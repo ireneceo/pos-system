@@ -283,5 +283,17 @@
     "paid": "Paid",
     "overdue": "Overdue",
     "delivered": "Delivered"
+  },
+  "nav": {
+    "direct": "External"
+  },
+  "viewNote": {
+    "own": "You can edit or delete this supplier from the External tab."
+  },
+  "profile": {
+    "externalSupplier": "External supplier"
+  },
+  "source": {
+    "external": "EXTERNAL"
   }
 }

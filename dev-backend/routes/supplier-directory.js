@@ -128,18 +128,11 @@ router.get('/supplier-directory', async (req, res) => {
     const where = { status: 'active' };
     if (country) where.country = String(country).toUpperCase();
     if (state) where.state = String(state);
-    // 2026-06-22 (Irene): 외부공급업체는 등록한 본인에게만 보인다(프라이버시).
-    // 디렉토리/검색에는 (a) 시스템 가입 공급업체(공개 마켓) + (b) 내 buyerEntity 가 등록한
-    // 외부공급업체만 노출. 남의 외부공급업체(is_system_registered=false + registered_by≠나)는 제외.
-    const and = [];
-    if (req.buyerEntity) {
-      and.push({ [Op.or]: [
-        { is_system_registered: true },
-        { is_system_registered: false, registered_by_entity_type: req.buyerEntity.type, registered_by_entity_id: req.buyerEntity.id }
-      ] });
-    } else {
-      and.push({ is_system_registered: true });
-    }
+    // Find Suppliers = **솔루션 가입 공급업체를 찾아 계약을 신청하는 곳**이다.
+    // 내가 손으로 적어 넣은 외부업체(External)를 여기 섞으면 "가입 업체 vs 외부업체" 구분이
+    // 무너진다 — 외부업체는 External 탭에서 관리한다. (Irene 2026-07-12)
+    // 이전엔 내 외부업체도 포함시켜(is_system_registered=false + registered_by=나) 검색에 나왔다.
+    const and = [{ is_system_registered: true }];
     if (search && String(search).trim()) {
       const term = `%${String(search).trim()}%`;
       and.push({ [Op.or]: [

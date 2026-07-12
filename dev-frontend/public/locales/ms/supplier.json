@@ -283,5 +283,17 @@
     "paid": "Dibayar",
     "overdue": "Tertunggak",
     "delivered": "Sampai"
+  },
+  "nav": {
+    "direct": "Luaran"
+  },
+  "viewNote": {
+    "own": "Anda boleh sunting atau padam pembekal ini dari tab Luaran."
+  },
+  "profile": {
+    "externalSupplier": "Pembekal luaran"
+  },
+  "source": {
+    "external": "LUARAN"
   }
 }

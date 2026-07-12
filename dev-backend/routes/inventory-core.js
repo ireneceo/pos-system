@@ -19,6 +19,15 @@ async function getRestaurantCostMap(restaurantId) {
   return map;
 }
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+// 브랜드 공유 재료 접근·재고 규칙의 단일 소스 (docs/BRAND_STOCK_SHARING_DESIGN.md)
+const { readableIngredient, stockFor, stockMapFor, applyStock } = require('../utils/brandStockAccess');
+
+/**
+ * 이 매장이 다룰 수 있는 재료인가 — 자기 재료 ∪ 부모 브랜드 재료.
+ * 예전엔 Ingredient.findByPk 만 하고 소유권을 안 봐서 남의 매장 재료 id 로도 입고가 됐다(IDOR).
+ */
+const ownedIngredient = (ingredientId, restaurantId, transaction) =>
+  readableIngredient(ingredientId, { type: 'restaurant', id: parseInt(restaurantId, 10) }, transaction);
 const { deleteOldImages } = require('../utils/imageProcessor');
 
 // Apply auth middleware to all routes
@@ -108,9 +117,18 @@ router.get('/:restaurantId/inventory', async (req, res) => {
       }
     }
 
+    // 브랜드 공유 재료의 실재고는 매장 오버레이가 단일 소스 (브랜드 행의 current_stock 이 아님)
+    const brandStockMap = await stockMapFor(
+      restaurantId,
+      ingredients.filter(i => i.owner_type === 'brand').map(i => i.id)
+    );
+
     // Add stock status
     ingredients = ingredients.map(ing => {
-      const currentStock = parseFloat(ing.current_stock) || 0;
+      const isBrandShared = ing.owner_type === 'brand';
+      const currentStock = isBrandShared
+        ? (brandStockMap[ing.id] || 0)
+        : (parseFloat(ing.current_stock) || 0);
       const minStock = parseFloat(ing.min_stock) || 0;
 
       let stockStatus = 'normal';
@@ -123,6 +141,9 @@ router.get('/:restaurantId/inventory', async (req, res) => {
       const onOrder = onOrderMap[ing.id] || null;
       return {
         ...ing.toJSON(),
+        current_stock: currentStock,
+        is_brand_shared: isBrandShared, // 프론트: Brand 배지 + 재료 자체 편집 차단
+        read_only: isBrandShared,
         stock_status: stockStatus,
         on_order_quantity: onOrder ? onOrder.qty : 0,
         on_order_delivery_date: onOrder ? onOrder.date : null
@@ -276,20 +297,16 @@ router.post('/:restaurantId/inventory/initial', async (req, res) => {
     const userId = req.user.id;
 
     for (const item of items) {
-      const ingredient = await Ingredient.findByPk(item.ingredient_id);
-      if (!ingredient) continue;
+      const ingredient = await ownedIngredient(item.ingredient_id, restaurantId, transaction);
+      if (!ingredient) continue; // 남의 매장/브랜드 재료 → 무시
 
       const quantity = parseFloat(item.quantity) || 0;
 
-      // Update ingredient stock
-      await Ingredient.update(
-        {
-          current_stock: quantity,
-          last_actual_stock: quantity,
-          last_stock_take_at: new Date()
-        },
-        { where: { id: item.ingredient_id }, transaction }
-      );
+      // 브랜드 공유 재료는 매장 오버레이에, 매장 재료는 재료 행에 (형제 매장 재고 오염 방지)
+      await applyStock(ingredient, restaurantId, quantity, transaction, { stockTake: true });
+      if (ingredient.owner_type !== 'brand') {
+        await ingredient.update({ last_actual_stock: quantity }, { transaction });
+      }
 
       // Create transaction record
       await InventoryTransaction.create({
@@ -332,7 +349,7 @@ router.post('/:restaurantId/inventory/receive', async (req, res) => {
     } = req.body;
     const userId = req.user.id;
 
-    const ingredient = await Ingredient.findByPk(ingredient_id);
+    const ingredient = await ownedIngredient(ingredient_id, restaurantId, transaction);
     if (!ingredient) {
       await transaction.rollback();
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
@@ -340,14 +357,10 @@ router.post('/:restaurantId/inventory/receive', async (req, res) => {
 
     // Round to 2 decimal places for consistency
     const addQty = Math.round((parseFloat(quantity) || 0) * 100) / 100;
-    const currentStock = Math.round((parseFloat(ingredient.current_stock) || 0) * 100) / 100;
+    const currentStock = Math.round((await stockFor(ingredient, restaurantId, transaction)) * 100) / 100;
     const newStock = Math.round((currentStock + addQty) * 100) / 100;
 
-    // Update ingredient stock
-    await Ingredient.update(
-      { current_stock: newStock, last_stock_take_at: new Date() },
-      { where: { id: ingredient_id }, transaction }
-    );
+    await applyStock(ingredient, restaurantId, newStock, transaction, { stockTake: true });
 
     // Create inventory batch for FIFO tracking
     const batch = await InventoryBatch.create({
@@ -385,6 +398,7 @@ router.post('/:restaurantId/inventory/receive', async (req, res) => {
       {
         where: {
           ingredient_id: ingredient_id,
+          restaurant_id: restaurantId, // 브랜드 공유 재료는 매장마다 알림이 다르다
           is_resolved: false
         },
         transaction
@@ -414,21 +428,17 @@ router.post('/:restaurantId/inventory/waste', async (req, res) => {
     const { ingredient_id, quantity, notes } = req.body;
     const userId = req.user.id;
 
-    const ingredient = await Ingredient.findByPk(ingredient_id);
+    const ingredient = await ownedIngredient(ingredient_id, restaurantId, transaction);
     if (!ingredient) {
       await transaction.rollback();
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
 
     const wasteQty = parseFloat(quantity) || 0;
-    const currentStock = parseFloat(ingredient.current_stock) || 0;
+    const currentStock = await stockFor(ingredient, restaurantId, transaction);
     const newStock = Math.max(0, currentStock - wasteQty);
 
-    // Update ingredient stock
-    await Ingredient.update(
-      { current_stock: newStock },
-      { where: { id: ingredient_id }, transaction }
-    );
+    await applyStock(ingredient, restaurantId, newStock, transaction);
 
     // Create transaction record
     await InventoryTransaction.create({
@@ -466,13 +476,13 @@ router.post('/:restaurantId/inventory/adjust', async (req, res) => {
     const { ingredient_id, quantity, new_quantity, notes, reason } = req.body;
     const userId = req.user.id;
 
-    const ingredient = await Ingredient.findByPk(ingredient_id);
+    const ingredient = await ownedIngredient(ingredient_id, restaurantId, transaction);
     if (!ingredient) {
       await transaction.rollback();
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
 
-    const currentStock = parseFloat(ingredient.current_stock) || 0;
+    const currentStock = await stockFor(ingredient, restaurantId, transaction);
     let newStock;
     let adjustQty;
 
@@ -486,11 +496,7 @@ router.post('/:restaurantId/inventory/adjust', async (req, res) => {
       newStock = Math.max(0, currentStock + adjustQty);
     }
 
-    // Update ingredient stock
-    await Ingredient.update(
-      { current_stock: newStock },
-      { where: { id: ingredient_id }, transaction }
-    );
+    await applyStock(ingredient, restaurantId, newStock, transaction);
 
     // Create transaction record
     await InventoryTransaction.create({

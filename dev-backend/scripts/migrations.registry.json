@@ -43,7 +43,8 @@
     "20260629_create_processed_ops.js",
     "20260708_normalize_unknown_company.js",
     "migrate-rent-category.js",
-    "migrate-ai-recognition-tables.js"
+    "migrate-ai-recognition-tables.js",
+    "migrate-restaurant-ingredient-stocks.js"
   ],
   "manual": {
     "migrate-staff-payment-void-perms.js": "의도적 제외 — 매 배포 재실행 시 access_pos 직원 전원에게 결제·취소 권한을 재부여해, 매장이 의도적으로 끈 권한(예: 서버 역할)을 도로 켠다. 최초 1회 백필 운영 적용됨. 직원 권한 단일소스=직원관리 UI. (2026-06-24 결정)",

@@ -66,6 +66,8 @@ interface MyIngredientRow {
   // not a brand ingredient. Carried into the cart so submit can emit product_ingredient_id.
   product_ingredient_id?: number;
   is_product_ingredient?: boolean;
+  // 매장이 보는 부모 브랜드의 표준 재료 — 발주는 되지만 공급처 연결/해제는 브랜드 전용(읽기전용).
+  is_brand_shared?: boolean;
 }
 
 interface CatalogRow {
@@ -431,7 +433,7 @@ const BadgeRow = styled.div`
   min-height: 18px;
 `;
 
-const Badge = styled.span<{ $variant?: 'success' | 'cart' | 'warning' | 'options' | 'brand' | 'foodcourt' }>`
+const Badge = styled.span<{ $variant?: 'success' | 'cart' | 'warning' | 'options' | 'brand' | 'foodcourt' | 'shared' }>`
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
@@ -445,6 +447,7 @@ const Badge = styled.span<{ $variant?: 'success' | 'cart' | 'warning' | 'options
       case 'options': return '#7C3AED';
       case 'brand': return '#EDE9FE';
       case 'foodcourt': return '#FCE7F3';
+      case 'shared': return '#F3F4F6';
       default: return '#EEF2FF';
     }
   }};
@@ -454,6 +457,7 @@ const Badge = styled.span<{ $variant?: 'success' | 'cart' | 'warning' | 'options
       case 'warning': return '#92400E';
       case 'options': return 'white';
       case 'brand': return '#6D28D9';
+      case 'shared': return '#4B5563';
       case 'foodcourt': return '#9D174D';
       default: return '#635BFF';
     }
@@ -782,6 +786,45 @@ const NewPurchaseOrderPage: React.FC = () => {
         ingredientRows = res.ok && j.success && Array.isArray(j.data) ? j.data : [];
       }
 
+      // 매장은 부모 브랜드의 표준 재료도 발주한다 — 브랜드가 정의하고 공급처를 붙여둔 것을
+      // 그대로 쓴다(읽기전용). 레시피 화면이 이미 쓰는 병합 패턴과 같은 엔드포인트.
+      // docs/BRAND_STOCK_SHARING_DESIGN.md
+      let brandSharedRows: MyIngredientRow[] = [];
+      if (buyerEntity?.type === 'restaurants') {
+        try {
+          const bRes = await fetch(
+            `/api/restaurants/${buyerEntity.id}/brand-ingredients?include=sellers`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          const bJson = await bRes.json();
+          const bData: any[] = bRes.ok && bJson.success && Array.isArray(bJson.data) ? bJson.data : [];
+          brandSharedRows = bData.map((item): MyIngredientRow => ({
+            id: item.id,
+            name: item.name,
+            unit: item.unit ?? null,
+            ingredient_category_id: item.ingredient_category_id ?? null,
+            ingredientCategory: item.ingredientCategory ?? null,
+            track_stock: item.track_stock ?? true,
+            created_at: item.created_at ?? null,
+            is_brand_shared: true,
+            sellers: (Array.isArray(item.sellerSources) ? item.sellerSources : []).map((s: any): SellerOpt => ({
+              id: s.id,
+              seller_product_id: s.seller_product_id,
+              seller_type: s.seller_type,
+              seller_entity_id: s.seller_entity_id ?? null,
+              seller_name: s.seller_name,
+              unit_price: Number(s.unit_price) || 0,
+              unit_conversion: Number(s.unit_conversion) || 1,
+              min_order_quantity: Number(s.min_order_quantity) || 1,
+              lead_time_days: Number(s.lead_time_days) || 0,
+              is_preferred: !!s.is_preferred,
+              seller_product_name: s.seller_product_name ?? null,
+              seller_product_sku: s.seller_product_sku ?? null,
+            })),
+          }));
+        } catch { /* brand-shared fetch is additive; ignore failures */ }
+      }
+
       // BG (brands) only — Stock Items = owner-scoped ProductIngredient with a seller-source mapping.
       let productIngredientRows: MyIngredientRow[] = [];
       if (buyerEntity?.type === 'brands') {
@@ -824,7 +867,7 @@ const NewPurchaseOrderPage: React.FC = () => {
         } catch { /* BG stock-item fetch is additive; ignore failures */ }
       }
 
-      setMyList([...ingredientRows, ...productIngredientRows]);
+      setMyList([...ingredientRows, ...brandSharedRows, ...productIngredientRows]);
     } catch { setMyList([]); }
     finally { setLoadingMine(false); }
   }, [buyerApiBase, buyerEntity]);
@@ -1447,6 +1490,8 @@ const NewPurchaseOrderPage: React.FC = () => {
                         type="button"
                         onClick={() => {
                           if (!hasSeller) {
+                            // 브랜드 표준 재료는 공급처를 브랜드가 붙인다 — 매장은 연결할 수 없다(읽기전용)
+                            if (row.is_brand_shared) return;
                             // 발주처 미연결 — inline modal 띄움 (페이지 이동 X, catalog 탭 자동 검색 X)
                             setConnectTarget({ id: row.id, name: row.name, unit: row.unit || '', product_ingredient_id: row.product_ingredient_id });
                             return;
@@ -1457,7 +1502,8 @@ const NewPurchaseOrderPage: React.FC = () => {
                       >
                         <BadgeRow>
                           {inCart && <Badge $variant="cart">×{qInCart}</Badge>}
-                          {!inCart && !hasSeller && <Badge $variant="warning">{t('newPo.connectCta', 'Click to connect supplier →')}</Badge>}
+                          {row.is_brand_shared && <Badge $variant="shared">{t('newPo.brandStock', 'Brand stock')}</Badge>}
+                          {!inCart && !hasSeller && !row.is_brand_shared && <Badge $variant="warning">{t('newPo.connectCta', 'Click to connect supplier →')}</Badge>}
                           {!inCart && hasSeller && <Badge $variant="success">{t('newPo.linked', 'Linked')}</Badge>}
                           {hasSeller && row.sellers.some(s => s.seller_type === 'brand') && <Badge $variant="brand">{t('newPo.brandBadge', 'BRAND')}</Badge>}
                           {hasSeller && row.sellers.some(s => s.seller_type === 'foodcourt') && <Badge $variant="foodcourt">{t('newPo.foodcourtBadge', 'FOODCOURT')}</Badge>}
@@ -1518,7 +1564,9 @@ const NewPurchaseOrderPage: React.FC = () => {
                           </>
                         ) : (
                           <CardMeta style={{ color: '#92400E' }}>
-                            {t('newPo.needLink', 'Link a supplier to order')}
+                            {row.is_brand_shared
+                              ? t('newPo.brandNeedsLink', 'Your brand has not linked a supplier to this item yet')
+                              : t('newPo.needLink', 'Link a supplier to order')}
                           </CardMeta>
                         )}
                       </ItemBox>

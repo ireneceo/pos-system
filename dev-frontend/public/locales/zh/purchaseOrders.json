@@ -388,5 +388,7 @@
   },
   "newPo.viewMode": "显示方式",
   "newPo.viewCard": "卡片",
-  "newPo.viewList": "列表"
+  "newPo.viewList": "列表",
+  "newPo.brandStock": "品牌库存",
+  "newPo.brandNeedsLink": "品牌尚未为该项目关联供应商"
 }

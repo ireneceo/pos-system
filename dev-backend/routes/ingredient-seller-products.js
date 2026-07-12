@@ -27,23 +27,35 @@ const {
 const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
+const { readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
 
 router.use(['/ingredients', '/ingredient-seller-products', '/seller-catalog'], authenticateToken, requireBuyerRole);
 
 const VALID_SELLER_TYPES = ['system_admin', 'brand', 'foodcourt', 'supplier'];
 
-/** Verify ingredient is owned by the buyer entity. */
-async function ingredientBelongsToBuyer(ingredientId, buyerEntity) {
-  const ing = await Ingredient.findByPk(ingredientId);
-  if (!ing) return null;
-  if (!buyerEntity) return ing; // SA bypass
-  if (buyerEntity.type === 'restaurant') {
-    if (parseInt(ing.restaurant_id, 10) === buyerEntity.id) return ing;
-  } else if (buyerEntity.type === 'brand') {
-    if (parseInt(ing.brand_id, 10) === buyerEntity.id) return ing;
-  } else if (buyerEntity.type === 'foodcourt') {
-    return null; // No foodcourt_id on Ingredient
+/**
+ * 재고아이템 접근 — 읽기와 쓰기를 나눈다 (utils/brandStockAccess.js 가 단일 소스).
+ *
+ *   읽기(GET seller-sources): 매장은 자기 재료 ∪ **부모 브랜드 재료** — 브랜드가 붙여둔
+ *     공급처를 매장이 그대로 보고 발주해야 하기 때문(계약은 supplierAccess 가 상속 처리).
+ *   쓰기(POST/PUT/DELETE): 소유자 본인만. 매장이 브랜드 재료의 공급처를 연결·수정·해제하면
+ *     형제 매장 전체의 공급망이 바뀐다 → 403. 브랜드 재료의 공급처는 BG 가 정의한다.
+ */
+const readableIngredientForBuyer = (ingredientId, buyerEntity) => readableIngredient(ingredientId, buyerEntity);
+
+/** 쓰기 대상. 읽기는 되는데 쓰기가 안 되는 경우(브랜드 공유 재료) 를 403 으로 구분해 돌려준다. */
+async function writableIngredientOr403(ingredientId, buyerEntity, res) {
+  const writable = await writableIngredient(ingredientId, buyerEntity);
+  if (writable) return writable;
+  const readable = await readableIngredient(ingredientId, buyerEntity);
+  if (readable) {
+    res.status(403).json({
+      success: false,
+      message: 'Brand-owned stock item is read-only. Ask the brand to change its supplier sources.'
+    });
+    return null;
   }
+  res.status(404).json({ success: false, message: 'Ingredient not found' });
   return null;
 }
 
@@ -63,7 +75,7 @@ router.get('/ingredients/:ingredientId/seller-sources', async (req, res) => {
     if (!Number.isFinite(ingredientId)) {
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
-    const ing = await ingredientBelongsToBuyer(ingredientId, req.buyerEntity);
+    const ing = await readableIngredientForBuyer(ingredientId, req.buyerEntity);
     if (!ing) {
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
@@ -103,10 +115,8 @@ router.post('/ingredients/:ingredientId/seller-sources', async (req, res) => {
     if (!Number.isFinite(ingredientId)) {
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
-    const ing = await ingredientBelongsToBuyer(ingredientId, req.buyerEntity);
-    if (!ing) {
-      return res.status(404).json({ success: false, message: 'Ingredient not found' });
-    }
+    const ing = await writableIngredientOr403(ingredientId, req.buyerEntity, res);
+    if (!ing) return; // 403(브랜드 공유 재료) / 404 는 헬퍼가 응답
 
     const {
       seller_type,
@@ -189,11 +199,9 @@ router.put('/ingredient-seller-products/:id', async (req, res) => {
     if (!isp) {
       return res.status(404).json({ success: false, message: 'Seller source not found' });
     }
-    // IDOR via ingredient ownership
-    const ing = await ingredientBelongsToBuyer(isp.ingredient_id, req.buyerEntity);
-    if (!ing) {
-      return res.status(404).json({ success: false, message: 'Seller source not found' });
-    }
+    // IDOR via ingredient ownership (브랜드 공유 재료는 매장이 못 고침 → 403)
+    const ing = await writableIngredientOr403(isp.ingredient_id, req.buyerEntity, res);
+    if (!ing) return;
 
     const { unit_price, is_preferred, is_active, notes, unit_conversion, min_order_quantity, lead_time_days } = req.body;
     const updates = {};
@@ -241,10 +249,8 @@ router.delete('/ingredient-seller-products/:id', async (req, res) => {
     if (!isp) {
       return res.status(404).json({ success: false, message: 'Seller source not found' });
     }
-    const ing = await ingredientBelongsToBuyer(isp.ingredient_id, req.buyerEntity);
-    if (!ing) {
-      return res.status(404).json({ success: false, message: 'Seller source not found' });
-    }
+    const ing = await writableIngredientOr403(isp.ingredient_id, req.buyerEntity, res);
+    if (!ing) return;
 
     await isp.destroy();
     res.json({ success: true, message: 'Seller source deleted' });

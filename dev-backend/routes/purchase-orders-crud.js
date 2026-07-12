@@ -39,6 +39,7 @@ const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeServ
 const { sendNotificationBatch, getSupplierAdminIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
 const { normalizeCurrencyCode, sameCurrency } = require('../utils/currency');
 const { resolveSellers, getSeller, getSellerName, isExternalSeller } = require('../utils/sellerNames');
+const { readableIngredient } = require('../utils/brandStockAccess');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
 
@@ -121,20 +122,16 @@ function checkPOOwnership(po, req) {
   return po.entity_type === req.buyerEntity.type && po.entity_id === req.buyerEntity.id;
 }
 
-/** Verify ingredient is owned by the buyer entity. */
+/**
+ * Verify the buyer may ORDER this ingredient.
+ *
+ * A restaurant may order its own stock items AND its parent brand's shared ones
+ * (브랜드 표준 재료 — 정의는 브랜드, 발주는 매장). Ownership rules live in one place:
+ * utils/brandStockAccess.js. brand_id is resolved server-side there (never from the client)
+ * so sibling brands of the same owner cannot leak.
+ */
 async function ingredientBelongsToBuyer(ingredientId, buyerEntity) {
-  const ing = await Ingredient.findByPk(ingredientId);
-  if (!ing) return null;
-  if (!buyerEntity) return ing; // SA without override: allow
-  if (buyerEntity.type === 'restaurant') {
-    if (parseInt(ing.restaurant_id, 10) === buyerEntity.id) return ing;
-  } else if (buyerEntity.type === 'brand') {
-    if (parseInt(ing.brand_id, 10) === buyerEntity.id) return ing;
-  } else if (buyerEntity.type === 'foodcourt') {
-    // Phase 2 (2026-04-29): foodcourt 도 ingredient 소유 (owner_type='foodcourt')
-    if (parseInt(ing.foodcourt_id, 10) === buyerEntity.id) return ing;
-  }
-  return null;
+  return readableIngredient(ingredientId, buyerEntity);
 }
 
 /**

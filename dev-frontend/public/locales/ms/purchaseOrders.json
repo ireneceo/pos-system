@@ -388,5 +388,7 @@
   },
   "newPo.viewMode": "Mod paparan",
   "newPo.viewCard": "Kad",
-  "newPo.viewList": "Senarai"
+  "newPo.viewList": "Senarai",
+  "newPo.brandStock": "Stok jenama",
+  "newPo.brandNeedsLink": "Jenama anda belum memautkan pembekal untuk item ini"
 }

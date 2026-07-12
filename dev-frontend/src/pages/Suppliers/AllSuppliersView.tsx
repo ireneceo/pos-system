@@ -138,12 +138,12 @@ function labelOf(source: SourceKey, t: any): string {
     case 'contract': return t('supplier:source.contract', 'CONTRACTED');
     case 'brand_shared': return t('supplier:source.brandShared', 'BRAND SHARED');
     case 'own': return t('supplier:source.own', 'OWN');
-    case 'external': return t('supplier:source.external', 'DIRECT');
+    case 'external': return t('supplier:source.external', 'EXTERNAL');
   }
 }
 function sourceNoteOf(source: SourceKey, t: any): string {
   switch (source) {
-    case 'own': return t('supplier:viewNote.own', 'You can edit or delete this supplier from the Direct tab.');
+    case 'own': return t('supplier:viewNote.own', 'You can edit or delete this supplier from the External tab.');
     case 'brand_shared': return t('supplier:viewNote.brandShared', 'Shared by your parent Brand. Read-only.');
     case 'contract': return t('supplier:viewNote.contract', 'Linked via active supplier contract. Manage in the Contracts tab.');
     case 'brand_parent': return t('supplier:viewNote.brandParent', 'Your parent Brand HQ — read-only.');

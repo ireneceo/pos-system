@@ -1342,6 +1342,15 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                             ))}
                           </div>
                         )}
+                        {/* 브랜드 표준 재료는 공급처를 브랜드가 정한다 — 매장에는 연결/등록 버튼을 주지 않는다(읽기전용).
+                            docs/BRAND_STOCK_SHARING_DESIGN.md */}
+                        {isItemReadOnly(ingredient) ? (
+                          sellers.length === 0 && (
+                            <span style={{ fontSize: 12, color: '#92400E' }}>
+                              Your brand has not linked a supplier to this item yet
+                            </span>
+                          )
+                        ) : (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                           <button
                             type="button"
@@ -1371,6 +1380,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                             Register on external supplier
                           </button>
                         </div>
+                        )}
                       </InfoValue>
                     </InfoRow>
                   );

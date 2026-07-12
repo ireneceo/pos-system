@@ -19,6 +19,7 @@ import {
   ConfidenceBadge,
   SettingsButton,
   IngredientName,
+  BrandTag,
   IngredientMeta,
   InventoryTableHeader,
   InventoryTableRow,
@@ -210,7 +211,10 @@ const StockListSection: React.FC<Props> = ({
                           )}
                         </StockItemImage>
                         <StockItemDetails>
-                          <IngredientName>{item.name}</IngredientName>
+                          <IngredientName>
+                            {item.name}
+                            {item.is_brand_shared && <BrandTag title="Stock item defined by your brand">Brand</BrandTag>}
+                          </IngredientName>
                           {item.code && <StockItemCode>{item.code}</StockItemCode>}
                           <IngredientMeta>{item.category}</IngredientMeta>
                         </StockItemDetails>
@@ -400,7 +404,10 @@ const StockListSection: React.FC<Props> = ({
                           )}
                         </StockItemImage>
                         <StockItemDetails>
-                          <IngredientName>{item.name}</IngredientName>
+                          <IngredientName>
+                            {item.name}
+                            {item.is_brand_shared && <BrandTag title="Stock item defined by your brand">Brand</BrandTag>}
+                          </IngredientName>
                           {item.code && <StockItemCode>{item.code}</StockItemCode>}
                           <IngredientMeta>
                             {item.category} • {(parseFloat(String(item.avg_daily_usage)) || 0).toFixed(2)} {item.unit}/day
@@ -541,14 +548,20 @@ const StockListSection: React.FC<Props> = ({
                     >
                       Waste
                     </Button>
-                    <SettingsButton onClick={() => onSettings(item)}>
-                      Settings
-                    </SettingsButton>
+                    {/* 브랜드 표준 재료는 재료 정의(설정·삭제)를 브랜드가 소유한다 — 매장은 재고만 다룬다.
+                        재고 입고/폐기/조정은 매장별 오버레이라 그대로 허용. */}
+                    {!item.is_brand_shared && (
+                      <SettingsButton onClick={() => onSettings(item)}>
+                        Settings
+                      </SettingsButton>
+                    )}
+                    {!item.is_brand_shared && (
                     <DeleteButton onClick={() => onDelete({ type: 'ingredient', id: item.id, name: item.name })}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M18 6L6 18M6 6l12 12" />
                       </svg>
                     </DeleteButton>
+                    )}
                   </ActionButtons>
                 </InventoryTableRow>
                 );

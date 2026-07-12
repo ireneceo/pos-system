@@ -4,9 +4,9 @@
  *
  * 탭:
  *   - All Suppliers: 모든 source 통합 (own + brand_shared + contract + parent_brand + parent_foodcourt)
- *   - Direct:        직접 등록 + brand 공유 (자기 suppliers 테이블)
+ *   - External:      직접 등록한 외부업체(솔루션 미가입) + brand 공유 — 계약 개념 없음
  *   - Contracts:     계약된 supplier_company (active SupplierContract)
- *   - Find:          시스템 supplier 검색·신청
+ *   - Find:          **솔루션 가입** supplier 검색·계약신청 (외부업체는 여기 안 나온다)
  */
 import React from 'react';
 import styled from 'styled-components';
@@ -49,7 +49,7 @@ export default function UnifiedSuppliersPage() {
             {t('supplier:nav.allSuppliers', 'All Suppliers')}
           </Tab>
           <Tab active={tab === 'direct'} onClick={() => setTab('direct')}>
-            {t('supplier:nav.direct', 'Direct')}
+            {t('supplier:nav.direct', 'External')}
           </Tab>
           <Tab active={tab === 'contracts'} onClick={() => setTab('contracts')}>
             {t('supplier:nav.contracts', 'Contracts')}

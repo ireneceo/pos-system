@@ -6,6 +6,10 @@
  *   - Restaurant Owner       → ('restaurant', user.restaurant_id) if assigned
  *                               or via RestaurantManager join (multi-restaurant owner)
  *   - Brand General / Manager → ('brand', user.brand_id)
+ *        + Brand General 은 **자기가 소유한 다른 브랜드**로 전환 가능(?entity_type=brand&entity_id=N).
+ *          한 오너가 브랜드를 여러 개 갖는 게 정상인데(project_brand_multi_owner) primary 한 곳에
+ *          고정돼 있어, 두 번째 브랜드의 재료엔 공급처조차 못 붙였다 — 실제로 운영 K-DINE 이
+ *          여기 걸려 공급처 0건이었다. 소유(Brand.owner_id === user.id) 확인 후에만 허용.
  *   - Foodcourt General / Manager → ('foodcourt', user.foodcourt_id)
  *   - System Admin → optional ?entity_type=&entity_id= override
  *
@@ -38,7 +42,7 @@ function resolveBuyerFromUser(user) {
   return null;
 }
 
-function requireBuyerRole(req, res, next) {
+async function requireBuyerRole(req, res, next) {
   const user = req.user;
   if (!user) {
     return res.status(401).json({ success: false, message: 'Not authenticated' });
@@ -70,6 +74,26 @@ function requireBuyerRole(req, res, next) {
       success: false,
       message: 'No buyer entity assigned to your account (restaurant_id / brand_id / foodcourt_id missing)'
     });
+  }
+
+  // Brand General 이 자기가 소유한 다른 브랜드로 전환 — 소유 확인 후에만.
+  // (Brand Manager 는 전환 불가: 배정된 브랜드만.)
+  if (user.role === 'Brand General' && req.query.entity_type === 'brand') {
+    const wanted = parseInt(req.query.entity_id, 10);
+    if (Number.isFinite(wanted) && wanted !== entity.id) {
+      try {
+        const { Brand } = require('../models');
+        const owned = await Brand.findOne({ where: { id: wanted, owner_id: user.id }, attributes: ['id'] });
+        if (!owned) {
+          return res.status(403).json({ success: false, message: 'Not your brand' });
+        }
+        req.buyerEntity = { type: 'brand', id: wanted };
+        req.buyerIsAdmin = false;
+        return next();
+      } catch (err) {
+        return res.status(500).json({ success: false, message: 'Failed to resolve buyer brand' });
+      }
+    }
   }
 
   req.buyerEntity = entity;

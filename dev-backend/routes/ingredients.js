@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { Ingredient, IngredientCategory, Restaurant, Supplier, RestaurantIngredientCost } = require('../models');
+const { Ingredient, IngredientCategory, Restaurant, Supplier, RestaurantIngredientCost, IngredientSellerProduct, SupplierProduct } = require('../models');
+const { stockMapFor, readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
@@ -638,6 +639,33 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
       };
     });
 
+    // 매장별 실재고(브랜드 공유 행이 아니라 오버레이가 단일 소스) — docs/BRAND_STOCK_SHARING_DESIGN.md
+    const brandIds = brandIngredients.map(i => i.id);
+    const stockMap = await stockMapFor(restaurantId, brandIds);
+
+    // 공급처(seller-sources) 첨부 — ?include=sellers. 브랜드가 붙여둔 공급처를 매장이 그대로
+    // 보고 발주한다(연결·해제는 브랜드 전용 = 읽기전용). 무옵션 호출의 응답은 불변(하위호환).
+    const wantSellers = String(req.query.include || '').split(',').includes('sellers');
+    let sellerMap = {};
+    if (wantSellers && brandIds.length) {
+      const rows = await IngredientSellerProduct.findAll({
+        where: { ingredient_id: brandIds, is_active: true },
+        order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
+      });
+      const spIds = [...new Set(rows.filter(r => r.seller_type === 'supplier' && r.seller_product_id).map(r => r.seller_product_id))];
+      const spMap = spIds.length
+        ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(sp => [sp.id, sp]))
+        : {};
+      rows.forEach(r => {
+        const sp = r.seller_type === 'supplier' ? spMap[r.seller_product_id] : null;
+        (sellerMap[r.ingredient_id] = sellerMap[r.ingredient_id] || []).push({
+          ...r.toJSON(),
+          seller_product_name: sp?.name || null,
+          seller_product_sku: sp?.sku || null
+        });
+      });
+    }
+
     // 각 재료에 restaurant_cost, effective_cost 추가
     const enrichedIngredients = brandIngredients.map(ing => {
       const plain = ing.toJSON();
@@ -646,6 +674,10 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
       plain.restaurant_cost = override ? override.unit_cost : null;
       plain.cost_notes = override ? override.notes : null;
       plain.effective_cost = override ? override.unit_cost : brandCost;
+      plain.current_stock = stockMap[plain.id] || 0;   // 이 매장의 실재고
+      plain.is_brand_shared = true;                     // 프론트: Brand 배지 + 편집 차단
+      plain.read_only = true;
+      if (wantSellers) plain.sellerSources = sellerMap[plain.id] || [];
       return plain;
     });
 
@@ -701,15 +733,23 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
  */
 router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
-    const { ingredientId } = req.params;
+    const { restaurantId, ingredientId } = req.params;
     const { code, name, image_url, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
 
-    console.log('[DEBUG] PUT restaurant ingredient - ingredientId:', ingredientId, 'body:', req.body);
-
-    const ingredient = await Ingredient.findByPk(ingredientId);
-    if (!ingredient) {
-      return res.status(404).json({ success: false, error: { message: 'Ingredient not found', code: 'NOT_FOUND' } });
+    // 소유권 — 재료 행 자체를 고치는 API. 예전엔 findByPk 만 하고 소유권을 안 봐서
+    // 남의 매장 재료나 브랜드 표준 재료(형제 매장 공유 행)까지 수정·삭제됐다.
+    // 브랜드 재료의 정의는 브랜드가 소유한다(매장은 재고만) — docs/BRAND_STOCK_SHARING_DESIGN.md
+    const buyer = { type: 'restaurant', id: parseInt(restaurantId, 10) };
+    const own = await writableIngredient(ingredientId, buyer);
+    if (!own) {
+      const shared = await readableIngredient(ingredientId, buyer);
+      return res.status(shared ? 403 : 404).json({
+        success: false,
+        message: shared ? 'Brand-owned stock item is read-only. Only the brand can change it.' : 'Ingredient not found'
+      });
     }
+
+    const ingredient = own;
 
     // Build update object with only provided fields
     const updateData = {};
@@ -763,13 +803,22 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
  */
 router.delete('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
-    const { ingredientId } = req.params;
+    const { restaurantId, ingredientId } = req.params;
 
-    const ingredient = await Ingredient.findByPk(ingredientId);
-    if (!ingredient) {
-      return res.status(404).json({ success: false, error: { message: 'Ingredient not found', code: 'NOT_FOUND' } });
+    // 소유권 — 재료 행 자체를 고치는 API. 예전엔 findByPk 만 하고 소유권을 안 봐서
+    // 남의 매장 재료나 브랜드 표준 재료(형제 매장 공유 행)까지 수정·삭제됐다.
+    // 브랜드 재료의 정의는 브랜드가 소유한다(매장은 재고만) — docs/BRAND_STOCK_SHARING_DESIGN.md
+    const buyer = { type: 'restaurant', id: parseInt(restaurantId, 10) };
+    const own = await writableIngredient(ingredientId, buyer);
+    if (!own) {
+      const shared = await readableIngredient(ingredientId, buyer);
+      return res.status(shared ? 403 : 404).json({
+        success: false,
+        message: shared ? 'Brand-owned stock item is read-only. Only the brand can change it.' : 'Ingredient not found'
+      });
     }
 
+    const ingredient = own;
     await ingredient.destroy();
 
     res.json({ success: true, message: 'Ingredient deleted' });

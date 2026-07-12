@@ -4,6 +4,7 @@ const { Op } = require('sequelize');
 const database = require('../config/database');
 const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch, GeneralStock, GeneralStockTransaction, Supplier, RestaurantIngredientCost } = require('../models');
 const { getStartOfMonth, getRestaurantTimezone } = require('../utils/dateTimeHelper');
+const { readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
 
 // 레스토랑의 코스트 오버라이드 맵 조회 헬퍼
 
@@ -402,8 +403,23 @@ router.get('/:restaurantId/inventory/:ingredientId/par-level', async (req, res) 
 // PUT /api/restaurants/:restaurantId/inventory/:ingredientId/settings - PAR 설정 업데이트
 router.put('/:restaurantId/inventory/:ingredientId/settings', async (req, res) => {
   try {
-    const { ingredientId } = req.params;
+    const { restaurantId, ingredientId } = req.params;
     const { lead_time_days, safety_stock_percent, manual_daily_usage, min_stock, min_order } = req.body;
+
+    // 소유권 — 재료 행 자체를 고치는 API 다. 예전엔 검사가 없어 남의 재료 id 로도 수정됐고(IDOR),
+    // 브랜드 표준 재료는 형제 매장이 공유하는 행이라 한 매장이 고치면 전 매장이 바뀐다.
+    // (재고 수량은 매장별 오버레이라 별개 — docs/BRAND_STOCK_SHARING_DESIGN.md)
+    const buyer = { type: 'restaurant', id: parseInt(restaurantId, 10) };
+    const own = await writableIngredient(ingredientId, buyer);
+    if (!own) {
+      const shared = await readableIngredient(ingredientId, buyer);
+      return res.status(shared ? 403 : 404).json({
+        success: false,
+        message: shared
+          ? 'Brand-owned stock item is read-only. Ask the brand to change its settings.'
+          : 'Ingredient not found'
+      });
+    }
 
     const updateData = {};
     if (lead_time_days !== undefined) updateData.lead_time_days = lead_time_days;

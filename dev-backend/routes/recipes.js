@@ -2,6 +2,40 @@ const express = require('express');
 const router = express.Router();
 const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product, RecipeCategory, Category, RestaurantIngredientCost } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+const { Op } = require('sequelize');
+
+/**
+ * 레시피에 넣으려는 재료가 이 레시피의 소유 범위 안인지 검증한다.
+ *
+ *   브랜드 레시피 → 그 브랜드의 재료만
+ *   매장 레시피   → 자기 매장 재료 ∪ **부모 브랜드 재료**(프랜차이즈 표준 재료)
+ *
+ * 예전엔 검증이 없어 아무 ingredient_id 나 붙일 수 있었고, 실제로 운영에 타 브랜드 재료를
+ * 참조하는 레시피가 생겼다. (docs/BRAND_STOCK_SHARING_DESIGN.md G6)
+ * 반환: 허용되지 않은 ingredient_id 배열 (빈 배열이면 통과).
+ */
+async function findDisallowedIngredientIds(items, scope) {
+  const ids = [...new Set((items || []).map(i => parseInt(i.ingredient_id, 10)).filter(Number.isFinite))];
+  if (!ids.length) return [];
+
+  const or = [];
+  if (scope.restaurantId) {
+    or.push({ restaurant_id: scope.restaurantId, owner_type: 'restaurant' });
+    const rest = await Restaurant.findByPk(scope.restaurantId, { attributes: ['brand_id'] });
+    if (rest?.brand_id) or.push({ brand_id: rest.brand_id, owner_type: 'brand' });
+  }
+  if (scope.brandId) {
+    or.push({ brand_id: scope.brandId, owner_type: 'brand' });
+  }
+  if (!or.length) return ids;
+
+  const allowed = await Ingredient.findAll({
+    where: { id: { [Op.in]: ids }, [Op.or]: or },
+    attributes: ['id']
+  });
+  const allowedSet = new Set(allowed.map(a => a.id));
+  return ids.filter(id => !allowedSet.has(id));
+}
 const { canEditRecipe, isBrandManager } = require('../middleware/recipeAuth');
 const { requireRestaurantModule } = require('../middleware/requireModule');
 const { generateRecipeCode } = require('../utils/codeGenerator');
@@ -78,6 +112,12 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
 
     // Auto-generate code if not provided
     const finalCode = req.body.code || await generateRecipeCode(Recipe, 'brand', brandId);
+
+    // 재료 소유권 검증 — 이 브랜드 재료만 (타 브랜드/타 매장 재료 참조 차단)
+    const badIng = await findDisallowedIngredientIds(ingredients, { brandId: brand_id });
+    if (badIng.length) {
+      return res.status(400).json({ success: false, message: `Ingredient not in this brand: ${badIng.join(', ')}` });
+    }
 
     // 레시피 생성 (owner_type = 'brand')
     const recipe = await Recipe.create({
@@ -190,6 +230,12 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
     if (suggested_price !== undefined) updateData.suggested_price = suggested_price ? parseFloat(suggested_price) : 0;
 
     await recipe.update(updateData);
+
+    // 재료 소유권 검증 — 이 브랜드 재료만 (타 브랜드/타 매장 재료 참조 차단)
+    const badIng = await findDisallowedIngredientIds(ingredients, { brandId: brand_id });
+    if (badIng.length) {
+      return res.status(400).json({ success: false, message: `Ingredient not in this brand: ${badIng.join(', ')}` });
+    }
 
     // 재료 업데이트 (기존 삭제 후 재생성)
     if (ingredients) {
@@ -420,6 +466,12 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
     // Auto-generate code if not provided
     const finalCode = req.body.code || await generateRecipeCode(Recipe, 'restaurant', restaurantId);
 
+    // 재료 소유권 검증 — 자기 매장 재료 ∪ 부모 브랜드 재료 (타 브랜드 재료 참조 차단)
+    const badIng = await findDisallowedIngredientIds(ingredients, { restaurantId: parseInt(restaurantId, 10) });
+    if (badIng.length) {
+      return res.status(400).json({ success: false, message: `Ingredient not available to this restaurant: ${badIng.join(', ')}` });
+    }
+
     // 레시피 생성 (owner_type = 'restaurant')
     const recipe = await Recipe.create({
       owner_type: 'restaurant',
@@ -528,6 +580,12 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
       instructions_detail,
       suggested_price
     });
+
+    // 재료 소유권 검증 — 자기 매장 재료 ∪ 부모 브랜드 재료 (타 브랜드 재료 참조 차단)
+    const badIng = await findDisallowedIngredientIds(ingredients, { restaurantId: parseInt(restaurantId, 10) });
+    if (badIng.length) {
+      return res.status(400).json({ success: false, message: `Ingredient not available to this restaurant: ${badIng.join(', ')}` });
+    }
 
     // 재료 업데이트 (기존 삭제 후 재생성)
     if (ingredients) {

@@ -388,5 +388,7 @@
   },
   "newPo.viewMode": "보기 방식",
   "newPo.viewCard": "카드",
-  "newPo.viewList": "리스트"
+  "newPo.viewList": "리스트",
+  "newPo.brandStock": "브랜드 재고",
+  "newPo.brandNeedsLink": "브랜드가 이 재료에 공급처를 아직 연결하지 않았습니다"
 }

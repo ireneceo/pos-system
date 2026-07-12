@@ -99,6 +99,7 @@ const EntityPlan = require('./EntityPlan');
 const EntityPlanRestaurant = require('./EntityPlanRestaurant');
 const EntityPlanPrice = require('./EntityPlanPrice');
 const RestaurantIngredientCost = require('./RestaurantIngredientCost');
+const RestaurantIngredientStock = require('./RestaurantIngredientStock');
 const SystemLog = require('./SystemLog');
 const SchedulerRun = require('./SchedulerRun');
 const ProcessedOp = require('./ProcessedOp');
@@ -549,6 +550,12 @@ Restaurant.hasMany(RestaurantIngredientCost, { foreignKey: 'restaurant_id', as: 
 RestaurantIngredientCost.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
 Ingredient.hasMany(RestaurantIngredientCost, { foreignKey: 'ingredient_id', as: 'restaurantCosts' });
 RestaurantIngredientCost.belongsTo(User, { foreignKey: 'updated_by', as: 'updater' });
+
+// RestaurantIngredientStock associations (restaurant-level stock for brand-owned ingredients)
+RestaurantIngredientStock.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(RestaurantIngredientStock, { foreignKey: 'restaurant_id', as: 'ingredientStocks' });
+RestaurantIngredientStock.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+Ingredient.hasMany(RestaurantIngredientStock, { foreignKey: 'ingredient_id', as: 'restaurantStocks' });
 
 // Comment associations (polymorphic)
 Comment.belongsTo(User, { foreignKey: 'author_id', as: 'author' });
@@ -1061,6 +1068,7 @@ module.exports = {
   EntityPlanRestaurant,
   EntityPlanPrice,
   RestaurantIngredientCost,
+  RestaurantIngredientStock,
   SystemLog,
   SchedulerRun,
   ProcessedOp,

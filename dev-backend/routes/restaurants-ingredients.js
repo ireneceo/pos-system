@@ -4,6 +4,7 @@
 const express = require('express');
 const router = express.Router();
 require('../models'); // Load associations
+const { readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
 const Restaurant = require('../models/Restaurant');
 const User = require('../models/User');
 const Brand = require('../models/Brand');
@@ -463,10 +464,23 @@ router.post('/:restaurantId/ingredients/from-catalog', authenticateToken, checkR
 
 router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
-    const { ingredientId } = req.params;
+    const { restaurantId, ingredientId } = req.params;
     const { code, name, category, unit, unit_cost, supplier_name, min_stock, image_url, ingredient_category_id, base_quantity, supplier_id, track_stock } = req.body;
-    const ingredient = await Ingredient.findByPk(ingredientId);
-    if (!ingredient) return res.status(404).json({ success: false, error: { message: 'Ingredient not found', code: 'NOT_FOUND' } });
+
+    // 소유권 — 재료 행 자체를 고치는 API. 예전엔 findByPk 만 하고 소유권을 안 봐서
+    // 남의 매장 재료나 브랜드 표준 재료(형제 매장 공유 행)까지 수정·삭제됐다.
+    // 브랜드 재료의 정의는 브랜드가 소유한다(매장은 재고만) — docs/BRAND_STOCK_SHARING_DESIGN.md
+    const buyer = { type: 'restaurant', id: parseInt(restaurantId, 10) };
+    const own = await writableIngredient(ingredientId, buyer);
+    if (!own) {
+      const shared = await readableIngredient(ingredientId, buyer);
+      return res.status(shared ? 403 : 404).json({
+        success: false,
+        message: shared ? 'Brand-owned stock item is read-only. Only the brand can change it.' : 'Ingredient not found'
+      });
+    }
+
+    const ingredient = own;
 
     // Build update object with only provided fields
     const updateData = {};
@@ -498,9 +512,17 @@ router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkR
 
 router.delete('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
-    const { ingredientId } = req.params;
-    const ingredient = await Ingredient.findByPk(ingredientId);
-    if (!ingredient) return res.status(404).json({ success: false, error: { message: 'Ingredient not found', code: 'NOT_FOUND' } });
+    const { restaurantId, ingredientId } = req.params;
+    // 소유권 — 남의 매장 재료/브랜드 표준 재료 삭제 차단 (예전엔 id 만으로 삭제됐다)
+    const buyer = { type: 'restaurant', id: parseInt(restaurantId, 10) };
+    const ingredient = await writableIngredient(ingredientId, buyer);
+    if (!ingredient) {
+      const shared = await readableIngredient(ingredientId, buyer);
+      return res.status(shared ? 403 : 404).json({
+        success: false,
+        message: shared ? 'Brand-owned stock item is read-only. Only the brand can delete it.' : 'Ingredient not found'
+      });
+    }
     await ingredient.destroy();
     res.json({ success: true, message: 'Ingredient deleted' });
   } catch (error) {

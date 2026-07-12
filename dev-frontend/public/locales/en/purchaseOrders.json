@@ -388,5 +388,7 @@
   },
   "newPo.viewMode": "View mode",
   "newPo.viewCard": "Card",
-  "newPo.viewList": "List"
+  "newPo.viewList": "List",
+  "newPo.brandStock": "Brand stock",
+  "newPo.brandNeedsLink": "Your brand has not linked a supplier to this item yet"
 }

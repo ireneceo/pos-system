@@ -283,5 +283,17 @@
     "paid": "已付款",
     "overdue": "逾期",
     "delivered": "已送达"
+  },
+  "nav": {
+    "direct": "外部供应商"
+  },
+  "viewNote": {
+    "own": "可在“外部供应商”标签中编辑或删除该供应商。"
+  },
+  "profile": {
+    "externalSupplier": "外部供应商"
+  },
+  "source": {
+    "external": "外部"
   }
 }

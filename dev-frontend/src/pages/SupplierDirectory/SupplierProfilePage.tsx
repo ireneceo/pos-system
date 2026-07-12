@@ -521,6 +521,11 @@ const SupplierProfilePage: React.FC = () => {
 
   const renderActionArea = () => {
     if (!profile) return null;
+    // 외부업체(솔루션 미가입) — 계약이라는 개념이 없다. 등록 시 만들어지는 auto-contract 는
+    // 발주를 열어주기 위한 내부 장치일 뿐이라 "Contract Active" 로 보이면 안 된다. (Irene 2026-07-12)
+    if (profile.is_system_registered === false) {
+      return <Badge variant="neutral">{t('profile.externalSupplier', 'External supplier')}</Badge>;
+    }
     if (myStatus === 'active') {
       const id = profile.my_contract?.id;
       return (

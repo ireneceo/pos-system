@@ -227,6 +227,20 @@ export const IngredientName = styled.div`
   margin-bottom: 4px;
 `;
 
+/** 브랜드 표준 재료 표식 — 재고는 매장별이지만 재료 정의는 브랜드 소유(읽기전용). */
+export const BrandTag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #F3F4F6;
+  color: #4B5563;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+`;
+
 export const IngredientMeta = styled.div`
   font-size: 13px;
   color: #4B5563;

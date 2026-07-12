@@ -33,6 +33,7 @@ const {
   Restaurant,
   RestaurantIngredientCost
 } = require('../models');
+const { stockFor, applyStock } = require('../utils/brandStockAccess');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
@@ -454,7 +455,10 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
       const qty = parseFloat(item.quantity_ordered) || 0;
       if (qty <= 0) continue;
       const stockDelta = Math.round(qty * conv * 100) / 100;
-      const currentStock = parseFloat(ingredient.current_stock) || 0;
+      // 브랜드 공유 재료면 이 매장의 오버레이 재고가 기준 (브랜드 행 = 형제 매장과 공유)
+      const currentStock = po.entity_type === 'restaurant'
+        ? await stockFor(ingredient, po.entity_id, t)
+        : parseFloat(ingredient.current_stock) || 0;
       const newStock = ingredient.track_stock !== false
         ? Math.round((currentStock + stockDelta) * 100) / 100
         : currentStock;
@@ -482,7 +486,11 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
       }, { transaction: t });
 
       if (ingredient.track_stock !== false) {
-        await ingredient.update({ current_stock: newStock, last_stock_take_at: new Date() }, { transaction: t });
+        if (po.entity_type === 'restaurant') {
+          await applyStock(ingredient, po.entity_id, newStock, t, { stockTake: true });
+        } else {
+          await ingredient.update({ current_stock: newStock, last_stock_take_at: new Date() }, { transaction: t });
+        }
       }
 
       // Restaurant buyer 가중평균 cost (정식 /receive 와 동일 로직)
@@ -803,7 +811,9 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
       }
 
       const conv = parseFloat(item.unit_conversion) || 1;
-      let currentStock = parseFloat(ingredient.current_stock) || 0;
+      let currentStock = po.entity_type === 'restaurant'
+        ? await stockFor(ingredient, po.entity_id, t)
+        : parseFloat(ingredient.current_stock) || 0;
       let normalQtyTotal = 0;             // sum of split.quantity where reason === null
       let lastDiscrepancyReason = null;   // 마지막 short/pending split 기록 — UI에서 표시용
 
@@ -884,10 +894,15 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
             }
           }
 
-          await ingredient.update(
-            { current_stock: newStock, last_stock_take_at: new Date() },
-            { transaction: t }
-          );
+          if (po.entity_type === 'restaurant') {
+            // 브랜드 공유 재료 → 매장 오버레이 / 매장 재료 → 재료 행 (형제 매장 재고 오염 방지)
+            await applyStock(ingredient, po.entity_id, newStock, t, { stockTake: true });
+          } else {
+            await ingredient.update(
+              { current_stock: newStock, last_stock_take_at: new Date() },
+              { transaction: t }
+            );
+          }
           currentStock = newStock;
         } else if (reason === 'damaged' || reason === 'wrong_item') {
           // Auto returns — 재고 변동 없음

@@ -283,5 +283,17 @@
     "paid": "결제 완료",
     "overdue": "연체",
     "delivered": "도착"
+  },
+  "nav": {
+    "direct": "외부업체"
+  },
+  "viewNote": {
+    "own": "이 공급업체는 외부업체 탭에서 수정·삭제할 수 있습니다."
+  },
+  "profile": {
+    "externalSupplier": "외부업체"
+  },
+  "source": {
+    "external": "외부업체"
   }
 }
