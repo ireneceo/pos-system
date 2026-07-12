@@ -1,10 +1,10 @@
 {
  "note": "운영 배포 시점 소스 지문 — deploy-to-production.sh 성공 후 자동 기록. 수동 편집 금지.",
- "created_at": "2026-07-11T19:53:56.801Z",
+ "created_at": "2026-07-12T03:37:42.090Z",
  "file_count": 1758,
  "files": {
   "CLAUDE.md": "827d4ef4c7c1d8872598dcfedd2d83f40cf6ba90c0f23be27bd132f68ed6ba6f",
-  "deploy-to-production.sh": "37ad94e61994e96bf1037afe1ccd55388e951c8d5bd26c7b06d7263a9903c9df",
+  "deploy-to-production.sh": "6d413b39d4bb1b0fb109f31ecd04a38b56f3cdb2f34ff422f934006df9b2f683",
   "desktop-pos/.gitignore": "5e789cb7bc1878be6161310e77139b44326fc5a5a915d560d719964adb2732e3",
   "desktop-pos/README.md": "3e993c03326e1d9553b1d3e1dd2a7b565330fbf12e58fdb88249c0f3e87e6cb1",
   "desktop-pos/assets/icon.png": "e4e33652564fb59fb401d605f372dad2384a6f12001f72b8598c0e76bfd1261b",
@@ -1679,7 +1679,7 @@
   "dev-frontend/src/pages/RestaurantInvoices.css": "c276b5d6d9e3558e2b3bc2dae3c5cf869aed1c59bf2f60f79953663581b84d6c",
   "dev-frontend/src/pages/Sales/SalesPage.tsx": "2c77c47319e8fe7acce6636d7aee6fa7ebce2239c39e75c23b68b7a4ef516076",
   "dev-frontend/src/pages/Settings/MallSalesIntegrationSettings.tsx": "0899e32c86b0d64e9372159f0fe88d320fc29f5c7760eab875faa254ac103c92",
-  "dev-frontend/src/pages/Settings/SettingsPage.tsx": "8ce18cc05ad6433b8a7e3472f01596dea12818fa988f7acb8cbace5ed69b9bd7",
+  "dev-frontend/src/pages/Settings/SettingsPage.tsx": "95e190bef4bb1d9fa577dd5888ae86757c31c97d54206dfc23cae790605ee84e",
   "dev-frontend/src/pages/Settings/components/ZonesAndGroupsCard.tsx": "ff2ab50165db163a6eb4feddb06e84e2d842e763dc84b5a20276fb033bd3028a",
   "dev-frontend/src/pages/Staff/StaffPage.tsx": "9f117444f6ebd66a1e5cbd1dc361af6557e0857aa3603eedb42c0bd4582ca011",
   "dev-frontend/src/pages/Supplier/SupplierCompanyInfoPage.tsx": "95f4885281101e4751def3dbf34c4cc0da5efc22575f9827a0fe0b8c6852c405",

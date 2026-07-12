@@ -300,6 +300,19 @@ log "Syncing frontend build to production server..."
 # NOTE: --delete would wipe build/desktop/ (the Windows installer .exe lives in
 # dev-frontend-build/desktop/, NOT in the fresh npm build). Exclude it here and
 # sync it separately below so the native app installer is never removed/regressed.
+# ⚠ rsync 직전 산출물 검사 (2026-07-12 사고 후 추가 — fail-closed)
+# 사고: 배포가 도는 동안 다른 창에서 build:dev 를 돌렸다. react-scripts 는 시작 시 build/ 를
+# 비우는데 그 빌드가 타입에러로 실패 → index.html 이 사라진 상태에서 이 rsync(--delete)가
+# 그 빈 폴더를 운영에 밀어넣었다 → 운영 전 페이지 404. 빌드 성공(5단계)과 rsync(7단계) 사이에
+# 산출물이 바뀔 수 있으므로 **보내기 직전에** 다시 확인한다.
+if [ ! -f "$LOCAL_DEV_FRONTEND/build/index.html" ]; then
+    error "빌드 산출물에 index.html 이 없다 — 배포 중 다른 빌드가 build/ 를 비웠을 수 있음. 운영에 빈 폴더를 rsync 하면 전 페이지 404. 빌드 재실행 후 재배포."
+fi
+if [ ! -d "$LOCAL_DEV_FRONTEND/build/static/js" ] || [ -z "$(ls -A $LOCAL_DEV_FRONTEND/build/static/js 2>/dev/null)" ]; then
+    error "빌드 산출물에 JS 번들이 없다 — 깨진 빌드를 운영에 보낼 뻔했다. 빌드 재실행 후 재배포."
+fi
+success "빌드 산출물 검사 통과 (index.html + JS 번들 존재)"
+
 FRONTEND_RSYNC_LOG=$(rsync -avz --delete --exclude 'desktop' \
     $LOCAL_DEV_FRONTEND/build/ $PROD_SERVER:$REMOTE_PROD_FRONTEND/build/ 2>&1)
 FRONTEND_RSYNC_EXIT=$?
