@@ -207,20 +207,26 @@ router.get('/purchase-orders/:id/pdf', async (req, res) => {
     if (!po) return res.status(404).json({ success: false, message: 'Not found' });
     if (!checkPOOwnership(po, req)) return res.status(404).json({ success: false, message: 'Not found' });
 
-    // Seller 정보 (외부 supplier 면 SupplierCompany 모델에서 가져옴)
-    const SupplierCompany = require('../models/SupplierCompany');
-    let seller = null;
-    if (po.seller_type === 'supplier' && po.seller_entity_id) {
-      seller = await SupplierCompany.findByPk(po.seller_entity_id);
-    }
+    // Seller 정보 — supplier/brand/foodcourt 공통 해석기(utils/sellerNames).
+    // 예전엔 supplier 만 조회해서 브랜드 발주서의 공급업체 칸이 비었다.
+    const { resolveSellers, getSeller } = require('../utils/sellerNames');
+    const sellerMap = await resolveSellers([po]);
+    const seller = getSeller(sellerMap, po.seller_type, po.seller_entity_id);
 
-    // Buyer 정보
+    // Buyer 정보 — 구매자는 restaurant / brand / foodcourt 3종.
+    // (2026-07-12: 존재하지 않는 `po.buyer_entity_type` 을 보고 있어 조건이 항상 거짓 →
+    //  공급업체에게 나가는 발주서의 구매자 이름·주소가 늘 비어 있었다. 실제 컬럼은 entity_type/entity_id.)
     let buyerName = '';
     let buyerAddress = '';
-    if (po.buyer_entity_type === 'restaurant') {
-      const Restaurant = require('../models/Restaurant');
-      const r = await Restaurant.findByPk(po.buyer_entity_id);
-      if (r) { buyerName = r.name; buyerAddress = r.address || ''; }
+    const buyerModels = {
+      restaurant: require('../models/Restaurant'),
+      brand: require('../models/Brand'),
+      foodcourt: require('../models/Foodcourt')
+    };
+    const BuyerModel = buyerModels[po.entity_type];
+    if (BuyerModel && po.entity_id) {
+      const b = await BuyerModel.findByPk(po.entity_id).catch(() => null);
+      if (b) { buyerName = b.name || ''; buyerAddress = b.address || ''; }
     }
 
     // Internal item names (RA Ingredient + BG ProductIngredient) and — for the

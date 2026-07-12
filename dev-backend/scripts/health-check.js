@@ -555,6 +555,41 @@ function definePosTests({ adminToken }) {
     return noLeak && noMiss;
   });
 
+  // 발주 판매자 이름은 supplier/brand/foodcourt 3종 모두 해석돼야 한다. 목록 API 가 supplier 만
+  // 조회해서 브랜드 발주(=BG 가 자기 매장에 파는 것)의 공급업체 이름이 '—' 로 비어 있었다
+  // (2026-07-12 with MIN). 해석기를 다시 supplier 전용으로 좁히면 여기서 깨진다.
+  test('pos', '발주 판매자 이름: 브랜드 발주도 이름이 내려온다 (supplier 전용 회귀)', async () => {
+    const { User } = require('../models');
+    const PurchaseOrder = require('../models/PurchaseOrder');
+    const jwtLib = require('jsonwebtoken');
+
+    const brandPO = await PurchaseOrder.findOne({
+      where: { seller_type: 'brand', entity_type: 'restaurant' },
+      order: [['id', 'DESC']]
+    });
+    if (!brandPO) return true; // 브랜드 발주 데이터 없으면 검증 불가 → skip
+
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: brandPO.entity_id } });
+    if (!ra) return true;
+    const token = jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = { Authorization: `Bearer ${token}` };
+
+    // 상세: 이름 + seller 객체(스테이징/공유 텍스트가 읽는 것) 둘 다 있어야 한다
+    const detail = await request('GET', `/purchase-orders/${brandPO.id}`, null, auth);
+    if (detail.status !== 200) return false;
+    const d = detail.body?.data || {};
+    if (!d.seller_name || !d.seller?.name) return false;
+    // 브랜드는 플랫폼 계정 = 자동발송(외부 수동발송 아님)
+    if (d.is_external !== false) return false;
+
+    // 목록: 같은 PO 가 목록에서도 이름을 갖는다 (비어 있던 화면이 여기였다)
+    const list = await request('GET', `/purchase-orders?status=${brandPO.status}&limit=200`, null, auth);
+    if (list.status !== 200) return false;
+    const row = (list.body?.data || []).find((p) => p.id === brandPO.id);
+    if (!row) return true; // 페이지 밖이면 판정 불가
+    return !!row.seller_name && row.seller_name === d.seller_name;
+  });
+
   // 구독 가격의 단일 소스 = 서버(PlanTemplate/PlanPrice). 프론트·라우트에 박아둔 가격표
   // (basic29/pro99/ent199)는 실제 값(49/99/179)과 달랐다 — 다시 하드코딩되면 여기서 깨진다.
   test('pos', '구독 플랜 가격 = 서버 PlanTemplate 기준 (하드코딩 가격표 금지)', async () => {

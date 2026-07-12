@@ -341,7 +341,15 @@
     "noPhoneTitle": "无电话号码",
     "noPhone": "该供应商未登记电话号码。",
     "noEmailTitle": "无电子邮箱",
-    "noEmail": "该供应商未登记电子邮箱。"
+    "noEmail": "该供应商未登记电子邮箱。",
+    "pdfPreview": "采购单",
+    "pdfDownload": "下载 PDF",
+    "pdfPrint": "打印",
+    "pdfFailed": "无法加载采购单文件",
+    "pdfDownloadFailed": "PDF 下载失败",
+    "submitOne": "提交采购单",
+    "markSent": "标记为已发送",
+    "submitFailed": "无法提交此采购单"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}：数量单位不一致 — 需手动输入",

@@ -341,7 +341,15 @@
     "noPhoneTitle": "Tiada Nombor Telefon",
     "noPhone": "Tiada nombor telefon didaftarkan untuk penjual ini.",
     "noEmailTitle": "Tiada E-mel",
-    "noEmail": "Tiada alamat e-mel didaftarkan untuk penjual ini."
+    "noEmail": "Tiada alamat e-mel didaftarkan untuk penjual ini.",
+    "pdfPreview": "Pesanan Belian",
+    "pdfDownload": "Muat Turun PDF",
+    "pdfPrint": "Cetak",
+    "pdfFailed": "Gagal memuatkan dokumen pesanan belian",
+    "pdfDownloadFailed": "Gagal memuat turun PDF",
+    "submitOne": "Hantar Pesanan",
+    "markSent": "Tanda Telah Dihantar",
+    "submitFailed": "Gagal menghantar pesanan belian ini"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit tidak sepadan — kemasukan manual diperlukan",

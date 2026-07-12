@@ -38,6 +38,7 @@ const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
 const { sendNotificationBatch, getSupplierAdminIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
 const { normalizeCurrencyCode, sameCurrency } = require('../utils/currency');
+const { resolveSellers, getSeller, getSellerName, isExternalSeller } = require('../utils/sellerNames');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
 
@@ -280,7 +281,6 @@ router.get('/purchase-orders', async (req, res) => {
     // 모든 PO에 item_count / total_quantity / seller_name / is_external 항상 포함
     // (Staging 페이지: include=items || status=draft 일 때는 items 배열 + seller 객체도 함께)
     const includeItems = req.query.include === 'items' || req.query.status === 'draft';
-    const SupplierCompany = require('../models/SupplierCompany');
     const ids = rows.map(p => p.id);
 
     // Item 집계 (모든 PO 공통)
@@ -296,13 +296,9 @@ router.get('/purchase-orders', async (req, res) => {
     }) : [];
     const aggMap = Object.fromEntries(itemAggRows.map(r => [r.purchase_order_id, r]));
 
-    // Supplier 정보 (seller_type='supplier' 인 PO 만)
-    const supplierIds = [...new Set(rows.filter(p => p.seller_type === 'supplier').map(p => p.seller_entity_id).filter(Boolean))];
-    const suppliers = supplierIds.length ? await SupplierCompany.findAll({
-      where: { id: { [Op.in]: supplierIds } },
-      attributes: ['id', 'name', 'phone', 'email', 'is_system_registered', 'min_order_amount']
-    }) : [];
-    const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s]));
+    // 판매자 정보 — supplier / brand / foodcourt 전부. (2026-07-12: supplier 만 조회해서
+    // 브랜드 발주의 공급업체 이름이 비어 있었다. 해석은 utils/sellerNames 단일 소스.)
+    const sellerMap = await resolveSellers(rows);
 
     // includeItems 일 때만 items 배열 동봉
     let itemsByPo = {};
@@ -325,12 +321,11 @@ router.get('/purchase-orders', async (req, res) => {
       const agg = aggMap[p.id] || {};
       plain.item_count = parseInt(agg.item_count || 0, 10);
       plain.total_quantity = parseFloat(agg.total_quantity || 0);
-      const sup = (p.seller_type === 'supplier' && supplierMap[p.seller_entity_id]) ? supplierMap[p.seller_entity_id] : null;
-      plain.seller_name = sup ? sup.name : null;
-      plain.is_external = sup ? !sup.is_system_registered : false;
+      plain.seller_name = getSellerName(sellerMap, p.seller_type, p.seller_entity_id);
+      plain.is_external = isExternalSeller(sellerMap, p.seller_type, p.seller_entity_id);
       if (includeItems) {
         plain.items = itemsByPo[p.id] || [];
-        plain.seller = sup ? sup.toJSON() : null;
+        plain.seller = getSeller(sellerMap, p.seller_type, p.seller_entity_id);
       }
       return plain;
     });
@@ -400,35 +395,8 @@ router.get('/purchase-orders/suggestions', async (req, res) => {
       if (!preferredByIng[s.ingredient_id]) preferredByIng[s.ingredient_id] = s;
     }
 
-    // Sprint 5: resolve seller names for each group (supplier/brand/foodcourt)
-    const sellerKeys = new Map();
-    for (const ing of lowIngredients) {
-      const seller = preferredByIng[ing.id];
-      if (!seller) continue;
-      const k = `${seller.seller_type}:${seller.seller_entity_id || 0}`;
-      sellerKeys.set(k, { type: seller.seller_type, id: seller.seller_entity_id });
-    }
-    const sellerNames = new Map();
-    for (const [k, v] of sellerKeys) {
-      try {
-        if (v.type === 'supplier' && v.id) {
-          const s = await SupplierCompany.findByPk(v.id, { attributes: ['id', 'name', 'trade_name'] });
-          if (s) sellerNames.set(k, s.trade_name || s.name);
-        } else if (v.type === 'brand' && v.id) {
-          const { Brand } = require('../models');
-          const b = await Brand.findByPk(v.id, { attributes: ['id', 'name', 'trade_name'] });
-          if (b) sellerNames.set(k, b.trade_name || b.name);
-        } else if (v.type === 'foodcourt' && v.id) {
-          const { Foodcourt } = require('../models');
-          const f = await Foodcourt.findByPk(v.id, { attributes: ['id', 'name', 'trade_name'] });
-          if (f) sellerNames.set(k, f.trade_name || f.name);
-        } else if (v.type === 'system_admin') {
-          sellerNames.set(k, 'POS Catalog');
-        }
-      } catch (e) {
-        // fall through — name remains null
-      }
-    }
+    // 판매자 이름 (supplier/brand/foodcourt/system_admin) — 목록·상세와 동일 해석기
+    const sellerMap = await resolveSellers(Object.values(preferredByIng));
 
     // Build suggestion entries grouped by seller
     const groups = {};
@@ -446,7 +414,7 @@ router.get('/purchase-orders/suggestions', async (req, res) => {
         groups[groupKey] = {
           seller_type: seller ? seller.seller_type : null,
           seller_entity_id: seller ? seller.seller_entity_id : null,
-          seller_name: seller ? (sellerNames.get(groupKey) || null) : null,
+          seller_name: seller ? getSellerName(sellerMap, seller.seller_type, seller.seller_entity_id) : null,
           items: []
         };
       }
@@ -503,27 +471,12 @@ router.get('/purchase-orders/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Purchase order not found' });
     }
 
-    // seller 정보 + is_external 보강
+    // seller 정보 + is_external 보강 (supplier/brand/foodcourt 동일 규칙 — utils/sellerNames)
     const plain = po.toJSON();
-    if (po.seller_type === 'supplier' && po.seller_entity_id) {
-      const SupplierCompany = require('../models/SupplierCompany');
-      const sup = await SupplierCompany.findByPk(po.seller_entity_id, {
-        attributes: ['id', 'name', 'phone', 'email', 'is_system_registered']
-      });
-      if (sup) {
-        plain.seller_name = sup.name;
-        plain.seller = sup.toJSON();
-        plain.is_external = !sup.is_system_registered;
-      }
-    } else if (po.seller_type === 'brand' && po.seller_entity_id) {
-      const Brand = require('../models/Brand');
-      const b = await Brand.findByPk(po.seller_entity_id, { attributes: ['id', 'name'] }).catch(() => null);
-      if (b) plain.seller_name = b.name;
-    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id) {
-      const Foodcourt = require('../models/Foodcourt');
-      const f = await Foodcourt.findByPk(po.seller_entity_id, { attributes: ['id', 'name'] }).catch(() => null);
-      if (f) plain.seller_name = f.name;
-    }
+    const sellerMap = await resolveSellers([po]);
+    plain.seller_name = getSellerName(sellerMap, po.seller_type, po.seller_entity_id);
+    plain.seller = getSeller(sellerMap, po.seller_type, po.seller_entity_id);
+    plain.is_external = isExternalSeller(sellerMap, po.seller_type, po.seller_entity_id);
 
     // Item-level identity flattening (P0-3): internal name (RA Ingredient or BG
     // ProductIngredient or description) + supplier's own sale-product name/SKU via

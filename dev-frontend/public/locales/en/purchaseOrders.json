@@ -341,7 +341,15 @@
     "noPhoneTitle": "No Phone Number",
     "noPhone": "No phone number is registered for this seller.",
     "noEmailTitle": "No Email",
-    "noEmail": "No email address is registered for this seller."
+    "noEmail": "No email address is registered for this seller.",
+    "pdfPreview": "Purchase Order",
+    "pdfDownload": "Download PDF",
+    "pdfPrint": "Print",
+    "pdfFailed": "Failed to load the purchase order document",
+    "pdfDownloadFailed": "Failed to download PDF",
+    "submitOne": "Submit",
+    "markSent": "Mark as Sent",
+    "submitFailed": "Failed to submit this purchase order"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit mismatch — manual entry required",

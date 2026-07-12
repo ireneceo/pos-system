@@ -21,6 +21,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
 const { resolveOwnerRestaurantIds } = require('../utils/poOwnerApproval');
+const { resolveSellers, getSellerName } = require('../utils/sellerNames');
 const {
   fireSellerSubmittedNotification,
   fireOwnerApprovalResultNotification
@@ -84,30 +85,13 @@ router.get('/purchase-orders/pending-approval', authenticateToken, requireOwnerS
     const nameMap = {};
     restaurants.forEach(r => { nameMap[r.id] = r.name; });
 
-    // Seller name lookup (supplier/brand/foodcourt) so the approval queue's Seller
-    // column isn't always '-'. Batch per type to avoid N+1.
-    const SupplierCompany = require('../models/SupplierCompany');
-    const Brand = require('../models/Brand');
-    const Foodcourt = require('../models/Foodcourt');
-    const idsByType = { supplier: new Set(), brand: new Set(), foodcourt: new Set() };
-    rows.forEach(p => { if (p.seller_entity_id && idsByType[p.seller_type]) idsByType[p.seller_type].add(p.seller_entity_id); });
-    const sellerName = { supplier: {}, brand: {}, foodcourt: {} };
-    const loadNames = async (Model, type) => {
-      const ids = [...idsByType[type]];
-      if (!ids.length) return;
-      const found = await Model.findAll({ where: { id: { [Op.in]: ids } }, attributes: ['id', 'name'] }).catch(() => []);
-      found.forEach(x => { sellerName[type][x.id] = x.name; });
-    };
-    await Promise.all([
-      loadNames(SupplierCompany, 'supplier'),
-      loadNames(Brand, 'brand'),
-      loadNames(Foodcourt, 'foodcourt')
-    ]);
+    // Seller 이름 (supplier/brand/foodcourt/system_admin) — 목록·상세·제안과 동일 해석기
+    const sellerMap = await resolveSellers(rows);
 
     const data = rows.map(p => {
       const o = p.toJSON();
       o.restaurant_name = nameMap[p.entity_id] || null;
-      o.seller_name = (sellerName[p.seller_type] && sellerName[p.seller_type][p.seller_entity_id]) || null;
+      o.seller_name = getSellerName(sellerMap, p.seller_type, p.seller_entity_id);
       return o;
     });
     res.json({ success: true, data });

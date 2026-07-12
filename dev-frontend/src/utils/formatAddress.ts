@@ -51,14 +51,47 @@ function joinParts(parts: Array<string | null | undefined>, sep: string = ', '):
   return parts.map(clean).filter(Boolean).join(sep);
 }
 
+/**
+ * 주소 1행(street line)에 이미 들어있는 도시/주/우편번호를 다시 붙이지 않게 걸러낸다.
+ * 실제 데이터가 "2, Jalan PJU 7/2, Mutiara Damansara, 47820 Petaling Jaya, Selangor" 처럼
+ * 도시·주를 1행에 포함해 저장돼 있어, city/state 를 또 이어붙이면
+ * "… Petaling Jaya, Selangor, Petaling Jaya, Selangor, Malaysia" 가 됐다 (2026-07-12 Irene).
+ *
+ * 콤마로 끊은 **토큰 단위**로만 비교한다 — 부분문자열로 비교하면 "Jalan Kuala Lumpur"(도로명)
+ * 때문에 도시 "Kuala Lumpur" 를 통째로 지워버린다. 토큰 앞의 우편번호(예: "47820 Petaling
+ * Jaya")는 떼고 비교한다.
+ */
+function lineTokens(...lines: Array<string | null | undefined>): Set<string> {
+  const tokens = new Set<string>();
+  for (const line of lines) {
+    for (const raw of clean(line).split(',')) {
+      const t = raw.trim().toLowerCase();
+      if (!t) continue;
+      tokens.add(t);
+      // "47820 petaling jaya" → 우편번호("47820")와 도시("petaling jaya") 둘 다 토큰으로
+      const m = t.match(/^(\d{4,6})\s+(.+)$/);
+      if (m) { tokens.add(m[1]); tokens.add(m[2]); }
+    }
+  }
+  return tokens;
+}
+
+/** 1행에 이미 있는 값이면 '' 로 만들어 중복 표기를 막는다. */
+function dropIfInLine(value: string, tokens: Set<string>): string {
+  const v = clean(value).toLowerCase();
+  return v && tokens.has(v) ? '' : value;
+}
+
 export function formatAddress(addr: Address | null | undefined, format: AddressFormat = 'full', locale: AppLocale = DEFAULT_LOCALE): string {
   if (!addr) return '';
 
   const line1 = clean(addr.address);
   const line2 = clean(addr.address_line_2);
-  const city = clean(addr.city);
-  const state = clean(addr.state);
-  const postal = clean(addr.postal_code);
+  // 1행이 이미 도시/주/우편번호를 품고 있으면 뒤에 또 붙이지 않는다 (중복 표기 방지)
+  const inLine = lineTokens(line1, line2);
+  const city = dropIfInLine(clean(addr.city), inLine);
+  const state = dropIfInLine(clean(addr.state), inLine);
+  const postal = dropIfInLine(clean(addr.postal_code), inLine);
   const country = addr.country ? getCountryName(addr.country, locale) : '';
 
   if (format === 'location') {

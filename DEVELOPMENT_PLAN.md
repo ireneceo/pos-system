@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-11 #3 (**임차인 임대료 청구 신규 기능 운영 배포 + 설정 가짜탭 제거**. `/기능설계` 6단계로 임대료 청구 구축 — 계약의 임대조건으로 매월 임대료 인보이스 자동발행(멱등)·임차인별 납부/연체 현황·계약 종료 시 중단. **신규 테이블 0개**(계약·인보이스·유닛 재사용, invoice_categories 에 rent 1행). 실호출 13/13 + 유저흐름 11/11 + health-check pos 19/19. 이메일 알림·연체 전환은 기존 인보이스 파이프라인이 그대로 커버(실증). 운영 배포 Backup 20260711_194035 — **마이그레이션이 배포 중 실행되지 않아 수동 복구**(다음 배포 전 원인 규명 필요). 추가로 **설정의 매니저 Company/Brands/Billing 탭 전체가 하드코딩 가짜**("다음 청구일 January 15, 2025", 브랜드 목록 상수)이면서 **requireRestaurantMatch 로 아무도 도달 못 하는 죽은 코드**임을 확인 → 제거. 정리 중 RA 설정 크래시 회귀를 내고 실브라우저 검증에서 잡아 수정. verify-all 13/13.)
+> **최종 업데이트:** 2026-07-12 (**발주 신원 해석 단일화 + PDF 미리보기 + 업체별 개별 제출 — 운영 배포 3회 / 🔴 배포 파이프라인 치명 결함 2개 규명·수정 / 프랜차이즈 맵 좌표 — dev 미배포**. with MIN "발주에 공급업체 이름이 안 뜬다" 한 건에서 시작해 근본 6개: ①발주 목록 API가 판매자를 supplier 타입만 조회 → 브랜드 발주 이름 `—`(운영 6건 중 5건이 brand) → 라우트마다 5벌 중복이던 판매자 조회를 `utils/sellerNames.js` **단일 해석기**로 통일 ②발주서 PDF가 **존재하지 않는 컬럼**(`buyer_entity_type`)을 읽어 **구매자 이름·주소가 항상 비어 있었다**(공급업체가 받는 문서에 주문자가 없었음) ③PDF 버튼이 열자마자 인쇄창 → **미리보기 + 상하 Download/Print**(공용 Modal) ④수신처를 브랜드명이 아닌 **회사명(브랜드명)** 으로 = "GIT Consulting (with MIN)" ⑤Discard 를 공용 danger-outline(파스텔 연빨강)·수량 `× 1.00`→`× 1` ⑥**업체별 개별 제출**(시스템=Submit 자동발송 / 외부=Mark as Sent 수동발송 — 백엔드는 이미 지원, UI만 없었다). **🔴 배포 파이프라인**: 마이그 루프의 `while read` + `ssh` 가 **stdin 을 삼켜 43개 중 1개만 실행**(7/11 임대료 마이그 미실행의 진짜 원인, 7/10 레지스트리 개편 때 유입 → 배포 3회 영향) → `ssh -n` + 실행수 대조 fail-closed(**이번 배포 43/43 실증**) / 배포가 `sync-database` 를 `--alter` 없이 불러 **스키마를 아예 안 만들던 것**(AI 테이블 2개 방치) → 멱등 마이그+레지스트리+운영 손대기 전 fail-closed 게이트(현재 dev 151==운영 151). **Fable 구조검토**: with MIN 인쇄 backlog 21건은 자가 해소(단 KDS 화면에선 dismiss 안 됨 — 매장 테스트는 POS 화면에서). 운영 실검증: 단계이동·결제·인쇄 계약 5/5. verify-all 13/13 ×3회. **미배포**: 프랜차이즈 맵 좌표(운영 22개 중 2개만 좌표 — 지오코딩이 생성/주소수정 시에만 돌고 백필 없었음 + 유틸이 429를 조용히 삼켜 배치 전멸) + 주소 중복표기 제거.)
+>
+> **이전:** 2026-07-11 #3 (**임차인 임대료 청구 신규 기능 운영 배포 + 설정 가짜탭 제거**. `/기능설계` 6단계로 임대료 청구 구축 — 계약의 임대조건으로 매월 임대료 인보이스 자동발행(멱등)·임차인별 납부/연체 현황·계약 종료 시 중단. **신규 테이블 0개**(계약·인보이스·유닛 재사용, invoice_categories 에 rent 1행). 실호출 13/13 + 유저흐름 11/11 + health-check pos 19/19. 이메일 알림·연체 전환은 기존 인보이스 파이프라인이 그대로 커버(실증). 운영 배포 Backup 20260711_194035 — **마이그레이션이 배포 중 실행되지 않아 수동 복구**(다음 배포 전 원인 규명 필요). 추가로 **설정의 매니저 Company/Brands/Billing 탭 전체가 하드코딩 가짜**("다음 청구일 January 15, 2025", 브랜드 목록 상수)이면서 **requireRestaurantMatch 로 아무도 도달 못 하는 죽은 코드**임을 확인 → 제거. 정리 중 RA 설정 크래시 회귀를 내고 실브라우저 검증에서 잡아 수정. verify-all 13/13.)
 >
 > **이전:** 2026-07-10 #2 (**E2E b~f + 주문 생애주기 실증 + 셰이크다운 배포 — 운영 배포**. Irene "주문관리 확인은 너한테. 주문 다 넣어보고 결제·단계이동·프린트 다 테스트 → /검증 → /배포." demo rid=38에 실제 HTTP로 주문 전 생애주기 15/15 증명(생성→claim 경쟁 1/5→재인쇄0→+Round→pending→preparing→ready→served→결제 completed→삭제) + E2E 시나리오 b~f flaky-0(3회 연속 13/13, mutation은 결정적 request API·UI는 mount 무크래시) + health-check orphan-sweep cascade 보강. **셰이크다운 배포**: 런타임 무변경분(안전기반+e2e)+새 9게이트 첫 실전 통과, Backup 20260710_195933·Smoke 9/9·운영 health OK·deploy-manifest(1762파일) 앵커 활성화. **배포 중 mount sweep flake 근본수리**: 첫 시도 mount 게이트 fail-closed 중단(sweep 자체는 72/72·55/55 OK=실크래시 아닌 rebuild직후 전이적 pageerror)→CLAUDE.md 규칙대로 --skip-safety 금지, headless-page/roles-sweep에 실패 route 1회 재검 추가(진짜 크래시는 재검도 실패→여전히 차단)→재배포 mount 465s 크래시0 통과. 인쇄/KDS/돈 런타임 무접촉·버전 미상승. 상세 session-state + 아래.)
 >
@@ -53,6 +55,57 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 발주 신원 해석 단일화 + 배포 파이프라인 치명 결함 2개 (2026-07-12, 운영 배포 3회)
+
+> Irene "with MIN 카페에서 gitconsulting 브랜드 프로덕트 발주하면 공급업체 이름이 안 뜬다" 한 건에서 출발. 증상만 때우지 않고 코드·운영 DB 실측으로 근본을 팠더니 **발주 결함 6개 + 배포 파이프라인 치명 결함 2개**가 나왔다.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 판매자 이름 단일 해석기 | 목록 API 가 `seller_type='supplier'` 만 조회 → 브랜드 발주 이름 `—`(운영 with MIN 발주 6건 중 **5건이 brand**). 라우트마다 5벌 중복(목록/상세/제안/승인/PDF) → `utils/sellerNames.js` 단일화 | ✅ 완료 |
+| 🔴 발주서 PDF 구매자 공란 | PDF 가 **존재하지 않는 컬럼** `po.buyer_entity_type` 을 읽어 조건이 항상 거짓(실제 `entity_type`) → **공급업체가 받는 문서에 주문자·배송지가 늘 비어 있었다** | ✅ 완료 |
+| 수신처 = 회사명 (브랜드명) | 발주를 받는 주체는 브랜드가 아니라 그 브랜드를 운영하는 회사 → `GIT Consulting (with MIN)`. 회사명 없으면 브랜드명 폴백 | ✅ 완료 |
+| PDF 버튼 = 미리보기 | 열자마자 브라우저 인쇄창이 뜨던 것(서버 HTML 의 `onload→print()`) → 문서 미리보기 + **Download/Print 를 모달 위·아래**(공용 Modal headerActions+footer). Download 는 진짜 .pdf 파일 | ✅ 완료 |
+| 업체별 개별 제출 | 발주·인보이스가 업체별로 따로인데 UI 는 `Submit All` 뿐이었다. 백엔드는 **이미 PO 단위 제출 지원** → 카드마다 버튼(시스템=`Submit` 자동발송 / 외부=`Mark as Sent` 수동발송) | ✅ 완료 |
+| Discard 색 · 수량 표기 | Discard(=영구삭제)가 중립 회색(없는 `ghost` variant) → 공용 `danger-outline`(#FEF2F2 배경 + #EF4444 라인). 수량 `× 1.00` → `× 1`(공용 `formatQuantity`) | ✅ 완료 |
+| 🔴🔴 마이그레이션이 1개만 실행되던 것 | `while read` 루프 안의 `ssh` 가 **stdin 을 삼켜** 레지스트리 43개 중 **첫 1개만 실행**. 7/11 임대료 마이그 "실행 안 됨"의 진짜 원인(7/10 `for`→`while read` 개편 때 유입, 배포 3회 영향) → `ssh -n` + 실행수 대조 fail-closed. **이번 배포 43/43 실증** | ✅ 완료 |
+| 🔴 배포가 스키마를 안 만들던 것 | 배포는 `sync-database.js` 를 **`--alter` 없이** 호출(안전모드) = 스키마 무변경인데 주석은 "sync 가 적용한다"고 거짓 → AI 테이블 2개가 운영에 없는 채 방치 → 멱등 마이그 + 레지스트리 + **운영 손대기 전 fail-closed 게이트**(등록된 마이그가 커버하면 통과). dev 151 == 운영 151 | ✅ 완료 |
+| 회귀 박제 | health-check `pos`: "브랜드 발주도 이름이 내려온다" — supplier 전용으로 되돌리면 **정확히 이 1건만 실패**(19/20) 실증 | ✅ 완료 |
+
+### Fable 구조검토 (코드 실측 기반)
+- **with MIN 인쇄 backlog 21건 → 첫 인쇄를 막지 않는다**(마스터 autoPrint ON 시 폴러가 같은 사이클에 `print-dismiss`). **단 ①KDS 화면에선 dismiss 가 안 돈다 → 매장 테스트는 POS/설정 화면에서 ②과거 ON 상태로 꺼진 기기가 있으면 21장 폭주 가능 ③K-DINE IPC 는 1035건이라 켜면 4~5분 공백.**
+- 정석 해법(미실행·승인 대기): `pending-print` 에 **24시간 신선도 경계**(인쇄 보호파일 → 승인+실프린터 확인 필수, **매장 종이 확인 후 별도 배포**).
+- 오늘 배포분 적대 검토: 인쇄 보호파일 무접촉(8/8), 내가 만든 스키마 게이트가 정상 배포까지 막던 결함·`scp` stdin·마이그 실패 판정 3건 지적 → 전부 수정.
+
+### 운영 실검증 (배포 후)
+주문생성 · **단계이동**(pending→preparing→ready→served) · **결제**(현금 완납 completed) · **인쇄 계약 5/5**(동시 claim 5개 중 **1개만 승리** · printed 후 재인쇄 0 · +Round 새 품목만) — 검증 주문 전량 삭제, **POS 가 집어간 것 0건 = 종이 안 나감**.
+
+### 수정된 파일
+- `dev-backend/utils/sellerNames.js` (신규) · `routes/purchase-orders-{crud,approval,workflow}.js`
+- `dev-backend/scripts/migrate-ai-recognition-tables.js` (신규) · `scripts/migrations.registry.json` · `scripts/health-check.js`
+- `deploy-to-production.sh` (마이그 루프 `ssh -n`+실행수 대조 · 스키마 fail-closed 게이트 · bash 산술 버그 · 빌드 산출물 검사)
+- `dev-frontend/src/pages/PurchaseOrders/PurchaseOrder{StagingPage,DetailPage,PrintPage}.tsx` · `src/utils/unitConversion.ts` · `public/locales/{en,ko,zh,ms}/purchaseOrders.json`
+
+---
+
+## 🔵 진행: 프랜차이즈 맵 좌표 (2026-07-12, dev 검증완료·**미배포**)
+
+> Irene "브랜드 제너럴 프랜차이즈 맵에 지도가 안 나와". 지도(react-leaflet)는 정상 — **찍을 좌표가 없었다**(운영 매장 22개 중 좌표 2개).
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 좌표 백필 | 지오코딩이 **매장 생성 시 / 주소 수정 시**에만 돌아, 그 전에 만들어진 매장은 좌표가 영영 null → `scripts/backfill-restaurant-coords.js`(멱등, 좌표 없는 행만) | ✅ dev 완료 |
+| 🔴 지오코딩이 실패를 삼키던 것 | 유틸이 HTTP 429(rate limit)·5xx 를 "주소 못 찾음"과 똑같이 조용히 null 처리 + 재시도 0 → **연속 지오코딩 시 전멸**(단건은 성공). 매장 생성 시에도 같은 구멍 → 재시도(백오프) + 실패 로깅 | ✅ dev 완료 |
+| 주소 중복 표기 | `address` 컬럼에 이미 도시·주가 들어있는데 `city`/`state` 를 또 붙여 "…Petaling Jaya, Selangor, Petaling Jaya, Selangor" → 공용 `formatAddress` 에서 **콤마 토큰 단위**로 중복만 제거(도로명 `Jalan Kuala Lumpur` 오탐 없음 실증) | ✅ dev 완료 |
+
+**남은 일: `/배포` + 운영 20개 매장 좌표 백필 실행 → 지도 표시 확인.**
+
+### 수정된 파일
+- `dev-backend/utils/geocoding.js` · `dev-backend/scripts/backfill-restaurant-coords.js` (신규) · `dev-frontend/src/utils/formatAddress.ts`
+
+---
 
 ## ✅ 완료: #8 매니저 리포트 가짜매출 + #24 구독변경 배선 (2026-07-11, dev 검증완료·미배포·★Fable 게이트)
 

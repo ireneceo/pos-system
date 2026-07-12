@@ -38,10 +38,12 @@ sudo /var/www/rollback-production.sh [타임스탬프]
 - rsync는 --exclude='.env'로 덮어쓰기 방지
 - 손상 시 백업에서 자동 복원
 
-### DB 스키마 동기화
-- `sync-database.js`는 `alter: false`로 실행
-- 기존 데이터와 설정값 유지
-- 새 컬럼 추가 시 수동으로 ALTER TABLE 필요
+### DB 스키마 동기화 (2026-07-12 정정 — 중요)
+- 배포는 `sync-database.js` 를 **`--alter` 없이** 실행한다 = **모델 로드만 검증하고 스키마는 전혀 바꾸지 않는다**(과거 `--alter` 컬럼 드롭 사고 때문).
+- 따라서 **배포는 새 테이블·새 컬럼을 만들지 않는다.** 스키마 변경의 **유일한 경로 = `scripts/migrate-*.js`(멱등) + `scripts/migrations.registry.json` 의 `deploy` 등록**.
+  - 등록을 잊으면 `check-migration-registry.js` 가 배포 전 fail-closed 로 차단.
+  - 운영에 없고 **마이그도 없는** 테이블/컬럼이 있으면, 운영을 건드리기 전(백업·빌드·rsync 이전) 단계에서 배포가 **중단**된다(2026-07-12 신설). 등록된 마이그가 커버하면 통과.
+- ⚠ 과거 함정(수정 완료): 마이그 실행 루프의 `while read` + `ssh` 조합에서 **ssh 가 stdin 을 삼켜 첫 1개만 실행**되고 나머지가 조용히 건너뛰어졌다(2026-07-10~12, 배포 3회). → `ssh -n` + **실행수 == 레지스트리수 대조(fail-closed)**. 배포 로그의 `배포 마이그레이션 N/N 실행 완료` 로 확인할 것.
 
 ### 백업 위치
 - `/var/www/backups/[타임스탬프]/`

@@ -1174,7 +1174,16 @@
       "Bash(awk '{print $6,$7,$8}')",
       "Bash(awk 'NR>=3271 && /activeTab === /{print NR\": \"$0}' src/pages/Settings/SettingsPage.tsx)",
       "Bash(awk 'NR>=2700 && NR<=2880 && /activeTab|showTabs|isMgrRole|return|\\\\{\\\\/\\\\*/' src/pages/Settings/SettingsPage.tsx)",
-      "Bash(awk 'NR<2876 && \\(/if \\\\\\(loading/ || /if \\\\\\(!/ || /return \\\\\\(/ || /return null/ || /^  if \\\\\\(/\\)' src/pages/Settings/SettingsPage.tsx)"
+      "Bash(awk 'NR<2876 && \\(/if \\\\\\(loading/ || /if \\\\\\(!/ || /return \\\\\\(/ || /return null/ || /^  if \\\\\\(/\\)' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/a1ae5cfe-e805-4901-b519-3b9edd4b5baa/scratchpad/prod-verify.js irene@87.106.78.146:/tmp/prod-verify.js)",
+      "Bash(scp -q prod-verify.js irene@87.106.78.146:/tmp/prod-verify.js)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/a1ae5cfe-e805-4901-b519-3b9edd4b5baa/scratchpad/prod-print-verify.js irene@87.106.78.146:/tmp/prod-print-verify.js)",
+      "Bash(scp -q prod-print-verify.js irene@87.106.78.146:/tmp/pv.js)",
+      "Bash(scp -q scripts/migrate-ai-recognition-tables.js irene@87.106.78.146:/var/www/production-backend/scripts/)",
+      "Bash(scp -q irene@87.106.78.146:/tmp/prod_s.json /tmp/prod_s.json)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/a1ae5cfe-e805-4901-b519-3b9edd4b5baa/scratchpad/prod-verify.js irene@87.106.78.146:/tmp/pv1.js)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/a1ae5cfe-e805-4901-b519-3b9edd4b5baa/scratchpad/prod-print-verify.js irene@87.106.78.146:/tmp/pv2.js)",
+      "Bash(timeout 1500 node scripts/verify-all.js --full)"
     ],
     "deny": [],
     "ask": []

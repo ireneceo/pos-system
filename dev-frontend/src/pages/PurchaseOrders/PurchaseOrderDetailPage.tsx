@@ -12,6 +12,7 @@ import {
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
+import { formatQuantity } from '../../utils/unitConversion';
 import { formatDate } from '../../utils/timezone';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
@@ -1089,10 +1090,10 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                               )}
                             </DataTableCell>
                             <DataTableCell data-label={t('detail.items.qtyOrdered') as string} align="right">
-                              {Number(it.quantity_ordered).toFixed(2)} {it.ingredient_unit || ''}
+                              {formatQuantity(it.quantity_ordered)} {it.ingredient_unit || ''}
                             </DataTableCell>
                             <DataTableCell data-label={t('detail.items.qtyReceived') as string} align="right">
-                              {Number(it.quantity_received).toFixed(2)} {it.ingredient_unit || ''}
+                              {formatQuantity(it.quantity_received)} {it.ingredient_unit || ''}
                             </DataTableCell>
                             <DataTableCell data-label={t('detail.items.unitPrice') as string} align="right">
                               {formatMoney(it.unit_price)}

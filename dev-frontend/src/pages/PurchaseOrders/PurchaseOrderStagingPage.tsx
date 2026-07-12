@@ -7,13 +7,17 @@
  *
  * 모든 처리 후 "전체 발주 확정" 버튼 → 시스템 PO submit (자동 알림) + 외부 PO mark-sent-external.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Container, Content } from '../../components/UI';
+import { Button } from '../../components/UI/Button';
+import { Modal } from '../../components/UI/Modal';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
+import { formatQuantity } from '../../utils/unitConversion';
+import { renderIframeToPdf } from '../../utils/invoicePdf';
 import AlertDialog from '../../components/Common/AlertDialog';
 import ConfirmModal from '../../components/ConfirmModal';
 
@@ -119,6 +123,23 @@ const Empty = styled.div`
   font-size: 14px;
 `;
 
+const PdfActions = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+`;
+
+// 발주서 문서 미리보기 — A4 비율. 서버가 주는 인쇄용 HTML 을 그대로 띄운다.
+const PdfFrame = styled.iframe`
+  width: 100%;
+  height: 60vh;
+  min-height: 420px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: white;
+`;
+
 const PurchaseOrderStagingPage: React.FC = () => {
   const { t } = useTranslation('purchaseOrders');
   const navigate = useNavigate();
@@ -129,6 +150,11 @@ const PurchaseOrderStagingPage: React.FC = () => {
   const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
   const [discardTarget, setDiscardTarget] = useState<POStaging | null>(null);
   const [discarding, setDiscarding] = useState(false);
+  const [submittingId, setSubmittingId] = useState<number | null>(null);
+  // PDF 미리보기 — 열자마자 인쇄창이 뜨지 않고 문서를 먼저 보여준다(2026-07-12 Irene).
+  const [pdfPreview, setPdfPreview] = useState<{ po: POStaging; html: string } | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const pdfFrameRef = useRef<HTMLIFrameElement | null>(null);
 
   const fetchDrafts = useCallback(async () => {
     setLoading(true);
@@ -177,20 +203,51 @@ const PurchaseOrderStagingPage: React.FC = () => {
   const systemPOs = useMemo(() => pos.filter(p => !p.seller || p.seller.is_system_registered), [pos]);
   const grandTotal = useMemo(() => pos.reduce((s, p) => s + (parseFloat(p.total_amount) || 0), 0), [pos]);
 
-  const downloadPDF = (po: POStaging) => {
-    const token = getAuthToken();
-    // PDF endpoint 는 HTML auto-print — 새 탭에서 열기 (token URL param 으로 전달은 불가; 동일 origin cookie 또는 GET 직접 fetch)
-    fetch(`/api/purchase-orders/${po.id}/pdf`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.text())
-      .then(html => {
-        const w = window.open('', '_blank');
-        if (w) { w.document.write(html); w.document.close(); }
-      });
+  // 발주서 미리보기 — 서버 HTML 을 그대로 쓰되 auto-print 스크립트는 제거한다.
+  // (예전엔 새 탭을 열자마자 브라우저 인쇄창이 떴다. 문서를 먼저 보고 다운로드/인쇄를 고르게 한다.)
+  const openPdfPreview = async (po: POStaging) => {
+    setPdfBusy(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/purchase-orders/${po.id}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) {
+        setAlertDlg({ title: t('common:error', 'Error') as string, message: t('staging.pdfFailed', 'Failed to load the purchase order document') as string });
+        return;
+      }
+      const html = (await res.text()).replace(/<script[\s\S]*?window\.print[\s\S]*?<\/script>/gi, '');
+      setPdfPreview({ po, html });
+    } catch {
+      setAlertDlg({ title: t('common:error', 'Error') as string, message: t('staging.pdfFailed', 'Failed to load the purchase order document') as string });
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
+  // 실제 PDF 파일로 저장 (인쇄창의 'PDF로 저장'이 아니라 파일 다운로드) — 상세 페이지와 동일 유틸
+  const downloadPdfFile = async () => {
+    const frame = pdfFrameRef.current;
+    if (!frame || !pdfPreview) return;
+    setPdfBusy(true);
+    try {
+      await renderIframeToPdf(frame, `${pdfPreview.po.po_number || `PO-${pdfPreview.po.id}`}.pdf`);
+    } catch (e) {
+      console.error('download PO pdf failed:', e);
+      setAlertDlg({ title: t('common:error', 'Error') as string, message: t('staging.pdfDownloadFailed', 'Failed to download PDF') as string });
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
+  const printPdfPreview = () => {
+    const win = pdfFrameRef.current?.contentWindow;
+    if (!win) return;
+    win.focus();
+    win.print();
   };
 
   // PO 품목을 사람이 읽을 수 있는 줄목록으로 (이름 × 수량 @ 단가). 이름 없으면 #id.
   const itemLines = (po: POStaging) => (po.items || []).map((it: any) =>
-    `- ${it.product_name || it.ingredient_name || ('Item #' + it.ingredient_id)} x ${parseFloat(it.quantity_ordered).toFixed(2)} @ ${parseFloat(it.unit_price).toFixed(2)}`
+    `- ${it.product_name || it.ingredient_name || ('Item #' + it.ingredient_id)} x ${formatQuantity(it.quantity_ordered)} @ ${parseFloat(it.unit_price).toFixed(2)}`
   ).join('\n');
 
   const shareViaWhatsApp = (po: POStaging) => {
@@ -252,6 +309,38 @@ const PurchaseOrderStagingPage: React.FC = () => {
     }
   };
 
+  // 업체별 개별 제출 (2026-07-12 Irene): PO 는 업체별로 따로 발행·인보이스도 따로다.
+  // 따라서 카드마다 자기 발주만 완료할 수 있어야 한다. 엔드포인트는 submitAll 과 동일
+  // (시스템 = /submit 자동발송, 외부 = /mark-sent-external 수동발송 표시).
+  const submitOne = async (po: POStaging) => {
+    const isExternal = !!(po.seller && !po.seller.is_system_registered);
+    setSubmittingId(po.id);
+    setError(null);
+    try {
+      const token = getAuthToken();
+      const url = isExternal
+        ? `/api/purchase-orders/${po.id}/mark-sent-external`
+        : `/api/purchase-orders/${po.id}/submit`;
+      const res = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        setAlertDlg({
+          title: t('common:error', 'Error') as string,
+          message: j?.message || (t('staging.submitFailed', 'Failed to submit this purchase order') as string)
+        });
+        return;
+      }
+      // 제출된 카드만 사라진다. 남은 draft 가 없으면 발주 내역으로 이동.
+      const remaining = pos.filter(p => p.id !== po.id);
+      if (remaining.length === 0) { navigate('/pos/purchase-orders/history'); return; }
+      fetchDrafts();
+    } catch (e: any) {
+      setAlertDlg({ title: t('common:error', 'Error') as string, message: e?.message || 'Network error' });
+    } finally {
+      setSubmittingId(null);
+    }
+  };
+
   // 아이템별 삭제 (draft). 마지막 품목이면 서버가 PO 도 함께 삭제 → 목록 갱신.
   const removeItem = async (poId: number, itemId: number) => {
     try {
@@ -287,7 +376,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
         <ItemsBlock>
           {(po.items || []).map(it => (
             <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span>· {(it as any).product_name || (it as any).ingredient_name || `Item #${it.ingredient_id}`} × {parseFloat(it.quantity_ordered).toFixed(2)} @ {parseFloat(it.unit_price).toFixed(2)}</span>
+              <span>· {(it as any).product_name || (it as any).ingredient_name || `Item #${it.ingredient_id}`} × {formatQuantity(it.quantity_ordered)} @ {parseFloat(it.unit_price).toFixed(2)}</span>
               <button type="button" onClick={() => removeItem(po.id, it.id)} title={t('staging.removeItem', 'Remove item') as string}
                 style={{ border: 'none', background: 'transparent', color: '#9CA3AF', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 4px' }}>×</button>
             </div>
@@ -301,7 +390,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
             {t('staging.externalHint', 'Send this PO to the supplier via PDF / WhatsApp / email. The system will not auto-send.')}
           </InfoLine>
           <Actions>
-            <ThemedButton variant="primary" size="small" onClick={() => downloadPDF(po)}>
+            <ThemedButton variant="outline" size="small" onClick={() => openPdfPreview(po)}>
               {t('staging.downloadPdf', 'PDF')}
             </ThemedButton>
             <ThemedButton variant="outline" size="small" onClick={() => shareViaWhatsApp(po)}>
@@ -310,9 +399,14 @@ const PurchaseOrderStagingPage: React.FC = () => {
             <ThemedButton variant="outline" size="small" onClick={() => shareViaEmail(po)}>
               {t('staging.email', 'Email')}
             </ThemedButton>
-            <ThemedButton variant="ghost" size="small" onClick={() => setDiscardTarget(po)}>
+            <Button variant="primary" size="small" onClick={() => submitOne(po)} disabled={submittingId === po.id}>
+              {submittingId === po.id
+                ? t('staging.submitting', 'Submitting…')
+                : t('staging.markSent', 'Mark as Sent')}
+            </Button>
+            <Button variant="danger-outline" size="small" onClick={() => setDiscardTarget(po)}>
               {t('staging.discard', 'Discard')}
-            </ThemedButton>
+            </Button>
           </Actions>
         </>
       ) : (
@@ -321,9 +415,14 @@ const PurchaseOrderStagingPage: React.FC = () => {
             {t('staging.systemHint', 'This PO will be auto-sent to the supplier upon final submit.')}
           </InfoLine>
           <Actions>
-            <ThemedButton variant="ghost" size="small" onClick={() => setDiscardTarget(po)}>
+            <Button variant="primary" size="small" onClick={() => submitOne(po)} disabled={submittingId === po.id}>
+              {submittingId === po.id
+                ? t('staging.submitting', 'Submitting…')
+                : t('staging.submitOne', 'Submit')}
+            </Button>
+            <Button variant="danger-outline" size="small" onClick={() => setDiscardTarget(po)}>
               {t('staging.discard', 'Discard')}
-            </ThemedButton>
+            </Button>
           </Actions>
         </>
       )}
@@ -410,6 +509,40 @@ const PurchaseOrderStagingPage: React.FC = () => {
         cancelText={t('common:cancel', 'Cancel') as string}
         type="danger"
       />
+
+      {/* 발주서 미리보기 — 문서를 먼저 보여주고, 다운로드/인쇄는 위·아래 양쪽에서 고른다 */}
+      <Modal
+        isOpen={!!pdfPreview}
+        onClose={() => setPdfPreview(null)}
+        title={`${t('staging.pdfPreview', 'Purchase Order')} · ${pdfPreview?.po.po_number || ''}`}
+        maxWidth="900px"
+        headerActions={
+          <PdfActions>
+            <Button variant="primary" size="small" onClick={downloadPdfFile} disabled={pdfBusy}>
+              {t('staging.pdfDownload', 'Download PDF')}
+            </Button>
+            <Button variant="secondary" size="small" onClick={printPdfPreview} disabled={pdfBusy}>
+              {t('staging.pdfPrint', 'Print')}
+            </Button>
+          </PdfActions>
+        }
+        footer={
+          <PdfActions>
+            <Button variant="primary" onClick={downloadPdfFile} disabled={pdfBusy}>
+              {t('staging.pdfDownload', 'Download PDF')}
+            </Button>
+            <Button variant="secondary" onClick={printPdfPreview} disabled={pdfBusy}>
+              {t('staging.pdfPrint', 'Print')}
+            </Button>
+          </PdfActions>
+        }
+      >
+        <PdfFrame
+          ref={pdfFrameRef}
+          title={pdfPreview?.po.po_number || 'purchase-order'}
+          srcDoc={pdfPreview?.html || ''}
+        />
+      </Modal>
     </Container>
   );
 };

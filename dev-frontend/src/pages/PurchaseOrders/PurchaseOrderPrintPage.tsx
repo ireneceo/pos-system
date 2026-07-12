@@ -10,6 +10,7 @@ import styled from 'styled-components';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
+import { formatQuantity } from '../../utils/unitConversion';
 
 interface POItem {
   id: number;
@@ -30,6 +31,7 @@ interface PODetail {
   entity_id: number;
   seller_type: string;
   seller_entity_id: number | null;
+  seller_name?: string | null;
   subtotal: number | string;
   total_amount: number | string;
   tax_amount: number | string;
@@ -248,9 +250,9 @@ const PurchaseOrderPrintPage: React.FC = () => {
         <InfoBox>
           <div className="lbl">{t('print.seller', 'Seller')}</div>
           <div className="val">
-            {data.seller_type === 'system_admin'
-              ? 'POS Catalog'
-              : `${data.seller_type}${data.seller_entity_id ? ' #' + data.seller_entity_id : ''}`}
+            {data.seller_name
+              || (data.seller_type === 'system_admin' ? 'POS Catalog' : '')
+              || `${data.seller_type}${data.seller_entity_id ? ' #' + data.seller_entity_id : ''}`}
           </div>
           {data.expected_delivery_date && (
             <div style={{ marginTop: 8, fontSize: 12, color: '#4B5563' }}>
@@ -280,7 +282,7 @@ const PurchaseOrderPrintPage: React.FC = () => {
             return (
               <tr key={it.id}>
                 <td>{it.ingredient?.name || it.description || `#${it.ingredient_id}`}</td>
-                <td className="num">{Number(it.quantity_ordered).toFixed(2)}</td>
+                <td className="num">{formatQuantity(it.quantity_ordered)}</td>
                 <td>{it.unit || it.ingredient?.unit || ''}</td>
                 <td className="num">{formatMoney(it.unit_price, ccy)}</td>
                 <td className="num">{formatMoney(lt, ccy)}</td>

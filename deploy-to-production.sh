@@ -184,8 +184,38 @@ if [ -f /tmp/deploy_prod_schema.json ] && [ -s /tmp/deploy_prod_schema.json ]; t
         echo "$SCHEMA_DIFF" | grep -E "^(🆕|⚠️|🔄|🗑️|   |───|Total)" | head -40
         echo ""
 
+        # ⚠ 2026-07-12 수정 — 예전 주석("sync-database.js 가 알아서 적용")은 **거짓**이었다.
+        # 배포는 sync-database.js 를 --alter 없이 부른다(안전모드 = 모델 로드만, 스키마 무변경).
+        # 즉 신규 테이블/컬럼은 배포로 절대 생성되지 않는다 → 경고만 보고 진행하면 운영에 코드는
+        # 새 것, 스키마는 옛 것이 된다(실제로 menu_reference_photos·recognition_logs 가 며칠간
+        # 없는 채로 있었다). 스키마 변경의 유일한 경로 = scripts/migrate-*.js + registry 등록.
+        # → 운영을 건드리기 전(백업·빌드·rsync 이전)에 fail-closed 로 막는다.
+        # 신규 테이블/컬럼이 diff 에 뜨는 것 자체는 정상이다 — 이 시점은 마이그 실행 **전**이라
+        # 등록된 마이그가 만들어 줄 테이블도 여기선 "없음"으로 보인다. 따라서 **레지스트리 마이그가
+        # 그 이름을 실제로 다루는지 대조**해서, 커버되면 통과·커버 안 되면 차단한다(fail-closed).
+        # (2026-07-12 Fable 지적: 무조건 차단하면 합법 배포까지 막고 --skip-safety 남용을 부른다.)
+        MISSING_NAMES=$(echo "$SCHEMA_DIFF" | grep -E "^   \+ " | sed -E 's/^   \+ ([A-Za-z0-9_.]+).*/\1/' | sort -u)
+        if [ -n "$MISSING_NAMES" ]; then
+            UNCOVERED=""
+            for NAME in $MISSING_NAMES; do
+                BARE=${NAME##*.}   # table.column 형태면 컬럼명만
+                if ! grep -rqs -- "$BARE" $LOCAL_DEV_BACKEND/scripts/migrate-*.js $LOCAL_DEV_BACKEND/scripts/sprint*-migration.js 2>/dev/null; then
+                    UNCOVERED="$UNCOVERED $NAME"
+                fi
+            done
+            if [ -n "$UNCOVERED" ]; then
+                if [ "$SKIP_SAFETY" = true ]; then
+                    warn "마이그가 없는 스키마 드리프트(${UNCOVERED} ) — --skip-safety 로 진행 (의식적 선택)."
+                else
+                    error "🗄️ 운영에 없고 **마이그레이션도 없는** 스키마 항목:${UNCOVERED} — 배포는 스키마를 만들지 않는다(sync-database 는 --alter 없이 돈다). 멱등 마이그(scripts/migrate-*.js)를 작성하고 scripts/migrations.registry.json 의 deploy 에 등록한 뒤 재배포. (긴급 우회: --skip-safety)"
+                fi
+            else
+                success "스키마 차이는 등록된 마이그레이션이 커버함 — 배포 중 생성됨"
+            fi
+        fi
+
         if [ "$AUTO_MODE" = false ]; then
-            warn "sync-database.js will attempt to apply these changes automatically."
+            warn "위 차이는 registry 마이그레이션으로만 적용된다."
             read -p "Continue with deployment? (y/N): " schema_confirm
             if [[ ! "$schema_confirm" =~ ^[Yy]$ ]]; then
                 echo "Cancelled."
@@ -420,25 +450,42 @@ DEPLOY_MIGRATIONS=$(node scripts/check-migration-registry.js --list-deploy)
 if [ $? -ne 0 ] || [ -z "$DEPLOY_MIGRATIONS" ]; then
     error "마이그레이션 레지스트리 검사 실패 — 미분류/유령 마이그가 있어 배포 목록을 확정할 수 없음. 'node scripts/check-migration-registry.js' 로 확인 후 registry.json 정리. (안전 게이트에서 이미 걸렸어야 함)"
 fi
+# ⚠ 루프 안의 ssh 는 반드시 `ssh -n` (2026-07-12 사고 후 수정).
+# 근본: `while read` 가 stdin 으로 목록을 읽는데, 루프 첫 바퀴의 ssh 가 그 stdin 을 통째로
+# 삼켜버려 **항상 첫 마이그 1개만 실행되고 나머지 41개는 조용히 건너뛰었다**. 2026-07-11
+# 임대료 배포에서 migrate-rent-category.js 가 "실행 안 됨"으로 보였던 것이 바로 이것이다
+# (레지스트리 등록은 정상이었다). -n = ssh 가 stdin 을 /dev/null 로 읽게 함.
+MIG_RAN=0
 while IFS= read -r MIG_NAME; do
     [ -z "$MIG_NAME" ] && continue
     SPRINT_MIG="scripts/$MIG_NAME"
-    if ssh $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$SPRINT_MIG"; then
+    if ssh -n $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$SPRINT_MIG"; then
         log "Running $MIG_NAME..."
-        SPRINT_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true
-        if echo "$SPRINT_OUTPUT" | grep -qiE "(complete|✓|done|migrated|seeded)"; then
-            success "$MIG_NAME completed"
-        else
-            warn "$MIG_NAME output (review needed):"
+        # 종료코드로 성공/실패를 판정한다. 예전엔 출력 문자열 grep(휴리스틱)만 봐서, 마이그가
+        # exit 1 로 죽어도 warn 으로 흘러갔다(2026-07-12 Fable 지적). 실패면 배포를 세운다.
+        SPRINT_OUTPUT=$(ssh -n $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1")
+        SPRINT_EXIT=$?
+        if [ $SPRINT_EXIT -ne 0 ]; then
             echo "$SPRINT_OUTPUT" | tail -20
+            error "🗄️ 마이그레이션 실패: $MIG_NAME (exit $SPRINT_EXIT) — 운영 스키마가 어중간해질 수 있다. 원인 수정 후 재배포."
         fi
+        success "$MIG_NAME completed"
     else
         warn "$MIG_NAME not found on prod — copying from dev..."
-        scp -q "$LOCAL_DEV_BACKEND/$SPRINT_MIG" "$PROD_SERVER:$REMOTE_PROD_BACKEND/$SPRINT_MIG" || warn "scp failed for $MIG_NAME"
-        SPRINT_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true
+        # scp 도 ssh 계열이라 stdin 을 삼킨다 → 루프 목록이 사라진다. </dev/null 로 차단. (2026-07-12)
+        scp -q "$LOCAL_DEV_BACKEND/$SPRINT_MIG" "$PROD_SERVER:$REMOTE_PROD_BACKEND/$SPRINT_MIG" < /dev/null || warn "scp failed for $MIG_NAME"
+        SPRINT_OUTPUT=$(ssh -n $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true
         echo "$SPRINT_OUTPUT" | tail -10
     fi
+    MIG_RAN=$((MIG_RAN + 1))
 done <<< "$DEPLOY_MIGRATIONS"
+
+# 실행 수 == 레지스트리 수 인지 대조 (fail-closed). 조용한 누락을 다시는 놓치지 않는다.
+MIG_EXPECTED=$(echo "$DEPLOY_MIGRATIONS" | grep -c '[^[:space:]]')
+if [ "$MIG_RAN" -ne "$MIG_EXPECTED" ]; then
+    error "마이그레이션 실행 수 불일치: 레지스트리 ${MIG_EXPECTED}개 중 ${MIG_RAN}개만 실행됨 — 조용한 누락(과거 원인: 루프 안 ssh 가 stdin 을 삼킴). 배포 중단."
+fi
+success "배포 마이그레이션 ${MIG_RAN}/${MIG_EXPECTED} 실행 완료"
 
 # ──────────────────────────────────────────
 # 9b. Sync seed data (addon_modules, plan_templates 등 시스템 설정 데이터)
@@ -495,8 +542,13 @@ if [ -f /tmp/deploy_prod_schema_after.json ] && [ -s /tmp/deploy_prod_schema_aft
         success "Post-sync: schemas are now identical"
     else
         # Count remaining new tables and new columns (critical)
-        NEW_TABLES=$(echo "$POST_DIFF" | grep -c "^   + " 2>/dev/null || echo 0)
-        TYPE_CHANGES=$(echo "$POST_DIFF" | grep -c "^   ⚡" 2>/dev/null || echo 0)
+        # (2026-07-12: `grep -c ... || echo 0` 은 미매치 시 grep 이 이미 "0" 을 찍고 exit 1 →
+        #  `|| echo 0` 이 0 을 하나 더 붙여 "0\n0" → `[ -gt ]` 가 "integer expression expected" 로
+        #  터졌다. grep -c 는 항상 숫자를 찍으므로 `|| true` 로 종료코드만 삼킨다.)
+        NEW_TABLES=$(echo "$POST_DIFF" | grep -c "^   + " 2>/dev/null || true)
+        TYPE_CHANGES=$(echo "$POST_DIFF" | grep -c "^   ⚡" 2>/dev/null || true)
+        NEW_TABLES=${NEW_TABLES:-0}
+        TYPE_CHANGES=${TYPE_CHANGES:-0}
 
         if echo "$POST_DIFF" | grep -qE "^🆕 New (tables|columns)"; then
             warn "Post-sync: some new tables/columns still missing on prod!"

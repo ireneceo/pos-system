@@ -114,11 +114,20 @@ export const calculateIngredientCost = (
 };
 
 /**
+ * 수량 표시 포맷 — 정수는 소수점 없이(1), 소수는 2자리(1.50).
+ * 금액과 달리 수량은 "1.00" 이 오히려 혼란스럽다(2026-07-12 Irene).
+ */
+export const formatQuantity = (quantity: number | string): string => {
+  const n = typeof quantity === 'number' ? quantity : parseFloat(quantity);
+  if (!Number.isFinite(n)) return '0';
+  return n.toFixed(n % 1 === 0 ? 0 : 2);
+};
+
+/**
  * 단위별 표시 포맷
  */
 export const formatQuantityWithUnit = (quantity: number, unit: string): string => {
-  const decimals = quantity % 1 === 0 ? 0 : 2;
-  return `${quantity.toFixed(decimals)} ${unit}`;
+  return `${formatQuantity(quantity)} ${unit}`;
 };
 
 /**
