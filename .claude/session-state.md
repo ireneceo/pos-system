@@ -1,57 +1,54 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-12 19:15, idle 2023s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: ingredients.js,inventory-core.js inventory-extra.js,po-returns.js recipes.js,health-check.js inventoryDeductionService.js,test-brand-stock.js inventory.json,inventory.json inventory.json,inventory.json
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-07-12
-**버전:** v3.68 (운영). 오늘 배포 3회는 **버전 미상승**(기능 수정·인프라).
-**작업 상태:** 완료 — verify-all **13/13** (mount sweep 8역할 포함). 운영 배포 3회 완료 + **프랜차이즈 맵 좌표분은 dev 미배포**.
+**마지막 업데이트:** 2026-07-12 (심야)
+**버전:** v3.68 (운영). 오늘 배포 5회 모두 **버전 미상승**(기능 수정·신규 기능).
+**작업 상태:** 완료 — Fable 최종 게이트 승인 후 운영 배포, **운영 실검증 11/11**.
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션 2026-07-12)
+### 완료된 작업 (이번 세션 2026-07-12 #2)
 
-#### 발주 신원 해석 — 운영 배포 (Backup 20260712_073501 / 085448 / 092939)
-> Irene "with MIN 카페에서 gitconsulting 브랜드 프로덕트 발주하면 공급업체 이름이 안 뜬다" 한 건에서 근본 6개.
-- **🔴 브랜드 발주의 공급업체 이름이 `—`** — 목록 API 가 판매자를 `seller_type='supplier'` 일 때만 조회(brand/foodcourt 는 채우는 코드 자체가 없음). 운영 with MIN 발주 **6건 중 5건이 brand** = 사실상 전부. 라우트마다 **5벌 중복**(목록/상세/제안/승인/PDF)이 뿌리 → **`utils/sellerNames.js` 단일 해석기**로 통일.
-- **🔴 발주서 PDF 의 구매자가 항상 공란** — 존재하지 않는 컬럼 `po.buyer_entity_type` 을 읽어 조건이 늘 거짓(실제 `entity_type`). **공급업체가 받는 문서에 주문자·배송지가 없었다.** 브랜드 발주는 판매자도 공란(같은 supplier-only 패턴).
-- **수신처 = 회사명 (브랜드명)** (Irene 지적) — 발주를 받는 건 브랜드가 아니라 그 브랜드를 운영하는 회사 → 운영 확인 **"GIT Consulting (with MIN)"**. 회사명 없으면 브랜드명 폴백.
-- **PDF 버튼 = 인쇄창 자동실행 → 미리보기** — 문서를 먼저 보여주고 **Download/Print 를 모달 위·아래**(공용 Modal headerActions+footer). Download 는 진짜 .pdf(상세 페이지의 `renderIframeToPdf` 재사용).
-- **업체별 개별 제출** (Irene 지적) — 발주·인보이스가 업체별로 따로인데 UI 는 `Submit All` 뿐. 백엔드는 **이미 PO 단위 제출 지원**(시스템=`/submit` 자동발송, 외부=`/mark-sent-external` 수동발송) → 카드마다 버튼(**Submit** / **Mark as Sent**). 카드 하나 제출 → 그 카드만 사라짐.
-- **Discard = 공용 danger-outline**(#FEF2F2 파스텔 + #EF4444 라인 — 없는 `ghost` variant 라 회색으로 떨어지고 있었다) · **수량 `× 1.00` → `× 1`**(공용 `formatQuantity`).
-- 회귀 박제: health-check `pos` "브랜드 발주도 이름이 내려온다" — supplier 전용으로 되돌리면 **정확히 이 1건만 실패**(19/20) 실증.
+#### 브랜드 재고 공유 (신규 기능, 운영 배포 · Backup 20260712_201511)
+> Irene "공급업체·스톡아이템도 브랜드에 연결하면 레시피처럼 공유돼야 한다. K-DINE with MIN 기준으로." · 설계 = `docs/BRAND_STOCK_SHARING_DESIGN.md`
+- **Fable 구조판정 C안** — 내가 제안한 `product_ingredients` 통합은 **기각**. 그건 *본사 자체 구매 재고*(current_stock/PAR/실사 = buyer 재고)라 브랜드 표준 재료와 **성격이 다르다**. 통합해도 K-DINE 은 계약 0건이라 발주 불가 → 전제가 무너짐. 정석 = **이미 있는 구조를 잇는다**.
+- 브랜드 재료(`ingredients.owner_type='brand'`, 운영 270건) → 소속 매장에 **읽기전용** 공유. 매장은 발주·입고·레시피에 사용, **수정·삭제·공급처 연결은 브랜드 전용**.
+- **신규 테이블 1개** `restaurant_ingredient_stocks`(매장별 실재고 오버레이) — 브랜드 공유 행의 current_stock 을 매장이 갱신하면 형제 매장 재고가 오염된다. 단가는 기존 `restaurant_ingredient_costs` 와 대칭. **데이터 이관 0**.
+- 접근·재고 규칙 **단일 소스** = `utils/brandStockAccess.js`(readable/writable/stockFor/applyStock). brand_id 는 **항상 서버 조회**(형제 브랜드 누출 방지).
+- **K-DINE 이 막혀 있던 진짜 원인** = `buyerScope` 가 BG 를 primary 브랜드(brand 1)에 고정 → **두 번째 브랜드(K-DINE=brand 2) 재료엔 공급처를 붙일 수조차 없었다**(그래서 운영 매핑 0건·계약 0건). → 소유 브랜드로 전환 허용(`?entity_type=brand&entity_id=N` + `Brand.owner_id` 검증, `isBrandManager` 와 동일 기준). 프론트도 와이어링(안 하면 **primary 브랜드로 잘못 귀속**되는 침묵 버그).
 
-#### 🔴🔴 배포 파이프라인 치명 결함 2개 — 규명·수정
-1. **마이그레이션이 43개 중 1개만 실행되고 있었다** — `while read` 루프의 **`ssh` 가 stdin(목록 나머지)을 삼킴**. 2026-07-11 임대료 배포의 "마이그 실행 안 됨"의 진짜 원인(7/10 `for`→`while read` 개편 때 유입, **배포 3회 영향**). → `ssh -n` + `scp < /dev/null` + **실행수 대조 fail-closed**. **이번 배포 로그 `43/43 실행 완료` 로 실증**(이전 배포 1/43).
-2. **배포는 스키마를 아예 만들지 않는다** — `sync-database.js` 를 **`--alter` 없이** 호출(안전모드). 주석은 "sync 가 적용한다"고 **거짓** → AI 인식 테이블 2개가 운영에 없는 채 방치. → 멱등 마이그(`migrate-ai-recognition-tables.js`) + 레지스트리 등록 + **운영 손대기 전 fail-closed 게이트**(등록된 마이그가 커버하면 통과 — 무조건 차단은 정상 배포도 막는다는 Fable 지적 반영). **dev 151 == 운영 151 일치.**
-   - 추가 수정: bash 산술 버그(`grep -c || echo 0` → `0\n0`) · 마이그가 exit 1 로 죽어도 warn 통과하던 판정 → 종료코드 fail-closed.
-   - 단일 진실 = 메모리 [[reference_deploy_migration_ssh_stdin]], `DEPLOYMENT.md` 정정 완료.
+#### 함께 봉쇄한 기존 결함 (전부 이번 절단면 안)
+- **IDOR 5개**: `/inventory/receive` · `/inventory/deduct` · PAR settings · 재료 `PUT` · 재료 `DELETE` 에 **소유권 검사가 아예 없었다** — 남의 매장 재료를 id 만으로 입고·차감·수정·삭제 가능.
+- **`/inventory/deduct` 항상 500** — 라우트 분리 때 `checkAndCreateAlert` 헬퍼가 유실(호출 화면이 없어 미발견) → `utils/stockAlerts.js` 로 공용화(알림은 매장 스코프 — 안 그러면 A매장 입고가 B매장 알림을 지운다).
+- **주문 차감·FIFO 배치가 브랜드 행을 깎던 것** (Fable P0 적발) — 입고=오버레이 / 차감=브랜드행 이면 **이중장부**가 된다. 폐기·PO 반품 환원도 동일 분기.
+- **레시피 재료 소유권 검증 없음** — 운영에 **타 브랜드 재료 참조 1건 실재**.
 
-#### 운영 실검증 (배포 후, 테스트 매장 한정)
-주문생성 · **단계이동**(pending→preparing→ready→served) · **결제**(현금 완납 completed) · **인쇄 계약 5/5**(동시 claim 5개 중 **1개만 승리** · printed 후 재인쇄 0 · **+Round 새 품목만**). 검증 주문 전량 삭제·인쇄큐 제거, **POS 가 집어간 것 0건 = 종이 안 나감**.
+#### 부록 (공급업체 혼동 정리)
+- **Direct → External(외부업체)** 명칭 변경(4언어) · **Find Suppliers 에서 외부업체 제외**(= 가입 공급업체를 찾아 계약 신청하는 곳) · 외부업체 프로필의 **계약 UI 제거**(자동계약은 발주를 열어주는 내부 장치일 뿐) · 운영 테스트 잔재 `__EDIT_DELETE_TEST__` 삭제.
+- 확인: **외부업체는 유저 계정이 생기지 않는다** (운영 39곳 전부 owner_id NULL, supplier 역할 유저는 데모 1개뿐).
 
-#### 프랜차이즈 맵 좌표 (dev 검증완료 · **미배포**)
-> Irene "브랜드 제너럴 프랜차이즈 맵에 지도가 안 나와". 지도(react-leaflet)는 정상 — **찍을 좌표가 없었다**(운영 22개 중 좌표 **2개**).
-- **좌표 백필** `scripts/backfill-restaurant-coords.js`(멱등, 좌표 없는 행만) — 지오코딩이 **생성 시 / 주소 수정 시**에만 돌아 그 전 매장은 영영 null 이었다.
-- **🔴 지오코딩이 실패를 삼키던 것** — HTTP 429(rate limit)·5xx 를 "주소 못 찾음"과 똑같이 조용히 null 처리 + 재시도 0 → **연속 지오코딩 시 전멸**(단건은 성공). 매장 생성 시에도 같은 구멍 → **재시도(백오프) + 실패 로깅**. 상세주소가 지도에 없으면 도시/주 단위 **근사 좌표** 폴백(로그에 "근사" 표기).
-- **주소 중복 표기 제거** — `address` 컬럼에 이미 도시·주가 있는데 `city`/`state` 를 또 붙여 "…Petaling Jaya, Selangor, Petaling Jaya, Selangor". 공용 `formatAddress` 에서 **콤마 토큰 단위**로 중복만 제거(도로명 `Jalan Kuala Lumpur` 오탐 없음 실증).
+#### 발주 리스트 보기 재작성
+- 원인: **카드 마크업을 grid 행에 흘려넣어** 열과 자식이 어긋남 → 가운데 공백·정렬 붕괴. 행마다 별개 grid 라 `auto` 열은 행별 폭이 달라짐. 미디어쿼리가 **뷰포트**를 봐서(카트 패널 때문에 1100px 창에서도 리스트 실폭 490px) 이름 열이 35px 까지 찌그러짐.
+- 수정: **5열 전용 마크업**(이름+배지/분류/공급처/가격/액션) + **컨테이너 쿼리**(리스트 실폭 기준) + 가격·액션 고정폭(행 간 정렬 보장) + **행높이 44px 균일**. 토글은 **POS Image/Compact 와 동일 디자인**(연회색 트랙+흰 활성칩) · 우측정렬.
+- 실측: 5개 폭 전부 열정렬 ✓ · 행높이 44px · pageerror 0.
+
+#### 검증
+- 실호출 30/30(읽기전용·공급처 읽기/쓰기403·발주 생성/타브랜드 차단·입고 오버레이·**실주문 차감 오버레이**·IDOR 404·본사체인 무접촉) · health-check `pos` **27/27**(브랜드 재고 회귀 **6건 신규 박제**) · verify-all **13/13** · print-guard 8/8 무접촉.
+- **Fable 최종 게이트: 승인** (C1 deduct 500 · C2 죽은 토글 수정 후).
+- **운영 실검증 11/11** — 테스트 매장(rid=5)에서 주문 생성 → 단계이동(preparing→ready→served) → **현금 결제 completed** → 인쇄 계약(동시 claim 5개 중 **1개만 승리**, printed 후 재인쇄 0) → 주문 삭제·인쇄 플래그 정리(**종이 안 나감**).
 
 ### 다음 확정 작업
-- **프랜차이즈 맵 좌표분 `/배포`** (Irene 지시 시) → 배포 후 **운영 20개 매장 좌표 백필 실행**(`node scripts/backfill-restaurant-coords.js`) → 지도 표시 확인.
+- 없음 — 지시 대기
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
-- **with MIN 매장 인쇄 1회 테스트** (물리, 사람 필요) — **Fable 판정: backlog 21건은 자가 해소되어 첫 인쇄를 막지 않는다.** 단 ①**KDS 화면에선 dismiss 가 안 돈다 → 테스트는 POS/설정 화면에서** ②과거 autoPrint ON 상태로 꺼진 기기가 있으면 21장 폭주 가능 → **방문 직전** `POST /api/autoprint-diagnostic/clear-stuck-print-flags/10 {"minutesOld":60}` 로 정리하면 리스크 0 (Irene 지시 시 실행).
-- **`pending-print` 24시간 신선도 경계** (Fable 정석 설계, 미실행) — 오래된 주문은 어떤 컷오프로도 자동인쇄 대상이 아니므로 정의를 서버 쿼리로 이관(클라이언트 sweep 의존 제거). `orders-crud.js` = **인쇄 보호파일** → Irene 승인 + `--bless` + 실프린터 확인 필수. **매장 종이 확인이 끝난 뒤 별도 배포**(방문에 변수 섞지 말 것).
-- PO **목록 페이지**(`PurchaseOrdersPage.tsx:586`)의 PDF 버튼은 아직 자동 인쇄창 — staging 과 UX 통일 필요(Fable 지적).
-- 빌(bill) 경로엔 백로그 컷오프가 없다 — needs_bill 누적 매장이 빌 autoPrint 켜면 옛 영수증 폭주 가능(현재 with MIN·K-DINE 모두 needs_bill=0 이라 무해).
-- K-DINE IPC 인쇄 대기 **1035건** — 자동인쇄 미사용으로 보임. 켜면 4~5분 공백(윈도우 20건씩 dismiss).
-- timezone(242)·design(310) baseline 부채 점진 소거 · E2E 시나리오 확장
+- **브랜드 재료 실사(stock-take)·발주제안 미지원** (Fable 별건 판정) — 현재 매장 실사 목록이 브랜드 재료를 제외한다(`inventory-core.js` restaurant_id 만). 포함하려면 complete 경로도 오버레이 분기 필요.
+- **Find/Contracts 페이지의 BG 브랜드 선택 UI** — 두 번째 브랜드 명의로 *가입 공급업체* 계약을 신청하려면 필요(외부업체 경로는 이번에 해결됨).
+- `inventory-core.js` stock-take complete 의 stockTakeId 매장 귀속 미검증(기존 IDOR, 이번 범위 밖).
+- `po-returns.js` brand-seller 환원이 buyer 감소와 같은 행을 도로 증가시켜 net 0 이 되는 기존 버그 의심 — 별도 조사.
+- with MIN 매장 인쇄 1회 물리 테스트(사람 필요) · timezone(242)·design(310) baseline 부채 · E2E 시나리오 확장
 
 ---
 

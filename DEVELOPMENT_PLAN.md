@@ -1,6 +1,9 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-12 (**발주 신원 해석 단일화 + PDF 미리보기 + 업체별 개별 제출 — 운영 배포 3회 / 🔴 배포 파이프라인 치명 결함 2개 규명·수정 / 프랜차이즈 맵 좌표 — dev 미배포**. with MIN "발주에 공급업체 이름이 안 뜬다" 한 건에서 시작해 근본 6개: ①발주 목록 API가 판매자를 supplier 타입만 조회 → 브랜드 발주 이름 `—`(운영 6건 중 5건이 brand) → 라우트마다 5벌 중복이던 판매자 조회를 `utils/sellerNames.js` **단일 해석기**로 통일 ②발주서 PDF가 **존재하지 않는 컬럼**(`buyer_entity_type`)을 읽어 **구매자 이름·주소가 항상 비어 있었다**(공급업체가 받는 문서에 주문자가 없었음) ③PDF 버튼이 열자마자 인쇄창 → **미리보기 + 상하 Download/Print**(공용 Modal) ④수신처를 브랜드명이 아닌 **회사명(브랜드명)** 으로 = "GIT Consulting (with MIN)" ⑤Discard 를 공용 danger-outline(파스텔 연빨강)·수량 `× 1.00`→`× 1` ⑥**업체별 개별 제출**(시스템=Submit 자동발송 / 외부=Mark as Sent 수동발송 — 백엔드는 이미 지원, UI만 없었다). **🔴 배포 파이프라인**: 마이그 루프의 `while read` + `ssh` 가 **stdin 을 삼켜 43개 중 1개만 실행**(7/11 임대료 마이그 미실행의 진짜 원인, 7/10 레지스트리 개편 때 유입 → 배포 3회 영향) → `ssh -n` + 실행수 대조 fail-closed(**이번 배포 43/43 실증**) / 배포가 `sync-database` 를 `--alter` 없이 불러 **스키마를 아예 안 만들던 것**(AI 테이블 2개 방치) → 멱등 마이그+레지스트리+운영 손대기 전 fail-closed 게이트(현재 dev 151==운영 151). **Fable 구조검토**: with MIN 인쇄 backlog 21건은 자가 해소(단 KDS 화면에선 dismiss 안 됨 — 매장 테스트는 POS 화면에서). 운영 실검증: 단계이동·결제·인쇄 계약 5/5. verify-all 13/13 ×3회. **미배포**: 프랜차이즈 맵 좌표(운영 22개 중 2개만 좌표 — 지오코딩이 생성/주소수정 시에만 돌고 백필 없었음 + 유틸이 429를 조용히 삼켜 배치 전멸) + 주소 중복표기 제거.)
+> **최종 업데이트:** 2026-07-12 #2 (**브랜드 재고 공유(프랜차이즈 표준 재료) 신규 기능 + 기존 IDOR 5개 봉쇄 — 운영 배포**. Irene "공급업체·스톡아이템도 브랜드에 연결하면 레시피처럼 공유돼서 매장으로 내려가야 한다. K-DINE with MIN 기준으로 제대로 연결되게." **Fable 구조판정 = C안**(내가 제안한 `product_ingredients` 통합은 **기각** — 그건 *본사 자체 구매 재고*로 브랜드 표준 재료와 성격이 다르고, 통합해도 K-DINE 은 계약 0건이라 발주가 안 됨). 정석 = **이미 있는 구조를 잇는다**: 브랜드 재료(`ingredients.owner_type='brand'`, 운영 270건)가 소속 매장에 **읽기전용**으로 내려가고 매장이 그걸로 **발주·입고·레시피**를 쓴다. 신규 테이블 1개(`restaurant_ingredient_stocks` = 매장별 실재고 오버레이 — 브랜드 공유 행의 current_stock 을 매장이 갱신하면 형제 매장 재고가 오염됨), **데이터 이관 0**. 접근 규칙 단일 소스 = `utils/brandStockAccess.js`. **K-DINE 이 막혀 있던 진짜 원인**: BG 가 primary 브랜드(brand 1)에 고정돼 **두 번째 브랜드(K-DINE=brand 2) 재료엔 공급처를 붙일 수조차 없었다**(`buyerScope`) → 소유 브랜드로 전환 허용(`Brand.owner_id` 검증, `isBrandManager` 와 동일 기준). **함께 봉쇄한 기존 결함**: `/inventory/receive`·`/deduct`·PAR settings·재료 PUT/DELETE 에 **소유권 검사가 아예 없어** 남의 매장 재료를 id 만으로 입고·차감·수정·삭제 가능(**IDOR 5개**) / 레시피에 아무 재료나 붙일 수 있어 **운영에 타 브랜드 재료 참조 1건 실재** / `/inventory/deduct` 는 헬퍼 유실로 **항상 500**(호출 화면이 없어 미발견) / 주문 차감·FIFO 배치가 매장 스코프 없이 브랜드 행을 깎아 **형제 매장 재고·배치 오염**(Fable P0 적발 — 이걸 안 고치고 배포했으면 입고=오버레이/차감=브랜드행 **이중장부**). **부록**: Direct→**External** 명칭 변경, Find Suppliers 에서 외부업체 제외(가입 업체 검색 전용), 외부업체 프로필의 계약 UI 제거(자동계약은 내부 장치일 뿐), 운영 테스트 잔재 1행 삭제. **발주 리스트 보기 재작성**: 카드 마크업을 grid 에 흘려넣어 가운데가 비고 열이 어긋나던 것 → 5열 전용 마크업 + **컨테이너 쿼리**(뷰포트가 아니라 리스트 실폭 — 카트 패널 때문에 1100px 창에서도 리스트는 490px) + 행높이 44px 균일, 토글은 POS Image/Compact 와 동일 디자인·우측정렬. 검증: 실호출 30/30 · health-check pos 27/27(회귀 6건 신규 박제) · verify-all 13/13 · Fable 최종 게이트 승인 · **운영 실검증 11/11**(주문→단계이동→결제→인쇄 계약 claim 1/5·재인쇄 0).)
+
+>
+> **이전:** 2026-07-12 (발주 신원 해석 단일화 + 배포 파이프라인 치명 결함 2개 — 운영 배포 3회)
 >
 > **이전:** 2026-07-11 #3 (**임차인 임대료 청구 신규 기능 운영 배포 + 설정 가짜탭 제거**. `/기능설계` 6단계로 임대료 청구 구축 — 계약의 임대조건으로 매월 임대료 인보이스 자동발행(멱등)·임차인별 납부/연체 현황·계약 종료 시 중단. **신규 테이블 0개**(계약·인보이스·유닛 재사용, invoice_categories 에 rent 1행). 실호출 13/13 + 유저흐름 11/11 + health-check pos 19/19. 이메일 알림·연체 전환은 기존 인보이스 파이프라인이 그대로 커버(실증). 운영 배포 Backup 20260711_194035 — **마이그레이션이 배포 중 실행되지 않아 수동 복구**(다음 배포 전 원인 규명 필요). 추가로 **설정의 매니저 Company/Brands/Billing 탭 전체가 하드코딩 가짜**("다음 청구일 January 15, 2025", 브랜드 목록 상수)이면서 **requireRestaurantMatch 로 아무도 도달 못 하는 죽은 코드**임을 확인 → 제거. 정리 중 RA 설정 크래시 회귀를 내고 실브라우저 검증에서 잡아 수정. verify-all 13/13.)
 >
@@ -8057,6 +8060,34 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - 백엔드: `services/rentBilling.js`(신규) · `routes/rent-billing.js`(신규) · `scripts/migrate-rent-category.js`(신규) · `services/invoiceScheduler.js` · `models/Contract.js` · `server.js` · `scripts/health-check.js` · `scripts/migrations.registry.json`
 - 프론트: `pages/Foodcourt/RentManagement.tsx` · `components/Contract/ContractDetail.tsx` · `components/Layout/MainLayout.tsx`(사이드바, bless) · `App.tsx`(라우트 역할) · `pages/Settings/SettingsPage.tsx` · `pages/Manager/ManagerSubscriptionsPage.tsx` · locales ×4
 - 문서: `docs/TENANT_RENT_BILLING.md`(신규)
+
+---
+
+## ✅ 완료: 브랜드 재고 공유 + IDOR 봉쇄 + 발주 리스트 UI (2026-07-12 #2)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 브랜드 재고 공유 | 브랜드 표준 재료 → 소속 매장 읽기전용 공유(재고 페이지·발주·레시피), 매장이 발주·입고 가능 | ✓ 완료 |
+| 매장별 재고 오버레이 | `restaurant_ingredient_stocks` 신규 — 브랜드 공유 행 오염 방지(형제 매장 격리) | ✓ 완료 |
+| BG 다브랜드 buyer 스코프 | 오너가 소유한 브랜드로 전환 허용(`Brand.owner_id` 검증) — K-DINE 이 막혀 있던 근본 | ✓ 완료 |
+| IDOR 5개 봉쇄 | receive / deduct / PAR settings / 재료 PUT / DELETE 에 소유권 검사(기존엔 전무) | ✓ 완료 |
+| 주문차감·FIFO 매장 스코프 | 차감이 브랜드 행을 깎던 이중장부·형제 매장 배치 소진 차단 (Fable P0) | ✓ 완료 |
+| `/inventory/deduct` 500 복구 | `checkAndCreateAlert` 유실 → `utils/stockAlerts.js` 공용화 | ✓ 완료 |
+| 레시피 재료 소유권 검증 | 타 브랜드 재료 참조 차단(운영에 1건 실재) | ✓ 완료 |
+| 공급업체 정리 | Direct→External, Find 에서 외부업체 제외, 외부업체 계약 UI 제거 | ✓ 완료 |
+| 발주 리스트 보기 | 5열 전용 마크업 + 컨테이너 쿼리 + 행높이 균일, 토글 공용 디자인·우측정렬 | ✓ 완료 |
+| 회귀 박제 | health-check `pos` 에 브랜드 재고 6건 추가 (27/27) | ✓ 완료 |
+
+### 수정된 파일
+- `dev-backend/utils/brandStockAccess.js` (신규 — 접근·재고 규칙 단일 소스), `dev-backend/utils/stockAlerts.js` (신규)
+- `dev-backend/models/RestaurantIngredientStock.js` (신규) + `models/index.js`
+- `dev-backend/scripts/migrate-restaurant-ingredient-stocks.js` (신규) + `migrations.registry.json`
+- `dev-backend/routes/` — `ingredients.js` · `restaurants-ingredients.js` · `ingredient-seller-products.js` · `inventory-core.js` · `inventory-extra.js` · `purchase-orders-crud.js` · `purchase-orders-workflow.js` · `po-returns.js` · `recipes.js` · `supplier-directory.js`
+- `dev-backend/middleware/buyerScope.js` · `dev-backend/services/inventoryDeductionService.js` · `dev-backend/scripts/health-check.js`
+- `dev-frontend/src/pages/PurchaseOrders/NewPurchaseOrderPage.tsx` · `RecipeManagement/IngredientsTab.tsx` · `SupplierDirectory/SupplierProfilePage.tsx` · `Suppliers/*` · `components/Inventory/*` · `components/Common/ConnectSellerModal.tsx` · i18n 4언어
+- `docs/BRAND_STOCK_SHARING_DESIGN.md` (신규 설계 문서)
 
 ---
 

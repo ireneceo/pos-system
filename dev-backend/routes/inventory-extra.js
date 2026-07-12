@@ -5,6 +5,7 @@ const database = require('../config/database');
 const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch, GeneralStock, GeneralStockTransaction, Supplier, RestaurantIngredientCost } = require('../models');
 const { getStartOfMonth, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { readableIngredient, writableIngredient, stockFor, applyStock } = require('../utils/brandStockAccess');
+const { checkAndCreateAlert } = require('../utils/stockAlerts');
 
 // 레스토랑의 코스트 오버라이드 맵 조회 헬퍼
 

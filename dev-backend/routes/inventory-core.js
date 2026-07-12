@@ -21,6 +21,7 @@ async function getRestaurantCostMap(restaurantId) {
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 // 브랜드 공유 재료 접근·재고 규칙의 단일 소스 (docs/BRAND_STOCK_SHARING_DESIGN.md)
 const { readableIngredient, stockFor, stockMapFor, applyStock } = require('../utils/brandStockAccess');
+const { checkAndCreateAlert } = require('../utils/stockAlerts');
 
 /**
  * 이 매장이 다룰 수 있는 재료인가 — 자기 재료 ∪ 부모 브랜드 재료.
@@ -1040,62 +1041,7 @@ router.get('/:restaurantId/inventory/reorder-suggestions', async (req, res) => {
 // Helper Functions
 // ============================================
 
-async function checkAndCreateAlert(ingredientId, restaurantId, newStock, transaction = null) {
-  const ingredient = await Ingredient.findByPk(ingredientId);
-  if (!ingredient) return;
-
-  const minStock = parseFloat(ingredient.min_stock) || 0;
-  const currentStock = newStock;
-
-  // Check if there's already an unresolved alert
-  const existingAlert = await StockAlert.findOne({
-    where: {
-      ingredient_id: ingredientId,
-      is_resolved: false
-    }
-  });
-
-  if (currentStock <= 0) {
-    // Out of stock
-    if (existingAlert) {
-      await StockAlert.update(
-        { alert_type: 'out_of_stock', current_stock: currentStock },
-        { where: { id: existingAlert.id }, transaction }
-      );
-    } else {
-      await StockAlert.create({
-        restaurant_id: restaurantId,
-        ingredient_id: ingredientId,
-        alert_type: 'out_of_stock',
-        current_stock: currentStock,
-        min_stock: minStock
-      }, { transaction });
-    }
-  } else if (currentStock <= minStock) {
-    // Low stock
-    if (existingAlert) {
-      await StockAlert.update(
-        { alert_type: 'low_stock', current_stock: currentStock },
-        { where: { id: existingAlert.id }, transaction }
-      );
-    } else {
-      await StockAlert.create({
-        restaurant_id: restaurantId,
-        ingredient_id: ingredientId,
-        alert_type: 'low_stock',
-        current_stock: currentStock,
-        min_stock: minStock
-      }, { transaction });
-    }
-  } else if (existingAlert) {
-    // Stock is now above min_stock, resolve the alert
-    await StockAlert.update(
-      { is_resolved: true, resolved_at: new Date() },
-      { where: { id: existingAlert.id }, transaction }
-    );
-  }
-}
-
+// checkAndCreateAlert 는 utils/stockAlerts.js 로 이동 (inventory-extra 와 공유 — 사본 금지)
 // GET /api/restaurants/:restaurantId/inventory/expiring - 유통기한 임박 항목 조회
 router.get('/:restaurantId/inventory/expiring', async (req, res) => {
   try {

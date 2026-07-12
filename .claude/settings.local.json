@@ -1189,7 +1189,11 @@
       "Bash(scp -q /tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/probe.sql irene@87.106.78.146:/tmp/probe.sql)",
       "Bash(scp -q /tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/p2.sql irene@87.106.78.146:/tmp/p2.sql)",
       "Bash(scp -q /tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/p3.sql irene@87.106.78.146:/tmp/p3.sql)",
-      "Bash(scp -q /tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/p4.sql irene@87.106.78.146:/tmp/p4.sql)"
+      "Bash(scp -q /tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/p4.sql irene@87.106.78.146:/tmp/p4.sql)",
+      "Bash(sed -n '/^const ItemContainer/,/^`;/p' src/pages/PurchaseOrders/NewPurchaseOrderPage.tsx)",
+      "Bash(sed -n '/^const ListRow/,/^`;/p' src/pages/PurchaseOrders/NewPurchaseOrderPage.tsx)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/prod-verify.js irene@87.106.78.146:/tmp/prod-verify.js)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/prod-verify.js irene@87.106.78.146:/var/www/production-backend/verify-tmp.js)"
     ],
     "deny": [],
     "ask": []

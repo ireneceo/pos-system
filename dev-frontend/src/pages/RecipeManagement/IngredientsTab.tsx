@@ -1399,8 +1399,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   </InfoRow>
                 )}
               </IngredientInfo>
-              {/* Track Stock 토글 - Restaurant Admin만 표시 (브랜드 재료도 재고 연동은 가능) */}
-              {isRestaurantAdmin && (
+              {/* Track Stock 토글 — 매장 소유 재료만. track_stock 은 브랜드 공유 행의 정의 속성이라
+                  매장이 바꾸면 형제 매장까지 바뀐다(서버 403). 브랜드 재료엔 버튼을 주지 않는다. */}
+              {isRestaurantAdmin && !isItemReadOnly(ingredient) && (
                 <TrackStockRow
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}

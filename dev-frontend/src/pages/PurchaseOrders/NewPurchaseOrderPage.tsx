@@ -278,7 +278,8 @@ const Grid = styled.div`
 // 안의 내용(뱃지·이름·가격·옵션 버튼)은 그대로 재사용한다(두 벌 유지 금지).
 const ItemContainer = styled.div<{ $list: boolean }>`
   ${p => (p.$list
-    ? `display: flex; flex-direction: column; border: 1px solid #E6EBF1; border-radius: 8px; overflow: hidden; background: #fff;`
+    ? `display: flex; flex-direction: column; border: 1px solid #E6EBF1; border-radius: 8px; overflow: hidden; background: #fff;
+       container-type: inline-size; container-name: polist;`
     : `display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;`)}
 `;
 
@@ -292,12 +293,18 @@ const List = styled.div`
   background: #fff;
 `;
 
-const ListRow = styled.button<{ $disabled?: boolean }>`
+const ListRow = styled.button<{ $disabled?: boolean; $actionsWidth?: number }>`
+  /* 열과 자식이 1:1 (이름+배지 / 분류·단위 / 공급처 / 가격 / 액션).
+     행마다 grid 가 따로라 auto 열은 행별 폭이 달라진다 → 가격·액션은 고정폭으로 정렬을 보장.
+     폭 판단은 뷰포트가 아니라 **리스트 컨테이너**(@container) — 이 화면은 우측 카트 패널이
+     폭을 먹어서 뷰포트 기준으론 이름 열이 찌그러진다. */
   display: grid;
-  grid-template-columns: 1fr 140px 110px auto;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.9fr) minmax(0, 1fr) 96px ${p => p.$actionsWidth || 96}px;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
+  width: 100%;
+  min-height: 44px;   /* 썸네일 유무와 무관하게 행 높이 균일 */
+  padding: 6px 14px;
   text-align: left;
   background: #fff;
   border: none;
@@ -305,63 +312,171 @@ const ListRow = styled.button<{ $disabled?: boolean }>`
   cursor: ${p => (p.$disabled ? 'default' : 'pointer')};
   opacity: ${p => (p.$disabled ? 0.55 : 1)};
   transition: background 0.15s;
+  font-family: inherit;
 
   &:last-child { border-bottom: none; }
   &:hover { background: ${p => (p.$disabled ? '#fff' : '#F8FAFF')}; }
 
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr auto;
-    row-gap: 4px;
+  /* 좁아지면 분류부터 접는다 (이름·공급처·가격·액션 우선) */
+  @container polist (max-width: 900px) {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 96px ${p => p.$actionsWidth || 96}px;
+  }
+
+  /* 더 좁으면 공급처도 접는다 */
+  @container polist (max-width: 680px) {
+    grid-template-columns: minmax(0, 1fr) 96px ${p => p.$actionsWidth || 96}px;
+  }
+
+  /* 가장 좁을 때만 2줄 */
+  @container polist (max-width: 460px) {
+    grid-template-columns: minmax(0, 1fr) ${p => p.$actionsWidth || 96}px;
+    row-gap: 6px;
   }
 `;
-
 const ListName = styled.div`
+  min-width: 0;
   font-size: 13.5px;
   font-weight: 600;
   color: #0A2540;
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
-`;
+  flex-wrap: nowrap;   /* 넓으면 한 줄 — 이름이 길면 이름을 말줄임 */
+  overflow: hidden;
 
+  @container polist (max-width: 460px) { flex-wrap: wrap; }
+`;
+const ListNameText = styled.span`
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+/** 분류·단위 — 가장 먼저 접히는 열 */
 const ListMeta = styled.div`
+  min-width: 0;
   font-size: 12px;
   color: #6B7C93;
-`;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 
+  @container polist (max-width: 900px) { display: none; }
+  @container polist (max-width: 460px) {
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+  }
+`;
+/** 공급처(+최소주문) — 두 번째로 접히는 열 */
+const ListVendor = styled.div`
+  min-width: 0;
+  font-size: 12px;
+  color: #6B7C93;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  @container polist (max-width: 680px) { display: none; }
+`;
 const ListPrice = styled.div`
   font-size: 13px;
   font-weight: 700;
   color: #0A2540;
   text-align: right;
-`;
+  white-space: nowrap;
 
+  @container polist (max-width: 460px) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+`;
+const ListNoSeller = styled.div`
+  font-size: 12px;
+  color: #92400E;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  @container polist (max-width: 460px) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+`;
 const ListActions = styled.div`
   display: flex;
   gap: 6px;
   justify-content: flex-end;
+  flex-wrap: wrap;   /* 버튼 2개(옵션+담기)면 좁을 때 세로로 접힌다 */
+
+  @container polist (max-width: 460px) {
+    grid-column: 2;
+    grid-row: 1;
+  }
 `;
 
-// 보기 전환 토글 (카드 / 리스트) — 선택은 localStorage 에 남아 다시 들어와도 유지된다.
+/** 옵션 버튼 — 카드/리스트가 같은 모양을 쓴다(카드에 인라인으로 박혀 있던 것을 승격). */
+const OptionsButton = styled.button`
+  padding: 6px 12px;
+  border: 1px solid #635BFF;
+  border-radius: 8px;
+  background: #EEF2FF;
+  color: #635BFF;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  align-self: flex-start;
+  font-family: inherit;
+  white-space: nowrap;
+`;
+
+/** 리스트 행 썸네일 — 카탈로그 상품 이미지(작게). */
+const ListThumb = styled.img`
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #F1F4F8;
+`;
+
+const AddToStockButton = styled.button`
+  padding: 6px 12px;
+  border: 1px solid #C7CED6;
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: #0A2540;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+`;
+
+
 const ViewToggle = styled.div`
-  display: inline-flex;
-  border: 1px solid #E6EBF1;
+  display: flex;
+  margin-left: auto;   /* 필터 줄 오른쪽 끝 */
+  background: #F1F4F8;
   border-radius: 6px;
-  overflow: hidden;
+  padding: 2px;
+  flex-shrink: 0;
 `;
 
 const ViewBtn = styled.button<{ $active: boolean }>`
-  padding: 6px 10px;
+  padding: 5px 14px;
+  border: none;
+  border-radius: 5px;
   font-size: 12px;
   font-weight: 600;
-  border: none;
   cursor: pointer;
-  background: ${p => (p.$active ? '#635BFF' : '#fff')};
-  color: ${p => (p.$active ? '#fff' : '#6B7C93')};
-  transition: background 0.15s;
-
-  &:hover { background: ${p => (p.$active ? '#5A51E6' : '#F1F4F8')}; }
+  transition: all 0.15s;
+  background: ${p => (p.$active ? '#FFFFFF' : 'transparent')};
+  color: ${p => (p.$active ? '#0A2540' : '#4B5563')};
+  box-shadow: ${p => (p.$active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none')};
+  flex-shrink: 0;
+  white-space: nowrap;
 `;
 
 const Card = styled.button<{ $disabled?: boolean }>`
@@ -1481,93 +1596,110 @@ const NewPurchaseOrderPage: React.FC = () => {
                     const inCart = piKey ? isInCartByKey(piKey) : isInCart(row.id);
                     const qInCart = piKey ? cartQtyOfByKey(piKey) : cartQtyOf(row.id);
                     const hasSeller = row.sellers && row.sellers.length > 0;
-                    const minPrice = hasSeller ? Math.min(...row.sellers.map(s => s.unit_price)) : 0;
                     const cat = row.ingredientCategory;
-                    const ItemBox = viewMode === 'list' ? ListRow : Card;
+                    const isList = viewMode === 'list';
+                    const ItemBox = isList ? ListRow : Card;
+
+                    // 표시값은 한 번만 계산해 카드/리스트가 나눠 쓴다 (두 벌로 복제하면 곧 어긋난다)
+                    const catText = cat
+                      ? `${cat.emoji ? cat.emoji + ' ' : ''}${cat.name}`
+                      : (t('newPo.uncategorized', 'Uncategorized') as string);
+                    const metaText = `${catText}${row.unit ? ` · ${row.unit}` : ''}`;
+
+                    let priceText = '';
+                    let vendorText = '';
+                    if (hasSeller) {
+                      let pricedSellers = row.sellers;
+                      if (mineSellerFilter !== 'all') {
+                        const [tt, idStr] = mineSellerFilter.split(':');
+                        const sid = parseInt(idStr, 10);
+                        pricedSellers = row.sellers.filter(s => s.seller_type === tt && s.seller_entity_id === sid);
+                      }
+                      const perUnit = pricedSellers.map(s => (parseFloat(String(s.unit_price)) || 0) / (parseFloat(String(s.unit_conversion)) || 1));
+                      const minPer = perUnit.length ? Math.min(...perUnit) : 0;
+                      priceText = (pricedSellers.length === 1 || mineSellerFilter !== 'all')
+                        ? minPer.toFixed(2)
+                        : `from ${minPer.toFixed(2)}`;
+                      const minOrder = Math.max(1, ...row.sellers.map(s => Number(s.min_order_quantity) || 1));
+                      const vendorName = row.sellers.length === 1
+                        ? row.sellers[0].seller_name
+                        : `${row.sellers.length} ${t('newPo.vendors', 'vendors')}`;
+                      vendorText = isList
+                        ? `${vendorName}${minOrder > 1 ? ` · ${t('newPo.minOrder', 'Min')} ${minOrder}` : ''}`
+                        : `/${row.unit || 'unit'} · ${vendorName}${minOrder > 1 ? ` · ${t('newPo.minOrder', 'Min')} ${minOrder}` : ''}`;
+                    }
+                    const noSellerText = row.is_brand_shared
+                      ? (t('newPo.brandNeedsLink', 'Your brand has not linked a supplier to this item yet') as string)
+                      : (t('newPo.needLink', 'Link a supplier to order') as string);
+                    const hasOptions = !!(row.sellers.find(s => s.is_preferred) || row.sellers[0])?.has_options;
+
+                    const badges = (
+                      <>
+                        {inCart && <Badge $variant="cart">×{qInCart}</Badge>}
+                        {row.is_brand_shared && <Badge $variant="shared">{t('newPo.brandStock', 'Brand stock')}</Badge>}
+                        {!inCart && !hasSeller && !row.is_brand_shared && !isList && <Badge $variant="warning">{t('newPo.connectCta', 'Click to connect supplier →')}</Badge>}
+                        {!inCart && hasSeller && !isList && <Badge $variant="success">{t('newPo.linked', 'Linked')}</Badge>}
+                        {hasSeller && row.sellers.some(s => s.seller_type === 'brand') && <Badge $variant="brand">{t('newPo.brandBadge', 'BRAND')}</Badge>}
+                        {hasSeller && row.sellers.some(s => s.seller_type === 'foodcourt') && <Badge $variant="foodcourt">{t('newPo.foodcourtBadge', 'FOODCOURT')}</Badge>}
+                      </>
+                    );
+
+                    const optionsBtn = hasSeller && hasOptions ? (
+                      <OptionsButton
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); openMineOptionModal(row); }}
+                      >
+                        {t('newPo.optionsButton', 'Options')}
+                      </OptionsButton>
+                    ) : null;
+
+                    const onPick = () => {
+                      if (!hasSeller) {
+                        // 브랜드 표준 재료는 공급처를 브랜드가 붙인다 — 매장은 연결할 수 없다(읽기전용)
+                        if (row.is_brand_shared) return;
+                        // 발주처 미연결 — inline modal 띄움 (페이지 이동 X, catalog 탭 자동 검색 X)
+                        setConnectTarget({ id: row.id, name: row.name, unit: row.unit || '', product_ingredient_id: row.product_ingredient_id });
+                        return;
+                      }
+                      addMineToCart(row);
+                    };
+
                     return (
                       <ItemBox
                         key={reactKey}
                         type="button"
-                        onClick={() => {
-                          if (!hasSeller) {
-                            // 브랜드 표준 재료는 공급처를 브랜드가 붙인다 — 매장은 연결할 수 없다(읽기전용)
-                            if (row.is_brand_shared) return;
-                            // 발주처 미연결 — inline modal 띄움 (페이지 이동 X, catalog 탭 자동 검색 X)
-                            setConnectTarget({ id: row.id, name: row.name, unit: row.unit || '', product_ingredient_id: row.product_ingredient_id });
-                            return;
-                          }
-                          addMineToCart(row);
-                        }}
+                        {...(isList ? { $actionsWidth: 96 } : {})}
+                        onClick={onPick}
                         onDoubleClick={() => hasSeller && (piKey ? incCartQtyByKey(piKey, 1) : incCartQty(row.id, 1))}
                       >
-                        <BadgeRow>
-                          {inCart && <Badge $variant="cart">×{qInCart}</Badge>}
-                          {row.is_brand_shared && <Badge $variant="shared">{t('newPo.brandStock', 'Brand stock')}</Badge>}
-                          {!inCart && !hasSeller && !row.is_brand_shared && <Badge $variant="warning">{t('newPo.connectCta', 'Click to connect supplier →')}</Badge>}
-                          {!inCart && hasSeller && <Badge $variant="success">{t('newPo.linked', 'Linked')}</Badge>}
-                          {hasSeller && row.sellers.some(s => s.seller_type === 'brand') && <Badge $variant="brand">{t('newPo.brandBadge', 'BRAND')}</Badge>}
-                          {hasSeller && row.sellers.some(s => s.seller_type === 'foodcourt') && <Badge $variant="foodcourt">{t('newPo.foodcourtBadge', 'FOODCOURT')}</Badge>}
-                        </BadgeRow>
-                        <CardName>{row.name}</CardName>
-                        <CardMeta>
-                          {cat ? `${cat.emoji ? cat.emoji + ' ' : ''}${cat.name}` : t('newPo.uncategorized', 'Uncategorized')}
-                          {row.unit ? ` · ${row.unit}` : ''}
-                        </CardMeta>
-                        {hasSeller ? (
+                        {isList ? (
                           <>
-                            <CardPrice>
-                              {(() => {
-                                // 환산 단가 (per ingredient unit) = unit_price / unit_conversion
-                                // 발주처 필터 활성 시 그 seller 가격만, 아니면 minPrice (또는 from)
-                                let pricedSellers = row.sellers;
-                                if (mineSellerFilter !== 'all') {
-                                  const [tt, idStr] = mineSellerFilter.split(':');
-                                  const sid = parseInt(idStr, 10);
-                                  pricedSellers = row.sellers.filter(s => s.seller_type === tt && s.seller_entity_id === sid);
-                                }
-                                const perUnit = pricedSellers.map(s => (parseFloat(String(s.unit_price)) || 0) / (parseFloat(String(s.unit_conversion)) || 1));
-                                const minPer = perUnit.length ? Math.min(...perUnit) : 0;
-                                return pricedSellers.length === 1 || mineSellerFilter !== 'all' ? minPer.toFixed(2) : `from ${minPer.toFixed(2)}`;
-                              })()}
-                            </CardPrice>
-                            <CardMeta>
-                              /{row.unit || 'unit'}
-                              {' · '}
-                              {row.sellers.length === 1 ? row.sellers[0].seller_name : `${row.sellers.length} ${t('newPo.vendors', 'vendors')}`}
-                              {(() => {
-                                // 여러 seller 면 최대 min_order (가장 큰 제약) 표시
-                                const minOrder = Math.max(1, ...row.sellers.map(s => Number(s.min_order_quantity) || 1));
-                                return minOrder > 1 ? ` · ${t('newPo.minOrder', 'Min')} ${minOrder}` : '';
-                              })()}
-                            </CardMeta>
-                            {(row.sellers.find(s => s.is_preferred) || row.sellers[0])?.has_options && (
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); openMineOptionModal(row); }}
-                                style={{
-                                  marginTop: 8,
-                                  padding: '6px 12px',
-                                  border: '1px solid #635BFF',
-                                  borderRadius: 8,
-                                  background: '#EEF2FF',
-                                  color: '#635BFF',
-                                  fontWeight: 700,
-                                  fontSize: 12,
-                                  cursor: 'pointer',
-                                  alignSelf: 'flex-start',
-                                  fontFamily: 'inherit',
-                                }}
-                              >
-                                {t('newPo.optionsButton', 'Options')}
-                              </button>
-                            )}
+                            <ListName>
+                              <ListNameText title={row.name}>{row.name}</ListNameText>
+                              {badges}
+                            </ListName>
+                            <ListMeta title={metaText}>{metaText}</ListMeta>
+                            <ListVendor title={vendorText}>{hasSeller ? vendorText : ''}</ListVendor>
+                            {hasSeller
+                              ? <ListPrice>{priceText}</ListPrice>
+                              : <ListNoSeller title={noSellerText}>{noSellerText}</ListNoSeller>}
+                            <ListActions>{optionsBtn}</ListActions>
                           </>
                         ) : (
-                          <CardMeta style={{ color: '#92400E' }}>
-                            {row.is_brand_shared
-                              ? t('newPo.brandNeedsLink', 'Your brand has not linked a supplier to this item yet')
-                              : t('newPo.needLink', 'Link a supplier to order')}
-                          </CardMeta>
+                          <>
+                            <BadgeRow>{badges}</BadgeRow>
+                            <CardName>{row.name}</CardName>
+                            <CardMeta>{metaText}</CardMeta>
+                            {hasSeller ? (
+                              <>
+                                <CardPrice>{priceText}</CardPrice>
+                                <CardMeta>{vendorText}</CardMeta>
+                                {optionsBtn}
+                              </>
+                            ) : (
+                              <CardMeta style={{ color: '#92400E' }}>{noSellerText}</CardMeta>
+                            )}
+                          </>
                         )}
                       </ItemBox>
                     );
@@ -1604,73 +1736,80 @@ const NewPurchaseOrderPage: React.FC = () => {
                   {catalogList.map(p => {
                     const inCart = p.mapped_ingredient_id != null && cart.some(r => r.ingredient_id === p.mapped_ingredient_id);
                     const qInCart = p.mapped_ingredient_id ? cartQtyOf(p.mapped_ingredient_id) : 0;
-                    const ItemBox = viewMode === 'list' ? ListRow : Card;
+                    const isList = viewMode === 'list';
+                    const ItemBox = isList ? ListRow : Card;
+
+                    const metaText = `${p.category_name ? `${p.category_name} · ` : ''}${p.unit || ''}${
+                      (p.min_order_quantity || 1) > 1 ? ` · ${t('newPo.minOrder', 'Min')} ${p.min_order_quantity}` : ''
+                    }`;
+                    const sellerText = `${p.supplier?.name || ''}${p.sku ? ` · ${p.sku}` : ''}`;
+
+                    const badges = (
+                      <>
+                        {p.supplier?.seller_type === 'brand' && <Badge $variant="brand">{t('newPo.brandBadge', 'BRAND')}</Badge>}
+                        {p.supplier?.seller_type === 'foodcourt' && <Badge $variant="foodcourt">{t('newPo.foodcourtBadge', 'FOODCOURT')}</Badge>}
+                        {inCart && <Badge $variant="cart">×{qInCart}</Badge>}
+                        {!inCart && p.already_mapped && <Badge $variant="success">{t('newPo.linked', 'Linked')}</Badge>}
+                      </>
+                    );
+
+                    const actions = (
+                      <>
+                        {p.has_options && (
+                          <OptionsButton
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); openCatalogOptionModal(p); }}
+                          >
+                            {t('newPo.optionsButton', 'Options')}
+                          </OptionsButton>
+                        )}
+                        {!p.already_mapped && (
+                          <AddToStockButton
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); registerCatalogToStock(p); }}
+                            title={t('newPo.addToStockHint', 'Add to My Stock Items without ordering') as string}
+                          >
+                            {t('newPo.addToStock', 'Add to My Stock')}
+                          </AddToStockButton>
+                        )}
+                      </>
+                    );
+
                     return (
                       <ItemBox
                         key={p.id}
                         type="button"
+                        {...(isList ? { $actionsWidth: 206 } : {})}
                         onClick={() => addCatalogToCart(p)}
                         onDoubleClick={() => !p.has_options && p.mapped_ingredient_id && incCartQty(p.mapped_ingredient_id, 1)}
                       >
-                        <BadgeRow>
-                          {p.supplier?.seller_type === 'brand' && <Badge $variant="brand">{t('newPo.brandBadge', 'BRAND')}</Badge>}
-                          {p.supplier?.seller_type === 'foodcourt' && <Badge $variant="foodcourt">{t('newPo.foodcourtBadge', 'FOODCOURT')}</Badge>}
-                          {inCart && <Badge $variant="cart">×{qInCart}</Badge>}
-                          {!inCart && p.already_mapped && <Badge $variant="success">{t('newPo.linked', 'Linked')}</Badge>}
-                        </BadgeRow>
-                        {p.image_url && (
-                          <ProductImage>
-                            <img src={p.image_url} alt={p.name} loading="lazy" />
-                          </ProductImage>
+                        {isList ? (
+                          <>
+                            <ListName>
+                              {p.image_url && <ListThumb src={p.image_url} alt="" loading="lazy" />}
+                              <ListNameText title={p.name}>{p.name}</ListNameText>
+                              {badges}
+                            </ListName>
+                            <ListMeta title={metaText}>{metaText}</ListMeta>
+                            <ListVendor title={sellerText}>{sellerText}</ListVendor>
+                            <ListPrice>{p.unit_price.toFixed(2)}</ListPrice>
+                            <ListActions>{actions}</ListActions>
+                          </>
+                        ) : (
+                          <>
+                            <BadgeRow>{badges}</BadgeRow>
+                            {p.image_url && (
+                              <ProductImage>
+                                <img src={p.image_url} alt={p.name} loading="lazy" />
+                              </ProductImage>
+                            )}
+                            <CardName>{p.name}</CardName>
+                            <CardMeta>{metaText}</CardMeta>
+                            <CardPrice>{p.unit_price.toFixed(2)}</CardPrice>
+                            <CardMeta>{sellerText}</CardMeta>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>{actions}</div>
+                          </>
                         )}
-                        <CardName>{p.name}</CardName>
-                        <CardMeta>
-                          {p.category_name ? `${p.category_name} · ` : ''}{p.unit || ''}
-                          {(p.min_order_quantity || 1) > 1 ? ` · ${t('newPo.minOrder', 'Min')} ${p.min_order_quantity}` : ''}
-                        </CardMeta>
-                        <CardPrice>{p.unit_price.toFixed(2)}</CardPrice>
-                        <CardMeta>{p.supplier?.name || ''}{p.sku ? ` · ${p.sku}` : ''}</CardMeta>
-                        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                          {p.has_options && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); openCatalogOptionModal(p); }}
-                              style={{
-                                padding: '6px 12px',
-                                border: '1px solid #635BFF',
-                                borderRadius: 8,
-                                background: '#EEF2FF',
-                                color: '#635BFF',
-                                fontWeight: 700,
-                                fontSize: 12,
-                                cursor: 'pointer',
-                                fontFamily: 'inherit',
-                              }}
-                            >
-                              {t('newPo.optionsButton', 'Options')}
-                            </button>
-                          )}
-                          {!p.already_mapped && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); registerCatalogToStock(p); }}
-                              title={t('newPo.addToStockHint', 'Add to My Stock Items without ordering') as string}
-                              style={{
-                                padding: '6px 12px',
-                                border: '1px solid #C7CED6',
-                                borderRadius: 8,
-                                background: '#FFFFFF',
-                                color: '#0A2540',
-                                fontWeight: 700,
-                                fontSize: 12,
-                                cursor: 'pointer',
-                                fontFamily: 'inherit',
-                              }}
-                            >
-                              {t('newPo.addToStock', 'Add to My Stock')}
-                            </button>
-                          )}
-                        </div>
                       </ItemBox>
                     );
                   })}
