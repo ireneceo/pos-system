@@ -1242,7 +1242,8 @@
       "Bash(awk 'NR==2{print \"free -m 대조: available =\", $7, \"MB\"}')",
       "Bash(awk 'length\\($0\\)==0{b++} END{print \"빈 줄:\", b}' MEMORY.md)",
       "Bash(awk 'c>=2{print} /^---$/{c++}' project_settings_guard_analysis.md)",
-      "Bash(awk 'c>=2{print} /^---$/{c++}' project_printer_settings_wipe_locks.md)"
+      "Bash(awk 'c>=2{print} /^---$/{c++}' project_printer_settings_wipe_locks.md)",
+      "Bash(journalctl --since \"3 hours ago\" --no-pager)"
     ],
     "deny": [],
     "ask": []
