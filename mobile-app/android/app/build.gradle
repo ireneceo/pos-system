@@ -8,15 +8,18 @@ android {
         jvmTarget = '17'
     }
     buildFeatures {
-        // BuildConfig.DEBUG drives the dev/prod server-URL branch (§7-5).
+        // BuildConfig.VERSION_NAME is the single source of truth for the app version
+        // (diagnostics.appVersion → the web bridge → the App.tsx badge → the release
+        // feed). No version constant may live in Kotlin or JS — a hand-maintained one
+        // drifts from the APK the store actually runs (2026-07-13 desktop CTA, §8-4-B2).
         buildConfig true
     }
     defaultConfig {
         applicationId "com.purplehere.pos.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "0.2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -24,10 +27,35 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Sideload signing key (design §8-7). The keystore lives OUTSIDE the repo
+    // (/opt/secrets) and keystore.properties is git-ignored — the key is permanent:
+    // changing it forces every store to uninstall + reinstall. Absent file = the
+    // release build stays unsigned (dev machines can still compile), so a missing key
+    // can never silently produce an APK signed with something else.
+    def keystorePropsFile = rootProject.file("keystore.properties")
+    def keystoreProps = new Properties()
+    if (keystorePropsFile.exists()) {
+        keystoreProps.load(new FileInputStream(keystorePropsFile))
+    }
+
+    signingConfigs {
+        if (keystorePropsFile.exists()) {
+            release {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

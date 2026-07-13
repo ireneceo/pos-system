@@ -44,6 +44,7 @@ const GATES = [
   { id: 'route-guard', tier: 'static', label: '🛡️ IDOR 라우트 가드 (신규 무방비 0)', cwd: BACKEND, cmd: ['node', 'scripts/check-route-guard.js', '--summary'] },
   { id: 'migration-registry', tier: 'static', label: '🗄️ 마이그레이션 레지스트리 (배포목록 누락 = 스키마 드리프트 차단)', cwd: BACKEND, cmd: ['node', 'scripts/check-migration-registry.js'] },
   { id: 'timezone', tier: 'static', label: '🕐 타임존 가드 (신규 위반 0)', cwd: BACKEND, cmd: ['node', 'scripts/timezone-check.js'] },
+  { id: 'desktop-feed', tier: 'static', label: '🖥️ 데스크탑 설치본 피드 (CTA·자동업데이트가 최신 exe 를 가리킴)', cwd: BACKEND, cmd: ['node', 'scripts/check-desktop-feed.js', '--quiet'] },
   { id: 'hydration', tier: 'static', label: '💧 state hydration 안전 (warning 0)', cwd: FRONTEND, cmd: ['node', 'scripts/state-hydration-check.js'] },
   { id: 'sensitive-diff', tier: 'static', label: '🧭 민감영역 diff 분류 (Fable 게이트 판정, 정보성)', cwd: BACKEND, cmd: ['node', 'scripts/check-sensitive-diff.js'], advisory: true },
   { id: 'inspection', tier: 'runtime', label: '🔎 인스펙션 하니스 (구조 불변식, 신규 위반 0)', cwd: BACKEND, cmd: ['node', 'scripts/inspection/run.js'] },

@@ -1105,7 +1105,8 @@
       "networkIp": "Network printer (enter IP)…",
       "autoPrintOffTitle": "Auto-print is off",
       "autoPrintOffDesc": "Kitchen tickets will not print automatically when orders arrive. Turn it on so new orders print by themselves.",
-      "autoPrintOnBtn": "Turn on auto-print"
+      "autoPrintOnBtn": "Turn on auto-print",
+      "choosePrinter": "Select a printer…"
     },
     "adminOnlyNotice": "Printer settings can only be changed by the Restaurant Admin.",
     "adminOnlyReadonly": "Printer settings can only be changed by the Restaurant Admin. Your changes here will not be saved — except Emergency Routing Mode, which any staff can toggle.",
@@ -1138,7 +1139,31 @@
       "close": "Close"
     },
     "loading": "Loading printer settings…",
-    "loadError": "Couldn't load printer settings — check the connection and retry. The values shown may not be your saved settings, and changes will not be saved until this succeeds."
+    "loadError": "Couldn't load printer settings — check the connection and retry. The values shown may not be your saved settings, and changes will not be saved until this succeeds.",
+    "android": {
+      "title": "Printers on this tablet",
+      "desc": "Register each printer on this tablet, then pick it by name for the bill and kitchen printers above. The name you enter here is the name you select above.",
+      "network": "Network printers (Wi-Fi)",
+      "noneYet": "None registered yet.",
+      "namePlaceholder": "Name (e.g. KITCHEN)",
+      "add": "Register",
+      "bluetooth": "Bluetooth printers",
+      "btNonePaired": "No paired devices. Pair the printer in the Android Bluetooth settings first.",
+      "btDenied": "Bluetooth permission is needed to see paired printers.",
+      "btDeniedForever": "Bluetooth permission was permanently denied. Enable it in the Android app settings.",
+      "btAllow": "Allow Bluetooth",
+      "openAppSettings": "Open app settings",
+      "openBtSettings": "Open Bluetooth settings",
+      "likelyPrinter": "printer",
+      "refresh": "Refresh",
+      "bridgeError": "The app's printing bridge did not respond. Restart the app; if this keeps happening the app needs to be reinstalled.",
+      "err": {
+        "NAME_REQUIRED": "Enter a printer name.",
+        "HOST_REQUIRED": "Enter the printer's IP address.",
+        "BAD_PORT": "Port must be between 1 and 65535.",
+        "PRINTER_NOT_FOUND": "That printer is not registered on this tablet."
+      }
+    }
   },
   "settingsPage.businessHours.title": "Business Hours & Last Order",
   "settingsPage.businessHours.description": "Set opening hours per day and a last-order time. When on, mobile customers can order only during opening hours (until last order). Counter (POS) orders are never blocked; pickup pre-orders are guided to a valid time.",
@@ -1193,5 +1218,6 @@
     "sendNow": "Send now",
     "sending": "Sending...",
     "sendResult": "Sent {{sent}} day(s), {{failed}} failed."
-  }
+  },
+  "printer.methodGuide.nativeActiveDescAndroid": "This app prints directly — no separate print app to install. Register this tablet's printers below, then pick each one by name."
 }

@@ -1,0 +1,54 @@
+[
+  {
+    "label": "V3-0 bridge present",
+    "expression": "(async () => { const np = window.__NATIVE_PRINT, su = window.__NATIVE_PRINT_SETUP; return { native: !!np, available: np && np.available === true, methods: np ? ['listPrinters','getDefaultPrinter','printHtml','printRaw','openDrawer','diagnostics'].filter(m => typeof np[m] === 'function') : [], setup: !!su, setupMethods: su ? ['getState','addNetPrinter','removeNetPrinter','setDefaultPrinter','requestBtPermission'].filter(m => typeof su[m] === 'function') : [] }; })()"
+  },
+  {
+    "label": "V3-7a register printers (KITCHEN/BAR/DEAD)",
+    "expression": "(async () => { const s = window.__NATIVE_PRINT_SETUP; const a = await s.addNetPrinter({ name: 'KITCHEN', host: '10.0.2.2', port: 9100 }); const b = await s.addNetPrinter({ name: 'BAR', host: '10.0.2.2', port: 9101 }); const d = await s.addNetPrinter({ name: 'DEAD', host: '10.255.255.1', port: 9100 }); const names = await window.__NATIVE_PRINT.listPrinters(); return { a, b, d, names }; })()"
+  },
+  {
+    "label": "V3-2 diagnostics contract (appVersion from BuildConfig)",
+    "expression": "(async () => { const d = await window.__NATIVE_PRINT.diagnostics(); return { platform: d.platform, appVersion: d.appVersion, defaultPrinter: d.defaultPrinter === null ? 'null' : d.defaultPrinter, hasPrinters: Array.isArray(d.printers), bridgeVersion: window.__NATIVE_PRINT.version }; })()"
+  },
+  {
+    "label": "V3-1a printRaw by NAME (registry path) — marker RAW_BY_NAME",
+    "expression": "(async () => { const bytes = new TextEncoder().encode('RAW_BY_NAME'); const b64 = btoa(String.fromCharCode(...bytes)); const r = await window.__NATIVE_PRINT.printRaw({ data: b64, target: { kind: 'os', printerName: 'KITCHEN' } }); return { r, b64 }; })()"
+  },
+  {
+    "label": "V3-1b printRaw binary edge bytes 0x00..0xFF (LAN direct)",
+    "expression": "(async () => { const arr = new Uint8Array(256); for (let i = 0; i < 256; i++) arr[i] = i; let s = ''; arr.forEach(b => s += String.fromCharCode(b)); const b64 = btoa(s); const r = await window.__NATIVE_PRINT.printRaw({ data: b64, target: { kind: 'lan', host: '10.0.2.2', port: 9100 } }); return { r, b64 }; })()"
+  },
+  {
+    "label": "V3-3 openDrawer (exactly 1B 70 00 64 64)",
+    "expression": "(async () => await window.__NATIVE_PRINT.openDrawer({ kind: 'os', printerName: 'KITCHEN' }))()"
+  },
+  {
+    "label": "V3-4a unknown printer name -> PRINTER_NOT_FOUND, zero bytes",
+    "expression": "(async () => await window.__NATIVE_PRINT.printRaw({ data: btoa('GHOST_MUST_NOT_PRINT'), target: { kind: 'os', printerName: 'GHOST' } }))()"
+  },
+  {
+    "label": "V3-4b empty name + no default -> PRINTER_NOT_FOUND",
+    "expression": "(async () => await window.__NATIVE_PRINT.printHtml({ html: '<b>must not print</b>', printerName: '', widthMm: 80, copies: 1 }))()"
+  },
+  {
+    "label": "V3-4c case-insensitive match ('kitchen' -> KITCHEN)",
+    "expression": "(async () => await window.__NATIVE_PRINT.printRaw({ data: btoa('CASE_INSENSITIVE'), target: { kind: 'os', printerName: 'kitchen' } }))()"
+  },
+  {
+    "label": "V3-5 lane order — 3 raw jobs to KITCHEN keep call order",
+    "expression": "(async () => { const np = window.__NATIVE_PRINT; const r = await Promise.all([1,2,3].map(i => np.printRaw({ data: btoa('SEQ_' + i), target: { kind: 'os', printerName: 'KITCHEN' } }))); return r; })()"
+  },
+  {
+    "label": "V3-2b printHtml Korean raster (GS v 0, non-blank)",
+    "expression": "(async () => { const html = '<html><body style=\"font-family:sans-serif\"><h2>주방 티켓 KITCHEN</h2><p>불고기 덮밥 x2</p><p>김치찌개 x1</p></body></html>'; const t0 = Date.now(); const r = await window.__NATIVE_PRINT.printHtml({ html, printerName: 'KITCHEN', widthMm: 80, copies: 1 }); return { r, ms: Date.now() - t0 }; })()"
+  },
+  {
+    "label": "V3-6 dead printer must NOT block a healthy one (lane isolation)",
+    "expression": "(async () => { const np = window.__NATIVE_PRINT; const html = '<html><body><h3>LANE_ISOLATION</h3></body></html>'; const t0 = Date.now(); const dead = np.printHtml({ html, printerName: 'DEAD', widthMm: 80, copies: 1 }).then(r => ({ r, ms: Date.now() - t0 })); await new Promise(r => setTimeout(r, 100)); const t1 = Date.now(); const live = await np.printHtml({ html: '<html><body><h3>BAR_AFTER_DEAD</h3></body></html>', printerName: 'BAR', widthMm: 80, copies: 1 }); const liveMs = Date.now() - t1; const deadRes = await dead; return { live, liveMs, dead: deadRes }; })()"
+  },
+  {
+    "label": "V3-7b registry round-trip: remove BAR -> PRINTER_NOT_FOUND",
+    "expression": "(async () => { const s = window.__NATIVE_PRINT_SETUP; const rm = await s.removeNetPrinter('BAR'); const after = await window.__NATIVE_PRINT.listPrinters(); const p = await window.__NATIVE_PRINT.printRaw({ data: btoa('BAR_REMOVED'), target: { kind: 'os', printerName: 'BAR' } }); return { rm, after, p }; })()"
+  }
+]

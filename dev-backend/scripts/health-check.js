@@ -2010,10 +2010,18 @@ function definePrintTests({ adminToken }) {
   // 🔒 보호 파일 무결성 — 배포 의무 게이트가 자동으로 생명선 코드 변경을 감지.
   // 인쇄 무관 작업이 실수로 인쇄/주문 코드를 건드렸으면 여기서 빨간불.
   test('print', '🔒 인쇄/주문 보호 파일 무결성 (변경 0건)', async () => {
-    const { compareManifest } = require('./check-print-guard');
+    const { compareManifest, PROTECTED_FILES } = require('./check-print-guard');
     const r = compareManifest();
     if (!r.hasBaseline) {
       throw new Error('기준 미등록 — node scripts/check-print-guard.js --bless 먼저 실행');
+    }
+    // 운영 서버에는 dev-frontend/dev-backend 소스 트리가 없다(빌드 결과물만 배포된다).
+    // 매니페스트가 그 소스 경로를 가리키므로 운영에서 이 검사는 대상 자체가 없다 →
+    // **전부** 없을 때만 skip. 하나라도 있는데 나머지가 사라졌으면 그건 진짜 삭제 →
+    // 그대로 실패시킨다 (dev 에서 생명선 파일이 지워지는 사고를 놓치면 안 된다).
+    // 같은 판례: 배포 스크립트 검사(위 '현행 스크립트인지' 마커) — 이 환경의 대상이 아니면 skip.
+    if (r.missing.length === PROTECTED_FILES.length && r.changed.length === 0 && r.added.length === 0) {
+      return true; // 소스 트리 없는 환경(운영) → 검사 대상 아님
     }
     if (r.ok) return true;
     const lines = [

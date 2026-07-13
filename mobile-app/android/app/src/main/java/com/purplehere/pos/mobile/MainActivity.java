@@ -48,12 +48,12 @@ public class MainActivity extends BridgeActivity {
         // running (design §7-4).
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        // Server URL by build type (design §7-5). The config default is dev so a
-        // debug build can NEVER accidentally hit production ("검증은 전부 dev").
-        // A release build (deploy only) points at production.
-        if (!BuildConfig.DEBUG) {
-            getBridge().getWebView().post(() ->
-                getBridge().getWebView().loadUrl("https://purplehere.com/pos"));
-        }
+        // NO runtime loadUrl swap for release builds (design §8-4 P0-5). Capacitor
+        // injects its runtime for the ONE origin configured in capacitor.config, so
+        // navigating the WebView to a different origin can drop
+        // Capacitor.Plugins.NativePrint — the bridge IIFE then returns silently and
+        // printing is dead in release, with no error anywhere. The URL is fixed at
+        // BUILD time instead: PURPLE_APP_URL -> capacitor.config.ts -> cap sync.
+        // (Default stays dev, so a debug build can never hit production.)
     }
 }

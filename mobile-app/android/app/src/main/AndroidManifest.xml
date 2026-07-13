@@ -24,12 +24,10 @@
 
         </activity>
 
-        <!-- Native printer setup screen (design §7-1), launched via the
-             NativePrint.openPrinterSettings() plugin method. Not exported. -->
-        <activity
-            android:name=".PrinterSettingsActivity"
-            android:label="Printer Setup"
-            android:exported="false" />
+        <!-- No native printer-setup screen (design §8-1). Printer settings are
+             restaurant-admin-gated in the web app (CLAUDE.md 🔒) and protected by the
+             wipe locks; a native screen would be an unauthenticated back door around
+             both. Setup lives in the web Settings page via window.__NATIVE_PRINT_SETUP. -->
 
         <provider
             android:name="androidx.core.content.FileProvider"

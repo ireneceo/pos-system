@@ -20,16 +20,37 @@ interface PwaInstallState {
 
 // The native Windows desktop app (Electron) replaces QZ Tray. On a Windows
 // browser we offer it; when already running inside it, the preload sets
-// window.__PURPLE_DESKTOP so we don't offer it again. Same-origin path so it
-// resolves on whichever host (dev/prod) is serving it.
-// The ?v= version tag is a cache-buster: the CDN (Cloudflare) caches by full
-// URL, so bumping this on each installer release forces a fresh fetch instead
-// of serving a stale (or SPA-fallback HTML) response. The `download` attr keeps
-// the saved filename clean (query string is stripped). Bump on new installer.
-export const DESKTOP_APP_VERSION = '0.1.6';
-// Versioned filename so the downloaded file itself shows the version (PurplePOS-Setup-0.1.5.exe)
-// — the shop can verify which version they're installing before running it. (Irene 2026-07-09)
-const DESKTOP_APP_URL = `/desktop/PurplePOS-Setup-${DESKTOP_APP_VERSION}.exe`;
+// window.__PURPLE_DESKTOP so we don't offer it again. Same-origin paths so they
+// resolve on whichever host (dev/prod) is serving them.
+//
+// The installer version is NOT written here. It is read at runtime from
+// /desktop/latest.yml — the same feed electron-updater consumes, so the CTA and
+// the auto-updater can never disagree about which build is current. A hardcoded
+// constant drifted before: it still said 0.1.6 after 0.1.7 shipped, so every new
+// shop downloaded a superseded installer (2026-07-13).
+const DESKTOP_FEED_URL = '/desktop/latest.yml';
+// Always-latest alias (byte-identical copy of the newest installer, published
+// alongside the versioned files). Used when the feed can't be read, so the button
+// still serves the current build instead of 404ing or going stale.
+const DESKTOP_APP_FALLBACK_URL = '/desktop/PurplePOS-Setup.exe';
+
+// Versioned filename so the downloaded file itself shows the version
+// (PurplePOS-Setup-0.1.7.exe) — the shop can verify which version they're
+// installing before running it. (Irene 2026-07-09)
+async function resolveDesktopAppUrl(): Promise<string | null> {
+  try {
+    const res = await fetch(DESKTOP_FEED_URL, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const feed = await res.text();
+    const file = feed.match(/^path:\s*(\S+)\s*$/m)?.[1];
+    // Only ever hand the browser a filename the feed itself names, and only if it
+    // looks like our installer — never build a URL out of unvalidated feed text.
+    if (!file || !/^PurplePOS-Setup[\w.-]*\.exe$/.test(file)) return null;
+    return `/desktop/${file}`;
+  } catch {
+    return null;
+  }
+}
 
 function detectWindowsDesktop(): boolean {
   if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
@@ -65,6 +86,18 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [isStandalone, setIsStandalone] = useState<boolean>(isStandaloneNow());
   const [{ isIOS, version: iosVersion }] = useState(detectIOS());
   const [isWindowsDesktop] = useState(detectWindowsDesktop());
+  // Starts on the always-latest alias so the button works on first paint, then
+  // upgrades to the versioned filename the feed names.
+  const [desktopAppUrl, setDesktopAppUrl] = useState<string>(DESKTOP_APP_FALLBACK_URL);
+
+  useEffect(() => {
+    if (!isWindowsDesktop) return;
+    let cancelled = false;
+    resolveDesktopAppUrl().then((url) => {
+      if (!cancelled && url) setDesktopAppUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [isWindowsDesktop]);
 
   useEffect(() => {
     const onBefore = (e: Event) => {
@@ -95,7 +128,7 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (isWindowsDesktop) {
       try {
         const a = document.createElement('a');
-        a.href = DESKTOP_APP_URL;
+        a.href = desktopAppUrl;
         a.download = '';
         document.body.appendChild(a);
         a.click();
@@ -108,7 +141,7 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const choice = await deferred.userChoice;
     setDeferred(null);
     return choice.outcome;
-  }, [deferred, isWindowsDesktop]);
+  }, [deferred, isWindowsDesktop, desktopAppUrl]);
 
   const [dismissedUntil, setDismissedUntil] = useState<number>(() => {
     try {
@@ -141,7 +174,7 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       isIOS,
       iosVersion,
       isWindowsDesktop,
-      desktopAppUrl: DESKTOP_APP_URL,
+      desktopAppUrl,
       promptInstall,
       dismissBanner,
       shouldShowBanner

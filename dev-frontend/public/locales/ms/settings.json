@@ -1105,7 +1105,8 @@
       "networkIp": "Pencetak rangkaian (masukkan IP)…",
       "autoPrintOffTitle": "Cetak automatik dimatikan",
       "autoPrintOffDesc": "Tiket dapur tidak akan dicetak automatik apabila pesanan tiba. Hidupkan supaya pesanan baharu dicetak dengan sendiri.",
-      "autoPrintOnBtn": "Hidupkan cetak automatik"
+      "autoPrintOnBtn": "Hidupkan cetak automatik",
+      "choosePrinter": "Pilih pencetak…"
     },
     "adminOnlyNotice": "Tetapan pencetak hanya boleh diubah oleh Pentadbir Restoran.",
     "adminOnlyReadonly": "Tetapan pencetak hanya boleh diubah oleh Pentadbir Restoran. Perubahan di sini tidak akan disimpan — kecuali Mod Penghalaan Kecemasan yang boleh ditogol oleh mana-mana kakitangan.",
@@ -1138,7 +1139,31 @@
       "close": "Tutup"
     },
     "loading": "Memuatkan tetapan pencetak…",
-    "loadError": "Tidak dapat memuatkan tetapan pencetak — semak sambungan dan cuba semula. Nilai yang dipaparkan mungkin bukan tetapan tersimpan anda, dan perubahan tidak akan disimpan sehingga ini berjaya."
+    "loadError": "Tidak dapat memuatkan tetapan pencetak — semak sambungan dan cuba semula. Nilai yang dipaparkan mungkin bukan tetapan tersimpan anda, dan perubahan tidak akan disimpan sehingga ini berjaya.",
+    "android": {
+      "title": "Pencetak pada tablet ini",
+      "desc": "Daftarkan setiap pencetak pada tablet ini, kemudian pilih mengikut nama untuk pencetak bil dan dapur di atas. Nama yang anda masukkan di sini ialah nama yang anda pilih di atas.",
+      "network": "Pencetak rangkaian (Wi-Fi)",
+      "noneYet": "Belum ada pencetak didaftarkan.",
+      "namePlaceholder": "Nama (cth. KITCHEN)",
+      "add": "Daftar",
+      "bluetooth": "Pencetak Bluetooth",
+      "btNonePaired": "Tiada peranti berpasangan. Pasangkan pencetak dalam tetapan Bluetooth Android dahulu.",
+      "btDenied": "Kebenaran Bluetooth diperlukan untuk melihat pencetak berpasangan.",
+      "btDeniedForever": "Kebenaran Bluetooth ditolak secara kekal. Hidupkannya dalam tetapan aplikasi Android.",
+      "btAllow": "Benarkan Bluetooth",
+      "openAppSettings": "Buka tetapan aplikasi",
+      "openBtSettings": "Buka tetapan Bluetooth",
+      "likelyPrinter": "pencetak",
+      "refresh": "Muat semula",
+      "bridgeError": "Jambatan cetakan aplikasi tidak bertindak balas. Mulakan semula aplikasi; jika berterusan, aplikasi perlu dipasang semula.",
+      "err": {
+        "NAME_REQUIRED": "Masukkan nama pencetak.",
+        "HOST_REQUIRED": "Masukkan alamat IP pencetak.",
+        "BAD_PORT": "Port mestilah antara 1 hingga 65535.",
+        "PRINTER_NOT_FOUND": "Pencetak itu tidak didaftarkan pada tablet ini."
+      }
+    }
   },
   "settingsPage.businessHours.title": "Waktu Operasi & Pesanan Terakhir",
   "settingsPage.businessHours.description": "Tetapkan waktu buka setiap hari dan waktu pesanan terakhir. Apabila dihidupkan, pelanggan mudah alih hanya boleh memesan dalam waktu operasi (sehingga pesanan terakhir). Pesanan kaunter (POS) tidak disekat; tempahan ambil sendiri dipandu ke masa yang sah.",
@@ -1193,5 +1218,6 @@
     "sendNow": "Hantar sekarang",
     "sending": "Menghantar...",
     "sendResult": "Dihantar {{sent}} hari, {{failed}} gagal."
-  }
+  },
+  "printer.methodGuide.nativeActiveDescAndroid": "Aplikasi ini mencetak terus — tiada aplikasi cetakan berasingan untuk dipasang. Daftarkan pencetak tablet ini di bawah, kemudian pilih mengikut nama."
 }

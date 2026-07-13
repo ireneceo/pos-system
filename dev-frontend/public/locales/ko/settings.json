@@ -1105,7 +1105,8 @@
       "networkIp": "네트워크 프린터 (IP 직접 입력)…",
       "autoPrintOffTitle": "자동 인쇄가 꺼져 있습니다",
       "autoPrintOffDesc": "주문이 들어와도 주방 티켓이 자동으로 인쇄되지 않습니다. 켜면 새 주문이 자동으로 인쇄됩니다.",
-      "autoPrintOnBtn": "자동 인쇄 켜기"
+      "autoPrintOnBtn": "자동 인쇄 켜기",
+      "choosePrinter": "프린터 선택…"
     },
     "adminOnlyNotice": "프린터 설정은 레스토랑 관리자만 변경할 수 있습니다.",
     "adminOnlyReadonly": "프린터 설정은 레스토랑 관리자만 변경할 수 있습니다. 여기서의 변경은 저장되지 않습니다 — 단, 비상 라우팅 모드는 직원도 켤 수 있습니다.",
@@ -1138,7 +1139,31 @@
       "close": "닫기"
     },
     "loading": "프린터 설정 불러오는 중…",
-    "loadError": "프린터 설정을 불러오지 못했습니다 — 연결을 확인하고 다시 시도하세요. 지금 보이는 값은 저장된 설정이 아닐 수 있으며, 성공할 때까지 변경 사항은 저장되지 않습니다."
+    "loadError": "프린터 설정을 불러오지 못했습니다 — 연결을 확인하고 다시 시도하세요. 지금 보이는 값은 저장된 설정이 아닐 수 있으며, 성공할 때까지 변경 사항은 저장되지 않습니다.",
+    "android": {
+      "title": "이 태블릿의 프린터",
+      "desc": "이 태블릿에 프린터를 먼저 등록한 뒤, 위의 빌·주방 프린터에서 이름으로 선택하세요. 여기에 적은 이름이 위에서 고르는 이름입니다.",
+      "network": "네트워크 프린터 (Wi-Fi)",
+      "noneYet": "등록된 프린터가 없습니다.",
+      "namePlaceholder": "이름 (예: KITCHEN)",
+      "add": "등록",
+      "bluetooth": "블루투스 프린터",
+      "btNonePaired": "페어링된 기기가 없습니다. 안드로이드 블루투스 설정에서 프린터를 먼저 페어링하세요.",
+      "btDenied": "페어링된 프린터를 보려면 블루투스 권한이 필요합니다.",
+      "btDeniedForever": "블루투스 권한이 영구 거부되었습니다. 안드로이드 앱 설정에서 허용하세요.",
+      "btAllow": "블루투스 허용",
+      "openAppSettings": "앱 설정 열기",
+      "openBtSettings": "블루투스 설정 열기",
+      "likelyPrinter": "프린터",
+      "refresh": "새로고침",
+      "bridgeError": "앱의 인쇄 브릿지가 응답하지 않습니다. 앱을 재시작하고, 계속되면 앱을 다시 설치해야 합니다.",
+      "err": {
+        "NAME_REQUIRED": "프린터 이름을 입력하세요.",
+        "HOST_REQUIRED": "프린터 IP 주소를 입력하세요.",
+        "BAD_PORT": "포트는 1~65535 사이여야 합니다.",
+        "PRINTER_NOT_FOUND": "이 태블릿에 등록되지 않은 프린터입니다."
+      }
+    }
   },
   "settingsPage.businessHours.title": "영업시간 & 라스트오더",
   "settingsPage.businessHours.description": "요일별 영업시간과 라스트오더 시각을 설정합니다. 켜면 모바일 고객은 영업시간(라스트오더까지)에만 주문할 수 있습니다. 카운터(POS) 주문은 차단되지 않으며, 픽업 예약은 가능한 시간으로 안내됩니다.",
@@ -1193,5 +1218,6 @@
     "sendNow": "지금 전송",
     "sending": "전송 중...",
     "sendResult": "{{sent}}일 전송, {{failed}}건 실패."
-  }
+  },
+  "printer.methodGuide.nativeActiveDescAndroid": "이 앱이 직접 인쇄합니다 — 별도 인쇄 앱 설치가 필요 없습니다. 아래에서 이 태블릿의 프린터를 등록한 뒤, 이름으로 선택하세요."
 }

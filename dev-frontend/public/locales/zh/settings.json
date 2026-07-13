@@ -1105,7 +1105,8 @@
       "networkIp": "网络打印机（输入 IP）…",
       "autoPrintOffTitle": "自动打印已关闭",
       "autoPrintOffDesc": "订单到达时厨房小票不会自动打印。开启后新订单将自动打印。",
-      "autoPrintOnBtn": "开启自动打印"
+      "autoPrintOnBtn": "开启自动打印",
+      "choosePrinter": "选择打印机…"
     },
     "adminOnlyNotice": "打印机设置只能由餐厅管理员更改。",
     "adminOnlyReadonly": "打印机设置只能由餐厅管理员更改。此处的更改不会被保存——但紧急路由模式任何员工都可切换。",
@@ -1138,7 +1139,31 @@
       "close": "关闭"
     },
     "loading": "正在加载打印机设置…",
-    "loadError": "无法加载打印机设置 — 请检查网络后重试。当前显示的值可能不是您保存的设置，在成功之前更改不会被保存。"
+    "loadError": "无法加载打印机设置 — 请检查网络后重试。当前显示的值可能不是您保存的设置，在成功之前更改不会被保存。",
+    "android": {
+      "title": "本平板的打印机",
+      "desc": "先在本平板注册打印机，然后在上方账单/厨房打印机中按名称选择。此处填写的名称即上方可选的名称。",
+      "network": "网络打印机 (Wi-Fi)",
+      "noneYet": "尚未注册任何打印机。",
+      "namePlaceholder": "名称（例如 KITCHEN）",
+      "add": "注册",
+      "bluetooth": "蓝牙打印机",
+      "btNonePaired": "没有已配对的设备。请先在安卓蓝牙设置中配对打印机。",
+      "btDenied": "需要蓝牙权限才能查看已配对的打印机。",
+      "btDeniedForever": "蓝牙权限已被永久拒绝。请在安卓应用设置中开启。",
+      "btAllow": "允许蓝牙",
+      "openAppSettings": "打开应用设置",
+      "openBtSettings": "打开蓝牙设置",
+      "likelyPrinter": "打印机",
+      "refresh": "刷新",
+      "bridgeError": "应用的打印桥接没有响应。请重启应用；若持续出现，需要重新安装应用。",
+      "err": {
+        "NAME_REQUIRED": "请输入打印机名称。",
+        "HOST_REQUIRED": "请输入打印机 IP 地址。",
+        "BAD_PORT": "端口必须在 1 到 65535 之间。",
+        "PRINTER_NOT_FOUND": "该打印机未在本平板注册。"
+      }
+    }
   },
   "settingsPage.businessHours.title": "营业时间和最后点餐",
   "settingsPage.businessHours.description": "按每天设置营业时间和最后点餐时间。开启后，手机顾客只能在营业时间内（截至最后点餐）下单。柜台(POS)订单不受限制；自取预订会引导至有效时间。",
@@ -1193,5 +1218,6 @@
     "sendNow": "立即发送",
     "sending": "发送中...",
     "sendResult": "已发送{{sent}}天，{{failed}}天失败。"
-  }
+  },
+  "printer.methodGuide.nativeActiveDescAndroid": "本应用直接打印——无需安装单独的打印应用。请在下方注册本平板的打印机，然后按名称选择。"
 }

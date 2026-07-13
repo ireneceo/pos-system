@@ -104,3 +104,137 @@ billPrint는 비-IP 주소를 `{kind:'os', printerName}` / `printHtml({printerNa
 - V4 **E2E(종이 없는 실배선)**: 에뮬레이터가 dev.purplehere.com/pos 로드 → `__NATIVE_PRINT` shape/diagnostics 확인 → 데모 매장 주문 → **폴러 → printRaw → 가짜 프린터 수신**까지 실증.
 - V5 BT 경로: 서버서 실검증 불가 — DantSu 위임 + 코드리뷰까지. **실검증은 A3**(이 부분만 하드웨어 블록).
 - 게이트 통과 기준: V1~V4 전부 + dev-frontend diff 0(print-guard 8/8 무접촉) + 계약 위반 0.
+
+---
+
+## 8. P0 재설계 확정 (Fable 2026-07-13 — §7과 다른 부분은 이 절이 이긴다)
+
+> 2026-07-13 Opus 감사(P0-1~P0-5) 후 Fable 설계 게이트. 코드 실측 완료:
+> `NativePrintPlugin.kt` / `PrinterRegistry.kt` / `PrinterSettingsActivity.kt` / `MainActivity.java` /
+> `nativePrintBridge.js` / `capacitor.config.ts` / billPrint.js(🔒 읽기만) / SettingsPage.tsx(NativePrinterSelect) /
+> desktop-pos preload+print / check-print-guard.js / check-desktop-feed.js / scripts/verify.
+> **billPrint.js 및 보호파일 8개는 이번 작업에서 0줄 변경**(→ §8-5). §4 계약도 무변경.
+
+### 8-0. 평결 요약
+1. **프린터 레지스트리 = 기기 로컬 유지(정당), 단 관리 UI = 웹 Settings 페이지가 전담.** 네이티브 설정 Activity(`PrinterSettingsActivity`)는 **삭제**.
+2. §4 계약(`__NATIVE_PRINT`)은 확장하지 않는다. 등록/권한 관리는 **Android 전용 별도 객체 `window.__NATIVE_PRINT_SETUP`** 로 — Windows에는 존재하지 않으므로 Windows 동작은 바이트 단위 동일.
+3. P0-2~P0-5 전부 인정 + 감사에 없던 결함 4건 추가 확인(§8-4-B): printHtml 레인 설계 결함(죽은 프린터 1대가 **모든** HTML 인쇄를 막음), release URL 스왑의 Capacitor 브릿지 소실 위험, 버전 상수 드리프트 재유입(오늘 데스크탑 CTA 사고와 동일 클래스), 중복 플러그인 사본 드리프트.
+4. 하드웨어 없이 "인쇄가 맞다"까지 증명 가능(V3/V4 구체 판정 = §8-6). 실기기 필요 = BT 경로 + 종이 품질 + 운영 origin 로그인·안정성뿐 — **매장 방문 1회로 묶는다.**
+
+### 8-1. 결정 ①: 레지스트리는 어디에 사는가
+
+**채택: (b′) 데이터는 기기 로컬(SharedPreferences) 유지 + 관리 UI는 웹 Settings 페이지.**
+
+레지스트리 데이터 자체가 필요한가 — **네트워크 프린터에 한해 필수다.** 근거(전부 🔒 보호 동작이라 우회 불가):
+- billPrint는 비-IP 주소를 **이름만** 브릿지로 넘긴다(`{kind:'os', printerName}` — billPrint.js:806, 253).
+- 한글 보존 경로(printHtml)는 **IP 주소를 거부**한다(billPrint.js:730-733). 즉 한글 티켓을 찍으려면 주소가 이름이어야 하고, 이름→IP 해석이 기기 어딘가에 있어야 한다.
+- Windows도 사실 동일 구조다: `printer_settings`(공유, 역할→이름) + **OS 스풀러(기기 로컬, 이름→물리 전송)**. OS 프린터 "KITCHEN"은 PC마다 제어판에서 따로 잡는다. Android 레지스트리는 그 스풀러의 대체물 — **이원화가 아니라 Windows와 같은 2층 모델.**
+- 드리프트 걱정(오늘 CTA 사고 클래스)은 데이터가 **서로소**라 성립하지 않는다: printer_settings는 "어느 역할이 어느 이름"만, 레지스트리는 "그 이름이 이 기기에서 어느 IP/MAC"만 갖는다. 겹치는 값이 없다. 게다가 기존 `NativePrinterSelect`가 이미 저장된 이름이 listPrinters에 없으면 **savedButUndetected 경고를 띄운다**(SettingsPage.tsx:668) — 드리프트가 나면 화면에서 보인다.
+- 서버측(printer_settings에 host 필드 추가) 대안 기각: billPrint가 이름만 넘기므로(🔒) 플러그인이 직접 API를 불러야 함 → 네이티브에 인증·fetch·캐시가 생기는 새 실패 모드 + Windows와 비대칭 + "설정은 웹이 단일 진실, 네이티브에 설정 저장 금지"(DESKTOP §8-4)와 충돌. 그리고 이름→IP는 본질상 기기 스코프 정보다(같은 이름이라도 기기마다 도달 가능성이 다름).
+
+**기각: (a) 네이티브 설정 Activity.** 이유:
+- **웹의 권한 게이트를 우회하는 뒷문.** "프린터 설정은 레스토랑 관리자만 변경"(CLAUDE.md 🔒 4번) + wipe 자물쇠 3개가 전부 웹에 산다. 현재 Kotlin Activity는 무인증으로 프린터 추가/삭제/기본지정이 가능하다.
+- 자유입력 "Name (must match POS printer name)" 폼 = 손으로 이름을 맞추는 드리프트 유발 패턴 그 자체.
+- 영어 하드코딩(i18n 4개 언어 불가), RA 디자인 표준 밖, 수정마다 APK 재배포 필요(웹이면 웹 배포로 끝).
+- 설정 화면 이원화(웹 Settings + 네이티브 Activity 두 개의 문) — 금지된 클래스.
+
+정밀 교정 한 가지: 감사 P0-1의 "`exported=false`라 열 수 없다"는 부정확 — 같은 앱 내 `startActivity`는 exported와 무관하게 동작하고, 실제 갭은 **JS 노출 + 호출부 부재**뿐이다. 어쨌든 결론(등록 경로 전무)은 동일하고, 해법은 Activity 노출이 아니라 삭제다.
+
+### 8-2. 결정 ②: 계약 — §4 무확장, Android 전용 `__NATIVE_PRINT_SETUP`
+
+`__NATIVE_PRINT`(7메서드 + available/version)는 **한 글자도 안 바뀐다.** billPrint.js는 SETUP 객체를 절대 읽지 않는다(읽는 곳 = SettingsPage뿐 — 비보호 파일). Windows는 이 객체를 주입하지 않으므로 Windows 앱/웹 동작은 바이트 동일.
+
+`nativePrintBridge.js` IIFE가 함께 주입하는 Android 전용 객체:
+```typescript
+window.__NATIVE_PRINT_SETUP = {
+  platform: 'android',
+  getState(): Promise<{ btPermission:'granted'|'denied'|'denied_forever'|'not_needed',
+                        net:[{name,host,port}], bonded:[{name,mac,likelyPrinter:boolean}],
+                        defaultPrinter:string|null }>,
+  addNetPrinter({name,host,port}): Promise<{ok,error?}>,   // upsert by name(case-insens.)
+  removeNetPrinter(name): Promise<{ok,error?}>,
+  setDefaultPrinter(name|null): Promise<{ok,error?}>,
+  requestBtPermission(): Promise<{state}>,                  // Capacitor @PermissionCallback 경유(P0-3 해결)
+  openSystemBluetoothSettings(): Promise<{ok}>,             // ACTION_BLUETOOTH_SETTINGS 인텐트
+  openAppSettings(): Promise<{ok}>                          // denied_forever 시 안내용
+};
+```
+- 웹 쪽 소비자 = SettingsPage.tsx 단 1곳: `__NATIVE_PRINT_SETUP` feature-detect 시 프린터 섹션에 "이 기기의 프린터(태블릿)" 카드 렌더 — 네트워크 프린터 추가/삭제 목록, 페어링된 BT 목록(+ "블루투스 설정 열기" 버튼), BT 권한 상태/요청 버튼. 프린터 **선택**은 기존 `NativePrinterSelect` 드롭다운이 이미 처리한다(listPrinters → address=이름 저장, MIN Cafe 패턴 그대로) — 새 선택 UI 불필요.
+- Android에서는 드롭다운의 "이 PC 기본 프린터(자동)" 옵션(`__DEFAULT__` → method='browser')을 숨긴다 — Android의 browser 인쇄 = 시스템 인쇄 다이얼로그(PDF)라 매장 사용 불가. 항상 이름 지정. (§4의 기본프린터 해석 자체는 계약대로 유지.)
+- 카드 접근은 페이지 자체의 역할 게이트(레스토랑 관리자)와 wipe 자물쇠를 그대로 상속 — 별도 보안 작업 불필요.
+
+### 8-3. 결정 ③: 블루투스 페어링/선택 UX
+- **페어링 = Android 시스템 설정**(bonded만, 스캔 없음 → 위치권한 불필요, §7-4 유지). 웹 카드의 "블루투스 설정 열기" 버튼이 시스템 화면으로 보낸다. 앱 안에 자체 스캐너/페어링 UI를 만들지 않는다(정석: OS가 하는 일은 OS에).
+- 페어링된 프린터는 `listPrinters()`에 **BT 기기 이름**으로 자동 등장 → 매장은 그 이름을 기존 드롭다운에서 고름 → `printer_settings.address = <BT 이름>`(또는 MAC — resolve가 둘 다 매칭, PrinterRegistry.kt:94-96). 즉 "BT 프린터가 printer_settings가 참조할 이름이 되는" 경로 = bonded 이름 그대로, 등록 절차 0.
+- bonded 목록에는 헤드셋 등 잡기기도 섞인다 → `BluetoothClass` major IMAGING(0x600)이면 `likelyPrinter:true`로 표시·상단 정렬하되 **하드 필터는 금지**(싸구려 프린터가 클래스를 엉터리로 보고하는 사례 흔함).
+- 권한: 앱 시작 시 선요청 제거(현재 `load()`의 `ensureBtPermissionRequested` — 맥락 없는 첫 실행 팝업). 요청 시점 = Settings 카드의 명시 버튼 or 첫 BT 인쇄 시. Capacitor `requestPermissionForAlias` + `@PermissionCallback`으로 결과를 받아 상태 반환(P0-3 근본 해결). 2회 거부(denied_forever) → 카드가 `openAppSettings()` 안내.
+
+### 8-4. P0 수정 명세
+
+**A. 감사 P0 인정분**
+- **P0-2 (LAN 타임아웃):** `Socket(t.host, t.port)`(NativePrintPlugin.kt:203) → `Socket().connect(InetSocketAddress(host,port), 5000)` + `soTimeout=10000`. §4 계약값(5s/20s) 준수. 판정 = V3-6.
+- **P0-3 (BT 권한):** §8-3 방식으로 대체. `BT_PERMISSION` 에러는 유지(billPrint 실패 처리 그대로).
+- **P0-4 (diagnostics shape):** §4 일치로 교정 — `{ platform:'android', appVersion: BuildConfig.VERSION_NAME, printers, defaultPrinter }` (+ `btPermission` 추가 필드는 additive라 무해). 하드코딩 `"0.1.0"` 2곳(NativePrintPlugin.kt:173, nativePrintBridge.js:21) 제거 — App.tsx:489가 이 값을 배지로 표시한다. runQZDiagnostic의 "Electron ?" 표기는 billPrint(🔒) 소관이라 그대로 둔다(코스메틱).
+- **P0-5 (release URL):** MainActivity의 `loadUrl("https://purplehere.com/pos")` 스왑(MainActivity.java:54-57) **삭제**. 이 핵은 ① release가 dev를 먼저 로드했다가 갈아타고(이중 로드) ② `allowNavigation` 없이는 외부 브라우저로 튕기며 ③ 설령 webview에 남아도 **Capacitor 런타임 주입이 설정된 server origin에 묶여 있어 새 origin에서 `Capacitor.Plugins.NativePrint`가 사라질 수 있다** — 그러면 IIFE가 조용히 리턴(nativePrintBridge.js:13)해 release에서 인쇄가 통째로 죽는다. 정석 = **빌드 시점에 URL 확정**: `capacitor.config.ts`의 `server.url = process.env.PURPLE_APP_URL || 'https://dev.purplehere.com/pos'`, release 빌드 스크립트가 `PURPLE_APP_URL=https://purplehere.com/pos npx cap sync android` 후 gradle. `allowNavigation` 불필요(단일 origin — 결제 리다이렉트 등 외부 origin 요부는 V4에서 실측 후 필요 시 최소 추가).
+
+**B. 감사가 놓친 결함 (이번에 같이 고친다)**
+1. **printHtml 레인 설계 결함(운영 위험 최상):** 현재 렌더+**전송까지** 공용 `"html"` 레인에서 실행(NativePrintPlugin.kt:122-135). Windows는 HTML이 OS 스풀러로 가서 프린터별 직렬화가 공짜였지만 Android는 HTML도 같은 LAN/BT 소켓이다. 결과: ① 죽은 KITCHEN 하나가 **빌 인쇄까지 전 HTML 인쇄를 블록**(P0-2와 결합 시 잡당 ~2분) ② 같은 프린터에 raw(레인 lan:host)와 html(레인 html)이 **동시 접속해 인터리브 가능**. 수정: **렌더는 html 레인(WebView 직렬화), 전송은 목적지 레인으로 핸드오프.** html 레인이 FIFO라 호출 순서가 목적지 레인 enqueue 순서로 보존됨(발송순서 계약 유지). 판정 = V3-5/6.
+2. **버전 상수 드리프트 재유입:** gradle `versionName "1.0"` vs 하드코딩 `"0.1.0"` 2곳 — 오늘 데스크탑 CTA 사고와 동일 클래스. 단일 소스 = `BuildConfig.VERSION_NAME`(P0-4에 포함).
+3. **중복 플러그인 사본:** `mobile-app/native/NativePrintPlugin.kt`가 live 사본(`android/app/src/...`)과 **이미 diff남**. `native/` 사본 삭제(단일 사본 = android/ 트리).
+4. **브릿지 fail-silent:** 플러그인 부재 시 IIFE 무언 리턴 + inject 실패 시 log만 — 매장은 "인쇄만 안 되는 앱"을 본다. V4-1이 상시 게이트로 잡고, Settings 진단 카드(getState 실패 = 브릿지 부재 표시)가 현장 신호. 추가로 MainActivity와 plugin `load()` 양쪽의 이중 주입 리스너는 MainActivity 1곳으로 정리(IIFE 멱등이라 무해했지만 단일화).
+
+### 8-5. 절단면 (파일 단위 — 이 목록 밖 변경 = 반려)
+
+**변경 (mobile-app/):**
+- `android/.../NativePrintPlugin.kt` — §8-4 전부 + SETUP 메서드군 + `openPrinterSettings` 삭제
+- `android/.../PrinterSettingsActivity.kt` — **삭제** / `AndroidManifest.xml` — activity 엔트리 삭제
+- `android/.../MainActivity.java` — release loadUrl 블록 삭제, 주입 리스너 단일화
+- `capacitor.config.ts` — `server.url` env 분기 / `android/app/build.gradle` — signingConfig + versionName 규율
+- `src/nativePrintBridge.js` — SETUP 객체 노출, version을 diagnostics에서
+- `native/NativePrintPlugin.kt` — 삭제(중복 사본)
+- `scripts/build-release.sh`(신규) + `scripts/verify/*` 하니스 완성(§8-6)
+
+**변경 (dev-frontend/): `src/pages/Settings/SettingsPage.tsx` 단 1파일** — §8-2 카드 + Android에서 `__DEFAULT__` 숨김 + i18n 키(en/ko/zh/ms 4언어). (A4 단계에서 `PwaInstallContext.tsx` — P0 아님.)
+
+**변경 (dev-backend/):** `scripts/check-mobile-feed.js`(신규, §8-7 — 배포 단계에서).
+
+**불가침 (0줄 — print-guard 8/8 그대로, --bless 불필요):** `billPrint.js` · `useAutoPrintPoller.ts` · `stationEnrichment.js` · `orderTotals.js` · `MainLayout.tsx` · `KitchenDisplayPage.tsx` · `POSTerminalPage.tsx` · `orders-crud.js` + `hybridKitchenPrint.ts` + 폴러/claim/발송순서 로직 일체. billPrint의 §4 소비 코드는 이미 운영 배포된 상태 그대로 재사용한다.
+
+### 8-6. 검증 게이트 확정 (§7-6의 V3/V4를 이 판정으로 구체화)
+
+셋업: 호스트에서 `fake-printer.js` 2대(:9100=KITCHEN, :9101=BAR), 에뮬레이터 → `10.0.2.2`. `__NATIVE_PRINT_SETUP.addNetPrinter`로 등록. cdp-eval의 `exprFile`들(현재 부재 = 하니스 미완)을 리포에 커밋해 재현 가능하게.
+
+**V3 — 가짜 프린터 바이트 판정 (전부 PASS여야 통과):**
+- **V3-1 raw 바이트 동일성:** 실제 티켓 ESC/POS(한글 포함) + 바이너리 엣지(0x00~0xFF 샘플)를 base64로 `printRaw` → 캡처 bytes ≡ `Buffer.from(data,'base64')` (sha256 일치). lan 직접 + `{kind:'os',printerName:'KITCHEN'}` 이름 경유 둘 다. QZ도 base64 디코드 바이트를 그대로 쏘므로 이것이 곧 "QZ 경로와 바이트 동일" 증명. *(주의: 바이트 동일성 판정은 raw/드로어에만 유효 — printHtml은 Windows=OS 드라이버 래스터, Android=WebView 래스터라 바이트가 다른 게 정상. HTML은 구조 판정 + 종이 확인.)*
+- **V3-2 printHtml 구조:** 실제 `generateHTMLKitchenTicket` 산출물 인쇄 → ① 선두 `1B 40` ② `GS v 0`(1D 76 30 00) 블록 존재, xL/xH=72/0(=576px) ③ 스트립 높이 ≤256 ④ 잉크 비트수 > 임계(백지 아님) + 서로 다른 티켓 2종의 래스터가 상이(글리프 실렌더 증명) ⑤ 말미 feed+`1D 56 42 00` ⑥ copies=2 → 프레임 정확히 2회.
+- **V3-3 드로어:** `openDrawer` → 캡처가 **정확히 5바이트 `1B 70 00 64 64`**, 단일 커넥션, 그 외 0바이트.
+- **V3-4 명시 실패:** 미등록 이름 → `{ok:false,error:'PRINTER_NOT_FOUND'}` **그리고 어느 가짜 프린터에도 0바이트**. 빈 이름+기본 미지정 동일. 대소문자 무시 매칭('kitchen' → KITCHEN) PASS.
+- **V3-5 레인/순서:** 같은 프린터 3잡 = 도착순==호출순(시퀀스 마커). 동시 BAR 잡은 KITCHEN 큐를 기다리지 않음.
+- **V3-6 죽은 프린터 격리(P0-2+§8-4-B1 판정):** DEAD=10.255.255.1 등록 → DEAD에 printHtml 직후 KITCHEN에 printHtml: DEAD는 ≤6s 내 `{ok:false}`, KITCHEN 잡은 <3s 도착(블록 안 됨).
+- **V3-7 레지스트리 왕복:** add → listPrinters 반영 → remove → PRINTER_NOT_FOUND. 앱 재시작 후 잔존(SharedPreferences).
+
+**V4 — 에뮬레이터 E2E (dev, 데모 매장 rid=38):**
+- **V4-1 브릿지 존재(상시 게이트):** 실 페이지에서 `Capacitor.Plugins.NativePrint` 정의 + `__NATIVE_PRINT` 7메서드 + `available===true` + `__NATIVE_PRINT_SETUP` 존재.
+- **V4-2 진단 계약:** `diagnostics().appVersion === <gradle versionName>` (상수 드리프트 게이트).
+- **V4-3 폴러 전 구간:** printer_settings 주방 프린터 address='KITCHEN' 설정 → 결제 주문 생성 → 폴러 claim → 가짜 프린터에 **정확히 1잡**(60s 내 중복 0) + pending-print 소진. +Round → 잡 정확히 +1.
+- **V4-4 무언 성공 없음:** address='GHOST' → 어디에도 0바이트 + printed 스탬프 없음(재시도 arm 유지).
+- **V4-5 release 파이프라인:** `PURPLE_APP_URL=dev` 로 빌드한 **서명 release APK**가 V4-1 통과(디버그 전용 검증 금지) + 운영용 APK의 `assets/capacitor.config.json`에 `https://purplehere.com/pos` 포함을 정적 검사.
+
+**"하드웨어 없이 인쇄가 맞다" 선언 기준:** V1·V2 + V3-1~7 + V4-1~5 전부 PASS + `check-print-guard.js` 8/8 무변경 + `health-check.js --category=print` PASS + `npm run build:dev` 후 verify-all(--full, SettingsPage 변경분 mount).
+
+**그래도 실기기(매장 태블릿+프린터, 방문 1회)가 필요한 것:** ① BT SPP 실전(V5 — 에뮬레이터에 BT 없음) ② 종이 품질: 한글 글리프/농도/576px 폭 정합/컷 ③ 드로어 물리 킥 ④ 실프린터의 래스터 프레이밍 수용 ⑤ 태블릿 시스템 폰트의 한글 렌더 ⑥ 운영 origin 로그인+폴러 장시간 안정 ⑦ 사이드로드 설치 UX. 전부 한 방문에 묶는다(CLAUDE.md 인쇄 프로세스 5).
+
+### 8-7. 릴리즈·배포
+- **서명키:** 사이드로드 전용 keystore 1개 생성(RSA4096, 유효 30년+), 리포 밖 `/opt/secrets/`(root 전용, 일일 백업 세트 포함), `keystore.properties`는 git-ignore. **키 변경 = 전 매장 재설치**이므로 영구 고정. Play 스토어는 안 간다(Windows 미서명 파일럿과 동일 결정).
+- **버전 단일 소스 = `build.gradle` versionName/versionCode.** diagnostics.appVersion·브릿지 version·App.tsx 배지 전부 여기서 파생. 웹 소스에 APK 버전 상수 금지.
+- **피드:** `build-release.sh`가 빌드 산출물에서 `latest.json`{versionName,versionCode,file,sha256,size}을 **생성**(손 편집 금지) + 항상-최신 별칭 `PurplePOS.apk` → `dev-frontend-build/mobile/`(배포 rsync가 운영 `/mobile/`로). `check-mobile-feed.js` = check-desktop-feed.js의 3불변식 미러(피드↔파일 sha 일치 / 별칭 바이트 동일 / 프론트 소스 버전 상수 0) → verify-all·배포 게이트 편입.
+- **CTA(A4, P0 아님):** PwaInstallContext에 Android 분기 — `/mobile/latest.json`을 읽는다. 데스크탑과 동일 패턴, 상수 재도입 불가.
+- 인앱 자동업데이트는 사이드로드 특성상 불가 — 앱이 자기 versionName과 latest.json을 비교해 넛지 배너(후속, 이것도 피드 기반).
+
+### 8-8. 작업 순서
+| 단계 | 내용 | 블로커 |
+|---|---|---|
+| **M1 코드 절단면** | §8-4 전부 + SETUP 브릿지 + SettingsPage 카드(i18n 4언어) + config/gradle/서명 + 중복사본 삭제 | 없음(서버) |
+| **M2 게이트** | 하니스 완성(exprFile 커밋) → V1·V2 → V3-1~7 → V4-1~5 | 없음(서버, KVM 확인됨) |
+| **M3 실기기 A3** | §8-6 하드웨어 목록 ①~⑦, 매장 방문 1회 | **하드웨어** (진입조건: M2 전부 PASS) |
+| **M4 배포** | 피드+가드+CTA. 준비는 M3와 병행 가능, CTA 공개는 M3 PASS 후 | M3 |

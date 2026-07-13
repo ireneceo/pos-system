@@ -2,18 +2,25 @@ package com.purplehere.pos.mobile
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Resolves a printer NAME (printer_settings.address) to a transport — Android has
- * no OS print spooler, so this is the core gap fix (design §7-1). Two sources:
- *   - Network printers registered in-app: name -> host:port (SharedPreferences).
- *   - Bonded Bluetooth printers: name / MAC (BluetoothAdapter.bondedDevices).
- * A non-empty name that matches nothing = PRINTER_NOT_FOUND (no silent fallback,
- * §4 contract — the thefire BAR "success-looking non-print" lesson).
+ * Resolves a printer NAME (printer_settings.address) to a transport. Android has no
+ * OS print spooler, so this fills the same role the Windows spooler plays: the web
+ * app's printer_settings says "which role prints to which NAME"; this says "what that
+ * name is on THIS device". The two stores are disjoint — no duplicated source of truth
+ * (design §8-1).
+ *
+ * Two sources:
+ *   - Network printers registered from the web Settings page: name -> host:port (SharedPreferences).
+ *   - Bonded Bluetooth printers: name / MAC (paired in the Android system settings).
+ *
+ * A non-empty name that matches nothing = null -> caller returns PRINTER_NOT_FOUND
+ * (no silent fallback to a default — §4, the thefire BAR "success-looking non-print" lesson).
  */
 sealed class PrintTarget {
     data class Lan(val host: String, val port: Int) : PrintTarget()
@@ -24,6 +31,11 @@ class PrinterRegistry(private val context: Context) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     data class NetPrinter(val name: String, val host: String, val port: Int)
+
+    /** A paired BT device as shown in the setup card. `likelyPrinter` is a HINT for
+     *  sorting/labelling only — never a filter: cheap thermal printers routinely report
+     *  a bogus device class, and hiding them would strand the store (design §8-3). */
+    data class BondedPrinter(val name: String, val mac: String, val likelyPrinter: Boolean)
 
     fun netPrinters(): List<NetPrinter> {
         val raw = prefs.getString(KEY_NET, "[]") ?: "[]"
@@ -54,15 +66,18 @@ class PrinterRegistry(private val context: Context) {
         prefs.edit().putString(KEY_DEFAULT, name ?: "").apply()
     }
 
-    @SuppressLint("MissingPermission") // callers gate on BLUETOOTH_CONNECT (§7-4)
-    fun bondedBtPrinters(): List<PrintTarget.Bt> {
+    @SuppressLint("MissingPermission") // callers gate on BLUETOOTH_CONNECT; SecurityException caught below
+    fun bondedBtPrinters(): List<BondedPrinter> {
         val mgr = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         @Suppress("DEPRECATION")
         val adapter = mgr?.adapter ?: BluetoothAdapter.getDefaultAdapter() ?: return emptyList()
         return try {
-            adapter.bondedDevices?.map { PrintTarget.Bt(it.address, it.name ?: it.address) } ?: emptyList()
+            adapter.bondedDevices.orEmpty().map { d ->
+                val imaging = d.bluetoothClass?.majorDeviceClass == BluetoothClass.Device.Major.IMAGING
+                BondedPrinter(d.name ?: d.address, d.address, imaging)
+            }.sortedByDescending { it.likelyPrinter }
         } catch (e: SecurityException) {
-            emptyList()
+            emptyList() // permission not granted yet — the setup card asks for it
         } catch (e: Exception) {
             emptyList()
         }
@@ -78,22 +93,26 @@ class PrinterRegistry(private val context: Context) {
 
     /**
      * Resolve a requested name to a transport.
-     * ""  -> the registry default (null if none set).
-     * miss -> null  (caller returns PRINTER_NOT_FOUND).
+     * ""   -> the registry default (null if none set).
+     * miss -> null (caller returns PRINTER_NOT_FOUND).
      */
     fun resolve(requested: String?): PrintTarget? {
         val name = (requested ?: "").trim()
         if (name.isEmpty()) {
-            val def = defaultPrinterName() ?: return null
-            if (def.trim().equals(name, ignoreCase = true)) return null // guard self-loop
-            return resolve(def)
+            val def = defaultPrinterName()?.trim() ?: return null
+            if (def.isEmpty()) return null // guard: never recurse on an empty default
+            return resolveNamed(def)
         }
+        return resolveNamed(name)
+    }
+
+    private fun resolveNamed(name: String): PrintTarget? {
         val lc = name.lowercase()
         netPrinters().firstOrNull { it.name.trim().lowercase() == lc }
             ?.let { return PrintTarget.Lan(it.host, it.port) }
         bondedBtPrinters().firstOrNull {
             it.name.trim().lowercase() == lc || it.mac.trim().lowercase() == lc
-        }?.let { return it }
+        }?.let { return PrintTarget.Bt(it.mac, it.name) }
         return null
     }
 
