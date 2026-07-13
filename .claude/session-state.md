@@ -1,19 +1,30 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-13 04:55, idle 1835s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: inventory-core.js,inventory-extra.js purchase-orders-crud.js,health-check.js inventoryDeductionService.js,brandStockAccess.js stockAlerts.js,SettingsModal.tsx DashboardSection.tsx,StockListSection.tsx types.ts,StockTakePage.tsx
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-07-12 (심야)
-**버전:** v3.68 (운영). 오늘 배포 5회 모두 **버전 미상승**(기능 수정·신규 기능).
-**작업 상태:** 완료 — Fable 최종 게이트 승인 후 운영 배포, **운영 실검증 11/11**.
+**마지막 업데이트:** 2026-07-13
+**버전:** v3.68 (운영).
+**작업 상태:** 완료 — **브랜드 재료 실사·발주제안·매장별 PAR** 구현 + Fable 재검증 **승인**. **dev 검증 완료 · 운영 미배포**(Irene `/배포` 대기).
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션 2026-07-12 #2)
+### 다음 확정 작업
+- **브랜드 재료 실사·발주제안 `/배포`** (Irene 지시 시). Fable 배포 승인 완료 — 마이그(컬럼 8개 추가)는 기존 `migrate-restaurant-ingredient-stocks.js` 가 자동 수행(registry 등록됨).
+  - 배포 후 운영 확인: ①마이그 로그 `+8`(재실행 `+0`) ②기존 오버레이 행의 신규 8컬럼 전부 NULL(=상속 → 동작 변화 0) ③실매장 1곳에서 브랜드 재료 Settings 저장 → 브랜드 행 불변·형제 매장 불변 ④**대시보드 제안 + Bulk Order 체크박스 양쪽**에 브랜드 재료 ⑤실사 1회(기대재고=매장 재고, 완료 후 브랜드 행 불변) ⑥운영 health-check `--category=pos`
+
+### 완료된 작업 (2026-07-13 — 브랜드 재료 실사 · 발주 제안 · 매장별 PAR)
+> Irene "브랜드 재료 실사랑 발주 제안도 해줘" · 설계·판정 = **Fable(B안)** · 문서 = `docs/BRAND_STOCK_SHARING_DESIGN.md` "후속 ①"
+- **판정 B — PAR(발주점·리드타임·사용량)은 매장별.** 프랜차이즈 표준: 본사가 재료를 표준화하고 **PAR 은 지점이 정한다**(10석 매장과 100석 매장이 같은 발주점을 쓸 수 없다). 결정적으로 **`calculate-usage` 가 이미 브랜드 공유 행을 오염**시키고 있었다 — 형제 매장 입고까지 합산해 공유 행에 써서 **전 지점의 사용량을 덮었다** → 매장별 저장소가 어차피 필요.
+- **스키마**: 새 테이블 없이 기존 오버레이(`restaurant_ingredient_stocks`)에 **nullable 컬럼 8개**(NULL=브랜드 기본값 상속). **0 은 유효한 오버라이드** → 상속 판정은 `!= null`(falsy 금지).
+- **실사**: 대상에 브랜드 재료 포함(기대재고=매장 오버레이) · 완료 시 **오버레이만 갱신**(브랜드 행·형제 매장 불변).
+- **발주 제안 — 두 곳 모두**: 대시보드(`/inventory/reorder-suggestions`) + **Bulk Order 체크박스(`/purchase-orders/suggestions`)**. 후자는 Fable 이 적발(한쪽만 고치면 "부족한데 담을 수 없는" 반쪽). ⚠ 브랜드 분기에 `min_stock>0` SQL 필터 금지(브랜드 행은 0, 임계치는 오버레이).
+- **부족/품절·알림 임계치**도 매장 기준(`stockAlerts` + 주문 자동차감 2곳).
+- **기존 IDOR 봉쇄**: 실사 detail·items·complete·cancel 4곳이 `stockTakeId` 매장 귀속 미검증 → **남의 매장 실사 열람·조작·완료 가능**했다. 교차 실사항목 id 주입도 차단.
+- 프론트: 브랜드 재료도 Settings 열림(안내: 정의는 브랜드, PAR 은 이 매장) · 실사·발주제안에 `Brand` 표식. **재료 정의(이름·단위·공급처·삭제)는 여전히 브랜드 전용.**
+- 검증: 실호출 **29/29**(내) + Fable 독립 **41/41 + 9/9** · health-check `pos` **31/31**(회귀 4건 신규+1건 갱신) · verify-all **13/13** · print-guard 8/8 무접촉.
+- Fable 지적으로 수정: 내 회귀 테스트의 **파괴적 정리**(그 매장·재료의 실사 이력·알림 전부 DELETE — health-check 는 운영에서도 도는 스크립트) → 테스트 생성분만 id 스코프로 삭제.
+
+### 완료된 작업 (2026-07-12 #2 — 운영 배포 완료)
 
 #### 브랜드 재고 공유 (신규 기능, 운영 배포 · Backup 20260712_201511)
 > Irene "공급업체·스톡아이템도 브랜드에 연결하면 레시피처럼 공유돼야 한다. K-DINE with MIN 기준으로." · 설계 = `docs/BRAND_STOCK_SHARING_DESIGN.md`
@@ -43,15 +54,10 @@
 - **Fable 최종 게이트: 승인** (C1 deduct 500 · C2 죽은 토글 수정 후).
 - **운영 실검증 11/11** — 테스트 매장(rid=5)에서 주문 생성 → 단계이동(preparing→ready→served) → **현금 결제 completed** → 인쇄 계약(동시 claim 5개 중 **1개만 승리**, printed 후 재인쇄 0) → 주문 삭제·인쇄 플래그 정리(**종이 안 나감**).
 
-### 다음 확정 작업
-- 없음 — 지시 대기
-
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
-- **브랜드 재료 실사(stock-take)·발주제안 미지원** (Fable 별건 판정) — 현재 매장 실사 목록이 브랜드 재료를 제외한다(`inventory-core.js` restaurant_id 만). 포함하려면 complete 경로도 오버레이 분기 필요.
 - **Find/Contracts 페이지의 BG 브랜드 선택 UI** — 두 번째 브랜드 명의로 *가입 공급업체* 계약을 신청하려면 필요(외부업체 경로는 이번에 해결됨).
-- `inventory-core.js` stock-take complete 의 stockTakeId 매장 귀속 미검증(기존 IDOR, 이번 범위 밖).
 - `po-returns.js` brand-seller 환원이 buyer 감소와 같은 행을 도로 증가시켜 net 0 이 되는 기존 버그 의심 — 별도 조사.
 - with MIN 매장 인쇄 1회 물리 테스트(사람 필요) · timezone(242)·design(310) baseline 부채 · E2E 시나리오 확장
 
