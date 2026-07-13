@@ -1,1 +1,1 @@
-[{"label":"e","expression":"(async () => ({ url: location.pathname, token: !!localStorage.getItem('auth_token') }))()"}]
+[{"label":"e","expression":"(async () => { try { return (JSON.parse(localStorage.getItem('printerSettings')||'{}').kitchenPrinter||{}).address || null; } catch { return null; } })()"}]

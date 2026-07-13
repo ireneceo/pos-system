@@ -1220,7 +1220,13 @@
       "Bash(pkill -f '[q]emu-system-x86_64')",
       "Bash(timeout 600 ./gradlew assembleDebug -q)",
       "Bash(echo \"V3 EXIT=$?\")",
-      "Bash(timeout 900 node scripts/verify/run-v4.js --keep)"
+      "Bash(timeout 900 node scripts/verify/run-v4.js --keep)",
+      "Bash(adb devices *)",
+      "Bash(echo \"V4 시작 \\(pid $!\\)\")",
+      "Bash(pkill -f run-v4.js)",
+      "Bash(/opt/android-sdk/platform-tools/adb emu *)",
+      "Bash(pkill -f fake-printer.js)",
+      "Bash(xargs -r kill -9)"
     ],
     "deny": [],
     "ask": []

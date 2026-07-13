@@ -142,21 +142,35 @@ async function main() {
   const token = login.body?.token || login.body?.data?.token;
   if (!token) throw new Error('demo-login 실패');
 
-  const before = await api('GET', `/store/settings?restaurant_id=${rid}`, null, token);
-  const savedPrinter = before.body?.data?.printerSettings || before.body?.data?.printer_settings || null;
+  const readPrinter = async () => {
+    const r = await api('GET', `/store/settings?restaurant_id=${rid}`, null, token);
+    const ps = r.body?.data?.printer_settings || null;
+    return typeof ps === 'string' ? JSON.parse(ps) : ps;
+  };
+  const savedPrinter = await readPrinter();
 
+  // The settings route only accepts snake_case `printer_settings` (routes/store.js
+  // allowedFields). A camelCase key is not rejected — it is silently dropped and the
+  // route still answers 200, which is exactly the "success-looking non-effect" this
+  // gate exists to catch. So never trust the status code: write, read back, and refuse
+  // to run the gate on settings that did not actually land.
   const setPrinter = async (address) => {
     const r = await api('PUT', '/store/settings', {
       restaurant_id: rid,
-      printerSettings: {
+      printer_settings: {
         ...(savedPrinter || {}),
         kitchenPrinter: { enabled: true, autoPrint: true, method: 'qztray', address, copies: 1 },
       },
     }, token);
-    return r.status === 200;
+    const now = await readPrinter();
+    const kp = (now && now.kitchenPrinter) || {};
+    if (r.status !== 200 || kp.address !== address || kp.method !== 'qztray' || kp.autoPrint !== true) {
+      throw new Error(`프린터 설정이 서버에 저장되지 않았다 (status=${r.status}, 저장된 값=${JSON.stringify(kp)}) — 설정이 안 먹은 채로 인쇄를 판정하면 거짓 결과가 된다`);
+    }
+    return true;
   };
-  const okSet = await setPrinter('KITCHEN');
-  console.log(`  프린터 설정: kitchen → 'KITCHEN' (autoPrint ON) ${okSet ? 'OK' : '실패'}`);
+  await setPrinter('KITCHEN');
+  console.log(`  프린터 설정: kitchen → 'KITCHEN' (qztray · autoPrint ON) — 서버 되읽기로 확인`);
 
   // 3. emulator + app
   if ((sh(ADB, ['shell', 'getprop', 'sys.boot_completed']).stdout || '').trim() !== '1') {
@@ -200,30 +214,38 @@ async function main() {
   await waitFor('bridge', () => evalInApp("(async () => typeof window.__NATIVE_PRINT === 'object' && typeof window.__NATIVE_PRINT_SETUP === 'object')()") === true, 90000, 3000);
   console.log('  앱 기동 + 브릿지 확인');
 
-  // 4. register the printer on the device + log the app in, then reload so the poller starts.
+  // 4. register the printer ON THE TABLET (name → host:port; Android has no OS spooler,
+  //    which is the whole reason the registry exists), log the app in, then load /pos.
   //
-  // billPrint reads printer settings from localStorage (the store syncs them there), and it
-  // dispatches by METHOD: 'rawbt' fires a RawBT intent (the legacy per-device print app),
-  // and only 'qztray' + an address reaches the native bridge. A shop that still carries the
-  // legacy rawbt setting would therefore print nothing inside our app. Configuring the
-  // printer from the in-app Settings page writes method='qztray' + the printer name, which is
-  // the supported path — so the gate configures exactly that, deliberately and explicitly,
-  // rather than depending on whatever the store had before.
-  const appSettings = {
-    ...(savedPrinter || {}),
-    kitchenPrinter: { enabled: true, autoPrint: true, method: 'qztray', address: 'KITCHEN', copies: 1 },
-  };
+  // The printer SETTINGS are deliberately NOT injected into localStorage here. billPrint
+  // reads them from localStorage, but StoreContext overwrites that key with the server's
+  // printer_settings on every store load — so an injected value is wiped the moment the app
+  // reloads, and the gate would be testing a state no shop can ever be in. The honest path
+  // is the real one: the settings live on the server (written above, read back), and the app
+  // pulls them down. reloadAndWaitForPrinter() below proves the app actually received them.
   evalInApp(`(async () => {
     await window.__NATIVE_PRINT_SETUP.addNetPrinter({name:'KITCHEN', host:'10.0.2.2', port:9100});
     localStorage.setItem('auth_token', ${JSON.stringify(token)});
-    localStorage.setItem('printerSettings', ${JSON.stringify(JSON.stringify(appSettings))});
     return true;
   })()`);
-  evalInApp("(async () => { location.href = '/pos'; return true; })()");
-  await sleep(12000); // app reloads, authenticates, mounts, poller arms
-  await waitFor('bridge after reload', () => evalInApp("(async () => typeof window.__NATIVE_PRINT === 'object')()") === true, 60000, 3000);
+
+  // Reload the app and wait until the poller's OWN view of the printer settings (the exact
+  // localStorage key billPrint reads) matches what the server holds. Judging on a sleep()
+  // instead would race the store fetch and report "the app doesn't print" for an app that
+  // simply had not been told which printer to use yet.
+  const appPrinterAddress = () => {
+    const r = evalInApp("(async () => { try { return (JSON.parse(localStorage.getItem('printerSettings')||'{}').kitchenPrinter||{}).address || null; } catch { return null; } })()");
+    return r;
+  };
+  const reloadAndWaitForPrinter = async (expected) => {
+    evalInApp("(async () => { location.href = '/pos'; return true; })()");
+    await sleep(10000); // app reloads, authenticates, StoreContext syncs settings, poller arms
+    await waitFor('bridge after reload', () => evalInApp("(async () => typeof window.__NATIVE_PRINT === 'object')()") === true, 60000, 3000);
+    await waitFor(`app to receive printer '${expected}'`, () => appPrinterAddress() === expected, 60000, 3000);
+  };
+  await reloadAndWaitForPrinter('KITCHEN');
   const loggedIn = evalInApp("(async () => ({ url: location.pathname, token: !!localStorage.getItem('auth_token') }))()");
-  console.log(`  앱 로그인 상태: ${JSON.stringify(loggedIn)}`);
+  console.log(`  앱 로그인 상태: ${JSON.stringify(loggedIn)} · 앱이 받은 프린터: ${appPrinterAddress()}`);
 
   fs.writeFileSync(CAP, '');
   console.log('\n판정:\n');
@@ -269,8 +291,11 @@ async function main() {
   }
 
   // ── V4-4: unknown printer → nothing printed AND the order stays armed ─────
+  // The app must genuinely be pointed at the unregistered printer before we judge it.
+  // Otherwise "no bytes went out" would pass for the most boring reason imaginable — the
+  // app never got the setting — and V4-4/V4-5 would be green while proving nothing.
   await setPrinter('GHOST');
-  await sleep(3000);
+  await reloadAndWaitForPrinter('GHOST');
   fs.writeFileSync(CAP, '');
   const ghostOrder = await Order.create({
     restaurant_id: rid,
@@ -296,7 +321,7 @@ async function main() {
     await Order.destroy({ where: { id: ghostOrder.id }, force: true });
     // restore the shop's real printer settings
     if (savedPrinter) {
-      await api('PUT', '/store/settings', { restaurant_id: rid, printerSettings: savedPrinter }, token);
+      await api('PUT', '/store/settings', { restaurant_id: rid, printer_settings: savedPrinter }, token);
     }
   }
 
