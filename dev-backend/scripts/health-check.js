@@ -936,6 +936,37 @@ function definePosTests({ adminToken }) {
   // 발주가 판매자에게 나가는 경로는 **세 곳**이다: submit / bulk auto_submit / mark-sent-external.
   // 셋 다 오너 승인 게이트(utils/poOwnerApproval.applySubmitGate)를 타야 한다 —
   // 실제로 bulk·external 두 경로가 승인 없이 발주를 내보내고 있었다(Fable 2026-07-13 적발).
+  // ── 반품 재고 환원 (2026-07-13) ─────────────────────────────────────────────
+  // 반품 승인은 **입고의 정확한 역방향**이어야 한다: 구매자 재고 차감 + 판매자 자기 재고 환원.
+  // 브랜드 판매자 분기가 판매자 재고가 아니라 **구매자의 재료 행**을 올려서, 1단계 차감과
+  // 상쇄돼 net 0 이었다(반품해도 매장 재고가 안 줄고 본사 재고는 복구 안 됨 — 실증 후 수정).
+  test('pos', '반품: 브랜드 판매자 환원이 구매자 재료를 되올리지 않는다 (net 0 회귀)', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const raw = fs.readFileSync(path.join(__dirname, '../routes/po-returns.js'), 'utf8');
+    // 주석은 제외하고 **실제 코드**만 본다 (주석이 옛 코드를 인용하고 있어 오탐 났다)
+    const src = raw.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    // 브랜드 분기가 BOM(ProductRecipeIngredient → ProductIngredient) 으로 환원하는가
+    const brandBranch = src.slice(src.indexOf("seller_type === 'brand'"), src.indexOf("seller_type === 'foodcourt'"));
+    const usesBom = /ProductRecipeIngredient\.findAll/.test(brandBranch) && /ProductIngredient\.findByPk/.test(brandBranch);
+    // 구매자 재료 행(ret.ingredient_id)을 다시 올리면 안 된다 (net 0 의 원인)
+    const reRaisesBuyer = /[^t]Ingredient\.findByPk\(ret\.ingredient_id/.test(brandBranch);
+    // 구매자 차감이 unit_conversion 을 반영하고 원장을 남기는가
+    const buyerScoped = /unit_conversion/.test(src) && /'return_out'/.test(src);
+    return usesBom && !reRaisesBuyer && buyerScoped;
+  });
+
+  test('pos', '반품: 이중 승인·누적 초과 차단 (재고·크레딧노트 이중 발행 금지)', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '../routes/po-returns.js'), 'utf8');
+    // 승인/반려가 행을 잠그는가 (동시 승인 2발 → 재고 2번 환원 + CN 2장 방지)
+    const locks = /loadAndCheckReturn\(req, t\)/.test(src) && /lock: t\.LOCK\.UPDATE, transaction: t/.test(src);
+    // 생성·승인 모두 기존 반품 합산을 본다 (5개 입고에 5개 반품을 세 번 요청해도 통과하던 구멍)
+    const sums = (src.match(/PurchaseOrderReturn\.sum\('quantity'/g) || []).length >= 2;
+    return locks && sums;
+  });
+
   test('pos', '발주 승인: 게이트가 3경로(submit·bulk·외부전송) 모두에 적용', async () => {
     const src = require('fs');
     const path = require('path');

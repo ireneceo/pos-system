@@ -14,10 +14,12 @@
 const express = require('express');
 const router = express.Router();
 const database = require('../config/database');
+const { Op } = require('sequelize');
 const {
   PurchaseOrder, PurchaseOrderItem, PurchaseOrderReturn,
   Ingredient, IngredientSellerProduct, SupplierProduct, SupplierInventoryTransaction,
   InventoryTransaction, FoodcourtProduct,
+  BrandProduct, ProductRecipeIngredient, ProductIngredient,
   Invoice, InvoiceItem
 } = require('../models');
 const { stockFor, applyStock } = require('../utils/brandStockAccess');
@@ -77,11 +79,19 @@ router.post('/purchase-orders/:id/returns', async (req, res) => {
         await t.rollback();
         return res.status(400).json({ success: false, message: `Item ${itemId} does not belong to this PO` });
       }
-      // Cannot return more than received
+      // 입고량을 넘겨 반품할 수 없다 — **기존 반품 합산**까지 본다.
+      // (예전엔 라인별 단건 검사뿐이라 5개 입고에 5개 반품을 세 번 요청해도 다 통과했다.)
       const received = parseFloat(poItem.quantity_received) || 0;
-      if (qty > received) {
+      const priorSum = (await PurchaseOrderReturn.sum('quantity', {
+        where: { purchase_order_item_id: itemId, status: { [Op.in]: ['requested', 'approved'] } },
+        transaction: t
+      })) || 0;
+      if (qty + priorSum > received) {
         await t.rollback();
-        return res.status(400).json({ success: false, message: `Return qty (${qty}) exceeds received (${received}) for item ${itemId}` });
+        return res.status(400).json({
+          success: false,
+          message: `Return qty (${qty}) + already requested/approved (${priorSum}) exceeds received (${received}) for item ${itemId}`
+        });
       }
 
       const ret = await PurchaseOrderReturn.create({
@@ -159,11 +169,18 @@ router.get('/seller-orders/:id/returns', async (req, res) => {
   }
 });
 
-async function loadAndCheckReturn(req) {
+/**
+ * 반품 로드 + 판매자 소유권 확인.
+ * ⚠ 트랜잭션(t)을 주면 PO·반품 행을 **잠근다**. 안 잠그면 동시 승인 2발이 둘 다
+ *   status='requested' 를 읽어 **재고를 두 번 환원하고 크레딧노트를 두 장** 발행한다.
+ *   PO 락은 같은 PO 의 승인들을 직렬화해 누적 합산검사의 정합 전제도 만든다.
+ */
+async function loadAndCheckReturn(req, t) {
   const id = parseInt(req.params.id, 10);
   const returnId = parseInt(req.params.returnId, 10);
   if (!Number.isFinite(id) || !Number.isFinite(returnId)) return { error: 'Order/Return not found', status: 404 };
-  const po = await PurchaseOrder.findByPk(id);
+  const lockOpts = t ? { lock: t.LOCK.UPDATE, transaction: t } : undefined;
+  const po = await PurchaseOrder.findByPk(id, lockOpts);
   if (!po) return { error: 'Order not found', status: 404 };
   const sellerOk = req.sellerEntity
     ? po.seller_type === req.sellerEntity.type &&
@@ -172,7 +189,7 @@ async function loadAndCheckReturn(req) {
         : parseInt(po.seller_entity_id, 10) === parseInt(req.sellerEntity.id, 10))
     : !!req.sellerIsAdmin;
   if (!sellerOk) return { error: 'Order not found', status: 404 };
-  const ret = await PurchaseOrderReturn.findByPk(returnId);
+  const ret = await PurchaseOrderReturn.findByPk(returnId, lockOpts);
   if (!ret || ret.purchase_order_id !== po.id) return { error: 'Return not found', status: 404 };
   return { po, ret };
 }
@@ -180,29 +197,76 @@ async function loadAndCheckReturn(req) {
 router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => {
   const t = await database.sequelize.transaction();
   try {
-    const { error, status, po, ret } = await loadAndCheckReturn(req);
+    const { error, status, po, ret } = await loadAndCheckReturn(req, t);   // 행 잠금 — 이중 승인 방지
     if (error) { await t.rollback(); return res.status(status).json({ success: false, message: error }); }
     if (ret.status !== 'requested') {
       await t.rollback();
       return res.status(400).json({ success: false, message: `Return cannot be approved in status '${ret.status}'` });
     }
 
-    // 1. Reverse buyer-side ingredient stock (decrement)
-    //    입고가 매장 오버레이로 갔으니 그 역방향도 같아야 한다 — 브랜드 공유 재료의 브랜드 행을
-    //    직접 깎으면 형제 매장 재고가 오염된다. (docs/BRAND_STOCK_SHARING_DESIGN.md)
-    if (po.entity_type === 'restaurant') {
+    const item = await PurchaseOrderItem.findByPk(ret.purchase_order_item_id, { transaction: t });
+    const delta = parseFloat(ret.quantity) || 0;
+
+    // 승인 합산 검사 — 이미 승인된 반품 + 이번 건이 입고량을 넘으면 안 된다
+    const approvedSum = (await PurchaseOrderReturn.sum('quantity', {
+      where: {
+        purchase_order_item_id: ret.purchase_order_item_id,
+        status: 'approved',
+        id: { [Op.ne]: ret.id }
+      },
+      transaction: t
+    })) || 0;
+    const receivedQty = parseFloat(item?.quantity_received) || 0;
+    if (approvedSum + delta > receivedQty) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false,
+        message: `Approved returns (${approvedSum}) + this return (${delta}) exceed received (${receivedQty})`
+      });
+    }
+
+    // 1. 구매자 재고 차감 — 입고의 정확한 역방향.
+    //    입고는 `quantity × unit_conversion` 을 더했으므로 반품도 같은 양을 뺀다(환산 누락 시 어긋난다).
+    //    브랜드 공유 재료면 applyStock 이 매장 오버레이로 보낸다 — 브랜드 행을 직접 깎으면
+    //    형제 매장 재고가 오염된다. (docs/BRAND_STOCK_SHARING_DESIGN.md)
+    if (po.entity_type === 'restaurant' && ret.ingredient_id) {
       const ingredient = await Ingredient.findByPk(ret.ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
       if (ingredient) {
+        const conv = parseFloat(item?.unit_conversion) || 1;
+        const reverseQty = Math.round(delta * conv * 100) / 100;
         const cur = await stockFor(ingredient, po.entity_id, t);
-        const newStock = Math.max(0, Math.round((cur - parseFloat(ret.quantity)) * 100) / 100);
-        await applyStock(ingredient, po.entity_id, newStock, t);
+        const newStock = ingredient.track_stock !== false
+          ? Math.max(0, Math.round((cur - reverseQty) * 100) / 100)
+          : cur;
+        if (ingredient.track_stock !== false) await applyStock(ingredient, po.entity_id, newStock, t);
+
+        // 원장에는 **실제 이동량**을 적는다 — 재고가 모자라 클램프가 걸리면 의도량보다 작다.
+        // 의도량을 적으면 `이전재고 + quantity_change ≠ stock_after` 가 되어 원장 합산이
+        // 실재고와 영원히 어긋난다(감사·실사가 깨진다). 선례: inventoryDeductionService 도
+        // 실제 차감량을 기록한다. track_stock=false 는 재고를 안 건드리므로 관례대로 의도량.
+        const applied = ingredient.track_stock !== false
+          ? Math.round((cur - newStock) * 100) / 100
+          : reverseQty;
+        if (applied < reverseQty) {
+          console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 매장 재고 ${cur} 뿐 — ${applied} 만 차감(클램프)`);
+        }
+
+        // 원장 기록 — 입고('purchase')는 남기는데 반품은 아무것도 안 남기고 있었다(감사 구멍)
+        await InventoryTransaction.create({
+          entity_type: 'restaurant', entity_id: po.entity_id,
+          ingredient_id: ingredient.id,
+          transaction_type: 'return_out',
+          quantity_change: -applied,
+          unit: ingredient.unit || ret.unit || 'unit',
+          stock_after: newStock,
+          purchase_order_id: po.id,
+          notes: `Return #${ret.id} approved — buyer stock reversal`,
+          created_by: req.user?.id || null
+        }, { transaction: t });
       }
     }
 
-    // 2. Seller-side stock 환원 (양방향 무결성)
-    //    Sprint 7: brand/foodcourt seller도 분기 추가
-    const item = await PurchaseOrderItem.findByPk(ret.purchase_order_item_id, { transaction: t });
-    const delta = parseFloat(ret.quantity) || 0;
+    // 2. 판매자 재고 환원 (양방향 무결성) — 각 판매자가 **자기 재고**를 되돌린다
 
     if (po.seller_type === 'supplier' && po.seller_entity_id) {
       // 기존 — Supplier 환원
@@ -230,25 +294,40 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
           }
         }
       }
-    } else if (po.seller_type === 'brand' && po.seller_entity_id && ret.ingredient_id) {
-      // Sprint 7 — Brand seller 환원
-      const ingredient = await Ingredient.findByPk(ret.ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
-      if (ingredient) {
-        const old = parseFloat(ingredient.current_stock) || 0;
-        const nu = Math.round((old + delta) * 100) / 100;
-        await ingredient.update({ current_stock: nu }, { transaction: t });
-        await InventoryTransaction.create({
-          entity_type: 'brand',
-          entity_id: po.seller_entity_id,
-          ingredient_id: ret.ingredient_id,
-          transaction_type: 'return_in',
-          quantity_change: delta,
-          unit: ingredient.unit || ret.unit || 'unit',
-          stock_after: nu,
-          purchase_order_id: po.id,
-          notes: `Return #${ret.id} approved (brand seller)`,
-          created_by: req.user?.id || null
-        }, { transaction: t });
+    } else if (po.seller_type === 'brand' && po.seller_entity_id && item?.ingredient_seller_product_id) {
+      // Brand seller 환원 = **출고의 정확한 역방향**.
+      //   출고(seller-orders.js ship): BrandProduct.recipe(BOM) → ProductIngredient 차감
+      //   따라서 반품도 같은 BOM 으로 ProductIngredient 를 되돌린다.
+      // ⚠ 예전 코드는 `Ingredient.findByPk(ret.ingredient_id)`(= **구매자**의 재료 행)를 올렸다.
+      //   1단계에서 깎은 바로 그 행이라 −q 후 +q = **net 0** — 반품해도 매장 재고가 안 줄고
+      //   본사 재고는 복구되지 않았다. (2026-07-13 실증 후 수정)
+      const mapping = await IngredientSellerProduct.findByPk(item.ingredient_seller_product_id, { transaction: t });
+      if (mapping?.seller_product_id) {
+        const bp = await BrandProduct.findByPk(mapping.seller_product_id, { transaction: t });
+        if (bp?.product_recipe_id) {   // 레시피 없으면 환원 없음 — 출고도 차감하지 않았다(대칭)
+          const recipeIngs = await ProductRecipeIngredient.findAll({
+            where: { recipe_id: bp.product_recipe_id }, transaction: t
+          });
+          for (const ri of recipeIngs) {
+            const pIng = await ProductIngredient.findByPk(ri.ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
+            if (!pIng) continue;
+            const backQty = Math.round((parseFloat(ri.quantity) || 0) * delta * 100) / 100;
+            if (backQty <= 0) continue;
+            const cur = parseFloat(pIng.current_stock) || 0;
+            const nu = pIng.track_stock !== false ? Math.round((cur + backQty) * 100) / 100 : cur;
+            if (pIng.track_stock !== false) await pIng.update({ current_stock: nu }, { transaction: t });
+            await InventoryTransaction.create({
+              entity_type: 'brand', entity_id: po.seller_entity_id,
+              product_ingredient_id: pIng.id,
+              transaction_type: 'return_in',
+              quantity_change: backQty,
+              unit: pIng.unit, stock_after: nu,
+              purchase_order_id: po.id,
+              notes: `Return #${ret.id} approved (brand seller, ${bp.name})`,
+              created_by: req.user?.id || null
+            }, { transaction: t });
+          }
+        }
       }
     } else if (po.seller_type === 'foodcourt' && po.seller_entity_id && item?.ingredient_seller_product_id) {
       // Sprint 7 — Foodcourt seller 환원
@@ -342,24 +421,31 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
 });
 
 router.post('/seller-orders/:id/returns/:returnId/reject', async (req, res) => {
+  // 승인과 같은 트랜잭션·락 — 안 그러면 approve ↔ reject 레이스로
+  // "재고는 환원됐는데 상태는 rejected" 가 만들어진다.
+  const t = await database.sequelize.transaction();
   try {
-    const { error, status, po, ret } = await loadAndCheckReturn(req);
-    if (error) return res.status(status).json({ success: false, message: error });
+    const { error, status, po, ret } = await loadAndCheckReturn(req, t);
+    if (error) { await t.rollback(); return res.status(status).json({ success: false, message: error }); }
     if (ret.status !== 'requested') {
+      await t.rollback();
       return res.status(400).json({ success: false, message: `Return cannot be rejected in status '${ret.status}'` });
     }
     const reason = sanitizeString(String(req.body?.reason || '').trim()).slice(0, 1000);
-    if (!reason) return res.status(400).json({ success: false, message: 'reason is required' });
+    if (!reason) { await t.rollback(); return res.status(400).json({ success: false, message: 'reason is required' }); }
 
     await ret.update({
       status: 'rejected',
       rejected_by_user_id: req.user.id,
       resolved_at: new Date(),
       rejection_reason: reason
-    });
+    }, { transaction: t });
+    await t.commit();
+
     emitPoEvent(req, po, 'seller-order-updated');
     res.json({ success: true, data: ret, message: 'Return rejected' });
   } catch (err) {
+    if (!t.finished) await t.rollback();
     console.error('POST reject return error:', err);
     res.status(500).json({ success: false, message: 'Failed to reject return' });
   }
