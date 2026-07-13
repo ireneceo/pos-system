@@ -652,11 +652,29 @@ function definePosTests({ adminToken }) {
     const rows = list.body?.data || [];
     if (!rows.length || !rows.every((r) => r.is_brand_shared && r.read_only && Array.isArray(r.sellerSources))) return false;
 
-    // 매장이 브랜드 재료를 고치거나 지우려 하면 막혀야 한다 (읽기전용)
+    // 재료 **정의**(이름·삭제)는 브랜드 소유 → 매장이 고치면 4xx
     const put = await request('PUT', `/restaurants/${rest.id}/ingredients/${ing.id}`, { name: 'REGRESSION' }, auth);
     const del = await request('DELETE', `/restaurants/${rest.id}/ingredients/${ing.id}`, null, auth);
+    if (!(put.status >= 400 && del.status >= 400)) return false;
+
+    // 반면 **PAR 설정은 매장별**(2026-07-13) — 저장되되 브랜드 행은 불변이어야 한다.
+    // 지점마다 회전율이 달라 발주점이 같을 수 없다(프랜차이즈 표준).
+    const { RestaurantIngredientStock } = require('../models');
+    const before = await RestaurantIngredientStock.findOne({ where: { restaurant_id: rest.id, ingredient_id: ing.id } });
+    const beforeMin = before ? before.min_stock : null;
+    const brandMinBefore = String(ing.min_stock);
+
     const par = await request('PUT', `/restaurants/${rest.id}/inventory/${ing.id}/settings`, { min_stock: 999 }, auth);
-    return put.status >= 400 && del.status >= 400 && par.status >= 400;
+    const overlay = await RestaurantIngredientStock.findOne({ where: { restaurant_id: rest.id, ingredient_id: ing.id } });
+    const brandAfter = await Ingredient.findByPk(ing.id);
+    const savedToOverlay = par.status === 200 && overlay && Number(overlay.min_stock) === 999;
+    const brandUntouched = String(brandAfter.min_stock) === brandMinBefore;
+
+    // 원복 (검증이 데이터를 남기지 않는다)
+    if (before) await overlay.update({ min_stock: beforeMin });
+    else if (overlay) await overlay.destroy();
+
+    return savedToOverlay && brandUntouched;
   });
 
   test('pos', '브랜드 재고: 공급처 연결은 브랜드만 (매장 쓰기 403, 읽기 200)', async () => {
@@ -743,6 +761,175 @@ function definePosTests({ adminToken }) {
     // FIFO 배치도 매장 스코프여야 형제 매장 배치를 소진하지 않는다
     const scopedFifo = /restaurant_id: restaurantId/.test(src);
     return usesOverlay && !directWrite && scopedFifo;
+  });
+
+  // ── 브랜드 재료 실사 · 발주 제안 · 매장별 PAR (2026-07-13) ───────────────────
+  // 실사·발주제안은 브랜드 표준 재료를 포함해야 하고, 결과는 **이 매장에만** 반영돼야 한다.
+  // (브랜드 공유 행을 갱신하면 형제 매장 재고·사용량이 통째로 오염된다.)
+  test('pos', '브랜드 재고: 실사에 브랜드 재료 포함 + 오버레이만 갱신 (브랜드 행 불변)', async () => {
+    const { Restaurant, Ingredient, User, RestaurantIngredientStock, StockTake, StockTakeItem, InventoryTransaction, StockAlert } = require('../models');
+    const jwtLib = require('jsonwebtoken');
+    const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true, track_stock: true } });
+    if (!ing) return true;
+    const rest = await Restaurant.findOne({ where: { brand_id: ing.brand_id } });
+    if (!rest) return true;
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: rest.id } });
+    if (!ra) return true;
+    // 실제 진행 중인 실사가 있으면 방해하지 않는다
+    const busy = await StockTake.findOne({ where: { restaurant_id: rest.id, status: 'in_progress' } });
+    if (busy) return true;
+
+    const token = jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = { Authorization: `Bearer ${token}` };
+    const brandStockBefore = String(ing.current_stock);
+    const overlayBefore = await RestaurantIngredientStock.findOne({ where: { restaurant_id: rest.id, ingredient_id: ing.id } });
+
+    // ⚠ 정리는 **이 테스트가 만든 행만** 지운다. health-check 는 `--host=https://purplehere.com`
+    //   으로 운영에서도 도는 스크립트라, ingredient/restaurant 조건만으로 destroy 하면
+    //   실매장의 실사 이력·미해소 알림이 통째로 날아간다. (Fable 2026-07-13)
+    //   참고: 완료 시 그 매장 **자기 소유 재료**에도 last_stock_take_at/last_actual_stock 스탬프가
+    //   찍힌다(수량은 actual=theoretical 이라 불변) — 스탬프는 원복하지 않는다.
+    const { Op: OpHC } = require('sequelize');
+    const txBefore = (await InventoryTransaction.findAll({
+      where: { restaurant_id: rest.id, ingredient_id: ing.id }, attributes: ['id'], raw: true
+    })).map((r) => r.id);
+    const alertBefore = (await StockAlert.findAll({
+      where: { restaurant_id: rest.id, ingredient_id: ing.id }, attributes: ['id'], raw: true
+    })).map((r) => r.id);
+
+    const create = await request('POST', `/restaurants/${rest.id}/stock-takes`, {}, auth);
+    const st = create.body?.data;
+    if (create.status !== 200 || !st) return false;
+    const items = st.items || [];
+    const brandItem = items.find((i) => i.ingredient_id === ing.id);
+
+    let verdict = !!brandItem; // 실사 대상에 브랜드 재료가 있어야 한다
+    if (verdict) {
+      const payload = items.map((i) => ({
+        id: i.id,
+        actual_stock: i.ingredient_id === ing.id ? 7 : Number(i.theoretical_stock) || 0
+      }));
+      await request('PUT', `/restaurants/${rest.id}/stock-takes/${st.id}/items`, { items: payload }, auth);
+      const done = await request('POST', `/restaurants/${rest.id}/stock-takes/${st.id}/complete`, {}, auth);
+      const overlay = await RestaurantIngredientStock.findOne({ where: { restaurant_id: rest.id, ingredient_id: ing.id } });
+      const brandAfter = await Ingredient.findByPk(ing.id);
+      verdict = done.status === 200
+        && overlay && Number(overlay.current_stock) === 7 && Number(overlay.last_actual_stock) === 7
+        && String(brandAfter.current_stock) === brandStockBefore; // 브랜드 행 불변
+    }
+
+    // 원복 — 테스트가 만든 행만 (기존 이력·알림 보존)
+    await StockTakeItem.destroy({ where: { stock_take_id: st.id } });
+    await StockTake.destroy({ where: { id: st.id }, force: true });
+    await InventoryTransaction.destroy({
+      where: {
+        restaurant_id: rest.id, ingredient_id: ing.id,
+        ...(txBefore.length ? { id: { [OpHC.notIn]: txBefore } } : {})
+      }
+    });
+    await StockAlert.destroy({
+      where: {
+        restaurant_id: rest.id, ingredient_id: ing.id,
+        ...(alertBefore.length ? { id: { [OpHC.notIn]: alertBefore } } : {})
+      }
+    });
+    if (overlayBefore) {
+      await RestaurantIngredientStock.update(
+        { current_stock: overlayBefore.current_stock, last_actual_stock: overlayBefore.last_actual_stock },
+        { where: { restaurant_id: rest.id, ingredient_id: ing.id } }
+      );
+    } else {
+      await RestaurantIngredientStock.destroy({ where: { restaurant_id: rest.id, ingredient_id: ing.id } });
+    }
+    return verdict;
+  });
+
+  test('pos', '브랜드 재고: 발주 제안에 브랜드 재료 + 매장별 PAR 반영', async () => {
+    const { Restaurant, Ingredient, User, RestaurantIngredientStock } = require('../models');
+    const jwtLib = require('jsonwebtoken');
+    const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true, track_stock: true } });
+    if (!ing) return true;
+    const rest = await Restaurant.findOne({ where: { brand_id: ing.brand_id } });
+    if (!rest) return true;
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: rest.id } });
+    if (!ra) return true;
+    const token = jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const before = await RestaurantIngredientStock.findOne({ where: { restaurant_id: rest.id, ingredient_id: ing.id } });
+    // 재고 0 + 매장 min_stock 5 → 제안 대상이 되어야 한다 (min 0·usage 0 이면 제안수량 0 이라 안 뜬다)
+    const [row] = await RestaurantIngredientStock.findOrCreate({
+      where: { restaurant_id: rest.id, ingredient_id: ing.id },
+      defaults: { restaurant_id: rest.id, ingredient_id: ing.id, current_stock: 0 }
+    });
+    await row.update({ current_stock: 0, min_stock: 5 });
+
+    const sug = await request('GET', `/restaurants/${rest.id}/inventory/reorder-suggestions`, null, auth);
+    const hit = (sug.body?.data || []).find((x) => x.ingredient?.id === ing.id);
+    const verdict = sug.status === 200 && !!hit && hit.is_brand_shared === true && Number(hit.min_stock) === 5;
+
+    // 원복
+    if (before) await row.update({ current_stock: before.current_stock, min_stock: before.min_stock });
+    else await row.destroy();
+    return verdict;
+  });
+
+  // 발주 제안은 **두 곳**이다: 대시보드 제안(/inventory/reorder-suggestions)과
+  // 재고화면 Bulk Order 체크박스·발주 페이지 제안 패널(/purchase-orders/suggestions).
+  // 후자만 브랜드 재료를 빼면 "부족하다고 뜨는데 담을 수가 없는" 반쪽이 된다(Fable 2026-07-13).
+  test('pos', '브랜드 재고: Bulk Order 제안(/purchase-orders/suggestions)에도 브랜드 재료', async () => {
+    const { Restaurant, Ingredient, User, RestaurantIngredientStock } = require('../models');
+    const jwtLib = require('jsonwebtoken');
+    const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true, track_stock: true } });
+    if (!ing) return true;
+    const rest = await Restaurant.findOne({ where: { brand_id: ing.brand_id } });
+    if (!rest) return true;
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: rest.id } });
+    if (!ra) return true;
+    const token = jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const before = await RestaurantIngredientStock.findOne({ where: { restaurant_id: rest.id, ingredient_id: ing.id } });
+    const [row] = await RestaurantIngredientStock.findOrCreate({
+      where: { restaurant_id: rest.id, ingredient_id: ing.id },
+      defaults: { restaurant_id: rest.id, ingredient_id: ing.id, current_stock: 0 }
+    });
+    await row.update({ current_stock: 0, min_stock: 5 });   // 브랜드 행 min_stock 은 0 이라 SQL 필터로는 안 잡힌다
+
+    const sug = await request('GET', '/purchase-orders/suggestions', null, auth);
+    const items = (sug.body?.data?.groups || []).flatMap((g) => g.items || []);
+    const hit = items.find((i) => i.ingredient?.id === ing.id);
+    const verdict = sug.status === 200 && !!hit && hit.is_brand_shared === true && Number(hit.ingredient.min_stock) === 5;
+
+    if (before) await row.update({ current_stock: before.current_stock, min_stock: before.min_stock });
+    else await row.destroy();
+    return verdict;
+  });
+
+  test('pos', '브랜드 재고: 남의 매장 실사 조작 불가 (stockTakeId IDOR)', async () => {
+    const { Restaurant, User, StockTake } = require('../models');
+    const { Op } = require('sequelize');
+    const jwtLib = require('jsonwebtoken');
+    const rest = await Restaurant.findOne({ where: { id: { [Op.ne]: null } } });
+    if (!rest) return true;
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: rest.id } });
+    if (!ra) return true;
+    const other = await Restaurant.findOne({ where: { id: { [Op.ne]: rest.id } } });
+    if (!other) return true;
+
+    const token = jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = { Authorization: `Bearer ${token}` };
+    const foreign = await StockTake.create({
+      restaurant_id: other.id, stock_take_date: new Date(), status: 'in_progress', created_by: ra.id
+    });
+
+    const g = await request('GET', `/restaurants/${rest.id}/stock-takes/${foreign.id}`, null, auth);
+    const p = await request('PUT', `/restaurants/${rest.id}/stock-takes/${foreign.id}/items`, { items: [] }, auth);
+    const c = await request('POST', `/restaurants/${rest.id}/stock-takes/${foreign.id}/complete`, {}, auth);
+    const x = await request('POST', `/restaurants/${rest.id}/stock-takes/${foreign.id}/cancel`, {}, auth);
+
+    await StockTake.destroy({ where: { id: foreign.id }, force: true });
+    return g.status === 404 && p.status === 404 && c.status === 404 && x.status === 404;
   });
 
   test('pos', '브랜드 재고: 본사 구매 체인(product_ingredients) 무접촉', async () => {

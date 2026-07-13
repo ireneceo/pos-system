@@ -12,6 +12,7 @@ import {
   ActionButtons,
 } from '../../UI';
 import {
+  BrandTag,
   InfoBox,
   SectionTitle,
   AlertCard,
@@ -194,7 +195,10 @@ const DashboardSection: React.FC<Props> = ({
           </TableHeader>
           {suggestions.slice(0, 10).map(s => (
             <TableRow key={s.ingredient.id} columns="2fr 1fr 1fr 1fr 1fr 100px 150px">
-              <div>{s.ingredient.name}</div>
+              <div>
+                {s.ingredient.name}
+                {s.is_brand_shared && <BrandTag title="Stock item defined by your brand">Brand</BrandTag>}
+              </div>
               <div>{formatStock(s.current_stock)} {s.ingredient.unit}</div>
               <div>{(parseFloat(String(s.avg_daily_usage)) || 0).toFixed(2)} {s.ingredient.unit}/day</div>
               <div style={{ fontWeight: 600 }}>{formatStock(s.suggested_qty)} {s.ingredient.unit}</div>

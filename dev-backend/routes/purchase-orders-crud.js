@@ -39,7 +39,7 @@ const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeServ
 const { sendNotificationBatch, getSupplierAdminIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
 const { normalizeCurrencyCode, sameCurrency } = require('../utils/currency');
 const { resolveSellers, getSeller, getSellerName, isExternalSeller } = require('../utils/sellerNames');
-const { readableIngredient } = require('../utils/brandStockAccess');
+const { readableIngredient, parentBrandIdOf, overlayMapFor, effectiveSettings } = require('../utils/brandStockAccess');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
 
@@ -346,12 +346,21 @@ router.get('/purchase-orders/suggestions', async (req, res) => {
   try {
     if (!buyerScopeRequired(req, res)) return;
 
-    // Build ingredient ownership filter
-    const ownershipWhere = {};
+    // 대상 = 내 재료 ∪ 부모 브랜드 표준 재료 (재고관리의 Bulk Order 체크박스와 발주 페이지
+    // 제안 패널이 이 라우트를 쓴다 — 대시보드 제안만 고치면 "부족하다고 뜨는데 담을 수가 없는"
+    // 반쪽이 된다. Fable 2026-07-13)
+    //
+    // ⚠ 브랜드 분기에 `min_stock > 0` SQL 필터를 걸면 안 된다 — 브랜드 행의 min_stock 은 0 이고
+    //   실제 임계치는 **매장 오버레이**에 있다. 브랜드 쪽은 전부 뽑아 effective 로 거른다.
+    let ownershipOr;
     if (req.buyerEntity.type === 'restaurant') {
-      ownershipWhere.restaurant_id = req.buyerEntity.id;
+      const brandId = await parentBrandIdOf(req.buyerEntity.id);
+      ownershipOr = [
+        { restaurant_id: req.buyerEntity.id, min_stock: { [Op.gt]: 0 } },
+        ...(brandId ? [{ owner_type: 'brand', brand_id: brandId }] : [])
+      ];
     } else if (req.buyerEntity.type === 'brand') {
-      ownershipWhere.brand_id = req.buyerEntity.id;
+      ownershipOr = [{ brand_id: req.buyerEntity.id, min_stock: { [Op.gt]: 0 } }];
     } else {
       // foodcourt: no foodcourt_id on Ingredient — return empty
       return res.json({ success: true, data: { groups: [] } });
@@ -359,17 +368,32 @@ router.get('/purchase-orders/suggestions', async (req, res) => {
 
     const ingredients = await Ingredient.findAll({
       where: {
-        ...ownershipWhere,
+        [Op.or]: ownershipOr,
         is_active: true,
-        track_stock: true,
-        min_stock: { [Op.gt]: 0 }
+        track_stock: true
       }
     });
 
+    // 브랜드 재료의 재고·임계치는 이 매장의 오버레이가 진실 (지점마다 발주점이 다르다)
+    const sugOverlay = req.buyerEntity.type === 'restaurant'
+      ? await overlayMapFor(req.buyerEntity.id, ingredients.filter(i => i.owner_type === 'brand').map(i => i.id))
+      : {};
+    const effOf = (ing) => {
+      const isBrandShared = req.buyerEntity.type === 'restaurant' && ing.owner_type === 'brand';
+      const overlay = isBrandShared ? sugOverlay[ing.id] : null;
+      const eff = effectiveSettings(ing, overlay);
+      return {
+        isBrandShared,
+        cur: isBrandShared
+          ? (overlay ? parseFloat(overlay.current_stock) || 0 : 0)
+          : (parseFloat(ing.current_stock) || 0),
+        min: parseFloat(eff.min_stock) || 0
+      };
+    };
+
     const lowIngredients = ingredients.filter(ing => {
-      const cur = parseFloat(ing.current_stock) || 0;
-      const min = parseFloat(ing.min_stock) || 0;
-      return cur < min;
+      const { cur, min } = effOf(ing);
+      return min > 0 && cur < min;
     });
 
     if (lowIngredients.length === 0) {
@@ -398,8 +422,7 @@ router.get('/purchase-orders/suggestions', async (req, res) => {
     // Build suggestion entries grouped by seller
     const groups = {};
     for (const ing of lowIngredients) {
-      const cur = parseFloat(ing.current_stock) || 0;
-      const min = parseFloat(ing.min_stock) || 0;
+      const { cur, min, isBrandShared } = effOf(ing);
       const suggested = Math.max(0, Math.round(((min * 1.5) - cur) * 100) / 100);
       const seller = preferredByIng[ing.id] || null;
 
@@ -420,9 +443,11 @@ router.get('/purchase-orders/suggestions', async (req, res) => {
           id: ing.id,
           name: ing.name,
           unit: ing.unit,
-          current_stock: parseFloat(ing.current_stock) || 0,
-          min_stock: parseFloat(ing.min_stock) || 0
+          current_stock: cur,   // 브랜드 재료면 이 매장의 오버레이 재고
+          min_stock: min,       // 브랜드 재료면 이 매장의 임계치
+          owner_type: ing.owner_type
         },
+        is_brand_shared: isBrandShared,
         suggested_qty: suggested,
         seller_source: seller ? {
           id: seller.id,

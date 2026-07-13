@@ -42,7 +42,9 @@ const SettingsModal: React.FC<Props> = ({
     {ingredient && (
       <>
         <InfoBox>
-          Configure PAR Level calculation parameters and manual usage settings.
+          {ingredient.is_brand_shared
+            ? 'Item definition (name, unit, suppliers) is managed by your brand. These PAR settings apply to this store only.'
+            : 'Configure PAR Level calculation parameters and manual usage settings.'}
         </InfoBox>
 
         <div style={{ marginBottom: '16px', padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>

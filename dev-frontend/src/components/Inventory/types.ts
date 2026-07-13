@@ -65,7 +65,10 @@ export interface ReorderSuggestion {
     unit: string;
     unit_cost: number;
     category: string;
+    owner_type?: 'brand' | 'restaurant' | 'foodcourt';
   };
+  /** 브랜드 표준 재료 — 재고·PAR 은 이 매장 기준, 재료 정의는 브랜드 소유 */
+  is_brand_shared?: boolean;
   current_stock: number;
   min_stock: number;
   avg_daily_usage: number;

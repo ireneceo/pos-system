@@ -558,13 +558,12 @@ const StockListSection: React.FC<Props> = ({
                     >
                       Waste
                     </Button>
-                    {/* 브랜드 표준 재료는 재료 정의(설정·삭제)를 브랜드가 소유한다 — 매장은 재고만 다룬다.
-                        재고 입고/폐기/조정은 매장별 오버레이라 그대로 허용. */}
-                    {!item.is_brand_shared && (
-                      <SettingsButton onClick={() => onSettings(item)}>
-                        Settings
-                      </SettingsButton>
-                    )}
+                    {/* 재료 **정의**(이름·단위·공급처·삭제)는 브랜드 소유 → 매장에서 못 고친다.
+                        하지만 **PAR 설정**(최소재고·리드타임·사용량)은 매장별이다 — 지점마다 회전율이
+                        달라 발주점이 같을 수 없다(프랜차이즈 표준). Settings 는 브랜드 재료에도 연다. */}
+                    <SettingsButton onClick={() => onSettings(item)}>
+                      Settings
+                    </SettingsButton>
                     {!item.is_brand_shared && (
                     <DeleteButton onClick={() => onDelete({ type: 'ingredient', id: item.id, name: item.name })}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

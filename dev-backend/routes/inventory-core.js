@@ -20,8 +20,15 @@ async function getRestaurantCostMap(restaurantId) {
 }
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 // 브랜드 공유 재료 접근·재고 규칙의 단일 소스 (docs/BRAND_STOCK_SHARING_DESIGN.md)
-const { readableIngredient, stockFor, stockMapFor, applyStock } = require('../utils/brandStockAccess');
+const { readableIngredient, stockFor, stockMapFor, overlayMapFor, effectiveSettings, applyStock, parentBrandIdOf } = require('../utils/brandStockAccess');
 const { checkAndCreateAlert } = require('../utils/stockAlerts');
+
+/**
+ * 실사가 이 매장 소유인지 — URL 의 :restaurantId 는 checkRestaurantAccess 가 보지만,
+ * :stockTakeId 가 그 매장 것인지는 아무도 안 봤다(남의 매장 실사를 열람·수정·완료·취소 가능).
+ */
+const stockTakeBelongsTo = (stockTake, restaurantId) =>
+  !!stockTake && parseInt(stockTake.restaurant_id, 10) === parseInt(restaurantId, 10);
 
 /**
  * 이 매장이 다룰 수 있는 재료인가 — 자기 재료 ∪ 부모 브랜드 재료.
@@ -118,8 +125,9 @@ router.get('/:restaurantId/inventory', async (req, res) => {
       }
     }
 
-    // 브랜드 공유 재료의 실재고는 매장 오버레이가 단일 소스 (브랜드 행의 current_stock 이 아님)
-    const brandStockMap = await stockMapFor(
+    // 브랜드 공유 재료의 실재고·PAR 은 매장 오버레이가 단일 소스 (브랜드 행 값이 아님).
+    // PAR(min_stock/리드타임/사용량)이 매장별인 이유: 지점마다 좌석·회전율이 달라 발주점이 같을 수 없다.
+    const brandOverlay = await overlayMapFor(
       restaurantId,
       ingredients.filter(i => i.owner_type === 'brand').map(i => i.id)
     );
@@ -127,10 +135,12 @@ router.get('/:restaurantId/inventory', async (req, res) => {
     // Add stock status
     ingredients = ingredients.map(ing => {
       const isBrandShared = ing.owner_type === 'brand';
+      const overlay = isBrandShared ? brandOverlay[ing.id] : null;
+      const eff = effectiveSettings(ing, overlay);       // 브랜드 기본값 + 매장 오버라이드
       const currentStock = isBrandShared
-        ? (brandStockMap[ing.id] || 0)
+        ? (overlay ? parseFloat(overlay.current_stock) || 0 : 0)
         : (parseFloat(ing.current_stock) || 0);
-      const minStock = parseFloat(ing.min_stock) || 0;
+      const minStock = parseFloat(eff.min_stock) || 0;
 
       let stockStatus = 'normal';
       if (currentStock <= 0) {
@@ -141,9 +151,9 @@ router.get('/:restaurantId/inventory', async (req, res) => {
 
       const onOrder = onOrderMap[ing.id] || null;
       return {
-        ...ing.toJSON(),
+        ...eff,                                          // 재료 정의 + 이 매장의 유효 PAR
         current_stock: currentStock,
-        is_brand_shared: isBrandShared, // 프론트: Brand 배지 + 재료 자체 편집 차단
+        is_brand_shared: isBrandShared, // 프론트: Brand 배지 (재료 정의는 여전히 읽기전용)
         read_only: isBrandShared,
         stock_status: stockStatus,
         on_order_quantity: onOrder ? onOrder.qty : 0,
@@ -187,18 +197,21 @@ router.get('/:restaurantId/inventory/summary', async (req, res) => {
     let lowStockCount = 0;
     let outOfStockCount = 0;
 
-    // 브랜드 공유 재료의 재고는 매장 오버레이가 단일 소스 — 브랜드 행으로 집계하면 부족/품절 수가 왜곡된다
-    const summaryStockMap = await stockMapFor(
+    // 브랜드 공유 재료의 재고·임계치는 매장 오버레이가 단일 소스 — 브랜드 행으로 집계하면
+    // 부족/품절 수가 왜곡된다(지점마다 재고도 발주점도 다르다)
+    const summaryOverlay = await overlayMapFor(
       restaurantId,
       ingredients.filter(i => i.owner_type === 'brand').map(i => i.id)
     );
 
     ingredients.forEach(ing => {
       totalItems++;
+      const ov = ing.owner_type === 'brand' ? summaryOverlay[ing.id] : null;
+      const effS = effectiveSettings(ing, ov);
       const currentStock = ing.owner_type === 'brand'
-        ? (summaryStockMap[ing.id] || 0)
+        ? (ov ? parseFloat(ov.current_stock) || 0 : 0)
         : (parseFloat(ing.current_stock) || 0);
-      const minStock = parseFloat(ing.min_stock) || 0;
+      const minStock = parseFloat(effS.min_stock) || 0;
 
       if (currentStock <= 0) {
         outOfStockCount++;
@@ -717,20 +730,38 @@ router.post('/:restaurantId/stock-takes', async (req, res) => {
       created_by: userId
     }, { transaction });
 
-    // Get all active ingredients and create stock take items
+    // 실사 대상 = 내 재료 ∪ 부모 브랜드 표준 재료 (브랜드 쪽은 track_stock 만 —
+    // 추적 안 하는 재료는 세어봐야 applyStock 이 기록을 스킵해 조용히 버려진다).
+    const brandId = await parentBrandIdOf(restaurantId, transaction);
     const ingredients = await Ingredient.findAll({
-      where: { restaurant_id: restaurantId, is_active: true }
+      where: {
+        is_active: true,
+        [Op.or]: [
+          { restaurant_id: restaurantId },
+          ...(brandId ? [{ owner_type: 'brand', brand_id: brandId, track_stock: true }] : [])
+        ]
+      },
+      transaction
     });
 
     // 레스토랑 코스트 오버라이드 맵 조회
     const costMap = await getRestaurantCostMap(restaurantId);
+    // 브랜드 재료의 기대재고는 브랜드 행이 아니라 **이 매장의 오버레이**가 진실이다
+    const takeStockMap = await stockMapFor(
+      restaurantId,
+      ingredients.filter(i => i.owner_type === 'brand').map(i => i.id),
+      transaction
+    );
 
     for (const ing of ingredients) {
       const effectiveCost = costMap[ing.id] !== undefined ? costMap[ing.id] : (parseFloat(ing.unit_cost) || 0);
+      const theoretical = ing.owner_type === 'brand'
+        ? (takeStockMap[ing.id] || 0)
+        : (parseFloat(ing.current_stock) || 0);
       await StockTakeItem.create({
         stock_take_id: stockTake.id,
         ingredient_id: ing.id,
-        theoretical_stock: parseFloat(ing.current_stock) || 0,
+        theoretical_stock: theoretical,
         unit_cost: effectiveCost
       }, { transaction });
     }
@@ -750,7 +781,7 @@ router.post('/:restaurantId/stock-takes', async (req, res) => {
         include: [{
           model: Ingredient,
           as: 'ingredient',
-          attributes: ['id', 'name', 'unit', 'category']
+          attributes: ['id', 'name', 'unit', 'category', 'owner_type']
         }]
       }]
     });
@@ -766,7 +797,7 @@ router.post('/:restaurantId/stock-takes', async (req, res) => {
 // GET /api/restaurants/:restaurantId/stock-takes/:stockTakeId - 실사 상세
 router.get('/:restaurantId/stock-takes/:stockTakeId', async (req, res) => {
   try {
-    const { stockTakeId } = req.params;
+    const { restaurantId, stockTakeId } = req.params;
 
     const stockTake = await StockTake.findByPk(stockTakeId, {
       include: [{
@@ -775,12 +806,12 @@ router.get('/:restaurantId/stock-takes/:stockTakeId', async (req, res) => {
         include: [{
           model: Ingredient,
           as: 'ingredient',
-          attributes: ['id', 'name', 'unit', 'category']
+          attributes: ['id', 'name', 'unit', 'category', 'owner_type']
         }]
       }]
     });
 
-    if (!stockTake) {
+    if (!stockTakeBelongsTo(stockTake, restaurantId)) {
       return res.status(404).json({ success: false, message: 'Stock take not found' });
     }
 
@@ -794,11 +825,14 @@ router.get('/:restaurantId/stock-takes/:stockTakeId', async (req, res) => {
 // PUT /api/restaurants/:restaurantId/stock-takes/:stockTakeId/items - 실사 항목 업데이트
 router.put('/:restaurantId/stock-takes/:stockTakeId/items', async (req, res) => {
   try {
-    const { stockTakeId } = req.params;
+    const { restaurantId, stockTakeId } = req.params;
     const { items } = req.body; // [{ id, actual_stock, variance_reason, notes }]
 
     const stockTake = await StockTake.findByPk(stockTakeId);
-    if (!stockTake || stockTake.status !== 'in_progress') {
+    if (!stockTakeBelongsTo(stockTake, restaurantId)) {
+      return res.status(404).json({ success: false, message: 'Stock take not found' });
+    }
+    if (stockTake.status !== 'in_progress') {
       return res.status(400).json({ success: false, message: 'Stock take not found or not in progress' });
     }
 
@@ -807,7 +841,8 @@ router.put('/:restaurantId/stock-takes/:stockTakeId/items', async (req, res) => 
       if (isNaN(actualStock)) continue;
 
       const stockTakeItem = await StockTakeItem.findByPk(item.id);
-      if (!stockTakeItem) continue;
+      // 이 실사에 속한 항목만 — 남의 실사 항목 id 를 섞어 보내는 것을 막는다
+      if (!stockTakeItem || parseInt(stockTakeItem.stock_take_id, 10) !== parseInt(stockTake.id, 10)) continue;
 
       const variance = parseFloat(stockTakeItem.theoretical_stock) - actualStock;
       const varianceValue = variance * parseFloat(stockTakeItem.unit_cost);
@@ -830,7 +865,7 @@ router.put('/:restaurantId/stock-takes/:stockTakeId/items', async (req, res) => 
         include: [{
           model: Ingredient,
           as: 'ingredient',
-          attributes: ['id', 'name', 'unit', 'category']
+          attributes: ['id', 'name', 'unit', 'category', 'owner_type']
         }]
       }]
     });
@@ -854,7 +889,11 @@ router.post('/:restaurantId/stock-takes/:stockTakeId/complete', async (req, res)
       include: [{ model: StockTakeItem, as: 'items' }]
     });
 
-    if (!stockTake || stockTake.status !== 'in_progress') {
+    if (!stockTakeBelongsTo(stockTake, restaurantId)) {
+      await transaction.rollback();
+      return res.status(404).json({ success: false, message: 'Stock take not found' });
+    }
+    if (stockTake.status !== 'in_progress') {
       await transaction.rollback();
       return res.status(400).json({ success: false, message: 'Stock take not found or not in progress' });
     }
@@ -886,12 +925,20 @@ router.post('/:restaurantId/stock-takes/:stockTakeId/complete', async (req, res)
         totalVarianceValue += varianceValue;
       }
 
-      // Update ingredient stock to actual stock
-      await Ingredient.update({
-        current_stock: item.actual_stock,
-        last_actual_stock: item.actual_stock,
-        last_stock_take_at: new Date()
-      }, { where: { id: item.ingredient_id }, transaction });
+      // 재고 반영 — 브랜드 표준 재료는 **이 매장의 오버레이**에만(공유 행을 덮으면 형제 매장 오염).
+      // 재료 1회만 조회해 unit 까지 재사용(예전엔 트랜잭션 로그용으로 또 조회했다).
+      const ing = await Ingredient.findByPk(item.ingredient_id, { transaction });
+      if (ing) {
+        if (ing.owner_type === 'brand') {
+          await applyStock(ing, restaurantId, item.actual_stock, transaction, { stockTake: true, recordActual: true });
+        } else {
+          await Ingredient.update({
+            current_stock: item.actual_stock,
+            last_actual_stock: item.actual_stock,
+            last_stock_take_at: new Date()
+          }, { where: { id: item.ingredient_id }, transaction });
+        }
+      }
 
       // Create transaction record for adjustment
       if (variance !== 0) {
@@ -900,7 +947,7 @@ router.post('/:restaurantId/stock-takes/:stockTakeId/complete', async (req, res)
           ingredient_id: item.ingredient_id,
           transaction_type: 'stock_take',
           quantity_change: -variance, // Negative if theoretical > actual
-          unit: (await Ingredient.findByPk(item.ingredient_id)).unit,
+          unit: ing ? ing.unit : null,
           stock_after: item.actual_stock,
           stock_take_id: stockTakeId,
           notes: `Stock take adjustment - Reason: ${item.variance_reason || 'not specified'}`,
@@ -935,7 +982,7 @@ router.post('/:restaurantId/stock-takes/:stockTakeId/complete', async (req, res)
         include: [{
           model: Ingredient,
           as: 'ingredient',
-          attributes: ['id', 'name', 'unit', 'category']
+          attributes: ['id', 'name', 'unit', 'category', 'owner_type']
         }]
       }]
     });
@@ -951,10 +998,13 @@ router.post('/:restaurantId/stock-takes/:stockTakeId/complete', async (req, res)
 // POST /api/restaurants/:restaurantId/stock-takes/:stockTakeId/cancel - 실사 취소
 router.post('/:restaurantId/stock-takes/:stockTakeId/cancel', async (req, res) => {
   try {
-    const { stockTakeId } = req.params;
+    const { restaurantId, stockTakeId } = req.params;
 
     const stockTake = await StockTake.findByPk(stockTakeId);
-    if (!stockTake || stockTake.status !== 'in_progress') {
+    if (!stockTakeBelongsTo(stockTake, restaurantId)) {
+      return res.status(404).json({ success: false, message: 'Stock take not found' });
+    }
+    if (stockTake.status !== 'in_progress') {
       return res.status(400).json({ success: false, message: 'Stock take not found or not in progress' });
     }
 
@@ -979,20 +1029,43 @@ router.get('/:restaurantId/inventory/reorder-suggestions', async (req, res) => {
   try {
     const { restaurantId } = req.params;
 
+    // 제안 대상 = 내 재료 ∪ 부모 브랜드 표준 재료 (브랜드 쪽은 track_stock 만)
+    const reorderBrandId = await parentBrandIdOf(restaurantId);
     const ingredients = await Ingredient.findAll({
-      where: { restaurant_id: restaurantId, is_active: true }
+      where: {
+        is_active: true,
+        [Op.or]: [
+          { restaurant_id: restaurantId },
+          ...(reorderBrandId ? [{ owner_type: 'brand', brand_id: reorderBrandId, track_stock: true }] : [])
+        ]
+      }
     });
 
     // 레스토랑 코스트 오버라이드 맵 조회
     const costMap = await getRestaurantCostMap(restaurantId);
+    // 브랜드 재료의 재고·PAR 은 **이 매장의 오버레이**가 진실 (지점마다 회전율이 다르다)
+    const reorderOverlay = await overlayMapFor(
+      restaurantId,
+      ingredients.filter(i => i.owner_type === 'brand').map(i => i.id)
+    );
 
     const suggestions = [];
 
     for (const ing of ingredients) {
-      const currentStock = parseFloat(ing.current_stock) || 0;
-      const minStock = parseFloat(ing.min_stock) || 0;
-      const avgDailyUsage = parseFloat(ing.avg_daily_usage) || 0;
-      const leadTimeDays = ing.lead_time_days || 2;
+      const isBrandShared = ing.owner_type === 'brand';
+      const overlay = isBrandShared ? reorderOverlay[ing.id] : null;
+      const eff = effectiveSettings(ing, overlay);
+
+      const currentStock = isBrandShared
+        ? (overlay ? parseFloat(overlay.current_stock) || 0 : 0)
+        : (parseFloat(ing.current_stock) || 0);
+      const minStock = parseFloat(eff.min_stock) || 0;
+      // 수동 입력 사용량이 있으면 그것이 우선 — par-level 은 이미 manual 우선인데 발주 제안만
+      // avg 만 봐서 Settings 의 수동값이 무시되던 불일치를 통일한다(매장 재료에도 동일 적용).
+      const avgDailyUsage = eff.manual_daily_usage != null
+        ? (parseFloat(eff.manual_daily_usage) || 0)
+        : (parseFloat(eff.avg_daily_usage) || 0);
+      const leadTimeDays = eff.lead_time_days || 2;
       const effectiveCost = costMap[ing.id] !== undefined ? costMap[ing.id] : parseFloat(ing.unit_cost);
 
       // 발주점 = (일평균 사용량 × 리드타임) + 안전재고
@@ -1011,8 +1084,10 @@ router.get('/:restaurantId/inventory/reorder-suggestions', async (req, res) => {
               name: ing.name,
               unit: ing.unit,
               unit_cost: effectiveCost,
-              category: ing.category
+              category: ing.category,
+              owner_type: ing.owner_type
             },
+            is_brand_shared: isBrandShared,
             current_stock: currentStock,
             min_stock: minStock,
             avg_daily_usage: avgDailyUsage,

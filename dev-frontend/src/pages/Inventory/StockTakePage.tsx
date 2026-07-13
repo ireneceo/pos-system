@@ -34,6 +34,7 @@ interface StockTakeItem {
     name: string;
     unit: string;
     category: string;
+    owner_type?: 'brand' | 'restaurant' | 'foodcourt';  // brand = 브랜드 표준 재료(정의는 브랜드 소유)
   };
 }
 
@@ -261,6 +262,20 @@ const HistoryDate = styled.div`
 const HistoryMeta = styled.div`
   font-size: 13px;
   color: #4B5563;
+`;
+
+/** 브랜드 표준 재료 표식 — 실사 수량은 이 매장 것이지만 재료 정의는 브랜드 소유. */
+const BrandTag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #F3F4F6;
+  color: #4B5563;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -600,7 +615,12 @@ const StockTakePage: React.FC = () => {
                     </CategoryHeader>
                     {items.map(item => (
                       <tr key={item.id}>
-                        <td>{item.ingredient?.name || '-'}</td>
+                        <td>
+                          {item.ingredient?.name || '-'}
+                          {item.ingredient?.owner_type === 'brand' && (
+                            <BrandTag title="Stock item defined by your brand">Brand</BrandTag>
+                          )}
+                        </td>
                         <td>{item.ingredient?.unit || '-'}</td>
                         <td>{item.theoretical_stock}</td>
                         <td>

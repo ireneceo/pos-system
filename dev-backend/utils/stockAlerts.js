@@ -7,6 +7,7 @@
  * 사본을 늘리지 말고 여기 하나만 쓴다.
  */
 const { Ingredient, StockAlert } = require('../models');
+const { effectiveMinStock } = require('./brandStockAccess');
 
 /**
  * 재고 변동 후 알림 상태를 맞춘다.
@@ -21,7 +22,8 @@ async function checkAndCreateAlert(ingredientId, restaurantId, newStock, transac
   const ingredient = await Ingredient.findByPk(ingredientId);
   if (!ingredient) return;
 
-  const minStock = parseFloat(ingredient.min_stock) || 0;
+  // 임계치도 매장별 — 브랜드 재료면 이 매장의 오버라이드가 우선(지점마다 발주점이 다르다)
+  const minStock = await effectiveMinStock(ingredient, restaurantId, transaction);
   const currentStock = newStock;
 
   const existingAlert = await StockAlert.findOne({

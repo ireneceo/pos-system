@@ -6,7 +6,7 @@
 const { Op } = require('sequelize');
 const database = require('../config/database');
 // 브랜드 공유 재료의 재고는 매장별 오버레이가 단일 소스 (docs/BRAND_STOCK_SHARING_DESIGN.md)
-const { stockFor, applyStock } = require('../utils/brandStockAccess');
+const { stockFor, applyStock, effectiveMinStock } = require('../utils/brandStockAccess');
 const {
   Product,
   Recipe,
@@ -250,7 +250,8 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
               restaurantId,
               ingredient.id,
               newStock,
-              parseFloat(ingredient.min_stock) || 0,
+              // 임계치는 매장별 — 브랜드 재료면 이 매장의 오버라이드가 우선
+              await effectiveMinStock(ingredient, restaurantId, transaction),
               transaction
             );
 
@@ -300,7 +301,7 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
               created_by: null
             }, { transaction });
 
-            await checkAndCreateAlert(restaurantId, oi.ingredient.id, oiNewStock, parseFloat(oi.ingredient.min_stock) || 0, transaction);
+            await checkAndCreateAlert(restaurantId, oi.ingredient.id, oiNewStock, await effectiveMinStock(oi.ingredient, restaurantId, transaction), transaction);
 
             results.deductions.push({
               ingredient_id: oi.ingredient.id,

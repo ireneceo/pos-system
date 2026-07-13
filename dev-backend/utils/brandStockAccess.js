@@ -103,7 +103,12 @@ async function stockMapFor(restaurantId, ingredientIds, transaction) {
 async function applyStock(ing, restaurantId, newStock, transaction, opts = {}) {
   if (ing.track_stock === false) return parseFloat(ing.current_stock) || 0;
   const rounded = Math.round((parseFloat(newStock) || 0) * 100) / 100;
-  const stamp = opts.stockTake ? { last_stock_take_at: new Date() } : {};
+  // recordActual = 실사로 확정된 값(last_actual_stock 까지 기록). 입고/PO 입고는 stockTake 만 찍던
+  // 기존 동작 그대로 — 그 호출부를 건드리지 않으려고 옵션을 분리했다.
+  const stamp = {
+    ...(opts.stockTake ? { last_stock_take_at: new Date() } : {}),
+    ...(opts.recordActual ? { last_actual_stock: rounded } : {}),
+  };
 
   if (ing.owner_type === 'brand') {
     const [row] = await RestaurantIngredientStock.findOrCreate({
@@ -119,6 +124,74 @@ async function applyStock(ing, restaurantId, newStock, transaction, opts = {}) {
   return rounded;
 }
 
+/** 매장 id → { ingredient_id: 오버레이 row } (재고 + PAR 오버라이드를 한 번에). */
+async function overlayMapFor(restaurantId, ingredientIds, transaction) {
+  const map = {};
+  if (!ingredientIds || !ingredientIds.length) return map;
+  const rows = await RestaurantIngredientStock.findAll({
+    where: { restaurant_id: restaurantId, ingredient_id: ingredientIds },
+    transaction,
+  });
+  rows.forEach((r) => { map[r.ingredient_id] = r; });
+  return map;
+}
+
+/** PAR 오버라이드 대상 필드 (NULL = 브랜드 기본값 상속). */
+const SETTING_FIELDS = [
+  'min_stock', 'min_order', 'lead_time_days', 'safety_stock_percent',
+  'manual_daily_usage', 'avg_daily_usage', 'prediction_confidence',
+  'last_actual_stock', 'last_stock_take_at',
+];
+
+/**
+ * 이 매장에서 유효한 설정값 — 브랜드 재료면 오버레이가 있는 필드만 덮고 나머지는 브랜드 기본값.
+ * ⚠ 0 은 유효한 오버라이드다 → `!= null` 로만 판정(falsy 판정 금지: min_stock 0 이 상속으로 오인된다).
+ */
+function effectiveSettings(ing, overlayRow) {
+  const base = typeof ing.toJSON === 'function' ? ing.toJSON() : { ...ing };
+  if (ing.owner_type !== 'brand' || !overlayRow) return base;
+  const o = typeof overlayRow.toJSON === 'function' ? overlayRow.toJSON() : overlayRow;
+  for (const f of SETTING_FIELDS) {
+    if (o[f] != null) base[f] = o[f];
+  }
+  return base;
+}
+
+/** 알림·발주점이 쓰는 이 매장의 최소재고 (브랜드 재료면 오버레이 우선). */
+async function effectiveMinStock(ing, restaurantId, transaction) {
+  if (!ing) return 0;
+  if (ing.owner_type !== 'brand') return parseFloat(ing.min_stock) || 0;
+  const row = await RestaurantIngredientStock.findOne({
+    where: { restaurant_id: restaurantId, ingredient_id: ing.id },
+    transaction,
+  });
+  if (row && row.min_stock != null) return parseFloat(row.min_stock) || 0;
+  return parseFloat(ing.min_stock) || 0;
+}
+
+/**
+ * 설정 저장 — 브랜드 재료면 매장 오버레이에, 매장 재료면 재료 행에.
+ * patch 의 `undefined` 필드는 건너뛰고, 명시적 `null` 은 "상속으로 되돌리기"로 저장한다.
+ */
+async function applySettings(ing, restaurantId, patch, transaction) {
+  const clean = {};
+  for (const [k, v] of Object.entries(patch || {})) {
+    if (v !== undefined) clean[k] = v;
+  }
+  if (!Object.keys(clean).length) return;
+
+  if (ing.owner_type === 'brand') {
+    const [row] = await RestaurantIngredientStock.findOrCreate({
+      where: { restaurant_id: restaurantId, ingredient_id: ing.id },
+      defaults: { restaurant_id: restaurantId, ingredient_id: ing.id, current_stock: 0 },
+      transaction,
+    });
+    await row.update(clean, { transaction });
+    return;
+  }
+  await ing.update(clean, { transaction });
+}
+
 module.exports = {
   parentBrandIdOf,
   isBrandSharedFor,
@@ -126,5 +199,10 @@ module.exports = {
   writableIngredient,
   stockFor,
   stockMapFor,
+  overlayMapFor,
+  effectiveSettings,
+  effectiveMinStock,
+  applySettings,
   applyStock,
+  SETTING_FIELDS,
 };

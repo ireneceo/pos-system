@@ -4,7 +4,7 @@ const { Op } = require('sequelize');
 const database = require('../config/database');
 const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch, GeneralStock, GeneralStockTransaction, Supplier, RestaurantIngredientCost } = require('../models');
 const { getStartOfMonth, getRestaurantTimezone } = require('../utils/dateTimeHelper');
-const { readableIngredient, writableIngredient, stockFor, applyStock } = require('../utils/brandStockAccess');
+const { readableIngredient, writableIngredient, stockFor, applyStock, applySettings, overlayMapFor, effectiveSettings } = require('../utils/brandStockAccess');
 const { checkAndCreateAlert } = require('../utils/stockAlerts');
 
 // 레스토랑의 코스트 오버라이드 맵 조회 헬퍼
@@ -360,10 +360,14 @@ router.get('/:restaurantId/inventory/:ingredientId/par-level', async (req, res) 
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
 
+    // PAR 은 매장별 — 브랜드 재료면 오버레이 오버라이드가 브랜드 기본값을 덮는다
+    const parOverlay = (await overlayMapFor(restaurantId, [parseInt(ingredientId, 10)]))[ingredientId];
+    const eff = effectiveSettings(ingredient, parOverlay);
+
     // Get daily usage (from manual setting or calculated)
-    const dailyUsage = parseFloat(ingredient.manual_daily_usage) || parseFloat(ingredient.avg_daily_usage) || 0;
-    const leadTimeDays = parseInt(ingredient.lead_time_days) || 1;
-    const safetyStockPercent = parseFloat(ingredient.safety_stock_percent) || 20;
+    const dailyUsage = parseFloat(eff.manual_daily_usage) || parseFloat(eff.avg_daily_usage) || 0;
+    const leadTimeDays = parseInt(eff.lead_time_days) || 1;
+    const safetyStockPercent = parseFloat(eff.safety_stock_percent) || 20;
 
     // PAR Level = (Daily Usage × Lead Time) + Safety Stock
     const leadTimeUsage = dailyUsage * leadTimeDays;
@@ -393,8 +397,8 @@ router.get('/:restaurantId/inventory/:ingredientId/par-level', async (req, res) 
         par_level: parseFloat(parLevel.toFixed(2)),
         reorder_point: parseFloat(reorderPoint.toFixed(2)),
         suggested_order_qty: parseFloat(suggestedOrderQty.toFixed(2)),
-        prediction_confidence: ingredient.prediction_confidence || 'none',
-        data_source: ingredient.manual_daily_usage ? 'manual' : (ingredient.avg_daily_usage > 0 ? 'calculated' : 'none')
+        prediction_confidence: eff.prediction_confidence || 'none',
+        data_source: eff.manual_daily_usage != null ? 'manual' : (parseFloat(eff.avg_daily_usage) > 0 ? 'calculated' : 'none')
       }
     });
   } catch (error) {
@@ -409,19 +413,14 @@ router.put('/:restaurantId/inventory/:ingredientId/settings', async (req, res) =
     const { restaurantId, ingredientId } = req.params;
     const { lead_time_days, safety_stock_percent, manual_daily_usage, min_stock, min_order } = req.body;
 
-    // 소유권 — 재료 행 자체를 고치는 API 다. 예전엔 검사가 없어 남의 재료 id 로도 수정됐고(IDOR),
-    // 브랜드 표준 재료는 형제 매장이 공유하는 행이라 한 매장이 고치면 전 매장이 바뀐다.
-    // (재고 수량은 매장별 오버레이라 별개 — docs/BRAND_STOCK_SHARING_DESIGN.md)
+    // PAR 설정은 **매장별**이다 — 지점마다 좌석·회전율이 달라 발주점·리드타임이 같을 수 없다
+    // (프랜차이즈 표준: 본사가 재료를 표준화하고 PAR 은 지점이 정한다).
+    // 브랜드 표준 재료면 공유 행 대신 **매장 오버레이**에 저장한다(형제 매장 무영향).
+    // ⚠ 재료 정의(이름·단위·단가·공급처)는 여전히 브랜드 전용 — 그건 routes/ingredients.js 가 403.
     const buyer = { type: 'restaurant', id: parseInt(restaurantId, 10) };
-    const own = await writableIngredient(ingredientId, buyer);
-    if (!own) {
-      const shared = await readableIngredient(ingredientId, buyer);
-      return res.status(shared ? 403 : 404).json({
-        success: false,
-        message: shared
-          ? 'Brand-owned stock item is read-only. Ask the brand to change its settings.'
-          : 'Ingredient not found'
-      });
+    const target = await readableIngredient(ingredientId, buyer);
+    if (!target) {
+      return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
 
     const updateData = {};
@@ -431,10 +430,15 @@ router.put('/:restaurantId/inventory/:ingredientId/settings', async (req, res) =
     if (min_stock !== undefined) updateData.min_stock = min_stock;
     if (min_order !== undefined) updateData.min_order = min_order;
 
-    await Ingredient.update(updateData, { where: { id: ingredientId } });
+    await applySettings(target, restaurantId, updateData);
 
-    const ingredient = await Ingredient.findByPk(ingredientId);
-    res.json({ success: true, data: ingredient });
+    // 응답 = 이 매장의 유효값(브랜드 기본값 + 오버라이드)
+    const fresh = await Ingredient.findByPk(ingredientId);
+    const overlay = (await overlayMapFor(restaurantId, [parseInt(ingredientId, 10)]))[ingredientId];
+    res.json({
+      success: true,
+      data: { ...effectiveSettings(fresh, overlay), is_brand_shared: fresh.owner_type === 'brand' }
+    });
   } catch (error) {
     console.error('Update ingredient settings error:', error);
     res.status(500).json({ success: false, message: error.message });
@@ -477,6 +481,9 @@ router.post('/:restaurantId/inventory/calculate-usage', async (req, res) => {
       const transactions = await InventoryTransaction.findAll({
         where: {
           ingredient_id: ingredient.id,
+          // 브랜드 공유 재료는 형제 매장이 같은 ingredient_id 로 입고를 남긴다 →
+          // 매장 스코프가 없으면 남의 입고까지 합산돼 사용량이 부풀려진다
+          restaurant_id: restaurantId,
           transaction_type: 'purchase',
           created_at: { [Op.gte]: startDate }
         },
@@ -505,10 +512,12 @@ router.post('/:restaurantId/inventory/calculate-usage', async (req, res) => {
         }
       }
 
-      await Ingredient.update({
+      // 사용량은 매장별 값이다 — 브랜드 공유 행에 쓰면 **형제 매장 전부의 사용량이 덮인다**
+      // (이 경로가 이미 그렇게 오염시키고 있었다). applySettings 가 브랜드/매장 분기를 처리한다.
+      await applySettings(ingredient, restaurantId, {
         avg_daily_usage: avgDailyUsage,
         prediction_confidence: confidence
-      }, { where: { id: ingredient.id } });
+      });
 
       results.push({
         ingredient_id: ingredient.id,

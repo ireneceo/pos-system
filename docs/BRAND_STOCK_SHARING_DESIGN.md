@@ -191,3 +191,75 @@ Irene 지적 "Direct가 왜 Find Suppliers에 뜨고, 외부업체인데 왜 계
 4. 운영 잔재 정리: 테스트 행 `__EDIT_DELETE_TEST__`(supplier_companies) 제거
 
 > 확인된 사실: **외부업체는 유저 계정이 생기지 않는다.** 운영 외부업체 39곳 전부 `owner_id` NULL, 공급업체 역할 유저는 데모 1개뿐. (Irene 우려 → 실측으로 해소)
+
+---
+
+# 후속 ① — 브랜드 재료 실사 · 발주 제안 · 매장별 PAR (2026-07-13)
+
+설계·판정: **Fable** · 구현: Opus · 상태: dev 검증 완료
+
+> **한 줄**: 브랜드가 재료를 **표준화**하고, **PAR(발주점·리드타임·사용량)은 지점이 정한다.** 실사·발주 제안이 브랜드 재료를 포함하되 결과는 **그 매장에만** 반영된다.
+
+## 왜 매장별 PAR 인가 (Fable 판정 B)
+
+- **업계 표준**: 프랜차이즈 재고 시스템(Restaurant365·MarketMan·Toast 재고)은 예외 없이 "본사가 품목 카탈로그(정의·규격·공급처)를 표준화하고 **PAR/발주점은 지점별**"이다. 지점마다 좌석·회전율·배송 주기가 달라 소진 속도가 다르다. 본사 값은 **권장 초기값**의 의미만 갖는다.
+- 브랜드 PAR 을 그대로 쓰면(안 A) 10석 매장과 100석 매장이 같은 발주점으로 알림·제안을 받는다 → 한쪽은 소음, 한쪽은 결품.
+- 결정적으로 **`calculate-usage` 가 이미 브랜드 공유 행을 오염시키고 있었다** — 사용량 계산이 형제 매장 입고까지 합산하고 결과를 공유 행에 써서 **전 매장의 avg_daily_usage 를 덮었다.** 이걸 고치려면 어차피 매장별 저장소가 필요하다 → (B) 가 정답.
+
+## 스키마 — 기존 오버레이 확장 (새 테이블 없음)
+
+`restaurant_ingredient_stocks` 에 **nullable 오버라이드 컬럼 8개** 추가 (`NULL` = 브랜드 기본값 상속):
+`last_actual_stock` · `min_stock` · `min_order` · `lead_time_days` · `safety_stock_percent` · `manual_daily_usage` · `avg_daily_usage` · `prediction_confidence`
+
+- 오버레이 행 = "이 매장의, 이 브랜드 재료에 대한 로컬 상태"다. 재고량과 PAR 은 같은 `(restaurant_id, ingredient_id)` 단위 → 세 번째 테이블을 만들면 조인·findOrCreate 경로만 늘어난다. 기존 조회가 이미 이 테이블을 읽으므로 **추가 쿼리 0**.
+- **⚠ `0` 은 유효한 오버라이드다** — 상속 판정은 반드시 `!= null` 로. falsy 판정하면 `min_stock: 0` 이 상속으로 오인된다.
+- 마이그레이션은 기존 `migrate-restaurant-ingredient-stocks.js` 확장(멱등 ADD COLUMN). registry 재등록 불요.
+
+## 규칙 (단일 소스 = `utils/brandStockAccess.js`)
+
+| 헬퍼 | 역할 |
+|---|---|
+| `overlayMapFor` | 매장 오버레이 행 일괄 조회(재고 + PAR) |
+| `effectiveSettings(ing, overlay)` | 브랜드 기본값 + 매장 오버라이드 병합 |
+| `effectiveMinStock(ing, rid)` | 알림·발주점이 쓰는 이 매장 임계치 |
+| `applySettings(ing, rid, patch)` | 브랜드 재료 → 오버레이 / 매장 재료 → 재료 행 |
+| `applyStock(..., { recordActual })` | 실사 확정값(last_actual_stock)까지 기록 — 입고 경로는 기존대로 stockTake 만 |
+
+**재료 정의(이름·단위·단가·공급처·삭제)는 여전히 브랜드 전용(403).** 매장이 바꾸는 것은 **재고와 PAR 뿐**이다.
+
+## 바뀐 것
+
+| 영역 | 변경 |
+|---|---|
+| 실사 생성 | 대상 = 내 재료 ∪ 부모 브랜드 재료(track_stock). 기대재고 = **매장 오버레이** |
+| 실사 완료 | 브랜드 재료 → 오버레이에 반영(+`last_actual_stock`), 브랜드 행 불변 |
+| 실사 IDOR | detail·items·complete·cancel 4곳 + 교차 항목 조작 차단 (**기존 결함**) |
+| 발주 제안 | 브랜드 재료 포함 · 재고/PAR 은 매장 기준 · `is_brand_shared` 표식 |
+| 발주 제안 공식 | 수동 사용량이 있으면 우선(par-level 과 통일 — 기존엔 발주 제안만 avg 만 봐서 Settings 수동값이 무시됐다) |
+| 재고 목록·요약 | 부족/품절 판정이 **매장 임계치** 기준 |
+| PAR 설정 저장 | 브랜드 재료도 저장 가능(403 해제) → **오버레이에** 저장. 재료 정의는 여전히 403 |
+| `calculate-usage` | 트랜잭션 조회에 매장 스코프 추가 + 결과를 오버레이에 기록 (**형제 매장 오염 수정**) |
+| 알림 임계치 | `stockAlerts` + 주문 자동차감 2곳이 매장 임계치 사용 |
+| 프론트 | 브랜드 재료도 Settings 열림(안내 문구: 정의는 브랜드, PAR 은 이 매장) · 실사·발주제안에 `Brand` 표식 |
+
+## 검증 (dev 실호출 29/29)
+
+매장별 PAR 저장(브랜드 행 불변·형제 매장 무영향) · 목록/par-level/발주제안이 매장 PAR 사용 · 실사에 브랜드 재료 포함(기대재고=오버레이) · 완료 시 오버레이만 갱신 · 알림이 매장 임계치 기준 · 실사 IDOR 4종 404 · `calculate-usage` 가 브랜드 행 무변경 · 브랜드 재료 원본 완전 무변경.
+
+회귀 박제: health-check `pos` — 기존 1건 갱신(PAR 은 이제 200 + 브랜드 행 불변) + **신규 3건**(실사 포함·오버레이 반영 / 발주 제안 매장 PAR / 실사 IDOR) → **30/30**.
+
+## 발주 제안은 **두 곳**이다 (놓치기 쉬움)
+
+| 라우트 | 화면 |
+|---|---|
+| `GET /inventory/reorder-suggestions` | 재고관리 대시보드 제안 목록 |
+| `GET /purchase-orders/suggestions` | 재고관리 **Bulk Order 체크박스** + 발주 페이지 제안 패널 |
+
+**둘 다 브랜드 재료를 포함해야 한다.** 한쪽만 고치면 "부족하다고 뜨는데 담을 수가 없는" 반쪽이 된다(Fable 적발).
+⚠ `/purchase-orders/suggestions` 의 브랜드 분기에 **`min_stock > 0` SQL 필터를 걸면 안 된다** — 브랜드 행의 min_stock 은 0이고 실제 임계치는 매장 오버레이에 있다. 브랜드 쪽은 전부 뽑아 effective 값으로 거른다.
+
+## 알아둘 것 (경미)
+
+- `calculate-usage` 는 브랜드 재료마다 오버레이 행을 `findOrCreate` 한다(current_stock 0으로 생성 — 무해).
+- SettingsModal 에서 수동 사용량을 **비우면 `null` = 상속**이다. 브랜드가 값을 넣어둔 경우 매장이 "사용 안 함"을 표현하려면 **0을 입력**해야 한다(0은 유효한 오버라이드).
+- health-check 의 실사 회귀는 대상 매장의 자기 소유 재료에도 `last_stock_take_at`/`last_actual_stock` 스탬프를 남긴다(수량은 불변, 원복하지 않음).
