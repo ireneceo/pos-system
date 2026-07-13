@@ -1,6 +1,6 @@
 {
  "note": "운영 배포 시점 소스 지문 — deploy-to-production.sh 성공 후 자동 기록. 수동 편집 금지.",
- "created_at": "2026-07-13T07:53:19.718Z",
+ "created_at": "2026-07-13T09:54:29.939Z",
  "file_count": 1766,
  "files": {
   "CLAUDE.md": "827d4ef4c7c1d8872598dcfedd2d83f40cf6ba90c0f23be27bd132f68ed6ba6f",
@@ -344,7 +344,7 @@
   "dev-backend/routes/owner.js": "eb7f01499277d69451992a31ce73dd13c9b86509e8feb23e7fb6a1717f45ca21",
   "dev-backend/routes/payments.js": "82de43eeb506d2c8b34829f353ae7d0e37fd377f2480634f7a724aa4d6c4c94e",
   "dev-backend/routes/plans.js": "1cb2004a04117fa73046fd1e82754235988461eba956a207aab789f8cb993a42",
-  "dev-backend/routes/po-returns.js": "de315390e92c65d46d511eee95c2a4d31feaf61620295e625b2358048477bb93",
+  "dev-backend/routes/po-returns.js": "77cd80ab36caae3040b7c237ca51f56714192077ebabb5aa670c5a5844e95c12",
   "dev-backend/routes/print-events.js": "11f2774b3b339a50acc63ea2d6b9aa53001174b61fb86c3e314270b244471378",
   "dev-backend/routes/product-ingredient-categories.js": "19d6c855d189a8c0e2980cecd3fdb10fde0ed8c79bbd28906456eb66d6e18e29",
   "dev-backend/routes/product-ingredients.js": "217ec474cd84957a0bc2bdfbccd7006ca4155101df72c357e547d7d0bde002ec",
@@ -431,7 +431,7 @@
   "dev-backend/scripts/gen-og-image.js": "dc3e43bca04eaa3a2536ebdd2b1c9f373e3f7a5d9a22ebadcc5089882282df62",
   "dev-backend/scripts/generate-qz-cert.js": "b0ca6ac45359b38e11c76c79c5ec77df645eb2e3c83c3caae5840140a1b63fe8",
   "dev-backend/scripts/generate-slugs.js": "4357e3807c92347649a1902c3f3f12970a3865dddb0631937fa2e2505c841f3d",
-  "dev-backend/scripts/health-check.js": "855a300e6dd81698372ea3f7ba5da1342848fff0a422a200e7df7388d8983c3a",
+  "dev-backend/scripts/health-check.js": "844ebf8e5d6a8ae0539b44330e2170c833d89aa44738489d6f9e732424d5222a",
   "dev-backend/scripts/inspection/baseline.json": "95051bc9b581ea06cd331b0ac93155b15f890a23ebf8763891bd77ceeba3fd3e",
   "dev-backend/scripts/inspection/run.js": "56c38a0cbb5ab586fadf8f7f22bdecc2a3fca3bcd92443356616ad8a05ba2db6",
   "dev-backend/scripts/inspection/suites/order-integrity.js": "d2499616e03cb7e1f4fee53921642a89a55d3033113b07e825ce3c4db05abf71",

@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-12 #2 (**브랜드 재고 공유(프랜차이즈 표준 재료) 신규 기능 + 기존 IDOR 5개 봉쇄 — 운영 배포**. Irene "공급업체·스톡아이템도 브랜드에 연결하면 레시피처럼 공유돼서 매장으로 내려가야 한다. K-DINE with MIN 기준으로 제대로 연결되게." **Fable 구조판정 = C안**(내가 제안한 `product_ingredients` 통합은 **기각** — 그건 *본사 자체 구매 재고*로 브랜드 표준 재료와 성격이 다르고, 통합해도 K-DINE 은 계약 0건이라 발주가 안 됨). 정석 = **이미 있는 구조를 잇는다**: 브랜드 재료(`ingredients.owner_type='brand'`, 운영 270건)가 소속 매장에 **읽기전용**으로 내려가고 매장이 그걸로 **발주·입고·레시피**를 쓴다. 신규 테이블 1개(`restaurant_ingredient_stocks` = 매장별 실재고 오버레이 — 브랜드 공유 행의 current_stock 을 매장이 갱신하면 형제 매장 재고가 오염됨), **데이터 이관 0**. 접근 규칙 단일 소스 = `utils/brandStockAccess.js`. **K-DINE 이 막혀 있던 진짜 원인**: BG 가 primary 브랜드(brand 1)에 고정돼 **두 번째 브랜드(K-DINE=brand 2) 재료엔 공급처를 붙일 수조차 없었다**(`buyerScope`) → 소유 브랜드로 전환 허용(`Brand.owner_id` 검증, `isBrandManager` 와 동일 기준). **함께 봉쇄한 기존 결함**: `/inventory/receive`·`/deduct`·PAR settings·재료 PUT/DELETE 에 **소유권 검사가 아예 없어** 남의 매장 재료를 id 만으로 입고·차감·수정·삭제 가능(**IDOR 5개**) / 레시피에 아무 재료나 붙일 수 있어 **운영에 타 브랜드 재료 참조 1건 실재** / `/inventory/deduct` 는 헬퍼 유실로 **항상 500**(호출 화면이 없어 미발견) / 주문 차감·FIFO 배치가 매장 스코프 없이 브랜드 행을 깎아 **형제 매장 재고·배치 오염**(Fable P0 적발 — 이걸 안 고치고 배포했으면 입고=오버레이/차감=브랜드행 **이중장부**). **부록**: Direct→**External** 명칭 변경, Find Suppliers 에서 외부업체 제외(가입 업체 검색 전용), 외부업체 프로필의 계약 UI 제거(자동계약은 내부 장치일 뿐), 운영 테스트 잔재 1행 삭제. **발주 리스트 보기 재작성**: 카드 마크업을 grid 에 흘려넣어 가운데가 비고 열이 어긋나던 것 → 5열 전용 마크업 + **컨테이너 쿼리**(뷰포트가 아니라 리스트 실폭 — 카트 패널 때문에 1100px 창에서도 리스트는 490px) + 행높이 44px 균일, 토글은 POS Image/Compact 와 동일 디자인·우측정렬. 검증: 실호출 30/30 · health-check pos 27/27(회귀 6건 신규 박제) · verify-all 13/13 · Fable 최종 게이트 승인 · **운영 실검증 11/11**(주문→단계이동→결제→인쇄 계약 claim 1/5·재인쇄 0).)
+> **최종 업데이트:** 2026-07-13 (**운영 배포 3회 — 브랜드 재료 실사·발주제안·매장별 PAR / 발주 오너 승인 우회 봉인 + 판매자 유출 차단 / 반품 net 0 수정**. ①**브랜드 재료 실사·발주제안**: 실사에 브랜드 재료 포함(기대재고=매장 오버레이, 완료 시 오버레이만 갱신 → 브랜드 행·형제 매장 불변) + 발주 제안 **두 경로 모두**(대시보드 + 재고화면 Bulk Order — 한쪽만 고치면 "부족한데 담을 수 없는" 반쪽) + **매장별 PAR**(Fable 판정 B: 프랜차이즈 표준 = 본사가 재료를 표준화하고 PAR 은 지점이 정한다. `restaurant_ingredient_stocks` 에 nullable 컬럼 8개, NULL=브랜드 기본값 상속 → **배포 즉시 동작 변화 0**). 함께 **`calculate-usage` 가 형제 매장 입고까지 합산해 브랜드 공유 행을 덮던 오염** + **실사 IDOR 4곳**(남의 매장 실사 열람·조작·완료 가능) 봉인. ②**발주 오너 승인**: 요청 3건(승인 흐름·설정 토글·오너 프로필 노출)은 **이미 다 있었고**, 진짜 결함은 **승인 우회 3경로** — 일괄발주(Bulk Order)·외부업체 수동전송이 게이트를 통째로 건너뛰고, 승인 대기 발주를 입고로 끝낼 수 있었다 → `applySubmitGate` **단일 게이트**로 통일. 그리고 **draft(장바구니)·승인대기 발주가 판매자 포털에 그대로 노출**되던 것(소켓 실시간 갱신까지) 차단 — Fable 이 두 번 배포를 막고 세 번째에 GO. ③**반품 net 0**: 브랜드 판매자 반품 환원이 판매자 재고가 아니라 **구매자의 재료 행**을 올려 1단계 차감과 상쇄 → **반품해도 매장 재고가 안 줄고 본사 재고도 복구 안 됨**(실증: 20 → 20.00). 출고의 정확한 역방향(BrandProduct→BOM→ProductIngredient)으로 수정 + 환산 누락·원장 구멍·이중 승인 레이스·누적 초과 반품 차단. 운영 반품 0건 = 예방 수정. 전 건 **Fable 설계·검증 게이트** 통과, 운영 실검증 완료.)
 
 >
 > **이전:** 2026-07-12 (발주 신원 해석 단일화 + 배포 파이프라인 치명 결함 2개 — 운영 배포 3회)
@@ -8088,6 +8088,32 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-backend/middleware/buyerScope.js` · `dev-backend/services/inventoryDeductionService.js` · `dev-backend/scripts/health-check.js`
 - `dev-frontend/src/pages/PurchaseOrders/NewPurchaseOrderPage.tsx` · `RecipeManagement/IngredientsTab.tsx` · `SupplierDirectory/SupplierProfilePage.tsx` · `Suppliers/*` · `components/Inventory/*` · `components/Common/ConnectSellerModal.tsx` · i18n 4언어
 - `docs/BRAND_STOCK_SHARING_DESIGN.md` (신규 설계 문서)
+
+---
+
+## ✅ 완료: 브랜드 재료 실사·발주제안 / 발주 오너 승인 / 반품 net 0 (2026-07-13, 운영 배포 3회)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 브랜드 재료 실사 | 실사 대상에 브랜드 재료 포함, 완료 시 매장 오버레이만 갱신(브랜드 행·형제 매장 불변) | ✓ 완료 |
+| 발주 제안 (2경로) | 대시보드 + Bulk Order 체크박스 양쪽에 브랜드 재료 (한쪽만 고치면 반쪽 — Fable 적발) | ✓ 완료 |
+| 매장별 PAR | 최소재고·리드타임·사용량을 지점이 정한다 (NULL=브랜드 기본값 상속 → 배포 즉시 변화 0) | ✓ 완료 |
+| calculate-usage 오염 | 형제 매장 입고까지 합산해 브랜드 공유 행을 덮던 것 → 매장 스코프 + 오버레이 | ✓ 완료 |
+| 실사 IDOR | detail/items/complete/cancel 4곳이 실사의 매장 귀속 미검증 (남의 실사 조작 가능) | ✓ 완료 |
+| 발주 승인 우회 3경로 | 일괄발주·외부전송이 게이트 우회, 승인대기 발주를 입고로 종결 가능 → `applySubmitGate` 단일화 | ✓ 완료 |
+| 판매자 유출 차단 | draft(장바구니)·승인대기 발주가 판매자 포털에 노출 + 소켓 실시간 갱신 → 목록·상세·소켓 3지점 봉인 | ✓ 완료 |
+| 반품 net 0 | 브랜드 반품 환원이 구매자 재료 행을 되올려 상쇄 → 출고의 역방향(BOM→ProductIngredient)으로 수정 | ✓ 완료 |
+| 반품 부수 결함 | 환산 누락 · 원장 구멍 · 이중 승인 레이스 · 누적 초과 반품 | ✓ 완료 |
+
+### 수정된 파일
+- 백엔드: `routes/` — `inventory-core.js` · `inventory-extra.js` · `purchase-orders-crud.js` · `purchase-orders-workflow.js` · `po-returns.js` · `seller-orders.js` · `ingredients.js`
+- `utils/brandStockAccess.js`(설정 병합·오버레이) · `utils/poOwnerApproval.js`(`applySubmitGate`) · `utils/poShare.ts` · `services/poRealtimeService.js` · `services/inventoryDeductionService.js`
+- `models/RestaurantIngredientStock.js` + `scripts/migrate-restaurant-ingredient-stocks.js`(PAR 컬럼 8개, 멱등)
+- 프론트: `components/Inventory/*` · `pages/Inventory/StockTakePage.tsx` · `pages/PurchaseOrders/*` · `pages/Settings/SettingsPage.tsx`
+- `scripts/health-check.js` — 회귀 9건 신규 (pos 37/37)
+- 문서: `docs/BRAND_STOCK_SHARING_DESIGN.md`(후속 ①) · `docs/PURCHASE_ORDER_SYSTEM.md`(§G-5, §G-6)
 
 ---
 
