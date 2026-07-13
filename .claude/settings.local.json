@@ -1195,7 +1195,8 @@
       "Bash(scp -q /tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/prod-verify.js irene@87.106.78.146:/tmp/prod-verify.js)",
       "Bash(scp -q /tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/prod-verify.js irene@87.106.78.146:/var/www/production-backend/verify-tmp.js)",
       "Bash(NODE_PATH=/var/www/dev-backend/node_modules node /tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/fable-verify.js)",
-      "Bash(NODE_PATH=/var/www/dev-backend/node_modules node -e ' *)"
+      "Bash(NODE_PATH=/var/www/dev-backend/node_modules node -e ' *)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/prod-verify2.js irene@87.106.78.146:/var/www/production-backend/verify-tmp.js)"
     ],
     "deny": [],
     "ask": []
