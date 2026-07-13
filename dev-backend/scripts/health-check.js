@@ -936,6 +936,157 @@ function definePosTests({ adminToken }) {
   // 발주가 판매자에게 나가는 경로는 **세 곳**이다: submit / bulk auto_submit / mark-sent-external.
   // 셋 다 오너 승인 게이트(utils/poOwnerApproval.applySubmitGate)를 타야 한다 —
   // 실제로 bulk·external 두 경로가 승인 없이 발주를 내보내고 있었다(Fable 2026-07-13 적발).
+  // ── FG 출고 차감 · BG/FG 구매자 반품 (2026-07-13, Fable B1·B2) ──────────────
+  // FG 판매자는 **출고 때 재고를 아예 안 깎으면서** 반품 때만 늘렸다(반대 비대칭 = 재고 인플레).
+  // BG 가 구매자면 반품 생성이 **500**(ingredient_id NOT NULL 인데 BG 라인은 product_ingredient_id).
+  test('pos', '반품: 라인 FK 스키마 (BG 재고아이템 라인도 반품 가능)', async () => {
+    const { sequelize } = require('../config/database');
+    const [cols] = await sequelize.query(
+      "SELECT column_name AS name, is_nullable AS nullable FROM information_schema.columns " +
+      "WHERE table_schema = DATABASE() AND table_name = 'purchase_order_returns'"
+    );
+    const by = Object.fromEntries(cols.map((c) => [String(c.name || c.COLUMN_NAME).toLowerCase(), c]));
+    const hasPi = !!by['product_ingredient_id'];
+    const ingNullable = by['ingredient_id']
+      && String(by['ingredient_id'].nullable || by['ingredient_id'].IS_NULLABLE).toUpperCase() === 'YES';
+    return hasPi && ingNullable;   // 마이그 누락 시 fail-closed
+  });
+
+  // 소스 grep 이 아니라 **실제 동작**으로 잡는다 — 식별자만 지키고 로직이 망가지면 grep 은 통과한다.
+  test('pos', '반품: BG 구매자 반품이 본사 재고를 줄인다 (예전엔 생성부터 500)', async () => {
+    const { Op: OpB2 } = require('sequelize');
+    const {
+      PurchaseOrder, PurchaseOrderItem, PurchaseOrderReturn, ProductIngredient,
+      Brand, User, InventoryTransaction, Invoice, InvoiceItem
+    } = require('../models');
+    const jwtLib = require('jsonwebtoken');
+
+    const bg = await User.findOne({ where: { role: 'Brand General', brand_id: { [OpB2.ne]: null } } });
+    const sa = await User.findOne({ where: { role: 'System Admin' } });
+    const pIng = bg ? await ProductIngredient.findOne({ where: { owner_user_id: bg.id } }) : null;
+    if (!bg || !sa || !pIng) return true;
+
+    const stockBefore = pIng.current_stock;
+    const trackBefore = pIng.track_stock;
+    let po = null, cn = null;
+    try {
+      await pIng.update({ current_stock: 40, track_stock: true });
+      po = await PurchaseOrder.create({
+        po_number: `HC-B2-${Date.now()}`, entity_type: 'brand', entity_id: bg.brand_id,
+        seller_type: 'supplier', seller_entity_id: 1, status: 'delivered', currency: 'MYR',
+        subtotal: 100, total_amount: 100, created_by_user_id: bg.id
+      });
+      const item = await PurchaseOrderItem.create({
+        purchase_order_id: po.id, product_ingredient_id: pIng.id,
+        description: pIng.name, quantity_ordered: 10, quantity_received: 10,
+        unit_price: 10, unit_conversion: 2, line_total: 100   // conv≠1 로 환산까지 검증
+      });
+
+      const bgAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const saAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: sa.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+
+      const created = await request('POST', `/purchase-orders/${po.id}/returns`,
+        { items: [{ purchase_order_item_id: item.id, quantity: 2, reason: 'damaged' }] }, bgAuth);
+      if (created.status !== 201) return false;   // 예전엔 500 (ingredient_id NOT NULL)
+      const retId = created.body?.data?.[0]?.id;
+      const retRow = await PurchaseOrderReturn.findByPk(retId);
+      if (!retRow || retRow.product_ingredient_id !== pIng.id || retRow.ingredient_id !== null) return false;
+
+      const appr = await request('POST', `/seller-orders/${po.id}/returns/${retId}/approve`, {}, saAuth);
+      if (appr.status !== 200) return false;
+
+      const after = await ProductIngredient.findByPk(pIng.id);
+      const stockOk = Number(after.current_stock) === 36;   // 40 − (2 × conv 2)
+      const tx = await InventoryTransaction.findOne({
+        where: { purchase_order_id: po.id, transaction_type: 'return_out' }
+      });
+      const ledgerOk = !!tx && tx.product_ingredient_id === pIng.id && Number(tx.quantity_change) === -4;
+
+      const brand = await Brand.findByPk(bg.brand_id);
+      cn = await Invoice.findOne({ where: { invoice_number: { [OpB2.like]: `CN-${po.po_number}%` } } });
+      const payerOk = !!cn && cn.payer_type === 'brand_manager' && Number(cn.payer_id) === Number(brand.owner_id);
+
+      return stockOk && ledgerOk && payerOk;
+    } finally {
+      if (cn) { await InvoiceItem.destroy({ where: { invoice_id: cn.id }, force: true }); await Invoice.destroy({ where: { id: cn.id }, force: true }); }
+      if (po) {
+        await PurchaseOrderReturn.destroy({ where: { purchase_order_id: po.id }, force: true });
+        await InventoryTransaction.destroy({ where: { purchase_order_id: po.id } });
+        await PurchaseOrderItem.destroy({ where: { purchase_order_id: po.id } });
+        await PurchaseOrder.destroy({ where: { id: po.id }, force: true });
+      }
+      await pIng.update({ current_stock: stockBefore, track_stock: trackBefore });
+    }
+  });
+
+  test('pos', '반품: FG 출고 차감 ↔ 반품 환원 대칭 (재고 인플레 금지)', async () => {
+    const { Op: OpB1 } = require('sequelize');
+    const {
+      PurchaseOrder, PurchaseOrderItem, PurchaseOrderReturn, Ingredient, IngredientSellerProduct,
+      FoodcourtProduct, Foodcourt, Restaurant, User, InventoryTransaction, Invoice, InvoiceItem
+    } = require('../models');
+    const jwtLib = require('jsonwebtoken');
+
+    const fc = await Foodcourt.findOne();
+    const fcOwner = fc ? await User.findByPk(fc.owner_id) : null;
+    const rest = await Restaurant.findOne({ where: { foodcourt_id: fc ? fc.id : -1 } })
+      || await Restaurant.findOne({ where: { is_demo: true } });
+    const ra = rest ? await User.findOne({ where: { restaurant_id: rest.id, role: 'Restaurant Admin' } }) : null;
+    const ing = rest ? await Ingredient.findOne({ where: { restaurant_id: rest.id, is_active: true } }) : null;
+    if (!fc || !fcOwner || !ra || !ing) return true;
+
+    let fp = null, mapping = null, po = null, cn = null;
+    try {
+      fp = await FoodcourtProduct.create({
+        foodcourt_id: fc.id, name: '__HC_FP__', unit: 'kg', unit_price: 5, current_stock: 50, is_active: true
+      });
+      mapping = await IngredientSellerProduct.create({
+        ingredient_id: ing.id, seller_type: 'foodcourt', seller_entity_id: fc.id,
+        seller_product_id: fp.id, unit_price: 5, unit_conversion: 1, is_active: true
+      });
+      po = await PurchaseOrder.create({
+        po_number: `HC-B1-${Date.now()}`, entity_type: 'restaurant', entity_id: rest.id,
+        seller_type: 'foodcourt', seller_entity_id: fc.id, status: 'confirmed', currency: 'MYR',
+        subtotal: 30, total_amount: 30, created_by_user_id: ra.id
+      });
+      const item = await PurchaseOrderItem.create({
+        purchase_order_id: po.id, ingredient_id: ing.id, ingredient_seller_product_id: mapping.id,
+        description: ing.name, quantity_ordered: 6, quantity_received: 6,
+        unit_price: 5, unit_conversion: 1, line_total: 30
+      });
+
+      const fgAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: fcOwner.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const raAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+
+      // 출고 → FG 재고가 줄어야 한다 (예전엔 아무것도 안 깎았다)
+      const ship = await request('POST', `/seller-orders/${po.id}/ship`, { tracking_number: 'HC' }, fgAuth);
+      const afterShip = await FoodcourtProduct.findByPk(fp.id);
+      const shipOk = ship.status === 200 && Number(afterShip.current_stock) === 44;
+
+      // 반품 승인 → 원래대로 복귀해야 한다 (출고와 대칭 = 인플레 없음)
+      await po.update({ status: 'delivered' });
+      const created = await request('POST', `/purchase-orders/${po.id}/returns`,
+        { items: [{ purchase_order_item_id: item.id, quantity: 6, reason: 'damaged' }] }, raAuth);
+      const retId = created.body?.data?.[0]?.id;
+      const appr = await request('POST', `/seller-orders/${po.id}/returns/${retId}/approve`, {}, fgAuth);
+      const afterReturn = await FoodcourtProduct.findByPk(fp.id);
+      const symmetryOk = appr.status === 200 && Number(afterReturn.current_stock) === 50;
+
+      cn = await Invoice.findOne({ where: { invoice_number: { [OpB1.like]: `CN-${po.po_number}%` } } });
+      return shipOk && symmetryOk;
+    } finally {
+      if (cn) { await InvoiceItem.destroy({ where: { invoice_id: cn.id }, force: true }); await Invoice.destroy({ where: { id: cn.id }, force: true }); }
+      if (po) {
+        await PurchaseOrderReturn.destroy({ where: { purchase_order_id: po.id }, force: true });
+        await InventoryTransaction.destroy({ where: { purchase_order_id: po.id } });
+        await PurchaseOrderItem.destroy({ where: { purchase_order_id: po.id } });
+        await PurchaseOrder.destroy({ where: { id: po.id }, force: true });
+      }
+      if (mapping) await IngredientSellerProduct.destroy({ where: { id: mapping.id }, force: true });
+      if (fp) await FoodcourtProduct.destroy({ where: { id: fp.id }, force: true });
+    }
+  });
+
   // ── 배포 스크립트 안전 계약 (2026-07-13) ────────────────────────────────────
   // 배포 게이트는 **fail-closed 는 맞지만 fail-silent 는 안 된다.** 실제로 스키마 export 가
   // 실패했을 때 stderr 를 버려서 아무 말 없이 exit 2 로 죽었고(반품 배포 1차 시도),

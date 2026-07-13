@@ -22,6 +22,7 @@ const {
   BrandProduct, ProductRecipeIngredient, ProductIngredient,
   Invoice, InvoiceItem
 } = require('../models');
+const { resolvePayer } = require('../services/purchaseOrderService');
 const { stockFor, applyStock } = require('../utils/brandStockAccess');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
@@ -97,7 +98,10 @@ router.post('/purchase-orders/:id/returns', async (req, res) => {
       const ret = await PurchaseOrderReturn.create({
         purchase_order_id: po.id,
         purchase_order_item_id: itemId,
+        // 발주 라인과 같은 모양으로: 매장/푸드코트 = ingredient_id · BG 본사 = product_ingredient_id.
+        // 예전엔 ingredient_id 가 NOT NULL 이라 BG 구매자 반품이 **500** 으로 죽었다.
         ingredient_id: poItem.ingredient_id,
+        product_ingredient_id: poItem.product_ingredient_id || null,
         quantity: qty,
         unit: poItem.unit,
         unit_price: poItem.unit_price,
@@ -227,9 +231,45 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
 
     // 1. 구매자 재고 차감 — 입고의 정확한 역방향.
     //    입고는 `quantity × unit_conversion` 을 더했으므로 반품도 같은 양을 뺀다(환산 누락 시 어긋난다).
-    //    브랜드 공유 재료면 applyStock 이 매장 오버레이로 보낸다 — 브랜드 행을 직접 깎으면
-    //    형제 매장 재고가 오염된다. (docs/BRAND_STOCK_SHARING_DESIGN.md)
-    if (po.entity_type === 'restaurant' && ret.ingredient_id) {
+    //
+    //    ⚠ **엔티티 타입이 아니라 라인 모양으로 분기한다** — 입고가 그렇게 하기 때문이다.
+    //      BG 본사 라인 = product_ingredient_id (ProductIngredient), 그 외 = ingredient_id.
+    //      예전엔 `po.entity_type === 'restaurant'` 만 처리해서 **BG/FG 가 구매자면 반품해도
+    //      재고가 안 줄었다**(Fable 2026-07-13 B2).
+    const buyerPIngId = ret.product_ingredient_id || item?.product_ingredient_id || null;
+
+    if (buyerPIngId) {
+      // (a) BG 본사 재고아이템 라인 — 입고(purchase-orders-workflow: ProductIngredient += qty×conv)의 역방향
+      const pIng = await ProductIngredient.findByPk(buyerPIngId, { lock: t.LOCK.UPDATE, transaction: t });
+      if (pIng) {
+        const conv = parseFloat(item?.unit_conversion) || 1;
+        const reverseQty = Math.round(delta * conv * 100) / 100;
+        const cur = parseFloat(pIng.current_stock) || 0;
+        const newStock = pIng.track_stock !== false
+          ? Math.max(0, Math.round((cur - reverseQty) * 100) / 100)
+          : cur;
+        if (pIng.track_stock !== false) await pIng.update({ current_stock: newStock }, { transaction: t });
+
+        const applied = pIng.track_stock !== false
+          ? Math.round((cur - newStock) * 100) / 100
+          : reverseQty;
+        if (applied < reverseQty) {
+          console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 본사 재고 ${cur} 뿐 — ${applied} 만 차감(클램프)`);
+        }
+
+        await InventoryTransaction.create({
+          entity_type: po.entity_type, entity_id: po.entity_id,
+          product_ingredient_id: pIng.id,
+          transaction_type: 'return_out',
+          quantity_change: -applied,
+          unit: pIng.unit || ret.unit || 'unit',
+          stock_after: newStock,
+          purchase_order_id: po.id,
+          notes: `Return #${ret.id} approved — buyer stock reversal`,
+          created_by: req.user?.id || null
+        }, { transaction: t });
+      }
+    } else if (po.entity_type === 'restaurant' && ret.ingredient_id) {
       const ingredient = await Ingredient.findByPk(ret.ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
       if (ingredient) {
         const conv = parseFloat(item?.unit_conversion) || 1;
@@ -254,6 +294,38 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
         // 원장 기록 — 입고('purchase')는 남기는데 반품은 아무것도 안 남기고 있었다(감사 구멍)
         await InventoryTransaction.create({
           entity_type: 'restaurant', entity_id: po.entity_id,
+          ingredient_id: ingredient.id,
+          transaction_type: 'return_out',
+          quantity_change: -applied,
+          unit: ingredient.unit || ret.unit || 'unit',
+          stock_after: newStock,
+          purchase_order_id: po.id,
+          notes: `Return #${ret.id} approved — buyer stock reversal`,
+          created_by: req.user?.id || null
+        }, { transaction: t });
+      }
+    } else if (ret.ingredient_id) {
+      // (c) BG(레거시 Ingredient 소유)·FG 구매자 — 입고의 else 분기(ingredient.current_stock 직접 증가)의 역방향.
+      //     오버레이는 매장 전용이므로 여기선 재료 행을 직접 다룬다.
+      const ingredient = await Ingredient.findByPk(ret.ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (ingredient) {
+        const conv = parseFloat(item?.unit_conversion) || 1;
+        const reverseQty = Math.round(delta * conv * 100) / 100;
+        const cur = parseFloat(ingredient.current_stock) || 0;
+        const newStock = ingredient.track_stock !== false
+          ? Math.max(0, Math.round((cur - reverseQty) * 100) / 100)
+          : cur;
+        if (ingredient.track_stock !== false) await ingredient.update({ current_stock: newStock }, { transaction: t });
+
+        const applied = ingredient.track_stock !== false
+          ? Math.round((cur - newStock) * 100) / 100
+          : reverseQty;
+        if (applied < reverseQty) {
+          console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 재고 ${cur} 뿐 — ${applied} 만 차감(클램프)`);
+        }
+
+        await InventoryTransaction.create({
+          entity_type: po.entity_type, entity_id: po.entity_id,
           ingredient_id: ingredient.id,
           transaction_type: 'return_out',
           quantity_change: -applied,
@@ -355,6 +427,8 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
       }
     }
 
+    const payer = await resolvePayer(po);
+
     // 3. Issue Credit Note Invoice (negative-style: use status='credit')
     // Sprint 7: currency assertion (PO ↔ Credit Note 정합)
     const lineTotal = Math.round((parseFloat(ret.quantity) * (parseFloat(ret.unit_price) || 0)) * 100) / 100;
@@ -368,9 +442,12 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
       issuer_id: po.seller_entity_id || 1,
       issued_by: req.user?.id || 1,
       issued_at: new Date(),
-      payer_type: po.entity_type === 'restaurant' ? 'restaurant' : (po.entity_type === 'brand' ? 'brand_manager' : 'foodcourt_manager'),
-      payer_id: po.entity_id,
-      restaurant_id: po.entity_type === 'restaurant' ? po.entity_id : null,
+      // payer 해석은 트레이드 인보이스와 **같은 단일 소스**(purchaseOrderService.resolvePayer).
+      // 예전엔 payer_id 를 po.entity_id(브랜드 id) 로 넣어, BG/FG 구매자의 크레딧노트가
+      // 그들의 인보이스·SOA 화면에 붙지 않았다(트레이드 인보이스는 owner user id 를 쓴다).
+      payer_type: payer.payer_type,
+      payer_id: payer.payer_id,
+      restaurant_id: payer.restaurant_id,
       contract_id: po.contract_id || null,
       billing_period_start: new Date(),
       billing_period_end: new Date(),
@@ -393,7 +470,7 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
 
     await InvoiceItem.create({
       invoice_id: creditInvoice.id,
-      description: `Return: ingredient #${ret.ingredient_id} × ${ret.quantity} ${ret.unit || ''}`,
+      description: `Return: ${ret.ingredient_id ? `ingredient #${ret.ingredient_id}` : `stock item #${ret.product_ingredient_id}`} × ${ret.quantity} ${ret.unit || ''}`,
       quantity: ret.quantity,
       unit_price: ret.unit_price || 0,
       calculated_amount: lineTotal,

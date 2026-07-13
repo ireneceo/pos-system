@@ -475,6 +475,40 @@ router.post('/:id/ship', async (req, res) => {
           }
         }
       }
+
+      // FG (푸드코트 판매자) 출고 — FoodcourtProduct.current_stock 직접 차감.
+      // FG 는 BOM 이 없다(상품 자체가 재고) — BG 처럼 레시피를 거치지 않는다.
+      // ⚠ 예전엔 이 분기가 **아예 없어서** 출고해도 재고가 안 줄었다. 그런데 반품 승인은
+      //   FoodcourtProduct 를 늘렸다 → 깎은 적 없는 재고를 환원 = **FG 재고 인플레이션**
+      //   (반대 방향 비대칭 — Fable 2026-07-13 적발). 이제 ship(−q) ↔ 반품(+q) 이 대칭이다.
+      if (locked.seller_type === 'foodcourt' && locked.seller_entity_id) {
+        const { FoodcourtProduct, InventoryTransaction } = require('../models');
+        const fItems = await PurchaseOrderItem.findAll({ where: { purchase_order_id: locked.id }, transaction: t });
+        for (const it of fItems) {
+          if (!it.ingredient_seller_product_id) continue;
+          const mapping = await IngredientSellerProduct.findByPk(it.ingredient_seller_product_id, { transaction: t });
+          if (!mapping || !mapping.seller_product_id) continue;
+          const fp = await FoodcourtProduct.findByPk(mapping.seller_product_id, { lock: t.LOCK.UPDATE, transaction: t });
+          if (!fp) continue;
+          const qty = parseFloat(it.quantity_ordered) || 0;
+          if (qty <= 0) continue;
+          const old = parseFloat(fp.current_stock) || 0;
+          const nu = Math.round((old - qty) * 100) / 100;   // 음수 허용 = supplier 분기와 동일(과판매 가시화)
+          await fp.update({ current_stock: nu }, { transaction: t });
+          await InventoryTransaction.create({
+            entity_type: 'foodcourt', entity_id: locked.seller_entity_id,
+            ingredient_id: it.ingredient_id,        // 반품 FG 분기와 동일 관례
+            transaction_type: 'order_deduct',
+            quantity_change: -qty,
+            unit: fp.unit || it.unit || 'unit',     // InventoryTransaction.unit 은 NOT NULL
+            stock_after: nu,
+            purchase_order_id: locked.id,
+            notes: `Sold on PO ${locked.po_number} (${fp.name})`,
+            created_by: req.user?.id || null
+          }, { transaction: t });
+        }
+      }
+
       return { po: locked, newTracking: tracking };
     });
     po = result.po;

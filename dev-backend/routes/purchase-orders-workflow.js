@@ -906,7 +906,9 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
           const ar = await PurchaseOrderReturn.create({
             purchase_order_id: po.id,
             purchase_order_item_id: item.id,
+            // 발주 라인과 같은 모양으로 — BG 본사 라인은 ingredient_id 가 없다(예전엔 500)
             ingredient_id: item.ingredient_id,
+            product_ingredient_id: item.product_ingredient_id || null,
             quantity: qty,
             unit: item.unit || ingredient.unit,
             unit_price: parseFloat(item.unit_price) || 0,
@@ -1061,7 +1063,9 @@ router.put('/purchase-orders/:id/items/:itemId/discrepancy', async (req, res) =>
       autoReturn = await PurchaseOrderReturn.create({
         purchase_order_id: po.id,
         purchase_order_item_id: itemId,
+        // 발주 라인과 같은 모양으로 — BG 본사 라인은 ingredient_id 가 없다(예전엔 500)
         ingredient_id: item.ingredient_id,
+        product_ingredient_id: item.product_ingredient_id || null,
         quantity: qty,
         unit: item.unit,
         unit_price: parseFloat(item.unit_price) || 0,

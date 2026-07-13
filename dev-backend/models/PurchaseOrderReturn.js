@@ -5,7 +5,10 @@ const PurchaseOrderReturn = sequelize.define('PurchaseOrderReturn', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   purchase_order_id: { type: DataTypes.INTEGER, allowNull: false },
   purchase_order_item_id: { type: DataTypes.INTEGER, allowNull: false },
-  ingredient_id: { type: DataTypes.INTEGER, allowNull: false },
+  // 발주 라인은 두 모양이다: 매장/푸드코트 = ingredient_id · BG 본사 = product_ingredient_id.
+  // 예전엔 ingredient_id 가 NOT NULL 이라 BG 구매자 반품이 500 으로 죽었다. (Fable 2026-07-13)
+  ingredient_id: { type: DataTypes.INTEGER, allowNull: true },
+  product_ingredient_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'BG 재고아이템 라인 반품 (ingredient_id 와 둘 중 하나)' },
   quantity: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   unit: { type: DataTypes.STRING(50), allowNull: true },
   unit_price: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
