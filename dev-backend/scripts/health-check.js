@@ -936,6 +936,28 @@ function definePosTests({ adminToken }) {
   // 발주가 판매자에게 나가는 경로는 **세 곳**이다: submit / bulk auto_submit / mark-sent-external.
   // 셋 다 오너 승인 게이트(utils/poOwnerApproval.applySubmitGate)를 타야 한다 —
   // 실제로 bulk·external 두 경로가 승인 없이 발주를 내보내고 있었다(Fable 2026-07-13 적발).
+  // ── 배포 스크립트 안전 계약 (2026-07-13) ────────────────────────────────────
+  // 배포 게이트는 **fail-closed 는 맞지만 fail-silent 는 안 된다.** 실제로 스키마 export 가
+  // 실패했을 때 stderr 를 버려서 아무 말 없이 exit 2 로 죽었고(반품 배포 1차 시도),
+  // 백업 cp 는 실패해도 `|| true` 로 넘어가며 "Backup created" 를 찍고 있었다(롤백 불가).
+  test('pos', '배포 스크립트: 스키마 export·백업 실패가 조용히 넘어가지 않는다', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const sh = fs.readFileSync(path.join(__dirname, '../../deploy-to-production.sh'), 'utf8');
+
+    // 스키마 export: stderr 를 버리지 않고, 재시도하고, 실패하면 error 로 죽는다
+    const schemaLoud = /export_dev_schema\(\)/.test(sh)
+      && /dev 스키마 export 3회 실패/.test(sh)
+      && !/node compare-schema\.js --export --out \/tmp\/deploy_dev_schema\.json 2>\/dev\/null/.test(sh);
+
+    // 백업: 실패 시 error, 그리고 실제로 만들어졌는지 검증한 뒤에만 진행
+    const backupVerified = /백엔드 백업 실패/.test(sh)
+      && /백업이 비어 있다/.test(sh)
+      && !/cp -r \$REMOTE_PROD_BACKEND [^\n]*2>\/dev\/null \|\| true/.test(sh);
+
+    return schemaLoud && backupVerified;
+  });
+
   // ── 반품 재고 환원 (2026-07-13) ─────────────────────────────────────────────
   // 반품 승인은 **입고의 정확한 역방향**이어야 한다: 구매자 재고 차감 + 판매자 자기 재고 환원.
   // 브랜드 판매자 분기가 판매자 재고가 아니라 **구매자의 재료 행**을 올려서, 1단계 차감과

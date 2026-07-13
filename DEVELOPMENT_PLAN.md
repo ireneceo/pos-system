@@ -8106,6 +8106,7 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 | 판매자 유출 차단 | draft(장바구니)·승인대기 발주가 판매자 포털에 노출 + 소켓 실시간 갱신 → 목록·상세·소켓 3지점 봉인 | ✓ 완료 |
 | 반품 net 0 | 브랜드 반품 환원이 구매자 재료 행을 되올려 상쇄 → 출고의 역방향(BOM→ProductIngredient)으로 수정 | ✓ 완료 |
 | 반품 부수 결함 | 환산 누락 · 원장 구멍 · 이중 승인 레이스 · 누적 초과 반품 | ✓ 완료 |
+| 🔴 배포 게이트 fail-silent | 스키마 export 실패 시 **원인 없이 죽던 것**(반품 배포 1차 시도) + **운영 백업이 실패해도 "Backup created" 찍고 진행**(= 롤백 불가) → fail-loud + 재시도 + 백업 실제 생성 검증. 회귀 박제(옛 패턴 복귀 시 게이트가 잡음) | ✓ 완료 |
 
 ### 수정된 파일
 - 백엔드: `routes/` — `inventory-core.js` · `inventory-extra.js` · `purchase-orders-crud.js` · `purchase-orders-workflow.js` · `po-returns.js` · `seller-orders.js` · `ingredients.js`

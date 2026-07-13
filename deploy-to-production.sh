@@ -160,13 +160,43 @@ fi
 log "Comparing DB schemas (dev vs prod)..."
 
 # Export dev DB schema
+#
+# ⚠ 2026-07-13 — 예전엔 `2>/dev/null` 로 stderr 를 버렸다. compare-schema.js 는 export 실패 시
+#   `exit 2` 로 죽는데, 그 사유가 사라진 채 `set -e` 가 스크립트를 **아무 말 없이 종료**시켰다
+#   (실제로 반품 배포 1차 시도가 안전게이트 9/9 통과 후 여기서 조용히 죽었다).
+#   fail-closed 는 맞지만 **fail-silent 는 안 된다** — 왜 안 됐는지 모르면 다음 사람이
+#   `--skip-safety` 로 우회한다. 이제 ①stderr 를 보여주고 ②일시적 DB 경합은 재시도하고
+#   ③그래도 실패하면 **원인을 찍고** 죽는다.
 cd $LOCAL_DEV_BACKEND
-node compare-schema.js --export --out /tmp/deploy_dev_schema.json 2>/dev/null
-DEV_TABLES=$(node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('/tmp/deploy_dev_schema.json','utf-8'))).length)")
+rm -f /tmp/deploy_dev_schema.json
 
-# Export prod DB schema via SSH
-ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node compare-schema.js --export --out /tmp/deploy_prod_schema.json 2>/dev/null" 2>/dev/null || true
-scp -q $PROD_SERVER:/tmp/deploy_prod_schema.json /tmp/deploy_prod_schema.json 2>/dev/null
+export_dev_schema() {
+    local attempt=$1
+    local err
+    if err=$(node compare-schema.js --export --out /tmp/deploy_dev_schema.json 2>&1 >/dev/null); then
+        [ -s /tmp/deploy_dev_schema.json ] && return 0
+        err="산출물이 비었거나 생성되지 않음 (/tmp/deploy_dev_schema.json)"
+    fi
+    echo -e "  ${YELLOW}[시도 ${attempt}] dev 스키마 export 실패:${NC} ${err}" >&2
+    return 1
+}
+
+SCHEMA_EXPORT_OK=false
+for attempt in 1 2 3; do
+    if export_dev_schema $attempt; then SCHEMA_EXPORT_OK=true; break; fi
+    [ $attempt -lt 3 ] && sleep 3
+done
+if [ "$SCHEMA_EXPORT_OK" != true ]; then
+    error "🗄️ dev 스키마 export 3회 실패 — 위 사유 참조. 스키마 대조 없이 배포하면 코드/스키마 드리프트를 못 잡는다. (DB 접속·풀 상태 확인 후 재시도)"
+fi
+
+DEV_TABLES=$(node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('/tmp/deploy_dev_schema.json','utf-8'))).length)" 2>/dev/null) ||     error "🗄️ dev 스키마 파일을 읽지 못했다 (/tmp/deploy_dev_schema.json 손상)"
+
+# Export prod DB schema via SSH (실패해도 배포는 계속 — 아래 if 가 없으면 경고만)
+PROD_EXPORT_ERR=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node compare-schema.js --export --out /tmp/deploy_prod_schema.json 2>&1 >/dev/null" 2>&1) || true
+[ -n "$PROD_EXPORT_ERR" ] && echo -e "  ${YELLOW}운영 스키마 export 경고:${NC} $(echo "$PROD_EXPORT_ERR" | tail -1)"
+rm -f /tmp/deploy_prod_schema.json
+scp -q $PROD_SERVER:/tmp/deploy_prod_schema.json /tmp/deploy_prod_schema.json 2>/dev/null || true
 
 if [ -f /tmp/deploy_prod_schema.json ] && [ -s /tmp/deploy_prod_schema.json ]; then
     PROD_TABLES=$(node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('/tmp/deploy_prod_schema.json','utf-8'))).length)")
@@ -243,11 +273,26 @@ fi
 # ──────────────────────────────────────────
 # 4. Create backup on production server
 # ──────────────────────────────────────────
+# ⚠ 2026-07-13 — 예전엔 백업 cp 가 `2>/dev/null || true` 라 **실패해도 조용히 넘어가고**
+#   그래도 "Backup created" 를 찍었다. 백업 없이 배포되면 **롤백이 불가능**하다.
+#   이제 실패 사유를 보여주고, 백업이 실제로 만들어졌는지 **검증한 뒤에만** 진행한다.
 log "Creating backup on production server..."
-ssh $PROD_SERVER "mkdir -p /var/www/backups/${TIMESTAMP}"
-ssh $PROD_SERVER "cp -r $REMOTE_PROD_BACKEND /var/www/backups/${TIMESTAMP}/production-backend" 2>/dev/null || true
-ssh $PROD_SERVER "cp -r $REMOTE_PROD_FRONTEND/build /var/www/backups/${TIMESTAMP}/production-frontend-build" 2>/dev/null || true
-success "Backup created: /var/www/backups/${TIMESTAMP}"
+ssh $PROD_SERVER "mkdir -p /var/www/backups/${TIMESTAMP}" \
+    || error "백업 디렉토리 생성 실패 (/var/www/backups/${TIMESTAMP}) — 운영 디스크·권한 확인"
+
+BK_ERR=$(ssh $PROD_SERVER "cp -r $REMOTE_PROD_BACKEND /var/www/backups/${TIMESTAMP}/production-backend" 2>&1) \
+    || error "백엔드 백업 실패: ${BK_ERR} — 백업 없이 배포하면 롤백할 수 없다"
+
+# 프론트 빌드 백업은 운영에 build 가 아직 없을 수 있어 경고만 (백엔드 백업이 롤백의 핵심)
+FBK_ERR=$(ssh $PROD_SERVER "cp -r $REMOTE_PROD_FRONTEND/build /var/www/backups/${TIMESTAMP}/production-frontend-build" 2>&1) \
+    || warn "프론트 빌드 백업 실패: $(echo "$FBK_ERR" | tail -1)"
+
+# 실제로 만들어졌는지 확인 — "성공 메시지"만 찍고 넘어가지 않는다
+BK_FILES=$(ssh $PROD_SERVER "find /var/www/backups/${TIMESTAMP}/production-backend -maxdepth 1 -type f 2>/dev/null | wc -l" 2>/dev/null || echo 0)
+if [ "${BK_FILES:-0}" -lt 1 ]; then
+    error "백업이 비어 있다 (/var/www/backups/${TIMESTAMP}/production-backend) — 롤백 불가 상태로는 배포하지 않는다"
+fi
+success "Backup created: /var/www/backups/${TIMESTAMP} (백엔드 루트 파일 ${BK_FILES}개 확인)"
 
 # ──────────────────────────────────────────
 # 5. Build frontend locally
