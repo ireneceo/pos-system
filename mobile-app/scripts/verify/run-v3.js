@@ -70,9 +70,21 @@ const jobs = (file) => {
 const hexOf = (s) => Buffer.from(s, 'utf8').toString('hex');
 const findJob = (list, needleHex) => list.find((j) => j.hex.includes(needleHex));
 
+// See run-v4.js: the emulator takes ~4.5GB. Starting one on a memory-starved server takes
+// the dev backend / MySQL / SSH down with it. Refuse rather than cause an outage.
+function assertRoomForEmulator() {
+  const info = fs.readFileSync('/proc/meminfo', 'utf8');
+  const availMb = Math.round(parseInt((info.match(/MemAvailable:\s+(\d+) kB/) || [])[1] || '0', 10) / 1024);
+  if (availMb < 3000) {
+    throw new Error(`가용 메모리 ${availMb}MB — 에뮬레이터(약 4.5GB)를 띄우면 서버가 죽는다. 3000MB 이상 확보 후 실행`);
+  }
+  console.log(`  가용 메모리 ${availMb}MB — 에뮬레이터 기동 가능`);
+}
+
 async function main() {
   console.log('\n=== V3 — Android 인쇄 게이트 (하드웨어 없이 바이트 판정) ===\n');
   if (!fs.existsSync(APK)) throw new Error(`APK 없음: ${APK} (먼저 ./gradlew assembleDebug)`);
+  assertRoomForEmulator();
 
   // 1. fake printers (the emulator reaches the host at 10.0.2.2)
   for (const [port, out] of [[9100, CAP_KITCHEN], [9101, CAP_BAR]]) {

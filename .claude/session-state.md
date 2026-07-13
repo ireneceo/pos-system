@@ -1,10 +1,5 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-13 21:00, idle 2084s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: .v4.json,run-v4.js
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-07-13
 **버전:** v3.68 (운영).
@@ -12,11 +7,23 @@
 **dev 완료·미배포:** 데스크탑 다운로드 CTA 버전 드리프트 수정(#6).
 
 ### 진행 중인 작업
-- 없음
+- **안드로이드 M2 (V4 폴러 E2E 게이트)** — 하니스·환경 결함 3건을 고쳤고 **고친 하니스로 완주(6/6)는 아직 못 봄**. 다음 세션 첫 작업 = `PURPLE_AVD=purplepos-ci node scripts/verify/run-v4.js` 1회 완주 확인. (아래 #8)
 
 ### 다음 확정 작업
-- 🔴 **B1 (윈도우, 🔒보호파일) — Fable 설계·검증 필수**: `billPrint.js` `printTicketHTML` 이 네이티브의 실패(`PRINTER_NOT_FOUND` 등)를 버리고 무조건 `true` 반환 → 폴러가 "인쇄됨" 도장 → **종이 없이 티켓 유실**. 인쇄 생명선이라 미착수.
-- **안드로이드 M2 잔여(V4 폴러 E2E) → M3 매장 실기기 1회 → M4 배포**(서명·호스팅·CTA). M1(코드) + V3(바이트 게이트)는 완료 — 아래.
+- 🔴 **B1 (윈도우, 🔒보호파일) — Fable 설계·검증 필수**: `billPrint.js` `printTicketHTML` 이 네이티브의 실패(`PRINTER_NOT_FOUND` 등)를 버리고 무조건 `true` 반환 → 폴러가 "인쇄됨" 도장 → **종이 없이 티켓 유실**. 인쇄 생명선이라 미착수. (단, 폴러의 주력 경로인 `method='qztray'` 는 `sendTicketAutoFormat`→`sendViaQZTray`/`sendHTMLViaQZTray` 로 **반환값이 정직함** — B1 은 `method='browser'` 매장에서 터진다. 이번에 코드로 재확인.)
+- **안드로이드 V4 완주 → M3 매장 실기기 1회 → M4 배포**(서명·호스팅·CTA). M1(코드) + V3(바이트 게이트)는 완료.
+- **V3 를 새 AVD(`purplepos-ci`)에서 1회 재확인** — V3 13/13 은 옛 google_apis AVD 에서 받은 결과다. 기본 AVD 는 아직 `purplepos`(옛것) 라 동작엔 영향 없지만, 옛 AVD 는 서버를 흔든다(아래).
+
+### 완료된 작업 (2026-07-13 #8 — V4 게이트가 3회 실패한 진짜 이유: 앱이 아니라 게이트·환경이었다)
+> 세션이 SSH 끊김으로 중단 → 이어받아 실측. **앱 코드는 한 줄도 안 고쳤다**(print-guard 8/8 무변경). 고친 것 = 하니스 + 에뮬레이터 환경.
+- **① 픽스처 불일치 (V4-1/2/3 실패의 원인)**: 데모 매장(rid=5)에 **스테이션 프린터 2개가 'BAR' 주소**로 설정돼 있다. `billPrint.printKitchenTicketViaRawBT` 는 스테이션이 하나라도 있으면 **마스터(`kitchenPrinter.address`)를 아예 안 쓴다**(station 분기). 하니스는 태블릿에 'KITCHEN' 만 등록하고 마스터만 설정 → **앱은 'BAR' 로 인쇄 시도 → 태블릿 미등록 → 0바이트**. 게이트가 자기 픽스처 때문에 앱을 범인으로 몰았다. → 이제 **판정 대상 설정을 전부 명시**(마스터 + 스테이션)하고 **앱이 실제로 읽는 API GET 으로 되읽기 검증**.
+- **② 에뮬레이터 환경 (마지막 실행이 "bridge timeout" 으로 죽은 원인)**: AVD 가 **google_apis(GMS 포함)** 이미지 + RAM 1.5GB. 메모리 빠듯한 서버에서 **GMS 가 ANR 로 죽으면서 앱을 같이 kill** (`Killing com.purplehere.pos.mobile: depends on provider ...FontsProvider in dying proc com.google.android.gms.persistent`). → **GMS 없는 AOSP AVD `purplepos-ci`**(RAM 2GB) 신설, V4 기본값으로. 게이트에 필요한 건 WebView 이지 Google Play 가 아니다.
+- **③ V4-5 판정 오류 (마지막 실행의 "티켓 유실" 은 오탐)**: `needs_print` 스냅샷으로 판정했는데 **`print-claim` 이 인쇄 시작 시점에 이미 `needs_print=0`** 으로 만든다 → "인쇄 중"과 "인쇄됐다고 도장 찍음"을 구분 못 함. → **품목 `printed_at` 도장**(PATCH `/printed` 만 찍는다)으로 판정 교체 + 폴러가 **정착(재무장)할 때까지 대기** 후 판정.
+- **게이트 강화**: **V4-6 스테이션 라우팅 신설** — 실매장 표준(KQ1/KQ2/BAR)이 이 경로다. 가짜 프린터 2대(9100=KITCHEN, 9101=KQ1)로 **"티켓이 나왔나"가 아니라 "옳은 프린터로 나왔나"** 를 판정(스테이션 1장 + 마스터 0장). 앱 사망 감지(죽은 앱을 90초 폴링 후 "브릿지 없음"으로 오보고하던 것).
+- **🛡️ 서버 보호 (Irene 지적)**: 에뮬레이터는 **RSS 약 4.5GB** — 이 서버(7.9GB, dev-backend/MySQL/PlanQ 공존)에서 띄우면 여유가 200MB 까지 떨어진다. **SSH 가 끊긴 것도 이 자원 압박이 원인으로 보인다**(내리자마자 6.8GB→2.1GB 사용). → V3·V4 둘 다 **가용 3GB 미만이면 기동 거부**(fail-loud). 에뮬레이터 실행 중엔 프론트 빌드 등 동시 실행 금지.
+- **🛡️ 중단돼도 매장 원복**: 게이트는 데모 매장 프린터를 **실제로 갈아끼운다**. 중단된 실행이 데모 매장 스테이션 설정을 지운 채 남긴 사고를 겪음 → **모든 종료 경로(크래시·SIGINT/TERM/HUP)에서 설정 원복 + 테스트 주문 정리**. (이번 사고분은 수동 복구 완료 — 25/26 → 'BAR' 확인.)
+- **부수 확인 (제품 동작, 변경 안 함)**: 설정 API 는 **스테이션 프린터를 지울 수 없다** — 빈 맵/키 누락을 "미로드"로 보고 기존값 보존(`utils/settingsGuard`, thefire 설정 wipe 사고 대응 자물쇠). 의도된 동작이라 손대지 않았고, 하니스 픽스처만 DB 직접 쓰기로 우회.
+- **남은 것**: 고친 하니스로 **V4 완주(6/6) 미확인** — 다음 세션 첫 작업. 변경 파일 = `scripts/verify/run-v4.js`, `scripts/verify/run-v3.js`(메모리 게이트만).
 
 ### 완료된 작업 (2026-07-13 #7 — 안드로이드 P0 구현 + 하드웨어 없는 인쇄 게이트, dev 완료 · 미배포)
 > Irene "안드로이드 P0 구현 시작해" · 설계 = **Fable**(`mobile-app/docs/ANDROID_APP_DESIGN.md` §8)

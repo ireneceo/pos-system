@@ -1226,7 +1226,19 @@
       "Bash(pkill -f run-v4.js)",
       "Bash(/opt/android-sdk/platform-tools/adb emu *)",
       "Bash(pkill -f fake-printer.js)",
-      "Bash(xargs -r kill -9)"
+      "Bash(xargs -r kill -9)",
+      "Bash(chmod +x /tmp/claude-1000/-var-www/0c155e7f-35de-4b67-be08-0e19f2533540/scratchpad/v4-instrumented.sh)",
+      "Bash(nohup /tmp/claude-1000/-var-www/0c155e7f-35de-4b67-be08-0e19f2533540/scratchpad/v4-instrumented.sh)",
+      "Bash(echo \"started pid $!\")",
+      "Bash(awk 'NR<=8{printf \"%-8s %6.0fMB %s\\\\n\", $1, $6/1024, substr\\($11\" \"$12\" \"$13,1,60\\)}')",
+      "Bash(yes)",
+      "Bash(./cmdline-tools/latest/bin/sdkmanager --install \"system-images;android-34;default;x86_64\")",
+      "Bash(pkill -f \"run-v4.js\")",
+      "Bash(pkill -f \"fake-printer.js\")",
+      "Bash(pkill -f watch-db.js)",
+      "Bash(pkill -9 -f qemu-system)",
+      "Bash(/opt/android-sdk/platform-tools/adb kill-server *)",
+      "Bash(awk 'NR==2{printf \"메모리: %dMB 사용 / %dMB, 여유 %dMB\\\\n\", $3, $2, $7}')"
     ],
     "deny": [],
     "ask": []

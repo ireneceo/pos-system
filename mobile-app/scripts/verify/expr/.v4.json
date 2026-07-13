@@ -1,1 +1,1 @@
-[{"label":"e","expression":"(async () => { try { return (JSON.parse(localStorage.getItem('printerSettings')||'{}').kitchenPrinter||{}).address || null; } catch { return null; } })()"}]
+[{"label":"e","expression":"(async () => typeof window.__NATIVE_PRINT === 'object' && typeof window.__NATIVE_PRINT_SETUP === 'object')()"}]
