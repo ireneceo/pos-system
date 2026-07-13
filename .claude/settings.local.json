@@ -1238,7 +1238,11 @@
       "Bash(pkill -f watch-db.js)",
       "Bash(pkill -9 -f qemu-system)",
       "Bash(/opt/android-sdk/platform-tools/adb kill-server *)",
-      "Bash(awk 'NR==2{printf \"메모리: %dMB 사용 / %dMB, 여유 %dMB\\\\n\", $3, $2, $7}')"
+      "Bash(awk 'NR==2{printf \"메모리: %dMB 사용 / %dMB, 여유 %dMB\\\\n\", $3, $2, $7}')",
+      "Bash(awk 'NR==2{print \"free -m 대조: available =\", $7, \"MB\"}')",
+      "Bash(awk 'length\\($0\\)==0{b++} END{print \"빈 줄:\", b}' MEMORY.md)",
+      "Bash(awk 'c>=2{print} /^---$/{c++}' project_settings_guard_analysis.md)",
+      "Bash(awk 'c>=2{print} /^---$/{c++}' project_printer_settings_wipe_locks.md)"
     ],
     "deny": [],
     "ask": []

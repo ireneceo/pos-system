@@ -222,6 +222,16 @@ window.__NATIVE_PRINT_SETUP = {
 
 **"하드웨어 없이 인쇄가 맞다" 선언 기준:** V1·V2 + V3-1~7 + V4-1~5 전부 PASS + `check-print-guard.js` 8/8 무변경 + `health-check.js --category=print` PASS + `npm run build:dev` 후 verify-all(--full, SettingsPage 변경분 mount).
 
+#### 8-6-1. 구현된 V4 하니스가 위 설계와 다른 점 (2026-07-13, 실행하며 드러난 것)
+> V4 가 3회 연속 실패했는데 **원인은 전부 게이트 쪽**이었다. 설계가 못 짚은 부분을 여기 박아둔다 — 다음 사람이 같은 함정에 빠지지 않도록.
+
+- **매장은 스테이션 프린터를 쓴다 — 마스터 주소만 설정하면 앱은 그리로 안 찍는다.** `billPrint.printKitchenTicketViaRawBT` 는 `kitchenStationPrinters` 가 하나라도 있으면 마스터(`kitchenPrinter.address`)를 **아예 건너뛴다**. 데모 매장엔 스테이션 2개가 'BAR' 로 잡혀 있어, 'KITCHEN' 만 등록한 하니스는 **미등록 프린터로 인쇄를 시도하고 0바이트**를 받았다(= "앱이 못 찍는다"로 오보고). → 하니스는 **판정 대상 설정을 전부 명시**(마스터+스테이션)하고, **앱이 실제로 읽는 API GET 으로 되읽기 검증**한다. 실매장 표준 경로인 **스테이션 라우팅 판정(V4-6)** 을 추가: 가짜 프린터 2대(9100=KITCHEN, 9101=KQ1)로 **스테이션 1장 + 마스터 0장** — "티켓이 나왔나"가 아니라 "**옳은 프린터로** 나왔나".
+- **`needs_print` 스냅샷으로 티켓 유실을 판정하면 안 된다.** `print-claim` 이 인쇄 **시작** 시점에 `needs_print=0` 을 만든다 → "인쇄 중"과 "인쇄됐다고 도장 찍음"이 구분되지 않아, 정상 동작을 **티켓 유실로 오탐**했다. 판정은 **품목 `printed_at`**(PATCH `/printed` 만 찍는다) + **폴러가 재무장할 때까지 대기** 후.
+- **AVD 는 GMS 없는 AOSP 이미지(`purplepos-ci`).** google_apis 이미지는 메모리 압박에서 GMS 가 ANR→사망하며 **앱을 함께 kill** 한다(`Killing ...: depends on provider ...FontsProvider in dying proc com.google.android.gms.persistent`) → "bridge timeout" 으로 보인다. 게이트에 필요한 건 WebView 이지 Google Play 가 아니다.
+- **에뮬레이터는 RSS 약 4.5GB — 서버를 굶긴다.** dev-backend·MySQL·PlanQ 가 같은 7.9GB 박스에 산다. V3·V4 는 **가용 3GB 미만이면 기동을 거부**한다(fail-loud). 에뮬레이터 실행 중 프론트 빌드 등 동시 실행 금지.
+- **게이트는 데모 매장 프린터를 실제로 갈아끼운다 → 모든 종료 경로에서 원복.** 중단된 실행이 매장 스테이션 설정을 지운 채 남긴 사고가 실제로 났다. 크래시·SIGINT/TERM/HUP 전부에서 설정 원복 + 테스트 주문 정리.
+- **설정 API 로는 스테이션 프린터를 지울 수 없다**(`utils/settingsGuard` 가 빈 맵/키 누락을 "미로드"로 보고 보존 — thefire wipe 사고 자물쇠). 의도된 동작이므로 하니스 픽스처만 **DB 직접 쓰기**로 만든다.
+
 **그래도 실기기(매장 태블릿+프린터, 방문 1회)가 필요한 것:** ① BT SPP 실전(V5 — 에뮬레이터에 BT 없음) ② 종이 품질: 한글 글리프/농도/576px 폭 정합/컷 ③ 드로어 물리 킥 ④ 실프린터의 래스터 프레이밍 수용 ⑤ 태블릿 시스템 폰트의 한글 렌더 ⑥ 운영 origin 로그인+폴러 장시간 안정 ⑦ 사이드로드 설치 UX. 전부 한 방문에 묶는다(CLAUDE.md 인쇄 프로세스 5).
 
 ### 8-7. 릴리즈·배포
