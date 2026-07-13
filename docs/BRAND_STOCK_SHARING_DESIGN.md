@@ -258,6 +258,10 @@ Irene 지적 "Direct가 왜 Find Suppliers에 뜨고, 외부업체인데 왜 계
 **둘 다 브랜드 재료를 포함해야 한다.** 한쪽만 고치면 "부족하다고 뜨는데 담을 수가 없는" 반쪽이 된다(Fable 적발).
 ⚠ `/purchase-orders/suggestions` 의 브랜드 분기에 **`min_stock > 0` SQL 필터를 걸면 안 된다** — 브랜드 행의 min_stock 은 0이고 실제 임계치는 매장 오버레이에 있다. 브랜드 쪽은 전부 뽑아 effective 값으로 거른다.
 
+## 오너 승인과의 관계
+
+브랜드 재료로 만든 발주도 **오너 승인 게이트를 그대로 탄다**(`docs/PURCHASE_ORDER_SYSTEM.md §G-5`). 재고 오버레이(입고·차감·실사)는 승인 상태와 무관하게 동작한다 — 단 **승인 대기 발주는 수령 불가**이므로 오버레이에 재고가 들어오지 않는다(정상).
+
 ## 알아둘 것 (경미)
 
 - `calculate-usage` 는 브랜드 재료마다 오버레이 행을 `findOrCreate` 한다(current_stock 0으로 생성 — 무해).

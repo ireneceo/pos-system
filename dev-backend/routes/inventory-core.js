@@ -89,7 +89,8 @@ router.get('/:restaurantId/inventory', async (req, res) => {
     // 입고예정(on-order) — 활성 발주(주문됐으나 미입고)의 남은 수량을 ingredient 별로 집계.
     // 재고 증가 공식과 동일하게 (quantity_ordered - quantity_received) × unit_conversion 로 재고단위 환산.
     // 목적: "이미 발주해서 들어올 양"을 미리 보여 중복 발주 방지.
-    const ACTIVE_PO_STATUSES = ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'];
+    // pending_approval 포함 — 승인 대기 중인 수량이 '입고예정'에 안 잡히면 같은 재료를 또 발주하게 된다
+    const ACTIVE_PO_STATUSES = ['pending_approval', 'submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'];
     const onOrderMap = {}; // ingredient_id → { qty, date }
     const ingIds = ingredients.map(i => i.id);
     if (ingIds.length > 0) {

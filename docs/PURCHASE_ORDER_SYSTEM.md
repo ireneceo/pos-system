@@ -1076,3 +1076,36 @@ draft ──submit──▶ (오너승인 ON & 오너연결) pending_approval �
 ### H-5. 수정 파일
 - 백엔드: `routes/purchase-orders-crud.js`(bulk mergeDraft, draft 품목 product_name), `routes/purchase-orders-workflow.js`(DELETE PO / DELETE item / consolidate-drafts)
 - 프론트: `pages/PurchaseOrders/NewPurchaseOrderPage.tsx`(카트 영속화·Planned Order 개명·Pending POs 링크), `PurchaseOrderStagingPage.tsx`(자동통합·Discard·아이템 × 삭제·품목명·WhatsApp/Email 내용·헤더 80px), `public/sw.js`(3.89)
+
+---
+
+## §G-5. 승인 게이트는 **발주가 나가는 3경로 전부**에 적용된다 (2026-07-13, Fable)
+
+발주가 판매자에게 나가는 길은 하나가 아니다. **세 곳 전부**가 `utils/poOwnerApproval.applySubmitGate` 를 타야 한다:
+
+| 경로 | 라우트 | 화면 |
+|---|---|---|
+| 일반 제출 | `POST /purchase-orders/:id/submit` | 발주 확정(Staging) Submit |
+| **일괄발주** | `POST /purchase-orders/bulk` (`auto_submit:true`) | **재고관리 Bulk Order 체크박스** |
+| **외부업체 수동전송** | `POST /purchase-orders/:id/mark-sent-external` | Staging 의 Mark as Sent |
+
+⚠ **게이트를 라우트에 복붙하지 말 것.** 실제로 submit 에만 게이트가 있고 **bulk·외부전송 두 경로는 승인 없이 발주를 내보내고 있었다**(Fable 2026-07-13 적발). 새 발주 경로를 만들면 반드시 `applySubmitGate` 를 태운다.
+
+승인 대기(`pending_approval`) 상태의 취급:
+- **수령 불가** — `mark-received` 는 화이트리스트(`submitted`/`confirmed`/`shipped`/`in_transit`/`delivered`/`partial_received`)만 허용. 예전엔 `received`/`cancelled` 만 막아서 **승인 대기 발주를 입고로 끝낼 수** 있었다. 정식 `/receive` 는 원래부터 안전.
+- **철회 가능** — 작성자가 `cancel` 할 수 있다(오너 반려를 기다리며 묶이지 않는다).
+- **입고예정(on-order)에 포함** — `inventory-core.js` `ACTIVE_PO_STATUSES` 에 포함. 안 그러면 승인 대기 중인 수량을 못 보고 같은 재료를 또 발주하게 된다.
+- 승인 대기 시 **판매자 통지·`seller-order-created` 이벤트를 내보내면 안 된다**(오너 승인 후에만).
+
+브랜드 표준 재료로 만든 발주도 동일하게 게이트를 탄다 — 재고 오버레이 로직은 승인 상태와 무관(`docs/BRAND_STOCK_SHARING_DESIGN.md`).
+
+### §G-6. 승인 전 발주는 **판매자에게 존재하지 않는다** (2026-07-13, Fable 적발)
+
+`draft`(구매자 장바구니 — 아직 보내지도 않음)와 `pending_approval`(오너 승인 대기)은 **판매자 포털에 절대 노출되면 안 된다.** 실제로는 상태 필터가 아예 없어 **둘 다 그대로 보이고 있었다.**
+
+봉인 지점 3곳:
+1. `routes/seller-orders.js` — 목록: `SELLER_HIDDEN = ['draft','pending_approval']` 를 `Op.notIn` 으로 강제. **`?status=draft` 로 요청해도 뚫리지 않는다**(예전엔 쿼리가 필터를 덮어썼다).
+2. 같은 파일 — 상세: 숨김 상태면 **404**(소유권 통과해도).
+3. `services/poRealtimeService.js` `emitPoEvent` — 숨김 상태면 **seller 룸 emit 생략**(buyer 룸은 유지). 여기가 단일 지점이라 새 발주 경로가 생겨도 판매자 유출은 여기서 걸린다.
+
+승인 후 발송(외부공급업체): 승인 필요 매장은 Staging 의 WhatsApp/Email 이 **잠기고**(승인 전 발송 유도 금지), 승인된 뒤 **발주 상세 페이지**에서 보낸다. 메시지 빌더는 `utils/poShare.ts` 단일 소스(두 화면 공유).

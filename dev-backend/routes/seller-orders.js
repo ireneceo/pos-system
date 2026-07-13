@@ -71,6 +71,14 @@ async function attachSellerProductInfo(pos) {
 
 const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
 
+/**
+ * 판매자에게 **보이면 안 되는** 발주 상태.
+ *   draft            — 구매자의 장바구니. 아직 보내지도 않았다.
+ *   pending_approval — 오너 승인 대기. "승인 전엔 판매자에게 나가지 않는다"가 이 기능의 계약이다.
+ * (Fable 2026-07-13: 상태 필터가 아예 없어 둘 다 판매자 포털에 그대로 보이고 있었다.)
+ */
+const SELLER_HIDDEN = ['draft', 'pending_approval'];
+
 function buildSellerWhere(req) {
   // System Admin without override → return all (used for stats / list)
   if (req.sellerIsAdmin && !req.sellerEntity) return {};
@@ -166,7 +174,12 @@ router.get('/', async (req, res) => {
     const offset = (page - 1) * limit;
 
     const filterWhere = { ...(where || {}) };
-    if (req.query.status) filterWhere.status = req.query.status;
+    // 숨김 상태는 쿼리로 요청해도 뚫리지 않는다 (필터를 덮어쓰던 자리)
+    if (req.query.status && !SELLER_HIDDEN.includes(req.query.status)) {
+      filterWhere.status = req.query.status;
+    } else {
+      filterWhere.status = { [Op.notIn]: SELLER_HIDDEN };
+    }
     // Sprint 6: date range filter (from/to ISO date strings)
     if (req.query.from || req.query.to) {
       filterWhere.created_at = {};
@@ -279,6 +292,10 @@ router.get('/:id', async (req, res) => {
     });
     if (!po) return res.status(404).json({ success: false, message: 'Order not found' });
     if (!checkSellerOwnership(po, req)) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+    // 발신 전(draft)·승인 대기(pending_approval) 는 판매자에게 존재하지 않는 주문이다
+    if (SELLER_HIDDEN.includes(po.status)) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 

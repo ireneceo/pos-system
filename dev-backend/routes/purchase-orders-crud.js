@@ -40,6 +40,8 @@ const { sendNotificationBatch, getSupplierAdminIds, getBrandManagerIds, getFoodc
 const { normalizeCurrencyCode, sameCurrency } = require('../utils/currency');
 const { resolveSellers, getSeller, getSellerName, isExternalSeller } = require('../utils/sellerNames');
 const { readableIngredient, parentBrandIdOf, overlayMapFor, effectiveSettings } = require('../utils/brandStockAccess');
+const { applySubmitGate } = require('../utils/poOwnerApproval');
+const { fireOwnerApprovalPendingNotification } = require('../services/poNotifications');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
 
@@ -1015,11 +1017,16 @@ router.post('/purchase-orders/bulk', async (req, res) => {
         try {
           const fresh = await PurchaseOrder.findByPk(po.id);
           if (fresh && fresh.status === 'draft') {
-            const newTracking = appendTrackingEvent(fresh, 'submitted');
-            const now = new Date();
-            await fresh.update({ status: 'submitted', submitted_at: now, tracking_info: newTracking });
-            emitPoEvent(req, fresh, 'seller-order-created');
-            setImmediate(() => fireSellerSubmittedNotification(fresh));
+            // 일괄발주(재고관리 Bulk Order)도 **발주가 나가는 경로**다 → 오너 승인 게이트 필수.
+            // 예전엔 여기서 submitted 직행이라 승인 ON 이어도 그냥 나갔다 (Fable 2026-07-13).
+            const needsApproval = await applySubmitGate(fresh, null, appendTrackingEvent);
+            if (needsApproval) {
+              emitPoEvent(req, fresh, 'seller-order-updated');
+              setImmediate(() => fireOwnerApprovalPendingNotification(fresh));
+            } else {
+              emitPoEvent(req, fresh, 'seller-order-created');
+              setImmediate(() => fireSellerSubmittedNotification(fresh));
+            }
           }
         } catch (e) {
           console.error('[bulk] auto-submit error po=' + po.id, e.message);

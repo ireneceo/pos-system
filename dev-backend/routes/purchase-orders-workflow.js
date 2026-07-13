@@ -38,7 +38,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
-const { isApprovalRequiredForRestaurant } = require('../utils/poOwnerApproval');
+const { isApprovalRequiredForRestaurant, applySubmitGate } = require('../utils/poOwnerApproval');
 const { fireSellerSubmittedNotification, fireOwnerApprovalPendingNotification } = require('../services/poNotifications');
 
 // Path-level guards so unrelated /api/* fall-throughs aren't blocked by buyer-role.
@@ -349,9 +349,18 @@ router.post('/purchase-orders/:id/mark-sent-external', async (req, res) => {
     if (!po) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
     if (!checkPOOwnership(po, req)) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
     if (po.status !== 'draft') { await t.rollback(); return res.status(400).json({ success: false, message: 'Only draft can be marked sent' }); }
-    const newTracking = appendTrackingEvent(po, 'submitted', null, { source: 'external_manual_send', method: req.body?.method || 'manual' });
-    await po.update({ status: 'submitted', submitted_at: new Date(), tracking_info: newTracking }, { transaction: t });
+
+    // 외부업체 수동 전송도 **발주가 나가는 경로**다 → 오너 승인 게이트를 반드시 탄다.
+    // (예전엔 draft → submitted 직행이라 승인 ON 이어도 그냥 나갔다 — Fable 2026-07-13)
+    const needsApproval = await applySubmitGate(po, t, (p, st, note) =>
+      appendTrackingEvent(p, st, note, { source: 'external_manual_send', method: req.body?.method || 'manual' })
+    );
     await t.commit();
+
+    if (needsApproval) {
+      emitPoEvent(req, po, 'seller-order-updated');
+      setImmediate(() => fireOwnerApprovalPendingNotification(po));
+    }
     res.json({ success: true, data: po });
   } catch (err) {
     if (!t.finished) await t.rollback();
@@ -417,9 +426,17 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
     const po = await PurchaseOrder.findByPk(id, { transaction: t });
     if (!po) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
     if (!checkPOOwnership(po, req)) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
-    if (po.status === 'received' || po.status === 'cancelled') {
+    // 수령은 **발주가 실제로 나간 뒤**에만 가능하다. 예전엔 received/cancelled 만 막아서
+    // **승인 대기(pending_approval) 발주를 입고 처리로 끝낼 수** 있었다(승인 우회 — Fable 2026-07-13).
+    const RECEIVABLE = ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'];
+    if (!RECEIVABLE.includes(po.status)) {
       await t.rollback();
-      return res.status(400).json({ success: false, message: `Already ${po.status}` });
+      return res.status(400).json({
+        success: false,
+        message: po.status === 'pending_approval'
+          ? 'Purchase order is awaiting Owner approval'
+          : `Cannot receive a ${po.status} purchase order`
+      });
     }
 
     // Stock 흐름 — items 별로 ingredient.current_stock += quantity_ordered × unit_conversion + InventoryBatch + InventoryTransaction 기록.
@@ -567,29 +584,8 @@ router.post('/purchase-orders/:id/submit', async (req, res) => {
       }
       // Owner approval gate — restaurant POs only, when an Owner is connected
       // and operation_settings.requirePoOwnerApproval !== false (default ON).
-      let needsApproval = false;
-      if (locked.entity_type === 'restaurant') {
-        const restaurant = await Restaurant.findByPk(locked.entity_id, {
-          attributes: ['id', 'operation_settings'], transaction: t
-        });
-        needsApproval = await isApprovalRequiredForRestaurant(restaurant);
-      }
-      const now = new Date();
-      if (needsApproval) {
-        const tracking = appendTrackingEvent(locked, 'pending_approval', 'Awaiting Owner approval');
-        await locked.update({
-          status: 'pending_approval',
-          approval_required: true,
-          tracking_info: tracking
-        }, { transaction: t });
-      } else {
-        const tracking = appendTrackingEvent(locked, 'submitted');
-        await locked.update({
-          status: 'submitted',
-          submitted_at: now,
-          tracking_info: tracking
-        }, { transaction: t });
-      }
+      // 승인 게이트는 utils/poOwnerApproval 단일 소스 (submit / bulk / 외부전송 3경로 공유)
+      await applySubmitGate(locked, t, appendTrackingEvent);
       return locked;
     });
 
@@ -1106,7 +1102,8 @@ router.post('/purchase-orders/:id/cancel', async (req, res) => {
       const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
       if (!checkPOOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
-      if (!['draft', 'submitted'].includes(locked.status)) {
+      // pending_approval 도 철회 가능 — 오너가 반려할 때까지 묶여 있으면 안 된다
+      if (!['draft', 'submitted', 'pending_approval'].includes(locked.status)) {
         const e = new Error(`Cannot cancel order in status '${locked.status}'. Use returns flow after delivery.`);
         e.code = 'BAD_STATUS';
         throw e;

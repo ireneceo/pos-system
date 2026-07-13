@@ -155,7 +155,9 @@
       "markShipped": "Tanda Dihantar",
       "receive": "Terima",
       "returns": "Permintaan pulangan",
-      "print": "Cetak"
+      "print": "Cetak",
+      "whatsapp": "WhatsApp",
+      "email": "E-mel"
     },
     "noNotes": "Tiada nota.",
     "returns": {
@@ -167,7 +169,9 @@
       "failed": "Gagal menghantar pulangan",
       "networkError": "Ralat rangkaian",
       "rejectReason": "Sebab penolakan:"
-    }
+    },
+    "noEmailTitle": "Tiada E-mel",
+    "noEmail": "Tiada alamat e-mel didaftarkan untuk penjual ini."
   },
   "receive": {
     "modalTitle": "Terima Pesanan",
@@ -349,7 +353,10 @@
     "pdfDownloadFailed": "Gagal memuat turun PDF",
     "submitOne": "Hantar Pesanan",
     "markSent": "Tanda Telah Dihantar",
-    "submitFailed": "Gagal menghantar pesanan belian ini"
+    "submitFailed": "Gagal menghantar pesanan belian ini",
+    "externalHintApproval": "Pesanan belian ini perlu kelulusan Pemilik sebelum dihantar kepada pembekal. Perkongsian dibuka selepas diluluskan.",
+    "sendAfterApproval": "Tersedia selepas kelulusan Pemilik",
+    "submitForApproval": "Hantar untuk kelulusan"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit tidak sepadan — kemasukan manual diperlukan",

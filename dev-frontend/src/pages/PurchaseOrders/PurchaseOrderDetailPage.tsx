@@ -13,6 +13,7 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
 import { formatQuantity } from '../../utils/unitConversion';
+import { sharePoViaWhatsApp, sharePoViaEmail } from '../../utils/poShare';
 import { formatDate } from '../../utils/timezone';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
@@ -936,6 +937,35 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
           <ThemedButton variant="danger-outline" onClick={openCancel}>
             {t('detail.actions.cancel')}
           </ThemedButton>
+        )}
+        {/* 오너 승인 대기 — 작성자가 철회할 수 있다(오너 반려를 기다리며 묶이지 않게) */}
+        {s === 'pending_approval' && (
+          <ThemedButton variant="danger-outline" onClick={openCancel}>
+            {t('detail.actions.cancel')}
+          </ThemedButton>
+        )}
+        {/* 외부공급업체는 시스템이 자동 발송하지 않는다 → 승인/제출 이후 여기서 사람이 보낸다.
+            승인 필요 매장에서는 Staging 의 발송 버튼이 잠겨 있으므로 이 경로가 유일한 발송 수단이다. */}
+        {detail.is_external && ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'].includes(s) && (
+          <>
+            <ThemedButton variant="outline" onClick={() => sharePoViaWhatsApp(detail as any, formatQuantity)}>
+              {t('detail.actions.whatsapp', 'WhatsApp')}
+            </ThemedButton>
+            <ThemedButton
+              variant="outline"
+              onClick={() => {
+                const sent = sharePoViaEmail(detail as any, formatQuantity);
+                if (!sent) {
+                  setAlertDlg({
+                    title: t('detail.noEmailTitle', 'No Email') as string,
+                    message: t('detail.noEmail', 'No email address is registered for this seller.') as string
+                  });
+                }
+              }}
+            >
+              {t('detail.actions.email', 'Email')}
+            </ThemedButton>
+          </>
         )}
         {(s === 'received' || s === 'partial_received' || s === 'delivered') && (
           <ThemedButton

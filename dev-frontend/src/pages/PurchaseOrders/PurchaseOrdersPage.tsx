@@ -844,7 +844,8 @@ const PurchaseOrdersPage: React.FC = () => {
               ) : (
                 filteredRows.map(row => {
                   const hasInvoice = !!(row.external_invoice_url || row.trade_invoice_id);
-                  const canMarkReceived = row.status !== 'received' && row.status !== 'cancelled' && row.status !== 'draft';
+                  // 승인 대기(pending_approval) 발주는 아직 판매자에게 나가지도 않았다 → 수령 불가(서버도 400)
+                  const canMarkReceived = row.status !== 'received' && row.status !== 'cancelled' && row.status !== 'draft' && row.status !== 'pending_approval';
                   const canUploadInvoice = row.is_external && !row.external_invoice_url && row.status !== 'draft' && row.status !== 'cancelled';
                   return (
                   <DataTableRow key={row.id}>

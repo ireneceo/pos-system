@@ -932,6 +932,180 @@ function definePosTests({ adminToken }) {
     return g.status === 404 && p.status === 404 && c.status === 404 && x.status === 404;
   });
 
+  // ── 발주 오너 승인 게이트 (2026-07-13) ──────────────────────────────────────
+  // 발주가 판매자에게 나가는 경로는 **세 곳**이다: submit / bulk auto_submit / mark-sent-external.
+  // 셋 다 오너 승인 게이트(utils/poOwnerApproval.applySubmitGate)를 타야 한다 —
+  // 실제로 bulk·external 두 경로가 승인 없이 발주를 내보내고 있었다(Fable 2026-07-13 적발).
+  test('pos', '발주 승인: 게이트가 3경로(submit·bulk·외부전송) 모두에 적용', async () => {
+    const src = require('fs');
+    const path = require('path');
+    const crud = src.readFileSync(path.join(__dirname, '../routes/purchase-orders-crud.js'), 'utf8');
+    const wf = src.readFileSync(path.join(__dirname, '../routes/purchase-orders-workflow.js'), 'utf8');
+    // bulk auto_submit 과 mark-sent-external 이 게이트를 호출하는가 (직접 submitted 직행 금지)
+    const bulkGated = /applySubmitGate\(/.test(crud);
+    const wfGated = (wf.match(/applySubmitGate\(/g) || []).length >= 2; // submit + mark-sent-external
+    // mark-received 는 화이트리스트(pending_approval 수령 금지)
+    const receiveGuarded = /RECEIVABLE\s*=\s*\[/.test(wf) && !/po\.status === 'received' \|\| po\.status === 'cancelled'/.test(wf);
+    return bulkGated && wfGated && receiveGuarded;
+  });
+
+  test('pos', '발주 승인: 오너 연결+ON 이면 일괄발주도 pending_approval (우회 금지)', async () => {
+    const { Restaurant, User, PurchaseOrder, PurchaseOrderItem, Ingredient, IngredientSellerProduct } = require('../models');
+    const { QueryTypes, Op: OpPO } = require('sequelize');
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+
+    const demo = await Restaurant.findOne({ where: { is_demo: true } });
+    if (!demo) return true;
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: demo.id } });
+    // 데모/테스트 오너만 — 임의 실계정을 오너로 붙이지 않는다
+    const owner = await User.findOne({
+      where: { role: 'Restaurant Owner', [OpPO.or]: [{ username: { [OpPO.like]: '%demo%' } }, { username: { [OpPO.like]: '%test%' } }] }
+    });
+    if (!ra || !owner) return true;
+    const mapping = await IngredientSellerProduct.findOne({
+      include: [{ model: Ingredient, as: 'ingredient', where: { restaurant_id: demo.id }, required: true }]
+    });
+    if (!mapping) return true;
+
+    // ⚠ bulk 는 **같은 판매자의 기존 draft 에 병합(mergeDraft)** 한다. 기존 draft 가 있으면
+    //   테스트가 그 실주문을 통째로 삼켜 삭제하게 된다(실제로 dev 에서 draft 1건 소실 사고).
+    //   → 기존 draft 가 있으면 이 케이스는 건너뛴다.
+    const existingDraft = await PurchaseOrder.findOne({
+      where: {
+        entity_type: 'restaurant', entity_id: demo.id, status: 'draft',
+        seller_type: mapping.seller_type, seller_entity_id: mapping.seller_entity_id
+      }
+    });
+    if (existingDraft) return true;
+
+    const settingsBefore = JSON.parse(JSON.stringify(demo.operation_settings || {}));
+    const token = jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = { Authorization: `Bearer ${token}` };
+    let po = null;
+
+    try {
+      await sequelize.query(
+        `INSERT INTO restaurant_managers (restaurant_id, manager_id, relationship_type, assigned_at, createdAt, updatedAt)
+         VALUES (:rid, :uid, 'ownership', NOW(), NOW(), NOW())`,
+        { replacements: { rid: demo.id, uid: owner.id }, type: QueryTypes.INSERT }
+      );
+      await demo.update({ operation_settings: { ...settingsBefore, requirePoOwnerApproval: true } });
+
+      const res = await request('POST', '/purchase-orders/bulk', {
+        groups: [{
+          seller_type: mapping.seller_type, seller_entity_id: mapping.seller_entity_id,
+          items: [{ ingredient_id: mapping.ingredient_id, quantity_ordered: 1, ingredient_seller_product_id: mapping.id }]
+        }],
+        auto_submit: true
+      }, auth);
+      po = res.body?.data?.orders?.[0] || null;
+      const gated = res.status === 201 && po?.status === 'pending_approval';
+
+      // 승인 대기 발주는 입고로 끝낼 수 없다
+      let receiveBlocked = true;
+      if (po) {
+        const recv = await request('POST', `/purchase-orders/${po.id}/mark-received`, {}, auth);
+        receiveBlocked = recv.status === 400;
+      }
+      return gated && receiveBlocked;
+    } finally {
+      // 예외가 나도 ownership 행·설정이 데모 매장에 남으면 안 된다
+      if (po?.id) {
+        await PurchaseOrderItem.destroy({ where: { purchase_order_id: po.id } });
+        await PurchaseOrder.destroy({ where: { id: po.id }, force: true });
+      }
+      await sequelize.query(
+        `DELETE FROM restaurant_managers WHERE restaurant_id = :rid AND manager_id = :uid AND relationship_type = 'ownership'`,
+        { replacements: { rid: demo.id, uid: owner.id }, type: QueryTypes.DELETE }
+      );
+      await demo.update({ operation_settings: settingsBefore });
+    }
+  });
+
+  // 승인 전 발주는 **판매자에게 존재하지 않는 주문**이다. draft(장바구니)·pending_approval 이
+  // 판매자 포털 목록·상세에 그대로 보이고 있었다(Fable 2026-07-13) — 이 기능의 계약을 정면으로 깨는 결함.
+  test('pos', '발주 승인: 판매자에게 draft/pending_approval 미노출 (승인 전 유출 금지)', async () => {
+    const { PurchaseOrder, User } = require('../models');
+    const { Op: OpSL } = require('sequelize');
+    const jwtLib = require('jsonwebtoken');
+
+    const supAdmin = await User.findOne({ where: { role: 'Supplier Admin', supplier_company_id: { [OpSL.ne]: null } } });
+    if (!supAdmin) return true;
+    const token = jwtLib.sign({ userId: supAdmin.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = { Authorization: `Bearer ${token}` };
+
+    // 목록: 숨김 상태가 하나도 없어야 한다 (status 를 강제로 요청해도 마찬가지)
+    const list = await request('GET', '/seller-orders?limit=100', null, auth);
+    if (list.status !== 200) return false;
+    const leaked = (list.body?.data || []).some((p) => ['draft', 'pending_approval'].includes(p.status));
+    const forcedDraft = await request('GET', '/seller-orders?status=draft&limit=100', null, auth);
+    const forcedLeak = (forcedDraft.body?.data || []).some((p) => p.status === 'draft');
+
+    // 상세: 이 판매자의 draft/pending PO 가 실제로 있으면 404 여야 한다
+    let detailBlocked = true;
+    const hidden = await PurchaseOrder.findOne({
+      where: {
+        seller_type: 'supplier', seller_entity_id: supAdmin.supplier_company_id,
+        status: { [OpSL.in]: ['draft', 'pending_approval'] }
+      }
+    });
+    if (hidden) {
+      const d = await request('GET', `/seller-orders/${hidden.id}`, null, auth);
+      detailBlocked = d.status === 404;
+    }
+    return !leaked && !forcedLeak && detailBlocked;
+  });
+
+  test('pos', '발주 승인: 오너 미연결 매장은 설정과 무관하게 즉시 submitted (기존 동작 보존)', async () => {
+    const { Restaurant, User, PurchaseOrder, PurchaseOrderItem, Ingredient, IngredientSellerProduct } = require('../models');
+    const { QueryTypes } = require('sequelize');
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+
+    const demo = await Restaurant.findOne({ where: { is_demo: true } });
+    if (!demo) return true;
+    // 오너 연결이 실제로 없는지 확인 (있으면 이 케이스는 판정 불가 → skip)
+    const owners = await sequelize.query(
+      `SELECT 1 AS x FROM restaurant_managers WHERE restaurant_id = :rid AND relationship_type = 'ownership' LIMIT 1`,
+      { replacements: { rid: demo.id }, type: QueryTypes.SELECT }
+    );
+    if (owners.length) return true;
+
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: demo.id } });
+    const mapping = await IngredientSellerProduct.findOne({
+      include: [{ model: Ingredient, as: 'ingredient', where: { restaurant_id: demo.id }, required: true }]
+    });
+    if (!ra || !mapping) return true;
+
+    // bulk 의 mergeDraft 가 기존 draft 를 삼키지 않도록 — 있으면 skip
+    const existingDraft = await PurchaseOrder.findOne({
+      where: {
+        entity_type: 'restaurant', entity_id: demo.id, status: 'draft',
+        seller_type: mapping.seller_type, seller_entity_id: mapping.seller_entity_id
+      }
+    });
+    if (existingDraft) return true;
+
+    const token = jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = { Authorization: `Bearer ${token}` };
+    const res = await request('POST', '/purchase-orders/bulk', {
+      groups: [{
+        seller_type: mapping.seller_type, seller_entity_id: mapping.seller_entity_id,
+        items: [{ ingredient_id: mapping.ingredient_id, quantity_ordered: 1, ingredient_seller_product_id: mapping.id }]
+      }],
+      auto_submit: true
+    }, auth);
+    const po = res.body?.data?.orders?.[0];
+    const verdict = res.status === 201 && po?.status === 'submitted';
+
+    if (po) {
+      await PurchaseOrderItem.destroy({ where: { purchase_order_id: po.id } });
+      await PurchaseOrder.destroy({ where: { id: po.id }, force: true });
+    }
+    return verdict;
+  });
+
   test('pos', '브랜드 재고: 본사 구매 체인(product_ingredients) 무접촉', async () => {
     const { ProductIngredient, IngredientSellerProduct } = require('../models');
     const { Op } = require('sequelize');

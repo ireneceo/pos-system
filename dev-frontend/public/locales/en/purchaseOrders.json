@@ -155,7 +155,9 @@
       "markShipped": "Mark Shipped",
       "receive": "Receive",
       "returns": "Request return",
-      "print": "Print"
+      "print": "Print",
+      "whatsapp": "WhatsApp",
+      "email": "Email"
     },
     "noNotes": "No notes.",
     "returns": {
@@ -167,7 +169,9 @@
       "failed": "Failed to submit return",
       "networkError": "Network error",
       "rejectReason": "Rejection reason:"
-    }
+    },
+    "noEmailTitle": "No Email",
+    "noEmail": "No email address is registered for this seller."
   },
   "receive": {
     "modalTitle": "Receive Order",
@@ -349,7 +353,10 @@
     "pdfDownloadFailed": "Failed to download PDF",
     "submitOne": "Submit",
     "markSent": "Mark as Sent",
-    "submitFailed": "Failed to submit this purchase order"
+    "submitFailed": "Failed to submit this purchase order",
+    "externalHintApproval": "This purchase order needs Owner approval before it can be sent to the supplier. Sharing is enabled once approved.",
+    "sendAfterApproval": "Available after Owner approval",
+    "submitForApproval": "Submit for approval"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit mismatch — manual entry required",

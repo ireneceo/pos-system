@@ -10,6 +10,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../contexts/AuthContext';
+import { sharePoViaWhatsApp, sharePoViaEmail } from '../../utils/poShare';
 import { useNavigate } from 'react-router-dom';
 import { Container, Content } from '../../components/UI';
 import { Button } from '../../components/UI/Button';
@@ -155,6 +157,25 @@ const PurchaseOrderStagingPage: React.FC = () => {
   const [pdfPreview, setPdfPreview] = useState<{ po: POStaging; html: string } | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const pdfFrameRef = useRef<HTMLIFrameElement | null>(null);
+  // 오너 승인이 필요한 매장이면 **승인 전에 공급업체로 보내면 안 된다**.
+  // (서버는 이미 pending_approval 로 막지만, 화면이 WhatsApp/Email 발송을 권하면 통제가 무의미해진다.)
+  const [needsOwnerApproval, setNeedsOwnerApproval] = useState(false);
+
+  const { user } = useAuth();
+  useEffect(() => {
+    const rid = (user as any)?.restaurant_id || (user as any)?.restaurantId;
+    if (!rid) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/restaurants/${rid}`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        const j = await res.json();
+        const data = j?.data || j;
+        const hasOwner = Array.isArray(data?.managers) && data.managers.some((m: any) => m.role === 'Restaurant Owner');
+        const setting = data?.operation_settings?.requirePoOwnerApproval;
+        setNeedsOwnerApproval(!!hasOwner && setting !== false);
+      } catch { /* 조회 실패 시 기존 동작 유지 */ }
+    })();
+  }, [user]);
 
   const fetchDrafts = useCallback(async () => {
     setLoading(true);
@@ -245,43 +266,17 @@ const PurchaseOrderStagingPage: React.FC = () => {
     win.print();
   };
 
-  // PO 품목을 사람이 읽을 수 있는 줄목록으로 (이름 × 수량 @ 단가). 이름 없으면 #id.
-  const itemLines = (po: POStaging) => (po.items || []).map((it: any) =>
-    `- ${it.product_name || it.ingredient_name || ('Item #' + it.ingredient_id)} x ${formatQuantity(it.quantity_ordered)} @ ${parseFloat(it.unit_price).toFixed(2)}`
-  ).join('\n');
-
-  const shareViaWhatsApp = (po: POStaging) => {
-    const cur = po.currency || 'MYR';
-    const text = encodeURIComponent(
-      `[Purchase Order ${po.po_number || '#' + po.id}]\n` +
-      `${po.seller?.name ? 'Supplier: ' + po.seller.name + '\n' : ''}\n` +
-      `Items:\n${itemLines(po) || '(none)'}\n\n` +
-      `Total: ${cur} ${parseFloat(po.total_amount || '0').toFixed(2)}\n` +
-      `${po.expected_delivery_date ? 'Expected delivery: ' + po.expected_delivery_date + '\n' : ''}` +
-      `${po.delivery_address ? 'Deliver to: ' + po.delivery_address + '\n' : ''}` +
-      `\nPlease confirm this order.`
-    );
-    // 번호가 등록돼 있으면 그 번호로, 없으면 번호 없이 열어 WhatsApp 에서 연락처 선택해 보냄.
-    const phone = po.seller?.phone ? po.seller.phone.replace(/\D/g, '') : '';
-    window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
-  };
+  // 공유 메시지 빌더는 utils/poShare 단일 소스 — 발주 상세도 같은 함수를 쓴다(문구 갈라짐 방지)
+  const shareViaWhatsApp = (po: POStaging) => sharePoViaWhatsApp(po as any, formatQuantity);
 
   const shareViaEmail = (po: POStaging) => {
-    if (!po.seller?.email) {
-      setAlertDlg({ title: t('staging.noEmailTitle', 'No Email') as string, message: t('staging.noEmail', 'No email address is registered for this seller.') as string });
-      return;
+    const sent = sharePoViaEmail(po as any, formatQuantity);
+    if (!sent) {
+      setAlertDlg({
+        title: t('staging.noEmailTitle', 'No Email') as string,
+        message: t('staging.noEmail', 'No email address is registered for this seller.') as string
+      });
     }
-    const subject = encodeURIComponent(`Purchase Order ${po.po_number || '#' + po.id}`);
-    const body = encodeURIComponent(
-      `Dear ${po.seller.name},\n\nWe would like to place a purchase order:\n\n` +
-      `PO #: ${po.po_number || po.id}\n\n` +
-      `Items:\n${itemLines(po) || '(none)'}\n\n` +
-      `Total: ${po.currency || 'MYR'} ${parseFloat(po.total_amount || '0').toFixed(2)}\n` +
-      `${po.expected_delivery_date ? 'Expected: ' + po.expected_delivery_date + '\n' : ''}` +
-      `${po.delivery_address ? 'Delivery to: ' + po.delivery_address + '\n' : ''}` +
-      `\nFull PO attached. Please confirm receipt.\n\nThank you.`
-    );
-    window.location.href = `mailto:${po.seller.email}?subject=${subject}&body=${body}`;
   };
 
   const submitAll = async () => {
@@ -387,22 +382,39 @@ const PurchaseOrderStagingPage: React.FC = () => {
       {isExternal ? (
         <>
           <InfoLine>
-            {t('staging.externalHint', 'Send this PO to the supplier via PDF / WhatsApp / email. The system will not auto-send.')}
+            {needsOwnerApproval
+              ? t('staging.externalHintApproval', 'This purchase order needs Owner approval before it can be sent to the supplier. Sharing is enabled once approved.')
+              : t('staging.externalHint', 'Send this PO to the supplier via PDF / WhatsApp / email. The system will not auto-send.')}
           </InfoLine>
           <Actions>
             <ThemedButton variant="outline" size="small" onClick={() => openPdfPreview(po)}>
               {t('staging.downloadPdf', 'PDF')}
             </ThemedButton>
-            <ThemedButton variant="outline" size="small" onClick={() => shareViaWhatsApp(po)}>
+            {/* 승인 필요 매장에서는 승인 전 발송을 화면이 권하지 않는다 — 승인 후 상세 페이지에서 발송한다 */}
+            <ThemedButton
+              variant="outline"
+              size="small"
+              onClick={() => shareViaWhatsApp(po)}
+              disabled={needsOwnerApproval}
+              title={needsOwnerApproval ? (t('staging.sendAfterApproval', 'Available after Owner approval') as string) : undefined}
+            >
               {t('staging.whatsapp', 'WhatsApp')}
             </ThemedButton>
-            <ThemedButton variant="outline" size="small" onClick={() => shareViaEmail(po)}>
+            <ThemedButton
+              variant="outline"
+              size="small"
+              onClick={() => shareViaEmail(po)}
+              disabled={needsOwnerApproval}
+              title={needsOwnerApproval ? (t('staging.sendAfterApproval', 'Available after Owner approval') as string) : undefined}
+            >
               {t('staging.email', 'Email')}
             </ThemedButton>
             <Button variant="primary" size="small" onClick={() => submitOne(po)} disabled={submittingId === po.id}>
               {submittingId === po.id
                 ? t('staging.submitting', 'Submitting…')
-                : t('staging.markSent', 'Mark as Sent')}
+                : needsOwnerApproval
+                  ? t('staging.submitForApproval', 'Submit for approval')
+                  : t('staging.markSent', 'Mark as Sent')}
             </Button>
             <Button variant="danger-outline" size="small" onClick={() => setDiscardTarget(po)}>
               {t('staging.discard', 'Discard')}

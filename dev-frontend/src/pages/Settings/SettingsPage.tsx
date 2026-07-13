@@ -8148,6 +8148,8 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                           return { bg: '#FEF3C7', color: '#D97706', border: '#FDE68A' };
                         case 'Brand Manager':
                           return { bg: '#FAE8FF', color: '#A855F7', border: '#E9D5FF' };
+                        case 'Restaurant Owner':
+                          return { bg: '#EEF2FF', color: '#635BFF', border: '#C7D2FE' };
                         default:
                           return { bg: '#F1F4F8', color: '#4B5563', border: '#C7CED6' };
                       }

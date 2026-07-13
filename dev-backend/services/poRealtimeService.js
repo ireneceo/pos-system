@@ -96,6 +96,14 @@ function emitPoEvent(req, po, eventName) {
     const buyerRoom = `buyer_${po.entity_type}_${po.entity_id}`;
     io.of('/orders').to(buyerRoom).emit(eventName, payload);
 
+    // 발신 전(draft)·오너 승인 대기(pending_approval) 는 **판매자에게 존재하지 않는 주문**이다.
+    // 여기서 막지 않으면 판매자 화면이 소켓 refresh 로 승인 전 주문을 띄운다(Fable 2026-07-13).
+    // 단일 지점 차단 — 새 발주 경로가 생겨도 판매자 유출은 여기서 걸린다. buyer 룸은 그대로.
+    const SELLER_HIDDEN_STATUSES = ['draft', 'pending_approval'];
+    if (SELLER_HIDDEN_STATUSES.includes(po.status)) {
+      return;
+    }
+
     // Seller room: only emit when we have a concrete seller_entity_id.
     // 'system_admin' as seller has no entity_id (POS catalog itself is the
     // seller — no humans to notify on the seller side). Previously this

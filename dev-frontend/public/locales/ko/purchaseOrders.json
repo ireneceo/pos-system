@@ -155,7 +155,9 @@
       "markShipped": "배송 처리",
       "receive": "수령",
       "returns": "반품 요청",
-      "print": "인쇄"
+      "print": "인쇄",
+      "whatsapp": "왓츠앱",
+      "email": "이메일"
     },
     "noNotes": "메모 없음.",
     "returns": {
@@ -167,7 +169,9 @@
       "failed": "반품 제출 실패",
       "networkError": "네트워크 오류",
       "rejectReason": "거부 사유:"
-    }
+    },
+    "noEmailTitle": "이메일 없음",
+    "noEmail": "이 판매자에게 등록된 이메일이 없습니다."
   },
   "receive": {
     "modalTitle": "주문 수령",
@@ -349,7 +353,10 @@
     "pdfDownloadFailed": "PDF 다운로드에 실패했습니다",
     "submitOne": "발주 제출",
     "markSent": "발송 완료 표시",
-    "submitFailed": "이 발주서를 제출하지 못했습니다"
+    "submitFailed": "이 발주서를 제출하지 못했습니다",
+    "externalHintApproval": "이 발주는 오너 승인을 받아야 공급업체로 보낼 수 있습니다. 승인 후 발송 버튼이 열립니다.",
+    "sendAfterApproval": "오너 승인 후 발송 가능",
+    "submitForApproval": "승인 요청"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: 수량 단위 차이 — 수동 입력 필요",

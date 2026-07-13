@@ -29,7 +29,7 @@ const BulkOrderModal: React.FC<Props> = ({
   isOpen, onClose, items, currency, submitting, error, resultPos,
   onUpdateItem, onRemoveItem, onSend
 }) => {
-  const { t } = useTranslation('inventory');
+  const { t } = useTranslation(['inventory', 'purchaseOrders']);
 
   // Group preview by seller (matches backend grouping)
   const groups = useMemo(() => {
@@ -97,7 +97,7 @@ const BulkOrderModal: React.FC<Props> = ({
                   fontSize: 11, fontWeight: 600, padding: '4px 10px',
                   background: '#FEF3C7', color: '#92400E', borderRadius: 999
                 }}>
-                  {po.status}
+                  {t(`purchaseOrders:status.${po.status}`, { defaultValue: po.status })}
                 </span>
               </div>
             ))}
