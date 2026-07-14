@@ -8,6 +8,9 @@
  * 모바일 고객 토큰은 별도 (`mobile/utils/mobileApi.ts`의 mobileToken 헬퍼 사용)
  */
 
+// ⚠ 예외 1곳: utils/billPrint.js 의 _printTrace 가 이 키를 문자열로 직접 읽는다.
+//    인쇄 라우트 가드가 billPrint 를 로더 없는 webpack 으로 번들하기 때문에 그 파일은
+//    의존성 0(qz-tray 뿐)을 유지해야 한다. 키를 바꾸면 그쪽도 함께 고칠 것.
 const AUTH_TOKEN_KEY = 'auth_token';
 
 export function getAuthToken(): string | null {

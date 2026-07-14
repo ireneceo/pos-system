@@ -732,6 +732,7 @@ async function sendHTMLViaQZTray(htmlContent, printerName, opts) {
       return false;
     }
     const r = await _np.printHtml({ html: htmlContent, printerName: resolved, widthMm: 80, copies: 1 });
+    _printTrace('html', { printer: resolved || '(default)', ok: !!(r && r.ok), err: r && r.error, render: r && r.render });
     if (r && r.ok && opts && opts.drawerPulse) {
       try { await _np.openDrawer({ kind: 'os', printerName: resolved }); } catch (_) { /* drawer non-fatal */ }
     }
@@ -806,6 +807,7 @@ async function sendViaQZTray(escposContent, printerAddress) {
       target = { kind: 'os', printerName: printerAddress || '' };
     }
     const r = await _np.printRaw({ data, target });
+    _printTrace('raw', { printer: printerAddress || '(default)', ok: !!(r && r.ok), err: r && r.error, bytes: escposContent ? escposContent.length : 0 });
     return !!(r && r.ok);
   }
   try {
@@ -1976,13 +1978,21 @@ export function printHTMLContent(htmlContent, title) {
 export function printTicketHTML(htmlContent, title) {
   const _np = (typeof window !== 'undefined') && window.__NATIVE_PRINT;
   if (_np && typeof _np.printHtml === 'function') {
+    // 2026-07-14 (B1 수정, Irene 승인): 예전엔 결과를 버리고 무조건 true 를 돌려줬다. 그래서
+    // 네이티브 인쇄가 실패해도(백지·PRINTER_NOT_FOUND) 폴러가 "인쇄됨" 도장을 찍었고 —
+    // 종이는 안 나왔는데 티켓은 사라졌다. 이제 실제 결과를 돌려준다: 실패면 false → 폴러가
+    // printed 스탬프를 안 찍고 needs_print 를 남겨 다음 사이클에 재시도한다(= qztray 실패와
+    // 동일한 기존 계약. 새 상태 없음). 네이티브 분기만 Promise 를 반환하고, 브라우저 분기는
+    // 기존 동기 반환 그대로 — 웹 매장 동작 불변.
     try {
-      // Fire-and-forget to match the existing browser-path sync contract (the
-      // dialog path never detected failure either, so poller re-arm is unchanged).
-      _np.printHtml({ html: htmlContent, printerName: '', widthMm: 80, copies: 1 })
-        .catch(() => {});
-    } catch (_) { /* never throw from a print dispatch */ }
-    return true;
+      return _np.printHtml({ html: htmlContent, printerName: '', widthMm: 80, copies: 1 })
+        .then((r) => {
+          const ok = !!(r && r.ok);
+          _printTrace('ticketHtml', { printer: '(default)', ok, err: r && r.error, render: r && r.render });
+          return ok;
+        })
+        .catch(() => false);
+    } catch (_) { return false; }
   }
   return printHTMLContent(htmlContent, title);
 }
@@ -2037,6 +2047,50 @@ function _getPrintFormat() {
   return 'auto';
 }
 
+// ── 네이티브 인쇄 텔레메트리 (2026-07-14, Irene 승인 — with MIN 백지 원격 진단) ──────────────
+// 인쇄 동작(방식·타이밍·라우팅·바이트)은 일절 바꾸지 않는다. 결과를 "관찰해서 서버 로그로
+// 흘려보내기만" 한다: POST /api/orders/print-debug → 운영 로그의 `[print-trace] CLIENT ...`.
+// 왜 필요한가: 매장이 백지를 뽑아도 앱에도 서버에도 아무 기록이 없어, 사람이 매장에 가야만
+// 원인을 알 수 있었다. 이제 인쇄 1회로 실행 중인 앱 버전 · 선택된 경로(html/raw) · 대상
+// 프린터 · 네이티브 반환값 · 숨은창이 실제로 무엇을 그렸는지(render)가 남는다.
+// 네이티브 앱(__NATIVE_PRINT)에서만 동작 — 브라우저/QZ/RawBT 매장은 여기서 즉시 반환한다.
+let _traceDefaultPrinter;   // OS 기본 프린터 (1회 조회 후 캐시)
+function _printTrace(type, fields) {
+  try {
+    const _np = (typeof window !== 'undefined') && window.__NATIVE_PRINT;
+    if (!_np) return;
+    // 토큰: auth.ts 의 AUTH_TOKEN_KEY('auth_token')를 문자열로 직접 읽는다. import 하지 않는 이유 =
+    // 인쇄 라우트 가드(scripts/print-route-guard)가 이 파일을 "로더 없는 webpack"으로 번들해
+    // 자동인쇄 21루트를 실제 실행시키는 배포 게이트이기 때문. billPrint.js 가 의존성 0(qz-tray 뿐)
+    // 이어야 그 게이트가 성립한다 — 디버그 로그 하나 때문에 게이트에 툴체인을 추가해 취약하게
+    // 만들지 않는다. ⚠ 키를 바꾸려면 auth.ts 와 이 두 곳을 함께 고칠 것.
+    // (순서 주의: __NATIVE_PRINT 체크 → 토큰 체크. 가드 하니스는 native 를 mock 으로 켜지만
+    //  토큰은 심지 않으므로, 이 순서 덕분에 하니스에서 fetch 가 한 번도 발생하지 않는다.)
+    let tok = null;
+    try { tok = localStorage.getItem('auth_token'); } catch (_) { return; }
+    if (!tok) return;
+    const send = (def) => {
+      try {
+        const info = Object.entries({ ver: _np.version, fmt: _getPrintFormat(), def, ...fields })
+          .filter(([, v]) => v !== undefined && v !== null)
+          .map(([k, v]) => k + '=' + (typeof v === 'object' ? JSON.stringify(v) : v))
+          .join(' ');
+        fetch('/api/orders/print-debug', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+          body: JSON.stringify({ type, printer: fields.printer || '', ok: fields.ok, info })
+        }).catch(() => {});
+      } catch (_) { /* 트레이스가 인쇄를 방해하는 일은 없어야 한다 */ }
+    };
+    if (_traceDefaultPrinter !== undefined) send(_traceDefaultPrinter);
+    else if (typeof _np.getDefaultPrinter === 'function') {
+      _np.getDefaultPrinter()
+        .then((d) => { _traceDefaultPrinter = d || ''; send(_traceDefaultPrinter); })
+        .catch(() => { _traceDefaultPrinter = ''; send(''); });
+    } else send('');
+  } catch (_) { /* never throw from a print dispatch */ }
+}
+
 // True when this ticket is safe to print as raw ESC/POS text. Base rule: content is PURE
 // ASCII (rawText already ASCII-folded accents + common symbols upstream) — any residual
 // non-ASCII (Hangul/Kana/Thai/Arabic/CJK/unmapped glyph) is never printed as raw mojibake.
@@ -2051,6 +2105,14 @@ function _ticketIsTextSafe(escposContent, opts) {
 
 // OS-driver (non-LAN-IP) QZ/native dispatch with auto format selection.
 async function sendTicketAutoFormat(escposContent, htmlContent, address, opts) {
+  // 경로 판정만 관찰(순수함수 재호출 — 부작용 0). "왜 이 티켓이 raw 로 갔나 / HTML 로 갔나"를
+  // 서버 로그에서 바로 읽기 위한 것. 발송은 아래 원래 코드 그대로.
+  _printTrace('route-qz', {
+    printer: address || '(default)',
+    textSafe: _ticketIsTextSafe(escposContent, opts),
+    ascii: !/[^\x00-\x7F]/.test(escposContent || ''),
+    img: !!(opts && opts.hasImage)
+  });
   if (_ticketIsTextSafe(escposContent, opts)) {
     const ok = await sendViaQZTray(escposContent, address);
     if (ok && opts && opts.drawerPulse) { try { await openCashDrawer(); } catch (_) { /* drawer non-fatal */ } }
@@ -2064,6 +2126,13 @@ async function sendTicketAutoFormat(escposContent, htmlContent, address, opts) {
 // blank on image printing. PLAIN browser keeps the existing print-dialog path unchanged.
 async function printTicketAutoFormat(escposContent, htmlContent, title, opts) {
   const _np = (typeof window !== 'undefined') && window.__NATIVE_PRINT;
+  _printTrace('route-browser', {
+    printer: '(default)',
+    title: title || '',
+    textSafe: _ticketIsTextSafe(escposContent, opts),
+    ascii: !/[^\x00-\x7F]/.test(escposContent || ''),
+    img: !!(opts && opts.hasImage)
+  });
   if (_np && _ticketIsTextSafe(escposContent, opts)) {
     // Browser method has no printer address → OS default ('' → printRaw OS default).
     // Drawer parity: the old browser path (printTicketHTML) never opened the drawer, so

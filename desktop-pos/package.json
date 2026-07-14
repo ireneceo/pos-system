@@ -1,7 +1,7 @@
 {
   "name": "purple-pos-desktop",
   "productName": "Purple POS",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Purple POS Windows desktop shell (Electron) — QZ Tray replacement. Loads the remote web app and replaces only the print transport layer.",
   "author": "PurpleHere",
   "license": "UNLICENSED",
@@ -34,14 +34,19 @@
       "node_modules/**/*"
     ],
     "publish": [
-      { "provider": "generic", "url": "https://purplehere.com/desktop/" }
+      {
+        "provider": "generic",
+        "url": "https://purplehere.com/desktop/"
+      }
     ],
     "win": {
       "icon": "assets/icon.png",
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "artifactName": "PurplePOS-Setup-${version}.${ext}"

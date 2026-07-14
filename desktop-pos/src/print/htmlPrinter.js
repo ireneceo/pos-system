@@ -121,6 +121,27 @@ async function doPrint({ html, printerName, widthMm, copies }) {
   try {
     await loadAndPaint(win, tmpFile, html);
 
+    // 0.1.8: what did the hidden window ACTUALLY paint? A blank ticket and a perfectly
+    // rendered one are indistinguishable once the job is spooled — this is the only place
+    // that can tell them apart. The web layer ships these numbers to the server print log,
+    // so a blank receipt at the shop is diagnosable without anyone standing at the printer:
+    //   txt≈0 / h≈0  → the render is blank        (app bug — fix the renderer)
+    //   txt large    → the render is fine         (blame the spool/driver leg)
+    //   imgErr > 0   → the logo failed to load    (image path, not a blank page)
+    let render = null;
+    try {
+      render = await withTimeout(
+        wc.executeJavaScript(
+          '({h: document.body ? document.body.scrollHeight : 0,' +
+          ' txt: document.body ? document.body.innerText.replace(/\\s/g, "").length : 0,' +
+          ' imgs: document.images.length,' +
+          ' imgErr: Array.from(document.images).filter(i => !i.complete || i.naturalWidth === 0).length})'
+        ),
+        500,
+        null
+      );
+    } catch (_) { render = null; /* diagnostics must never block a print */ }
+
     const printResult = await new Promise((resolve) => {
       wc.print(
         {
@@ -141,9 +162,9 @@ async function doPrint({ html, printerName, widthMm, copies }) {
     });
 
     if (!printResult.success) {
-      return { ok: false, error: printResult.failureReason || 'PRINT_FAILED' };
+      return { ok: false, error: printResult.failureReason || 'PRINT_FAILED', render };
     }
-    return { ok: true };
+    return { ok: true, render };
   } catch (err) {
     return { ok: false, error: (err && err.message) || 'PRINT_ERROR' };
   } finally {

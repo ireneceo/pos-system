@@ -46,12 +46,17 @@ function init() {
     // the file is cached (every 30 min here). Without this guard the restart-modal would
     // reappear over a live POS all day after one "Later". Prompt ONCE per version; after
     // "Later" the update still auto-installs on the next app quit (autoInstallOnAppQuit).
-    const promptedVersions = new Set();
+    // 0.1.8: was "prompt once per version, ever". One "Later" and the app went silent for good,
+    // so a shop could run a stale build indefinitely. Now: at most once per version per DAY —
+    // enough to be noticed, not enough to nag a live POS.
+    const promptedAt = new Map();
+    const REPROMPT_MS = 24 * 60 * 60 * 1000;
     autoUpdater.on('update-downloaded', (info) => {
       ulog('downloaded: ' + (info && info.version));
       const v = (info && info.version) || '';
-      if (v && promptedVersions.has(v)) return;
-      if (v) promptedVersions.add(v);
+      const last = v ? promptedAt.get(v) : undefined;
+      if (last !== undefined && (Date.now() - last) < REPROMPT_MS) return;
+      if (v) promptedAt.set(v, Date.now());
       try {
         const { dialog, BrowserWindow } = require('electron');
         const win = BrowserWindow.getFocusedWindow() || (BrowserWindow.getAllWindows() || [])[0] || null;
@@ -78,9 +83,56 @@ function init() {
     autoUpdater.checkForUpdatesAndNotify().catch((e) => console.warn('[updater] check failed:', e && e.message));
     // Re-check periodically so an all-day-open POS eventually pulls + prompts (every 30 min).
     try { setInterval(() => { try { autoUpdater.checkForUpdates().catch(() => {}); } catch (_) {} }, 30 * 60 * 1000); } catch (_) { /* non-fatal */ }
+
+    // 0.1.8 — the update that never arrived. A shop POS is never closed: staff pick "Later",
+    // the app stays open for weeks, and `autoInstallOnAppQuit` never fires. That is how with MIN
+    // sat on a build we had already fixed while we hunted a bug that no longer existed.
+    //
+    // So install it ourselves — but ONLY when it cannot cost the shop a ticket:
+    //   • 03:00–05:59 local (shop is closed)
+    //   • no keyboard/mouse for 15 min (nobody is mid-order)
+    //   • no print job queued or running (a ticket is not mid-flight)
+    // Then quitAndInstall(silent, forceRunAfter) restarts the app by itself, so the POS is back
+    // up before opening. Any orders that arrive during the ~30s restart are NOT lost: the server
+    // keeps needs_print set and the poller collects them on the way back.
+    // We never force a restart during business hours — that is the one thing worse than a stale build.
+    installWhenSafe();
   } catch (e) {
     console.warn('[updater] init skipped:', e && e.message);
   }
+}
+
+// Arm the night-idle installer once an update is downloaded and waiting.
+function installWhenSafe() {
+  let armed = false;
+  autoUpdater.on('update-downloaded', () => { armed = true; });
+
+  const IDLE_SECONDS = 15 * 60;
+  setInterval(() => {
+    if (!armed) return;
+    try {
+      const { powerMonitor } = require('electron');
+      // 머신 로컬 시각을 쓰는 게 맞다 — 묻는 것이 "이 POS 가 지금 새벽인가"이기 때문.
+      // (레스토랑 설정 타임존은 화면 표시용 규칙이고, 여기엔 해당하지 않는다.)
+      const hour = new Date().getHours();
+      const idle = powerMonitor.getSystemIdleTime();
+      let printIdle = true;
+      try { printIdle = require('./print/serialQueue').isIdle(); } catch (_) { /* assume idle */ }
+
+      if (hour >= 3 && hour < 6 && idle >= IDLE_SECONDS && printIdle) {
+        armed = false;
+        ulog(`night-idle install (hour=${hour} idle=${idle}s printIdle=${printIdle})`);
+        try {
+          autoUpdater.quitAndInstall(true, true);
+        } catch (e) {
+          // 설치가 실패하면(권한/파일 락/서명) 다시 무장한다. 여기서 조용히 포기하면 그 PC 는
+          // 영영 업데이트되지 않는다 — 지금 고치고 있는 바로 그 문제를 재생산하는 셈이다.
+          armed = true;
+          ulog('quitAndInstall failed (re-armed): ' + (e && e.message));
+        }
+      }
+    } catch (_) { /* never break the updater */ }
+  }, 5 * 60 * 1000);
 }
 
 module.exports = { init };

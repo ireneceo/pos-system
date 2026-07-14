@@ -26,6 +26,7 @@ const ROOT = path.resolve(__dirname, '../..');
 const SDK = process.env.ANDROID_SDK_ROOT || process.env.ANDROID_HOME || '/opt/android-sdk';
 const ADB = path.join(SDK, 'platform-tools/adb');
 const EMULATOR = path.join(SDK, 'emulator/emulator');
+const GATE = '/var/www/scripts/heavy-task-gate.sh';
 // AOSP (no-GMS) AVD. A google_apis image drags Google Play Services into a headless CI
 // box; on a memory-tight server GMS ANRs, dies, and takes the app down with it
 // ("Killing com.purplehere.pos.mobile: depends on provider ...FontsProvider in dying proc
@@ -124,14 +125,27 @@ function evalInApp(expression) {
 // backend and MySQL, and the box stops answering (2026-07-13: the session's own SSH died
 // that way). Refuse to start rather than take the server down; the gate is worthless if it
 // costs an outage to run.
+// The gate itself lives in /var/www/scripts/heavy-task-gate.sh — one place decides whether a
+// heavy task may start, so the build and the emulator can never green-light each other.
 function assertRoomForEmulator() {
+  const g = spawnSync('bash', [GATE, 'emulator'], { encoding: 'utf8' });
+  if (g.status !== 0) throw new Error((g.stdout || g.stderr || '').trim() || '메모리 게이트 차단');
   const info = fs.readFileSync('/proc/meminfo', 'utf8');
-  const availKb = parseInt((info.match(/MemAvailable:\s+(\d+) kB/) || [])[1] || '0', 10);
-  const availMb = Math.round(availKb / 1024);
-  if (availMb < 3000) {
-    throw new Error(`가용 메모리 ${availMb}MB — 에뮬레이터(약 4.5GB)를 띄우면 서버가 죽는다. 3000MB 이상 확보 후 실행 (다른 에뮬레이터/빌드 종료)`);
-  }
+  const availMb = Math.round(parseInt((info.match(/MemAvailable:\s+(\d+) kB/) || [])[1] || '0', 10) / 1024);
   console.log(`  가용 메모리 ${availMb}MB — 에뮬레이터 기동 가능`);
+}
+
+// Even inside the gate, a runaway qemu must not be able to take the box down: the cgroup caps
+// it at 5 GB, so the emulator dies alone instead of freezing the server.
+function emulatorCmd() {
+  const args = ['-avd', AVD, '-no-window', '-no-audio', '-no-snapshot',
+    '-gpu', 'swiftshader_indirect', '-no-boot-anim'];
+  const boxed = spawnSync('systemd-run', ['--user', '--scope', '-q', '-p', 'MemoryMax=10M', 'true'], { encoding: 'utf8' });
+  if (boxed.status === 0) {
+    return { cmd: 'systemd-run', args: ['--user', '--scope', '-q', '-p', 'MemoryMax=5G', EMULATOR, ...args] };
+  }
+  console.log('  ⚠ systemd-run 사용 불가 — cgroup 상자 없이 에뮬레이터 기동');
+  return { cmd: EMULATOR, args };
 }
 
 async function main() {
@@ -243,8 +257,8 @@ async function main() {
   // 3. emulator + app
   if ((sh(ADB, ['shell', 'getprop', 'sys.boot_completed']).stdout || '').trim() !== '1') {
     console.log('  에뮬레이터 부팅 중...');
-    const emu = spawn(EMULATOR, ['-avd', AVD, '-no-window', '-no-audio', '-no-snapshot',
-      '-gpu', 'swiftshader_indirect', '-no-boot-anim'], { stdio: 'ignore' });
+    const e = emulatorCmd();
+    const emu = spawn(e.cmd, e.args, { stdio: 'ignore' });
     children.push(emu);
     await waitFor('boot', () => (sh(ADB, ['shell', 'getprop', 'sys.boot_completed']).stdout || '').trim() === '1', 300000, 3000);
   }

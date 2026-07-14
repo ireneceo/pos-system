@@ -83,7 +83,10 @@ function createMainWindow() {
     minHeight: 600,
     show: false,
     backgroundColor: '#ffffff',
-    title: 'Purple POS',
+    // 0.1.8: the running version must be readable WITHOUT opening a log file. "Is the shop
+    // actually on the build we fixed?" blocked the with MIN blank-receipt hunt for days —
+    // nobody could answer it from the screen. Now the title bar answers it.
+    title: `Purple POS ${app.getVersion()}`,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -96,6 +99,10 @@ function createMainWindow() {
   });
 
   windowState.track('main', mainWindow);
+
+  // The web app sets document.title, which Electron mirrors into the window title — that would
+  // erase the version we just put there. Keep ours.
+  mainWindow.on('page-title-updated', (e) => { e.preventDefault(); });
 
   mainWindow.once('ready-to-show', () => {
     if (maximized) mainWindow.maximize();

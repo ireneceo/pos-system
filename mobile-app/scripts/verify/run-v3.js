@@ -72,13 +72,26 @@ const findJob = (list, needleHex) => list.find((j) => j.hex.includes(needleHex))
 
 // See run-v4.js: the emulator takes ~4.5GB. Starting one on a memory-starved server takes
 // the dev backend / MySQL / SSH down with it. Refuse rather than cause an outage.
+const GATE = '/var/www/scripts/heavy-task-gate.sh';
+
 function assertRoomForEmulator() {
+  const g = spawnSync('bash', [GATE, 'emulator'], { encoding: 'utf8' });
+  if (g.status !== 0) throw new Error((g.stdout || g.stderr || '').trim() || '메모리 게이트 차단');
   const info = fs.readFileSync('/proc/meminfo', 'utf8');
   const availMb = Math.round(parseInt((info.match(/MemAvailable:\s+(\d+) kB/) || [])[1] || '0', 10) / 1024);
-  if (availMb < 3000) {
-    throw new Error(`가용 메모리 ${availMb}MB — 에뮬레이터(약 4.5GB)를 띄우면 서버가 죽는다. 3000MB 이상 확보 후 실행`);
-  }
   console.log(`  가용 메모리 ${availMb}MB — 에뮬레이터 기동 가능`);
+}
+
+// A runaway qemu must die alone, not freeze the box (see run-v4.js).
+function emulatorCmd() {
+  const args = ['-avd', AVD, '-no-window', '-no-audio', '-no-snapshot',
+    '-gpu', 'swiftshader_indirect', '-no-boot-anim'];
+  const boxed = spawnSync('systemd-run', ['--user', '--scope', '-q', '-p', 'MemoryMax=10M', 'true'], { encoding: 'utf8' });
+  if (boxed.status === 0) {
+    return { cmd: 'systemd-run', args: ['--user', '--scope', '-q', '-p', 'MemoryMax=5G', EMULATOR, ...args] };
+  }
+  console.log('  ⚠ systemd-run 사용 불가 — cgroup 상자 없이 에뮬레이터 기동');
+  return { cmd: EMULATOR, args };
 }
 
 async function main() {
@@ -98,8 +111,8 @@ async function main() {
   const booted = sh(ADB, ['shell', 'getprop', 'sys.boot_completed']).stdout || '';
   if (booted.trim() !== '1') {
     console.log('  에뮬레이터 부팅 중...');
-    const emu = spawn(EMULATOR, ['-avd', AVD, '-no-window', '-no-audio', '-no-snapshot',
-      '-gpu', 'swiftshader_indirect', '-no-boot-anim'], { stdio: 'ignore', detached: false });
+    const e = emulatorCmd();
+    const emu = spawn(e.cmd, e.args, { stdio: 'ignore', detached: false });
     children.push(emu);
     await waitFor('boot', () => (sh(ADB, ['shell', 'getprop', 'sys.boot_completed']).stdout || '').trim() === '1', 300000, 3000);
   }

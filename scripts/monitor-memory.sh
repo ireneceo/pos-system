@@ -1,36 +1,21 @@
 #!/bin/bash
-# Memory monitoring and auto-optimization script
+# memory forensics — 기록만 한다. 조치는 earlyoom 이 한다. (2026-07-14 전면 교체)
+#
+# 옛 버전은 메모리 85% 넘으면 drop_caches 를 하고 MySQL 을 재시작했다. 둘 다 유해했다:
+#   - drop_caches: 스래시 중 페이지캐시를 버려 디스크 IO 를 폭증시킨다 = 프리즈를 악화
+#   - MySQL 재시작: 압박 때마다 개발 DB 를 끊는다 (보호해야 할 대상을 스스로 죽임)
+# 프리즈 방어는 earlyoom(가용 10%/5% 에서 폭주 프로세스만 kill) + cgroup 상자 + heavy-task-gate 가 한다.
+# 이 스크립트의 유일한 일 = 다음 사건이 나면 원인을 1분 해상도로 되짚을 수 있게 남기는 것.
+# 함께 볼 것: journalctl -u earlyoom · sar -r -f /var/log/sysstat/saDD
 
 LOG_FILE="/var/www/logs/memory-monitor.log"
-ALERT_THRESHOLD=85  # Alert if memory usage exceeds 85%
-
-# Create log directory if it doesn't exist
 mkdir -p /var/www/logs
 
-# Get memory usage percentage
-MEMORY_USAGE=$(free | grep Mem | awk '{printf "%.0f", $3/$2 * 100}')
-SWAP_USAGE=$(free | grep Swap | awk '{printf "%.0f", $3/$2 * 100}')
+{
+  printf '[%s] ' "$(date '+%Y-%m-%d %H:%M:%S')"
+  free -m | awk '/^Mem:/{printf "mem_used=%sMB avail=%sMB ", $3, $7} /^Swap:/{printf "swap=%s/%sMB\n", $3, $2}'
+  ps -eo pid,rss,comm --sort=-rss | awk 'NR>1 && NR<=6 {printf "    top%d: %sMB %s (pid %s)\n", NR-1, int($2/1024), $3, $1}'
+} >> "$LOG_FILE"
 
-# Log current status
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Memory: ${MEMORY_USAGE}% | Swap: ${SWAP_USAGE}%" >> $LOG_FILE
-
-# If memory usage is high, take action
-if [ $MEMORY_USAGE -gt $ALERT_THRESHOLD ] || [ $SWAP_USAGE -gt 50 ]; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: High memory usage detected!" >> $LOG_FILE
-
-    # Clear cache
-    sync
-    echo 3 > /proc/sys/vm/drop_caches
-
-    # Restart MySQL if it's using too much swap
-    MYSQL_SWAP=$(grep VmSwap /proc/$(pgrep mysqld)/status 2>/dev/null | awk '{print $2}')
-    if [ ! -z "$MYSQL_SWAP" ] && [ $MYSQL_SWAP -gt 102400 ]; then  # More than 100MB swap
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Restarting MySQL due to high swap usage" >> $LOG_FILE
-        systemctl restart mysql
-    fi
-
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Optimization complete" >> $LOG_FILE
-fi
-
-# Keep only last 1000 lines of log
-tail -1000 $LOG_FILE > ${LOG_FILE}.tmp && mv ${LOG_FILE}.tmp $LOG_FILE
+# 1분 간격 × 상위5 프로세스 = 하루 약 8600줄. 10000줄이면 최근 하루치가 남는다.
+tail -10000 "$LOG_FILE" > "${LOG_FILE}.tmp" && mv "${LOG_FILE}.tmp" "$LOG_FILE"

@@ -66,6 +66,13 @@ else
     echo -e "${YELLOW}⚠ Autoprint regression SKIPPED (SKIP_REGRESSION=1)${NC}"
 fi
 
+# 0. 메모리 게이트 — 에뮬레이터와 겹치거나 메모리가 부족하면 빌드를 시작하지 않는다.
+#    (서버 프리즈·강제 재부팅 방지. 우회: SKIP_MEMGATE=1)
+if ! bash /var/www/scripts/heavy-task-gate.sh build; then
+    echo -e "${RED}✗ 빌드를 시작하지 않았습니다 (메모리 게이트).${NC}"
+    exit 1
+fi
+
 # 1. 이전 빌드 정리 + 빌드 실행
 if [ -d "$BUILD_DIR/static" ]; then
     sudo rm -rf "$BUILD_DIR/static"
@@ -77,13 +84,34 @@ cd "$SCRIPT_DIR"
 export TSC_COMPILE_ON_ERROR=true
 BUILD_START=$(date +%s)
 
+# 빌드를 cgroup 상자에 가둔다 — 폭주해도 빌드만 죽고 서버는 산다.
+# (실측 총피크 3.08GiB → 4G 캡. 힙 상한 2560MB 는 package.json.)
+BUILD_RUNNER=""
+if systemd-run --user --scope -q -p MemoryMax=10M true >/dev/null 2>&1; then
+    BUILD_RUNNER="systemd-run --user --scope -q -p MemoryMax=4G -p MemorySwapMax=512M"
+else
+    echo -e "${YELLOW}⚠ systemd-run 사용 불가 — cgroup 상자 없이 빌드합니다${NC}"
+fi
+
 # 빌드 실행 — 진행 상황을 실시간 출력
-npm run build 2>&1 | while IFS= read -r line; do
+set -o pipefail
+$BUILD_RUNNER npm run build 2>&1 | while IFS= read -r line; do
     # 핵심 진행 메시지만 출력 (Creating, Compiled, error)
     if echo "$line" | grep -qiE "Creating|Compiled|error|warning|Failed"; then
         echo -e "  ${line}"
     fi
 done
+BUILD_STATUS=${PIPESTATUS[0]}
+set +o pipefail
+
+if [ "$BUILD_STATUS" -ne 0 ]; then
+    echo -e "${RED}✗ 빌드 실패 (exit ${BUILD_STATUS})${NC}"
+    if [ "$BUILD_STATUS" -eq 137 ] || [ "$BUILD_STATUS" -eq 134 ]; then
+        echo -e "${RED}  메모리 상한(4G)에 걸려 죽었습니다. 다른 무거운 작업을 끄고 재시도하거나,${NC}"
+        echo -e "${RED}  필요치를 재측정해 package.json 힙 상한(현재 2560MB)을 조정하세요.${NC}"
+    fi
+    exit 1
+fi
 
 BUILD_END=$(date +%s)
 BUILD_TIME=$((BUILD_END - BUILD_START))
