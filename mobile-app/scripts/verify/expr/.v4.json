@@ -1,1 +1,1 @@
-[{"label":"e","expression":"(async () => typeof window.__NATIVE_PRINT === 'object' && typeof window.__NATIVE_PRINT_SETUP === 'object')()"}]
+[{"label":"e","expression":"(async () => { location.href = '/pos'; return true; })()"}]

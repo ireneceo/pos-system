@@ -1243,7 +1243,18 @@
       "Bash(awk 'length\\($0\\)==0{b++} END{print \"빈 줄:\", b}' MEMORY.md)",
       "Bash(awk 'c>=2{print} /^---$/{c++}' project_settings_guard_analysis.md)",
       "Bash(awk 'c>=2{print} /^---$/{c++}' project_printer_settings_wipe_locks.md)",
-      "Bash(journalctl --since \"3 hours ago\" --no-pager)"
+      "Bash(journalctl --since \"3 hours ago\" --no-pager)",
+      "Bash(/opt/android-sdk/platform-tools/adb shell *)",
+      "Bash(/opt/android-sdk/platform-tools/adb logcat *)",
+      "Bash(dmesg -T)",
+      "Bash(journalctl --since \"-30 min\")",
+      "Bash(awk '/pid  \\\\]/,/Out of memory/')",
+      "Bash(sort -k7 -n -r)",
+      "Bash(awk '{printf \"%s %sMB %s %s %s\\\\n\", $1, int\\($2/1024\\), $3, $4, $5}')",
+      "Bash(kill 11460 15467)",
+      "Bash(PURPLE_AVD=purplepos-ci node scripts/verify/run-v4.js --keep)",
+      "Bash(tee /tmp/claude-1000/-var-www/2f93f15d-ad99-4608-b589-e88173279736/scratchpad/v4-run1.log)",
+      "Bash(awk 'NR>=13560 && NR<=13754' /tmp/claude-1000/-var-www/2f93f15d-ad99-4608-b589-e88173279736/scratchpad/logcat.log)"
     ],
     "deny": [],
     "ask": []
