@@ -1359,7 +1359,11 @@
       "Bash(nohup ./gradlew assembleRelease -x lintVitalAnalyzeRelease -x lintVitalReportRelease -x lintVitalRelease --no-daemon)",
       "Bash(echo \"재빌드 PID: $! \\(lint 제외 — 빠름\\)\")",
       "Bash(pkill -9 -f \"assembleRelease\\\\|GradleWrapperMain\\\\|GradleDaemon\")",
-      "Bash(echo \"재빌드 PID: $!\")"
+      "Bash(echo \"재빌드 PID: $!\")",
+      "Bash(kill -0 32189222)",
+      "Bash(awk '{print $NF}')",
+      "Bash(awk '{print $5\" bytes\"}')",
+      "Bash(awk '/승인|approval|판단 요약|Key.*judg|§ ?8|## 8|규모|Phase|MVP/{p=1} p' PRINT_SELF_DIAGNOSE_DESIGN.md)"
     ],
     "deny": [],
     "ask": []
