@@ -284,7 +284,25 @@ router.post('/paypal', express.raw({ type: 'application/json' }), async (req, re
   // (payment_settings) or every PayPal webhook is rejected here.
   const webhookId = await getWebhookIdForIssuer('system', null);
   if (!webhookId) {
-    await systemLogger.error('security', 'paypal-webhook', 'No webhookId configured — rejecting unverified webhook (fail-closed)');
+    // Same 400 rejection either way (fail-closed, nothing mutated) — but split the LOG LEVEL by
+    // cause so a normal, expected state doesn't page an hourly alert email:
+    //   • PayPal DISABLED (no store uses it for live payments) → unverifiable POSTs to this public
+    //     URL are internet probes/noise → WARN (audit trail w/ source, no alert).
+    //   • PayPal ENABLED but webhookId missing → a genuine setup mistake → ERROR (alert).
+    // getPayPalConfigForIssuer THROWS when PayPal is not configured, so treat a throw as "disabled".
+    let paypalEnabled = false;
+    try { paypalEnabled = !!(await getPayPalConfigForIssuer('system', null)); } catch (_) { paypalEnabled = false; }
+    const meta = {
+      ip: req.headers['x-forwarded-for'] || req.ip || (req.connection && req.connection.remoteAddress) || null,
+      ua: req.headers['user-agent'] || null,
+      event_type: (event && event.event_type) || null,
+      event_id: (event && event.id) || null
+    };
+    if (paypalEnabled) {
+      await systemLogger.error('security', 'paypal-webhook', 'PayPal enabled but webhookId not configured — rejecting (fail-closed, setup error)', meta);
+    } else {
+      await systemLogger.warn('security', 'paypal-webhook', 'Unverified webhook rejected — PayPal disabled (probe/noise)', meta);
+    }
     return res.status(400).json({ error: 'PayPal webhookId not configured' });
   }
   const ok = await verifyPayPalSignature(req, event, webhookId);

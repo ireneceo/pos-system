@@ -11,6 +11,8 @@ const path = require('path');
 const { app, BrowserWindow } = require('electron');
 const { enqueue } = require('./serialQueue');
 const printers = require('./printers');
+const { printRawWindows } = require('./rawWindows');
+const raster = require('./raster');
 
 const RENDER_TIMEOUT_MS = 20000;
 
@@ -101,6 +103,51 @@ async function loadAndPaint(win, tmpFile, html) {
   } catch (_) { /* non-fatal */ }
 }
 
+// Canonical print path (2026-07-15 — with MIN blank-bill): render the ticket in
+// Chromium, then CAPTURE the painted pixels and encode them as ESC/POS raster so
+// the bytes go out the proven RAW transport (winspool) instead of the Windows GDI
+// print driver. Cheap POS-80 thermal drivers blank a silent GDI raster job but
+// execute a GS v 0 raster command natively — the same reason the kitchen order
+// ticket (raw ESC/POS) prints while the HTML bill did not. Returns a ready-to-send
+// Buffer, or null if the page couldn't be captured (caller falls back to GDI).
+const RAF_WAIT = 'new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 60))))';
+
+async function captureRasterDocument(win, wc, widthMm) {
+  // The real bill/ticket HTML lays out at `width:100%` under `@page 80mm`. On screen
+  // capturePage() would otherwise use the WINDOW width (420px) as the layout width, so
+  // text would come out ~70% of design size (Fable C1). Pin the CSS layout width to the
+  // paper's printable width and render it up to the exact printer dot width via zoom, so
+  // the captured pixels are 1:1 with what the printer prints — crisp, correct-size glyphs.
+  const dots = raster.dotsForWidthMm(widthMm);                    // 80mm → 576, 58mm → 384
+  const cssW = Math.max(120, Math.round((Number(widthMm) || 80) / 25.4 * 96)); // 80mm → 302 CSS px
+  const zoom = dots / cssW;                                       // ~1.9 → renders cssW layout at `dots` device px
+
+  try { wc.setZoomFactor(zoom); } catch (_) { /* non-fatal */ }
+  // Width first (DIP = cssW*zoom = dots) so the page reflows at cssW CSS px, then measure
+  // the reflowed content HEIGHT (CSS px, zoom-independent) to size the window for a full,
+  // un-clipped capture. Over-measure a little — extra bottom whitespace is harmless (cut
+  // follows a feed), a short window would clip the total line.
+  try {
+    win.setContentSize(dots, 1200);
+    await withTimeout(wc.executeJavaScript(RAF_WAIT), 1500, true);
+    const hCss = await withTimeout(
+      wc.executeJavaScript('document.body ? Math.ceil(document.body.scrollHeight) : 0'), 1000, 0
+    );
+    const hDip = Math.min(Math.ceil((hCss || 1200) * zoom) + 24, 8000);
+    win.setContentSize(dots, hDip);
+    await withTimeout(wc.executeJavaScript(RAF_WAIT), 1500, true);
+  } catch (_) { /* non-fatal — capture whatever is painted */ }
+
+  const img = await wc.capturePage();
+  if (!img || img.isEmpty()) return null;
+  // Already rendered at `dots` wide; resize is a safety no-op that guarantees exact width.
+  const sized = img.resize({ width: dots });
+  const size = sized.getSize();
+  const bmp = sized.getBitmap();                                 // tightly packed BGRA
+  if (!bmp || !bmp.length || !size.width || !size.height) return null;
+  return raster.buildRasterDocument(bmp, size.width, size.height);
+}
+
 async function doPrint({ html, printerName, widthMm, copies }) {
   // Enforce the explicit-failure contract before rendering anything.
   const resolved = await printers.resolveDeviceName(printerName || '');
@@ -142,6 +189,37 @@ async function doPrint({ html, printerName, widthMm, copies }) {
       );
     } catch (_) { render = null; /* diagnostics must never block a print */ }
 
+    // ── Canonical path: pixel raster over the proven RAW transport ──────────
+    // Windows only (winspool). Render → capture → GS v 0 raster → printRawWindows,
+    // the exact byte transport the kitchen order ticket prints on today. This is
+    // what makes the design (logo + Korean) come out on the very driver that
+    // blanked the old GDI silent-print path.
+    if (process.platform === 'win32') {
+      try {
+        const doc = await captureRasterDocument(win, wc, widthMm);
+        if (doc && doc.length) {
+          const copiesN = Math.max(1, copies || 1);
+          let sent = { ok: false, error: 'RASTER_NOT_SENT' };
+          for (let i = 0; i < copiesN; i++) {
+            sent = await printRawWindows(doc, deviceName);
+            if (!sent || !sent.ok) break;
+          }
+          if (sent && sent.ok) {
+            return { ok: true, render: Object.assign({ via: 'raster' }, render || {}) };
+          }
+          if (render) render.rasterErr = (sent && sent.error) || 'RASTER_FAIL';
+        } else if (render) {
+          render.rasterErr = 'RASTER_NO_CAPTURE';
+        }
+      } catch (rErr) {
+        if (render) render.rasterErr = (rErr && rErr.message) || 'RASTER_EXC';
+      }
+      // raster failed to send → fall through to GDI silent print as a last resort.
+    }
+
+    // ── Fallback: Electron GDI silent print (0.1.8 behaviour) ───────────────
+    // Reset any zoom the raster attempt applied so GDI print uses the normal layout.
+    try { wc.setZoomFactor(1); } catch (_) { /* non-fatal */ }
     const printResult = await new Promise((resolve) => {
       wc.print(
         {
@@ -162,9 +240,9 @@ async function doPrint({ html, printerName, widthMm, copies }) {
     });
 
     if (!printResult.success) {
-      return { ok: false, error: printResult.failureReason || 'PRINT_FAILED', render };
+      return { ok: false, error: printResult.failureReason || 'PRINT_FAILED', render: Object.assign({ via: 'gdi' }, render || {}) };
     }
-    return { ok: true, render };
+    return { ok: true, render: Object.assign({ via: 'gdi' }, render || {}) };
   } catch (err) {
     return { ok: false, error: (err && err.message) || 'PRINT_ERROR' };
   } finally {

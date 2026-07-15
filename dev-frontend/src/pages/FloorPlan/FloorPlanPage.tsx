@@ -372,8 +372,8 @@ const FloorPlanPage: React.FC = () => {
   usePosThemeOnBody(posTheme);
   // 스탭 PIN 로그인 전환 (POS Terminal 과 동일 — switchUser/logout).
   const [showCashierPinModal, setShowCashierPinModal] = useState(false);
-  // 좁은 화면(≤1280px, 10인치 단말)에서 Daily Settlement/Customer Display/Open Drawer 를
-  // 설정(gear) 드롭다운으로 수납. CSS 미디어와 충돌 없게 JS 로 단일 판정.
+  // 좁은 화면(≤1720px)에서 Cash Drawer/Open Drawer/Customer Display 를 설정(gear)
+  // 드롭다운으로 수납. CSS 미디어와 충돌 없게 JS 로 단일 판정. (임계값 근거는 아래 useEffect.)
   const [isNarrow, setIsNarrow] = useState(false);
   // 2026-06-28 (5-1): Fullscreen mode for order-taking — hides the header action row
   // AND the bottom stats bar to maximize the table map (Irene: "주문받을 땐 헤더 불필요").
@@ -392,7 +392,12 @@ const FloorPlanPage: React.FC = () => {
   // 2026-06-28 (FloorPlan): 테이블 상세를 큰 팝업으로 보기 토글(측면패널 ↔ 중앙 모달).
   const [detailExpanded, setDetailExpanded] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1440px)');
+    // 2026-07-15 (Irene, 네이티브앱 헤더 2줄 수정): 임계값 1440 은 너무 낮았다. 실측 결과
+    // 인라인 카운터 액션(Cash Drawer·Open Drawer·마감·Customer Display·테마·스피커·gear)은
+    // ≥1680px 에서만 한 줄에 들어가, 1441~1679px(1600급 모니터·최대화 네이티브앱)에서 헤더가
+    // 2줄로 접혔다. 액션이 실제로 맞는 폭까지는 gear 로 수납하도록 1720 으로 올림(i18n·로그인
+    // 이름 길이 변동 여유 포함). 그 이상에서만 인라인.
+    const mq = window.matchMedia('(max-width: 1720px)');
     const apply = () => setIsNarrow(mq.matches);
     apply();
     mq.addEventListener('change', apply);
@@ -1971,16 +1976,35 @@ const FloorPlanPage: React.FC = () => {
           </StaffInfo>
           <Clock>{clock}</Clock>
 
-          {/* 액션 버튼 순서: Daily Settlement(항상 인라인) · Customer Display · Open Drawer.
-              좁은 화면(≤1280px, 10인치 단말)에선 Customer Display/Open Drawer 만 설정(gear)
-              드롭다운으로 수납한다. Daily Settlement 은 마감 핵심 동작이라 좁은 화면에서도 인라인 유지(Irene). */}
+          {/* 액션 버튼 순서: [Today's Cash Drawer · Open Drawer](현금 동선 한 묶음) · Daily Settlement · Customer Display.
+              2026-07-15 (Irene): 현금 두 버튼이 마감▾·Customer Display 에 밀려 떨어져 있던 걸 인접 배치로 묶음.
+              좁은 화면(≤1720px)에선 Cash Drawer/Open Drawer/Customer Display 를 설정(gear) 드롭다운으로 수납한다.
+              Daily Settlement 은 마감 핵심 동작이라 좁은 화면에서도 인라인 유지(Irene). */}
           {canOperatePOS && !isNarrow && (
+          <>
           <BackBtn type="button" onClick={() => setShowCashDrawer(true)} title="Cash Drawer">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '15px', height: '15px' }}>
               <path d="M2 8h20M2 8l2-4h16l2 4M2 8v10a2 2 0 002 2h16a2 2 0 002-2V8M9 13h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             {t('cash:todayCashDrawer', { defaultValue: "Today's Cash Drawer" })}
           </BackBtn>
+          <BackBtn type="button"
+            onClick={async () => {
+              try {
+                const { openCashDrawer } = await import('../../utils/billPrint');
+                const ok = await openCashDrawer();
+                if (!ok) {
+                  setCdInfoModal({ open: true, title: 'Drawer did not open', message: 'Cash drawer pulse needs QZ Tray or RawBT (not Browser print mode).\nCheck Settings → Workstations → Method.' });
+                }
+              } catch (e: any) {
+                setCdInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
+              }
+            }}
+            title="Send open-drawer pulse to the active workstation's bill printer"
+          >
+            Open Drawer
+          </BackBtn>
+          </>
           )}
           {/* 2026-06-28 (Irene): Daily/Final 따로 였던 걸 "마감 ▾" 하나로 통합 + Staff Meal 추가.
               Daily/Final 은 이 화면의 기존 모달 재사용(시재 FinalSettlementModal 보존). */}
@@ -1988,7 +2012,6 @@ const FloorPlanPage: React.FC = () => {
             <SettlementMenu onDaily={() => setShowSettlement(true)} onFinal={() => setShowFinalSettlement(true)} />
           )}
           {canOperatePOS && !isNarrow && (
-            <>
               <BackBtn type="button"
                 onClick={async () => {
                   const result = await openCustomerDisplay(restaurantId || '');
@@ -2002,23 +2025,6 @@ const FloorPlanPage: React.FC = () => {
                 {isAutoOpenEnabled() && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--pos-brand, #635BFF)', display: 'inline-block' }} />}
                 Customer Display
               </BackBtn>
-              <BackBtn type="button"
-                onClick={async () => {
-                  try {
-                    const { openCashDrawer } = await import('../../utils/billPrint');
-                    const ok = await openCashDrawer();
-                    if (!ok) {
-                      setCdInfoModal({ open: true, title: 'Drawer did not open', message: 'Cash drawer pulse needs QZ Tray or RawBT (not Browser print mode).\nCheck Settings → Workstations → Method.' });
-                    }
-                  } catch (e: any) {
-                    setCdInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
-                  }
-                }}
-                title="Send open-drawer pulse to the active workstation's bill printer"
-              >
-                Open Drawer
-              </BackBtn>
-            </>
           )}
 
           {/* 보기 색상 토글 (밝게/고대비/어둡게) — 항상 표시, 기기별 기억. */}
@@ -2066,17 +2072,9 @@ const FloorPlanPage: React.FC = () => {
           {(() => {
             const gearItems: OverflowMenuItem[] = [];
             if (isNarrow && canOperatePOS) {
-              // 좁은 화면(≤1440): Daily Settlement 만 인라인 유지(Irene), 나머지 카운터 액션은 gear 수납.
+              // 좁은 화면(≤1720): Daily Settlement 만 인라인 유지(Irene), 나머지 카운터 액션은 gear 수납.
+              // 현금 동선 한 묶음: Today's Cash Drawer 바로 뒤에 Open Drawer (2026-07-15 Irene).
               gearItems.push({ id: 'cash-drawer', label: t('cash:todayCashDrawer', { defaultValue: "Today's Cash Drawer" }) as string, onClick: () => setShowCashDrawer(true) });
-              gearItems.push({ id: 'final-settlement', label: t('cash:finalSettlement', { defaultValue: 'Final Settlement' }) as string, onClick: () => setShowFinalSettlement(true) });
-              gearItems.push({
-                id: 'customer-display', label: 'Customer Display', indicator: isAutoOpenEnabled(),
-                onClick: async () => {
-                  const result = await openCustomerDisplay(restaurantId || '');
-                  bumpCdMirror();
-                  if (result.title && result.message) setCdInfoModal({ open: true, title: result.title, message: result.message });
-                }
-              });
               gearItems.push({
                 id: 'open-drawer', label: 'Open Drawer',
                 onClick: async () => {
@@ -2087,6 +2085,15 @@ const FloorPlanPage: React.FC = () => {
                   } catch (e: any) {
                     setCdInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
                   }
+                }
+              });
+              gearItems.push({ id: 'final-settlement', label: t('cash:finalSettlement', { defaultValue: 'Final Settlement' }) as string, onClick: () => setShowFinalSettlement(true) });
+              gearItems.push({
+                id: 'customer-display', label: 'Customer Display', indicator: isAutoOpenEnabled(),
+                onClick: async () => {
+                  const result = await openCustomerDisplay(restaurantId || '');
+                  bumpCdMirror();
+                  if (result.title && result.message) setCdInfoModal({ open: true, title: result.title, message: result.message });
                 }
               });
             }

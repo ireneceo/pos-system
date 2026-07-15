@@ -1299,7 +1299,12 @@
       "Bash(timeout 1500 npx electron-builder --win)",
       "Bash(awk '{print \"verify-all 경과: \"$1\"초\"}')",
       "Bash(awk '{print \"  진행 중: \"$2\" \\(\"$1\"초\\)\"}')",
-      "Bash(scp -q release/PurplePOS-Setup-0.1.8.exe release/PurplePOS-Setup-0.1.8.exe.blockmap release/latest.yml irene@87.106.78.146:/var/www/production-frontend/build/desktop/)"
+      "Bash(scp -q release/PurplePOS-Setup-0.1.8.exe release/PurplePOS-Setup-0.1.8.exe.blockmap release/latest.yml irene@87.106.78.146:/var/www/production-frontend/build/desktop/)",
+      "Bash(scp /tmp/claude-1000/-var-www/3fdcff4c-d8a2-4567-a029-c007ced451c0/scratchpad/withmin-bill-printer.js irene@87.106.78.146:/var/www/production-backend/withmin-bill-printer.js)",
+      "Bash(rsync -avz PurplePOS-Setup-0.1.9.exe PurplePOS-Setup-0.1.9.exe.blockmap latest.yml irene@87.106.78.146:/var/www/production-frontend/build/desktop/)",
+      "Bash(bash -n scripts/prod-memory-protection.sh)",
+      "Bash(sed -i 's/좁은 화면\\(≤1440px\\)에선 Cash Drawer\\\\/Open Drawer\\\\/Customer Display 를 설정\\(gear\\) 드롭다운으로 수납한다./좁은 화면\\(≤1720px\\)에선 Cash Drawer\\\\/Open Drawer\\\\/Customer Display 를 설정\\(gear\\) 드롭다운으로 수납한다./' FloorPlanPage.tsx)",
+      "Bash(sed -i 's/\\\\/\\\\/ 좁은 화면\\(≤1440\\): Daily Settlement 만 인라인 유지\\(Irene\\), 나머지 카운터 액션은 gear 수납./\\\\/\\\\/ 좁은 화면\\(≤1720\\): Daily Settlement 만 인라인 유지\\(Irene\\), 나머지 카운터 액션은 gear 수납./' FloorPlanPage.tsx)"
     ],
     "deny": [],
     "ask": []

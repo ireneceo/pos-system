@@ -1,94 +1,35 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-14 12:55, idle 2029s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: deploy-manifest.json
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-07-14
-**버전:** v3.68 (운영)
-**작업 상태:** 인쇄 원격진단 **운영 배포 실행 중**(스크립트 진행 중 — 다음 세션 첫 확인 항목) · 매장 인쇄 확인 대기
+**마지막 업데이트:** 2026-07-15
+**버전:** v3.68 (운영) · 데스크탑앱 **0.1.9**
+**작업 상태:** 완료 — 운영 배포 2회 + Fable 최종검증 GO. **매장 실프린터 확인 1회(내일)만 남음.**
 
----
+### 진행 중인 작업
+- 없음
 
-## 🔴 다음 세션 첫 할 일 (순서대로)
+### 완료된 작업 (이번 세션 — 2026-07-15)
+- **윈도우앱 빌 백지 정석 수리(0.1.9 래스터)**: HTML 렌더 → `capturePage` → ESC/POS GS v 0 래스터(`raster.js`) → `printRawWindows`(오더티켓이 쓰는 검증된 winspool RAW)로 **GDI 드라이버 우회**. 실패 시 GDI 폴백(회귀0), 웹 계약 불변(billPrint.js 무접촉). C1(캡처폭 302px 고정+zoom 576dot 네이티브렌더+높이 재측정) 반영. 진단창 "전체 인쇄 테스트(Bill+Ticket)" 1클릭 추가.
+- **with MIN(id=10) 운영 설정**: 빌 프린터 `qztray/POS-80`, **`printFormat='graphic'`**(우리 디자인). 스테이션 9·22·로고 불변. 백업 `/tmp/withmin-printer_settings-backup-*.json`(운영).
+- **데스크탑 피드**: 0.1.9 wine 빌드 → 운영/dev 피드 0.1.9(정체됐던 0.1.7 해소) + CTA 다운로드 별칭 0.1.9.
+- **PayPal 웹훅 로그레벨**: PayPal 꺼짐=warn(알림메일 오탐 제거)/켰는데 webhookId 없음=error. 400 차단 불변.
+- **Floor Plan 헤더 반응형**(백로그 [[project_native_app_floorplan_cashmgmt_backlog]]): ①헤더 2줄 = isNarrow 임계 1440→**1720**(인라인 액션은 ≥1680px에서만 한 줄, 1441~1679 구간이 2줄이던 것 — 실측 재현). ②캐시 버튼 = Open Drawer를 Today's Cash Drawer 옆으로 묶음. Playwright 1500~1920 전 구간 1줄 확인.
+- **검증/배포**: verify-all --full **14/14**(mount sweep 크래시0) → 운영 배포 2회(Backup 20260715_070606·084544, Smoke 9/9) → 운영체크(번들 바이트동일·에러0·graphic유지) → **Fable 최종검증 GO** ×2(래스터 + FloorPlan). 인쇄 보호파일 8/8 무접촉·디자인 신규0.
+- 버전 유지(Irene). CHANGELOG/릴리즈노트는 내일 종이확인 후 정리.
 
-### 0. 배포 결과 확인 (제일 먼저)
-지난 세션 마지막에 `/배포` 를 돌린 채 종료했다. **성공 여부를 먼저 확인**한다.
-```bash
-ssh -n irene@87.106.78.146 'pm2 logs production-backend --lines 5 --nostream; ls -t /var/www/backups | head -2'
-curl -s -o /dev/null -w "%{http_code}\n" https://purplehere.com
-curl -s https://purplehere.com/desktop/latest.yml | head -2      # 0.1.8 이어야 함 (업로드 확인됨)
-```
-실패했으면 재배포. (앱 0.1.8 은 **운영 피드 업로드 완료** — 매장에 이미 설치됨을 Irene 이 확인.)
+### 다음 확정 작업 (Irene 명시)
+1. **내일 매장 실프린터 확인** — 앱이 오늘밤 03~06시 유휴에 자동 0.1.9+재시작→graphic 반영됨. ①빌 1장 + 오더티켓 1장 = 둘 다 우리 디자인(로고·한글) 확인 ②서랍(Open Drawer) 1회.
+   - 실주문 없이 먼저 보려면: 앱 **Ctrl+Shift+D → "전체 인쇄 테스트(Bill+Ticket)"**(프린터 POS-80). 출력창 `via:raster` 확인.
+   - ⚠ 앱이 **0.1.9인지 먼저 확인**(창 제목). 0.1.8에 graphic 로드되면 백지. (앱은 Ctrl+R/재시작 전까지 옛 설정으로 인쇄 = 안전.)
+   - **백지/이상 시 즉시 원격 복구**: `production-backend/withmin-bill-printer.js`(배포가 지움 → 없으면 scratchpad `withmin-bill-printer.js` 재scp) → `node withmin-bill-printer.js text`(빌=raw텍스트로 복구) + `[print-trace]`의 `render.{txt,via,rasterErr}`로 원인판정 → 0.1.10. 진단: `ssh -n irene@87.106.78.146 'pm2 logs production-backend --lines 300 --nostream | grep print-trace'`
+2. **운영 메모리 보호막(earlyoom)** — 운영 root 비번 필요, Irene 1줄: `! ssh -t irene@87.106.78.146 'sudo bash -s' < /var/www/scripts/prod-memory-protection.sh` (무중단·멱등·문법검증 완료. 현재 운영에 earlyoom 미가동, fail2ban만 가동.)
 
-### 1. 🔑 빌을 오더티켓과 같은 길로 (Irene 지적 — 코드 0줄)
-**두 티켓은 완전히 다른 길로 나간다. 그래서 하나는 나오고 하나는 안 나온다.**
-
-| | 경로 | 결과 |
-|---|------|------|
-| **오더티켓** | 스테이션 `method=qztray, address='POS-80'` → `printRaw` = **raw ESC/POS + 이름 지정 프린터** | **나온다** (단, 우리 디자인 아님 = raw 텍스트) |
-| **빌** | 워크스테이션 billPrinter `method='browser', address=''` + **로고 설정됨**(`hasImage=true`) → `printHtml({printerName:''})` = **HTML 이미지 + OS 기본 프린터** | **백지/안 나옴** |
-
-→ **설정 2개만 바꾸면 빌이 즉시 나온다**: 빌 프린터 `method=qztray` + `address='POS-80'`, `printFormat='text'`. (로고·디자인 없는 텍스트 영수증)
-⚠ `printerName:''`(OS 기본)이 **POS-80 이 아닐** 가능성 → 트레이스의 `def=` 필드가 OS 기본 프린터 이름을 알려준다.
-
-### 2. 매장 프로토콜 (Irene, 2분) → 내가 로그로 판정
-앱은 이미 **0.1.8 설치 확인됨**. ①앱에서 **Ctrl+R**(진단 포함된 새 웹 번들 로드) ②**빌 프린트 1회** ③오더티켓 1회.
-```bash
-ssh -n irene@87.106.78.146 'pm2 logs production-backend --lines 300 --nostream | grep print-trace'
-```
-| 로그 | 판정 |
-|------|------|
-| `render.txt≈0` | **앱이 백지를 그림** → 앱 렌더 버그 (0.1.9) |
-| `render.txt` 큼 + 종이 백지 | 앱은 정상, **스풀/드라이버 구간**이 범인 (브라우저 인쇄는 되는 것과 대조) |
-| `ok=false err=...` | 에러 문자열대로 수정 |
-| 정상 출력 | **Settings `printFormat='graphic'`** → 빌·오더티켓 **둘 다 우리 디자인** 복구 |
-
-⚠ **종이로 검증되기 전까지 autoPrint 켜지 말 것**(Fable): 실패 주문이 `pending-print` "오래된 20건" 창을 점유 → 신규 주문 주방티켓까지 밀릴 수 있다.
-
-### 3. 운영서버 메모리 보호막 (sudo 비번 필요 — Irene 실행 1줄)
-```
-! ssh -t irene@87.106.78.146 'sudo bash -s' < /var/www/scripts/prod-memory-protection.sh
-```
-무중단(서비스 재시작 0). fail2ban 은 운영에 이미 켜져 있음.
-
----
-
-## 완료된 작업 (이번 세션 — 2026-07-14)
-
-### ① 서버 반복 다운 근본수리 (코드 런타임 무변경)
-- **원인**: 사양 문제가 아니라 **관리 부재**. 안드로이드 에뮬레이터(qemu 4.5GB) + 과대설정된 프론트 빌드(실측 3.08GiB면 되는데 힙 상한 4096 → 4.8GB까지 부풂)가 7.9GB 서버에서 겹쳐 **스왑 만재 → 프리즈 → 사람이 콘솔 리셋**(재부팅 4회). OOM 희생자 6건 전부 빌드 node.
-- **4중 방어(비용 0)**: `scripts/heavy-task-gate.sh`(빌드↔에뮬레이터 상호배제) → 빌드 힙 **2560** → **cgroup 상자**(빌드 4G/에뮬 5G) → **earlyoom**(가용 10%/5%, MySQL −800·PM2 −500·nginx −500·sshd −1000 보호).
-- 옛 `monitor-memory.sh` 가 **유해**했음(압박 시 drop_caches = 스래시 악화 + MySQL 재시작) → **기록 전용**으로 교체(1분 부검 로그) + sysstat 1분.
-- **실증**: 풍선 6.4GB → earlyoom 이 **4초 만에** kill, 커널 OOM 0, 서비스 전원 생존. 실빌드 69초 성공.
-- 부수: **fail2ban**(SSH 무차별 대입 22,000건+) + **비번 로그인 차단**(성공 로그인 237건 전부 publickey 확인 후).
-- **RAM·스왑 증설 불필요** (Fable 판정). 단일 진실 = `docs/SERVER_MEMORY_PROTECTION.md`.
-
-### ② with MIN 네이티브앱 인쇄 — 원격 진단 + B1 + 앱 0.1.8 (운영 배포)
-- **브라우저 인쇄는 멀쩡하다**(Irene) → 프린터·드라이버 무죄, **앱이 범인**. 매장 앱은 **진짜 0.1.7**(구버전 가설 사망) — 0.1.7 에서도 백지.
-- **원격 진단 텔레메트리**(`billPrint.js` 5곳 → `[print-trace]` 운영 로그): 앱버전·경로·프린터·성공여부·**숨은창이 실제로 그린 것**(`render={h,txt,imgs,imgErr}`)·OS 기본프린터. **매장에 갈 필요가 없어짐.**
-- 🔴 **B1 수정**: `printTicketHTML` 이 네이티브 실패를 삼키고 **무조건 true** → 폴러가 "인쇄됨" 도장 → **종이 없이 티켓 유실**하던 것. 실결과 반환(실패 → 재시도, qztray 실패와 동일 계약).
-- **앱 0.1.8**: 렌더 지표 반환 · **창 제목에 버전** · **업데이터 심야 자동설치**(POS 가 앱을 안 닫아 업데이트가 영영 안 깔리던 문제 — 03~06시+무입력15분+인쇄큐 유휴, 실패 시 재무장).
-- 검증: 라우트가드 **34/34**(타 매장 회귀 0) · verify-all **14/14** · 앱테스트 6/6 · 텔레메트리 실증 · print-guard `--bless` · **Fable 최종게이트 GO**.
-
-### ③ PayPal 알림 검토 (수정 미착수)
-- **오탐**: 운영 PayPal `enabled=false`·webhookId 없음, 매장 22곳·브랜드 6곳 **전부 PayPal 미설정** → 인터넷 봇이 공개 웹훅 URL 을 찌른 것. fail-closed 로 정상 차단(월 1건 수준).
-- **진짜 결함 = 로그 레벨**: 형제 분기(서명검증 실패)는 이미 warning + IP/UA 기록으로 낮춰졌는데 **이 분기만 error → 알림 메일 발송**. 수정안: PayPal 꺼져 있으면 **warning**(소음) / 켰는데 webhookId 없으면 **error**(진짜 설정 실수) + IP/UA 기록. 차단 동작(400)은 불변.
-
----
-
-## 다음 확정 작업
-- 위 "다음 세션 첫 할 일" 0~3 (배포 결과 확인 → 빌 경로 전환 → 매장 인쇄 판정 → 운영 보호막)
-
-## 후속 후보 (아이디어 메모, 확정 X)
+### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
-- **PayPal 웹훅 로그 레벨 수정**(위 ③ — 1파일, 알림 메일 오탐 제거)
-- **빌 인쇄 N회 연속 실패 시 포기+통지**(Fable 백로그 — 폴러 절단면, 별도 승인 필요. `pending-print` 20건 창 잠식 방지)
-- **안드로이드 M2**: V4 폴러 E2E 게이트 완주(하니스 수정 완료, 완주 미확인) → M3 매장 실기기 → M4 배포. ⚠ 에뮬레이터는 이제 게이트가 빌드와 겹치지 않게 강제함
-- 프랜차이즈 맵 좌표 백필(dev 완료·미배포) · with MIN 매장 실프린터 종이 확인 · timezone/design baseline 부채
+- 인쇄 후속(내일 종이확인 후): 빌 실패 N회 포기+통지(폴러 절단면·승인 필요) · Fable 다듬기(TIMEOUT류 애매실패 시 GDI 폴백 생략 = 이중인쇄 방지, `doRenderCheck` zoom 리셋 1줄) · 58mm 매장 `widthMm` 플러밍(현재 웹 80 하드코딩)
+- 소켓 인증 하드닝(라이브주문 무인증) · 매출 대조 마감(미구현) · 안드로이드 M2(V4 게이트 완주) · 프랜차이즈 맵 좌표 백필(dev완료·미배포) · timezone/design baseline 부채
+- FloorPlan 주석 3곳 1720 정정분(순수 주석)·release notes 정리 = 다음 배포/내일 반영
 
 ---
 

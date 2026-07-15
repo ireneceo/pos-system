@@ -26,6 +26,17 @@
   </section>
 
   <section>
+    <h2>정석 자가진단 — Bill + Order Ticket (실제 주문 없이 디자인 확인)</h2>
+    <label>Printer name (예: POS-80)</label><br />
+    <input id="selfPrinter" placeholder="POS-80" size="30" value="POS-80" />
+    <button id="btnSelfTest">전체 인쇄 테스트 (Bill + Ticket)</button>
+    <div style="font-size:12px;color:#6b7280;margin-top:6px;">
+      한 번 누르면 로고 포함 빌 샘플과 주방 오더티켓 샘플이 지정 프린터로 인쇄됩니다.
+      둘 다 디자인(로고·한글)대로 나오면 정상 — 매장 실주문 인쇄도 동일 경로입니다.
+    </div>
+  </section>
+
+  <section>
     <h2>HTML pixel print (Korean glyph test)</h2>
     <label>Printer name (blank = OS default)</label><br />
     <input id="htmlPrinter" placeholder="e.g. KITCHEN or blank" size="30" />

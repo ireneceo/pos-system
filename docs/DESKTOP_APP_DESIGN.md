@@ -160,10 +160,11 @@ if (_np) { /* 브릿지 위임 */ } else { /* 기존 QZ 코드 무수정 */ }
 ## 6. Main process 인쇄 구현 스펙
 
 ### 6-1. HTML pixel (`print/htmlPrinter.js`)
-1. 숨김 BrowserWindow(재사용 풀 1개, `show:false`) 에 `loadURL('data:text/html;charset=utf-8,...')` 또는 `webContents.loadURL` + 완료 대기.
-2. `webContents.print({silent:true, deviceName, margins:{marginType:'none'}, pageSize:{width: widthMm*1000, height: 자동}}, cb)` — 콜백 성공/실패를 `{ok}`로.
-3. 잡 단위 직렬 큐(호출 순서 = 발송 순서). 연속 티켓(스테이션 3장 등)도 순서 보존.
-4. 한글: Chromium이 OS 드라이버로 픽셀 렌더 → QZ HTML pixel과 동일 원리. **폰트가 서버 웹폰트면 숨김 창에서도 로드됨(원격 origin CSS 그대로)** — 단, 기존 티켓 HTML이 inline style 기반이므로 대부분 무의존.
+1. 숨김 BrowserWindow(재사용 풀 1개, `show:false` + `paintWhenInitiallyHidden` + `showInactive()` 오프스크린) 에 tmp HTML 파일 `loadFile` + `did-finish-load`·이미지 decode·2×rAF 대기(`loadAndPaint`).
+2. **★ 정석 경로(2026-07-15, with MIN 백지 근본수리) = 드라이버 우회 래스터**: 렌더된 페이지를 `wc.capturePage()`로 픽셀 캡처 → **ESC/POS GS v 0 래스터(`print/raster.js`)로 인코딩** → **`printRawWindows`(§6-3 winspool RAW)로 발송**. 즉 오더티켓이 쓰는 검증된 RAW 전송 그대로. 캡처 폭은 80mm=302 CSS px 로 고정하고 `setZoomFactor(dots/cssW≈1.9)`로 576 dot 네이티브 렌더(글자 크기 정상·업스케일 아님), 높이 재측정으로 클리핑 방지. **왜**: `webContents.print({silent,deviceName})`는 Windows GDI 프린터 드라이버에 무음 이미지 잡을 넘기는데, 싸구려 POS-80 열전사 드라이버가 이걸 **백지** 처리한다(크롬 인쇄대화상자·오더티켓 raw는 정상 = 그 GDI 무음 경로만 문제). 래스터는 프린터 펌웨어가 직접 실행하므로 드라이버 독립·한글 정상.
+3. **폴백**: win32 아님 / capturePage 실패 / RAW 발송 실패 시 기존 `webContents.print({silent:true, deviceName, margins:{marginType:'none'}}, cb)`(커스텀 pageSize 없음 = 드라이버 기본 폼) — 회귀 0. 반환 `render.via`(raster|gdi) + `render.txt/h/imgErr`(숨은창이 실제 그린 것)를 웹이 `[print-trace]`로 서버 로그에 남겨 원격 진단.
+4. 잡 단위 직렬 큐(호출 순서 = 발송 순서). 연속 티켓(스테이션 3장 등)도 순서 보존.
+5. 한글: Chromium이 픽셀 렌더 후 비트맵으로 인코딩 → 래스터라 드라이버 폰트 무관 정상. **폰트가 서버 웹폰트면 숨김 창에서도 로드됨** — 단, 기존 티켓 HTML이 inline style 기반이므로 대부분 무의존.
 
 ### 6-2. LAN raw (`print/rawLan.js`)
 `net.Socket` → `connect(port, host)` (기본 9100) → base64 decode한 Buffer write → end. connect 5초/전체 10초 타임아웃. QZ의 host/port raw와 동일 결과, 중간층 제거.
