@@ -297,6 +297,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchComments = async () => {
@@ -425,15 +426,26 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
   };
 
   const handleDelete = async (commentId: number) => {
+    setDeleteError('');
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/comments/${commentId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (response.ok) fetchComments();
+      if (response.ok) {
+        fetchComments();
+        return;
+      }
+      // 실패를 조용히 삼키지 않는다 — 사유를 화면에 표시(진단 가능). 이전엔 non-ok 시
+      // 아무 반응이 없어 "삭제해도 안 지워진다"로 보였다. (2026-07-15)
+      let msg = `Failed to delete comment (HTTP ${response.status})`;
+      try { const j = await response.json(); if (j?.message) msg = j.message; } catch { /* ignore */ }
+      console.error('Delete comment failed:', response.status, msg);
+      setDeleteError(msg);
     } catch (error) {
       console.error('Error deleting comment:', error);
+      setDeleteError('Network error — could not delete the comment. Please try again.');
     }
   };
 
@@ -491,6 +503,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
       ) : (
         <EmptyText>No comments yet</EmptyText>
       )}
+      {deleteError && <ErrorText>{deleteError}</ErrorText>}
       <InputArea>
         <InputRow>
           <CommentInput

@@ -88,6 +88,11 @@
       "title": "윈도우용 Purple POS",
       "body": "안정적인 인쇄를 위한 Windows 앱 — QZ Tray·자바 설치 불필요.",
       "button": "Windows용 다운로드"
+    },
+    "androidApp": {
+      "title": "안드로이드용 Purple POS",
+      "body": "WiFi·블루투스로 주방 프린터에 안정적으로 인쇄하는 안드로이드 앱을 받으세요.",
+      "button": "안드로이드용 다운로드"
     }
   },
   "empty": {

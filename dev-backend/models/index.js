@@ -931,6 +931,10 @@ BrandMenuOption.belongsTo(BrandMenuOptionGroup, { foreignKey: 'group_id', as: 'g
 BrandMenu.belongsTo(ProductRecipe, { foreignKey: 'product_recipe_id', as: 'recipe' });
 ProductRecipe.hasMany(BrandMenu, { foreignKey: 'product_recipe_id', as: 'brandMenus' });
 
+// "Linked Recipe" (Brand Recipe / Recipe 모델) — 메뉴관리·재고차감이 쓰는 정합 필드. (2026-07-15)
+BrandMenu.belongsTo(Recipe, { foreignKey: 'recipe_id', as: 'linkedRecipe' });
+Recipe.hasMany(BrandMenu, { foreignKey: 'recipe_id', as: 'linkedBrandMenus' });
+
 BrandMenu.belongsToMany(BrandMenuOptionGroup, {
   through: BrandMenuOptionGroupLink,
   foreignKey: 'brand_menu_id',

@@ -67,7 +67,25 @@ async function waitFor(label, fn, timeoutMs, intervalMs = 2000) {
   }
   throw new Error(`timeout waiting for ${label}`);
 }
+// Single-instance lock, shared with run-v3 — see run-v3.js acquireLock(): concurrent
+// gates interleave adb/emulator/ports and the loser's cleanup kills the winner's run.
+const LOCK = '/tmp/purple-android-gate.lock';
+function acquireLock() {
+  try {
+    const pid = parseInt(fs.readFileSync(LOCK, 'utf8'), 10);
+    if (pid) { process.kill(pid, 0); throw new Error(`다른 게이트가 이미 실행 중 (pid=${pid}) — 동시 실행 금지, 끝나길 기다릴 것`); }
+  } catch (e) {
+    if (String(e.message).includes('동시 실행')) throw e;
+    // ENOENT / ESRCH(죽은 pid) → stale, take it
+  }
+  fs.writeFileSync(LOCK, String(process.pid));
+}
+function releaseLock() {
+  try { if (parseInt(fs.readFileSync(LOCK, 'utf8'), 10) === process.pid) fs.unlinkSync(LOCK); } catch { /* not ours */ }
+}
+
 function cleanup() {
+  releaseLock();
   if (KEEP) return;
   for (const c of children) { try { c.kill('SIGKILL'); } catch { /* gone */ } }
   sh(ADB, ['emu', 'kill']);
@@ -113,6 +131,14 @@ const appAlive = () => !!(sh(ADB, ['shell', 'pidof', PKG], { timeout: 15000 }).s
 
 // ── CDP: evaluate one expression in the app's WebView ───────────────────────
 function evalInApp(expression) {
+  // Re-resolve + re-forward the WebView socket every call — its pid changes on a
+  // renderer restart / reload, so a one-time forward goes stale and every eval hits
+  // a dead process, making the app look broken (bridge "missing", app "dead") when
+  // it's fine. Proven via CDP on a freshly-forwarded socket. Same trap the page-target
+  // wait already guards; evalInApp must too. (2026-07-15 — 4th env/harness trap.)
+  const socks = sh(ADB, ['shell', 'cat', '/proc/net/unix']).stdout || '';
+  const m = socks.match(/webview_devtools_remote_\d+/);
+  if (m) sh(ADB, ['forward', 'tcp:9222', `localabstract:${m[0]}`], { timeout: 15000 });
   const f = path.join(__dirname, 'expr/.v4.json');
   fs.writeFileSync(f, JSON.stringify([{ label: 'e', expression }]));
   const r = sh('node', [path.join(__dirname, 'cdp-eval.js'), '9222', f], { timeout: 60000 });
@@ -151,12 +177,25 @@ function emulatorCmd() {
 async function main() {
   console.log('\n=== V4 — Android 폴러 전 구간 E2E (데모 매장, 실제 주문 → 앱이 인쇄) ===\n');
   if (!fs.existsSync(APK)) throw new Error(`APK 없음: ${APK}`);
+  acquireLock();
   assertRoomForEmulator();
 
   // The models read DB creds from dev-backend's .env — load it explicitly, since this
   // script runs from mobile-app.
   require('/var/www/dev-backend/node_modules/dotenv').config({ path: '/var/www/dev-backend/.env' });
   const { Order, Restaurant, User } = require('/var/www/dev-backend/models');
+
+  // dev-backend's models/index.js registers its OWN SIGTERM/SIGINT handlers that close
+  // the DB pool immediately. All handlers fire on the same signal: ours starts the
+  // (async) shop restore, then the models' handler closes the pool underneath it — the
+  // restore dies on "ConnectionManager was closed" and the shop keeps the test fixture
+  // (2026-07-15 측정: 원복 실패, 4am 백업에서 수동 복구). The restore is the one thing
+  // that must win on shutdown: drop every pre-registered handler and re-register ours
+  // alone. The pool still closes when the process exits.
+  for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+    process.removeAllListeners(sig);
+    process.on(sig, () => { console.log(`\n(${sig}) 중단 — 매장 설정 원복 후 종료`); restoreThenExit(1); });
+  }
 
   // The restaurant MUST be the one the app's user logs into — the poller only ever picks
   // up its own restaurant's orders, so an order created anywhere else simply never prints
@@ -181,6 +220,10 @@ async function main() {
   // 1. fake printers — the master kitchen printer and one station printer. Two of them,
   //    because "a ticket came out" is not the contract: it must come out of the RIGHT
   //    printer. One capture file per printer is what makes mis-routing visible.
+  // Stale printers from an interrupted run still hold the ports; the new spawn then dies
+  // on EADDRINUSE with stdio:ignore — captures stay empty and the gate blames the app.
+  sh('pkill', ['-f', 'verify/fake-printer.js']);
+  await sleep(300);
   for (const [port, cap] of [['9100', CAP], ['9101', CAP_ST]]) {
     const fp = spawn('node', [path.join(__dirname, 'fake-printer.js'), port, cap], { stdio: 'ignore' });
     children.push(fp);
@@ -262,6 +305,16 @@ async function main() {
     children.push(emu);
     await waitFor('boot', () => (sh(ADB, ['shell', 'getprop', 'sys.boot_completed']).stdout || '').trim() === '1', 300000, 3000);
   }
+
+  // Clock-skew observation (diagnostic only). The auto-print BACKLOG CUTOFF compares the
+  // app's `kitchenAutoPrintEnabledAt = Date.now()` (GUEST clock) against the order's server
+  // `created_at`; a large guest-ahead skew would make every test order look like backlog and
+  // be silently dismissed. Measured 2026-07-15: skew ~3s (within adb latency) — NOT the cause.
+  // Kept as a log so a future large skew is visible instead of masquerading as an app bug.
+  const _hostEpoch = Math.floor(Date.now() / 1000);
+  const _emuEpoch = parseInt((sh(ADB, ['shell', 'date', '+%s'], { timeout: 15000 }).stdout || '0').trim(), 10) || 0;
+  console.log(`  에뮬레이터 시계: host=${_hostEpoch} guest=${_emuEpoch} (skew ${_emuEpoch - _hostEpoch}s)`);
+
   sh(ADB, ['install', '-r', APK]);
   sh(ADB, ['shell', 'am', 'start', '-n', `${PKG}/.MainActivity`]);
 
@@ -296,14 +349,32 @@ async function main() {
   // waitFor() swallows exceptions by design (transient adb/cdp hiccups shouldn't abort the
   // gate), so the app-death check gets its own loop — a killed app must be REPORTED, not
   // polled for 90 seconds and then reported as "no bridge" (an app problem it isn't).
+  // performance.now() > 45000: the web app is a PWA — on a FRESH install the service
+  // worker finishes installing seconds after first load and index.tsx force-reloads the
+  // page (controllerchange). A reload mid-run destroys the JS context: the printer
+  // registration below evaporates and the gate mis-judges the app. 45s of uptime with
+  // the bridge present means the one-time SW reload is behind us (uptime resets on
+  // reload, so this is self-proving). Measured 2026-07-15 on V3 — same page, same trap.
   const bridgeUp = () => {
-    try { return evalInApp("(async () => typeof window.__NATIVE_PRINT === 'object' && typeof window.__NATIVE_PRINT_SETUP === 'object')()") === true; }
+    try { return evalInApp("(async () => typeof window.__NATIVE_PRINT === 'object' && typeof window.__NATIVE_PRINT_SETUP === 'object' && performance.now() > 45000)()") === true; }
     catch { return false; }
   };
   const t0Bridge = Date.now();
+  let relaunches = 0;
   while (!bridgeUp()) {
     if (!appAlive()) throw new Error('앱 프로세스가 죽었다 — 코드가 아니라 에뮬레이터 환경 문제 (logcat: 시스템이 앱을 kill). GMS 없는 AVD 인지 확인');
-    if (Date.now() - t0Bridge > 90000) throw new Error('브릿지(__NATIVE_PRINT)가 90초 안에 안 뜬다 — 앱은 살아 있음');
+    // A fresh emulator's guest network can still be settling when the app first
+    // navigates; the load then fails and the WebView parks on chrome-error://
+    // FOREVER (a WebView never retries by itself — measured 2026-07-15 on V3).
+    // A stuck error page is an env flake, not an app verdict: relaunch, bounded.
+    let href = ''; try { href = evalInApp("(async () => location.href)()") || ''; } catch { /* poll on */ }
+    if (href.startsWith('chrome-error://') && relaunches < 4) {
+      relaunches++;
+      console.log(`  페이지 로드 실패(chrome-error) — 앱 재기동 ${relaunches}/4`);
+      sh(ADB, ['shell', 'am', 'force-stop', PKG]);
+      sh(ADB, ['shell', 'am', 'start', '-n', `${PKG}/.MainActivity`]);
+    }
+    if (Date.now() - t0Bridge > 180000) throw new Error('브릿지(__NATIVE_PRINT)가 180초 안에 안 뜬다 — 앱은 살아 있음');
     await sleep(3000);
   }
   console.log('  앱 기동 + 브릿지 확인');
@@ -324,6 +395,11 @@ async function main() {
     await window.__NATIVE_PRINT_SETUP.addNetPrinter({name:'KITCHEN', host:'10.0.2.2', port:9100});
     await window.__NATIVE_PRINT_SETUP.addNetPrinter({name:'KQ1', host:'10.0.2.2', port:9101});
     localStorage.setItem('auth_token', ${JSON.stringify(token)});
+    // \`install -r\` keeps WebView localStorage, so a stale kitchenAutoPrintEnabledAt from a
+    // prior run persists and the poller won't overwrite it (it only sets when empty). Clear
+    // it so autoPrint re-arms fresh with the now-clock-synced guest time, strictly BEFORE the
+    // test order is created — otherwise the backlog cutoff could still misfire on a stale stamp.
+    localStorage.removeItem('kitchenAutoPrintEnabledAt');
     return true;
   })()`);
 
@@ -349,6 +425,22 @@ async function main() {
     await sleep(10000); // app reloads, authenticates, StoreContext syncs settings, poller arms
     await waitFor('bridge after reload', () => { try { return evalInApp("(async () => typeof window.__NATIVE_PRINT === 'object')()") === true; } catch { return false; } }, 60000, 3000);
     await waitFor(`app to receive printer config ${want}`, () => appPrinterSig() === want, 60000, 3000);
+    // ── ROOT CAUSE + FIX (2026-07-15, MEASURED): the auto-print BACKLOG CUTOFF silently
+    // DISMISSED every test order (print-dismiss → needs_print=false, print_claimed_at=NULL,
+    // 0 bytes, 0 printed_at, NO print-trace — the exact V4-1/2/3 fail signature). The cutoff
+    // (MainLayout.tsx:1370 / useAutoPrintPoller.ts) auto-prints only orders whose server
+    // created_at is AFTER `kitchenAutoPrintEnabledAt` (the OFF→ON flush guard — CORRECT app
+    // behaviour). The harness reloads /pos several times; each reload re-arms that stamp at
+    // the poller's FIRST tick, and the relationship between "poller armed" and "test order
+    // created" is not deterministic across reloads/late ticks — so the fresh order kept
+    // landing on the wrong side of the cutoff and was dismissed as backlog. NOT clock skew
+    // (measured ±1s) and NOT a native-routing bug (billPrint never ran). The honest fixture
+    // for "a shop with auto-print already on" is: autoPrint was enabled LONG before this
+    // order. Pin the stamp to epoch 1 so no test order is ever backlog — deterministic and
+    // immune to clock/timezone/tick-race. The poller re-reads this key every tick and only
+    // overwrites it when EMPTY, so a truthy value sticks. App code is untouched.
+    const _armDiag = evalInApp(`(async () => { const was = localStorage.getItem('kitchenAutoPrintEnabledAt'); localStorage.setItem('kitchenAutoPrintEnabledAt', '1'); return JSON.stringify({ wasArmed: was, guestNow: Date.now() }); })()`);
+    console.log(`  autoPrint 백로그컷 중립화(=오래전부터 ON): ${_armDiag}`);
   };
   const MASTER_CFG = { address: 'KITCHEN', stations: {} };
   const STATION_CFG = { address: 'KITCHEN', stations: STATION };
@@ -366,7 +458,14 @@ async function main() {
     const o = await Order.findByPk(id);
     let items = o && o.order_items;
     if (typeof items === 'string') { try { items = JSON.parse(items); } catch { items = []; } }
-    return { stamped: (items || []).filter((i) => i && i.printed_at).length, needsPrint: o && o.needs_print };
+    // print_claimed_at distinguishes the two zero-byte outcomes: DISMISS (backlog cutoff)
+    // sets needs_print=false + print_claimed_at=NULL and prints nothing; a real CLAIM sets
+    // print_claimed_at=NOW then prints. Surfacing it turns "nothing printed" into a diagnosis.
+    return {
+      stamped: (items || []).filter((i) => i && i.printed_at).length,
+      needsPrint: o && o.needs_print,
+      claimedAt: o && o.print_claimed_at,
+    };
   };
 
   clearJobs();
@@ -392,6 +491,11 @@ async function main() {
     await waitFor('ticket at the fake printer', () => jobs().length >= 1, 90000, 2000).catch(() => {});
     await sleep(8000); // would a duplicate arrive? (the claim contract must prevent it)
     printedJobs = jobs();
+    // Diagnosis anchor: dump the order's print state. needs_print=false + claimedAt=null +
+    // 0 jobs == backlog DISMISS (clock skew). needs_print=false + claimedAt set + 0 jobs ==
+    // a real claim that failed to reach the printer (a native-routing bug). This one line
+    // is what turns a red V4 into a root cause.
+    { const s = await printedStamps(order.id); console.log(`  [diag V4-1] jobs=${printedJobs.length} needs_print=${s.needsPrint} print_claimed_at=${s.claimedAt || 'null'} printed_at=${s.stamped}`); }
 
     assert('V4-1 폴러가 주문을 잡아 앱이 티켓을 인쇄 (정확히 1장)',
       printedJobs.length === 1,

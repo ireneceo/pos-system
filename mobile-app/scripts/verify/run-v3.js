@@ -53,7 +53,27 @@ async function waitFor(label, fn, timeoutMs, intervalMs = 2000) {
   throw new Error(`timeout waiting for ${label} (${Math.round(timeoutMs / 1000)}s)`);
 }
 
+// Single-instance lock, shared with run-v4: two concurrent gates fight over adb, the
+// emulator and the capture ports, and the loser's cleanup (`adb emu kill`) murders the
+// winner's emulator mid-run — 2026-07-15: a duplicated invocation clobbered a passing
+// V3's log and killed a booting V4. Fail loudly instead of interleaving.
+const LOCK = '/tmp/purple-android-gate.lock';
+function acquireLock() {
+  try {
+    const pid = parseInt(fs.readFileSync(LOCK, 'utf8'), 10);
+    if (pid) { process.kill(pid, 0); throw new Error(`다른 게이트가 이미 실행 중 (pid=${pid}) — 동시 실행 금지, 끝나길 기다릴 것`); }
+  } catch (e) {
+    if (String(e.message).includes('동시 실행')) throw e; // live holder → refuse
+    // ENOENT / ESRCH(죽은 pid) → stale, take it
+  }
+  fs.writeFileSync(LOCK, String(process.pid));
+}
+function releaseLock() {
+  try { if (parseInt(fs.readFileSync(LOCK, 'utf8'), 10) === process.pid) fs.unlinkSync(LOCK); } catch { /* not ours */ }
+}
+
 function cleanup() {
+  releaseLock();
   // --keep means "leave the emulator and the fake printers up so a failure can be
   // debugged live" — killing our children would defeat exactly that.
   if (KEEP) return;
@@ -97,9 +117,14 @@ function emulatorCmd() {
 async function main() {
   console.log('\n=== V3 — Android 인쇄 게이트 (하드웨어 없이 바이트 판정) ===\n');
   if (!fs.existsSync(APK)) throw new Error(`APK 없음: ${APK} (먼저 ./gradlew assembleDebug)`);
+  acquireLock();
   assertRoomForEmulator();
 
   // 1. fake printers (the emulator reaches the host at 10.0.2.2)
+  // Stale printers from an interrupted run still hold the ports; the new spawn then dies
+  // on EADDRINUSE with stdio:ignore — captures stay empty and the gate blames the app.
+  sh('pkill', ['-f', 'verify/fake-printer.js']);
+  await sleep(300);
   for (const [port, out] of [[9100, CAP_KITCHEN], [9101, CAP_BAR]]) {
     const p = spawn('node', [path.join(__dirname, 'fake-printer.js'), String(port), out], { stdio: 'ignore' });
     children.push(p);
@@ -151,14 +176,55 @@ async function main() {
   // "bridge missing" bug (it did, on the first run of this harness). Poll for the real
   // thing instead. If it never appears, THAT is a genuine failure and we say so.
   const READY = path.join(__dirname, 'expr/.ready.json');
-  fs.writeFileSync(READY, JSON.stringify([{
-    label: 'ready',
-    expression: "(async () => (typeof window.__NATIVE_PRINT === 'object' && typeof window.__NATIVE_PRINT_SETUP === 'object'))()",
-  }]));
+  // Plain synchronous boolean, and the page must have been up for 45s WITH the bridge.
+  // Two measured traps live here (2026-07-15):
+  //  1) The bridge injects at t≈18s, well after the page target exists — so poll, don't
+  //     assume.
+  //  2) The web app is a PWA: on a FRESH install the service worker finishes installing
+  //     seconds after first load and index.tsx's controllerchange handler force-reloads
+  //     the page. A reload mid-judging destroys the JS context — the expressions in
+  //     flight return undefined (looks like "bridge missing"), the printer registration
+  //     evaporates, and every later print honestly answers PRINTER_NOT_FOUND. That was
+  //     this gate's 10/13-fail signature. performance.now() resets on reload, so
+  //     requiring 45s of uptime with the bridge present guarantees the one-time SW
+  //     reload has already happened before we start judging.
+  fs.writeFileSync(READY, JSON.stringify([
+    { label: 'ready', expression: "typeof window.__NATIVE_PRINT === 'object' && typeof window.__NATIVE_PRINT_SETUP === 'object' && performance.now() > 45000" },
+    { label: 'diag', expression: "JSON.stringify({np:typeof window.__NATIVE_PRINT,setup:typeof window.__NATIVE_PRINT_SETUP,cap:typeof window.Capacitor,plugin:typeof (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.NativePrint),up:Math.round(performance.now()/1000),href:location.href})" },
+  ]));
+  let relaunches = 0;
   await waitFor('bridge injection (__NATIVE_PRINT)', () => {
+    // Re-resolve + re-forward the socket every poll, exactly like the page-target
+    // wait above. The initial page target can appear on an early WebView socket
+    // that a renderer restart / real-page load then replaces with a new pid — the
+    // one-time forward from the page-target wait goes stale and every bridge poll
+    // hits a dead process, so __NATIVE_PRINT looks missing even though it injected
+    // fine (proven via CDP on a freshly-forwarded socket). Without this the gate
+    // false-times-out at 90s on a slow box. (2026-07-15 — 4th env/harness trap.)
+    const socks = sh(ADB, ['shell', 'cat', '/proc/net/unix']).stdout || '';
+    const all = socks.match(/webview_devtools_remote_\d+/g) || [];
+    const m = all[0];
+    if (!m) return false;
+    sh(ADB, ['forward', 'tcp:9222', `localabstract:${m}`]);
     const r = sh('node', [path.join(__dirname, 'cdp-eval.js'), '9222', READY], { timeout: 30000 });
+    if (process.env.V_DEBUG) { let diag='?'; try { diag = JSON.parse(r.stdout)[1].value; } catch (e) { diag = 'parse-fail status='+r.status+' err='+((r.stderr||'').trim().slice(0,120)+' out='+(r.stdout||'').trim().slice(0,120)); } console.log(`    [bridge poll] socks=${JSON.stringify(all)} ${diag}`); }
+    // A fresh emulator's guest network can still be settling when the app first
+    // navigates; the load then fails and the WebView parks on
+    // chrome-error://chromewebdata FOREVER (a WebView never retries by itself) —
+    // measured 2026-07-15: 180s of polls all on the error page while the server was
+    // fine. A stuck error page is an env flake, not an app verdict: relaunch the app
+    // (bounded) and keep polling.
+    let href = '';
+    try { href = JSON.parse(JSON.parse(r.stdout)[1].value).href || ''; } catch { /* no diag */ }
+    if (href.startsWith('chrome-error://') && relaunches < 4) {
+      relaunches++;
+      console.log(`    페이지 로드 실패(chrome-error) — 앱 재기동 ${relaunches}/4`);
+      sh(ADB, ['shell', 'am', 'force-stop', PKG]);
+      sh(ADB, ['shell', 'am', 'start', '-n', `${PKG}/.MainActivity`]);
+      return false;
+    }
     try { return JSON.parse(r.stdout)[0].value === true; } catch { return false; }
-  }, 90000, 3000);
+  }, 180000, 3000);
   fs.unlinkSync(READY);
   console.log('  브릿지 주입 확인 (__NATIVE_PRINT + __NATIVE_PRINT_SETUP)\n');
 
@@ -175,6 +241,9 @@ async function main() {
     );
   }
   const out = JSON.parse(cdp.stdout);
+  // An evaluation error (e.g. "Execution context was destroyed" from a page reload) is
+  // otherwise swallowed into value=undefined and mis-judged as an app failure — say it.
+  for (const o of out) { if (o.error !== undefined) console.log(`  ⚠ [cdp] ${o.label}: ${String(o.error).slice(0, 140)}`); }
   const byLabel = (frag) => (out.find((o) => o.label.includes(frag)) || {}).value;
   await sleep(1500); // let the last socket close land in the capture
 

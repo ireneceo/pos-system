@@ -88,6 +88,11 @@
       "title": "Purple POS untuk Windows",
       "body": "Dapatkan apl Windows untuk cetakan yang stabil — tanpa QZ Tray atau Java.",
       "button": "Muat turun untuk Windows"
+    },
+    "androidApp": {
+      "title": "Purple POS untuk Android",
+      "body": "Dapatkan apl Android untuk cetakan dapur yang stabil melalui WiFi atau Bluetooth.",
+      "button": "Muat turun untuk Android"
     }
   },
   "empty": {

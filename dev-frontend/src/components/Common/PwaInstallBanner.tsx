@@ -14,7 +14,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const PwaInstallBanner: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
-  const { canInstall, isIOS, iosVersion, isWindowsDesktop, desktopAppUrl, promptInstall, dismissBanner, shouldShowBanner } = usePwaInstall();
+  const { canInstall, isIOS, iosVersion, isWindowsDesktop, desktopAppUrl, isAndroidBrowser, androidAppUrl, promptInstall, dismissBanner, shouldShowBanner } = usePwaInstall();
   const { isAuthenticated } = useAuth();
 
   // PWA/iOS install banner stays scoped to /pos (as before). The Windows desktop
@@ -28,8 +28,12 @@ const PwaInstallBanner: React.FC = () => {
   // Windows browser and offered the installer. Suppress by route.
   const isCustomerDisplayRoute = /\/(checkout-display|display)(\/|\?|$)/.test(location.pathname);
   const showWindowsCta = isWindowsDesktop && isAuthenticated;
+  // Same as Windows: a logged-in store user on an Android tablet browser should be
+  // offered the native APK on any in-app screen. Customers (mobile ordering) are not
+  // authenticated, so they never see it.
+  const showAndroidCta = isAndroidBrowser && isAuthenticated;
   if (isCustomerDisplayRoute) return null;
-  if (!isPosRoute && !showWindowsCta) return null;
+  if (!isPosRoute && !showWindowsCta && !showAndroidCta) return null;
   if (!shouldShowBanner) return null;
 
   const handleInstall = async () => {
@@ -74,11 +78,15 @@ const PwaInstallBanner: React.FC = () => {
           <div style={{ fontSize: 15, fontWeight: 600, color: '#0A2540', marginBottom: 4 }}>
             {isWindowsDesktop
               ? t('common:pwa.desktopApp.title', 'Purple POS for Windows')
-              : t('common:pwa.installBanner.title')}
+              : isAndroidBrowser
+                ? t('common:pwa.androidApp.title', 'Purple POS for Android')
+                : t('common:pwa.installBanner.title')}
           </div>
           <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.5 }}>
             {isWindowsDesktop
               ? t('common:pwa.desktopApp.body', 'Get the Windows app for reliable printing — no QZ Tray or Java to install.')
+              : isAndroidBrowser
+              ? t('common:pwa.androidApp.body', 'Get the Android app for reliable kitchen printing over WiFi or Bluetooth.')
               : isIOS
                 ? (oldIos
                     ? t('common:pwa.installBanner.iosOldGuide')
@@ -105,7 +113,26 @@ const PwaInstallBanner: React.FC = () => {
             </div>
           )}
 
-          {!isWindowsDesktop && canInstall && !isIOS && (
+          {isAndroidBrowser && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <a
+                href={androidAppUrl}
+                download
+                onClick={() => dismissBanner(365)}
+                style={{
+                  background: '#635BFF', color: '#fff', border: '1px solid #635BFF',
+                  padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', textDecoration: 'none', transition: 'opacity 0.15s'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+              >
+                {t('common:pwa.androidApp.button', 'Download for Android')}
+              </a>
+            </div>
+          )}
+
+          {!isWindowsDesktop && !isAndroidBrowser && canInstall && !isIOS && (
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button
                 type="button"

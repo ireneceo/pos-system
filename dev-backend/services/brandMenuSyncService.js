@@ -219,6 +219,10 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     if (brandMenu.emoji) updates.emoji = brandMenu.emoji;
     if (brandMenu.description) updates.description = brandMenu.description;
     if (brandMenu.product_recipe_id) updates.product_recipe_id = brandMenu.product_recipe_id;
+    // "Linked Recipe"(recipe_id) — 재고차감이 쓰는 필드. 매장이 자기 레시피를 지정했으면
+    // 절대 덮어쓰지 않는다(비클로버): 매장 recipe_id 가 비어 있을 때만 브랜드 값 상속.
+    // 브랜드 링크 해제(recipe_id=null)는 매장 값을 건드리지 않는다(=매장 소유 존중).
+    if (brandMenu.recipe_id && product.recipe_id == null) updates.recipe_id = brandMenu.recipe_id;
     await product.update(updates, { transaction });
     return { product, created: false };
   }
@@ -236,6 +240,7 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     emoji: brandMenu.emoji || null,
     optionGroups: localOptionGroupIds,
     product_recipe_id: brandMenu.product_recipe_id || null,
+    recipe_id: brandMenu.recipe_id || null, // "Linked Recipe" 상속(초기 푸시) — 재고차감이 쓰는 필드
     is_set_menu: !!brandMenu.is_set_menu,
     set_items: brandMenu.set_items || null,
     set_groups: await translateSetGroupsForRestaurant(brandMenu.set_groups, restaurantId, transaction),

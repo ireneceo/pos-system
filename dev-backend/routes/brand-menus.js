@@ -21,7 +21,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { requireBGScope } = require('../middleware/brandScope');
 const { normalizeImageField, copyImageToOwnedFile } = require('../utils/imageProcessor');
 const {
-  Brand, Restaurant, ProductRecipe, BrandMenu, BrandMenuCategory,
+  Brand, Restaurant, ProductRecipe, Recipe, BrandMenu, BrandMenuCategory,
   BrandMenuOptionGroup, BrandMenuOption, BrandMenuOptionGroupLink, BrandMenuRestaurant, Product,
   BrandMenuRecommendation
 } = require('../models');
@@ -116,6 +116,7 @@ async function loadMenuWithIncludes(id) {
     include: [
       { model: BrandMenuCategory, as: 'category' },
       { model: ProductRecipe, as: 'recipe' },
+      { model: Recipe, as: 'linkedRecipe', attributes: ['id', 'name'] },
       {
         model: BrandMenuOptionGroup, as: 'optionGroups', through: { attributes: ['sort_order'] },
         include: [{ model: BrandMenuOption, as: 'options' }]
@@ -144,6 +145,7 @@ router.get('/', authenticateToken, requireBGScope, async (req, res) => {
       include: [
         { model: BrandMenuCategory, as: 'category', attributes: ['id', 'name', 'emoji'] },
         { model: ProductRecipe, as: 'recipe', attributes: ['id', 'name', 'code'] },
+        { model: Recipe, as: 'linkedRecipe', attributes: ['id', 'name'] },
         // 세트 빌더의 구성품 상속옵션 표시용 — 각 메뉴의 옵션그룹 id (경량)
         { model: BrandMenuOptionGroup, as: 'optionGroups', attributes: ['id', 'name'], through: { attributes: [] } }
       ],
@@ -282,7 +284,7 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
   const t = await BrandMenu.sequelize.transaction();
   try {
     const {
-      brand_id, category_id, product_recipe_id, name, description, image_url, emoji,
+      brand_id, category_id, product_recipe_id, recipe_id, name, description, image_url, emoji,
       recommended_price, currency, is_active, after_meal, set_only, sort_order, distribution_mode,
       option_group_ids, locks, is_set_menu, set_items, set_groups
     } = req.body;
@@ -301,6 +303,16 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
     if (!(await assertBrandOwnership(req, brand_id))) {
       await t.rollback();
       return res.status(403).json({ success: false, message: 'Brand not owned' });
+    }
+
+    // Linked Recipe(recipe_id)는 반드시 이 브랜드 소유 레시피여야 함 — FK 만으로는 타 브랜드
+    // 레시피를 링크할 수 있어(IDOR·이름 노출) 명시 검증. null/미지정은 통과(해제).
+    if (recipe_id != null) {
+      const rec = await Recipe.findByPk(recipe_id, { attributes: ['id', 'brand_id'], transaction: t });
+      if (!rec || rec.brand_id !== parseInt(brand_id, 10)) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'recipe_id must be a recipe of this brand' });
+      }
     }
 
     // Apply brand-level menu_settings defaults for any unspecified field.
@@ -338,6 +350,7 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
     const menu = await BrandMenu.create({
       brand_id, category_id: category_id || null,
       product_recipe_id: product_recipe_id || null,
+      recipe_id: recipe_id || null,
       name: name.trim(), description: description || null,
       image_url: ownedImage, emoji: emoji || null,
       recommended_price: recommended_price || 0, currency: currency || 'MYR',
@@ -410,13 +423,23 @@ router.put('/:id', authenticateToken, requireBGScope, async (req, res) => {
     }
 
     const body = req.body || {};
-    const updatable = ['category_id', 'product_recipe_id', 'name', 'description', 'emoji',
+    const updatable = ['category_id', 'product_recipe_id', 'recipe_id', 'name', 'description', 'emoji',
       'recommended_price', 'currency', 'is_active', 'after_meal', 'set_only', 'sort_order', 'distribution_mode',
       'lock_name', 'lock_price', 'lock_category', 'lock_image', 'lock_options',
       'is_set_menu', 'set_items', 'set_groups', 'lock_set_items'];
       // lock_sort_order 는 PUT 에서 받지 않음 — 브랜드 전체 설정(enforce_menu_order)이 단일 source
     const update = {};
     for (const k of updatable) if (k in body) update[k] = body[k];
+
+    // Linked Recipe(recipe_id) 변경 시 이 브랜드 소유 레시피인지 검증(위 POST 와 동일 사유).
+    // null(해제)은 통과.
+    if (update.recipe_id != null) {
+      const rec = await Recipe.findByPk(update.recipe_id, { attributes: ['id', 'brand_id'], transaction: t });
+      if (!rec || rec.brand_id !== menu.brand_id) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'recipe_id must be a recipe of this brand' });
+      }
+    }
 
     if (body.image_url !== undefined) {
       update.image_url = await normalizeImageField(body.image_url, {
@@ -531,6 +554,7 @@ router.post('/:id/copy', authenticateToken, requireBGScope, async (req, res) => 
       brand_id: targetBrandId,
       category_id: null,  // categories don't carry across brands (different scope)
       product_recipe_id: null, // recipe stays with original brand
+      recipe_id: null,         // Recipe(brand-scoped) 는 원 브랜드 소유 — 다른 브랜드로 안 넘어감
       name: req.body.name || `${source.name} (Copy)`,
       description: source.description, image_url: source.image_url, emoji: source.emoji,
       recommended_price: source.recommended_price, currency: source.currency,
@@ -572,6 +596,7 @@ router.post('/:id/duplicate', authenticateToken, requireBGScope, async (req, res
       brand_id: source.brand_id,             // SAME brand
       category_id: source.category_id,       // valid within same brand
       product_recipe_id: source.product_recipe_id,
+      recipe_id: source.recipe_id,           // 같은 브랜드 내 복제 — Linked Recipe 승계
       name: req.body.name || `${source.name} (Copy)`,
       description: source.description, image_url: source.image_url, emoji: source.emoji,
       recommended_price: source.recommended_price, currency: source.currency,

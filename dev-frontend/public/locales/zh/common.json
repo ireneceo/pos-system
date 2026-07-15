@@ -88,6 +88,11 @@
       "title": "Purple POS Windows 版",
       "body": "获取 Windows 应用以实现可靠打印 — 无需安装 QZ Tray 或 Java。",
       "button": "下载 Windows 版"
+    },
+    "androidApp": {
+      "title": "Purple POS 安卓版",
+      "body": "获取安卓应用，通过 WiFi 或蓝牙稳定打印厨房小票。",
+      "button": "下载安卓版"
     }
   },
   "empty": {

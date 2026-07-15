@@ -1,12 +1,18 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-07-15
-**버전:** v3.68 (운영) · 데스크탑앱 **0.1.9**
-**작업 상태:** 완료 — 운영 배포 2회 + Fable 최종검증 GO. **매장 실프린터 확인 1회(내일)만 남음.**
+**마지막 업데이트:** 2026-07-15 #2
+**버전:** v3.68 (운영, 유지) · 데스크탑앱 **0.1.9**
+**작업 상태:** 완료 — BG 데모 버그 2건 수정 + Fable GO + **운영 배포**(Backup 20260715_122030, 마이그 46/46, 스모크 9/9, 운영 실검증 PASS).
 
 ### 진행 중인 작업
 - 없음
+
+### 완료된 작업 (이번 세션 — 2026-07-15 #2, 운영 배포)
+- **#1 브랜드 메뉴 "Linked Recipe" 오배선 근본수리**: 레시피 2계통(Recipe/recipe_id ↔ ProductRecipe/product_recipe_id) 중 브랜드 메뉴만 잘못 product_recipe_id 에 물려, "레시피 관리(Brand Recipes)"에 등록한 Recipe 가 드롭다운에 안 떴다. 레스토랑 메뉴·재고차감(inventoryDeductionService)이 쓰는 recipe_id 로 정합화 → `brand_menus.recipe_id` 신설(멱등 마이그+레지스트리) + 드롭다운 `/api/brands/:id/recipes` + create/update/GET(linkedRecipe) + brandMenuSyncService 매장 Product.recipe_id 상속(생성 상속·업데이트 비클로버) + recipe_id 브랜드 소유 IDOR 검증. 단일소스 [[reference_two_recipe_systems]].
+- **#2 공지 댓글 삭제 하드닝**: 삭제 실패를 조용히 삼켜 "삭제 안됨"으로 보이던 CommentSection.handleDelete → 실패 사유 화면 표시. (서버·데이터·프론트 전 계층 정상이라 하드 실패 재현은 못 했으나, 실패 시 원인이 드러나도록.)
+- **검증**: 실API 전흐름·IDOR 4/4·verify-all 13/13·print-guard 8/8 무접촉·BG mount 21/21 → **Fable 게이트 GO**(동기화 비클로버 런타임 20/20·FK ON DELETE SET NULL 실증) → 운영 배포 → 운영 실검증(recipe_id 컬럼+FK 적용·드롭다운소스 200·linkedRecipe 필드 정상).
+- 버전 v3.68 유지(Irene 확정) — 버그수정이라 릴리즈노트/공지 생략.
 
 ### 완료된 작업 (이번 세션 — 2026-07-15)
 - **윈도우앱 빌 백지 정석 수리(0.1.9 래스터)**: HTML 렌더 → `capturePage` → ESC/POS GS v 0 래스터(`raster.js`) → `printRawWindows`(오더티켓이 쓰는 검증된 winspool RAW)로 **GDI 드라이버 우회**. 실패 시 GDI 폴백(회귀0), 웹 계약 불변(billPrint.js 무접촉). C1(캡처폭 302px 고정+zoom 576dot 네이티브렌더+높이 재측정) 반영. 진단창 "전체 인쇄 테스트(Bill+Ticket)" 1클릭 추가.

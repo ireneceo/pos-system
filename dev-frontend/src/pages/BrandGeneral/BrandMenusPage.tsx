@@ -1281,7 +1281,12 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
   // defaults configured in the Settings tab. Backend fills them on create.
   const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
   const [recipes, setRecipes] = useState<Array<{ id: number; name: string }>>([]);
-  const [recipeId, setRecipeId] = useState<string>(menu?.recipe?.id ? String(menu.recipe.id) : '');
+  // "Linked Recipe" = Brand Recipe(Recipe 모델, recipe_id) — 레스토랑 메뉴·재고차감과 정합.
+  // (이전엔 product_recipe_id/ProductRecipe 에 잘못 물려 '레시피 관리'에 등록한 레시피가 안 떴음.)
+  const [recipeId, setRecipeId] = useState<string>(
+    (menu as any)?.linkedRecipe?.id ? String((menu as any).linkedRecipe.id)
+      : ((menu as any)?.recipe_id ? String((menu as any).recipe_id) : '')
+  );
   const [optionGroups, setOptionGroups] = useState<Array<{ id: number; name: string; is_required: boolean; max_select: number }>>([]);
   const [selectedOptionGroupIds, setSelectedOptionGroupIds] = useState<number[]>([]);
   // 식후 제공(디저트 등) 등록 플래그 — 매장 Product 와 동일
@@ -1318,7 +1323,7 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
         const [c, og, r] = await Promise.all([
           fetch(`/api/brand-menu-categories?brand_id=${brandId}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : { data: [] }),
           fetch(`/api/brand-menu-option-groups?brand_id=${brandId}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : { data: [] }),
-          fetch(`/api/product-recipes?brand_id=${brandId}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : { data: [] })
+          fetch(`/api/brands/${brandId}/recipes`, { headers: authHeaders() }).then(r => r.ok ? r.json() : { data: [] })
         ]);
         setCategories((c.data || []).map((x: any) => ({ id: x.id, name: x.name })));
         setOptionGroups((og.data || []).map((x: any) => ({ id: x.id, name: x.name, is_required: !!x.is_required, max_select: x.max_select || 1 })));
@@ -1376,7 +1381,7 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
         emoji: emoji || null, image_url: imageUrl || null,
         recommended_price: parseFloat(price) || 0,
         category_id: categoryId ? parseInt(categoryId, 10) : null,
-        product_recipe_id: recipeId ? parseInt(recipeId, 10) : null,
+        recipe_id: recipeId ? parseInt(recipeId, 10) : null,
         // distribution_mode + lock_* are omitted on purpose — the backend fills
         // them from brand.menu_settings defaults (Settings tab is the single source).
         option_group_ids: selectedOptionGroupIds,

@@ -88,6 +88,11 @@
       "title": "Purple POS for Windows",
       "body": "Get the Windows app for reliable printing — no QZ Tray or Java to install.",
       "button": "Download for Windows"
+    },
+    "androidApp": {
+      "title": "Purple POS for Android",
+      "body": "Get the Android app for reliable kitchen printing over WiFi or Bluetooth.",
+      "button": "Download for Android"
     }
   },
   "empty": {

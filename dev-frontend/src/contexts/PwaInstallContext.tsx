@@ -13,6 +13,8 @@ interface PwaInstallState {
   iosVersion: number | null;
   isWindowsDesktop: boolean;      // Windows browser, NOT already inside the native app
   desktopAppUrl: string;          // native Windows installer download (same-origin)
+  isAndroidBrowser: boolean;      // Android browser, NOT already inside the native app
+  androidAppUrl: string;          // native Android APK download (same-origin, sideload)
   promptInstall: () => Promise<'accepted' | 'dismissed' | 'unavailable'>;
   dismissBanner: (days?: number) => void;
   shouldShowBanner: boolean;
@@ -61,6 +63,22 @@ function detectWindowsDesktop(): boolean {
   return isWin && !isNativeDesktop();
 }
 
+// The native Android app (Capacitor) replaces the browser+QZ path on tablets:
+// it injects window.__NATIVE_PRINT for LAN/Bluetooth printing that a plain Android
+// browser can't do. A PWA on Android has no printer access → blank kitchen tickets,
+// exactly like a Windows PWA — so an Android POS browser is steered to the native
+// APK, never to the PWA. The APK's own bridge sets window.__PURPLE_DESKTOP
+// (platform:'android'), so once installed isNativeDesktop() is true and we stop
+// offering it. Sideload install (like Windows SmartScreen: "unknown source" once).
+const ANDROID_APP_URL = '/desktop/PurplePOS.apk';
+
+function detectAndroidBrowser(): boolean {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const isAndroid = /Android/.test(ua) && !/Windows Phone/.test(ua);
+  return isAndroid && !isNativeDesktop();
+}
+
 const PwaInstallContext = createContext<PwaInstallState | null>(null);
 
 const DISMISS_KEY = 'pos.pwa-install.dismissed_until';
@@ -86,6 +104,7 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [isStandalone, setIsStandalone] = useState<boolean>(isStandaloneNow());
   const [{ isIOS, version: iosVersion }] = useState(detectIOS());
   const [isWindowsDesktop] = useState(detectWindowsDesktop());
+  const [isAndroidBrowser] = useState(detectAndroidBrowser());
   // Starts on the always-latest alias so the button works on first paint, then
   // upgrades to the versioned filename the feed names.
   const [desktopAppUrl, setDesktopAppUrl] = useState<string>(DESKTOP_APP_FALLBACK_URL);
@@ -125,10 +144,13 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // native Windows desktop app (.exe) — it has the print bridge. A PWA on Windows has
     // no printer access → blank tickets, so never steer a Windows POS to the PWA.
     // Download the installer instead of firing the browser's PWA prompt.
-    if (isWindowsDesktop) {
+    // Android POS browser: same reasoning as Windows — the PWA can't reach the
+    // kitchen printer, only the native APK can. Download the APK, don't fire the
+    // browser's PWA prompt.
+    if (isWindowsDesktop || isAndroidBrowser) {
       try {
         const a = document.createElement('a');
-        a.href = desktopAppUrl;
+        a.href = isWindowsDesktop ? desktopAppUrl : ANDROID_APP_URL;
         a.download = '';
         document.body.appendChild(a);
         a.click();
@@ -141,7 +163,7 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const choice = await deferred.userChoice;
     setDeferred(null);
     return choice.outcome;
-  }, [deferred, isWindowsDesktop, desktopAppUrl]);
+  }, [deferred, isWindowsDesktop, isAndroidBrowser, desktopAppUrl]);
 
   const [dismissedUntil, setDismissedUntil] = useState<number>(() => {
     try {
@@ -163,18 +185,20 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // the "Install App" sidebar button + banner would wrongly appear and install a second,
   // print-bridge-less PWA copy (with MIN, 2026-07-08).
   const nativeApp = isNativeDesktop();
-  const shouldShowBanner = !isStandalone && !isDismissed && !nativeApp && (Boolean(deferred) || isIOS || isWindowsDesktop);
+  const shouldShowBanner = !isStandalone && !isDismissed && !nativeApp && (Boolean(deferred) || isIOS || isWindowsDesktop || isAndroidBrowser);
 
   return (
     <PwaInstallContext.Provider value={{
       // Windows browser → offer the native app even if the PWA prompt never fired;
       // never inside the native app (already installed). Other OSes → PWA prompt.
-      canInstall: !nativeApp && (Boolean(deferred) || isWindowsDesktop),
+      canInstall: !nativeApp && (Boolean(deferred) || isWindowsDesktop || isAndroidBrowser),
       isStandalone,
       isIOS,
       iosVersion,
       isWindowsDesktop,
       desktopAppUrl,
+      isAndroidBrowser,
+      androidAppUrl: ANDROID_APP_URL,
       promptInstall,
       dismissBanner,
       shouldShowBanner

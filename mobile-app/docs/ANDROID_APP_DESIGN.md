@@ -232,6 +232,29 @@ window.__NATIVE_PRINT_SETUP = {
 - **게이트는 데모 매장 프린터를 실제로 갈아끼운다 → 모든 종료 경로에서 원복.** 중단된 실행이 매장 스테이션 설정을 지운 채 남긴 사고가 실제로 났다. 크래시·SIGINT/TERM/HUP 전부에서 설정 원복 + 테스트 주문 정리.
 - **설정 API 로는 스테이션 프린터를 지울 수 없다**(`utils/settingsGuard` 가 빈 맵/키 누락을 "미로드"로 보고 보존 — thefire wipe 사고 자물쇠). 의도된 동작이므로 하니스 픽스처만 **DB 직접 쓰기**로 만든다.
 
+**2026-07-15 추가 (Fable 검증 — V3 13/13 PASS 달성 과정에서 확정된 함정 4개):**
+- **웹앱은 PWA — 첫 설치 후 SW 가 페이지를 1회 강제 리로드한다**(`index.tsx` controllerchange → reload). 브릿지가 보이자마자 판정을 시작하면 리로드가 실행 컨텍스트를 파괴해 초반 표현식이 undefined 로 증발(→ "브릿지 없음"으로 오보고)하고, 프린터 등록이 증발해 이후 전부 정직한 PRINTER_NOT_FOUND(10/13 실패 시그니처). → 브릿지 대기 식이 `performance.now() > 45000` 을 함께 요구(리로드 시 uptime 리셋 = 자가 증명). **Opus 세션의 "독립 스크립트는 브릿지를 보는데 하니스는 못 본다" 모순의 주범이 이 타이밍이었다.**
+- **신선한 에뮬레이터의 첫 내비게이션은 게스트 네트워크 준비와 경합** — 실패하면 WebView 가 `chrome-error://chromewebdata` 에 **영구 정지**(재시도 없음). 페이지 타깃 체크는 통과한 뒤라 "브릿지 타임아웃"으로 보인다. → 브릿지 폴에서 chrome-error 감지 시 `am force-stop` + `am start` 재기동(최대 4회).
+- **게이트 동시 실행 = 파국.** 두 실행이 같은 adb/에뮬레이터/포트를 공유하고, 지는 쪽 cleanup 의 `adb emu kill` 이 이기는 쪽 에뮬레이터를 죽인다(PASS 하던 V3 로그가 실패 로그로 덮이고, 부팅 중인 V4 가 살해당함). 배경 실행 래퍼가 같은 명령을 재실행하는 사고가 실제로 났다. → `/tmp/purple-android-gate.lock` 단일 인스턴스 락(V3·V4 공유, stale pid 자동 해제, cleanup 에서 해제).
+- **dev-backend models 의 자체 SIGTERM/SIGINT 핸들러가 DB 풀을 즉시 닫는다** — 게이트의 (async) 매장 원복이 그 밑에서 "ConnectionManager was closed" 로 죽어 픽스처가 매장에 남는다(4am 백업 `/var/backups/dev-db/daily/` 에서 수동 복구했음). → require(models) 직후 해당 시그널 리스너 전부 제거 후 게이트 핸들러만 재등록. 그 외: 중단된 실행이 남긴 fake-printer 가 포트를 물고 있으면 새 스폰이 조용히 EADDRINUSE 로 죽어 "0바이트" 오판 → 기동 전 `pkill -f verify/fake-printer.js`.
+
+**V4 진단 확정(2026-07-15, print-trace + DB 직접조회로 측정) — 순차 블로커 2개:**
+
+V3 = 13/13 PASS. V4 는 두 개의 별개 블로커가 순차로 겹쳐 있었다. **블로커 #1 은 측정으로 확정·수정됨(하니스), #2 는 특성만 규명(추가 측정 1회 필요).**
+
+- **블로커 #1 = 자동인쇄 백로그 컷오프의 조용한 DISMISS (확정·수정).** 원 증상("claim 되는데 0바이트")의 정체. 측정 근거:
+  - run5(수정 전): `needs_print=false, print_claimed_at=NULL, printed_at=0, 0바이트, print-trace 0` = **print-dismiss** 시그니처(claim 은 `print_claimed_at=NOW`, dismiss 는 `NULL` — 이 필드가 둘을 가른다). billPrint 는 아예 호출 안 됨(trace 0).
+  - 원인: 백로그 컷오프(`_ordMs < kitchenAutoPrintEnabledAt`, MainLayout.tsx:1370 / useAutoPrintPoller.ts)는 autoPrint 켠 시각 이전 주문만 인쇄 제외하는 **OFF→ON 폭주 방지 게이트(=정상 앱 동작)**. 하니스가 `/pos` 를 여러 번 reload 하는데, 매 reload 마다 폴러 첫 tick 이 그 스탬프를 재무장 → "폴러 재무장 시각" vs "테스트 주문 생성 시각" 관계가 비결정적 → 주문이 컷오프 반대편에 떨어져 backlog 로 dismiss.
+  - **반증된 오답: 시계 스큐(측정 0~±1s, 무관) · 네이티브 라우팅(dismiss 케이스는 billPrint 자체가 실행 안 됨).**
+  - **수정(하니스 전용, 앱 무변경):** `reloadAndWaitForPrinter` 말미에 `kitchenAutoPrintEnabledAt='1'`(=오래전부터 autoPrint ON = 정상 매장 상태) 고정. 폴러는 이 키를 매 tick 재독하고 값이 있으면 덮어쓰지 않으므로 고정 유지 → 어떤 테스트 주문도 backlog 아님. 시계/타임존/tick 레이스 완전 면역.
+  - **효과 확인(run7):** 시그니처가 `print_claimed_at=NULL → SET` 으로 뒤집힘 = dismiss 소멸, 주문이 **실제 claim** 됨.
+
+- **블로커 #2 = claim 은 되는데 0바이트 + printed_at 0 + route-qz/html trace 0 (특성 규명, 미확정).** #1 을 고치니 드러난 별개 문제. run7 측정: `print_claimed_at` 이 하트비트로 갱신되는 상태(=인쇄 진행중/보류) + 가짜프린터 0바이트 + `_printTrace` 전무. 즉 폴러가 claim 후 `printKitchenTicketViaRawBT` 를 호출했으나 **billPrint 의 네이티브 발송(sendTicketAutoFormat/sendHTMLViaQZTray→`__NATIVE_PRINT`) 지점에 도달한 흔적이 없다.** 코드상 데모매장 method='qztray'(setKitchen)→`shouldUseQZTray('kitchen')`=true→route-qz trace 가 떠야 하는데 안 뜸 = 코드 예측과 실측이 불일치. **미해결 모순.**
+  - 다음 측정(에뮬 1회): 폴러 인쇄 경로에 **_printTrace 독립 로그**(console→서버 or logcat) 를 심어 ①`printKitchenTicketViaRawBT` 진입 여부 ②`getPrinterMethod('kitchen')` 실제 반환값(localStorage.printerSettings.kitchenPrinter.method) ③어느 분기(qztray/rawbt)로 갔는지 ④`__NATIVE_PRINT.printHtml` 호출·완료 여부 를 직접 찍어 확정. V3 는 printHtml 을 **CDP 직접호출**로 증명했을 뿐 **폴러→billPrint 경로**를 증명하지 않으므로, 차이는 이 경로에 있다.
+  - **billPrint 수정 승인됨(Irene 2026-07-15, 브라우저 경로 바이트 불변 조건)** — #2 원인이 네이티브 분기 결함으로 확정되면 그 분기만 수정. 단 현재는 **미확정**이라 앱 무변경 유지.
+
+**환경 주의(측정 중 확인):** full V4 게이트는 이 7.9GB 박스에서 에뮬 부팅이 ~50% 실패(모델 in-process 로드+에뮬 동시 메모리 압박). 독립 부팅은 안정(24s). 반복 재실행 대신 에뮬 1회 유지 상태에서 측정할 것.
+
 **그래도 실기기(매장 태블릿+프린터, 방문 1회)가 필요한 것:** ① BT SPP 실전(V5 — 에뮬레이터에 BT 없음) ② 종이 품질: 한글 글리프/농도/576px 폭 정합/컷 ③ 드로어 물리 킥 ④ 실프린터의 래스터 프레이밍 수용 ⑤ 태블릿 시스템 폰트의 한글 렌더 ⑥ 운영 origin 로그인+폴러 장시간 안정 ⑦ 사이드로드 설치 UX. 전부 한 방문에 묶는다(CLAUDE.md 인쇄 프로세스 5).
 
 ### 8-7. 릴리즈·배포
