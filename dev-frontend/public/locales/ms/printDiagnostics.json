@@ -17,6 +17,25 @@
         "found": "{{n}} pesanan yang lebih lama daripada {{olderThanMin}} minit masih menunggu untuk dicetak.",
         "guide": "Kosongkan tiket tersekat, kemudian pastikan pencetak berfungsi."
       },
+      "unprinted_now": {
+        "title": "Pesanan tidak mencetak sekarang",
+        "master_off": "{{n}} pesanan sedang menunggu tetapi cetak automatik dimatikan — hidupkannya atau cetak secara manual.",
+        "no_device": "{{n}} pesanan tidak dicetak — tiada POS mengambilnya. Pastikan POS pencetak dihidupkan dan dalam talian.",
+        "dead_claim": "{{n}} pesanan tidak dicetak — sebuah peranti mencuba tetapi gagal. Ia mencuba semula; periksa pencetak itu.",
+        "qz_error": "{{n}} pesanan tidak dicetak — pencetak tidak bertindak balas. Periksa kuasa, kertas dan kabel.",
+        "backlog": "{{n}} pesanan sebelum cetak automatik dihidupkan sedang menunggu — cetak secara manual.",
+        "printer_unreachable_fallback": "{{n}} pesanan dicetak ke pencetak lain kerana pencetak yang dimaksudkan tidak dapat dicapai.",
+        "generic": "{{n}} pesanan tidak dicetak dalam {{sinceSec}} saat atau lebih.",
+        "guide": "Periksa POS pencetak dan pencetak, kemudian kosongkan atau cetak semula jika perlu."
+      },
+      "bt_permission": {
+        "title": "Kebenaran Bluetooth",
+        "denied": "Kebenaran Bluetooth dimatikan, jadi pencetak Bluetooth tidak dapat dicapai.",
+        "deniedForever": "Kebenaran Bluetooth disekat. Hidupkannya untuk aplikasi ini dalam tetapan telefon.",
+        "unknown": "Kebenaran Bluetooth tidak dapat diperiksa.",
+        "guide": "Benarkan Bluetooth apabila aplikasi meminta, kemudian jalankan semakan semula.",
+        "guideSettings": "Buka tetapan aplikasi telefon dan benarkan Bluetooth untuk aplikasi ini."
+      },
       "station_drift": {
         "title": "Penetapan pencetak dapur",
         "unassigned": "Dapur ini tiada pencetak ditetapkan: {{unassigned}}. Itemnya jatuh ke pencetak pertama.",

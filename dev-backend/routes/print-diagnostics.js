@@ -32,6 +32,7 @@ function chk(id, status, opts = {}) {
 }
 
 const STUCK_MINUTES = 60;      // S3: 이만큼 오래 걸린 미인쇄 = 막힌 티켓
+const UNPRINTED_STALE_SEC = 45; // S4: 이만큼 안 나간 needs_print = "지금 안 되고 있음"(print-events status 와 동일 기준)
 const POLLER_DEAD_MS = 30000;  // S2: 마지막 폴 이후 이만큼 = 담당 기기 응답 없음
 const DEVICE_STALE_MS = 5 * 60 * 1000; // S8: 리포트 신선도
 
@@ -83,6 +84,41 @@ router.get('/restaurant/:restaurantId/checks', authenticateToken, checkRestauran
       guide: stuckCount > 0 ? ['diag.check.stuck_tickets.guide'] : [],
       fix: stuckCount > 0 ? { type: 'api', action: 'clear_stuck_flags', label: 'diag.fix.clear_stuck' } : null,
       evidence: { count: stuckCount, olderThanMin: STUCK_MINUTES }
+    }));
+
+    // S4 unprinted_now — 지금 안 나가고 있는 신선 미인쇄(45초+) + 사유
+    //   S3(60분 적체)와 달리 "방금부터 안 됨"을 잡는다. 사유는 print-events status 와 동일 규칙:
+    //   마스터 꺼짐 > 최근 print_event reason > 죽은 claim > no_device.
+    const unprintedCutoff = new Date(Date.now() - UNPRINTED_STALE_SEC * 1000);
+    const unprintedCount = await Order.count({
+      where: { restaurant_id: rid, is_deleted: false, needs_print: true, createdAt: { [Op.lt]: unprintedCutoff } }
+    });
+    let unprintedReason = 'no_device';
+    if (unprintedCount > 0) {
+      if (!autoOn) {
+        unprintedReason = 'master_off';
+      } else {
+        // 최근 30분 내 이 매장의 마지막 실패/사유 이벤트로 힌트
+        const lastEv = await PrintEvent.findOne({
+          where: {
+            restaurant_id: rid,
+            created_at: { [Op.gt]: new Date(Date.now() - 30 * 60 * 1000) },
+            reason_code: { [Op.ne]: null }
+          },
+          order: [['created_at', 'DESC']],
+          attributes: ['reason_code']
+        });
+        if (lastEv?.reason_code) unprintedReason = lastEv.reason_code;
+      }
+    }
+    // 사유별 cause 키(없는 코드는 generic 로 폴백 — i18n 에 정의된 것만)
+    const KNOWN_REASONS = new Set(['master_off', 'no_device', 'dead_claim', 'qz_error', 'backlog', 'printer_unreachable_fallback']);
+    const reasonKey = KNOWN_REASONS.has(unprintedReason) ? unprintedReason : 'generic';
+    checks.push(chk('unprinted_now', unprintedCount > 0 ? 'fail' : 'pass', {
+      severity: 'critical',
+      cause: unprintedCount > 0 ? `diag.check.unprinted_now.${reasonKey}` : null,
+      guide: unprintedCount > 0 ? ['diag.check.unprinted_now.guide'] : [],
+      evidence: { count: unprintedCount, sinceSec: UNPRINTED_STALE_SEC, reasonCode: unprintedReason }
     }));
 
     // S5 station_drift — 스테이션 있는데 프린터 미지정
@@ -154,13 +190,12 @@ router.get('/restaurant/:restaurantId/checks', authenticateToken, checkRestauran
 // ─── POST /device-report — 기기 스냅샷 upsert (자기 매장 스코프) ───
 router.post('/device-report', authenticateToken, async (req, res) => {
   try {
-    // restaurant_id 는 body 를 신뢰하지 않고 토큰 스코프로 확정.
-    const rid = req.user.restaurant_id || parseInt(req.body.restaurant_id, 10);
-    if (!rid) return res.status(400).json({ success: false, message: 'No restaurant context' });
-    // 본인 매장만(스태프/RA 는 자기 매장, 그 외 역할은 body restaurant_id 를 access 로 확인)
-    if (req.user.restaurant_id && Number(req.user.restaurant_id) !== Number(rid)) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
+    // restaurant_id 는 오직 토큰 스코프로만 확정 — body 는 절대 신뢰하지 않는다.
+    // 리포터(buildDeviceReport)는 restaurant_id 를 payload 에 넣지 않고, 매장 계정에서만
+    // 발사된다. 따라서 매장 스코프 없는 계정(BG/FG/SA)의 device-report 는 거부한다.
+    // (body.restaurant_id 폴백은 죽은 경로이자 크로스테넌트 쓰기 오염 공격면이었음 — Fable 적발)
+    const rid = req.user.restaurant_id ? Number(req.user.restaurant_id) : null;
+    if (!rid) return res.status(403).json({ success: false, message: 'Device reports require a restaurant-scoped account' });
     const b = req.body || {};
     if (!b.device_id) return res.status(400).json({ success: false, message: 'device_id required' });
 

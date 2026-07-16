@@ -73,6 +73,28 @@ export function detectPlatform(): Platform {
   return 'web';
 }
 
+/**
+ * Android native Bluetooth permission state (read-only). Returns one of
+ * 'granted' | 'not_needed' | 'denied' | 'denied_forever', or null when it cannot
+ * be read / is not applicable. Reads __NATIVE_PRINT_SETUP.getState() (Android-only
+ * surface) with a diagnostics() fallback — never requests the permission here.
+ */
+async function readBtPermission(): Promise<string | null> {
+  try {
+    const setup = (window as any).__NATIVE_PRINT_SETUP;
+    if (setup?.getState) {
+      const st = await setup.getState();
+      if (st && typeof st.btPermission === 'string') return st.btPermission;
+    }
+    const np = nativeBridge();
+    if (np?.diagnostics) {
+      const d = await np.diagnostics();
+      if (d && typeof d.btPermission === 'string') return d.btPermission;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
 /** websocket.isActive() — a passive read. Never connects. */
 export function readQzActive(): boolean | null {
   try {
@@ -293,6 +315,35 @@ export async function runDeviceChecks(): Promise<DiagCheck[]> {
       guide: trusted || !bridgeOk ? [] : ['diag.check.cert_trusted.guide'],
       evidence: { certHandshake: summaryTrust ?? null },
     }));
+  }
+
+  // D7 bt_permission — Android native only. Bluetooth printing needs the runtime
+  // permission (Android 12+). Honest states: granted/not_needed → pass, denied →
+  // warn (can re-prompt), denied_forever → fail (must enable in OS settings).
+  if (platform === 'android-app') {
+    const bt = await readBtPermission();
+    if (bt === 'granted' || bt === 'not_needed') {
+      checks.push(chk('bt_permission', 'pass', { evidence: { state: bt } }));
+    } else if (bt === 'denied') {
+      checks.push(chk('bt_permission', 'warn', {
+        severity: 'major',
+        cause: 'diag.check.bt_permission.denied',
+        guide: ['diag.check.bt_permission.guide'],
+        evidence: { state: bt },
+      }));
+    } else if (bt === 'denied_forever') {
+      checks.push(chk('bt_permission', 'fail', {
+        severity: 'major',
+        cause: 'diag.check.bt_permission.deniedForever',
+        guide: ['diag.check.bt_permission.guideSettings'],
+        evidence: { state: bt },
+      }));
+    } else {
+      checks.push(chk('bt_permission', 'unknown', {
+        cause: 'diag.check.bt_permission.unknown',
+        evidence: { state: bt },
+      }));
+    }
   }
 
   checks.push(...settingsAndFormatChecks(ps, platform));

@@ -1369,7 +1369,12 @@
       "Bash(awk '/router.post\\\\\\(/{p=1} p{print NR\": \"$0} /res.json|res.status/{if\\(p\\)c++} c>2{exit}' routes/print-events.js2)",
       "Bash(awk '{print $2, $4, $11, $12}')",
       "Bash(pkill -f \"tsc --noEmit\")",
-      "Bash(echo \"빌드 PID: $! \\(백그라운드\\)\")"
+      "Bash(echo \"빌드 PID: $! \\(백그라운드\\)\")",
+      "Bash(pkill -f \"node.*build:dev\")",
+      "Bash(awk '/checkRestaurantAccess/,/^};?$/' middleware/auth.js)",
+      "Bash(echo \"REG_EXIT=$?\")",
+      "Bash(echo \"SENS_EXIT=$?\")",
+      "Bash(echo \"I18N_EXIT=$?\")"
     ],
     "deny": [],
     "ask": []

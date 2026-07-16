@@ -17,6 +17,25 @@
         "found": "{{n}} order(s) older than {{olderThanMin}} minutes are still waiting to print.",
         "guide": "Clear the stuck tickets, then check that the printer is working."
       },
+      "unprinted_now": {
+        "title": "Orders not printing now",
+        "master_off": "{{n}} order(s) have not printed and auto-print is off — turn it on or print them manually.",
+        "no_device": "{{n}} order(s) are not printing — no POS has picked them up. Check that the printing POS is on and online.",
+        "dead_claim": "{{n}} order(s) are not printing — a device tried but failed. It is retrying; check that printer.",
+        "qz_error": "{{n}} order(s) are not printing — the printer did not respond. Check its power, paper and cable.",
+        "backlog": "{{n}} order(s) from before auto-print was on are waiting — print them manually.",
+        "printer_unreachable_fallback": "{{n}} order(s) printed to a different printer because the intended one was unreachable.",
+        "generic": "{{n}} order(s) have not printed in the last {{sinceSec}} seconds or more.",
+        "guide": "Check the printing POS and printer, then clear or reprint if needed."
+      },
+      "bt_permission": {
+        "title": "Bluetooth permission",
+        "denied": "Bluetooth permission is off, so Bluetooth printers cannot be reached.",
+        "deniedForever": "Bluetooth permission is blocked. Turn it on for this app in the phone's settings.",
+        "unknown": "Bluetooth permission could not be checked.",
+        "guide": "Allow Bluetooth when the app asks, then run the check again.",
+        "guideSettings": "Open the phone's app settings and allow Bluetooth for this app."
+      },
       "station_drift": {
         "title": "Kitchen printer assignment",
         "unassigned": "These kitchens have no printer assigned: {{unassigned}}. Their items fall through to the first printer.",

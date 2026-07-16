@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../contexts/AuthContext';
 
 /**
  * AutoPrintFailureBanner — PRINT_RULES_MATRIX rule 6: when an auto-print fails,
@@ -9,9 +10,13 @@ import { useTranslation } from 'react-i18next';
  * this banner tells staff what to check if it keeps failing.
  *
  * Non-blocking fixed banner (does not cover the POS). Dismissible.
+ * The "Printer Settings" button deep-links into Settings > Printer with ?diag=1
+ * so the Print Self-Diagnose panel auto-runs a full check on arrival
+ * (docs/PRINT_SELF_DIAGNOSE_DESIGN.md §5-1).
  */
 const AutoPrintFailureBanner: React.FC = () => {
   const { t } = useTranslation('common');
+  const { user } = useAuth();
   const [fail, setFail] = useState<{ orderNumber?: string; scope?: string; at: number } | null>(null);
 
   useEffect(() => {
@@ -49,7 +54,13 @@ const AutoPrintFailureBanner: React.FC = () => {
       </span>
       <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
         <button
-          onClick={() => { try { window.location.href = '/pos/restaurant/settings?tab=printer'; } catch { setFail(null); } }}
+          onClick={() => {
+            const rid = user?.restaurantId || (user as any)?.restaurant_id;
+            // Real RA settings route is /restaurant/:restaurantId/settings (App.tsx).
+            // ?diag=1 makes the self-diagnose panel auto-run its full check on load.
+            if (rid) { try { window.location.href = `/restaurant/${rid}/settings?tab=printer&diag=1`; return; } catch { /* fall through */ } }
+            setFail(null);
+          }}
           style={{ background: '#fff', color: '#FF6B6B', border: 'none', borderRadius: 6, padding: '6px 12px', fontWeight: 700, cursor: 'pointer' }}
         >
           {t('printFailBanner.printerSettings', 'Printer Settings')}
