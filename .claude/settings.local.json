@@ -1363,7 +1363,10 @@
       "Bash(kill -0 32189222)",
       "Bash(awk '{print $NF}')",
       "Bash(awk '{print $5\" bytes\"}')",
-      "Bash(awk '/승인|approval|판단 요약|Key.*judg|§ ?8|## 8|규모|Phase|MVP/{p=1} p' PRINT_SELF_DIAGNOSE_DESIGN.md)"
+      "Bash(awk '/승인|approval|판단 요약|Key.*judg|§ ?8|## 8|규모|Phase|MVP/{p=1} p' PRINT_SELF_DIAGNOSE_DESIGN.md)",
+      "Bash(awk '/^## 2\\\\.|^## 3\\\\.|^## 4\\\\.|^## 5\\\\./{p=1} /^## 5\\\\./{c++} p && c<2' PRINT_SELF_DIAGNOSE_DESIGN.md)",
+      "Bash(awk '/print_device_status$/{p=1} p; /^```$/ && p && NR>1{c++; if\\(c>=1 && p\\) exit}' PRINT_SELF_DIAGNOSE_DESIGN.md)",
+      "Bash(awk '/router.post\\\\\\(/{p=1} p{print NR\": \"$0} /res.json|res.status/{if\\(p\\)c++} c>2{exit}' routes/print-events.js2)"
     ],
     "deny": [],
     "ask": []

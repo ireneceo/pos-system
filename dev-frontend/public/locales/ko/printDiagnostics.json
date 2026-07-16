@@ -1,0 +1,154 @@
+{
+  "diag": {
+    "check": {
+      "master_gate": {
+        "title": "자동 인쇄 설정",
+        "off": "자동 인쇄가 꺼져 있어 티켓이 자동으로 나오지 않습니다.",
+        "guide": "프린터 설정을 열고 카운터 POS의 자동 인쇄를 켜세요."
+      },
+      "poller_alive": {
+        "title": "인쇄 담당 POS 응답",
+        "never": "아직 이 매장에서 인쇄하는 기기가 확인되지 않았습니다.",
+        "silent": "인쇄 담당 POS가 {{sinceLastPollSec}}초 동안 응답이 없습니다 — 그 기기의 앱이나 브라우저가 켜져 있는지 확인하세요.",
+        "guide": "인쇄를 담당하는 카운터 POS가 켜져 있고 앱이나 브라우저가 열려 있는지 확인하세요."
+      },
+      "stuck_tickets": {
+        "title": "밀린 미인쇄 주문",
+        "found": "{{olderThanMin}}분이 넘은 주문 {{n}}건이 아직 인쇄를 기다리고 있습니다.",
+        "guide": "밀린 티켓을 비운 뒤 프린터가 정상 작동하는지 확인하세요."
+      },
+      "station_drift": {
+        "title": "주방 프린터 지정",
+        "unassigned": "다음 주방에 프린터가 지정되지 않았습니다: {{unassigned}}. 해당 품목이 첫 번째 프린터로 흘러갑니다.",
+        "guide": "각 주방에 프린터를 지정하거나 아래 원터치 설정을 사용하세요."
+      },
+      "printer_config_sane": {
+        "title": "프린터 설정 정합성",
+        "issues": "일부 프린터 설정이 이상합니다: {{issues}}."
+      },
+      "recent_failures": {
+        "title": "최근 인쇄 실패",
+        "count": "최근 {{hours}}시간 동안 인쇄 {{n}}건이 실패했습니다."
+      },
+      "device_reports_fresh": {
+        "title": "인쇄 담당 POS 접속",
+        "none": "아직 이 매장에서 인쇄 기기가 접속한 기록이 없습니다.",
+        "stale": "인쇄 담당 POS가 최근에 접속하지 않았습니다 — 꺼져 있거나 오프라인일 수 있습니다."
+      },
+      "role_identity": {
+        "title": "이 기기의 역할",
+        "printerCause": "이 기기({{label}})는 티켓을 인쇄합니다.",
+        "displayCause": "이 기기({{label}})는 인쇄하지 않고 주문만 표시합니다. 티켓은 인쇄 담당 POS가 처리합니다."
+      },
+      "bridge_or_qz": {
+        "title": "인쇄 연결",
+        "qzFail": "인쇄 앱(QZ Tray)이 실행 중이 아니거나 이 PC에서 연결되지 않습니다.",
+        "nativeFail": "이 기기의 인쇄 서비스가 응답하지 않습니다. 앱을 다시 시작하세요.",
+        "rawbtUnknown": "인쇄가 RawBT 앱을 통해 나가며 자동으로 확인할 수 없습니다. 테스트 인쇄로 확인하세요.",
+        "guide": "인쇄 앱이 설치·실행 중인지 확인한 뒤 다시 점검하세요."
+      },
+      "printers_visible": {
+        "title": "프린터 인식",
+        "missing": "다음 프린터가 이 기기의 프린터 목록에 없습니다: {{missingList}}.",
+        "noList": "이 기기의 프린터 목록을 읽지 못해 프린터 이름을 확인할 수 없었습니다.",
+        "guide": "프린터 전원과 케이블을 확인하고, 이름이 프린터 설정의 이름과 같은지 확인하세요."
+      },
+      "cert_trusted": {
+        "title": "신뢰된 인쇄",
+        "fail": "아직 신뢰 설정이 안 되어 인쇄 시 \"이 인쇄를 허용할까요?\" 팝업이 뜰 수 있습니다.",
+        "guide": "프린터 설치 파일을 다시 설치하면 팝업 없이 신뢰된 인쇄가 됩니다."
+      },
+      "settings_sync": {
+        "title": "설정 동기화",
+        "drift": "이 기기에 저장된 프린터 설정이 매장 설정과 다릅니다.",
+        "guide": "페이지를 새로고침하면 이 기기가 매장의 저장된 프린터 설정을 다시 불러옵니다."
+      },
+      "print_format_fit": {
+        "title": "인쇄 형식",
+        "info": "인쇄 형식이 \"{{format}}\"으로 설정되어 있습니다. 티켓이 백지로 나오면 텍스트 테스트 인쇄와 이미지 테스트 인쇄를 모두 해 보고 어느 쪽이 나오는지 확인하세요.",
+        "guide": "아래 테스트 인쇄(텍스트·이미지)로 프린터가 지원하는 형식을 찾으세요."
+      },
+      "test_print": {
+        "title": "실제 출력물",
+        "prompt": "실제 출력물은 자동으로 확인할 수 없습니다. 테스트 인쇄로 확인하세요."
+      }
+    },
+    "fix": {
+      "open_printer_settings": "프린터 설정 열기",
+      "clear_stuck": "밀린 티켓 비우기",
+      "seed_stations": "스테이션 프린터 설정",
+      "test_print": "테스트 인쇄"
+    }
+  },
+  "panel": {
+    "title": "프린터 자가진단",
+    "desc": "한 번의 점검으로 무엇이 문제고 어떻게 고치는지 확인합니다.",
+    "runButton": "전체 점검 실행",
+    "running": "점검 중…",
+    "thisDevice": "이 기기",
+    "roleLabel": {
+      "printer": "티켓 인쇄함",
+      "display": "표시 전용"
+    },
+    "allGoodCount": "인쇄 체계 정상 — 점검 {{n}}항목 통과.",
+    "error": "점검을 실행하지 못했습니다. 연결을 확인하고 다시 시도하세요.",
+    "recovering": "처리 중…",
+    "recoveredCount": "완료 — {{n}}건 정리됨.",
+    "recoverFailed": "완료하지 못했습니다. 다시 시도하세요.",
+    "testModalTitle": "테스트 인쇄",
+    "testModalDesc": "테스트를 인쇄하고 종이가 나왔는지 알려 주세요. 실제 출력물을 확인하는 유일한 방법입니다.",
+    "targetBill": "영수증 프린터",
+    "targetKitchen": "주방 프린터",
+    "testText": "테스트(텍스트)",
+    "testImage": "테스트(이미지)",
+    "testPrompt": "종이가 나왔나요?",
+    "testYes": "네, 나왔어요",
+    "testNo": "아니요, 안 나왔어요",
+    "testRecordedOk": "기록됨 — 출력이 정상입니다.",
+    "testRecordedFail": "기록됨 — 프린터 전원·용지·케이블을 확인하세요.",
+    "testError": "테스트 인쇄를 보내지 못했습니다.",
+    "testTicketTitle": "인쇄 테스트",
+    "testTicketFormatImage": "이미지 / 그래픽 형식"
+  },
+  "admin": {
+    "title": "인쇄 상태",
+    "subtitle": "전 매장 인쇄 상태입니다. 매장을 클릭하면 기기·점검 상세를 봅니다.",
+    "refresh": "새로고침",
+    "loading": "불러오는 중…",
+    "error": "불러오지 못했습니다. 다시 시도하세요.",
+    "empty": "표시할 매장이 없습니다.",
+    "never": "데이터 없음",
+    "secondsAgo": "{{n}}초 전",
+    "minutesAgo": "{{n}}분 전",
+    "hoursAgo": "{{n}}시간 전",
+    "noAutoDevice": "접속 기기 없음",
+    "col": {
+      "restaurant": "매장",
+      "status": "상태",
+      "unprinted": "미인쇄",
+      "recentFails": "실패(24h)",
+      "autoDevice": "인쇄 기기",
+      "lastResponse": "최근 응답"
+    },
+    "severity": {
+      "critical": "주의",
+      "warn": "경고",
+      "unknown": "확인 불가",
+      "ok": "정상"
+    },
+    "drill": {
+      "title": "상세",
+      "serverChecks": "서버 점검",
+      "noChecks": "점검 없음.",
+      "devices": "기기",
+      "noDevices": "아직 접속한 기기가 없습니다. 매장에 POS를 켜 달라고 안내하세요.",
+      "deviceCount": "기기 수",
+      "platform": "종류",
+      "version": "앱 버전",
+      "mode": "인쇄 방식",
+      "lastReport": "최근 접속",
+      "autoPrint": "자동 인쇄",
+      "guideStore": "기기 점검은 매장에서 설정 > 프린터를 열고 전체 점검 실행을 눌러야 합니다."
+    }
+  }
+}

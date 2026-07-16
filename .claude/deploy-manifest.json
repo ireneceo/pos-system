@@ -1,10 +1,10 @@
 {
  "note": "운영 배포 시점 소스 지문 — deploy-to-production.sh 성공 후 자동 기록. 수동 편집 금지.",
- "created_at": "2026-07-15T21:12:56.248Z",
+ "created_at": "2026-07-16T05:42:44.499Z",
  "file_count": 1770,
  "files": {
   "CLAUDE.md": "827d4ef4c7c1d8872598dcfedd2d83f40cf6ba90c0f23be27bd132f68ed6ba6f",
-  "deploy-to-production.sh": "67618b4d587520fb3f861755590916d4107418f75c97ef527815149f1a518937",
+  "deploy-to-production.sh": "712bcd44dab25d797633a08f851065032dc926db6ceb686e12b61c6f85c73879",
   "desktop-pos/.gitignore": "5e789cb7bc1878be6161310e77139b44326fc5a5a915d560d719964adb2732e3",
   "desktop-pos/README.md": "3e993c03326e1d9553b1d3e1dd2a7b565330fbf12e58fdb88249c0f3e87e6cb1",
   "desktop-pos/assets/icon.png": "e4e33652564fb59fb401d605f372dad2384a6f12001f72b8598c0e76bfd1261b",
@@ -1217,7 +1217,7 @@
   "dev-frontend/src/components/Common/AttachmentList.tsx": "84fac1a088271e4d078a2b082a35b605aa5c4e7ad73dbb64ff92b9a1e67e324a",
   "dev-frontend/src/components/Common/AutoSaveField.tsx": "aa8f067195074e73bab858b0e2807f6bfe0dc703f15f1d1e03804df30ca9dac5",
   "dev-frontend/src/components/Common/CalendarPicker.tsx": "0d07806372cd8dee0b385ad7865ea58bbd5ab483e4308986827b0782560a356f",
-  "dev-frontend/src/components/Common/CommentSection.tsx": "3de7b07e2f3b18a9417de22f8b1a9878e32c1b4b9b3a5ab4441239eee5c1d260",
+  "dev-frontend/src/components/Common/CommentSection.tsx": "cb936873286145061b46fbe19e22bdd2e12059cdd7b87611f6d4fff73d0f1252",
   "dev-frontend/src/components/Common/ConfirmDialog.tsx": "b9fd0011dca89f28646575392cd9a0d6be11134d90e40c3901cb43229ea863ec",
   "dev-frontend/src/components/Common/ConnectSellerModal.tsx": "046d0a2ee9ee64d79b54ea4504b54e6998628f32755df7b3e1086018ac3d0415",
   "dev-frontend/src/components/Common/CookieConsentBanner.tsx": "82aeb27356e59e5bcc9815075c1dd43da3c30b3211e5081167950b6a8960e7ff",

@@ -22,7 +22,8 @@ i18n
       'plans', 'notifications', 'floorplan', 'recipes', 'suppliers',
       'validation', 'contract', 'supplier', 'supplierDirectory',
       'purchaseOrders', 'purchaseInvoices', 'referrals', 'billing',
-      'walkthrough', 'subscription', 'reservation', 'cash', 'promotions'
+      'walkthrough', 'subscription', 'reservation', 'cash', 'promotions',
+      'printDiagnostics'
     ],
     defaultNS: 'common',
 

@@ -152,6 +152,7 @@ const Reservation = require('./Reservation');
 
 // Print Visibility & Diagnostics (2026-06-26) — additive log, no print-path change
 const PrintEvent = require('./PrintEvent');
+const PrintDeviceStatus = require('./PrintDeviceStatus');
 
 // Define associations
 // Brand - Restaurant associations
@@ -1141,5 +1142,6 @@ module.exports = {
   // Reservations (v3.29+)
   Reservation,
   // Print Visibility & Diagnostics (2026-06-26)
-  PrintEvent
+  PrintEvent,
+  PrintDeviceStatus
 };

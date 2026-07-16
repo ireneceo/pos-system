@@ -20,6 +20,8 @@ import OfflineBanner from './components/Offline/OfflineBanner';
 import OfflineLockOverlay from './components/Offline/OfflineLockOverlay';
 import NotificationToaster from './components/Common/NotificationToaster';
 import PwaInstallBanner from './components/Common/PwaInstallBanner';
+import AutoPrintFailureBanner from './components/AutoPrintFailureBanner';
+import PrintDeviceReporter from './components/PrintDeviceReporter';
 // Login Page (keep static - frequently used, first contact)
 import LoginPage from './pages/Login/LoginPage';
 
@@ -111,6 +113,7 @@ const FloorPlanEditor = React.lazy(() => import('./pages/FloorPlan/FloorPlanEdit
 
 // Admin pages
 const AdminDashboard = React.lazy(() => import('./pages/Admin/AdminDashboard'));
+const PrintHealthPage = React.lazy(() => import('./pages/Admin/PrintHealthPage'));
 const ManagersPage = React.lazy(() => import('./pages/Admin/ManagersPage'));
 const RestaurantsPage = React.lazy(() => import('./pages/Admin/RestaurantsPage'));
 const SubscriptionsPage = React.lazy(() => import('./pages/Admin/SubscriptionsPage'));
@@ -494,6 +497,12 @@ function App() {
                         <PwaInstallBanner />
                         <OfflineBanner />
                         <OfflineLockOverlay />
+                        {/* Print Self-Diagnose (docs/PRINT_SELF_DIAGNOSE_DESIGN.md):
+                            failure banner (deep-links to Settings>Printer diagnose) +
+                            passive device reporter. Both are read-only w.r.t. the print
+                            pipeline — the protected files stay untouched (print-guard 8/8). */}
+                        <AutoPrintFailureBanner />
+                        <PrintDeviceReporter />
                       <Suspense fallback={<PageLoader />}>
                       <Routes>
                       {/* ===== PUBLIC ROUTES (No MainLayout) ===== */}
@@ -625,6 +634,11 @@ function App() {
                       <Route path="/pos/admin/report" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <AdminReportsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/admin/print-health" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <PrintHealthPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/admin/support" element={

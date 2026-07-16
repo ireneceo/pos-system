@@ -1,0 +1,154 @@
+{
+  "diag": {
+    "check": {
+      "master_gate": {
+        "title": "Auto-print setting",
+        "off": "Auto-print is turned off, so tickets will not print by themselves.",
+        "guide": "Open printer settings and turn on auto-print for the counter POS."
+      },
+      "poller_alive": {
+        "title": "Printing POS response",
+        "never": "No device has been seen printing yet for this store.",
+        "silent": "The printing POS has not responded for {{sinceLastPollSec}} seconds — check that its app or browser is open.",
+        "guide": "Make sure the counter POS that prints is powered on with its app or browser open."
+      },
+      "stuck_tickets": {
+        "title": "Stuck unprinted orders",
+        "found": "{{n}} order(s) older than {{olderThanMin}} minutes are still waiting to print.",
+        "guide": "Clear the stuck tickets, then check that the printer is working."
+      },
+      "station_drift": {
+        "title": "Kitchen printer assignment",
+        "unassigned": "These kitchens have no printer assigned: {{unassigned}}. Their items fall through to the first printer.",
+        "guide": "Set up a printer for each kitchen, or use the one-tap setup below."
+      },
+      "printer_config_sane": {
+        "title": "Printer settings consistency",
+        "issues": "Some printer settings look off: {{issues}}."
+      },
+      "recent_failures": {
+        "title": "Recent print failures",
+        "count": "{{n}} print(s) failed in the last {{hours}} hours."
+      },
+      "device_reports_fresh": {
+        "title": "Printing POS check-in",
+        "none": "No printing device has checked in for this store yet.",
+        "stale": "The printing POS has not checked in recently — it may be closed or offline."
+      },
+      "role_identity": {
+        "title": "This device's role",
+        "printerCause": "This device ({{label}}) prints tickets.",
+        "displayCause": "This device ({{label}}) does not print — it only shows orders. The printing POS handles tickets."
+      },
+      "bridge_or_qz": {
+        "title": "Printing connection",
+        "qzFail": "The printing app (QZ Tray) is not running or not reachable on this PC.",
+        "nativeFail": "This device's printing service did not respond. Restart the app.",
+        "rawbtUnknown": "Printing goes through the RawBT app, which cannot be checked automatically. Use a test print to confirm.",
+        "guide": "Make sure the printing app is installed and running, then run the check again."
+      },
+      "printers_visible": {
+        "title": "Printer detection",
+        "missing": "These printers are not in this device's printer list: {{missingList}}.",
+        "noList": "This device's printer list could not be read, so printer names could not be confirmed.",
+        "guide": "Check the printer power and cable, and confirm the name matches the one in the printer settings."
+      },
+      "cert_trusted": {
+        "title": "Trusted printing",
+        "fail": "Printing may show an \"Allow this print?\" pop-up because it is not trusted yet.",
+        "guide": "Reinstall the printer setup file so printing is trusted with no pop-up."
+      },
+      "settings_sync": {
+        "title": "Settings sync",
+        "drift": "This device's saved printer settings differ from the store's settings.",
+        "guide": "Reload the page so this device picks up the store's saved printer settings."
+      },
+      "print_format_fit": {
+        "title": "Print format",
+        "info": "Print format is set to \"{{format}}\". If tickets come out blank, try both a text test print and an image test print to see which works.",
+        "guide": "Use the test prints below (text and image) to find which format your printer supports."
+      },
+      "test_print": {
+        "title": "Actual paper output",
+        "prompt": "The actual printout cannot be detected automatically. Use a test print to confirm."
+      }
+    },
+    "fix": {
+      "open_printer_settings": "Open printer settings",
+      "clear_stuck": "Clear stuck tickets",
+      "seed_stations": "Set up station printers",
+      "test_print": "Test print"
+    }
+  },
+  "panel": {
+    "title": "Printer self-check",
+    "desc": "Run one check to see what is wrong and how to fix it.",
+    "runButton": "Run full check",
+    "running": "Checking…",
+    "thisDevice": "This device",
+    "roleLabel": {
+      "printer": "Prints tickets",
+      "display": "Display only"
+    },
+    "allGoodCount": "Printing looks healthy — {{n}} checks passed.",
+    "error": "The check could not run. Check the connection and try again.",
+    "recovering": "Working…",
+    "recoveredCount": "Done — {{n}} fixed.",
+    "recoverFailed": "Could not complete. Try again.",
+    "testModalTitle": "Test print",
+    "testModalDesc": "Print a test and tell us if paper came out. This is the only way to confirm the actual printout.",
+    "targetBill": "Receipt printer",
+    "targetKitchen": "Kitchen printer",
+    "testText": "Test (text)",
+    "testImage": "Test (image)",
+    "testPrompt": "Did the paper come out?",
+    "testYes": "Yes, it printed",
+    "testNo": "No, nothing",
+    "testRecordedOk": "Recorded — the printout works.",
+    "testRecordedFail": "Recorded — please check the printer power, paper and cable.",
+    "testError": "Could not send the test print.",
+    "testTicketTitle": "PRINT TEST",
+    "testTicketFormatImage": "Image / graphic format"
+  },
+  "admin": {
+    "title": "Print Health",
+    "subtitle": "Printing status across all stores. Click a store for device and check details.",
+    "refresh": "Refresh",
+    "loading": "Loading…",
+    "error": "Could not load. Try again.",
+    "empty": "No stores to show.",
+    "never": "No data",
+    "secondsAgo": "{{n}}s ago",
+    "minutesAgo": "{{n}}m ago",
+    "hoursAgo": "{{n}}h ago",
+    "noAutoDevice": "None reporting",
+    "col": {
+      "restaurant": "Store",
+      "status": "Status",
+      "unprinted": "Unprinted",
+      "recentFails": "Fails (24h)",
+      "autoDevice": "Printing device",
+      "lastResponse": "Last response"
+    },
+    "severity": {
+      "critical": "Attention",
+      "warn": "Warning",
+      "unknown": "Unknown",
+      "ok": "OK"
+    },
+    "drill": {
+      "title": "Details",
+      "serverChecks": "Server checks",
+      "noChecks": "No checks.",
+      "devices": "Devices",
+      "noDevices": "No devices have reported yet. Ask the store to open the POS.",
+      "deviceCount": "Devices",
+      "platform": "Type",
+      "version": "App version",
+      "mode": "Print mode",
+      "lastReport": "Last check-in",
+      "autoPrint": "Auto-print",
+      "guideStore": "To run device checks, ask the store to open Settings > Printer and tap Run full check."
+    }
+  }
+}

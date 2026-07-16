@@ -280,7 +280,10 @@ log "Creating backup on production server..."
 ssh $PROD_SERVER "mkdir -p /var/www/backups/${TIMESTAMP}" \
     || error "백업 디렉토리 생성 실패 (/var/www/backups/${TIMESTAMP}) — 운영 디스크·권한 확인"
 
-BK_ERR=$(ssh $PROD_SERVER "cp -r $REMOTE_PROD_BACKEND /var/www/backups/${TIMESTAMP}/production-backend" 2>&1) \
+# node_modules(143MB·1.4만 파일) 제외 — 재설치로 복원되므로 백업 불필요. cp -r 로 통째
+# 복사하면 이 파일무더기 때문에 백업 하나가 10분+ 걸려 배포가 30분이 됐다(2026-07-16 회귀
+# 수리). rsync --exclude 로 코드만 백업 → 수 초. 롤백 핵심(서버코드·package.json)은 그대로.
+BK_ERR=$(ssh $PROD_SERVER "mkdir -p /var/www/backups/${TIMESTAMP}/production-backend && rsync -a --exclude=node_modules --exclude=.git $REMOTE_PROD_BACKEND/ /var/www/backups/${TIMESTAMP}/production-backend/" 2>&1) \
     || error "백엔드 백업 실패: ${BK_ERR} — 백업 없이 배포하면 롤백할 수 없다"
 
 # 프론트 빌드 백업은 운영에 build 가 아직 없을 수 있어 경고만 (백엔드 백업이 롤백의 핵심)

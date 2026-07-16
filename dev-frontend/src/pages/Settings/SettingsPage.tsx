@@ -26,6 +26,7 @@ import { getRestaurantTimezone } from '../../utils/timezone';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import PrintSelfDiagnosePanel from '../../components/Settings/PrintSelfDiagnosePanel';
 import MallSalesIntegrationSettings from './MallSalesIntegrationSettings';
 import { isOfflineMainPos, setOfflineMainPos } from '../../utils/offlineMainPos';
 import { openCustomerDisplay, isAutoOpenEnabled, setAutoOpenEnabled, resetCustomerDisplayPosition } from '../../utils/customerDisplay';
@@ -5828,6 +5829,12 @@ const SettingsPage: React.FC = () => {
                     {t('common:retry', 'Retry')}
                   </button>
                 </div>
+              )}
+              {/* Print Self-Diagnose (docs/PRINT_SELF_DIAGNOSE_DESIGN.md §5-1) —
+                  one button merges server checks + this device's checks into a plain
+                  list with causes, guides, safe recovery buttons and test prints. */}
+              {!printerSettingsLoading && (
+                <PrintSelfDiagnosePanel restaurantId={user?.restaurantId} />
               )}
               {/* ★ Print Format — store-level. How tickets/receipts render on the
                   printer. 'auto' works for most; 'text' rescues text-only / cheap USB

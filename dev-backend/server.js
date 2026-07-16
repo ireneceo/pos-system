@@ -433,6 +433,18 @@ app.use('/api/menu', menuRouter);
 app.use('/api/mobile', mobileRouter);
 app.use('/api/invoices', invoicesRouter);
 app.use('/api/rent', rentBillingRouter);
+// 인쇄 자가진단(S2 폴러 생존) — 자동인쇄 담당 기기가 pending-print 를 5초마다 친다.
+// 그 200 응답을 관측만 해(요청을 막거나 바꾸지 않음) "폴링 중" 물증을 남긴다. orders-crud
+// (🔒 인쇄 보호파일) 한 줄도 안 건드림. res.on('finish')로 성공 응답만 기록.
+// (docs/PRINT_SELF_DIAGNOSE_DESIGN.md §2-1)
+const pollerObserver = require('./utils/pollerObserver');
+app.use((req, res, next) => {
+  if (req.method === 'GET') {
+    const m = req.path.match(/^\/api\/orders\/restaurant\/(\d+)\/pending-print\b/);
+    if (m) res.on('finish', () => { if (res.statusCode === 200) pollerObserver.record(m[1]); });
+  }
+  next();
+});
 app.use('/api/orders', ordersRouter);
 app.use('/api/order-audit', orderAuditRouter);
 app.use('/api/cash', cashManagementRouter);
@@ -531,6 +543,7 @@ app.use('/api/badge-counts', badgeCountsRouter);  // Sidebar badge counts
 app.use('/api/kitchen-stations', kitchenStationsRouter);  // Kitchen station management
 app.use('/api/diagnostic/autoprint', autoprintDiagnosticRouter);  // Auto-print preview + self-test
 app.use('/api/print-events', require('./routes/print-events'));  // Print Visibility & Diagnostics (additive; never touches existing print path)
+app.use('/api/print-diagnostics', require('./routes/print-diagnostics'));  // Print Self-Diagnose & Remote Support (read-only; 인쇄 보호파일 무접촉)
 app.use('/api/system-products', systemProductsRouter);  // System products (hardware)
 app.use('/api/system-product-categories', systemProductCategoriesRouter);  // System product categories
 app.use('/api/system-product-option-groups', systemProductOptionGroupsRouter);  // System product option groups

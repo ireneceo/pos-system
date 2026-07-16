@@ -1,0 +1,154 @@
+{
+  "diag": {
+    "check": {
+      "master_gate": {
+        "title": "Tetapan cetak automatik",
+        "off": "Cetak automatik dimatikan, jadi tiket tidak akan dicetak dengan sendiri.",
+        "guide": "Buka tetapan pencetak dan hidupkan cetak automatik untuk POS kaunter."
+      },
+      "poller_alive": {
+        "title": "Respons POS pencetak",
+        "never": "Belum ada peranti yang dikesan sedang mencetak untuk kedai ini.",
+        "silent": "POS pencetak tidak memberi respons selama {{sinceLastPollSec}} saat — pastikan apl atau pelayarnya dibuka.",
+        "guide": "Pastikan POS kaunter yang mencetak dihidupkan dengan apl atau pelayarnya terbuka."
+      },
+      "stuck_tickets": {
+        "title": "Pesanan belum dicetak tersekat",
+        "found": "{{n}} pesanan yang lebih lama daripada {{olderThanMin}} minit masih menunggu untuk dicetak.",
+        "guide": "Kosongkan tiket tersekat, kemudian pastikan pencetak berfungsi."
+      },
+      "station_drift": {
+        "title": "Penetapan pencetak dapur",
+        "unassigned": "Dapur ini tiada pencetak ditetapkan: {{unassigned}}. Itemnya jatuh ke pencetak pertama.",
+        "guide": "Tetapkan pencetak untuk setiap dapur, atau guna persediaan satu sentuh di bawah."
+      },
+      "printer_config_sane": {
+        "title": "Ketekalan tetapan pencetak",
+        "issues": "Beberapa tetapan pencetak kelihatan tidak kena: {{issues}}."
+      },
+      "recent_failures": {
+        "title": "Kegagalan cetak terkini",
+        "count": "{{n}} cetakan gagal dalam {{hours}} jam yang lalu."
+      },
+      "device_reports_fresh": {
+        "title": "Daftar masuk POS pencetak",
+        "none": "Belum ada peranti pencetak mendaftar masuk untuk kedai ini.",
+        "stale": "POS pencetak tidak mendaftar masuk baru-baru ini — mungkin ditutup atau di luar talian."
+      },
+      "role_identity": {
+        "title": "Peranan peranti ini",
+        "printerCause": "Peranti ini ({{label}}) mencetak tiket.",
+        "displayCause": "Peranti ini ({{label}}) tidak mencetak — ia hanya memaparkan pesanan. POS pencetak mengendalikan tiket."
+      },
+      "bridge_or_qz": {
+        "title": "Sambungan cetak",
+        "qzFail": "Apl pencetak (QZ Tray) tidak berjalan atau tidak dapat dicapai pada PC ini.",
+        "nativeFail": "Perkhidmatan cetak peranti ini tidak memberi respons. Mulakan semula apl.",
+        "rawbtUnknown": "Cetakan melalui apl RawBT yang tidak dapat diperiksa secara automatik. Guna cetakan ujian untuk sahkan.",
+        "guide": "Pastikan apl pencetak dipasang dan berjalan, kemudian jalankan semakan semula."
+      },
+      "printers_visible": {
+        "title": "Pengesanan pencetak",
+        "missing": "Pencetak ini tiada dalam senarai pencetak peranti ini: {{missingList}}.",
+        "noList": "Senarai pencetak peranti ini tidak dapat dibaca, jadi nama pencetak tidak dapat disahkan.",
+        "guide": "Semak kuasa dan kabel pencetak, dan pastikan namanya sepadan dengan nama dalam tetapan pencetak."
+      },
+      "cert_trusted": {
+        "title": "Cetakan dipercayai",
+        "fail": "Cetakan mungkin memaparkan pop timbul \"Benarkan cetakan ini?\" kerana ia belum dipercayai.",
+        "guide": "Pasang semula fail persediaan pencetak supaya cetakan dipercayai tanpa pop timbul."
+      },
+      "settings_sync": {
+        "title": "Penyegerakan tetapan",
+        "drift": "Tetapan pencetak yang disimpan pada peranti ini berbeza daripada tetapan kedai.",
+        "guide": "Muat semula halaman supaya peranti ini mengambil tetapan pencetak kedai yang disimpan."
+      },
+      "print_format_fit": {
+        "title": "Format cetak",
+        "info": "Format cetak ditetapkan kepada \"{{format}}\". Jika tiket keluar kosong, cuba cetakan ujian teks dan cetakan ujian imej untuk lihat yang mana berkesan.",
+        "guide": "Guna cetakan ujian di bawah (teks dan imej) untuk cari format yang disokong pencetak anda."
+      },
+      "test_print": {
+        "title": "Cetakan sebenar",
+        "prompt": "Cetakan sebenar tidak dapat dikesan secara automatik. Guna cetakan ujian untuk sahkan."
+      }
+    },
+    "fix": {
+      "open_printer_settings": "Buka tetapan pencetak",
+      "clear_stuck": "Kosongkan tiket tersekat",
+      "seed_stations": "Sediakan pencetak stesen",
+      "test_print": "Cetakan ujian"
+    }
+  },
+  "panel": {
+    "title": "Semakan sendiri pencetak",
+    "desc": "Jalankan satu semakan untuk lihat apa yang tidak kena dan cara membetulkannya.",
+    "runButton": "Jalankan semakan penuh",
+    "running": "Menyemak…",
+    "thisDevice": "Peranti ini",
+    "roleLabel": {
+      "printer": "Mencetak tiket",
+      "display": "Paparan sahaja"
+    },
+    "allGoodCount": "Cetakan kelihatan sihat — {{n}} semakan lulus.",
+    "error": "Semakan tidak dapat dijalankan. Semak sambungan dan cuba lagi.",
+    "recovering": "Memproses…",
+    "recoveredCount": "Selesai — {{n}} dibetulkan.",
+    "recoverFailed": "Tidak dapat selesai. Cuba lagi.",
+    "testModalTitle": "Cetakan ujian",
+    "testModalDesc": "Cetak ujian dan beritahu kami jika kertas keluar. Ini satu-satunya cara untuk sahkan cetakan sebenar.",
+    "targetBill": "Pencetak resit",
+    "targetKitchen": "Pencetak dapur",
+    "testText": "Ujian (teks)",
+    "testImage": "Ujian (imej)",
+    "testPrompt": "Adakah kertas keluar?",
+    "testYes": "Ya, ia mencetak",
+    "testNo": "Tidak, tiada apa-apa",
+    "testRecordedOk": "Direkodkan — cetakan berfungsi.",
+    "testRecordedFail": "Direkodkan — sila semak kuasa, kertas dan kabel pencetak.",
+    "testError": "Tidak dapat menghantar cetakan ujian.",
+    "testTicketTitle": "UJIAN CETAK",
+    "testTicketFormatImage": "Format imej / grafik"
+  },
+  "admin": {
+    "title": "Kesihatan Cetak",
+    "subtitle": "Status cetakan merentas semua kedai. Klik kedai untuk butiran peranti dan semakan.",
+    "refresh": "Muat semula",
+    "loading": "Memuatkan…",
+    "error": "Tidak dapat memuatkan. Cuba lagi.",
+    "empty": "Tiada kedai untuk dipaparkan.",
+    "never": "Tiada data",
+    "secondsAgo": "{{n}}s lalu",
+    "minutesAgo": "{{n}}m lalu",
+    "hoursAgo": "{{n}}j lalu",
+    "noAutoDevice": "Tiada laporan",
+    "col": {
+      "restaurant": "Kedai",
+      "status": "Status",
+      "unprinted": "Belum dicetak",
+      "recentFails": "Gagal (24j)",
+      "autoDevice": "Peranti pencetak",
+      "lastResponse": "Respons terakhir"
+    },
+    "severity": {
+      "critical": "Perhatian",
+      "warn": "Amaran",
+      "unknown": "Tidak diketahui",
+      "ok": "OK"
+    },
+    "drill": {
+      "title": "Butiran",
+      "serverChecks": "Semakan pelayan",
+      "noChecks": "Tiada semakan.",
+      "devices": "Peranti",
+      "noDevices": "Belum ada peranti melapor. Minta kedai buka POS.",
+      "deviceCount": "Peranti",
+      "platform": "Jenis",
+      "version": "Versi apl",
+      "mode": "Mod cetak",
+      "lastReport": "Daftar masuk terakhir",
+      "autoPrint": "Cetak automatik",
+      "guideStore": "Untuk menjalankan semakan peranti, minta kedai buka Tetapan > Pencetak dan ketik Jalankan semakan penuh."
+    }
+  }
+}

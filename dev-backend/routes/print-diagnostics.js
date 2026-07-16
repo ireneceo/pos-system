@@ -1,0 +1,269 @@
+/**
+ * routes/print-diagnostics.js — 인쇄 자가진단 & 원격 지원 (읽기전용 진단).
+ *
+ * 설계: docs/PRINT_SELF_DIAGNOSE_DESIGN.md.
+ * 원칙: 인쇄 보호파일(billPrint/폴러/claim/orders-crud) 무접촉. 상태 READ + 서버 추론만.
+ *   복구 액션은 기존 autoprint-diagnostic API 재사용(이 파일은 진단 계산·기기 레지스트리·fleet).
+ *
+ * 엔드포인트:
+ *   GET  /api/print-diagnostics/restaurant/:restaurantId/checks   서버 체크 S1~S9(계산만)
+ *   POST /api/print-diagnostics/device-report                     기기 스냅샷 upsert
+ *   GET  /api/print-diagnostics/restaurant/:restaurantId/devices  기기 목록 + 폴러 관측
+ *   GET  /api/print-diagnostics/fleet                             SA/BG 매장별 요약(원격뷰)
+ */
+const express = require('express');
+const router = express.Router();
+const { Op } = require('sequelize');
+const { authenticateToken, requireRole, checkRestaurantAccess } = require('../middleware/auth');
+const { Restaurant, Order, PrintEvent, PrintDeviceStatus, KitchenStation, Brand } = require('../models');
+const { sinceLastPoll } = require('../utils/pollerObserver');
+
+// 진단 결과 모델(§2-3) — 클라/서버 공통. title/cause/guide 는 i18n 키(프론트가 t() 처리).
+function chk(id, status, opts = {}) {
+  return {
+    id, scope: 'server', domain: 'print', status,
+    severity: opts.severity || 'minor',
+    title: opts.title || `diag.check.${id}.title`,
+    cause: opts.cause || null,
+    guide: opts.guide || [],
+    fix: opts.fix || null,
+    evidence: opts.evidence || {}
+  };
+}
+
+const STUCK_MINUTES = 60;      // S3: 이만큼 오래 걸린 미인쇄 = 막힌 티켓
+const POLLER_DEAD_MS = 30000;  // S2: 마지막 폴 이후 이만큼 = 담당 기기 응답 없음
+const DEVICE_STALE_MS = 5 * 60 * 1000; // S8: 리포트 신선도
+
+// ─── GET /restaurant/:restaurantId/checks — 서버 체크 실행(저장 없음) ───
+router.get('/restaurant/:restaurantId/checks', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const rid = parseInt(req.params.restaurantId, 10);
+    const restaurant = await Restaurant.findByPk(rid);
+    if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
+
+    const ps = restaurant.printer_settings || {};
+    const checks = [];
+
+    // S1 master_gate — 자동인쇄 켜진 기기가 설정상 존재하나
+    const kp = ps.kitchenPrinter || {};
+    const workstations = Array.isArray(ps.workstations) ? ps.workstations : [];
+    const autoOn = (kp.enabled && kp.autoPrint) ||
+      workstations.some(w => w?.kitchenPrinter?.enabled && w?.kitchenPrinter?.autoPrint);
+    checks.push(chk('master_gate', autoOn ? 'pass' : 'fail', {
+      severity: 'critical',
+      cause: autoOn ? null : 'diag.check.master_gate.off',
+      guide: autoOn ? [] : ['diag.check.master_gate.guide'],
+      fix: autoOn ? null : { type: 'navigate', action: 'navigate_settings', label: 'diag.fix.open_printer_settings' },
+      evidence: { kitchenAutoPrint: !!(kp.enabled && kp.autoPrint), workstationAutoPrint: workstations.length }
+    }));
+
+    // S2 poller_alive — 담당 기기가 pending-print 를 최근에 쳤나(관측 물증)
+    const since = sinceLastPoll(rid);
+    const pollerOk = since != null && since < POLLER_DEAD_MS;
+    checks.push(chk('poller_alive', pollerOk ? 'pass' : (since == null ? 'unknown' : 'fail'), {
+      severity: 'critical',
+      cause: pollerOk ? null : (since == null ? 'diag.check.poller_alive.never' : 'diag.check.poller_alive.silent'),
+      guide: pollerOk ? [] : ['diag.check.poller_alive.guide'],
+      evidence: { sinceLastPollSec: since == null ? null : Math.round(since / 1000) }
+    }));
+
+    // S3 stuck_tickets — 오래된 미인쇄/미출력 적체
+    const stuckSince = new Date(Date.now() - STUCK_MINUTES * 60 * 1000);
+    const stuckCount = await Order.count({
+      where: {
+        restaurant_id: rid,
+        [Op.or]: [{ needs_print: true }, { needs_bill: true }],
+        updatedAt: { [Op.lt]: stuckSince }
+      }
+    });
+    checks.push(chk('stuck_tickets', stuckCount > 0 ? 'warn' : 'pass', {
+      severity: 'major',
+      cause: stuckCount > 0 ? 'diag.check.stuck_tickets.found' : null,
+      guide: stuckCount > 0 ? ['diag.check.stuck_tickets.guide'] : [],
+      fix: stuckCount > 0 ? { type: 'api', action: 'clear_stuck_flags', label: 'diag.fix.clear_stuck' } : null,
+      evidence: { count: stuckCount, olderThanMin: STUCK_MINUTES }
+    }));
+
+    // S5 station_drift — 스테이션 있는데 프린터 미지정
+    const stations = await KitchenStation.findAll({ where: { restaurant_id: rid }, attributes: ['id', 'name'] });
+    const stationPrinters = ps.kitchenStationPrinters || {};
+    const unassigned = stations.filter(s => {
+      const sp = stationPrinters[String(s.id)];
+      return !sp || !(sp.name || sp.address);
+    }).map(s => s.name);
+    checks.push(chk('station_drift', unassigned.length > 0 ? 'warn' : (stations.length ? 'pass' : 'na'), {
+      severity: 'major',
+      cause: unassigned.length > 0 ? 'diag.check.station_drift.unassigned' : null,
+      guide: unassigned.length > 0 ? ['diag.check.station_drift.guide'] : [],
+      fix: unassigned.length > 0 ? { type: 'api', action: 'seed_station_configs', label: 'diag.fix.seed_stations' } : null,
+      evidence: { stations: stations.length, unassigned }
+    }));
+
+    // S6 printer_config_sane — method↔address↔name 정합
+    const sanity = [];
+    const checkPrinter = (name, p) => {
+      if (!p || !p.enabled) return;
+      if (p.method === 'qztray' && !p.name && !p.address) sanity.push(`${name}: qztray인데 이름/주소 없음`);
+      if (p.method === 'rawbt' && !p.name) { /* rawbt 기본프린터 허용 — 경고 아님 */ }
+      if (p.address && /^\d{1,3}(\.\d{1,3}){3}$/.test(p.address) === false && /^\d/.test(p.address)) {
+        sanity.push(`${name}: 주소 형식 이상(${p.address})`);
+      }
+    };
+    checkPrinter('빌', ps.billPrinter); checkPrinter('주방', kp);
+    checks.push(chk('printer_config_sane', sanity.length > 0 ? 'warn' : 'pass', {
+      cause: sanity.length > 0 ? 'diag.check.printer_config_sane.issues' : null,
+      evidence: { issues: sanity }
+    }));
+
+    // S7 recent_failures — 최근 24h 실패/fallback 집계
+    const dayAgo = new Date(Date.now() - 24 * 3600 * 1000);
+    const recentFail = await PrintEvent.count({
+      where: { restaurant_id: rid, outcome: { [Op.in]: ['failed', 'fallback'] }, created_at: { [Op.gte]: dayAgo } }
+    });
+    checks.push(chk('recent_failures', recentFail > 0 ? 'warn' : 'pass', {
+      cause: recentFail > 0 ? 'diag.check.recent_failures.count' : null,
+      evidence: { count: recentFail, hours: 24 }
+    }));
+
+    // S8 device_reports_fresh — 자동인쇄 담당 기기가 최근 리포트했나
+    const autoDevices = await PrintDeviceStatus.findAll({
+      where: { restaurant_id: rid, is_auto_print: true },
+      attributes: ['device_id', 'label', 'app_version', 'last_report_at', 'platform']
+    });
+    const freshAuto = autoDevices.filter(d => d.last_report_at && (Date.now() - new Date(d.last_report_at).getTime()) < DEVICE_STALE_MS);
+    checks.push(chk('device_reports_fresh', autoDevices.length === 0 ? 'unknown' : (freshAuto.length > 0 ? 'pass' : 'warn'), {
+      severity: 'major',
+      cause: autoDevices.length === 0 ? 'diag.check.device_reports_fresh.none'
+        : (freshAuto.length === 0 ? 'diag.check.device_reports_fresh.stale' : null),
+      evidence: {
+        autoDevices: autoDevices.map(d => ({
+          label: d.label, platform: d.platform, appVersion: d.app_version,
+          lastReportSec: d.last_report_at ? Math.round((Date.now() - new Date(d.last_report_at).getTime()) / 1000) : null
+        }))
+      }
+    }));
+
+    res.json({ success: true, data: { restaurant_id: rid, checks, generatedAt: new Date().toISOString() } });
+  } catch (e) {
+    console.error('[print-diagnostics] checks error:', e);
+    res.status(500).json({ success: false, message: 'Failed to run checks' });
+  }
+});
+
+// ─── POST /device-report — 기기 스냅샷 upsert (자기 매장 스코프) ───
+router.post('/device-report', authenticateToken, async (req, res) => {
+  try {
+    // restaurant_id 는 body 를 신뢰하지 않고 토큰 스코프로 확정.
+    const rid = req.user.restaurant_id || parseInt(req.body.restaurant_id, 10);
+    if (!rid) return res.status(400).json({ success: false, message: 'No restaurant context' });
+    // 본인 매장만(스태프/RA 는 자기 매장, 그 외 역할은 body restaurant_id 를 access 로 확인)
+    if (req.user.restaurant_id && Number(req.user.restaurant_id) !== Number(rid)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    const b = req.body || {};
+    if (!b.device_id) return res.status(400).json({ success: false, message: 'device_id required' });
+
+    await PrintDeviceStatus.upsert({
+      restaurant_id: rid,
+      device_id: String(b.device_id).slice(0, 64),
+      workstation_id: b.workstation_id ? String(b.workstation_id).slice(0, 64) : null,
+      label: b.label ? String(b.label).slice(0, 120) : null,
+      platform: b.platform ? String(b.platform).slice(0, 32) : null,
+      app_version: b.app_version ? String(b.app_version).slice(0, 32) : null,
+      printer_mode: b.printer_mode ? String(b.printer_mode).slice(0, 16) : null,
+      is_auto_print: !!b.is_auto_print,
+      qz_active: typeof b.qz_active === 'boolean' ? b.qz_active : null,
+      snapshot: b.snapshot || null,
+      last_report_at: new Date(),
+      last_diag_at: b.is_diag ? new Date() : undefined
+    });
+    res.json({ success: true });
+  } catch (e) {
+    console.error('[print-diagnostics] device-report error:', e);
+    res.status(500).json({ success: false, message: 'Failed to record device report' });
+  }
+});
+
+// ─── GET /restaurant/:restaurantId/devices — 기기 목록 + 폴러 관측 ───
+router.get('/restaurant/:restaurantId/devices', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const rid = parseInt(req.params.restaurantId, 10);
+    const devices = await PrintDeviceStatus.findAll({
+      where: { restaurant_id: rid },
+      order: [['last_report_at', 'DESC']]
+    });
+    const since = sinceLastPoll(rid);
+    res.json({
+      success: true,
+      data: {
+        pollerSinceSec: since == null ? null : Math.round(since / 1000),
+        devices: devices.map(d => ({
+          device_id: d.device_id, label: d.label, platform: d.platform,
+          app_version: d.app_version, printer_mode: d.printer_mode, is_auto_print: d.is_auto_print,
+          qz_active: d.qz_active, snapshot: d.snapshot,
+          last_report_at: d.last_report_at, last_diag_at: d.last_diag_at
+        }))
+      }
+    });
+  } catch (e) {
+    console.error('[print-diagnostics] devices error:', e);
+    res.status(500).json({ success: false, message: 'Failed to load devices' });
+  }
+});
+
+// ─── GET /fleet — SA/BG 매장별 요약 (원격뷰) ───
+router.get('/fleet', authenticateToken, requireRole('System Admin', 'Brand General'), async (req, res) => {
+  try {
+    // 범위: SA=전 매장 / BG=소유 브랜드 매장만 (서버측 필터 — IDOR 방지)
+    const where = {};
+    if (req.user.role === 'Brand General') {
+      const brands = await Brand.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] });
+      const brandIds = brands.map(b => b.id);
+      if (brandIds.length === 0) return res.json({ success: true, data: [] });
+      where.brand_id = { [Op.in]: brandIds };
+    }
+    const restaurants = await Restaurant.findAll({ where, attributes: ['id', 'name', 'brand_id'] });
+    const rids = restaurants.map(r => r.id);
+    if (rids.length === 0) return res.json({ success: true, data: [] });
+
+    // 매장별: 미인쇄(막힌) 수 · 담당기기 생존 · 마지막 리포트 · 최근24h 실패
+    const dayAgo = new Date(Date.now() - 24 * 3600 * 1000);
+    const rows = await Promise.all(restaurants.map(async (r) => {
+      const rid = r.id;
+      const stuck = await Order.count({
+        where: { restaurant_id: rid, [Op.or]: [{ needs_print: true }, { needs_bill: true }] }
+      });
+      const fails = await PrintEvent.count({
+        where: { restaurant_id: rid, outcome: { [Op.in]: ['failed', 'fallback'] }, created_at: { [Op.gte]: dayAgo } }
+      });
+      const autoDev = await PrintDeviceStatus.findOne({
+        where: { restaurant_id: rid, is_auto_print: true },
+        order: [['last_report_at', 'DESC']],
+        attributes: ['label', 'app_version', 'last_report_at']
+      });
+      const since = sinceLastPoll(rid);
+      const lastReportSec = autoDev?.last_report_at ? Math.round((Date.now() - new Date(autoDev.last_report_at).getTime()) / 1000) : null;
+      // 심각도: 폴러 죽음 or 막힌티켓 = 빨강 / 실패 or 리포트 오래됨 = 노랑 / else 초록
+      let severity = 'ok';
+      if ((since != null && since > POLLER_DEAD_MS) || stuck > 0) severity = 'critical';
+      else if (fails > 0 || (lastReportSec != null && lastReportSec * 1000 > DEVICE_STALE_MS)) severity = 'warn';
+      else if (since == null && !autoDev) severity = 'unknown';
+      return {
+        restaurant_id: rid, name: r.name, brand_id: r.brand_id,
+        severity, stuck, recentFails: fails,
+        pollerSinceSec: since == null ? null : Math.round(since / 1000),
+        autoDevice: autoDev ? { label: autoDev.label, appVersion: autoDev.app_version, lastReportSec } : null
+      };
+    }));
+    // 심각한 것 먼저
+    const rank = { critical: 0, warn: 1, unknown: 2, ok: 3 };
+    rows.sort((a, b) => (rank[a.severity] ?? 9) - (rank[b.severity] ?? 9));
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    console.error('[print-diagnostics] fleet error:', e);
+    res.status(500).json({ success: false, message: 'Failed to load fleet' });
+  }
+});
+
+module.exports = router;
