@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../UI/Button';
 import { ModalComponent } from '../UI/Modal';
 import { getAuthToken } from '../../utils/auth';
+import { formatDateTime } from '../../utils/dateFormat';
 import {
   runDeviceChecks,
   detectPlatform,
@@ -172,7 +173,7 @@ const PrintSelfDiagnosePanel: React.FC<Props> = ({ restaurantId }) => {
         qzTrayTestPrint(address);
       } else {
         // HTML / image path — the withmin blank-paper class fails here on cheap drivers.
-        const now = new Date().toLocaleString();
+        const now = formatDateTime(new Date());  // 매장 타임존
         const html = `<html><head><meta charset="utf-8"><style>
           body{font-family:sans-serif;text-align:center;padding:12px;}
           h2{margin:4px 0;} .k{font-size:28px;letter-spacing:2px;}

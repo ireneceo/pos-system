@@ -1553,7 +1553,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         { path: '/pos/admin/subscriptions', label: t('nav.subscriptions') },
         { path: '/pos/admin/system-products', label: t('nav.systemProducts') },
         { path: '/pos/admin/report', label: t('nav.report') },
-        { path: '/pos/admin/scheduler-monitor', label: t('nav.schedulerMonitor', 'Scheduler Monitor') }
+        { path: '/pos/admin/scheduler-monitor', label: t('nav.schedulerMonitor', 'Scheduler Monitor') },
+        { path: '/pos/admin/print-health', label: t('nav.printHealth', 'Print Health') }
       ]
     },
     {

@@ -177,7 +177,7 @@ const PrintHealthPage: React.FC = () => {
                   return (
                     <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
                       <span style={{ color, fontWeight: 800, minWidth: 14, textAlign: 'center' }}>{glyph}</span>
-                      <span style={{ color: '#374151' }}>{t(c.title, { ...(c.evidence || {}), n: c.evidence?.count })}</span>
+                      <span style={{ color: '#374151' }}>{t(c.title)}</span>
                     </div>
                   );
                 })}
