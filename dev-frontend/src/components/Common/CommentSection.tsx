@@ -303,8 +303,11 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
   const fetchComments = async () => {
     try {
       const token = getAuthToken();
+      // no-store: 삭제/작성 직후 같은 URL 재조회가 브라우저 HTTP 캐시의 옛 목록을 받아
+      // 화면이 안 바뀌던 문제 방지(삭제한 댓글이 재접속 전까지 남아 보임). (2026-07-16)
       const response = await fetch(`/api/comments/${entityType}/${entityId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
       });
       if (response.ok) {
         const result = await response.json();
@@ -434,6 +437,10 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
+        // 낙관적 제거 — 화면에서 즉시 사라지게(네트워크 왕복 기다리지 않음). 이어서
+        // fetchComments 로 서버와 재대조(no-store 라 재추가 안 됨). 삭제했는데 화면엔
+        // 남아 재접속해야 사라지던 것 수정. (2026-07-16)
+        setComments((prev) => prev.filter((c) => c.id !== commentId));
         fetchComments();
         return;
       }
