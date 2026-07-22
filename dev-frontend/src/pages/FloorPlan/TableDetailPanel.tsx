@@ -51,7 +51,7 @@ interface TableDetailPanelProps {
   // Track A: 품목 → 상품 사진 조회(표시 전용, 없으면 썸네일 미표시). 설계 §A-4.5.
   productLookup?: (productId?: number | null, name?: string) => ProductPhotoInfo | null;
   onClose: () => void;
-  onNewOrder: (opts?: { takeaway?: boolean; mergeOrderId?: number; guests?: number }) => void;
+  onNewOrder: (opts?: { takeaway?: boolean; mergeOrderId?: number; guests?: number; checkInReservationId?: number }) => void;
   onStatusChange: (orderId: number, newStatus: string) => Promise<void>;
   onPayment: () => void;
   onNavigateToPOS: () => void;
@@ -2339,7 +2339,12 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
           <ActionGroup>
             <ActionBtn
               $variant="primary"
-              onClick={() => onNewOrder(reservationInfo?.guestCount ? { guests: Number(reservationInfo.guestCount) } : undefined)}
+              onClick={() => onNewOrder({
+                ...(reservationInfo?.guestCount ? { guests: Number(reservationInfo.guestCount) } : {}),
+                // 이 테이블 예약을 명시적으로 체크인 → handleNewOrder 가 arrived 로 전환.
+                // 백엔드가 주문 생성 시 arrived→seated 로 seat(기존 linkArrivedReservationToOrder).
+                ...(reservationInfo?.reservationId ? { checkInReservationId: reservationInfo.reservationId } : {})
+              })}
             >
               {reservationInfo ? 'Check in (New Order)' : 'New Order'}
             </ActionBtn>

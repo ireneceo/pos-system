@@ -108,6 +108,7 @@ export interface TableStatusInfo {
   // Reservation overlay (P2-6) — set when status==='reserved' (no active order)
   reservationId?: number;
   reservedLabel?: string;   // e.g. "Reserved 7:00 PM" (already timezone-formatted)
+  reservedTimeLabel?: string; // compact time-only, e.g. "7:00 PM" — for the small in-node label
   reservedAt?: string;      // ISO of reserved_at (for sorting/detail)
   reservedSoon?: boolean;   // 리드타임 내 임박 예약(강조/주문보류). false=오늘 예정(표시만).
 }

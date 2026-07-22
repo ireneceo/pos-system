@@ -1309,11 +1309,29 @@ const FloorPlanPage: React.FC = () => {
     return null;
   };
 
-  const handleNewOrder = (opts?: { takeaway?: boolean; walkIn?: boolean; mergeOrderId?: number; guests?: number; override?: boolean }) => {
+  const handleNewOrder = (opts?: { takeaway?: boolean; walkIn?: boolean; mergeOrderId?: number; guests?: number; override?: boolean; checkInReservationId?: number }) => {
     // 워크인(매장식사 신규)만 검사 — 포장/체크인/Add-items 머지는 제외.
     if (!opts?.takeaway && !opts?.mergeOrderId && !opts?.override) {
       const br = findBlockingReservation();
       if (br) { setReserveWarn({ reservation: br, opts }); return; }
+    }
+    // 예약 체크인 (P2-6) — "Check in (New Order)" 는 이 테이블 예약을 명시적으로 체크인하는
+    // 동작이다. Reservations 화면의 "Arrived" 와 동일하게 예약을 confirmed→arrived 로 전환한다
+    // (best-effort). 그러면 주문 생성 시 백엔드 linkArrivedReservationToOrder 가 arrived→seated
+    // 로 seat + order.reservation_id 링크 → 세 화면 상태가 일치. 이미 arrived 면 400 무시(백엔드가
+    // seat). 실패해도 주문 흐름은 그대로 진행(비치명적). 주문생성 코드(Fable 영역)는 무접촉.
+    if (opts?.checkInReservationId) {
+      (async () => {
+        try {
+          const token = getAuthToken();
+          await fetch(`/api/reservations/${opts.checkInReservationId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ status: 'arrived' })
+          });
+        } catch (_) { /* non-fatal — 체크인 실패가 주문을 막지 않음 */ }
+        loadReservations();
+      })();
     }
     const params = new URLSearchParams();
     // Add Items (#7) — 기존 주문에 머지(새 주문 생성 방지). POS 가 forceMergeIntoOrderId 로 합친다.

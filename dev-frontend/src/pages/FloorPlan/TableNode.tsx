@@ -73,6 +73,13 @@ const SeatsLabel = styled.div<{ $textColor: string }>`
   color: ${p => p.$textColor};
   opacity: 0.7;
   margin-top: 2px;
+  /* 원형 노드(고정 px) 안에서 절대 줄바꿈/넘침 금지 — 넘치면 …로 자른다.
+     예약 테이블이 인원/시간 등 추가 줄을 넣어 원 밖으로 밀려나던 회귀 방지. */
+  max-width: 92%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const StatusInfo = styled.div<{ $textColor: string }>`
@@ -80,6 +87,11 @@ const StatusInfo = styled.div<{ $textColor: string }>`
   font-weight: 600;
   color: ${p => p.$textColor};
   margin-top: 3px;
+  max-width: 92%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const StaffMealBadge = styled.div`
@@ -254,7 +266,7 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
           {!isEditing && statusInfo && status !== 'available' && (
             <StatusInfo $textColor={colors.text}>
               {status === 'reserved'
-                ? (statusInfo.reservedLabel || 'Reserved')
+                ? (statusInfo.reservedTimeLabel || statusInfo.reservedLabel || 'Reserved')
                 : isStaffMeal ? 'Staff Meal' : ({
                   pending: 'Pending',
                   preparing: 'Preparing',

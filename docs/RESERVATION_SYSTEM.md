@@ -399,10 +399,10 @@ STATUS_LABEL: 동일 + `pending→Pending` / `cancelled→Cancelled`. underscore
 - `types.ts` — `TableStatus` 에 `'reserved'` 추가 + STATUS_COLORS(연블루 `#DBEAFE/#2563EB/#1D4ED8`) + STATUS_LABELS.
 - `utils/orderStage.ts` — `deriveReservedTableMap(reservations, { leadMinutes, now })` → FPTI/번호 키 → 예약정보. confirmed/arrived + `now ∈ [reserved_at - lead, reserved_at + turn]` 인 것만. **점유맵에 이미 있는 키는 제외**(점유 우선).
 - `FloorPlanPage` — 오늘 예약 fetch(GET list date=today) → reserved 병합(활성 주문 없는 테이블만) + 배지. 체크인 네비 query(`seatReservation`,`tableId`,`table`,`guests`) 읽어 테이블 선택 + POS 자동 오버레이.
-- `handleNewOrder({ guests })` — `guests` 를 POS URL 에 부가.
+- `handleNewOrder({ guests, checkInReservationId? })` — `guests` 를 POS URL 에 부가. **`checkInReservationId` 전달 시(TableDetailPanel "Check in (New Order)") 예약을 `confirmed→arrived` 로 PATCH**(best-effort, 이미 arrived 면 400 무시). 그러면 주문 생성 시 백엔드 `linkArrivedReservationToOrder` 가 `arrived→seated` + `order.reservation_id` 링크. **주의(2026-07-22 수리)**: 이전엔 이 버튼이 POS 만 열고 예약을 전혀 전환하지 않아 Seated 가 안 됐다. 백엔드는 `arrived` 만 seat(미래 `confirmed` 예약을 워크인이 잘못 seat 하는 것 방지 = 의도적 안전장치) → **프론트에서 명시적 체크인 시 arrived 로 올려주는 것이 정답**(orders-crud 무접촉).
 - `POSTerminalPage` — **print-neutral 1줄 effect**: `searchParams.get('guests')` → `setGuestCount`. 🔒 인쇄 블록 무접촉(print-guard 로 증명 후 re-bless).
 - `TableDetailPanel` — reserved 테이블 클릭 시 게스트/인원/시간 표시.
-- `ReservationsTimelinePage` — 테이블 드롭다운 value=FPTI(번호 병행 전송), arrived/seated 버튼 → 플로어플랜 체크인 네비.
+- `ReservationsTimelinePage` — 테이블 드롭다운 value=FPTI(번호 병행 전송), arrived/seated 버튼 → 플로어플랜 체크인 네비. **focus/visibility 재조회(2026-07-22)**: 다른 화면(FloorPlan/POS)에서 체크인해 상태가 바뀌어도 이 화면은 mount 때만 fetch 했다 → 창 포커스 복귀/탭 재표시 시 재조회해 최신 상태(Seated) 반영(예약은 소켓 이벤트 없음 → focus 재조회가 표준).
 - i18n `reservation` ns 4언어: reserved 라벨/배지/체크인.
 
 ### 7-F. 테스트

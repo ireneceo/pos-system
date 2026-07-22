@@ -143,6 +143,19 @@ export default function ReservationsTimelinePage() {
 
   useEffect(() => { reload(); }, [reload]);
 
+  // 화면 간 상태 동기화 — Floor Plan/POS 에서 예약을 체크인(arrived/seated)하면 예약 상태가
+  // 바뀌는데, 이 화면은 mount 때만 fetch 했다. 창 포커스 복귀 / 탭 재표시 시 재조회해 최신
+  // 상태(예: Seated)를 반영한다. (예약 상태는 소켓 이벤트가 없어 focus/visibility 재조회가 표준.)
+  useEffect(() => {
+    const onFocus = () => { if (document.visibilityState !== 'hidden') reload(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [reload]);
+
   // FloorPlan 의 정의된 테이블 로드 (선택지)
   useEffect(() => {
     if (!restaurantId) return;

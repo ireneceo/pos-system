@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-16 (**v3.69 운영 배포 — 인쇄 자가진단 & 원격 지원 시스템**. 매장 버튼1개(설정>프린터 "전체 점검")로 전 디바이스×인쇄방식 진단(원인+가이드+안전복구 버튼+테스트인쇄 2종) + 자동인쇄 실패 시 화면 상단 배너 첫 노출(App.tsx 마운트=UX변화) + 관리자 원격뷰(Admin>Print Health, SA — 미인쇄·담당기기 생존·앱버전). **조립 우선 설계**(runQZDiagnostic·브릿지 diagnostics·preview·복구API·print_events 등 기존 측정기 재사용), 신규는 ①기기→서버 스냅샷 채널(print_device_status upsert 1테이블) ②폴러 생존 관측 미들웨어(orders-crud 무접촉) 둘뿐. 설계대조 후 3건 보강(실패배너 딥링크 죽은경로 교정·S4 unprinted_now·D7 bt_permission). **Fable 게이트 CONDITIONAL GO→보안결함 1건 수정→GO**: device-report가 restaurant_id 미보유 계정의 body.restaurant_id 무검증 신뢰(BG→타매장 위조행 주입·fleet오염) → 토큰스코프로만 확정. 🔒 **인쇄 보호파일 8/8 무접촉**(MainLayout 사이드바 1줄·재-bless). 검증: API 19/19·S4 fault-injection·크로스테넌트 403·verify-all --full 14/14·print-guard 8/8. Backup 20260716_124948·Smoke 9/9·운영 테이블 15컬럼·신규라우트 401. **남음**: D8 테스트 인쇄 실프린터 종이 확인 1회(매장). 상세=session-state.)
+> **최종 업데이트:** 2026-07-22 (**루아 윈도우 데스크탑앱 테스트 수정 4건 — 운영 배포**. 매장 윈도우 앱(0.1.9) 테스트에서 나온 4건을 4병렬 조사로 근본원인 실측 후 처리. **#2 Floor Plan 예약 테이블 레이아웃 깨짐**: 고정 70×70 원에 `"Reserved 05:30 pm"` 긴 문자열이 줄바꿈→overflow(nowrap/말줄임 없음) → 노드 안엔 시간만(reservedTimeLabel 신설) + SeatsLabel/StatusInfo nowrap+ellipsis+max-width(모든 넘침 방지). **#3 프린터 실패배너 재등장+상단nav 가림**: Dismiss가 기억 안 함+5초 폴러 재발화 + top:0 전체폭 오버레이 → 실패 key별 Dismiss 쿨다운(10분) + 하단 중앙 토스트 재배치. **인쇄 파이프라인 무접촉**(배너=display-only, 8보호파일 아님·dispatch부 무수정, print-guard 8/8). **#4 예약 상태 미동기화(Seated 안 됨)**: FloorPlan "Check in (New Order)"가 예약 전환 안 함 + 백엔드는 arrived만 seat(confirmed 제외=워크인 오링크 방지 의도적 안전장치) → 체크인 시 프론트가 confirmed→arrived PATCH(Reservations "Arrived" 경로와 동일) → **백엔드 기존 흐름이 주문생성 시 arrived→seated+order.reservation_id 링크**(주문생성=Fable 영역 무접촉) + Reservations focus/visibility 재조회. **#1 exe 다운로드 SmartScreen 경고**: 코드 문제 아님 — 미서명 설치파일(무평판)이 근본. 유일 해법=코드서명 인증서 구매(Azure Trusted Signing 등) → **Irene 결정 항목, 코드 무변경**. 검증: verify-all --full **14/14**(mount 8역할 크래시0)·이슈4 API E2E 11/11·print-guard 8/8·sensitive-diff Fable 비대상. 운영 배포 Backup 20260722_121601·Smoke 9/9·마이그 47/47·스키마 동일 153테이블. 상세=아래 ✅ 섹션 + session-state.)
+>
+> **이전:** 2026-07-16 (**v3.69 운영 배포 — 인쇄 자가진단 & 원격 지원 시스템**. 매장 버튼1개(설정>프린터 "전체 점검")로 전 디바이스×인쇄방식 진단(원인+가이드+안전복구 버튼+테스트인쇄 2종) + 자동인쇄 실패 시 화면 상단 배너 첫 노출(App.tsx 마운트=UX변화) + 관리자 원격뷰(Admin>Print Health, SA — 미인쇄·담당기기 생존·앱버전). **조립 우선 설계**(runQZDiagnostic·브릿지 diagnostics·preview·복구API·print_events 등 기존 측정기 재사용), 신규는 ①기기→서버 스냅샷 채널(print_device_status upsert 1테이블) ②폴러 생존 관측 미들웨어(orders-crud 무접촉) 둘뿐. 설계대조 후 3건 보강(실패배너 딥링크 죽은경로 교정·S4 unprinted_now·D7 bt_permission). **Fable 게이트 CONDITIONAL GO→보안결함 1건 수정→GO**: device-report가 restaurant_id 미보유 계정의 body.restaurant_id 무검증 신뢰(BG→타매장 위조행 주입·fleet오염) → 토큰스코프로만 확정. 🔒 **인쇄 보호파일 8/8 무접촉**(MainLayout 사이드바 1줄·재-bless). 검증: API 19/19·S4 fault-injection·크로스테넌트 403·verify-all --full 14/14·print-guard 8/8. Backup 20260716_124948·Smoke 9/9·운영 테이블 15컬럼·신규라우트 401. **남음**: D8 테스트 인쇄 실프린터 종이 확인 1회(매장). 상세=session-state.)
 >
 > **이전:** 2026-07-15 #3 (**BG 레시피연결 버그 + 댓글 하드닝 운영배포 · 안드로이드 다운로드 CTA+APK 운영배포 · 인쇄 자가진단 Fable 설계**. ①**브랜드 메뉴 "Linked Recipe" 오배선 근본수리**: 레시피 2계통 중 브랜드메뉴만 잘못 product_recipe_id 에 물려 "레시피 관리(Recipe)" 등록분이 드롭다운에 안 뜨던 것 → recipe_id 정합화(brand_menus.recipe_id 신설·멱등마이그·매장 Product.recipe_id 비클로버 상속·IDOR검증), Fable GO, 운영배포+실검증. ②**공지 댓글 삭제 하드닝**(실패 조용히 삼키던 것 표시). ③**안드로이드 네이티브앱 배포 배선**: 윈도우처럼 안드로이드 브라우저 감지→"Download for Android"(서명 release APK, 운영URL) CTA(PwaInstall 대칭, 4언어) + APK 운영 호스팅(/desktop/PurplePOS.apk) → 운영배포·검증(다운로드 200·CTA 반영). 키스토어 /opt/secrets/purplepos-release.keystore(보관필수). ④**안드로이드 V3 인쇄게이트 완주**(Fable): 하니스 함정 4건(PWA SW 리로드·chrome-error·동시실행·워치독오탐) 수정→**V3 13/13 PASS**(앱 인쇄 바이트 증명), V4 폴러실인쇄는 실기기 확인 이관. ⑤**인쇄 자가진단 시스템 Fable 설계**(docs/PRINT_SELF_DIAGNOSE_DESIGN.md, 구현 다음세션). 전 배포 인쇄 보호파일 8/8 무접촉. 버전 v3.68 유지. 상세=session-state.)
 >
@@ -70,6 +72,36 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 루아 윈도우 데스크탑앱 테스트 수정 4건 (2026-07-22, 운영 배포)
+
+> 매장 윈도우 데스크탑앱(0.1.9) 테스트(작성자 루아)에서 나온 4건. 이미지 추측 금지·4병렬 조사로 각 근본원인 실측 후 최소변경 수정.
+
+### 완료된 작업
+
+| # | 작업 | 근본 원인 | 조치 | 상태 |
+|:-:|------|-----------|------|:----:|
+| 2 | Floor Plan 예약 테이블 레이아웃 깨짐 | 고정 70×70 원에 `"Reserved 05:30 pm"` 긴 문자열이 줄바꿈→4번째줄→overflow(nowrap/말줄임/overflow 없음). Win·mac 동일(순수 CSS) | 노드 안엔 시간만(`reservedTimeLabel` 신설) + SeatsLabel/StatusInfo `nowrap+ellipsis+max-width:92%`. 상세패널 배지는 풀문구 유지 | ✅ 완료 |
+| 3 | 프린터 실패배너 재등장 + 상단 nav 가림 | (a)Dismiss가 기억 안 함+5초 폴러가 같은 이벤트 재발화 (b)`position:fixed top:0` 전체폭 오버레이가 nav 덮음 | 실패 key(scope+order)별 Dismiss 쿨다운(10분) 억제+동일오류 리렌더 방지 + **하단 중앙 토스트 재배치**. 인쇄 파이프라인 무접촉(배너=display-only) | ✅ 완료 |
+| 4 | 예약 상태 미동기화(Seated 안 됨) | FloorPlan "Check in (New Order)"가 예약 전환 안 함(POS만 열음). 백엔드는 `arrived`만 seat(`confirmed` 제외=워크인 오링크 방지 의도적 안전장치) | 체크인 시 프론트가 `confirmed→arrived` PATCH(Reservations "Arrived" 경로와 동일)→**기존 백엔드 흐름이 주문생성 시 arrived→seated+order.reservation_id 링크**(주문생성 코드 무접촉) + Reservations focus/visibility 재조회 | ✅ 완료 |
+| 1 | exe 다운로드 SmartScreen 경고 | **미서명 설치파일**(무평판)이 근본 — 코드 문제 아님. 설계상 의도적 보류(DESKTOP_APP_DESIGN §10) | 유일 해법=코드서명 인증서 구매(Azure Trusted Signing/EV). **Irene 결정 항목, 코드 무변경.** 파일럿은 "추가정보→실행"으로 사용 | ⏸ Irene 결정 |
+
+### 검증
+- verify-all --full **14/14**(print-guard 8/8·design 신규0·IDOR·타임존·health-check 회귀·i18n·인쇄 라우트 가드 + **실브라우저 mount 8역할 크래시0** — FloorPlan·Reservations·POS 포함)
+- 이슈4 예약 체크인 **실제 API E2E 11/11**(confirmed→arrived→주문→seated+order.reservation_id 링크, 데모매장, 테스트데이터 정리)
+- check-sensitive-diff **Fable 게이트 비대상**(주문생성/스키마/보안경계 무접촉, 신규 아키텍처 없음)
+- 운영 배포: Backup 20260722_121601 · Smoke 9/9 · 마이그 47/47 · 스키마 동일(153테이블)
+
+### 수정된 파일
+- `dev-frontend/src/pages/FloorPlan/TableNode.tsx` · `src/utils/orderStage.ts` · `src/pages/FloorPlan/types.ts` (#2)
+- `dev-frontend/src/components/AutoPrintFailureBanner.tsx` (#3)
+- `dev-frontend/src/pages/FloorPlan/TableDetailPanel.tsx` · `src/pages/FloorPlan/FloorPlanPage.tsx` · `src/pages/Reservations/ReservationsTimelinePage.tsx` (#4)
+
+### 남은 것 / 미확인
+- **#1 코드서명 인증서** 구매 여부 = Irene 결정 (매장 확대 시점 권장). 사면 서명 배선 구현.
+- **#2·#3 실 윈도우앱 눈 확인 1회**(원 안 텍스트 렌더 / 하단 토스트가 POS 하단 결제버튼과 겹치는지) — 헤드리스는 크래시0만 증명.
+
+---
 
 ## 🔵 진행: with MIN 네이티브앱 인쇄 — 원격 진단 + B1 + 앱 0.1.8 (2026-07-14 #2, 운영 배포·매장 확인 대기)
 

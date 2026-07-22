@@ -216,7 +216,10 @@ export const deriveReservedTableMap = (
       reservationId: r.id,
       reservedAt: r.reserved_at,
       reservedSoon: soon,
-      reservedLabel: timeLabel ? `Reserved ${timeLabel}` : 'Reserved'
+      reservedLabel: timeLabel ? `Reserved ${timeLabel}` : 'Reserved',
+      // 노드 안(작은 원)에는 시간만 — "Reserved 05:30 pm" 은 원을 넘쳐 줄바꿈됐다(테이블 색이
+      // 이미 예약을 나타냄). 상세 패널/배지는 계속 reservedLabel(풀 문구)을 쓴다.
+      reservedTimeLabel: timeLabel || undefined
     } as TableStatusInfo;
   }
 
