@@ -6,7 +6,12 @@
 **작업 상태:** **완료 — 루아 윈도우 데스크탑앱(0.1.9) 테스트 수정 3건 운영 배포 + 1건 결정 항목.** Backup 20260722_121601 · Smoke 9/9 · 마이그 47/47 · 스키마 동일(153테이블). verify-all --full 14/14 · 이슈4 API E2E 11/11 · print-guard 8/8 무접촉 · Fable 게이트 비대상.
 
 ### 진행 중인 작업
-- 없음
+- **인쇄 백로그 신선도 경계 — 배포 대기(Irene 승인 + 매장 종이확인 1회 필요)** · Fable **CONDITIONAL GO**
+  - 원인: 서버는 주문 생성 시 프린터 설정과 무관하게 `needs_print=1` 을 찍는데, 지우는 주체는 자동인쇄 폴러뿐 → **자동인쇄를 안 켠 매장은 무한 누적**. 운영 실측(2026-07-23): K-DINE IPC 1,616 · The Fire 86 · with MIN 65 · Seoul Garden 7. 창은 oldest-20 이라 옛 행이 20칸 점유 시 신규 주문이 창 밖으로 밀림(=2026-06-22 사고 재발).
+  - **운영 조치 완료**: 24h 지난 2,035건 플래그 해제(rid8 1879→37, rid5 87→1, rid10 100→6, rid13 13→0). 오늘 주문 무접촉. 롤백 스냅샷 = 양 서버 `/var/www/backups/print-backlog-cleanup/backlog-snapshot-20260723.json`. needs_bill 잔량 전 매장 0건.
+  - **dev 코드(미배포·미bless)**: `orders-crud.js` pending-print **branch 1 에만** 24h 신선도 경계(🔒 branch 2 `pending_reprint` 는 무필터 유지 = 취소표 분실 방지) · `print-diagnostics.js` fleet stuck 카운트 정합 · health-check 계약 테스트 신설(25h 제외 / 재발행 포함 / 신선 포함).
+  - 검증: 계약 3조건 통과 + **경계 임시 제거 시 정확히 그 1건만 실패 → 원복 sha256 동일** · 플레이키 3/3 · verify-all 139/140(유일 실패=보호파일 지문, 의도) · 인쇄 라우트 가드 34루트 통과.
+  - **남은 조건**: ①Irene 승인 + 매장 실프린터 종이확인 1회(신규 주문 1장 / 하루 지난 주문 취소 → 취소표 출력) → `--bless` → `/배포` ②rid8 autoPrint 활성화는 폴러 켜진 상태에서.
 
 ### 완료된 작업 (이번 세션 — 2026-07-22, 운영 배포)
 - **루아 윈도우 데스크탑앱 테스트 수정 4건** — 4병렬 조사로 각 근본원인 실측 후 처리:
@@ -16,6 +21,32 @@
   - **#1 exe 다운로드 SmartScreen 경고 (⏸ Irene 결정)**: 코드 문제 아님 — **미서명 설치파일**(무평판)이 근본. 유일 해법=코드서명 인증서 구매(Azure Trusted Signing 연~$120 추천 / EV=즉시평판). **코드 무변경.** 파일럿은 "추가정보→실행"으로 사용. 사면 서명 배선 구현.
   - **검증**: verify-all --full **14/14**(print-guard 8/8·design 신규0·IDOR·타임존·health-check 회귀·i18n·인쇄 라우트 가드 + 실브라우저 mount 8역할 크래시0) · 이슈4 API E2E 11/11 · sensitive-diff Fable 비대상.
   - **미확인(남은 것)**: #2·#3 실 윈도우앱 눈 확인 1회(원 안 텍스트 렌더 / 하단 토스트가 POS 하단 결제버튼과 겹치는지) — 헤드리스는 크래시0만 증명. #1 인증서 구매 결정.
+
+### IOI Mall 매출 연동 (The Fire, rid5) — 버그2건 수정·인증 실증 완료, machine ID 대기
+- **기능은 완전 개발돼 있었음**(mallSalesService/scheduler/routes/preview), 단 config 0건=미가동. 임차인 "샘플 먼저" 요청 → Tangent 공식 스펙 대조.
+- **인증 실증**: 우리 fetchToken(POST+form-urlencoded)으로 staging.synthesis.bz bearer 토큰 획득 ✅. GET/POST 모호성 실측 해소(POST·GET+body 200, GET+query 400 → POST 유지 정답, OAuth2 RFC상 POST 필수).
+- **버그1(tender SST 포함→gto 불일치)**: tender를 SST 전으로 환산(분모=paySum, overpay/사후정정도 tender합==gto 보장). `accrueOrderTenders` 순수함수 추출.
+- **버그2(HTTP 200 status:error를 성공기록)**: postSalesHourly가 status!=='success'면 throw(fail-closed: 부재·비JSON 200도 실패). staging 실서버가 "Machine ID 없음" status:error 반환→우리 검증이 정확히 실패로 잡음 실증.
+- **Fable CONDITIONAL GO → 조건 충족**: fail-closed 강화 + 계약테스트 `tests/mall-sales.test.js` **10/10**(tender==gto·overpay·status:error·부재·비JSON). 강권고3(paySum 분모) 반영.
+- 🔴 **대상 매장 = rid=16**(The Fire @ IOI Mall Damansara, branch명 붙은 실매장. suspended·6/30후 주문없음이나 **재오픈 불요** — Irene 확정). rid=5는 is_test=1 테스트매장 = IOI 아님(오전 오인 정정). rid=16 데이터 양호(card_type 분리·SST). 5/31 실매출 24레코드 staging 전송 `status:success` 실증.
+- **몰 자격증명 = staging = 여기 있음(안 기다림)**: User ID/Machine ID `50100025` / PW `DCStest1234`. 이걸로 인증·전송 다 됨. "운영 자격증명 별도 발송"은 몰 스펙 §8이 명시한 몰 절차(내가 만든 요구 아님).
+- **세팅 완료(2026-07-23)**: 운영 `restaurant_sales_integrations` id=1 저장(rid=16, staging, enabled=**false**, gst=Y, machine=50100025). 시스템 경유 test-connection(fetchToken) 성공. ENCRYPTION_KEY 회전 마이그 `migrate-encryption-key-rotation.js`(멱등·단위검증·registry manual) 준비 — go-live 직전 실행.
+- **go-live 3단계(순서강제)**: ①수정 백엔드 배포(print-guard가 orders-crud 신선도경계건으로 fail-closed → 실프린터 확인+bless 후 함께) ②ENCRYPTION_KEY 강화(.env키+회전마이그+restart, 배포 restart 와 묶으면 중단0) ③운영 자격증명 수령→config를 production 전환→test/send-now→enabled=true→SchedulerRun 관측.
+- 파일: `dev-backend/services/mallSalesService.js` · `tests/mall-sales.test.js`(신규) · `scripts/migrate-encryption-key-rotation.js`(신규) · `docs/MALL_SALES_API_INTEGRATION.md`
+
+### Irene 실행 대기 (운영 sudo 비밀번호 필요 — 한 세션에 묶어서)
+1. **earlyoom 설치** — `ssh -t irene@87.106.78.146 'sudo bash /tmp/prod-memory-protection.sh'` (파일 업로드 완료)
+   > ⚠ 문서에 있던 옛 명령(`'sudo bash -s' < 파일`)은 **TTY를 못 잡아 실행 불가**였고, 그게 7/14 이후 미적용의 실제 이유. 두 문서 모두 정정 완료.
+2. **sudoers 위생 정리** — `scripts/prod-sudoers-cleanup.sh` (Fable PASS). 삭제=chown/kill/lsof NOPASSWD(사용처 0·chown은 사실상 비번없는 root) / 유지=nginx 3종+캐시 rm(배포 하중)+`(ALL:ALL) ALL`. fail-closed(백업→visudo -cf 통과시에만 반영→nginx 생존 검증), 멱등.
+   - 미결: `dev-backend/restart-dev.sh`(kill/lsof NOPASSWD의 출처, 참조 사실상 0이나 **`dev-backend/README.md:112`에 사용법으로 남아 있음** → 지우려면 README 동반 수정). 배포 rsync `--delete` 라 **소스를 지워야 운영본이 영구 제거**됨.
+3. **개발서버 sudoers 정리 — 거의 완료(Irene 확인 1줄만 남음)** · Fable PASS · (c)근본원인제거
+   - **B**: `package.json` 평문 비번 패턴(`.env`에서 SUDO_PASSWORD 읽어 `sudo -S`) 死코드 제거
+   - **1**: `deploy-dev.sh`·`restart-dev.sh`·`build-low-memory.sh`·`npm-install-safe.sh` 탈sudo(실제 sudo 호출 = deploy-dev fix_ownership 폴백 1개만)
+   - **2**: `dev-frontend-build` root→irene 소유 전환(lua ACL 보존, root파일 814→0). nginx(www-data)는 other 읽기만 필요 → 서빙 무영향
+   - **3 검증**: build:dev 70초 성공 + 방금 빌드한 번들이 실제 서빙(main.69a4f01e.js) + restart-dev.sh sudo없이 정상(헬스ok)
+   - **4**: 진짜 출처는 드롭인 `/etc/sudoers.d/irene`(`NOPASSWD:ALL`)였음 → **제거 완료**. irene은 `sudo` 그룹이라 비번 sudo 전권 유지. `sudo -n true` 차단 확인(=NOPASSWD 제거 실증). 백업 `/root/sudoers.d-irene-backup-20260723_130535`
+   - **⚠ 남은 것(Irene 1회)**: 본인 터미널에서 `sudo visudo -c` 실행 → "parsed OK" 나오면 (a)sudoers 문법 정상 (b)비번 인증 정상 동시 확인 = lockout 아님 최종 확정. (제가 비번이 없어 이 확인만 못 함.)
+   - 미결: 개발서버 `restart-dev.sh`(dev원본) README.md:112 참조는 여전히 유효 문서 — 지우려면 동반수정(운영본과 별개, 지금은 둘 다 탈sudo 라 위험 없음)
 
 ### 다음 확정 작업
 - 없음 — 지시 대기

@@ -1911,6 +1911,51 @@ function definePrintTests({ adminToken }) {
     return pass;
   });
 
+  // 계약 1-b (2026-07-23): pending-print 신선도 경계 24h.
+  //   자동인쇄를 안 켠 매장은 needs_print 를 지우는 주체(폴러)가 없어 플래그가 무한 누적된다
+  //   (운영 실측: K-DINE 1,616건). 창은 oldest-20 이라 옛 행이 20칸을 점유하면 신규 주문이 창 밖으로
+  //   밀려 자동인쇄가 통째로 멈춘다. 서버가 "창 = 신선한 주문만" 을 보장하는지 박제한다.
+  //   ⚠ 되돌리면(경계 제거) 정확히 (a) 가 실패한다 = 회귀 감지.
+  test('print', '신선도 경계: 25시간 지난 미인쇄 주문은 pending-print 창에서 제외', async () => {
+    const Order = require('../models/Order');
+    const rid = await demoRestaurantId();
+    if (!rid) return true;
+
+    const stale = new Date(Date.now() - 25 * 3600 * 1000);
+    const fresh = new Date(Date.now() - 60 * 1000);
+    const mk = async (createdAt, extra = {}) => {
+      const o = await Order.create({
+        restaurant_id: rid, customer_name: TEST_MARKER, total_amount: 10, status: 'pending',
+        source: 'pos', order_type: 'dine_in', needs_print: true,
+        order_items: [{ id: 'hc-f1', name: 'HealthCheck Fresh', quantity: 1, price: 10 }],
+        ...extra,
+      });
+      // createdAt 은 생성 시 자동 스탬프 → 과거로 강제 이동(silent: updatedAt 오염 방지)
+      await Order.update({ createdAt }, { where: { id: o.id }, silent: true });
+      return o;
+    };
+
+    const oldOrder = await mk(stale);
+    const freshOrder = await mk(fresh);
+    // (b) 오래된 주문이라도 "지금" 취소/이동한 재발행은 반드시 인쇄돼야 한다 (2026-06-24 취소표 분실 사고)
+    const oldReprint = await mk(stale, {
+      pending_reprint: { type: 'cancel', notice: { title: '** CANCELLED **', lines: ['HealthCheck'] } },
+    });
+
+    let pass = false;
+    try {
+      const res = await request('GET', `/orders/restaurant/${rid}/pending-print`, null, adminAuth);
+      const ids = (res.body?.data || []).map((o) => o.id);
+      const aExcluded = !ids.includes(oldOrder.id);    // (a) 오래된 일반 미인쇄 → 창 밖
+      const bIncluded = ids.includes(oldReprint.id);   // (b) 오래된 재발행 → 창 안 (경계 예외)
+      const cIncluded = ids.includes(freshOrder.id);   // (c) 신선한 주문 → 창 안
+      pass = aExcluded && bIncluded && cIncluded;
+    } finally {
+      await Order.destroy({ where: { id: [oldOrder.id, freshOrder.id, oldReprint.id] }, force: true });
+    }
+    return pass;
+  });
+
   // 계약 2: +Round 추가분만 인쇄, 빌은 전체 유지
   test('print', '+Round 추가 시 kitchen_items=새 품목만, order_items=전체', async () => {
     const Order = require('../models/Order');

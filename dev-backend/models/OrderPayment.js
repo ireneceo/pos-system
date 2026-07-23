@@ -18,6 +18,7 @@ const OrderPayment = sequelize.define('OrderPayment', {
   amount: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   payment_method: { type: DataTypes.STRING(50), allowNull: false }, // cash, card, mobile, qrpay, etc.
   card_type: { type: DataTypes.STRING(50), allowNull: true },        // visa, master, amex
+  ewallet_type: { type: DataTypes.STRING(20), allowNull: true },     // tng, grabpay, boost, shopeepay, duitnow, other (2026-07-23 IOI Mall)
   transaction_id: { type: DataTypes.STRING(255), allowNull: true },  // Stripe PI / PayPal capture id
   // Split bill — 어떤 아이템을 이 결제로 처리했는지 추적 (영수증/audit).
   // null = 전체 주문 결제. 배열 = items 단위 split.

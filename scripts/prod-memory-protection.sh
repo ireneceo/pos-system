@@ -10,7 +10,15 @@
 #   실행 중인 프로세스엔 /proc 로 즉시 적용하고, systemd 드롭인은 "다음 재시작부터" 유효.
 # 멱등 — 여러 번 돌려도 안전.
 #
-# 실행: ssh -t irene@87.106.78.146 'sudo bash -s' < /var/www/scripts/prod-memory-protection.sh
+# 실행 (2단계 — 반드시 이 순서로):
+#   scp /var/www/scripts/prod-memory-protection.sh irene@87.106.78.146:/tmp/
+#   ssh -t irene@87.106.78.146 'sudo bash /tmp/prod-memory-protection.sh'
+#
+# ⚠ 2026-07-23: 원래 여기 적혀 있던 `ssh -t ... 'sudo bash -s' < 이파일` 은 실행되지 않는다.
+#   stdin 을 스크립트 파일이 차지해 -t 가 TTY 를 못 잡고, 운영 sudo 는 비밀번호를 요구하므로
+#   "sudo: a terminal is required to read the password" 로 죽는다. 그래서 7/14 이후 이 보호막이
+#   미적용으로 남아 있었다. 파일을 먼저 올린 뒤 실행해야 sudo 가 프롬프트를 띄울 수 있다.
+#   (개발서버는 NOPASSWD 라 옛 명령도 통과해서, 차이를 눈치채기 어려웠다.)
 
 set -e
 echo "=== 운영서버 메모리 보호막 설치 (무중단) ==="

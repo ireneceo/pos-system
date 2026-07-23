@@ -2660,7 +2660,7 @@ const POSTerminalPage: React.FC = () => {
     setShowPaymentModal(true);
   };
 
-  const handleConfirmPayment = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscountAmount?: number, cardType?: string, staffNames?: string[][]) => {
+  const handleConfirmPayment = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscountAmount?: number, cardType?: string, staffNames?: string[][], ewalletType?: string) => {
     // 중복 실행 방지
     if (isProcessingPayment) {
       console.warn('POS - Payment already in progress, ignoring duplicate call');
@@ -2694,6 +2694,7 @@ const POSTerminalPage: React.FC = () => {
         pointDiscount: pointDiscountAmount || 0,
         paymentMethod: method,
         cardType: method === 'card' ? (cardType || null) : null,
+        ewalletType: method === 'ewallet' ? (ewalletType || null) : null,
         amountReceived: amountReceived || adjustedTotal,
         change: change || 0
       };

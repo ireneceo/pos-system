@@ -2946,18 +2946,35 @@ router.get('/restaurant/:restaurantId/pending-print', authenticateToken, async (
       // per-station 추적 정상이면 재시도는 안 찍힌 스테이션(BAR)만 → 이미 찍은 KQ 재인쇄 0.
       try { const _ra = (_reRes && _reRes[0] && _reRes[0].affectedRows) || 0; if (_ra > 0) console.log(`[print-trace] stale-recovery re-armed=${_ra} rid=${restaurantId}`); } catch {}
     } catch (reErr) { console.error('[pending-print] stale-claim recovery error:', reErr.message); }
+    // 2026-07-23 (Irene 지시 + Fable 판정): 신선도 경계. 서버는 주문 생성 시 프린터 설정과 무관하게
+    // needs_print=true 를 찍는데, 이 플래그를 지우는 주체는 "자동인쇄 폴러가 도는 기기" 뿐이다
+    // (/printed · print-claim · print-dismiss). 그래서 자동인쇄를 안 켠 매장은 플래그가 영영 안 지워지고
+    // 무한 누적된다 — 운영 실측 2026-07-23: K-DINE IPC 1,616건(한 달치), The Fire 86, with MIN 65.
+    // 이 창은 oldest-20 이므로 옛 행이 20칸을 영구 점유하면 "정말 새 주문"이 창 밖으로 밀려 자동인쇄가
+    // 통째로 멈춘다(= 2026-06-22 print-dismiss 를 만든 그 사고의 재발). dismiss 는 폴러가 돌 때만
+    // 작동하므로 폴러가 아예 없는 매장에서는 방어가 되지 않는다 → 서버가 "창은 항상 신선한 주문만
+    // 담는다"는 불변식을 보장한다. 인쇄 방식·라우팅·타이밍·주체 전부 무변경(창의 모집단만 상한).
+    const PENDING_PRINT_FRESH_HOURS = 24;
+    const _freshSince = new Date(Date.now() - PENDING_PRINT_FRESH_HOURS * 3600 * 1000);
     const orders = await Order.findAll({
       where: {
         restaurant_id: restaurantId,
         [Op.or]: [
           // 일반 라이브 주문: 삭제 안 된 것만. 2026-06-13: 삭제됐는데 needs_print 가 남은 주문이
           // 고스트 티켓으로 재인쇄되는 사고 방지. 인쇄 방식/라우팅/타이밍 무변경.
-          { is_deleted: false, [Op.or]: [{ needs_print: true }, { needs_bill: true }] },
+          // 2026-07-23: + 신선도 경계(24h). 자동인쇄 대상은 신선한 주문뿐 — 하루 지난 주문을 지금
+          // 자동으로 찍어봐야 주방엔 의미가 없고, 창만 잠식한다. 수동 인쇄(Kitchen Ticket 버튼)는
+          // order_items 로 찍으므로 needs_print 와 무관 = 언제든 그대로 인쇄 가능(영향 0).
+          { is_deleted: false, createdAt: { [Op.gte]: _freshSince }, [Op.or]: [{ needs_print: true }, { needs_bill: true }] },
           // 2026-06-24 (Irene "취소했는데 프린트 안나옴"): 명시적 재발행(취소/삭제/이동 안내,
           // pending_reprint NOT NULL)은 주문이 삭제됐어도 1회 인쇄한다. 취소는 보통 주문삭제를
           // 동반하는데(claim 직후 is_deleted=1), 위 is_deleted=false 필터가 취소표까지 큐에서
           // 빼버려 분실됐다. 고스트와 달리 이건 직원의 명시적 현재 동작이라 인쇄돼야 한다.
           // /printed 가 needs_print=false + pending_reprint=null 로 1회 후 정리(중복 없음).
+          // 🔒 2026-07-23: 이 분기에는 위 신선도 경계를 절대 걸지 않는다. 어제 들어온 주문을 "지금"
+          // 취소/이동/void 한 것은 직원의 현재 동작이라 반드시 인쇄돼야 한다(주문 생성일이 오래됐다는
+          // 이유로 취소표를 버리면 2026-06-24 취소표 분실 사고가 그대로 재발한다). 재발행은 1회 인쇄 후
+          // pending_reprint=null 로 정리되므로 누적되지 않는다 = 창을 잠식하지 않는다.
           { needs_print: true, pending_reprint: { [Op.ne]: null } }
         ]
       },

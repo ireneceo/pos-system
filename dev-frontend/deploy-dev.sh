@@ -75,7 +75,7 @@ fi
 
 # 1. 이전 빌드 정리 + 빌드 실행
 if [ -d "$BUILD_DIR/static" ]; then
-    sudo rm -rf "$BUILD_DIR/static"
+    rm -rf "$BUILD_DIR/static"
     echo -e "${YELLOW}🗑️ 이전 빌드 파일 정리 완료${NC}"
 fi
 echo -e "\n${YELLOW}React 앱 빌드 중... (1~3분 소요)${NC}"
@@ -139,11 +139,13 @@ chmod -R 755 "$BUILD_DIR"
 find "$BUILD_DIR" -type f -exec chmod 644 {} \;
 
 echo -e "\n${YELLOW}🗑️ 이전 빌드 파일 정리 중...${NC}"
-sudo rm -rf "$DEPLOY_DIR/static"
+# 2026-07-23: DEPLOY_DIR(dev-frontend-build)은 irene 소유 + lua ACL → sudo 불필요.
+# nginx(www-data)는 other 읽기(755/644)만 필요하므로 소유자가 irene 이어도 서빙 정상.
+# (근거·설계 = Fable 게이트. root 소유를 고집할 보안 이익 0 이었다.)
+rm -rf "$DEPLOY_DIR/static"
 
 echo -e "\n${YELLOW}📦 nginx 배포 폴더로 복사 중...${NC}"
-if sudo cp -r "$BUILD_DIR"/* "$DEPLOY_DIR"/; then
-    sudo chown -R root:root "$DEPLOY_DIR"
+if cp -r "$BUILD_DIR"/* "$DEPLOY_DIR"/; then
     echo -e "${GREEN}✓ $DEPLOY_DIR 로 복사 완료${NC}"
 else
     echo -e "${RED}✗ 배포 폴더 복사 실패${NC}"

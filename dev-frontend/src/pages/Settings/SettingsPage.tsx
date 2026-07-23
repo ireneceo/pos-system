@@ -1022,6 +1022,7 @@ const SettingsPage: React.FC = () => {
   const customQrImageRef = useRef<AutoSaveHandle>(null);
   const ewalletQrRef = useRef<AutoSaveHandle>(null);
   const requireCardTypeRef = useRef<AutoSaveHandle>(null);
+  const requireEwalletTypeRef = useRef<AutoSaveHandle>(null);
   const companyLogoRef = useRef<AutoSaveHandle>(null);
   const storeLogoRef = useRef<AutoSaveHandle>(null);
   const [deleteStationConfirm, setDeleteStationConfirm] = useState<{ isOpen: boolean; stationId: number | null; stationName: string }>({ isOpen: false, stationId: null, stationName: '' });
@@ -2960,6 +2961,27 @@ const SettingsPage: React.FC = () => {
                           imageAltText="E-Wallet QR Code"
                         />
                       </AutoSaveField>
+                      {/* 2026-07-23: 이월렛 서브타입 선택 필수 여부 (몰 매출보고 tng 구분용). 카드 requireCardType 대칭. */}
+                      <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>
+                            {t('settings:settingsPage.requireEwalletType', { defaultValue: 'Require e-wallet type selection' })}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '2px' }}>
+                            {t('settings:settingsPage.requireEwalletTypeHint', { defaultValue: 'When on, the cashier must pick the e-wallet (Touch ‘n Go / GrabPay / Boost / ShopeePay / DuitNow / Other) before completing an e-wallet payment. Needed to report Touch ‘n Go separately for mall sales.' })}
+                          </div>
+                        </div>
+                        <AutoSaveField ref={requireEwalletTypeRef} onSave={handleSave} type="toggle">
+                          <ToggleSwitch>
+                            <ToggleInput
+                              type="checkbox"
+                              checked={!!method.requireEwalletType}
+                              onChange={(e) => { handlePaymentSettingChange(key, 'requireEwalletType', e.target.checked); requireEwalletTypeRef.current?.triggerSave(); }}
+                            />
+                            <ToggleSlider />
+                          </ToggleSwitch>
+                        </AutoSaveField>
+                      </div>
                     </div>
                   )}
 

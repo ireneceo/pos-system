@@ -13,7 +13,7 @@ pm2 stop all 2>/dev/null || true
 
 # Clear cache
 echo "🧹 Clearing system cache..."
-sudo sync
+sync
 echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null
 npm cache clean --force 2>/dev/null || true
 

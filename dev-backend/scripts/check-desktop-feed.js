@@ -74,6 +74,61 @@ function checkFeed() {
   }
 }
 
+// 2026-07-23: 안드로이드 APK 커버리지. 이 게이트는 윈도우 exe/피드/별칭만 검사했는데, 매장에 나가는
+// 네이티브 앱은 윈도우·안드로이드 둘이다(2026-07-15 안드로이드 CTA 운영 배포). 안드로이드 쪽만 무검사면
+// APK 가 빠지거나 프론트 링크와 파일명이 어긋나도 배포가 통과하고, 태블릿 매장은 CTA 404 를 받는다
+// (안드로이드는 sideload 라 스토어가 대신 잡아주지도 않는다). exe 와 같은 모델로 막는다.
+function checkAndroidApk() {
+  // 프론트가 실제로 가리키는 경로를 소스에서 읽는다 — 상수를 손으로 따라가지 않는다(드리프트 차단).
+  const ctxFile = path.join(FRONTEND_SRC, 'contexts/PwaInstallContext.tsx');
+  let referenced = null;
+  if (fs.existsSync(ctxFile)) {
+    const m = fs.readFileSync(ctxFile, 'utf8').match(/ANDROID_APP_URL\s*=\s*['"]([^'"]+)['"]/);
+    referenced = m ? m[1] : null;
+  }
+  if (!referenced) {
+    notes.push('안드로이드 CTA 상수(ANDROID_APP_URL)를 프론트에서 못 찾음 — APK 검사 skip');
+    return;
+  }
+  const apkName = referenced.replace(/^\/desktop\//, '');
+  const apkPath = path.join(DESKTOP_DIR, apkName);
+
+  if (!fs.existsSync(apkPath)) {
+    failures.push(`프론트 CTA 가 가리키는 APK 가 없다: ${referenced} — 안드로이드 태블릿 매장이 다운로드 404`);
+    return;
+  }
+  // 실제 APK 인지(ZIP 매직 PK\x03\x04) + 껍데기 아닌지. 빈/잘린 파일이 올라가면 설치 단계에서야 드러난다.
+  const fd = fs.openSync(apkPath, 'r');
+  const head = Buffer.alloc(4);
+  fs.readSync(fd, head, 0, 4, 0);
+  fs.closeSync(fd);
+  const size = fs.statSync(apkPath).size;
+  if (head[0] !== 0x50 || head[1] !== 0x4b) {
+    failures.push(`${apkName} 이 APK(ZIP) 형식이 아니다 — 설치 불가 파일이 배포된다`);
+  } else if (size < 1024 * 1024) {
+    failures.push(`${apkName} 크기가 비정상(${Math.round(size / 1024)}KB) — 잘린 빌드로 보인다`);
+  } else {
+    notes.push(`안드로이드 APK ${apkName} (${(size / 1048576).toFixed(1)}MB)`);
+  }
+
+  // 별칭이 최신 버전본과 바이트 동일한지 — exe 별칭과 같은 사고(구버전 배포) 방지.
+  const versioned = fs.readdirSync(DESKTOP_DIR)
+    .filter((f) => /^PurplePOS-\d+\.\d+\.\d+\.apk$/.test(f))
+    .sort((a, b) => {
+      const v = (s) => s.match(/(\d+)\.(\d+)\.(\d+)/).slice(1, 4).map(Number);
+      const [a1, a2, a3] = v(a); const [b1, b2, b3] = v(b);
+      return a1 - b1 || a2 - b2 || a3 - b3;
+    });
+  if (versioned.length) {
+    const latest = versioned[versioned.length - 1];
+    if (sha512Base64(path.join(DESKTOP_DIR, latest)) !== sha512Base64(apkPath)) {
+      failures.push(`${apkName}(CTA 별칭) 이 최신 APK(${latest}) 와 다르다 — 매장이 구버전을 받는다`);
+    } else {
+      notes.push(`APK 별칭 = ${latest} (바이트 동일)`);
+    }
+  }
+}
+
 function checkNoHardcodedVersion() {
   // 프론트가 버전이 붙은 설치본 파일명을 스스로 만들면(리터럴이든 템플릿이든) 드리프트가 재발한다.
   //   금지: 'PurplePOS-Setup-0.1.6.exe' · `PurplePOS-Setup-${VER}.exe`
@@ -115,6 +170,7 @@ function main() {
   }
 
   checkFeed();
+  checkAndroidApk();
   checkNoHardcodedVersion();
 
   if (failures.length) {

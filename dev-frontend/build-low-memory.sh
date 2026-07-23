@@ -9,7 +9,7 @@ pm2 stop all
 
 # Clear system cache
 echo "🧹 Clearing cache..."
-sudo sync
+sync
 echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null
 
 # Wait for memory to stabilize

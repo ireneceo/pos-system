@@ -154,6 +154,11 @@ Order.init({
     allowNull: true,
     comment: 'Card type when payment_method is card: visa, master, amex, other'
   },
+  ewallet_type: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: 'E-wallet sub-type when payment_method is ewallet: tng, grabpay, boost, shopeepay, duitnow, other (2026-07-23, IOI Mall tng 구분)'
+  },
   payment_status: {
     type: DataTypes.ENUM('pending', 'partial', 'completed', 'failed', 'payment_verification_pending', 'rejected'),
     defaultValue: 'pending'

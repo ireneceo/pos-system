@@ -235,7 +235,7 @@ interface PaymentModalProps {
   takeawayCharge?: number;
   discountAmount?: number;
   couponDiscount?: number;
-  onConfirmPayment: (paymentMethod: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number, cardType?: string, staffNames?: string[][]) => void;
+  onConfirmPayment: (paymentMethod: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number, cardType?: string, staffNames?: string[][], ewalletType?: string) => void;
   paymentMethods?: any;
   taxRate?: number;
   serviceChargeRate?: number;
@@ -507,6 +507,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   }, [paymentMethods]); // eslint-disable-line react-hooks/exhaustive-deps
   const [cashAmount, setCashAmount] = useState('');
   const [cardType, setCardType] = useState<string>('');
+  const [ewalletType, setEwalletType] = useState<string>('');
   // Discount-at-payment (incl. deferred payment from Live Orders / Floor Plan).
 
   // ─── Split bill state ───
@@ -710,6 +711,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         body.change_amount = Math.max(0, body.amount_received - amount);
       }
       if (paymentMethod === 'card' && cardType) body.card_type = cardType;
+      if (paymentMethod === 'ewallet' && ewalletType) body.ewallet_type = ewalletType;
 
       // 오프라인(메인 POS) — 서버 왕복 없이 split 부분 결제를 op 로그에 기록(재생 시 동일 POST /orders/:id/payments).
       // split = PARTIAL 결제 → settle_full 절대 설정 안 함(전액 결제 아님). 온라인 경로는 이 블록 아래로 무변경.
@@ -793,6 +795,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       }
     } else if (paymentMethod === 'card') {
       onConfirmPayment(paymentMethod, undefined, undefined, pointsToUse, pointDiscount, cardType);
+    } else if (paymentMethod === 'ewallet') {
+      onConfirmPayment(paymentMethod, undefined, undefined, pointsToUse, pointDiscount, undefined, undefined, ewalletType);
     } else if (paymentMethod === 'staffMeal') {
       confirmStaffMeal();
     } else {
@@ -802,6 +806,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   // 카드 결제 시 카드종류 선택 필수 여부 (매장 Payment 설정).
   const requireCardType = !!(paymentMethods && paymentMethods.card && paymentMethods.card.requireCardType);
+  // 이월렛 결제 시 서브타입(TnG 등) 선택 필수 여부 — 몰 매출보고 tng 구분용.
+  const requireEwalletType = !!(paymentMethods && paymentMethods.ewallet && paymentMethods.ewallet.requireEwalletType);
 
   const canConfirm = () => {
     if (!paymentMethods || availableMethods.length === 0) return false;
@@ -814,6 +820,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       if (paymentMethod === 'card') {
         return !requireCardType || !!cardType;
       }
+      if (paymentMethod === 'ewallet') {
+        return !requireEwalletType || !!ewalletType;
+      }
       return true;
     }
     if (paymentMethod === 'cash') {
@@ -823,6 +832,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     if (paymentMethod === 'card') {
       // 매장 설정(payment_settings.card.requireCardType)이 켜져 있으면 카드종류 선택 필수.
       return !requireCardType || !!cardType;
+    }
+    if (paymentMethod === 'ewallet') {
+      // 매장 설정(payment_settings.ewallet.requireEwalletType)이 켜져 있으면 이월렛 종류 선택 필수.
+      return !requireEwalletType || !!ewalletType;
     }
     return true;
   };
@@ -1302,7 +1315,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             <RadioButton
               key={method.key}
               selected={paymentMethod === method.key}
-              onClick={() => { setPaymentMethod(method.key); setCardType(''); }}
+              onClick={() => { setPaymentMethod(method.key); setCardType(''); setEwalletType(''); }}
             >
               <div>{method.label}</div>
             </RadioButton>
@@ -1330,6 +1343,37 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           {requireCardType && !cardType && (
             <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 500, color: '#FF6B6B' }}>
               Please select a card type to continue.
+            </div>
+          )}
+        </InputSection>
+      )}
+
+      {paymentMethod === 'ewallet' && (
+        <InputSection>
+          <Label>{requireEwalletType ? 'E-Wallet Type *' : 'E-Wallet Type (Optional)'}</Label>
+          {/* 2026-07-23: 이월렛 서브타입 — 몰 매출보고 tng 구분용. 카드 Card Type UI 대칭. */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {[
+              { key: 'tng', label: "Touch 'n Go" },
+              { key: 'grabpay', label: 'GrabPay' },
+              { key: 'boost', label: 'Boost' },
+              { key: 'shopeepay', label: 'ShopeePay' },
+              { key: 'duitnow', label: 'DuitNow' },
+              { key: 'other', label: 'Other' },
+            ].map(opt => (
+              <QuickAmountBtn
+                key={opt.key}
+                selected={ewalletType === opt.key}
+                onClick={() => setEwalletType(ewalletType === opt.key ? '' : opt.key)}
+                style={{ flex: '1 1 30%', minWidth: 0, padding: '10px 2px' }}
+              >
+                {opt.label}
+              </QuickAmountBtn>
+            ))}
+          </div>
+          {requireEwalletType && !ewalletType && (
+            <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 500, color: '#FF6B6B' }}>
+              Please select an e-wallet type to continue.
             </div>
           )}
         </InputSection>

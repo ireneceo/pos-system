@@ -266,8 +266,14 @@ router.get('/fleet', authenticateToken, requireRole('System Admin', 'Brand Gener
     const dayAgo = new Date(Date.now() - 24 * 3600 * 1000);
     const rows = await Promise.all(restaurants.map(async (r) => {
       const rid = r.id;
+      // 2026-07-23: pending-print 의 24h 신선도 경계와 같은 기준으로 센다. 경계 밖(하루 지난) 주문은
+      // 애초에 자동인쇄 대상이 아니므로 "막힌 티켓"이 아니다. 무기한 raw 카운트로 두면 자동인쇄를 안 켠
+      // 매장이 영구 critical 빨강으로 굳어 severity(284행 stuck>0=critical)가 신호 기능을 잃는다.
       const stuck = await Order.count({
-        where: { restaurant_id: rid, [Op.or]: [{ needs_print: true }, { needs_bill: true }] }
+        where: {
+          restaurant_id: rid, is_deleted: false, createdAt: { [Op.gte]: dayAgo },
+          [Op.or]: [{ needs_print: true }, { needs_bill: true }]
+        }
       });
       const fails = await PrintEvent.count({
         where: { restaurant_id: rid, outcome: { [Op.in]: ['failed', 'fallback'] }, created_at: { [Op.gte]: dayAgo } }

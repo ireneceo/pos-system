@@ -44,7 +44,7 @@ Content-Type: application/json
 | `gst` | GST | MY는 2018 GST폐지→SST. **0 또는 SST? 담당자 확인** |
 | `discount` | 할인 | |
 | `servicecharge` | 서비스차지 | |
-| `noofpax` | 인원수 | 우리 `guest_count` |
+| `noofpax` | 인원수 | **테이블 좌석수 산출**(buildSeatMap/seatsForOrder, guest_count 아님 — 2026-06-29 수동입력 제거 결정). dine-in 착석분만·테이크아웃=0. rid=16 실측 6/30: 영수증31→noofpax120 |
 | `cash` | 현금 결제액 | |
 | `tng` | Touch'n Go(이월렛) | |
 | `visa` / `mastercard` / `amex` | 카드 스킴별 | 우리 `card_type`(visa/master/amex)와 1:1 |
@@ -67,7 +67,7 @@ Content-Type: application/json
 | gst | Σ tax (SST 정책 확정 후) |
 | discount | Σ discount(+coupon/policy) |
 | servicecharge | Σ service_charge |
-| noofpax | Σ guest_count |
+| noofpax | Σ 착석 테이블 좌석수(그 시간대) — guest_count 아님(2026-06-29 결정) |
 | cash | Σ payment_method=cash |
 | tng | Σ payment_method=ewallet(Touch'n Go) |
 | visa/mastercard/amex | Σ card_type=visa/master/amex (이미 존재) |
@@ -129,6 +129,50 @@ Content-Type: application/json
 
 ---
 
-## 5. 상태
-- 기술 연동(인증+24레코드 전송) **staging 실증 완료**(2026-06-29). 우리 데이터로 전 필드 생성 가능 확인.
-- 미구현: 저장 모델 + 설정 UI + 집계/스케줄러(=§3). 담당자 확인(§4) 후 구현 권장.
+## 5. 상태 (2026-07-23 갱신)
+- 기술 연동(인증+24레코드 전송) **staging 실증 완료**(2026-06-29, 2026-07-23 재확인).
+- **구현 완료** — 저장 모델·집계·페이로드·스케줄러·API 전부 존재(§6). §3의 "미구현"은 해소됨.
+- **미가동** — `restaurant_sales_integrations` config 0건. 운영 URL·자격증명·machine ID 수령 후 켠다(유일 블로커).
+
+---
+
+## 6. 구현 현황 + 2026-07-23 스펙 대조 수정 (The Fire @ IOI Mall Damansara)
+
+> 임차인(입점 매장) = **The Fire Korean Restaurant @ IOI Mall Damansara = 운영 rid=16** (branch_name 'IOI Mall Damansara', 현재 suspended·6/30 이후 주문 없음이나 **매장 재오픈 불요** — 연동은 주문 데이터만 집계하지 매장 상태와 무관, Irene 2026-07-23 확정). 임대인/몰 운영사 = **IOI Mall**(Tangent/DCS Synthesis). "인증되냐"고 묻는 쪽 = IOI Mall.
+> ⚠ **주의: rid=5(The Fire, slug kdine-korean)는 is_test=1 테스트 매장 — IOI Mall 매장 아님.** 운영에 "The Fire Korean Restaurant" 4개(rid 16=IOI Damansara / 24=Publika / 25=ÆON Maluri / 5=테스트). **연동 대상은 rid=16 하나뿐.** 초기(07-23 오전) rid=5로 샘플 뽑은 건 오인 — 정정됨.
+
+### 구현된 코드
+| 구성 | 파일 |
+|---|---|
+| 모델 | `models/RestaurantSalesIntegration.js` (machine_id·URL·password_enc(AES-256)·gst_registered·enabled·last_status) |
+| 집계·페이로드·전송 | `services/mallSalesService.js` (aggregateDay 24시간 · buildSalesPayload · fetchToken · postSalesHourly · sendForRestaurant) |
+| 스케줄러 | `services/mallSalesScheduler.js` (매일 18:00 UTC=02:00 MYT, enabled 연동만 순회, 최근 7일 upsert) |
+| API | `routes/sales-integrations.js` (CRUD · `/:id/test` 토큰테스트 · `/:id/send-now` · `/:id/preview` 전송 안 하고 미리보기) |
+
+### 인증 — "IOI Mall에서 인증되냐"의 답 = **된다** (staging 완전 실증)
+- 우리 `fetchToken`(POST + form-urlencoded, OAuth2 password grant)으로 `staging.synthesis.bz` bearer 토큰 획득 성공(HTTP 200). 2026-06-29·07-23 확인.
+- GET/POST 모호성(스펙 §8) 실측 해소: **POST·GET+body 둘 다 200, GET+query만 400** → POST 유지가 정답(OAuth2 RFC 6749 §3.2도 POST 필수). 코드 변경 불필요.
+- **2026-07-23 몰이 준 staging 자격증명으로 end-to-end 성공**: User ID `50100025` / Password `DCStest1234` / Machine ID `50100025`. (staging 전용, 운영값 아님. 자격증명은 DB `password_enc` AES-256, git 비커밋.)
+  - 토큰 발급 ✅ → 0값 24레코드 전송 ✅ `{"status":"success",...created in Tangent :24}` → **rid=16 실매출 24레코드**(2026-05-31, 45영수증 RM4,475.90, 카드스킴 분리 visa 907.94·master 316.03, 수정된 tender합=gto 정합) 전송 ✅ `status:success`.
+  - 즉 인증·형식·금액(SST전 tender=gto)·24레코드 규칙 전부 몰 실서버가 수락 확인. rid=16은 **card_type 기록이 있어 visa/master 분리됨**(rid=5는 전부 othersamount였던 것과 대조 — 대상 매장 데이터 품질 양호). 남은 건 **운영 URL·자격증명·운영 machine ID**뿐.
+
+### 2026-07-23 스펙 대조로 발견·수정한 버그 2건 (Fable 게이트 CONDITIONAL GO → 조건 충족)
+1. **tender 금액이 SST 포함** → 스펙 §4는 tender(cash/tng/visa/…/othersamount)를 gto와 같은 "SST 전" 기준으로 규정 → **tender 합계 = gto** 여야 함. 수정 전 The Fire 7/12 샘플: gto 264.57인데 othersamount 279.00(=+SST). 수정: `accrueOrderTenders` 순수함수로 SST 전 환산(분모=실결제합 paySum → overpay·사후정정도 정합 보장).
+2. **HTTP 200 + `{"status":"error"}`를 성공으로 기록** → 스펙 §5·요건12: 검증 실패도 HTTP 200으로 온다. 수정 전 `postSalesHourly`는 HTTP 상태만 봐 거절을 "성공" 로깅. 수정: status가 정확히 'success'가 아니면(에러·부재·비JSON 200 포함) throw(fail-closed). **staging 실서버가 실제 거절 반환 → 우리 검증이 정확히 잡음 실증.**
+- 회귀 박제: `tests/mall-sales.test.js` **10/10** (tender==gto·overpay·status:error·status부재·비JSON).
+
+### IOI Mall에 회신할 내용 (임대인/몰 운영사에게)
+1. **인증 검증 완료** — staging에서 토큰 발급·전송 파이프라인 정상 동작 확인. 24레코드/일 형식 준수.
+2. **필요한 것(몰이 제공)**: The Fire 매장의 **운영 machine ID(8자리) + 운영 token/SalesHourly URL + 계정 자격증명**. 이것만 받으면 켠다.
+3. **§4에서 이미 확정된 사항 재확인 불필요**: gto=할인후·SST전·서비스차지 포함·void/refund 차감 / gst=SST 금액 / batchid=숫자≤12(우리는 영업일 YYYYMMDD, 같은 날 재전송 upsert) / tng=Touch'n Go 전용 / 매일 최근7일 재전송.
+4. **The Fire 데이터 품질 (2026-07-23 Fable 실측 정정)**: ①**noofpax = OK** — 테이블 좌석수로 자동 산출(rid=16 6/30 noofpax=120). guest_count 아님. ②**카드스킴 = OK** — rid=16은 `requireCardType=ON`이라 visa/master/amex 실제 분리(6월 visa35·master14). cash는 매장설정에서 비활성. ③**유일 갭 = 이월렛 세분**: POS 이월렛이 단일 'ewallet' 버튼(TnG/GrabPay/Boost/QR 한 버튼)이라 TnG 식별 불가 → 전부 othersamount. **매핑 버그 아님, 데이터 부재**. TnG 분리하려면 이월렛 서브타입 UI 개발(중규모·결제무결성=Fable게이트) + **몰의 tng 정의(로컬 QR월렛 포함?) 확인 선행**. ④예약금(reservation_deposit) 이중계상 여부.
+
+### 세팅 완료 (2026-07-23)
+- **운영 config 저장 완료**: `restaurant_sales_integrations` id=1, rid=16, provider=tangent_synthesis, mall_name='IOI Mall Damansara', environment=**staging**, user_id/machine_id=50100025, gst_registered=**Y**(The Fire SST 6% 실측), cadence=daily, send_window_days=7, **enabled=false**(자동전송 OFF — 스케줄러 순회 제외, 라이브 리스크 0). 비번=암호화(현재 기본키, staging 비민감).
+- **시스템 경유 인증 검증**: 저장된 암호화 비번으로 `fetchToken` 토큰 발급 성공(test-connection 경로 실증).
+- **ENCRYPTION_KEY 회전 준비**: `scripts/migrate-encryption-key-rotation.js`(멱등, 단위검증 완료) + 레지스트리 manual 등록. AES 암호화 영향 컬럼은 `notification_settings.smtp_password`·`restaurant_sales_integrations.password_enc` 둘뿐(bcrypt 해시 무관). go-live 직전 실행.
+
+### 남은 것 (go-live 3단계 — 순서 강제)
+1. **운영 백엔드 배포** (현재 운영은 7/23 수정 전 코드 = tender SST포함·status fail-open). `mallSalesService.js` 수정본 배포 필요. ⚠ 같은 워킹트리에 인쇄 신선도경계(🔒 orders-crud.js) 변경이 있어 print-guard fail-closed → 그 건 **매장 실프린터 확인+bless** 후 함께 배포.
+2. **ENCRYPTION_KEY 강화**(운영 실자격증명 저장 전): 강한키 생성 → 운영 `.env` 기록 → `migrate-encryption-key-rotation.js` 1회 → **즉시 pm2 restart production-backend**(새벽 권장 — 재암호화~restart 사이 수초 SMTP 발송 실패 가능). 배포가 어차피 prod 를 restart 하므로 **배포와 묶으면 추가 중단 0**.
+3. **운영 자격증명 수령 시**(몰): config 를 UI 또는 스크립트로 environment=production + 운영 token_url/sales_url + 운영 machine_id/user_id/password 갱신 → pm2 restart(토큰캐시) → test-connection → send-now 1일 → 몰 수신 확인 → **enabled=true** → 다음날 02:00 MYT SchedulerRun(`mall_sales_daily`)·`last_status=success` 관측 2~3일.

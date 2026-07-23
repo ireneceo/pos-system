@@ -86,21 +86,26 @@ function seatsForOrder(order, seatMap) {
 
 // ── 결제수단 분류 → 몰 결제 버킷 ─────────────────────────────────────────
 // 버킷: cash / tng(Touch'n Go 전용) / visa / mastercard / amex / voucher / othersamount
-function addToBucket(buckets, method, cardType, amount) {
+function addToBucket(buckets, method, cardType, amount, ewalletType) {
   const amt = Number(amount) || 0;
   if (amt === 0) return;
   const m = String(method || '').toLowerCase();
   const c = String(cardType || '').toLowerCase();
+  const e = String(ewalletType || '').toLowerCase();
 
   if (m === 'cash') { buckets.cash += amt; return; }
   if (m === 'voucher' || m === 'gift' || m === 'giftcard') { buckets.voucher += amt; return; }
-  // Touch 'n Go 전용 — 식별 가능한 경우만. 그 외 이월렛/QR 은 othersamount(보수적).
-  if (m === 'tng' || m.includes('touch') || c === 'tng' || c.includes('touch')) { buckets.tng += amt; return; }
+  // Touch 'n Go 전용(몰 스펙에 tng 필드만 있음). 2026-07-23: 이월렛 서브타입(ewallet_type=tng) 우선,
+  // 레거시 호환으로 method/card_type 의 tng/touch 도 인정. GrabPay/Boost/DuitNow 등 다른 이월렛은
+  // 몰에 필드가 없어 othersamount(보수적).
+  if (e === 'tng' || e.includes('touch') || m === 'tng' || m.includes('touch') || c === 'tng' || c.includes('touch')) {
+    buckets.tng += amt; return;
+  }
   // 카드 스킴
   if (c === 'visa') { buckets.visa += amt; return; }
   if (c === 'master' || c === 'mastercard') { buckets.mastercard += amt; return; }
   if (c === 'amex') { buckets.amex += amt; return; }
-  // 분류 못한 카드/이월렛/QR/기타 = catch-all
+  // 분류 못한 카드/이월렛(GrabPay 등)/QR/기타 = catch-all
   buckets.othersamount += amt;
 }
 
@@ -109,6 +114,26 @@ function emptyHour() {
     receiptcount: 0, gto: 0, gst: 0, discount: 0, servicecharge: 0, noofpax: 0,
     cash: 0, tng: 0, visa: 0, mastercard: 0, amex: 0, voucher: 0, othersamount: 0
   };
+}
+
+/**
+ * 한 주문의 결제금액을 tender 버킷에 SST 전 기준으로 누적한다 (2026-07-23, Tangent 스펙 §4 대조).
+ * tender 필드(cash/tng/visa/…/othersamount)는 gto 와 같은 기준("할인 후·SST 전·서비스차지 포함")이라
+ * tender 합계 = gto(= total − tax) 여야 한다. 결제금액(OrderPayment.amount·total_amount)은 SST 포함이므로
+ * gto/paySum 비율을 곱해 SST 전으로 환산한다. 분모를 total 이 아니라 실제 결제합(paySum)으로 잡아,
+ * overpay(현금 초과수령)·결제완료 후 total 축소(사후정정) 같은 Σamount≠total 케이스에서도 tender합==gto
+ * 를 대수적으로 보장한다(Fable 권고3). 순수 함수 — DB 무관, 계약 테스트로 박제.
+ */
+function accrueOrderTenders(bucket, total, tax, pays, orderMethod, orderCardType, orderEwalletType) {
+  const gto = total - tax; // SST 전 순매출(서비스차지 포함)
+  if (pays && pays.length) {
+    const paySum = pays.reduce((a, p) => a + (Number(p.amount) || 0), 0);
+    const factor = paySum > 0 ? gto / paySum : 0;
+    for (const p of pays) addToBucket(bucket, p.payment_method, p.card_type, (Number(p.amount) || 0) * factor, p.ewallet_type);
+  } else {
+    // 주문 레벨 폴백(분할결제 미기록) — 전액이 주문 결제수단 하나로, SST 전 금액을 tender 로.
+    addToBucket(bucket, orderMethod, orderCardType, gto, orderEwalletType);
+  }
 }
 
 /**
@@ -133,7 +158,7 @@ async function aggregateDay(restaurant, dateStr) {
     attributes: [
       'id', 'order_date', 'total_amount', 'tax', 'service_charge',
       'discount', 'coupon_discount', 'discount_policy_amount', 'point_discount',
-      'payment_method', 'card_type', 'table_number', 'floor_plan_table_id'
+      'payment_method', 'card_type', 'ewallet_type', 'table_number', 'floor_plan_table_id'
     ]
   });
 
@@ -143,7 +168,7 @@ async function aggregateDay(restaurant, dateStr) {
   if (orderIds.length) {
     const pays = await OrderPayment.findAll({
       where: { order_id: { [Op.in]: orderIds } },
-      attributes: ['order_id', 'amount', 'payment_method', 'card_type']
+      attributes: ['order_id', 'amount', 'payment_method', 'card_type', 'ewallet_type']
     });
     for (const p of pays) {
       if (!paymentsByOrder.has(p.order_id)) paymentsByOrder.set(p.order_id, []);
@@ -170,13 +195,7 @@ async function aggregateDay(restaurant, dateStr) {
     bucket.noofpax += seatsForOrder(o, seatMap);
     bucket.receiptcount += 1;
 
-    const pays = paymentsByOrder.get(o.id);
-    if (pays && pays.length) {
-      for (const p of pays) addToBucket(bucket, p.payment_method, p.card_type, p.amount);
-    } else {
-      // 주문 레벨 폴백 — 결제 금액은 total_amount 로 본다.
-      addToBucket(bucket, o.payment_method, o.card_type, total);
-    }
+    accrueOrderTenders(bucket, total, tax, paymentsByOrder.get(o.id), o.payment_method, o.card_type, o.ewallet_type);
   }
 
   return { hours, orderCount: orders.length };
@@ -262,6 +281,17 @@ async function postSalesHourly(integration, token, sales) {
   if (!res.ok) throw new Error(`SalesHourly HTTP ${res.status}: ${text.slice(0, 400)}`);
   let json;
   try { json = JSON.parse(text); } catch { json = { raw: text }; }
+  // 2026-07-23 (Tangent 스펙 §5·요건12): 검증 실패가 HTTP 200 으로 온다. HTTP 상태만 믿으면 거절된
+  // 전송을 "성공"으로 기록한다. 스펙은 성공·실패 모두 status 필드를 보장하므로 fail-closed:
+  // status 가 정확히 'success' 가 아니면(에러·부재·비JSON 프록시/WAF 200 포함) 실패로 던진다.
+  // false-failure 는 멱등 7일 재전송이 흡수하므로 무해 — 조용한 미보고(fail-open)만 막으면 된다.
+  const status = String(json.status || '').trim().toLowerCase();
+  if (status !== 'success') {
+    const errs = Array.isArray(json.errors)
+      ? json.errors.map(e => e.message || e.status_code).filter(Boolean).join(' | ')
+      : (json.message || text.slice(0, 300));
+    throw new Error(`SalesHourly not confirmed (status=${json.status ?? 'none'}): ${errs}`);
+  }
   return json;
 }
 
@@ -309,5 +339,5 @@ module.exports = {
   postSalesHourly,
   sendForRestaurant,
   PROVIDER_DEFAULTS,
-  _internal: { hourInTz, utcBoundsForDate, addToBucket, money }
+  _internal: { hourInTz, utcBoundsForDate, addToBucket, money, accrueOrderTenders, emptyHour }
 };

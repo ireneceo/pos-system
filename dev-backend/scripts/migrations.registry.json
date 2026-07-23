@@ -1,6 +1,7 @@
 {
   "note": "마이그레이션 단일 소스 (schema drift 방지). deploy-to-production.sh 가 이 파일의 `deploy` 목록을 순서대로 실행한다(하드코딩 목록 대체). 새 migrate-*.js / YYYYMMDD_*.js / sprintN-*.js 를 추가하면 check-migration-registry.js 가 미분류를 배포 전 fail-closed 로 잡는다 → 등록을 잊을 수 없음. 새 마이그는 반드시 여기 `deploy`(매 배포 재실행, 멱등 필수) 또는 `manual`(일회성/레거시/의도적 제외, 이유 명시)에 분류할 것.",
   "deploy": [
+    "migrate-add-ewallet-type.js",
     "cleanup-users-duplicate-indexes.js",
     "cleanup-restaurants-duplicate-indexes.js",
     "cleanup-sequelize-duplicate-indexes.js",
@@ -50,6 +51,7 @@
     "migrate-print-device-status.js"
   ],
   "manual": {
+    "migrate-encryption-key-rotation.js": "일회성 — ENCRYPTION_KEY 기본키→강한키 회전 시 기존 AES 암호화행(notification_settings.smtp_password, restaurant_sales_integrations.password_enc) 재암호화. go-live(운영 몰 실자격증명 저장) 직전 .env 키 기록 후 1회 실행+즉시 pm2 restart. 매 배포 재실행 금지(이미 새키 행을 손상). (2026-07-23 Fable)",
     "migrate-staff-payment-void-perms.js": "의도적 제외 — 매 배포 재실행 시 access_pos 직원 전원에게 결제·취소 권한을 재부여해, 매장이 의도적으로 끈 권한(예: 서버 역할)을 도로 켠다. 최초 1회 백필 운영 적용됨. 직원 권한 단일소스=직원관리 UI. (2026-06-24 결정)",
     "migrate-images.js": "일회성 — 초기 이미지 마이그레이션(과거 적용). 배포 루프 미포함.",
     "migrate-base64-images.js": "일회성 — DB base64 인라인 이미지 → 디스크 파일 변환(과거 적용).",

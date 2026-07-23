@@ -170,7 +170,15 @@
 earlyoom 실사격(풍선 RSS 4.2GB·6.4GB → **4초 만에** kill, 커널 OOM 0, MySQL·nginx·PM2 5개 전원 생존) · 게이트 양방향 차단 · 실빌드 69초 성공(earlyoom 발동 0) · verify-all 13/13 · print-guard 8/8 무접촉.
 
 ### 남은 것
-- **운영서버 보호막 미적용** (sudo 비번 필요 — Irene 실행): `ssh -t irene@87.106.78.146 'sudo bash -s' < /var/www/scripts/prod-memory-protection.sh` (무중단, 서비스 재시작 0)
+- **운영서버 보호막 미적용** (운영 sudo 는 비밀번호 필요 — Irene 실행). **2단계로 해야 한다**:
+  ```bash
+  scp /var/www/scripts/prod-memory-protection.sh irene@87.106.78.146:/tmp/
+  ssh -t irene@87.106.78.146 'sudo bash /tmp/prod-memory-protection.sh'
+  ```
+  (무중단, 서비스 재시작 0)
+  > ⚠ 2026-07-23 정정: 여기 원래 적혀 있던 `ssh -t ... 'sudo bash -s' < 스크립트` 는 **실행되지 않는 명령**이었다.
+  > stdin 을 스크립트가 차지해 `-t` 가 TTY 를 못 잡고 sudo 가 비밀번호를 못 받는다("a terminal is required").
+  > **7/14 이후 이 항목이 계속 미적용으로 남아 있던 실제 이유.** 개발서버는 NOPASSWD 라 같은 명령이 통과해서 차이가 안 보였다.
 - **스왑 증설·RAM 증설 불필요** (Fable 판정 — 늘리면 스래시만 길어진다 / 동시 실행할 이유가 없다)
 
 ---
