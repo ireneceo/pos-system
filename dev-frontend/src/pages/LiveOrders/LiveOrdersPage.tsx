@@ -1583,7 +1583,7 @@ const LiveOrdersPage: React.FC = () => {
     }
   };
 
-  const handlePaymentConfirm = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number, cardType?: string) => {
+  const handlePaymentConfirm = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number, cardType?: string, _staffNames?: string[][], ewalletType?: string) => {
     if (!orderForPayment) return;
     stopSound();
 
@@ -1598,6 +1598,7 @@ const LiveOrdersPage: React.FC = () => {
           amount: _total - _paid,
           payment_method: method,
           card_type: method === 'card' ? (cardType || null) : null,
+          ewallet_type: method === 'ewallet' ? (ewalletType || null) : null,
           cashier_name: (orderForPayment as any).cashier_name || undefined,
           settle_full: true,
         });
@@ -1616,7 +1617,8 @@ const LiveOrdersPage: React.FC = () => {
 
       const updatePayload: any = {
         payment_status: 'completed', payment_method: method,
-        card_type: method === 'card' ? (cardType || null) : null
+        card_type: method === 'card' ? (cardType || null) : null,
+        ewallet_type: method === 'ewallet' ? (ewalletType || null) : null
       };
 
       if (pointsUsed && pointsUsed > 0 && pointDiscount && pointDiscount > 0) {

@@ -2767,6 +2767,7 @@ const POSTerminalPage: React.FC = () => {
       point_discount: pointDiscountAmount || null,
       paymentMethod: method,
       card_type: method === 'card' ? (cardType || null) : null,
+      ewallet_type: method === 'ewallet' ? (ewalletType || null) : null,
       paymentStatus: 'completed' as const,
       orderType: orderType,
       orderSource: 'pos' as const,

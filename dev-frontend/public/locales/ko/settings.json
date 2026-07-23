@@ -1009,7 +1009,9 @@
     "membershipDisplayEntry": {
       "title": "고객 디스플레이 — 멤버십 입력",
       "description": "고객용 디스플레이 화면에 전화번호 키패드 노출 — 손님이 직접 전화번호를 입력하여 포인트/멤버십 적립."
-    }
+    },
+    "acceptedEwallets": "취급 이월렛",
+    "acceptedEwalletsHint": "취급하는 이월렛을 선택하세요. 1개면 결제 시 자동 지정, 2개 이상이면 결제할 때 캐셔가 선택합니다. 몰 매출보고에서 Touch 'n Go를 따로 집계하는 데 사용됩니다."
   },
   "printer.emergency.workstationReceiptPrinter": "이 워크스테이션 영수증 프린터",
   "printer.emergency.destinationHint": "워크스테이션 “{{ws}}”의 영수증(빌) 프린터",

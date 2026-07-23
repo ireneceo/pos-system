@@ -1421,7 +1421,9 @@ const FloorPlanPage: React.FC = () => {
     _change?: number,
     pointsUsed?: number,
     pointDiscount?: number,
-    cardType?: string
+    cardType?: string,
+    _staffNames?: string[][],
+    ewalletType?: string
   ) => {
     // Two sources of truth — takeaway path uses the explicit order id; dine-in path looks up the
     // active order for the selected table.
@@ -1445,7 +1447,8 @@ const FloorPlanPage: React.FC = () => {
       const updatePayload: any = {
         payment_status: 'completed',
         payment_method: method,
-        card_type: method === 'card' ? (cardType || null) : null
+        card_type: method === 'card' ? (cardType || null) : null,
+        ewallet_type: method === 'ewallet' ? (ewalletType || null) : null
       };
 
       if (pointsUsed && pointsUsed > 0 && pointDiscount && pointDiscount > 0) {
@@ -1479,6 +1482,7 @@ const FloorPlanPage: React.FC = () => {
           amount: dueAmount,
           payment_method: method,
           card_type: method === 'card' ? (cardType || null) : null,
+          ewallet_type: method === 'ewallet' ? (ewalletType || null) : null,
           cashier_name: undefined,
           settle_full: true,
         });

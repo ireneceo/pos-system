@@ -54,6 +54,44 @@ describe('tender = SST 전, 합계 == gto (버그1)', () => {
   });
 });
 
+describe('이월렛 서브타입 → 몰 tender 매핑 (2026-07-23)', () => {
+  const gto = (b) => b; // 편의
+  test("ewallet + ewallet_type='tng' → tng 버킷", () => {
+    const b = emptyHour();
+    // total 106, tax 6 → gto 100
+    accrueOrderTenders(b, 106.00, 6.00, null, 'ewallet', null, 'tng');
+    expect(b.tng).toBeCloseTo(100.00, 2);
+    expect(b.othersamount).toBe(0);
+    expect(tenderSum(b)).toBeCloseTo(100.00, 2);
+  });
+
+  test("ewallet + ewallet_type='grabpay' → othersamount (몰에 필드 없음)", () => {
+    const b = emptyHour();
+    accrueOrderTenders(b, 106.00, 6.00, null, 'ewallet', null, 'grabpay');
+    expect(b.othersamount).toBeCloseTo(100.00, 2);
+    expect(b.tng).toBe(0);
+  });
+
+  test('ewallet 서브타입 미지정 → othersamount (기존 동작 유지)', () => {
+    const b = emptyHour();
+    accrueOrderTenders(b, 106.00, 6.00, null, 'ewallet', null, null);
+    expect(b.othersamount).toBeCloseTo(100.00, 2);
+    expect(b.tng).toBe(0);
+  });
+
+  test('분할결제: cash + ewallet(tng) → cash·tng 분리, 합계 gto', () => {
+    const b = emptyHour();
+    // total 212, tax 12 → gto 200. cash 100 + ewallet(tng) 112
+    accrueOrderTenders(b, 212.00, 12.00, [
+      { payment_method: 'cash', card_type: null, ewallet_type: null, amount: 100.00 },
+      { payment_method: 'ewallet', card_type: null, ewallet_type: 'tng', amount: 112.00 },
+    ], null, null, null);
+    expect(b.cash).toBeCloseTo(94.34, 1);   // 100 × 200/212
+    expect(b.tng).toBeCloseTo(105.66, 1);   // 112 × 200/212
+    expect(tenderSum(b)).toBeCloseTo(200.00, 2);
+  });
+});
+
 describe('postSalesHourly: HTTP 200 거절 감지 (버그2, fail-closed)', () => {
   const integration = { provider: 'tangent_synthesis', environment: 'staging', sales_url: 'https://x/api' };
   const origFetch = global.fetch;

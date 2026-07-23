@@ -2961,25 +2961,47 @@ const SettingsPage: React.FC = () => {
                           imageAltText="E-Wallet QR Code"
                         />
                       </AutoSaveField>
-                      {/* 2026-07-23: 이월렛 서브타입 선택 필수 여부 (몰 매출보고 tng 구분용). 카드 requireCardType 대칭. */}
-                      <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>
-                            {t('settings:settingsPage.requireEwalletType', { defaultValue: 'Require e-wallet type selection' })}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '2px' }}>
-                            {t('settings:settingsPage.requireEwalletTypeHint', { defaultValue: 'When on, the cashier must pick the e-wallet (Touch ‘n Go / GrabPay / Boost / ShopeePay / DuitNow / Other) before completing an e-wallet payment. Needed to report Touch ‘n Go separately for mall sales.' })}
-                          </div>
+                      {/* 2026-07-23: 취급 이월렛 지정(몰 매출보고 tng 구분용). 1개 선택=주문 시 자동 태깅(캐셔 선택 불필요),
+                          2개 이상=결제 시 캐셔가 선택. 미선택=서브타입 캡처 안 함(기존 동작). */}
+                      <div style={{ marginTop: '16px' }}>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>
+                          {t('settings:settingsPage.acceptedEwallets', { defaultValue: 'Accepted e-wallets' })}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '2px', marginBottom: '10px' }}>
+                          {t('settings:settingsPage.acceptedEwalletsHint', { defaultValue: 'Select the e-wallets you accept. Pick one and it is tagged automatically at payment; pick two or more and the cashier chooses at checkout. Used to report Touch ‘n Go separately for mall sales.' })}
                         </div>
                         <AutoSaveField ref={requireEwalletTypeRef} onSave={handleSave} type="toggle">
-                          <ToggleSwitch>
-                            <ToggleInput
-                              type="checkbox"
-                              checked={!!method.requireEwalletType}
-                              onChange={(e) => { handlePaymentSettingChange(key, 'requireEwalletType', e.target.checked); requireEwalletTypeRef.current?.triggerSave(); }}
-                            />
-                            <ToggleSlider />
-                          </ToggleSwitch>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {[
+                              { k: 'tng', label: "Touch 'n Go" },
+                              { k: 'grabpay', label: 'GrabPay' },
+                              { k: 'boost', label: 'Boost' },
+                              { k: 'shopeepay', label: 'ShopeePay' },
+                              { k: 'duitnow', label: 'DuitNow' },
+                              { k: 'other', label: 'Other' },
+                            ].map(opt => {
+                              const list: string[] = Array.isArray(method.acceptedTypes) ? method.acceptedTypes : [];
+                              const on = list.includes(opt.k);
+                              return (
+                                <button
+                                  key={opt.k}
+                                  type="button"
+                                  onClick={() => {
+                                    const next = on ? list.filter((x: string) => x !== opt.k) : [...list, opt.k];
+                                    handlePaymentSettingChange(key, 'acceptedTypes', next);
+                                    requireEwalletTypeRef.current?.triggerSave();
+                                  }}
+                                  style={{
+                                    padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                                    border: on ? '1px solid #635BFF' : '1px solid #C7CED6',
+                                    background: on ? '#635BFF' : '#FFFFFF', color: on ? '#FFFFFF' : '#425466',
+                                  }}
+                                >
+                                  {on ? '✓ ' : ''}{opt.label}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </AutoSaveField>
                       </div>
                     </div>

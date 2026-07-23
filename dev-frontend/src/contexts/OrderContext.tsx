@@ -160,6 +160,7 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         source: 'pos',  // POS Terminal order source
         payment_method: order.paymentMethod || null,
         card_type: (order as any).card_type || null,
+        ewallet_type: (order as any).ewallet_type || null,  // 2026-07-23: 이월렛 서브타입(몰 tng 구분)
         payment_status: order.paymentStatus || 'pending',
         order_date: new Date(),
         cashier_id: (order as any).cashier_id || null,

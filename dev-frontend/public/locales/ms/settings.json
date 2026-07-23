@@ -1009,7 +1009,9 @@
     "membershipDisplayEntry": {
       "title": "Paparan Pelanggan — Kemasukan Keahlian",
       "description": "Tunjukkan pad nombor telefon pada skrin yang menghadap pelanggan supaya tetamu boleh masukkan nombor telefon untuk mata / keahlian."
-    }
+    },
+    "acceptedEwallets": "E-dompet diterima",
+    "acceptedEwalletsHint": "Pilih e-dompet yang anda terima. Pilih satu maka ia ditandakan automatik semasa bayaran; pilih dua atau lebih maka juruwang memilih semasa pembayaran. Digunakan untuk melaporkan Touch 'n Go secara berasingan bagi jualan mall."
   },
   "printer.emergency.workstationReceiptPrinter": "pencetak resit stesen kerja ini",
   "printer.emergency.destinationHint": "Pencetak resit (bil) pada stesen kerja “{{ws}}”",

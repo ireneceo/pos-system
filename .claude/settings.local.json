@@ -1392,7 +1392,14 @@
       "Bash(pkill -f \"e2e-auth\\\\|b4txqbqen\")",
       "Bash(jobs -p)",
       "Bash(sed -i '47s|.*|| `noofpax` | 인원수 | **테이블 좌석수 산출**\\(buildSeatMap/seatsForOrder — guest_count 아님, 2026-06-29 결정\\). dine-in 착석분만, 테이크아웃=0 |' MALL_SALES_API_INTEGRATION.md)",
-      "Bash(sed -i '70s|.*|| noofpax | Σ 착석 테이블 좌석수\\(그 시간대\\) — guest_count 아님 |' MALL_SALES_API_INTEGRATION.md)"
+      "Bash(sed -i '70s|.*|| noofpax | Σ 착석 테이블 좌석수\\(그 시간대\\) — guest_count 아님 |' MALL_SALES_API_INTEGRATION.md)",
+      "Bash(awk 'NR>=1055 && NR<=1120 && /order.update|await order.update|updateFields|allowedUpdate|req.body\\\\\\)/' routes/orders-crud.js)",
+      "Bash(sed -i 's/return !requireEwalletType || !!ewalletType;/return !ewalletNeedsChoice || !!ewalletType;/g' components/POSTerminal/PaymentModal.tsx)",
+      "Bash(sed -i \"s/onClick={\\(\\) => { setPaymentMethod\\(method.key\\); setCardType\\(''\\); setEwalletType\\(''\\); }}/onClick={\\(\\) => { setPaymentMethod\\(method.key\\); setCardType\\(''\\); setEwalletType\\(method.key === 'ewallet' \\\\&\\\\& acceptedEwallets.length === 1 ? acceptedEwallets[0] : ''\\); }}/\" components/POSTerminal/PaymentModal.tsx)",
+      "Bash(perl -0pi -e \"s/\\(payment_status: 'completed',\\\\n\\\\s*payment_method: method,\\\\n\\\\s*card_type: method === 'card' \\\\? \\\\\\(cardType \\\\|\\\\| null\\\\\\) : null\\\\n\\)/\\\\$1        , ewallet_type: method === 'ewallet' ? \\(ewalletType || null\\) : null\\\\n/g\" pages/FloorPlan/FloorPlanPage.tsx)",
+      "Bash(perl -0pi -e \"s/\\\\{t\\\\\\('posTerminal:payment\\\\.ewalletType', \\\\{ defaultValue: 'E-Wallet Type' \\\\}\\\\\\)\\\\} \\\\*/E-Wallet Type */g\" components/POSTerminal/PaymentModal.tsx)",
+      "Bash(perl -0pi -e \"s/\\\\{t\\\\\\('posTerminal:payment\\\\.selectEwalletType', \\\\{ defaultValue: 'Please select an e-wallet type to continue\\\\.' \\\\}\\\\\\)\\\\}/Please select an e-wallet type to continue./g\" components/POSTerminal/PaymentModal.tsx)",
+      "Bash(perl -0pi -e \"s/\\\\{t\\\\\\('posTerminal:payment\\\\.ewalletType', \\\\{ defaultValue: 'E-Wallet Type' \\\\}\\\\\\)\\\\}: <strong>/E-Wallet Type: <strong>/g\" components/POSTerminal/PaymentModal.tsx)"
     ],
     "deny": [],
     "ask": []

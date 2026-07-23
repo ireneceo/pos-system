@@ -22,7 +22,20 @@
   - **검증**: verify-all --full **14/14**(print-guard 8/8·design 신규0·IDOR·타임존·health-check 회귀·i18n·인쇄 라우트 가드 + 실브라우저 mount 8역할 크래시0) · 이슈4 API E2E 11/11 · sensitive-diff Fable 비대상.
   - **미확인(남은 것)**: #2·#3 실 윈도우앱 눈 확인 1회(원 안 텍스트 렌더 / 하단 토스트가 POS 하단 결제버튼과 겹치는지) — 헤드리스는 크래시0만 증명. #1 인증서 구매 결정.
 
-### IOI Mall 매출 연동 (The Fire, rid5) — 버그2건 수정·인증 실증 완료, machine ID 대기
+### 이월렛 서브타입 캡처 (IOI Mall tng 구분) — dev 완료·미배포, Fable CONDITIONAL GO 조건 충족
+- **목적**: POS 이월렛이 단일 'ewallet'라 몰 tng 필드 못 채움 → 서브타입 캡처(카드 card_type 대칭, 전용 컬럼 ewallet_type).
+- **정석 UX(Irene 지시 반영)**: 설정에서 취급 이월렛 지정(payment_settings.ewallet.acceptedTypes 배열). **1개=주문 시 자동 태깅(캐셔 선택 불필요), 2개↑=캐셔 선택(필수), 0개=캡처 안 함(기존 동작).** requireEwalletType 토글 폐기(acceptedTypes 로 대체).
+- **모든 POS 경로 배선(Irene 지적+Fable 조건)**: POSTerminal(신규주문 OrderContext) + FloorPlan(다인인·테이크웨이 PATCH+오프라인op) + LiveOrders(PATCH+오프라인op) + split(orders-payment). card_type 흐르는 전 경로 패리티. 백엔드 PATCH는 order.update(req.body) 통째저장이라 무변경.
+- **몰 매핑**: addToBucket 이 ewallet_type='tng'→몰 tng, 나머지(grabpay/boost 등)→othersamount(몰에 필드 없음).
+- **🔴 TDZ 크래시 잡음**: auto-tag useEffect 가 acceptedEwallets(뒤 선언) 참조 → "Cannot access before initialization" POS Terminal 크래시. 빌드·TS 통과했으나 실브라우저 mount 에서 발견 → 선언을 useEffect 앞으로 이동. (실UI 검증 고집의 성과.)
+- **실브라우저 UI/UX 3시나리오 실증**: 설정 다중선택 렌더·클릭저장 OK / POS 결제 0개(UI없음·확인가능)·1개(자동"Touch 'n Go"·확인가능)·2개(버튼2+경고+확인비활성). POS Terminal mount 크래시0.
+- **기존 이월렛 → grabpay 백필(Irene 지시)**: dev 241건 적용. 운영은 컬럼 배포 후 `migrate-backfill-ewallet-grabpay.js`(manual 등록) 1회.
+- 검증: 계약테스트 14/14(tng/grabpay/미지정/split) · 마이그 레지스트리 드리프트0 · i18n 통과 · print-guard 보호파일 2건(POSTerminalPage 이월렛 plumbing[인쇄 무변경]·orders-crud 별건).
+- 파일: `PaymentModal.tsx`·`SettingsPage.tsx`·`FloorPlanPage.tsx`·`LiveOrdersPage.tsx`·`OrderContext.tsx`·🔒`POSTerminalPage.tsx`(1줄)·`services/mallSalesService.js`·`routes/orders-payment.js`·`models/{Order,OrderPayment}.js`·`scripts/migrate-add-ewallet-type.js`·`migrate-backfill-ewallet-grabpay.js`·`tests/mall-sales.test.js`·locales 4언어
+- **배포 전**: Fable 2차 재검증(설계 변경분 acceptedTypes) **진행 중 → 결과는 다음 세션에서 확인·반영**·실프린터 확인은 불요(인쇄 무변경)·orders-crud 별건과 함께 나감 인지.
+- **/검증 완료(2026-07-23)**: verify-all --full 실브라우저 mount sweep 8역할+POS **크래시0(662.8s)** · state-hydration 0 · 인쇄 라우트가드 34/34 · health 139/140(유일실패=print-guard 의도) · 실API 왕복 5/5 · 계약 14/14 · check-sensitive-diff=★Fable대상(①②③).
+
+### IOI Mall 매출 연동 (The Fire=rid16) — 버그2건 수정·인증 실증 완료, machine ID 대기
 - **기능은 완전 개발돼 있었음**(mallSalesService/scheduler/routes/preview), 단 config 0건=미가동. 임차인 "샘플 먼저" 요청 → Tangent 공식 스펙 대조.
 - **인증 실증**: 우리 fetchToken(POST+form-urlencoded)으로 staging.synthesis.bz bearer 토큰 획득 ✅. GET/POST 모호성 실측 해소(POST·GET+body 200, GET+query 400 → POST 유지 정답, OAuth2 RFC상 POST 필수).
 - **버그1(tender SST 포함→gto 불일치)**: tender를 SST 전으로 환산(분모=paySum, overpay/사후정정도 tender합==gto 보장). `accrueOrderTenders` 순수함수 추출.

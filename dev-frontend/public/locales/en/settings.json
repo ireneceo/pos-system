@@ -1009,7 +1009,9 @@
     "membershipDisplayEntry": {
       "title": "Customer Display — Membership Entry",
       "description": "Show a phone-number keypad on the customer-facing screen (Customer Display) so guests can enter their phone for points / membership."
-    }
+    },
+    "acceptedEwallets": "Accepted e-wallets",
+    "acceptedEwalletsHint": "Select the e-wallets you accept. Pick one and it is tagged automatically at payment; pick two or more and the cashier chooses at checkout. Used to report Touch 'n Go separately for mall sales."
   },
   "printer.emergency.workstationReceiptPrinter": "this workstation’s receipt printer",
   "printer.emergency.destinationHint": "Receipt (bill) printer on workstation “{{ws}}”",

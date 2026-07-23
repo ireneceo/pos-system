@@ -378,7 +378,7 @@ router.post('/:id/payments', authenticateToken, requirePaymentAccess, async (req
       return res.status(400).json({ success: false, message: 'Order is already fully paid' });
     }
 
-    const { amount, payment_method, items_paid, amount_received, change_amount, card_type, transaction_id, cashier_name } = req.body || {};
+    const { amount, payment_method, items_paid, amount_received, change_amount, card_type, ewallet_type, transaction_id, cashier_name } = req.body || {};
     const parsedAmount = parseFloat(amount);
     if (!parsedAmount || parsedAmount <= 0) {
       return res.status(400).json({ success: false, message: 'amount must be > 0' });
@@ -404,6 +404,7 @@ router.post('/:id/payments', authenticateToken, requirePaymentAccess, async (req
       amount: parsedAmount,
       payment_method,
       card_type: card_type || null,
+      ewallet_type: ewallet_type || null,
       transaction_id: transaction_id || null,
       items_paid: items_paid || null,
       amount_received: amount_received != null ? parseFloat(amount_received) : null,

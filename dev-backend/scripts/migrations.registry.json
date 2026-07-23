@@ -51,6 +51,7 @@
     "migrate-print-device-status.js"
   ],
   "manual": {
+    "migrate-backfill-ewallet-grabpay.js": "일회성 — 기존 이월렛 주문(payment_method='ewallet', ewallet_type NULL)을 모두 'grabpay' 로 백필(Irene 지시 2026-07-23). migrate-add-ewallet-type 선행 필요. 매 배포 재실행 금지(신규 NULL 을 grabpay 로 덮음). 운영은 컬럼 배포 후 1회 수동 실행. dev 는 2026-07-23 적용됨.",
     "migrate-encryption-key-rotation.js": "일회성 — ENCRYPTION_KEY 기본키→강한키 회전 시 기존 AES 암호화행(notification_settings.smtp_password, restaurant_sales_integrations.password_enc) 재암호화. go-live(운영 몰 실자격증명 저장) 직전 .env 키 기록 후 1회 실행+즉시 pm2 restart. 매 배포 재실행 금지(이미 새키 행을 손상). (2026-07-23 Fable)",
     "migrate-staff-payment-void-perms.js": "의도적 제외 — 매 배포 재실행 시 access_pos 직원 전원에게 결제·취소 권한을 재부여해, 매장이 의도적으로 끈 권한(예: 서버 역할)을 도로 켠다. 최초 1회 백필 운영 적용됨. 직원 권한 단일소스=직원관리 UI. (2026-06-24 결정)",
     "migrate-images.js": "일회성 — 초기 이미지 마이그레이션(과거 적용). 배포 루프 미포함.",
