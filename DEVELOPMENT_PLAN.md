@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-22 (**루아 윈도우 데스크탑앱 테스트 수정 4건 — 운영 배포**. 매장 윈도우 앱(0.1.9) 테스트에서 나온 4건을 4병렬 조사로 근본원인 실측 후 처리. **#2 Floor Plan 예약 테이블 레이아웃 깨짐**: 고정 70×70 원에 `"Reserved 05:30 pm"` 긴 문자열이 줄바꿈→overflow(nowrap/말줄임 없음) → 노드 안엔 시간만(reservedTimeLabel 신설) + SeatsLabel/StatusInfo nowrap+ellipsis+max-width(모든 넘침 방지). **#3 프린터 실패배너 재등장+상단nav 가림**: Dismiss가 기억 안 함+5초 폴러 재발화 + top:0 전체폭 오버레이 → 실패 key별 Dismiss 쿨다운(10분) + 하단 중앙 토스트 재배치. **인쇄 파이프라인 무접촉**(배너=display-only, 8보호파일 아님·dispatch부 무수정, print-guard 8/8). **#4 예약 상태 미동기화(Seated 안 됨)**: FloorPlan "Check in (New Order)"가 예약 전환 안 함 + 백엔드는 arrived만 seat(confirmed 제외=워크인 오링크 방지 의도적 안전장치) → 체크인 시 프론트가 confirmed→arrived PATCH(Reservations "Arrived" 경로와 동일) → **백엔드 기존 흐름이 주문생성 시 arrived→seated+order.reservation_id 링크**(주문생성=Fable 영역 무접촉) + Reservations focus/visibility 재조회. **#1 exe 다운로드 SmartScreen 경고**: 코드 문제 아님 — 미서명 설치파일(무평판)이 근본. 유일 해법=코드서명 인증서 구매(Azure Trusted Signing 등) → **Irene 결정 항목, 코드 무변경**. 검증: verify-all --full **14/14**(mount 8역할 크래시0)·이슈4 API E2E 11/11·print-guard 8/8·sensitive-diff Fable 비대상. 운영 배포 Backup 20260722_121601·Smoke 9/9·마이그 47/47·스키마 동일 153테이블. 상세=아래 ✅ 섹션 + session-state.)
+> **최종 업데이트:** 2026-07-23 (**IOI Mall 매출보고 연동 + 이월렛 서브타입 캡처 — dev 완료·미배포**. IOI Mall(임대인, Tangent SalesHourly API)에 The Fire(rid=16) 시간별 매출 자동보고. 기능은 이미 개발돼 있었고 인증(staging 자격증명 50100025)을 우리 코드로 토큰발급→24레코드 전송 `status:success` 실증. **스펙 대조로 버그2건 수정**: ①tender가 SST 포함(gto 불일치) → SST 전 환산(분모=paySum, tender합=gto) ②HTTP 200 status:error를 성공기록 → fail-closed. **이월렛 서브타입 캡처 신규 개발**: POS 이월렛이 단일 'ewallet'라 몰 tng 못 채움 → 전용컬럼 ewallet_type(카드 card_type 대칭), 설정 acceptedTypes 다중선택(1개=자동태깅·2개↑=선택강제·0개=기존동작), 전 POS 결제경로 배선(POSTerminal·FloorPlan·LiveOrders·split), addToBucket tng 매핑. **실UI 검증에서 POS Terminal TDZ 크래시 발견·수정**(빌드·TS 통과했으나 런타임). 기존 이월렛→grabpay 백필(dev 241건). **rid=16 config 운영 저장(enabled=false)+시스템 인증 검증**. ENCRYPTION_KEY 회전 마이그 준비(go-live 직전). 검증: verify-all --full mount sweep 8역할+POS **크래시0(662.8s)**·인쇄 라우트가드 34/34·실API 왕복 5/5·계약 14/14·health 139/140(유일실패=print-guard 의도). **Fable 2차 재검증 CONDITIONAL GO**(절단면 결함0, 조건=orders-crud 별건 인쇄변경 Irene승인+bless·backfill 순서). ★Fable 게이트 대상. 상세=아래 ✅ 섹션 + session-state.)
+>
+> **이전:** 2026-07-22 (**루아 윈도우 데스크탑앱 테스트 수정 4건 — 운영 배포**. 매장 윈도우 앱(0.1.9) 테스트에서 나온 4건을 4병렬 조사로 근본원인 실측 후 처리. **#2 Floor Plan 예약 테이블 레이아웃 깨짐**: 고정 70×70 원에 `"Reserved 05:30 pm"` 긴 문자열이 줄바꿈→overflow(nowrap/말줄임 없음) → 노드 안엔 시간만(reservedTimeLabel 신설) + SeatsLabel/StatusInfo nowrap+ellipsis+max-width(모든 넘침 방지). **#3 프린터 실패배너 재등장+상단nav 가림**: Dismiss가 기억 안 함+5초 폴러 재발화 + top:0 전체폭 오버레이 → 실패 key별 Dismiss 쿨다운(10분) + 하단 중앙 토스트 재배치. **인쇄 파이프라인 무접촉**(배너=display-only, 8보호파일 아님·dispatch부 무수정, print-guard 8/8). **#4 예약 상태 미동기화(Seated 안 됨)**: FloorPlan "Check in (New Order)"가 예약 전환 안 함 + 백엔드는 arrived만 seat(confirmed 제외=워크인 오링크 방지 의도적 안전장치) → 체크인 시 프론트가 confirmed→arrived PATCH(Reservations "Arrived" 경로와 동일) → **백엔드 기존 흐름이 주문생성 시 arrived→seated+order.reservation_id 링크**(주문생성=Fable 영역 무접촉) + Reservations focus/visibility 재조회. **#1 exe 다운로드 SmartScreen 경고**: 코드 문제 아님 — 미서명 설치파일(무평판)이 근본. 유일 해법=코드서명 인증서 구매(Azure Trusted Signing 등) → **Irene 결정 항목, 코드 무변경**. 검증: verify-all --full **14/14**(mount 8역할 크래시0)·이슈4 API E2E 11/11·print-guard 8/8·sensitive-diff Fable 비대상. 운영 배포 Backup 20260722_121601·Smoke 9/9·마이그 47/47·스키마 동일 153테이블. 상세=아래 ✅ 섹션 + session-state.)
 >
 > **이전:** 2026-07-16 (**v3.69 운영 배포 — 인쇄 자가진단 & 원격 지원 시스템**. 매장 버튼1개(설정>프린터 "전체 점검")로 전 디바이스×인쇄방식 진단(원인+가이드+안전복구 버튼+테스트인쇄 2종) + 자동인쇄 실패 시 화면 상단 배너 첫 노출(App.tsx 마운트=UX변화) + 관리자 원격뷰(Admin>Print Health, SA — 미인쇄·담당기기 생존·앱버전). **조립 우선 설계**(runQZDiagnostic·브릿지 diagnostics·preview·복구API·print_events 등 기존 측정기 재사용), 신규는 ①기기→서버 스냅샷 채널(print_device_status upsert 1테이블) ②폴러 생존 관측 미들웨어(orders-crud 무접촉) 둘뿐. 설계대조 후 3건 보강(실패배너 딥링크 죽은경로 교정·S4 unprinted_now·D7 bt_permission). **Fable 게이트 CONDITIONAL GO→보안결함 1건 수정→GO**: device-report가 restaurant_id 미보유 계정의 body.restaurant_id 무검증 신뢰(BG→타매장 위조행 주입·fleet오염) → 토큰스코프로만 확정. 🔒 **인쇄 보호파일 8/8 무접촉**(MainLayout 사이드바 1줄·재-bless). 검증: API 19/19·S4 fault-injection·크로스테넌트 403·verify-all --full 14/14·print-guard 8/8. Backup 20260716_124948·Smoke 9/9·운영 테이블 15컬럼·신규라우트 401. **남음**: D8 테스트 인쇄 실프린터 종이 확인 1회(매장). 상세=session-state.)
 >
@@ -72,6 +74,46 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: IOI Mall 매출보고 + 이월렛 서브타입 캡처 (2026-07-23, dev 완료·미배포)
+
+> IOI Mall(임대인/몰 운영사, Tangent SalesHourly) 매출보고 연동. 대상 매장 = The Fire @ IOI Mall Damansara(운영 rid=16 — rid=5는 is_test 테스트매장, 정정). 몰이 물은 "인증되냐" = **된다**(staging 실증). 단일 진실 = `docs/MALL_SALES_API_INTEGRATION.md`.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 인증·전송 실증 | 몰 staging 자격증명(50100025)으로 우리 코드 토큰발급→24레코드+실매출 전송 `status:success` | ✅ |
+| 버그1: tender SST 포함 | 스펙상 tender=gto 기준 → SST 전 환산(분모 paySum, tender합==gto 대수보장) | ✅ |
+| 버그2: status:error를 성공기록 | HTTP 200 거절 감지, status!=='success'면 throw(fail-closed) | ✅ |
+| 이월렛 서브타입 캡처 | 전용컬럼 ewallet_type(카드 대칭), 설정 acceptedTypes(1개=자동/2개↑=선택/0개=기존), addToBucket tng 매핑 | ✅ |
+| 전 POS 경로 배선 | POSTerminal·FloorPlan(온·오프라인)·LiveOrders(온·오프라인)·split — card_type 8경로 1:1 패리티 | ✅ |
+| TDZ 크래시 수정 | auto-tag useEffect 가 뒤 선언 참조 → POS Terminal 런타임 크래시(실UI서 발견) → 선언 이동 | ✅ |
+| grabpay 백필 | 기존 이월렛(NULL)→grabpay, dev 241건. 운영은 컬럼배포 후 마이그 1회 | ✅ |
+| rid=16 config 운영 저장 | restaurant_sales_integrations id=1(staging·enabled=false·gst=Y), 시스템 경유 인증 검증 | ✅ |
+| ENCRYPTION_KEY 회전 준비 | 기본키→강한키 재암호화 마이그(go-live 직전, manual) | ✅ |
+
+### 검증
+- verify-all --full: 실브라우저 mount sweep 8역할+POS **크래시0(662.8s)** · state-hydration 0 · 인쇄 라우트가드 34/34 · i18n · health 139/140(유일실패=print-guard 지문, 의도)
+- 실 API HTTP 왕복 5/5(주문생성 tng / 후불정산 PATCH grabpay / 설정 PUT acceptedTypes / 몰집계 tng=100)
+- 계약테스트 `mall-sales.test.js` **14/14** · 실브라우저 UI/UX 3시나리오(0/1/2개)
+- **Fable 2차 재검증 CONDITIONAL GO**(A~E 결함0, 조건=배포절차) · check-sensitive-diff ★Fable 대상(①보호영역 ②결제무결성 ③DB마이그)
+
+### 수정된 파일
+- 백엔드: `services/mallSalesService.js` · `routes/orders-payment.js` · `models/{Order,OrderPayment}.js` · `scripts/migrate-add-ewallet-type.js`·`migrate-backfill-ewallet-grabpay.js`·`migrate-encryption-key-rotation.js` · `tests/mall-sales.test.js` · `migrations.registry.json`
+- 프론트: `components/POSTerminal/PaymentModal.tsx` · `pages/Settings/SettingsPage.tsx` · `pages/FloorPlan/FloorPlanPage.tsx` · `pages/LiveOrders/LiveOrdersPage.tsx` · `contexts/OrderContext.tsx` · 🔒`pages/POSTerminal/POSTerminalPage.tsx`(결제 plumbing 4줄) · locales 4언어 settings.json
+- 문서: `docs/MALL_SALES_API_INTEGRATION.md`
+
+### 배포 전 (Fable CONDITIONAL GO 조건)
+1. **orders-crud 별건(pending-print 24h 신선도 경계)에 Irene 명시 승인** — 이월렛 게이트가 대신 승인 불가(인쇄 절대규칙). 성격상 티켓 포맷·방식 무변경+계약테스트 박제라 종이 재확인 없이 회귀게이트 갈음 가능(최종 Irene 결정)
+2. 승인 후 `check-print-guard.js --bless`(POSTerminalPage+orders-crud) → 배포
+3. 운영: migrate-add-ewallet-type(deploy 자동) → 컬럼확인 후 backfill manual 1회 → rid=16 acceptedTypes 지정
+- **이월렛 자체 실프린터 확인 불요**(billPrint/폴러 diff 0, 인쇄 무변경)
+
+### 후속 (비차단)
+- PaymentModal isOpen 전환 시 cardType/ewalletType 리셋(주문 간 잔존 — 카드도 동일 기존 패턴) · split 오프라인 op card_type/ewallet_type 미포함(기존 갭) · 모바일 이월렛 서브타입
+
+---
 
 ## ✅ 완료: 루아 윈도우 데스크탑앱 테스트 수정 4건 (2026-07-22, 운영 배포)
 
