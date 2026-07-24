@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-24 (**v3.70 운영 배포 완료** — Backup 20260724_131217 · 안전게이트 9/9 · 마이그 49/49 · Smoke 9/9 · 스키마 153테이블. Irene 인쇄 변경 명시 승인 → print-guard bless → 배포. **운영 실업무 검증 44/44 PASS**(데모매장 rid=13, 실고객 매장 무접촉, 생성데이터 FK 완전삭제): 주문생성→주방인쇄→큐소멸(정확히 1번)→+Round 재등장(새 품목만) / ★25h 열린 테이블 +Round 큐 포함(배포 전이면 무음유실) / 구 데이터(스탬프 NULL)는 7/23 동작 그대로 / ★재시도 경로(claim·re-arm) 무스탬프 = 옛 행 부활 0 / 단계이동 4단계 / 테이블이동·void·주문취소 재발행 예약 + 오래된 주문 취소표 경계면제 유지 / 결제 이월렛 2경로(orders.ewallet_type=tng · order_payments.ewallet_type=grabpay)+카드 대칭+현금 금액정합. 남은 것 = 실프린터 종이 1회 확인(Irene) + rid=16 acceptedTypes 지정. 배포 내역 상세 ↓.
+> **최종 업데이트:** 2026-07-24 (**운영 배포 3회 완료, 버전 v3.70 유지** — ①13:26 인쇄 신선도+이월렛/몰(Backup 131217, 검증44/44) ②16:33 카드·이월렛 서브타입 설정 통일(Backup 163333, 검증15/15, Fable GO) ③19:38 모바일 이월렛 서브타입 갭(Backup 193808, 검증9/9, Fable GO). **카드·이월렛 통일**: 두 결제수단이 각자 자란 것을 하나로 — `acceptedTypes[]`+`requireType`, 0개=카드기본목록/이월렛UI없음·1개=자동태깅·2개↑=선택, 단일소스 `resolvePaymentSubtype`. 운영 44매장 판정 대조 차이0. **모바일 갭**: 실측 rid=16 이월렛 86%가 모바일인데 `dev/mobile` 서브타입 참조0 → 몰 TNG 보고 새던 것 수정(공용 헬퍼로 자동태깅/손님선택, 오프라인 분할결제 op 서브타입 보존). 🔴 실브라우저가 내 bare `useEffect` 크래시 적발(빌드·TS 통과·모바일 결제화면 백지)→`React.useEffect` 수정. **rid=16 acceptedTypes=['tng'] 설정**(POS 자동태깅 실효). **모바일은 보류**: ewallet qrImage EMPTY로 손님 결제불가 → availableIn `['pos']` 로 되돌림, 매장 TNG QR 확보 시 재오픈. 상세=session-state + ✅ 섹션. 
+>
+> **이전:** 2026-07-24 (**v3.70 운영 배포 완료** — Backup 20260724_131217 · 안전게이트 9/9 · 마이그 49/49 · Smoke 9/9 · 스키마 153테이블. Irene 인쇄 변경 명시 승인 → print-guard bless → 배포. **운영 실업무 검증 44/44 PASS**(데모매장 rid=13, 실고객 매장 무접촉, 생성데이터 FK 완전삭제): 주문생성→주방인쇄→큐소멸(정확히 1번)→+Round 재등장(새 품목만) / ★25h 열린 테이블 +Round 큐 포함(배포 전이면 무음유실) / 구 데이터(스탬프 NULL)는 7/23 동작 그대로 / ★재시도 경로(claim·re-arm) 무스탬프 = 옛 행 부활 0 / 단계이동 4단계 / 테이블이동·void·주문취소 재발행 예약 + 오래된 주문 취소표 경계면제 유지 / 결제 이월렛 2경로(orders.ewallet_type=tng · order_payments.ewallet_type=grabpay)+카드 대칭+현금 금액정합. 남은 것 = 실프린터 종이 1회 확인(Irene) + rid=16 acceptedTypes 지정. 배포 내역 상세 ↓.
 >
 > **이전:** 2026-07-24 dev (**배포 전 Fable 전수 검증 + 🔒 인쇄 신선도 근본수정**. Irene "배포 전에 fable이 기존 운영 기능들 문제없나 체크해. 주문관리부터 모두 다" → 운영 델타 25파일 기준 **Fable 5트랙 병렬 회귀검증**(주문코어/결제/인쇄/DB마이그/전역) → **델타가 만든 신규 회귀 0건**, 단 인쇄 트랙이 **엣지 1건 실증**: 2026-07-23 도입한 pending-print 24h 신선도 경계가 주문 `createdAt` 기준이라 **24h 넘게 열린 테이블에 +Round 하면 그 라운드 주방티켓이 무음 유실**. Irene "철저히 고쳐. 제대로 고쳐" 지시로 근본수정 — 판정 대상은 "주문이 태어난 시각"이 아니라 **"인쇄 필요가 발생한 시각"**이므로 신규 컬럼 `orders.print_needed_at` + 창 판정 `COALESCE(print_needed_at, createdAt)`. 기존 행 NULL=createdAt 폴백이라 **배포 즉시 동작 변화 0**, 백필 안 하는 것이 설계(마이그↔코드 배포 갭 봉인). 스탬프 7곳(mergeItemsIntoOrder 가 add-items·merge-items·생성머지·자동머지·테이블머지 5호출부 전부 커버) / **⛔ 무스탬프 5곳**(죽은-claim 복구·rearm·claim·dismiss·printed — 스탬프하면 인쇄고장 매장의 claim↔re-arm 핑퐁이 옛 행을 영구 신선화해 누적 방어 붕괴). 기각안: updatedAt(결제가 옛 행 부활)·order_items 서브쿼리(TEXT 컬럼이라 불가+고빈도 경로)·pending_reprint 경로(인쇄 라우팅 변경=승인조건 위반). **반증 실증**: 동일 행에서 구 판정식 제외(=버그)/신 판정식 포함/실 API 포함+새 품목만. 회귀테스트 2건 신설(140→142). **Fable 적대검증 GO**(스탬프 전수 7/7·무스탬프 6엔드포인트 실호출·인쇄고장 시뮬 3사이클 부활 0·생성SQL 육안·오프라인 재생 3방향·취소표 계약 유지·EXPLAIN 동일). health 141/142·라우트가드 34/34 — 실패 전건이 print-guard 지문(bless 대기). **grabpay 백필은 Irene 위임 → Fable 판정으로 미실행 확정**(NULL≡grabpay 로 출력 무변화·몰 7일창 소급없음·97% 타매장 오태깅·재실행 footgun) → dev 원복. ★Fable 게이트 대상. 상세=아래 ✅ 섹션 + session-state.)
 >
@@ -78,6 +80,33 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 카드·이월렛 서브타입 통일 + 모바일 갭 수정 (2026-07-24, 운영 배포 2·3차, v3.70 유지)
+
+> Irene "Require card type처럼 이월렛도 필수 표시하고, 카드도 이월렛처럼 항목 선택하게 해야 하는 거 아니냐. 왜 다르게 해?" → 이후 "POS/플로어플랜/모바일오더 다 제대로 적용돼?" → 실측으로 모바일 갭 발견·수정.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 카드·이월렛 설정 통일 | 각자 자란 두 모델을 하나로: `acceptedTypes[]`+`requireType`. 0개=카드 기본목록/이월렛 UI없음·1개=자동태깅·2개↑=선택. 단일소스 `constants/resolvePaymentSubtype` | ✅ 배포(2차) |
+| 카드 취급종류 선택 | 하드코딩 5종 → 매장이 취급 카드 지정(미지정=기존 5종). 1종이면 자동태깅 | ✅ |
+| 이월렛 필수 토글 | 카드 `requireCardType`과 대칭. 기본 true(도입 전 동작 유지) | ✅ |
+| 하위호환 | 구 키 `requireCardType` 폴백+동시기록. 운영 44매장 판정 대조 **차이 0** = 동작 변화 0 | ✅ |
+| 모바일 이월렛 갭 수정 | rid=16 이월렛 86%가 모바일인데 `dev/mobile` 서브타입 참조 0 → 공용 헬퍼로 자동태깅/손님선택. payload에 `ewallet_type` | ✅ 배포(3차) |
+| 오프라인 분할결제 갭 | op에 `card_type`/`ewallet_type` 추가(온라인분할·오프라인전액은 이미 있었음) | ✅ |
+| 🔴 실브라우저 크래시 적발 | bare `useEffect`(빌드·TS 통과했으나 모바일 결제화면 진입 즉시 백지) → `React.useEffect` 수정 | ✅ |
+| rid=16 tng 설정 | `acceptedTypes=['tng']`(POS 자동태깅 실효). 모바일은 qrImage EMPTY로 보류 → `availableIn=['pos']` 되돌림 | ⏸ QR 대기 |
+
+### 검증
+- Fable 게이트 **GO ×2**(설정통일·모바일갭 각각, 최종본 델타 재확인까지) · verify-all --full 14/14 · dev 실호출 13/13+13/13 · 실브라우저 9/9(Fable 독립 18/18) · 운영검증 15/15+rid16 12/12 · 🔒 인쇄 보호파일 8/8 무접촉 · DB 마이그레이션 없음
+
+### 수정된 파일
+- `dev-frontend/src/constants/index.ts`(신규 `CARD_TYPE_OPTIONS`/`EWALLET_TYPE_OPTIONS`/`resolvePaymentSubtype`)
+- `dev-frontend/src/components/POSTerminal/PaymentModal.tsx` · `src/pages/Settings/SettingsPage.tsx` · `src/mobile/pages/PaymentPage.tsx`
+- `dev-backend/models/Restaurant.js`(payment_settings 기본값) · locales `{en,ko,zh,ms}/settings.json`·`common.json`
+
+---
 
 ## ✅ 완료: IOI Mall 매출보고 + 이월렛 서브타입 캡처 (2026-07-23, dev 완료·미배포)
 

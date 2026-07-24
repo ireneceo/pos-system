@@ -1,9 +1,9 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-07-24 (**운영 배포 2회 완료, 버전 v3.70 유지** — ①인쇄 신선도 근본수정+이월렛 서브타입/몰 매출보고 ②카드·이월렛 서브타입 설정 통일. 둘 다 Fable GO + 운영 실검증)
+**마지막 업데이트:** 2026-07-24 (**운영 배포 3회 완료, 버전 v3.70 유지** — ①인쇄 신선도 근본수정+이월렛 서브타입/몰 매출보고 ②카드·이월렛 서브타입 설정 통일. 둘 다 Fable GO + 운영 실검증)
 **버전:** **v3.70** (운영 — 2026-07-24. 2회차 배포는 **버전 미상승 = Irene 결정**, 릴리즈 노트·블로그·공지 생략) · 데스크탑앱 0.1.9 · 안드로이드앱 0.2.0
-**작업 상태:** **운영 배포 2회 완료** — 1차(13:26 UTC, Backup 20260724_131217, 실업무검증 44/44) + 2차(16:33 UTC, Backup 20260724_163333, 운영검증 15/15) — 둘 다 v3.70. 남은 것 = 실프린터 종이 1회 확인(Irene) + rid=16 acceptedTypes 지정
+**작업 상태:** **운영 배포 3회 완료** — 1차(13:26 Backup 131217, 검증44/44) + 2차(16:33 Backup 163333, 검증15/15) + 3차(19:38 Backup 193808, 모바일 이월렛 갭, 검증9/9) — 모두 v3.70. 남은 것 = 실프린터 종이 1회 확인(Irene) + rid=16 모바일 이월렛 QR 업로드 후 재오픈(현재 POS만)
 
 ### 진행 중인 작업
 - 없음
@@ -28,7 +28,7 @@
   - Fable [중] "구현자 스크립트 재현 불가"는 **scratchpad 사본이 수정 전 버전**이라 생긴 것(실행본은 `/var/www/dev-frontend`에서 언랩 수정 후 12/12 통과 뒤 삭제). Fable이 언랩 고쳐 21/21로 독립 재검증 → 결론 동일
 - 별건 발견(미조치): `formatPaymentDisplay`가 이월렛 서브타입 미반영(카드만 "Card(Visa)") — 빌 인쇄 내용 포함이라 별도 승인 필요
 
-### 완료(dev) — 미배포: 모바일 이월렛 서브타입 갭 수정 (2026-07-24)
+### ✅ 운영 배포 완료: 모바일 이월렛 서브타입 갭 수정 (2026-07-24, 3차 Backup 20260724_193808)
 > Irene "포스터미널·플로어플랜·모바일오더에서 주문 들어올 때 다 제대로 적용돼?" → 실측 결과 **모바일만 미적용**.
 
 - **실측 근거**: 운영 90일 rid=16(몰 보고 대상) 이월렛 **모바일 64건 / POS 10건 = 86%가 모바일**인데 `dev-frontend/src/mobile` 전체에서 `card_type/ewallet_type` 참조 **0건** → TNG 지정해도 몰 보고에 POS분 10건만 잡히던 상태
@@ -39,7 +39,9 @@
 - 🔒 **`orders-crud.js` 무접촉** — 모바일이 `/api/orders`(보호파일)로 생성하지만 백엔드 대신 프론트가 값을 채워 보내는 방식 선택
 - 🔴 **실브라우저가 잡은 내 결함**: bare `useEffect` 사용 → 이 파일은 `useState`만 import하고 훅을 `React.*`로 쓰는 관례 → **빌드·TS 통과했으나 모바일 결제화면 진입 즉시 `ReferenceError` 백지**(배포됐으면 매장 모바일 주문 결제 전면 차단). `React.useEffect`로 수정·재빌드·재검증. v3.37 TDZ와 같은 계열 = 정적검사로 못 잡음
 - **검증**: dev 실호출 **13/13**(1개 자동태깅 저장/2개 손님선택 저장/미지정 NULL/몰 집계가 `orders.ewallet_type` 읽음) · 모바일 실브라우저 **9/9**(3시나리오 크래시0) · verify-all --full **14/14**(마운트 8역할 크래시0 663.8s, 🔒인쇄 보호파일 8/8 무접촉)
-- ★ **Fable 게이트 대상**(②돈·주문 ③모델) — 재검증 요청 완료, 판정 대기
+- ★ **Fable 게이트 GO** (모바일 갭 델타 독립 재검증 18/18): ewallet_type 생존체인 끝까지 실호출(생성·분할·오프라인재생·retry)·bare훅 전수스윕 재발0·미지정 매장 흐름 완전동일·🔒 orders-crud 무접촉. 지적 조치: 디버그 잔재 2파일 삭제, "선언밖 변경 nav.rentManagement"는 오탐(기존 평면키에 쉼표만)
+- **운영 배포(3차)**: Backup `20260724_193808` · 마이그 49/49 · Smoke 9/9 · 신 모바일 청크 서빙 200
+- **rid=16 tng 설정 + 검증 12/12**: `acceptedTypes=['tng']` 저장(POS 자동태깅 실효) · 데모매장 동일설정 end-to-end(모바일 ewallet 주문→ewallet_type=tng→몰집계 읽음)·잔여0. **모바일 보류**: qrImage EMPTY로 손님 결제불가 → `availableIn=['pos']` 되돌림
 
 ### 완료된 작업 (이번 세션 — 2026-07-24)
 - **Fable 5트랙 배포 전 전수 회귀검증** (운영 델타 25파일 기준): 주문코어 **GO** / 결제·인쇄·DB마이그·전역 CONDITIONAL GO → **델타가 만든 신규 회귀 0건**. `acceptedTypes` 0개 = 기존 동작 100% 동일 실증, 대시보드/캐시업은 ewallet_type 미참조(합계 불변), 프린터설정 wipe 자물쇠 3개 실쓰기 생존 증명, mount 8역할 크래시0(664s), 7역할 유저흐름 통과
@@ -51,14 +53,16 @@
 - 문서: `docs/PRINT_RULES_MATRIX.md` 🔒 pending-print 창 신선도 규칙 신설 · 메모리 [[reference_pending_print_window]] 갱신
 
 ### 다음 확정 작업
-- 없음 — 지시 대기 (배포는 아래 조건 충족 + Irene /배포)
+- **rid=16(The Fire @ IOI Mall) 모바일 이월렛 QR 업로드 후 재오픈** — 배포된 모바일 이월렛 서브타입 코드는 완성됐고 rid=16 `acceptedTypes=['tng']`도 설정됨(POS 이월렛은 이미 자동 태깅 실효). **모바일은 보류**: ewallet `qrImage`가 비어(EMPTY) 손님이 스캔할 QR이 없어 결제 불가('Loading...'만 표시) → 안전을 위해 `availableIn`을 `['pos']`로 되돌려 둠. **매장 TNG QR 이미지 확보 시**: 설정>결제수단에 업로드(또는 이미지 받아 직접 반영) + `availableIn`에 `'mobile'` 추가 한 줄 → 모바일 TNG도 몰 보고에 자동 태깅. 참고: rid=16 6월 모바일 이월렛 36건 RM2,971(적지 않음, 6/30 이후 중단 = QR 부재 추정)
+- 없음(그 외) — 지시 대기 (배포는 아래 조건 충족 + Irene /배포)
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
-- **IOI Mall 가동**: 배포 후 rid=16 acceptedTypes 지정 → 몰 운영 자격증명 수령 시 production 전환·enabled=true · 임대인 회신(인증 검증완료+샘플+운영 machine ID 요청)
-- **`GET /api/restaurants` 과다노출**(Fable 트랙5 발견, 델타 무관 기존 동작): Staff 토큰에도 전 매장 33곳 + 관리자 email/phone 반환 — 별도 이슈로 검토
-- 이월렛 비차단 후속: PaymentModal isOpen 리셋(주문간 잔존, 구 card_type 동일 패턴) · split 오프라인 op card_type/ewallet_type 미포함(기존 갭) · 모바일 이월렛 서브타입
+- **IOI Mall 가동**: rid=16 `acceptedTypes=['tng']` 지정 완료(POS 태깅 실효) → 몰 운영 자격증명 수령 시 production 전환·enabled=true · 임대인 회신(인증 검증완료+샘플+운영 machine ID 요청). ⏸ 모바일 TNG는 rid=16 QR 업로드 후 재오픈(위 다음 확정 작업)
+- **`GET /api/restaurants` 과다노출**(Fable 발견, 이번 델타 무관 기존 동작): Supplier·Staff 토큰에도 `payment_settings`(게이트웨이 비밀키 필드)·`printer_settings`·전 매장 목록 반환 — 운영 실노출값=with MIN 은행계좌+프린터설정(비밀키 현재 미설정). 별도 이슈로 검토
+- `formatPaymentDisplay` 이월렛 서브타입 미반영(카드만 "Card(Visa)") — 빌 인쇄 내용 포함이라 인쇄 별건 승인 필요 / `DailySettlementPrint.tsx` 카드 라벨맵 중복(단일소스 미적용, 인쇄물)
+- 이월렛 비차단 후속(기존): PaymentModal isOpen 리셋(주문간 잔존) · `table_number` 10자 초과 시 raw DB에러 노출(사용자 메시지로 교체)
 - 프론트 백로그 컷오프도 `print_needed_at ?? createdAt` 로 정렬(🔒 폴러 보호파일 — 별건 승인 필요)
 - ENCRYPTION_KEY 강화(go-live 직전, 재실행 금지) · 개발서버 sudoers Irene visudo -c · 인쇄 자가진단 D8 실프린터 · 안드로이드 실기기 폴러 · 소켓 인증 하드닝 · 매출 대조 마감 · exe 코드서명 인증서(Irene 결정)
 
