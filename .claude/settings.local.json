@@ -1409,7 +1409,10 @@
       "Bash(node scripts/migrate-encryption-key-rotation.js)",
       "Bash(echo \"REAL_EXIT=$?\")",
       "Bash(awk '{print $3\":\"$4}')",
-      "Bash(awk 'NR>=2330 && NR<=2345' /var/www/dev-backend/routes/orders-crud.js)"
+      "Bash(awk 'NR>=2330 && NR<=2345' /var/www/dev-backend/routes/orders-crud.js)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/7c09181f-b63b-4cbf-bd96-b3de95e965b1/scratchpad/prod-verify.js irene@87.106.78.146:/tmp/prod-verify.js22)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/7c09181f-b63b-4cbf-bd96-b3de95e965b1/scratchpad/prod-verify2.js irene@87.106.78.146:/tmp/prod-verify2.js)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/7c09181f-b63b-4cbf-bd96-b3de95e965b1/scratchpad/prod-verify3.js irene@87.106.78.146:/tmp/prod-verify3.js)"
     ],
     "deny": [],
     "ask": []

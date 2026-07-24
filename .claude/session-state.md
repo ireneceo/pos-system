@@ -1,9 +1,9 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-07-24 (배포 전 Fable 전수검증 + 🔒 인쇄 신선도 근본수정 — dev 완료·미배포)
-**버전:** **v3.69** (운영 — 2026-07-16 배포. 버전은 /배포 시에만 갱신) · 데스크탑앱 0.1.9 · 안드로이드앱 0.2.0
-**작업 상태:** **완료(dev) — 배포 대기(Irene 인쇄 승인 + bless 후 /배포)**
+**마지막 업데이트:** 2026-07-24 (**v3.70 운영 배포 완료** — Fable 전수검증 + 🔒 인쇄 신선도 근본수정 + 이월렛 서브타입/몰 매출보고. 운영 실업무검증 44/44)
+**버전:** **v3.70** (운영 — 2026-07-24 배포. 버전은 /배포 시에만 갱신) · 데스크탑앱 0.1.9 · 안드로이드앱 0.2.0
+**작업 상태:** **운영 배포 완료 (2026-07-24 13:26 UTC)** — Backup 20260724_131217 · Smoke 9/9 · 마이그 49/49 · 스키마 153테이블 · 운영 실업무검증 **44/44 PASS**. 남은 것 = 실프린터 종이 1회 확인(Irene) + rid=16 acceptedTypes 지정
 
 ### 진행 중인 작업
 - 없음
@@ -33,11 +33,18 @@
 
 ## 🔵 배포 전 필수 순서 (Fable 조건)
 
-1. **Irene 인쇄 변경 명시 승인** — ①pending-print 24h 신선도 경계(7/23) ②신선도 기준 교정 print_needed_at(7/24). 티켓 포맷·발송방식·라우팅 무변경 + 계약테스트 4건 박제
-2. 승인 후 `cd /var/www/dev-backend && node scripts/check-print-guard.js --bless` (orders-crud.js + POSTerminalPage.tsx — 후자는 7/23 별건 ewallet 결제 plumbing 3줄, 인쇄 블록 무관)
-3. **Irene `/배포`** → 마이그 `migrate-add-ewallet-type` + `migrate-print-needed-at` 자동 실행(둘 다 registry `deploy`, 멱등)
-4. 배포 후: 운영 `SHOW COLUMNS` 로 컬럼 2개 확인 + 주문 생성/조회 1회 + **신규 주문 오더티켓 1장 실프린터 눈 확인**(Irene — 코드로 종이는 못 봄)
-5. rid=16 `payment_settings.ewallet.acceptedTypes` 지정(몰 tng 분리)
+1. ✅ **Irene 인쇄 변경 명시 승인 완료 (2026-07-24)** — ①pending-print 24h 신선도 경계(7/23) ②신선도 기준 교정 print_needed_at(7/24). 티켓 포맷·발송방식·라우팅 무변경 + 계약테스트 4건 박제. 승인 전 diff 실측 확인: orders-crud +49/-4(스탬프 5블록 + 창 판정 COALESCE), POSTerminalPage 3줄(ewallet 결제 plumbing, 인쇄 블록 무접촉)
+2. ✅ **print-guard bless 완료** — `print-guard.manifest.json` blessed_at 2026-07-24T13:06:36Z (8파일). 이후 verify-all **13/13 전 게이트 통과**(health-check 회귀·인쇄 라우트가드·마이그 레지스트리 미분류 0 포함)
+3. ✅ **운영 배포 완료 (2026-07-24)** — 안전게이트 9/9 · Backup `20260724_131217` · post-build mount sweep · 마이그 49/49(`migrate-add-ewallet-type`·`migrate-print-needed-at` 포함) · Smoke 9/9 · 스냅샷 1787파일
+4. ✅ **운영 컬럼 확인** — `orders.print_needed_at`(datetime NULL) · `orders.ewallet_type`·`order_payments.ewallet_type`(varchar20 NULL)
+5. ✅ **운영 실업무 검증 44/44 PASS** (데모매장 rid=13, is_demo=1 — 실고객 매장 무접촉, 생성데이터 FK 완전삭제·잔여 0)
+   - 주문생성→주방인쇄(/printed)→큐 소멸(정확히 1번)→+Round 재등장, kitchen_items 새 품목만
+   - ★핵심: 25h 열린 테이블 +Round 가 큐에 포함(배포 전이면 무음유실) / 구 데이터(스탬프 NULL)는 7/23 동작 그대로 제외
+   - ★재시도 경로(claim·re-arm) 무스탬프 실증 = 인쇄고장 매장 옛 행 부활 0
+   - 단계이동 4단계 · 테이블이동(pending_reprint=move) · void(=void) · 주문취소(=cancel) + **오래된 주문 취소표 경계 면제 유지**(2026-06-24 계약)
+   - 결제: POS 즉시결제→`orders.ewallet_type=tng` / 후불정산→`order_payments.ewallet_type=grabpay` / 카드 대칭 확인 / 현금 금액정합
+6. ⏳ **Irene 실프린터 종이 1회 확인** — 신규 주문 오더티켓 1장(코드로 종이는 못 봄)
+7. ⏳ rid=16 `payment_settings.ewallet.acceptedTypes` 지정(몰 tng 분리)
 - ⛔ **grabpay 백필은 실행하지 않는다**(미실행 확정) · ⛔ **encryption-key-rotation 도 이번 배포에서 실행 안 함**(go-live 직전 1회 전용, 재실행 시 자격증명 파괴 위험)
 
 ---
