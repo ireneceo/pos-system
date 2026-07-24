@@ -734,5 +734,6 @@
   "offlineLockAuto": "Skrin ini akan dibuka secara automatik apabila sambungan pulih.",
   "offlineLockMakeMain": "Guna peranti ini sebagai POS utama",
   "offlineLockMakeMainHint": "Hanya pada POS kaunter yang disambung ke pencetak anda.",
-  "nav.rentManagement": "Pengurusan Sewa"
+  "nav.rentManagement": "Pengurusan Sewa",
+  "ewalletTypeQuestion": "E-dompet manakah yang anda gunakan untuk membayar?"
 }

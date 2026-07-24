@@ -346,13 +346,20 @@ Restaurant.init({
             enabled: true,
             label: 'Card',
             availableIn: ['pos'],
-            requireCardType: false // 카드 결제 시 카드종류(Visa/Master 등) 선택 필수 여부
+            // 2026-07-24: 카드·이월렛 서브타입 설정 통일. acceptedTypes=매장이 취급하는 종류(빈 배열이면
+            // 결제화면에 기본 목록 표시), requireType=선택 필수 여부. requireCardType 은 구 키(폴백 유지).
+            acceptedTypes: [],
+            requireType: false,
+            requireCardType: false // 구 키 — 기존 매장 설정 호환용
           },
           ewallet: {
             enabled: true,
             label: 'E-Wallet',
             availableIn: ['pos', 'mobile'],
-            qrImage: '' // QR code image for customer scanning
+            qrImage: '', // QR code image for customer scanning
+            // 카드와 동일 규칙. requireType 기본 true = 도입 전 동작("2개 이상 취급이면 선택 필수") 유지.
+            acceptedTypes: [],
+            requireType: true
           },
           bankTransfer: {
             enabled: true,

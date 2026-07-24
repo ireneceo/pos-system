@@ -734,5 +734,6 @@
   "offlineLockAuto": "This screen unlocks automatically when the connection is back.",
   "offlineLockMakeMain": "Use this device as the main POS",
   "offlineLockMakeMainHint": "Only on the counter POS connected to your printer.",
-  "nav.rentManagement": "Rent Management"
+  "nav.rentManagement": "Rent Management",
+  "ewalletTypeQuestion": "Which e-wallet are you paying with?"
 }

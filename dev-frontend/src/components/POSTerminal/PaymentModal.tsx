@@ -10,6 +10,7 @@ import {
 } from '../Common/Modal';
 import styled from 'styled-components';
 import { formatCurrency } from '../../utils/currency';
+import { resolvePaymentSubtype, CARD_TYPE_OPTIONS, EWALLET_TYPE_LABELS } from '../../constants';
 import { useStore } from '../../contexts/StoreContext';
 import { useOffline } from '../../contexts/OfflineContext';
 import { isOfflineMainPos } from '../../utils/offlineMainPos';
@@ -508,12 +509,18 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const [cashAmount, setCashAmount] = useState('');
   const [cardType, setCardType] = useState<string>('');
   const [ewalletType, setEwalletType] = useState<string>('');
-  // 이월렛 서브타입 — 매장이 설정에서 "취급 이월렛"을 지정(acceptedTypes). 몰 매출보고 tng 구분용.
-  //   0개: 캡처 안 함(선택 없음, 기존 동작) / 1개: 자동 태깅(캐셔 선택 불필요) / 2개↑: 캐셔가 선택(필수).
+  // 결제수단 서브타입(카드 종류 / 이월렛 종류) — 카드·이월렛 완전 동일 규칙 (2026-07-24).
+  //   accepted 0개: 카드=기본 목록 표시(회귀 방지) · 이월렛=UI 없음(캡처 안 함)
+  //   accepted 1개: 자동 태깅(캐셔 선택 불필요)
+  //   accepted 2개↑: 캐셔가 선택. requireType 이면 필수(미선택 시 결제 차단), 아니면 건너뛰기 허용
   //   ⚠ 아래 auto-tag useEffect 가 참조하므로 반드시 그 앞에서 선언(TDZ 방지 — 2026-07-23 크래시 교훈).
-  const acceptedEwallets: string[] = ((paymentMethods && paymentMethods.ewallet && Array.isArray(paymentMethods.ewallet.acceptedTypes)) ? paymentMethods.ewallet.acceptedTypes : []).filter(Boolean);
-  const ewalletNeedsChoice = acceptedEwallets.length >= 2;
-  const EWALLET_LABELS: Record<string, string> = { tng: "Touch 'n Go", grabpay: 'GrabPay', boost: 'Boost', shopeepay: 'ShopeePay', duitnow: 'DuitNow', other: 'Other' };
+  const cardCfg = resolvePaymentSubtype('card', paymentMethods as any);
+  const ewalletCfg = resolvePaymentSubtype('ewallet', paymentMethods as any);
+  const acceptedCards: string[] = cardCfg.accepted;
+  const acceptedEwallets: string[] = ewalletCfg.accepted;
+  const ewalletNeedsChoice = ewalletCfg.needsChoice;
+  const EWALLET_LABELS = EWALLET_TYPE_LABELS;
+  const CARD_LABELS: Record<string, string> = Object.fromEntries(CARD_TYPE_OPTIONS.map(o => [o.k, o.label]));
   // Discount-at-payment (incl. deferred payment from Live Orders / Floor Plan).
 
   // ─── Split bill state ───
@@ -656,11 +663,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   }, [availableMethods, paymentMethod]);
 
   // 2026-07-23: 이월렛이 매장 설정에 1개만이면 서브타입 자동 태깅(캐셔 선택 불필요). 초기·재열림 대비.
+  // 2026-07-24: 카드도 동일 규칙(취급 카드 1종만 지정한 매장은 캐셔가 매번 누를 필요 없다).
   useEffect(() => {
-    if (paymentMethod === 'ewallet' && acceptedEwallets.length === 1 && ewalletType !== acceptedEwallets[0]) {
-      setEwalletType(acceptedEwallets[0]);
+    if (paymentMethod === 'ewallet' && ewalletCfg.autoTag && ewalletType !== ewalletCfg.autoTag) {
+      setEwalletType(ewalletCfg.autoTag);
     }
-  }, [paymentMethod, acceptedEwallets, ewalletType]);
+    if (paymentMethod === 'card' && cardCfg.autoTag && cardType !== cardCfg.autoTag) {
+      setCardType(cardCfg.autoTag);
+    }
+  }, [paymentMethod, ewalletCfg.autoTag, ewalletType, cardCfg.autoTag, cardType]);
 
   // 모달이 새로 열리면 직원이름 입력 초기화 (이전 주문 값 잔존 방지).
   useEffect(() => {
@@ -734,6 +745,11 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           amount,
           payment_method: paymentMethod,
           items_paid: itemsPaid,
+          // 2026-07-24: 오프라인 분할결제도 서브타입을 보존한다. 온라인 분할결제(위 body)와
+          // 전액결제 오프라인 경로(FloorPlan/LiveOrders)는 이미 보내고 있었는데 여기만 빠져 있어서,
+          // 오프라인 중 나눠 낸 결제만 카드/이월렛 종류가 유실됐다(재생해도 복구 불가).
+          ...(paymentMethod === 'card' && cardType ? { card_type: cardType } : {}),
+          ...(paymentMethod === 'ewallet' && ewalletType ? { ewallet_type: ewalletType } : {}),
           ...(body.amount_received != null ? { amount_received: body.amount_received } : {}),
           ...(body.change_amount != null ? { change_amount: body.change_amount } : {}),
           cashier_name: cashierName
@@ -817,8 +833,11 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     }
   };
 
-  // 카드 결제 시 카드종류 선택 필수 여부 (매장 Payment 설정).
-  const requireCardType = !!(paymentMethods && paymentMethods.card && paymentMethods.card.requireCardType);
+  // 카드 결제 시 카드종류 선택 필수 여부 (매장 Payment 설정 card.requireType, 구 키 requireCardType 폴백).
+  // 1종만 취급하는 매장은 위 auto-tag 로 이미 채워지므로 필수여도 캐셔 입력이 없다.
+  const requireCardType = cardCfg.requireType;
+  // 이월렛 필수 여부 — 카드와 동일하게 매장이 켜고 끈다(기본 true = 도입 전 동작 유지).
+  const requireEwalletType = ewalletCfg.requireType;
 
   const canConfirm = () => {
     if (!paymentMethods || availableMethods.length === 0) return false;
@@ -832,7 +851,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         return !requireCardType || !!cardType;
       }
       if (paymentMethod === 'ewallet') {
-        return !ewalletNeedsChoice || !!ewalletType;
+        return !(ewalletNeedsChoice && requireEwalletType) || !!ewalletType;
       }
       return true;
     }
@@ -845,8 +864,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       return !requireCardType || !!cardType;
     }
     if (paymentMethod === 'ewallet') {
-      // 매장 설정(payment_settings.ewallet.requireEwalletType)이 켜져 있으면 이월렛 종류 선택 필수.
-      return !ewalletNeedsChoice || !!ewalletType;
+      // 매장 설정(payment_settings.ewallet.requireType)이 켜져 있고 취급 이월렛이 2개 이상일 때만 필수.
+      // 꺼져 있으면 캐셔가 건너뛸 수 있다(카드와 동일 규칙).
+      return !(ewalletNeedsChoice && requireEwalletType) || !!ewalletType;
     }
     return true;
   };
@@ -1335,25 +1355,35 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         )}
       </Section>
 
-      {paymentMethod === 'card' && (
+      {paymentMethod === 'card' && acceptedCards.length >= 1 && (
         <InputSection>
-          <Label>{requireCardType ? 'Card Type *' : 'Card Type (Optional)'}</Label>
-          {/* Card types on a SINGLE row (2026-05-31 Irene) — was a wrapping grid. */}
-          <div style={{ display: 'flex', gap: '6px' }}>
-            {['visa', 'master', 'amex', 'debit', 'other'].map(type => (
-              <QuickAmountBtn
-                key={type}
-                selected={cardType === type}
-                onClick={() => setCardType(cardType === type ? '' : type)}
-                style={{ flex: 1, minWidth: 0, padding: '10px 2px' }}
-              >
-                {type === 'visa' ? 'Visa' : type === 'master' ? 'Master' : type === 'amex' ? 'Amex' : type === 'debit' ? 'Debit' : 'Other'}
-              </QuickAmountBtn>
-            ))}
-          </div>
-          {requireCardType && !cardType && (
-            <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 500, color: '#FF6B6B' }}>
-              Please select a card type to continue.
+          {/* 2026-07-24: 카드 종류도 이월렛과 동일 규칙 — 매장이 취급 카드(acceptedTypes)를 지정하고,
+              1종이면 자동 태깅(캐셔 무입력), 2종↑이면 선택. 미지정 매장은 기본 5종 그대로(회귀 0).
+              Card types on a SINGLE row (2026-05-31 Irene) — was a wrapping grid. */}
+          {cardCfg.needsChoice ? (
+            <>
+              <Label>{requireCardType ? 'Card Type *' : 'Card Type (Optional)'}</Label>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {acceptedCards.map(type => (
+                  <QuickAmountBtn
+                    key={type}
+                    selected={cardType === type}
+                    onClick={() => setCardType(cardType === type ? '' : type)}
+                    style={{ flex: 1, minWidth: 0, padding: '10px 2px' }}
+                  >
+                    {CARD_LABELS[type] || type}
+                  </QuickAmountBtn>
+                ))}
+              </div>
+              {requireCardType && !cardType && (
+                <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 500, color: '#FF6B6B' }}>
+                  Please select a card type to continue.
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ fontSize: '13px', color: '#425466' }}>
+              Card Type: <strong>{CARD_LABELS[acceptedCards[0]] || acceptedCards[0]}</strong>
             </div>
           )}
         </InputSection>
@@ -1365,7 +1395,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               지정. 2개↑일 때만 캐셔 선택(카드 Card Type UI 대칭). 1개면 위에서 자동 태깅 → 이 블록은 2개↑에서만. */}
           {ewalletNeedsChoice ? (
             <>
-              <Label>E-Wallet Type *</Label>
+              <Label>{requireEwalletType ? 'E-Wallet Type *' : 'E-Wallet Type (Optional)'}</Label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {acceptedEwallets.map(k => (
                   <QuickAmountBtn
@@ -1378,7 +1408,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                   </QuickAmountBtn>
                 ))}
               </div>
-              {!ewalletType && (
+              {requireEwalletType && !ewalletType && (
                 <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 500, color: '#FF6B6B' }}>
                   Please select an e-wallet type to continue.
                 </div>

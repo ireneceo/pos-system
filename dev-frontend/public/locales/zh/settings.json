@@ -990,7 +990,7 @@
   "restaurantDashboard.editMenuItems": "编辑菜单项目",
   "settingsPage": {
     "requireCardType": "必须选择卡类型",
-    "requireCardTypeHint": "开启后，收银员在完成刷卡支付前必须选择卡类型（Visa / Master / Amex / Other）。",
+    "requireCardTypeHint": "开启后，收银员在完成刷卡支付前必须选择卡类型。如果只接受一种卡类型，将自动填入。",
     "orderTypePin": {
       "allowedOrderTypes": "可用订单类型",
       "allowedOrderTypesHelp": "全部勾选表示该方式适用于所有移动订单类型。",
@@ -1011,7 +1011,11 @@
       "description": "在顾客屏幕显示电话号码键盘，方便客人输入手机号累积积分/会员。"
     },
     "acceptedEwallets": "接受的电子钱包",
-    "acceptedEwalletsHint": "选择您接受的电子钱包。选择一个则在付款时自动标记；选择两个或以上则由收银员在结账时选择。用于在商场销售报告中单独统计 Touch 'n Go。"
+    "acceptedEwalletsHint": "选择您接受的电子钱包。选择一个则在付款时自动标记；选择两个或以上则由收银员在结账时选择。用于在商场销售报告中单独统计 Touch 'n Go。",
+    "acceptedCards": "接受的卡类型",
+    "acceptedCardsHint": "选择您接受的卡类型。选择一个则在付款时自动标记；选择两个或以上则由收银员在结账时选择。全部不选则显示默认列表。",
+    "requireEwalletType": "必须选择电子钱包类型",
+    "requireEwalletTypeHint": "开启后，收银员在完成支付前必须选择电子钱包类型。如果只接受一种电子钱包，将自动填入。"
   },
   "printer.emergency.workstationReceiptPrinter": "本工位的收据打印机",
   "printer.emergency.destinationHint": "工位 “{{ws}}” 的收据(账单)打印机",

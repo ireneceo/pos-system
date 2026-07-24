@@ -9,6 +9,7 @@ import { useMenu } from '../../contexts/MenuContext';
 import { useBrandTheme } from '../../contexts/BrandThemeContext';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
+import { CARD_TYPE_OPTIONS, EWALLET_TYPE_OPTIONS } from '../../constants';
 import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
@@ -1022,7 +1023,9 @@ const SettingsPage: React.FC = () => {
   const customQrImageRef = useRef<AutoSaveHandle>(null);
   const ewalletQrRef = useRef<AutoSaveHandle>(null);
   const requireCardTypeRef = useRef<AutoSaveHandle>(null);
-  const requireEwalletTypeRef = useRef<AutoSaveHandle>(null);
+  const acceptedCardsRef = useRef<AutoSaveHandle>(null);
+  const requireEwalletTypeRef = useRef<AutoSaveHandle>(null);   // 취급 이월렛 칩 목록 저장용
+  const requireEwalletToggleRef = useRef<AutoSaveHandle>(null); // 이월렛 필수 여부 토글
   const companyLogoRef = useRef<AutoSaveHandle>(null);
   const storeLogoRef = useRef<AutoSaveHandle>(null);
   const [deleteStationConfirm, setDeleteStationConfirm] = useState<{ isOpen: boolean; stationId: number | null; stationName: string }>({ isOpen: false, stationId: null, stationName: '' });
@@ -2921,24 +2924,65 @@ const SettingsPage: React.FC = () => {
 
                   {/* Card - POS only, no PG config needed (online payments use Online Payment method) */}
 
-                  {/* Card Settings — require card type selection at payment */}
+                  {/* Card Settings — 취급 카드 지정 + 필수 여부 (2026-07-24: 이월렛과 동일 구조로 통일) */}
                   {key === 'card' && method.enabled && (
                     <div style={{ borderTop: '1px solid #C7CED6', paddingTop: '16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                      {/* 취급 카드 종류 — 미지정이면 기본 5종이 결제화면에 그대로 표시(기존 동작 유지) */}
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>
+                        {t('settings:settingsPage.acceptedCards', { defaultValue: 'Accepted card types' })}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '2px', marginBottom: '10px' }}>
+                        {t('settings:settingsPage.acceptedCardsHint', { defaultValue: 'Select the card types you accept. Pick one and it is tagged automatically at payment; pick two or more and the cashier chooses at checkout. Leave all unselected to show the default list.' })}
+                      </div>
+                      <AutoSaveField ref={acceptedCardsRef} onSave={handleSave} type="toggle">
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {CARD_TYPE_OPTIONS.map(opt => {
+                            const list: string[] = Array.isArray(method.acceptedTypes) ? method.acceptedTypes : [];
+                            const on = list.includes(opt.k);
+                            return (
+                              <button
+                                key={opt.k}
+                                type="button"
+                                aria-pressed={on}
+                                onClick={() => {
+                                  const next = on ? list.filter((x: string) => x !== opt.k) : [...list, opt.k];
+                                  handlePaymentSettingChange(key, 'acceptedTypes', next);
+                                  acceptedCardsRef.current?.triggerSave();
+                                }}
+                                style={{
+                                  padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                                  border: on ? '1px solid #635BFF' : '1px solid #C7CED6',
+                                  background: on ? '#635BFF' : '#FFFFFF', color: on ? '#FFFFFF' : '#425466',
+                                }}
+                              >
+                                {on ? '\u2713 ' : ''}{opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </AutoSaveField>
+
+                      {/* 필수 여부 — 구 키 requireCardType 을 계속 쓴다(기존 매장 설정 보존) */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginTop: '16px' }}>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>
                             {t('settings:settingsPage.requireCardType', { defaultValue: 'Require card type selection' })}
                           </div>
                           <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '2px' }}>
-                            {t('settings:settingsPage.requireCardTypeHint', { defaultValue: 'When on, the cashier must pick a card type (Visa / Master / Amex / Other) before completing a card payment.' })}
+                            {t('settings:settingsPage.requireCardTypeHint', { defaultValue: 'When on, the cashier must pick a card type before completing a card payment. If you accept only one card type, it is filled in automatically.' })}
                           </div>
                         </div>
                         <AutoSaveField ref={requireCardTypeRef} onSave={handleSave} type="toggle">
                           <ToggleSwitch>
                             <ToggleInput
                               type="checkbox"
-                              checked={!!method.requireCardType}
-                              onChange={(e) => { handlePaymentSettingChange(key, 'requireCardType', e.target.checked); requireCardTypeRef.current?.triggerSave(); }}
+                              checked={typeof method.requireType === 'boolean' ? method.requireType : !!method.requireCardType}
+                              onChange={(e) => {
+                                // 구·신 키를 함께 기록 — 이전 버전 번들(SW 캐시)이 남아 있어도 동작 동일
+                                handlePaymentSettingChange(key, 'requireType', e.target.checked);
+                                handlePaymentSettingChange(key, 'requireCardType', e.target.checked);
+                                requireCardTypeRef.current?.triggerSave();
+                              }}
                             />
                             <ToggleSlider />
                           </ToggleSwitch>
@@ -2972,20 +3016,14 @@ const SettingsPage: React.FC = () => {
                         </div>
                         <AutoSaveField ref={requireEwalletTypeRef} onSave={handleSave} type="toggle">
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                            {[
-                              { k: 'tng', label: "Touch 'n Go" },
-                              { k: 'grabpay', label: 'GrabPay' },
-                              { k: 'boost', label: 'Boost' },
-                              { k: 'shopeepay', label: 'ShopeePay' },
-                              { k: 'duitnow', label: 'DuitNow' },
-                              { k: 'other', label: 'Other' },
-                            ].map(opt => {
+                            {EWALLET_TYPE_OPTIONS.map(opt => {
                               const list: string[] = Array.isArray(method.acceptedTypes) ? method.acceptedTypes : [];
                               const on = list.includes(opt.k);
                               return (
                                 <button
                                   key={opt.k}
                                   type="button"
+                                  aria-pressed={on}
                                   onClick={() => {
                                     const next = on ? list.filter((x: string) => x !== opt.k) : [...list, opt.k];
                                     handlePaymentSettingChange(key, 'acceptedTypes', next);
@@ -3002,6 +3040,28 @@ const SettingsPage: React.FC = () => {
                               );
                             })}
                           </div>
+                        </AutoSaveField>
+                      </div>
+
+                      {/* 필수 여부 — 카드와 동일. 기본 true(도입 전 동작 = 2개 이상이면 무조건 필수) */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginTop: '16px' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>
+                            {t('settings:settingsPage.requireEwalletType', { defaultValue: 'Require e-wallet type selection' })}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '2px' }}>
+                            {t('settings:settingsPage.requireEwalletTypeHint', { defaultValue: 'When on, the cashier must pick an e-wallet type before completing the payment. If you accept only one e-wallet, it is filled in automatically.' })}
+                          </div>
+                        </div>
+                        <AutoSaveField ref={requireEwalletToggleRef} onSave={handleSave} type="toggle">
+                          <ToggleSwitch>
+                            <ToggleInput
+                              type="checkbox"
+                              checked={typeof method.requireType === 'boolean' ? method.requireType : true}
+                              onChange={(e) => { handlePaymentSettingChange(key, 'requireType', e.target.checked); requireEwalletToggleRef.current?.triggerSave(); }}
+                            />
+                            <ToggleSlider />
+                          </ToggleSwitch>
                         </AutoSaveField>
                       </div>
                     </div>

@@ -990,7 +990,7 @@
   "restaurantDashboard.editMenuItems": "메뉴 항목 수정",
   "settingsPage": {
     "requireCardType": "카드 종류 선택 필수",
-    "requireCardTypeHint": "켜면 카드 결제 완료 전에 캐셔가 카드 종류(Visa / Master / Amex / Other)를 반드시 선택해야 합니다.",
+    "requireCardTypeHint": "켜면 카드 결제 완료 전에 캐셔가 카드 종류를 반드시 선택해야 합니다. 취급 카드가 1개면 자동으로 입력됩니다.",
     "orderTypePin": {
       "allowedOrderTypes": "허용 주문방식",
       "allowedOrderTypesHelp": "모두 선택된 상태는 이 결제수단이 모든 모바일 주문방식에 허용됨을 의미합니다.",
@@ -1011,7 +1011,11 @@
       "description": "고객용 디스플레이 화면에 전화번호 키패드 노출 — 손님이 직접 전화번호를 입력하여 포인트/멤버십 적립."
     },
     "acceptedEwallets": "취급 이월렛",
-    "acceptedEwalletsHint": "취급하는 이월렛을 선택하세요. 1개면 결제 시 자동 지정, 2개 이상이면 결제할 때 캐셔가 선택합니다. 몰 매출보고에서 Touch 'n Go를 따로 집계하는 데 사용됩니다."
+    "acceptedEwalletsHint": "취급하는 이월렛을 선택하세요. 1개면 결제 시 자동 지정, 2개 이상이면 결제할 때 캐셔가 선택합니다. 몰 매출보고에서 Touch 'n Go를 따로 집계하는 데 사용됩니다.",
+    "acceptedCards": "취급 카드 종류",
+    "acceptedCardsHint": "취급하는 카드 종류를 선택하세요. 1개면 결제 시 자동 지정, 2개 이상이면 결제할 때 캐셔가 선택합니다. 아무것도 선택하지 않으면 기본 목록이 표시됩니다.",
+    "requireEwalletType": "이월렛 종류 선택 필수",
+    "requireEwalletTypeHint": "켜면 결제 완료 전에 캐셔가 이월렛 종류를 반드시 선택해야 합니다. 취급 이월렛이 1개면 자동으로 입력됩니다."
   },
   "printer.emergency.workstationReceiptPrinter": "이 워크스테이션 영수증 프린터",
   "printer.emergency.destinationHint": "워크스테이션 “{{ws}}”의 영수증(빌) 프린터",

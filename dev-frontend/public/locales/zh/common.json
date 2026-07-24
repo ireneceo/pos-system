@@ -734,5 +734,6 @@
   "offlineLockAuto": "连接恢复后此画面将自动解锁。",
   "offlineLockMakeMain": "将此设备用作主 POS",
   "offlineLockMakeMainHint": "仅在连接打印机的收银台 POS 上操作。",
-  "nav.rentManagement": "租金管理"
+  "nav.rentManagement": "租金管理",
+  "ewalletTypeQuestion": "您使用哪种电子钱包付款？"
 }

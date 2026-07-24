@@ -990,7 +990,7 @@
   "restaurantDashboard.editMenuItems": "Edit menu items",
   "settingsPage": {
     "requireCardType": "Require card type selection",
-    "requireCardTypeHint": "When on, the cashier must pick a card type (Visa / Master / Amex / Other) before completing a card payment.",
+    "requireCardTypeHint": "When on, the cashier must pick a card type before completing a card payment. If you accept only one card type, it is filled in automatically.",
     "orderTypePin": {
       "allowedOrderTypes": "Available order types",
       "allowedOrderTypesHelp": "Leave all selected to allow this method for every mobile order type.",
@@ -1011,7 +1011,11 @@
       "description": "Show a phone-number keypad on the customer-facing screen (Customer Display) so guests can enter their phone for points / membership."
     },
     "acceptedEwallets": "Accepted e-wallets",
-    "acceptedEwalletsHint": "Select the e-wallets you accept. Pick one and it is tagged automatically at payment; pick two or more and the cashier chooses at checkout. Used to report Touch 'n Go separately for mall sales."
+    "acceptedEwalletsHint": "Select the e-wallets you accept. Pick one and it is tagged automatically at payment; pick two or more and the cashier chooses at checkout. Used to report Touch 'n Go separately for mall sales.",
+    "acceptedCards": "Accepted card types",
+    "acceptedCardsHint": "Select the card types you accept. Pick one and it is tagged automatically at payment; pick two or more and the cashier chooses at checkout. Leave all unselected to show the default list.",
+    "requireEwalletType": "Require e-wallet type selection",
+    "requireEwalletTypeHint": "When on, the cashier must pick an e-wallet type before completing the payment. If you accept only one e-wallet, it is filled in automatically."
   },
   "printer.emergency.workstationReceiptPrinter": "this workstation’s receipt printer",
   "printer.emergency.destinationHint": "Receipt (bill) printer on workstation “{{ws}}”",

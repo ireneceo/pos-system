@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useCustomer } from '../../contexts/CustomerContext';
+import { resolvePaymentSubtype, EWALLET_TYPE_LABELS } from '../../constants';
 import { useStore } from '../../contexts/StoreContext';
 import CustomerModal from '../../components/Customer/CustomerModal';
 import api from '../services/api';
@@ -559,7 +560,20 @@ const PaymentPage: React.FC = () => {
   } = useCustomer();
   const { getTakeawayCharge, operationSettings, updateSettings } = useStore();
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
+  // 2026-07-24: 이월렛 서브타입(몰 매출보고 tng 구분) — POS 와 완전히 같은 규칙을 공용 헬퍼로 공유한다.
+  //   취급 이월렛 1개 = 손님 입력 없이 자동 태깅 / 2개↑ = 손님이 선택 / 0개 = 캡처 안 함(기존 동작).
+  //   ⚠ 아래 auto-tag useEffect 가 참조하므로 반드시 그 앞에서 선언(TDZ 방지 — POS 2026-07-23 교훈).
+  const mobileEwalletCfg = resolvePaymentSubtype('ewallet', paymentMethods);
+  const [ewalletType, setEwalletType] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // 취급 이월렛이 1개면 자동 태깅(손님이 고를 필요 없음). POS PaymentModal 과 동일 규칙.
+  // 이 파일은 react 에서 useState 만 import 하고 훅은 React.* 로 쓴다 — 관례를 따른다.
+  React.useEffect(() => {
+    if (mobileEwalletCfg.autoTag && ewalletType !== mobileEwalletCfg.autoTag) {
+      setEwalletType(mobileEwalletCfg.autoTag);
+    }
+  }, [mobileEwalletCfg.autoTag, ewalletType]);
   const [error, setError] = useState('');
 
   // Card form state
@@ -1326,6 +1340,14 @@ const PaymentPage: React.FC = () => {
       return;
     }
 
+    // 2026-07-24: 매장이 취급 이월렛을 2개 이상 지정하고 "필수"로 설정한 경우에만 종류를 요구한다.
+    // 1개 지정 매장은 자동 태깅되어 여기 걸리지 않고, 미지정 매장은 기존과 동일하게 묻지 않는다.
+    if ((paymentMethod === 'ewallet' || paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment')
+        && mobileEwalletCfg.needsChoice && mobileEwalletCfg.requireType && !ewalletType) {
+      setError(t('common:ewalletTypeQuestion', { defaultValue: 'Which e-wallet are you paying with?' }));
+      return;
+    }
+
     // 2026-06-01: never fall back to restaurant_id=1. If the store context isn't
     // resolved, a `currentStore?.id || 1` default attached the order to the wrong
     // restaurant (id 1) and it never showed in the real store's POS. Block submit
@@ -1640,6 +1662,10 @@ const PaymentPage: React.FC = () => {
             order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
             source: 'mobile',
             payment_method: (paymentMethod === 'ewallet' || paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment') ? 'ewallet' : 'bankTransfer',
+            // 이월렛 서브타입 — 매장이 취급 이월렛을 지정했을 때만 채운다(미지정이면 null = 기존 동작).
+            // 이 payload 는 QR/계좌이체 확인 페이지로 그대로 넘어가므로 그 경로에도 함께 반영된다.
+            ewallet_type: (paymentMethod === 'ewallet' || paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment')
+              ? (ewalletType || null) : null,
             payment_status: 'pending',
             kitchen_ready: false,
             order_date: new Date(),
@@ -2914,6 +2940,39 @@ const PaymentPage: React.FC = () => {
             })}
           </PaymentMethods>
           
+          {/* 2026-07-24: 취급 이월렛이 2개 이상인 매장만 손님에게 종류를 묻는다.
+              1개면 위 auto-tag 가 채우므로 이 블록은 뜨지 않는다(손님 입력 0). */}
+          {(paymentMethod === 'ewallet' || paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment')
+            && mobileEwalletCfg.needsChoice && (
+            <div style={{ marginTop: 12, marginBottom: 4 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 8 }}>
+                {t('common:ewalletTypeQuestion', { defaultValue: 'Which e-wallet are you paying with?' })}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {mobileEwalletCfg.accepted.map((k) => {
+                  const on = ewalletType === k;
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setEwalletType(on ? '' : k)}
+                      style={{
+                        padding: '12px 16px', borderRadius: 8, cursor: 'pointer',
+                        fontSize: 14, fontWeight: 600, minHeight: 44,
+                        border: on ? '1px solid #635BFF' : '1px solid #D1D5DB',
+                        background: on ? '#635BFF' : '#FFFFFF',
+                        color: on ? '#FFFFFF' : '#374151'
+                      }}
+                    >
+                      {EWALLET_TYPE_LABELS[k] || k}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {paymentMethod === 'card' && (
             <CardForm>
               <Input

@@ -501,15 +501,70 @@ export function getPaymentMethodLabel(method: string, paymentSettings?: Record<s
 }
 
 /**
- * Card type label mapping
+ * 결제수단 서브타입(카드 종류 / 이월렛 종류) 단일 소스 — 2026-07-24.
+ *
+ * 카드와 이월렛은 원래 서로 다른 시점·다른 요구에서 각자 자라서 모델이 어긋나 있었다
+ * (카드=종류 하드코딩+필수토글 / 이월렛=취급목록 선택+필수토글 없음). 설정 화면과 결제
+ * 화면이 같은 목록을 보도록 여기 한 곳에서만 정의한다. 값(키)은 DB 에 그대로 저장되므로
+ * 기존 데이터 호환을 위해 절대 바꾸지 않는다 — 라벨만 바꿀 수 있다.
  */
-const CARD_TYPE_LABELS: Record<string, string> = {
-  visa: 'Visa',
-  master: 'Master',
-  amex: 'Amex',
-  debit: 'Debit',
-  other: 'Other'
-};
+export const CARD_TYPE_OPTIONS: Array<{ k: string; label: string }> = [
+  { k: 'visa', label: 'Visa' },
+  { k: 'master', label: 'Master' },
+  { k: 'amex', label: 'Amex' },
+  { k: 'debit', label: 'Debit' },
+  { k: 'other', label: 'Other' }
+];
+
+export const EWALLET_TYPE_OPTIONS: Array<{ k: string; label: string }> = [
+  { k: 'tng', label: "Touch 'n Go" },
+  { k: 'grabpay', label: 'GrabPay' },
+  { k: 'boost', label: 'Boost' },
+  { k: 'shopeepay', label: 'ShopeePay' },
+  { k: 'duitnow', label: 'DuitNow' },
+  { k: 'other', label: 'Other' }
+];
+
+const CARD_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  CARD_TYPE_OPTIONS.map(o => [o.k, o.label])
+);
+
+export const EWALLET_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  EWALLET_TYPE_OPTIONS.map(o => [o.k, o.label])
+);
+
+/**
+ * 결제수단 서브타입 설정 해석 — 카드·이월렛 공통 규칙 (2026-07-24).
+ *
+ *   accepted 0개 → 카드는 기본 목록(회귀 방지: 예전엔 5종이 하드코딩이었다), 이월렛은 UI 없음
+ *   accepted 1개 → 자동 태깅(캐셔 입력 불필요)
+ *   accepted 2개↑ → 캐셔가 선택. requireType 이면 필수(미선택 시 결제 차단), 아니면 건너뛰기 허용
+ *
+ * 하위호환: 카드의 필수 여부는 구 키 `requireCardType` 을 폴백으로 읽는다(기존 매장 설정 보존).
+ *           이월렛 requireType 기본값은 true — 도입 전 동작이 "2개 이상이면 무조건 필수" 였으므로
+ *           기본을 false 로 두면 매장 모르게 필수가 풀린다.
+ */
+export function resolvePaymentSubtype(
+  method: 'card' | 'ewallet',
+  paymentSettings?: Record<string, any> | null
+): { accepted: string[]; requireType: boolean; needsChoice: boolean; autoTag: string | null } {
+  const cfg = (paymentSettings && paymentSettings[method]) || {};
+  const raw: string[] = Array.isArray(cfg.acceptedTypes) ? cfg.acceptedTypes.filter(Boolean) : [];
+  const fallback = method === 'card' ? CARD_TYPE_OPTIONS.map(o => o.k) : [];
+  const accepted = raw.length > 0 ? raw : fallback;
+
+  let requireType: boolean;
+  if (typeof cfg.requireType === 'boolean') requireType = cfg.requireType;
+  else if (method === 'card') requireType = !!cfg.requireCardType;   // 구 키 폴백
+  else requireType = true;                                           // 이월렛 도입 전 동작 유지
+
+  return {
+    accepted,
+    requireType,
+    needsChoice: accepted.length >= 2,
+    autoTag: accepted.length === 1 ? accepted[0] : null
+  };
+}
 
 /**
  * Format payment method with card type: "Card(Visa)", "Cash", etc.

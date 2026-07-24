@@ -990,7 +990,7 @@
   "restaurantDashboard.editMenuItems": "Sunting item menu",
   "settingsPage": {
     "requireCardType": "Wajib pilih jenis kad",
-    "requireCardTypeHint": "Apabila dihidupkan, juruwang mesti memilih jenis kad (Visa / Master / Amex / Other) sebelum melengkapkan pembayaran kad.",
+    "requireCardTypeHint": "Apabila dihidupkan, juruwang mesti memilih jenis kad sebelum melengkapkan pembayaran kad. Jika anda hanya menerima satu jenis kad, ia diisi automatik.",
     "orderTypePin": {
       "allowedOrderTypes": "Jenis pesanan dibenarkan",
       "allowedOrderTypesHelp": "Biarkan semua dipilih untuk membenarkan kaedah ini bagi setiap jenis pesanan mudah alih.",
@@ -1011,7 +1011,11 @@
       "description": "Tunjukkan pad nombor telefon pada skrin yang menghadap pelanggan supaya tetamu boleh masukkan nombor telefon untuk mata / keahlian."
     },
     "acceptedEwallets": "E-dompet diterima",
-    "acceptedEwalletsHint": "Pilih e-dompet yang anda terima. Pilih satu maka ia ditandakan automatik semasa bayaran; pilih dua atau lebih maka juruwang memilih semasa pembayaran. Digunakan untuk melaporkan Touch 'n Go secara berasingan bagi jualan mall."
+    "acceptedEwalletsHint": "Pilih e-dompet yang anda terima. Pilih satu maka ia ditandakan automatik semasa bayaran; pilih dua atau lebih maka juruwang memilih semasa pembayaran. Digunakan untuk melaporkan Touch 'n Go secara berasingan bagi jualan mall.",
+    "acceptedCards": "Jenis kad diterima",
+    "acceptedCardsHint": "Pilih jenis kad yang anda terima. Pilih satu maka ia ditandakan automatik semasa bayaran; pilih dua atau lebih maka juruwang memilih semasa pembayaran. Biarkan semua tidak dipilih untuk memaparkan senarai lalai.",
+    "requireEwalletType": "Wajib pilih jenis e-dompet",
+    "requireEwalletTypeHint": "Apabila dihidupkan, juruwang mesti memilih jenis e-dompet sebelum melengkapkan pembayaran. Jika anda hanya menerima satu e-dompet, ia diisi automatik."
   },
   "printer.emergency.workstationReceiptPrinter": "pencetak resit stesen kerja ini",
   "printer.emergency.destinationHint": "Pencetak resit (bil) pada stesen kerja “{{ws}}”",
