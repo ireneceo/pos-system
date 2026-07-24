@@ -1,58 +1,44 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-07-23 (IOI Mall 매출보고 + 이월렛 서브타입 — dev 완료·미배포)
+**마지막 업데이트:** 2026-07-24 (배포 전 Fable 전수검증 + 🔒 인쇄 신선도 근본수정 — dev 완료·미배포)
 **버전:** **v3.69** (운영 — 2026-07-16 배포. 버전은 /배포 시에만 갱신) · 데스크탑앱 0.1.9 · 안드로이드앱 0.2.0
-**작업 상태:** **완료(dev) — 배포 대기(Fable CONDITIONAL GO 조건).**
+**작업 상태:** **완료(dev) — 배포 대기(Irene 인쇄 승인 + bless 후 /배포)**
 
 ### 진행 중인 작업
-- 없음 (이월렛/몰연동 dev 완료, 배포는 Irene /배포 + 아래 조건)
+- 없음
 
-### 완료된 작업 (이번 세션 — 2026-07-23)
-- **인쇄 백로그 신선도 경계**: 자동인쇄 안 켠 매장이 needs_print 무한누적(K-DINE 1,616건) → pending-print 24h 경계(orders-crud, 🔒보호파일). 운영 청소 2,035건. Fable CONDITIONAL GO. **미배포·미bless**(실프린터 확인 대기).
-- **운영서버 earlyoom + sudoers 정리**: 메모리 보호막 설치(mysqld−800/nginx−500/sshd−1000)·위험 NOPASSWD 3종(chown/kill/lsof) 제거. Irene 실행 완료.
-- **개발서버 sudoers 정리**: 서빙폴더 root→irene(sudo 근본제거)·NOPASSWD:ALL 드롭인 제거·평문비번 패턴 제거. Fable PASS. `sudo visudo -c` 최종확인만 Irene.
-- **IOI Mall 매출보고 + 이월렛 서브타입** (아래 상세) — dev 완료.
+### 완료된 작업 (이번 세션 — 2026-07-24)
+- **Fable 5트랙 배포 전 전수 회귀검증** (운영 델타 25파일 기준): 주문코어 **GO** / 결제·인쇄·DB마이그·전역 CONDITIONAL GO → **델타가 만든 신규 회귀 0건**. `acceptedTypes` 0개 = 기존 동작 100% 동일 실증, 대시보드/캐시업은 ewallet_type 미참조(합계 불변), 프린터설정 wipe 자물쇠 3개 실쓰기 생존 증명, mount 8역할 크래시0(664s), 7역할 유저흐름 통과
+- **🔒 인쇄 신선도 경계 근본수정** (Irene "철저히 고쳐. 제대로 고쳐"): 판정 기준을 주문 `createdAt` → **`COALESCE(print_needed_at, createdAt)`**. 신규 컬럼 `orders.print_needed_at`("인쇄 필요가 발생한 시각"). 스탬프 7곳 / **⛔ 무스탬프 5곳**(재시도 경로 — 찍으면 누적 방어 붕괴). 기존 행 NULL=폴백이라 **배포 즉시 동작 변화 0**, 백필 안 하는 게 설계
+- **반증 실증**: 동일 행에서 구 판정식 창 제외(=버그) / 신 판정식 포함 / 실 API 포함 + kitchen_items=새 품목만
+- **회귀테스트 2건 신설** (health-check print 140→142): 25h 주문 +Round 창 포함(실 API 경유) · 재시도 경로 무스탬프+부활 없음
+- **Fable 적대 검증 GO**: 스탬프 전수 7/7(DB 트리거 0개까지 폐쇄 증명) · 무스탬프 6엔드포인트 실호출 전부 NULL · **인쇄고장 매장 3사이클 시뮬 → 부활 0** · 생성 SQL 육안 · 오프라인 재생 3방향 · 취소표 계약 유지 · EXPLAIN 신/구 동일
+- **grabpay 백필 미실행 확정** (Irene 위임 → Fable 판정): NULL≡grabpay 로 출력 무변화 · 몰 7일창 소급없음 · 97.3%가 몰 무관 매장(K-DINE 12,556) 오태깅 · 재실행 footgun → registry+스크립트 "⛔ 운영 실행 금지" 명기, dev 원복(241+2 → NULL)
+- 문서: `docs/PRINT_RULES_MATRIX.md` 🔒 pending-print 창 신선도 규칙 신설 · 메모리 [[reference_pending_print_window]] 갱신
 
 ### 다음 확정 작업
 - 없음 — 지시 대기 (배포는 아래 조건 충족 + Irene /배포)
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
-- **IOI Mall 배포·가동**: orders-crud 별건 승인+bless → 배포 → 운영 backfill·rid16 acceptedTypes 지정 → 몰 운영자격증명 수령 시 production 전환·enabled=true
-- **IOI Mall 회신**(임대인): 인증 검증완료 + 샘플 + 운영 machine ID 요청
-- 이월렛 후속(비차단): PaymentModal isOpen 리셋(주문간 잔존)·split 오프라인 op card_type/ewallet_type·모바일 이월렛 서브타입
-- ENCRYPTION_KEY 강화(go-live 직전)·개발서버 sudoers Irene visudo -c·인쇄 자가진단 D8 실프린터·안드로이드 실기기 폴러·소켓 인증 하드닝·매출 대조 마감
+
+- **IOI Mall 가동**: 배포 후 rid=16 acceptedTypes 지정 → 몰 운영 자격증명 수령 시 production 전환·enabled=true · 임대인 회신(인증 검증완료+샘플+운영 machine ID 요청)
+- **`GET /api/restaurants` 과다노출**(Fable 트랙5 발견, 델타 무관 기존 동작): Staff 토큰에도 전 매장 33곳 + 관리자 email/phone 반환 — 별도 이슈로 검토
+- 이월렛 비차단 후속: PaymentModal isOpen 리셋(주문간 잔존, 구 card_type 동일 패턴) · split 오프라인 op card_type/ewallet_type 미포함(기존 갭) · 모바일 이월렛 서브타입
+- 프론트 백로그 컷오프도 `print_needed_at ?? createdAt` 로 정렬(🔒 폴러 보호파일 — 별건 승인 필요)
+- ENCRYPTION_KEY 강화(go-live 직전, 재실행 금지) · 개발서버 sudoers Irene visudo -c · 인쇄 자가진단 D8 실프린터 · 안드로이드 실기기 폴러 · 소켓 인증 하드닝 · 매출 대조 마감 · exe 코드서명 인증서(Irene 결정)
 
 ---
 
-## 🔵 IOI Mall 매출보고 + 이월렛 서브타입 (2026-07-23, dev 완료·미배포)
+## 🔵 배포 전 필수 순서 (Fable 조건)
 
-### IOI Mall 매출보고 (Tangent SalesHourly)
-- **대상 = 운영 rid=16** (The Fire @ IOI Mall Damansara). rid=5는 is_test 테스트매장(오전 오인 정정). IOI=임대인(인증 묻는쪽)/The Fire=임차인.
-- **인증 = 된다**: 몰 staging 자격증명(User/Machine `50100025`, PW `DCStest1234`)으로 우리 코드 토큰발급→0값24레코드+rid16 실매출 전송 전부 `status:success` 실증.
-- **버그2건 수정**: ①tender가 SST 포함→gto 불일치 → SST 전 환산(분모 paySum, tender합=gto) ②HTTP 200 status:error를 성공기록 → fail-closed(status!=='success' throw).
-- **운영 config 저장**: restaurant_sales_integrations id=1(rid16, staging, **enabled=false**=자동전송OFF, gst=Y). 시스템 경유 test-connection 성공.
-- staging 자격증명은 비민감. 운영 실자격증명 저장 전 ENCRYPTION_KEY 강화(migrate-encryption-key-rotation, manual).
-- 단일 진실 = `docs/MALL_SALES_API_INTEGRATION.md` · 메모리 [[reference_ioi_mall_sales_reporting]]
-
-### 이월렛 서브타입 캡처 (몰 tng 구분)
-- 전용컬럼 `ewallet_type`(카드 card_type 대칭). 설정 `payment_settings.ewallet.acceptedTypes[]` 다중선택: **0개=캡처안함(기존동작) / 1개=자동태깅(캐셔 선택불필요) / 2개↑=선택강제**.
-- 몰 매핑: ewallet_type='tng'→몰 tng, 나머지(grabpay 등)→othersamount(몰에 필드없음).
-- **전 POS 경로 배선**: POSTerminal·FloorPlan(온·오프)·LiveOrders(온·오프)·split — card_type 8경로 1:1. 백엔드 PATCH는 order.update(req.body) 통째저장이라 무변경.
-- 🔴 **TDZ 크래시 수정**: auto-tag useEffect가 뒤 선언 acceptedEwallets 참조 → POS Terminal 런타임 크래시(빌드·TS 통과, 실브라우저서 발견) → 선언 이동.
-- **grabpay 백필**(Irene 지시): 기존 이월렛 NULL→grabpay, dev 241건. 운영은 컬럼배포 후 migrate-backfill-ewallet-grabpay(manual) 1회.
-
-### 검증 (/검증 완료)
-- verify-all --full: 실브라우저 mount sweep 8역할+POS **크래시0(662.8s)** · state-hydration 0 · 인쇄 라우트가드 34/34 · health 139/140(유일실패=print-guard 지문 의도)
-- 실 API 왕복 5/5 · 계약테스트 14/14 · 실UI 3시나리오(0/1/2개)
-- **Fable 2차 재검증 CONDITIONAL GO**: 이월렛 절단면 A~E 결함0. check-sensitive-diff ★Fable 대상(①보호영역 ②결제무결성 ③DB마이그).
-
-### 배포 전 필수 (Fable 조건, 순서)
-1. **orders-crud 별건(pending-print 24h 신선도)에 Irene 명시 승인** — 이월렛 게이트가 대신 승인 불가(인쇄 절대규칙). 티켓 포맷·방식 무변경+계약테스트 박제라 종이 재확인 없이 회귀게이트 갈음 가능(최종 Irene 결정).
-2. 승인 후 `check-print-guard.js --bless`(POSTerminalPage 결제 plumbing 4줄 + orders-crud) → /배포.
-3. 운영: migrate-add-ewallet-type(deploy 자동) → 컬럼확인 후 backfill manual 1회 → rid16 acceptedTypes 지정.
-- **이월렛 자체 실프린터 확인 불요**(billPrint/폴러 diff 0, 인쇄 무변경, 라우트가드 34/34).
+1. **Irene 인쇄 변경 명시 승인** — ①pending-print 24h 신선도 경계(7/23) ②신선도 기준 교정 print_needed_at(7/24). 티켓 포맷·발송방식·라우팅 무변경 + 계약테스트 4건 박제
+2. 승인 후 `cd /var/www/dev-backend && node scripts/check-print-guard.js --bless` (orders-crud.js + POSTerminalPage.tsx — 후자는 7/23 별건 ewallet 결제 plumbing 3줄, 인쇄 블록 무관)
+3. **Irene `/배포`** → 마이그 `migrate-add-ewallet-type` + `migrate-print-needed-at` 자동 실행(둘 다 registry `deploy`, 멱등)
+4. 배포 후: 운영 `SHOW COLUMNS` 로 컬럼 2개 확인 + 주문 생성/조회 1회 + **신규 주문 오더티켓 1장 실프린터 눈 확인**(Irene — 코드로 종이는 못 봄)
+5. rid=16 `payment_settings.ewallet.acceptedTypes` 지정(몰 tng 분리)
+- ⛔ **grabpay 백필은 실행하지 않는다**(미실행 확정) · ⛔ **encryption-key-rotation 도 이번 배포에서 실행 안 함**(go-live 직전 1회 전용, 재실행 시 자격증명 파괴 위험)
 
 ---
 

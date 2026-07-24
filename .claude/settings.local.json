@@ -1399,7 +1399,17 @@
       "Bash(perl -0pi -e \"s/\\(payment_status: 'completed',\\\\n\\\\s*payment_method: method,\\\\n\\\\s*card_type: method === 'card' \\\\? \\\\\\(cardType \\\\|\\\\| null\\\\\\) : null\\\\n\\)/\\\\$1        , ewallet_type: method === 'ewallet' ? \\(ewalletType || null\\) : null\\\\n/g\" pages/FloorPlan/FloorPlanPage.tsx)",
       "Bash(perl -0pi -e \"s/\\\\{t\\\\\\('posTerminal:payment\\\\.ewalletType', \\\\{ defaultValue: 'E-Wallet Type' \\\\}\\\\\\)\\\\} \\\\*/E-Wallet Type */g\" components/POSTerminal/PaymentModal.tsx)",
       "Bash(perl -0pi -e \"s/\\\\{t\\\\\\('posTerminal:payment\\\\.selectEwalletType', \\\\{ defaultValue: 'Please select an e-wallet type to continue\\\\.' \\\\}\\\\\\)\\\\}/Please select an e-wallet type to continue./g\" components/POSTerminal/PaymentModal.tsx)",
-      "Bash(perl -0pi -e \"s/\\\\{t\\\\\\('posTerminal:payment\\\\.ewalletType', \\\\{ defaultValue: 'E-Wallet Type' \\\\}\\\\\\)\\\\}: <strong>/E-Wallet Type: <strong>/g\" components/POSTerminal/PaymentModal.tsx)"
+      "Bash(perl -0pi -e \"s/\\\\{t\\\\\\('posTerminal:payment\\\\.ewalletType', \\\\{ defaultValue: 'E-Wallet Type' \\\\}\\\\\\)\\\\}: <strong>/E-Wallet Type: <strong>/g\" components/POSTerminal/PaymentModal.tsx)",
+      "Bash(echo \"RUN1_EXIT=$?\")",
+      "Bash(echo \"RUN2_EXIT=$?\")",
+      "Bash(awk 'NR>=1 && /router\\\\.get\\\\\\(.\\\\/.,/{print NR\": \"$0}' /var/www/dev-backend/routes/restaurants-crud.js)",
+      "Bash(awk -F= '{print length\\($2\\)}')",
+      "Bash(kill 1334926)",
+      "Bash(pkill -f \"b85nvsnrk\")",
+      "Bash(node scripts/migrate-encryption-key-rotation.js)",
+      "Bash(echo \"REAL_EXIT=$?\")",
+      "Bash(awk '{print $3\":\"$4}')",
+      "Bash(awk 'NR>=2330 && NR<=2345' /var/www/dev-backend/routes/orders-crud.js)"
     ],
     "deny": [],
     "ask": []

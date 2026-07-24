@@ -1956,6 +1956,87 @@ function definePrintTests({ adminToken }) {
     return pass;
   });
 
+  // 계약 1-c (2026-07-24): 신선도 기준 = "인쇄 필요가 발생한 시각"(print_needed_at), 주문 생일 아님.
+  //   최초 구현(1-b)은 orders.createdAt 으로 판정해서, 24h 넘게 열려 있던 테이블에 +Round 를 넣으면
+  //   needs_print 가 "지금" 켜지는데도 창에서 탈락 → 그 라운드 주방티켓이 무음 유실됐다(실호출 실증).
+  //   ⚠ 되돌리면(COALESCE 제거 또는 스탬프 누락) 이 테스트가 실패한다 = 회귀 감지.
+  //   실 API(POST /add-items)로 검증한다 — DB 직접 세팅으로는 스탬프 배선을 증명할 수 없기 때문.
+  test('print', '신선도 기준: 25시간 열린 주문의 +Round 는 창에 포함(라운드 티켓 유실 방지)', async () => {
+    const Order = require('../models/Order');
+    const rid = await demoRestaurantId();
+    if (!rid) return true;
+
+    const stale = new Date(Date.now() - 25 * 3600 * 1000);
+    // 어제부터 열려 있고 1라운드는 이미 인쇄된 주문(기존 행 재현 = print_needed_at NULL)
+    const order = await Order.create({
+      restaurant_id: rid, customer_name: TEST_MARKER, total_amount: 10, status: 'preparing',
+      source: 'pos', order_type: 'dine_in', needs_print: false, print_needed_at: null,
+      order_items: [{ id: 'hc-old-1', name: 'Yesterday Round1', quantity: 1, price: 10, printed_at: stale.toISOString() }],
+    });
+    await Order.update({ createdAt: stale }, { where: { id: order.id }, silent: true });
+
+    let pass = false;
+    try {
+      // 실 API: 오늘 이 테이블에 라운드 추가 (mergeItemsIntoOrder 스탬프 배선을 실제로 태운다)
+      const add = await request('POST', `/orders/${order.id}/add-items`,
+        { items: [{ id: 'hc-old-r2', name: 'Round2 NEW', quantity: 1, price: 10 }] }, adminAuth);
+
+      const res = await request('GET', `/orders/restaurant/${rid}/pending-print`, null, adminAuth);
+      const found = (res.body?.data || []).find((o) => o.id === order.id);
+      const inWindow = !!found;                                   // (a) 창 포함 — 수정 전엔 여기서 실패
+      const onlyNew = !!found && Array.isArray(found.kitchen_items)
+        && found.kitchen_items.length === 1
+        && found.kitchen_items[0].name === 'Round2 NEW';           // (b) +Round 계약 불변(새 품목만)
+
+      const reloaded = await Order.findByPk(order.id);
+      const stamped = !!reloaded.print_needed_at
+        && (Date.now() - new Date(reloaded.print_needed_at).getTime()) < 60 * 1000;  // (c) 스탬프 실증
+
+      pass = add.status === 200 && inWindow && onlyNew && stamped;
+    } finally {
+      // 실 API(add-items)가 order_actions 자식행을 만들므로 cascade 후 삭제(orphan sweep 과 동일 관행)
+      try { await Order.sequelize.query(`DELETE FROM \`order_actions\` WHERE order_id = ${Number(order.id)}`); } catch (e) { /* 무참조 */ }
+      await Order.destroy({ where: { id: order.id }, force: true });
+    }
+    return pass;
+  });
+
+  // 계약 1-d (2026-07-24): 재시도(죽은-claim 자동복구)는 신선도를 갱신하지 않는다 = 옛 행 영구부활 없음.
+  //   복구 UPDATE 는 나이 상한 없이 re-arm 하므로, 여기서 print_needed_at 을 스탬프하면 인쇄가 고장난
+  //   매장에서 claim↔re-arm 핑퐁이 옛 행을 영원히 신선하게 만들어 누적 방어(1-b 원목적)가 붕괴한다.
+  //   ⚠ 되돌리면(복구 경로에 스탬프 추가) 이 테스트가 실패한다 = 누적 사고 재발 감지.
+  test('print', '재시도 경로(죽은-claim 복구)는 신선도 스탬프를 찍지 않는다', async () => {
+    const Order = require('../models/Order');
+    const rid = await demoRestaurantId();
+    if (!rid) return true;
+
+    const stale = new Date(Date.now() - 25 * 3600 * 1000);
+    const order = await Order.create({
+      restaurant_id: rid, customer_name: TEST_MARKER, total_amount: 10, status: 'pending',
+      source: 'pos', order_type: 'dine_in',
+      needs_print: false, print_claimed_at: stale, print_needed_at: null,
+      order_items: [{ id: 'hc-rearm-1', name: 'Stale Claimed', quantity: 1, price: 10 }],
+    });
+    await Order.update({ createdAt: stale }, { where: { id: order.id }, silent: true });
+
+    let pass = false;
+    try {
+      // 1회 호출 = 핸들러 진입부의 죽은-claim 복구 UPDATE 가 이 행을 re-arm 한다
+      await request('GET', `/orders/restaurant/${rid}/pending-print`, null, adminAuth);
+      const reloaded = await Order.findByPk(order.id);
+      const reArmed = reloaded.needs_print === true;          // (a) 복구는 작동했고
+      const notStamped = reloaded.print_needed_at === null;   // (b) 스탬프는 안 찍혔고
+
+      const res2 = await request('GET', `/orders/restaurant/${rid}/pending-print`, null, adminAuth);
+      const stillOut = !(res2.body?.data || []).some((o) => o.id === order.id);  // (c) 그래도 창 밖 = 부활 없음
+
+      pass = reArmed && notStamped && stillOut;
+    } finally {
+      await Order.destroy({ where: { id: order.id }, force: true });
+    }
+    return pass;
+  });
+
   // 계약 2: +Round 추가분만 인쇄, 빌은 전체 유지
   test('print', '+Round 추가 시 kitchen_items=새 품목만, order_items=전체', async () => {
     const Order = require('../models/Order');

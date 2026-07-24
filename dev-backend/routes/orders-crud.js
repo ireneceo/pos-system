@@ -496,6 +496,11 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null, 
     //   있다 — false 로 덮으면 그 티켓이 증발(zero-ticket 사고). 보존이면 대기분 없으면 그대로(아무것도 안 찍힘),
     //   대기분 있으면 폴러가 未printed 품목만(우리 스탬프분 제외) 찍는다 → 양쪽 모두 정확히 1장(I3).
     needs_print: printedOffline ? existingOrder.needs_print : true,
+    // 2026-07-24 신선도 스탬프: 라운드/머지 = 인쇄 필요가 "지금" 발생 → 창 판정 기준 갱신.
+    //   이 한 줄이 "24h 넘게 열린 테이블의 +Round 티켓 무음 유실"을 막는다(창 판정 = COALESCE(print_needed_at, createdAt)).
+    //   오프라인 재생(printedOffline)은 기존 값 보존 — 위 needs_print 보존 원칙(§15-3-E)과 동일하게,
+    //   이미 로컬로 찍힌 재생분이 옛 행의 신선도를 되살리지 않게 한다.
+    print_needed_at: printedOffline ? existingOrder.print_needed_at : new Date(),
     // +Round/merge = 새 라운드 → 통합 가드 리셋(추가분 통합 카피 재발행). 새주문 hybrid+poller 더블만 가드, 재인쇄는 단일 소스라 안전.
     consolidated_printed_at: printedOffline ? existingOrder.consolidated_printed_at : null
   }, updateOptions);
@@ -892,7 +897,9 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
             // 2026-05-28: backend trigger for auto-print polling (POS direct trigger
             // still fires as fast path — this is the safety net for any device).
             // 오프라인 로컬인쇄분(printed_offline)은 이미 찍혔으니 needs_print=false.
-            needs_print: _printedOffline ? false : true
+            needs_print: _printedOffline ? false : true,
+            // 2026-07-24 신선도 스탬프(신규 주문 = 인쇄 필요 발생). 오프라인 로컬인쇄분은 needs_print=false 이므로 null.
+            print_needed_at: _printedOffline ? null : new Date()
           }, {
             transaction: t,
             validate: false  // Skip validation since we're generating order_number
@@ -1349,6 +1356,9 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
       if ((printedItems.length > 0 || _priorMovePending) && !_skipMoveReprint) {
         const _reprintUpdate = {
           needs_print: true,
+          // 2026-07-24 신선도 스탬프: 이동 안내도 "지금 발생한 인쇄 필요". 재발행 분기는 경계 면제라
+          // 기능상 필수는 아니지만, 스탬프 = 인쇄 필요 발생 시각이라는 단일 의미를 예외 없이 유지한다.
+          print_needed_at: new Date(),
           print_claimed_at: null,
           // 테이블 이동 = 새 라운드 → 통합 가드 리셋(이동 안내 통합 카피 재발행).
           consolidated_printed_at: null,
@@ -1703,7 +1713,8 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
           const cleared = (Array.isArray(citems) ? citems : []).map(it => { if (!it || typeof it !== 'object') return it; if (!_notServed(it)) return it; const c = { ...it }; delete c.printed_at; delete c.printed; return c; });
           const _creason = (req.body.reason && String(req.body.reason).trim()) || '';
           await order.update({
-            order_items: cleared, needs_print: true, print_claimed_at: null,
+            // 2026-07-24 신선도 스탬프(취소 안내 = 지금 발생한 인쇄 필요). 재발행 분기는 경계 면제지만 의미 통일.
+            order_items: cleared, needs_print: true, print_needed_at: new Date(), print_claimed_at: null,
             // 주문취소 = 새 라운드 → 통합 가드 리셋(취소 안내 통합 카피 재발행).
             consolidated_printed_at: null,
             pending_reprint: { type: 'cancel', notice: { title: '** ORDER CANCELLED **', lines: _creason ? ['Reason: ' + _creason, 'Do NOT make this order.'] : ['Do NOT make this order.'] } }
@@ -2673,6 +2684,8 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requireVoidAccess, asy
         _vlines.push('Do NOT make this item.');
       }
       order.needs_print = true;
+      // 2026-07-24 신선도 스탬프(void 안내 = 지금 발생한 인쇄 필요). 재발행 분기는 경계 면제지만 의미 통일.
+      order.print_needed_at = new Date();
       order.print_claimed_at = null;
       // 아이템 void = 새 라운드 → 통합 가드 리셋(void 안내 통합 카피 재발행). MASTER(KQ POS) 미도달이면 자연히 안 감(#3).
       order.consolidated_printed_at = null;
@@ -2956,6 +2969,17 @@ router.get('/restaurant/:restaurantId/pending-print', authenticateToken, async (
     // 담는다"는 불변식을 보장한다. 인쇄 방식·라우팅·타이밍·주체 전부 무변경(창의 모집단만 상한).
     const PENDING_PRINT_FRESH_HOURS = 24;
     const _freshSince = new Date(Date.now() - PENDING_PRINT_FRESH_HOURS * 3600 * 1000);
+    // 2026-07-24 (Irene "철저히 고쳐" + Fable 설계): 신선도 키 = "인쇄 필요가 마지막으로 발생한 시각"
+    // (print_needed_at). 최초 구현은 주문의 createdAt 으로 판정해서, 24h 넘게 열려 있던 테이블에
+    // +Round 를 넣으면 needs_print 가 지금 켜지는데도 창에서 탈락 → 그 라운드 주방티켓이 무음 유실됐다.
+    // 기존 행(NULL)은 createdAt 으로 폴백하므로 2026-07-23 동작과 동일 = 배포 즉시 동작 변화 0.
+    // ⛔ 재시도 경로(죽은-claim 복구/print-rearm)는 스탬프하지 않는다 → 옛 행이 영구 부활하지 않는다.
+    const _freshWhere = Order.sequelize.where(
+      Order.sequelize.fn('COALESCE',
+        Order.sequelize.col('print_needed_at'),
+        Order.sequelize.col('createdAt')),
+      { [Op.gte]: _freshSince }
+    );
     const orders = await Order.findAll({
       where: {
         restaurant_id: restaurantId,
@@ -2965,7 +2989,9 @@ router.get('/restaurant/:restaurantId/pending-print', authenticateToken, async (
           // 2026-07-23: + 신선도 경계(24h). 자동인쇄 대상은 신선한 주문뿐 — 하루 지난 주문을 지금
           // 자동으로 찍어봐야 주방엔 의미가 없고, 창만 잠식한다. 수동 인쇄(Kitchen Ticket 버튼)는
           // order_items 로 찍으므로 needs_print 와 무관 = 언제든 그대로 인쇄 가능(영향 0).
-          { is_deleted: false, createdAt: { [Op.gte]: _freshSince }, [Op.or]: [{ needs_print: true }, { needs_bill: true }] },
+          // 2026-07-24: 기준을 createdAt → COALESCE(print_needed_at, createdAt) 로 교정(_freshWhere).
+          //   "오래 열린 테이블의 새 라운드"는 신선한 실작업이므로 반드시 인쇄돼야 한다.
+          { is_deleted: false, [Op.and]: [_freshWhere], [Op.or]: [{ needs_print: true }, { needs_bill: true }] },
           // 2026-06-24 (Irene "취소했는데 프린트 안나옴"): 명시적 재발행(취소/삭제/이동 안내,
           // pending_reprint NOT NULL)은 주문이 삭제됐어도 1회 인쇄한다. 취소는 보통 주문삭제를
           // 동반하는데(claim 직후 is_deleted=1), 위 is_deleted=false 필터가 취소표까지 큐에서

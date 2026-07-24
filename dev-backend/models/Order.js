@@ -96,6 +96,19 @@ Order.init({
     defaultValue: null,
     comment: 'When a device print-claimed this order (cleared on /printed). Stale = auto re-armed.'
   },
+  // 2026-07-24 (Irene "철저히 고쳐" + Fable 설계): pending-print 신선도 경계(2026-07-23)의 판정 기준 교정.
+  // "인쇄 필요가 마지막으로 발생한 시각". createdAt 단독 기준은 24h 넘게 열린 주문의 +Round(=지금
+  // 발생한 인쇄 필요)를 창에서 무음 탈락시켰다 → 그 라운드 주방티켓 분실(실호출 실증).
+  // needs_print 를 켜는 '새 인쇄 필요' 지점(생성·라운드/머지·이동·취소·void)에서만 NOW 스탬프.
+  // ⛔ 재시도 경로(죽은-claim 자동복구, /print-rearm)는 절대 스탬프하지 않는다 — 같은 인쇄 필요의
+  // 재시도일 뿐이며, 스탬프하면 인쇄 고장 매장에서 claim↔re-arm 핑퐁이 옛 행을 영원히 신선하게 만들어
+  // 누적 방어(2026-07-23 원목적)가 무너진다. NULL(기존 행)은 창 판정이 createdAt 으로 폴백 = 종전 동일.
+  print_needed_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'When the print need last arose (create/round/move/cancel/void). Freshness key for pending-print window; NULL falls back to createdAt.'
+  },
   // 2026-06-24: 테이블이동·취소·void 재인쇄도 "누른 기기 직접인쇄" → "DB → 인쇄 전담 POS 폴러"로 통일.
   // pending_reprint = { type:'move'|'cancel'|'void', data:{...인쇄데이터 스냅샷} }. 액션 라우트가 설정,
   // 폴러가 type 에 맞는 기존 인쇄함수 호출 후 NULL. reprint_claimed_at = print_claimed_at 와 동일한

@@ -336,7 +336,10 @@ router.post('/order', async (req, res) => {
           status: preserveOutstanding ? 'outstanding' : 'pending',
           // 2026-05-28: 같은 테이블 모바일 추가 = kitchen ticket 만 (주방 추가
           // 주문 받아야 함). bill 은 절대 안 나옴 — 결제 버튼 시점에만.
-          needs_print: true
+          needs_print: true,
+          // 2026-07-24 신선도 스탬프: 모바일 자동머지 라운드 = 인쇄 필요가 "지금" 발생.
+          // 없으면 24h 넘게 열린 테이블의 모바일 추가주문 티켓이 창에서 무음 탈락한다.
+          print_needed_at: new Date()
         });
         await mergeableOrder.reload();
 
@@ -453,6 +456,7 @@ router.post('/order', async (req, res) => {
             total_amount: total,
             status: initialStatus,
             needs_print: true,  // 2026-05-28: backend trigger for auto-print polling
+            print_needed_at: new Date(),  // 2026-07-24: 신선도 스탬프(모바일 주문 생성 = 인쇄 필요 발생)
             order_type: actualOrderType,
             payment_method: paymentMethod || 'counter',
             payment_status: 'pending',

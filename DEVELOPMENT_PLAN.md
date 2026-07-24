@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-23 (**IOI Mall 매출보고 연동 + 이월렛 서브타입 캡처 — dev 완료·미배포**. IOI Mall(임대인, Tangent SalesHourly API)에 The Fire(rid=16) 시간별 매출 자동보고. 기능은 이미 개발돼 있었고 인증(staging 자격증명 50100025)을 우리 코드로 토큰발급→24레코드 전송 `status:success` 실증. **스펙 대조로 버그2건 수정**: ①tender가 SST 포함(gto 불일치) → SST 전 환산(분모=paySum, tender합=gto) ②HTTP 200 status:error를 성공기록 → fail-closed. **이월렛 서브타입 캡처 신규 개발**: POS 이월렛이 단일 'ewallet'라 몰 tng 못 채움 → 전용컬럼 ewallet_type(카드 card_type 대칭), 설정 acceptedTypes 다중선택(1개=자동태깅·2개↑=선택강제·0개=기존동작), 전 POS 결제경로 배선(POSTerminal·FloorPlan·LiveOrders·split), addToBucket tng 매핑. **실UI 검증에서 POS Terminal TDZ 크래시 발견·수정**(빌드·TS 통과했으나 런타임). 기존 이월렛→grabpay 백필(dev 241건). **rid=16 config 운영 저장(enabled=false)+시스템 인증 검증**. ENCRYPTION_KEY 회전 마이그 준비(go-live 직전). 검증: verify-all --full mount sweep 8역할+POS **크래시0(662.8s)**·인쇄 라우트가드 34/34·실API 왕복 5/5·계약 14/14·health 139/140(유일실패=print-guard 의도). **Fable 2차 재검증 CONDITIONAL GO**(절단면 결함0, 조건=orders-crud 별건 인쇄변경 Irene승인+bless·backfill 순서). ★Fable 게이트 대상. 상세=아래 ✅ 섹션 + session-state.)
+> **최종 업데이트:** 2026-07-24 (**배포 전 Fable 전수 검증 + 🔒 인쇄 신선도 근본수정 — dev 완료·미배포**. Irene "배포 전에 fable이 기존 운영 기능들 문제없나 체크해. 주문관리부터 모두 다" → 운영 델타 25파일 기준 **Fable 5트랙 병렬 회귀검증**(주문코어/결제/인쇄/DB마이그/전역) → **델타가 만든 신규 회귀 0건**, 단 인쇄 트랙이 **엣지 1건 실증**: 2026-07-23 도입한 pending-print 24h 신선도 경계가 주문 `createdAt` 기준이라 **24h 넘게 열린 테이블에 +Round 하면 그 라운드 주방티켓이 무음 유실**. Irene "철저히 고쳐. 제대로 고쳐" 지시로 근본수정 — 판정 대상은 "주문이 태어난 시각"이 아니라 **"인쇄 필요가 발생한 시각"**이므로 신규 컬럼 `orders.print_needed_at` + 창 판정 `COALESCE(print_needed_at, createdAt)`. 기존 행 NULL=createdAt 폴백이라 **배포 즉시 동작 변화 0**, 백필 안 하는 것이 설계(마이그↔코드 배포 갭 봉인). 스탬프 7곳(mergeItemsIntoOrder 가 add-items·merge-items·생성머지·자동머지·테이블머지 5호출부 전부 커버) / **⛔ 무스탬프 5곳**(죽은-claim 복구·rearm·claim·dismiss·printed — 스탬프하면 인쇄고장 매장의 claim↔re-arm 핑퐁이 옛 행을 영구 신선화해 누적 방어 붕괴). 기각안: updatedAt(결제가 옛 행 부활)·order_items 서브쿼리(TEXT 컬럼이라 불가+고빈도 경로)·pending_reprint 경로(인쇄 라우팅 변경=승인조건 위반). **반증 실증**: 동일 행에서 구 판정식 제외(=버그)/신 판정식 포함/실 API 포함+새 품목만. 회귀테스트 2건 신설(140→142). **Fable 적대검증 GO**(스탬프 전수 7/7·무스탬프 6엔드포인트 실호출·인쇄고장 시뮬 3사이클 부활 0·생성SQL 육안·오프라인 재생 3방향·취소표 계약 유지·EXPLAIN 동일). health 141/142·라우트가드 34/34 — 실패 전건이 print-guard 지문(bless 대기). **grabpay 백필은 Irene 위임 → Fable 판정으로 미실행 확정**(NULL≡grabpay 로 출력 무변화·몰 7일창 소급없음·97% 타매장 오태깅·재실행 footgun) → dev 원복. ★Fable 게이트 대상. 상세=아래 ✅ 섹션 + session-state.)
+>
+> **이전:** 2026-07-23 (**IOI Mall 매출보고 연동 + 이월렛 서브타입 캡처 — dev 완료·미배포**. IOI Mall(임대인, Tangent SalesHourly API)에 The Fire(rid=16) 시간별 매출 자동보고. 기능은 이미 개발돼 있었고 인증(staging 자격증명 50100025)을 우리 코드로 토큰발급→24레코드 전송 `status:success` 실증. **스펙 대조로 버그2건 수정**: ①tender가 SST 포함(gto 불일치) → SST 전 환산(분모=paySum, tender합=gto) ②HTTP 200 status:error를 성공기록 → fail-closed. **이월렛 서브타입 캡처 신규 개발**: POS 이월렛이 단일 'ewallet'라 몰 tng 못 채움 → 전용컬럼 ewallet_type(카드 card_type 대칭), 설정 acceptedTypes 다중선택(1개=자동태깅·2개↑=선택강제·0개=기존동작), 전 POS 결제경로 배선(POSTerminal·FloorPlan·LiveOrders·split), addToBucket tng 매핑. **실UI 검증에서 POS Terminal TDZ 크래시 발견·수정**(빌드·TS 통과했으나 런타임). 기존 이월렛→grabpay 백필(dev 241건). **rid=16 config 운영 저장(enabled=false)+시스템 인증 검증**. ENCRYPTION_KEY 회전 마이그 준비(go-live 직전). 검증: verify-all --full mount sweep 8역할+POS **크래시0(662.8s)**·인쇄 라우트가드 34/34·실API 왕복 5/5·계약 14/14·health 139/140(유일실패=print-guard 의도). **Fable 2차 재검증 CONDITIONAL GO**(절단면 결함0, 조건=orders-crud 별건 인쇄변경 Irene승인+bless·backfill 순서). ★Fable 게이트 대상. 상세=아래 ✅ 섹션 + session-state.)
 >
 > **이전:** 2026-07-22 (**루아 윈도우 데스크탑앱 테스트 수정 4건 — 운영 배포**. 매장 윈도우 앱(0.1.9) 테스트에서 나온 4건을 4병렬 조사로 근본원인 실측 후 처리. **#2 Floor Plan 예약 테이블 레이아웃 깨짐**: 고정 70×70 원에 `"Reserved 05:30 pm"` 긴 문자열이 줄바꿈→overflow(nowrap/말줄임 없음) → 노드 안엔 시간만(reservedTimeLabel 신설) + SeatsLabel/StatusInfo nowrap+ellipsis+max-width(모든 넘침 방지). **#3 프린터 실패배너 재등장+상단nav 가림**: Dismiss가 기억 안 함+5초 폴러 재발화 + top:0 전체폭 오버레이 → 실패 key별 Dismiss 쿨다운(10분) + 하단 중앙 토스트 재배치. **인쇄 파이프라인 무접촉**(배너=display-only, 8보호파일 아님·dispatch부 무수정, print-guard 8/8). **#4 예약 상태 미동기화(Seated 안 됨)**: FloorPlan "Check in (New Order)"가 예약 전환 안 함 + 백엔드는 arrived만 seat(confirmed 제외=워크인 오링크 방지 의도적 안전장치) → 체크인 시 프론트가 confirmed→arrived PATCH(Reservations "Arrived" 경로와 동일) → **백엔드 기존 흐름이 주문생성 시 arrived→seated+order.reservation_id 링크**(주문생성=Fable 영역 무접촉) + Reservations focus/visibility 재조회. **#1 exe 다운로드 SmartScreen 경고**: 코드 문제 아님 — 미서명 설치파일(무평판)이 근본. 유일 해법=코드서명 인증서 구매(Azure Trusted Signing 등) → **Irene 결정 항목, 코드 무변경**. 검증: verify-all --full **14/14**(mount 8역할 크래시0)·이슈4 API E2E 11/11·print-guard 8/8·sensitive-diff Fable 비대상. 운영 배포 Backup 20260722_121601·Smoke 9/9·마이그 47/47·스키마 동일 153테이블. 상세=아래 ✅ 섹션 + session-state.)
 >
@@ -8312,6 +8314,49 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `mobile-app/scripts/verify/run-v4.js` (픽스처·판정·V4-6·원복·메모리 게이트·앱 사망 감지)
 - `mobile-app/scripts/verify/run-v3.js` (메모리 게이트만)
 - 신규 AVD `purplepos-ci` (AOSP android-34, GMS 없음, RAM 2GB)
+
+---
+
+## ✅ 완료: 배포 전 Fable 전수 검증 + 🔒 인쇄 신선도 근본수정 (2026-07-24, dev 완료·미배포)
+
+> Irene "배포 전에 fable이 기존 운영 기능들 문제없나 체크해. 주문관리부터 모두 다" → Fable 5트랙 병렬 회귀검증 → 인쇄 엣지 실증 → Irene "철저히 고쳐. 제대로 고쳐" → 근본수정 → Fable 적대검증 **GO**.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Fable 5트랙 배포전 회귀검증 | 운영 델타 25파일 기준. 주문코어 GO / 결제·인쇄·DB·전역 CONDITIONAL GO. **델타가 만든 신규 회귀 0건** | ✅ 완료 |
+| 🔴 인쇄 엣지 실증 | 24h 넘게 열린 테이블에 +Round → 그 라운드 주방티켓 **무음 유실**(25h 주문 add-items 실호출 증명) | ✅ 완료 |
+| 🔒 신선도 기준 근본수정 | 판정 기준을 "주문이 태어난 시각"(createdAt) → **"인쇄 필요가 발생한 시각"**(print_needed_at). 창 판정 `COALESCE(print_needed_at, createdAt) >= now-24h` | ✅ 완료 |
+| 스탬프 배선 7곳 | mergeItemsIntoOrder(add-items·merge-items·생성머지·자동머지·테이블머지 5호출부 전부 커버)·주문생성·이동·취소·void·모바일 자동머지·모바일 생성 | ✅ 완료 |
+| ⛔ 무스탬프 5곳(핵심 결정) | 죽은-claim 복구·print-rearm·print-claim·print-dismiss·printed — 스탬프하면 인쇄고장 매장에서 claim↔re-arm 핑퐁이 옛 행을 영구 신선화 → **누적 방어 붕괴** | ✅ 완료 |
+| 마이그레이션 | `migrate-print-needed-at.js` 멱등(2회 실증)·process.exit·registry `deploy`. **백필 안 하는 것이 설계**(배포 갭 봉인) | ✅ 완료 |
+| 회귀테스트 2건 신설 | ①25h 주문 +Round 창 포함(실 API add-items 경유) ②재시도 경로 무스탬프+부활 없음 → health-check 140→142건 | ✅ 완료 |
+| grabpay 백필 미실행 확정 | Irene 위임 → Fable 판정. registry+스크립트 헤더에 "⛔ 운영 실행 금지" 명기, dev 원복(orders 241·order_payments 2 → NULL) | ✅ 완료 |
+
+### 기각된 대안 (근본수정 설계)
+- **(a) `updatedAt` 기준** — 결제·상태변경 등 인쇄 무관 갱신이 옛 미인쇄 행에 24h 신선도 리스를 새로 줘 **누적 문제 부분 재발**. 기각.
+- **(c) `order_items` 최신추가 서브쿼리** — `order_items` 는 별도 테이블이 아니라 orders 의 **TEXT(JSON) 컬럼**이라 인덱스 불가 + 창 쿼리는 워크스테이션마다 수 초 간격 최고빈도 경로. 이동/취소/void 는 품목을 추가하지 않아 보이지도 않음. 기각.
+- **(d) 라운드를 `pending_reprint`(경계 면제) 경로로** — 폴러가 type 별 **다른 인쇄 함수**를 부르는 별도 계약이라 인쇄 라우팅이 바뀜 = Irene 승인조건(방식 무변경) 위반. 기각.
+
+### 검증
+- **반증 실증**: 동일 행에서 구 판정식 창 **제외**(=버그) / 신 판정식 **포함** / 실 API 포함 + `kitchen_items`=새 품목만
+- **Fable 적대검증 GO**: 스탬프 전수 7/7(raw SQL·DB 트리거 0개까지 폐쇄 증명) · 무스탬프 6개 엔드포인트 실호출 후 DB 재조회 전부 NULL · **인쇄고장 매장 시뮬 3사이클 → 매 사이클 창 밖 유지·스탬프 0**(구조적 이유: claim 은 창에서 본 주문에만 발생 → 옛 행은 핑퐁 자체가 불성립) · 생성 SQL 육안(경계는 branch1 에만, 재발행 분기 무경계) · 오프라인 재생 3방향 정확 · 취소표 계약 유지 · 타임존 UTC 단일축 · EXPLAIN 신/구 동일
+- health-check **141/142** · print **10/11** · 인쇄 라우트 가드 **34/34** · verify-all 11/13 — **실패 전건이 print-guard 지문 1개**(bless 대기)
+- 프론트엔드 무접촉 · 인쇄 방식/라우팅/타이밍/주체 무변경(Irene 승인 조건)
+
+### 수정된 파일
+- `dev-backend/models/Order.js` (print_needed_at 컬럼)
+- 🔒 `dev-backend/routes/orders-crud.js` (스탬프 5곳 + 창 판정)
+- `dev-backend/routes/mobile-orders.js` (스탬프 2곳)
+- `dev-backend/scripts/migrate-print-needed-at.js` (신규)
+- `dev-backend/scripts/health-check.js` (회귀테스트 2건)
+- `dev-backend/scripts/migrations.registry.json` · `dev-backend/scripts/migrate-backfill-ewallet-grabpay.js` (백필 미실행 확정)
+
+### 배포 전 남은 것
+1. **Irene 인쇄 변경 승인** → `check-print-guard.js --bless` (orders-crud + 어제 별건 POSTerminalPage)
+2. `/배포` → 마이그 `migrate-add-ewallet-type` + `migrate-print-needed-at` 자동 실행
+3. 배포 후 **신규 주문 오더티켓 1장 실프린터 눈 확인**(Irene) · rid=16 acceptedTypes 지정
 
 ---
 
