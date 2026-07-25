@@ -157,6 +157,13 @@ router.get('/subscriptions/manager/:managerId', authenticateToken, async (req, r
   try {
     const { managerId } = req.params;
 
+    // 2026-07-25 보안: 자기검사가 없어 아무 인증 계정이나 임의 managerId 로 그 사람 관할 매장의
+    // 구독·매출·인보이스 요약을 받아갈 수 있었다. `/restaurants/manager/:managerId` 와 동일한
+    // 결함·동일한 해법(프론트 호출부 0건이라 동작 변화 없음).
+    if (String(managerId) !== String(req.user.id) && req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, error: { message: 'Not authorized', code: 'FORBIDDEN' } });
+    }
+
     // Get restaurants managed by this manager via restaurant_managers junction table
     const RestaurantManager = require('../models/RestaurantManager');
     const managedLinks = await RestaurantManager.findAll({

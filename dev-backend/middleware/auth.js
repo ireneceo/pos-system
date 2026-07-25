@@ -175,6 +175,17 @@ const checkRestaurantAccess = async (req, res, next) => {
       return res.status(400).json({ success: false, error: { message: 'restaurantId required', code: 'VALIDATION_ERROR' } });
     }
 
+    // 🔴 id 정규화 — 이 게이트를 통째로 무력화하던 우회 (2026-07-25 Fable 적대검증 실증).
+    // 판정은 `parseInt(target)` 으로 하는데 핸들러는 원문 문자열로 findByPk 를 돌고, MySQL 은
+    // 그 문자열을 float 로 캐스팅한다. `parseInt('1.16e2') === 1` / MySQL `'1.16e2' → 116`
+    // ⇒ 자기 매장 id 로 판정을 통과한 뒤 **남의 매장**이 조회·수정된다.
+    // 실증: RA(매장1) → `/restaurants/1.16e2/company-info` 200, `/store/settings?restaurantId=1.16e2` 200.
+    // 이 미들웨어는 103개 라우트가 쓰므로 테넌트 경계가 앱 전역에서 뚫렸다.
+    // 정규 10진수만 받는다(조이는 방향 — 정상 호출은 전부 정수 id).
+    if (!/^\d+$/.test(String(targetRestaurantId))) {
+      return res.status(400).json({ success: false, error: { message: 'Invalid restaurant id', code: 'VALIDATION_ERROR' } });
+    }
+
     // System Admin can access everything
     if (req.user.role === 'System Admin') {
       return next();
@@ -423,6 +434,70 @@ const userCanAccessRestaurant = async (user, targetRestaurantId) => {
   return false;
 };
 
+// Route gate for `/api/restaurants/:id` style paths where :id IS the restaurant id.
+// 2026-07-25 보안: 이 경로들이 authenticateToken 만 달고 있어 아무 인증 계정이나 남의 매장
+// 전 컬럼(payment_settings·printer_settings 포함)을 읽거나 status 를 바꿀 수 있었다.
+//
+// ⚠ checkRestaurantAccess 를 쓰지 않는 이유(실측): 그쪽에는 "Brand General 이 소유한 브랜드의
+// 매장" / "Foodcourt General 이 소유한 푸드코트의 매장" 폴백이 없어, 자기 관할 매장인데도 403 이
+// 난다(예: FG demo_foodcourt → 자기 푸드코트 44 산하 r38/r39 가 403). 목록(GET /restaurants)은
+// foodcourt_id 로 스코핑해 보여주므로 "목록엔 보이는데 상세는 403" 인 화면 붕괴가 된다.
+// userCanAccessRestaurant 는 그 폴백을 가지고 있다(위 정의 참조) → 이걸 단일 기준으로 쓴다.
+//
+// 주의: 라우트별 추가 제약(예: Foodcourt Manager 의 branch 일치)은 이 게이트가 대체하지 않는다.
+// 핸들러에 이미 있는 검사는 AND 로 그대로 남긴다.
+const requireRestaurantScope = (paramName = 'id') => async (req, res, next) => {
+  try {
+    const targetId = req.params[paramName];
+    // 정규 10진수만 통과시킨다 → next('route') 로 넘겨 뒤쪽 구체 라우트가 잡게 한다.
+    // (restaurants-crud 의 '/:id' 는 '/available/:managerId' 등보다 먼저 선언돼 있어서, 핸들러가
+    //  isNaN 일 때 next('route') 로 폴스루하는 데 의존한다. 여기서 400 으로 삼키면 그 라우트들이
+    //  전부 죽는다.)
+    //
+    // 🔴 `isNaN(parseInt(x))` 를 쓰면 안 된다(2026-07-25 Fable 적대검증이 실증한 우회):
+    // `parseInt('3.8e1') === 3` 인데 MySQL 은 문자열 '3.8e1' 을 float 로 캐스팅해 **38** 로 읽는다.
+    // 즉 게이트는 매장 3 을 검사하고 핸들러의 findByPk(req.params.id) 는 매장 38 을 돌려준다
+    // → 자기 매장 id 로 남의 매장 전 컬럼(게이트웨이 비밀키 포함) 읽기·status 변경이 뚫렸다.
+    // 그래서 ①정규 digits 만 허용하고 ②판정에 쓴 값으로 param 을 고정해 게이트와 핸들러가
+    // **같은 값**을 보게 한다.
+    if (targetId === undefined || targetId === null || !/^\d+$/.test(String(targetId))) {
+      return next('route');
+    }
+    req.params[paramName] = String(parseInt(targetId, 10));
+    if (await userCanAccessRestaurant(req.user, targetId)) return next();
+
+    // ⚠ 불변식: **상세 게이트는 목록 스코핑보다 엄격하면 안 된다.**
+    // GET /api/restaurants 는 Foodcourt General/Manager 에게 `whereClause.foodcourt_id =
+    // user.foodcourt_id` (+FM 이면 branch_id) 로 매장을 **보여준다**. 그런데
+    // userCanAccessRestaurant 의 푸드코트 폴백은 `Foodcourt General` **이면서 소유자**일 때만
+    // 참이라, ①Foodcourt Manager ②소유자가 아닌 Foodcourt General 은 목록엔 뜨는데 상세는
+    // 403 이 된다 = 매니저 콘솔에서 클릭하면 죽는다(2026-07-25 실측으로 발견).
+    // 그래서 목록과 **동일한 규칙**을 여기서 그대로 반영한다.
+    //
+    // userCanAccessRestaurant 를 고치지 않는 이유: 그 함수는 쿠폰·인보이스 쓰기 게이트와
+    // 소켓 room 인증 등 11개 파일이 공유한다. 거기서 느슨하게 하면 이번 절단면을 넘는
+    // 권한 확대가 되므로, 이 라우트 쌍(list↔detail)의 불변식은 이 게이트에서 닫는다.
+    // (근본 정리 = 접근판정 3중화 해소. 별건 설계 대상 — 아래 주석 참조.)
+    const u = req.user;
+    if (u && (u.role === 'Foodcourt General' || u.role === 'Foodcourt Manager') && u.foodcourt_id) {
+      const r = await Restaurant.findByPk(parseInt(targetId), { attributes: ['id', 'foodcourt_id', 'branch_id'] });
+      if (r && r.foodcourt_id && parseInt(r.foodcourt_id) === parseInt(u.foodcourt_id)) {
+        // 지점 스코프 FM 은 자기 지점 매장만 (목록과 동일 조건)
+        if (u.role === 'Foodcourt Manager' && u.branch_id) {
+          if (parseInt(r.branch_id) === parseInt(u.branch_id)) return next();
+        } else {
+          return next();
+        }
+      }
+    }
+
+    return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
+  } catch (error) {
+    console.error('[AUTH] requireRestaurantScope error:', error.message);
+    return res.status(500).json({ success: false, error: { message: 'Failed to verify access', code: 'INTERNAL_ERROR' } });
+  }
+};
+
 // Generic entity-scope check used by settings/notification/report routes that key
 // on (entity_type, entity_id) rather than a plain restaurant_id. Restaurant scope
 // reuses userCanAccessRestaurant; brand/foodcourt scope = System Admin or the owner.
@@ -459,6 +534,7 @@ module.exports = {
   requireVoidAccess,
   userCanVoid,
   checkRestaurantAccess,
+  requireRestaurantScope,
   userCanAccessRestaurant,
   userCanAccessEntity,
   checkSubscriptionStatus,

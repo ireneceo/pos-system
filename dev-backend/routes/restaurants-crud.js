@@ -69,7 +69,7 @@ const AddonModule = require('../models/AddonModule');
 const { Recipe, Ingredient, RecipeIngredient } = require('../models');
 const CompanySettings = require('../models/CompanySettings');
 const { Op } = require('sequelize');
-const { authenticateToken, checkRestaurantAccess, requireRole } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess, requireRole, requireRestaurantScope } = require('../middleware/auth');
 const { validateRestaurantCreation } = require('../middleware/validation');
 const { getTodayBounds, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { deleteOldImages } = require('../utils/imageProcessor');
@@ -132,6 +132,33 @@ router.get('/', authenticateToken, async (req, res) => {
       // Branch-scoped Foodcourt Manager: further limit to restaurants in their branch
       if (req.user.role === 'Foodcourt Manager' && req.user.branch_id) {
         whereClause.branch_id = req.user.branch_id;
+      }
+    } else if (req.user && req.user.role !== 'System Admin') {
+      // 2026-07-25 보안: 위 두 분기에 안 걸리는 역할은 **스코핑이 통째로 없어서 전 매장**을
+      // 받아갔다(Supplier·Staff·Restaurant Admin·Owner, 그리고 foodcourt_id/brand_id 가
+      // 미배정된 Foodcourt/Brand 역할). 응답이 allowlist 라 게이트웨이 비밀키는 안 나갔지만
+      // 타 매장의 email·phone·주소·사업자등록번호·세금ID·플랜금액·거래조건과 **당일 매출·주문수**
+      // 까지 나갔다.
+      //
+      // 또한 이건 "목록엔 보이는데 상세는 403" 의 원인이기도 하다 — 상세는
+      // requireRestaurantScope 로 막히므로, 목록만 열려 있으면 클릭하는 순간 죽는다.
+      // ⇒ 목록을 상세 게이트와 같은 범위로 좁힌다(list ⊆ detail 불변식).
+      //
+      // 프론트 실측: 이 목록을 부르는 곳은 SA·BG/BM·FG/FM·매니저 콘솔·계약상세뿐이고
+      // Supplier/Staff/RA/POS/모바일 호출부는 0건. Owner 는 별도 /api/owner/restaurants 사용.
+      const { Op: ScopeOp } = require('sequelize');
+      if (req.user.role === 'Restaurant Admin' || req.user.role === 'Staff') {
+        whereClause.id = req.user.restaurant_id || 0;   // 자기 매장만 (미배정이면 0건)
+      } else if (req.user.role === 'Restaurant Owner') {
+        const { RestaurantManager } = require('../models');
+        const owned = await RestaurantManager.findAll({
+          where: { manager_id: req.user.id, relationship_type: 'ownership' },
+          attributes: ['restaurant_id']
+        });
+        whereClause.id = { [ScopeOp.in]: owned.map(o => o.restaurant_id).concat([0]) };
+      } else {
+        // Supplier 등 매장 목록이 업무상 필요 없는 역할 + 스코프 미배정 감독역할 → 0건
+        whereClause.id = 0;
       }
     }
 
@@ -369,6 +396,13 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
   try {
     const { managerId } = req.params;
 
+    // 2026-07-25 보안: 자기검사가 없어 아무 인증 계정이나 임의 managerId 를 넣어 그 사람 관할
+    // 매장 전 컬럼(toJSON 벌크 — payment_settings·printer_settings 포함)을 받아갈 수 있었다.
+    // 바로 아래 '/available/:managerId' 가 쓰는 것과 동일한 패턴.
+    if (String(managerId) !== String(req.user.id) && req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, error: { message: 'Not authorized', code: 'FORBIDDEN' } });
+    }
+
     // Get the target user to determine scope strategy
     const targetUser = await User.findByPk(managerId, { attributes: ['id', 'role', 'brand_id', 'foodcourt_id'] });
     if (!targetUser) {
@@ -482,6 +516,22 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
 // 공개 라우트 - 모바일 고객이 slug로 레스토랑 정보 조회
 // 보안: 민감정보(business_registration, tax_id, bank_account_name 등 일부)는 응답에 포함되지만
 // 결제 흐름에 필요. manager 개인정보(email/phone)는 제외.
+// 손님(익명)이 모바일 QR URL 의 slug 로 매장을 여는 공개 엔드포인트.
+// 2026-07-25 보안: 이전에는 toJSON() 전 컬럼(80개)을 그대로 내보내 **토큰 없이** 매장의
+// printer_settings·business_registration·tax_id·legal_*·bank_*·plan_*·payment_settings.online.config
+// (stripeSecretKey/paypalClientSecret) 까지 읽혔다. slug 는 QR URL 에 박혀 있어 공개값이므로
+// 추측조차 필요 없었다 — 인증이 필요한 /:id 보다 상위 결함.
+// 이제 손님 화면이 실제로 쓰는 필드만 내보낸다(모바일 8개 페이지 + StoreContext 실측 기준).
+const PUBLIC_SLUG_FIELDS = [
+  'id', 'name', 'branch_name', 'slug', 'logo_url', 'country', 'status', 'is_demo',
+  'currency', 'cash_rounding', 'rounding_apply_to',
+  'operation_settings', 'table_settings', 'mobile_settings', 'reservation_settings', 'floor_plan',
+  'address', 'address_line_2', 'city', 'state', 'postal_code', 'phone',
+  // 아래 4개는 현재 Restaurant 모델에 컬럼이 없어 실응답엔 안 나온다(모바일이 `|| ''` 로 폴백).
+  // 손님 표시용으로 의도된 이름이라, 나중에 컬럼이 생겨도 조용히 누락되지 않도록 미리 넣어 둔다.
+  'description', 'logo', 'is_open', 'opening_hours'
+];
+
 router.get('/slug/:slug', async (req, res) => {
   try {
     const restaurant = await Restaurant.findOne({
@@ -492,9 +542,27 @@ router.get('/slug/:slug', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Restaurant not found' });
     }
 
-    const restaurantData = restaurant.toJSON();
-    // 민감정보 마스킹: manager 정보는 제외
-    delete restaurantData.admin_id;
+    const full = restaurant.toJSON();
+    const restaurantData = {};
+    for (const field of PUBLIC_SLUG_FIELDS) {
+      if (full[field] !== undefined) restaurantData[field] = full[field];
+    }
+
+    // payment_settings 는 손님이 결제수단·계좌번호·QR 이미지를 봐야 하므로 유지한다
+    // (bankTransfer.accountNumber 는 설계상 손님에게 보여주는 값 — 비밀이 아니다).
+    // 단 게이트웨이 자격증명인 `config`(stripeSecretKey/paypalClientSecret 등)는 제거한다.
+    // 서버측 stripeService/paypalService 가 DB 를 직접 읽으므로 결제 실행에 영향 없고,
+    // 모바일에서 `payment_settings.*.config` 를 읽는 곳은 0건(전 페이지 실측).
+    let ps = full.payment_settings;
+    if (typeof ps === 'string') { try { ps = JSON.parse(ps); } catch { ps = null; } }
+    if (ps && typeof ps === 'object') {
+      const safe = JSON.parse(JSON.stringify(ps));
+      for (const key of Object.keys(safe)) {
+        const method = safe[key];
+        if (method && typeof method === 'object' && 'config' in method) delete method.config;
+      }
+      restaurantData.payment_settings = safe;
+    }
 
     res.json({ success: true, data: restaurantData });
   } catch (error) {
@@ -504,7 +572,12 @@ router.get('/slug/:slug', async (req, res) => {
 });
 
 // Get table status for floor plan - MUST be before /:id route
-router.get('/:id/table-status', authenticateToken, async (req, res) => {
+// 2026-07-25 보안: authenticateToken 만 있어 **아무 인증 계정이나** 남의 매장 실시간 영업정보
+// (손님 이름·전화번호·주문 품목·금액·결제수단·payment_proof)를 통째로 읽을 수 있었다.
+// 설정값이 아니라 고객 개인정보라 이번 배치에서 같이 막는다.
+// 프론트 호출부는 **0건**(FloorPlanPage 가 이 의존을 의도적으로 제거하고 utils/orderStage.ts
+// 클라이언트 미러로 대체 — grep 히트는 전부 주석) → 동작 변화 0.
+router.get('/:id/table-status', authenticateToken, requireRestaurantScope('id'), async (req, res) => {
   try {
     const restaurantId = req.params.id;
 
@@ -711,7 +784,12 @@ router.get('/:id/company-info', authenticateToken, checkRestaurantAccess, async 
 });
 
 // Get restaurant details
-router.get('/:id', authenticateToken, async (req, res, next) => {
+// 2026-07-25 보안: authenticateToken 만 있어 아무 인증 계정이나 남의 매장 전 컬럼(88개 —
+// payment_settings 의 stripeSecretKey/paypalClientSecret, printer_settings, bank_*, tax_id 포함)을
+// 읽을 수 있었다. requireRestaurantScope 가 비숫자 id 를 next('route') 로 흘려보내므로 아래
+// 폴스루 계약은 그대로 유지된다. 응답 필드는 축소하지 않는다 — Settings 프린터탭·POS 결제화면·
+// LiveOrders 가 이 응답을 1차 소스로 쓰기 때문(축소하면 프린터설정 wipe 사고 경로 재현).
+router.get('/:id', authenticateToken, requireRestaurantScope('id'), async (req, res, next) => {
   // Guard: skip non-numeric IDs so concrete routes below (e.g. /subscriptions/manager/:id, /available/:id) can match
   if (isNaN(req.params.id)) return next('route');
   try {
@@ -2106,7 +2184,11 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 });
 
 // Update restaurant status
-router.patch('/:id/status', authenticateToken, async (req, res) => {
+// 2026-07-25 보안: 게이트가 전무해 아무 인증 계정(타 매장 Staff 포함)이나 임의 매장을 'suspended'
+// 로 밀어 그 매장 로그인을 차단할 수 있었다(임의 테넌트 영업정지 = 읽기 유출보다 심각).
+// 프론트 호출부는 **0건**(매장 상태 변경은 PUT /restaurants/:id 로 나간다) — 역할 제한으로
+// 인한 동작 변화 0. (Fable 검증 시 "Admin 화면 2곳" 이라 적었던 것은 오기.)
+router.patch('/:id/status', authenticateToken, requireRole('System Admin', 'Brand General', 'Foodcourt General'), requireRestaurantScope('id'), async (req, res) => {
   try {
     const { status } = req.body;
     const restaurant = await Restaurant.findByPk(req.params.id);
@@ -2173,7 +2255,8 @@ router.get('/available/:managerId', authenticateToken, async (req, res) => {
 });
 
 // Get categories for a specific restaurant
-router.get('/:id/categories', authenticateToken, async (req, res) => {
+// 2026-07-25 보안: 크로스테넌트 조회 가능했음. 프론트 호출부 0건 → 동작 변화 0.
+router.get('/:id/categories', authenticateToken, requireRestaurantScope('id'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -2221,7 +2304,9 @@ router.get('/:id/categories', authenticateToken, async (req, res) => {
 });
 
 // Get allowed routes for a restaurant based on their plan
-router.get('/:id/allowed-routes', authenticateToken, async (req, res) => {
+// 2026-07-25 보안: 크로스테넌트 조회 가능했음. 유일 호출부(useAllowedRoutes.ts:60)는
+// RA/Staff 가 **자기 매장** id 로만 부르므로 게이트 추가는 무영향.
+router.get('/:id/allowed-routes', authenticateToken, requireRestaurantScope('id'), async (req, res) => {
   try {
     const { id } = req.params;
 

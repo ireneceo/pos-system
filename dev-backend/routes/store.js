@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Restaurant = require('../models/Restaurant');
 const SystemSettings = require('../models/SystemSettings');
-const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess, userCanAccessRestaurant } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLogger');
 const {
   guardPrinterSettings,
@@ -107,22 +107,35 @@ router.put('/settings', authenticateToken, async (req, res) => {
     console.log('👤 User Info:', { userId: req.user?.id, restaurantId: req.user?.restaurant_id });
     console.log('📦 Request Body Keys:', Object.keys(req.body));
 
-    const restaurantId = req.query.restaurantId || req.user.restaurant_id;
-    console.log('🎯 Target Restaurant ID:', restaurantId);
+    const rawRestaurantId = req.query.restaurantId || req.user.restaurant_id;
+    console.log('🎯 Target Restaurant ID:', rawRestaurantId);
 
-    if (!restaurantId) {
+    if (!rawRestaurantId) {
       console.error('✗ No restaurant ID provided');
       return res.status(400).json({ success: false, error: { message: 'Restaurant ID is required', code: 'VALIDATION_ERROR' } });
     }
 
+    // 🔴 id 정규화 (2026-07-25 Fable 적대검증 실증): `?restaurantId=1.16e2` 를 주면
+    // 권한판정(parseInt → 1)과 실제 조회(MySQL float 캐스팅 → 116)가 **다른 매장**을 가리켜
+    // 남의 매장 설정에 쓰기가 가능했다. 정규 10진수만 받고, 이후 전 구간에서 이 값만 쓴다.
+    if (!/^\d+$/.test(String(rawRestaurantId))) {
+      return res.status(400).json({ success: false, error: { message: 'Invalid restaurant id', code: 'VALIDATION_ERROR' } });
+    }
+    const restaurantId = String(parseInt(rawRestaurantId, 10));
+
     // Access control: Only allow users to update their own restaurant
     // System Admin can update any restaurant
+    //
+    // 2026-07-25 보안: 이전에는 Restaurant Admin·Staff 만 검사하고 그 외 역할(Supplier, Owner,
+    // Brand/Foodcourt Manager 등)은 무검사로 통과해, 타 매장의 payment_settings·operation_settings
+    // 를 덮어쓸 수 있었다. GET /store/settings 는 checkRestaurantAccess 로 막혀 있는데 쓰기만
+    // 열려 있던 비대칭 게이트. 이제 비-SA 는 전부 userCanAccessRestaurant 로 통일한다
+    // (RA/Staff 판정은 기존 restaurant_id 일치 검사와 동일 → 그쪽 동작 변화 0).
     if (req.user.role !== 'System Admin') {
-      if (req.user.role === 'Restaurant Admin' || req.user.role === 'Staff') {
-        if (parseInt(req.user.restaurant_id) !== parseInt(restaurantId)) {
-          console.error('✗ Access denied: User restaurant_id does not match target');
-          return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
-        }
+      const allowed = await userCanAccessRestaurant(req.user, restaurantId);
+      if (!allowed) {
+        console.error('✗ Access denied: user has no access to target restaurant');
+        return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
       }
     }
     console.log('✓ Access control passed');

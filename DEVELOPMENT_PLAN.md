@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-24 (**운영 배포 3회 완료, 버전 v3.70 유지** — ①13:26 인쇄 신선도+이월렛/몰(Backup 131217, 검증44/44) ②16:33 카드·이월렛 서브타입 설정 통일(Backup 163333, 검증15/15, Fable GO) ③19:38 모바일 이월렛 서브타입 갭(Backup 193808, 검증9/9, Fable GO). **카드·이월렛 통일**: 두 결제수단이 각자 자란 것을 하나로 — `acceptedTypes[]`+`requireType`, 0개=카드기본목록/이월렛UI없음·1개=자동태깅·2개↑=선택, 단일소스 `resolvePaymentSubtype`. 운영 44매장 판정 대조 차이0. **모바일 갭**: 실측 rid=16 이월렛 86%가 모바일인데 `dev/mobile` 서브타입 참조0 → 몰 TNG 보고 새던 것 수정(공용 헬퍼로 자동태깅/손님선택, 오프라인 분할결제 op 서브타입 보존). 🔴 실브라우저가 내 bare `useEffect` 크래시 적발(빌드·TS 통과·모바일 결제화면 백지)→`React.useEffect` 수정. **rid=16 acceptedTypes=['tng'] 설정**(POS 자동태깅 실효). **모바일은 보류**: ewallet qrImage EMPTY로 손님 결제불가 → availableIn `['pos']` 로 되돌림, 매장 TNG QR 확보 시 재오픈. 상세=session-state + ✅ 섹션. 
+> **최종 업데이트:** 2026-07-25 (**매장 크로스테넌트 과다노출 수정 — dev 완료·미배포, Fable VERDICT GO**. Irene "fable하고 검토해서 진행해" → "운영에 아무 문제 없는지 제대로 확인해. 제대로 완벽하게 구성된 코드구조인지". `/api/restaurants` 계열이 `authenticateToken` 만 달고 있어 **아무 인증 계정이나 남의 매장 전 컬럼**(게이트웨이 비밀키·프린터설정·사업자등록번호·계좌)을 읽고, `PATCH /:id/status` 로 **임의 매장을 정지**시키고, `PUT /store/settings` 로 **남의 매장 설정에 쓰기**가 가능했다. `slug` 라우트는 **완전 익명**으로 80컬럼(slug 는 QR URL 공개값 = 추측 불필요), `table-status` 는 호출부 0건인 죽은 라우트인데 **타 매장 손님 이름·전화·주문내역·매출·payment_proof** 를 반환. 목록은 스코핑 분기 2개를 비껴가는 역할(Supplier·Staff·RA·Owner·스코프 미배정 FG/FM)에게 **전 매장**을 줬다. **결함 9개 수정 + 영구 회귀 7건.** 🔴 Fable 이 내 블로커 적발: `parseInt('3.8e1')===3` vs MySQL `'3.8e1'→38` 로 **게이트가 검사한 매장과 핸들러가 반환한 매장이 달라** 게이트가 통째로 뚫렸고, **같은 split 이 `checkRestaurantAccess`(103라우트)에도 있어 앱 전역이 뚫려 있었다**(내가 독립 재현) → 조이는 방향으로 같이 차단. 🔴 내가 만든 회귀도 스스로 발견·수정: 상세 게이트가 목록보다 엄격해 **Foodcourt Manager 는 목록엔 뜨는데 상세 403**(매니저 콘솔 사망) — dev 에선 branch_id 가 우연히 안 맞아 안 드러났음. `userCanAccessRestaurant` 는 **의도적 무수정**(소켓 room 인증 등 11파일 공유). 검증: verify-all 13/13 · health-check 147/147(security 42/42) · **고장주입 6/6 검출** · **A/B 664호출 diff 0** · **우회 25개 인코딩 차단** · **list⊆detail 78유저 196쌍 위반 0** · 🔒 인쇄 8/8 무접촉. 마이그·프론트 무변경. 운영 실측으로 **결제 비밀키 저장 0건 확인(로테이션 불필요)**, **소켓 카운터 withoutToken 0/287 확인(강제 전환 가능)**. 상세=session-state + ✅ 섹션.
+>
+> **이전:** 2026-07-24 (**운영 배포 3회 완료, 버전 v3.70 유지** — ①13:26 인쇄 신선도+이월렛/몰(Backup 131217, 검증44/44) ②16:33 카드·이월렛 서브타입 설정 통일(Backup 163333, 검증15/15, Fable GO) ③19:38 모바일 이월렛 서브타입 갭(Backup 193808, 검증9/9, Fable GO). **카드·이월렛 통일**: 두 결제수단이 각자 자란 것을 하나로 — `acceptedTypes[]`+`requireType`, 0개=카드기본목록/이월렛UI없음·1개=자동태깅·2개↑=선택, 단일소스 `resolvePaymentSubtype`. 운영 44매장 판정 대조 차이0. **모바일 갭**: 실측 rid=16 이월렛 86%가 모바일인데 `dev/mobile` 서브타입 참조0 → 몰 TNG 보고 새던 것 수정(공용 헬퍼로 자동태깅/손님선택, 오프라인 분할결제 op 서브타입 보존). 🔴 실브라우저가 내 bare `useEffect` 크래시 적발(빌드·TS 통과·모바일 결제화면 백지)→`React.useEffect` 수정. **rid=16 acceptedTypes=['tng'] 설정**(POS 자동태깅 실효). **모바일은 보류**: ewallet qrImage EMPTY로 손님 결제불가 → availableIn `['pos']` 로 되돌림, 매장 TNG QR 확보 시 재오픈. 상세=session-state + ✅ 섹션. 
 >
 > **이전:** 2026-07-24 (**v3.70 운영 배포 완료** — Backup 20260724_131217 · 안전게이트 9/9 · 마이그 49/49 · Smoke 9/9 · 스키마 153테이블. Irene 인쇄 변경 명시 승인 → print-guard bless → 배포. **운영 실업무 검증 44/44 PASS**(데모매장 rid=13, 실고객 매장 무접촉, 생성데이터 FK 완전삭제): 주문생성→주방인쇄→큐소멸(정확히 1번)→+Round 재등장(새 품목만) / ★25h 열린 테이블 +Round 큐 포함(배포 전이면 무음유실) / 구 데이터(스탬프 NULL)는 7/23 동작 그대로 / ★재시도 경로(claim·re-arm) 무스탬프 = 옛 행 부활 0 / 단계이동 4단계 / 테이블이동·void·주문취소 재발행 예약 + 오래된 주문 취소표 경계면제 유지 / 결제 이월렛 2경로(orders.ewallet_type=tng · order_payments.ewallet_type=grabpay)+카드 대칭+현금 금액정합. 남은 것 = 실프린터 종이 1회 확인(Irene) + rid=16 acceptedTypes 지정. 배포 내역 상세 ↓.
 >
@@ -80,6 +82,65 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 매장 크로스테넌트 과다노출 수정 (2026-07-25, dev 완료·미배포, Fable VERDICT **GO**)
+
+> Irene "fable하고 검토해서 진행해" → "운영에 아무 문제 없는지 제대로 확인해. 제대로 완벽하게 구성된 코드구조인지 제대로"
+> ★ **Fable 검증 게이트 대상**(기준 ⑤ 보안 경계) — 게이트 수행 완료, VERDICT GO.
+
+### 완료된 작업
+
+| # | 결함 | 실제 위험 | 조치 | 상태 |
+|:-:|------|-----------|------|:----:|
+| 1 | `GET /restaurants/:id` — authOnly + `toJSON()` 88컬럼 | 아무 인증 계정이나 남의 매장 `payment_settings.online.config.stripeSecretKey`·`paypalClientSecret`·`printer_settings`·`bank_*`·`tax_id` 열람 | `requireRestaurantScope` (응답 필드는 **미축소**) | ✅ |
+| 2 | `GET /restaurants/slug/:slug` — **완전 익명** 80컬럼 | slug 는 QR URL 에 박힌 공개값 = 추측 불필요. 토큰 없이 전 컬럼 | 허용목록 23필드 + `payment_settings.*.config` 제거 | ✅ |
+| 3 | `PATCH /restaurants/:id/status` — 게이트 전무 | 임의 매장을 `suspended` 로 밀어 **로그인 차단 = 테넌트 영업정지(DoS)** | `requireRole(SA,BG,FG)` + 스코프 | ✅ |
+| 4 | `PUT /store/settings?restaurantId=` — RA/Staff 만 검사 | 읽기는 막고 **쓰기는 연** 비대칭 → 타 매장 설정 덮어쓰기 | 비-SA 전부 `userCanAccessRestaurant` | ✅ |
+| 5 | `GET /restaurants/manager/:managerId` — 자기검사 0 | 임의 managerId 로 그 사람 관할 매장 전컬럼 벌크 | self/SA 검사 | ✅ |
+| 6 | `GET /restaurants/subscriptions/manager/:managerId` — 자기검사 0 | 구독·매출·인보이스 요약 유출 | self/SA 검사 | ✅ |
+| 7 | `GET /restaurants/:id/table-status` | **호출부 0건인 죽은 라우트**인데 타 매장 손님 이름·전화번호·주문 품목·매출·결제수단·`payment_proof` 반환 (PDPA급 PII) | `requireRestaurantScope` | ✅ |
+| 8 | `/restaurants/:id/categories` · `/allowed-routes` | 크로스테넌트 조회 | `requireRestaurantScope` | ✅ |
+| 9 | `GET /restaurants` 목록 — 스코핑 분기 2개뿐 | Supplier·Staff·RA·Owner·**스코프 미배정 FG/FM** 이 **전 매장** 수신(email·주소·사업자번호·세금ID·플랜금액·거래조건 + **당일 매출·주문수**) | 역할별 스코핑 (list ⊆ detail) | ✅ |
+
+**실측 — 목록 스코핑 효과**: Supplier 33→**0** · RA 33→**1**(자기) · Staff 33→**1** · Owner 33→**3**(ownership) · 미배정 FM 33→**0** · SA **33 불변** · FG(fc44) **2 불변** · BG(brand10) **3 불변**
+
+### 🔴 Fable 이 잡은 블로커 — 게이트가 한 글자로 뚫림
+
+`parseInt('3.8e1') === 3` 인데 MySQL 은 `'3.8e1'` 을 float 캐스팅해 **38** 로 읽는다 → **권한판정이 본 매장과 핸들러가 반환한 매장이 다르다.**
+- 실증: FG5 → `/restaurants/38` **403** / `/restaurants/3.8e1` **200**(매장38 전컬럼) · BG6 → `PATCH /restaurants/1.16e2/status` **200**(매장116 정지) · RA → `PUT /store/settings?restaurantId=1.16e2` **200**
+- **같은 split 이 `checkRestaurantAccess`(103 라우트)에도 존재** → 테넌트 경계가 앱 전역으로 뚫려 있었음(구현자가 독립 재현: `/restaurants/1.16e2/company-info` **200**). 조이는 방향(`^\d+$` 만 허용)으로 같이 차단
+- 조치: 세 곳(`requireRestaurantScope`·`checkRestaurantAccess`·`PUT /store/settings`) 동일 규칙 + 판정값으로 param 고정
+
+### 🔴 구현자가 스스로 발견·수정한 회귀 — 불변식 위반
+
+상세 게이트가 목록 스코핑보다 엄격 → **Foodcourt Manager·비소유 FG 는 목록엔 뜨는데 상세 403** = 매니저 콘솔 사망. dev 에선 그 FM 의 `branch_id` 가 우연히 안 맞아 목록이 0건이라 **데이터 우연으로 가려져 있었음**.
+`userCanAccessRestaurant` 는 **의도적으로 무수정** — 쿠폰·인보이스 쓰기 게이트와 **소켓 room 인증** 등 11개 파일이 공유해 절단면을 넘는 권한 확대가 되기 때문. 게이트 안에서 목록과 동일 규칙만 폴백.
+
+### 설계 판단 (기각안 포함)
+- **`/:id` 응답은 축소하지 않는다** — Settings 프린터탭·🔒POSTerminal 결제·LiveOrders 의 **1차 소스**. 축소하면 프린터탭 백지 → 저장 시 실설정 덮어씀 = 2026-05-31 thefire 프린터설정 wipe 사고 재현 경로
+- **`checkRestaurantAccess` 는 오답** — BG-owns-brand / FG-owns-foodcourt 폴백이 없어 자기 관할 매장인데도 403(Fable 실측 반증). `userCanAccessRestaurant` 기반이 정답
+
+### 검증
+- verify-all **13/13** · health-check **147/147**(security **42/42**, 신규 7건: 크로스테넌트 4 · PII 1 · id정규화 1 · list⊆detail 불변식 1)
+- **고장주입 6/6 검출** — 구현자의 첫 id-정규화 테스트가 조용히 skip 되던 것도 주입으로 발견해 수정(짝 못 찾으면 경고 출력)
+- Fable 독립: `checkRestaurantAccess` 정규화 **A/B 664 호출 diff 0** · 우회 **25개 인코딩**(전각·%00·0x·배열·중복쿼리) 전부 차단 · **list⊆detail 78유저 196쌍 위반 0** · 실브라우저 8역할 크래시 0 · 잔여 데이터 0
+- 🔒 인쇄 보호파일 **8/8 무접촉** + print **11/11** · 마이그레이션 없음 · 프론트 무변경 · 롤백 = 백엔드 6파일 revert + `pm2 restart`
+
+### 운영 실측으로 종결한 항목 (SSH 읽기 전용)
+- **결제 비밀키 로테이션 불필요** — 운영 22매장 중 결제설정 14개, online 활성 2개(둘 다 데모/테스트), **저장된 stripeSecretKey·paypalClientSecret 길이 전부 0**
+- **소켓 강제 전환 가능** — 운영 카운터 `withToken 287 / withoutToken 0 / invalidToken 0 / crossRestaurant 0`(관측 2026-07-24 19:52~). 옛 번들 기기 0건. 운영 `JWT_EXPIRES_IN=7d`
+
+### 수정된 파일
+- `dev-backend/middleware/auth.js` (`requireRestaurantScope` 신설 = 순수 추가 + `checkRestaurantAccess` 정규화 3줄)
+- `dev-backend/routes/restaurants-crud.js` · `routes/restaurants-subscription.js` · `routes/store.js`
+- `dev-backend/scripts/health-check.js` (영구 회귀 7건) · `scripts/check-route-guard.js` (사실과 다른 주석 정정 — 배럴 보호는 `inventory-core.js:46` **하나뿐**)
+
+### 별건으로 넘긴 것 (이번에 안 함)
+- **Phase 2 — 게이트웨이 비밀키 응답 마스킹**: `guardPaymentSettings` 의 nested `config` 보존 + SettingsPage write-only 마스크가 **같이** 가야 함. 하나만 하면 저장 시 **비밀키 silent wipe**
+- **접근판정 4중화 통합**: `checkRestaurantAccess`(103) / `userCanAccessRestaurant`(11, 소켓 포함) / 목록 인라인 WHERE / 게이트 폴백. 정석 = resolver 1개 + 투영 2개. **순서 엄수** = shadow 1주 → 목록+게이트 → 소켓 최후 → 103라우트 최후 ([[reference_restaurant_access_four_gates]])
+- **Fable 이 발견한 프론트 기존 결함 2건**: `SettingsPage.tsx:5291` 빈 객체 PUT 로 `reservation_settings` wipe(설정 wipe 계열) · `mobile/OrderTypePage.tsx:396,471`·`PaymentPage.tsx:1393` 하드코딩 `'1'` 폴백으로 **손님이 다른 매장에 붙음**
+
+---
 
 ## ✅ 완료: 카드·이월렛 서브타입 통일 + 모바일 갭 수정 (2026-07-24, 운영 배포 2·3차, v3.70 유지)
 

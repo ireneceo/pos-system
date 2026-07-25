@@ -353,6 +353,146 @@ function defineSecurityTests({ customerToken, member, restId }) {
     return r.status === 403;
   });
 
+  // Cross-tenant IDOR — 2026-07-25 감사로 발견·수정. `/api/restaurants/*` 계열이
+  // authenticateToken 만 달고 있어 아무 인증 계정이나 남의 매장 전 컬럼(payment_settings 의
+  // stripeSecretKey/paypalClientSecret, printer_settings, bank_*, tax_id 포함)을 읽고, 심지어
+  // status 를 'suspended' 로 밀어 그 매장 로그인을 차단할 수 있었다. 영구 가드.
+  test('security', '다른 매장 Staff가 /restaurants/:id → 403 (매장 전컬럼 유출 차단)', async () => {
+    const User = require('../models/User');
+    const { Op } = require('sequelize');
+    const staff = await User.findOne({ where: { role: 'Staff', restaurant_id: { [Op.ne]: null } } });
+    if (!staff) return true;
+    const otherRid = staff.restaurant_id === restId ? restId + 1 : restId;
+    const tk = jwt.sign({ userId: staff.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', `/restaurants/${otherRid}`, null, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
+  test('security', 'Supplier가 /restaurants/manager/:managerId → 403 (관할매장 벌크 유출 차단)', async () => {
+    const User = require('../models/User');
+    const sup = await User.findOne({ where: { role: 'Supplier Admin' } });
+    const mgr = await User.findOne({ where: { role: 'Brand General' } });
+    if (!sup || !mgr) return true;
+    const tk = jwt.sign({ userId: sup.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', `/restaurants/manager/${mgr.id}`, null, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
+  test('security', '다른 매장 Staff가 PATCH /restaurants/:id/status → 403 (임의 테넌트 영업정지 차단)', async () => {
+    const User = require('../models/User');
+    const Restaurant = require('../models/Restaurant');
+    const { Op } = require('sequelize');
+    const staff = await User.findOne({ where: { role: 'Staff', restaurant_id: { [Op.ne]: null } } });
+    if (!staff) return true;
+    const otherRid = staff.restaurant_id === restId ? restId + 1 : restId;
+    const target = await Restaurant.findByPk(otherRid, { attributes: ['id', 'status'] });
+    if (!target) return true;
+    // 게이트가 회귀해 통과되더라도 데이터가 바뀌지 않도록 "현재값과 동일한 값"을 보낸다.
+    const tk = jwt.sign({ userId: staff.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('PATCH', `/restaurants/${otherRid}/status`, { status: target.status }, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
+  test('security', '익명 /restaurants/slug/:slug 에 printer_settings·게이트웨이 비밀키 없음', async () => {
+    const Restaurant = require('../models/Restaurant');
+    const { Op } = require('sequelize');
+    const withSlug = await Restaurant.findOne({ where: { slug: { [Op.ne]: null } }, attributes: ['id', 'slug'] });
+    if (!withSlug || !withSlug.slug) return true;
+    const r = await request('GET', `/restaurants/slug/${withSlug.slug}`);   // 토큰 없음 = 익명
+    if (r.status !== 200) return false;
+    const d = (r.body && r.body.data) || {};
+    if (d.printer_settings !== undefined) return false;
+    if (d.business_registration !== undefined || d.tax_id !== undefined || d.bank_account !== undefined) return false;
+    // payment_settings 는 손님 결제화면이 쓰므로 유지되어야 하고, config(비밀키)만 없어야 한다.
+    if (!d.payment_settings) return false;
+    return !Object.values(d.payment_settings).some(m => m && typeof m === 'object' && m.config !== undefined);
+  });
+
+  test('security', '다른 매장 Staff가 /restaurants/:id/table-status → 403 (손님 개인정보 유출 차단)', async () => {
+    const User = require('../models/User');
+    const { Op } = require('sequelize');
+    const staff = await User.findOne({ where: { role: 'Staff', restaurant_id: { [Op.ne]: null } } });
+    if (!staff) return true;
+    const otherRid = staff.restaurant_id === restId ? restId + 1 : restId;
+    const tk = jwt.sign({ userId: staff.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', `/restaurants/${otherRid}/table-status`, null, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
+
+  // 🔴 id 정규화 우회 (2026-07-25 Fable 적대검증 실증). `parseInt('1.16e2')===1` 인데 MySQL 은
+  // 문자열 '1.16e2' 를 float 로 캐스팅해 116 으로 읽는다 → 권한판정과 실제조회가 다른 매장을
+  // 가리켜 게이트가 통째로 무력화됐다. 정수 id 로만 테스트하면 이 클래스를 영영 못 잡으므로
+  // 지수표기 id 를 명시적으로 박아 둔다.
+  test('security', 'id 정규화: 지수표기(1.16e2) 로 게이트 우회 불가', async () => {
+    const User = require('../models/User');
+    const Restaurant = require('../models/Restaurant');
+    const { Op } = require('sequelize');
+    // parseInt 로는 자기 매장, float 로는 남의 매장이 되는 (계정, 대상) 쌍을 실제 데이터에서 찾는다.
+    // 예: 자기=1, 대상=116 → '1.16e2' (parseInt 1 / Number 116). 대상 id 문자열이 자기 id 문자열로
+    // 시작해야 표기를 만들 수 있으므로, 그 조건으로 직접 짝을 찾는다(휴리스틱 금지 — 못 찾으면
+    // 테스트가 조용히 무의미해진다).
+    const ras = await User.findAll({
+      where: { role: 'Restaurant Admin', restaurant_id: { [Op.ne]: null } },
+      attributes: ['id', 'restaurant_id'], limit: 40
+    });
+    const allIds = (await Restaurant.findAll({ attributes: ['id'] })).map(r => r.id);
+    let ra = null, tid = null;
+    for (const cand of ras) {
+      const m = String(parseInt(cand.restaurant_id));
+      const hit = allIds.find(i => String(i) !== m && String(i).startsWith(m));
+      if (hit) { ra = cand; tid = String(hit); break; }
+    }
+    if (!ra) {
+      console.log('      ↳ 경고: 지수표기 우회를 만들 수 있는 (계정,매장) 짝이 dev 데이터에 없음 — 검사 미수행');
+      return true;
+    }
+    const mine = String(parseInt(ra.restaurant_id));
+    const rest = tid.slice(mine.length);
+    const exp = `${mine}.${rest}e${rest.length}`;   // parseInt → mine, Number → tid
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', `/restaurants/${exp}`, null, { Authorization: `Bearer ${tk}` });
+    if (r.status === 200) {
+      console.log(`      ↳ 우회 성공: /restaurants/${exp} → 200 (매장 ${tid} 노출)`);
+      return false;
+    }
+    // ⚠ 빈 body 로 보낸다. 게이트가 회귀했을 때 이 요청이 실제로 통과하면 **피해 매장에 쓰기**가
+    // 일어나므로, 어떤 필드도 싣지 않아 통과하더라도 덮어쓸 값이 없게 한다(검출력은 동일 —
+    // 판정 기준은 200 여부).
+    const s = await request('PUT', `/store/settings?restaurantId=${exp}`, {}, { Authorization: `Bearer ${tk}` });
+    if (s.status === 200) {
+      console.log(`      ↳ 우회 성공: PUT /store/settings?restaurantId=${exp} → 200 (매장 ${tid} 쓰기)`);
+      return false;
+    }
+    return true;
+  });
+
+  // 불변식: **상세 게이트는 목록 스코핑보다 엄격하면 안 된다.**
+  // 목록(GET /restaurants)이 보여준 매장을 클릭했을 때 상세가 403 이면 매니저 콘솔이 죽는다.
+  // 2026-07-25 에 실제로 이 구멍이 있었다(Foodcourt Manager·비소유 Foodcourt General 이
+  // 목록엔 뜨는데 상세 403). dev 에서는 그 FM 의 branch_id 가 우연히 안 맞아 목록이 0건이라
+  // 안 드러났다 — 데이터 우연에 기대지 않도록 "목록에 뜬 것은 전부 열려야 한다"를 직접 검사한다.
+  test('security', '불변식: 목록에 보이는 매장은 상세도 열림 (list⊆detail)', async () => {
+    const User = require('../models/User');
+    const { Op } = require('sequelize');
+    // 감독역할 + 저권한역할 둘 다 본다. 저권한역할은 목록이 자기 매장(또는 0건)으로
+    // 좁혀졌는지까지 이 불변식으로 자동 검증된다(전 매장이 실리면 상세 403 → 실패).
+    const supervisors = await User.findAll({
+      where: { role: { [Op.in]: ['Foodcourt General', 'Foodcourt Manager', 'Brand General', 'Brand Manager',
+                                 'Supplier Admin', 'Staff', 'Restaurant Admin', 'Restaurant Owner'] } },
+      attributes: ['id', 'role'], limit: 40
+    });
+    for (const u of supervisors) {
+      const tk = jwt.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+      const list = await request('GET', '/restaurants', null, { Authorization: `Bearer ${tk}` });
+      if (list.status !== 200 || !Array.isArray(list.body)) continue;
+      for (const r of list.body.slice(0, 5)) {
+        const d = await request('GET', `/restaurants/${r.id}`, null, { Authorization: `Bearer ${tk}` });
+        if (d.status === 403) {
+          console.log(`      ↳ 불변식 위반: ${u.role}(id=${u.id}) 목록엔 매장 ${r.id} 이 보이는데 상세는 403`);
+          return false;
+        }
+      }
+    }
+    return true;
+  });
+
   // Cross-tenant IDOR — Phase 1 (2026-06-08): query-param scoped endpoints that
   // previously trusted ?restaurantId blindly (coupons / option-groups / store).
   test('security', '다른 RA가 cross-tenant /coupons?restaurantId → 403', async () => {

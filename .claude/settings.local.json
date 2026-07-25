@@ -1415,7 +1415,21 @@
       "Bash(scp -q /tmp/claude-1000/-var-www/7c09181f-b63b-4cbf-bd96-b3de95e965b1/scratchpad/prod-verify3.js irene@87.106.78.146:/tmp/prod-verify3.js)",
       "Bash(scp -q /tmp/claude-1000/-var-www/7c09181f-b63b-4cbf-bd96-b3de95e965b1/scratchpad/subtype-compat.js irene@87.106.78.146:/tmp/subtype-compat.js)",
       "Bash(xargs -r stat -c '%y %n')",
-      "Bash(scp -q /tmp/claude-1000/-var-www/7c09181f-b63b-4cbf-bd96-b3de95e965b1/scratchpad/prod-subtype-verify.js irene@87.106.78.146:/tmp/prod-subtype-verify.js)"
+      "Bash(scp -q /tmp/claude-1000/-var-www/7c09181f-b63b-4cbf-bd96-b3de95e965b1/scratchpad/prod-subtype-verify.js irene@87.106.78.146:/tmp/prod-subtype-verify.js)",
+      "Bash(awk 'NR>=1980 && NR<=2108 && \\(/req.user.role/ || /403/ || /FORBIDDEN/\\)' routes/restaurants-crud.js)",
+      "Bash(rm -f /tmp/claude-1000/-var-www/cc1e9997-8cca-4e62-8ce5-6c7e13059c27/scratchpad/mon.js)",
+      "Bash(kill %1)",
+      "Bash(sed -i \"s#require\\('dotenv'\\)#require\\('/var/www/dev-backend/node_modules/dotenv'\\)#; s#require\\('jsonwebtoken'\\)#require\\('/var/www/dev-backend/node_modules/jsonwebtoken'\\)#\" socket-auth-livefire.js)",
+      "Bash(sed -i \"s#require\\('/var/www/dev-backend/node_modules/dotenv'\\).config\\(\\);#require\\('/var/www/dev-backend/node_modules/dotenv'\\).config\\({ path: '/var/www/dev-backend/.env' }\\);#\" socket-auth-livefire.js)",
+      "Bash(bash /tmp/claude-1000/-var-www/cc1e9997-8cca-4e62-8ce5-6c7e13059c27/scratchpad/fable-06-faultinject.sh 2>&1)",
+      "Bash(awk 'NR>=1 && /<InvoicesPage/{print NR\": \"$0}' App.tsx)",
+      "Bash(sort -t: -k1,1)",
+      "Bash(pkill -f \"node -e require\\\\\\('/var/www/dev-backend/routes/restaurants-crud.js'\\\\\\)\")",
+      "Bash(bash /tmp/claude-1000/-var-www/cc1e9997-8cca-4e62-8ce5-6c7e13059c27/scratchpad/fable-10-inject-invariant.sh 2>&1)",
+      "Bash(echo \"=== exit: $? ===\")",
+      "Bash(bash /tmp/claude-1000/-var-www/cc1e9997-8cca-4e62-8ce5-6c7e13059c27/scratchpad/fable-11-validate-fix.sh 2>&1)",
+      "Bash(xargs -I{} dirname {})",
+      "Bash(bash /tmp/claude-1000/-var-www/cc1e9997-8cca-4e62-8ce5-6c7e13059c27/scratchpad/fable-22-ab.sh 2>&1)"
     ],
     "deny": [],
     "ask": []

@@ -612,6 +612,31 @@ Phase A/B 의 저장만 되어있던 `branch_id`/`brand_id` 를 실제 필터로
 
 검증: RA@R5 → restaurantId=99 시도 시 403 (menu/inventory) 또는 404 (cross-brand IDOR). E2E 9/9 PASS.
 
+### 🔐 매장 접근판정 — 어떤 게이트를 쓸 것인가 (2026-07-25 확정)
+
+**"이 유저가 매장 X 에 접근 가능한가" 에 답하는 곳이 현재 4곳이고 규칙이 서로 다르다.** 새 라우트를 만들 때 아무거나 고르면 안 된다.
+
+| 판정처 | 사용처 | 빠진 것 |
+|---|---|---|
+| `checkRestaurantAccess` | 라우트 **103개** | BG-owns-brand / FG-owns-foodcourt 폴백 **없음** |
+| `userCanAccessRestaurant` | 11개 파일 (**소켓 room 인증 포함**) | Manager 역할(FM/BM) 감독 스코프 **없음** |
+| 목록 인라인 WHERE (`restaurants-crud.js` GET /) | 목록 | 위 둘과 또 다른 기준 |
+| `requireRestaurantScope` (2026-07-25 신설) | `/api/restaurants/:id` 계열 6곳 | 목록 규칙을 손으로 맞춘 폴백 |
+
+**규칙**
+1. `/api/restaurants/:id` 처럼 **`:id` 가 매장 id** 인 라우트 → `requireRestaurantScope('id')`. `checkRestaurantAccess` 를 쓰면 **BG/FG 정상 사용자가 403** 난다(자기 브랜드·푸드코트 매장인데도).
+2. `:id` 가 **리소스 id** 인 라우트 → `checkRestaurantAccess` 를 체이닝하지 말 것(그 id 를 매장 id 로 오인). 핸들러 안에서 `userCanAccessRestaurant(req.user, 조회한행.restaurant_id)`.
+3. **불변식 `list ⊆ detail`** — 목록이 보여준 매장은 상세도 열려야 한다. 깨지면 "목록엔 보이는데 클릭하면 403" 으로 매니저 콘솔이 죽는다. health-check security 에 영구 케이스 있음.
+4. ⛔ **`userCanAccessRestaurant` 를 직접 느슨하게 만들지 말 것** — 소켓 room 인증이 딸려 온다.
+5. 🔴 **권한판정에 `isNaN(parseInt(x))` 금지.** `parseInt('1.16e2')===1` 인데 MySQL 은 `'1.16e2'`→**116** 이라 게이트가 검사한 매장과 핸들러가 조회한 매장이 달라진다(2026-07-25 실증, 앱 전역이 뚫려 있었음). 반드시 `/^\d+$/` + 판정값으로 param 고정.
+
+통합(resolver 1개 + 투영 2개)이 정석이나 **순서 엄수**: shadow 1주 → 목록+게이트 → `userCanAccessRestaurant` 도메인별(소켓 최후) → `checkRestaurantAccess` 103라우트 최후. 5번을 먼저 하면 앱 전역 권한 확대.
+
+### 크로스테넌트 과다노출 일괄 차단 (2026-07-25, dev 미배포)
+
+`/api/restaurants` 계열 결함 9개 차단 — 상세(88컬럼·게이트웨이 비밀키)·**익명 slug**(80컬럼)·`PATCH /:id/status`(임의 테넌트 영업정지)·`PUT /store/settings`(쓰기 비대칭)·`manager/:managerId` ×2·`table-status`(타 매장 손님 이름·전화·주문·`payment_proof`)·`categories`·`allowed-routes`·**목록 스코핑**(Supplier·Staff·RA·Owner·스코프 미배정 FG/FM 이 전 매장 수신).
+목록 실측: Supplier 33→0 · RA 33→1 · Owner 33→3 · 미배정 FM 33→0 · SA/FG/BG 불변. 상세 = `DEVELOPMENT_PLAN.md` 2026-07-25 섹션.
+
 ---
 
 ## 업데이트 이력
@@ -622,3 +647,4 @@ Phase A/B 의 저장만 되어있던 `branch_id`/`brand_id` 를 실제 필터로
 - 2026-03-06: 권한 매트릭스에 인보이스 결제/결제확인 행 추가, Brand General 인보이스 발행 권한 ✅로 수정
 - 2026-04-19 (v3.15): Manager 지점/브랜드 할당 저장 레이어, Brand 권한 owner_id 기반으로 개편, Invoice IDOR null-safe 수정
 - 2026-04-28 (v3.19 미배포): menu/brand-inventory IDOR 일괄 차단, checkRestaurantAccess 다중 소스 해결 (params/query/body)
+- 2026-07-25 (dev 미배포): 매장 접근판정 게이트 선택 규칙 신설(4중화 현황 + `requireRestaurantScope`), id 정규화 우회 차단 규칙, `/api/restaurants` 계열 크로스테넌트 결함 9개 일괄 차단

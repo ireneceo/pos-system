@@ -30,9 +30,18 @@
  *   - 이 스캔은 **라우트 문자열에 literal `/restaurant/:` 를 가진 라우트**만 본다(약 40개).
  *   - `app.use('/api/restaurants', router)` / `app.use('/api/restaurant/:restaurantId', router)`
  *     처럼 **마운트 프리픽스**로 매장 스코프가 붙는 하위 라우터(inventory-core/extra,
- *     recommendations, restaurants-ingredients 등 45+ 라우트)는 라우트 문자열이 `/:restaurantId/…`
- *     라 이 정규식에 안 걸린다 = **미검사**. 그들은 현재 배럴 `router.use('/:restaurantId',
- *     checkRestaurantAccess)` 로 라우터 레벨 보호됨(실측). 이 체커는 그 배럴을 검증하지 않는다.
+ *     recommendations, restaurants-crud, restaurants-ingredients 등 45+ 라우트)는 라우트 문자열이
+ *     `/:id` · `/:restaurantId/…` 라 이 정규식에 안 걸린다 = **미검사**.
+ *
+ *   ⚠ 2026-07-25 정정: 이전 주석은 "그들은 배럴 `router.use('/:restaurantId', checkRestaurantAccess)`
+ *     로 라우터 레벨 보호됨(실측)" 이라고 적었으나 **사실과 다르다**. 그 배럴은 `inventory-core.js:46`
+ *     **하나뿐**이고, `routes/restaurants.js` 배럴에는 스코프 가드가 없다. 그 잘못된 문장 때문에
+ *     `/api/restaurants/:id` 표면이 "이미 안전"으로 넘어갔고, 실제로는 authenticateToken 만 달린 채
+ *     아무 인증 계정이나 남의 매장 전 컬럼(payment_settings 의 게이트웨이 비밀키 포함)을 읽고
+ *     PATCH /:id/status 로 임의 매장을 정지시킬 수 있었다(2026-07-25 수정).
+ *     ⇒ 이 스캐너는 프리픽스 마운트 라우터를 **여전히 안 본다**. "미검사"를 "안전"으로 읽지 말 것.
+ *     그 표면의 회귀는 health-check security 의 라이브 403 케이스가 잡는다(restaurants/:id,
+ *     manager/:managerId, PATCH /:id/status, 익명 slug 축소 — 고장주입 3/3 검출 실증).
  *   - 즉 이 가드는 "직접 `/restaurant/:` 라우트"의 신규 무방비만 잡는 **부분 그물**이다.
  *     전 표면 계약검증은 health-check 의 라이브 403(1차 백스톱)이 담당.
  * 한계2: 정적 grep 휴리스틱이라 인라인검사를 특이 형태로 하면 false-SAFE 가능(안전측 실패). B-3 참조.
