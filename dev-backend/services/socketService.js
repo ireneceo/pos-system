@@ -85,6 +85,15 @@ function makeSocketAuth(nsName) {
   };
 }
 
+// restaurantId 정규화 — 권한판정과 룸 이름이 같은 값을 봐야 한다.
+// 2026-07-25 교훈: parseInt('3.8e1')===3 인데 MySQL 은 '3.8e1'→38 로 캐스팅해
+// "게이트가 검사한 매장 ≠ 실제로 쓰인 매장" 이 됐다. 소켓도 같은 규칙(^\d+$)만 허용.
+// 반환: 정규화된 문자열 또는 null(거부).
+function normalizeRid(v) {
+  const s = String(v ?? '').trim();
+  return /^\d+$/.test(s) ? String(parseInt(s, 10)) : null;
+}
+
 // join-restaurant room 검증 — 인증 신원 기준. 허용 여부 boolean 반환.
 // 강제 모드: 권한 없으면 false(=join 거부). 모니터 모드: 로깅만 하고 true(=동작 무변경).
 async function canJoinRestaurant(socket, restaurantId, nsName) {
@@ -101,6 +110,27 @@ async function canJoinRestaurant(socket, restaurantId, nsName) {
     return true; // 모니터: 거부 안 함
   }
   return ok;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// emit 방향 room 검증 (2026-07-26 신설) — join 만 막아서는 부족했다.
+//
+// socket.to(room) 은 **그 룸에 가입했는지와 무관하게** 아무 룸에나 쏠 수 있다.
+// 즉 join-restaurant 을 검증해도, payload 의 restaurantId 를 바꿔 보내면
+// 타 매장 화면에 위조 카트 표시 / 강제 초기화 / 타 매장 진행 중 판매에 회원 붙이기
+// (=로열티 적립)가 그대로 가능했다. join 과 동일 기준으로 emit 도 검증한다.
+//
+// 모드 의미는 join 과 동일 — 모니터: 로깅만(동작 무변경) / 강제: 드랍.
+// 성능: cart-update 는 카트 변경마다 오므로 소켓별로 판정 결과를 메모(매장 1~2개).
+// ────────────────────────────────────────────────────────────────────────────
+async function canEmitToRestaurant(socket, restaurantId, nsName) {
+  const rid = normalizeRid(restaurantId);
+  if (!rid) return null;
+  socket.data.ridAuth = socket.data.ridAuth || new Map();
+  if (socket.data.ridAuth.has(rid)) return socket.data.ridAuth.get(rid) ? rid : null;
+  const ok = await canJoinRestaurant(socket, rid, nsName);
+  socket.data.ridAuth.set(rid, ok);
+  return ok ? rid : null;
 }
 
 function initSocketServer(server) {
@@ -158,8 +188,9 @@ function initSocketServer(server) {
   io.of('/orders').use(makeSocketAuth('/orders'));
   io.of('/orders').on('connection', (socket) => {
     socket.on('join-restaurant', async (restaurantId) => {
-      if (!(await canJoinRestaurant(socket, restaurantId, '/orders'))) return; // 강제 모드: 권한 없으면 join 거부
-      socket.join(`restaurant_${restaurantId}`);
+      const rid = await canEmitToRestaurant(socket, restaurantId, '/orders'); // 강제 모드: 권한 없으면 join 거부
+      if (!rid) return;
+      socket.join(`restaurant_${rid}`);
     });
 
     // Sprint 5: Seller side (Supplier Admin / Brand General / Foodcourt General / System Admin)
@@ -209,23 +240,49 @@ function initSocketServer(server) {
     });
   });
 
-  // Kitchen namespace
+  // Kitchen / Display namespace
+  // ⚠️ 2026-07-26 실측: 이 두 네임스페이스는 **클라이언트가 0건**이다(웹 번들·데스크탑앱·
+  // 안드로이드앱 전수 grep, 서버측 emit 도 이 파일 안에만 존재). KDS 는 /orders 를 쓴다.
+  // 그런데 핸들러가 `io.of(ns).emit()` = **네임스페이스 전체 브로드캐스트**여서, 접속만 하면
+  // 아무 매장 화면에나 가짜 주문·픽업 이벤트를 뿌릴 수 있는 크로스테넌트 릴레이였다.
+  // 삭제 대신 다른 네임스페이스와 같은 규칙(join-restaurant + 룸 스코프)으로 통일 —
+  // 지금은 클라이언트가 없어 동작 변화 0이고, 나중에 쓰더라도 테넌트 경계가 유지된다.
   io.of('/kitchen').use(makeSocketAuth('/kitchen'));
   io.of('/kitchen').on('connection', (socket) => {
-    socket.on('new-order', (order) => {
-      io.of('/kitchen').emit('new-order', order);
+    socket.on('join-restaurant', async (restaurantId) => {
+      const rid = await canEmitToRestaurant(socket, restaurantId, '/kitchen');
+      if (!rid) return;
+      socket.data.joinedRid = rid;
+      socket.join(`restaurant_${rid}`);
     });
 
-    socket.on('order-ready', (order) => {
-      io.of('/display').emit('pickup-ready', order);
+    socket.on('new-order', async (order) => {
+      const rid = await canEmitToRestaurant(socket, order?.restaurant_id ?? socket.data.joinedRid, '/kitchen');
+      if (!rid) return;
+      io.of('/kitchen').to(`restaurant_${rid}`).emit('new-order', order);
+    });
+
+    socket.on('order-ready', async (order) => {
+      const rid = await canEmitToRestaurant(socket, order?.restaurant_id ?? socket.data.joinedRid, '/kitchen');
+      if (!rid) return;
+      io.of('/display').to(`restaurant_${rid}`).emit('pickup-ready', order);
     });
   });
 
   // Display namespace
   io.of('/display').use(makeSocketAuth('/display'));
   io.of('/display').on('connection', (socket) => {
-    socket.on('order-completed', (pickupNumber) => {
-      io.of('/display').emit('pickup-completed', pickupNumber);
+    socket.on('join-restaurant', async (restaurantId) => {
+      const rid = await canEmitToRestaurant(socket, restaurantId, '/display');
+      if (!rid) return;
+      socket.data.joinedRid = rid;
+      socket.join(`restaurant_${rid}`);
+    });
+
+    socket.on('order-completed', async (pickupNumber, restaurantId) => {
+      const rid = await canEmitToRestaurant(socket, restaurantId ?? socket.data.joinedRid, '/display');
+      if (!rid) return;
+      io.of('/display').to(`restaurant_${rid}`).emit('pickup-completed', pickupNumber);
     });
   });
 
@@ -277,8 +334,8 @@ function initSocketServer(server) {
   io.of('/checkout-display').use(makeSocketAuth('/checkout-display'));
   io.of('/checkout-display').on('connection', (socket) => {
     socket.on('join-restaurant', async (restaurantId) => {
-      if (!(await canJoinRestaurant(socket, restaurantId, '/checkout-display'))) return; // 강제 모드: 권한 없으면 거부
-      const rid = String(restaurantId);
+      const rid = await canEmitToRestaurant(socket, restaurantId, '/checkout-display'); // 강제 모드: 권한 없으면 거부
+      if (!rid) return;
       socket.join(`restaurant_${rid}`);
       const cached = cartCache.get(rid);
       if (cached) {
@@ -289,42 +346,46 @@ function initSocketServer(server) {
     });
 
     // POS에서 카트 업데이트 전송
-    socket.on('cart-update', (data) => {
-      if (data?.restaurantId) {
-        const rid = String(data.restaurantId);
-        const prev = cartCache.get(rid) || {};
-        cartCache.set(rid, { ...prev, cart: data, ts: Date.now() });
-      }
+    socket.on('cart-update', async (data) => {
+      const rid = await canEmitToRestaurant(socket, data?.restaurantId, '/checkout-display');
+      if (!rid) return; // 강제 모드: 타 매장 위조 카트 드랍
+      const prev = cartCache.get(rid) || {};
+      cartCache.set(rid, { ...prev, cart: data, ts: Date.now() });
       // 같은 레스토랑의 checkout-display에만 전송
-      socket.to(`restaurant_${data.restaurantId}`).emit('cart-update', data);
+      socket.to(`restaurant_${rid}`).emit('cart-update', data);
     });
 
     // POS에서 고객 체크인 수신 → POS로 전달
-    socket.on('customer-checkin', (data) => {
-      socket.to(`restaurant_${data.restaurantId}`).emit('customer-checkin', data);
+    socket.on('customer-checkin', async (data) => {
+      const rid = await canEmitToRestaurant(socket, data?.restaurantId, '/checkout-display');
+      if (!rid) return; // 강제 모드: 타 매장 판매에 회원 붙이기(로열티 적립) 드랍
+      socket.to(`restaurant_${rid}`).emit('customer-checkin', data);
     });
 
     // POS에서 결제 완료 — cart 종료 + 캐시 클리어
-    socket.on('checkout-complete', (data) => {
-      if (data?.restaurantId) cartCache.delete(String(data.restaurantId));
-      socket.to(`restaurant_${data.restaurantId}`).emit('checkout-complete', data);
+    socket.on('checkout-complete', async (data) => {
+      const rid = await canEmitToRestaurant(socket, data?.restaurantId, '/checkout-display');
+      if (!rid) return;
+      cartCache.delete(rid);
+      socket.to(`restaurant_${rid}`).emit('checkout-complete', data);
     });
 
     // Floor Plan 에서 테이블 선택 해제 → Customer Display 초기 화면으로 복귀
-    socket.on('cart-clear', (data) => {
-      if (data?.restaurantId) cartCache.delete(String(data.restaurantId));
-      socket.to(`restaurant_${data.restaurantId}`).emit('cart-clear', data);
+    socket.on('cart-clear', async (data) => {
+      const rid = await canEmitToRestaurant(socket, data?.restaurantId, '/checkout-display');
+      if (!rid) return; // 강제 모드: 타 매장 화면 강제 초기화 드랍
+      cartCache.delete(rid);
+      socket.to(`restaurant_${rid}`).emit('cart-clear', data);
     });
 
     // POS 에서 회원 선택/해제 → Customer Display 에 회원 정보 표시
     // payload: { restaurantId, customer: { id, name, phone, loyaltyTier, points } | null }
-    socket.on('pos-customer-update', (data) => {
-      if (data?.restaurantId) {
-        const rid = String(data.restaurantId);
-        const prev = cartCache.get(rid) || {};
-        cartCache.set(rid, { ...prev, customer: data.customer ?? null, ts: Date.now() });
-      }
-      socket.to(`restaurant_${data.restaurantId}`).emit('pos-customer-update', data);
+    socket.on('pos-customer-update', async (data) => {
+      const rid = await canEmitToRestaurant(socket, data?.restaurantId, '/checkout-display');
+      if (!rid) return;
+      const prev = cartCache.get(rid) || {};
+      cartCache.set(rid, { ...prev, customer: data.customer ?? null, ts: Date.now() });
+      socket.to(`restaurant_${rid}`).emit('pos-customer-update', data);
     });
   });
 

@@ -47,6 +47,10 @@ const GATES = [
   { id: 'desktop-feed', tier: 'static', label: '🖥️ 데스크탑 설치본 피드 (CTA·자동업데이트가 최신 exe 를 가리킴)', cwd: BACKEND, cmd: ['node', 'scripts/check-desktop-feed.js', '--quiet'] },
   { id: 'hydration', tier: 'static', label: '💧 state hydration 안전 (warning 0)', cwd: FRONTEND, cmd: ['node', 'scripts/state-hydration-check.js'] },
   { id: 'sensitive-diff', tier: 'static', label: '🧭 민감영역 diff 분류 (Fable 게이트 판정, 정보성)', cwd: BACKEND, cmd: ['node', 'scripts/check-sensitive-diff.js'], advisory: true },
+  // 계약 테스트 — "사고를 박제한" jest 스위트. 개별 명령을 기억할 필요 없이 게이트가 돌린다.
+  //   order-totals  = 금액 공식(돈)  /  settings-guard = 설정 wipe(thefire 무인쇄 사고)
+  //   socket-auth   = 소켓 테넌트 경계(join + emit 양방향, 강제/모니터 두 모드)
+  { id: 'contract-tests', tier: 'runtime', label: '📜 계약 테스트 (금액공식·설정wipe·소켓경계)', cwd: BACKEND, cmd: ['npx', 'jest', 'tests/order-totals.test.js', 'tests/settings-guard.test.js', 'tests/socket-auth.test.js', '--forceExit', '--silent'], timeout: 300000 },
   { id: 'inspection', tier: 'runtime', label: '🔎 인스펙션 하니스 (구조 불변식, 신규 위반 0)', cwd: BACKEND, cmd: ['node', 'scripts/inspection/run.js'] },
   { id: 'health', tier: 'runtime', label: '❤️ health-check 전체 회귀 (인쇄 계약+보안+API)', cwd: BACKEND, cmd: ['node', 'scripts/health-check.js', '--quiet'], timeout: 300000 },
   { id: 'print-routes', tier: 'runtime', label: '🖨️ 인쇄 라우트 가드 (자동인쇄 전 루트 실제 실행)', cwd: FRONTEND, cmd: ['node', 'scripts/print-route-guard/run.js', '--quiet'], timeout: 300000 },

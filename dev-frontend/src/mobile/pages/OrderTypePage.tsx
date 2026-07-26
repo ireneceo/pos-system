@@ -380,53 +380,63 @@ const OrderTypePage: React.FC = () => {
   // True once we've consumed the URL pin so the user is free to override via the picker.
   const autoSkippedRef = React.useRef(false);
 
+  // 매장 응답 → StoreData 매핑 **단일소스**. 마운트 로드와 주문 시작 시 재확정이 같은 것을 쓴다.
+  // 매장 id 가 확정되지 않으면 null 을 돌려 호출부가 진행을 멈추게 한다 —
+  // 예전 `id: ... || '1'` 폴백은 매장 식별 실패 시 손님 세션을 **1번 매장**에 묶었다(크로스테넌트).
+  const mapStoreData = React.useCallback((data: any, fallbackSlug: string): StoreData | null => {
+    const id = data?.id != null ? String(data.id).trim() : '';
+    if (!/^\d+$/.test(id)) return null;
+    return {
+      id,
+      slug: data.slug || fallbackSlug,
+      name: data.name || 'Restaurant',
+      branchName: data.branch_name || null,
+      description: data.description || 'Welcome to our restaurant',
+      logo: data.logo || '/images/store-logo.png',
+      isOpen: data.isOpen !== false,
+      openingHours: data.openingHours || {},
+      openingTime: data.openingTime,
+      closingTime: data.closingTime,
+      timeZone: data.timeZone,
+      orderTypes: data.orderTypes || {
+        dineIn: true,
+        takeaway: true,
+        pickup: false,
+        delivery: false
+      },
+      reservationsEnabled: !!data.reservationsEnabled,
+      pickupSettings: data.pickupSettings || undefined,
+      takeawaySettings: data.takeawaySettings || undefined,
+      pauseOrdering: !!data.pauseOrdering,
+      pauseMessage: data.pauseMessage || '',
+      tableNumberRequired: !!data.tableNumberRequired,
+      floorTables: Array.isArray(data.floorTables) ? data.floorTables : [],
+      ordering: data.ordering
+    };
+  }, []);
+
+  const fetchStoreBySlug = React.useCallback(async (storeSlug: string): Promise<StoreData | null> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/mobile/store/${storeSlug}`);
+      if (!response.ok) return null;
+      const result = await response.json();
+      if (!result.success || !result.data) return null;
+      return mapStoreData(result.data, storeSlug);
+    } catch (error) {
+      console.error('Error loading store data:', error);
+      return null;
+    }
+  }, [mapStoreData]);
+
   // Load store data on mount
   useEffect(() => {
-    const loadStoreData = async () => {
-      if (!slug) return;
-
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/mobile/store/${slug}`);
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data) {
-            console.log('Store data loaded:', result.data);
-            setStoreData({
-              id: result.data.id?.toString() || '1',
-              slug: result.data.slug || slug,
-              name: result.data.name || 'Restaurant',
-              branchName: result.data.branch_name || null,
-              description: result.data.description || 'Welcome to our restaurant',
-              logo: result.data.logo || '/images/store-logo.png',
-              isOpen: result.data.isOpen !== false,
-              openingHours: result.data.openingHours || {},
-              openingTime: result.data.openingTime,
-              closingTime: result.data.closingTime,
-              timeZone: result.data.timeZone,
-              orderTypes: result.data.orderTypes || {
-                dineIn: true,
-                takeaway: true,
-                pickup: false,
-                delivery: false
-              },
-              reservationsEnabled: !!result.data.reservationsEnabled,
-              pickupSettings: result.data.pickupSettings || undefined,
-              takeawaySettings: result.data.takeawaySettings || undefined,
-              pauseOrdering: !!result.data.pauseOrdering,
-              pauseMessage: result.data.pauseMessage || '',
-              tableNumberRequired: !!result.data.tableNumberRequired,
-              floorTables: Array.isArray(result.data.floorTables) ? result.data.floorTables : [],
-              ordering: result.data.ordering
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error loading store data:', error);
-      }
-    };
-
-    loadStoreData();
-  }, [slug]);
+    if (!slug) return;
+    let cancelled = false;
+    fetchStoreBySlug(slug).then((mapped) => {
+      if (!cancelled && mapped) setStoreData(mapped);
+    });
+    return () => { cancelled = true; };
+  }, [slug, fetchStoreBySlug]);
 
   // Helper function to get display name for order type
   const getOrderTypeDisplayName = (type: string): string => {
@@ -469,15 +479,17 @@ const OrderTypePage: React.FC = () => {
         throw new Error('Restaurant not found');
       }
 
-      const store = storeData || {
-        id: '1',
-        slug: restaurantSlug,
-        name: 'Restaurant',
-        description: 'Welcome to our restaurant',
-        logo: '/images/store-logo.png',
-        isOpen: true,
-        openingHours: {}
-      };
+      // 매장이 아직 안 실렸으면(첫 로드 실패 / 느린 망 경합) 여기서 한 번 더 확정한다.
+      // ⛔ 하드코딩 `id: '1'` 폴백 금지 — 그 폴백은 손님 세션·장바구니·주문을 **1번 매장**에
+      // 붙여 버렸다(아래 sessionStorage 'restaurantId' 가 그 값을 그대로 쓴다).
+      let store = storeData;
+      if (!store) {
+        store = await fetchStoreBySlug(restaurantSlug);
+        if (store) setStoreData(store);
+      }
+      if (!store) {
+        throw new Error('Restaurant not found');
+      }
 
       setCurrentStore(store);
 

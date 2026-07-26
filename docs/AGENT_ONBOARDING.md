@@ -113,6 +113,17 @@ cd /var/www/dev-backend && node scripts/check-sensitive-diff.js
   **게이트가 검사한 행과 핸들러가 조회한 행이 달라진다**(2026-07-25 앱 전역 우회 실증). `/^\d+$/` + param 고정.
 - **보안 테스트는 정수 id 만 쓰면 그 클래스를 영영 못 잡는다** — 지수표기·전각·배열 쿼리까지 넣을 것.
   그리고 **새로 만든 회귀 테스트는 반드시 고장 주입으로 검출력을 증명**한다(조용히 skip 되는 테스트가 실제로 있었다).
+- 🔴 **소켓은 join 만 검증해도 안 막힌다** — `socket.to(room)` 은 **가입 여부와 무관하게** 아무 룸에나 쏜다.
+  emit 핸들러가 payload 의 `restaurantId` 를 그대로 믿으면 타 매장 화면에 위조 카트·강제 초기화·
+  회원 붙이기(로열티 적립)가 가능하다(2026-07-26 봉인). 새 소켓 이벤트는 `canEmitToRestaurant` 를 통과시킬 것.
+  회귀 박제 = `tests/socket-auth.test.js`(강제·모니터 두 모드), 게이트 = verify-all `contract-tests`.
+- 🔴 **"로그인만 확인"하는 미들웨어가 남아 있다** — `authenticateToken` 만 달고 `body.restaurant_id` /
+  `:restaurantId` 를 신뢰하면 타 매장 데이터가 샌다. 2026-07-26 실측 사례: membership 의 `customerSelfOrAdmin`
+  admin 경로가 그래서 **타 매장 손님 이름·전화·이메일·포인트 이력**을 200 으로 내줬고, 포인트 쓰기 5개는
+  타 매장 손님 포인트를 조작할 수 있었다(호출부 0건인 죽은 라우트여도 게이트는 달아야 한다).
+- **프리픽스 마운트 표면의 보호는 "우산"일 수 있다** — `/api/restaurants/:rid/*` 는 inventory-core 배럴 가드가
+  **마운트 순서 덕에** 덮고 있다(server.js 라인 순서 의존). 그 순서를 바꾸면 조용히 열린다 —
+  라우터 마운트 순서 변경은 보안 변경으로 취급하고 health-check 라이브 403 으로 재확인할 것.
 
 ## 7. 보고 규율
 

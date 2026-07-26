@@ -522,6 +522,118 @@ function defineSecurityTests({ customerToken, member, restId }) {
     const r = await request('GET', `/store/settings?restaurantId=${otherRid}`, null, { Authorization: `Bearer ${tk}` });
     return r.status === 403;
   });
+  // 설정 wipe 계열 방어 — 프론트가 "일부 키만" PUT 해도(예: 예약 토글이 enabled 만 보냄,
+  // 현재 설정 GET 이 실패해 병합 원본이 비어 있을 때) 나머지 키가 살아남아야 한다.
+  // 2026-05-31 프린터설정 wipe 사고와 동일 계열 — 실 HTTP 왕복으로 박제한다.
+  test('security', '부분 PUT 이 reservation_settings 나머지 키를 지우지 않는다 (설정 wipe 방어)', async () => {
+    const Restaurant = require('../models/Restaurant');
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: restId } });
+    if (!ra) return true;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const before = await Restaurant.findByPk(restId);
+    const original = before.reservation_settings ? JSON.parse(JSON.stringify(before.reservation_settings)) : null;
+    try {
+      // 다른 키가 있는 상태를 만든 뒤, enabled 만 보내는 부분 PUT
+      await request('PUT', `/store/settings?restaurantId=${restId}`,
+        { reservation_settings: { enabled: false, slot: { max_party: 20 }, hcMarker: 'keep-me' } },
+        { Authorization: `Bearer ${tk}` });
+      await request('PUT', `/store/settings?restaurantId=${restId}`,
+        { reservation_settings: { enabled: true } },
+        { Authorization: `Bearer ${tk}` });
+      const after = await Restaurant.findByPk(restId);
+      const rs = after.reservation_settings || {};
+      return rs.enabled === true && rs.hcMarker === 'keep-me' && rs.slot?.max_party === 20;
+    } finally {
+      // 원복 — 운영/데모 설정을 테스트가 바꾼 채 두지 않는다
+      await Restaurant.update({ reservation_settings: original }, { where: { id: restId } });
+    }
+  });
+
+  // 멤버십(로열티) 크로스테넌트 — 2026-07-26 실측 결함.
+  // customerSelfOrAdmin 의 admin 경로가 authenticateToken 만이라 아무 매장 직원이나
+  // 타 매장 손님의 이름·전화·이메일·포인트 이력을 읽을 수 있었다(200 실증).
+  // 포인트 쓰기는 body.restaurant_id 무검증 → 타 매장 손님 포인트 조작 가능.
+  const MEMBERSHIP_READS = [
+    (rid) => `/membership/customer/${rid}/1`,
+    (rid) => `/membership/points/history/${rid}/1`,
+    (rid) => `/membership/tier/info/${rid}/1`,
+  ];
+  test('security', '다른 매장 RA 가 멤버십 손님 조회 3경로 → 전부 403 (손님 PII 유출 차단)', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: restId } });
+    if (!ra) return true;
+    const otherRid = restId === 5 ? 8 : 5;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    for (const mk of MEMBERSHIP_READS) {
+      const r = await request('GET', mk(otherRid), null, { Authorization: `Bearer ${tk}` });
+      if (r.status !== 403) {
+        console.log(`      ↳ 유출: GET ${mk(otherRid)} → ${r.status}`);
+        return false;
+      }
+    }
+    return true;
+  });
+  test('security', '다른 매장 RA 가 포인트 쓰기(earn/use/adjust/refund/welcome) → 전부 403', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: restId } });
+    if (!ra) return true;
+    const otherRid = restId === 5 ? 8 : 5;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    // customer_id = 존재하지 않는 id — 게이트가 회귀해도 실데이터를 건드리지 않는다.
+    // (게이트 있으면 403, 없으면 404 → 어느 쪽이든 이 테스트가 회귀를 잡는다)
+    const ghostCid = 99999999;
+    const writes = [
+      ['/membership/points/earn', { restaurant_id: otherRid, customer_id: ghostCid, amount: 10 }],
+      ['/membership/points/use', { restaurant_id: otherRid, customer_id: ghostCid, points: 10 }],
+      ['/membership/points/adjust', { restaurant_id: otherRid, customer_id: ghostCid, points: 10 }],
+      ['/membership/points/refund', { restaurant_id: otherRid, customer_id: ghostCid, points: 10 }],
+      ['/membership/points/welcome', { restaurant_id: otherRid, customer_id: ghostCid }],
+    ];
+    for (const [p, body] of writes) {
+      const r = await request('POST', p, body, { Authorization: `Bearer ${tk}` });
+      if (r.status !== 403) {
+        console.log(`      ↳ 쓰기 통과: POST ${p} → ${r.status}`);
+        return false;
+      }
+    }
+    return true;
+  });
+  test('security', '익명 멤버십 설정 GET 이 없는 매장에 행을 만들지 않는다 (무인증 쓰기 차단)', async () => {
+    const MembershipSettings = require('../models/MembershipSettings');
+    const ghostRid = 99991;
+    const r = await request('GET', `/membership/settings/${ghostRid}`, null, {});
+    const created = await MembershipSettings.findOne({ where: { restaurant_id: ghostRid } });
+    if (created) {
+      await MembershipSettings.destroy({ where: { restaurant_id: ghostRid } });
+      return false;
+    }
+    return r.status === 404;
+  });
+
+  // 소켓 인증 관측 엔드포인트 — 강제 전환(SOCKET_AUTH_ENFORCE) 판단의 근거 데이터.
+  // 전 매장 접속 패턴이 담기므로 System Admin 전용이어야 한다.
+  test('security', '익명 /socket-auth-monitor → 401 (전 매장 소켓 관측치 차단)', async () => {
+    return (await request('GET', '/socket-auth-monitor', null, {})).status === 401;
+  });
+  test('security', 'RA 토큰 /socket-auth-monitor → 403 (SA 전용)', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (!ra) return true;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    return (await request('GET', '/socket-auth-monitor', null, { Authorization: `Bearer ${tk}` })).status === 403;
+  });
+  test('security', 'SA /socket-auth-monitor → 카운터 4종 노출 (강제 전환 판단 근거 생존)', async () => {
+    const User = require('../models/User');
+    const sa = await User.findOne({ where: { role: 'System Admin' } });
+    if (!sa) return true;
+    const tk = jwt.sign({ userId: sa.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', '/socket-auth-monitor', null, { Authorization: `Bearer ${tk}` });
+    if (r.status !== 200) return false;
+    const total = r.body?.data?.total || r.body?.total;
+    return !!total && ['withToken', 'withoutToken', 'invalidToken', 'crossRestaurant'].every((k) => k in total);
+  });
+
   // 폐기된 미인증 레거시 대시보드 라우트는 더 이상 전 매장 집계를 200으로 누출하면 안 됨
   // (기존: 익명 200 → 폐기 후: 401 차단). recent-orders / stats / order-status 표본.
   test('security', '익명 /dashboard/recent-orders → 200 아님 (집계 누출 차단)', async () => {

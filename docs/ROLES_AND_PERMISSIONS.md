@@ -637,6 +637,26 @@ Phase A/B 의 저장만 되어있던 `branch_id`/`brand_id` 를 실제 필터로
 `/api/restaurants` 계열 결함 9개 차단 — 상세(88컬럼·게이트웨이 비밀키)·**익명 slug**(80컬럼)·`PATCH /:id/status`(임의 테넌트 영업정지)·`PUT /store/settings`(쓰기 비대칭)·`manager/:managerId` ×2·`table-status`(타 매장 손님 이름·전화·주문·`payment_proof`)·`categories`·`allowed-routes`·**목록 스코핑**(Supplier·Staff·RA·Owner·스코프 미배정 FG/FM 이 전 매장 수신).
 목록 실측: Supplier 33→0 · RA 33→1 · Owner 33→3 · 미배정 FM 33→0 · SA/FG/BG 불변. 상세 = `DEVELOPMENT_PLAN.md` 2026-07-25 섹션.
 
+### 로열티(멤버십)·소켓 크로스테넌트 차단 (2026-07-26, dev 미배포)
+
+**① 멤버십 — "로그인만 확인"하던 미들웨어.** `customerSelfOrAdmin` 은 customer 토큰은 본인 검사를 하는데,
+**admin 경로는 `authenticateToken` 만** 통과시켰다 → 아무 매장 직원 계정이나 `/membership/customer/:rid/:cid` ·
+`/points/history/…` · `/tier/info/…` 로 **타 매장 손님의 이름·전화·이메일·포인트 이력**을 읽을 수 있었다(200 실증).
+포인트 쓰기 5개(`earn/use/refund/adjust/welcome`)는 `restaurant_id` 를 **body 로 받고 소유권 검사가 없어**
+타 매장 손님 포인트를 조작할 수 있었다(호출부 0건인 죽은 라우트 — 실제 적립은 `services/pointService.js` 내부 경유).
+→ 읽기는 `ensureAdminRestaurantScope`(= `userCanAccessRestaurant`), 쓰기는 `requireBodyRestaurantScope`.
+공개인 `GET /settings/:rid` 는 정책상 유지하되 **익명이 임의 매장에 설정 행을 만들던 것**(무인증 쓰기)을 차단.
+
+**규칙 6 추가**: `body.restaurant_id` 를 쓰는 라우트도 게이트 대상이다. "역할만 맞으면 통과"는 스코프가 아니다.
+
+**② 소켓 emit** — join 검증만으로는 부족(`socket.to()` 는 가입 무관하게 아무 룸에나 쏜다).
+`canEmitToRestaurant` 로 emit 도 같은 기준 검증. 상세 = `docs/SOCKET_AUTH_HARDENING.md` Phase B-2.
+
+**③ 프리픽스 마운트 표면 실측** — `check-route-guard.js` 를 그 표면까지 확장(패스 B)해 50건을 드러낸 뒤
+무관한 RA·BG·FG 3신원으로 전수 라이브 호출: **무관한 신원에는 전부 401/403(실제 유출 0)**, 200 은 전부 정당한 권한
+(BG=브랜드 소유주 / FG=oversight 배정)이었다. 단 그 보호의 실체가 **inventory-core 배럴 가드 + 마운트 순서**이므로,
+`server.js` 라우터 마운트 순서 변경은 **보안 변경**으로 취급한다.
+
 ---
 
 ## 업데이트 이력
@@ -648,3 +668,4 @@ Phase A/B 의 저장만 되어있던 `branch_id`/`brand_id` 를 실제 필터로
 - 2026-04-19 (v3.15): Manager 지점/브랜드 할당 저장 레이어, Brand 권한 owner_id 기반으로 개편, Invoice IDOR null-safe 수정
 - 2026-04-28 (v3.19 미배포): menu/brand-inventory IDOR 일괄 차단, checkRestaurantAccess 다중 소스 해결 (params/query/body)
 - 2026-07-25 (dev 미배포): 매장 접근판정 게이트 선택 규칙 신설(4중화 현황 + `requireRestaurantScope`), id 정규화 우회 차단 규칙, `/api/restaurants` 계열 크로스테넌트 결함 9개 일괄 차단
+- 2026-07-26 (dev 미배포): 멤버십(로열티) 손님 PII 3경로 + 포인트 쓰기 5경로 크로스테넌트 차단, 소켓 emit 방향 봉인, 프리픽스 마운트 표면 전수 라이브 실측(유출 0 확인 + 마운트 순서 의존성 명시)

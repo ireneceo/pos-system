@@ -41,11 +41,33 @@
 - `join-seller`/`join-buyer` 도 인증 신원 기준으로 제한(현재 payload 신뢰).
 - `/kitchen`·`/display` 도 인증 적용(혹은 최소 인증 + 검증된 룸).
 
+### Phase B-2 — emit 방향 봉인 ✅ 2026-07-26 (dev 완료·미배포)
+
+> **join 만 검증해서는 구멍이 안 막힌다**는 것을 실측으로 확인해 추가된 단계.
+
+- 근거: `socket.to(room)` 은 **그 룸에 가입했는지와 무관하게** 아무 룸에나 emit 할 수 있다.
+  즉 Phase B 의 join 검증을 통과한 뒤에도 payload 의 `restaurantId` 를 바꿔 보내면
+  ① 타 매장 고객화면에 **위조 장바구니** 표시(cart-update) ② **강제 초기화**(cart-clear)
+  ③ 타 매장 **진행 중 판매에 회원 붙이기 → 로열티 적립**(customer-checkin·pos-customer-update)
+  ④ 서버 카트 캐시(cartCache) 오염 → 그 매장 화면 재접속 시 **위조 카트 재생** 이 가능했다.
+- 조치: `canEmitToRestaurant(socket, rid, ns)` 신설 — join 과 **동일 기준**(`userCanAccessRestaurant`)
+  으로 emit 도 검증. 모드 의미도 동일(모니터=로깅만·동작 무변경 / 강제=드랍). 소켓별 판정 메모(성능).
+  `/checkout-display` 5개 핸들러 전부 + `/orders` join 에 적용. rid 정규화(`^\d+$`) 공통.
+- `/kitchen`·`/display`: 클라이언트 0건(웹 번들·데스크탑앱·안드로이드앱 전수 grep)인 죽은 네임스페이스인데
+  `io.of(ns).emit()` = **네임스페이스 전체 브로드캐스트**였다(가짜 주문 주입 채널). 삭제 대신
+  join-restaurant + 룸 스코프로 통일 — 지금은 클라가 없어 동작 변화 0, 나중에 써도 경계 유지.
+- ⚠️ **강제 전환(`SOCKET_AUTH_ENFORCE=true`) 전에 이 단계가 배포돼 있어야 한다.** 그러지 않으면
+  핸드셰이크·join 은 막히는데 emit 경로는 열린 채로 남는다.
+
 ## 4. 검증
 
 - 서버 소켓 실테스트: 무토큰 연결 거부 / 타 매장 join 거부 / 본인 매장 정상 수신 / SysAdmin 전체.
 - e2e 3회 무결: 라이브오더·KDS·플로어플랜 실시간 회귀 0 + 인쇄 정상(실프린터 sanity — 보호파일 변경 절차).
 - health-check 에 소켓 인증 케이스 영구 추가(무토큰 거부 / 타매장 거부).
+- ✅ 2026-07-26 영구 박제: `dev-backend/tests/socket-auth.test.js` **15건** — 강제 모드(무토큰·위조토큰 거부 /
+  5개 emit 크로스테넌트 드랍 / 캐시 오염 없음 / `/orders` join 거부 / `/kitchen` 룸 스코프) +
+  모니터 모드(무토큰 연결 유지·정상 전달·crossRestaurant 계측). verify-all `contract-tests` 게이트에 포함.
+  고장주입으로 검출력 확인(게이트 제거 시 실패).
 
 ## 5. 갭 / 위험
 

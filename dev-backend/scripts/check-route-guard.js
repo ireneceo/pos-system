@@ -44,6 +44,16 @@
  *     manager/:managerId, PATCH /:id/status, 익명 slug 축소 — 고장주입 3/3 검출 실증).
  *   - 즉 이 가드는 "직접 `/restaurant/:` 라우트"의 신규 무방비만 잡는 **부분 그물**이다.
  *     전 표면 계약검증은 health-check 의 라이브 403(1차 백스톱)이 담당.
+ *
+ *   ✅ 2026-07-26 해소: **패스 B 신설로 프리픽스 마운트 표면도 스캔한다**(아래 참조).
+ *     그때 드러난 50건을 전수 라이브 실측(무관한 RA·BG·FG 3신원 × GET/POST/PUT/DELETE)한 결과:
+ *       - 무관한 신원(다른 매장 RA)에게는 **전부 401/403** — 실제 유출 0.
+ *       - 200 이 나온 건은 전부 **정당한 권한**이었다(BG=그 매장 브랜드 소유주 / FG=그 매장 oversight 배정).
+ *       - 단, 이 보호의 실체는 `/api/restaurants/:rid/*` 를 지나가는 **inventory-core 배럴 가드가
+ *         마운트 순서 덕에 우산처럼 덮는 것**이다(server.js 라인 순서 의존) = 구조적 취약.
+ *         라우터 마운트 순서를 바꾸면 조용히 열릴 수 있으므로, 그 표면의 계약은 health-check
+ *         라이브 403 케이스로 별도 고정해 두었다.
+ *     ⇒ baseline 50건은 "측정으로 안전 확인됨(2026-07-26)" 상태의 기록이다. **신규는 fail.**
  * 한계2: 정적 grep 휴리스틱이라 인라인검사를 특이 형태로 하면 false-SAFE 가능(안전측 실패). B-3 참조.
  */
 
@@ -68,19 +78,58 @@ function stripComments(s) {
 function bodyHasInlineOwnershipCheck(rawBody) {
   const body = stripComments(rawBody);
   if (/ensureRestaurant\s*\(/.test(body)) return true;
-  if (/checkRestaurantAccess/.test(body)) return true;
-  // req.user 의 restaurant_id 를 실제 비교(=/!==/!=/등)해 403/거부하는 패턴만 SAFE 로 인정.
-  const comparesUserRid = /req\.user[^\n;]*restaurant_id[^\n;]*[!=<>]=|restaurant_id[^\n;]*[!=<>]=[^\n;]*req\.user/.test(body);
+  if (/checkRestaurantAccess|requireRestaurantScope|userCanAccessRestaurant/.test(body)) return true;
   const denies = /403|Access denied|Forbidden|권한\s*(없|거부)|접근\s*거부/.test(body);
-  if (comparesUserRid && denies) return true;
+  if (!denies) return false;
+  // req.user 의 restaurant_id 를 실제 비교(=/!==/!=/등)해 403/거부하는 패턴.
+  const comparesUserRid = /req\.user[^\n;]*restaurant_id[^\n;]*[!=<>]=|restaurant_id[^\n;]*[!=<>]=[^\n;]*req\.user/.test(body);
+  if (comparesUserRid) return true;
+  // 2026-07-26 확장: 매장 스코프를 restaurant_id 비교가 아닌 **다른 정당한 신원 축**으로
+  // 강제하는 라우트가 많다(실측 후 오탐 제거). 아래를 SAFE 로 인정한다:
+  //   - System Admin 전용 인라인 검사   (예: restaurants-subscription restore/generate-invoice)
+  //   - 소유 브랜드/푸드코트 대조        (예: DELETE /restaurants/:id — ownedBrandIds 포함 여부)
+  //   - 호출자 자신(req.user.id)로 스코프 (예: owner claim/unclaim — manager_id: req.user.id)
+  const saOnly = /req\.user[^\n;]*role[^\n;]*(!==|===|!=|==)[^\n;]*['"`]System Admin['"`]|['"`]System Admin['"`][^\n;]*(!==|===|!=|==)[^\n;]*req\.user[^\n;]*role/.test(body);
+  if (saOnly) return true;
+  const ownedEntity = /owned(Brand|Foodcourt)Ids|(brand|foodcourt)_id[^\n;]*(includes|indexOf|===|!==)/.test(body) &&
+                      /req\.user[^\n;]*(id|brand_id|foodcourt_id)/.test(body);
+  if (ownedEntity) return true;
+  const selfScoped = /(manager_id|owner_id|user_id|admin_id)\s*:\s*req\.user\.id/.test(body);
+  if (selfScoped) return true;
   return false;
 }
 
-function middlewareIsSafe(mw) {
+function middlewareIsSafe(mw, fileText) {
   if (/checkRestaurantAccess/.test(mw)) return true;
+  if (/requireRestaurantScope/.test(mw)) return true;   // 2026-07-25 신설 게이트(BG/FG 소유 폴백 포함)
   if (/requireRole\(\s*['"`]System Admin['"`]/.test(mw)) return true;
   if (/requireSystemAdmin|adminGuard/.test(mw)) return true;
+  // spread 미들웨어 상수 해석 — `const common = [authenticateToken, checkRestaurantAccess, gate]`
+  // 를 `router.get('/:restaurantId/x', ...common, handler)` 로 쓰는 패턴(ai-serving 등).
+  // 이걸 못 읽으면 정당히 보호된 라우트가 오탐으로 잡힌다.
+  if (fileText) {
+    const spreads = mw.match(/\.\.\.(\w+)/g) || [];
+    for (const s of spreads) {
+      const name = s.slice(3);
+      const def = new RegExp(`(?:const|let|var)\\s+${name}\\s*=\\s*\\[([^\\]]*)\\]`).exec(fileText);
+      if (def && /checkRestaurantAccess|requireRestaurantScope/.test(def[1])) return true;
+    }
+    // 같은 파일에 정의된 **로컬 미들웨어 함수**를 1단계 따라간다.
+    // 예: membership.js 의 `customerSelfOrAdmin` / `requireBodyRestaurantScope` 는 내부에서
+    // userCanAccessRestaurant 로 매장 소유권을 확인한다. 이름만 보고 오탐하면 안 된다.
+    const names = (mw.match(/\b([a-z][A-Za-z0-9_]*)\b/g) || []).filter((n) => !['async', 'req', 'res', 'next'].includes(n));
+    for (const n of new Set(names)) {
+      const fn = new RegExp(`(?:async\\s+)?function\\s+${n}\\s*\\(([\\s\\S]{0,2500}?)\\n\\}`).exec(fileText) ||
+                 new RegExp(`(?:const|let|var)\\s+${n}\\s*=\\s*(?:async\\s*)?\\(?[^=]*=>([\\s\\S]{0,2500}?)\\n\\}`).exec(fileText);
+      if (fn && /userCanAccessRestaurant|checkRestaurantAccess|requireRestaurantScope|ensureAdminRestaurantScope/.test(fn[1])) return true;
+    }
+  }
   return false;
+}
+
+// 파일 자체가 라우터 레벨로 매장 가드를 걸어 두었는지 (`router.use('/:restaurantId', checkRestaurantAccess)`)
+function fileHasRouterLevelScopeGuard(text) {
+  return /router\.use\(\s*['"`]\/:[\w]+(?:\/[\w-]+)?['"`]\s*,[^\n]*(checkRestaurantAccess|requireRestaurantScope)/.test(text);
 }
 
 function scanFile(file, text) {
@@ -94,20 +143,96 @@ function scanFile(file, text) {
     const startIdx = m.index;
     const nextRouter = text.indexOf('\nrouter.', startIdx + 1);
     const body = text.slice(startIdx, nextRouter === -1 ? undefined : nextRouter);
-    if (middlewareIsSafe(mw) || bodyHasInlineOwnershipCheck(body)) continue;
+    if (middlewareIsSafe(mw, text) || bodyHasInlineOwnershipCheck(body)) continue;
     const line = text.slice(0, startIdx).split('\n').length;
     violations.push({ fp: `${path.basename(file)} ${routePath}`, line });
   }
   return violations;
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// 패스 B (2026-07-26 신설) — **프리픽스 마운트 표면**.
+//
+// 위 패스 A 는 라우트 문자열에 literal `/restaurant/:` 가 있는 것만 본다. 그런데
+// 2026-07-25 사고가 난 표면은 `app.use('/api/restaurants', router)` 로 마운트돼 라우트
+// 문자열이 `/:id` · `/:id/table-status` 라서 **스캐너가 아예 안 보던 곳**이었다
+// (authenticateToken 만 달린 채 남의 매장 전 컬럼·게이트웨이 비밀키가 열려 있었음).
+// 그 사각을 정적으로도 덮는다.
+//
+// 대상 선정(오탐 억제): 매장 스코프가 확실한 것만.
+//   ① server.js 에서 `/api/restaurant(s)` 프리픽스로 마운트된 라우터 파일의,
+//      **첫 세그먼트가 매장 파라미터**인 라우트 (`/:id`, `/:restaurantId`, `/:rid/...`)
+//   ② 파일 위치와 무관하게 경로에 literal `:restaurantId` 가 들어간 라우트
+// `/api/menu` 의 `/:id`(=상품) 같은 건 대상이 아니다 — 프리픽스가 매장이 아니므로.
+// ────────────────────────────────────────────────────────────────────────────
+const SERVER_FILE = path.resolve(__dirname, '../server.js');
+const ROUTE_ANY_RE = /router\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]*)['"`]\s*,([^\n]*)/g;
+const RID_PARAM = /^(id|rid|restaurantId|restaurant_id)$/;
+
+function restaurantScopedMountFiles() {
+  const files = new Set();
+  let text; try { text = fs.readFileSync(SERVER_FILE, 'utf8'); } catch { return files; }
+  const mountRe = /app\.use\(\s*['"`](\/api\/restaurants?[^'"`]*)['"`]\s*,[^\n]*require\(\s*['"`]\.\/routes\/([\w.-]+)['"`]/g;
+  let m;
+  while ((m = mountRe.exec(text)) !== null) {
+    files.add(m[2].endsWith('.js') ? m[2] : `${m[2]}.js`);
+  }
+  return files;
+}
+
+// 배럴 라우터(routes/restaurants.js 처럼 하위 라우터를 다시 use 하는 파일)도 따라간다.
+function expandBarrels(fileSet) {
+  const out = new Set(fileSet);
+  for (const f of fileSet) {
+    let text; try { text = fs.readFileSync(path.join(ROUTES_DIR, f), 'utf8'); } catch { continue; }
+    const re = /require\(\s*['"`]\.\/([\w.-]+)['"`]\s*\)/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const child = m[1].endsWith('.js') ? m[1] : `${m[1]}.js`;
+      if (fs.existsSync(path.join(ROUTES_DIR, child))) out.add(child);
+    }
+  }
+  return out;
+}
+
+function scanFilePrefixMounted(file, text, isRestaurantMount) {
+  const violations = [];
+  let m;
+  ROUTE_ANY_RE.lastIndex = 0;
+  while ((m = ROUTE_ANY_RE.exec(text)) !== null) {
+    const routePath = m[2];
+    const mw = m[3];
+    if (/\/restaurant\/:/.test(routePath)) continue; // 패스 A 담당 (중복 계상 방지)
+
+    const segs = routePath.split('/').filter(Boolean);
+    const firstIsRid = segs.length > 0 && segs[0].startsWith(':') && RID_PARAM.test(segs[0].slice(1));
+    const hasRidParam = /:restaurant_?[iI]d\b/.test(routePath);
+    const inScope = (isRestaurantMount && firstIsRid) || hasRidParam;
+    if (!inScope) continue;
+
+    const startIdx = m.index;
+    const nextRouter = text.indexOf('\nrouter.', startIdx + 1);
+    const body = text.slice(startIdx, nextRouter === -1 ? undefined : nextRouter);
+    if (middlewareIsSafe(mw, text) || bodyHasInlineOwnershipCheck(body)) continue;
+
+    // 라우터 레벨 배럴 가드(`router.use('/:restaurantId', checkRestaurantAccess)`)가 있으면 안전
+    if (fileHasRouterLevelScopeGuard(text)) continue;
+
+    const line = text.slice(0, startIdx).split('\n').length;
+    violations.push({ fp: `[mount] ${path.basename(file)} ${routePath}`, line });
+  }
+  return violations;
+}
+
 // ── 스캔 ──
 const files = fs.readdirSync(ROUTES_DIR).filter(f => f.endsWith('.js'));
+const mountFiles = expandBarrels(restaurantScopedMountFiles());
 let violations = [];
 for (const f of files) {
   const full = path.join(ROUTES_DIR, f);
   let text; try { text = fs.readFileSync(full, 'utf8'); } catch { continue; }
   violations = violations.concat(scanFile(full, text));
+  violations = violations.concat(scanFilePrefixMounted(full, text, mountFiles.has(f)));
 }
 
 let baseline = [];

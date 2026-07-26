@@ -8,12 +8,56 @@ const { authenticateCustomer } = require('../middleware/customerAuth');
 // ========================================
 // 보안 정책 (라우트별 명시)
 // ========================================
-// 1. GET /settings/:rid           → 공개 (모바일 결제에서 멤버십 정책 확인 필요)
-// 2. GET /customer/:rid/:cid       → Customer self OR Admin
-// 3. GET /points/history/:rid/:cid → Customer self OR Admin
-// 4. GET /tier/info/:rid/:cid      → Customer self OR Admin
+// 1. GET /settings/:rid           → 공개 (모바일 결제에서 멤버십 정책 확인 필요. 존재하는 매장만)
+// 2. GET /customer/:rid/:cid       → Customer self OR **그 매장** Admin
+// 3. GET /points/history/:rid/:cid → Customer self OR **그 매장** Admin
+// 4. GET /tier/info/:rid/:cid      → Customer self OR **그 매장** Admin
 // 5. POST /points/calculate-discount → 공개 (단순 계산)
-// 6. 그 외 (POST/PUT, 포인트 적립/사용/조정 등) → POS Admin (authenticateToken)
+// 6. 그 외 (POST/PUT, 포인트 적립/사용/조정 등) → POS Admin + **body.restaurant_id 소유권 검사**
+
+// ────────────────────────────────────────────────────────────────────────────
+// 매장 스코프 검사 (2026-07-26 신설)
+//
+// 실측된 결함: `customerSelfOrAdmin` 의 **admin 경로가 authenticateToken 만** 통과시켜,
+// 아무 매장 직원 계정이나 `/customer/:rid/:cid` · `/points/history/…` · `/tier/info/…` 로
+// **타 매장 손님의 이름·전화·이메일·포인트 이력**을 읽을 수 있었다(rid38 RA → rid5 손님, 200 실증).
+// 포인트 쓰기(earn/use/refund/adjust/welcome)는 `restaurant_id` 를 **body 로 받고** 소유권
+// 검사가 없어 타 매장 손님 포인트를 조작할 수 있었다(호출부 0건인 죽은 라우트 — 2026-07-25
+// table-status 와 동일 패턴, 삭제 대신 게이트).
+//
+// CLAUDE.md 보안 규칙: "restaurant_id 파라미터를 신뢰하지 않는다".
+// id 정규화는 2026-07-25 규칙(^\d+$)과 동일 — parseInt/MySQL 캐스팅 불일치로 게이트가 뚫린 사고 방지.
+// ────────────────────────────────────────────────────────────────────────────
+const { userCanAccessRestaurant } = require('../middleware/auth');
+
+function normalizeRid(v) {
+  const s = String(v ?? '').trim();
+  return /^\d+$/.test(s) ? String(parseInt(s, 10)) : null;
+}
+
+// 인증된 POS 계정(req.user)이 그 매장에 접근 가능한지. 통과 시 true, 실패 시 응답 전송 후 false.
+async function ensureAdminRestaurantScope(req, res, rawRid) {
+  const rid = normalizeRid(rawRid);
+  if (!rid) {
+    res.status(400).json({ success: false, message: 'Invalid restaurant id' });
+    return false;
+  }
+  if (req.user?.role === 'System Admin') return true;
+  let ok = false;
+  try { ok = await userCanAccessRestaurant(req.user, rid); } catch { ok = false; }
+  if (!ok) {
+    res.status(403).json({ success: false, message: 'Access denied' });
+    return false;
+  }
+  return true;
+}
+
+// body.restaurant_id 를 쓰는 POS 전용 쓰기 라우트용 미들웨어
+function requireBodyRestaurantScope(req, res, next) {
+  authenticateToken(req, res, async () => {
+    if (await ensureAdminRestaurantScope(req, res, req.body?.restaurant_id)) next();
+  });
+}
 
 // Customer 본인 또는 Admin 둘 다 허용 미들웨어
 async function customerSelfOrAdmin(req, res, next) {
@@ -43,7 +87,10 @@ async function customerSelfOrAdmin(req, res, next) {
     // customer token 아님 → admin 시도
   }
 
-  return authenticateToken(req, res, next);
+  // Admin 경로 — 로그인만으론 부족하다. 그 매장 소유권까지 확인해야 타 매장 손님 PII 가 안 샌다.
+  return authenticateToken(req, res, async () => {
+    if (await ensureAdminRestaurantScope(req, res, req.params.restaurantId)) next();
+  });
 }
 
 // ========================================
@@ -56,14 +103,24 @@ async function customerSelfOrAdmin(req, res, next) {
  */
 router.get('/settings/:restaurantId', async (req, res) => {
   try {
-    const { restaurantId } = req.params;
+    // 공개 라우트라 익명이 임의 값을 넣을 수 있다 → id 정규화 + 존재하는 매장만.
+    // (예전엔 익명 GET 이 아무 restaurant_id 로나 설정 행을 생성할 수 있었다 = 무인증 쓰기)
+    const restaurantId = normalizeRid(req.params.restaurantId);
+    if (!restaurantId) {
+      return res.status(400).json({ success: false, message: 'Invalid restaurant id' });
+    }
 
     let settings = await MembershipSettings.findOne({
       where: { restaurant_id: restaurantId }
     });
 
-    // 설정이 없으면 기본값으로 생성
+    // 설정이 없으면 기본값으로 생성 — 실재하는 매장일 때만
     if (!settings) {
+      const { Restaurant } = require('../models');
+      const exists = await Restaurant.findByPk(restaurantId, { attributes: ['id'] });
+      if (!exists) {
+        return res.status(404).json({ success: false, message: 'Restaurant not found' });
+      }
       settings = await MembershipSettings.create({
         restaurant_id: restaurantId
       });
@@ -192,7 +249,7 @@ router.get('/customer/:restaurantId/:customerId', customerSelfOrAdmin, async (re
  * - amount: 결제 금액 (필수) - 포인트 계산용
  * - description: 설명 (선택)
  */
-router.post('/points/earn', authenticateToken, async (req, res) => {
+router.post('/points/earn', requireBodyRestaurantScope, async (req, res) => {
   const t = await sequelize.transaction();
 
   try {
@@ -311,7 +368,7 @@ router.post('/points/earn', authenticateToken, async (req, res) => {
  * - points: 사용할 포인트 (필수)
  * - description: 설명 (선택)
  */
-router.post('/points/use', authenticateToken, async (req, res) => {
+router.post('/points/use', requireBodyRestaurantScope, async (req, res) => {
   const t = await sequelize.transaction();
 
   try {
@@ -416,7 +473,7 @@ router.post('/points/use', authenticateToken, async (req, res) => {
  * POST /api/membership/points/refund
  * 포인트 환불 (주문 취소 시)
  */
-router.post('/points/refund', authenticateToken, async (req, res) => {
+router.post('/points/refund', requireBodyRestaurantScope, async (req, res) => {
   const t = await sequelize.transaction();
 
   try {
@@ -485,7 +542,7 @@ router.post('/points/refund', authenticateToken, async (req, res) => {
  * POST /api/membership/points/adjust
  * 포인트 수동 조정 (관리자용)
  */
-router.post('/points/adjust', authenticateToken, async (req, res) => {
+router.post('/points/adjust', requireBodyRestaurantScope, async (req, res) => {
   const t = await sequelize.transaction();
 
   try {
@@ -564,7 +621,7 @@ router.post('/points/adjust', authenticateToken, async (req, res) => {
  * POST /api/membership/points/welcome
  * 환영 포인트 지급
  */
-router.post('/points/welcome', authenticateToken, async (req, res) => {
+router.post('/points/welcome', requireBodyRestaurantScope, async (req, res) => {
   const t = await sequelize.transaction();
 
   try {

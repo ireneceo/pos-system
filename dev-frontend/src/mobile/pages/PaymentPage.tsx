@@ -1390,7 +1390,7 @@ const PaymentPage: React.FC = () => {
           price: item.totalPrice / item.quantity,
           options: item.selectedOptions
         })),
-        currentStore?.id || '1'
+        resolvedRestaurantId // ⛔ `|| '1'` 폴백 금지(위 게이트가 이미 미해결 상태를 차단) — 타 매장 메뉴로 검증되던 잔재
       );
 
       console.log('🔵 Step 2: Validation response:', validationResponse);
