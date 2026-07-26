@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-26 (**백로그 보완·정리 — dev 완료·미배포, ★Fable 게이트 대상(②⑤)**. Irene "다른 작업 할게 없어? 보완하고 관리하고 수정해야 할 거 다 제대로 해" → 백로그를 추측 없이 전수 실측. **① 소켓 emit 봉인**: `socket.to(room)` 은 가입 여부와 무관하게 아무 룸에나 쏘므로 join 검증만으론 안 막혔다 — 타 매장 고객화면 위조 카트·강제 초기화·**진행 중 판매에 회원 붙여 로열티 적립**·카트캐시 오염(재접속 재생)이 가능. `canEmitToRestaurant` 로 `/checkout-display` 5핸들러+`/orders` join 봉인. 덤으로 `/kitchen`·`/display` 가 **클라이언트 0건인 죽은 네임스페이스인데 네임스페이스 전체 브로드캐스트 릴레이**(가짜 주문 주입)임을 발견해 룸 스코프로 통일. **② 로열티 크로스테넌트 실측 결함**: `customerSelfOrAdmin` admin 경로가 authenticateToken 만이라 **rid38 RA 토큰으로 rid5 손님 이름·전화·이메일·포인트 이력 200**(PDPA급), 포인트 쓰기 5개는 body `restaurant_id` 무검증으로 **타 매장 손님 포인트 조작**(고장주입에서 실제 200+적립 발생 — dev 데이터 원복), 익명 설정 GET 이 **임의 매장에 행 생성**(무인증 쓰기)까지. **③ 모바일 하드코딩 매장1 폴백 제거**(매장 로드 실패 시 손님 세션이 1번 매장에 묶였다). **④ check-route-guard 를 7/25 이 남긴 프리픽스 마운트 표면까지 확장** → 드러난 50건을 무관한 RA·BG·FG 3신원 전수 라이브 호출로 검증(**실제 유출 0**, 200 은 전부 정당 권한) + 🔎 **보호 실체가 inventory-core 배럴 가드 + server.js 마운트 순서 의존**임을 발견(순서 바꾸면 조용히 열림 — 문서화). **⑤ 안전망**: `tests/socket-auth.test.js` 15건(강제·모니터) + verify-all 신규 게이트 `contract-tests` + health-check security 42→49. 고장주입 검출 소켓 2/3(3번째는 룸을 판정값으로 고정해 악용 불가=이중화)·멤버십 2/2·스캐너 1/1. **⑥ Fable 지적 1건은 결함 아님으로 종결**(reservation_settings 는 백엔드 guardShallowSettings 가 보존 — 실 HTTP 로 증명 후 계약 박제). 검증: verify-all **--full 15/15**(mount 8역할 658s 크래시0)·health **156/156**·🔒 인쇄 8/8 무접촉·마이그 없음. 상세=session-state.)
+> **최종 업데이트:** 2026-07-26 (**v3.71 운영 배포 완료** — Backup 20260726_154741 · 안전게이트 9/9 · mount sweep 크래시0 · 마이그 49/49 · Smoke 9/9 · 스키마 153테이블 동일 · 배포 스냅샷 1788파일. 운영 실검증: 소켓 emit 봉인·멤버십 게이트 코드 반영 확인 + **타 매장 손님조회 3경로 403 / 자기 매장 200**. 배포 내용 = 7/25 매장 크로스테넌트 차단 + 아래 7/26 보완분. Irene "다른 작업 할게 없어? 보완하고 관리하고 수정해야 할 거 다 제대로 해" → 백로그를 추측 없이 전수 실측. **① 소켓 emit 봉인**: `socket.to(room)` 은 가입 여부와 무관하게 아무 룸에나 쏘므로 join 검증만으론 안 막혔다 — 타 매장 고객화면 위조 카트·강제 초기화·**진행 중 판매에 회원 붙여 로열티 적립**·카트캐시 오염(재접속 재생)이 가능. `canEmitToRestaurant` 로 `/checkout-display` 5핸들러+`/orders` join 봉인. 덤으로 `/kitchen`·`/display` 가 **클라이언트 0건인 죽은 네임스페이스인데 네임스페이스 전체 브로드캐스트 릴레이**(가짜 주문 주입)임을 발견해 룸 스코프로 통일. **② 로열티 크로스테넌트 실측 결함**: `customerSelfOrAdmin` admin 경로가 authenticateToken 만이라 **rid38 RA 토큰으로 rid5 손님 이름·전화·이메일·포인트 이력 200**(PDPA급), 포인트 쓰기 5개는 body `restaurant_id` 무검증으로 **타 매장 손님 포인트 조작**(고장주입에서 실제 200+적립 발생 — dev 데이터 원복), 익명 설정 GET 이 **임의 매장에 행 생성**(무인증 쓰기)까지. **③ 모바일 하드코딩 매장1 폴백 제거**(매장 로드 실패 시 손님 세션이 1번 매장에 묶였다). **④ check-route-guard 를 7/25 이 남긴 프리픽스 마운트 표면까지 확장** → 드러난 50건을 무관한 RA·BG·FG 3신원 전수 라이브 호출로 검증(**실제 유출 0**, 200 은 전부 정당 권한) + 🔎 **보호 실체가 inventory-core 배럴 가드 + server.js 마운트 순서 의존**임을 발견(순서 바꾸면 조용히 열림 — 문서화). **⑤ 안전망**: `tests/socket-auth.test.js` 15건(강제·모니터) + verify-all 신규 게이트 `contract-tests` + health-check security 42→49. 고장주입 검출 소켓 2/3(3번째는 룸을 판정값으로 고정해 악용 불가=이중화)·멤버십 2/2·스캐너 1/1. **⑥ Fable 지적 1건은 결함 아님으로 종결**(reservation_settings 는 백엔드 guardShallowSettings 가 보존 — 실 HTTP 로 증명 후 계약 박제). 검증: verify-all **--full 15/15**(mount 8역할 658s 크래시0)·health **156/156**·🔒 인쇄 8/8 무접촉·마이그 없음. 상세=session-state.)
 >
 > **이전:** 2026-07-25 (**매장 크로스테넌트 과다노출 수정 — dev 완료·미배포, Fable VERDICT GO**. Irene "fable하고 검토해서 진행해" → "운영에 아무 문제 없는지 제대로 확인해. 제대로 완벽하게 구성된 코드구조인지". `/api/restaurants` 계열이 `authenticateToken` 만 달고 있어 **아무 인증 계정이나 남의 매장 전 컬럼**(게이트웨이 비밀키·프린터설정·사업자등록번호·계좌)을 읽고, `PATCH /:id/status` 로 **임의 매장을 정지**시키고, `PUT /store/settings` 로 **남의 매장 설정에 쓰기**가 가능했다. `slug` 라우트는 **완전 익명**으로 80컬럼(slug 는 QR URL 공개값 = 추측 불필요), `table-status` 는 호출부 0건인 죽은 라우트인데 **타 매장 손님 이름·전화·주문내역·매출·payment_proof** 를 반환. 목록은 스코핑 분기 2개를 비껴가는 역할(Supplier·Staff·RA·Owner·스코프 미배정 FG/FM)에게 **전 매장**을 줬다. **결함 9개 수정 + 영구 회귀 7건.** 🔴 Fable 이 내 블로커 적발: `parseInt('3.8e1')===3` vs MySQL `'3.8e1'→38` 로 **게이트가 검사한 매장과 핸들러가 반환한 매장이 달라** 게이트가 통째로 뚫렸고, **같은 split 이 `checkRestaurantAccess`(103라우트)에도 있어 앱 전역이 뚫려 있었다**(내가 독립 재현) → 조이는 방향으로 같이 차단. 🔴 내가 만든 회귀도 스스로 발견·수정: 상세 게이트가 목록보다 엄격해 **Foodcourt Manager 는 목록엔 뜨는데 상세 403**(매니저 콘솔 사망) — dev 에선 branch_id 가 우연히 안 맞아 안 드러났음. `userCanAccessRestaurant` 는 **의도적 무수정**(소켓 room 인증 등 11파일 공유). 검증: verify-all 13/13 · health-check 147/147(security 42/42) · **고장주입 6/6 검출** · **A/B 664호출 diff 0** · **우회 25개 인코딩 차단** · **list⊆detail 78유저 196쌍 위반 0** · 🔒 인쇄 8/8 무접촉. 마이그·프론트 무변경. 운영 실측으로 **결제 비밀키 저장 0건 확인(로테이션 불필요)**, **소켓 카운터 withoutToken 0/287 확인(강제 전환 가능)**. 상세=session-state + ✅ 섹션.
 >
@@ -84,6 +84,53 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: v3.71 운영 배포 — 손님정보·고객화면 보호 + 안전망 확충 (2026-07-26)
+
+> Irene "다른 작업 할게 없어? 보완하고 관리하고 수정해야 할 거 다 제대로 해" → 백로그 전수 실측 → "주문관리가 제대로 되어 있어? 운영문제 없는지 배포 전에 확인해" → 배포 전 점검 → `/배포` → v3.71.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 소켓 emit 크로스테넌트 봉인 | `socket.to(room)` 은 가입 여부와 무관하게 아무 룸에나 쏜다 → join 검증만으론 안 막혔다. `canEmitToRestaurant` 로 `/checkout-display` 5핸들러 + `/orders` join 봉인 | ✅ 배포 |
+| 죽은 네임스페이스 릴레이 차단 | `/kitchen`·`/display` 는 클라이언트 0건인데 `io.of(ns).emit()` = 전 테넌트 브로드캐스트(가짜 주문 주입) → 룸 스코프 통일(동작 변화 0) | ✅ 배포 |
+| 로열티 손님 PII 유출 차단 | `customerSelfOrAdmin` admin 경로가 authenticateToken 만 → **rid38 RA 토큰으로 rid5 손님 이름·전화·이메일·포인트 이력 200 실증** | ✅ 배포 |
+| 포인트 쓰기 5경로 게이트 | `earn/use/refund/adjust/welcome` 이 body `restaurant_id` 무검증 → 타 매장 손님 포인트 조작(고장주입에서 실제 200+적립 실증) | ✅ 배포 |
+| 익명 무인증 쓰기 차단 | 익명 `GET /membership/settings/:rid` 가 임의 매장에 설정 행을 생성하던 것 | ✅ 배포 |
+| 모바일 매장 오배정 제거 | `storeData \|\| { id:'1' }` 폴백이 손님 세션을 **1번 매장**에 묶었다 → 매핑 단일소스 + 실패 시 진행 중단 | ✅ 배포 |
+| route-guard 표면 확장 | 7/25 이 남긴 "프리픽스 마운트 미검사 표면"까지 스캔(패스 B) + 판정 정밀화(SA 인라인·소유엔티티·self·spread·로컬 미들웨어 추적) | ✅ 배포 |
+| 안전망 확충 | `tests/socket-auth.test.js` 15건(강제·모니터) 신설 + verify-all 신규 게이트 `contract-tests` + health-check security 42→49 | ✅ 배포 |
+
+### 실측으로 종결한 것 (수정 없음)
+- **Fable 지적 `SettingsPage.tsx:5291` reservation_settings wipe = 결함 아님** — 백엔드 `guardShallowSettings` 가 missing key 를 보존. 실 HTTP 왕복으로 증명하고 그 계약을 health-check 에 박제
+- **프리픽스 마운트 50건 전수 라이브 실측** — 무관한 RA·BG·FG 3신원 × GET/POST/PUT/DELETE 호출 결과 **무관한 신원엔 전부 401/403(실제 유출 0)**. 200 은 전부 정당 권한(BG=브랜드 소유주 / FG=oversight 배정)
+- ⚠️ 단 그 보호의 실체는 **inventory-core 배럴 가드 + server.js 마운트 순서** → 순서 변경은 보안 변경으로 취급(문서화)
+
+### 배포 전 점검 (Irene "주문관리 제대로 되어 있어?")
+- **주문 생애주기 12/12** — 생성→주방큐→동시 claim 5개 중 1개만→printed→큐 소멸→+Round(새 품목만)→단계 4개→금액 정합(정식 공식)→결제 완료→익명 401→크로스테넌트 403 (테스트 주문 완전 삭제)
+- **소켓 실사격 8/8** (pm2 실서버, 운영과 동일 모니터 모드) — 고객화면 카트·회원·재접속 캐시 재생·결제완료 정상, 무토큰 연결 유지
+- **역할 회귀 0** — 7역할 × 4경로 28호출 전부 200(게이트가 정상 사용자를 막지 않음)
+- **운영 실측** — 7일 415주문, 금액 공식 불일치 4건은 전부 테스트매장 `SMOKE99` 배포 스모크 주문, 음수/고아/과다수납 0. 미인쇄 266건은 **자동인쇄 끈 매장 3곳의 정상 누적**이고 **자동인쇄 ON 5개 매장은 미인쇄 0**
+
+### 🔴 운영 실측 중 발견한 별건 (미수정 — 설계 필요)
+**마감(Cash-up) 기대금액이 항상 0** — `cash-management.js:45 computeExpected` 는 `order_payments` 합산인데,
+운영 POS 결제는 `PATCH orders {payment_status:'completed'}` 로만 기록 → `order_payments` 전 기간 5행, 최근 7일 408건 중 **0행**.
+교대 마감 시 기대현금·기대카드가 0으로 나와 센 현금 전액이 "초과"로 표시된다. **아직 사고 없음**(shift 3건 전부 미마감, 마감기록 0건).
+돈 무결성 = Fable 게이트 대상.
+
+### 배포 결과 (v3.71)
+Backup `20260726_154741` · 안전게이트 **9/9** · mount sweep 크래시 0 · 마이그 **49/49** · Smoke **9/9** · 스키마 153테이블 동일 · 스냅샷 1788파일.
+운영 실검증: 코드 반영 확인 + **타 매장 손님조회 3경로 403 / 자기 매장 200**. 릴리즈 블로그 `/blog/release-v3.71`(200) + 공지 id=103 등록.
+
+### 수정된 파일
+- `dev-backend/services/socketService.js` · `routes/membership.js`
+- `dev-backend/scripts/check-route-guard.js` · `scripts/health-check.js` · `scripts/verify-all.js` · `scripts/route-guard-baseline.json`
+- `dev-backend/tests/socket-auth.test.js`(신규) · `package.json`(devDep `socket.io-client`)
+- `dev-frontend/src/mobile/pages/OrderTypePage.tsx` · `PaymentPage.tsx`
+- `docs/SOCKET_AUTH_HARDENING.md` · `docs/ROLES_AND_PERMISSIONS.md` · `docs/AGENT_ONBOARDING.md`
+
+---
 
 ## ✅ 완료: 매장 크로스테넌트 과다노출 수정 (2026-07-25, dev 완료·미배포, Fable VERDICT **GO**)
 
