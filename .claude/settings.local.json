@@ -1430,7 +1430,12 @@
       "Bash(bash /tmp/claude-1000/-var-www/cc1e9997-8cca-4e62-8ce5-6c7e13059c27/scratchpad/fable-11-validate-fix.sh 2>&1)",
       "Bash(xargs -I{} dirname {})",
       "Bash(bash /tmp/claude-1000/-var-www/cc1e9997-8cca-4e62-8ce5-6c7e13059c27/scratchpad/fable-22-ab.sh 2>&1)",
-      "Bash(awk 'NR>=520 && NR<=760' routes/orders-crud.js)"
+      "Bash(awk 'NR>=520 && NR<=760' routes/orders-crud.js)",
+      "Bash(zgrep -c \"ERR_ERL_KEY_GEN_IPV6\" /var/www/logs/development/*.gz)",
+      "Bash(cp /tmp/claude-1000/-var-www/915c18e7-3d3e-47d0-8258-238212044ff3/scratchpad/db-audit.js /var/www/dev-backend/tmp-fable-db-audit.js)",
+      "Bash(rm -f /var/www/dev-backend/tmp-fable-db-audit.js)",
+      "Bash(cp /var/www/dev-backend/routes/cash-management.js /tmp/claude-1000/-var-www/915c18e7-3d3e-47d0-8258-238212044ff3/scratchpad/cash-management.ORIG)",
+      "Bash(sed -i \"s/payment_status: 'completed',/payment_status: 'zz_never',/\" routes/cash-management.js)"
     ],
     "deny": [],
     "ask": []

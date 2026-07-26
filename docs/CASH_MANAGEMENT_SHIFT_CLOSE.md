@@ -104,6 +104,32 @@
 - **P1 — 진짜 블라인드 카운트**: `/expected` 가 예상 '금액'을 카운트 전 클라에 보내던 누수 제거 → 수단 키만 전송. 실제 금액/variance 는 reconcile 응답에서만 공개.
 - 검증: 적대 API 13/13 + health101/101 + print-guard8/8 + mount0. (잔여 후속: 동시 open DB 유니크 가드, 통화별 variance 임계값.)
 
+### 🔴 P0 근본 수정 — 기대금액이 항상 0이던 결함 (2026-07-26, dev·미배포)
+
+> 운영 실측(읽기 전용 SSH)에서 발견. 이 문서가 §5·§7 에서 "**order_payments 기준**"이라고 적어 둔 전제가
+> **현실과 달랐다** — 매장 POS 는 그 원장을 안 쓴다.
+
+- **실측**: 매장 POS 의 결제 완료는 `PATCH /api/orders/:id {payment_status:'completed'}` 로 **주문 행에만** 기록된다
+  (`FloorPlanPage.tsx`·`TableDetailPanel.tsx`·`LiveOrdersPage.tsx`). `POST /orders/:id/payments`(분할결제)만 원장을 남긴다.
+  운영 최근 7일 결제완료 **408건 중 order_payments 0행**(전 기간 5행), `orders.amount_paid` 도 전부 0.
+- **증상**: `computeExpected` 가 원장만 합산 → 교대를 닫는 순간 기대현금·기대카드·기대이월렛이 **전부 0** →
+  세어 넣은 현금 전액이 "초과(surplus)"로 표시된다. **아직 사고 없음** — 운영 `cashier_shifts` 3건 전부 미마감,
+  `cash_reconciliations` **0건**(마감을 닫은 매장이 아직 없다).
+- **수정**: `computeExpected` 에 대시보드와 **같은 폴백 구조**를 도입 —
+  주문 1건당 **원장 행이 있으면 그 행들**(분할결제 정확), **없으면 주문의 `payment_method` × `total_amount`**.
+  원장이 있는 주문은 폴백에서 제외해 **이중 계상 0**. 취소/삭제/미결제 제외 규칙은 그대로.
+- **⚠️ 필터 기준은 대시보드와 의도적으로 다르다** — 마감은 `payment_status='completed'`(드로어에 들어온 돈),
+  대시보드는 `status='completed'`(매출). 운영에 **결제완료인데 status 가 served/preparing 인 주문 77건 RM3,042** 가 있어
+  status 로 거르면 그 돈이 통째로 빠진다. 그래서 Z-Report 합계와 대시보드 매출은 **항상 일치하지 않을 수 있고 그게 정상**이다.
+- **staffMeal(직원식) 제외** — 실제로 받은 돈이 아니라, 포함하면 카운트 화면에 'Staffmeal' 행이 생기고 필연적 '부족'이 난다(운영 9건).
+- **Z-Report `payment_count` 도 폴백 반영** — 예전엔 원장 행만 세어 total_sales 는 큰데 건수가 0 으로 찍혔다.
+- **창 기준**: 원장은 `paid_at`, 폴백은 주문 `order_date`(주문 행에 결제 시각 컬럼이 없음). 같은 날 교대에선 사실상 동일.
+  교대 경계를 넘겨 수납한 주문은 접수한 교대로 잡힌다 — 정확히 하려면 결제 경로(🔒 `orders-crud.js`)가 원장을 써야 해서 **별건**.
+- **🔒 보호파일 무접촉** — `routes/cash-management.js` 만 수정(print-guard 8/8).
+- **회귀 박제**: `tests/cashup-expected.test.js` 4건(원장 없는 결제 집계 / 취소·삭제 제외 / 미결제 제외 / 원장 우선·이중계상 0)
+  → verify-all `contract-tests` 게이트. **고장주입 3/3 검출**(폴백 제거·취소 제외 해제·이중 계상).
+- **운영 데이터 대조**: rid=8 오늘 기준 수정 후 기대금액 = **ewallet RM1,851.40(72건)**, 현재 운영 코드 = **0**.
+
 ## 8. 프론트 UX 확정 (2026-06-19, 글로벌 POS 표준 + 극단적 단순함)
 **원칙:** ① 블라인드 카운트(예상 숨기고 실물 먼저 입력 → 손실방지 표준) ② 1화면 1결정 위저드 ③ 차이=평문+신호등색 ④ 터치 숫자패드(키보드 없음).
 **위저드 4단계:** ① 교대 시작(개시현금=직전 마감 자동제시, 숫자패드) → ② 카운트(예상 숨김, 수단별 실제 입력) → ③ 차이 공개(Expected/Counted/Diff + "RM2 short" 평문 + 색 + 마감현금) → ④ Z-Report(수단별 매출·차이·마감현금, Print/Done).

@@ -1,9 +1,9 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-07-26 (**v3.71 운영 배포 완료**)
+**마지막 업데이트:** 2026-07-26 (**v3.71 운영 배포 완료** + 마감 기대금액 근본수정 dev·미배포)
 **버전:** **v3.71** (운영 — 2026-07-26) · 데스크탑앱 0.1.9 · 안드로이드앱 0.2.0
-**작업 상태:** 완료
+**작업 상태:** 완료 (v3.71 배포됨 / 마감 기대금액 수정은 dev 검증 완료·미배포)
 
 ### 진행 중인 작업
 - 없음
@@ -43,6 +43,14 @@
 **⑧ v3.71 운영 배포** — Backup `20260726_154741` · 안전게이트 9/9 · mount sweep 크래시0 · 마이그 49/49 · Smoke 9/9 · 스키마 153테이블 동일 · 스냅샷 1788파일.
 운영 실검증: 코드 반영 확인 + **타 매장 손님조회 3경로 403 / 자기 매장 200**. 릴리즈 블로그 `/blog/release-v3.71`(200) + 공지 id=103.
 
+**⑨ 마감(Cash-up) 기대금액 근본 수정** (2026-07-26 #2, dev 완료·미배포)
+- 운영 실측으로 찾은 결함: `computeExpected` 가 **OrderPayment 원장만** 합산 → 매장 POS 결제(`PATCH orders`)가 안 잡혀 **기대금액이 항상 0**(운영 7일 408건 중 원장 0행). 마감을 닫는 순간 센 현금 전액이 "초과"로 표시될 상태였다(운영 마감 이력 0건이라 사고 미발생).
+- 수정: **대시보드 매출 집계와 동일 규칙**으로 통일 — 주문별 원장 있으면 그것, 없으면 주문 `payment_method` × `total_amount`. 원장 있는 주문은 폴백 제외(이중 계상 0). 취소·삭제·미결제 제외 유지.
+- 🔒 보호파일 무접촉(`routes/cash-management.js` 만). 회귀 = `tests/cashup-expected.test.js` **4건** → verify-all `contract-tests` 편입, **고장주입 3/3 검출**.
+- 운영 대조: rid=8 오늘 수정 후 = **ewallet RM1,851.40(72건)** vs 현재 운영 코드 **0**.
+- 검증: verify-all **14/14** · health-check 통과 · 🔒 인쇄 8/8 무접촉 · 마이그레이션 없음.
+- 남은 것: 결제 시각을 정확히 남기려면 결제 경로(🔒 `orders-crud.js`)가 원장을 써야 함 = **별건**(Irene 승인+실프린터 확인 필요 영역).
+
 ### 다음 확정 작업
 - **소켓 인증 강제 전환(`SOCKET_AUTH_ENFORCE=true`)** — Irene "소켓 켜" 지시 시 비피크에 env 플립 + `pm2 restart --update-env`(**코드 무배포**, 롤백 30초) + 직후 카운터 재확인.
   ✅ 선행조건 충족 — emit 봉인이 v3.71 로 운영 반영됨(운영 코드 확인). 이제 켜면 join·emit 양방향이 함께 막힌다.
@@ -50,7 +58,8 @@
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
-- 🔴 **마감(Cash-up) 기대금액 0 잠복 결함** (2026-07-26 운영 실측) — `computeExpected` 는 `order_payments` 합산인데 운영 결제는 `PATCH orders` 로만 기록(7일 408건 중 **0행**). 마감을 닫는 순간 기대현금·기대카드가 0 → 센 현금 전액이 "초과". **아직 사고 없음**(shift 3건 전부 미마감, 마감기록 0건). 돈 무결성 = Fable 게이트 대상. [[reference_cashup_expected_zero_gap]]
+- **마감 기대금액 수정 배포** — 위 ⑨ dev 완료. 돈 무결성이라 ★Fable 게이트 대상. Irene `/배포` 지시 시 진행
+- **결제 원장 일원화(별건)** — 결제 완료 시 OrderPayment 행을 남기면 결제 '시각'까지 정확해져 교대 경계 문제도 사라진다. 🔒 `orders-crud.js` 접촉이라 Irene 승인 + 실프린터 확인 필요. [[reference_cashup_expected_zero_gap]]
 - **Phase 2 — 게이트웨이 비밀키 응답 마스킹**: `guardPaymentSettings` nested `config` 보존 + SettingsPage write-only 마스크가 **같이** 가야 함(하나만 하면 저장 시 비밀키 silent wipe)
 - **접근판정 4중화 통합**: resolver 1개 + 투영 2개. 순서 엄수 = shadow 1주 → 목록+게이트 → `userCanAccessRestaurant` 도메인별(소켓 최후) → `checkRestaurantAccess` 103라우트 최후. **선행조건 추가**: `/api/restaurants/:rid/*` 우산(마운트 순서 의존)을 명시 게이트로 바꾸는 것과 함께 가야 함. [[reference_restaurant_access_four_gates]]
 - **Fable 발견 프론트 기존 결함 1건**: `mobile/OrderTypePage.tsx`·`PaymentPage.tsx` 폴백은 이번에 처리됨 / 남은 것 = 다른 하드코딩 경로 점검

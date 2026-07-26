@@ -38,15 +38,41 @@ function businessDate(tz) {
   } catch { return null; }
 }
 
-// order_payments(window) → { cash, card:{visa,..}, other:{ewallet,..} }
+// 결제 window → { cash, card:{visa,..}, other:{ewallet,..} }
+//
 // 취소/소프트삭제 주문의 결제는 제외 — OrderPayment 는 환불/void 컬럼도 reverse 행위도 없어
 // (orders 취소 시 결제행이 그대로 남음) 그대로 합산하면 expected 현금이 부풀려져 '가짜 부족'
 // (직원 횡령 누명)이 발생. dashboard 매출 집계(is_deleted/cancelled 제외)와 동일 규칙. (P0)
+//
+// ⚠️ 2026-07-26 근본 수정 — **기대금액이 항상 0** 이던 문제.
+//   예전엔 OrderPayment 만 합산했다. 그런데 매장 POS 의 결제 완료는
+//   `PATCH /api/orders/:id {payment_status:'completed'}` 로 주문 행에만 기록되고
+//   OrderPayment 행을 만들지 않는다(분할결제 경로만 원장을 남긴다).
+//   운영 실측(2026-07-26): 최근 7일 결제완료 **408건 중 OrderPayment 0행**, 전 기간 5행.
+//   → 마감을 닫는 순간 기대현금·기대카드가 0 이 되어, 세어 넣은 현금 전액이 '초과'로 표시된다.
+//   (운영에서 아직 마감을 닫은 매장이 없어 사고는 나지 않았다 — cash_reconciliations 0건)
+//
+// 해법: 대시보드 매출 집계(routes/dashboard.js)와 **같은 폴백 구조**를 쓴다 —
+//   주문 1건당 OrderPayment 행이 있으면 그 행들(분할결제 정확), 없으면 주문의 payment_method × 금액.
+//   같은 주문을 두 번 세지 않도록 원장이 있는 주문은 폴백에서 제외한다.
+//
+// ⚠️ 단 **필터 기준은 대시보드와 의도적으로 다르다**(같다고 적으면 안 된다):
+//   - 마감 = `payment_status='completed'` (드로어에 들어온 돈 기준. status 가 아직 served/preparing 이어도 포함)
+//   - 대시보드 = `status='completed'` (매출 기준)
+//   → 그래서 Z-Report 합계와 대시보드 매출이 항상 일치하지는 않는다. **정상이며 버그가 아니다.**
+//
+// 창(window) 기준: 원장은 `paid_at`, 폴백은 주문의 `order_date`(주문 행에 결제 시각 컬럼이 없음).
+//   같은 날 교대에서는 사실상 동일하다. 교대 경계를 넘겨 결제한 주문(전 교대에 접수 → 다음 교대에 수납)은
+//   접수한 교대로 잡힌다 — 결제 시각을 남기려면 결제 경로(🔒 orders-crud.js)가 원장을 써야 하므로 별건.
 async function computeExpected(restaurantId, start, end) {
+  const rid = Number(restaurantId);
+  const excludedOrders = literal(`(SELECT id FROM orders WHERE restaurant_id = ${rid} AND (status = 'cancelled' OR is_deleted = true))`);
+
+  // ① 결제 원장(OrderPayment) — 분할결제·수동 결제 경로
   const where = {
     restaurant_id: restaurantId,
     paid_at: { [Op.gte]: start },
-    order_id: { [Op.notIn]: literal(`(SELECT id FROM orders WHERE restaurant_id = ${Number(restaurantId)} AND (status = 'cancelled' OR is_deleted = true))`) }
+    order_id: { [Op.notIn]: excludedOrders }
   };
   if (end) where.paid_at[Op.lte] = end;
   const rows = await OrderPayment.findAll({
@@ -55,18 +81,48 @@ async function computeExpected(restaurantId, start, end) {
     group: ['payment_method', 'card_type'],
     raw: true
   });
+
   const expected = { cash: 0, card: {}, other: {} };
-  for (const r of rows) {
-    const m = String(r.payment_method || '').toLowerCase();
-    const amt = round2(r.total);
+  const add = (method, cardType, amount) => {
+    const m = String(method || '').toLowerCase();
+    const amt = round2(amount);
+    if (!amt) return;
     if (m === 'cash') expected.cash = round2(expected.cash + amt);
     else if (m === 'card') {
-      const ct = String(r.card_type || 'card').toLowerCase();
+      const ct = String(cardType || 'card').toLowerCase();
       expected.card[ct] = round2((expected.card[ct] || 0) + amt);
     } else {
-      expected.other[m] = round2((expected.other[m] || 0) + amt);
+      expected.other[m || 'unknown'] = round2((expected.other[m || 'unknown'] || 0) + amt);
     }
-  }
+  };
+  for (const r of rows) add(r.payment_method, r.card_type, r.total);
+
+  // ② 원장이 없는 결제완료 주문 — 주문 행 자체가 유일한 기록 (매장 POS 의 실제 경로)
+  //
+  // ⚠️ `status` 가 아니라 **`payment_status`** 로 거른다(대시보드 매출 집계와 다른 점).
+  //    마감은 "드로어에 들어온 돈"을 세는 것이라, 아직 served/preparing 이어도 **결제가 끝났으면 포함**해야 한다.
+  //    운영 실측(2026-07-26): 결제완료인데 status 가 served/pending/preparing/ready 인 주문 77건 RM3,042 존재.
+  // staffMeal 은 실제로 받은 돈이 아니다(직원식) → 제외. 포함하면 카운트 화면에 'Staffmeal' 행이 생기고
+  //    받은 돈이 없으니 필연적으로 variance(가짜 부족)가 난다. 대시보드도 매출에서 제외한다.
+  const Order = require('../models/Order');
+  const orderWhere = {
+    restaurant_id: restaurantId,
+    payment_status: 'completed',
+    status: { [Op.notIn]: ['cancelled'] },
+    payment_method: { [Op.notIn]: ['staffMeal', 'staffmeal'] },
+    [Op.or]: [{ is_deleted: false }, { is_deleted: null }],
+    order_date: { [Op.gte]: start },
+    id: { [Op.notIn]: literal(`(SELECT DISTINCT order_id FROM order_payments WHERE restaurant_id = ${rid})`) }
+  };
+  if (end) orderWhere.order_date[Op.lte] = end;
+  const orderRows = await Order.findAll({
+    where: orderWhere,
+    attributes: ['payment_method', 'card_type', [fn('SUM', col('total_amount')), 'total']],
+    group: ['payment_method', 'card_type'],
+    raw: true
+  });
+  for (const r of orderRows) add(r.payment_method, r.card_type, r.total);
+
   return expected;
 }
 
@@ -253,9 +309,26 @@ router.post('/restaurant/:restaurantId/shift/:id/close', authenticateToken, chec
     // Z-Report 요약 — 교대 + 대조 + 인출입금 종합 (프론트가 인쇄 HTML 로 렌더; billPrint 무변경).
     {
       const mv = await computeMovements(shift.id);
-      const orderCount = await OrderPayment.count({
-        where: { restaurant_id: restaurantId, paid_at: { [Op.between]: [shift.opened_at, shift.closed_at || new Date()] } }
+      // 결제 건수 — 원장 행 + **원장이 없는 결제완료 주문**(매장 POS 의 실제 경로).
+      // 2026-07-26: 예전엔 원장만 세어 total_sales 는 큰데 payment_count 가 0 으로 찍혔다(Fable 지적).
+      const windowEnd = shift.closed_at || new Date();
+      const Order = require('../models/Order');
+      const ridNum = Number(restaurantId);
+      const ledgerCount = await OrderPayment.count({
+        where: { restaurant_id: restaurantId, paid_at: { [Op.between]: [shift.opened_at, windowEnd] } }
       });
+      const fallbackCount = await Order.count({
+        where: {
+          restaurant_id: restaurantId,
+          payment_status: 'completed',
+          status: { [Op.notIn]: ['cancelled'] },
+          payment_method: { [Op.notIn]: ['staffMeal', 'staffmeal'] },
+          [Op.or]: [{ is_deleted: false }, { is_deleted: null }],
+          order_date: { [Op.between]: [shift.opened_at, windowEnd] },
+          id: { [Op.notIn]: literal(`(SELECT DISTINCT order_id FROM order_payments WHERE restaurant_id = ${ridNum})`) }
+        }
+      });
+      const orderCount = ledgerCount + fallbackCount;
       const exp = recon.expected || { cash: 0, card: {}, other: {} };
       const totalSales = round2(
         (exp.cash || 0)
@@ -486,3 +559,7 @@ router.put('/restaurant/:restaurantId/payment-methods', authenticateToken, check
 });
 
 module.exports = router;
+// 테스트 전용 노출 — 기대금액 집계는 블라인드 카운트 설계상 HTTP 응답으로 금액을 주지 않는다
+// (`/expected` 는 수단 키만 반환). 계약 회귀는 이 함수를 직접 호출해 검증한다.
+// settingsGuard._internal 과 동일한 패턴. 라우터 동작에는 영향 없음.
+module.exports._internal = { computeExpected };
