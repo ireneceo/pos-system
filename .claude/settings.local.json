@@ -1452,7 +1452,8 @@
       "Bash(scp -q PurplePOS-Setup-0.1.10.exe PurplePOS-Setup-0.1.10.exe.blockmap latest.yml irene@87.106.78.146:/var/www/production-frontend/build/desktop/)",
       "Bash(xargs -I{} echo \"IPv6 경고 발생: {}건\")",
       "Bash(xargs -I{} echo \"{}건 \\(0이어야 정상\\)\")",
-      "Bash(scp -q dev-backend/routes/ai-serving.js irene@87.106.78.146:/var/www/production-backend/routes/)"
+      "Bash(scp -q dev-backend/routes/ai-serving.js irene@87.106.78.146:/var/www/production-backend/routes/)",
+      "Bash(tar -czf /var/www/backups/dev-daily/__CMDSUB_OUTPUT__/desktop-pos.tar.gz --exclude=node_modules --exclude=release -C /var/www desktop-pos)"
     ],
     "deny": [],
     "ask": []
