@@ -1435,7 +1435,17 @@
       "Bash(cp /tmp/claude-1000/-var-www/915c18e7-3d3e-47d0-8258-238212044ff3/scratchpad/db-audit.js /var/www/dev-backend/tmp-fable-db-audit.js)",
       "Bash(rm -f /var/www/dev-backend/tmp-fable-db-audit.js)",
       "Bash(cp /var/www/dev-backend/routes/cash-management.js /tmp/claude-1000/-var-www/915c18e7-3d3e-47d0-8258-238212044ff3/scratchpad/cash-management.ORIG)",
-      "Bash(sed -i \"s/payment_status: 'completed',/payment_status: 'zz_never',/\" routes/cash-management.js)"
+      "Bash(sed -i \"s/payment_status: 'completed',/payment_status: 'zz_never',/\" routes/cash-management.js)",
+      "Bash(cp .env /tmp/claude-1000/-var-www/02f96fc5-f748-4d5f-93f0-6777228395fb/scratchpad/dev.env.bak)",
+      "Bash(printf '\\\\n# 소켓 인증 강제 \\(2026-07-27 리허설\\)\\\\nSOCKET_AUTH_ENFORCE=true\\\\n')",
+      "Bash(pkill -f \"jest tests/socket-auth\")",
+      "Bash(kill 2018072 2018093)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/02f96fc5-f748-4d5f-93f0-6777228395fb/scratchpad/prod-verify.js irene@87.106.78.146:/var/www/production-backend/_tmp-prod-verify.js)",
+      "Bash(rsync -rc --dry-run --itemize-changes --exclude node_modules --exclude .env --exclude uploads --exclude *.log --exclude .git --exclude logs dev-backend/ irene@87.106.78.146:/var/www/production-backend/)",
+      "Bash(rsync -rc --dry-run --itemize-changes --exclude 'node_modules' --exclude '.env' --exclude 'uploads' --exclude '*.log' --exclude '.git' --exclude 'logs' dev-backend/ irene@87.106.78.146:/var/www/production-backend/)",
+      "Bash(rsync -rc --dry-run --itemize-changes --exclude 'desktop' dev-frontend-build/ irene@87.106.78.146:/var/www/production-frontend/build/)",
+      "Bash(unzip -p /var/www/mobile-app/android/app/build/outputs/apk/release/app-release.apk assets/capacitor.config.json)",
+      "Bash(unzip -l /var/www/mobile-app/android/app/build/outputs/apk/release/app-release.apk)"
     ],
     "deny": [],
     "ask": []

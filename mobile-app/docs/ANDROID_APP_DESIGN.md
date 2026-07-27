@@ -3,6 +3,28 @@
 > 작성 2026-07-02. Windows 데스크탑앱(Electron)과 **완전 대칭**. 단일 진실 = 이 문서.
 > 목적: 태블릿에서 **기기마다 RawBT 따로 설치하는 고통 제거** → 앱 내장 자동인쇄(다중 프린터·자동발행).
 
+## 🔴 실태 (2026-07-27 Fable 검증 — "완료" 주장보다 이게 우선한다)
+
+**이 앱은 아직 매장에 줄 수 있는 상태가 증명된 적이 없다.**
+
+- **실사용 매장 0개** — 운영 `print_device_status` 17행 중 `android-app` **0행**
+  (`web-rawbt 8` = 태블릿이 **여전히 브라우저+RawBT** 로 돌고 있다는 뜻 = 이 앱의 목적이 미달성).
+- **V4 폴러 자동인쇄 E2E 미통과** — §8-6-1 의 blocker #2 가 미해결로 남아 있다(claim 은 되는데 0바이트,
+  billPrint 발송 흔적 없음 = "코드 예측과 실측 불일치"). V3 13/13 은 CDP 직접 호출로 **바이트만** 증명한 것이고,
+  **폴러→billPrint→네이티브 경로는 증명되지 않았다.** 자동 주방인쇄가 이 앱의 존재 이유이므로 이게 최대 결함.
+- **실기기(M3) 검증 0회** — BT SPP 실전·종이 품질(한글 글리프/576px/컷)·드로어 물리 킥·실프린터 래스터 수용·
+  태블릿 한글 폰트·운영 로그인+폴러 장시간·사이드로드 설치 UX 전부 미실행(하드웨어 필요, 에뮬레이터로 불가).
+- **배포 파이프라인이 §8-7 설계와 불일치** — `latest.json` 버전 피드 없음 · `/mobile/` 경로 없음(APK 는 `/desktop/` 에)
+  · `check-mobile-feed.js` 미작성 · 인앱 업데이트 넛지 없음 → 사이드로드 특성상 **매장 APK 는 수동 재설치 전까지 영구 구버전**.
+
+**실측으로 확인된 완료분**: 0.2.0 서명 APK 호스팅(로컬 `app-release.apk` ↔ `/desktop/PurplePOS.apk`
+↔ `/desktop/PurplePOS-0.2.0.apk` sha256 3자 일치), 키스토어 `/opt/secrets/purplepos-release.keystore` 보관,
+내장 `capacitor.config.json` 의 `server.url=https://purplehere.com/pos`(D1 준수), CTA 배선.
+즉 **"운영 배포·검증 완료" 는 "APK 호스팅 + CTA 까지" 로 읽어야 한다.**
+
+**다음 순서**: V4 폴러 자동인쇄 모순을 먼저 풀고 → 실기기 방문 1회에 M3 7종 + V4 를 **묶어서** 검증
+(CLAUDE.md 인쇄 프로세스 5 = 매장 왕복 1회 원칙).
+
 ## 0. 한 줄 요약
 Capacitor 셸이 운영 웹앱(https://purplehere.com/pos)을 그대로 로드하고, **`window.__NATIVE_PRINT` 브릿지를 Android 네이티브로 주입**한다. billPrint의 P2 분기가 그 브릿지를 그대로 사용 → **프론트 코드 0줄 변경**. Windows(Electron)와 **동일한 §4 계약**을 Android가 구현하는 것뿐.
 
