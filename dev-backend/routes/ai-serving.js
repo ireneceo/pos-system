@@ -13,6 +13,7 @@ const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs');
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
 const { Op } = require('sequelize');
 
 const { authenticateToken, checkRestaurantAccess, requireRole } = require('../middleware/auth');
@@ -33,9 +34,18 @@ const uploadMem = multer({
   },
 });
 
+// 연사 방지 + 프로바이더 비용 가드. 인증 사용자는 user id 기준, 비인증 폴백만 IP 기준.
+//
+// 2026-07-27: 원래 `req.ip` 를 그대로 키에 썼더니 express-rate-limit 이 부팅마다
+// ERR_ERL_KEY_GEN_IPV6 로 경고했다 — IPv6 는 한 사용자가 /64 대역의 주소를 사실상 무한히
+// 바꿀 수 있어 IP 원문을 키로 쓰면 **상한을 얼마든지 우회**할 수 있다. 라이브러리가 주는
+// ipKeyGenerator 로 IPv6 를 대역 단위로 정규화한다(IPv4 는 그대로).
 const recognizeLimiter = rateLimit({
   windowMs: 60 * 1000, max: 30,
-  keyGenerator: (req) => `${req.user?.id || req.ip}:${req.params.restaurantId}`,
+  keyGenerator: (req) => {
+    const who = req.user?.id ? `u${req.user.id}` : `ip${ipKeyGenerator(req.ip)}`;
+    return `${who}:${req.params.restaurantId}`;
+  },
   message: { success: false, message: 'Too many recognitions, slow down' },
 });
 
@@ -292,6 +302,32 @@ router.post('/:restaurantId/refresh-embeddings', authenticateToken, checkRestaur
     const result = await seedFromProductImages(restaurantId, provider);
     return res.json({ success: true, data: { ...result, model: provider.model } });
   } catch (e) { return fail(res, 500, 'refresh failed'); }
+});
+
+// ───────────────────── 7. prepare (콜드스타트 제거) ─────────────────────
+// 2026-07-27: 레퍼런스 임베딩 시드는 여태 "첫 recognize 가 refs=0 을 보면 그때 시작"
+// 하는 지연 방식이었다. 결과: **처음 카메라를 켠 사람은 반드시 인식 실패**(mode:'fallback',
+// 직접 고르기)를 겪고, 매장은 "기능이 안 된다"고 판단한다. 운영에서 실제로 레퍼런스가
+// 0장인 채 아무도 안 쓰게 된 이유다(2026-07-27 실측: recognition_logs 0행).
+//
+// 카메라 화면을 여는 순간 이 엔드포인트를 부르면 촬영하기 전에 시드가 시작되므로
+// 첫 촬영부터 인식이 동작한다. 멱등(_seeding 락)이고 즉시 반환한다 —
+// 시드는 백그라운드로 돌고 화면을 절대 막지 않는다.
+//
+// requireRole 을 걸지 않는 이유: 실제로 카메라를 쓰는 사람은 서빙 직원(Staff)이다.
+// 쓰기 대상은 자기 매장 레퍼런스 임베딩뿐이고 매장 경계는 checkRestaurantAccess + gate 가 지킨다.
+router.post('/:restaurantId/prepare', ...common, async (req, res) => {
+  try {
+    const restaurantId = parseInt(req.params.restaurantId, 10);
+    const provider = ai.getProvider();
+    const ready = await MenuReferencePhoto.count({
+      where: { restaurant_id: restaurantId, is_active: true, embedding_model: provider.model }
+    });
+    // 이미 이 모델로 준비돼 있으면 아무것도 하지 않는다(매번 재임베딩 = 불필요한 비용).
+    if (ready > 0) return res.json({ success: true, data: { ready, seeding: false, model: provider.model } });
+    seedFromProductImages(restaurantId, provider).catch(() => {});
+    return res.json({ success: true, data: { ready: 0, seeding: true, model: provider.model } });
+  } catch (e) { return fail(res, 500, 'prepare failed'); }
 });
 
 module.exports = router;

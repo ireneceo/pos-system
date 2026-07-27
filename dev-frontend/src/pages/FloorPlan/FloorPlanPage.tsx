@@ -84,6 +84,39 @@ const ZoneFilterBar = styled.div`
     padding: 5px 16px;
   }
 `;
+// Items 뷰 전용 서빙 도구 툴바 (2026-07-27). 존 필터 바에 흩어져 있던 카메라·메뉴사진
+// 진입점을 "서빙하는 화면" 안으로 모은 것. ZoneChip 과 같은 터치 규격(min-height 40 / 999 radius).
+const ItemsToolbar = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0 2px 10px;
+`;
+const ToolBtn = styled.button<{ $primary?: boolean }>`
+  background: ${p => p.$primary ? 'var(--pos-brand, #635BFF)' : 'var(--pos-control, #FFFFFF)'};
+  color: ${p => p.$primary ? '#fff' : 'var(--pos-text-muted, #4B5563)'};
+  border: 1px solid ${p => p.$primary ? 'var(--pos-brand, #635BFF)' : 'var(--pos-border, #C7CED6)'};
+  border-radius: 999px;
+  min-height: 40px;
+  padding: 8px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: filter 0.12s ease, background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  @media (hover: hover) {
+    &:hover:not(:disabled) { filter: brightness(0.96); }
+  }
+  &:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(99,91,255,0.3); }
+`;
+
 const ZoneChip = styled.button<{ active: boolean }>`
   background: ${p => p.active ? 'var(--pos-brand, #635BFF)' : 'var(--pos-control, #FFFFFF)'};
   color: ${p => p.active ? '#fff' : 'var(--pos-text-muted, #4B5563)'};
@@ -2218,25 +2251,10 @@ const FloorPlanPage: React.FC = () => {
           >
             {t('floorplan:floorPlanPage.takeawayWalkIn', '+ Walk-in')}
           </ZoneChip>
-          <ZoneChip
-            type="button"
-            active={false}
-            onClick={() => { setGalleryOpen(true); refreshMenuPhotos(); }}
-            title={t('floorplan:menuPhotos.openHint', 'Browse menu photos')}
-          >
-            {t('floorplan:menuPhotos.open', 'Menu Photos')}
-          </ZoneChip>
-          {aiServeEnabled && (
-            <ZoneChip
-              type="button"
-              active={false}
-              onClick={() => setServeCamOpen(true)}
-              disabled={typeof navigator !== 'undefined' && navigator.onLine === false}
-              title={t('floorplan:aiServe.openHint', 'AI camera serving')}
-            >
-              {t('floorplan:aiServe.open', 'Serve Cam')}
-            </ZoneChip>
-          )}
+          {/* 2026-07-27 (Irene): 카메라 서빙과 메뉴 사진은 존 필터 바에서 제거하고
+              **Items 뷰 안**으로 옮겼다. 둘 다 "준비된 항목을 찾아 서빙한다"는 Items 의 일인데
+              버튼만 바깥 상단에 나란히 있어서 ⑴ 어느 쪽이 촬영 기능인지 구분이 안 되고
+              ⑵ 정작 서빙하는 화면과 떨어져 있었다. 진입점은 Items 툴바 하나로 통일. */}
           {/* 2026-06-28 (5-1): exit-fullscreen lives in the zone bar (always visible) since the
               header — which holds the enter-fullscreen control — is hidden in fullscreen mode. */}
           {fullscreen && (
@@ -2274,6 +2292,32 @@ const FloorPlanPage: React.FC = () => {
         {/* Items 뷰는 바닥 전체를 회색으로(흰 카드 또렷) — 박스가 아니라 풀 배경. */}
         <CanvasWrapper $tight={activeView === 'floor'} style={(activeView === 'items' || activeView === 'takeaway') ? { background: 'var(--pos-menu-bg, #E4E9EF)' } : undefined}>
           {activeView === 'items' ? (
+            <>
+            {/* 서빙 도구는 서빙하는 화면 안에 둔다 (2026-07-27 Irene).
+                카메라 = 촬영해서 그 항목을 바로 열어 서빙 / 사진 = 못 알아볼 때 눈으로 찾기. */}
+            <ItemsToolbar>
+              {aiServeEnabled && (
+                <ToolBtn
+                  type="button"
+                  $primary
+                  onClick={() => setServeCamOpen(true)}
+                  disabled={typeof navigator !== 'undefined' && navigator.onLine === false}
+                  title={t('floorplan:aiServe.openHint', 'Take a photo to find and serve the dish')}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  {t('floorplan:aiServe.open', 'Find by photo')}
+                </ToolBtn>
+              )}
+              <ToolBtn
+                type="button"
+                onClick={() => { setGalleryOpen(true); refreshMenuPhotos(); }}
+                title={t('floorplan:menuPhotos.openHint', 'Browse menu photos')}
+              >
+                {t('floorplan:menuPhotos.open', 'Menu Photos')}
+              </ToolBtn>
+            </ItemsToolbar>
             <ItemListView
               dineInOrders={applyServeOverrides(Object.entries(tableStatuses).flatMap(([fpti, o]: [string, any]) => {
                 // 한 테이블에 주문 여러 개면 전부(orders[]) 펼쳐 표시 — KDS 와 동일 커버리지. 라벨(U-1)로 통일.
@@ -2300,6 +2344,7 @@ const FloorPlanPage: React.FC = () => {
               onOpenTakeaway={handleOpenTakeawayFromItems}
               productLookup={productLookup}
             />
+            </>
           ) : activeView === 'floor' ? (
             <FloorPlanCanvas
               floorPlan={filteredFloorPlan}

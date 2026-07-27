@@ -70,10 +70,20 @@ function encodeRaster(bmp, width, height, opts) {
   return Buffer.concat(chunks);
 }
 
-// Full print document: reset → raster image → feed → partial cut. This is what
-// gets handed to rawWindows/rawLan, exactly like a raw ESC/POS text ticket.
+// Wrap already-encoded raster band bytes into a full print document:
+// reset → image → feed → ONE partial cut.
+//
+// Split out (2026-07-27) because a tall ticket is captured in several slices and
+// must still come out as a SINGLE receipt — concatenating whole documents would
+// emit an INIT and a CUT between slices, tearing one bill into pieces.
+function wrapRasterDocument(imageBytes) {
+  return Buffer.concat([INIT, imageBytes, FEED, CUT]);
+}
+
+// Full print document from a single bitmap. This is what gets handed to
+// rawWindows/rawLan, exactly like a raw ESC/POS text ticket.
 function buildRasterDocument(bmp, width, height, opts) {
-  return Buffer.concat([INIT, encodeRaster(bmp, width, height, opts), FEED, CUT]);
+  return wrapRasterDocument(encodeRaster(bmp, width, height, opts));
 }
 
 // Printable dot width for a paper size. 80mm paper = 72mm print area = 576 dots
@@ -82,4 +92,4 @@ function dotsForWidthMm(widthMm) {
   return (Number(widthMm) || 80) >= 80 ? 576 : 384;
 }
 
-module.exports = { encodeRaster, buildRasterDocument, dotsForWidthMm, BAND_ROWS };
+module.exports = { encodeRaster, buildRasterDocument, wrapRasterDocument, dotsForWidthMm, BAND_ROWS };

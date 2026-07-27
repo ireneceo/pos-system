@@ -16,7 +16,7 @@ const { app } = require('electron');
 const { enqueue } = require('./serialQueue');
 const printers = require('./printers');
 
-const EXEC_TIMEOUT_MS = 15000;
+const { EXEC_TIMEOUT_MS } = require('./budget');
 
 const PS_SCRIPT = `param(
   [Parameter(Mandatory=$true)][string]$PrinterName,
@@ -67,6 +67,50 @@ try {
   [RawPrinterHelper]::ClosePrinter($h) | Out-Null
 }
 Write-Output "OK"
+
+# ── Post-send condition probe (2026-07-27) ───────────────────────────────────
+# WritePrinter succeeding only proves the SPOOLER accepted the bytes — it says
+# nothing about paper. Out-of-paper / open cover / offline all returned a clean
+# "OK" before, so the app reported a printed ticket that never existed on paper.
+#
+# This probe runs AFTER the write and only ever ADDS a warning line. It must
+# never block or fail the job:
+#   * CLAUDE.md forbids reintroducing a printer-availability GATE (the qzHasPrinter
+#     incident blocked even manual printing).
+#   * Once the bytes are spooled the job really does print when paper is refilled,
+#     so turning this into a failure would make the poller re-arm and DUPLICATE.
+# Therefore: print first, warn second. Unknown/unsupported status stays silent —
+# most cheap POS-80 drivers report nothing, and a false alarm is its own harm.
+#
+# The probe is also HARD-BOUNDED (Fable C1): it shares this process's execFile
+# deadline, and a sluggish WMI service could otherwise push an ALREADY-SPOOLED
+# job past that deadline, get us killed, and make the app report a failure for a
+# ticket that had already printed — which the poller would then reprint.
+# 2 seconds, then we give up on the probe and leave the job reported as plain OK.
+try {
+  $probe = Start-Job -ScriptBlock {
+    param($n)
+    Get-CimInstance -ClassName Win32_Printer -ErrorAction Stop |
+      Where-Object { $_.Name -eq $n } |
+      Select-Object -First 1 DetectedErrorState, WorkOffline
+  } -ArgumentList $PrinterName
+  $pr = $null
+  if (Wait-Job $probe -Timeout 2) { $pr = Receive-Job $probe }
+  Remove-Job $probe -Force -ErrorAction SilentlyContinue
+  if ($pr) {
+    $warn = $null
+    switch ([int]$pr.DetectedErrorState) {
+      3 { $warn = 'LOW_PAPER' }
+      4 { $warn = 'NO_PAPER' }
+      7 { $warn = 'DOOR_OPEN' }
+      8 { $warn = 'PAPER_JAM' }
+      9 { $warn = 'OFFLINE' }
+      11 { $warn = 'OUTPUT_BIN_FULL' }
+    }
+    if (-not $warn -and $pr.WorkOffline -eq $true) { $warn = 'OFFLINE' }
+    if ($warn) { Write-Output ("WARN:" + $warn) }
+  }
+} catch { }
 `;
 
 let _scriptPath = null;
@@ -79,6 +123,8 @@ function ensureScript() {
 
 // Resolve '' to the OS default printer NAME (winspool needs a real name).
 // A non-empty name not in the OS list is a hard PRINTER_NOT_FOUND (§4 contract).
+// Name matching is delegated to printers.matchPrinterName so the winspool leg and
+// the raster/GDI leg can never disagree about which device a setting points at.
 async function resolveName(printerName) {
   if (!printerName) {
     const def = await printers.getDefaultPrinter();
@@ -86,9 +132,16 @@ async function resolveName(printerName) {
     return { ok: true, name: def };
   }
   const names = await printers.listPrinters();
-  if (names.includes(printerName)) return { ok: true, name: printerName };
-  return { ok: false, error: 'PRINTER_NOT_FOUND' };
+  const m = printers.matchPrinterName(names, printerName);
+  if (m.ok) return { ok: true, name: m.name, matchedBy: m.matchedBy };
+  return { ok: false, error: m.error, requested: m.requested, available: m.available };
 }
+
+// Stdout parsing + exec-result interpretation live in ./psResult (pure, unit-tested).
+// interpretExec also keeps stderr's first line, which used to be dropped on the
+// floor — a winspool failure reached the shop as a bare "WINSPOOL_ERROR" with no
+// reason, undiagnosable remotely.
+const { interpretExec } = require('./psResult');
 
 function runPowerShell(printerName, dataFile) {
   return new Promise((resolve) => {
@@ -98,11 +151,7 @@ function runPowerShell(printerName, dataFile) {
       ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script,
         '-PrinterName', printerName, '-FilePath', dataFile],
       { timeout: EXEC_TIMEOUT_MS, windowsHide: true },
-      (err, stdout) => {
-        if (err) return resolve({ ok: false, error: (err.killed ? 'TIMEOUT' : 'WINSPOOL_ERROR') });
-        if (String(stdout).includes('OK')) return resolve({ ok: true });
-        resolve({ ok: false, error: 'WINSPOOL_NO_OK' });
-      }
+      (err, stdout, stderr) => resolve(interpretExec(err, stdout, stderr))
     );
   });
 }

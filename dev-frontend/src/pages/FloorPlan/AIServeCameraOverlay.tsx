@@ -83,14 +83,19 @@ const AIServeCameraOverlay: React.FC<Props> = ({ open, onClose, restaurantId, pr
     } catch { setCamError(true); }
   }, []);
 
+  const authHeader = () => { const tk = getAuthToken(); return tk ? { Authorization: `Bearer ${tk}` } : {}; };
+
   useEffect(() => {
     if (!open) return;
     setPhase('viewfinder'); setStill(null); setResult(null); setSelIdx(0);
     startCamera();
+    // 2026-07-27: 레퍼런스 임베딩 준비를 화면 열 때 시작한다. 예전엔 첫 촬영이 refs=0 을
+    // 만난 뒤에야 시드가 시작돼 **처음 쓰는 사람은 반드시 인식 실패**를 봤다(운영에서 이 기능이
+    // 한 번도 안 쓰이게 된 이유). 멱등이고 응답을 기다리지 않으므로 뷰파인더를 막지 않는다.
+    fetch(`/api/ai-serving/${restaurantId}/prepare`, { method: 'POST', headers: { ...authHeader() } })
+      .catch(() => { /* 준비 실패해도 촬영은 가능 — recognize 가 fallback 으로 강등 */ });
     return () => { stopStream(); };
-  }, [open, startCamera, stopStream]);
-
-  const authHeader = () => { const tk = getAuthToken(); return tk ? { Authorization: `Bearer ${tk}` } : {}; };
+  }, [open, restaurantId, startCamera, stopStream]);
 
   const sendRecognize = useCallback(async (blob: Blob) => {
     setPhase('analyzing');

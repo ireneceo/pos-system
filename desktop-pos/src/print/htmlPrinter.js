@@ -14,7 +14,13 @@ const printers = require('./printers');
 const { printRawWindows } = require('./rawWindows');
 const raster = require('./raster');
 
-const RENDER_TIMEOUT_MS = 20000;
+// Time budgets and capture slicing live in ./budget (pure, unit-tested).
+const {
+  RENDER_BUDGET_MS, ABORT_GRACE_MS, MAX_SLICE_DIP, MAX_TOTAL_DIP,
+  jobBudgetMs, planCaptureSlices, fallbackDecision
+} = require('./budget');
+
+const TIMEOUT = Symbol('timeout');
 
 let _win = null;
 
@@ -127,28 +133,77 @@ async function captureRasterDocument(win, wc, widthMm) {
   // the reflowed content HEIGHT (CSS px, zoom-independent) to size the window for a full,
   // un-clipped capture. Over-measure a little — extra bottom whitespace is harmless (cut
   // follows a feed), a short window would clip the total line.
+  // A viewport shorter than the document shows a classic Windows scrollbar, and
+  // capturePage() would print that ~4mm grey track down the right edge of the
+  // receipt (Fable C2a). The ticket HTML has no scrollbar CSS of its own, so
+  // suppress it here — programmatic scrolling still works.
+  try { await wc.insertCSS('html,body{scrollbar-width:none!important}::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}'); }
+  catch (_) { /* non-fatal */ }
+
+  let hCss = 0;
+  let contentDip = 1200;
   try {
     win.setContentSize(dots, 1200);
     await withTimeout(wc.executeJavaScript(RAF_WAIT), 1500, true);
-    const hCss = await withTimeout(
+    hCss = await withTimeout(
       wc.executeJavaScript('document.body ? Math.ceil(document.body.scrollHeight) : 0'), 1000, 0
     );
-    const hDip = Math.min(Math.ceil((hCss || 1200) * zoom) + 24, 8000);
-    win.setContentSize(dots, hDip);
-    await withTimeout(wc.executeJavaScript(RAF_WAIT), 1500, true);
+    contentDip = Math.min(Math.ceil((hCss || 1200) * zoom), MAX_TOTAL_DIP);
   } catch (_) { /* non-fatal — capture whatever is painted */ }
 
-  const img = await wc.capturePage();
-  if (!img || img.isEmpty()) return null;
-  // Already rendered at `dots` wide; resize is a safety no-op that guarantees exact width.
-  const sized = img.resize({ width: dots });
-  const size = sized.getSize();
-  const bmp = sized.getBitmap();                                 // tightly packed BGRA
-  if (!bmp || !bmp.length || !size.width || !size.height) return null;
-  return raster.buildRasterDocument(bmp, size.width, size.height);
+  // 2026-07-27: this used to clamp to 8000 device px and capture ONCE. Anything
+  // taller (a long bill, a big table's kitchen ticket) was silently CUT OFF — the
+  // paper looked fine, it just stopped mid-order. Slice instead so the full
+  // document always prints; the printer feeds continuously, so consecutive raster
+  // bands join into one seamless receipt.
+  const slices = planCaptureSlices(contentDip, MAX_SLICE_DIP);
+  const parts = [];
+  const singleShot = slices.length <= 1;
+
+  for (const slice of (singleShot ? [{ y: 0, h: contentDip }] : slices)) {
+    try {
+      // Single-shot keeps 0.1.9's +24 bottom slack (guards the last line against a
+      // 1px measurement error). Sliced mode must NOT add slack: the extra height
+      // would push the final scroll past the document end, Chromium would clamp it,
+      // and the last seam would REPRINT the preceding ~24 device rows — a duplicated
+      // line on every long ticket (Fable C2b).
+      win.setContentSize(dots, singleShot ? slice.h + 24 : slice.h);
+      if (!singleShot) {
+        // Scroll so `slice.y` sits at the top of the viewport. Values are device px;
+        // the page scrolls in CSS px, hence the /zoom.
+        await withTimeout(
+          wc.executeJavaScript('window.scrollTo(0, ' + Math.round(slice.y / zoom) + '); true'),
+          1000, true
+        );
+      }
+      await withTimeout(wc.executeJavaScript(RAF_WAIT), 1500, true);
+    } catch (_) { /* non-fatal — capture whatever is painted */ }
+
+    const img = await wc.capturePage();
+    if (!img || img.isEmpty()) return null;
+    // Already rendered at `dots` wide; resize also normalises away the display's
+    // DPI scale factor (a 125%/150% Windows desktop returns a wider bitmap), so the
+    // encoded dot width is exact on any monitor.
+    const sized = img.resize({ width: dots });
+    const size = sized.getSize();
+    const bmp = sized.getBitmap();                               // tightly packed BGRA
+    if (!bmp || !bmp.length || !size.width || !size.height) return null;
+    parts.push(raster.encodeRaster(bmp, size.width, size.height));
+  }
+
+  if (!parts.length) return null;
+  // One document: reset → all image bands → feed → single cut. Slicing must not
+  // produce several torn-off pieces of paper.
+  return {
+    bytes: raster.wrapRasterDocument(Buffer.concat(parts)),
+    slices: parts.length,
+    // A ticket longer than ~7.5m is a runaway, not a bill. Report it rather than
+    // letting the clamp become a new silent truncation.
+    truncated: Math.ceil((hCss || 0) * zoom) > MAX_TOTAL_DIP
+  };
 }
 
-async function doPrint({ html, printerName, widthMm, copies }) {
+async function doPrint({ html, printerName, widthMm, copies }, token) {
   // Enforce the explicit-failure contract before rendering anything.
   const resolved = await printers.resolveDeviceName(printerName || '');
   if (!resolved.ok) {
@@ -165,6 +220,10 @@ async function doPrint({ html, printerName, widthMm, copies }) {
     `pp-ticket-${process.pid}-${Date.now()}.html`
   );
 
+  // Declared outside the try so the catch path can still report WHY a print died
+  // (previously an exception returned a bare error with no render evidence).
+  const render = {};
+
   try {
     await loadAndPaint(win, tmpFile, html);
 
@@ -175,46 +234,87 @@ async function doPrint({ html, printerName, widthMm, copies }) {
     //   txt≈0 / h≈0  → the render is blank        (app bug — fix the renderer)
     //   txt large    → the render is fine         (blame the spool/driver leg)
     //   imgErr > 0   → the logo failed to load    (image path, not a blank page)
-    let render = null;
+    // 2026-07-27: `render` used to be null when this probe timed out, and every
+    // later `if (render) render.rasterErr = …` then silently discarded the REASON
+    // the print failed — the shop got a bare failure with nothing to diagnose.
+    // Start from a real object so diagnostics can never be lost; the metrics merge
+    // in when they arrive.
     try {
-      render = await withTimeout(
+      const metrics = await withTimeout(
         wc.executeJavaScript(
           '({h: document.body ? document.body.scrollHeight : 0,' +
           ' txt: document.body ? document.body.innerText.replace(/\\s/g, "").length : 0,' +
           ' imgs: document.images.length,' +
           ' imgErr: Array.from(document.images).filter(i => !i.complete || i.naturalWidth === 0).length})'
         ),
-        500,
+        1500,
         null
       );
-    } catch (_) { render = null; /* diagnostics must never block a print */ }
+      if (metrics && typeof metrics === 'object') Object.assign(render, metrics);
+      else render.metricsErr = 'RENDER_PROBE_TIMEOUT';
+    } catch (e) {
+      // diagnostics must never block a print — but they must not vanish either.
+      render.metricsErr = (e && e.message) || 'RENDER_PROBE_ERROR';
+    }
 
     // ── Canonical path: pixel raster over the proven RAW transport ──────────
     // Windows only (winspool). Render → capture → GS v 0 raster → printRawWindows,
     // the exact byte transport the kitchen order ticket prints on today. This is
     // what makes the design (logo + Korean) come out on the very driver that
     // blanked the old GDI silent-print path.
+    const copiesN = Math.max(1, copies || 1);
+    let sentCopies = 0;   // copies that physically reached the printer via raster
+
     if (process.platform === 'win32') {
       try {
         const doc = await captureRasterDocument(win, wc, widthMm);
-        if (doc && doc.length) {
-          const copiesN = Math.max(1, copies || 1);
-          let sent = { ok: false, error: 'RASTER_NOT_SENT' };
+        if (doc && doc.bytes && doc.bytes.length) {
+          if (doc.slices > 1) render.slices = doc.slices;
+          if (doc.truncated) render.truncated = true;
+          let last = { ok: false, error: 'RASTER_NOT_SENT' };
           for (let i = 0; i < copiesN; i++) {
-            sent = await printRawWindows(doc, deviceName);
-            if (!sent || !sent.ok) break;
+            // The job budget expired and this render was abandoned: stop spooling.
+            // destroy() only cancels webContents work — without this check the copy
+            // loop would keep feeding paper for a ticket already reported TIMEOUT,
+            // which the poller then reprints (Fable §3 hardening).
+            if (token && token.cancelled) {
+              render.rasterErr = 'CANCELLED';
+              break;
+            }
+            last = await printRawWindows(doc.bytes, deviceName);
+            if (!last || !last.ok) break;
+            sentCopies++;
+            if (last.warn) render.printerWarn = last.warn;   // NO_PAPER / DOOR_OPEN / …
           }
-          if (sent && sent.ok) {
-            return { ok: true, render: Object.assign({ via: 'raster' }, render || {}) };
+          if (sentCopies >= copiesN) {
+            return { ok: true, render: Object.assign({ via: 'raster', copies: sentCopies }, render) };
           }
-          if (render) render.rasterErr = (sent && sent.error) || 'RASTER_FAIL';
-        } else if (render) {
+          if (!render.rasterErr) render.rasterErr = (last && last.error) || 'RASTER_FAIL';
+          if (last && last.detail) render.rasterDetail = last.detail;
+        } else {
           render.rasterErr = 'RASTER_NO_CAPTURE';
         }
       } catch (rErr) {
-        if (render) render.rasterErr = (rErr && rErr.message) || 'RASTER_EXC';
+        render.rasterErr = (rErr && rErr.message) || 'RASTER_EXC';
       }
-      // raster failed to send → fall through to GDI silent print as a last resort.
+
+      // ── Duplicate-print guard (2026-07-27, with MIN forensics) ────────────
+      // The old code fell through to GDI whenever the raster leg reported
+      // anything but full success — INCLUDING the case where some copies had
+      // already come out. GDI then reprinted the FULL requested count, so a
+      // 2-copy ticket that failed on copy 2 produced 1 + 2 = 3 pieces of paper.
+      // Paper already produced can never be taken back, so GDI is only allowed
+      // as a fallback when NOTHING was printed at all (budget.fallbackDecision).
+      if (fallbackDecision(sentCopies, copiesN) === 'partial') {
+        return {
+          ok: false,
+          error: 'PARTIAL_COPIES',
+          sentCopies,
+          requestedCopies: copiesN,
+          render: Object.assign({ via: 'raster' }, render)
+        };
+      }
+      // sentCopies === 0 → nothing on paper yet → GDI fallback is safe.
     }
 
     // ── Fallback: Electron GDI silent print (0.1.8 behaviour) ───────────────
@@ -240,20 +340,50 @@ async function doPrint({ html, printerName, widthMm, copies }) {
     });
 
     if (!printResult.success) {
-      return { ok: false, error: printResult.failureReason || 'PRINT_FAILED', render: Object.assign({ via: 'gdi' }, render || {}) };
+      return { ok: false, error: printResult.failureReason || 'PRINT_FAILED', render: Object.assign({ via: 'gdi' }, render) };
     }
-    return { ok: true, render: Object.assign({ via: 'gdi' }, render || {}) };
+    return { ok: true, render: Object.assign({ via: 'gdi' }, render) };
   } catch (err) {
-    return { ok: false, error: (err && err.message) || 'PRINT_ERROR' };
+    return { ok: false, error: (err && err.message) || 'PRINT_ERROR', render };
   } finally {
     try { fs.unlinkSync(tmpFile); } catch (_) { /* best effort */ }
   }
 }
 
+// Run `work` on the html lane, but never let the lane advance while the shared
+// hidden window is still in use.
+//
+// 2026-07-27 (with MIN forensics) — the bug this replaces:
+//   printHtml used to return Promise.race([doPrint, timeout]). On timeout the
+//   RACE settled, so serialQueue considered the job done and started the NEXT
+//   ticket immediately — while the timed-out doPrint was still loading, zooming,
+//   scrolling and capturing THE SAME hidden window. Two jobs then interleaved in
+//   one window: job B's HTML could be captured for job A's printer, or a "TIMEOUT"
+//   was reported for a ticket that printed anyway and got reprinted.
+// The fix: on timeout we tear the window down (that is what actually CANCELS the
+// in-flight render — pending webContents calls reject), wait briefly for it to
+// unwind, and only then release the lane. The next job builds a fresh window.
+function runExclusive(budgetMs, work) {
+  return enqueue('html', async () => {
+    // Cancellation token: destroy() cancels the RENDER, but the winspool copy loop
+    // runs outside the window and must be told to stop too (Fable §3).
+    const token = { cancelled: false };
+    const running = work(token);
+    // Never let an unhandled rejection escape while we are racing it.
+    const guarded = running.catch((e) => ({ ok: false, error: (e && e.message) || 'PRINT_ERROR' }));
+
+    const res = await withTimeout(guarded, budgetMs, TIMEOUT);
+    if (res !== TIMEOUT) return res;
+
+    token.cancelled = true;                       // stop any further copies
+    destroy();                                    // cancel: kill the shared window
+    await withTimeout(guarded, ABORT_GRACE_MS, TIMEOUT);   // let it unwind
+    return { ok: false, error: 'TIMEOUT' };
+  });
+}
+
 function printHtml(job) {
-  return enqueue('html', () =>
-    withTimeout(doPrint(job), RENDER_TIMEOUT_MS, { ok: false, error: 'TIMEOUT' })
-  );
+  return runExclusive(jobBudgetMs(job), (token) => doPrint(job, token));
 }
 
 // 0.1.7 diagnostics: render the SAME pipeline a real bill uses, but capture the painted
@@ -281,9 +411,7 @@ async function doRenderCheck({ html }) {
 }
 
 function renderCheck(job) {
-  return enqueue('html', () =>
-    withTimeout(doRenderCheck(job), RENDER_TIMEOUT_MS, { ok: false, error: 'TIMEOUT' })
-  );
+  return runExclusive(RENDER_BUDGET_MS, () => doRenderCheck(job));
 }
 
 // Tear down the cached hidden print window so it can't keep the process alive after
