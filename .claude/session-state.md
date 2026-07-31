@@ -1,5 +1,10 @@
 # Purple POS — 개발 세션 상태
 
+<!-- AUTOSAVE-STALE-BANNER -->
+> **[AUTO-SAVE STALE] (2026-07-31 10:30, idle 2675s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
+> 변경된 작업 파일: CASH_MANAGEMENT_SHIFT_CLOSE.md
+<!-- /AUTOSAVE-STALE-BANNER -->
+
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-07-27 #2 (소켓 강제 전환 + 윈도우앱 인쇄 6건 수리 + AI 카메라 서빙 운영 활성화·배포)
 **버전:** **v3.71** (운영 — 2026-07-26) · 데스크탑앱 0.1.9 · 안드로이드앱 0.2.0

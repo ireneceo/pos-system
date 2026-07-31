@@ -130,6 +130,68 @@
   → verify-all `contract-tests` 게이트. **고장주입 3/3 검출**(폴백 제거·취소 제외 해제·이중 계상).
 - **운영 데이터 대조**: rid=8 오늘 기준 수정 후 기대금액 = **ewallet RM1,851.40(72건)**, 현재 운영 코드 = **0**.
 
+### 📐 후속 설계 — 결제 원장 일원화 (2026-07-31, 조사·설계 완료 / **구현은 승인 대기**)
+
+> 위 §7 "P0 근본 수정" 이 **별건**으로 남겨 둔 항목(`line 127`)의 설계. 기대금액 0 은 **이미 수리·운영 반영됨**
+> (2026-07-27 체크섬 대조로 확인). 여기서 다루는 것은 **남은 결함 3가지**다.
+
+#### 운영 실측 (읽기 전용 SSH, 2026-07-31)
+| 항목 | 값 |
+|------|-----|
+| 결제완료 주문 (3개월) | **5,904건 / RM172,733** |
+| `order_payments` 행 | **전 기간 5행** (2026-05-22 ~ 07-12) |
+| `orders.amount_paid > 0` | **8개월 통틀어 5건** |
+| 교대 | **3건 전부 open** — rid10 7/7~(24일), rid25 6/27~, rid13 6/24~ |
+| `cash_reconciliations` | **0건** (마감을 닫은 매장 없음) |
+| 결제수단(3개월) | ewallet 5,349 · card 490 · bankTransfer 28 · cash 28 · staffMeal 9 |
+
+#### 결제 완료 경로 4개 — 원장 기록 여부
+| # | 경로 | 원장 | 호출부 |
+|---|------|:----:|--------|
+| 1 | `POST /orders/:id/payments` | ✅ | PaymentModal(분할·부분), 오프라인 재생(op_id 멱등) |
+| 2 | **`PATCH /orders/:id {payment_status:'completed'}`** | ❌ | FloorPlanPage · TableDetailPanel · LiveOrdersPage ← **지배적** |
+| 3 | PayPal capture (`orders-payment.js:184`) | ❌ | 모바일 온라인결제 |
+| 4 | Stripe confirm (`orders-payment.js:248`) | ❌ | 모바일 온라인결제 |
+
+#### 남은 결함 3가지
+1. **결제 시각이 어디에도 없다** — 경로2는 감사로그도 `actionType:'updated'` 라 `payment_received` 를 안 남긴다.
+   `orders.updatedAt` 은 이후 어떤 편집이든 덮어쓴다. → 교대 경계를 넘겨 수납한 주문이 **접수한 교대**로 잡힌다.
+   운영 교대가 24~37일씩 열려 있는 현 상태에선 이 오차가 교대 전체를 뒤섞는다.
+2. **분할결제 상세 없음** — 폴백은 "주문 1건 = 수단 1개" 가정. 한 주문을 현금+카드로 나눠 받으면 표현 불가.
+3. **`amount_paid` 항상 0** — 부분수납 잔액을 서버가 모른다(경로1만 누적).
+
+#### 설계 — 단일 헬퍼 (정석: 3곳 각각 패치 금지)
+`utils/orderPaymentLedger.js` → `recordOrderPayment(order, ctx, t)`
+- **경로 2·3·4 가 전부 이 헬퍼 하나를 호출**한다. 경로1(이미 원장을 쓰는 정식 경로)은 무수정.
+- **멱등**: 직전 `payment_status !== 'completed'` → `'completed'` **전이일 때만** 기록. 재호출·중복 PATCH 는 no-op.
+- **금액** = `total_amount − 기존 원장합` (부분수납 후 완납도 정확, 이중 계상 0). 0 이하면 기록 생략.
+- **`paid_at` = now** ← 이 설계의 핵심 산출물(현재 어디에도 없는 값).
+- `cashier_id`/`cashier_name` = 요청 신원(경로3·4 는 `null`/'Customer'), `payment_method`/`card_type`/`ewallet_type` = 갱신 후 주문 값.
+- 주문 갱신과 **같은 트랜잭션**. 실패 시 결제 자체를 막지 않도록 비치명 처리(원장 실패 → 폴백이 그대로 커버).
+
+#### 이중 계상 안전성 — 읽는 쪽 3곳 전부 이미 폴백 구조 (2026-07-31 코드 실측)
+| 소비자 | 동작 | 원장 생성 시 영향 |
+|--------|------|------------------|
+| `cash-management.computeExpected` | 원장 있는 주문은 폴백에서 **제외**(`id NOT IN (SELECT order_id ...)`) | 이중 계상 0. 창 기준이 `order_date`→`paid_at` 으로 **정확해짐**(의도한 개선) |
+| `dashboard.js:936` | `paymentRows.length > 0` 이면 행 기준, 없으면 주문 기준 | 이중 계상 0. 수단별 합계 **불변** |
+| `mallSalesService:166` | 주문 단위 순회, 원장 있으면 원장 + `factor` 로 gto 정합 | 행 합계 = `total_amount` 이므로 **tender 값 완전 불변** |
+
+#### 백필 — 하지 않는다
+옛 주문엔 결제 시각이 존재하지 않아 `paid_at` 을 채우면 **날조**가 되고, 그 주문이 폴백→원장으로 옮겨가며
+집계 값이 바뀐다. 쓰기 시작 + 자연 이관(레거시 supplier 와 동일 원칙 [[reference_legacy_supplier_writestop_natural_migration]]).
+
+#### 위험·전제
+- 🔒 **`routes/orders-crud.js` 접촉** — 인쇄 로직은 무접촉이나 **지문이 바뀐다** → Irene 명시 승인 + `check-print-guard --bless` 필요.
+- **Fable 게이트 대상** (기준②돈·주문 무결성 + 기준①보호영역 접촉).
+- **마이그레이션 없음** — 신규 컬럼 0(`order_payments` 기존 스키마 그대로), 롤백 = 헬퍼 호출 제거.
+
+#### 검증 계획
+- 계약 테스트 신설: 전이 1회=행 1개 / 중복 PATCH=행 증가 0 / 부분수납 후 완납=잔액만 / 취소 주문 제외 유지 /
+  경로3·4 온라인결제 행 생성 / `amount_paid` 정합.
+- **이중 계상 반증**: 같은 주문에 대해 수정 전/후 `computeExpected`·dashboard 매출·mall tender **3값 diff 0**.
+- 고장주입: 멱등 가드 제거 → 중복 행 검출 / 잔액 계산을 `total` 로 바꿈 → 이중 계상 검출.
+- `verify-all --full` + print-guard(bless 후 8/8) + health-check.
+
 ## 8. 프론트 UX 확정 (2026-06-19, 글로벌 POS 표준 + 극단적 단순함)
 **원칙:** ① 블라인드 카운트(예상 숨기고 실물 먼저 입력 → 손실방지 표준) ② 1화면 1결정 위저드 ③ 차이=평문+신호등색 ④ 터치 숫자패드(키보드 없음).
 **위저드 4단계:** ① 교대 시작(개시현금=직전 마감 자동제시, 숫자패드) → ② 카운트(예상 숨김, 수단별 실제 입력) → ③ 차이 공개(Expected/Counted/Diff + "RM2 short" 평문 + 색 + 마감현금) → ④ Z-Report(수단별 매출·차이·마감현금, Print/Done).
