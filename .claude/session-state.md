@@ -1,17 +1,22 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-31 10:30, idle 2675s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: CASH_MANAGEMENT_SHIFT_CLOSE.md
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-07-27 #2 (소켓 강제 전환 + 윈도우앱 인쇄 6건 수리 + AI 카메라 서빙 운영 활성화·배포)
 **버전:** **v3.71** (운영 — 2026-07-26) · 데스크탑앱 0.1.9 · 안드로이드앱 0.2.0
 **작업 상태:** 완료. **운영 배포됨** (Backup 20260727_184955 · Smoke 9/9). 윈도우앱 0.1.10 빌드는 진행 중·미게시
 
 ### 진행 중인 작업
-- 없음
+- **결제 원장 일원화 — 조사·설계 완료 / 구현은 Irene 승인 대기** (2026-07-31)
+  - 설계 전문 = `docs/CASH_MANAGEMENT_SHIFT_CLOSE.md` §7 "📐 후속 설계 — 결제 원장 일원화"
+  - 🔒 `orders-crud.js` 지문이 바뀌므로 **승인 + print-guard bless 필요**, Fable 게이트 대상(돈·보호영역)
+
+### 2026-07-31 운영 점검 (읽기 전용)
+- **🔎 소켓 강제 모드 생존 확인** — 운영 백엔드가 오늘 06:15경 새로 뜬 정황(uptime 3.5h, restarts 0)이라
+  [[reference_pm2_stale_env_dotenv]] 함정으로 조용히 꺼질 수 있었다. **동작으로 증명**: 무토큰 4NS + 위조토큰
+  **5/5 거부**, 런타임 `SOCKET_AUTH_ENFORCE=true`, 소켓 인증 오류 로그 0 → **소켓 전환 마무리 항목 종료**
+- 인쇄 생명선 정상 — 미인쇄 누적 rid8(52)·rid10(8)은 **둘 다 `autoPrint=false` 매장의 정상 누적**(rid10 `kitchen.enabled=true·autoPrint=false`)
+- 24h 주문 60건 · pm2 158MB · health ok · 네이티브앱 실사용 여전히 **0**(web-rawbt 8/web 6/web-qz 4, web-qz 는 7/24 이후 미갱신)
+- **기록 정정**: "마감 기대금액 0" 은 **이미 수리·운영 반영됨**(폴백 도입분). 남은 건 결제 시각 부재 = 위 설계 항목
 
 ### 완료된 작업 (이번 세션 — 2026-07-27)
 
