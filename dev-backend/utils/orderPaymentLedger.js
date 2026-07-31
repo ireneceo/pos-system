@@ -30,6 +30,7 @@
 
 const OrderPayment = require('../models/OrderPayment');
 const { round2 } = require('./orderTotals');
+const { isRetryableError } = require('./queryWrapper');
 
 // 직원 계정 네임스페이스(r{rid}:username) 제거 — 영수증/원장에 내부 접두사가 새지 않게.
 function stripNs(name) {
@@ -101,7 +102,13 @@ async function recordOrderPayment(order, ctx = {}, t = null) {
 
     return row;
   } catch (e) {
-    // 비치명 — 결제를 막지 않는다. 집계는 주문 레벨 폴백이 그대로 커버한다.
+    // ⚠️ 2026-07-31 (Fable P2) — 트랜잭션 안에서 **재시도 가능한** 에러(데드락·락타임아웃)를 삼키면
+    //   tx 는 이미 죽어 있는데 호출부가 계속 진행하고, commit 이 "Transaction cannot be committed" 로
+    //   터진다. 그 메시지는 isRetryableError 패턴에 안 걸려 `executeTransaction(maxRetries:3)` 이
+    //   **무력화**되고 결제 PATCH 가 그냥 실패한다. → 다시 던져서 폐쇄 전체를 재시도시킨다.
+    //   (재시도 시 롤백으로 원장도 초기화되므로 멱등은 유지된다.)
+    if (t && isRetryableError(e)) throw e;
+    // 그 외에는 비치명 — 결제를 막지 않는다. 집계는 주문 레벨 폴백이 그대로 커버한다.
     console.error('[orderPaymentLedger] 원장 기록 실패 (결제는 정상 처리됨):', e.message);
     return null;
   }

@@ -192,19 +192,30 @@ router.post('/:id/capture-paypal-order', async (req, res) => {
       };
       // 결제 완료 → "Require payment before kitchen" 토글로 awaiting_payment 였던 주문을 키친 진입(pending)으로 전환.
       const _prevStatusPP = order.status;
-      const _prevPayPP = order.payment_status;
       if (order.status === 'awaiting_payment') updatePayload.status = 'pending';
-      await order.update(updatePayload);
 
-      // 결제 원장(2026-07-31) — 온라인 결제도 결제 시각을 남긴다. 위 가드가 completed 를 이미 막으므로 항상 전이.
-      await recordOrderPayment(order, {
-        prevPaymentStatus: _prevPayPP,
-        cashierName: 'Customer',
-        transactionId: captureId || orderId
+      // 🔒 원자적 claim (2026-07-31, Fable P1) — 진입부 가드는 두 요청이 **동시에** 통과할 수 있다.
+      //   게이트웨이 API 왕복(수백 ms)이 가드~기록 사이에 있어 창이 넓고, 그 사이 둘 다 prev='pending' 을
+      //   읽으면 **원장 2행(전액 ×2)** 이 생긴다(Fable 이 10/10 재현). DB 조건부 UPDATE 로 승자를 1명만 만든다.
+      //   receipt_number 에 유니크 제약이 없어 DB 가 대신 막아주지 못한다.
+      const [_claimedPP] = await Order.update(updatePayload, {
+        where: { id: order.id, payment_status: { [Op.ne]: 'completed' } }
       });
+      const _wonPP = _claimedPP === 1;
+      if (_wonPP) await order.reload();
+
+      // 결제 원장(2026-07-31) — 온라인 결제도 결제 시각을 남긴다. claim 승자만 기록 → 동시 요청에도 1행.
+      if (_wonPP) {
+        await recordOrderPayment(order, {
+          prevPaymentStatus: 'pending',
+          cashierName: 'Customer',
+          transactionId: captureId || orderId
+        });
+      }
 
       // ── Audit log — payment_received (+ status_change if awaiting_payment → pending) ────────────────
-      logOrderActionSafe({
+      // claim 패자는 감사로그도 남기지 않는다(같은 결제가 2번 기록되는 것 방지). 응답은 그대로 성공.
+      if (_wonPP) logOrderActionSafe({
         orderId: order.id, restaurantId: order.restaurant_id,
         actionType: 'payment_received',
         performedByUserId: null,
@@ -213,7 +224,7 @@ router.post('/:id/capture-paypal-order', async (req, res) => {
         source: 'mobile',
         metadata: { provider: 'paypal', transaction_id: captureId || orderId, amount: order.total_amount }
       });
-      if (_prevStatusPP === 'awaiting_payment' && updatePayload.status === 'pending') {
+      if (_wonPP && _prevStatusPP === 'awaiting_payment' && updatePayload.status === 'pending') {
         logOrderActionSafe({
           orderId: order.id, restaurantId: order.restaurant_id,
           actionType: 'status_change',
@@ -263,19 +274,27 @@ router.post('/:id/confirm-stripe-payment', async (req, res) => {
       };
       // 결제 완료 → awaiting_payment 주문을 키친 진입(pending) 으로 전환.
       const _prevStatusSt = order.status;
-      const _prevPaySt = order.payment_status;
       if (order.status === 'awaiting_payment') updatePayload.status = 'pending';
-      await order.update(updatePayload);
 
-      // 결제 원장(2026-07-31) — 온라인 결제도 결제 시각을 남긴다. 위 가드가 completed 를 이미 막으므로 항상 전이.
-      await recordOrderPayment(order, {
-        prevPaymentStatus: _prevPaySt,
-        cashierName: 'Customer',
-        transactionId: paymentIntent.id
+      // 🔒 원자적 claim — PayPal 경로와 동일 이유(2026-07-31, Fable P1). 상세 주석은 capture 핸들러 참조.
+      const [_claimedSt] = await Order.update(updatePayload, {
+        where: { id: order.id, payment_status: { [Op.ne]: 'completed' } }
       });
+      const _wonSt = _claimedSt === 1;
+      if (_wonSt) await order.reload();
+
+      // 결제 원장(2026-07-31) — claim 승자만 기록 → 동시 요청에도 1행.
+      if (_wonSt) {
+        await recordOrderPayment(order, {
+          prevPaymentStatus: 'pending',
+          cashierName: 'Customer',
+          transactionId: paymentIntent.id
+        });
+      }
 
       // ── Audit log — payment_received (+ status_change if awaiting_payment → pending) ────────────────
-      logOrderActionSafe({
+      // claim 패자는 감사로그도 남기지 않는다(같은 결제 2회 기록 방지). 응답은 그대로 성공.
+      if (_wonSt) logOrderActionSafe({
         orderId: order.id, restaurantId: order.restaurant_id,
         actionType: 'payment_received',
         performedByUserId: null,
@@ -284,7 +303,7 @@ router.post('/:id/confirm-stripe-payment', async (req, res) => {
         source: 'mobile',
         metadata: { provider: 'stripe', transaction_id: paymentIntent.id, amount: order.total_amount }
       });
-      if (_prevStatusSt === 'awaiting_payment' && updatePayload.status === 'pending') {
+      if (_wonSt && _prevStatusSt === 'awaiting_payment' && updatePayload.status === 'pending') {
         logOrderActionSafe({
           orderId: order.id, restaurantId: order.restaurant_id,
           actionType: 'status_change',

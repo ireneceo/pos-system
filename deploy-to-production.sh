@@ -685,15 +685,21 @@ smoke_test "Health check" \
     '"status":"ok"'
 
 # Smoke 로그인 — 로그인 페이지의 "Test Accounts" 와 동일한 demo-login(키 기반, 비번 하드코딩 X).
-# test_restaurant_admin = K-DINE Restaurant Admin(is_test, restaurant_id=5). 과거 직접로그인
-# (admin@pos-system.com)은 그 계정 삭제(이메일폭주 정리, 2026-06-01)로 항상 실패하던 것 →
+# 과거 직접로그인(admin@pos-system.com)은 그 계정 삭제(이메일폭주 정리, 2026-06-01)로 항상 실패하던 것 →
 # demo-login 키 방식으로 교체(2026-06-04). restaurant_id 도 응답에서 추출해 하위 smoke 에 사용.
+#
+# 🔒 2026-07-31 — 키를 test_restaurant_admin → **demo_restaurant_admin** 으로 교체.
+#   test_restaurant_admin = admin@kdine.com → **restaurant_id 5 = The Fire Korean Restaurant = 실고객 매장**.
+#   즉 배포할 때마다 실매장에 RM1 주문을 만들고 취소해 왔고, 그 취소분이 **취소표 재발행(needs_print=1)** 으로
+#   그 매장 인쇄 큐에 남았다(2026-07-26·07-27·07-31 배포분이 실제로 남아 있었다).
+#   그 매장이 autoPrint 를 켜는 순간 **유령 취소표가 주방에서 나온다.** 스모크는 실매장을 건드리면 안 된다.
+#   demo_restaurant_admin = demo-restaurant@purplehere.com → restaurant_id 13(Seoul Garden BBQ, is_demo=1).
 SMOKE_LOGIN=$(ssh $PROD_SERVER "curl -s --max-time 5 -X POST http://localhost:3002/api/auth/demo-login \
     -H 'Content-Type: application/json' \
-    -d '{\"key\":\"test_restaurant_admin\"}'" 2>/dev/null)
+    -d '{\"key\":\"demo_restaurant_admin\"}'" 2>/dev/null)
 ADMIN_TOKEN=$(echo "$SMOKE_LOGIN" | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
 SMOKE_RID=$(echo "$SMOKE_LOGIN" | grep -o '"restaurant_id":[0-9]*' | head -1 | cut -d':' -f2)
-[ -z "$SMOKE_RID" ] && SMOKE_RID=5
+[ -z "$SMOKE_RID" ] && SMOKE_RID=13
 
 if [ -n "$ADMIN_TOKEN" ] && [ "$ADMIN_TOKEN" != "null" ]; then
     echo -e "  ${GREEN}✓${NC} Test admin login (demo-login key)"
@@ -712,11 +718,28 @@ if [ -n "$ADMIN_TOKEN" ]; then
             -H 'Authorization: Bearer $ADMIN_TOKEN'" \
         '"success"'
 
+    # 🔒 실매장 보호 가드 (2026-07-31, fail-loud) — 주문을 만드는 스모크는 **데모 매장에서만** 돈다.
+    #   키가 바뀌거나 데모 계정이 다른 매장에 붙는 사고가 나도, 실매장에 주문·인쇄큐 잔재를 남기지 않는다.
+    #   판정은 추측이 아니라 서버가 준 is_demo 로 한다.
+    SMOKE_IS_DEMO=$(ssh $PROD_SERVER "curl -s --max-time 5 http://localhost:3002/api/restaurants/$SMOKE_RID \
+        -H 'Authorization: Bearer $ADMIN_TOKEN'" 2>/dev/null | grep -o '"is_demo":true' | head -1)
+
+    if [ -z "$SMOKE_IS_DEMO" ]; then
+        echo -e "  ${RED}✗${NC} 주문 스모크 중단 — restaurant_id=$SMOKE_RID 는 데모 매장이 아니다 (실매장에 주문/인쇄큐 잔재 금지)"
+        SMOKE_FAIL=$((SMOKE_FAIL + 1))
+        SMOKE_TOTAL=$((SMOKE_TOTAL + 1))
+        ADMIN_TOKEN_ORDER=""
+    else
+        ADMIN_TOKEN_ORDER="$ADMIN_TOKEN"
+    fi
+fi
+
+if [ -n "$ADMIN_TOKEN_ORDER" ]; then
     SMOKE_TOTAL=$((SMOKE_TOTAL + 1))
     ORDER_RESPONSE=$(ssh $PROD_SERVER "curl -s --max-time 10 -X POST http://localhost:3002/api/orders \
         -H 'Content-Type: application/json' \
         -H 'Authorization: Bearer $ADMIN_TOKEN' \
-        -d '{\"restaurant_id\":$SMOKE_RID,\"order_type\":\"dine_in\",\"table_number\":\"SMOKE99\",\"skipAutoMerge\":true,\"order_items\":[{\"name\":\"Smoke Test Item\",\"price\":1.00,\"quantity\":1}]}'" 2>/dev/null) || ORDER_RESPONSE=""
+        -d '{\"restaurant_id\":$SMOKE_RID,\"order_type\":\"dine_in\",\"table_number\":\"SMOKE99\",\"customer_name\":\"__SMOKE__\",\"skipAutoMerge\":true,\"order_items\":[{\"name\":\"Smoke Test Item\",\"price\":1.00,\"quantity\":1}]}'" 2>/dev/null) || ORDER_RESPONSE=""
 
     SMOKE_ORDER_ID=$(echo "$ORDER_RESPONSE" | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
 
@@ -729,11 +752,41 @@ if [ -n "$ADMIN_TOKEN" ]; then
                 -H 'Authorization: Bearer $ADMIN_TOKEN'" \
             '"order_items"'
 
-        # Cleanup
+        # Cleanup — 취소
         ssh $PROD_SERVER "curl -s --max-time 5 -X PATCH http://localhost:3002/api/orders/$SMOKE_ORDER_ID/status \
             -H 'Content-Type: application/json' \
             -H 'Authorization: Bearer $ADMIN_TOKEN' \
             -d '{\"status\":\"cancelled\"}'" > /dev/null 2>&1 || true
+
+        # 🔒 Cleanup — 인쇄 큐 잔재 제거 (2026-07-31).
+        #   주문 취소는 설계상 **취소 안내표 재발행**(needs_print=1)을 남긴다. 사람이 낸 취소면 맞는 동작이지만,
+        #   스모크가 만든 합성 주문의 취소표는 아무도 받을 필요가 없다. 안 치우면 배포마다 큐에 쌓이고,
+        #   그 매장이 autoPrint 를 켜는 순간 유령 취소표가 주방에서 나온다.
+        #   정식 경로 print-dismiss("이 주문은 자동인쇄 대상 아님") 사용 — 인쇄 로직 무변경.
+        ssh $PROD_SERVER "curl -s --max-time 5 -X PATCH http://localhost:3002/api/orders/$SMOKE_ORDER_ID/print-dismiss \
+            -H 'Content-Type: application/json' \
+            -H 'Authorization: Bearer $ADMIN_TOKEN' -d '{}'" > /dev/null 2>&1 || true
+
+        # Cleanup — 주문 이력에서도 내린다 (2026-07-31).
+        #   취소만 하면 주문 이력·대시보드 **취소 집계**에 합성 RM1 이 영구히 남는다
+        #   (2026-06-04~07-31 사이 실매장 The Fire 에 165건 누적 → 그 매장 6~7월 취소통계가 165 vs 실제 1 이었다).
+        #   ⛔ 주의: 여기서 API 취소 경로를 또 타면 **취소 안내표가 재발행**되고 그 재발행은 is_deleted 를
+        #   무시하고 살아남는다. 그래서 순서가 중요하다 — 위에서 print-dismiss 로 큐를 비운 **뒤에** 삭제한다.
+        ssh $PROD_SERVER "curl -s --max-time 5 -X DELETE http://localhost:3002/api/orders/$SMOKE_ORDER_ID \
+            -H 'Content-Type: application/json' \
+            -H 'Authorization: Bearer $ADMIN_TOKEN'" > /dev/null 2>&1 || true
+
+        # 치웠는지 **검증**한다 (fire-and-forget 금지 — 잔재가 남으면 배포가 알려야 한다)
+        SMOKE_TOTAL=$((SMOKE_TOTAL + 1))
+        SMOKE_RESIDUE=$(ssh $PROD_SERVER "curl -s --max-time 5 http://localhost:3002/api/orders/restaurant/$SMOKE_RID/pending-print \
+            -H 'Authorization: Bearer $ADMIN_TOKEN'" 2>/dev/null | grep -o "\"id\":$SMOKE_ORDER_ID," | head -1)
+        if [ -z "$SMOKE_RESIDUE" ]; then
+            echo -e "  ${GREEN}✓${NC} Smoke 인쇄 큐 잔재 0 (print-dismiss 확인)"
+            SMOKE_PASS=$((SMOKE_PASS + 1))
+        else
+            echo -e "  ${RED}✗${NC} Smoke 주문이 인쇄 큐에 남았다 (#$SMOKE_ORDER_ID) — 매장 주방에 유령 취소표가 갈 수 있다"
+            SMOKE_FAIL=$((SMOKE_FAIL + 1))
+        fi
     else
         echo -e "  ${RED}✗${NC} POST order"
         SMOKE_FAIL=$((SMOKE_FAIL + 1))

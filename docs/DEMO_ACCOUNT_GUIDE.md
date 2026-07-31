@@ -105,9 +105,19 @@
 | Brand | gitconsulting (ID:23) | Brand General | Brand: with MIN, K-DINE with MIN |
 | Restaurant | kdineipc1 (ID:19) | Restaurant Admin | K-DINE IPC Branch (ID:8) |
 | Restaurant | withmin1 (ID:22) | Restaurant Admin | with MIN Cafe (ID:10) |
-| Restaurant | kdine_admin (ID:9) | Restaurant Admin | K-Dine Korean Restaurant (ID:5) |
+| Restaurant | kdine_admin (ID:9) | Restaurant Admin | ⚠️ **The Fire Korean Restaurant (ID:5) — 실영업 매장** |
 | Staff | Moon (ID:28) | Staff | K-DINE IPC Branch (ID:8) |
-| Staff | kdine_staff (ID:10) | Staff | K-Dine Korean Restaurant (ID:5) |
+| Staff | kdine_staff (ID:10) | Staff | ⚠️ The Fire Korean Restaurant (ID:5) — 실영업 매장 |
+
+> 🔒 **rid 5 함정 (2026-07-31 사고)** — 이 표에 "K-Dine Korean Restaurant"로 적혀 있던 **ID 5 는 개명 후
+> 실제 영업 중인 고객 매장(The Fire Korean Restaurant)** 이다. 계정 `kdine_admin`(= `admin@kdine.com`,
+> demo-login 키 **`test_restaurant_admin`**)에 `is_test=true` 가 붙어 있어 "테스트 계정"처럼 보이지만
+> **매장은 실매장**(`restaurants.is_demo=0`).
+> 실제로 배포 스모크가 이 키를 써서 **2026-06-04 ~ 07-31 사이 그 매장에 RM1 주문 165건을 만들고 취소**했고,
+> 취소가 만드는 **취소 안내표가 그 매장 주방 인쇄 큐에 누적**됐다(autoPrint 를 켰다면 유령 취소표가 나왔다).
+> **규칙: 데이터를 쓰는(주문 생성 등) 자동화는 계정의 `is_test` 가 아니라 매장의 `is_demo` 로 판정한다.**
+> 주문을 만드는 용도는 **`demo_restaurant_admin`(→ rid 13 Seoul Garden BBQ, `is_demo=1`)** 을 쓸 것.
+> 상세 = `DEPLOYMENT.md` 🔒 "스모크는 실매장을 건드리지 않는다".
 
 ### 데모/테스트 계정 (is_demo = true)
 

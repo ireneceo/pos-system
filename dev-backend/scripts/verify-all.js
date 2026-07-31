@@ -51,7 +51,8 @@ const GATES = [
   //   order-totals  = 금액 공식(돈)  /  settings-guard = 설정 wipe(thefire 무인쇄 사고)
   //   socket-auth   = 소켓 테넌트 경계(join + emit 양방향, 강제/모니터 두 모드)
   //   cashup-expected = 마감 기대금액(주문 행에만 기록된 결제도 잡히는지 + 취소 제외 + 이중계상 0)
-  { id: 'contract-tests', tier: 'runtime', label: '📜 계약 테스트 (금액공식·설정wipe·소켓경계·마감기대금액)', cwd: BACKEND, cmd: ['npx', 'jest', 'tests/order-totals.test.js', 'tests/settings-guard.test.js', 'tests/socket-auth.test.js', 'tests/cashup-expected.test.js', '--forceExit', '--silent'], timeout: 300000 },
+  //   order-payment-ledger = 결제 원장 일원화(전이 1회만 기록·유령결제 방지·이중계상 0·staffMeal 제외)
+  { id: 'contract-tests', tier: 'runtime', label: '📜 계약 테스트 (금액공식·설정wipe·소켓경계·마감기대금액·결제원장)', cwd: BACKEND, cmd: ['npx', 'jest', 'tests/order-totals.test.js', 'tests/settings-guard.test.js', 'tests/socket-auth.test.js', 'tests/cashup-expected.test.js', 'tests/order-payment-ledger.test.js', '--forceExit', '--silent'], timeout: 300000 },
   { id: 'inspection', tier: 'runtime', label: '🔎 인스펙션 하니스 (구조 불변식, 신규 위반 0)', cwd: BACKEND, cmd: ['node', 'scripts/inspection/run.js'] },
   { id: 'health', tier: 'runtime', label: '❤️ health-check 전체 회귀 (인쇄 계약+보안+API)', cwd: BACKEND, cmd: ['node', 'scripts/health-check.js', '--quiet'], timeout: 300000 },
   { id: 'print-routes', tier: 'runtime', label: '🖨️ 인쇄 라우트 가드 (자동인쇄 전 루트 실제 실행)', cwd: FRONTEND, cmd: ['node', 'scripts/print-route-guard/run.js', '--quiet'], timeout: 300000 },

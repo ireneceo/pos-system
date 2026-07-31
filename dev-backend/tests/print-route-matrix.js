@@ -191,7 +191,10 @@ async function run() {
   // ── R9: 아이템 단일 취소 (removedItem station + was_printed) ──
   console.log('[R9] 아이템 단일 취소');
   const r9order = track((await newPosOrder('R9_' + suffix)).json?.data);
-  const r9 = await api('DELETE', '/api/orders/' + r9order.id + '/items/0', { reason: 'wrong item', source: 'pos' });
+  // void_pin: dev 매장 5 는 operation_settings.requireVoidPin = true 라 손실방지 게이트가 먼저 400 을 낸다
+  // (2026-07-31 확인 — 인쇄와 무관한 설정 드리프트로 R9 3건이 통째로 빨간색이었다).
+  // 게이트를 끄지 않고 **권한 PIN 을 실제로 통과시켜** 인쇄 라우팅 계약을 그대로 검증한다. RA(id 9) PIN.
+  const r9 = await api('DELETE', '/api/orders/' + r9order.id + '/items/0', { reason: 'wrong item', source: 'pos', void_pin: '1234' });
   ok('R9', '취소 2xx', r9.status >= 200 && r9.status < 300, 'status=' + r9.status);
   ok('R9', 'removedItem.kitchen_station_id 포함', r9.json?.removedItem?.kitchen_station_id !== undefined, 'station=' + r9.json?.removedItem?.kitchen_station_id);
   ok('R9', 'removedItem.was_printed 플래그 포함', typeof r9.json?.removedItem?.was_printed === 'boolean', 'was_printed=' + r9.json?.removedItem?.was_printed);

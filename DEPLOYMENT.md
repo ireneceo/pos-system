@@ -73,6 +73,25 @@ sudo /var/www/rollback-production.sh [타임스탬프]
 6. **Smoke tests** - /api/health, /api/invoices, /api/restaurants, /api/admin/payment-settings 응답 확인
 7. **프론트엔드 번들 접근 확인** - main.*.js 파일 HTTP 200 응답 확인
 
+### 🔒 스모크는 실매장을 건드리지 않는다 (2026-07-31)
+
+> 배포마다 **실고객 매장에 주문을 만들고 취소해 왔고, 그 취소분이 인쇄 큐에 쌓이고 있었다.**
+> 2026-07-22 ~ 07-31 배포분 **8건**이 The Fire(rid 5) 큐에 남아 있었다(발견 시점 기준).
+> 그 매장이 `autoPrint` 를 켜는 순간 **유령 취소표가 주방에서 나온다.** 다행히 OFF 라 종이는 안 나갔다.
+
+- **원인**: 스모크 로그인 키가 `test_restaurant_admin`(= `admin@kdine.com` → **rid 5 = 실매장**)이었다.
+  계정에 `is_test` 플래그가 있어 "테스트 계정"처럼 보였지만, **매장은 실제 영업 중인 고객 매장**이다.
+- **수정 3가지**:
+  1. 키를 **`demo_restaurant_admin`** 으로 교체 (→ rid 13 Seoul Garden BBQ, `is_demo=1`). 폴백 RID 도 5→13.
+  2. **fail-loud 가드** — 주문 생성 스모크 직전에 `GET /api/restaurants/:id` 의 `is_demo` 를 확인하고,
+     데모 매장이 아니면 **주문 스모크를 중단하고 FAIL 로 보고**한다(조용히 건너뛰지 않는다).
+     판정은 추측이 아니라 서버가 준 값으로 한다.
+  3. **자기 잔재 제거 + 검증** — 취소는 설계상 취소 안내표를 재발행하므로(사람이 낸 취소면 맞는 동작),
+     합성 주문에 한해 정식 경로 `PATCH /orders/:id/print-dismiss` 로 큐에서 내리고,
+     **`pending-print` 를 다시 조회해 실제로 사라졌는지 검증**한다(fire-and-forget 금지).
+- **인쇄 로직은 무변경** — 배포 하니스만 고쳤다. `print-dismiss` 는 기존 공개 계약("이 주문은 자동인쇄 대상 아님").
+- 기존 잔재 8건은 `print-dismiss` 로 정리 완료(같은 큐에 있던 **실주문 1건은 보존** — SMOKE99·RM1·cancelled 만 지정).
+
 ## 배포 후 수동 확인
 
 1. https://purplehere.com 접속 확인

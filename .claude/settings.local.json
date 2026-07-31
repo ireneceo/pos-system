@@ -1454,7 +1454,19 @@
       "Bash(xargs -I{} echo \"{}건 \\(0이어야 정상\\)\")",
       "Bash(scp -q dev-backend/routes/ai-serving.js irene@87.106.78.146:/var/www/production-backend/routes/)",
       "Bash(tar -czf /var/www/backups/dev-daily/__CMDSUB_OUTPUT__/desktop-pos.tar.gz --exclude=node_modules --exclude=release -C /var/www desktop-pos)",
-      "Bash(awk 'NR>=1028 && NR<=1200 && /logOrderActionSafe|actionType/' routes/orders-crud.js)"
+      "Bash(awk 'NR>=1028 && NR<=1200 && /logOrderActionSafe|actionType/' routes/orders-crud.js)",
+      "Bash(pkill -f \"jest tests/order-payment-ledger\")",
+      "Bash(perl -0pi -e \"s/if \\\\\\(String\\\\\\(ctx\\\\.prevPaymentStatus \\\\|\\\\| ''\\\\\\) === 'completed'\\\\\\) return null;/\\\\/\\\\/ FAULT-INJECT/\" utils/orderPaymentLedger.js)",
+      "Bash(perl -0pi -e \"s/    payment_method: \\\\{ \\\\[Op\\\\.notIn\\\\]: \\\\['staffMeal', 'staffmeal'\\\\] \\\\}\\\\n  \\\\};\\\\n  if \\\\\\(end\\\\\\) where\\\\.paid_at/    \\\\/\\\\/ FAULT2\\\\n  };\\\\n  if \\(end\\) where.paid_at/\" routes/cash-management.js)",
+      "Bash(perl -0pi -e \"s/const amount = round2\\\\\\(total - already\\\\\\);/const amount = total; \\\\/\\\\/ FAULT3/\" utils/orderPaymentLedger.js)",
+      "Bash(awk 'NR>=2357 && NR<=2560 && /payment_status/' routes/orders-crud.js)",
+      "Bash(perl -0pi -e \"s/\\\\{ where: \\\\{ id: o\\\\.id, payment_status: \\\\{ \\\\[Op\\\\.ne\\\\]: 'completed' \\\\} \\\\} \\\\}/{ where: { id: o.id } } \\\\/\\\\/ FAULT-CLAIM/\" tests/order-payment-ledger.test.js)",
+      "Bash(awk '{print $1, substr\\($2, index\\($2,\"/\"\\)+1\\)}')",
+      "Bash(scp -o BatchMode=yes /tmp/claude-1000/-var-www/0444d432-4d76-4517-ae97-fdd91d1701e2/scratchpad/verify-4flows.js irene@87.106.78.146:/tmp/verify-4flows.js)",
+      "Bash(perl -0pi -e \"s/const left = await q\\\\\\('SELECT COUNT\\\\\\(\\\\*\\\\\\) c FROM orders WHERE table_number=\\\\? AND restaurant_id=\\\\?', \\\\['V1', \\\\\\(await q\\\\\\('SELECT id FROM restaurants WHERE is_demo=1 LIMIT 1'\\\\\\)\\\\\\)\\\\[0\\\\]\\\\.id\\\\]\\\\\\);/const left = await q\\('SELECT COUNT\\(*\\) c FROM orders WHERE table_number=? AND id IN \\(?\\)', ['V1', made.length?made:[0]]\\);/\" /tmp/claude-1000/-var-www/0444d432-4d76-4517-ae97-fdd91d1701e2/scratchpad/verify-4flows.js)",
+      "Bash(awk 'NR>=2470 && NR<=2560 && \\(/needs_print/ || /router.delete/ || /is_deleted/ || /pending_reprint/\\)' routes/orders-crud.js)",
+      "Bash(awk 'NR>=2071 && NR<=2140' routes/orders-crud.js)",
+      "Bash(timeout 300 bash -c \"cat /tmp/claude-1000/-var-www/0444d432-4d76-4517-ae97-fdd91d1701e2/scratchpad/release-v3.73.json | node scripts/create-release-post.js --stdin --sync-prod\")"
     ],
     "deny": [],
     "ask": []
