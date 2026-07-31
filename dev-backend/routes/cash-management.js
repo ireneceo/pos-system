@@ -69,10 +69,16 @@ async function computeExpected(restaurantId, start, end) {
   const excludedOrders = literal(`(SELECT id FROM orders WHERE restaurant_id = ${rid} AND (status = 'cancelled' OR is_deleted = true))`);
 
   // ① 결제 원장(OrderPayment) — 분할결제·수동 결제 경로
+  //
+  // ⚠️ staffMeal 제외는 ②폴백과 **반드시 대칭**이어야 한다 — 직원식은 실제로 받은 돈이 아니라서
+  //   포함하면 카운트 화면에 'Staffmeal' 행이 생기고 받은 돈이 없으니 필연적 '부족'(직원 횡령 누명)이 난다.
+  //   2026-07-31 결제 원장 일원화로 **모든 결제완료 주문이 원장 행을 갖게 되면서** 이 비대칭이
+  //   실제로 발현되는 경로가 됐다(그전엔 원장 자체가 5행뿐이라 잠복). 분할결제 경로도 원래 뚫려 있던 구멍.
   const where = {
     restaurant_id: restaurantId,
     paid_at: { [Op.gte]: start },
-    order_id: { [Op.notIn]: excludedOrders }
+    order_id: { [Op.notIn]: excludedOrders },
+    payment_method: { [Op.notIn]: ['staffMeal', 'staffmeal'] }
   };
   if (end) where.paid_at[Op.lte] = end;
   const rows = await OrderPayment.findAll({
@@ -314,8 +320,15 @@ router.post('/restaurant/:restaurantId/shift/:id/close', authenticateToken, chec
       const windowEnd = shift.closed_at || new Date();
       const Order = require('../models/Order');
       const ridNum = Number(restaurantId);
+      // ⚠️ 원장 카운트의 제외 규칙은 아래 폴백 카운트와 **대칭**이어야 한다(취소·삭제·직원식).
+      //   2026-07-31 원장 일원화로 모든 결제완료 주문이 행을 갖게 되면서 비대칭이 실제 오차가 된다.
       const ledgerCount = await OrderPayment.count({
-        where: { restaurant_id: restaurantId, paid_at: { [Op.between]: [shift.opened_at, windowEnd] } }
+        where: {
+          restaurant_id: restaurantId,
+          paid_at: { [Op.between]: [shift.opened_at, windowEnd] },
+          payment_method: { [Op.notIn]: ['staffMeal', 'staffmeal'] },
+          order_id: { [Op.notIn]: literal(`(SELECT id FROM orders WHERE restaurant_id = ${ridNum} AND (status = 'cancelled' OR is_deleted = true))`) }
+        }
       });
       const fallbackCount = await Order.count({
         where: {

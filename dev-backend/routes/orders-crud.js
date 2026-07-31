@@ -23,6 +23,7 @@ const { checkPaymentMethodAllowed } = require('../utils/paymentMethodGuard');
 const { enforceVoidPin } = require('../utils/voidPinGuard');
 const { enrichItemsWithStation } = require('../utils/stationEnrichment');
 const { round2, computeOrderTotals, mixedDineInSubtotal } = require('../utils/orderTotals');
+const { recordOrderPayment } = require('../utils/orderPaymentLedger');
 
 // 예약-주문 자동 링크 (P2-6, 인쇄 무관) — dine-in 주문이 'arrived'(체크인) 예약이 걸린
 // 테이블에서 생성되면 그 예약을 주문에 연결(order.reservation_id) + 예약 arrived→seated.
@@ -1096,8 +1097,20 @@ router.patch('/:id', authenticateToken, async (req, res) => {
         }
       }
 
+      // 결제 원장(2026-07-31): 갱신 **전** 상태를 잡아 둔다 — 전이일 때만 원장을 남기기 위함.
+      const _prevPaymentStatus = order.payment_status;
+
       // Update order with provided fields
       await order.update(req.body, { transaction: t });
+
+      // 결제 완료 전이 → 원장 1행 + amount_paid. 이 경로가 매장 POS 의 지배적 결제 경로인데
+      // 지금껏 결제 시각을 아무 데도 안 남겼다(감사로그도 'updated'). 인쇄·주문 로직 무접촉.
+      // 멱등·비치명은 헬퍼가 보장 — 실패해도 결제를 막지 않는다. 상세 = utils/orderPaymentLedger.js
+      await recordOrderPayment(order, {
+        prevPaymentStatus: _prevPaymentStatus,
+        cashierId: req.user?.id || null,
+        cashierName: req.user?.full_name || req.user?.username || null
+      }, t);
 
       return order;
     }, { maxRetries: 3 });

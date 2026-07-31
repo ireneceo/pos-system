@@ -12,6 +12,7 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { stripStaffNs } = require('../utils/staffName');
 const { alreadyProcessed, recordProcessed } = require('../utils/opIdGuard');
+const { recordOrderPayment } = require('../utils/orderPaymentLedger');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
@@ -191,8 +192,16 @@ router.post('/:id/capture-paypal-order', async (req, res) => {
       };
       // 결제 완료 → "Require payment before kitchen" 토글로 awaiting_payment 였던 주문을 키친 진입(pending)으로 전환.
       const _prevStatusPP = order.status;
+      const _prevPayPP = order.payment_status;
       if (order.status === 'awaiting_payment') updatePayload.status = 'pending';
       await order.update(updatePayload);
+
+      // 결제 원장(2026-07-31) — 온라인 결제도 결제 시각을 남긴다. 위 가드가 completed 를 이미 막으므로 항상 전이.
+      await recordOrderPayment(order, {
+        prevPaymentStatus: _prevPayPP,
+        cashierName: 'Customer',
+        transactionId: captureId || orderId
+      });
 
       // ── Audit log — payment_received (+ status_change if awaiting_payment → pending) ────────────────
       logOrderActionSafe({
@@ -254,8 +263,16 @@ router.post('/:id/confirm-stripe-payment', async (req, res) => {
       };
       // 결제 완료 → awaiting_payment 주문을 키친 진입(pending) 으로 전환.
       const _prevStatusSt = order.status;
+      const _prevPaySt = order.payment_status;
       if (order.status === 'awaiting_payment') updatePayload.status = 'pending';
       await order.update(updatePayload);
+
+      // 결제 원장(2026-07-31) — 온라인 결제도 결제 시각을 남긴다. 위 가드가 completed 를 이미 막으므로 항상 전이.
+      await recordOrderPayment(order, {
+        prevPaymentStatus: _prevPaySt,
+        cashierName: 'Customer',
+        transactionId: paymentIntent.id
+      });
 
       // ── Audit log — payment_received (+ status_change if awaiting_payment → pending) ────────────────
       logOrderActionSafe({
