@@ -46,6 +46,10 @@ const GATES = [
   { id: 'timezone', tier: 'static', label: '🕐 타임존 가드 (신규 위반 0)', cwd: BACKEND, cmd: ['node', 'scripts/timezone-check.js'] },
   { id: 'desktop-feed', tier: 'static', label: '🖥️ 데스크탑 설치본 피드 (CTA·자동업데이트가 최신 exe 를 가리킴)', cwd: BACKEND, cmd: ['node', 'scripts/check-desktop-feed.js', '--quiet'] },
   { id: 'hydration', tier: 'static', label: '💧 state hydration 안전 (warning 0)', cwd: FRONTEND, cmd: ['node', 'scripts/state-hydration-check.js'] },
+  // 2026-08-19 (with MIN #260819-010): 선언 안 된 setter 호출이 버튼을 통째로 죽였다(2.5개월 무증상).
+  //   이 프로젝트는 TS 타입검사가 실질적으로 게이트 역할을 못 한다(typescript 4.9 vs i18next TS5 d.ts →
+  //   파서가 먼저 터지고 CRA 가 타입오류를 warning 으로만 낸다) → 이 스캐너가 그 구멍을 좁게 막는다.
+  { id: 'dead-handlers', tier: 'static', label: '🧟 죽은 핸들러 (선언 없는 setter 호출 = 클릭 즉시 ReferenceError)', cwd: BACKEND, cmd: ['node', 'scripts/check-dead-handlers.js', '--summary'] },
   { id: 'sensitive-diff', tier: 'static', label: '🧭 민감영역 diff 분류 (Fable 게이트 판정, 정보성)', cwd: BACKEND, cmd: ['node', 'scripts/check-sensitive-diff.js'], advisory: true },
   // 계약 테스트 — "사고를 박제한" jest 스위트. 개별 명령을 기억할 필요 없이 게이트가 돌린다.
   //   order-totals  = 금액 공식(돈)  /  settings-guard = 설정 wipe(thefire 무인쇄 사고)

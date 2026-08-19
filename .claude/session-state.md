@@ -1,12 +1,46 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-07-31 (v3.73 배포 — 결제 원장 일원화 + 배포 스모크 실매장 오염 수리)
+**마지막 업데이트:** 2026-08-19 (결제 증빙 Confirm 버튼 죽어 있던 것 근본 수리 — **개발서버 검증 완료·운영 미배포**)
+**직전 배포:** 2026-07-31 (v3.73 — 결제 원장 일원화 + 배포 스모크 실매장 오염 수리)
 **버전:** **v3.73** (운영 — 2026-07-31) · 데스크탑앱 0.1.10 · 안드로이드앱 0.2.0
 **작업 상태:** 완료. **운영 배포됨** (Backup `20260731_125916` · Smoke 9/9 · 4흐름 실검증 22/22)
 
 ### 진행 중인 작업
 - 없음
+
+### 완료(개발서버 검증까지) — 2026-08-19 · 운영 미배포
+
+**결제 증빙 "Confirm Payment 버튼이 눌리지가 않아" 근본 수리 (with MIN Cafe #260819-010)**
+- **근본**: `LiveOrdersPage.handleVerifyConfirm` 첫 줄이 **존재하지 않는 함수** `setAudioEnabled(false)` 호출.
+  2026-06-05 알림음 단일화(a8272d06)에서 `audioEnabled` 가 useState → 파생 const 로 바뀌며 setter 는
+  사라졌는데 호출만 남았다 → 클릭 즉시 ReferenceError → **요청이 아예 전송되지 않음**. **2.5개월 무증상.**
+  운영 번들 `4765.de35128d.chunk.js` 에서 free identifier(축약 안 됨)로 확인 = 미정의 확정.
+- **운영 실측**: 실패 구간(08:45~08:51 UTC) 이 주문 PATCH **서버 도달 0건**, 같은 매장 다른 주문 PATCH 2건은 성공
+  → 백엔드/구독정지 무관. 결제는 08:51:40 다른 화면(Floor Plan/POS)으로 처리됨(원장 1행·`paid_at` 정상).
+- **오해 제거**: `[handleInvoicePaid] subscription restored for restaurant 10` 로그는 **이미 active 여도 찍힌다**
+  (`restoreSubscription` 미변경 시에도 success:true). 그리고 `checkSubscriptionStatus` 는 **어디에도 마운트 안 됨**.
+- **수정 4가지**(Live Orders + Floor Plan 테이블 패널 양쪽 대칭):
+  ①죽은 호출 제거 ②`res.ok`/`success:false` 확인 후 실패면 **모달 유지 + 모달 안에 사유 배너**
+  (토스트는 모달 오버레이 뒤로 갈 수 있다) ③`fetchWithTimeout`(기존 유틸 재사용, 15s) — 무한대기로
+  버튼이 영구 잠기는 것 차단 ④결제는 됐는데 주방 전송(`/status`)만 실패한 경우 구분 안내(티켓 미발행 방치 방지)
+- **영구 안전망 신설**: `dev-backend/scripts/check-dead-handlers.js` + verify-all `dead-handlers` 등록.
+  선언 없는 `setXxx(` 호출을 fail-closed 로 잡는다. **고장주입 검증**(주입 시 exit 1 / 복원 시 0).
+  **왜 필요한가**: 이 프로젝트는 typescript 4.9.5 vs i18next TS5 `.d.ts` 로 **타입검사가 게이트 역할을 못 한다**
+  (파서가 먼저 터지고 CRA 가 타입오류를 warning 으로만 낸다) → TS2304 가 아무것도 막지 못했다.
+- **전수 스캔**: dev-frontend/src 562파일 중 같은 결함 **다른 곳 0건**.
+- **검증**: 신규 e2e `payment-verification.spec.js`(FI-1 서버500 / FI-2 무응답hang / OK 정상) **3회 연속 3/3**
+  · verify-all **15/15** · mount sweep(8역할+POS/manager) **통과, 크래시 0** · 🔒 인쇄 보호파일 **8/8 무접촉**
+  · 백엔드 실패응답 shape 실호출 확인(404 "Order not found" / 401 "Access token required" / 200 success:true)
+  · demo rid=38 전용(MARKER), 운영 데이터 무접촉
+- ⚠️ **Fable 게이트 대상** (`check-sensitive-diff` 기계 판정: 기준 ② 돈·주문 무결성 접촉) — 배포 전 Fable 점검 권고
+- 변경 파일: `LiveOrdersPage.tsx` · `PaymentVerificationModal.tsx` · `TableDetailPanel.tsx` ·
+  `scripts/verify-all.js` · (신규) `scripts/check-dead-handlers.js` · (신규) `e2e/payment-verification.spec.js`
+- **남은 별건(미수정, 승인 필요)**:
+  ① `orders-crud.js:1136` 의 `actionType:'updated'` 가 OrderAction ENUM 에 없어 **PATCH /orders/:id 감사로그가
+     전부 조용히 버려진다**(운영 로그 `Data truncated for column 'action_type'`). 🔒 보호파일 + 운영 ENUM 마이그 필요.
+  ② `checkSubscriptionStatus` 미마운트 = 구독정지가 API 를 안 막는다(비즈니스 결정 필요).
+  ③ 타입검사 복구(typescript 업그레이드 또는 i18next 타입 핀) — 이 게이트가 살아야 같은 클래스가 원천 차단된다.
 
 ### 완료된 작업 (이번 세션 — 2026-07-31)
 

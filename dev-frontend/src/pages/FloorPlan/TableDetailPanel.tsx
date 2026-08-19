@@ -25,6 +25,8 @@ import { getAuthToken } from '../../utils/auth';
 // 오프라인 편집 배선 (§15-5 ⑨⑩⑪⑫⑯) — 온라인 경로는 그대로, 메인POS 오프라인일 때만 로컬 op 기록.
 import { useOffline } from '../../contexts/OfflineContext';
 import { isOfflineMainPos } from '../../utils/offlineMainPos';
+// 타임아웃 있는 fetch(기존 유틸 재사용) — 무한대기로 버튼이 영구 잠기는 것 방지. 신규 유틸 만들지 않음.
+import { fetchWithTimeout } from '../../utils/offlineOrderQueue';
 // Helper: payment_proof 호환 — { current, history } 구조 또는 기존 단일 객체 모두 지원
 const getProofCurrent = (proof: any): any => {
   if (!proof) return null;
@@ -1224,58 +1226,106 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
   // Payment verification modal state
   const [showPaymentProofModal, setShowPaymentProofModal] = useState<'verify' | 'view' | false>(false);
+  // 결제 검증 실패 사유 — 모달 **안에** 표시(패널 배너는 모달 뒤라 안 보인다).
+  const [payVerifyError, setPayVerifyError] = useState<string | null>(null);
 
   const handleConfirmPaymentClick = () => {
+    setPayVerifyError(null);
     setShowPaymentProofModal('verify');
   };
 
+  // 2026-08-19 (with MIN #260819-010): "confirm payment 버튼이 눌리지가 않아" 수리.
+  // 근본 = 요청이 무응답이면 공용 Button 의 async 가드(중복결제 방지)가 promise settle 을 기다리며
+  // 버튼을 **영구 비활성**으로 잠그고, 실패는 catch 무음이라 아무 표시도 없었다.
+  // → ①fetchWithTimeout 으로 반드시 settle ②res.ok 확인 후 실패면 모달 유지 + 사유 표시
+  //   ③결제는 됐는데 주방 전송(/status)만 실패한 경우를 구분. 결제 로직·인쇄 경로는 무변경.
+  const PAY_VERIFY_TIMEOUT_MS = 15000;
+  const payVerifyMsg = (error: any): string =>
+    error?.name === 'AbortError'
+      ? 'No response from the server. Check the connection and try again.'
+      : (error?.message || 'Network error. Check the connection and try again.');
+
   const handleConfirmPayment = async () => {
-    if (!statusInfo?.orderId) return;
-    // §15-5 ⑯ 모바일 결제 증빙 검증은 서버 필요(비범위 §15-8) — 오프라인 비활성, op 미기록.
-    if (isOffline && isOfflineMainPos()) {
-      offlineNotice('오프라인', '모바일 결제 증빙 검증은 서버 연결이 필요합니다. 복구 후 처리하세요.');
+    if (!statusInfo?.orderId) {
+      setPayVerifyError('Order details could not be loaded. Refresh and try again.');
       return;
     }
+    // §15-5 ⑯ 모바일 결제 증빙 검증은 서버 필요(비범위 §15-8) — 오프라인 비활성, op 미기록.
+    if (isOffline && isOfflineMainPos()) {
+      setPayVerifyError('Payment verification needs a connection. Please retry when back online.');
+      return;
+    }
+    setPayVerifyError(null);
     setLoading(true);
     try {
       const token = getAuthToken();
-      await fetch(`/api/orders/${statusInfo.orderId}`, {
+      const res = await fetchWithTimeout(`/api/orders/${statusInfo.orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ payment_status: 'completed' })
-      });
+      }, PAY_VERIFY_TIMEOUT_MS);
+      const json = await res.json().catch(() => ({} as any));
+      if (!res.ok || json?.success === false) {
+        setPayVerifyError(json?.message || json?.error?.message || `Server rejected the request (${res.status}).`);
+        setLoading(false);
+        return;                                  // 모달 유지 → 같은 증빙으로 재시도 가능
+      }
       // 결제 완료 후 outstanding이면 pending으로 변경 (주방에 전송) — LiveOrders와 동일
       if (orderStatus === 'outstanding') {
-        await fetch(`/api/orders/${statusInfo.orderId}/status`, {
+        const sres = await fetchWithTimeout(`/api/orders/${statusInfo.orderId}/status`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ status: 'pending' })
-        });
+        }, PAY_VERIFY_TIMEOUT_MS).catch(() => null);
+        if (!sres || !sres.ok) {
+          // 결제는 기록됨 — 주방 전송만 실패. 조용히 넘기면 티켓이 안 나간다.
+          setShowPaymentProofModal(false);
+          onOrderUpdated();
+          offlineNotice('Kitchen dispatch failed', 'Payment was confirmed, but the order was not sent to the kitchen. Move the stage manually.');
+          setLoading(false);
+          return;
+        }
       }
       setShowPaymentProofModal(false);
       onOrderUpdated();
-    } catch (_) { /* silently fail */ }
+    } catch (error: any) {
+      setPayVerifyError(payVerifyMsg(error));
+      console.error('Error confirming payment:', error);
+    }
     setLoading(false);
   };
 
   const handleRejectPayment = async () => {
-    if (!statusInfo?.orderId) return;
-    // §15-5 ⑯ 모바일 결제 증빙 거절도 서버 필요 — 오프라인 비활성, op 미기록.
-    if (isOffline && isOfflineMainPos()) {
-      offlineNotice('오프라인', '모바일 결제 증빙 검증은 서버 연결이 필요합니다. 복구 후 처리하세요.');
+    if (!statusInfo?.orderId) {
+      setPayVerifyError('Order details could not be loaded. Refresh and try again.');
       return;
     }
+    // §15-5 ⑯ 모바일 결제 증빙 거절도 서버 필요 — 오프라인 비활성, op 미기록.
+    if (isOffline && isOfflineMainPos()) {
+      setPayVerifyError('Payment verification needs a connection. Please retry when back online.');
+      return;
+    }
+    setPayVerifyError(null);
     setLoading(true);
     try {
       const token = getAuthToken();
-      await fetch(`/api/orders/${statusInfo.orderId}`, {
+      const res = await fetchWithTimeout(`/api/orders/${statusInfo.orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ payment_status: 'rejected', status: 'outstanding' })
-      });
+      }, PAY_VERIFY_TIMEOUT_MS);
+      const json = await res.json().catch(() => ({} as any));
+      if (!res.ok || json?.success === false) {
+        setPayVerifyError(json?.message || json?.error?.message || `Server rejected the request (${res.status}).`);
+        setLoading(false);
+        return;
+      }
       setShowPaymentProofModal(false);
       onOrderUpdated();
-    } catch (_) { /* silently fail */ }
+    } catch (error: any) {
+      setPayVerifyError(payVerifyMsg(error));
+      console.error('Error rejecting payment:', error);
+    }
     setLoading(false);
   };
 
@@ -1484,7 +1534,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       {/* Payment Proof Verification Modal */}
       <Modal
         isOpen={!!showPaymentProofModal}
-        onClose={() => setShowPaymentProofModal(false)}
+        onClose={() => { setShowPaymentProofModal(false); setPayVerifyError(null); }}
         title={showPaymentProofModal === 'verify' ? 'Payment Verification' : 'Customer Submitted Proof'}
         size="small"
         footer={showPaymentProofModal === 'verify' ? (
@@ -1494,6 +1544,11 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
           </>
         ) : undefined}
       >
+        {payVerifyError && (
+          <div data-testid="verify-error" style={{ marginBottom: '16px', padding: '10px 12px', background: '#FEF2F2', border: '1px solid #EF4444', borderRadius: '6px', color: '#B91C1C', fontSize: '13px' }}>
+            {payVerifyError}
+          </div>
+        )}
         <div style={{ marginBottom: '16px' }}>
           <div style={{ fontSize: '14px', color: 'var(--pos-text-muted, #4B5563)', marginBottom: '6px' }}>Order: <strong style={{ color: 'var(--pos-text, #0A2540)' }}>#{statusInfo?.orderNumber}</strong></div>
           <div style={{ fontSize: '14px', color: 'var(--pos-text-muted, #4B5563)', marginBottom: '6px' }}>Amount: <strong style={{ color: 'var(--pos-text, #0A2540)' }}>{getCurrencySymbol(currency)} {statusInfo?.totalAmount?.toFixed(2)}</strong></div>

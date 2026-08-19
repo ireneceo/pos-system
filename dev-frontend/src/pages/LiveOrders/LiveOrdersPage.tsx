@@ -55,6 +55,8 @@ import PaymentVerificationModal from './PaymentVerificationModal';
 import OfflineOrdersPanel from '../../components/Offline/OfflineOrdersPanel';
 import { useOffline } from '../../contexts/OfflineContext';
 import { isOfflineMainPos } from '../../utils/offlineMainPos';
+// 타임아웃 있는 fetch(기존 유틸 재사용) — 무한대기로 버튼이 영구 잠기는 것 방지. 신규 유틸 만들지 않음.
+import { fetchWithTimeout } from '../../utils/offlineOrderQueue';
 
 // PeriodType imported from DatePeriodFilter component
 
@@ -162,6 +164,8 @@ const LiveOrdersPage: React.FC = () => {
 
   // Payment Verification Modal (for Confirm button in table list)
   const [verifyOrder, setVerifyOrder] = useState<DbOrder | null>(null);
+  // 결제 검증 실패 사유 — 모달 안에 표시(토스트는 모달 오버레이 뒤로 갈 수 있어 안 보일 수 있다).
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   // Select Mode for merging orders
   const [selectMode, setSelectMode] = useState(false);
@@ -1381,43 +1385,103 @@ const LiveOrdersPage: React.FC = () => {
   };
 
 
-  // Payment Verification Modal handlers
+  // ── Payment Verification Modal handlers
+  // 2026-08-19 (with MIN #260819-010, Irene: "confirm payment 버튼이 눌리지가 않아"):
+  //   운영 실측 — 실패 구간(08:45~08:51) 동안 이 주문의 PATCH 가 **서버에 한 건도 도달하지 않았고**
+  //   같은 매장의 다른 주문 PATCH 는 성공했다(= 백엔드·구독정지 무관, 클릭이 클라이언트에서 삼켜짐).
+  //   버튼이 "죽는" 경로 3개를 한 번에 막는다:
+  //     ① 무한대기 — 공용 Button 의 async 가드는 promise 가 settle 될 때까지 버튼을 비활성으로 잠근다
+  //        (중복결제 방지, Button.tsx). 그런데 fetch 에 타임아웃이 없어 응답이 안 오면 promise 가 영원히
+  //        안 끝나고 **버튼이 영구 비활성 = 눌리지 않음**이 된다 → fetchWithTimeout 으로 반드시 settle.
+  //     ② 실패 무통보 — res.ok 미확인 + catch 무음이라 403/400/500 이어도 성공처럼 모달이 닫혔다.
+  //        이제 실패면 **모달을 열어 둔 채** 사유를 모달 안에 띄운다(재시도 가능, 토스트는 모달 뒤로 갈 수 있음).
+  //     ③ 결제는 됐는데 주방 전송(/status)만 실패한 경우 — 티켓이 안 나가는데 조용했다 → 구분해서 알린다.
+  //   결제 로직/인쇄 경로는 무변경(같은 엔드포인트·같은 body·같은 순서).
+  const PAY_VERIFY_TIMEOUT_MS = 15000;
+
+  const payVerifyErrorText = (error: any): string =>
+    error?.name === 'AbortError'
+      ? 'No response from the server. Check the connection and try again.'
+      : (error?.message || 'Network error. Check the connection and try again.');
+
+  const payVerifyServerError = (res: Response, json: any): string =>
+    json?.message || json?.error?.message || (typeof json?.error === 'string' ? json.error : null) || `Server rejected the request (${res.status}).`;
+
   const handleVerifyConfirm = async () => {
     if (!verifyOrder) return;
     // ── 오프라인 (⑯ §15-5) — 모바일 결제 증빙 검증은 서버 필요. 오프라인 비활성 + 안내(op 미기록).
     if (isOffline && isOfflineMainPos()) {
-      showToast('Payment verification needs a connection. Please retry when back online.', 'error');
+      const msg = 'Payment verification needs a connection. Please retry when back online.';
+      setVerifyError(msg);
+      showToast(msg, 'error');
       return;
     }
-    setAudioEnabled(false);
+    setVerifyError(null);
+    // 2026-08-19 진짜 근본: 여기 있던 `setAudioEnabled(false)` 는 **존재하지 않는 함수**였다.
+    //   2026-06-05 알림음 단일화(a8272d06)에서 audioEnabled 가 useState → 파생 const 로 바뀌면서
+    //   setter 는 사라졌는데 이 호출만 남았다. 그 결과 클릭 즉시 ReferenceError → **요청이 아예
+    //   전송되지 않고 버튼이 완전히 죽어 있었다**(운영 번들 4765.chunk.js 에서 free identifier 확인).
+    //   with MIN #260819-010 의 "confirm payment 버튼이 눌리지가 않아" 가 정확히 이것.
+    //   결제 확인이 매장 알림음을 끌 이유도 없다(끄면 새 주문을 놓친다) → 재도입 금지, 삭제가 정답.
     try {
-      await fetch(`/api/orders/${verifyOrder.id}`, getFetchOptions({
+      const res = await fetchWithTimeout(`/api/orders/${verifyOrder.id}`, getFetchOptions({
         method: 'PATCH', body: JSON.stringify({ payment_status: 'completed' })
-      }));
+      }), PAY_VERIFY_TIMEOUT_MS);
+      const json = await res.json().catch(() => ({} as any));
+      if (!res.ok || json?.success === false) {
+        const msg = payVerifyServerError(res, json);
+        setVerifyError(msg);
+        showToast(msg, 'error');
+        return;                                  // 모달 유지 → 같은 증빙으로 재시도 가능
+      }
       if (verifyOrder.status === 'outstanding') {
-        await fetch(`/api/orders/${verifyOrder.id}/status`, getFetchOptions({
+        const sres = await fetchWithTimeout(`/api/orders/${verifyOrder.id}/status`, getFetchOptions({
           method: 'PATCH', body: JSON.stringify({ status: 'pending' })
-        }));
+        }), PAY_VERIFY_TIMEOUT_MS).catch(() => null);
+        if (!sres || !sres.ok) {
+          // 결제는 기록됨 — 주방 전송만 실패. 조용히 넘기면 티켓이 안 나간다.
+          showToast('Payment confirmed, but sending the order to the kitchen failed. Move the stage manually.', 'error');
+        }
       }
       setVerifyOrder(null);
       fetchOrders();
-    } catch (error) { console.error('Error confirming payment:', error); }
+    } catch (error: any) {
+      const msg = payVerifyErrorText(error);
+      setVerifyError(msg);
+      showToast(msg, 'error');
+      console.error('Error confirming payment:', error);
+    }
   };
 
   const handleVerifyReject = async () => {
     if (!verifyOrder) return;
     // ── 오프라인 (⑯ §15-5) — 모바일 결제 증빙 거절은 서버 필요. 오프라인 비활성 + 안내(op 미기록).
     if (isOffline && isOfflineMainPos()) {
-      showToast('Payment verification needs a connection. Please retry when back online.', 'error');
+      const msg = 'Payment verification needs a connection. Please retry when back online.';
+      setVerifyError(msg);
+      showToast(msg, 'error');
       return;
     }
+    setVerifyError(null);
     try {
-      await fetch(`/api/orders/${verifyOrder.id}`, getFetchOptions({
+      const res = await fetchWithTimeout(`/api/orders/${verifyOrder.id}`, getFetchOptions({
         method: 'PATCH', body: JSON.stringify({ payment_status: 'rejected', status: 'outstanding' })
-      }));
+      }), PAY_VERIFY_TIMEOUT_MS);
+      const json = await res.json().catch(() => ({} as any));
+      if (!res.ok || json?.success === false) {
+        const msg = payVerifyServerError(res, json);
+        setVerifyError(msg);
+        showToast(msg, 'error');
+        return;
+      }
       setVerifyOrder(null);
       fetchOrders();
-    } catch (error) { console.error('Error rejecting payment:', error); }
+    } catch (error: any) {
+      const msg = payVerifyErrorText(error);
+      setVerifyError(msg);
+      showToast(msg, 'error');
+      console.error('Error rejecting payment:', error);
+    }
   };
 
   const handleDeleteOrder = (orderId: number) => {
@@ -2050,7 +2114,7 @@ const LiveOrdersPage: React.FC = () => {
                           </ActionButton>
                         )}
                         {canTakePayment && (order.payment_status as any) === 'payment_verification_pending' && (
-                          <ActionButton onClick={(e) => { e.stopPropagation(); setVerifyOrder(order); }}
+                          <ActionButton onClick={(e) => { e.stopPropagation(); setVerifyError(null); setVerifyOrder(order); }}
                             style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>Confirm Payment</ActionButton>
                         )}
                         {order.status !== 'completed' && order.status !== 'cancelled' && order.payment_status !== 'pending' && order.payment_status !== 'partial' && (order.payment_status as any) !== 'payment_verification_pending' && (
@@ -2349,7 +2413,8 @@ const LiveOrdersPage: React.FC = () => {
         <PaymentVerificationModal
           verifyOrder={verifyOrder}
           operationSettings={operationSettings}
-          onClose={() => setVerifyOrder(null)}
+          error={verifyError}
+          onClose={() => { setVerifyOrder(null); setVerifyError(null); }}
           onConfirm={handleVerifyConfirm}
           onReject={handleVerifyReject}
         />

@@ -10,13 +10,16 @@ import { VerifyRejectButton, VerifyConfirmButton } from './styles';
 interface PaymentVerificationModalProps {
   verifyOrder: DbOrder | null;
   operationSettings: any;
+  // 2026-08-19: 확인/거절 실패 사유. 모달 **안에** 띄운다 — 토스트는 모달 오버레이 뒤로 갈 수 있어
+  // 매장에서 "버튼이 안 눌린다"로만 보였다(실제로는 요청 실패/무응답).
+  error?: string | null;
   onClose: () => void;
   onConfirm: () => void;
   onReject: () => void;
 }
 
 const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
-  verifyOrder, operationSettings, onClose, onConfirm, onReject
+  verifyOrder, operationSettings, error, onClose, onConfirm, onReject
 }) => {
   const { t } = useTranslation('orders');
 
@@ -37,6 +40,11 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
         const proofHistory = getProofHistory((verifyOrder as any).payment_proof);
         return (
           <>
+            {error && (
+              <div data-testid="verify-error" style={{ marginBottom: '16px', padding: '10px 12px', background: '#FEF2F2', border: '1px solid #EF4444', borderRadius: '6px', color: '#B91C1C', fontSize: '13px' }}>
+                {error}
+              </div>
+            )}
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '14px', color: '#4B5563', marginBottom: '6px' }}>Order: <strong style={{ color: '#0A2540' }}>#{verifyOrder.order_number}</strong></div>
               <div style={{ fontSize: '14px', color: '#4B5563', marginBottom: '6px' }}>Amount: <strong style={{ color: '#0A2540' }}>{formatCurrency(verifyOrder.total_amount, operationSettings.currency)}</strong></div>
