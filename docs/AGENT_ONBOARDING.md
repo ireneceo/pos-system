@@ -107,6 +107,15 @@ cd /var/www/dev-backend && node scripts/check-sensitive-diff.js
   운영 SSH 는 **`irene@87.106.78.146`** (배포 스크립트와 동일 계정, 키 있음). `root@` 는 안 된다 —
   2026-07-25 에 `root@` 로 시도해 실패하고는 "SSH 불가" 로 단정해 Irene 에게 확인을 떠넘긴 사고가 있었다.
   **읽기 전용**(SELECT·로그·상태 조회)만. 코드·설정 변경은 `/배포` 로만.
+- 🔴 **"버튼이 안 눌린다" 신고 = 핸들러 첫 줄들이 실존하는 식별자인지부터 본다.** 선언 없는 `setXxx()`
+  호출은 클릭 즉시 ReferenceError 라 **요청이 아예 안 나가고** 화면엔 아무 반응이 없다(2026-08-19
+  with MIN #260819-010, Live Orders `Confirm Payment` 2.5개월 사망). 판별법: ①운영 로그·DB 로
+  **요청이 서버에 도달했는지** 먼저 확인(도달 0건 = 클라이언트) ②운영 번들에서 그 이름이 **축약 안 된 채**
+  남아 있으면 미정의 확정(`grep -o '.\{200\}이름.\{300\}' chunk.js` — 정상 지역변수는 `Ot`,`It` 로 축약된다).
+  게이트 = verify-all `dead-handlers`. **이 프로젝트의 TS 타입검사는 게이트가 아니다**(위 표 참조).
+- **실패는 반드시 보이게** — `res.ok` 미확인 + `catch(_){}` 무음 + 타임아웃 없는 `fetch` 3종은 전부
+  "버튼이 죽은 것처럼 보임"을 만든다. 타임아웃은 신규 유틸 대신 `utils/offlineOrderQueue` 의
+  `fetchWithTimeout` 재사용, 사유는 **모달 안**에 띄운다(토스트는 모달 오버레이 뒤로 갈 수 있다).
 - **매장 접근 게이트는 아무거나 쓰면 안 된다** — `:id` 가 매장이면 `requireRestaurantScope`,
   리소스면 핸들러 안 `userCanAccessRestaurant`. `checkRestaurantAccess` 는 BG/FG 소유 폴백이 없어
   정상 사용자를 403 낸다. 불변식 `list ⊆ detail` 필수. 단일 진실 = `docs/ROLES_AND_PERMISSIONS.md`.
