@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-31 (**v3.73 운영 배포 — 결제 원장 일원화 + 배포 스모크가 실매장을 오염시키던 것 수리**. 결제 완료 경로 4개 중 원장(`order_payments`)을 쓰는 건 1개뿐이라 **결제 시각이 어디에도 기록되지 않았다**(운영 실측: 결제완료 3개월 5,904건 vs 원장 전 기간 5행, `amount_paid` 8개월 5건). 단일 헬퍼 `utils/orderPaymentLedger.js` 를 나머지 3경로(PATCH `/orders/:id`·PayPal·Stripe)가 호출 — 🔒 `orders-crud.js` 는 **4줄**(전이 전 상태 캡처 + 호출), 인쇄 블록 무접촉. 읽는 쪽 3곳이 이미 "원장 있으면 원장, 없으면 주문" 폴백이라 **이중 계상 0·IOI Mall tender 불변**(코드 실측). 백필 안 함(없는 결제 시각을 지어내지 않는다). **Fable 게이트 CONDITIONAL GO → 결함 2건 적발·수정**: **P1** 온라인결제 진입부 가드를 동시 요청 2개가 통과해 전액 원장 2행(Fable 10/10 재현) → **원자적 claim** 으로 승자만 기록 · **P2** 헬퍼가 tx-fatal(데드락)까지 삼켜 `maxRetries:3` 무력화 → retryable 이면 rethrow. 🔎 **고장주입이 내 테스트 허점을 2번 잡았다** — ①금액 상한이 멱등 가드를 가려 "멱등" 테스트가 가드를 검증 못 함 ②두 호출이 같은 값이면 MySQL 이 "변경 0행"을 돌려줘 claim 없이도 통과. 둘 다 실제 위험 시나리오로 테스트를 고쳐 검출력 확보. **배포 후 4흐름 운영 실검증 22/22**(주문관리·단계이동·결제·프린트). ⚠️ **부수 발견**: 배포 스모크가 `test_restaurant_admin`(= rid 5 **실고객 매장** The Fire)에 RM1 주문을 만들고 취소해 왔고, 그 **취소 안내표가 그 매장 주방 인쇄 큐에 쌓이고 있었다**(autoPrint 켜면 유령 취소표) → 데모 매장 전용 전환 + **fail-loud `is_demo` 가드** + `print-dismiss`·`DELETE` 자기 정리 + 잔재 0 검증. Fable 판정 후 누적 **401건 정리**(실매장 6~7월 취소 통계 **165 → 1**), 같은 큐의 실주문은 보존. verify-all **14/14** · 인쇄 라우트 **42/42** · 운영 인스펙션 **24/24**. 상세=session-state.)
+> **최종 업데이트:** 2026-08-19 (**결제 증빙 Confirm Payment 버튼이 죽어 있던 것 근본 수리 — 개발서버 검증 완료·운영 미배포**. with MIN Cafe #260819-010 "confirm payment 버튼이 눌리지가 않아" → 근본은 `LiveOrdersPage.handleVerifyConfirm` 첫 줄의 **존재하지 않는 함수** `setAudioEnabled(false)`. 2026-06-05 알림음 단일화(a8272d06)에서 `audioEnabled` 가 useState → 파생 const 로 바뀌며 setter 는 사라졌는데 호출만 남아, 클릭 즉시 ReferenceError → **요청이 아예 전송되지 않았다. 2.5개월 무증상**(운영 번들 `4765.de35128d.chunk.js` 에 free identifier 로 남아 있는 것으로 확정). 운영 실측으로 "실패 구간 이 주문 PATCH 서버 도달 0건 / 같은 매장 다른 주문 PATCH 는 성공" 을 먼저 잡아 백엔드·구독정지 가설을 제거했다(`subscription restored` 로그는 **이미 active 여도 찍히고**, `checkSubscriptionStatus` 는 **어디에도 마운트 안 됨**). 수정은 Live Orders·Floor Plan 대칭 4가지 — ①죽은 호출 제거 ②`res.ok` 확인 후 실패면 **모달 유지 + 모달 안 사유 배너**(토스트는 모달 뒤로 갈 수 있다) ③`fetchWithTimeout` 재사용(15s)로 무한대기 잠김 차단 ④결제는 됐는데 주방 전송만 실패한 경우 구분. **영구 안전망 `check-dead-handlers.js` 신설 + verify-all 등록**(고장주입 검출 확인) — 이 프로젝트는 typescript 4.9.5 vs i18next TS5 `.d.ts` 때문에 **타입검사가 게이트 역할을 못 해** TS2304 가 아무것도 막지 못했다. 562파일 전수 스캔 결과 같은 결함 다른 곳 0건. 신규 e2e 3종(서버500·무응답hang·정상) **3회 연속 3/3** · verify-all **15/15** · mount sweep 통과 · 🔒 인쇄 8/8 무접촉. ⚠️ **Fable 검증 대상**. 상세=session-state.)
+>
+> **이전:** 2026-07-31 (**v3.73 운영 배포 — 결제 원장 일원화 + 배포 스모크가 실매장을 오염시키던 것 수리**. 결제 완료 경로 4개 중 원장(`order_payments`)을 쓰는 건 1개뿐이라 **결제 시각이 어디에도 기록되지 않았다**(운영 실측: 결제완료 3개월 5,904건 vs 원장 전 기간 5행, `amount_paid` 8개월 5건). 단일 헬퍼 `utils/orderPaymentLedger.js` 를 나머지 3경로(PATCH `/orders/:id`·PayPal·Stripe)가 호출 — 🔒 `orders-crud.js` 는 **4줄**(전이 전 상태 캡처 + 호출), 인쇄 블록 무접촉. 읽는 쪽 3곳이 이미 "원장 있으면 원장, 없으면 주문" 폴백이라 **이중 계상 0·IOI Mall tender 불변**(코드 실측). 백필 안 함(없는 결제 시각을 지어내지 않는다). **Fable 게이트 CONDITIONAL GO → 결함 2건 적발·수정**: **P1** 온라인결제 진입부 가드를 동시 요청 2개가 통과해 전액 원장 2행(Fable 10/10 재현) → **원자적 claim** 으로 승자만 기록 · **P2** 헬퍼가 tx-fatal(데드락)까지 삼켜 `maxRetries:3` 무력화 → retryable 이면 rethrow. 🔎 **고장주입이 내 테스트 허점을 2번 잡았다** — ①금액 상한이 멱등 가드를 가려 "멱등" 테스트가 가드를 검증 못 함 ②두 호출이 같은 값이면 MySQL 이 "변경 0행"을 돌려줘 claim 없이도 통과. 둘 다 실제 위험 시나리오로 테스트를 고쳐 검출력 확보. **배포 후 4흐름 운영 실검증 22/22**(주문관리·단계이동·결제·프린트). ⚠️ **부수 발견**: 배포 스모크가 `test_restaurant_admin`(= rid 5 **실고객 매장** The Fire)에 RM1 주문을 만들고 취소해 왔고, 그 **취소 안내표가 그 매장 주방 인쇄 큐에 쌓이고 있었다**(autoPrint 켜면 유령 취소표) → 데모 매장 전용 전환 + **fail-loud `is_demo` 가드** + `print-dismiss`·`DELETE` 자기 정리 + 잔재 0 검증. Fable 판정 후 누적 **401건 정리**(실매장 6~7월 취소 통계 **165 → 1**), 같은 큐의 실주문은 보존. verify-all **14/14** · 인쇄 라우트 **42/42** · 운영 인스펙션 **24/24**. 상세=session-state.)
 >
 > **이전:** 2026-07-27 #2 (**v3.72 배포 — AI 카메라 서빙 운영 활성화 + 윈도우앱 인쇄 8건 수리**. AI 서빙은 코드·화면이 다 배포돼 있었는데 **운영 Enterprise 요금제에 `ai_serving` 이 빠져 403** 이었다(dev 에만 있었음) → 멱등 마이그로 등록, 운영 실호출 403→200·임베딩 220/76건 생성 확인. Irene 지적대로 Menu Photos·Serve Cam 을 **Floor Plan > Items 안**으로 통합(흐름은 원래 맞았고 진입점만 밖에 있었다). 첫 사용자가 반드시 인식 실패하던 콜드스타트 제거. Vertex 진짜 AI 실배선 완료(자격증명만 대기, 안 쓰면 과금 0). 윈도우앱은 Fable 포렌식으로 좌초 원인 규명(회귀가 아니라 **8일 5빌드 채택 실패**) 후 인쇄 결함 6건 수리 + **Fable 게이트가 내 수정이 만든 신규 2건 적발**(C1 프로브가 인쇄된 티켓을 실패로 보고→재인쇄 / C2 이음매 한 줄 중복) → 0.1.10 게시. verify-all --full 15/15 · 데스크탑 회귀 66/66 · 🔒 인쇄 8/8 무접촉. **남은 건 실프린터 종이 1장**(서버에 프린터 없음). 상세=session-state.)
 >
@@ -8613,6 +8615,64 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 1. **Irene 인쇄 변경 승인** → `check-print-guard.js --bless` (orders-crud + 어제 별건 POSTerminalPage)
 2. `/배포` → 마이그 `migrate-add-ewallet-type` + `migrate-print-needed-at` 자동 실행
 3. 배포 후 **신규 주문 오더티켓 1장 실프린터 눈 확인**(Irene) · rid=16 acceptedTypes 지정
+
+---
+
+## ✅ 완료: 결제 증빙 Confirm Payment 버튼 죽어 있던 것 근본 수리 (2026-08-19) — 개발서버 검증 완료·운영 미배포
+
+> 신고: with MIN Cafe 주문 **#260819-010** (RM 128.02 / bankTransfer) — "은행송금 확인하고 confirm payment 버튼이 눌리지가 않아".
+
+### 근본 원인 — 버튼이 "안 눌린" 게 아니라 핸들러가 첫 줄에서 죽었다
+
+`LiveOrdersPage.handleVerifyConfirm` 첫 줄이 **존재하지 않는 함수** `setAudioEnabled(false)` 를 호출.
+2026-06-05 알림음 단일화(`a8272d06`)에서 `audioEnabled` 가 `useState` → 파생 `const` 로 바뀌며 setter 는
+사라졌는데 호출만 남았다 → **클릭 즉시 ReferenceError → 요청이 아예 전송되지 않음. 2.5개월 무증상.**
+
+**증거(추측 아님)**
+- 운영 실측: 실패 구간(08:45~08:51 UTC) 이 주문 PATCH **서버 도달 0건**, 같은 매장 다른 주문 PATCH 2건은 성공
+  → 백엔드/DB/구독정지 무관. 결제는 08:51:40 **다른 화면**(Floor Plan/POS)으로 처리됨(원장 1행·`paid_at` 정상).
+- 운영 번들 `4765.de35128d.chunk.js` 에 `setAudioEnabled` 가 **축약 안 된 free identifier** 로 존재
+  (다른 지역변수는 `Ot`,`It` 로 축약) = 번들러가 해석 못 한 미정의 확정.
+- 잘못된 단서 제거: `[handleInvoicePaid] subscription restored for restaurant 10` 로그는 **이미 active 여도 찍힌다**
+  (`restoreSubscription` 이 미변경 시에도 `success:true`). `checkSubscriptionStatus` 는 **어디에도 마운트 안 됨**.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 죽은 호출 제거 | `setAudioEnabled(false)` 삭제 — 결제 확인이 매장 알림음을 끌 이유 없음(끄면 새 주문 놓침) | ✅ 완료 |
+| 실패 가시화 | `res.ok`/`success:false` 확인 → 실패면 **모달 유지 + 모달 안 사유 배너**(토스트는 모달 오버레이 뒤로 갈 수 있다) | ✅ 완료 |
+| 무한대기 차단 | 기존 유틸 `fetchWithTimeout`(15s) 재사용 — 신규 유틸 안 만듦 | ✅ 완료 |
+| 부분실패 구분 | 결제는 기록됐는데 주방 전송(`/status`)만 실패한 경우 별도 안내(티켓 미발행 방치 방지) | ✅ 완료 |
+| 양쪽 화면 대칭 | Live Orders + Floor Plan 테이블 패널 동일 처리 | ✅ 완료 |
+| 영구 안전망 | `check-dead-handlers.js` 신설 + verify-all `dead-handlers` 등록(fail-closed) | ✅ 완료 |
+| 전수 스캔 | dev-frontend/src **562파일** 중 같은 결함 **다른 곳 0건** | ✅ 완료 |
+| 회귀 테스트 | e2e `payment-verification.spec.js` — FI-1 서버500 / FI-2 무응답hang / OK 정상 | ✅ 완료 |
+
+### 왜 어떤 게이트도 못 잡았나 (구조적)
+
+`typescript@4.9.5` 인데 `node_modules/i18next` 의 `.d.ts` 가 TS5 문법(const type parameter)을 써서 파서가 먼저
+터지고, CRA 는 그 뒤 타입오류를 **warning 으로만** 낸다(빌드 통과). 즉 `TS2304 Cannot find name` 이 게이트
+역할을 전혀 못 한다 — 오타난 식별자가 조용히 운영까지 간다. `check-dead-handlers.js` 가 그 구멍을 좁게 막는다.
+
+### 검증
+
+- 신규 e2e **3회 연속 3/3**(flaky 0) — 수정 전에는 정상 경로조차 실패, 수정 후 통과 = 회귀 박제
+- **고장주입**: 게이트에 죽은 호출 재주입 → exit 1 검출 / 복원 → exit 0 (첫 시도에서 주입이 조용히 실패해
+  "통과"로 보이던 것도 잡아냄 — 주입에는 반드시 assert)
+- verify-all **15/15** · mount sweep(8역할+POS/manager) 통과·크래시 0 · 🔒 인쇄 보호파일 **8/8 무접촉**
+- 백엔드 실패 응답 shape 실호출 확인(404 `Order not found` / 401 `Access token required` / 200 `success:true`)
+- demo rid=38 전용(MARKER), 운영 데이터 무접촉
+
+### 수정된 파일
+- `dev-frontend/src/pages/LiveOrders/LiveOrdersPage.tsx`
+- `dev-frontend/src/pages/LiveOrders/PaymentVerificationModal.tsx`
+- `dev-frontend/src/pages/FloorPlan/TableDetailPanel.tsx`
+- `dev-backend/scripts/verify-all.js`
+- `dev-backend/scripts/check-dead-handlers.js` (신규)
+- `dev-frontend/e2e/payment-verification.spec.js` (신규)
+
+⚠️ **이 변경은 Fable 검증 대상** (`check-sensitive-diff` 기계 판정: 기준 ② 돈·주문 무결성 접촉) — Fable 세션 점검 후 배포 권장.
 
 ---
 
