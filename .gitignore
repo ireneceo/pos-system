@@ -88,3 +88,6 @@ backups/
 .claude/.fable-gate-nag
 .claude/.fable-gate-skip
 .claude/fable-gate-skips.log
+
+# Playwright 실행 산출물 (실패 스냅샷·트레이스) — 배포에 나가면 안 된다
+dev-frontend/test-results/

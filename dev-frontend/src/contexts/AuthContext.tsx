@@ -569,6 +569,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               preferred_language: apiUser.preferred_language || 'en'
             };
             setUser(userData);
+            // 세션 복원 시에도 컨텍스트 목록을 다시 읽는다.
+            // ⚠ 안 하면 **새로고침(F5) 후 헤더 스위처와 대시보드 진입점이 사라진다** — 목록이 로그인
+            //    시점에만 채워지기 때문(실측: e2e ⑨ 가 검출). 실사용자는 새로고침을 하므로 치명적이다.
+            refreshContextsRef.current?.();
             if (apiUser.preferred_language && apiUser.preferred_language !== i18n.language) {
               i18n.changeLanguage(apiUser.preferred_language);
             }
@@ -778,6 +782,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logoutRef = React.useRef<(() => void) | null>(null);
   // storage 리스너는 마운트 시 1회만 붙으므로, 최신 user 를 ref 로 읽는다(스테일 클로저 방지).
   const userRef = React.useRef<User | null>(null);
+  // 부팅 복원 effect 는 refreshContexts 선언보다 위에서 돌므로 ref 로 참조한다.
+  const refreshContextsRef = React.useRef<null | (() => Promise<UserContextOption[] | null>)>(null);
   userRef.current = user;
 
   const logout = async () => {
@@ -918,6 +924,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return null;
     }
   }, []);
+
+  refreshContextsRef.current = refreshContexts;
 
   const switchContext = useCallback(async (target: SwitchContextTarget) => {
     const token = getAuthToken();

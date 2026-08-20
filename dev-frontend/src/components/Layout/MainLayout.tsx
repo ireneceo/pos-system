@@ -11,6 +11,7 @@ import { PaymentStatusModals } from '../PaymentStatus/PaymentStatusModals';
 import { AccessBlocked } from '../PaymentStatus/AccessBlocked';
 import LanguageSelector from '../Common/LanguageSelector';
 import InboxBell from '../Inbox/InboxBell';
+import HeaderContextSwitcher from './HeaderContextSwitcher';
 import PlanBadge from './PlanBadge';
 import WorkstationChip from './WorkstationChip';
 import { useTranslation } from 'react-i18next';
@@ -2501,6 +2502,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <HeaderActions>
           {isLoggedIn && planType && <PlanBadgeWrapper><PlanBadge planType={planType} loading={routesLoading} /></PlanBadgeWrapper>}
           {isLoggedIn && restaurantId && <WorkstationChip restaurantId={restaurantId} />}
+          {isLoggedIn && <HeaderContextSwitcher />}
           {isLoggedIn && <InboxBell />}
           <LanguageSelector variant="globe" />
           {isLoggedIn && currentStaff ? (

@@ -13,7 +13,13 @@
  *      따라오지 않으면 그 탭은 옛 컨텍스트 화면인데 요청만 새 자격으로 나가 전부 거부되고,
  *      그 탭이 POS·주방이면 결제·자동인쇄가 조용히 멈춘다(🔒 인쇄 안전 직결).
  *
- * 쓰기는 demo 매장(rid 18·38)과 demo 계정에만 한다. 부여 행은 스펙이 만들고 반드시 지운다.
+ * 쓰기는 demo 매장(rid 18·38)과 demo 계정에만 한다.
+ *
+ * ⚠ **정리는 이 스펙이 만든 행만 지운다.** 예전엔 `afterEach` 가 계정의 모자를 **전부** 삭제했는데,
+ *   같은 demo 계정에 시연용으로 부여해 둔 모자까지 지워버려 **Irene 이 화면을 못 보는 사고**가 났다
+ *   (2026-08-20 실측). 테스트는 자기가 만든 것만 치운다 — 남의 상태를 건드리지 않는다.
+ *
+ * ⚠ **rid 18 은 e2e 전용이다. 시연용 부여에는 쓰지 말 것**(시연은 다른 demo 매장으로).
  */
 const { test, expect } = require('@playwright/test');
 const { demoLogin, apiBase, authHeaders, bodyLooksCrashed, assertDevBaseURL } = require('./fixtures/demo-guard');
@@ -26,8 +32,21 @@ const HAT_KEY = 'demo_brand_general';
 const { execFileSync } = require('child_process');
 const SEED = '/var/www/dev-backend/scripts/test-seed-context.js';
 const seed = (args) => execFileSync('node', [SEED, ...args], { encoding: 'utf8', cwd: '/var/www/dev-backend' });
-const grantHat = (email, rid) => seed(['grant', '--user', email, '--restaurant', String(rid)]);
-const revokeHats = (email) => seed(['revoke', '--user', email]);
+// 이 스펙이 만든 (계정, 매장) 쌍만 기록해 두고, 그것만 되돌린다.
+const ownGrants = new Set();
+const grantHat = (email, rid) => {
+  seed(['grant', '--user', email, '--restaurant', String(rid)]);
+  ownGrants.add(`${email}|${rid}`);
+};
+/** 이 스펙이 만든 모자만 회수 — 시연용 등 다른 부여는 건드리지 않는다. */
+const revokeOwnHats = (email) => {
+  for (const k of Array.from(ownGrants)) {
+    const [e, rid] = k.split('|');
+    if (e !== email) continue;
+    seed(['revoke', '--user', e, '--restaurant', rid]);
+    ownGrants.delete(k);
+  }
+};
 const HAT_EMAIL = 'demo-brand@purplehere.com';
 async function getContexts(request, baseURL, token) {
   const res = await request.get(apiBase(baseURL) + '/auth/contexts', { headers: authHeaders(token) });
@@ -128,14 +147,18 @@ test.describe('멀티 컨텍스트 로그인', () => {
 });
 
 test.describe('모자를 쓴 상태 (시딩)', () => {
-  test.beforeEach(() => { revokeHats(HAT_EMAIL); grantHat(HAT_EMAIL, HAT_RID); });
-  test.afterEach(() => { revokeHats(HAT_EMAIL); });
+  test.beforeEach(() => { revokeOwnHats(HAT_EMAIL); grantHat(HAT_EMAIL, HAT_RID); });
+  test.afterEach(() => { revokeOwnHats(HAT_EMAIL); });
 
-  test('⑤ 픽커에 카드 2장 — 기본 배지 + 부여받은 매장', async ({ page, request, baseURL }) => {
+  test('⑤ 픽커에 기본 정체 + 부여받은 매장이 함께 뜬다', async ({ page, request, baseURL }) => {
     assertDevBaseURL(baseURL);
     const { token, user } = await demoLogin(request, baseURL, HAT_KEY);
+    // ⚠ 총 개수로 단정하지 않는다 — 같은 demo 계정에 **시연용 부여**가 함께 있을 수 있고,
+    //   그때마다 테스트가 깨지면 그건 제품 결함이 아니라 테스트가 남의 상태에 의존한 것이다.
+    //   이 스펙이 만든 모자와 기본 정체가 **있는지**만 확인한다.
     const contexts = await getContexts(request, baseURL, token);
-    expect(contexts.length, '기본 1 + 모자 1').toBe(2);
+    expect(contexts.some((c) => c.kind === 'default'), '기본 정체는 항상 있다').toBe(true);
+    expect(contexts.some((c) => c.kind === 'granted' && c.entity_id === HAT_RID), '이 스펙이 부여한 모자').toBe(true);
 
     await page.addInitScript(([t, r]) => {
       localStorage.setItem('auth_token', t); localStorage.setItem('currentUserRole', r);
@@ -171,8 +194,8 @@ test.describe('모자를 쓴 상태 (시딩)', () => {
     await page.getByText('Test Debug Restaurant').click();
     await page.waitForURL((u) => u.pathname.includes(`/restaurant/${HAT_RID}/`), { timeout: 20000 });
 
-    // 관리자가 모자를 회수한다.
-    revokeHats(HAT_EMAIL);
+    // 관리자가 모자를 회수한다(이 스펙이 만든 것만).
+    revokeOwnHats(HAT_EMAIL);
 
     // 화면이 로그아웃(=로그인 페이지)으로 가면 안 된다 — 안내 후 픽커여야 한다.
     //
@@ -201,11 +224,11 @@ test.describe('모자를 쓴 상태 (시딩)', () => {
 });
 
 test.describe('SA 부여 관리 화면 (P4)', () => {
-  test.afterEach(() => { revokeHats(HAT_EMAIL); });
+  test.afterEach(() => { revokeOwnHats(HAT_EMAIL); });
 
   test('⑧ SA 상세 화면에서 부여 → 사용자 픽커에 반영 → 회수', async ({ request, baseURL }) => {
     assertDevBaseURL(baseURL);
-    revokeHats(HAT_EMAIL);
+    revokeOwnHats(HAT_EMAIL);
 
     // SA 토큰 — demo 계정이 없어 서명으로 만든다(health-check 선례).
     // ⚠ 프론트엔드에는 jsonwebtoken 이 없다(실측: Cannot find module). 백엔드 프로세스에서 만들어 가져온다.
@@ -229,21 +252,72 @@ test.describe('SA 부여 관리 화면 (P4)', () => {
       data: { entity_type: 'restaurant', entity_id: HAT_RID, role: 'Restaurant Admin' }
     });
     expect(grant.status(), 'SA 부여').toBe(200);
+    ownGrants.add(`${HAT_EMAIL}|${HAT_RID}`);   // API 로 만든 것도 스펙 소유로 기록 — 정리에서 빠지지 않게
 
-    // 사용자 쪽 목록에 반영되는가
+    // 사용자 쪽 목록에 반영되는가 — 개수가 아니라 **그 매장이 들어왔는지**로 본다.
     const after = await getContexts(request, baseURL, bg.token);
-    expect(after.length, '기본 1 + 부여 1').toBe(2);
+    expect(after.some((c) => c.kind === 'granted' && c.entity_id === HAT_RID), 'SA 부여분이 사용자 목록에 반영').toBe(true);
 
     // SA 목록 조회로 부여분 id 확보 → 회수
     const list = await request.get(apiBase(baseURL) + `/users/${bg.user.id}/contexts`, { headers: authHeaders(saTok) });
     const body = await list.json();
-    const granted = body.data.contexts.find((c) => c.kind === 'granted');
-    expect(granted, '부여분 존재').toBeTruthy();
+    // ⚠ "첫 번째 부여분"을 고르면 안 된다 — 같은 계정에 **시연용 부여**가 함께 있으면
+    //   남의 모자를 회수해버린다(실측: 3회 실행 뒤 시연용 rid39 가 사라졌다).
+    //   반드시 **이 스펙이 만든 매장**을 지정한다.
+    const granted = body.data.contexts.find((c) => c.kind === 'granted' && c.entity_id === HAT_RID);
+    expect(granted, `이 스펙이 부여한 모자(rid ${HAT_RID}) 존재`).toBeTruthy();
 
     const del = await request.delete(apiBase(baseURL) + `/users/${bg.user.id}/contexts/${granted.id}`, { headers: authHeaders(saTok) });
     expect(del.status(), 'SA 회수').toBe(200);
 
     const final = await getContexts(request, baseURL, bg.token);
-    expect(final.length, '회수 후 기본 1개만').toBe(1);
+    expect(final.some((c) => c.kind === 'granted' && c.entity_id === HAT_RID), '회수 후 그 모자는 사라진다').toBe(false);
+    expect(final.some((c) => c.kind === 'default'), '기본 정체는 남는다').toBe(true);
+  });
+});
+
+test.describe('헤더 스위처 (P3b)', () => {
+  test.afterEach(() => { revokeOwnHats(HAT_EMAIL); });
+
+  // ⏸ 보류 — **삭제·약화가 아니라 의도를 기록한 보류**다(assertion 은 그대로 보존).
+  // 사유: P3b 데스크탑 배치가 Irene 4줄 승인 대기(2026-08-20). 현재 모바일 헤더에만 들어가 있어
+  //       데스크탑 뷰포트에서는 표시되지 않는다. **구현 시 fixme 를 제거하고 반드시 통과시킬 것.**
+  // 알려진 빨간불을 상시 두면 "원래 하나는 실패해"가 정상화돼 게이트 신뢰가 침식된다.
+  test.fixme('⑨ 모자가 있으면 헤더에 현재 컨텍스트가 보이고, 없으면 헤더 요소가 없다', async ({ browser, request, baseURL }) => {
+    assertDevBaseURL(baseURL);
+    const SWITCHER = '[aria-label*="Switch store"], [aria-label*="매장·역할"]';
+
+    // ⚠ 계정마다 **브라우저 컨텍스트를 따로** 만든다. 한 컨텍스트에서 addInitScript 로 토큰을 심으면
+    //    그 스크립트가 **매 네비게이션마다 다시 실행돼 토큰을 처음 값으로 되돌린다**(실측: 두 번째
+    //    계정으로 바꿔도 첫 계정으로 되돌아가 스위처가 안 보였다 — 제품이 아니라 테스트의 함정).
+    const open = async (token, role, path) => {
+      const ctx = await browser.newContext();
+      await ctx.addInitScript(([t, r]) => {
+        localStorage.setItem('auth_token', t); localStorage.setItem('currentUserRole', r);
+      }, [token, role]);
+      const pg = await ctx.newPage();
+      await pg.goto(path);
+      await pg.waitForLoadState('domcontentloaded');
+      await pg.waitForTimeout(4000);
+      return { ctx, pg };
+    };
+
+    // (a) 모자 없는 계정 — 헤더에 스위처가 없어야 한다(전 사용자 현행 무변화)
+    const ra = await demoLogin(request, baseURL, 'demo_restaurant_admin');
+    const a = await open(ra.token, ra.user.role, `/restaurant/${ra.user.restaurant_id}/dashboard`);
+    expect(await a.pg.locator(SWITCHER).count(), '모자 없는 계정 헤더에는 스위처가 없어야 한다').toBe(0);
+    expect(bodyLooksCrashed(await a.pg.locator('body').innerText())).toBeFalsy();
+    await a.ctx.close();
+
+    // (b) 모자 있는 계정 — 헤더에 현재 컨텍스트가 보이고, 눌러서 선택 화면으로 간다
+    grantHat(HAT_EMAIL, HAT_RID);
+    const bg = await demoLogin(request, baseURL, HAT_KEY);
+    const b = await open(bg.token, bg.user.role, '/pos/brand/general/dashboard');
+    await expect(b.pg.locator(SWITCHER).first(), '모자 있는 계정 헤더에 스위처 표시').toBeVisible({ timeout: 15000 });
+
+    await b.pg.locator(SWITCHER).first().click();
+    await b.pg.waitForURL((u) => u.pathname.includes('/pos/select-context'), { timeout: 20000 });
+    expect(bodyLooksCrashed(await b.pg.locator('body').innerText())).toBeFalsy();
+    await b.ctx.close();
   });
 });
