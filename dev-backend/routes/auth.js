@@ -268,9 +268,28 @@ router.get('/me', async (req, res, next) => {
       }
     }
 
+    // 컨텍스트 투영 — middleware/auth.js 의 공유 헬퍼와 **같은 규칙**(중복 구현 금지, 설계 §4.3).
+    // ctx claim 이 없으면 아래 effective 는 원값 그대로라 기존 응답과 바이트 동일하다.
+    let effective = {
+      id: user.id,
+      role: user.role,
+      restaurant_id: user.restaurant_id,
+      brand_id: user.brand_id,
+      foodcourt_id: user.foodcourt_id,
+      branch_id: user.branch_id,
+      manager_id: user.manager_id,
+      permissions
+    };
+    if (decoded.ctx) {
+      const { projectContext, markContextFallback } = require('../middleware/auth');
+      const projection = await projectContext(effective, decoded.ctx);
+      effective = projection.user;
+      if (projection.fallback) markContextFallback(res);
+    }
+
     // Resolve supplier_company_id for supplier roles (Admin via owner_id reverse FK)
     let supplierCompanyId = user.supplier_company_id || null;
-    if (!supplierCompanyId && user.role === 'Supplier Admin') {
+    if (!supplierCompanyId && effective.role === 'Supplier Admin') {
       const SupplierCompany = require('../models/SupplierCompany');
       const sc = await SupplierCompany.findOne({ where: { owner_id: user.id }, attributes: ['id'] });
       if (sc) supplierCompanyId = sc.id;
@@ -284,9 +303,9 @@ router.get('/me', async (req, res, next) => {
     let restaurantName = null;
     let restaurantIsDemo = false;
     let restaurantIsTest = false;
-    if (user.restaurant_id) {
+    if (effective.restaurant_id) {
       const Restaurant = require('../models/Restaurant');
-      const r = await Restaurant.findByPk(user.restaurant_id, {
+      const r = await Restaurant.findByPk(effective.restaurant_id, {
         attributes: ['status', 'name', 'is_demo', 'is_test']
       });
       if (r) {
@@ -301,11 +320,11 @@ router.get('/me', async (req, res, next) => {
       id: user.id,
       email: user.email,
       username: user.username,
-      role: user.role,
-      restaurant_id: user.restaurant_id,
-      manager_id: user.manager_id,
-      brand_id: user.brand_id,
-      foodcourt_id: user.foodcourt_id,
+      role: effective.role,
+      restaurant_id: effective.restaurant_id,
+      manager_id: effective.manager_id,
+      brand_id: effective.brand_id,
+      foodcourt_id: effective.foodcourt_id,
       supplier_company_id: supplierCompanyId,
       subscription_status: user.subscription_status || null,
       plan_type: user.plan_type || null,
@@ -321,7 +340,7 @@ router.get('/me', async (req, res, next) => {
       is_test: !!user.is_test,
       email_verified: !!user.email_verified,   // 프론트 미인증 안내 배너용
       preferred_language: user.preferred_language || 'en',
-      permissions
+      permissions: effective.permissions
     };
 
     successResponse(res, userData, 'User information retrieved');
@@ -582,6 +601,133 @@ router.post('/resend-verification', async (req, res) => {
   } catch (error) {
     console.error('[AUTH] Resend verification error:', error.message);
     errorResponse(res, 'Failed to resend verification email', 500);
+  }
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// 멀티 컨텍스트 로그인 — 목록 조회 / 전환.
+// docs/MULTI_CONTEXT_LOGIN_DESIGN.md §4.2.
+//
+// 전환 = **새 JWT 발급**(PIN 캐셔 전환과 동일 방식, routes/staff.js:34). 신원(userId)은 그대로
+// 두고 모자만 바꾼다. 응답 shape 도 PIN 과 같아 프론트 switchUser 를 그대로 재사용한다.
+// ────────────────────────────────────────────────────────────────────────────
+const { authenticateToken } = require('../middleware/auth');
+const userContexts = require('../services/userContexts');
+
+// 고를 수 있는 컨텍스트 목록 = [파생 기본 컨텍스트] + 부여된 모자들.
+//
+// ⚠ req.user 는 **투영본**일 수 있다(모자를 쓴 상태에서 호출하면 role/스칼라가 덮여 있다).
+// 목록은 언제나 **네이티브 기준**이어야 본래 정체로 돌아올 수 있으므로, DB 원행을 다시 읽는다.
+router.get('/contexts', authenticateToken, async (req, res, next) => {
+  try {
+    const User = require('../models/User');
+    const native = await User.findByPk(req.user.id);
+    if (!native) {
+      return errorResponse(res, 'User not found', 401, 'USER_NOT_FOUND');
+    }
+    const contexts = await userContexts.listContexts(native);
+    successResponse(res, { contexts }, 'Contexts retrieved');
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 컨텍스트 전환 — `{ target: 'default' }` 또는 `{ entity_type, entity_id, role }`.
+router.post('/switch-context', authenticateToken, async (req, res, next) => {
+  try {
+    const jwt = require('jsonwebtoken');
+    const User = require('../models/User');
+
+    if (!process.env.JWT_SECRET) {
+      return errorResponse(res, 'Server configuration error', 500, 'CONFIG_ERROR');
+    }
+
+    // 네이티브 원행 재확인 — 투영본이 아니라 실제 신원으로 판정한다.
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return errorResponse(res, 'User not found', 401, 'USER_NOT_FOUND');
+    }
+    // 비활성 계정은 전환도 불가([[reference_user_deactivation]]).
+    if (user.is_active === false) {
+      return errorResponse(res, 'Account is deactivated', 403, 'ACCOUNT_DEACTIVATED');
+    }
+
+    const expiresIn = process.env.JWT_EXPIRES_IN || '24h';
+    const baseClaims = {
+      userId: user.id,
+      email: user.email,
+      username: user.username,
+      branch_id: user.branch_id,
+      manager_id: user.manager_id
+    };
+
+    // ── 1) 본래 정체로 복귀 = ctx claim 없는 **일반 토큰** 재발급 (로그인 토큰과 동일 shape).
+    if (req.body && req.body.target === 'default') {
+      const token = jwt.sign({
+        ...baseClaims,
+        role: user.role,
+        brand_id: user.brand_id,
+        foodcourt_id: user.foodcourt_id,
+        restaurant_id: user.restaurant_id
+      }, process.env.JWT_SECRET, { expiresIn });
+
+      return successResponse(res, {
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          role: user.role,
+          restaurant_id: user.restaurant_id,
+          brand_id: user.brand_id,
+          foodcourt_id: user.foodcourt_id,
+          manager_id: user.manager_id
+        },
+        context: userContexts.deriveDefaultContext(user)
+      }, 'Switched to default context');
+    }
+
+    // ── 2) 부여된 모자로 전환.
+    const { entity_type, entity_id, role } = req.body || {};
+    const resolved = await userContexts.getGrantedContextForSwitch(user.id, { entity_type, entity_id, role });
+    if (!resolved.ok) {
+      const status = resolved.reason === 'CONTEXT_NOT_GRANTED' ? 403 : 400;
+      return errorResponse(res, 'Context not available', status, resolved.reason);
+    }
+
+    // 표준 claim 에 **투영값**을 싣고(기존 판정처가 그대로 읽는다) ctx 마커를 덧붙인다.
+    // ctx 는 "어느 모자인가"의 표시일 뿐, 권한은 매 요청 서버가 user_contexts 로 재검증한다.
+    const token = jwt.sign({
+      ...baseClaims,
+      role: resolved.role,
+      restaurant_id: resolved.entity_id,
+      brand_id: null,
+      foodcourt_id: null,
+      ctx: { v: 1, t: 'restaurant', id: resolved.entity_id, r: resolved.role }
+    }, process.env.JWT_SECRET, { expiresIn });
+
+    await userContexts.touchContextUsage(resolved.id);
+
+    return successResponse(res, {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: resolved.role,
+        restaurant_id: resolved.entity_id,
+        brand_id: null,
+        foodcourt_id: null,
+        manager_id: null,
+        permissions: []
+      },
+      // suspended 매장이어도 전환은 막지 않는다(설계 §4.2) — 프론트가 인보이스 pin 으로 처리.
+      restaurantStatus: resolved.status,
+      restaurantName: resolved.name,
+      context: { kind: 'granted', entity_type: 'restaurant', entity_id: resolved.entity_id, role: resolved.role, label: resolved.name }
+    }, 'Context switched');
+  } catch (error) {
+    next(error);
   }
 });
 

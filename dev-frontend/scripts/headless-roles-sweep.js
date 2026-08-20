@@ -186,11 +186,32 @@ async function runRole(label, cfg) {
 
 (async () => {
   const all = [];
+  const skipped = [];
   for (const [k, cfg] of Object.entries(ROLES)) {
+    if (!cfg.token) skipped.push(k);
     all.push(...await runRole(k, cfg));
   }
   const failed = all.filter(r => r.status !== 'OK' || r.pageerrors.length > 0);
   console.log(`\n=== Summary: ${all.length - failed.length}/${all.length} OK · ${failed.length} failed ===`);
   failed.forEach(r => console.log(`  [${r.label}] ${r.route} → ${r.status}`));
+
+  // 🚨 거짓 통과 방지 (2026-08-20) — 토큰이 없으면 역할을 조용히 건너뛰고 `0/0 OK` 로
+  // **성공 종료**하던 구조였다. 실측 사고: 이 스크립트가 전 역할을 skip 한 채 초록불을 냈고,
+  // 그대로 "mount 검증 통과"로 보고될 뻔했다. 검사기가 아무것도 검사하지 않았으면
+  // 그건 통과가 아니라 고장이다 — fail-closed 로 닫는다.
+  // (같은 클래스: check-route-guard `--summary` fail-open 사고 → 이 프로젝트의 확정 규칙)
+  if (all.length === 0) {
+    console.error('\n✗ 검사한 페이지가 0건입니다 — 토큰 미주입으로 전 역할이 skip 됐을 수 있습니다.');
+    console.error('  필요한 env: ' + Object.keys(ROLES).map(k => k.toUpperCase() + '_TOKEN').join(', '));
+    process.exit(1);
+  }
+  if (skipped.length) {
+    console.error(`\n✗ 토큰이 없어 건너뛴 역할 ${skipped.length}개: ${skipped.join(', ')}`);
+    console.error('  일부만 검사하고 통과로 보고하지 않기 위해 실패로 처리합니다.');
+    console.error('  의도적으로 일부만 돌리려면 SWEEP_ALLOW_PARTIAL=1 을 설정하세요(그 사실이 로그에 남습니다).');
+    if (!process.env.SWEEP_ALLOW_PARTIAL) process.exit(1);
+    console.error('  → SWEEP_ALLOW_PARTIAL=1 로 부분 실행을 허용했습니다.');
+  }
+
   process.exit(failed.length ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

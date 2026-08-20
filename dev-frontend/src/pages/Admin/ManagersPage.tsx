@@ -26,6 +26,7 @@ import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useStore } from '../../contexts/StoreContext';
 import { useTranslation } from 'react-i18next';
+import UserContextsSection from '../../components/Admin/UserContextsSection';
 
 import { getAuthToken } from '../../utils/auth';
 interface Manager {
@@ -1385,7 +1386,11 @@ const ManagersPage: React.FC = () => {
                   <FormTextarea value={selectedManager.address} disabled />
                 </FormGroup>
               </FormGrid>
-            
+
+              {/* 컨텍스트("모자") 부여 관리 — System Admin 전용 (설계 §7-P4).
+                  부여 0건이면 "없음"만 보이므로 기존 화면과 사실상 동일하다. */}
+              <UserContextsSection userId={selectedManager.id.replace('mgr-', '')} />
+
         </CommonModal>
         )}
 

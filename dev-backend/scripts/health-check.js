@@ -79,8 +79,10 @@ function request(method, path, body, headers = {}) {
       let data = '';
       res.on('data', (c) => (data += c));
       res.on('end', () => {
-        try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
-        catch { resolve({ status: res.statusCode, body: data }); }
+        // headers 도 함께 반환 — 응답 헤더로 계약을 표현하는 케이스가 있다
+        // (예: 멀티 컨텍스트 폴백 `X-Context-Fallback`). 기존 케이스에는 영향 없는 추가 필드.
+        try { resolve({ status: res.statusCode, headers: res.headers, body: JSON.parse(data) }); }
+        catch { resolve({ status: res.statusCode, headers: res.headers, body: data }); }
       });
     });
     req.on('error', (e) => resolve({ status: 0, body: e.message }));
@@ -189,6 +191,60 @@ function defineAuthTests({ adminToken, customerToken, member, restId }) {
   test('auth', '잘못된 토큰 → 401/403', async () => {
     const r = await request('GET', '/auth/me', null, { Authorization: 'Bearer invalid.token.here' });
     return r.status === 401 || r.status === 403;
+  });
+
+  // ── 멀티 컨텍스트 로그인 (docs/MULTI_CONTEXT_LOGIN_DESIGN.md §4) ─────────────
+  // 영구 회귀 케이스. 부여 행을 만들지 않고 **위조/거부 경로만** 검사하므로 DB 를 안 건드린다.
+  const jwtLib = require('jsonwebtoken');
+
+  test('auth', '컨텍스트 목록 — 부여 0건이어도 본래 정체 1개는 항상 있다', async () => {
+    const r = await request('GET', '/auth/contexts', null, { Authorization: `Bearer ${adminToken}` });
+    return r.status === 200 && Array.isArray(r.body?.data?.contexts) &&
+      r.body.data.contexts.length >= 1 && r.body.data.contexts[0].kind === 'default';
+  });
+
+  test('auth', '위조 ctx 토큰 → 401 아니라 네이티브 폴백 + X-Context-Fallback', async () => {
+    // 401 이면 프론트 httpClient 가 전역 로그아웃 → 픽커 복귀 불가(설계 §4.3 F5).
+    const decoded = jwtLib.decode(adminToken) || {};
+    const forged = jwtLib.sign(
+      { userId: decoded.userId, role: 'Restaurant Admin', restaurant_id: 999999,
+        ctx: { v: 1, t: 'restaurant', id: 999999, r: 'Restaurant Admin' } },
+      process.env.JWT_SECRET, { expiresIn: '2m' }
+    );
+    // 두 경로를 **모두** 검사한다. `/auth/me` 는 라우트가 직접 투영하고, `/auth/contexts` 는
+    // authenticateToken(초크포인트)이 투영한다 — 한쪽만 보면 다른 쪽 방어가 사라져도 통과한다
+    // (실측: 초크포인트 헤더를 제거하는 고장주입이 /me 만 보던 케이스를 통과시켰다).
+    const me = await request('GET', '/auth/me', null, { Authorization: `Bearer ${forged}` });
+    const ctxList = await request('GET', '/auth/contexts', null, { Authorization: `Bearer ${forged}` });
+    return me.status === 200 && me.headers?.['x-context-fallback'] === 'revoked' &&
+      me.body?.data?.role !== 'Restaurant Admin' &&
+      ctxList.status === 200 && ctxList.headers?.['x-context-fallback'] === 'revoked';
+  });
+
+  test('auth', '전환 — 지수표기 entity_id 위조 → 400 (parseInt 우회 차단)', async () => {
+    const r = await request('POST', '/auth/switch-context',
+      { entity_type: 'restaurant', entity_id: '1.16e2', role: 'Restaurant Admin' },
+      { Authorization: `Bearer ${adminToken}` });
+    return r.status === 400;
+  });
+
+  test('auth', '전환 — v1 비허용 조합(브랜드 모자) → 400', async () => {
+    const r = await request('POST', '/auth/switch-context',
+      { entity_type: 'brand', entity_id: 1, role: 'Brand General' },
+      { Authorization: `Bearer ${adminToken}` });
+    return r.status === 400;
+  });
+
+  test('auth', '전환 — 부여받지 않은 매장 → 403', async () => {
+    const r = await request('POST', '/auth/switch-context',
+      { entity_type: 'restaurant', entity_id: restId, role: 'Restaurant Admin' },
+      { Authorization: `Bearer ${adminToken}` });
+    return r.status === 403;
+  });
+
+  test('auth', '무회귀 — ctx 없는 토큰의 /auth/me 에는 폴백 헤더가 없다', async () => {
+    const r = await request('GET', '/auth/me', null, { Authorization: `Bearer ${adminToken}` });
+    return r.status === 200 && !r.headers?.['x-context-fallback'];
   });
 }
 

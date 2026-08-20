@@ -3,6 +3,97 @@ import { Navigate, useLocation, useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext';
 import { useAllowedRoutes } from '../hooks/useAllowedRoutes';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
+// 이 파일에는 기존 로컬 `Button`(아래 styled)이 이미 있다 — 이름 충돌을 피해 별칭으로 가져온다.
+// (기존 로컬 버튼은 baseline 부채라 이번 작업 범위에서 건드리지 않는다.)
+import { Button as SharedButton } from './UI';
+
+// ── POS 현장 단말 가드용 헬퍼 (설계 §6.3) ──────────────────────────────────
+// 이 기기가 어느 매장 POS 로 고정됐는지는 로그인 시에만 기록된다(`pos_device_restaurant`,
+// AuthContext). 컨텍스트 전환은 이 값을 덮어쓰지 않으므로 "기기가 원래 속한 매장"의 기준값이 된다.
+const POS_DEVICE_ROUTE_PREFIXES = ['/pos-terminal', '/kitchen', '/display', '/checkout-display', '/floor-plan'];
+
+function isPosDeviceRoute(pathname: string): boolean {
+  return POS_DEVICE_ROUTE_PREFIXES.some((p) => pathname.startsWith(p) || pathname.includes(p));
+}
+
+function getDeviceContextMismatch(user: { restaurantId?: string | null; restaurant_id?: number | null }):
+  { device: { id: string; name: string }; session: string } | null {
+  let device: any = null;
+  try {
+    const raw = localStorage.getItem('pos_device_restaurant');
+    device = raw ? JSON.parse(raw) : null;
+  } catch {
+    device = null;
+  }
+  if (!device?.id) return null;                      // 기기 고정 없음 → 가드 미적용(기존 동작)
+  const sessionRid = String(user.restaurantId ?? user.restaurant_id ?? '');
+  if (!sessionRid) return null;
+  if (sessionRid === String(device.id)) return null; // 일치 → 통과
+  return { device: { id: String(device.id), name: device.name || '' }, session: sessionRid };
+}
+
+const MismatchWrap = styled.div`
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background: var(--pos-bg, #F6F9FC);
+  text-align: center;
+`;
+
+const MismatchPanel = styled.div`
+  max-width: 460px;
+  width: 100%;
+  padding: 28px 24px;
+  border-radius: 12px;
+  background: var(--pos-surface, #FFFFFF);
+  box-shadow: 0 4px 16px rgba(10, 37, 64, 0.08);
+
+  button {
+    min-height: 44px;
+  }
+`;
+
+const MismatchGlyph = styled.div`
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 12px;
+  color: #F59E0B;
+`;
+
+const MismatchTitle = styled.h2`
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--pos-text, #0A2540);
+`;
+
+const MismatchText = styled.p`
+  margin: 0 0 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--pos-text-muted, #425466);
+`;
+
+// 진입 차단 화면 — "이 기기의 매장으로 전환" 버튼으로 정상 상태로 돌아갈 수 있게 한다.
+const DeviceContextMismatchScreen: React.FC<{ device: { id: string; name: string }; session: string }> = ({ device }) => {
+  const { t } = useTranslation('auth');
+  const navigate = useNavigate();
+  return (
+    <MismatchWrap>
+      <MismatchPanel>
+        <MismatchGlyph aria-hidden="true">◐</MismatchGlyph>
+        <MismatchTitle>{t('context.deviceMismatch.title')}</MismatchTitle>
+        <MismatchText>{t('context.deviceMismatch.message', { device: device.name || device.id })}</MismatchText>
+        <SharedButton variant="primary" fullWidth onClick={() => navigate('/pos/select-context')}>
+          {t('context.deviceMismatch.switch')}
+        </SharedButton>
+      </MismatchPanel>
+    </MismatchWrap>
+  );
+};
 
 // Routes whose feature belongs to an advanced-tier addon module. When the user's
 // current subscription plan does not include the listed module code, ProtectedRoute
@@ -363,6 +454,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return <Navigate to="/pos/supplier/dashboard" replace />;
       default:
         return <Navigate to="/pos" replace />;
+    }
+  }
+
+  // ── POS 현장 단말 가드 (docs/MULTI_CONTEXT_LOGIN_DESIGN.md §6.3 / 검증 F7-2) ──
+  //
+  // 스위처를 POS 화면에 안 그리는 것만으로는 부족하다. B 매장 모자를 쓴 사람이 A 매장에
+  // 고정된 기기에서 주소로 POS 에 들어올 수 있고(권한상 정당하다 — 그 매장의 RA 니까),
+  // 그러면 PIN 캐셔 전환은 기기 고정 매장(A) 기준으로 직원을 찾아 **화면·기기·세션 3자가 어긋난다.**
+  // 기기 고정이 없는 브라우저는 이 가드가 아예 동작하지 않는다(기존 동작 유지).
+  if (user && isPosDeviceRoute(location.pathname)) {
+    const mismatch = getDeviceContextMismatch(user);
+    if (mismatch) {
+      return <DeviceContextMismatchScreen device={mismatch.device} session={mismatch.session} />;
     }
   }
 

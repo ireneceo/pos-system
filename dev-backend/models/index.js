@@ -9,6 +9,7 @@ const InvoiceCategory = require('./InvoiceCategory');
 const Order = require('./Order');
 const OrderAction = require('./OrderAction');
 const OrderPayment = require('./OrderPayment');
+const UserContext = require('./UserContext');
 const CashierShift = require('./CashierShift');
 const CashReconciliation = require('./CashReconciliation');
 const CashMovement = require('./CashMovement');
@@ -161,6 +162,12 @@ Restaurant.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
 
 // Brand - User (owner) associations
 Brand.belongsTo(User, { foreignKey: 'owner_id', as: 'owner' });
+// 부여된 컨텍스트("모자") — docs/MULTI_CONTEXT_LOGIN_DESIGN.md §3.2.
+// grantee(user_id) 와 부여자(granted_by) 두 방향 모두 User 를 가리킨다.
+UserContext.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+UserContext.belongsTo(User, { foreignKey: 'granted_by', as: 'grantedBy' });
+User.hasMany(UserContext, { foreignKey: 'user_id', as: 'contexts' });
+
 User.hasMany(Brand, { foreignKey: 'owner_id', as: 'brands' });
 
 // Foodcourt - User (owner) associations
@@ -1003,6 +1010,7 @@ module.exports = {
   Order,
   OrderAction,
   OrderPayment,
+  UserContext,
   CashierShift,
   CashReconciliation,
   CashMovement,

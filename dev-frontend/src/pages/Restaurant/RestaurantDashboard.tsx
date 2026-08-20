@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useContextSwitchQuickAction } from '../../components/ContextSwitchQuickAction';
 import { openSecondaryPage } from '../../utils/appShell';
 import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
@@ -486,6 +487,7 @@ const raTourSteps = (t: (k: string, fallback?: string) => string): TourStep[] =>
 ]);
 
 const RestaurantDashboard: React.FC = () => {
+  const ctxSwitchItem = useContextSwitchQuickAction();
   const { t } = useTranslation('settings');
   const displayRole = useRoleDisplayName();
   const navigate = useNavigate();
@@ -970,7 +972,11 @@ const RestaurantDashboard: React.FC = () => {
                   items.push({ icon: '≡', title: t('common:nav.menu'), desc: t('settings:restaurantDashboard.editMenuItems'), onClick: () => navigate(`/restaurant/${restaurantId}/menu`) });
                 }
 
-                return items.slice(0, 4).map((item, idx) => (
+                // 컨텍스트 전환 진입점 — 고를 것이 2개 이상일 때만 나타난다(설계 §6.2).
+                // 기존 4칸을 밀어내지 않도록 뒤에 덧붙인다.
+                const finalItems = ctxSwitchItem ? [...items.slice(0, 4), ctxSwitchItem] : items.slice(0, 4);
+
+                return finalItems.map((item, idx) => (
                   <QuickActionCard key={idx} onClick={item.onClick}>
                     <div className="icon">{item.icon}</div>
                     <div className="title">{item.title}</div>

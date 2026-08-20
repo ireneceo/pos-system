@@ -59,7 +59,7 @@ const GATES = [
   { id: 'contract-tests', tier: 'runtime', label: '📜 계약 테스트 (금액공식·설정wipe·소켓경계·마감기대금액·결제원장)', cwd: BACKEND, cmd: ['npx', 'jest', 'tests/order-totals.test.js', 'tests/settings-guard.test.js', 'tests/socket-auth.test.js', 'tests/cashup-expected.test.js', 'tests/order-payment-ledger.test.js', '--forceExit', '--silent'], timeout: 300000 },
   { id: 'inspection', tier: 'runtime', label: '🔎 인스펙션 하니스 (구조 불변식, 신규 위반 0)', cwd: BACKEND, cmd: ['node', 'scripts/inspection/run.js'] },
   { id: 'health', tier: 'runtime', label: '❤️ health-check 전체 회귀 (인쇄 계약+보안+API)', cwd: BACKEND, cmd: ['node', 'scripts/health-check.js', '--quiet'], timeout: 300000 },
-  { id: 'print-routes', tier: 'runtime', label: '🖨️ 인쇄 라우트 가드 (자동인쇄 전 루트 실제 실행)', cwd: FRONTEND, cmd: ['node', 'scripts/print-route-guard/run.js', '--quiet'], timeout: 300000 },
+  { id: 'print-routes', tier: 'runtime', label: '🖨️ 인쇄 라우트 가드 (자동인쇄 전 루트 실제 실행)', cwd: FRONTEND, cmd: ['node', 'scripts/print-route-guard/run.js', '--quiet'], timeout: 600000 },  // 300s→600s (2026-08-20): e2e·빌드와 겹치면 34/34 정상인데도 타임아웃으로 거짓 실패했다. 게이트를 느슨하게 한 게 아니라 부하 여유만 준 것.
   { id: 'i18n', tier: 'runtime', label: '🌐 i18n 4언어 키 일치', cwd: FRONTEND, cmd: ['node', 'scripts/verify-translations.js'] },
   { id: 'mount', tier: 'mount', label: '🖥️ 실브라우저 mount sweep (8역할 + /pos/manager/*, 크래시0)', cwd: FRONTEND, cmd: null /* 특수 처리: 토큰 자동조달 + 2개 sweep 병합 */, timeout: 1200000 },
 ];
@@ -185,6 +185,12 @@ function runGate(gate, extraEnv) {
       lines.slice(-6).forEach((l) => console.log(c.cyan('      ' + l)));
     } else if (!r.ok) {
       console.log(c.red(`      exit=${r.code}${r.timedOut ? ' (timeout)' : ''} — 출력 마지막 15줄:`));
+      if (r.timedOut) {
+        // 타임아웃은 "게이트 실패"가 아니라 **머신 부하**일 수 있다(2026-08-20 실측:
+        // e2e 브라우저와 겹쳐 print-route-guard 가 300초를 넘겼는데 단독 실행은 34/34 통과).
+        // 거짓 실패를 진짜 결함으로 오독하지 않도록 판단 힌트를 남긴다.
+        console.log(c.yellow(`      ⏱ ${Math.round((gate.timeout || 0) / 1000)}초 초과 — 빌드·e2e·브라우저가 같이 돌고 있었는지 확인하고, 유휴 상태에서 단독 재실행해 볼 것.`));
+      }
       r.out.trim().split('\n').slice(-15).forEach((l) => console.log(c.gray('      | ' + l)));
     }
     results.push({ gate, ...r, effOk });

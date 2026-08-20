@@ -137,6 +137,16 @@ async function login(emailOrUsername, password) {
     if (sc) supplierCompanyId = sc.id;
   }
 
+  // 고를 수 있는 컨텍스트 목록 — **덧붙이는 필드**(additive, 설계 §4). 부여 0건이면 기본 컨텍스트
+  // 1개뿐이라 프론트는 P3a 픽커가 붙기 전까지 이 값을 읽지 않는다(기존 동작 무변경).
+  // 목록 조회가 실패해도 로그인은 막지 않는다 — 로그인은 영업 생명선이다.
+  let contexts = [];
+  try {
+    contexts = await require('./userContexts').listContexts(user);
+  } catch (e) {
+    console.warn('[AUTH] listContexts 실패(로그인은 계속):', e.message);
+  }
+
   // Resolve restaurant context for RA/Staff so the frontend can decide whether to
   // pin the user to the invoice page (suspended account UX). Demo / test
   // restaurants are excluded from that pin so QA tooling stays usable.
@@ -157,6 +167,7 @@ async function login(emailOrUsername, password) {
   }
 
   return {
+    contexts,
     token,
     user: {
       id: user.id,
@@ -883,7 +894,17 @@ async function loginAsDemo(key) {
     }
   }
 
+  // 빠른 로그인도 동일하게 contexts 를 싣는다 — 데모 시연이 이 경로를 쓰므로 픽커가 비면 안 된다.
+  // login() 과 같은 패턴: 실패해도 로그인은 진행(로그인은 영업 생명선).
+  let contexts = [];
+  try {
+    contexts = await require('./userContexts').listContexts(user);
+  } catch (e) {
+    console.warn('[AUTH] listContexts 실패(빠른 로그인은 계속):', e.message);
+  }
+
   return {
+    contexts,
     token,
     user: {
       id: user.id,

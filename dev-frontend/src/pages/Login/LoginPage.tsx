@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { getDashboardPath } from '../../utils/dashboardPath';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import { LanguageSelector } from '../../components/Common';
@@ -441,7 +442,7 @@ const LoginPage: React.FC = () => {
   const displayRole = useRoleDisplayName();
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, loginAsDemo, user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { login, loginAsDemo, user, isAuthenticated, isLoading: authLoading, contexts } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -481,52 +482,17 @@ const LoginPage: React.FC = () => {
       if (isValidPath && from !== '/pos' && !isFullScreen) {
         // Redirect to the originally requested page
         navigate(from, { replace: true });
+      } else if (contexts.length >= 2) {
+        // 고를 수 있는 자격이 2개 이상일 때만 선택 화면으로 보낸다.
+        // 부여받은 모자가 없으면 목록은 [기본 정체] 1개뿐이라 여기 걸리지 않는다 = 기존 동작 그대로.
+        // (docs/MULTI_CONTEXT_LOGIN_DESIGN.md §6.1)
+        navigate('/pos/select-context', { replace: true });
       } else {
-        // Redirect to role-specific dashboard
-        switch (user.role) {
-          case 'System Admin':
-            navigate('/pos/admin/dashboard', { replace: true });
-            break;
-          case 'Foodcourt General':
-            navigate('/pos/foodcourt/general/dashboard', { replace: true });
-            break;
-          case 'Brand General':
-            navigate('/pos/brand/general/dashboard', { replace: true });
-            break;
-          case 'Foodcourt Manager':
-            navigate('/pos/foodcourt/dashboard', { replace: true });
-            break;
-          case 'Brand Manager':
-            navigate('/pos/brand/dashboard', { replace: true });
-            break;
-          case 'Restaurant Admin':
-            // Route to /pos root — PosRootRedirect renders the NoRestaurantAssigned
-            // screen when restaurantId is missing, instead of leaking into restaurant 1.
-            if (user.restaurantId) {
-              navigate(`/restaurant/${user.restaurantId}/dashboard`, { replace: true });
-            } else {
-              navigate('/pos', { replace: true });
-            }
-            break;
-          case 'Restaurant Owner':
-            navigate('/pos/owner/dashboard', { replace: true });
-            break;
-          case 'Supplier Admin':
-            navigate('/pos/supplier/dashboard', { replace: true });
-            break;
-          case 'Staff':
-            if (user.restaurantId) {
-              navigate(`/restaurant/${user.restaurantId}/dashboard`, { replace: true });
-            } else {
-              navigate('/pos', { replace: true });
-            }
-            break;
-          default:
-            navigate('/pos/basic', { replace: true });
-        }
+        // 역할별 대시보드 — 규칙은 utils/dashboardPath 단일 소스(전환·팔로우와 공유).
+        navigate(getDashboardPath(user.role, { restaurantId: user.restaurantId }), { replace: true });
       }
     }
-  }, [authLoading, isAuthenticated, user, navigate, location]);
+  }, [authLoading, isAuthenticated, user, navigate, location, contexts]);
 
   const handleQuickLogin = async (account: typeof DEMO_ACCOUNTS[0] | typeof TEST_ACCOUNTS[0]) => {
     setError('');

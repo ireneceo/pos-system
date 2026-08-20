@@ -1273,4 +1273,136 @@ router.post('/:id/reset-password', authenticateToken, async (req, res) => {
   }
 });
 
+// ────────────────────────────────────────────────────────────────────────────
+// 컨텍스트("모자") 부여 관리 — System Admin 전용.
+// docs/MULTI_CONTEXT_LOGIN_DESIGN.md §7-P4.
+//
+// v1 은 (restaurant × Restaurant Admin) 조합만 부여할 수 있다. 정합 검사와 id 정규화(^\d+$)는
+// services/userContexts 가 이미 강제하므로 **여기서 다시 구현하지 않는다** — 규칙이 두 곳으로
+// 갈라지면 그게 곧 이 프로젝트가 반복해서 데인 "판정처 분열"이다.
+//
+// ⛔ 부여 권한을 브랜드 총괄 등에게 열지 않는다 — 자기 권한을 스스로 넓히는 경로가 되기 때문.
+// ────────────────────────────────────────────────────────────────────────────
+const userContexts = require('../services/userContexts');
+const { sequelize: _seq } = require('../config/database');
+
+// 특정 유저가 가진 컨텍스트 목록 (기본 정체 + 부여된 모자).
+router.get('/:id/contexts', authenticateToken, requireRole('System Admin'), async (req, res) => {
+  try {
+    const target = await User.findByPk(req.params.id);
+    if (!target) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    const contexts = await userContexts.listContexts(target);
+
+    // 소멸 매장 행 표시(§3.5) — 목록 쿼리는 JOIN 으로 걸러내므로, 관리 화면에서는
+    // "대상 매장이 사라진 모자"를 따로 보여줘야 회수 누락을 사람이 알 수 있다.
+    const [orphans] = await _seq.query(
+      `SELECT uc.id, uc.entity_type, uc.entity_id, uc.role
+         FROM user_contexts uc
+         LEFT JOIN restaurants r ON r.id = uc.entity_id
+        WHERE uc.user_id = :uid AND uc.entity_type = 'restaurant' AND r.id IS NULL`,
+      { replacements: { uid: target.id } }
+    );
+
+    res.json({ success: true, data: { contexts, orphans } });
+  } catch (error) {
+    console.error('[users] GET /:id/contexts error:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// 모자 부여.
+router.post('/:id/contexts', authenticateToken, requireRole('System Admin'), async (req, res) => {
+  try {
+    const target = await User.findByPk(req.params.id);
+    if (!target) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    if (target.is_active === false) {
+      return res.status(400).json({ success: false, message: 'Cannot grant to a deactivated account' });
+    }
+
+    const { entity_type, entity_id, role } = req.body || {};
+    const entityId = userContexts.normalizeEntityId(entity_id);
+    if (!entityId) {
+      return res.status(400).json({ success: false, message: 'entity_id must be a positive integer' });
+    }
+    if (!userContexts.isV1GrantableCombination(entity_type, role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only (restaurant × Restaurant Admin) can be granted in this version'
+      });
+    }
+
+    const Restaurant = require('../models/Restaurant');
+    const restaurant = await Restaurant.findByPk(entityId, { attributes: ['id', 'name'] });
+    if (!restaurant) {
+      return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    }
+
+    // 자기 매장(네이티브 정체)과 같은 모자는 의미가 없다 — 중복 표시만 만든다.
+    if (String(target.restaurant_id || '') === String(entityId)) {
+      return res.status(400).json({ success: false, message: 'User already belongs to this restaurant' });
+    }
+
+    // 멱등 — UNIQUE(user_id, entity_type, entity_id, role)
+    await _seq.query(
+      `INSERT INTO user_contexts (user_id, entity_type, entity_id, role, granted_by, created_at, updated_at)
+       VALUES (:u, :t, :e, :r, :by, NOW(), NOW())
+       ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+      { replacements: { u: target.id, t: entity_type, e: entityId, r: role, by: req.user.id } }
+    );
+
+    logActivity(req, {
+      action_type: 'create',
+      entity_type: 'user_context',
+      entity_id: target.id,
+      entity_name: target.full_name || target.username || target.email,
+      description: `Granted ${role} context for restaurant "${restaurant.name}" (#${entityId}) to ${target.email || target.id}`,
+      restaurant_id: entityId
+    });
+
+    res.json({ success: true, data: { user_id: target.id, entity_id: entityId, role }, message: 'Context granted' });
+  } catch (error) {
+    console.error('[users] POST /:id/contexts error:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// 모자 회수. 회수돼도 그 사용자의 세션은 살아남고 본래 정체로 폴백한다(설계 §4.3).
+router.delete('/:id/contexts/:contextId', authenticateToken, requireRole('System Admin'), async (req, res) => {
+  try {
+    const uid = userContexts.normalizeEntityId(req.params.id);
+    const ctxId = userContexts.normalizeEntityId(req.params.contextId);
+    if (!uid || !ctxId) {
+      return res.status(400).json({ success: false, message: 'Invalid id' });
+    }
+
+    const [rows] = await _seq.query(
+      'SELECT id, entity_id, role FROM user_contexts WHERE id = :c AND user_id = :u',
+      { replacements: { c: ctxId, u: uid } }
+    );
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Context not found' });
+    }
+
+    await _seq.query('DELETE FROM user_contexts WHERE id = :c AND user_id = :u',
+      { replacements: { c: ctxId, u: uid } });
+
+    logActivity(req, {
+      action_type: 'delete',
+      entity_type: 'user_context',
+      entity_id: uid,
+      description: `Revoked ${rows[0].role} context for restaurant #${rows[0].entity_id} from user #${uid}`,
+      restaurant_id: rows[0].entity_id
+    });
+
+    res.json({ success: true, message: 'Context revoked' });
+  } catch (error) {
+    console.error('[users] DELETE /:id/contexts/:contextId error:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 module.exports = router;

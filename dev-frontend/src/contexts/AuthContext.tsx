@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import i18n from '../i18n';
 
 import { getAuthToken, setAuthToken, clearAuthToken } from '../utils/auth';
-import { setOn401Handler } from '../utils/httpClient';
+import { setOn401Handler, setOnContextFallbackHandler, resetContextFallbackNotice } from '../utils/httpClient';
 import { displayStaffName } from '../utils/staffName';
+import { getDashboardPath } from '../utils/dashboardPath';
 export type UserRole = 'System Admin' | 'Foodcourt General' | 'Brand General' | 'Foodcourt Manager' | 'Brand Manager' | 'Restaurant Owner' | 'Restaurant Admin' | 'Staff' | 'Supplier Admin' | 'Supplier Staff' | 'Referral Partner';
 
 export interface User {
@@ -38,6 +39,22 @@ export interface User {
   preferred_language?: string;
 }
 
+// 픽커가 그리는 컨텍스트 1개. 서버 `GET /api/auth/contexts` 응답 shape 을 그대로 쓴다.
+// (필드 규약은 기존 혼용 유지 — snake_case 서버 필드를 변환하지 않는다.)
+export interface UserContextOption {
+  kind: 'default' | 'granted';
+  entity_type: string;
+  entity_id: number | null;
+  role: string;
+  label: string;
+  id?: number;
+  last_used_at?: string | null;
+}
+
+export type SwitchContextTarget =
+  | { target: 'default' }
+  | { entity_type: string; entity_id: number; role: string };
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -62,6 +79,14 @@ interface AuthContextType {
   canOpenStaffRoute: (path: string) => boolean;
   // 로그인 후 Staff 기본 랜딩 경로(보유 접근 우선순위).
   staffHomePath: (restaurantId: string | number) => string;
+  // ── 멀티 컨텍스트 로그인 (docs/MULTI_CONTEXT_LOGIN_DESIGN.md §4·§6) ──
+  // 고를 수 있는 컨텍스트("모자") 목록. 1개 이하면 픽커를 띄우지 않는다(= 현행 그대로).
+  contexts: UserContextOption[];
+  // 목록 재조회 (부여/회수 후 동기화).
+  // 성공 시 목록, **조회 실패 시 null** (빈 목록과 구분 — 옛 목록 잔존 방지).
+  refreshContexts: () => Promise<UserContextOption[] | null>;
+  // 컨텍스트 전환 — 서버가 새 토큰을 발급하고 switchUser 로 갈아끼운다. 성공 시 이동할 경로 반환.
+  switchContext: (target: SwitchContextTarget) => Promise<{ ok: boolean; path?: string; error?: string }>;
   // Refetch /me and update user in place. Use after server-side state changes
   // that affect ProtectedRoute / SuspendedBanner — e.g., paying an overdue
   // invoice flips restaurantStatus from 'suspended' to 'active'.
@@ -467,6 +492,8 @@ const STAFF_ROUTE_ACCESS: { test: RegExp; keys: string[] }[] = [
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  // 고를 수 있는 컨텍스트 목록 — 부여 0건이면 [기본 정체] 1개뿐(= UI 변화 0).
+  const [contexts, setContexts] = useState<UserContextOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -584,6 +611,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (result.success && result.data) {
           const apiUser = result.data.user;
+          // 로그인 응답의 컨텍스트 목록(additive) — 부여 0건이면 [기본 정체] 1개뿐이라
+          // LoginPage 는 기존과 동일하게 대시보드로 직행한다(무회귀).
+          setContexts(Array.isArray(result.data.contexts) ? result.data.contexts : []);
 
           // Staff는 DB에서 받은 메뉴 permissions 사용
           const loginPermissions = apiUser.role === 'Staff' && Array.isArray(apiUser.permissions)
@@ -658,6 +688,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const result = await response.json();
         if (result.success && result.data) {
           const apiUser = result.data.user;
+          // 로그인 응답의 컨텍스트 목록(additive) — 부여 0건이면 [기본 정체] 1개뿐이라
+          // LoginPage 는 기존과 동일하게 대시보드로 직행한다(무회귀).
+          setContexts(Array.isArray(result.data.contexts) ? result.data.contexts : []);
           const loginPermissions = apiUser.role === 'Staff' && Array.isArray(apiUser.permissions)
             ? apiUser.permissions
             : ROLE_PERMISSIONS[apiUser.role as UserRole] || [];
@@ -743,6 +776,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logoutRef = React.useRef<(() => void) | null>(null);
+  // storage 리스너는 마운트 시 1회만 붙으므로, 최신 user 를 ref 로 읽는다(스테일 클로저 방지).
+  const userRef = React.useRef<User | null>(null);
+  userRef.current = user;
 
   const logout = async () => {
     try {
@@ -788,6 +824,57 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
+  // ── 크로스탭 동기 (설계 §4.7 — 🔒 인쇄 안전 직결) ────────────────────────
+  // 토큰은 탭이 아니라 **브라우저 단위**로 공유된다(localStorage). 한 탭에서 컨텍스트를 바꾸면
+  // 다른 탭의 메모리 user 는 옛 컨텍스트인 채 요청만 새 토큰으로 나가 **전부 403** 이 된다 —
+  // 그 탭이 POS/주방이면 결제·자동인쇄가 조용히 멈춘다. 그래서 전 탭이 함께 따라오게 한다.
+  //
+  // storage 이벤트는 **다른 탭에서만** 발화하므로(자기 탭 제외) 전환한 탭은 영향받지 않는다.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== 'auth_token') return;
+      if (!e.newValue) return;            // 로그아웃은 기존 401 경로가 처리
+      // 새 토큰으로 서버 기준 신원을 다시 읽는다(토큰을 프론트에서 해석하지 않는다).
+      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${e.newValue}` } })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((json) => {
+          const fresh = json?.data;
+          if (!fresh) return;
+          const changed =
+            String(fresh.role) !== String(userRef.current?.role) ||
+            String(fresh.restaurant_id ?? '') !== String(userRef.current?.restaurant_id ?? '');
+          if (!changed) return;
+          // ⚠ 이벤트만 쏘면 안 된다 — 메모리 user 가 옛 자격 그대로라 새 대시보드로 이동해도
+          // ProtectedRoute 가 "역할·매장 불일치"로 되튕긴다(실측: URL 그대로 + 403 누적).
+          // PIN 전환과 같은 경로로 **신원까지 교체**한 뒤 이동시킨다(auth-ready 로 StoreContext 재로드 포함).
+          switchUser(e.newValue as string, {
+            id: fresh.id,
+            email: fresh.email,
+            role: fresh.role,
+            username: fresh.username,
+            name: fresh.full_name || fresh.username || fresh.email,
+            restaurant_id: fresh.restaurant_id ?? null,
+            manager_id: fresh.manager_id ?? null,
+            brand_id: fresh.brand_id ?? null,
+            foodcourt_id: fresh.foodcourt_id ?? null,
+            permissions: Array.isArray(fresh.permissions) ? fresh.permissions : []
+          });
+          window.dispatchEvent(new CustomEvent('context-follow', { detail: fresh }));
+        })
+        .catch(() => { /* 네트워크 실패 시 다음 요청의 403 이 알려준다 */ });
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // 모자 회수 감지 — 서버가 200 + X-Context-Fallback 으로 알린다(401 금지, 설계 §4.3).
+  useEffect(() => {
+    setOnContextFallbackHandler(() => {
+      window.dispatchEvent(new Event('context-revoked'));
+    });
+    return () => setOnContextFallbackHandler(null);
+  }, []);
+
   // PIN 전환 시 JWT 교체 + user 상태 교체 (리다이렉트 없음)
   const switchUser = (token: string, userData: SwitchUserData) => {
     const newUser: User = {
@@ -809,6 +896,58 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // StoreContext에 인증 완료 알림
     window.dispatchEvent(new Event('auth-ready'));
   };
+
+  // ────────────────────────────────────────────────────────────────────────
+  // 멀티 컨텍스트 로그인 — docs/MULTI_CONTEXT_LOGIN_DESIGN.md §4·§6.
+  // 부여받은 모자가 없으면 contexts 는 [기본 정체] 1개뿐이라 UI 는 아무것도 바뀌지 않는다.
+  // ────────────────────────────────────────────────────────────────────────
+  // ⚠ 실패와 "빈 목록"을 구분해서 돌려준다(null = 조회 실패).
+  // 구분하지 않으면 호출부가 `if (list.length)` 로 걸러내다가 **회수된 옛 목록을 계속 표시**한다
+  // (실측: 회수 후에도 픽커에 사라진 모자가 남았다). 사라진 권한이 화면에 남는 건 그 자체로 결함.
+  const refreshContexts = useCallback(async (): Promise<UserContextOption[] | null> => {
+    const token = getAuthToken();
+    if (!token) return null;
+    try {
+      const res = await fetch('/api/auth/contexts', { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return null;
+      const json = await res.json();
+      const list: UserContextOption[] = json?.data?.contexts || [];
+      setContexts(list);
+      return list;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const switchContext = useCallback(async (target: SwitchContextTarget) => {
+    const token = getAuthToken();
+    if (!token) return { ok: false, error: 'NOT_AUTHENTICATED' };
+    try {
+      const res = await fetch('/api/auth/switch-context', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(target)
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.data?.token) {
+        return { ok: false, error: json?.error?.code || json?.error || `HTTP ${res.status}` };
+      }
+      // PIN 전환과 동일 경로 재사용 — 토큰 교체 + user 교체 + auth-ready 로 StoreContext 재로드.
+      switchUser(json.data.token, json.data.user);
+      // 새 컨텍스트로 넘어갔으니 회수 알림 래치를 푼다 — 안 풀면 이 모자가 회수돼도 두 번째
+      // 배너가 안 뜬다(세션당 1회만 울리는 결함).
+      resetContextFallbackNotice();
+      await refreshContexts();
+      return {
+        ok: true,
+        path: getDashboardPath(json.data.user?.role, { restaurantId: json.data.user?.restaurant_id })
+      };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'NETWORK_ERROR' };
+    }
+    // switchUser 는 이 컴포넌트 스코프에서 안정적이라 의존성에 넣지 않는다(기존 훅 관행과 동일).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshContexts]);
 
   const updateUser = (userData: Partial<User>) => {
     if (!user) return;
@@ -955,7 +1094,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     canAccessRoute,
     canOpenStaffRoute,
     staffHomePath,
-    refreshUser
+    refreshUser,
+    contexts,
+    refreshContexts,
+    switchContext
   };
 
   return (

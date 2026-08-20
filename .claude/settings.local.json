@@ -1489,6 +1489,10 @@
           {
             "type": "command",
             "command": "/var/www/.claude/hooks/auto-save.sh stop"
+          },
+          {
+            "type": "command",
+            "command": "/var/www/.claude/hooks/fable-gate.sh"
           }
         ]
       }

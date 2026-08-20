@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useContextSwitchQuickAction } from '../../components/ContextSwitchQuickAction';
 import styled from 'styled-components';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
@@ -508,6 +509,7 @@ const ForecastNote = styled.div`font-size: 11px; color: #6B7280; font-style: ita
 // ============================================================================
 
 const BrandGeneralDashboard: React.FC = () => {
+  const ctxSwitchItem = useContextSwitchQuickAction();
   const { t } = useTranslation('brand');
   const displayRole = useRoleDisplayName();
   const navigate = useNavigate();
@@ -888,7 +890,15 @@ const BrandGeneralDashboard: React.FC = () => {
               <div className="title">{t('brand:brandGeneralDashboard.reports')}</div>
               <div className="description">{t('brand:brandGeneralDashboard.performanceAnalytics')}</div>
             </QuickActionCard>
-          </QuickActionsGrid>
+                      {/* 컨텍스트 전환 — 고를 자격이 2개 이상일 때만 나타난다(설계 §6.2) */}
+            {ctxSwitchItem && (
+              <QuickActionCard onClick={ctxSwitchItem.onClick}>
+                <div className="icon">{ctxSwitchItem.icon}</div>
+                <div className="title">{ctxSwitchItem.title}</div>
+                <div className="description">{ctxSwitchItem.desc}</div>
+              </QuickActionCard>
+            )}
+</QuickActionsGrid>
         </QuickActionsSection>
 
         {/* Revenue Distribution + Active Contracts */}

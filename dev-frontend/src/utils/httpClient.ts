@@ -24,6 +24,41 @@ const POS_BYPASS_PATHS = [
 
 let on401Handler: (() => void) | null = null;
 
+// 컨텍스트("모자") 회수 감지 핸들러.
+// 서버는 회수된 ctx 토큰에 401 을 주지 않는다 — 401 은 위 전역 자동 로그아웃을 트리거해
+// "픽커로 복귀"가 아니라 강제 로그아웃이 되기 때문(설계 §4.3). 대신 200 + 이 헤더로 알린다.
+let onContextFallbackHandler: (() => void) | null = null;
+let fallbackNotified = false;
+
+export function setOnContextFallbackHandler(handler: (() => void) | null): void {
+  onContextFallbackHandler = handler;
+  fallbackNotified = false;
+}
+
+/**
+ * 알림 래치 해제 — **컨텍스트를 새로 바꿀 때마다 호출해야 한다.**
+ *
+ * 래치가 없으면 배너·네비게이션이 폭주하지만, 리셋이 없으면 반대로 **세션당 딱 한 번만** 울린다:
+ * 모자 A 회수 → 배너 → 모자 B 착용 → **B 가 회수돼도 두 번째 배너가 안 뜬다**(요청은 조용히
+ * 네이티브로 폴백돼 사용자는 이유를 모른 채 권한만 사라진 화면을 본다).
+ */
+export function resetContextFallbackNotice(): void {
+  fallbackNotified = false;
+}
+
+// 같은 세션에서 여러 요청이 동시에 헤더를 물고 와도 **1회만** 알린다(배너·네비게이션 폭주 방지).
+function notifyContextFallback(response: Response): void {
+  if (fallbackNotified || !onContextFallbackHandler) return;
+  try {
+    if (response.headers.get('X-Context-Fallback') === 'revoked') {
+      fallbackNotified = true;
+      onContextFallbackHandler();
+    }
+  } catch {
+    /* 헤더 접근 불가(opaque 응답 등) — 무시 */
+  }
+}
+
 // AuthContext에서 로그아웃 콜백 등록
 export function setOn401Handler(handler: (() => void) | null): void {
   on401Handler = handler;
@@ -87,6 +122,7 @@ export function installFetchInterceptor(): void {
           if (on401Handler) on401Handler();
         }
       }
+      notifyContextFallback(response);
       return response.clone();
     }
 
@@ -104,6 +140,9 @@ export function installFetchInterceptor(): void {
         if (on401Handler) on401Handler();
       }
     }
+
+    // 5) 컨텍스트 회수 감지 (200 + X-Context-Fallback: revoked)
+    notifyContextFallback(response);
 
     return response;
   };

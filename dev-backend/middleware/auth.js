@@ -4,6 +4,65 @@ const Restaurant = require('../models/Restaurant');
 const RestaurantManager = require('../models/RestaurantManager');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
+const { validateGrantedContext } = require('../services/userContexts');
+
+// ────────────────────────────────────────────────────────────────────────────
+// 컨텍스트 투영 — 멀티 컨텍스트 로그인의 유일한 초크포인트.
+// docs/MULTI_CONTEXT_LOGIN_DESIGN.md §4.3.
+//
+// 토큰 = "어느 모자를 쓰고 있는가"(세션 상태) / 서버 = "그 모자를 지금도 가졌는가"(권한).
+// 역할이 나뉘어 있어 재로그인 없는 전환과 회수 즉시 반영이 동시에 성립한다.
+//
+// ⛔ 이 헬퍼는 req.user 를 만들 때 **한 번만** 개입한다. 접근판정 4곳
+// (checkRestaurantAccess / userCanAccessRestaurant / 목록 WHERE / requireRestaurantScope)
+// 본문은 절대 수정하지 않는다 — 투영된 req.user 가 "그 매장의 네이티브 RA 와 똑같은 모양"이라
+// 4곳 규칙이 전부 일치하는 유일한 경로(RA 스칼라 비교) 위로만 태우는 것이 설계의 핵심이다.
+//
+// ctx 없음 → 아무 일도 하지 않는다(기존 경로 바이트 동일 = 무회귀 제1 조건).
+// ctx 있고 회수됨 → 401 이 아니라 **네이티브 정체로 폴백**. 프론트 httpClient 가 모든 401 을
+//   전역 로그아웃으로 처리하므로(설계 §4.3 F5), 401 이면 "픽커 복귀"가 아니라 강제 로그아웃이 된다.
+//   폴백은 그 사람의 진짜 정체로 내려가는 것이라 권한 확대가 없다.
+// ────────────────────────────────────────────────────────────────────────────
+async function projectContext(baseUser, ctx) {
+  if (!ctx || !baseUser) return { user: baseUser, fallback: false, projected: false };
+
+  let granted = false;
+  try {
+    granted = await validateGrantedContext(baseUser.id, {
+      entity_type: ctx.t,
+      entity_id: ctx.id,
+      role: ctx.r
+    });
+  } catch (e) {
+    // 판정 실패는 "권한 없음"으로 닫는다(fail-closed) — 단 폴백이라 세션은 산다.
+    console.error('[AUTH] context validation error:', e.message);
+    granted = false;
+  }
+
+  if (!granted) return { user: baseUser, fallback: true, projected: false };
+
+  // 투영 필드 전체 명세 — 설계 §4.3 표 그대로. 누락하면 이전 모자의 스코프가 새는 것이라
+  // brand/foodcourt/branch/manager 는 **명시적으로 null**, permissions 는 **[]** 로 덮는다.
+  return {
+    user: {
+      ...baseUser,
+      role: ctx.r,
+      restaurant_id: ctx.id,
+      brand_id: null,
+      foodcourt_id: null,
+      branch_id: null,
+      manager_id: null,
+      permissions: []
+    },
+    fallback: false,
+    projected: true
+  };
+}
+
+// 회수된 모자 감지를 프론트에 알리는 응답 헤더(401 금지 — 위 주석 참조).
+function markContextFallback(res) {
+  try { res.set('X-Context-Fallback', 'revoked'); } catch { /* 헤더 전송 후면 무시 */ }
+}
 
 const authenticateToken = async (req, res, next) => {
   try {
@@ -41,6 +100,14 @@ const authenticateToken = async (req, res, next) => {
       permissions: Array.isArray(user.permissions) ? user.permissions : [],
       is_demo: user.is_demo || false
     };
+
+    // 컨텍스트 투영 (decoded.ctx 없으면 위 req.user 그대로 = 기존 경로 무변경).
+    if (decoded.ctx) {
+      const projection = await projectContext(req.user, decoded.ctx);
+      req.user = projection.user;
+      req.contextProjected = projection.projected;
+      if (projection.fallback) markContextFallback(res);
+    }
 
     next();
   } catch (error) {
@@ -288,6 +355,14 @@ const optionalAuthenticateToken = async (req, res, next) => {
         manager_id: user.manager_id,
         is_demo: user.is_demo || false
       };
+
+      // 컨텍스트 투영 — authenticateToken 과 동일 규칙(공유 헬퍼).
+      if (decoded.ctx) {
+        const projection = await projectContext(req.user, decoded.ctx);
+        req.user = projection.user;
+        req.contextProjected = projection.projected;
+        if (projection.fallback) markContextFallback(res);
+      }
     } else {
       req.user = null;
     }
@@ -526,6 +601,9 @@ const userCanAccessEntity = async (user, entityType, entityId) => {
 module.exports = {
   authenticateToken,
   optionalAuthenticateToken,
+  // 컨텍스트 투영 — routes/auth.js `/me` 가 같은 규칙을 쓰도록 공유(중복 구현 금지).
+  projectContext,
+  markContextFallback,
   requireRole,
   requirePosCounter,
   userCanOperatePosCounter,

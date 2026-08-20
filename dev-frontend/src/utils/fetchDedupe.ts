@@ -32,6 +32,9 @@ const NON_DEDUPED_PATTERNS: RegExp[] = [
   /\/inbox/,                       // 메시지
   /\/socket\.io/,                  // websocket
   /\/auth\/me/,                    // 세션 검증
+  /\/auth\/contexts/,              // 컨텍스트("모자") 목록 — 권한 데이터라 항상 최신이어야 한다.
+                                   // 2초 TTL 캐시를 타면 **회수된 모자가 픽커에 남는다**(실측:
+                                   // 전환 직후 회수 → 픽커가 캐시된 옛 목록 2건을 그대로 표시).
   /_t=\d+/,                        // 명시적 cache-bust
 ];
 

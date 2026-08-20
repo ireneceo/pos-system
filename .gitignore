@@ -82,3 +82,9 @@ public/uploads/
 .eslintcache
 backups/
 .claude/worktrees/
+
+# Fable 게이트 상태 파일 (로컬 전용 — 지문/우회 기록)
+.claude/.fable-gate-pass
+.claude/.fable-gate-nag
+.claude/.fable-gate-skip
+.claude/fable-gate-skips.log

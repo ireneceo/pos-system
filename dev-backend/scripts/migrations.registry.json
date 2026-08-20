@@ -44,6 +44,7 @@
     "migrate-supplier-company-bridge.js",
     "migrate-supplier-staff.js",
     "migrate-takeaway-charge-nullable.js",
+    "migrate-user-contexts.js",
     "migrate-user-is-active.js",
     "promote-reservations-to-base.js",
     "register-brand-menus-module.js",

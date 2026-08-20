@@ -57,7 +57,7 @@ function logTokenMonitor(ns, reason) {
 // 소켓 핸드셰이크 JWT 검증 미들웨어. 토큰 유효 → socket.data.user 부착.
 // 모니터 모드: 토큰 없음/위조여도 next()(허용). 강제 모드: 거부.
 function makeSocketAuth(nsName) {
-  return (socket, next) => {
+  return async (socket, next) => {
     const token = (socket.handshake.auth && socket.handshake.auth.token) ||
                   socket.handshake.headers?.authorization?.replace(/^Bearer\s+/, '');
     if (token) {
@@ -67,6 +67,31 @@ function makeSocketAuth(nsName) {
           id: d.userId || d.id, role: d.role, restaurant_id: d.restaurant_id,
           brand_id: d.brand_id, foodcourt_id: d.foodcourt_id
         };
+
+        // 컨텍스트("모자") 토큰 한정 재검증 — docs/MULTI_CONTEXT_LOGIN_DESIGN.md §4.4.
+        //
+        // 핸드셰이크는 claim 만 보므로, 모자가 회수돼도 그 토큰으로 새 연결+join 이 만료(≤24h)까지
+        // 가능하다. RA 스칼라 경로는 DB 를 안 봐서 회수가 반영될 지점이 없다 → 여기서 1쿼리로 막는다.
+        //
+        // ⚠ ctx 없는 토큰(운영 중인 전 매장 함대)은 이 분기에 들어오지 않는다 = 기존 경로 무영향.
+        // 그래서 신규 경로인 ctx 소켓만은 모니터/강제 모드와 무관하게 **무조건 거부**한다.
+        if (d.ctx) {
+          const { validateGrantedContext } = require('./userContexts');
+          let ok = false;
+          try {
+            ok = await validateGrantedContext(socket.data.user.id, {
+              entity_type: d.ctx.t, entity_id: d.ctx.id, role: d.ctx.r
+            });
+          } catch (e) {
+            ok = false; // 판정 실패는 닫는다(fail-closed)
+          }
+          if (!ok) {
+            bump(nsName, 'ctxRevoked');
+            return next(new Error('auth: context revoked'));
+          }
+          socket.data.ctx = { t: d.ctx.t, id: String(d.ctx.id), r: d.ctx.r };
+        }
+
         bump(nsName, 'withToken');
         return next();
       } catch (err) {
@@ -102,6 +127,13 @@ async function canJoinRestaurant(socket, restaurantId, nsName) {
     // 토큰 없는 클라(모니터 모드에서만 도달) — 기존 동작 유지(허용).
     return !SOCKET_AUTH_ENFORCE;
   }
+  // 모자를 쓴 소켓은 **그 매장 룸만** 허용한다(설계 §4.4). 투영 토큰이라 아래 판정도 통과하지만,
+  // "한 번에 모자 하나" 원칙상 다른 룸으로 새는 경로를 여기서 닫는다. ctx 없는 소켓은 무영향.
+  if (socket.data.ctx && String(restaurantId) !== socket.data.ctx.id) {
+    bump(nsName, 'ctxRoomMismatch', `user${user.id}→r${restaurantId}`);
+    return false;
+  }
+
   let ok = false;
   try { ok = await userCanAccessRestaurant(user, restaurantId); } catch { ok = false; }
   if (!ok && !SOCKET_AUTH_ENFORCE) {

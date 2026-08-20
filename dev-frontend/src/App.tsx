@@ -8,6 +8,7 @@ import { MenuProvider } from './contexts/MenuContext';
 import { CustomerProvider } from './contexts/CustomerContext';
 import { StaffProvider } from './contexts/StaffContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import ContextFollowGate from './components/ContextFollowGate';
 import { PaymentStatusProvider } from './contexts/PaymentStatusContext';
 import { SiteSettingsProvider } from './contexts/SiteSettingsContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -26,6 +27,8 @@ import PrintDeviceReporter from './components/PrintDeviceReporter';
 import LoginPage from './pages/Login/LoginPage';
 
 // Landing Pages — lazy (logged-in users never hit these; visitors see "Loading…" once)
+// 멀티 컨텍스트 로그인 — 선택 화면(lazy) + 크로스탭 팔로우 게이트(항상 마운트, 렌더는 이벤트 시에만)
+const ContextSelectPage = React.lazy(() => import('./pages/ContextSelect/ContextSelectPage'));
 const HomePage = React.lazy(() => import('./pages/Landing/HomePage'));
 const AboutPage = React.lazy(() => import('./pages/Landing/AboutPage'));
 const FeaturesPage = React.lazy(() => import('./pages/Landing/FeaturesPage'));
@@ -471,6 +474,9 @@ function App() {
             <OrderProvider>
               <Router>
                 <AuthProvider>
+                {/* 다른 탭에서 컨텍스트가 바뀌면 이 탭도 따라오게 한다(§4.7).
+                    MainLayout(인쇄 보호파일)이 아니라 여기 두는 이유 = 보호파일 무접촉. */}
+                <ContextFollowGate />
                 <StoreProvider>
                   {/* ConsolidatedTicketRunner removed 2026-06-09 — the consolidated
                       order ticket is now produced by the existing kitchen-print mirror
@@ -530,6 +536,8 @@ function App() {
 
                       {/* Login & Email Verification */}
                       <Route path="/pos" element={<LoginPage />} />
+                      {/* 컨텍스트 선택 — 부여받은 모자가 2개 이상인 사용자만 도달한다 */}
+                      <Route path="/pos/select-context" element={<ProtectedRoute><ContextSelectPage /></ProtectedRoute>} />
                       <Route path="/verify-email" element={<VerifyEmailPage />} />
 
                       {/* Referral System (Refer & Earn) — auth handled at the page/Layout level (Phase 1D will wire ProtectedRoute) */}
