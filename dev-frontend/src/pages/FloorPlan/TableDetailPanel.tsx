@@ -1240,6 +1240,13 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   // → ①fetchWithTimeout 으로 반드시 settle ②res.ok 확인 후 실패면 모달 유지 + 사유 표시
   //   ③결제는 됐는데 주방 전송(/status)만 실패한 경우를 구분. 결제 로직·인쇄 경로는 무변경.
   const PAY_VERIFY_TIMEOUT_MS = 15000;
+  // 2026-08-20 (Fable 게이트 지적 #3): `PATCH /orders/:id` 의 400/404 는 `error` 가 **문자열**이다
+  // (orders-crud.js:1152,1159 — 예: "Order not found"). 문자열 폴백이 없으면 실제 사유가
+  // "Server rejected the request (404)" 로 뭉개져 매장이 원인을 못 본다. LiveOrders 와 규칙을 맞춘다.
+  const payVerifyServerError = (res: Response, json: any): string =>
+    json?.message || json?.error?.message || (typeof json?.error === 'string' ? json.error : null)
+    || `Server rejected the request (${res.status}).`;
+
   const payVerifyMsg = (error: any): string =>
     error?.name === 'AbortError'
       ? 'No response from the server. Check the connection and try again.'
@@ -1266,7 +1273,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       }, PAY_VERIFY_TIMEOUT_MS);
       const json = await res.json().catch(() => ({} as any));
       if (!res.ok || json?.success === false) {
-        setPayVerifyError(json?.message || json?.error?.message || `Server rejected the request (${res.status}).`);
+        setPayVerifyError(payVerifyServerError(res, json));
         setLoading(false);
         return;                                  // 모달 유지 → 같은 증빙으로 재시도 가능
       }
@@ -1316,7 +1323,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       }, PAY_VERIFY_TIMEOUT_MS);
       const json = await res.json().catch(() => ({} as any));
       if (!res.ok || json?.success === false) {
-        setPayVerifyError(json?.message || json?.error?.message || `Server rejected the request (${res.status}).`);
+        setPayVerifyError(payVerifyServerError(res, json));
         setLoading(false);
         return;
       }

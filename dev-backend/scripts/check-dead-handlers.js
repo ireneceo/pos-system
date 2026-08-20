@@ -52,7 +52,13 @@ function isDeclared(src, name) {
     new RegExp(`(?:const|let|var|function)\\s+${n}\\b`).test(src) ||      // const setX = / function setX
     new RegExp(`,\\s*${n}\\s*\\]`).test(src) ||                          // const [x, setX] = useState
     new RegExp(`\\b${n}\\s*\\??\\s*:`).test(src) ||                       // props 타입/객체 키
-    new RegExp(`\\{[^{}]*\\b${n}\\b[^{}]*\\}`).test(src)                 // 구조분해/import/props
+    // 2026-08-20 (Fable 게이트 지적 #1): 예전엔 여기가 `\\{[^{}]*name[^{}]*\\}` 였는데, **죽은 호출 자신이
+    // 자기를 가려버렸다** — `onClick={() => setGhost(true)}` 는 JSX 중괄호가, 중괄호 없는 짧은 함수 몸통
+    // `() => { setGhost(true); }` 는 그 몸통 자체가 매치되어 "선언됨"으로 통과했다(Fable 이 레플리카로 실증).
+    // 사고 클래스의 상당수(인라인 핸들러)가 그대로 새던 구멍이라 **선언 문맥 3종으로 한정**한다.
+    new RegExp(`import\\s*(?:type\\s*)?\\{[^}]*\\b${n}\\b[^}]*\\}`).test(src) ||          // import { setX }
+    new RegExp(`(?:const|let|var)\\s*\\{[^}]*\\b${n}\\b[^}]*\\}\\s*=`).test(src) ||       // const { setX } = ...
+    new RegExp(`\\(\\s*\\{[^}]*\\b${n}\\b[^}]*\\}`).test(src)                          // ({ setX }) => 파라미터 구조분해
   );
 }
 

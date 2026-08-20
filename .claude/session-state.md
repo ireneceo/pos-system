@@ -46,14 +46,30 @@
   (게이트 표에 `dead-handlers` + 흔한 함정 2줄) · 메모리 [[reference_dead_handler_type_gate_broken]]
 - ⚠️ **Fable 검증 대상** (`check-sensitive-diff`: 기준 ② 돈·주문 무결성 접촉)
 
-### 다음 확정 작업 (Irene 2026-08-19 지시)
+### ✅ Fable 검증 게이트 — 통과 (2026-08-20)
 
-**1. Fable 검증 게이트 — 이번 수정분 (운영 배포 전 필수)**
-- 대상 = 위 6개 파일. 확인 항목: diff 가 승인 절단면 안인지 / 결제 상태전이·원장에 영향 0인지 /
-  실패 경로에서 **부분 성공(결제 기록됨 + 주방 전송 실패)** 처리가 올바른지 / `check-dead-handlers.js` 오탐·누락
-- 통과 후 Irene `/배포` 지시가 있을 때만 운영 반영
+**판정 GO · 치명 결함 0.** Fable 이 실측으로 확인한 것: 절단면 준수(소스 6파일만) · 결제 PATCH 엔드포인트/body/순서
+동일 · 서버측 금액·원장·상태전이 diff 0 · 🔒 인쇄 무접촉(print/kitchen/ticket/qz/station 접촉 0, print-guard 8/8) ·
+**재클릭 멱등**(타임아웃인데 서버는 커밋된 경우까지 — `recordOrderPayment` 전이가드+잔액가드로 원장 중복 0,
+`/status` pending→pending 은 인쇄 스탬프 없음 = 티켓 중복 경로 없음) · e2e 가 헛테스트 아님(방어 제거 시 각각 실패,
+FI-2 17.7s = 15s 타임아웃 실증) · **스캐너가 사고 시점 커밋(3f6a6a0a)의 `setAudioEnabled` line 1392 를 실제로 검출**.
 
-**2. 안드로이드 실기기 검증 — 태블릿 PC 확보됨 (2026-08-19)**
+**지적 3건 중 2건 즉시 반영:**
+- ① **스캐너 규칙4 누락 수정** — 죽은 호출 자신이 자기를 "선언됨"으로 가려 `onClick={() => setGhost(true)}` 같은
+  **인라인 핸들러가 통과**하고 있었다(Fable 레플리카 실증). 규칙4를 선언 문맥 3종(`import {}` / `const {} =` /
+  `({}) =>` 파라미터)으로 한정. **고장주입 확인**: 누락 2종 검출 / 정상 선언 대조군 미검출 / 562파일 오탐 0.
+- ③ **TableDetailPanel 메시지 비대칭 수정** — 백엔드 400/404 는 `error` 가 **문자열**인데 TDP 에 문자열 폴백이
+  없어 실제 사유("Order not found")가 `Server rejected the request (404)` 로 뭉개졌다 → LiveOrders 와 규칙 통일.
+- ② **`completed → rejected` 후퇴 창은 후속 분리** — 결제가 서버에 커밋된 뒤 Reject 를 누르면 백엔드가 그대로
+  받는다(원장엔 수납 기록, 주문은 미결제 = 대사 불일치). **이중계상은 없고 기존 동작**이며 이번 변경이 만든 게 아니다.
+  고치려면 🔒 `orders-crud.js` 에 409 거부 필요 → **별도 승인 건** (아래 별건 ④).
+
+**재검증(수정 후)**: e2e **3회 연속 3/3** · 정적 게이트 **10/10** · mount sweep · print-guard 8/8.
+**남은 것 = Irene `/배포` 지시뿐.**
+
+### 다음 확정 작업 (Irene 지시)
+
+**1. 안드로이드 실기기 검증 — 태블릿 PC 확보됨 (2026-08-19). 사전점검 완료(2026-08-20)**
 > 그동안 "테스트할 매장이 아예 없다"로 막혀 있던 항목. **기기가 생겨 해제됨.**
 - 앱: `https://purplehere.com/desktop/` 사이드로드 APK (안드로이드앱 0.2.0)
 - 검증 묶음(**기기 1대에 한 번에 몰아서** — 왕복 1회 원칙):
@@ -65,7 +81,22 @@
   - `device_status` 에 실제로 올라오는지(현재 실사용 0대 [[reference_native_apps_zero_adoption]])
 - ⚠️ 실기기 **종이 출력 확인은 Irene 눈**이 필요(코드/헤드리스로는 못 봄)
 
-**3. 이번 세션에서 발견했으나 미수정 — 다음 세션에서 처리 (Irene 지시)**
+**사전점검 결과 (2026-08-20, 실측 — 이걸 안 하면 4번째 오진이 난다)**
+- ✅ APK `https://purplehere.com/desktop/PurplePOS.apk` HTTP 200 · **정식 서명**(CN=Purple POS, O=Purple Here, C=MY)
+  · 내부 `capacitor.config.json` = `https://purplehere.com/pos` **운영 오리진**(= V4-5 정적검사 통과)
+- ✅ **인쇄 텔레메트리는 네이티브 앱에서 자동 발사** — `billPrint._printTrace` 가 `__NATIVE_PRINT` 있으면 무조건
+  `POST /api/orders/print-debug` → 운영 로그 `[print-trace] CLIENT`. **켤 플래그도 코드 수정도 불필요** →
+  V4 블로커 #2("claim 은 되는데 0바이트 + trace 0")를 🔒 보호파일 무접촉으로 실기기에서 측정 가능.
+- ✅ 관측 도구 `dev-backend/scripts/watch-android-device.js` (읽기 전용: 기기리포트 / claim·`printed_at` 전이 /
+  print-trace 한 화면). 유실 판정은 `needs_print` 아니라 **`printed_at`** 으로 한다(함정 #2).
+- 🔴 **차단 조건 — with MIN(rid10) 주방 마스터 자동인쇄가 꺼져 있다.** 운영 실측:
+  `kitchenPrinter.autoPrint=false`, `address=""` / 스테이션 Kitchen(9)·BAR(22)는 `autoPrint=true`,`address=POS-80`,qztray.
+  실제 게이트는 `useAutoPrintPoller.ts:212` 의 `_kitchenAuto = kitchenPrinter.enabled && kitchenPrinter.autoPrint`
+  = **마스터만 본다**(스테이션 OR 금지 = 2026-06-25 확정). 기기 리포트도 `auto=0` 으로 일치.
+  → **테스트 시작 시 Irene 이 설정에서 주방 마스터 autoPrint 를 켜야 한다**(프린터 설정은 RA 만 변경 가능,
+  실매장이라 내가 임의로 안 바꾼다). 안 켜면 폴러가 아예 안 찍어 "앱이 못 찍는다" 로 또 오진난다.
+
+**2. 발견했으나 미수정 — 다음 세션에서 처리 (Irene 지시)**
 - ① 🔒 `orders-crud.js:1136` 의 `actionType:'updated'` 가 OrderAction ENUM 에 없어 **PATCH /orders/:id
   감사로그가 전부 조용히 버려진다**(운영 로그 `Data truncated for column 'action_type'` 실측).
   → 보호파일 + 운영 ENUM 마이그 필요 = **Fable 게이트 대상**. 결제 주체는 `order_payments`(v3.73)에 남으므로
@@ -74,6 +105,9 @@
   (정말 막을 것인가 / 어디까지 막을 것인가). 지금은 정지돼도 매장이 정상 사용 가능.
 - ③ **타입검사 복구** — typescript 업그레이드 또는 i18next 타입 핀. 이게 살아야 같은 클래스가 원천 차단된다
   (`check-dead-handlers.js` 는 좁은 임시 방어막).
+- ④ **`completed → rejected` 후퇴 차단**(Fable 지적 #2) — 결제가 서버에 커밋된 뒤 매장이 Reject 를 누르면
+  `PATCH /orders/:id` 가 그대로 받아 **원장엔 수납 기록 / 주문은 미결제** 대사 불일치 창이 생긴다.
+  이중계상은 없고 기존 동작이지만, 🔒 `orders-crud.js` 에 409 거부를 넣어야 하므로 **별도 승인 + Fable 게이트**.
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
