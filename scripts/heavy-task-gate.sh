@@ -23,6 +23,15 @@ emulator_running() { pgrep -x 'qemu-system-x86|emulator' >/dev/null 2>&1; }
 build_running() {
   ps -eo comm,args --no-headers | awk '$1 == "node" && /react-scripts/ { found = 1 } END { exit !found }'
 }
+# 2026-08-20: 위 판정은 **도구 이름(react-scripts)에 묶여 있어** 같은 박스의 다른 빌드를 못 본다.
+# 실측 사고 직전 상황: PlanQ 프론트 빌드가 `node .../tsc -b` 로 **4.1GB** 를 쓰고 있는데
+# build_running() 은 false 를 반환했다(react-scripts 아님). 이 박스에는 Purple 말고도
+# PlanQ·Lingo 가 함께 산다 — 도구도 제품도 앞으로 더 늘어난다.
+# → 이름이 아니라 **실제 사용량**으로 판정한다. 1.5GB 넘게 쓰는 node 프로세스가 있으면
+#   무엇이 됐든 중량작업으로 간주. comm 기준이라 pgrep -f 자기매칭 오탐도 없다.
+heavy_node_running() {
+  ps -eo comm,rss --no-headers | awk '$1 == "node" && $2 > 1536000 { found = 1 } END { exit !found }'
+}
 
 case "$ROLE" in
   build)
@@ -37,6 +46,12 @@ case "$ROLE" in
     if build_running; then
       echo "GATE 차단: 프론트 빌드가 실행 중입니다 — 에뮬레이터와 겹치면 서버가 얼어붙습니다."
       echo "          빌드 완료 후 다시 실행하세요."
+      exit 1
+    fi
+    if heavy_node_running; then
+      echo "GATE 차단: 메모리를 크게 쓰는 node 작업(빌드 등)이 실행 중입니다 — 에뮬레이터와 겹치면 서버가 얼어붙습니다."
+      echo "          해당 작업 완료 후 다시 실행하세요. 지금 도는 것:"
+      ps -eo pid,rss,comm,args --no-headers | awk '$3 == "node" && $2 > 1536000 { line=""; for (i=4; i<=NF && i<=9; i++) line = line " " $i; printf "            %sMB  pid %s %s\n", int($2/1024), $1, line }'
       exit 1
     fi
     MIN=3000

@@ -12,7 +12,7 @@
  * exist on the tablet, NOTHING is printed AND the order is NOT stamped — it must stay
  * armed for a retry. A "success-looking non-print" is the one outcome a shop can't see.
  *
- * Demo restaurant only (is_demo) — never touches a live shop's data.
+ * Demo restaurant only — is_demo 를 fail-loud 로 강제 확인한다(2026-08-20). 실매장 무접촉.
  *
  *   node scripts/verify/run-v4.js [--keep]
  */
@@ -41,8 +41,14 @@ const API = 'http://localhost:3001/api';
 const MARKER = '__V4_ANDROID_PRINT__';
 // The demo-login key the app logs in with, and the account it maps to
 // (services/authService.js). Its restaurant is the one the poller watches.
-const DEMO_RA_KEY = 'test_restaurant_admin';
-const DEMO_RA_EMAIL = 'admin@kdine.com';
+// 2026-08-20: 예전엔 `test_restaurant_admin`(= admin@kdine.com → dev rid 5 "Test3") 이었다.
+// 그 매장은 **is_demo=0 · is_test=0** 이라, 헤더의 "Demo restaurant only (is_demo)" 선언이
+// 사실이 아니었다 — 이 게이트는 매장 **프린터 설정을 갈아끼우고 주문을 만든다**(중단된 실행이
+// 스테이션 설정을 지운 사고가 §8-6-1 에 기록돼 있다). 2026-07-31 배포 스모크가 같은 키로 실매장
+// (운영 rid 5 = The Fire)을 오염시킨 것과 **동일한 결함 클래스**라 같은 방식으로 고친다:
+//   ① 데모 매장 키로 교체 ② is_demo 를 **fail-loud** 로 강제(조용히 건너뛰기 금지).
+const DEMO_RA_KEY = 'demo_restaurant_admin';
+const DEMO_RA_EMAIL = 'demo-restaurant@purplehere.com';
 const KEEP = process.argv.includes('--keep');
 
 const children = [];
@@ -212,7 +218,13 @@ async function main() {
   if (!/dev/i.test(dbName)) {
     throw new Error(`DB '${dbName}' 은 개발 DB 가 아니다 — 주문을 만드는 게이트라 중단한다`);
   }
-  console.log(`  검증 매장 rid=${rid} (${shop.name}) · DB=${dbName}`);
+  // 데모 매장 fail-loud 가드 — "데모가 아니면 조용히 건너뛴다" 가 아니라 **중단**한다.
+  // 조용한 스킵은 "게이트가 돌았다"는 착각을 남기고, 그 사이 실매장이 오염된다(2026-07-31 교훈).
+  if (!shop.is_demo) {
+    throw new Error(`rid=${rid} (${shop.name}) 은 데모 매장이 아니다(is_demo=${shop.is_demo}) — `
+      + '이 게이트는 프린터 설정을 갈아끼우고 주문을 만든다. 데모 매장에서만 실행한다.');
+  }
+  console.log(`  검증 매장 rid=${rid} (${shop.name}) · is_demo=1 ✓ · DB=${dbName}`);
 
   // Orphan sweep — marker-scoped, so a previous interrupted run can't skew this one.
   await Order.destroy({ where: { customer_name: MARKER, restaurant_id: rid }, force: true });
