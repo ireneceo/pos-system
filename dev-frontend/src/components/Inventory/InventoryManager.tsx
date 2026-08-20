@@ -33,7 +33,7 @@ import GeneralStockFormModal from './modals/GeneralStockFormModal';
 import DeleteConfirmModal from './modals/DeleteConfirmModal';
 
 const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId: propRestaurantId }) => {
-  useAuth();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const restaurantId = mode === 'restaurant' ? propRestaurantId : undefined;
@@ -50,6 +50,49 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [stockTypeFilter, setStockTypeFilter] = useState<'all' | 'ingredients' | 'general_stock'>('all');
+
+  // ── 부족 알림에서 바로 발주 담기 ─────────────────────────────────────────
+  // 즉시 발주가 아니라 **장바구니에 담는다**: 부족한 품목은 보통 여러 개 나오고,
+  // 하나씩 주문서를 만들면 같은 판매자에게 주문이 쪼개진다. 담아 두면 발주 화면에서
+  // 판매자별로 묶어 한 번에 보낼 수 있다.
+  // 저장 형식은 발주 화면(NewPurchaseOrderPage)의 CartRow 와 **같은 모양·같은 키**를 쓴다 —
+  // 다른 형식으로 쓰면 담긴 게 화면에 안 나타나는 조용한 실패가 된다.
+  const [cartNotice, setCartNotice] = useState<string | null>(null);
+
+  const addToPurchaseCart = (ingredient: any) => {
+    const brandId = (user as any)?.brand_id;
+    if (!brandId) return;
+    const key = `po-cart:brands:${brandId}`;
+    try {
+      const raw = localStorage.getItem(key);
+      const cart: any[] = raw ? JSON.parse(raw) : [];
+      const cartKey = `pi:${ingredient.id}`;
+      const existing = cart.find((r) => r.cart_key === cartKey);
+      // 부족분 = 최소 재고 - 현재 재고. 0 이하면 최소 주문량(없으면 1)으로 시작한다.
+      const shortfall = Math.max(0, (ingredient.min_stock || 0) - (ingredient.current_stock || 0));
+      const qty = Math.max(shortfall || 0, ingredient.min_order || 0) || 1;
+      if (existing) {
+        existing.quantity = (existing.quantity || 0) + qty;
+      } else {
+        cart.push({
+          cart_key: cartKey,
+          ingredient_id: ingredient.linked_ingredient_id || ingredient.id,
+          product_ingredient_id: ingredient.id,
+          ingredient_name: ingredient.name,
+          ingredient_unit: ingredient.unit,
+          selected_seller_id: ingredient.supplier_id || 0,
+          quantity: qty,
+          available_sellers: []
+        });
+      }
+      localStorage.setItem(key, JSON.stringify(cart));
+      setCartNotice(`${ingredient.name} added to your order cart (${cart.length} item${cart.length > 1 ? 's' : ''}).`);
+      window.setTimeout(() => setCartNotice(null), 4000);
+    } catch {
+      setCartNotice('Could not add to cart. Please try again.');
+      window.setTimeout(() => setCartNotice(null), 4000);
+    }
+  };
 
   const authFetch = useAuthFetch();
 
@@ -142,6 +185,17 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         <Title>Inventory</Title>
       </Header>
 
+      {/* 담긴 사실을 알려주지 않으면 눌렀는지 몰라 같은 품목을 또 담는다.
+          발주 화면으로 강제 이동시키지는 않는다 — 여러 건을 이어서 담는 흐름을 끊지 않기 위함. */}
+      {cartNotice && (
+        <div style={{
+          margin: '0 24px 12px', padding: '10px 14px', borderRadius: '8px',
+          background: '#EEF2FF', border: '1px solid #C7D2FE', color: '#3730A3', fontSize: '13px'
+        }}>
+          {cartNotice}
+        </div>
+      )}
+
       <Content>
         <TabContainer>
           <Tab active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')}>
@@ -174,6 +228,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             onWaste={adjust.openWaste}
             onResolveAlert={resolveAlert}
             onOrder={order.open}
+            onAddToPurchaseCart={isBrandGeneralMode ? addToPurchaseCart : undefined}
             onGoToList={() => setActiveTab('list')}
             onGoToHistory={() => setActiveTab('history')}
             onGoToIngredientsPage={goToIngredientsPage}

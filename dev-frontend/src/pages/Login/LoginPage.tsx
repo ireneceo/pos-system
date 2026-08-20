@@ -45,6 +45,13 @@ const DEMO_ACCOUNTS = [
   }
 ];
 
+// QA 계정 카드는 **운영 공개 로그인 페이지에 있을 이유가 없다.**
+// 서버 가드가 실매장에 닿는 계정의 quick-login 을 거부하므로(services/authService.js),
+// 운영에서는 이 카드 중 일부가 영구히 403 이 된다 — 영구히 죽는 버튼을 공개 페이지에 두지 않는다.
+// 운영에는 데모 카드 5장만. 서버 가드는 운영에서도 이중 방어로 그대로 살아 있다.
+const IS_DEV_HOST = typeof window !== 'undefined'
+  && /^(localhost|127\.0\.0\.1|dev\.)/.test(window.location.hostname);
+
 const TEST_ACCOUNTS = [
   {
     key: 'test_brand_general',
@@ -698,10 +705,13 @@ const LoginPage: React.FC = () => {
             ))}
           </DemoAccountsSection>
 
+          {IS_DEV_HOST && (
           <TestAccountsToggle onClick={() => setShowTestAccounts(!showTestAccounts)}>
             {showTestAccounts ? '▲' : '▼'} <span>{t('auth:loginPage.test')}</span> Test Accounts
           </TestAccountsToggle>
+          )}
 
+          {IS_DEV_HOST && (
           <TestAccountsSection show={showTestAccounts}>
             {TEST_ACCOUNTS.map((account) => (
               <TestAccountCard
@@ -718,6 +728,7 @@ const LoginPage: React.FC = () => {
               </TestAccountCard>
             ))}
           </TestAccountsSection>
+          )}
 
           <Divider />
 

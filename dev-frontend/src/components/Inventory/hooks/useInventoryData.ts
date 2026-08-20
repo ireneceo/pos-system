@@ -94,14 +94,25 @@ export function useInventoryData({ mode, restaurantId, authFetch }: Params) {
           const ingredients = inventoryRes.data || [];
 
           const transformedInventory = ingredients.map((ing: any) => {
-            const currentStock = parseFloat(ing.current_stock) || 0;
+            // 연결된 판매 재료가 있으면 **그쪽 실재고**가 진실이다.
+            // 매입 계층의 current_stock 은 "사온 양"이고, 실제로 매장에 남아 있는 양은
+            // 판매 재료 + 매장 오버레이 합계다. 연결이 없으면 매입 수치로 되돌아간다.
+            const linked = ing.linked_stock !== null && ing.linked_stock !== undefined;
+            const currentStock = linked
+              ? (parseFloat(ing.linked_stock) || 0) + (parseFloat(ing.linked_store_total) || 0)
+              : parseFloat(ing.current_stock) || 0;
             const minStock = parseFloat(ing.min_stock) || 0;
 
+            // 임계치를 안 정한 품목(min_stock=0)은 알림 대상이 아니다.
+            // 예전에는 재고 0 이면 무조건 '품절'로 떠서, 애초에 재고를 안 세는 품목까지
+            // 경고 목록을 가득 채웠다 — 진짜 부족한 것이 그 속에 묻혔다.
             let stockStatus: 'normal' | 'low_stock' | 'out_of_stock' = 'normal';
-            if (currentStock <= 0) {
-              stockStatus = 'out_of_stock';
-            } else if (currentStock <= minStock) {
-              stockStatus = 'low_stock';
+            if (minStock > 0) {
+              if (currentStock <= 0) {
+                stockStatus = 'out_of_stock';
+              } else if (currentStock <= minStock) {
+                stockStatus = 'low_stock';
+              }
             }
 
             return {
@@ -123,6 +134,11 @@ export function useInventoryData({ mode, restaurantId, authFetch }: Params) {
               manual_daily_usage: ing.manual_daily_usage ? parseFloat(ing.manual_daily_usage) : null,
               prediction_confidence: ing.prediction_confidence || 'none',
               stock_status: stockStatus,
+              // 발주 담기·연결 안내에 필요한 원본 정보(화면이 판단하지 않게 여기서 넘긴다)
+              linked_ingredient_id: ing.linked_ingredient_id || null,
+              linked_stock: linked ? parseFloat(ing.linked_stock) || 0 : null,
+              linked_store_total: linked ? parseFloat(ing.linked_store_total) || 0 : null,
+              unit_price: parseFloat(ing.unit_price) || parseFloat(ing.unit_cost) || 0,
               supplier_id: ing.supplier_id,
               supplier_name: ing.supplier_name
             };

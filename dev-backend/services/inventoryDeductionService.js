@@ -164,7 +164,11 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
       success: true,
       deductions: [],
       warnings: [],
-      errors: []
+      errors: [],
+      // "레시피가 없어서 아무것도 안 뺐다"는 경고 더미에 묻혀 보이지 않았다.
+      // 운영 실측(2026-08-20): 상품 754개 중 레시피가 걸린 것은 1개뿐이라
+      // 판매로 인한 차감이 전 기간 0건이었는데도 아무도 몰랐다. 세어서 드러낸다.
+      skipped_no_recipe: 0
     };
 
     // Process each order item
@@ -186,6 +190,7 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
 
         if (recipeIngredients.length === 0) {
           // No recipe linked - skip deduction
+          results.skipped_no_recipe += 1;
           results.warnings.push({
             product_id: productId,
             product_name: tgt.name,
@@ -228,7 +233,15 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
             // FIFO deduction from batches (매장 스코프)
             const fifoResult = await deductStockFIFO(ingredient.id, actualDeductQty, transaction, restaurantId);
 
-            const newStock = currentStock - fifoResult.deducted_quantity;
+            // ── 배치가 모자라도 재고는 실제 소비량만큼 줄인다 ──────────────────
+            // 예전에는 `newStock = currentStock - fifoResult.deducted_quantity` 였다.
+            // FIFO 는 **배치(입고 로트)** 에서만 빼는데, 배치가 없거나 부족한 매장에서는
+            // deducted_quantity 가 0 이 되고, 그러면 팔았는데도 재고가 그대로 남았다.
+            // 음식은 나갔다 — 장부만 안 줄어든 것이다. 실제 소비량(actualDeductQty)으로
+            // 줄이고, 배치로 못 덮은 몫은 `batch_shortfall` 로 남겨 추적 가능하게 한다.
+            const batchCovered = fifoResult.deducted_quantity || 0;
+            const shortfall = Math.round((actualDeductQty - batchCovered) * 10000) / 10000;
+            const newStock = Math.round((currentStock - actualDeductQty) * 10000) / 10000;
 
             // 브랜드 공유 재료 → 매장 오버레이 / 매장 재료 → 재료 행
             await applyStock(ingredient, restaurantId, newStock, transaction);
@@ -238,10 +251,11 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
               restaurant_id: restaurantId,
               ingredient_id: ingredient.id,
               transaction_type: 'order_deduct',
-              quantity_change: -fifoResult.deducted_quantity,
+              quantity_change: -actualDeductQty,
               unit: ingredient.unit,
               stock_after: newStock,
-              notes: `Order #${orderId} - ${tgt.name} x${tgtQty}`,
+              notes: `Order #${orderId} - ${tgt.name} x${tgtQty}`
+                + (shortfall > 0 ? ` [batch_shortfall ${shortfall}]` : ''),
               created_by: null // System action
             }, { transaction });
 
@@ -258,7 +272,9 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
             results.deductions.push({
               ingredient_id: ingredient.id,
               ingredient_name: ingredient.name,
-              quantity_deducted: fifoResult.deducted_quantity,
+              quantity_deducted: actualDeductQty,
+              batch_covered: batchCovered,
+              batch_shortfall: shortfall > 0 ? shortfall : 0,
               unit: ingredient.unit,
               new_stock: newStock,
               batches_affected: fifoResult.batches.length
@@ -286,7 +302,10 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
 
           if (oiActualDeduct > 0) {
             const oiFifo = await deductStockFIFO(oi.ingredient.id, oiActualDeduct, transaction, restaurantId);
-            const oiNewStock = oiCurrentStock - oiFifo.deducted_quantity;
+            // 레시피 재료와 동일 규칙 — 배치가 모자라도 실제 소비량만큼 줄인다(위 주석 참조).
+            const oiCovered = oiFifo.deducted_quantity || 0;
+            const oiShortfall = Math.round((oiActualDeduct - oiCovered) * 10000) / 10000;
+            const oiNewStock = Math.round((oiCurrentStock - oiActualDeduct) * 10000) / 10000;
 
             await applyStock(oi.ingredient, restaurantId, oiNewStock, transaction);
 
@@ -294,10 +313,11 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
               restaurant_id: restaurantId,
               ingredient_id: oi.ingredient.id,
               transaction_type: 'order_deduct',
-              quantity_change: -oiFifo.deducted_quantity,
+              quantity_change: -oiActualDeduct,
               unit: oi.ingredient.unit,
               stock_after: oiNewStock,
-              notes: `Order #${orderId} - Option "${selOpt.name}" x${orderQty}`,
+              notes: `Order #${orderId} - Option "${selOpt.name}" x${orderQty}`
+                + (oiShortfall > 0 ? ` [batch_shortfall ${oiShortfall}]` : ''),
               created_by: null
             }, { transaction });
 
@@ -306,7 +326,9 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
             results.deductions.push({
               ingredient_id: oi.ingredient.id,
               ingredient_name: oi.ingredient.name,
-              quantity_deducted: oiFifo.deducted_quantity,
+              quantity_deducted: oiActualDeduct,
+              batch_covered: oiCovered,
+              batch_shortfall: oiShortfall > 0 ? oiShortfall : 0,
               unit: oi.ingredient.unit,
               new_stock: oiNewStock,
               source: `option: ${selOpt.name}`

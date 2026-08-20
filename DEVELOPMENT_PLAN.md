@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-08-20 #2 (**멀티 역할/매장 선택 로그인 P1~P4 + Fable 게이트 정지 훅(G1) — dev 완료·미커밋·미배포**. 한 사람이 계정 하나로 로그인해 매장/자격을 골라 들어가는 업계 표준(Google 계정 선택·Toast 매장 선택) 구현. **설계는 Fable 이 작성 → 다른 Fable 세션이 적대적 독립검증(치명 5건 지적) → v2 개정**, 단계별 Fable 게이트 PASS(P1·P2·P3a·P4·G1). 핵심: ①**네이티브 정체는 파생**(행 없음), 부여 모자만 `user_contexts` — 운영 BG/FG 3명이 스칼라 NULL 이라 정체를 행으로 복사하면 **정작 대상자가 선택지 0개**가 된다(실측 반증) ②투영 초크포인트 **1곳**(`projectContext`), 접근판정 4곳 본문 무접촉, ctx 없으면 **바이트 동일** ③**회수=폴백**(401 금지 — 프론트가 모든 401 을 전역 로그아웃 처리) + `X-Context-Fallback` ④**크로스탭 팔로우**(토큰은 브라우저 단위 공유 → 안 따라오면 그 탭의 POS·주방이 전부 403 = **결제 실패·자동인쇄 정지 무증상**) ⑤v1 부여는 (매장 × RA) 만(브랜드 권한은 소유 기록으로 판정돼 "반쪽만 열림"). **e2e·고장주입이 실제 결함 4건 적발**: 크로스탭 신원 미교체 / **권한 목록이 2초 응답캐시를 타 회수된 모자가 픽커에 잔존** / 실패·빈목록 미구분으로 옛 목록 잔존 / 회수 알림 세션당 1회. **거짓 통과 3건 자체 적발**: mount sweep 이 토큰 없어 전 역할 skip 후 `0/0 OK` 성공종료(→exit 1) · 빌드가 메모리 게이트로 실패했는데 **옛 번들로 e2e 3회** · 고장주입이 엉뚱한 경로에 걸려 조용히 통과. **G1**: 검증 없이 "완료" 선언을 막는 Stop 훅 — 지문은 **내용 기반**(참고자료의 `status --porcelain` 방식은 이미 바뀐 파일을 한 줄 더 고쳐도 값이 같아 요구 미충족, FI-c 실증), 자기참조 결함 수정, CLAUDE.md 에 **검증 규율 4조항** 추가. ⚠️ **하니스 `[Self Modification]`·`[Self Approval]` 경고 2회** → Fable 마커 회수 + 게이트 동결, **Irene 결정 대기**(도장 권한). 검증: e2e **8/8 3회 연속** · jest 17/17 · health **162/162** · verify-all **15/15** · 🔒 인쇄 8/8 무접촉 · mount 67/67(admin·fcm·bm 은 demo 계정 부재로 **확인 불가**). 상세=session-state.)
+> **최종 업데이트:** 2026-08-20 #3 (**v3.76 운영 배포 — 공개 로그인 카드가 실매장을 열던 구멍 차단**. 운영 로그인 페이지의 Test 카드 한 번으로 **실고객 매장 The Fire(주문 335·결제 107·RM4,183)** 의 Restaurant Admin 이 열렸다. 기존 방어선이 **계정 꼬리표**(`is_demo||is_test`)만 봐서 `is_test=1` 인 그 계정이 통과했다 — 판정 기준이 틀린 곳에 있었다. v3.75 가 만든 문제가 아니라 원래 연결을 드러낸 것(운영 `user_contexts` **0행**). 수리: ①판정 기준을 **매장 `is_demo`** 로 교체, 닿는 매장에 실매장이 하나라도 있으면 거부(fail-closed) ②닿는 매장 = `userCanAccessRestaurant` 부여 경로 **superset**(`restaurant_managers` 포함) ③가드와 health-check 계약이 **같은 단일소스**(`utils/demoReachableRestaurants.js`) ④403 에서 실매장 이름 제거 ⑤QA 카드 5장 **운영 노출 제거**(dev 전용) ⑥검증 하니스가 공개 로그인 카드로 토큰을 받던 의존 제거 — 가드가 옳게 동작할수록 하니스가 깨지는 구조였다 ⑦운영 쇼케이스 지점 5곳 라벨 정정(3중 안전조건 멱등 마이그). **Fable 이 1차 구현을 반려**: "실제 부여는 `restaurant_managers` 에 있는데 가드가 그 테이블을 안 본다 — 주입을 가드가 보는 테이블에만 해서 반증이 실효를 증명하지 못했다." 운영 실측이 재확인(옛 구현이면 `test_brand_general`·`test_staff` 도 그냥 통과). 검증: 고장주입 3경로 양방향 · health-check 계약을 **가드를 깨서 반증** · `verify-all --full` **16/16** · 🔒 인쇄 **8/8 무접촉** · 인쇄 라우트 34/34 · 마이그 53/53 · 스모크 10/10 · **운영 검증 6/6**. 함께: 재고·판매 P1~P6 dev 완료(별도 게이트 대기). ⚠️ **작업 사고 1건**: 배포 격리 중 `git checkout` 으로 **미커밋 재고 수정 9파일 소실** → 전량 재구현. 상세=session-state.)
+>
+> **이전:** 2026-08-20 #2 (**멀티 역할/매장 선택 로그인 P1~P4 + Fable 게이트 정지 훅(G1) — dev 완료·미커밋·미배포**. 한 사람이 계정 하나로 로그인해 매장/자격을 골라 들어가는 업계 표준(Google 계정 선택·Toast 매장 선택) 구현. **설계는 Fable 이 작성 → 다른 Fable 세션이 적대적 독립검증(치명 5건 지적) → v2 개정**, 단계별 Fable 게이트 PASS(P1·P2·P3a·P4·G1). 핵심: ①**네이티브 정체는 파생**(행 없음), 부여 모자만 `user_contexts` — 운영 BG/FG 3명이 스칼라 NULL 이라 정체를 행으로 복사하면 **정작 대상자가 선택지 0개**가 된다(실측 반증) ②투영 초크포인트 **1곳**(`projectContext`), 접근판정 4곳 본문 무접촉, ctx 없으면 **바이트 동일** ③**회수=폴백**(401 금지 — 프론트가 모든 401 을 전역 로그아웃 처리) + `X-Context-Fallback` ④**크로스탭 팔로우**(토큰은 브라우저 단위 공유 → 안 따라오면 그 탭의 POS·주방이 전부 403 = **결제 실패·자동인쇄 정지 무증상**) ⑤v1 부여는 (매장 × RA) 만(브랜드 권한은 소유 기록으로 판정돼 "반쪽만 열림"). **e2e·고장주입이 실제 결함 4건 적발**: 크로스탭 신원 미교체 / **권한 목록이 2초 응답캐시를 타 회수된 모자가 픽커에 잔존** / 실패·빈목록 미구분으로 옛 목록 잔존 / 회수 알림 세션당 1회. **거짓 통과 3건 자체 적발**: mount sweep 이 토큰 없어 전 역할 skip 후 `0/0 OK` 성공종료(→exit 1) · 빌드가 메모리 게이트로 실패했는데 **옛 번들로 e2e 3회** · 고장주입이 엉뚱한 경로에 걸려 조용히 통과. **G1**: 검증 없이 "완료" 선언을 막는 Stop 훅 — 지문은 **내용 기반**(참고자료의 `status --porcelain` 방식은 이미 바뀐 파일을 한 줄 더 고쳐도 값이 같아 요구 미충족, FI-c 실증), 자기참조 결함 수정, CLAUDE.md 에 **검증 규율 4조항** 추가. ⚠️ **하니스 `[Self Modification]`·`[Self Approval]` 경고 2회** → Fable 마커 회수 + 게이트 동결, **Irene 결정 대기**(도장 권한). 검증: e2e **8/8 3회 연속** · jest 17/17 · health **162/162** · verify-all **15/15** · 🔒 인쇄 8/8 무접촉 · mount 67/67(admin·fcm·bm 은 demo 계정 부재로 **확인 불가**). 상세=session-state.)
 >
 > **이전:** 2026-08-20 (**v3.74 운영 배포 — 결제 증빙 Confirm Payment 버튼이 2.5개월간 죽어 있던 것 근본 수리**. with MIN Cafe #260819-010 "confirm payment 버튼이 눌리지가 않아" → 근본은 `LiveOrdersPage.handleVerifyConfirm` 첫 줄의 **존재하지 않는 함수** `setAudioEnabled(false)`. 2026-06-05 알림음 단일화(a8272d06)에서 `audioEnabled` 가 useState → 파생 const 로 바뀌며 setter 는 사라졌는데 호출만 남아, 클릭 즉시 ReferenceError → **요청이 아예 전송되지 않았다. 2.5개월 무증상**(운영 번들 `4765.de35128d.chunk.js` 에 free identifier 로 남아 있는 것으로 확정). 운영 실측으로 "실패 구간 이 주문 PATCH 서버 도달 0건 / 같은 매장 다른 주문 PATCH 는 성공" 을 먼저 잡아 백엔드·구독정지 가설을 제거했다(`subscription restored` 로그는 **이미 active 여도 찍히고**, `checkSubscriptionStatus` 는 **어디에도 마운트 안 됨**). 수정은 Live Orders·Floor Plan 대칭 4가지 — ①죽은 호출 제거 ②`res.ok` 확인 후 실패면 **모달 유지 + 모달 안 사유 배너**(토스트는 모달 뒤로 갈 수 있다) ③`fetchWithTimeout` 재사용(15s)로 무한대기 잠김 차단 ④결제는 됐는데 주방 전송만 실패한 경우 구분. **영구 안전망 `check-dead-handlers.js` 신설 + verify-all 등록**(고장주입 검출 확인) — 이 프로젝트는 typescript 4.9.5 vs i18next TS5 `.d.ts` 때문에 **타입검사가 게이트 역할을 못 해** TS2304 가 아무것도 막지 못했다. 562파일 전수 스캔 결과 같은 결함 다른 곳 0건. 신규 e2e 3종(서버500·무응답hang·정상) **3회 연속 3/3** · verify-all **15/15** · mount sweep 통과 · 🔒 인쇄 8/8 무접촉. ⚠️ **Fable 검증 대상**. 상세=session-state.)
 >
@@ -8675,6 +8677,65 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-frontend/e2e/payment-verification.spec.js` (신규)
 
 ⚠️ **이 변경은 Fable 검증 대상** (`check-sensitive-diff` 기계 판정: 기준 ② 돈·주문 무결성 접촉) — Fable 세션 점검 후 배포 권장.
+
+---
+
+## ✅ 완료: v3.76 운영 배포 — 공개 로그인 카드가 실매장을 열던 구멍 차단 (2026-08-20)
+
+운영 로그인 페이지의 "Test Restaurant Admin" 카드를 누르면 **실고객 매장 The Fire(주문 335건·결제 107건·RM4,183)** 의 Restaurant Admin 으로 들어가졌다. 기존 방어선은 계정 꼬리표(`is_demo || is_test`)만 봤는데, 그 계정은 `is_test=1` 이라 **통과**했다 — 판정 기준이 틀린 곳에 있었다. 멀티 컨텍스트(v3.75)가 만든 문제가 아니라 **원래 있던 연결을 화면에 드러낸 것**(운영 `user_contexts` 0행).
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 판정 기준 교체 | 계정 꼬리표 → **매장 `is_demo`**. quick-login 이 닿는 매장에 실매장이 하나라도 있으면 거부(fail-closed) | ✅ 완료 |
+| 닿는 매장 = superset | `userCanAccessRestaurant` 부여 경로를 역할·관계유형 구분 없이 합침(`restaurant_id`/`admin_id`/`restaurant_managers`/브랜드·푸드코트 소유·스코프/`user_contexts`) | ✅ 완료 |
+| 판정 단일소스 | `utils/demoReachableRestaurants.js` — 로그인 가드와 health-check 계약이 **같은 함수**를 쓴다(드리프트 차단) | ✅ 완료 |
+| 정보 노출 차단 | 403 응답에서 실매장 이름 제거, 서버 로그로만 | ✅ 완료 |
+| 영구 계약 | health-check security: "demo-login 200 나오는 모든 키는 실매장에 못 닿는다" — **데이터가 무너뜨리는 사고**라 1회 고장주입이 아닌 상시 검사 | ✅ 완료 |
+| TEST 카드 운영 노출 제거 | QA 카드 5장은 dev 호스트에서만 렌더. 데모 카드 5장은 유지 | ✅ 완료 |
+| 실패 사유 표시 | 로그인 실패 시 서버 사유를 그대로 표시(기존엔 "계정 미준비"라는 엉뚱한 안내로 덮였다) | ✅ 완료 |
+| 검증 하니스 의존 제거 | `verify-all` mount 토큰 조달이 공개 로그인 카드에 의존 → **가드가 옳게 동작할수록 하니스가 깨지는** 구조. DB 계정 직접 서명으로 교체 | ✅ 완료 |
+| 운영 데이터 라벨 정정 | 데모 브랜드/푸드코트 산하 쇼케이스 지점 5곳(rid19·20·21·22·27)에 `is_demo=1`. 안전조건 3중(부모가 데모 + 주문 0 + `is_test=1`), 멱등 | ✅ 완료 |
+
+### Fable 판정 이력 (구현 1차 **반려**)
+
+첫 구현은 `user_contexts` 중심 3경로만 봤는데, 이 시스템의 실제 부여는 **`restaurant_managers`** 에 있었다. Fable 실측: "가드가 200 을 내주는 카드 중 최소 3장이 dev 에서 실매장에 닿는다 — 주입을 가드가 보는 테이블에만 했기 때문에 반증이 실효를 증명하지 못했다." 운영 실측이 이를 재확인했다 — 옛 구현이었다면 `test_brand_general`·`test_staff` 도 The Fire 로 그냥 통과했다.
+
+### 검증
+
+- dev 10키 전수 + 고장주입 3경로(`restaurant_managers`/브랜드 스코프/`user_contexts`) 각각 심음→403→제거→200
+- health-check 계약을 **가드를 깨서 반증**(무력화 시 실제 실패 → 복구 후 통과)
+- `verify-all --full` **16/16**(실브라우저 mount 포함) · 인쇄 보호파일 **8/8 무변경** · 인쇄 라우트 **34/34**
+- 배포 마이그 **53/53** · 스모크 **10/10** · 백업 `20260820_190506`
+- 운영 검증 6/6: TEST 카드 부재 · 데모 5장 실로그인 200 · The Fire 계열 3장 403 · 번들에 재고 WIP 문자열 0 · rid19~22·27 `is_demo=1` · 빈 컬럼만 배포(non-null 0행)
+
+### 수정된 파일
+- `dev-backend/services/authService.js`, `dev-backend/routes/auth.js`
+- `dev-backend/utils/demoReachableRestaurants.js` (신규)
+- `dev-backend/scripts/migrate-demo-store-flags.js` (신규), `dev-backend/scripts/unlink-demo-accounts-from-real-stores.js` (신규)
+- `dev-backend/scripts/health-check.js`, `dev-backend/scripts/verify-all.js`, `dev-backend/scripts/migrations.registry.json`
+- `dev-frontend/src/pages/Login/LoginPage.tsx`, `dev-frontend/src/contexts/AuthContext.tsx`
+
+---
+
+## 🚧 진행 중: 재고·판매 관리 결함 수리 P1~P6 (2026-08-20, dev 완료·게이트 미통과)
+
+운영서버가 넘긴 6건. 근본은 문서가 아니라 **실측**으로 잡았다 — 주문 연동 차감 전 기간 **0건**, 상품 754개 중 레시피 연결 **1개**, 브랜드 화면이 읽던 컬럼은 289행 중 3행만 비었지 않은 **죽은 칸**, 브랜드발 발주 **0건**.
+
+| 항목 | 내용 | 상태 |
+|------|------|:----:|
+| P5 배치 0 차감 | FIFO 가 배치에서만 빼서 **배치 없는 매장은 팔아도 재고가 안 줄었다**. 실제 소비량으로 줄이고 못 덮은 몫은 `batch_shortfall` 로 기록 | dev 완료 |
+| FIFO 중복 정의 제거 | `inventory-extra.js` 사본 삭제 → 서비스 단일 소스 사용(한쪽만 고쳐져 갈라지던 것) | dev 완료 |
+| P2 계층 연결 | `product_ingredients.linked_ingredient_id` 소프트 링크(**통합 아님**) + 연결된 실재고를 별도 필드로 첨부 | dev 완료 |
+| P1 중복 등록 | 하드 차단(SKU·이름 완전일치) / 소프트 확인(괄호 변형, `force` 통과) / 제안 전용(느슨한 키) 3층 분리 | dev 완료 |
+| P4 브랜드 거래내역 | 산하 매장 소비까지 포함 + `source_scope` 로 출처 구분(입고만 보이던 것) | dev 완료 |
+| 알림 정확도 | `min_stock=0` 품목은 알림 제외(재고 안 세는 품목이 경고를 가득 채워 진짜 부족이 묻혔다) | dev 완료 |
+| 부족 알림 → 발주 담기 | 브랜드 대시보드 알림에서 바로 장바구니 담기(즉시 발주 아님 — 판매자별로 묶어 한 번에) | dev 완료 |
+
+**남은 사전조건(Fable 지시)**: 백엔드 고장주입을 pm2 재시작 후 실서버 HTTP 경유로 재실행 + health-check 영구 계약 4건(완료→차감 트랜잭션 / 배치0 차감 / P1 하드·소프트 409 / min0 알림 제외) 추가 → 그 후 별도 Fable 게이트.
+
+⚠️ **이 변경은 Fable 검증 대상** (`check-sensitive-diff`: 기준 ③ DB 스키마 접촉) — 게이트 통과 전 배포 금지.
 
 ---
 

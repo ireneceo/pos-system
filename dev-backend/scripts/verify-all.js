@@ -79,11 +79,44 @@ function postJson(url, body) {
   });
 }
 
+// mount 토큰 조달. **공개 로그인 게이트에 의존하지 않는다.**
+// 조달 방식 = DB 계정으로 JWT 직접 서명(signRoleToken 과 동일). 화이트리스트 확장·가드 완화 없음.
+// 2026-08-20: quick-login 에 "닿는 매장이 실매장이면 거부" 가드가 붙으면서, 이 하니스가
+// 카드 로그인으로 토큰을 받던 구조가 그대로 깨졌다(3역할 조달 실패 → sweep 미실행).
+// 검증 하니스가 **공개 로그인 구멍을 이용해 돌고 있었다**는 뜻이라, 가드를 푸는 대신 조달을 바꾼다:
+// 카드가 열려 있으면 그대로 쓰고, 막혀 있으면 **같은 계정 이메일로 토큰을 직접 서명**한다
+// (계정 무변경·비밀번호 불필요, signRoleToken 과 동일 방식). 검사 대상 신원은 이전과 같다.
 async function fetchDemoToken(key) {
+  // 서명 우선 — 공개 로그인 경로를 **타지 않는다**. 서명이 불가능할 때만 카드 로그인으로 폴백.
+  const signed = await signTokenForDemoKey(key);
+  if (signed) return signed;
   const r = await postJson('http://localhost:3001/api/auth/demo-login', { key });
   const token = r.token || (r.data && r.data.token);
-  if (!token) throw new Error(`demo-login 실패 (${key}): ${JSON.stringify(r).slice(0, 120)}`);
-  return token;
+  if (token) return token;
+  throw new Error(`토큰 조달 실패 (${key}): ${JSON.stringify(r).slice(0, 120)}`);
+}
+
+// 카드가 가드에 막힌 경우의 대체 조달 — 화이트리스트가 가리키는 **바로 그 계정**으로 서명한다.
+async function signTokenForDemoKey(key) {
+  try {
+    const jwt = require('jsonwebtoken');
+    const { User } = require('../models');
+    const { sequelize } = require('../config/database');
+    const { DEMO_KEY_TO_EMAIL } = require('../services/authService');
+    const email = DEMO_KEY_TO_EMAIL[key];
+    if (!email || !process.env.JWT_SECRET) return null;
+    const user = await User.findOne({
+      where: sequelize.where(sequelize.fn('LOWER', sequelize.col('email')), String(email).toLowerCase())
+    });
+    if (!user) return null;
+    return jwt.sign({
+      userId: user.id, email: user.email, role: user.role, username: user.username,
+      brand_id: user.brand_id, foodcourt_id: user.foodcourt_id, restaurant_id: user.restaurant_id,
+      manager_id: user.manager_id,
+    }, process.env.JWT_SECRET, { expiresIn: '30m' });
+  } catch {
+    return null;
+  }
 }
 
 // demo-login 화이트리스트에 없는 역할(System Admin / Brand·Foodcourt Manager)의 mount 검증용 토큰.

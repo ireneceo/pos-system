@@ -11,6 +11,7 @@ const PlanPrice = require('../models/PlanPrice');
 // EntityPlanRestaurant is used by Brand/Foodcourt plan assignment, not self-signup
 const { sequelize } = require('../db');
 const ReferralClick = require('../models/ReferralClick');
+const { findReachableRealRestaurant } = require('../utils/demoReachableRestaurants');
 
 /**
  * If the new user signed up via a referral_code, link them to the referrer
@@ -843,6 +844,24 @@ async function loginAsDemo(key) {
     err.code = 'DEMO_ACCOUNT_MISSING';
     throw err;
   }
+  // ── 닿는 매장 기준 가드 (2026-08-20) ──────────────────────────────────────
+  // 계정 꼬리표(is_test)만 보면 안 된다. 운영 실측: 공개 로그인 카드의 `admin@kdine.com` 이
+  // **실주문 수백 건 매장**(운영 rid 5 The Fire)의 Restaurant Admin 이었다.
+  // 즉 "테스트 계정" 표시가 붙어 있어도 **닿는 매장이 실매장이면 실매장 권한이 열린다.**
+  // 판정 기준은 계정이 아니라 **매장 is_demo** 다([[reference_smoke_writes_to_real_store]] 와 같은 뿌리).
+  // 닿는 매장 집합의 정의·근거는 utils/demoReachableRestaurants.js (health-check 계약과 공유).
+  const realStore = await findReachableRealRestaurant(sequelize, user);
+  if (realStore) {
+    // 매장 이름·id 는 서버 로그로만. 공개(익명) 엔드포인트라 응답에 실매장 정보를 실으면 노출이다.
+    console.warn(
+      `[demo-login] blocked key=${key} user=${user.id} — reachable real restaurant `
+      + `id=${realStore.id} name=${realStore.name}`
+    );
+    const err = new Error('This quick-login account is not available. Please contact support.');
+    err.code = 'NOT_DEMO_RESTAURANT';
+    throw err;
+  }
+
   if (!user.is_demo && !user.is_test) {
     // Defence-in-depth: never issue a token for a real account via this path.
     const err = new Error('Account is not a demo/test account');

@@ -1,6 +1,6 @@
 # 데모/테스트 계정 관리 가이드
 
-> **최종 업데이트:** 2026-05-03
+> **최종 업데이트:** 2026-08-20
 > **목적:** 데모/테스트 계정이 실제 매출 통계에 영향을 주지 않도록 관리
 
 ## 2026-05-03 업데이트 — 5 데모 역할 + demo-login endpoint + enterprise fallback
@@ -22,9 +22,51 @@
 `POST /api/auth/demo-login { key }` — 비밀번호 없이 quick login.
 
 - 화이트리스트 매핑 (`DEMO_KEY_TO_EMAIL`) — 알 수 없는 key → 400 INVALID_DEMO_KEY
-- 가드: 매핑된 user 의 `is_demo === true` OR `is_test === true` 만 토큰 발급. 그 외 → 403 NOT_DEMO_ACCOUNT
+- 가드 ①(계정): 매핑된 user 의 `is_demo === true` OR `is_test === true` 만 토큰 발급. 그 외 → 403 NOT_DEMO_ACCOUNT
+- 가드 ②(매장, 2026-08-20 추가 · **판정의 본체**): 그 계정이 **닿을 수 있는 매장** 중 하나라도 `is_demo` 가 아니면 → 403 NOT_DEMO_RESTAURANT
 - Rate limit 30/min
 - 결과: LoginPage / DemoPage 의 카드 클릭 시 password 코드가 main.js 에 0 file 노출
+
+## 2026-08-20 업데이트 — 판정 기준이 계정이 아니라 **매장**이다 (v3.76)
+
+### 왜 바뀌었나 (운영 실측)
+
+운영 로그인 페이지의 `test_restaurant_admin`(admin@kdine.com) 카드는 **`is_test=1`** 이라 계정 가드를 통과했는데, 그 계정은 **rid 5 The Fire Korean Restaurant** 의 Restaurant Admin 이었다 — 주문 335건·결제 107건·RM4,183 의 **실고객 매장**. 즉 계정에 "테스트" 딱지가 붙어 있어도 **닿는 매장이 실매장이면 실매장 권한이 열린다.** 같은 뿌리의 사고가 이전에도 있었다(배포 스모크가 실매장에 주문을 만들던 건 — 판정을 계정 `is_test` 로 했기 때문).
+
+### 닿는 매장(superset) — `utils/demoReachableRestaurants.js`
+
+`middleware/auth.js` 의 `userCanAccessRestaurant` 부여 경로를 **역할·관계유형 구분 없이 합친 집합**이다. 실판정보다 넓다 — fail-closed 가드는 과차단이 안전하고 미차단이 결함이기 때문. (좁게 잡았다가 실제 부여 테이블 `restaurant_managers` 를 빠뜨려 구멍이 남았던 전례가 있다.)
+
+1. `users.restaurant_id`
+2. `restaurants.admin_id`
+3. `restaurant_managers.manager_id` (관계유형 무관 — ownership/oversight 모두)
+4. `brands.owner_id` 경유 브랜드 산하 매장 / `users.brand_id` 스코프
+5. `foodcourts.owner_id` 경유 푸드코트 산하 매장 / `users.foodcourt_id` 스코프
+6. `user_contexts` 부여(entity_type='restaurant')
+
+이 집합은 **로그인 가드와 health-check 영구 계약이 공유**한다. 각자 쿼리를 들면 한쪽만 고쳐져 "검사는 통과하는데 구멍은 열린" 상태가 만들어진다.
+
+### 영구 계약 (health-check security)
+
+> "demo-login 이 200 을 내주는 모든 키에 대해, 닿는 매장에 `is_demo=0` 이 0건"
+
+코드가 아니라 **데이터**가 무너뜨리는 종류의 사고다(계정에 매장 부여가 새로 생기면 즉시 재발) → 1회 고장주입이 아니라 상시 검사.
+
+### 운영 TEST 카드는 노출하지 않는다
+
+`LoginPage.tsx` 의 TEST 카드 5장은 **dev 호스트(localhost/127.0.0.1/dev.)에서만** 렌더된다. 서버 가드는 운영에서도 이중 방어로 유지된다. 데모 카드 5장은 운영에 그대로 노출된다.
+
+### 데모 매장 라벨 규칙
+
+데모 브랜드/푸드코트 **산하의 쇼케이스 지점**인데 `is_demo` 가 안 붙어 있으면 데모 카드가 죽는다. 라벨 정정은 `scripts/migrate-demo-store-flags.js`(배포 마이그, 멱등)가 하며 **안전조건 3중**을 모두 만족해야 건드린다:
+①부모(brand/foodcourt)가 `is_demo=1` ②주문 0건 ③`is_test=1`.
+실매장을 데모로 잘못 바꾸면 그 매장이 공개 카드로 열리므로 조건을 좁게 잡았다. (2026-08-20 운영 적용: rid 19·20·21·22·27)
+
+### 데모 계정에 실매장 부여가 남아 있으면 끊는다
+
+가드는 "그 계정으로 못 들어가게" 할 뿐 부여 자체를 지우지 않는다. `scripts/unlink-demo-accounts-from-real-stores.js`(dry-run 기본)가 데모 계정의 실매장 관리행을 정리한다. **주문이 있는 매장의 브랜드/푸드코트 소속은 건드리지 않는다** — 데모 계정 접근을 끊자고 남의 매장 연결을 부수지 않는다.
+
+---
 
 ### Enterprise fallback (모든 모듈 활성)
 

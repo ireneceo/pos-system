@@ -578,61 +578,10 @@ router.get('/:restaurantId/inventory/:ingredientId/batches', async (req, res) =>
   }
 });
 
-// FIFO 차감 함수 (내부 사용)
-async function deductStockFIFO(ingredientId, quantityToDeduct, transaction, restaurantId = null) {
-  let remainingToDeduct = parseFloat(quantityToDeduct);
-  const deductedBatches = [];
-
-  // Get active batches ordered by FIFO (oldest first, then by expiry date)
-  const batches = await InventoryBatch.findAll({
-    where: {
-      ingredient_id: ingredientId,
-      // 브랜드 공유 재료는 형제 매장이 같은 ingredient_id 로 배치를 만든다 → 매장 스코프 필수
-      ...(restaurantId ? { restaurant_id: restaurantId } : {}),
-      status: 'active',
-      remaining_quantity: { [Op.gt]: 0 }
-    },
-    order: [
-      ['expiry_date', 'ASC'],
-      ['received_date', 'ASC']
-    ],
-    transaction
-  });
-
-  for (const batch of batches) {
-    if (remainingToDeduct <= 0) break;
-
-    const batchRemaining = parseFloat(batch.remaining_quantity);
-    const deductFromBatch = Math.min(batchRemaining, remainingToDeduct);
-
-    const newRemaining = batchRemaining - deductFromBatch;
-    const newStatus = newRemaining <= 0 ? 'depleted' : 'active';
-
-    await InventoryBatch.update({
-      remaining_quantity: newRemaining,
-      status: newStatus
-    }, {
-      where: { id: batch.id },
-      transaction
-    });
-
-    deductedBatches.push({
-      batch_id: batch.id,
-      batch_number: batch.batch_number,
-      quantity_deducted: deductFromBatch,
-      expiry_date: batch.expiry_date
-    });
-
-    remainingToDeduct -= deductFromBatch;
-  }
-
-  return {
-    success: remainingToDeduct <= 0,
-    deducted_quantity: parseFloat(quantityToDeduct) - remainingToDeduct,
-    remaining_to_deduct: remainingToDeduct,
-    batches: deductedBatches
-  };
-}
+// FIFO 차감은 services/inventoryDeductionService.js 가 단일 소스다.
+// 예전에는 이 파일에도 같은 함수가 복사돼 있었다 — 한쪽만 고쳐지면 "주문 차감은 맞는데
+// 수동 차감은 틀린" 식으로 갈라진다. 정의를 지우고 가져다 쓴다.
+const { deductStockFIFO } = require('../services/inventoryDeductionService');
 
 // POST /api/restaurants/:restaurantId/inventory/deduct - FIFO 기반 재고 차감
 router.post('/:restaurantId/inventory/deduct', async (req, res) => {
@@ -667,7 +616,12 @@ router.post('/:restaurantId/inventory/deduct', async (req, res) => {
     // FIFO deduction from batches (매장 스코프)
     const fifoResult = await deductStockFIFO(ingredient_id, deductQty, transaction, restaurantId);
 
-    const newStock = currentStock - fifoResult.deducted_quantity;
+    // 배치가 모자라도 **요청한 만큼** 줄인다(주문 차감과 동일 규칙).
+    // 배치는 입고 로트 장부일 뿐이고, 사람이 "이만큼 뺐다"고 기록한 것이 실제 사건이다.
+    // 배치로 못 덮은 몫은 notes 에 `batch_shortfall` 로 남겨 나중에 맞출 수 있게 한다.
+    const batchCovered = fifoResult.deducted_quantity || 0;
+    const shortfall = Math.round((deductQty - batchCovered) * 10000) / 10000;
+    const newStock = Math.round((currentStock - deductQty) * 10000) / 10000;
 
     await applyStock(ingredient, restaurantId, newStock, transaction);
 
@@ -676,10 +630,11 @@ router.post('/:restaurantId/inventory/deduct', async (req, res) => {
       restaurant_id: restaurantId,
       ingredient_id: ingredient_id,
       transaction_type: reason || 'order_deduct',
-      quantity_change: -fifoResult.deducted_quantity,
+      quantity_change: -deductQty,
       unit: ingredient.unit,
       stock_after: newStock,
-      notes: notes || `Deducted via FIFO from ${fifoResult.batches.length} batch(es)`,
+      notes: (notes || `Deducted via FIFO from ${fifoResult.batches.length} batch(es)`)
+        + (shortfall > 0 ? ` [batch_shortfall ${shortfall}]` : ''),
       created_by: userId
     }, { transaction });
 

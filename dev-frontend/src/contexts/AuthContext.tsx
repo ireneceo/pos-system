@@ -726,6 +726,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return true;
         }
       }
+      // 서버가 이유를 준 경우(예: 실매장 소속이라 차단) 그대로 보여준다 —
+      // "provisioned 안 됨" 같은 엉뚱한 안내로 덮으면 원인을 못 찾는다.
+      const failure = await response.json().catch(() => null);
+      const serverMessage = failure?.error?.message || failure?.message;
+      if (serverMessage) throw new Error(serverMessage);
       return false;
     } catch (error) {
       throw error;

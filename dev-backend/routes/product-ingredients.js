@@ -75,6 +75,52 @@ router.get('/', async (req, res) => {
       data = ingredients.map(i => ({ ...i.toJSON(), sellers: byIng[i.id] || [] }));
     }
 
+    // ── 연결된 판매 재료의 실재고 첨부 (읽기 전용) ────────────────────────────
+    // `current_stock`(매입 계층 자체 수량)은 **건드리지 않는다.** 두 계층은 세는 대상이
+    // 다르므로 하나로 덮어쓰면 어느 쪽도 못 믿게 된다. 대신 "이 자재와 같은 물건인 판매
+    // 재료가 실제로 얼마나 있는가"를 별도 필드로 얹어, 화면이 둘을 나란히 보여줄 수 있게 한다.
+    //   linked_stock       : 판매 계층(ingredients) 재고
+    //   linked_store_total : 매장 오버레이(restaurant_ingredient_stocks) 합계 = 진짜 현물
+    //   linked_stores      : 매장별 내역
+    // 연결이 없으면 **null** 이다(0 이 아니다) — "연결 안 됨"과 "재고 0"은 다른 사실이다.
+    const linkedIds = [...new Set(data.map((i) => i.linked_ingredient_id).filter(Boolean))];
+    if (linkedIds.length) {
+      const { Ingredient, RestaurantIngredientStock, Restaurant } = require('../models');
+      const linked = await Ingredient.findAll({
+        where: { id: linkedIds },
+        attributes: ['id', 'name', 'unit', 'current_stock']
+      });
+      const linkedMap = Object.fromEntries(linked.map((g) => [g.id, g]));
+      const stocks = await RestaurantIngredientStock.findAll({
+        where: { ingredient_id: linkedIds },
+        attributes: ['ingredient_id', 'restaurant_id', 'current_stock'],
+        include: [{ model: Restaurant, as: 'restaurant', attributes: ['id', 'name'], required: false }]
+      });
+      const byIngredient = {};
+      stocks.forEach((st) => {
+        (byIngredient[st.ingredient_id] = byIngredient[st.ingredient_id] || []).push({
+          restaurant_id: st.restaurant_id,
+          restaurant_name: st.restaurant?.name || null,
+          current_stock: parseFloat(st.current_stock) || 0
+        });
+      });
+      data = data.map((i) => {
+        const row = i.toJSON ? i.toJSON() : i;
+        const g = row.linked_ingredient_id ? linkedMap[row.linked_ingredient_id] : null;
+        if (!g) return { ...row, linked_stock: null, linked_store_total: null, linked_stores: [], linked_unit: null };
+        const perStore = byIngredient[g.id] || [];
+        return {
+          ...row,
+          linked_stock: parseFloat(g.current_stock) || 0,
+          linked_store_total: perStore.reduce((a, b) => a + b.current_stock, 0),
+          linked_stores: perStore,
+          linked_unit: g.unit || null
+        };
+      });
+    } else {
+      data = data.map((i) => ({ ...(i.toJSON ? i.toJSON() : i), linked_stock: null, linked_store_total: null, linked_stores: [], linked_unit: null }));
+    }
+
     res.json({
       success: true,
       data

@@ -299,7 +299,27 @@ router.get('/brands/:brandId/inventory/expiring', requireBrandScope(), async (re
 router.get('/brands/:brandId/inventory/transactions', requireBrandScope(), async (req, res) => {
   try {
     const brandId = parseInt(req.params.brandId, 10);
-    const where = { entity_type: 'brand', entity_id: brandId };
+
+    // ── 산하 매장의 움직임까지 포함한다 ──────────────────────────────────────
+    // 예전에는 `entity_type='brand'` 행만 봤다. 그런데 브랜드 재료의 실제 소비는
+    // **매장에서** 일어나고(판매 차감·수동 차감·폐기), 그 거래는 restaurant 스코프로 쌓인다.
+    // 그래서 브랜드 History 화면이 "입고만 있고 나간 적 없는" 그림을 보여줬다.
+    // 브랜드 자신 + 산하 매장을 합쳐 보여주고, 각 행이 어디서 난 것인지 `source_scope` 로 구분한다.
+    const brandRestaurants = await Restaurant.findAll({
+      where: { brand_id: brandId },
+      attributes: ['id', 'name']
+    });
+    const brandRestaurantIds = brandRestaurants.map((r) => r.id);
+    const restaurantNameById = Object.fromEntries(brandRestaurants.map((r) => [r.id, r.name]));
+
+    const where = brandRestaurantIds.length
+      ? {
+          [Op.or]: [
+            { entity_type: 'brand', entity_id: brandId },
+            { restaurant_id: { [Op.in]: brandRestaurantIds } }
+          ]
+        }
+      : { entity_type: 'brand', entity_id: brandId };
 
     if (req.query.ingredient_id) where.ingredient_id = parseInt(req.query.ingredient_id, 10);
     if (req.query.transaction_type) where.transaction_type = String(req.query.transaction_type);
@@ -319,7 +339,19 @@ router.get('/brands/:brandId/inventory/transactions', requireBrandScope(), async
       limit, offset
     });
 
-    res.json({ success: true, data: { transactions: rows, total: count } });
+    // 행마다 출처를 붙인다 — 같은 재료의 입고(브랜드)와 소비(매장)가 한 표에 섞이므로
+    // 어느 쪽인지 구분되지 않으면 읽는 사람이 수량 부호를 오해한다.
+    const transactions = rows.map((t) => {
+      const row = t.toJSON();
+      const isStore = !!row.restaurant_id && brandRestaurantIds.includes(row.restaurant_id);
+      return {
+        ...row,
+        source_scope: isStore ? 'restaurant' : 'brand',
+        source_name: isStore ? (restaurantNameById[row.restaurant_id] || null) : null
+      };
+    });
+
+    res.json({ success: true, data: { transactions, total: count } });
   } catch (err) {
     console.error('[brand-inventory] transactions error:', err);
     res.status(500).json({ success: false, message: 'Failed to fetch transactions' });

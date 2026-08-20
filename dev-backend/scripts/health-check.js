@@ -724,6 +724,36 @@ function defineSecurityTests({ customerToken, member, restId }) {
   });
   // The brand-pushed read path (brand-ingredients) must NOT be tier-gated — a
   // franchise branch always sees HQ-provided ingredients regardless of its tier.
+  // 공개 quick-login 카드가 **실매장에 닿지 못한다**는 영구 계약.
+  // 코드가 아니라 **데이터**가 무너뜨리는 종류의 사고라(계정에 매장 부여가 새로 생기면 즉시 재발)
+  // 고장주입 1회가 아니라 상시 검사로 둔다. 판정 집합은 로그인 가드와 같은 단일소스를 쓴다.
+  // 운영 실측 근거: `admin@kdine.com`(is_test=1) 이 실주문 335건 매장의 Restaurant Admin 이었다.
+  test('security', 'demo-login 통과 키는 실매장(is_demo=0)에 닿지 않는다', async () => {
+    const { DEMO_KEY_TO_EMAIL } = require('../services/authService');
+    const { findReachableRestaurants } = require('../utils/demoReachableRestaurants');
+    const { sequelize } = require('../config/database');
+    const User = require('../models/User');
+
+    for (const [key, email] of Object.entries(DEMO_KEY_TO_EMAIL)) {
+      const res = await request('POST', '/auth/demo-login', { key });
+      if (res.status !== 200) continue; // 차단된 카드는 이 계약의 대상이 아니다
+      const u = await User.findOne({
+        where: sequelize.where(
+          sequelize.fn('LOWER', sequelize.col('email')),
+          String(email).toLowerCase()
+        )
+      });
+      if (!u) return false; // 200 인데 계정을 못 찾으면 검사기 고장 — 통과시키지 않는다
+      const rows = await findReachableRestaurants(sequelize, u);
+      const real = (rows || []).filter((r) => !r.is_demo);
+      if (real.length) {
+        console.log(c.red(`      ↳ ${key} → 실매장 ${real.length}건 (예: ${real[0].id})`));
+        return false;
+      }
+    }
+    return true;
+  });
+
   test('security', 'tier gate — brand-ingredients 읽기는 비차단', async () => {
     const Restaurant = require('../models/Restaurant');
     const User = require('../models/User');

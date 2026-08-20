@@ -122,6 +122,20 @@ ProductIngredient.init({
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  // 같은 물건인 판매 계층 재료(ingredients.id) 로의 **소프트 링크**.
+  // ── 통합이 아니다 ────────────────────────────────────────────────────────
+  // 매입 자재(product_ingredients)와 판매 재료(ingredients)는 계층이 다르다:
+  // 전자는 "무엇을 사오는가", 후자는 "무엇으로 만드는가"이고, 매장 실재고의 진실은
+  // 또 다른 곳(restaurant_ingredient_stocks)에 있다. 셋을 합치면 매입 단위와 소비 단위가
+  // 뒤섞여 재고가 틀어진다. 그래서 **합치지 않고 잇기만** 한다 — 이 컬럼은 "이 자재는
+  // 저 재료와 같은 물건"이라는 표시일 뿐이며, current_stock 계산에는 영향을 주지 않는다.
+  // 값은 사람이 확인해 채운다(scripts/link-product-ingredients.js). 외래키 제약은 걸지
+  // 않는다 — 판매 재료가 비활성/삭제돼도 매입 자재는 살아야 한다.
+  linked_ingredient_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '같은 물건인 ingredients.id (소프트 링크)'
   }
 }, {
   sequelize: database.sequelize,

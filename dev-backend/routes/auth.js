@@ -72,6 +72,10 @@ router.post('/demo-login', demoLoginLimiter, async (req, res, next) => {
     if (error.code === 'DEMO_ACCOUNT_MISSING') {
       return errorResponse(res, error.message, 404, 'DEMO_ACCOUNT_MISSING');
     }
+    if (error.code === 'NOT_DEMO_RESTAURANT') {
+      // 실매장 소속 계정이 공개 카드로 들어오려 한 경우 — fail-closed.
+      return errorResponse(res, error.message, 403, 'NOT_DEMO_RESTAURANT');
+    }
     if (error.code === 'NOT_DEMO_ACCOUNT') {
       return errorResponse(res, error.message, 403, 'NOT_DEMO_ACCOUNT');
     }

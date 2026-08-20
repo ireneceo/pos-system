@@ -51,6 +51,9 @@ interface Props {
   onWaste: (ingredient: IngredientStock) => void;
   onResolveAlert: (alertId: number) => void;
   onOrder: (item: UnifiedStockItem) => void;
+  // 부족 알림에서 곧바로 발주 장바구니에 담기 위한 핸들러.
+  // 담을 수 없는 상태(판매 재료 미연결)면 null 을 넘겨 버튼 대신 안내를 띄운다.
+  onAddToPurchaseCart?: (ingredient: IngredientStock) => void;
   onGoToList: () => void;
   onGoToHistory: () => void;
   onGoToIngredientsPage: () => void;
@@ -69,6 +72,7 @@ const DashboardSection: React.FC<Props> = ({
   onWaste,
   onResolveAlert,
   onOrder,
+  onAddToPurchaseCart,
   onGoToList,
   onGoToHistory,
   onGoToIngredientsPage,
@@ -110,6 +114,26 @@ const DashboardSection: React.FC<Props> = ({
                 </AlertDetail>
               </AlertInfo>
               <ActionButtons>
+                {/* 부족한 걸 봤으면 그 자리에서 주문까지 되어야 한다 — 목록으로 되돌아가
+                    같은 품목을 다시 찾게 만들지 않는다. 담기는 장바구니 방식(즉시 발주 아님)이라
+                    여러 건을 모아 한 번에 보낼 수 있다. */}
+                {onAddToPurchaseCart && (() => {
+                  const ing = inventory.find(i => i.id === alert.ingredient_id);
+                  const linkable = !!(ing as any)?.linked_ingredient_id;
+                  return linkable ? (
+                    <Button
+                      variant="primary"
+                      onClick={() => { if (ing) onAddToPurchaseCart(ing); }}
+                      style={{ padding: '8px 16px', fontSize: '13px' }}
+                    >
+                      Add to Order
+                    </Button>
+                  ) : (
+                    // 연결이 없으면 무엇을 얼마에 살지 정할 수 없다. 버튼을 비활성으로
+                    // 남겨두면 왜 안 되는지 알 수 없으므로, 이유를 글로 보여준다.
+                    <AlertDetail style={{ fontSize: '12px' }}>Link required</AlertDetail>
+                  );
+                })()}
                 <Button
                   variant="primary"
                   onClick={() => {

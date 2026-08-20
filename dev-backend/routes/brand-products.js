@@ -633,6 +633,42 @@ router.get('/brand-products', authenticateToken, requireBGScope, async (req, res
  * GET /api/brand-products/:productId
  * 제품 상세 조회
  */
+// GET /api/brand-products/similar?name=...&sku=... — 등록 폼이 입력 중 보여줄 유사 상품.
+// **차단하지 않는다.** 사람이 "이미 있는 그것 아닌가?"를 스스로 알아보게 하는 용도라
+// 오탐 비용이 0 이고, 형제 변형이 같이 뜨는 것도 오히려 유익하다.
+// 반드시 '/brand-products/:productId' 보다 먼저 등록한다(안 그러면 productId='similar' 로 매칭).
+router.get('/brand-products/similar', authenticateToken, requireBGScope, async (req, res) => {
+  try {
+    const { name, sku, exclude_id } = req.query;
+    if (!name || !String(name).trim()) {
+      return res.json({ success: true, data: { exact: null, similar: [], suggestions: [] } });
+    }
+    if (req.bgOwnerId == null) {
+      return res.status(400).json({ success: false, message: 'owner_user_id required' });
+    }
+    const { findDuplicateBrandProducts } = require('../utils/brandProductDuplicate');
+    const dup = await findDuplicateBrandProducts({
+      ownerUserId: req.bgOwnerId,
+      name,
+      sku: sku || null,
+      excludeId: exclude_id ? parseInt(exclude_id, 10) : undefined
+    });
+    const shape = (r) => ({ id: r.id, name: r.name, sku: r.sku, unit: r.unit, unit_price: r.unit_price, is_active: r.is_active });
+    res.json({
+      success: true,
+      data: {
+        exact: dup.exact ? shape(dup.exact) : null,
+        exact_reason: dup.exactReason || null,
+        similar: (dup.similar || []).map(shape),
+        suggestions: (dup.suggestions || []).map(shape)
+      }
+    });
+  } catch (error) {
+    console.error('Similar brand products error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.get('/brand-products/:productId', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { productId } = req.params;
@@ -726,6 +762,39 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
 
     if (req.bgOwnerId == null) {
       return res.status(400).json({ success: false, message: 'owner_user_id required' });
+    }
+
+    // ── 중복 등록 방지 ────────────────────────────────────────────────────────
+    // 같은 물건이 이름만 바꿔 여러 번 등록되면 재고가 여러 칸으로 쪼개져 어느 것도 안 맞는다.
+    // 규칙은 둘로 나뉜다(근거는 utils/brandProductDuplicate.js 주석):
+    //   하드 차단 = SKU 또는 이름 완전일치 → 명백한 중복
+    //   소프트    = 괄호 설명만 다른 변형 → 409 로 물어보되 `force: true` 로 통과 가능
+    // 크기·용량이 다른 정당한 변형(L/M/S, 850CC vs 780CC)을 막지 않으려고, 느슨한 규칙은
+    // **차단에 쓰지 않고** 제안 목록으로만 돌려준다.
+    const { findDuplicateBrandProducts } = require('../utils/brandProductDuplicate');
+    const dup = await findDuplicateBrandProducts({ ownerUserId: req.bgOwnerId, name, sku });
+    if (dup.exact) {
+      return res.status(409).json({
+        success: false,
+        error: {
+          code: dup.exactReason,
+          message: dup.exactReason === 'DUPLICATE_SKU'
+            ? `SKU "${sku}" is already used by "${dup.exact.name}".`
+            : `"${dup.exact.name}" already exists.`,
+          existing: { id: dup.exact.id, name: dup.exact.name, sku: dup.exact.sku, unit: dup.exact.unit }
+        }
+      });
+    }
+    if (dup.similar && dup.similar.length && req.body.force !== true) {
+      return res.status(409).json({
+        success: false,
+        error: {
+          code: 'SIMILAR_EXISTS',
+          message: 'A very similar product already exists. Register anyway?',
+          similar: dup.similar.map((r) => ({ id: r.id, name: r.name, sku: r.sku, unit: r.unit })),
+          suggestions: (dup.suggestions || []).map((r) => ({ id: r.id, name: r.name, sku: r.sku, unit: r.unit }))
+        }
+      });
     }
 
     // Validate category belongs to same BG
