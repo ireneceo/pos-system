@@ -451,7 +451,35 @@ router.post('/:id/ship', async (req, res) => {
           const mapping = await IngredientSellerProduct.findByPk(it.ingredient_seller_product_id, { transaction: t });
           if (!mapping || !mapping.seller_product_id) continue;
           const bp = await BrandProduct.findByPk(mapping.seller_product_id, { transaction: t });
-          if (!bp || !bp.product_recipe_id) continue; // 레시피 없으면 차감 없음
+          if (!bp) continue;
+
+          if (!bp.product_recipe_id) {
+            // ── 레시피 없는 프로덕트는 **그 상품 자체가 재고 단위** ─────────────
+            // 매장이 메뉴를 팔 때와 같은 규칙(2026-08-22 확정 모델). 그대로 파는 물건은
+            // BOM 이 있을 수 없는데, 예전에는 여기서 그냥 건너뛰어 팔려도 재고가 안 줄었다.
+            // `track_stock` 켠 상품만 깎는다.
+            if (!bp.track_stock) continue;
+            const soldQtyDirect = parseFloat(it.quantity_ordered) || 0;
+            if (soldQtyDirect <= 0) continue;
+            const curBp = parseFloat(bp.current_stock) || 0;
+            const takeBp = Math.min(soldQtyDirect, curBp);      // 음수 재고 금지
+            const shortBp = Math.round((soldQtyDirect - takeBp) * 100) / 100;
+            const nextBp = Math.round((curBp - takeBp) * 100) / 100;
+            await bp.update({ current_stock: nextBp }, { transaction: t });
+            await InventoryTransaction.create({
+              entity_type: 'brand', entity_id: locked.seller_entity_id,
+              brand_product_id: bp.id,
+              transaction_type: 'order_deduct',
+              quantity_change: -takeBp,
+              unit: bp.stock_unit || bp.unit || 'ea',
+              stock_after: nextBp,
+              purchase_order_id: locked.id,
+              notes: `Sold on PO ${locked.po_number} (${bp.name})`
+                + (shortBp > 0 ? ` [stock_shortfall ${shortBp}]` : ''),
+              created_by: req.user?.id || null
+            }, { transaction: t });
+            continue;
+          }
           const recipeIngs = await ProductRecipeIngredient.findAll({ where: { recipe_id: bp.product_recipe_id }, transaction: t });
           const soldQty = parseFloat(it.quantity_ordered) || 0;
           for (const ri of recipeIngs) {

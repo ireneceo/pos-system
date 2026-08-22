@@ -95,15 +95,9 @@ router.get('/brands/:brandId/inventory/summary', requireBrandScope(), async (req
     let lowStockCount = 0;
     let outOfStockCount = 0;
 
-    // 목록과 **같은 기준**으로 센다 — 요약과 목록이 다른 값을 읽으면 숫자가 서로 안 맞는다.
-    const summaryBrandIds = ingredients.filter(i => !i.restaurant_id).map(i => i.id);
-    const summaryOverlay = await overlayStockByIngredient(summaryBrandIds, restaurantIds, {});
-
     ingredients.forEach(ing => {
-      const ov = !ing.restaurant_id ? summaryOverlay.get(ing.id) : null;
-      const currentStock = !ing.restaurant_id
-        ? (ov ? ov.total : 0)
-        : (parseFloat(ing.current_stock) || 0);
+      // 브랜드 재고 기준으로 센다(매장 보유분은 별개 — 목록과 같은 규칙).
+      const currentStock = parseFloat(ing.current_stock) || 0;
       const minStock = parseFloat(ing.min_stock) || 0;
 
       if (currentStock <= 0) {
@@ -190,10 +184,12 @@ router.get('/brands/:brandId/inventory', requireBrandScope(), async (req, res) =
     const inventoryData = ingredients.map(ing => {
       const isBrandOwned = !ing.restaurant_id;
       const ov = isBrandOwned ? overlay.get(ing.id) : null;
-      const centralStock = parseFloat(ing.current_stock) || 0;
 
-      // 실물 기준: 브랜드 재료는 매장 합계, 매장 재료는 자기 행. **더하지 않는다**(2배 방지).
-      const currentStock = isBrandOwned ? (ov ? ov.total : 0) : centralStock;
+      // 브랜드 재고와 매장 재고는 **다른 것**이다. 브랜드는 자기 재고를 스스로 관리하고,
+      // 매장은 매장대로 자기 재고를 가진다. 그래서 `current_stock` 은 그대로 **브랜드 자기
+      // 재고**이고, 매장 보유분은 `store_stock` 으로 **따로** 보여준다.
+      // 합치지 않는다 — 합치면 브랜드가 자기 창고에 뭐가 있는지 알 수 없게 된다.
+      const currentStock = parseFloat(ing.current_stock) || 0;
       const minStock = parseFloat(ing.min_stock) || 0;
 
       let stockStatus = 'normal';
@@ -210,8 +206,7 @@ router.get('/brands/:brandId/inventory', requireBrandScope(), async (req, res) =
         unit_cost: parseFloat(ing.unit_cost) || 0,
         category: ing.category,
         current_stock: currentStock,
-        // 중앙(브랜드 행) 보유분 — 실물과 별개로 보여준다. 합산 금지(이중계상으로 읽힌다).
-        central_stock: isBrandOwned ? centralStock : null,
+        // 산하 매장이 들고 있는 양 — 참고용. 브랜드 재고에 더하지 않는다.
         store_stock: isBrandOwned ? (ov ? ov.total : 0) : null,
         store_breakdown: isBrandOwned ? (ov ? ov.perStore : []) : null,
         min_stock: minStock,
@@ -316,20 +311,21 @@ router.get('/brands/:brandId/inventory/expiring', requireBrandScope(), async (re
 
 
 /**
- * 브랜드 소유 재료의 **실물 재고**를 매장 오버레이에서 읽어 온다.
+ * 브랜드 소유 재료를 **산하 매장이 얼마나 들고 있는지** 오버레이에서 읽어 온다(참고용).
  *
  * ── 왜 필요한가 ────────────────────────────────────────────────────────────
- * 브랜드 재료(`owner_type='brand'`)의 진짜 재고는 `ingredients.current_stock` 이 아니라
- * 매장별 오버레이(`restaurant_ingredient_stocks`)에 있다. 형제 매장이 같은 재료 행을
- * 공유하므로 브랜드 행 하나에 수량을 적을 수 없기 때문이다.
- * 그런데 브랜드 재고 화면은 브랜드 행만 읽어 왔고, 그래서 운영에서는 화면을 맞추려고
- * **같은 값을 브랜드 행에도 복사해 두는** 상태가 됐다(2026-08-20, 18품목).
+ * 산하 매장이 그 재료를 얼마나 들고 있는지는 매장별 오버레이
+ * (`restaurant_ingredient_stocks`)에 있다. 브랜드 화면에서 그것도 함께 보이게 한다.
  *
- * ── 왜 합산하지 않는가 (중요) ─────────────────────────────────────────────
- * 브랜드 행 값과 오버레이 값이 **지금 같은 숫자**라, 둘을 더하면 화면이 정확히 2배가 된다.
- * 그래서 더하지 않고 **오버레이를 실물 기준으로 삼고, 브랜드 행 값은 `central_stock` 으로
- * 따로 보여준다.** 이렇게 하면 표시용 사본을 0 으로 정리하기 **전에도 후에도 같은 숫자**라
- * 위험한 전환 구간이 없다.
+ * ── 브랜드 재고와 매장 재고는 다른 것이다 (2026-08-22 Irene 확인) ────────
+ * 브랜드 제너럴은 **자기 재고를 스스로 관리한다.** 그러니 브랜드 재고 화면의 수량은
+ * 그대로 브랜드 자기 재고(`ingredients.current_stock`)이고, 매장이 들고 있는 양은
+ * **참고용으로 따로** 보여준다(`store_stock`). **더하지 않는다** — 더하면 브랜드가
+ * 자기 창고에 뭐가 있는지 알 수 없게 되고, 이중계상으로도 읽힌다.
+ *
+ * ⚠️ 운영 데이터 주의: 현재 브랜드1 의 18품목은 화면을 맞추려고 **매장 값을 브랜드 행에
+ * 복사해 둔 상태**다(2026-08-20). 그건 코드 문제가 아니라 데이터 문제이며, 브랜드가
+ * 자기 실재고를 입력하면 해소된다.
  *
  * @returns {Promise<Map<number, {total:number, perStore:Array}>>} ingredient_id → 매장 합계·내역
  */

@@ -189,7 +189,40 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
         const recipeIngredients = await getProductRecipeIngredients(productId);
 
         if (recipeIngredients.length === 0) {
-          // No recipe linked - skip deduction
+          // ── 레시피가 없는 상품은 **그 상품 자체가 재고 단위**다 ─────────────
+          // 캔음료·병맥주·완제품처럼 그대로 파는 물건은 레시피가 있을 수 없다.
+          // 예전에는 여기서 그냥 건너뛰어, 팔려도 재고가 전혀 안 줄었다.
+          // `track_stock` 을 켠 상품만 깎는다(안 켠 상품은 재고를 안 세기로 한 것).
+          const prod = await Product.findByPk(productId, { transaction });
+          if (prod && prod.track_stock) {
+            const cur = parseFloat(prod.current_stock) || 0;
+            const take = Math.min(tgtQty, cur);        // 음수 재고 금지(재료 차감과 같은 규칙)
+            const short = Math.round((tgtQty - take) * 10000) / 10000;
+            const next = Math.round((cur - take) * 10000) / 10000;
+            await prod.update({ current_stock: next }, { transaction });
+            await InventoryTransaction.create({
+              restaurant_id: restaurantId,
+              product_id: prod.id,
+              transaction_type: 'order_deduct',
+              quantity_change: -take,
+              unit: prod.stock_unit || 'ea',
+              stock_after: next,
+              notes: `Order #${orderId} - ${tgt.name} x${tgtQty}`
+                + (short > 0 ? ` [stock_shortfall ${short}]` : ''),
+              created_by: null
+            }, { transaction });
+            results.deductions.push({
+              product_id: prod.id,
+              ingredient_name: prod.name,
+              quantity_deducted: take,
+              unit: prod.stock_unit || 'ea',
+              new_stock: next,
+              source: 'product_stock'
+            });
+            continue;
+          }
+
+          // 재고를 안 세기로 한 상품 — 건너뛰되 **몇 건인지 센다**(조용한 0 차감 방지)
           results.skipped_no_recipe += 1;
           results.warnings.push({
             product_id: productId,

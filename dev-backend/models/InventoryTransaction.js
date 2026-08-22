@@ -33,6 +33,17 @@ InventoryTransaction.init({
     allowNull: true,
     comment: 'BG 재고아이템(ProductIngredient) 거래. ingredient_id 와 둘 중 하나만'
   },
+  // 레시피 없는 상품의 자체 재고 이동 — 재료 차감과 **같은 표**에 남긴다(이력이 한곳에서 보이게).
+  product_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '매장 메뉴(products.id) 자체 재고 이동'
+  },
+  brand_product_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '브랜드 프로덕트(brand_products.id) 자체 재고 이동'
+  },
   transaction_type: {
     type: DataTypes.ENUM(
       'initial', 'purchase', 'order_deduct', 'stock_take', 'waste', 'adjustment',

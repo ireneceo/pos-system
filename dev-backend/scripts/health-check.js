@@ -2090,6 +2090,45 @@ function defineInventoryTests() {
     }
   });
 
+  // ①-3 레시피 **없는** 상품은 그 상품 자체가 재고 단위다 — 팔리면 상품 재고가 빠져야 한다.
+  //     (2026-08-22 확정 모델: 상품은 "레시피 있음 → 재료 차감" / "없음 → 상품이 재고" 둘 중 하나.
+  //      RA 메뉴·BG 프로덕트 대칭.) 이 절반이 없어서 캔음료·완제품이 팔려도 재고가 안 줄었다.
+  test('inventory', '레시피 없는 상품(track_stock)은 판매하면 그 상품 재고가 빠진다', async () => {
+    const { sequelize } = require('../config/database');
+    const { Product, InventoryTransaction } = require('../models');
+    const demo = (await sequelize.query('SELECT id FROM restaurants WHERE is_demo = 1 LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    if (!demo) return true;
+    const cat = (await sequelize.query('SELECT name FROM categories WHERE restaurant_id = :r LIMIT 1',
+      { replacements: { r: demo.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    if (!cat) return true;
+
+    let prod;
+    try {
+      prod = await Product.create({
+        restaurant_id: demo.id, name: 'ZZ-HC-PRODSTOCK-PROBE', category: cat.name,
+        price: 5, is_active: true, track_stock: true, current_stock: 10, stock_unit: 'can'
+      });
+      await svc.deductInventoryForOrder(
+        demo.id, [{ id: prod.id, product_id: prod.id, name: prod.name, quantity: 3 }], 0
+      );
+      const after = await Product.findByPk(prod.id);
+      if (Math.abs(parseFloat(after.current_stock) - 7) > 0.001) return false;
+
+      // 재고보다 많이 팔아도 **음수로 가지 않는다**(재료 차감과 같은 규칙)
+      await svc.deductInventoryForOrder(
+        demo.id, [{ id: prod.id, product_id: prod.id, name: prod.name, quantity: 99 }], 0
+      );
+      const after2 = await Product.findByPk(prod.id);
+      return Math.abs(parseFloat(after2.current_stock)) < 0.001;
+    } catch {
+      return false;
+    } finally {
+      try { if (prod) await InventoryTransaction.destroy({ where: { product_id: prod.id } }); } catch {}
+      try { if (prod) await prod.destroy({ force: true }); } catch {}
+    }
+  });
+
   // ② 차감 계산이 "배치가 덮은 양"을 쓰지 않는다는 것을 코드로 고정한다.
   //    (①은 데이터가 없으면 통과하므로, 규칙 자체를 잠그는 검사를 따로 둔다.)
   test('inventory', '차감 계산이 배치량이 아니라 소비량 기준이다 (코드 계약)', async () => {

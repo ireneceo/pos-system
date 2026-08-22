@@ -35,6 +35,7 @@
   "migrate-print-device-status.js",
   "migrate-print-needed-at.js",
   "migrate-product-ingredient-link.js",
+  "migrate-product-level-stock.js",
   "migrate-product-recommendations.js",
   "migrate-qz-diagnostic-category.js",
   "migrate-referral.js",

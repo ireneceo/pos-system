@@ -20,7 +20,8 @@ import {
   FormTextArea,
   Button as UIButton,
   TabContainer,
-  Tab
+  Tab,
+  StatusBadge
 } from '../../components/UI';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
@@ -832,6 +833,7 @@ const MenuManagementPage: React.FC = () => {
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [missingFilter, setMissingFilter] = useState<'none' | 'price' | 'cost'>('none');
   const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   // 세트 모달 내부 인라인 에러 (팝업 위 팝업 금지 — 모달 안에서 바로 표시)
@@ -886,6 +888,9 @@ const MenuManagementPage: React.FC = () => {
     set_items: [],
     set_display_order: 0,
     recipe_id: null,
+    track_stock: false,
+    current_stock: 0,
+    stock_unit: '',
     takeaway_charge: 0
   });
 
@@ -1010,6 +1015,14 @@ const MenuManagementPage: React.FC = () => {
     sortKey
   );
 
+  // 빠진 값만 걸러 보기. 요약 줄의 숫자를 누르면 켜지고, 다시 누르면 꺼진다.
+  // 요약의 건수는 **거르기 전 목록** 기준이라, 걸러 본 상태에서도 전체 수가 그대로 보인다.
+  const visibleItems = missingFilter === 'price'
+    ? filteredItems.filter((i: any) => !i.price || Number(i.price) === 0)
+    : missingFilter === 'cost'
+      ? filteredItems.filter((i: any) => !i.recipe_id)
+      : filteredItems;
+
   // Progressive rendering - only activate for large lists (50+ items)
   const useProgressive = filteredItems.length > PROGRESSIVE_THRESHOLD;
 
@@ -1053,6 +1066,9 @@ const MenuManagementPage: React.FC = () => {
       set_items: [],
       set_display_order: 0,
       recipe_id: null,
+    track_stock: false,
+    current_stock: 0,
+    stock_unit: '',
       takeaway_charge: 0
     });
     setSelectedOptionGroups([]);
@@ -1076,6 +1092,9 @@ const MenuManagementPage: React.FC = () => {
       set_items: [],
       set_display_order: 0,
       recipe_id: null,
+    track_stock: false,
+    current_stock: 0,
+    stock_unit: '',
       takeaway_charge: 0
     });
     setSelectedOptionGroups([]);
@@ -1139,6 +1158,11 @@ const MenuManagementPage: React.FC = () => {
       set_only: (item as any).set_only || false,
       set_items: item.set_items || [],
       set_display_order: item.set_display_order || 0,
+      // 자체 재고 — 수정 폼을 열 때 저장된 값을 그대로 싣는다.
+      // (안 실으면 저장 시 0/꺼짐으로 덮어써 재고가 조용히 날아간다.)
+      track_stock: !!(item as any).track_stock,
+      current_stock: Number((item as any).current_stock) || 0,
+      stock_unit: (item as any).stock_unit || '',
       recipe_id: item.recipe_id || null,
       takeaway_charge: item.takeaway_charge ?? 0
     });
@@ -1339,6 +1363,9 @@ const MenuManagementPage: React.FC = () => {
       code: formData.code || '',
       name: formData.name || '',
       price: formData.price || 0,
+      track_stock: !!formData.track_stock,
+      current_stock: formData.track_stock ? (Number(formData.current_stock) || 0) : 0,
+      stock_unit: formData.stock_unit || null,
       category: formData.category,
       emoji: formData.emoji || '🍽️',
       description: formData.description,
@@ -1400,6 +1427,9 @@ const MenuManagementPage: React.FC = () => {
       code: formData.code || '',
       name: formData.name || '',
       price: formData.price || 0,
+      track_stock: !!formData.track_stock,
+      current_stock: formData.track_stock ? (Number(formData.current_stock) || 0) : 0,
+      stock_unit: formData.stock_unit || null,
       category: formData.category,
       emoji: formData.emoji || '🍽️',
       description: formData.description,
@@ -1599,6 +1629,51 @@ const MenuManagementPage: React.FC = () => {
             ))}
           </TabContainer>
 
+          {/* 빠진 값 요약 — 숫자만 보여주고 누르면 그것만 걸러 본다.
+              한 줄이라 목록을 밀어내지 않고, 0 이면 아예 나타나지 않는다. */}
+          {(() => {
+            const noPrice = filteredItems.filter(i => !i.price || Number(i.price) === 0).length;
+            const noCost = filteredItems.filter(i => !i.recipe_id).length;
+            if (!noPrice && !noCost) return null;
+            return (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+                margin: '0 0 12px', padding: '10px 14px', borderRadius: '8px',
+                background: '#F9FAFB', border: '1px solid #E5E7EB', fontSize: '13px', color: '#4B5563'
+              }}>
+                <span>{t('menu:badges.missingSummary', { defaultValue: 'Missing information' })}</span>
+                {noPrice > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setMissingFilter(missingFilter === 'price' ? 'none' : 'price')}
+                    style={{
+                      border: missingFilter === 'price' ? '1px solid #DC2626' : '1px solid #E5E7EB',
+                      background: missingFilter === 'price' ? '#FEE2E2' : '#FFFFFF',
+                      color: '#B91C1C', borderRadius: '999px', padding: '3px 10px',
+                      fontSize: '12px', fontWeight: 600, cursor: 'pointer'
+                    }}
+                  >
+                    {t('menu:badges.noPrice', { defaultValue: 'No price' })} {noPrice}
+                  </button>
+                )}
+                {noCost > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setMissingFilter(missingFilter === 'cost' ? 'none' : 'cost')}
+                    style={{
+                      border: missingFilter === 'cost' ? '1px solid #635BFF' : '1px solid #E5E7EB',
+                      background: missingFilter === 'cost' ? '#EEF2FF' : '#FFFFFF',
+                      color: '#4B5563', borderRadius: '999px', padding: '3px 10px',
+                      fontSize: '12px', fontWeight: 600, cursor: 'pointer'
+                    }}
+                  >
+                    {t('menu:badges.noCost', { defaultValue: 'Cost not set' })} {noCost}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
+
           {searchQuery && filteredItems.length === 0 ? (
             <NoResultsMessage>
               <div className="icon">🔍</div>
@@ -1611,7 +1686,7 @@ const MenuManagementPage: React.FC = () => {
             </NoResultsMessage>
           ) : (
             <MenuGrid>
-              {(useProgressive ? filteredItems.slice(0, visibleCount) : filteredItems).map(item => (
+              {(useProgressive ? visibleItems.slice(0, visibleCount) : visibleItems).map(item => (
               <MenuCard key={item.id} soldOut={item.soldOut} inactive={item.is_active === false}>
                 <MenuImage>
                   {item.is_set_menu && <SetBadge>{t('menu:menuManagementPage.set')}</SetBadge>}
@@ -1642,6 +1717,23 @@ const MenuManagementPage: React.FC = () => {
                     <MenuName>{item.code ? `${item.code} ` : ''}{item.name}</MenuName>
                     <MenuPrice>{formatCurrency(item.price, selectedCurrency)}</MenuPrice>
                   </MenuHeader>
+                  {/* 빠진 값 표시 — 판매가는 빠뜨린 것(빨강), 원가는 아직 안 이은 것(회색).
+                      원가를 경고색으로 두면 전 상품이 붉어져 진짜 문제가 묻힌다
+                      (운영 실측: 754개 중 원가 근거 있는 것 0개). */}
+                  {(!item.price || Number(item.price) === 0 || !item.recipe_id) && (
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+                      {(!item.price || Number(item.price) === 0) && (
+                        <StatusBadge status="error" size="small">
+                          {t('menu:badges.noPrice', { defaultValue: 'No price' })}
+                        </StatusBadge>
+                      )}
+                      {!item.recipe_id && (
+                        <StatusBadge status="draft" size="small">
+                          {t('menu:badges.noCost', { defaultValue: 'Cost not set' })}
+                        </StatusBadge>
+                      )}
+                    </div>
+                  )}
                   <MenuDescription>
                     {item.description || 'No description available'}
                   </MenuDescription>
@@ -1839,6 +1931,42 @@ const MenuManagementPage: React.FC = () => {
               min="0"
             />
           </UIFormGroup>
+
+          {/* 레시피 없는 상품의 자체 재고 — 캔음료·병맥주처럼 그대로 파는 물건.
+              레시피를 연결하면 재료가 빠지므로 이 칸은 나타나지 않는다(둘 중 하나다). */}
+          {!formData.recipe_id && (
+            <UIFormGroup>
+              <FormLabel>{t('menu:menuManagementPage.trackStock', 'Track stock for this item')}</FormLabel>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#4B5563', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={!!formData.track_stock}
+                  onChange={(e) => setFormData({ ...formData, track_stock: e.target.checked })}
+                  style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#635BFF' }}
+                />
+                {t('menu:menuManagementPage.trackStockHelp', 'Sold as-is (no recipe) — count this item itself as stock')}
+              </label>
+              {formData.track_stock && (
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <FormInput
+                    type="number"
+                    value={formData.current_stock ?? 0}
+                    onChange={(e) => setFormData({ ...formData, current_stock: parseFloat(e.target.value) || 0 })}
+                    onFocus={(e) => { if (parseFloat(e.target.value) === 0) e.target.select(); }}
+                    step="1"
+                    min="0"
+                    placeholder={t('menu:menuManagementPage.currentStock', 'Current stock')}
+                  />
+                  <FormInput
+                    type="text"
+                    value={formData.stock_unit || ''}
+                    onChange={(e) => setFormData({ ...formData, stock_unit: e.target.value })}
+                    placeholder={t('menu:menuManagementPage.stockUnit', 'Unit (e.g. can, bottle)')}
+                  />
+                </div>
+              )}
+            </UIFormGroup>
+          )}
 
           <UIFormGroup>
             <FormLabel>{t('menu:menuManagementPage.takeawayPackagingFee', 'Takeaway Packaging Fee (RM)')}</FormLabel>
@@ -2167,6 +2295,42 @@ const MenuManagementPage: React.FC = () => {
               disabled={!!editingItem?.brand_menu_locks_snapshot?.price}
             />
           </UIFormGroup>
+
+          {/* 레시피 없는 상품의 자체 재고 — 캔음료·병맥주처럼 그대로 파는 물건.
+              레시피를 연결하면 재료가 빠지므로 이 칸은 나타나지 않는다(둘 중 하나다). */}
+          {!formData.recipe_id && (
+            <UIFormGroup>
+              <FormLabel>{t('menu:menuManagementPage.trackStock', 'Track stock for this item')}</FormLabel>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#4B5563', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={!!formData.track_stock}
+                  onChange={(e) => setFormData({ ...formData, track_stock: e.target.checked })}
+                  style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#635BFF' }}
+                />
+                {t('menu:menuManagementPage.trackStockHelp', 'Sold as-is (no recipe) — count this item itself as stock')}
+              </label>
+              {formData.track_stock && (
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <FormInput
+                    type="number"
+                    value={formData.current_stock ?? 0}
+                    onChange={(e) => setFormData({ ...formData, current_stock: parseFloat(e.target.value) || 0 })}
+                    onFocus={(e) => { if (parseFloat(e.target.value) === 0) e.target.select(); }}
+                    step="1"
+                    min="0"
+                    placeholder={t('menu:menuManagementPage.currentStock', 'Current stock')}
+                  />
+                  <FormInput
+                    type="text"
+                    value={formData.stock_unit || ''}
+                    onChange={(e) => setFormData({ ...formData, stock_unit: e.target.value })}
+                    placeholder={t('menu:menuManagementPage.stockUnit', 'Unit (e.g. can, bottle)')}
+                  />
+                </div>
+              )}
+            </UIFormGroup>
+          )}
 
           <UIFormGroup>
             <FormLabel>{t('menu:menuManagementPage.takeawayPackagingFee', 'Takeaway Packaging Fee (RM)')}</FormLabel>

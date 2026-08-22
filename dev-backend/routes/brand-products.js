@@ -731,7 +731,9 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
       min_order_quantity, image_url, category_id, emoji,
       is_active, product_recipe_id, sort_order, brand_ids, restaurant_ids,
       distribution_mode, option_group_ids,
-      is_set_menu, set_items, set_display_order
+      is_set_menu, set_items, set_display_order,
+      // 레시피 없는 프로덕트의 자체 재고(매장 메뉴와 같은 규칙)
+      track_stock, current_stock, stock_unit, min_stock
     } = req.body;
 
     if (!name || !name.trim()) {
@@ -841,7 +843,12 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
       set_items: is_set_menu ? set_items : null,
       set_display_order: set_display_order || 0,
       product_recipe_id: product_recipe_id || null,
-      sort_order: sort_order || 0
+      sort_order: sort_order || 0,
+      // 레시피가 있으면 매입자재가 빠지므로 자체 재고는 쓰지 않는다(둘 중 하나).
+      track_stock: !product_recipe_id && track_stock === true,
+      current_stock: (!product_recipe_id && track_stock === true) ? (parseFloat(current_stock) || 0) : 0,
+      min_stock: parseFloat(min_stock) || 0,
+      stock_unit: stock_unit || null
     });
 
     // brand_ids → BrandProductBrand 매핑 (specific_brands 모드)
@@ -941,7 +948,9 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       min_order_quantity, image_url, category_id, emoji,
       is_active, product_recipe_id, sort_order, brand_ids, restaurant_ids,
       distribution_mode, option_group_ids,
-      is_set_menu, set_items, set_display_order
+      is_set_menu, set_items, set_display_order,
+      // 레시피 없는 프로덕트의 자체 재고(매장 메뉴와 같은 규칙)
+      track_stock, current_stock, stock_unit, min_stock
     } = req.body;
 
     const product = await BrandProduct.findByPk(productId);
@@ -1000,7 +1009,14 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       set_items: set_items !== undefined ? (finalIsSet ? set_items : null) : product.set_items,
       set_display_order: set_display_order !== undefined ? set_display_order : product.set_display_order,
       product_recipe_id: product_recipe_id !== undefined ? product_recipe_id : product.product_recipe_id,
-      sort_order: sort_order !== undefined ? sort_order : product.sort_order
+      sort_order: sort_order !== undefined ? sort_order : product.sort_order,
+      // 자체 재고 — 레시피가 붙으면 끈다(둘 중 하나만 성립한다).
+      track_stock: (product_recipe_id !== undefined ? product_recipe_id : product.product_recipe_id)
+        ? false
+        : (track_stock !== undefined ? track_stock === true : product.track_stock),
+      current_stock: current_stock !== undefined ? (parseFloat(current_stock) || 0) : product.current_stock,
+      min_stock: min_stock !== undefined ? (parseFloat(min_stock) || 0) : product.min_stock,
+      stock_unit: stock_unit !== undefined ? (stock_unit || null) : product.stock_unit
     });
 
     // 브랜드/지점 매핑 업데이트 — mode 별로 적절한 테이블만 갱신

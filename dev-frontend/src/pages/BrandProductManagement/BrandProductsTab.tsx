@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getErrorMessage } from '../../utils/apiError';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
+import { StatusBadge } from '../../components/UI/CommonStyles';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
@@ -375,6 +376,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     unit: '',
     base_quantity: '1',
     unit_price: '',
+    track_stock: false,
+    current_stock: 0,
+    stock_unit: '',
     min_order_quantity: '1',
     category_id: '',
     image_url: '',
@@ -393,6 +397,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   const [setMenuSearchQuery, setSetMenuSearchQuery] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // 판매가 빠진 것만 걸러 보기(요약 줄의 숫자 클릭). 건수는 거르기 전 기준으로 유지된다.
+  const [showMissingPriceOnly, setShowMissingPriceOnly] = useState(false);
   const [directIngredients, setDirectIngredients] = useState<{ingredient_id: number; name: string; quantity: number; unit: string; unit_cost: number}[]>([]);
   const [productIngredientsList, setProductIngredientsList] = useState<{id: number; name: string; unit: string; unit_cost: number}[]>([]);
 
@@ -523,6 +529,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         unit: product.unit || '',
         base_quantity: (product.base_quantity || 1).toString(),
         unit_price: product.unit_price.toString(),
+        track_stock: !!(product as any).track_stock,
+        current_stock: Number((product as any).current_stock) || 0,
+        stock_unit: (product as any).stock_unit || '',
         min_order_quantity: product.min_order_quantity.toString(),
         category_id: product.category_id?.toString() || '',
         image_url: product.image_url || '',
@@ -566,6 +575,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         unit: '',
         base_quantity: '1',
         unit_price: '',
+    track_stock: false,
+    current_stock: 0,
+    stock_unit: '',
         min_order_quantity: '1',
         category_id: categories.length > 0 ? categories[0].id.toString() : '',
         image_url: '',
@@ -642,6 +654,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           unit: formData.unit || null,
           base_quantity: parseFloat(formData.base_quantity) || 1,
           unit_price: parseFloat(formData.unit_price) || 0,
+          track_stock: !!formData.track_stock,
+          current_stock: formData.track_stock ? (Number(formData.current_stock) || 0) : 0,
+          stock_unit: formData.stock_unit || null,
           min_order_quantity: parseInt(formData.min_order_quantity) || 1,
           category_id: formData.category_id ? parseInt(formData.category_id) : null,
           image_url: formData.image_url || null,
@@ -874,6 +889,32 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         </ThemedButton>
       </div>
 
+      {(() => {
+        const noPrice = filteredProducts.filter((p: any) => !p.unit_price || Number(p.unit_price) === 0).length;
+        if (!noPrice) return null;
+        return (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+            margin: '0 0 12px', padding: '10px 14px', borderRadius: '8px',
+            background: '#F9FAFB', border: '1px solid #E5E7EB', fontSize: '13px', color: '#4B5563'
+          }}>
+            <span>Missing information</span>
+            <button
+              type="button"
+              onClick={() => setShowMissingPriceOnly(v => !v)}
+              style={{
+                border: showMissingPriceOnly ? '1px solid #DC2626' : '1px solid #E5E7EB',
+                background: showMissingPriceOnly ? '#FEE2E2' : '#FFFFFF',
+                color: '#B91C1C', borderRadius: '999px', padding: '3px 10px',
+                fontSize: '12px', fontWeight: 600, cursor: 'pointer'
+              }}
+            >
+              No price {noPrice}
+            </button>
+          </div>
+        );
+      })()}
+
       {filteredProducts.length === 0 ? (
         <EmptyState>
           <EmptyTitle>
@@ -892,7 +933,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         </EmptyState>
       ) : (
         <ProductsGrid>
-          {filteredProducts.map(product => (
+          {(showMissingPriceOnly ? filteredProducts.filter((p: any) => !p.unit_price || Number(p.unit_price) === 0) : filteredProducts).map(product => (
             <ProductCard
               key={product.id}
               isActive={product.is_active}
@@ -926,6 +967,14 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                   <DetailLabel>{'Unit Price'}</DetailLabel>
                   <PriceValue>RM {(Number(product.unit_price) || 0).toFixed(2)}</PriceValue>
                 </DetailRow>
+                {/* 판매가가 비어 있으면 눈에 보이게 — 운영 실측 109개 중 39개가 0 이었다.
+                    0 원으로 팔리는 게 아니라 아직 안 넣은 것이라, 목록에서 바로 골라낼 수 있어야 한다. */}
+                {(!product.unit_price || Number(product.unit_price) === 0) && (
+                  <DetailRow>
+                    <span />
+                    <StatusBadge status="error" size="small">No price</StatusBadge>
+                  </DetailRow>
+                )}
                 {product.unit && (
                   <DetailRow>
                     <DetailLabel>{'Unit'}</DetailLabel>
@@ -1030,6 +1079,41 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                 rows={2}
               />
             </UIFormGroup>
+
+            {/* 레시피(BOM) 없는 프로덕트의 자체 재고 — 매장 메뉴와 같은 규칙.
+                레시피를 연결하면 매입자재가 빠지므로 이 칸은 나타나지 않는다(둘 중 하나다). */}
+            {!formData.product_recipe_id && (
+              <UIFormGroup>
+                <FormLabel>Track stock for this product</FormLabel>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#4B5563', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!formData.track_stock}
+                    onChange={(e) => setFormData({ ...formData, track_stock: e.target.checked })}
+                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#635BFF' }}
+                  />
+                  Sold as-is (no recipe) — count this product itself as stock
+                </label>
+                {formData.track_stock && (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                    <FormInput
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={formData.current_stock ?? 0}
+                      onChange={(e) => setFormData({ ...formData, current_stock: parseFloat(e.target.value) || 0 })}
+                      placeholder="Current stock"
+                    />
+                    <FormInput
+                      type="text"
+                      value={formData.stock_unit || ''}
+                      onChange={(e) => setFormData({ ...formData, stock_unit: e.target.value })}
+                      placeholder="Unit (e.g. carton, box)"
+                    />
+                  </div>
+                )}
+              </UIFormGroup>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
               <UIFormGroup>
