@@ -323,7 +323,8 @@ router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBr
       supplier_id: null,
       min_stock: 0,
       current_stock: 0,
-      track_stock: true,
+      // 재고 관리는 사람이 켠다 — 카탈로그에 담았다고 자동으로 세기 시작하지 않는다
+      track_stock: false,
       is_active: true,
       code: ''
     }, { transaction: t });
@@ -1182,7 +1183,7 @@ router.post('/foodcourts/:foodcourtId/ingredients/from-catalog', authenticateTok
       owner_type: 'foodcourt', foodcourt_id: fcid, brand_id: null, restaurant_id: null,
       name: body.name || productName, unit: finalUnit,
       base_quantity: 1, unit_cost: parseFloat(productPrice) || 0,
-      min_stock: 0, current_stock: 0, track_stock: true, is_active: true, code: ''
+      min_stock: 0, current_stock: 0, track_stock: false, is_active: true, code: ''
     }, { transaction: t });
 
     const mapping = await IngredientSellerProduct.create({

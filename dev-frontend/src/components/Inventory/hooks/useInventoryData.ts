@@ -19,7 +19,7 @@ interface Params {
   authFetch: AuthFetch;
 }
 
-export function useInventoryData({ mode, restaurantId, authFetch }: Params) {
+export function useInventoryData({ mode, restaurantId, authFetch, includeUntracked = false }: Params & { includeUntracked?: boolean }) {
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
@@ -48,7 +48,7 @@ export function useInventoryData({ mode, restaurantId, authFetch }: Params) {
       if (mode === 'restaurant') {
         const [summaryRes, inventoryRes, alertsRes, suggestionsRes, expiringRes] = await Promise.all([
           authFetch(`/api/restaurants/${restaurantId}/inventory/summary`),
-          authFetch(`/api/restaurants/${restaurantId}/inventory`),
+          authFetch(`/api/restaurants/${restaurantId}/inventory${includeUntracked ? '?include_untracked=true' : ''}`),
           authFetch(`/api/restaurants/${restaurantId}/inventory/alerts?resolved=false`),
           authFetch(`/api/restaurants/${restaurantId}/inventory/reorder-suggestions`),
           authFetch(`/api/restaurants/${restaurantId}/inventory/expiring?days=14`)
@@ -88,7 +88,10 @@ export function useInventoryData({ mode, restaurantId, authFetch }: Params) {
         }
       } else {
         // Brand mode
-        const inventoryRes = await authFetch('/api/product-ingredients?track_stock=true');
+        // 재고 관리 꺼진 항목까지 보려면 필터를 빼고 전부 받는다(그 화면에서 바로 켤 수 있게).
+        const inventoryRes = await authFetch(
+          includeUntracked ? '/api/product-ingredients' : '/api/product-ingredients?track_stock=true'
+        );
 
         if (inventoryRes.success) {
           const ingredients = inventoryRes.data || [];
@@ -134,6 +137,7 @@ export function useInventoryData({ mode, restaurantId, authFetch }: Params) {
               manual_daily_usage: ing.manual_daily_usage ? parseFloat(ing.manual_daily_usage) : null,
               prediction_confidence: ing.prediction_confidence || 'none',
               stock_status: stockStatus,
+              track_stock: ing.track_stock !== false,
               // 발주 담기·연결 안내에 필요한 원본 정보(화면이 판단하지 않게 여기서 넘긴다)
               linked_ingredient_id: ing.linked_ingredient_id || null,
               linked_stock: linked ? parseFloat(ing.linked_stock) || 0 : null,
@@ -206,7 +210,7 @@ export function useInventoryData({ mode, restaurantId, authFetch }: Params) {
     } finally {
       setLoading(false);
     }
-  }, [mode, restaurantId, authFetch]);
+  }, [mode, restaurantId, authFetch, includeUntracked]);
 
   useEffect(() => {
     fetchData();

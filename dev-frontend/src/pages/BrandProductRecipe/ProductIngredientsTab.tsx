@@ -412,7 +412,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
     min_stock: '0',
     min_order: '0',
     current_stock: '0',
-    track_stock: true
+    track_stock: false
   });
 
   // ── Supplier Products (seller-sources) — 발주 연결용 매핑 (editing existing item only) ──
@@ -494,7 +494,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
         min_stock: '0',
         min_order: '0',
         current_stock: '0',
-        track_stock: true
+        track_stock: false
       });
     }
     setShowModal(true);
@@ -517,7 +517,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       min_stock: '0',
       min_order: '0',
       current_stock: '0',
-      track_stock: true
+      track_stock: false
     });
   };
 

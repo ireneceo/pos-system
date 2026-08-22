@@ -61,7 +61,10 @@ router.get('/:restaurantId/inventory', async (req, res) => {
     });
 
     // Build where clause to include both restaurant and brand ingredients
-    // Only include ingredients with track_stock: true
+    // 기본은 재고 관리 켜진 것만. `?include_untracked=true` 면 꺼진 것도 함께 준다 —
+    // 재고 화면에서 **끄고 켜는 일을 그 화면 안에서** 하려면 꺼진 항목도 보여야 하기 때문이다.
+    // (예전에는 끄는 순간 목록에서 사라져, 다시 켜려면 다른 메뉴로 가야 했다.)
+    const includeUntracked = String(req.query.include_untracked || '') === 'true';
     const orConditions = [{ restaurant_id: restaurantId }];
     if (restaurant?.brand_id) {
       orConditions.push({ brand_id: restaurant.brand_id });
@@ -70,7 +73,7 @@ router.get('/:restaurantId/inventory', async (req, res) => {
     const whereClause = {
       [Op.or]: orConditions,
       is_active: true,
-      track_stock: true
+      ...(includeUntracked ? {} : { track_stock: true })
     };
 
     if (category) {

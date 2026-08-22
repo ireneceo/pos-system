@@ -139,7 +139,12 @@ Ingredient.init({
   },
   track_stock: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true,
+    defaultValue: false,
+    // 기본값 **꺼짐**. 예전 기본값은 켜짐이었고, 아무도 끄지 않아 만들어진 것이 전부
+    // 재고 관리 대상이 됐다 — 운영 실측(2026-08-22): 매입자재 289개 전부 켜져 있는데
+    // 실제로 수량이 들어 있는 건 3개, 매장 재료도 364/365 켜짐에 수량은 28개뿐이었다.
+    // 그 결과 목록은 수백 줄인데 관리되는 건 몇 개고, 수량 0인 것들이 알림을 채웠다.
+    // 재고를 세겠다고 **사람이 정한 것만** 켠다. 화면의 토글로 언제든 켤 수 있다.
     comment: 'Whether to track this ingredient in inventory stock list'
   },
   is_active: {

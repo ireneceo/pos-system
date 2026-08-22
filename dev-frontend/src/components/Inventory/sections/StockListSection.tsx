@@ -93,6 +93,11 @@ interface Props {
   // Delete
   onDelete: (target: DeleteTarget) => void;
 
+  // 재고 관리 켜기/끄기 — 이 화면 안에서 처리한다(끄면 사라져 다시 못 켜던 것 해소).
+  showUntracked?: boolean;
+  setShowUntracked?: (v: boolean) => void;
+  onToggleTrackStock?: (item: IngredientStock, next: boolean) => void;
+
   // Sprint 5: bulk selection + suggestions
   suggestionsById?: Map<number, SuggestionRow>;
   selectedIds?: Set<number>;
@@ -123,6 +128,9 @@ const StockListSection: React.FC<Props> = ({
   onWaste,
   onSettings,
   onDelete,
+  showUntracked,
+  setShowUntracked,
+  onToggleTrackStock,
   suggestionsById,
   selectedIds,
   onToggleSelect,
@@ -341,7 +349,22 @@ const StockListSection: React.FC<Props> = ({
 
       {(stockTypeFilter === 'all' || stockTypeFilter === 'ingredients') && (
         <>
-          {stockTypeFilter === 'all' && <SectionTitle>Ingredients ({filteredInventory.length})</SectionTitle>}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+            {stockTypeFilter === 'all' && <SectionTitle>Ingredients ({filteredInventory.length})</SectionTitle>}
+            {/* 재고를 세지 않는 항목까지 함께 보여 주는 스위치.
+                끄면 목록에서 사라지므로, 다시 켜려면 이 화면에서 볼 수 있어야 한다. */}
+            {setShowUntracked && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#4B5563', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={!!showUntracked}
+                  onChange={(e) => setShowUntracked(e.target.checked)}
+                  style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#635BFF' }}
+                />
+                Show items not tracked
+              </label>
+            )}
+          </div>
           {filteredInventory.length === 0 ? (
             <EmptyState>
               <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
@@ -384,7 +407,11 @@ const StockListSection: React.FC<Props> = ({
                 const hasMapping = !!sugg && !!sugg.seller_type;
                 const isChecked = selectedIds?.has(item.id) || false;
                 return (
-                <InventoryTableRow key={item.id} columns="36px 2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 260px">
+                <InventoryTableRow
+                  key={item.id}
+                  columns="36px 2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 260px"
+                  style={item.track_stock === false ? { opacity: 0.55 } : undefined}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {hasMapping && onToggleSelect ? (
                       <input
@@ -561,6 +588,21 @@ const StockListSection: React.FC<Props> = ({
                     {/* 재료 **정의**(이름·단위·공급처·삭제)는 브랜드 소유 → 매장에서 못 고친다.
                         하지만 **PAR 설정**(최소재고·리드타임·사용량)은 매장별이다 — 지점마다 회전율이
                         달라 발주점이 같을 수 없다(프랜차이즈 표준). Settings 는 브랜드 재료에도 연다. */}
+                    {onToggleTrackStock && (
+                      // 한 번 눌러 켜고 끈다. 끄면 목록·알림·실사·발주 제안에서 즉시 빠지고,
+                      // 데이터는 그대로 남는다(삭제가 아니다).
+                      <SettingsButton
+                        onClick={() => onToggleTrackStock(item, item.track_stock === false)}
+                        style={item.track_stock === false
+                          ? { color: '#635BFF', borderColor: '#635BFF' }
+                          : undefined}
+                        title={item.track_stock === false
+                          ? 'Not counted in inventory — click to start tracking'
+                          : 'Counted in inventory — click to stop tracking'}
+                      >
+                        {item.track_stock === false ? 'Track' : 'Untrack'}
+                      </SettingsButton>
+                    )}
                     <SettingsButton onClick={() => onSettings(item)}>
                       Settings
                     </SettingsButton>

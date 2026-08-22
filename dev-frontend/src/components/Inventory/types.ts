@@ -30,6 +30,9 @@ export interface IngredientStock {
   stock_status: StockStatus;
   supplier_id: number | null;
   supplier_name: string | null;
+  // 재고 관리 대상 여부. 꺼져 있으면 목록·알림·실사·발주 제안에서 빠진다.
+  // 목록에 함께 보여 주고 그 자리에서 켤 수 있게 하려고 화면까지 내려보낸다.
+  track_stock?: boolean;
   // 브랜드 표준 재료(부모 브랜드 소유) — 매장은 재고를 다루되 재료 자체는 못 고친다(읽기전용).
   is_brand_shared?: boolean;
   // 입고예정 — 이미 발주됐으나 미입고된 수량(재고단위 환산) + 가장 빠른 입고예정일.

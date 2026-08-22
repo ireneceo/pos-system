@@ -528,7 +528,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     unit_cost: '',
     supplier_id: '' as string | number,
     min_stock: '0',
-    track_stock: true
+    track_stock: false
   };
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [initialFormData, setInitialFormData] = useState(EMPTY_FORM);

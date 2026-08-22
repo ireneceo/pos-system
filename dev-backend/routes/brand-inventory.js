@@ -10,7 +10,8 @@ const {
   PurchaseOrder,
   GeneralStock,
   GeneralStockCategory,
-  Supplier
+  Supplier,
+  RestaurantIngredientStock
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBrandScope } = require('../middleware/brandScope');
@@ -94,8 +95,15 @@ router.get('/brands/:brandId/inventory/summary', requireBrandScope(), async (req
     let lowStockCount = 0;
     let outOfStockCount = 0;
 
+    // 목록과 **같은 기준**으로 센다 — 요약과 목록이 다른 값을 읽으면 숫자가 서로 안 맞는다.
+    const summaryBrandIds = ingredients.filter(i => !i.restaurant_id).map(i => i.id);
+    const summaryOverlay = await overlayStockByIngredient(summaryBrandIds, restaurantIds, {});
+
     ingredients.forEach(ing => {
-      const currentStock = parseFloat(ing.current_stock) || 0;
+      const ov = !ing.restaurant_id ? summaryOverlay.get(ing.id) : null;
+      const currentStock = !ing.restaurant_id
+        ? (ov ? ov.total : 0)
+        : (parseFloat(ing.current_stock) || 0);
       const minStock = parseFloat(ing.min_stock) || 0;
 
       if (currentStock <= 0) {
@@ -175,8 +183,17 @@ router.get('/brands/:brandId/inventory', requireBrandScope(), async (req, res) =
       order: [['name', 'ASC']]
     });
 
+    // 브랜드 소유 재료는 실물이 매장 오버레이에 있다 — 브랜드 행 값만 읽으면 실재고가 아니다.
+    const brandOwnedIds = ingredients.filter(i => !i.restaurant_id).map(i => i.id);
+    const overlay = await overlayStockByIngredient(brandOwnedIds, restaurantIds, restaurantMap);
+
     const inventoryData = ingredients.map(ing => {
-      const currentStock = parseFloat(ing.current_stock) || 0;
+      const isBrandOwned = !ing.restaurant_id;
+      const ov = isBrandOwned ? overlay.get(ing.id) : null;
+      const centralStock = parseFloat(ing.current_stock) || 0;
+
+      // 실물 기준: 브랜드 재료는 매장 합계, 매장 재료는 자기 행. **더하지 않는다**(2배 방지).
+      const currentStock = isBrandOwned ? (ov ? ov.total : 0) : centralStock;
       const minStock = parseFloat(ing.min_stock) || 0;
 
       let stockStatus = 'normal';
@@ -193,6 +210,10 @@ router.get('/brands/:brandId/inventory', requireBrandScope(), async (req, res) =
         unit_cost: parseFloat(ing.unit_cost) || 0,
         category: ing.category,
         current_stock: currentStock,
+        // 중앙(브랜드 행) 보유분 — 실물과 별개로 보여준다. 합산 금지(이중계상으로 읽힌다).
+        central_stock: isBrandOwned ? centralStock : null,
+        store_stock: isBrandOwned ? (ov ? ov.total : 0) : null,
+        store_breakdown: isBrandOwned ? (ov ? ov.perStore : []) : null,
         min_stock: minStock,
         avg_daily_usage: parseFloat(ing.avg_daily_usage) || 0,
         prediction_confidence: ing.prediction_confidence || 'none',
@@ -292,6 +313,46 @@ router.get('/brands/:brandId/inventory/expiring', requireBrandScope(), async (re
     res.status(500).json({ success: false, message: 'Failed to fetch expiring items' });
   }
 });
+
+
+/**
+ * 브랜드 소유 재료의 **실물 재고**를 매장 오버레이에서 읽어 온다.
+ *
+ * ── 왜 필요한가 ────────────────────────────────────────────────────────────
+ * 브랜드 재료(`owner_type='brand'`)의 진짜 재고는 `ingredients.current_stock` 이 아니라
+ * 매장별 오버레이(`restaurant_ingredient_stocks`)에 있다. 형제 매장이 같은 재료 행을
+ * 공유하므로 브랜드 행 하나에 수량을 적을 수 없기 때문이다.
+ * 그런데 브랜드 재고 화면은 브랜드 행만 읽어 왔고, 그래서 운영에서는 화면을 맞추려고
+ * **같은 값을 브랜드 행에도 복사해 두는** 상태가 됐다(2026-08-20, 18품목).
+ *
+ * ── 왜 합산하지 않는가 (중요) ─────────────────────────────────────────────
+ * 브랜드 행 값과 오버레이 값이 **지금 같은 숫자**라, 둘을 더하면 화면이 정확히 2배가 된다.
+ * 그래서 더하지 않고 **오버레이를 실물 기준으로 삼고, 브랜드 행 값은 `central_stock` 으로
+ * 따로 보여준다.** 이렇게 하면 표시용 사본을 0 으로 정리하기 **전에도 후에도 같은 숫자**라
+ * 위험한 전환 구간이 없다.
+ *
+ * @returns {Promise<Map<number, {total:number, perStore:Array}>>} ingredient_id → 매장 합계·내역
+ */
+async function overlayStockByIngredient(ingredientIds, restaurantIds, restaurantMap) {
+  const map = new Map();
+  if (!ingredientIds.length || !restaurantIds.length) return map;
+  const rows = await RestaurantIngredientStock.findAll({
+    where: { ingredient_id: ingredientIds, restaurant_id: restaurantIds },
+    attributes: ['ingredient_id', 'restaurant_id', 'current_stock']
+  });
+  rows.forEach((r) => {
+    const cur = map.get(r.ingredient_id) || { total: 0, perStore: [] };
+    const qty = parseFloat(r.current_stock) || 0;
+    cur.total = Math.round((cur.total + qty) * 100) / 100;
+    cur.perStore.push({
+      restaurant_id: r.restaurant_id,
+      restaurant_name: restaurantMap[r.restaurant_id] || null,
+      current_stock: qty
+    });
+    map.set(r.ingredient_id, cur);
+  });
+  return map;
+}
 
 // ─── Sprint 7 — Brand inventory transactions ──────────────
 // GET /api/brands/:brandId/inventory/transactions

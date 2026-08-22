@@ -592,10 +592,23 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     setFormError(null);
   };
 
+  // 중복 확인 대화: 서버가 409 SIMILAR_EXISTS 를 주면 사용자가 결정한다.
+  // "그래도 새로 등록"을 고르면 같은 요청을 force:true 로 재전송한다.
+  // ── 왜 필요한가 ────────────────────────────────────────────────────────
+  // 2026-08-22 백엔드에 소프트 중복 가드가 들어갔는데 화면이 force 를 안 보내,
+  // 괄호 안 설명만 다른 **정당한 변형**(종이볼 L/M/S, 850CC vs 780CC)을 아예 등록할 수
+  // 없었다. 사용자에게는 원인 모를 실패로 보였다.
+  const [similarConfirm, setSimilarConfirm] = useState<{
+    open: boolean; names: string[]; retry: null | (() => void);
+  }>({ open: false, names: [], retry: null });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
+    await submitProduct(false);
+  };
 
+  const submitProduct = async (force: boolean) => {
     setFormError(null);
 
     if (!formData.name.trim()) {
@@ -642,15 +655,32 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           brand_ids: formData.distribution_mode === 'specific_brands' ? formData.brand_ids : [],
           restaurant_ids: formData.distribution_mode === 'specific_restaurants' ? formData.restaurant_ids : [],
           option_group_ids: formData.option_group_ids,
-          directIngredients: !formData.product_recipe_id ? directIngredients : undefined
+          directIngredients: !formData.product_recipe_id ? directIngredients : undefined,
+          // 사용자가 "그래도 새로 등록"을 고른 경우에만 실린다. 하드 중복(SKU·이름 완전일치)은
+          // force 로도 통과하지 않는다 — 그건 되돌릴 수 없이 명백한 중복이기 때문.
+          ...(force ? { force: true } : {})
         })
       });
 
       const data = await response.json();
 
       if (data.success) {
+        setSimilarConfirm({ open: false, names: [], retry: null });
         handleCloseModal();
         fetchProducts();
+      } else if (response.status === 409 && data?.error?.code === 'SIMILAR_EXISTS') {
+        // 차단이 아니라 확인이다 — 사람이 "같은 물건인지" 판단한다.
+        const names: string[] = [
+          ...(data.error.similar || []).map((r: any) => r.name),
+          ...(data.error.suggestions || []).map((r: any) => r.name),
+        ];
+        setSimilarConfirm({ open: true, names, retry: () => submitProduct(true) });
+      } else if (response.status === 409 && data?.error?.existing) {
+        // 하드 중복 — 이미 있는 상품이 무엇인지 이름·SKU 로 알려 준다(막연한 실패 금지).
+        const ex = data.error.existing;
+        setFormError(
+          `${data.error.message || 'Already exists.'} — "${ex.name}"${ex.sku ? ` (SKU ${ex.sku})` : ''}`
+        );
       } else {
         setFormError(getErrorMessage(data, 'Failed to save product'));
       }
@@ -1323,6 +1353,24 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         message={`Are you sure you want to delete "${productToDelete?.name}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
+      />
+      <ConfirmModal
+        isOpen={similarConfirm.open}
+        title="Similar product already exists"
+        message={
+          `${similarConfirm.names.slice(0, 5).map((n) => `• ${n}`).join('\n')}`
+          + `${similarConfirm.names.length > 5 ? `\n… and ${similarConfirm.names.length - 5} more` : ''}`
+          + '\n\nRegister this as a new product anyway?'
+        }
+        onConfirm={() => {
+          const retry = similarConfirm.retry;
+          setSimilarConfirm({ open: false, names: [], retry: null });
+          if (retry) retry();
+        }}
+        onCancel={() => setSimilarConfirm({ open: false, names: [], retry: null })}
+        confirmText="Register anyway"
+        cancelText="Cancel"
+        type="warning"
       />
       <ConfirmModal
         isOpen={infoModal.open}

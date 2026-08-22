@@ -2015,7 +2015,10 @@ function defineInventoryTests() {
     try {
       ing = await Ingredient.create({
         restaurant_id: demo.id, name: 'ZZ-HC-DEDUCT-PROBE',
-        unit: 'kg', current_stock: 10, min_stock: 0, is_active: true
+        // track_stock 을 **명시**한다. 2026-08-22 부터 기본값이 꺼짐이고,
+        // `applyStock` 은 꺼진 재료에 재고를 쓰지 않는다(재고를 안 세기로 한 품목이므로 정상).
+        // 이 계약이 검증하려는 것은 "관리 켜진 재료가 배치 없이도 줄어드는가" 다.
+        unit: 'kg', current_stock: 10, min_stock: 0, is_active: true, track_stock: true
       });
       recipe = await Recipe.create({ restaurant_id: demo.id, name: 'ZZ-HC-DEDUCT-PROBE' });
       ri = await RecipeIngredient.create({ recipe_id: recipe.id, ingredient_id: ing.id, quantity: 2, unit: 'kg' });
@@ -2038,6 +2041,47 @@ function defineInventoryTests() {
       return false;
     } finally {
       // 잔재를 남기지 않는다 — 실패해도 지운다
+      try { if (ing) await InventoryTransaction.destroy({ where: { ingredient_id: ing.id } }); } catch {}
+      try { if (ri) await ri.destroy({ force: true }); } catch {}
+      try { if (prod) await prod.destroy({ force: true }); } catch {}
+      try { if (recipe) await recipe.destroy({ force: true }); } catch {}
+      try { if (ing) await ing.destroy({ force: true }); } catch {}
+    }
+  });
+
+  // ①-2 반대편 계약: **재고 관리를 끈 품목은 판매해도 재고가 움직이지 않는다.**
+  //     끄기는 "목록에서 숨기기"가 아니라 "이 품목은 세지 않는다"는 뜻이다. 끈 품목까지
+  //     차감되면 안 쓰기로 한 재료가 조용히 마이너스로 흘러간다.
+  test('inventory', '재고 관리 끈 품목은 판매해도 재고가 안 변한다', async () => {
+    const { sequelize } = require('../config/database');
+    const { Ingredient, Product, Recipe, RecipeIngredient, InventoryTransaction } = require('../models');
+    const demo = (await sequelize.query('SELECT id FROM restaurants WHERE is_demo = 1 LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    if (!demo) return true;
+    const cat = (await sequelize.query('SELECT name FROM categories WHERE restaurant_id = :r LIMIT 1',
+      { replacements: { r: demo.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    if (!cat) return true;
+
+    let ing, prod, recipe, ri;
+    try {
+      ing = await Ingredient.create({
+        restaurant_id: demo.id, name: 'ZZ-HC-UNTRACKED-PROBE',
+        unit: 'kg', current_stock: 10, min_stock: 0, is_active: true, track_stock: false
+      });
+      recipe = await Recipe.create({ restaurant_id: demo.id, name: 'ZZ-HC-UNTRACKED-PROBE' });
+      ri = await RecipeIngredient.create({ recipe_id: recipe.id, ingredient_id: ing.id, quantity: 2, unit: 'kg' });
+      prod = await Product.create({
+        restaurant_id: demo.id, name: 'ZZ-HC-UNTRACKED-PROBE', category: cat.name,
+        price: 1, recipe_id: recipe.id, is_active: true
+      });
+      await svc.deductInventoryForOrder(
+        demo.id, [{ id: prod.id, product_id: prod.id, name: prod.name, quantity: 3 }], 0
+      );
+      const after = await Ingredient.findByPk(ing.id);
+      return Math.abs(parseFloat(after.current_stock) - 10) < 0.001;
+    } catch {
+      return false;
+    } finally {
       try { if (ing) await InventoryTransaction.destroy({ where: { ingredient_id: ing.id } }); } catch {}
       try { if (ri) await ri.destroy({ force: true }); } catch {}
       try { if (prod) await prod.destroy({ force: true }); } catch {}

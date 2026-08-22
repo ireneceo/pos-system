@@ -112,6 +112,14 @@ const TransactionHistorySection: React.FC<Props> = ({ restaurantId, isBrandGener
               <div style={{ fontWeight: 600, color: '#0A2540' }}>
                 {t.ingredient?.name || '-'}
               </div>
+              {/* 출처 표시 — 브랜드 거래내역에는 브랜드 자신의 입고와 **산하 매장의 소비**가
+                  한 표에 섞인다. 어디서 난 움직임인지 안 보이면 수량 부호를 오해한다. */}
+              {(t as any).source_scope === 'restaurant' && (
+                <div style={{ display: 'inline-block', marginTop: 3, fontSize: 10, padding: '1px 6px',
+                  background: '#EEF2FF', color: '#3730A3', borderRadius: 999, fontWeight: 600 }}>
+                  {(t as any).source_name || 'Store'}
+                </div>
+              )}
             </MobileValue>
             <MobileValue>
               <MobileLabel>Type</MobileLabel>

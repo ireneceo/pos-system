@@ -962,7 +962,7 @@ const NewPurchaseOrderPage: React.FC = () => {
               unit: item.unit ?? null,
               product_ingredient_id: item.id,
               is_product_ingredient: true,
-              track_stock: true,
+              track_stock: false,
               created_at: item.created_at ?? null,
               sellers: (Array.isArray(item.sellers) ? item.sellers : []).map((s): SellerOpt => ({
                 id: s.id,
