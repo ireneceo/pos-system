@@ -1981,6 +1981,178 @@ function defineReservationTests({ customerToken }) {
 
 // DB 무결성 — Sequelize sync 가 누적 추가하는 중복 unique index 조기 감지.
 // 한 컬럼당 unique 인덱스가 2 개 이상 쌓이면 MySQL 64-key 한도가 임박.
+// ==========================================================================
+// 카테고리: 재고 (inventory) — 판매↔재고 계약
+// --------------------------------------------------------------------------
+// 이 계약들이 없던 동안 "판매로 인한 재고 차감이 전 기간 0건"인 상태가 아무 게이트에도
+// 걸리지 않았다. 코드가 아니라 **연결(레시피)과 배치 유무** 같은 데이터 조건이
+// 무너뜨리는 종류라, 한 번 고치고 끝낼 수 없어 상시 검사로 둔다.
+// 쓰기가 필요한 검사는 **트랜잭션 안에서 하고 롤백**한다 — 잔재를 남기지 않는다.
+// ==========================================================================
+function defineInventoryTests() {
+  const svc = require('../services/inventoryDeductionService');
+
+  // ① 판매 완료 → 재고 차감이 **실제로 일어나고**, 배치가 없어도 판매분만큼 줄어야 한다.
+  //    FIFO 는 배치(입고 로트)에서만 빼므로, 배치 없는 매장에서 예전 코드는 0 을 뺐다 —
+  //    음식은 나갔는데 장부만 그대로였다. 임시 재료·상품·레시피를 **데모 매장에** 만들어
+  //    실제 차감 경로를 태우고, 끝나면 지운다(운영 매장에는 쓰지 않는다).
+  test('inventory', '판매 완료 → 배치 0 재료도 판매분만큼 차감된다', async () => {
+    const { sequelize } = require('../config/database');
+    const { Ingredient, Product, Recipe, RecipeIngredient, InventoryTransaction } = require('../models');
+    const demo = (await sequelize.query(
+      'SELECT id FROM restaurants WHERE is_demo = 1 LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }
+    ))[0];
+    if (!demo) return true;
+    // products.category 는 categories.name 을 참조하는 FK 다 — 임의 문자열을 못 쓴다.
+    const cat = (await sequelize.query(
+      'SELECT name FROM categories WHERE restaurant_id = :r LIMIT 1',
+      { replacements: { r: demo.id }, type: sequelize.QueryTypes.SELECT }
+    ))[0];
+    if (!cat) return true;
+
+    let ing, prod, recipe, ri;
+    try {
+      ing = await Ingredient.create({
+        restaurant_id: demo.id, name: 'ZZ-HC-DEDUCT-PROBE',
+        unit: 'kg', current_stock: 10, min_stock: 0, is_active: true
+      });
+      recipe = await Recipe.create({ restaurant_id: demo.id, name: 'ZZ-HC-DEDUCT-PROBE' });
+      ri = await RecipeIngredient.create({ recipe_id: recipe.id, ingredient_id: ing.id, quantity: 2, unit: 'kg' });
+      prod = await Product.create({
+        restaurant_id: demo.id, name: 'ZZ-HC-DEDUCT-PROBE', category: cat.name,
+        price: 1, recipe_id: recipe.id, is_active: true
+      });
+
+      // 배치를 만들지 않았다 → FIFO 가 덮는 양은 0 이다(이 검사의 핵심 조건)
+      const r = await svc.deductInventoryForOrder(
+        demo.id, [{ id: prod.id, product_id: prod.id, name: prod.name, quantity: 3 }], 0
+      );
+      const after = await Ingredient.findByPk(ing.id);
+      const stock = parseFloat(after.current_stock);
+      // 2(레시피) × 3(주문) = 6 이 줄어야 한다. 옛 코드였다면 10 그대로였다.
+      if (Math.abs(stock - 4) > 0.001) return false;
+      const d = (r.deductions || [])[0];
+      return !!d && d.batch_shortfall === 6;
+    } catch {
+      return false;
+    } finally {
+      // 잔재를 남기지 않는다 — 실패해도 지운다
+      try { if (ing) await InventoryTransaction.destroy({ where: { ingredient_id: ing.id } }); } catch {}
+      try { if (ri) await ri.destroy({ force: true }); } catch {}
+      try { if (prod) await prod.destroy({ force: true }); } catch {}
+      try { if (recipe) await recipe.destroy({ force: true }); } catch {}
+      try { if (ing) await ing.destroy({ force: true }); } catch {}
+    }
+  });
+
+  // ② 차감 계산이 "배치가 덮은 양"을 쓰지 않는다는 것을 코드로 고정한다.
+  //    (①은 데이터가 없으면 통과하므로, 규칙 자체를 잠그는 검사를 따로 둔다.)
+  test('inventory', '차감 계산이 배치량이 아니라 소비량 기준이다 (코드 계약)', async () => {
+    const fs = require('fs');
+    const raw = fs.readFileSync(require.resolve('../services/inventoryDeductionService'), 'utf8');
+    // 주석은 뺀다 — 이 파일 주석은 옛 계산식을 **설명하려고 인용**하고 있어서,
+    // 그대로 훑으면 고쳐 놓고도 실패한다(검사기가 자기 문서를 결함으로 읽는 함정).
+    const src = raw.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    if (/currentStock\s*-\s*fifoResult\.deducted_quantity/.test(src)) return false;
+    if (/oiCurrentStock\s*-\s*oiFifo\.deducted_quantity/.test(src)) return false;
+    return /batch_shortfall/.test(src);
+  });
+
+  // ③ 레시피가 없으면 차감이 아예 일어나지 않는다 — 그 사실이 **세어져야** 한다.
+  //    예전에는 경고 더미에 묻혀, 상품 754개 중 1개만 레시피가 걸린 상태를 아무도 몰랐다.
+  test('inventory', '레시피 미연결 건수가 집계된다 (조용한 0 차감 방지)', async () => {
+    const { sequelize } = require('../config/database');
+    const t = await sequelize.transaction();
+    try {
+      // 시그니처: (restaurantId, orderItems, orderId)
+      const r = await svc.deductInventoryForOrder(
+        1,
+        [{ id: 999999999, product_id: 999999999, name: 'no-recipe-probe', quantity: 1 }],
+        0
+      );
+      return typeof r.skipped_no_recipe === 'number' && r.skipped_no_recipe >= 1;
+    } catch {
+      return false;
+    } finally {
+      await t.rollback();
+    }
+  });
+
+  // ④ 브랜드 상품 중복 등록은 막힌다(하드) / 변형은 물어본다(소프트).
+  //    같은 물건이 이름만 바꿔 여러 번 등록되면 재고가 쪼개져 어느 칸도 안 맞는다.
+  test('inventory', '브랜드 상품 이름 완전일치 → 409 (중복 등록 차단)', async () => {
+    const { sequelize } = require('../config/database');
+    const { BrandProduct } = require('../models');
+    const owner = (await sequelize.query(
+      'SELECT owner_user_id FROM brand_products GROUP BY owner_user_id ORDER BY COUNT(*) DESC LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }
+    ))[0];
+    if (!owner) return true;
+    const sample = await BrandProduct.findOne({ where: { owner_user_id: owner.owner_user_id } });
+    if (!sample) return true;
+    const u = (await sequelize.query('SELECT id, email, role, brand_id FROM users WHERE id = :i',
+      { replacements: { i: owner.owner_user_id }, type: sequelize.QueryTypes.SELECT }))[0];
+    if (!u) return true;
+    const tk = jwt.sign({ userId: u.id, email: u.email, role: u.role, brand_id: u.brand_id },
+      process.env.JWT_SECRET, { expiresIn: '5m' });
+    const res = await request('POST', '/brand-products',
+      { name: sample.name, unit: 'pcs', unit_price: 1 }, { Authorization: `Bearer ${tk}` });
+    // 409 여야 하고, 그 요청으로 새 상품이 생기면 안 된다.
+    // 가드가 회귀하면(≠409) 이 요청이 **실브랜드 카탈로그에 진짜 중복 상품을 만든다** —
+    // 검사는 실패로 알리되, 자기가 만든 행은 자기가 지운다(실브랜드 잔재 금지, Fable 게이트 지적 2026-08-22).
+    if (res.status !== 409) {
+      const createdId = res.body?.data?.id || null;
+      if (createdId) {
+        try { await BrandProduct.destroy({ where: { id: createdId, owner_user_id: owner.owner_user_id } }); } catch {}
+      }
+      return false;
+    }
+    const after = await BrandProduct.count({ where: { owner_user_id: owner.owner_user_id, name: sample.name } });
+    return after === 1;
+  });
+
+  // ④-2 변형(괄호 설명만 다른 이름)은 소프트 409 로 **물어봐야** 한다 — 사전조건이 요구한
+  //     "하드·소프트" 중 소프트 쪽 영구 계약. HTTP 로 변형 등록을 실제로 만들면 매 검사마다
+  //     실브랜드에 쓰기가 생기므로, 판별 단일소스(utils/brandProductDuplicate)를 직접 태워
+  //     읽기 전용으로 잠그고, 라우트의 "소프트=409+force 통과" 코드는 정적 계약으로 고정한다.
+  //     (일회성 HTTP 주입 증명은 2026-08-20 게이트에서 완료 — 이건 그 규칙이 계속 사는지 감시.)
+  test('inventory', '브랜드 상품 괄호 변형 → 소프트 중복 검출 + force 통과 계약', async () => {
+    const { sequelize } = require('../config/database');
+    const { BrandProduct } = require('../models');
+    const { findDuplicateBrandProducts } = require('../utils/brandProductDuplicate');
+    const owner = (await sequelize.query(
+      'SELECT owner_user_id FROM brand_products GROUP BY owner_user_id ORDER BY COUNT(*) DESC LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }
+    ))[0];
+    if (!owner) return true;
+    const sample = await BrandProduct.findOne({ where: { owner_user_id: owner.owner_user_id } });
+    if (!sample) return true;
+    // 같은 이름에 괄호 설명만 덧붙인 변형 → 변형 키가 같아져 소프트 검출돼야 한다
+    const dup = await findDuplicateBrandProducts({
+      ownerUserId: owner.owner_user_id, name: `${sample.name} (ZZ-HC-VARIANT-PROBE)`, sku: null
+    });
+    const detected = !!dup.exact || (dup.similar || []).some((r) => r.id === sample.id);
+    if (!detected) return false;
+    // 라우트 계약: 소프트 검출을 SIMILAR_EXISTS 409 로 돌려주되 force 로 통과시킨다
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../routes/brand-products'), 'utf8');
+    return /SIMILAR_EXISTS/.test(src) && /force\s*!==\s*true/.test(src);
+  });
+
+  // ⑤ 임계치를 안 정한 품목(min_stock=0)은 부족/품절 알림 대상이 아니다.
+  //    재고를 애초에 안 세는 품목이 경고 목록을 채우면 진짜 부족이 묻힌다.
+  test('inventory', 'min_stock=0 품목은 재고 알림에서 제외된다 (프론트 계약)', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const p = path.join(__dirname, '..', '..', 'dev-frontend', 'src', 'components',
+      'Inventory', 'hooks', 'useInventoryData.ts');
+    if (!fs.existsSync(p)) return true;
+    const src = fs.readFileSync(p, 'utf8');
+    return /if\s*\(minStock\s*>\s*0\)/.test(src);
+  });
+}
+
 function defineDbTests() {
   test('db', 'users 테이블 인덱스 수 ≤ 15 (중복 unique 누적 차단)', async () => {
     const { sequelize } = require('../config/database');
@@ -2662,6 +2834,7 @@ async function runTests(allTests, category) {
   // §9 주문루트×설정 매트릭스 테스트가 정의되면 자동 활성화 (Phase 3 예정).
   if (typeof defineMatrixTests === 'function') defineMatrixTests(ctx);
   defineDbTests();
+  defineInventoryTests();
 
   const allPass = await runTests(tests, opts.category);
   process.exit(allPass ? 0 : 1);
