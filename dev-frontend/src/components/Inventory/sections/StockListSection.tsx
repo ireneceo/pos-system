@@ -70,6 +70,8 @@ interface Props {
   setSearchTerm: (v: string) => void;
   statusFilter: StatusFilter;
   setStatusFilter: (v: StatusFilter) => void;
+  categoryFilter: string;
+  setCategoryFilter: (v: string) => void;
 
   // Order input state
   orderQuantities: { [key: string]: string };
@@ -116,6 +118,8 @@ const StockListSection: React.FC<Props> = ({
   setSearchTerm,
   statusFilter,
   setStatusFilter,
+  categoryFilter,
+  setCategoryFilter,
   orderQuantities,
   setOrderQuantities,
   onOrder,
@@ -136,10 +140,27 @@ const StockListSection: React.FC<Props> = ({
   onToggleSelect,
 }) => {
   const { t } = useTranslation(['inventory', 'common']);
+
+  // 카테고리 목록 — 지금 보고 있는 재고에서 실제로 쓰이는 것만(빈 카테고리는 안 띄운다).
+  const categories = React.useMemo(() => {
+    const set = new Set<string>();
+    inventory.forEach(i => { if (i.category) set.add(i.category); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [inventory]);
+
+  // 'zero' = 재고가 0 인 것. stock_status 와 별개 기준인 이유: 최소재고(min_stock)를 안 정한
+  // 품목은 stock_status 가 늘 'normal' 이라 "재고 없는 것만 보기"가 불가능했다.
+  // (임계치 미설정 품목을 경고로 안 띄우는 기존 알림 정책은 그대로 둔다.)
+  const matchesStatusFilter = (item: { stock_status: string; current_stock: number }) =>
+    statusFilter === 'all' ? true
+      : statusFilter === 'zero' ? (item.current_stock <= 0)
+      : item.stock_status === statusFilter;
+
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || item.stock_status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesStatus = matchesStatusFilter(item);
+    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+    return matchesSearch && matchesStatus && matchesCategory;
   });
 
   return (
@@ -160,11 +181,22 @@ const StockListSection: React.FC<Props> = ({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
+        {categories.length > 0 && (
+          <FilterSelect
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            style={{ minWidth: '160px' }}
+          >
+            <option value="all">All Categories</option>
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </FilterSelect>
+        )}
         <FilterSelect
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
         >
           <option value="all">All Status</option>
+          <option value="zero">Zero Stock</option>
           <option value="normal">Normal</option>
           <option value="low_stock">Low Stock</option>
           <option value="out_of_stock">Out of Stock</option>
@@ -184,7 +216,7 @@ const StockListSection: React.FC<Props> = ({
             <SectionTitle>
               General Stock ({generalStockInventory.filter(item => {
                 const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-                const matchesStatus = statusFilter === 'all' || item.stock_status === statusFilter;
+                const matchesStatus = matchesStatusFilter(item);
                 return matchesSearch && matchesStatus;
               }).length})
             </SectionTitle>
@@ -204,7 +236,7 @@ const StockListSection: React.FC<Props> = ({
             {generalStockInventory
               .filter(item => {
                 const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-                const matchesStatus = statusFilter === 'all' || item.stock_status === statusFilter;
+                const matchesStatus = matchesStatusFilter(item);
                 return matchesSearch && matchesStatus;
               })
               .map(item => (
@@ -531,6 +563,23 @@ const StockListSection: React.FC<Props> = ({
                       </div>
                     </MobileValue>
                   </MobileGrid>
+                  {/* 공급처가 연결되지 않은 품목은 발주 자체가 불가능하다. 예전에는 연결된 것과
+                      똑같이 수량칸+Order 버튼을 그려서, 눌러야 "No supplier mapping" 을 보고
+                      알 수 있었다 — 목록만 봐서는 무엇을 발주할 수 있는지 구분이 안 됐다.
+                      버튼을 비활성으로 두지 않고(비활성 금지 규칙), 연결하러 가는 행동을 준다. */}
+                  {!hasMapping ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: 12, color: '#6B7280', whiteSpace: 'nowrap' }}>
+                        No supplier linked
+                      </span>
+                      <OrderButton
+                        onClick={() => { window.location.href = '/pos/purchase-orders'; }}
+                        style={{ background: '#F1F4F8', color: '#374151', borderColor: '#C7CED6' }}
+                      >
+                        Link
+                      </OrderButton>
+                    </div>
+                  ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <OrderInput
                       type="number"
@@ -570,6 +619,7 @@ const StockListSection: React.FC<Props> = ({
                       Order
                     </OrderButton>
                   </div>
+                  )}
                   <ActionButtons>
                     <Button
                       variant="primary"

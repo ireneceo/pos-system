@@ -371,3 +371,20 @@ const models = { User, Product, Customer /* ... */ };
 5. **배포 후 확인** → 로그 체크, 사이트 테스트
 
 **핵심:** `deploy-production.sh`가 자동으로 `sync-database.js`를 실행하므로, 테이블 구조가 자동으로 동기화됩니다! 🚀
+
+
+---
+
+## ⚠️ ENUM 값 추가는 sync-database 가 못 한다 (2026-08-24 실측)
+
+배포는 `sync-database.js` 를 **`--alter` 없이** 부른다(스키마 무변경). 따라서 **모델 ENUM 에 값을 넣어도
+운영 DB 는 안 바뀐다.** 실제로 `purchase_orders.status` 의 `pending_approval` 이 운영에 없어, 오너 승인이
+켜진 매장의 발주 제출이 `Data truncated for column 'status'` 로 실패하는 상태가 오래 방치돼 있었다
+(스키마 비교에는 "type changes 1" 로만 뜨고 배포는 통과).
+
+**작성 규칙** (`scripts/migrate-po-status-pending-approval.js` 참고)
+- 현재 ENUM 을 `information_schema` 에서 **읽어서 거기에 더한다.** 목록을 하드코딩하면 값이 날아간다.
+- NULL 허용·기본값을 `SHOW COLUMNS` 로 읽어 보존한다.
+- ALTER 후 **추가됐는지 + 기존 값이 하나도 안 사라졌는지** 스스로 검사하고, 아니면 실패시킨다.
+- 멱등: 이미 있으면 skip. `migrations.registry.json` 의 `deploy` 에 등록(미등록은 배포 전 fail-closed).
+- **중간 삽입도 안전하다**: MySQL 은 ENUM 을 문자열로 재매핑한다(dev 100행 7종 상태로 검증 — 전부 보존).

@@ -50,6 +50,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [stockTypeFilter, setStockTypeFilter] = useState<'all' | 'ingredients' | 'general_stock'>('all');
+  // 카테고리 필터 — 재고가 많아지면 "무엇을 발주할지" 를 카테고리로 좁혀 보게 된다.
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   // ── 부족 알림에서 바로 발주 담기 ─────────────────────────────────────────
   // 즉시 발주가 아니라 **장바구니에 담는다**: 부족한 품목은 보통 여러 개 나오고,
@@ -279,6 +281,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             setSearchTerm={setSearchTerm}
             statusFilter={statusFilter}
             setStatusFilter={setStatusFilter}
+            categoryFilter={categoryFilter}
+            setCategoryFilter={setCategoryFilter}
             orderQuantities={order.orderQuantities}
             setOrderQuantities={order.setOrderQuantities}
             onOrder={order.open}

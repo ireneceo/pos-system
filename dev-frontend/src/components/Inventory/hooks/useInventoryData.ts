@@ -97,13 +97,15 @@ export function useInventoryData({ mode, restaurantId, authFetch, includeUntrack
           const ingredients = inventoryRes.data || [];
 
           const transformedInventory = ingredients.map((ing: any) => {
-            // 연결된 판매 재료가 있으면 **그쪽 실재고**가 진실이다.
-            // 매입 계층의 current_stock 은 "사온 양"이고, 실제로 매장에 남아 있는 양은
-            // 판매 재료 + 매장 오버레이 합계다. 연결이 없으면 매입 수치로 되돌아간다.
-            const linked = ing.linked_stock !== null && ing.linked_stock !== undefined;
-            const currentStock = linked
-              ? (parseFloat(ing.linked_stock) || 0) + (parseFloat(ing.linked_store_total) || 0)
-              : parseFloat(ing.current_stock) || 0;
+            // 브랜드 수량 = **브랜드 자기 재고**(current_stock). 매장이 들고 있는 양은
+            // 더하지 않고 **따로** 보여준다. (2026-08-22 Irene 확정 · routes/brand-inventory.js 주석)
+            // 예전엔 linked_stock + linked_store_total 을 더해 브랜드 수량인 척 보여줬는데,
+            // ①브랜드가 자기 창고에 뭐가 있는지 알 수 없고 ②브랜드 행에 매장 값을 복사해 둔
+            // 표시용 사본(운영 18건)과 겹쳐 이중계상으로 읽혔다.
+            // 또한 입고·조정·차감은 전부 current_stock 에 쓰므로, 표시도 current_stock 이어야
+            // "보이는 값"과 "바뀌는 값"이 같아진다.
+            const currentStock = parseFloat(ing.current_stock) || 0;
+            const storeTotal = parseFloat(ing.linked_store_total) || 0;
             const minStock = parseFloat(ing.min_stock) || 0;
 
             // 임계치를 안 정한 품목(min_stock=0)은 알림 대상이 아니다.
@@ -140,8 +142,10 @@ export function useInventoryData({ mode, restaurantId, authFetch, includeUntrack
               track_stock: ing.track_stock !== false,
               // 발주 담기·연결 안내에 필요한 원본 정보(화면이 판단하지 않게 여기서 넘긴다)
               linked_ingredient_id: ing.linked_ingredient_id || null,
-              linked_stock: linked ? parseFloat(ing.linked_stock) || 0 : null,
-              linked_store_total: linked ? parseFloat(ing.linked_store_total) || 0 : null,
+              linked_stock: ing.linked_stock != null ? parseFloat(ing.linked_stock) || 0 : null,
+              linked_store_total: storeTotal,
+              // 매장별 보유 내역 — "어느 매장에 얼마" 를 그대로 보여주기 위해 원본을 넘긴다
+              linked_stores: Array.isArray(ing.linked_stores) ? ing.linked_stores : [],
               unit_price: parseFloat(ing.unit_price) || parseFloat(ing.unit_cost) || 0,
               supplier_id: ing.supplier_id,
               supplier_name: ing.supplier_name

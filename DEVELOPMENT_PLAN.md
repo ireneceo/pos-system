@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-08-22 (**재고 2차 — 운영 배포 3건**. ①**D1: 내가 만든 회귀 해제** — 소프트 중복 가드가 종이볼 L/M/S 같은 **정당한 변형 상품 등록을 막고 있었다**(운영 번들 234청크 전수 `SIMILAR_EXISTS` 0건으로 확인). 확인 모달→`force:true` 재요청으로 풀되 **완전 중복은 force 로도 차단** ②**빠진 값 표시** — 판매가 없음(빨강)/원가 미설정(회색) 배지 + 요약 줄 클릭 필터. 원가를 경고색으로 안 한 이유는 754개 전부라 진짜 문제가 묻히기 때문 ③**레시피 없는 상품 = 그 자체가 재고**(핵심) — 확정 모델은 "상품은 레시피 있음(재료 차감)/없음(상품이 재고 단위) 둘 중 하나, RA 메뉴·BG 프로덕트 완전 대칭". ②쪽이 **양쪽 다 미구현**이라 캔음료·완제품은 팔려도 재고가 안 줄었다(`products` 는 칸만 있고 깎는 코드 없음 — 운영 772개 중 `track_stock=1` **0개**, `brand_products` 는 칸 자체 없음). 주문완료/매장출고 시 차감·음수금지·`stock_shortfall` 기록·거래기록은 재료와 같은 표. 검증: verify-all **15/15** · mount 통과 · 🔒 인쇄 **8/8 무접촉** · 재고 계약 **8건**(각각 깨뜨려 검출력 증명) · 운영 실동작 10→7, 과잉판매 0 정지. **hydration 게이트가 실제 버그 적발**(메뉴 수정 저장 시 재고 0 으로 소실) → 배포 전 수정. **미배포**: D2 는 부르는 화면이 0건이라 판단 보류. ⚠️ Fable 토큰 소진으로 개발서버 자체 검증(기계 게이트 전체+고장주입). 상세=session-state.)
+> **최종 업데이트:** 2026-08-24 (**운영 배포 4건 + 재고 데이터 정정**. ①**발주 내역 전체 초기화**(7건→0, Irene "발주기능 쓴 적 없어") — 재고 행은 안 지우고 발주 연결만 끊음 ②**발주 Stock Items 가 통째로 안 보이던 것** — 프론트가 `track_stock` 을 false 로 고정해 286개 전부 "untracked" 로 숨김 ③**카테고리 필터가 비어 있던 것** — 같은 매핑 블록이 `category` 를 안 받아감(운영 18개 카테고리) ④**재고관리 카테고리·Zero Stock 필터 + 연결 안 된 품목 구분**, 발주 목록 제목 2줄·카테고리·재고 표시 ⑤**`purchase_orders.status` ENUM 에 `pending_approval` 추가** — 마이그가 아예 미작성이라 오너 연결 매장은 발주 제출이 실패하던 상태(고장주입 7/7로 실패 재현·복구 증명) ⑥**GIT Consulting 재고 18건 313개가 with MIN Cafe 매장칸에 잘못 들어가 있던 것을 BG 재고로 정정**(세 화면 API 6/6 검증). ⚠️ 작업 중 내가 저지른 것: 코드 주석을 도메인 근거로 삼아 매장 수량을 BG 칸에 17건 잘못 입력 → 되돌림. **코드 주석은 이전 세션의 해석일 뿐 도메인 사실이 아니다.** 상세=session-state.)
 >
 > **이전:** 2026-08-20 #3 (**v3.76 운영 배포 — 공개 로그인 카드가 실매장을 열던 구멍 차단**. 운영 로그인 페이지의 Test 카드 한 번으로 **실고객 매장 The Fire(주문 335·결제 107·RM4,183)** 의 Restaurant Admin 이 열렸다. 기존 방어선이 **계정 꼬리표**(`is_demo||is_test`)만 봐서 `is_test=1` 인 그 계정이 통과했다 — 판정 기준이 틀린 곳에 있었다. v3.75 가 만든 문제가 아니라 원래 연결을 드러낸 것(운영 `user_contexts` **0행**). 수리: ①판정 기준을 **매장 `is_demo`** 로 교체, 닿는 매장에 실매장이 하나라도 있으면 거부(fail-closed) ②닿는 매장 = `userCanAccessRestaurant` 부여 경로 **superset**(`restaurant_managers` 포함) ③가드와 health-check 계약이 **같은 단일소스**(`utils/demoReachableRestaurants.js`) ④403 에서 실매장 이름 제거 ⑤QA 카드 5장 **운영 노출 제거**(dev 전용) ⑥검증 하니스가 공개 로그인 카드로 토큰을 받던 의존 제거 — 가드가 옳게 동작할수록 하니스가 깨지는 구조였다 ⑦운영 쇼케이스 지점 5곳 라벨 정정(3중 안전조건 멱등 마이그). **Fable 이 1차 구현을 반려**: "실제 부여는 `restaurant_managers` 에 있는데 가드가 그 테이블을 안 본다 — 주입을 가드가 보는 테이블에만 해서 반증이 실효를 증명하지 못했다." 운영 실측이 재확인(옛 구현이면 `test_brand_general`·`test_staff` 도 그냥 통과). 검증: 고장주입 3경로 양방향 · health-check 계약을 **가드를 깨서 반증** · `verify-all --full` **16/16** · 🔒 인쇄 **8/8 무접촉** · 인쇄 라우트 34/34 · 마이그 53/53 · 스모크 10/10 · **운영 검증 6/6**. 함께: 재고·판매 P1~P6 dev 완료(별도 게이트 대기). ⚠️ **작업 사고 1건**: 배포 격리 중 `git checkout` 으로 **미커밋 재고 수정 9파일 소실** → 전량 재구현. 상세=session-state.)
 >
@@ -8802,6 +8802,40 @@ hydration 게이트가 **메뉴 수정 저장 시 재고가 0 으로 날아가�
 
 ⚠️ **이 변경은 Fable 검증 대상**(`check-sensitive-diff`: 기준 ③ DB 스키마 접촉). Fable 토큰 소진으로
 개발서버에서 기계 게이트 전체 + 고장주입으로 자체 검증했고, 그 사실을 명시해 둔다.
+
+---
+
+## ✅ 완료: 발주 초기화 + 재고/발주 화면 결함 + BG 재고 정정 (2026-08-24)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 발주 내역 초기화 | 운영 `purchase_orders` 7건·items 30건 삭제. 재고 행은 유지하고 발주 연결만 NULL 처리 | ✅ 완료 |
+| Stock Items 미표시 수정 | 프론트가 BG 재고아이템 `track_stock` 을 false 로 고정 → 286개 전부 숨김. DB 값 사용으로 수정 | ✅ 완료 |
+| 카테고리 미표시 수정 | 같은 매핑이 `category_id`/`category` 미전달 → 전부 미분류. API 값 사용으로 수정(운영 18개) | ✅ 완료 |
+| 재고관리 필터 | 카테고리 필터 + Zero Stock 필터 추가. 알림 정책(임계치 미설정=경고 안 함)은 무변경 | ✅ 완료 |
+| 연결 안 된 품목 구분 | 발주 불가 품목에 Order 대신 `No supplier linked` + `Link`(운영 283 연결 / 3 미연결) | ✅ 완료 |
+| 발주 목록 표시 | 제목 2줄(최장 89자), 카테고리가 900px 이하에서 사라지던 것 이름 아래로 이동, 현재 재고 표시 | ✅ 완료 |
+| `pending_approval` ENUM | 운영에 값이 없어 오너 연결 매장의 발주 제출이 실패하던 것. 멱등 마이그 + 레지스트리 등록 | ✅ 완료 |
+| SW 버전 올림 | `4.62-...-20260820` → `4.63-po-list-meta-20260824`. 옛 캐시 자동 정리 | ✅ 완료 |
+| BG 재고 정정(데이터) | GIT Consulting 재고 18건 313개가 with MIN Cafe 매장칸에 잘못 입력돼 있던 것 이관 | ✅ 완료 |
+
+### 검증
+- verify-all **16/16** ×3회(실브라우저 mount sweep 655~685초 실수행) · 🔒 인쇄 **8/8 무접촉** · 스모크 **10/10** ×4
+- 고장주입으로 증상 재현 후 수정 검출: track_stock(0건→8건) · 카테고리(0개→전체) · ENUM(저장 거부→성공) 
+- 운영 실데이터 판정: 카테고리 필터 4/4 · 재고 정정 6/6 · ENUM 4/4
+- **게이트가 실제로 잡은 것**: 타임존 가드가 내 `toLocaleString` 적발 / 빌드가 메모리 게이트에 막혀 시작조차 안 됨(그대로 검증했으면 옛 번들 검증)
+
+### 수정된 파일
+- `dev-frontend/src/pages/PurchaseOrders/NewPurchaseOrderPage.tsx`
+- `dev-frontend/src/components/Inventory/InventoryManager.tsx`
+- `dev-frontend/src/components/Inventory/sections/StockListSection.tsx`
+- `dev-frontend/src/components/Inventory/hooks/useInventoryData.ts` (미배포)
+- `dev-frontend/src/components/Inventory/types.ts` (미배포)
+- `dev-frontend/public/sw.js`
+- `dev-backend/scripts/migrate-po-status-pending-approval.js` (신규)
+- `dev-backend/scripts/migrations.registry.json`
 
 ---
 

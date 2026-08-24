@@ -684,3 +684,30 @@ async function updateAvgDailyUsage(ingredientId) {
 ---
 
 **문서 끝**
+
+
+---
+
+## 🔒 재고 소유 주체 — 매장과 브랜드는 **각자 자기 재고** (2026-08-24 Irene 확정)
+
+> Irene 원문: **"매장 재고가 브랜드제너럴이랑 무슨 상관이냐고. 각자 자기 재고를 관리하는 건데."**
+> / **"브랜드 재고를 브랜드제너럴은 관리하지 않아. 판매하는 거지."**
+
+| 주체 | 재고가 사는 곳 | 화면 |
+|---|---|---|
+| 매장(RA) 자기 재료 | `ingredients.current_stock` | `/restaurant/:id/inventory` |
+| 매장이 쓰는 **브랜드 공유 재료** | `restaurant_ingredient_stocks` (매장별 오버레이) | 〃 (`inventory-core.js:141-146`) |
+| 브랜드(BG) **매입재고** | `product_ingredients.current_stock` (owner_user_id 단위) | `/pos/brand-inventory` · Stock Items · Purchase Order |
+
+**규칙**
+1. **BG 화면에 매장 수량을 끌어와 보여주지 않는다.** 섞으면 BG 가 자기 창고에 뭐가 있는지 알 수 없고,
+   그 숫자를 믿고 발주하면 실제로는 재고가 없다.
+2. `product_ingredients.linked_ingredient_id` 는 **읽기 경로만** 따르고 쓰기 경로는 전부 무시한다
+   (`product-ingredients.js:548` · `purchase-orders-workflow.js:464/790` · `seller-orders.js:492`).
+   **채우면 안 된다** — 화면은 연결값을 보여주는데 입고·차감은 다른 칸에 쌓여 숫자가 안 움직인다.
+3. 브랜드 행(`ingredients`, brand_id 있고 restaurant_id NULL)에 매장 수량을 **복사해 넣지 말 것.**
+   2026-08-20 에 화면을 맞추려고 18건을 복사해 둔 적이 있고, 그게 "누구 재고인지" 판단을 망가뜨렸다.
+4. 코드 주석을 도메인 사실의 근거로 쓰지 말 것 — 주석은 이전 세션의 해석일 수 있다(실제로 그랬다).
+
+**미해결(Fable 설계 대기)**: `ingredients`(브랜드 88) vs `product_ingredients`(286) 목록 이원화,
+`linked_ingredient_id` 반쪽 구현, FG 도 같은 어긋남(입고는 `ingredients`, 화면은 `foodcourt_products`).

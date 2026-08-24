@@ -61,6 +61,8 @@ interface MyIngredientRow {
   ingredientCategory?: { id: number; name: string; emoji?: string | null } | null;
   sellers: SellerOpt[];
   track_stock?: boolean;
+  // 지금 남아 있는 재고 — "얼마나 남았나"를 보고 발주량을 정하게 목록에 같이 보여준다.
+  current_stock?: number | null;
   created_at?: string | null;
   // BG (brands) only — set when this row is a BG ProductIngredient (Stock Item),
   // not a brand ingredient. Carried into the cart so submit can emit product_ingredient_id.
@@ -299,11 +301,14 @@ const ListRow = styled.button<{ $disabled?: boolean; $actionsWidth?: number }>`
      폭 판단은 뷰포트가 아니라 **리스트 컨테이너**(@container) — 이 화면은 우측 카트 패널이
      폭을 먹어서 뷰포트 기준으론 이름 열이 찌그러진다. */
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.9fr) minmax(0, 1fr) 96px ${p => p.$actionsWidth || 96}px;
+  /* 분류·단위·재고는 더 이상 별도 열이 아니라 **이름 아래 줄**이다. 예전엔 분류가 열이라
+     컨테이너 900px 이하에서 통째로 display:none 됐고(우측 카트 패널 때문에 사실상 항상
+     숨김), 이름도 1줄 말줄임이라 긴 상품명이 잘렸다. 열을 하나 줄여 이름에 폭을 준다. */
+  grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr) 96px ${p => p.$actionsWidth || 96}px;
   align-items: center;
   gap: 12px;
   width: 100%;
-  min-height: 44px;   /* 썸네일 유무와 무관하게 행 높이 균일 */
+  min-height: 48px;
   padding: 6px 14px;
   text-align: left;
   background: #fff;
@@ -317,12 +322,7 @@ const ListRow = styled.button<{ $disabled?: boolean; $actionsWidth?: number }>`
   &:last-child { border-bottom: none; }
   &:hover { background: ${p => (p.$disabled ? '#fff' : '#F8FAFF')}; }
 
-  /* 좁아지면 분류부터 접는다 (이름·공급처·가격·액션 우선) */
-  @container polist (max-width: 900px) {
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 96px ${p => p.$actionsWidth || 96}px;
-  }
-
-  /* 더 좁으면 공급처도 접는다 */
+  /* 좁아지면 공급처를 접는다 (이름·가격·액션 우선). 분류·재고는 이름 아래라 안 사라진다. */
   @container polist (max-width: 680px) {
     grid-template-columns: minmax(0, 1fr) 96px ${p => p.$actionsWidth || 96}px;
   }
@@ -333,40 +333,42 @@ const ListRow = styled.button<{ $disabled?: boolean; $actionsWidth?: number }>`
     row-gap: 6px;
   }
 `;
+/** 이름 칸 = 제목줄(이름+배지) + 정보줄(분류·단위·재고) 2단 */
 const ListName = styled.div`
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+`;
+const ListNameTop = styled.div`
   min-width: 0;
   font-size: 13.5px;
   font-weight: 600;
   color: #0A2540;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
-  flex-wrap: nowrap;   /* 넓으면 한 줄 — 이름이 길면 이름을 말줄임 */
-  overflow: hidden;
-
-  @container polist (max-width: 460px) { flex-wrap: wrap; }
+  flex-wrap: wrap;
 `;
+/* 제목은 2줄까지 보여준다 — 한 줄 말줄임이라 긴 상품명이 앞부분만 남던 것 해소 */
 const ListNameText = styled.span`
   min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  word-break: break-word;
 `;
-/** 분류·단위 — 가장 먼저 접히는 열 */
+/** 분류 · 단위 · 재고 — 이름 아래, 어느 폭에서도 사라지지 않는다 */
 const ListMeta = styled.div`
   min-width: 0;
-  font-size: 12px;
+  font-size: 11.5px;
   color: #6B7C93;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-
-  @container polist (max-width: 900px) { display: none; }
-  @container polist (max-width: 460px) {
-    display: block;
-    grid-column: 1;
-    grid-row: 2;
-  }
 `;
 /** 공급처(+최소주문) — 두 번째로 접히는 열 */
 const ListVendor = styled.div`
@@ -920,6 +922,7 @@ const NewPurchaseOrderPage: React.FC = () => {
             ingredient_category_id: item.ingredient_category_id ?? null,
             ingredientCategory: item.ingredientCategory ?? null,
             track_stock: item.track_stock ?? true,
+            current_stock: item.current_stock != null ? Number(item.current_stock) : null,
             created_at: item.created_at ?? null,
             is_brand_shared: true,
             sellers: (Array.isArray(item.sellerSources) ? item.sellerSources : []).map((s: any): SellerOpt => ({
@@ -975,6 +978,7 @@ const NewPurchaseOrderPage: React.FC = () => {
               ingredientCategory: item.category
                 ? { id: item.category.id, name: item.category.name, emoji: item.category.emoji ?? null }
                 : null,
+              current_stock: item.current_stock != null ? Number(item.current_stock) : null,
               created_at: item.created_at ?? null,
               sellers: (Array.isArray(item.sellers) ? item.sellers : []).map((s): SellerOpt => ({
                 id: s.id,
@@ -1616,7 +1620,17 @@ const NewPurchaseOrderPage: React.FC = () => {
                     const catText = cat
                       ? `${cat.emoji ? cat.emoji + ' ' : ''}${cat.name}`
                       : (t('newPo.uncategorized', 'Uncategorized') as string);
-                    const metaText = `${catText}${row.unit ? ` · ${row.unit}` : ''}`;
+                    // 재고는 "모름(null)" 과 "0" 이 다르다 — 0 을 모름으로 뭉개면 발주 판단이 틀어진다.
+                    // 수량 서식은 toLocaleString 을 쓰지 않는다 — 타임존 가드가 잡기도 하고,
+                    // 재고 수량은 로케일 구분자보다 소수점 정리가 중요하다(1.50 → 1.5, 3.00 → 3).
+                    const fmtQty = (v: number) => {
+                      const s2 = v.toFixed(2);
+                      return s2.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+                    };
+                    const stockText = row.current_stock != null
+                      ? `${t('newPo.inStock', 'In stock')} ${fmtQty(Number(row.current_stock))}${row.unit ? ` ${row.unit}` : ''}`
+                      : '';
+                    const metaText = [catText, row.unit || '', stockText].filter(Boolean).join(' · ');
 
                     let priceText = '';
                     let vendorText = '';
@@ -1687,10 +1701,12 @@ const NewPurchaseOrderPage: React.FC = () => {
                         {isList ? (
                           <>
                             <ListName>
-                              <ListNameText title={row.name}>{row.name}</ListNameText>
-                              {badges}
+                              <ListNameTop>
+                                <ListNameText title={row.name}>{row.name}</ListNameText>
+                                {badges}
+                              </ListNameTop>
+                              <ListMeta title={metaText}>{metaText}</ListMeta>
                             </ListName>
-                            <ListMeta title={metaText}>{metaText}</ListMeta>
                             <ListVendor title={vendorText}>{hasSeller ? vendorText : ''}</ListVendor>
                             {hasSeller
                               ? <ListPrice>{priceText}</ListPrice>

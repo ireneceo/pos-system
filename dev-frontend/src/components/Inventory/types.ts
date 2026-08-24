@@ -38,6 +38,12 @@ export interface IngredientStock {
   // 입고예정 — 이미 발주됐으나 미입고된 수량(재고단위 환산) + 가장 빠른 입고예정일.
   on_order_quantity?: number;
   on_order_delivery_date?: string | null;
+  // 매장 보유분 — 브랜드 수량과 **더하지 않고 따로** 보여준다(2026-08-22 Irene 확정).
+  // 브랜드 창고엔 없어도 매장이 들고 있을 수 있어, 발주량 판단에 필요한 정보다.
+  linked_ingredient_id?: number | null;
+  linked_stock?: number | null;
+  linked_store_total?: number | null;
+  linked_stores?: Array<{ restaurant_id: number; restaurant_name?: string; current_stock: number }>;
   supplier?: {
     id: number;
     name: string;
