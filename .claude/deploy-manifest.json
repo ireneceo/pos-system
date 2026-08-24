@@ -1,6 +1,6 @@
 {
  "note": "운영 배포 시점 소스 지문 — deploy-to-production.sh 성공 후 자동 기록. 수동 편집 금지.",
- "created_at": "2026-08-22T09:01:31.609Z",
+ "created_at": "2026-08-24T14:31:59.952Z",
  "file_count": 1819,
  "files": {
   "CLAUDE.md": "a6cfad2fd8bfc53829408020acb88f06bc17a4f11d16cc7d9e0579d706cac949",
@@ -592,7 +592,7 @@
   "dev-backend/services/ai/index.js": "33836395e02b5a0121b870ef9891cb5447ec3e47786a257dc3bee867a9df9810",
   "dev-backend/services/ai/ranking.js": "eeef010ce657829305f3ac690a3fd8cefddbe00b2a129064b79deb6d07dd33e4",
   "dev-backend/services/authService.js": "b1ee35a6b8348fec486c500e0656d03b1ea0b78c5ce1f998c0c6a4e6cee6f4ce",
-  "dev-backend/services/base64ImageSweep.js": "4614a22898fd4d100e2d9204f96b98ef71236a84f29b2f5748a8c1cbb5779f02",
+  "dev-backend/services/base64ImageSweep.js": "4538c0c3efccdf61f5b7390b565a38d598a9a3b28f0407019884de7742e198ed",
   "dev-backend/services/brandMenuSyncService.js": "21610d5424d529ea20db2cb975b77cde744044ff05a3d5102c30a3a40ca77b15",
   "dev-backend/services/dailyStatsScheduler.js": "8f0b06b447d5d4593f276a6d55119bae2c318a0700ae8ceeb2a79ca3d89d84b8",
   "dev-backend/services/demoResetScheduler.js": "0da4173574a880832caa3f977476a6f77065eaf31c78066ff8b45d83b634b82f",
@@ -1700,7 +1700,7 @@
   "dev-frontend/src/pages/Profile/ProfilePage.tsx": "bfb0ea9c89248c37e7d1b52153aef02f087fc5a72dd0544ef1b1d6080c8dcda0",
   "dev-frontend/src/pages/Profile/SubscriptionTab.tsx": "32bb73de90dbe8d66966579179998ec2f5a739a89293c0ba928d529adc2fb5a9",
   "dev-frontend/src/pages/Promotions/PromotionsPage.tsx": "5d6af997c46494656739e6d275563c2c108d42e9a0d10dfd92ac740a137fd457",
-  "dev-frontend/src/pages/PurchaseOrders/NewPurchaseOrderPage.tsx": "5c1b5feb609940712fa58427dcaec9b72b902e5fcd6bb218ada33a971a61813b",
+  "dev-frontend/src/pages/PurchaseOrders/NewPurchaseOrderPage.tsx": "f37550d0bc4fcb0999492faa23939818c03097b6bac635b3e4aec43f7a633d49",
   "dev-frontend/src/pages/PurchaseOrders/PurchaseOrderDetailPage.tsx": "e5c4decf0bb5c4ac2c0f2d6ed7021e9e0869c8f07726c6952d40b375533ed4ac",
   "dev-frontend/src/pages/PurchaseOrders/PurchaseOrderPrintPage.tsx": "37793bd78310e296dbb767194627ec04c3739e41d0b744987e488dbd4726728c",
   "dev-frontend/src/pages/PurchaseOrders/PurchaseOrderStagingPage.tsx": "aba45a1b7840a69a3f6741252291bc446ec2c5450a5558eef1f96cd0369970a6",

@@ -962,7 +962,19 @@ const NewPurchaseOrderPage: React.FC = () => {
               unit: item.unit ?? null,
               product_ingredient_id: item.id,
               is_product_ingredient: true,
-              track_stock: false,
+              // DB 값을 그대로 쓴다. 예전엔 false 로 고정해서, 실제로는 track_stock=1 인
+              // 재고아이템까지 전부 "untracked" 로 분류 → 기본 필터(showUntracked=false)가
+              // 통째로 숨겨 "No linked stock items" 가 뜨고 숨긴 개수만 토글에 찍혔다
+              // (운영 실측: owner 286개 전부 track_stock=1 인데 0개 노출). Irene 2026-08-24
+              track_stock: item.track_stock ?? true,
+              // 카테고리도 API 가 보내주는 걸 그대로 받는다(product_ingredients 는 category_id/category,
+              // ingredients 는 ingredient_category_id/ingredientCategory 로 키 이름만 다르다).
+              // 안 받아가서 BG 재고아이템이 전부 "미분류"로 떨어졌고, 카테고리 필터에 미분류 하나만
+              // 뜨거나 아예 고를 게 없었다(운영: 286개 전부 카테고리 있는데 0개 노출). Irene 2026-08-24
+              ingredient_category_id: item.category_id ?? null,
+              ingredientCategory: item.category
+                ? { id: item.category.id, name: item.category.name, emoji: item.category.emoji ?? null }
+                : null,
               created_at: item.created_at ?? null,
               sellers: (Array.isArray(item.sellers) ? item.sellers : []).map((s): SellerOpt => ({
                 id: s.id,
