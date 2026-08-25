@@ -49,6 +49,26 @@ export const getUnitInfo = (unit: string) => {
 };
 
 /**
+ * 수량 입력의 증감 단위(step) — **단위가 정한다.** (2026-08-25)
+ *
+ * 팩·개·박스처럼 쪼갤 수 없는 단위는 1씩, 무게·부피는 소수(0.01) 입력이 의미가 있다.
+ * 발주 카트·수령·반품 수량이 전부 `step="0.01"` 로 고정돼 있어 팩 상품에서 화살표를
+ * 한 번 누르면 0.01 씩 오르던 것을 이 함수 하나로 통일한다.
+ * 모르는 단위는 **세는 것으로 본다**(1) — 발주 수량의 대부분이 팩·개다.
+ * ⚠️ 단가·단위환산 비율 입력에는 쓰지 말 것. 그건 원래 소수가 맞다.
+ */
+const DISCRETE_UNIT_CATEGORIES = ['count', 'serving'];
+
+export const qtyStepForUnit = (unit?: string | null): number => {
+  const key = (unit || '').trim().toLowerCase();
+  if (!key) return 1;
+  // getUnitInfo 는 대소문자 정확일치라 'L' / 'KG' 같은 표기를 놓친다. 여기서만 느슨하게 본다.
+  const info = STANDARD_UNITS.find(u => u.value.toLowerCase() === key);
+  if (!info) return 1;
+  return DISCRETE_UNIT_CATEGORIES.includes(info.category) ? 1 : 0.01;
+};
+
+/**
  * 두 단위가 변환 가능한지 확인
  */
 export const canConvert = (fromUnit: string, toUnit: string): boolean => {

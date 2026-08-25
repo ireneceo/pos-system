@@ -31,6 +31,7 @@ import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { Modal as UIModal } from '../../components/UI/Modal';
+import { qtyStepForUnit } from '../../utils/unitConversion';
 
 type SellerType = 'system_admin' | 'brand' | 'foodcourt' | 'supplier';
 
@@ -1883,7 +1884,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                       <QtyInput
                         type="number"
                         min={0}
-                        step={0.01}
+                        step={qtyStepForUnit(row.ingredient_unit)}
                         value={row.quantity}
                         onChange={(e) => updateRow(row.cart_key, {
                           quantity: Math.max(0, parseFloat(e.target.value) || 0)

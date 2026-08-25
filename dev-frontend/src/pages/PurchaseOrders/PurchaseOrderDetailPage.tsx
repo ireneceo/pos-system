@@ -12,7 +12,7 @@ import {
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
-import { formatQuantity } from '../../utils/unitConversion';
+import { formatQuantity, qtyStepForUnit } from '../../utils/unitConversion';
 import { sharePoViaWhatsApp, sharePoViaEmail } from '../../utils/poShare';
 import { formatDate } from '../../utils/timezone';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
@@ -1308,7 +1308,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
 
                       <div>
                         <SmallInput
-                          type="number" step="0.01" min="0" inputMode="decimal"
+                          type="number" step={qtyStepForUnit(line.unit)} min="0" inputMode="decimal"
                           placeholder="qty"
                           value={sp.quantity || ''}
                           onChange={(e) => updateSplit(line.item_id, sp.uid, { quantity: Number(e.target.value) })}
@@ -1519,7 +1519,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                     type="number"
                     min="0"
                     max={maxQty}
-                    step="0.01"
+                    step={qtyStepForUnit(item?.ingredient_unit)}
                     placeholder={`Max ${maxQty}`}
                     value={line.quantity}
                     onChange={(e) => setReturnLines(arr => arr.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l))}
