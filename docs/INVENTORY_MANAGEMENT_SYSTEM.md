@@ -347,6 +347,29 @@ CREATE TABLE stock_alerts (
 |--------|----------|------|
 | GET | `/api/restaurants/:id/inventory/reorder-suggestions` | 발주 제안 목록 |
 
+### ⚠️ 연결 여부와 부족 여부는 다른 질문이다 (2026-08-25)
+
+**발주 제안(suggestions)은 "재고가 부족한가"만 답한다.** `min_stock > 0 && 현재고 < min_stock`
+인 것만 담기 때문에, **최소치를 정하지 않은 품목은 공급처가 멀쩡히 연결돼 있어도 여기에 안 나온다.**
+
+재고 화면이 이걸 "공급처가 연결됐는가"의 근거로 쓴 적이 있었고(2026-08-24~25),
+그 결과 **운영 브랜드 285건·매장 77건이 "No supplier linked" 로 표시되며 주문 버튼이 사라졌다.**
+게다가 이 라우트는 `ingredients`/`ingredient_id` 만 보므로 BG 재고아이템
+(`product_ingredients`/`product_ingredient_id`)은 애초에 잡히지 않는다.
+
+**연결 여부는 별도 필드로 답한다:**
+
+| 대상 | 연결 여부 판정 |
+|------|----------------|
+| 매장(RA) | `GET /api/restaurants/:id/inventory` 응답의 **`has_seller_source`** (`routes/inventory-core.js`) |
+| 브랜드(BG) | `GET /api/product-ingredients?include=sellers` 의 **`sellers` 배열 길이** |
+
+화면(`components/Inventory/sections/StockListSection.tsx`)에서
+- **주문 가능 여부** = `has_seller_source`
+- **일괄발주 체크박스**(부족분 담기) = 발주 제안 유무 (`canBulkSelect`)
+로 분리돼 있다. 이 둘을 다시 한 값으로 합치지 말 것.
+회귀 스펙: `dev-frontend/e2e/inventory-seller-link.spec.js`
+
 ---
 
 ## Frontend 설계

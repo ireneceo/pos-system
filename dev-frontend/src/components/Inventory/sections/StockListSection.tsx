@@ -245,13 +245,13 @@ const StockListSection: React.FC<Props> = ({
                     <MobileValue className="col-info">
                       <MobileLabel>Item</MobileLabel>
                       <StockItemInfo>
-                        <StockItemImage>
-                          {item.image_url ? (
+                        {/* 사진이 없으면 자리표시 네모를 그리지 않는다 — 빈 회색 박스가
+                            무엇인지 알 수 없는 데다, 좁은 이름 칸을 52px 씩 잡아먹었다. */}
+                        {item.image_url && (
+                          <StockItemImage>
                             <img src={item.image_url} alt={item.name} />
-                          ) : (
-                            <span />
-                          )}
-                        </StockItemImage>
+                          </StockItemImage>
+                        )}
                         <StockItemDetails>
                           <IngredientName>
                             {item.name}
@@ -422,7 +422,7 @@ const StockListSection: React.FC<Props> = ({
             </EmptyState>
           ) : (
             <Table>
-              <InventoryTableHeader columns="36px 2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 260px">
+              <InventoryTableHeader columns="36px 3.5fr 0.9fr 1fr 1fr 0.9fr 1.1fr 0.9fr 150px 260px">
                 <span></span>
                 <span className="col-info">Ingredient</span>
                 <span>Status</span>
@@ -436,16 +436,25 @@ const StockListSection: React.FC<Props> = ({
               </InventoryTableHeader>
               {filteredInventory.map(item => {
                 const sugg = suggestionsById?.get(item.id);
-                const hasMapping = !!sugg && !!sugg.seller_type;
+                // 발주 가능 = 공급처가 연결돼 있는가. **재고가 부족한가와 다른 질문이다.**
+                // 예전엔 `sugg`(재고부족 발주제안) 유무로 판정해, 최소치를 안 정한 품목은
+                // 연결이 멀쩡해도 "No supplier linked" 로 뜨고 주문 칸이 통째로 사라졌다
+                // (운영 실측 2026-08-25: BG 285건 · 매장 77건이 연결돼 있는데 발주 불가로 보임).
+                // has_seller_source 가 없는 옛 응답에서는 종전대로 제안 유무로 떨어진다.
+                const hasMapping = item.has_seller_source !== undefined
+                  ? item.has_seller_source
+                  : (!!sugg && !!sugg.seller_type);
+                // 일괄발주 체크박스는 **부족분 담기** 기능이라 제안이 있어야 의미가 있다 — 그대로 둔다.
+                const canBulkSelect = !!sugg && !!sugg.seller_type;
                 const isChecked = selectedIds?.has(item.id) || false;
                 return (
                 <InventoryTableRow
                   key={item.id}
-                  columns="36px 2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 260px"
+                  columns="36px 3.5fr 0.9fr 1fr 1fr 0.9fr 1.1fr 0.9fr 150px 260px"
                   style={item.track_stock === false ? { opacity: 0.55 } : undefined}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {hasMapping && onToggleSelect ? (
+                    {canBulkSelect && onToggleSelect ? (
                       <input
                         type="checkbox"
                         checked={isChecked}
@@ -461,13 +470,13 @@ const StockListSection: React.FC<Props> = ({
                     <MobileValue className="col-info">
                       <MobileLabel>Ingredient</MobileLabel>
                       <StockItemInfo>
-                        <StockItemImage>
-                          {item.image_url ? (
+                        {/* 사진이 없으면 자리표시 네모를 그리지 않는다 — 빈 회색 박스가
+                            무엇인지 알 수 없는 데다, 좁은 이름 칸을 52px 씩 잡아먹었다. */}
+                        {item.image_url && (
+                          <StockItemImage>
                             <img src={item.image_url} alt={item.name} />
-                          ) : (
-                            <span />
-                          )}
-                        </StockItemImage>
+                          </StockItemImage>
+                        )}
                         <StockItemDetails>
                           <IngredientName>
                             {item.name}
@@ -548,8 +557,10 @@ const StockListSection: React.FC<Props> = ({
                             ↓ {sugg.suggested_qty} {sugg.unit}
                           </div>
                         </div>
-                      ) : item.supplier_name ? (
-                        <div style={{ color: '#0A2540', fontSize: '13px' }}>{item.supplier_name}</div>
+                      ) : (item.seller_source_name || item.supplier_name) ? (
+                        // 연결된 공급처 이름. seller_source_name = 실제 연결(ingredient_seller_products),
+                        // supplier_name = 쓰기중단된 레거시 컬럼이라 뒤로 둔다.
+                        <div style={{ color: '#0A2540', fontSize: '13px' }}>{item.seller_source_name || item.supplier_name}</div>
                       ) : (
                         <span style={{ display: 'inline-block', padding: '1px 6px', background: '#F1F4F8', color: '#6B7280', borderRadius: 999, fontWeight: 600, fontSize: 10 }}>
                           No mapping

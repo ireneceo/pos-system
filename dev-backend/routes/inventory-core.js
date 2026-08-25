@@ -129,6 +129,22 @@ router.get('/:restaurantId/inventory', async (req, res) => {
       }
     }
 
+    // 공급처 연결 여부 — **발주 가능한가**의 단일 소스. (2026-08-25)
+    // 재고 화면이 이 값을 "재고부족 발주제안"(/purchase-orders/suggestions)에서 유추하고 있었는데,
+    // 그 목록은 `min_stock > 0 && 현재고 < min_stock` 인 것만 담는다. 최소치를 안 정한 품목은
+    // 연결이 멀쩡해도 제안에 안 나오고, 화면은 그걸 "No supplier linked" 로 읽어 **주문 버튼을
+    // 통째로 감췄다**(운영 실측: 매장 77건이 연결돼 있는데 발주 불가로 보였다).
+    // 연결 여부와 부족 여부는 다른 질문이다 — 여기서 연결만 따로 답한다.
+    const sellerLinkedIds = new Set();
+    if (ingIds.length > 0) {
+      const { IngredientSellerProduct } = require('../models');
+      const links = await IngredientSellerProduct.findAll({
+        where: { ingredient_id: { [Op.in]: ingIds }, is_active: true },
+        attributes: ['ingredient_id']
+      });
+      for (const l of links) sellerLinkedIds.add(l.ingredient_id);
+    }
+
     // 브랜드 공유 재료의 실재고·PAR 은 매장 오버레이가 단일 소스 (브랜드 행 값이 아님).
     // PAR(min_stock/리드타임/사용량)이 매장별인 이유: 지점마다 좌석·회전율이 달라 발주점이 같을 수 없다.
     const brandOverlay = await overlayMapFor(
@@ -160,6 +176,7 @@ router.get('/:restaurantId/inventory', async (req, res) => {
         is_brand_shared: isBrandShared, // 프론트: Brand 배지 (재료 정의는 여전히 읽기전용)
         read_only: isBrandShared,
         stock_status: stockStatus,
+        has_seller_source: sellerLinkedIds.has(ing.id),
         on_order_quantity: onOrder ? onOrder.qty : 0,
         on_order_delivery_date: onOrder ? onOrder.date : null
       };

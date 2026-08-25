@@ -35,6 +35,11 @@ export interface IngredientStock {
   track_stock?: boolean;
   // 브랜드 표준 재료(부모 브랜드 소유) — 매장은 재고를 다루되 재료 자체는 못 고친다(읽기전용).
   is_brand_shared?: boolean;
+  // 공급처가 실제로 연결돼 있는가 = **발주 가능한가**. (2026-08-25)
+  // 재고가 부족한가(발주제안)와는 다른 질문이다. 예전엔 이 둘을 한 값으로 섞어 써서,
+  // 최소치를 안 정한 품목은 연결이 멀쩡해도 "No supplier linked" 로 뜨고 주문 버튼이 사라졌다.
+  has_seller_source?: boolean;
+  seller_source_name?: string | null;
   // 입고예정 — 이미 발주됐으나 미입고된 수량(재고단위 환산) + 가장 빠른 입고예정일.
   on_order_quantity?: number;
   on_order_delivery_date?: string | null;

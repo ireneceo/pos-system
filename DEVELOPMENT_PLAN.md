@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-08-24 (**운영 배포 4건 + 재고 데이터 정정**. ①**발주 내역 전체 초기화**(7건→0, Irene "발주기능 쓴 적 없어") — 재고 행은 안 지우고 발주 연결만 끊음 ②**발주 Stock Items 가 통째로 안 보이던 것** — 프론트가 `track_stock` 을 false 로 고정해 286개 전부 "untracked" 로 숨김 ③**카테고리 필터가 비어 있던 것** — 같은 매핑 블록이 `category` 를 안 받아감(운영 18개 카테고리) ④**재고관리 카테고리·Zero Stock 필터 + 연결 안 된 품목 구분**, 발주 목록 제목 2줄·카테고리·재고 표시 ⑤**`purchase_orders.status` ENUM 에 `pending_approval` 추가** — 마이그가 아예 미작성이라 오너 연결 매장은 발주 제출이 실패하던 상태(고장주입 7/7로 실패 재현·복구 증명) ⑥**GIT Consulting 재고 18건 313개가 with MIN Cafe 매장칸에 잘못 들어가 있던 것을 BG 재고로 정정**(세 화면 API 6/6 검증). ⚠️ 작업 중 내가 저지른 것: 코드 주석을 도메인 근거로 삼아 매장 수량을 BG 칸에 17건 잘못 입력 → 되돌림. **코드 주석은 이전 세션의 해석일 뿐 도메인 사실이 아니다.** 상세=session-state.)
+> **최종 업데이트:** 2026-08-25 (**운영 배포 1건 + 운영 데이터 3건 + 결함 수리**. ①**발주 수량 화살표가 0.01 씩 오르던 것 수정 → 운영 배포**(팩·개는 1씩, 무게·부피만 소수. 카트·수령·반품 3곳) ②**GIT Consulting 재고 실사 반영**(어긋난 8건만, 313→306) + **옛 표기 중복 상품 21건 정리**(109→90건, 한글 병기로 통일) + **신규 2건 등록**(투명컵·뚜껑, 판매가 원가+40%, 재고 18팩씩) + **TK 1000 매입단가**(1CTN RM80÷5PKT=RM16) ③⚠️ **어제(8/24) 내가 만든 결함 수리 — 재고관리에서 주문 기능이 사라져 있었다**: 공급처 연결 여부를 '재고부족 발주제안'으로 판정해 최소치 미설정 품목이 전부 '미연결'로 표시(운영 BG 285건·매장 77건이 발주 불가로 보임). 실제 연결로 판정하도록 수리, 고장주입으로 증상 재현·복구 증명 ④발주 카트 개선(이름 전체표시·재고 병기·우측 패널 드래그 리사이즈), 재고관리 빈 회색 네모 제거·이름칸 확대, **포장 표기 노출**(`50SETS X 5PKTS/CTN`). ⚠️ 내가 만들고 고친 것: 상품 삭제 후 채번이 건수 기반이라 이미 쓰인 SKU 재발급 / 상품 삭제가 발주 연결을 안 치워 실매장 4건 끊김 → 둘 다 복구. 상세=session-state.)
 >
 > **이전:** 2026-08-20 #3 (**v3.76 운영 배포 — 공개 로그인 카드가 실매장을 열던 구멍 차단**. 운영 로그인 페이지의 Test 카드 한 번으로 **실고객 매장 The Fire(주문 335·결제 107·RM4,183)** 의 Restaurant Admin 이 열렸다. 기존 방어선이 **계정 꼬리표**(`is_demo||is_test`)만 봐서 `is_test=1` 인 그 계정이 통과했다 — 판정 기준이 틀린 곳에 있었다. v3.75 가 만든 문제가 아니라 원래 연결을 드러낸 것(운영 `user_contexts` **0행**). 수리: ①판정 기준을 **매장 `is_demo`** 로 교체, 닿는 매장에 실매장이 하나라도 있으면 거부(fail-closed) ②닿는 매장 = `userCanAccessRestaurant` 부여 경로 **superset**(`restaurant_managers` 포함) ③가드와 health-check 계약이 **같은 단일소스**(`utils/demoReachableRestaurants.js`) ④403 에서 실매장 이름 제거 ⑤QA 카드 5장 **운영 노출 제거**(dev 전용) ⑥검증 하니스가 공개 로그인 카드로 토큰을 받던 의존 제거 — 가드가 옳게 동작할수록 하니스가 깨지는 구조였다 ⑦운영 쇼케이스 지점 5곳 라벨 정정(3중 안전조건 멱등 마이그). **Fable 이 1차 구현을 반려**: "실제 부여는 `restaurant_managers` 에 있는데 가드가 그 테이블을 안 본다 — 주입을 가드가 보는 테이블에만 해서 반증이 실효를 증명하지 못했다." 운영 실측이 재확인(옛 구현이면 `test_brand_general`·`test_staff` 도 그냥 통과). 검증: 고장주입 3경로 양방향 · health-check 계약을 **가드를 깨서 반증** · `verify-all --full` **16/16** · 🔒 인쇄 **8/8 무접촉** · 인쇄 라우트 34/34 · 마이그 53/53 · 스모크 10/10 · **운영 검증 6/6**. 함께: 재고·판매 P1~P6 dev 완료(별도 게이트 대기). ⚠️ **작업 사고 1건**: 배포 격리 중 `git checkout` 으로 **미커밋 재고 수정 9파일 소실** → 전량 재구현. 상세=session-state.)
 >
@@ -8836,6 +8836,39 @@ hydration 게이트가 **메뉴 수정 저장 시 재고가 0 으로 날아가�
 - `dev-frontend/public/sw.js`
 - `dev-backend/scripts/migrate-po-status-pending-approval.js` (신규)
 - `dev-backend/scripts/migrations.registry.json`
+
+---
+
+## ✅ 완료: 발주·재고 결함 수리 + GIT Consulting 재고 정비 (2026-08-25)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 발주 수량 step | 화살표가 0.01 씩 오르던 것 → 단위가 정하게(팩·개 1, 무게·부피 0.01). 카트·수령·반품 3곳 | ✅ 운영 배포 |
+| 재고관리 주문 기능 복구 | 어제 만든 결함 — 연결 판정을 '재고부족 제안'에서 **실제 연결**로. BG 285건·매장 77건 영향 | ✅ dev |
+| 재고관리 목록 정리 | 빈 회색 자리표시 제거, 이름칸 2.5→3.5fr, 품목명 줄바꿈(잘리지 않음) | ✅ dev |
+| 발주 카트 개선 | 이름 전체 표시, 현재 재고 병기, 우측 패널 드래그 리사이즈(320~760px 기억) | ✅ dev |
+| 포장 표기 노출 | 공급업체 상품명의 `(50SETS X 5PKTS/CTN)` 을 목록·카트에 그대로 표시 | ✅ dev |
+| GIT 재고 실사 | 21건 대조 → 어긋난 8건만 수정. 313 → 306, 이후 신규 2건 18팩씩 → 342 | ✅ 운영 |
+| 중복 상품 정리 | 옛 영문 표기 21건 삭제, 한글 병기로 통일. 상품 109 → 90건. 카테고리 19건 이관 | ✅ 운영 |
+| 신규 품목 등록 | 투명컵·뚜껑 (판매가 원가+40%), UGS 카탈로그 등록 + 재고 연결 | ✅ 운영 |
+| TK 1000 매입단가 | 1 CTN RM80 ÷ 5 PKT = 팩당 RM16.00 | ✅ 운영 |
+
+### 수정된 파일
+- `dev-backend/routes/inventory-core.js` — 매장 재고 목록에 `has_seller_source` 추가
+- `dev-frontend/src/components/Inventory/sections/StockListSection.tsx` — 주문 가능 판정 분리
+- `dev-frontend/src/components/Inventory/hooks/useInventoryData.ts` — `include=sellers`
+- `dev-frontend/src/components/Inventory/types.ts` · `styles.ts`
+- `dev-frontend/src/pages/PurchaseOrders/NewPurchaseOrderPage.tsx` — 카트·포장표기·리사이즈
+- `dev-frontend/src/pages/PurchaseOrders/PurchaseOrderDetailPage.tsx` — 수령·반품 수량 step
+- `dev-frontend/src/utils/unitConversion.ts` — `qtyStepForUnit()` 공용 헬퍼
+- `dev-frontend/e2e/po-qty-step.spec.js` · `inventory-seller-link.spec.js` (신규)
+
+### 배운 것
+- **채번이 건수 기반**(`PRD-{count+1}`)이라 행을 지운 뒤 등록하면 번호가 재발급된다 → [[reference_count_based_code_numbering]]
+- **상품 삭제가 `ingredient_seller_products` 를 안 치운다** — 실매장 발주 연결 4건이 끊겼다(데이터 복구 완료, 코드는 미수정)
+- 연결 여부와 부족 여부는 **다른 질문**이다. 한 값으로 섞으면 최소치 미설정 품목이 통째로 사라진다
 
 ---
 

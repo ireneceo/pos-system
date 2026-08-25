@@ -1,6 +1,6 @@
 {
  "note": "운영 배포 시점 소스 지문 — deploy-to-production.sh 성공 후 자동 기록. 수동 편집 금지.",
- "created_at": "2026-08-24T18:30:45.180Z",
+ "created_at": "2026-08-25T19:44:39.645Z",
  "file_count": 1820,
  "files": {
   "CLAUDE.md": "a6cfad2fd8bfc53829408020acb88f06bc17a4f11d16cc7d9e0579d706cac949",
@@ -1328,7 +1328,7 @@
   "dev-frontend/src/components/Inventory/hooks/useIngredientAdjustModal.ts": "c474b1e4fd40a45bc58ccd83b83c76e8a5486c2644c2cd23ad62aa0ee77a28e8",
   "dev-frontend/src/components/Inventory/hooks/useInitialStockModal.ts": "99fcc013def5c4f1fa1f89695f35a5f0b4ae174660a9fd2c22d0a8135b81bf76",
   "dev-frontend/src/components/Inventory/hooks/useInlineStockEdit.ts": "341492051d0b67a415ebe76624a2aed78f427b55b283289f77289aa3f4cf7ab1",
-  "dev-frontend/src/components/Inventory/hooks/useInventoryData.ts": "99d9c58d351c030ed97707a798c2de09602e04c5c4bc7438a033967e42efbfc0",
+  "dev-frontend/src/components/Inventory/hooks/useInventoryData.ts": "ff1b09d2ffb74b8c29a4057ca4db239399b680c1e7ecd90732b1601c93859ddb",
   "dev-frontend/src/components/Inventory/hooks/useOrderModal.ts": "81e5ddca08c00d60ab0360a080a0417dd09ab7682c9c759dd481d8c47b134566",
   "dev-frontend/src/components/Inventory/hooks/useSettingsModal.ts": "0d8dc24ae631099c47b51c56228df3c67d15de099a15071dd0cd70d081952238",
   "dev-frontend/src/components/Inventory/modals/BulkOrderModal.tsx": "13167607f8c00c6d567999844114b763168a3ae3e6540c86b3e1160259e319f6",
@@ -1344,7 +1344,7 @@
   "dev-frontend/src/components/Inventory/sections/StockListSection.tsx": "5e765339e00f3f1b8ee505cb5479afe7bfb89629dd508a2350e96f3bcb8ef53d",
   "dev-frontend/src/components/Inventory/sections/TransactionHistorySection.tsx": "5d9a2ef238813c8336a5e5a3fd106a08657f0de8827966e565d5db6d82952855",
   "dev-frontend/src/components/Inventory/styles.ts": "61ad890154f1e286fb259d3156e53bdebd7b028798c2d056e8e6be4cd24bc5a5",
-  "dev-frontend/src/components/Inventory/types.ts": "9c8bba10cecacdd979504681e2f77dc644e6a23a3a3d8af4f9381fd2cb4fe8a1",
+  "dev-frontend/src/components/Inventory/types.ts": "c75dd5682959041ffd762a9bb3b9b7ff83b65de0c9f686a62c640ea757beb3d7",
   "dev-frontend/src/components/Inventory/utils.ts": "62daa6b64717dff64629e887a96b78e9fd8ffec9834f4b8147b89b96197f25a5",
   "dev-frontend/src/components/Invoice/InvoiceDetailModal.tsx": "c76c7326c01c5c35735752cc8cb60f39d48098f780d97a6014a7da44a0bc5a83",
   "dev-frontend/src/components/Invoice/InvoiceHistoryModal.tsx": "9dad836fe1fe46aee741b881f96451c60647ee981797c6e26ea9b0a4de05dca9",
@@ -1701,8 +1701,8 @@
   "dev-frontend/src/pages/Profile/ProfilePage.tsx": "bfb0ea9c89248c37e7d1b52153aef02f087fc5a72dd0544ef1b1d6080c8dcda0",
   "dev-frontend/src/pages/Profile/SubscriptionTab.tsx": "32bb73de90dbe8d66966579179998ec2f5a739a89293c0ba928d529adc2fb5a9",
   "dev-frontend/src/pages/Promotions/PromotionsPage.tsx": "5d6af997c46494656739e6d275563c2c108d42e9a0d10dfd92ac740a137fd457",
-  "dev-frontend/src/pages/PurchaseOrders/NewPurchaseOrderPage.tsx": "e55bd531fefe7965109b2dfe50f69b1243d0a14736a30e34ca9709235a20018a",
-  "dev-frontend/src/pages/PurchaseOrders/PurchaseOrderDetailPage.tsx": "e5c4decf0bb5c4ac2c0f2d6ed7021e9e0869c8f07726c6952d40b375533ed4ac",
+  "dev-frontend/src/pages/PurchaseOrders/NewPurchaseOrderPage.tsx": "ff2788f8527489acf496ec53e7109b6829320952faac901a0fe9bf64cd70cb7b",
+  "dev-frontend/src/pages/PurchaseOrders/PurchaseOrderDetailPage.tsx": "6eac6de027981b1e12807edc9500dc98c6c30dd819830f418fffcfbded663aa7",
   "dev-frontend/src/pages/PurchaseOrders/PurchaseOrderPrintPage.tsx": "37793bd78310e296dbb767194627ec04c3739e41d0b744987e488dbd4726728c",
   "dev-frontend/src/pages/PurchaseOrders/PurchaseOrderStagingPage.tsx": "aba45a1b7840a69a3f6741252291bc446ec2c5450a5558eef1f96cd0369970a6",
   "dev-frontend/src/pages/PurchaseOrders/PurchaseOrdersPage.tsx": "35b333fe7437f391ee9f1d8c9ebcd75f4ae3117f8c703232d0f4cb5b917dd976",
@@ -1822,6 +1822,6 @@
   "dev-frontend/src/utils/tableLabel.ts": "7e7c5fecb04abefc353cc9d603fd451e141b526dfc883d5dc24e528f4cb173a9",
   "dev-frontend/src/utils/thermalPrinter.ts": "3618a8a8eecbc4b60ce167d0ec92203b64cc5d652ba972e1ead1b1f80a6895d0",
   "dev-frontend/src/utils/timezone.ts": "c2e5db8ca0c344717b30df5d365da5ff90035c501e4ffd33e18dc4fa3f37b20f",
-  "dev-frontend/src/utils/unitConversion.ts": "22a1e5b69a5360d4367dd8dbe655074a470b5102433564ff280564f33d6a7f2c"
+  "dev-frontend/src/utils/unitConversion.ts": "65215bba1961e0a3f6278a237d9e66a77510a83e7a282deb2f706455fd4d8be9"
  }
 }

@@ -221,10 +221,15 @@ export const QuickActions = styled.div`
   flex-wrap: wrap;
 `;
 
+/** 재고 목록의 품목명. 이름이 길어 잘리면 무엇인지 알아볼 수 없다 —
+ *  자르지 말고 2줄까지 접어서 전부 보여준다(2026-08-25 Irene 보고). */
 export const IngredientName = styled.div`
   font-weight: 600;
   color: #0A2540;
   margin-bottom: 4px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.35;
 `;
 
 /** 브랜드 표준 재료 표식 — 재고는 매장별이지만 재료 정의는 브랜드 소유(읽기전용). */

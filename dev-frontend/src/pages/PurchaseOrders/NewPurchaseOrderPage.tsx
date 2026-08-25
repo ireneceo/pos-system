@@ -100,6 +100,9 @@ interface CartRow {
   available_sellers: SellerOpt[];
   selected_options?: SelectedOption[];
   adjusted_unit_price?: number;  // base + 옵션 price_adjustment 합
+  // 담을 때의 남은 재고 — 카트에서 "얼마 남았는지 보면서" 수량을 정하려면 필요하다.
+  // (2026-08-25 Irene: "재고수량 보면서 발주해야 하는데 장바구니에선 안 보인다")
+  current_stock?: number | null;
   // BG (brands) only — set when the source row is a BG ProductIngredient (Stock Item).
   // submit emits { product_ingredient_id, ... } instead of { ingredient_id, ... }.
   product_ingredient_id?: number;
@@ -148,9 +151,38 @@ const PageTitle = styled.h1`
   }
 `;
 
-const Layout = styled.div`
+/** 우측 카트 폭은 사람이 끌어서 정한다 — 품목명이 길어 기본 380px 로는 늘 모자랐다.
+ *  (2026-08-25 Irene: "우측 패널 사이즈를 리사이징 가능하게, 더 넓게 해야 할 때가 많다") */
+/**
+ * 공급업체 판매품목명에 붙어 있는 **포장 표기**만 뽑는다.
+ *   "TK 1000 (A1000) ... (50SETS X 5PKTS/CTN)"  →  "50SETS X 5PKTS/CTN"
+ *   "PP SHEET LID 8511 780/850/1000CC (50PCS X 12PKTS)" → "50PCS X 12PKTS"
+ * 발주는 팩 단위로 넣는데 매입은 CTN 단위로 오는 일이 많아, "몇 팩이 한 박스인지"를
+ * 주문하는 자리에서 바로 봐야 한다. (2026-08-25 Irene 요청)
+ * 표기 규칙이 공급업체마다 제각각이라 **해석하지 않고 그대로 보여준다** — 잘못 계산해
+ * 틀린 수량을 권하느니, 적힌 것을 정확히 옮기는 편이 안전하다.
+ */
+const packSpecOf = (sellerProductName?: string | null): string => {
+  if (!sellerProductName) return '';
+  const parts = String(sellerProductName).match(/\(([^()]*)\)/g) || [];
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const inner = parts[i].slice(1, -1).trim();
+    if (/\d/.test(inner) && /(PKT|PCS|SET|CTN|BOX|ROLL|BTL|PACK|BUNDLE|GRAM)/i.test(inner)) return inner;
+  }
+  // 괄호 없이 "… | 900ml x 12btl/ctn" 처럼 뒤에 붙는 형태
+  const tail = String(sellerProductName).split('|').pop() || '';
+  const m = tail.match(/[\w.]+\s*x\s*\d+\s*[A-Za-z]+\s*\/?\s*[A-Za-z]*/i);
+  return m && /\d/.test(m[0]) ? m[0].trim() : '';
+};
+
+const CART_WIDTH_KEY = 'po_cart_width';
+const CART_WIDTH_DEFAULT = 380;
+const CART_WIDTH_MIN = 320;
+const CART_WIDTH_MAX = 760;
+
+const Layout = styled.div<{ $cartWidth: number }>`
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: minmax(0, 1fr) ${p => p.$cartWidth}px;
   gap: 0;
   flex: 1;
   min-height: 0;
@@ -596,6 +628,24 @@ const CartPane = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+`;
+
+/** 카트 왼쪽 모서리의 폭 조절 손잡이. 좁은 화면(카트가 아래로 내려가는 배치)에서는 숨긴다. */
+const CartResizer = styled.div`
+  position: absolute;
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: col-resize;
+  z-index: 5;
+  background: transparent;
+  &:hover, &:active { background: #635BFF22; }
+
+  @media (max-width: 1024px) {
+    display: none;
+  }
 `;
 
 const CartHeader = styled.div`
@@ -628,8 +678,8 @@ const CartLine = styled.div`
 
 const CartLineHead = styled.div`
   display: grid;
-  grid-template-columns: 1fr 70px 70px 22px;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) 70px 70px 22px;
+  align-items: start;
   gap: 6px;
 `;
 
@@ -860,6 +910,48 @@ const NewPurchaseOrderPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  // ── 카트 폭 (사람이 끌어서 정하고, 브라우저에 기억시킨다) ──────────────────────
+  // localStorage 는 개인용 편의값이라 실패해도 화면이 정상 동작해야 한다 → 전부 try/catch.
+  const [cartWidth, setCartWidth] = useState<number>(() => {
+    try {
+      const raw = window.localStorage.getItem(CART_WIDTH_KEY);
+      const n = raw ? parseInt(raw, 10) : NaN;
+      if (Number.isFinite(n)) return Math.min(CART_WIDTH_MAX, Math.max(CART_WIDTH_MIN, n));
+    } catch { /* 저장소를 못 읽어도 기본값으로 뜬다 */ }
+    return CART_WIDTH_DEFAULT;
+  });
+  const resizeRef = useRef<{ startX: number; startW: number } | null>(null);
+
+  const onResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    resizeRef.current = { startX: e.clientX, startW: cartWidth };
+
+    const onMove = (ev: MouseEvent) => {
+      const st = resizeRef.current;
+      if (!st) return;
+      // 왼쪽으로 끌면 넓어진다(카트가 오른쪽에 있으므로 부호를 뒤집는다)
+      const next = Math.min(CART_WIDTH_MAX, Math.max(CART_WIDTH_MIN, st.startW + (st.startX - ev.clientX)));
+      setCartWidth(next);
+    };
+    const onUp = () => {
+      const st = resizeRef.current;
+      resizeRef.current = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.userSelect = '';
+      if (st) {
+        setCartWidth(w => {
+          try { window.localStorage.setItem(CART_WIDTH_KEY, String(w)); } catch { /* 기억 못 해도 그만 */ }
+          return w;
+        });
+      }
+    };
+    document.body.style.userSelect = 'none';   // 끄는 동안 글자가 선택되지 않게
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [cartWidth]);
+
   const [optionModal, setOptionModal] = useState<{ row: CatalogRow; product: any } | null>(null);
   // Connect mode — mine 탭의 unlinked ingredient 를 catalog 항목과 연결할 때 사용
   const [connectTarget, setConnectTarget] = useState<{ id: number; name: string; unit?: string; product_ingredient_id?: number } | null>(null);
@@ -1146,6 +1238,7 @@ const NewPurchaseOrderPage: React.FC = () => {
       ingredient_id: row.id,
       ingredient_name: row.name,
       ingredient_unit: row.unit || '',
+      current_stock: row.current_stock ?? null,
       selected_seller_id: preferred.id,
       quantity: Math.max(1, preferred.min_order_quantity || 1),
       available_sellers: row.sellers,
@@ -1322,6 +1415,7 @@ const NewPurchaseOrderPage: React.FC = () => {
           ingredient_id: isBG ? 0 : ing.id,
           ingredient_name: ing.name,
           ingredient_unit: ing.unit || '',
+          current_stock: (ing as any).current_stock ?? null,
           selected_seller_id: seller.id,
           quantity: baseQty,
           available_sellers: [seller],
@@ -1456,7 +1550,7 @@ const NewPurchaseOrderPage: React.FC = () => {
         </ThemedButton>
       </PageHeader>
 
-      <Layout>
+      <Layout $cartWidth={cartWidth}>
         <MainPane>
           <TabBar>
             <TabBtn $active={tab === 'mine'} onClick={() => { setTab('mine'); setCategoryFilter('all'); setMineSellerFilter('all'); setSearch(''); }}>
@@ -1631,7 +1725,11 @@ const NewPurchaseOrderPage: React.FC = () => {
                     const stockText = row.current_stock != null
                       ? `${t('newPo.inStock', 'In stock')} ${fmtQty(Number(row.current_stock))}${row.unit ? ` ${row.unit}` : ''}`
                       : '';
-                    const metaText = [catText, row.unit || '', stockText].filter(Boolean).join(' · ');
+                    // 대표 공급처(선호 → 첫 번째)의 포장 표기 — "몇 팩이 한 박스인지"
+                    const packSpec = packSpecOf(
+                      (row.sellers.find(s => s.is_preferred) || row.sellers[0])?.seller_product_name
+                    );
+                    const metaText = [catText, row.unit || '', stockText, packSpec].filter(Boolean).join(' · ');
 
                     let priceText = '';
                     let vendorText = '';
@@ -1849,6 +1947,7 @@ const NewPurchaseOrderPage: React.FC = () => {
         </MainPane>
 
         <CartPane>
+          <CartResizer onMouseDown={onResizeStart} title="Drag to resize" />
           <CartHeader>
             {t('newPo.cart.title', 'Planned Order')} {cart.length > 0 && `(${cart.length})`}
           </CartHeader>
@@ -1876,10 +1975,26 @@ const NewPurchaseOrderPage: React.FC = () => {
                   <CartLine key={row.cart_key}>
                     <CartLineHead>
                       <div style={{ minWidth: 0 }}>
+                        {/* 이름을 자르면 무엇을 담았는지 알 수 없다 — 접어서 전부 보여준다.
+                            남은 재고를 같이 띄워, 카트를 벗어나지 않고 수량을 정할 수 있게 한다.
+                            (2026-08-25 Irene 보고) */}
                         <div style={{
                           fontSize: 13, fontWeight: 600, color: '#0A2540',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                          overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.35
                         }}>{row.ingredient_name}</div>
+                        {(row.current_stock != null || packSpecOf(seller.seller_product_name)) && (
+                          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                            {row.current_stock != null && (
+                              <>{t('newPo.cart.inStock', 'In stock')}: {row.current_stock} {row.ingredient_unit || ''}</>
+                            )}
+                            {/* 포장 표기 — 발주는 팩으로 넣는데 매입은 박스로 오는 일이 많다 */}
+                            {packSpecOf(seller.seller_product_name) && (
+                              <span style={{ marginLeft: row.current_stock != null ? 6 : 0, color: '#0A2540', fontWeight: 600 }}>
+                                {packSpecOf(seller.seller_product_name)}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <QtyInput
                         type="number"

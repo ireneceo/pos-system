@@ -89,8 +89,13 @@ export function useInventoryData({ mode, restaurantId, authFetch, includeUntrack
       } else {
         // Brand mode
         // 재고 관리 꺼진 항목까지 보려면 필터를 빼고 전부 받는다(그 화면에서 바로 켤 수 있게).
+        // include=sellers — 공급처 연결 여부(=발주 가능한가)의 단일 소스.
+        // 예전엔 이 판정을 "재고부족 발주제안"에서 유추해, 최소치를 안 정한 품목은
+        // 연결이 멀쩡해도 "No supplier linked" 로 뜨고 주문 버튼이 사라졌다. (2026-08-25)
         const inventoryRes = await authFetch(
-          includeUntracked ? '/api/product-ingredients' : '/api/product-ingredients?track_stock=true'
+          includeUntracked
+            ? '/api/product-ingredients?include=sellers'
+            : '/api/product-ingredients?track_stock=true&include=sellers'
         );
 
         if (inventoryRes.success) {
@@ -148,7 +153,12 @@ export function useInventoryData({ mode, restaurantId, authFetch, includeUntrack
               linked_stores: Array.isArray(ing.linked_stores) ? ing.linked_stores : [],
               unit_price: parseFloat(ing.unit_price) || parseFloat(ing.unit_cost) || 0,
               supplier_id: ing.supplier_id,
-              supplier_name: ing.supplier_name
+              supplier_name: ing.supplier_name,
+              // 발주 가능 여부 = 공급처가 실제로 연결돼 있는가. 부족 여부와 별개다.
+              has_seller_source: Array.isArray(ing.sellers) && ing.sellers.length > 0,
+              seller_source_name: (Array.isArray(ing.sellers) && ing.sellers.length > 0)
+                ? (ing.sellers.find((sv: any) => sv.is_preferred) || ing.sellers[0])?.seller_name || null
+                : null
             };
           });
 
