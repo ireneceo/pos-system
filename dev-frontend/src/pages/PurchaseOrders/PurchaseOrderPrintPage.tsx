@@ -22,6 +22,13 @@ interface POItem {
   unit_price: number | string;
   line_total: number | string;
   ingredient?: { id: number; name: string; unit: string };
+  /**
+   * 공급업체 자기 판매품목 정체성(백엔드 utils/sellerProductIdentity 가 붙여준다).
+   * 매핑이 없는 라인·브랜드/푸드코트 판매자는 null → 내부명으로 폴백한다.
+   */
+  seller_product_name?: string | null;
+  seller_product_sku?: string | null;
+  ingredient_name?: string | null;
 }
 interface PODetail {
   id: number;
@@ -164,11 +171,21 @@ const formatMoney = (v: number | string | null | undefined, ccy = 'MYR') => {
   return `${ccy} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
-const PurchaseOrderPrintPage: React.FC = () => {
+interface PrintPageProps {
+  /**
+   * 공급업체 전용 경로(`/pos/supplier/orders/:id/print`)에서 켠다.
+   * 판매자 모드를 **경로로 강제**한다 — 쿼리 파라미터에만 맡기면 `?as=seller` 가 빠진 접근이
+   * 구매자 엔드포인트를 때려 403 화면이 된다. (2026-08-27)
+   */
+  forceSellerView?: boolean;
+}
+
+const PurchaseOrderPrintPage: React.FC<PrintPageProps> = ({ forceSellerView = false }) => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  // ?as=seller — incoming-orders 페이지에서 BG/FG/Supplier 가 print 할 때 seller endpoint 사용
-  const isSellerView = searchParams.get('as') === 'seller';
+  // ?as=seller — BG/FG 수신함에서 print 할 때 seller endpoint 사용.
+  // 공급업체는 전용 경로가 forceSellerView 로 강제한다(쿼리 없이도 판매자 모드).
+  const isSellerView = forceSellerView || searchParams.get('as') === 'seller';
   const { t } = useTranslation('purchaseOrders');
   const [data, setData] = useState<PODetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -265,7 +282,8 @@ const PurchaseOrderPrintPage: React.FC = () => {
       <Table>
         <thead>
           <tr>
-            <th>{t('print.ingredient', 'Ingredient')}</th>
+            <th>{t('print.item', 'Item')}</th>
+            <th>{t('print.sku', 'SKU')}</th>
             <th className="num">{t('print.qty', 'Qty')}</th>
             <th>{t('print.unit', 'Unit')}</th>
             <th className="num">{t('print.unitPrice', 'Unit Price')}</th>
@@ -274,14 +292,28 @@ const PurchaseOrderPrintPage: React.FC = () => {
         </thead>
         <tbody>
           {items.length === 0 ? (
-            <tr><td colSpan={5} style={{ textAlign: 'center', color: '#6B7280' }}>—</td></tr>
+            <tr><td colSpan={6} style={{ textAlign: 'center', color: '#6B7280' }}>—</td></tr>
           ) : items.map(it => {
             const lt = it.line_total != null
               ? Number(it.line_total)
               : Number(it.quantity_ordered) * Number(it.unit_price);
+            // 이 문서는 **공급업체가 받는 문서**다 → 공급업체 자기 판매품목명·SKU 가 주(主),
+            // 구매자 내부명은 대조용 참고(부). 매핑이 없는 옛 발주·브랜드 판매자는 내부명만 나온다.
+            // (설계: docs/STOCK_ITEM_VS_SUPPLIER_PRODUCT_DESIGN.md ③-4)
+            const internalName = it.ingredient_name || it.ingredient?.name || it.description || `#${it.ingredient_id}`;
+            const mainName = it.seller_product_name || internalName;
+            const showRef = !!it.seller_product_name && it.seller_product_name !== internalName;
             return (
               <tr key={it.id}>
-                <td>{it.ingredient?.name || it.description || `#${it.ingredient_id}`}</td>
+                <td>
+                  {mainName}
+                  {showRef && (
+                    <div style={{ fontSize: 11, color: '#6B7280' }}>
+                      {t('print.buyerRef', 'Buyer ref')}: {internalName}
+                    </div>
+                  )}
+                </td>
+                <td>{it.seller_product_sku || '—'}</td>
                 <td className="num">{formatQuantity(it.quantity_ordered)}</td>
                 <td>{it.unit || it.ingredient?.unit || ''}</td>
                 <td className="num">{formatMoney(it.unit_price, ccy)}</td>

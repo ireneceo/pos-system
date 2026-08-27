@@ -41,6 +41,7 @@ const { normalizeCurrencyCode, sameCurrency } = require('../utils/currency');
 const { resolveSellers, getSeller, getSellerName, isExternalSeller } = require('../utils/sellerNames');
 const { readableIngredient, parentBrandIdOf, overlayMapFor, effectiveSettings } = require('../utils/brandStockAccess');
 const { applySubmitGate } = require('../utils/poOwnerApproval');
+const { attachSellerProductIdentity } = require('../utils/sellerProductIdentity');
 const { fireOwnerApprovalPendingNotification } = require('../services/poNotifications');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
@@ -308,11 +309,16 @@ router.get('/purchase-orders', async (req, res) => {
         where: { purchase_order_id: { [Op.in]: ids } },
         include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'name'], required: false }]
       });
+      const plainItems = [];
       for (const it of allItems) {
         const plain = it.toJSON();
         plain.product_name = plain.description || (plain.ingredient && plain.ingredient.name) || null;
+        plainItems.push(plain);
         (itemsByPo[plain.purchase_order_id] = itemsByPo[plain.purchase_order_id] || []).push(plain);
       }
+      // 2026-08-27 (Irene): staging 에서 보내는 WhatsApp/이메일에도 공급업체 판매품목명·SKU 가
+      // 나가야 한다(받는 쪽이 자기 창고에서 대조 가능하게). 단일 소스 = utils/sellerProductIdentity.
+      await attachSellerProductIdentity({ items: plainItems });
     }
 
     const enriched = rows.map(p => {
@@ -507,20 +513,16 @@ router.get('/purchase-orders/:id', async (req, res) => {
     // the sellerSource mapping. So the PO detail screen can show both.
     const items = plain.items || [];
     if (items.length) {
-      const { ProductIngredient, SupplierProduct } = require('../models');
-      const spIds = [...new Set(items.map(it => it.sellerSource).filter(ss => ss && ss.seller_type === 'supplier' && ss.seller_product_id).map(ss => ss.seller_product_id))];
+      const { ProductIngredient } = require('../models');
       const pIngIds = [...new Set(items.map(it => it.product_ingredient_id).filter(Boolean))];
-      const [spRows, pIngRows] = await Promise.all([
-        spIds.length ? SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false }) : [],
+      const [, pIngRows] = await Promise.all([
+        // 판매품목명·SKU 는 단일 소스(utils/sellerProductIdentity)로 — 인쇄본·공유메시지·
+        // 공급업체 수신함이 같은 이름을 쓰게 한다
+        attachSellerProductIdentity(plain),
         pIngIds.length ? ProductIngredient.findAll({ where: { id: pIngIds }, attributes: ['id', 'name', 'unit'] }) : []
       ]);
-      const spMap = Object.fromEntries(spRows.map(s => [s.id, s]));
       const pIngMap = Object.fromEntries(pIngRows.map(p => [p.id, p]));
       for (const it of items) {
-        const ss = it.sellerSource;
-        const sp = ss && ss.seller_type === 'supplier' ? spMap[ss.seller_product_id] : null;
-        it.seller_product_name = sp ? sp.name : null;
-        it.seller_product_sku = sp ? sp.sku : null;
         it.ingredient_name = (it.ingredient && it.ingredient.name) || (pIngMap[it.product_ingredient_id] && pIngMap[it.product_ingredient_id].name) || it.description || null;
       }
     }

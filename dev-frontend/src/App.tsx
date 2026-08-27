@@ -1394,6 +1394,19 @@ function App() {
                           <SupplierOrdersPage />
                         </ProtectedRoute>
                       } />
+                      {/* 2026-08-27: 공급업체 전용 발주서 인쇄본. 이전에는 수신함 Print 버튼이
+                          구매자 경로(`/pos/purchase-orders/:id/print?as=seller`)를 열었는데,
+                          공급업체에게 허용된 경로는 `/pos/supplier/*` 뿐이라(AuthContext ROLE_ROUTES)
+                          **눌러도 목록으로 튕겼다.** 서버(seller-orders)는 원래 열려 있었다 —
+                          프론트 경로만 질서 밖에 있던 것. 예외를 없애 네임스페이스 안으로 편입한다.
+                          판매자 모드는 **경로로 강제**한다(쿼리 파라미터에 맡기면 파라미터가 빠졌을 때
+                          구매자 엔드포인트를 때려 403 화면이 된다). Supplier Staff 는 서버
+                          SELLER_ROLES 에 없어 403 이므로 제외 — 프론트가 서버보다 넓으면 안 된다. */}
+                      <Route path="/pos/supplier/orders/:id/print" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
+                          <PurchaseOrderPrintPage forceSellerView />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/pos/supplier/trade-invoices" element={
                         <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
                           <SupplierTradeInvoicesPage />
@@ -1466,6 +1479,9 @@ function App() {
                           <PurchaseOrderDetailPage />
                         </ProtectedRoute>
                       } />
+                      {/* 구매자쪽 인쇄본. 공급업체는 여기 오지 않는다 — 공급업체 화면은 전부
+                          `/pos/supplier/*` 네임스페이스에 살고 ROLE_ROUTES 가 그 질서를 강제한다.
+                          공급업체 전용 인쇄 경로는 아래 `/pos/supplier/orders/:id/print`. */}
                       <Route path="/pos/purchase-orders/:id/print" element={
                         <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                           <PurchaseOrderPrintPage />

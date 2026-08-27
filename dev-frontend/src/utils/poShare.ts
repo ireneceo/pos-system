@@ -14,6 +14,12 @@ interface SharePOItem {
   ingredient_id?: number;
   quantity_ordered: number | string;
   unit_price: number | string;
+  /**
+   * 공급업체 자기 판매품목 정체성(백엔드 utils/sellerProductIdentity).
+   * 매핑 없는 라인·브랜드/푸드코트 판매자는 null → 내부명 폴백.
+   */
+  seller_product_name?: string | null;
+  seller_product_sku?: string | null;
 }
 
 export interface SharePO {
@@ -27,11 +33,24 @@ export interface SharePO {
   seller?: { name?: string | null; phone?: string | null; email?: string | null } | null;
 }
 
-/** 품목 줄목록 (이름 × 수량 @ 단가). 이름 없으면 #id. */
+/**
+ * 품목 줄목록 (이름 × 수량 @ 단가). 이름 없으면 #id.
+ *
+ * 이 메시지는 **공급업체에게 나간다** → 받는 쪽이 자기 창고에서 대조할 수 있도록
+ * 공급업체 판매품목명 + SKU 를 주(主)로 쓰고, 구매자 내부명은 이름이 다를 때만
+ * `(ref: …)` 로 병기한다. 매핑이 없는 옛 발주·브랜드/푸드코트 판매자는 내부명만 나간다.
+ * (설계: docs/STOCK_ITEM_VS_SUPPLIER_PRODUCT_DESIGN.md ③-4)
+ */
 export function poItemLines(po: SharePO, formatQuantity: (q: any) => string): string {
-  return (po.items || []).map((it) =>
-    `- ${it.product_name || it.ingredient_name || ('Item #' + it.ingredient_id)} x ${formatQuantity(it.quantity_ordered)} @ ${parseFloat(String(it.unit_price)).toFixed(2)}`
-  ).join('\n');
+  return (po.items || []).map((it) => {
+    const internalName = it.product_name || it.ingredient_name || ('Item #' + it.ingredient_id);
+    const mainName = it.seller_product_name || internalName;
+    const sku = it.seller_product_sku ? ` [${it.seller_product_sku}]` : '';
+    const ref = it.seller_product_name && it.seller_product_name !== internalName
+      ? ` (ref: ${internalName})`
+      : '';
+    return `- ${mainName}${sku} x ${formatQuantity(it.quantity_ordered)} @ ${parseFloat(String(it.unit_price)).toFixed(2)}${ref}`;
+  }).join('\n');
 }
 
 /** WhatsApp 발송 — 판매자 번호가 있으면 그 번호로, 없으면 연락처 선택 화면으로. */

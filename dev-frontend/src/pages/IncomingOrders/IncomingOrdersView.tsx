@@ -420,6 +420,14 @@ function playSellerChime() {
 
 const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i18nNamespace }) => {
   const { user } = useAuth();
+
+  // 발주서 인쇄본 URL — **공급업체는 전용 경로**를 쓴다. 공급업체 계정에 허용된 경로는
+  // `/pos/supplier/*` 뿐이라(AuthContext ROLE_ROUTES) 구매자 경로를 열면 목록으로 튕겼다.
+  // 브랜드/푸드코트 판매자는 구매자 경로가 원래 허용돼 있어 기존 URL 을 유지한다. (2026-08-27)
+  const printUrlFor = (poId: number | string) =>
+    user?.role === 'Supplier Admin'
+      ? `/pos/supplier/orders/${poId}/print`
+      : `/pos/purchase-orders/${poId}/print?as=seller`;
   // Use 'supplier' namespace for shared keys — Brand/Foodcourt pages still
   // re-use the supplier orders namespace so we don't duplicate strings.
   const { t } = useTranslation([i18nNamespace, 'supplier', 'common']);
@@ -1052,7 +1060,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                           <ThemedButton size="small" variant="outline" onClick={() => openDetail(row)}>
                             {tNs('orders.actions.view', 'View')}
                           </ThemedButton>
-                          <ThemedButton size="small" variant="outline" onClick={() => window.open(`/pos/purchase-orders/${row.id}/print?as=seller`, '_blank')}>
+                          <ThemedButton size="small" variant="outline" onClick={() => window.open(printUrlFor(row.id), '_blank')}>
                             {tNs('orders.actions.print', 'Print')}
                           </ThemedButton>
                           {row.status === 'submitted' && (
