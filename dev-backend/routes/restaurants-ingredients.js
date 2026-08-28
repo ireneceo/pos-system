@@ -123,14 +123,14 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
       const brandIds = [...new Set(mappings.filter(m => m.seller_type === 'brand').map(m => m.seller_entity_id).filter(Boolean))];
       const foodcourtIds = [...new Set(mappings.filter(m => m.seller_type === 'foodcourt').map(m => m.seller_entity_id).filter(Boolean))];
 
-      const [suppliers, brands, foodcourts] = await Promise.all([
-        supplierIds.length ? SupplierCompany.findAll({ where: { id: { [Op.in]: supplierIds } }, attributes: ['id', 'name'] }) : [],
-        brandIds.length ? Brand.findAll({ where: { id: { [Op.in]: brandIds } }, attributes: ['id', 'name'] }) : [],
-        foodcourtIds.length ? Foodcourt.findAll({ where: { id: { [Op.in]: foodcourtIds } }, attributes: ['id', 'name'] }) : []
-      ]);
-      const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s.name]));
-      const brandMap = Object.fromEntries(brands.map(b => [b.id, b.name]));
-      const foodcourtMap = Object.fromEntries(foodcourts.map(f => [f.id, f.name]));
+      // 판매자 표시명은 **공용 단일소스**(utils/sellerNames)를 쓴다.
+      // ⚠ 2026-08-28 Irene: 거래처가 "with MIN"(브랜드명)으로 떠서 헷갈렸다 — 여기서 브랜드 테이블의
+      //   `name` 만 직접 읽고 `company_name`(GIT Consulting)을 안 봤기 때문이다.
+      //   각자 조회를 짜면 이런 어긋남이 또 난다. 단일소스 경유로 고정한다.
+      const { resolveSellers, getSellerName } = require('../utils/sellerNames');
+      const sellerResolved = await resolveSellers(
+        mappings.map(m => ({ seller_type: m.seller_type, seller_entity_id: m.seller_entity_id }))
+      );
 
       // Brand seller sources carry the brand's OWN product name/SKU — different from the
       // restaurant's internal stock item name. Resolve them like supplier products so the
@@ -145,11 +145,9 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
       const sellersByIngredient = {};
       for (const m of mappings) {
         const arr = sellersByIngredient[m.ingredient_id] || (sellersByIngredient[m.ingredient_id] = []);
-        let sellerName = 'Unknown';
-        if (m.seller_type === 'supplier') sellerName = supplierMap[m.seller_entity_id] || 'Supplier';
-        else if (m.seller_type === 'brand') sellerName = brandMap[m.seller_entity_id] || 'Brand';
-        else if (m.seller_type === 'foodcourt') sellerName = foodcourtMap[m.seller_entity_id] || 'Foodcourt';
-        else if (m.seller_type === 'system_admin') sellerName = 'PurpleHere';
+        let sellerName = m.seller_type === 'system_admin'
+          ? 'PurpleHere'
+          : (getSellerName(sellerResolved, m.seller_type, m.seller_entity_id) || 'Unknown');
         const groups = (m.seller_type === 'supplier' ? (optsBySpId[m.seller_product_id] || []) : []);
         const spInfo = (m.seller_type === 'supplier' ? spInfoById[m.seller_product_id]
                       : m.seller_type === 'brand' ? bpInfoById[m.seller_product_id]

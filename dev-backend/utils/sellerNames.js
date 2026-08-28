@@ -23,16 +23,17 @@ const sellerKey = (type, id) => `${type}:${parseInt(id, 10)}`;
 
 /**
  * 수신처 표시 이름. 발주를 받는 것은 브랜드/푸드코트가 아니라 그것을 운영하는 회사다.
- *   brand/foodcourt : "회사명 (브랜드명)" — 회사명 없으면 브랜드명만
+ *   brand/foodcourt : **회사명 단독** (회사명 없으면 브랜드/푸드코트명 폴백)
  *   supplier        : 업체명 그대로 (name 이 이미 회사)
  */
 function buildSellerDisplayName(type, row) {
   const entityName = (row.name || '').trim();
   const companyName = (row.company_name || '').trim();
   if (type === 'supplier') return entityName || companyName || null;
-  if (!companyName || companyName === entityName) return entityName || null;
-  if (!entityName) return companyName;
-  return `${companyName} (${entityName})`;
+  // 2026-08-28 Irene: 거래처는 **회사명 단독**으로 보여준다.
+  //   "GIT Consulting (with MIN)" 처럼 브랜드명을 괄호로 병기하면 매장 화면에서 헷갈린다 —
+  //   거래처는 파는 회사이지 브랜드가 아니다. 회사명이 없을 때만 브랜드/푸드코트명으로 폴백.
+  return companyName || entityName || null;
 }
 
 /**

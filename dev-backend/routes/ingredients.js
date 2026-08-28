@@ -147,12 +147,19 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
           }));
       }
 
+      // 판매자 표시명 단일소스 — 각자 조회를 짜면 브랜드명/회사명이 어긋난다(2026-08-28).
+      const sellerResolvedShared = await resolveSellers(
+        mappings.map(m => ({ seller_type: m.seller_type, seller_entity_id: m.seller_entity_id }))
+      );
+
       const sellersByIngredient = {};
       for (const m of mappings) {
         const arr = sellersByIngredient[m.ingredient_id] || (sellersByIngredient[m.ingredient_id] = []);
+        // 판매자 표시명은 공용 단일소스(utils/sellerNames)를 쓴다 — 브랜드 테이블의 name 만 직접 읽으면
+        // 거래처가 회사명(GIT Consulting) 대신 브랜드명(with MIN)으로 떠서 헷갈린다(2026-08-28 Irene).
         let sellerName = 'Unknown';
         if (m.seller_type === 'supplier') sellerName = supplierMap[m.seller_entity_id] || 'Supplier';
-        else if (m.seller_type === 'brand') sellerName = brandMap[m.seller_entity_id] || 'Brand';
+        else if (m.seller_type === 'brand') sellerName = getSellerName(sellerResolvedShared, 'brand', m.seller_entity_id) || brandMap[m.seller_entity_id] || 'Brand';
         else if (m.seller_type === 'foodcourt') sellerName = foodcourtMap[m.seller_entity_id] || 'Foodcourt';
         else if (m.seller_type === 'system_admin') sellerName = 'PurpleHere';
         const groups = (m.seller_type === 'supplier' ? (optsBySpId[m.seller_product_id] || []) : []);
@@ -466,12 +473,19 @@ router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRes
       const spIds = [...new Set(mappings.filter(m => m.seller_type === 'supplier' && m.seller_product_id).map(m => m.seller_product_id))];
       const spMap = spIds.length ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: { [Op.in]: spIds } }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(s => [s.id, s])) : {};
 
+      // 판매자 표시명 단일소스 — 각자 조회를 짜면 브랜드명/회사명이 어긋난다(2026-08-28).
+      const sellerResolvedShared = await resolveSellers(
+        mappings.map(m => ({ seller_type: m.seller_type, seller_entity_id: m.seller_entity_id }))
+      );
+
       const sellersByIngredient = {};
       for (const m of mappings) {
         const arr = sellersByIngredient[m.ingredient_id] || (sellersByIngredient[m.ingredient_id] = []);
+        // 판매자 표시명은 공용 단일소스(utils/sellerNames)를 쓴다 — 브랜드 테이블의 name 만 직접 읽으면
+        // 거래처가 회사명(GIT Consulting) 대신 브랜드명(with MIN)으로 떠서 헷갈린다(2026-08-28 Irene).
         let sellerName = 'Unknown';
         if (m.seller_type === 'supplier') sellerName = supplierMap[m.seller_entity_id] || 'Supplier';
-        else if (m.seller_type === 'brand') sellerName = brandMap[m.seller_entity_id] || 'Brand';
+        else if (m.seller_type === 'brand') sellerName = getSellerName(sellerResolvedShared, 'brand', m.seller_entity_id) || brandMap[m.seller_entity_id] || 'Brand';
         else if (m.seller_type === 'foodcourt') sellerName = foodcourtMap[m.seller_entity_id] || 'Foodcourt';
         else if (m.seller_type === 'system_admin') sellerName = 'PurpleHere';
         const sp = m.seller_type === 'supplier' ? spMap[m.seller_product_id] : null;
