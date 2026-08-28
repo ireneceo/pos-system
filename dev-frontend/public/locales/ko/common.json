@@ -322,7 +322,8 @@
     "brandMenuUpdates": "브랜드 메뉴 업데이트",
     "allBrands": "전체 브랜드",
     "pickupDisplay": "픽업 안내",
-    "cashManagement": "시재관리"
+    "cashManagement": "시재관리",
+    "bulkLink": "일괄 연결"
   },
   "language": {
     "en": "English",

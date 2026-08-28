@@ -275,6 +275,7 @@ const MySuppliersPage = React.lazy(() => import('./pages/SupplierDirectory/MySup
 // Sprint 2: Contract detail uses MySuppliersPage with auto-open modal (no separate page)
 // Sprint 3 — Purchase Orders (buyer-side ordering)
 const PurchaseOrdersPage = React.lazy(() => import('./pages/PurchaseOrders/PurchaseOrdersPage'));
+const StockLedgerLinkPage = React.lazy(() => import('./pages/StockLedger/StockLedgerLinkPage'));
 const NewPurchaseOrderPage = React.lazy(() => import('./pages/PurchaseOrders/NewPurchaseOrderPage'));
 const PurchaseOrderStagingPage = React.lazy(() => import('./pages/PurchaseOrders/PurchaseOrderStagingPage'));
 const PurchaseOrderDetailPage = React.lazy(() => import('./pages/PurchaseOrders/PurchaseOrderDetailPage'));
@@ -1450,6 +1451,15 @@ function App() {
                       <Route path="/pos/suppliers/contracts/:contractId" element={
                         <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                           <MySuppliersPage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* 재고 장부 정렬 + 일괄 링크 (docs/STOCK_LEDGER_UNIFICATION_DESIGN.md)
+                          가드는 두 겹이다 — 여기 requiredRole + AuthContext ROLE_ROUTES.
+                          한쪽만 고치면 여전히 튕긴다 (reference_frontend_route_guard_two_layers). */}
+                      <Route path="/pos/stock-ledger" element={
+                        <ProtectedRoute requiredRole={['Brand General','Restaurant Admin','System Admin']}>
+                          <StockLedgerLinkPage />
                         </ProtectedRoute>
                       } />
 

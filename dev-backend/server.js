@@ -364,6 +364,7 @@ const foodcourtInventoryRouter = require('./routes/foodcourt-inventory');
 const productRecipeRouter = require('./routes/product-recipe');
 const productRecipesRouter = require('./routes/product-recipes');
 const productIngredientsRouter = require('./routes/product-ingredients');
+const stockLedgerRouter = require('./routes/stock-ledger');
 const productRecipeCategoriesRouter = require('./routes/product-recipe-categories');
 const productIngredientCategoriesRouter = require('./routes/product-ingredient-categories');
 const generalStockCategoriesRouter = require('./routes/general-stock-categories');
@@ -526,6 +527,7 @@ app.use('/api', foodcourtInventoryRouter);  // exposes /api/foodcourts/:foodcour
 app.use('/api', productRecipeRouter);
 app.use('/api/product-recipes', productRecipesRouter);
 app.use('/api/product-ingredients', productIngredientsRouter);
+app.use('/api', stockLedgerRouter);  // /api/{brands|restaurants}/:id/stock-ledger/* · /catalog-link/*
 app.use('/api/product-recipe-categories', productRecipeCategoriesRouter);
 app.use('/api', generalStockCategoriesRouter);
 app.use('/api', generalStockRouter);  // Company-wide general stock routes for Brand General

@@ -1,0 +1,68 @@
+{
+  "title": "批量关联",
+  "noScope": "您的账号未关联品牌或门店。",
+  "source": "来源",
+  "sellerType": "卖方",
+  "sellerId": "卖方 ID",
+  "submit": "应用所选项",
+  "empty": "没有可显示的项目",
+  "blocked": "不可添加",
+  "linked": "已关联",
+  "nameMatch": "名称匹配",
+  "tabs": {
+    "link": "采购关联",
+    "coverage": "覆盖情况"
+  },
+  "sources": {
+    "stockItems": "公司库存项目",
+    "catalog": "卖方目录"
+  },
+  "sellers": {
+    "supplier": "供应商",
+    "brand": "品牌",
+    "foodcourt": "美食广场"
+  },
+  "mode": {
+    "connect": "关联到现有项目",
+    "create": "新建",
+    "skip": "排除",
+    "hold": "暂缓"
+  },
+  "col": {
+    "name": "卖方商品",
+    "unit": "单位",
+    "price": "单价",
+    "target": "目标",
+    "recipes": "配方",
+    "cost": "应用成本"
+  },
+  "summary": {
+    "total": "总计",
+    "auto": "新增",
+    "review": "需确认",
+    "linked": "已关联",
+    "blocked": "不可添加"
+  },
+  "result": {
+    "created": "已创建",
+    "connected": "已关联",
+    "skipped": "已跳过",
+    "failed": "失败"
+  },
+  "errors": {
+    "generic": "请求失败",
+    "noContract": "需要与该卖方的有效合同。",
+    "restaurantOnly": "只有门店可以向品牌或美食广场卖方采购。",
+    "batchInProgress": "另一个批处理正在进行，请稍后重试。"
+  },
+  "coverage": {
+    "unmapped": "未关联供应商",
+    "usedInRecipes": "用于配方",
+    "recipesWithout": "无配料的配方",
+    "item": "项目",
+    "recipe": "配方",
+    "allLinked": "所有项目均有供应商",
+    "allRecipesLinked": "所有配方均已关联配料",
+    "recipesHint": "未关联配料的配方 — 请在配方编辑器中关联。"
+  }
+}

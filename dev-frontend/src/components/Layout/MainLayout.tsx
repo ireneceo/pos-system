@@ -1667,6 +1667,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasManagerPermission('products') && isRouteAllowed('/pos/purchase-orders') },
           { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasManagerPermission('products') && isRouteAllowed('/pos/purchase-orders') },
           { path: '/pos/brand-ingredients', label: t('nav.stockItems', 'Stock Items'), visible: isRouteAllowed('/pos/brand-ingredients') },
+          { path: '/pos/stock-ledger', label: t('nav.bulkLink', 'Bulk Link'), visible: isRouteAllowed('/pos/stock-ledger') },
           { path: '/pos/brand-inventory', label: t('nav.inventory'), visible: isRouteAllowed('/pos/brand-inventory') },
           { path: '/pos/suppliers', label: t('nav.suppliers'), visible: isRouteAllowed('/pos/suppliers') },
           { path: '/pos/manager/coupons', label: t('nav.coupons'), visible: isRouteAllowed('/pos/manager/coupons') },
@@ -1957,6 +1958,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/purchase-orders') },
           { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/purchase-orders') },
           { path: `/restaurant/${rid}/ingredients`, label: t('nav.stockItems', 'Stock Items'), visible: hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${rid}/ingredients`) },
+          { path: '/pos/stock-ledger', label: t('nav.bulkLink', 'Bulk Link'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/stock-ledger') },
           { path: `/restaurant/${rid}/inventory`, label: t('nav.inventory'), visible: hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${rid}/inventory`) },
           { path: '/pos/suppliers', label: t('nav.suppliers'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/suppliers') }
         ].filter(i => i.visible !== false),

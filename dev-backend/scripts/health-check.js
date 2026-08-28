@@ -2236,6 +2236,71 @@ function defineInventoryTests() {
   });
 }
 
+
+/**
+ * 재고 장부 정렬 + 일괄 링크 라우트 영구 안전망.
+ * 설계: docs/STOCK_LEDGER_UNIFICATION_DESIGN.md §9-2
+ *
+ * ⚠ 여기서 지키는 계약 2가지 (둘 다 실제로 깨뜨려 본 적 있는 것):
+ *   ① 익명 차단 — 5개 라우트 전부 401
+ *   ② **가드가 이 라우터 밖으로 새지 않는다** — 이 라우터는 `app.use('/api', ...)` 로 마운트되므로
+ *      전역 미들웨어를 걸면 /api 전체가 막힌다. 2026-08-28 실제로 그렇게 만들어
+ *      Supplier Admin 의 /api/supplier/* 가 통째로 403 이 됐다(mount sweep 이 적발).
+ *      그 회귀를 여기서 영구히 잡는다.
+ */
+function defineStockLedgerTests({ adminToken }) {
+  const ROUTES = [
+    ['GET', '/brands/1/stock-ledger/migration-preview'],
+    ['GET', '/brands/1/stock-ledger/coverage'],
+    ['GET', '/brands/1/catalog-link/preview?seller_type=supplier&seller_entity_id=1'],
+    ['POST', '/brands/1/stock-ledger/migrate'],
+    ['POST', '/brands/1/catalog-link/bulk']
+  ];
+  for (const [m, path] of ROUTES) {
+    test('security', `익명 ${path.split('?')[0]} → 401`, async () =>
+      (await request(m, path, m === 'POST' ? {} : null)).status === 401);
+  }
+
+  // ② 가드 누출 방지 — 이 라우터와 무관한 /api 라우트가 buyer 게이트에 걸리면 안 된다.
+  //    Supplier Admin 은 buyer 역할이 아니다 → 누출되면 403 'Buyer role required' 가 뜬다.
+  test('security', 'stock-ledger 가드가 /api 전역으로 새지 않는다 (하류 라우트 무영향)', async () => {
+    const { User } = require('../models');
+    const sup = await User.findOne({ where: { role: 'Supplier Admin' } });
+    if (!sup) return true; // dev 에 계정 없으면 대상 부재
+    const tk = jwt.sign({ userId: sup.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    // ⚠ 탐침은 반드시 **stock-ledger 보다 뒤에 마운트된** 라우트여야 한다(server.js 기준).
+    //    앞에 마운트된 /api/auth/me 로 재면 누출이 있어도 통과한다 — 실제로 그렇게 만들었다가
+    //    고장주입에서 거짓 통과가 나 적발했다(2026-08-28).
+    const DOWNSTREAM = ['/notices', '/badge-counts', '/inbox', '/work-manuals'];
+    for (const path of DOWNSTREAM) {
+      const r = await request('GET', path, null, { Authorization: `Bearer ${tk}` });
+      const msg = (r.body && r.body.message) || '';
+      if (r.status === 403 && msg.includes('Buyer role required')) return false;
+    }
+    return true;
+  });
+
+  // 무권한 역할 차단 — Customer 토큰(POS 사용자 아님)은 통과하면 안 된다.
+  test('security', 'stock-ledger 는 POS 토큰이 아니면 거부', async () => {
+    const r = await request('GET', '/brands/1/stock-ledger/coverage', null,
+      { Authorization: 'Bearer not-a-real-token' });
+    return r.status === 401 || r.status === 403;
+  });
+
+  // 계약 — preview 응답의 summary 합계가 items 총계와 어긋나지 않는다(System Admin 스코프 지정).
+  test('pos', 'stock-ledger migration-preview 계약 (summary 합계 정합)', async () => {
+    const { Brand } = require('../models');
+    const b = await Brand.findOne({ order: [['id', 'ASC']] });
+    if (!b) return true;
+    const r = await request('GET',
+      `/brands/${b.id}/stock-ledger/migration-preview?entity_type=brand&entity_id=${b.id}`,
+      null, { Authorization: `Bearer ${adminToken}` });
+    if (r.status !== 200) return false;
+    const s = r.body && r.body.data && r.body.data.summary;
+    return !!s && (s.auto + s.review === s.total);
+  });
+}
+
 function defineDbTests() {
   test('db', 'users 테이블 인덱스 수 ≤ 15 (중복 unique 누적 차단)', async () => {
     const { sequelize } = require('../config/database');
@@ -2918,6 +2983,7 @@ async function runTests(allTests, category) {
   if (typeof defineMatrixTests === 'function') defineMatrixTests(ctx);
   defineDbTests();
   defineInventoryTests();
+  defineStockLedgerTests(ctx);
 
   const allPass = await runTests(tests, opts.category);
   process.exit(allPass ? 0 : 1);

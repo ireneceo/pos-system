@@ -1,0 +1,68 @@
+{
+  "title": "Bulk link",
+  "noScope": "No brand or restaurant is assigned to your account.",
+  "source": "Source",
+  "sellerType": "Seller",
+  "sellerId": "Seller ID",
+  "submit": "Apply to selected",
+  "empty": "Nothing to show",
+  "blocked": "Unavailable",
+  "linked": "Already linked",
+  "nameMatch": "Name match",
+  "tabs": {
+    "link": "Purchase links",
+    "coverage": "Coverage"
+  },
+  "sources": {
+    "stockItems": "Company stock items",
+    "catalog": "Seller catalog"
+  },
+  "sellers": {
+    "supplier": "Supplier",
+    "brand": "Brand",
+    "foodcourt": "Foodcourt"
+  },
+  "mode": {
+    "connect": "Link to existing",
+    "create": "Create new",
+    "skip": "Exclude",
+    "hold": "Hold"
+  },
+  "col": {
+    "name": "Seller item",
+    "unit": "Unit",
+    "price": "Price",
+    "target": "Target",
+    "recipes": "Recipes",
+    "cost": "Apply cost"
+  },
+  "summary": {
+    "total": "Total",
+    "auto": "New",
+    "review": "Needs check",
+    "linked": "Linked",
+    "blocked": "Unavailable"
+  },
+  "result": {
+    "created": "Created",
+    "connected": "Linked",
+    "skipped": "Skipped",
+    "failed": "Failed"
+  },
+  "errors": {
+    "generic": "Request failed",
+    "noContract": "An active contract with this seller is required.",
+    "restaurantOnly": "Only restaurants can buy from brand or foodcourt sellers.",
+    "batchInProgress": "Another batch is running. Try again shortly."
+  },
+  "coverage": {
+    "unmapped": "No supplier linked",
+    "usedInRecipes": "Used in recipes",
+    "recipesWithout": "Recipes with no ingredients",
+    "item": "Item",
+    "recipe": "Recipe",
+    "allLinked": "Every item has a supplier",
+    "allRecipesLinked": "Every recipe has ingredients",
+    "recipesHint": "Recipes with no ingredients linked — link them in the recipe editor."
+  }
+}

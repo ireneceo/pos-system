@@ -91,6 +91,7 @@ const GeneralStockCategory = require('./GeneralStockCategory');
 const GeneralStockTransaction = require('./GeneralStockTransaction');
 const ProductRecipe = require('./ProductRecipe');
 const ProductIngredient = require('./ProductIngredient');
+const StockLedgerBatchItem = require('./StockLedgerBatchItem');
 const ProductRecipeCategory = require('./ProductRecipeCategory');
 const ProductIngredientCategory = require('./ProductIngredientCategory');
 const ProductRecipeIngredient = require('./ProductRecipeIngredient');
@@ -1151,5 +1152,6 @@ module.exports = {
   Reservation,
   // Print Visibility & Diagnostics (2026-06-26)
   PrintEvent,
-  PrintDeviceStatus
+  PrintDeviceStatus,
+  StockLedgerBatchItem
 };

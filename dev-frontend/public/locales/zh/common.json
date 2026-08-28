@@ -322,7 +322,8 @@
     "brandMenuUpdates": "品牌菜单更新",
     "allBrands": "所有品牌",
     "pickupDisplay": "取餐显示",
-    "cashManagement": "备用金管理"
+    "cashManagement": "备用金管理",
+    "bulkLink": "批量关联"
   },
   "language": {
     "en": "English",

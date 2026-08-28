@@ -1,0 +1,68 @@
+{
+  "title": "Pautan pukal",
+  "noScope": "Tiada jenama atau restoran ditetapkan kepada akaun anda.",
+  "source": "Sumber",
+  "sellerType": "Penjual",
+  "sellerId": "ID penjual",
+  "submit": "Guna pada yang dipilih",
+  "empty": "Tiada item untuk dipaparkan",
+  "blocked": "Tidak tersedia",
+  "linked": "Sudah dipaut",
+  "nameMatch": "Nama sepadan",
+  "tabs": {
+    "link": "Pautan pembelian",
+    "coverage": "Liputan"
+  },
+  "sources": {
+    "stockItems": "Item stok syarikat",
+    "catalog": "Katalog penjual"
+  },
+  "sellers": {
+    "supplier": "Pembekal",
+    "brand": "Jenama",
+    "foodcourt": "Medan selera"
+  },
+  "mode": {
+    "connect": "Paut ke item sedia ada",
+    "create": "Cipta baharu",
+    "skip": "Kecualikan",
+    "hold": "Tangguh"
+  },
+  "col": {
+    "name": "Item penjual",
+    "unit": "Unit",
+    "price": "Harga",
+    "target": "Sasaran",
+    "recipes": "Resipi",
+    "cost": "Guna kos"
+  },
+  "summary": {
+    "total": "Jumlah",
+    "auto": "Baharu",
+    "review": "Perlu semak",
+    "linked": "Dipaut",
+    "blocked": "Tidak tersedia"
+  },
+  "result": {
+    "created": "Dicipta",
+    "connected": "Dipaut",
+    "skipped": "Dilangkau",
+    "failed": "Gagal"
+  },
+  "errors": {
+    "generic": "Permintaan gagal",
+    "noContract": "Kontrak aktif dengan penjual ini diperlukan.",
+    "restaurantOnly": "Hanya restoran boleh membeli daripada penjual jenama atau medan selera.",
+    "batchInProgress": "Kelompok lain sedang berjalan. Cuba sebentar lagi."
+  },
+  "coverage": {
+    "unmapped": "Tiada pembekal dipaut",
+    "usedInRecipes": "Digunakan dalam resipi",
+    "recipesWithout": "Resipi tanpa bahan",
+    "item": "Item",
+    "recipe": "Resipi",
+    "allLinked": "Setiap item mempunyai pembekal",
+    "allRecipesLinked": "Setiap resipi mempunyai bahan",
+    "recipesHint": "Resipi tanpa bahan dipaut — pautkan dalam editor resipi."
+  }
+}

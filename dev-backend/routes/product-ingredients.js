@@ -181,71 +181,35 @@ router.post('/from-catalog', async (req, res) => {
       return res.status(400).json({ success: false, message: 'owner_user_id required' });
     }
     const body = req.body || {};
-    const supplierProductId = parseInt(body.supplier_product_id, 10);
-    const brandProductId = parseInt(body.brand_product_id, 10);
-    const foodcourtProductId = parseInt(body.foodcourt_product_id, 10);
-    const SupplierProduct = require('../models/SupplierProduct');
     const SupplierContract = require('../models/SupplierContract');
-    const IngredientSellerProduct = require('../models/IngredientSellerProduct');
-    const BrandProduct = require('../models/BrandProduct');
-    const FoodcourtProduct = require('../models/FoodcourtProduct');
     const { Brand } = require('../models');
+    const catalogLink = require('../utils/catalogLink');
 
-    let sellerType, sellerProductRow, sellerEntityId, productName, productUnit, productPrice, productMinQty;
-    if (Number.isFinite(supplierProductId)) {
-      const sp = await SupplierProduct.findByPk(supplierProductId, { transaction: t });
-      if (!sp) { await t.rollback(); return res.status(404).json({ success: false, message: 'Supplier product not found' }); }
+    const seller = await catalogLink.resolveSellerProduct({
+      body,
+      transaction: t,
       // BG 소유 브랜드 중 하나라도 이 공급업체와 active 계약 필요 (seller-sources POST 와 동일 검증)
-      const brandIds = (await Brand.findAll({ where: { owner_id: req.bgOwnerId }, attributes: ['id'], transaction: t })).map(b => b.id);
-      const contract = brandIds.length
-        ? await SupplierContract.findOne({
-            where: { entity_type: 'brand', entity_id: brandIds, supplier_company_id: sp.supplier_company_id, status: 'active' },
-            transaction: t
-          })
-        : null;
-      if (!contract) { await t.rollback(); return res.status(403).json({ success: false, code: 'NO_ACTIVE_CONTRACT', message: 'No active contract with this supplier' }); }
-      sellerType = 'supplier'; sellerProductRow = sp; sellerEntityId = sp.supplier_company_id;
-      productName = sp.name; productUnit = sp.unit; productPrice = sp.unit_price; productMinQty = sp.min_order_quantity;
-    } else if (Number.isFinite(brandProductId)) {
-      const bp = await BrandProduct.findByPk(brandProductId, { transaction: t });
-      if (!bp) { await t.rollback(); return res.status(404).json({ success: false, message: 'Brand product not found' }); }
-      // 카탈로그는 brand seller 를 seller_entity_id=brand.id 로 노출 → product owner 의 brand 로 해석
-      const sellerBrand = bp.owner_user_id
-        ? await Brand.findOne({ where: { owner_id: bp.owner_user_id }, attributes: ['id'], transaction: t })
-        : null;
-      sellerType = 'brand'; sellerProductRow = bp; sellerEntityId = sellerBrand ? sellerBrand.id : null;
-      productName = bp.name; productUnit = bp.unit; productPrice = bp.unit_price; productMinQty = bp.min_order_quantity;
-    } else if (Number.isFinite(foodcourtProductId)) {
-      const fp = await FoodcourtProduct.findByPk(foodcourtProductId, { transaction: t });
-      if (!fp) { await t.rollback(); return res.status(404).json({ success: false, message: 'Foodcourt product not found' }); }
-      sellerType = 'foodcourt'; sellerProductRow = fp; sellerEntityId = fp.foodcourt_id;
-      productName = fp.name; productUnit = fp.unit; productPrice = fp.unit_price; productMinQty = fp.min_order_quantity;
-    } else {
-      await t.rollback();
-      return res.status(400).json({ success: false, message: 'supplier_product_id, brand_product_id, or foodcourt_product_id is required' });
-    }
+      supplierContract: async (supplierCompanyId) => {
+        const brandIds = (await Brand.findAll({ where: { owner_id: req.bgOwnerId }, attributes: ['id'], transaction: t })).map(b => b.id);
+        if (!brandIds.length) return null;
+        return SupplierContract.findOne({
+          where: { entity_type: 'brand', entity_id: brandIds, supplier_company_id: supplierCompanyId, status: 'active' },
+          transaction: t
+        });
+      },
+      // ⚠ 정렬 미지정 findOne — 다브랜드 소유자면 **비결정적**이다(잠복 결함, 설계문서 §7).
+      //    동작 보존 대상이라 그대로 둔다. 새 코드는 restaurant 의미(brand_id)를 따를 것.
+      brandSellerEntityId: async (bp) => {
+        const sellerBrand = bp.owner_user_id
+          ? await Brand.findOne({ where: { owner_id: bp.owner_user_id }, attributes: ['id'], transaction: t })
+          : null;
+        return sellerBrand ? sellerBrand.id : null;
+      }
+    });
+    if (!seller.ok) { await t.rollback(); return res.status(seller.status).json(seller.body); }
 
-    // unit 정규화 (routes/ingredients.js from-catalog 와 동일 매핑)
-    const UNIT_ENUM = ['kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'];
-    const UNIT_MAP = {
-      kg: 'kg', kgs: 'kg', kilogram: 'kg', kilograms: 'kg',
-      g: 'g', gram: 'g', grams: 'g', gr: 'g',
-      l: 'L', liter: 'L', liters: 'L', litre: 'L', litres: 'L',
-      ml: 'ml',
-      piece: 'piece', pcs: 'piece', pc: 'piece', ea: 'piece', each: 'piece', unit: 'piece',
-      pack: 'pack', pkt: 'pack', packet: 'pack', bag: 'pack', sack: 'pack',
-      box: 'pack', case: 'pack', carton: 'pack', ctn: 'pack',
-      can: 'can', tin: 'can',
-      bottle: 'bottle', btl: 'bottle'
-    };
-    const normalizeUnit = (u) => {
-      if (!u) return 'piece';
-      if (UNIT_ENUM.includes(u)) return u;
-      const mapped = UNIT_MAP[String(u).toLowerCase().trim()];
-      return mapped || 'piece';
-    };
-    const finalUnit = body.unit && UNIT_ENUM.includes(body.unit) ? body.unit : normalizeUnit(productUnit);
-    const unitConversion = parseFloat(body.unit_conversion) > 0 ? parseFloat(body.unit_conversion) : 1;
+    const finalUnit = catalogLink.resolveUnit(body.unit, seller.productUnit);
+    const unitConversion = catalogLink.resolveUnitConversion(body.unit_conversion);
 
     // Connect mode — 기존 BG 소유 ProductIngredient 에 매핑만 추가
     const existingPiId = parseInt(body.existing_product_ingredient_id, 10);
@@ -255,47 +219,22 @@ router.post('/from-catalog', async (req, res) => {
         await t.rollback();
         return res.status(404).json({ success: false, message: 'Target stock item not found' });
       }
-      const dup = await IngredientSellerProduct.findOne({
-        where: {
-          product_ingredient_id: targetPi.id, seller_type: sellerType,
-          seller_entity_id: sellerEntityId, seller_product_id: sellerProductRow.id
-        },
-        transaction: t
+      const r = await catalogLink.connectExisting({
+        target: targetPi, seller, unitConversion, targetKey: 'product_ingredient_id', transaction: t
       });
-      if (dup) {
-        await t.commit();
-        return res.json({ success: true, data: { ingredient: targetPi, mapping: dup, created: false, connected: true } });
-      }
-      const otherCount = await IngredientSellerProduct.count({
-        where: { product_ingredient_id: targetPi.id, is_active: true }, transaction: t
-      });
-      const mapping = await IngredientSellerProduct.create({
-        ingredient_id: null,
-        product_ingredient_id: targetPi.id,
-        seller_type: sellerType, seller_entity_id: sellerEntityId, seller_product_id: sellerProductRow.id,
-        unit_price: parseFloat(productPrice) || 0,
-        unit_conversion: unitConversion,
-        min_order_quantity: parseInt(productMinQty, 10) || 1,
-        lead_time_days: 0,
-        is_preferred: otherCount === 0,
-        is_active: true
-      }, { transaction: t });
       await t.commit();
-      return res.status(201).json({ success: true, data: { ingredient: targetPi, mapping, created: false, connected: true } });
+      return res.status(r.status).json(r.body);
     }
 
     // Idempotent — 이미 매핑된 ProductIngredient 가 이 BG 소유면 그대로 반환
-    const existing = await IngredientSellerProduct.findOne({
-      where: { seller_type: sellerType, seller_entity_id: sellerEntityId, seller_product_id: sellerProductRow.id, product_ingredient_id: { [Op.ne]: null } },
+    const already = await catalogLink.findAlreadyLinked({
+      seller, targetKey: 'product_ingredient_id',
+      findTarget: (id) => ProductIngredient.findByPk(id, { transaction: t }),
+      ownsTarget: (pi) => pi.owner_user_id === req.bgOwnerId,
+      extraWhere: { product_ingredient_id: { [Op.ne]: null } },
       transaction: t
     });
-    if (existing) {
-      const pi = await ProductIngredient.findByPk(existing.product_ingredient_id, { transaction: t });
-      if (pi && pi.owner_user_id === req.bgOwnerId) {
-        await t.commit();
-        return res.json({ success: true, data: { ingredient: pi, mapping: existing, created: false } });
-      }
-    }
+    if (already) { await t.commit(); return res.status(already.status).json(already.body); }
 
     // 새 ProductIngredient + 매핑 생성
     const scopedCount = await ProductIngredient.count({ where: { owner_user_id: req.bgOwnerId }, transaction: t });
@@ -303,10 +242,10 @@ router.post('/from-catalog', async (req, res) => {
     const ingredient = await ProductIngredient.create({
       owner_user_id: req.bgOwnerId,
       code,
-      name: body.name || productName,
+      name: body.name || seller.productName,
       unit: finalUnit,
       base_quantity: 1,
-      unit_cost: parseFloat(productPrice) || 0,
+      unit_cost: parseFloat(seller.productPrice) || 0,
       min_stock: 0,
       min_order: 0,
       current_stock: 0,
@@ -317,17 +256,9 @@ router.post('/from-catalog', async (req, res) => {
       is_active: true
     }, { transaction: t });
 
-    const mapping = await IngredientSellerProduct.create({
-      ingredient_id: null,
-      product_ingredient_id: ingredient.id,
-      seller_type: sellerType, seller_entity_id: sellerEntityId, seller_product_id: sellerProductRow.id,
-      unit_price: parseFloat(productPrice) || 0,
-      unit_conversion: unitConversion,
-      min_order_quantity: parseInt(productMinQty, 10) || 1,
-      lead_time_days: 0,
-      is_preferred: true,
-      is_active: true
-    }, { transaction: t });
+    const mapping = await catalogLink.createMappingFor({
+      target: ingredient, seller, unitConversion, targetKey: 'product_ingredient_id', transaction: t
+    });
 
     await t.commit();
     res.status(201).json({ success: true, data: { ingredient, mapping, created: true } });
