@@ -155,6 +155,13 @@ NFKC 유니코드 정규화(U+00A0 등 비가시 공백·전각 처리) → trim
 - (참고: 운영 발주 상태 분포 = draft 3 / submitted 1. `pending_approval` 행은 아직 0건.)
 
 **이 문서에 넣지 않는 별건 (Irene 승인 후 별도 실행):**
+- **`supplier_companies` 37 "GIT Consult" 는 고아가 아니다 (2026-08-28 실측으로 판정 수정)** —
+  레거시 `suppliers` id=**5**("GIT Consult", 2026-01-13 생성, 회사 행보다 6개월 선행)가 37 을 가리키고,
+  그 supplier 를 **재료 12건이 `ingredients.supplier_id` 로 참조**한다. `supplier_companies` 참조 FK 는 0건이라
+  **DB 가 막아주지 않는다** — 지우면 조용히 깨진다. 레거시 supplier 정책은 "쓰기 중단 + 자연 이관, 백필 안 함"
+  ([[reference_legacy_supplier_writestop_natural_migration]])이므로 **강제 정리 금지**.
+  정리하려면 **재료 12건 재지정이 선행 조건**. (36 은 참조 0 이라 2026-08-28 삭제 완료.)
+- **원본 유래 중복 19건** — §14-1 목록 참조. 이번 범위 무접촉.
 - `supplier_companies` 36·37 "GIT Consult" 고아 행 정리. 정체가 확정된 지금 **이 supplier 행들은 존재 이유가 없다** —
   "깃컨설팅에 발주"는 brand 1 판매자 경로(restaurant 10 의 `brand_id=1` 이라 이미 허용)로 가는 것이지
   자기 자신을 공급업체 회사로 등록하는 게 아니다. 2026-07-05 34초 간격 생성 = 등록 시행착오 잔재로 판단.
@@ -556,3 +563,58 @@ cd /var/www/dev-frontend && npm run i18n:verify
 - dev 검증은 **데모 매장**에서만(운영 매장 쓰기 0)
 - 운영 반영은 Irene `/배포` 명령 때만. 배포 전 백업 확인 + 마이그 registry 통과
 - 배포 후 §10-6 검증 쿼리를 **운영에서 읽기 전용으로 1회** 실행해 보고
+
+
+---
+
+## 14. 실행 기록 (2026-08-28 운영 반영 완료)
+
+**배포**: `EXIT_CODE=0` · 백업 `20260828_083607` · 마이그 57/57(신규 `migrate-stock-ledger-batch-items.js` 포함) · 스모크 10/10.
+
+**모드 1 이관** — batch `13381394-f0c7-469f-b94b-8a85782e8f78`
+`created 226 · connected 62 · skipped 0 · failed 0` · 배치 이력 `create_ingredient` 226 + `link_seller` **305**(원본 매핑 전량 복제).
+원본 `product_ingredients` 288건과 매핑 305건 **무손상 보존**. `update_cost` 0(원가 덮어쓰기 없음).
+
+**모드 2 발주 전용 등록** — batch `04338ebd-1180-41d2-a0e2-0653ee03deb5`
+restaurant 10: `created 81 · skipped 5 · failed 0`. skip 5 = 기연결 4 + **담기 불가 1**(`RECLOSABLE LID 12OZ BLACK`, `NO_DISTRIBUTION_LINK`).
+
+**결과** — with MIN Cafe 화면: 재고 **460건**(자기 149 + 브랜드 공유 311), 발주 가능 **432건**
+(이관 전 157건 표시 / 66건 발주 가능). 브랜드 판매자 발주 가능 85건(신규 81 + 기연결 4).
+
+**실증** — 매장 계정으로 실제 발주 생성 `PO-R10-20260828-001` (201, total 27.90, 라인 1) → 삭제(200, `deleted_at` 확인).
+`verifySellerRelation`·`MAPPING_REQUIRED` 실통과. 실브라우저 3페이지 pageerror 0.
+
+**§10-6 검증**: ①매핑 없는 신규 3건 = **원본에도 매핑 0이던 항목**(Light soy sauce / Minced garlic / Anchovy Soup Stock)
+②재고 기준 중복 **0** ③과거 발주 고아 **0** ④원가 무단변경 **0** ⑤**이중 노출 0**(Stock Items 매핑 섞임 0 · 자기재고↔공유 교차 0).
+
+**롤백**: `node scripts/rollback-stock-ledger-batch.js --batch=<uuid> [--apply]` (dry-run 기본).
+
+**정리**: `supplier_companies` **36 삭제**(전참조 0 재확인 후) · **37 보존**(§7 참조).
+
+### 14-1. 원본 유래 중복 19건 (이번 범위 무접촉 · 정리 착수 시 작업 목록)
+
+같은 판매자상품이 **이름이 다른 두 재고**에 붙어 있다. 원본 Stock Items 에 이미 그렇게 등록돼 있던 것을
+충실히 복제한 결과이며 이관이 만든 중복이 아니다. 이름이 달라 정확일치 매칭에도 걸리지 않는다.
+병합은 **어느 이름을 남길지·수량을 어떻게 합칠지의 내용 판단**이라 도구가 대신할 수 없다(자동 병합 금지 원칙).
+
+| 판매자상품 | ingredient id | 이름 |
+|---|---|---|
+| `supplier:7:96` | 491, 703 | AUS BRISKET(호주산 양지) / Aust Midfield Brisket Pedo (소고기_호주_양지) |
+| `supplier:10:247` | 501, 716 | Peeled Garlic(깐마늘) / Peeled Garlic(Bawang Putih Kopek) (깐마늘) |
+| `supplier:24:115` | 498, 704 | Cooking Oil(식용유) / High Oleic Sunflower & Canola Oil Clear Vall |
+| `supplier:24:121` | 507, 705 | MSG / Monosodium Glutamate Ajinomoto |
+| `supplier:24:126` | 505, 706 | Extra Fine Salt(고운소금) / Extra Fine Salt_Double Swallow (고운 소금) |
+| `supplier:24:127` | 505, 706 | Extra Fine Salt(고운소금) / Extra Fine Salt_Double Swallow (고운 소금) |
+| `supplier:24:156` | 597, 707 | Heavy Duty Garbage Bag (L) / Heavy Duty Garbage Bag[XL Size] (쓰레기봉투_L) |
+| `supplier:24:157` | 598, 708 | Heavy Duty Garbage Bag (XL) / Heavy Duty Garbage Bag[L Size] (쓰레기봉투_XL) |
+| `supplier:28:172` | 494, 709 | Gochujang(고추장) / Gochujang (Korean Chili Paste) (고추장_해찬들태양초알찬 |
+| `supplier:28:173` | 499, 710 | Cooking Vinegar(미향) / Cooking Vinegar (미향 오뚜기18L) |
+| `supplier:28:176` | 496, 711 | Coarse Pepper Powder(굵은 고춧가루) / Coarse Pepper Powder (굵은 고춧가루1kg) |
+| `supplier:28:177` | 497, 712 | Fine Pepper Powder(고운 고춧가루) / Fine Pepper Powder (고운 고춧가루1kg) |
+| `supplier:28:179` | 615, 640 | Kimchi (포기김치 10kg) / Kimchi (K1 할랄김치) |
+| `supplier:28:189` | 500, 713 | Anchovi Sauce (멸치액젓 하선정) / Anchovi Sauce (멸치액젓 하선정 800g) |
+| `supplier:28:194` | 628, 629 | Hotteok / Hotteok (삼립미니꿀호떡) |
+| `supplier:28:204` | 500, 714 | Anchovi Sauce (멸치액젓 하선정) / Anchovi Sauce (멸치액젓 하선정 2.5kg) |
+| `supplier:28:214` | 504, 715 | Beef Stock(소고기 다시다) / Beef Stock (소고기다시다 2kg) |
+| `supplier:28:216` | 651, 655 | Glass Noodle (당면 14kg) / Glass Noodle (당면 백설햇 1kg) |
+| `supplier:28:218` | 653, 654 | Dried seaweed sheet for KImbob (김밥용김_100매) / Dried seaweed sheet for KImbob (김밥용 김) |
