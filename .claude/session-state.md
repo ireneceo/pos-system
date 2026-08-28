@@ -146,7 +146,30 @@ Irene 원문: "이 브랜드제너럴이 판매한 이 세일즈오더의 주문
 (`help@gitconsulting.group` 만 수신). 로그 `[Notification] Skip: user 11 is_test account`. **Irene 지시 대기 — is_test 끄면 둘 다 수신.**
 후속 후보 2건(Fable): ①수신자 조회가 `is_active` 를 안 걸러 비활성 관리자도 수신 ②`getBrandManagerIds` 가 `users.brand_id` 단일 컬럼 기준이라 다중 브랜드 소유자는 누락 가능.
 
-**3. 운영 ENUM 재실측 — `pending_approval` 아직 없음**
+**3. 🔴 운영 ENUM `pending_approval` — 배포 후에도 여전히 없다 (원인 미확정, 확인 불가)**
+
+배포(15:35:16)에서 `migrate-po-status-pending-approval.js` 가 **`[OK] completed` 로 종료**했는데
+**배포 후 실측에도 값이 없다.** 성공 보고를 하지 않는다.
+
+실측(배포 후):
+- `DATABASE()` = `purple_production_db`, `DB_NAME` env 도 동일
+- `COLUMN_TYPE` = `enum('draft','submitted',...,'delivery_failed')` — 11개, `pending_approval` **없음**
+- 마이그 스크립트가 쓰는 것과 **똑같은 파싱 로직**으로 재현 → `includes('pending_approval') = false`
+- 마이그 파일 sha256 dev == 운영 **동일**(`20ed22ff...`) — 옛 파일 아님
+- `REMOTE_PROD_BACKEND=/var/www/production-backend` — 경로 맞음
+- `sync-database.js` 는 마이그**보다 먼저**(라인 449) 돌고 `--alter` 없이 돈다 → 되돌린 게 아님
+- 배포 자체도 알고 있었다: `Total: ... 1 type changes` / `1 type differences remain (usually harmless: datetime↔timestamp etc)` ← **이 "harmless" 문구가 실제로는 이 ENUM 갭을 덮고 있다**
+
+**모순**: 스크립트 로직상 값이 없으면 ALTER → 검증 → 없으면 `throw` → `process.exit(1)` 이어야 한다.
+그런데 exit 0. 배포 로그는 마이그 stdout 을 **성공 시 출력하지 않아**(`if` 분기는 실패할 때만 tail) 무슨 일이 있었는지 볼 수 없다.
+
+**⛔ 확인 불가 — 추측하지 않는다.** 다음 섹션에서 할 것:
+1. 운영에서 마이그를 **직접 실행해 stdout 을 본다** (이번 세션에서는 권한 분류기가 원격 실행을 차단해 못 했다)
+2. 성공 분기도 stdout 을 남기도록 배포 스크립트 수정 검토 (지금은 실패할 때만 보인다 = fail-silent 의 사촌)
+3. 라인 450 `SYNC_OUTPUT=$(ssh ...) || true` 도 같은 fail-open 계열 — 함께 검토
+4. 발현 조건은 그대로: 오너 연결 매장 3곳(Seoul BBQ House 1 · Downtown Pizza 2 · Sunset Cafe 3)이 발주 제출하면 터진다. with MIN Cafe(10)·K-DINE IPC(8) 은 오너 연결 없어 미발현
+
+**4. 운영 ENUM 첫 실측 기록 (배포 전)**
 메모리에 "해결됨"으로 적혀 있었으나 **틀렸다**. 두 계측기로 재확인. 마이그·레지스트리 등록·운영 파일은 전부 정상.
 원인 후보: 배포 마이그 루프의 **else 분기(운영에 파일 없을 때)가 `|| true` 로 첫 실행 실패를 삼킨다.**
 파일이 이미 운영에 있으므로 다음 배포는 fail-closed 인 if 분기를 탄다 → 배포 후 ENUM 재확인 필수.
