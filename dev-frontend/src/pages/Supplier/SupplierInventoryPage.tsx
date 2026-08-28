@@ -16,6 +16,7 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import { formatDateTime } from '../../utils/timezone';
 import { getAuthToken } from '../../utils/auth';
+import { formatQuantity } from '../../utils/unitConversion';
 
 interface TransactionRow {
   id: number;
@@ -544,7 +545,7 @@ const SupplierInventoryPage: React.FC = () => {
                         </DataTableCell>
                         <DataTableCell data-label={t('supplier:inventory.history.delta', 'Change') as string} align="right">
                           <span style={{ color: positive ? '#059669' : '#DC2626', fontWeight: 600 }}>
-                            {positive ? '+' : ''}{Number(tx.quantity_change).toFixed(2)} {tx.unit || ''}
+                            {positive ? '+' : ''}{formatQuantity(tx.quantity_change)} {tx.unit || ''}
                           </span>
                         </DataTableCell>
                         <DataTableCell data-label={t('supplier:inventory.history.stockAfter', 'Stock After') as string} align="right">

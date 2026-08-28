@@ -508,10 +508,69 @@ function fmtDate(date, lang = 'en', timezone = DEFAULT_TZ) {
   }
 }
 
+
+/**
+ * 발주 품목 표 — 메일 본문에 내역을 싣는다.
+ * 2026-08-28 Irene: "이메일에 내역이 다 나와야지. 굳이 들어가야만 보이면 불편하지."
+ *   기존 발주 메일은 PO번호·구매자·총액·상태만 보내서, 받는 쪽이 화면에 들어가야 뭘 주문했는지 알 수 있었다.
+ * ⚠ items 를 안 넘기면 **빈 문자열**을 반환한다 — 기존 호출부 계약 불변(안 넘기면 현행과 동일 출력).
+ */
+const PO_ITEMS_MAX = 20;
+function poItemsTable(items, currency, poTotal) {
+  if (!Array.isArray(items) || items.length === 0) return '';
+  const esc = (v) => String(v == null ? '' : v).replace(/[<>&"]/g, ch => (
+    { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[ch]
+  )).slice(0, 160);
+  const shown = items.slice(0, PO_ITEMS_MAX);
+  const rest = items.length - shown.length;
+  const rows = shown.map(it => {
+    const qty = Number(it.quantity_ordered ?? it.quantity ?? 0);
+    const unit = Number(it.unit_price ?? 0);
+    const line = it.line_total != null ? Number(it.line_total) : qty * unit;
+    return `
+      <tr>
+        <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;color:#374151;font-size:13px;">${esc(it.name)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;color:#374151;font-size:13px;text-align:right;white-space:nowrap;">${qty}${it.unit ? ' ' + esc(it.unit) : ''}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;color:#374151;font-size:13px;text-align:right;white-space:nowrap;">${fmtMoney(unit, currency)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;color:#111827;font-size:13px;text-align:right;white-space:nowrap;font-weight:600;">${fmtMoney(line, currency)}</td>
+      </tr>`;
+  }).join('');
+  const more = rest > 0
+    ? `<tr><td colspan="4" style="padding:8px 10px;color:#6B7280;font-size:12px;">+ ${rest} more item(s) — see the full list in the order screen</td></tr>`
+    : '';
+  // 합계는 **발주서 총액(poTotal)** 을 우선한다 — 위 infoRow('Total') 과 어긋나면 받는 쪽이 혼란스럽다.
+  // 상한(20줄)을 넘겨 일부만 보여줄 때도 합계는 전체 기준이어야 하므로 라인 합산은 폴백으로만 쓴다.
+  const grand = (poTotal != null && !Number.isNaN(Number(poTotal)))
+    ? Number(poTotal)
+    : items.reduce((sum, it) => {
+      const qty = Number(it.quantity_ordered ?? it.quantity ?? 0);
+      const unit = Number(it.unit_price ?? 0);
+      return sum + (it.line_total != null ? Number(it.line_total) : qty * unit);
+    }, 0);
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 16px;border:1px solid #E5E7EB;border-radius:6px;">
+      <thead>
+        <tr style="background:#F9FAFB;">
+          <th align="left"  style="padding:8px 10px;color:#6B7280;font-size:12px;font-weight:600;">Item</th>
+          <th align="right" style="padding:8px 10px;color:#6B7280;font-size:12px;font-weight:600;">Qty</th>
+          <th align="right" style="padding:8px 10px;color:#6B7280;font-size:12px;font-weight:600;">Unit</th>
+          <th align="right" style="padding:8px 10px;color:#6B7280;font-size:12px;font-weight:600;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>${rows}${more}</tbody>
+      <tfoot>
+        <tr style="background:#F9FAFB;">
+          <td colspan="3" align="right" style="padding:10px;color:#374151;font-size:13px;font-weight:600;">Total</td>
+          <td align="right" style="padding:10px;color:${BRAND_COLOR};font-size:14px;font-weight:700;white-space:nowrap;">${fmtMoney(grand, currency)}</td>
+        </tr>
+      </tfoot>
+    </table>`;
+}
+
 /**
  * Seller Order Received — sent to Seller (Supplier/Brand/Foodcourt) when buyer submits PO.
  */
-function sellerOrderReceivedEmail({ buyerName, poNumber, total, currency, link }) {
+function sellerOrderReceivedEmail({ buyerName, poNumber, total, currency, link, items }) {
   const title = 'New Purchase Order Received';
   const safeBuyer = (buyerName || 'A buyer').toString().slice(0, 120);
   const safePo = (poNumber || '—').toString().slice(0, 80);
@@ -525,6 +584,7 @@ function sellerOrderReceivedEmail({ buyerName, poNumber, total, currency, link }
       infoRow('Total', `<span style="color:${BRAND_COLOR};font-weight:700;">${fmtMoney(total, currency)}</span>`) +
       infoRow('Status', '<span style="color:#F59E0B;font-weight:600;">Awaiting Confirmation</span>')
     )}
+    ${poItemsTable(items, currency, total)}
     <p style="color:#6B7280;font-size:14px;margin:0 0 16px;line-height:1.6;">
       Please review the order and confirm or reject it. After confirmation you can mark it shipped with tracking info.
     </p>
@@ -540,7 +600,7 @@ function sellerOrderReceivedEmail({ buyerName, poNumber, total, currency, link }
 /**
  * PO Approval Pending — sent to connected Owner when a restaurant PO awaits approval (2026-06-21).
  */
-function poApprovalPendingEmail({ buyerName, poNumber, total, currency, link }) {
+function poApprovalPendingEmail({ buyerName, poNumber, total, currency, link, items }) {
   const title = 'Purchase Order Awaiting Your Approval';
   const safeBuyer = (buyerName || 'Your restaurant').toString().slice(0, 120);
   const safePo = (poNumber || '—').toString().slice(0, 80);
@@ -554,6 +614,7 @@ function poApprovalPendingEmail({ buyerName, poNumber, total, currency, link }) 
       infoRow('Total', `<span style="color:${BRAND_COLOR};font-weight:700;">${fmtMoney(total, currency)}</span>`) +
       infoRow('Status', '<span style="color:#F59E0B;font-weight:600;">Awaiting Owner Approval</span>')
     )}
+    ${poItemsTable(items, currency, total)}
     <p style="color:#6B7280;font-size:14px;margin:0 0 16px;line-height:1.6;">
       Please review and approve or reject this order. It will only be sent to the supplier after your approval.
     </p>

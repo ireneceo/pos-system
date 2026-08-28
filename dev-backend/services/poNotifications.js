@@ -45,12 +45,14 @@ async function fireSellerSubmittedNotification(po) {
     if (userIds.length === 0) return;
     const buyerName = await resolveBuyerName(po);
     const { sellerOrderReceivedEmail } = require('../utils/notificationTemplates');
+    const { loadPoEmailItems } = require('../utils/poEmailItems');
     const mail = sellerOrderReceivedEmail({
       buyerName,
       poNumber: po.po_number,
       total: po.total_amount,
       currency: po.currency || 'MYR',
-      link: `${FRONTEND_URL}/pos/seller-orders`
+      link: `${FRONTEND_URL}/pos/seller-orders`,
+      items: await loadPoEmailItems(po.id)
     });
     await sendNotificationBatch(userIds, 'seller_order_received', mail);
   } catch (e) {
@@ -66,12 +68,14 @@ async function fireOwnerApprovalPendingNotification(po) {
     if (!ownerIds.length) return;
     const buyerName = await resolveBuyerName(po);
     const { poApprovalPendingEmail } = require('../utils/notificationTemplates');
+    const { loadPoEmailItems } = require('../utils/poEmailItems');
     const mail = poApprovalPendingEmail({
       buyerName,
       poNumber: po.po_number,
       total: po.total_amount,
       currency: po.currency || 'MYR',
-      link: `${FRONTEND_URL}/pos/owner/po-approvals`
+      link: `${FRONTEND_URL}/pos/owner/po-approvals`,
+      items: await loadPoEmailItems(po.id)
     });
     await sendNotificationBatch(ownerIds, 'po_approval_pending', mail);
   } catch (e) {

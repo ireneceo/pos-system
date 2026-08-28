@@ -618,3 +618,68 @@ restaurant 10: `created 81 · skipped 5 · failed 0`. skip 5 = 기연결 4 + **�
 | `supplier:28:214` | 504, 715 | Beef Stock(소고기 다시다) / Beef Stock (소고기다시다 2kg) |
 | `supplier:28:216` | 651, 655 | Glass Noodle (당면 14kg) / Glass Noodle (당면 백설햇 1kg) |
 | `supplier:28:218` | 653, 654 | Dried seaweed sheet for KImbob (김밥용김_100매) / Dried seaweed sheet for KImbob (김밥용 김) |
+
+
+---
+
+## 15. 2026-08-28 재작업 — Irene 정정 반영 (모델 변경)
+
+> ⚠ **§1 의 "이관 목적지 = brand 1 장부" 결정은 폐기됐다.** Irene 정정: "각각 서로의 재고야 연동도 아니고" ·
+> "브랜드는 재고를 가지고 있지 않아" · "브랜드에서 빼". 아래가 현재 유효한 모델이다.
+
+### 15-1. 확정 모델 (Fable, Irene 정정 반영)
+| # | 결정 |
+|---|---|
+| ① | **위드민 매장 재고 = 깃컨설팅 Stock Items 사본 전량.** 브랜드 공유(읽기전용) 아님 — 매장이 **소유**한다 |
+| ② | **브랜드 층 재고 0.** 기존 89행도 매장으로 흡수(겹침 63 비활성·비겹침 26 소유전환) |
+| ③ | **수량은 복사하지 않는다**(전부 0). `track_stock` 은 **원본 미러**(원본 288 전부 ON) |
+| ④ | 일반 외부 공급업체(21개사)는 **매장에 직접 연결** |
+| ⑤ | **UGS 는 깃컨설팅의 공급업체.** UGS 물품은 깃컨설팅 프로덕트로 등록하고, 위드민 거래처는 **깃컨설팅** |
+| ⑥ | 깃컨설팅 프로덕트 중 **패키지·소스만** 매장에 담는다(기타 33건은 담지 않되 상품 행은 존치) |
+| ⑦ | **거래처 표시 = 회사명 단독**("GIT Consulting"). 브랜드명 병기 금지 |
+
+### 15-2. 용어 규율 (Irene 지적)
+**원가**(사는 값) / **판매가**(파는 값) **두 단어만** 쓴다. "매입가·단가" 같은 제3의 단어 금지.
+- `supplier_products.unit_price` = 원가 · `brand_products.unit_price` = **판매가** ·
+  `ingredients.unit_cost` = 원가 · `ingredient_seller_products.unit_price` = 그 거래처 원가
+- 구조: **프로덕트**(판매가) / **재고**(원가) / **공급업체 상품**(원가) 은 서로 다르고,
+  레시피가 있으면 **프로덕트 ↔ 재고 사이에 레시피**가 들어간다(`Product.recipe_id → Recipe → RecipeIngredient → ingredients`).
+
+### 15-3. 실행 결과 (운영)
+| 단계 | 결과 |
+|---|---|
+| 모드 1 롤백 | 531건(재고 226 + 매핑 305) · brand 1 기준선 89 복귀 |
+| 모드 2 롤백 | 162건 |
+| **매장 소유 재이관** `654399fc-…` | **created 286 · skipped 2(중복 무접촉) · failed 0** |
+| **브랜드 89행 흡수** | 병합 63(비활성) · 소유전환 26 · 오버레이 정리 22 · **수량 보존 대조 0=0** |
+| **UGS 프로덕트 등록** | 신규 **55**(판매가 초기값 = 원가, 마진 0) · 프로덕트 90 → 145 |
+| **깃컨설팅 연결** | 매장 55건 연결 후 **UGS 직접 매핑 55 비활성** · 원본 UGS 매핑 57 **활성 유지** |
+| **모드 2 재실행** | 패키지·소스 108 중 신규 3 · 기존 연결 57 (기타 33 제외) |
+| **IKEA 티슈** | 공급업체 IKEA(41) 신규 · 브랜드 계약 · 공급업체 상품 원가 RM5.50 · 매장 재고 · 거래처 연결 |
+| **최종** | 매장 재료 **380** · 브랜드 활성 재고 **0** · 중복 표시 **0** · 치킨 13 · MTP 2 · 거래처 "GIT Consulting" |
+
+### 15-4. 근본 원인 기록 — "왜 없어"
+초기 이관이 `track_stock: false` 를 **강제**했고(원본은 288 전부 ON), 발주 화면 `My Stock Items` 탭이
+`if (!showUntracked && r.track_stock === false) return false;`(`NewPurchaseOrderPage.tsx`)로 **기본 숨김**한다.
+→ 226행이 통째로 안 보였다. 데이터·번들·API 문제가 아니었다(전부 용의선상에서 제거 실증).
+**교훈: `track_stock=false` 로 만드는 모든 행은 잠재적 "왜 없어"다.**
+
+### 15-5. 남은 것 (다음 섹션)
+**A. 공급업체 없는 재고 12건** — Irene 이 매입처를 알려주면 연결(IKEA 흐름 재사용):
+  1. Anchovy Soup Stock (면사랑 멸치밑국물육수1.8L)
+  2. Bread_Hokkaido
+  3. K-Bulgogi 1kg
+  4. K-DINE Hat
+  5. K-DINE T-Shirt / 2XL
+  6. K-DINE T-Shirt / XL
+  7. K-Yukgaejang Beef 1kg
+  8. Light soy sauce(양조간장)
+  9. Matcha Powderr
+  10. Minced garlic (간마늘)
+  11. Rice-Jasmin cal fresh 5kg/pkt
+  12. (1건 추가 — 목록 재확인 필요)
+
+**B. 판매가 0인 프로덕트** — 원가가 0으로 등록돼 있어 판매가도 0. Irene 이 채울 예정.
+목록: `docs/archive/2026-08-28-stock-ledger/bp_class.json` · `ugs_registered.json`
+
+**C. 감사 기록** — `docs/archive/2026-08-28-stock-ledger/` (7파일, /tmp 에서 이전 완료)

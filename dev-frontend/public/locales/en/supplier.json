@@ -146,7 +146,7 @@
     "joinWaitlist": "We'll notify you when this is ready."
   },
   "orders": {
-    "title": "Live Orders",
+    "title": "Sales Orders",
     "subtitle": "Real-time incoming purchase orders",
     "stats": {
       "pending": "Pending Review",

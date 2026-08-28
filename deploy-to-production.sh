@@ -521,9 +521,20 @@ while IFS= read -r MIG_NAME; do
     else
         warn "$MIG_NAME not found on prod — copying from dev..."
         # scp 도 ssh 계열이라 stdin 을 삼킨다 → 루프 목록이 사라진다. </dev/null 로 차단. (2026-07-12)
-        scp -q "$LOCAL_DEV_BACKEND/$SPRINT_MIG" "$PROD_SERVER:$REMOTE_PROD_BACKEND/$SPRINT_MIG" < /dev/null || warn "scp failed for $MIG_NAME"
-        SPRINT_OUTPUT=$(ssh -n $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true
+        scp -q "$LOCAL_DEV_BACKEND/$SPRINT_MIG" "$PROD_SERVER:$REMOTE_PROD_BACKEND/$SPRINT_MIG" < /dev/null \
+            || error "🗄️ 마이그레이션 전송 실패: $MIG_NAME — 운영에 파일이 없는 채로 넘어가면 스키마가 안 맞는다."
+        # 2026-08-28: 여기 `|| true` 가 있었다. **새 마이그의 첫 실행만 fail-open** 이었던 것 —
+        #   파일이 이미 운영에 있는 위 if 분기는 exit code 로 fail-closed 인데, 정작 처음 태우는
+        #   이 분기가 실패를 삼켰다. 실제 피해: purchase_orders.status ENUM 의 'pending_approval' 이
+        #   마이그·레지스트리 등록이 다 정상인데도 운영에 안 들어가 있었고, 배포는 조용히 통과했다.
+        #   fail-closed 는 맞되 fail-silent 는 금지 — [[reference_deploy_gate_fail_loud]].
+        SPRINT_OUTPUT=$(ssh -n $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1")
+        SPRINT_EXIT=$?
         echo "$SPRINT_OUTPUT" | tail -10
+        if [ $SPRINT_EXIT -ne 0 ]; then
+            error "🗄️ 마이그레이션 실패(최초 실행): $MIG_NAME (exit $SPRINT_EXIT) — 원인 수정 후 재배포."
+        fi
+        success "$MIG_NAME completed (first run)"
     fi
     MIG_RAN=$((MIG_RAN + 1))
 done <<< "$DEPLOY_MIGRATIONS"

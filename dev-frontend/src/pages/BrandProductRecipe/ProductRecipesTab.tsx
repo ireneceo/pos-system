@@ -12,7 +12,7 @@ import SearchableSelect from '../../components/Common/SearchableSelect';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
-import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit } from '../../utils/unitConversion';
+import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit, formatQuantity } from '../../utils/unitConversion';
 import ConfirmModal from '../../components/ConfirmModal';
 
 interface ProductRecipesTabProps {
@@ -1419,7 +1419,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
                       return (
                         <tr key={idx}>
                           <td><strong>{ingredient?.name || `Ingredient #${fi.ingredient_id}`}</strong></td>
-                          <td>{Number(fi.quantity).toFixed(2)} {fi.unit}</td>
+                          <td>{formatQuantity(fi.quantity)} {fi.unit}</td>
                           <td>{getCurrencySymbol(selectedCurrency)} {costPerUnit.toFixed(2)}/{ingredient?.unit}</td>
                           <td>{formatCurrency(subtotal, selectedCurrency)}</td>
                         </tr>
@@ -1746,7 +1746,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
                     {recipeModalData.recipeIngredients.map((ri, idx) => (
                       <RecipeIngredientItem key={idx}>
                         <RecipeIngredientName>{ri.ingredient?.name || `Ingredient #${ri.ingredient_id}`}</RecipeIngredientName>
-                        <RecipeIngredientQty>{Number(ri.quantity).toFixed(2)} {ri.unit}</RecipeIngredientQty>
+                        <RecipeIngredientQty>{formatQuantity(ri.quantity)} {ri.unit}</RecipeIngredientQty>
                       </RecipeIngredientItem>
                     ))}
                   </RecipeIngredientList>

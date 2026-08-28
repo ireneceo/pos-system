@@ -80,12 +80,14 @@ async function fireSellerSubmittedNotification(po) {
       }
     } catch (_) { /* keep default */ }
     const { sellerOrderReceivedEmail } = require('../utils/notificationTemplates');
+    const { loadPoEmailItems } = require('../utils/poEmailItems');
     const mail = sellerOrderReceivedEmail({
       buyerName,
       poNumber: po.po_number,
       total: po.total_amount,
       currency: po.currency || 'MYR',
-      link: `${FRONTEND_URL}/pos/seller-orders`
+      link: `${FRONTEND_URL}/pos/seller-orders`,
+      items: await loadPoEmailItems(po.id)
     });
     await sendNotificationBatch(userIds, 'seller_order_received', mail);
   } catch (e) {
@@ -907,14 +909,44 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
       lock: transaction.LOCK.UPDATE
     });
     if (existing) {
-      const itemsToCreate = validatedItems.map(it => ({ ...it, purchase_order_id: existing.id }));
-      await PurchaseOrderItem.bulkCreate(itemsToCreate, { transaction });
-      const mergedSubtotal = Math.round(((parseFloat(existing.subtotal) || 0) + totals.subtotal) * 100) / 100;
-      const mergedTotal = Math.round(((parseFloat(existing.total_amount) || 0) + totals.total_amount) * 100) / 100;
+      // 2026-08-28 (Irene): 같은 품목을 다시 담으면 **줄이 하나 더 생겼다**.
+      //   실제 사고: 어제 담은 draft 에 오늘 같은 품목을 담아 Glass Noddle 이 2줄로 제출됐다
+      //   ("내가 주문을 이렇게 지금 다 안넣었는데 왜 글라스누들이 들어있어?").
+      //   같은 (재고, 판매자상품) 라인이 이미 있으면 **수량을 합친다**. 줄은 늘리지 않는다.
+      const prevItems = await PurchaseOrderItem.findAll({
+        where: { purchase_order_id: existing.id }, transaction, lock: transaction.LOCK.UPDATE
+      });
+      const keyOf = (it) => [
+        it.ingredient_id ?? 'n', it.product_ingredient_id ?? 'n', it.ingredient_seller_product_id ?? 'n'
+      ].join('|');
+      const prevByKey = new Map(prevItems.map(it => [keyOf(it), it]));
+
+      const itemsToCreate = [];
+      for (const it of validatedItems) {
+        const hit = prevByKey.get(keyOf(it));
+        if (hit) {
+          const qty = Math.round(((parseFloat(hit.quantity_ordered) || 0) + (parseFloat(it.quantity_ordered) || 0)) * 100) / 100;
+          const unit = parseFloat(it.unit_price) || parseFloat(hit.unit_price) || 0;
+          await hit.update({
+            quantity_ordered: qty,
+            unit_price: unit,
+            line_total: Math.round(qty * unit * 100) / 100
+          }, { transaction });
+        } else {
+          itemsToCreate.push({ ...it, purchase_order_id: existing.id });
+        }
+      }
+      if (itemsToCreate.length) await PurchaseOrderItem.bulkCreate(itemsToCreate, { transaction });
+
+      // 합산이 생겼으므로 총액은 누적이 아니라 **라인에서 다시 계산**한다(중복 가산 방지)
+      const freshItems = await PurchaseOrderItem.findAll({ where: { purchase_order_id: existing.id }, transaction });
+      const recomputed = computeTotals(freshItems.map(x => ({
+        quantity_ordered: x.quantity_ordered, unit_price: x.unit_price
+      })));
       await existing.update({
-        subtotal: mergedSubtotal,
-        tax_amount: (parseFloat(existing.tax_amount) || 0) + totals.tax_amount,
-        total_amount: mergedTotal,
+        subtotal: recomputed.subtotal,
+        tax_amount: recomputed.tax_amount,
+        total_amount: recomputed.total_amount,
         // 배송지/예정일/메모는 기존 draft 유지(있으면), 없으면 새 값 채움
         expected_delivery_date: existing.expected_delivery_date || expected_delivery_date || null,
         delivery_address: existing.delivery_address || (resolvedDeliveryAddress ? sanitizeString(String(resolvedDeliveryAddress)) : null)

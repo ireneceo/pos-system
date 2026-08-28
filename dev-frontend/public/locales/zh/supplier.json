@@ -146,7 +146,7 @@
     "joinWaitlist": "准备就绪后我们会通知您。"
   },
   "orders": {
-    "title": "实时订单",
+    "title": "销售订单",
     "subtitle": "实时收到的采购订单",
     "stats": {
       "pending": "待审核",

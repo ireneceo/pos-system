@@ -13,7 +13,7 @@ import SearchableSelect from '../../components/Common/SearchableSelect';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
-import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit } from '../../utils/unitConversion';
+import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit, formatQuantity } from '../../utils/unitConversion';
 
 import { getAuthToken } from '../../utils/auth';
 interface RecipesTabProps {
@@ -1717,7 +1717,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                       return (
                         <tr key={idx}>
                           <td><strong>{ingredient?.name || `Ingredient #${ri.ingredient_id}`}</strong></td>
-                          <td>{Number(ri.quantity).toFixed(2)} {ri.unit}</td>
+                          <td>{formatQuantity(ri.quantity)} {ri.unit}</td>
                           <td style={isBrandRecipeView && hasOverride ? { color: '#4B5563', textDecoration: 'line-through' } : {}}>
                             {getCurrencySymbol(selectedCurrency)} {brandCostPerUnit.toFixed(2)}/{ingredient?.unit}
                           </td>
@@ -2133,7 +2133,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                 return (
                   <RecipeIngredientItem key={idx}>
                     <RecipeIngredientName>{ingredient?.name || `Ingredient #${ri.ingredient_id}`}</RecipeIngredientName>
-                    <RecipeIngredientQty>{Number(ri.quantity).toFixed(2)} {ri.unit}</RecipeIngredientQty>
+                    <RecipeIngredientQty>{formatQuantity(ri.quantity)} {ri.unit}</RecipeIngredientQty>
                   </RecipeIngredientItem>
                 );
               })}

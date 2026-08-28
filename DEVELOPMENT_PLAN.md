@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-08-28 (**v3.79 운영 배포 — with MIN 재고 장부 정렬 + 일괄 링크 도구, 이관 완료**). Irene 지시: "git consulting에 있는 재고아이템이랑 공급업체 및 상품이 with min에도 있어야 해… 대량으로 할 수가 없어서 너무 불편해". 실체는 **한 사업의 재고가 두 목록으로 갈라진 것** — 회사(BG) Stock Items 288건(공급처 매핑 285)에는 지식이 다 있는데, 레시피가 붙고 매장이 공유받는 브랜드 식자재 89건은 매핑 0이었다. ①**브랜드 장부로 이관**(created 226 + connected 62, 매핑 305 복제, 원본 288·305 무손상 보존) ②**깃컨설팅 판매상품 81건을 매장에 발주 전용 등록**(track_stock=false) ③신규 도구 `/pos/stock-ledger`(구매 연결·커버리지 2탭, 정확일치 제안·확정은 사람, 원가 반영 opt-in, 멱등) ④롤백 스크립트(dry-run 기본). **결과: with MIN Cafe 재고 표시 157 → 460건, 발주 가능 66 → 432건.** 실증: 매장 계정 실발주 PO-R10-20260828-001 생성(201)→삭제(200). 검증: verify-all --full **16/16** · 실호출 14/14 · 중간회귀 12/12(from-catalog 4패밀리 동작 불변) · rollback 반증 5/5 · **고장주입 양방향 2건** · 인쇄 계약 10/10 · 인쇄루트 34/34. **Fable 게이트 4종 PASS.** ⚠ 검증이 **내가 만든 결함 2건**(라우터가 /api 전체에 가드 누출 → 공급업체·오너 화면 403 / 매장 라우트 checkRestaurantAccess 누락)과 **내 검사기 가짜 통과 1건**을 잡아냈고 전부 수정·반증 재수립. 상세=`docs/STOCK_LEDGER_UNIFICATION_DESIGN.md`.
+> **최종 업데이트:** 2026-08-28 #2 (**v3.80 운영 배포 — 발주 수량 병합 + 발주 메일 품목표 + 수량 표시 정리**). Irene 지시 3건: "앞서 만든 병합 패치 적용해" / "이메일에 내역이 다 나와야지. 굳이 들어가야만 보이면 불편하지" / "수량인데 소수점이 어딨어". ①**같은 품목 재담기 = 수량 합산**(draft 한정, `WHERE status:'draft'` 안에서만 도달 → submitted 무접촉). 이게 PO-10 에서 같은 3품목이 08-27 08:50·09:48 두 번 담겨 2줄씩 됐던 것의 재발 방지다 ②**발주 메일에 품목표**(품목명·수량·단가·금액+총액, 20줄 상한 "+N more", `items` optional 이라 안 넘기면 기존과 바이트 동일) ③**수량 소수점 제거** 공용 `formatQuantity` 로 7곳(1.00 pack → 1 pack, 실제 소수는 유지) ④메뉴↔페이지 제목 i18n 통일 ⑤**배포 스크립트 fail-loud** — 마이그 루프 else 분기(신규 마이그 **첫 실행**)가 `|| true` 로 실패를 삼키고 있었다. 검증: verify-all --full **16/16**(mount sweep 8역할 크래시 0) · 🔒 인쇄 **8/8 무변경** · 병합 실호출 10/10 + **고장주입 4건 실패로 반증** · i18n Errors 0. **Fable 게이트 PASS**(마커 dc387b4ffebb). ⚠️ **내가 만든 운영 결함 2건 적발 — 다음 섹션 최우선**: (a) 이번 세션 UGS 상품 등록이 **원가를 판매가 자리에 복사**(중복 41종 전부 원가와 일치) → GIT Consulting 이 매장에 마진 0 으로 파는 상태, **PO-10(195.70)도 원가로 제출됨**. 코드 결함 아님 — 공급업체상품→자기판매상품 등록 화면이 **아예 없어** 스크립트로 때웠고 마진 단계가 빠졌다 (b) `catalogLink.js` `connectExisting()` 중복 키에 `seller_product_id` 가 있어 **상품 행이 다르면 새 링크 생성** → 같은 재료에 활성 연결 2개. Irene 이 "판매가 나오는 거 맞아? 원가 아니지?" 라고 정확히 짚었는데 내가 "판매가 맞다"고 **틀리게 답했다**. 정리는 Irene 승인 대기. 함께 확정: **원가 2경로**(재판매=공급업체 가격 / 레시피 프로덕트=재료비 합계, RA·BG 공통, 정책 분기 없음). 상세=`.claude/session-state.md`.
+>
+> **이전:** 2026-08-28 (**v3.79 운영 배포 — with MIN 재고 장부 정렬 + 일괄 링크 도구, 이관 완료**). Irene 지시: "git consulting에 있는 재고아이템이랑 공급업체 및 상품이 with min에도 있어야 해… 대량으로 할 수가 없어서 너무 불편해". 실체는 **한 사업의 재고가 두 목록으로 갈라진 것** — 회사(BG) Stock Items 288건(공급처 매핑 285)에는 지식이 다 있는데, 레시피가 붙고 매장이 공유받는 브랜드 식자재 89건은 매핑 0이었다. ①**브랜드 장부로 이관**(created 226 + connected 62, 매핑 305 복제, 원본 288·305 무손상 보존) ②**깃컨설팅 판매상품 81건을 매장에 발주 전용 등록**(track_stock=false) ③신규 도구 `/pos/stock-ledger`(구매 연결·커버리지 2탭, 정확일치 제안·확정은 사람, 원가 반영 opt-in, 멱등) ④롤백 스크립트(dry-run 기본). **결과: with MIN Cafe 재고 표시 157 → 460건, 발주 가능 66 → 432건.** 실증: 매장 계정 실발주 PO-R10-20260828-001 생성(201)→삭제(200). 검증: verify-all --full **16/16** · 실호출 14/14 · 중간회귀 12/12(from-catalog 4패밀리 동작 불변) · rollback 반증 5/5 · **고장주입 양방향 2건** · 인쇄 계약 10/10 · 인쇄루트 34/34. **Fable 게이트 4종 PASS.** ⚠ 검증이 **내가 만든 결함 2건**(라우터가 /api 전체에 가드 누출 → 공급업체·오너 화면 403 / 매장 라우트 checkRestaurantAccess 누락)과 **내 검사기 가짜 통과 1건**을 잡아냈고 전부 수정·반증 재수립. 상세=`docs/STOCK_LEDGER_UNIFICATION_DESIGN.md`.
 >
 > **이전:** 2026-08-20 #3 (**v3.76 운영 배포 — 공개 로그인 카드가 실매장을 열던 구멍 차단**. 운영 로그인 페이지의 Test 카드 한 번으로 **실고객 매장 The Fire(주문 335·결제 107·RM4,183)** 의 Restaurant Admin 이 열렸다. 기존 방어선이 **계정 꼬리표**(`is_demo||is_test`)만 봐서 `is_test=1` 인 그 계정이 통과했다 — 판정 기준이 틀린 곳에 있었다. v3.75 가 만든 문제가 아니라 원래 연결을 드러낸 것(운영 `user_contexts` **0행**). 수리: ①판정 기준을 **매장 `is_demo`** 로 교체, 닿는 매장에 실매장이 하나라도 있으면 거부(fail-closed) ②닿는 매장 = `userCanAccessRestaurant` 부여 경로 **superset**(`restaurant_managers` 포함) ③가드와 health-check 계약이 **같은 단일소스**(`utils/demoReachableRestaurants.js`) ④403 에서 실매장 이름 제거 ⑤QA 카드 5장 **운영 노출 제거**(dev 전용) ⑥검증 하니스가 공개 로그인 카드로 토큰을 받던 의존 제거 — 가드가 옳게 동작할수록 하니스가 깨지는 구조였다 ⑦운영 쇼케이스 지점 5곳 라벨 정정(3중 안전조건 멱등 마이그). **Fable 이 1차 구현을 반려**: "실제 부여는 `restaurant_managers` 에 있는데 가드가 그 테이블을 안 본다 — 주입을 가드가 보는 테이블에만 해서 반증이 실효를 증명하지 못했다." 운영 실측이 재확인(옛 구현이면 `test_brand_general`·`test_staff` 도 그냥 통과). 검증: 고장주입 3경로 양방향 · health-check 계약을 **가드를 깨서 반증** · `verify-all --full` **16/16** · 🔒 인쇄 **8/8 무접촉** · 인쇄 라우트 34/34 · 마이그 53/53 · 스모크 10/10 · **운영 검증 6/6**. 함께: 재고·판매 P1~P6 dev 완료(별도 게이트 대기). ⚠️ **작업 사고 1건**: 배포 격리 중 `git checkout` 으로 **미커밋 재고 수정 9파일 소실** → 전량 재구현. 상세=session-state.)
 >
@@ -8908,6 +8910,45 @@ hydration 게이트가 **메뉴 수정 저장 시 재고가 0 으로 날아가�
 - `dev-frontend/src/utils/poShare.ts`
 - `dev-frontend/src/utils/poShare.test.ts` (신규)
 - `dev-frontend/e2e/po-supplier-product-name.spec.js` (신규)
+
+---
+
+## ✅ 완료: 발주 수량 병합 + 발주 메일 품목표 + 수량 표시 정리 (2026-08-28)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| PO-10 중복 줄 정리 | 운영 발주서에서 8/27 생성분 3줄(천끈·Glass Noddle·컵덮개) 삭제. 9줄 → 6줄, 209.70 → 195.70. **원인 확정**: 같은 3품목이 08-27 08:50 과 09:48 에 두 번 담겨 각각 2줄이 됐던 것 | ✅ 완료 |
+| 발주 수량 병합 | draft 발주에 같은 품목 재담기 시 줄이 늘지 않고 **수량 합산**. `WHERE status:'draft'` 안에서만 도달 → submitted PO 무접촉. 실호출 10/10 + 고장주입 시 4건 실패로 반증 성립 | ✅ 완료 |
+| 발주 메일 품목표 | `sellerOrderReceivedEmail`·`poApprovalPendingEmail` 에 품목명·수량·단가·금액 표 + 총액. `items` **optional**(안 넘기면 기존과 동일 출력, 실측 확인). 20줄 상한 + "+N more item(s)". 표 합계는 PO 총액 우선(헤더와 불일치 방지). HTML 이스케이프 | ✅ 완료 |
+| 수량 소수점 제거 | 공용 `formatQuantity` 로 7곳 통일 — `1.00 pack` → `1 pack`, 실제 소수는 유지. 금액 계산 무접촉(diff 12줄) | ✅ 완료 |
+| 메뉴명↔페이지 제목 통일 | 메뉴 "Sales Orders" ↔ 페이지 "Live Orders" 불일치. 하드코딩이 아니라 i18n 값 문제 — `supplier:orders.title` 4개 언어를 `common:nav.salesOrders` 와 일치 | ✅ 완료 |
+| 배포 스크립트 fail-loud | 마이그 루프의 **else 분기(신규 마이그 첫 실행)가 `\|\| true` 로 실패를 삼키던 것** 수정. `pending_approval` ENUM 이 등록·배포됐는데도 운영에 안 들어간 원인 후보 | ✅ 완료 |
+
+### 검증
+`verify-all --full` **16/16 통과**(실브라우저 mount sweep 8역할 크래시 0 포함) · 🔒 인쇄 보호파일 **8/8 무변경** ·
+`i18n:verify` Errors 0 · `check-sensitive-diff` 기계 기준 비대상 · Fable 게이트 마커 `dc387b4ffebb`
+
+### 실측으로 드러난 것 (조치 대기 — session-state 참조)
+- **운영 판매가 오염**: 이번 세션에 UGS 원가를 GIT Consulting 판매가 자리에 복사(41/41 원가 일치). PO-10 이 원가로 제출된 상태. 코드 결함 아님 — 등록 화면이 없어 스크립트로 한 것
+- **중복 판매연결 41종**: `catalogLink.js` `connectExisting()` 중복 키에 `seller_product_id` 가 있어 상품 행이 다르면 새 링크 생성
+- **운영 ENUM `pending_approval` 아직 없음** (메모리에 "해결됨"으로 잘못 기록돼 있던 것 정정)
+- **알림 누락 1명**: `irene@gitconsulting.group`(user 11) 이 `is_test=1` 이라 발주 알림 미수신
+- **판매 주문(B2B) 매출·원가 리포트 부재**: 판매자 집계는 건수 카운트뿐, 금액 SUM 없음. 공급업체는 Reports 메뉴 자체 없음
+
+### 수정된 파일
+- `dev-backend/routes/purchase-orders-crud.js`
+- `dev-backend/services/poNotifications.js`
+- `dev-backend/utils/notificationTemplates.js`
+- `dev-backend/utils/poEmailItems.js` (신규)
+- `dev-frontend/src/pages/IncomingOrders/IncomingOrdersView.tsx`
+- `dev-frontend/src/pages/PurchaseOrders/PurchaseOrdersPage.tsx`
+- `dev-frontend/src/pages/Supplier/SupplierInventoryPage.tsx`
+- `dev-frontend/src/pages/RecipeManagement/RecipesTab.tsx`
+- `dev-frontend/src/pages/BrandProductRecipe/ProductRecipesTab.tsx`
+- `dev-frontend/public/locales/{en,ko,zh,ms}/supplier.json`
+- `deploy-to-production.sh`
 
 ---
 

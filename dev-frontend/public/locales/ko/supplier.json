@@ -146,7 +146,7 @@
     "joinWaitlist": "준비가 되면 알려 드리겠습니다."
   },
   "orders": {
-    "title": "라이브 오더",
+    "title": "판매 주문",
     "subtitle": "실시간 들어오는 발주",
     "stats": {
       "pending": "검토 대기",

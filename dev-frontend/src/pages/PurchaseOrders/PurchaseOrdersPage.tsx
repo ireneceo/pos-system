@@ -18,6 +18,7 @@ import { renderIframeToPdf } from '../../utils/invoicePdf';
 import PurchaseOrderDetailPage from './PurchaseOrderDetailPage';
 import AlertDialog from '../../components/Common/AlertDialog';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
+import { formatQuantity } from '../../utils/unitConversion';
 
 // LiveOrders 와 동일한 FilterToolbar 패턴
 const FilterToolbar = styled.div`
@@ -743,7 +744,7 @@ const PurchaseOrdersPage: React.FC = () => {
                       <span>{item.ingredient_name}</span>
                       <span>
                         {t('list.suggestions.currentStock')}: {Number(item.current_stock).toFixed(2)} ·{' '}
-                        {t('list.suggestions.suggested')}: <strong>{Number(item.suggested_quantity).toFixed(2)}</strong>
+                        {t('list.suggestions.suggested')}: <strong>{formatQuantity(item.suggested_quantity)}</strong>
                       </span>
                     </li>
                   ))}

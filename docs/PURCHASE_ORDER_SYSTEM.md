@@ -1109,3 +1109,61 @@ draft ──submit──▶ (오너승인 ON & 오너연결) pending_approval �
 3. `services/poRealtimeService.js` `emitPoEvent` — 숨김 상태면 **seller 룸 emit 생략**(buyer 룸은 유지). 여기가 단일 지점이라 새 발주 경로가 생겨도 판매자 유출은 여기서 걸린다.
 
 승인 후 발송(외부공급업체): 승인 필요 매장은 Staging 의 WhatsApp/Email 이 **잠기고**(승인 전 발송 유도 금지), 승인된 뒤 **발주 상세 페이지**에서 보낸다. 메시지 빌더는 `utils/poShare.ts` 단일 소스(두 화면 공유).
+
+
+---
+
+## 장바구니 수량 병합 (2026-08-28 배포 v3.80)
+
+**같은 품목을 다시 담으면 줄이 늘지 않고 수량이 합쳐진다.**
+
+이전 동작: 어제 담은 draft 에 오늘 같은 품목을 담으면 **줄이 하나 더 생겼다.**
+실제 사고 — PO-R10-20260827-001 에서 같은 3품목(갈색 천끈·Glass Noddle·컵덮개)이
+`08-27 08:50:06` 과 `08-27 09:48:03` 에 두 번 담겨 **각각 2줄**이 됐고 그대로 제출됐다
+(Irene: "내가 주문을 이렇게 지금 다 안넣었는데 왜 글라스누들이 들어있어?").
+
+**구현** — `routes/purchase-orders-crud.js` `createPurchaseOrderCore()` 의 `mergeDraft` 분기:
+- 병합 키 = `(ingredient_id, product_ingredient_id, ingredient_seller_product_id)`
+- 기존 라인이 있으면 `quantity_ordered` 합산 + `line_total` 재계산, 없으면 새 줄
+- 총액은 **누적 가산이 아니라 라인에서 재계산**(`computeTotals(freshItems)`) — 중복 가산 방지
+- ⚠ **draft 한정**: 이 분기는 `PurchaseOrder.findOne({ ..., status: 'draft' })` 안에서만 도달한다.
+  제출된 PO 에는 병합이 개입하지 않고 **새 draft 가 따로 생긴다.**
+
+**검증**: demo 매장(38) 실호출 10/10 PASS. 고장주입(`const hit = prevByKey.get(...)` → `null`) 시 4건 FAIL 로 반증 성립.
+
+---
+
+## 발주 알림 메일 품목표 (2026-08-28 배포 v3.80)
+
+**메일 본문에 주문 내역이 다 나온다** — Irene: "이메일에 내역이 다 나와야지. 굳이 들어가야만 보이면 불편하지."
+그전에는 발주번호·구매자·총액·상태만 있어서 받는 쪽이 화면에 들어가야 뭘 주문했는지 알 수 있었다.
+
+- `utils/poEmailItems.js` (신규) — 알림 경로 전용 로더. **절대 throw 하지 않는다**(실패 시 빈 배열).
+  표시명 = `ingredient.name` → `productIngredient.name` → `description`.
+  (`IngredientSellerProduct` 에는 이름 컬럼이 없어 판매자 상품명은 못 쓴다.)
+- `utils/notificationTemplates.js` `poItemsTable(items, currency, poTotal)` —
+  `sellerOrderReceivedEmail` · `poApprovalPendingEmail` 에 **`items` optional** 인자.
+  **안 넘기면 기존과 동일 출력**(계약 불변, 실측 확인).
+  20줄 상한 + `+ N more item(s)`. 표 하단 합계는 **PO 총액 우선**(헤더 `infoRow('Total')` 과 어긋나면 안 됨). HTML 이스케이프 적용.
+- 호출부 3곳: `routes/purchase-orders-crud.js` · `services/poNotifications.js` ×2.
+  `routes/seller-orders.js:327` 은 **구매자용 "Order Confirmed" 메일을 자체 html 로 조립**하는 곳이라 대상 아님(후속 후보).
+- 라벨은 영어 하드코딩 — 기존 템플릿(`wrapTemplate(..., 'en')`, 'PO Number'/'Buyer'/'Status')과 같은 관례.
+
+---
+
+## 백로그 — 판매자 라인 단위 품절/문제 처리 (2026-08-28 실측, 미착수)
+
+**현재 실측**: 구매자는 `PurchaseOrderDetailPage` 에서 **주문 전체 취소**(사유 입력)만 가능하고 라인 단위 삭제 UI 가 없다.
+판매자(`routes/seller-orders.js`)는 `confirm`·`ship`·`reject`(전체)·`deliver`·`tracking` 뿐 —
+**라인 하나를 빼며 사유를 보내는 경로가 없다.**
+백엔드 `PUT /purchase-orders/:id` 는 `draft`·`submitted` 편집을 허용하나(items 전체 교체) 화면 진입점이 없다.
+
+**요구 (Irene 2026-08-28)**: "관리자가 다시 주문취소를 한개씩 못 빼나? 품절이나 문제 있을 때" ·
+"판매자가 삭제하고 이유 보내야 하는 거 아니야?"
+→ 같은 대화에서 **"지금 방식 문제 없어"** 로 닫혀 **백로그**로 둔다.
+
+**착수 시 설계 방침 (예약)**
+- ⛔ `purchase_order_items.discrepancy_*`(`short`·`damaged`·`wrong_item`·`pending`) **재사용 금지** —
+  그건 **구매자가 입고 시 차이를 보고**하는 필드다. 판매자의 발송 전 처리와 의미가 다르다.
+- 라인 상태 신설(예: `removed_by_seller` + 사유) + 구매자 알림 + **총액은 표준 재계산 경로로만**.
+- 구매자 쪽 라인 단위 빼기 UI 도 같은 묶음으로.

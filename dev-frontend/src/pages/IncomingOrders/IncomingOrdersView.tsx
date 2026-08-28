@@ -17,6 +17,7 @@ import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
 import { useTabParam } from '../../hooks/useTabParam';
+import { formatQuantity } from '../../utils/unitConversion';
 
 // Layout / Form / ModalButton primitives are inlined here on purpose.
 // Importing them across chunks from `components/UI` triggered a TDZ runtime
@@ -1367,7 +1368,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      {Number(it.quantity_ordered).toFixed(2)} {it.unit || ''}
+                      {formatQuantity(it.quantity_ordered)} {it.unit || ''}
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       {formatMoney(it.unit_price, detailFull.currency)}
