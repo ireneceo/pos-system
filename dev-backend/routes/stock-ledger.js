@@ -106,12 +106,30 @@ function logItem(t, { batchId, buyer, userId, action, targetTable, targetId, sou
 // 1. GET /api/brands/:brandId/stock-ledger/migration-preview
 //    BG Stock Items(288) → 브랜드 재료 이관 제안
 // ============================================================
-router.get('/brands/:brandId/stock-ledger/migration-preview', ...GATES, scopeGuard('brandId', 'brand'),
-  async (req, res) => {
+/**
+ * BG Stock Items 의 소유자(user id)를 구매자 스코프에서 찾는다.
+ *  - brand 구매자      → 그 브랜드의 owner_id
+ *  - restaurant 구매자 → 부모 브랜드의 owner_id (매장은 본사 창고에서 가져온다)
+ *
+ * ⚠ 2026-08-28 Irene 정정: 이관 목적지는 **매장 자기 재고**다.
+ *   처음엔 브랜드 장부에 넣고 매장이 공유로 보게 했는데, 매장 화면에서 읽기 전용이라
+ *   "남의 것"으로 보였다. 소유자 의도는 "각각 서로의 재고"였다.
+ */
+async function stockItemOwnerFor(buyer) {
+  if (buyer.type === 'brand') return brandOwnerId(buyer.id);
+  if (buyer.type === 'restaurant') {
+    const r = await Restaurant.findByPk(buyer.id, { attributes: ['id', 'brand_id'] });
+    if (!r || !r.brand_id) return null;
+    return brandOwnerId(r.brand_id);
+  }
+  return null;
+}
+
+async function migrationPreviewHandler(req, res) {
     try {
       const buyer = req.buyerEntity;
-      const ownerId = await brandOwnerId(buyer.id);
-      if (ownerId == null) return res.status(404).json({ success: false, message: 'Brand not found' });
+      const ownerId = await stockItemOwnerFor(buyer);
+      if (ownerId == null) return res.status(404).json({ success: false, message: 'No parent brand / stock item owner found' });
 
       const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 100));
       const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
@@ -169,13 +187,15 @@ router.get('/brands/:brandId/stock-ledger/migration-preview', ...GATES, scopeGua
       console.error('GET stock-ledger/migration-preview error:', err);
       res.status(500).json({ success: false, message: 'Failed to build migration preview' });
     }
-  });
+}
+
+router.get('/brands/:brandId/stock-ledger/migration-preview', ...GATES, scopeGuard('brandId', 'brand'), migrationPreviewHandler);
+router.get('/restaurants/:restaurantId/stock-ledger/migration-preview', ...GATES, checkRestaurantAccess, scopeGuard('restaurantId', 'restaurant'), migrationPreviewHandler);
 
 // ============================================================
 // 2. POST /api/brands/:brandId/stock-ledger/migrate
 // ============================================================
-router.post('/brands/:brandId/stock-ledger/migrate', ...GATES, scopeGuard('brandId', 'brand'),
-  async (req, res) => {
+async function migrateHandler(req, res) {
     const buyer = req.buyerEntity;
     const decisions = Array.isArray(req.body?.decisions) ? req.body.decisions : null;
     const dryRun = req.body?.dry_run === true;
@@ -187,8 +207,8 @@ router.post('/brands/:brandId/stock-ledger/migrate', ...GATES, scopeGuard('brand
     }
 
     try {
-      const ownerId = await brandOwnerId(buyer.id);
-      if (ownerId == null) return res.status(404).json({ success: false, message: 'Brand not found' });
+      const ownerId = await stockItemOwnerFor(buyer);
+      if (ownerId == null) return res.status(404).json({ success: false, message: 'No parent brand / stock item owner found' });
 
       // 동시 배치 방지 — 60초 내 같은 스코프의 진행 흔적이 있으면 409
       const recent = await StockLedgerBatchItem.findOne({
@@ -240,7 +260,11 @@ router.post('/brands/:brandId/stock-ledger/migrate', ...GATES, scopeGuard('brand
           if (mode === 'connect') {
             const tid = parseInt(d.existing_ingredient_id, 10);
             target = Number.isFinite(tid) ? await Ingredient.findByPk(tid, { transaction: t }) : null;
-            if (!target || target.owner_type !== 'brand' || target.brand_id !== buyer.id) {
+            const ownsTarget = target && target.owner_type === buyer.type && (
+              buyer.type === 'brand' ? target.brand_id === buyer.id
+              : buyer.type === 'restaurant' ? target.restaurant_id === buyer.id
+              : target.foodcourt_id === buyer.id);
+            if (!ownsTarget) {
               await t.rollback();
               result.failed.push({ source_id: srcId, reason: 'TARGET_NOT_IN_SCOPE' });
               continue;
@@ -248,13 +272,18 @@ router.post('/brands/:brandId/stock-ledger/migrate', ...GATES, scopeGuard('brand
           } else {
             if (dryRun) { await t.rollback(); result.created++; continue; }
             target = await Ingredient.create({
-              owner_type: 'brand', brand_id: buyer.id, restaurant_id: null, foodcourt_id: null,
+              owner_type: buyer.type,
+              brand_id: buyer.type === 'brand' ? buyer.id : null,
+              restaurant_id: buyer.type === 'restaurant' ? buyer.id : null,
+              foodcourt_id: buyer.type === 'foodcourt' ? buyer.id : null,
               name: pi.name,
               unit: catalogLink.resolveUnit(null, pi.unit),
               base_quantity: pi.base_quantity || 1,
               unit_cost: parseFloat(pi.unit_cost) || 0,
               min_stock: 0, current_stock: 0,
-              track_stock: false,          // 발주 전용으로 시작 — 재고 세기는 사람이 켠다
+              // 원본 Stock Item 의 재고 추적 설정을 그대로 미러한다(Fable 2026-08-28).
+              // 원본이 세던 것은 계속 세고, 안 세던 것은 발주 전용으로 남는다.
+              track_stock: pi.track_stock === true,
               is_active: true, code: ''
             }, { transaction: t });
             await logItem(t, {
@@ -330,7 +359,10 @@ router.post('/brands/:brandId/stock-ledger/migrate', ...GATES, scopeGuard('brand
       console.error('POST stock-ledger/migrate error:', err);
       res.status(500).json({ success: false, message: 'Migration failed' });
     }
-  });
+}
+
+router.post('/brands/:brandId/stock-ledger/migrate', ...GATES, scopeGuard('brandId', 'brand'), migrateHandler);
+router.post('/restaurants/:restaurantId/stock-ledger/migrate', ...GATES, checkRestaurantAccess, scopeGuard('restaurantId', 'restaurant'), migrateHandler);
 
 
 // ============================================================
