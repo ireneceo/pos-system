@@ -1,0 +1,498 @@
+[
+ {
+  "source_id": 26,
+  "name": "Peach Base (복숭아 베이스)",
+  "ingredient_id": 444,
+  "ingredient_name": "Peach Base (복숭아 베이스)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 29,
+  "name": "Grape Base (포도 베이스)",
+  "ingredient_id": 402,
+  "ingredient_name": "Grape Base (포도 베이스)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 73,
+  "name": "Dishwashing Liquid Limau (설거지 세제)",
+  "ingredient_id": 390,
+  "ingredient_name": "Dishwashing Liquid Limau (설거지 세제)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 233,
+  "name": "Omija Base (오미자 베이스)",
+  "ingredient_id": 422,
+  "ingredient_name": "Omija Base (오미자 베이스)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 234,
+  "name": "Grapefruit Base (자몽 베이스)",
+  "ingredient_id": 404,
+  "ingredient_name": "Grapefruit Base (자몽 베이스)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 235,
+  "name": "Kiwi Base (키위 베이스)",
+  "ingredient_id": 414,
+  "ingredient_name": "Kiwi Base (키위 베이스)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 236,
+  "name": "Strawberry Base (딸기 베이스)",
+  "ingredient_id": 466,
+  "ingredient_name": "Strawberry Base (딸기 베이스)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 237,
+  "name": "Thermal Roll 80MM X 60MM X 12MM (L) (영수증 페이퍼롤)",
+  "ingredient_id": 474,
+  "ingredient_name": "Thermal Roll 80MM X 60MM X 12MM (L) (영수증 페이퍼롤)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 238,
+  "name": "Kitchen Towel V / P 2PLY (키친타올)",
+  "ingredient_id": 412,
+  "ingredient_name": "Kitchen Towel V / P 2PLY (키친타올)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 239,
+  "name": "Plastic Perforated Roll Bag (비닐 롤백)",
+  "ingredient_id": 448,
+  "ingredient_name": "Plastic Perforated Roll Bag (비닐 롤백)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 240,
+  "name": "JC Plastic Singlet Bag 18\" X 22\" #48 White (주방용 음식쓰레기 봉투)",
+  "ingredient_id": 410,
+  "ingredient_name": "JC Plastic Singlet Bag 18\" X 22\" #48 White (주방용 음식쓰레기 봉투)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 241,
+  "name": "TK 1000 (A1000) Clear Rectangular Container With Lid (소스판매용 사각 플라스틱통)",
+  "ingredient_id": 476,
+  "ingredient_name": "TK 1000 (A1000) Clear Rectangular Container With Lid (소스판매용 사각 플라스틱통)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 242,
+  "name": "PP Sheet Lid 8511 780 / 850 / 1000CC (갈색 종이 밥그릇 뚜껑)",
+  "ingredient_id": 452,
+  "ingredient_name": "PP Sheet Lid 8511 780 / 850 / 1000CC (갈색 종이 밥그릇 뚜껑)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 243,
+  "name": "Single Wall Paper Bowl Plain Kraft (갈색 종이 밥그릇(M))",
+  "ingredient_id": 460,
+  "ingredient_name": "Single Wall Paper Bowl Plain Kraft (갈색 종이 밥그릇(M))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 244,
+  "name": "Plastic Spoon 180 Heavy Duty Black (일회용 검정스푼)",
+  "ingredient_id": 450,
+  "ingredient_name": "Plastic Spoon 180 Heavy Duty Black (일회용 검정스푼)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 245,
+  "name": "Plastic Fork 180 Heavy Duty Black (일회용 검정포크)",
+  "ingredient_id": 446,
+  "ingredient_name": "Plastic Fork 180 Heavy Duty Black (일회용 검정포크)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 246,
+  "name": "MW R12 Round Container With Lid (플라스틱 작은 밥그릇)",
+  "ingredient_id": 418,
+  "ingredient_name": "MW R12 Round Container With Lid (플라스틱 작은 밥그릇)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 247,
+  "name": "PE Singlet Bag 15'' X 18'' (비닐봉투(M) (기본))",
+  "ingredient_id": 440,
+  "ingredient_name": "PE Singlet Bag 15'' X 18'' (비닐봉투(M) (기본))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 248,
+  "name": "3.25OZ PP Round Sauce Container With Hinged Lid (플라스틱 소스통(L))",
+  "ingredient_id": 372,
+  "ingredient_name": "3.25OZ PP Round Sauce Container With Hinged Lid (플라스틱 소스통(L))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 249,
+  "name": "Standard Dish Washing Liquid Green | 10Liters (설거지 세제 대형)",
+  "ingredient_id": 464,
+  "ingredient_name": "Standard Dish Washing Liquid Green | 10Liters (설거지 세제 대형)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 250,
+  "name": "Pck 2 Cup Drinks Egg Tray (컵받침 / 2컵용)",
+  "ingredient_id": 434,
+  "ingredient_name": "Pck 2 Cup Drinks Egg Tray (컵받침 / 2컵용)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 251,
+  "name": "Goodmaid Care Hand Cleanser Lemon | x / ctn (손세정제)",
+  "ingredient_id": 396,
+  "ingredient_name": "Goodmaid Care Hand Cleanser Lemon | x / ctn (손세정제)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 252,
+  "name": "BT Paper Lunch Box Kraft (L) 180mm(L) ×120mm(W) x 50mm(H) (도시락 박스(대형))",
+  "ingredient_id": 378,
+  "ingredient_name": "BT Paper Lunch Box Kraft (L) 180mm(L) ×120mm(W) x 50mm(H) (도시락 박스(대형))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 253,
+  "name": "Hdpe Plastic Glove / M (투명비닐장갑 M)",
+  "ingredient_id": 406,
+  "ingredient_name": "Hdpe Plastic Glove / M (투명비닐장갑 M)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 254,
+  "name": "MW R1000 Round Container With Lid (플라스틱 큰 그릇 R1000)",
+  "ingredient_id": 416,
+  "ingredient_name": "MW R1000 Round Container With Lid (플라스틱 큰 그릇 R1000)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 255,
+  "name": "Double Wall Paper Bowl Kraft (갈색 빙수컵 종이)",
+  "ingredient_id": 394,
+  "ingredient_name": "Double Wall Paper Bowl Kraft (갈색 빙수컵 종이)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 256,
+  "name": "Paperbowlldi 10MM Transparent x 20pkts (갈색 빙수컵 플라스틱 뚜껑)",
+  "ingredient_id": 432,
+  "ingredient_name": "Paperbowlldi 10MM Transparent x 20pkts (갈색 빙수컵 플라스틱 뚜껑)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 257,
+  "name": "Bl-140 Inner Bowl Tray With Lid (갈색 종이 밥그릇 덮밥 뚜껑)",
+  "ingredient_id": 376,
+  "ingredient_name": "Bl-140 Inner Bowl Tray With Lid (갈색 종이 밥그릇 덮밥 뚜껑)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 258,
+  "name": "Single Wall Paper Bowl Plain Kraft (갈색 종이 밥그릇(L))",
+  "ingredient_id": 458,
+  "ingredient_name": "Single Wall Paper Bowl Plain Kraft (갈색 종이 밥그릇(L))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 259,
+  "name": "Single Wall Paper Bowl Plain Kraft (갈색 종이 밥그릇(S))",
+  "ingredient_id": 462,
+  "ingredient_name": "Single Wall Paper Bowl Plain Kraft (갈색 종이 밥그릇(S))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 260,
+  "name": "9OZ / 270ML Double Wall Paper Cup Kraft (갈색 종이컵 작은 넙적 9OZ)",
+  "ingredient_id": 374,
+  "ingredient_name": "9OZ / 270ML Double Wall Paper Cup Kraft (갈색 종이컵 작은 넙적 9OZ)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 261,
+  "name": "3-PLY Natural Jute Twisted Twine Rustic Crafty String Roll / 100M / Natural Brown (갈색 천끈)",
+  "ingredient_id": 370,
+  "ingredient_name": "3-PLY Natural Jute Twisted Twine Rustic Crafty String Roll / 100M / Natural Brown (갈색 천끈)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 262,
+  "name": "12OZ Double Wall Paper Cup Kraft (갈색 큰 종이컵 12OZ)",
+  "ingredient_id": 364,
+  "ingredient_name": "12OZ Double Wall Paper Cup Kraft (갈색 큰 종이컵 12OZ)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 263,
+  "name": "Paper Cold Cup 80mm x 117mm White x 20pkts (갈색 흰 종이 음료컵(아이스용))",
+  "ingredient_id": 428,
+  "ingredient_name": "Paper Cold Cup 80mm x 117mm White x 20pkts (갈색 흰 종이 음료컵(아이스용))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 264,
+  "name": "Reclosable Lid Black (검정 작은 종이컵 뚜껑)",
+  "ingredient_id": 454,
+  "ingredient_name": "Reclosable Lid Black (검정 작은 종이컵 뚜껑)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 265,
+  "name": "Reclosable Lid Black (검정 종이컵 뚜껑 큰)",
+  "ingredient_id": 456,
+  "ingredient_name": "Reclosable Lid Black (검정 종이컵 뚜껑 큰)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 266,
+  "name": "Pck Dcut #D BR Brown (구멍 손잡이 종이백)",
+  "ingredient_id": 436,
+  "ingredient_name": "Pck Dcut #D BR Brown (구멍 손잡이 종이백)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 267,
+  "name": "Take Away Cup Leak Proof Paper 120MM (깔개 및 컵 덮개)",
+  "ingredient_id": 470,
+  "ingredient_name": "Take Away Cup Leak Proof Paper 120MM (깔개 및 컵 덮개)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 268,
+  "name": "Zip Lock Bag 6\" X 9\" (냉장고용 플라스틱 봉투)",
+  "ingredient_id": 478,
+  "ingredient_name": "Zip Lock Bag 6\" X 9\" (냉장고용 플라스틱 봉투)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 269,
+  "name": "BT Paper Lunch Box Kraft (M) (도시락 박스(디저트) (기본))",
+  "ingredient_id": 380,
+  "ingredient_name": "BT Paper Lunch Box Kraft (M) (도시락 박스(디저트) (기본))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 270,
+  "name": "BT Paper Two Compartment Lunch Box Kraft (M) (도시락박스(반반/샌드위치))",
+  "ingredient_id": 382,
+  "ingredient_name": "BT Paper Two Compartment Lunch Box Kraft (M) (도시락박스(반반/샌드위치))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 271,
+  "name": "PE Singlet Bag 18'' X 20'' (비닐봉투(L))",
+  "ingredient_id": 442,
+  "ingredient_name": "PE Singlet Bag 18'' X 20'' (비닐봉투(L))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 272,
+  "name": "PE Singlet Bag 12'' X 15'' (비닐봉투(S) (작은거))",
+  "ingredient_id": 438,
+  "ingredient_name": "PE Singlet Bag 12'' X 15'' (비닐봉투(S) (작은거))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 273,
+  "name": "Sun Paper Bag Twisted Handle Brown 28CM X 15CM X 30CM (손잡이 종이백)",
+  "ingredient_id": 468,
+  "ingredient_name": "Sun Paper Bag Twisted Handle Brown 28CM X 15CM X 30CM (손잡이 종이백)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 274,
+  "name": "Disposablevinylglove Powder Free / Semi-Transparent / M (실리콘장갑 (M / 친환경))",
+  "ingredient_id": 392,
+  "ingredient_name": "Disposablevinylglove Powder Free / Semi-Transparent / M (실리콘장갑 (M / 친환경))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 275,
+  "name": "Goodmaid Oven Cleaner Lemon | x / ctn (오븐 세제 (주방기구))",
+  "ingredient_id": 400,
+  "ingredient_name": "Goodmaid Oven Cleaner Lemon | x / ctn (오븐 세제 (주방기구))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 276,
+  "name": "Oven Cleaner High Grade Colorless | 10Liters (오븐 세제 대형 (주방기구))",
+  "ingredient_id": 424,
+  "ingredient_name": "Oven Cleaner High Grade Colorless | 10Liters (오븐 세제 대형 (주방기구))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 277,
+  "name": "Goodmaid Cocorex Bleach Regular | x / ctn (왁스)",
+  "ingredient_id": 398,
+  "ingredient_name": "Goodmaid Cocorex Bleach Regular | x / ctn (왁스)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 278,
+  "name": "Dish Wash Lime Ppt | x / ctn (유리창 세제)",
+  "ingredient_id": 388,
+  "ingredient_name": "Dish Wash Lime Ppt | x / ctn (유리창 세제)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 279,
+  "name": "Tea Table Candle (작은 촛불)",
+  "ingredient_id": 472,
+  "ingredient_name": "Tea Table Candle (작은 촛불)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 280,
+  "name": "NO 8 Flower Cases Cup Cake Paper Liner 41MM X 23MM (종이받침 (곶감용))",
+  "ingredient_id": 420,
+  "ingredient_name": "NO 8 Flower Cases Cup Cake Paper Liner 41MM X 23MM (종이받침 (곶감용))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 281,
+  "name": "Deodeorizer Fresh Floor Kleen Lavender Purple | 10Liters (주방 바닥 세제)",
+  "ingredient_id": 386,
+  "ingredient_name": "Deodeorizer Fresh Floor Kleen Lavender Purple | 10Liters (주방 바닥 세제)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 282,
+  "name": "Paper Bag Twisted Handle 270mm×210mm×140mm (트위스트손잡이 종이백)",
+  "ingredient_id": 426,
+  "ingredient_name": "Paper Bag Twisted Handle 270mm×210mm×140mm (트위스트손잡이 종이백)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 283,
+  "name": "2OZ PP Round Sauce Container With Hinged Lid (플라스틱 소스통(M))",
+  "ingredient_id": 368,
+  "ingredient_name": "2OZ PP Round Sauce Container With Hinged Lid (플라스틱 소스통(M))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 284,
+  "name": "1OZ PP Round Sauce Container With Hinged Lid (플라스틱 소스통(S))",
+  "ingredient_id": 366,
+  "ingredient_name": "1OZ PP Round Sauce Container With Hinged Lid (플라스틱 소스통(S))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 285,
+  "name": "120Z I 95mm x 107mm I Transparent x20pkts; 1,000pcs (플라스틱 음료컵(아이스용))",
+  "ingredient_id": 362,
+  "ingredient_name": "120Z I 95mm x 107mm I Transparent x20pkts; 1,000pcs (플라스틱 음료컵(아이스용))",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 287,
+  "name": "Ice Cream Tub Cup 160Z 97mm(D) White x20pkts (흰색 빙수컵 종이 뚜껑)",
+  "ingredient_id": 408,
+  "ingredient_name": "Ice Cream Tub Cup 160Z 97mm(D) White x20pkts (흰색 빙수컵 종이 뚜껑)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 288,
+  "name": "Paper Ice Cream Tub Cup 160Z / 95mm x 101mm White x20pkts (흰색 종이 빙수컵)",
+  "ingredient_id": 430,
+  "ingredient_name": "Paper Ice Cream Tub Cup 160Z / 95mm x 101mm White x20pkts (흰색 종이 빙수컵)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 304,
+  "name": "(SC-450) 450ML Round Container (국물판매용 원형 소)",
+  "ingredient_id": 483,
+  "ingredient_name": "(SC-450) 450ML Round Container (국물판매용 원형 소)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 305,
+  "name": "(SC-800) 800ML Round Container (국물판매용 원형 대)",
+  "ingredient_id": 485,
+  "ingredient_name": "(SC-800) 800ML Round Container (국물판매용 원형 대)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 307,
+  "name": "MTP 360 (12OZ) PP Plastic Cup (플라스틱 투명컵)",
+  "ingredient_id": 487,
+  "ingredient_name": "MTP 360 (12OZ) PP Plastic Cup (플라스틱 투명컵)",
+  "recipes": 0,
+  "sources": 1
+ },
+ {
+  "source_id": 308,
+  "name": "MTP 12/16/22 FL5 PET Flat Lid (플라스틱 투명컵 뚜껑)",
+  "ingredient_id": 489,
+  "ingredient_name": "MTP 12/16/22 FL5 PET Flat Lid (플라스틱 투명컵 뚜껑)",
+  "recipes": 0,
+  "sources": 1
+ }
+]

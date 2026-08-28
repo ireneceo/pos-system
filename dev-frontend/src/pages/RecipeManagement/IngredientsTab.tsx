@@ -7,6 +7,7 @@ import { SearchInput, FilterSelect } from '../../components/Common/FilterCompone
 import ListControlsBar from '../../components/Common/ListControlsBar';
 import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
 import { useAuth } from '../../contexts/AuthContext';
+import { DataTableStatus } from '../../components/UI/DataTable';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
@@ -1305,7 +1306,14 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   /* 브랜드 관리자 or 레스토랑 자체 재료: 기존 방식 */
                   <InfoRow>
                     <InfoLabel>{'Unit Cost'}</InfoLabel>
-                    <InfoValue>{formatCurrency(Number(ingredient.unit_cost), selectedCurrency)}</InfoValue>
+                    <InfoValue>
+                      {/* 원가가 0이면 "안 넣은 것"인지 "정말 0원"인지 화면에서 구분이 안 됐다.
+                          Irene 2026-08-28: "원가 0이고 판매가 0이면 알게 해줄 수 없어? 알기 쉽게 ui에서"
+                          → 오류가 아니라 **미입력 상태**라 danger 빨강이 아닌 공용 warning 배지를 쓴다. */}
+                      {Number(ingredient.unit_cost) > 0
+                        ? formatCurrency(Number(ingredient.unit_cost), selectedCurrency)
+                        : <DataTableStatus variant="warning">{t('ingredients.costNotSet', '원가 미설정')}</DataTableStatus>}
+                    </InfoValue>
                   </InfoRow>
                 )}
                 <InfoRow>

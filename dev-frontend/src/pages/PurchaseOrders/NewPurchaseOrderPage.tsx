@@ -1742,9 +1742,14 @@ const NewPurchaseOrderPage: React.FC = () => {
                       }
                       const perUnit = pricedSellers.map(s => (parseFloat(String(s.unit_price)) || 0) / (parseFloat(String(s.unit_conversion)) || 1));
                       const minPer = perUnit.length ? Math.min(...perUnit) : 0;
-                      priceText = (pricedSellers.length === 1 || mineSellerFilter !== 'all')
-                        ? minPer.toFixed(2)
-                        : `from ${minPer.toFixed(2)}`;
+                      // 가격 0 은 "0원에 판다"가 아니라 **아직 안 넣은 것**이다. 숫자 0.00 으로 보이면
+                      // 구분이 안 돼 그대로 발주하게 된다 — Irene 2026-08-28:
+                      // "원가 0이고 판매가 0이면 알게 해줄 수 없어? 알기 쉽게 ui에서"
+                      priceText = minPer > 0
+                        ? ((pricedSellers.length === 1 || mineSellerFilter !== 'all')
+                            ? minPer.toFixed(2)
+                            : `from ${minPer.toFixed(2)}`)
+                        : t('newPo.priceNotSet', '가격 미설정');
                       const minOrder = Math.max(1, ...row.sellers.map(s => Number(s.min_order_quantity) || 1));
                       const vendorName = row.sellers.length === 1
                         ? row.sellers[0].seller_name

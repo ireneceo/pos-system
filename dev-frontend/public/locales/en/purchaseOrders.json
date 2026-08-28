@@ -339,7 +339,8 @@
     "noCategories": "No categories",
     "noSellers": "No sellers",
     "allCategoriesFilter": "All categories",
-    "uncategorized": "Uncategorized"
+    "uncategorized": "Uncategorized",
+    "priceNotSet": "Price not set"
   },
   "staging": {
     "noPhoneTitle": "No Phone Number",

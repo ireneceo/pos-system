@@ -339,7 +339,8 @@
     "noCategories": "Tiada kategori",
     "noSellers": "Tiada penjual",
     "allCategoriesFilter": "Semua kategori",
-    "uncategorized": "Tidak dikategori"
+    "uncategorized": "Tidak dikategori",
+    "priceNotSet": "Harga belum ditetapkan"
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",

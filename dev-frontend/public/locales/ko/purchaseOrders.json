@@ -339,7 +339,8 @@
     "noCategories": "카테고리 없음",
     "noSellers": "발주처 없음",
     "allCategoriesFilter": "전체 카테고리",
-    "uncategorized": "미분류"
+    "uncategorized": "미분류",
+    "priceNotSet": "가격 미설정"
   },
   "staging": {
     "noPhoneTitle": "전화번호 없음",
