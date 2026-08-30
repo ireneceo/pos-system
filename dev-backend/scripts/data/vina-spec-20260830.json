@@ -1,0 +1,2966 @@
+{
+ "note": "VINA 단가표 반영 계획 — 2026-08-30 동결. Fable PASS 후 배포 마이그로 1회 적용. ⛔ 수정 금지.",
+ "source": "Irene 제공 VINA 표(324행) ↔ 운영 supplier_products 대조. 위험/의심/미매칭은 제외됨.",
+ "frozenAt": "2026-08-30T19:07:38.758Z",
+ "count": 174,
+ "plan": [
+  {
+   "id": 52,
+   "label": "닭똥집 Chicken Gizzards",
+   "vendor": "Guan Kee Poultry",
+   "lineNo": 2,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 45,
+   "label": "직원식 Halal chicken 2kg (chunk cut)",
+   "vendor": "Guan Kee Poultry",
+   "lineNo": 3,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 44,
+   "label": "닭다리살 Chicken Chop L(260~280g)",
+   "vendor": "Guan Kee Poultry",
+   "lineNo": 4,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 51,
+   "label": "닭가슴살 Chicken Breast",
+   "vendor": "Guan Kee Poultry",
+   "lineNo": 5,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 48,
+   "label": "간닭고기 Minced Chicken",
+   "vendor": "Guan Kee Poultry",
+   "lineNo": 6,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 239,
+   "label": "생강 Old ginger",
+   "vendor": "TaiYangFresh",
+   "lineNo": 8,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 242,
+   "label": "청양고추(칠리파디) Green Chilli Padi(Cili Api Hijau)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 9,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 261,
+   "label": "홍파프리카 Red Capsicum(Cili Epal Merah)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 10,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 262,
+   "label": "청파프리카 Green Capsicum(Cili Epal Hijau)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 11,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 22,
+   "label": "감자 Potato(Ubi Kentang)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 12,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 240,
+   "label": "Broccoli",
+   "vendor": "TaiYangFresh",
+   "lineNo": 14,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 250,
+   "label": "숙주나물 Bitter Melon (Peria Besar)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 15,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 258,
+   "label": "Water Spinach",
+   "vendor": "TaiYangFresh",
+   "lineNo": 16,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 243,
+   "label": "돼지호박 Green Zucchini (Zucchini Hijau)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 18,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 260,
+   "label": "당근 Carrot",
+   "vendor": "TaiYangFresh",
+   "lineNo": 19,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     0.5
+    ]
+   }
+  },
+  {
+   "id": 259,
+   "label": "무 Radish",
+   "vendor": "TaiYangFresh",
+   "lineNo": 20,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 254,
+   "label": "오이-일본 Japanese Cucumber(Timun Jepun)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 22,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 246,
+   "label": "새송이버섯 KingOysterMushroom(Cendawan Kaki)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 23,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ],
+    "base_quantity": [
+     1,
+     3
+    ]
+   }
+  },
+  {
+   "id": 244,
+   "label": "양배추 Cabbage(Kobis China)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 24,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 269,
+   "label": "홍사과 Red Apple (PinkLady)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 25,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ]
+   }
+  },
+  {
+   "id": 245,
+   "label": "대파 Korean Leek",
+   "vendor": "TaiYangFresh",
+   "lineNo": 26,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 247,
+   "label": "깐마늘 Peeled Garlic(Bawang Putih Kopek)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 27,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ],
+    "unit_price": [
+     7.8,
+     7
+    ]
+   }
+  },
+  {
+   "id": 141,
+   "label": "순두부(튜브) Soft Tofu Tube_Sakura 300g(Taufu)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 28,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "pack",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     300
+    ],
+    "unit_price": [
+     1.3,
+     1.5
+    ]
+   }
+  },
+  {
+   "id": 60,
+   "label": "양파 Yellow Onion(Bawang Holland)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 29,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 233,
+   "label": "우유 Milk Good Day UHT Full Cream",
+   "vendor": "Seven Eleven",
+   "lineNo": 30,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "piece",
+     "l"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ],
+    "unit_price": [
+     6.5,
+     5.9
+    ]
+   }
+  },
+  {
+   "id": 19,
+   "label": "양파 Yellow Onion",
+   "vendor": "Bila Bila Mart",
+   "lineNo": 34,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "piece",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     500
+    ],
+    "unit_price": [
+     9,
+     3.9
+    ]
+   }
+  },
+  {
+   "id": 299,
+   "label": "딸기 베이스 STRAWBERRY BASE",
+   "vendor": "Tourmanium(참존)",
+   "lineNo": 36,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "ml"
+    ],
+    "base_quantity": [
+     1,
+     835
+    ]
+   }
+  },
+  {
+   "id": 294,
+   "label": "포도 베이스 GRAPE BASE",
+   "vendor": "Tourmanium(참존)",
+   "lineNo": 37,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "ml"
+    ],
+    "base_quantity": [
+     1,
+     835
+    ]
+   }
+  },
+  {
+   "id": 293,
+   "label": "복숭아 베이스 PEACH BASE",
+   "vendor": "Tourmanium(참존)",
+   "lineNo": 38,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "ml"
+    ],
+    "base_quantity": [
+     1,
+     835
+    ]
+   }
+  },
+  {
+   "id": 296,
+   "label": "오미자 베이스 OMIJA BASE",
+   "vendor": "Tourmanium(참존)",
+   "lineNo": 39,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "ml"
+    ],
+    "base_quantity": [
+     1,
+     835
+    ]
+   }
+  },
+  {
+   "id": 146,
+   "label": "고운흑후추 Black Pepper Powder_McCormick",
+   "vendor": "LSH",
+   "lineNo": 41,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "bottle",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     510
+    ]
+   }
+  },
+  {
+   "id": 120,
+   "label": "빵가루 White Breadcrumbs 面包粉 白色 美天 ALL DAY - 1kg",
+   "vendor": "LSH",
+   "lineNo": 44,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 116,
+   "label": "주방세제 Dishwashing Liquid 3.3L",
+   "vendor": "LSH",
+   "lineNo": 45,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "piece",
+     "l"
+    ],
+    "base_quantity": [
+     1,
+     3.3
+    ],
+    "unit_price": [
+     7.5,
+     8.4
+    ]
+   }
+  },
+  {
+   "id": 109,
+   "label": "식용유(튀김용팜유) Cooking Oil 清油 SAWIT EMAS - 5kg",
+   "vendor": "LSH",
+   "lineNo": 46,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     5
+    ]
+   }
+  },
+  {
+   "id": 115,
+   "label": "식용유 High Oleic Sunflower & Canola Oil 高油酸葵花籽与菜籽油 CLEAR VALLEY- 3kg",
+   "vendor": "LSH",
+   "lineNo": 48,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     3
+    ]
+   }
+  },
+  {
+   "id": 153,
+   "label": "연유 Sweetened Milk 甜奶 TEAPOT PILIHAN - 500g",
+   "vendor": "LSH",
+   "lineNo": 49,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "can",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     500
+    ]
+   }
+  },
+  {
+   "id": 119,
+   "label": "흰설탕 Fine Sugar CSR - 1kg",
+   "vendor": "LSH",
+   "lineNo": 50,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 118,
+   "label": "진간장 LKK Light Light Soy Sauce (Plastic/胶桶) 鲜味生抽 李锦记 LKK - 1.9Litre",
+   "vendor": "LSH",
+   "lineNo": 51,
+   "tier": "SPEC",
+   "sets": {
+    "base_quantity": [
+     1,
+     6
+    ]
+   }
+  },
+  {
+   "id": 190,
+   "label": "백설부침가루1kg Korean Pancake Mix_Beksul",
+   "vendor": "New Seoul Mart",
+   "lineNo": 52,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 203,
+   "label": "진미짜장소스5kg Jjajang Sauce(Jinmi)",
+   "vendor": "New Seoul Mart",
+   "lineNo": 55,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     5
+    ]
+   }
+  },
+  {
+   "id": 211,
+   "label": "소주 참이슬(딸기) Soju (Strawberry Flavour)",
+   "vendor": "New Seoul Mart",
+   "lineNo": 56,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "bottle",
+     "ml"
+    ],
+    "base_quantity": [
+     1,
+     360
+    ]
+   }
+  },
+  {
+   "id": 189,
+   "label": "멸치액젓 하선정 800g Anchovi Sauce 800g",
+   "vendor": "New Seoul Mart",
+   "lineNo": 57,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     800
+    ]
+   }
+  },
+  {
+   "id": 177,
+   "label": "고운 고춧가루1kg Fine Pepper Powder",
+   "vendor": "New Seoul Mart",
+   "lineNo": 58,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 176,
+   "label": "굵은 고춧가루1kg Coarse Pepper Powder",
+   "vendor": "New Seoul Mart",
+   "lineNo": 60,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 174,
+   "label": "핫이슈 밀떡1kg Hot Issue Rice Cake",
+   "vendor": "New Seoul Mart",
+   "lineNo": 61,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 196,
+   "label": "소주 참이슬 (복숭아) Soju (Peach Flavour)",
+   "vendor": "New Seoul Mart",
+   "lineNo": 62,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "bottle",
+     "ml"
+    ],
+    "base_quantity": [
+     1,
+     360
+    ]
+   }
+  },
+  {
+   "id": 178,
+   "label": "백설튀김가루1kg Frying Powder Mix_Beksul",
+   "vendor": "New Seoul Mart",
+   "lineNo": 63,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 26,
+   "label": "가스통 Gas Cylinder (14kg)",
+   "vendor": "DamaiGasServices",
+   "lineNo": 65,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "drum"
+    ]
+   }
+  },
+  {
+   "id": 76,
+   "label": "자루 Broom/Mop Stick",
+   "vendor": "KK Mart",
+   "lineNo": 79,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ]
+   }
+  },
+  {
+   "id": 94,
+   "label": "Yeepi Torch Lighter",
+   "vendor": "KK Mart",
+   "lineNo": 82,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ]
+   }
+  },
+  {
+   "id": 95,
+   "label": "Microfiber Mop",
+   "vendor": "KK Mart",
+   "lineNo": 83,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ]
+   }
+  },
+  {
+   "id": 68,
+   "label": "아이스크림Nestle Nestle Vanilla Icecream",
+   "vendor": "KK Mart",
+   "lineNo": 85,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "l"
+    ],
+    "base_quantity": [
+     1,
+     1.5
+    ]
+   }
+  },
+  {
+   "id": 56,
+   "label": "King Oyster Mushroom",
+   "vendor": "Indus Grocers",
+   "lineNo": 86,
+   "tier": "A",
+   "sets": {
+    "unit_price": [
+     2.25,
+     2.3
+    ]
+   }
+  },
+  {
+   "id": 279,
+   "label": "Kale",
+   "vendor": "Village Grocer",
+   "lineNo": 90,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     80
+    ]
+   }
+  },
+  {
+   "id": 57,
+   "label": "Holland Red & Green Coral Lettuce",
+   "vendor": "Indus Grocers",
+   "lineNo": 95,
+   "tier": "A",
+   "sets": {
+    "unit_price": [
+     6.99,
+     7
+    ]
+   }
+  },
+  {
+   "id": 10,
+   "label": "레몬라임티 SCRIPPO LEMON LIME TEA",
+   "vendor": "AIM coffee",
+   "lineNo": 99,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 11,
+   "label": "초코렛 파우더 Premium Chocolate Powder",
+   "vendor": "AIM coffee",
+   "lineNo": 100,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 54,
+   "label": "식빵 10slices Hokkaido Breads",
+   "vendor": "Hokkaido Bakery",
+   "lineNo": 102,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ],
+    "base_quantity": [
+     1,
+     10
+    ]
+   }
+  },
+  {
+   "id": 62,
+   "label": "쌀 다른 버전 Sawah Mas (Staff Meal)",
+   "vendor": "JASMINE",
+   "lineNo": 104,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     10
+    ]
+   }
+  },
+  {
+   "id": 63,
+   "label": "쌀-자스민 Rice-Jasmin cal fresh 5kg",
+   "vendor": "JASMINE",
+   "lineNo": 105,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     5
+    ]
+   }
+  },
+  {
+   "id": 46,
+   "label": "닭다리 Chicken Drumstick (Medium)",
+   "vendor": "Guan Kee Poultry",
+   "lineNo": 110,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 33,
+   "label": "아몬드 슬라이스 Sliced Almond",
+   "vendor": "Direct",
+   "lineNo": 112,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     120
+    ]
+   }
+  },
+  {
+   "id": 121,
+   "label": "MSG Monosodium Glutamate Ajinomoto 1kg",
+   "vendor": "LSH",
+   "lineNo": 113,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 122,
+   "label": "치킨스톡(파우더)_KNORR Chicken Stock Powder 鸡精粉 家乐牌 KNORR - 1kg",
+   "vendor": "LSH",
+   "lineNo": 114,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 101,
+   "label": "오징어 몸통 링 Frozen Squid Ring With Skin",
+   "vendor": "LSH",
+   "lineNo": 115,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 104,
+   "label": "깐새우 [IQF]PRAWN 31/40 PD(PeeledDeveined) PDTO(PD&Tail-on)",
+   "vendor": "LSH",
+   "lineNo": 116,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ],
+    "unit_price": [
+     13.9,
+     25.5
+    ]
+   }
+  },
+  {
+   "id": 180,
+   "label": "보리차 BARLEY TEA Bag",
+   "vendor": "New Seoul Mart",
+   "lineNo": 117,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "piece",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     300
+    ],
+    "unit_price": [
+     14,
+     8
+    ]
+   }
+  },
+  {
+   "id": 172,
+   "label": "고추장_해찬들태양초알찬17kg Gochujang",
+   "vendor": "New Seoul Mart",
+   "lineNo": 118,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     14
+    ]
+   }
+  },
+  {
+   "id": 21,
+   "label": "감자 Potato",
+   "vendor": "Bila Bila Mart",
+   "lineNo": 120,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 27,
+   "label": "Green Capsicum",
+   "vendor": "De Green Wholesale Enterprise",
+   "lineNo": 123,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 28,
+   "label": "Tomato",
+   "vendor": "De Green Wholesale Enterprise",
+   "lineNo": 124,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 29,
+   "label": "코랄 샐러드 green(red) coral",
+   "vendor": "De Lettuce Bear",
+   "lineNo": 125,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     500
+    ]
+   }
+  },
+  {
+   "id": 30,
+   "label": "믹스샐러드 Mix Salad",
+   "vendor": "De Lettuce Bear",
+   "lineNo": 126,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     500
+    ]
+   }
+  },
+  {
+   "id": 35,
+   "label": "참기름_Chee Seng Sesame Oil*Chee Seng*",
+   "vendor": "Direct",
+   "lineNo": 127,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "piece",
+     "ml"
+    ],
+    "base_quantity": [
+     1,
+     320
+    ],
+    "unit_price": [
+     18.75,
+     18.8
+    ]
+   }
+  },
+  {
+   "id": 50,
+   "label": "닭간 Chicken Liver",
+   "vendor": "Guan Kee Poultry",
+   "lineNo": 128,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 97,
+   "label": "연어 Salmon Fillet with Skin-On WHOLE",
+   "vendor": "Lee's Fandbee Frozen",
+   "lineNo": 131,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ],
+    "unit_price": [
+     57.95,
+     58
+    ]
+   }
+  },
+  {
+   "id": 182,
+   "label": "사골분말 Beef Bone Powder",
+   "vendor": "New Seoul Mart",
+   "lineNo": 132,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 214,
+   "label": "소고기다시다 2kg Beef Stock",
+   "vendor": "New Seoul Mart",
+   "lineNo": 133,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     2
+    ]
+   }
+  },
+  {
+   "id": 173,
+   "label": "미향 오뚜기18L Cooking Vinegar",
+   "vendor": "New Seoul Mart",
+   "lineNo": 134,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "l"
+    ],
+    "base_quantity": [
+     1,
+     18
+    ]
+   }
+  },
+  {
+   "id": 49,
+   "label": "간닭고기 Minced Chicken",
+   "vendor": "NSK",
+   "lineNo": 139,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ],
+    "unit_price": [
+     15.29,
+     15.3
+    ]
+   }
+  },
+  {
+   "id": 265,
+   "label": "레몬 Lemon",
+   "vendor": "TaiYangFresh",
+   "lineNo": 140,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ]
+   }
+  },
+  {
+   "id": 274,
+   "label": "마스킹테이프 Masking Tape 48mm x 40yrds",
+   "vendor": "The Paper Clip & Co",
+   "lineNo": 144,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ]
+   }
+  },
+  {
+   "id": 275,
+   "label": "Fancy Ring Note Book",
+   "vendor": "The Paper Clip & Co",
+   "lineNo": 145,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ]
+   }
+  },
+  {
+   "id": 297,
+   "label": "자몽 베이스 GRAPEFRUIT BASE",
+   "vendor": "Tourmanium(참존)",
+   "lineNo": 146,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "ml"
+    ],
+    "base_quantity": [
+     1,
+     835
+    ]
+   }
+  },
+  {
+   "id": 298,
+   "label": "키위 베이스 KIWI BASE",
+   "vendor": "Tourmanium(참존)",
+   "lineNo": 147,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "ml"
+    ],
+    "base_quantity": [
+     1,
+     835
+    ]
+   }
+  },
+  {
+   "id": 249,
+   "label": "홍고추 Red Chilli (Big) Cili Merah",
+   "vendor": "TaiYangFresh",
+   "lineNo": 148,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 256,
+   "label": "(직원식) Long Bean",
+   "vendor": "TaiYangFresh",
+   "lineNo": 149,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 268,
+   "label": "라임 Lime",
+   "vendor": "TaiYangFresh",
+   "lineNo": 152,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 266,
+   "label": "청고추 Green Chilli (Big) Cili Hijau",
+   "vendor": "TaiYangFresh",
+   "lineNo": 153,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 241,
+   "label": "긴가지(직원식) Eggplant (Terung Panjang)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 155,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 263,
+   "label": "시금치 Spinach (Bayam)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 156,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 264,
+   "label": "두부 Hard Tofu",
+   "vendor": "TaiYangFresh",
+   "lineNo": 157,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ],
+    "base_quantity": [
+     1,
+     10
+    ],
+    "unit_price": [
+     5.5,
+     6
+    ]
+   }
+  },
+  {
+   "id": 255,
+   "label": "(직원식) Ladies finger (Bendi)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 158,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 270,
+   "label": "배추 Chinese(Long)Cabbage",
+   "vendor": "TaiYangFresh",
+   "lineNo": 159,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ],
+    "unit_price": [
+     4.5,
+     4.8
+    ]
+   }
+  },
+  {
+   "id": 257,
+   "label": "롱빈(직원식) Green Beans (Buncis)",
+   "vendor": "TaiYangFresh",
+   "lineNo": 161,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 312,
+   "label": "설거지 세제 대형 STANDARD DISH WASHING LIQUID Green | 10Liters",
+   "vendor": "UGS",
+   "lineNo": 163,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "drum"
+    ]
+   }
+  },
+  {
+   "id": 324,
+   "label": "갈색 천끈 3-PLY NATURAL JUTE TWISTED TWINE RUSTIC CRAFTY STRING ROLL / 100M / Natural Brown",
+   "vendor": "UGS",
+   "lineNo": 173,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "roll"
+    ]
+   }
+  },
+  {
+   "id": 337,
+   "label": "실리콘장갑 (M / 친환경) DISPOSABLEVINYLGLOVE POWDER FREE / Semi-Transparent / M (100pcs x 10boxes)",
+   "vendor": "UGS",
+   "lineNo": 185,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "box"
+    ]
+   }
+  },
+  {
+   "id": 342,
+   "label": "작은 촛불 TEA TABLE CANDLE (100PCS X 20BOXES)",
+   "vendor": "UGS",
+   "lineNo": 188,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "box"
+    ]
+   }
+  },
+  {
+   "id": 344,
+   "label": "주방 바닥 세제 DEODEORIZER FRESH FLOOR KLEEN Lavender Purple | 10Liters",
+   "vendor": "UGS",
+   "lineNo": 190,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "drum"
+    ]
+   }
+  },
+  {
+   "id": 281,
+   "label": "생크림 Cooking Cream Emborg",
+   "vendor": "Village Grocer",
+   "lineNo": 203,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "l"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 283,
+   "label": "망고 큐브 Mango Golden Lily",
+   "vendor": "Village Grocer",
+   "lineNo": 205,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 136,
+   "label": "스프라이트캔 1박스 Sprite (Can)",
+   "vendor": "LSH",
+   "lineNo": 210,
+   "tier": "B",
+   "sets": {
+    "base_quantity": [
+     1,
+     12
+    ],
+    "unit_price": [
+     1.58,
+     19
+    ]
+   }
+  },
+  {
+   "id": 132,
+   "label": "양조식초 White Vinegar 白醋 美天 ALL DAY - 3.4kg",
+   "vendor": "LSH",
+   "lineNo": 211,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     3.4
+    ],
+    "unit_price": [
+     9.5,
+     10.5
+    ]
+   }
+  },
+  {
+   "id": 130,
+   "label": "베이킹소다 Baking Soda Bicarbonate Soda King's 120g",
+   "vendor": "LSH",
+   "lineNo": 214,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "bottle",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     120
+    ]
+   }
+  },
+  {
+   "id": 137,
+   "label": "꿀 Honey 蜜糖 美天 ALL DAY - 1kg",
+   "vendor": "LSH",
+   "lineNo": 215,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "bottle",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 110,
+   "label": "카라멜 간장 Dark Soy Sauce_Cheong Chan 740ml 1022-005",
+   "vendor": "LSH",
+   "lineNo": 216,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "bottle",
+     "ml"
+    ],
+    "base_quantity": [
+     1,
+     740
+    ]
+   }
+  },
+  {
+   "id": 111,
+   "label": "마른 편썬 표고버섯 Sliced Dried Mushroom(Shiitake) 1kg",
+   "vendor": "LSH",
+   "lineNo": 217,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 112,
+   "label": "칵테일 소시지 Chicken Sausage Cocktail_Gourmet Chef",
+   "vendor": "LSH",
+   "lineNo": 218,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 113,
+   "label": "망고시럽 Sunquick Mango Cordial 芒果汁 SUNQUICK - 700ml",
+   "vendor": "LSH",
+   "lineNo": 219,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "bottle",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     800
+    ]
+   }
+  },
+  {
+   "id": 123,
+   "label": "VIT 인스턴트 면 Cyber Fresh Cling Film (450mm)",
+   "vendor": "LSH",
+   "lineNo": 220,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "roll"
+    ]
+   }
+  },
+  {
+   "id": 125,
+   "label": "굴소스_판다 이금기 Oyster Sauce Panda (Tin/铁罐) 熊猫蚝油 李锦记 LKK - 2.2kg",
+   "vendor": "LSH",
+   "lineNo": 221,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     2.2
+    ]
+   }
+  },
+  {
+   "id": 128,
+   "label": "고무줄 Rubber Band",
+   "vendor": "LSH",
+   "lineNo": 222,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     500
+    ]
+   }
+  },
+  {
+   "id": 131,
+   "label": "소다수 F&N Club Soda Water (Can)",
+   "vendor": "LSH",
+   "lineNo": 224,
+   "tier": "SPEC",
+   "sets": {
+    "base_quantity": [
+     1,
+     24
+    ]
+   }
+  },
+  {
+   "id": 133,
+   "label": "마요네즈 Real Mayonnaise_Lady's Choice 3L",
+   "vendor": "LSH",
+   "lineNo": 225,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "l"
+    ],
+    "base_quantity": [
+     1,
+     3
+    ]
+   }
+  },
+  {
+   "id": 124,
+   "label": "VIT 인스턴트 면 Instant Noodle 唯一面 VIT'S - 840g",
+   "vendor": "LSH",
+   "lineNo": 226,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     840
+    ]
+   }
+  },
+  {
+   "id": 134,
+   "label": "쌀가루 Erawan Blended Rice Flour",
+   "vendor": "LSH",
+   "lineNo": 227,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 138,
+   "label": "멸치다시다 Anchovies Seasoning Powder Knorr 1kg",
+   "vendor": "LSH",
+   "lineNo": 228,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 139,
+   "label": "마른 목이버섯 Black Fungus",
+   "vendor": "LSH",
+   "lineNo": 229,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 142,
+   "label": "칼집 오징어몸통 Squid Flower(60%Water)",
+   "vendor": "LSH",
+   "lineNo": 231,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 143,
+   "label": "오징어몸통 [IQF]Squid Cube U10 6/8",
+   "vendor": "LSH",
+   "lineNo": 232,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 144,
+   "label": "게맛살 Crab Sticks_Kanika",
+   "vendor": "LSH",
+   "lineNo": 233,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     500
+    ]
+   }
+  },
+  {
+   "id": 145,
+   "label": "관자 Hokkaido Scallop(20/30) 1kg",
+   "vendor": "LSH",
+   "lineNo": 234,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 105,
+   "label": "깐새우 Peeled Prawn(50/60)(Noodle Prawn) No Tail",
+   "vendor": "LSH",
+   "lineNo": 235,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 147,
+   "label": "사과잼 Apple Jam Homefarm 450g",
+   "vendor": "LSH",
+   "lineNo": 236,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "bottle",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     450
+    ]
+   }
+  },
+  {
+   "id": 148,
+   "label": "생강가루 Ginger Powder 400g",
+   "vendor": "LSH",
+   "lineNo": 237,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     400
+    ]
+   }
+  },
+  {
+   "id": 151,
+   "label": "액젓 Thailand Fish Sauce (Fish/苏昌) 鱼露 PANTAI - 880g",
+   "vendor": "LSH",
+   "lineNo": 239,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "bottle",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     880
+    ],
+    "unit_price": [
+     2.85,
+     2.9
+    ]
+   }
+  },
+  {
+   "id": 156,
+   "label": "쓰레기봉투_L Heavy Duty Garbage Bag[XL Size]",
+   "vendor": "LSH",
+   "lineNo": 242,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ],
+    "base_quantity": [
+     1,
+     10
+    ]
+   }
+  },
+  {
+   "id": 157,
+   "label": "쓰레기봉투_XL Heavy Duty Garbage Bag[L Size]",
+   "vendor": "LSH",
+   "lineNo": 243,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ],
+    "base_quantity": [
+     1,
+     8
+    ]
+   }
+  },
+  {
+   "id": 158,
+   "label": "클로록스(락스) Clorox Bleach 漂白水 POREX - 4Litre",
+   "vendor": "LSH",
+   "lineNo": 244,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "l"
+    ],
+    "base_quantity": [
+     1,
+     4
+    ]
+   }
+  },
+  {
+   "id": 159,
+   "label": "부탄가스 Gas Cartridge 小型煤气 YEEPI - 230g",
+   "vendor": "LSH",
+   "lineNo": 245,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ],
+    "base_quantity": [
+     1,
+     4
+    ]
+   }
+  },
+  {
+   "id": 162,
+   "label": "달_직원식 Dried India Dhal_All day 1kg",
+   "vendor": "LSH",
+   "lineNo": 247,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 163,
+   "label": "찹쌀가루 Glutinous Rice Flour_Three Goats 500g",
+   "vendor": "LSH",
+   "lineNo": 248,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     500
+    ]
+   }
+  },
+  {
+   "id": 164,
+   "label": "밀가루 Multipurpose Flour_Baker's Choice 1kg",
+   "vendor": "LSH",
+   "lineNo": 249,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ],
+    "unit_price": [
+     3.25,
+     3.3
+    ]
+   }
+  },
+  {
+   "id": 167,
+   "label": "감자튀김 프렌치프라이 French Fries[Shoestring Cut 7mm]_Farm Frites",
+   "vendor": "LSH",
+   "lineNo": 251,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     2
+    ],
+    "unit_price": [
+     20.45,
+     20.5
+    ]
+   }
+  },
+  {
+   "id": 193,
+   "label": "김가루 1kg Crunch Seasoned Seaweed",
+   "vendor": "New Seoul Mart",
+   "lineNo": 256,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 198,
+   "label": "꿀유자차 Honey Citron Tea",
+   "vendor": "New Seoul Mart",
+   "lineNo": 260,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "bottle",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ],
+    "unit_price": [
+     0,
+     32
+    ]
+   }
+  },
+  {
+   "id": 183,
+   "label": "대림부산어묵1kg Fish Cake_Daerim Busan",
+   "vendor": "New Seoul Mart",
+   "lineNo": 261,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 206,
+   "label": "베트남 고운 고춧가루1kg Fine Spicy Pepper Powder",
+   "vendor": "New Seoul Mart",
+   "lineNo": 262,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 186,
+   "label": "물엿 청정원18kg Corn Syrup",
+   "vendor": "New Seoul Mart",
+   "lineNo": 263,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     18
+    ]
+   }
+  },
+  {
+   "id": 187,
+   "label": "오뚜기 카레 순한맛 1kg Curry Powder Mild 1kg_Otoki",
+   "vendor": "New Seoul Mart",
+   "lineNo": 264,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 191,
+   "label": "김밥 단무지2.8kg Kimbob Yellow Pickled Radish",
+   "vendor": "New Seoul Mart",
+   "lineNo": 265,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     2.8
+    ]
+   }
+  },
+  {
+   "id": 192,
+   "label": "꿀대추청 꽃샘 Honey Jujube",
+   "vendor": "New Seoul Mart",
+   "lineNo": 266,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 197,
+   "label": "갈아만든배 1박스 Crushed Pear",
+   "vendor": "New Seoul Mart",
+   "lineNo": 267,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ],
+    "base_quantity": [
+     1,
+     12
+    ]
+   }
+  },
+  {
+   "id": 201,
+   "label": "소주 참이슬 패트병 1.8L Soju PET bottle_1.8L",
+   "vendor": "New Seoul Mart",
+   "lineNo": 269,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "bottle",
+     "l"
+    ],
+    "base_quantity": [
+     1,
+     1.8
+    ]
+   }
+  },
+  {
+   "id": 202,
+   "label": "미른미역_해농 Dry Seaweed_해농",
+   "vendor": "New Seoul Mart",
+   "lineNo": 270,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ],
+    "unit_price": [
+     11.55,
+     11.6
+    ]
+   }
+  },
+  {
+   "id": 207,
+   "label": "CJ해찬들 재래식된장 14kg Korean Traditional Soybean Paste_CJ",
+   "vendor": "New Seoul Mart",
+   "lineNo": 273,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     14
+    ]
+   }
+  },
+  {
+   "id": 208,
+   "label": "단팥 Red beans for Bingsu",
+   "vendor": "New Seoul Mart",
+   "lineNo": 274,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "kg"
+    ],
+    "base_quantity": [
+     1,
+     3
+    ]
+   }
+  },
+  {
+   "id": 210,
+   "label": "소주 참이슬 Soju (Plain Flavour)",
+   "vendor": "New Seoul Mart",
+   "lineNo": 276,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "bottle",
+     "ml"
+    ],
+    "base_quantity": [
+     1,
+     360
+    ]
+   }
+  },
+  {
+   "id": 212,
+   "label": "불맛기름_시아스 500g Smoke Flavor Oil",
+   "vendor": "New Seoul Mart",
+   "lineNo": 277,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     500
+    ]
+   }
+  },
+  {
+   "id": 213,
+   "label": "뉴슈가_담울 60g New Sugar",
+   "vendor": "New Seoul Mart",
+   "lineNo": 278,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     60
+    ]
+   }
+  },
+  {
+   "id": 215,
+   "label": "백설빵가루1kg Bread crumbs",
+   "vendor": "New Seoul Mart",
+   "lineNo": 279,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 217,
+   "label": "중화면 면사랑 Chinese Style Noodle",
+   "vendor": "New Seoul Mart",
+   "lineNo": 281,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     1150
+    ]
+   }
+  },
+  {
+   "id": 220,
+   "label": "오쉐프순후추450g O'shef Block Pepper Powder_Otoki",
+   "vendor": "New Seoul Mart",
+   "lineNo": 283,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "bottle",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     450
+    ]
+   }
+  },
+  {
+   "id": 221,
+   "label": "소면 CJ/오뚜기900g Plain Noodle",
+   "vendor": "New Seoul Mart",
+   "lineNo": 284,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     900
+    ]
+   }
+  },
+  {
+   "id": 222,
+   "label": "화유 500ml-Sias Fire oil",
+   "vendor": "New Seoul Mart",
+   "lineNo": 285,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     500
+    ]
+   }
+  },
+  {
+   "id": 175,
+   "label": "과일맛종합캔디-아리랑 Fruit Candy_Arirang",
+   "vendor": "New Seoul Mart",
+   "lineNo": 286,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     780
+    ]
+   }
+  },
+  {
+   "id": 195,
+   "label": "꿀생강청 꽃샘 Honey ginger",
+   "vendor": "New Seoul Mart",
+   "lineNo": 287,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ],
+    "unit_price": [
+     29,
+     32
+    ]
+   }
+  },
+  {
+   "id": 223,
+   "label": "조갯살 Cockle Meat(Blood Clam) 300/500 PCS_Crustacean 20% Glazing",
+   "vendor": "Nikudo",
+   "lineNo": 288,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "pack",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     500
+    ],
+    "unit_price": [
+     0.25,
+     0.3
+    ]
+   }
+  },
+  {
+   "id": 106,
+   "label": "깐새우 VANNAMEI PD IQF 31/40;10% GLAZING",
+   "vendor": "Nikudo",
+   "lineNo": 289,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     500
+    ]
+   }
+  },
+  {
+   "id": 107,
+   "label": "깐새우 VANNAMEI PD IQF 41/50;10% GLAZING",
+   "vendor": "Nikudo",
+   "lineNo": 290,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     500
+    ]
+   }
+  },
+  {
+   "id": 227,
+   "label": "낙지_큰사이즈손질된 Octopus Long Leg Whole Clean Cut_Cephalopod",
+   "vendor": "Nikudo",
+   "lineNo": 291,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     500
+    ]
+   }
+  },
+  {
+   "id": 102,
+   "label": "오징어 몸통 링 SQUID RING (NET:35%) 鱿鱼圈",
+   "vendor": "Nikudo",
+   "lineNo": 294,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "kg"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ]
+   }
+  },
+  {
+   "id": 231,
+   "label": "올리브오일 Olive Oil",
+   "vendor": "NSK",
+   "lineNo": 295,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "ml"
+    ],
+    "base_quantity": [
+     1,
+     250
+    ]
+   }
+  },
+  {
+   "id": 234,
+   "label": "오트우유 Oat Milk(Oat Side) Farmerly",
+   "vendor": "Seven Eleven",
+   "lineNo": 301,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "piece",
+     "l"
+    ],
+    "order_mode": [
+     "pack",
+     "measure"
+    ],
+    "unit_price": [
+     9.9,
+     8.9
+    ]
+   }
+  },
+  {
+   "id": 236,
+   "label": "메이플시럽 Maple Syrup_COTTEES",
+   "vendor": "Shopee",
+   "lineNo": 302,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "l"
+    ],
+    "base_quantity": [
+     1,
+     3
+    ]
+   }
+  },
+  {
+   "id": 237,
+   "label": "궁중약과 Yakgwa",
+   "vendor": "Sinsunmi Mart",
+   "lineNo": 303,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ],
+    "base_quantity": [
+     1,
+     8
+    ]
+   }
+  },
+  {
+   "id": 98,
+   "label": "프랑크소시지(닭) Lees Chicken Frank 32ea",
+   "vendor": "Lee's Fandbee Frozen",
+   "lineNo": 304,
+   "tier": "B",
+   "sets": {
+    "unit": [
+     "piece",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     340
+    ],
+    "unit_price": [
+     5.49,
+     5.5
+    ]
+   }
+  },
+  {
+   "id": 64,
+   "label": "다목적 밀가루 Faiza Tepung Gandum",
+   "vendor": "Jaya Grocer",
+   "lineNo": 305,
+   "tier": "A",
+   "sets": {
+    "unit_price": [
+     3.89,
+     3.9
+    ]
+   }
+  },
+  {
+   "id": 74,
+   "label": "옥수수전분 Corn Starch Pantai Tepung Jagung",
+   "vendor": "KK Mart",
+   "lineNo": 308,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "g"
+    ],
+    "base_quantity": [
+     1,
+     300
+    ]
+   }
+  },
+  {
+   "id": 77,
+   "label": "클립 Paper Clip",
+   "vendor": "KK Mart",
+   "lineNo": 310,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "box"
+    ]
+   }
+  },
+  {
+   "id": 84,
+   "label": "초코아이스크림Nestle Nestle Chocolate Icecream",
+   "vendor": "KK Mart",
+   "lineNo": 316,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "piece",
+     "l"
+    ],
+    "base_quantity": [
+     1,
+     1.5
+    ]
+   }
+  },
+  {
+   "id": 88,
+   "label": "주방 쓰레기 봉투 GARBAGE BIN BAG (81cm*110cm) XL 10ea",
+   "vendor": "KK Mart",
+   "lineNo": 319,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ],
+    "base_quantity": [
+     1,
+     10
+    ]
+   }
+  },
+  {
+   "id": 92,
+   "label": "Mop Head",
+   "vendor": "KK Mart",
+   "lineNo": 323,
+   "tier": "SPEC",
+   "sets": {
+    "unit": [
+     "pack",
+     "piece"
+    ]
+   }
+  }
+ ]
+}

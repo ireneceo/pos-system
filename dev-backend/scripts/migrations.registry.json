@@ -54,6 +54,7 @@
     "migrate-track-stock-default-off.js",
     "migrate-user-contexts.js",
     "migrate-user-is-active.js",
+    "migrate-vina-spec-20260830.js",
     "promote-reservations-to-base.js",
     "register-brand-menus-module.js",
     "sprint4-migration.js",
