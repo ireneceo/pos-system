@@ -383,6 +383,12 @@ const OrderModeOption = styled.label<{ $active: boolean }>`
   &:hover { border-color: #635BFF; }
 `;
 
+const PriceMeaning = styled.div`
+  margin-top: 5px;
+  font-size: 12px;
+  color: #6B7280;
+`;
+
 const OrderModeHint = styled.div`
   margin-top: 6px;
   font-size: 12px;
@@ -1056,6 +1062,20 @@ const SupplierProductsTab: React.FC<Props> = ({
                   placeholder="0.00"
                   required
                 />
+                {/*
+                  "가격을 어떻게 설정해?" — 화면에 설명이 없어서 나온 질문이다(2026-08-30 Irene).
+                  같은 숫자 칸이지만 주문 방식에 따라 **무엇 1개당 가격인지**가 달라진다.
+                */}
+                <PriceMeaning>
+                  {!formData.unit
+                    // 단위를 아직 안 고르면 규격 문구를 만들 수 없다 — 억지로 "1 unit of 1" 같은 말을 만들지 않는다.
+                    ? t('products.priceMeaning.needUnit', 'Choose a unit below to see what this price covers')
+                    : formData.order_mode === 'measure'
+                      ? t('products.priceMeaning.measure', 'Price per 1 {{unit}}', { unit: formData.unit })
+                      : t('products.priceMeaning.pack', 'Price per 1 unit of {{spec}}', {
+                          spec: `${formData.base_quantity || 1}${formData.unit}`
+                        })}
+                </PriceMeaning>
               </UIFormGroup>
 
               <UIFormGroup>
@@ -1068,6 +1088,14 @@ const SupplierProductsTab: React.FC<Props> = ({
                   onChange={(e) => setFormData({ ...formData, base_quantity: e.target.value })}
                   placeholder="1"
                 />
+                {/*
+                  Unit 은 **내용물 단위**가 정본이다(2026-08-30 규약). 용기 이름(포대·박스)을 담는
+                  별도 컬럼이 없어서, Unit 에 'bag' 을 넣으면 단위당 가격 비교가 원천 불가해진다.
+                */}
+                <PriceMeaning>
+                  {t('products.fields.baseQuantityHint',
+                    'If sold in packs, put the content unit here (kg, g) and the amount in Base Qty (e.g. 5)')}
+                </PriceMeaning>
               </UIFormGroup>
 
               <UIFormGroup>

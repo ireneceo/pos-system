@@ -64,7 +64,8 @@
       "lowStockThreshold": "Had Stok Rendah",
       "leadTimeDays": "Masa Hantaran (hari)",
       "isActive": "Aktif",
-      "orderMode": "Kaedah Pesanan"
+      "orderMode": "Kaedah Pesanan",
+      "baseQuantityHint": "Jika dijual dalam pek, isi unit kandungan (kg, g) di Unit dan jumlahnya di Base Qty (cth: 5)"
     },
     "categoryManagement": "Pengurusan Kategori",
     "optionGroups": "Kumpulan Pilihan",
@@ -79,6 +80,11 @@
       "measure": "Ikut berat atau isi padu (kg, g, L, ml)",
       "packHint": "Pembeli pesan seperti '3 unit'{{spec}}",
       "measureHint": "Pembeli pesan seperti '2.5 {{unit}}'"
+    },
+    "priceMeaning": {
+      "measure": "Harga bagi 1 {{unit}}",
+      "pack": "Harga bagi 1 unit {{spec}}",
+      "needUnit": "Pilih unit di bawah untuk melihat asas harga ini"
     }
   },
   "inventory": {

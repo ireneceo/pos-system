@@ -2191,22 +2191,33 @@ const NewPurchaseOrderPage: React.FC = () => {
                         )}
                       </div>
                       {(() => {
-                        // 무게·부피로 주문하는 품목이면 판매자 단위(kg/L)를, 아니면 재고 단위를 따른다.
+                        // 수량 접미 = **판매 단위, 항상**. 무엇을 몇 개/몇 kg 담고 있는지 숫자 옆에서 바로 읽혀야 한다.
+                        //   그전엔 measure 에만 붙여서 팩 상품은 수량 옆이 비어 있었다(2026-08-30 Irene 지적).
+                        //   모드가 가르는 것은 **소수 허용 여부**뿐이다: measure=0.01 스텝, pack=1 스텝.
                         const isMeasure = seller?.order_mode === 'measure';
-                        const qtyUnit = isMeasure ? (seller?.seller_unit || row.ingredient_unit) : row.ingredient_unit;
+                        const qtyUnit = seller?.seller_unit || row.ingredient_unit || '';
+                        // 표기 규약 (2026-08-30 확정) — `unit` 은 **내용물 단위**가 정본이다.
+                        //   판매 단위(포대·박스)를 담는 별도 컬럼이 없어서, 규격을 그대로 병기하면
+                        //   "pack·3pack" 처럼 겹쳤다. 용기 이름은 계산에 안 쓰이는 장식이므로 표기에서 뺀다.
+                        //     pack + 규격>1 → `3 × 5kg`   (포대라는 낱말 없이도 무해석으로 읽힌다)
+                        //     pack + 규격=1 → `3 piece`
+                        //     measure       → `1.5 kg`
+                        const bq = Number(seller?.base_quantity);
+                        const hasSpec = !isMeasure && Number.isFinite(bq) && bq > 1 && qtyUnit;
+                        const suffix = hasSpec ? `× ${bq}${qtyUnit}` : qtyUnit;
                         return (
                           <QtyWrap>
                             <QtyInput
                               type="number"
                               min={0}
-                              step={qtyStepForUnit(qtyUnit)}
+                              step={isMeasure ? qtyStepForUnit(qtyUnit) : 1}
                               value={row.quantity}
                               onChange={(e) => updateRow(row.cart_key, {
                                 quantity: Math.max(0, parseFloat(e.target.value) || 0)
                               })}
-                              style={isMeasure && qtyUnit ? { paddingRight: 26, textAlign: 'left' } : undefined}
+                              style={suffix ? { paddingRight: Math.min(64, 12 + suffix.length * 6), textAlign: 'left' } : undefined}
                             />
-                            {isMeasure && qtyUnit && <QtyUnit>{qtyUnit}</QtyUnit>}
+                            {suffix && <QtyUnit title={suffix}>{suffix}</QtyUnit>}
                           </QtyWrap>
                         );
                       })()}

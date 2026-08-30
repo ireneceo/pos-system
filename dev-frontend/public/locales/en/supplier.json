@@ -64,7 +64,8 @@
       "lowStockThreshold": "Low Stock Threshold",
       "leadTimeDays": "Lead Time (days)",
       "isActive": "Active",
-      "orderMode": "Order Method"
+      "orderMode": "Order Method",
+      "baseQuantityHint": "If sold in packs, put the content unit here (kg, g) and the amount in Base Qty (e.g. 5)"
     },
     "categoryManagement": "Category Management",
     "optionGroups": "Option Groups",
@@ -79,6 +80,11 @@
       "measure": "By weight or volume (kg, g, L, ml)",
       "packHint": "Buyers order like '3 units'{{spec}}",
       "measureHint": "Buyers order like '2.5 {{unit}}'"
+    },
+    "priceMeaning": {
+      "measure": "Price per 1 {{unit}}",
+      "pack": "Price per 1 unit of {{spec}}",
+      "needUnit": "Choose a unit below to see what this price covers"
     }
   },
   "inventory": {
