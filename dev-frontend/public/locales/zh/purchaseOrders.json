@@ -344,7 +344,8 @@
     "allCategoriesFilter": "全部类别",
     "uncategorized": "未分类",
     "priceNotSet": "未设置价格",
-    "minOrder": "最少"
+    "minOrder": "最少",
+    "needsUnitSetup": "需确认单位"
   },
   "staging": {
     "noPhoneTitle": "无电话号码",

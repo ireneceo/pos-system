@@ -1,7 +1,7 @@
 {
  "note": "운영 배포 시점 소스 지문 — deploy-to-production.sh 성공 후 자동 기록. 수동 편집 금지.",
- "created_at": "2026-08-30T18:56:58.685Z",
- "file_count": 1844,
+ "created_at": "2026-08-30T19:27:11.267Z",
+ "file_count": 1846,
  "files": {
   "CLAUDE.md": "c7ef544cb7e7e2a44a1c930b240c4f13145e18517ac8fa53a9269e2e4ff80e5e",
   "deploy-to-production.sh": "9f43e47b38b5645ed972f4c4dfb1c1213e84ec540c11dd0d0b5513dd79551a07",
@@ -436,6 +436,7 @@
   "dev-backend/scripts/convert-to-webp.js": "406e3b4cde6658c0b33c7342f18f54149c8f293d986e3a1a9f0b52531a00da88",
   "dev-backend/scripts/create-membership-tables.js": "ebb52002151fc69da211ca10c8043e3ce00d71438c9c121839577b6626686251",
   "dev-backend/scripts/create-release-post.js": "a638e0adebbdd2b15a555bb3f9b1264e20f279c4eb578c2114556c733f154f43",
+  "dev-backend/scripts/data/vina-spec-20260830.json": "d04475b1257daded185cf2b674fadbac21439a84ce9a698fbc276bb8f4552665",
   "dev-backend/scripts/data/withmin-supply-import.tsv": "b69ef7d8372b02476ef5fbb926b6cb57687dd3e63ad540c84487270eecdba1eb",
   "dev-backend/scripts/deploy-manifest.js": "273127f27da1facee28dc3761b11ec0a314e4286bc214fa394391788af5d1bea",
   "dev-backend/scripts/design-guard-baseline.json": "81fa69c245457ba4b610c3ef3294f51175e78dee9697a806a299d794b6be49ce",
@@ -528,7 +529,8 @@
   "dev-backend/scripts/migrate-track-stock-default-off.js": "d0b1a08448d03dbe80a02ae626006c97156aa69946d1468e9d1c5b481e401a24",
   "dev-backend/scripts/migrate-user-contexts.js": "549183e39ac6bb5ba94f41a3051108363a8b1f6eb16d50c80816ed5b0a4698c4",
   "dev-backend/scripts/migrate-user-is-active.js": "339231628682082e62018a444db8fc7cf8a492ce913e0ab8e45d043092e7e945",
-  "dev-backend/scripts/migrations.registry.json": "a2af7c8afc5ace5f56243387eda42f4dcade9f8d4b7934f09352247016f8716a",
+  "dev-backend/scripts/migrate-vina-spec-20260830.js": "0f32fd6db0f672f99eae2bdf71f5b22b5d0965b82a7016eb0c3a78cb4bccef45",
+  "dev-backend/scripts/migrations.registry.json": "48eeb84bf7b88e212fa969b427f2c542a5085ac04c347a0210d39eb3fbbc86ec",
   "dev-backend/scripts/migrations/add_brand_menu_scope.sql": "f72ed9e4844cacfe140a728ba93606abd720b400b91f4d83aa05ff3921996897",
   "dev-backend/scripts/migrations/add_product_set_only.sql": "67adbac36518eb3f97f9a798e8ea1419e016729a9edbb02fb7d9c23872a88dd1",
   "dev-backend/scripts/normalize-phone-numbers.js": "6d30a8f5e85b9fba726bfe173a95deadee9c7f4082a308bc225d9899d747d995",

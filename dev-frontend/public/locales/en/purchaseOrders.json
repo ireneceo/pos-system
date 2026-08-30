@@ -344,7 +344,8 @@
     "allCategoriesFilter": "All categories",
     "uncategorized": "Uncategorized",
     "priceNotSet": "Price not set",
-    "minOrder": "Min"
+    "minOrder": "Min",
+    "needsUnitSetup": "Check unit"
   },
   "staging": {
     "noPhoneTitle": "No Phone Number",

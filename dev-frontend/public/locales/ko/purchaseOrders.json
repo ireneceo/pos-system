@@ -344,7 +344,8 @@
     "allCategoriesFilter": "전체 카테고리",
     "uncategorized": "미분류",
     "priceNotSet": "가격 미설정",
-    "minOrder": "최소"
+    "minOrder": "최소",
+    "needsUnitSetup": "단위 확인 필요"
   },
   "staging": {
     "noPhoneTitle": "전화번호 없음",

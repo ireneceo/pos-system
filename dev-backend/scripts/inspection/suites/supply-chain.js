@@ -108,23 +108,77 @@ module.exports = {
          ${norm(a)} <> ${norm(b)}
          AND NOT (${norm(a)} IN (${synList}) AND ${norm(b)} IN (${synList}))`;
 
+    // ⚠ **모드 인지형** (2026-08-30 개정) — `unit` 의미가 바뀌며 이 검사의 전제도 바뀌었다.
+    //   단가표 반영 후 `supplier_products.unit` 은 **판매 단위가 아니라 내용물 단위**다(5kg 들이의 kg).
+    //   그러면 pack 모드에서 "재고 piece ↔ 판매자 kg" 은 불일치가 아니다 — 주문 수량은 여전히 팩 수라
+    //   1팩 주문 = 재고 +1개가 맞다. 옛 규칙은 이런 행 90건을 오탐으로 잡았다.
+    //   ⛔ 오탐만 걷어내고 **진짜 위험 2종은 오히려 강화**한다:
+    //     ① measure + 재고 개수단위 → 1kg 주문이 재고 +1개
+    //     ② pack + 재고 연속단위    → conv 가 base×단위계수와 어긋나면 1팩이 1g
+    //   ⚠ **차원(질량/부피)을 반드시 구분한다.** kg 와 L 은 둘 다 계수 1000 이라
+    //      한 표에 담으면 `kg ↔ L` 이 want=1 로 "계산됨" 처리되어 통과한다 —
+    //      질량↔부피는 밀도를 알아야 하므로 **기계가 정할 수 없다**(2026-08-30 실측으로 발견:
+    //      Test Oil kg↔L conv=1 이 조용히 통과하고 있었다).
+    const DIM = { g: 'mass', kg: 'mass', ml: 'vol', l: 'vol' };
+    const UNIT_FACTOR = { g: 1, kg: 1000, ml: 1, l: 1000 };
+    const isContinuous = (u) => !!DIM[String(u || '').trim().toLowerCase()];
+    const dim = (u) => DIM[String(u || '').trim().toLowerCase()];
+    const sameDim = (a, b) => !!dim(a) && dim(a) === dim(b);
+    const factor = (u) => UNIT_FACTOR[String(u || '').trim().toLowerCase()];
+
     const convRows = [];
     for (const leg of [
       { type: 'supplier', table: 'supplier_products' },
       { type: 'brand', table: 'brand_products' },
     ]) {
+      // 브랜드 판매상품에는 order_mode/base_quantity 컬럼이 없다 — pack·1 로 본다.
+      const modeCol = leg.type === 'supplier' ? 's.order_mode' : "'pack'";
+      const baseCol = leg.type === 'supplier' ? 's.base_quantity' : '1';
       const rows = (await q(`
-        SELECT isp.id, i.name, i.unit AS stock_unit, s.unit AS seller_unit, '${leg.type}' AS leg
+        SELECT isp.id, i.name, i.unit AS stock_unit, s.unit AS seller_unit,
+               ${modeCol} AS order_mode, ${baseCol} AS base_quantity,
+               isp.unit_conversion AS conv, '${leg.type}' AS leg
           FROM ingredient_seller_products isp
           JOIN ingredients i ON i.id = isp.ingredient_id
           JOIN \`${leg.table}\` s ON s.id = isp.seller_product_id
          WHERE isp.is_active = 1
            AND isp.seller_type = '${leg.type}'
-           AND isp.unit_conversion = 1
            AND i.unit IS NOT NULL AND s.unit IS NOT NULL
            AND ${mismatchClause('i.unit', 's.unit')}
-         LIMIT 50`));
-      convRows.push(...rows);
+         LIMIT 300`));
+      for (const r of rows) {
+        const stockCont = isContinuous(r.stock_unit);
+        const conv = Number(r.conv);
+        if (r.order_mode === 'measure') {
+          if (!stockCont) {
+            convRows.push({ ...r, why: '무게·부피로 주문하는데 재고는 개수 단위 — 1kg 주문이 재고 1개로 들어간다' });
+            continue;
+          }
+          if (!sameDim(r.seller_unit, r.stock_unit)) {
+            convRows.push({ ...r, why: `${r.seller_unit} ↔ ${r.stock_unit} 는 질량↔부피라 기계가 환산할 수 없다 — 사람이 넣어야 한다` });
+            continue;
+          }
+          const want = factor(r.seller_unit) / factor(r.stock_unit);
+          if (Math.abs(conv - want) > 1e-6) {
+            convRows.push({ ...r, why: `환산비가 ${conv} 인데 단위상 ${want} 여야 한다` });
+          }
+          continue;
+        }
+        // pack — 주문 수량은 팩 수. 재고가 개수면 conv=1 이 정상이므로 잡지 않는다.
+        if (!stockCont) continue;
+        if (isContinuous(r.seller_unit)) {
+          if (!sameDim(r.seller_unit, r.stock_unit)) {
+            convRows.push({ ...r, why: `${r.seller_unit} ↔ ${r.stock_unit} 는 질량↔부피라 기계가 환산할 수 없다 — 사람이 넣어야 한다` });
+          } else {
+            const want = Number(r.base_quantity) * factor(r.seller_unit) / factor(r.stock_unit);
+            if (Math.abs(conv - want) > 1e-6) {
+              convRows.push({ ...r, why: `1팩 = ${r.base_quantity}${r.seller_unit} 이므로 환산비 ${want} 여야 하는데 ${conv}` });
+            }
+          }
+        } else if (conv === 1) {
+          convRows.push({ ...r, why: '재고는 무게·부피인데 판매 단위가 개수 — 1팩이 몇 g인지 사람이 넣어야 한다' });
+        }
+      }
     }
 
     // 표본 0 = 검사기 고장 판정 (collate 누락·조인 붕괴로 조용히 0건이 되는 것을 잡는다).
@@ -157,8 +211,8 @@ module.exports = {
     } else {
       for (const r of convRows) {
         const pair = `${String(r.stock_unit).trim().toLowerCase()}↔${String(r.seller_unit).trim().toLowerCase()}`;
-        add(`R-SC-007 #${r.id}[${r.leg}] ${pair} conv=1`, false,
-          `${r.name} — 입고 수량이 환산 없이 기록된다. 환산비를 사람이 입력해야 한다(⛔ 자동 백필 금지)`);
+        add(`R-SC-007 #${r.id}[${r.leg}] ${pair} conv=${r.conv}`, false,
+          `${r.name} — ${r.why} (⛔ 자동 백필 금지)`);
       }
     }
 

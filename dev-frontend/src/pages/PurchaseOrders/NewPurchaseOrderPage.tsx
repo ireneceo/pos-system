@@ -213,6 +213,46 @@ const perUnitPriceOf = (seller?: Partial<SellerOpt> | null): number => {
   return Number.isFinite(bq) && bq > 0 ? price / bq : price;
 };
 
+/**
+ * 단위 설정이 덜 끝난 링크인가 — **판정 기준은 인스펙션 R-SC-007 과 동일**하다.
+ *   (dev-backend/scripts/inspection/suites/supply-chain.js)
+ * ⛔ 프론트에 별도 판정 로직을 만들지 말 것 — 화면과 검사기가 서로 다른 말을 하게 된다.
+ *
+ *   measure + 재고가 개수 단위  → 1kg 주문이 재고 +1개로 들어간다 (환산 미확정)
+ *   measure + 재고가 연속 단위  → conv 가 단위계수와 맞아야 한다
+ *   pack    + 재고가 개수 단위  → conv=1 이 정상 (주문 = 팩 수)
+ *   pack    + 재고가 연속 단위  → conv 가 base×단위계수와 맞아야 한다
+ */
+// ⚠ **차원(질량/부피)을 구분한다.** kg 와 L 은 둘 다 계수 1000 이라 한 표에 담으면
+//    `kg ↔ L` 이 want=1 로 "계산됨" 처리되어 통과한다 — 질량↔부피는 밀도를 알아야 하므로
+//    기계가 정할 수 없다(2026-08-30 실측: Test Oil kg↔L conv=1 이 조용히 통과하고 있었다).
+const UNIT_DIM: Record<string, 'mass' | 'vol'> = { g: 'mass', kg: 'mass', ml: 'vol', l: 'vol' };
+const UNIT_FACTOR: Record<string, number> = { g: 1, kg: 1000, ml: 1, l: 1000 };
+const dimOf = (u?: string | null) => UNIT_DIM[String(u || '').trim().toLowerCase()];
+const isContinuousUnit = (u?: string | null) => !!dimOf(u);
+const sameDim = (a?: string | null, b?: string | null) => !!dimOf(a) && dimOf(a) === dimOf(b);
+const unitFactor = (u?: string | null) => UNIT_FACTOR[String(u || '').trim().toLowerCase()];
+
+const needsUnitSetup = (seller?: Partial<SellerOpt> | null, stockUnit?: string | null): boolean => {
+  if (!seller || !seller.seller_unit || !stockUnit) return false;
+  const stockCont = isContinuousUnit(stockUnit);
+  const conv = Number(seller.unit_conversion);
+  if (!Number.isFinite(conv)) return true;
+  if (seller.order_mode === 'measure') {
+    if (!stockCont) return true;                       // 개수로 세는데 무게로 주문 = 환산 불가
+    if (!sameDim(seller.seller_unit, stockUnit)) return true;   // 질량↔부피 = 사람만 앎
+    const want = unitFactor(seller.seller_unit)! / unitFactor(stockUnit)!;
+    return Math.abs(conv - want) > 1e-6;
+  }
+  if (!stockCont) return false;                        // pack × 개수재고 = 정상
+  if (isContinuousUnit(seller.seller_unit)) {
+    if (!sameDim(seller.seller_unit, stockUnit)) return true;   // 질량↔부피 = 사람만 앎
+    const want = Number(seller.base_quantity) * unitFactor(seller.seller_unit)! / unitFactor(stockUnit)!;
+    return Math.abs(conv - want) > 1e-6;
+  }
+  return conv === 1;                                   // 재고는 무게인데 판매 단위가 개수
+};
+
 const CART_WIDTH_KEY = 'po_cart_width';
 const CART_WIDTH_DEFAULT = 380;
 const CART_WIDTH_MIN = 320;
@@ -1926,9 +1966,10 @@ const NewPurchaseOrderPage: React.FC = () => {
                         : `${row.sellers.length} ${t('newPo.vendors', 'vendors')}`;
                       // 최소주문 표시도 소수 대응 — measure 의 "최소 0.5kg" 이 "1" 로 보이면 거짓말이다.
                       const minOrderText = minOrder > 1 ? ` · ${t('newPo.minOrder', 'Min')} ${formatQuantity(minOrder)}` : '';
-                      vendorText = isList
-                        ? `${vendorName}${minOrderText}`
-                        : `/${row.unit || 'unit'} · ${vendorName}${minOrderText}`;
+                      // 가격 옆 단위는 **어느 뷰에서든 항상** 붙는다.
+                      //   목록 뷰만 단위를 떨어뜨려 "3.30" 이 무엇 기준인지 알 수 없었다(2026-08-30 Irene 지적).
+                      //   minPer 는 conv 까지 나눈 **재고 단위당** 가격이므로 단위는 row.unit 이다.
+                      vendorText = `/${row.unit || 'unit'} · ${vendorName}${minOrderText}`;
                     }
                     const noSellerText = row.is_brand_shared
                       ? (t('newPo.brandNeedsLink', 'Your brand has not linked a supplier to this item yet') as string)
@@ -1941,6 +1982,9 @@ const NewPurchaseOrderPage: React.FC = () => {
                         {row.is_brand_shared && <Badge $variant="shared">{t('newPo.brandStock', 'Brand stock')}</Badge>}
                         {!inCart && !hasSeller && !row.is_brand_shared && !isList && <Badge $variant="warning">{t('newPo.connectCta', 'Click to connect supplier →')}</Badge>}
                         {!inCart && hasSeller && !isList && <Badge $variant="success">{t('newPo.linked', 'Linked')}</Badge>}
+                        {hasSeller && needsUnitSetup(leadSeller, row.unit) && (
+                          <Badge $variant="warning">{t('newPo.needsUnitSetup', 'Check unit')}</Badge>
+                        )}
                         {hasSeller && row.sellers.some(s => s.seller_type === 'brand') && <Badge $variant="brand">{t('newPo.brandBadge', 'BRAND')}</Badge>}
                         {hasSeller && row.sellers.some(s => s.seller_type === 'foodcourt') && <Badge $variant="foodcourt">{t('newPo.foodcourtBadge', 'FOODCOURT')}</Badge>}
                       </>

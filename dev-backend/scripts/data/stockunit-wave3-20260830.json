@@ -1,0 +1,950 @@
+{
+ "note": "재고 단위 교정 3차 물결 — 2026-08-30 동결. ⛔ 수정 금지.",
+ "rule": "재고 unit 을 판매자 내용물 단위와 동일화(conv=1). 개수→연속 방향만 허용. 재고 수량 0 인 행만.",
+ "frozenAt": "2026-08-30T19:45:26.784Z",
+ "ingredients": 63,
+ "links": 66,
+ "plan": [
+  {
+   "ingId": 223,
+   "name": "Milk Good Day Uht Full Cream (우유)",
+   "oldUnit": "piece",
+   "newUnit": "l",
+   "stock": 0,
+   "links": [
+    {
+     "link": 255,
+     "conv": 1,
+     "basis": "같은 단위(l)"
+    }
+   ]
+  },
+  {
+   "ingId": 224,
+   "name": "Oat Milk(Oat Side) Farmerly (오트우유)",
+   "oldUnit": "piece",
+   "newUnit": "l",
+   "stock": 0,
+   "links": [
+    {
+     "link": 256,
+     "conv": 1,
+     "basis": "같은 단위(l)"
+    }
+   ]
+  },
+  {
+   "ingId": 232,
+   "name": "Cooking Cream Emborg (생크림)",
+   "oldUnit": "piece",
+   "newUnit": "l",
+   "stock": 0,
+   "links": [
+    {
+     "link": 359,
+     "conv": 1,
+     "basis": "같은 단위(l)"
+    }
+   ]
+  },
+  {
+   "ingId": 234,
+   "name": "Mango Golden Lily (망고 큐브)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 361,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 824,
+   "name": "Scrippo Lemon Lime Tea (레몬라임티)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 871,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 825,
+   "name": "Premium Chocolate Powder (초코렛 파우더)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 872,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 834,
+   "name": "Potato (감자)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 881,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    },
+    {
+     "link": 882,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 839,
+   "name": "Green Capsicum",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 887,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 840,
+   "name": "Tomato",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 888,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 847,
+   "name": "Chicken Chop L(260~280g) (닭다리살)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 895,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 848,
+   "name": "Halal chicken (chunk cut) (직원식)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 896,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 850,
+   "name": "Minced Chicken (간닭고기)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 899,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    },
+    {
+     "link": 900,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 851,
+   "name": "Chicken Liver (닭간)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 901,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 852,
+   "name": "Chicken Breast (닭가슴살)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 902,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 853,
+   "name": "Chicken Gizzards (닭똥집)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 903,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 865,
+   "name": "Salmon Fillet with Skin-On Whole (연어)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 915,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 872,
+   "name": "Sliced Dried Mushroom(Shiitake) (마른 편썬 표고버섯)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 928,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 873,
+   "name": "Chicken Sausage Cocktail (칵테일 소시지)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 929,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 877,
+   "name": "Fine Sugar Csr (흰설탕)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 933,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 878,
+   "name": "White Breadcrumbs All Day (빵가루)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 934,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 879,
+   "name": "Chicken Stock Powder Knorr (치킨스톡(파우더)_KNORR)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 935,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 888,
+   "name": "Erawan Blended Rice Flour",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 945,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 891,
+   "name": "Honey All Day (꿀)",
+   "oldUnit": "bottle",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 948,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 892,
+   "name": "Anchovies Seasoning Powder Knorr",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 949,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 893,
+   "name": "Black Fungus (마른 목이버섯)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 950,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 895,
+   "name": "Squid Flower(60%Water) (칼집 오징어몸통)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 953,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 896,
+   "name": "[IQF]Squid Cube U10 6 / 8 (오징어몸통)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 954,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 898,
+   "name": "Hokkaido Scallop(20 / 30) (관자)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 956,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 913,
+   "name": "Dried India Dhal (달_직원식)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 971,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 915,
+   "name": "Multipurpose Flour (밀가루)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 973,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 922,
+   "name": "Hot Issue Rice Cake (핫이슈 밀떡1kg)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 980,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 924,
+   "name": "Frying Powder Mix (백설튀김가루1kg)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 982,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 928,
+   "name": "Fish Cake (대림부산어묵1kg)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 986,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 932,
+   "name": "Curry Powder Mild 1kg (오뚜기 카레 순한맛 1kg)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 990,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 934,
+   "name": "Korean Pancake Mix (백설부침가루1kg)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 992,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 936,
+   "name": "Honey Jujube (꿀대추청 꽃샘)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 994,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 937,
+   "name": "Crunch Seasoned Seaweed (김가루 1kg)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 995,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 943,
+   "name": "Honey Citron Tea (꿀유자차)",
+   "oldUnit": "bottle",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1001,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 947,
+   "name": "Dry Seaweed (미른미역_해농)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1005,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 951,
+   "name": "Fine Spicy Pepper Powder (베트남 고운 고춧가루1kg)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1009,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 960,
+   "name": "Bread crumbs (백설빵가루1kg)",
+   "oldUnit": "pack",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1017,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 979,
+   "name": "Old ginger (생강)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1039,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 980,
+   "name": "Broccoli",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1040,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 981,
+   "name": "Eggplant (Terung Panjang) (긴가지(직원식))",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1041,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 982,
+   "name": "Green Chilli Padi(Cili Api Hijau) (청양고추(칠리파디))",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1042,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 983,
+   "name": "Green Zucchini (돼지호박)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1043,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 984,
+   "name": "Cabbage(Kobis China) (양배추)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1044,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 987,
+   "name": "Red Chilli (Big) Cili Merah (홍고추)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1047,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 988,
+   "name": "Bitter Melon (Peria Besar) (숙주나물)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1048,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 992,
+   "name": "Japanese Cucumber(Timun Jepun) (오이-일본)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1052,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 993,
+   "name": "Ladies finger (Bendi) ((직원식))",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1053,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    },
+    {
+     "link": 1054,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 994,
+   "name": "Green Beans (Buncis) (롱빈(직원식))",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1055,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 995,
+   "name": "Water Spinach",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1056,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 997,
+   "name": "Red Capsicum(Cili Epal Merah) (홍파프리카)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1058,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 998,
+   "name": "Green Capsicum(Cili Epal Hijau) (청파프리카)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1059,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 999,
+   "name": "Spinach (Bayam) (시금치)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1060,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 1002,
+   "name": "Green Chilli (Big) Cili Hijau (청고추)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1063,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 1004,
+   "name": "Lime (라임)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1065,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 1006,
+   "name": "Chinese(Long)Cabbage (배추)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1067,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 1068,
+   "name": "Monosodium Glutamate Ajinomoto",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1129,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 1074,
+   "name": "Coarse Pepper Powder (굵은 고춧가루1kg)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1136,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 1075,
+   "name": "Fine Pepper Powder (고운 고춧가루1kg)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1137,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  },
+  {
+   "ingId": 1079,
+   "name": "Peeled Garlic(Bawang Putih Kopek) (깐마늘)",
+   "oldUnit": "piece",
+   "newUnit": "kg",
+   "stock": 0,
+   "links": [
+    {
+     "link": 1141,
+     "conv": 1,
+     "basis": "같은 단위(kg)"
+    }
+   ]
+  }
+ ],
+ "excluded": [
+  {
+   "ing": "Yellow Onion(양파)",
+   "ingId": "800",
+   "link": 846,
+   "why": "방향 제약 — 재고 g(연속) → piece(개수) 는 정밀도 강등이라 금지",
+   "vendor": "Indus Grocers"
+  },
+  {
+   "ing": "Extra Fine Salt(고운소금)",
+   "ingId": "812",
+   "link": 858,
+   "why": "방향 제약 — 재고 g(연속) → pack(개수) 는 정밀도 강등이라 금지",
+   "vendor": "LSH"
+  },
+  {
+   "ing": "Chicken Drumstick (Medium) (닭다리)",
+   "ingId": "849",
+   "link": 898,
+   "why": "Drumstick(pack, 규격 1.00) → kg 로 결정적 유도 불가",
+   "vendor": "NSK"
+  },
+  {
+   "ing": "Frozen Squid Ring With Skin (오징어 몸통 링)",
+   "ingId": "868",
+   "link": 920,
+   "why": "Squid Ring +-400g (premium g(pack, 규격 1.00) → kg 로 결정적 유도 불가",
+   "vendor": "Seafood"
+  },
+  {
+   "ing": "[IQF]PRAWN 31 / 40 PD(PeeledDeveined) PDTO(PD&Tail-on) (깐새우)",
+   "ingId": "869",
+   "link": 925,
+   "why": "PRAWN 31/40 PD(PeeledDeveine(pack, 규격 1.00) → kg 로 결정적 유도 불가",
+   "vendor": "Seafood"
+  },
+  {
+   "ing": "Aust Midfield Brisket Pedo (소고기_호주_양지)",
+   "ingId": "1066",
+   "link": 1127,
+   "why": "재고 5.00 남아 있음 — 단위 변경 시 수량 의미가 바뀐다(사람 확인)",
+   "vendor": "Lee's Fandbee Frozen"
+  }
+ ]
+}

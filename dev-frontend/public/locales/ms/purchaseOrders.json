@@ -344,7 +344,8 @@
     "allCategoriesFilter": "Semua kategori",
     "uncategorized": "Tidak dikategori",
     "priceNotSet": "Harga belum ditetapkan",
-    "minOrder": "Min"
+    "minOrder": "Min",
+    "needsUnitSetup": "Semak unit"
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",
