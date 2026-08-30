@@ -1,20 +1,53 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-08-30 (운영 배포 3회 · VINA 데이터 물결 3회 완료 · UI 2건 dev 대기)
+**마지막 업데이트:** 2026-08-30 (레시피 저장경로 수리 + 파괴방어 안전망 · 운영 카테고리 정리)
 **버전:** v3.80 (2026-08-28 배포). **8/30 배포 3회는 버전 미상승 — Irene 지시**
-**작업 상태:** 단위주문 전 과정 운영 반영 완료. UI 2건(목록 단위·확인 뱃지)+검사기 개정이 dev 에서 `/배포` 대기.
+**작업 상태:** 레시피 수리·안전망 커밋 완료(Fable PASS). 운영 카테고리 정리 적용 완료. BG 단위주문 C 중단 상태.
 
-> ### 🔔 돌아오면 여기부터 (Irene 회신 3건 · 전부 Fable 권고 포함)
-> 1. **`/배포`** — 이제 **한 번에 전부** 나간다: 기존 4묶음(fetchDedupe·알림 수신자·발주 메일 0~5·SW bump)
->    **+ 단위주문 1·2단계**. Fable 권고: 묶어서 1회. 커밋 `7eaefdf2` · `a42a8d1f` · `40fd0123`.
-> 2. **환산값 4건 회신** — 사람만 아는 값이라 자동으로 안 채웠다:
->    ①계란 1 tray = 몇 kg ②Test Oil 1 L = 몇 kg ③Soy Sauce 1 L = 몇 g ④Black Pepper kg↔g(1000 추정, 확인 요청).
->    현재 인스펙션 baseline 에 `defect-pending-human-value` 로 추적 중.
-> 3. **운영 정리 `--apply`** — B2B 리포트 착수 조건. 실측: `/tmp/ugs_cleanup.log` **없음 = 미실행**. 아래 🟠 참조.
->
-> Fable 판정: **이 사이클의 굵직한 작업은 소진.** 회신 전 새 작업 벌이지 말 것.
+> ### 🔔 돌아오면 여기부터
+> 1. **`/배포` 대기 묶음** — 기존 4묶음(fetchDedupe·알림 수신자·발주 메일 0~5·SW bump)
+>    **+ 단위주문 1·2단계 UI** **+ 레시피 수리·안전망(커밋 `63e037be`)** **+ BG 단위주문 C 마이그(커밋 `98fc930e`)**.
+>    ⚠ 검사기 개정(R-SC-007)과 baseline 재등록은 **같은 배포에** 나가야 한다.
+> 2. **운영 카테고리 — Irene 확인 1건**: 새 카테고리 이름을 `Uncategorized` 로 만들었다(기존이 전부 영문이라 통일).
+>    한글 "미분류"를 원하면 **화면에서 이름만 바꾸면 된다**(6개 스코프: 매장 8·10·13, 브랜드 1·2, BG owner 23).
+> 3. **환산값 4건 회신 대기** — 계란 tray→kg / Test Oil L→kg / Soy Sauce L→g / Black Pepper kg↔g.
+>    ⛔ 기계가 추측 금지. 인스펙션 baseline 에 `defect-pending-human-value` 로 추적 중.
+> 4. **다음 배포의 운영 검증 필수 1건 (Fable 지시)** — health-check brand 프로브가 운영에서 집는 BG 계정이
+>    **진짜 시험 계정인지**(실브랜드 데이터 소유 여부) 1회 확인·기록. `is_test` 가 실사용자에 잘못 붙은 전례가 있다
+>    ([[reference_notification_six_gates]]). 아니면 픽스처 기준을 조인다.
 
 ### 진행 중인 작업
-- 없음 (전부 dev 완결 · Irene 컨펌/배포 지시 대기)
+- **BG 단위주문 물결 C — 중단 상태(마이그만 완료).** Irene 카테고리 지시로 중단했다.
+  - 완료: `migrate-brand-unit-order.js`(brand_products.order_mode 신설 + min_order_quantity 확폭) ·
+    registry `deploy` 등록 · 멱등 2회 · 행수/합계 보존 자가검증 통과. **dev 적용됨, 운영 미적용.**
+  - 남은 것: **브랜드 링크 직렬화** — `routes/ingredients.js` 두 곳(`bpInfoById` 138행, `bpMap` 624행)과
+    `routes/restaurants-ingredients.js` 146행이 브랜드 상품의 `unit`/`base_quantity`/`order_mode` 를 **버린다**.
+    지금은 브랜드 판매자면 무조건 `seller_unit=null · base_quantity=1 · order_mode='pack'` 으로 나간다.
+  - 🔴 **같이 고쳐야 할 지뢰(실측 확인)**: `routes/ingredients.js` 두 곳이 이미 `attributes: [... 'order_mode']` 로
+    BrandProduct 를 조회한다. 컬럼이 없던 상태에서 **브랜드 재료에 브랜드 판매자를 연결하는 순간 그 화면이 500**
+    이었다(`Unknown column 'order_mode' in 'field list'` 실측). dev·운영 모두 그런 연결이 0건이라 안 터졌을 뿐.
+    위 마이그가 컬럼을 만들어 지뢰는 제거됐으나 **운영 배포 전까지는 운영에 그대로 남아 있다.**
+  - 이후: 물결 D(BG 폼 라디오·규격 입력 + 구매 게이트 개방) + BG 왕복 E2E.
+
+### 완료된 작업 (이번 세션)
+1. **레시피 저장경로 근본수정 + 파괴방어 영구 안전망** (커밋 `63e037be`, Fable 게이트 PASS)
+   - 메뉴(RA)·프로덕트(BG) 폼의 "직접 재료 입력" 저장이 ①기존 재료를 **먼저 전부 지우고** ②새로 넣는데,
+     트랜잭션이 없고 catch 가 오류를 삼켰다. ②가 실패하면 **지운 것만 남아** 재료가 통째로 증발하고
+     화면엔 "저장됨"으로 보였다. **실측 반증: 방어 제거 시 재료 2건 → 0건 소실 + status 200.**
+   - `routes/menu.js`(POST·PUT) + `routes/brand-products.js`(POST·PUT) **4곳** 트랜잭션 + rollback + **400 반환**.
+   - `product_recipe_ingredients` 에 **UNIQUE(recipe_id, ingredient_id) 신설** — 형제 `recipe_ingredients` 엔
+     있던 불변식이 brand 축에만 없어 같은 재료 2행 → BG BOM 이중 → 입고 재고·원가 이중 계산이었다.
+     마이그 멱등 · 행수 자가검증 · **중복 발견 시 지우지 않고 목록 출력 후 실패**. 착수 전 중복 dev 0 / 운영 0(73행).
+   - `health-check --category=inventory` 에 파괴방어 4케이스. **inventory 12/12 · 건너뜀 0 · 잔재 0(연속 2회)**.
+   - **이식 반증**: 방어 제거 → **정확히 새 4건만 실패, 기존 8건 무영향**. 원복 → 12/12.
+2. **Wave A(직접 연결 컬럼 4개) 철회** — 기존 레시피 경로가 멀쩡해 같은 것을 두 벌 만들 이유가 없었다.
+   DB 컬럼 DROP · 마이그 파일 삭제 · registry 60 복귀 · 모델/association/차감분기 원복. 유지분은 `source` 라벨뿐.
+3. **운영 카테고리 정리** (커밋 `98fc930e`, Fable 사전승인 실행)
+   - **아이템 중복은 없었다** — brand_products 이름·SKU 중복 0, with MIN 재고 이름 중복 0.
+     BG 프로덕트 145 중 92건이 with MIN 재고와 동명이나 이건 "파는 상품 ↔ 사는 재고"의 정상 대응.
+   - 병합 9쌍(41건 이동) · 빈 옛 카테고리 5 삭제(0건인 것만) · 자동 채움 277 · 나머지 202 는 `Uncategorized` 신설 6개에 수용.
+   - 소유자가 다른 동명 카테고리(매장/브랜드 각 1벌, 13쌍)는 **구조상 정상이라 무접촉**.
+   - 즉시검증: 같은 소유자 중복 0 · 옛 이름 잔존 0 · 고아 0 · **카테고리 없는 행 0**.
+   - 백업 `/var/www/backups/data-migrations/category-cleanup-20260830.before.json`(48KB) + 완료 마커.
 
 ### 🟣 dev 완결 · 운영 미반영 (다음 `/배포` 묶음 — Fable 권고)
 > **다음 `/배포` 1회 = D 완결판 + 알림 수정 2건 + 발주 메일 묶음 0~5 + SW_VERSION bump.**
@@ -110,13 +143,18 @@ dev-frontend/src/utils/{fetchDedupe,httpClient}.ts
 - **[2차] 단위주문 설계 문서 작성** — `docs/PURCHASE_ORDER_SYSTEM.md` 말미(컨펌 4건 게이트 명문화)
 
 ### 다음 확정 작업
-- **없음 — Irene 회신 대기.** 아래는 회신이 와야 움직이는 것들:
-  - **단위주문 3단계 (BG/FG 확장)** — ⛔ 착수 조건 = **RA 에서 실사용 후.** 코드 작업은 `buyerEntity.type === 'restaurants'`
-    게이트 **제거만**이면 된다(설계·데이터는 이미 전 역할 공용). `docs/PURCHASE_ORDER_SYSTEM.md` §4.
-  - **환산비 4건 입력** — Irene 회신 필요. ⛔ 자동 백필 금지(tray→kg 는 기계가 못 추측).
-  - **서버 min_order 강제** — 백로그 등재됨. 착수 전 결정 3건 선행(경고 vs 차단 / 적용 시점 / 기존 26건 영향 실측).
-  - **B. 판매 주문(B2B) 매출·원가 리포트** — Fable 설계 완료. 착수 조건 = 정리 `--apply` 증명 접수 후.
-- ~~단위 주문(kg/g)~~ — **2026-08-30 1·2단계 완료** (Fable PASS `a3738784979f`, dev 완결·운영 미배포)
+- **BG 단위주문 물결 C 재개 → D** (위 "진행 중인 작업" 참조). Fable 지시: C 완료 시 게이트 판정 요청.
+- **`/배포`** — Irene 지시 시. 위 🔔 1번 묶음.
+
+### 후속 후보 (아이디어 메모, 확정 X)
+> /개발시작 자동 추천 대상 아님. 다음 사이클 결정은 Irene 지시 기준.
+- **환산비 4건 + 사람만 아는 값 6건** — Irene 회신 필요. ⛔ 자동 백필 금지.
+- **서버 min_order 강제** — 착수 전 결정 3건 선행(경고 vs 차단 / 적용 시점 / 기존 26건 영향 실측).
+- **B. 판매 주문(B2B) 매출·원가 리포트** — Fable 설계 완료. 착수 조건 = 정리 `--apply` 증명 접수 후.
+- **directIngredients 4곳 공용함수 통합** — 이제 4곳이 같은 형태로 수렴해 통합 시점에 유리(Fable 백로그).
+- **`supplier_products` 351건 카테고리** — `supplier_categories` 테이블이 **0행**. 정리가 아니라 신규 구축이라
+  이번 범위 밖으로 뺐다(Fable 판정).
+- **`l`/`L` varchar 정규화** · **BG 레시피 59건 `brand_id=null`** · **track_stock 레거시 은퇴**.
 
 ---
 
