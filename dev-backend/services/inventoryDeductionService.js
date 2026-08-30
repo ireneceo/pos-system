@@ -190,6 +190,9 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
 
         if (recipeIngredients.length === 0) {
           // ── 레시피가 없는 상품은 **그 상품 자체가 재고 단위**다 ─────────────
+          // 캔음료·병맥주·완제품처럼 그대로 파는 물건. `track_stock` 켠 상품만 깎는다.
+          // ⛔ **확장 금지(레거시).** `products.current_stock` 는 재고아이템과 별도 저장소라
+          //    이원화된다. 재료를 쓰는 메뉴는 레시피(또는 메뉴 폼의 직접 재료 입력)를 쓴다.
           // 캔음료·병맥주·완제품처럼 그대로 파는 물건은 레시피가 있을 수 없다.
           // 예전에는 여기서 그냥 건너뛰어, 팔려도 재고가 전혀 안 줄었다.
           // `track_stock` 을 켠 상품만 깎는다(안 켠 상품은 재고를 안 세기로 한 것).
@@ -227,7 +230,7 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
           results.warnings.push({
             product_id: productId,
             product_name: tgt.name,
-            message: 'No recipe linked - inventory not deducted'
+            message: 'No recipe or stock link - inventory not deducted'
           });
           continue;
         }
@@ -310,7 +313,9 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
               batch_shortfall: shortfall > 0 ? shortfall : 0,
               unit: ingredient.unit,
               new_stock: newStock,
-              batches_affected: fifoResult.batches.length
+              batches_affected: fifoResult.batches.length,
+              // 어느 분기가 발화했는지 로그에 남긴다 — 서열 검증의 단일 증거
+              source: ri.__source || 'recipe'
             });
           }
         }

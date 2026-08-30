@@ -881,17 +881,20 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
     // Auto-create ProductRecipe if directIngredients provided
     const directIngredients = req.body.directIngredients;
     if (directIngredients && Array.isArray(directIngredients) && directIngredients.length > 0 && !product.product_recipe_id) {
+      // 레시피 생성 → 재료 → 프로덕트 연결을 한 덩어리로 묶는다.
+      // 중간에 실패하면 전부 되돌린다 — 껍데기 레시피를 남기지 않는다.
+      const t = await BrandProduct.sequelize.transaction();
       try {
         const { ProductRecipe, ProductRecipeIngredient, ProductIngredient } = require('../models');
         const recipe = await ProductRecipe.create({
           name: `${product.name} (auto)`,
           is_active: true,
           total_ingredient_cost: 0
-        });
+        }, { transaction: t });
         let totalCost = 0;
         for (const di of directIngredients) {
           if (!di.ingredient_id || !di.quantity) continue;
-          const ingredient = await ProductIngredient.findByPk(di.ingredient_id);
+          const ingredient = await ProductIngredient.findByPk(di.ingredient_id, { transaction: t });
           if (!ingredient) continue;
           const cost = parseFloat(ingredient.unit_cost || 0) * parseFloat(di.quantity);
           await ProductRecipeIngredient.create({
@@ -900,13 +903,21 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
             quantity: di.quantity,
             unit: di.unit || ingredient.unit,
             cost: cost
-          });
+          }, { transaction: t });
           totalCost += cost;
         }
-        await recipe.update({ total_ingredient_cost: totalCost });
-        await product.update({ product_recipe_id: recipe.id });
+        await recipe.update({ total_ingredient_cost: totalCost }, { transaction: t });
+        await product.update({ product_recipe_id: recipe.id }, { transaction: t });
+        await t.commit();
       } catch (recipeError) {
+        await t.rollback();
+        // 조용히 삼키지 않는다 — 실패가 화면에 보여야 사용자가 다시 넣을 수 있다.
         console.error('Auto ProductRecipe creation error:', recipeError.message);
+        return res.status(400).json({
+          success: false,
+          message: `프로덕트는 저장됐지만 재료 연결에 실패했습니다: ${recipeError.message}`,
+          data: product
+        });
       }
     }
 
@@ -1064,39 +1075,49 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
     // Handle directIngredients for auto ProductRecipe
     const directIngredients = req.body.directIngredients;
     if (directIngredients && Array.isArray(directIngredients)) {
+      // 🔴 여기는 기존 재료를 **먼저 지우고** 다시 넣는다.
+      // 트랜잭션이 없으면 중간 실패 시 "지운 것만 남아" 쌓아둔 재료가 통째로 사라진다.
+      const t = await BrandProduct.sequelize.transaction();
       try {
         const { ProductRecipe: PR, ProductRecipeIngredient: PRI, ProductIngredient: PI } = require('../models');
-        const product = await BrandProduct.findByPk(productId);
+        const product = await BrandProduct.findByPk(productId, { transaction: t });
         if (directIngredients.length > 0) {
           let recipe;
           if (product.product_recipe_id) {
-            recipe = await PR.findByPk(product.product_recipe_id);
-            if (recipe) await PRI.destroy({ where: { recipe_id: recipe.id } });
+            recipe = await PR.findByPk(product.product_recipe_id, { transaction: t });
+            if (recipe) await PRI.destroy({ where: { recipe_id: recipe.id }, transaction: t });
           }
           if (!recipe) {
-            recipe = await PR.create({ name: `${product.name} (auto)`, is_active: true, total_ingredient_cost: 0 });
-            await product.update({ product_recipe_id: recipe.id });
+            recipe = await PR.create({ name: `${product.name} (auto)`, is_active: true, total_ingredient_cost: 0 }, { transaction: t });
+            await product.update({ product_recipe_id: recipe.id }, { transaction: t });
           }
           let totalCost = 0;
           for (const di of directIngredients) {
             if (!di.ingredient_id || !di.quantity) continue;
-            const ingredient = await PI.findByPk(di.ingredient_id);
+            const ingredient = await PI.findByPk(di.ingredient_id, { transaction: t });
             if (!ingredient) continue;
             const cost = parseFloat(ingredient.unit_cost || 0) * parseFloat(di.quantity);
-            await PRI.create({ recipe_id: recipe.id, ingredient_id: di.ingredient_id, quantity: di.quantity, unit: di.unit || ingredient.unit, cost });
+            await PRI.create({ recipe_id: recipe.id, ingredient_id: di.ingredient_id, quantity: di.quantity, unit: di.unit || ingredient.unit, cost }, { transaction: t });
             totalCost += cost;
           }
-          await recipe.update({ total_ingredient_cost: totalCost, name: `${product.name} (auto)` });
+          await recipe.update({ total_ingredient_cost: totalCost, name: `${product.name} (auto)` }, { transaction: t });
         } else if (product.product_recipe_id) {
-          const recipe = await PR.findByPk(product.product_recipe_id);
+          const recipe = await PR.findByPk(product.product_recipe_id, { transaction: t });
           if (recipe && recipe.name.endsWith('(auto)')) {
-            await PRI.destroy({ where: { recipe_id: recipe.id } });
-            await recipe.destroy();
-            await product.update({ product_recipe_id: null });
+            await PRI.destroy({ where: { recipe_id: recipe.id }, transaction: t });
+            await recipe.destroy({ transaction: t });
+            await product.update({ product_recipe_id: null }, { transaction: t });
           }
         }
+        await t.commit();
       } catch (recipeError) {
+        await t.rollback();
+        // 조용히 삼키지 않는다 — 삼키면 "저장됐는데 재료가 사라졌다"가 된다.
         console.error('Auto ProductRecipe update error:', recipeError.message);
+        return res.status(400).json({
+          success: false,
+          message: `프로덕트는 저장됐지만 재료 수정에 실패했습니다: ${recipeError.message}`
+        });
       }
     }
 

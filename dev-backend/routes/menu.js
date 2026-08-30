@@ -479,8 +479,16 @@ router.post('/product', checkRestaurantAccess, async (req, res) => {
 
     const product = await Product.create(productData);
 
-    // Auto-create recipe if directIngredients provided
+    // 메뉴 폼의 "Ingredients (direct)" — 재료를 상품 소유 레시피로 정규화한다.
+    //
+    // 🔴 2026-08-30 수리: 이 블록은 **다단계 쓰기(레시피 생성 → 재료 INSERT → 상품 연결)를
+    //    트랜잭션 없이** 하면서 실패를 `non-fatal` 로 삼켰다. 그러면 중간에 실패했을 때
+    //    **재료 0개짜리 고아 레시피만 남고 사용자 입력은 사라지는데 화면엔 "저장됨"으로 보인다.**
+    //    (실제로 그런 껍데기 레시피 126건을 두고 원인 추적에 하루를 썼다 — 조용한 실패가
+    //     만드는 비용은 실패 자체보다 크다.)
+    // → ①단일 트랜잭션(부분 저장 없음) ②fail-loud(실패는 API 에러로 나가 화면에 보인다).
     if (directIngredients && Array.isArray(directIngredients) && directIngredients.length > 0 && !product.recipe_id) {
+      const t = await Product.sequelize.transaction();
       try {
         const recipe = await Recipe.create({
           name: `${product.name} (auto)`,
@@ -488,29 +496,37 @@ router.post('/product', checkRestaurantAccess, async (req, res) => {
           restaurant_id: restaurantId,
           is_active: true,
           total_ingredient_cost: 0
-        });
+        }, { transaction: t });
 
         let totalCost = 0;
         for (const di of directIngredients) {
           if (!di.ingredient_id || !di.quantity) continue;
-          const ingredient = await Ingredient.findByPk(di.ingredient_id);
+          const ingredient = await Ingredient.findByPk(di.ingredient_id, { transaction: t });
           if (!ingredient) continue;
           const cost = parseFloat(ingredient.unit_cost || 0) * parseFloat(di.quantity);
           await RecipeIngredient.create({
             recipe_id: recipe.id,
             ingredient_id: di.ingredient_id,
             quantity: di.quantity,
+            // ⚠ 단위는 재고아이템의 것을 정본으로 — recipe_ingredients.unit 은 NOT NULL ENUM 이라
+            //    클라이언트가 빈 값이나 목록 밖 값을 보내면 INSERT 가 죽는다.
             unit: di.unit || ingredient.unit,
             cost: cost
-          });
+          }, { transaction: t });
           totalCost += cost;
         }
 
-        await recipe.update({ total_ingredient_cost: totalCost });
-        await product.update({ recipe_id: recipe.id });
+        await recipe.update({ total_ingredient_cost: totalCost }, { transaction: t });
+        await product.update({ recipe_id: recipe.id }, { transaction: t });
+        await t.commit();
       } catch (recipeError) {
-        console.error('Auto-recipe creation error:', recipeError.message);
-        // Product is already created, recipe creation failure is non-fatal
+        await t.rollback();   // 고아 레시피를 남기지 않는다
+        console.error('Direct ingredients save failed:', recipeError.message);
+        return res.status(400).json({
+          success: false,
+          message: `메뉴는 저장됐지만 재료 연결에 실패했습니다: ${recipeError.message}`,
+          data: product
+        });
       }
     }
 
@@ -672,16 +688,21 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
 
     await product.update(updateData);
 
+    // 🔴 2026-08-30 수리 — 이 블록은 **기존 재료를 먼저 지우고 다시 넣는다.**
+    //    트랜잭션이 없으면 중간에 실패했을 때 **지운 것만 남고 새 재료는 안 들어간다**
+    //    = 사용자가 쌓아둔 레시피 재료가 통째로 사라진다. 게다가 catch 가 조용히 삼켜
+    //    화면엔 "저장됨"으로 보였다. → 단일 트랜잭션 + fail-loud.
     if (directIngredients && Array.isArray(directIngredients)) {
+      const t = await Product.sequelize.transaction();
       try {
         const rid = product.restaurant_id;
         if (directIngredients.length > 0) {
           let recipe;
           if (product.recipe_id) {
             // Update existing auto-recipe: clear old ingredients, add new
-            recipe = await Recipe.findByPk(product.recipe_id);
+            recipe = await Recipe.findByPk(product.recipe_id, { transaction: t });
             if (recipe) {
-              await RecipeIngredient.destroy({ where: { recipe_id: recipe.id } });
+              await RecipeIngredient.destroy({ where: { recipe_id: recipe.id }, transaction: t });
             }
           }
           if (!recipe) {
@@ -692,38 +713,46 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
               restaurant_id: rid,
               is_active: true,
               total_ingredient_cost: 0
-            });
-            await product.update({ recipe_id: recipe.id });
+            }, { transaction: t });
+            await product.update({ recipe_id: recipe.id }, { transaction: t });
           }
 
           let totalCost = 0;
           for (const di of directIngredients) {
             if (!di.ingredient_id || !di.quantity) continue;
-            const ingredient = await Ingredient.findByPk(di.ingredient_id);
+            const ingredient = await Ingredient.findByPk(di.ingredient_id, { transaction: t });
             if (!ingredient) continue;
             const cost = parseFloat(ingredient.unit_cost || 0) * parseFloat(di.quantity);
             await RecipeIngredient.create({
               recipe_id: recipe.id,
               ingredient_id: di.ingredient_id,
               quantity: di.quantity,
+              // ⚠ 단위 정본은 재고아이템 — NOT NULL ENUM 이라 빈 값/목록 밖이면 INSERT 가 죽는다
               unit: di.unit || ingredient.unit,
               cost: cost
-            });
+            }, { transaction: t });
             totalCost += cost;
           }
-          await recipe.update({ total_ingredient_cost: totalCost, name: `${product.name} (auto)` });
+          await recipe.update({ total_ingredient_cost: totalCost, name: `${product.name} (auto)` }, { transaction: t });
         } else if (directIngredients.length === 0 && product.recipe_id) {
           // Empty array = remove direct ingredients, but keep recipe_id if it was manually linked
-          const recipe = await Recipe.findByPk(product.recipe_id);
+          const recipe = await Recipe.findByPk(product.recipe_id, { transaction: t });
           if (recipe && recipe.name.endsWith('(auto)')) {
             // Only remove auto-generated recipes
-            await RecipeIngredient.destroy({ where: { recipe_id: recipe.id } });
-            await recipe.destroy();
-            await product.update({ recipe_id: null });
+            await RecipeIngredient.destroy({ where: { recipe_id: recipe.id }, transaction: t });
+            await recipe.destroy({ transaction: t });
+            await product.update({ recipe_id: null }, { transaction: t });
           }
         }
+        await t.commit();
       } catch (recipeError) {
-        console.error('Auto-recipe update error:', recipeError.message);
+        await t.rollback();   // 기존 재료를 지운 채로 끝나지 않는다
+        console.error('Direct ingredients update failed:', recipeError.message);
+        return res.status(400).json({
+          success: false,
+          message: `메뉴는 저장됐지만 재료 연결에 실패했습니다: ${recipeError.message}`,
+          data: product
+        });
       }
     }
 

@@ -162,7 +162,26 @@ async function setup() {
     }
   } catch { /* optional — tests that need it will gracefully skip */ }
 
-  return { adminUser, adminToken, member, customerToken, restId, restaurantAdminUser, restaurantAdminToken };
+  // 쓰기 왕복 프로브용 토큰 — **데모 매장/데모 브랜드에만** 쓴다.
+  // 쓰기 대상 판정은 계정 is_test 가 아니라 매장 is_demo 다([[reference_smoke_writes_to_real_store]]).
+  // 여기서만 발급한다 — 케이스가 각자 서명하면 setup 이 계정을 바꿔도 케이스만 조용히 낡는다.
+  let demoRestId = null, demoRaToken = null, demoBgUserId = null, demoBgToken = null;
+  try {
+    const { User } = require('../models');
+    const { sequelize } = require('../config/database');
+    const demoRest = (await sequelize.query(
+      'SELECT id FROM restaurants WHERE is_demo = 1 LIMIT 1', { type: sequelize.QueryTypes.SELECT }))[0];
+    if (demoRest) {
+      const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: demoRest.id } });
+      if (ra) { demoRestId = demoRest.id; demoRaToken = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' }); }
+    }
+    // 브랜드 축은 매장이 없다 — 테스트 계정(is_test)으로 한정한다.
+    const bg = await User.findOne({ where: { role: 'Brand General', is_test: true } });
+    if (bg) { demoBgUserId = bg.id; demoBgToken = jwt.sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '5m' }); }
+  } catch { /* optional — 없으면 해당 케이스가 건너뛴다고 출력한다 */ }
+
+  return { adminUser, adminToken, member, customerToken, restId, restaurantAdminUser, restaurantAdminToken,
+           demoRestId, demoRaToken, demoBgUserId, demoBgToken };
 }
 
 // ============================================
@@ -1996,8 +2015,40 @@ function defineReservationTests({ customerToken }) {
 // 무너뜨리는 종류라, 한 번 고치고 끝낼 수 없어 상시 검사로 둔다.
 // 쓰기가 필요한 검사는 **트랜잭션 안에서 하고 롤백**한다 — 잔재를 남기지 않는다.
 // ==========================================================================
-function defineInventoryTests() {
+function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgToken } = {}) {
   const svc = require('../services/inventoryDeductionService');
+
+  // 레시피 쓰기 프로브가 만든 것만 지운다. 실패해도 지운다(잔재 0 · 재실행 멱등).
+  const PROBE = 'ZZ-HC-RECIPEWRITE-';
+  // 정리는 **그 케이스가 만든 이름만** 지운다. 접두어 전체를 지우면 두 health-check 가
+  // 겹쳐 돌 때 서로의 진행 중 데이터를 지워 없던 실패를 만든다(2026-08-30 실측).
+  // 레시피 이름은 라우트가 `${상품명} (auto)` 로 만든다 — 그래서 LIKE 로 잡는다.
+  // 정리 문장은 **각자 try** 로 돈다. 하나를 통째 try 로 감싸면 앞 문장이 실패했을 때
+  // 뒤 문장이 통째로 안 돌아 잔재가 남는데, catch 가 삼켜 조용히 쌓인다.
+  // (2026-08-30 실측: 컬럼명을 brand_product_id 로 잘못 써서 브랜드 프로덕트가 매 실행 2건씩 남았다)
+  async function runCleanup(stmts, r) {
+    const { sequelize } = require('../config/database');
+    for (const sql of stmts) {
+      try { await sequelize.query(sql, { replacements: r }); }
+      catch (e) { console.log(c.gray(`      (정리 실패 — 잔재가 남을 수 있음: ${e.message.slice(0, 80)})`)); }
+    }
+  }
+  const cleanupMenuProbe = (probeName) => runCleanup([
+    'UPDATE products SET recipe_id = NULL WHERE name = :n',
+    'DELETE FROM recipe_ingredients WHERE recipe_id IN (SELECT id FROM recipes WHERE name LIKE :like)',
+    'DELETE FROM recipes WHERE name LIKE :like',
+    'DELETE FROM products WHERE name = :n',
+  ], { n: probeName, like: probeName + '%' });
+  // 참조 컬럼은 brand_products 를 가리키는 FK 실측 기준: 전부 `product_id` 다.
+  const cleanupBrandProbe = (probeName) => runCleanup([
+    'UPDATE brand_products SET product_recipe_id = NULL WHERE name = :n',
+    'DELETE FROM product_recipe_ingredients WHERE recipe_id IN (SELECT id FROM product_recipes WHERE name LIKE :like)',
+    'DELETE FROM product_recipes WHERE name LIKE :like',
+    'DELETE FROM brand_product_brands WHERE product_id IN (SELECT id FROM brand_products WHERE name = :n)',
+    'DELETE FROM brand_product_restaurants WHERE product_id IN (SELECT id FROM brand_products WHERE name = :n)',
+    'DELETE FROM brand_product_option_group_products WHERE product_id IN (SELECT id FROM brand_products WHERE name = :n)',
+    'DELETE FROM brand_products WHERE name = :n',
+  ], { n: probeName, like: probeName + '%' });
 
   // ① 판매 완료 → 재고 차감이 **실제로 일어나고**, 배치가 없어도 판매분만큼 줄어야 한다.
   //    FIFO 는 배치(입고 로트)에서만 빼므로, 배치 없는 매장에서 예전 코드는 0 을 뺐다 —
@@ -2241,6 +2292,147 @@ function defineInventoryTests() {
     const src = fs.readFileSync(p, 'utf8');
     return /if\s*\(minStock\s*>\s*0\)/.test(src);
   });
+
+  // ══════════════════════════════════════════════════════════════════
+  // 레시피 재료 쓰기 안전망 (2026-08-30)
+  //
+  // 배경: 메뉴(RA)·프로덕트(BG) 폼의 "직접 재료 입력"은 저장할 때
+  //   ① 기존 재료를 **먼저 전부 지우고** ② 새로 넣는다.
+  //   트랜잭션이 없던 시절 ②가 중간에 실패하면 **지운 것만 남아** 쌓아둔 재료가
+  //   통째로 사라지는데, catch 가 오류를 삼켜 화면에는 "저장됨"으로 보였다.
+  //   (2026-08-30 실측 반증: 방어 제거 시 재료 2건 → 0건 소실 + status 200)
+  //
+  // 실패 주입 벡터 = **같은 재료를 2번 보내기**.
+  //   두 테이블 모두 UNIQUE(recipe_id, ingredient_id) 가 있어 두 번째 INSERT 가
+  //   **SQL 모드와 무관하게** 확정 실패한다. ENUM 위반 같은 모드 의존 벡터를 쓰지 않는 이유다.
+  //
+  // 데모 매장/데모 브랜드에만 쓰고, 만든 것은 전부 지운다(잔재 0·멱등).
+  // ══════════════════════════════════════════════════════════════════
+
+  // ④ 메뉴(RA): 재료 수정이 실패해도 기존 재료가 살아남고, 실패가 화면에 보인다.
+  test('inventory', '메뉴 재료 수정 실패 — 기존 재료 보존 + API 에러(조용한 삼킴 금지)', async () => {
+    const { sequelize } = require('../config/database');
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음 — 계약 미검증)')); return true; }
+    const q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const cat = (await q('SELECT name FROM categories WHERE restaurant_id = :r LIMIT 1', { r: demoRestId }))[0];
+    const ings = await q('SELECT id, unit FROM ingredients WHERE restaurant_id = :r AND is_active = 1 LIMIT 2', { r: demoRestId });
+    if (!cat || ings.length < 2) { console.log(c.gray('      (건너뜀: 데모 매장 재료 2건 미만 — 계약 미검증)')); return true; }
+
+    const auth = { Authorization: `Bearer ${demoRaToken}` };
+    const probeName = PROBE + Date.now();
+    const base = { name: probeName, category: cat.name, price: 1, restaurant_id: demoRestId, is_available: true };
+    let pid = null, rid = null;
+    try {
+      const c1 = await request('POST', '/menu/product', { ...base, directIngredients: [
+        { ingredient_id: ings[0].id, quantity: 2, unit: ings[0].unit },
+        { ingredient_id: ings[1].id, quantity: 3, unit: ings[1].unit }] }, auth);
+      pid = c1.body?.data?.id;
+      if (!pid) return false;
+      rid = (await q('SELECT recipe_id FROM products WHERE id = :p', { p: pid }))[0]?.recipe_id;
+      const before = Number((await q('SELECT COUNT(*) AS c FROM recipe_ingredients WHERE recipe_id = :r', { r: rid }))[0].c);
+      if (before !== 2) return false;   // 주입 전이 2건이어야 "지워졌는지"를 잴 수 있다
+
+      // 같은 재료 2번 → 두 번째 INSERT 가 유니크 위반으로 확정 실패
+      const bad = await request('PUT', `/menu/product/${pid}`, { ...base, directIngredients: [
+        { ingredient_id: ings[0].id, quantity: 1, unit: ings[0].unit },
+        { ingredient_id: ings[0].id, quantity: 1, unit: ings[0].unit }] }, auth);
+
+      const after = Number((await q('SELECT COUNT(*) AS c FROM recipe_ingredients WHERE recipe_id = :r', { r: rid }))[0].c);
+      // ① 실패가 API 에러로 나온다  ② 기존 2건이 그대로 살아 있다
+      return bad.status === 400 && after === 2;
+    } catch { return false; }
+    finally { await cleanupMenuProbe(probeName); }
+  });
+
+  // ⑤ 메뉴(RA): 생성이 실패하면 껍데기 레시피를 남기지 않는다.
+  test('inventory', '메뉴 재료 저장 실패 — 고아 레시피 0 + API 에러', async () => {
+    const { sequelize } = require('../config/database');
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음 — 계약 미검증)')); return true; }
+    const q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const cat = (await q('SELECT name FROM categories WHERE restaurant_id = :r LIMIT 1', { r: demoRestId }))[0];
+    const ings = await q('SELECT id, unit FROM ingredients WHERE restaurant_id = :r AND is_active = 1 LIMIT 1', { r: demoRestId });
+    if (!cat || !ings.length) { console.log(c.gray('      (건너뜀: 데모 매장 재료 없음 — 계약 미검증)')); return true; }
+
+    const auth = { Authorization: `Bearer ${demoRaToken}` };
+    const probeName = PROBE + Date.now();
+    try {
+      const before = Number((await q('SELECT COUNT(*) AS c FROM recipes WHERE restaurant_id = :r', { r: demoRestId }))[0].c);
+      const bad = await request('POST', '/menu/product', {
+        name: probeName, category: cat.name, price: 1, restaurant_id: demoRestId, is_available: true,
+        directIngredients: [
+          { ingredient_id: ings[0].id, quantity: 1, unit: ings[0].unit },
+          { ingredient_id: ings[0].id, quantity: 1, unit: ings[0].unit }]
+      }, auth);
+      const after = Number((await q('SELECT COUNT(*) AS c FROM recipes WHERE restaurant_id = :r', { r: demoRestId }))[0].c);
+      const linked = bad.body?.data?.id
+        ? (await q('SELECT recipe_id FROM products WHERE id = :p', { p: bad.body.data.id }))[0]?.recipe_id
+        : null;
+      return bad.status === 400 && after === before && !linked;
+    } catch { return false; }
+    finally { await cleanupMenuProbe(probeName); }
+  });
+
+  // ⑥ 프로덕트(BG): 같은 계약의 brand 축. BOM 이 이중/소실되면 입고 재고·원가가 함께 틀어진다.
+  test('inventory', '프로덕트 재료 수정 실패 — 기존 재료 보존 + API 에러', async () => {
+    const { sequelize } = require('../config/database');
+    if (!demoBgToken || !demoBgUserId) { console.log(c.gray('      (건너뜀: 데모 브랜드 계정 없음 — 계약 미검증)')); return true; }
+    const q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const cat = (await q('SELECT id FROM brand_product_categories WHERE owner_user_id = :u AND is_active = 1 LIMIT 1', { u: demoBgUserId }))[0];
+    const ings = await q('SELECT id, unit FROM product_ingredients WHERE owner_user_id = :u AND is_active = 1 LIMIT 2', { u: demoBgUserId });
+    if (!cat || ings.length < 2) { console.log(c.gray('      (건너뜀: 데모 브랜드 재료 2건 미만 — 계약 미검증)')); return true; }
+
+    const auth = { Authorization: `Bearer ${demoBgToken}` };
+    const probeName = PROBE + Date.now();
+    const base = { name: probeName, category_id: cat.id, unit_price: 1, cost_price: 0, unit: 'piece', is_active: true };
+    let pid = null, rid = null;
+    try {
+      const c1 = await request('POST', '/brand-products', { ...base, directIngredients: [
+        { ingredient_id: ings[0].id, quantity: 2, unit: ings[0].unit },
+        { ingredient_id: ings[1].id, quantity: 3, unit: ings[1].unit }] }, auth);
+      pid = c1.body?.data?.id;
+      if (!pid) return false;
+      rid = (await q('SELECT product_recipe_id FROM brand_products WHERE id = :p', { p: pid }))[0]?.product_recipe_id;
+      const before = Number((await q('SELECT COUNT(*) AS c FROM product_recipe_ingredients WHERE recipe_id = :r', { r: rid }))[0].c);
+      if (before !== 2) return false;
+
+      const bad = await request('PUT', `/brand-products/${pid}`, { ...base, directIngredients: [
+        { ingredient_id: ings[0].id, quantity: 1, unit: ings[0].unit },
+        { ingredient_id: ings[0].id, quantity: 1, unit: ings[0].unit }] }, auth);
+
+      const after = Number((await q('SELECT COUNT(*) AS c FROM product_recipe_ingredients WHERE recipe_id = :r', { r: rid }))[0].c);
+      return bad.status === 400 && after === 2;
+    } catch { return false; }
+    finally { await cleanupBrandProbe(probeName); }
+  });
+
+  // ⑦ 프로덕트(BG): 생성 실패 시 고아 레시피 0.
+  test('inventory', '프로덕트 재료 저장 실패 — 고아 레시피 0 + API 에러', async () => {
+    const { sequelize } = require('../config/database');
+    if (!demoBgToken || !demoBgUserId) { console.log(c.gray('      (건너뜀: 데모 브랜드 계정 없음 — 계약 미검증)')); return true; }
+    const q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const cat = (await q('SELECT id FROM brand_product_categories WHERE owner_user_id = :u AND is_active = 1 LIMIT 1', { u: demoBgUserId }))[0];
+    const ings = await q('SELECT id, unit FROM product_ingredients WHERE owner_user_id = :u AND is_active = 1 LIMIT 1', { u: demoBgUserId });
+    if (!cat || !ings.length) { console.log(c.gray('      (건너뜀: 데모 브랜드 재료 없음 — 계약 미검증)')); return true; }
+
+    const auth = { Authorization: `Bearer ${demoBgToken}` };
+    const probeName = PROBE + Date.now();
+    try {
+      const before = Number((await q('SELECT COUNT(*) AS c FROM product_recipes'))[0].c);
+      const bad = await request('POST', '/brand-products', {
+        name: probeName, category_id: cat.id, unit_price: 1, cost_price: 0, unit: 'piece', is_active: true,
+        directIngredients: [
+          { ingredient_id: ings[0].id, quantity: 1, unit: ings[0].unit },
+          { ingredient_id: ings[0].id, quantity: 1, unit: ings[0].unit }]
+      }, auth);
+      const after = Number((await q('SELECT COUNT(*) AS c FROM product_recipes'))[0].c);
+      const linked = bad.body?.data?.id
+        ? (await q('SELECT product_recipe_id FROM brand_products WHERE id = :p', { p: bad.body.data.id }))[0]?.product_recipe_id
+        : null;
+      return bad.status === 400 && after === before && !linked;
+    } catch { return false; }
+    finally { await cleanupBrandProbe(probeName); }
+  });
+
 }
 
 
@@ -2989,7 +3181,7 @@ async function runTests(allTests, category) {
   // §9 주문루트×설정 매트릭스 테스트가 정의되면 자동 활성화 (Phase 3 예정).
   if (typeof defineMatrixTests === 'function') defineMatrixTests(ctx);
   defineDbTests();
-  defineInventoryTests();
+  defineInventoryTests(ctx);
   defineStockLedgerTests(ctx);
 
   const allPass = await runTests(tests, opts.category);
