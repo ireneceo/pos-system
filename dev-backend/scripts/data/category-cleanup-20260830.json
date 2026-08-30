@@ -1,0 +1,265 @@
+{
+  "version": "category-cleanup-20260830",
+  "note": "운영 카테고리 정리 — 동결 계획. Fable 판정 2026-08-30. 표시·분류 데이터만 건드린다(돈·재고 산술 무관).",
+  "merge": [
+    {
+      "from": "Meats",
+      "to": "Meat"
+    },
+    {
+      "from": "Veggies",
+      "to": "Vegetables"
+    },
+    {
+      "from": "veggies",
+      "to": "Vegetables"
+    },
+    {
+      "from": "Sauce",
+      "to": "Sauce & Condiment"
+    },
+    {
+      "from": "Sauces",
+      "to": "Sauce & Condiment"
+    },
+    {
+      "from": "Seafoods",
+      "to": "Seafood"
+    },
+    {
+      "from": "Drink Base",
+      "to": "Base & Syrup"
+    },
+    {
+      "from": "Packaging",
+      "to": "Packaging & Disposables"
+    }
+  ],
+  "untouched": [
+    "Processed",
+    "Prepared",
+    "etc."
+  ],
+  "deleteEmptyLegacy": [
+    "Printing",
+    "Branding",
+    "Ingredients",
+    "Staff Meal",
+    "Poultry"
+  ],
+  "vocab": [
+    [
+      "Sauce & Condiment",
+      [
+        "sauce",
+        "ketchup",
+        "mayonnaise",
+        "mayo",
+        "vinegar",
+        "gochujang",
+        "doenjang",
+        "condiment"
+      ]
+    ],
+    [
+      "Packaging & Disposables",
+      [
+        "packaging",
+        "container",
+        "lid",
+        "straw",
+        "napkin",
+        "tissue",
+        "glove",
+        "wrap",
+        "tray",
+        "pouch",
+        "cup",
+        "box",
+        "bag",
+        "carton",
+        "cutlery",
+        "spoon",
+        "fork",
+        "chopstick",
+        "sticker",
+        "twine",
+        "paper bowl"
+      ]
+    ],
+    [
+      "Cleaning & Chemical",
+      [
+        "cleaner",
+        "cleanser",
+        "detergent",
+        "bleach",
+        "dishwash",
+        "dishwashing",
+        "soap",
+        "sanitizer",
+        "deodorizer",
+        "deodeorizer",
+        "disinfectant"
+      ]
+    ],
+    [
+      "Meat",
+      [
+        "beef",
+        "pork",
+        "lamb",
+        "brisket",
+        "bacon",
+        "sausage"
+      ]
+    ],
+    [
+      "Poultry",
+      [
+        "chicken",
+        "duck",
+        "poultry"
+      ]
+    ],
+    [
+      "Seafood",
+      [
+        "fish",
+        "prawn",
+        "shrimp",
+        "squid",
+        "octopus",
+        "seafood",
+        "crab",
+        "anchovy",
+        "seaweed"
+      ]
+    ],
+    [
+      "Dairy & Egg",
+      [
+        "milk",
+        "cheese",
+        "butter",
+        "cream",
+        "egg",
+        "yogurt",
+        "yoghurt"
+      ]
+    ],
+    [
+      "Noodle, Rice & Grain",
+      [
+        "rice",
+        "noodle",
+        "pasta",
+        "flour",
+        "grain",
+        "ramen",
+        "udon",
+        "tteok"
+      ]
+    ],
+    [
+      "Tea & Coffee",
+      [
+        "coffee",
+        "tea",
+        "latte",
+        "espresso",
+        "matcha"
+      ]
+    ],
+    [
+      "Base & Syrup",
+      [
+        "syrup",
+        "puree",
+        "concentrate",
+        "marmalade"
+      ]
+    ],
+    [
+      "Spice & Powder",
+      [
+        "spice",
+        "pepper",
+        "salt",
+        "seasoning",
+        "powder"
+      ]
+    ],
+    [
+      "Vegetables",
+      [
+        "onion",
+        "garlic",
+        "cabbage",
+        "lettuce",
+        "carrot",
+        "potato",
+        "tomato",
+        "cucumber",
+        "spinach",
+        "mushroom",
+        "radish",
+        "scallion",
+        "chilli",
+        "chili",
+        "vegetable"
+      ]
+    ],
+    [
+      "Fruit",
+      [
+        "apple",
+        "banana",
+        "lemon",
+        "orange",
+        "strawberry",
+        "mango",
+        "grape",
+        "peach",
+        "melon",
+        "blueberry",
+        "citron",
+        "yuja"
+      ]
+    ],
+    [
+      "Alcohol",
+      [
+        "beer",
+        "soju",
+        "wine",
+        "whisky",
+        "whiskey",
+        "vodka",
+        "makgeolli"
+      ]
+    ],
+    [
+      "Beverage",
+      [
+        "juice",
+        "cola",
+        "sprite",
+        "beverage"
+      ]
+    ]
+  ],
+  "rules": [
+    "쓰기는 카테고리가 NULL 인 행만 — 채워진 것은 절대 덮어쓰지 않는다.",
+    "어휘가 2개 이상 카테고리에 걸리면 채우지 않는다(추측 금지). 남은 것은 목록으로 보고한다.",
+    "병합·삭제는 같은 소유자 안에서만. 소유자가 다른 동명 카테고리는 구조상 정상이라 무접촉.",
+    "카테고리를 지우기 전에 그 카테고리를 무는 행이 0인지 확인한다(고아 방지).",
+    "어휘는 단어 경계로만 맞춘다 — 글자 포함(ham ⊂ Chamomile)은 오분류를 만든다.",
+    "veto 어휘가 이름에 있으면 자동 분류하지 않는다."
+  ],
+  "veto": [
+    "candle",
+    "baking soda",
+    "bicarbonate"
+  ]
+}
