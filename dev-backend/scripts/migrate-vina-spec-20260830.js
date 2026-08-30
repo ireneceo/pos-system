@@ -27,8 +27,14 @@ const { sequelize } = require('../config/database');
 
 const PLAN_FILE = path.join(__dirname, 'data', 'vina-spec-20260830.json');
 const PLAN_SHA = 'd04475b1257daded185cf2b674fadbac21439a84ce9a698fbc276bb8f4552665';
-const MARKER = path.join(__dirname, 'data', '.vina-spec-20260830.applied');
 const EXPECT = 174;
+
+// ⚠ `scripts/data/` 는 배포 rsync --delete 영향권이다 — dev 에 없는 파일은 운영에서 지워진다.
+//    마커·백업을 거기 두면 **다음 배포가 롤백 경로를 삭제**한다(2026-08-30 실측).
+//    → 트리 밖에 둬야 배포를 넘어 산다. `/var/www/backups/` 는 rsync 대상이 아니고,
+//      사람이 복구를 찾을 때 이미 보는 자리다.
+const SAFE_DIR = '/var/www/backups/data-migrations';
+const MARKER = path.join(SAFE_DIR, '.vina-spec-20260830.applied');
 
 const eqNum = (a, b) => {
   const x = Number(a), y = Number(b);
@@ -78,6 +84,7 @@ const eqNum = (a, b) => {
     skipped.slice(0, 10).forEach(s => console.log(`    – #${s.p.id} ${s.p.label.slice(0, 36)} — ${s.why}`));
 
     if (!willWrite.length) {
+      fs.mkdirSync(SAFE_DIR, { recursive: true });
       fs.writeFileSync(MARKER, `${new Date().toISOString()} — 쓸 행 0 (이미 반영된 상태)\n`);
       console.log('  ✓ 쓸 행 0 — 마커 기록 후 종료');
       process.exit(0);
@@ -85,7 +92,8 @@ const eqNum = (a, b) => {
 
     // 백업 덤프
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backup = path.join(__dirname, 'data', `vina-spec-backup-${stamp}.json`);
+    fs.mkdirSync(SAFE_DIR, { recursive: true });
+    const backup = path.join(SAFE_DIR, `vina-spec-backup-${stamp}.json`);
     fs.writeFileSync(backup, JSON.stringify(willWrite.map(w => ({ id: w.id, before: w.before })), null, 1));
     console.log(`  ✓ 백업 덤프: ${backup} (${willWrite.length}행)`);
 
