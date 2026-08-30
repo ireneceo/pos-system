@@ -43,6 +43,14 @@ const BrandProduct = sequelize.define('BrandProduct', {
     defaultValue: 1,
     comment: 'Base quantity per unit'
   },
+  // 'pack' = 개수로 주문(팩·박스) / 'measure' = 무게·부피로 주문(kg·g·L·ml, 소수 허용).
+  // 기본이 'pack' 이라 기존 행·기존 호출은 동작이 바뀌지 않는다.
+  order_mode: {
+    type: DataTypes.ENUM('pack', 'measure'),
+    allowNull: false,
+    defaultValue: 'pack',
+    comment: '주문 방식 (개수 / 무게·부피)'
+  },
   unit_price: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,

@@ -23,6 +23,9 @@ const { normalizeImageField } = require('../utils/imageProcessor');
 // P0-3 Wave B: 브랜드 상품 관리(카탈로그/카테고리/옵션그룹/상품레시피)는 Advanced(brand_products).
 // BG 유저 스코프 경로만 게이트 — 레스토랑이 브랜드 카탈로그를 읽는 `/brands/:brandId/products`(별도 prefix)는
 // 비차단. authenticateToken 선행(per-route 와 중복돼도 idempotent), 데모/System Admin bypass.
+// 주문 방식 — 'pack'=개수로, 'measure'=무게·부피로(소수 허용). 공급업체 축과 같은 값.
+const ORDER_MODES = ['pack', 'measure'];
+
 router.use(['/brand-products', '/brand-product-categories', '/brand-product-option-groups'],
   authenticateToken, requireBrandUserModule('brand_products'));
 
@@ -727,7 +730,7 @@ router.get('/brand-products/:productId', authenticateToken, requireBGScope, asyn
 router.post('/brand-products', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const {
-      name, description, sku, unit, base_quantity, unit_price,
+      name, description, sku, unit, base_quantity, order_mode, unit_price,
       min_order_quantity, image_url, category_id, emoji,
       is_active, product_recipe_id, sort_order, brand_ids, restaurant_ids,
       distribution_mode, option_group_ids,
@@ -833,6 +836,8 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
       sku: finalSku,
       unit: unit || null,
       base_quantity: base_quantity || 1,
+      // 안 보내면 'pack' = 지금까지의 동작. 값이 오면 목록 안에 있는지만 본다.
+      order_mode: ORDER_MODES.includes(order_mode) ? order_mode : 'pack',
       unit_price: unit_price || 0,
       min_order_quantity: min_order_quantity || 1,
       image_url: normalizedImage,
@@ -955,7 +960,7 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
   try {
     const { productId } = req.params;
     const {
-      name, description, sku, unit, base_quantity, unit_price,
+      name, description, sku, unit, base_quantity, order_mode, unit_price,
       min_order_quantity, image_url, category_id, emoji,
       is_active, product_recipe_id, sort_order, brand_ids, restaurant_ids,
       distribution_mode, option_group_ids,
@@ -1009,6 +1014,7 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       sku: sku !== undefined ? sku : product.sku,
       unit: unit !== undefined ? unit : product.unit,
       base_quantity: base_quantity !== undefined ? base_quantity : product.base_quantity,
+      order_mode: ORDER_MODES.includes(order_mode) ? order_mode : product.order_mode,
       unit_price: unit_price !== undefined ? unit_price : product.unit_price,
       min_order_quantity: min_order_quantity !== undefined ? min_order_quantity : product.min_order_quantity,
       image_url: normalizedImage !== undefined ? normalizedImage : product.image_url,

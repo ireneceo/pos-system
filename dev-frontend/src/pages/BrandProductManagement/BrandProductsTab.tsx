@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { parseMinOrderQty } from '../../utils/unitConversion';
+import { parseMinOrderQty, OrderMode } from '../../utils/unitConversion';
 import { getErrorMessage } from '../../utils/apiError';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
@@ -63,6 +63,8 @@ interface Product {
   sku: string | null;
   unit: string | null;
   base_quantity: number;
+  // 주문 방식 — 구매자가 "몇 개"로 담을지 "몇 kg"로 담을지. 없으면 'pack'(기존 동작).
+  order_mode?: OrderMode;
   unit_price: number;
   min_order_quantity: number;
   image_url: string | null;
@@ -348,6 +350,37 @@ const CheckboxItem = styled.label`
   }
 `;
 
+const OrderModeRow = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const OrderModeOption = styled.label<{ $active: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid ${(p) => (p.$active ? '#635BFF' : '#E5E7EB')};
+  background: ${(p) => (p.$active ? '#F5F3FF' : '#FFFFFF')};
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: ${(p) => (p.$active ? 600 : 400)};
+  color: ${(p) => (p.$active ? '#4C42E6' : '#374151')};
+  transition: border-color 0.15s, background 0.15s;
+
+  input { accent-color: #635BFF; margin: 0; cursor: pointer; }
+
+  &:hover { border-color: #635BFF; }
+`;
+
+const OrderModeHint = styled.div`
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6B7280;
+`;
+
 const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   brands,
   onCountChange,
@@ -376,6 +409,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     sku: '',
     unit: '',
     base_quantity: '1',
+    order_mode: 'pack' as OrderMode,
     unit_price: '',
     track_stock: false,
     current_stock: 0,
@@ -529,6 +563,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         sku: product.sku || '',
         unit: product.unit || '',
         base_quantity: (product.base_quantity || 1).toString(),
+        order_mode: (product.order_mode || 'pack') as OrderMode,
         unit_price: product.unit_price.toString(),
         track_stock: !!(product as any).track_stock,
         current_stock: Number((product as any).current_stock) || 0,
@@ -575,6 +610,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         sku: '',
         unit: '',
         base_quantity: '1',
+        order_mode: 'pack' as OrderMode,
         unit_price: '',
     track_stock: false,
     current_stock: 0,
@@ -654,6 +690,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           sku: formData.sku.trim() || null,
           unit: formData.unit || null,
           base_quantity: parseFloat(formData.base_quantity) || 1,
+          order_mode: formData.order_mode,
           unit_price: parseFloat(formData.unit_price) || 0,
           track_stock: !!formData.track_stock,
           current_stock: formData.track_stock ? (Number(formData.current_stock) || 0) : 0,
@@ -1116,7 +1153,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               </UIFormGroup>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
               <UIFormGroup>
                 <FormLabel>Unit Price (RM) *</FormLabel>
                 <FormInput
@@ -1155,6 +1192,41 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </FormSelect>
+              </UIFormGroup>
+
+              <UIFormGroup>
+                <FormLabel>{t('products.fields.orderMode', 'Order Method')}</FormLabel>
+                {/*
+                  주문 방식 — 구매자가 이 상품을 "몇 개" 로 담을지 "몇 kg" 로 담을지 정한다.
+                  전문용어(mode/catch-weight) 금지: 판매자가 읽고 바로 아는 말만 쓴다.
+                  기본은 '개수로 주문' = 기존 동작이라, 손대지 않으면 지금까지와 똑같이 등록된다.
+                */}
+                <OrderModeRow role="radiogroup" aria-label={t('products.fields.orderMode', 'Order Method')}>
+                  {(['pack', 'measure'] as OrderMode[]).map((mode) => (
+                    <OrderModeOption key={mode} $active={formData.order_mode === mode}>
+                      <input
+                        type="radio"
+                        name="brand_order_mode"
+                        value={mode}
+                        checked={formData.order_mode === mode}
+                        onChange={() => setFormData({ ...formData, order_mode: mode })}
+                      />
+                      <span>
+                        {mode === 'pack'
+                          ? t('products.orderMode.pack', 'By count (pack / box)')
+                          : t('products.orderMode.measure', 'By weight or volume (kg, g, L, ml)')}
+                      </span>
+                    </OrderModeOption>
+                  ))}
+                </OrderModeRow>
+                <OrderModeHint>
+                  {formData.order_mode === 'measure'
+                    ? t('products.orderMode.measureHint', "Buyers order like '2.5 {{unit}}'", { unit: formData.unit || 'kg' })
+                    : t('products.orderMode.packHint', "Buyers order like '3 units'{{spec}}", {
+                        spec: formData.base_quantity && formData.unit
+                          ? ` (${formData.base_quantity}${formData.unit} per unit)` : ''
+                      })}
+                </OrderModeHint>
               </UIFormGroup>
 
               <UIFormGroup>

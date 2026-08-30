@@ -135,7 +135,14 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
       const bpInfoById = {};
       if (brandProductIds.length) {
         const bps = await BrandProduct.findAll({ where: { id: { [Op.in]: brandProductIds } }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'order_mode'], paranoid: false });
-        for (const bp of bps) bpInfoById[bp.id] = { name: bp.name || null, sku: bp.sku || null };
+        // 규격·주문방식까지 싣는다. 예전엔 name/sku 만 담아서, 브랜드가 5kg 포대로 팔아도
+        // 구매 화면엔 `seller_unit=null · base_quantity=1 · order_mode='pack'` 으로 나갔다.
+        for (const bp of bps) bpInfoById[bp.id] = {
+          name: bp.name || null, sku: bp.sku || null,
+          unit: bp.unit || null,
+          base_quantity: bp.base_quantity != null ? parseFloat(bp.base_quantity) : 1,
+          order_mode: bp.order_mode || 'pack'
+        };
       }
       const optsBySpId = {};
       for (const sp of supProds) {
@@ -179,7 +186,7 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
           seller_product_name: spInfo.name || null,
           seller_product_sku: spInfo.sku || null,
           // 규격·주문방식 — 구매 화면이 "5kg/포대" 표시와 kg 소수 입력을 결정하는 데 쓴다.
-          // (2026-08-30 단위주문. order_mode 는 supplier_products 에만 있다 — 브랜드는 null)
+          // (2026-08-30 단위주문. 공급업체·브랜드 양쪽에서 온다 — 없으면 'pack' = 현행 동작)
           seller_unit: spInfo.unit ?? null,
           base_quantity: spInfo.base_quantity ?? 1,
           order_mode: spInfo.order_mode ?? 'pack',
@@ -632,7 +639,12 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
           ...r.toJSON(),
           seller_name: getSellerName(sellerMapResolved, r.seller_type, r.seller_entity_id),
           seller_product_name: prod?.name || null,
-          seller_product_sku: prod?.sku || null
+          seller_product_sku: prod?.sku || null,
+          // 규격·주문방식 — 매장이 이 목록에서 바로 발주하므로 여기에도 실어야
+          // "3 × 5kg" 표시와 kg 소수 입력이 동작한다(공급업체·브랜드 공통).
+          seller_unit: prod?.unit ?? null,
+          base_quantity: prod?.base_quantity != null ? parseFloat(prod.base_quantity) : 1,
+          order_mode: prod?.order_mode || 'pack'
         });
       });
     }

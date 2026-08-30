@@ -141,9 +141,16 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
       const BrandProduct = require('../models/BrandProduct');
       const brandProductIds = [...new Set(mappings.filter(m => m.seller_type === 'brand').map(m => m.seller_product_id).filter(Boolean))];
       const brandProds = brandProductIds.length
-        ? await BrandProduct.findAll({ where: { id: { [Op.in]: brandProductIds } }, attributes: ['id', 'name', 'sku'], paranoid: false })
+        ? await BrandProduct.findAll({ where: { id: { [Op.in]: brandProductIds } },
+            attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'order_mode'], paranoid: false })
         : [];
-      const bpInfoById = Object.fromEntries(brandProds.map(b => [b.id, { name: b.name, sku: b.sku }]));
+      // 규격·주문방식까지 담는다 — 빠뜨리면 브랜드 상품이 늘 "낱개 주문"으로 보인다.
+      const bpInfoById = Object.fromEntries(brandProds.map(b => [b.id, {
+        name: b.name, sku: b.sku,
+        unit: b.unit || null,
+        base_quantity: b.base_quantity != null ? parseFloat(b.base_quantity) : 1,
+        order_mode: b.order_mode || 'pack'
+      }]));
 
       const sellersByIngredient = {};
       for (const m of mappings) {
@@ -164,7 +171,7 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
           seller_product_name: spInfo.name || null,
           seller_product_sku: spInfo.sku || null,
           // 규격·주문방식 — 구매 화면의 "5kg/포대" 표시와 kg 소수 입력을 결정한다.
-          // (2026-08-30 단위주문. order_mode 는 supplier_products 에만 있어 브랜드는 'pack')
+          // (2026-08-30 단위주문. 공급업체·브랜드 양쪽에서 온다 — 없으면 'pack' = 현행 동작)
           seller_unit: spInfo.unit ?? null,
           base_quantity: spInfo.base_quantity ?? 1,
           order_mode: spInfo.order_mode ?? 'pack',

@@ -708,5 +708,16 @@
   "brandMenusPage.recommendMenusHint": "顾客加入此菜单后向其推荐。保存时同步到所有关联餐厅。",
   "brandMenusPage.noOtherMenus": "暂无其他可推荐的菜单。",
   "brandMenusPage.selectMenuToRecommend": "选择要推荐的菜单...",
-  "brandMenusPage.allMenusAdded": "所有菜单均已添加"
+  "brandMenusPage.allMenusAdded": "所有菜单均已添加",
+  "products": {
+    "fields": {
+      "orderMode": "订购方式"
+    },
+    "orderMode": {
+      "pack": "按数量订购（包／箱）",
+      "measure": "按重量或容量订购（kg, g, L, ml）",
+      "measureHint": "买家会以「2.5{{unit}}」的方式下单",
+      "packHint": "买家会以「3 个」的方式下单{{spec}}"
+    }
+  }
 }

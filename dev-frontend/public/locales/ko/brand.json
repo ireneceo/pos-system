@@ -708,5 +708,16 @@
   "brandMenusPage.recommendMenusHint": "손님이 이 메뉴를 담은 후 추천으로 제안됩니다. 저장 시 연결된 모든 매장에 동기화됩니다.",
   "brandMenusPage.noOtherMenus": "추천할 다른 메뉴가 아직 없습니다.",
   "brandMenusPage.selectMenuToRecommend": "추천할 메뉴 선택...",
-  "brandMenusPage.allMenusAdded": "모든 메뉴가 이미 추가됨"
+  "brandMenusPage.allMenusAdded": "모든 메뉴가 이미 추가됨",
+  "products": {
+    "fields": {
+      "orderMode": "주문 방식"
+    },
+    "orderMode": {
+      "pack": "개수로 주문 (팩·박스)",
+      "measure": "무게·부피로 주문 (kg, g, L, ml)",
+      "measureHint": "구매자가 '2.5{{unit}}' 처럼 담습니다",
+      "packHint": "구매자가 '3개' 처럼 담습니다{{spec}}"
+    }
+  }
 }

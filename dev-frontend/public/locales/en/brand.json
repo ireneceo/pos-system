@@ -708,5 +708,16 @@
   "brandMenusPage.recommendMenusHint": "Suggested to customers after they add this item. Synced to all linked restaurants on save.",
   "brandMenusPage.noOtherMenus": "No other menus available to recommend yet.",
   "brandMenusPage.selectMenuToRecommend": "Select a menu to recommend...",
-  "brandMenusPage.allMenusAdded": "All menus already added"
+  "brandMenusPage.allMenusAdded": "All menus already added",
+  "products": {
+    "fields": {
+      "orderMode": "Order Method"
+    },
+    "orderMode": {
+      "pack": "By count (pack / box)",
+      "measure": "By weight or volume (kg, g, L, ml)",
+      "measureHint": "Buyers order like '2.5 {{unit}}'",
+      "packHint": "Buyers order like '3 units'{{spec}}"
+    }
+  }
 }

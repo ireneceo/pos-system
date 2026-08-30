@@ -708,5 +708,16 @@
   "brandMenusPage.recommendMenusHint": "Dicadangkan kepada pelanggan selepas mereka menambah item ini. Diselaraskan ke semua restoran berkaitan apabila disimpan.",
   "brandMenusPage.noOtherMenus": "Tiada menu lain tersedia untuk dicadangkan lagi.",
   "brandMenusPage.selectMenuToRecommend": "Pilih menu untuk dicadangkan...",
-  "brandMenusPage.allMenusAdded": "Semua menu telah ditambah"
+  "brandMenusPage.allMenusAdded": "Semua menu telah ditambah",
+  "products": {
+    "fields": {
+      "orderMode": "Kaedah Pesanan"
+    },
+    "orderMode": {
+      "pack": "Mengikut bilangan (pek / kotak)",
+      "measure": "Mengikut berat atau isipadu (kg, g, L, ml)",
+      "measureHint": "Pembeli memesan seperti '2.5 {{unit}}'",
+      "packHint": "Pembeli memesan seperti '3 unit'{{spec}}"
+    }
+  }
 }

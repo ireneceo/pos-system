@@ -1397,12 +1397,30 @@ Irene 원문: **"설계가 완벽하게 할 수 있어? 일단 레스토랑관�
 | 물결 | 내용 | 상태 |
 |---|---|---|
 | **C-1** | `brand_products.order_mode` ENUM('pack','measure') 신설 + `min_order_quantity` 확폭 (`scripts/migrate-brand-unit-order.js`, registry `deploy`) | ✅ dev 적용 · 운영 미적용 |
-| **C-2** | 브랜드 링크 **직렬화** — 브랜드 상품의 `unit`/`base_quantity`/`order_mode` 를 판매자 항목에 실어 보내기 | ⏸ 미착수 |
-| **D** | BG 상품 폼 라디오·규격 입력 + 구매 UI 게이트 개방 | ⏸ 미착수 |
+| **C-2** | 브랜드 링크 **직렬화** — 브랜드 상품의 `unit`/`base_quantity`/`order_mode` 를 판매자 항목에 실어 보내기 | ✅ 완료 |
+| **D** | BG 상품 폼 라디오 + API `order_mode` 수용 | ✅ 완료 |
 
-**C-2 가 왜 필요한가**: 지금 브랜드 판매자 항목은 무조건 `seller_unit=null · base_quantity=1 ·
-order_mode='pack'` 으로 나간다 — 세 곳이 브랜드 상품의 규격을 **읽고도 버린다**.
-`routes/ingredients.js` 138행(`bpInfoById`) · 624행(`bpMap`) · `routes/restaurants-ingredients.js` 146행.
+**C-2 가 왜 필요했는가**: 브랜드 판매자 항목이 무조건 `seller_unit=null · base_quantity=1 ·
+order_mode='pack'` 으로 나갔다 — 세 곳이 브랜드 상품의 규격을 **읽고도 버렸다**.
+`routes/restaurants-ingredients.js` 146행 · `routes/ingredients.js` 138행(BG 자기 재료) ·
+624행(브랜드 공유 재료). 셋 다 공급업체와 같은 모양으로 맞췄다.
+반증: 파일별로 되돌리면 해당 경로만 옛 증상으로 실패하고 공급업체 경로는 무영향 —
+그 과정에서 `/restaurants/:id/ingredients` 의 **실제 핸들러가 `restaurants-ingredients.js`** 임도 확정했다.
+
+**D 에서 나온 실결함**: `routes/brand-products.js` 가 `order_mode` 를 **아예 받지 않았다.**
+폼에서 '무게로 주문'을 골라도 조용히 `'pack'` 으로 저장됐다. POST/PUT 구조분해 + `ORDER_MODES`
+검증 + 모델 필드로 수정.
+
+> **📌 3단계 전제 정정 (2026-08-30 실측)**
+> 위 표의 3단계는 "**게이트 제거만**"이라고 적었으나 **제거할 게이트가 없었다.**
+> 구매 UI 의 measure 수량 입력·규격 표시·per-unit 비교는 처음부터 **`seller.order_mode` 만 보고**
+> 동작하며 `buyerEntity.type` 분기가 걸려 있지 않다(`NewPurchaseOrderPage.tsx` 실측).
+> 즉 3단계의 실체는 **판매자 데이터(브랜드 2컬럼) + 직렬화**였고, 화면은 데이터가 오는 순간 열렸다.
+> 1091·1104·1142·1428행의 `buyerEntity` 분기는 **장바구니 구성·구매자 축**에 관한 것이지
+> 단위주문 게이트가 아니다.
+
+**왕복 검증 (Fable 게이트 조건)**: BG measure 상품(kg) → 매장 재고(g) 연결 환산 1000 →
+매장이 **2.5kg** 발주(금액 RM75, 소수 무손실) → 입고 → **재고 +2500g = 2.5 × 1000**. 6/6 통과·잔재 0.
 
 🔴 **C-1 이 함께 없앤 지뢰**: `routes/ingredients.js` 두 곳이 이미 `attributes: [... 'order_mode']`
 로 `BrandProduct` 를 조회하고 있었다. 컬럼이 없어서 **브랜드 재료에 브랜드 판매자를 연결하는
