@@ -474,6 +474,24 @@ Recipe: 토마토 수프 (Restaurant My Cost 적용)
 - DB 스키마 변경 최소화 (새 FK 컬럼 불필요)
 - 프론트엔드에서 recipe 선택과 재료 직접 연결이 상호 배타적으로 동작
 
+### 🔒 저장 규약 (2026-08-30, 실제 데이터 파괴를 겪고 세운 것)
+
+**이 블록은 4곳(`routes/menu.js` POST·PUT, `routes/brand-products.js` POST·PUT)이 같은 형태를 지킨다.**
+
+1. **단일 트랜잭션.** 레시피 생성 → 재료 삽입 → 상품 연결은 한 덩어리다. 특히 **수정(PUT)은 기존
+   재료를 `destroy` 로 전부 지운 뒤 다시 넣는다** — 트랜잭션이 없으면 중간 실패 시 **"지운 것만
+   남아"** 사용자가 쌓아둔 재료가 통째로 사라진다.
+2. **fail-loud.** 실패는 `400` 으로 나간다. `catch` 로 삼키면 화면에는 "저장됨"으로 보이고
+   사용자는 재료가 사라진 것을 나중에야 안다. *(실측 반증: 방어 제거 시 재료 2건 → 0건 + status 200)*
+3. **한 레시피에 같은 재료는 1행.** `recipe_ingredients` · `product_recipe_ingredients` 둘 다
+   `UNIQUE(recipe_id, ingredient_id)`. 2행이 들어가면 BOM 이 이중이 되어 **입고 재고와 원가가
+   그만큼 이중 계산**된다. brand 축은 이 제약이 없어 2026-08-30 에 신설했다
+   (`scripts/migrate-product-recipe-ingredient-unique.js`).
+
+**회귀 안전망**: `node scripts/health-check.js --category=inventory` 의 파괴방어 4케이스가
+이 규약을 계약으로 검사한다(실패 주입 = 같은 재료 2번 → 유니크 위반, SQL 모드 무관).
+방어를 걷어내면 그 4건이 실제로 실패하는 것까지 증명돼 있다.
+
 ### 실제 DB 변경 (Phase 1~2)
 
 ```sql

@@ -1392,6 +1392,23 @@ Irene 원문: **"설계가 완벽하게 할 수 있어? 일단 레스토랑관�
 
 **FG 발주 실사용 여부 미측정**은 이 순서 덕에 지금 알 필요가 없다(3단계에서 판단).
 
+### 3단계 진행 상황 (2026-08-30, 물결 C 부분 완료 — 중단)
+
+| 물결 | 내용 | 상태 |
+|---|---|---|
+| **C-1** | `brand_products.order_mode` ENUM('pack','measure') 신설 + `min_order_quantity` 확폭 (`scripts/migrate-brand-unit-order.js`, registry `deploy`) | ✅ dev 적용 · 운영 미적용 |
+| **C-2** | 브랜드 링크 **직렬화** — 브랜드 상품의 `unit`/`base_quantity`/`order_mode` 를 판매자 항목에 실어 보내기 | ⏸ 미착수 |
+| **D** | BG 상품 폼 라디오·규격 입력 + 구매 UI 게이트 개방 | ⏸ 미착수 |
+
+**C-2 가 왜 필요한가**: 지금 브랜드 판매자 항목은 무조건 `seller_unit=null · base_quantity=1 ·
+order_mode='pack'` 으로 나간다 — 세 곳이 브랜드 상품의 규격을 **읽고도 버린다**.
+`routes/ingredients.js` 138행(`bpInfoById`) · 624행(`bpMap`) · `routes/restaurants-ingredients.js` 146행.
+
+🔴 **C-1 이 함께 없앤 지뢰**: `routes/ingredients.js` 두 곳이 이미 `attributes: [... 'order_mode']`
+로 `BrandProduct` 를 조회하고 있었다. 컬럼이 없어서 **브랜드 재료에 브랜드 판매자를 연결하는
+순간 그 화면이 500** 이었다(실측 `Unknown column 'order_mode' in 'field list'`).
+dev·운영 모두 그런 연결이 0건이라 안 터졌을 뿐이다 — **운영은 배포 전까지 그대로 남아 있다.**
+
 ## 5. 설계 완성도에 대한 Fable 답변 (Irene 질문 "완벽하게 할 수 있어?")
 
 "완벽"을 약속하지 않는다. 대신 근거를 든다:

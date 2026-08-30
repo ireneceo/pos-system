@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-08-30 (**v3.80 유지 — 버전 미상승, Irene 지시**). 운영 배포 3회. ①**발주 상세에서도 "받았다" 가능** — 목록엔 있는데 상세엔 입고 버튼이 없었고, 운영 발주가 **전부 submitted 에 머물러** 사실상 모든 발주가 여기 걸려 있었다(`RECEIVABLE_STATUSES` 단일 상수로 두 입고 라우트 통일, draft·승인대기 차단 유지) ②**재고 입고↔발주 동기화** — 재고 화면 입고와 발주 수령이 서로를 몰라 **같은 물건이 두 번 더해지던 구멍**을 막음(조회 전용 `open-po-lines` + 모달 선택지, 쓰기는 PO `/receive` 단일 경로. RA·BG 양쪽 완료, 나머지 3경로는 실측으로 "적용 불가" 확정) ③**발주 상세 모바일 4건**(번역 코드 노출·타임라인 2중·버튼 정렬·품목 카드 밀도) ④🎯 **3세션 미스터리 종결 — `pending_approval` ENUM 소거 원인 확정**: `sprint6-migration.js` 가 ENUM 목록을 **하드코딩**해, 30초 전 마이그가 넣은 값을 매 배포마다 지우고 있었다(`sprint7` 도 같은 지뢰). 마이그·레지스트리·배포 루프는 **전부 정상**이었다. `lib/enumExpand.js`(expand-only) 신설 + 4지점 교체 + **배포 게이트가 ENUM 값 소실을 차단**(`check-enum-parity.js`) → 배포 후 생존 증명 완료 ⑤**신규 발주 화면 모바일 붕괴 수정**(미배포) — 장바구니가 화면 절반을 고정 점유해 360px 에서 상품 카드 영역이 **55px**(카드 최소 180px = 0장)였다. 하단 접이식 시트로 전환. 검증: verify-all 15/15 · mount sweep 8역할 크래시 0 · 운영 전수검사 **측정 25/25 · 측정 불가 0** · 고장주입 반증 4회. **Fable 게이트 PASS**(C 마커 7b9a5211fd43). 상세=`.claude/session-state.md`.
+> **최종 업데이트:** 2026-08-30 #2 (**v3.80 유지**). ⑥**레시피 재료가 저장 실패 때 통째로 사라지던 것 근본수정** — 메뉴·프로덕트 폼의 "직접 재료 입력"은 기존 재료를 **먼저 다 지우고** 다시 넣는데 트랜잭션이 없고 오류를 삼켜서, 중간에 실패하면 **지운 것만 남고 화면엔 "저장됨"** 으로 보였다(실측 반증: 방어 제거 시 2건 → 0건 소실 + status 200). 4곳 트랜잭션+400 반환, `product_recipe_ingredients` 유니크 신설(BG BOM 이중 → 입고 재고·원가 이중계산 차단), health-check 파괴방어 4케이스 편입(이식 반증: 방어 제거 시 정확히 새 4건만 실패). ⑦**운영 카테고리 정리** — 아이템 중복은 없었고(이름·SKU 0) 겹친 건 카테고리뿐. 병합 9쌍(41건 이동)·빈 옛 카테고리 5 삭제·자동 채움 277·나머지 202 는 `Uncategorized` 수용 → **카테고리 없는 행 0**. ⑧BG 단위주문 물결 C 마이그만 완료(직렬화 미완, 중단). 상세=`.claude/session-state.md`.
+>
+> **이전:** 2026-08-30 (**v3.80 유지 — 버전 미상승, Irene 지시**). 운영 배포 3회. ①**발주 상세에서도 "받았다" 가능** — 목록엔 있는데 상세엔 입고 버튼이 없었고, 운영 발주가 **전부 submitted 에 머물러** 사실상 모든 발주가 여기 걸려 있었다(`RECEIVABLE_STATUSES` 단일 상수로 두 입고 라우트 통일, draft·승인대기 차단 유지) ②**재고 입고↔발주 동기화** — 재고 화면 입고와 발주 수령이 서로를 몰라 **같은 물건이 두 번 더해지던 구멍**을 막음(조회 전용 `open-po-lines` + 모달 선택지, 쓰기는 PO `/receive` 단일 경로. RA·BG 양쪽 완료, 나머지 3경로는 실측으로 "적용 불가" 확정) ③**발주 상세 모바일 4건**(번역 코드 노출·타임라인 2중·버튼 정렬·품목 카드 밀도) ④🎯 **3세션 미스터리 종결 — `pending_approval` ENUM 소거 원인 확정**: `sprint6-migration.js` 가 ENUM 목록을 **하드코딩**해, 30초 전 마이그가 넣은 값을 매 배포마다 지우고 있었다(`sprint7` 도 같은 지뢰). 마이그·레지스트리·배포 루프는 **전부 정상**이었다. `lib/enumExpand.js`(expand-only) 신설 + 4지점 교체 + **배포 게이트가 ENUM 값 소실을 차단**(`check-enum-parity.js`) → 배포 후 생존 증명 완료 ⑤**신규 발주 화면 모바일 붕괴 수정**(미배포) — 장바구니가 화면 절반을 고정 점유해 360px 에서 상품 카드 영역이 **55px**(카드 최소 180px = 0장)였다. 하단 접이식 시트로 전환. 검증: verify-all 15/15 · mount sweep 8역할 크래시 0 · 운영 전수검사 **측정 25/25 · 측정 불가 0** · 고장주입 반증 4회. **Fable 게이트 PASS**(C 마커 7b9a5211fd43). 상세=`.claude/session-state.md`.
 >
 > **이전:** 2026-08-28 (**v3.79 운영 배포 — with MIN 재고 장부 정렬 + 일괄 링크 도구, 이관 완료**). Irene 지시: "git consulting에 있는 재고아이템이랑 공급업체 및 상품이 with min에도 있어야 해… 대량으로 할 수가 없어서 너무 불편해". 실체는 **한 사업의 재고가 두 목록으로 갈라진 것** — 회사(BG) Stock Items 288건(공급처 매핑 285)에는 지식이 다 있는데, 레시피가 붙고 매장이 공유받는 브랜드 식자재 89건은 매핑 0이었다. ①**브랜드 장부로 이관**(created 226 + connected 62, 매핑 305 복제, 원본 288·305 무손상 보존) ②**깃컨설팅 판매상품 81건을 매장에 발주 전용 등록**(track_stock=false) ③신규 도구 `/pos/stock-ledger`(구매 연결·커버리지 2탭, 정확일치 제안·확정은 사람, 원가 반영 opt-in, 멱등) ④롤백 스크립트(dry-run 기본). **결과: with MIN Cafe 재고 표시 157 → 460건, 발주 가능 66 → 432건.** 실증: 매장 계정 실발주 PO-R10-20260828-001 생성(201)→삭제(200). 검증: verify-all --full **16/16** · 실호출 14/14 · 중간회귀 12/12(from-catalog 4패밀리 동작 불변) · rollback 반증 5/5 · **고장주입 양방향 2건** · 인쇄 계약 10/10 · 인쇄루트 34/34. **Fable 게이트 4종 PASS.** ⚠ 검증이 **내가 만든 결함 2건**(라우터가 /api 전체에 가드 누출 → 공급업체·오너 화면 403 / 매장 라우트 checkRestaurantAccess 누락)과 **내 검사기 가짜 통과 1건**을 잡아냈고 전부 수정·반증 재수립. 상세=`docs/STOCK_LEDGER_UNIFICATION_DESIGN.md`.
 >
@@ -8975,6 +8977,39 @@ hydration 게이트가 **메뉴 수정 저장 시 재고가 0 으로 날아가�
 - `dev-frontend/src/components/Inventory/{hooks/useIngredientAdjustModal.ts, modals/ReceiveModal.tsx, InventoryManager.tsx}`
 - `dev-frontend/src/{App.tsx, contexts/SiteSettingsContext.tsx}` · locales 4개 언어
 - `dev-backend/scripts/cleanup-ugs-duplicate-products.js` (신규, 운영 실행 대기)
+
+---
+
+## ✅ 완료: 레시피 저장경로 근본수정 + 파괴방어 안전망 · 운영 카테고리 정리 (2026-08-30)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 레시피 재료 저장 파괴 수정 | 메뉴(RA)·프로덕트(BG) 폼의 "직접 재료 입력" 저장이 기존 재료를 **먼저 전부 지우고** 다시 넣는데, 트랜잭션이 없고 catch 가 오류를 삼켰다. 중간 실패 시 **지운 것만 남아** 재료가 통째로 증발하고 화면엔 "저장됨"으로 보였다. 4곳(menu POST·PUT, brand-products POST·PUT) 단일 트랜잭션 + rollback + 400 반환 | ✅ 완료 |
+| BG BOM 이중 방지 | `product_recipe_ingredients` 에 UNIQUE(recipe_id, ingredient_id) 신설 — 형제 `recipe_ingredients` 엔 있던 불변식이 brand 축에만 없어 같은 재료 2행 → **입고 재고·원가 이중 계산**이었다. 마이그 멱등·행수 자가검증·중복 시 삭제 없이 fail-closed | ✅ 완료 |
+| 파괴방어 영구 안전망 | `health-check --category=inventory` 에 4케이스(menu/brand × PUT 파괴방어·POST 고아0). 실패 주입은 **같은 재료 2번 = 유니크 위반**(SQL 모드 무관). 이식 반증: 방어 제거 시 **정확히 새 4건만 실패, 기존 8건 무영향** | ✅ 완료 |
+| Wave A 철회 | 메뉴·프로덕트를 재고에 직접 연결하는 컬럼 4개를 만들었다가 **기존 레시피 경로가 멀쩡함을 실측**하고 전량 원복(DB·마이그·모델·차감분기) | ✅ 완료 |
+| 운영 카테고리 중복 정리 | 아이템 중복은 **없었다**(이름·SKU 0). 같은 소유자 안의 옛/새 이름 공존만 병합 9쌍(41건 이동) + 빈 옛 카테고리 5 삭제. 소유자가 다른 동명 13쌍은 구조상 정상이라 무접촉 | ✅ 완료 |
+| 운영 카테고리 전량 적용 | 미분류 자동 채움 277건(어휘가 **정확히 한 카테고리에만** 걸릴 때만, 단어 경계 매칭) + 나머지 202건은 소유자별 `Uncategorized` 신설 6개에 수용. **카테고리 없는 행 0** | ✅ 완료 |
+| BG 단위주문 물결 C (부분) | `brand_products.order_mode` 신설 + `min_order_quantity` 확폭. `routes/ingredients.js` 두 곳이 **없는 컬럼을 이미 조회**하고 있어 브랜드 재료↔브랜드 판매자 연결 시 500 이던 지뢰 제거. **직렬화는 미완 — 중단 상태** | ⏸ 중단 |
+
+### 계측에서 잡은 것 (기록)
+
+- **고장주입이 거짓 통과했다** — 주입 전 재료 1건 → 1건이라 숫자가 우연히 같아 파괴를 못 짚었다. 아침에 "3/3 통과"로 보고한 것은 **PUT 파괴 축을 아예 안 본 통과**였다(소급 정정).
+- **실패 주입 벡터가 환경 의존이면 안 된다** — ENUM 위반은 비STRICT 환경에서 조용히 잘려 거짓 통과한다. DB 제약(유니크) 위반으로 교체.
+- **조용한 삼킴을 내가 재현했다** — 정리 함수를 문장 전체 하나의 try 로 감싸고 컬럼명을 틀려, 뒤 문장이 통째로 안 돌아 잔재가 매 실행 2건씩 쌓였다. 문장별 try + 가시 경고로 수정.
+- **어휘 매칭은 단어 경계로** — 글자 포함이면 `ham` ⊂ `Chamomile` 로 오분류된다(표본 검토에서 3건 적발).
+
+### 수정된 파일
+- `dev-backend/routes/menu.js` · `dev-backend/routes/brand-products.js`
+- `dev-backend/services/inventoryDeductionService.js`
+- `dev-backend/scripts/health-check.js`
+- `dev-backend/scripts/migrate-product-recipe-ingredient-unique.js` (신규)
+- `dev-backend/scripts/migrate-brand-unit-order.js` (신규)
+- `dev-backend/scripts/migrate-category-cleanup-20260830.js` + `scripts/data/category-cleanup-20260830.json` (신규, 운영 적용 완료)
+- `dev-backend/scripts/migrate-category-uncategorized-20260830.js` (신규, 운영 적용 완료)
+- `dev-backend/scripts/migrations.registry.json`
 
 ---
 
