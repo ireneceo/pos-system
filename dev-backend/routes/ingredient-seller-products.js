@@ -26,6 +26,7 @@ const {
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
+const { parseMinOrderQty } = require('../utils/quantity');
 const { sanitizeString } = require('../middleware/validation');
 const { readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
 
@@ -172,7 +173,8 @@ router.post('/ingredients/:ingredientId/seller-sources', async (req, res) => {
       seller_product_id: sellerProductId,
       unit_price: price,
       unit_conversion: parseFloat(unit_conversion) || 1,
-      min_order_quantity: parseInt(min_order_quantity, 10) || 1,
+      // 소수 보존 — measure 모드 "최소 0.5kg". parseInt 절삭 금지(utils/quantity 참조)
+      min_order_quantity: parseMinOrderQty(min_order_quantity),
       lead_time_days: parseInt(lead_time_days, 10) || 0,
       is_preferred: !!is_preferred,
       is_active: true,
@@ -213,7 +215,7 @@ router.put('/ingredient-seller-products/:id', async (req, res) => {
       updates.unit_price = p;
     }
     if (unit_conversion !== undefined) updates.unit_conversion = parseFloat(unit_conversion) || 1;
-    if (min_order_quantity !== undefined) updates.min_order_quantity = parseInt(min_order_quantity, 10) || 1;
+    if (min_order_quantity !== undefined) updates.min_order_quantity = parseMinOrderQty(min_order_quantity);
     if (lead_time_days !== undefined) updates.lead_time_days = parseInt(lead_time_days, 10) || 0;
     if (is_active !== undefined) updates.is_active = !!is_active;
     if (notes !== undefined) updates.notes = notes ? sanitizeString(String(notes)).slice(0, 255) : null;

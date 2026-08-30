@@ -1,3 +1,4 @@
+const { parseMinOrderQty } = require('./quantity');
 /**
  * catalogLink.js — from-catalog(카탈로그에서 재고 항목 담기) 공통 로직의 단일 소스.
  *
@@ -138,7 +139,14 @@ function mappingAttrs({ seller, unitConversion, isPreferred, targetKey, targetId
     seller_product_id: seller.sellerProductRow.id,
     unit_price: parseFloat(seller.productPrice) || 0,
     unit_conversion: unitConversion,
-    min_order_quantity: parseInt(seller.productMinQty, 10) || 1,
+    // 최소주문은 소수를 허용한다 (measure 모드의 "최소 0.5kg").
+    //   그전까지 `parseInt(...) || 1` 이었다 — 0.5 가 0 으로 잘리고 `|| 1` 이 1 로 되살려
+    //   **판매자가 0.5kg 로 등록해도 링크에는 1 이 박혔다**(컬럼은 DECIMAL 로 넓혔는데
+    //   4벌 공통 쓰기 경로가 잘라내면 확폭이 무의미하다 — 2026-08-30).
+    //   폴백 1 은 유지한다: 값이 없거나(NaN/null) 0 이하면 종전대로 1.
+    //   ⚠ `|| 1` 만으로는 부족하다 — 0.5 는 truthy 라 통과하지만 parseInt 가 먼저 죽인다.
+    //     그래서 절삭(parseInt) 자체를 없애고 유한 양수만 통과시킨다.
+    min_order_quantity: parseMinOrderQty(seller.productMinQty),
     lead_time_days: 0,
     is_preferred: isPreferred,
     is_active: true

@@ -63,7 +63,8 @@
       "currentStock": "현재 재고",
       "lowStockThreshold": "재고 부족 임계값",
       "leadTimeDays": "리드 타임 (일)",
-      "isActive": "활성화"
+      "isActive": "활성화",
+      "orderMode": "주문 방식"
     },
     "categoryManagement": "카테고리 관리",
     "optionGroups": "옵션 그룹",
@@ -72,7 +73,13 @@
     "planLimitReached": "현재 플랜의 상품 등록 한도에 도달했습니다. 업그레이드해 주세요.",
     "noProducts": "등록된 상품이 없습니다. \"상품 추가\"를 눌러 카탈로그를 만들어 보세요.",
     "deleteConfirm": "이 상품을 삭제하시겠습니까?",
-    "copySuffix": " (복사본)"
+    "copySuffix": " (복사본)",
+    "orderMode": {
+      "pack": "개수로 주문 (팩·박스)",
+      "measure": "무게·부피로 주문 (kg·g·L·ml)",
+      "packHint": "구매자가 '3 개' 처럼 주문합니다{{spec}}",
+      "measureHint": "구매자가 '2.5 {{unit}}' 처럼 주문합니다"
+    }
   },
   "inventory": {
     "title": "재고 관리",

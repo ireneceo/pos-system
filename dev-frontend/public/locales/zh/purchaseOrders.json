@@ -343,7 +343,8 @@
     "noSellers": "无供应商",
     "allCategoriesFilter": "全部类别",
     "uncategorized": "未分类",
-    "priceNotSet": "未设置价格"
+    "priceNotSet": "未设置价格",
+    "minOrder": "最少"
   },
   "staging": {
     "noPhoneTitle": "无电话号码",

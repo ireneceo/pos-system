@@ -343,7 +343,8 @@
     "noSellers": "Tiada penjual",
     "allCategoriesFilter": "Semua kategori",
     "uncategorized": "Tidak dikategori",
-    "priceNotSet": "Harga belum ditetapkan"
+    "priceNotSet": "Harga belum ditetapkan",
+    "minOrder": "Min"
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",

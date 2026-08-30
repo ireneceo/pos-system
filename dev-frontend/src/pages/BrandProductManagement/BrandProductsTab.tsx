@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { parseMinOrderQty } from '../../utils/unitConversion';
 import { getErrorMessage } from '../../utils/apiError';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
@@ -657,7 +658,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           track_stock: !!formData.track_stock,
           current_stock: formData.track_stock ? (Number(formData.current_stock) || 0) : 0,
           stock_unit: formData.stock_unit || null,
-          min_order_quantity: parseInt(formData.min_order_quantity) || 1,
+          min_order_quantity: parseMinOrderQty(formData.min_order_quantity),
           category_id: formData.category_id ? parseInt(formData.category_id) : null,
           image_url: formData.image_url || null,
           emoji: formData.emoji || null,

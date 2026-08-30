@@ -342,6 +342,16 @@ DB 에서 활성 판매자 링크가 있는 품목(Onion, ingredient 16)을 찾�
 
 ---
 
+## 📌 계측 규율 (실제로 밟은 것만)
+
+- **장시간 sweep 실행 중 빌드 금지** — 겹치면 메모리 게이트 조건이다(2026-08-30 실제: 가용 2.3GB 강하,
+  빌드 힙 2560MB). 순서화하거나 **sweep 종료를 확인한 뒤** 빌드할 것. 겹쳤다면 sweep 을 죽이고
+  빌드 완료 후 **단독 재실행**한다(구 번들 대상 sweep 은 어차피 무효).
+- `pgrep -f "verify-all.js"` 는 **대기 루프 자신을 매칭한다**. 실제 프로세스 확인은
+  `ps -eo cmd | grep "[n]ode scripts/verify-all"` 형태로.
+
+---
+
 ## 📌 스키마 함정 (다음 세션 대비)
 
 1. `purchase_order_items` 에 `seller_product_id` **없다**. `ingredient_seller_product_id`(링크 id)를 문다 —
@@ -350,6 +360,14 @@ DB 에서 활성 판매자 링크가 있는 품목(Onion, ingredient 16)을 찾�
    **브랜드 상품의 소유·판매 범위 판정은 `ingredient_seller_products` 링크 기준으로 해야 한다.**
    이걸로 조인했다가 가격 목록이 `0건` 으로 나왔고, 앞선 실측과 모순돼 계측기를 의심해 잡았다.
 3. `ProductIngredient` 에 **`brand_id` 없다** — 소유는 `owner_user_id`.
+4. 🔴 **`ingredient_seller_products.seller_product_id` 는 다형(polymorphic) 참조다.**
+   `seller_type='supplier'` 면 `supplier_products`, `'brand'` 면 `brand_products` 를 가리킨다.
+   **타입 필터 없이 한쪽 테이블에 조인하면 ID 충돌로 가짜 행이 붙는다.**
+   2026-08-30 실제 오측: 단위 불일치 링크를 재다가 brand 링크 2건(id 51·52)이 같은 id 의
+   supplier 상품과 엉겨 "4건 → 6건으로 늘었다"는 **없는 사실**을 보고했다. 정확히 조인하니 4건 불변이었고,
+   51·52 는 piece↔pcs 동의어라 애초에 결함도 아니었다.
+   → 이 표를 조인할 때는 **항상 `seller_type` 으로 다리를 나눠라.** 감지 검사는
+   `scripts/inspection/suites/supply-chain.js` R-SC-007 이 그 형태로 박제해 뒀다.
 
 ---
 

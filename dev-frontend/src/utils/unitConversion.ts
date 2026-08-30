@@ -140,7 +140,11 @@ export const calculateIngredientCost = (
 export const formatQuantity = (quantity: number | string): string => {
   const n = typeof quantity === 'number' ? quantity : parseFloat(quantity);
   if (!Number.isFinite(n)) return '0';
-  return n.toFixed(n % 1 === 0 ? 0 : 2);
+  // 정수는 소수점 없이, 소수는 **잔여 0 을 떼고** 보여준다 — `1.50 kg` 이 아니라 `1.5 kg`.
+  //   무게·부피 발주(measure)가 생기면서 같은 수가 화면마다 `1.5` / `1.50` 로 갈렸다.
+  //   ⛔ 여기서 반올림하지 말 것 — 1.5 를 2 로 만들면 입고·청구가 틀려 보인다.
+  //   이 함수가 수량 표시의 **단일 소스**다(카트·staging·상세·인쇄). 로컬 포매터를 새로 만들지 말 것.
+  return n.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
 };
 
 /**
@@ -169,3 +173,28 @@ export const calculateCostPerUnit = (
     unit: yieldUnit
   };
 };
+
+/**
+ * 최소 주문 수량 파싱 — **소수를 보존한다.**
+ *
+ * 왜 (2026-08-30): `min_order_quantity` 를 INT → DECIMAL(10,2) 로 넓혔는데
+ * 폼 5곳이 전부 `parseInt` 로 잘라 보내고 있었다. 판매자가 "최소 0.5kg" 을 입력해도
+ * 서버에 1 이 도착했다. 백엔드도 같은 이유로 `utils/quantity.js` 의
+ * `parseMinOrderQty` 로 일원화했다(전수 목록 = docs/PURCHASE_ORDER_SYSTEM.md §2-⑥-a).
+ *
+ * ⛔ 새 폼에서 `parseInt(min_order_quantity)` 를 쓰지 말 것.
+ *
+ * 경계: '0.5'→0.5 · '0.01'→0.01 · '0'→fallback · 음수/NaN/''/null→fallback
+ */
+export const parseMinOrderQty = (v: unknown, fallback = 1): number => {
+  const n = parseFloat(String(v));
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+};
+
+/**
+ * 판매상품 주문 방식 — 백엔드 ENUM 과 같은 목록(models/SupplierProduct.js).
+ * 'pack'    = 개수로 주문 (팩/박스/포대) — 기본이자 기존 동작
+ * 'measure' = 무게·부피로 주문 (kg·g·L·ml, 소수)
+ */
+export type OrderMode = 'pack' | 'measure';
+export const ORDER_MODES: OrderMode[] = ['pack', 'measure'];

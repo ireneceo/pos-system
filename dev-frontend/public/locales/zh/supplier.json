@@ -63,7 +63,8 @@
       "currentStock": "当前库存",
       "lowStockThreshold": "低库存阈值",
       "leadTimeDays": "交货周期（天）",
-      "isActive": "启用"
+      "isActive": "启用",
+      "orderMode": "订购方式"
     },
     "categoryManagement": "分类管理",
     "optionGroups": "选项组",
@@ -72,7 +73,13 @@
     "planLimitReached": "已达到当前套餐的商品数量上限，请升级套餐。",
     "noProducts": "暂无商品。点击\"添加商品\"开始建立目录。",
     "deleteConfirm": "确定要删除此商品吗？",
-    "copySuffix": "（副本）"
+    "copySuffix": "（副本）",
+    "orderMode": {
+      "pack": "按数量订购（包／箱）",
+      "measure": "按重量或容量订购（kg、g、L、ml）",
+      "packHint": "买家按“3 个”这样下单{{spec}}",
+      "measureHint": "买家按“2.5 {{unit}}”这样下单"
+    }
   },
   "inventory": {
     "title": "库存管理",

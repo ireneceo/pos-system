@@ -63,7 +63,8 @@
       "currentStock": "Stok Semasa",
       "lowStockThreshold": "Had Stok Rendah",
       "leadTimeDays": "Masa Hantaran (hari)",
-      "isActive": "Aktif"
+      "isActive": "Aktif",
+      "orderMode": "Kaedah Pesanan"
     },
     "categoryManagement": "Pengurusan Kategori",
     "optionGroups": "Kumpulan Pilihan",
@@ -72,7 +73,13 @@
     "planLimitReached": "Had produk pelan anda telah dicapai. Sila naik taraf.",
     "noProducts": "Tiada produk lagi. Klik \"Tambah Produk\" untuk mula membina katalog anda.",
     "deleteConfirm": "Adakah anda pasti mahu memadam produk ini?",
-    "copySuffix": " (Salinan)"
+    "copySuffix": " (Salinan)",
+    "orderMode": {
+      "pack": "Ikut bilangan (pek / kotak)",
+      "measure": "Ikut berat atau isi padu (kg, g, L, ml)",
+      "packHint": "Pembeli pesan seperti '3 unit'{{spec}}",
+      "measureHint": "Pembeli pesan seperti '2.5 {{unit}}'"
+    }
   },
   "inventory": {
     "title": "Pengurusan Inventori",

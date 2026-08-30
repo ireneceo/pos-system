@@ -63,7 +63,8 @@
       "currentStock": "Current Stock",
       "lowStockThreshold": "Low Stock Threshold",
       "leadTimeDays": "Lead Time (days)",
-      "isActive": "Active"
+      "isActive": "Active",
+      "orderMode": "Order Method"
     },
     "categoryManagement": "Category Management",
     "optionGroups": "Option Groups",
@@ -72,7 +73,13 @@
     "planLimitReached": "Product limit reached for your plan. Please upgrade.",
     "noProducts": "No products yet. Click \"Add Product\" to start building your catalog.",
     "deleteConfirm": "Are you sure you want to delete this product?",
-    "copySuffix": " (Copy)"
+    "copySuffix": " (Copy)",
+    "orderMode": {
+      "pack": "By count (pack / box)",
+      "measure": "By weight or volume (kg, g, L, ml)",
+      "packHint": "Buyers order like '3 units'{{spec}}",
+      "measureHint": "Buyers order like '2.5 {{unit}}'"
+    }
   },
   "inventory": {
     "title": "Inventory Management",

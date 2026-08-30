@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { parseMinOrderQty } from '../../utils/unitConversion';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -447,7 +448,7 @@ const SupplierProfilePage: React.FC = () => {
     const payload = {
       name: productForm.name.trim(), unit: productForm.unit,
       unit_price: parseFloat(productForm.unit_price),
-      min_order_quantity: productForm.min_order_quantity ? parseInt(productForm.min_order_quantity, 10) : 1,
+      min_order_quantity: parseMinOrderQty(productForm.min_order_quantity),
       lead_time_days: productForm.lead_time_days ? parseInt(productForm.lead_time_days, 10) : 0
     };
     try {

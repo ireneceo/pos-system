@@ -10,6 +10,7 @@ const {
   PurchaseOrderItem
 } = require('../models');
 const { Op } = require('sequelize');
+const { parseMinOrderQty } = require('../utils/quantity');
 
 router.use(authenticateToken);
 router.use(requireBGScope);
@@ -678,7 +679,8 @@ router.post('/:id/seller-sources', async (req, res) => {
       seller_product_id: sellerProductId,
       unit_price: price,
       unit_conversion: parseFloat(unit_conversion) || 1,
-      min_order_quantity: parseInt(min_order_quantity, 10) || 1,
+      // 소수 보존 — parseInt 절삭 금지(utils/quantity 참조)
+      min_order_quantity: parseMinOrderQty(min_order_quantity),
       lead_time_days: parseInt(lead_time_days, 10) || 0,
       is_preferred: !!is_preferred,
       is_active: true

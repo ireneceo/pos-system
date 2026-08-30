@@ -54,7 +54,14 @@ async function main() {
   }
 
   if (bless) {
-    fs.writeFileSync(BASELINE_FILE, JSON.stringify(freshBaseline, null, 2) + '\n');
+    // `_` 로 시작하는 최상위 키는 스위트가 아니라 **메타데이터**(상태 라벨·사유·필요값)다.
+    // 이것을 보존하지 않으면 --bless 한 번에 "이 항목이 왜 baseline 에 있는가"가 통째로 사라져,
+    // 다음 사람이 baseline 을 "옳다고 판정된 것"으로 오독한다(실제로는 '추적 중인 부채'다).
+    // 스위트 이름은 `_` 로 시작하지 않으므로 충돌 없음.
+    const preserved = Object.fromEntries(
+      Object.entries(readBaseline()).filter(([k]) => k.startsWith('_'))
+    );
+    fs.writeFileSync(BASELINE_FILE, JSON.stringify({ ...freshBaseline, ...preserved }, null, 2) + '\n');
     console.log(`baseline 갱신: ${BASELINE_FILE} (실패 ${totalFail}건 등록)`);
     await sequelize.close().catch(() => {});
     process.exit(0);

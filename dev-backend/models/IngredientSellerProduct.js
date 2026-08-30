@@ -24,7 +24,8 @@ const IngredientSellerProduct = sequelize.define('IngredientSellerProduct', {
     type: DataTypes.DECIMAL(10, 4), defaultValue: 1,
     comment: 'recipe unit -> seller product unit ratio'
   },
-  min_order_quantity: { type: DataTypes.INTEGER, defaultValue: 1 },
+  // measure 모드의 "최소 0.5kg" 을 담으려면 DECIMAL 이어야 한다 (INT 는 0.5 를 못 담음)
+  min_order_quantity: { type: DataTypes.DECIMAL(10, 2), defaultValue: 1 },
   lead_time_days: { type: DataTypes.INTEGER, defaultValue: 0 },
   is_preferred: { type: DataTypes.BOOLEAN, defaultValue: false },
   is_active: { type: DataTypes.BOOLEAN, defaultValue: true },

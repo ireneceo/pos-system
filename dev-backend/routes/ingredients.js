@@ -122,7 +122,10 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
       // name/code. Design: docs/STOCK_ITEM_VS_SUPPLIER_PRODUCT_DESIGN.md (P0-1).
       const spInfoById = {};
       for (const sp of supProds) {
-        spInfoById[sp.id] = { name: sp.name || null, sku: sp.sku || null };
+        spInfoById[sp.id] = { name: sp.name || null, sku: sp.sku || null,
+          unit: sp.unit || null,
+          base_quantity: sp.base_quantity != null ? parseFloat(sp.base_quantity) : 1,
+          order_mode: sp.order_mode || 'pack' };
       }
       // Brand seller sources also carry the brand's own product name/SKU (different from our
       // internal name) — resolve them so brand-linked items show the brand product identity too.
@@ -131,7 +134,7 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
       const brandProductIds = [...new Set(mappings.filter(m => m.seller_type === 'brand').map(m => m.seller_product_id).filter(Boolean))];
       const bpInfoById = {};
       if (brandProductIds.length) {
-        const bps = await BrandProduct.findAll({ where: { id: { [Op.in]: brandProductIds } }, attributes: ['id', 'name', 'sku'], paranoid: false });
+        const bps = await BrandProduct.findAll({ where: { id: { [Op.in]: brandProductIds } }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'order_mode'], paranoid: false });
         for (const bp of bps) bpInfoById[bp.id] = { name: bp.name || null, sku: bp.sku || null };
       }
       const optsBySpId = {};
@@ -175,6 +178,11 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
           // Seller's own sale-product identity (P0-1 + brand extension): supplier or brand product name/SKU.
           seller_product_name: spInfo.name || null,
           seller_product_sku: spInfo.sku || null,
+          // 규격·주문방식 — 구매 화면이 "5kg/포대" 표시와 kg 소수 입력을 결정하는 데 쓴다.
+          // (2026-08-30 단위주문. order_mode 는 supplier_products 에만 있다 — 브랜드는 null)
+          seller_unit: spInfo.unit ?? null,
+          base_quantity: spInfo.base_quantity ?? 1,
+          order_mode: spInfo.order_mode ?? 'pack',
           unit_price: parseFloat(m.unit_price),
           unit_conversion: parseFloat(m.unit_conversion),
           min_order_quantity: m.min_order_quantity,
@@ -471,7 +479,7 @@ router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRes
       // Supplier sale-product identity (name + SKU) for display alongside internal name/code (P0-1).
       const SupplierProduct = require('../models/SupplierProduct');
       const spIds = [...new Set(mappings.filter(m => m.seller_type === 'supplier' && m.seller_product_id).map(m => m.seller_product_id))];
-      const spMap = spIds.length ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: { [Op.in]: spIds } }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(s => [s.id, s])) : {};
+      const spMap = spIds.length ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: { [Op.in]: spIds } }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'order_mode'], paranoid: false })).map(s => [s.id, s])) : {};
 
       // 판매자 표시명 단일소스 — 각자 조회를 짜면 브랜드명/회사명이 어긋난다(2026-08-28).
       const sellerResolvedShared = await resolveSellers(
@@ -497,6 +505,11 @@ router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRes
           seller_name: sellerName,
           seller_product_name: sp?.name || null,
           seller_product_sku: sp?.sku || null,
+          // 규격·주문방식 — 구매 화면이 "5kg/포대" 표시와 kg 소수 입력을 결정하는 데 쓴다.
+          // (2026-08-30 단위주문. order_mode 는 supplier_products 에만 있다 — 브랜드는 null)
+          seller_unit: sp?.unit ?? null,
+          base_quantity: sp?.base_quantity != null ? parseFloat(sp.base_quantity) : 1,
+          order_mode: sp?.order_mode ?? 'pack',
           unit_price: parseFloat(m.unit_price),
           unit_conversion: parseFloat(m.unit_conversion),
           min_order_quantity: m.min_order_quantity,
@@ -598,7 +611,7 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
       });
       const spIds = [...new Set(rows.filter(r => r.seller_type === 'supplier' && r.seller_product_id).map(r => r.seller_product_id))];
       const spMap = spIds.length
-        ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(sp => [sp.id, sp]))
+        ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'order_mode'], paranoid: false })).map(sp => [sp.id, sp]))
         : {};
       // 판매자 표시 이름 — 발주와 같은 단일 해석기(utils/sellerNames)를 쓴다. 각자 조회를 짜면
       // 목록만 brand/foodcourt 를 빠뜨려 이름이 비어 보이던 사고가 재발한다(2026-07-12).
@@ -609,7 +622,7 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
       const BrandProduct = require('../models/BrandProduct');
       const bpIds = [...new Set(rows.filter(r => r.seller_type === 'brand' && r.seller_product_id).map(r => r.seller_product_id))];
       const bpMap = bpIds.length
-        ? Object.fromEntries((await BrandProduct.findAll({ where: { id: bpIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(b => [b.id, b]))
+        ? Object.fromEntries((await BrandProduct.findAll({ where: { id: bpIds }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'order_mode'], paranoid: false })).map(b => [b.id, b]))
         : {};
       rows.forEach(r => {
         const prod = r.seller_type === 'supplier' ? spMap[r.seller_product_id]

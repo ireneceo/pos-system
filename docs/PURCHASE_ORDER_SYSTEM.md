@@ -1185,6 +1185,22 @@ draft ──submit──▶ (오너승인 ON & 오너연결) pending_approval �
 
 ---
 
+## 백로그 — 서버가 최소주문(min_order_quantity)을 강제하지 않음 (2026-08-30 관측, 미착수)
+
+**실측**: 최소주문 0.5 로 등록된 판매상품을 **0.3 으로 발주하니 `201` 통과**했다.
+화면(`NewPurchaseOrderPage`)은 "Min 0.5" 로 안내하지만 **서버 차단은 없다.** 기존 동작이며 단위주문 작업이 만든 것이 아니다.
+
+**왜 이번(2단계) 범위가 아닌가 (Fable 판정)**:
+- 재고 무결성과 무관하다 — 0.3 발주도 환산·입고·재고 반영은 정확히 돈다. **상거래 제약이지 정합성 구멍이 아니다.**
+- 강제 방식이 **사업 결정 선행 사안**이다: 경고냐 차단이냐 / 담기에서 막느냐 제출에서 막느냐 / 판매자별 예외를 두느냐.
+- 회귀 위험: `min_order_quantity > 1` 인 기존 행이 supplier_products 15 · ingredient_seller_products 11 (총 26건).
+  서버 강제를 넣으면 **기존 pack 발주가 어디서 걸리는지 미측정**이다.
+
+**착수 시 선행 조건**: ①경고 vs 차단 결정 ②적용 시점(담기·제출) 결정 ③기존 26건 영향 실측.
+**현재 Fable 권고**: 안내만 유지. 실사용에서 문제가 생기면 그때 차단 도입.
+
+---
+
 ## 백로그 — 판매자 라인 단위 품절/문제 처리 (2026-08-28 실측, 미착수)
 
 **현재 실측**: 구매자는 `PurchaseOrderDetailPage` 에서 **주문 전체 취소**(사유 입력)만 가능하고 라인 단위 삭제 UI 가 없다.
@@ -1233,7 +1249,7 @@ draft ──submit──▶ (오너승인 ON & 오너연결) pending_approval �
 | 항목 | 값 |
 |---|---|
 | 활성 판매자 링크 | 58건 (conv=1: 53 / ≠1: 5) |
-| **단위 불일치인데 conv=1** | **4건** — Black Pepper(g↔kg) · Egg(kg↔tray) · Test Oil(kg↔L) · Soy Sauce(g↔L) |
+| **단위 불일치인데 conv=1** | **4건** — Black Pepper(g↔kg) · Egg(kg↔tray) · Test Oil(kg↔L) · Soy Sauce(g↔L)<br>⚠ 8/30 재측정에서 보고된 "6건" 은 **계측 오류**였다 — `seller_type` 미필터 조인이 brand 링크 id 를 `supplier_products` 와 **ID 충돌**로 오결합했다(51·52 는 실제로는 piece↔pcs 동의어). **실측은 4건 불변.** |
 | `supplier_products.base_quantity <> 1` | **0건 / 38행** — 규격 필드 사용 이력 **0** |
 | PO 라인 소수 수량 | **0건 / 127행** |
 | `min_order_quantity > 1` | supplier_products 15 · ingredient_seller_products 11 |
@@ -1257,6 +1273,35 @@ draft ──submit──▶ (오너승인 ON & 오너연결) pending_approval �
 
 재고 환산은 기존 공식 그대로 `수량 × unit_conversion`. 입고는 `quantity_received` 가 이미 DECIMAL 이라 **실중량 입고가 그대로 된다**(업계 catch-weight 방식).
 **모드는 판매상품에 붙는다** → 같은 재고아이템이라도 업체 A 는 팩, 업체 B 는 kg 주문이 자연히 공존한다("업체별로 다르다" 요구가 모델에서 그대로 수용됨).
+
+#### ②-a 구현 결과 (2026-08-30 완료) — 어디까지 손댔고 어디를 남겼나
+
+**응답에 규격·주문방식을 싣는 지점 (실측으로 필요를 확인한 곳만):**
+- `routes/restaurants-ingredients.js` seller 직렬화 — **발주 화면이 실제로 쓰는 경로**
+- `routes/ingredients.js` seller 직렬화 2곳
+- `routes/supplier-directory.js` `/supplier-catalog` — 옵션 모달의 소수 수량 판정에 필요
+
+**⛔ 미확장 1곳 (확인 불가 명시):** `routes/ingredients.js` 3번째 직렬화(라인 621 부근, `prod?.name` 사용).
+발주 화면을 경유하지 않아 **필요를 실측으로 확인하지 못했다.** 혹시 몰라 확장하는 것은 최소범위 위반이므로 두었다.
+→ **규격 표시가 비는 화면이 발견되면 이 지점부터 본다.**
+
+**PO 라인 스냅샷 (2026-08-30 실측):** `purchase_order_items` 는 주문 시점의
+`unit` · `unit_price` · `unit_conversion` · `quantity_ordered` · `description` 을 **스냅샷한다.**
+`order_mode` · `base_quantity` 는 **스냅샷하지 않는다(컬럼 없음).**
+→ 판매자가 나중에 주문방식·규격을 바꿔도 **과거 라인의 금액·수량·환산은 흔들리지 않는다.**
+`specTextOf()`/`perUnitPriceOf()` 는 현재 판매자 값을 읽지만 **발주 화면(담기 전)에서만** 쓰이고
+확정된 PO 라인 표시에는 쓰이지 않는다.
+
+**판정 (2026-08-30 Fable): `order_mode`·`base_quantity` 스냅샷 컬럼을 추가하지 않는다.**
+확정 라인을 그리는 세 표면(상세·인쇄·메일)이 판매자 현재값을 읽지 않으므로 **무결성 무영향**이고,
+담기 전 화면이 현재값을 읽는 것은 "지금 팔리는 조건"을 보여주는 **맞는** 동작이다.
+지금 아무 표면도 요구하지 않는 구조 확장이라 기각.
+→ **확정된 발주 라인에 규격을 그리는 화면을 새로 만들 때만 재검토한다.**
+
+**수량 표시 포매터 단일화 (2026-08-30):** 카트·staging·상세·인쇄 전부 `utils/unitConversion.ts` 의
+`formatQuantity` 하나를 쓴다(`1.5` / `3` / `0.01` — 정수는 소수점 없음, 소수는 잔여 0 제거).
+그전엔 카트만 로컬 포매터라 같은 수가 `1.5` / `1.50` 로 갈렸다. ⛔ 로컬 포매터를 새로 만들지 말 것.
+⛔ 이 함수에서 **반올림 금지** — 1.5 를 2 로 만들면 입고·청구가 틀려 보인다.
 
 ### ③ 옵션으로 규격/가격 넣기 — **비권고 (채택 금지)**
 옵션(`price_adjustment`)은 **`unit_conversion` 을 못 문다.** "1kg 옵션 / 5kg 옵션"으로 규격을 흉내내면 같은 카트행의 환산비 하나로 다른 규격이 입고돼 **재고 수치가 깨진다.**
@@ -1285,7 +1330,41 @@ draft ──submit──▶ (오너승인 ON & 오너연결) pending_approval �
 
 ### ⑥ `min_order_quantity` DECIMAL 확폭 (④-2 와 동일 작업)
 
-### ⑦ `SupplierOptionModal.tsx:268` 정수 강제 해제
+#### ⑥-a 쓰기·읽기 경로 전수 (2026-08-30 발굴 · 백엔드 완료)
+
+**컬럼만 DECIMAL 로 넓히면 소용없다** — `min_order_quantity` 를 만지는 지점이 **15곳**이었고 전부 `parseInt` 로 잘랐다.
+그중 3곳은 절삭에 더해 `Number.isInteger` 검증으로 **0.5 를 400 으로 거부**하고 있었다(= 판매자가 입력 자체를 못 함).
+
+**공용 헬퍼로 일원화한다. 삼항식 복붙 금지** — 다음 사람이 16번째 쓰기 경로를 또 잘라 넣는다.
+- 백엔드: `dev-backend/utils/quantity.js` 의 `parseMinOrderQty(v, fallback = 1)`
+- 프론트: `dev-frontend/src/utils/unitConversion.ts` (단위 유틸의 집 — 새 파일 만들지 말 것)
+- 경계: `0.5→0.5 · 0.01→0.01 · 0→fallback · 음수/NaN/''/null→fallback`
+
+| # | 위치 | 성격 | 상태 |
+|---|---|---|---|
+| 1 | `utils/catalogLink.js` mappingAttrs | 4벌 공통 쓰기 | ✅ 헬퍼 |
+| 2 | `routes/ingredient-seller-products.js` POST | 쓰기 | ✅ 헬퍼 |
+| 3 | `routes/ingredient-seller-products.js` PUT | 쓰기 | ✅ 헬퍼 |
+| 4 | `routes/product-ingredients.js` | 쓰기 | ✅ 헬퍼 |
+| 5·6·7 | `routes/supplier-directory.js` ×3 | 직렬화(읽기) | ✅ 헬퍼 — DB 0.5 를 1 로 보여주는 것도 데이터 거짓말 |
+| 8 | `routes/supplier-directory.js` 쓰기 검증 | 쓰기 + 정수거부 | ✅ 헬퍼 + `> 0` 검증 |
+| 9 | `routes/supplier-products.js` POST | 쓰기 + 정수거부 | ✅ 헬퍼 + `> 0` 검증 |
+| 10 | `routes/supplier-products.js` PUT | 쓰기 + 정수거부 | ✅ 헬퍼 + `> 0` 검증 |
+| 11 | `pages/Supplier/SupplierProductsTab.tsx` | 판매자 등록폼 | 2단계(2-1) |
+| 12 | `pages/SupplierDirectory/SupplierProfilePage.tsx` | 폼 | 2단계(2-7) |
+| 13 | `pages/FoodcourtGeneral/FoodcourtProductsTab.tsx` | 폼 (FG) | 2단계(2-7) — **절삭 제거만**, measure 개념 미도입 |
+| 14 | `pages/BrandProductManagement/BrandProductsTab.tsx` | 폼 (BG) | 2단계(2-7) — **절삭 제거만** |
+| 15 | `pages/RecipeManagement/IngredientsTab.tsx` | 외부 공급업체 등록 | 2단계(2-7) |
+
+**층 절단과의 관계(Fable 확정):** 층은 *기능 노출(measure UI)* 을 가르는 것이지 *공용 컬럼의 쓰기 정합성* 을 가르지 않는다.
+BG/FG 폼의 절삭 제거는 "measure 기능을 여는 것"이 아니라 "입력값을 자르지 않고 저장하는 것" — 3단계 침범이 아니다.
+
+**참고:** `base_quantity` 에는 `parseInt` 절삭이 **한 곳도 없다**(전부 parseFloat) — 규격 쪽은 원래 소수 안전.
+
+**옛 코드 소거 증명:** 백엔드에서 `parseInt` × `min_order` 조합 전수 grep **0건**.
+
+### ⑦ `dev-frontend/src/pages/PurchaseOrders/SupplierOptionModal.tsx:268` 정수 강제 해제
+> ⚠ 경로 정정(2026-08-30 실측): 이 파일은 `components/Suppliers/` 가 **아니라** `pages/PurchaseOrders/` 아래에 있다.
 ```js
 onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
 ```

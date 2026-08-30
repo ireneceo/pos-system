@@ -3,6 +3,38 @@
     "S-REF-006 유저 매장 스코프 참조 유효 (restaurant_id)"
   ],
   "supply-chain": [
-    "R-SC-006 재고 카테고리 연결 (카테고리 있는 오너)"
-  ]
+    "R-SC-006 재고 카테고리 연결 (카테고리 있는 오너)",
+    "R-SC-007 #32[supplier] g↔kg conv=1",
+    "R-SC-007 #41[supplier] kg↔tray conv=1",
+    "R-SC-007 #42[supplier] kg↔l conv=1",
+    "R-SC-007 #43[supplier] g↔l conv=1",
+    "R-SC-007 #124[brand] piece↔cup conv=1"
+  ],
+  "_labels": {
+    "_note": "인스펙션 baseline 항목의 상태 라벨. 러너는 이 키를 읽지 않는다(suite 이름이 아니므로 무해). baseline 에 있다는 것은 '옳다'가 아니라 '기존 부채로 추적 중'이라는 뜻이다 — design-guard·timezone 과 동일 모델(기존 부채=baseline, 게이트는 신규 유입만 차단).",
+    "defect-pending-human-value": {
+      "뜻": "확인된 결함. 환산값은 사람만 넣을 수 있어 입력 대기 중(⛔ 자동 백필 금지).",
+      "해당": [
+        "R-SC-007 #32[supplier] g↔kg conv=1",
+        "R-SC-007 #41[supplier] kg↔tray conv=1",
+        "R-SC-007 #42[supplier] kg↔l conv=1",
+        "R-SC-007 #43[supplier] g↔l conv=1"
+      ],
+      "필요한 값": {
+        "#32 Black Pepper": "1kg = 몇 g (미터법이라 1000 으로 확정 가능하나 이번 라운드에 백필 예외를 만들지 않음)",
+        "#41 Egg": "계란 1 tray = 몇 kg",
+        "#42 Test Oil": "기름 1 L = 몇 kg",
+        "#43 Soy Sauce": "간장 1 L = 몇 g"
+      },
+      "등재일": "2026-08-30"
+    },
+    "pending-judgment": {
+      "뜻": "동의어 추정이나 확정 판정 보류. 데이터 소유자 확인 전까지 미판정으로 둔다.",
+      "해당": [
+        "R-SC-007 #124[brand] piece↔cup conv=1"
+      ],
+      "메모": "Iced Tea — 1 cup = 1 piece 일 가능성이 높지만 기계가 확정하지 않는다. ⛔ 동의어 테이블(COUNT_UNIT_SYNONYMS)을 불려서 지우지 말 것 — 그건 검사를 눈멀게 한다.",
+      "등재일": "2026-08-30"
+    }
+  }
 }

@@ -5,6 +5,7 @@
  * is_required + min/max selections 검증 → onConfirm(selectedOptions, adjustedPrice).
  */
 import React, { useState, useMemo, useEffect } from 'react';
+import { qtyStepForUnit, type OrderMode } from '../../utils/unitConversion';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalButton } from '../../components/UI/Modal';
@@ -37,6 +38,8 @@ interface Props {
   productName: string;
   basePrice: number;
   unit?: string | null;
+  /** 주문 방식 — 'measure' 면 수량을 소수로 받는다(kg·L). 미지정이면 'pack'(정수, 기존 동작). */
+  orderMode?: OrderMode;
   optionGroups: SupplierOptionGroup[];
   onConfirm: (selectedOptions: SelectedOption[], adjustedUnitPrice: number, quantity: number) => void;
 }
@@ -129,10 +132,14 @@ const TotalRow = styled.div`
   border-radius: 10px;
 `;
 
-const SupplierOptionModal: React.FC<Props> = ({ open, onClose, productName, basePrice, unit, optionGroups, onConfirm }) => {
+const SupplierOptionModal: React.FC<Props> = ({ open, onClose, productName, basePrice, unit, orderMode, optionGroups, onConfirm }) => {
   const { t } = useTranslation('purchaseOrders');
   const [selected, setSelected] = useState<Record<number, number[]>>({});  // group_id → [option_id]
   const [quantity, setQuantity] = useState(1);
+  // 스텝은 주문 방식이 정한다. measure 만 단위를 보고 소수로 내려간다(kg=0.01, 개=1).
+  const qStep = orderMode === 'measure' ? qtyStepForUnit(unit) : 1;
+  // 0.1 + 0.2 부동소수 찌꺼기 방지 — 수량은 소수 2자리까지만 의미가 있다.
+  const round2 = (v: number) => Math.round(v * 100) / 100;
 
   useEffect(() => {
     if (open) {
@@ -260,14 +267,24 @@ const SupplierOptionModal: React.FC<Props> = ({ open, onClose, productName, base
 
       <QtyRow>
         <span style={{ fontSize: 13, fontWeight: 600, color: '#0A2540' }}>{t('optionModal.qty', 'Quantity')}</span>
-        <QtyBtn type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))}>−</QtyBtn>
+        {/*
+          수량 증감·입력은 **단위가 정한다.**
+            pack   = 팩·박스라 1 씩 (기존 동작 그대로 유지)
+            measure = kg·L 라 0.01 씩, 소수 입력 허용
+          그전까지 parseInt 로 강제해 measure 의 1.5kg 이 1 로 잘렸다.
+        */}
+        <QtyBtn type="button" onClick={() => setQuantity(q => round2(Math.max(qStep, q - qStep)))}>−</QtyBtn>
         <QtyInput
           type="number"
-          min={1}
+          min={qStep}
+          step={qStep}
           value={quantity}
-          onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+          onChange={(e) => {
+            const v = parseFloat(e.target.value);
+            setQuantity(Number.isFinite(v) && v > 0 ? round2(v) : qStep);
+          }}
         />
-        <QtyBtn type="button" onClick={() => setQuantity(q => q + 1)}>+</QtyBtn>
+        <QtyBtn type="button" onClick={() => setQuantity(q => round2(q + qStep))}>+</QtyBtn>
       </QtyRow>
 
       <TotalRow>

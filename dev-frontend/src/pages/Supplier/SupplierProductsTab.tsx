@@ -19,6 +19,7 @@ import { FormGrid2, FormGrid4 } from '../../components/UI/FormGrid';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
 import { getAuthToken } from '../../utils/auth';
+import { parseMinOrderQty, qtyStepForUnit, type OrderMode } from '../../utils/unitConversion';
 
 interface SupplierProductCategory {
   id: number;
@@ -50,6 +51,7 @@ interface SupplierProduct {
   sku: string | null;
   unit: string | null;
   base_quantity: number;
+  order_mode: OrderMode;
   unit_price: number;
   min_order_quantity: number;
   image_url: string | null;
@@ -351,6 +353,42 @@ const UpgradeLink = styled.button`
   }
 `;
 
+/*
+ * 주문 방식 선택 — 라디오 2택. 새 설정 페이지·토글·안내 모달을 만들지 않는다(2026-08-30 확정 UX).
+ * 판매자가 이 폼에서 정하면 구매자 화면은 알아서 그렇게 동작한다.
+ * 색은 primary #635BFF (RA 표준). styled.button 신규 금지 규칙에 걸리지 않는 label/div 만 쓴다.
+ */
+const OrderModeRow = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const OrderModeOption = styled.label<{ $active: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid ${(p) => (p.$active ? '#635BFF' : '#E5E7EB')};
+  background: ${(p) => (p.$active ? '#F5F3FF' : '#FFFFFF')};
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: ${(p) => (p.$active ? 600 : 400)};
+  color: ${(p) => (p.$active ? '#4C42E6' : '#374151')};
+  transition: border-color 0.15s, background 0.15s;
+
+  input { accent-color: #635BFF; margin: 0; cursor: pointer; }
+
+  &:hover { border-color: #635BFF; }
+`;
+
+const OrderModeHint = styled.div`
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6B7280;
+`;
+
 const Pagination = styled.div`
   display: flex;
   justify-content: center;
@@ -426,6 +464,7 @@ const SupplierProductsTab: React.FC<Props> = ({
     sku: '',
     unit: '',
     base_quantity: '1',
+    order_mode: 'pack' as OrderMode,
     unit_price: '',
     min_order_quantity: '1',
     category_id: '',
@@ -545,6 +584,7 @@ const SupplierProductsTab: React.FC<Props> = ({
         sku: detail.sku || '',
         unit: detail.unit || '',
         base_quantity: (detail.base_quantity ?? 1).toString(),
+        order_mode: (detail.order_mode || 'pack') as OrderMode,
         unit_price: detail.unit_price.toString(),
         min_order_quantity: detail.min_order_quantity.toString(),
         category_id: detail.category_id?.toString() || '',
@@ -563,6 +603,7 @@ const SupplierProductsTab: React.FC<Props> = ({
         sku: '',
         unit: '',
         base_quantity: '1',
+        order_mode: 'pack' as OrderMode,
         unit_price: '',
         min_order_quantity: '1',
         category_id: categories.length > 0 ? categories[0].id.toString() : '',
@@ -620,8 +661,9 @@ const SupplierProductsTab: React.FC<Props> = ({
           sku: formData.sku.trim() || undefined,
           unit: formData.unit || null,
           base_quantity: parseFloat(formData.base_quantity) || 1,
-          unit_price: unitPrice,
-          min_order_quantity: parseInt(formData.min_order_quantity, 10) || 1,
+          order_mode: formData.order_mode,
+          // ⛔ parseInt 금지 — measure 모드의 "최소 0.5kg" 이 1 로 잘린다 (utils/unitConversion)
+          min_order_quantity: parseMinOrderQty(formData.min_order_quantity),
           category_id: formData.category_id ? parseInt(formData.category_id, 10) : null,
           image_url: formData.image_url || null,
           emoji: formData.emoji || null,
@@ -1045,9 +1087,11 @@ const SupplierProductsTab: React.FC<Props> = ({
 
               <UIFormGroup>
                 <FormLabel>{t('products.fields.minOrderQuantity', 'Min Order')}</FormLabel>
+                {/* 무게·부피로 주문하면 0.5 같은 최소치가 의미를 갖는다. 단위가 step 을 정한다. */}
                 <FormInput
                   type="number"
-                  min="1"
+                  min={formData.order_mode === 'measure' ? '0.01' : '1'}
+                  step={formData.order_mode === 'measure' ? qtyStepForUnit(formData.unit) : 1}
                   value={formData.min_order_quantity}
                   onChange={(e) =>
                     setFormData({ ...formData, min_order_quantity: e.target.value })
@@ -1055,6 +1099,40 @@ const SupplierProductsTab: React.FC<Props> = ({
                 />
               </UIFormGroup>
             </FormGrid4>
+
+            {/*
+              주문 방식 — 구매자가 이 상품을 "몇 개" 로 담을지 "몇 kg" 로 담을지 정한다.
+              전문용어(mode/catch-weight) 금지: 판매자가 읽고 바로 아는 말만 쓴다.
+              기본은 '개수로 주문' = 기존 동작이라, 손대지 않으면 지금까지와 똑같이 등록된다.
+            */}
+            <UIFormGroup>
+              <FormLabel>{t('products.fields.orderMode', 'Order Method')}</FormLabel>
+              <OrderModeRow role="radiogroup" aria-label={t('products.fields.orderMode', '주문 방식')}>
+                {(['pack', 'measure'] as OrderMode[]).map((mode) => (
+                  <OrderModeOption key={mode} $active={formData.order_mode === mode}>
+                    <input
+                      type="radio"
+                      name="order_mode"
+                      value={mode}
+                      checked={formData.order_mode === mode}
+                      onChange={() => setFormData({ ...formData, order_mode: mode })}
+                    />
+                    <span>
+                      {mode === 'pack'
+                        ? t('products.orderMode.pack', 'By count (pack / box)')
+                        : t('products.orderMode.measure', 'By weight or volume (kg, g, L, ml)')}
+                    </span>
+                  </OrderModeOption>
+                ))}
+              </OrderModeRow>
+              <OrderModeHint>
+                {formData.order_mode === 'measure'
+                  ? t('products.orderMode.measureHint', "Buyers order like '2.5 {{unit}}'", { unit: formData.unit || 'kg' })
+                  : t('products.orderMode.packHint', "Buyers order like '3 units'{{spec}}", {
+                      spec: formData.base_quantity && formData.unit ? ` (${formData.base_quantity}${formData.unit} ${t('products.fields.unit', 'per unit')})` : ''
+                    })}
+              </OrderModeHint>
+            </UIFormGroup>
 
             <FormGrid2>
               <UIFormGroup>

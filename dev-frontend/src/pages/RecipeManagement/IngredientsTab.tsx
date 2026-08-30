@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { parseMinOrderQty } from '../../utils/unitConversion';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
@@ -835,7 +836,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       const token = getAuthToken();
       const cr = await fetch(`/api/external-suppliers/${supplierId}/products${buyerScopeQS}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: productName, sku: extForm.sku.trim() || undefined, unit: extTarget.unit || 'kg', unit_price: parseFloat(extForm.unit_price), min_order_quantity: extForm.min_order_quantity ? parseInt(extForm.min_order_quantity, 10) : 1 })
+        body: JSON.stringify({ name: productName, sku: extForm.sku.trim() || undefined, unit: extTarget.unit || 'kg', unit_price: parseFloat(extForm.unit_price), min_order_quantity: parseMinOrderQty(extForm.min_order_quantity) })
       });
       const cj = await cr.json().catch(() => null);
       if (!cr.ok || !cj?.success) { setExtError(cj?.message || 'Failed to create product.'); setExtSaving(false); return; }

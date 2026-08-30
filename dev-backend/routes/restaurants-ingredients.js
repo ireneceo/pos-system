@@ -104,7 +104,10 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
       // Supplier product identity (name + SKU) for display next to internal name/code (P0-1).
       const spInfoById = {};
       for (const sp of supProds) {
-        spInfoById[sp.id] = { name: sp.name || null, sku: sp.sku || null };
+        spInfoById[sp.id] = { name: sp.name || null, sku: sp.sku || null,
+          unit: sp.unit || null,
+          base_quantity: sp.base_quantity != null ? parseFloat(sp.base_quantity) : 1,
+          order_mode: sp.order_mode || 'pack' };
       }
       const optsBySpId = {};
       for (const sp of supProds) {
@@ -160,6 +163,11 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
           seller_name: sellerName,
           seller_product_name: spInfo.name || null,
           seller_product_sku: spInfo.sku || null,
+          // 규격·주문방식 — 구매 화면의 "5kg/포대" 표시와 kg 소수 입력을 결정한다.
+          // (2026-08-30 단위주문. order_mode 는 supplier_products 에만 있어 브랜드는 'pack')
+          seller_unit: spInfo.unit ?? null,
+          base_quantity: spInfo.base_quantity ?? 1,
+          order_mode: spInfo.order_mode ?? 'pack',
           unit_price: parseFloat(m.unit_price),
           unit_conversion: parseFloat(m.unit_conversion),
           min_order_quantity: m.min_order_quantity,
@@ -378,9 +386,17 @@ router.post('/:restaurantId/ingredients/from-catalog', authenticateToken, checkR
       code: ''
     }, { transaction: t });
 
-    // ⚠ 생성 흐름의 매핑은 원래 unit_conversion 을 **1 로 고정**했다(body 값 무시). 보존.
+    // 생성 흐름도 body 의 unit_conversion 을 받는다 (2026-08-30 수정).
+    //   그전까지 여기만 **1 로 고정**돼 있었다 — 나머지 3벌(ingredients.js 2곳·product-ingredients.js)은
+    //   원래부터 body 값을 넘기고 있었고, 이 패밀리만 예외였다.
+    //   결과: 판매자 kg ↔ 재고 g 처럼 단위가 다른 링크가 환산비 1 로 만들어져
+    //   **1kg 입고가 1g 으로 기록**됐다. 2026-08-30 실측으로 그런 링크 6건 확인
+    //   (측정 사이에 4→6 으로 증가 = 이 버그가 계속 새 불량 링크를 만들고 있었다).
+    //   bodyConversion 은 connect 모드가 쓰던 것과 **같은 값**이다(위에서 이미 해석됨) —
+    //   `resolveUnitConversion` 이 양수만 통과시키고 그 외에는 1 로 떨어뜨린다.
+    //   ⛔ 기존 6건 자동 백필은 하지 않는다 — tray→kg 는 기계가 추측할 수 없다(사람이 입력).
     const mapping = await catalogLink.createMappingFor({
-      target: ingredient, seller, unitConversion: 1, targetKey: 'ingredient_id', transaction: t
+      target: ingredient, seller, unitConversion: bodyConversion, targetKey: 'ingredient_id', transaction: t
     });
 
     await t.commit();

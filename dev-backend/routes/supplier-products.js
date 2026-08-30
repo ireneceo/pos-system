@@ -23,6 +23,11 @@ const {
   SupplierProductOptionGroupProduct
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
+const { parseMinOrderQty } = require('../utils/quantity');
+
+// 판매상품 주문 방식. 모델/DB ENUM 과 같은 목록을 유지한다(models/SupplierProduct.js).
+// 'pack' = 개수로 주문(팩/박스/포대) — 기존 전 행의 동작. 'measure' = 무게·부피로 주문(소수).
+const ORDER_MODES = ['pack', 'measure'];
 const {
   requireSupplierScope,
   applySupplierFilter
@@ -570,9 +575,19 @@ router.post(
         return res.status(400).json({ success: false, message: 'base_quantity must be a non-negative number' });
       }
 
-      const min_order_quantity = req.body.min_order_quantity !== undefined ? parseInt(req.body.min_order_quantity, 10) : 1;
-      if (!Number.isInteger(min_order_quantity) || min_order_quantity < 1) {
-        return res.status(400).json({ success: false, message: 'min_order_quantity must be >= 1' });
+      // 주문 방식. 'pack'(개수로 주문) = 기본이자 현행 동작. 'measure'(무게·부피로 주문) 신설.
+      // 값을 안 보내면 pack — 기존 클라이언트는 아무 영향 없다.
+      const order_mode = req.body.order_mode !== undefined && req.body.order_mode !== ''
+        ? String(req.body.order_mode) : 'pack';
+      if (!ORDER_MODES.includes(order_mode)) {
+        return res.status(400).json({ success: false, message: `order_mode must be one of ${ORDER_MODES.join(', ')}` });
+      }
+
+      // 소수 허용 — measure 모드 "최소 0.5kg". 정수 강제는 0.5 를 400 으로 거부했다.
+      const min_order_quantity = req.body.min_order_quantity !== undefined
+        ? parseMinOrderQty(req.body.min_order_quantity, NaN) : 1;
+      if (!Number.isFinite(min_order_quantity) || min_order_quantity <= 0) {
+        return res.status(400).json({ success: false, message: 'min_order_quantity must be > 0' });
       }
 
       const low_stock_threshold = req.body.low_stock_threshold !== undefined ? parseFloat(req.body.low_stock_threshold) : 0;
@@ -607,6 +622,7 @@ router.post(
         sku,
         unit: req.body.unit ? sanitizeString(req.body.unit) : null,
         base_quantity,
+        order_mode,
         unit_price,
         min_order_quantity,
         image_url: req.body.image_url || null,
@@ -709,11 +725,20 @@ router.put('/supplier-products/:productId', ...baseGates, async (req, res) => {
       }
       updates.base_quantity = v;
     }
-    if (req.body.min_order_quantity !== undefined) {
-      const v = parseInt(req.body.min_order_quantity, 10);
-      if (!Number.isInteger(v) || v < 1) {
+    if (req.body.order_mode !== undefined) {
+      const v = String(req.body.order_mode);
+      if (!ORDER_MODES.includes(v)) {
         await t.rollback();
-        return res.status(400).json({ success: false, message: 'min_order_quantity must be >= 1' });
+        return res.status(400).json({ success: false, message: `order_mode must be one of ${ORDER_MODES.join(', ')}` });
+      }
+      updates.order_mode = v;
+    }
+    if (req.body.min_order_quantity !== undefined) {
+      // 소수 허용 (위와 동일 사유)
+      const v = parseMinOrderQty(req.body.min_order_quantity, NaN);
+      if (!Number.isFinite(v) || v <= 0) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'min_order_quantity must be > 0' });
       }
       updates.min_order_quantity = v;
     }

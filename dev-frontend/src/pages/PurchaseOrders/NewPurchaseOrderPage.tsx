@@ -31,7 +31,7 @@ import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { Modal as UIModal } from '../../components/UI/Modal';
-import { qtyStepForUnit } from '../../utils/unitConversion';
+import { qtyStepForUnit, parseMinOrderQty, formatQuantity, type OrderMode } from '../../utils/unitConversion';
 
 type SellerType = 'system_admin' | 'brand' | 'foodcourt' | 'supplier';
 
@@ -52,6 +52,11 @@ interface SellerOpt {
   // 백엔드 ?include=sellers 가 SupplierProduct join 으로 채움(공급업체 타입만 값, 아니면 null).
   seller_product_name?: string | null;
   seller_product_sku?: string | null;
+  // 규격·주문방식 (2026-08-30 단위주문). 백엔드 ?include=sellers 가 supplier_products 에서 채운다.
+  // order_mode 는 supplier_products 에만 있는 컬럼이라 브랜드·푸드코트 판매자는 'pack' 로 온다.
+  seller_unit?: string | null;
+  base_quantity?: number;
+  order_mode?: OrderMode;
 }
 
 interface MyIngredientRow {
@@ -88,6 +93,9 @@ interface CatalogRow {
   mapped_ingredient_id?: number | null;
   has_options?: boolean;
   option_groups?: SupplierOptionGroup[];
+  /** 주문 방식 (2026-08-30 단위주문). 카탈로그 응답의 supplier_products 값. 없으면 'pack'. */
+  order_mode?: OrderMode;
+  base_quantity?: number;
 }
 
 interface CartRow {
@@ -173,6 +181,36 @@ const packSpecOf = (sellerProductName?: string | null): string => {
   const tail = String(sellerProductName).split('|').pop() || '';
   const m = tail.match(/[\w.]+\s*x\s*\d+\s*[A-Za-z]+\s*\/?\s*[A-Za-z]*/i);
   return m && /\d/.test(m[0]) ? m[0].trim() : '';
+};
+
+/**
+ * 규격 표시 단일 소스 — "5kg/포대" 처럼 1 주문단위에 담긴 양을 보여준다.
+ *
+ * 판매자가 등록한 구조화 값(base_quantity + seller_unit)을 **먼저** 쓴다.
+ * 그 값이 없거나 1 이면 예전 방식(상품 이름에 박힌 "(900ml x 12btl)")으로 떨어진다 —
+ * 이름 오염은 규격 필드가 없던 시절의 흔적이라 새로 만들지 않되, 기존 데이터는 계속 읽는다.
+ *
+ * 무게·부피로 주문하는 상품(order_mode='measure')은 규격이 의미 없다(낱개로 무게를 산다) → 빈 문자열.
+ */
+const specTextOf = (seller?: Partial<SellerOpt> | null): string => {
+  if (!seller) return '';
+  if (seller.order_mode === 'measure') return '';
+  const bq = Number(seller.base_quantity);
+  if (Number.isFinite(bq) && bq > 1 && seller.seller_unit) return `${bq}${seller.seller_unit}`;
+  return packSpecOf(seller.seller_product_name);
+};
+
+/**
+ * 단위당 가격 — 업체 비교의 유일하게 공정한 축.
+ * 규격이 다르면(5kg 포대 vs 1kg 봉지) 표시가격끼리는 비교가 안 된다.
+ * measure 는 이미 단위당 가격이므로 그대로.
+ */
+const perUnitPriceOf = (seller?: Partial<SellerOpt> | null): number => {
+  if (!seller) return 0;
+  const price = parseFloat(String(seller.unit_price)) || 0;
+  if (seller.order_mode === 'measure') return price;
+  const bq = Number(seller.base_quantity);
+  return Number.isFinite(bq) && bq > 0 ? price / bq : price;
 };
 
 const CART_WIDTH_KEY = 'po_cart_width';
@@ -790,6 +828,25 @@ const QtyInput = styled.input`
   text-align: center;
   outline: none;
   &:focus { border-color: #635BFF; }
+`;
+
+/*
+ * 수량 입력 + 단위 접미. 무게·부피로 주문하는 품목에서 "지금 kg 를 넣고 있다"를
+ * 입력칸 안에서 바로 알게 한다 — 뱃지나 안내 모달을 새로 만들지 않는다(2026-08-30 확정 UX).
+ */
+const QtyWrap = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+`;
+
+const QtyUnit = styled.span`
+  position: absolute;
+  right: 7px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6B7280;
+  pointer-events: none;
 `;
 
 const VendorMini = styled.select`
@@ -1817,19 +1874,16 @@ const NewPurchaseOrderPage: React.FC = () => {
                       ? `${cat.emoji ? cat.emoji + ' ' : ''}${cat.name}`
                       : (t('newPo.uncategorized', 'Uncategorized') as string);
                     // 재고는 "모름(null)" 과 "0" 이 다르다 — 0 을 모름으로 뭉개면 발주 판단이 틀어진다.
-                    // 수량 서식은 toLocaleString 을 쓰지 않는다 — 타임존 가드가 잡기도 하고,
-                    // 재고 수량은 로케일 구분자보다 소수점 정리가 중요하다(1.50 → 1.5, 3.00 → 3).
-                    const fmtQty = (v: number) => {
-                      const s2 = v.toFixed(2);
-                      return s2.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
-                    };
+                    // 수량 서식은 공용 formatQuantity 단일 소스를 쓴다(카트·staging·상세·인쇄 동일 표기).
+                    //   로컬 포매터를 두었더니 같은 수가 카트는 1.5, 상세는 1.50 으로 갈렸다 — 2026-08-30 통일.
+                    //   toLocaleString 은 쓰지 않는다: 타임존 가드가 잡고, 로케일 구분자보다 소수점 정리가 중요하다.
                     const stockText = row.current_stock != null
-                      ? `${t('newPo.inStock', 'In stock')} ${fmtQty(Number(row.current_stock))}${row.unit ? ` ${row.unit}` : ''}`
+                      ? `${t('newPo.inStock', 'In stock')} ${formatQuantity(Number(row.current_stock))}${row.unit ? ` ${row.unit}` : ''}`
                       : '';
-                    // 대표 공급처(선호 → 첫 번째)의 포장 표기 — "몇 팩이 한 박스인지"
-                    const packSpec = packSpecOf(
-                      (row.sellers.find(s => s.is_preferred) || row.sellers[0])?.seller_product_name
-                    );
+                    // 대표 공급처(선호 → 첫 번째)의 규격 — "몇 kg 들이 한 포대인지".
+                    // 판매자가 등록한 규격 필드를 먼저 쓰고, 없으면 상품 이름에 박힌 표기로 떨어진다.
+                    const leadSeller = row.sellers.find(s => s.is_preferred) || row.sellers[0];
+                    const packSpec = specTextOf(leadSeller);
                     const metaText = [catText, row.unit || '', stockText, packSpec].filter(Boolean).join(' · ');
 
                     let priceText = '';
@@ -1841,7 +1895,12 @@ const NewPurchaseOrderPage: React.FC = () => {
                         const sid = parseInt(idStr, 10);
                         pricedSellers = row.sellers.filter(s => s.seller_type === tt && s.seller_entity_id === sid);
                       }
-                      const perUnit = pricedSellers.map(s => (parseFloat(String(s.unit_price)) || 0) / (parseFloat(String(s.unit_conversion)) || 1));
+                      // 업체 비교는 **단위당 가격**으로만 공정하다 — 5kg 포대와 1kg 봉지는
+                      // 표시가격끼리 비교가 안 된다. 규격(base_quantity)과 재고환산(unit_conversion)을
+                      // 둘 다 걷어낸 값으로 비교한다.
+                      const perUnit = pricedSellers.map(
+                        s => perUnitPriceOf(s) / (parseFloat(String(s.unit_conversion)) || 1)
+                      );
                       const minPer = perUnit.length ? Math.min(...perUnit) : 0;
                       // 가격 0 은 "0원에 판다"가 아니라 **아직 안 넣은 것**이다. 숫자 0.00 으로 보이면
                       // 구분이 안 돼 그대로 발주하게 된다 — Irene 2026-08-28:
@@ -1851,13 +1910,25 @@ const NewPurchaseOrderPage: React.FC = () => {
                             ? minPer.toFixed(2)
                             : `from ${minPer.toFixed(2)}`)
                         : t('newPo.priceNotSet', '가격 미설정');
-                      const minOrder = Math.max(1, ...row.sellers.map(s => Number(s.min_order_quantity) || 1));
+                      // 최소주문은 **주문할 판매자의 것**이다.
+                      //   그전까지 `Math.max(1, ...전체 판매자)` 라 5곳 중 한 곳이 100 이면
+                      //   1개만 파는 곳에서 사도 "Min 100" 이 떴다 — 살 수 있는 물건을 못 사게 막던 표시다.
+                      //   판매자 필터가 걸려 있으면 그 판매자만(pricedSellers), 아니면 대표 공급처 기준.
+                      const minOrderSellers = pricedSellers.length ? pricedSellers : row.sellers;
+                      const minOrderBasis = mineSellerFilter !== 'all'
+                        ? minOrderSellers
+                        : [minOrderSellers.find(sv => sv.is_preferred) || minOrderSellers[0]].filter(Boolean);
+                      const minOrder = minOrderBasis.length
+                        ? Math.min(...minOrderBasis.map(sv => parseMinOrderQty(sv!.min_order_quantity)))
+                        : 1;
                       const vendorName = row.sellers.length === 1
                         ? row.sellers[0].seller_name
                         : `${row.sellers.length} ${t('newPo.vendors', 'vendors')}`;
+                      // 최소주문 표시도 소수 대응 — measure 의 "최소 0.5kg" 이 "1" 로 보이면 거짓말이다.
+                      const minOrderText = minOrder > 1 ? ` · ${t('newPo.minOrder', 'Min')} ${formatQuantity(minOrder)}` : '';
                       vendorText = isList
-                        ? `${vendorName}${minOrder > 1 ? ` · ${t('newPo.minOrder', 'Min')} ${minOrder}` : ''}`
-                        : `/${row.unit || 'unit'} · ${vendorName}${minOrder > 1 ? ` · ${t('newPo.minOrder', 'Min')} ${minOrder}` : ''}`;
+                        ? `${vendorName}${minOrderText}`
+                        : `/${row.unit || 'unit'} · ${vendorName}${minOrderText}`;
                     }
                     const noSellerText = row.is_brand_shared
                       ? (t('newPo.brandNeedsLink', 'Your brand has not linked a supplier to this item yet') as string)
@@ -2119,15 +2190,26 @@ const NewPurchaseOrderPage: React.FC = () => {
                           </div>
                         )}
                       </div>
-                      <QtyInput
-                        type="number"
-                        min={0}
-                        step={qtyStepForUnit(row.ingredient_unit)}
-                        value={row.quantity}
-                        onChange={(e) => updateRow(row.cart_key, {
-                          quantity: Math.max(0, parseFloat(e.target.value) || 0)
-                        })}
-                      />
+                      {(() => {
+                        // 무게·부피로 주문하는 품목이면 판매자 단위(kg/L)를, 아니면 재고 단위를 따른다.
+                        const isMeasure = seller?.order_mode === 'measure';
+                        const qtyUnit = isMeasure ? (seller?.seller_unit || row.ingredient_unit) : row.ingredient_unit;
+                        return (
+                          <QtyWrap>
+                            <QtyInput
+                              type="number"
+                              min={0}
+                              step={qtyStepForUnit(qtyUnit)}
+                              value={row.quantity}
+                              onChange={(e) => updateRow(row.cart_key, {
+                                quantity: Math.max(0, parseFloat(e.target.value) || 0)
+                              })}
+                              style={isMeasure && qtyUnit ? { paddingRight: 26, textAlign: 'left' } : undefined}
+                            />
+                            {isMeasure && qtyUnit && <QtyUnit>{qtyUnit}</QtyUnit>}
+                          </QtyWrap>
+                        );
+                      })()}
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#635BFF', textAlign: 'right' }}>
                         {(effectivePrice * row.quantity).toFixed(2)}
                       </div>
@@ -2228,6 +2310,7 @@ const NewPurchaseOrderPage: React.FC = () => {
           productName={optionModal.row.name}
           basePrice={optionModal.row.unit_price}
           unit={optionModal.row.unit}
+          orderMode={optionModal.row.order_mode}
           optionGroups={optionModal.row.option_groups}
           onConfirm={async (selectedOptions, adjustedUnitPrice, qty) => {
             const row = optionModal.row;

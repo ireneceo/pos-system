@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { parseMinOrderQty } from '../../utils/unitConversion';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import {
@@ -410,7 +411,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
           unit: formData.unit || null,
           base_quantity: parseFloat(formData.base_quantity) || 1,
           unit_price: parseFloat(formData.unit_price) || 0,
-          min_order_quantity: parseInt(formData.min_order_quantity) || 1,
+          min_order_quantity: parseMinOrderQty(formData.min_order_quantity),
           category_id: formData.category_id ? parseInt(formData.category_id) : null,
           image_url: formData.image_url || null,
           emoji: formData.emoji || null,

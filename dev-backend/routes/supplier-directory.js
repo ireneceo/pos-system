@@ -35,6 +35,7 @@ const {
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
+const { parseMinOrderQty } = require('../utils/quantity');
 const { sanitizeString } = require('../middleware/validation');
 const {
   supplierContractRequestedEmail,
@@ -702,8 +703,11 @@ router.get('/supplier-catalog', async (req, res) => {
         name: p.name,
         sku: p.sku,
         unit: p.unit,
+        // 규격·주문방식 — 구매 화면이 "5kg/포대" 표시와 kg 소수 입력을 결정한다(2026-08-30 단위주문).
+        base_quantity: p.base_quantity != null ? parseFloat(p.base_quantity) : 1,
+        order_mode: p.order_mode || 'pack',
         unit_price: parseFloat(p.unit_price) || 0,
-        min_order_quantity: parseInt(p.min_order_quantity, 10) || 1,
+        min_order_quantity: parseMinOrderQty(p.min_order_quantity),
         image_url: p.image_url,
         category_id: p.category_id,
         category_name: p.category?.name || null,
@@ -786,7 +790,7 @@ router.get('/supplier-catalog', async (req, res) => {
               sku: p.sku,
               unit: p.unit,
               unit_price: parseFloat(p.unit_price) || 0,
-              min_order_quantity: parseInt(p.min_order_quantity, 10) || 1,
+              min_order_quantity: parseMinOrderQty(p.min_order_quantity),
               image_url: p.image_url,
               category_id: p.category_id,
               category_name: p.category?.name || null,
@@ -835,7 +839,7 @@ router.get('/supplier-catalog', async (req, res) => {
               sku: p.sku,
               unit: p.unit,
               unit_price: parseFloat(p.unit_price) || 0,
-              min_order_quantity: parseInt(p.min_order_quantity, 10) || 1,
+              min_order_quantity: parseMinOrderQty(p.min_order_quantity),
               image_url: p.image_url,
               category_id: p.category_id,
               category_name: p.category?.name || null,
@@ -1074,8 +1078,10 @@ function buildProductFields(body) {
   if (!Number.isFinite(unit_price) || unit_price < 0) return { error: 'unit_price must be a non-negative number' };
   const base_quantity = body.base_quantity !== undefined && body.base_quantity !== '' ? parseFloat(body.base_quantity) : 1;
   if (!Number.isFinite(base_quantity) || base_quantity < 0) return { error: 'base_quantity must be a non-negative number' };
-  const min_order_quantity = body.min_order_quantity !== undefined && body.min_order_quantity !== '' ? parseInt(body.min_order_quantity, 10) : 1;
-  if (!Number.isInteger(min_order_quantity) || min_order_quantity < 1) return { error: 'min_order_quantity must be >= 1' };
+  // 소수 허용 — measure 모드 "최소 0.5kg". 정수 강제(Number.isInteger)는 0.5 를 400 으로 거부했다.
+  const min_order_quantity = body.min_order_quantity !== undefined && body.min_order_quantity !== ''
+    ? parseMinOrderQty(body.min_order_quantity, NaN) : 1;
+  if (!Number.isFinite(min_order_quantity) || min_order_quantity <= 0) return { error: 'min_order_quantity must be > 0' };
   const lead_time_days = body.lead_time_days !== undefined && body.lead_time_days !== '' ? parseInt(body.lead_time_days, 10) : 0;
   if (!Number.isInteger(lead_time_days) || lead_time_days < 0) return { error: 'lead_time_days must be a non-negative integer' };
   return { value: {

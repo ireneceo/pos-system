@@ -32,6 +32,7 @@
     "migrate-po-owner-approval.js",
     "migrate-po-return-line-types.js",
     "migrate-po-status-pending-approval.js",
+    "migrate-po-unit-order-foundation.js",
     "migrate-print-claim-recovery.js",
     "migrate-print-device-status.js",
     "migrate-print-needed-at.js",
