@@ -394,9 +394,12 @@ const LegacyRestaurantRedirect: React.FC = () => {
 function App() {
   // Load site settings and update SEO on mount
   React.useEffect(() => {
+    // 언마운트/이동 시 우리가 명시적으로 취소하고, catch 에서 그 취소만 골라 침묵시킨다.
+    // ⛔ 메시지 문자열로 거르지 않는다 — 진짜 네트워크 장애도 같은 문자열을 낸다.
+    const controller = new AbortController();
     const loadSiteSettings = async () => {
       try {
-        const response = await fetch('/api/site-settings');
+        const response = await fetch('/api/site-settings', { signal: controller.signal });
         if (response.ok) {
           const settings = await response.json();
 
@@ -461,11 +464,14 @@ function App() {
           }
         }
       } catch (error) {
+        // 우리가 취소한 요청은 실패가 아니다.
+        if (controller.signal.aborted || (error as Error)?.name === 'AbortError') return;
         console.error('Failed to load site settings:', error);
       }
     };
 
     loadSiteSettings();
+    return () => controller.abort();
   }, []);
 
   return (

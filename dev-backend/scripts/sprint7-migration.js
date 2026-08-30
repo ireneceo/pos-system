@@ -25,6 +25,8 @@
 
 require('dotenv').config();
 const { sequelize } = require('../config/database');
+// ENUM 은 expand-only — 목록 하드코딩 금지 (scripts/lib/enumExpand.js 주석 참조)
+const { expandEnum } = require('./lib/enumExpand');
 const { QueryTypes } = require('sequelize');
 
 const DRY = process.argv.includes('--dry-run');
@@ -114,18 +116,14 @@ async function alterInventoryTransactions() {
     );
   } else log('skip — restaurant_id already nullable');
 
-  // ENUM 확장 — 현재 값에 return_in/return_out 없으면 확장
-  const ttDef = await getColumnDef('inventory_transactions', 'transaction_type');
-  if (ttDef && !ttDef.column_type.includes('return_in')) {
-    await exec(
-      `ALTER TABLE inventory_transactions
-         MODIFY COLUMN transaction_type ENUM(
-           'initial','purchase','order_deduct','stock_take','waste','adjustment',
-           'return_in','return_out'
-         ) NOT NULL`,
-      'transaction_type ENUM 확장'
-    );
-  } else log('skip — transaction_type ENUM already extended');
+  // ENUM 확장 — expand-only. 이 마이그가 담당하는 값만 보장한다(목록 하드코딩 금지).
+  {
+    const r = await expandEnum(sequelize, 'inventory_transactions', 'transaction_type',
+      ['return_in', 'return_out']);
+    log(r.added.length
+      ? `transaction_type ENUM 확장 — 추가: ${r.added.join(', ')}`
+      : 'skip — transaction_type ENUM already extended');
+  }
 
   if (!(await indexExists('inventory_transactions', 'idx_entity'))) {
     await exec(
@@ -197,18 +195,15 @@ async function alterInventoryBatches() {
 // ─── A3. purchase_orders.status ──────────────────────
 async function alterPurchaseOrders() {
   log('=== A3. purchase_orders.status ===');
-  const def = await getColumnDef('purchase_orders', 'status');
-  if (def && (!def.column_type.includes('in_transit') || !def.column_type.includes('delivery_failed'))) {
-    await exec(
-      `ALTER TABLE purchase_orders
-         MODIFY COLUMN status ENUM(
-           'draft','submitted','confirmed','shipped',
-           'in_transit','delivered','partial_received','received',
-           'cancelled','closed','delivery_failed'
-         ) NOT NULL DEFAULT 'draft'`,
-      'status ENUM 확장 (in_transit, delivery_failed)'
-    );
-  } else log('skip — status ENUM already extended');
+  // expand-only. 이 마이그가 담당하는 값은 in_transit·delivery_failed 둘뿐이다.
+  // 예전엔 11개 목록을 하드코딩해, 가드가 걸릴 때마다 남의 값(pending_approval)을 지울 수 있었다.
+  {
+    const r = await expandEnum(sequelize, 'purchase_orders', 'status',
+      ['in_transit', 'delivery_failed']);
+    log(r.added.length
+      ? `status ENUM 확장 — 추가: ${r.added.join(', ')}`
+      : 'skip — status ENUM already extended');
+  }
 }
 
 // ─── A4. purchase_order_items ────────────────────────

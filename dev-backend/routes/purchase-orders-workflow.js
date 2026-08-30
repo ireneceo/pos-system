@@ -50,6 +50,12 @@ router.use('/purchase-orders', authenticateToken, requireBuyerRole);
 
 const VALID_SELLER_TYPES = ['system_admin', 'brand', 'foodcourt', 'supplier'];
 
+// 입고 가능한 상태 — mark-received(전량 lite)와 receive(splits 정식)가 같은 집합을 쓴다.
+// 판매자가 shipped/delivered 를 눌러주지 않는 매장이 많아(운영 PO 전건이 submitted 에 머묾)
+// 구매자가 물건을 받았으면 그 시점 상태와 무관하게 입고할 수 있어야 한다.
+// draft·pending_approval 은 계속 막는다 — 승인 우회 방지(2026-07-13 판정).
+const RECEIVABLE_STATUSES = ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'];
+
 const ENTITY_TYPE_PREFIX = {
   restaurant: 'R',
   brand: 'B',
@@ -428,8 +434,7 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
     if (!checkPOOwnership(po, req)) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
     // 수령은 **발주가 실제로 나간 뒤**에만 가능하다. 예전엔 received/cancelled 만 막아서
     // **승인 대기(pending_approval) 발주를 입고 처리로 끝낼 수** 있었다(승인 우회 — Fable 2026-07-13).
-    const RECEIVABLE = ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'];
-    if (!RECEIVABLE.includes(po.status)) {
+    if (!RECEIVABLE_STATUSES.includes(po.status)) {
       await t.rollback();
       return res.status(400).json({
         success: false,
@@ -674,11 +679,13 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
       await t.rollback();
       return res.status(404).json({ success: false, message: 'Purchase order not found' });
     }
-    if (!['shipped', 'delivered', 'partial_received'].includes(po.status)) {
+    if (!RECEIVABLE_STATUSES.includes(po.status)) {
       await t.rollback();
       return res.status(400).json({
         success: false,
-        message: 'Only shipped or partially received orders can receive items'
+        message: po.status === 'pending_approval'
+          ? 'Purchase order is awaiting Owner approval'
+          : `Cannot receive a ${po.status} purchase order`
       });
     }
 

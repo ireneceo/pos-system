@@ -22,15 +22,17 @@ import AlertDialog from '../../components/Common/AlertDialog';
 
 // Icon-only buttons (matches PurchaseOrdersPage pattern)
 const HeaderIconBtn = styled.button`
-  width: 36px;
-  height: 36px;
+  /* 옆에 서는 ThemedButton(기본 padding 12px 20px + font-size 14px)과 높이·모서리를 맞춘다.
+     모바일에서 아이콘 버튼만 낮아 줄이 들쭉날쭉해 보이던 것을 없앤다. */
+  width: 42px;
+  height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 1px solid #C7CED6;
   background: white;
   color: #475569;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   padding: 0;
   transition: all 0.15s;
@@ -75,6 +77,11 @@ const EmbeddedFooter = styled.div`
 `;
 
 type POStatus = 'draft' | 'pending_approval' | 'submitted' | 'confirmed' | 'shipped' | 'in_transit' | 'delivered' | 'partial_received' | 'received' | 'cancelled' | 'closed' | 'delivery_failed';
+
+// 백엔드 RECEIVABLE_STATUSES(routes/purchase-orders-workflow.js)와 같은 집합.
+// 판매자가 배송 상태를 눌러주지 않아도 구매자가 입고할 수 있어야 한다.
+// draft·pending_approval 은 제외 — 승인 우회 방지.
+const RECEIVABLE_STATUSES: POStatus[] = ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'];
 
 // Sprint 7: discrepancy reasons
 type DiscrepancyReason = null | 'short' | 'damaged' | 'wrong_item' | 'pending';
@@ -155,6 +162,53 @@ const HeaderActions = styled.div`
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+`;
+
+// 헤더 액션 줄. 공용 Header 가 ≤768px 에서 세로 배치로 바뀌므로,
+// 그 안의 액션 묶음도 폭 100% 를 잡고 왼쪽 정렬로 흘러야 한다(오른쪽 정렬은 세로 배치에서 무의미).
+const HeaderActionBar = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: flex-start;
+  }
+`;
+
+// 품목 표 모바일 밀도. 공용 DataTable 은 셀 min-width 140px 라 좁은 폰에서 한 줄에 하나씩만
+// 들어가 품목 1건이 5줄(≈440px)이 됐다. 여기서만 폭 기준을 낮춰 수량·금액이 2열로 서게 한다.
+// 품목명은 mobileFullWidth 로 한 줄 차지 → 품목 1건 = 이름 1줄 + 수량 1줄 + 금액 1줄.
+const ItemsTableWrap = styled.div`
+  @media (max-width: 768px) {
+    td[data-label] {
+      min-width: 104px;
+      flex-basis: calc(50% - 5px);
+    }
+    td[data-label]:first-child {
+      min-width: 100%;
+      flex-basis: 100%;
+    }
+  }
+`;
+
+// 접이식 섹션 헤더 — Section 의 h3 와 같은 무게로 보이게 맞춘다.
+const AccordionToggle = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0A2540;
+  text-align: left;
 `;
 
 const Section = styled.div`
@@ -447,6 +501,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [trackingOpen, setTrackingOpen] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [receiveLines, setReceiveLines] = useState<ReceiveLine[]>([]);
   const [receiveError, setReceiveError] = useState<string | null>(null);
@@ -928,7 +983,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
             </ThemedButton>
           </>
         )}
-        {(s === 'shipped' || s === 'delivered' || s === 'partial_received') && (
+        {RECEIVABLE_STATUSES.includes(s) && (
           <ThemedButton variant="primary" onClick={openReceive}>
             {t('detail.actions.receive')}
           </ThemedButton>
@@ -1034,12 +1089,12 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
             </Title>
             <Subtitle>{detail?.seller_name || ''}</Subtitle>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <HeaderActionBar>
             <ThemedButton variant="outline" onClick={() => navigate('/pos/purchase-orders/new')}>
               {t('detail.orderMore', '+ Order More')}
             </ThemedButton>
             {renderActions()}
-          </div>
+          </HeaderActionBar>
         </Header>
       )}
 
@@ -1074,8 +1129,19 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
               {renderTimeline()}
             </Section>
 
+            {/* 배송 추적은 위 Status Timeline 과 단계가 겹쳐 보이므로 기본 접어 둔다.
+                운송사 이벤트는 정보가 달라 삭제하지 않고 아코디언으로 보존(다중 섹션 = Accordion 표준). */}
             {(detail as any).tracking_info && (
               <Section>
+                <AccordionToggle
+                  type="button"
+                  onClick={() => setTrackingOpen(v => !v)}
+                  aria-expanded={trackingOpen}
+                >
+                  <span>{t('detail.section.tracking', 'Delivery Tracking')}</span>
+                  <span aria-hidden="true">{trackingOpen ? '▾' : '▸'}</span>
+                </AccordionToggle>
+                <div hidden={!trackingOpen}>
                 <DeliveryTimeline
                   events={(detail as any).tracking_info?.events}
                   carrier_name={(detail as any).tracking_info?.carrier_name}
@@ -1084,11 +1150,13 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                   tracking_url={(detail as any).tracking_info?.tracking_url}
                   estimated_arrival={(detail as any).tracking_info?.estimated_arrival}
                 />
+                </div>
               </Section>
             )}
 
             <Section>
               <h3>{t('detail.section.items')}</h3>
+              <ItemsTableWrap>
               <DataTableContainer>
                 <DataTable>
                   <DataTableHead>
@@ -1110,7 +1178,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                           : Number(it.quantity_ordered) * Number(it.unit_price);
                         return (
                           <DataTableRow key={it.id}>
-                            <DataTableCell data-label={t('detail.items.ingredient') as string}>
+                            <DataTableCell data-label={t('detail.items.ingredient') as string} mobileFullWidth>
                               <strong>{it.ingredient_name}</strong>
                               {(it.seller_product_name || it.seller_product_sku) && (
                                 <div style={{ fontSize: 12, color: '#6B7280' }}>
@@ -1138,6 +1206,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                   </tbody>
                 </DataTable>
               </DataTableContainer>
+              </ItemsTableWrap>
 
               <TotalsBox>
                 <div>

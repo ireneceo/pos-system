@@ -336,6 +336,9 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         onManufactureDateChange={adjust.setManufactureDate}
         expiryDate={adjust.expiryDate}
         onExpiryDateChange={adjust.setExpiryDate}
+        openPoLines={adjust.openPoLines}
+        selectedPoItemId={adjust.selectedPoItemId}
+        onSelectPoItem={adjust.setSelectedPoItemId}
         onConfirm={adjust.handleReceive}
       />
 

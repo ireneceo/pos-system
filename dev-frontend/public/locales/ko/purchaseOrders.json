@@ -124,6 +124,8 @@
       "submitted": "제출됨",
       "confirmed": "확정됨",
       "shipped": "배송 중",
+      "in_transit": "운송 중",
+      "delivered": "도착",
       "received": "수령 완료",
       "partial_received": "부분 수령",
       "cancelled": "취소됨"
@@ -131,7 +133,8 @@
     "section": {
       "items": "품목",
       "delivery": "배송",
-      "notes": "메모"
+      "notes": "메모",
+      "tracking": "배송 추적"
     },
     "items": {
       "ingredient": "재료",

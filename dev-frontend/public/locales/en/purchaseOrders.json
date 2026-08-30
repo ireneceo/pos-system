@@ -124,6 +124,8 @@
       "submitted": "Submitted",
       "confirmed": "Confirmed",
       "shipped": "Shipped",
+      "in_transit": "In Transit",
+      "delivered": "Delivered",
       "received": "Received",
       "partial_received": "Partially Received",
       "cancelled": "Cancelled"
@@ -131,7 +133,8 @@
     "section": {
       "items": "Items",
       "delivery": "Delivery",
-      "notes": "Notes"
+      "notes": "Notes",
+      "tracking": "Delivery Tracking"
     },
     "items": {
       "ingredient": "Ingredient",

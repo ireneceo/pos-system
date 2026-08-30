@@ -449,6 +449,17 @@ date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', timeZone:
 ### DB 스키마 변경
 - [ ] 모델 + DB 테이블 + `models/index.js` association + export 모두 확인
 - [ ] ENUM 추가 시 → 모델 파일 + ALTER TABLE 쿼리 모두 실행
+- [ ] 🔴 **ENUM 은 expand-only — 현재 정의를 읽어 부족한 값만 더한다. 목록 교체 금지.**
+  `MODIFY COLUMN x ENUM('a','b','c')` 처럼 **목록을 하드코딩하면 다른 마이그가 넣은 값을 지운다.**
+  반드시 공용 유틸 사용: `const { expandEnum } = require('./lib/enumExpand')` →
+  `await expandEnum(sequelize, '테이블', '컬럼', ['내가 담당하는 값만'])`.
+  각 마이그는 **자기가 담당하는 값만** 보장한다 — 남의 값까지 나열하는 순간 그게 소거 장치가 된다.
+  (2026-08-30 실제 사고: `sprint6-migration.js` 가 9개 목록을 하드코딩해,
+  30초 전 `migrate-po-status-pending-approval.js` 가 넣은 `pending_approval` 을
+  **3번의 배포에서 연속으로** 지웠다. 레지스트리 실행 순서가 파일명 정렬이라 sprint6 이 뒤에 온다.
+  마이그·레지스트리·배포 루프는 전부 정상이었고 결함은 "목록 하드코딩" 하나였다. `sprint7` 도 같은 지뢰였다.)
+  **자동 강제:** 배포 게이트가 `scripts/check-enum-parity.js` 로 **dev ENUM 값이 운영에 없으면 배포를 차단**한다
+  (다른 타입 차이는 WARN 유지). 예전엔 이 자리가 갭을 감지하고도 "usually harmless" 로 넘겼다.
 - [ ] **새 마이그레이션 스크립트**(seed INSERT·ENUM ALTER 등 sync-database 로 안 되는 것) → `scripts/migrate-*.js` 멱등 작성 + **`scripts/migrations.registry.json` 에 분류**(`deploy`=매 배포 재실행 / `manual`=일회성·이유명시). 배포는 레지스트리를 단일 소스로 읽음 — 등록 잊으면 `check-migration-registry.js` 가 배포 전 fail-closed 로 차단
 
 ### 프론트엔드 연동

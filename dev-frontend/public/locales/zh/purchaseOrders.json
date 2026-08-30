@@ -124,6 +124,8 @@
       "submitted": "已提交",
       "confirmed": "已确认",
       "shipped": "已发货",
+      "in_transit": "运输中",
+      "delivered": "已送达",
       "received": "已收货",
       "partial_received": "部分收货",
       "cancelled": "已取消"
@@ -131,7 +133,8 @@
     "section": {
       "items": "项目",
       "delivery": "配送",
-      "notes": "备注"
+      "notes": "备注",
+      "tracking": "配送追踪"
     },
     "items": {
       "ingredient": "原料",

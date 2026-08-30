@@ -5,7 +5,9 @@ const { requireBGScope, applyBGFilter, assertBGOwnsRow } = require('../middlewar
 const {
   ProductIngredient,
   ProductIngredientCategory,
-  ProductRecipeIngredient
+  ProductRecipeIngredient,
+  PurchaseOrder,
+  PurchaseOrderItem
 } = require('../models');
 const { Op } = require('sequelize');
 
@@ -466,6 +468,78 @@ router.delete('/:id', async (req, res) => {
 });
 
 // 재고 조정
+// GET /api/product-ingredients/:id/open-po-lines
+// 이 브랜드 재고아이템이 담긴 "입고 가능한" 발주 라인을 돌려준다.
+// RA 쪽 `GET /restaurants/:id/inventory/open-po-lines` 와 **대칭**이다 —
+// 다른 점은 PO 라인을 ingredient_id 가 아니라 product_ingredient_id 로 찾는다는 것뿐.
+//
+// 왜 필요한가: 브랜드 입고(POST /:id/adjust-stock)와 발주 수령(PO /receive 의
+// product_ingredient_id 분기)이 **같은 ProductIngredient.current_stock 을 각각 올린다.**
+// 서로를 모르므로 같은 물건을 양쪽에서 처리하면 재고가 두 번 더해진다.
+// 그래서 입고 화면이 진행 중 발주를 보여주고, 사용자가 고르면 발주 경로로 태운다.
+// ⚠ 조회 전용 — 상태를 바꾸지 않는다. 실제 입고는 POST /purchase-orders/:id/receive 가 유일한 경로.
+router.get('/:id/open-po-lines', async (req, res) => {
+  try {
+    const ingredient = await ProductIngredient.findByPk(req.params.id);
+    // 남의 브랜드 재고아이템으로 남의 발주를 들여다보지 못하게 소유권부터 본다.
+    if (!assertBGOwnsRow(ingredient, req, res)) return;
+
+    // purchase-orders-workflow.js 의 RECEIVABLE_STATUSES 와 같은 집합.
+    // pending_approval 은 제외 — 승인 전에는 입고할 수 없다.
+    const RECEIVABLE = ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'];
+
+    const pos = await PurchaseOrder.findAll({
+      where: { status: { [Op.in]: RECEIVABLE } },
+      attributes: ['id', 'po_number', 'status', 'entity_type', 'entity_id', 'expected_delivery_date', 'submitted_at'],
+      include: [{
+        model: PurchaseOrderItem,
+        as: 'items',
+        attributes: ['id', 'product_ingredient_id', 'quantity_ordered', 'quantity_received', 'unit_conversion', 'unit_price'],
+        where: { product_ingredient_id: ingredient.id },
+        required: true
+      }],
+      order: [['submitted_at', 'ASC']]
+    });
+
+    // 남의 발주가 섞이지 않게 구매자를 좁힌다.
+    // ⚠ ProductIngredient 에는 brand_id 가 없다 — 소유는 `owner_user_id`(BG 사용자) 다.
+    //    그래서 "이 재고아이템의 브랜드"를 행에서 직접 못 읽고, 요청자의 BG 스코프로 판정한다.
+    //    (assertBGOwnsRow 가 이미 owner_user_id === req.bgOwnerId 를 통과시킨 뒤다.)
+    const myBrandId = req.user?.brand_id != null ? parseInt(req.user.brand_id, 10) : null;
+
+    const lines = [];
+    for (const po of pos) {
+      if (po.entity_type !== 'brand') continue;
+      // SA(bgOwnerIsAdmin)는 브랜드 한정이 없으므로 통과시킨다.
+      if (!req.bgOwnerIsAdmin) {
+        if (myBrandId == null || parseInt(po.entity_id, 10) !== myBrandId) continue;
+      }
+      for (const it of (po.items || [])) {
+        const remaining = Math.round(((parseFloat(it.quantity_ordered) || 0) - (parseFloat(it.quantity_received) || 0)) * 100) / 100;
+        if (remaining <= 0) continue; // 이미 다 받은 줄은 제안하지 않는다
+        lines.push({
+          purchase_order_id: po.id,
+          po_number: po.po_number,
+          po_status: po.status,
+          expected_delivery_date: po.expected_delivery_date,
+          item_id: it.id,
+          quantity_ordered: parseFloat(it.quantity_ordered) || 0,
+          quantity_received: parseFloat(it.quantity_received) || 0,
+          quantity_remaining: remaining,
+          unit_conversion: parseFloat(it.unit_conversion) || 1,
+          unit_price: parseFloat(it.unit_price) || 0,
+          ingredient_unit: ingredient.unit
+        });
+      }
+    }
+
+    res.json({ success: true, data: lines });
+  } catch (error) {
+    console.error('product-ingredients open-po-lines error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load open purchase order lines' });
+  }
+});
+
 router.post('/:id/adjust-stock', async (req, res) => {
   try {
     const ingredient = await ProductIngredient.findByPk(req.params.id);

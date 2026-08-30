@@ -1,0 +1,238 @@
+{
+ "generated_at": "2026-08-30T06:53:26.982Z",
+ "scope": "정리 이후 살아남는, 매장이 발주 가능한 GIT Consulting 판매상품",
+ "summary": {
+  "surviving": 68,
+  "needs_price": 25,
+  "needs_price_with_known_cost": 0,
+  "negative_margin": 0
+ },
+ "needs_price": [
+  {
+   "product_id": 122,
+   "name": "120Z I 95mm x 107mm I Transparent x20pkts; 1,000pcs (플라스틱 음료컵(아이스용))",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "120Z I 95mm x 107mm I Transparent x20pkts; 1,000pcs (플라스틱 음료컵(아이스용))",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 125,
+   "name": "2OZ PP Round Sauce Container With Hinged Lid (플라스틱 소스통(M))",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "2OZ PP Round Sauce Container With Hinged Lid (플라스틱 소스통(M))",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 126,
+   "name": "3-PLY Natural Jute Twisted Twine Rustic Crafty String Roll / 100M / Natural Brown (갈색 천끈)",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "3-PLY Natural Jute Twisted Twine Rustic Crafty String Roll / 100M / Natural Brown (갈색 천끈)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 132,
+   "name": "BT Paper Two Compartment Lunch Box Kraft (M) (도시락박스(반반/샌드위치))",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "BT Paper Two Compartment Lunch Box Kraft (M) (도시락박스(반반/샌드위치))",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 137,
+   "name": "Disposablevinylglove Powder Free / Semi-Transparent / M (실리콘장갑 (M / 친환경))",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Disposablevinylglove Powder Free / Semi-Transparent / M (실리콘장갑 (M / 친환경))",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 138,
+   "name": "Double Wall Paper Bowl Kraft (갈색 빙수컵 종이)",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Double Wall Paper Bowl Kraft (갈색 빙수컵 종이)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 144,
+   "name": "Hdpe Plastic Glove / M (투명비닐장갑 M)",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Hdpe Plastic Glove / M (투명비닐장갑 M)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 145,
+   "name": "Ice Cream Tub Cup 160Z 97mm(D) White x20pkts (흰색 빙수컵 종이 뚜껑)",
+   "unit": "piece",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Ice Cream Tub Cup 160Z 97mm(D) White x20pkts (흰색 빙수컵 종이 뚜껑)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 151,
+   "name": "NO 8 Flower Cases Cup Cake Paper Liner 41MM X 23MM (종이받침 (곶감용))",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "NO 8 Flower Cases Cup Cake Paper Liner 41MM X 23MM (종이받침 (곶감용))",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 154,
+   "name": "Paper Bag Twisted Handle 270mm×210mm×140mm (트위스트손잡이 종이백)",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Paper Bag Twisted Handle 270mm×210mm×140mm (트위스트손잡이 종이백)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 155,
+   "name": "Paper Cold Cup 80mm x 117mm White x 20pkts (갈색 흰 종이 음료컵(아이스용))",
+   "unit": "piece",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Paper Cold Cup 80mm x 117mm White x 20pkts (갈색 흰 종이 음료컵(아이스용))",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 156,
+   "name": "Paper Ice Cream Tub Cup 160Z / 95mm x 101mm White x20pkts (흰색 종이 빙수컵)",
+   "unit": "piece",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Paper Ice Cream Tub Cup 160Z / 95mm x 101mm White x20pkts (흰색 종이 빙수컵)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 157,
+   "name": "Paperbowlldi 10MM Transparent x 20pkts (갈색 빙수컵 플라스틱 뚜껑)",
+   "unit": "piece",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Paperbowlldi 10MM Transparent x 20pkts (갈색 빙수컵 플라스틱 뚜껑)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 158,
+   "name": "Pck 2 Cup Drinks Egg Tray (컵받침 / 2컵용)",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Pck 2 Cup Drinks Egg Tray (컵받침 / 2컵용)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 159,
+   "name": "Pck Dcut #D BR Brown (구멍 손잡이 종이백)",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Pck Dcut #D BR Brown (구멍 손잡이 종이백)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 162,
+   "name": "PE Singlet Bag 18'' X 20'' (비닐봉투(L))",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "PE Singlet Bag 18'' X 20'' (비닐봉투(L))",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 165,
+   "name": "Plastic Perforated Roll Bag (비닐 롤백)",
+   "unit": "piece",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Plastic Perforated Roll Bag (비닐 롤백)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 169,
+   "name": "Reclosable Lid Black (검정 종이컵 뚜껑 큰)",
+   "unit": "piece",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Reclosable Lid Black (검정 종이컵 뚜껑 큰)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 170,
+   "name": "Single Wall Paper Bowl Plain Kraft (갈색 종이 밥그릇(L))",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Single Wall Paper Bowl Plain Kraft (갈색 종이 밥그릇(L))",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 175,
+   "name": "Sun Paper Bag Twisted Handle Brown 28CM X 15CM X 30CM (손잡이 종이백)",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Sun Paper Bag Twisted Handle Brown 28CM X 15CM X 30CM (손잡이 종이백)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 176,
+   "name": "Take Away Cup Leak Proof Paper 120MM (깔개 및 컵 덮개)",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Take Away Cup Leak Proof Paper 120MM (깔개 및 컵 덮개)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 178,
+   "name": "Thermal Roll 80MM X 60MM X 12MM (L) (영수증 페이퍼롤)",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Thermal Roll 80MM X 60MM X 12MM (L) (영수증 페이퍼롤)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 179,
+   "name": "TK 1000 (A1000) Clear Rectangular Container With Lid (소스판매용 사각 플라스틱통)",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "TK 1000 (A1000) Clear Rectangular Container With Lid (소스판매용 사각 플라스틱통)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 180,
+   "name": "Zip Lock Bag 6\" X 9\" (냉장고용 플라스틱 봉투)",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "Zip Lock Bag 6\" X 9\" (냉장고용 플라스틱 봉투)",
+   "newly_registered_2026_08_28": false
+  },
+  {
+   "product_id": 213,
+   "name": "12OZ DOUBLE WALL PAPER CUP Kraft (20PCS X 25PKTS)",
+   "unit": "pack",
+   "sale_price": 0,
+   "supplier_cost": null,
+   "ingredient": "12OZ Double Wall Paper Cup Kraft (갈색 큰 종이컵 12OZ)",
+   "newly_registered_2026_08_28": true
+  }
+ ],
+ "negative_margin": []
+}

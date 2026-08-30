@@ -615,8 +615,24 @@ if [ -f /tmp/deploy_prod_schema_after.json ] && [ -s /tmp/deploy_prod_schema_aft
         fi
 
         if [ "$TYPE_CHANGES" -gt 0 ]; then
-            # Type changes (datetime vs timestamp etc) are usually harmless
-            echo -e "  ${CYAN}${TYPE_CHANGES} type differences remain (usually harmless: datetime↔timestamp etc)${NC}"
+            # 타입 차이 대부분(datetime↔timestamp 등)은 무해하다. 그러나 **dev ENUM 에 있는 값이
+            # prod ENUM 에 없는 것**은 무해하지 않다 — 그 값을 쓰는 코드가 운영에서 즉시 터진다.
+            #
+            # 2026-08-30: 이 자리가 정확히 그 갭을 감지하고도 "usually harmless" 로 넘겨,
+            # purchase_orders.status 의 'pending_approval' 이 **3번의 배포에서 연속으로** 빠진 채
+            # 통과했다. 근본은 sprint6 의 ENUM 목록 하드코딩이었지만(수정됨), 게이트가 물러서
+            # 아무도 몰랐다. 값 소실만 골라 차단한다 — 나머지 타입 차이는 지금처럼 정보로만 남긴다.
+            ENUM_LOSS=$(cd $LOCAL_DEV_BACKEND && node scripts/check-enum-parity.js                 /tmp/deploy_dev_schema.json /tmp/deploy_prod_schema_after.json 2>&1) || ENUM_LOSS_EXIT=$?
+            if [ "${ENUM_LOSS_EXIT:-0}" -ne 0 ]; then
+                echo "$ENUM_LOSS"
+                if [ "$SKIP_SAFETY" = true ]; then
+                    warn "ENUM 값 소실 — --skip-safety 로 진행 (의식적 선택)."
+                else
+                    error "🗄️ 운영 ENUM 에 dev 값이 빠져 있다(위 목록) — 그 값을 쓰는 코드가 운영에서 터진다. 해당 ENUM 을 다루는 마이그가 expand-only(scripts/lib/enumExpand.js)인지 확인하고 재배포. (긴급 우회: --skip-safety)"
+                fi
+            else
+                echo -e "  ${CYAN}${TYPE_CHANGES} type differences remain (ENUM 값 소실 0 — datetime↔timestamp 등)${NC}"
+            fi
         fi
     fi
 else

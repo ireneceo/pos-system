@@ -6,33 +6,27 @@
  */
 const { sequelize } = require('../config/database');
 const { PurchaseOrderReturn } = require('../models');
+// ENUM 은 expand-only — 목록 하드코딩 금지. 2026-08-30 이전 이 파일의 하드코딩이
+// migrate-po-status-pending-approval.js 가 넣은 'pending_approval' 을 매 배포마다 지웠다.
+const { expandEnum } = require('./lib/enumExpand');
 
 (async () => {
   try {
-    // 1. ALTER status enum
-    try {
-      await sequelize.query(`
-        ALTER TABLE \`purchase_orders\`
-        MODIFY COLUMN \`status\` ENUM('draft','submitted','confirmed','shipped','delivered','partial_received','received','cancelled','closed')
-        NOT NULL DEFAULT 'draft'
-      `);
-      console.log('✓ purchase_orders.status enum extended with "delivered"');
-    } catch (e) {
-      if (String(e.message).includes('already')) console.log('· enum already extended');
-      else console.log('  warning:', e.message);
+    // 1. purchase_orders.status — 이 마이그가 담당하는 값은 'delivered' 하나다.
+    //    나머지 값은 각자의 마이그가 넣는다. 여기서 목록을 통째로 쓰면 남의 값을 지운다.
+    {
+      const r = await expandEnum(sequelize, 'purchase_orders', 'status', ['delivered']);
+      console.log(r.added.length
+        ? `✓ purchase_orders.status enum extended with ${r.added.join(', ')}`
+        : '· purchase_orders.status enum already has "delivered"');
     }
 
-    // 1b. ALTER invoices.status enum to include 'credit' (Sprint 6 — Credit Notes)
-    try {
-      await sequelize.query(`
-        ALTER TABLE \`invoices\`
-        MODIFY COLUMN \`status\` ENUM('draft','pending_payment','payment_submitted','paid','overdue','cancelled','credit')
-        DEFAULT 'draft'
-      `);
-      console.log('✓ invoices.status enum extended with "credit"');
-    } catch (e) {
-      if (String(e.message).includes('already')) console.log('· invoices enum already extended');
-      else console.log('  warning:', e.message);
+    // 1b. invoices.status — 이 마이그가 담당하는 값은 'credit' 하나다 (Sprint 6 Credit Notes).
+    {
+      const r = await expandEnum(sequelize, 'invoices', 'status', ['credit']);
+      console.log(r.added.length
+        ? `✓ invoices.status enum extended with ${r.added.join(', ')}`
+        : '· invoices.status enum already has "credit"');
     }
 
     // 2. Create returns table

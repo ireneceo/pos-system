@@ -164,6 +164,40 @@ PO status가 Shipped 또는 Confirmed일 때 [Receive] 가능
   └─ 기존 inventory-routes.js의 receive 로직을 서비스 함수로 추출하여 재사용
 ```
 
+### 🔒 입고 가능 상태 = `RECEIVABLE_STATUSES` 단일 상수 (2026-08-30)
+
+`routes/purchase-orders-workflow.js` 의 모듈 상수 하나를 **두 입고 라우트가 공유**한다:
+`['submitted','confirmed','shipped','in_transit','delivered','partial_received']`
+- `POST /purchase-orders/:id/mark-received` — 전량 정상 수령 lite
+- `POST /purchase-orders/:id/receive` — splits(정상/short/damaged/wrong_item/pending) 정식
+- ⛔ `draft`·`pending_approval` 은 계속 막는다 — **오너 승인 우회 방지**(2026-07-13 판정, 번복 아님)
+
+**왜 확대했나:** 예전엔 상세가 `shipped|delivered|partial_received` 에서만 입고 버튼을 띄웠는데,
+**운영 발주 전건이 `submitted` 에 머물러 있었다**(판매자가 배송 상태를 눌러주지 않는다).
+즉 운영에서 입고 기능이 한 번도 쓰인 적이 없었다. 목록은 이미 submitted 부터 버튼을 띄우고 있어
+**리스트/상세 비대칭**이기도 했다. 한쪽만 넓히면 우회 경로가 생기므로 한 상수로 묶었다.
+
+### 🔒 재고 화면 입고 ↔ 발주 수령 동기화 (이중 가산 방지, 2026-08-30)
+
+**문제:** 재고 화면 입고와 발주 수령이 서로를 몰라, 같은 물건을 양쪽에서 처리하면 재고가 두 번 더해졌다
+(고장주입 실증: 물건 6개 입고 → 재고 **+12**).
+
+**설계:** 입고 창이 그 품목의 진행 중 발주를 **보여주고 사용자가 고른다.**
+- 조회 전용 API — RA: `GET /restaurants/:id/inventory/open-po-lines?ingredient_id=N`
+  / BG: `GET /product-ingredients/:id/open-po-lines` (대칭, `product_ingredient_id` 기준)
+- "발주 입고로 처리" 선택 → **PO `/receive` 경로 호출.** 재고 가산 로직을 복제하지 않는다 —
+  **입고의 단일 소스는 PO 수령 경로 하나다.**
+- "일반 입고" → 기존 동작 그대로(발주와 무관한 입고는 실제로 존재하므로 막지 않는다)
+- ⛔ **자동 매칭 금지** — 수량·품목 자동 추정은 오귀속 사고 경로다. 사람이 고른다.
+- 이미 다 받은 라인은 목록에서 사라진다(재수령 이중가산 차단 지점).
+
+**나머지 입고 경로는 실측으로 "적용 불가" 확정** — 억지로 만들면 헛코드에 가짜 안심이 얹힌다:
+| 경로 | 이유 |
+|---|---|
+| `supplier-inventory/receive` | 공급업체는 **판매자** — 구매자 화이트리스트(`buyerScope.js`: restaurant/brand/foodcourt) 밖 |
+| `general-stock/:id/receive` | `purchase_order_items` 에 general_stock 참조 컬럼이 **없다** |
+| `foodcourts/:id/inventory/receive` | `FoodcourtProduct.current_stock` 을 올린다 — PO 라인(Ingredient/ProductIngredient)과 **다른 객체** |
+
 ---
 
 ## 5. 화면 설계

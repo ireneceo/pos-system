@@ -41,12 +41,17 @@ export const SiteSettingsProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchSettings();
+    // 언마운트/이동 시 요청을 **우리가 명시적으로 취소**하고, catch 에서는 그 취소만 골라 침묵시킨다.
+    // ⛔ 에러 메시지 문자열("Failed to fetch")로 거르지 않는다 — 같은 문자열이 진짜 네트워크 장애에서도
+    //    나오므로, 그렇게 하면 실장애까지 덮는 새 fail-silent 가 된다.
+    const controller = new AbortController();
+    fetchSettings(controller.signal);
+    return () => controller.abort();
   }, []);
 
-  const fetchSettings = async () => {
+  const fetchSettings = async (signal?: AbortSignal) => {
     try {
-      const response = await fetch('/api/site-settings');
+      const response = await fetch('/api/site-settings', { signal });
       if (response.ok) {
         const data = await response.json();
         setSettings({
@@ -62,6 +67,8 @@ export const SiteSettingsProvider: React.FC<{ children: ReactNode }> = ({ childr
         });
       }
     } catch (error) {
+      // 우리가 취소한 요청은 실패가 아니다 — 조용히 끝낸다(로딩 상태도 건드리지 않는다).
+      if (signal?.aborted || (error as Error)?.name === 'AbortError') return;
       console.error('Failed to load site settings:', error);
     }
     setLoading(false);

@@ -1492,9 +1492,16 @@ function definePosTests({ adminToken }) {
     // bulk auto_submit 과 mark-sent-external 이 게이트를 호출하는가 (직접 submitted 직행 금지)
     const bulkGated = /applySubmitGate\(/.test(crud);
     const wfGated = (wf.match(/applySubmitGate\(/g) || []).length >= 2; // submit + mark-sent-external
-    // mark-received 는 화이트리스트(pending_approval 수령 금지)
-    const receiveGuarded = /RECEIVABLE\s*=\s*\[/.test(wf) && !/po\.status === 'received' \|\| po\.status === 'cancelled'/.test(wf);
-    return bulkGated && wfGated && receiveGuarded;
+    // 입고는 화이트리스트 방식이어야 한다(블랙리스트로 되돌리면 pending_approval 수령이 뚫린다).
+    // 2026-08-30: mark-received 와 receive 가 같은 집합을 쓰도록 RECEIVABLE_STATUSES 로 통일됨.
+    const whitelist = wf.match(/const RECEIVABLE_STATUSES\s*=\s*\[([^\]]*)\]/);
+    const receiveGuarded = !!whitelist
+      && !/'pending_approval'/.test(whitelist[1])   // 승인 대기는 절대 입고 불가
+      && !/'draft'/.test(whitelist[1])
+      && !/po\.status === 'received' \|\| po\.status === 'cancelled'/.test(wf);
+    // 두 입고 라우트가 **같은** 화이트리스트를 봐야 한다(한쪽만 넓히면 우회 경로가 생긴다)
+    const bothUseWhitelist = (wf.match(/RECEIVABLE_STATUSES\.includes\(po\.status\)/g) || []).length >= 2;
+    return bulkGated && wfGated && receiveGuarded && bothUseWhitelist;
   });
 
   test('pos', '발주 승인: 오너 연결+ON 이면 일괄발주도 pending_approval (우회 금지)', async () => {

@@ -124,6 +124,8 @@
       "submitted": "Dihantar",
       "confirmed": "Disahkan",
       "shipped": "Dihantar",
+      "in_transit": "Dalam Transit",
+      "delivered": "Sampai",
       "received": "Diterima",
       "partial_received": "Diterima Sebahagian",
       "cancelled": "Dibatalkan"
@@ -131,7 +133,8 @@
     "section": {
       "items": "Item",
       "delivery": "Penghantaran",
-      "notes": "Nota"
+      "notes": "Nota",
+      "tracking": "Penjejakan Penghantaran"
     },
     "items": {
       "ingredient": "Bahan",

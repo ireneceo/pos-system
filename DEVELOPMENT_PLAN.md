@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-08-28 #2 (**v3.80 운영 배포 — 발주 수량 병합 + 발주 메일 품목표 + 수량 표시 정리**). Irene 지시 3건: "앞서 만든 병합 패치 적용해" / "이메일에 내역이 다 나와야지. 굳이 들어가야만 보이면 불편하지" / "수량인데 소수점이 어딨어". ①**같은 품목 재담기 = 수량 합산**(draft 한정, `WHERE status:'draft'` 안에서만 도달 → submitted 무접촉). 이게 PO-10 에서 같은 3품목이 08-27 08:50·09:48 두 번 담겨 2줄씩 됐던 것의 재발 방지다 ②**발주 메일에 품목표**(품목명·수량·단가·금액+총액, 20줄 상한 "+N more", `items` optional 이라 안 넘기면 기존과 바이트 동일) ③**수량 소수점 제거** 공용 `formatQuantity` 로 7곳(1.00 pack → 1 pack, 실제 소수는 유지) ④메뉴↔페이지 제목 i18n 통일 ⑤**배포 스크립트 fail-loud** — 마이그 루프 else 분기(신규 마이그 **첫 실행**)가 `|| true` 로 실패를 삼키고 있었다. 검증: verify-all --full **16/16**(mount sweep 8역할 크래시 0) · 🔒 인쇄 **8/8 무변경** · 병합 실호출 10/10 + **고장주입 4건 실패로 반증** · i18n Errors 0. **Fable 게이트 PASS**(마커 dc387b4ffebb). ⚠️ **내가 만든 운영 결함 2건 적발 — 다음 섹션 최우선**: (a) 이번 세션 UGS 상품 등록이 **원가를 판매가 자리에 복사**(중복 41종 전부 원가와 일치) → GIT Consulting 이 매장에 마진 0 으로 파는 상태, **PO-10(195.70)도 원가로 제출됨**. 코드 결함 아님 — 공급업체상품→자기판매상품 등록 화면이 **아예 없어** 스크립트로 때웠고 마진 단계가 빠졌다 (b) `catalogLink.js` `connectExisting()` 중복 키에 `seller_product_id` 가 있어 **상품 행이 다르면 새 링크 생성** → 같은 재료에 활성 연결 2개. Irene 이 "판매가 나오는 거 맞아? 원가 아니지?" 라고 정확히 짚었는데 내가 "판매가 맞다"고 **틀리게 답했다**. 정리는 Irene 승인 대기. 함께 확정: **원가 2경로**(재판매=공급업체 가격 / 레시피 프로덕트=재료비 합계, RA·BG 공통, 정책 분기 없음). 상세=`.claude/session-state.md`.
+> **최종 업데이트:** 2026-08-30 (**v3.80 유지 — 버전 미상승, Irene 지시**). 운영 배포 3회. ①**발주 상세에서도 "받았다" 가능** — 목록엔 있는데 상세엔 입고 버튼이 없었고, 운영 발주가 **전부 submitted 에 머물러** 사실상 모든 발주가 여기 걸려 있었다(`RECEIVABLE_STATUSES` 단일 상수로 두 입고 라우트 통일, draft·승인대기 차단 유지) ②**재고 입고↔발주 동기화** — 재고 화면 입고와 발주 수령이 서로를 몰라 **같은 물건이 두 번 더해지던 구멍**을 막음(조회 전용 `open-po-lines` + 모달 선택지, 쓰기는 PO `/receive` 단일 경로. RA·BG 양쪽 완료, 나머지 3경로는 실측으로 "적용 불가" 확정) ③**발주 상세 모바일 4건**(번역 코드 노출·타임라인 2중·버튼 정렬·품목 카드 밀도) ④🎯 **3세션 미스터리 종결 — `pending_approval` ENUM 소거 원인 확정**: `sprint6-migration.js` 가 ENUM 목록을 **하드코딩**해, 30초 전 마이그가 넣은 값을 매 배포마다 지우고 있었다(`sprint7` 도 같은 지뢰). 마이그·레지스트리·배포 루프는 **전부 정상**이었다. `lib/enumExpand.js`(expand-only) 신설 + 4지점 교체 + **배포 게이트가 ENUM 값 소실을 차단**(`check-enum-parity.js`) → 배포 후 생존 증명 완료 ⑤**신규 발주 화면 모바일 붕괴 수정**(미배포) — 장바구니가 화면 절반을 고정 점유해 360px 에서 상품 카드 영역이 **55px**(카드 최소 180px = 0장)였다. 하단 접이식 시트로 전환. 검증: verify-all 15/15 · mount sweep 8역할 크래시 0 · 운영 전수검사 **측정 25/25 · 측정 불가 0** · 고장주입 반증 4회. **Fable 게이트 PASS**(C 마커 7b9a5211fd43). 상세=`.claude/session-state.md`.
 >
 > **이전:** 2026-08-28 (**v3.79 운영 배포 — with MIN 재고 장부 정렬 + 일괄 링크 도구, 이관 완료**). Irene 지시: "git consulting에 있는 재고아이템이랑 공급업체 및 상품이 with min에도 있어야 해… 대량으로 할 수가 없어서 너무 불편해". 실체는 **한 사업의 재고가 두 목록으로 갈라진 것** — 회사(BG) Stock Items 288건(공급처 매핑 285)에는 지식이 다 있는데, 레시피가 붙고 매장이 공유받는 브랜드 식자재 89건은 매핑 0이었다. ①**브랜드 장부로 이관**(created 226 + connected 62, 매핑 305 복제, 원본 288·305 무손상 보존) ②**깃컨설팅 판매상품 81건을 매장에 발주 전용 등록**(track_stock=false) ③신규 도구 `/pos/stock-ledger`(구매 연결·커버리지 2탭, 정확일치 제안·확정은 사람, 원가 반영 opt-in, 멱등) ④롤백 스크립트(dry-run 기본). **결과: with MIN Cafe 재고 표시 157 → 460건, 발주 가능 66 → 432건.** 실증: 매장 계정 실발주 PO-R10-20260828-001 생성(201)→삭제(200). 검증: verify-all --full **16/16** · 실호출 14/14 · 중간회귀 12/12(from-catalog 4패밀리 동작 불변) · rollback 반증 5/5 · **고장주입 양방향 2건** · 인쇄 계약 10/10 · 인쇄루트 34/34. **Fable 게이트 4종 PASS.** ⚠ 검증이 **내가 만든 결함 2건**(라우터가 /api 전체에 가드 누출 → 공급업체·오너 화면 403 / 매장 라우트 checkRestaurantAccess 누락)과 **내 검사기 가짜 통과 1건**을 잡아냈고 전부 수정·반증 재수립. 상세=`docs/STOCK_LEDGER_UNIFICATION_DESIGN.md`.
 >
@@ -8949,6 +8949,32 @@ hydration 게이트가 **메뉴 수정 저장 시 재고가 0 으로 날아가�
 - `dev-frontend/src/pages/BrandProductRecipe/ProductRecipesTab.tsx`
 - `dev-frontend/public/locales/{en,ko,zh,ms}/supplier.json`
 - `deploy-to-production.sh`
+
+---
+
+## ✅ 완료: 발주 입고 대칭화 · 재고↔발주 동기화 · ENUM 소거 근본수정 (2026-08-30)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 발주 "받았다" 대칭화 | 목록엔 있고 상세엔 없던 입고 버튼. 운영 발주 전건이 submitted 라 **아무도 입고를 못 하던 상태**. 두 입고 라우트를 `RECEIVABLE_STATUSES` 하나로 통일 | ✅ 배포 |
+| 재고 입고 ↔ 발주 동기화 (RA) | 같은 물건을 재고·발주 양쪽에서 처리하면 **재고 이중 가산**. 입고 창이 진행 중 발주를 보여주고 고르게 함 | ✅ 배포 |
+| 재고 입고 ↔ 발주 동기화 (BG) | 브랜드 재고아이템에 남아 있던 같은 구멍. 고장주입으로 **물건 6개 → 재고 +12** 재현 후 차단 | ✅ dev |
+| 발주 상세 모바일 4건 | 번역 안 된 코드 노출(4개 언어) · 타임라인 2중 · 버튼 정렬/높이 · 품목 카드 5줄→3줄 | ✅ 배포 |
+| 🎯 ENUM 소거 근본수정 | `sprint6`·`sprint7` 의 ENUM 목록 하드코딩이 `pending_approval` 을 **3배포 연속 소거**. expand-only 유틸 신설 + 게이트 차단 추가 | ✅ 배포 |
+| 신규 발주 화면 모바일 | 장바구니 50vh 고정 → 360px 에서 상품 카드 **55px**. 하단 접이식 시트로 전환 | ✅ dev |
+| 콘솔 노이즈 (부분) | `AbortController` 판별. ⚠ `fetchDedupe` 경유분은 잔존 — **부분 해결** | ⚠️ dev |
+| 운영 전수검사 계측기 | 전 역할에 `restaurant_id` 를 가정해 5건이 "측정 불가"였다. 역할별 스코프로 재작성 → **측정 25/25 · 측정 불가 0** | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/scripts/lib/enumExpand.js` (신규) · `dev-backend/scripts/check-enum-parity.js` (신규)
+- `dev-backend/scripts/sprint6-migration.js` · `sprint7-migration.js` · `health-check.js` · `deploy-to-production.sh`
+- `dev-backend/routes/purchase-orders-workflow.js` · `inventory-core.js` · `product-ingredients.js`
+- `dev-frontend/src/pages/PurchaseOrders/PurchaseOrderDetailPage.tsx` · `NewPurchaseOrderPage.tsx`
+- `dev-frontend/src/components/Inventory/{hooks/useIngredientAdjustModal.ts, modals/ReceiveModal.tsx, InventoryManager.tsx}`
+- `dev-frontend/src/{App.tsx, contexts/SiteSettingsContext.tsx}` · locales 4개 언어
+- `dev-backend/scripts/cleanup-ugs-duplicate-products.js` (신규, 운영 실행 대기)
 
 ---
 

@@ -189,9 +189,13 @@ const Layout = styled.div<{ $cartWidth: number }>`
   background: #F9FAFB;
   overflow: hidden;
 
+  /* 좁은 화면: 카트에 50vh 를 고정 배분하던 것을 없앤다.
+     담기 전 카트는 정보가 0인데 화면 절반을 먹었고, 정작 담아야 할 상품 목록이 눌렸다
+     (360×740 실측: 카드 영역 55px — 카드 최소 높이 180px 이라 한 장도 못 들어감).
+     이제 본문이 전부 쓰고, 카트는 하단 고정 바 + 접이식 시트로 띄운다. */
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr 50vh;
+    grid-template-rows: 1fr;
   }
 `;
 
@@ -623,12 +627,102 @@ const Empty = styled.div`
 `;
 
 // ── Cart sidebar ──
-const CartPane = styled.div`
+const CartPane = styled.div<{ $sheetOpen?: boolean }>`
   background: white;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
+
+  /* ≤1024px = 하단 시트. 접히면 헤더 줄만 보이고, 펼치면 내용만큼 자라되 60vh 를 넘지 않는다
+     (펼쳐도 상품 목록 상단이 보여 맥락이 유지된다). 데스크탑 사이드바는 무접촉. */
+  @media (max-width: 1024px) {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    border-top: 1px solid #C7CED6;
+    box-shadow: 0 -2px 12px rgba(10, 37, 64, 0.10);
+    max-height: ${p => (p.$sheetOpen ? '60vh' : 'auto')};
+  }
+`;
+
+/** 하단 시트 헤더 = 접힘 상태의 유일한 표시. 담긴 수·합계가 여기서 즉시 갱신되는 것이
+ *  "담겼다"의 피드백이다(카트가 안 보이므로 이 피드백이 없으면 카드를 연타하게 된다).
+ *  넓은 화면에서는 기존 CartHeader 가 그대로 쓰이므로 이 버튼은 숨긴다. */
+const CartSheetBar = styled.button`
+  display: none;
+
+  @media (max-width: 1024px) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 52px;
+    padding: 0 16px;
+    border: 0;
+    background: white;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+  }
+`;
+
+const CartSheetCount = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+`;
+
+const CartSheetBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: #635BFF;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+`;
+
+const CartSheetTotal = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0A2540;
+`;
+
+/** 시트가 접혔을 때 본문(카트 목록·푸터)을 숨긴다. 넓은 화면에서는 항상 보인다. */
+const CartBody = styled.div<{ $sheetOpen?: boolean }>`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+
+  @media (max-width: 1024px) {
+    display: ${p => (p.$sheetOpen ? 'flex' : 'none')};
+  }
+`;
+
+/** 하단 시트가 본문 마지막 줄을 가리지 않도록 좁은 화면에서만 여백을 준다. */
+const SheetSpacer = styled.div`
+  display: none;
+  @media (max-width: 1024px) {
+    display: block;
+    height: 56px;
+    flex: 0 0 auto;
+  }
 `;
 
 /** 카트 왼쪽 모서리의 폭 조절 손잡이. 좁은 화면(카트가 아래로 내려가는 배치)에서는 숨긴다. */
@@ -649,6 +743,10 @@ const CartResizer = styled.div`
 `;
 
 const CartHeader = styled.div`
+  /* 좁은 화면에서는 CartSheetBar 가 헤더 역할을 하므로 숨긴다. */
+  @media (max-width: 1024px) {
+    display: none;
+  }
   height: 49px;
   box-sizing: border-box;
   display: flex;
@@ -913,6 +1011,9 @@ const NewPurchaseOrderPage: React.FC = () => {
 
   // ── 카트 폭 (사람이 끌어서 정하고, 브라우저에 기억시킨다) ──────────────────────
   // localStorage 는 개인용 편의값이라 실패해도 화면이 정상 동작해야 한다 → 전부 try/catch.
+  // 좁은 화면(≤1024px) 하단 카트 시트의 접힘/펼침. 기본 접힘 —
+  // 담기 전 카트는 정보가 0이라 화면을 차지할 이유가 없다. 넓은 화면에서는 이 값이 무시된다.
+  const [cartSheetOpen, setCartSheetOpen] = useState(false);
   const [cartWidth, setCartWidth] = useState<number>(() => {
     try {
       const raw = window.localStorage.getItem(CART_WIDTH_KEY);
@@ -1949,13 +2050,30 @@ const NewPurchaseOrderPage: React.FC = () => {
               )
             )}
           </ScrollArea>
+          <SheetSpacer />
         </MainPane>
 
-        <CartPane>
+        <CartPane $sheetOpen={cartSheetOpen}>
           <CartResizer onMouseDown={onResizeStart} title="Drag to resize" />
+          {/* 좁은 화면 전용 하단 바 — 담긴 수·합계가 여기서 갱신되는 것이 "담겼다"의 피드백이다 */}
+          <CartSheetBar
+            type="button"
+            onClick={() => setCartSheetOpen(v => !v)}
+            aria-expanded={cartSheetOpen}
+          >
+            <CartSheetCount>
+              {t('newPo.cart.title', 'Planned Order')}
+              {cart.length > 0 && <CartSheetBadge>{cart.length}</CartSheetBadge>}
+            </CartSheetCount>
+            <CartSheetTotal>
+              {cart.length > 0 && <span>{grandTotal.toFixed(2)}</span>}
+              <span aria-hidden="true">{cartSheetOpen ? '▾' : '▴'}</span>
+            </CartSheetTotal>
+          </CartSheetBar>
           <CartHeader>
             {t('newPo.cart.title', 'Planned Order')} {cart.length > 0 && `(${cart.length})`}
           </CartHeader>
+          <CartBody $sheetOpen={cartSheetOpen}>
           <CartScroll>
             {cart.length === 0 ? (
               <Empty>
@@ -2097,6 +2215,7 @@ const NewPurchaseOrderPage: React.FC = () => {
               </>
             )}
           </CartFooter>
+          </CartBody>
         </CartPane>
       </Layout>
 

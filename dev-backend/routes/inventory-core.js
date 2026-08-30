@@ -373,6 +373,74 @@ router.post('/:restaurantId/inventory/initial', async (req, res) => {
   }
 });
 
+// GET /api/restaurants/:restaurantId/inventory/open-po-lines?ingredient_id=N
+// 이 재료가 담긴 "입고 가능한" 발주 라인을 돌려준다.
+// 용도: 재고 화면에서 입고하려는 품목이 진행 중 발주에 들어 있으면 사용자에게 알려주고
+//       발주 입고 경로로 태울지 고르게 한다. 재고 입고와 발주 입고가 서로를 몰라
+//       같은 물건이 두 번 더해지던 구멍을 막는 것이 목적이다.
+// ⚠ 조회 전용 — 상태를 바꾸지 않는다. 실제 입고는 POST /purchase-orders/:id/receive 가 유일한 경로.
+router.get('/:restaurantId/inventory/open-po-lines', async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const ingredientId = parseInt(req.query.ingredient_id, 10);
+    if (!Number.isFinite(ingredientId)) {
+      return res.status(400).json({ success: false, message: 'ingredient_id is required' });
+    }
+    // 남의 매장 재료 id 로 남의 발주를 들여다보지 못하게 소유권부터 본다.
+    const ingredient = await ownedIngredient(ingredientId, restaurantId);
+    if (!ingredient) {
+      return res.status(404).json({ success: false, message: 'Ingredient not found' });
+    }
+
+    // purchase-orders-workflow.js 의 RECEIVABLE_STATUSES 와 같은 집합.
+    // pending_approval 은 제외 — 승인 전에는 입고할 수 없다.
+    const RECEIVABLE = ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'];
+
+    const pos = await PurchaseOrder.findAll({
+      where: {
+        entity_type: 'restaurant',
+        entity_id: restaurantId,
+        status: { [Op.in]: RECEIVABLE }
+      },
+      attributes: ['id', 'po_number', 'status', 'expected_delivery_date', 'submitted_at'],
+      include: [{
+        model: PurchaseOrderItem,
+        as: 'items',
+        attributes: ['id', 'ingredient_id', 'quantity_ordered', 'quantity_received', 'unit_conversion', 'unit_price'],
+        where: { ingredient_id: ingredientId },
+        required: true
+      }],
+      order: [['submitted_at', 'ASC']]
+    });
+
+    const lines = [];
+    for (const po of pos) {
+      for (const it of (po.items || [])) {
+        const remaining = Math.round(((parseFloat(it.quantity_ordered) || 0) - (parseFloat(it.quantity_received) || 0)) * 100) / 100;
+        if (remaining <= 0) continue; // 이미 다 받은 줄은 제안하지 않는다
+        lines.push({
+          purchase_order_id: po.id,
+          po_number: po.po_number,
+          po_status: po.status,
+          expected_delivery_date: po.expected_delivery_date,
+          item_id: it.id,
+          quantity_ordered: parseFloat(it.quantity_ordered) || 0,
+          quantity_received: parseFloat(it.quantity_received) || 0,
+          quantity_remaining: remaining,
+          unit_conversion: parseFloat(it.unit_conversion) || 1,
+          unit_price: parseFloat(it.unit_price) || 0,
+          ingredient_unit: ingredient.unit
+        });
+      }
+    }
+
+    res.json({ success: true, data: lines });
+  } catch (error) {
+    console.error('open-po-lines error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load open purchase order lines' });
+  }
+});
+
 // POST /api/restaurants/:restaurantId/inventory/receive - 입고 처리 (배치 정보 포함)
 router.post('/:restaurantId/inventory/receive', async (req, res) => {
   const transaction = await database.sequelize.transaction();
