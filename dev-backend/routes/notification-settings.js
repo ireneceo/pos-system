@@ -27,6 +27,7 @@ const NOTIFICATION_CATEGORIES = [
   // 발주 오너 승인 워크플로우 (2026-06-21)
   { key: 'po_approval_pending', label: 'Purchase Order Awaiting Approval', description: 'When a restaurant purchase order needs your approval as the Owner', section: 'Supply Chain', roles: ['Restaurant Owner'] },
   { key: 'po_approval_result', label: 'Purchase Order Approval Result', description: 'When the Owner approves or rejects your purchase order', section: 'Supply Chain', roles: ['Restaurant Admin', 'Restaurant Owner', 'Staff'] },
+  { key: 'po_buyer_confirm', label: 'Purchase Order Placed (Confirmation)', description: 'Confirmation to you when your purchase order is sent to the seller', section: 'Supply Chain', roles: ['Restaurant Admin', 'Restaurant Owner', 'Staff', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] },
   // Phase 3 — Referral Program
   { key: 'referral_commission', label: 'Referral Commission', description: 'When a commission is credited to your wallet (referrer) or a referral signs up', section: 'Referrals', roles: ['all'] },
   { key: 'referral_payout', label: 'Referral Payout Updates', description: 'Payout request status updates (approved / paid / rejected)', section: 'Referrals', roles: ['all'] },

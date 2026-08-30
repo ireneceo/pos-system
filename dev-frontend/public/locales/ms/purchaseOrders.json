@@ -360,7 +360,8 @@
     "submitFailed": "Gagal menghantar pesanan belian ini",
     "externalHintApproval": "Pesanan belian ini perlu kelulusan Pemilik sebelum dihantar kepada pembekal. Perkongsian dibuka selepas diluluskan.",
     "sendAfterApproval": "Tersedia selepas kelulusan Pemilik",
-    "submitForApproval": "Hantar untuk kelulusan"
+    "submitForApproval": "Hantar untuk kelulusan",
+    "addedAt": "Ditambah"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit tidak sepadan — kemasukan manual diperlukan",

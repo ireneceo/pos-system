@@ -80,5 +80,61 @@
     "viewButton": "Buka Kontrak",
     "renewButton": "Mula Pembaharuan",
     "contactBody": "Untuk sebarang pertanyaan mengenai kontrak, sila hubungi kami secara langsung."
+  },
+  "po": {
+    "sellerReceived": {
+      "subject": "PO baharu {{poNumber}} daripada {{buyer}}",
+      "heading": "Pesanan Belian Baharu Diterima",
+      "body": "<strong>{{buyer}}</strong> telah menghantar pesanan belian baharu kepada syarikat anda.",
+      "poNumber": "No. PO",
+      "buyer": "Pembeli",
+      "total": "Jumlah",
+      "status": "Status",
+      "awaitingConfirmation": "Menunggu Pengesahan",
+      "hint": "Sila semak pesanan dan sahkan atau tolak. Selepas pengesahan anda boleh tandakan sebagai dihantar dengan maklumat penjejakan.",
+      "cta": "Semak Pesanan",
+      "textFallback": "Pesanan belian baharu {{poNumber}} daripada {{buyer}}. Jumlah: {{total}}."
+    },
+    "approvalPending": {
+      "subject": "Kelulusan diperlukan: PO {{poNumber}}",
+      "heading": "Pesanan Belian Menunggu Kelulusan Anda",
+      "body": "<strong>{{buyer}}</strong> menghantar pesanan belian yang memerlukan kelulusan anda.",
+      "cta": "Semak & Luluskan",
+      "textFallback": "Pesanan belian {{poNumber}} memerlukan kelulusan anda. Jumlah: {{total}}."
+    },
+    "approvalResult": {
+      "subjectApproved": "Diluluskan: PO {{poNumber}}",
+      "subjectRejected": "Ditolak: PO {{poNumber}}",
+      "headingApproved": "Pesanan Belian Diluluskan",
+      "headingRejected": "Pesanan Belian Ditolak",
+      "bodyApproved": "Pesanan belian anda telah diluluskan dan dihantar kepada penjual.",
+      "bodyRejected": "Pesanan belian anda telah ditolak.",
+      "reason": "Sebab",
+      "cta": "Lihat Pesanan",
+      "textFallback": "Pesanan belian {{poNumber}}: {{result}}."
+    },
+    "buyerConfirm": {
+      "subject": "Pesanan dibuat: PO {{poNumber}}",
+      "heading": "Pesanan Belian Anda Telah Dibuat",
+      "body": "Pesanan belian anda telah dihantar kepada <strong>{{seller}}</strong>.",
+      "seller": "Penjual",
+      "cta": "Lihat Pesanan",
+      "hint": "Anda akan dimaklumkan apabila penjual mengesahkan pesanan.",
+      "textFallback": "Pesanan belian {{poNumber}} dibuat dengan {{seller}}. Jumlah: {{total}}."
+    },
+    "externalSend": {
+      "subject": "Pesanan Belian {{poNumber}} daripada {{buyer}}",
+      "heading": "Pesanan Belian Baharu",
+      "body": "<strong>{{buyer}}</strong> telah membuat pesanan belian dengan anda.",
+      "hint": "Sila balas e-mel ini untuk mengesahkan pesanan.",
+      "textFallback": "Pesanan belian {{poNumber}} daripada {{buyer}}. Jumlah: {{total}}."
+    },
+    "items": {
+      "item": "Item",
+      "qty": "Kuantiti",
+      "unitPrice": "Harga Unit",
+      "lineTotal": "Amaun",
+      "grandTotal": "Jumlah"
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { getApiBaseUrl } from '../config/api';
 import { getAuthToken, clearAuthToken } from './auth';
-import { shouldDedupe, buildDedupeKey, tryReuse, trackInflight } from './fetchDedupe';
+import { shouldDedupe, buildDedupeKey, dedupedFetch } from './fetchDedupe';
 
 // POS 관리자 인증을 건너뛸 경로
 // - 토큰 자동 주입 안 함
@@ -105,13 +105,16 @@ export function installFetchInterceptor(): void {
     const resolvedUrl = typeof resolvedInput === 'string' ? resolvedInput : resolvedInput.toString();
     if (method === 'GET' && shouldDedupe(resolvedUrl)) {
       const key = buildDedupeKey(resolvedUrl, injectedAuth);
-      const reused = tryReuse(key);
-      if (reused) return reused;
-
-      const fresh = originalFetch(resolvedInput as RequestInfo, resolvedInit);
-      trackInflight(key, fresh);
-      // dedupe path 는 401 핸들링 도 동일하게 적용해야 함.
-      const response = await fresh;
+      // 공유 fetch 는 **호출자 signal 이 아니라 dedupe 가 만든 signal** 로 나간다.
+      // 호출자 signal 은 구독 취소용으로만 쓰이고, 구독자가 전원 빠졌을 때만 실요청이 abort 된다.
+      // (예전엔 리더 signal 이 그대로 실려, 리더가 언마운트하면 팔로워 전원이 AbortError 였다.)
+      // ⚠ Request 객체에 내장된 signal 은 여기서 읽지 않는다 — 기존과 동일한 한계(범위 밖).
+      const response = await dedupedFetch(
+        key,
+        resolvedInit?.signal ?? undefined,
+        (sharedSignal) =>
+          originalFetch(resolvedInput as RequestInfo, { ...(resolvedInit || {}), signal: sharedSignal })
+      );
       if (response.status === 401 && includesApi && !isBypass && getAuthToken()) {
         const isCustomerOrMembership =
           urlString.includes('/api/customers/') || urlString.includes('/api/membership/');
@@ -123,7 +126,8 @@ export function installFetchInterceptor(): void {
         }
       }
       notifyContextFallback(response);
-      return response.clone();
+      // dedupedFetch 가 이미 구독자별 clone 을 준다 — 여기서 다시 clone 하지 않는다.
+      return response;
     }
 
     const response = await originalFetch(resolvedInput as RequestInfo, resolvedInit);

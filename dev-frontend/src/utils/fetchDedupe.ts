@@ -19,7 +19,25 @@
 
 const TTL_MS = 2000;
 
-const inflight = new Map<string, Promise<Response>>();
+/**
+ * in-flight 엔트리 — 공유 fetch 1개 + 구독자 참조계수.
+ *
+ * 2026-08-30: 예전에는 **리더의 signal 이 공유 fetch 에 그대로 실렸다.** 그래서
+ * 리더가 abort(언마운트·StrictMode cleanup)하면 공유 fetch 가 죽고,
+ * **abort 하지 않은 팔로워 전원이 AbortError** 를 받았다(실측: signal 을 아예
+ * 주지 않은 호출자까지 AbortError). 반대로 팔로워의 signal 은 어디에도 안 붙어
+ * abort 가 무시됐다.
+ *
+ * 이제 실제 네트워크 fetch 는 **호출자 signal 이 아니라 controller.signal** 로 나가고,
+ * 구독자가 전원 빠졌을 때(active === 0)에만 공유 fetch 를 abort 한다.
+ */
+type InflightEntry = {
+  promise: Promise<Response>;
+  controller: AbortController;
+  active: number;
+};
+
+const inflight = new Map<string, InflightEntry>();
 const cache = new Map<string, { res: Response; expires: number }>();
 
 // 라이브 데이터 — 항상 최신을 받아야 하므로 dedupe 제외.
@@ -51,34 +69,104 @@ export function buildDedupeKey(url: string, authHeader: string): string {
   return url + '|' + authHeader.slice(-16);
 }
 
-/**
- * 같은 key 의 in-flight Promise 또는 TTL cache 가 있으면 fresh Response clone 반환.
- * 없으면 null — 호출자가 실제 fetch 실행.
- */
-export function tryReuse(key: string): Promise<Response> | null {
-  const pending = inflight.get(key);
-  if (pending) return pending.then(r => r.clone());
-
-  const cached = cache.get(key);
-  if (cached && cached.expires > Date.now()) {
-    return Promise.resolve(cached.res.clone());
+// fetch 네이티브 계약과 같은 형태의 abort 오류.
+function makeAbortError(): Error {
+  if (typeof DOMException === 'function') {
+    return new DOMException('The user aborted a request.', 'AbortError');
   }
-  return null;
+  const e = new Error('The user aborted a request.');
+  e.name = 'AbortError';
+  return e;
 }
 
 /**
- * fetch 실행 직전 — in-flight 등록. 실패 시 정리.
+ * 공유 fetch 의 구독자로 등록한다.
+ *
+ * - signal 이 없는 구독자는 **영구 구독**(감소 이벤트가 없으므로 공유 fetch 는 절대 abort 되지 않는다).
+ * - signal 이 abort 되면 그 구독자만 AbortError 로 reject 하고 참조계수를 줄인다.
+ * - 참조계수가 0 이 될 때만 공유 fetch 를 abort 한다.
  */
-export function trackInflight(key: string, promise: Promise<Response>): void {
-  inflight.set(key, promise);
+function subscribe(entry: InflightEntry, callerSignal?: AbortSignal): Promise<Response> {
+  if (callerSignal?.aborted) return Promise.reject(makeAbortError());
+
+  entry.active += 1;
+
+  return new Promise<Response>((resolve, reject) => {
+    let settled = false;
+    let onAbort: (() => void) | null = null;
+
+    const cleanup = () => {
+      // 리스너 누수 방지 — settle 시 반드시 제거한다.
+      if (onAbort && callerSignal) callerSignal.removeEventListener('abort', onAbort);
+      onAbort = null;
+    };
+
+    if (callerSignal) {
+      onAbort = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        entry.active -= 1;
+        if (entry.active <= 0) entry.controller.abort();
+        reject(makeAbortError());
+      };
+      callerSignal.addEventListener('abort', onAbort);
+    }
+
+    entry.promise.then(
+      (res) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(res.clone());
+      },
+      (err) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(err);
+      }
+    );
+  });
+}
+
+/**
+ * dedupe 단일 진입점.
+ *
+ * 같은 key 의 in-flight 공유 fetch 나 TTL 캐시가 있으면 그것을 쓰고, 없으면 `run` 으로
+ * 실제 fetch 를 시작한다. **`run` 에는 호출자 signal 이 아니라 공유 controller 의 signal 을 준다.**
+ * 반환 Response 는 구독자별 clone 이라 호출부에서 추가 clone 이 필요 없다.
+ */
+export function dedupedFetch(
+  key: string,
+  callerSignal: AbortSignal | undefined,
+  run: (sharedSignal: AbortSignal) => Promise<Response>
+): Promise<Response> {
+  const existing = inflight.get(key);
+  if (existing) return subscribe(existing, callerSignal);
+
+  const cached = cache.get(key);
+  if (cached && cached.expires > Date.now()) {
+    // 캐시 히트도 fetch 계약을 지킨다 — 이미 abort 된 signal 이면 응답을 주지 않는다.
+    if (callerSignal?.aborted) return Promise.reject(makeAbortError());
+    return Promise.resolve(cached.res.clone());
+  }
+
+  const controller = new AbortController();
+  const promise = run(controller.signal);
+  const entry: InflightEntry = { promise, controller, active: 0 };
+  inflight.set(key, entry);
+
   promise
-    .then(res => {
+    .then((res) => {
       if (res.ok) {
         cache.set(key, { res: res.clone(), expires: Date.now() + TTL_MS });
       }
     })
-    .catch(() => { /* swallow — handled by caller */ })
+    .catch(() => { /* swallow — 구독자별로 전달된다 */ })
     .finally(() => { inflight.delete(key); });
+
+  return subscribe(entry, callerSignal);
 }
 
 // TTL 지난 entry cleanup (1회 등록).

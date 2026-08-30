@@ -80,5 +80,61 @@
     "viewButton": "Open Contract",
     "renewButton": "Start Renewal",
     "contactBody": "For any questions about your contract, please contact us directly."
+  },
+  "po": {
+    "sellerReceived": {
+      "subject": "New PO {{poNumber}} from {{buyer}}",
+      "heading": "New Purchase Order Received",
+      "body": "<strong>{{buyer}}</strong> has submitted a new purchase order to your company.",
+      "poNumber": "PO Number",
+      "buyer": "Buyer",
+      "total": "Total",
+      "status": "Status",
+      "awaitingConfirmation": "Awaiting Confirmation",
+      "hint": "Please review the order and confirm or reject it. After confirmation you can mark it shipped with tracking info.",
+      "cta": "Review Order",
+      "textFallback": "New purchase order {{poNumber}} from {{buyer}}. Total: {{total}}."
+    },
+    "approvalPending": {
+      "subject": "Approval needed: PO {{poNumber}}",
+      "heading": "Purchase Order Awaiting Your Approval",
+      "body": "<strong>{{buyer}}</strong> submitted a purchase order that needs your approval.",
+      "cta": "Review & Approve",
+      "textFallback": "Purchase order {{poNumber}} needs your approval. Total: {{total}}."
+    },
+    "approvalResult": {
+      "subjectApproved": "Approved: PO {{poNumber}}",
+      "subjectRejected": "Rejected: PO {{poNumber}}",
+      "headingApproved": "Purchase Order Approved",
+      "headingRejected": "Purchase Order Rejected",
+      "bodyApproved": "Your purchase order has been approved and sent to the seller.",
+      "bodyRejected": "Your purchase order was rejected.",
+      "reason": "Reason",
+      "cta": "View Order",
+      "textFallback": "Purchase order {{poNumber}}: {{result}}."
+    },
+    "buyerConfirm": {
+      "subject": "Order placed: PO {{poNumber}}",
+      "heading": "Your Purchase Order Was Placed",
+      "body": "Your purchase order has been sent to <strong>{{seller}}</strong>.",
+      "seller": "Seller",
+      "cta": "View Order",
+      "hint": "You will be notified when the seller confirms the order.",
+      "textFallback": "Purchase order {{poNumber}} placed with {{seller}}. Total: {{total}}."
+    },
+    "externalSend": {
+      "subject": "Purchase Order {{poNumber}} from {{buyer}}",
+      "heading": "New Purchase Order",
+      "body": "<strong>{{buyer}}</strong> has placed a purchase order with you.",
+      "hint": "Please reply to this email to confirm the order.",
+      "textFallback": "Purchase order {{poNumber}} from {{buyer}}. Total: {{total}}."
+    },
+    "items": {
+      "item": "Item",
+      "qty": "Qty",
+      "unitPrice": "Unit Price",
+      "lineTotal": "Amount",
+      "grandTotal": "Total"
+    }
   }
 }

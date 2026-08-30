@@ -24,6 +24,7 @@ const { resolveOwnerRestaurantIds } = require('../utils/poOwnerApproval');
 const { resolveSellers, getSellerName } = require('../utils/sellerNames');
 const {
   fireSellerSubmittedNotification,
+  fireBuyerConfirmNotification,
   fireOwnerApprovalResultNotification
 } = require('../services/poNotifications');
 
@@ -137,6 +138,7 @@ router.post('/purchase-orders/:id/approve', authenticateToken, requireOwnerScope
     emitPoEvent(req, po, 'seller-order-created');
     // 승인 후 판매자 통지 + 작성자 결과 통지
     setImmediate(() => fireSellerSubmittedNotification(po));
+    setImmediate(() => fireBuyerConfirmNotification(po));
     setImmediate(() => fireOwnerApprovalResultNotification(po, { approved: true }));
 
     res.json({ success: true, data: po });

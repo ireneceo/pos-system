@@ -80,5 +80,61 @@
     "viewButton": "打开合同",
     "renewButton": "开始续约",
     "contactBody": "如有合同相关疑问,请直接与我们联系。"
+  },
+  "po": {
+    "sellerReceived": {
+      "subject": "来自 {{buyer}} 的新采购单 {{poNumber}}",
+      "heading": "收到新采购单",
+      "body": "<strong>{{buyer}}</strong> 已向贵公司提交新采购单。",
+      "poNumber": "采购单号",
+      "buyer": "买方",
+      "total": "合计",
+      "status": "状态",
+      "awaitingConfirmation": "等待确认",
+      "hint": "请查看订单并确认或拒绝。确认后可填写物流信息标记为已发货。",
+      "cta": "查看订单",
+      "textFallback": "来自 {{buyer}} 的新采购单 {{poNumber}}。合计：{{total}}。"
+    },
+    "approvalPending": {
+      "subject": "需要审批：采购单 {{poNumber}}",
+      "heading": "有采购单等待您审批",
+      "body": "<strong>{{buyer}}</strong> 提交了需要您审批的采购单。",
+      "cta": "查看并审批",
+      "textFallback": "采购单 {{poNumber}} 需要您审批。合计：{{total}}。"
+    },
+    "approvalResult": {
+      "subjectApproved": "已批准：采购单 {{poNumber}}",
+      "subjectRejected": "已拒绝：采购单 {{poNumber}}",
+      "headingApproved": "采购单已批准",
+      "headingRejected": "采购单已拒绝",
+      "bodyApproved": "您的采购单已获批准并发送给卖方。",
+      "bodyRejected": "您的采购单已被拒绝。",
+      "reason": "原因",
+      "cta": "查看订单",
+      "textFallback": "采购单 {{poNumber}}：{{result}}。"
+    },
+    "buyerConfirm": {
+      "subject": "下单成功：采购单 {{poNumber}}",
+      "heading": "您的采购单已提交",
+      "body": "您的采购单已发送给 <strong>{{seller}}</strong>。",
+      "seller": "卖方",
+      "cta": "查看订单",
+      "hint": "卖方确认订单后我们会通知您。",
+      "textFallback": "已向 {{seller}} 提交采购单 {{poNumber}}。合计：{{total}}。"
+    },
+    "externalSend": {
+      "subject": "来自 {{buyer}} 的采购单 {{poNumber}}",
+      "heading": "新采购单",
+      "body": "<strong>{{buyer}}</strong> 已向您下达采购单。",
+      "hint": "请回复此邮件以确认订单。",
+      "textFallback": "来自 {{buyer}} 的采购单 {{poNumber}}。合计：{{total}}。"
+    },
+    "items": {
+      "item": "品项",
+      "qty": "数量",
+      "unitPrice": "单价",
+      "lineTotal": "金额",
+      "grandTotal": "合计"
+    }
   }
 }

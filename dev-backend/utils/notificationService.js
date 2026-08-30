@@ -165,12 +165,29 @@ async function _restaurantIsDemoOrTest(restaurantId) {
   } catch { return false; }
 }
 
+/**
+ * 단일 수신자 발송.
+ *
+ * `mailOptions` 는 **완성된 객체**이거나 **`(user) => mailOptions` 팩토리**다(2026-08-30 추가).
+ * 팩토리는 수신자별 렌더가 필요할 때 쓴다 — 예: 발주 메일이 수신자 `preferred_language` 로 본문·제목을 만든다.
+ * 기존 21개 호출부는 객체를 그대로 넘기므로 **바이트 단위로 기존 경로**를 탄다(추가형).
+ */
 async function sendNotification(recipientUserId, category, mailOptions) {
   try {
     // 1. Get recipient user
     const user = await User.findByPk(recipientUserId);
     if (!user || !user.email) {
       console.log(`[Notification] Skip: user ${recipientUserId} not found or no email`);
+      return;
+    }
+
+    // 1-a0. Reject deactivated accounts. 수신자 해석 함수 5개와 자체 배열을 만드는
+    //       호출부(notices/qz-tray/supplier 등) 전부가 이 함수로 수렴하므로, 관문을
+    //       여기 하나만 두면 21개 호출부가 모두 덮인다(쿼리에 심으면 자체 배열 경로가 샌다).
+    //       ⚠ null/undefined 는 **활성으로 취급**한다 — is_active 는 2026-06-16 신설 컬럼이라
+    //       null 을 비활성으로 읽으면 그 이전 계정들의 알림이 통째로 침묵한다.
+    if (user.is_active === false || user.is_active === 0) {
+      console.log(`[Notification] Skip: user ${recipientUserId} inactive (${user.email})`);
       return;
     }
 
@@ -211,6 +228,22 @@ async function sendNotification(recipientUserId, category, mailOptions) {
     if (prefs && prefs[category] === false) {
       console.log(`[Notification] Skip: user ${recipientUserId} disabled '${category}'`);
       return;
+    }
+
+    // 2-b. 수신자별 렌더 (팩토리 전달 시).
+    //   **관문을 다 통과한 뒤**에 부른다 — skip 될 수신자를 위해 렌더하지 않는다(비용·로그 오염 방지).
+    //   팩토리가 던지면 **그 수신자만** 건너뛴다. 배치 전체를 죽이지 않는다(수신자별 격리).
+    if (typeof mailOptions === 'function') {
+      try {
+        mailOptions = await mailOptions(user);
+      } catch (e) {
+        console.log(`[Notification] Skip: user ${recipientUserId} render failed (${e.message})`);
+        return;
+      }
+      if (!mailOptions) {
+        console.log(`[Notification] Skip: user ${recipientUserId} render returned empty`);
+        return;
+      }
     }
 
     // 3. Resolve SMTP
@@ -278,7 +311,8 @@ async function sendNotification(recipientUserId, category, mailOptions) {
  *
  * @param {number[]} userIds - Array of user IDs
  * @param {string} category - Notification category key
- * @param {object} mailOptions - { subject, html, text }
+ * @param {object|function} mailOptions - { subject, html, text } 또는 (user) => 그 객체.
+ *   몸통이 map 이라 팩토리도 그대로 각 수신자에게 전달된다(수정 불필요).
  */
 async function sendNotificationBatch(userIds, category, mailOptions) {
   if (!userIds || userIds.length === 0) return;
@@ -303,8 +337,20 @@ async function getSystemAdminIds() {
  * Find Brand General/Manager user IDs for a brand.
  */
 async function getBrandManagerIds(brandId) {
+  // 축이 둘이다:
+  //   ① users.brand_id — 그 브랜드에 배정된 관리자
+  //   ② brands.owner_id — 그 브랜드의 소유자
+  // 예전엔 ①만 봐서, **브랜드를 여러 개 가진 소유자가 첫 브랜드에서만 잡혔다.**
+  // 실측(2026-08-30 dev): user 6 이 brands 1·2·4 를 소유하는데 users.brand_id=1 이라
+  // brand 2 는 소유자 누락, brand 4·17·33 은 **수신자 0명**이었다.
+  // 소유자 레그에 role 조건을 걸지 않는 이유 — 소유가 곧 수신 자격이고, 실제로
+  // brand 33 소유자는 users.brand_id 가 null 이었다.
   const users = await sequelize.query(
-    "SELECT id FROM users WHERE brand_id = :brandId AND role IN ('Brand General', 'Brand Manager') AND email IS NOT NULL",
+    `SELECT DISTINCT u.id FROM users u
+     WHERE u.email IS NOT NULL AND (
+       (u.brand_id = :brandId AND u.role IN ('Brand General', 'Brand Manager'))
+       OR u.id IN (SELECT owner_id FROM brands WHERE id = :brandId AND owner_id IS NOT NULL)
+     )`,
     { replacements: { brandId }, type: QueryTypes.SELECT }
   );
   return users.map(u => u.id);

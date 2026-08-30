@@ -19,11 +19,13 @@ import { Modal } from '../../components/UI/Modal';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
 import { formatQuantity } from '../../utils/unitConversion';
+import { formatDateTime } from '../../utils/dateFormat';
+import { useStore } from '../../contexts/StoreContext';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
 import AlertDialog from '../../components/Common/AlertDialog';
 import ConfirmModal from '../../components/ConfirmModal';
 
-interface POItem { id: number; ingredient_id: number; quantity_ordered: string; unit_price: string; }
+interface POItem { id: number; ingredient_id: number; quantity_ordered: string; unit_price: string; created_at?: string | null; }
 interface POSeller { id: number; name: string; phone?: string | null; email?: string | null; is_system_registered: boolean; }
 interface POStaging {
   id: number;
@@ -36,6 +38,8 @@ interface POStaging {
   currency: string;
   expected_delivery_date?: string | null;
   delivery_address?: string | null;
+  // 2026-08-30 Irene: "담은 날짜가 안 보인다" — 스키마에 이미 있던 값을 표시만 한다(신설 없음).
+  created_at?: string | null;
   items?: POItem[];
 }
 
@@ -145,6 +149,9 @@ const PdfFrame = styled.iframe`
 const PurchaseOrderStagingPage: React.FC = () => {
   const { t } = useTranslation('purchaseOrders');
   const navigate = useNavigate();
+  // 날짜 표시는 브라우저 로컬이 아니라 **매장 타임존** 기준(프로젝트 절대 규칙).
+  const { operationSettings } = useStore();
+  const storeTimeZone = operationSettings?.timeZone || 'Asia/Kuala_Lumpur';
   const [pos, setPos] = useState<POStaging[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -361,6 +368,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
           </POSellerName>
           <POMeta>
             {po.po_number || `#${po.id}`}
+            {po.created_at ? ` · ${t('staging.addedAt', 'Added')}: ${formatDateTime(po.created_at, storeTimeZone)}` : ''}
             {po.expected_delivery_date ? ` · ${t('staging.expected', 'Expected')}: ${po.expected_delivery_date}` : ''}
           </POMeta>
         </POSellerBox>

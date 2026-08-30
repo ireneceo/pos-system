@@ -1201,3 +1201,124 @@ draft ──submit──▶ (오너승인 ON & 오너연결) pending_approval �
   그건 **구매자가 입고 시 차이를 보고**하는 필드다. 판매자의 발송 전 처리와 의미가 다르다.
 - 라인 상태 신설(예: `removed_by_seller` + 사유) + 구매자 알림 + **총액은 표준 재계산 경로로만**.
 - 구매자 쪽 라인 단위 빼기 UI 도 같은 묶음으로.
+
+---
+
+# 📌 단위 주문(UoM) · 다중 공급업체 오더 방향 — 설계 (2026-08-30, Fable 점검)
+
+> ## ⛔ Irene 컨펌 대기 3건 — 컨펌 전 구현 착수 금지
+> 1. **팩 규격이 여러 개인 품목은 옵션이 아니라 판매상품을 따로 등록** (25kg 포대 / 5kg 백 각각). *Fable 권고: 이 방식으로.*
+> 2. **`order_mode='measure'`(kg/g 직접 주문) 신설.** *Fable 권고: 도입.*
+> 3. **다중 공급업체는 현 구조 유지 + 3곳 보완.** *Fable 권고: 유지+보완.*
+> 4. **"RA 먼저" 3단계 진행** (2026-08-30 Irene 질문 "일단 레스토랑관리자에서 하고 나서 볼까?" → Fable 찬성). *Fable 권고: 아래 §4 순서로.*
+
+## 배경 — Irene 질문 (2026-08-30 원문)
+
+> 공급업체 상품이나 우리 재료 아이템에서 이름을 1kg라고 단위로 지정 안하고 주문을 kg이나 g으로 주문할 수 있을까?
+> 수량으로 주문하는게 어려운 품목들이 있는데 이걸 어떻게 해야 할까? 옵션으로 가격을 넣어야 하지 않을까?
+> 그리고 주문을 갯수로 할지 단위로 할지도 왔다갔다 하기도 해. 공급업체별로나 우리 운영별로 다르기도 하고
+> 같은 재고인데 업체가 여러 개 연결된 경우 어떻게 주문되는 거야? 해당 공급업체별로 같은 아이템이 다 나오는 거야?
+
+## 0. 결론 — 구조는 이미 준비돼 있다. 문제는 UX 미사용 + 정수 제약 + 모드 부재
+
+| 이미 있는 것 | 위치 |
+|---|---|
+| 발주 수량 소수 저장 | `PurchaseOrderItem.quantity_ordered/received` **DECIMAL(10,2)** |
+| 연결별 환산비 | `IngredientSellerProduct.unit_conversion` DECIMAL(10,4) — 입고·반품·미착 계산에 **실제 사용 중** |
+| 판매자 단위·규격 | `SupplierProduct.unit` STRING(50) + `base_quantity` DECIMAL(10,2) |
+| 프론트 소수 입력 | `utils/unitConversion.ts:62` `qtyStepForUnit()` — 연속 단위에 step 0.01 |
+
+## 1. 실측 (dev, 2026-08-30 · ⚠ 운영 미확인 — classifier 로 운영 DB 조회 차단)
+
+| 항목 | 값 |
+|---|---|
+| 활성 판매자 링크 | 58건 (conv=1: 53 / ≠1: 5) |
+| **단위 불일치인데 conv=1** | **4건** — Black Pepper(g↔kg) · Egg(kg↔tray) · Test Oil(kg↔L) · Soy Sauce(g↔L) |
+| `supplier_products.base_quantity <> 1` | **0건 / 38행** — 규격 필드 사용 이력 **0** |
+| PO 라인 소수 수량 | **0건 / 127행** |
+| `min_order_quantity > 1` | supplier_products 15 · ingredient_seller_products 11 |
+| 공급업체 옵션 실사용 | 그룹 5 · 옵션 15 · 상품연결 6 |
+| 다중 판매자 재료 | 1개=36종 / 2개=2종 / 3개=1종 / **5개=1종** |
+| 이름에 규격 박은 흔적 | 2건 (`Premium Coffee Beans 1kg`, `Tiger Beer 338ml`) |
+
+→ **기존 데이터 마이그 부담 없음.** 규격·소수 주문 모두 신설이라 깨끗하게 시작 가능.
+
+## 2. 절단면 (Fable 확정, 7항목)
+
+### ① 규격 표시 통일 — 이름 오염 종료
+규격은 `SupplierProduct.unit + base_quantity` 가 담는다. 표시는 **"품목명 — {base_quantity}{unit}/{판매단위}"**.
+이름에 "1kg" 을 박는 것은 카탈로그·카트가 `base_quantity` 를 표시하지 않아 생긴 **우회**였다.
+
+### ② `order_mode` 2종 (판매상품 단위)
+| 모드 | 수량 의미 | 가격 | 용도 |
+|---|---|---|---|
+| `pack` (기본, 현행) | 팩 갯수 | 팩당 | 현재 전부 |
+| `measure` (신설) | **kg/g/L/ml 직접 입력(소수)** | 단위당 | 고기·생선·채소 등 갯수가 무의미한 품목 |
+
+재고 환산은 기존 공식 그대로 `수량 × unit_conversion`. 입고는 `quantity_received` 가 이미 DECIMAL 이라 **실중량 입고가 그대로 된다**(업계 catch-weight 방식).
+**모드는 판매상품에 붙는다** → 같은 재고아이템이라도 업체 A 는 팩, 업체 B 는 kg 주문이 자연히 공존한다("업체별로 다르다" 요구가 모델에서 그대로 수용됨).
+
+### ③ 옵션으로 규격/가격 넣기 — **비권고 (채택 금지)**
+옵션(`price_adjustment`)은 **`unit_conversion` 을 못 문다.** "1kg 옵션 / 5kg 옵션"으로 규격을 흉내내면 같은 카트행의 환산비 하나로 다른 규격이 입고돼 **재고 수치가 깨진다.**
+→ **팩 규격이 여러 개면 판매상품을 여러 개 등록**한다(각자 가격·`base_quantity`·링크 환산비). 발주 라인이 상품이 아니라 **연결(`ingredient_seller_product_id`)** 을 무는 현 구조와 정확히 맞물린다.
+옵션은 원래 용도(등급·브랜드·손질 방식 등 품질 변형)로만 유지.
+
+### ④ 다중 공급업체 — 현 구조가 정석. 유지한다
+현재 동작(실측):
+- **재료 1개 = 화면 1행.** 판매자는 그 행 안의 배열(`MyIngredientRow.sellers`). **업체별로 같은 아이템이 여러 줄 나오지 않는다.**
+- 카드 표시: 판매자 1개면 이름, 2개 이상이면 **"N vendors"** (`NewPurchaseOrderPage.tsx:1855`)
+- 담을 때 기본 판매자: ①공급업체 필터 → ②`is_preferred` → ③`sellers[0]` (1321~1323행)
+- 카트에서 드롭다운 변경 (2165행), 제출 시 **판매자별 PO 자동 분리** (`/purchase-orders/bulk`)
+- 백엔드 자동 제안: `is_preferred DESC, unit_price ASC` 로 재료당 1판매자 (`purchase-orders-crud.js:415-427`)
+
+**보완 3곳:**
+1. `NewPurchaseOrderPage.tsx:1854` — 최소주문을 여러 판매자 **`Math.max`** 로 잡는다. **버그.** → **선택된 판매자의 `min_order_quantity` 기준**으로.
+2. `min_order_quantity` **INTEGER → DECIMAL(10,2)** (`SupplierProduct`·`IngredientSellerProduct` 2곳). measure 모드의 "최소 0.5kg" 을 담으려면 필수.
+3. 판매자 선택 시 **공통 단위 환산가(`unit_price ÷ base_quantity`, per-kg)** 를 나란히 표시 → 규격이 다른 업체 간 가격 비교가 가능해진다. 판매자 전환 시 기존 `conversionModal` 로 수량·환산 재확인.
+
+### ⑤ 🔴 conv=1 생성 버그 + 불일치 감지 (지뢰)
+`routes/restaurants-ingredients.js:381` 주석 원문: *"생성 흐름의 매핑은 원래 unit_conversion 을 **1 로 고정**했다(body 값 무시). 보존."*
+→ 단위가 다른 링크가 conv=1 로 박히면 **1kg 입고가 재고 1g 으로 기록된다.** dev 에서 4건 실증.
+- 조치 ①: 생성 흐름이 `unit_conversion` 을 **받게** 수정
+- 조치 ②: 단위 불일치인데 conv=1 인 링크를 **감지·표시만** 하는 멱등 점검
+- ⛔ **자동 백필 금지** — `tray→kg` 같은 건 기계가 추측할 수 없다. 사람이 값을 넣어야 한다.
+
+### ⑥ `min_order_quantity` DECIMAL 확폭 (④-2 와 동일 작업)
+
+### ⑦ `SupplierOptionModal.tsx:268` 정수 강제 해제
+```js
+onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+```
+→ measure 모드에서 소수가 잘린다. **이 설계에 묶어서** 처리(단독 수정 금지 — 최소범위·묶음 원칙).
+
+## 3. 착수 조건
+- **Irene 컨펌 3건 회신** (문서 머리 참조). 회신 전 구현 착수 금지.
+- 컨펌 후 DB 변경(`order_mode` 신설·`min_order_quantity` 확폭)은 **`expandEnum`/멱등 마이그 + `migrations.registry.json` 등록** 필수 (2026-08-30 ENUM 소거 사고 교훈).
+
+## 4. 진행 순서 — 역할이 아니라 **층**으로 가른다 (2026-08-30 Fable 확정)
+
+Irene 원문: **"설계가 완벽하게 할 수 있어? 일단 레스토랑관리자에서 하고 나서 볼까?"**
+
+**왜 순수 역할 절단은 기각인가** — `SupplierProduct.order_mode`·`base_quantity`·`min_order_quantity` 는 **판매자(공급업체)가 등록하는 데이터**다.
+공급업체 상품 하나를 RA·BG·FG 가 함께 산다. 역할별로 다른 값을 두려면 판매자 데이터를 이중화해야 하고,
+그러면 **재고 환산(`수량 × unit_conversion`)이 깨진다.** 그래서 절단면은 역할이 아니라 층이다.
+
+| 단계 | 범위 | 내용 | 화면 변화 |
+|---|---|---|---|
+| **1** | 전 역할 공용 기반 | `min_order_quantity` INTEGER→DECIMAL(2곳) · `order_mode` 신설(**기본 `'pack'` = 현행**) · conv=1 생성 버그 수정(§2-⑤) · 단위 불일치 감지 점검 | **없음** (기본값이 현재 동작) |
+| **2** | 구매 UI = **RA 한정** + 판매자 등록 폼 | measure 수량 입력 · per-kg 비교 표시 · 규격 표시 통일 → `buyerEntity.type === 'restaurants'` 게이트. 공급업체 상품 등록에 규격·주문방식 입력 추가(공급업체가 설정해야 RA 가 쓴다) | RA 만 |
+| **3** | BG/FG 확장 | RA 실사용으로 익은 뒤 **게이트 제거만** | BG·FG |
+
+**게이트 방식**: 새 구조 도입 없이 기존 분기 패턴을 그대로 쓴다 — `NewPurchaseOrderPage.tsx` 의 1091행(`!== 'brands'`) · 1104행(`=== 'restaurants'`) · 1142행(`=== 'brands'`) · 1428행(`isBG`) 와 동일 형태.
+
+**FG 발주 실사용 여부 미측정**은 이 순서 덕에 지금 알 필요가 없다(3단계에서 판단).
+
+## 5. 설계 완성도에 대한 Fable 답변 (Irene 질문 "완벽하게 할 수 있어?")
+
+"완벽"을 약속하지 않는다. 대신 근거를 든다:
+- **규격 필드 사용 이력 0 · 소수 주문 이력 0** → 옮길 기존 데이터가 없다(마이그 부담 사실상 없는 신설)
+- 스키마의 80%(소수 수량 DECIMAL · 링크 환산비 · 판매상품 단위)가 **이미 존재**한다
+- 모든 변경이 **기본값 = 현재 동작**인 추가형이다
+- 가장 위험한 지점(입고 시 재고 환산)은 **이미 검증된 공식**(`수량 × unit_conversion`, 반품 대칭 포함)을 그대로 탄다
+
+약속하는 것은 **"단계마다 반증(고장주입) 포함 검증을 통과해야만 다음으로 가는 진행"** 이다.

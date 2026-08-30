@@ -360,7 +360,8 @@
     "submitFailed": "Failed to submit this purchase order",
     "externalHintApproval": "This purchase order needs Owner approval before it can be sent to the supplier. Sharing is enabled once approved.",
     "sendAfterApproval": "Available after Owner approval",
-    "submitForApproval": "Submit for approval"
+    "submitForApproval": "Submit for approval",
+    "addedAt": "Added"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit mismatch — manual entry required",

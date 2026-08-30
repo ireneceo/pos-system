@@ -39,7 +39,7 @@ const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
 const { isApprovalRequiredForRestaurant, applySubmitGate } = require('../utils/poOwnerApproval');
-const { fireSellerSubmittedNotification, fireOwnerApprovalPendingNotification } = require('../services/poNotifications');
+const { fireSellerSubmittedNotification, fireOwnerApprovalPendingNotification, fireBuyerConfirmNotification } = require('../services/poNotifications');
 
 // Path-level guards so unrelated /api/* fall-throughs aren't blocked by buyer-role.
 router.use('/purchase-orders', authenticateToken, requireBuyerRole);
@@ -376,6 +376,70 @@ router.post('/purchase-orders/:id/mark-sent-external', async (req, res) => {
 });
 
 // ============================================
+// POST /api/purchase-orders/:id/send-external-email — 계정 없는 외부 공급업체에게 발주서 메일 발송
+//
+// 2026-08-30 신설. 그전까지 외부 공급업체 경로는 `mark-sent-external`(사람이 밖에서 보낸 뒤 "보냈음" 마킹)뿐이라
+// **시스템이 메일을 한 통도 보내지 않았다.** 이건 자동 발송이 아니라 **구매자가 누르는 명시 액션**이다.
+// 언어는 'en' 고정 — 계정이 없어 수신자 언어 축이 존재하지 않는다(없는 축을 만들지 않는다).
+// 발송은 `sendPlatformEmail` 경유 — placeholder/미인증 차단·바운스 차단 가드를 그대로 탄다.
+// ============================================
+router.post('/purchase-orders/:id/send-external-email', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Not found' });
+    const po = await PurchaseOrder.findByPk(id);
+    if (!po) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!checkPOOwnership(po, req)) return res.status(404).json({ success: false, message: 'Not found' });
+    if (po.seller_type !== 'supplier' || !po.seller_entity_id) {
+      return res.status(400).json({ success: false, message: 'External email is only for supplier orders' });
+    }
+
+    const SupplierCompany = require('../models/SupplierCompany');
+    const sc = await SupplierCompany.findByPk(po.seller_entity_id);
+    if (!sc) return res.status(404).json({ success: false, message: 'Supplier not found' });
+    if (sc.owner_id) {
+      return res.status(400).json({ success: false, message: 'This supplier has an account — they are notified in the app' });
+    }
+    if (!sc.email) {
+      return res.status(400).json({ success: false, message: 'Supplier has no email address on file' });
+    }
+
+    // 구매자 표시명 — 판매자/구매자 신원 단일 소스 규칙과 같은 계열
+    let buyerName = 'A buyer';
+    try {
+      const { resolveBuyerName } = require('../services/poNotifications');
+      if (typeof resolveBuyerName === 'function') buyerName = await resolveBuyerName(po);
+    } catch (_) { /* keep default */ }
+
+    const { poExternalSendEmail } = require('../utils/notificationTemplates');
+    const { loadPoEmailItems } = require('../utils/poEmailItems');
+    const mail = poExternalSendEmail({
+      buyerName,
+      poNumber: po.po_number,
+      total: po.total_amount,
+      currency: po.currency || 'MYR',
+      items: await loadPoEmailItems(po.id)
+    }, 'en');
+
+    const { sendPlatformEmail } = require('../utils/emailService');
+    const result = await sendPlatformEmail({ to: sc.email, subject: mail.subject, html: mail.html, text: mail.text });
+
+    // 가드에 걸려 안 나갔으면 그대로 알린다 — "보냈다" 고 거짓말하지 않는다.
+    if (result && result.skipped) {
+      return res.json({ success: true, data: { sent: false, reason: result.reason }, message: 'Email not sent (blocked by guard)' });
+    }
+
+    appendTrackingEvent(po, po.status, `Purchase order emailed to ${sc.email}`, { source: 'system_email' });
+    await po.save();
+
+    res.json({ success: true, data: { sent: true, to: sc.email } });
+  } catch (err) {
+    console.error('send-external-email error:', err);
+    res.status(500).json({ success: false, message: 'Failed to send email' });
+  }
+});
+
+// ============================================
 // POST /api/purchase-orders/:id/upload-invoice — 외부 공급업체 인보이스 파일 URL 저장
 //   url 은 /api/upload/files 호출로 사전 업로드된 결과 (relativePath, originalName 포함)
 // ============================================
@@ -602,6 +666,7 @@ router.post('/purchase-orders/:id/submit', async (req, res) => {
       emitPoEvent(req, po, 'seller-order-created');
       // Notify seller asynchronously — don't block response
       setImmediate(() => fireSellerSubmittedNotification(po));
+      setImmediate(() => fireBuyerConfirmNotification(po));
     }
 
     res.json({ success: true, data: po });

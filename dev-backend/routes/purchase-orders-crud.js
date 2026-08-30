@@ -36,64 +36,16 @@ const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
-const { sendNotificationBatch, getSupplierAdminIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
 const { normalizeCurrencyCode, sameCurrency } = require('../utils/currency');
 const { resolveSellers, getSeller, getSellerName, isExternalSeller } = require('../utils/sellerNames');
 const { readableIngredient, parentBrandIdOf, overlayMapFor, effectiveSettings } = require('../utils/brandStockAccess');
 const { applySubmitGate } = require('../utils/poOwnerApproval');
 const { attachSellerProductIdentity } = require('../utils/sellerProductIdentity');
-const { fireOwnerApprovalPendingNotification } = require('../services/poNotifications');
+// 발주 알림은 services/poNotifications.js 단일 소스. 2026-08-30: 이 파일에 같은 이름의
+// 로컬 정의가 한 벌 더 있어 경로별로 갈릴 수 있었다(동작은 동일했음) → 서비스로 통합.
+const { fireOwnerApprovalPendingNotification, fireSellerSubmittedNotification, fireBuyerConfirmNotification } = require('../services/poNotifications');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
-
-/**
- * Notify seller (Supplier Admin / Brand General / Foodcourt General) when a new PO is submitted.
- * Sends email via sendNotificationBatch with category 'seller_order_received'.
- * Recipients honor their notification preferences. Errors do not block PO submit.
- */
-async function fireSellerSubmittedNotification(po) {
-  try {
-    let userIds = [];
-    if (po.seller_type === 'supplier' && po.seller_entity_id) {
-      userIds = await getSupplierAdminIds(po.seller_entity_id);
-    } else if (po.seller_type === 'brand' && po.seller_entity_id) {
-      userIds = await getBrandManagerIds(po.seller_entity_id);
-    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id) {
-      userIds = await getFoodcourtManagerIds(po.seller_entity_id);
-    }
-    if (userIds.length === 0) return;
-    // Buyer 이름 resolve — Restaurant / Brand / Foodcourt
-    let buyerName = 'A buyer';
-    try {
-      const Restaurant = require('../models/Restaurant');
-      const Brand = require('../models/Brand');
-      const Foodcourt = require('../models/Foodcourt');
-      if (po.entity_type === 'restaurant') {
-        const r = await Restaurant.findByPk(po.entity_id, { attributes: ['name'] });
-        if (r?.name) buyerName = r.name;
-      } else if (po.entity_type === 'brand') {
-        const b = await Brand.findByPk(po.entity_id, { attributes: ['name'] });
-        if (b?.name) buyerName = b.name;
-      } else if (po.entity_type === 'foodcourt') {
-        const f = await Foodcourt.findByPk(po.entity_id, { attributes: ['name'] });
-        if (f?.name) buyerName = f.name;
-      }
-    } catch (_) { /* keep default */ }
-    const { sellerOrderReceivedEmail } = require('../utils/notificationTemplates');
-    const { loadPoEmailItems } = require('../utils/poEmailItems');
-    const mail = sellerOrderReceivedEmail({
-      buyerName,
-      poNumber: po.po_number,
-      total: po.total_amount,
-      currency: po.currency || 'MYR',
-      link: `${FRONTEND_URL}/pos/seller-orders`,
-      items: await loadPoEmailItems(po.id)
-    });
-    await sendNotificationBatch(userIds, 'seller_order_received', mail);
-  } catch (e) {
-    console.error('[purchase-orders] fireSellerSubmittedNotification error:', e.message);
-  }
-}
 
 // Path-level guards so unrelated /api/* fall-throughs aren't blocked by buyer-role.
 router.use('/purchase-orders', authenticateToken, requireBuyerRole);
@@ -1060,6 +1012,7 @@ router.post('/purchase-orders/bulk', async (req, res) => {
             } else {
               emitPoEvent(req, fresh, 'seller-order-created');
               setImmediate(() => fireSellerSubmittedNotification(fresh));
+              setImmediate(() => fireBuyerConfirmNotification(fresh));
             }
           }
         } catch (e) {

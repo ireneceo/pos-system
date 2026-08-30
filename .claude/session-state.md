@@ -1,10 +1,96 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-08-30
+**마지막 업데이트:** 2026-08-30 14:43 UTC (세션 저장 — Irene 자리 비움)
 **버전:** v3.80 (2026-08-28 배포). **8/30 배포 3회는 버전 미상승 — Irene 지시**
-**작업 상태:** 완료 (C/D/A′ 는 dev 완료·미배포 — `/배포` 지시 대기)
+**작업 상태:** 진행 중 작업 없음 — **dev 완결분 4묶음이 운영 배포 대기**. Irene 회신 3건 대기 중.
+
+> ### 🔔 돌아오면 여기부터 (Irene 결정 3건 · 전부 Fable 권고 포함)
+> 1. **`/배포`** — 운영 반영 대기 **4묶음**(D 완결판 + 알림 수정 2건 + 발주 메일 0~5 + **SW_VERSION bump**).
+>    Fable 권고: 한 번에 묶어서. **SW bump 안 하면 매장 기기에 수정이 안 보일 수 있다**(현재 `4.63-po-list-meta-20260824`, 8/24 자).
+> 2. **단위주문 컨펌 4건** — ①팩 규격=별도 판매상품(옵션 비권고) ②`order_mode='measure'` 신설 ③다중 공급업체 현행 유지+보완
+>    ④**"RA 먼저" 찬성 — 단 역할이 아니라 층으로 3단계**(공용 기반→RA 한정 UI→BG/FG). 설계=`docs/PURCHASE_ORDER_SYSTEM.md` 말미.
+> 3. **운영 정리 `--apply`** — B2B 리포트 착수 조건. 실측: `/tmp/ugs_cleanup.log` **없음 = 미실행**. 아래 🟠 3단계 참조.
+>
+> Fable 판정: 막히지 않은 굵직한 작업은 소진됨 → **새 대형 작업을 벌이지 말고 배포가 순서.**
 
 ### 진행 중인 작업
-- 없음
+- 없음 (전부 dev 완결 · Irene 컨펌/배포 지시 대기)
+
+### 🟣 dev 완결 · 운영 미반영 (다음 `/배포` 묶음 — Fable 권고)
+> **다음 `/배포` 1회 = D 완결판 + 알림 수정 2건 + 발주 메일 묶음 0~5 + SW_VERSION bump.**
+> 묶음이 커졌고 **staging 화면 프론트 변경이 포함**돼 SW bump 필요성이 더 강해졌다(Fable).
+> Fable 합산 게이트 **PASS · 마커 `ed69def88ad9`**(발주 메일 포함 최종). 이전 마커 `dd5a648ceee1`(D+알림)은 이것으로 대체.
+
+1. **D. fetchDedupe abort 참조계수 근본수정** — `utils/fetchDedupe.ts` 재작성 + `httpClient.ts` 연결
+   - 근본: 공유 fetch 에 **리더의 signal 이 그대로 실려** 있었다. 리더가 abort 하면 팔로워 전원이 AbortError,
+     반대로 팔로워 signal 은 어디에도 안 붙어 abort 가 무시됐다.
+   - 조치: 실네트워크 fetch 는 `controller.signal` 로 나가고, **구독자 참조계수가 0 일 때만** abort.
+     signal 없는 구독자는 **영구 구독**(공유 fetch 를 죽이지 못함). 캐시 히트도 `aborted` 면 AbortError.
+   - ⚠ `null`/`undefined` 판정 주의는 아래 알림 건과 동일 계열 — 여기선 `signal?.aborted` 만 본다.
+   - **고장 재현 반증 확보**: 수정 전 S1 `{A:Abort, B:Abort}` / S3(B 는 signal 조차 없음) `{B:Abort}` / S4 `200`(abort 무시).
+     수정 후 S1 `{A:Abort, B:ok200}` · S2 둘 다 Abort · S3 `{B:ok200}` · S4 `AbortError` · S5 네트워크 **1회**(dedupe 무회귀).
+   - 검증: build EXIT 0(파이프 없이) · **번들 내용 확인**(새 문자열 존재 + `trackInflight` 소거) · verify-all **--full 16/16**(mount sweep 8역할 656.9s) · print-guard 8/8.
+   - **401 자동 로그아웃 · `notifyContextFallback` 무접촉.**
+
+2. **알림 수신자 결함 2건** — `utils/notificationService.js` 1파일
+   - **브랜드 소유자 누락**: `getBrandManagerIds` 가 `users.brand_id` 단일 컬럼만 봐서, 브랜드를 여러 개 가진
+     소유자가 첫 브랜드에서만 잡혔다. **실호출 실증** — brand 2 소유자 누락, brand 4·17·33 은 **수신자 0명**.
+     조치: `OR u.id IN (SELECT owner_id FROM brands WHERE id=:brandId ...)` 소유 레그 추가(**role 무조건** — brand 33 소유자는 `brand_id=null`), `DISTINCT`.
+     수정 후: 1 `[2,6,8,11]`(집합 불변·중복0) / 2 `[3,6]` / 4 `[6]` / 10 `[22]`(불변) / 17 `[22]` / 33 `[148]` — **기대값 전건 일치**.
+   - **`is_active` 미필터**: 수신자 해석 함수 5개 전부 필터 없음. 다만 호출부 21곳이 **전부 `sendNotification` 하나로 수렴**하므로
+     그 단일 관문(#1 직후·`email_verified` 앞)에만 `1-a0` 추가. ⛔ 쿼리에 심으면 자체 배열 호출부가 샌다.
+     🔴 **`null`/`undefined` 는 활성 취급**(`=== false || === 0`) — 6/16 신설 컬럼이라 null 을 비활성으로 읽으면 구계정 알림이 통째로 침묵한다.
+     고장주입 왕복 증명: user 23(데모매장) `is_active=0` → `Skip: ... inactive` / 원복 → 다음 관문 `is_test` 로 진행 / DB 원복 확인.
+   - 검증: verify-all **15/15**(health-check 전체 포함) · print-guard 8/8 · sensitive-diff 비대상.
+
+3. **발주 메일 묶음 0~5** — `Fable PASS(ed69def88ad9)`
+   - **0. 발송 함수 단일화** — `purchase-orders-crud.js` 에 `fireSellerSubmittedNotification` 이 **한 벌 더** 있었다(동작 동일).
+     한쪽만 고치면 경로별로 메일이 갈리는 구조 → 로컬 정의 49줄 삭제, `services/poNotifications.js` 단일 소스로. 고아 import 4개 제거.
+   - **1. 4언어화** — `locales/*/email.json` 에 `po` 네임스페이스(각 106키 동수). 템플릿을 `(args, lang)` 로 전환 + `getEmailText`.
+     🔴 **구조 장애를 팩토리로 풀었다**: 메일 본문이 수신자를 알기 전에 만들어져 수신자별 언어가 불가능했다.
+     → `sendNotification` 이 `mailOptions` 로 **`(user) => mailOptions` 팩토리도** 받는다(관문 전부 통과 후·SMTP 앞에서 해석).
+     팩토리 throw/빈값 → **그 수신자만** skip. `sendNotificationBatch` 는 몸통이 map 이라 무수정.
+     **기존 21개 호출부는 객체를 넘겨 기존 경로 그대로** — 후방 호환 **바이트 동일 5/5** 로 증명.
+   - **2. 구매자 확인메일 신설** — 그전까지 발주 넣은 사람은 **아무 메일도 못 받았다**(판매자·오너만 받음).
+     `poBuyerConfirmEmail`(4언어·품목표) + `fireBuyerConfirmNotification` + 카테고리 `po_buyer_confirm` 등록.
+     제출 3경로(workflow·approval·crud)에 판매자 통지와 같은 자리로 연결. 판매자명은 `utils/sellerNames` 경유.
+   - **3. 승인결과 메일 품목표** — 같은 가족 중 여기만 `items` 를 안 받고 있었다.
+   - **4. 외부 공급업체 발송** — `POST /purchase-orders/:id/send-external-email`(명시 액션, 자동 아님, 언어 'en' 고정).
+     `sendPlatformEmail` 경유(placeholder·바운스 가드 그대로). **가드에 막히면 `{sent:false, reason}` 로 정직 응답** — "보냈다" 거짓말 안 함.
+     검증 5케이스: 익명 401 / 남의 PO 404 / 계정 있는 업체 400 / 외부+이메일 → `dev-environment` 차단 / 이메일 없음 400.
+     ⛔ dev 는 `sendPlatformEmail` 이 SMTP 를 원천 skip 해 **실발송 물리적 불가**.
+   - **5. draft 담은 날짜** — 스키마 신설 0(`created_at` 이 이미 응답에 있음). `PurchaseOrderStagingPage` 헤더에 표시,
+     **매장 타임존**(`operationSettings.timeZone` + `formatDateTime`) 준수. i18n `staging.addedAt` 4언어.
+   - 검증: verify-all **--full 16/16**(mount sweep 8역할 660s 크래시 0) · i18n Errors 0 · 번들 반영 확인(lazy chunk) ·
+     후방호환 5/5 · 고장주입 3종(throw·null·배치격리) · check-sensitive-diff 비대상.
+
+4. **SW_VERSION bump** — 아직 안 됨(`4.63-po-list-meta-20260824`). 위 🟣 배포 결과 섹션 참조.
+
+**⚠ 이번 사이클 계측 실수(전부 자진 보고·재측정):**
+- 검증 중 **실제 메일 1통 발송**(자사 도메인의 없는 사서함). Fable 판정 = 경미·종결. 이후 알림 검증은 **SMTP 경계 스텁이 표준**.
+- 고장주입 1차가 `is_test` 관문 선발화로 **무효** → 관문 통과 임시 사용자로 재설계.
+- `poEmailItems` 실패는 **계측기 고장**(`models/index.js` 미로드 → association 없음). 결함 아님.
+- 표본 선정 오류(PO 194 는 상세조회부터 404) → 접근 가능한 PO 75 로 교체.
+- **`SupplierCompany` 는 `paranoid: true`** — raw SQL 로 재서 삭제 행이 섞였다.
+  정정: 공급업체 **16곳(외부 6, 이메일 보유 1 = sc60 `order@bevdist.demo`)**. 앞서 보고한 "20곳/외부 10" 은 오측.
+
+**손대지 않은 것(실측 근거):**
+- **foodcourt 소유 레그** — `foodcourts.owner_id` 는 있으나 누락 표본 **0건**, 다중 소유자 **0명**. 실증 안 돼서 미변경(brand 와 동일 구조라 잠재 가능성은 남음).
+- `getSupplierAdminIds` OR 두 번째 가지 — 테스트 staff 1명 생성해 `[208,444]` 로 **실증**, 삭제 후 잔재 0·목록 복귀 확인. **이상 없음, 코드 무변경.**
+
+### 📌 Git 상태 (2026-08-30 14:43 UTC 세션 저장 시점)
+- 브랜치 `deploy-isolation` / 최근 커밋 `c0677eb1 feat(po): 발주 입고 대칭화 + 재고↔발주 동기화 + ENUM 소거 근본수정`
+- **미커밋 변경 21건** (아래 🟣 dev 완결분 전부. ⛔ **배포 격리 전 stash 필수** — 과거 `git checkout` 으로 미커밋 9파일 소실 전례)
+```
+.claude/deploy-manifest.json · .claude/session-state.md · docs/PURCHASE_ORDER_SYSTEM.md
+dev-backend/locales/{en,ko,ms,zh}/email.json
+dev-backend/routes/{notification-settings,purchase-orders-approval,purchase-orders-crud,purchase-orders-workflow}.js
+dev-backend/services/poNotifications.js
+dev-backend/utils/{notificationService,notificationTemplates}.js
+dev-frontend/public/locales/{en,ko,ms,zh}/purchaseOrders.json
+dev-frontend/src/pages/PurchaseOrders/PurchaseOrderStagingPage.tsx
+dev-frontend/src/utils/{fetchDedupe,httpClient}.ts
+```
+- 미추적 파일 **0건**(임시 계측 스크립트 전부 삭제 확인)
 
 ### 완료된 작업 (이번 세션)
 - **발주 "받았다" 대칭화** (운영 배포) — 목록엔 있고 상세엔 없던 입고 버튼. **운영 발주 전건이 submitted** 라 사실상 아무도 입고를 못 하던 상태였다
@@ -15,21 +101,95 @@
 - **운영 전수검사 계측기 재작성** — 측정 25/25 · **측정 불가 0**
 - **운영 정리 스크립트 작성·Fable 검토 통과** (`cleanup-ugs-duplicate-products.js`) — 운영 /tmp 배치·sha256 일치, 실행 대기
 - 문서: `CLAUDE.md`(expand-only) · `SCHEMA-MIGRATION-GUIDE.md` · `PURCHASE_ORDER_SYSTEM.md` · CHANGELOG · 메모리 2건
+- **[2차] 운영 배포 1회** (13:02 UTC) — C·D·A′ 반영. 게이트 9/9 · 마이그 58/58 · **ENUM 값 소실 0** · 스모크 10/10
+- **[2차] D. fetchDedupe abort 참조계수 근본수정** (dev 완결) — 고장 재현 후 5/5 통과
+- **[2차] 알림 수신자 결함 2건** (dev 완결) — 브랜드 3곳이 **수신자 0명**이던 것 + `is_active` 미필터
+- **[2차] 발주 메일 묶음 0~5** (dev 완결) — 함수 단일화·4언어·구매자 확인메일 신설·승인결과 품목표·외부발송 액션·담은 날짜
+- **[2차] 마감 기대금액 갭 = 결함 부존재로 종결** — 착수 전 실측으로 헛작업 차단, 기록·메모리 정정
+- **[2차] 단위주문 설계 문서 작성** — `docs/PURCHASE_ORDER_SYSTEM.md` 말미(컨펌 4건 게이트 명문화)
 
 ### 다음 확정 작업
-- **B. 판매 주문(B2B) 매출·원가 리포트** — Fable 설계 완료. **착수 조건 = Irene 의 정리 `--apply` 증명 4종 접수 후**
-- **미배포분 3건(C·D·A′) 운영 반영** — `/배포` 지시가 있을 때만
+- **단위 주문(kg/g) · 다중 공급업체 오더 방향** — Fable 점검·설계 완료 + dev 실측 완료 + **설계 문서 작성 완료**(`docs/PURCHASE_ORDER_SYSTEM.md` 말미 섹션). **착수 조건 = Irene 컨펌 4건 회신** (아래 🟣 참조)
+- **B. 판매 주문(B2B) 매출·원가 리포트** — Fable 설계 완료. **착수 조건 = Irene 의 정리 `--apply` 증명 4종 접수 후** (실측: `/tmp/ugs_cleanup.log` 없음 = 미실행)
+- ~~미배포분 3건(C·D·A′) 운영 반영~~ — **2026-08-30 배포 완료**
+
+---
+
+## 🟣 2026-08-30 배포 결과 + SW bump 미실시 (Irene 판단 대기)
+
+**배포 성공** (13:02:30 UTC, 종료코드 0, Fable 판정 = 성공):
+게이트 9/9 우회 없음 · 인스펙션 25/27(신규 위반 0, baseline 2) · mount sweep 통과 ·
+마이그 58/58 · **ENUM 값 소실 0**(dev·prod 12값 전부 존재, `in_transit` 나열 순서만 다름 — 8/30 사고 방지장치 작동 확인) ·
+스모크 10/10 · health uptime 3s · 백업 `/var/www/backups/20260830_124742` · 스냅샷 1842파일.
+
+**⚠ SW 버전 bump 안 됨 — 미해결.** `SW_VERSION = '4.63-po-list-meta-20260824'`.
+실측: `curl https://purplehere.com/sw.js` 와 dev 양쪽 **동일한 8/24 자 버전**.
+→ PWA 를 캐시한 매장 기기에 **C(발주 모바일 수정)가 도달하지 않을 수 있다.** "고쳤는데 그대로예요" 재보고 조건.
+**Fable 권고: SW_VERSION bump 후 프론트만 재배포(저위험).** ⛔ Irene `/배포` 지시 없이는 실행 금지.
+
+---
+
+## 🟣 단위 주문(kg/g) 점검 — Fable 판정 완료, Irene 컨펌 3건 대기
+
+**Irene 질문:** 이름에 "1kg" 안 박고 kg/g 로 주문 가능한가 / 수량 주문이 어려운 품목 / 옵션으로 가격을 넣어야 하나 /
+갯수·단위가 오락가락 / 같은 재고에 공급업체 여러 개 연결 시 오더 방향.
+
+**⛔ 컨펌 4건 (4번은 2026-08-30 Irene 질문 "일단 레스토랑관리자에서 하고 나서 볼까?" 에 대한 Fable 답):**
+1. 팩 규격 여러 개 = **판매상품 여러 개 등록**(옵션으로 규격 흉내내기 비권고)
+2. **`order_mode='measure'` 신설** (kg/g 직접 입력, 가격은 단위당)
+3. **다중 공급업체 현 구조 유지 + 3곳 보완**
+4. **"RA 먼저" — 찬성. 단 역할이 아니라 층으로 3단계**:
+   ①전 역할 공용 기반(`min_order` DECIMAL·`order_mode` 신설 **기본 pack=현행**·conv 버그·불일치 감지 → **화면 변화 0**)
+   ②구매 UI 는 `buyerEntity.type === 'restaurants'` 게이트로 **RA 에만** + 공급업체 상품 등록에 규격·주문방식 입력
+   ③RA 에서 익은 뒤 **게이트 제거만** 으로 BG/FG 확장
+   ⚠ 순수 역할 절단은 **기각** — 판매자 데이터(order_mode·base_quantity·min_order)는 역할별로 못 가른다. 이중화하면 재고 환산이 깨진다.
+
+**"완벽하게 할 수 있어?" 에 대한 Fable 답:** "완벽"을 약속하지 않고 근거를 든다 — 규격·소수주문 **사용 이력 0**(옮길 데이터 없음) /
+스키마 80% 이미 존재 / 모든 변경이 **기본값=현재동작 추가형** / 최대 위험지점(입고 환산)은 검증된 공식 그대로.
+약속하는 것은 **단계마다 반증(고장주입) 포함 검증 통과 후 다음 진행**.
+
+**Fable 판정 요지:** 구조는 이미 80% 준비됨(소수 수량 DECIMAL·링크 환산비·판매상품 단위). 문제는 UX 미사용 + 정수 제약 2곳 + measure 모드 부재.
+1. **팩 규격 여러 개 = 판매상품 여러 개로 등록** (옵션으로 규격 흉내내기는 **비권고** — 옵션은 unit_conversion 을 못 물어 재고가 깨진다)
+2. **`order_mode='measure'` 신설** — kg/g 직접 입력(소수), 가격은 단위당. 업계 catch-weight 방식
+3. **다중 공급업체 현 구조 유지**(재료 1행 + 판매자 배열 + 제출 시 판매자별 PO 분리) + 3곳 보완:
+   `NewPurchaseOrderPage.tsx:1854` 최소주문 `Math.max` **버그** → 선택된 판매자 기준 /
+   `min_order_quantity` INTEGER→DECIMAL(2곳) / 업체 간 **단위당 가격(unit_price ÷ base_quantity)** 비교 표시
+4. **지뢰 정식 포함**: `restaurants-ingredients.js:381` 생성 흐름이 `unit_conversion` 을 **1 로 고정**(body 무시)
+   → ①생성이 환산비를 받게 수정 ②불일치+conv=1 링크를 **감지·표시만** 하는 멱등 점검(⛔ 자동 백필 금지 — tray→kg 은 기계가 못 추측)
+5. `SupplierOptionModal.tsx:268` `Math.max(1, parseInt(...))` 정수 강제도 이 설계에 **묶어서** 처리(지금 따로 고치지 말 것)
+
+**dev 실측 (운영 미확인 — classifier 로 운영 DB 조회 차단):**
+| 항목 | 값 |
+|---|---|
+| 활성 링크 | 58건 (conv=1: 53 / ≠1: 5) |
+| **단위 불일치인데 conv=1** | **4건** — Black Pepper(g↔kg) · Egg(kg↔tray) · Test Oil(kg↔L) · Soy Sauce(g↔L) ← **1kg 입고가 1g 으로 기록되는 조건** |
+| `supplier_products.base_quantity <> 1` | **0건 / 38행** — 규격 필드 **사용 이력 0** |
+| PO 라인 소수 수량 | **0건 / 127행** (스키마는 DECIMAL 인데 쓰인 적 없음) |
+| min_order_quantity > 1 | supplier_products 15 · ingredient_seller_products 11 |
+| 공급업체 옵션 실사용 | 그룹 5 · 옵션 15 · 상품연결 6 |
+| 다중 판매자 재료 | 1개=36종 / 2개=2종 / 3개=1종 / **5개=1종** |
+| 이름에 규격 박은 흔적 | 2건 (`Premium Coffee Beans 1kg`, `Tiger Beer 338ml`) |
+| 프론트 소수 준비 | `utils/unitConversion.ts:62` `qtyStepForUnit()` 이 연속단위에 **0.01 스텝** 이미 적용 |
+| 잔여 정수 강제 | **`SupplierOptionModal.tsx:268` 1곳뿐** |
+
+→ **신설 부담 없음**(기존 데이터 마이그 불필요)이 Fable 판정.
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
-- **fetchDedupe signal 설계** — 참조계수 방식(모든 호출자가 abort 했을 때만 실요청 abort), 호출부 6곳.
-  ⚠ **페이지 파기 중의 `Failed to fetch` 는 브라우저 고유 동작이라 완전 제거 불가** — 0 으로 만들려고 헛수사하지 말 것
+- ~~fetchDedupe signal 설계~~ → **2026-08-30 완료**(위 🟣 D 항목)
+  ⚠ 남는 사실: **페이지 파기 중의 `Failed to fetch` 는 브라우저 고유 동작이라 완전 제거 불가** — 0 으로 만들려고 헛수사하지 말 것
+- **notice 메일 `lang` 하드코딩** — 템플릿은 4언어를 타는데 호출부(`routes/notices.js:496`)가 `'en'` 고정.
+  PO 와 **같은 팩토리 방식으로 풀린다**(이번 범위 밖, Fable 무접촉 지시)
+- **payment_method='counter' 가 `other` 로 분류**(dev 4건) — 현금·카드 어느 쪽도 아닌 항목으로 마감 화면에 뜬다.
+  4건짜리 관측이라 단독 사이클 안 씀 — **마감 대사 UX 검토 시 텐더 매핑과 함께 판정**(Fable)
 - 브랜드 재고 이원화 구조 — 공급업체 링크는 `product_ingredient_id` 축, 브랜드 링크는 `ingredient_id` 축이라 재료 id 만으로 원가에 못 닿는다 ([[project_brand_stock_two_lists_split]])
 - 공급업체 없는 재고 12건 연결 (Irene 이 매입처를 알려주면 진행) / 판매가 0인 프로덕트 채우기
 - 발주 메일 다국어 / 계정 없는 사람에게 발주 알림 / 구매자 확인메일 품목표 / draft 담은 날짜 표시
 - 판매자 라인 단위 품절 처리 (⛔ `discrepancy_*` 재사용 금지)
-- 알림 수신자 조회가 `is_active` 미필터 / `getBrandManagerIds` 다중 브랜드 누락 가능
+- ~~알림 수신자 `is_active` 미필터 / `getBrandManagerIds` 다중 브랜드 누락~~ → **2026-08-30 수정 완료**(위 🟣)
+- **foodcourt 소유 레그 잠재** — `getFoodcourtManagerIds` 도 `foodcourt_id` 단일 컬럼. brand 와 동일 형태지만 dev 표본 0 이라 미수정
+- **`getSupplierAdminIds` staff 레그** — 2026-08-30 테스트 계정으로 실증 마감(이상 없음)
 - 작업 3(공급업체 소비자 커머스) 재개 — 커밋 `f87cd631`, 운영엔 스키마만 배포됨
 
 ---
@@ -127,7 +287,7 @@ IDOR 403 차단 / `open-po-lines` 200·400·401 / ENUM 존재.
 - 검증: 접힘 **53px**(이전 370~512px) · 펼침 24~33vh · 담기→`Cart15.20▴` 즉시 갱신 → 제출 도달 ·
   1280 은 `position:relative` 720px 사이드바 + 시트바 `display:none` 유지. verify-all 15/15 + mount sweep 8역할 크래시 0.
 
-**D. site-settings 콘솔 노이즈 — ⚠ 부분 해결 (완료 아님)**
+**D. site-settings 콘솔 노이즈 — 부분 상태로 운영 반영됨 · 근본수정 진행 중**
 - `AbortController` + `signal.aborted` 판별(⛔ 메시지 문자열 매칭 금지 — 같은 문자열이 진짜 장애에서도 난다).
 - **잔존**: `utils/fetchDedupe.ts` 가 동일 GET 을 요청 1개로 합쳐, 호출부 6곳 중 다른 곳이 먼저 쏘면 signal 이 안 붙는다
   (실측: 요청 결말 200 인데 `hasSignal: false`). 백로그는 위 "후속 후보" 참조.
@@ -201,3 +361,30 @@ DB 에서 활성 판매자 링크가 있는 품목(Onion, ingredient 16)을 찾�
 이전 세션에서 진행하던 작업을 이어서 하고 싶어.
 /var/www/.claude/session-state.md 파일 읽어줘.
 ```
+
+
+---
+
+## ✅ 마감 기대금액 0 갭 — **결함 부존재로 종료** (2026-08-30 실측 재확인, Fable 판정)
+
+**낡은 기록이 오늘 착수 근거가 될 뻔했다.** 세션기록·메모리에 `마감 기대금액 0 갭(미수정)` 으로 남아 있던 항목은
+**2026-07-31 결제 원장 일원화로 이미 근본수정된 상태**였다. 착수 전 실측에서 전제가 무너져 구현 없이 종료.
+
+**현재 구조 = 2레그** (`routes/cash-management.js:67` `computeExpected`)
+- ① 결제 원장(`OrderPayment`) — `paid_at` 기준, `staffMeal`·취소·삭제 주문 제외
+- ② **원장 없는 결제완료 주문 폴백** — `Order` 를 `payment_status='completed'`(⚠ `status` 아님) 로 걸러 `order_date` 합산,
+  `id NOT IN (SELECT DISTINCT order_id FROM order_payments)` 로 **이중 계상 차단**
+
+**쓰기는 4경로 일원화됨** (`utils/orderPaymentLedger.js` `recordOrderPayment`, 멱등·비치명):
+`orders-crud.js:1109`(POS PATCH·지배 경로) · `orders-payment.js:209`(PayPal) · `:288`(Stripe) · `:437`(분할 직접 create).
+⛔ **백필 안 함이 설계** — 옛 주문은 결제 시각이 없어 `paid_at` 을 채우면 날조. 쓰기 시작 + 자연 이관.
+
+**2026-08-30 실측(dev):** 원장 26행/22주문 · 결제완료 836건 · 폴백 커버 **817건** · 분할결제 실존(2결제 1주문, 4결제 1주문) ·
+닫힌 마감 1건(reconciled). 최근 결제완료 4건(7/31, rid 5)은 **전부 원장 보유** = 쓰기 실동작 증거.
+`computeExpected` 실호출: rid 5 → `{cash:0, card:{}, other:{counter:114, ewallet:230.3}}` — **0 아님**.
+rid 38 의 0 은 **정상**(원인 확정 2건): ①결제완료 272건의 `order_date` 최대가 2026-06-02 인데 교대는 06-20 18:54 개시 → 창 안 매출 0
+②창 안에 있는 원장 12행은 **전부 `is_deleted=1`** 주문이라 `excludedOrders` 가 정확히 제외.
+
+**미확인:** 운영 DB 조회 classifier 차단으로 **운영에서 원장이 실제로 쌓이는지 못 쟀다.**
+폴백 레그 덕에 원장이 안 쌓여도 기대금액은 주문 행으로 계산된다(설계상 안전) → Irene 에게 지금 요청하지 않고,
+**다음 배포 후 `/운영검증` 에 "원장 적재 여부 읽기 확인" 1항목을 얹는 것으로 갈음**한다(Fable).

@@ -80,5 +80,61 @@
     "viewButton": "계약서 열기",
     "renewButton": "갱신 시작",
     "contactBody": "계약 관련 문의는 담당자에게 연락주십시오."
+  },
+  "po": {
+    "sellerReceived": {
+      "subject": "{{buyer}} 님의 새 발주 {{poNumber}}",
+      "heading": "새 발주가 접수되었습니다",
+      "body": "<strong>{{buyer}}</strong> 님이 귀사에 새 발주를 넣었습니다.",
+      "poNumber": "발주번호",
+      "buyer": "구매자",
+      "total": "합계",
+      "status": "상태",
+      "awaitingConfirmation": "확인 대기",
+      "hint": "발주 내용을 확인하시고 승인 또는 거절해 주세요. 승인 후에는 송장 정보와 함께 배송중으로 표시할 수 있습니다.",
+      "cta": "발주 확인하기",
+      "textFallback": "{{buyer}} 님의 새 발주 {{poNumber}}. 합계: {{total}}."
+    },
+    "approvalPending": {
+      "subject": "승인 필요: 발주 {{poNumber}}",
+      "heading": "승인을 기다리는 발주가 있습니다",
+      "body": "<strong>{{buyer}}</strong> 이(가) 승인이 필요한 발주를 제출했습니다.",
+      "cta": "확인하고 승인하기",
+      "textFallback": "발주 {{poNumber}} 승인이 필요합니다. 합계: {{total}}."
+    },
+    "approvalResult": {
+      "subjectApproved": "승인됨: 발주 {{poNumber}}",
+      "subjectRejected": "반려됨: 발주 {{poNumber}}",
+      "headingApproved": "발주가 승인되었습니다",
+      "headingRejected": "발주가 반려되었습니다",
+      "bodyApproved": "발주가 승인되어 판매자에게 전달되었습니다.",
+      "bodyRejected": "발주가 반려되었습니다.",
+      "reason": "사유",
+      "cta": "발주 보기",
+      "textFallback": "발주 {{poNumber}}: {{result}}."
+    },
+    "buyerConfirm": {
+      "subject": "발주 완료: {{poNumber}}",
+      "heading": "발주가 접수되었습니다",
+      "body": "<strong>{{seller}}</strong> 에게 발주가 전달되었습니다.",
+      "seller": "판매자",
+      "cta": "발주 보기",
+      "hint": "판매자가 발주를 확인하면 알려드립니다.",
+      "textFallback": "{{seller}} 에게 발주 {{poNumber}} 완료. 합계: {{total}}."
+    },
+    "externalSend": {
+      "subject": "{{buyer}} 님의 발주서 {{poNumber}}",
+      "heading": "새 발주서",
+      "body": "<strong>{{buyer}}</strong> 님이 귀사에 발주했습니다.",
+      "hint": "이 메일에 회신하여 발주를 확인해 주세요.",
+      "textFallback": "{{buyer}} 님의 발주 {{poNumber}}. 합계: {{total}}."
+    },
+    "items": {
+      "item": "품목",
+      "qty": "수량",
+      "unitPrice": "단가",
+      "lineTotal": "금액",
+      "grandTotal": "합계"
+    }
   }
 }
