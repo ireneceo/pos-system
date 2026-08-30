@@ -134,7 +134,7 @@ flowchart LR
 |---|---|---|
 | S1 `master_gate` | printer_settings의 kitchenPrinter.enabled+autoPrint(워크스테이션 포함) — 자동인쇄 켜진 기기가 설정상 존재하나 | "자동인쇄가 꺼져 있어요" → 설정 이동 |
 | S2 `poller_alive` | 관측 미들웨어 last-seen < 30s | **critical** "인쇄 담당 POS가 n분째 응답 없음 — 그 기기의 앱/브라우저를 확인" |
-| S3 `stuck_tickets` | needs_print/needs_bill이 60분+ 적체 (기존 clear-stuck 로직과 동일 기준) | "오래된 미인쇄 주문 n건이 걸려 있어요" → **[막힌 티켓 비우기]** (기존 API) |
+| S3 `stuck_tickets` | needs_print/needs_bill이 60분+ 적체 **AND 자동인쇄가 켜져 있을 때만** (아래 🔒 참조) | "오래된 미인쇄 주문 n건이 걸려 있어요" → **[막힌 티켓 비우기]** (기존 API) |
 | S4 `unprinted_now` | print-events GET status 재사용 (45초+ 미인쇄 + 사유) | 사유별 문구 (no_device/dead_claim/…) |
 | S5 `station_drift` | 기존 preview warnings 재사용 (스테이션 있는데 프린터 미지정 / 품목 스테이션 미지정) | → **[스테이션 설정 시딩]** (기존 API) + 설정 이동 |
 | S6 `printer_config_sane` | method↔address↔name 정합 (qztray인데 address 빈값, LAN IP 형식 오류, rawbt인데 이름 없음 등) | 항목별 지적 + 설정 이동 |
@@ -253,6 +253,19 @@ print_device_status
 | 1 | QZ Tray 종료 후 진단 | D2 fail("QZ Tray가 실행 중이 아니에요") — 나머지 서버 체크는 정상 표시 |
 | 2 | 설정 프린터 이름을 오타로 변경 | D3 fail + 이름 대조 evidence |
 | 3 | 데모 주문에 needs_print=true·created 2시간 전 시딩 | S3 fail → [막힌 티켓 비우기] → 재진단 pass (복구 왕복) |
+
+> ### 🔒 S3 는 자동인쇄가 **켜진** 매장에서만 경고한다 (2026-08-30 Irene 지적 → 수정)
+> `needs_print` 는 주문이 생길 때 **설정과 무관하게** 켜지고(`orders-crud.js:1371` · `mobile-orders.js:339,458`),
+> 끄는 것은 **폴러가 인쇄를 집어갈 때뿐**(`orders-crud.js:3083,3112,3259`)이다.
+> 따라서 **자동인쇄를 끄고 수동으로 인쇄하는 매장은 아무도 플래그를 끄지 않아 무한히 쌓인다** —
+> 그건 고장이 아니라 운영 방식이다. 운영 실측: `needs_print=1` **2,098건**, The Fire·K-DINE IPC·with MIN
+> **세 매장 전부 `autoPrint=false`**.
+> S4 `unprinted_now` 는 이미 `master_off` 로 사유를 구분하는데 **S3 만 몰라서** 수동 운영 매장에
+> 영구 `warn`(severity major)이 떴다. → `stuckIsReal = autoOn && stuckCount > 0`.
+> 꺼진 매장은 `pass` + `evidence.suppressed = 'master_off'` 로 **왜 pass 인지 남긴다**(억제가 은폐가 되지 않게).
+> ⚠ 위 시나리오 3(복구 왕복)은 **자동인쇄를 켠 상태**에서 시딩해야 재현된다.
+> ⛔ "autoPrint 꺼짐이면 `needs_print` 를 안 켠다" 방향은 **기각**(Fable) — 주문 생성 경로에 설정 읽기를
+> 심는 것이고, 뒤늦게 켰을 때 티켓 유실 표면을 만든다. 적체 2,098건 정리도 **불요**(백로그 컷오프가 폭주를 막는다).
 | 4 | 스테이션 추가·프린터 미지정 | S5 fail → [시딩] → pass |
 | 5 | 자동인쇄 기기 폴링 중단(브라우저 닫기) | 30초 내 S2 fail, 재시작 시 pass |
 | 6 | localStorage 설정을 서버와 다르게 조작 | D5 warn + [설정 다시 불러오기] |

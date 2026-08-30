@@ -175,8 +175,21 @@ async function setup() {
       const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: demoRest.id } });
       if (ra) { demoRestId = demoRest.id; demoRaToken = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' }); }
     }
-    // 브랜드 축은 매장이 없다 — 테스트 계정(is_test)으로 한정한다.
-    const bg = await User.findOne({ where: { role: 'Brand General', is_test: true } });
+    // 브랜드 축은 매장이 없다 — 그래도 `is_test` 하나만 믿으면 안 된다.
+    //   운영 실측(2026-08-30): `with MIN`(brand 1)·`The Fire`(brand 5) 의 BG 계정에 `is_test=1` 이
+    //   붙어 있다. 둘 다 **실브랜드**(is_demo=0)다. 지금은 우연히 id 가 낮은 빈 계정이 뽑히지만,
+    //   그 계정이 사라지면 프로브가 실브랜드 카탈로그에 상품을 만들었다 지우게 된다.
+    //   → 계정 꼬리표가 아니라 **소속 브랜드가 데모인지**로 판정한다([[reference_smoke_writes_to_real_store]]).
+    //      브랜드가 없는 계정(brand_id NULL)은 실브랜드 데이터를 못 건드리므로 허용한다.
+    const bgRows = await sequelize.query(
+      `SELECT u.id FROM users u
+         LEFT JOIN brands b ON b.id = u.brand_id
+        WHERE u.role = 'Brand General' AND u.is_test = 1
+          AND (u.brand_id IS NULL OR b.is_demo = 1)
+        ORDER BY u.id LIMIT 1`,
+      { type: sequelize.QueryTypes.SELECT }
+    );
+    const bg = bgRows[0];
     if (bg) { demoBgUserId = bg.id; demoBgToken = jwt.sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '5m' }); }
   } catch { /* optional — 없으면 해당 케이스가 건너뛴다고 출력한다 */ }
 

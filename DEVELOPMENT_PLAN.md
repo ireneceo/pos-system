@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-08-30 #2 (**v3.80 유지**). ⑥**레시피 재료가 저장 실패 때 통째로 사라지던 것 근본수정** — 메뉴·프로덕트 폼의 "직접 재료 입력"은 기존 재료를 **먼저 다 지우고** 다시 넣는데 트랜잭션이 없고 오류를 삼켜서, 중간에 실패하면 **지운 것만 남고 화면엔 "저장됨"** 으로 보였다(실측 반증: 방어 제거 시 2건 → 0건 소실 + status 200). 4곳 트랜잭션+400 반환, `product_recipe_ingredients` 유니크 신설(BG BOM 이중 → 입고 재고·원가 이중계산 차단), health-check 파괴방어 4케이스 편입(이식 반증: 방어 제거 시 정확히 새 4건만 실패). ⑦**운영 카테고리 정리** — 아이템 중복은 없었고(이름·SKU 0) 겹친 건 카테고리뿐. 병합 9쌍(41건 이동)·빈 옛 카테고리 5 삭제·자동 채움 277·나머지 202 는 `Uncategorized` 수용 → **카테고리 없는 행 0**. ⑧BG 단위주문 물결 C 마이그만 완료(직렬화 미완, 중단). 상세=`.claude/session-state.md`.
+> **최종 업데이트:** 2026-08-30 #3 (**v3.80 유지 — 배포 5회 전부 버전 미상승, Irene 지시**). ⑨**브랜드 상품도 kg·g 로 발주**(직렬화 3곳이 브랜드 규격을 읽고도 버리던 것 + `order_mode` 미수용 실결함 수정, 왕복 E2E 2.5kg→RM75→재고+2500g) ⑩**수동 인쇄 매장의 헛경고 제거** — `needs_print` 는 주문 생성 시 설정과 무관하게 켜지고 폴러만 끄므로 자동인쇄 끈 매장은 무한 적체인데, 진단 S3 만 그걸 몰라 영구 경고를 냈다(운영 2,098건·세 매장 전부 꺼짐). 인쇄 동작 무접촉(print-guard 8/8) ⑪**미분류 202→121건**(용기어·세제어 우선 규칙 — 표본에서 실제 오분류 2건을 잡아 규칙 추가) ⑫🔴 **BG 프로브가 실브랜드에 쓸 뻔한 것 차단** — 운영 `with MIN`·`The Fire` BG 계정에 `is_test=1` 이 잘못 붙어 있었다. 판정을 소속 브랜드 `is_demo` 로 교체.
+>
+> **이전:** 2026-08-30 #2 (**v3.80 유지**). ⑥**레시피 재료가 저장 실패 때 통째로 사라지던 것 근본수정** — 메뉴·프로덕트 폼의 "직접 재료 입력"은 기존 재료를 **먼저 다 지우고** 다시 넣는데 트랜잭션이 없고 오류를 삼켜서, 중간에 실패하면 **지운 것만 남고 화면엔 "저장됨"** 으로 보였다(실측 반증: 방어 제거 시 2건 → 0건 소실 + status 200). 4곳 트랜잭션+400 반환, `product_recipe_ingredients` 유니크 신설(BG BOM 이중 → 입고 재고·원가 이중계산 차단), health-check 파괴방어 4케이스 편입(이식 반증: 방어 제거 시 정확히 새 4건만 실패). ⑦**운영 카테고리 정리** — 아이템 중복은 없었고(이름·SKU 0) 겹친 건 카테고리뿐. 병합 9쌍(41건 이동)·빈 옛 카테고리 5 삭제·자동 채움 277·나머지 202 는 `Uncategorized` 수용 → **카테고리 없는 행 0**. ⑧BG 단위주문 물결 C 마이그만 완료(직렬화 미완, 중단). 상세=`.claude/session-state.md`.
 >
 > **이전:** 2026-08-30 (**v3.80 유지 — 버전 미상승, Irene 지시**). 운영 배포 3회. ①**발주 상세에서도 "받았다" 가능** — 목록엔 있는데 상세엔 입고 버튼이 없었고, 운영 발주가 **전부 submitted 에 머물러** 사실상 모든 발주가 여기 걸려 있었다(`RECEIVABLE_STATUSES` 단일 상수로 두 입고 라우트 통일, draft·승인대기 차단 유지) ②**재고 입고↔발주 동기화** — 재고 화면 입고와 발주 수령이 서로를 몰라 **같은 물건이 두 번 더해지던 구멍**을 막음(조회 전용 `open-po-lines` + 모달 선택지, 쓰기는 PO `/receive` 단일 경로. RA·BG 양쪽 완료, 나머지 3경로는 실측으로 "적용 불가" 확정) ③**발주 상세 모바일 4건**(번역 코드 노출·타임라인 2중·버튼 정렬·품목 카드 밀도) ④🎯 **3세션 미스터리 종결 — `pending_approval` ENUM 소거 원인 확정**: `sprint6-migration.js` 가 ENUM 목록을 **하드코딩**해, 30초 전 마이그가 넣은 값을 매 배포마다 지우고 있었다(`sprint7` 도 같은 지뢰). 마이그·레지스트리·배포 루프는 **전부 정상**이었다. `lib/enumExpand.js`(expand-only) 신설 + 4지점 교체 + **배포 게이트가 ENUM 값 소실을 차단**(`check-enum-parity.js`) → 배포 후 생존 증명 완료 ⑤**신규 발주 화면 모바일 붕괴 수정**(미배포) — 장바구니가 화면 절반을 고정 점유해 360px 에서 상품 카드 영역이 **55px**(카드 최소 180px = 0장)였다. 하단 접이식 시트로 전환. 검증: verify-all 15/15 · mount sweep 8역할 크래시 0 · 운영 전수검사 **측정 25/25 · 측정 불가 0** · 고장주입 반증 4회. **Fable 게이트 PASS**(C 마커 7b9a5211fd43). 상세=`.claude/session-state.md`.
 >
@@ -9010,6 +9012,34 @@ hydration 게이트가 **메뉴 수정 저장 시 재고가 0 으로 날아가�
 - `dev-backend/scripts/migrate-category-cleanup-20260830.js` + `scripts/data/category-cleanup-20260830.json` (신규, 운영 적용 완료)
 - `dev-backend/scripts/migrate-category-uncategorized-20260830.js` (신규, 운영 적용 완료)
 - `dev-backend/scripts/migrations.registry.json`
+
+---
+
+## ✅ 완료: 브랜드 단위주문 + 인쇄 헛경고 제거 + 카테고리 2차 (2026-08-30 #2)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 브랜드 단위주문 (C+D) | 브랜드 상품도 kg/g 로 발주. 직렬화 3곳이 브랜드 상품의 `unit`/`base_quantity`/`order_mode` 를 **읽고도 버리던** 것 수정 + BG 폼 주문방식 라디오(4언어) | ✅ 완료 |
+| 🔴 `order_mode` 미수용 | `routes/brand-products.js` 가 `order_mode` 를 **아예 안 받았다** — 폼에서 '무게로 주문'을 골라도 조용히 `pack` 저장. 검증 중 실측 발견 | ✅ 완료 |
+| 인쇄 진단 헛경고 | `needs_print` 는 주문 생성 시 설정과 무관하게 켜지고 폴러만 끈다 → **자동인쇄 끈 매장은 무한 적체**. S4 는 `master_off` 를 아는데 S3 만 몰라 수동 운영 매장에 영구 경고. `autoOn` 일 때만 warn | ✅ 완료 |
+| 카테고리 2차 보강 | 미분류 **202 → 121건**. 용기어 우선(소스통=통) + 세제어 우선(Dish Wash Lime=세제) + 어휘 보강 | ✅ 완료 |
+| 🔴 BG 프로브 픽스처 | 운영에서 `with MIN`·`The Fire` 의 BG 계정에 **`is_test=1` 이 잘못 붙어 있었다**(둘 다 `is_demo=0` 실브랜드). 지금은 id 낮은 빈 계정이 뽑혀 무사했으나, 사라지면 실브랜드에 쓴다 → 판정을 **소속 브랜드 `is_demo`** 로 교체 | ✅ 완료 |
+
+### 검증
+- BG 왕복 E2E 6/6: BG kg 상품 → 매장 재고(g) 환산 1000 → **2.5kg 발주(RM75, 소수 무손실)** → 입고 → **재고 +2500g**
+- 직렬화 반증: 파일별로 되돌리면 해당 경로만 옛 증상으로 실패, 공급업체 경로 무영향. `/restaurants/:id/ingredients` 의 **실핸들러도 확정**
+- S3 양방향 반증: 자동인쇄 꺼짐 → `pass`(사유 `master_off`) / 켜짐 → `warn` 유지. `check-print-guard` **8/8 무변경**
+- 픽스처 반증(운영 데이터): 새 기준이 `K-DINE Brand`·`thefire` 를 **막고** 빈 시험 계정만 통과
+- `verify-all --full` 16/16 · `verify-all` 15/15 · 운영 배포 2회 스모크 각 10/10 · 마이그 62/62
+
+### 수정된 파일
+- `dev-backend/routes/{ingredients.js, restaurants-ingredients.js, brand-products.js, print-diagnostics.js}`
+- `dev-backend/models/BrandProduct.js` · `dev-backend/scripts/health-check.js`
+- `dev-backend/scripts/migrate-{brand-unit-order, category-fill-wave2-20260830}.js` (신규)
+- `dev-frontend/src/pages/BrandProductManagement/BrandProductsTab.tsx` · `locales/*/brand.json`
+- `docs/PURCHASE_ORDER_SYSTEM.md` (3단계 전제 정정)
 
 ---
 
