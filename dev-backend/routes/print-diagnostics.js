@@ -78,12 +78,21 @@ router.get('/restaurant/:restaurantId/checks', authenticateToken, checkRestauran
         updatedAt: { [Op.lt]: stuckSince }
       }
     });
-    checks.push(chk('stuck_tickets', stuckCount > 0 ? 'warn' : 'pass', {
+    // 자동인쇄를 꺼두고 **수동으로 인쇄하는 매장**에서는 이 표시가 적체가 아니다.
+    //   `needs_print` 는 주문이 생길 때 설정과 무관하게 켜지고, 끄는 것은 폴러가 인쇄를 집어갈 때뿐이다.
+    //   즉 자동인쇄가 꺼져 있으면 아무도 끄지 않아 무한히 쌓인다 — 그건 고장이 아니라 운영 방식이다.
+    //   S4(unprinted_now)는 이미 `master_off` 로 사유를 구분하는데 S3 만 몰라서, 수동 운영 매장에
+    //   영구 "적체" 경고가 떴다(2026-08-30 Irene 지적 · 운영 실측 2,098건 · 세 매장 전부 autoPrint=false).
+    //   ⚠ 자동인쇄가 **켜진** 매장의 진짜 적체는 그대로 warn 이어야 한다 — 그래서 autoOn 일 때만 경고한다.
+    const stuckIsReal = autoOn && stuckCount > 0;
+    checks.push(chk('stuck_tickets', stuckIsReal ? 'warn' : 'pass', {
       severity: 'major',
-      cause: stuckCount > 0 ? 'diag.check.stuck_tickets.found' : null,
-      guide: stuckCount > 0 ? ['diag.check.stuck_tickets.guide'] : [],
-      fix: stuckCount > 0 ? { type: 'api', action: 'clear_stuck_flags', label: 'diag.fix.clear_stuck' } : null,
-      evidence: { count: stuckCount, olderThanMin: STUCK_MINUTES }
+      cause: stuckIsReal ? 'diag.check.stuck_tickets.found' : null,
+      guide: stuckIsReal ? ['diag.check.stuck_tickets.guide'] : [],
+      fix: stuckIsReal ? { type: 'api', action: 'clear_stuck_flags', label: 'diag.fix.clear_stuck' } : null,
+      evidence: { count: stuckCount, olderThanMin: STUCK_MINUTES,
+                  // 꺼진 매장에서 왜 pass 인지 화면·로그에서 바로 읽히게 남긴다.
+                  suppressed: !autoOn && stuckCount > 0 ? 'master_off' : undefined }
     }));
 
     // S4 unprinted_now — 지금 안 나가고 있는 신선 미인쇄(45초+) + 사유

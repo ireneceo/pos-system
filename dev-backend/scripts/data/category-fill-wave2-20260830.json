@@ -1,0 +1,349 @@
+{
+  "version": "category-fill-wave2-20260830",
+  "note": "미분류(Uncategorized) 잔여를 줄이는 2차 보강. Fable 판정 2026-08-30. 표시·분류 데이터만.",
+  "why": [
+    "1차에서 '두 카테고리에 걸리면 안 채운다'는 규칙 때문에 소스통·티백류가 통째로 남았다.",
+    "용기 명사가 있으면 음식어는 '무엇을 담는가'의 수식일 뿐이므로 용기가 상품의 정체다(Fable).",
+    "병 자체가 상품이어도 Packaging & Disposables 가 맞다 — 이 규칙은 예외가 없다."
+  ],
+  "containerFirst": {
+    "category": "Packaging & Disposables",
+    "words": [
+      "container",
+      "cup",
+      "lid",
+      "bag",
+      "box",
+      "tray",
+      "wrap",
+      "bottle",
+      "straw",
+      "carton",
+      "pouch",
+      "cutlery",
+      "napkin",
+      "tissue",
+      "glove",
+      "foil",
+      "sticker",
+      "twine",
+      "liner",
+      "paper bowl",
+      "serviette",
+      "stirrer",
+      "skewer",
+      "toothpick",
+      "cake case",
+      "baking paper"
+    ]
+  },
+  "vocab": [
+    [
+      "Kitchen & Supplies",
+      [
+        "gas",
+        "cylinder",
+        "cartridge",
+        "colander",
+        "note book",
+        "notebook",
+        "cling film",
+        "knife",
+        "tong",
+        "apron",
+        "brush",
+        "sponge",
+        "mop",
+        "broom",
+        "thermometer",
+        "timer",
+        "scale",
+        "chopping board",
+        "strainer",
+        "ladle",
+        "whisk",
+        "peeler",
+        "opener",
+        "bucket"
+      ]
+    ],
+    [
+      "Sauce & Condiment",
+      [
+        "sauce",
+        "ketchup",
+        "mayonnaise",
+        "mayo",
+        "vinegar",
+        "gochujang",
+        "doenjang",
+        "condiment",
+        "soy sauce",
+        "oyster",
+        "mustard",
+        "dressing",
+        "paste"
+      ]
+    ],
+    [
+      "Cleaning & Chemical",
+      [
+        "cleaner",
+        "cleanser",
+        "detergent",
+        "bleach",
+        "dishwash",
+        "dishwashing",
+        "soap",
+        "sanitizer",
+        "deodorizer",
+        "deodeorizer",
+        "disinfectant",
+        "degreaser"
+      ]
+    ],
+    [
+      "Spice & Powder",
+      [
+        "spice",
+        "pepper",
+        "salt",
+        "seasoning",
+        "powder",
+        "starch",
+        "curry",
+        "cinnamon",
+        "paprika",
+        "sesame",
+        "chilli powder",
+        "stock powder",
+        "baking soda",
+        "bicarbonate",
+        "yeast"
+      ]
+    ],
+    [
+      "Noodle, Rice & Grain",
+      [
+        "rice",
+        "noodle",
+        "pasta",
+        "flour",
+        "grain",
+        "ramen",
+        "udon",
+        "tteok",
+        "crumb",
+        "crumbs",
+        "vermicelli",
+        "barley",
+        "oat",
+        "cereal",
+        "dhal",
+        "bean sprout"
+      ]
+    ],
+    [
+      "Meat",
+      [
+        "beef",
+        "pork",
+        "lamb",
+        "brisket",
+        "bacon",
+        "sausage",
+        "mutton",
+        "ribs"
+      ]
+    ],
+    [
+      "Poultry",
+      [
+        "chicken",
+        "duck",
+        "poultry",
+        "drumstick",
+        "thigh"
+      ]
+    ],
+    [
+      "Seafood",
+      [
+        "fish",
+        "prawn",
+        "shrimp",
+        "squid",
+        "octopus",
+        "seafood",
+        "crab",
+        "anchovy",
+        "seaweed",
+        "clam",
+        "cockle",
+        "mussel",
+        "scallop",
+        "fungus"
+      ]
+    ],
+    [
+      "Dairy & Egg",
+      [
+        "milk",
+        "cheese",
+        "butter",
+        "cream",
+        "egg",
+        "yogurt",
+        "yoghurt",
+        "margarine"
+      ]
+    ],
+    [
+      "Tea & Coffee",
+      [
+        "coffee",
+        "tea",
+        "latte",
+        "espresso",
+        "matcha",
+        "chamomile",
+        "earl grey",
+        "herbal"
+      ]
+    ],
+    [
+      "Base & Syrup",
+      [
+        "syrup",
+        "puree",
+        "concentrate",
+        "marmalade",
+        "base"
+      ]
+    ],
+    [
+      "Vegetables",
+      [
+        "onion",
+        "garlic",
+        "cabbage",
+        "lettuce",
+        "carrot",
+        "potato",
+        "tomato",
+        "cucumber",
+        "spinach",
+        "mushroom",
+        "radish",
+        "scallion",
+        "chilli",
+        "chili",
+        "vegetable",
+        "broccoli",
+        "eggplant",
+        "terung",
+        "zucchini",
+        "pumpkin",
+        "leek",
+        "celery",
+        "corn",
+        "pea",
+        "bean",
+        "kimchi",
+        "sprout"
+      ]
+    ],
+    [
+      "Fruit",
+      [
+        "apple",
+        "banana",
+        "lemon",
+        "orange",
+        "strawberry",
+        "mango",
+        "grape",
+        "peach",
+        "melon",
+        "blueberry",
+        "citron",
+        "yuja",
+        "pear",
+        "lime",
+        "kiwi",
+        "pineapple",
+        "coconut"
+      ]
+    ],
+    [
+      "Alcohol",
+      [
+        "beer",
+        "soju",
+        "wine",
+        "whisky",
+        "whiskey",
+        "vodka",
+        "makgeolli",
+        "sake"
+      ]
+    ],
+    [
+      "Beverage",
+      [
+        "juice",
+        "soda water",
+        "cola",
+        "sprite",
+        "beverage",
+        "mineral water",
+        "soft drink"
+      ]
+    ],
+    [
+      "Other",
+      [
+        "candy",
+        "chocolate",
+        "snack",
+        "dessert",
+        "jelly",
+        "pudding"
+      ]
+    ]
+  ],
+  "rules": [
+    "⓪ 세제 기능 명사가 있으면 Cleaning & Chemical 로 확정 — 향(lime/lemon)보다 기능이 이긴다.",
+    "① 용기 명사가 있으면 Packaging & Disposables 로 확정 — 음식어와 충돌해도 용기가 이긴다.",
+    "② 용기어가 없으면 어휘표로 판정하되 **정확히 한 카테고리에만** 걸릴 때만 채운다.",
+    "③ 여전히 충돌·미상이면 Uncategorized 에 그대로 둔다. 틀린 분류가 빈 분류보다 낫지 않다.",
+    "④ 어휘는 단어 경계로만 맞춘다(ham ⊂ Chamomile 오분류 방지).",
+    "⑤ 쓰기 대상은 현재 Uncategorized 인 행만. 사람이 이미 고른 카테고리는 절대 안 건드린다.",
+    "⑥ 자기 소유 스코프에 그 카테고리가 없으면 채우지 않는다(카테고리를 새로 만들지 않는다).",
+    "⑦ veto 어휘(candle 등)가 있으면 자동 분류하지 않는다 — 표본 검토에서 실제로 틀렸던 것."
+  ],
+  "cleaningFirst": {
+    "category": "Cleaning & Chemical",
+    "note": "세제는 향으로 이름 붙는다(Lime/Lemon). 향 단어가 과일로 새는 것을 막는다 — 기능 명사가 이긴다.",
+    "words": [
+      "cleaner",
+      "cleanser",
+      "detergent",
+      "bleach",
+      "sanitizer",
+      "disinfectant",
+      "degreaser",
+      "dish wash",
+      "dishwash",
+      "dishwashing",
+      "hand soap",
+      "floor kleen",
+      "toilet",
+      "stain remover"
+    ]
+  },
+  "veto": [
+    "candle",
+    "jjigae"
+  ]
+}
