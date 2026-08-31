@@ -1,6 +1,6 @@
 {
  "note": "운영 배포 시점 소스 지문 — deploy-to-production.sh 성공 후 자동 기록. 수동 편집 금지.",
- "created_at": "2026-08-31T08:20:27.956Z",
+ "created_at": "2026-08-31T08:37:46.153Z",
  "file_count": 1857,
  "files": {
   "CLAUDE.md": "c7ef544cb7e7e2a44a1c930b240c4f13145e18517ac8fa53a9269e2e4ff80e5e",
@@ -1235,7 +1235,7 @@
   "dev-frontend/public/sitemap.xml": "be8d2f01e860854999a53767935fb0f223a0121147574992512a166a53f87757",
   "dev-frontend/public/speaker-off.svg": "af5904f0efb5bb4cd0e6d5476541ac84352542bdf5b8968712de7160d9a84dac",
   "dev-frontend/public/speaker-on.svg": "6d47457221d538f039ac11afc295b27a05583cb52c4563a33f7ec19baa39f94f",
-  "dev-frontend/public/sw.js": "23f395bb29675c24f4ca38446e4746a204019c24ddf8c3b83b60f3e5fa7f6255",
+  "dev-frontend/public/sw.js": "171ff4b1f555981f6c5703822da003f1b93d9415c2a1eba5448e9c55573a10f0",
   "dev-frontend/scripts/auto-fix-glossary.js": "786076be09094938aca4c0e1ea1cd3a1f0add7a9ddd7724ebb00def75102ae4a",
   "dev-frontend/scripts/capture-features.js": "d6ae6e04fb1a84cd90a87c7e881ee5958e481bbfe108c58ddc69171b8cc05bf7",
   "dev-frontend/scripts/capture-responsive.js": "26038a5084e3d09813f1943b80f543047f934b8e82874c867751653900049169",
