@@ -1,6 +1,6 @@
 {
  "note": "운영 배포 시점 소스 지문 — deploy-to-production.sh 성공 후 자동 기록. 수동 편집 금지.",
- "created_at": "2026-08-31T08:37:46.153Z",
+ "created_at": "2026-08-31T10:03:19.193Z",
  "file_count": 1857,
  "files": {
   "CLAUDE.md": "c7ef544cb7e7e2a44a1c930b240c4f13145e18517ac8fa53a9269e2e4ff80e5e",
@@ -460,7 +460,7 @@
   "dev-backend/scripts/lib/enumExpand.js": "ca9d07784efe35d2a9b1b74ce9d1b37569a61a69d11f018c40552e0c327a553c",
   "dev-backend/scripts/link-product-ingredients.js": "6d87b73f5aa3647257a1b3170cf625ac6b3e37383c176b10a03f682e4db4777b",
   "dev-backend/scripts/link-product-recipes.js": "b669dca346fef42753d5258fbea2f51f7305858dac7f845fa0b905680889c816",
-  "dev-backend/scripts/mark-demo-accounts.js": "b7df2ec024e0962dff8bd16c87bd66f0307e3579ccc63b8156407594e9e1235b",
+  "dev-backend/scripts/mark-demo-accounts.js": "2fc72f7e1558440bef02633b97ecc4322575886de11937b9ca64c5acf08721bb",
   "dev-backend/scripts/migrate-add-ewallet-type.js": "791fcdf1b63a9450fb085f0e24841a9cc362e08d2099c942f8609123507381a8",
   "dev-backend/scripts/migrate-add-order-idempotency.js": "e7294b11833faf5aea1593dc6b211241b9a678b2dc3cf12874f6a493df38ff07",
   "dev-backend/scripts/migrate-add-order-notes.js": "0737f7a2a2e8981ee95293a476a7d809d275ad7e92db41df479152c6b0f2af95",
