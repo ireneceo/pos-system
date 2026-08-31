@@ -363,7 +363,12 @@
     "externalHintApproval": "Pesanan belian ini perlu kelulusan Pemilik sebelum dihantar kepada pembekal. Perkongsian dibuka selepas diluluskan.",
     "sendAfterApproval": "Tersedia selepas kelulusan Pemilik",
     "submitForApproval": "Hantar untuk kelulusan",
-    "addedAt": "Ditambah"
+    "addedAt": "Ditambah",
+    "nameMode": {
+      "label": "Paparan nama item",
+      "seller": "Nama produk pembekal",
+      "internal": "Nama stok kami"
+    }
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit tidak sepadan — kemasukan manual diperlukan",

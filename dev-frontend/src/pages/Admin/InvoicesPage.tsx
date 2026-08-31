@@ -826,7 +826,7 @@ const InvoicesPage: React.FC = () => {
             <table class="items-table">
                 <thead><tr><th>${t('admin:invoicesPage.description')}</th><th class="text-center">${t('admin:invoicesPage.qty')}</th><th class="text-right">${t('admin:invoicesPage.unitPrice')}</th><th class="text-right">${t('admin:invoicesPage.amount')}</th></tr></thead>
                 <tbody>
-                    ${invoice.items.map(item => `<tr><td>${item.description}</td><td class="text-center">${item.quantity}</td><td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td><td class="text-right">${formatCurrency(item.total, invoice.currency || 'MYR')}</td></tr>`).join('')}
+                    ${invoice.items.map(item => `<tr><td>${item.description}</td><td class="text-center">${item.quantity}${(item as any).unit ? ' ' + (item as any).unit : ''}</td><td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td><td class="text-right">${formatCurrency(item.total, invoice.currency || 'MYR')}</td></tr>`).join('')}
                 </tbody>
             </table>
         </div>

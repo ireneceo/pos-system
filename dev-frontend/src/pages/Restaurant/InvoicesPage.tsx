@@ -121,6 +121,8 @@ interface Invoice {
 interface InvoiceItem {
   description: string;
   quantity: number;
+  /** 수량을 따라다니는 단위(kg/g/L…). 발주 유래가 아닌 인보이스는 없음 (2026-08-31) */
+  unit?: string | null;
   unitPrice: number;
   total: number;
 }
@@ -933,7 +935,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     ${invoice.items && invoice.items.length > 0 ? invoice.items.map(item => `
                     <tr>
                         <td>${item.description}</td>
-                        <td class="text-center">${item.quantity}</td>
+                        <td class="text-center">${item.quantity}${item.unit ? ' ' + item.unit : ''}</td>
                         <td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td>
                         <td class="text-right">${formatCurrency(item.total, invoice.currency || 'MYR')}</td>
                     </tr>
@@ -1394,7 +1396,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                         selectedInvoice.items.map((item, index) => (
                           <tr key={index} style={{ borderBottom: '1px solid #F1F4F8' }}>
                             <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937' }}>{item.description}</td>
-                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'center' }}>{item.quantity}</td>
+                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'center' }}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</td>
                             <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.unitPrice, selectedInvoice.currency || 'MYR')}</td>
                             <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.total, selectedInvoice.currency || 'MYR')}</td>
                           </tr>

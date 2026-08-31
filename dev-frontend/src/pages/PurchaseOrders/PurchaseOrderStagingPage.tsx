@@ -25,7 +25,33 @@ import { renderIframeToPdf } from '../../utils/invoicePdf';
 import AlertDialog from '../../components/Common/AlertDialog';
 import ConfirmModal from '../../components/ConfirmModal';
 
-interface POItem { id: number; ingredient_id: number; quantity_ordered: string; unit_price: string; created_at?: string | null; }
+interface POItem {
+  id: number; ingredient_id: number; quantity_ordered: string; unit_price: string; created_at?: string | null;
+  // 수량을 따라다니는 단위(kg/g/L/piece…). 발주 라인에 이미 저장돼 있는데 이 화면만 안 쓰고 있었다.
+  unit?: string | null;
+  // 공급업체 자기 판매품목 정체성 — 목록 API 가 이미 내려준다(utils/sellerProductIdentity).
+  // 내부 재고명과 실제로 다르다: 우리 `Cheddar Cheese` ↔ 공급업체 `Fresh Whole Milk`.
+  seller_product_name?: string | null;
+  seller_product_sku?: string | null;
+  product_name?: string | null;
+  ingredient_name?: string | null;
+}
+
+/**
+ * 품목 표시 기준 — 2026-08-31 Irene: "공급업체 상품명으로 표시 또는 우리 재고명으로 표시
+ * 라는 표시방법 2가지 따로 있으면 안돼?"
+ * 기본값은 `seller` — 이 화면에서 하는 일이 **공급업체에 발주를 보내는 것**이라,
+ * 받는 쪽이 자기 창고에서 대조할 이름이 기본으로 보여야 한다.
+ * 선택은 브라우저에 기억시킨다(사용자별 편의값 — 서버 상태가 아니다).
+ */
+type NameMode = 'seller' | 'internal';
+const NAME_MODE_KEY = 'po.staging.nameMode';
+function loadNameMode(): NameMode {
+  try {
+    const v = localStorage.getItem(NAME_MODE_KEY);
+    return v === 'internal' ? 'internal' : 'seller';
+  } catch { return 'seller'; }
+}
 interface POSeller { id: number; name: string; phone?: string | null; email?: string | null; is_system_registered: boolean; }
 interface POStaging {
   id: number;
@@ -111,16 +137,44 @@ const InfoLine = styled.div`
   border-radius: 6px;
   margin-bottom: 8px;
 `;
+/**
+ * 합계·전체제출 바 — 2026-08-31 Irene: "이 내용은 푸터에 하단에 붙어서 계속 하단 따라다녀야지."
+ *
+ * `position: sticky; bottom: 0` 만으로는 부족했다. 스티키는 **자기 컨테이닝 블록 안에서만** 움직이는데,
+ * 이 바는 `Container` 의 마지막 자식이라 컨테이너 끝(= 콘텐츠 끝)이 곧 정착점이 된다.
+ * 그래서 목록이 짧으면 화면 중간에 떠 있고, 스크롤을 끝까지 내리기 전에는 하단에 붙지 않았다.
+ * → `Container` 를 flex column 으로 만들고 `Content` 에 flex:1 을 줘서, 목록이 짧든 길든
+ *   바가 항상 뷰포트 하단에 오도록 한다(짧을 때는 밀려서 바닥, 길 때는 스티키로 고정).
+ * z-index 는 카드 위에 뜨게. 아이폰 홈바 대비 safe-area 패딩.
+ */
 const SubmitBar = styled.div`
   position: sticky;
   bottom: 0;
+  z-index: 5;
   background: white;
   border-top: 1px solid #C7CED6;
   padding: 16px 32px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+
+  @media (max-width: 768px) {
+    padding: 12px 16px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+`;
+
+/**
+ * 품목명 표시방법 전환 (공급업체 상품명 ↔ 우리 재고명).
+ * ⚠ 버튼은 **공용 `components/UI/Button`** 을 쓴다 — 페이지 안에서 버튼 스타일 컴포넌트를
+ *   새로 만드는 것은 CLAUDE.md "🎨 디자인 단일 기준" 위반이고 design-guard 가 잡는다.
+ *   여기서는 두 버튼을 한 덩어리로 묶는 래퍼(div)만 만든다.
+ */
+const NameModeToggle = styled.div`
+  display: inline-flex;
+  gap: 6px;
 `;
 const Empty = styled.div`
   text-align: center;
@@ -167,6 +221,23 @@ const PurchaseOrderStagingPage: React.FC = () => {
   // 오너 승인이 필요한 매장이면 **승인 전에 공급업체로 보내면 안 된다**.
   // (서버는 이미 pending_approval 로 막지만, 화면이 WhatsApp/Email 발송을 권하면 통제가 무의미해진다.)
   const [needsOwnerApproval, setNeedsOwnerApproval] = useState(false);
+  const [nameMode, setNameMode] = useState<NameMode>(loadNameMode);
+
+  const changeNameMode = (m: NameMode) => {
+    setNameMode(m);
+    try { localStorage.setItem(NAME_MODE_KEY, m); } catch { /* 사생활 모드 등 — 저장 실패해도 화면은 동작 */ }
+  };
+
+  /**
+   * 한 줄에 보일 품목명.
+   * `seller` 모드라도 공급업체 판매품목 매핑이 없는 라인(외부 판매자·옛 발주)은 내부명으로 폴백한다 —
+   * 빈칸이 되면 무엇을 주문했는지조차 안 보인다.
+   */
+  const itemLabel = (it: POItem): string => {
+    const internal = it.product_name || it.ingredient_name || `Item #${it.ingredient_id}`;
+    if (nameMode === 'internal') return internal;
+    return it.seller_product_name || internal;
+  };
 
   const { user } = useAuth();
   useEffect(() => {
@@ -379,7 +450,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
         <ItemsBlock>
           {(po.items || []).map(it => (
             <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span>· {(it as any).product_name || (it as any).ingredient_name || `Item #${it.ingredient_id}`} × {formatQuantity(it.quantity_ordered)} @ {parseFloat(it.unit_price).toFixed(2)}</span>
+              <span>· {itemLabel(it)} × {formatQuantity(it.quantity_ordered)}{it.unit ? ` ${it.unit}` : ''} @ {parseFloat(it.unit_price).toFixed(2)}</span>
               <button type="button" onClick={() => removeItem(po.id, it.id)} title={t('staging.removeItem', 'Remove item') as string}
                 style={{ border: 'none', background: 'transparent', color: '#9CA3AF', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 4px' }}>×</button>
             </div>
@@ -450,17 +521,39 @@ const PurchaseOrderStagingPage: React.FC = () => {
   );
 
   return (
-    <Container>
+    // flex column + Content flex:1 — 목록이 짧아도 SubmitBar 가 하단에 붙어 있게 (위 SubmitBar 주석 참조)
+    <Container style={{ display: 'flex', flexDirection: 'column' }}>
       <PageHeader>
         <div>
           <PageTitle>{t('staging.title', 'Pending Purchase Orders')}</PageTitle>
         </div>
-        <ThemedButton variant="ghost" onClick={() => navigate('/pos/purchase-orders')}>
-          {t('staging.back', '← Back to Cart')}
-        </ThemedButton>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* 표시방법 2가지 — 공급업체 상품명 / 우리 재고명 (2026-08-31 Irene) */}
+          <NameModeToggle role="group" aria-label={t('staging.nameMode.label', 'Item name display') as string}>
+            <Button
+              type="button"
+              size="small"
+              variant={nameMode === 'seller' ? 'primary' : 'secondary'}
+              onClick={() => changeNameMode('seller')}
+            >
+              {t('staging.nameMode.seller', 'Supplier product name')}
+            </Button>
+            <Button
+              type="button"
+              size="small"
+              variant={nameMode === 'internal' ? 'primary' : 'secondary'}
+              onClick={() => changeNameMode('internal')}
+            >
+              {t('staging.nameMode.internal', 'Our stock name')}
+            </Button>
+          </NameModeToggle>
+          <ThemedButton variant="ghost" onClick={() => navigate('/pos/purchase-orders')}>
+            {t('staging.back', '← Back to Cart')}
+          </ThemedButton>
+        </div>
       </PageHeader>
 
-      <Content style={{ paddingBottom: 80 }}>
+      <Content style={{ flex: 1, paddingBottom: 80 }}>
         {loading && pos.length === 0 ? (
           <Empty>{t('common:loading', 'Loading…')}</Empty>
         ) : pos.length === 0 ? (

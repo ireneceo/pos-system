@@ -370,7 +370,8 @@ router.get('/', authenticateToken, async (req, res) => {
 
           return {
             description: fullDescription,
-            quantity: item.quantity || 1,
+            quantity: Number(item.quantity ?? 1),
+            unit: item.unit || null,
             unitPrice: parseFloat(item.unit_price || item.fixed_amount || item.calculated_amount || 0),
             total: parseFloat(item.fixed_amount || item.calculated_amount || 0)
           };
@@ -491,7 +492,8 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
       const transformedItems = (invoice.items || []).map(item => ({
         id: item.id?.toString(),
         description: item.description || item.item_name || 'Service',
-        quantity: item.quantity || 1,
+        quantity: Number(item.quantity ?? 1),
+        unit: item.unit || null,
         unitPrice: parseFloat(item.unit_price || item.calculated_amount || item.fixed_amount || 0),
         taxRate: parseFloat(item.tax_rate || 0),
         taxAmount: parseFloat(item.tax_amount || 0),
@@ -613,7 +615,8 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
       if (invoice.items && invoice.items.length > 0) {
         invoiceItems = invoice.items.map(item => ({
           description: item.description,
-          quantity: item.quantity || 1,
+          quantity: Number(item.quantity ?? 1),
+          unit: item.unit || null,
           unitPrice: parseFloat(item.unit_price || item.fixed_amount || item.calculated_amount || 0),
           taxAmount: parseFloat(item.tax_amount || 0),
           total: parseFloat(item.fixed_amount || item.calculated_amount || 0)
@@ -980,7 +983,8 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
           }
           return {
             description: desc,
-            quantity: item.quantity || 1,
+            quantity: Number(item.quantity ?? 1),
+            unit: item.unit || null,
             unitPrice: parseFloat(item.unit_price || item.fixed_amount || item.calculated_amount || 0),
             total: parseFloat(item.fixed_amount || item.calculated_amount || 0)
           };
@@ -1084,7 +1088,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
       items: items?.map(item => ({
         id: item.id?.toString(),
         description: item.description,
-        quantity: item.quantity || 1,
+        quantity: Number(item.quantity ?? 1),
+        unit: item.unit || null,
         unitPrice: parseFloat(item.unit_price || item.fixed_amount || item.calculated_amount || 0),
         taxRate: parseFloat(item.tax_rate || 0),
         taxAmount: parseFloat(item.tax_amount || 0),

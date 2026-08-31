@@ -363,7 +363,12 @@
     "externalHintApproval": "该采购单需经东主批准后才能发送给供应商。批准后即可分享。",
     "sendAfterApproval": "东主批准后可发送",
     "submitForApproval": "提交审批",
-    "addedAt": "加入时间"
+    "addedAt": "加入时间",
+    "nameMode": {
+      "label": "品项名称显示",
+      "seller": "供应商商品名",
+      "internal": "我方库存名"
+    }
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}：数量单位不一致 — 需手动输入",

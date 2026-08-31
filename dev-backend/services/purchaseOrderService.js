@@ -9,6 +9,8 @@ const {
   SupplierContract, SupplierCompany, Brand, Foodcourt, Restaurant, User
 } = require('../models');
 const { finalizeInvoice } = require('../utils/invoiceCalculation');
+// 공급업체 판매품목명 해석 단일 소스 — 화면·인쇄본·공유메시지·인보이스가 같은 이름을 써야 한다.
+const { attachSellerProductIdentity } = require('../utils/sellerProductIdentity');
 
 /**
  * Compute payer_type, payer_id, restaurant_id from PO buyer side.
@@ -186,11 +188,27 @@ async function createTradeInvoice(po) {
   });
 
   // Create InvoiceItems from PO items
-  for (const item of fullPo.items || []) {
+  //
+  // 2026-08-31 Irene: "인보이스는 모두 공급업체에 보내는 건 모두 공급업체 상품표시" /
+  //                   "공급업체에 보내는 건 우리 표시이름은 없어도 되지 않아?"
+  // 그전까지 라인 이름이 `item.description` = **우리 내부 재고명 스냅샷**이라, 받는 공급업체가
+  // 자기 창고 품목과 대조할 수 없었다. 실제로 이름이 다르다 —
+  // 우리 `Cheddar Cheese` ↔ 공급업체 `Fresh Whole Milk` / 우리 `Beef Rib` ↔ `Australian Beef Rib`.
+  // 판매품목명 해석은 단일 소스(utils/sellerProductIdentity) 경유 — 화면·인쇄본·메일과 같은 답을 내야 한다.
+  // 매핑 없는 라인(외부 판매자·옛 발주)은 내부명으로 폴백해 빈칸이 되지 않게 한다.
+  const poItems = (fullPo.items || []).map(i => (typeof i.toJSON === 'function' ? i.toJSON() : i));
+  try {
+    await attachSellerProductIdentity({ items: poItems });
+  } catch (e) {
+    // 이름 해석 실패가 인보이스 발행 자체를 막으면 안 된다 — 내부명 폴백으로 계속 간다.
+    console.error('[purchaseOrderService] seller identity attach failed:', e.message);
+  }
+  for (const item of poItems) {
     await InvoiceItem.create({
       invoice_id: invoice.id,
-      description: item.description || `Item #${item.id}`,
+      description: item.seller_product_name || item.description || `Item #${item.id}`,
       quantity: item.quantity_ordered,
+      unit: item.unit || null,
       unit_price: item.unit_price,
       calculated_amount: item.line_total,
       total_amount: item.line_total,
