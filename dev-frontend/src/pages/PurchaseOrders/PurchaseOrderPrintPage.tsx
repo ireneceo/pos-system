@@ -297,22 +297,17 @@ const PurchaseOrderPrintPage: React.FC<PrintPageProps> = ({ forceSellerView = fa
             const lt = it.line_total != null
               ? Number(it.line_total)
               : Number(it.quantity_ordered) * Number(it.unit_price);
-            // 이 문서는 **공급업체가 받는 문서**다 → 공급업체 자기 판매품목명·SKU 가 주(主),
-            // 구매자 내부명은 대조용 참고(부). 매핑이 없는 옛 발주·브랜드 판매자는 내부명만 나온다.
-            // (설계: docs/STOCK_ITEM_VS_SUPPLIER_PRODUCT_DESIGN.md ③-4)
+            // 이 문서는 **공급업체가 받는 문서**다 → 공급업체 자기 판매품목명·SKU 만 쓴다.
+            // 🔴 2026-08-31 Irene: "공급업체에게 보내는 건데 우리 이름 저장한 것까지 보낼 필요 있어?"
+            //   그전에는 이름이 다를 때 'Buyer ref: 우리내부명' 을 아래 줄에 병기했다. 받는 쪽엔
+            //   쓸모없고(자기 창고엔 그 이름이 없다) 우리 내부 명명 규칙만 노출된다 → 제거.
+            //   같은 원칙: 왓츠앱/메일 공유(utils/poShare) · 거래 인보이스 · 발주 알림 메일.
+            //   매핑 없는 라인(외부 판매자·옛 발주)만 내부명으로 폴백한다(빈칸 방지).
             const internalName = it.ingredient_name || it.ingredient?.name || it.description || `#${it.ingredient_id}`;
             const mainName = it.seller_product_name || internalName;
-            const showRef = !!it.seller_product_name && it.seller_product_name !== internalName;
             return (
               <tr key={it.id}>
-                <td>
-                  {mainName}
-                  {showRef && (
-                    <div style={{ fontSize: 11, color: '#6B7280' }}>
-                      {t('print.buyerRef', 'Buyer ref')}: {internalName}
-                    </div>
-                  )}
-                </td>
+                <td>{mainName}</td>
                 <td>{it.seller_product_sku || '—'}</td>
                 <td className="num">{formatQuantity(it.quantity_ordered)}</td>
                 <td>{it.unit || it.ingredient?.unit || ''}</td>
