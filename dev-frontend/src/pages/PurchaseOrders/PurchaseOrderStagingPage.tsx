@@ -11,7 +11,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { sharePoViaWhatsApp, sharePoViaEmail } from '../../utils/poShare';
+import { sharePoViaWhatsApp, sharePoViaEmail, isRealSupplierSku } from '../../utils/poShare';
 import { useNavigate } from 'react-router-dom';
 import { Container, Content } from '../../components/UI';
 import { Button } from '../../components/UI/Button';
@@ -450,7 +450,15 @@ const PurchaseOrderStagingPage: React.FC = () => {
         <ItemsBlock>
           {(po.items || []).map(it => (
             <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span>· {itemLabel(it)} × {formatQuantity(it.quantity_ordered)}{it.unit ? ` ${it.unit}` : ''} @ {parseFloat(it.unit_price).toFixed(2)}</span>
+              <span>
+                · <strong>{itemLabel(it)}</strong>
+                {/* 공급업체 실제 품목코드만 — 우리 자동채번(SP-…)은 받는 쪽이 모르는 번호라 숨긴다.
+                    판정은 단일 소스 utils/poShare.isRealSupplierSku (왓츠앱·메일과 같은 규칙). */}
+                {isRealSupplierSku(it.seller_product_sku) && (
+                  <span style={{ color: '#6B7280' }}> [{it.seller_product_sku}]</span>
+                )}
+                {' '}× {formatQuantity(it.quantity_ordered)}{it.unit ? ` ${it.unit}` : ''} @ {parseFloat(it.unit_price).toFixed(2)}
+              </span>
               <button type="button" onClick={() => removeItem(po.id, it.id)} title={t('staging.removeItem', 'Remove item') as string}
                 style={{ border: 'none', background: 'transparent', color: '#9CA3AF', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 4px' }}>×</button>
             </div>

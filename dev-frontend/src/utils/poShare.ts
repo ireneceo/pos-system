@@ -59,20 +59,38 @@ export interface SharePO {
  *   `bold()` 는 채널별로 다르다 — 왓츠앱은 `*..*`, 메일(mailto 평문)은 굵게가 없어 그대로 둔다.
  * (설계: docs/PURCHASE_ORDER_SYSTEM.md 발주 알림 메일 품목표 절)
  */
+/**
+ * 공급업체가 **실제로 쓰는 품목코드**인지 판정 — 단일 소스(화면·왓츠앱·메일이 같은 규칙).
+ *
+ * 🔴 2026-08-31 Irene: "여기에 나오는 리스트는 코드들 왜 없앴어?"
+ *   화면에서 뺀 적은 없었다(원래 없었다). 문제는 반대로 **왓츠앱에 쓸모없는 코드를 넣은 것**이었다.
+ *   실측: `SP-10-0011` 류는 **우리 시스템 자동 채번**이라 공급업체는 모르는 번호다.
+ *   진짜 공급업체 코드를 가진 곳은 LSH 뿐(61개 중 57개 · 예 `1100-013`, `2017-013`);
+ *   TaiYangFresh 36 / AIM 11 / Guan Kee 10 / Hokkaido 1 은 **실제코드 0개**.
+ *   → `SP-<숫자>-<숫자>` 패턴은 감춘다. 받는 쪽이 모르는 번호는 소음일 뿐이다.
+ */
+export function isRealSupplierSku(sku?: string | null): boolean {
+  if (!sku) return false;
+  return !/^SP-\d+-\d+$/i.test(sku.trim());
+}
+
 export function poItemLines(
   po: SharePO,
   formatQuantity: (q: any) => string,
   bold: (s: string) => string = (s) => s,
 ): string {
-  return (po.items || []).map((it, idx) => {
+  return (po.items || []).map((it) => {
     const internalName = it.product_name || it.ingredient_name || ('Item #' + it.ingredient_id);
     const mainName = it.seller_product_name || internalName;
     const qty = `${formatQuantity(it.quantity_ordered)}${it.unit ? ' ' + it.unit : ''}`;
     const price = parseFloat(String(it.unit_price)).toFixed(2);
     const lineTotal = (Number(it.quantity_ordered) * Number(it.unit_price)).toFixed(2);
-    const sku = it.seller_product_sku ? `  [${it.seller_product_sku}]` : '';
-    // 1행=품목명(굵게), 2행=수량·단가·소계. 이름이 다른 정보에 묻히지 않게 줄을 나눈다.
-    return `${idx + 1}. ${bold(mainName)}${sku}\n    ${qty} × ${price} = ${lineTotal}`;
+    const sku = isRealSupplierSku(it.seller_product_sku) ? `  [${it.seller_product_sku}]` : '';
+    // 🔴 2026-08-31 Irene(3차): "단위랑 단가를 2줄로 내렸어? 번호를 붙인거랑 줄이 이상하게
+    //   나열되서 보기 어렵잖아. 이럴거면 그냥 한줄이 낫겠어" → 번호·줄바꿈 철회, **한 줄**로 환원.
+    //   남기는 개선은 ①이름 굵게(원래 Irene 제안) ②단위 ③줄별 소계 ④머리말 품목 수.
+    //   교훈: 정보를 더 넣는 것보다 **한 줄에서 이름이 먼저 읽히는 것**이 중요했다.
+    return `- ${bold(mainName)}${sku}  ${qty} × ${price} = ${lineTotal}`;
   }).join('\n');
 }
 

@@ -13,7 +13,7 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
 import { formatQuantity, qtyStepForUnit } from '../../utils/unitConversion';
-import { sharePoViaWhatsApp, sharePoViaEmail } from '../../utils/poShare';
+import { sharePoViaWhatsApp, sharePoViaEmail, isRealSupplierSku } from '../../utils/poShare';
 import { formatDate } from '../../utils/timezone';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
@@ -1183,7 +1183,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                               {(it.seller_product_name || it.seller_product_sku) && (
                                 <div style={{ fontSize: 12, color: '#6B7280' }}>
                                   {it.seller_product_name || ''}
-                                  {it.seller_product_sku ? `${it.seller_product_name ? ' · ' : ''}SKU: ${it.seller_product_sku}` : ''}
+                                  {isRealSupplierSku(it.seller_product_sku) ? `${it.seller_product_name ? ' · ' : ''}SKU: ${it.seller_product_sku}` : ''}
                                 </div>
                               )}
                             </DataTableCell>

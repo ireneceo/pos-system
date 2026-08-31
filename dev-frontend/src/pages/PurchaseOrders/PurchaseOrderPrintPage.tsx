@@ -11,6 +11,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { formatQuantity } from '../../utils/unitConversion';
+import { isRealSupplierSku } from '../../utils/poShare';
 
 interface POItem {
   id: number;
@@ -333,7 +334,8 @@ const PurchaseOrderPrintPage: React.FC<PrintPageProps> = ({ forceSellerView = fa
             return (
               <tr key={it.id}>
                 <td>{mainName}</td>
-                <td>{it.seller_product_sku || '—'}</td>
+                {/* 우리 자동채번(SP-…)은 공급업체가 모르는 번호라 숨긴다 — utils/poShare 와 같은 규칙 */}
+                <td>{isRealSupplierSku(it.seller_product_sku) ? it.seller_product_sku : '—'}</td>
                 <td className="num">{formatQuantity(it.quantity_ordered)}</td>
                 <td>{it.unit || it.ingredient?.unit || ''}</td>
                 <td className="num">{formatMoney(it.unit_price, ccy)}</td>
