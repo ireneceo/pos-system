@@ -15,8 +15,12 @@
 > - **재부팅 필요 = 진짜.** 실행 커널 `6.8.0-134`인데 설치된 최신은 `6.8.0-138`.
 >   `/var/run/reboot-required.pkgs` = linux-image-136/137, linux-base, **libc6**.
 >   uptime **6주 6일**(2026-07-13 부팅).
-> - ⛔ **운영 재부팅·78개 일괄 upgrade 는 Irene 승인 없이 실행 금지.** 서비스 1~2분 중단 +
->   nginx/mysql/node 재시작 위험. 영업시간 외 권장.
+> - ✅ **Irene 결정(2026-08-31): "밤에 하자"** — 재부팅은 **영업 종료 후 야간**에 수행.
+>   ⛔ 낮/영업시간 실행 금지. 서비스 1~2분 중단.
+>   ⛔ **78개 일괄 upgrade 는 재부팅과 같이 하지 않는다** — nginx/mysql/node 재시작이 겹치면
+>   문제 생겼을 때 원인 분리가 안 된다. 별도 일정.
+>   실행 시 순서: ①`pm2 save` ②`sudo reboot` ③부팅 후 `pm2 list`·`curl /api/health`·프론트 200 확인
+>   ④`uname -r` 이 `6.8.0-138` 인지 확인 ⑤`/var/run/reboot-required` 사라졌는지 확인.
 > - 모니터 스크립트 위치: 운영 `/opt/security-monitor/{security-check,weekly-report,send-alert-email}.sh`
 >
 > **📌 매장 기기에서 1회 필요** — 새 주문 알림(order_new)은 코드가 나갔지만
@@ -58,7 +62,8 @@
 
 - **주문 알림 나머지 4종** — `order_status`·`kitchen_alert`·`staff_call`·`inventory_low` 는
   여전히 **죽은 토글**(설정에 보이지만 발신 코드 0곳). `order_new` 와 같은 방식으로 열 수 있다.
-- **운영서버 OS 패치·재부팅** — 위 🔔 참조. 승인·시간대 결정 필요.
+- **운영서버 OS 재부팅** — Irene "밤에 하자" 결정됨. 야간에 실행 + 부팅 후 확인 5단계(위 🔔).
+- **운영서버 78개 일괄 upgrade** — 재부팅과 분리. 일정 미정.
 - **매장 기기 푸시 구독** — 알림 허용 1회. 매장 안내 필요.
 - 환산비 4건 + 사람만 아는 값 6건 (Irene 회신 필요, ⛔ 자동 백필 금지)
 - 서버 min_order 강제 · B. 판매주문 매출·원가 리포트 · directIngredients 4곳 통합
