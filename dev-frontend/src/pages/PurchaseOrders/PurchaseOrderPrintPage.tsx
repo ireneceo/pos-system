@@ -61,8 +61,21 @@ const PrintRoot = styled.div`
   margin: 0 auto;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
+  /**
+   * 🔴 2026-08-31 Irene: "PDF도 다음 장 2번째 장부터 맨 위로 들러붙어. 여백이 들어가야 하는 거
+   *   아니야? 페이지 잘 나눠야지"
+   *   원인: 여백을 컨테이너 padding 으로만 줬다. padding 은 **첫 페이지 콘텐츠 박스에만** 걸려서
+   *   2페이지부터는 종이 맨 위에 붙는다. 종이 여백은 @page 의 margin 이 유일한 정답이다.
+   *   ⚠ 이 주석 안에 백틱을 쓰면 styled 템플릿 리터럴이 그 자리에서 닫혀 파일이 깨진다(실제로 겪음).
+   */
+  @page {
+    size: A4;
+    margin: 14mm 12mm;
+  }
+
   @media print {
-    padding: 16px;
+    /* 여백은 @page 가 준다. 여기서 padding 을 또 주면 첫 장만 더 들어가 어긋난다. */
+    padding: 0;
     max-width: 100%;
     margin: 0;
   }
@@ -120,6 +133,15 @@ const Table = styled.table`
   th, td { padding: 10px 12px; border-bottom: 1px solid #C7CED6; text-align: left; }
   th { background: #F9FAFB; font-weight: 600; color: #4B5563; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
   td.num, th.num { text-align: right; font-feature-settings: 'tnum'; }
+
+  /* 2026-08-31 — 여러 장으로 넘어갈 때 읽을 수 있게.
+     ①머리글을 매 장 반복(2장부터 무슨 칸인지 모르던 것) ②한 품목 줄이 장 경계에서 잘리지 않게. */
+  @media print {
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { break-inside: avoid; page-break-inside: avoid; }
+    th { background: #F9FAFB !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
 `;
 
 const Totals = styled.div`
@@ -131,6 +153,9 @@ const Totals = styled.div`
   }
   & .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
   & .row.total { border-top: 2px solid #0A2540; padding-top: 8px; margin-top: 8px; font-size: 16px; font-weight: 700; }
+
+  /* 합계 블록이 장 경계에서 쪼개지면 금액을 못 읽는다 — 통째로 다음 장으로 넘긴다. */
+  @media print { break-inside: avoid; page-break-inside: avoid; }
 `;
 
 const NoPrint = styled.div`

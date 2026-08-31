@@ -67,10 +67,17 @@ export async function renderIframeToPdf(iframe: HTMLIFrameElement, filename: str
     windowHeight: contentHeight
   });
 
-  const imgWidthMm = 210; // A4 width
-  const pageHeightMm = 297; // A4 height
+  // 🔴 2026-08-31 Irene: "PDF도 다음 장 2번째 장부터 맨 위로 들러붙어. 여백이 들어가야 하는 거
+  //   아니야? 페이지 잘 나눠야지"
+  //   원인: 이미지를 (0,0) 에 A4 폭 그대로 얹어서 **모든 장의 여백이 0** 이었다. 화면의 CSS padding 은
+  //   캡처 이미지 안에 들어가므로 1장 위쪽에만 보이고, 2장부터는 잘린 지점이 곧 종이 맨 위가 된다.
+  //   → 종이 여백을 PDF 배치 단계에서 준다. 폭도 여백만큼 줄여야 좌우가 잘리지 않는다.
+  const PAGE_W_MM = 210, PAGE_H_MM = 297;      // A4
+  const MARGIN_X_MM = 12, MARGIN_Y_MM = 14;    // 종이 여백(모든 장 공통)
+  const imgWidthMm = PAGE_W_MM - MARGIN_X_MM * 2;   // 실제 그림 폭 186mm
+  const usableHeightMm = PAGE_H_MM - MARGIN_Y_MM * 2; // 한 장에 담기는 높이 269mm
   const mmPerPx = imgWidthMm / canvas.width;
-  const pageHeightPx = Math.floor(pageHeightMm / mmPerPx);
+  const pageHeightPx = Math.floor(usableHeightMm / mmPerPx);
   const safetyMarginPx = Math.floor(40 / mmPerPx); // ~40mm scan window
 
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -79,7 +86,7 @@ export async function renderIframeToPdf(iframe: HTMLIFrameElement, filename: str
   // Single-page fast path
   if (!ctx || canvas.height <= pageHeightPx) {
     const imgData = canvas.toDataURL('image/png');
-    pdf.addImage(imgData, 'PNG', 0, 0, imgWidthMm, canvas.height * mmPerPx);
+    pdf.addImage(imgData, 'PNG', MARGIN_X_MM, MARGIN_Y_MM, imgWidthMm, canvas.height * mmPerPx);
     pdf.save(filename);
     return;
   }
@@ -115,11 +122,12 @@ export async function renderIframeToPdf(iframe: HTMLIFrameElement, filename: str
     );
 
     if (pageIndex > 0) pdf.addPage();
+    // 모든 장에 동일한 여백을 준다 — 2장부터 종이 맨 위에 붙던 것의 실제 수정 지점.
     pdf.addImage(
       pageCanvas.toDataURL('image/png'),
       'PNG',
-      0,
-      0,
+      MARGIN_X_MM,
+      MARGIN_Y_MM,
       imgWidthMm,
       sliceHeight * mmPerPx
     );

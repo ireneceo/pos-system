@@ -48,29 +48,52 @@ export interface SharePO {
  *
  * 단위도 함께 싣는다 — Irene: *"인보이스랑 모든 곳에 다 단위 따라다녀야"*.
  * 수량만 있고 단위가 없으면 받는 쪽이 5개인지 5kg인지 알 수 없다.
+ *
+ * 🔴 2026-08-31 Irene(2차): *"왓츠앱으로 주는 형태가 보기가 너무 어려운데. 공급업체가 체크하고
+ *   주문 내역대로 정리하기 어려울 것 같아. 몇개인지도 모르겠고 … 이름 옆에도 내용이 따라 붙어서
+ *   이름이 잘 안보이는데 이름만 굵게하는 건 어때?"*
+ *   그전엔 한 줄에 이름·SKU·수량·단가를 다 붙여 이름이 묻혔고, 품목이 몇 개인지도 셀 수 없었다.
+ *   (매장은 이 화면 대신 **캡처를 보내는 게 더 낫다**고 느끼고 있었다 — 그게 실패 신호였다.)
+ *   → ①품목명 **굵게**(WhatsApp `*bold*`) ②이름과 수량을 **줄 분리** ③**번호 매김**(받는 쪽이
+ *     하나씩 체크하며 담을 수 있게) ④줄마다 **소계** ⑤머리말에 **품목 수** 명시.
+ *   `bold()` 는 채널별로 다르다 — 왓츠앱은 `*..*`, 메일(mailto 평문)은 굵게가 없어 그대로 둔다.
  * (설계: docs/PURCHASE_ORDER_SYSTEM.md 발주 알림 메일 품목표 절)
  */
-export function poItemLines(po: SharePO, formatQuantity: (q: any) => string): string {
-  return (po.items || []).map((it) => {
+export function poItemLines(
+  po: SharePO,
+  formatQuantity: (q: any) => string,
+  bold: (s: string) => string = (s) => s,
+): string {
+  return (po.items || []).map((it, idx) => {
     const internalName = it.product_name || it.ingredient_name || ('Item #' + it.ingredient_id);
     const mainName = it.seller_product_name || internalName;
-    const sku = it.seller_product_sku ? ` [${it.seller_product_sku}]` : '';
-    const unit = it.unit ? ` ${it.unit}` : '';
-    return `- ${mainName}${sku} x ${formatQuantity(it.quantity_ordered)}${unit} @ ${parseFloat(String(it.unit_price)).toFixed(2)}`;
+    const qty = `${formatQuantity(it.quantity_ordered)}${it.unit ? ' ' + it.unit : ''}`;
+    const price = parseFloat(String(it.unit_price)).toFixed(2);
+    const lineTotal = (Number(it.quantity_ordered) * Number(it.unit_price)).toFixed(2);
+    const sku = it.seller_product_sku ? `  [${it.seller_product_sku}]` : '';
+    // 1행=품목명(굵게), 2행=수량·단가·소계. 이름이 다른 정보에 묻히지 않게 줄을 나눈다.
+    return `${idx + 1}. ${bold(mainName)}${sku}\n    ${qty} × ${price} = ${lineTotal}`;
   }).join('\n');
 }
 
-/** WhatsApp 발송 — 판매자 번호가 있으면 그 번호로, 없으면 연락처 선택 화면으로. */
+/**
+ * WhatsApp 발송 — 판매자 번호가 있으면 그 번호로, 없으면 연락처 선택 화면으로.
+ * WhatsApp 은 `*텍스트*` 를 굵게 렌더한다 → 품목명·합계를 굵게 해 스캔이 쉽게.
+ */
 export function sharePoViaWhatsApp(po: SharePO, formatQuantity: (q: any) => string): void {
   const cur = po.currency || 'MYR';
+  const b = (s: string) => `*${s}*`;
+  const count = (po.items || []).length;
   const text = encodeURIComponent(
-    `[Purchase Order ${po.po_number || '#' + po.id}]\n` +
-    `${po.seller?.name ? 'Supplier: ' + po.seller.name + '\n' : ''}\n` +
-    `Items:\n${poItemLines(po, formatQuantity) || '(none)'}\n\n` +
-    `Total: ${cur} ${parseFloat(String(po.total_amount || '0')).toFixed(2)}\n` +
-    `${po.expected_delivery_date ? 'Expected delivery: ' + po.expected_delivery_date + '\n' : ''}` +
-    `${po.delivery_address ? 'Deliver to: ' + po.delivery_address + '\n' : ''}` +
-    `\nPlease confirm this order.`
+    `${b('PURCHASE ORDER')}\n` +
+    `${po.po_number || '#' + po.id}\n` +
+    `${po.seller?.name ? po.seller.name + '\n' : ''}` +
+    `\n${b(`Items (${count})`)}\n` +
+    `${poItemLines(po, formatQuantity, b) || '(none)'}\n\n` +
+    `${b(`TOTAL: ${cur} ${parseFloat(String(po.total_amount || '0')).toFixed(2)}`)}\n` +
+    `${po.expected_delivery_date ? '\nExpected delivery: ' + po.expected_delivery_date : ''}` +
+    `${po.delivery_address ? '\nDeliver to: ' + po.delivery_address : ''}` +
+    `\n\nPlease confirm this order.`
   );
   const phone = po.seller?.phone ? po.seller.phone.replace(/\D/g, '') : '';
   window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
@@ -83,7 +106,7 @@ export function sharePoViaEmail(po: SharePO, formatQuantity: (q: any) => string)
   const body = encodeURIComponent(
     `Dear ${po.seller.name},\n\nWe would like to place a purchase order:\n\n` +
     `PO #: ${po.po_number || po.id}\n\n` +
-    `Items:\n${poItemLines(po, formatQuantity) || '(none)'}\n\n` +
+    `Items (${(po.items || []).length}):\n${poItemLines(po, formatQuantity) || '(none)'}\n\n` +
     `Total: ${po.currency || 'MYR'} ${parseFloat(String(po.total_amount || '0')).toFixed(2)}\n` +
     `${po.expected_delivery_date ? 'Expected: ' + po.expected_delivery_date + '\n' : ''}` +
     `${po.delivery_address ? 'Deliver to: ' + po.delivery_address + '\n' : ''}` +
