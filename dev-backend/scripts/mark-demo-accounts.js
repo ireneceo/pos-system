@@ -96,8 +96,29 @@ async function main() {
     const realRestIdsDerived = derived(realRestIdsSql, '_rr');
 
     // 1. Users
-    // REAL accounts — username 화이트리스트 OR 실매장 소속 직원
-    await seq.query(`UPDATE users SET is_demo = false, is_test = false WHERE username IN (${realList}) OR restaurant_id IN (${realRestIdsSql})`);
+    // REAL accounts — username 화이트리스트 OR 실매장 소속 직원 OR **실브랜드 운영자**
+    //
+    // 2026-08-31 Irene: "배포할 때 운영서버가 알아서 해?"
+    //   그때까지 두 축이 **비대칭**이었다 — 매장 축은 여기(REAL 절)에 있어 이미 찍힌 is_test 를
+    //   배포 때 자동으로 풀어 줬는데(실증: 오늘 배포에서 K-DINE IPC 직원 r8:Wai·r8:James 가 저절로 복구),
+    //   브랜드 축은 아래 TEST 절의 **제외 조건에만** 있어서 "새로 안 찍는다"까지였고
+    //   **이미 찍힌 것을 푸는 경로가 없었다.** 그래서 K-DINE Brand·thefire 는 사람이 손으로 고쳐야 했다.
+    //   → 두 축을 대칭으로 맞춘다. 이제 배포가 알아서 복구한다(수동 DB 쓰기 불필요).
+    //
+    // 안전 근거: 판정 기준이 `is_real_customer` 뿐이고 **이 스크립트는 그 컬럼을 절대 쓰지 않는다**.
+    //   값은 마이그레이션(migrate-real-customer-flag.js)의 큐레이트된 시드로만 세워진다 —
+    //   즉 폭발 반경 = "사람이 실고객이라고 명시한 브랜드에 배정되었거나 그 브랜드를 소유한 계정"뿐이고,
+    //   이미 자동 복구되고 있는 매장 축과 **신뢰 근거가 동일**하다.
+    // ⛔ 그래서 여기에 "test 인 것을 전부 real 로" 같은 넓은 복원은 절대 넣지 않는다 —
+    //    그건 진짜 시험 계정에 실메일이 나가는 역방향 사고다.
+    const realBrandMemberSql = haveBrandCol
+      ? `(brand_id IS NOT NULL AND brand_id IN (${REAL_BRANDS_SQL}))
+         OR id IN (SELECT owner_id FROM brands WHERE owner_id IS NOT NULL AND is_real_customer = 1)`
+      : '0';
+    await seq.query(`UPDATE users SET is_demo = false, is_test = false
+      WHERE username IN (${realList})
+         OR restaurant_id IN (${realRestIdsSql})
+         OR (${realBrandMemberSql})`);
     // DEMO accounts
     await seq.query(`UPDATE users SET is_demo = true, is_test = false WHERE username IN (${demoList})`);
     // 브랜드 축 제외 조건 (2026-08-31 신설) — 실브랜드를 운영하는 사람을 test 로 뒤집지 않는다.
