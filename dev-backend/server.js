@@ -677,6 +677,18 @@ async function startServer() {
     app.set('io', io);
     module.exports.io = io;
 
+    // 새 주문 푸시(order_new) — Order afterCreate 훅 1회 등록.
+    // 🔒 인쇄 보호파일(orders-crud.js)을 건드리지 않으려고 라우트가 아니라 모델에 건다.
+    //    트랜잭션이면 afterCommit 에서만 발화하고, await 하지 않으며, 오류를 삼킨다
+    //    — 알림이 주문 생성 경로를 절대 방해하지 않는다. 상세=services/orderNotificationService.js
+    try {
+      const { installOrderHooks } = require('./services/orderNotificationService');
+      const Order = require('./models/Order');
+      console.log(installOrderHooks(Order) ? '✓ Order 알림 훅 등록(order_new)' : '· Order 알림 훅 이미 등록됨');
+    } catch (e) {
+      console.warn('⚠️ Order 알림 훅 등록 실패(주문 처리에는 영향 없음):', e.message);
+    }
+
     // Start invoice scheduler
     invoiceScheduler.start();
 

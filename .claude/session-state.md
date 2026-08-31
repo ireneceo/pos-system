@@ -7,7 +7,17 @@
 > Irene 원문: *"알림 신경쓰지 말고 제대로 해결해줘. 그나저나 관리자가 등록되면 알림이 둘다 가는 거 맞아?
 > 알림을 받을지 말지 스탭들 설정도 없지? 주문 받으면 관리하는 것 때문에"*
 >
-> **🔴 막힌 것 2건 — Irene 결정 필요**
+> **✅ 막혔던 2건 중 1건 해소**
+> - 인쇄 보호파일 게이트 = **해제 완료**(bless). 근거: 인쇄영역(900~1500행) sha256 이전=현재 동일 +
+>   그 hunk 제외 시 파일 전체 동일 → 인쇄 무접촉 증명. `verify-all --full` **16/16**.
+> - 운영 2행 UPDATE = **여전히 권한 정책 차단**. 운영서버 세션용 인수인계 프롬프트를
+>   `.claude/handoff-prod-is-test-fix.md` 에 작성해 뒀다(대상 id·금지사항·검증 숫자 34→32 포함).
+>
+> **📌 배포 시점 판단(Opus)**: 지금 나가는 게 맞다 — 매장이 실제로 겪는 문제(알림 미수신·관리자 누락)가
+> 들어 있고 미배포 묶음이 이미 크다(발주 메일·알림 수신자·fetchDedupe). 단 **영업시간은 피한다**
+> (SW 4.65 로 매장 기기가 한 번 새로고침됨). 인쇄·주문 경로 무접촉이라 위험 자체는 낮다.
+>
+> **~~막힌 것 2건~~ (이력)**
 > 1. **인쇄 보호파일 게이트** — T3 가 `MainLayout.tsx`(보호 8파일 중 하나)를 건드려 print-guard 실패.
 >    `verify-all --full` = **2/16 게이트 실패(print-guard + health), 나머지 전부 통과**(health 182/183,
 >    mount sweep 650.6s 크래시 0, 인쇄 라우트 가드 통과, i18n 0).
@@ -17,7 +27,17 @@
 > 2. **운영 2행 UPDATE 가 권한 정책(classifier)에 막힘** — `users` id 11·29 `is_test=1→0`.
 >    DRY-RUN 은 통과(대상 정확히 2행 확인). **우회 시도하지 않았다.**
 >
-> **📌 Fable 사용 한도 소진** — 이후 판단은 받지 못했다. T1-a v2 는 지시가 확정 절단면이라 구현 완료.
+> **📌 Fable 사용 한도 소진** — Irene 지시("fable 없이 너가 제대로 해")로 **이후 판정은 Opus 가 수행**.
+> 게이트 마커도 `Opus 판정 (Fable 한도 소진 · Irene 지시)` 로 사실대로 기록했다 — Fable 판정으로 위장하지 않았다.
+> 판정 근거 4종: ①diff 전수 대조(범위 밖 0) ②고장주입 반증 3종 ③실호출·실브라우저 ④배포 안전성.
+>
+> **🔎 3번(실주소 is_test 계정 9건)은 조치 불요로 종결** — Irene 지적("정해져있는 테스트 계정
+> 확인이 안돼? 시스템관리자에 다 있는데?")이 옳았고 내가 물을 게 아니라 확인했어야 했다.
+> 기준 = `services/authService.js:804` `DEMO_KEY_TO_EMAIL` 지정 10개(데모5+테스트5).
+> 9건 실측: 전부 **데모/시험 매장 소속 + 주문 0건**(lualua·lua_test·Seoul Table Kitchen·K-Bowl House·
+> Bamboo Garden Café·K-dine with.MIN, 또는 매장 없음). **표시가 맞다. 잘못 붙은 건 브랜드 계정 2개뿐.**
+> 참고: 운영 매장 5 `The Fire Korean Restaurant`(주문 335건)이 is_test=1 인 것은
+> 2026-06-28 Irene 확정("#5 는 정체불명이라 제외") — 재논의 금지. 로그인 카드 "300+ orders for testing" 이 이 매장.
 >
 > **✅ dev 완료 3건 (커밋 전)**
 > - **T2 수신자 리졸버 단일화** — `getRestaurantAdminAndOwnerIds` 신설 + 6곳 교체.
@@ -59,8 +79,21 @@
 >   ⛔ 방향을 잘못 뒤집으면 시험 계정에 실메일이 나가는 역방향 사고 — Irene 확인 필요.
 >   (`kdine_admin`·`kdine_staff` 의 is_test=1 은 **demo-login 가드 통과에 필요** — 건드리지 말 것.)
 >
-> **🔴 미구현 — Irene 컨펌 대기 (Fable 권고 = 구현 진행)**
-> **주문 알림(`order_new` 등)은 존재하지 않는다.** `order_new`/`order_status`/`kitchen_alert`/
+> **✅ 주문 알림(`order_new`) 구현 완료 (2026-08-31, Irene "1번 하고")**
+> `services/orderNotificationService.js` 신설 + `server.js` 부팅 시 `Order.afterCreate` 훅 1회 등록.
+> 🔒 **라우트가 아니라 모델 훅인 이유**: 주문 생성 emit 은 `orders-crud.js:997`(POS)·`mobile-orders.js:527`
+> 두 곳인데 **orders-crud.js 가 인쇄 보호파일**이다. 인쇄 생명선을 인쇄 무관한 이유로 건드리지 않으려고
+> 저장 지점 한 곳에 붙였다 — POS·모바일·향후 경로까지 자동으로 덮인다.
+> 안전장치 3: ①트랜잭션이면 `afterCommit` 에서만 발화(롤백 시 유령 알림 0) ②`await` 안 함(주문 응답 무지연)
+> ③오류 전량 삼킴(알림 실패가 주문 실패로 번지지 않음).
+> **실발화 증명 5/5**: 일반주문 1회(`#번호 · Table 7 · 42.50`) / 트랜잭션 커밋 1회 / **롤백 0회** /
+> 취소상태 생성 0회 / **푸시 고장주입해도 주문 생성 성공**. 잔재 0.
+> **개인설정 게이트 HTTP 왕복 3/3**: 기본 통과 → `order_new` 끄면 `category_off` 차단 → 다시 켜면 통과, 원복 null.
+> ⚠ 기기마다 브라우저 알림 허용 1회 필요(현재 dev 구독 1대) — 배포 후 매장 기기에서 켜야 실제 도달.
+> 나머지 4종(`order_status`·`kitchen_alert`·`staff_call`·`inventory_low`)은 **여전히 죽은 토글** — 다음 단계.
+>
+> **~~미구현~~ (해결됨) — 착수 전 사실 기록:**
+> **주문 알림(`order_new` 등)은 존재하지 않았다.** `order_new`/`order_status`/`kitchen_alert`/
 > `staff_call`/`inventory_low` 5종은 `notification-settings.js` 에 `push_only:true` 로 **정의만** 돼 있고
 > **발신 코드가 저장소에 0곳**이다(설정 화면 토글은 보이지만 평생 안 온다).
 > 실제 발신자가 있는 push 는 예약 3종뿐(`services/reservationNotificationService.js:68,92`).
