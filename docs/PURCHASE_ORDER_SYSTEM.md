@@ -1173,8 +1173,18 @@ draft ──submit──▶ (오너승인 ON & 오너연결) pending_approval �
 그전에는 발주번호·구매자·총액·상태만 있어서 받는 쪽이 화면에 들어가야 뭘 주문했는지 알 수 있었다.
 
 - `utils/poEmailItems.js` (신규) — 알림 경로 전용 로더. **절대 throw 하지 않는다**(실패 시 빈 배열).
-  표시명 = `ingredient.name` → `productIngredient.name` → `description`.
-  (`IngredientSellerProduct` 에는 이름 컬럼이 없어 판매자 상품명은 못 쓴다.)
+  ~~표시명 = `ingredient.name` → `productIngredient.name` → `description`~~ **(2026-08-31 뒤집힘)**
+
+  🔴 **2026-08-31 변경 — 공급업체에 나가는 문서는 공급업체 상품명을 쓴다.**
+  Irene: *"공급업체에 보내는 건 우리 표시이름은 없어도 되지 않아? … 인보이스는 모두 공급업체에
+  보내는 건 모두 공급업체 상품표시"*
+  메일은 **공급업체가 받는 문서**라 그쪽 판매품목명이 주인공이다. 우리 내부 재고명은 싣지 않는다.
+  표시명 = **`seller_product_name`** → (매핑 없을 때만) `ingredient.name` → `productIngredient.name` → `description`.
+  해석은 단일 소스 `utils/sellerProductIdentity` 경유 — 화면·인쇄본·인보이스와 같은 답을 내야 한다.
+  (위 괄호의 "판매자 상품명은 못 쓴다"는 **틀린 서술이었다** — 이름 컬럼이 링크 테이블에 없을 뿐,
+  `ingredient_seller_product_id` → `seller_type` 으로 다리를 나눠 `supplier_products`/`brand_products`
+  에서 read-time 조인하면 나온다. 이름은 실제로 다르다: 우리 `Beef Rib` ↔ 공급업체 `Australian Beef Rib`.)
+  같은 라인의 **단위**(`purchase_order_items.unit`)도 함께 실린다.
 - `utils/notificationTemplates.js` `poItemsTable(items, currency, poTotal)` —
   `sellerOrderReceivedEmail` · `poApprovalPendingEmail` 에 **`items` optional** 인자.
   **안 넘기면 기존과 동일 출력**(계약 불변, 실측 확인).

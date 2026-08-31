@@ -93,6 +93,46 @@
 
 ---
 
+## 1-9. 실고객 표시 `is_real_customer` (2026-08-31 신설) — **배포 자동 마킹의 화이트리스트**
+
+매 운영 배포는 `scripts/mark-demo-accounts.js` 를 돌려(`deploy-to-production.sh:582`)
+**"명단에 없으면 전부 test"**(deny-by-default) 로 계정·매장·브랜드를 분류한다.
+그 명단이 **스크립트 안에 하드코딩된 이름·id 목록**이던 것이 반복 사고의 뿌리였다:
+
+- 2026-06-28 — 매장 축 누락 → `thefire` 매장이 매 배포 test 로 재마킹돼 **공지 미수신**
+- 2026-08-31 — 브랜드 축 누락 → 실브랜드 운영자(`K-DINE Brand`·`thefire`)가 매 배포 `is_test=1` 로
+  재마킹 → 알림 관문(`notificationService` 1-a2)에서 **조용히 누락**. 실주소(`irene@gitconsulting.group`)인데도.
+
+### 조치 — 명단을 DB 로 옮겼다
+
+| | |
+|---|---|
+| 컬럼 | `brands.is_real_customer` · `restaurants.is_real_customer` (TINYINT(1) DEFAULT 0) |
+| 세우는 곳 | `scripts/migrate-real-customer-flag.js` (registry `deploy`, 멱등 시드) |
+| 읽는 곳 | `scripts/mark-demo-accounts.js` — **읽기만 하고 절대 쓰지 않는다** |
+
+🔴 **"읽기만"이 지속성의 근거다.** 1차 시도는 판정 근거를 브랜드의 `is_demo/is_test` 로 삼았는데,
+같은 스크립트의 brands 절이 매 실행 그 근거를 지워서 **1회차는 유지, 2회차에 재발**했다(리허설로 적발).
+
+### 두 축은 대칭이다 (2026-08-31 10:03 배포)
+
+`mark-demo-accounts` 의 REAL 절이 **이미 찍힌 `is_test` 를 자동으로 푼다** — 세 축 모두:
+
+1. `REAL_USERNAMES` 화이트리스트 (플랫폼 계정)
+2. `restaurant_id IN (is_real_customer=1 매장)`
+3. **`brand_id IN (is_real_customer=1 브랜드)` OR 그 브랜드의 `owner_id`** ← 2026-08-31 추가
+
+3번이 없던 동안 브랜드 운영자는 사람이 손으로 고쳐야 했다(Irene: *"배포할 때 운영서버가 알아서 해?"*).
+지금은 **새 실고객이 생기면 DB 에서 `is_real_customer=1` 만 세우면 되고, 스크립트는 고치지 않는다.**
+
+⛔ **"test 인 것을 전부 real 로" 같은 넓은 복원은 넣지 않는다** — 진짜 시험 계정에 실메일이 나가는
+역방향 사고다. 복원 범위는 위 3축으로만 한정한다.
+
+⛔ **지정 데모/테스트 계정 10개**(`services/authService.js:804` `DEMO_KEY_TO_EMAIL`)의 표시는 건드리지 말 것 —
+`is_demo` OR `is_test` 여야 demo-login 가드를 통과한다. 풀면 로그인 페이지 quick-login 이 깨진다.
+
+---
+
 ## 2. is_demo / is_test 플래그 체계 (2026-03-18 분리)
 
 ### 이원 플래그

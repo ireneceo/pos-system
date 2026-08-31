@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-08-31 (**v3.80 유지 · dev 완료·미배포**). Irene 지시: *"알림 신경쓰지 말고 제대로 해결해줘. 그나저나 관리자가 등록되면 알림이 둘다 가는 거 맞아? 알림을 받을지 말지 스탭들 설정도 없지?"* ①**인보이스 알림이 관리자에게 안 가던 것 근본수정** — "이 매장 관리자가 누구인가"를 푸는 코드가 4갈래(같은 raw SQL 5곳 복제 + `restaurants.admin_id` 단일컬럼 + 오너만 + 작성자)로 갈려 있었고, 그중 인보이스 발행 알림만 옛 `admin_id` 컬럼을 읽었다. 실측: 관리자 2명인 매장은 1명만, `admin_id` 가 빈 매장 2곳은 **관리자 전원 누락**, 1곳은 **남의 매장 관리자(23번)** 에게 발송. `getRestaurantAdminAndOwnerIds` 신설 + 6곳 통일(고장주입 반증 5/5). ②**직원이 알림 설정을 못 찾던 것** — 개인 설정인데 사이드바 진입이 매장 `settings` 메뉴권한에 묶여 Staff 16명 중 1명만 보였다. 전원 노출 + 라벨 `시스템 설정`→`알림`(4언어 기존 키). ③**실고객 표시가 배포마다 뒤집히던 근본 구조 전환** — `deploy-to-production.sh:582` 가 매 배포 실행하는 `mark-demo-accounts.js` 의 제외 축이 username 목록과 매장 ID 둘뿐이라, 매장에 속하지 않는 **브랜드 운영자가 매번 `is_test=1` 로 재마킹**돼 알림 관문 1-a2 에서 조용히 빠졌다(2026-06-28 thefire 공지 미수신 사고와 같은 계열 — 그때 매장 축만 막음). 하드코딩 명단을 **DB 컬럼 `is_real_customer`(스크립트가 읽기만 하고 쓰지 않는 자리)** 로 이전 — 1차 시도(브랜드 플래그 근거)는 같은 스크립트의 brands 절이 근거를 지워 **2회차에 재발**했고, 리허설이 그걸 잡았다. 최종 리허설 **5/5**(고장재현·1회차·**연속 3회 지속**·역방향 안전·자기소거 없음). ④**주문 알림은 존재하지 않음을 발견** — `order_new`·`order_status`·`kitchen_alert`·`staff_call`·`inventory_low` 5종이 설정 화면에 토글만 있고 **발신 코드 0곳**(푸시 기반시설은 완비, 예약 3종만 실사용). **미구현 — Irene 컨펌 대기.** ⑤SW 4.64→4.65(운영과 동일해 프론트 변경이 캐시 기기에 안 갈 뻔). 상세=`.claude/session-state.md`.
+> **최종 업데이트:** 2026-08-31 #2 (**v3.80 유지 — Irene "버전 올릴 필요없어" · 운영 배포 4회 완료**). ⑥**발주·인보이스에 단위가 숫자를 따라다니게** + **공급업체에 나가는 문서는 공급업체 상품명**(우리 내부명 제거) + staging **표시방법 토글**(공급업체 상품명/우리 재고명) + **합계바 하단 고정**. 덤으로 `invoice_items.quantity` 가 정수라 kg·g 발주(2.5kg)가 인보이스에서 **2로 깎일** 잠재결함을 소수로 확장(금액 무영향 확인). ⑦**실브랜드 운영자를 배포가 자동 복구**하도록 매장 축과 대칭화 — Irene "배포할 때 운영서버가 알아서 해?" 질문으로 발견. 그전엔 브랜드 축에 "이미 찍힌 것을 푸는 경로"가 없어 사람이 손으로 고쳐야 했다. 운영 결과 `is_test` 32→30(대상 2계정), 수동 조치 대기 0. ⑧SW 4.64→4.66.
+>
+> **이전:** 2026-08-31 #1 (**v3.80 유지 · 운영 배포 완료**). Irene 지시: *"알림 신경쓰지 말고 제대로 해결해줘. 그나저나 관리자가 등록되면 알림이 둘다 가는 거 맞아? 알림을 받을지 말지 스탭들 설정도 없지?"* ①**인보이스 알림이 관리자에게 안 가던 것 근본수정** — "이 매장 관리자가 누구인가"를 푸는 코드가 4갈래(같은 raw SQL 5곳 복제 + `restaurants.admin_id` 단일컬럼 + 오너만 + 작성자)로 갈려 있었고, 그중 인보이스 발행 알림만 옛 `admin_id` 컬럼을 읽었다. 실측: 관리자 2명인 매장은 1명만, `admin_id` 가 빈 매장 2곳은 **관리자 전원 누락**, 1곳은 **남의 매장 관리자(23번)** 에게 발송. `getRestaurantAdminAndOwnerIds` 신설 + 6곳 통일(고장주입 반증 5/5). ②**직원이 알림 설정을 못 찾던 것** — 개인 설정인데 사이드바 진입이 매장 `settings` 메뉴권한에 묶여 Staff 16명 중 1명만 보였다. 전원 노출 + 라벨 `시스템 설정`→`알림`(4언어 기존 키). ③**실고객 표시가 배포마다 뒤집히던 근본 구조 전환** — `deploy-to-production.sh:582` 가 매 배포 실행하는 `mark-demo-accounts.js` 의 제외 축이 username 목록과 매장 ID 둘뿐이라, 매장에 속하지 않는 **브랜드 운영자가 매번 `is_test=1` 로 재마킹**돼 알림 관문 1-a2 에서 조용히 빠졌다(2026-06-28 thefire 공지 미수신 사고와 같은 계열 — 그때 매장 축만 막음). 하드코딩 명단을 **DB 컬럼 `is_real_customer`(스크립트가 읽기만 하고 쓰지 않는 자리)** 로 이전 — 1차 시도(브랜드 플래그 근거)는 같은 스크립트의 brands 절이 근거를 지워 **2회차에 재발**했고, 리허설이 그걸 잡았다. 최종 리허설 **5/5**(고장재현·1회차·**연속 3회 지속**·역방향 안전·자기소거 없음). ④**주문 알림은 존재하지 않음을 발견** — `order_new`·`order_status`·`kitchen_alert`·`staff_call`·`inventory_low` 5종이 설정 화면에 토글만 있고 **발신 코드 0곳**(푸시 기반시설은 완비, 예약 3종만 실사용). **미구현 — Irene 컨펌 대기.** ⑤SW 4.64→4.65(운영과 동일해 프론트 변경이 캐시 기기에 안 갈 뻔). 상세=`.claude/session-state.md`.
 >
 > **이전:** 2026-08-30 #3 (**v3.80 유지 — 배포 5회 전부 버전 미상승, Irene 지시**). ⑨**브랜드 상품도 kg·g 로 발주**(직렬화 3곳이 브랜드 규격을 읽고도 버리던 것 + `order_mode` 미수용 실결함 수정, 왕복 E2E 2.5kg→RM75→재고+2500g) ⑩**수동 인쇄 매장의 헛경고 제거** — `needs_print` 는 주문 생성 시 설정과 무관하게 켜지고 폴러만 끄므로 자동인쇄 끈 매장은 무한 적체인데, 진단 S3 만 그걸 몰라 영구 경고를 냈다(운영 2,098건·세 매장 전부 꺼짐). 인쇄 동작 무접촉(print-guard 8/8) ⑪**미분류 202→121건**(용기어·세제어 우선 규칙 — 표본에서 실제 오분류 2건을 잡아 규칙 추가) ⑫🔴 **BG 프로브가 실브랜드에 쓸 뻔한 것 차단** — 운영 `with MIN`·`The Fire` BG 계정에 `is_test=1` 이 잘못 붙어 있었다. 판정을 소속 브랜드 `is_demo` 로 교체.
 >
@@ -9042,6 +9044,35 @@ hydration 게이트가 **메뉴 수정 저장 시 재고가 0 으로 날아가�
 - `dev-backend/scripts/migrate-{brand-unit-order, category-fill-wave2-20260830}.js` (신규)
 - `dev-frontend/src/pages/BrandProductManagement/BrandProductsTab.tsx` · `locales/*/brand.json`
 - `docs/PURCHASE_ORDER_SYSTEM.md` (3단계 전제 정정)
+
+---
+
+## ✅ 완료: 알림 수신자 정상화 + 발주·인보이스 단위/공급업체명 (2026-08-31)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 관리자 알림 누락 근본수정 | "이 매장 관리자가 누구인가"가 4갈래로 갈려 있었고, 인보이스 발행 알림만 옛 `restaurants.admin_id` 단일 컬럼을 읽었다. 관리자 2명 매장은 1명만, admin_id 결손 매장 2곳은 관리자 전원 누락, 1곳은 **남의 매장 관리자**에게 발송. `getRestaurantAdminAndOwnerIds` 신설 + 6곳 통일 | ✅ 완료 |
+| 직원 알림설정 진입점 | 개인 설정인데 사이드바가 매장 `settings` 메뉴권한에 묶여 Staff 16명 중 1명만 보였다. 전원 노출 + 라벨 `시스템 설정`→`알림` | ✅ 완료 |
+| 실고객 표시 구조 전환 | 배포마다 도는 `mark-demo-accounts` 가 브랜드 운영자를 매번 `is_test=1` 로 재마킹 → 알림에서 조용히 누락. 하드코딩 명단을 **DB 컬럼 `is_real_customer`**(스크립트가 읽기만 하는 자리)로 이전 | ✅ 완료 |
+| 새 주문 푸시 알림(order_new) | 설정 화면에 토글만 있고 **발신 코드가 0곳**이던 죽은 토글에 발신 연결. 🔒 인쇄 보호파일을 피해 `Order.afterCreate` 훅으로 구현(트랜잭션 롤백 시 미발화·주문 경로 무영향) | ✅ 완료 |
+| 단위가 숫자를 따라다님 | staging 목록 `× 2.5 kg`, 인보이스 화면·인쇄본 수량 옆 단위. `invoice_items.unit` 신설 | ✅ 완료 |
+| 공급업체 문서 = 공급업체 상품명 | 거래 인보이스·공급업체 메일에서 우리 내부명 제거. 이름이 실제로 다름(`Beef Rib`↔`Australian Beef Rib`) | ✅ 완료 |
+| staging 표시방법 토글 + 푸터 고정 | 공급업체 상품명/우리 재고명 전환(localStorage 기억), 합계바 하단 고정 | ✅ 완료 |
+| 🔴 인보이스 수량 정수 결함 | `invoice_items.quantity` 가 `int` 라 kg·g 발주(2.5kg)가 **2로 깎일** 상태. DECIMAL 확장(금액은 `calculated_amount` 기준이라 무영향) | ✅ 완료 |
+| 배포 자동 복구 대칭화 | 매장 축만 자동 복구되고 브랜드 축은 "푸는 경로"가 없어 수작업이 필요했다. 대칭화로 **수동 조치 자체를 제거** | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/utils/notificationService.js` · `dev-backend/services/{purchaseOrderService,invoiceScheduler,soaScheduler,orderNotificationService}.js`
+- `dev-backend/routes/{supplier,brand-soa,foodcourt-soa,seller-orders,invoices-crud,invoices-list}.js`
+- `dev-backend/utils/poEmailItems.js` · `dev-backend/models/InvoiceItem.js` · `dev-backend/server.js`
+- `dev-backend/scripts/{mark-demo-accounts,migrate-real-customer-flag,migrate-invoice-item-unit}.js`
+- `dev-frontend/src/pages/PurchaseOrders/PurchaseOrderStagingPage.tsx` · `dev-frontend/src/pages/{Restaurant,Admin}/InvoicesPage.tsx`
+- `dev-frontend/src/components/Layout/MainLayout.tsx` · `dev-frontend/public/sw.js` · 4언어 `purchaseOrders.json`
+
+### 운영 배포 4회 (전부 스모크 10/10 · 마이그 64/64 · ENUM 소실 0)
+06:53 알림 3종 / 08:20 발주·인보이스 단위 / 08:37 SW 4.66 / 10:03 자동복구 대칭화
 
 ---
 
