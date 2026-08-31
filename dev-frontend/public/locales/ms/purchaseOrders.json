@@ -44,6 +44,12 @@
       "suggested": "Kuantiti Dicadangkan",
       "loadFailed": "Gagal memuat cadangan.",
       "empty": "Tiada cadangan pesan semula buat masa ini."
+    },
+    "action": {
+      "markReceivedAll": "Terima semua",
+      "markReceivedAllTitle": "Semua item tiba — tandakan keseluruhan pesanan diterima",
+      "receivePartial": "Separa",
+      "receivePartialTitle": "Sebahagian item tiada — masukkan kuantiti diterima bagi setiap item"
     }
   },
   "new": {
@@ -368,6 +374,11 @@
       "label": "Paparan nama item",
       "seller": "Nama produk pembekal",
       "internal": "Nama stok kami"
+    },
+    "refreshFailed": "Tidak dapat memuat semula senarai. Memaparkan keadaan terakhir.",
+    "submitAllConfirm": {
+      "title": "Hantar semua pesanan belian?",
+      "desc": "{{count}} pesanan belian berjumlah {{amount}} akan dihantar kepada pembekal. Tindakan ini tidak boleh dibatalkan."
     }
   },
   "unitCompat": {

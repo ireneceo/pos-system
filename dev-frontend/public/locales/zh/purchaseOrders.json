@@ -44,6 +44,12 @@
       "suggested": "建议数量",
       "loadFailed": "加载建议失败。",
       "empty": "目前没有补货建议。"
+    },
+    "action": {
+      "markReceivedAll": "全部入库",
+      "markReceivedAllTitle": "全部到货时 — 将整张订单标记为已收货",
+      "receivePartial": "部分入库",
+      "receivePartialTitle": "部分到货时 — 逐项输入实收数量"
     }
   },
   "new": {
@@ -368,6 +374,11 @@
       "label": "品项名称显示",
       "seller": "供应商商品名",
       "internal": "我方库存名"
+    },
+    "refreshFailed": "无法刷新列表，显示最后加载的状态。",
+    "submitAllConfirm": {
+      "title": "发送所有采购订单？",
+      "desc": "{{count}} 张采购订单，合计 {{amount}}，将全部发送给供应商。此操作无法撤销。"
     }
   },
   "unitCompat": {

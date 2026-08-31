@@ -212,6 +212,14 @@ const PurchaseOrderStagingPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
   const [discardTarget, setDiscardTarget] = useState<POStaging | null>(null);
+  /**
+   * 🔴 2026-08-31 — "전체 제출" 확인창.
+   * 이 버튼은 화면의 **모든 발주를 한 번에** 공급업체로 보낸다(되돌릴 수 없다).
+   * 그런데 같은 날 합계바를 하단 고정으로 바꾸면서 버튼이 **항상 손가락 밑**에 오게 됐다
+   * (Irene 요청 "푸터에 붙어서 따라다녀야지"). 편해진 만큼 오발 위험이 커졌으므로
+   * 건수·금액을 보여주고 한 번 묻는다. 개별 Mark as Sent 는 한 건이라 묻지 않는다.
+   */
+  const [confirmSubmitAll, setConfirmSubmitAll] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [submittingId, setSubmittingId] = useState<number | null>(null);
   // PDF 미리보기 — 열자마자 인쇄창이 뜨지 않고 문서를 먼저 보여준다(2026-07-12 Irene).
@@ -255,8 +263,20 @@ const PurchaseOrderStagingPage: React.FC = () => {
     })();
   }, [user]);
 
-  const fetchDrafts = useCallback(async () => {
-    setLoading(true);
+  /**
+   * 목록 새로고침.
+   *
+   * 🔴 2026-08-31 Irene: "내가 마크센트를 하나의 공급업체만 눌렀는데 모든 POs가 다 없어졌어 …
+   *   다같이 사라지지 않게 해."
+   *   실측: 서버 데이터는 **한 건만** submitted 였다(나머지는 draft 유지). 즉 처리 로직은 정상이고,
+   *   문제는 이 함수였다 — 조회가 실패하면 `setPos([])` 로 **화면을 통째로 비웠다.**
+   *   그래서 "한 건 눌렀는데 전부 사라짐"으로 보였다. 앞의 consolidate-drafts 왕복이 하나 더 있어
+   *   그 사이 실패/지연 확률도 높았다.
+   *   → **실패하면 이전 목록을 그대로 둔다.** 화면을 비우는 건 "서버가 정상 응답했는데 0건"일 때만.
+   *     화면에서 사라지는 것은 사용자에게 "지워졌다"로 읽히므로, 확신 없는 비움은 하지 않는다.
+   */
+  const fetchDrafts = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const token = getAuthToken();
       // 2026-06-22 (Irene "같은 공급업체는 합쳐라"): 열 때마다 같은 공급업체 draft 를 한 PO 로 통합한 뒤 조회.
@@ -265,14 +285,17 @@ const PurchaseOrderStagingPage: React.FC = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       const j = await res.json();
-      if (res.ok && j.success) {
-        setPos(Array.isArray(j.data) ? j.data : []);
+      if (res.ok && j.success && Array.isArray(j.data)) {
+        setPos(j.data);            // 서버가 확실히 답했을 때만 목록을 교체한다
       } else {
-        setPos([]);
+        // 조회 실패 — 목록은 건드리지 않는다(이전 상태 유지). 사라진 것처럼 보이지 않게.
+        setError(t('staging.refreshFailed', 'Could not refresh the list. Showing the last loaded state.') as string);
       }
-    } catch { setPos([]); }
-    finally { setLoading(false); }
-  }, []);
+    } catch {
+      setError(t('staging.refreshFailed', 'Could not refresh the list. Showing the last loaded state.') as string);
+    }
+    finally { if (!opts?.silent) setLoading(false); }
+  }, [t]);
 
   useEffect(() => { fetchDrafts(); }, [fetchDrafts]);
 
@@ -359,6 +382,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
 
   const submitAll = async () => {
     if (pos.length === 0) return;
+    setConfirmSubmitAll(false);
     setSubmitting(true);
     setError(null);
     try {
@@ -404,9 +428,16 @@ const PurchaseOrderStagingPage: React.FC = () => {
         return;
       }
       // 제출된 카드만 사라진다. 남은 draft 가 없으면 발주 내역으로 이동.
+      //
+      // 🔴 2026-08-31 Irene: "Mark as Sent는 혼자 서브밋 되는 거잖아 … 다같이 사라지지 않게 해."
+      //   전에는 성공 즉시 fetchDrafts() 로 **목록 전체를 다시 그렸다**. 그 새로고침이 실패하면
+      //   화면이 통째로 비어 "하나 눌렀는데 전부 사라졌다"가 됐다(서버 데이터는 멀쩡했다).
+      //   → 보낸 카드만 **로컬에서 먼저 제거**해 나머지는 흔들리지 않게 하고,
+      //     새로고침은 조용히(silent) 뒤따르게 한다. 실패해도 위 fetchDrafts 가 목록을 비우지 않는다.
       const remaining = pos.filter(p => p.id !== po.id);
+      setPos(remaining);
       if (remaining.length === 0) { navigate('/pos/purchase-orders/history'); return; }
-      fetchDrafts();
+      fetchDrafts({ silent: true });
     } catch (e: any) {
       setAlertDlg({ title: t('common:error', 'Error') as string, message: e?.message || 'Network error' });
     } finally {
@@ -605,7 +636,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {error && <div style={{ fontSize: 12, color: '#991B1B' }}>{error}</div>}
-            <ThemedButton variant="primary" onClick={submitAll} disabled={submitting}>
+            <ThemedButton variant="primary" onClick={() => setConfirmSubmitAll(true)} disabled={submitting}>
               {submitting
                 ? t('staging.submitting', 'Submitting…')
                 : t('staging.submitAll', 'Submit All')}
@@ -613,6 +644,17 @@ const PurchaseOrderStagingPage: React.FC = () => {
           </div>
         </SubmitBar>
       )}
+      <ConfirmModal
+        isOpen={confirmSubmitAll}
+        title={t('staging.submitAllConfirm.title', 'Send all purchase orders?') as string}
+        message={t('staging.submitAllConfirm.desc', {
+          count: pos.length,
+          amount: `MYR ${grandTotal.toFixed(2)}`,
+          defaultValue: '{{count}} purchase order(s) totalling {{amount}} will be sent to the suppliers. This cannot be undone.'
+        }) as string}
+        onConfirm={submitAll}
+        onClose={() => setConfirmSubmitAll(false)}
+      />
       <AlertDialog
         isOpen={!!alertDlg}
         onClose={() => setAlertDlg(null)}

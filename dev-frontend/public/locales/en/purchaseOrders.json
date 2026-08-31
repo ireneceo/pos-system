@@ -44,6 +44,12 @@
       "suggested": "Suggested Qty",
       "loadFailed": "Failed to load suggestions.",
       "empty": "No reorder suggestions right now."
+    },
+    "action": {
+      "markReceivedAll": "Receive all",
+      "markReceivedAllTitle": "All items arrived — mark the whole order received",
+      "receivePartial": "Partial",
+      "receivePartialTitle": "Some items missing — enter received quantity per item"
     }
   },
   "new": {
@@ -368,6 +374,11 @@
       "label": "Item name display",
       "seller": "Supplier product name",
       "internal": "Our stock name"
+    },
+    "refreshFailed": "Could not refresh the list. Showing the last loaded state.",
+    "submitAllConfirm": {
+      "title": "Send all purchase orders?",
+      "desc": "{{count}} purchase order(s) totalling {{amount}} will be sent to the suppliers. This cannot be undone."
     }
   },
   "unitCompat": {

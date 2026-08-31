@@ -924,15 +924,30 @@ const PurchaseOrdersPage: React.FC = () => {
                             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
                         </IconBtn>
+                        {/* 2026-08-31 Irene: "여기에 전체 리시브만 있는데 뭐 하나 안왔으면 어떻게 해?"
+                            부분 입고는 원래 지원된다(상세 화면에서 품목별 수량·부족 사유 입력, status partial_received).
+                            그런데 목록에는 전량 처리 버튼 하나뿐이라 **그 길이 있다는 걸 알 수 없었다.**
+                            → ①버튼 이름을 "전량 입고"로 바꿔 전부 왔을 때만 쓰는 것임을 드러내고
+                              ②옆에 "부분 입고"를 두어 상세(품목별 처리)로 보낸다. */}
                         {canMarkReceived && (
-                          <ThemedButton
-                            size="small"
-                            variant="primary"
-                            onClick={() => handleMarkReceived(row)}
-                            title={t('list.action.markReceived', 'Mark received') as string}
-                          >
-                            {t('list.action.markReceived', 'Receive')}
-                          </ThemedButton>
+                          <>
+                            <ThemedButton
+                              size="small"
+                              variant="primary"
+                              onClick={() => handleMarkReceived(row)}
+                              title={t('list.action.markReceivedAllTitle', 'All items arrived — mark the whole order received') as string}
+                            >
+                              {t('list.action.markReceivedAll', 'Receive all')}
+                            </ThemedButton>
+                            <ThemedButton
+                              size="small"
+                              variant="outline"
+                              onClick={() => navigate(`/pos/purchase-orders/${row.id}`)}
+                              title={t('list.action.receivePartialTitle', 'Some items missing — enter received quantity per item') as string}
+                            >
+                              {t('list.action.receivePartial', 'Partial')}
+                            </ThemedButton>
+                          </>
                         )}
                         {canUploadInvoice && (
                           <label style={{ display: 'inline-block' }}>

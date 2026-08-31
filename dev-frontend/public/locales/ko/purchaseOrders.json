@@ -44,6 +44,12 @@
       "suggested": "추천 수량",
       "loadFailed": "추천을 불러오지 못했습니다.",
       "empty": "지금은 재주문 추천이 없습니다."
+    },
+    "action": {
+      "markReceivedAll": "전량 입고",
+      "markReceivedAllTitle": "전부 도착했을 때 — 발주 전체를 입고 처리합니다",
+      "receivePartial": "부분 입고",
+      "receivePartialTitle": "일부만 왔을 때 — 품목별로 받은 수량을 입력합니다"
     }
   },
   "new": {
@@ -368,6 +374,11 @@
       "label": "품목명 표시",
       "seller": "공급업체 상품명",
       "internal": "우리 재고명"
+    },
+    "refreshFailed": "목록을 새로 불러오지 못했습니다. 마지막으로 불러온 상태를 보여줍니다.",
+    "submitAllConfirm": {
+      "title": "발주를 모두 보낼까요?",
+      "desc": "발주 {{count}}건 · 합계 {{amount}} 을(를) 공급업체에 모두 보냅니다. 되돌릴 수 없습니다."
     }
   },
   "unitCompat": {
