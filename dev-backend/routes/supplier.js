@@ -881,17 +881,9 @@ router.post('/soa/:contractId/remind', async (req, res) => {
 
     // Resolve recipient user ids based on buyer entity
     let recipients = [];
-    const { getRestaurantOwnerIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
+    const { getRestaurantAdminAndOwnerIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
     if (contract.entity_type === 'restaurant') {
-      const { sequelize } = require('../config/database');
-      const { QueryTypes } = require('sequelize');
-      const admins = await sequelize.query(
-        `SELECT id FROM users WHERE restaurant_id = :rid AND role = 'Restaurant Admin' AND email IS NOT NULL`,
-        { replacements: { rid: contract.entity_id }, type: QueryTypes.SELECT }
-      );
-      recipients = admins.map(a => a.id);
-      const owners = await getRestaurantOwnerIds(contract.entity_id);
-      owners.forEach(id => { if (!recipients.includes(id)) recipients.push(id); });
+      recipients = await getRestaurantAdminAndOwnerIds(contract.entity_id);
     } else if (contract.entity_type === 'brand') {
       recipients = await getBrandManagerIds(contract.entity_id);
     } else if (contract.entity_type === 'foodcourt') {

@@ -1,7 +1,80 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-08-30 #4 (`/개발완료` · 운영 배포 5회차)
-**버전:** v3.80 (2026-08-28 배포). **8/30 배포 5회는 전부 버전 미상승 — Irene 지시**
-**작업 상태:** 완료. **개발 잔여 없음.** BG 단위주문 C+D 운영 반영 완료(스모크 10/10 · 마이그 62/62).
+**마지막 업데이트:** 2026-08-31 (알림 수신자 · 직원 알림설정 · 실고객 표시 구조)
+**버전:** v3.80 (2026-08-28 배포). 8/30 배포 5회는 전부 버전 미상승 — Irene 지시
+**작업 상태:** dev 완료 · **미배포**. 막힌 것 2건(아래 🔔).
+
+> ### 🔔 2026-08-31 — 돌아오면 여기부터 (알림 3종)
+> Irene 원문: *"알림 신경쓰지 말고 제대로 해결해줘. 그나저나 관리자가 등록되면 알림이 둘다 가는 거 맞아?
+> 알림을 받을지 말지 스탭들 설정도 없지? 주문 받으면 관리하는 것 때문에"*
+>
+> **🔴 막힌 것 2건 — Irene 결정 필요**
+> 1. **인쇄 보호파일 게이트** — T3 가 `MainLayout.tsx`(보호 8파일 중 하나)를 건드려 print-guard 실패.
+>    `verify-all --full` = **2/16 게이트 실패(print-guard + health), 나머지 전부 통과**(health 182/183,
+>    mount sweep 650.6s 크래시 0, 인쇄 라우트 가드 통과, i18n 0).
+>    실측: 인쇄 코드(`_printPollFn` 966·1178·1182·1213·1233·1429·1430행)와 **접촉 0**,
+>    변경은 2018행대 1줄 교체 + 주석 4줄. 빌드 내 autoprint regression **PASS 44**.
+>    ⛔ `--bless` 는 Irene 승인 사항이라 **찍지 않았다.**
+> 2. **운영 2행 UPDATE 가 권한 정책(classifier)에 막힘** — `users` id 11·29 `is_test=1→0`.
+>    DRY-RUN 은 통과(대상 정확히 2행 확인). **우회 시도하지 않았다.**
+>
+> **📌 Fable 사용 한도 소진** — 이후 판단은 받지 못했다. T1-a v2 는 지시가 확정 절단면이라 구현 완료.
+>
+> **✅ dev 완료 3건 (커밋 전)**
+> - **T2 수신자 리졸버 단일화** — `getRestaurantAdminAndOwnerIds` 신설 + 6곳 교체.
+>   진짜 결함은 `invoiceScheduler.js:1202` 가 `restaurants.admin_id` **단일 컬럼**을 읽던 것.
+>   실측 옛 동작: rid 1 `[23,289]`(23은 매장 38 관리자) / rid 2 `[289]` / rid 3 `[289]` / rid 24 `[39]`
+>   → 신규 `[163,164,289]` `[326,327,289]` `[328,329,289]` `[39,48]`. 5/5 PASS.
+>   **고장주입 반증**: 관리자 레그 제거 → 5/5 FAIL, 원복 → 5/5 PASS.
+>   ⛔ poNotifications(오너만)·created_by(신청자만)는 설계상 의도 — 무접촉.
+> - **T3 직원 알림설정 진입점** — `MainLayout.tsx:2021` 노출조건 `hasMenuPermission('settings')` → `true`,
+>   라벨 `nav.systemSettings` → `nav.notifications`(4언어 기존 키, 신규 0).
+>   근거: Staff 16명 중 settings 권한 보유 **1명** → 15명은 URL 직접입력으로만 도달했다.
+> - **T1-a v2 실고객 표시 구조 전환** — 하드코딩 명단 → DB 컬럼 `is_real_customer`.
+>   `scripts/migrate-real-customer-flag.js`(신규, registry `deploy` 등록 63개 · 미분류 0) +
+>   `mark-demo-accounts.js` 개정. **스크립트는 이 컬럼을 읽기만 하고 쓰지 않는다** = 지속성 근거.
+>   리허설 **5/5 PASS**(고장재현 / 1회차 / **연속 3회 지속** / 역방향 안전 / 브랜드행 자기소거 없음).
+>
+> **🔍 근본 원인 (확정)** — `deploy-to-production.sh:582` 가 매 배포 `mark-demo-accounts.js` 실행.
+> 그 users 절 제외 축이 username 목록 + `restaurant_id IN (16,24,25)` **둘뿐**이라
+> 브랜드 운영자(restaurant_id NULL)를 **매 배포마다** `is_test=1` 로 재마킹했다.
+> 알림 관문 1-a2(`notificationService.js:207`)가 is_test 를 보므로 실사용자가 조용히 빠졌다.
+> 스크립트 주석이 기록한 2026-06-28 thefire 공지 미수신 사고와 같은 계열(그때 매장 축만 막음).
+>
+> **🧪 1차 수정이 깨진 이유(리허설이 잡음)** — 브랜드 `is_demo/is_test` 를 판정 근거로 쓰면
+> 같은 스크립트의 brands 절이 매 실행 그 근거를 지운다 → 1회차 유지, **2회차 재발**. 실측 확인.
+> 그래서 근거를 스크립트가 안 쓰는 `is_real_customer` 로 옮겼다.
+>
+> **🔬 운영 감사 실측 (읽기 전용, 2026-08-31)**
+> - `thefire`(id 29, `Xghz12@gmail.com`) 소유 브랜드 5 `The Fire` = **`is_test=1`** ← brands 절이
+>   실제로 매 배포 test 로 마킹해 온 것 **확인**(직전 세션의 '확인 불가' 항목 해소).
+> - `K-DINE Brand`(id 11, `irene@gitconsulting.group`) 브랜드 1 `with MIN` = `is_demo0/test0`
+>   (REAL_BRAND_NAMES 에 있어서 살아남음) → **두 계정의 운명이 갈리던 이유**.
+> - 매장 16·24·25 = 전부 `demo0/test0` (ID 화이트리스트가 지켜 왔음).
+> - 운영 분포: users 49(demo 2 / test 34) · restaurants 22(demo 14 / test 8) · brands 6(demo 3 / test 1).
+> - `is_real_customer` 컬럼 운영에 **없음**(마이그 미배포 — 정상).
+> - ⚠ **추가 발견 — 실주소인데 is_test=1 인 계정 9건** (Fable 지시대로 **뒤집지 않고 목록만**):
+>   id 31 `lua2_test`(hsj0102@naver.com) · 33 `sooj`(han.sj.lua@gmail.com) · 34 `lualua`(hsoooj@naver.com) ·
+>   38 `hyggek02`(ryns0818@gmail.com) · 43 `Han lua_2`(hello@seoultable.my) · 44 `kim lua`(support@kbowlhouse.my) ·
+>   45 `park lua`(hello@bamboogarden.my) · 60 `Tan`(jason.tan@kdine.com) · 63 `Lua Han`(hsoooj123@naver.com).
+>   ⛔ 방향을 잘못 뒤집으면 시험 계정에 실메일이 나가는 역방향 사고 — Irene 확인 필요.
+>   (`kdine_admin`·`kdine_staff` 의 is_test=1 은 **demo-login 가드 통과에 필요** — 건드리지 말 것.)
+>
+> **🔴 미구현 — Irene 컨펌 대기 (Fable 권고 = 구현 진행)**
+> **주문 알림(`order_new` 등)은 존재하지 않는다.** `order_new`/`order_status`/`kitchen_alert`/
+> `staff_call`/`inventory_low` 5종은 `notification-settings.js` 에 `push_only:true` 로 **정의만** 돼 있고
+> **발신 코드가 저장소에 0곳**이다(설정 화면 토글은 보이지만 평생 안 온다).
+> 실제 발신자가 있는 push 는 예약 3종뿐(`services/reservationNotificationService.js:68,92`).
+> 기반시설은 완비: `web-push@^3.6.7` · `services/pushService.js` · `models/PushSubscription.js` · `routes/push.js`.
+> `sendPushToRestaurant`(:196)이 `role IN ('Restaurant Admin','Staff') AND push_enabled=1` 로 뽑고
+> `isCategoryEnabled`(:62)가 개인설정 존중, `push_muted_hours` 도 있음. dev `push_subscriptions` = **1행**.
+>
+> **⚠ 자진 보고 — 계측 실수 1건**
+> 수정한 `mark-demo-accounts.js` 를 **dev 에서 사전 스냅샷 없이 직접 1회 실행**했다.
+> 그 실행은 restaurants 절의 MySQL 자기참조 에러로 죽었지만 **users 절은 이미 적용된 뒤**였다.
+> 확인된 변경: user 148 `ard_bg_1774540704036` is_test 0→1. 나머지 변경분은 **사전 스냅샷이 없어 열거 불가**.
+> 매장·브랜드는 무영향(그 앞에서 죽음 — test 표시 0 유지). demo-login 계정 정상 확인.
+> dev DB 는 데이터 덤프 백업이 없어(`/var/www/backups/dev-daily` = 코드 tar 만) **정확한 원상복구 불가**.
+> 현재 dev: users 실 6 / demo 3 / test 71. 운영은 무영향.
 
 > ### 🔔 돌아오면 여기부터
 > 1. **BG 단위주문 C+D 는 dev 완료·미배포.** 커밋 `cfad56a8`. 다음 `/배포` 묶음.

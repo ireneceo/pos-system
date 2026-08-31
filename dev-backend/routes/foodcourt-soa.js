@@ -19,11 +19,9 @@ const {
   Foodcourt
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
-const { sequelize } = require('../config/database');
-const { QueryTypes } = require('sequelize');
 const {
   sendNotificationBatch,
-  getRestaurantOwnerIds
+  getRestaurantAdminAndOwnerIds
 } = require('../utils/notificationService');
 const { requireFoodcourtScope } = require('./entity-billing');
 
@@ -162,14 +160,7 @@ router.post(
       const totalDue = invoices.reduce((s, i) => s + Number(i.total_amount || 0), 0);
       const currency = invoices[0]?.currency || 'MYR';
 
-      const recipients = new Set();
-      const admins = await sequelize.query(
-        `SELECT id FROM users WHERE restaurant_id = :rid AND role = 'Restaurant Admin' AND email IS NOT NULL`,
-        { replacements: { rid: restaurant.id }, type: QueryTypes.SELECT }
-      );
-      admins.forEach(a => recipients.add(a.id));
-      const owners = await getRestaurantOwnerIds(restaurant.id);
-      owners.forEach(id => recipients.add(id));
+      const recipients = new Set(await getRestaurantAdminAndOwnerIds(restaurant.id));
 
       if (recipients.size === 0) {
         return res.status(400).json({ success: false, message: 'No recipients found' });

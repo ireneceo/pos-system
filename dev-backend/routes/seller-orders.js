@@ -34,9 +34,8 @@ const { authenticateToken } = require('../middleware/auth');
 const { requireSellerRole } = require('../middleware/sellerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, decorateCarrier, emitPoEvent } = require('../services/poRealtimeService');
-const { sendNotificationBatch, getRestaurantOwnerIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
+const { sendNotificationBatch, getRestaurantAdminAndOwnerIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
 const { sequelize } = require('../config/database');
-const { QueryTypes } = require('sequelize');
 
 router.use(authenticateToken);
 router.use(requireSellerRole);
@@ -114,13 +113,7 @@ async function getBuyerRecipientUserIds(po) {
   try {
     const ids = new Set();
     if (po.entity_type === 'restaurant') {
-      const admins = await sequelize.query(
-        `SELECT id FROM users WHERE restaurant_id = :rid AND role = 'Restaurant Admin' AND email IS NOT NULL`,
-        { replacements: { rid: po.entity_id }, type: QueryTypes.SELECT }
-      );
-      admins.forEach(u => ids.add(u.id));
-      const owners = await getRestaurantOwnerIds(po.entity_id);
-      owners.forEach(id => ids.add(id));
+      (await getRestaurantAdminAndOwnerIds(po.entity_id)).forEach(id => ids.add(id));
     } else if (po.entity_type === 'brand') {
       const mgrs = await getBrandManagerIds(po.entity_id);
       mgrs.forEach(id => ids.add(id));

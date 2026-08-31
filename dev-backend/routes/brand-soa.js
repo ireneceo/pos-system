@@ -32,10 +32,8 @@ const { authenticateToken } = require('../middleware/auth');
 const { requireBrandScope } = require('../middleware/brandScope');
 const {
   sendNotificationBatch,
-  getRestaurantOwnerIds
+  getRestaurantAdminAndOwnerIds
 } = require('../utils/notificationService');
-const { sequelize } = require('../config/database');
-const { QueryTypes } = require('sequelize');
 
 const FRONTEND_BASE_URL = process.env.FRONTEND_URL ||
   (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
@@ -186,14 +184,7 @@ router.post(
       const currency = invoices[0]?.currency || 'MYR';
 
       // Recipients = Restaurant Admin + Restaurant Owner
-      const recipients = new Set();
-      const admins = await sequelize.query(
-        `SELECT id FROM users WHERE restaurant_id = :rid AND role = 'Restaurant Admin' AND email IS NOT NULL`,
-        { replacements: { rid: restaurant.id }, type: QueryTypes.SELECT }
-      );
-      admins.forEach(a => recipients.add(a.id));
-      const owners = await getRestaurantOwnerIds(restaurant.id);
-      owners.forEach(id => recipients.add(id));
+      const recipients = new Set(await getRestaurantAdminAndOwnerIds(restaurant.id));
 
       if (recipients.size === 0) {
         return res.status(400).json({ success: false, message: 'No recipients found' });

@@ -382,6 +382,34 @@ async function getRestaurantOwnerIds(restaurantId) {
 }
 
 /**
+ * Find Restaurant Admin + Restaurant Owner user IDs for a restaurant.
+ *
+ * 매장으로 가는 알림의 표준 수신자 = "그 매장 관리자 전원 + 오너 전원".
+ * 2026-08-31 신설 — 이 의미가 5곳에 **같은 raw SQL 로 복제**돼 있었고, 여섯 번째인
+ * invoiceScheduler 만 `restaurants.admin_id` **단일 컬럼**을 읽어 혼자 다른 답을 냈다.
+ * 실측(dev): 관리자가 2명인 매장 4곳 / admin_id 가 비었거나 그 매장 관리자가 아닌 매장 3곳 —
+ *   rid 2 관리자 [326,327] · admin_id NULL / rid 3 관리자 [328,329] · admin_id NULL /
+ *   rid 1 관리자 [163,164] · admin_id 23(매장 38 의 관리자).
+ * 즉 invoice_created 는 그 3곳에서 관리자에게 안 가거나 남의 매장 사람에게 갔다.
+ *
+ * 의미는 기존 5곳 raw SQL 과 **동일**하다(검증된 동작을 그대로 승격). 폭을 넓히지 않았다 —
+ * `restaurant_managers` 경유로만 붙은 사람은 실측 결과 전부 오너·브랜드 담당자였고
+ * Restaurant Admin 은 0명이라, 그 축을 더할 근거가 없다(2026-08-31 dev 전수 조회).
+ *
+ * ⛔ 발주 오너승인(오너만)·발주 승인결과(신청자만)는 **설계상 의도된 수신자**라 이 함수를 쓰지 않는다.
+ */
+async function getRestaurantAdminAndOwnerIds(restaurantId) {
+  const admins = await sequelize.query(
+    `SELECT id FROM users WHERE restaurant_id = :restaurantId AND role = 'Restaurant Admin' AND email IS NOT NULL`,
+    { replacements: { restaurantId }, type: QueryTypes.SELECT }
+  );
+  const ids = new Set(admins.map(a => a.id));
+  const owners = await getRestaurantOwnerIds(restaurantId);
+  owners.forEach(id => ids.add(id));
+  return [...ids];
+}
+
+/**
  * Find Supplier Admin + Staff user IDs for a supplier company.
  * Includes:
  *   - SupplierCompany.owner_id (Supplier Admin)
@@ -409,5 +437,6 @@ module.exports = {
   getBrandManagerIds,
   getFoodcourtManagerIds,
   getRestaurantOwnerIds,
+  getRestaurantAdminAndOwnerIds,
   getSupplierAdminIds
 };

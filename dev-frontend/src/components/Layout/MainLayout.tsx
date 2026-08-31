@@ -2018,7 +2018,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: `/restaurant/${rid}/settings?tab=reservation`, label: t('nav.reservation', 'Reservation'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/settings?tab=membership`, label: t('nav.membership', 'Membership'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/settings?tab=salesReporting`, label: t('nav.salesReporting', 'Mall Sales Reporting'), visible: hasMenuPermission('settings') },
-          { path: `/restaurant/${rid}/notification-settings`, label: t('nav.systemSettings'), visible: hasMenuPermission('settings') },
+          // 알림 수신 설정은 **개인 설정**이라 매장 `settings` 메뉴권한에 묶이지 않는다.
+          // 2026-08-31 실측: Staff 16명 중 settings 권한 보유 1명 → 나머지 15명은 사이드바에서
+          // 찾을 수 없고 URL 직접 입력으로만 도달했다. 라우트(App.tsx)는 원래 Staff 허용.
+          // 라벨도 'systemSettings'(시스템 설정)로 잘못 붙어 있었다 — 다른 역할 사이드바는 nav.notifications.
+          { path: `/restaurant/${rid}/notification-settings`, label: t('nav.notifications', 'Notifications'), visible: true },
           { path: `/restaurant/${rid}/history`, label: t('nav.changeHistory'), visible: hasMenuPermission('reports') && isRouteAllowed(`/restaurant/${rid}/history`) }
         ].filter(i => i.visible !== false),
         visible: true

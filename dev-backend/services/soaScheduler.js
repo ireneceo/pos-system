@@ -24,10 +24,9 @@ const {
   SchedulerRun
 } = require('../models');
 const { sequelize } = require('../config/database');
-const { QueryTypes } = require('sequelize');
 const {
   sendNotificationBatch,
-  getRestaurantOwnerIds,
+  getRestaurantAdminAndOwnerIds,
   getBrandManagerIds,
   getFoodcourtManagerIds
 } = require('../utils/notificationService');
@@ -62,13 +61,7 @@ async function getBuyerRecipientUserIds(entityType, entityId) {
   try {
     const ids = new Set();
     if (entityType === 'restaurant') {
-      const admins = await sequelize.query(
-        `SELECT id FROM users WHERE restaurant_id = :rid AND role = 'Restaurant Admin' AND email IS NOT NULL`,
-        { replacements: { rid: entityId }, type: QueryTypes.SELECT }
-      );
-      admins.forEach(u => ids.add(u.id));
-      const owners = await getRestaurantOwnerIds(entityId);
-      owners.forEach(id => ids.add(id));
+      (await getRestaurantAdminAndOwnerIds(entityId)).forEach(id => ids.add(id));
     } else if (entityType === 'brand') {
       const mgrs = await getBrandManagerIds(entityId);
       mgrs.forEach(id => ids.add(id));

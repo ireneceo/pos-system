@@ -7,7 +7,7 @@ const { sendIssuerEmail } = require('../utils/emailService');
 const { generateInvoiceNotificationEmail } = require('../utils/invoiceEmailTemplate');
 const { getSiteTimezone, getLocalDate, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { normalizeAdditionalCharges } = require('../utils/paymentSettingsHelper');
-const { sendNotification, getRestaurantOwnerIds } = require('../utils/notificationService');
+const { sendNotification, getRestaurantAdminAndOwnerIds } = require('../utils/notificationService');
 const { invoiceCreatedEmail } = require('../utils/notificationTemplates');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://dev.purplehere.com';
@@ -1198,14 +1198,14 @@ class InvoiceScheduler {
       const isTrial = restaurant.status === 'trial';
       const restaurantTz = getRestaurantTimezone(restaurant);
       const mail = invoiceCreatedEmail(invoice, restaurant.name, { isTrial, timezone: restaurantTz });
-      // Notify restaurant admin
-      if (restaurant.admin_id) {
-        sendNotification(restaurant.admin_id, 'invoice_created', mail);
-      }
-      // Notify restaurant owners
-      const ownerIds = await getRestaurantOwnerIds(restaurant.id);
-      for (const ownerId of ownerIds) {
-        sendNotification(ownerId, 'invoice_created', mail);
+      // 2026-08-31 — 예전엔 `restaurant.admin_id` **단일 컬럼**을 읽었다. 그 컬럼은 관리자 명부가
+      // 아니라 매장당 1명만 담는 옛 필드라, 실측(dev)에서 관리자가 2명인 매장 4곳은 1명만 받고,
+      // admin_id 가 비었거나(rid 2·3) 남의 매장 관리자를 가리키는 매장(rid 1 → 23번은 매장 38 관리자)
+      // 3곳은 관리자에게 아예 안 가거나 엉뚱한 사람에게 갔다.
+      // 나머지 5개 호출부와 같은 의미의 단일 리졸버로 통일한다.
+      const recipientIds = await getRestaurantAdminAndOwnerIds(restaurant.id);
+      for (const uid of recipientIds) {
+        sendNotification(uid, 'invoice_created', mail);
       }
     } catch (e) {
       console.error('[Invoice notification error]', e.message);

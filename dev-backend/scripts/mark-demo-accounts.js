@@ -38,15 +38,23 @@ const DEMO_USERNAMES = [
   'demo-restaurant',   // Restaurant Admin Demo
 ];
 
-// 실제 브랜드/레스토랑 이름
-const REAL_BRAND_NAMES = ['with MIN', 'K-DINE with MIN'];
-const REAL_RESTAURANT_NAMES = ['K-Dine Korean Restaurant', 'K-DINE IPC Branch', 'with MIN Cafe', 'WOR-PRO FOOD'];
-
-// 이름이 다른 매장과 겹쳐 이름 화이트리스트로 못 거르는 실매장은 ID로 직접 지정.
-// The Fire 01/02/03 = 운영 restaurant id 16/24/25 — 같은 이름 "The Fire Korean Restaurant" 4개 중
-// 실매장 3개(#5 는 정체불명이라 제외, 2026-06-28 Irene 확정). 이게 없으면 매 배포 때 thefire 가
-// is_test=true 로 재마킹돼 공지/이메일/통계에서 빠진다(공지 미수신 재발 근본원인).
-const REAL_RESTAURANT_IDS = [16, 24, 25];
+// ========================================
+// 실브랜드·실매장 판정 = DB 컬럼 `is_real_customer` (2026-08-31, Fable 판정 T1-a v2)
+// ========================================
+// 예전엔 여기에 REAL_BRAND_NAMES / REAL_RESTAURANT_NAMES / REAL_RESTAURANT_IDS 를
+// **하드코딩**했다. 그게 이 계열 사고의 병인이다 — 목록에 없는 실고객은 매 배포마다
+// test 로 재마킹돼 알림·공지에서 조용히 빠졌다(2026-06-28 thefire 매장 / 2026-08-31 브랜드 축).
+//
+// 🔴 이 스크립트는 `is_real_customer` 를 **읽기만 하고 절대 쓰지 않는다.** 그것이 지속성의 근거다.
+//    자기가 쓰는 플래그(is_demo/is_test)를 판정 근거로 삼으면 자기 근거를 스스로 지운다 —
+//    실제로 그렇게 만들었다가 "1회차는 유지, 2회차에 다시 뒤집힘"을 리허설에서 관측했다.
+//    → 새 실고객이 생기면 **DB 에서 is_real_customer 를 1 로 세우면 되고, 이 파일은 고치지 않는다.**
+//
+// deny-by-default(목록 밖은 test) 정책 자체는 유지한다 — 뒤집으면 정크 계정에 실메일이 나가는
+// 역방향 사고라 이 방향이 안전하다. 바뀐 것은 정책이 아니라 화이트리스트의 **저장 위치**다.
+// 시드·컬럼 = scripts/migrate-real-customer-flag.js (registry deploy 분류, mark 보다 먼저 실행됨).
+const REAL_BRANDS_SQL = `SELECT id FROM brands WHERE is_real_customer = 1`;
+const REAL_RESTAURANTS_SQL = `SELECT id FROM restaurants WHERE is_real_customer = 1`;
 
 async function main() {
   const seq = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
@@ -61,18 +69,63 @@ async function main() {
 
     const realList = REAL_USERNAMES.map(u => `'${u}'`).join(',');
     const demoList = DEMO_USERNAMES.map(u => `'${u}'`).join(',');
-    // ID 화이트리스트(이름 겹침 회피). 비어 있으면 매칭 안 되게 0 으로.
-    const realRestIds = REAL_RESTAURANT_IDS.length ? REAL_RESTAURANT_IDS.join(',') : '0';
+
+    // 실고객 판정은 DB 컬럼에서 읽는다(하드코딩 목록 대체). 이 스크립트는 이 컬럼을 쓰지 않는다.
+    // 컬럼이 아직 없는 DB(마이그 미실행)에서도 죽지 않도록 존재를 먼저 확인한다 —
+    // 없으면 빈 집합으로 취급해 **예전과 동일한 동작**으로 안전하게 떨어진다(배포는 마이그가 먼저라 정상 경로는 아님).
+    const [colRows] = await seq.query(
+      `SELECT table_name AS t FROM information_schema.columns
+       WHERE table_schema = DATABASE() AND column_name = 'is_real_customer' AND table_name IN ('brands','restaurants')`
+    );
+    const haveBrandCol = colRows.some(r => (r.t || r.TABLE_NAME) === 'brands');
+    const haveRestCol = colRows.some(r => (r.t || r.TABLE_NAME) === 'restaurants');
+    if (!haveBrandCol || !haveRestCol) {
+      console.warn('  ⚠ is_real_customer 컬럼 없음 — migrate-real-customer-flag.js 미실행. 실고객 보호 없이 진행합니다.');
+    }
+    // NOT IN (빈 집합) = TRUE 이므로 컬럼 부재 시에도 SQL 이 성립한다. 매칭 방지용으로 0 을 넣는다.
+    const realBrandIdsSql = haveBrandCol ? REAL_BRANDS_SQL : 'SELECT 0';
+    const realRestIdsSql = haveRestCol ? REAL_RESTAURANTS_SQL : 'SELECT 0';
+    // 🔴 MySQL 은 UPDATE 의 대상 테이블을 그 문장의 서브쿼리에서 직접 참조하지 못한다
+    //    ("You can't specify target table 'X' for update in FROM clause").
+    //    brands·restaurants 절은 자기 테이블을 읽으므로 **파생 테이블로 한 겹 감싸야** 한다.
+    //    (users 절은 대상이 users 라 brands/restaurants 서브쿼리를 그냥 써도 된다.)
+    //    2026-08-31 리허설 ⑤번 기준이 이 결함을 잡았다 — 감싸지 않은 판이 restaurants 절에서
+    //    통째로 죽어 brands·restaurants·foodcourts 분류가 전부 실행되지 않았다.
+    const derived = (sql, alias) => `SELECT id FROM (${sql}) AS ${alias}`;
+    const realBrandIdsDerived = derived(realBrandIdsSql, '_rb');
+    const realRestIdsDerived = derived(realRestIdsSql, '_rr');
 
     // 1. Users
-    // REAL accounts — username 화이트리스트 OR 실매장(ID) 소속 직원
-    await seq.query(`UPDATE users SET is_demo = false, is_test = false WHERE username IN (${realList}) OR restaurant_id IN (${realRestIds})`);
+    // REAL accounts — username 화이트리스트 OR 실매장 소속 직원
+    await seq.query(`UPDATE users SET is_demo = false, is_test = false WHERE username IN (${realList}) OR restaurant_id IN (${realRestIdsSql})`);
     // DEMO accounts
     await seq.query(`UPDATE users SET is_demo = true, is_test = false WHERE username IN (${demoList})`);
-    // TEST accounts (not REAL and not DEMO) — 실매장 소속 직원은 제외(restaurant_id NULL 은 영향 없음)
-    await seq.query(`UPDATE users SET is_demo = false, is_test = true WHERE username NOT IN (${realList},${demoList}) AND (restaurant_id IS NULL OR restaurant_id NOT IN (${realRestIds})) AND is_demo = false AND is_test = false`);
+    // 브랜드 축 제외 조건 (2026-08-31 신설) — 실브랜드를 운영하는 사람을 test 로 뒤집지 않는다.
+    //
+    // 근본 원인: 이 절의 제외 축이 username 목록과 restaurant_id(실매장 ID) **둘뿐**이었다.
+    // 브랜드 운영자는 매장에 소속되지 않아 restaurant_id 가 NULL 이므로, username 이 목록에
+    // 없으면 **매 배포마다** is_test=true 로 재마킹됐다. 알림 관문(notificationService 1-a2)이
+    // is_test 를 보므로 실주소를 가진 브랜드 운영자가 조용히 알림에서 빠진다.
+    // 실측(2026-08-31 dev): user 11 `K-DINE Brand`(irene@gitconsulting.group, 실주소) is_test=1 /
+    //                       user 6 `brand_general`(실브랜드 `with MIN` 소유) is_test=1.
+    // :44-48 주석의 thefire 공지 미수신 사고와 같은 계열 — 그때는 매장 축만 막고 브랜드 축을 열어뒀다.
+    //
+    // ⛔ username·id 를 새로 하드코딩하지 않는다. 하드코딩 목록이 이 계열 사고의 병인이다.
+    // 축은 둘 — ① users.brand_id 가 실브랜드를 가리킴(배정된 담당자) ② 실브랜드의 owner_id(소유자).
+    //    ②가 따로 필요한 이유: 소유자가 brand_id 를 안 갖는 경우가 실재한다(dev brand 33 소유자 = brand_id NULL).
+    // 🔴 판정 근거가 `is_real_customer`(이 스크립트가 안 쓰는 컬럼)이므로 **절 실행 순서와 무관**하다.
+    //    is_demo/is_test 를 근거로 삼았던 1차 시도는 아래 brands 절이 그 근거를 지워 2회차에 깨졌다.
+    const realBrandOwnersSql = haveBrandCol
+      ? `SELECT owner_id FROM brands WHERE owner_id IS NOT NULL AND is_real_customer = 1`
+      : 'SELECT 0';
+    const realBrandExclusion = `
+      AND (brand_id IS NULL OR brand_id NOT IN (${realBrandIdsSql}))
+      AND id NOT IN (${realBrandOwnersSql})`;
+
+    // TEST accounts (not REAL and not DEMO) — 실매장 소속 직원·실브랜드 운영자는 제외(restaurant_id NULL 은 영향 없음)
+    await seq.query(`UPDATE users SET is_demo = false, is_test = true WHERE username NOT IN (${realList},${demoList}) AND (restaurant_id IS NULL OR restaurant_id NOT IN (${realRestIdsSql}))${realBrandExclusion} AND is_demo = false AND is_test = false`);
     // Also fix any that were wrongly marked as demo but should be test
-    await seq.query(`UPDATE users SET is_demo = false, is_test = true WHERE username NOT IN (${realList},${demoList}) AND (restaurant_id IS NULL OR restaurant_id NOT IN (${realRestIds})) AND is_demo = true`);
+    await seq.query(`UPDATE users SET is_demo = false, is_test = true WHERE username NOT IN (${realList},${demoList}) AND (restaurant_id IS NULL OR restaurant_id NOT IN (${realRestIdsSql}))${realBrandExclusion} AND is_demo = true`);
 
     const [userCounts] = await seq.query(`
       SELECT
@@ -83,14 +136,12 @@ async function main() {
     `);
     console.log(`  Users: ${userCounts[0].real_count} real, ${userCounts[0].demo_count} demo, ${userCounts[0].test_count} test`);
 
-    // 2. Restaurants
-    const realRestList = REAL_RESTAURANT_NAMES.map(n => `'${n}'`).join(',');
-    // REAL — 이름 화이트리스트 OR ID 화이트리스트(같은 이름 매장 구분용)
-    await seq.query(`UPDATE restaurants SET is_demo = false, is_test = false WHERE name IN (${realRestList}) OR id IN (${realRestIds})`);
-    // Demo restaurants: owned by demo users
-    await seq.query(`UPDATE restaurants SET is_demo = true, is_test = false WHERE admin_id IN (SELECT id FROM users WHERE is_demo = true)`);
-    // Test restaurants: not real (이름·ID 둘 다 아님) and not demo
-    await seq.query(`UPDATE restaurants SET is_test = true WHERE name NOT IN (${realRestList}) AND id NOT IN (${realRestIds}) AND is_demo = false AND is_test = false`);
+    // 2. Restaurants — 실고객 판정은 is_real_customer 컬럼(이 스크립트가 안 쓰는 자리)
+    await seq.query(`UPDATE restaurants SET is_demo = false, is_test = false WHERE id IN (${realRestIdsDerived})`);
+    // Demo restaurants: owned by demo users (실고객 매장은 제외 — 데모 소유자가 잘못 걸려도 실매장을 데모로 만들지 않는다)
+    await seq.query(`UPDATE restaurants SET is_demo = true, is_test = false WHERE admin_id IN (SELECT id FROM users WHERE is_demo = true) AND id NOT IN (${realRestIdsDerived})`);
+    // Test restaurants: 실고객 아님 and not demo
+    await seq.query(`UPDATE restaurants SET is_test = true WHERE id NOT IN (${realRestIdsDerived}) AND is_demo = false AND is_test = false`);
 
     const [restCounts] = await seq.query(`
       SELECT
@@ -101,11 +152,10 @@ async function main() {
     `);
     console.log(`  Restaurants: ${restCounts[0].real_count} real, ${restCounts[0].demo_count} demo, ${restCounts[0].test_count} test`);
 
-    // 3. Brands
-    const realBrandList = REAL_BRAND_NAMES.map(n => `'${n}'`).join(',');
-    await seq.query(`UPDATE brands SET is_demo = false, is_test = false WHERE name IN (${realBrandList})`);
-    await seq.query(`UPDATE brands SET is_demo = true, is_test = false WHERE owner_id IN (SELECT id FROM users WHERE is_demo = true)`);
-    await seq.query(`UPDATE brands SET is_test = true WHERE name NOT IN (${realBrandList}) AND is_demo = false AND is_test = false`);
+    // 3. Brands — 실고객 판정은 is_real_customer 컬럼
+    await seq.query(`UPDATE brands SET is_demo = false, is_test = false WHERE id IN (${realBrandIdsDerived})`);
+    await seq.query(`UPDATE brands SET is_demo = true, is_test = false WHERE owner_id IN (SELECT id FROM users WHERE is_demo = true) AND id NOT IN (${realBrandIdsDerived})`);
+    await seq.query(`UPDATE brands SET is_test = true WHERE id NOT IN (${realBrandIdsDerived}) AND is_demo = false AND is_test = false`);
 
     const [brandCounts] = await seq.query(`
       SELECT
