@@ -1497,41 +1497,60 @@ dev·운영 모두 그런 연결이 0건이라 안 터졌을 뿐이다 — **운
 | 결제 정보 | **없음.** `purchase_orders` 에 결제 컬럼이 하나도 없다(`payment_status`/`payment_method`/`paid_at` 부재) |
 | 현금관리 연결 | **없음.** `cash_movements.source` ENUM = `manual`/`settlement` 뿐이고 발주를 가리킬 `reference_id` 도 없다 |
 
-### 🔴 0-1. 판매자(브랜드) 재고가 안 빠지는 근본 — **연결 부재**
+### 🔴 0-1. 판매자(브랜드) 재고가 안 빠지는 근본 — **연결은 있다. 수량이 다른 목록에 있다**
 
-`seller-orders.js` ship 의 브랜드 분기는 이렇게 갈린다:
-1. 판매상품에 **레시피가 있으면** → BOM 으로 `ProductIngredient` 차감 ✓
-2. **레시피가 없으면**(=재판매 상품) → `brand_products.current_stock` 을 차감. `track_stock` 꺼져 있으면 **건너뜀**
+> ⚠ 내 1차 진단("연결이 아예 없다")은 **틀렸다.** Irene 정정:
+> *"깃 프로덕트를 팔았으면 당연히 깃의 재고에서 나가야지. 재고관리가 프로덕트랑 연결되는 거잖아.
+> 레스토랑관리자는 메뉴랑 레시피랑 연결되는 거고 브랜드제너럴은 프로덕트랑 레시피랑 연결되는 거고
+> 레시피 있고 없고에 따라 다르고 레시피 연결은 재료 연결된 것에서 빼는 거고"*
 
-**문제: `brand_products.current_stock` 은 GIT 이 실제로 쓰는 재고가 아니다.**
-GIT 의 실제 재고는 **`product_ingredients`(브랜드 재고)** 에 있고, 거기엔 수량도 있고 `track_stock=1` 로 켜져 있다.
+**Irene 확정 모델**
 
-실측 (PO-R10-20260827-001 의 6품목):
+| 역할 | 체인 |
+|---|---|
+| 레스토랑 관리자 | 메뉴 → 레시피 → 재료 |
+| 브랜드 제너럴 | **프로덕트 → 레시피 → 재료** |
+| 레시피 **있으면** | 레시피에 **연결된 재료**에서 뺀다 |
+| 레시피 **없으면** | **프로덕트에 연결된 재고**에서 뺀다 |
 
-| 판매상품 | 판매상품 track_stock / 재고칸 | 같은 이름의 GIT 재고 |
+**연결 장치는 실재한다** — `syncProductToIngredients()`(`routes/brand-products.js`)가 판매상품을
+`ingredients` 로 미러하면서 **`ingredients.brand_product_id`** 를 채운다.
+실측: **brand 1 의 브랜드 재료 63건 중 63건 전부 `brand_product_id` 연결됨.**
+
+**그런데 수량이 그 행에 없다.**
+
+| 재고가 사는 곳 | 판매상품과 연결 | 실제 수량 |
 |---|---|---|
-| #185 MTP 360 투명컵 | 꺼짐 / 0 | **#307 PI-288 · 18 pack · track=1** |
-| #186 MTP 플랫 뚜껑 | 꺼짐 / 0 | **#308 PI-289 · 18 pack · track=1** |
-| #192 TK 1000 사각통 | 꺼짐 / 0 | **이름 불일치 — 못 찾음** |
-| #199 3.25OZ 소스통 | 꺼짐 / 0 | **이름 불일치 — 못 찾음** |
-| #223 PE 비닐봉투 | 꺼짐 / 0 | **이름 불일치 — 못 찾음** |
-| #241 SC-800 원형 대 | 꺼짐 / 0 | **이름 불일치 — 못 찾음** |
+| `ingredients` (brand_id, `brand_product_id` 연결) | **있음 (63/63)** | **전부 0.00** |
+| `product_ingredients` (BG 재고, 발주 입고가 쌓이는 곳) | **참조 컬럼 자체가 없음** | 투명컵 #307 **18 pack** · 뚜껑 #308 **18 pack** |
 
-> **판매상품 → 판매자 자기 재고를 가리키는 컬럼이 아예 없다.**
-> `ingredient_seller_products.product_ingredient_id` 는 **구매자**측 브랜드 재고를 가리키는 자리이고,
-> 이 6건은 구매자가 레스토랑이라 `ingredient_id`(with MIN 재료)만 채워져 있고 `product_ingredient_id` 는 전부 `null`.
-> 이름 매칭은 6개 중 2개만 맞는다(나머지는 공급업체식 이름).
-> ⛔ `brand_products.current_stock` 을 쓰면 **같은 물건에 재고 숫자가 두 개** 생긴다 → [[project_brand_stock_two_lists_split]] 재발.
+- GIT 이 UGS 에서 발주 → 입고는 **`product_ingredients`** 로 들어간다(`mark-received`/`receive` 의 `product_ingredient_id` 분기).
+- GIT 이 팔 때(ship) 보는 곳은 `brand_products.current_stock`(미사용, 0) — 또는 Irene 모델대로면
+  연결된 `ingredients` 행(0). **어느 쪽이든 0이라 차감이 안 된다.**
+- ⇒ **입고 버킷과 출고 버킷이 다르다.** 이것이 [[project_brand_stock_two_lists_split]]
+  (브랜드 재고 목록 2개로 갈라짐 — 식자재 vs Stock Items)와 같은 뿌리다.
+
+**추가 결함: 미러 행이 아예 없는 상품이 있다.**
+PO-R10-20260827-001 의 6품목 중 **4개**(#192 사각통 · #199 소스통 · #223 비닐봉투 · #241 SC-800)는
+`ingredients` 미러 행이 **0건**이다. 2026-08-28 UGS 일괄 등록 스크립트가 `syncProductToIngredients()` 를
+부르지 않고 `brand_products` 행만 만들어서다([[reference_supplier_cost_copied_as_price]] 와 같은 사고 계열).
+`sync_to_ingredients` 는 8개 전부 `1` 로 켜져 있는데도 미러가 없다 = **플래그와 실제가 어긋나 있다.**
 
 ## 1. 절단면 (설계 시 결정할 것)
 
-### A. 판매자 재고 차감 — 연결을 만든다
-- **판매상품(재판매) → 판매자 자기 재고**를 가리키는 **정식 연결**을 신설한다 (컬럼 1개 또는 링크 테이블).
-  이름 매칭은 임시방편으로도 쓰지 않는다(6개 중 2개만 맞았다).
-- 차감 대상은 **`ProductIngredient` 단일 소스.** `brand_products.current_stock` 은 재판매 경로에서 **쓰지 않는다**.
-- `track_stock` 은 **판매자 재고 행의 값**을 따른다(이미 켜져 있음). 판매상품 쪽 스위치는 재판매 경로에서 판정에 쓰지 않는다.
-  📌 Irene: *"재고추적은 항상되는 거 아니야?"* — 사용자 입장에서 켜고 끄는 개념이 노출될 이유가 없다.
-- 연결이 없는 판매상품은 **출고 시 경고**(조용히 건너뛰지 말 것). 지금은 조용히 0건 차감된다.
+### A. 판매자 재고 차감 — **버킷을 하나로 모은다** (연결을 새로 만드는 게 아니다)
+1. **출고 차감 규칙을 Irene 모델대로 확정**
+   - 레시피 **있으면** → 레시피에 연결된 재료에서 차감
+   - 레시피 **없으면** → **프로덕트에 연결된 재고**에서 차감 (`ingredients.brand_product_id`)
+   - ⛔ `brand_products.current_stock` 은 **재판매 경로에서 쓰지 않는다** (같은 물건 재고가 두 개 된다)
+2. **입고와 출고가 같은 행을 보게 한다** — 지금은 입고가 `product_ingredients`, 출고가 `ingredients` 로 갈라져 있다.
+   둘 중 **어느 쪽을 브랜드 재고의 단일 소스로 삼을지**가 이 설계의 핵심 결정.
+   (⚠ `product_ingredients` 통합은 과거 Fable 이 기각한 적 있음 — [[reference_brand_stock_sharing]] 대조 필수)
+3. **미러 누락 복구** — `sync_to_ingredients=1` 인데 미러 행이 없는 판매상품을 찾아 재동기화.
+   등록 경로(스크립트 포함)가 반드시 `syncProductToIngredients()` 를 거치도록 강제.
+4. **연결이 없거나 재고가 0인 상품은 출고 시 경고** — 지금은 조용히 0건 차감된다.
+   📌 Irene: *"재고추적은 항상되는 거 아니야?"* → 사용자에게 켜고 끄는 스위치를 노출할 이유가 없다.
+   `track_stock` 판정은 **재고 행의 값**을 따르고 판매상품 쪽 플래그는 재판매 경로에서 쓰지 않는다.
 
 ### B. 양방향 확인 UX
 - **판매자 배송 → 구매자**: 목록·상세에 `업체가 배송완료로 표시했습니다` 띠 + **[수령 확인]** 강조 버튼
