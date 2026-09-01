@@ -72,7 +72,23 @@
 - 메모리 2건: [[reference_packaging_unit_is_pack]] · [[project_kdine_menu_pending_apply]]
 
 ### 다음 확정 작업
-- 없음 — 지시 대기
+- **발주 수령·배송 양방향 확인 + 결제/현금 연결 + 판매자 재고 차감** (2026-09-01 Irene 지시:
+  *"다른 건 다 다음 섹션에 설계해서 하게 저장해"*) — **설계부터**.
+  단일 소스: **`docs/PURCHASE_ORDER_SYSTEM.md` 맨 끝 "📌 다음 섹션 설계 대상"** 섹션 (실측 + 절단면 A~D)
+  - **A. 판매자 재고 차감 근본** — 판매상품(재판매)이 **판매자 자기 재고를 가리키는 연결이 아예 없다.**
+    출고 코드가 아무도 안 쓰는 `brand_products.current_stock` 을 보고, 꺼져 있으면 **조용히 0건 차감**.
+    실제 GIT 재고는 `product_ingredients` 에 있고 수량·track_stock 다 정상(투명컵/뚜껑 18 pack).
+    이름 매칭은 6개 중 2개만 맞음 → **정식 연결 신설 필요.** ⛔ `brand_products.current_stock` 사용 금지
+    (같은 물건 재고가 두 개 됨 = [[project_brand_stock_two_lists_split]] 재발)
+  - **B. 양방향 확인 UX** — 판매자 배송→구매자 "수령 확인" 안내(현재 알림만, 화면 안내 없음) /
+    구매자 수령→판매자 알림 **신설**(현재 `purchase-orders-workflow.js` 에 알림 0곳)
+  - **C. staging 결제·수령 한번에** — 매장이 직접 사 온 경우. 확인창 필수
+  - **D. 결제 정보 + 현금관리 연결** — `purchase_orders` 에 결제 컬럼 **0개**.
+    `payment_status`/`payment_method`/`paid_at` 신설 + 현금 시 `cash_movements` 출금 자동 생성
+    (`source` ENUM **expand-only** 추가 + `reference_id`) + **취소·환불 되돌리기 경로 필수**
+  - 규모 중~대 · 운영 마이그레이션 포함 · 돈 접촉 → 검증 규율 4조항 전부
+
+### (참고) 지시 대기였던 것
   단, Irene 이 주기로 한 것 2건이 오면 바로 이어짐:
   ① **레시피 상세**(계란·소세지 포함 여부 포함) → 비워둔 26건 내용 채우기 + `#27`/`#20` 연결
   ② **K-DINE 신메뉴 적용 지시** → `docs/KDINE_MENU_AND_RECIPE_PLAN.md` 기준 실행
