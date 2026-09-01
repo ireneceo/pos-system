@@ -17,8 +17,17 @@ export const DataTableContainer = styled.div`
   border: 1px solid #C7CED6;
   width: 100%;
   /* 헤더(#F1F4F8) 사각 모서리가 둥근 컨테이너 밖으로 삐져나오는 문제(FG-3) 해결.
-     LiveOrders(주문화면)는 이 컨테이너를 쓰지 않으므로 영향 없음. */
-  overflow: hidden;
+     LiveOrders(주문화면)는 이 컨테이너를 쓰지 않으므로 영향 없음.
+
+     2026-09-01: 세로만 hidden, 가로는 auto 다. 예전엔 overflow:hidden 이라
+     열이 많은 목록(발주 8열 등)이 1025~1400px 구간에서 컨테이너보다 넓어지면
+     스크롤이 아니라 잘려서 오른쪽 열(Actions)에 아예 손이 닿지 않았다.
+     1366×768 노트북·태블릿 가로가 정확히 이 구간이라 실사용에서 계속 걸렸다.
+     세로 hidden 을 유지하므로 FG-3 의 둥근 모서리 수정은 그대로 산다.
+     실측 도구: scripts/responsive-audit.js (TABLE_CLIPPED 판정) */
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 
   @media (max-width: 1024px) {
     background: transparent;

@@ -201,6 +201,55 @@ const DashboardSection: React.FC<Props> = ({
       </>
     )}
 
+    {/* 입고 예정 — 이미 발주해서 오고 있는 것. 재주문 제안 바로 위에 둔다:
+        "더 시켜라"를 보기 전에 "이미 시킨 게 있다"를 먼저 보게 해야 중복 발주가 안 난다.
+        수량은 목록 화면이 쓰는 on_order_quantity 를 그대로 쓴다 — 여기서 다시 계산하면
+        어떤 발주 상태를 '오는 중'으로 볼지가 두 곳으로 갈라져 목록의 "↧ N incoming" 과
+        대시보드 숫자가 어긋난다. 정의는 백엔드 한 곳(inventory-core 의 ACTIVE_PO_STATUSES)뿐이다. */}
+    {(() => {
+      const incoming = inventory
+        .filter(i => Number(i.on_order_quantity) > 0)
+        .sort((a, b) => {
+          const da = a.on_order_delivery_date;
+          const db = b.on_order_delivery_date;
+          // 도착일 잡힌 것부터. 날짜 없는 발주는 뒤로 보내되 목록에서 빼지는 않는다
+          if (da && db) return da < db ? -1 : da > db ? 1 : 0;
+          if (da) return -1;
+          if (db) return 1;
+          return String(a.name).localeCompare(String(b.name));
+        });
+      if (incoming.length === 0) return null;
+      return (
+        <>
+          <SectionTitle>Incoming Stock</SectionTitle>
+          <InfoBox>
+            Already ordered and on the way. Check here before reordering to avoid ordering twice.
+          </InfoBox>
+          <Table>
+            <TableHeader columns="2fr 1fr 1fr">
+              <span>Ingredient</span>
+              <span>Incoming</span>
+              <span>Expected</span>
+            </TableHeader>
+            {incoming.slice(0, 10).map(item => (
+              <TableRow key={item.id} columns="2fr 1fr 1fr">
+                <div>
+                  {item.name}
+                  {item.is_brand_shared && <BrandTag title="Stock item defined by your brand">Brand</BrandTag>}
+                </div>
+                <div style={{ fontWeight: 600 }}>
+                  {formatStock(item.on_order_quantity)} {item.unit}
+                </div>
+                <div>
+                  {item.on_order_delivery_date ? formatDateTz(item.on_order_delivery_date, null) : '—'}
+                </div>
+              </TableRow>
+            ))}
+          </Table>
+        </>
+      );
+    })()}
+
     {suggestions.length > 0 && (
       <>
         <SectionTitle>Reorder Suggestions</SectionTitle>

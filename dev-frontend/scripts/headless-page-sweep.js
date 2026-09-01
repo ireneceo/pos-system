@@ -72,6 +72,12 @@ const RA_ROUTES = [
 // router 에 없어(예: /pos/brand/general/restaurants) 빈 렌더를 "OK"로 오판하던 false positive 제거.
 const BG_ROUTES = [
   '/pos/brand/general/dashboard',
+  // 2026-09-01 추가: FG 변형(/pos/foodcourt/general/incoming-orders)은 roles-sweep 에 있었는데
+  // BG 변형만 빠져 있어 배포 게이트가 이 페이지를 한 번도 열어보지 않았다.
+  '/pos/brand/general/incoming-orders',
+  // 같은 비대칭이 하나 더 있었다: FG 직원목록(/pos/foodcourt/manager)은 roles-sweep 에 있는데
+  // 브랜드 직원목록만 어느 스윕에도 없었다. 2026-09-01 이 파일을 고치고도 못 열어봤던 화면이다.
+  '/pos/brand/manager',
   '/pos/admin/restaurants',
   '/pos/admin/staff',
   '/pos/admin/managers',

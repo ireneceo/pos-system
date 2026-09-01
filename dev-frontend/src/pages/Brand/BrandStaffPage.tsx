@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
-import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
+import { DataTableContainer, DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { Modal, ModalButton, ModalWarning, FormRow, FormGroup, FormLabel, FormInput } from '../../components/UI/Modal';
@@ -116,19 +116,6 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
 
 const Content = styled.div`
   padding: 32px;
-`;
-
-const TableContainer = styled.div`
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #C7CED6;
-  overflow: hidden;
-
-  @media (max-width: 768px) {
-    background: transparent;
-    border: none;
-    border-radius: 0;
-  }
 `;
 
 const ManagerName = styled.div`
@@ -584,7 +571,7 @@ const BrandStaffPage: React.FC = () => {
           />
         </FilterBar>
 
-        <TableContainer>
+        <DataTableContainer>
           {filteredManagers.length === 0 ? (
             <EmptyState>
               <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
@@ -668,7 +655,7 @@ const BrandStaffPage: React.FC = () => {
               </tbody>
             </DataTable>
           )}
-        </TableContainer>
+        </DataTableContainer>
       </Content>
 
       {/* ===== Add Manager Modal ===== */}

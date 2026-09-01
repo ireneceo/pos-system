@@ -420,7 +420,12 @@ const RecentOrdersSection = styled.div`
   background: white;
   border-radius: 16px;
   border: 1px solid #C7CED6;
-  overflow: hidden;
+  /* 2026-09-01: 세로만 hidden, 가로는 auto. overflow:hidden 이면 표가 컨테이너보다 넓어질 때
+     스크롤이 아니라 잘려서 오른쪽 열에 손이 닿지 않는다. 세로 hidden 을 유지하므로
+     둥근 모서리는 그대로다. 근거: 같은 잠재 패턴(6열 표)
+     실측: scripts/responsive-audit.js (TABLE_CLIPPED) */
+  overflow-x: auto;
+  overflow-y: hidden;
 
   h3 {
     padding: 20px 24px;

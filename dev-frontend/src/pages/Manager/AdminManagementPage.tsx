@@ -112,7 +112,11 @@ const StaffTableContainer = styled.div`
   background: white;
   border-radius: 12px;
   border: 1px solid #C7CED6;
-  overflow: hidden;
+  /* 2026-09-01: 세로만 hidden, 가로는 auto. overflow:hidden 이면 안의 표가 넓어질 때
+     스크롤이 아니라 잘려서 오른쪽 열에 손이 닿지 않는다(1025~1400px 노트북 구간).
+     세로 hidden 유지라 둥근 모서리는 그대로다. 실측: scripts/responsive-audit.js */
+  overflow-x: auto;
+  overflow-y: hidden;
 
   @media (max-width: 768px) {
     background: transparent;
