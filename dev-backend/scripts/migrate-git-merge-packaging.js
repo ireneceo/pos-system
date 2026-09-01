@@ -164,8 +164,25 @@ async function requireTargetColumns() {
       unitFixed++;
     }
 
+    // ── 단위 정합 (Fable 판정 2026-09-01)
+    // 레시피 없는 프로덕트는 **그 자체가 재고아이템**이고, 판매·출고 차감이 quantity 를
+    // 환산 없이 그대로 뺀다(brand_products 에 환산 필드가 없다). 그래서 판매 단위(unit)와
+    // 재고 단위(stock_unit)가 다르면 숫자가 틀린다 → 둘을 같게 맞춘다.
+    // "기본 pack" 은 단위가 아예 없는 행에만 적용된다(P#187 bottle → bottle 이 맞다).
+    let unitAligned = 0;
+    const ALIGN_IDS = [...PAIRS_EFFECTIVE.map(p => p.bp), ...UNITS_EFFECTIVE.map(u => u.bp)];
+    for (const id of ALIGN_IDS) {
+      const bp = await BrandProduct.findByPk(id, { transaction: t });
+      if (!bp || !ownedBy(bp)) continue;
+      const target = bp.unit || bp.stock_unit || 'pack';
+      if (bp.unit === target && bp.stock_unit === target) continue;
+      console.log(`  ${APPLY ? '✓' : '·'} P#${id} 단위 정합 ${bp.unit}/${bp.stock_unit} → ${target}/${target}`);
+      if (APPLY) await bp.update({ unit: target, stock_unit: target }, { transaction: t });
+      unitAligned++;
+    }
+
     if (APPLY) { await t.commit(); } else { await t.rollback(); }
-    console.log(`${APPLY ? '✓ 적용' : '· dry-run(롤백)'} — 합친 짝 ${moved} / 건너뜀 ${skipped} / 단위 보정 ${unitFixed}`);
+    console.log(`${APPLY ? '✓ 적용' : '· dry-run(롤백)'} — 합친 짝 ${moved} / 건너뜀 ${skipped} / 단위 보정 ${unitFixed} / 단위 정합 ${unitAligned}`);
     process.exit(0);
   } catch (e) {
     try { await t.rollback(); } catch (_) {}

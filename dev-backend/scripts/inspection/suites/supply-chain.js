@@ -240,6 +240,23 @@ module.exports = {
       add(`R-SC-011 ${table} 재고추적 꺼진 행 없음 (스위치 폐기)`, off === 0, `${off}건`);
     }
 
+    // ── R-SC-012: 레시피 없는 브랜드 프로덕트는 판매 단위 = 재고 단위 ───────────
+    // 프로덕트가 곧 재고아이템이고 판매·출고 차감이 quantity 를 **환산 없이** 그대로 뺀다
+    // (brand_products 에는 환산 필드가 없다). 두 단위가 다르면 숫자가 조용히 틀린다.
+    // 2026-09-01 실제 사례: "NULL 이면 pack" 규칙이 unit=bottle 인 행에 stock_unit=pack 을 박았다.
+    const unitMismatch = await q(`
+      SELECT id, name, unit, stock_unit FROM brand_products
+       WHERE product_recipe_id IS NULL AND is_active = 1
+         AND unit IS NOT NULL AND stock_unit IS NOT NULL AND unit <> stock_unit`);
+    if (unitMismatch.length === 0) {
+      add('R-SC-012 레시피 없는 브랜드 프로덕트 단위 불일치 없음', true, '');
+    } else {
+      for (const r of unitMismatch) {
+        add(`R-SC-012 #${r.id} ${r.unit}↔${r.stock_unit}`, false,
+          `${r.name} — 판매 단위와 재고 단위가 다르면 차감이 틀린다(환산 없음)`);
+      }
+    }
+
     // ── R-SC-009: 공급처 연결이 남의 소유 프로덕트를 가리키지 않는다 ─────────────
     // 프로덕트 타깃이 열리면서 "내 재고 화면에 남의 프로덕트가 뜨는" 크로스테넌트 경로가
     // 생길 수 있다. 링크의 소유자와 프로덕트의 소유자가 다른 행 = 0 이어야 한다.
