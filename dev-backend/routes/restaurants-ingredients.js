@@ -248,7 +248,7 @@ router.post('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcce
     const { restaurantId } = req.params;
     const {
       code, name, image_url, category, ingredient_category_id, unit,
-      base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock
+      base_quantity, unit_cost, supplier_name, supplier_id, min_stock
     } = req.body;
     const normalizedImage = await normalizeIngredientImage(image_url, restaurantId);
     const ingredient = await Ingredient.create({
@@ -269,7 +269,6 @@ router.post('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcce
       supplier_id: null,
       min_stock: min_stock || 0,
       current_stock: 0,
-      track_stock: track_stock || false
     });
     res.json({ success: true, data: ingredient });
   } catch (error) {
@@ -388,7 +387,6 @@ router.post('/:restaurantId/ingredients/from-catalog', authenticateToken, checkR
       min_stock: 0,
       current_stock: 0,
       // ⚠ 이 패밀리만 true 다(다른 3벌은 false). 동작 보존 — 임의로 맞추지 말 것.
-      track_stock: true,
       is_active: true,
       code: ''
     }, { transaction: t });
@@ -418,7 +416,7 @@ router.post('/:restaurantId/ingredients/from-catalog', authenticateToken, checkR
 router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId, ingredientId } = req.params;
-    const { code, name, category, unit, unit_cost, supplier_name, min_stock, image_url, ingredient_category_id, base_quantity, supplier_id, track_stock } = req.body;
+    const { code, name, category, unit, unit_cost, supplier_name, min_stock, image_url, ingredient_category_id, base_quantity, supplier_id } = req.body;
 
     // 소유권 — 재료 행 자체를 고치는 API. 예전엔 findByPk 만 하고 소유권을 안 봐서
     // 남의 매장 재료나 브랜드 표준 재료(형제 매장 공유 행)까지 수정·삭제됐다.
@@ -453,7 +451,6 @@ router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkR
     }
     if (ingredient_category_id !== undefined) updateData.ingredient_category_id = ingredient_category_id;
     if (base_quantity !== undefined) updateData.base_quantity = base_quantity;
-    if (track_stock !== undefined) updateData.track_stock = track_stock;
 
     await ingredient.update(updateData);
     res.json({ success: true, data: ingredient });

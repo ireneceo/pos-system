@@ -56,6 +56,52 @@ const VALID_SELLER_TYPES = ['system_admin', 'brand', 'foodcourt', 'supplier'];
 // draft·pending_approval 은 계속 막는다 — 승인 우회 방지(2026-07-13 판정).
 const RECEIVABLE_STATUSES = ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'];
 
+/**
+ * 레시피 없는 프로덕트로의 입고 (2026-09-01).
+ *
+ * 그전에는 발주 라인이 재료만 가리킬 수 있어서, 사온 물건이 프로덕트로 들어올 길이 없었다.
+ * 프로덕트는 **그 자체가 재고아이템**이고 수량이 프로덕트 행에 산다(판매 차감도 거기서 뺀다).
+ * 그래서 입고도 같은 자리에 더한다 — 재고아이템을 따로 만들지 않는다.
+ *
+ * 소유권을 여기서 다시 검사한다: 발주 생성 때 검사했더라도, 입고는 돈과 수량이 움직이는
+ * 지점이라 라인이 남의 프로덕트를 가리키면 400 으로 끊는다.
+ *
+ * @returns {{ok:true, stockAfter:number}} | {{ok:false, message:string}}
+ */
+async function receiveIntoProduct({ item, po, delta, userId, t, note }) {
+  const isBrandSide = !!item.brand_product_id;
+  const id = isBrandSide ? item.brand_product_id : item.product_id;
+  const Model = require(isBrandSide ? '../models/BrandProduct' : '../models/Product');
+  const prod = await Model.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+  if (!prod) return { ok: false, message: `Product ${id} not found` };
+
+  if (isBrandSide) {
+    if (po.entity_type !== 'brand') return { ok: false, message: `Product ${id} is a brand product but PO buyer is ${po.entity_type}` };
+    const Brand = require('../models/Brand');
+    const brand = await Brand.findByPk(po.entity_id, { transaction: t });
+    const ownerOk = brand && prod.owner_user_id != null && parseInt(brand.owner_id, 10) === parseInt(prod.owner_user_id, 10);
+    if (!ownerOk) return { ok: false, message: `Product ${id} does not belong to this buyer` };
+  } else {
+    if (po.entity_type !== 'restaurant' || parseInt(prod.restaurant_id, 10) !== parseInt(po.entity_id, 10)) {
+      return { ok: false, message: `Product ${id} does not belong to this buyer` };
+    }
+  }
+
+  const cur = parseFloat(prod.current_stock) || 0;
+  const next = Math.round((cur + delta) * 100) / 100;
+  const unit = prod.stock_unit || prod.unit || null;
+  await InventoryTransaction.create({
+    entity_type: po.entity_type, entity_id: po.entity_id,
+    ...(isBrandSide ? { brand_product_id: id } : { product_id: id, restaurant_id: po.entity_id }),
+    transaction_type: 'purchase', quantity_change: delta,
+    unit, stock_after: next, purchase_order_id: po.id,
+    notes: note, created_by: userId
+  }, { transaction: t });
+  await prod.update({ current_stock: next }, { transaction: t });
+  return { ok: true, stockAfter: next };
+}
+
+
 const ENTITY_TYPE_PREFIX = {
   restaurant: 'R',
   brand: 'B',
@@ -513,6 +559,19 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
     const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, transaction: t });
     const Ingredient = require('../models/Ingredient');
     for (const item of items) {
+      // 레시피 없는 프로덕트 수령 — 수량이 프로덕트에 산다(2026-09-01)
+      if (item.product_id || item.brand_product_id) {
+        const convP = parseFloat(item.unit_conversion) || 1;
+        const qtyP = parseFloat(item.quantity_ordered) || 0;
+        if (qtyP <= 0) continue;
+        const deltaP = Math.round(qtyP * convP * 100) / 100;
+        const r = await receiveIntoProduct({
+          item, po, delta: deltaP, userId: req.user.id, t,
+          note: `PO ${po.po_number} mark-received`
+        });
+        if (!r.ok) { await t.rollback(); return res.status(400).json({ success: false, message: r.message }); }
+        continue;
+      }
       // BG 재고아이템(ProductIngredient) 수령 — 정상 전량 재고 반영 (RA Ingredient 경로와 분리)
       if (item.product_ingredient_id) {
         const pIng = await ProductIngredient.findByPk(item.product_ingredient_id, { transaction: t });
@@ -522,7 +581,9 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
         if (qtyB <= 0) continue;
         const deltaB = Math.round(qtyB * convB * 100) / 100;
         const curB = parseFloat(pIng.current_stock) || 0;
-        const newB = pIng.track_stock !== false ? Math.round((curB + deltaB) * 100) / 100 : curB;
+        // 2026-09-01: track_stock 스위치 제거 — 항상 추적한다.
+        // (꺼져 있으면 입고가 기록만 되고 수량이 안 올라가, 산 물건이 재고에 없는 것처럼 보였다)
+        const newB = Math.round((curB + deltaB) * 100) / 100;
         await InventoryTransaction.create({
           entity_type: po.entity_type, entity_id: po.entity_id,
           product_ingredient_id: item.product_ingredient_id,
@@ -530,13 +591,13 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
           unit: pIng.unit, stock_after: newB, purchase_order_id: po.id,
           notes: `PO ${po.po_number} mark-received`, created_by: req.user.id
         }, { transaction: t });
-        if (pIng.track_stock !== false) await pIng.update({ current_stock: newB }, { transaction: t });
+        await pIng.update({ current_stock: newB }, { transaction: t });
         continue;
       }
       if (!item.ingredient_id) continue;
       const ingredient = await Ingredient.findByPk(item.ingredient_id, { transaction: t });
       if (!ingredient) continue;
-      // track_stock=false 인 ingredient 는 재고 추적 안 함 — InventoryBatch/Transaction 만 기록, current_stock 변경 안 함
+      // 2026-09-01: track_stock 스위치 제거 — 재고는 항상 추적한다
       const conv = parseFloat(item.unit_conversion) || 1;
       const qty = parseFloat(item.quantity_ordered) || 0;
       if (qty <= 0) continue;
@@ -545,9 +606,8 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
       const currentStock = po.entity_type === 'restaurant'
         ? await stockFor(ingredient, po.entity_id, t)
         : parseFloat(ingredient.current_stock) || 0;
-      const newStock = ingredient.track_stock !== false
-        ? Math.round((currentStock + stockDelta) * 100) / 100
-        : currentStock;
+      // 2026-09-01: 스위치 제거 — 항상 추적
+      const newStock = Math.round((currentStock + stockDelta) * 100) / 100;
       const unitCost = parseFloat(item.unit_price) || 0;
 
       await InventoryBatch.create({
@@ -571,12 +631,10 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
         created_by: req.user.id
       }, { transaction: t });
 
-      if (ingredient.track_stock !== false) {
-        if (po.entity_type === 'restaurant') {
-          await applyStock(ingredient, po.entity_id, newStock, t, { stockTake: true });
-        } else {
-          await ingredient.update({ current_stock: newStock, last_stock_take_at: new Date() }, { transaction: t });
-        }
+      if (po.entity_type === 'restaurant') {
+        await applyStock(ingredient, po.entity_id, newStock, t, { stockTake: true });
+      } else {
+        await ingredient.update({ current_stock: newStock, last_stock_take_at: new Date() }, { transaction: t });
       }
 
       // Restaurant buyer 가중평균 cost (정식 /receive 와 동일 로직)
@@ -836,6 +894,24 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
         }
       }
 
+      // 레시피 없는 프로덕트 수령 — 정상분만 프로덕트 수량에 더한다(2026-09-01)
+      if (item.product_id || item.brand_product_id) {
+        const convP = parseFloat(item.unit_conversion) || 1;
+        let normalP = 0;
+        for (const split of splits) {
+          if (split.reason !== null) continue; // 파손·부족분은 재고에 안 넣는다(재료 경로와 같은 규칙)
+          normalP = Math.round((normalP + split.quantity) * 100) / 100;
+          const deltaP = Math.round(split.quantity * convP * 100) / 100;
+          const r = await receiveIntoProduct({
+            item, po, delta: deltaP, userId: req.user.id, t,
+            note: `PO ${po.po_number} receive`
+          });
+          if (!r.ok) { await t.rollback(); return res.status(400).json({ success: false, message: r.message }); }
+        }
+        await item.update({ quantity_received: Math.round((alreadyReceived + normalP) * 100) / 100 }, { transaction: t });
+        continue;
+      }
+
       // BG 재고아이템(ProductIngredient) 수령 — 정상분만 재고 반영 (split/damage 미적용, RA Ingredient 경로와 분리)
       if (item.product_ingredient_id) {
         const pIng = await ProductIngredient.findByPk(item.product_ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
@@ -851,7 +927,7 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
           const qty = split.quantity;
           normalB = Math.round((normalB + qty) * 100) / 100;
           const deltaB = Math.round(qty * convB * 100) / 100;
-          const newB = pIng.track_stock !== false ? Math.round((curB + deltaB) * 100) / 100 : curB;
+          const newB = Math.round((curB + deltaB) * 100) / 100; // 2026-09-01: 스위치 제거, 항상 추적
           await InventoryTransaction.create({
             entity_type: po.entity_type, entity_id: po.entity_id,
             product_ingredient_id: item.product_ingredient_id,
@@ -859,7 +935,7 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
             unit: pIng.unit, stock_after: newB, purchase_order_id: po.id,
             notes: `PO ${po.po_number} receive`, created_by: req.user.id
           }, { transaction: t });
-          if (pIng.track_stock !== false) await pIng.update({ current_stock: newB }, { transaction: t });
+          await pIng.update({ current_stock: newB }, { transaction: t });
           curB = newB;
         }
         await item.update({ quantity_received: Math.round((alreadyReceived + normalB) * 100) / 100 }, { transaction: t });

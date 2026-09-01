@@ -411,7 +411,6 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     base_quantity: '1',
     order_mode: 'pack' as OrderMode,
     unit_price: '',
-    track_stock: false,
     current_stock: 0,
     stock_unit: '',
     min_order_quantity: '1',
@@ -565,7 +564,6 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         base_quantity: (product.base_quantity || 1).toString(),
         order_mode: (product.order_mode || 'pack') as OrderMode,
         unit_price: product.unit_price.toString(),
-        track_stock: !!(product as any).track_stock,
         current_stock: Number((product as any).current_stock) || 0,
         stock_unit: (product as any).stock_unit || '',
         min_order_quantity: product.min_order_quantity.toString(),
@@ -612,7 +610,6 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         base_quantity: '1',
         order_mode: 'pack' as OrderMode,
         unit_price: '',
-    track_stock: false,
     current_stock: 0,
     stock_unit: '',
         min_order_quantity: '1',
@@ -692,8 +689,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           base_quantity: parseFloat(formData.base_quantity) || 1,
           order_mode: formData.order_mode,
           unit_price: parseFloat(formData.unit_price) || 0,
-          track_stock: !!formData.track_stock,
-          current_stock: formData.track_stock ? (Number(formData.current_stock) || 0) : 0,
+          current_stock: !formData.product_recipe_id ? (Number(formData.current_stock) || 0) : 0,
           stock_unit: formData.stock_unit || null,
           min_order_quantity: parseMinOrderQty(formData.min_order_quantity),
           category_id: formData.category_id ? parseInt(formData.category_id) : null,
@@ -1119,37 +1115,30 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             </UIFormGroup>
 
             {/* 레시피(BOM) 없는 프로덕트의 자체 재고 — 매장 메뉴와 같은 규칙.
-                레시피를 연결하면 매입자재가 빠지므로 이 칸은 나타나지 않는다(둘 중 하나다). */}
+                레시피를 연결하면 매입자재가 빠지므로 이 칸은 나타나지 않는다(둘 중 하나다).
+                2026-09-01(Q5): 켜고 끄는 체크박스 제거 — 레시피가 없으면 항상 이 수량이 재고다. */}
             {!formData.product_recipe_id && (
               <UIFormGroup>
-                <FormLabel>Track stock for this product</FormLabel>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#4B5563', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={!!formData.track_stock}
-                    onChange={(e) => setFormData({ ...formData, track_stock: e.target.checked })}
-                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#635BFF' }}
+                <FormLabel>Stock for this product</FormLabel>
+                <div style={{ fontSize: '13px', color: '#4B5563', marginBottom: '8px' }}>
+                  Sold as-is (no recipe) — this product itself is the stock
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <FormInput
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={formData.current_stock ?? 0}
+                    onChange={(e) => setFormData({ ...formData, current_stock: parseFloat(e.target.value) || 0 })}
+                    placeholder="Current stock"
                   />
-                  Sold as-is (no recipe) — count this product itself as stock
-                </label>
-                {formData.track_stock && (
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                    <FormInput
-                      type="number"
-                      step="1"
-                      min="0"
-                      value={formData.current_stock ?? 0}
-                      onChange={(e) => setFormData({ ...formData, current_stock: parseFloat(e.target.value) || 0 })}
-                      placeholder="Current stock"
-                    />
-                    <FormInput
-                      type="text"
-                      value={formData.stock_unit || ''}
-                      onChange={(e) => setFormData({ ...formData, stock_unit: e.target.value })}
-                      placeholder="Unit (e.g. carton, box)"
-                    />
-                  </div>
-                )}
+                  <FormInput
+                    type="text"
+                    value={formData.stock_unit || ''}
+                    onChange={(e) => setFormData({ ...formData, stock_unit: e.target.value })}
+                    placeholder="Unit (e.g. carton, box)"
+                  />
+                </div>
               </UIFormGroup>
             )}
 

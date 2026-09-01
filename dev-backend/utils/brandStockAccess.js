@@ -97,11 +97,11 @@ async function stockMapFor(restaurantId, ingredientIds, transaction) {
 
 /**
  * 재고 반영 — 브랜드 재료면 매장 오버레이에, 매장 재료면 재료 행에 쓴다.
- * newStock 은 호출부가 계산한 최종값. track_stock=false 면 아무것도 안 쓴다.
- * 반환: 실제 기록된 재고(변경 안 했으면 기존값).
+ * newStock 은 호출부가 계산한 최종값. 반환: 실제 기록된 재고.
+ * 2026-09-01(Q5): track_stock 게이트 제거 — 예전에는 꺼져 있으면 여기서 조용히 반환해
+ * **호출부가 계산한 값이 버려졌다**(입고·차감이 다 지나간 뒤 마지막에 사라지는 자리였다).
  */
 async function applyStock(ing, restaurantId, newStock, transaction, opts = {}) {
-  if (ing.track_stock === false) return parseFloat(ing.current_stock) || 0;
   const rounded = Math.round((parseFloat(newStock) || 0) * 100) / 100;
   // recordActual = 실사로 확정된 값(last_actual_stock 까지 기록). 입고/PO 입고는 stockTake 만 찍던
   // 기존 동작 그대로 — 그 호출부를 건드리지 않으려고 옵션을 분리했다.

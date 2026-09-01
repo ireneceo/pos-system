@@ -245,14 +245,11 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
         const conv = parseFloat(item?.unit_conversion) || 1;
         const reverseQty = Math.round(delta * conv * 100) / 100;
         const cur = parseFloat(pIng.current_stock) || 0;
-        const newStock = pIng.track_stock !== false
-          ? Math.max(0, Math.round((cur - reverseQty) * 100) / 100)
-          : cur;
-        if (pIng.track_stock !== false) await pIng.update({ current_stock: newStock }, { transaction: t });
+        // 2026-09-01(Q5): track_stock 게이트 제거 — 항상 되돌린다
+        const newStock = Math.max(0, Math.round((cur - reverseQty) * 100) / 100);
+        await pIng.update({ current_stock: newStock }, { transaction: t });
 
-        const applied = pIng.track_stock !== false
-          ? Math.round((cur - newStock) * 100) / 100
-          : reverseQty;
+        const applied = Math.round((cur - newStock) * 100) / 100;
         if (applied < reverseQty) {
           console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 본사 재고 ${cur} 뿐 — ${applied} 만 차감(클램프)`);
         }
@@ -275,18 +272,15 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
         const conv = parseFloat(item?.unit_conversion) || 1;
         const reverseQty = Math.round(delta * conv * 100) / 100;
         const cur = await stockFor(ingredient, po.entity_id, t);
-        const newStock = ingredient.track_stock !== false
-          ? Math.max(0, Math.round((cur - reverseQty) * 100) / 100)
-          : cur;
-        if (ingredient.track_stock !== false) await applyStock(ingredient, po.entity_id, newStock, t);
+        // 2026-09-01(Q5): track_stock 게이트 제거 — 항상 되돌린다
+        const newStock = Math.max(0, Math.round((cur - reverseQty) * 100) / 100);
+        await applyStock(ingredient, po.entity_id, newStock, t);
 
         // 원장에는 **실제 이동량**을 적는다 — 재고가 모자라 클램프가 걸리면 의도량보다 작다.
         // 의도량을 적으면 `이전재고 + quantity_change ≠ stock_after` 가 되어 원장 합산이
         // 실재고와 영원히 어긋난다(감사·실사가 깨진다). 선례: inventoryDeductionService 도
-        // 실제 차감량을 기록한다. track_stock=false 는 재고를 안 건드리므로 관례대로 의도량.
-        const applied = ingredient.track_stock !== false
-          ? Math.round((cur - newStock) * 100) / 100
-          : reverseQty;
+        // 실제 차감량을 기록한다.
+        const applied = Math.round((cur - newStock) * 100) / 100;
         if (applied < reverseQty) {
           console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 매장 재고 ${cur} 뿐 — ${applied} 만 차감(클램프)`);
         }
@@ -312,14 +306,11 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
         const conv = parseFloat(item?.unit_conversion) || 1;
         const reverseQty = Math.round(delta * conv * 100) / 100;
         const cur = parseFloat(ingredient.current_stock) || 0;
-        const newStock = ingredient.track_stock !== false
-          ? Math.max(0, Math.round((cur - reverseQty) * 100) / 100)
-          : cur;
-        if (ingredient.track_stock !== false) await ingredient.update({ current_stock: newStock }, { transaction: t });
+        // 2026-09-01(Q5): track_stock 게이트 제거 — 항상 되돌린다
+        const newStock = Math.max(0, Math.round((cur - reverseQty) * 100) / 100);
+        await ingredient.update({ current_stock: newStock }, { transaction: t });
 
-        const applied = ingredient.track_stock !== false
-          ? Math.round((cur - newStock) * 100) / 100
-          : reverseQty;
+        const applied = Math.round((cur - newStock) * 100) / 100;
         if (applied < reverseQty) {
           console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 재고 ${cur} 뿐 — ${applied} 만 차감(클램프)`);
         }
@@ -386,8 +377,8 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
             const backQty = Math.round((parseFloat(ri.quantity) || 0) * delta * 100) / 100;
             if (backQty <= 0) continue;
             const cur = parseFloat(pIng.current_stock) || 0;
-            const nu = pIng.track_stock !== false ? Math.round((cur + backQty) * 100) / 100 : cur;
-            if (pIng.track_stock !== false) await pIng.update({ current_stock: nu }, { transaction: t });
+            const nu = Math.round((cur + backQty) * 100) / 100; // 2026-09-01(Q5): 게이트 제거
+            await pIng.update({ current_stock: nu }, { transaction: t });
             await InventoryTransaction.create({
               entity_type: 'brand', entity_id: po.seller_entity_id,
               product_ingredient_id: pIng.id,

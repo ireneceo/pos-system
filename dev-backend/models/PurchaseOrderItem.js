@@ -6,6 +6,12 @@ const PurchaseOrderItem = sequelize.define('PurchaseOrderItem', {
   purchase_order_id: { type: DataTypes.INTEGER, allowNull: false },
   ingredient_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'RA/brand Ingredient. BG ProductIngredient 주문이면 null' },
   product_ingredient_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'BG 재고아이템(ProductIngredient) 주문. ingredient_id 와 둘 중 하나만' },
+  // 2026-09-01: 레시피 없는 프로덕트는 그 자체가 재고아이템인데(수량이 프로덕트에 산다)
+  // 발주 라인이 재료만 가리킬 수 있어서 사온 물건이 프로덕트로 들어올 길이 없었다.
+  // 그래서 같은 물건이 "프로덕트"와 "따로 만든 재고아이템" 둘로 갈라졌다(GIT 포장재).
+  // 아래 4개(ingredient/product_ingredient/product/brand_product)는 **정확히 하나만** 채운다 — utils/stockTarget.js
+  product_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'RA 레시피 없는 프로덕트 = 재고아이템 자체. 넷 중 하나만' },
+  brand_product_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'BG 레시피 없는 브랜드 프로덕트. 넷 중 하나만' },
   ingredient_seller_product_id: {
     type: DataTypes.INTEGER, allowNull: true,
     comment: 'snapshot of which seller product was used'
@@ -37,7 +43,9 @@ const PurchaseOrderItem = sequelize.define('PurchaseOrderItem', {
   updatedAt: 'updated_at',
   indexes: [
     { fields: ['purchase_order_id'] },
-    { fields: ['ingredient_id'] }
+    { fields: ['ingredient_id'] },
+    { fields: ['product_id'] },
+    { fields: ['brand_product_id'] }
   ]
 });
 

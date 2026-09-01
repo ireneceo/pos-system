@@ -436,27 +436,30 @@ router.post('/:id/ship', async (req, res) => {
             // ── 레시피 없는 프로덕트는 **그 상품 자체가 재고 단위** ─────────────
             // 매장이 메뉴를 팔 때와 같은 규칙(2026-08-22 확정 모델). 그대로 파는 물건은
             // BOM 이 있을 수 없는데, 예전에는 여기서 그냥 건너뛰어 팔려도 재고가 안 줄었다.
-            // `track_stock` 켠 상품만 깎는다.
-            if (!bp.track_stock) continue;
+            // 2026-09-01: `track_stock` 게이트 제거 — 항상 깎는다(매장 판매 차감과 같은 규칙).
+            //   스위치가 꺼져 있으면 팔려도 조용히 안 깎였다.
             const soldQtyDirect = parseFloat(it.quantity_ordered) || 0;
             if (soldQtyDirect <= 0) continue;
             const curBp = parseFloat(bp.current_stock) || 0;
             const takeBp = Math.min(soldQtyDirect, curBp);      // 음수 재고 금지
             const shortBp = Math.round((soldQtyDirect - takeBp) * 100) / 100;
             const nextBp = Math.round((curBp - takeBp) * 100) / 100;
-            await bp.update({ current_stock: nextBp }, { transaction: t });
-            await InventoryTransaction.create({
-              entity_type: 'brand', entity_id: locked.seller_entity_id,
-              brand_product_id: bp.id,
-              transaction_type: 'order_deduct',
-              quantity_change: -takeBp,
-              unit: bp.stock_unit || bp.unit || 'ea',
-              stock_after: nextBp,
-              purchase_order_id: locked.id,
-              notes: `Sold on PO ${locked.po_number} (${bp.name})`
-                + (shortBp > 0 ? ` [stock_shortfall ${shortBp}]` : ''),
-              created_by: req.user?.id || null
-            }, { transaction: t });
+            // 0 에서 0 을 빼는 원장 줄은 남기지 않는다(재고 이력이 빈 줄로 덮이지 않게)
+            if (takeBp > 0) {
+              await bp.update({ current_stock: nextBp }, { transaction: t });
+              await InventoryTransaction.create({
+                entity_type: 'brand', entity_id: locked.seller_entity_id,
+                brand_product_id: bp.id,
+                transaction_type: 'order_deduct',
+                quantity_change: -takeBp,
+                unit: bp.stock_unit || bp.unit || 'ea',
+                stock_after: nextBp,
+                purchase_order_id: locked.id,
+                notes: `Sold on PO ${locked.po_number} (${bp.name})`
+                  + (shortBp > 0 ? ` [stock_shortfall ${shortBp}]` : ''),
+                created_by: req.user?.id || null
+              }, { transaction: t });
+            }
             continue;
           }
           const recipeIngs = await ProductRecipeIngredient.findAll({ where: { recipe_id: bp.product_recipe_id }, transaction: t });
@@ -467,8 +470,8 @@ router.post('/:id/ship', async (req, res) => {
             const useQty = Math.round((parseFloat(ri.quantity) || 0) * soldQty * 100) / 100;
             if (useQty <= 0) continue;
             const cur = parseFloat(pIng.current_stock) || 0;
-            const newStock = pIng.track_stock !== false ? Math.round((cur - useQty) * 100) / 100 : cur;
-            if (pIng.track_stock !== false) await pIng.update({ current_stock: newStock }, { transaction: t });
+            const newStock = Math.round((cur - useQty) * 100) / 100; // 2026-09-01: 스위치 제거, 항상 추적
+            await pIng.update({ current_stock: newStock }, { transaction: t });
             await InventoryTransaction.create({
               entity_type: 'brand', entity_id: locked.seller_entity_id,
               product_ingredient_id: pIng.id,

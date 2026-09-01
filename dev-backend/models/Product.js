@@ -64,8 +64,12 @@ Product.init({
   // Stock management fields
   track_stock: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false,
-    comment: 'Whether to track stock for this product'
+    defaultValue: true,
+    // Q5(2026-09-01): **로직에서 읽지 않는 컬럼.** 호환용으로만 남긴다 — 게이트로 재사용 금지.
+    // 예전에는 이 값이 꺼져 있으면 판매 차감·입고를 건너뛰었고, 그게 GIT 포장재가
+    // 팔려도 재고가 안 빠진 직접 원인이었다(포장재 6개 전부 꺼짐). 스위치 자체를 없앴다.
+    // 안 쓰는 품목은 `is_active=false` 로 끈다(원래 그 용도). 저재고 알림은 min_stock>0 만 뜬다.
+    comment: 'Whether to track stock for this product (deprecated gate — always tracked)'
   },
   current_stock: {
     type: DataTypes.DECIMAL(10, 2),

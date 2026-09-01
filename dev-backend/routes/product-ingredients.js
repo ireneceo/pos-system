@@ -20,13 +20,12 @@ router.use(requireBGScope);
 // 목록 조회
 router.get('/', async (req, res) => {
   try {
-    const { category_id, search, is_active, track_stock } = req.query;
+    const { category_id, search, is_active } = req.query;
 
     const where = {};
     applyBGFilter(where, req);
     if (category_id) where.category_id = category_id;
     if (is_active !== undefined) where.is_active = is_active === 'true';
-    if (track_stock !== undefined) where.track_stock = track_stock === 'true';
     if (search) {
       where[Op.or] = [
         { name: { [Op.like]: `%${search}%` } },
@@ -255,7 +254,6 @@ router.post('/from-catalog', async (req, res) => {
       lead_time_days: 1,
       safety_stock_percent: 20,
       // 재고 관리는 사람이 켠다(모델 기본값과 동일 규칙)
-      track_stock: false,
       is_active: true
     }, { transaction: t });
 
@@ -338,7 +336,7 @@ router.post('/', async (req, res) => {
       unit_cost, supplier_name, supplier_id,
       min_stock, min_order, current_stock,
       lead_time_days, safety_stock_percent,
-      manual_daily_usage, track_stock
+      manual_daily_usage
     } = req.body;
 
     // 코드 자동 생성 (BG 소유 내 카운트)
@@ -371,7 +369,6 @@ router.post('/', async (req, res) => {
       manual_daily_usage,
       // 재고 관리는 **사람이 켠다**. 예전엔 값을 안 보내면 켜진 채로 만들어져,
       // 만든 것이 전부 관리 대상이 됐다(운영 실측 289/289 켜짐, 수량 있는 건 3개).
-      track_stock: track_stock === true,
       is_active: true
     });
 
@@ -406,7 +403,7 @@ router.put('/:id', async (req, res) => {
       'unit_cost',
       'min_stock', 'min_order', 'current_stock',
       'lead_time_days', 'safety_stock_percent',
-      'manual_daily_usage', 'track_stock', 'is_active'
+      'manual_daily_usage', 'is_active'
     ];
 
     const updateData = {};

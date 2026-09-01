@@ -31,6 +31,7 @@
     "migrate-invoice-item-unit.js",
     "migrate-order-action-table-moved.js",
     "migrate-pending-reprint.js",
+    "migrate-po-item-product-target.js",
     "migrate-po-owner-approval.js",
     "migrate-po-return-line-types.js",
     "migrate-po-status-pending-approval.js",
@@ -95,6 +96,7 @@
     "migrate-brand-display-stock-zero.js": "보류 — 운영 재고 18건(브랜드 표시용 사본)을 0으로 바꾸는 데이터 변경. 원래 P2 화면 수정과 짝으로 나갈 예정이었으나 P2 절단면이 실측으로 뒤집혀(화면이 이 테이블을 안 읽음) 코드 짝이 사라졌다. 또한 오염 경로인 브랜드 주체 발주가 운영 역대 0건이라 긴급도 없음(2026-08-20 실측). Irene 지시는 '코드만 문제없게 하고 배포'였고 DB 작업은 운영서버 몫으로 위임됨 → 이번 배포에서 제외. 실행 시 --dry-run 으로 대상 18건 확인 후 적용(멱등, 매장 오버레이 무접촉).",
     "migrate-category-cleanup-20260830.js": "일회성 — 운영 카테고리 중복 병합(9쌍·41건 이동)+빈 옛 카테고리 삭제(5)+미분류 자동 채움(277). 2026-08-30 ssh 로 직접 적용 완료, 완료마커 /var/www/backups/data-migrations/.category-cleanup-20260830.applied. 재실행 금지(마커가 막음).",
     "migrate-category-uncategorized-20260830.js": "일회성 — 미분류 항목 202건을 소유자별 Uncategorized 카테고리에 담음(신설 6). Irene 지시 2026-08-30. ssh 직접 적용 완료, 멱등(NULL 인 행만).",
-    "migrate-category-fill-wave2-20260830.js": "일회성 — 미분류 잔여 202→121건(81건 채움). 용기어·세제어 우선 규칙 + 어휘 보강. 2026-08-30 ssh 직접 적용 완료, 마커 /var/www/backups/data-migrations/.category-fill-wave2-20260830.applied. 멱등(Uncategorized 인 행만)."
+    "migrate-category-fill-wave2-20260830.js": "일회성 — 미분류 잔여 202→121건(81건 채움). 용기어·세제어 우선 규칙 + 어휘 보강. 2026-08-30 ssh 직접 적용 완료, 마커 /var/www/backups/data-migrations/.category-fill-wave2-20260830.applied. 멱등(Uncategorized 인 행만).",
+    "migrate-git-merge-packaging.js": "일회성 데이터 이관 — GIT 포장재 갈라진 재고 합치기(운영 1회, 이름·소유자 이중 확인, 멱등). 배포 루프에서 재실행하지 않는다."
   }
 }

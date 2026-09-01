@@ -28,7 +28,6 @@ export interface MigrationItem {
   name: string;
   unit: string | null;
   unit_cost: string | number | null;
-  track_stock: boolean;
   seller_sources: SellerSource[];
   match: MatchInfo;
   suggested_mode: LinkMode;

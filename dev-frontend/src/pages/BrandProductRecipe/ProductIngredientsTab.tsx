@@ -41,7 +41,6 @@ interface Ingredient {
   min_stock: number;
   min_order: number;
   current_stock: number;
-  track_stock: boolean;
   is_active: boolean;
   sellers?: Array<{
     id: number;
@@ -157,66 +156,7 @@ const IngredientCategoryBadge = styled.div`
   letter-spacing: 0.5px;
 `;
 
-const TrackStockRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: #F4F6F9;
-  border-radius: 8px;
-  margin-top: 12px;
-`;
-
-const TrackStockLabel = styled.span`
-  font-size: 13px;
-  font-weight: 500;
-  color: #0A2540;
-`;
-
-const ToggleSwitch = styled.label`
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 22px;
-`;
-
-const ToggleInput = styled.input`
-  opacity: 0;
-  width: 0;
-  height: 0;
-`;
-
-const ToggleSlider = styled.span`
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #C7CED6;
-  transition: 0.3s;
-  border-radius: 22px;
-
-  &:before {
-    position: absolute;
-    content: "";
-    height: 16px;
-    width: 16px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-  }
-
-  ${ToggleInput}:checked + & {
-    background-color: #635BFF;
-  }
-
-  ${ToggleInput}:checked + &:before {
-    transform: translateX(22px);
-  }
-`;
+// 2026-09-01(Q5): 재고추적 토글 UI 제거 — 스위치 자체를 없앴다(항상 추적).
 
 const IngredientInfo = styled.div`
   margin: 12px 0;
@@ -411,8 +351,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
     supplier_id: '' as string | number,
     min_stock: '0',
     min_order: '0',
-    current_stock: '0',
-    track_stock: false
+    current_stock: '0'
   });
 
   // ── Supplier Products (seller-sources) — 발주 연결용 매핑 (editing existing item only) ──
@@ -477,8 +416,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
         supplier_id: ingredient.supplier_id || '',
         min_stock: ingredient.min_stock.toString(),
         min_order: ingredient.min_order.toString(),
-        current_stock: ingredient.current_stock.toString(),
-        track_stock: ingredient.track_stock
+        current_stock: ingredient.current_stock.toString()
       });
     } else {
       setEditingIngredient(null);
@@ -493,8 +431,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
         supplier_id: '',
         min_stock: '0',
         min_order: '0',
-        current_stock: '0',
-        track_stock: false
+        current_stock: '0'
       });
     }
     setShowModal(true);
@@ -516,8 +453,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       supplier_id: '',
       min_stock: '0',
       min_order: '0',
-      current_stock: '0',
-      track_stock: false
+      current_stock: '0'
     });
   };
 
@@ -633,8 +569,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
           unit_cost: parseFloat(formData.unit_cost) || 0,
           min_stock: parseFloat(formData.min_stock) || 0,
           min_order: parseFloat(formData.min_order) || 0,
-          current_stock: parseFloat(formData.current_stock) || 0,
-          track_stock: formData.track_stock
+          current_stock: parseFloat(formData.current_stock) || 0
         })
       });
 
@@ -649,40 +584,6 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       setInfoModal({ open: true, title: 'Save Failed', message: 'Failed to save ingredient. Please try again.' });
     } finally {
       setSaving(false);
-    }
-  };
-
-  // Track Stock 토글 핸들러
-  const handleTrackStockToggle = async (ingredient: Ingredient, newValue: boolean) => {
-    try {
-      // 필요한 필드만 전송 (category 관계 객체 제외)
-      const response = await fetchAPI(`/api/product-ingredients/${ingredient.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          name: ingredient.name,
-          category_id: ingredient.category_id,
-          image_url: ingredient.image_url,
-          unit: ingredient.unit,
-          base_quantity: ingredient.base_quantity,
-          unit_cost: ingredient.unit_cost,
-          min_stock: ingredient.min_stock,
-          min_order: ingredient.min_order,
-          current_stock: ingredient.current_stock,
-          is_active: ingredient.is_active,
-          track_stock: newValue
-        })
-      });
-
-      if (response.success) {
-        // 로컬 상태 업데이트
-        setIngredients(prev => prev.map(ing =>
-          ing.id === ingredient.id ? { ...ing, track_stock: newValue } : ing
-        ));
-      } else {
-        setInfoModal({ open: true, title: 'Update Failed', message: response.error || 'Failed to update track stock. Please try again.' });
-      }
-    } catch (error) {
-      console.error('Failed to toggle track stock:', error);
     }
   };
 
@@ -720,7 +621,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
   };
 
   const getStockStatus = (ingredient: Ingredient): 'normal' | 'low' | 'out' => {
-    if (!ingredient.track_stock) return 'normal';
+    // 2026-09-01(Q5): 재고추적 스위치 제거 — 항상 재고 기준으로 본다
     if (ingredient.current_stock <= 0) return 'out';
     if (ingredient.current_stock <= ingredient.min_stock) return 'low';
     return 'normal';
@@ -870,31 +771,14 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
                     <InfoValue>{ingredient.code}</InfoValue>
                   </InfoRow>
                 )}
-                {ingredient.track_stock && (
-                  <InfoRow>
-                    <InfoLabel>{'Stock'}</InfoLabel>
-                    <StockBadge status={getStockStatus(ingredient)}>
-                      {ingredient.current_stock} {ingredient.unit}
-                    </StockBadge>
-                  </InfoRow>
-                )}
+                <InfoRow>
+                  <InfoLabel>{'Stock'}</InfoLabel>
+                  <StockBadge status={getStockStatus(ingredient)}>
+                    {ingredient.current_stock} {ingredient.unit}
+                  </StockBadge>
+                </InfoRow>
               </IngredientInfo>
 
-              {/* Track Stock 토글 */}
-              <TrackStockRow>
-                <TrackStockLabel>{'Track in Inventory'}</TrackStockLabel>
-                <ToggleSwitch>
-                  <ToggleInput
-                    type="checkbox"
-                    checked={ingredient.track_stock || false}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      handleTrackStockToggle(ingredient, e.target.checked);
-                    }}
-                  />
-                  <ToggleSlider />
-                </ToggleSwitch>
-              </TrackStockRow>
 
               <IngredientActions>
                 <ActionButton
@@ -1176,9 +1060,6 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
             <span style={{ fontSize: '11px', fontWeight: 600, color: '#635BFF', background: '#F0F4FF', padding: '3px 8px', borderRadius: '4px' }}>
               {detailIngredient.category_name || 'Uncategorized'}
             </span>
-            {detailIngredient.track_stock && (
-              <span style={{ fontSize: '11px', fontWeight: 500, color: '#059669', background: '#ECFDF5', padding: '3px 8px', borderRadius: '4px' }}>{'Tracking'}</span>
-            )}
           </div>
 
           <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '16px' }}>
@@ -1192,11 +1073,11 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
             </div>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
               <div style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px' }}>{'Current Stock'}</div>
-              <div style={{ fontSize: '14px', fontWeight: 600 }}>{detailIngredient.track_stock ? `${Number(detailIngredient.current_stock || 0).toFixed(1)} ${detailIngredient.unit}` : '-'}</div>
+              <div style={{ fontSize: '14px', fontWeight: 600 }}>{`${Number(detailIngredient.current_stock || 0).toFixed(1)} ${detailIngredient.unit}`}</div>
             </div>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
               <div style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px' }}>{'Min Stock'}</div>
-              <div style={{ fontSize: '14px', fontWeight: 600 }}>{detailIngredient.track_stock ? `${Number(detailIngredient.min_stock || 0)} ${detailIngredient.unit}` : '-'}</div>
+              <div style={{ fontSize: '14px', fontWeight: 600 }}>{`${Number(detailIngredient.min_stock || 0)} ${detailIngredient.unit}`}</div>
             </div>
           </div>
 

@@ -5,7 +5,7 @@
  *   ① product_recommendations 수동연결(브랜드분 먼저 → 매장분) 있으면 그걸
  *   ② 없으면 "추천 카테고리"(is_recommendation_source 또는 이름 자동감지)의 상품
  *   ③ 그래도 없으면 []
- * 공통 필터: is_active, brand_scope_active!=false, 재고(track_stock=false||current_stock>0),
+ * 공통 필터: is_active, brand_scope_active!=false,
  *           담은 상품 자신 제외, 최대 limit(기본 6). (장바구니 중복 제외는 프론트.)
  */
 const { Op } = require('sequelize');
@@ -27,7 +27,9 @@ function categoryIsRecommendationSource(cat) {
 }
 
 function inStock(p) {
-  return !p.track_stock || (Number(p.current_stock) || 0) > 0;
+  // 2026-09-01(Q5): 재고 기반 숨김 제거. 품절 표시는 별도 플래그 몫 —
+  // 재고 0 이 판매를 막지 않는 한 추천도 막지 않는다(POS·모바일은 0 에서 안 막힌다).
+  return p.is_active !== false;
 }
 function visible(p) {
   // 노출 = is_active(RA) AND brand_scope_active(BG, false=숨김)
@@ -54,7 +56,7 @@ async function resolveRecommendations(restaurantId, productId, limit = 6) {
   let candidates = [];
   if (links.length) {
     const recIds = [...new Set(links.map(l => l.recommended_product_id))];
-    const found = await Product.findAll({ where: { id: { [Op.in]: recIds }, restaurant_id: restaurantId }, attributes: [...PUBLIC_PRODUCT_ATTRS, 'is_active', 'brand_scope_active', 'track_stock', 'current_stock'] });
+    const found = await Product.findAll({ where: { id: { [Op.in]: recIds }, restaurant_id: restaurantId }, attributes: [...PUBLIC_PRODUCT_ATTRS, 'is_active', 'brand_scope_active'] });
     const byId = new Map(found.map(p => [p.id, p]));
     candidates = recIds.map(id => byId.get(id)).filter(Boolean); // preserve link order
   } else {
@@ -64,7 +66,7 @@ async function resolveRecommendations(restaurantId, productId, limit = 6) {
     if (recNames.length) {
       candidates = await Product.findAll({
         where: { restaurant_id: restaurantId, category: { [Op.in]: recNames } },
-        attributes: [...PUBLIC_PRODUCT_ATTRS, 'is_active', 'brand_scope_active', 'track_stock', 'current_stock'],
+        attributes: [...PUBLIC_PRODUCT_ATTRS, 'is_active', 'brand_scope_active'],
         order: [['display_order', 'ASC'], ['id', 'DESC']],
       });
     }
@@ -74,7 +76,7 @@ async function resolveRecommendations(restaurantId, productId, limit = 6) {
     if (candidates.length === 0) {
       candidates = await Product.findAll({
         where: { restaurant_id: restaurantId, is_active: true, is_set_menu: false },
-        attributes: [...PUBLIC_PRODUCT_ATTRS, 'is_active', 'brand_scope_active', 'track_stock', 'current_stock'],
+        attributes: [...PUBLIC_PRODUCT_ATTRS, 'is_active', 'brand_scope_active'],
         order: [['display_order', 'ASC'], ['id', 'DESC']],
         limit: 40,
       });

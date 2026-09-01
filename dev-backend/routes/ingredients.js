@@ -280,8 +280,6 @@ router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBr
       supplier_id: null,
       min_stock: 0,
       current_stock: 0,
-      // 재고 관리는 사람이 켠다 — 카탈로그에 담았다고 자동으로 세기 시작하지 않는다
-      track_stock: false,
       is_active: true,
       code: ''
     }, { transaction: t });
@@ -307,7 +305,7 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
   try {
     const { brandId } = req.params;
     const brand_id = brandId;
-    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
+    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
     // Auto-generate code if not provided
     const finalCode = code || await generateIngredientCode(Ingredient, 'brand', brandId);
@@ -329,8 +327,7 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
       supplier_name: null,
       supplier_id: null,
       min_stock: min_stock || 0,
-      current_stock: 0,
-      track_stock: track_stock || false
+      current_stock: 0
     });
 
     res.json({ success: true, data: ingredient });
@@ -348,7 +345,7 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
   try {
     const { ingredientId } = req.params;
     const ingredient_id = ingredientId;
-    const { code, name, image_url, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
+    const { code, name, image_url, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {
@@ -372,7 +369,6 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
     if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
     // 레거시 supplier_name/supplier_id 쓰기 중단 (2026-07-04) — 기존 값 보존, API 로 수정 안 함. 공급처=seller-source 매핑.
     if (min_stock !== undefined) updateData.min_stock = min_stock;
-    if (track_stock !== undefined) updateData.track_stock = track_stock;
 
     await ingredient.update(updateData);
 
@@ -678,7 +674,7 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
 router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
+    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
     // Auto-generate code if not provided
     const finalCode = code || await generateIngredientCode(Ingredient, 'restaurant', restaurantId);
@@ -699,8 +695,7 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
       supplier_name: null,
       supplier_id: null,
       min_stock: min_stock || 0,
-      current_stock: 0,
-      track_stock: track_stock || false
+      current_stock: 0
     });
 
     res.json({ success: true, data: ingredient });
@@ -717,7 +712,7 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
 router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId, ingredientId } = req.params;
-    const { code, name, image_url, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
+    const { code, name, image_url, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
     // 소유권 — 재료 행 자체를 고치는 API. 예전엔 findByPk 만 하고 소유권을 안 봐서
     // 남의 매장 재료나 브랜드 표준 재료(형제 매장 공유 행)까지 수정·삭제됐다.
@@ -751,11 +746,9 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
     if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
     // 레거시 supplier_name/supplier_id 쓰기 중단 (2026-07-04) — 기존 값 보존, API 로 수정 안 함. 공급처=seller-source 매핑.
     if (min_stock !== undefined) updateData.min_stock = min_stock;
-    if (track_stock !== undefined) updateData.track_stock = track_stock;
 
     console.log('[DEBUG] updateData:', updateData);
     await ingredient.update(updateData);
-    console.log('[DEBUG] After update - track_stock:', ingredient.track_stock);
 
     // Reload with associations for frontend display
     const updatedIngredient = await Ingredient.findByPk(ingredientId, {
@@ -1100,7 +1093,7 @@ router.post('/foodcourts/:foodcourtId/ingredients/from-catalog', authenticateTok
       name: body.name || seller.productName,
       unit: catalogLink.resolveUnit(body.unit, seller.productUnit),
       base_quantity: 1, unit_cost: parseFloat(seller.productPrice) || 0,
-      min_stock: 0, current_stock: 0, track_stock: false, is_active: true, code: ''
+      min_stock: 0, current_stock: 0, is_active: true, code: ''
     }, { transaction: t });
 
     const mapping = await catalogLink.createMappingFor({

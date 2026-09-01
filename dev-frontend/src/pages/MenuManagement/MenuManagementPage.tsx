@@ -888,7 +888,6 @@ const MenuManagementPage: React.FC = () => {
     set_items: [],
     set_display_order: 0,
     recipe_id: null,
-    track_stock: false,
     current_stock: 0,
     stock_unit: '',
     takeaway_charge: 0
@@ -1066,7 +1065,6 @@ const MenuManagementPage: React.FC = () => {
       set_items: [],
       set_display_order: 0,
       recipe_id: null,
-    track_stock: false,
     current_stock: 0,
     stock_unit: '',
       takeaway_charge: 0
@@ -1092,7 +1090,6 @@ const MenuManagementPage: React.FC = () => {
       set_items: [],
       set_display_order: 0,
       recipe_id: null,
-    track_stock: false,
     current_stock: 0,
     stock_unit: '',
       takeaway_charge: 0
@@ -1160,7 +1157,6 @@ const MenuManagementPage: React.FC = () => {
       set_display_order: item.set_display_order || 0,
       // 자체 재고 — 수정 폼을 열 때 저장된 값을 그대로 싣는다.
       // (안 실으면 저장 시 0/꺼짐으로 덮어써 재고가 조용히 날아간다.)
-      track_stock: !!(item as any).track_stock,
       current_stock: Number((item as any).current_stock) || 0,
       stock_unit: (item as any).stock_unit || '',
       recipe_id: item.recipe_id || null,
@@ -1363,8 +1359,7 @@ const MenuManagementPage: React.FC = () => {
       code: formData.code || '',
       name: formData.name || '',
       price: formData.price || 0,
-      track_stock: !!formData.track_stock,
-      current_stock: formData.track_stock ? (Number(formData.current_stock) || 0) : 0,
+      current_stock: !formData.recipe_id ? (Number(formData.current_stock) || 0) : 0,
       stock_unit: formData.stock_unit || null,
       category: formData.category,
       emoji: formData.emoji || '🍽️',
@@ -1427,8 +1422,7 @@ const MenuManagementPage: React.FC = () => {
       code: formData.code || '',
       name: formData.name || '',
       price: formData.price || 0,
-      track_stock: !!formData.track_stock,
-      current_stock: formData.track_stock ? (Number(formData.current_stock) || 0) : 0,
+      current_stock: !formData.recipe_id ? (Number(formData.current_stock) || 0) : 0,
       stock_unit: formData.stock_unit || null,
       category: formData.category,
       emoji: formData.emoji || '🍽️',
@@ -1932,39 +1926,33 @@ const MenuManagementPage: React.FC = () => {
             />
           </UIFormGroup>
 
-          {/* 레시피 없는 상품의 자체 재고 — 캔음료·병맥주처럼 그대로 파는 물건.
-              레시피를 연결하면 재료가 빠지므로 이 칸은 나타나지 않는다(둘 중 하나다). */}
+          {/* 레시피 없는 상품의 자체 재고 — 캔음료·병맥주·포장재처럼 그대로 파는 물건.
+              레시피를 연결하면 재료가 빠지므로 이 칸은 나타나지 않는다(둘 중 하나다).
+              2026-09-01(Q5): 켜고 끄는 체크박스를 없앴다 — 스위치가 꺼져 있으면 팔려도
+              재고가 안 빠졌고, 그게 결함의 직접 원인이었다. 레시피가 없으면 항상 이 수량이 재고다. */}
           {!formData.recipe_id && (
             <UIFormGroup>
-              <FormLabel>{t('menu:menuManagementPage.trackStock', 'Track stock for this item')}</FormLabel>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#4B5563', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={!!formData.track_stock}
-                  onChange={(e) => setFormData({ ...formData, track_stock: e.target.checked })}
-                  style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#635BFF' }}
+              <FormLabel>{t('menu:menuManagementPage.trackStock', 'Stock for this item')}</FormLabel>
+              <div style={{ fontSize: '13px', color: '#4B5563', marginBottom: '8px' }}>
+                {t('menu:menuManagementPage.trackStockHelp', 'Sold as-is (no recipe) — this item itself is the stock')}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <FormInput
+                  type="number"
+                  value={formData.current_stock ?? 0}
+                  onChange={(e) => setFormData({ ...formData, current_stock: parseFloat(e.target.value) || 0 })}
+                  onFocus={(e) => { if (parseFloat(e.target.value) === 0) e.target.select(); }}
+                  step="1"
+                  min="0"
+                  placeholder={t('menu:menuManagementPage.currentStock', 'Current stock') as string}
                 />
-                {t('menu:menuManagementPage.trackStockHelp', 'Sold as-is (no recipe) — count this item itself as stock')}
-              </label>
-              {formData.track_stock && (
-                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                  <FormInput
-                    type="number"
-                    value={formData.current_stock ?? 0}
-                    onChange={(e) => setFormData({ ...formData, current_stock: parseFloat(e.target.value) || 0 })}
-                    onFocus={(e) => { if (parseFloat(e.target.value) === 0) e.target.select(); }}
-                    step="1"
-                    min="0"
-                    placeholder={t('menu:menuManagementPage.currentStock', 'Current stock')}
-                  />
-                  <FormInput
-                    type="text"
-                    value={formData.stock_unit || ''}
-                    onChange={(e) => setFormData({ ...formData, stock_unit: e.target.value })}
-                    placeholder={t('menu:menuManagementPage.stockUnit', 'Unit (e.g. can, bottle)')}
-                  />
-                </div>
-              )}
+                <FormInput
+                  type="text"
+                  value={formData.stock_unit || ''}
+                  onChange={(e) => setFormData({ ...formData, stock_unit: e.target.value })}
+                  placeholder={t('menu:menuManagementPage.stockUnit', 'Unit (e.g. can, bottle)') as string}
+                />
+              </div>
             </UIFormGroup>
           )}
 
@@ -2296,39 +2284,33 @@ const MenuManagementPage: React.FC = () => {
             />
           </UIFormGroup>
 
-          {/* 레시피 없는 상품의 자체 재고 — 캔음료·병맥주처럼 그대로 파는 물건.
-              레시피를 연결하면 재료가 빠지므로 이 칸은 나타나지 않는다(둘 중 하나다). */}
+          {/* 레시피 없는 상품의 자체 재고 — 캔음료·병맥주·포장재처럼 그대로 파는 물건.
+              레시피를 연결하면 재료가 빠지므로 이 칸은 나타나지 않는다(둘 중 하나다).
+              2026-09-01(Q5): 켜고 끄는 체크박스를 없앴다 — 스위치가 꺼져 있으면 팔려도
+              재고가 안 빠졌고, 그게 결함의 직접 원인이었다. 레시피가 없으면 항상 이 수량이 재고다. */}
           {!formData.recipe_id && (
             <UIFormGroup>
-              <FormLabel>{t('menu:menuManagementPage.trackStock', 'Track stock for this item')}</FormLabel>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#4B5563', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={!!formData.track_stock}
-                  onChange={(e) => setFormData({ ...formData, track_stock: e.target.checked })}
-                  style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#635BFF' }}
+              <FormLabel>{t('menu:menuManagementPage.trackStock', 'Stock for this item')}</FormLabel>
+              <div style={{ fontSize: '13px', color: '#4B5563', marginBottom: '8px' }}>
+                {t('menu:menuManagementPage.trackStockHelp', 'Sold as-is (no recipe) — this item itself is the stock')}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <FormInput
+                  type="number"
+                  value={formData.current_stock ?? 0}
+                  onChange={(e) => setFormData({ ...formData, current_stock: parseFloat(e.target.value) || 0 })}
+                  onFocus={(e) => { if (parseFloat(e.target.value) === 0) e.target.select(); }}
+                  step="1"
+                  min="0"
+                  placeholder={t('menu:menuManagementPage.currentStock', 'Current stock') as string}
                 />
-                {t('menu:menuManagementPage.trackStockHelp', 'Sold as-is (no recipe) — count this item itself as stock')}
-              </label>
-              {formData.track_stock && (
-                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                  <FormInput
-                    type="number"
-                    value={formData.current_stock ?? 0}
-                    onChange={(e) => setFormData({ ...formData, current_stock: parseFloat(e.target.value) || 0 })}
-                    onFocus={(e) => { if (parseFloat(e.target.value) === 0) e.target.select(); }}
-                    step="1"
-                    min="0"
-                    placeholder={t('menu:menuManagementPage.currentStock', 'Current stock')}
-                  />
-                  <FormInput
-                    type="text"
-                    value={formData.stock_unit || ''}
-                    onChange={(e) => setFormData({ ...formData, stock_unit: e.target.value })}
-                    placeholder={t('menu:menuManagementPage.stockUnit', 'Unit (e.g. can, bottle)')}
-                  />
-                </div>
-              )}
+                <FormInput
+                  type="text"
+                  value={formData.stock_unit || ''}
+                  onChange={(e) => setFormData({ ...formData, stock_unit: e.target.value })}
+                  placeholder={t('menu:menuManagementPage.stockUnit', 'Unit (e.g. can, bottle)') as string}
+                />
+              </div>
             </UIFormGroup>
           )}
 

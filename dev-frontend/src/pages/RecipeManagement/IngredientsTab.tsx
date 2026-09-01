@@ -73,7 +73,6 @@ interface Ingredient {
   is_active: boolean;
   min_stock?: number;
   current_stock?: number;
-  track_stock?: boolean;
   sellers?: Array<{
     id: number;
     seller_type: 'supplier' | 'brand' | 'foodcourt';
@@ -260,21 +259,7 @@ const ResetButton = styled.button`
   }
 `;
 
-const TrackStockRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: #F4F6F9;
-  border-radius: 8px;
-  margin-top: 12px;
-`;
-
-const TrackStockLabel = styled.span`
-  font-size: 13px;
-  font-weight: 500;
-  color: #0A2540;
-`;
+// 2026-09-01(Q5): 재고추적 토글 UI 제거 — 스위치 자체를 없앴다(항상 추적).
 
 const ToggleSwitch = styled.label`
   position: relative;
@@ -506,7 +491,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const [extSaving, setExtSaving] = useState(false);
   const [extError, setExtError] = useState<string | null>(null);
   // Track Stock pending value (AutoSaveField onSave 가 onChange 직후 호출됨)
-  const trackPendingRef = useRef<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('newest');
@@ -530,7 +514,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     unit_cost: '',
     supplier_id: '' as string | number,
     min_stock: '0',
-    track_stock: false
+
   };
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [initialFormData, setInitialFormData] = useState(EMPTY_FORM);
@@ -950,7 +934,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         unit_cost: ingredient.unit_cost.toString(),
         supplier_id: ingredient.supplier_id || '',
         min_stock: ingredient.min_stock?.toString() || '0',
-        track_stock: ingredient.track_stock || false
       };
     } else {
       setSelectedIngredient(null);
@@ -1035,7 +1018,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           base_quantity: parseFloat(formData.base_quantity) || 1,
           unit_cost: parseFloat(formData.unit_cost),
           min_stock: parseInt(formData.min_stock) || 0,
-          track_stock: formData.track_stock
         })
       });
 
@@ -1061,51 +1043,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   };
 
   // Track Stock 토글 핸들러 (브랜드 재료도 재고 연동은 가능)
-  const handleTrackStockToggle = async (ingredient: Ingredient, newValue: boolean) => {
-    try {
-      let url = '';
-      if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        url = `/api/brands/${brandId}/ingredients/${ingredient.id}`;
-      } else if (user?.role === 'Restaurant Admin') {
-        url = `/api/restaurants/${effectiveRestaurantId}/ingredients/${ingredient.id}`;
-      }
-
-      const token = getAuthToken();
-      // 필요한 필드만 전송 (관계 객체 제외)
-      const response = await fetch(url, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          code: ingredient.code,
-          name: ingredient.name,
-          image_url: ingredient.image_url,
-          ingredient_category_id: ingredient.ingredient_category_id,
-          unit: ingredient.unit,
-          base_quantity: ingredient.base_quantity,
-          unit_cost: ingredient.unit_cost,
-          min_stock: ingredient.min_stock,
-          is_active: ingredient.is_active,
-          track_stock: newValue
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setIngredients(prev => prev.map(ing =>
-          ing.id === ingredient.id ? { ...ing, track_stock: newValue } : ing
-        ));
-      } else {
-        throw new Error(data.error || 'Failed to update track stock');
-      }
-    } catch (error) {
-      console.error('Failed to toggle track stock:', error);
-      throw error; // AutoSaveField 가 error indicator 표시
-    }
-  };
 
   const filteredIngredients = sortItems(ingredients.filter(ingredient => {
     const matchesSearch = ingredient.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -1408,32 +1345,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   </InfoRow>
                 )}
               </IngredientInfo>
-              {/* Track Stock 토글 — 매장 소유 재료만. track_stock 은 브랜드 공유 행의 정의 속성이라
-                  매장이 바꾸면 형제 매장까지 바뀐다(서버 403). 브랜드 재료엔 버튼을 주지 않는다. */}
-              {isRestaurantAdmin && !isItemReadOnly(ingredient) && (
-                <TrackStockRow
-                  onClick={(e) => e.stopPropagation()}
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  <TrackStockLabel>{'Track in Inventory'}</TrackStockLabel>
-                  <AutoSaveField
-                    type="toggle"
-                    onSave={async () => {
-                      const next = trackPendingRef.current[ingredient.id];
-                      if (next === undefined) return;
-                      await handleTrackStockToggle(ingredient, next);
-                    }}
-                  >
-                    <Toggle
-                      checked={ingredient.track_stock || false}
-                      onChange={(checked) => {
-                        trackPendingRef.current[ingredient.id] = checked;
-                      }}
-                      ariaLabel="Track in Inventory"
-                    />
-                  </AutoSaveField>
-                </TrackStockRow>
-              )}
 
               {!isItemReadOnly(ingredient) && (
                 <IngredientActions>
@@ -1729,9 +1640,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             <span style={{ fontSize: '11px', fontWeight: 600, color: '#635BFF', background: '#F0F4FF', padding: '3px 8px', borderRadius: '4px' }}>
               {detailIngredient.ingredientCategory?.emoji} {detailIngredient.ingredientCategory?.name || 'Uncategorized'}
             </span>
-            {detailIngredient.track_stock && (
-              <span style={{ fontSize: '11px', fontWeight: 500, color: '#059669', background: '#ECFDF5', padding: '3px 8px', borderRadius: '4px' }}>{'Tracking'}</span>
-            )}
             {detailIngredient.code && (
               <span style={{ fontSize: '11px', fontWeight: 500, color: '#4B5563', background: '#F1F4F8', padding: '3px 8px', borderRadius: '4px' }}>{detailIngredient.code}</span>
             )}
@@ -1767,13 +1675,13 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             </div>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
               <div style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px' }}>{'Current Stock'}</div>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: detailIngredient.track_stock && Number(detailIngredient.current_stock || 0) <= Number(detailIngredient.min_stock || 0) ? '#EF4444' : '#0A2540' }}>
-                {detailIngredient.track_stock ? `${Number(detailIngredient.current_stock || 0).toFixed(1)} ${detailIngredient.unit}` : '-'}
+              <div style={{ fontSize: '14px', fontWeight: 600, color: Number(detailIngredient.current_stock || 0) <= Number(detailIngredient.min_stock || 0) ? '#EF4444' : '#0A2540' }}>
+                {`${Number(detailIngredient.current_stock || 0).toFixed(1)} ${detailIngredient.unit}`}
               </div>
             </div>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
               <div style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px' }}>{'Min Stock'}</div>
-              <div style={{ fontSize: '14px', fontWeight: 600 }}>{detailIngredient.track_stock ? `${Number(detailIngredient.min_stock || 0)} ${detailIngredient.unit}` : '-'}</div>
+              <div style={{ fontSize: '14px', fontWeight: 600 }}>{`${Number(detailIngredient.min_stock || 0)} ${detailIngredient.unit}`}</div>
             </div>
           </div>
 

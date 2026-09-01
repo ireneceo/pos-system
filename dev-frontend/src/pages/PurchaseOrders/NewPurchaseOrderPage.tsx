@@ -66,7 +66,6 @@ interface MyIngredientRow {
   ingredient_category_id?: number | null;
   ingredientCategory?: { id: number; name: string; emoji?: string | null } | null;
   sellers: SellerOpt[];
-  track_stock?: boolean;
   // 지금 남아 있는 재고 — "얼마나 남았나"를 보고 발주량을 정하게 목록에 같이 보여준다.
   current_stock?: number | null;
   created_at?: string | null;
@@ -1153,8 +1152,6 @@ const NewPurchaseOrderPage: React.FC = () => {
   const [optionModal, setOptionModal] = useState<{ row: CatalogRow; product: any } | null>(null);
   // Connect mode — mine 탭의 unlinked ingredient 를 catalog 항목과 연결할 때 사용
   const [connectTarget, setConnectTarget] = useState<{ id: number; name: string; unit?: string; product_ingredient_id?: number } | null>(null);
-  // mine 탭에 untracked (track_stock=false) ingredient 표시 여부. 기본은 숨김 — 양념같이 추적 안 하는 건 발주 흐름 분리.
-  const [showUntracked, setShowUntracked] = useState(false);
   // unit_conversion 입력 modal — connect 시 1 seller_unit = ? ingredient_unit
   const [conversionModal, setConversionModal] = useState<{
     row: CatalogRow;
@@ -1212,7 +1209,6 @@ const NewPurchaseOrderPage: React.FC = () => {
             unit: item.unit ?? null,
             ingredient_category_id: item.ingredient_category_id ?? null,
             ingredientCategory: item.ingredientCategory ?? null,
-            track_stock: item.track_stock ?? true,
             current_stock: item.current_stock != null ? Number(item.current_stock) : null,
             created_at: item.created_at ?? null,
             is_brand_shared: true,
@@ -1256,11 +1252,6 @@ const NewPurchaseOrderPage: React.FC = () => {
               unit: item.unit ?? null,
               product_ingredient_id: item.id,
               is_product_ingredient: true,
-              // DB 값을 그대로 쓴다. 예전엔 false 로 고정해서, 실제로는 track_stock=1 인
-              // 재고아이템까지 전부 "untracked" 로 분류 → 기본 필터(showUntracked=false)가
-              // 통째로 숨겨 "No linked stock items" 가 뜨고 숨긴 개수만 토글에 찍혔다
-              // (운영 실측: owner 286개 전부 track_stock=1 인데 0개 노출). Irene 2026-08-24
-              track_stock: item.track_stock ?? true,
               // 카테고리도 API 가 보내주는 걸 그대로 받는다(product_ingredients 는 category_id/category,
               // ingredients 는 ingredient_category_id/ingredientCategory 로 키 이름만 다르다).
               // 안 받아가서 BG 재고아이템이 전부 "미분류"로 떨어졌고, 카테고리 필터에 미분류 하나만
@@ -1343,16 +1334,14 @@ const NewPurchaseOrderPage: React.FC = () => {
   // "Add to My Stock" 으로 카탈로그에서 바로 등록한 항목은 카테고리가 비어 여기 잡힌다.
   const UNCAT = '__uncat__';
   const hasUncategorizedMine = useMemo(
-    () => myList.some(r => !r.ingredient_category_id && (showUntracked || r.track_stock !== false)),
-    [myList, showUntracked]
+    () => myList.some(r => !r.ingredient_category_id),
+    [myList]
   );
 
   const filteredMy = useMemo(() => {
     const q = search.trim().toLowerCase();
     const ts = (r: MyIngredientRow) => (r.created_at ? new Date(r.created_at).getTime() : 0);
     return myList.filter(r => {
-      // Track in Inventory 토글 OFF 이면 mine 탭에서 숨김 (showUntracked=true 일 때만 노출)
-      if (!showUntracked && r.track_stock === false) return false;
       if (categoryFilter !== 'all') {
         if (categoryFilter === UNCAT) {
           if (r.ingredient_category_id) return false;
@@ -1375,7 +1364,7 @@ const NewPurchaseOrderPage: React.FC = () => {
       ];
       return haystack.some(s => s.toLowerCase().includes(q));
     }).sort((a, b) => ts(b) - ts(a)); // 최신 등록 순 (newest first)
-  }, [myList, search, categoryFilter, showUntracked, mineSellerFilter]);
+  }, [myList, search, categoryFilter, mineSellerFilter]);
 
   // mine 탭 발주처(seller) 목록 — myList의 모든 sellers union (중복 제거)
   const mineSellers = useMemo(() => {
@@ -1391,8 +1380,6 @@ const NewPurchaseOrderPage: React.FC = () => {
     }
     return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [myList]);
-
-  const untrackedCount = useMemo(() => (myList || []).filter(r => r.track_stock === false).length, [myList]);
 
   // isInCart / cartQtyOf — 옵션 없는 row 만 빠른 lookup (옵션 있으면 항상 새 row)
   const isInCart = (ingredientId: number) =>
@@ -1826,23 +1813,6 @@ const NewPurchaseOrderPage: React.FC = () => {
                   noOptionsMessage={t('newPo.noSellers', 'No sellers') as string}
                 />
               </FilterSelectBox>
-            )}
-            {tab === 'mine' && untrackedCount > 0 && (
-              <label style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px',
-                background: showUntracked ? '#EEF2FF' : '#F1F4F8',
-                border: `1px solid ${showUntracked ? '#C7D2FE' : '#C7CED6'}`,
-                borderRadius: 6, fontSize: 12, fontWeight: 600,
-                color: showUntracked ? '#3730A3' : '#4B5563', cursor: 'pointer'
-              }}>
-                <input
-                  type="checkbox"
-                  checked={showUntracked}
-                  onChange={(e) => setShowUntracked(e.target.checked)}
-                  style={{ margin: 0 }}
-                />
-                {t('newPo.showUntracked', 'Show untracked')} ({untrackedCount})
-              </label>
             )}
             {/* 보기 전환 — 카드 / 리스트. 탭별로 기억하고 localStorage 에 남아 재진입 시 유지된다. */}
             <ViewToggle role="group" aria-label={t('newPo.viewMode', 'View mode') as string}>

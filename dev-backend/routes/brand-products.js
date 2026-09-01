@@ -736,7 +736,7 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
       distribution_mode, option_group_ids,
       is_set_menu, set_items, set_display_order,
       // 레시피 없는 프로덕트의 자체 재고(매장 메뉴와 같은 규칙)
-      track_stock, current_stock, stock_unit, min_stock
+      current_stock, stock_unit, min_stock
     } = req.body;
 
     if (!name || !name.trim()) {
@@ -850,8 +850,9 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
       product_recipe_id: product_recipe_id || null,
       sort_order: sort_order || 0,
       // 레시피가 있으면 매입자재가 빠지므로 자체 재고는 쓰지 않는다(둘 중 하나).
-      track_stock: !product_recipe_id && track_stock === true,
-      current_stock: (!product_recipe_id && track_stock === true) ? (parseFloat(current_stock) || 0) : 0,
+      // 2026-09-01(Q5): 조건은 **레시피 유무 하나뿐**이다. 스위치는 없앴다 —
+      // 스위치를 안 켰다고 산 물건이 재고에 안 들어오는 게 GIT 결함의 원인이었다.
+      current_stock: !product_recipe_id ? (parseFloat(current_stock) || 0) : 0,
       min_stock: parseFloat(min_stock) || 0,
       stock_unit: stock_unit || null
     });
@@ -966,7 +967,7 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       distribution_mode, option_group_ids,
       is_set_menu, set_items, set_display_order,
       // 레시피 없는 프로덕트의 자체 재고(매장 메뉴와 같은 규칙)
-      track_stock, current_stock, stock_unit, min_stock
+      current_stock, stock_unit, min_stock
     } = req.body;
 
     const product = await BrandProduct.findByPk(productId);
@@ -1027,11 +1028,10 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       set_display_order: set_display_order !== undefined ? set_display_order : product.set_display_order,
       product_recipe_id: product_recipe_id !== undefined ? product_recipe_id : product.product_recipe_id,
       sort_order: sort_order !== undefined ? sort_order : product.sort_order,
-      // 자체 재고 — 레시피가 붙으면 끈다(둘 중 하나만 성립한다).
-      track_stock: (product_recipe_id !== undefined ? product_recipe_id : product.product_recipe_id)
-        ? false
-        : (track_stock !== undefined ? track_stock === true : product.track_stock),
-      current_stock: current_stock !== undefined ? (parseFloat(current_stock) || 0) : product.current_stock,
+      // 자체 재고 — 레시피가 붙으면 0 이다(둘 중 하나만 성립한다). 2026-09-01(Q5): 스위치 제거.
+      current_stock: (product_recipe_id !== undefined ? product_recipe_id : product.product_recipe_id)
+        ? 0
+        : (current_stock !== undefined ? (parseFloat(current_stock) || 0) : product.current_stock),
       min_stock: min_stock !== undefined ? (parseFloat(min_stock) || 0) : product.min_stock,
       stock_unit: stock_unit !== undefined ? (stock_unit || null) : product.stock_unit
     });

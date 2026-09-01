@@ -508,6 +508,17 @@ ProductIngredient.hasMany(PurchaseOrderItem, { foreignKey: 'product_ingredient_i
 InventoryTransaction.belongsTo(ProductIngredient, { foreignKey: 'product_ingredient_id', as: 'productIngredient' });
 ProductIngredient.hasMany(InventoryTransaction, { foreignKey: 'product_ingredient_id', as: 'inventoryTransactions' });
 
+// 2026-09-01: 레시피 없는 프로덕트 = 재고아이템 자체. 발주·공급처 연결이 프로덕트를 직접 가리킨다.
+// (그 전에는 재료만 가리킬 수 있어 사온 물건이 프로덕트로 못 들어왔고, 같은 물건이 둘로 갈라졌다)
+PurchaseOrderItem.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+Product.hasMany(PurchaseOrderItem, { foreignKey: 'product_id', as: 'purchaseOrderItems' });
+PurchaseOrderItem.belongsTo(BrandProduct, { foreignKey: 'brand_product_id', as: 'brandProduct' });
+BrandProduct.hasMany(PurchaseOrderItem, { foreignKey: 'brand_product_id', as: 'purchaseOrderItems' });
+IngredientSellerProduct.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+Product.hasMany(IngredientSellerProduct, { foreignKey: 'product_id', as: 'sellerProducts' });
+IngredientSellerProduct.belongsTo(BrandProduct, { foreignKey: 'brand_product_id', as: 'brandProduct' });
+BrandProduct.hasMany(IngredientSellerProduct, { foreignKey: 'brand_product_id', as: 'sellerProducts' });
+
 // BrandProduct - ProductRecipe association
 BrandProduct.belongsTo(ProductRecipe, { foreignKey: 'product_recipe_id', as: 'productRecipe' });
 ProductRecipe.hasMany(BrandProduct, { foreignKey: 'product_recipe_id', as: 'brandProducts' });

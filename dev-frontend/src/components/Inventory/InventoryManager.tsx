@@ -108,27 +108,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   // 켜기/끄기 실행. 백엔드는 두 화면(RA 재료 / BG 매입자재)이 엔드포인트만 다르고 규칙은 같다.
   // 성공하면 목록을 다시 불러온다 — "관리 안 함 보기"가 꺼져 있으면 방금 끈 항목이 목록에서
   // 빠지는 것이 정상이고, 그 사실이 화면에 그대로 보이는 편이 덜 헷갈린다.
-  const handleToggleTrackStock = async (item: any, next: boolean) => {
-    const endpoint = mode === 'brand'
-      ? `/api/product-ingredients/${item.id}`
-      : `/api/restaurants/${restaurantId}/ingredients/${item.id}`;
-    try {
-      const res = await authFetch(endpoint, {
-        method: 'PUT',
-        body: JSON.stringify({ track_stock: next })
-      });
-      if (res?.success) {
-        setCartNotice(next
-          ? `${item.name} is now counted in inventory.`
-          : `${item.name} is no longer counted in inventory (data kept).`);
-        window.setTimeout(() => setCartNotice(null), 4000);
-        data.refetch();
-      }
-    } catch {
-      setCartNotice('Could not change tracking. Please try again.');
-      window.setTimeout(() => setCartNotice(null), 4000);
-    }
-  };
+
 
   const adjust = useIngredientAdjustModal({
     mode,
@@ -269,7 +249,6 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           <StockListSection
             showUntracked={showUntracked}
             setShowUntracked={setShowUntracked}
-            onToggleTrackStock={handleToggleTrackStock}
             mode={mode}
             restaurantId={restaurantId}
             inventory={data.inventory}

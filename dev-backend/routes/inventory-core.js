@@ -61,10 +61,6 @@ router.get('/:restaurantId/inventory', async (req, res) => {
     });
 
     // Build where clause to include both restaurant and brand ingredients
-    // 기본은 재고 관리 켜진 것만. `?include_untracked=true` 면 꺼진 것도 함께 준다 —
-    // 재고 화면에서 **끄고 켜는 일을 그 화면 안에서** 하려면 꺼진 항목도 보여야 하기 때문이다.
-    // (예전에는 끄는 순간 목록에서 사라져, 다시 켜려면 다른 메뉴로 가야 했다.)
-    const includeUntracked = String(req.query.include_untracked || '') === 'true';
     const orConditions = [{ restaurant_id: restaurantId }];
     if (restaurant?.brand_id) {
       orConditions.push({ brand_id: restaurant.brand_id });
@@ -72,8 +68,9 @@ router.get('/:restaurantId/inventory', async (req, res) => {
 
     const whereClause = {
       [Op.or]: orConditions,
-      is_active: true,
-      ...(includeUntracked ? {} : { track_stock: true })
+      is_active: true
+      // 2026-09-01(Q5): track_stock 필터 제거 — 목록은 활성 재료를 전부 보여준다.
+      // 예전에는 스위치가 꺼진 재료가 목록에서 사라져, 발주 화면에 "스톡엔 있는데 없다"가 났다.
     };
 
     if (category) {
@@ -819,7 +816,7 @@ router.post('/:restaurantId/stock-takes', async (req, res) => {
       created_by: userId
     }, { transaction });
 
-    // 실사 대상 = 내 재료 ∪ 부모 브랜드 표준 재료 (브랜드 쪽은 track_stock 만 —
+    // 실사 대상 = 내 재료 ∪ 부모 브랜드 표준 재료 (2026-09-01: track_stock 조건 제거, is_active 만 —
     // 추적 안 하는 재료는 세어봐야 applyStock 이 기록을 스킵해 조용히 버려진다).
     const brandId = await parentBrandIdOf(restaurantId, transaction);
     const ingredients = await Ingredient.findAll({
@@ -827,7 +824,7 @@ router.post('/:restaurantId/stock-takes', async (req, res) => {
         is_active: true,
         [Op.or]: [
           { restaurant_id: restaurantId },
-          ...(brandId ? [{ owner_type: 'brand', brand_id: brandId, track_stock: true }] : [])
+          ...(brandId ? [{ owner_type: 'brand', brand_id: brandId }] : [])
         ]
       },
       transaction
@@ -1118,14 +1115,14 @@ router.get('/:restaurantId/inventory/reorder-suggestions', async (req, res) => {
   try {
     const { restaurantId } = req.params;
 
-    // 제안 대상 = 내 재료 ∪ 부모 브랜드 표준 재료 (브랜드 쪽은 track_stock 만)
+    // 제안 대상 = 내 재료 ∪ 부모 브랜드 표준 재료 (2026-09-01: is_active 만. 제안은 min_stock>0 이 거른다)
     const reorderBrandId = await parentBrandIdOf(restaurantId);
     const ingredients = await Ingredient.findAll({
       where: {
         is_active: true,
         [Op.or]: [
           { restaurant_id: restaurantId },
-          ...(reorderBrandId ? [{ owner_type: 'brand', brand_id: reorderBrandId, track_stock: true }] : [])
+          ...(reorderBrandId ? [{ owner_type: 'brand', brand_id: reorderBrandId }] : [])
         ]
       }
     });

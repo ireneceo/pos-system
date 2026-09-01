@@ -190,30 +190,41 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
 
         if (recipeIngredients.length === 0) {
           // ── 레시피가 없는 상품은 **그 상품 자체가 재고 단위**다 ─────────────
-          // 캔음료·병맥주·완제품처럼 그대로 파는 물건. `track_stock` 켠 상품만 깎는다.
-          // ⛔ **확장 금지(레거시).** `products.current_stock` 는 재고아이템과 별도 저장소라
-          //    이원화된다. 재료를 쓰는 메뉴는 레시피(또는 메뉴 폼의 직접 재료 입력)를 쓴다.
-          // 캔음료·병맥주·완제품처럼 그대로 파는 물건은 레시피가 있을 수 없다.
-          // 예전에는 여기서 그냥 건너뛰어, 팔려도 재고가 전혀 안 줄었다.
-          // `track_stock` 을 켠 상품만 깎는다(안 켠 상품은 재고를 안 세기로 한 것).
+          // 캔음료·병맥주·포장재처럼 그대로 파는 물건. 수량이 프로덕트 행에 산다.
+          // 2026-09-01: `track_stock` 게이트를 없앴다 — 항상 깎는다.
+          //   스위치가 꺼져 있으면 팔려도 조용히 안 깎였고, 그게 GIT 포장재가 안 빠진
+          //   직접 원인이었다(포장재 6개 전부 꺼져 있었다). 안 쓰는 품목은 "비활성"으로 끈다.
+          // 입고도 같은 자리로 들어온다(purchase-orders-workflow receiveIntoProduct).
           const prod = await Product.findByPk(productId, { transaction });
-          if (prod && prod.track_stock) {
+          if (prod) {
             const cur = parseFloat(prod.current_stock) || 0;
             const take = Math.min(tgtQty, cur);        // 음수 재고 금지(재료 차감과 같은 규칙)
             const short = Math.round((tgtQty - take) * 10000) / 10000;
             const next = Math.round((cur - take) * 10000) / 10000;
-            await prod.update({ current_stock: next }, { transaction });
-            await InventoryTransaction.create({
-              restaurant_id: restaurantId,
-              product_id: prod.id,
-              transaction_type: 'order_deduct',
-              quantity_change: -take,
-              unit: prod.stock_unit || 'ea',
-              stock_after: next,
-              notes: `Order #${orderId} - ${tgt.name} x${tgtQty}`
-                + (short > 0 ? ` [stock_shortfall ${short}]` : ''),
-              created_by: null
-            }, { transaction });
+            // 스위치를 없애 "재고 0 인 프로덕트"까지 이 경로로 들어온다.
+            // 0 에서 0 을 빼는 원장 줄을 남기면 재고 이력이 의미 없는 줄로 덮인다 →
+            // 실제로 깎인 경우에만 기록하고, 못 깎은 몫은 부족분(warnings)으로 센다.
+            if (take > 0) await prod.update({ current_stock: next }, { transaction });
+            if (take > 0) {
+              await InventoryTransaction.create({
+                restaurant_id: restaurantId,
+                product_id: prod.id,
+                transaction_type: 'order_deduct',
+                quantity_change: -take,
+                unit: prod.stock_unit || 'ea',
+                stock_after: next,
+                notes: `Order #${orderId} - ${tgt.name} x${tgtQty}`
+                  + (short > 0 ? ` [stock_shortfall ${short}]` : ''),
+                created_by: null
+              }, { transaction });
+            }
+            if (short > 0) {
+              results.warnings.push({
+                product_id: prod.id,
+                product_name: prod.name,
+                message: `Insufficient product stock - short ${short} ${prod.stock_unit || 'ea'}`
+              });
+            }
             results.deductions.push({
               product_id: prod.id,
               ingredient_name: prod.name,
@@ -225,7 +236,7 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
             continue;
           }
 
-          // 재고를 안 세기로 한 상품 — 건너뛰되 **몇 건인지 센다**(조용한 0 차감 방지)
+          // 프로덕트 행이 없는 경우(삭제 등) — 건너뛰되 **몇 건인지 센다**(조용한 0 차감 방지)
           results.skipped_no_recipe += 1;
           results.warnings.push({
             product_id: productId,

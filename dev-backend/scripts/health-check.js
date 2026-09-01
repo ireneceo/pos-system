@@ -1070,7 +1070,7 @@ function definePosTests({ adminToken }) {
   test('pos', '브랜드 재고: 매장 재고는 오버레이가 단일 소스 (브랜드 행 불변 + 형제 격리)', async () => {
     const { Restaurant, Ingredient, User, RestaurantIngredientStock } = require('../models');
     const jwtLib = require('jsonwebtoken');
-    const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true, track_stock: true } })
+    const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true } })
       || await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true } });
     if (!ing) return true;
     const rest = await Restaurant.findOne({ where: { brand_id: ing.brand_id } });
@@ -1139,7 +1139,7 @@ function definePosTests({ adminToken }) {
   test('pos', '브랜드 재고: 실사에 브랜드 재료 포함 + 오버레이만 갱신 (브랜드 행 불변)', async () => {
     const { Restaurant, Ingredient, User, RestaurantIngredientStock, StockTake, StockTakeItem, InventoryTransaction, StockAlert } = require('../models');
     const jwtLib = require('jsonwebtoken');
-    const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true, track_stock: true } });
+    const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true } });
     if (!ing) return true;
     const rest = await Restaurant.findOne({ where: { brand_id: ing.brand_id } });
     if (!rest) return true;
@@ -1217,7 +1217,7 @@ function definePosTests({ adminToken }) {
   test('pos', '브랜드 재고: 발주 제안에 브랜드 재료 + 매장별 PAR 반영', async () => {
     const { Restaurant, Ingredient, User, RestaurantIngredientStock } = require('../models');
     const jwtLib = require('jsonwebtoken');
-    const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true, track_stock: true } });
+    const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true } });
     if (!ing) return true;
     const rest = await Restaurant.findOne({ where: { brand_id: ing.brand_id } });
     if (!rest) return true;
@@ -1250,7 +1250,7 @@ function definePosTests({ adminToken }) {
   test('pos', '브랜드 재고: Bulk Order 제안(/purchase-orders/suggestions)에도 브랜드 재료', async () => {
     const { Restaurant, Ingredient, User, RestaurantIngredientStock } = require('../models');
     const jwtLib = require('jsonwebtoken');
-    const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true, track_stock: true } });
+    const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true } });
     if (!ing) return true;
     const rest = await Restaurant.findOne({ where: { brand_id: ing.brand_id } });
     if (!rest) return true;
@@ -1337,10 +1337,9 @@ function definePosTests({ adminToken }) {
     if (!bg || !sa || !pIng) return true;
 
     const stockBefore = pIng.current_stock;
-    const trackBefore = pIng.track_stock;
     let po = null, cn = null;
     try {
-      await pIng.update({ current_stock: 40, track_stock: true });
+      await pIng.update({ current_stock: 40 }); // 2026-09-01(Q5): 스위치 없음 — 항상 추적
       po = await PurchaseOrder.create({
         po_number: `HC-B2-${Date.now()}`, entity_type: 'brand', entity_id: bg.brand_id,
         seller_type: 'supplier', seller_entity_id: 1, status: 'delivered', currency: 'MYR',
@@ -1385,7 +1384,7 @@ function definePosTests({ adminToken }) {
         await PurchaseOrderItem.destroy({ where: { purchase_order_id: po.id } });
         await PurchaseOrder.destroy({ where: { id: po.id }, force: true });
       }
-      await pIng.update({ current_stock: stockBefore, track_stock: trackBefore });
+      await pIng.update({ current_stock: stockBefore });
     }
   });
 
@@ -2086,10 +2085,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     try {
       ing = await Ingredient.create({
         restaurant_id: demo.id, name: 'ZZ-HC-DEDUCT-PROBE',
-        // track_stock 을 **명시**한다. 2026-08-22 부터 기본값이 꺼짐이고,
-        // `applyStock` 은 꺼진 재료에 재고를 쓰지 않는다(재고를 안 세기로 한 품목이므로 정상).
-        // 이 계약이 검증하려는 것은 "관리 켜진 재료가 배치 없이도 줄어드는가" 다.
-        unit: 'kg', current_stock: 10, min_stock: 0, is_active: true, track_stock: true
+        unit: 'kg', current_stock: 10, min_stock: 0, is_active: true
       });
       recipe = await Recipe.create({ restaurant_id: demo.id, name: 'ZZ-HC-DEDUCT-PROBE' });
       ri = await RecipeIngredient.create({ recipe_id: recipe.id, ingredient_id: ing.id, quantity: 2, unit: 'kg' });
@@ -2120,12 +2116,12 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
   });
 
-  // ①-2 반대편 계약: **재고 관리를 끈 품목은 판매해도 재고가 움직이지 않는다.**
-  //     끄기는 "목록에서 숨기기"가 아니라 "이 품목은 세지 않는다"는 뜻이다. 끈 품목까지
-  //     차감되면 안 쓰기로 한 재료가 조용히 마이너스로 흘러간다.
-  test('inventory', '재고 관리 끈 품목은 판매해도 재고가 안 변한다', async () => {
+  // ①-2 (2026-09-01 Q5 로 계약 교체) 예전 계약은 "재고 관리를 끈 품목은 판매해도 안 변한다" 였다.
+  //     그 스위치가 **팔려도 재고가 안 빠지던 결함의 직접 원인**이라 스위치 자체를 없앴다.
+  //     이제 계약은 반대다: **레시피 없는 프로덕트는 스위치 없이 항상 빠진다.**
+  test('inventory', '레시피 없는 프로덕트는 track_stock=false 여도 항상 재고가 빠진다 (5 → 2판매 → 3)', async () => {
     const { sequelize } = require('../config/database');
-    const { Ingredient, Product, Recipe, RecipeIngredient, InventoryTransaction } = require('../models');
+    const { Product, InventoryTransaction } = require('../models');
     const demo = (await sequelize.query('SELECT id FROM restaurants WHERE is_demo = 1 LIMIT 1',
       { type: sequelize.QueryTypes.SELECT }))[0];
     if (!demo) return true;
@@ -2133,38 +2129,121 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       { replacements: { r: demo.id }, type: sequelize.QueryTypes.SELECT }))[0];
     if (!cat) return true;
 
-    let ing, prod, recipe, ri;
+    let prod;
     try {
-      ing = await Ingredient.create({
-        restaurant_id: demo.id, name: 'ZZ-HC-UNTRACKED-PROBE',
-        unit: 'kg', current_stock: 10, min_stock: 0, is_active: true, track_stock: false
-      });
-      recipe = await Recipe.create({ restaurant_id: demo.id, name: 'ZZ-HC-UNTRACKED-PROBE' });
-      ri = await RecipeIngredient.create({ recipe_id: recipe.id, ingredient_id: ing.id, quantity: 2, unit: 'kg' });
+      // **track_stock: false 를 일부러 넣는다.** 기본값(true)에 기대면 게이트를 되살려도
+      // 테스트가 통과해 버려 반증력이 없다(2026-09-01 고장주입에서 실제로 그랬다).
+      // 계약은 "옛 스위치가 꺼져 있어도 빠진다" 이므로 꺼진 행으로 재야 한다.
       prod = await Product.create({
-        restaurant_id: demo.id, name: 'ZZ-HC-UNTRACKED-PROBE', category: cat.name,
-        price: 1, recipe_id: recipe.id, is_active: true
+        restaurant_id: demo.id, name: 'ZZ-HC-Q5-ALWAYS-PROBE', category: cat.name,
+        price: 3, is_active: true, current_stock: 5, stock_unit: 'pack', track_stock: false
       });
       await svc.deductInventoryForOrder(
-        demo.id, [{ id: prod.id, product_id: prod.id, name: prod.name, quantity: 3 }], 0
+        demo.id, [{ id: prod.id, product_id: prod.id, name: prod.name, quantity: 2 }], 0
       );
-      const after = await Ingredient.findByPk(ing.id);
-      return Math.abs(parseFloat(after.current_stock) - 10) < 0.001;
+      const after = await Product.findByPk(prod.id);
+      return Math.abs(parseFloat(after.current_stock) - 3) < 0.001;
     } catch {
       return false;
     } finally {
-      try { if (ing) await InventoryTransaction.destroy({ where: { ingredient_id: ing.id } }); } catch {}
-      try { if (ri) await ri.destroy({ force: true }); } catch {}
+      try { if (prod) await InventoryTransaction.destroy({ where: { product_id: prod.id } }); } catch {}
       try { if (prod) await prod.destroy({ force: true }); } catch {}
-      try { if (recipe) await recipe.destroy({ force: true }); } catch {}
-      try { if (ing) await ing.destroy({ force: true }); } catch {}
+    }
+  });
+
+  // 수량 0 에서 팔면 — 깎을 게 없다. **원장에 0 짜리 줄을 남기지 않고** 부족분만 센다.
+  // (스위치를 없애면서 재고 0 인 프로덕트까지 이 경로로 들어오므로, 빈 줄이 이력을 덮지 않게)
+  test('inventory', '재고 0 인 프로덕트 판매(track_stock=false 여도) — 원장 행 0건 + 부족분 경고', async () => {
+    const { sequelize } = require('../config/database');
+    const { Product, InventoryTransaction } = require('../models');
+    const demo = (await sequelize.query('SELECT id FROM restaurants WHERE is_demo = 1 LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    if (!demo) return true;
+    const cat = (await sequelize.query('SELECT name FROM categories WHERE restaurant_id = :r LIMIT 1',
+      { replacements: { r: demo.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    if (!cat) return true;
+
+    let prod;
+    try {
+      prod = await Product.create({
+        restaurant_id: demo.id, name: 'ZZ-HC-Q5-ZERO-PROBE', category: cat.name,
+        price: 3, is_active: true, current_stock: 0, stock_unit: 'pack', track_stock: false
+      });
+      const r = await svc.deductInventoryForOrder(
+        demo.id, [{ id: prod.id, product_id: prod.id, name: prod.name, quantity: 4 }], 0
+      );
+      const rows = await InventoryTransaction.count({ where: { product_id: prod.id } });
+      const warned = (r?.warnings || []).some(w => w.product_id === prod.id);
+      const after = await Product.findByPk(prod.id);
+      return rows === 0 && warned && Math.abs(parseFloat(after.current_stock)) < 0.001;
+    } catch {
+      return false;
+    } finally {
+      try { if (prod) await InventoryTransaction.destroy({ where: { product_id: prod.id } }); } catch {}
+      try { if (prod) await prod.destroy({ force: true }); } catch {}
+    }
+  });
+
+  // 입고가 프로덕트로 들어온다 — 이게 없어서 사온 물건이 따로 만든 재고아이템에 쌓였다(GIT).
+  // **실제 라우트를 탄다.** 스크립트 안에서 "더한다"를 재현하면 코드가 아니라 산수를 재는 것이라,
+  // receiveIntoProduct 를 지워도 통과해 버린다(반증력 0). POST /purchase-orders → mark-received 로 잰다.
+  test('inventory', '발주 수령이 레시피 없는 프로덕트 재고를 올린다 (실제 라우트)', async () => {
+    const { sequelize } = require('../config/database');
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음 — 계약 미검증)')); return true; }
+    const q = (s2, r) => sequelize.query(s2, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const { Product, PurchaseOrder, PurchaseOrderItem, InventoryTransaction } = require('../models');
+    const cat = (await q('SELECT name FROM categories WHERE restaurant_id = :r LIMIT 1', { r: demoRestId }))[0];
+    if (!cat) { console.log(c.gray('      (건너뜀: 데모 매장 카테고리 없음)')); return true; }
+
+    const auth = { Authorization: `Bearer ${demoRaToken}` };
+    let prod = null, poId = null;
+    try {
+      // 옛 스위치가 꺼진 프로덕트로 만든다 — 게이트가 되살아나면 입고도 막혀야 잡힌다
+      prod = await Product.create({
+        restaurant_id: demoRestId, name: 'ZZ-HC-Q5-RECEIVE-PROBE-' + Date.now(), category: cat.name,
+        price: 3, is_active: true, current_stock: 1, stock_unit: 'pack', track_stock: false
+      });
+
+      // system_admin 판매자 = 계약 없이 발주 가능(공급처 매핑 불필요)
+      const created = await request('POST', '/purchase-orders', {
+        seller_type: 'system_admin', seller_entity_id: null,
+        items: [{ product_id: prod.id, quantity_ordered: 6, unit: 'pack', unit_price: 0, unit_conversion: 1 }]
+      }, auth);
+      poId = created.body?.data?.id;
+      if (!poId) { console.log(c.gray(`      (발주 생성 실패: ${created.status} ${JSON.stringify(created.body).slice(0, 160)})`)); return false; }
+
+      // 라인이 프로덕트를 가리키는지 — 여기가 비면 "입고 경로"가 아예 안 열린 것이다
+      const item = await PurchaseOrderItem.findOne({ where: { purchase_order_id: poId } });
+      if (!item || Number(item.product_id) !== Number(prod.id)) {
+        console.log(c.gray(`      (발주 라인이 product_id 를 안 담았다: ${item && item.product_id})`)); return false;
+      }
+
+      await PurchaseOrder.update({ status: 'shipped' }, { where: { id: poId } });
+      const before = Number((await Product.findByPk(prod.id)).current_stock);
+      const recv = await request('POST', `/purchase-orders/${poId}/mark-received`, {}, auth);
+      if (recv.status !== 200) { console.log(c.gray(`      (수령 실패: ${recv.status} ${JSON.stringify(recv.body).slice(0, 160)})`)); return false; }
+
+      const after = Number((await Product.findByPk(prod.id)).current_stock);
+      const rows = await InventoryTransaction.count({ where: { product_id: prod.id, purchase_order_id: poId } });
+      if (Math.abs(after - (before + 6)) > 0.001) {
+        console.log(c.gray(`      (수령 후 재고가 안 올랐다: ${before} → ${after}, 기대 ${before + 6})`)); return false;
+      }
+      return rows === 1;
+    } catch (e) {
+      console.log(c.gray(`      (예외: ${e.message})`));
+      return false;
+    } finally {
+      try { if (prod) await InventoryTransaction.destroy({ where: { product_id: prod.id } }); } catch {}
+      try { if (poId) await PurchaseOrderItem.destroy({ where: { purchase_order_id: poId }, force: true }); } catch {}
+      try { if (poId) await PurchaseOrder.destroy({ where: { id: poId }, force: true }); } catch {}
+      try { if (prod) await prod.destroy({ force: true }); } catch {}
     }
   });
 
   // ①-3 레시피 **없는** 상품은 그 상품 자체가 재고 단위다 — 팔리면 상품 재고가 빠져야 한다.
   //     (2026-08-22 확정 모델: 상품은 "레시피 있음 → 재료 차감" / "없음 → 상품이 재고" 둘 중 하나.
   //      RA 메뉴·BG 프로덕트 대칭.) 이 절반이 없어서 캔음료·완제품이 팔려도 재고가 안 줄었다.
-  test('inventory', '레시피 없는 상품(track_stock)은 판매하면 그 상품 재고가 빠진다', async () => {
+  test('inventory', '레시피 없는 상품은 판매하면 항상 그 상품 재고가 빠진다', async () => {
     const { sequelize } = require('../config/database');
     const { Product, InventoryTransaction } = require('../models');
     const demo = (await sequelize.query('SELECT id FROM restaurants WHERE is_demo = 1 LIMIT 1',
@@ -2178,7 +2257,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     try {
       prod = await Product.create({
         restaurant_id: demo.id, name: 'ZZ-HC-PRODSTOCK-PROBE', category: cat.name,
-        price: 5, is_active: true, track_stock: true, current_stock: 10, stock_unit: 'can'
+        price: 5, is_active: true, current_stock: 10, stock_unit: 'can'
       });
       await svc.deductInventoryForOrder(
         demo.id, [{ id: prod.id, product_id: prod.id, name: prod.name, quantity: 3 }], 0

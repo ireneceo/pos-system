@@ -8,7 +8,7 @@
  *     경로 값과 다르면 403.
  *   - 쓰기는 **항목별 트랜잭션 + 부분성공 리포트** — 한 행 실패가 나머지를 막지 않는다.
  *   - **멱등**: (target, seller_type, seller_entity_id, seller_product_id) 재제출 시 생성 0.
- *   - `apply_cost` 기본 false(원가 자동 덮어쓰기 금지) · `track_stock` 기본 false(발주 전용).
+ *   - `apply_cost` 기본 false(원가 자동 덮어쓰기 금지). 재고 추적 스위치는 폐기(Q5 2026-09-01 — 항상 추적).
  *   - 모든 쓰기 1건 = `stock_ledger_batch_items` 1행. **롤백은 이 기록만 보고 한다**(현재 상태로 추론 금지).
  *   - ⛔ `product_ingredients.linked_ingredient_id` 쓰기 금지(반쪽 구현 — 채우면 숫자가 안 움직인다).
  *   - ⛔ 원본 `ingredient_seller_products`(product_ingredient 경유) 행은 **삭제하지 않는다**
@@ -63,7 +63,7 @@ async function ingredientIndexFor(buyer) {
   const where = buyer.type === 'brand' ? { owner_type: 'brand', brand_id: buyer.id }
     : buyer.type === 'restaurant' ? { owner_type: 'restaurant', restaurant_id: buyer.id }
       : { owner_type: 'foodcourt', foodcourt_id: buyer.id };
-  const rows = await Ingredient.findAll({ where, attributes: ['id', 'name', 'unit', 'unit_cost', 'track_stock'] });
+  const rows = await Ingredient.findAll({ where, attributes: ['id', 'name', 'unit', 'unit_cost'] });
   const byName = new Map();
   for (const r of rows) {
     const k = catalogLink.normalizeName(r.name);
@@ -161,7 +161,6 @@ async function migrationPreviewHandler(req, res) {
         name: pi.name,
         unit: pi.unit,
         unit_cost: pi.unit_cost,
-        track_stock: pi.track_stock,
         seller_sources: (mapsByPi[pi.id] || []).map(m => ({
           seller_type: m.seller_type, seller_entity_id: m.seller_entity_id,
           seller_product_id: m.seller_product_id, unit_price: m.unit_price,
@@ -281,9 +280,6 @@ async function migrateHandler(req, res) {
               base_quantity: pi.base_quantity || 1,
               unit_cost: parseFloat(pi.unit_cost) || 0,
               min_stock: 0, current_stock: 0,
-              // 원본 Stock Item 의 재고 추적 설정을 그대로 미러한다(Fable 2026-08-28).
-              // 원본이 세던 것은 계속 세고, 안 세던 것은 발주 전용으로 남는다.
-              track_stock: pi.track_stock === true,
               is_active: true, code: ''
             }, { transaction: t });
             await logItem(t, {
@@ -572,7 +568,6 @@ async function catalogBulkHandler(req, res) {
             base_quantity: 1,
             unit_cost: parseFloat(row.unit_price) || 0,
             min_stock: 0, current_stock: 0,
-            track_stock: it.track_stock === true,   // 기본 false = 발주 전용
             is_active: true, code: ''
           }, { transaction: t });
           wasCreated = true;
@@ -580,7 +575,7 @@ async function catalogBulkHandler(req, res) {
             batchId, buyer, userId: req.user.id,
             action: 'create_ingredient', targetTable: 'ingredients', targetId: target.id,
             sourceRef: `${sellerType}_product:${spId}`,
-            after: { name: target.name, unit: target.unit, track_stock: target.track_stock }
+            after: { name: target.name, unit: target.unit }
           });
         }
 

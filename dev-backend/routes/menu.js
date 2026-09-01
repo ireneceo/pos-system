@@ -824,7 +824,6 @@ router.post('/product/:id/copy', checkProductTenant, async (req, res) => {
       emoji: sourceProduct.emoji,
       soldOut: false,
       is_active: true,
-      track_stock: sourceProduct.track_stock,
       current_stock: 0,  // Reset stock for copy
       min_stock: sourceProduct.min_stock,
       stock_unit: sourceProduct.stock_unit,

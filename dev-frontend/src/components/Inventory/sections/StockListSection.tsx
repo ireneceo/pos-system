@@ -98,7 +98,6 @@ interface Props {
   // 재고 관리 켜기/끄기 — 이 화면 안에서 처리한다(끄면 사라져 다시 못 켜던 것 해소).
   showUntracked?: boolean;
   setShowUntracked?: (v: boolean) => void;
-  onToggleTrackStock?: (item: IngredientStock, next: boolean) => void;
 
   // Sprint 5: bulk selection + suggestions
   suggestionsById?: Map<number, SuggestionRow>;
@@ -134,7 +133,6 @@ const StockListSection: React.FC<Props> = ({
   onDelete,
   showUntracked,
   setShowUntracked,
-  onToggleTrackStock,
   suggestionsById,
   selectedIds,
   onToggleSelect,
@@ -451,7 +449,6 @@ const StockListSection: React.FC<Props> = ({
                 <InventoryTableRow
                   key={item.id}
                   columns="36px 3.5fr 0.9fr 1fr 1fr 0.9fr 1.1fr 0.9fr 150px 260px"
-                  style={item.track_stock === false ? { opacity: 0.55 } : undefined}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {canBulkSelect && onToggleSelect ? (
@@ -649,21 +646,6 @@ const StockListSection: React.FC<Props> = ({
                     {/* 재료 **정의**(이름·단위·공급처·삭제)는 브랜드 소유 → 매장에서 못 고친다.
                         하지만 **PAR 설정**(최소재고·리드타임·사용량)은 매장별이다 — 지점마다 회전율이
                         달라 발주점이 같을 수 없다(프랜차이즈 표준). Settings 는 브랜드 재료에도 연다. */}
-                    {onToggleTrackStock && (
-                      // 한 번 눌러 켜고 끈다. 끄면 목록·알림·실사·발주 제안에서 즉시 빠지고,
-                      // 데이터는 그대로 남는다(삭제가 아니다).
-                      <SettingsButton
-                        onClick={() => onToggleTrackStock(item, item.track_stock === false)}
-                        style={item.track_stock === false
-                          ? { color: '#635BFF', borderColor: '#635BFF' }
-                          : undefined}
-                        title={item.track_stock === false
-                          ? 'Not counted in inventory — click to start tracking'
-                          : 'Counted in inventory — click to stop tracking'}
-                      >
-                        {item.track_stock === false ? 'Track' : 'Untrack'}
-                      </SettingsButton>
-                    )}
                     <SettingsButton onClick={() => onSettings(item)}>
                       Settings
                     </SettingsButton>

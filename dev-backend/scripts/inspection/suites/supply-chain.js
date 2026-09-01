@@ -8,6 +8,7 @@ module.exports = {
   async run({ q }) {
     const checks = [];
     const add = (name, pass, detail) => checks.push({ name, pass, detail });
+    const cnt = async (sql) => Number((await q(sql))[0].c);
 
     // ── R-SC-001: 판매품목(sync_to_ingredients) → 레스토랑 미러 완결성 ──────────────
     // distribution_mode='all' 상품은 brand_product_brands N:M 행이 없어 옛 sync가 미러 0개를
@@ -215,6 +216,56 @@ module.exports = {
           `${r.name} — ${r.why} (⛔ 자동 백필 금지)`);
       }
     }
+
+    // ── R-SC-008: 재고 타깃은 "넷 중 정확히 하나" ────────────────────────────────
+    // 2026-09-01: 발주 라인·공급처 연결에 프로덕트 타깃 2개(product_id·brand_product_id)를
+    // 열었다. 넷 중 둘 이상 채워지면 입고가 두 곳으로 가거나(이중 계상) 0개면 아무 데도
+    // 안 들어간다 — 둘 다 화면에는 정상으로 보이는 조용한 결함이다.
+    // 쓰기 경로는 utils/stockTarget.js 가 막지만, **막았다고 믿지 않고** DB 에서 다시 잰다.
+    const TARGET_SUM = `(ingredient_id IS NOT NULL) + (product_ingredient_id IS NOT NULL)
+                      + (product_id IS NOT NULL) + (brand_product_id IS NOT NULL)`;
+    for (const [table, label] of [['purchase_order_items', '발주 라인'], ['ingredient_seller_products', '공급처 연결']]) {
+      const many = await cnt(`SELECT COUNT(*) c FROM ${table} WHERE ${TARGET_SUM} > 1`);
+      add(`R-SC-008 ${label} 재고 타깃 2개 이상 없음 (${table})`, many === 0, `${many}건`);
+      const none = await cnt(`SELECT COUNT(*) c FROM ${table} WHERE ${TARGET_SUM} = 0`);
+      add(`R-SC-008 ${label} 재고 타깃 0개 없음 (${table})`, none === 0, `${none}건`);
+    }
+
+    // ── R-SC-011: 재고추적 스위치 재발 감지 ──────────────────────────────────────
+    // Q5(2026-09-01)로 스위치를 없앴다. 컬럼은 호환용으로 남아 있는데, 누군가 다시
+    // 게이트로 쓰기 시작하면 가장 먼저 0 행이 생긴다(끄는 UI 나 기본값 되돌림).
+    // 그때 조용히 "팔려도 재고가 안 빠지는" 상태로 되돌아가므로 0 을 불변식으로 박는다.
+    for (const table of ['products', 'brand_products', 'ingredients', 'product_ingredients']) {
+      const off = await cnt(`SELECT COUNT(*) c FROM ${table} WHERE track_stock = 0`);
+      add(`R-SC-011 ${table} 재고추적 꺼진 행 없음 (스위치 폐기)`, off === 0, `${off}건`);
+    }
+
+    // ── R-SC-009: 공급처 연결이 남의 소유 프로덕트를 가리키지 않는다 ─────────────
+    // 프로덕트 타깃이 열리면서 "내 재고 화면에 남의 프로덕트가 뜨는" 크로스테넌트 경로가
+    // 생길 수 있다. 링크의 소유자와 프로덕트의 소유자가 다른 행 = 0 이어야 한다.
+    const crossBrand = await cnt(`
+      SELECT COUNT(*) c FROM ingredient_seller_products isp
+      JOIN brand_products bp ON bp.id = isp.brand_product_id
+      WHERE isp.brand_product_id IS NOT NULL AND bp.owner_user_id IS NULL`);
+    add('R-SC-009 브랜드 프로덕트 링크에 소유자 없는 행 없음', crossBrand === 0, `${crossBrand}건`);
+    const crossProd = await cnt(`
+      SELECT COUNT(*) c FROM ingredient_seller_products isp
+      JOIN products p ON p.id = isp.product_id
+      WHERE isp.product_id IS NOT NULL AND p.restaurant_id IS NULL`);
+    add('R-SC-009 매장 프로덕트 링크에 매장 없는 행 없음', crossProd === 0, `${crossProd}건`);
+
+    // ── R-SC-010: 레시피 있는 프로덕트를 재고아이템처럼 사지 않는다 ──────────────
+    // 레시피가 있으면 재고는 재료에서 빠진다. 그 프로덕트를 발주로 또 사면 이중 계상이다.
+    const recipeBuy = await cnt(`
+      SELECT COUNT(*) c FROM purchase_order_items poi
+      JOIN products p ON p.id = poi.product_id
+      WHERE poi.product_id IS NOT NULL AND (p.recipe_id IS NOT NULL OR p.product_recipe_id IS NOT NULL)`);
+    add('R-SC-010 레시피 있는 매장 프로덕트 발주 라인 없음', recipeBuy === 0, `${recipeBuy}건`);
+    const recipeBuyB = await cnt(`
+      SELECT COUNT(*) c FROM purchase_order_items poi
+      JOIN brand_products bp ON bp.id = poi.brand_product_id
+      WHERE poi.brand_product_id IS NOT NULL AND bp.product_recipe_id IS NOT NULL`);
+    add('R-SC-010 레시피 있는 브랜드 프로덕트 발주 라인 없음', recipeBuyB === 0, `${recipeBuyB}건`);
 
     return checks;
   },

@@ -131,9 +131,11 @@ async function resolveSellerProduct({ body, transaction, supplierContract, brand
 
 /** 매핑 1건 생성에 쓰는 필드 (4벌 공통). */
 function mappingAttrs({ seller, unitConversion, isPreferred, targetKey, targetId }) {
+  // 2026-09-01: 타깃 컬럼이 4개(재료 2 + 프로덕트 2)로 늘었다. 여기서 손으로 분기하면
+  // 새 타깃이 추가될 때 한 곳이 빠진다 → 넷 중 정확히 하나를 보장하는 공용 함수를 통과시킨다.
+  const { stockTargetAttrs } = require('./stockTarget');
   return {
-    ingredient_id: targetKey === 'ingredient_id' ? targetId : null,
-    ...(targetKey === 'product_ingredient_id' ? { product_ingredient_id: targetId } : {}),
+    ...stockTargetAttrs(targetKey, targetId),
     seller_type: seller.sellerType,
     seller_entity_id: seller.sellerEntityId,
     seller_product_id: seller.sellerProductRow.id,

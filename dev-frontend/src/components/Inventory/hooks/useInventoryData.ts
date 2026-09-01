@@ -95,7 +95,7 @@ export function useInventoryData({ mode, restaurantId, authFetch, includeUntrack
         const inventoryRes = await authFetch(
           includeUntracked
             ? '/api/product-ingredients?include=sellers'
-            : '/api/product-ingredients?track_stock=true&include=sellers'
+            : '/api/product-ingredients?include=sellers'
         );
 
         if (inventoryRes.success) {
@@ -144,7 +144,6 @@ export function useInventoryData({ mode, restaurantId, authFetch, includeUntrack
               manual_daily_usage: ing.manual_daily_usage ? parseFloat(ing.manual_daily_usage) : null,
               prediction_confidence: ing.prediction_confidence || 'none',
               stock_status: stockStatus,
-              track_stock: ing.track_stock !== false,
               // 발주 담기·연결 안내에 필요한 원본 정보(화면이 판단하지 않게 여기서 넘긴다)
               linked_ingredient_id: ing.linked_ingredient_id || null,
               linked_stock: ing.linked_stock != null ? parseFloat(ing.linked_stock) || 0 : null,

@@ -40,6 +40,7 @@ const { normalizeCurrencyCode, sameCurrency } = require('../utils/currency');
 const { resolveSellers, getSeller, getSellerName, isExternalSeller } = require('../utils/sellerNames');
 const { readableIngredient, parentBrandIdOf, overlayMapFor, effectiveSettings } = require('../utils/brandStockAccess');
 const { applySubmitGate } = require('../utils/poOwnerApproval');
+const { stockTargetAttrs } = require('../utils/stockTarget');
 const { attachSellerProductIdentity } = require('../utils/sellerProductIdentity');
 // 발주 알림은 services/poNotifications.js 단일 소스. 2026-08-30: 이 파일에 같은 이름의
 // 로컬 정의가 한 벌 더 있어 경로별로 갈릴 수 있었다(동작은 동일했음) → 서비스로 통합.
@@ -331,8 +332,8 @@ router.get('/purchase-orders/suggestions', async (req, res) => {
     const ingredients = await Ingredient.findAll({
       where: {
         [Op.or]: ownershipOr,
-        is_active: true,
-        track_stock: true
+        is_active: true
+        // 2026-09-01(Q5): track_stock 조건 제거 — 스위치가 꺼졌다고 발주 화면에서 사라지면 안 된다
       }
     });
 
@@ -660,6 +661,64 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
 
   const validatedItems = [];
   for (const raw of items) {
+    // 2026-09-01: 레시피 없는 프로덕트 = 재고아이템 자체(수량이 프로덕트에 산다).
+    // 그전에는 발주 라인이 재료만 가리킬 수 있어 **사온 물건이 프로덕트로 들어올 길이 없었다**
+    // → 같은 물건이 프로덕트와 따로 만든 재고아이템으로 갈라졌다(GIT 포장재).
+    if (raw.product_id || raw.brand_product_id) {
+      const isBrandSide = !!raw.brand_product_id;
+      const targetKey = isBrandSide ? 'brand_product_id' : 'product_id';
+      const pid = parseInt(raw[targetKey], 10);
+      const qtyP = parseFloat(raw.quantity_ordered);
+      if (!Number.isFinite(pid) || !(qtyP > 0)) {
+        return { ok: false, status: 400, body: { success: false, message: `Each item requires ${targetKey} and quantity_ordered > 0` } };
+      }
+      const Model = require(isBrandSide ? '../models/BrandProduct' : '../models/Product');
+      const prod = await Model.findByPk(pid, { transaction });
+      if (!prod) {
+        return { ok: false, status: 400, body: { success: false, message: `Product ${pid} not found` } };
+      }
+      // 소유권 — 프로덕트는 매장(RA) 또는 BG 오너 소유다. 남의 프로덕트로 입고가 흘러가면 안 된다.
+      const owned = isBrandSide
+        ? (prod.owner_user_id != null && prod.owner_user_id === userId)
+        : (buyerEntity && buyerEntity.type === 'restaurant' && parseInt(prod.restaurant_id, 10) === buyerEntity.id);
+      if (!owned) {
+        return { ok: false, status: 400, body: { success: false, message: `Product ${pid} not accessible to this buyer` } };
+      }
+      // 레시피가 있으면 재고는 재료에서 빠진다 — 그런 프로덕트를 재고아이템처럼 사면 이중 계상이 된다.
+      const hasRecipe = prod.product_recipe_id != null || (!isBrandSide && prod.recipe_id != null);
+      if (hasRecipe || prod.is_set_menu) {
+        return {
+          ok: false, status: 400,
+          body: { success: false, code: 'PRODUCT_HAS_RECIPE', message: `Product ${pid} has a recipe (or is a set) — order its ingredients instead` }
+        };
+      }
+      let convP = 1, priceP = 0, mappingP = raw.ingredient_seller_product_id || null;
+      if (seller_type !== 'system_admin') {
+        const mw = { [targetKey]: pid, seller_type, seller_entity_id: seller_entity_id ? parseInt(seller_entity_id, 10) : null, is_active: true };
+        if (raw.ingredient_seller_product_id) mw.id = raw.ingredient_seller_product_id;
+        const mapping = await IngredientSellerProduct.findOne({ where: mw, transaction });
+        if (!mapping) {
+          return { ok: false, status: 400, body: { success: false, code: 'MAPPING_REQUIRED', message: `Product ${pid} is not mapped to this seller` } };
+        }
+        mappingP = mapping.id; convP = parseFloat(mapping.unit_conversion) || 1; priceP = parseFloat(mapping.unit_price) || 0;
+      }
+      const fConvP = raw.unit_conversion != null ? (parseFloat(raw.unit_conversion) || 1) : convP;
+      const fPriceP = raw.unit_price != null ? (parseFloat(raw.unit_price) || 0) : priceP;
+      validatedItems.push({
+        ...stockTargetAttrs(targetKey, pid),
+        ingredient_seller_product_id: mappingP,
+        quantity_ordered: qtyP,
+        quantity_received: 0,
+        unit: raw.unit || prod.stock_unit || prod.unit || null,
+        unit_price: fPriceP,
+        unit_conversion: fConvP,
+        line_total: Math.round((qtyP * fPriceP) * 100) / 100,
+        notes: raw.notes ? sanitizeString(String(raw.notes)).slice(0, 255) : null,
+        description: prod.name ? String(prod.name).slice(0, 255) : null
+      });
+      continue;
+    }
+
     // BG 재고아이템(ProductIngredient) 라인 — RA ingredient_id 경로와 분리
     if (raw.product_ingredient_id) {
       const piId = parseInt(raw.product_ingredient_id, 10);
@@ -686,8 +745,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
       const fConv = raw.unit_conversion != null ? (parseFloat(raw.unit_conversion) || 1) : convB;
       const fPrice = raw.unit_price != null ? (parseFloat(raw.unit_price) || 0) : priceB;
       validatedItems.push({
-        ingredient_id: null,
-        product_ingredient_id: piId,
+        ...stockTargetAttrs('product_ingredient_id', piId),
         ingredient_seller_product_id: mappingB,
         quantity_ordered: qtyB,
         quantity_received: 0,
@@ -741,7 +799,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
     const finalConv = raw.unit_conversion != null ? (parseFloat(raw.unit_conversion) || 1) : convFallback;
     const finalPrice = raw.unit_price != null ? (parseFloat(raw.unit_price) || 0) : priceFallback;
     validatedItems.push({
-      ingredient_id: ingredientId,
+      ...stockTargetAttrs('ingredient_id', ingredientId),
       ingredient_seller_product_id: resolvedMappingId,
       quantity_ordered: qty,
       quantity_received: 0,
