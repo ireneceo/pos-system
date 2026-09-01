@@ -135,6 +135,21 @@
       "unitPrice": "Harga Unit",
       "lineTotal": "Amaun",
       "grandTotal": "Jumlah"
+    },
+    "buyerReceived": {
+      "subject": "{{buyer}} mengesahkan penerimaan PO {{poNumber}}",
+      "heading": "Pembeli Mengesahkan Penerimaan",
+      "body": "<strong>{{buyer}}</strong> telah mengesahkan penerimaan pesanan belian <strong>{{poNumber}}</strong>.",
+      "poNumber": "No. PO",
+      "buyer": "Pembeli",
+      "total": "Jumlah",
+      "status": "Status",
+      "needsShip": "Menunggu rekod penghantaran anda",
+      "alreadyShipped": "Sudah dihantar",
+      "hintNeedsShip": "Stok anda ditolak apabila pesanan ini ditanda sebagai dihantar. Sila rekodkan penghantaran supaya inventori kekal tepat.",
+      "hintShipped": "Tiada tindakan diperlukan — pesanan ini sudah ditanda dihantar.",
+      "cta": "Buka Pesanan",
+      "textFallback": "{{buyer}} mengesahkan penerimaan {{poNumber}}. Jumlah: {{total}}."
     }
   }
 }

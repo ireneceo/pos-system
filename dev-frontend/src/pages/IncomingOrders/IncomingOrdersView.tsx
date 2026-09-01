@@ -1048,6 +1048,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                       <DataTableCell data-label={tNs('orders.table.status', 'Status') as string} align="center">
                         <DataTableStatus variant={StatusVariantMap[row.status] || 'info'}>
                           {tNs(`status.${row.status}`, row.status)}
+                          {/* 구매자가 먼저 받은 발주 — 출고를 안 누르면 우리 재고가 안 빠진다(2026-09-01 Q6) */}
+                          {!row.shipped_at && (row.status === 'received' || row.status === 'partial_received') && (
+                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#B45309', marginTop: 2 }}>
+                              {tNs('orders.badge.needsDispatch', 'Buyer confirmed receipt — record dispatch')}
+                            </div>
+                          )}
                         </DataTableStatus>
                       </DataTableCell>
                       <DataTableCell data-label={tNs('orders.table.time', 'Time') as string}>
@@ -1077,6 +1083,14 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                           {row.status === 'confirmed' && (
                             <ThemedButton size="small" variant="primary" onClick={() => openShipModal(row)}>
                               {tNs('orders.actions.ship', 'Ship')}
+                            </ThemedButton>
+                          )}
+                          {/* 2026-09-01(Q6): 구매자가 배송 전에 먼저 수령한 발주.
+                              우리 재고는 출고를 눌러야 빠지는데, 이 상태로 두면 영영 안 빠진다
+                              (운영 실측: 수령된 발주가 전부 이 상태였다). 자동 처리하지 않고 사람이 누른다. */}
+                          {!row.shipped_at && (row.status === 'received' || row.status === 'partial_received') && (
+                            <ThemedButton size="small" variant="primary" onClick={() => openShipModal(row)}>
+                              {tNs('orders.actions.recordDispatch', 'Record dispatch')}
                             </ThemedButton>
                           )}
                           {row.status === 'shipped' && (

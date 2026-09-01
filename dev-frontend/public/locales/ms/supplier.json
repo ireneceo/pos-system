@@ -193,7 +193,8 @@
       "ship": "Tanda Dihantar",
       "reject": "Tolak",
       "deliver": "Tanda Sampai",
-      "editTracking": "Edit jejak"
+      "editTracking": "Edit jejak",
+      "recordDispatch": "Rekod penghantaran"
     },
     "confirm": {
       "title": "Sahkan Pesanan",
@@ -225,7 +226,10 @@
       "off": "Bunyi mati"
     },
     "emptyHint": "Pesanan baru akan muncul di sini secara masa nyata.",
-    "loading": "Memuatkan…"
+    "loading": "Memuatkan…",
+    "badge": {
+      "needsDispatch": "Pembeli sahkan terima — rekod penghantaran"
+    }
   },
   "tradeInvoicesPage": {
     "title": "Invois Dagangan",

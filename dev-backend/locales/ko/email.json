@@ -135,6 +135,21 @@
       "unitPrice": "단가",
       "lineTotal": "금액",
       "grandTotal": "합계"
+    },
+    "buyerReceived": {
+      "subject": "{{buyer}} 님이 발주 {{poNumber}} 수령을 확인했습니다",
+      "heading": "구매자가 수령을 확인했습니다",
+      "body": "<strong>{{buyer}}</strong> 님이 발주 <strong>{{poNumber}}</strong> 의 수령을 확인했습니다.",
+      "poNumber": "발주 번호",
+      "buyer": "구매자",
+      "total": "합계",
+      "status": "상태",
+      "needsShip": "출고 기록 대기",
+      "alreadyShipped": "출고 완료",
+      "hintNeedsShip": "출고 처리를 해야 우리 재고가 빠집니다. 재고가 맞으려면 출고를 기록해 주세요.",
+      "hintShipped": "추가로 하실 일은 없습니다 — 이미 출고 처리된 발주입니다.",
+      "cta": "발주 열기",
+      "textFallback": "{{buyer}} 님이 {{poNumber}} 수령을 확인했습니다. 합계: {{total}}."
     }
   }
 }

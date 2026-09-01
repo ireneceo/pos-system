@@ -50,6 +50,9 @@
       "markReceivedAllTitle": "全部到货时 — 将整张订单标记为已收货",
       "receivePartial": "部分入库",
       "receivePartialTitle": "部分到货时 — 逐项输入实收数量"
+    },
+    "badge": {
+      "sellerShipped": "供应商已标记发货"
     }
   },
   "new": {

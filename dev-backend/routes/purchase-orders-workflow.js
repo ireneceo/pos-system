@@ -39,7 +39,7 @@ const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
 const { isApprovalRequiredForRestaurant, applySubmitGate } = require('../utils/poOwnerApproval');
-const { fireSellerSubmittedNotification, fireOwnerApprovalPendingNotification, fireBuyerConfirmNotification } = require('../services/poNotifications');
+const { fireSellerSubmittedNotification, fireOwnerApprovalPendingNotification, fireBuyerConfirmNotification, fireBuyerReceivedNotification } = require('../services/poNotifications');
 
 // Path-level guards so unrelated /api/* fall-throughs aren't blocked by buyer-role.
 router.use('/purchase-orders', authenticateToken, requireBuyerRole);
@@ -676,6 +676,10 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
     }, { transaction: t });
 
     await t.commit();
+    // 2026-09-01(Q6): 구매자가 받았다는 사실을 판매자에게 알린다.
+    // 판매자 재고는 "출고"에서만 빠지는데 구매자가 먼저 받는 경로가 실제로는 유일했다
+    // → 알려주지 않으면 판매자 재고가 영영 안 빠진다. 발송 실패가 수령을 막지 않도록 non-blocking.
+    setImmediate(() => fireBuyerReceivedNotification(po));
     res.json({ success: true, data: po });
   } catch (err) {
     if (!t.finished) await t.rollback();
@@ -1148,6 +1152,8 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
       })();
     }
 
+    // 2026-09-01(Q6): mark-received 와 같은 규칙 — 구매자 수령을 판매자에게 알린다
+    setImmediate(() => fireBuyerReceivedNotification(updated));
     res.json({
       success: true,
       data: updated,

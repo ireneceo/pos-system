@@ -370,7 +370,18 @@ router.post('/:id/ship', async (req, res) => {
       const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
       if (!checkSellerOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
-      if (locked.status !== 'confirmed') {
+      // 2026-09-01(Q6): 출고 기준은 상태가 아니라 **`shipped_at` 1회**다.
+      //   운영 실측: 수령된 발주 8건이 전부 판매자 출고 없이 수령됐다(구매자가 먼저 받는 게
+      //   예외가 아니라 유일한 경로였다). 차감이 'confirmed' 에서만 열려 있어서
+      //   **판매자 재고가 한 번도 안 빠졌다.** 이제 어느 상태에서든 한 번은 출고할 수 있고,
+      //   두 번째부터는 409 로 막는다(이중 차감 방지 = 이 가드가 유일한 방어선).
+      const NOT_SHIPPABLE = ['draft', 'pending_approval', 'submitted', 'cancelled', 'rejected'];
+      if (locked.shipped_at) {
+        const e = new Error('Already shipped');
+        e.code = 'ALREADY_SHIPPED';
+        throw e;
+      }
+      if (NOT_SHIPPABLE.includes(locked.status)) {
         const e = new Error(`Cannot ship order in status '${locked.status}'`);
         e.code = 'BAD_STATUS';
         throw e;
@@ -384,7 +395,8 @@ router.post('/:id/ship', async (req, res) => {
       const tracking = appendTrackingEvent({ tracking_info: merged }, 'shipped', carrierNote);
 
       await locked.update({
-        status: 'shipped',
+        // 이미 받은 발주를 뒤로 돌리지 않는다 — 수령 이후 상태면 그대로 두고 출고 시각만 남긴다
+        ...(locked.status === 'confirmed' ? { status: 'shipped' } : {}),
         shipped_at: new Date(),
         tracking_info: tracking
       }, { transaction: t });
@@ -554,6 +566,7 @@ router.post('/:id/ship', async (req, res) => {
     res.json({ success: true, data: po, message: 'Order shipped' });
   } catch (err) {
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
+    if (err.code === 'ALREADY_SHIPPED') return res.status(409).json({ success: false, message: err.message });
     if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
     console.error('POST /api/seller-orders/:id/ship error:', err);
     res.status(500).json({ success: false, message: 'Failed to ship order' });

@@ -50,6 +50,9 @@
       "markReceivedAllTitle": "전부 도착했을 때 — 발주 전체를 입고 처리합니다",
       "receivePartial": "부분 입고",
       "receivePartialTitle": "일부만 왔을 때 — 품목별로 받은 수량을 입력합니다"
+    },
+    "badge": {
+      "sellerShipped": "업체가 배송완료로 표시"
     }
   },
   "new": {

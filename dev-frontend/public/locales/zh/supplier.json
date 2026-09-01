@@ -193,7 +193,8 @@
       "ship": "标记发货",
       "reject": "拒绝",
       "deliver": "标记已送达",
-      "editTracking": "编辑追踪"
+      "editTracking": "编辑追踪",
+      "recordDispatch": "记录发货"
     },
     "confirm": {
       "title": "确认订单",
@@ -225,7 +226,10 @@
       "off": "声音关"
     },
     "emptyHint": "新订单到达时将在此处实时显示。",
-    "loading": "加载中…"
+    "loading": "加载中…",
+    "badge": {
+      "needsDispatch": "买方已确认收货 — 请记录发货"
+    }
   },
   "tradeInvoicesPage": {
     "title": "交易发票",

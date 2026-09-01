@@ -135,6 +135,21 @@
       "unitPrice": "单价",
       "lineTotal": "金额",
       "grandTotal": "合计"
+    },
+    "buyerReceived": {
+      "subject": "{{buyer}} 已确认收到采购单 {{poNumber}}",
+      "heading": "买方已确认收货",
+      "body": "<strong>{{buyer}}</strong> 已确认收到采购单 <strong>{{poNumber}}</strong>。",
+      "poNumber": "采购单号",
+      "buyer": "买方",
+      "total": "合计",
+      "status": "状态",
+      "needsShip": "等待您记录发货",
+      "alreadyShipped": "已发货",
+      "hintNeedsShip": "标记发货后才会扣减您的库存。请记录发货以保持库存准确。",
+      "hintShipped": "无需操作 — 此采购单已标记为发货。",
+      "cta": "打开采购单",
+      "textFallback": "{{buyer}} 已确认收到 {{poNumber}}。合计：{{total}}。"
     }
   }
 }

@@ -50,6 +50,9 @@
       "markReceivedAllTitle": "All items arrived — mark the whole order received",
       "receivePartial": "Partial",
       "receivePartialTitle": "Some items missing — enter received quantity per item"
+    },
+    "badge": {
+      "sellerShipped": "Seller marked as dispatched"
     }
   },
   "new": {

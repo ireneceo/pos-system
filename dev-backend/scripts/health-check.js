@@ -2386,6 +2386,156 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
   });
 
   // ══════════════════════════════════════════════════════════════════
+  // Q6(2026-09-01) 배송·수령 양방향 — 판매자 재고가 "출고 1회"에서만 빠진다.
+  //   운영 실측: 수령된 발주 8건 전부 판매자 출고 없이 수령됐다 = 판매자 재고가
+  //   한 번도 안 빠지는 게 정상 경로였다. 아래 3건이 그 계약이다.
+  // ══════════════════════════════════════════════════════════════════
+
+  // 픽스처: 데모 BG 브랜드 프로덕트(레시피 없음·재고 20) + 데모 매장이 그 브랜드에게 낸 발주 1건.
+  // PO 는 모델로 직접 만든다(계약의 대상은 생성이 아니라 receive/ship 라우트다).
+  async function makeQ6Fixture() {
+    const { sequelize } = require('../config/database');
+    const { BrandProduct, PurchaseOrder, PurchaseOrderItem, IngredientSellerProduct, User } = require('../models');
+    const demo = (await sequelize.query('SELECT id FROM restaurants WHERE is_demo = 1 LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    const bgUser = (await sequelize.query(
+      "SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1",
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    const brand = (await sequelize.query('SELECT id FROM brands WHERE owner_id = :o LIMIT 1',
+      { replacements: { o: bgUser && bgUser.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    const anyUser = (await sequelize.query('SELECT id FROM users LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    if (!demo || !bgUser || !brand || !anyUser) return null;
+
+    // 판매자(브랜드) 쪽 상품 — 출고할 때 여기서 빠진다
+    const bp = await BrandProduct.create({
+      owner_user_id: bgUser.id, name: 'ZZ-HC-Q6-' + Date.now(), unit: 'pack', stock_unit: 'pack',
+      base_quantity: 1, unit_price: 2, min_order_quantity: 1, is_active: true, current_stock: 20,
+      sku: 'ZZ-Q6-' + Math.random().toString(36).slice(2, 8),
+    });
+    // 구매자(매장) 쪽 재고 — 수령하면 여기로 들어온다.
+    // ⚠ 발주 라인의 타깃은 **구매자 것**이다. 판매자 상품은 ingredient_seller_product 로만 연결된다.
+    //   (이걸 헷갈려 판매자 상품을 라인 타깃으로 넣었더니 P1 소유권 가드가 400 으로 막았다 — 정상)
+    const { Product } = require('../models');
+    const cat = (await sequelize.query('SELECT name FROM categories WHERE restaurant_id = :r LIMIT 1',
+      { replacements: { r: demo.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    if (!cat) return null;
+    const buyerProd = await Product.create({
+      restaurant_id: demo.id, name: 'ZZ-HC-Q6-BUY-' + Date.now(), category: cat.name,
+      price: 3, is_active: true, current_stock: 0, stock_unit: 'pack', track_stock: false,
+    });
+    const isp = await IngredientSellerProduct.create({
+      product_id: buyerProd.id, seller_type: 'brand', seller_entity_id: brand.id,
+      seller_product_id: bp.id, unit_price: 2, unit_conversion: 1, is_preferred: true, is_active: true,
+    });
+    const po = await PurchaseOrder.create({
+      po_number: 'ZZ-HC-Q6-' + (Date.now() % 1000000), entity_type: 'restaurant', entity_id: demo.id,
+      seller_type: 'brand', seller_entity_id: brand.id, status: 'submitted',
+      subtotal: 6, tax_amount: 0, total_amount: 6, currency: 'MYR', created_by_user_id: anyUser.id,
+    });
+    const item = await PurchaseOrderItem.create({
+      purchase_order_id: po.id, product_id: buyerProd.id, ingredient_seller_product_id: isp.id,
+      quantity_ordered: 3, unit: 'pack', unit_price: 2, line_total: 6, unit_conversion: 1,
+    });
+    return { demo, bgUser, brand, bp, buyerProd, isp, po, item };
+  }
+
+  async function cleanQ6(fx) {
+    if (!fx) return;
+    const { BrandProduct, PurchaseOrder, PurchaseOrderItem, IngredientSellerProduct, InventoryTransaction } = require('../models');
+    const { Product } = require('../models');
+    try { await InventoryTransaction.destroy({ where: { brand_product_id: fx.bp.id } }); } catch {}
+    try { if (fx.buyerProd) await InventoryTransaction.destroy({ where: { product_id: fx.buyerProd.id } }); } catch {}
+    try { await PurchaseOrderItem.destroy({ where: { purchase_order_id: fx.po.id }, force: true }); } catch {}
+    try { await PurchaseOrder.destroy({ where: { id: fx.po.id }, force: true }); } catch {}
+    try { await IngredientSellerProduct.destroy({ where: { id: fx.isp.id }, force: true }); } catch {}
+    try { await BrandProduct.destroy({ where: { id: fx.bp.id }, force: true }); } catch {}
+    try { if (fx.buyerProd) await Product.destroy({ where: { id: fx.buyerProd.id }, force: true }); } catch {}
+  }
+
+  // 계약 1 — 구매자가 먼저 받으면 판매자에게 발송 시도가 일어난다.
+  //   이 시스템은 알림 행을 남기지 않고 메일만 보낸다(알림 테이블 없음) → 관측 대상은
+  //   발송 직전 운영 로그(`[notify] buyer_received po=… recipients=…`)다.
+  test('inventory', 'Q6 구매자 수령 → 판매자에게 발송 시도(로그 관측) + status received', async () => {
+    if (!demoRaToken) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음)')); return true; }
+    const fs = require('fs'); const os = require('os'); const path = require('path');
+    const logPath = path.join(os.homedir(), '.pm2/logs/dev-backend-out.log');
+    const sizeBefore = fs.existsSync(logPath) ? fs.statSync(logPath).size : null;
+    if (sizeBefore === null) { console.log(c.gray('      (건너뜀: pm2 out 로그 없음 — 관측 불가)')); return true; }
+
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 BG/브랜드 픽스처 불가)')); return true; }
+    try {
+      const { PurchaseOrder } = require('../models');
+      const r = await request('POST', `/purchase-orders/${fx.po.id}/mark-received`, {},
+        { Authorization: `Bearer ${demoRaToken}` });
+      if (r.status !== 200) { console.log(c.gray(`      (수령 실패 ${r.status} ${JSON.stringify(r.body).slice(0,140)})`)); return false; }
+      const after = await PurchaseOrder.findByPk(fx.po.id);
+      if (after.status !== 'received') { console.log(c.gray(`      (status=${after.status}, 기대 received)`)); return false; }
+
+      // 발송 경로는 비동기다(setImmediate → 수신자 조회 → 품목 로드). 고정 대기 대신 폴링한다 —
+      // 한 번 읽고 없다고 실패시키면 느린 DB 에서 가짜 실패가 난다.
+      let line = null;
+      for (let i = 0; i < 12 && !line; i++) {
+        await new Promise(res => setTimeout(res, 500));
+        // ⚠ 바이트 오프셋으로 **버퍼**를 자른다. utf8 문자열을 slice(바이트수) 하면
+        //   한글 로그(멀티바이트)에서 시작점이 밀려 새 줄을 통째로 잘라먹는다(실제로 그랬다).
+        const tail = fs.readFileSync(logPath).subarray(sizeBefore).toString('utf8');
+        line = tail.split('\n').find(l => l.includes('[notify] buyer_received') && l.includes(`po=${fx.po.po_number}`));
+      }
+      if (!line) { console.log(c.gray('      (발송 로그 없음 — 라우트가 알림을 안 부른다)')); return false; }
+      if (/recipients=none/.test(line)) { console.log(c.gray(`      (수신자 0명: ${line.trim()})`)); return false; }
+      return true;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanQ6(fx); }
+  });
+
+  // 계약 2 — 이미 수령된 발주도 판매자가 출고할 수 있고, 그때 재고가 1회 빠진다.
+  //   상태는 뒤로 돌리지 않는다(received 유지). shipped_at 만 남는다.
+  test('inventory', 'Q6 수령 후 판매자 출고 — 재고 1회 차감 · status received 유지', async () => {
+    const { BrandProduct, PurchaseOrder } = require('../models');
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    try {
+      const jwtLib = require('jsonwebtoken');
+      const bgTok = jwtLib.sign({ userId: fx.bgUser.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+      await PurchaseOrder.update({ status: 'received', received_at: new Date() }, { where: { id: fx.po.id } });
+      const before = Number((await BrandProduct.findByPk(fx.bp.id)).current_stock);
+      const r = await request('POST', `/seller-orders/${fx.po.id}/ship`, { tracking_info: { carrier: 'ZZ' } },
+        { Authorization: `Bearer ${bgTok}` });
+      if (r.status !== 200) { console.log(c.gray(`      (출고 실패 ${r.status} ${JSON.stringify(r.body).slice(0,140)})`)); return false; }
+      const po2 = await PurchaseOrder.findByPk(fx.po.id);
+      const after = Number((await BrandProduct.findByPk(fx.bp.id)).current_stock);
+      if (!po2.shipped_at) { console.log(c.gray('      (shipped_at 미설정)')); return false; }
+      if (po2.status !== 'received') { console.log(c.gray(`      (status=${po2.status} — 뒤로 돌아갔다)`)); return false; }
+      if (Math.abs(after - (before - 3)) > 0.001) { console.log(c.gray(`      (재고 ${before} → ${after}, 기대 ${before - 3})`)); return false; }
+      return true;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanQ6(fx); }
+  });
+
+  // 계약 3 — 두 번째 출고는 409. 재고는 안 움직인다(이중 차감 방지의 유일한 방어선).
+  test('inventory', 'Q6 출고 재호출 → 409 · 재고 변화 0', async () => {
+    const { BrandProduct, PurchaseOrder } = require('../models');
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    try {
+      const jwtLib = require('jsonwebtoken');
+      const bgTok = jwtLib.sign({ userId: fx.bgUser.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+      await PurchaseOrder.update({ status: 'received', received_at: new Date() }, { where: { id: fx.po.id } });
+      const first = await request('POST', `/seller-orders/${fx.po.id}/ship`, {}, { Authorization: `Bearer ${bgTok}` });
+      if (first.status !== 200) { console.log(c.gray(`      (1차 출고 실패 ${first.status})`)); return false; }
+      const mid = Number((await BrandProduct.findByPk(fx.bp.id)).current_stock);
+      const second = await request('POST', `/seller-orders/${fx.po.id}/ship`, {}, { Authorization: `Bearer ${bgTok}` });
+      const end = Number((await BrandProduct.findByPk(fx.bp.id)).current_stock);
+      if (second.status !== 409) { console.log(c.gray(`      (2차 status=${second.status}, 기대 409)`)); return false; }
+      if (Math.abs(end - mid) > 0.001) { console.log(c.gray(`      (재고가 또 빠졌다 ${mid} → ${end})`)); return false; }
+      return true;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanQ6(fx); }
+  });
+
+  // ══════════════════════════════════════════════════════════════════
   // 레시피 재료 쓰기 안전망 (2026-08-30)
   //
   // 배경: 메뉴(RA)·프로덕트(BG) 폼의 "직접 재료 입력"은 저장할 때

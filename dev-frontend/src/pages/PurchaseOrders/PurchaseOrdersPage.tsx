@@ -887,6 +887,13 @@ const PurchaseOrdersPage: React.FC = () => {
                       <DataTableStatus variant={StatusVariantMap[row.status] || 'info'}>
                         {t(`status.${row.status}`)}
                       </DataTableStatus>
+                      {/* 2026-09-01(Q6): 업체가 배송완료로 표시했다는 사실을 구매자에게 보여준다.
+                          수령 확인 버튼은 원래 자리 그대로 — 새 버튼을 만들지 않는다. */}
+                      {(row.status === 'shipped' || row.status === 'delivered') && (
+                        <div style={{ fontSize: '11px', fontWeight: 600, color: '#0369A1', marginTop: 2 }}>
+                          {t('list.badge.sellerShipped', { defaultValue: 'Seller marked as dispatched' })}
+                        </div>
+                      )}
                     </DataTableCell>
                     <DataTableCell data-label={t('list.table.expected') as string}>
                       {formatDate(row.expected_delivery_date) || '-'}

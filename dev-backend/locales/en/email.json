@@ -135,6 +135,21 @@
       "unitPrice": "Unit Price",
       "lineTotal": "Amount",
       "grandTotal": "Total"
+    },
+    "buyerReceived": {
+      "subject": "{{buyer}} confirmed receipt of PO {{poNumber}}",
+      "heading": "Buyer Confirmed Receipt",
+      "body": "<strong>{{buyer}}</strong> has confirmed receipt of purchase order <strong>{{poNumber}}</strong>.",
+      "poNumber": "PO Number",
+      "buyer": "Buyer",
+      "total": "Total",
+      "status": "Status",
+      "needsShip": "Awaiting your dispatch record",
+      "alreadyShipped": "Already dispatched",
+      "hintNeedsShip": "Your stock is deducted when you mark this order dispatched. Please record the dispatch so your inventory stays correct.",
+      "hintShipped": "No action needed — this order was already marked dispatched.",
+      "cta": "Open Order",
+      "textFallback": "{{buyer}} confirmed receipt of {{poNumber}}. Total: {{total}}."
     }
   }
 }

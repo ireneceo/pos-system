@@ -193,7 +193,8 @@
       "ship": "배송 처리",
       "reject": "거부",
       "deliver": "배송 완료",
-      "editTracking": "배송정보 수정"
+      "editTracking": "배송정보 수정",
+      "recordDispatch": "출고 처리"
     },
     "confirm": {
       "title": "주문 확정",
@@ -225,7 +226,10 @@
       "off": "소리 꺼짐"
     },
     "emptyHint": "새 발주가 도착하면 실시간으로 여기에 표시됩니다.",
-    "loading": "불러오는 중…"
+    "loading": "불러오는 중…",
+    "badge": {
+      "needsDispatch": "구매자 수령 확인 — 출고 처리 필요"
+    }
   },
   "tradeInvoicesPage": {
     "title": "거래 인보이스",

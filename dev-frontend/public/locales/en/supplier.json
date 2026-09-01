@@ -193,7 +193,8 @@
       "ship": "Mark Shipped",
       "reject": "Reject",
       "deliver": "Mark Delivered",
-      "editTracking": "Edit tracking"
+      "editTracking": "Edit tracking",
+      "recordDispatch": "Record dispatch"
     },
     "confirm": {
       "title": "Confirm Order",
@@ -225,7 +226,10 @@
       "off": "Sound off"
     },
     "emptyHint": "New orders will appear here in real time.",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "badge": {
+      "needsDispatch": "Buyer confirmed receipt — record dispatch"
+    }
   },
   "tradeInvoicesPage": {
     "title": "Trade Invoices",

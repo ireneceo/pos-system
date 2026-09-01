@@ -572,6 +572,45 @@ function poItemsTable(items, currency, poTotal, lang = 'en') {
 /**
  * Seller Order Received — sent to Seller (Supplier/Brand/Foodcourt) when buyer submits PO.
  */
+/**
+ * 구매자가 수령을 확인했을 때 **판매자**에게 (2026-09-01 · Q6).
+ *
+ * 왜 필요한가: 판매자 재고는 "출고" 버튼에서만 빠진다. 그런데 운영 실측상 수령된 발주가
+ * 전부 출고를 거치지 않고 구매자 쪽에서 먼저 수령 처리됐다 — 그래서 판매자 재고가
+ * 한 번도 안 빠졌다. 구매자가 받았다는 사실을 판매자에게 알리고 출고 기록을 요청한다.
+ * 이미 출고된 발주면 요청 없이 사실만 알린다.
+ */
+function buyerReceivedEmail({ buyerName, poNumber, total, currency, link, items, alreadyShipped }, lang = 'en') {
+  const { getEmailText } = require('./i18n');
+  const t = (k, p) => getEmailText(lang, 'po.buyerReceived.' + k, p);
+  const safeBuyer = (buyerName || 'A buyer').toString().slice(0, 120);
+  const safePo = (poNumber || '—').toString().slice(0, 80);
+  const money = fmtMoney(total, currency);
+  const statusText = alreadyShipped ? t('alreadyShipped') : t('needsShip');
+  const statusColor = alreadyShipped ? '#10B981' : '#F59E0B';
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      ${t('body', { buyer: safeBuyer, poNumber: safePo })}
+    </p>
+    ${infoTable(
+      infoRow(t('poNumber'), safePo) +
+      infoRow(t('buyer'), safeBuyer) +
+      infoRow(t('total'), `<span style="color:${BRAND_COLOR};font-weight:700;">${money}</span>`) +
+      infoRow(t('status'), `<span style="color:${statusColor};font-weight:600;">${statusText}</span>`)
+    )}
+    ${poItemsTable(items, currency, total, lang)}
+    <p style="color:#6B7280;font-size:14px;margin:0 0 16px;line-height:1.6;">
+      ${alreadyShipped ? t('hintShipped') : t('hintNeedsShip')}
+    </p>
+    ${ctaButton(t('cta'), link || `${BASE_URL}/pos/seller-orders`)}`;
+
+  return withRenderMeta({
+    subject: t('subject', { poNumber: safePo, buyer: safeBuyer }),
+    html: wrapTemplate(t('heading'), body, lang),
+    text: t('textFallback', { poNumber: safePo, buyer: safeBuyer, total: money })
+  });
+}
+
 function sellerOrderReceivedEmail({ buyerName, poNumber, total, currency, link, items }, lang = 'en') {
   const { getEmailText } = require('./i18n');
   const t = (k, p) => getEmailText(lang, 'po.sellerReceived.' + k, p);
@@ -990,6 +1029,7 @@ module.exports = {
   supplierContractTerminatedEmail,
   // Sprint 4 — Supply Chain Order Lifecycle
   sellerOrderReceivedEmail,
+  buyerReceivedEmail,
   poApprovalPendingEmail,
   poApprovalResultEmail,
   poBuyerConfirmEmail,

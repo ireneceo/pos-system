@@ -64,6 +64,50 @@ async function fireSellerSubmittedNotification(po) {
   }
 }
 
+/**
+ * 구매자가 수령을 확인했다 — **판매자**에게 통지 (2026-09-01 · Q6).
+ * fireSellerSubmittedNotification 의 판매자 방향 미러. 계정이 없는 외부 공급업체는 건너뛴다
+ * (userIds 가 비면 조용히 종료 — 그쪽은 왓츠앱/메일 수동 경로다).
+ */
+async function fireBuyerReceivedNotification(po) {
+  try {
+    let userIds = [];
+    if (po.seller_type === 'supplier' && po.seller_entity_id) {
+      userIds = await getSupplierAdminIds(po.seller_entity_id);
+    } else if (po.seller_type === 'brand' && po.seller_entity_id) {
+      userIds = await getBrandManagerIds(po.seller_entity_id);
+    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id) {
+      userIds = await getFoodcourtManagerIds(po.seller_entity_id);
+    }
+    if (userIds.length === 0) {
+      // 계정 없는 외부 공급업체 — 조용히 끝내되 "왜 안 갔는지"는 남긴다
+      console.log(`[notify] buyer_received po=${po.po_number} seller=${po.seller_type}:${po.seller_entity_id} recipients=none`);
+      return;
+    }
+    const buyerName = await resolveBuyerName(po);
+    const { buyerReceivedEmail } = require('../utils/notificationTemplates');
+    const { loadPoEmailItems } = require('../utils/poEmailItems');
+    const items = await loadPoEmailItems(po.id);
+    const args = {
+      buyerName,
+      poNumber: po.po_number,
+      total: po.total_amount,
+      currency: po.currency || 'MYR',
+      link: `${FRONTEND_URL}/pos/seller-orders`,
+      items,
+      alreadyShipped: !!po.shipped_at,
+    };
+    // 발송 추적 로그 — 이 시스템은 알림 행을 남기지 않고 메일만 보낸다(알림 테이블 없음).
+    // 어느 발주가 누구에게 나갔는지 사후에 확인할 방법이 아예 없어서 한 줄 남긴다.
+    // 개인정보는 넣지 않는다(사용자 id 만).
+    console.log(`[notify] buyer_received po=${po.po_number} seller=${po.seller_type}:${po.seller_entity_id} recipients=${userIds.length ? userIds.join(',') : 'none'}`);
+    await sendNotificationBatch(userIds, 'buyer_received',
+      (user) => buyerReceivedEmail(args, user.preferred_language || 'en'));
+  } catch (e) {
+    console.error('[poNotifications] fireBuyerReceivedNotification error:', e.message);
+  }
+}
+
 /** 레스토랑 발주가 오너 승인 대기 — 연결된 오너 통지. */
 async function fireOwnerApprovalPendingNotification(po) {
   try {
@@ -146,5 +190,6 @@ module.exports = {
   fireSellerSubmittedNotification,
   fireBuyerConfirmNotification,
   fireOwnerApprovalPendingNotification,
-  fireOwnerApprovalResultNotification
+  fireOwnerApprovalResultNotification,
+  fireBuyerReceivedNotification,
 };
