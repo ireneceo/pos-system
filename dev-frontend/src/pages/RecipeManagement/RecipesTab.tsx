@@ -14,6 +14,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit, formatQuantity } from '../../utils/unitConversion';
+import { downloadCSV, toCSVRow, formatDateForFilename } from '../../utils/csvDownload';
 
 import { getAuthToken } from '../../utils/auth';
 interface RecipesTabProps {
@@ -1373,6 +1374,60 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     return matchesSearch && matchesCategory;
   }) as any[], sortKey) as typeof recipes;
 
+  // What and Why: 레시피 목록 CSV 내려받기.
+  // - 화면에 보이는 것(검색·분류 필터·정렬 적용)만 내보낸다 — 사용자가 본 것과 파일이 일치해야 한다.
+  // - 재료 단위로 한 줄씩 펼친다(레시피 열은 반복). 엑셀에서 피벗·필터가 바로 되는 형태.
+  // - 재료가 없는 레시피도 한 줄은 남긴다 — 안 그러면 목록에서 조용히 사라진다.
+  const handleDownloadCSV = () => {
+    const headers = [
+      'Recipe Code', 'Recipe Name', 'Category', 'Owner', 'Active',
+      'Yield Amount', 'Yield Unit', 'Prep Time (min)', 'Cook Time (min)',
+      'Recipe Cost', 'Suggested Price',
+      'Ingredient Code', 'Ingredient Name', 'Quantity', 'Unit',
+      'Ingredient Unit Cost', 'Ingredient Base Qty', 'Line Cost', 'Notes'
+    ];
+    // 숫자는 통화기호 없이 숫자만 — 엑셀에서 바로 계산되게.
+    const num = (v: any) => (v === null || v === undefined || v === '' ? '' : Number(v));
+    const lines = [toCSVRow(headers)];
+
+    filteredRecipes.forEach(recipe => {
+      const base = [
+        recipe.code || '',
+        recipe.name,
+        recipe.recipeCategory?.name || recipe.category || '',
+        recipe.owner_type === 'brand' ? 'Brand' : 'Restaurant',
+        recipe.is_active ? 'Y' : 'N',
+        num(recipe.yield_amount),
+        recipe.yield_unit || '',
+        num(recipe.prep_time),
+        num(recipe.cook_time),
+        num(recipe.effective_ingredient_cost ?? recipe.total_ingredient_cost),
+        num(recipe.suggested_price)
+      ];
+      const items = recipe.recipeIngredients || [];
+      if (items.length === 0) {
+        lines.push(toCSVRow([...base, '', '', '', '', '', '', '', '']));
+        return;
+      }
+      items.forEach(ri => {
+        lines.push(toCSVRow([
+          ...base,
+          ri.ingredient?.code || '',
+          ri.ingredient?.name || '',
+          num(ri.quantity),
+          ri.unit || ri.ingredient?.unit || '',
+          num(ri.ingredient?.effective_cost ?? ri.ingredient?.unit_cost),
+          num(ri.ingredient?.base_quantity),
+          num(ri.effective_cost ?? ri.cost),
+          ri.notes || ''
+        ]));
+      });
+    });
+
+    const scope = (user?.role === 'Brand General' || user?.role === 'Brand Manager') ? 'brand' : 'restaurant';
+    downloadCSV(lines.join('\n'), `recipes_${scope}_${formatDateForFilename(new Date())}.csv`);
+  };
+
   // Get unique categories from recipeCategories list
   const filterCategories = [
     { id: 'all', name: 'All Categories' },
@@ -1413,6 +1468,9 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               Image
             </button>
           </div>
+          <ThemedButton variant="outline" onClick={handleDownloadCSV}>
+            Download CSV
+          </ThemedButton>
           <ThemedButton variant="primary" onClick={() => handleOpenModal(null)}>
             New Recipe
           </ThemedButton>
