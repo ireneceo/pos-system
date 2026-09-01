@@ -308,7 +308,29 @@ CREATE TABLE ingredient_categories (
 | `/recipes` | RecipesPage | Restaurant Admin | 레시피 관리 + 메뉴 등록 |
 | `/ingredients` | IngredientsPage | Restaurant Admin | 재료 관리 |
 
-### RecipesTab (Brand General용) 기능
+### RecipesTab — **BG·RA 공용** (2026-09-01 정정)
+
+> 실측: `RecipeManagementPage`(→`RecipesTab`)가 **두 경로에 그대로 재사용**된다.
+> BG `/pos/recipes` · RA `/restaurant/:restaurantId/recipe-management`.
+> RA 화면은 자기 레시피 + 브랜드 레시피를 함께 조회한다(`/recipes` + `/brand-recipes` 병렬).
+> 따라서 **이 탭을 고치면 두 역할에 동시에 반영된다.**
+
+#### 목록 CSV 다운로드 (2026-09-01 추가)
+툴바 `New Recipe` 옆 **`Download CSV`** 버튼. 공용 유틸 `utils/csvDownload.ts` 사용(BOM 포함 — 엑셀 한글 안 깨짐).
+
+- **화면에 보이는 것만** 내보낸다 — 검색·분류 필터·정렬이 그대로 반영된다
+- **재료 단위로 한 줄씩** 펼친다(레시피 열은 반복). 엑셀에서 피벗·필터가 바로 된다
+- **재료가 없는 레시피도 한 줄은 남긴다** — 목록에서 조용히 빠지지 않게
+- 숫자는 통화기호 없이 — 엑셀에서 바로 계산됨
+- 원가는 `effective_cost`(매장 오버라이드 우선, 없으면 브랜드 원가)
+- 파일명 `recipes_{brand|restaurant}_YYYY-MM-DD.csv`
+
+19열: `Recipe Code · Recipe Name · Category · Owner · Active · Yield Amount · Yield Unit · Prep Time · Cook Time · Recipe Cost · Suggested Price · Ingredient Code · Ingredient Name · Quantity · Unit · Ingredient Unit Cost · Ingredient Base Qty · Line Cost · Notes`
+
+> `Owner` 열이 Brand / Restaurant 를 구분한다 — RA 화면은 두 종류가 섞여 나오기 때문.
+> 목록 API가 이미 `recipeIngredients`(+`ingredient`)를 include 하므로 **백엔드 변경은 없다.**
+
+#### 기타 기능
 
 #### 리스트 카드 표시 정보
 - 레시피명, 카테고리 (Badge)

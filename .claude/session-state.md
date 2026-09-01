@@ -1,169 +1,96 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-08-31 #3 (`/개발완료` · 운영 배포 8회 · 미배포 0)
-**버전:** v3.80 — **Irene 지시 "버전 올릴 필요없어"**. 오늘 배포 8회 전부 버전 미상승
-**작업 상태:** 완료. **개발 잔여 없음 · 수동 조치 대기 0.**
+**마지막 업데이트:** 2026-09-01 (`/개발완료`)
+**버전:** v3.80 — 변경 없음 (운영 코드 배포 없음)
+**작업 상태:** 완료. 코드 변경 1건은 **개발서버만(미배포)**, 운영은 **데이터 작업만** 수행.
 
-> ### 🔔 2026-08-31 #3 — 발주 운영 실사용 피드백 (최신 · 미배포 3건)
-> **운영에서 with MIN 실발주를 하며 나온 요청들.** Irene 이 실제로 발주를 넣는 중이라 사안이 구체적이다.
+> ### 🔔 돌아오면 여기부터 (2026-09-01, K-DINE / GIT Consulting)
 >
-> **✅ 전부 배포 완료 (SW 4.70, 17:24 UTC · 스모크 10/10 · 마이그 64/64)**
-> ⚠ 도중 **빌드가 메모리 게이트에 두 번 막혔다** — `/opt/planq/dev-frontend` 의 `tsc -b` 가 4.1GB 점유,
-> 가용 1.5GB < 필요 2.5GB. **PlanQ 는 같은 서버의 별개 프로젝트라 임의 종료하지 않았고**,
-> 대기 후 가용 5.5GB 에서 빌드했다. ⛔ `SKIP_MEMGATE=1` 우회 금지([[reference_server_freeze_memory_guard]]).
+> **오늘 운영 코드 배포는 없었다.** 운영에 들어간 것은 **데이터**뿐이다(가격 16행 + 레시피 정리).
 >
-> 이번 배포분 3건 (`PurchaseOrderStagingPage.tsx` · `PurchaseOrdersPage.tsx`):
-> 1. **발주가 통째로 사라져 보이던 것** — Irene: *"마크센트를 하나의 공급업체만 눌렀는데 모든 POs가 다 없어졌어"*
->    실측: 서버는 **정상**이었다(한 건만 submitted, 나머지 draft 유지). 범인은 `fetchDrafts` —
->    조회 실패 시 `setPos([])` 로 **화면을 통째로 비웠다**. 앞의 consolidate-drafts 왕복이 실패·지연을 키웠다.
->    → ①실패 시 목록 유지(안내만) ②보낸 카드만 로컬 제거 후 silent 새로고침.
->    📌 교훈: **화면에서 사라지는 것은 "지워졌다"로 읽힌다.** 확신 없는 비움 금지.
-> 2. **Submit All 확인창** — 이 버튼은 화면의 발주를 **전부** 보낸다(되돌릴 수 없음). 같은 날 내가
->    합계바를 하단 고정으로 바꿔 **항상 손가락 밑**에 오게 만들어 오발 위험을 키웠다 → 건수·금액 확인 후 진행.
-> 3. **입고 버튼 분리** — Irene: *"전체 리시브만 있는데 뭐 하나 안왔으면 어떻게 해?"*
->    부분 입고는 **원래 지원됨**(상세에서 품목별 수량·부족사유, status `partial_received`,
->    `POST /purchase-orders/:id/receive` splits). 목록에 전량 버튼뿐이라 **길이 있는 줄 몰랐던 것**.
->    → `전량 입고` + `부분 입고`(상세로 이동) 2버튼. i18n 4언어.
+> **⚠ 내가 저지른 사고 — 같은 세션에 정정함**
+> Irene 이 준 **낱개 가격(0.60/0.86)을 `pack` 칸에 그대로 넣어 운영을 50배 싸게** 만들었다.
+> Irene 이 *"1팩이 30링43링깃인데 뭐가 31배야?"* 로 잡아줬다. **1팩 = 50개.**
+> → 넣은 뒤 **낱개로 되나눠 대조**했으면 막았다. 규칙화 = 메모리 [[reference_packaging_unit_is_pack]]
 >
-> **✅ 배포 완료분 (SW 4.66→4.69, 오늘 배포 7회)**
-> - 왓츠앱/메일/인쇄본/인보이스 = **공급업체 상품명만**(우리 내부명 제거) + 단위 표시
-> - 왓츠앱 **한 줄** + 품목명 굵게 + 품목 수 + 줄별 소계
->   ⚠ 중간에 번호·줄바꿈을 얹었다가 Irene *"이럴거면 그냥 한줄이 낫겠어"* 로 철회.
->   📌 교훈: **"이름만 굵게"라고 했으면 그것만 한다.** 요청보다 많이 바꿔 두 번 헛돌았다.
-> - **SKU 는 실제 공급업체 코드만** — `SP-<n>-<n>` 은 우리 자동채번이라 받는 쪽이 모른다.
->   실측: LSH 61개 중 57개만 실제코드(`1080-046`), TaiYangFresh/AIM/GuanKee/Hokkaido 는 **0개**.
->   단일 소스 `utils/poShare.isRealSupplierSku()` — 5곳 적용(왓츠앱·메일·staging·인쇄본·상세).
-> - **PDF 2장부터 종이 끝에 붙던 것** — 원인은 CSS 가 아니라 `utils/invoicePdf.ts` 가 잘라낸 이미지를
->   `addImage(...,0,0,210mm,...)` 로 얹어 **모든 장 여백 0** 이었다. → 좌우 12mm·상하 14mm, 폭 186mm,
->   페이지높이 269mm. 인보이스 PDF 도 같은 함수라 함께 개선. + 브라우저 인쇄 `@page`·thead 반복·break-inside.
->
-> **📦 운영 데이터 작업 (with MIN, rid 10)**
-> - **실발주 33품목 생성** — 화면과 같은 API(`POST /purchase-orders/bulk`, auto_submit=false)로 draft 6건.
->   Irene 이 하나씩 Mark as Sent → TaiYangFresh(22)·Guan Kee(5)·AIM(2) **발송 완료**, Hokkaido(1)·LSH(3) draft.
-> - 커피 → **1kg 단위 kg/measure**, 수량 10→**5kg**(내가 두 배 오입력).
->   ⚠ **상품명의 `1kg` 은 아직 잘못 붙어 있다** — 실제 1팩 500g. Irene 미회신, 제거 대기.
-> - Cherry Tomato **중복 재고 정리** — De Green 연결(867)+중복재고(820) 삭제, TaiYangFresh(989/1049)만 유지.
-> - Guan Kee **치킨 단위 통일**(piece→kg 2건) + **없던 품목 2개 신설**
->   (`Old Chicken` 17.50 / `Drumstick Boneless w/Skin` 22.50, SKU SP-15-0009·0010).
-> - Hokkaido 식빵 → **`Hokkaido Sandwich Loaf (F)`**, 단가 0.80 → **6.30**(1pack).
-> - ⛔ 8월 가격표(13.00/17.50) vs 등록가(12.30/17.00) 차이는 **결함 아님** — 그 사이 내렸고 오늘 표와 일치.
->   내가 "차이 난다"고 한 건 과거 가격과 비교한 오지적.
->
-> **📌 다음 세션 확정 작업 (Irene: "2번 다음 섹션에 하자")**
-> **재고 대시보드에 "입고 예정" 표시** — `/restaurant/:id/inventory?tab=dashboard`.
-> 데이터는 이미 있다: `submitted`/`confirmed`/`shipped` 발주의 품목·수량·예상도착일.
-> 재고가 부족해 보여도 이미 주문한 것인지 구분되게. **설계부터** 시작.
->
-> **❓ Irene 회신 대기 1건** — 커피 상품명에서 `1kg` 제거(실제 1팩 500g, 주문은 kg).
->
-> **⚠ 이번 구간 자진 보고**
-> - 요청 범위를 넘겨 두 번 되돌림(왓츠앱 번호·줄바꿈 / SKU 무검증 추가).
-> - styled 템플릿 주석에 **백틱**을 써서 파일이 깨짐(tsc TS1005 로 적발).
-> - `order_mode` 에 없는 값 `weight` 사용 → 첫 문장 실패(잔재 0), `measure` 로 정정.
-> - `sequelize.query` 에 `replacements` 를 옵션으로 안 감싸 치환 실패(잔재 0).
-> - 브라우저 검증이 dev draft 에 품목이 없어 무효 → 픽스처 만들어 재검증.
+> **📌 Irene 지적 3건 (재발 금지)**
+> 1. *"왜 자꾸 같은 소리를 해? 아까 그 가격 바꾸라고 했잖아"* — **이미 지시받은 건 되묻지 말고 실행.**
+> 2. *"마음대로 레시피 만들지 말고 내용은 비워둬. 제목 넣으라고 했잖아"* — **모르는 값을 지어내지 않는다.**
+>    (내가 소시지 1줄=40g·밥 200g·재료 원가 0 을 임의로 넣었다가 전부 제거)
+> 3. *"메뉴는 대부분 겹치는데 왜 신메뉴가 66개야?"* — **66은 브랜드 계층 총계.** 매장 기준 진짜 신규는 **7건**.
 
----
-
-> ### 🔔 돌아오면 여기부터 (2026-08-31 #1~#2)
-> **오늘 운영 배포 4회 전부 성공** (스모크 10/10 · 마이그 64/64 · ENUM 소실 0):
-> 06:53 알림 3종 / 08:20 발주·인보이스 단위 / 08:37 SW 4.66 / 10:03 자동복구 대칭화
->
-> **⚠ 운영서버 OS — Irene 확인 대기 1건 (개발과 무관, 인프라)**
-> 주간 보안 리포트(운영 87.106.78.146) 실측 결과:
-> - **보안 업데이트 1건 실재** — `libdrm-amdgpu1`(noble-security). 전체 대기 78개.
->   ⚠ 내 1차 조회는 `apt-get -s upgrade` 로 재서 **0건으로 오판**했다. 정답 소스는
->   `/usr/lib/update-notifier/apt-check`(리포트가 쓰는 것) 또는 `apt-get -s dist-upgrade`.
-> - **재부팅 필요 = 진짜.** 실행 커널 `6.8.0-134`인데 설치된 최신은 `6.8.0-138`.
->   `/var/run/reboot-required.pkgs` = linux-image-136/137, linux-base, **libc6**.
->   uptime **6주 6일**(2026-07-13 부팅).
-> - ✅ **Irene 결정(2026-08-31): "밤에 하자"** — 재부팅은 **영업 종료 후 야간**에 수행.
->   ⛔ 낮/영업시간 실행 금지. 서비스 1~2분 중단.
->   ⛔ **78개 일괄 upgrade 는 재부팅과 같이 하지 않는다** — nginx/mysql/node 재시작이 겹치면
->   문제 생겼을 때 원인 분리가 안 된다. 별도 일정.
->   실행 시 순서: ①`pm2 save` ②`sudo reboot` ③부팅 후 `pm2 list`·`curl /api/health`·프론트 200 확인
->   ④`uname -r` 이 `6.8.0-138` 인지 확인 ⑤`/var/run/reboot-required` 사라졌는지 확인.
-> - 모니터 스크립트 위치: 운영 `/opt/security-monitor/{security-check,weekly-report,send-alert-email}.sh`
->
-> **📌 매장 기기에서 1회 필요** — 새 주문 알림(order_new)은 코드가 나갔지만
-> **브라우저 알림 허용을 누른 기기가 아직 0대**다. 켜야 실제로 도착한다.
-
-### 진행 중인 작업 (2026-09-01, K-DINE)
-- **[개발서버 완료·미배포] 레시피 목록 CSV 다운로드** — `RecipesTab.tsx` 1파일.
-  이 컴포넌트가 BG `/pos/recipes` + RA `/restaurant/:id/recipe-management` 양쪽에 쓰여 한 곳으로 두 역할 커버.
-  목록 API가 이미 `recipeIngredients` 를 내려줘 **백엔드 변경 0**. 공용 `utils/csvDownload.ts` 재사용(신규 유틸 0).
-  재료 단위 19열 펼침 + 재료 없는 레시피도 1행 보존 + 화면 필터/정렬과 일치.
-  검증: tsc 0 · design-guard 신규위반 0 · build:dev OK · **실브라우저 RA(rid38)/BG 둘 다 PASS**
-  (RA 4레시피→17행, 19열 일치, BOM OK, console.error 0). BG 1건은 결함 아님 —
-  페이지가 `/api/brands/4/recipes`(브랜드 컨텍스트)를 불렀고 CSV가 그 전부를 담았음을 대조로 증명.
-
-### 대기 중 (운영 쓰기 0건 — 권한/회신 대기)
-1. **K-DINE with MIN(brand 2) 브랜드 메뉴 66건 + 옵션 + 옵션레시피 9종 → rid 8 공유**
-   스크립트 `운영:/tmp/kd.js` (멱등, 드라이런 통과: 레시피 이름 못찾음 0 · 기존레시피 35건 연결).
-   실행: `ssh irene@87.106.78.146 'cd /var/www/production-backend && node /tmp/kd.js --apply'`
-   스냅샷: `운영:/var/www/backups/kdine-brand-snapshot-*.json`
-   ⛔ 기존 가격·기존 레시피 42개 무접촉(Irene 지시). `#27`(계란)·`#20`(소세지)은 연결 보류 — 레시피 상세 대기.
-   임시값 4곳: 소세지 1줄=40g · 밥 200g · 모짜렐라 원가0 · 해물 원가0
-2. **SC-450/SC-800 가격** — `/개`가 낱개인지 회신 대기. 운영은 `pack` 22.50/38.25.
-   ⚠ with MIN 재고에 GIT 판매링크가 2개씩(1197/1198=원가 22.50/38.25, 1256/1257=판매가 27.90/45.90),
-   `PO-R10-20260827-001` 이 원가로 나갔다 — 중복링크 정리 없이 가격만 고치면 재발.
-3. **K-DINE 기존 메뉴 가격 변경** — Irene "나중에". 안전창 = 현지 22시~익일 09시(주문 0건 실측).
+### 진행 중인 작업
+- 없음
 
 ### 완료된 작업 (이번 세션)
-1. **인보이스 발행 알림이 관리자에게 안 가던 것 근본수정** — "이 매장 관리자가 누구인가"가 4갈래로
-   갈려 있었고 그중 인보이스만 옛 `restaurants.admin_id` 단일 컬럼을 읽었다.
-   실측: 관리자 2명 매장 4곳은 1명만 / admin_id 결손 2곳은 **전원 누락** / 1곳은 **남의 매장 관리자**에게 발송.
-   `getRestaurantAdminAndOwnerIds` 신설 + 6곳 통일. **고장주입 반증**(관리자 레그 제거 → 5/5 FAIL → 원복 5/5 PASS).
-   ⛔ 발주 오너승인(오너만)·발주 결과(신청자만)는 설계상 의도 — 무접촉.
-2. **직원 알림설정 진입점** — 개인 설정인데 매장 `settings` 메뉴권한에 묶여 Staff 16명 중 1명만 보였다.
-   전원 노출 + 라벨 `시스템 설정`→`알림`(4언어 기존 키 재사용, 신규 0).
-3. **실고객 표시 구조 전환** — 배포마다 도는 `mark-demo-accounts` 가 브랜드 운영자를 매번 `is_test=1` 로
-   재마킹 → 알림 관문 1-a2 에서 조용히 누락(실주소 `irene@gitconsulting.group` 포함).
-   하드코딩 명단 → **DB 컬럼 `is_real_customer`**(스크립트가 읽기만 하는 자리)로 이전.
-   1차 시도(브랜드 플래그 근거)는 같은 스크립트가 근거를 지워 **2회차 재발** → 리허설이 적발.
-4. **새 주문 푸시 알림(order_new) 신설** — 설정 화면에 토글만 있고 **발신 코드가 0곳**이던 죽은 토글.
-   🔒 인쇄 보호파일(`orders-crud.js`)을 피해 `Order.afterCreate` 훅으로 구현.
-   안전장치 3: afterCommit(롤백 시 미발화) · await 안 함 · 오류 삼킴. **실발화 5/5**.
-5. **발주·인보이스에 단위가 숫자를 따라다님** + **공급업체 문서는 공급업체 상품명**(우리 내부명 제거)
-   + staging **표시방법 토글** + **합계바 하단 고정**. 기존 인보이스 22건/라인 29건 전환(B 지시).
-6. **🔴 잠재결함: `invoice_items.quantity` 가 `int`** — kg·g 발주(2.5kg)가 인보이스에서 **2로 깎일** 상태.
-   DECIMAL 확장. 금액 무영향 확인(합계는 `calculated_amount` 기준). 실증 2.5 저장 → 2.50 조회.
-7. **배포 자동복구 대칭화** — Irene *"배포할 때 운영서버가 알아서 해?"* 로 발견.
-   매장 축만 자동 복구되고 브랜드 축은 "푸는 경로"가 없어 수작업이 필요했다.
-   대칭화로 **수동 조치 자체를 제거**. 운영 결과 `is_test` 32→30(대상 2계정), 알림 관문 "통과".
-8. 문서: `DEVELOPMENT_PLAN.md` · `docs/DEMO_ACCOUNT_GUIDE.md`(is_real_customer 체계 신설) ·
-   `docs/PURCHASE_ORDER_SYSTEM.md`(표시명 규칙 뒤집힘 반영) · `CHANGELOG.md` · 메모리 2건.
+
+**1. 레시피 목록 CSV 다운로드 — 개발서버 완료 (미배포)**
+- `dev-frontend/src/pages/RecipeManagement/RecipesTab.tsx` **1파일**.
+  이 컴포넌트가 BG `/pos/recipes` + RA `/restaurant/:id/recipe-management` **양쪽에 그대로 재사용**돼 한 곳으로 두 역할 커버.
+- 목록 API가 이미 `recipeIngredients` 를 include → **백엔드 변경 0**. 공용 `utils/csvDownload.ts` 재사용 → **신규 유틸 0**.
+  공용 `ThemedButton` → **design-guard 신규 위반 0**.
+- 19열, 재료 단위로 펼침. **화면 필터/정렬 그대로** + **재료 없는 레시피도 1행 보존**.
+- 검증: tsc 0 · design-guard 0 · `build:dev` OK · **실브라우저 RA(데모 rid38)/BG 둘 다 PASS**
+  (RA 4레시피→17행, 19열 일치, BOM OK, console.error 0). BG 1건은 결함 아님 —
+  페이지가 `/api/brands/4/recipes` 를 불렀고 CSV 가 그 전부를 담았음을 네트워크 응답 대조로 증명.
+
+**2. SC-450 / SC-800 용기 가격 정정 — 운영 16행 반영**
+- **1팩 = 50개.** 단위 `pack` 무변경, 가격 컬럼만.
+
+  | | 원가/pack | 판매가/pack (+20%) | 낱개 환산 |
+  |---|---|---|---|
+  | SC-450 | 22.50 → **30.00** | 27.90 → **36.00** | 0.60 / 0.72 ✓ |
+  | SC-800 | 38.25 → **43.00** | 45.90 → **51.60** | 0.86 / 1.032 ✓ |
+
+- 체인 6곳: UGS 상품(352/353) → UGS→GIT(453/454) → GIT 재고(304/305)
+  → GIT 판매가(181/182) → GIT→withMIN(1256/1257) → withMIN 재고(1080/1081)
+- **중복 경로도 같은 값으로 정리** — 중복상품 240/241 + 링크 1197/1198 → 36.00/51.60.
+  with MIN 이 보는 4개 링크 전부 동일값 확인. (8/28 원가복사 사고의 잔재였음)
+- 롤백 파일 3개: `운영:/var/www/backups/sc-price-before-*.json` · `sc-price-fix2-before-*.json` · `sc-dup-before-*.json`
+
+**3. K-DINE 브랜드 레시피 정리 — 운영 반영 (brand 2, 42 → 68건)**
+- **Suggested Price 26건 갱신** — 기존 값이 정수 반올림이라 많이 틀려 있었다
+  (미역국 19→15.9, 된장 21→17.9, 감자전 17→14.9, 치킨강정 19→14.9 등). 확정 가격표로 교정.
+- **레시피 신규 17건 + 옵션 레시피 9건 = 26건을 제목·카테고리·Suggested Price 만** 생성. **내용 전부 비움.**
+  (Jjajang Ramen·Seafood Rice Bowl·Chicken Yukgaejang·Buldak·Veggie Ramen·Egg Fried Rice·Others 3·Drinks 6 / Add-on 9)
+- 레시피 카테고리 신규 3: `A La Carte` · `Others` · `Add-on`
+- **재료는 하나도 만들지 않았다** — 모짜렐라·해물은 원가를 몰라서.
+  **기존 레시피 42개의 재료 무접촉**(`suggested_price` 만 갱신).
+- 백업: `운영:/var/www/backups/recipes-before-*.json`
+
+**4. K-DINE 신메뉴 — 문서화만 (적용 안 함)**
+- **`docs/KDINE_MENU_AND_RECIPE_PLAN.md`** (신규, 219줄) = 단일 소스.
+  확정 가격표 전문 · 옵션가 9종 · 옵션그룹 11개 · 옵션→재료 매핑 · 기존 레시피 35건 대조 · 시스템 제약 5가지.
+- **매장(rid 8) 기준 진짜 신규는 7건**: Seafood Rice Bowl · Buldak Fried Chicken(밥/단품) ·
+  Chicken Yukgaejang · Seafood Kimchi Pancake · Jjajang Ramen · Grape Ade.
+  이름 그대로 있음 43건 / **이름만 다른 것 16건**(Family Set 1~3 = K-Fire·K-Fry Delight·Veggie Lover,
+  `ALA CARTE -` 접두사 8건, Beef Miyeokguk, Sausage Egg Fried Rice, Fried Rice Beef Bulgogi, Egg Veggie Ramen 등).
+- 적용 스크립트(멱등, 드라이런 통과): `운영:/tmp/kd.js --apply` · 스냅샷 `운영:/var/www/backups/kdine-brand-snapshot-*.json`
+
+**5. 문서/메모리**
+- `DEVELOPMENT_PLAN.md` · `CHANGELOG.md` · `docs/RECIPE_MANAGEMENT_SYSTEM.md`
+  (RecipesTab 이 BG 전용이라는 잘못된 서술 정정 + CSV 절 신설) · `docs/KDINE_MENU_AND_RECIPE_PLAN.md`(신규)
+- 메모리 2건: [[reference_packaging_unit_is_pack]] · [[project_kdine_menu_pending_apply]]
 
 ### 다음 확정 작업
-- **재고 대시보드 "입고 예정" 표시** (Irene: "2번 다음 섹션에 하자") — `/restaurant/:id/inventory?tab=dashboard`.
-  데이터는 이미 있다: `submitted`/`confirmed`/`shipped` 발주의 품목·수량·예상도착일.
-  재고가 부족해 보여도 이미 주문한 것인지 구분되게. **설계부터** 시작.
+- 없음 — 지시 대기
+  단, Irene 이 주기로 한 것 2건이 오면 바로 이어짐:
+  ① **레시피 상세**(계란·소세지 포함 여부 포함) → 비워둔 26건 내용 채우기 + `#27`/`#20` 연결
+  ② **K-DINE 신메뉴 적용 지시** → `docs/KDINE_MENU_AND_RECIPE_PLAN.md` 기준 실행
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
-- **주문 알림 나머지 4종** — `order_status`·`kitchen_alert`·`staff_call`·`inventory_low` 는
-  여전히 **죽은 토글**(설정에 보이지만 발신 코드 0곳). `order_new` 와 같은 방식으로 열 수 있다.
-- **운영서버 OS 재부팅** — Irene "밤에 하자" 결정됨. 야간에 실행 + 부팅 후 확인 5단계(위 🔔).
-- **운영서버 78개 일괄 upgrade** — 재부팅과 분리. 일정 미정.
-- **매장 기기 푸시 구독** — 알림 허용 1회. 매장 안내 필요.
-- 환산비 4건 + 사람만 아는 값 6건 (Irene 회신 필요, ⛔ 자동 백필 금지)
-- 서버 min_order 강제 · B. 판매주문 매출·원가 리포트 · directIngredients 4곳 통합
-- `supplier_products` 351건 카테고리 체계(신규 구축) · FG(푸드코트) 단위주문
-- `l`/`L` varchar 정규화(11건) · BG 레시피 59건 `brand_id=null` · track_stock 레거시 은퇴
-
-### 📌 이번 세션 자진 보고 (계측·규율 실수 5건)
-1. **dev 스크립트를 사전 스냅샷 없이 실행** — user 148 플래그 변경. dev DB 덤프 백업이 없어 정확한 원복 불가.
-2. **인보이스 판정 쿼리가 교차곱** → "13/28 실패" 오판. ROW_NUMBER 로 짝 맞춰 재측정 13/13 PASS.
-3. **design-guard 위반** — 토글에 로컬 버튼 스타일 신규 생성. 우회 없이 공용 `Button` 교체·재빌드·재확인.
-   (교체 후 남은 1건은 **내 주석 문구**가 패턴에 걸린 것 → 문구 수정, 예외 등록 아님.)
-4. **SW 버전 미상승 배포** — 직전 세션에 내가 지적하고 고쳤던 사고를 반복. 발견 즉시 4.66 재배포.
-   📌 **규칙: 프론트가 바뀐 배포는 SW_VERSION 을 반드시 같이 올린다.**
-5. **보안 리포트 1차 조회 오판** — `apt-get -s upgrade` 로 재서 "0건"이라 했으나 실제 1건.
-
-### 📌 Fable 상태
-**사용 한도 소진.** Irene 지시("fable 없이 너가 제대로 해")로 이후 판정은 **Opus 가 수행**했고,
-게이트 마커에 `Opus 판정 (Fable 한도 소진 · Irene 지시)` 로 **사실대로 기록**했다(Fable 판정으로 위장 안 함).
-판정 근거 4종: ①diff 전수 대조 ②고장주입 반증 ③실호출·실브라우저 ④배포 안전성.
+- **레시피 CSV 운영 배포** — 개발서버에서 검증 끝. `/배포` 지시 시 나감
+- **K-DINE 기존 메뉴 가격 변경** — Irene "나중에". 안전창 = 현지 **22:00~익일 09:00**(주문 0건 실측).
+  같이 처리할 것: **가격 0원 메뉴 2건**(`Sundubu-jjigae (S)`, `Kimchi-jjigae (S)` — 현재 RM0.00),
+  Potato Pancake 15.90→14.90
+- **음료 조건부 가격** — "음식 주문 시 RM3/RM1" 은 시스템 미지원. 별도 메뉴 2줄 or 옵션. Irene 결정 필요
+- **미정값** — 소시지 1줄 g · 밥 옵션 g · 모짜렐라 원가 · 해물 원가/구성 · 치킨강정 "6피스" g
+- **운영서버 좀비 프로세스 정리** — 이전 세션들이 남긴 `node -e` 가 **17~47일째** 살아 있다
+  (sequelize 풀 열어둔 채 `process.exit` 없이 종료). 메모리 상시 점유 → [[reference_prod_server_resource_constraint]]
+- **재고 대시보드 "입고 예정" 표시** (8/31 확정분, 미착수) — `/restaurant/:id/inventory?tab=dashboard`
+- **운영서버 OS 재부팅** — Irene "밤에 하자" 결정됨 (커널 6.8.0-134 → 138)
+- 주문 알림 나머지 4종(죽은 토글) · 매장 기기 푸시 구독 1회
 
 ---
 
