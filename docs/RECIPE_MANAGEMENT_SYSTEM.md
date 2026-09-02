@@ -319,16 +319,31 @@ CREATE TABLE ingredient_categories (
 툴바 `New Recipe` 옆 **`Download CSV`** 버튼. 공용 유틸 `utils/csvDownload.ts` 사용(BOM 포함 — 엑셀 한글 안 깨짐).
 
 - **화면에 보이는 것만** 내보낸다 — 검색·분류 필터·정렬이 그대로 반영된다
-- **재료 단위로 한 줄씩** 펼친다(레시피 열은 반복). 엑셀에서 피벗·필터가 바로 된다
+- **레시피 1건 = 1줄** (2026-09-02 재구성)
 - **재료가 없는 레시피도 한 줄은 남긴다** — 목록에서 조용히 빠지지 않게
 - 숫자는 통화기호 없이 — 엑셀에서 바로 계산됨
 - 원가는 `effective_cost`(매장 오버라이드 우선, 없으면 브랜드 원가)
 - 파일명 `recipes_{brand|restaurant}_YYYY-MM-DD.csv`
 
-19열: `Recipe Code · Recipe Name · Category · Owner · Active · Yield Amount · Yield Unit · Prep Time · Cook Time · Recipe Cost · Suggested Price · Ingredient Code · Ingredient Name · Quantity · Unit · Ingredient Unit Cost · Ingredient Base Qty · Line Cost · Notes`
+13열: `Recipe Code · Recipe Name · Category · Active · Yield Amount · Yield Unit · Prep Time (min) · Cook Time (min) · Recipe Cost · Suggested Price · Recipe Summary · Instructions · Ingredients`
 
-> `Owner` 열이 Brand / Restaurant 를 구분한다 — RA 화면은 두 종류가 섞여 나오기 때문.
 > 목록 API가 이미 `recipeIngredients`(+`ingredient`)를 include 하므로 **백엔드 변경은 없다.**
+
+##### 🔴 2026-09-02 재구성 — 조리법이 아예 빠져 있었다
+처음 형태는 **"재료 1건 = 1줄"**(19열)이라 레시피 열이 재료 수만큼 반복됐고, **그 구조에는
+조리법이 들어갈 자리가 없어 `instructions_summary`·`instructions_detail` 이 한 열도 없었다.**
+받아 보면 레시피 내용이 통째로 빠져 있었다(Irene 지적).
+
+바뀐 규칙:
+- **레시피 1건 = 1줄.** 재료는 마지막 한 칸에 `이름 수량단위; 이름 수량단위; …` 로 모은다
+- `Recipe Summary`=`instructions_summary`, `Instructions`=`instructions_detail`
+  (비면 옛 `instructions` 로 폴백 — 화면과 같은 규칙)
+- **셀 안 줄바꿈은 ` | ` 로 치환** — 조리법은 여러 줄이라 그대로 넣으면 엑셀에서 칸이 밀린다
+- 재료 코드·기준수량·줄단가·Notes·Owner 열은 **뺐다**(Irene "필요한 것만")
+
+> **RA 도 같은 버튼으로 받는다.** RecipesTab 은 RA 일 때 `/restaurants/:id/brand-recipes` 를
+> 함께 조회해 브랜드 레시피를 목록 앞에 합치고, 그 응답은 `recipe.toJSON()` 이라 조리법 컬럼이
+> 그대로 실려 온다(실호출 확인 2026-09-02). 즉 **브랜드가 만든 레시피를 매장에서 그대로 내려받는다.**
 
 #### 기타 기능
 

@@ -492,6 +492,31 @@ CREATE TABLE stock_alerts (
 
 ## 계산 로직
 
+### 🔴 0. 주문 라인에서 상품을 알아내는 법 (2026-09-02 — 반드시 먼저 읽을 것)
+
+**차감이 도는 것보다 먼저 "무엇이 팔렸는지"를 알아내야 한다. 여기가 조용히 깨져 있었다.**
+
+POS 가 저장하는 주문 라인에는 **`product_id` 가 없다.** 상품은 `menuItem.id` 에 있고,
+`id` 에는 카트 임시값(`order-<timestamp>`)이 들어 있다:
+```json
+{ "id": "order-1788352827589", "menuItem": { "id": "43", "name": "S1 Sundubu-jjigae" },
+  "name": "S1 Sundubu-jjigae", "price": 15, "quantity": 2 }
+```
+차감 서비스만 `item.product_id || item.id` 로 읽어 **임시값을 상품 id 로 오인**했고, 그 결과
+**POS 로 들어온 모든 주문이 전 매장에서 한 번도 재고를 깎지 못했다**(운영 실측: 완료 라인
+1,444건 중 `product_id` 를 가진 라인 **0건**, `order_deduct` 원장 0건).
+
+**규칙: 주문 라인 → 상품 id 해석은 `utils/stationEnrichment.js` 의 `resolveProductId` 하나만 쓴다.**
+인쇄(스테이션 라우팅)와 **같은 함수**다. 후보 순서 `menu_item_id → product_id → menuItem.id → id`,
+숫자만 인정(`order-…` 는 걸러진다). **새 해석 규칙을 만들지 말 것** — 이 결함이 정확히 "규칙 두 벌"에서 났다.
+
+- 세트는 `set_components` 를 쓴다. 여긴 숫자 `product_id` 가 정상적으로 들어 있다(운영 103/103).
+  표시용 `set_items`(`menuItemId`)는 **읽지 않는다**.
+- 해석 실패는 `unresolved_line` 으로 따로 센다. **"상품 식별 불가" ≠ "레시피 없음"** —
+  둘을 섞은 것이 이 결함을 오래 숨긴 관측 구멍이었다.
+- 안전망: `health-check --category=inventory` 의 **POS 라인 모양 계약**(라우트 실호출).
+  서비스를 `{ id, product_id }` 로 직접 호출하는 테스트만으로는 이 결함을 **못 잡는다**.
+
 ### 1. 주문 시 재고 차감
 
 ```javascript

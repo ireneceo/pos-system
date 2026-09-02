@@ -1,6 +1,6 @@
 {
  "note": "운영 배포 시점 소스 지문 — deploy-to-production.sh 성공 후 자동 기록. 수동 편집 금지.",
- "created_at": "2026-09-02T17:26:13.400Z",
+ "created_at": "2026-09-02T17:45:06.173Z",
  "file_count": 1873,
  "files": {
   "CLAUDE.md": "c7ef544cb7e7e2a44a1c930b240c4f13145e18517ac8fa53a9269e2e4ff80e5e",
@@ -1243,7 +1243,7 @@
   "dev-frontend/public/sitemap.xml": "be8d2f01e860854999a53767935fb0f223a0121147574992512a166a53f87757",
   "dev-frontend/public/speaker-off.svg": "af5904f0efb5bb4cd0e6d5476541ac84352542bdf5b8968712de7160d9a84dac",
   "dev-frontend/public/speaker-on.svg": "6d47457221d538f039ac11afc295b27a05583cb52c4563a33f7ec19baa39f94f",
-  "dev-frontend/public/sw.js": "c335fa477c7cad981ce4f3762996bb47201d418841bbd592469e4d73c736a0b5",
+  "dev-frontend/public/sw.js": "567d8359d8395cb5ca97c59d3dfbc14e239b926121b19f255c41e77a5b30e6cd",
   "dev-frontend/scripts/auto-fix-glossary.js": "786076be09094938aca4c0e1ea1cd3a1f0add7a9ddd7724ebb00def75102ae4a",
   "dev-frontend/scripts/capture-features.js": "d6ae6e04fb1a84cd90a87c7e881ee5958e481bbfe108c58ddc69171b8cc05bf7",
   "dev-frontend/scripts/capture-responsive.js": "26038a5084e3d09813f1943b80f543047f934b8e82874c867751653900049169",
@@ -1764,7 +1764,7 @@
   "dev-frontend/src/pages/RecipeManagement/IngredientsTab.tsx": "4c8c2a0102ad325cf9e7d6ee653361bc8be6d970fb88d1c365c7c8f1ca476094",
   "dev-frontend/src/pages/RecipeManagement/RecipeCategoriesTab.tsx": "0531f66d84b3cd4d8c62419d1809d28c341ccd14c5c1c2c56d38a3ef9f5ccd11",
   "dev-frontend/src/pages/RecipeManagement/RecipeManagementPage.tsx": "6d70d8bd90eef37d973016862b9e60ef51482da0993ba9f1326baf5ad60069fc",
-  "dev-frontend/src/pages/RecipeManagement/RecipesTab.tsx": "cfab262c6a37763877a172b8fe2cc74eba1ce5d5c2a2a83036e8af4b6bc38df9",
+  "dev-frontend/src/pages/RecipeManagement/RecipesTab.tsx": "d2eadaefaedda1765106c7b0d00eb2eb6e95e1ab58095b7871467bbb4de772d1",
   "dev-frontend/src/pages/Recipes/RecipesPage.tsx": "ddcc9b0471ec7e175987110e5c7de1c0287c1855380243733e595866438302cc",
   "dev-frontend/src/pages/Referral/ReferralDashboardPage.tsx": "5eb561251ce3c631f82c67ca460da2987b411b9f6089ee20a4943d3e5b48dc21",
   "dev-frontend/src/pages/Referral/ReferralLoginPage.tsx": "2819370ec666092920337dd982309b843d1e1cb07e0de5509da691595e8fccb1",
