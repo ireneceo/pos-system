@@ -2035,7 +2035,7 @@ function defineReservationTests({ customerToken }) {
 // 무너뜨리는 종류라, 한 번 고치고 끝낼 수 없어 상시 검사로 둔다.
 // 쓰기가 필요한 검사는 **트랜잭션 안에서 하고 롤백**한다 — 잔재를 남기지 않는다.
 // ==========================================================================
-function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgToken } = {}) {
+function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgToken, adminToken } = {}) {
   const svc = require('../services/inventoryDeductionService');
 
   // 레시피 쓰기 프로브가 만든 것만 지운다. 실패해도 지운다(잔재 0 · 재실행 멱등).
@@ -2070,7 +2070,94 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     'DELETE FROM brand_products WHERE name = :n',
   ], { n: probeName, like: probeName + '%' });
 
+  // ⓪ **실제 POS 가 저장하는 라인 모양**으로 재고가 빠지는지 — 라우트 실호출.
+  //    2026-09-02 사고: 아래 ①②③ 은 서비스를 `{ id, product_id }` 로 **직접** 불러서
+  //    통과해 왔는데, POS 는 `product_id` 를 아예 싣지 않고 `menuItem.id` 에 상품을 담고
+  //    `id` 에는 카트 임시값(`order-<ts>`)을 넣는다. 그래서 차감이 그 임시값을 상품 id 로
+  //    오인했고 **POS 로 들어온 모든 주문이 전 매장에서 한 번도 재고를 깎지 못했다**
+  //    (운영 실측: 완료 라인 1,444건 중 product_id 를 가진 라인 0건).
+  //    이 검사는 모양을 손으로 만들지 않고 **POS 가 만드는 그 모양 그대로** 태운다.
+  test('inventory', 'POS 라인 모양(product_id 없음·menuItem.id) 주문 완료 → 재고가 실제로 빠진다 (라우트 실호출)', async () => {
+    const { sequelize } = require('../config/database');
+    const { Ingredient, Product, Recipe, RecipeIngredient, InventoryTransaction, Order } = require('../models');
+    const demo = (await sequelize.query(
+      'SELECT id FROM restaurants WHERE is_demo = 1 LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }
+    ))[0];
+    if (!demo) return true;
+    const cat = (await sequelize.query(
+      'SELECT name FROM categories WHERE restaurant_id = :r LIMIT 1',
+      { replacements: { r: demo.id }, type: sequelize.QueryTypes.SELECT }
+    ))[0];
+    if (!cat) return true;
+
+    const MARKER = '__HC_POSSHAPE_TEST__';
+    let ing, prod, recipe, ri, order;
+    try {
+      ing = await Ingredient.create({
+        restaurant_id: demo.id, name: 'ZZ-HC-POSSHAPE-PROBE',
+        unit: 'kg', current_stock: 10, min_stock: 0, is_active: true
+      });
+      recipe = await Recipe.create({ restaurant_id: demo.id, name: 'ZZ-HC-POSSHAPE-PROBE' });
+      ri = await RecipeIngredient.create({ recipe_id: recipe.id, ingredient_id: ing.id, quantity: 2, unit: 'kg' });
+      prod = await Product.create({
+        restaurant_id: demo.id, name: 'ZZ-HC-POSSHAPE-PROBE', category: cat.name,
+        price: 1, recipe_id: recipe.id, is_active: true
+      });
+
+      // POS 가 실제로 만드는 라인: product_id 없음 · menuItem.id 가 상품 · id 는 카트 임시값
+      order = await Order.create({
+        restaurant_id: demo.id,
+        customer_name: MARKER,
+        total_amount: 2,
+        status: 'pending',
+        source: 'pos',
+        order_type: 'dine_in',
+        order_items: [{
+          id: `order-${Date.now()}`,
+          menuItem: { id: String(prod.id), name: prod.name, price: 1 },
+          name: prod.name,
+          price: 1,
+          quantity: 2
+        }]
+      });
+
+      // 차감을 트리거하는 **유일한 경로**를 실제로 친다 (orders-crud PATCH status)
+      const res = await request('PATCH', `/orders/${order.id}/status`, { status: 'completed' },
+        { Authorization: `Bearer ${adminToken}` });
+      if (res.status !== 200) return false;
+
+      // 2(레시피) × 2(주문 수량) = 4 가 줄어 10 → 6
+      const after = await Ingredient.findByPk(ing.id);
+      if (Math.abs(parseFloat(after.current_stock) - 6) > 0.001) return false;
+
+      // 원장이 실제로 남아야 한다 — "조용히 0 차감"이 이 사고의 본체였다
+      const ledger = await InventoryTransaction.count({
+        where: { ingredient_id: ing.id, transaction_type: 'order_deduct' }
+      });
+      return ledger >= 1;
+    } catch {
+      return false;
+    } finally {
+      try { if (ing) await InventoryTransaction.destroy({ where: { ingredient_id: ing.id } }); } catch {}
+      try {
+        if (order) {
+          for (const tbl of ['order_actions', 'order_payments', 'point_transactions']) {
+            try { await sequelize.query(`DELETE FROM \`${tbl}\` WHERE order_id = ${Number(order.id)}`); } catch {}
+          }
+          await Order.destroy({ where: { id: order.id }, force: true });
+        }
+      } catch {}
+      try { if (ri) await ri.destroy({ force: true }); } catch {}
+      try { if (prod) await prod.destroy({ force: true }); } catch {}
+      try { if (recipe) await recipe.destroy({ force: true }); } catch {}
+      try { if (ing) await ing.destroy({ force: true }); } catch {}
+    }
+  });
+
   // ① 판매 완료 → 재고 차감이 **실제로 일어나고**, 배치가 없어도 판매분만큼 줄어야 한다.
+  //    ⚠ 아래 ①②③ 은 서비스를 직접 호출한다(계산식 검증용) — **POS 가 만드는 라인 모양은
+  //      위 ⓪ 이 본다.** 직접 호출만 있던 탓에 2026-09-02 결함을 못 잡았다.
   //    FIFO 는 배치(입고 로트)에서만 빼므로, 배치 없는 매장에서 예전 코드는 0 을 뺐다 —
   //    음식은 나갔는데 장부만 그대로였다. 임시 재료·상품·레시피를 **데모 매장에** 만들어
   //    실제 차감 경로를 태우고, 끝나면 지운다(운영 매장에는 쓰지 않는다).

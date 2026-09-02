@@ -1853,3 +1853,67 @@ GIT 재고아이템 중 수량이 있는 것은 23종(64 pack 종이밥그릇 ~ 
 - **재고아이템을 지우면 과거 발주 라인의 포인터가 사라진다** — FK `poi_product_ingredient_fk`
   가 `ON DELETE SET NULL`. 라인의 수량·단가·판매품목명은 남으므로 "무엇을 샀는지"가 완전히
   사라지진 않는다. 운영 사고로 관측된 바 없어 마지막 순위. (2026-09-02 P4-2 중 실측으로 발견)
+
+---
+
+## 9. 판매 차감 계약 불일치 (2026-09-02 · 발견·수정·4차 배포)
+
+> P1~P4 가 전제하던 **"팔면 재고가 빠진다"가 실제로는 한 번도 성립한 적이 없었다.**
+> K-DINE IPC 매장에 브랜드 레시피를 연결하기 전, "이미 연결된 1건이 정말 깎는가"를
+> 먼저 재라는 게이트에서 드러났다. 연결을 먼저 했으면 그대로 묻혔을 결함이다.
+
+### 무엇이 잘못됐나
+`services/inventoryDeductionService.js` 단품 라인 경로가 상품 id 를 이렇게 집었다:
+```js
+: [{ pid: item.product_id || item.id, qty: orderQty, name: item.name }];   // 옛 코드
+```
+그런데 **POS 가 저장하는 주문 라인에는 `product_id` 가 없다.** 상품은 `menuItem.id` 에 있고,
+`id` 에는 카트 임시값(`order-<timestamp>`)이 들어 있다(`POSTerminalPage.tsx:2000` 외 5곳).
+→ 폴백이 `'order-1788352827589'` 를 상품 id 로 집어 `Product.findByPk()` 가 못 찾고,
+**"레시피 없음"으로 조용히 넘어갔다.**
+
+### 범위 (운영 실측)
+```
+완료 주문 라인 1,444건 중 product_id 를 가진 라인      0건
+  rid8 dine_in 1190 / takeaway 64 · rid10 dine_in 174 / takeaway 6 …
+운영 로그 "Deducted N ingredients"                    38건 전부 N=0
+       "No recipe or stock link"                      56건
+매장8 inventory_transactions 의 order_deduct           0건 (전 기간)
+  ↳ 그 사이 매장8 완료 주문 13,833건
+```
+**한 매장의 문제가 아니라 POS 로 들어온 모든 주문·모든 매장이었다.**
+
+### 세트 경로는 정상이었다 (의심했으나 기각)
+`set_components` 는 숫자 `product_id` 를 **103/103** 전부 갖고 있다. 그래서 세트 구성품은
+정상 차감돼 왔고, 로그의 `Insufficient stock` 4건(상품 364·32)이 그 증거다.
+표시용 `set_items` 는 `menuItemId` 를 쓰지만 서비스가 읽지 않는다 — **폴백을 만들지 않았다**
+(관측되지 않은 모양을 위한 방어는 규칙을 두 벌로 만든다. 오늘 결함이 정확히 "두 벌"에서 났다).
+
+### 수정 — 새 규칙을 만들지 않고 단일 소스를 재사용
+인쇄(스테이션 라우팅)가 이미 쓰던 해석기를 그대로 쓴다:
+```js
+const { resolveProductId } = require('../utils/stationEnrichment');
+// 후보 순서: menu_item_id → product_id → menuItem.id → id, 숫자만 인정
+```
+- `inventoryDeductionService.js` **182·416행** 교체, 세트 경로(181·415행) 무접촉
+- `unresolved_line` 카운터 신설 — **"상품 식별 불가" ≠ "레시피 없음"**. 섞으면 계기판이 또 거짓말한다
+- `utils/stationEnrichment.js` 는 🔒 보호파일 — **export 한 줄만**(`+1/-1`) 추가하고
+  인쇄 계약 10/10 통과로 동작 무변화를 증명한 뒤 Fable bless
+
+### 기존 테스트가 왜 못 잡았나
+`health-check.js` 의 inventory 계약 3건(2106·2149·2180)이 **서비스를 직접** 호출하면서
+`{ id: prod.id, product_id: prod.id }` 로 **상품 id 를 손으로 넣어** 줬다. POS 가 만드는 모양으로
+부른 테스트가 0건이었다. → ⓪ 신설: 데모 매장에 재료·레시피·상품을 만들고 **POS 라인 모양 그대로**
+주문 생성 → `PATCH /orders/:id/status completed` **실호출** → 재료 10→6 + `order_deduct` 원장 확인.
+고장주입으로 옛 코드로 되돌리면 이 계약만 실패함을 확인했다.
+
+### 소급하지 않는다
+과거 주문을 되돌려 깎지 않는다. 해당 매장들의 재고가 전부 0 이라 전부 부족분이 될 뿐이고,
+**원장은 사실의 기록이지 재구성이 아니다.**
+
+### 남은 별건 — 부족분이 어디에도 안 남는다
+재고 0 인 상태에서 팔리면 `actualDeductQty=0` 이라 원장 행이 안 생기고 콘솔 경고로만 끝난다
+(P1 의 "0 에서 0 빼는 줄은 안 남긴다" 결정과 한 세트). `StockAlert` 모델 필드는
+`restaurant_id · ingredient_id · alert_type · current_stock · min_stock · suggested_order_qty ·
+is_resolved · resolved_at` 로 **`product_id`·`order_id`·부족수량 자리가 없다.**
+→ "팔렸는데 못 깎은 사실"을 남기려면 설계가 먼저다. 반응 패치 금지.

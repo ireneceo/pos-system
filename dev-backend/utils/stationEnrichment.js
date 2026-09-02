@@ -179,4 +179,4 @@ async function enrichItemsWithStation(restaurantId, items) {
   return result;
 }
 
-module.exports = { enrichItemsWithStation };
+module.exports = { enrichItemsWithStation, resolveProductId };

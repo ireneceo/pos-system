@@ -7,6 +7,13 @@ const { Op } = require('sequelize');
 const database = require('../config/database');
 // 브랜드 공유 재료의 재고는 매장별 오버레이가 단일 소스 (docs/BRAND_STOCK_SHARING_DESIGN.md)
 const { stockFor, applyStock, effectiveMinStock } = require('../utils/brandStockAccess');
+// 주문 라인 → 상품 id 해석은 인쇄(스테이션 라우팅)와 **같은 함수**를 쓴다.
+// 2026-09-02: 여기만 `item.product_id || item.id` 를 쓰고 있었고, POS 라인은
+// product_id 를 안 싣고 menuItem.id 에 상품을 담는다. 그래서 카트 임시 id
+// (`order-<ts>`)를 상품 id 로 오인해 **POS 로 들어온 모든 주문이 전 매장에서
+// 한 번도 재고를 깎지 못했다**(운영 실측: 완료 라인 1,444건 중 product_id 0건).
+// 규칙을 새로 만들지 않고 기존 단일 소스를 그대로 쓴다.
+const { resolveProductId } = require('../utils/stationEnrichment');
 const {
   Product,
   Recipe,
@@ -168,7 +175,10 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
       // "레시피가 없어서 아무것도 안 뺐다"는 경고 더미에 묻혀 보이지 않았다.
       // 운영 실측(2026-08-20): 상품 754개 중 레시피가 걸린 것은 1개뿐이라
       // 판매로 인한 차감이 전 기간 0건이었는데도 아무도 몰랐다. 세어서 드러낸다.
-      skipped_no_recipe: 0
+      skipped_no_recipe: 0,
+      // "상품을 식별하지 못했다" 와 "레시피가 없다" 는 다른 사실이다. 섞으면
+      // 위의 계기판이 또 거짓말을 한다(2026-09-02 사고의 관측 구멍).
+      unresolved_line: 0
     };
 
     // Process each order item
@@ -179,11 +189,22 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
       // 아니면 상품 자체. 구성품 수량 = 구성품 qty × 주문 수량.
       const targets = (Array.isArray(item.set_components) && item.set_components.length > 0)
         ? item.set_components.map(c => ({ pid: c.product_id || c.id, qty: (parseInt(c.qty) || 1) * orderQty, name: c.name || item.name }))
-        : [{ pid: item.product_id || item.id, qty: orderQty, name: item.name }];
+        : [{ pid: resolveProductId(item), qty: orderQty, name: item.name }];
 
       for (const tgt of targets) {
         const productId = tgt.pid;
         const tgtQty = tgt.qty;
+
+        // 상품을 못 알아본 라인 — 레시피 없음과 구분해서 센다.
+        if (productId == null) {
+          results.unresolved_line += 1;
+          results.warnings.push({
+            product_id: null,
+            product_name: tgt.name,
+            message: 'Unresolved order line - product not identified, inventory not deducted'
+          });
+          continue;
+        }
 
         // Get recipe ingredients for this product (component or standalone)
         const recipeIngredients = await getProductRecipeIngredients(productId);
@@ -413,9 +434,10 @@ async function calculateRequiredIngredients(orderItems, restaurantId = null) {
     // 세트면 구성품별, 아니면 상품 자체
     const targets = (Array.isArray(item.set_components) && item.set_components.length > 0)
       ? item.set_components.map(c => ({ pid: c.product_id || c.id, qty: (parseInt(c.qty) || 1) * orderQty }))
-      : [{ pid: item.product_id || item.id, qty: orderQty }];
+      : [{ pid: resolveProductId(item), qty: orderQty }];
 
     for (const tgt of targets) {
+      if (tgt.pid == null) continue;
       const recipeIngredients = await getProductRecipeIngredients(tgt.pid);
 
       for (const ri of recipeIngredients) {
