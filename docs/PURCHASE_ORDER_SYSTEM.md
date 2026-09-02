@@ -1812,3 +1812,44 @@ GIT 재고아이템 중 수량이 있는 것은 23종(64 pack 종이밥그릇 ~ 
 - 고장주입 2회(영구 테스트 대상): 판매가 가드 제거 → 실패 / 중복 409 제거 → 실패. 원복 후 복귀, 주입 흔적 0.
 - 실호출 22/22(데모 매장·데모 BG, 만든 행 전부 원복) · `verify-all --full` · 인쇄 보호파일 8/8 무변경 ·
   디자인 신규 위반 0 · i18n 4언어 통과.
+
+
+---
+
+## 8. P4 결제·현금관리 구현 결과 (2026-09-02 · P4-1~3 운영 배포 / P4-4~5 개발서버)
+
+§5-3 절단면 그대로. **마감 기대금액 공식은 한 줄도 건드리지 않았다** —
+`routes/cash-management.js:258` 이 `shift_id` 로만 묶고 `source` 를 보지 않으므로
+발주 출금·환불 입금이 **자동으로** 그 공식에 잡힌다(실측·계약으로 증명).
+
+| 단계 | 내용 | 상태 |
+|---|---|---|
+| P4-1 | 결제 컬럼 5(`payment_status`/`payment_method`/`paid_at`/`paid_by_user_id`/`cash_movement_id`) + `cash_movements.purchase_order_id` + `source` expandEnum. 멱등·추가형·**백필 0** | 운영 배포 |
+| P4-2 | 수령 시 재고 반영을 `services/purchaseOrderReceive.js` 단일 소스로(라우트 -255/+45). **응답 diff 0** | 운영 배포 |
+| P4-3 | `services/purchaseOrderPayment.js` + 라우트 3개 | 운영 배포 |
+| P4-4 | 돈 계약 8건을 health-check **`cash` 카테고리**로 영구화 + 고장주입 2회 | 개발서버 |
+| P4-5 | 화면(공용 `ReceivePayModal` · staging "받을 발주" 블록 · 상세 버튼 · 4언어) | 개발서버 |
+
+### 라우트 4개
+- `POST /purchase-orders/:id/pay` — 결제만 기록
+- `POST /purchase-orders/:id/receive-and-pay` — **단일 트랜잭션**. 수령 본체는 `markAllReceived` 공유(복제 0).
+  결제가 실패하면 **수령까지 롤백**된다(실측: 재고 1 그대로·상태 shipped·원장 0).
+- `POST /purchase-orders/:id/refund-payment` — **명시 결제취소**
+- `cancel` 에 `reversePayment` 연결(paid 일 때만)
+
+### `refund-payment` 이 왜 생겼나 (Fable 적발)
+주 결제 순간은 `receive-and-pay`(**받으면서 지불**)인데 `cancel` 은 `draft·submitted·pending_approval`
+만 허용한다 → 이 라우트가 없으면 **가장 흔한 결제를 잘못 눌러도 되돌릴 길이 없었다**
+(드로어 `out` 만 남고 발주는 `paid` 로 굳는다). 설계 §5-3 의 "(또는 명시 결제취소)"가 이것이다.
+
+### 현금 규칙 (실측으로 확인)
+- 열린 시프트 **정확히 1개**일 때만 드로어 `out`. **2개 이상이면 400** — 임의로 고르면 그 시프트의
+  마감 기대금액이 조용히 틀어진다(앱은 1개를 강제하지만 DB 유니크가 아니다).
+- 0개면 결제는 기록하되 이동 없음 + `drawerSkipped` 안내(막지 않는다).
+- BG·푸드코트 구매자는 드로어가 없다 → 기록만.
+- 되돌리기는 **삭제가 아니라 반대 방향 `in`**. 드로어에서 나간 적 없는 결제는 되돌려도 입금이 없다.
+
+### 남은 백로그 (P4 뒤)
+- **재고아이템을 지우면 과거 발주 라인의 포인터가 사라진다** — FK `poi_product_ingredient_fk`
+  가 `ON DELETE SET NULL`. 라인의 수량·단가·판매품목명은 남으므로 "무엇을 샀는지"가 완전히
+  사라지진 않는다. 운영 사고로 관측된 바 없어 마지막 순위. (2026-09-02 P4-2 중 실측으로 발견)
