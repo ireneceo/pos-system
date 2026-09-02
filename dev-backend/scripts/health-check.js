@@ -2248,6 +2248,78 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
   });
 
+  // ── 브랜드 재료 동기화: 정체성만 덮고 결정은 존중한다 (2026-09-02) ──────────────
+  // 그전에는 `syncProductToIngredients` 가 미러 재료의 **전 컬럼을 매번 덮었다.**
+  // 사람이 끄거나 최소재고를 정해도 **상품을 한 번 수정하면 되돌아갔다.**
+  //   운영 실측(2026-09-02): 꺼진 미러 67건 중 **63건이 "상품은 켜져 있는데 사람이 끈 것"** —
+  //   다음 상품 수정 때 조용히 되살아날 상태였다. 가정이 아니라 이미 쌓여 있던 결함이다.
+  // 계약: 이름·단위·원가는 따라가고, is_active·min_stock·current_stock 은 안 건드린다.
+  //       예외 하나 — 상품이 비활성이 되면 미러도 꺼진다(단종품을 발주 화면에 남기지 않는다).
+  //       상품이 다시 활성이 돼도 미러는 **안 켠다**(기계가 사람을 이기지 않는다).
+  test('inventory', '브랜드 동기화: 사람이 끈 미러는 상품 수정에도 꺼진 채 · 이름/원가는 따라감', async () => {
+    const { sequelize } = require('../config/database');
+    const { BrandProduct, BrandProductBrand, Ingredient } = require('../models');
+    const bgUser = (await sequelize.query("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1",
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    const brand = bgUser && (await sequelize.query('SELECT id FROM brands WHERE owner_id = :o LIMIT 1',
+      { replacements: { o: bgUser.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    if (!bgUser || !brand) { console.log(c.gray('      (건너뜀: 데모 BG/브랜드 없음)')); return true; }
+    const { syncProductToIngredients } = require('../routes/brand-products');
+    if (typeof syncProductToIngredients !== 'function') {
+      console.log(c.gray('      (syncProductToIngredients 를 못 불러왔다 — 검사기 고장)')); return false;
+    }
+    let product = null;
+    try {
+      product = await BrandProduct.create({
+        owner_user_id: bgUser.id, name: 'ZZ-HC-SYNC-' + Date.now(), unit: 'pack', stock_unit: 'pack',
+        base_quantity: 1, unit_price: 10, min_order_quantity: 1, is_active: true,
+        sync_to_ingredients: true, distribution_mode: 'specific_brands',
+      });
+      await BrandProductBrand.findOrCreate({
+        where: { product_id: product.id, brand_id: brand.id },
+        defaults: { product_id: product.id, brand_id: brand.id },
+      });
+      await syncProductToIngredients(product.id);
+      let mirror = await Ingredient.findOne({ where: { brand_product_id: product.id, brand_id: brand.id } });
+      if (!mirror) { console.log(c.gray('      (미러가 안 생겼다)')); return false; }
+
+      // 사람이 결정한다: 끄고 · 최소재고 5 · 수량 10
+      await mirror.update({ is_active: false, min_stock: 5, current_stock: 10 });
+
+      // 상품 수정 → 동기화 재실행
+      await product.update({ name: product.name + '-RENAMED', unit_price: 22 });
+      await syncProductToIngredients(product.id);
+      await mirror.reload();
+      if (mirror.is_active !== false) { console.log(c.gray('      (사람이 끈 미러가 다시 켜졌다)')); return false; }
+      if (Number(mirror.min_stock) !== 5) { console.log(c.gray(`      (min_stock 이 덮였다: ${mirror.min_stock}, 기대 5)`)); return false; }
+      if (Number(mirror.current_stock) !== 10) { console.log(c.gray(`      (current_stock 이 덮였다: ${mirror.current_stock}, 기대 10)`)); return false; }
+      // 정체성은 따라가야 한다
+      if (!/-RENAMED$/.test(mirror.name)) { console.log(c.gray(`      (이름이 안 따라왔다: ${mirror.name})`)); return false; }
+      if (Math.abs(Number(mirror.unit_cost) - 22) > 0.001) { console.log(c.gray(`      (원가가 안 따라왔다: ${mirror.unit_cost}, 기대 22)`)); return false; }
+
+      // 상품 비활성 → 미러도 꺼진다(이미 꺼져 있으니 켜져 있는 상태로 되돌려 확인)
+      await mirror.update({ is_active: true });
+      await product.update({ is_active: false });
+      await syncProductToIngredients(product.id);
+      await mirror.reload();
+      if (mirror.is_active !== false) { console.log(c.gray('      (상품 단종인데 미러가 켜진 채다)')); return false; }
+
+      // 상품 재활성 → 미러는 **안 켜진다**
+      await product.update({ is_active: true });
+      await syncProductToIngredients(product.id);
+      await mirror.reload();
+      if (mirror.is_active !== false) { console.log(c.gray('      (상품 재활성이 미러를 다시 켰다 — 사람 결정을 덮었다)')); return false; }
+      return true;
+    } catch (e) {
+      console.log(c.gray(`      (예외: ${e.message})`));
+      return false;
+    } finally {
+      try { if (product) await Ingredient.destroy({ where: { brand_product_id: product.id }, force: true }); } catch {}
+      try { if (product) await sequelize.query('DELETE FROM brand_product_brands WHERE product_id = :p', { replacements: { p: product.id } }); } catch {}
+      try { if (product) await product.destroy({ force: true }); } catch {}
+    }
+  });
+
   // ── P3 등록 입구 (2026-09-02) ────────────────────────────────────────────────
   // 입구 ③ "재고아이템을 그대로 파는 프로덕트로도 등록". 지켜야 할 것 두 가지:
   //   ⑴ 판매가는 **사람이 넣는다** — 공급가(원가)를 판매가 자리에 복사하면 마진 0 이 운영에 박힌다

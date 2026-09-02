@@ -103,7 +103,15 @@ async function syncProductToIngredients(productId) {
         if (!ic) ic = await IngredientCategory.create({ owner_type: 'brand', brand_id: brand.id, name: bpCat.name, emoji: bpCat.emoji || null, is_active: true });
         ingredientCategoryId = ic.id;
       }
-      const ingredientData = {
+      // ── 동기화가 무엇을 덮고 무엇을 존중하는가 (2026-09-02, Fable 절단면) ──────────
+      // 그전에는 **전 컬럼을 매번 통째로 덮었다.** 그래서 사람이 미러 재료를 끄거나 최소재고를
+      // 정해도 **상품을 한 번 수정하면 전부 되돌아갔다.**
+      //   운영 실측(2026-09-02): 꺼진 미러 67건 중 **63건이 상품은 켜진 채 사람이 끈 것** —
+      //   즉 그 63건은 다음 상품 수정 때 조용히 다시 켜질 상태였다.
+      // 원칙: **동기화는 정체성만 맞추고, 사람의 결정은 건드리지 않는다.**
+      //   정체성(상품이 주인) = 이름·SKU·이미지·단위·기준수량·카테고리·원가
+      //   결정(재료 행이 주인) = is_active·min_stock·current_stock·category·supplier_name
+      const identity = {
         owner_type: 'brand',
         brand_id: brand.id,
         restaurant_id: null,
@@ -111,19 +119,32 @@ async function syncProductToIngredients(productId) {
         code: product.sku || null,
         name: product.name,
         image_url: product.image_url || null,
-        category: 'other',
         ingredient_category_id: ingredientCategoryId,
         unit: product.unit || 'piece',
         base_quantity: product.base_quantity || 1,
+        // 재판매 원가 = 공급업체 가격 그대로([[reference_cost_two_paths]])
         unit_cost: product.unit_price || 0,
-        supplier_name: null,
-        min_stock: 0,
-        current_stock: 0,
-        is_active: product.is_active
       };
       let ingredient = await Ingredient.findOne({ where: { brand_product_id: productId, brand_id: brand.id } });
-      if (ingredient) await ingredient.update(ingredientData);
-      else await Ingredient.create(ingredientData);
+      if (ingredient) {
+        // 수정 — 정체성만 쓴다. min_stock·current_stock 을 0 으로 덮던 하드코딩은 여기서 사라진다
+        // (브랜드 레벨 수량이 마침 0 이라 피해가 없었을 뿐, 동기화가 재고를 지우는 코드는 결함이다).
+        const patch = { ...identity };
+        // 유일한 예외: **끄는 방향만** 따라간다. 단종된 상품이 발주 화면에 남으면 안 되기 때문이다.
+        // 상품이 다시 활성화돼도 미러는 켜지 않는다 — 사람이 끈 것을 기계가 살리지 않는다.
+        if (!product.is_active && ingredient.is_active) patch.is_active = false;
+        await ingredient.update(patch);
+      } else {
+        // 생성 — 이때만 결정 칸의 초기값을 정한다
+        await Ingredient.create({
+          ...identity,
+          category: 'other',
+          supplier_name: null,
+          min_stock: 0,
+          current_stock: 0,
+          is_active: product.is_active,
+        });
+      }
     }
 
     // Remove ingredients for brands that are no longer targeted
