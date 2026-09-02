@@ -20,7 +20,7 @@ const CompanySettings = require('../models/CompanySettings');
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess, requireRole } = require('../middleware/auth');
 const { requireRestaurantModule } = require('../middleware/requireModule');
-const { validateRestaurantCreation } = require('../middleware/validation');
+const { validateRestaurantCreation, sanitizeString } = require('../middleware/validation');
 const jwt = require('jsonwebtoken');
 const { getTodayBounds, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { deleteOldImages, saveImageToFile } = require('../utils/imageProcessor');
@@ -278,6 +278,64 @@ router.post('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcce
 });
 
 // ============================================
+// GET /api/restaurants/:restaurantId/stock-products
+// 레시피 없는 프로덕트 = 그 자체가 재고아이템. 발주 화면·재고 목록이 재료와 **같은 모양**으로 받아
+// 한 목록에 섞어 보여줄 수 있게 한다(프론트가 분기하지 않도록 필드명을 재료 쪽에 맞춘다).
+// 2026-09-02(P3): P1 에서 서버·컬럼은 열렸는데 이 목록이 없어 화면에서 프로덕트를 고를 수 없었다.
+router.get('/:restaurantId/stock-products', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const rid = parseInt(req.params.restaurantId, 10);
+    const { Product, IngredientSellerProduct } = require('../models');
+    const rows = await Product.findAll({
+      where: {
+        restaurant_id: rid,
+        is_active: true,
+        is_set_menu: false,
+        recipe_id: null,
+        product_recipe_id: null,
+      },
+      // ⚠ products 는 createdAt(카멜)이다 — 다른 테이블과 달리 underscored 가 아니다
+      attributes: ['id', 'name', 'stock_unit', 'current_stock', 'min_stock', 'category', 'createdAt'],
+      order: [['name', 'ASC']],
+    });
+    const ids = rows.map((r) => r.id);
+    const links = ids.length
+      ? await IngredientSellerProduct.findAll({ where: { product_id: ids, is_active: true } })
+      : [];
+    const bySource = links.reduce((m, l) => {
+      (m[l.product_id] = m[l.product_id] || []).push(l);
+      return m;
+    }, {});
+    const { attachSellerProductIdentity } = require('../utils/sellerProductIdentity');
+    const data = rows.map((r) => ({
+      id: r.id,
+      kind: 'product',          // 재료 행과 구분하는 유일한 필드
+      name: r.name,
+      unit: r.stock_unit || null,
+      current_stock: r.current_stock != null ? Number(r.current_stock) : null,
+      min_stock: r.min_stock != null ? Number(r.min_stock) : null,
+      category: r.category || null,
+      created_at: r.createdAt || null,
+      sellerSources: (bySource[r.id] || []).map((s) => ({
+        id: s.id,
+        seller_product_id: s.seller_product_id,
+        seller_type: s.seller_type,
+        seller_entity_id: s.seller_entity_id,
+        unit_price: Number(s.unit_price) || 0,
+        unit_conversion: Number(s.unit_conversion) || 1,
+        min_order_quantity: Number(s.min_order_quantity) || 1,
+        lead_time_days: Number(s.lead_time_days) || 0,
+        is_preferred: !!s.is_preferred,
+      })),
+    }));
+    try { await attachSellerProductIdentity(data.flatMap((d) => d.sellerSources)); } catch { /* 표시용 — 실패해도 목록은 준다 */ }
+    res.json({ success: true, data });
+  } catch (err) {
+    console.error('GET /restaurants/:restaurantId/stock-products error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load stock products' });
+  }
+});
+
 // POST /api/restaurants/:restaurantId/ingredients/from-catalog
 // — Cart drawer "카탈로그" tab 에서 supplier_product 클릭 시 호출.
 //   ingredient 자동 생성 + IngredientSellerProduct 매핑 자동 생성. 응답에 둘 다 반환.
@@ -352,6 +410,61 @@ router.post('/:restaurantId/ingredients/from-catalog', authenticateToken, checkR
 
     // Connect mode — body.unit_conversion 우선, 기본 1
     const bodyConversion = catalogLink.resolveUnitConversion(body.unit_conversion);
+    // 2026-09-02(P3-②): 레시피 없는 프로덕트도 "우리 쪽 항목"이 될 수 있다.
+    //   P1 에서 서버·컬럼은 열렸는데 입구(화면·라우트)가 재료만 받아 프로덕트를 고를 수 없었다.
+    //   ⛔ 판매가를 공급가로 채우지 않는다 — 예전에 스크립트로 원가를 판매가에 복사해
+    //      마진 0 을 운영에 박은 사고가 있었다([[reference_supplier_cost_copied_as_price]]).
+    const existingProductId = parseInt(body.existing_product_id, 10);
+    if (Number.isFinite(existingProductId)) {
+      const { Product } = require('../models');
+      const prod = await Product.findByPk(existingProductId, { transaction: t });
+      if (!prod || parseInt(prod.restaurant_id, 10) !== rid) {
+        await t.rollback();
+        return res.status(404).json({ success: false, message: 'Target product not found in this restaurant' });
+      }
+      if (prod.recipe_id || prod.product_recipe_id || prod.is_set_menu) {
+        await t.rollback();
+        return res.status(400).json({
+          success: false, code: 'PRODUCT_HAS_RECIPE',
+          message: 'This product has a recipe — its stock comes from ingredients, not from purchases'
+        });
+      }
+      const r = await catalogLink.connectExisting({
+        target: prod, seller, unitConversion: bodyConversion, targetKey: 'product_id', transaction: t
+      });
+      await t.commit();
+      return res.status(r.status).json(r.body);
+    }
+
+    // 새 프로덕트로 등록 — 판매가는 **사람이 넣어야 한다**(빈 값·0 이하면 400)
+    if (body.new_product && typeof body.new_product === 'object') {
+      const np = body.new_product;
+      const price = parseFloat(np.price);
+      if (!Number.isFinite(price) || price <= 0) {
+        await t.rollback();
+        return res.status(400).json({
+          success: false, code: 'PRICE_REQUIRED',
+          message: 'Selling price is required for a new product (supplier cost is never copied into it)'
+        });
+      }
+      const { Product } = require('../models');
+      const prod = await Product.create({
+        restaurant_id: rid,
+        name: sanitizeString(String(np.name || seller.productName || '')).slice(0, 255),
+        category: np.category ? sanitizeString(String(np.category)).slice(0, 100) : null,
+        price,
+        is_active: true,
+        current_stock: 0,
+        min_stock: parseFloat(np.min_stock) || 0,
+        stock_unit: catalogLink.resolveUnit(np.unit, seller.productUnit),
+      }, { transaction: t });
+      const mapping = await catalogLink.createMappingFor({
+        target: prod, seller, unitConversion: bodyConversion, targetKey: 'product_id', transaction: t
+      });
+      await t.commit();
+      return res.status(201).json({ success: true, data: { product: prod, mapping, created: true } });
+    }
+
     const existingIngredientId = parseInt(body.existing_ingredient_id, 10);
     if (Number.isFinite(existingIngredientId)) {
       const targetIng = await Ingredient.findByPk(existingIngredientId, { transaction: t });

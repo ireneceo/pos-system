@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { requireBGScope, applyBGFilter, assertBGOwnsRow } = require('../middleware/brandScope');
+const { sanitizeString } = require('../middleware/validation');
 const {
   ProductIngredient,
   ProductIngredientCategory,
@@ -170,6 +171,58 @@ router.get('/transactions', async (req, res) => {
 });
 
 // ============================================
+// GET /api/product-ingredients/stock-products
+// 레시피 없는 브랜드 프로덕트 = 그 자체가 재고아이템 (RA /stock-products 와 같은 모양).
+// 2026-09-02(P3): 화면이 프로덕트를 고를 수 있게 하는 목록.
+router.get('/stock-products', async (req, res) => {
+  try {
+    const { BrandProduct, IngredientSellerProduct } = require('../models');
+    const rows = await BrandProduct.findAll({
+      where: {
+        owner_user_id: req.bgOwnerId,
+        is_active: true,
+        is_set_menu: false,
+        product_recipe_id: null,
+      },
+      attributes: ['id', 'name', 'unit', 'stock_unit', 'current_stock', 'min_stock', 'category_id', 'created_at'],
+      order: [['name', 'ASC']],
+    });
+    const ids = rows.map((r) => r.id);
+    const links = ids.length
+      ? await IngredientSellerProduct.findAll({ where: { brand_product_id: ids, is_active: true } })
+      : [];
+    const bySource = links.reduce((m2, l) => {
+      (m2[l.brand_product_id] = m2[l.brand_product_id] || []).push(l);
+      return m2;
+    }, {});
+    const data = rows.map((r) => ({
+      id: r.id,
+      kind: 'brand_product',
+      name: r.name,
+      unit: r.stock_unit || r.unit || null,
+      current_stock: r.current_stock != null ? Number(r.current_stock) : null,
+      min_stock: r.min_stock != null ? Number(r.min_stock) : null,
+      category_id: r.category_id || null,
+      created_at: r.created_at || null,
+      sellerSources: (bySource[r.id] || []).map((s) => ({
+        id: s.id,
+        seller_product_id: s.seller_product_id,
+        seller_type: s.seller_type,
+        seller_entity_id: s.seller_entity_id,
+        unit_price: Number(s.unit_price) || 0,
+        unit_conversion: Number(s.unit_conversion) || 1,
+        min_order_quantity: Number(s.min_order_quantity) || 1,
+        lead_time_days: Number(s.lead_time_days) || 0,
+        is_preferred: !!s.is_preferred,
+      })),
+    }));
+    res.json({ success: true, data });
+  } catch (err) {
+    console.error('GET /product-ingredients/stock-products error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load stock products' });
+  }
+});
+
 // POST /api/product-ingredients/from-catalog
 // — 발주 화면 "Supplier Catalog" 탭에서 catalog product 클릭 시 호출 (BG 용).
 //   ProductIngredient(owner_user_id) + IngredientSellerProduct(product_ingredient_id) 매핑 자동 생성. idempotent.
@@ -212,6 +265,64 @@ router.post('/from-catalog', async (req, res) => {
 
     const finalUnit = catalogLink.resolveUnit(body.unit, seller.productUnit);
     const unitConversion = catalogLink.resolveUnitConversion(body.unit_conversion);
+
+    // 2026-09-02(P3-②): 레시피 없는 브랜드 프로덕트도 "우리 쪽 항목"이 될 수 있다(RA 와 대칭).
+    //   ⛔ 판매가를 공급가로 채우지 않는다 — 마진 0 사고 재발 방지.
+    const existingBpId = parseInt(body.existing_brand_product_id, 10);
+    if (Number.isFinite(existingBpId)) {
+      const { BrandProduct } = require('../models');
+      const bp = await BrandProduct.findByPk(existingBpId, { transaction: t });
+      if (!bp || bp.owner_user_id !== req.bgOwnerId) {
+        await t.rollback();
+        return res.status(404).json({ success: false, message: 'Target product not found' });
+      }
+      if (bp.product_recipe_id || bp.is_set_menu) {
+        await t.rollback();
+        return res.status(400).json({
+          success: false, code: 'PRODUCT_HAS_RECIPE',
+          message: 'This product has a recipe — its stock comes from ingredients, not from purchases'
+        });
+      }
+      const r = await catalogLink.connectExisting({
+        target: bp, seller, unitConversion, targetKey: 'brand_product_id', transaction: t
+      });
+      await t.commit();
+      return res.status(r.status).json(r.body);
+    }
+
+    // 새 브랜드 프로덕트로 등록 — 판매가 필수(빈 값·0 이하면 400)
+    if (body.new_product && typeof body.new_product === 'object') {
+      const np = body.new_product;
+      const price = parseFloat(np.price);
+      if (!Number.isFinite(price) || price <= 0) {
+        await t.rollback();
+        return res.status(400).json({
+          success: false, code: 'PRICE_REQUIRED',
+          message: 'Selling price is required for a new product (supplier cost is never copied into it)'
+        });
+      }
+      const { BrandProduct } = require('../models');
+      const unitForProduct = catalogLink.resolveUnit(np.unit, seller.productUnit);
+      const bp = await BrandProduct.create({
+        owner_user_id: req.bgOwnerId,
+        category_id: np.category_id || null,
+        name: sanitizeString(String(np.name || seller.productName || '')).slice(0, 255),
+        unit: unitForProduct,
+        // 레시피 없는 프로덕트는 판매 단위 = 재고 단위여야 한다(환산 필드가 없다 — R-SC-012)
+        stock_unit: unitForProduct,
+        base_quantity: 1,
+        unit_price: price,
+        min_order_quantity: 1,
+        is_active: true,
+        current_stock: 0,
+        min_stock: parseFloat(np.min_stock) || 0,
+      }, { transaction: t });
+      const mapping = await catalogLink.createMappingFor({
+        target: bp, seller, unitConversion, targetKey: 'brand_product_id', transaction: t
+      });
+      await t.commit();
+      return res.status(201).json({ success: true, data: { product: bp, mapping, created: true } });
+    }
 
     // Connect mode — 기존 BG 소유 ProductIngredient 에 매핑만 추가
     const existingPiId = parseInt(body.existing_product_ingredient_id, 10);

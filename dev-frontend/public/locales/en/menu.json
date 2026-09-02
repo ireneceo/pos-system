@@ -162,5 +162,8 @@
   "menuManagementPage.crossSell.hint": "Shown to customers as add-ons right after they add this item to the cart. Leave empty to auto-suggest from dessert/drink categories.",
   "menuManagementPage.crossSell.addPlaceholder": "Select a product to recommend...",
   "menuManagementPage.crossSell.brandLocked": "Brand",
-  "menuManagementPage.crossSell.remove": "Remove"
+  "menuManagementPage.crossSell.remove": "Remove",
+  "menuManagementPage": {
+    "minStock": "Low-stock alert at"
+  }
 }

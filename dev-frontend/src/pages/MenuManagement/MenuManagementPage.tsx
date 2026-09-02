@@ -889,6 +889,7 @@ const MenuManagementPage: React.FC = () => {
     set_display_order: 0,
     recipe_id: null,
     current_stock: 0,
+    min_stock: 0,
     stock_unit: '',
     takeaway_charge: 0
   });
@@ -1066,6 +1067,7 @@ const MenuManagementPage: React.FC = () => {
       set_display_order: 0,
       recipe_id: null,
     current_stock: 0,
+    min_stock: 0,
     stock_unit: '',
       takeaway_charge: 0
     });
@@ -1091,6 +1093,7 @@ const MenuManagementPage: React.FC = () => {
       set_display_order: 0,
       recipe_id: null,
     current_stock: 0,
+    min_stock: 0,
     stock_unit: '',
       takeaway_charge: 0
     });
@@ -1158,6 +1161,7 @@ const MenuManagementPage: React.FC = () => {
       // 자체 재고 — 수정 폼을 열 때 저장된 값을 그대로 싣는다.
       // (안 실으면 저장 시 0/꺼짐으로 덮어써 재고가 조용히 날아간다.)
       current_stock: Number((item as any).current_stock) || 0,
+      min_stock: Number((item as any).min_stock) || 0,
       stock_unit: (item as any).stock_unit || '',
       recipe_id: item.recipe_id || null,
       takeaway_charge: item.takeaway_charge ?? 0
@@ -1360,6 +1364,9 @@ const MenuManagementPage: React.FC = () => {
       name: formData.name || '',
       price: formData.price || 0,
       current_stock: !formData.recipe_id ? (Number(formData.current_stock) || 0) : 0,
+      // 저재고 알림은 min_stock>0 인 품목만 뜬다 — 이 칸이 없어서 메뉴로 만든 프로덕트는
+      // 알림을 받을 방법이 아예 없었다(2026-09-02 P3).
+      min_stock: !formData.recipe_id ? (Number(formData.min_stock) || 0) : 0,
       stock_unit: formData.stock_unit || null,
       category: formData.category,
       emoji: formData.emoji || '🍽️',
@@ -1423,6 +1430,9 @@ const MenuManagementPage: React.FC = () => {
       name: formData.name || '',
       price: formData.price || 0,
       current_stock: !formData.recipe_id ? (Number(formData.current_stock) || 0) : 0,
+      // 저재고 알림은 min_stock>0 인 품목만 뜬다 — 이 칸이 없어서 메뉴로 만든 프로덕트는
+      // 알림을 받을 방법이 아예 없었다(2026-09-02 P3).
+      min_stock: !formData.recipe_id ? (Number(formData.min_stock) || 0) : 0,
       stock_unit: formData.stock_unit || null,
       category: formData.category,
       emoji: formData.emoji || '🍽️',
@@ -1952,6 +1962,15 @@ const MenuManagementPage: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, stock_unit: e.target.value })}
                   placeholder={t('menu:menuManagementPage.stockUnit', 'Unit (e.g. can, bottle)') as string}
                 />
+                <FormInput
+                  type="number"
+                  value={formData.min_stock ?? 0}
+                  onChange={(e) => setFormData({ ...formData, min_stock: parseFloat(e.target.value) || 0 })}
+                  onFocus={(e) => { if (parseFloat(e.target.value) === 0) e.target.select(); }}
+                  step="1"
+                  min="0"
+                  placeholder={t('menu:menuManagementPage.minStock', 'Low-stock alert at') as string}
+                />
               </div>
             </UIFormGroup>
           )}
@@ -2309,6 +2328,15 @@ const MenuManagementPage: React.FC = () => {
                   value={formData.stock_unit || ''}
                   onChange={(e) => setFormData({ ...formData, stock_unit: e.target.value })}
                   placeholder={t('menu:menuManagementPage.stockUnit', 'Unit (e.g. can, bottle)') as string}
+                />
+                <FormInput
+                  type="number"
+                  value={formData.min_stock ?? 0}
+                  onChange={(e) => setFormData({ ...formData, min_stock: parseFloat(e.target.value) || 0 })}
+                  onFocus={(e) => { if (parseFloat(e.target.value) === 0) e.target.select(); }}
+                  step="1"
+                  min="0"
+                  placeholder={t('menu:menuManagementPage.minStock', 'Low-stock alert at') as string}
                 />
               </div>
             </UIFormGroup>

@@ -162,5 +162,8 @@
   "menuManagementPage.crossSell.hint": "손님이 이 상품을 담은 직후 추천으로 표시됩니다. 비워두면 디저트/음료 카테고리에서 자동 추천합니다.",
   "menuManagementPage.crossSell.addPlaceholder": "추천할 상품 선택...",
   "menuManagementPage.crossSell.brandLocked": "브랜드",
-  "menuManagementPage.crossSell.remove": "삭제"
+  "menuManagementPage.crossSell.remove": "삭제",
+  "menuManagementPage": {
+    "minStock": "저재고 알림 기준"
+  }
 }

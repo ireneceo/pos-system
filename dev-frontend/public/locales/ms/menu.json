@@ -162,5 +162,8 @@
   "menuManagementPage.crossSell.hint": "Dipaparkan kepada pelanggan sebagai tambahan sebaik sahaja mereka menambah item ini ke troli. Biarkan kosong untuk cadangan automatik daripada kategori pencuci mulut/minuman.",
   "menuManagementPage.crossSell.addPlaceholder": "Pilih produk untuk dicadangkan...",
   "menuManagementPage.crossSell.brandLocked": "Jenama",
-  "menuManagementPage.crossSell.remove": "Buang"
+  "menuManagementPage.crossSell.remove": "Buang",
+  "menuManagementPage": {
+    "minStock": "Amaran stok rendah pada"
+  }
 }

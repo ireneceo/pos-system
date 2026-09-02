@@ -162,5 +162,8 @@
   "menuManagementPage.crossSell.hint": "顾客将此商品加入购物车后立即作为加购推荐显示。留空则自动从甜点/饮料类别推荐。",
   "menuManagementPage.crossSell.addPlaceholder": "选择要推荐的商品...",
   "menuManagementPage.crossSell.brandLocked": "品牌",
-  "menuManagementPage.crossSell.remove": "移除"
+  "menuManagementPage.crossSell.remove": "移除",
+  "menuManagementPage": {
+    "minStock": "低库存提醒值"
+  }
 }
