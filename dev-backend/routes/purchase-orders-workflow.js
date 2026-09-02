@@ -27,19 +27,19 @@ const {
   ProductIngredient,
   SupplierContract,
   SupplierCompany,
-  InventoryBatch,
-  InventoryTransaction,
   StockAlert,
   Restaurant,
-  RestaurantIngredientCost
 } = require('../models');
-const { stockFor, applyStock } = require('../utils/brandStockAccess');
+// 재고 반영은 services/purchaseOrderReceive 로 갔다 — 이 파일은 stockFor(표시용 현재고 조회)만 쓴다
+const { stockFor } = require('../utils/brandStockAccess');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
 const { isApprovalRequiredForRestaurant, applySubmitGate } = require('../utils/poOwnerApproval');
 const { fireSellerSubmittedNotification, fireOwnerApprovalPendingNotification, fireBuyerConfirmNotification, fireBuyerReceivedNotification } = require('../services/poNotifications');
+// 수령 시 재고 반영 단일 소스 — /receive 와 mark-received 가 같은 함수를 쓴다(P4-2, 복제 금지)
+const { applyReceipt, receiveIntoProduct } = require('../services/purchaseOrderReceive');
 
 // Path-level guards so unrelated /api/* fall-throughs aren't blocked by buyer-role.
 router.use('/purchase-orders', authenticateToken, requireBuyerRole);
@@ -56,51 +56,9 @@ const VALID_SELLER_TYPES = ['system_admin', 'brand', 'foodcourt', 'supplier'];
 // draft·pending_approval 은 계속 막는다 — 승인 우회 방지(2026-07-13 판정).
 const RECEIVABLE_STATUSES = ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'];
 
-/**
- * 레시피 없는 프로덕트로의 입고 (2026-09-01).
- *
- * 그전에는 발주 라인이 재료만 가리킬 수 있어서, 사온 물건이 프로덕트로 들어올 길이 없었다.
- * 프로덕트는 **그 자체가 재고아이템**이고 수량이 프로덕트 행에 산다(판매 차감도 거기서 뺀다).
- * 그래서 입고도 같은 자리에 더한다 — 재고아이템을 따로 만들지 않는다.
- *
- * 소유권을 여기서 다시 검사한다: 발주 생성 때 검사했더라도, 입고는 돈과 수량이 움직이는
- * 지점이라 라인이 남의 프로덕트를 가리키면 400 으로 끊는다.
- *
- * @returns {{ok:true, stockAfter:number}} | {{ok:false, message:string}}
- */
-async function receiveIntoProduct({ item, po, delta, userId, t, note }) {
-  const isBrandSide = !!item.brand_product_id;
-  const id = isBrandSide ? item.brand_product_id : item.product_id;
-  const Model = require(isBrandSide ? '../models/BrandProduct' : '../models/Product');
-  const prod = await Model.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
-  if (!prod) return { ok: false, message: `Product ${id} not found` };
-
-  if (isBrandSide) {
-    if (po.entity_type !== 'brand') return { ok: false, message: `Product ${id} is a brand product but PO buyer is ${po.entity_type}` };
-    const Brand = require('../models/Brand');
-    const brand = await Brand.findByPk(po.entity_id, { transaction: t });
-    const ownerOk = brand && prod.owner_user_id != null && parseInt(brand.owner_id, 10) === parseInt(prod.owner_user_id, 10);
-    if (!ownerOk) return { ok: false, message: `Product ${id} does not belong to this buyer` };
-  } else {
-    if (po.entity_type !== 'restaurant' || parseInt(prod.restaurant_id, 10) !== parseInt(po.entity_id, 10)) {
-      return { ok: false, message: `Product ${id} does not belong to this buyer` };
-    }
-  }
-
-  const cur = parseFloat(prod.current_stock) || 0;
-  const next = Math.round((cur + delta) * 100) / 100;
-  const unit = prod.stock_unit || prod.unit || null;
-  await InventoryTransaction.create({
-    entity_type: po.entity_type, entity_id: po.entity_id,
-    ...(isBrandSide ? { brand_product_id: id } : { product_id: id, restaurant_id: po.entity_id }),
-    transaction_type: 'purchase', quantity_change: delta,
-    unit, stock_after: next, purchase_order_id: po.id,
-    notes: note, created_by: userId
-  }, { transaction: t });
-  await prod.update({ current_stock: next }, { transaction: t });
-  return { ok: true, stockAfter: next };
-}
-
+// 레시피 없는 프로덕트로의 입고(2026-09-01)·BG 재고아이템·재료 입고는 전부
+// services/purchaseOrderReceive.js 로 옮겼다(P4-2). /receive 와 mark-received 가 같은 구현을 쓴다 —
+// 예전에는 두 벌이라 한쪽만 고치면 조용히 갈라졌다(P1 에서 게이트를 두 곳 따로 지워야 했다).
 
 const ENTITY_TYPE_PREFIX = {
   restaurant: 'R',
@@ -554,118 +512,24 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
       });
     }
 
-    // Stock 흐름 — items 별로 ingredient.current_stock += quantity_ordered × unit_conversion + InventoryBatch + InventoryTransaction 기록.
+    // Stock 흐름 — 재고 반영은 **services/purchaseOrderReceive.applyReceipt 단일 소스**를 쓴다(P4-2).
     // 정식 /receive 의 lite 버전: split (damaged/short 등) 없이 quantity_ordered 전량 정상 수령으로 처리.
+    //   ⚠ 재료 행을 잠그지 않는다(lockIngredient: false) — 이 라우트는 원래 안 잠갔다.
+    //     여기서 임의로 잠그면 그건 추출이 아니라 동작 변경이다.
     const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, transaction: t });
-    const Ingredient = require('../models/Ingredient');
     for (const item of items) {
-      // 레시피 없는 프로덕트 수령 — 수량이 프로덕트에 산다(2026-09-01)
-      if (item.product_id || item.brand_product_id) {
-        const convP = parseFloat(item.unit_conversion) || 1;
-        const qtyP = parseFloat(item.quantity_ordered) || 0;
-        if (qtyP <= 0) continue;
-        const deltaP = Math.round(qtyP * convP * 100) / 100;
-        const r = await receiveIntoProduct({
-          item, po, delta: deltaP, userId: req.user.id, t,
-          note: `PO ${po.po_number} mark-received`
-        });
-        if (!r.ok) { await t.rollback(); return res.status(400).json({ success: false, message: r.message }); }
-        continue;
-      }
-      // BG 재고아이템(ProductIngredient) 수령 — 정상 전량 재고 반영 (RA Ingredient 경로와 분리)
-      if (item.product_ingredient_id) {
-        const pIng = await ProductIngredient.findByPk(item.product_ingredient_id, { transaction: t });
-        if (!pIng) continue;
-        const convB = parseFloat(item.unit_conversion) || 1;
-        const qtyB = parseFloat(item.quantity_ordered) || 0;
-        if (qtyB <= 0) continue;
-        const deltaB = Math.round(qtyB * convB * 100) / 100;
-        const curB = parseFloat(pIng.current_stock) || 0;
-        // 2026-09-01: track_stock 스위치 제거 — 항상 추적한다.
-        // (꺼져 있으면 입고가 기록만 되고 수량이 안 올라가, 산 물건이 재고에 없는 것처럼 보였다)
-        const newB = Math.round((curB + deltaB) * 100) / 100;
-        await InventoryTransaction.create({
-          entity_type: po.entity_type, entity_id: po.entity_id,
-          product_ingredient_id: item.product_ingredient_id,
-          transaction_type: 'purchase', quantity_change: deltaB,
-          unit: pIng.unit, stock_after: newB, purchase_order_id: po.id,
-          notes: `PO ${po.po_number} mark-received`, created_by: req.user.id
-        }, { transaction: t });
-        await pIng.update({ current_stock: newB }, { transaction: t });
-        continue;
-      }
-      if (!item.ingredient_id) continue;
-      const ingredient = await Ingredient.findByPk(item.ingredient_id, { transaction: t });
-      if (!ingredient) continue;
-      // 2026-09-01: track_stock 스위치 제거 — 재고는 항상 추적한다
-      const conv = parseFloat(item.unit_conversion) || 1;
-      const qty = parseFloat(item.quantity_ordered) || 0;
-      if (qty <= 0) continue;
-      const stockDelta = Math.round(qty * conv * 100) / 100;
-      // 브랜드 공유 재료면 이 매장의 오버레이 재고가 기준 (브랜드 행 = 형제 매장과 공유)
-      const currentStock = po.entity_type === 'restaurant'
-        ? await stockFor(ingredient, po.entity_id, t)
-        : parseFloat(ingredient.current_stock) || 0;
-      // 2026-09-01: 스위치 제거 — 항상 추적
-      const newStock = Math.round((currentStock + stockDelta) * 100) / 100;
-      const unitCost = parseFloat(item.unit_price) || 0;
-
-      await InventoryBatch.create({
-        entity_type: po.entity_type, entity_id: po.entity_id,
-        ingredient_id: item.ingredient_id,
-        batch_number: null,
-        initial_quantity: stockDelta, remaining_quantity: stockDelta,
-        unit: ingredient.unit, unit_cost: unitCost,
-        expiry_date: null, received_date: new Date(), status: 'active',
-        purchase_order_id: po.id, created_by: req.user.id
-      }, { transaction: t });
-
-      await InventoryTransaction.create({
-        entity_type: po.entity_type, entity_id: po.entity_id,
-        ingredient_id: item.ingredient_id,
-        transaction_type: 'purchase',
-        quantity_change: stockDelta,
-        unit: ingredient.unit, stock_after: newStock,
-        purchase_order_id: po.id,
-        notes: `PO ${po.po_number} mark-received`,
-        created_by: req.user.id
-      }, { transaction: t });
-
-      if (po.entity_type === 'restaurant') {
-        await applyStock(ingredient, po.entity_id, newStock, t, { stockTake: true });
-      } else {
-        await ingredient.update({ current_stock: newStock, last_stock_take_at: new Date() }, { transaction: t });
-      }
-
-      // Restaurant buyer 가중평균 cost (정식 /receive 와 동일 로직)
-      if (po.entity_type === 'restaurant') {
-        const incomingCostPerIng = (parseFloat(item.unit_price) || 0) / conv;
-        const existingCostRow = await RestaurantIngredientCost.findOne({
-          where: { restaurant_id: po.entity_id, ingredient_id: item.ingredient_id },
-          transaction: t
-        });
-        const oldCost = existingCostRow
-          ? parseFloat(existingCostRow.unit_cost) || 0
-          : (parseFloat(ingredient.unit_cost) || 0);
-        const weighted = currentStock > 0 && newStock > 0
-          ? (currentStock * oldCost + stockDelta * incomingCostPerIng) / newStock
-          : incomingCostPerIng;
-        const newAvg = Math.round(weighted * 10000) / 10000;
-        if (existingCostRow) {
-          await existingCostRow.update({
-            unit_cost: newAvg,
-            notes: `PO ${po.po_number} mark-received`,
-            updated_by: req.user.id
-          }, { transaction: t });
-        } else {
-          await RestaurantIngredientCost.create({
-            restaurant_id: po.entity_id,
-            ingredient_id: item.ingredient_id,
-            unit_cost: newAvg,
-            notes: `PO ${po.po_number} mark-received`,
-            updated_by: req.user.id
-          }, { transaction: t });
-        }
+      const r = await applyReceipt({
+        item, po,
+        quantity: parseFloat(item.quantity_ordered) || 0,
+        userId: req.user.id, t,
+        note: `PO ${po.po_number} mark-received`,
+        lockIngredient: false,
+      });
+      // 프로덕트 타깃의 소유권 실패만 400 으로 돌린다(추출 전과 동일). 재료·재고아이템이
+      // 없어진 경우는 예전처럼 건너뛴다 — 여기서 막으면 옛 발주의 수령이 통째로 불가능해진다.
+      if (!r.ok && !r.missingIngredient) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: r.message });
       }
     }
 
@@ -898,16 +762,15 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
         }
       }
 
-      // 레시피 없는 프로덕트 수령 — 정상분만 프로덕트 수량에 더한다(2026-09-01)
+      // 레시피 없는 프로덕트 수령 — 정상분만 프로덕트 수량에 더한다(2026-09-01).
+      // 재고 반영은 applyReceipt 단일 소스(P4-2). 파손·부족분은 재고에 안 넣는다(재료 경로와 같은 규칙).
       if (item.product_id || item.brand_product_id) {
-        const convP = parseFloat(item.unit_conversion) || 1;
         let normalP = 0;
         for (const split of splits) {
-          if (split.reason !== null) continue; // 파손·부족분은 재고에 안 넣는다(재료 경로와 같은 규칙)
+          if (split.reason !== null) continue;
           normalP = Math.round((normalP + split.quantity) * 100) / 100;
-          const deltaP = Math.round(split.quantity * convP * 100) / 100;
-          const r = await receiveIntoProduct({
-            item, po, delta: deltaP, userId: req.user.id, t,
+          const r = await applyReceipt({
+            item, po, quantity: split.quantity, userId: req.user.id, t,
             note: `PO ${po.po_number} receive`
           });
           if (!r.ok) { await t.rollback(); return res.status(400).json({ success: false, message: r.message }); }
@@ -918,29 +781,21 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
 
       // BG 재고아이템(ProductIngredient) 수령 — 정상분만 재고 반영 (split/damage 미적용, RA Ingredient 경로와 분리)
       if (item.product_ingredient_id) {
+        // 행을 잠그고(FIFO 차감 경합 방지) 같은 인스턴스를 split 마다 물려준다 — 재고 반영은 applyReceipt(P4-2).
         const pIng = await ProductIngredient.findByPk(item.product_ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
         if (!pIng) {
           await t.rollback();
           return res.status(400).json({ success: false, message: `Product ingredient ${item.product_ingredient_id} not found` });
         }
-        const convB = parseFloat(item.unit_conversion) || 1;
-        let curB = parseFloat(pIng.current_stock) || 0;
         let normalB = 0;
         for (const split of splits) {
           if (split.reason !== null) continue; // BG: 정상분만 재고 반영
-          const qty = split.quantity;
-          normalB = Math.round((normalB + qty) * 100) / 100;
-          const deltaB = Math.round(qty * convB * 100) / 100;
-          const newB = Math.round((curB + deltaB) * 100) / 100; // 2026-09-01: 스위치 제거, 항상 추적
-          await InventoryTransaction.create({
-            entity_type: po.entity_type, entity_id: po.entity_id,
-            product_ingredient_id: item.product_ingredient_id,
-            transaction_type: 'purchase', quantity_change: deltaB,
-            unit: pIng.unit, stock_after: newB, purchase_order_id: po.id,
-            notes: `PO ${po.po_number} receive`, created_by: req.user.id
-          }, { transaction: t });
-          await pIng.update({ current_stock: newB }, { transaction: t });
-          curB = newB;
+          normalB = Math.round((normalB + split.quantity) * 100) / 100;
+          const r = await applyReceipt({
+            item, po, quantity: split.quantity, userId: req.user.id, t,
+            note: `PO ${po.po_number} receive`, pIng
+          });
+          if (!r.ok) { await t.rollback(); return res.status(400).json({ success: false, message: r.message }); }
         }
         await item.update({ quantity_received: Math.round((alreadyReceived + normalB) * 100) / 100 }, { transaction: t });
         continue;
@@ -971,87 +826,20 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
         const reason = split.reason;
 
         if (reason === null) {
-          // 정상 수령 — 재고 + InventoryBatch + InventoryTransaction
+          // 정상 수령 — 배치 + 원장 + 가중평균원가 + 오버레이. 전부 applyReceipt 단일 소스(P4-2).
+          //   split 사이에서 currentStock 을 물려준다(한 라인에 정상분이 여러 번 올 수 있다).
           normalQtyTotal = Math.round((normalQtyTotal + qty) * 100) / 100;
-          const stockDelta = Math.round(qty * conv * 100) / 100;
-          const newStock = Math.round((currentStock + stockDelta) * 100) / 100;
-          const unitCost = split.unit_cost != null
-            ? parseFloat(split.unit_cost)
-            : (parseFloat(item.unit_price) || 0);
-
-          // InventoryBatch — Sprint 7: entity_type 명시 (모든 buyer)
-          await InventoryBatch.create({
-            entity_type: po.entity_type,
-            entity_id: po.entity_id,
-            ingredient_id: item.ingredient_id,
-            batch_number: split.batch_no || null,
-            initial_quantity: stockDelta,
-            remaining_quantity: stockDelta,
-            unit: ingredient.unit,
-            unit_cost: unitCost,
-            expiry_date: split.expiry_date || null,
-            received_date: new Date(),
-            status: 'active',
-            purchase_order_id: po.id,
-            created_by: req.user.id
-          }, { transaction: t });
-
-          // InventoryTransaction — Sprint 7: entity_type 명시 + purchase_order_id FK
-          await InventoryTransaction.create({
-            entity_type: po.entity_type,
-            entity_id: po.entity_id,
-            ingredient_id: item.ingredient_id,
-            transaction_type: 'purchase',
-            quantity_change: stockDelta,
-            unit: ingredient.unit,
-            stock_after: newStock,
-            purchase_order_id: po.id,
-            notes: `PO ${po.po_number} receive`,
-            created_by: req.user.id
-          }, { transaction: t });
-
-          // Restaurant buyer 가중평균 cost
-          if (po.entity_type === 'restaurant') {
-            const incomingCostPerIng = (parseFloat(item.unit_price) || 0) / conv;
-            const existingCostRow = await RestaurantIngredientCost.findOne({
-              where: { restaurant_id: po.entity_id, ingredient_id: item.ingredient_id },
-              transaction: t
-            });
-            const oldCost = existingCostRow
-              ? parseFloat(existingCostRow.unit_cost) || 0
-              : (parseFloat(ingredient.unit_cost) || 0);
-            const weighted = currentStock > 0 && newStock > 0
-              ? (currentStock * oldCost + stockDelta * incomingCostPerIng) / newStock
-              : incomingCostPerIng;
-            const newAvg = Math.round(weighted * 10000) / 10000;
-
-            if (existingCostRow) {
-              await existingCostRow.update({
-                unit_cost: newAvg,
-                notes: `PO ${po.po_number} receive`,
-                updated_by: req.user.id
-              }, { transaction: t });
-            } else {
-              await RestaurantIngredientCost.create({
-                restaurant_id: po.entity_id,
-                ingredient_id: item.ingredient_id,
-                unit_cost: newAvg,
-                notes: `PO ${po.po_number} receive`,
-                updated_by: req.user.id
-              }, { transaction: t });
-            }
-          }
-
-          if (po.entity_type === 'restaurant') {
-            // 브랜드 공유 재료 → 매장 오버레이 / 매장 재료 → 재료 행 (형제 매장 재고 오염 방지)
-            await applyStock(ingredient, po.entity_id, newStock, t, { stockTake: true });
-          } else {
-            await ingredient.update(
-              { current_stock: newStock, last_stock_take_at: new Date() },
-              { transaction: t }
-            );
-          }
-          currentStock = newStock;
+          const r = await applyReceipt({
+            item, po, quantity: qty, userId: req.user.id, t,
+            note: `PO ${po.po_number} receive`,
+            unitCost: split.unit_cost != null ? parseFloat(split.unit_cost) : null,
+            batchNumber: split.batch_no || null,
+            expiryDate: split.expiry_date || null,
+            ingredientRow: ingredient,
+            currentStock,
+          });
+          if (!r.ok) { await t.rollback(); return res.status(400).json({ success: false, message: r.message }); }
+          currentStock = r.stockAfter;
         } else if (reason === 'damaged' || reason === 'wrong_item') {
           // Auto returns — 재고 변동 없음
           const sourceEvent = reason === 'damaged' ? 'receive_damage' : 'receive_wrong_item';
