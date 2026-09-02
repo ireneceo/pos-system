@@ -21,6 +21,9 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
+import Toggle from '../../components/Common/Toggle';
+import { costOrNotSet } from '../../utils/costDisplay';
+import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 interface Ingredient {
@@ -195,6 +198,7 @@ const IngredientsPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const { t } = useTranslation(['purchaseOrders', 'common']);
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -202,7 +206,11 @@ const IngredientsPage: React.FC = () => {
     unit: '',
     unit_cost: '',
     supplier_name: '',
-    min_stock: '0'
+    min_stock: '0',
+    // 2026-09-02: 브랜드 재료를 끄고 켜는 칸. 그전에는 이 값을 보낼 수단이 없어
+    //   **BG 가 자기 재료를 끌 방법이 아예 없었다**(운영에서 꺼진 63건은 API 밖에서 꺼진 것).
+    //   동기화는 이제 이 결정을 존중한다(brand-products.js syncProductToIngredients).
+    is_active: true
   });
 
   // ConfirmModal states
@@ -303,7 +311,8 @@ const IngredientsPage: React.FC = () => {
         unit: ingredient.unit,
         unit_cost: ingredient.unit_cost.toString(),
         supplier_name: ingredient.supplier_name || '',
-        min_stock: ingredient.min_stock?.toString() || '0'
+        min_stock: ingredient.min_stock?.toString() || '0',
+        is_active: ingredient.is_active !== false
       });
     } else {
       setSelectedIngredient(null);
@@ -314,7 +323,8 @@ const IngredientsPage: React.FC = () => {
         unit: '',
         unit_cost: '',
         supplier_name: '',
-        min_stock: '0'
+        min_stock: '0',
+        is_active: true
       });
     }
     setShowModal(true);
@@ -330,7 +340,8 @@ const IngredientsPage: React.FC = () => {
       unit: '',
       unit_cost: '',
       supplier_name: '',
-      min_stock: '0'
+      min_stock: '0',
+      is_active: true
     });
   };
 
@@ -367,7 +378,9 @@ const IngredientsPage: React.FC = () => {
         body: JSON.stringify({
           ...formData,
           unit_cost: parseFloat(formData.unit_cost),
-          min_stock: parseInt(formData.min_stock) || 0
+          min_stock: parseInt(formData.min_stock) || 0,
+          // 편집일 때만 — 새로 만들 때는 서버가 true 로 만든다
+          ...(selectedIngredient ? { is_active: !!formData.is_active } : {})
         })
       });
 
@@ -513,7 +526,8 @@ const IngredientsPage: React.FC = () => {
                   <IngredientInfo>
                     <InfoRow>
                       <InfoLabel>{'Unit Cost'}</InfoLabel>
-                      <InfoValue>{formatCurrency(ingredient.unit_cost, selectedCurrency || 'MYR')}</InfoValue>
+                      {/* 0 = "안 넣은 것". 숫자로 찍으면 구분이 안 돼 그대로 원가에 들어간다(공용 규칙). */}
+                      <InfoValue>{costOrNotSet(ingredient.unit_cost, selectedCurrency || 'MYR', t('purchaseOrders:ingredients.costNotSet', '원가 미설정') as string)}</InfoValue>
                     </InfoRow>
                     <InfoRow>
                       <InfoLabel>{'Unit'}</InfoLabel>
@@ -638,6 +652,26 @@ const IngredientsPage: React.FC = () => {
               placeholder="0"
             />
           </UIFormGroup>
+
+          {/* 켜고 끄기 — 편집일 때만. 끈 재료는 발주·레시피에서 빠지고,
+              **브랜드 상품을 수정해도 다시 켜지지 않는다**(동기화가 이 결정을 존중한다).
+              2026-09-02 신설: 그전에는 이 칸이 없어 BG 가 자기 재료를 끌 수단이 아예 없었다. */}
+          {selectedIngredient && (
+            <UIFormGroup>
+              <FormLabel>{t('purchaseOrders:ingredients.activeLabel', 'Active')}</FormLabel>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Toggle
+                  checked={!!formData.is_active}
+                  onChange={(v: boolean) => setFormData({ ...formData, is_active: v })}
+                />
+                <span style={{ fontSize: 12, color: '#6B7280' }}>
+                  {formData.is_active
+                    ? t('purchaseOrders:ingredients.activeOn', 'In use — appears in ordering and recipes')
+                    : t('purchaseOrders:ingredients.activeOff', 'Turned off — hidden from ordering. Editing the brand product will not turn it back on.')}
+                </span>
+              </div>
+            </UIFormGroup>
+          )}
 
           {/* Error Display */}
           {submitError && (

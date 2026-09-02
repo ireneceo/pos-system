@@ -318,7 +318,8 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/brand-menu-categories',
     '/pos/brand-menu-option-groups',
     '/pos/recipes',
-    '/pos/ingredients',
+    // '/pos/ingredients' 제거(2026-09-02) — 허용 목록에만 있고 **App.tsx 에 라우트도 사이드바도 없는 죽은 항목**이었다.
+    //   BG 의 재료 화면은 '/pos/brand/general/ingredients'(브랜드 네임스페이스, 위 와일드카드로 이미 허용).
     '/pos/suppliers/*',
     '/pos/purchase-orders/*',
     '/pos/stock-ledger',

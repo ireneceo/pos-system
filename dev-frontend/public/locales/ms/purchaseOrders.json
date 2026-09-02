@@ -492,5 +492,15 @@
     "confirm": "Sahkan",
     "reason": "Nota",
     "reasonPlaceholder": "Pilihan — dipaparkan pada pergerakan tunai"
+  },
+  "ingredients": {
+    "activeLabel": "Aktif",
+    "activeOn": "Digunakan — muncul dalam pesanan dan resipi",
+    "activeOff": "Dimatikan — disembunyikan daripada pesanan. Menyunting produk jenama tidak akan menghidupkannya semula.",
+    "linkPriceNotSet": "Harga belum diisi",
+    "costNotSet": "Kos belum ditetapkan"
+  },
+  "connect": {
+    "priceNotSet": "Harga belum diisi — kos akan menjadi 0"
   }
 }

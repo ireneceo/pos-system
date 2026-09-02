@@ -492,5 +492,15 @@
     "confirm": "확인",
     "reason": "메모",
     "reasonPlaceholder": "선택 — 현금 이동 내역에 표시됩니다"
+  },
+  "ingredients": {
+    "activeLabel": "사용",
+    "activeOn": "사용 중 — 발주·레시피 화면에 나옵니다",
+    "activeOff": "꺼짐 — 발주 화면에서 숨겨집니다. 브랜드 상품을 수정해도 다시 켜지지 않습니다.",
+    "linkPriceNotSet": "가격 미입력",
+    "costNotSet": "원가 미설정"
+  },
+  "connect": {
+    "priceNotSet": "가격 미입력 — 원가가 0 으로 들어갑니다"
   }
 }

@@ -231,7 +231,25 @@ router.put('/ingredient-seller-products/:id', async (req, res) => {
     }
 
     await isp.update(updates);
-    res.json({ success: true, data: isp });
+
+    // ── 비어 있던 원가만 채운다 (2026-09-02) ──────────────────────────────────
+    // 운영 실측: 단가 0 인 활성 링크 100건, 그중 99건은 **재료 원가도 0** 이다.
+    //   가격 0 인 공급업체 상품으로 재료를 만들 때 그 0 이 원가로 한 번 복사되고
+    //   (ingredients.js:278 등) 그 뒤 아무도 다시 계산하지 않아 그대로 굳은 것이다.
+    // 그래서 링크 가격을 0 → 실제 값으로 **고칠 때** 비어 있던 원가를 따라가게 한다.
+    //   ⛔ 0 이 아닌 원가는 절대 덮지 않는다 — 0 은 "결정 없음", 값이 있으면 "사람이 정한 것"이다.
+    //      (같은 원칙: 브랜드 동기화가 사람 결정을 덮지 않게 한 2026-09-02 수정)
+    //   선호 공급처일 때만 — 비선호 링크 가격이 대표 원가를 바꾸면 안 된다.
+    let costFilled = null;
+    if (updates.unit_price > 0 && isp.is_preferred) {
+      const currentCost = parseFloat(ing.unit_cost);
+      if (!(currentCost > 0)) {
+        await ing.update({ unit_cost: updates.unit_price });
+        costFilled = updates.unit_price;
+      }
+    }
+
+    res.json({ success: true, data: isp, ...(costFilled != null ? { ingredient_cost_filled: costFilled } : {}) });
   } catch (err) {
     console.error('PUT /ingredient-seller-products/:id error:', err);
     res.status(500).json({ success: false, message: 'Failed to update seller source' });

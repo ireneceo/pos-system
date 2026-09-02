@@ -492,5 +492,15 @@
     "confirm": "确认",
     "reason": "备注",
     "reasonPlaceholder": "选填——将显示在现金流水中"
+  },
+  "ingredients": {
+    "activeLabel": "启用",
+    "activeOn": "使用中——会出现在采购与配方中",
+    "activeOff": "已关闭——不在采购中显示。修改品牌商品也不会重新开启。",
+    "linkPriceNotSet": "未填价格",
+    "costNotSet": "未设成本"
+  },
+  "connect": {
+    "priceNotSet": "未填价格——成本将记为 0"
   }
 }

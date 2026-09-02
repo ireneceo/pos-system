@@ -1072,6 +1072,16 @@ function App() {
                           <IngredientsPage />
                         </ProtectedRoute>
                       } />
+                      {/* 2026-09-02: BG 네임스페이스의 "매장 공유 표준 재료" 화면.
+                          위 /pos/recipe-management/ingredients 는 라우트는 있으나 **BG 허용 목록에 없어
+                          열면 대시보드로 튕겼다** — 즉 BG 에게는 이 목록을 보는 화면이 아예 없었다
+                          (운영에서 꺼진 미러 재료 63건이 화면 밖에서 꺼진 이유). 가드를 넓히지 않고
+                          BG 네임스페이스(`/pos/brand/general/*` 는 이미 허용)에 라우트를 신설한다. */}
+                      <Route path="/pos/brand/general/ingredients" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
+                          <IngredientsPage />
+                        </ProtectedRoute>
+                      } />
 
                       {/* Suppliers Management */}
                       <Route path="/pos/suppliers" element={

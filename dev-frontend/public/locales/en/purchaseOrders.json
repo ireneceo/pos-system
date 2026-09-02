@@ -492,5 +492,15 @@
     "confirm": "Confirm",
     "reason": "Note",
     "reasonPlaceholder": "Optional — shown on the cash movement"
+  },
+  "ingredients": {
+    "activeLabel": "Active",
+    "activeOn": "In use — appears in ordering and recipes",
+    "activeOff": "Turned off — hidden from ordering. Editing the brand product will not turn it back on.",
+    "linkPriceNotSet": "No price set",
+    "costNotSet": "Cost not set"
+  },
+  "connect": {
+    "priceNotSet": "No price set — cost will be 0"
   }
 }

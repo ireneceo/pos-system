@@ -303,8 +303,13 @@ export default function ConnectSellerModal({ open, ingredient, targetKind = 'ing
                       {it.supplier?.name || '—'}{it.sku ? ` · SKU: ${it.sku}` : ''}{it.category_name ? ` · ${it.category_name}` : ''} · {it.unit || '—'}
                     </div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#635BFF', whiteSpace: 'nowrap' }}>
-                    RM{(it.unit_price || 0).toFixed(2)}
+                  {/* 가격 0 인 카탈로그 상품 — 그대로 연결하면 그 0 이 재료 원가로 복사돼 굳는다
+                      (운영 실측 2026-09-02: 단가 0 링크 100건, 그중 99건은 재료 원가도 0).
+                      막지는 않고 **보이게** 한다. 가격은 사용자만 안다. */}
+                  <div style={{ fontSize: 14, fontWeight: 700, color: Number(it.unit_price) > 0 ? '#635BFF' : '#92400E', whiteSpace: 'nowrap' }}>
+                    {Number(it.unit_price) > 0
+                      ? `RM${Number(it.unit_price).toFixed(2)}`
+                      : t('connect.priceNotSet', '가격 미입력 — 원가가 0 으로 들어갑니다')}
                   </div>
                 </Item>
               );

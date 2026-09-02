@@ -345,7 +345,7 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
   try {
     const { ingredientId } = req.params;
     const ingredient_id = ingredientId;
-    const { code, name, image_url, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
+    const { code, name, image_url, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, is_active } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {
@@ -369,6 +369,10 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
     if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
     // 레거시 supplier_name/supplier_id 쓰기 중단 (2026-07-04) — 기존 값 보존, API 로 수정 안 함. 공급처=seller-source 매핑.
     if (min_stock !== undefined) updateData.min_stock = min_stock;
+    // 2026-09-02: 켜고 끄기. 그전에는 이 필드가 없어 **BG 가 자기 브랜드 재료를 끌 방법이 아예 없었다**
+    //   (운영에서 꺼져 있던 63건은 API 밖에서 꺼진 것이다). 동기화는 이제 이 값을 존중한다 —
+    //   brand-products.js 의 syncProductToIngredients 가 끄는 방향만 따라가고 재활성은 안 따라간다.
+    if (is_active !== undefined) updateData.is_active = !!is_active;
 
     await ingredient.update(updateData);
 

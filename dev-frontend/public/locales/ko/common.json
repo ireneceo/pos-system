@@ -323,7 +323,8 @@
     "allBrands": "전체 브랜드",
     "pickupDisplay": "픽업 안내",
     "cashManagement": "시재관리",
-    "bulkLink": "일괄 연결"
+    "bulkLink": "일괄 연결",
+    "sharedIngredients": "공유 표준 재료"
   },
   "language": {
     "en": "English",

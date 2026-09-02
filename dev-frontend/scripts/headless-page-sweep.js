@@ -78,6 +78,9 @@ const BG_ROUTES = [
   // 같은 비대칭이 하나 더 있었다: FG 직원목록(/pos/foodcourt/manager)은 roles-sweep 에 있는데
   // 브랜드 직원목록만 어느 스윕에도 없었다. 2026-09-01 이 파일을 고치고도 못 열어봤던 화면이다.
   '/pos/brand/manager',
+  // 2026-09-02 신설: 매장 공유 표준 재료(BG). 그전에는 BG 가 이 목록을 볼 화면이 아예 없었다 —
+  //   허용 목록에만 있던 '/pos/ingredients' 는 라우트도 사이드바도 없는 죽은 항목이었다.
+  '/pos/brand/general/ingredients',
   '/pos/admin/restaurants',
   '/pos/admin/staff',
   '/pos/admin/managers',

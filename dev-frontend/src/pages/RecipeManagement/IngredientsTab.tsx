@@ -20,6 +20,7 @@ import AutoSaveField from '../../components/Common/AutoSaveField';
 import Toggle from '../../components/Common/Toggle';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { costOrNotSet } from '../../utils/costDisplay';
 import { getAuthToken } from '../../utils/auth';
 interface IngredientsTabProps {
   brandId: number | null;
@@ -1116,7 +1117,11 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                     <CostOverrideSection>
                       <CostRow>
                         <CostLabel type="brand">{'Brand Cost'}</CostLabel>
-                        <CostValue type="brand">{formatCurrency(Number(ingredient.unit_cost), selectedCurrency)}/{ingredient.unit}</CostValue>
+                        {/* 원가 0 = "정말 0원"이 아니라 **안 넣은 것**이다. 숫자로 찍으면 구분이 안 돼
+                            그대로 발주·레시피 원가에 들어간다(운영 실측 2026-09-02: 원가 0 인 재료가 99건). */}
+                        <CostValue type="brand">
+                          {costOrNotSet(ingredient.unit_cost, selectedCurrency, t('ingredients.costNotSet', '원가 미설정') as string, ingredient.unit)}
+                        </CostValue>
                       </CostRow>
 
                       {editingCostId === ingredient.id ? (
@@ -1186,7 +1191,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                       <CostRow style={{ marginTop: 6, borderTop: '1px solid #DBEAFE', paddingTop: 6 }}>
                         <CostLabel type="applied">{'Applied'}</CostLabel>
                         <CostValue type="applied">
-                          {formatCurrency(Number(ingredient.effective_cost ?? ingredient.unit_cost), selectedCurrency)}/{ingredient.unit} {ingredient.restaurant_cost !== null && ingredient.restaurant_cost !== undefined ? '✓' : ''}
+                          {Number(ingredient.effective_cost ?? ingredient.unit_cost) > 0
+                            ? `${formatCurrency(Number(ingredient.effective_cost ?? ingredient.unit_cost), selectedCurrency)}/${ingredient.unit} ${ingredient.restaurant_cost !== null && ingredient.restaurant_cost !== undefined ? '✓' : ''}`
+                            : t('ingredients.costNotSet', '원가 미설정')}
                         </CostValue>
                       </CostRow>
                     </CostOverrideSection>
@@ -1246,7 +1253,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                                 {s.seller_name ? ` · ${s.seller_name}` : ''}
                                 {s.seller_product_name ? ` · ${s.seller_product_name}` : ''}
                                 {s.seller_product_sku ? ` · SKU: ${s.seller_product_sku}` : ''}
-                                {s.unit_price != null ? ` · RM${Number(s.unit_price).toFixed(2)}` : ''}
+                                {/* 0 은 "공짜"가 아니라 **가격을 안 넣은 것**이다(운영 100건). 숫자로 찍으면 구분이 안 된다. */}
+                                {s.unit_price != null
+                                  ? (Number(s.unit_price) > 0 ? ` · RM${Number(s.unit_price).toFixed(2)}` : ` · ${t('ingredients.linkPriceNotSet', '가격 미입력')}`)
+                                  : ''}
                               </span>
                             ))}
                           </div>
@@ -1475,6 +1485,12 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             </UIFormGroup>
           </UIFormRow>
 
+          {/* 켜고 끄기 토글은 **BG 가 실제로 여는 화면**(pages/Ingredients/IngredientsPage)에 있다.
+              여기(RecipeManagement/IngredientsTab)에도 뒀다가 지웠다 — 이 컴포넌트를 렌더하는
+              라우트에 BG 가 도달하지 못해 **보이지 않는 두 번째 사본**이 되기 때문이다.
+              한 벌만 둔다(복제하면 곧 갈라진다). 2026-09-02 */
+          }
+
           {/* Suppliers — 재고를 발주처(seller)/외부공급업체에 연결.
               연결은 ingredient_id 매핑이 필요 → 새로 만들 때(id 없음)는 저장 후로 안내.
               연결/외부등록 모달은 컴포넌트 하단에 단일 렌더(connectTarget/extTarget) — 여기선 핸들러만 호출(중복 정의 X). */}
@@ -1496,7 +1512,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                         {s.seller_name ? ` · ${s.seller_name}` : ''}
                         {s.seller_product_name ? ` · ${s.seller_product_name}` : ''}
                         {s.seller_product_sku ? ` · SKU: ${s.seller_product_sku}` : ''}
-                        {s.unit_price != null ? ` · ${formatCurrency(Number(s.unit_price), selectedCurrency)}` : ''}
+                        {s.unit_price != null
+                          ? (Number(s.unit_price) > 0 ? ` · ${formatCurrency(Number(s.unit_price), selectedCurrency)}` : ` · ${t('ingredients.linkPriceNotSet', '가격 미입력')}`)
+                          : ''}
                         <button
                           type="button"
                           title="Disconnect this seller source"
@@ -1635,14 +1653,18 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             {isRestaurantAdmin && detailIngredient.owner_type === 'brand' ? (
               detailIngredient.restaurant_cost != null ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ fontSize: '13px', color: '#6B7280' }}>Brand Cost: <span style={{ textDecoration: 'line-through' }}>{formatCurrency(Number(detailIngredient.unit_cost), selectedCurrency)}/{detailIngredient.unit}</span></div>
+                  <div style={{ fontSize: '13px', color: '#6B7280' }}>Brand Cost: <span style={{ textDecoration: 'line-through' }}>
+                    {Number(detailIngredient.unit_cost) > 0
+                      ? `${formatCurrency(Number(detailIngredient.unit_cost), selectedCurrency)}/${detailIngredient.unit}`
+                      : t('ingredients.costNotSet', '원가 미설정')}
+                  </span></div>
                   <div style={{ fontSize: '16px', fontWeight: 600, color: '#2563EB' }}>
                     My Cost: {formatCurrency(Number(detailIngredient.restaurant_cost), selectedCurrency)}/{detailIngredient.unit}
                   </div>
                 </div>
               ) : (
                 <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540' }}>
-                  Unit Cost: {formatCurrency(Number(detailIngredient.unit_cost), selectedCurrency)} / {detailIngredient.unit}
+                  Unit Cost: {costOrNotSet(detailIngredient.unit_cost, selectedCurrency, t('ingredients.costNotSet', '원가 미설정') as string, detailIngredient.unit)}
                 </div>
               )
             ) : (

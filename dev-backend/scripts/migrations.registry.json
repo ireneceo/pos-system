@@ -12,6 +12,7 @@
     "migrate-add-order-idempotency.js",
     "migrate-add-order-notes.js",
     "migrate-add-partial-payment.js",
+    "migrate-addon-route-shared-ingredients.js",
     "migrate-ai-recognition-tables.js",
     "migrate-ai-serving-enterprise.js",
     "migrate-bg-product-supply-chain.js",

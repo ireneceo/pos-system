@@ -2283,8 +2283,15 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       let mirror = await Ingredient.findOne({ where: { brand_product_id: product.id, brand_id: brand.id } });
       if (!mirror) { console.log(c.gray('      (미러가 안 생겼다)')); return false; }
 
-      // 사람이 결정한다: 끄고 · 최소재고 5 · 수량 10
-      await mirror.update({ is_active: false, min_stock: 5, current_stock: 10 });
+      // 사람이 결정한다 — **실제 라우트로** 끈다(2026-09-02 신설한 끄기 입구를 함께 검사).
+      //   그전에는 PUT 이 is_active 를 안 받아 **BG 가 자기 재료를 끌 방법이 아예 없었다.**
+      const bgTok = require('jsonwebtoken').sign({ userId: bgUser.id }, process.env.JWT_SECRET, { expiresIn: '10m' });
+      const off = await request('PUT', `/brands/${brand.id}/ingredients/${mirror.id}`,
+        { is_active: false, min_stock: 5 }, { Authorization: `Bearer ${bgTok}` });
+      if (off.status !== 200) { console.log(c.gray(`      (끄기 입구가 없다: PUT ${off.status})`)); return false; }
+      await mirror.reload();
+      if (mirror.is_active !== false) { console.log(c.gray('      (PUT 이 200 인데 안 꺼졌다)')); return false; }
+      await mirror.update({ current_stock: 10 });
 
       // 상품 수정 → 동기화 재실행
       await product.update({ name: product.name + '-RENAMED', unit_price: 22 });
@@ -2317,6 +2324,71 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       try { if (product) await Ingredient.destroy({ where: { brand_product_id: product.id }, force: true }); } catch {}
       try { if (product) await sequelize.query('DELETE FROM brand_product_brands WHERE product_id = :p', { replacements: { p: product.id } }); } catch {}
       try { if (product) await product.destroy({ force: true }); } catch {}
+    }
+  });
+
+  // ── 링크 가격을 채우면 **비어 있던** 원가만 따라간다 (2026-09-02) ────────────────
+  // 운영 실측: 단가 0 인 활성 링크 100건, 그중 99건은 재료 원가도 0.
+  //   가격 0 인 공급업체 상품으로 재료를 만들 때 그 0 이 원가로 한 번 복사되고 그대로 굳은 것이다.
+  // 계약: 링크 0→5 & 원가 0  → 원가 5   (비어 있던 것을 채운다)
+  //       링크 0→5 & 원가 3  → 원가 3   (**사람이 정한 값은 절대 안 덮는다**)
+  //       비선호 링크 0→5    → 원가 무변화 (대표가 아닌 가격이 원가를 바꾸면 안 된다)
+  test('inventory', '링크 가격 입력 시 비어 있던 원가만 채운다 (있는 원가는 안 덮음 · 선호만)', async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const { Ingredient, IngredientSellerProduct, SupplierProduct } = require('../models');
+    const demo = (await sequelize.query('SELECT id FROM restaurants WHERE is_demo = 1 ORDER BY id LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    const ra = demo && (await sequelize.query(
+      "SELECT id FROM users WHERE restaurant_id = :r AND role = 'Restaurant Admin' LIMIT 1",
+      { replacements: { r: demo.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    const sp = (await sequelize.query('SELECT id, supplier_company_id FROM supplier_products LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    if (!demo || !ra || !sp || !process.env.JWT_SECRET) { console.log(c.gray('      (건너뜀: 데모 매장/공급업체 상품 없음)')); return true; }
+    const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const made = { ings: [], links: [] };
+    const mk = async (cost, preferred) => {
+      const ing = await Ingredient.create({
+        owner_type: 'restaurant', restaurant_id: demo.id, name: 'ZZ-HC-COST-' + Date.now() + Math.random().toString(36).slice(2, 5),
+        unit: 'kg', unit_cost: cost, current_stock: 0, min_stock: 0,
+      });
+      made.ings.push(ing.id);
+      const link = await IngredientSellerProduct.create({
+        ingredient_id: ing.id, seller_type: 'supplier', seller_entity_id: sp.supplier_company_id,
+        seller_product_id: sp.id, unit_price: 0, unit_conversion: 1, is_preferred: preferred, is_active: true,
+      });
+      made.links.push(link.id);
+      return { ing, link };
+    };
+    try {
+      // ① 원가 0 + 선호 → 채워진다
+      const a = await mk(0, true);
+      const r1 = await request('PUT', `/ingredient-seller-products/${a.link.id}`, { unit_price: 5 }, auth);
+      await a.ing.reload();
+      if (r1.status !== 200 || Math.abs(Number(a.ing.unit_cost) - 5) > 0.001) {
+        console.log(c.gray(`      (비어 있던 원가가 안 채워졌다: ${r1.status} unit_cost=${a.ing.unit_cost})`)); return false;
+      }
+      // ② 원가 3 + 선호 → 그대로 (사람이 정한 값)
+      const b = await mk(3, true);
+      const r2 = await request('PUT', `/ingredient-seller-products/${b.link.id}`, { unit_price: 5 }, auth);
+      await b.ing.reload();
+      if (r2.status !== 200 || Math.abs(Number(b.ing.unit_cost) - 3) > 0.001) {
+        console.log(c.gray(`      (사람이 정한 원가를 덮었다: ${b.ing.unit_cost}, 기대 3)`)); return false;
+      }
+      // ③ 원가 0 + 비선호 → 무변화
+      const d = await mk(0, false);
+      const r3 = await request('PUT', `/ingredient-seller-products/${d.link.id}`, { unit_price: 5 }, auth);
+      await d.ing.reload();
+      if (r3.status !== 200 || Number(d.ing.unit_cost) !== 0) {
+        console.log(c.gray(`      (비선호 링크가 원가를 바꿨다: ${d.ing.unit_cost}, 기대 0)`)); return false;
+      }
+      return true;
+    } catch (e) {
+      console.log(c.gray(`      (예외: ${e.message})`));
+      return false;
+    } finally {
+      try { for (const id of made.links) await IngredientSellerProduct.destroy({ where: { id }, force: true }); } catch {}
+      try { for (const id of made.ings) await Ingredient.destroy({ where: { id }, force: true }); } catch {}
     }
   });
 
