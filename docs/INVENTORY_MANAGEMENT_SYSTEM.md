@@ -704,6 +704,28 @@ async function updateAvgDailyUsage(ingredientId) {
 | System Admin | SystemProduct.track_stock + current_stock | 신규 필드 추가 |
 | Foodcourt General | FoodcourtProduct.track_stock + current_stock | 신규 테이블 |
 
+> ⚠ **2026-09-01(Q5) 갱신 — `track_stock` 스위치는 폐기됐다.**
+> `products`·`brand_products`·`ingredients`·`product_ingredients` 의 재고추적 스위치는
+> **꺼져 있으면 판매 차감·입고·반품을 건너뛰었고**, 그게 GIT 포장재가 팔려도 재고가 안 빠진
+> 직접 원인이었다(포장재 6개 전부 꺼짐). 이제 **항상 추적**하고, 안 쓰는 품목은 `is_active=false`
+> 로 끈다. 컬럼은 호환용으로만 남았고 **게이트로 재사용 금지** — 인스펙션 `R-SC-011` 이 4개
+> 테이블에 꺼진 행이 하나라도 생기면 배포를 막는다. 위 표의 SystemProduct/FoodcourtProduct 항목은
+> 그 시절 설계 기록이다.
+
+## 레시피 없는 프로덕트 = 그 자체가 재고아이템 (2026-09-01 P1)
+
+레시피가 있으면 재고는 **재료**에서 빠지고, 없으면 **프로덕트 자체**에서 빠진다 — 이 두 루트는
+원래부터 맞았다. 문제는 **입고가 프로덕트로 들어올 길이 없었다**는 것이다(발주 라인·공급처
+연결이 재료만 가리킬 수 있었다). 그래서 같은 물건이 "프로덕트"와 "따로 만든 재고아이템"으로 갈라졌다.
+
+- `purchase_order_items` · `ingredient_seller_products` 에 `product_id` / `brand_product_id` 추가.
+  네 컬럼(ingredient / product_ingredient / product / brand_product) 중 **정확히 하나만** 채운다 —
+  강제는 `utils/stockTarget.js`, 재검사는 인스펙션 `R-SC-008`.
+- 수령하면 `receiveIntoProduct()` 가 프로덕트 수량을 올린다(소유권 재검사 포함).
+- 레시피 있는 프로덕트를 발주 대상으로 고르면 400 — 이중 계상 방지(`R-SC-010`).
+- 레시피 없는 프로덕트는 **판매 단위 = 재고 단위**여야 한다(환산 필드가 없어 차감이 그대로 빠진다).
+  `R-SC-012` 가 감시.
+
 ---
 
 **문서 끝**
