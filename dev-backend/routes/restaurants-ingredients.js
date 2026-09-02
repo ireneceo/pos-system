@@ -278,6 +278,115 @@ router.post('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcce
 });
 
 // ============================================
+// POST /api/restaurants/:restaurantId/ingredients/:ingredientId/register-as-product
+// 재고아이템(재료)을 **그대로 파는 프로덕트**로도 등록한다 (P3-③ · 설계 Q1-부속).
+//
+// 왜 레시피를 만드는가: 한 물건이 재료이면서 그대로도 팔리는 경우(병음료를 칵테일 재료로도,
+// 낱개로도) **수량은 재료 한 곳에만 살아야 한다.** 프로덕트에 따로 수량을 두면 같은 물건이
+// 둘로 갈라진다(GIT 포장재가 정확히 그 사고였다). 그래서 프로덕트에는 재고를 두지 않고
+// **재료 ×1 레시피**를 걸어, 팔릴 때 재료에서 빠지게 한다.
+//
+// ⛔ 판매가는 필수 입력이다 — 공급가(원가)를 판매가로 복사하지 않는다
+//    ([[reference_supplier_cost_copied_as_price]]: 스크립트로 복사해 마진 0 을 운영에 박은 사고).
+// 중복(이미 이 재료 ×1 레시피로 파는 프로덕트가 있음) → 409. 전부 한 트랜잭션.
+router.post('/:restaurantId/ingredients/:ingredientId/register-as-product', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  const { sequelize } = require('../config/database');
+  const t = await sequelize.transaction();
+  try {
+    const rid = parseInt(req.params.restaurantId, 10);
+    const ingredientId = parseInt(req.params.ingredientId, 10);
+    const { Recipe, RecipeIngredient, Product } = require('../models');
+    const { generateRecipeCode } = require('../utils/codeGenerator');
+
+    const price = parseFloat(req.body?.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false, code: 'PRICE_REQUIRED',
+        message: 'Selling price is required (supplier cost is never copied into it)'
+      });
+    }
+
+    const ing = await Ingredient.findByPk(ingredientId, { transaction: t });
+    // 이 매장 소유 재료만. 부모 브랜드의 표준 재료는 브랜드가 관리한다(매장은 읽기전용).
+    if (!ing || ing.owner_type !== 'restaurant' || parseInt(ing.restaurant_id, 10) !== rid) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Ingredient not found in this restaurant' });
+    }
+
+    // 중복 검사 — "이 재료 하나만 쓰는 레시피에 걸린 이 매장 프로덕트"가 이미 있으면 그것이 답이다.
+    // 표시(마커) 컬럼이 아니라 **데이터 자체**로 판정한다(마커는 사람이 지우면 중복이 다시 생긴다).
+    const linksOfIngredient = await RecipeIngredient.findAll({
+      where: { ingredient_id: ingredientId }, attributes: ['recipe_id'], transaction: t
+    });
+    const candidateRecipeIds = [...new Set(linksOfIngredient.map((l) => l.recipe_id))];
+    let soloRecipeIds = [];
+    if (candidateRecipeIds.length) {
+      const allLinks = await RecipeIngredient.findAll({
+        where: { recipe_id: candidateRecipeIds }, attributes: ['recipe_id', 'ingredient_id'], transaction: t
+      });
+      const countByRecipe = allLinks.reduce((m, l) => { m[l.recipe_id] = (m[l.recipe_id] || 0) + 1; return m; }, {});
+      soloRecipeIds = candidateRecipeIds.filter((id) => countByRecipe[id] === 1);
+    }
+    if (soloRecipeIds.length) {
+      const dup = await Product.findOne({
+        where: { restaurant_id: rid, recipe_id: soloRecipeIds, is_active: true },
+        attributes: ['id', 'name'], transaction: t
+      });
+      if (dup) {
+        await t.rollback();
+        return res.status(409).json({
+          success: false, code: 'ALREADY_A_PRODUCT',
+          message: `Already sold as a product: ${dup.name}`,
+          data: { product_id: dup.id, product_name: dup.name }
+        });
+      }
+    }
+
+    const recipe = await Recipe.create({
+      owner_type: 'restaurant',
+      restaurant_id: rid,
+      brand_id: null,
+      code: await generateRecipeCode(Recipe, 'restaurant', rid),
+      name: sanitizeString(String(req.body?.name || ing.name)).slice(0, 100),
+      // ×1 — "이 재료 한 단위를 그대로 판다"
+      yield_amount: 1,
+      yield_unit: ing.unit || 'piece',
+      is_active: true,
+    }, { transaction: t });
+
+    await RecipeIngredient.create({
+      recipe_id: recipe.id,
+      ingredient_id: ing.id,
+      quantity: 1,
+      unit: ing.unit || 'piece',
+      cost: parseFloat(ing.unit_cost) || 0,
+    }, { transaction: t });
+
+    const product = await Product.create({
+      restaurant_id: rid,
+      name: sanitizeString(String(req.body?.name || ing.name)).slice(0, 100),
+      // products.category 는 NOT NULL(기본값 없음)
+      category: req.body?.category ? sanitizeString(String(req.body.category)).slice(0, 50) : 'Uncategorized',
+      price,
+      recipe_id: recipe.id,
+      is_active: true,
+      // 재고는 재료에 산다 — 프로덕트 수량은 쓰지 않는다(레시피가 걸린 프로덕트는 재료에서 차감).
+      current_stock: 0,
+      min_stock: 0,
+      stock_unit: ing.unit || 'piece',
+    }, { transaction: t });
+
+    await t.commit();
+    res.status(201).json({ success: true, data: { product, recipe } });
+  } catch (error) {
+    await t.rollback().catch(() => {});
+    console.error('register-as-product (restaurant) error:', error);
+    res.status(500).json({ success: false, message: 'Failed to register ingredient as a product' });
+  }
+});
+
+// ============================================
 // GET /api/restaurants/:restaurantId/stock-products
 // 레시피 없는 프로덕트 = 그 자체가 재고아이템. 발주 화면·재고 목록이 재료와 **같은 모양**으로 받아
 // 한 목록에 섞어 보여줄 수 있게 한다(프론트가 분기하지 않도록 필드명을 재료 쪽에 맞춘다).
@@ -451,7 +560,9 @@ router.post('/:restaurantId/ingredients/from-catalog', authenticateToken, checkR
       const prod = await Product.create({
         restaurant_id: rid,
         name: sanitizeString(String(np.name || seller.productName || '')).slice(0, 255),
-        category: np.category ? sanitizeString(String(np.category)).slice(0, 100) : null,
+        // products.category 는 NOT NULL(기본값 없음) — null 로 넣으면 통째로 500 이 난다.
+        // 이 화면엔 카테고리 칸이 없으므로 기존 관행값으로 떨어뜨린다(운영·dev 공통 'Uncategorized').
+        category: np.category ? sanitizeString(String(np.category)).slice(0, 50) : 'Uncategorized',
         price,
         is_active: true,
         current_stock: 0,

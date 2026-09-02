@@ -336,7 +336,8 @@
       "connected": "\"{{name}}\" connected to a supplier ✓",
       "connectHint": "Pick a catalog item to connect \"{{name}}\"",
       "addedAsSeparate": "Added as a separate ingredient (different unit/spec).",
-      "stockRegistered": "\"{{name}}\" added to My Stock Items"
+      "stockRegistered": "\"{{name}}\" added to My Stock Items",
+      "productRegistered": "\"{{name}}\" registered as a product"
     },
     "showUntracked": "Show untracked",
     "conversion": {
@@ -354,7 +355,27 @@
     "uncategorized": "Uncategorized",
     "priceNotSet": "Price not set",
     "minOrder": "Min",
-    "needsUnitSetup": "Check unit"
+    "needsUnitSetup": "Check unit",
+    "addAsProduct": "Add as product",
+    "addAsProductHint": "Register as a product you sell (selling price required)",
+    "newProduct": {
+      "title": "Register as a product",
+      "desc": "This product is sold as-is (no recipe), so its stock lives on the product itself — purchases add to it and sales take from it.",
+      "name": "Product name",
+      "price": "Selling price",
+      "priceHelp": "Supplier cost is {{cost}} — enter what you sell it for (it is never copied from the cost).",
+      "priceRequired": "Enter a selling price greater than 0.",
+      "minStock": "Low-stock alert at",
+      "save": "Register"
+    },
+    "productItem": "Product",
+    "sellAsProduct": {
+      "title": "Also sell this as a product",
+      "desc": "Sell {{name}} as-is. Stock stays on this item — one sale takes 1 {{unit}} from it, so the quantity never lives in two places.",
+      "priceHelp": "What you sell it for — it is never filled in from your cost.",
+      "failed": "Failed to register as a product.",
+      "error": "An error occurred. Please try again."
+    }
   },
   "staging": {
     "noPhoneTitle": "No Phone Number",

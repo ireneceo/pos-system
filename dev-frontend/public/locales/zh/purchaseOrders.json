@@ -336,7 +336,8 @@
       "connected": "\"{{name}}\" 已连接供应商 ✓",
       "connectHint": "点击目录项目以连接 \"{{name}}\"",
       "addedAsSeparate": "已作为独立食材添加 (单位/规格不同)。",
-      "stockRegistered": "\"{{name}}\" 已加入我的库存项目"
+      "stockRegistered": "\"{{name}}\" 已加入我的库存项目",
+      "productRegistered": "已将“{{name}}”注册为商品"
     },
     "showUntracked": "显示未追踪",
     "conversion": {
@@ -354,7 +355,27 @@
     "uncategorized": "未分类",
     "priceNotSet": "未设置价格",
     "minOrder": "最少",
-    "needsUnitSetup": "需确认单位"
+    "needsUnitSetup": "需确认单位",
+    "addAsProduct": "注册为商品",
+    "addAsProductHint": "注册为您销售的商品（必须填写售价）",
+    "newProduct": {
+      "title": "注册为商品",
+      "desc": "此商品按原样销售（无配方），因此库存记在商品本身上——采购入库增加，销售扣减。",
+      "name": "商品名称",
+      "price": "售价",
+      "priceHelp": "供应价为 {{cost}} — 请输入您的售价（绝不会从成本自动填入）。",
+      "priceRequired": "请输入大于 0 的售价。",
+      "minStock": "低库存提醒值",
+      "save": "注册"
+    },
+    "productItem": "商品",
+    "sellAsProduct": {
+      "title": "将此库存直接作为商品出售",
+      "desc": "按原样出售 {{name}}。库存仍记在此项目上——每售出一次从中扣减 1 {{unit}}，同一物品的数量不会分散在两处。",
+      "priceHelp": "您的售价——绝不会从成本自动填入。",
+      "failed": "注册为商品失败。",
+      "error": "发生错误，请重试。"
+    }
   },
   "staging": {
     "noPhoneTitle": "无电话号码",

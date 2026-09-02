@@ -2240,6 +2240,126 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
   });
 
+  // ── P3 등록 입구 (2026-09-02) ────────────────────────────────────────────────
+  // 입구 ③ "재고아이템을 그대로 파는 프로덕트로도 등록". 지켜야 할 것 두 가지:
+  //   ⑴ 판매가는 **사람이 넣는다** — 공급가(원가)를 판매가 자리에 복사하면 마진 0 이 운영에 박힌다
+  //      (실제 사고: 스크립트로 41/41 원가를 판매가에 복사 [[reference_supplier_cost_copied_as_price]]).
+  //   ⑵ 같은 재고를 두 번 등록하면 같은 물건이 두 프로덕트로 갈라진다 → 409 로 막는다.
+  // 만든 행은 전부 지운다(데모 매장 한정).
+  test('inventory', 'P3 재료→프로덕트 등록: 판매가 없으면 400 · 재료 ×1 레시피 · 중복 409', async () => {
+    const { sequelize } = require('../config/database');
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음 — 계약 미검증)')); return true; }
+    const { Ingredient, Recipe, RecipeIngredient, Product } = require('../models');
+    const auth = { Authorization: `Bearer ${demoRaToken}` };
+    let ing = null, prodId = null, recipeId = null, extraProductIds = [];
+    try {
+      ing = await Ingredient.create({
+        owner_type: 'restaurant', restaurant_id: demoRestId,
+        name: 'ZZ-HC-P3-ING-' + Date.now(), unit: 'pack', unit_cost: 4.44, current_stock: 5, min_stock: 0,
+      });
+      const base = `/restaurants/${demoRestId}/ingredients/${ing.id}/register-as-product`;
+
+      // ⑴ 판매가 없음 / 0 → 400, 프로덕트 생성 0
+      const noPrice = await request('POST', base, {}, auth);
+      const zeroPrice = await request('POST', base, { price: 0 }, auth);
+      if (noPrice.status !== 400 || zeroPrice.status !== 400) {
+        console.log(c.gray(`      (판매가 가드가 없다: ${noPrice.status}/${zeroPrice.status})`)); return false;
+      }
+      if (await Product.count({ where: { restaurant_id: demoRestId, name: ing.name } })) {
+        console.log(c.gray('      (400 인데 프로덕트가 생겼다)')); return false;
+      }
+
+      // 정상 등록 → 재료 ×1 레시피 + 프로덕트(재고는 재료에 남는다)
+      const ok = await request('POST', base, { price: 9.9 }, auth);
+      prodId = ok.body?.data?.product?.id; recipeId = ok.body?.data?.recipe?.id;
+      if (ok.status !== 201 || !prodId || !recipeId) {
+        console.log(c.gray(`      (등록 실패: ${ok.status} ${JSON.stringify(ok.body).slice(0, 160)})`)); return false;
+      }
+      const links = await RecipeIngredient.findAll({ where: { recipe_id: recipeId } });
+      if (links.length !== 1 || Number(links[0].ingredient_id) !== Number(ing.id) || Number(links[0].quantity) !== 1) {
+        console.log(c.gray(`      (레시피가 그 재료 ×1 이 아니다: ${JSON.stringify(links.map(l => [l.ingredient_id, l.quantity]))})`)); return false;
+      }
+      const prod = await Product.findByPk(prodId);
+      // 판매가는 입력값 그대로 — 원가(4.44)가 새어 들어오면 실패
+      if (Number(prod.price) !== 9.9 || Number(prod.current_stock) !== 0 || Number(prod.recipe_id) !== Number(recipeId)) {
+        console.log(c.gray(`      (프로덕트 계약 위반: price=${prod.price} stock=${prod.current_stock} recipe=${prod.recipe_id})`)); return false;
+      }
+
+      // ⑵ 중복 → 409, 추가 생성 0
+      const before = await Product.count({ where: { restaurant_id: demoRestId } });
+      const dup = await request('POST', base, { price: 12 }, auth);
+      const after = await Product.count({ where: { restaurant_id: demoRestId } });
+      if (dup.status !== 409 || before !== after) {
+        console.log(c.gray(`      (중복 가드가 없다: ${dup.status}, 프로덕트 ${before} → ${after})`));
+        if (dup.body?.data?.product_id) extraProductIds.push(dup.body.data.product_id);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.log(c.gray(`      (예외: ${e.message})`));
+      return false;
+    } finally {
+      try { if (recipeId) await RecipeIngredient.destroy({ where: { recipe_id: recipeId } }); } catch {}
+      try { if (prodId) await Product.destroy({ where: { id: prodId }, force: true }); } catch {}
+      try { for (const id of extraProductIds) await Product.destroy({ where: { id }, force: true }); } catch {}
+      try { if (recipeId) await Recipe.destroy({ where: { id: recipeId }, force: true }); } catch {}
+      try { if (ing) await ing.destroy({ force: true }); } catch {}
+    }
+  });
+
+  // BG 쪽 같은 계약(대칭). 브랜드를 여러 개 소유할 수 있으므로 **어느 브랜드인지 밝히지 않으면 400**
+  // — 임의로 고르면 남의 브랜드에 프로덕트를 만든다.
+  test('inventory', 'P3 BG 재고→브랜드 프로덕트: brand_id 없으면 400 · ×1 레시피 · 중복 409', async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const { ProductIngredient, ProductRecipe, ProductRecipeIngredient, BrandProduct } = require('../models');
+    const bgUser = (await sequelize.query(
+      "SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1",
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    const brands = await sequelize.query('SELECT id FROM brands WHERE owner_id = :o',
+      { replacements: { o: bgUser && bgUser.id }, type: sequelize.QueryTypes.SELECT });
+    if (!bgUser || !brands.length) { console.log(c.gray('      (건너뜀: 데모 BG/브랜드 없음 — 계약 미검증)')); return true; }
+    const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: bgUser.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    let ing = null, prodId = null, recipeId = null;
+    try {
+      ing = await ProductIngredient.create({
+        owner_user_id: bgUser.id, name: 'ZZ-HC-P3-BG-' + Date.now(), unit: 'pack',
+        unit_cost: 3.33, current_stock: 5, min_stock: 0, is_active: true,
+      });
+      const url = `/product-ingredients/${ing.id}/register-as-product`;
+
+      const noPrice = await request('POST', url, { brand_id: brands[0].id }, auth);
+      if (noPrice.status !== 400) { console.log(c.gray(`      (판매가 가드 없음: ${noPrice.status})`)); return false; }
+      if (brands.length > 1) {
+        const noBrand = await request('POST', url, { price: 5 }, auth);
+        if (noBrand.status !== 400) { console.log(c.gray(`      (브랜드 미지정인데 만들었다: ${noBrand.status})`)); return false; }
+      }
+
+      const ok = await request('POST', url, { price: 7.5, brand_id: brands[0].id }, auth);
+      prodId = ok.body?.data?.product?.id; recipeId = ok.body?.data?.recipe?.id;
+      if (ok.status !== 201 || !prodId || !recipeId) {
+        console.log(c.gray(`      (등록 실패: ${ok.status} ${JSON.stringify(ok.body).slice(0, 160)})`)); return false;
+      }
+      const links = await ProductRecipeIngredient.findAll({ where: { recipe_id: recipeId } });
+      const bp = await BrandProduct.findByPk(prodId);
+      // 판매가는 입력값 그대로 — 원가(3.33)가 새어 들어오면 실패
+      if (links.length !== 1 || Number(links[0].ingredient_id) !== Number(ing.id) || Number(bp.unit_price) !== 7.5) {
+        console.log(c.gray(`      (계약 위반: links=${links.length} price=${bp && bp.unit_price})`)); return false;
+      }
+      const dup = await request('POST', url, { price: 9, brand_id: brands[0].id }, auth);
+      return dup.status === 409;
+    } catch (e) {
+      console.log(c.gray(`      (예외: ${e.message})`));
+      return false;
+    } finally {
+      try { if (prodId) await sequelize.query('DELETE FROM brand_product_brands WHERE product_id = :p', { replacements: { p: prodId } }); } catch {}
+      try { if (prodId) await BrandProduct.destroy({ where: { id: prodId }, force: true }); } catch {}
+      try { if (recipeId) await ProductRecipeIngredient.destroy({ where: { recipe_id: recipeId } }); } catch {}
+      try { if (recipeId) await ProductRecipe.destroy({ where: { id: recipeId }, force: true }); } catch {}
+      try { if (ing) await ing.destroy({ force: true }); } catch {}
+    }
+  });
+
   // ①-3 레시피 **없는** 상품은 그 상품 자체가 재고 단위다 — 팔리면 상품 재고가 빠져야 한다.
   //     (2026-08-22 확정 모델: 상품은 "레시피 있음 → 재료 차감" / "없음 → 상품이 재고" 둘 중 하나.
   //      RA 메뉴·BG 프로덕트 대칭.) 이 절반이 없어서 캔음료·완제품이 팔려도 재고가 안 줄었다.
@@ -2512,6 +2632,91 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       return true;
     } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
     finally { await cleanQ6(fx); }
+  });
+
+  // P3 입구 ③ 의 **끝까지**: 재고아이템을 "그대로 팔기"로 등록해 만든 브랜드 프로덕트가
+  // 실제 출고 때 **재고아이템에서** 빠지는가. 여기가 이 설계의 요점이다 —
+  // 수량이 재고아이템 한 곳에만 살아야 하므로, 팔릴 때 프로덕트가 아니라 **재료가 줄어야** 한다.
+  // (register-as-product 를 실제 라우트로 만들고, 출고도 실제 라우트로 친다. 픽스처가 아니라 경로를 잰다.)
+  test('inventory', 'P3 "그대로 팔기" 프로덕트 출고 → 재고아이템에서 차감(프로덕트 수량 아님)', async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const {
+      ProductIngredient, ProductRecipe, ProductRecipeIngredient, BrandProduct,
+      Product, PurchaseOrder, PurchaseOrderItem, IngredientSellerProduct, InventoryTransaction,
+    } = require('../models');
+    const demo = (await sequelize.query('SELECT id FROM restaurants WHERE is_demo = 1 LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    const bgUser = (await sequelize.query(
+      "SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1",
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    const brand = (await sequelize.query('SELECT id FROM brands WHERE owner_id = :o LIMIT 1',
+      { replacements: { o: bgUser && bgUser.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    const anyUser = (await sequelize.query('SELECT id FROM users LIMIT 1', { type: sequelize.QueryTypes.SELECT }))[0];
+    const cat = demo && (await sequelize.query('SELECT name FROM categories WHERE restaurant_id = :r LIMIT 1',
+      { replacements: { r: demo.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    if (!demo || !bgUser || !brand || !anyUser || !cat) { console.log(c.gray('      (건너뜀: 데모 매장/BG 픽스처 불가)')); return true; }
+
+    const bgTok = jwtLib.sign({ userId: bgUser.id }, process.env.JWT_SECRET, { expiresIn: '10m' });
+    let ing = null, bpId = null, recipeId = null, buyerProd = null, isp = null, po = null;
+    try {
+      ing = await ProductIngredient.create({
+        owner_user_id: bgUser.id, name: 'ZZ-HC-P3-SHIP-' + Date.now(), unit: 'pack',
+        unit_cost: 1, current_stock: 20, min_stock: 0, is_active: true,
+      });
+      const reg = await request('POST', `/product-ingredients/${ing.id}/register-as-product`,
+        { price: 5, brand_id: brand.id }, { Authorization: `Bearer ${bgTok}` });
+      bpId = reg.body?.data?.product?.id; recipeId = reg.body?.data?.recipe?.id;
+      if (reg.status !== 201 || !bpId) { console.log(c.gray(`      (등록 실패 ${reg.status})`)); return false; }
+
+      buyerProd = await Product.create({
+        restaurant_id: demo.id, name: 'ZZ-HC-P3-SHIP-BUY-' + Date.now(), category: cat.name,
+        price: 7, is_active: true, current_stock: 0, stock_unit: 'pack',
+      });
+      isp = await IngredientSellerProduct.create({
+        product_id: buyerProd.id, seller_type: 'brand', seller_entity_id: brand.id,
+        seller_product_id: bpId, unit_price: 5, unit_conversion: 1, is_preferred: true, is_active: true,
+      });
+      po = await PurchaseOrder.create({
+        po_number: 'ZZ-HC-P3S-' + (Date.now() % 1000000), entity_type: 'restaurant', entity_id: demo.id,
+        seller_type: 'brand', seller_entity_id: brand.id, status: 'confirmed',
+        subtotal: 15, tax_amount: 0, total_amount: 15, currency: 'MYR', created_by_user_id: anyUser.id,
+      });
+      await PurchaseOrderItem.create({
+        purchase_order_id: po.id, product_id: buyerProd.id, ingredient_seller_product_id: isp.id,
+        quantity_ordered: 3, unit: 'pack', unit_price: 5, line_total: 15, unit_conversion: 1,
+      });
+
+      const ingBefore = Number((await ProductIngredient.findByPk(ing.id)).current_stock);
+      const r = await request('POST', `/seller-orders/${po.id}/ship`, { tracking_info: { carrier: 'ZZ' } },
+        { Authorization: `Bearer ${bgTok}` });
+      if (r.status !== 200) { console.log(c.gray(`      (출고 실패 ${r.status} ${JSON.stringify(r.body).slice(0, 140)})`)); return false; }
+
+      const ingAfter = Number((await ProductIngredient.findByPk(ing.id)).current_stock);
+      const bpAfter = Number((await BrandProduct.findByPk(bpId)).current_stock);
+      if (Math.abs(ingAfter - (ingBefore - 3)) > 0.001) {
+        console.log(c.gray(`      (재고아이템 ${ingBefore} → ${ingAfter}, 기대 ${ingBefore - 3})`)); return false;
+      }
+      // 프로덕트 자기 수량은 움직이면 안 된다 — 움직이면 같은 물건이 두 곳에서 빠진다(이중 차감)
+      if (Math.abs(bpAfter) > 0.001) { console.log(c.gray(`      (프로덕트 수량이 움직였다: ${bpAfter})`)); return false; }
+      const led = await InventoryTransaction.count({ where: { product_ingredient_id: ing.id, purchase_order_id: po.id } });
+      if (led !== 1) { console.log(c.gray(`      (원장 ${led}줄, 기대 1)`)); return false; }
+      return true;
+    } catch (e) {
+      console.log(c.gray(`      (예외: ${e.message})`));
+      return false;
+    } finally {
+      try { if (ing) await InventoryTransaction.destroy({ where: { product_ingredient_id: ing.id } }); } catch {}
+      try { if (po) await PurchaseOrderItem.destroy({ where: { purchase_order_id: po.id }, force: true }); } catch {}
+      try { if (po) await PurchaseOrder.destroy({ where: { id: po.id }, force: true }); } catch {}
+      try { if (isp) await IngredientSellerProduct.destroy({ where: { id: isp.id }, force: true }); } catch {}
+      try { if (buyerProd) await Product.destroy({ where: { id: buyerProd.id }, force: true }); } catch {}
+      try { if (bpId) await sequelize.query('DELETE FROM brand_product_brands WHERE product_id = :p', { replacements: { p: bpId } }); } catch {}
+      try { if (bpId) await BrandProduct.destroy({ where: { id: bpId }, force: true }); } catch {}
+      try { if (recipeId) await ProductRecipeIngredient.destroy({ where: { recipe_id: recipeId } }); } catch {}
+      try { if (recipeId) await ProductRecipe.destroy({ where: { id: recipeId }, force: true }); } catch {}
+      try { if (ing) await ing.destroy({ force: true }); } catch {}
+    }
   });
 
   // 계약 3 — 두 번째 출고는 409. 재고는 안 움직인다(이중 차감 방지의 유일한 방어선).

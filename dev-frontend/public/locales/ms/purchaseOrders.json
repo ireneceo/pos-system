@@ -336,7 +336,8 @@
       "connected": "\"{{name}}\" dipautkan ke pembekal ✓",
       "connectHint": "Klik item katalog untuk memautkan \"{{name}}\"",
       "addedAsSeparate": "Ditambah sebagai bahan berasingan (unit/spesifikasi berbeza).",
-      "stockRegistered": "\"{{name}}\" ditambah ke Item Stok Saya"
+      "stockRegistered": "\"{{name}}\" ditambah ke Item Stok Saya",
+      "productRegistered": "\"{{name}}\" didaftarkan sebagai produk"
     },
     "showUntracked": "Tunjuk yang tidak dijejak",
     "conversion": {
@@ -354,7 +355,27 @@
     "uncategorized": "Tidak dikategori",
     "priceNotSet": "Harga belum ditetapkan",
     "minOrder": "Min",
-    "needsUnitSetup": "Semak unit"
+    "needsUnitSetup": "Semak unit",
+    "addAsProduct": "Daftar sebagai produk",
+    "addAsProductHint": "Daftar sebagai produk yang anda jual (harga jualan diperlukan)",
+    "newProduct": {
+      "title": "Daftar sebagai produk",
+      "desc": "Produk ini dijual sebagaimana adanya (tiada resipi), jadi stoknya disimpan pada produk itu sendiri — belian menambah, jualan menolak.",
+      "name": "Nama produk",
+      "price": "Harga jualan",
+      "priceHelp": "Kos pembekal ialah {{cost}} — masukkan harga jualan anda (ia tidak pernah disalin daripada kos).",
+      "priceRequired": "Masukkan harga jualan lebih besar daripada 0.",
+      "minStock": "Amaran stok rendah pada",
+      "save": "Daftar"
+    },
+    "productItem": "Produk",
+    "sellAsProduct": {
+      "title": "Jual stok ini sebagaimana adanya",
+      "desc": "Jual {{name}} sebagaimana adanya. Stok kekal pada item ini — setiap jualan menolak 1 {{unit}} daripadanya, jadi kuantiti tidak pernah wujud di dua tempat.",
+      "priceHelp": "Harga jualan anda — ia tidak pernah diisi daripada kos anda.",
+      "failed": "Gagal mendaftar sebagai produk.",
+      "error": "Ralat berlaku. Sila cuba lagi."
+    }
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",

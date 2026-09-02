@@ -75,6 +75,11 @@ interface MyIngredientRow {
   is_product_ingredient?: boolean;
   // 매장이 보는 부모 브랜드의 표준 재료 — 발주는 되지만 공급처 연결/해제는 브랜드 전용(읽기전용).
   is_brand_shared?: boolean;
+  // 2026-09-02(P3-②) 레시피 없는 프로덕트 = **그 자체가 재고아이템**(수량이 프로덕트 행에 산다).
+  //   재료와 같은 목록에 섞어 보여주되, 담을 때·보낼 때는 이 타깃으로 나간다.
+  //   P1 이 서버·컬럼을 열어 뒀는데 이 화면이 재료만 보여줘서 **프로덕트를 살 수가 없었다.**
+  product_id?: number;        // RA — products.id
+  brand_product_id?: number;  // BG — brand_products.id
 }
 
 interface CatalogRow {
@@ -113,6 +118,9 @@ interface CartRow {
   // BG (brands) only — set when the source row is a BG ProductIngredient (Stock Item).
   // submit emits { product_ingredient_id, ... } instead of { ingredient_id, ... }.
   product_ingredient_id?: number;
+  // 레시피 없는 프로덕트 라인 — submit 이 { product_id } / { brand_product_id } 로 보낸다.
+  product_id?: number;
+  brand_product_id?: number;
 }
 
 const PageWrap = styled.div`
@@ -1151,7 +1159,13 @@ const NewPurchaseOrderPage: React.FC = () => {
 
   const [optionModal, setOptionModal] = useState<{ row: CatalogRow; product: any } | null>(null);
   // Connect mode — mine 탭의 unlinked ingredient 를 catalog 항목과 연결할 때 사용
-  const [connectTarget, setConnectTarget] = useState<{ id: number; name: string; unit?: string; product_ingredient_id?: number } | null>(null);
+  // 연결 대상 — 재료 / BG 재고아이템 / 레시피 없는 프로덕트(P3-②) 중 하나.
+  // id 는 그 종류의 테이블 id 다(재료 id 가 아니다) — 보내는 키는 kind 로 정한다.
+  const [connectTarget, setConnectTarget] = useState<{
+    id: number; name: string; unit?: string;
+    product_ingredient_id?: number;
+    kind?: 'ingredient' | 'product_ingredient' | 'product' | 'brand_product';
+  } | null>(null);
   // unit_conversion 입력 modal — connect 시 1 seller_unit = ? ingredient_unit
   const [conversionModal, setConversionModal] = useState<{
     row: CatalogRow;
@@ -1165,6 +1179,15 @@ const NewPurchaseOrderPage: React.FC = () => {
 
   const buildCartKey = (ingredientId: number, optionIds: number[] = []) =>
     `ing-${ingredientId}` + (optionIds.length ? '-opt-' + [...optionIds].sort((a, b) => a - b).join('-') : '');
+
+  // 한 목록에 재료 · BG 재고아이템 · 레시피 없는 프로덕트가 섞인다. 재료가 아닌 행은
+  // 다른 테이블의 id 라 **종류별 네임스페이스 키**로만 구분된다(재료 3번과 프로덕트 3번이
+  // 같은 카트 줄로 합쳐지면 엉뚱한 물건을 주문한다). 키를 만드는 곳은 여기 하나뿐이다.
+  const namespacedKeyOf = (row: { product_id?: number; brand_product_id?: number; product_ingredient_id?: number }): string | null =>
+    row.product_id ? `prod-${row.product_id}`
+    : row.brand_product_id ? `bprod-${row.brand_product_id}`
+    : row.product_ingredient_id ? `pi-${row.product_ingredient_id}`
+    : null;
 
   useEffect(() => {
     if (!toast) return;
@@ -1280,7 +1303,50 @@ const NewPurchaseOrderPage: React.FC = () => {
         } catch { /* BG stock-item fetch is additive; ignore failures */ }
       }
 
-      setMyList([...ingredientRows, ...brandSharedRows, ...productIngredientRows]);
+      // 2026-09-02(P3-②) 레시피 없는 프로덕트 = 그 자체가 재고아이템.
+      //   서버가 재료 목록과 **같은 모양**(+kind)으로 내려주므로 여기서 필드명을 바꾸지 않는다.
+      //   푸드코트는 이 타깃이 없다(프로덕트 재고 개념이 매장·BG 에만 있다) → 부르지 않는다.
+      let stockProductRows: MyIngredientRow[] = [];
+      const stockProductsUrl = buyerEntity?.type === 'restaurants'
+        ? `${buyerApiBase}/stock-products`
+        : buyerEntity?.type === 'brands' ? '/api/product-ingredients/stock-products' : null;
+      if (stockProductsUrl) {
+        try {
+          const spRes = await fetch(stockProductsUrl, { headers: { Authorization: `Bearer ${token}` } });
+          const spJson = await spRes.json();
+          const spData: any[] = spRes.ok && spJson.success && Array.isArray(spJson.data) ? spJson.data : [];
+          stockProductRows = spData.map((item): MyIngredientRow => ({
+            // 재료 id 와 섞이지 않게 id 는 0 으로 두고 타깃 컬럼으로만 식별한다
+            // (BG 재고아이템 행이 이미 쓰는 방식과 같다 — cart_key 가 진짜 식별자다).
+            id: 0,
+            name: item.name,
+            unit: item.unit ?? null,
+            ...(item.kind === 'brand_product'
+              ? { brand_product_id: item.id }
+              : { product_id: item.id }),
+            ingredient_category_id: null,
+            ingredientCategory: null,
+            current_stock: item.current_stock != null ? Number(item.current_stock) : null,
+            created_at: item.created_at ?? null,
+            sellers: (Array.isArray(item.sellerSources) ? item.sellerSources : []).map((s: any): SellerOpt => ({
+              id: s.id,
+              seller_product_id: s.seller_product_id,
+              seller_type: s.seller_type,
+              seller_entity_id: s.seller_entity_id ?? null,
+              seller_name: s.seller_name,
+              unit_price: Number(s.unit_price) || 0,
+              unit_conversion: Number(s.unit_conversion) || 1,
+              min_order_quantity: Number(s.min_order_quantity) || 1,
+              lead_time_days: Number(s.lead_time_days) || 0,
+              is_preferred: !!s.is_preferred,
+              seller_product_name: s.seller_product_name ?? null,
+              seller_product_sku: s.seller_product_sku ?? null,
+            })),
+          }));
+        } catch { /* additive — 실패해도 재료 목록은 그대로 준다 */ }
+      }
+
+      setMyList([...ingredientRows, ...brandSharedRows, ...productIngredientRows, ...stockProductRows]);
     } catch { setMyList([]); }
     finally { setLoadingMine(false); }
   }, [buyerApiBase, buyerEntity]);
@@ -1411,9 +1477,8 @@ const NewPurchaseOrderPage: React.FC = () => {
     }
     // BG Stock Item rows share ingredient id 0 — namespace their cart_key by
     // product_ingredient_id so distinct stock items don't collide into one cart row.
-    const key = row.product_ingredient_id
-      ? `pi-${row.product_ingredient_id}`
-      : buildCartKey(row.id);
+    // 레시피 없는 프로덕트(P3-②)도 같은 이유로 네임스페이스를 쓴다.
+    const key = namespacedKeyOf(row) || buildCartKey(row.id);
     if (cart.some(r => r.cart_key === key)) {
       setCart(prev => prev.map(r => r.cart_key === key ? { ...r, quantity: r.quantity + 1 } : r));
       return;
@@ -1427,7 +1492,9 @@ const NewPurchaseOrderPage: React.FC = () => {
       selected_seller_id: preferred.id,
       quantity: Math.max(1, preferred.min_order_quantity || 1),
       available_sellers: row.sellers,
-      ...(row.product_ingredient_id ? { product_ingredient_id: row.product_ingredient_id } : {})
+      ...(row.product_ingredient_id ? { product_ingredient_id: row.product_ingredient_id } : {}),
+      ...(row.product_id ? { product_id: row.product_id } : {}),
+      ...(row.brand_product_id ? { brand_product_id: row.brand_product_id } : {})
     }]);
     setToast(t('newPo.toast.added', { name: row.name, defaultValue: '"{{name}}" added to cart' }) as string);
   };
@@ -1452,6 +1519,66 @@ const NewPurchaseOrderPage: React.FC = () => {
   const registerCatalogToStock = async (row: CatalogRow) => {
     if (!buyerApiBase) return;
     await ensureIngredientAndAddToCart(row, [], row.unit_price, undefined, undefined, { stockOnly: true });
+  };
+
+  // 카탈로그 상품을 **판매 프로덕트**로 등록(P3-②). 레시피 없는 프로덕트는 그 자체가 재고아이템이라
+  // 이렇게 등록하면 사온 수량이 프로덕트로 들어오고, 팔릴 때 그 자리에서 빠진다.
+  // ⛔ 판매가는 사람이 넣는다 — 공급가를 판매가로 복사하지 않는다(마진 0 사고 재발 방지).
+  const [newProductModal, setNewProductModal] = useState<{ row: CatalogRow } | null>(null);
+  const [newProductForm, setNewProductForm] = useState<{ name: string; price: string; min_stock: string }>({ name: '', price: '', min_stock: '' });
+  const [newProductError, setNewProductError] = useState<string | null>(null);
+  const [newProductSaving, setNewProductSaving] = useState(false);
+
+  const openNewProductModal = (row: CatalogRow) => {
+    setNewProductForm({ name: row.name || '', price: '', min_stock: '' });
+    setNewProductError(null);
+    setNewProductModal({ row });
+  };
+
+  const submitNewProduct = async () => {
+    if (!newProductModal || !buyerApiBase) return;
+    const row = newProductModal.row;
+    const price = parseFloat(newProductForm.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      setNewProductError(t('newPo.newProduct.priceRequired', 'Enter a selling price greater than 0.') as string);
+      return;
+    }
+    setNewProductSaving(true); setNewProductError(null);
+    try {
+      const token = getAuthToken();
+      const isBG = buyerEntity?.type === 'brands';
+      const sellerType = (row.supplier as any)?.seller_type || 'supplier';
+      const body: any = sellerType === 'brand' ? { brand_product_id: row.id }
+        : sellerType === 'foodcourt' ? { foodcourt_product_id: row.id }
+        : { supplier_product_id: row.id };
+      body.new_product = {
+        name: newProductForm.name.trim() || row.name,
+        price,
+        unit: row.unit || undefined,
+        min_stock: parseFloat(newProductForm.min_stock) || 0,
+      };
+      const url = isBG ? '/api/product-ingredients/from-catalog' : `${buyerApiBase}/ingredients/from-catalog`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.success) {
+        setNewProductError(j?.message || 'Failed to register product');
+        setNewProductSaving(false);
+        return;
+      }
+      setNewProductModal(null);
+      setToast(t('newPo.toast.productRegistered', { name: body.new_product.name, defaultValue: '"{{name}}" registered as a product' }) as string);
+      fetchMine();
+      fetchCatalog();
+      setTab('mine');
+    } catch (e: any) {
+      setNewProductError(e?.message || 'Network error');
+    } finally {
+      setNewProductSaving(false);
+    }
   };
 
   const openCatalogOptionModal = (row: CatalogRow) => {
@@ -1519,7 +1646,13 @@ const NewPurchaseOrderPage: React.FC = () => {
       // Connect mode — 기존 ingredient 에 매핑만 추가 + unit_conversion 결정
       let autoConvNote: string | null = null;
       if (connectTarget?.id) {
-        if (isBG) {
+        // 레시피 없는 프로덕트가 대상이면 프로덕트 키로 보낸다(P3-②).
+        //   재료 키로 보내면 엉뚱한 재료에 붙거나 새 재료가 생겨 같은 물건이 또 갈라진다.
+        if (connectTarget.kind === 'product') {
+          body.existing_product_id = connectTarget.id;
+        } else if (connectTarget.kind === 'brand_product') {
+          body.existing_brand_product_id = connectTarget.id;
+        } else if (isBG) {
           body.existing_product_ingredient_id = connectTarget.product_ingredient_id;
         } else {
           body.existing_ingredient_id = connectTarget.id;
@@ -1544,7 +1677,8 @@ const NewPurchaseOrderPage: React.FC = () => {
           }
         }
       }
-      const fromCatalogUrl = isBG
+      const isProductTarget = connectTarget?.kind === 'product' || connectTarget?.kind === 'brand_product';
+      const fromCatalogUrl = (isBG || connectTarget?.kind === 'brand_product')
         ? '/api/product-ingredients/from-catalog'
         : `${buyerApiBase}/ingredients/from-catalog`;
       const res = await fetch(fromCatalogUrl, {
@@ -1557,8 +1691,10 @@ const NewPurchaseOrderPage: React.FC = () => {
         setError(j?.message || 'Failed to add');
         return;
       }
-      const ing = j.data.ingredient;
+      // 프로덕트 타깃이면 서버가 ingredient 대신 product 를 돌려준다(둘 다 id/name/unit 모양).
+      const ing = j.data.ingredient || j.data.product;
       const map = j.data.mapping;
+      if (!ing || !map) { setError('Unexpected response from server'); return; }
       // 양방향 등록 — 카탈로그에서 "주문 없이 내 스톡으로만 등록". 카트 담기를 건너뛰고
       // 스톡 목록(mine)·카탈로그(already_mapped 갱신)만 새로고침한다.
       if (opts.stockOnly) {
@@ -1586,9 +1722,11 @@ const NewPurchaseOrderPage: React.FC = () => {
       const optionIds = selectedOptions.map(o => o.option_id);
       // BG: ProductIngredient 패밀리 → mine-tab 과 동일하게 cart_key 를 pi-{id} 로 namespace + row 에 product_ingredient_id 부착.
       // RA/FC: 기존 ingredient 기반 cart_key 유지 (변경 없음).
-      const cart_key = isBG && optionIds.length === 0
-        ? `pi-${ing.id}`
-        : buildCartKey(ing.id, optionIds);
+      const cart_key = (isProductTarget && optionIds.length === 0)
+        ? (connectTarget?.kind === 'product' ? `prod-${ing.id}` : `bprod-${ing.id}`)
+        : (isBG && optionIds.length === 0)
+          ? `pi-${ing.id}`
+          : buildCartKey(ing.id, optionIds);
       const baseQty = qty ?? Math.max(1, seller.min_order_quantity);
 
       const existing = cart.find(r => r.cart_key === cart_key);
@@ -1606,7 +1744,9 @@ const NewPurchaseOrderPage: React.FC = () => {
           available_sellers: [seller],
           selected_options: selectedOptions.length ? selectedOptions : undefined,
           adjusted_unit_price: selectedOptions.length ? adjustedUnitPrice : undefined,
-          ...(isBG ? { product_ingredient_id: ing.id } : {})
+          ...(connectTarget?.kind === 'product' ? { product_id: ing.id }
+             : connectTarget?.kind === 'brand_product' ? { brand_product_id: ing.id }
+             : isBG ? { product_ingredient_id: ing.id } : {})
         }]);
       }
       if (j.data.connected) {
@@ -1682,7 +1822,20 @@ const NewPurchaseOrderPage: React.FC = () => {
           seller_type: g.seller_type,
           seller_entity_id: g.seller_entity_id,
           items: g.items.map(({ row, seller }) => (
-            row.product_ingredient_id
+            // 레시피 없는 프로덕트 라인 — 수량이 프로덕트 행에 들어간다(P1 이 연 입고 경로).
+            row.product_id
+              ? {
+                  product_id: row.product_id,
+                  ingredient_seller_product_id: seller.id,
+                  quantity_ordered: row.quantity
+                }
+              : row.brand_product_id
+              ? {
+                  brand_product_id: row.brand_product_id,
+                  ingredient_seller_product_id: seller.id,
+                  quantity_ordered: row.quantity
+                }
+              : row.product_ingredient_id
               ? {
                   // BG Stock Item (ProductIngredient) — backend accepts product_ingredient_id.
                   product_ingredient_id: row.product_ingredient_id,
@@ -1870,7 +2023,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                   {filteredMy.map(row => {
                     // BG Stock Item rows are identified by cart_key (`pi-${product_ingredient_id}`)
                     // since their ingredient_id is 0; normal rows keep the existing id-based lookup.
-                    const piKey = row.product_ingredient_id ? `pi-${row.product_ingredient_id}` : null;
+                    const piKey = namespacedKeyOf(row);
                     const reactKey = piKey || row.id;
                     const inCart = piKey ? isInCartByKey(piKey) : isInCart(row.id);
                     const qInCart = piKey ? cartQtyOfByKey(piKey) : cartQtyOf(row.id);
@@ -1949,6 +2102,8 @@ const NewPurchaseOrderPage: React.FC = () => {
                     const badges = (
                       <>
                         {inCart && <Badge $variant="cart">×{qInCart}</Badge>}
+                        {/* 재료와 한 목록에 섞이므로 "이건 파는 물건 자체"라는 표시가 필요하다(P3-②) */}
+                        {(row.product_id || row.brand_product_id) && <Badge $variant="shared">{t('newPo.productItem', 'Product')}</Badge>}
                         {row.is_brand_shared && <Badge $variant="shared">{t('newPo.brandStock', 'Brand stock')}</Badge>}
                         {!inCart && !hasSeller && !row.is_brand_shared && !isList && <Badge $variant="warning">{t('newPo.connectCta', 'Click to connect supplier →')}</Badge>}
                         {!inCart && hasSeller && !isList && <Badge $variant="success">{t('newPo.linked', 'Linked')}</Badge>}
@@ -1974,7 +2129,13 @@ const NewPurchaseOrderPage: React.FC = () => {
                         // 브랜드 표준 재료는 공급처를 브랜드가 붙인다 — 매장은 연결할 수 없다(읽기전용)
                         if (row.is_brand_shared) return;
                         // 발주처 미연결 — inline modal 띄움 (페이지 이동 X, catalog 탭 자동 검색 X)
-                        setConnectTarget({ id: row.id, name: row.name, unit: row.unit || '', product_ingredient_id: row.product_ingredient_id });
+                        setConnectTarget(
+                          row.product_id
+                            ? { id: row.product_id, name: row.name, unit: row.unit || '', kind: 'product' }
+                            : row.brand_product_id
+                              ? { id: row.brand_product_id, name: row.name, unit: row.unit || '', kind: 'brand_product' }
+                              : { id: row.id, name: row.name, unit: row.unit || '', product_ingredient_id: row.product_ingredient_id }
+                        );
                         return;
                       }
                       addMineToCart(row);
@@ -2088,6 +2249,17 @@ const NewPurchaseOrderPage: React.FC = () => {
                             title={t('newPo.addToStockHint', 'Add to My Stock Items without ordering') as string}
                           >
                             {t('newPo.addToStock', 'Add to My Stock')}
+                          </AddToStockButton>
+                        )}
+                        {/* 판매하는 물건(캔음료·포장재처럼 그대로 파는 것)은 재료가 아니라 프로덕트로 등록한다.
+                            푸드코트는 프로덕트 재고 타깃이 없어 이 버튼을 띄우지 않는다. */}
+                        {!p.already_mapped && buyerEntity?.type !== 'foodcourts' && (
+                          <AddToStockButton
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); openNewProductModal(p); }}
+                            title={t('newPo.addAsProductHint', 'Register as a product you sell (selling price required)') as string}
+                          >
+                            {t('newPo.addAsProduct', 'Add as product')}
                           </AddToStockButton>
                         )}
                       </>
@@ -2348,10 +2520,91 @@ const NewPurchaseOrderPage: React.FC = () => {
       <ConnectSellerModal
         open={!!connectTarget}
         ingredient={connectTarget ? { id: connectTarget.id, name: connectTarget.name, unit: connectTarget.unit } : null}
+        targetKind={connectTarget?.kind || 'ingredient'}
         buyerApiBase={buyerApiBase || ''}
         onClose={() => setConnectTarget(null)}
         onConnected={() => { fetchMine(); }}
       />
+
+      {/* 카탈로그 상품 → 내가 파는 프로덕트로 등록 (P3-②).
+          판매가는 필수 입력 — 공급가를 그대로 판매가로 넣으면 마진 0 이 된다. */}
+      <UIModal
+        isOpen={!!newProductModal}
+        onClose={() => setNewProductModal(null)}
+        title={t('newPo.newProduct.title', 'Register as a product') as string}
+        maxWidth="480px"
+        footer={newProductModal ? (
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setNewProductModal(null)}
+              style={{ padding: '8px 16px', background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#475569', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}
+            >
+              {t('common.cancel', 'Cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={submitNewProduct}
+              disabled={newProductSaving}
+              style={{
+                padding: '8px 16px', background: newProductSaving ? '#64748B' : '#635BFF',
+                border: 'none', color: 'white', borderRadius: 6, fontWeight: 600,
+                cursor: newProductSaving ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {t('newPo.newProduct.save', 'Register')}
+            </button>
+          </div>
+        ) : null}
+      >
+        {newProductModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p style={{ margin: 0, color: '#475569', fontSize: 13, lineHeight: 1.5 }}>
+              {t('newPo.newProduct.desc', 'This product is sold as-is (no recipe), so its stock lives on the product itself — purchases add to it and sales take from it.')}
+            </p>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
+              {t('newPo.newProduct.name', 'Product name')}
+              <input
+                type="text"
+                value={newProductForm.name}
+                onChange={(e) => setNewProductForm(f => ({ ...f, name: e.target.value }))}
+                style={{ width: '100%', boxSizing: 'border-box', marginTop: 4, padding: '8px 10px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14, background: 'white' }}
+              />
+            </label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
+              {t('newPo.newProduct.price', 'Selling price')} <span style={{ color: '#EF4444' }}>*</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={newProductForm.price}
+                onChange={(e) => setNewProductForm(f => ({ ...f, price: e.target.value }))}
+                style={{ width: '100%', boxSizing: 'border-box', marginTop: 4, padding: '8px 10px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14, background: 'white' }}
+              />
+              <span style={{ display: 'block', marginTop: 4, fontWeight: 400, color: '#6B7280' }}>
+                {t('newPo.newProduct.priceHelp', { cost: (newProductModal.row.unit_price || 0).toFixed(2), defaultValue: 'Supplier cost is {{cost}} — enter what you sell it for (it is never copied from the cost).' })}
+              </span>
+            </label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
+              {t('newPo.newProduct.minStock', 'Low-stock alert at')}
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={newProductForm.min_stock}
+                onChange={(e) => setNewProductForm(f => ({ ...f, min_stock: e.target.value }))}
+                placeholder="0"
+                style={{ width: '100%', boxSizing: 'border-box', marginTop: 4, padding: '8px 10px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14, background: 'white' }}
+              />
+            </label>
+            {newProductError && (
+              <div style={{ padding: '8px 10px', background: '#FEE2E2', border: '1px solid #FECACA', color: '#B91C1C', borderRadius: 6, fontSize: 12 }}>
+                {newProductError}
+              </div>
+            )}
+          </div>
+        )}
+      </UIModal>
 
       <UIModal
         isOpen={!!conversionModal}

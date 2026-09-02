@@ -92,6 +92,16 @@ interface CatalogItem {
 interface Props {
   open: boolean;
   ingredient: { id: number; name: string; unit?: string | null } | null;
+  /**
+   * 연결 대상의 종류. 생략하면 'ingredient' — 기존 호출부 동작 그대로.
+   * 2026-09-02(P3-②): 레시피 없는 프로덕트도 재고아이템이라 공급처를 붙일 수 있어야 한다.
+   * 종류에 따라 **보내는 키와 엔드포인트가 다르다** — 여기 한 곳에서만 갈라진다.
+   *   ingredient          → `${buyerApiBase}/ingredients/from-catalog` + existing_ingredient_id
+   *   product             → 같은 엔드포인트 + existing_product_id           (RA products)
+   *   product_ingredient  → /api/product-ingredients/from-catalog + existing_product_ingredient_id (BG)
+   *   brand_product       → /api/product-ingredients/from-catalog + existing_brand_product_id      (BG)
+   */
+  targetKind?: 'ingredient' | 'product_ingredient' | 'product' | 'brand_product';
   buyerApiBase: string; // e.g. '/api/restaurants/5'
   /** BG 가 primary 가 아닌 자기 브랜드로 작업할 때 buyer 스코프를 명시 ('?entity_type=brand&entity_id=2').
    *  없으면 서버가 primary 브랜드 카탈로그(=다른 계약)를 돌려준다. */
@@ -116,7 +126,7 @@ function detectConversion(ingUnit: string, sellerUnit: string): { auto: number |
   return { auto: null, note: `${ingUnit} ↔ ${sellerUnit}: incompatible — please enter conversion (1 ${sellerUnit} = ? ${ingUnit})` };
 }
 
-export default function ConnectSellerModal({ open, ingredient, buyerApiBase, buyerScopeQS = '', onClose, onConnected }: Props) {
+export default function ConnectSellerModal({ open, ingredient, targetKind = 'ingredient', buyerApiBase, buyerScopeQS = '', onClose, onConnected }: Props) {
   const { t } = useTranslation('purchaseOrders');
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -150,20 +160,28 @@ export default function ConnectSellerModal({ open, ingredient, buyerApiBase, buy
       .finally(() => setLoading(false));
   }, [open, search]);
 
-  // Fetch already-mapped seller_product ids of this ingredient
+  // Fetch already-mapped seller_product ids of this target.
+  // 종류마다 "내 목록" 이 다르다 — 재료는 ingredients, 프로덕트는 stock-products.
+  // 목록을 잘못 고르면 **이미 연결된 상품이 다시 후보로 뜬다**(중복 링크).
   useEffect(() => {
     if (!open || !ingredient?.id) return;
     const token = getAuthToken();
-    fetch(`${buyerApiBase}/ingredients?include=sellers`, { headers: { Authorization: `Bearer ${token}` } })
+    const listUrl =
+      targetKind === 'product' ? `${buyerApiBase}/stock-products`
+      : targetKind === 'brand_product' ? '/api/product-ingredients/stock-products'
+      : targetKind === 'product_ingredient' ? '/api/product-ingredients?include=sellers'
+      : `${buyerApiBase}/ingredients?include=sellers`;
+    fetch(listUrl, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(j => {
         const me = (j?.data || []).find((i: any) => i.id === ingredient.id);
         const set = new Set<string>();
-        (me?.sellers || []).forEach((s: any) => set.add(`${s.seller_type}:${s.seller_product_id}`));
+        // 재료 목록은 sellers, 프로덕트 목록은 sellerSources 로 내려온다(둘 다 같은 원소 모양).
+        ([...(me?.sellers || []), ...(me?.sellerSources || [])]).forEach((s: any) => set.add(`${s.seller_type}:${s.seller_product_id}`));
         setAlreadyMappedIds(set);
       })
       .catch(() => setAlreadyMappedIds(new Set()));
-  }, [open, ingredient?.id, buyerApiBase]);
+  }, [open, ingredient?.id, buyerApiBase, targetKind]);
 
   // Auto-detect conversion when selected changes
   useEffect(() => {
@@ -199,7 +217,13 @@ export default function ConnectSellerModal({ open, ingredient, buyerApiBase, buy
         : sellerType === 'foodcourt' ? { foodcourt_product_id: selected.id }
         : { supplier_product_id: selected.id };
       if (!asSeparate) {
-        body.existing_ingredient_id = ingredient.id;
+        // 연결 대상 키 — 넷 중 하나만 보낸다(서버 stockTarget 이 둘 이상이면 400).
+        const targetBodyKey =
+          targetKind === 'product' ? 'existing_product_id'
+          : targetKind === 'brand_product' ? 'existing_brand_product_id'
+          : targetKind === 'product_ingredient' ? 'existing_product_ingredient_id'
+          : 'existing_ingredient_id';
+        body[targetBodyKey] = ingredient.id;
         const conv = parseFloat(conversion);
         if (!Number.isFinite(conv) || conv <= 0) {
           setError(t('newPo.conversion.invalid', 'Enter a valid conversion ratio (> 0).') as string);
@@ -208,7 +232,10 @@ export default function ConnectSellerModal({ open, ingredient, buyerApiBase, buy
         body.unit_conversion = conv;
       }
       const token = getAuthToken();
-      const res = await fetch(`${buyerApiBase}/ingredients/from-catalog`, {
+      const endpoint = (targetKind === 'product_ingredient' || targetKind === 'brand_product')
+        ? '/api/product-ingredients/from-catalog'
+        : `${buyerApiBase}/ingredients/from-catalog`;
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(body)
@@ -317,7 +344,7 @@ export default function ConnectSellerModal({ open, ingredient, buyerApiBase, buy
           <Btn type="button" $variant="ghost" onClick={onClose} disabled={busy}>
             {t('common.cancel', 'Cancel')}
           </Btn>
-          {isIncompatible && (
+          {isIncompatible && targetKind === 'ingredient' && (
             <Btn type="button" $variant="amber" onClick={() => submit(true)} disabled={busy || !selected}>
               {t('connect.asSeparate', '+ Add as separate ingredient')}
             </Btn>

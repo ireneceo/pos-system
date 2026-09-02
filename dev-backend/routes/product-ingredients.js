@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
-const { requireBGScope, applyBGFilter, assertBGOwnsRow } = require('../middleware/brandScope');
+const { requireBGScope, applyBGFilter, assertBGOwnsRow, requireBrandScope } = require('../middleware/brandScope');
 const { sanitizeString } = require('../middleware/validation');
 const {
   ProductIngredient,
@@ -646,6 +646,132 @@ router.get('/:id/open-po-lines', async (req, res) => {
   } catch (error) {
     console.error('product-ingredients open-po-lines error:', error);
     res.status(500).json({ success: false, message: 'Failed to load open purchase order lines' });
+  }
+});
+
+// POST /api/product-ingredients/:id/register-as-product
+// 재고아이템을 **그대로 파는 브랜드 프로덕트**로도 등록한다 (P3-③ · RA 대칭).
+// 수량은 재고아이템 한 곳에만 산다 — 프로덕트에는 **재료 ×1 레시피**를 걸어
+// 출고(판매) 때 재고아이템에서 빠지게 한다(seller-orders 의 BOM 차감 경로).
+// ⛔ 판매가 필수(공급가 복사 금지) · 중복이면 409 · 전부 한 트랜잭션.
+router.post('/:id/register-as-product', requireBrandScope(), async (req, res) => {
+  const { sequelize } = require('../config/database');
+  const t = await sequelize.transaction();
+  try {
+    const { BrandProduct, ProductRecipe } = require('../models');
+    const price = parseFloat(req.body?.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false, code: 'PRICE_REQUIRED',
+        message: 'Selling price is required (supplier cost is never copied into it)'
+      });
+    }
+
+    // 브랜드 결정 — 명시된 brand_id, 없으면 소유 브랜드가 하나일 때만 자동.
+    // 둘 이상이면 **고르게 한다**(임의 선택은 남의 브랜드에 프로덕트를 만드는 사고가 된다).
+    let brandId = req.brandScope.brandId;
+    if (brandId == null && !req.brandScope.isAdmin && req.brandScope.ownedBrandIds?.length === 1) {
+      brandId = req.brandScope.ownedBrandIds[0];
+    }
+    if (brandId == null) {
+      await t.rollback();
+      return res.status(400).json({ success: false, code: 'BRAND_REQUIRED', message: 'brand_id required' });
+    }
+
+    const ing = await ProductIngredient.findByPk(parseInt(req.params.id, 10), { transaction: t });
+    if (!ing || (ing.owner_user_id != null && ing.owner_user_id !== req.bgOwnerId)) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Stock item not found' });
+    }
+
+    // 중복 — 이 재고아이템 하나만 쓰는 레시피에 걸린 내 브랜드 프로덕트가 이미 있으면 그것이 답이다.
+    const linksOfIngredient = await ProductRecipeIngredient.findAll({
+      where: { ingredient_id: ing.id }, attributes: ['recipe_id'], transaction: t
+    });
+    const candidateRecipeIds = [...new Set(linksOfIngredient.map((l) => l.recipe_id))];
+    let soloRecipeIds = [];
+    if (candidateRecipeIds.length) {
+      const allLinks = await ProductRecipeIngredient.findAll({
+        where: { recipe_id: candidateRecipeIds }, attributes: ['recipe_id', 'ingredient_id'], transaction: t
+      });
+      const countByRecipe = allLinks.reduce((m, l) => { m[l.recipe_id] = (m[l.recipe_id] || 0) + 1; return m; }, {});
+      soloRecipeIds = candidateRecipeIds.filter((id) => countByRecipe[id] === 1);
+    }
+    if (soloRecipeIds.length) {
+      const dup = await BrandProduct.findOne({
+        where: { owner_user_id: req.bgOwnerId, product_recipe_id: soloRecipeIds, is_active: true },
+        attributes: ['id', 'name'], transaction: t
+      });
+      if (dup) {
+        await t.rollback();
+        return res.status(409).json({
+          success: false, code: 'ALREADY_A_PRODUCT',
+          message: `Already sold as a product: ${dup.name}`,
+          data: { product_id: dup.id, product_name: dup.name }
+        });
+      }
+    }
+
+    const name = sanitizeString(String(req.body?.name || ing.name)).slice(0, 255);
+    // 코드는 기존 화면과 같은 방식(브랜드 스코프 내 카운트) — 형식을 여기서 새로 만들지 않는다.
+    const scopedCount = await ProductRecipe.count({ where: { brand_id: brandId }, transaction: t });
+    const recipe = await ProductRecipe.create({
+      brand_id: brandId,
+      code: `PR-${String(scopedCount + 1).padStart(3, '0')}`,
+      name: name.slice(0, 100),
+      yield_amount: 1,
+      yield_unit: ing.unit || 'piece',
+      is_active: true,
+    }, { transaction: t });
+
+    await ProductRecipeIngredient.create({
+      recipe_id: recipe.id,
+      ingredient_id: ing.id,
+      quantity: 1,
+      unit: ing.unit || 'piece',
+      cost: parseFloat(ing.unit_cost) || 0,
+    }, { transaction: t });
+
+    const product = await BrandProduct.create({
+      owner_user_id: req.bgOwnerId,
+      category_id: req.body?.category_id || null,
+      name,
+      unit: ing.unit || null,
+      // 레시피가 걸린 프로덕트는 자기 수량을 쓰지 않는다 — 재고는 재고아이템에 산다.
+      stock_unit: ing.unit || null,
+      base_quantity: 1,
+      unit_price: price,
+      min_order_quantity: 1,
+      product_recipe_id: recipe.id,
+      is_active: true,
+      current_stock: 0,
+      min_stock: 0,
+    }, { transaction: t });
+
+    // 브랜드 귀속 — 브랜드 프로덕트는 owner 소유이고, 어느 브랜드가 파는지는 별도 링크 테이블에 있다.
+    try {
+      const { BrandProductBrand } = require('../models');
+      if (BrandProductBrand) {
+        // 컬럼명은 product_id (brand_product_id 가 아니다 — 중간테이블 실제 스키마)
+        await BrandProductBrand.findOrCreate({
+          where: { product_id: product.id, brand_id: brandId },
+          defaults: { product_id: product.id, brand_id: brandId },
+          transaction: t,
+        });
+      }
+    } catch (linkErr) {
+      await t.rollback();
+      console.error('register-as-product (BG) brand link failed:', linkErr);
+      return res.status(500).json({ success: false, message: 'Failed to link product to brand' });
+    }
+
+    await t.commit();
+    res.status(201).json({ success: true, data: { product, recipe } });
+  } catch (error) {
+    await t.rollback().catch(() => {});
+    console.error('register-as-product (BG) error:', error);
+    res.status(500).json({ success: false, message: 'Failed to register stock item as a product' });
   }
 });
 

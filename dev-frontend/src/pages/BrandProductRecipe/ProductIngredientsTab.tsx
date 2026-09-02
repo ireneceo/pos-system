@@ -8,6 +8,8 @@ import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDr
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
+import RegisterExternalSupplierModal from '../../components/Common/RegisterExternalSupplierModal';
+import RegisterAsProductModal from '../../components/Common/RegisterAsProductModal';
 import { fetchAPI } from '../../utils/api';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
@@ -315,7 +317,7 @@ const StockBadge = styled.span<{ status: 'normal' | 'low' | 'out' }>`
   }};
 `;
 
-const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountChange, categoryRefreshKey }) => {
+const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, onCountChange, categoryRefreshKey }) => {
   const { defaultCurrency } = useBrandCurrency();
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
@@ -353,6 +355,11 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
     min_order: '0',
     current_stock: '0'
   });
+
+  // 2026-09-02(P3-③) 두 입구를 RA 재료 화면과 **같은 공유 부품**으로 연다.
+  //   그전까지 BG 재고 화면에는 외부공급업체 등록 입구가 아예 없었다(RA 에만 있었다).
+  const [extTarget, setExtTarget] = useState<Ingredient | null>(null);
+  const [sellAsProductTarget, setSellAsProductTarget] = useState<Ingredient | null>(null);
 
   // ── Supplier Products (seller-sources) — 발주 연결용 매핑 (editing existing item only) ──
   const [sellerSources, setSellerSources] = useState<SellerSource[]>([]);
@@ -787,6 +794,20 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
                 >
                   Edit
                 </ActionButton>
+                {/* 솔루션 미가입 외부공급업체 상품으로 등록 — RA 재료 화면과 같은 부품 */}
+                <ActionButton
+                  variant="secondary"
+                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExtTarget(ingredient); }}
+                >
+                  External supplier
+                </ActionButton>
+                {/* 그대로 파는 물건이면 브랜드 프로덕트로도 등록 — 재고는 이 아이템 한 곳에만 남는다 */}
+                <ActionButton
+                  variant="secondary"
+                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSellAsProductTarget(ingredient); }}
+                >
+                  Also sell as product
+                </ActionButton>
                 <ActionButton
                   variant="danger"
                   onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDeleteClick(ingredient); }}
@@ -798,6 +819,24 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
           ))}
         </IngredientsGrid>
       )}
+
+      {/* 경로② — 이 재고를 외부공급업체 상품으로 등록 (RA 재료 화면과 같은 공유 부품) */}
+      <RegisterExternalSupplierModal
+        target={extTarget ? { id: extTarget.id, name: extTarget.name, unit: extTarget.unit } : null}
+        targetKind="product_ingredient"
+        buyerApiBase={brandId ? `/api/brands/${brandId}` : ''}
+        buyerScopeQS={brandId ? `?entity_type=brand&entity_id=${brandId}` : ''}
+        onClose={() => setExtTarget(null)}
+        onRegistered={() => { fetchData(); }}
+      />
+      {/* 경로③ — 그대로 파는 브랜드 프로덕트로도 등록 (판매가 필수 · 서버가 재고 ×1 레시피 생성) */}
+      <RegisterAsProductModal
+        target={sellAsProductTarget ? { id: sellAsProductTarget.id, name: sellAsProductTarget.name, unit: sellAsProductTarget.unit } : null}
+        endpoint={sellAsProductTarget ? `/api/product-ingredients/${sellAsProductTarget.id}/register-as-product` : ''}
+        brandId={brandId ?? null}
+        onClose={() => setSellAsProductTarget(null)}
+        onRegistered={() => { fetchData(); }}
+      />
 
       <Modal
         isOpen={showModal}

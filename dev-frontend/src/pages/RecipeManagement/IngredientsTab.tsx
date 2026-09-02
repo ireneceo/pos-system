@@ -14,6 +14,8 @@ import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
+import RegisterExternalSupplierModal from '../../components/Common/RegisterExternalSupplierModal';
+import RegisterAsProductModal from '../../components/Common/RegisterAsProductModal';
 import AutoSaveField from '../../components/Common/AutoSaveField';
 import Toggle from '../../components/Common/Toggle';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
@@ -483,13 +485,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const [ingredientCategories, setIngredientCategories] = useState<IngredientCategory[]>([]);
   const [connectTarget, setConnectTarget] = useState<Ingredient | null>(null);
   // 경로② — 이 재고(stock item)를 외부공급업체 상품으로 등록 (솔루션 미가입 공급업체용).
+  // 2026-09-02(P3-③) 외부공급업체 등록은 공유 부품(RegisterExternalSupplierModal)이 맡는다.
+  //   폼·업체목록·저장은 부품 안에 있고 여기서는 **대상만** 들고 있는다(BG 화면과 같은 코드를 쓴다).
   const [extTarget, setExtTarget] = useState<Ingredient | null>(null);
-  const [extSuppliers, setExtSuppliers] = useState<Array<{ id: number; name: string }>>([]);
-  // supplier_name = 입력/선택한 공급업체명. 저장 시 같은 이름이 있으면 재사용, 없으면 생성(중복 방지).
-  // product_name(판매품목명) 기본값 = 내부 재고명이지만 수정 가능(공급업체가 파는 이름). sku = 공급업체 품번(선택).
-  const [extForm, setExtForm] = useState<{ supplier_id: number | null; product_name: string; sku: string; unit_price: string; min_order_quantity: string }>({ supplier_id: null, product_name: '', sku: '', unit_price: '', min_order_quantity: '' });
-  const [extSaving, setExtSaving] = useState(false);
-  const [extError, setExtError] = useState<string | null>(null);
   // Track Stock pending value (AutoSaveField onSave 가 onChange 직후 호출됨)
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -787,55 +785,13 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     }
   };
 
-  // 이 재고를 외부공급업체 상품으로 등록 — 내가 등록한 외부공급업체 목록 로드 + 모달 열기.
-  const openExtRegister = async (ing: Ingredient) => {
-    setExtTarget(ing);
-    // 판매품목명 기본값 = 내부 재고명(편의 프리필, 잠그지 않음). SKU 는 비워둠(선택).
-    setExtForm({ supplier_id: null, product_name: ing.name || '', sku: '', unit_price: '', min_order_quantity: '' });
-    setExtError(null);
-    let list: Array<{ id: number; name: string }> = [];
-    try {
-      const token = getAuthToken();
-      const r = await fetch(`/api/external-suppliers${buyerScopeQS}`, { headers: { Authorization: `Bearer ${token}` } });
-      const j = await r.json().catch(() => null);
-      list = Array.isArray(j?.data) ? j.data : [];
-    } catch { list = []; }
-    setExtSuppliers(list);
-  };
+  // 이 재고를 외부공급업체 상품으로 등록 — 폼·업체목록·2단계 저장은 공유 부품이 맡는다(P3-③).
+  //   같은 코드가 RA·BG 두 화면에 복사돼 있으면 곧 갈라진다. 여기서는 대상만 지정한다.
+  const openExtRegister = (ing: Ingredient) => setExtTarget(ing);
 
-  // 입력한 공급업체명으로: 같은 이름 있으면 재사용, 없으면 생성 → 상품 등록 + 매핑.
-  const saveExtRegister = async () => {
-    if (!extTarget) return;
-    setExtError(null);
-    // 2026-06-22 (Irene 확정): 자유입력 즉석생성이 아니라 "이미 등록된 외부공급업체를 선택"한다.
-    // 외부공급업체 자체 등록은 Suppliers(공급업체 디렉토리)에서 하고, 여기선 선택만 → 이 재료를
-    // 그 업체 상품으로 등록(SupplierProduct) + 매핑(from-catalog) → 발주 가능. docs §8.
-    const supplierId = extForm.supplier_id;
-    if (!supplierId) { setExtError('Select an external supplier.'); return; }
-    if (!extForm.unit_price || parseFloat(extForm.unit_price) < 0) { setExtError('Enter a valid price.'); return; }
-    // 판매품목명은 공급업체가 파는 이름(기본=내부명). 비우면 내부명으로 폴백.
-    const productName = extForm.product_name.trim() || extTarget.name;
-    setExtSaving(true);
-    try {
-      const token = getAuthToken();
-      const cr = await fetch(`/api/external-suppliers/${supplierId}/products${buyerScopeQS}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: productName, sku: extForm.sku.trim() || undefined, unit: extTarget.unit || 'kg', unit_price: parseFloat(extForm.unit_price), min_order_quantity: parseMinOrderQty(extForm.min_order_quantity) })
-      });
-      const cj = await cr.json().catch(() => null);
-      if (!cr.ok || !cj?.success) { setExtError(cj?.message || 'Failed to create product.'); setExtSaving(false); return; }
-      const supplierProductId = cj.data.id;
-      const buyerApiBase = isBrandRole && brandId ? `/api/brands/${brandId}` : `/api/restaurants/${effectiveRestaurantId}`;
-      const mr = await fetch(`${buyerApiBase}/ingredients/from-catalog`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ supplier_product_id: supplierProductId, existing_ingredient_id: extTarget.id, unit_conversion: 1, unit_price: parseFloat(extForm.unit_price) })
-      });
-      const mj = await mr.json().catch(() => null);
-      if (!mr.ok || !mj?.success) { setExtError(mj?.message || 'Created product, but failed to link it.'); setExtSaving(false); return; }
-      setExtTarget(null); reloadWithSellers();
-    } catch { setExtError('An error occurred. Please try again.'); }
-    finally { setExtSaving(false); }
-  };
+  // 이 재고를 **그대로 파는 프로덕트로도** 등록 (P3-③ · 재료 ×1 레시피는 서버가 만든다).
+  // 매장 소유 재료만 — 브랜드 표준 재료는 브랜드가 관리한다(매장에서는 읽기전용).
+  const [sellAsProductTarget, setSellAsProductTarget] = useState<Ingredient | null>(null);
 
   const fetchIngredients = async () => {
     try {
@@ -1332,6 +1288,21 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                           >
                             Register on external supplier
                           </button>
+                          {/* 그대로 파는 물건이면 프로덕트로도 등록 — 재고는 이 아이템 한 곳에만 남는다 */}
+                          {!isBrandRole && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setSellAsProductTarget(ingredient); }}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '4px 10px', borderRadius: 6,
+                                background: '#fff', border: '1px solid #C7CED6', color: '#4B5563',
+                                fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                              }}
+                            >
+                              Also sell as product
+                            </button>
+                          )}
                         </div>
                         )}
                       </InfoValue>
@@ -1572,6 +1543,20 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   >
                     Register on external supplier
                   </button>
+                  {!isBrandRole && (
+                    <button
+                      type="button"
+                      onClick={() => { setSellAsProductTarget(selectedIngredient); }}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '6px 12px', borderRadius: 6,
+                        background: '#fff', border: '1px solid #C7CED6', color: '#4B5563',
+                        fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                      }}
+                    >
+                      Also sell as product
+                    </button>
+                  )}
                 </div>
               </>
             ) : (
@@ -1759,61 +1744,22 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             .catch(() => {});
         }}
       />
-      {/* 경로② — 이 재고를 외부공급업체 상품으로 등록 */}
-      {extTarget && (
-        <Modal
-          isOpen
-          onClose={() => setExtTarget(null)}
-          title="Buy from an external supplier"
-          size="small"
-          footer={<>
-            <ModalButton variant="secondary" onClick={() => setExtTarget(null)}>Cancel</ModalButton>
-            <ModalButton variant="primary" disabled={extSaving} onClick={saveExtRegister}>{extSaving ? '…' : 'Save'}</ModalButton>
-          </>}
-        >
-          {extError && <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#DC2626', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 13 }}>{extError}</div>}
-          <div style={{ fontSize: 13, color: '#4B5563', marginBottom: 12 }}>
-            Record that you buy <strong style={{ color: '#0A2540' }}>{extTarget.name}</strong> from a supplier that isn't on the platform, at a set price. You can reuse the same supplier for many ingredients.
-          </div>
-          <UIFormGroup>
-            <FormLabel>Supplier *</FormLabel>
-            {extSuppliers.length > 0 ? (
-              <SearchableSelect
-                options={extSuppliers.map(s => ({ value: s.id, label: s.name }))}
-                value={extForm.supplier_id}
-                onChange={(v) => setExtForm({ ...extForm, supplier_id: v == null ? null : Number(v) })}
-                placeholder="Select an external supplier"
-                noOptionsMessage="No external suppliers found"
-              />
-            ) : (
-              <div style={{ fontSize: 13, color: '#6B7280', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px' }}>
-                No external suppliers registered yet. Add one in the <strong style={{ color: '#0A2540' }}>Suppliers</strong> menu first, then come back to register this ingredient as their product.
-              </div>
-            )}
-          </UIFormGroup>
-          <UIFormRow>
-            <UIFormGroup>
-              <FormLabel>Product name *</FormLabel>
-              <FormInput type="text" value={extForm.product_name} onChange={(e) => setExtForm({ ...extForm, product_name: e.target.value })} placeholder={extTarget.name} />
-              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>The supplier's own name for this product. Defaults to your item name — edit if theirs differs.</div>
-            </UIFormGroup>
-            <UIFormGroup>
-              <FormLabel>SKU</FormLabel>
-              <FormInput type="text" value={extForm.sku} onChange={(e) => setExtForm({ ...extForm, sku: e.target.value })} placeholder="Optional — supplier's product code" />
-            </UIFormGroup>
-          </UIFormRow>
-          <UIFormRow>
-            <UIFormGroup>
-              <FormLabel>Unit price *</FormLabel>
-              <FormInput type="number" step="0.01" min="0" value={extForm.unit_price} onChange={(e) => setExtForm({ ...extForm, unit_price: e.target.value })} placeholder={`0.00 /${extTarget.unit || 'unit'}`} />
-            </UIFormGroup>
-            <UIFormGroup>
-              <FormLabel>Min. order qty</FormLabel>
-              <FormInput type="number" min="1" value={extForm.min_order_quantity} onChange={(e) => setExtForm({ ...extForm, min_order_quantity: e.target.value })} placeholder="1" />
-            </UIFormGroup>
-          </UIFormRow>
-        </Modal>
-      )}
+      {/* 경로② — 이 재고를 외부공급업체 상품으로 등록 (공유 부품 · BG 재고 화면과 같은 코드) */}
+      <RegisterExternalSupplierModal
+        target={extTarget ? { id: extTarget.id, name: extTarget.name, unit: extTarget.unit } : null}
+        targetKind="ingredient"
+        buyerApiBase={isBrandRole && brandId ? `/api/brands/${brandId}` : `/api/restaurants/${effectiveRestaurantId}`}
+        buyerScopeQS={buyerScopeQS}
+        onClose={() => setExtTarget(null)}
+        onRegistered={() => { reloadWithSellers(); }}
+      />
+      {/* 경로③ — 이 재고를 그대로 파는 프로덕트로도 등록 (판매가 필수 · 서버가 재료 ×1 레시피 생성) */}
+      <RegisterAsProductModal
+        target={sellAsProductTarget ? { id: sellAsProductTarget.id, name: sellAsProductTarget.name, unit: sellAsProductTarget.unit } : null}
+        endpoint={sellAsProductTarget ? `/api/restaurants/${effectiveRestaurantId}/ingredients/${sellAsProductTarget.id}/register-as-product` : ''}
+        onClose={() => setSellAsProductTarget(null)}
+        onRegistered={() => { reloadWithSellers(); }}
+      />
 
       <ConfirmModal
         isOpen={unlinkTarget !== null}
