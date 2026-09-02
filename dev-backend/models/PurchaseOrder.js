@@ -44,6 +44,19 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
   cancelled_at: { type: DataTypes.DATE, allowNull: true },
   cancelled_reason: { type: DataTypes.TEXT, allowNull: true },
 
+  // ── 결제 (P4, 2026-09-02 · docs/PURCHASE_ORDER_SYSTEM.md §5-3) ──────────────
+  // "외상"은 별도 결제수단이 아니라 **unpaid 상태**다(나중에 /pay 로 결제한다).
+  // 기존 행은 전부 'unpaid' — 결제 사실을 모르는데 'paid' 로 백필하면 그게 거짓이다.
+  payment_status: {
+    type: DataTypes.ENUM('unpaid', 'paid', 'refunded'), allowNull: false, defaultValue: 'unpaid'
+  },
+  payment_method: { type: DataTypes.ENUM('cash', 'bank_transfer', 'card'), allowNull: true },
+  paid_at: { type: DataTypes.DATE, allowNull: true },
+  paid_by_user_id: { type: DataTypes.INTEGER, allowNull: true },
+  // 현금 결제로 만든 드로어 출금 이동. 취소·환불 때 **삭제가 아니라** 반대 방향 in 을 만들기 위해
+  // 원본을 가리켜 둔다(감사 기록 보존 · 마감 기대금액 공식이 자동으로 잡는다).
+  cash_movement_id: { type: DataTypes.INTEGER, allowNull: true },
+
   // Sprint 4
   tracking_info: {
     type: DataTypes.JSON, allowNull: true,
