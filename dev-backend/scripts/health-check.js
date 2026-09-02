@@ -2979,6 +2979,354 @@ function defineDbTests() {
 }
 
 function definePaymentTests() {
+  // ============================================
+  // CASH — 발주 결제·되돌리기 (P4-4, 2026-09-02)
+  // ============================================
+  // 돈이 움직이는 계약이라 inventory 와 **따로 센다.** 데모 매장(rid 고정 아님, is_demo=1) 한정,
+  // 시작 전 열린 시프트를 닫고 끝나면 만든 것을 전부 지운다.
+  //
+  // 지켜야 할 것:
+  //   ⑴ 현금 결제는 **열린 시프트가 정확히 1개**일 때만 드로어에서 나간다. 2개면 거절한다 —
+  //      임의로 고르면 그 시프트의 마감 기대금액이 조용히 틀어진다.
+  //   ⑵ 되돌리기는 **삭제가 아니라 반대 방향 이동**이다. 그래야 감사 기록이 남고,
+  //      마감 기대금액(개시+매출+Σin−Σout)이 저절로 원래대로 돌아온다.
+  //   ⑶ 수령+결제는 **한 트랜잭션**이다. 결제가 실패하면 재고도 안 들어와야 한다.
+
+  /** 데모 매장 + RA 토큰 + 카테고리. 없으면 null(테스트는 skip 처리). */
+  async function cashFixtureBase() {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const demo = (await sequelize.query('SELECT id FROM restaurants WHERE is_demo = 1 ORDER BY id LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    if (!demo) return null;
+    const ra = (await sequelize.query(
+      "SELECT id FROM users WHERE restaurant_id = :r AND role = 'Restaurant Admin' LIMIT 1",
+      { replacements: { r: demo.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    const cat = (await sequelize.query('SELECT name FROM categories WHERE restaurant_id = :r LIMIT 1',
+      { replacements: { r: demo.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    if (!ra || !cat || !process.env.JWT_SECRET) return null;
+    return {
+      demoId: demo.id, raId: ra.id, catName: cat.name,
+      auth: { Authorization: `Bearer ${jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` },
+    };
+  }
+
+  /** 발주 1건 생성(system_admin 판매자 = 계약 불필요) → shipped 로 올려 수령 가능 상태. */
+  async function makeCashPo(fx, { stock = 0, qty = 3, price = 5 } = {}) {
+    const { Product, PurchaseOrder } = require('../models');
+    const prod = await Product.create({
+      restaurant_id: fx.demoId, name: 'ZZ-HC-CASH-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      category: fx.catName, price: 9, is_active: true, current_stock: stock, stock_unit: 'pack',
+    });
+    const created = await request('POST', '/purchase-orders', {
+      seller_type: 'system_admin', seller_entity_id: null,
+      items: [{ product_id: prod.id, quantity_ordered: qty, unit: 'pack', unit_price: price, unit_conversion: 1 }],
+    }, fx.auth);
+    const poId = created.body && created.body.data && created.body.data.id;
+    if (poId) await PurchaseOrder.update({ status: 'shipped' }, { where: { id: poId } });
+    return { poId, prodId: prod.id, total: Number(created.body?.data?.total_amount) };
+  }
+
+  async function openCashShift(fx, float = 100) {
+    const { CashierShift } = require('../models');
+    return CashierShift.create({
+      restaurant_id: fx.demoId, status: 'open', opening_float: float, opened_at: new Date(),
+      opened_by_id: fx.raId, business_date: new Date().toISOString().slice(0, 10),
+    });
+  }
+
+  /** 시작 전 열린 시프트를 닫아 둔다(다른 테스트·이전 세션 잔재와 겹치면 시나리오가 성립하지 않는다). */
+  async function closeOpenShifts(demoId) {
+    const { CashierShift } = require('../models');
+    await CashierShift.update({ status: 'closed', closed_at: new Date() },
+      { where: { restaurant_id: demoId, status: 'open' } });
+  }
+
+  async function cleanCash(fx, made) {
+    const { Product, PurchaseOrder, PurchaseOrderItem, InventoryTransaction, CashierShift, CashMovement } = require('../models');
+    for (const id of made.pos || []) {
+      try { await CashMovement.destroy({ where: { purchase_order_id: id }, force: true }); } catch {}
+      try { await InventoryTransaction.destroy({ where: { purchase_order_id: id } }); } catch {}
+      try { await PurchaseOrderItem.destroy({ where: { purchase_order_id: id }, force: true }); } catch {}
+      try { await PurchaseOrder.destroy({ where: { id }, force: true }); } catch {}
+    }
+    for (const id of made.prods || []) {
+      try { await InventoryTransaction.destroy({ where: { product_id: id } }); } catch {}
+      try { await Product.destroy({ where: { id }, force: true }); } catch {}
+    }
+    for (const id of made.shifts || []) {
+      try { await CashMovement.destroy({ where: { shift_id: id }, force: true }); } catch {}
+      try { await require('../models').CashReconciliation.destroy({ where: { shift_id: id }, force: true }); } catch {}
+      try { await CashierShift.destroy({ where: { id }, force: true }); } catch {}
+    }
+  }
+
+  test('cash', '현금 결제 → 드로어 출금 1행 · 양쪽 참조 · 재결제 409', async () => {
+    const { sequelize } = require('../config/database');
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    try {
+      await closeOpenShifts(fx.demoId);
+      const shift = await openCashShift(fx); made.shifts.push(shift.id);
+      const po = await makeCashPo(fx); made.pos.push(po.poId); made.prods.push(po.prodId);
+      const r = await request('POST', `/purchase-orders/${po.poId}/pay`, { payment_method: 'cash' }, fx.auth);
+      if (r.status !== 200) { console.log(c.gray(`      (결제 실패 ${r.status} ${JSON.stringify(r.body).slice(0,140)})`)); return false; }
+      const movs = await sequelize.query(
+        'SELECT id, type, amount, source, shift_id FROM cash_movements WHERE purchase_order_id = :p',
+        { replacements: { p: po.poId }, type: sequelize.QueryTypes.SELECT });
+      const poRow = (await sequelize.query('SELECT payment_status, payment_method, cash_movement_id FROM purchase_orders WHERE id = :i',
+        { replacements: { i: po.poId }, type: sequelize.QueryTypes.SELECT }))[0];
+      if (movs.length !== 1 || movs[0].type !== 'out' || movs[0].source !== 'purchase_order' || movs[0].shift_id !== shift.id) {
+        console.log(c.gray(`      (이동이 계약과 다르다: ${JSON.stringify(movs)})`)); return false;
+      }
+      if (Math.abs(Number(movs[0].amount) - po.total) > 0.001) { console.log(c.gray(`      (금액 ${movs[0].amount} vs 발주 ${po.total})`)); return false; }
+      if (poRow.cash_movement_id !== movs[0].id || poRow.payment_status !== 'paid' || poRow.payment_method !== 'cash') {
+        console.log(c.gray(`      (발주 기록이 계약과 다르다: ${JSON.stringify(poRow)})`)); return false;
+      }
+      // 두 번 내면 드로어에서 두 번 빠진다 — 막혀야 한다
+      const again = await request('POST', `/purchase-orders/${po.poId}/pay`, { payment_method: 'cash' }, fx.auth);
+      const movs2 = await sequelize.query('SELECT id FROM cash_movements WHERE purchase_order_id = :p',
+        { replacements: { p: po.poId }, type: sequelize.QueryTypes.SELECT });
+      return again.status === 409 && movs2.length === 1;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); }
+  });
+
+  test('cash', '열린 시프트 0개 → 결제 기록만 · 이동 0 / 2개 이상 → 400 · 기록 0', async () => {
+    const { sequelize } = require('../config/database');
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    try {
+      await closeOpenShifts(fx.demoId);
+      // ① 시프트 없음 — 막지 않고 기록만, 안내 플래그
+      const a = await makeCashPo(fx); made.pos.push(a.poId); made.prods.push(a.prodId);
+      const r0 = await request('POST', `/purchase-orders/${a.poId}/pay`, { payment_method: 'cash' }, fx.auth);
+      const m0 = await sequelize.query('SELECT id FROM cash_movements WHERE purchase_order_id = :p',
+        { replacements: { p: a.poId }, type: sequelize.QueryTypes.SELECT });
+      const p0 = (await sequelize.query('SELECT payment_status, cash_movement_id FROM purchase_orders WHERE id = :i',
+        { replacements: { i: a.poId }, type: sequelize.QueryTypes.SELECT }))[0];
+      if (!(r0.status === 200 && r0.body.drawerSkipped === true && m0.length === 0 && p0.payment_status === 'paid' && p0.cash_movement_id === null)) {
+        console.log(c.gray(`      (시프트 0 계약 위반: ${r0.status} skipped=${r0.body && r0.body.drawerSkipped} 이동 ${m0.length})`)); return false;
+      }
+      // ② 시프트 2개 — 임의 선택 금지. 거절하고 아무것도 기록하지 않아야 한다
+      const s1 = await openCashShift(fx); made.shifts.push(s1.id);
+      const s2 = await openCashShift(fx); made.shifts.push(s2.id);
+      const b = await makeCashPo(fx); made.pos.push(b.poId); made.prods.push(b.prodId);
+      const r2 = await request('POST', `/purchase-orders/${b.poId}/pay`, { payment_method: 'cash' }, fx.auth);
+      const m2 = await sequelize.query('SELECT id FROM cash_movements WHERE purchase_order_id = :p',
+        { replacements: { p: b.poId }, type: sequelize.QueryTypes.SELECT });
+      const p2 = (await sequelize.query('SELECT payment_status FROM purchase_orders WHERE id = :i',
+        { replacements: { i: b.poId }, type: sequelize.QueryTypes.SELECT }))[0];
+      if (!(r2.status === 400 && r2.body.code === 'MULTIPLE_OPEN_SHIFTS' && m2.length === 0 && p2.payment_status === 'unpaid')) {
+        console.log(c.gray(`      (시프트 2개 계약 위반: ${r2.status} ${r2.body && r2.body.code} 이동 ${m2.length} 상태 ${p2.payment_status})`)); return false;
+      }
+      return true;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); }
+  });
+
+  test('cash', '계좌이체·BG 구매자는 드로어를 건드리지 않는다', async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    try {
+      await closeOpenShifts(fx.demoId);
+      const shift = await openCashShift(fx); made.shifts.push(shift.id);
+      const a = await makeCashPo(fx); made.pos.push(a.poId); made.prods.push(a.prodId);
+      const r1 = await request('POST', `/purchase-orders/${a.poId}/pay`, { payment_method: 'bank_transfer' }, fx.auth);
+      const m1 = await sequelize.query('SELECT id FROM cash_movements WHERE purchase_order_id = :p',
+        { replacements: { p: a.poId }, type: sequelize.QueryTypes.SELECT });
+      if (!(r1.status === 200 && m1.length === 0)) { console.log(c.gray(`      (계좌이체가 드로어를 건드렸다: ${r1.status} 이동 ${m1.length})`)); return false; }
+
+      // BG 구매자 — 드로어 자체가 없다
+      const { PurchaseOrder } = require('../models');
+      const bgUser = (await sequelize.query("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1",
+        { type: sequelize.QueryTypes.SELECT }))[0];
+      const brand = bgUser && (await sequelize.query('SELECT id FROM brands WHERE owner_id = :o LIMIT 1',
+        { replacements: { o: bgUser.id }, type: sequelize.QueryTypes.SELECT }))[0];
+      if (!bgUser || !brand) { console.log(c.gray('      (BG 부분 건너뜀: 데모 BG 없음)')); return true; }
+      const bgAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: bgUser.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+      const bgPo = await PurchaseOrder.create({
+        po_number: 'ZZ-HC-CASH-BG-' + (Date.now() % 1000000), entity_type: 'brand', entity_id: brand.id,
+        seller_type: 'system_admin', seller_entity_id: null, status: 'shipped',
+        subtotal: 20, tax_amount: 0, total_amount: 20, currency: 'MYR', created_by_user_id: bgUser.id,
+      });
+      made.pos.push(bgPo.id);
+      const r2 = await request('POST', `/purchase-orders/${bgPo.id}/pay?entity_type=brand&entity_id=${brand.id}`,
+        { payment_method: 'cash' }, bgAuth);
+      const m2 = await sequelize.query('SELECT id FROM cash_movements WHERE purchase_order_id = :p',
+        { replacements: { p: bgPo.id }, type: sequelize.QueryTypes.SELECT });
+      return r2.status === 200 && m2.length === 0;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); }
+  });
+
+  test('cash', 'receive-and-pay 는 한 트랜잭션 — 결제 실패면 재고도 안 들어온다', async () => {
+    const { sequelize } = require('../config/database');
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    try {
+      await closeOpenShifts(fx.demoId);
+      const shift = await openCashShift(fx); made.shifts.push(shift.id);
+      // ① 정상 — 재고 1 → 7, received/paid, 출금 1행
+      const a = await makeCashPo(fx, { stock: 1, qty: 6, price: 2 }); made.pos.push(a.poId); made.prods.push(a.prodId);
+      const r1 = await request('POST', `/purchase-orders/${a.poId}/receive-and-pay`, { payment_method: 'cash' }, fx.auth);
+      const st1 = (await sequelize.query('SELECT current_stock FROM products WHERE id = :i',
+        { replacements: { i: a.prodId }, type: sequelize.QueryTypes.SELECT }))[0];
+      const p1 = (await sequelize.query('SELECT status, payment_status FROM purchase_orders WHERE id = :i',
+        { replacements: { i: a.poId }, type: sequelize.QueryTypes.SELECT }))[0];
+      const m1 = await sequelize.query('SELECT id FROM cash_movements WHERE purchase_order_id = :p',
+        { replacements: { p: a.poId }, type: sequelize.QueryTypes.SELECT });
+      if (!(r1.status === 200 && Math.abs(Number(st1.current_stock) - 7) < 0.001 && p1.status === 'received' && p1.payment_status === 'paid' && m1.length === 1)) {
+        console.log(c.gray(`      (정상 경로 위반: ${r1.status} 재고 ${st1.current_stock} ${p1.status}/${p1.payment_status} 이동 ${m1.length})`)); return false;
+      }
+      // ② 결제가 실패하면 **수령까지 롤백**돼야 한다 — 이 라우트가 존재하는 이유다
+      const b = await makeCashPo(fx, { stock: 1, qty: 6, price: 2 }); made.pos.push(b.poId); made.prods.push(b.prodId);
+      const r2 = await request('POST', `/purchase-orders/${b.poId}/receive-and-pay`, { payment_method: 'not_a_method' }, fx.auth);
+      const st2 = (await sequelize.query('SELECT current_stock FROM products WHERE id = :i',
+        { replacements: { i: b.prodId }, type: sequelize.QueryTypes.SELECT }))[0];
+      const p2 = (await sequelize.query('SELECT status, payment_status FROM purchase_orders WHERE id = :i',
+        { replacements: { i: b.poId }, type: sequelize.QueryTypes.SELECT }))[0];
+      const led2 = (await sequelize.query('SELECT COUNT(*) c FROM inventory_transactions WHERE purchase_order_id = :p',
+        { replacements: { p: b.poId }, type: sequelize.QueryTypes.SELECT }))[0];
+      if (!(r2.status === 400 && Math.abs(Number(st2.current_stock) - 1) < 0.001 && p2.status === 'shipped' && p2.payment_status === 'unpaid' && Number(led2.c) === 0)) {
+        console.log(c.gray(`      (롤백 안 됨: ${r2.status} 재고 ${st2.current_stock} ${p2.status}/${p2.payment_status} 원장 ${led2.c})`)); return false;
+      }
+      return true;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); }
+  });
+
+  test('cash', '결제취소는 삭제가 아니라 반대 이동 — 수령 상태·재고는 그대로 / 재호출·미결제 409', async () => {
+    const { sequelize } = require('../config/database');
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    try {
+      await closeOpenShifts(fx.demoId);
+      const shift = await openCashShift(fx); made.shifts.push(shift.id);
+      const a = await makeCashPo(fx, { stock: 1, qty: 6, price: 2 }); made.pos.push(a.poId); made.prods.push(a.prodId);
+      await request('POST', `/purchase-orders/${a.poId}/receive-and-pay`, { payment_method: 'cash' }, fx.auth);
+      const r = await request('POST', `/purchase-orders/${a.poId}/refund-payment`, { reason: 'hc' }, fx.auth);
+      const movs = await sequelize.query('SELECT type, amount FROM cash_movements WHERE purchase_order_id = :p ORDER BY id',
+        { replacements: { p: a.poId }, type: sequelize.QueryTypes.SELECT });
+      const row = (await sequelize.query('SELECT status, payment_status FROM purchase_orders WHERE id = :i',
+        { replacements: { i: a.poId }, type: sequelize.QueryTypes.SELECT }))[0];
+      const st = (await sequelize.query('SELECT current_stock FROM products WHERE id = :i',
+        { replacements: { i: a.prodId }, type: sequelize.QueryTypes.SELECT }))[0];
+      const net = (await sequelize.query(
+        "SELECT SUM(CASE WHEN type='out' THEN -amount ELSE amount END) n FROM cash_movements WHERE purchase_order_id = :p",
+        { replacements: { p: a.poId }, type: sequelize.QueryTypes.SELECT }))[0];
+      if (!(r.status === 200 && movs.length === 2 && movs[0].type === 'out' && movs[1].type === 'in')) {
+        console.log(c.gray(`      (되돌리기가 반대 이동이 아니다: ${r.status} ${JSON.stringify(movs)})`)); return false;
+      }
+      // 결제만 되돌린다 — 수령 사실과 재고는 건드리지 않는다
+      if (!(row.payment_status === 'refunded' && row.status === 'received' && Math.abs(Number(st.current_stock) - 7) < 0.001)) {
+        console.log(c.gray(`      (수령/재고가 함께 되돌아갔다: ${row.status}/${row.payment_status} 재고 ${st.current_stock})`)); return false;
+      }
+      if (Math.abs(Number(net.n)) > 0.001) { console.log(c.gray(`      (드로어 순증감 ${net.n}, 기대 0)`)); return false; }
+
+      const again = await request('POST', `/purchase-orders/${a.poId}/refund-payment`, {}, fx.auth);
+      const b = await makeCashPo(fx); made.pos.push(b.poId); made.prods.push(b.prodId);
+      const unpaid = await request('POST', `/purchase-orders/${b.poId}/refund-payment`, {}, fx.auth);
+      return again.status === 409 && unpaid.status === 409;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); }
+  });
+
+  test('cash', '발주 취소 시 낸 돈이 드로어로 되돌아온다 (refunded)', async () => {
+    const { sequelize } = require('../config/database');
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    try {
+      await closeOpenShifts(fx.demoId);
+      const shift = await openCashShift(fx); made.shifts.push(shift.id);
+      const a = await makeCashPo(fx); made.pos.push(a.poId); made.prods.push(a.prodId);
+      await request('POST', `/purchase-orders/${a.poId}/pay`, { payment_method: 'cash' }, fx.auth);
+      // 취소 가능한 상태로 되돌린다(수령 전에 취소하는 실제 경로)
+      await sequelize.query("UPDATE purchase_orders SET status='submitted' WHERE id = :i", { replacements: { i: a.poId } });
+      const r = await request('POST', `/purchase-orders/${a.poId}/cancel`, { reason: 'hc' }, fx.auth);
+      const movs = await sequelize.query('SELECT type FROM cash_movements WHERE purchase_order_id = :p ORDER BY id',
+        { replacements: { p: a.poId }, type: sequelize.QueryTypes.SELECT });
+      const row = (await sequelize.query('SELECT payment_status FROM purchase_orders WHERE id = :i',
+        { replacements: { i: a.poId }, type: sequelize.QueryTypes.SELECT }))[0];
+      return r.status === 200 && movs.length === 2 && movs[1].type === 'in' && row.payment_status === 'refunded';
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); }
+  });
+
+  test('cash', '발주 결제 이동은 직원이 수정·삭제할 수 없다 (시스템 감사기록)', async () => {
+    const { sequelize } = require('../config/database');
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    try {
+      await closeOpenShifts(fx.demoId);
+      const shift = await openCashShift(fx); made.shifts.push(shift.id);
+      const a = await makeCashPo(fx); made.pos.push(a.poId); made.prods.push(a.prodId);
+      await request('POST', `/purchase-orders/${a.poId}/pay`, { payment_method: 'cash' }, fx.auth);
+      const mv = (await sequelize.query('SELECT id FROM cash_movements WHERE purchase_order_id = :p LIMIT 1',
+        { replacements: { p: a.poId }, type: sequelize.QueryTypes.SELECT }))[0];
+      if (!mv) { console.log(c.gray('      (이동이 없어 검사 불가)')); return false; }
+      const del = await request('DELETE', `/cash/restaurant/${fx.demoId}/movement/${mv.id}`, null, fx.auth);
+      const put = await request('PUT', `/cash/restaurant/${fx.demoId}/movement/${mv.id}`, { amount: 1 }, fx.auth);
+      const still = await sequelize.query('SELECT id, amount FROM cash_movements WHERE id = :i',
+        { replacements: { i: mv.id }, type: sequelize.QueryTypes.SELECT });
+      return del.status === 400 && put.status === 400 && still.length === 1;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); }
+  });
+
+  // 이 계약이 P4 의 핵심이다: 마감 기대금액 공식을 **건드리지 않았는데도**
+  // 발주 현금결제가 그 공식에 잡히고, 되돌리면 원래대로 돌아온다.
+  // (공식 = 개시시재 + 현금매출 + Σin − Σout, routes/cash-management.js. 여기서는 그 라우트를 실제로 부른다.)
+  test('cash', '마감 기대금액: 발주 현금결제만큼 줄고, 결제취소하면 원래대로', async () => {
+    const { sequelize } = require('../config/database');
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    const FLOAT = 100;
+    try {
+      await closeOpenShifts(fx.demoId);
+
+      // ── ① 결제만 한 시프트 → 기대금액 = 개시 + 현금매출 − 결제액
+      const s1 = await openCashShift(fx, FLOAT); made.shifts.push(s1.id);
+      const a = await makeCashPo(fx); made.pos.push(a.poId); made.prods.push(a.prodId);
+      const pay = await request('POST', `/purchase-orders/${a.poId}/pay`, { payment_method: 'cash' }, fx.auth);
+      if (pay.status !== 200) { console.log(c.gray(`      (결제 실패 ${pay.status})`)); return false; }
+      const rec1 = await request('POST', `/cash/restaurant/${fx.demoId}/shift/${s1.id}/reconcile`, { cash_counted: 0, actual: {} }, fx.auth);
+      if (rec1.status !== 200) { console.log(c.gray(`      (마감 실패 ${rec1.status} ${JSON.stringify(rec1.body).slice(0,140)})`)); return false; }
+      const expected1 = FLOAT + Number(rec1.body.expected.cash) - a.total;
+      if (Math.abs(Number(rec1.body.expectedCashInDrawer) - expected1) > 0.011) {
+        console.log(c.gray(`      (기대금액 ${rec1.body.expectedCashInDrawer}, 계약 ${expected1} = ${FLOAT} + 매출 ${rec1.body.expected.cash} − 결제 ${a.total})`));
+        return false;
+      }
+
+      // ── ② 결제 후 되돌린 시프트 → 기대금액 = 개시 + 현금매출 (순증감 0)
+      await closeOpenShifts(fx.demoId);
+      const s2 = await openCashShift(fx, FLOAT); made.shifts.push(s2.id);
+      const b = await makeCashPo(fx); made.pos.push(b.poId); made.prods.push(b.prodId);
+      const pay2 = await request('POST', `/purchase-orders/${b.poId}/pay`, { payment_method: 'cash' }, fx.auth);
+      const ref = await request('POST', `/purchase-orders/${b.poId}/refund-payment`, { reason: 'hc' }, fx.auth);
+      if (pay2.status !== 200 || ref.status !== 200) { console.log(c.gray(`      (결제/취소 실패 ${pay2.status}/${ref.status})`)); return false; }
+      const rec2 = await request('POST', `/cash/restaurant/${fx.demoId}/shift/${s2.id}/reconcile`, { cash_counted: 0, actual: {} }, fx.auth);
+      if (rec2.status !== 200) { console.log(c.gray(`      (마감 실패 ${rec2.status})`)); return false; }
+      const expected2 = FLOAT + Number(rec2.body.expected.cash);
+      if (Math.abs(Number(rec2.body.expectedCashInDrawer) - expected2) > 0.011) {
+        console.log(c.gray(`      (되돌린 뒤 기대금액 ${rec2.body.expectedCashInDrawer}, 계약 ${expected2} — 되돌리기가 공식에 안 잡혔다)`));
+        return false;
+      }
+      return true;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); }
+  });
+
   test('payment', '없는 주문 create-payment-intent → 404', async () => {
     return (await request('POST', '/orders/99999999/create-payment-intent', {})).status === 404;
   });
