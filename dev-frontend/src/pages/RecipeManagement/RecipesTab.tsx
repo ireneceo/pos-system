@@ -1376,52 +1376,51 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
 
   // What and Why: 레시피 목록 CSV 내려받기.
   // - 화면에 보이는 것(검색·분류 필터·정렬 적용)만 내보낸다 — 사용자가 본 것과 파일이 일치해야 한다.
-  // - 재료 단위로 한 줄씩 펼친다(레시피 열은 반복). 엑셀에서 피벗·필터가 바로 되는 형태.
-  // - 재료가 없는 레시피도 한 줄은 남긴다 — 안 그러면 목록에서 조용히 사라진다.
+  // - **레시피 1건 = 1줄.** 예전에는 "재료 1건 = 1줄"이라 레시피 열이 반복됐고,
+  //   그 구조에는 조리법이 들어갈 자리가 없어 **조리법이 아예 빠져 있었다**(2026-09-02 Irene 지적).
+  // - 재료는 한 칸에 `이름 수량단위; …` 로 모은다. 원가·코드·기준수량 열은 뺐다(필요한 것만).
+  // - 셀 안 줄바꿈은 ` | ` 로 바꾼다 — 엑셀에서 칸이 밀리는 것을 막는다.
   const handleDownloadCSV = () => {
     const headers = [
-      'Recipe Code', 'Recipe Name', 'Category', 'Owner', 'Active',
+      'Recipe Code', 'Recipe Name', 'Category', 'Active',
       'Yield Amount', 'Yield Unit', 'Prep Time (min)', 'Cook Time (min)',
       'Recipe Cost', 'Suggested Price',
-      'Ingredient Code', 'Ingredient Name', 'Quantity', 'Unit',
-      'Ingredient Unit Cost', 'Ingredient Base Qty', 'Line Cost', 'Notes'
+      'Recipe Summary', 'Instructions', 'Ingredients'
     ];
     // 숫자는 통화기호 없이 숫자만 — 엑셀에서 바로 계산되게.
     const num = (v: any) => (v === null || v === undefined || v === '' ? '' : Number(v));
+    // 줄바꿈이 셀을 깨뜨리지 않게 한 줄로 편다.
+    const flat = (v: string | null | undefined) =>
+      (v || '').replace(/\r\n|\r|\n/g, ' | ').replace(/\s+/g, ' ').trim();
     const lines = [toCSVRow(headers)];
 
     filteredRecipes.forEach(recipe => {
-      const base = [
+      const ingredients = (recipe.recipeIngredients || [])
+        .map(ri => {
+          const name = ri.ingredient?.name || '';
+          const qty = ri.quantity === null || ri.quantity === undefined ? '' : ri.quantity;
+          const unit = ri.unit || ri.ingredient?.unit || '';
+          return name ? `${name} ${qty}${unit}`.trim() : '';
+        })
+        .filter(Boolean)
+        .join('; ');
+
+      lines.push(toCSVRow([
         recipe.code || '',
         recipe.name,
         recipe.recipeCategory?.name || recipe.category || '',
-        recipe.owner_type === 'brand' ? 'Brand' : 'Restaurant',
         recipe.is_active ? 'Y' : 'N',
         num(recipe.yield_amount),
         recipe.yield_unit || '',
         num(recipe.prep_time),
         num(recipe.cook_time),
         num(recipe.effective_ingredient_cost ?? recipe.total_ingredient_cost),
-        num(recipe.suggested_price)
-      ];
-      const items = recipe.recipeIngredients || [];
-      if (items.length === 0) {
-        lines.push(toCSVRow([...base, '', '', '', '', '', '', '', '']));
-        return;
-      }
-      items.forEach(ri => {
-        lines.push(toCSVRow([
-          ...base,
-          ri.ingredient?.code || '',
-          ri.ingredient?.name || '',
-          num(ri.quantity),
-          ri.unit || ri.ingredient?.unit || '',
-          num(ri.ingredient?.effective_cost ?? ri.ingredient?.unit_cost),
-          num(ri.ingredient?.base_quantity),
-          num(ri.effective_cost ?? ri.cost),
-          ri.notes || ''
-        ]));
-      });
+        num(recipe.suggested_price),
+        flat(recipe.instructions_summary),
+        // 상세 조리법이 비어 있으면 옛 데이터의 instructions 로 폴백(화면과 같은 규칙)
+        flat(recipe.instructions_detail || recipe.instructions),
+        ingredients
+      ]));
     });
 
     const scope = (user?.role === 'Brand General' || user?.role === 'Brand Manager') ? 'brand' : 'restaurant';
