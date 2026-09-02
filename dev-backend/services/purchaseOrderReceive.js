@@ -193,4 +193,39 @@ async function applyReceipt({
   });
 }
 
-module.exports = { applyReceipt, receiveIntoProduct, receiveIntoProductIngredient, receiveIntoIngredient };
+/**
+ * 발주 **전량 수령 처리** — 라인 재고 반영 + 상태·시각·tracking 갱신까지 한 묶음.
+ *
+ * `mark-received` 와 `receive-and-pay` 가 **같은 절차**를 쓴다(P4-3).
+ * 재고 반영만 공유하고 "전량 수령 처리" 절차를 각자 적으면, P4-2 가 없앤 것과 같은
+ * 갈라짐이 그대로 다시 생긴다 — 다음에 mark-received 에 무언가 더할 때 조용히 어긋난다.
+ *
+ * 알림 발사는 **여기서 하지 않는다** — 커밋 뒤 non-blocking 이어야 하므로 라우트가 한다.
+ *
+ * @returns {{ok:true}} | {{ok:false, message:string}}  (400 으로 끊어야 하는 경우만 ok:false)
+ */
+async function markAllReceived(po, { userId, note, trackingSource }, t) {
+  const { PurchaseOrderItem } = require('../models');
+  const { appendTrackingEvent } = require('./poRealtimeService');
+  const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, transaction: t });
+  for (const item of items) {
+    const r = await applyReceipt({
+      item, po,
+      quantity: parseFloat(item.quantity_ordered) || 0,
+      userId, t, note,
+      // 이 라우트는 원래 재료 행을 잠그지 않았다 — 임의로 잠그면 동작 변경이다(P4-2 참조).
+      lockIngredient: false,
+    });
+    // 프로덕트 소유권 실패만 끊는다. 타깃 행이 사라진 라인은 예전처럼 건너뛴다 —
+    // 여기서 막으면 옛 발주의 수령이 통째로 불가능해진다.
+    if (!r.ok && !r.missingIngredient) return { ok: false, message: r.message };
+  }
+  const now = new Date();
+  const tracking = appendTrackingEvent(po, 'received', null, { source: trackingSource });
+  await po.update({
+    status: 'received', received_at: now, actual_delivery_date: now, tracking_info: tracking
+  }, { transaction: t });
+  return { ok: true };
+}
+
+module.exports = { applyReceipt, markAllReceived, receiveIntoProduct, receiveIntoProductIngredient, receiveIntoIngredient };

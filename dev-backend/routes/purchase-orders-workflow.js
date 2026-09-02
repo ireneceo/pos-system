@@ -39,7 +39,9 @@ const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeServ
 const { isApprovalRequiredForRestaurant, applySubmitGate } = require('../utils/poOwnerApproval');
 const { fireSellerSubmittedNotification, fireOwnerApprovalPendingNotification, fireBuyerConfirmNotification, fireBuyerReceivedNotification } = require('../services/poNotifications');
 // 수령 시 재고 반영 단일 소스 — /receive 와 mark-received 가 같은 함수를 쓴다(P4-2, 복제 금지)
-const { applyReceipt, receiveIntoProduct } = require('../services/purchaseOrderReceive');
+const { applyReceipt, markAllReceived } = require('../services/purchaseOrderReceive');
+// 결제·되돌리기 단일 소스 (P4-3) — 발주 행 기록 + 현금이면 드로어 이동. 마감 공식은 자동으로 잡는다.
+const { recordPayment, reversePayment } = require('../services/purchaseOrderPayment');
 
 // Path-level guards so unrelated /api/* fall-throughs aren't blocked by buyer-role.
 router.use('/purchase-orders', authenticateToken, requireBuyerRole);
@@ -488,6 +490,132 @@ router.post('/purchase-orders/:id/upload-invoice', async (req, res) => {
 });
 
 // ============================================
+// ─────────────────────────────────────────────────────────────────────────────
+// 결제 (P4-3) — 설계 docs/PURCHASE_ORDER_SYSTEM.md §5-3
+// 결제 사실은 **발주 행**에 남고, 현금이면 그 시프트 드로어에서 나간다.
+// 마감 기대금액 공식은 손대지 않는다 — 그 공식이 source 를 안 보고 시프트로만 묶기 때문에
+// 여기서 만든 이동이 자동으로 잡힌다(cash-management.js:258).
+// ─────────────────────────────────────────────────────────────────────────────
+
+// POST /api/purchase-orders/:id/pay — 이미 받은(또는 아직 안 받은) 발주의 결제만 기록
+router.post('/purchase-orders/:id/pay', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    const method = req.body && req.body.payment_method;
+    const result = await database.sequelize.transaction(async (t) => {
+      const po = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!po) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkPOOwnership(po, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      // 취소된 발주에 돈을 기록하지 않는다(되돌릴 대상이 없는 돈이 생긴다)
+      if (po.status === 'cancelled') { const e = new Error('Cannot pay a cancelled purchase order'); e.code = 'BAD_STATUS'; throw e; }
+      return recordPayment(po, {
+        method,
+        userId: req.user && req.user.id,
+        reason: req.body && req.body.reason ? sanitizeString(String(req.body.reason)).slice(0, 255) : null,
+      }, t);
+    });
+    res.json({
+      success: true,
+      data: result.po,
+      ...(result.movement ? { cash_movement_id: result.movement.id } : {}),
+      ...(result.drawerSkipped ? { drawerSkipped: true } : {}),
+    });
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    if (err.statusCode) return res.status(err.statusCode).json({ success: false, code: err.code, message: err.message });
+    if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, code: err.code, message: err.message });
+    console.error('POST /api/purchase-orders/:id/pay error:', err);
+    res.status(500).json({ success: false, message: 'Failed to record payment' });
+  }
+});
+
+// POST /api/purchase-orders/:id/refund-payment — **명시 결제취소**(발주 상태는 건드리지 않는다).
+// 왜 필요한가: 주 결제 순간은 `receive-and-pay`(받으면서 지불)인데, 수령 뒤에는 발주 취소가
+// 불가능하다(cancel 은 draft/submitted/pending_approval 만). 그래서 이 라우트가 없으면
+// **가장 흔한 결제를 잘못 눌러도 되돌릴 길이 없다** — 드로어 out 만 남고 발주는 paid 로 굳는다.
+// 되돌리기는 삭제가 아니라 반대 방향 `in` 이동이다(설계 §5-3, 감사 기록 보존).
+router.post('/purchase-orders/:id/refund-payment', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    const result = await database.sequelize.transaction(async (t) => {
+      const po = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!po) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkPOOwnership(po, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (po.payment_status !== 'paid') {
+        const e = new Error('This purchase order is not paid'); e.code = 'NOT_PAID'; e.statusCode = 409; throw e;
+      }
+      return reversePayment(po, {
+        userId: req.user && req.user.id,
+        reason: req.body && req.body.reason ? sanitizeString(String(req.body.reason)).slice(0, 255) : null,
+      }, t);
+    });
+    res.json({
+      success: true,
+      data: result.po,
+      ...(result.movement ? { cash_movement_id: result.movement.id } : {}),
+      ...(result.drawerSkipped ? { drawerSkipped: true } : {}),
+    });
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    if (err.statusCode) return res.status(err.statusCode).json({ success: false, code: err.code, message: err.message });
+    console.error('POST /api/purchase-orders/:id/refund-payment error:', err);
+    res.status(500).json({ success: false, message: 'Failed to reverse payment' });
+  }
+});
+
+// POST /api/purchase-orders/:id/receive-and-pay — 수령 + 결제를 **한 트랜잭션**으로.
+// 프론트가 receive 다음 pay 를 따로 부르면 중간 실패 때 "받았는데 미결제"가 남는다(설계 §5-3).
+// 수령 본체는 mark-received 와 **같은 applyReceipt** 를 쓴다 — 복제 금지.
+router.post('/purchase-orders/:id/receive-and-pay', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    const method = req.body && req.body.payment_method;
+    const result = await database.sequelize.transaction(async (t) => {
+      const po = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!po) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkPOOwnership(po, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!RECEIVABLE_STATUSES.includes(po.status)) {
+        const e = new Error(po.status === 'pending_approval'
+          ? 'Purchase order is awaiting Owner approval'
+          : `Cannot receive a ${po.status} purchase order`);
+        e.code = 'BAD_STATUS'; throw e;
+      }
+
+      // 수령 절차는 mark-received 와 **같은 함수**를 쓴다(복제 금지 — P4-3 Fable 지적)
+      const rcv = await markAllReceived(po, {
+        userId: req.user.id,
+        note: `PO ${po.po_number} receive-and-pay`,
+        trackingSource: 'receive_and_pay_action',
+      }, t);
+      if (!rcv.ok) { const e = new Error(rcv.message); e.code = 'BAD_STATUS'; throw e; }
+
+      // 결제가 실패하면 수령도 통째로 롤백된다 — 그게 이 라우트가 존재하는 이유다.
+      return recordPayment(po, {
+        method,
+        userId: req.user && req.user.id,
+        reason: req.body && req.body.reason ? sanitizeString(String(req.body.reason)).slice(0, 255) : null,
+      }, t);
+    });
+    // 수령 사실을 판매자에게 알린다(mark-received 와 같은 규칙 — non-blocking)
+    setImmediate(() => fireBuyerReceivedNotification(result.po));
+    res.json({
+      success: true,
+      data: result.po,
+      ...(result.movement ? { cash_movement_id: result.movement.id } : {}),
+      ...(result.drawerSkipped ? { drawerSkipped: true } : {}),
+    });
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    if (err.statusCode) return res.status(err.statusCode).json({ success: false, code: err.code, message: err.message });
+    if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, code: err.code, message: err.message });
+    console.error('POST /api/purchase-orders/:id/receive-and-pay error:', err);
+    res.status(500).json({ success: false, message: 'Failed to receive and pay' });
+  }
+});
+
 // POST /api/purchase-orders/:id/mark-received — 수령 완료 (간단 마킹, /receive 의 lite 버전)
 //   /receive 는 품목별 수량 검증 + GeneralStock 업데이트가 있어 무거움. 단순 수령 확인용.
 // ============================================
@@ -512,32 +640,17 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
       });
     }
 
-    // Stock 흐름 — 재고 반영은 **services/purchaseOrderReceive.applyReceipt 단일 소스**를 쓴다(P4-2).
-    // 정식 /receive 의 lite 버전: split (damaged/short 등) 없이 quantity_ordered 전량 정상 수령으로 처리.
-    //   ⚠ 재료 행을 잠그지 않는다(lockIngredient: false) — 이 라우트는 원래 안 잠갔다.
-    //     여기서 임의로 잠그면 그건 추출이 아니라 동작 변경이다.
-    const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, transaction: t });
-    for (const item of items) {
-      const r = await applyReceipt({
-        item, po,
-        quantity: parseFloat(item.quantity_ordered) || 0,
-        userId: req.user.id, t,
-        note: `PO ${po.po_number} mark-received`,
-        lockIngredient: false,
-      });
-      // 프로덕트 타깃의 소유권 실패만 400 으로 돌린다(추출 전과 동일). 재료·재고아이템이
-      // 없어진 경우는 예전처럼 건너뛴다 — 여기서 막으면 옛 발주의 수령이 통째로 불가능해진다.
-      if (!r.ok && !r.missingIngredient) {
-        await t.rollback();
-        return res.status(400).json({ success: false, message: r.message });
-      }
+    // 전량 수령 처리(라인 재고 반영 + 상태·시각·tracking)는 **services 단일 소스**를 쓴다(P4-3).
+    // receive-and-pay 도 같은 함수를 부른다 — 절차를 두 벌로 적으면 다음에 한쪽만 바뀐다.
+    const rcv = await markAllReceived(po, {
+      userId: req.user.id,
+      note: `PO ${po.po_number} mark-received`,
+      trackingSource: 'mark_received_action',
+    }, t);
+    if (!rcv.ok) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: rcv.message });
     }
-
-    const now = new Date();
-    const newTracking = appendTrackingEvent(po, 'received', null, { source: 'mark_received_action' });
-    await po.update({
-      status: 'received', received_at: now, actual_delivery_date: now, tracking_info: newTracking
-    }, { transaction: t });
 
     await t.commit();
     // 2026-09-01(Q6): 구매자가 받았다는 사실을 판매자에게 알린다.
@@ -1044,6 +1157,7 @@ router.post('/purchase-orders/:id/cancel', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Purchase order not found' });
     }
     const reason = req.body.reason ? sanitizeString(String(req.body.reason)) : null;
+    let cancelDrawerSkipped = false;   // 열린 시프트가 없어 드로어로 되돌리지 못한 경우 안내용
     po = await database.sequelize.transaction(async (t) => {
       const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
@@ -1061,14 +1175,19 @@ router.post('/purchase-orders/:id/cancel', async (req, res) => {
         cancelled_reason: reason,
         tracking_info: tracking
       }, { transaction: t });
+      // 낸 돈이 있으면 되돌린다 — **삭제가 아니라 반대 방향 이동**(감사 기록 보존, P4-3).
+      // 안 낸 발주면 noop 이라 취소 흐름 자체는 그대로다.
+      const rev = await reversePayment(locked, { userId: req.user && req.user.id, reason: `Cancelled PO ${locked.po_number}` }, t);
+      if (rev.drawerSkipped) cancelDrawerSkipped = true;
       return locked;
     });
     emitPoEvent(req, po, 'seller-order-updated');
 
-    res.json({ success: true, data: po });
+    res.json({ success: true, data: po, ...(cancelDrawerSkipped ? { drawerSkipped: true } : {}) });
   } catch (err) {
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Purchase order not found' });
     if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
+    if (err.code === 'MULTIPLE_OPEN_SHIFTS') return res.status(400).json({ success: false, code: err.code, message: err.message });
     console.error('POST /api/purchase-orders/:id/cancel error:', err);
     res.status(500).json({ success: false, message: 'Failed to cancel purchase order' });
   }

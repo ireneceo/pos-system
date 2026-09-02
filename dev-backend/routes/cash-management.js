@@ -444,7 +444,10 @@ router.put('/restaurant/:restaurantId/movement/:movementId', authenticateToken, 
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const mv = await CashMovement.findOne({ where: { id: req.params.movementId, restaurant_id: restaurantId } });
     if (!mv) return res.status(404).json({ success: false, message: 'Movement not found' });
-    if (mv.source === 'settlement') return res.status(400).json({ success: false, code: 'SETTLEMENT_LOCKED', message: 'Settlement adjustments cannot be edited.' });
+    // 시스템이 만든 이동(마감 차이 조정 · 발주 결제)은 직원이 고칠 수 없다 — 감사 기록이다.
+    // 2026-09-02(P4-3): 'settlement' 한 값만 보던 것을 "manual 이 아닌 전부"로 넓혔다.
+    // 값이 늘 때마다 여기를 고쳐야 하는 구조면 새 값이 조용히 무방비로 들어온다.
+    if (mv.source !== 'manual') return res.status(400).json({ success: false, code: 'SETTLEMENT_LOCKED', message: 'System-generated movements cannot be edited.' });
     const upd = {};
     if (req.body.type === 'in' || req.body.type === 'out') upd.type = req.body.type;
     if (req.body.amount != null) { const a = round2(req.body.amount); if (!(a > 0)) return res.status(400).json({ success: false, code: 'INVALID_MOVEMENT', message: 'amount must be > 0' }); upd.amount = a; }
@@ -460,7 +463,7 @@ router.delete('/restaurant/:restaurantId/movement/:movementId', authenticateToke
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const mv = await CashMovement.findOne({ where: { id: req.params.movementId, restaurant_id: restaurantId } });
     if (!mv) return res.status(404).json({ success: false, message: 'Movement not found' });
-    if (mv.source === 'settlement') return res.status(400).json({ success: false, code: 'SETTLEMENT_LOCKED', message: 'Settlement adjustments cannot be deleted.' });
+    if (mv.source !== 'manual') return res.status(400).json({ success: false, code: 'SETTLEMENT_LOCKED', message: 'System-generated movements cannot be deleted.' });
     await mv.destroy();
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
