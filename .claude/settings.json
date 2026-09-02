@@ -2,7 +2,25 @@
   "permissions": {
     "allow": [
       "Bash(pm2 logs:*)",
-      "Bash(wc -l /var/www/dev-frontend/public/locales/*/contract.json)"
+      "Bash(wc -l /var/www/dev-frontend/public/locales/*/contract.json)",
+      "Bash(node scripts/verify-all.js)",
+      "Bash(node scripts/verify-all.js --full)",
+      "Bash(node scripts/check-sensitive-diff.js)",
+      "Bash(node scripts/check-print-guard.js)",
+      "Bash(node scripts/check-design-guard.js)",
+      "Bash(node scripts/check-migration-registry.js)",
+      "Bash(node scripts/check-dead-handlers.js)",
+      "Bash(node scripts/inspection/run.js)",
+      "Bash(node dev-backend/scripts/fable-gate.js status)",
+      "Bash(node scripts/health-check.js)",
+      "Bash(node scripts/health-check.js --category=inventory)",
+      "Bash(node scripts/health-check.js --category=pos)",
+      "Bash(node scripts/health-check.js --category=print)",
+      "Bash(node scripts/health-check.js --category=security)",
+      "Bash(node scripts/health-check.js --category=auth)",
+      "Bash(node scripts/health-check.js --quiet)",
+      "Bash(npm run build:dev)",
+      "Bash(npm run i18n:verify)"
     ]
   }
 }
