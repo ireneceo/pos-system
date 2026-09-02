@@ -169,7 +169,10 @@
       "returns": "申请退货",
       "print": "打印",
       "whatsapp": "WhatsApp",
-      "email": "电子邮件"
+      "email": "电子邮件",
+      "receiveAndPay": "收货 + 付款",
+      "pay": "记录付款",
+      "refund": "撤销付款"
     },
     "noNotes": "无备注。",
     "returns": {
@@ -235,7 +238,8 @@
     "submitting": "提交中...",
     "close": "关闭",
     "cancel": "取消",
-    "confirm": "确认"
+    "confirm": "确认",
+    "ok": "确定"
   },
   "print": {
     "loading": "加载中…",
@@ -403,7 +407,13 @@
     "submitAllConfirm": {
       "title": "发送所有采购订单？",
       "desc": "{{count}} 张采购订单，合计 {{amount}}，将全部发送给供应商。此操作无法撤销。"
-    }
+    },
+    "receivableSection": "待收货",
+    "receiveAndPay": "收货 + 付款",
+    "receiveOnly": "仅收货",
+    "payOnly": "记录付款",
+    "refund": "撤销付款",
+    "unknownSeller": "供应商"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}：数量单位不一致 — 需手动输入",
@@ -444,5 +454,43 @@
   "newPo.viewCard": "卡片",
   "newPo.viewList": "列表",
   "newPo.brandStock": "品牌库存",
-  "newPo.brandNeedsLink": "品牌尚未为该项目关联供应商"
+  "newPo.brandNeedsLink": "品牌尚未为该项目关联供应商",
+  "pay": {
+    "title": {
+      "receiveAndPay": "收货并付款",
+      "receiveOnly": "仅收货（不付款）",
+      "pay": "记录付款",
+      "refund": "撤销此付款"
+    },
+    "method": {
+      "label": "付款方式",
+      "cash": "现金",
+      "bank": "银行转账",
+      "card": "刷卡",
+      "nonCashNote": "非现金付款仅记录在采购单上，不会动用钱箱。"
+    },
+    "effects": {
+      "title": "将会发生什么",
+      "stock": "库存按订购数量增加。",
+      "payment": "此采购单标记为已付款。",
+      "drawer": "从当前开启班次的钱箱中支出 RM {{amount}}。",
+      "refund": "生成一笔等额的现金收入记录——付款是被撤销而非删除。库存与收货记录不受影响。"
+    },
+    "error": {
+      "multipleShifts": "有多个班次处于开启状态——请先结束其中一个，再记录现金付款。",
+      "failed": "无法完成此操作。",
+      "network": "网络错误，请重试。"
+    },
+    "drawerSkipped": {
+      "title": "付款已记录——钱箱未更新",
+      "desc": "当前没有开启的班次，因此未记录为钱箱现金支出。"
+    },
+    "badge": {
+      "paid": "已付款",
+      "refunded": "付款已撤销"
+    },
+    "confirm": "确认",
+    "reason": "备注",
+    "reasonPlaceholder": "选填——将显示在现金流水中"
+  }
 }

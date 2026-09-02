@@ -10,6 +10,8 @@ import {
   FormGroup, FormLabel, FormTextArea, FormInput
 } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
+import ReceivePayModal, { ReceivePayMode } from '../../components/PurchaseOrders/ReceivePayModal';
+import ConfirmModal from '../../components/ConfirmModal';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
 import { formatQuantity, qtyStepForUnit } from '../../utils/unitConversion';
@@ -508,6 +510,9 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   const [receiveSubmitting, setReceiveSubmitting] = useState(false);
 
   const [cancelOpen, setCancelOpen] = useState(false);
+  // 결제 모달 (P4-5) — 되돌리기 어려운 3효과 확인창은 공용 부품이 맡는다(staging 과 같은 부품).
+  const [payModal, setPayModal] = useState<{ mode: ReceivePayMode } | null>(null);
+  const [payNotice, setPayNotice] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
@@ -957,8 +962,26 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   const renderActions = () => {
     if (!detail) return null;
     const s = detail.status;
+    const paid = (detail as any).payment_status === 'paid';
     return (
       <HeaderActions>
+        {/* 결제 (P4-5) — 받으면서 내는 것이 주 경로다. 이미 냈으면 되돌리기만 남긴다.
+            "수령만"은 기존 [receive] 버튼이 그대로 맡는다(부분수령·차이 처리가 붙어 있다). */}
+        {RECEIVABLE_STATUSES.includes(s) && !paid && (
+          <ThemedButton variant="primary" onClick={() => setPayModal({ mode: 'receive_and_pay' })}>
+            {t('detail.actions.receiveAndPay', 'Receive + pay')}
+          </ThemedButton>
+        )}
+        {!paid && s !== 'draft' && s !== 'cancelled' && s !== 'pending_approval' && (
+          <ThemedButton variant="secondary" onClick={() => setPayModal({ mode: 'pay' })}>
+            {t('detail.actions.pay', 'Record payment')}
+          </ThemedButton>
+        )}
+        {paid && (
+          <ThemedButton variant="danger-outline" onClick={() => setPayModal({ mode: 'refund' })}>
+            {t('detail.actions.refund', 'Reverse payment')}
+          </ThemedButton>
+        )}
         {s === 'draft' && (
           <>
             <ThemedButton
@@ -1315,6 +1338,33 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
           </ThemedButton>
           {renderActions()}
         </EmbeddedFooter>
+      )}
+
+      {/* 수령·결제 확인창 (P4-5) — staging 과 같은 공용 부품 */}
+      <ReceivePayModal
+        open={!!payModal}
+        mode={payModal?.mode || 'pay'}
+        po={detail ? { id: detail.id, po_number: (detail as any).po_number, total_amount: (detail as any).total_amount, seller_name: (detail as any).seller?.name || null } : null}
+        onClose={() => setPayModal(null)}
+        onDone={({ drawerSkipped }) => {
+          if (drawerSkipped) {
+            // 드로어에 안 들어갔다는 사실을 숨기지 않는다 — 직원이 드로어를 잘못 센다.
+            setPayNotice(t('pay.drawerSkipped.desc', 'No shift is open, so this was not recorded as a cash withdrawal from the drawer.') as string);
+          }
+          fetchDetail();
+        }}
+      />
+      {payNotice && (
+        <ConfirmModal
+          isOpen
+          title={t('pay.drawerSkipped.title', 'Payment recorded — drawer not updated') as string}
+          message={payNotice}
+          onConfirm={() => setPayNotice(null)}
+          onCancel={() => setPayNotice(null)}
+          confirmText={t('common.ok', 'OK') as string}
+          cancelText={t('common.close', 'Close') as string}
+          type="warning"
+        />
       )}
 
       {/* Receive Modal */}

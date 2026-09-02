@@ -169,7 +169,10 @@
       "returns": "Request return",
       "print": "Print",
       "whatsapp": "WhatsApp",
-      "email": "Email"
+      "email": "Email",
+      "receiveAndPay": "Receive + pay",
+      "pay": "Record payment",
+      "refund": "Reverse payment"
     },
     "noNotes": "No notes.",
     "returns": {
@@ -235,7 +238,8 @@
     "submitting": "Submitting...",
     "close": "Close",
     "cancel": "Cancel",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "ok": "OK"
   },
   "print": {
     "loading": "Loading…",
@@ -403,7 +407,13 @@
     "submitAllConfirm": {
       "title": "Send all purchase orders?",
       "desc": "{{count}} purchase order(s) totalling {{amount}} will be sent to the suppliers. This cannot be undone."
-    }
+    },
+    "receivableSection": "To receive",
+    "receiveAndPay": "Receive + pay",
+    "receiveOnly": "Receive only",
+    "payOnly": "Record payment",
+    "refund": "Reverse payment",
+    "unknownSeller": "Supplier"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit mismatch — manual entry required",
@@ -444,5 +454,43 @@
   "newPo.viewCard": "Card",
   "newPo.viewList": "List",
   "newPo.brandStock": "Brand stock",
-  "newPo.brandNeedsLink": "Your brand has not linked a supplier to this item yet"
+  "newPo.brandNeedsLink": "Your brand has not linked a supplier to this item yet",
+  "pay": {
+    "title": {
+      "receiveAndPay": "Receive and pay",
+      "receiveOnly": "Receive without paying",
+      "pay": "Record payment",
+      "refund": "Reverse this payment"
+    },
+    "method": {
+      "label": "Payment method",
+      "cash": "Cash",
+      "bank": "Bank transfer",
+      "card": "Card",
+      "nonCashNote": "Non-cash payments are recorded on the order only — the cash drawer is not touched."
+    },
+    "effects": {
+      "title": "What this does",
+      "stock": "Stock goes up by the ordered quantity.",
+      "payment": "The order is marked as paid.",
+      "drawer": "RM {{amount}} is taken out of the open shift cash drawer.",
+      "refund": "A matching cash-in movement is created — the payment is reversed, not deleted. Stock and receipt are not touched."
+    },
+    "error": {
+      "multipleShifts": "More than one shift is open — close one before recording a cash payment.",
+      "failed": "Could not complete this action.",
+      "network": "Network error. Please try again."
+    },
+    "drawerSkipped": {
+      "title": "Payment recorded — drawer not updated",
+      "desc": "No shift is open, so this was not recorded as a cash withdrawal from the drawer."
+    },
+    "badge": {
+      "paid": "Paid",
+      "refunded": "Payment reversed"
+    },
+    "confirm": "Confirm",
+    "reason": "Note",
+    "reasonPlaceholder": "Optional — shown on the cash movement"
+  }
 }

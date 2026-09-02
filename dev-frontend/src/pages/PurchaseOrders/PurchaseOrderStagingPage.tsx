@@ -24,6 +24,7 @@ import { useStore } from '../../contexts/StoreContext';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
 import AlertDialog from '../../components/Common/AlertDialog';
 import ConfirmModal from '../../components/ConfirmModal';
+import ReceivePayModal, { ReceivePayMode } from '../../components/PurchaseOrders/ReceivePayModal';
 
 interface POItem {
   id: number; ingredient_id: number; quantity_ordered: string; unit_price: string; created_at?: string | null;
@@ -67,6 +68,10 @@ interface POStaging {
   // 2026-08-30 Irene: "담은 날짜가 안 보인다" — 스키마에 이미 있던 값을 표시만 한다(신설 없음).
   created_at?: string | null;
   items?: POItem[];
+  // 결제 (P4) — 목록에서 "냈는지"가 보여야 두 번 내지 않는다
+  payment_status?: 'unpaid' | 'paid' | 'refunded' | null;
+  payment_method?: string | null;
+  seller_name?: string | null;
 }
 
 const PageHeader = styled.div`
@@ -220,6 +225,10 @@ const PurchaseOrderStagingPage: React.FC = () => {
    * 건수·금액을 보여주고 한 번 묻는다. 개별 Mark as Sent 는 한 건이라 묻지 않는다.
    */
   const [confirmSubmitAll, setConfirmSubmitAll] = useState(false);
+  // 받을 발주 (P4-5) — 보낸 뒤 아직 안 받은 발주를 여기서 바로 수령·결제한다.
+  //   그전에는 이 화면이 draft 만 조회해서, 받는 동작을 하려면 발주 목록으로 나가야 했다.
+  const [receivables, setReceivables] = useState<POStaging[]>([]);
+  const [payModal, setPayModal] = useState<{ po: POStaging; mode: ReceivePayMode } | null>(null);
   const [discarding, setDiscarding] = useState(false);
   const [submittingId, setSubmittingId] = useState<number | null>(null);
   // PDF 미리보기 — 열자마자 인쇄창이 뜨지 않고 문서를 먼저 보여준다(2026-07-12 Irene).
@@ -297,7 +306,21 @@ const PurchaseOrderStagingPage: React.FC = () => {
     finally { if (!opts?.silent) setLoading(false); }
   }, [t]);
 
-  useEffect(() => { fetchDrafts(); }, [fetchDrafts]);
+  // 받을 발주 — **수령 가능 상태 목록은 서버가 정한다**(`receivable=1`).
+  //   프론트에 상태 목록을 복사해 두면 서버가 상태를 늘릴 때 조용히 갈라진다.
+  const fetchReceivables = useCallback(async () => {
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/purchase-orders?receivable=1&limit=50', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const j = await res.json();
+      // 실패하면 목록을 비우지 않는다(draft 쪽과 같은 규칙 — 사라진 것처럼 보이지 않게)
+      if (res.ok && j.success && Array.isArray(j.data)) setReceivables(j.data);
+    } catch { /* non-fatal */ }
+  }, []);
+
+  useEffect(() => { fetchDrafts(); fetchReceivables(); }, [fetchDrafts, fetchReceivables]);
 
   // draft PO 폐기 — staging 에 쌓인 발송 전 draft 를 개별 제거(완전 삭제). 카트와 달리 staging 은
   // 누적 검토 영역이라 빼는 수단이 필요. DELETE /purchase-orders/:id (draft 전용, 서버 가드).
@@ -593,6 +616,55 @@ const PurchaseOrderStagingPage: React.FC = () => {
       </PageHeader>
 
       <Content style={{ flex: 1, paddingBottom: 80 }}>
+        {/* 받을 발주 (P4-5) — 보낸 발주를 여기서 바로 받고 결제한다.
+            draft 목록과 섞지 않는다: 아래는 "아직 안 보낸 것", 여기는 "보냈고 이제 받을 것". */}
+        {receivables.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#0F766E', textTransform: 'uppercase', letterSpacing: 0.5, padding: '0 4px', marginBottom: 8 }}>
+              {t('staging.receivableSection', 'To receive')} ({receivables.length})
+            </div>
+            {receivables.map(p => (
+              <POCard key={`recv-${p.id}`} $external={false}>
+                <POHead>
+                  <POSellerBox>
+                    <POSellerName>{p.seller_name || p.seller?.name || t('staging.unknownSeller', 'Supplier')}</POSellerName>
+                    <POMeta>
+                      {p.po_number || `#${p.id}`}
+                      {' · '}{p.status}
+                      {p.expected_delivery_date ? ` · ${t('staging.expected', 'Expected')}: ${p.expected_delivery_date}` : ''}
+                      {p.payment_status === 'paid' ? ` · ${t('pay.badge.paid', 'Paid')}` : ''}
+                      {p.payment_status === 'refunded' ? ` · ${t('pay.badge.refunded', 'Payment reversed')}` : ''}
+                    </POMeta>
+                  </POSellerBox>
+                  <POAmount>{p.currency || 'MYR'} {parseFloat(p.total_amount || '0').toFixed(2)}</POAmount>
+                </POHead>
+                <Actions>
+                  <Button type="button" size="small" variant="primary"
+                    onClick={() => setPayModal({ po: p, mode: 'receive_and_pay' })}>
+                    {t('staging.receiveAndPay', 'Receive + pay')}
+                  </Button>
+                  <Button type="button" size="small" variant="secondary"
+                    onClick={() => setPayModal({ po: p, mode: 'receive_only' })}>
+                    {t('staging.receiveOnly', 'Receive only')}
+                  </Button>
+                  {p.payment_status !== 'paid' && (
+                    <Button type="button" size="small" variant="secondary"
+                      onClick={() => setPayModal({ po: p, mode: 'pay' })}>
+                      {t('staging.payOnly', 'Record payment')}
+                    </Button>
+                  )}
+                  {p.payment_status === 'paid' && (
+                    <Button type="button" size="small" variant="secondary"
+                      onClick={() => setPayModal({ po: p, mode: 'refund' })}>
+                      {t('staging.refund', 'Reverse payment')}
+                    </Button>
+                  )}
+                </Actions>
+              </POCard>
+            ))}
+          </div>
+        )}
+
         {loading && pos.length === 0 ? (
           <Empty>{t('common:loading', 'Loading…')}</Empty>
         ) : pos.length === 0 ? (
@@ -644,6 +716,25 @@ const PurchaseOrderStagingPage: React.FC = () => {
           </div>
         </SubmitBar>
       )}
+      {/* 수령·결제 확인창 (P4-5) — 되돌리기 어려운 3효과를 먼저 적어 보여 준다 */}
+      <ReceivePayModal
+        open={!!payModal}
+        mode={payModal?.mode || 'receive_and_pay'}
+        po={payModal ? { id: payModal.po.id, po_number: payModal.po.po_number, total_amount: payModal.po.total_amount, seller_name: payModal.po.seller_name || payModal.po.seller?.name || null } : null}
+        onClose={() => setPayModal(null)}
+        onDone={({ drawerSkipped }) => {
+          fetchReceivables();
+          fetchDrafts({ silent: true });
+          // 서버가 드로어에 못 넣었으면 **숨기지 않고 알린다** — 직원이 드로어를 잘못 센다.
+          if (drawerSkipped) {
+            setAlertDlg({
+              title: t('pay.drawerSkipped.title', 'Payment recorded — drawer not updated') as string,
+              message: t('pay.drawerSkipped.desc', 'No shift is open, so this was not recorded as a cash withdrawal from the drawer.') as string,
+            });
+          }
+        }}
+      />
+
       <ConfirmModal
         isOpen={confirmSubmitAll}
         title={t('staging.submitAllConfirm.title', 'Send all purchase orders?') as string}

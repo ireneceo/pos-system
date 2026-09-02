@@ -213,7 +213,17 @@ router.get('/purchase-orders', async (req, res) => {
       where.entity_type = req.buyerEntity.type;
       where.entity_id = req.buyerEntity.id;
     }
-    if (req.query.status) where.status = req.query.status;
+    // 상태 다중 조회 — staging 의 "받을 발주" 블록이 수령 가능 상태 6개를 한 번에 묻는다(P4-5).
+    //   `status=shipped,delivered` 처럼 쉼표로 준다. 알 수 없는 값은 버린다(오타가 조용히
+    //   전체 목록으로 넓어지지 않게). `receivable=1` 이면 서버가 목록을 정해 준다 —
+    //   프론트가 상태 목록을 복사해 두면 상태가 늘 때 갈라진다.
+    if (req.query.receivable === '1' || req.query.receivable === 'true') {
+      const { RECEIVABLE_STATUSES } = require('../utils/poStatuses');
+      where.status = { [Op.in]: RECEIVABLE_STATUSES };
+    } else if (req.query.status) {
+      const wanted = String(req.query.status).split(',').map((x) => x.trim()).filter(Boolean);
+      where.status = wanted.length > 1 ? { [Op.in]: wanted } : wanted[0];
+    }
     if (req.query.seller_type && VALID_SELLER_TYPES.includes(req.query.seller_type)) {
       where.seller_type = req.query.seller_type;
     }

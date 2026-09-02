@@ -169,7 +169,10 @@
       "returns": "반품 요청",
       "print": "인쇄",
       "whatsapp": "왓츠앱",
-      "email": "이메일"
+      "email": "이메일",
+      "receiveAndPay": "수령 + 결제",
+      "pay": "결제 기록",
+      "refund": "결제 취소"
     },
     "noNotes": "메모 없음.",
     "returns": {
@@ -235,7 +238,8 @@
     "submitting": "제출 중...",
     "close": "닫기",
     "cancel": "취소",
-    "confirm": "확인"
+    "confirm": "확인",
+    "ok": "확인"
   },
   "print": {
     "loading": "불러오는 중…",
@@ -403,7 +407,13 @@
     "submitAllConfirm": {
       "title": "발주를 모두 보낼까요?",
       "desc": "발주 {{count}}건 · 합계 {{amount}} 을(를) 공급업체에 모두 보냅니다. 되돌릴 수 없습니다."
-    }
+    },
+    "receivableSection": "받을 발주",
+    "receiveAndPay": "수령 + 결제",
+    "receiveOnly": "수령만",
+    "payOnly": "결제 기록",
+    "refund": "결제 취소",
+    "unknownSeller": "공급업체"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: 수량 단위 차이 — 수동 입력 필요",
@@ -444,5 +454,43 @@
   "newPo.viewCard": "카드",
   "newPo.viewList": "리스트",
   "newPo.brandStock": "브랜드 재고",
-  "newPo.brandNeedsLink": "브랜드가 이 재료에 공급처를 아직 연결하지 않았습니다"
+  "newPo.brandNeedsLink": "브랜드가 이 재료에 공급처를 아직 연결하지 않았습니다",
+  "pay": {
+    "title": {
+      "receiveAndPay": "수령 + 결제",
+      "receiveOnly": "결제 없이 수령",
+      "pay": "결제 기록",
+      "refund": "결제 취소"
+    },
+    "method": {
+      "label": "결제 수단",
+      "cash": "현금",
+      "bank": "계좌이체",
+      "card": "카드",
+      "nonCashNote": "현금이 아닌 결제는 발주에만 기록되고 현금서랍은 건드리지 않습니다."
+    },
+    "effects": {
+      "title": "무엇이 일어나나요",
+      "stock": "주문 수량만큼 재고가 늘어납니다.",
+      "payment": "이 발주가 결제 완료로 기록됩니다.",
+      "drawer": "열려 있는 시프트의 현금서랍에서 RM {{amount}} 이(가) 빠져나갑니다.",
+      "refund": "같은 금액의 입금 이동이 생깁니다 — 결제를 지우는 것이 아니라 되돌립니다. 재고와 수령 기록은 그대로입니다."
+    },
+    "error": {
+      "multipleShifts": "열려 있는 시프트가 둘 이상입니다 — 하나를 마감한 뒤 현금 결제를 기록하세요.",
+      "failed": "처리하지 못했습니다.",
+      "network": "네트워크 오류입니다. 다시 시도해 주세요."
+    },
+    "drawerSkipped": {
+      "title": "결제는 기록됨 — 현금서랍은 반영 안 됨",
+      "desc": "열려 있는 시프트가 없어 현금서랍 출금으로 기록되지 않았습니다."
+    },
+    "badge": {
+      "paid": "결제완료",
+      "refunded": "결제취소됨"
+    },
+    "confirm": "확인",
+    "reason": "메모",
+    "reasonPlaceholder": "선택 — 현금 이동 내역에 표시됩니다"
+  }
 }

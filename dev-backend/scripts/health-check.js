@@ -1524,13 +1524,21 @@ function definePosTests({ adminToken }) {
     const bulkGated = /applySubmitGate\(/.test(crud);
     const wfGated = (wf.match(/applySubmitGate\(/g) || []).length >= 2; // submit + mark-sent-external
     // 입고는 화이트리스트 방식이어야 한다(블랙리스트로 되돌리면 pending_approval 수령이 뚫린다).
-    // 2026-08-30: mark-received 와 receive 가 같은 집합을 쓰도록 RECEIVABLE_STATUSES 로 통일됨.
-    const whitelist = wf.match(/const RECEIVABLE_STATUSES\s*=\s*\[([^\]]*)\]/);
+    // 2026-08-30: mark-received 와 receive 가 같은 집합을 쓰도록 RECEIVABLE_STATUSES 로 통일.
+    // 2026-09-02(P4-5): 화면도 같은 목록을 봐야 해서 상수를 utils/poStatuses.js 로 옮겼다.
+    //   **불변식은 그대로다** — 목록이 화이트리스트이고, 승인대기·draft 가 들어 있지 않으며,
+    //   입고 라우트들이 그 목록을 본다. 읽는 위치만 따라 옮긴다(원본이 없으면 실패시킨다).
+    const statusesSrc = (() => {
+      try { return src.readFileSync(path.join(__dirname, '../utils/poStatuses.js'), 'utf8'); }
+      catch { return ''; }
+    })();
+    const whitelist = statusesSrc.match(/const RECEIVABLE_STATUSES\s*=\s*\[([^\]]*)\]/);
     const receiveGuarded = !!whitelist
       && !/'pending_approval'/.test(whitelist[1])   // 승인 대기는 절대 입고 불가
       && !/'draft'/.test(whitelist[1])
       && !/po\.status === 'received' \|\| po\.status === 'cancelled'/.test(wf);
-    // 두 입고 라우트가 **같은** 화이트리스트를 봐야 한다(한쪽만 넓히면 우회 경로가 생긴다)
+    // 입고 라우트들이 **같은** 화이트리스트를 봐야 한다(한쪽만 넓히면 우회 경로가 생긴다).
+    //   mark-received · receive · receive-and-pay 셋 다.
     const bothUseWhitelist = (wf.match(/RECEIVABLE_STATUSES\.includes\(po\.status\)/g) || []).length >= 2;
     return bulkGated && wfGated && receiveGuarded && bothUseWhitelist;
   });

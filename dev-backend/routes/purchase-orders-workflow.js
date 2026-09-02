@@ -56,7 +56,8 @@ const VALID_SELLER_TYPES = ['system_admin', 'brand', 'foodcourt', 'supplier'];
 // 판매자가 shipped/delivered 를 눌러주지 않는 매장이 많아(운영 PO 전건이 submitted 에 머묾)
 // 구매자가 물건을 받았으면 그 시점 상태와 무관하게 입고할 수 있어야 한다.
 // draft·pending_approval 은 계속 막는다 — 승인 우회 방지(2026-07-13 판정).
-const RECEIVABLE_STATUSES = ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'];
+// 화면도 같은 목록을 봐야 해서 공용 상수로 뺐다(P4-5) — 복사본을 두면 상태가 늘 때 갈라진다.
+const { RECEIVABLE_STATUSES } = require('../utils/poStatuses');
 
 // 레시피 없는 프로덕트로의 입고(2026-09-01)·BG 재고아이템·재료 입고는 전부
 // services/purchaseOrderReceive.js 로 옮겼다(P4-2). /receive 와 mark-received 가 같은 구현을 쓴다 —

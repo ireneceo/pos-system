@@ -169,7 +169,10 @@
       "returns": "Permintaan pulangan",
       "print": "Cetak",
       "whatsapp": "WhatsApp",
-      "email": "E-mel"
+      "email": "E-mel",
+      "receiveAndPay": "Terima + bayar",
+      "pay": "Rekod pembayaran",
+      "refund": "Batalkan pembayaran"
     },
     "noNotes": "Tiada nota.",
     "returns": {
@@ -235,7 +238,8 @@
     "submitting": "Menghantar...",
     "close": "Tutup",
     "cancel": "Batal",
-    "confirm": "Sahkan"
+    "confirm": "Sahkan",
+    "ok": "OK"
   },
   "print": {
     "loading": "Memuatkan…",
@@ -403,7 +407,13 @@
     "submitAllConfirm": {
       "title": "Hantar semua pesanan belian?",
       "desc": "{{count}} pesanan belian berjumlah {{amount}} akan dihantar kepada pembekal. Tindakan ini tidak boleh dibatalkan."
-    }
+    },
+    "receivableSection": "Untuk diterima",
+    "receiveAndPay": "Terima + bayar",
+    "receiveOnly": "Terima sahaja",
+    "payOnly": "Rekod pembayaran",
+    "refund": "Batalkan pembayaran",
+    "unknownSeller": "Pembekal"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit tidak sepadan — kemasukan manual diperlukan",
@@ -444,5 +454,43 @@
   "newPo.viewCard": "Kad",
   "newPo.viewList": "Senarai",
   "newPo.brandStock": "Stok jenama",
-  "newPo.brandNeedsLink": "Jenama anda belum memautkan pembekal untuk item ini"
+  "newPo.brandNeedsLink": "Jenama anda belum memautkan pembekal untuk item ini",
+  "pay": {
+    "title": {
+      "receiveAndPay": "Terima dan bayar",
+      "receiveOnly": "Terima tanpa bayar",
+      "pay": "Rekod pembayaran",
+      "refund": "Batalkan pembayaran ini"
+    },
+    "method": {
+      "label": "Kaedah pembayaran",
+      "cash": "Tunai",
+      "bank": "Pindahan bank",
+      "card": "Kad",
+      "nonCashNote": "Pembayaran bukan tunai direkodkan pada pesanan sahaja — laci tunai tidak disentuh."
+    },
+    "effects": {
+      "title": "Apa yang berlaku",
+      "stock": "Stok bertambah mengikut kuantiti yang dipesan.",
+      "payment": "Pesanan ditandakan sebagai dibayar.",
+      "drawer": "RM {{amount}} dikeluarkan daripada laci tunai syif yang dibuka.",
+      "refund": "Satu pergerakan masuk tunai yang sama dicipta — pembayaran dibalikkan, bukan dipadam. Stok dan penerimaan tidak disentuh."
+    },
+    "error": {
+      "multipleShifts": "Lebih daripada satu syif dibuka — tutup satu sebelum merekod pembayaran tunai.",
+      "failed": "Tindakan ini tidak dapat diselesaikan.",
+      "network": "Ralat rangkaian. Sila cuba lagi."
+    },
+    "drawerSkipped": {
+      "title": "Pembayaran direkod — laci tidak dikemas kini",
+      "desc": "Tiada syif dibuka, jadi ia tidak direkodkan sebagai pengeluaran tunai daripada laci."
+    },
+    "badge": {
+      "paid": "Dibayar",
+      "refunded": "Pembayaran dibalikkan"
+    },
+    "confirm": "Sahkan",
+    "reason": "Nota",
+    "reasonPlaceholder": "Pilihan — dipaparkan pada pergerakan tunai"
+  }
 }
