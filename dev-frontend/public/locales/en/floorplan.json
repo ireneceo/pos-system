@@ -226,5 +226,10 @@
   "aiServe.cameraDenied": "Camera unavailable. Take a photo or pick manually.",
   "aiServe.takePhoto": "Take a photo",
   "aiServe.referencePhotos": "Recognition photos",
-  "aiServe.addPhoto": "Add photo"
+  "aiServe.addPhoto": "Add photo",
+  "offlineSavedTitle": "Saved offline",
+  "offlineAddedItems": "Added items are saved locally and will be sent automatically when the connection returns.",
+  "offlineCancelled": "The cancellation is saved locally and will be sent automatically when the connection returns.",
+  "mergeSent": "Merged — discard the earlier tickets and use this one (sent)",
+  "mergeNeedsSend": "Merged — press [Send] to send it to the kitchen"
 }

@@ -28,6 +28,9 @@ if (!file) { console.error('사용법: node scripts/load-deploy-record.js <relea
       in_progress: rec.in_progress, completed: rec.completed, issues: rec.issues,
       upcoming: rec.upcoming, behavior_changes: rec.behavior_changes,
       check_areas: rec.check_areas, verification: v,
+      // 이번 배포가 닫은 문의 번호. 화면은 이걸로 "반영: <태그>" 를 **계산해서만** 보여주고
+      // 문의 상태는 자동으로 바꾸지 않는다 — 닫는 것은 사람이 판단한다(2026-09-03 Irene 원칙).
+      resolves: rec.resolves || [],
     };
     const payload = {
       tag,

@@ -1464,5 +1464,38 @@
   "managerSubscriptionsPage.couldNotSwitchPayer": "Could not switch payer",
   "managerSubscriptionsPage.switchPayerFailed": "Failed to update who is billed for this subscription.",
   "managerSubscriptionsPage.payerSwitchedInvoicesUnchanged": "Payer switched, invoices unchanged",
-  "managerSubscriptionsPage.payerSwitchedInvoicesUnchangedMessage": "The subscription payer was updated, but existing unpaid invoices could not be re-pointed. Please check the invoices page."
+  "managerSubscriptionsPage.payerSwitchedInvoicesUnchangedMessage": "The subscription payer was updated, but existing unpaid invoices could not be re-pointed. Please check the invoices page.",
+  "deployRecords": {
+    "title": "Solution Dev Issues",
+    "openOnly": "Unresolved only",
+    "colDeploy": "Deploy",
+    "colDone": "Done",
+    "colOpen": "Open",
+    "empty": "No deploy records yet",
+    "loading": "Loading",
+    "pickOne": "Select a deploy on the left",
+    "none": "None",
+    "checkedBy": "Checked by: {{who}}",
+    "verification": "Verification",
+    "verificationHint": "Which gates and contracts confirmed it",
+    "sections": {
+      "behavior_changes": "What changes",
+      "behavior_changesHint": "Screens, numbers or behaviour that differ after this deploy",
+      "check_areas": "What to watch",
+      "check_areasHint": "Who needs to confirm what, by eye",
+      "completed": "Done",
+      "completedHint": "What went into this deploy",
+      "issues": "Issues",
+      "issuesHint": "Found and not yet closed",
+      "in_progress": "In progress",
+      "in_progressHint": "Still being worked on at deploy time",
+      "upcoming": "Upcoming",
+      "upcomingHint": "Candidates for the next cycle"
+    },
+    "inquiries": "Open inquiries",
+    "inquiriesHint": "Live from the inquiry list — status is never changed automatically",
+    "inqEmpty": "No open inquiries",
+    "inqCrash": "crash",
+    "addressedIn": "In {{tag}}"
+  }
 }

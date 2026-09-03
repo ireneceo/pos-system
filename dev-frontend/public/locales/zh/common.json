@@ -297,7 +297,8 @@
       "systemAccess": "系统访问",
       "brandManagement": "品牌管理",
       "brands": "品牌",
-      "franchise": "加盟"
+      "franchise": "加盟",
+      "solutionIssues": "解决方案问题"
     },
     "franchiseManagement": "加盟管理",
     "tenancyManagement": "入驻管理",
@@ -325,7 +326,8 @@
     "pickupDisplay": "取餐显示",
     "cashManagement": "备用金管理",
     "bulkLink": "批量关联",
-    "sharedIngredients": "共享标准食材"
+    "sharedIngredients": "共享标准食材",
+    "deployRecords": "开发问题"
   },
   "language": {
     "en": "English",
@@ -758,5 +760,7 @@
   "pwa.guide.mac.safariName": "输入名称并点击添加。",
   "pwa.guide.mac.safariOpen": "从程序坞打开，它将以独立窗口运行。",
   "pwa.guide.mac.useChrome": "请在 Chrome 或 Edge 中打开本站以将其安装为应用。（Safari 17 及以上也可通过 文件 › 添加到程序坞 添加。）",
-  "nav.deployRecords": "解决方案开发问题"
+  "nav.deployRecords": "解决方案开发问题",
+  "showMore": "展开",
+  "showLess": "收起"
 }

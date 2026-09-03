@@ -1597,9 +1597,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         { path: '/pos/admin/support', label: t('nav.inquiryManagement'), hasPending: badgeCounts.systemInquiry > 0 || (badgeCounts.unreadComments?.systemInquiry || 0) > 0 },
         { path: '/pos/admin/contact-inquiries', label: t('nav.contactInquiries') },
         { path: '/pos/admin/hardware-quotes', label: t('nav.hardwareQuotes') },
-        // 솔루션 개발이슈 — 배포 회차별 개발 현황(읽기 전용, 소스는 releases/*.json)
-        { path: '/pos/admin/deploy-records', label: t('nav.deployRecords', '솔루션 개발이슈') },
         { path: '/pos/admin/content', label: t('nav.content', 'Content') }
+      ]
+    },
+    {
+      // 커뮤니케이션 **다음의 별도 섹션** (2026-09-03 Irene 지시 "커뮤니케이션 아래에 따로 배치").
+      // 문의는 고객과의 대화이고 이건 우리 개발 현황이라, 같은 묶음에 두면 성격이 섞인다.
+      id: 'solution-issues',
+      label: t('nav.section.solutionIssues', 'Solution Issues'),
+      icon: <FileText />,
+      items: [
+        { path: '/pos/admin/deploy-records', label: t('nav.deployRecords', 'Dev Issues') }
       ]
     },
     {

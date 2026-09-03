@@ -1464,5 +1464,38 @@
   "managerSubscriptionsPage.couldNotSwitchPayer": "청구 대상을 변경하지 못했습니다",
   "managerSubscriptionsPage.switchPayerFailed": "이 구독의 청구 대상을 변경하지 못했습니다.",
   "managerSubscriptionsPage.payerSwitchedInvoicesUnchanged": "청구 대상은 변경됨, 인보이스는 그대로",
-  "managerSubscriptionsPage.payerSwitchedInvoicesUnchangedMessage": "구독 청구 대상은 변경되었으나 기존 미결제 인보이스의 청구 대상은 바뀌지 않았습니다. 인보이스 페이지를 확인하세요."
+  "managerSubscriptionsPage.payerSwitchedInvoicesUnchangedMessage": "구독 청구 대상은 변경되었으나 기존 미결제 인보이스의 청구 대상은 바뀌지 않았습니다. 인보이스 페이지를 확인하세요.",
+  "deployRecords": {
+    "title": "솔루션 개발이슈",
+    "openOnly": "미해결만",
+    "colDeploy": "배포",
+    "colDone": "완료",
+    "colOpen": "미해결",
+    "empty": "배포 기록이 없습니다",
+    "loading": "불러오는 중",
+    "pickOne": "왼쪽에서 배포를 선택하세요",
+    "none": "없음",
+    "checkedBy": "확인: {{who}}",
+    "verification": "검증 내역",
+    "verificationHint": "어떤 게이트·계약으로 확인했는가",
+    "sections": {
+      "behavior_changes": "변경 후 바뀌는 현상",
+      "behavior_changesHint": "이 배포로 화면·수치·동작이 달라지는 것",
+      "check_areas": "추가로 체크할 영역",
+      "check_areasHint": "누가 무엇을 눈으로 확인해야 하는가",
+      "completed": "완료",
+      "completedHint": "이번 배포에 들어간 것",
+      "issues": "이슈",
+      "issuesHint": "발견됐고 아직 안 닫힌 것",
+      "in_progress": "작업중",
+      "in_progressHint": "배포 시점에 진행 중",
+      "upcoming": "앞으로 할 것",
+      "upcomingHint": "다음 사이클 후보"
+    },
+    "inquiries": "접수된 문의",
+    "inquiriesHint": "문의 목록에서 실시간으로 읽습니다 — 상태를 자동으로 바꾸지 않습니다",
+    "inqEmpty": "미해결 문의가 없습니다",
+    "inqCrash": "크래시",
+    "addressedIn": "반영: {{tag}}"
+  }
 }

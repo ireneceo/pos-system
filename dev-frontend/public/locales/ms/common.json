@@ -297,7 +297,8 @@
       "systemAccess": "Akses Sistem",
       "brandManagement": "Pengurusan Jenama",
       "brands": "Jenama",
-      "franchise": "Francais"
+      "franchise": "Francais",
+      "solutionIssues": "Isu Solusi"
     },
     "franchiseManagement": "Pengurusan Francais",
     "tenancyManagement": "Pengurusan Penyewaan",
@@ -325,7 +326,8 @@
     "pickupDisplay": "Paparan Ambil",
     "cashManagement": "Pengurusan Tunai",
     "bulkLink": "Pautan Pukal",
-    "sharedIngredients": "Bahan Standard Dikongsi"
+    "sharedIngredients": "Bahan Standard Dikongsi",
+    "deployRecords": "Isu Pembangunan"
   },
   "language": {
     "en": "English",
@@ -758,5 +760,7 @@
   "pwa.guide.mac.safariName": "Taip nama dan klik Add.",
   "pwa.guide.mac.safariOpen": "Buka dari Dock — ia berjalan dalam tetingkap sendiri.",
   "pwa.guide.mac.useChrome": "Buka laman ini dalam Chrome atau Edge untuk memasangnya sebagai aplikasi. (Safari 17 ke atas juga boleh menambahnya melalui File › Add to Dock.)",
-  "nav.deployRecords": "Isu Pembangunan Solusi"
+  "nav.deployRecords": "Isu Pembangunan Solusi",
+  "showMore": "Lihat lagi",
+  "showLess": "Tutup"
 }

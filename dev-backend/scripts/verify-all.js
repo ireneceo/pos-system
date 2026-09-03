@@ -41,6 +41,7 @@ const GATES = [
   { id: 'print-guard', tier: 'static', label: '🔒 인쇄 보호파일 무결성 (8파일 sha256)', cwd: BACKEND, cmd: ['node', 'scripts/check-print-guard.js', '--quiet'] },
   { id: 'print-field-contract', tier: 'static', label: '🧾 인쇄 필드 계약 (세트 구성품 누락 방지)', cwd: BACKEND, cmd: ['node', 'scripts/check-print-field-contract.js'] },
   { id: 'design-guard', tier: 'static', label: '🎨 디자인 단일 기준 (RA=표준, 신규 위반 0)', cwd: BACKEND, cmd: ['node', 'scripts/check-design-guard.js', '--summary'] },
+  { id: 'i18n-hardcoded', tier: 'static', label: '🈯 소스 하드코딩 (화면 문구가 번역을 안 타는 것)', cwd: BACKEND, cmd: ['node', 'scripts/check-i18n-hardcoded.js'] },
   { id: 'route-guard', tier: 'static', label: '🛡️ IDOR 라우트 가드 (신규 무방비 0)', cwd: BACKEND, cmd: ['node', 'scripts/check-route-guard.js', '--summary'] },
   { id: 'migration-registry', tier: 'static', label: '🗄️ 마이그레이션 레지스트리 (배포목록 누락 = 스키마 드리프트 차단)', cwd: BACKEND, cmd: ['node', 'scripts/check-migration-registry.js'] },
   { id: 'timezone', tier: 'static', label: '🕐 타임존 가드 (신규 위반 0)', cwd: BACKEND, cmd: ['node', 'scripts/timezone-check.js'] },

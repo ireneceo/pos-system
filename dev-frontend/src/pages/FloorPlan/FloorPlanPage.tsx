@@ -1806,7 +1806,7 @@ const FloorPlanPage: React.FC = () => {
               run: doReissue,
               autoSent: _autoOnMove,
               ticketType: _moveNotice.title,
-              description: _autoOnMove ? '머지 — 이전 티켓들 버리고 이 티켓 사용 (발송됨)' : '머지 — [Send]를 눌러 주방에 전송',
+              description: _autoOnMove ? t('mergeSent') : t('mergeNeedsSend'),
               stations: previewStationBuckets(printed, printSettings),
             });
           } else if (result.data && result.data.pending_reprint) {

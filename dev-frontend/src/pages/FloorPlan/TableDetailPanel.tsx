@@ -833,7 +833,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         setAddItemsCart([]);
         setAddItemsSearchQuery('');
         onOrderUpdated();
-        offlineNotice('오프라인 저장됨', '추가 주문이 로컬에 저장되어 연결 시 자동 전송됩니다.');
+        offlineNotice(t('floorplan:offlineSavedTitle'), t('floorplan:offlineAddedItems'));
         return;
       }
       const res = await fetch(`/api/orders/${statusInfo.orderId}/merge-items`, {
@@ -1087,7 +1087,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
           status: 'cancelled', reason: reason || undefined, void_pin: voidPin || undefined, printed_offline: printed === true
         });
         onOrderUpdated();
-        offlineNotice('오프라인 저장됨', '주문 취소가 로컬에 저장되어 연결 시 자동 전송됩니다.');
+        offlineNotice(t('floorplan:offlineSavedTitle'), t('floorplan:offlineCancelled'));
         setLoading(false);
         return;
       }

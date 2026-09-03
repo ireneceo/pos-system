@@ -1,12 +1,21 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-09-03 (Irene 답 3건 대기)
-**버전:** v3.81
-**작업 상태:** 완료
+**마지막 업데이트:** 2026-09-03 18:40 UTC (운영 배포 #5 완료)
+**버전:** v3.81 (SW 4.77 — 버전 상승 여부 Irene 답 대기)
+**작업 상태:** 배포 완료
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션)
+### 이번 배포 (2026-09-03 #5 — SW 4.77 `dev-issues-i18n`)
+- **운영 반영 완료** 18:40 UTC. 백업 `/var/www/backups/20260903_182510` · 스모크 10/10 · PM2 online(restart 6)
+- 게이트: verify-all 표준 **16/16** · 배포 안전게이트 **10/10** · post-build 실브라우저 mount sweep **674.5초 크래시 0** · Fable 통과 마커 유효(지문 `3dc6c2b1214c`)
+- 운영 실측: `sw.js` = `4.77-dev-issues-i18n-20260903` · 번들 해시 `main.5ed0d9c7.js` 일치 · 4개 언어 `nav.section.solutionIssues` 존재 · `/api/admin/deploy-records` 401(마운트됨) · 운영 releases 에 이번 기록 존재
+- 내용: 소스 한글 하드코딩 게이트 신설(`check-i18n-hardcoded.js`, verify-all + 배포 3b/10 fail-closed) · 개발이슈 화면 4개 언어 24건 · 알림함 상대시간 `Intl.RelativeTimeFormat` · 플로어플랜 안내 4건 · 문의 본문 2줄+더보기 공용 `ClampText`(7화면) · 배포기록 '접수된 문의' 섹션 + `resolves` 칸 · 좌측 메뉴 개발이슈 별도 섹션. 닫은 문의 `SUPP-2026-9449-255`
+- **1회 실패 후 재시도(우리 코드 무관)**: 첫 시도의 프론트 빌드가 메모리 게이트에 막힘(가용 1574MB < 필요 2500MB — 같은 서버 `/opt/planq` tsc 3.8GB 동시 실행). 그 빌드가 끝난 뒤 재실행해 성공. **남의 빌드를 죽이지 않았음**
+- 남은 육안 확인(Irene): 문의 목록 '더 보기' 펼침 · 배포기록 하단 접수 문의 섹션 · 언어 전환 시 개발이슈 화면 문구
+- ⚠ 배포 로그 WARN 1건(차단 아님): `purchase_orders.status` ENUM **값 집합은 동일**, 순서만 dev↔운영 상이
+
+### 완료된 작업 (앞 세션)
 - **판매 차감 계약 불일치 수정 (4차 배포)** — POS 주문 라인에 `product_id` 가 없어 카트 임시 id(`order-<ts>`)를 상품 id 로 오인, **POS 주문 전체가 전 매장에서 한 번도 재고를 깎지 못하고 있었다**(운영 완료 라인 1,444건 중 product_id 0건 / 매장8 `order_deduct` 0건, 그 사이 완료 주문 13,833건). 인쇄가 이미 쓰던 `resolveProductId` 재사용으로 수정 — 새 규칙 만들지 않음. 세트 경로는 정상이었음(`set_components` 103/103 무접촉). 커밋 `f2b56389`
 - **관측 구멍 분리** — `unresolved_line`(상품 식별 불가) ≠ `skipped_no_recipe`(레시피 없음). 둘을 섞은 것이 결함을 오래 숨겼다
 - **POS 라인 모양 계약 신설 + 고장주입 반증** — 기존 3건(2106·2149·2180)은 `product_id` 를 손으로 넣어 직접 호출해 못 잡았다. 옛 코드 복원 시 새 계약만 실패함을 확인
@@ -53,7 +62,7 @@
 ### ⏸ Irene 답 대기 — 실행 순서 (세션 여기서 멈춤)
 셋은 서로 독립. 어느 것부터 와도 됨. 스크립트는 전부 준비·검증 완료, **운영 쓰기 0**.
 
-1. **`/배포`** → 배포 → 운영 스모크(`health-check --category=po`; 운영에 데모 매장 없으면 **SKIP 이 크게 찍히는지 확인하고 그 사실을 보고**) → 백필 `scratchpad/backfill-received.js --apply`(스냅샷 먼저) → 대조(바뀐 컬럼 `quantity_received` 50행·`updated_at` 뿐, PO별 주문합=수령합 9/9) → Fable 판정 → **Irene 화면 확인 2곳**(`PurchaseOrderDetailPage.tsx:1217` 수령 수량 · 반품 최대 수량)
+1. ~~**`/배포`**~~ **완료(2026-09-03 #1 회차에 반영됨)** → 운영 스모크(`health-check --category=po`; 운영에 데모 매장 없으면 **SKIP 이 크게 찍히는지 확인하고 그 사실을 보고**) → 백필 `scratchpad/backfill-received.js --apply`(스냅샷 먼저) → 대조(바뀐 컬럼 `quantity_received` 50행·`updated_at` 뿐, PO별 주문합=수령합 9/9) → Fable 판정 → **Irene 화면 확인 2곳**(`PurchaseOrderDetailPage.tsx:1217` 수령 수량 · 반품 최대 수량)
    - 배포 내용: `services/purchaseOrderReceive.js`(라인 수령량 쓰기 단일화 + `markAllReceived` 남은양만) · `routes/purchase-orders-workflow.js`(자체 쓰기 3곳 제거) · `scripts/health-check.js`(계약 5건 추가) · `docs/PURCHASE_ORDER_SYSTEM.md`(§10 설계). 마이그 0 · SW bump 0 · 프론트 0
    - Fable 게이트 PASS (지문 `756d1e8d5c9a`) — **워킹트리 바뀌면 무효, 재판정 필요**
 2. **설계 컨펌**(§10) → `scratchpad/apply-brand2-mappings.js` 드라이런 재실행(시점 차이 확인) → Fable → `--apply` 9건

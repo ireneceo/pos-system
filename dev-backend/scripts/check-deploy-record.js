@@ -55,6 +55,29 @@ for (const k of REQUIRED) {
 }
 if (empty.length) fail('필수 칸이 비어 있습니다', empty.join('\n  '));
 
+// 항목 형식 — 문자열이거나 {title:...} 객체여야 한다.
+// 실제 사고(2026-09-03): 객체를 기대하는 화면에 문자열 배열을 넣어 **전 항목이 빈 줄**로 떴다.
+// "비어 있지 않다" 만 보던 이 게이트는 그걸 통과시켰다. 형식까지 본다.
+for (const k of ['in_progress', 'completed', 'issues', 'upcoming', 'behavior_changes', 'check_areas']) {
+  const v = rec[k];
+  if (!Array.isArray(v)) continue;
+  v.forEach((x, i) => {
+    if (typeof x === 'string') { if (!x.trim()) fail(`${LABEL[k]}(${k})[${i}] 가 빈 문자열`); return; }
+    if (x && typeof x === 'object' && typeof x.title === 'string' && x.title.trim()) return;
+    fail(`${LABEL[k]}(${k})[${i}] 형식 오류 — 화면에 빈 줄로 뜹니다`,
+         '항목은 문자열이거나 { "title": "...", "detail": "..." } 객체여야 합니다.');
+  });
+}
+
+// resolves — 이번 배포가 닫은 문의 번호. 있으면 **실재하는 번호인지** 검사한다.
+// 오타 하나면 화면의 "반영: <태그>" 가 영원히 안 뜨고, 아무도 그걸 눈치채지 못한다.
+if (rec.resolves !== undefined) {
+  if (!Array.isArray(rec.resolves)) fail('resolves 는 배열이어야 합니다', '예: "resolves": ["SUPP-2026-9449-255"]');
+  const bad = rec.resolves.filter(x => typeof x !== 'string' || !/^[A-Z]+-\d{4}-\d+-\d+$/.test(x));
+  if (bad.length) fail(`resolves 에 문의 번호 형식이 아닌 값: ${bad.join(', ')}`, '형식: SUPP-2026-9449-255 / QZ-2026-1911-477');
+  console.log(c.gray(`   닫는 문의: ${rec.resolves.length ? rec.resolves.join(', ') : '없음'}`));
+}
+
 // 민감영역이면 Fable 판정 근거가 있어야 한다
 let sensitive = false;
 try {

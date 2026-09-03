@@ -1464,5 +1464,38 @@
   "managerSubscriptionsPage.couldNotSwitchPayer": "无法更改账单对象",
   "managerSubscriptionsPage.switchPayerFailed": "无法更改此订阅的账单对象。",
   "managerSubscriptionsPage.payerSwitchedInvoicesUnchanged": "账单对象已更改，发票未更新",
-  "managerSubscriptionsPage.payerSwitchedInvoicesUnchangedMessage": "订阅的账单对象已更新，但现有未付发票未能重新指向。请检查发票页面。"
+  "managerSubscriptionsPage.payerSwitchedInvoicesUnchangedMessage": "订阅的账单对象已更新，但现有未付发票未能重新指向。请检查发票页面。",
+  "deployRecords": {
+    "title": "解决方案开发问题",
+    "openOnly": "仅未解决",
+    "colDeploy": "部署",
+    "colDone": "已完成",
+    "colOpen": "未解决",
+    "empty": "尚无部署记录",
+    "loading": "载入中",
+    "pickOne": "请从左侧选择一次部署",
+    "none": "无",
+    "checkedBy": "确认人：{{who}}",
+    "verification": "验证内容",
+    "verificationHint": "通过哪些闸门与契约确认",
+    "sections": {
+      "behavior_changes": "部署后的变化",
+      "behavior_changesHint": "本次部署后画面、数值或行为的改变",
+      "check_areas": "需额外确认的范围",
+      "check_areasHint": "谁需要亲眼确认什么",
+      "completed": "已完成",
+      "completedHint": "本次部署包含的内容",
+      "issues": "问题",
+      "issuesHint": "已发现但尚未关闭",
+      "in_progress": "进行中",
+      "in_progressHint": "部署时仍在进行",
+      "upcoming": "待办",
+      "upcomingHint": "下一轮的候选项"
+    },
+    "inquiries": "已收到的咨询",
+    "inquiriesHint": "即时读取咨询清单 — 不会自动变更状态",
+    "inqEmpty": "没有未处理的咨询",
+    "inqCrash": "崩溃",
+    "addressedIn": "已纳入：{{tag}}"
+  }
 }

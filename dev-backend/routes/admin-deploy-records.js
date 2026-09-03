@@ -24,6 +24,8 @@ router.get('/', authenticateToken, requireRole('System Admin'), async (req, res)
         completed_count: count(r.sections, 'completed'),
         open_issue_count: openIssues(r.sections),
         check_area_count: count(r.sections, 'check_areas'),
+        // 화면이 "반영: <태그>" 를 계산할 수 있게 번호만 내려준다
+        resolves: (r.sections && Array.isArray(r.sections.resolves)) ? r.sections.resolves : [],
       })),
     });
   } catch (error) {

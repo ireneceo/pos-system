@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import {
   Container, Header, Title, Content,
@@ -30,14 +31,17 @@ interface Detail {
   sections: Record<string, Item[] | Record<string, string> | 'none'>;
 }
 
-const SECTIONS: { key: string; label: string; hint: string }[] = [
-  { key: 'behavior_changes', label: '변경 후 바뀌는 현상', hint: '이 배포로 화면·수치·동작이 달라지는 것' },
-  { key: 'check_areas',      label: '추가로 체크할 영역', hint: '누가 무엇을 눈으로 확인해야 하는가' },
-  { key: 'completed',        label: '완료',              hint: '이번 배포에 들어간 것' },
-  { key: 'issues',           label: '이슈',              hint: '발견됐고 아직 안 닫힌 것' },
-  { key: 'in_progress',      label: '작업중',            hint: '배포 시점에 진행 중' },
-  { key: 'upcoming',         label: '앞으로 할 것',       hint: '다음 사이클 후보' },
-];
+// 화면 문구는 여기 두지 않는다 — 렌더 시점에 t() 로 뽑는다(언어 전환이 바로 먹는다).
+// 순서 = 읽는 사람이 먼저 알아야 하는 것 순서.
+interface OpenInquiry {
+  id: string;
+  ticketNumber: string;
+  subject: string;
+  status: string;
+  createdAt: string;
+}
+
+const SECTION_KEYS = ['behavior_changes', 'check_areas', 'completed', 'issues', 'in_progress', 'upcoming'] as const;
 
 const Split = styled.div`display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start;
   @media (max-width: 1024px) { grid-template-columns: 1fr; }`;
@@ -60,6 +64,8 @@ const Note = styled.div`font-size: 12px; color: #4B5563; background: #F4F6F9; bo
 const Toggle = styled.label`display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #0A2540; cursor: pointer;`;
 
 const DeployRecordsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
+  const [inquiries, setInquiries] = useState<OpenInquiry[]>([]);
   const [rows, setRows] = useState<ListRow[]>([]);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,13 +89,33 @@ const DeployRecordsPage: React.FC = () => {
 
   useEffect(() => { void load(); }, [load]);
 
-  const renderItems = (raw: Item[] | Record<string, string> | 'none' | undefined) => {
-    if (!raw || raw === 'none') return <ItemDetail>없음</ItemDetail>;
+  // 문의는 **복사하지 않고 산다** — 배포기록에 옮겨 적으면 두 곳이 갈라진다.
+  // 여기서는 읽기만 하고, 닫는 것은 사람이 문의 관리 화면에서 한다(자동 상태변경 없음).
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/support-tickets', { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        if (!res.ok) return;
+        const j = await res.json();
+        const all: OpenInquiry[] = (j?.data || j || []) as OpenInquiry[];
+        setInquiries(all
+          .filter(x => x.status === 'open' || x.status === 'in-progress')
+          .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))));
+      } catch { /* 이 섹션이 없다고 배포기록을 못 보면 안 된다 */ }
+    })();
+  }, []);
+
+  const renderItems = (raw: Array<Item | string> | Record<string, string> | 'none' | undefined) => {
+    if (!raw || raw === 'none') return <ItemDetail>{t('deployRecords.none')}</ItemDetail>;
     if (!Array.isArray(raw)) {
       return <Note>{Object.entries(raw).map(([k, v]) => `${k}: ${v}`).join('\n')}</Note>;
     }
-    const items = openOnly ? raw.filter(i => i.status === 'open') : raw;
-    if (!items.length) return <ItemDetail>없음</ItemDetail>;
+    // 기록은 문자열 배열로도, {title, detail} 객체 배열로도 쓸 수 있다.
+    // 문자열로 쓴 기록이 **빈 줄로 렌더되던 결함**을 실브라우저에서 잡았다(2026-09-03).
+    // 쓰는 사람이 형식을 외우게 하지 않는다 — 화면이 둘 다 받는다.
+    const norm: Item[] = raw.map(x => (typeof x === 'string' ? ({ title: x } as Item) : x));
+    const items = openOnly ? norm.filter(i => i.status === 'open') : norm;
+    if (!items.length) return <ItemDetail>{t('deployRecords.none')}</ItemDetail>;
     return items.map((i, n) => (
       <ItemRow key={n} $open={i.status === 'open'}>
         <ItemTitle>
@@ -97,7 +123,7 @@ const DeployRecordsPage: React.FC = () => {
           {i.status && <Badge $tone={i.status === 'open' ? 'open' : i.status === 'deployed' || i.status === 'done' ? 'done' : 'plain'}>{i.status}</Badge>}
         </ItemTitle>
         {i.detail && <ItemDetail>{i.detail}</ItemDetail>}
-        {(i.scope || i.who) && <ItemMeta>{[i.scope, i.who && `확인: ${i.who}`].filter(Boolean).join('  ·  ')}</ItemMeta>}
+        {(i.scope || i.who) && <ItemMeta>{[i.scope, i.who && t('deployRecords.checkedBy', { who: i.who })].filter(Boolean).join('  ·  ')}</ItemMeta>}
       </ItemRow>
     ));
   };
@@ -105,10 +131,10 @@ const DeployRecordsPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>솔루션 개발이슈</Title>
+        <Title>{t('deployRecords.title')}</Title>
         <Toggle>
           <input type="checkbox" checked={openOnly} onChange={e => setOpenOnly(e.target.checked)} />
-          미해결만
+          {t('deployRecords.openOnly')}
         </Toggle>
       </Header>
       <Content>
@@ -117,9 +143,9 @@ const DeployRecordsPage: React.FC = () => {
             <DataTable>
               <DataTableHead>
                 <DataTableRow>
-                  <DataTableHeaderCell>배포</DataTableHeaderCell>
-                  <DataTableHeaderCell>완료</DataTableHeaderCell>
-                  <DataTableHeaderCell>미해결</DataTableHeaderCell>
+                  <DataTableHeaderCell>{t('deployRecords.colDeploy')}</DataTableHeaderCell>
+                  <DataTableHeaderCell>{t('deployRecords.colDone')}</DataTableHeaderCell>
+                  <DataTableHeaderCell>{t('deployRecords.colOpen')}</DataTableHeaderCell>
                 </DataTableRow>
               </DataTableHead>
               <tbody>
@@ -138,12 +164,33 @@ const DeployRecordsPage: React.FC = () => {
                 ))}
               </tbody>
             </DataTable>
-            {!loading && rows.length === 0 && <DataTableEmpty>배포 기록이 없습니다</DataTableEmpty>}
+            {!loading && rows.length === 0 && <DataTableEmpty>{t('deployRecords.empty')}</DataTableEmpty>}
+
+            <SectionTitle>
+              <SectionName>{t('deployRecords.inquiries')}</SectionName>
+              <SectionHint>{t('deployRecords.inquiriesHint')}</SectionHint>
+            </SectionTitle>
+            {inquiries.length === 0
+              ? <ItemDetail>{t('deployRecords.inqEmpty')}</ItemDetail>
+              : inquiries.map(q => {
+                  // "반영: <배포태그>" 는 저장하지 않고 **계산해서** 보여준다.
+                  const inTag = rows.find(r => (r.resolves || []).includes(q.ticketNumber))?.tag;
+                  return (
+                    <ItemRow key={q.id} $open>
+                      <ItemTitle>
+                        {q.subject}
+                        {q.subject.startsWith('[auto]') && <Badge $tone="open">{t('deployRecords.inqCrash')}</Badge>}
+                        {inTag && <Badge $tone="done">{t('deployRecords.addressedIn', { tag: inTag })}</Badge>}
+                      </ItemTitle>
+                      <ItemMeta>{q.ticketNumber}  ·  {String(q.createdAt).slice(0, 10)}</ItemMeta>
+                    </ItemRow>
+                  );
+                })}
           </DataTableContainer>
 
           <Panel>
             {!detail ? (
-              <ItemDetail>{loading ? '불러오는 중' : '왼쪽에서 배포를 선택하세요'}</ItemDetail>
+              <ItemDetail>{loading ? t('deployRecords.loading') : t('deployRecords.pickOne')}</ItemDetail>
             ) : (
               <>
                 <SectionTitle>
@@ -155,18 +202,18 @@ const DeployRecordsPage: React.FC = () => {
                   </SectionHint>
                 </SectionTitle>
                 {detail.fable_note && <Note>{detail.fable_note}</Note>}
-                {SECTIONS.map(s => (
-                  <div key={s.key}>
+                {SECTION_KEYS.map(k => (
+                  <div key={k}>
                     <SectionTitle>
-                      <SectionName>{s.label}</SectionName>
-                      <SectionHint>{s.hint}</SectionHint>
+                      <SectionName>{t(`deployRecords.sections.${k}`)}</SectionName>
+                      <SectionHint>{t(`deployRecords.sections.${k}Hint`)}</SectionHint>
                     </SectionTitle>
-                    {renderItems(detail.sections?.[s.key] as any)}
+                    {renderItems(detail.sections?.[k] as any)}
                   </div>
                 ))}
                 <SectionTitle>
-                  <SectionName>검증 내역</SectionName>
-                  <SectionHint>어떤 게이트·계약으로 확인했는가</SectionHint>
+                  <SectionName>{t('deployRecords.verification')}</SectionName>
+                  <SectionHint>{t('deployRecords.verificationHint')}</SectionHint>
                 </SectionTitle>
                 {renderItems(detail.sections?.verification as any)}
               </>

@@ -226,5 +226,10 @@
   "aiServe.cameraDenied": "Kamera tidak tersedia. Ambil foto atau pilih sendiri.",
   "aiServe.takePhoto": "Ambil foto",
   "aiServe.referencePhotos": "Foto pengecaman",
-  "aiServe.addPhoto": "Tambah foto"
+  "aiServe.addPhoto": "Tambah foto",
+  "offlineSavedTitle": "Disimpan luar talian",
+  "offlineAddedItems": "Pesanan tambahan disimpan pada peranti dan akan dihantar automatik apabila sambungan kembali.",
+  "offlineCancelled": "Pembatalan disimpan pada peranti dan akan dihantar automatik apabila sambungan kembali.",
+  "mergeSent": "Digabungkan — buang tiket terdahulu dan guna tiket ini (telah dihantar)",
+  "mergeNeedsSend": "Digabungkan — tekan [Send] untuk hantar ke dapur"
 }

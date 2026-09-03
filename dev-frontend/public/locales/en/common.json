@@ -297,7 +297,8 @@
       "systemAccess": "System Access",
       "brandManagement": "Brand Management",
       "brands": "Brands",
-      "franchise": "Franchise"
+      "franchise": "Franchise",
+      "solutionIssues": "Solution Issues"
     },
     "franchiseManagement": "Franchise Management",
     "tenancyManagement": "Tenancy Management",
@@ -325,7 +326,8 @@
     "pickupDisplay": "Pickup Display",
     "cashManagement": "Cash Management",
     "bulkLink": "Bulk Link",
-    "sharedIngredients": "Shared Ingredients"
+    "sharedIngredients": "Shared Ingredients",
+    "deployRecords": "Dev Issues"
   },
   "language": {
     "en": "English",
@@ -758,5 +760,7 @@
   "pwa.guide.mac.safariName": "Type a name and click Add.",
   "pwa.guide.mac.safariOpen": "Open it from the Dock — it runs in its own window.",
   "pwa.guide.mac.useChrome": "Open this site in Chrome or Edge to install it as an app. (Safari 17 or later can also add it from File › Add to Dock.)",
-  "nav.deployRecords": "Solution Dev Issues"
+  "nav.deployRecords": "Solution Dev Issues",
+  "showMore": "Show more",
+  "showLess": "Show less"
 }

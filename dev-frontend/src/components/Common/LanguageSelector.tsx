@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'ko', label: '한국어', flag: '🇰🇷' },
+  { code: 'ko', label: '한국어', flag: '🇰🇷' }, /* i18n-ok: 언어 이름은 그 언어로 적는다 — 번역 대상이 아니다 */
   { code: 'zh', label: '中文', flag: '🇨🇳' },
   { code: 'ms', label: 'Melayu', flag: '🇲🇾' },
 ];

@@ -103,6 +103,12 @@ else
     fi
     success "디자인 단일 기준 OK (신규 위반 0)"
 
+    log "Safety gate (3b/10): 🈯 소스 하드코딩 — 화면 문구가 번역을 안 타는 것 차단..."
+    if ! node scripts/check-i18n-hardcoded.js; then
+        error "🈯 소스에 박힌 화면 문구 — 그 문구는 언어를 바꿔도 안 바뀝니다. t('네임스페이스:키') 로 옮기고 4개 언어 파일에 키를 넣으세요. 번역 대상이 아닌 데이터면 그 줄에 '/* i18n-ok: 이유 */'. 정식 정리 후면 'node scripts/check-i18n-hardcoded.js --bless'. (긴급 우회: --skip-safety)"
+    fi
+    success "소스 하드코딩 OK (신규 0)"
+
     log "Safety gate (4/10): 🛡️ 라우트 가드 (IDOR — 신규 무방비 literal /restaurant/:param 차단, 마운트프리픽스 라우터는 배럴가드+health-check 담당)..."
     if ! node scripts/check-route-guard.js --summary; then
         error "🛡️ 신규 무방비 라우트 — /restaurant/:param 에 checkRestaurantAccess 또는 인라인 매장검사(req.user.restaurant_id≠param→403) 누락 = 타매장 데이터 유출(IDOR) 위험. 소유권 검사 추가 후 재배포. 정식/예외면 'node scripts/check-route-guard.js --bless'. (긴급 우회: --skip-safety)"

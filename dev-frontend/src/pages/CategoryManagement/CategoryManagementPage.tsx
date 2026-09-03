@@ -351,7 +351,7 @@ interface Category {
 }
 
 // #11c 크로스셀 — 카테고리 이름이 자동감지 추천 키워드(디저트/음료 등)에 걸리는지 (백엔드 crossSell.js 와 동일 키워드)
-const REC_KEYWORDS = ['dessert', 'desserts', '디저트', 'drink', 'drinks', '음료', '음료수', 'beverage', 'beverages'];
+const REC_KEYWORDS = ['dessert', 'desserts', '디저트', 'drink', 'drinks', '음료', '음료수', 'beverage', 'beverages']; /* i18n-ok: 표시 문구가 아니라 매칭 키워드다. 백엔드 crossSell.js 와 같은 목록이라 번역하면 자동감지가 깨진다 */
 const autoDetectsAsRecommendation = (name: string) => {
   const n = (name || '').trim().toLowerCase();
   return !!n && REC_KEYWORDS.some(k => n.includes(k));

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ClampText from '../../components/UI/ClampText';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
@@ -654,7 +655,11 @@ const SupportTicketsPage: React.FC = () => {
                 </TicketHeader>
 
                 <TicketDescription>
-                  {ticket.description}
+                  <ClampText
+                    text={ticket.description}
+                    moreLabel={t('common:showMore')}
+                    lessLabel={t('common:showLess')}
+                  />
                 </TicketDescription>
 
                 <TicketMeta>

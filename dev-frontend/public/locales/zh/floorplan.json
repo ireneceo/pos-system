@@ -226,5 +226,10 @@
   "aiServe.cameraDenied": "相机不可用。请拍照或手动选择。",
   "aiServe.takePhoto": "拍照",
   "aiServe.referencePhotos": "识别照片",
-  "aiServe.addPhoto": "添加照片"
+  "aiServe.addPhoto": "添加照片",
+  "offlineSavedTitle": "已离线保存",
+  "offlineAddedItems": "加点已保存在本机，恢复连线后会自动送出。",
+  "offlineCancelled": "取消订单已保存在本机，恢复连线后会自动送出。",
+  "mergeSent": "已合并 — 请丢弃先前的单据，使用这张（已送出）",
+  "mergeNeedsSend": "已合并 — 请按 [Send] 送到厨房"
 }

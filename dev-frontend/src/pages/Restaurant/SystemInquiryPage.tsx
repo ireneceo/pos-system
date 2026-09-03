@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ClampText from '../../components/UI/ClampText';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
@@ -321,11 +322,8 @@ const TicketDescription = styled.div`
   border-left: 3px solid #C7CED6;
   word-break: break-word;
   overflow-wrap: break-word;
-  /* 리스트 미리보기: 2줄 truncate (2026-06-21 운영 피드백 #4) */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  /* 자르기·펼치기는 ClampText 가 맡는다 — 여기에도 clamp 를 두면 이중으로 잘려
+     펼쳐도 안 보인다(2026-09-03 실브라우저에서 확인). 배경·여백만 남긴다. */
   text-overflow: ellipsis;
 `;
 
@@ -739,7 +737,11 @@ const SupportTicketsPage: React.FC = () => {
                 </TicketHeader>
 
                 <TicketDescription>
-                  {ticket.description}
+                  <ClampText
+                    text={ticket.description}
+                    moreLabel={t('common:showMore')}
+                    lessLabel={t('common:showLess')}
+                  />
                 </TicketDescription>
 
                 <TicketMeta>

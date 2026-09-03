@@ -100,24 +100,29 @@ export async function markAllRead(type: 'notice' = 'notice'): Promise<number> {
  */
 export function relativeTime(iso: string, locale: string = 'en'): string {
   if (!iso) return '';
+  // 언어별 문구를 우리가 들고 있지 않는다 — 브라우저 표준을 쓴다.
+  // 예전에는 ko/en 만 손으로 적어 두어 중국어·말레이어 사용자에게 영어가 나갔다(2026-09-03 실측).
+  // numeric:'auto' 가 "어제 / yesterday / 昨天 / semalam" 까지 알아서 준다.
+  // 언어가 늘어도 여기는 손댈 것이 없다.
   const then = new Date(iso).getTime();
-  const now = Date.now();
-  const diff = Math.max(0, now - then);
-  const sec = Math.floor(diff / 1000);
-  if (sec < 60) return locale === 'ko' ? '방금' : 'just now';
+  const sec = Math.floor(Math.max(0, Date.now() - then) / 1000);
+  // 로케일 태그가 이상하면 Intl 이 RangeError 를 던진다. 이 함수는 고객이 보는
+  // 카드(InboxItemCard) 렌더 경로에 있어, 던지면 화면이 통째로 오류 화면으로 간다.
+  let rtf: Intl.RelativeTimeFormat;
+  try { rtf = new Intl.RelativeTimeFormat(locale || 'en', { numeric: 'auto' }); }
+  catch { rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' }); }
+  if (sec < 60) return rtf.format(0, 'second').replace(/^in /, '');
   const min = Math.floor(sec / 60);
-  if (min < 60) return locale === 'ko' ? `${min}분 전` : `${min}m ago`;
+  if (min < 60) return rtf.format(-min, 'minute');
   const hr = Math.floor(min / 60);
-  if (hr < 24) return locale === 'ko' ? `${hr}시간 전` : `${hr}h ago`;
+  if (hr < 24) return rtf.format(-hr, 'hour');
   const day = Math.floor(hr / 24);
-  if (day === 1) return locale === 'ko' ? '어제' : 'yesterday';
-  if (day < 7) return locale === 'ko' ? `${day}일 전` : `${day}d ago`;
+  if (day < 7) return rtf.format(-day, 'day');
   const wk = Math.floor(day / 7);
-  if (wk < 5) return locale === 'ko' ? `${wk}주 전` : `${wk}w ago`;
+  if (wk < 5) return rtf.format(-wk, 'week');
   const mo = Math.floor(day / 30);
-  if (mo < 12) return locale === 'ko' ? `${mo}개월 전` : `${mo}mo ago`;
-  const yr = Math.floor(day / 365);
-  return locale === 'ko' ? `${yr}년 전` : `${yr}y ago`;
+  if (mo < 12) return rtf.format(-mo, 'month');
+  return rtf.format(-Math.floor(day / 365), 'year');
 }
 
 export const TYPE_COLORS: Record<InboxType, { bg: string; fg: string; dot: string }> = {

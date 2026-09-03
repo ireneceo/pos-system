@@ -147,7 +147,12 @@ async function visit(context, route) {
     await page.waitForTimeout(2500);
     const body = await page.evaluate(() => document.body?.innerText?.slice(0, 5000) || '');
     fallback = ERR_MARKERS.some(m => body.includes(m));
-    status = fallback ? 'ERROR_BOUNDARY' : 'OK';
+    // 직원 아이디의 내부 네임스페이스가 화면에 새면 안 된다.
+    // 운영 신고 SUPP-2026-4317-944: "리플래시하면 다시 r16.server1 로 아이디표시되는 거 여전해."
+    // 표시는 displayStaffName/stripStaffNs 가 벗겨야 하며, 어느 화면에서든 `r<숫자>.` 이
+    // 보이면 그 경로가 유틸을 안 타는 것이다.
+    const nsLeak = /\br\d+\.[A-Za-z0-9_]/.exec(body);
+    status = fallback ? 'ERROR_BOUNDARY' : (nsLeak ? `STAFF_NS_LEAK(${nsLeak[0]})` : 'OK');
   } catch (e) {
     status = 'NAV_FAIL';
   }

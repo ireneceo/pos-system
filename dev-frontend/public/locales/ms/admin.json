@@ -1464,5 +1464,38 @@
   "managerSubscriptionsPage.couldNotSwitchPayer": "Tidak dapat menukar pihak yang dibilkan",
   "managerSubscriptionsPage.switchPayerFailed": "Gagal mengemas kini pihak yang dibilkan untuk langganan ini.",
   "managerSubscriptionsPage.payerSwitchedInvoicesUnchanged": "Pembayar ditukar, invois tidak berubah",
-  "managerSubscriptionsPage.payerSwitchedInvoicesUnchangedMessage": "Pembayar langganan telah dikemas kini, tetapi invois belum berbayar tidak dapat dialihkan. Sila semak halaman invois."
+  "managerSubscriptionsPage.payerSwitchedInvoicesUnchangedMessage": "Pembayar langganan telah dikemas kini, tetapi invois belum berbayar tidak dapat dialihkan. Sila semak halaman invois.",
+  "deployRecords": {
+    "title": "Isu Pembangunan Solusi",
+    "openOnly": "Belum selesai sahaja",
+    "colDeploy": "Penghantaran",
+    "colDone": "Selesai",
+    "colOpen": "Belum selesai",
+    "empty": "Tiada rekod penghantaran lagi",
+    "loading": "Sedang dimuatkan",
+    "pickOne": "Pilih satu penghantaran di sebelah kiri",
+    "none": "Tiada",
+    "checkedBy": "Disahkan oleh: {{who}}",
+    "verification": "Pengesahan",
+    "verificationHint": "Gerbang dan kontrak yang mengesahkannya",
+    "sections": {
+      "behavior_changes": "Apa yang berubah",
+      "behavior_changesHint": "Skrin, nombor atau tingkah laku yang berbeza selepas penghantaran ini",
+      "check_areas": "Apa yang perlu disemak",
+      "check_areasHint": "Siapa perlu sahkan apa, dengan mata sendiri",
+      "completed": "Selesai",
+      "completedHint": "Apa yang masuk dalam penghantaran ini",
+      "issues": "Isu",
+      "issuesHint": "Ditemui dan belum ditutup",
+      "in_progress": "Sedang berjalan",
+      "in_progressHint": "Masih dikerjakan semasa penghantaran",
+      "upcoming": "Akan datang",
+      "upcomingHint": "Calon untuk kitaran seterusnya"
+    },
+    "inquiries": "Pertanyaan diterima",
+    "inquiriesHint": "Dibaca terus dari senarai pertanyaan — status tidak pernah diubah automatik",
+    "inqEmpty": "Tiada pertanyaan belum selesai",
+    "inqCrash": "ranap",
+    "addressedIn": "Dalam {{tag}}"
+  }
 }

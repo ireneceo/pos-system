@@ -226,5 +226,10 @@
   "aiServe.cameraDenied": "카메라를 쓸 수 없어요. 사진을 찍거나 직접 골라주세요.",
   "aiServe.takePhoto": "사진 찍기",
   "aiServe.referencePhotos": "인식 사진",
-  "aiServe.addPhoto": "사진 추가"
+  "aiServe.addPhoto": "사진 추가",
+  "offlineSavedTitle": "오프라인 저장됨",
+  "offlineAddedItems": "추가 주문이 로컬에 저장되어 연결 시 자동 전송됩니다.",
+  "offlineCancelled": "주문 취소가 로컬에 저장되어 연결 시 자동 전송됩니다.",
+  "mergeSent": "머지 — 이전 티켓들 버리고 이 티켓 사용 (발송됨)",
+  "mergeNeedsSend": "머지 — [Send]를 눌러 주방에 전송"
 }
