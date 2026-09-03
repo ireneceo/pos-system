@@ -9264,6 +9264,38 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 
 ---
 
+## ✅ 완료: 언어 전환 게이트 + 문의 읽기 (2026-09-03 #5 · SW 4.77 · v3.81 유지)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 소스 한글 하드코딩 게이트 신설 | `check-i18n-hardcoded.js` — jsx-text / jsx-attr / ui-message 3종. `t('키','한글')` 폴백은 위반 아님. 예외는 이유 강제 + 사용 건수 항상 출력. verify-all + 배포 3b/10 양쪽 fail-closed | ✅ 완료 |
+| 개발이슈 화면 4개 언어 | 화면 문구 24건 번역 키로. 배포 내용 본문은 내부 개발 노트라 한글 유지(Irene 승인) | ✅ 완료 |
+| 알림함 상대시간 다국어 | 문구를 우리가 들지 않고 `Intl.RelativeTimeFormat` 사용 — 중국어·말레이어 사용자에게 영어가 나오던 것 해소 | ✅ 완료 |
+| 문의 본문 자르기 공용화 | `ClampText` 1개를 7개 문의 화면이 공유. 2줄 + '더 보기'. 기존 2줄 clamp 6곳 제거(이중 자르기 결함 배포 전 적발) | ✅ 완료 |
+| 배포기록 화면 확장 | '접수된 문의' 섹션(실시간 조회, 상태 자동변경 0) + `resolves` 칸 → '반영: <태그>' 표시 | ✅ 완료 |
+| 좌측 메뉴 재배치 | 솔루션 개발이슈를 커뮤니케이션 아래 별도 섹션으로 | ✅ 완료 |
+| 운영 배포 + 사후 검증 | 게이트 16/16 · 안전게이트 10/10 · mount sweep 674.5s 크래시 0 · 스모크 10/10 · 운영 실측(sw 4.77 · 번들 해시 · 4개 언어 키) | ✅ 완료 |
+| 문의 SUPP-2026-9449-255 종결 | 답변 발송(운영 comments id 29) → Irene 이 상태 정리. 운영 열린 문의 **0건** | ✅ 완료 |
+| 알림함 폴백 결함 수정 | `Intl.RelativeTimeFormat` 미지원 브라우저에서 알림함이 통째로 오류 화면이 되던 회귀 — 존재 확인 후 영어 폴백. 고장주입 반증 완료. **운영 미배포(다음 회차)** | ✅ 개발 완료 |
+
+### 수정된 파일
+- `dev-backend/scripts/check-i18n-hardcoded.js` (신규) · `i18n-hardcoded.baseline.json` (신규)
+- `dev-backend/scripts/verify-all.js` · `check-deploy-record.js` · `load-deploy-record.js` · `routes/admin-deploy-records.js` · `deploy-to-production.sh`
+- `dev-frontend/src/components/UI/ClampText.tsx` (신규) · `components/Inbox/inboxApi.ts` · `components/Layout/MainLayout.tsx` · `components/Common/LanguageSelector.tsx`
+- `dev-frontend/src/pages/Admin/DeployRecordsPage.tsx` · 문의 화면 7종(Admin/Brand/Foodcourt/Manager/Owner/Restaurant/SupportTickets)
+- `dev-frontend/src/pages/FloorPlan/FloorPlanPage.tsx` · `TableDetailPanel.tsx` · `CategoryManagement/CategoryManagementPage.tsx`
+- 4개 언어 locale (`admin`/`common`/`floorplan`) · `public/sw.js` (4.77)
+
+### 배포 후 운영검증 (읽기 전용)
+- 주문 24h 57건(완료 54·취소 3) · 배포 이후 주문 1건 정상 생성 · 결제 `amount_paid`↔`total_amount` 불일치 0
+- `needs_print` 적체(매장8 2,133 / 매장10 171)는 **결함 아님** — 실매장 3곳 모두 자동인쇄 OFF(수동 인쇄)라 정상
+- 미확인(정직): 실프린터 종이 확인 · 운영 클론 쓰기 경로 전수 시험
+
+---
+
+
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 
 ### 현재 상황
