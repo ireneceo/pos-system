@@ -4,24 +4,29 @@ import { HelmetProvider } from 'react-helmet-async';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import CrashReportBox from './components/Common/CrashReportBox';
 import { installFetchInterceptor } from './utils/httpClient';
 import { startBuildVersionWatcher } from './utils/buildVersionWatcher';
 
 // Sentry 미사용 결정 (2026-05-03) — ErrorBoundary 는 React 표준 class로 inline 정의.
 
+type FallbackProps = { error: Error | null; componentStack: string | null; resetError: () => void };
+
 class ErrorBoundary extends React.Component<
-  { children: React.ReactNode; fallback: (props: { error: Error | null; resetError: () => void }) => React.ReactNode },
-  { hasError: boolean; error: Error | null }
+  { children: React.ReactNode; fallback: (props: FallbackProps) => React.ReactNode },
+  { hasError: boolean; error: Error | null; componentStack: string | null }
 > {
-  constructor(props: { children: React.ReactNode; fallback: (props: { error: Error | null; resetError: () => void }) => React.ReactNode }) {
+  constructor(props: { children: React.ReactNode; fallback: (props: FallbackProps) => React.ReactNode }) {
     super(props);
-    this.state = { hasError: false, error: null };
+    // componentStack 도 담는다 — "이 오류 보내기" 가 어느 컴포넌트에서 터졌는지 함께 보낸다.
+    this.state = { hasError: false, error: null, componentStack: null };
   }
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('[ErrorBoundary]', error, info);
+    this.setState({ componentStack: info?.componentStack || null });
     // ChunkLoadError = the browser cached an OLD main.js whose lazy-chunk hashes
     // no longer exist after a fresh deploy. The fix is a hard reload that drops
     // the cached main.js. Guard with sessionStorage so we don't loop if the
@@ -59,10 +64,10 @@ class ErrorBoundary extends React.Component<
       })();
     }
   }
-  resetError = () => this.setState({ hasError: false, error: null });
+  resetError = () => this.setState({ hasError: false, error: null, componentStack: null });
   render() {
     if (this.state.hasError) {
-      return this.props.fallback({ error: this.state.error, resetError: this.resetError });
+      return this.props.fallback({ error: this.state.error, componentStack: this.state.componentStack, resetError: this.resetError });
     }
     return this.props.children;
   }
@@ -141,7 +146,7 @@ root.render(
   <React.StrictMode>
     <HelmetProvider>
       <ErrorBoundary
-        fallback={({ resetError }) => (
+        fallback={({ error, componentStack, resetError }) => (
           <div style={{
             padding: '40px 20px',
             maxWidth: '600px',
@@ -170,6 +175,8 @@ root.render(
             >
               Try again
             </button>
+            {/* 오류를 그 자리에서 접수 — 이동하면 앱이 깨진 상태라 실패할 수 있다 */}
+            <CrashReportBox error={error} componentStack={componentStack} />
           </div>
         )}
       >

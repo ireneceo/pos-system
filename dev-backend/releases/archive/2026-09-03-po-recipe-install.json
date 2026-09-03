@@ -44,6 +44,12 @@
       "detail": "레시피 7건에 재료 33줄 + 원가, IPC 메뉴 64건을 브랜드 레시피에 연결, 재료 1건 생성.",
       "scope": "recipe_ingredients, products.recipe_id",
       "status": "deployed"
+    },
+    {
+      "title": "솔루션 개발이슈 화면 + 배포 기록 게이트",
+      "detail": "배포 회차별 개발 현황(7칸)을 시스템 관리자 화면에서 본다. 기록이 없거나 필수 칸이 비면 배포가 막힌다(게이트 10/10). 소스는 저장소 releases/*.json 이고 화면에서 못 고친다 — 고칠 수 있으면 코드와 기록이 갈라진다.",
+      "scope": "models/DeployRecord.js, scripts/check-deploy-record.js, scripts/load-deploy-record.js, routes/admin-deploy-records.js, pages/Admin/DeployRecordsPage.tsx, deploy-to-production.sh",
+      "status": "deployed"
     }
   ],
   "issues": [
@@ -146,6 +152,11 @@
       "title": "레시피 원가가 0 이 아니라 실제 값으로 보인다",
       "detail": "브랜드 레시피 화면은 저장값을 쓰는데 그 값이 비어 있었다.",
       "scope": "recipes.total_ingredient_cost"
+    },
+    {
+      "title": "기록 없이는 배포가 안 된다",
+      "detail": "배포 스크립트에 게이트 10/10 이 붙었다. releases/ 에 기록이 0개거나 2개 이상, 7칸 중 하나라도 비었거나, 앱 버전이 실제와 다르면 배포가 멈춘다.",
+      "scope": "deploy-to-production.sh"
     }
   ],
   "check_areas": [
@@ -178,17 +189,22 @@
       "title": "매장 재고 화면",
       "detail": "메뉴 64건에 레시피가 연결돼 판매 시 차감 대상이 메뉴 자체재고에서 재료로 바뀐다. 재고 입력 후 첫 판매에서 확인.",
       "who": "Opus (로그)"
+    },
+    {
+      "title": "솔루션 개발이슈 화면",
+      "detail": "시스템 관리자 → 솔루션 개발이슈. 이 회차가 보이고 7섹션이 채워져 있는지. 다음 배포부터 회차가 쌓인다.",
+      "who": "Irene"
     }
   ],
   "verification": {
     "gates": "verify-all 15/15 + 실브라우저 mount 8역할",
     "contracts_added": "9건 — PO 수령 5(전량·분할누적·남은양·재수령400·브랜드공유재료 순환) + 브랜드 레시피 2 + 기존 유지",
-    "fault_injections": "6건 — 라인갱신 제거 / 남은양→전량 / 매핑 제거 / conv 1000→1 / brand_id 되돌림 / iPad 보정 제거. 전부 해당 계약만 실패 후 복원",
+    "fault_injections": "6건 — 라인갱신 제거 / 남은양→전량 / 매핑 제거 / conv 1000→1 / brand_id 되돌림 / iPad 보정 제거. 전부 해당 계약만 실패 후 복원 / 배포기록 게이트 4건(기록0·기록2·빈칸·SW불일치) / 적재 로더 깨진 JSON → exit 1",
     "print_guard": "인쇄 계약 10/10 · 인쇄 라우트 34/34 통과 후 bless (MainLayout diff = 설치 버튼 3곳, _printPollFn 0줄)",
-    "migration": "none",
+    "migration": "migrate-deploy-records.js (deploy_records 신설, 멱등, 레지스트리 deploy)",
     "data_writes": "운영 DB 4배치 — 재료링크 33줄·원가 40 / 메뉴 recipe_id 64건 / 수령량 50줄. 전부 스냅샷 + 전후 지문으로 무접촉 증명",
     "not_verified": "실기기(아이패드·안드로이드) / nginx 적용 후 APK / IPC 첫 발주 / Mac 사파리 17 미만 분기",
     "fable_note": "PO 수령 단일화+남은양 / 브랜드 레시피 PUT brand_id→recipe.brand_id 핫픽스 / RecipesTab 푸터 고정 / 앱 설치 detectPlatform 단일소스+InstallGuideModal. 계약 9건·고장주입 6건·diff 직접 대조. 마이그 0",
-    "sw_version": "4.74-install-guide-20260903"
+    "sw_version": "4.75-deploy-records-20260903"
   }
 }

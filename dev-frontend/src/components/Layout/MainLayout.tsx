@@ -1034,6 +1034,33 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     } : null
   );
 
+  // 사이드바 하단 "문의하기" — 역할마다 이미 있는 문의 화면으로 보낸다.
+  // Irene 2026-09-03: "오류 있는 거 바로 바로 넣기 편하면 좋겠는데."
+  // 새 화면을 만들지 않는 이유 = 역할별 문의 화면·권한·알림이 이미 붙어 있어서,
+  // 없는 건 화면이 아니라 **어느 페이지에서든 닿는 입구** 하나였다.
+  const supportPath = useMemo(() => {
+    if (!user) return null;
+    const byRole: Record<string, string> = {
+      'System Admin': '/pos/admin/support',
+      'Brand General': '/pos/brand/general/system-inquiry',
+      'Brand Manager': '/pos/brand/general/system-inquiry',
+      'Foodcourt General': '/pos/foodcourt/general/system-inquiry',
+      'Foodcourt Manager': '/pos/foodcourt/general/system-inquiry',
+      'Owner': '/pos/owner/system-inquiry',
+      'Supplier Admin': '/pos/supplier/system-inquiry',
+      'Supplier Staff': '/pos/supplier/system-inquiry',
+      'Manager': '/pos/manager/support',
+    };
+    if (user.role === 'Restaurant Admin' || user.role === 'Staff') {
+      return restaurantId ? `/restaurant/${restaurantId}/support` : null;
+    }
+    // 플랜 게이트를 걸지 않는다 (2026-09-03 Irene 승인, Fable 권고).
+    // system_inquiry 모듈은 Professional 이상에만 들어 있어, 그대로 두면 Basic 매장
+    // (운영 대다수)에는 문의 입구가 없다. 문의·오류 신고는 유료 기능이 아니라 서비스
+    // 채널이므로 전 플랜·전 역할에 연다 — 막아서 손해 보는 쪽은 우리다.
+    return byRole[user.role] || null;
+  }, [user, restaurantId]);
+
   // Badge counts for sidebar notifications (includes pendingOrders)
   const [badgeCounts, setBadgeCounts] = useState({
     systemInquiry: 0,
@@ -3774,6 +3801,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </FooterRailButton>
               )}
 
+              {/* 문의하기 — icon rail */}
+              {supportPath && (
+                <FooterRailButton
+                  type="button"
+                  onClick={() => { navigate(supportPath); closeSidebar?.(); }}
+                  title={t('nav.contactSupport', '문의하기') || ''}
+                >
+                  <MessageSquare size={18} strokeWidth={2} />
+                </FooterRailButton>
+              )}
+
               {/* Language — flag only */}
               <FooterRailLang>
                 <LanguageSelector variant="icon" />
@@ -3845,7 +3883,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   Hidden when already running standalone (already installed). Triggers PWA prompt
                   directly — no separate /install landing page. */}
               {showInstallButton && (
-                <button type="button"
+                <button
                   type="button"
                   onClick={() => { openInstallGuide(); closeSidebar?.(); }}
                   title={t('nav.installApp', 'Install App') || ''}
@@ -3868,6 +3906,33 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 >
                   <Download size={16} strokeWidth={1.75} />
                   <span style={{ flex: 1 }}>{t('nav.installApp', 'Install App')}</span>
+                </button>
+              )}
+              {/* 문의하기 — 어느 페이지에서든 한 번에 문의 화면으로 */}
+              {supportPath && (
+                <button
+                  type="button"
+                  onClick={() => { navigate(supportPath); closeSidebar?.(); }}
+                  title={t('nav.contactSupport', '문의하기') || ''}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '12px 16px',
+                    margin: '0 8px 12px',
+                    borderRadius: 8,
+                    background: '#F4F6F9',
+                    color: '#0A2540',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    border: '1px solid #C7CED6',
+                    width: 'calc(100% - 16px)',
+                    textAlign: 'left'
+                  }}
+                >
+                  <MessageSquare size={16} strokeWidth={1.75} />
+                  <span style={{ flex: 1 }}>{t('nav.contactSupport', '문의하기')}</span>
                 </button>
               )}
               <LanguageSelectorWrapper>
