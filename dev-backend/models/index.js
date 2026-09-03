@@ -155,6 +155,8 @@ const Reservation = require('./Reservation');
 // Print Visibility & Diagnostics (2026-06-26) — additive log, no print-path change
 const PrintEvent = require('./PrintEvent');
 const PrintDeviceStatus = require('./PrintDeviceStatus');
+// 배포 기록 — 회차별 개발 현황(소스는 releases/*.json, 배포 스크립트가 적재)
+const DeployRecord = require('./DeployRecord');
 
 // Define associations
 // Brand - Restaurant associations
@@ -1011,6 +1013,7 @@ Restaurant.hasMany(RecognitionLog, { foreignKey: 'restaurant_id', as: 'recogniti
 RecognitionLog.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
 
 module.exports = {
+  DeployRecord,
   User,
   Restaurant,
   Brand,

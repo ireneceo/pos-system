@@ -1917,3 +1917,71 @@ const { resolveProductId } = require('../utils/stationEnrichment');
 `restaurant_id · ingredient_id · alert_type · current_stock · min_stock · suggested_order_qty ·
 is_resolved · resolved_at` 로 **`product_id`·`order_id`·부족수량 자리가 없다.**
 → "팔렸는데 못 깎은 사실"을 남기려면 설계가 먼저다. 반응 패치 금지.
+
+---
+
+## 10. 브랜드 공유 재료 순환 닫기 — 수령과 차감이 같은 행을 보게 (Fable 설계 · 2026-09-03)
+
+> 배경: 2026-09-03 K-DINE IPC(매장 8) 메뉴 62건을 브랜드 레시피에 연결해 판매 차감이 브랜드 g 재료의
+> **매장 오버레이**(`restaurant_ingredient_stocks`)에서 빠지게 됐다. 그 오버레이를 **채우는** 정상 경로가
+> 발주 수령인데, 브랜드 공유 재료는 발주 제출에서 막힌다. 이 절은 그 한 자리를 여는 설계다.
+
+### 10-1. 실측으로 확정된 사실 (2026-09-03 M7·M8)
+| 항목 | 사실 | 근거 |
+|---|---|---|
+| 차감 행 | 레시피 → 브랜드 g 재료 → `restaurant_ingredient_stocks(rid)` 오버레이 | `inventoryDeductionService.js:284 stockFor` → `brandStockAccess` |
+| 수령 행 | `applyReceipt → applyStock(ingredient, rid)` 이 `owner_type='brand'` 면 **같은 오버레이**에 씀 | `brandStockAccess.js:113-121` (findOrCreate → update) |
+| 라인 타깃 허용 | 매장은 자기 재료 ∪ 부모 브랜드 재료를 PO 라인 `ingredient_id` 로 담을 수 있음 | `purchase-orders-crud.js:777 ingredientBelongsToBuyer` = `readableIngredient` |
+| UI | 발주 담기 목록이 `brand-ingredients?include=sellers` 를 이미 가져옴(`is_brand_shared` 플래그) | `NewPurchaseOrderPage.tsx:1224` |
+| **막는 것** | 제출 게이트 `MAPPING_REQUIRED` — `ingredient_seller_products` 매핑 필수인데 **브랜드 소유 재료를 가리키는 매핑이 전 브랜드 0건** | `purchase-orders-crud.js:786-796` |
+| 우회 흔적 | GIT 구매자(매장 10)는 자기 재료 385개를 따로 만들어 매핑을 붙여 발주해 왔음. IPC 는 9개 | 매핑 134건 전수: 재료 `brand_id` 전부 null |
+| 환산 | `unit_conversion` 은 매핑에 살고, 라인이 복사하고, 수령이 곱한다. **운영 증명**: 5 kg 주문 → 재고 +5000 | `PO-R10-20260831-004` 라인 66-68 |
+| 두 벌 (A) | 브랜드 2 의 `ING-`(g, 레시피가 씀) ↔ `PRD-`(piece, 브랜드 프로덕트 미러) 11묶음. 미러는 `brand_products.sync_to_ingredients` 토글 산물(149건 전부 ON) | `brand-products.js:44 syncProductToIngredients` |
+| 발주 이력 | 브랜드 2 소스는 시스템으로 발주된 적 0건. 미러 행·g 행 모두 IPC 오버레이 0 | `purchase_order_items` 전수 |
+
+두 축을 분리한다: **(B) 수령 행 ≠ 차감 행** 이 순환을 끊는 실제 원인이고 이 절의 대상이다.
+**(A) g/piece 두 벌**은 토글의 산물로, (B) 가 닫히면 발주·차감 어느 경로에서도 쓰이지 않는 잔존물이 된다(10-4).
+
+### 10-2. 결정
+- **D1. 정체성은 브랜드 g 행(`ING-`) 하나.** 레시피·차감·`base_quantity` 원가가 전부 거기 있다. 재료 행 변경 0.
+- **D2. 브랜드 공유 재료 발주는 코드가 아니라 매핑 데이터로 연다.** `ingredient_seller_products` 에
+  `{ ingredient_id = g 행, seller = 그 브랜드, seller_product = 해당 브랜드 프로덕트(1kg 봉), unit_conversion = 봉 1개당 재료 단위 수, unit_price = 브랜드 판매가 }`.
+  브랜드 2 의 K-소스 **10묶음**부터(뚜껑 쌍 제외 — 레시피·공급처 둘 다 없고 원가 한쪽 0, GIT 포장재 건과 묶는다).
+  이 매핑 하나로 제출 게이트 통과 → 수령이 오버레이 +1000 → 차감이 같은 오버레이 −40. **코드 변경 0 이 목표.**
+- **D3. 브랜드 1(GIT)은 건드리지 않는다.** 매장 10 의 "자기 재료 385 + 매핑" 체계가 운영 중이고 정상 작동한다(9/9 수령 원장 정확). 그쪽을 브랜드 공유로 옮기는 것은 별도 결정.
+- **D4. 매핑 생성 주체는 브랜드 관리자 화면**(공급처 연결은 브랜드 전용이라는 기존 규칙 그대로). 화면·API 가 브랜드 소유 재료에 매핑을 만들 수 있는지는 **게이트 G1**(10-5). 못 만들면 허용 조건 1곳만 고친다 — 그 경우 코드 변경이 생기므로 Fable 게이트.
+- **D5. (A) PRD 미러 11행은 이번에 끄지 않는다.** 토글 OFF 의 영향(브랜드 프로덕트 판매·발주·BOM)이 미확인이고, 149건 전부 ON 인 관행에서 11건만 끄는 것은 관행 이탈이다. (B) 가 닫히면 이 행들은 레시피 0·매핑 0·오버레이 0 으로 **무해한 잔존물**이다. 정리는 동기화 덮어쓰기(D-sync) 설계와 함께(10-7).
+- **D6. 이동할 재고가 없다.** IPC 오버레이는 g 행·piece 행 모두 0 → 이관 스크립트 불필요. 8/24 식 수동 이동은 다시 하지 않는다.
+- **D7. 환산값은 추측하지 않는다.** 10묶음 전부 프로덕트 이름에 `1kg` 이 명시돼 있고 g 행 `base_quantity=1000` 과 일치하므로 `unit_conversion=1000` 이 Fable 판단이다. 단 `K-Yukgaejang`(g 행 6 ↔ 57 은 **kg** 단위·원가 불일치 30/34.9)은 모양이 달라 **브랜드 프로덕트 실물 확인 후** 넣는다 — 9묶음 먼저, 1묶음 보류.
+
+### 10-3. 절단면 (Irene 컨펌 대상)
+1. 데이터: 브랜드 2 매핑 **9건 생성**(K-Yukgaejang 보류) — `unit_conversion 1000`, `unit_price` = 브랜드 프로덕트 현재 판매가 그대로 복사, 매장 소유 재료 무접촉, 스냅샷·전후 지문(날짜 epoch 정규화) 형식.
+2. 코드: **0** (G1 결과에 따라 최대 1곳 — 매핑 생성 API 의 소유권 허용 조건).
+3. 화면: 변경 없음. IPC 발주 화면의 기존 `is_brand_shared` 목록이 그대로 쓰인다.
+4. 하지 않는 것: 재료 합치기 / 미러 끄기 / 브랜드 1 변경 / 재고 이동 / `product_ingredients.linked_ingredient_id`(다른 축, 쓰기 금지 유지).
+
+### 10-4. 검증 (게이트 — 통과 전 운영 쓰기 없음)
+- **계약 ⑤ 신설(영구, health-check `po`)**: 데모 브랜드+데모 매장에 공유 재료(g, base 1000)·브랜드 프로덕트(1kg)·매핑(conv 1000)·레시피(40g)·메뉴를 만들고 →
+  PO 제출 **통과** → 수령 → 오버레이 **+1000** → POS 주문 완료 → 오버레이 **960** + `order_deduct` 원장 1행. 픽스처는 `finally` 정리.
+  (dev 에 브랜드 2 가 없으므로 픽스처가 브랜드까지 만든다. 만들 수 없으면 "확인 불가"로 명시 — 조용한 스킵 금지.)
+- **고장주입 2건**: ⓐ 매핑 제거 → 제출 `400 MAPPING_REQUIRED`(게이트가 진짜 막는지) ⓑ `unit_conversion 1` → 오버레이 +1 (환산이 진짜 곱하는지). 둘 다 계약 ⑤가 **실패**해야 한다.
+- 운영 무접촉 증명: 매핑 INSERT 9행 외 변경 컬럼 0, 재료·프로덕트·오버레이 지문 동일.
+- 최종 증명은 운영에서만 가능: **IPC 의 첫 실제 발주 1건**(시험 발주 금지) → 수령 로그 오버레이 증가 → 첫 판매 `Deducted N ingredients` + `order_deduct` 1행. 이것으로 9/3 "확인 불가"(오버레이 분기 실제 차감)가 닫힌다.
+
+### 10-5. 착수 순서
+0. (독립) 대기 중인 PO 수령 수정 배포 + 과거 9건 백필.
+1. **G1 실측(읽기)**: 브랜드 관리자 화면에서 공급처 매핑을 만드는 경로(`routes/ingredients.js:245·1071 catalogLink.resolveUnitConversion` 부근)가 `owner_type='brand'` 재료를 허용하는지, seller = 자기 브랜드를 허용하는지, 그리고 그 API 가 `unit_conversion` 을 입력받는지.
+2. G1 통과 → 매핑 9건을 **화면과 같은 API** 로 만든다(직접 INSERT 금지 — 9/3 원가 0 사고의 교훈: 라우트를 우회하면 파생 컬럼이 빈다). API 가 브랜드 소유를 거부하면 허용 조건 1곳 수정 → Fable 게이트 → 배포 → 그 뒤 매핑.
+3. 계약 ⑤ + 고장주입 2건 → Fable 게이트.
+4. 운영 매핑 생성(드라이런 → 승인 → apply → 대조).
+5. Irene 안내: IPC 가 브랜드 소스를 **시스템으로 발주**하고 수령하면 재고가 g 로 쌓이고 팔릴 때 빠진다. 첫 발주 1건 로그로 종결 보고.
+
+### 10-6. 이 설계가 답하지 않는 것 (다음 절 대상)
+- **D-sync**: 브랜드 재료 동기화가 매장의 수동 결정(is_active·원가)을 덮어씀 / 끄기 입구 / `all` 배포 모드에서 매장 제외 불가. (A) 미러 정리도 여기서.
+- 브랜드 1(GIT) 을 공유 재료 체계로 옮길지.
+- 부족분 기록(StockAlert 자리 없음) — §9 마지막 항목 그대로.
+
+### 10-7. 백로그 (스키마·구조, 이번 아님)
+- `inventory_transactions` 에 `purchase_order_item_id` 추가 — 원장이 PO 만 참조해 같은 재료 두 라인이면 라인 대조 불가(9/3 M9).
+- 차감 서비스 "레시피 있음·재료 0줄" 을 "레시피 없음" 과 동일 취급 vs 편집 화면 "recipe_id 있음 = 자체재고 안 씀" — 정의 불일치(9/3). 실해는 재료 0줄 레시피 메뉴에 한정.
+- health-check 프레임워크에 SKIP 개념 없음(준비물 없으면 초록) — 카운터·요약 집계 신설.

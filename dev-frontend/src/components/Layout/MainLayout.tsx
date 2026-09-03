@@ -982,8 +982,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   }, [mobileAlertOrders.length, operationSettings?.mobileOrderAlerts?.bannerEnabled]);
   const operationSettingsRef = useRef(operationSettings);
   useEffect(() => { operationSettingsRef.current = operationSettings; }, [operationSettings]);
-  const { canInstall, isStandalone, isIOS, promptInstall } = usePwaInstall();
-  const showInstallButton = !isStandalone && (canInstall || isIOS);
+  // 설치 판정은 컨텍스트의 `platform` 하나만 본다(2026-09-03). 예전엔 여기서 isIOS 를
+  // 따로 보고 `alert` 로 안내해, 아이패드에서 눌러도 아무 반응이 없었다.
+  const { isStandalone, platform, openInstallGuide } = usePwaInstall();
+  const showInstallButton = !isStandalone && platform !== 'other';
 
   // Fullscreen pages (POS Terminal / Floor Plan / Kitchen / Customer Display / Mobile Order)
   // are sidebar entries marked openInNewTab. Inside our app shell — a PWA standalone
@@ -1568,6 +1570,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         { path: '/pos/admin/support', label: t('nav.inquiryManagement'), hasPending: badgeCounts.systemInquiry > 0 || (badgeCounts.unreadComments?.systemInquiry || 0) > 0 },
         { path: '/pos/admin/contact-inquiries', label: t('nav.contactInquiries') },
         { path: '/pos/admin/hardware-quotes', label: t('nav.hardwareQuotes') },
+        // 솔루션 개발이슈 — 배포 회차별 개발 현황(읽기 전용, 소스는 releases/*.json)
+        { path: '/pos/admin/deploy-records', label: t('nav.deployRecords', '솔루션 개발이슈') },
         { path: '/pos/admin/content', label: t('nav.content', 'Content') }
       ]
     },
@@ -3763,14 +3767,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               {showInstallButton && (
                 <FooterRailButton
                   type="button"
-                  onClick={async () => {
-                    if (canInstall) {
-                      await promptInstall();
-                    } else if (isIOS) {
-                      alert(t('common:pwa.installBanner.iosGuide', 'On iPhone/iPad: tap the Share button in Safari, then "Add to Home Screen".'));
-                    }
-                    closeSidebar?.();
-                  }}
+                  onClick={() => { openInstallGuide(); closeSidebar?.(); }}
                   title={t('nav.installApp', 'Install App') || ''}
                 >
                   <Download size={18} strokeWidth={2} />
@@ -3850,14 +3847,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               {showInstallButton && (
                 <button type="button"
                   type="button"
-                  onClick={async () => {
-                    if (canInstall) {
-                      await promptInstall();
-                    } else if (isIOS) {
-                      alert(t('common:pwa.installBanner.iosGuide', 'On iPhone/iPad: tap the Share button in Safari, then "Add to Home Screen".'));
-                    }
-                    closeSidebar?.();
-                  }}
+                  onClick={() => { openInstallGuide(); closeSidebar?.(); }}
                   title={t('nav.installApp', 'Install App') || ''}
                   style={{
                     display: 'flex',

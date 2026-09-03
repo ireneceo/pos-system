@@ -21,6 +21,7 @@ import OfflineBanner from './components/Offline/OfflineBanner';
 import OfflineLockOverlay from './components/Offline/OfflineLockOverlay';
 import NotificationToaster from './components/Common/NotificationToaster';
 import PwaInstallBanner from './components/Common/PwaInstallBanner';
+import InstallGuideModal from './components/Common/InstallGuideModal';
 import AutoPrintFailureBanner from './components/AutoPrintFailureBanner';
 import PrintDeviceReporter from './components/PrintDeviceReporter';
 // Login Page (keep static - frequently used, first contact)
@@ -167,6 +168,7 @@ const BrandStaffPage = React.lazy(() => import('./pages/Brand/BrandStaffPage'));
 const FoodcourtStaffPage = React.lazy(() => import('./pages/Foodcourt/FoodcourtStaffPage'));
 
 // Recipe Management
+const DeployRecordsPage = React.lazy(() => import('./pages/Admin/DeployRecordsPage'));
 const RecipeManagementPage = React.lazy(() => import('./pages/RecipeManagement/RecipeManagementPage'));
 const RestaurantIngredientsPage = React.lazy(() => import('./pages/RecipeManagement/IngredientsPage'));
 const RecipesPage = React.lazy(() => import('./pages/Recipes/RecipesPage'));
@@ -508,6 +510,7 @@ function App() {
                         <CookieConsentBanner />
                         <NotificationToaster />
                         <PwaInstallBanner />
+                        <InstallGuideModal />
                         <OfflineBanner />
                         <OfflineLockOverlay />
                         {/* Print Self-Diagnose (docs/PRINT_SELF_DIAGNOSE_DESIGN.md):
@@ -659,6 +662,12 @@ function App() {
                       <Route path="/pos/admin/support" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <SystemInquiryPage />
+                        </ProtectedRoute>
+                      } />
+                      {/* 솔루션 개발이슈 — 배포 회차별 개발 현황(시스템 관리자 전용, 읽기만) */}
+                      <Route path="/pos/admin/deploy-records" element={
+                        <ProtectedRoute requiredRole="System Admin">
+                          <DeployRecordsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/admin/contact-inquiries" element={

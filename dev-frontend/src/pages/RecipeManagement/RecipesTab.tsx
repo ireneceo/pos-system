@@ -1676,6 +1676,30 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         onClose={handleCloseModal}
         title={isViewMode ? 'Recipe Details' : (selectedRecipe ? 'Edit Recipe' : 'New Recipe')}
         size={isViewMode ? 'large' : 'medium'}
+        // 버튼은 공용 ModalFooter(flex-shrink:0)에 둔다 — 본문에 두면 내용이 길 때 같이
+        // 스크롤돼 버튼을 찾으러 내려가야 한다(2026-09-03 Irene 지적). 편집 모드의 제출
+        // 버튼은 본문 밖이라 `form` 속성으로 폼과 연결한다.
+        footer={isViewMode ? (
+          <>
+            <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
+              Close
+            </ModalButton>
+            {!isItemReadOnly(selectedRecipe) && (
+              <ModalButton type="button" variant="primary" onClick={() => setIsViewMode(false)}>
+                Edit
+              </ModalButton>
+            )}
+          </>
+        ) : (
+          <>
+            <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
+              Cancel
+            </ModalButton>
+            <ModalButton type="submit" form="recipe-edit-form" variant="primary">
+              {selectedRecipe ? 'Update Recipe' : 'Create Recipe'}
+            </ModalButton>
+          </>
+        )}
       >
         {isViewMode && selectedRecipe ? (
           /* View Mode - Clean readable layout */
@@ -1831,25 +1855,10 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               </ViewSection>
             )}
 
-            {/* Action Buttons */}
-            <ButtonGroup>
-              <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
-                Close
-              </ModalButton>
-              {!isItemReadOnly(selectedRecipe) && (
-                <ModalButton
-                  type="button"
-                  variant="primary"
-                  onClick={() => setIsViewMode(false)}
-                >
-                  Edit
-                </ModalButton>
-              )}
-            </ButtonGroup>
           </ViewContainer>
         ) : (
           /* Edit/Create Mode - Form layout */
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <form id="recipe-edit-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Basic Information */}
             <UIFormGroup>
               <FormLabel>Recipe Name *</FormLabel>
@@ -2090,15 +2099,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               <ErrorMessage>{formError}</ErrorMessage>
             )}
 
-            {/* Action Buttons */}
-            <ButtonGroup>
-              <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
-                Cancel
-              </ModalButton>
-              <ModalButton type="submit" variant="primary">
-                {selectedRecipe ? 'Update Recipe' : 'Create Recipe'}
-              </ModalButton>
-            </ButtonGroup>
           </form>
         )}
       </CommonModal>

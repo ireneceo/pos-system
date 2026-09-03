@@ -2671,6 +2671,271 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
   });
 
+
+  // ── 브랜드 레시피 수정 (2026-09-03) ─────────────────────────────────────
+  // 2026-07-12(b8190782)~09-03: PUT 핸들러가 **선언된 적 없는 `brand_id`** 를 읽어
+  // 모든 브랜드 레시피 수정이 ReferenceError(500) 로 실패했다. 조건 없이 도는 줄이라
+  // 이름만 고쳐도 막혔고 7주간 아무도 못 고쳤다. 재료 범위 기준은 URL 이 아니라
+  // **레시피의 실제 소유 브랜드**(권한 판정 `canEditRecipe` 와 같은 값).
+  async function brandRecipeCtx() {
+    const { sequelize } = require('../config/database');
+    const { Brand, User } = require('../models');
+    const r = (await sequelize.query(
+      'SELECT id, brand_id, name FROM recipes WHERE brand_id IS NOT NULL LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    if (!r) return null;
+    const b = await Brand.findByPk(r.brand_id);
+    const owner = b && b.owner_id ? await User.findByPk(b.owner_id) : null;
+    if (!owner) return null;
+    return { recipe: r, token: jwt.sign({ userId: owner.id }, process.env.JWT_SECRET, { expiresIn: '5m' }) };
+  }
+
+  test('po', '브랜드 레시피 수정: 이름만 바꿔도 200 (미선언 brand_id 회귀 방지)', async () => {
+    const ctx = await brandRecipeCtx();
+    if (!ctx) { poSkip(); return true; }
+    const res = await request('PUT', `/brands/${ctx.recipe.brand_id}/recipes/${ctx.recipe.id}`,
+      { name: ctx.recipe.name }, { Authorization: `Bearer ${ctx.token}` });
+    return res.status === 200;
+  });
+
+  test('po', '브랜드 레시피 수정: 타 브랜드 재료를 넣으면 400 (소유권 범위 = 레시피 소유 브랜드)', async () => {
+    const { sequelize } = require('../config/database');
+    const ctx = await brandRecipeCtx();
+    if (!ctx) { poSkip(); return true; }
+    // 이 레시피의 브랜드가 **소유하지 않은** 재료 하나
+    const foreign = (await sequelize.query(
+      `SELECT id FROM ingredients
+        WHERE NOT (owner_type = 'brand' AND brand_id = :b) AND is_active = 1 LIMIT 1`,
+      { replacements: { b: ctx.recipe.brand_id }, type: sequelize.QueryTypes.SELECT }))[0];
+    if (!foreign) { poSkip(); return true; }
+    const res = await request('PUT', `/brands/${ctx.recipe.brand_id}/recipes/${ctx.recipe.id}`,
+      { name: ctx.recipe.name, ingredients: [{ ingredient_id: foreign.id, quantity: 1, unit: 'g' }] },
+      { Authorization: `Bearer ${ctx.token}` });
+    return res.status === 400;   // 500(ReferenceError)도 200(무방비)도 아니어야 한다
+  });
+
+  const PO_MARKER = '__HC_PO_RECEIVE__';
+  // 스킵을 **조용한 통과로 읽히지 않게** 크게 찍는다. 이 프레임워크엔 스킵 카운터가 없어
+  // `return true` 가 곧 PASS 다 — 준비물이 없어 아무것도 검증하지 못했다는 사실을 눈에 띄게 남긴다.
+  let poSkipped = 0;
+  function poSkip() {
+    poSkipped += 1;
+    console.log(c.yellow(`      ⚠ SKIP — 데모 매장/RA 토큰 없음. 이 계약은 아무것도 검증하지 못했다 (누적 ${poSkipped}건)`));
+  }
+  // ── 발주 수령: 라인 수령량 단일화 (2026-09-03) ───────────────────────────
+  // 왜: `applyReceipt` 가 재고를 올리면서 라인 `quantity_received` 를 안 써서,
+  //     운영 수령 완료 PO **9건 전부** 수령량이 0 이었다(재고는 정상). 쓰기 지점을
+  //     applyReceipt 한 곳으로 모았고, 아래 3건이 두 경로가 다시 갈라지는 것을 막는다.
+  //     ⚠ 비교 단위: `quantity_received` 는 **라인 단위(환산 전)**, 재고는 `× unit_conversion`.
+  async function poFixture(demoId, { conv = 1, qty = 5 } = {}) {
+    const { sequelize } = require('../config/database');
+    const { Ingredient, PurchaseOrder, PurchaseOrderItem } = require('../models');
+    // PO 생성자 = 데모 매장 RA (토큰 주인과 같은 사람이어야 소유권 가드를 통과한다)
+    const ra = (await sequelize.query(
+      "SELECT id FROM users WHERE restaurant_id = :r AND role = 'Restaurant Admin' LIMIT 1",
+      { replacements: { r: demoId }, type: sequelize.QueryTypes.SELECT }))[0];
+    const ing = await Ingredient.create({ owner_type: 'restaurant', restaurant_id: demoId,
+      code: `HCPO-${Date.now()}${Math.floor(Math.random()*1000)}`, name: `${PO_MARKER} po ingredient`,
+      unit: 'kg', base_quantity: 1, unit_cost: 1, current_stock: 0, min_stock: 0, is_active: true });
+    const po = await PurchaseOrder.create({ po_number: `PO-${PO_MARKER}-${Date.now()%1000000}`,
+      entity_type: 'restaurant', entity_id: demoId, seller_type: 'supplier', status: 'confirmed',
+      created_by_user_id: ra ? ra.id : null, total_amount: 1 });
+    const item = await PurchaseOrderItem.create({ purchase_order_id: po.id, ingredient_id: ing.id,
+      quantity_ordered: qty, quantity_received: 0, unit: 'kg', unit_price: 1,
+      unit_conversion: conv, line_total: qty });
+    return { ing, po, item };
+  }
+  async function poCleanup() {
+    const { sequelize } = require('../config/database');
+    const { Ingredient, PurchaseOrder, PurchaseOrderItem } = require('../models');
+    const ids = (await Ingredient.findAll({ where: { name: `${PO_MARKER} po ingredient` }, attributes: ['id'] })).map(x => x.id);
+    if (ids.length) {
+      for (const tbl of ['restaurant_ingredient_costs','restaurant_ingredient_stocks','inventory_batches','inventory_transactions','ingredient_seller_products'])
+        await sequelize.query(`DELETE FROM ${tbl} WHERE ingredient_id IN (:ids)`, { replacements: { ids } }).catch(() => {});
+      await sequelize.query('DELETE FROM purchase_order_items WHERE ingredient_id IN (:ids)', { replacements: { ids } });
+      await sequelize.query('DELETE FROM ingredients WHERE id IN (:ids)', { replacements: { ids } });
+    }
+    const pos = await PurchaseOrder.findAll({ attributes: ['id', 'po_number'] });
+    const mine = pos.filter(p => String(p.po_number).includes(PO_MARKER)).map(p => p.id);
+    if (mine.length) {
+      await sequelize.query('DELETE FROM purchase_order_items WHERE purchase_order_id IN (:ids)', { replacements: { ids: mine } });
+      await sequelize.query('DELETE FROM purchase_orders WHERE id IN (:ids)', { replacements: { ids: mine } });
+    }
+  }
+
+  test('po', 'mark-received → 전 라인 수령량 = 주문량 (환산 1000 라인 포함, 재고는 환산 후)', async () => {
+    const { sequelize } = require('../config/database');
+    const { Ingredient, PurchaseOrderItem } = require('../models');
+    if (!demoRestId || !demoRaToken) { poSkip(); return true; }
+    const demo = { id: demoRestId };
+    try {
+      const f = await poFixture(demo.id, { conv: 1000, qty: 5 });
+      const res = await request('POST', `/purchase-orders/${f.po.id}/mark-received`, {},
+        { Authorization: `Bearer ${demoRaToken}` });
+      if (res.status !== 200) return false;
+      const it = await PurchaseOrderItem.findByPk(f.item.id);
+      const ing = await Ingredient.findByPk(f.ing.id);
+      // 라인 단위 5(kg) · 재고는 5 × 1000 = 5000
+      if (Math.abs(parseFloat(it.quantity_received) - 5) > 0.001) return false;
+      if (Math.abs(parseFloat(ing.current_stock) - 5000) > 0.001) return false;
+      return true;
+    } finally { await poCleanup(); }
+  });
+
+  test('po', '분할수령 2회(3+2) → 수령량 5 누적 · 이중 가산 없음', async () => {
+    const { sequelize } = require('../config/database');
+    const { Ingredient, PurchaseOrderItem } = require('../models');
+    if (!demoRestId || !demoRaToken) { poSkip(); return true; }
+    const demo = { id: demoRestId };
+    try {
+      const f = await poFixture(demo.id, { conv: 1, qty: 5 });
+      const h = { Authorization: `Bearer ${demoRaToken}` };
+      const r1 = await request('POST', `/purchase-orders/${f.po.id}/receive`,
+        { items: [{ item_id: f.item.id, quantity_received: 3 }] }, h);
+      if (r1.status !== 200) return false;
+      const mid = await PurchaseOrderItem.findByPk(f.item.id);
+      if (Math.abs(parseFloat(mid.quantity_received) - 3) > 0.001) return false;   // 3 이어야 (6 이면 이중 가산)
+      const r2 = await request('POST', `/purchase-orders/${f.po.id}/receive`,
+        { items: [{ item_id: f.item.id, quantity_received: 2 }] }, h);
+      if (r2.status !== 200) return false;
+      const end = await PurchaseOrderItem.findByPk(f.item.id);
+      const ing = await Ingredient.findByPk(f.ing.id);
+      if (Math.abs(parseFloat(end.quantity_received) - 5) > 0.001) return false;
+      if (Math.abs(parseFloat(ing.current_stock) - 5) > 0.001) return false;
+      return true;
+    } finally { await poCleanup(); }
+  });
+
+  test('po', '분할수령 3 → 전체수령 = 남은 2만 추가 (재고 5, 이중 가산 없음)', async () => {
+    const { PurchaseOrder, PurchaseOrderItem, Ingredient } = require('../models');
+    if (!demoRestId || !demoRaToken) { poSkip(); return true; }
+    const demo = { id: demoRestId };
+    try {
+      const f = await poFixture(demo.id, { conv: 1, qty: 5 });
+      const h = { Authorization: `Bearer ${demoRaToken}` };
+      const r1 = await request('POST', `/purchase-orders/${f.po.id}/receive`,
+        { items: [{ item_id: f.item.id, quantity_received: 3 }] }, h);
+      if (r1.status !== 200) return false;
+      const r2 = await request('POST', `/purchase-orders/${f.po.id}/mark-received`, {}, h);
+      if (r2.status !== 200) return false;
+      const it = await PurchaseOrderItem.findByPk(f.item.id);
+      const ing = await Ingredient.findByPk(f.ing.id);
+      const po = await PurchaseOrder.findByPk(f.po.id);
+      // 전량을 다시 넣던 옛 코드면 재고 8 · 수령 8 이 되어 여기서 실패한다
+      if (Math.abs(parseFloat(ing.current_stock) - 5) > 0.001) return false;
+      if (Math.abs(parseFloat(it.quantity_received) - 5) > 0.001) return false;
+      return po.status === 'received';
+    } finally { await poCleanup(); }
+  });
+
+  // ── (B) 브랜드 공유 재료 루프: 발주 → 수령 → 판매가 **같은 오버레이**에서 만난다 ──
+  // 설계 docs/PURCHASE_ORDER_SYSTEM.md §10. 매핑(1봉=1000g)만 있으면 코드 변경 없이 닫힌다.
+  // ⚠ 단위: PO 라인은 **봉 단위**(1), 재고 오버레이는 **g**(×1000), 레시피는 g(40).
+  const B5 = 'HC5-';
+  async function b5Sweep() {   // 이전 실행이 중간에 죽었을 때의 orphan 을 **시작 시** 쓸어낸다
+    const { sequelize } = require('../config/database');
+    const q = (x, r) => sequelize.query(x, { replacements: r || {}, type: sequelize.QueryTypes.SELECT });
+    const ings = (await q(`SELECT id FROM ingredients WHERE name LIKE '${B5}%'`)).map(x => x.id);
+    const bps = (await q(`SELECT id FROM brand_products WHERE name LIKE '${B5}%'`)).map(x => x.id);
+    const recs = (await q(`SELECT id FROM recipes WHERE name LIKE '${B5}%'`)).map(x => x.id);
+    const prods = (await q(`SELECT id FROM products WHERE name LIKE '${B5}%'`)).map(x => x.id);
+    const pos = (await q(`SELECT id FROM purchase_orders WHERE po_number LIKE '${B5}%'`)).map(x => x.id);
+    const ords = (await q(`SELECT id FROM orders WHERE customer_name = '${B5}order'`)).map(x => x.id);
+    const del = async (sql, r) => sequelize.query(sql, { replacements: r }).catch(() => {});
+    if (pos.length) { await del('DELETE FROM purchase_order_items WHERE purchase_order_id IN (:i)', { i: pos });
+                      await del('DELETE FROM inventory_transactions WHERE purchase_order_id IN (:i)', { i: pos });
+                      await del('DELETE FROM purchase_orders WHERE id IN (:i)', { i: pos }); }
+    if (ords.length) { await del('DELETE FROM order_actions WHERE order_id IN (:i)', { i: ords });
+                       await del('DELETE FROM orders WHERE id IN (:i)', { i: ords }); }
+    if (recs.length) { await del('DELETE FROM recipe_ingredients WHERE recipe_id IN (:i)', { i: recs }); }
+    if (prods.length) await del('DELETE FROM products WHERE id IN (:i)', { i: prods });
+    if (recs.length) await del('DELETE FROM recipes WHERE id IN (:i)', { i: recs });
+    if (ings.length) {
+      for (const tb of ['restaurant_ingredient_costs','restaurant_ingredient_stocks','inventory_batches','inventory_transactions','ingredient_seller_products','recipe_ingredients','purchase_order_items'])
+        await del(`DELETE FROM ${tb} WHERE ingredient_id IN (:i)`, { i: ings });
+      await del('DELETE FROM ingredients WHERE id IN (:i)', { i: ings });
+    }
+    if (bps.length) { await del('DELETE FROM ingredient_seller_products WHERE seller_product_id IN (:i)', { i: bps });
+                      await del('DELETE FROM brand_products WHERE id IN (:i)', { i: bps }); }
+  }
+
+  test('po', '브랜드 공유 재료: 발주 제출 → 수령 +1000g → 판매 -40g = 960 (매핑 conv 1000)', async () => {
+    const { sequelize } = require('../config/database');
+    const { Ingredient, BrandProduct, Recipe, RecipeIngredient, Product, Order,
+            PurchaseOrder, PurchaseOrderItem, RestaurantIngredientStock, InventoryTransaction } = require('../models');
+    const catalogLink = require('../utils/catalogLink');
+    if (!demoRestId || !demoRaToken) { poSkip(); return true; }
+    const rest = (await sequelize.query('SELECT id, brand_id, is_demo FROM restaurants WHERE id = :r',
+      { replacements: { r: demoRestId }, type: sequelize.QueryTypes.SELECT }))[0];
+    if (!rest || !rest.is_demo) { poSkip(); return true; }          // 실매장에 절대 쓰지 않는다
+    if (!rest.brand_id) { poSkip(); return true; }                  // 부모 브랜드 없는 데모면 검증 불가
+    await b5Sweep();
+    try {
+      const bid = rest.brand_id;
+      // 1) 브랜드 공유 재료 (g, 1000g 기준) + 브랜드 프로덕트(1봉)
+      const ing = await Ingredient.create({ owner_type: 'brand', brand_id: bid, code: `${B5}${Date.now()%100000}`,
+        name: `${B5}sauce`, unit: 'g', base_quantity: 1000, unit_cost: 30, current_stock: 0, min_stock: 0, is_active: true });
+      const bp = await BrandProduct.create({ name: `${B5}sauce 1kg`, unit_price: 30, base_quantity: 1,
+        order_mode: 'pack', min_order_quantity: 1, sync_to_ingredients: false });
+      // 2) 매핑 — 라우트(from-catalog)와 같은 함수·같은 인자로 1봉 = 1000g
+      const seller = await catalogLink.resolveSellerProduct({
+        body: { brand_product_id: bp.id }, transaction: null, brandSellerEntityId: async () => bid });
+      if (!seller.ok) return false;
+      const conn = await catalogLink.connectExisting({ target: ing, seller,
+        unitConversion: catalogLink.resolveUnitConversion(1000), targetKey: 'ingredient_id', transaction: null });
+      if (!conn.ok) return false;
+      // 3) 발주 제출 (매장 → 부모 브랜드) — 매핑이 없으면 여기서 400 이 난다
+      const h = { Authorization: `Bearer ${demoRaToken}` };
+      const created = await request('POST', '/purchase-orders',
+        { seller_type: 'brand', seller_entity_id: bid, items: [{ ingredient_id: ing.id, quantity_ordered: 1 }] }, h);
+      if (created.status !== 200 && created.status !== 201) return false;
+      const poId = created.body && (created.body.data?.id ?? created.body.id);
+      if (!poId) return false;
+      await PurchaseOrder.update({ status: 'confirmed' }, { where: { id: poId } });
+      // 4) 수령 → 오버레이 +1000g (봉 1 × conv 1000)
+      const recv = await request('POST', `/purchase-orders/${poId}/mark-received`, {}, h);
+      if (recv.status !== 200) return false;
+      const ov1 = await RestaurantIngredientStock.findOne({ where: { restaurant_id: rest.id, ingredient_id: ing.id } });
+      if (!ov1 || Math.abs(parseFloat(ov1.current_stock) - 1000) > 0.001) return false;
+      // 5) 레시피 40g + 메뉴 → POS 주문 완료 → 오버레이 960
+      const recipe = await Recipe.create({ name: `${B5}recipe`, brand_id: bid });
+      await RecipeIngredient.create({ recipe_id: recipe.id, ingredient_id: ing.id, quantity: 40, unit: 'g', cost: 1.2 });
+      const cat = (await sequelize.query('SELECT name FROM categories WHERE restaurant_id = :r LIMIT 1',
+        { replacements: { r: rest.id }, type: sequelize.QueryTypes.SELECT }))[0];
+      const prod = await Product.create({ restaurant_id: rest.id, name: `${B5}menu`, price: 1,
+        category: cat ? cat.name : 'Main', recipe_id: recipe.id, is_active: true });
+      const order = await Order.create({ restaurant_id: rest.id, customer_name: `${B5}order`, total_amount: 1,
+        status: 'pending', source: 'pos', order_type: 'dine_in',
+        order_items: [{ id: `order-${Date.now()}`, menuItem: { id: String(prod.id), name: prod.name, price: 1 },
+                        name: prod.name, price: 1, quantity: 1 }] });
+      const done = await request('PATCH', `/orders/${order.id}/status`, { status: 'completed' }, h);
+      if (done.status !== 200) return false;
+      const ov2 = await RestaurantIngredientStock.findOne({ where: { restaurant_id: rest.id, ingredient_id: ing.id } });
+      if (!ov2 || Math.abs(parseFloat(ov2.current_stock) - 960) > 0.001) return false;
+      const led = await InventoryTransaction.count({
+        where: { restaurant_id: rest.id, ingredient_id: ing.id, transaction_type: 'order_deduct' } });
+      return led >= 1;
+    } finally { await b5Sweep(); }
+  });
+
+  test('po', 'received 상태 PO 재수령은 400 (재고 이중 증가 차단)', async () => {
+    const { sequelize } = require('../config/database');
+    const { Ingredient } = require('../models');
+    if (!demoRestId || !demoRaToken) { poSkip(); return true; }
+    const demo = { id: demoRestId };
+    try {
+      const f = await poFixture(demo.id, { conv: 1, qty: 5 });
+      const h = { Authorization: `Bearer ${demoRaToken}` };
+      if ((await request('POST', `/purchase-orders/${f.po.id}/mark-received`, {}, h)).status !== 200) return false;
+      const before = parseFloat((await Ingredient.findByPk(f.ing.id)).current_stock);
+      const again = await request('POST', `/purchase-orders/${f.po.id}/receive`,
+        { items: [{ item_id: f.item.id, quantity_received: 5 }] }, h);
+      if (again.status !== 400) return false;
+      const after = parseFloat((await Ingredient.findByPk(f.ing.id)).current_stock);
+      return Math.abs(after - before) < 0.001;
+    } finally { await poCleanup(); }
+  });
+
   // ④ 브랜드 상품 중복 등록은 막힌다(하드) / 변형은 물어본다(소프트).
   //    같은 물건이 이름만 바꿔 여러 번 등록되면 재고가 쪼개져 어느 칸도 안 맞는다.
   test('inventory', '브랜드 상품 이름 완전일치 → 409 (중복 등록 차단)', async () => {

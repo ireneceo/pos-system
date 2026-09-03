@@ -889,7 +889,7 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
           });
           if (!r.ok) { await t.rollback(); return res.status(400).json({ success: false, message: r.message }); }
         }
-        await item.update({ quantity_received: Math.round((alreadyReceived + normalP) * 100) / 100 }, { transaction: t });
+        // 라인 수령량은 applyReceipt 가 이미 썼다(2026-09-03 단일화) — 여기서 또 쓰면 이중 가산.
         continue;
       }
 
@@ -911,7 +911,7 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
           });
           if (!r.ok) { await t.rollback(); return res.status(400).json({ success: false, message: r.message }); }
         }
-        await item.update({ quantity_received: Math.round((alreadyReceived + normalB) * 100) / 100 }, { transaction: t });
+        // 라인 수령량은 applyReceipt 가 이미 썼다(2026-09-03 단일화) — 여기서 또 쓰면 이중 가산.
         continue;
       }
 
@@ -989,14 +989,10 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
         }
       }
 
-      // Update item.quantity_received with normal split sum
+      // 라인 수령량은 `applyReceipt` 가 이미 썼다(2026-09-03 단일화). 여기서 다시 쓰면
+      // 같은 수량이 두 번 더해진다. 아래 allReceived 판정이 최신값을 읽도록 다시 읽기만 한다.
       if (normalQtyTotal > 0) {
-        const newRecv = Math.round((alreadyReceived + normalQtyTotal) * 100) / 100;
-        await PurchaseOrderItem.update(
-          { quantity_received: newRecv },
-          { where: { id: item.id }, transaction: t }
-        );
-        item.quantity_received = newRecv;
+        await item.reload({ transaction: t });
       }
       // (legacy block removed — splits 처리로 대체됨 below)
       affectedIngredientIds.add(item.ingredient_id);

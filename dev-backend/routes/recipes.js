@@ -230,7 +230,12 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
     if (suggested_price !== undefined) updateData.suggested_price = suggested_price ? parseFloat(suggested_price) : 0;
 
     // 재료 소유권 검증 — 이 브랜드 재료만 (타 브랜드/타 매장 재료 참조 차단)
-    const badIng = await findDisallowedIngredientIds(ingredients, { brandId: brand_id });
+    // 기준은 **레시피의 실제 소유 브랜드**(`recipe.brand_id`). URL 의 `:brandId` 를 쓰면 브랜드 X
+    // 소유자가 `/brands/Y/recipes/<X의 레시피>` 로 불러 Y 재료를 붙일 수 있다 — 권한 판정
+    // (`canEditRecipe`)도 `recipe.brand_id` 로 하므로 기준을 그것에 맞춘다.
+    // 2026-07-12~09-03: 선언된 적 없는 `brand_id` 를 읽어 **모든 브랜드 레시피 수정이
+    // ReferenceError(500)로 실패**했다 — 조건 없이 도는 줄이라 이름만 고쳐도 막혔다.
+    const badIng = await findDisallowedIngredientIds(ingredients, { brandId: recipe.brand_id });
     if (badIng.length) {
       return res.status(400).json({ success: false, message: `Ingredient not in this brand: ${badIng.join(', ')}` });
     }

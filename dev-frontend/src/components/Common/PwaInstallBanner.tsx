@@ -14,7 +14,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const PwaInstallBanner: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
-  const { canInstall, isIOS, iosVersion, isWindowsDesktop, desktopAppUrl, isAndroidBrowser, androidAppUrl, promptInstall, dismissBanner, shouldShowBanner } = usePwaInstall();
+  const { canInstall, isIOS, iosVersion, isWindowsDesktop, desktopAppUrl, isAndroidBrowser, androidAppUrl, promptInstall, dismissBanner, shouldShowBanner, platform, openInstallGuide } = usePwaInstall();
   const { isAuthenticated } = useAuth();
 
   // PWA/iOS install banner stays scoped to /pos (as before). The Windows desktop
@@ -33,14 +33,21 @@ const PwaInstallBanner: React.FC = () => {
   // authenticated, so they never see it.
   const showAndroidCta = isAndroidBrowser && isAuthenticated;
   if (isCustomerDisplayRoute) return null;
-  if (!isPosRoute && !showWindowsCta && !showAndroidCta) return null;
+  // 설치 가능한 플랫폼 + 로그인이면 **어느 화면에서든** 안내한다.
+  // 2026-09-03 정정: 예전엔 iOS 만 `/pos` 경로로 좁혀져 있어 매장 화면(/restaurant/:id/…)
+  // 에서는 아이패드 사용자에게 아무것도 안 보였다. 윈도우·안드로이드는 이미 전 화면이었다.
+  const showInstallCta = platform !== 'other' && isAuthenticated;
+  if (!isPosRoute && !showInstallCta) return null;
   if (!shouldShowBanner) return null;
 
   const handleInstall = async () => {
     if (canInstall) {
       const outcome = await promptInstall();
       if (outcome === 'accepted') dismissBanner(365);
+      return;
     }
+    // 프롬프트가 없는 플랫폼(iOS·구형 Mac 사파리)은 사이드바와 **같은 안내창**을 연다.
+    openInstallGuide();
   };
 
   const handleDismiss = () => dismissBanner();

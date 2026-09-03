@@ -83,7 +83,7 @@ if [ "$SKIP_SAFETY" = true ]; then
 else
     cd $LOCAL_DEV_BACKEND
 
-    log "Safety gate (1/9): 🔒 인쇄/주문 보호 파일 무결성..."
+    log "Safety gate (1/10): 🔒 인쇄/주문 보호 파일 무결성..."
     if ! node scripts/check-print-guard.js --quiet; then
         error "🔒 인쇄/주문 보호 파일이 변경됨. 의도한 인쇄 변경이고 실프린터 확인까지 끝났으면
        'cd dev-backend && node scripts/check-print-guard.js --bless' 후 재배포.
@@ -91,62 +91,70 @@ else
     fi
     success "보호 파일 무결성 OK (생명선 안전)"
 
-    log "Safety gate (2/9): 🧾 인쇄 데이터 필드 계약 (세트 구성품 누락 방지)..."
+    log "Safety gate (2/10): 🧾 인쇄 데이터 필드 계약 (세트 구성품 누락 방지)..."
     if ! node scripts/check-print-field-contract.js; then
         error "인쇄 항목 변환에서 세트 구성품 필드(set_components) 누락 — 빌/주방에 'SET' 만 찍히는 회귀. 해당 mapItem 수정 후 재배포. (긴급 우회: --skip-safety)"
     fi
     success "인쇄 필드 계약 OK (세트 구성품 전 경로 통과)"
 
-    log "Safety gate (3/9): 🎨 디자인 단일 기준(RA=표준) — 신규 위반 차단..."
+    log "Safety gate (3/10): 🎨 디자인 단일 기준(RA=표준) — 신규 위반 차단..."
     if ! node scripts/check-design-guard.js --summary; then
         error "🎨 신규 디자인 위반 — 공용 컴포넌트(DataTable/Button/StatCard/Modal) 미사용·장식 이모지·일반 danger 에 #FF6B6B 등 CLAUDE.md '🎨 디자인 단일 기준' 위반. 공용/RA 기준으로 고칠 것. 정식 변경이면 'node scripts/check-design-guard.js --bless'. (긴급 우회: --skip-safety)"
     fi
     success "디자인 단일 기준 OK (신규 위반 0)"
 
-    log "Safety gate (4/9): 🛡️ 라우트 가드 (IDOR — 신규 무방비 literal /restaurant/:param 차단, 마운트프리픽스 라우터는 배럴가드+health-check 담당)..."
+    log "Safety gate (4/10): 🛡️ 라우트 가드 (IDOR — 신규 무방비 literal /restaurant/:param 차단, 마운트프리픽스 라우터는 배럴가드+health-check 담당)..."
     if ! node scripts/check-route-guard.js --summary; then
         error "🛡️ 신규 무방비 라우트 — /restaurant/:param 에 checkRestaurantAccess 또는 인라인 매장검사(req.user.restaurant_id≠param→403) 누락 = 타매장 데이터 유출(IDOR) 위험. 소유권 검사 추가 후 재배포. 정식/예외면 'node scripts/check-route-guard.js --bless'. (긴급 우회: --skip-safety)"
     fi
     success "라우트 가드 OK (무방비 /restaurant/:param 신규 0)"
 
-    log "Safety gate (4b/9): 🗄️ 마이그레이션 레지스트리 (배포목록 누락 = 스키마 드리프트 차단)..."
+    log "Safety gate (4b/10): 🗄️ 마이그레이션 레지스트리 (배포목록 누락 = 스키마 드리프트 차단)..."
     if ! node scripts/check-migration-registry.js; then
         error "🗄️ 미분류/유령 마이그레이션 — 새 migrate-*.js 를 만들고 목록 등록을 잊으면 운영 DB 스키마가 안 맞는다. scripts/migrations.registry.json 의 deploy(멱등·매배포) 또는 manual(일회성, 이유명시) 에 추가 후 재배포. (긴급 우회: --skip-safety)"
     fi
     success "마이그레이션 레지스트리 OK (전 마이그 분류됨 — 드리프트 안전)"
 
-    log "Safety gate (5/9): 🕐 타임존 가드 (신규 위반 0 — 매장 타임존 규칙)..."
+    log "Safety gate (5/10): 🕐 타임존 가드 (신규 위반 0 — 매장 타임존 규칙)..."
     if ! node scripts/timezone-check.js; then
         error "🕐 신규 타임존 위반 — 브라우저 로컬시간 사용. getTodayBounds/formatDateTime 로 교체 후 재배포. 정식이면 'node scripts/timezone-check.js --bless'. (긴급 우회: --skip-safety)"
     fi
     success "타임존 가드 OK (신규 위반 0)"
 
-    log "Safety gate (6/9): 💧 state hydration 안전 (legacy 캐시 crash 방지)..."
+    log "Safety gate (6/10): 💧 state hydration 안전 (legacy 캐시 crash 방지)..."
     if ! (cd $LOCAL_DEV_FRONTEND && node scripts/state-hydration-check.js); then
         error "💧 hydration warning — 새 state field 의 defensive merge/accessor 누락 = legacy 사용자 runtime crash. /검증 0단계 가이드 참조. (긴급 우회: --skip-safety)"
     fi
     cd $LOCAL_DEV_BACKEND
     success "state hydration 안전 OK (warning 0)"
 
-    log "Safety gate (7/9): 회귀 테스트 (health-check 전체 — 인쇄 계약 + 보안 + API)..."
+    log "Safety gate (7/10): 회귀 테스트 (health-check 전체 — 인쇄 계약 + 보안 + API)..."
     if ! node scripts/health-check.js --quiet; then
         error "회귀 테스트 실패 — 인쇄/주문/보안 등 기능 회귀 감지. 위 실패 항목 수정 후 재배포. (긴급 우회: --skip-safety)"
     fi
     success "회귀 테스트 통과 — 인쇄/주문 계약 + 전체 기능 정상"
 
-    log "Safety gate (8/9): 인스펙션 하니스 (공급망·플랜모듈·주문돈무결성 구조 불변식)..."
+    log "Safety gate (8/10): 인스펙션 하니스 (공급망·플랜모듈·주문돈무결성 구조 불변식)..."
     if ! node scripts/inspection/run.js; then
         error "🔎 신규 구조 위반 — 공급망(자기참조/고아/미러/카테고리)·플랜모듈(buyer 게이트)·주문돈무결성(금액재구성/멱등중복/고아결제/결제합) 불변식 위반 감지. scripts/inspection 참조. 정식/의도된 부채면 'node scripts/inspection/run.js --bless'. (긴급 우회: --skip-safety)"
     fi
     success "인스펙션 하니스 통과 — 구조 불변식 신규 위반 0"
 
-    log "Safety gate (9/9): 🖨️ 인쇄 라우트 가드 (자동인쇄 디스패치 전 루트: 방식×프린터×native/web 실제 실행)..."
+    log "Safety gate (9/10): 🖨️ 인쇄 라우트 가드 (자동인쇄 디스패치 전 루트: 방식×프린터×native/web 실제 실행)..."
     cd $LOCAL_DEV_FRONTEND
     if ! node scripts/print-route-guard/run.js --quiet; then
         error "🖨️ 인쇄 라우트 회귀 — 자동인쇄 디스패치(utils/billPrint.js)가 어떤 방식/프린터 조합에서 잘못된 트랜스포트로 가거나 유령출력/누락 발생. 위 실패 루트 수정 후 재배포. 정식 라우팅 변경이면 scripts/print-route-guard/cases.js 기대값도 함께 갱신. (긴급 우회: --skip-safety)"
     fi
     success "인쇄 라우트 가드 통과 — 전 자동인쇄 루트 정상 (종이만 실기기 확인 남음)"
     cd $LOCAL_DEV_BACKEND
+
+    log "Safety gate (10/10): 📋 배포 기록 (releases/*.json 7칸 — 없거나 비면 배포 차단)..."
+    if ! node scripts/check-deploy-record.js; then
+        error "📋 배포 기록이 없거나 필수 칸이 비었습니다. dev-backend/releases/<날짜>-<태그>.json 에
+       작업중·완료·이슈·앞으로 할 것·**변경 후 바뀌는 현상**·**추가로 체크할 영역**·검증 내역을
+       채우고 재배포. (긴급 우회: --skip-safety)"
+    fi
+    success "배포 기록 OK"
 
     # 1c. 배포 델타 분류 (정보성, fail 아님) — 이번 배포가 민감영역(인쇄/돈/보안/마이그레이션)에
     # 닿는지 자동 분류해 표시. Fable 게이트 대상이면 여기서 눈으로 확인된다.
@@ -672,6 +680,37 @@ else
 fi
 
 # ──────────────────────────────────────────
+# 배포 기록 적재 — 회차별 개발 현황을 운영 DB(deploy_records)에 남긴다.
+# 재시작·헬스 확인 **뒤**에 한다(백엔드가 살아 있어야 모델이 붙는다).
+# 실패는 fail-loud: 코드는 이미 나갔으므로 롤백이 아니라 크게 알리고 수동 재적재를 안내한다.
+# ssh -n / < /dev/null — 루프 안 ssh 가 stdin 을 삼키는 함정 회피(마이그 경로와 같은 패턴).
+# ──────────────────────────────────────────
+if [ "$SKIP_SAFETY" = true ]; then
+    warn "배포 기록 적재 건너뜀 (--skip-safety)"
+else
+    REC_FILE=$(ls "$LOCAL_DEV_BACKEND"/releases/*.json 2>/dev/null | head -1)
+    if [ -z "$REC_FILE" ]; then
+        warn "배포 기록 파일이 없습니다 — 적재 건너뜀 (게이트를 통과했다면 이 경로는 나올 수 없습니다)"
+    else
+        REC_NAME=$(basename "$REC_FILE")
+        log "Loading deploy record: $REC_NAME"
+        ssh -n $PROD_SERVER "mkdir -p $REMOTE_PROD_BACKEND/releases" < /dev/null
+        scp -q "$REC_FILE" "$PROD_SERVER:$REMOTE_PROD_BACKEND/releases/$REC_NAME" < /dev/null
+        if ssh -n $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node scripts/load-deploy-record.js releases/$REC_NAME"; then
+            mkdir -p "$LOCAL_DEV_BACKEND/releases/archive"
+            mv "$REC_FILE" "$LOCAL_DEV_BACKEND/releases/archive/$REC_NAME"
+            success "배포 기록 적재 완료 — archive/$REC_NAME 로 이동"
+        else
+            # fail-loud — 코드는 이미 나갔으니 롤백이 아니라 **성공으로 읽히지 않게** 한다.
+            # 자동화는 exit 코드만 본다(오늘 배포 스크립트의 `Cancelled.` → exit 0 과 같은 함정).
+            RECORD_LOAD_FAILED=true
+            warn "[FAIL] 배포 기록이 적재되지 않았습니다 (코드는 이미 배포됨 — 롤백 아님)"
+            warn "  수동 재적재: ssh $PROD_SERVER \"cd $REMOTE_PROD_BACKEND && node scripts/load-deploy-record.js releases/$REC_NAME\""
+        fi
+    fi
+fi
+
+# ──────────────────────────────────────────
 # 13. Reload nginx (with cache clear)
 # ──────────────────────────────────────────
 log "Reloading nginx..."
@@ -907,3 +946,9 @@ echo "  Smoke:  ${SMOKE_PASS}/${SMOKE_TOTAL} passed"
 echo "  Time: $(date)"
 echo "============================================"
 echo ""
+
+# 배포 기록 적재 실패는 마지막에 다시 알리고 **exit 1** 로 끝낸다 — 위 요약만 보고
+# 성공으로 넘기지 않기 위해서다(코드 배포 자체는 이미 끝났다).
+if [ "${RECORD_LOAD_FAILED:-false}" = true ]; then
+    error "배포는 됐으나 개발이슈 기록이 적재되지 않았습니다 — 위 수동 재적재 명령을 실행하십시오."
+fi

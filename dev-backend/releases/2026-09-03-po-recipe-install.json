@@ -1,0 +1,194 @@
+{
+  "tag": "2026-09-03-po-recipe-install",
+  "in_progress": [
+    {
+      "title": "K-소스 10종 공급처 연결",
+      "detail": "IPC 가 브랜드 소스를 발주할 수 있게 하는 매핑 10건. 드라이런 완료(9건 + 육개장 1pack=1kg), 운영 apply 대기.",
+      "scope": "ingredient_seller_products",
+      "status": "ready"
+    }
+  ],
+  "completed": [
+    {
+      "title": "발주 '받은 수량'이 한 번도 기록되지 않던 것",
+      "detail": "전량 수령 경로가 재고는 올리면서 라인 수령량을 안 썼다. 운영 수령 PO 9건 전부 0. 쓰기 지점을 applyReceipt 한 곳으로 단일화. 과거 9건 50줄 백필 완료.",
+      "scope": "services/purchaseOrderReceive.js, routes/purchase-orders-workflow.js",
+      "status": "deployed"
+    },
+    {
+      "title": "일부 수령 후 '전체 수령' 시 재고 이중 가산",
+      "detail": "주문 5 → 3 받고 전체수령 = 8 이 되던 것. 남은 양만 받도록 수정. 기존 결함이었고 수령량이 참값이 되면서 드러났다.",
+      "scope": "markAllReceived",
+      "status": "deployed"
+    },
+    {
+      "title": "브랜드 레시피 수정이 100% 실패",
+      "detail": "2026-07-12~09-03, 7주간 전면 불능. 선언된 적 없는 brand_id 를 읽어 ReferenceError(500). 이름만 고쳐도 막혔다.",
+      "scope": "routes/recipes.js:233",
+      "status": "deployed"
+    },
+    {
+      "title": "레시피 팝업 버튼이 스크롤로 내려감",
+      "detail": "버튼을 공용 ModalFooter 로 이동. 본문 1063px 스크롤 후에도 버튼 y 불변 측정.",
+      "scope": "pages/RecipeManagement/RecipesTab.tsx",
+      "status": "deployed"
+    },
+    {
+      "title": "앱 설치가 아이패드·안드로이드에서 안 되던 것",
+      "detail": "기기 판정을 detectPlatform 한 곳으로(iPad = Macintosh + maxTouchPoints>1), alert 를 공용 안내 모달로, 사이드바 버튼 2벌 통합, 배너를 전 화면으로.",
+      "scope": "PwaInstallContext, InstallGuideModal, PwaInstallBanner, MainLayout",
+      "status": "deployed"
+    },
+    {
+      "title": "K-DINE 레시피 재료·메뉴·원가",
+      "detail": "레시피 7건에 재료 33줄 + 원가, IPC 메뉴 64건을 브랜드 레시피에 연결, 재료 1건 생성.",
+      "scope": "recipe_ingredients, products.recipe_id",
+      "status": "deployed"
+    }
+  ],
+  "issues": [
+    {
+      "title": "안드로이드 APK 다운로드가 여전히 막힘",
+      "detail": "서버가 APK 를 application/octet-stream 으로 보내 크롬이 설치 파일로 인식하지 않는다. nginx 한 블록 필요, sudo 권한이라 미적용.",
+      "scope": "/etc/nginx/sites-enabled/purplehere.com",
+      "status": "open"
+    },
+    {
+      "title": "브랜드 공유 재료 차감이 운영에서 미증명",
+      "detail": "dev 계약(발주→수령 +1000g→판매 -40g)은 통과. 운영은 IPC 첫 발주 로그로 확인. 시험 발주는 넣지 않는다.",
+      "scope": "restaurant_ingredient_stocks",
+      "status": "open"
+    },
+    {
+      "title": "Order.order_items getter 무방비 JSON.parse",
+      "detail": "값이 깨지면 그 주문을 읽는 모든 경로가 함께 죽는 단일 실패점. 라우트 6곳은 방어하는데 모델만 무방비. 실해 0. 수정 시 print-guard 대상.",
+      "scope": "models/Order.js:212",
+      "status": "open"
+    },
+    {
+      "title": "자체재고 사용 여부 정의 불일치",
+      "detail": "편집 화면과 차감 서비스가 '레시피는 있는데 재료 0줄'에서 다르게 판단. IPC 13개 메뉴 한정, 재고 0이라 실해 0.",
+      "scope": "MenuManagementPage.tsx:1365, inventoryDeductionService.js:210",
+      "status": "open"
+    },
+    {
+      "title": "health-check 에 SKIP 개념이 없음",
+      "detail": "준비물이 없어 아무것도 검증 못 해도 초록 통과로 집계된다.",
+      "scope": "scripts/health-check.js",
+      "status": "open"
+    },
+    {
+      "title": "배포 스크립트가 취소를 성공으로 알림",
+      "detail": "비대화형에서 확인 프롬프트에 걸리면 'Cancelled.' 를 찍고 exit 0. 자동화가 성공으로 읽는다.",
+      "scope": "deploy-to-production.sh:249,266",
+      "status": "open"
+    },
+    {
+      "title": "백엔드에 미선언 식별자 가드 없음",
+      "detail": "브랜드 레시피 결함이 7주간 살아남은 이유. 프론트에는 있으나 백엔드에는 없다.",
+      "scope": "scripts/verify-all.js",
+      "status": "open"
+    }
+  ],
+  "upcoming": [
+    {
+      "title": "솔루션 개발이슈 화면",
+      "detail": "이 기록 파일을 배포 시점에 운영 DB 로 적재하고 시스템 관리자 화면에서 회차별로 본다. 기록이 없으면 배포가 막히는 fail-closed.",
+      "scope": "models/DeployRecord.js, routes/admin, pages/Admin",
+      "status": "designed"
+    },
+    {
+      "title": "문의 바로가기 입구",
+      "detail": "사이드바 하단 고정 '문의' + 오류 화면에 '이 오류 보내기'. 매장 관리자에게 시스템 문의가 없는 것도 함께 연다.",
+      "scope": "MainLayout, ErrorBoundary, support-tickets",
+      "status": "planned"
+    },
+    {
+      "title": "플레이스토어 등록",
+      "detail": "PlanQ 계정에 추가 비용 없이 등록 가능. 2026-08-31 부터 API 36 필수인데 앱은 34 — SDK 상향 + 실기기 회귀 선행.",
+      "scope": "mobile-app/android",
+      "status": "blocked"
+    },
+    {
+      "title": "차이표 작업",
+      "detail": "재료 0줄 레시피 13개에 재료 걸기 / 육개장 레시피 두 벌 정본 / [REDUCED] 규칙 재검토 / 미역국 소고기 0.07kg→70g.",
+      "scope": "recipes, recipe_ingredients",
+      "status": "planned"
+    }
+  ],
+  "behavior_changes": [
+    {
+      "title": "발주 상세의 '받은 수량'이 실제 값으로 보인다",
+      "detail": "지금까지 전부 0 이었다. 과거 9건도 채웠으므로 화면 숫자가 바뀐다.",
+      "scope": "PurchaseOrderDetailPage.tsx:1217"
+    },
+    {
+      "title": "반품 가능 수량이 잡히기 시작한다",
+      "detail": "반품 최대 수량이 '받은 수량' 기준이라 0 이던 동안 반품이 동작하지 않았을 가능성이 크다.",
+      "scope": "PurchaseOrderDetailPage.tsx:1627"
+    },
+    {
+      "title": "일부 수령 후 전체 수령이 남은 양만 넣는다",
+      "detail": "예전에는 전량을 다시 넣어 재고가 부풀었다. 같은 조작의 결과 수치가 달라진다.",
+      "scope": "markAllReceived"
+    },
+    {
+      "title": "브랜드 레시피 저장이 된다",
+      "detail": "7주간 실패하던 동작이 성공한다. 재료를 바꿔 저장하면 기존 재료 줄을 지우고 다시 넣는 기존 동작 그대로다.",
+      "scope": "PUT /api/brands/:id/recipes/:id"
+    },
+    {
+      "title": "앱 설치 안내가 전 화면·전 기기에서 뜬다",
+      "detail": "예전에는 아이패드가 /pos 화면에서만, 그것도 alert 로 떴다.",
+      "scope": "PwaInstallBanner, MainLayout"
+    },
+    {
+      "title": "레시피 원가가 0 이 아니라 실제 값으로 보인다",
+      "detail": "브랜드 레시피 화면은 저장값을 쓰는데 그 값이 비어 있었다.",
+      "scope": "recipes.total_ingredient_cost"
+    }
+  ],
+  "check_areas": [
+    {
+      "title": "발주 상세 화면 2곳",
+      "detail": "수령 수량이 주문량과 같게 보이는지, 반품 가능 수량이 잡히는지. PO-R10-20260827-001 로 확인.",
+      "who": "Irene"
+    },
+    {
+      "title": "아이패드 설치 버튼",
+      "detail": "새로고침 후 사이드바 맨 아래 Install App → 안내창이 뜨는지. UA 시뮬레이션은 통과, 실기기 미확인.",
+      "who": "Irene"
+    },
+    {
+      "title": "안드로이드 APK",
+      "detail": "nginx 적용 후 실제 태블릿에서 다운로드·설치가 되는지. 적용 전에는 여전히 막혀 있다.",
+      "who": "Irene (nginx 실행 후)"
+    },
+    {
+      "title": "브랜드 레시피 저장",
+      "detail": "이름만 바꿔 저장, 재료를 바꿔 저장 둘 다. 재료 저장은 '지우고 다시 넣기' 라 실패 시 재료가 사라질 수 있는 경로다.",
+      "who": "Irene"
+    },
+    {
+      "title": "IPC 첫 발주 수령",
+      "detail": "브랜드 소스를 실제로 발주·수령했을 때 매장 재료 재고가 g 단위로 오르는지 로그로 확인.",
+      "who": "Opus (로그)"
+    },
+    {
+      "title": "매장 재고 화면",
+      "detail": "메뉴 64건에 레시피가 연결돼 판매 시 차감 대상이 메뉴 자체재고에서 재료로 바뀐다. 재고 입력 후 첫 판매에서 확인.",
+      "who": "Opus (로그)"
+    }
+  ],
+  "verification": {
+    "gates": "verify-all 15/15 + 실브라우저 mount 8역할",
+    "contracts_added": "9건 — PO 수령 5(전량·분할누적·남은양·재수령400·브랜드공유재료 순환) + 브랜드 레시피 2 + 기존 유지",
+    "fault_injections": "6건 — 라인갱신 제거 / 남은양→전량 / 매핑 제거 / conv 1000→1 / brand_id 되돌림 / iPad 보정 제거. 전부 해당 계약만 실패 후 복원",
+    "print_guard": "인쇄 계약 10/10 · 인쇄 라우트 34/34 통과 후 bless (MainLayout diff = 설치 버튼 3곳, _printPollFn 0줄)",
+    "migration": "none",
+    "data_writes": "운영 DB 4배치 — 재료링크 33줄·원가 40 / 메뉴 recipe_id 64건 / 수령량 50줄. 전부 스냅샷 + 전후 지문으로 무접촉 증명",
+    "not_verified": "실기기(아이패드·안드로이드) / nginx 적용 후 APK / IPC 첫 발주 / Mac 사파리 17 미만 분기",
+    "fable_note": "PO 수령 단일화+남은양 / 브랜드 레시피 PUT brand_id→recipe.brand_id 핫픽스 / RecipesTab 푸터 고정 / 앱 설치 detectPlatform 단일소스+InstallGuideModal. 계약 9건·고장주입 6건·diff 직접 대조. 마이그 0",
+    "sw_version": "4.74-install-guide-20260903"
+  }
+}

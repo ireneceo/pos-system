@@ -164,7 +164,26 @@ async function receiveIntoIngredient({
  * 라인은 ingredient / product_ingredient / product / brand_product **넷 중 하나**를 가리킨다
  * (utils/stockTarget 이 쓰기 시점에 강제하는 불변식).
  */
-async function applyReceipt({
+async function applyReceipt(args) {
+  const r = await applyReceiptToStock(args);
+  // ── 라인 수령량의 **유일한** 쓰기 지점 ────────────────────────────────
+  // 재고를 올리는 그 트랜잭션에서 같이 쓴다. 예전엔 분할수령 라우트만 자기 손으로
+  // 갱신하고 `markAllReceived`(mark-received·receive-and-pay)는 안 써서, 운영에서
+  // **수령 완료 PO 9건 전부 `quantity_received=0`** 이었다(재고는 정상). 경로가 갈리지
+  // 못하도록 여기 한 곳으로 모은다 — 패치가 아니라 단일화.
+  // 저장값은 **라인 단위(환산 전)**. 재고는 `× unit_conversion` 이지만 이 칸은 주문 단위다.
+  if (r && r.ok && !r.skipped) {
+    const add = parseFloat(args.quantity) || 0;
+    if (add > 0) {
+      const prev = parseFloat(args.item.quantity_received) || 0;
+      const next = Math.round((prev + add) * 100) / 100;
+      await args.item.update({ quantity_received: next }, { transaction: args.t });
+    }
+  }
+  return r;
+}
+
+async function applyReceiptToStock({
   item, po, quantity, userId, t, note,
   unitCost = null, batchNumber = null, expiryDate = null,
   lockIngredient = false, currentStock = null, pIng = null, ingredientRow = null,
@@ -209,9 +228,17 @@ async function markAllReceived(po, { userId, note, trackingSource }, t) {
   const { appendTrackingEvent } = require('./poRealtimeService');
   const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, transaction: t });
   for (const item of items) {
+    // **남은 양만** 넣는다. 예전엔 `quantity_ordered` 전량을 다시 넣어, 일부 수령된 PO 에
+    // "전체 수령"을 누르면 재고가 이중 가산됐다(주문 5 → 분할 3 → 전체수령 = +3 +5 = 8).
+    // `RECEIVABLE_STATUSES` 에 `partial_received` 가 있어 실제로 닿는 경로다.
+    // 예전엔 `quantity_received` 가 늘 0 이라 "남은 양"을 계산할 수조차 없었다 —
+    // 라인 수령량이 참값이 된 지금에야 이 계산이 가능하다.
+    // 남은 양 0 이면 applyReceiptToStock 의 `qty <= 0 → skipped` 분기가 알아서 건너뛴다.
+    const remaining = Math.max(0,
+      Math.round(((parseFloat(item.quantity_ordered) || 0) - (parseFloat(item.quantity_received) || 0)) * 100) / 100);
     const r = await applyReceipt({
       item, po,
-      quantity: parseFloat(item.quantity_ordered) || 0,
+      quantity: remaining,
       userId, t, note,
       // 이 라우트는 원래 재료 행을 잠그지 않았다 — 임의로 잠그면 동작 변경이다(P4-2 참조).
       lockIngredient: false,

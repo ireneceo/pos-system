@@ -18,6 +18,12 @@ interface PwaInstallState {
   promptInstall: () => Promise<'accepted' | 'dismissed' | 'unavailable'>;
   dismissBanner: (days?: number) => void;
   shouldShowBanner: boolean;
+  // ── 아래가 판정 단일 소스. 새 코드는 `platform` 만 본다(위 boolean 들은 호환용). ──
+  platform: InstallPlatform;      // windows / android / ios / mac / other
+  safariMajor: number | null;     // Mac 사파리 17+ = `파일 › Dock에 추가` 가능
+  installGuideOpen: boolean;
+  openInstallGuide: () => void;
+  closeInstallGuide: () => void;
 }
 
 // The native Windows desktop app (Electron) replaces QZ Tray. On a Windows
@@ -54,14 +60,6 @@ async function resolveDesktopAppUrl(): Promise<string | null> {
   }
 }
 
-function detectWindowsDesktop(): boolean {
-  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
-  const ua = navigator.userAgent || '';
-  const isWin = /Windows NT/.test(ua) && !/Windows Phone/.test(ua);
-  // Already inside the native app (preload sets window.__PURPLE_DESKTOP) →
-  // never offer the installer again.
-  return isWin && !isNativeDesktop();
-}
 
 // The native Android app (Capacitor) replaces the browser+QZ path on tablets:
 // it injects window.__NATIVE_PRINT for LAN/Bluetooth printing that a plain Android
@@ -72,24 +70,52 @@ function detectWindowsDesktop(): boolean {
 // offering it. Sideload install (like Windows SmartScreen: "unknown source" once).
 const ANDROID_APP_URL = '/desktop/PurplePOS.apk';
 
-function detectAndroidBrowser(): boolean {
-  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
-  const ua = navigator.userAgent || '';
-  const isAndroid = /Android/.test(ua) && !/Windows Phone/.test(ua);
-  return isAndroid && !isNativeDesktop();
-}
 
 const PwaInstallContext = createContext<PwaInstallState | null>(null);
 
 const DISMISS_KEY = 'pos.pwa-install.dismissed_until';
 
-function detectIOS(): { isIOS: boolean; version: number | null } {
-  if (typeof navigator === 'undefined') return { isIOS: false, version: null };
+// ── 설치 플랫폼 판정 = **단일 소스** ─────────────────────────────────────────
+// Irene 확정 정책(2026-09-03): 윈도우=데스크탑앱 / 안드로이드=APK / iPad·Mac=PWA.
+//
+// 왜 한 곳으로 모으나: 예전엔 `isIOS`·`isAndroidBrowser`·`isWindowsDesktop` 이 따로
+// 계산돼, iPad 판정을 한 곳에서 틀리면 배너·사이드바·모달이 **서로 다르게** 굴었다.
+// 실제 사고: iPadOS 13+ 사파리는 기본 UA 가 `Macintosh` 라 `/iPad/` 정규식이 false →
+// 설치 버튼이 사라지거나 눌러도 아무 일이 없었다(2026-09-03 Irene 보고).
+export type InstallPlatform = 'windows' | 'android' | 'ios' | 'mac' | 'other';
+
+function detectPlatform(): InstallPlatform {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return 'other';
+  if (isNativeDesktop()) return 'other';            // 이미 네이티브 앱 안 — 다시 권하지 않는다
   const ua = navigator.userAgent || '';
-  const isIOS = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream;
-  if (!isIOS) return { isIOS: false, version: null };
-  const m = ua.match(/OS (\d+)_/);
-  return { isIOS: true, version: m ? parseInt(m[1], 10) : null };
+  const touch = (navigator as any).maxTouchPoints || 0;
+
+  if (/Windows NT/.test(ua) && !/Windows Phone/.test(ua)) return 'windows';
+  if (/Android/.test(ua) && !/Windows Phone/.test(ua)) return 'android';
+  // iPhone/iPod 은 UA 에 그대로 나온다. **iPad 는 안 나올 수 있다** — 데스크톱 UA 를
+  // 쓰면서 터치가 있는 Macintosh 는 iPad 다(맥은 maxTouchPoints 가 0).
+  if (/iPhone|iPod/.test(ua) && !(window as any).MSStream) return 'ios';
+  if (/iPad/.test(ua) && !(window as any).MSStream) return 'ios';
+  if (/Macintosh/.test(ua) && touch > 1) return 'ios';
+  if (/Macintosh|Mac OS X/.test(ua)) return 'mac';
+  return 'other';
+}
+
+/** iOS 메이저 버전(푸시 지원 안내용). 데스크톱 UA 인 iPad 에서는 못 읽어 null. */
+function detectIOSVersion(): number | null {
+  if (typeof navigator === 'undefined') return null;
+  const m = (navigator.userAgent || '').match(/OS (\d+)_/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/** Safari 메이저 버전. macOS 14(Sonoma)+ 의 사파리 17 부터 `파일 › Dock에 추가` 가 있다.
+ *  macOS 버전은 UA 가 `10_15_7` 로 고정돼 못 쓰므로 **사파리 버전**으로 가른다. */
+function detectSafariMajor(): number | null {
+  if (typeof navigator === 'undefined') return null;
+  const ua = navigator.userAgent || '';
+  if (!/Safari/.test(ua) || /Chrome|Chromium|Edg\//.test(ua)) return null;   // 크로미움 계열 제외
+  const m = ua.match(/Version\/(\d+)/);
+  return m ? parseInt(m[1], 10) : null;
 }
 
 function isStandaloneNow(): boolean {
@@ -102,9 +128,14 @@ function isStandaloneNow(): boolean {
 export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState<boolean>(isStandaloneNow());
-  const [{ isIOS, version: iosVersion }] = useState(detectIOS());
-  const [isWindowsDesktop] = useState(detectWindowsDesktop());
-  const [isAndroidBrowser] = useState(detectAndroidBrowser());
+  // 판정은 한 번, 나머지는 전부 여기서 파생 — 세 곳이 따로 계산하다 갈라진 것이 사고 원인이었다.
+  const [platform] = useState<InstallPlatform>(detectPlatform());
+  const [safariMajor] = useState<number | null>(detectSafariMajor());
+  const [iosVersion] = useState<number | null>(detectIOSVersion());
+  const [installGuideOpen, setInstallGuideOpen] = useState(false);
+  const isIOS = platform === 'ios';
+  const isWindowsDesktop = platform === 'windows';
+  const isAndroidBrowser = platform === 'android';
   // Starts on the always-latest alias so the button works on first paint, then
   // upgrades to the versioned filename the feed names.
   const [desktopAppUrl, setDesktopAppUrl] = useState<string>(DESKTOP_APP_FALLBACK_URL);
@@ -185,7 +216,8 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // the "Install App" sidebar button + banner would wrongly appear and install a second,
   // print-bridge-less PWA copy (with MIN, 2026-07-08).
   const nativeApp = isNativeDesktop();
-  const shouldShowBanner = !isStandalone && !isDismissed && !nativeApp && (Boolean(deferred) || isIOS || isWindowsDesktop || isAndroidBrowser);
+  // 설치 가능한 플랫폼이면 전부 — 예전엔 iOS 만 `/pos` 경로로 좁혀져 매장 화면에서 안 보였다.
+  const shouldShowBanner = !isStandalone && !isDismissed && !nativeApp && (Boolean(deferred) || platform !== 'other');
 
   return (
     <PwaInstallContext.Provider value={{
@@ -201,7 +233,12 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       androidAppUrl: ANDROID_APP_URL,
       promptInstall,
       dismissBanner,
-      shouldShowBanner
+      shouldShowBanner,
+      platform,
+      safariMajor,
+      installGuideOpen,
+      openInstallGuide: () => setInstallGuideOpen(true),
+      closeInstallGuide: () => setInstallGuideOpen(false)
     }}>
       {children}
     </PwaInstallContext.Provider>

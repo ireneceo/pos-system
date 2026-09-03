@@ -29,6 +29,7 @@
     "migrate-coupon-scope.js",
     "migrate-currency-rm-to-myr.js",
     "migrate-demo-store-flags.js",
+    "migrate-deploy-records.js",
     "migrate-invoice-item-unit.js",
     "migrate-order-action-table-moved.js",
     "migrate-pending-reprint.js",
