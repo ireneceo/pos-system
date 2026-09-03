@@ -95,6 +95,25 @@ export async function markAllRead(type: 'notice' = 'notice'): Promise<number> {
 }
 
 /**
+ * Intl.RelativeTimeFormat 이 없는 구형 브라우저용 폴백.
+ * 2026-09-03 배포 전까지 쓰던 영어 표기 그대로 — 번역은 못 하지만 화면은 살아 있다.
+ */
+function legacyRelativeTime(sec: number): string {
+  if (sec < 60) return 'just now';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  const wk = Math.floor(day / 7);
+  if (wk < 5) return `${wk}w ago`;
+  const mo = Math.floor(day / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  return `${Math.floor(day / 365)}y ago`;
+}
+
+/**
  * Relative time formatter — "3분 전", "어제", "2주 전".
  * Designed to read fast in a list; full timestamp goes in the title attribute.
  */
@@ -108,6 +127,14 @@ export function relativeTime(iso: string, locale: string = 'en'): string {
   const sec = Math.floor(Math.max(0, Date.now() - then) / 1000);
   // 로케일 태그가 이상하면 Intl 이 RangeError 를 던진다. 이 함수는 고객이 보는
   // 카드(InboxItemCard) 렌더 경로에 있어, 던지면 화면이 통째로 오류 화면으로 간다.
+  // 그래서 방어가 두 겹이다 (2026-09-03 Fable 적발):
+  //   ① API 자체가 없는 구형 브라우저(iOS 13 이하 사파리 · Chrome 70 이하 · 구형 안드로이드 WebView)
+  //      — catch 안에서 다시 new Intl.RelativeTimeFormat 을 부르면 TypeError 가 그대로 밖으로 나간다.
+  //      그 기기에서는 알림함이 통째로 오류 화면이 된다. 그래서 생성 전에 존재부터 확인하고 영어로 폴백.
+  //   ② API 는 있는데 로케일 태그가 이상한 경우 — try/catch 로 en 재생성.
+  if (typeof Intl === 'undefined' || typeof (Intl as any).RelativeTimeFormat !== 'function') {
+    return legacyRelativeTime(sec);
+  }
   let rtf: Intl.RelativeTimeFormat;
   try { rtf = new Intl.RelativeTimeFormat(locale || 'en', { numeric: 'auto' }); }
   catch { rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' }); }
