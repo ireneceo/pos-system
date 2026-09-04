@@ -144,7 +144,7 @@ function labelOf(source: SourceKey, t: any): string {
 function sourceNoteOf(source: SourceKey, t: any): string {
   switch (source) {
     case 'own': return t('supplier:viewNote.own', 'You can edit or delete this supplier from the External tab.');
-    case 'brand_shared': return t('supplier:viewNote.brandShared', 'Shared by your parent Brand. Read-only.');
+    case 'brand_shared': return t('supplier:viewNote.brandShared', 'Shared by your Brand. Items are managed at the Brand account.');
     case 'contract': return t('supplier:viewNote.contract', 'Linked via active supplier contract. Manage in the Contracts tab.');
     case 'brand_parent': return t('supplier:viewNote.brandParent', 'Your parent Brand HQ — read-only.');
     case 'foodcourt_parent': return t('supplier:viewNote.foodcourtParent', 'Your parent Foodcourt HQ — read-only.');
@@ -410,6 +410,14 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
                     <ActionButton onClick={() => setEditing(r)}>{t('common:edit', 'Edit')}</ActionButton>
                     <ActionButton variant="danger" onClick={() => setDeleting(r)}>{t('common:delete', 'Delete')}</ActionButton>
                   </>
+                )}
+                {/* 브랜드가 공유한 업체는 매장에서 **읽기 전용**이 맞다 — 매장이 품목을 끼워 넣으면
+                    같은 업체를 공유받는 다른 매장 목록까지 바뀐다. 다만 `View` 하나만 있으면
+                    "왜 안 되지"가 되므로, 품목은 볼 수 있게 하고 어디서 넣는지 안내한다. */}
+                {r.source === 'brand_shared' && (
+                  <ActionButton onClick={() => setViewing(r)}>
+                    {t('supplier:card.viewProducts', 'View Products')}{r.raw?.product_count ? ` (${r.raw.product_count})` : ''}
+                  </ActionButton>
                 )}
                 {r.source === 'contract' && (
                   <ActionButton variant="primary" onClick={handleOpenContract}>{t('supplier:card.openContract', 'Open Contract')}</ActionButton>

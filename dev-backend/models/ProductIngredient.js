@@ -136,10 +136,15 @@ ProductIngredient.init({
   // 저 재료와 같은 물건"이라는 표시일 뿐이며, current_stock 계산에는 영향을 주지 않는다.
   // 값은 사람이 확인해 채운다(scripts/link-product-ingredients.js). 외래키 제약은 걸지
   // 않는다 — 판매 재료가 비활성/삭제돼도 매입 자재는 살아야 한다.
+  // ⛔ 폐기 (2026-09-04, docs/INGREDIENT_UNIFICATION_DESIGN.md §3-1).
+  //   Stock Item 1 → 재료 1 밖에 담지 못해, 한 Stock Item 을 **여러 브랜드에 공유**하면
+  //   거울이 여럿이라 담을 수 없다. 열쇠는 거울 쪽으로 옮겼다 —
+  //   `ingredients.source_product_ingredient_id` (거울 N → Stock Item 1).
+  //   컬럼은 남기되 **읽지도 쓰지도 않는다**(운영 데이터 0건). 새 코드는 새 열쇠를 쓸 것.
   linked_ingredient_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
-    comment: '같은 물건인 ingredients.id (소프트 링크)'
+    comment: '⛔ 폐기 — ingredients.source_product_ingredient_id 를 쓸 것 (2026-09-04)'
   }
 }, {
   sequelize: database.sequelize,

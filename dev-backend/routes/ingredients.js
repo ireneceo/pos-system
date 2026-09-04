@@ -1,5 +1,10 @@
 const express = require('express');
 const router = express.Router();
+
+// 재료 목록 통합 (docs/INGREDIENT_UNIFICATION_DESIGN.md F3).
+// 브랜드 재료는 Stock Items 의 거울이라 사람이 직접 만들지 않는다. 되돌리지 말 것 —
+// 열면 같은 물건이 두 줄로 갈라지던 2026-06/07 분열이 재발한다.
+const ALLOW_BRAND_INGREDIENT_WRITE = false;
 const { Ingredient, IngredientCategory, Restaurant, Supplier, RestaurantIngredientCost, IngredientSellerProduct, SupplierProduct } = require('../models');
 const { stockMapFor, readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
 const { resolveSellers, getSellerName } = require('../utils/sellerNames');
@@ -222,6 +227,17 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
 //   ingredient(owner_type='brand') + IngredientSellerProduct 매핑 자동 생성. idempotent.
 // ============================================
 router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBrandManager, async (req, res) => {
+  // ⛔ F5/F3 (2026-09-04, docs/INGREDIENT_UNIFICATION_DESIGN.md):
+  //   브랜드 재료를 만드는 길은 Stock Items 하나뿐이다. 이 입구(공급업체 카탈로그 → 브랜드 재료 생성)가
+  //   열려 있으면 **출처 없는 브랜드 행**이 또 생기고, 인스펙션 ING-UNI-002 가 배포를 막는다.
+  //   브랜드 구매자는 `/api/product-ingredients/from-catalog` 로 간다(거기서 Stock Item 이 생기고
+  //   공유를 켜면 거울이 생긴다). 매장·푸드코트 경로는 무접촉.
+  if (!ALLOW_BRAND_INGREDIENT_WRITE) {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'USE_STOCK_ITEMS', message: 'Brand buyers add catalog items in Stock Items.' }
+    });
+  }
   const t = await Ingredient.sequelize.transaction();
   try {
     const bid = parseInt(req.params.brandId, 10);
@@ -302,6 +318,15 @@ router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBr
  * 브랜드 재료 생성
  */
 router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, async (req, res) => {
+  // ⛔ F3 (2026-09-04, docs/INGREDIENT_UNIFICATION_DESIGN.md):
+  //   재료를 만드는 길은 Stock Items 하나뿐이다. 브랜드 재료 행은 그 **거울**이고 사람이 만들지 않는다.
+  //   이 입구가 열려 있으면 같은 물건이 또 두 줄이 된다(2026-06/07 분열의 재발 경로).
+  if (!ALLOW_BRAND_INGREDIENT_WRITE) {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'USE_STOCK_ITEMS', message: 'Ingredients are created in Stock Items. Turn on brand sharing there.' }
+    });
+  }
   try {
     const { brandId } = req.params;
     const brand_id = brandId;
@@ -350,6 +375,27 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {
       return res.status(404).json({ success: false, error: { message: 'Ingredient not found', code: 'NOT_FOUND' } });
+    }
+
+    // ⛔ F3 (2026-09-04): 이 행이 Stock Item 의 거울이면 **정체성 필드는 여기서 못 고친다.**
+    //   Stock Items 에서 고치면 동기화(F2)가 따라온다. 방향은 Stock Item → 거울 한 방향뿐.
+    //   ⚠ 막는 것은 거울 행 **자체**의 이름·단위·카테고리·코드뿐이다 —
+    //     매장 재고·최소치 입력 경로는 그대로 열려 있어야 한다(min_stock·is_active 는 통과).
+    if (ingredient.source_product_ingredient_id) {
+      // `is_active` 도 잠근다 — 거울을 켜고 끄는 길은 공유/해제(F1) 하나뿐이다.
+      // 여기서 열어두면 사람이 끈 거울을 F2 동기화가 되살려 서로 다투는 행이 생긴다.
+      // `min_stock` 만 통과 — 매장 재고·최소치 경로는 열려 있어야 한다.
+      const locked = ['code', 'name', 'unit', 'ingredient_category_id', 'is_active'].filter((f) => req.body[f] !== undefined);
+      if (locked.length) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'MIRROR_READONLY',
+            message: `Edit these in Stock Items: ${locked.join(', ')}`,
+            fields: locked
+          }
+        });
+      }
     }
 
     // Build update object with only provided fields

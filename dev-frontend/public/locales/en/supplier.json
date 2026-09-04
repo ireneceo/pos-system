@@ -305,12 +305,16 @@
     "direct": "External"
   },
   "viewNote": {
-    "own": "You can edit or delete this supplier from the External tab."
+    "own": "You can edit or delete this supplier from the External tab.",
+    "brandShared": "Shared by your Brand. Items are managed at the Brand account."
   },
   "profile": {
     "externalSupplier": "External supplier"
   },
   "source": {
     "external": "EXTERNAL"
+  },
+  "card": {
+    "viewProducts": "View Products"
   }
 }

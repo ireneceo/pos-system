@@ -86,43 +86,58 @@ router.get('/', async (req, res) => {
     //   linked_store_total : 매장 오버레이(restaurant_ingredient_stocks) 합계 = 진짜 현물
     //   linked_stores      : 매장별 내역
     // 연결이 없으면 **null** 이다(0 이 아니다) — "연결 안 됨"과 "재고 0"은 다른 사실이다.
-    const linkedIds = [...new Set(data.map((i) => i.linked_ingredient_id).filter(Boolean))];
-    if (linkedIds.length) {
-      const { Ingredient, RestaurantIngredientStock, Restaurant } = require('../models');
-      const linked = await Ingredient.findAll({
-        where: { id: linkedIds },
-        attributes: ['id', 'name', 'unit', 'current_stock']
+    // F7 (2026-09-04, docs/INGREDIENT_UNIFICATION_DESIGN.md): 열쇠를 **거울 쪽**으로 바꾼다.
+    //   구 `product_ingredients.linked_ingredient_id` 는 Stock Item 1 → 재료 1 밖에 못 담아
+    //   한 Stock Item 을 여러 브랜드에 공유하면 담지 못했고, 코드 주석이 쓰기를 금지해
+    //   **운영 데이터가 0건이라 이 표시가 항상 null 이었다.** 이제 `ingredients.source_product_ingredient_id`
+    //   로 역조회하므로 처음으로 값이 나온다. 거울이 여럿이면 **합산**한다(브랜드별 거울 각각의 몫).
+    const { Ingredient, RestaurantIngredientStock, Restaurant } = require('../models');
+    const { Op } = require('sequelize');
+    const stockIds = data.map((i) => (i.toJSON ? i.toJSON() : i).id).filter(Boolean);
+    const mirrors = stockIds.length
+      ? await Ingredient.findAll({
+          where: { source_product_ingredient_id: { [Op.in]: stockIds } },
+          attributes: ['id', 'name', 'unit', 'current_stock', 'brand_id', 'is_active', 'source_product_ingredient_id']
+        })
+      : [];
+    const mirrorsBySource = {};
+    mirrors.forEach((m) => { (mirrorsBySource[m.source_product_ingredient_id] = mirrorsBySource[m.source_product_ingredient_id] || []).push(m); });
+
+    const mirrorIds = mirrors.map((m) => m.id);
+    const overlays = mirrorIds.length
+      ? await RestaurantIngredientStock.findAll({
+          where: { ingredient_id: { [Op.in]: mirrorIds } },
+          attributes: ['ingredient_id', 'restaurant_id', 'current_stock'],
+          include: [{ model: Restaurant, as: 'restaurant', attributes: ['id', 'name'], required: false }]
+        })
+      : [];
+    const overlayByMirror = {};
+    overlays.forEach((st) => {
+      (overlayByMirror[st.ingredient_id] = overlayByMirror[st.ingredient_id] || []).push({
+        restaurant_id: st.restaurant_id,
+        restaurant_name: st.restaurant?.name || null,
+        current_stock: parseFloat(st.current_stock) || 0
       });
-      const linkedMap = Object.fromEntries(linked.map((g) => [g.id, g]));
-      const stocks = await RestaurantIngredientStock.findAll({
-        where: { ingredient_id: linkedIds },
-        attributes: ['ingredient_id', 'restaurant_id', 'current_stock'],
-        include: [{ model: Restaurant, as: 'restaurant', attributes: ['id', 'name'], required: false }]
-      });
-      const byIngredient = {};
-      stocks.forEach((st) => {
-        (byIngredient[st.ingredient_id] = byIngredient[st.ingredient_id] || []).push({
-          restaurant_id: st.restaurant_id,
-          restaurant_name: st.restaurant?.name || null,
-          current_stock: parseFloat(st.current_stock) || 0
-        });
-      });
-      data = data.map((i) => {
-        const row = i.toJSON ? i.toJSON() : i;
-        const g = row.linked_ingredient_id ? linkedMap[row.linked_ingredient_id] : null;
-        if (!g) return { ...row, linked_stock: null, linked_store_total: null, linked_stores: [], linked_unit: null };
-        const perStore = byIngredient[g.id] || [];
-        return {
-          ...row,
-          linked_stock: parseFloat(g.current_stock) || 0,
-          linked_store_total: perStore.reduce((a, b) => a + b.current_stock, 0),
-          linked_stores: perStore,
-          linked_unit: g.unit || null
-        };
-      });
-    } else {
-      data = data.map((i) => ({ ...(i.toJSON ? i.toJSON() : i), linked_stock: null, linked_store_total: null, linked_stores: [], linked_unit: null }));
-    }
+    });
+
+    data = data.map((i) => {
+      const row = i.toJSON ? i.toJSON() : i;
+      const ms = mirrorsBySource[row.id] || [];
+      // 연결이 없으면 **null** 이다(0 이 아니다) — "연결 안 됨"과 "재고 0"은 다른 사실이다.
+      if (!ms.length) return { ...row, shared_brand_ids: [], linked_stock: null, linked_store_total: null, linked_stores: [], linked_unit: null };
+      const perStore = [];
+      ms.forEach((m) => (overlayByMirror[m.id] || []).forEach((x) => perStore.push(x)));
+      return {
+        ...row,
+        // F1: 이 Stock Item 이 지금 어느 브랜드에 공유돼 있는가 = **활성 거울이 있는 브랜드**.
+        //     별도 플래그를 두지 않는다 — 두면 플래그와 실제 거울이 어긋나는 날이 온다.
+        shared_brand_ids: ms.filter((m) => m.is_active !== false).map((m) => m.brand_id),
+        linked_stock: ms.reduce((a, m) => a + (parseFloat(m.current_stock) || 0), 0),
+        linked_store_total: perStore.reduce((a, b) => a + b.current_stock, 0),
+        linked_stores: perStore,
+        linked_unit: ms[0].unit || null
+      };
+    });
 
     res.json({
       success: true,
@@ -524,7 +539,59 @@ router.put('/:id', async (req, res) => {
       }
     }
 
+    // 단위 변경 보호 (2026-09-04): 거울에 레시피 줄이 붙어 있는데 단위를 바꾸면
+    //   레시피 수량의 의미가 말없이 바뀐다(예: 5 g → 5 kg). 거부하고 사람이 결정하게 한다.
+    if (updateData.unit !== undefined && String(updateData.unit) !== String(ingredient.unit)) {
+      const [{ n: recipeLines }] = await ProductIngredient.sequelize.query(
+        `SELECT COUNT(*) n FROM recipe_ingredients ri
+           JOIN ingredients i ON i.id = ri.ingredient_id
+          WHERE i.source_product_ingredient_id = :id`,
+        { replacements: { id: ingredient.id }, type: ProductIngredient.sequelize.QueryTypes.SELECT }
+      );
+      if (Number(recipeLines) > 0) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'UNIT_LOCKED_BY_RECIPES',
+            message: `Unit is used by ${recipeLines} recipe line(s). Change the recipes first.`,
+            recipe_lines: Number(recipeLines)
+          }
+        });
+      }
+    }
+
     await ingredient.update(updateData);
+
+    // F1: 공유 브랜드 체크 반영 — 켠 브랜드엔 거울 생성(있으면 살림), 끈 브랜드는 해제.
+    //   해제는 참조가 있으면 **거부되고 사유가 돌아온다**(카테고리 삭제와 같은 규칙).
+    //   거부된 브랜드는 응답 `share_blocked` 로 알려 화면이 조용히 실패하지 않게 한다.
+    let shareBlocked = [];
+    if (Array.isArray(req.body.shared_brand_ids)) {
+      const { Ingredient } = require('../models');
+      const { shareToBrand, unshareFromBrand } = require('../services/stockItemMirror');
+      const want = new Set(req.body.shared_brand_ids.map(Number).filter(Number.isFinite));
+      const existing = await Ingredient.findAll({
+        where: { source_product_ingredient_id: ingredient.id },
+        attributes: ['id', 'brand_id', 'is_active']
+      });
+      const have = new Set(existing.filter((m) => m.is_active !== false).map((m) => Number(m.brand_id)));
+      for (const b of want) if (!have.has(b)) await shareToBrand(ingredient, b);
+      for (const b of have) {
+        if (want.has(b)) continue;
+        const r = await unshareFromBrand(ingredient, b);
+        if (!r.changed && r.reason === 'in-use') shareBlocked.push({ brand_id: b, ...r.detail });
+      }
+    }
+
+    // F2 (docs/INGREDIENT_UNIFICATION_DESIGN.md): Stock Item 의 정체성 변경을 거울에 흘려보낸다.
+    //   방향은 Stock Item → 거울 한 방향뿐. 실패해도 본 저장을 되돌리지 않되 조용히 삼키지 않는다.
+    try {
+      const { syncMirrors } = require('../services/stockItemMirror');
+      const r = await syncMirrors(ingredient);
+      if (r.updated) console.log(`[mirror] Stock Item ${ingredient.id} → 거울 ${r.updated}건 동기화`);
+    } catch (e) {
+      console.error(`[mirror] Stock Item ${ingredient.id} 거울 동기화 실패:`, e.message);
+    }
 
     const updatedIngredient = await ProductIngredient.findByPk(ingredient.id, {
       include: [{ model: ProductIngredientCategory, as: 'category' }]
@@ -532,6 +599,8 @@ router.put('/:id', async (req, res) => {
 
     res.json({
       success: true,
+      // 해제가 거부된 브랜드가 있으면 조용히 넘기지 않는다 — 화면이 사유를 보여줘야 한다.
+      share_blocked: shareBlocked,
       data: updatedIngredient,
       message: 'Product ingredient updated successfully'
     });
@@ -559,6 +628,41 @@ router.delete('/:id', async (req, res) => {
         success: false,
         error: `Cannot delete ingredient. It is used in ${usageCount} recipe(s).`
       });
+    }
+
+    // 거울 정리 (2026-09-04, docs/INGREDIENT_UNIFICATION_DESIGN.md):
+    //   이 Stock Item 을 공유받은 브랜드 거울이 있으면 먼저 해제한다.
+    //   참조(레시피 줄·매장 덧씌우기·공급처 연결)가 하나라도 있으면 **삭제하지 않는다** —
+    //   그냥 지우면 인스펙션 ING-UNI-003 이 사후에 잡을 고아를 우리가 사전에 만드는 꼴이다.
+    {
+      const { Ingredient } = require('../models');
+      const { unshareFromBrand } = require('../services/stockItemMirror');
+      const mirrors = await Ingredient.findAll({
+        where: { source_product_ingredient_id: ingredient.id },
+        attributes: ['id', 'brand_id', 'name']
+      });
+      const blocked = [];
+      for (const m of mirrors) {
+        const r = await unshareFromBrand(ingredient, m.brand_id);
+        if (!r.changed && r.reason === 'in-use') blocked.push({ brand_id: m.brand_id, ...r.detail });
+      }
+      if (blocked.length) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'MIRROR_IN_USE',
+            message: 'This Stock Item is shared and still in use. Remove those uses first.',
+            blocked
+          }
+        });
+      }
+      // 참조가 없어 비활성된 거울은 출처를 끊어 고아 참조를 남기지 않는다(행은 이력으로 보존).
+      if (mirrors.length) {
+        await Ingredient.update(
+          { source_product_ingredient_id: null },
+          { where: { source_product_ingredient_id: ingredient.id } }
+        );
+      }
     }
 
     await ingredient.destroy();

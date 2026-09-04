@@ -719,5 +719,8 @@
       "measureHint": "Buyers order like '2.5 {{unit}}'",
       "packHint": "Buyers order like '3 units'{{spec}}"
     }
+  },
+  "brandIngredientsPage": {
+    "subtitle": "The single list of ingredients. Turn on brand sharing to use them in recipes and orders."
   }
 }

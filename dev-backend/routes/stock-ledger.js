@@ -269,6 +269,14 @@ async function migrateHandler(req, res) {
               continue;
             }
           } else {
+            // ⛔ F5 (2026-09-04): 브랜드 구매자는 여기서 재료 행을 만들지 않는다.
+            //   재료를 만드는 길은 Stock Items 하나뿐 — 출처 없는 브랜드 행이 생기면
+            //   인스펙션 ING-UNI-002 가 배포를 막는다. 매장·푸드코트는 그대로 진행.
+            if (buyer.type === 'brand') {
+              await t.rollback();
+              result.failed.push({ source_id: srcId, reason: 'USE_STOCK_ITEMS' });
+              continue;
+            }
             if (dryRun) { await t.rollback(); result.created++; continue; }
             target = await Ingredient.create({
               owner_type: buyer.type,
@@ -558,6 +566,12 @@ async function catalogBulkHandler(req, res) {
             continue;
           }
         } else {
+          // ⛔ F5 (2026-09-04): 브랜드 구매자는 여기서 재료 행을 만들지 않는다(위와 같은 이유).
+          if (buyer.type === 'brand') {
+            await t.rollback();
+            result.failed.push({ seller_product_id: spId, reason: 'USE_STOCK_ITEMS' });
+            continue;
+          }
           target = await Ingredient.create({
             owner_type: buyer.type,
             brand_id: buyer.type === 'brand' ? buyer.id : null,

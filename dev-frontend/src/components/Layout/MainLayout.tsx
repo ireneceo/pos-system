@@ -1709,7 +1709,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           // 매장에 공유되는 표준 재료(브랜드가 정의 → 매장은 읽기전용). 위 Stock Items(매입자재)와 **다른 계층**이다.
           //   2026-09-02 신설 — 그전에는 BG 가 이 목록을 볼 화면이 아예 없었고,
           //   그래서 운영에서 꺼진 미러 재료 63건이 화면 밖(스크립트)에서 꺼져 있었다.
-          { path: '/pos/brand/general/ingredients', label: t('nav.sharedIngredients', 'Shared Ingredients'), visible: isRouteAllowed('/pos/brand/general/ingredients') },
           { path: '/pos/stock-ledger', label: t('nav.bulkLink', 'Bulk Link'), visible: isRouteAllowed('/pos/stock-ledger') },
           { path: '/pos/brand-inventory', label: t('nav.inventory'), visible: isRouteAllowed('/pos/brand-inventory') },
           { path: '/pos/suppliers', label: t('nav.suppliers'), visible: isRouteAllowed('/pos/suppliers') },
@@ -2791,7 +2790,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     {isRouteAllowed('/pos/brand-ingredients') && (
                       <NavItem data-tour="sidebar-bg-ingredients" to="/pos/brand-ingredients" active={isActive('/pos/brand-ingredients')} onClick={closeSidebar}>
                         <NavIcon>▤</NavIcon>
-                        {t("nav.ingredients")}
+                        {/* 같은 화면(`/pos/brand-ingredients`)이 1708행에서는 'Stock Items',
+                            여기서는 'Ingredients' 로 **다르게 불리고 있었다**(2026-09-04 실측).
+                            재료 목록은 하나이고 이름도 하나여야 한다 — Stock Items 로 통일. */}
+                        {t('nav.stockItems', 'Stock Items')}
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/suppliers') && (

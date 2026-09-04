@@ -41,6 +41,30 @@ Ingredient.init({
     allowNull: true,
     comment: 'Brand product FK - links to brand_products table'
   },
+  // 재료 목록 통합(2026-09-04, docs/INGREDIENT_UNIFICATION_DESIGN.md):
+  //   재료의 유일한 입력처는 Stock Items(product_ingredients) 이고,
+  //   이 테이블의 브랜드 행은 그 **거울**이다. 열쇠는 거울 쪽에 둔다 —
+  //   한 Stock Item 이 여러 브랜드에 공유되면 거울이 여럿이므로 거울 N → Stock Item 1.
+  //   ⛔ 이 열쇠가 채워진 행의 이름·단위·카테고리는 사람이 고치지 않는다(API 403).
+  //      Stock Item 을 고치면 동기화가 따라온다. 방향은 Stock Item → 거울 한 방향뿐.
+  //   (구 `product_ingredients.linked_ingredient_id` 는 1:1 이라 못 쓴다 — 폐기, 데이터 0건.)
+  source_product_ingredient_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '이 행이 거울인 Stock Item(product_ingredients.id). null 이면 거울이 아님'
+  },
+  // 출처는 **둘 중 정확히 하나**다 (2026-09-04 Fable 판정):
+  //   GIT 이 **사서 쓰는 것**(원재료·소모품) → 출처 = Stock Item(위 컬럼)
+  //   GIT 이 **파는 것**(프로덕트: K-소스 완제품·포장재·굿즈) → 출처 = **브랜드 프로덕트**(이 컬럼)
+  // 근거: 2026-09-01 `migrate-git-merge-packaging` 결정 — "레시피 없는 프로덕트는 그 자체가 재고아이템"
+  //   (수량이 프로덕트에 산다). 파는 물건에 Stock Item 을 또 만들면 그때 합쳐 놓은 것이 다시 갈라진다.
+  //   실측(2026-09-04): 활성 브랜드 재료 143건 중 **25건**이 소유 브랜드의 활성 프로덕트와 같은 물건이었다.
+  // ⛔ 둘 다 채워진 행은 결함이다 — 인스펙션 ING-UNI-003 이 잡는다.
+  source_brand_product_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '이 행이 거울인 브랜드 프로덕트(brand_products.id). Stock Item 출처와 둘 중 하나만'
+  },
   // Ingredient info
   code: {
     type: DataTypes.STRING(50),
@@ -157,7 +181,11 @@ Ingredient.init({
   timestamps: true,
   underscored: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  indexes: [
+    { fields: ['source_product_ingredient_id'] },
+    { fields: ['source_brand_product_id'] }
+  ]
 });
 
 module.exports = Ingredient;

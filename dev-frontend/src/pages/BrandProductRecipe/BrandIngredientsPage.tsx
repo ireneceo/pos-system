@@ -9,6 +9,12 @@ import ProductIngredientCategoriesTab from './ProductIngredientCategoriesTab';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+const Subtitle = styled.div`
+  margin-top: 4px;
+  font-size: 13px;
+  color: #6B7280;
+`;
+
 const HeaderActions = styled.div`
   display: flex;
   gap: 12px;
@@ -87,7 +93,12 @@ const BrandIngredientsPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>{t('brand:brandIngredientsPage.ingredients')}</Title>
+        <div>
+          <Title>{t('brand:brandIngredientsPage.ingredients')}</Title>
+          {/* F6: 이 화면이 재료의 유일한 입력처라는 것을 화면에서 말한다.
+              같은 개념의 두 번째 목록(Shared Ingredients)을 없앤 자리이기도 하다. */}
+          <Subtitle>{t('brand:brandIngredientsPage.subtitle', 'The single list of ingredients. Turn on brand sharing to use them in recipes and orders.')}</Subtitle>
+        </div>
         {brands.length > 0 && (
           <HeaderActions>
             <BrandSelect value={selectedBrand || ''} onChange={(e) => setSearchParams({ tab: activeTab, brandId: e.target.value })}>

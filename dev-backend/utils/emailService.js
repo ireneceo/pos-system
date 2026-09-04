@@ -170,7 +170,7 @@ async function screenRecipients(rawTo, opts = {}) {
     let row = null;
     try {
       const rows = await sequelize.query(
-        'SELECT email_verified, is_test FROM users WHERE email = :e LIMIT 1',
+        'SELECT id, email_verified, is_test FROM users WHERE email = :e LIMIT 1',
         { replacements: { e: addr }, type: QueryTypes.SELECT }
       );
       row = rows[0] || null;
@@ -178,6 +178,30 @@ async function screenRecipients(rawTo, opts = {}) {
     if (row && (row.is_test === true || row.is_test === 1)) {
       dropped.push({ addr, why: 'is_test account' });
       continue;
+    }
+    // 데모 전용 계정 차단 (2026-09-04).
+    //   `demo-brand@purplehere.com` 으로 발송이 계속돼 "주소를 찾을 수 없다" 반송이 반복 도착했다.
+    //   우리 도메인이라 placeholder 목록에 안 걸리고 그 계정 `is_test` 도 0 이라 통과했다.
+    //   ⛔ 주소 **이름**으로 판정하지 않는다(사람을 이름으로 거르는 것) — 이 프로젝트 원칙은
+    //      데모 판정을 **데이터(is_demo)** 로 한다. 그래서 "이 사람이 닿는 매장이 하나라도 실매장인가"를 묻고,
+    //      **전부 데모이면** 발송하지 않는다. 닿는 매장이 아예 없으면(플랫폼 계정 등) 막지 않는다.
+    if (row && row.id) {
+      try {
+        const reach = await sequelize.query(
+          `SELECT COUNT(*) AS total, SUM(CASE WHEN r.is_demo = 1 THEN 1 ELSE 0 END) AS demo
+             FROM restaurants r
+            WHERE r.brand_id IN (SELECT id FROM brands WHERE owner_id = :u)
+               OR r.id IN (SELECT restaurant_id FROM restaurant_managers WHERE manager_id = :u)
+               OR r.id = (SELECT restaurant_id FROM users WHERE id = :u)`,
+          { replacements: { u: row.id }, type: QueryTypes.SELECT }
+        );
+        const total = Number(reach[0]?.total || 0);
+        const demo = Number(reach[0]?.demo || 0);
+        if (total > 0 && demo === total) {
+          dropped.push({ addr, why: 'demo-only account (닿는 매장이 전부 데모)' });
+          continue;
+        }
+      } catch (_e) { /* 판정 실패 시 막지 않음 — 실사용자 누락이 더 나쁘다 */ }
     }
     if (!allowUnverified && row && (row.email_verified === false || row.email_verified === 0)) {
       dropped.push({ addr, why: 'email_verified=false' });

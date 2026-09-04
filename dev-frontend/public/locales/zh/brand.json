@@ -719,5 +719,8 @@
       "measureHint": "买家会以「2.5{{unit}}」的方式下单",
       "packHint": "买家会以「3 个」的方式下单{{spec}}"
     }
+  },
+  "brandIngredientsPage": {
+    "subtitle": "唯一的食材清单。开启品牌共享后即可用于配方与采购。"
   }
 }

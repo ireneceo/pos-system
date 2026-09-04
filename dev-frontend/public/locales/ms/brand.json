@@ -719,5 +719,8 @@
       "measureHint": "Pembeli memesan seperti '2.5 {{unit}}'",
       "packHint": "Pembeli memesan seperti '3 unit'{{spec}}"
     }
+  },
+  "brandIngredientsPage": {
+    "subtitle": "Senarai bahan tunggal. Hidupkan perkongsian jenama untuk guna dalam resipi dan pesanan."
   }
 }

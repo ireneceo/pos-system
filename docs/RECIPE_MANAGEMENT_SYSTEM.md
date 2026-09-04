@@ -1,3 +1,5 @@
+> 구조는 `docs/TRADE_STRUCTURE.md` 가 단일 기준입니다. 재료·상품·가격 판단은 그 문서부터 읽으세요.
+
 # Recipe Management System - 레시피 관리 시스템
 
 **작성일:** 2025-11-20

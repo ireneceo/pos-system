@@ -14,6 +14,60 @@ const { Op } = require('sequelize');
  * 참조하는 레시피가 생겼다. (docs/BRAND_STOCK_SHARING_DESIGN.md G6)
  * 반환: 허용되지 않은 ingredient_id 배열 (빈 배열이면 통과).
  */
+/**
+ * F4 (2026-09-04, docs/INGREDIENT_UNIFICATION_DESIGN.md):
+ * 브랜드 레시피의 재료 선택기는 **Stock Items** 를 보여준다. 저장할 때 그 Stock Item 을
+ * 이 브랜드의 **거울**(ingredients 행)로 해석한다 — 거울이 없으면 공유를 자동으로 켜고 만든다.
+ *
+ * 왜 거울로 해석하나: 레시피 줄·재고 차감·인쇄 상품 해석이 전부 `ingredients` 를 가리키고 있고,
+ * 그 배선을 건드리면 🔒 인쇄 보호 영역까지 닿는다. 목록만 하나로 보이면 목적은 달성된다.
+ *
+ * 입력 item 이 `product_ingredient_id` 를 담고 있으면 그것을 `ingredient_id` 로 바꿔 돌려준다.
+ * 이미 `ingredient_id` 만 있는 옛 화면 요청은 그대로 통과시킨다(호환).
+ */
+async function resolveStockItemsToMirrors(items, brandId) {
+  if (!Array.isArray(items) || !brandId) return items;
+  const { ProductIngredient, BrandProduct, Ingredient } = require('../models');
+  const { shareToBrand } = require('../services/stockItemMirror');
+  const out = [];
+  for (const raw of items) {
+    const item = { ...raw };
+    const pid = parseInt(item.product_ingredient_id, 10);
+    const bpid = parseInt(item.brand_product_id, 10);
+
+    if (Number.isFinite(pid) && !item.ingredient_id) {
+      const stock = await ProductIngredient.findByPk(pid);
+      if (stock) {
+        const { ingredient } = await shareToBrand(stock, brandId);
+        item.ingredient_id = ingredient.id;
+      }
+    } else if (Number.isFinite(bpid) && !item.ingredient_id) {
+      // GIT 이 **파는 것**(프로덕트)이 출처인 거울. 2026-09-01 결정대로 Stock Item 을 만들지 않는다 —
+      // 레시피 없는 프로덕트는 그 자체가 재고아이템이고, 여기서 또 만들면 그때 합쳐 놓은 것이 갈라진다.
+      const product = await BrandProduct.findByPk(bpid);
+      if (product) {
+        let mirror = await Ingredient.findOne({ where: { source_brand_product_id: product.id, brand_id: brandId } });
+        if (mirror) { if (!mirror.is_active) await mirror.update({ is_active: true }); }
+        else {
+          mirror = await Ingredient.create({
+            owner_type: 'brand', brand_id: brandId, restaurant_id: null,
+            source_brand_product_id: product.id,
+            name: product.name, unit: product.unit || 'pack',
+            base_quantity: product.base_quantity || 1,
+            unit_cost: product.unit_price || 0, // 초기값 폴백 — 이후 동기화 대상 아님
+            category: 'other', min_stock: 0, current_stock: 0, is_active: true
+          });
+        }
+        item.ingredient_id = mirror.id;
+      }
+    }
+    delete item.product_ingredient_id;
+    delete item.brand_product_id;
+    out.push(item);
+  }
+  return out;
+}
+
 async function findDisallowedIngredientIds(items, scope) {
   const ids = [...new Set((items || []).map(i => parseInt(i.ingredient_id, 10)).filter(Number.isFinite))];
   if (!ids.length) return [];
@@ -94,7 +148,9 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
   try {
     const { brandId } = req.params;
     const brand_id = brandId; // DB 쿼리용
-    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, yield_amount, yield_unit, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
+    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients: rawIngredients, yield_amount, yield_unit, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
+    // F4: 재료 선택기가 Stock Item 을 보냈으면 이 브랜드의 거울로 해석한다(없으면 공유를 켜고 만든다).
+    const ingredients = await resolveStockItemsToMirrors(rawIngredients, parseInt(brandId, 10));
 
     // 필수 필드 검증
     if (!name || !name.trim()) {
@@ -192,9 +248,11 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
  */
 router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecipe, async (req, res) => {
   try {
-    const { recipeId } = req.params;
+    const { brandId, recipeId } = req.params;
     const recipe_id = recipeId; // DB 쿼리용
-    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, yield_amount, yield_unit, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
+    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients: rawIngredients, yield_amount, yield_unit, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
+    // F4: 재료 선택기가 Stock Item 을 보냈으면 이 브랜드의 거울로 해석한다(없으면 공유를 켜고 만든다).
+    const ingredients = await resolveStockItemsToMirrors(rawIngredients, parseInt(brandId, 10));
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {

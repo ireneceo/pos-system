@@ -305,12 +305,16 @@
     "direct": "외부업체"
   },
   "viewNote": {
-    "own": "이 공급업체는 외부업체 탭에서 수정·삭제할 수 있습니다."
+    "own": "이 공급업체는 외부업체 탭에서 수정·삭제할 수 있습니다.",
+    "brandShared": "브랜드가 공유한 업체입니다. 품목은 브랜드 계정에서 관리합니다."
   },
   "profile": {
     "externalSupplier": "외부업체"
   },
   "source": {
     "external": "외부업체"
+  },
+  "card": {
+    "viewProducts": "품목 보기"
   }
 }

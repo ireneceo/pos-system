@@ -446,6 +446,14 @@ date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', timeZone:
 - [ ] URL: 하드코딩 금지 → `process.env.FRONTEND_URL || (NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com')` 사용
 - [ ] Comment 모델 ENUM 확장 시 → `Comment.js`, `CommentRead.js`, `comments.js validTypes` 3곳 모두 수정
 
+### 🔴 기존 개념에 새 목록·경로를 만들지 않는다 (2026-09-04 — 반복 사고에서 나옴)
+
+**재료 · 상품 · 가격**을 건드리는 작업은 **먼저 `docs/TRADE_STRUCTURE.md` 에 대조한다.**
+- ⛔ 같은 개념에 **새 목록·새 테이블·자동 복제 경로를 추가 금지.** 필요하면 **구조 문서를 먼저 고치고 Fable 판정**을 받는다.
+- 실제 사고: "재료"를 네 번 새로 지었다(RA 재료 · BG Stock Items · 브랜드 공유 재료 · **프로덕트 자동 복제**). 마지막 것이 2026-06-08·07-05 에 이미 레시피가 쓰던 재료 옆에 같은 물건 두 번째 줄을 자동 생성해, **레시피는 옛 줄 · 발주와 재고는 새 줄**을 쓰게 갈라졌다(사서 넣어도 레시피 숫자가 안 움직임).
+- **자동 강제:** 인스펙션 `ingredient-unification` 3건(같은 물질 두 줄 없음 · 브랜드 재료는 Stock Item 출처를 가짐 · 출처 끊김 0)이 배포 게이트에서 fail-closed. 고장주입 3/3 반증 완료.
+- 단일 진실: `docs/TRADE_STRUCTURE.md` · `docs/INGREDIENT_UNIFICATION_DESIGN.md` · 메모리 [[reference_trade_structure_doc]].
+
 ### DB 스키마 변경
 - [ ] 모델 + DB 테이블 + `models/index.js` association + export 모두 확인
 - [ ] ENUM 추가 시 → 모델 파일 + ALTER TABLE 쿼리 모두 실행

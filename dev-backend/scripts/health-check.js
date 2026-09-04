@@ -2335,15 +2335,17 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
   });
 
-  // ── 브랜드 재료 동기화: 정체성만 덮고 결정은 존중한다 (2026-09-02) ──────────────
-  // 그전에는 `syncProductToIngredients` 가 미러 재료의 **전 컬럼을 매번 덮었다.**
-  // 사람이 끄거나 최소재고를 정해도 **상품을 한 번 수정하면 되돌아갔다.**
-  //   운영 실측(2026-09-02): 꺼진 미러 67건 중 **63건이 "상품은 켜져 있는데 사람이 끈 것"** —
-  //   다음 상품 수정 때 조용히 되살아날 상태였다. 가정이 아니라 이미 쌓여 있던 결함이다.
-  // 계약: 이름·단위·원가는 따라가고, is_active·min_stock·current_stock 은 안 건드린다.
-  //       예외 하나 — 상품이 비활성이 되면 미러도 꺼진다(단종품을 발주 화면에 남기지 않는다).
-  //       상품이 다시 활성이 돼도 미러는 **안 켠다**(기계가 사람을 이기지 않는다).
-  test('inventory', '브랜드 동기화: 사람이 끈 미러는 상품 수정에도 꺼진 채 · 이름/원가는 따라감', async () => {
+  // ── 재료 목록 통합 계약 (2026-09-04, docs/INGREDIENT_UNIFICATION_DESIGN.md) ──────
+  // 옛 계약("사람이 끈 미러는 상품 수정에도 꺼진 채")은 **폐기**됐다 — 그 계약이 전제한
+  //   `syncProductToIngredients`(프로덕트 → 브랜드 재료 자동 복제) 자체를 F5 로 껐기 때문이다.
+  //   그 경로가 2026-06-08·07-05 에 이미 레시피가 쓰던 재료 옆에 같은 물건의 두 번째 줄을 만들어,
+  //   레시피는 옛 줄을 · 발주와 재고는 새 줄을 쓰게 갈라놓았다(사서 넣어도 레시피 숫자가 안 움직임).
+  // 새 계약: **재료를 만드는 길은 Stock Items 하나뿐이고, 브랜드 재료 행은 그 거울이다.**
+  //   아래 4케이스가 그 계약을 지킨다. 뮤트·삭제 금지 — 방어를 빼면 각각 실패해야 한다.
+
+  // ①: 복제 경로가 꺼진 상태에서 프로덕트를 저장해도 **재료 행 수가 늘지 않는다.**
+  //    진입부 즉시 반환을 빼면(=옛 동작 복원) 미러가 생겨 이 케이스가 실패한다.
+  test('inventory', '통합①: 프로덕트 저장이 브랜드 재료를 만들지 않는다 (복제 경로 폐기)', async () => {
     const { sequelize } = require('../config/database');
     const { BrandProduct, BrandProductBrand, Ingredient } = require('../models');
     const bgUser = (await sequelize.query("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1",
@@ -2357,8 +2359,9 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
     let product = null;
     try {
+      const before = await Ingredient.count({ where: { brand_id: brand.id } });
       product = await BrandProduct.create({
-        owner_user_id: bgUser.id, name: 'ZZ-HC-SYNC-' + Date.now(), unit: 'pack', stock_unit: 'pack',
+        owner_user_id: bgUser.id, name: 'ZZ-HC-UNI1-' + Date.now(), unit: 'pack', stock_unit: 'pack',
         base_quantity: 1, unit_price: 10, min_order_quantity: 1, is_active: true,
         sync_to_ingredients: true, distribution_mode: 'specific_brands',
       });
@@ -2367,50 +2370,122 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
         defaults: { product_id: product.id, brand_id: brand.id },
       });
       await syncProductToIngredients(product.id);
-      let mirror = await Ingredient.findOne({ where: { brand_product_id: product.id, brand_id: brand.id } });
-      if (!mirror) { console.log(c.gray('      (미러가 안 생겼다)')); return false; }
-
-      // 사람이 결정한다 — **실제 라우트로** 끈다(2026-09-02 신설한 끄기 입구를 함께 검사).
-      //   그전에는 PUT 이 is_active 를 안 받아 **BG 가 자기 재료를 끌 방법이 아예 없었다.**
-      const bgTok = require('jsonwebtoken').sign({ userId: bgUser.id }, process.env.JWT_SECRET, { expiresIn: '10m' });
-      const off = await request('PUT', `/brands/${brand.id}/ingredients/${mirror.id}`,
-        { is_active: false, min_stock: 5 }, { Authorization: `Bearer ${bgTok}` });
-      if (off.status !== 200) { console.log(c.gray(`      (끄기 입구가 없다: PUT ${off.status})`)); return false; }
-      await mirror.reload();
-      if (mirror.is_active !== false) { console.log(c.gray('      (PUT 이 200 인데 안 꺼졌다)')); return false; }
-      await mirror.update({ current_stock: 10 });
-
-      // 상품 수정 → 동기화 재실행
-      await product.update({ name: product.name + '-RENAMED', unit_price: 22 });
+      const after = await Ingredient.count({ where: { brand_id: brand.id } });
+      if (after !== before) {
+        console.log(c.gray(`      (재료 행이 늘었다: ${before} → ${after} — 복제 경로가 되살아났다)`)); return false;
+      }
+      // 삭제 분기도 안 타야 한다 — 껐다고 기존 재료를 지우면 매장 덧씌우기가 날아간다.
+      await product.update({ sync_to_ingredients: false });
       await syncProductToIngredients(product.id);
-      await mirror.reload();
-      if (mirror.is_active !== false) { console.log(c.gray('      (사람이 끈 미러가 다시 켜졌다)')); return false; }
-      if (Number(mirror.min_stock) !== 5) { console.log(c.gray(`      (min_stock 이 덮였다: ${mirror.min_stock}, 기대 5)`)); return false; }
-      if (Number(mirror.current_stock) !== 10) { console.log(c.gray(`      (current_stock 이 덮였다: ${mirror.current_stock}, 기대 10)`)); return false; }
-      // 정체성은 따라가야 한다
-      if (!/-RENAMED$/.test(mirror.name)) { console.log(c.gray(`      (이름이 안 따라왔다: ${mirror.name})`)); return false; }
-      if (Math.abs(Number(mirror.unit_cost) - 22) > 0.001) { console.log(c.gray(`      (원가가 안 따라왔다: ${mirror.unit_cost}, 기대 22)`)); return false; }
-
-      // 상품 비활성 → 미러도 꺼진다(이미 꺼져 있으니 켜져 있는 상태로 되돌려 확인)
-      await mirror.update({ is_active: true });
-      await product.update({ is_active: false });
-      await syncProductToIngredients(product.id);
-      await mirror.reload();
-      if (mirror.is_active !== false) { console.log(c.gray('      (상품 단종인데 미러가 켜진 채다)')); return false; }
-
-      // 상품 재활성 → 미러는 **안 켜진다**
-      await product.update({ is_active: true });
-      await syncProductToIngredients(product.id);
-      await mirror.reload();
-      if (mirror.is_active !== false) { console.log(c.gray('      (상품 재활성이 미러를 다시 켰다 — 사람 결정을 덮었다)')); return false; }
+      const after2 = await Ingredient.count({ where: { brand_id: brand.id } });
+      if (after2 !== before) {
+        console.log(c.gray(`      (sync=false 가 기존 재료를 지웠다: ${before} → ${after2})`)); return false;
+      }
       return true;
     } catch (e) {
-      console.log(c.gray(`      (예외: ${e.message})`));
-      return false;
+      console.log(c.gray(`      (예외: ${e.message})`)); return false;
     } finally {
       try { if (product) await Ingredient.destroy({ where: { brand_product_id: product.id }, force: true }); } catch {}
       try { if (product) await sequelize.query('DELETE FROM brand_product_brands WHERE product_id = :p', { replacements: { p: product.id } }); } catch {}
       try { if (product) await product.destroy({ force: true }); } catch {}
+    }
+  });
+
+  // ②: 브랜드 재료 직접 생성 입구가 닫혀 있다(403). 열리면 출처 없는 행이 또 생긴다.
+  test('inventory', '통합②: POST /brands/:id/ingredients → 403 (재료는 Stock Items 에서만)', async () => {
+    const { sequelize } = require('../config/database');
+    const bgUser = (await sequelize.query("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1",
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    const brand = bgUser && (await sequelize.query('SELECT id FROM brands WHERE owner_id = :o LIMIT 1',
+      { replacements: { o: bgUser.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    if (!bgUser || !brand) { console.log(c.gray('      (건너뜀: 데모 BG/브랜드 없음)')); return true; }
+    const bgTok = require('jsonwebtoken').sign({ userId: bgUser.id }, process.env.JWT_SECRET, { expiresIn: '10m' });
+    const probeName = 'ZZ-HC-UNI2-' + Date.now();
+    try {
+      const r = await request('POST', `/brands/${brand.id}/ingredients`,
+        { name: probeName, unit: 'g', unit_cost: 1 }, { Authorization: `Bearer ${bgTok}` });
+      if (r.status !== 403) { console.log(c.gray(`      (403 이 아니다: ${r.status} — 생성 입구가 열려 있다)`)); return false; }
+      return r.body?.error?.code === 'USE_STOCK_ITEMS';
+    } finally {
+      // 가드가 뚫린 경우(=고장주입 중)에는 실제로 행이 만들어진다. 그대로 두면 **내 테스트가
+      // 인스펙션 ING-UNI-002 를 깨뜨린다** — 실제로 한 번 그렇게 됐다. 성공·실패 무관하게 정리한다.
+      try {
+        const { Ingredient } = require('../models');
+        await Ingredient.destroy({ where: { name: probeName }, force: true });
+      } catch {}
+    }
+  });
+
+  // ③: 거울 행의 정체성 필드는 403. 매장 재고 경로(min_stock)는 열려 있어야 한다.
+  test('inventory', '통합③: 거울 이름 PUT → 403 · min_stock 은 통과', async () => {
+    const { sequelize } = require('../config/database');
+    const { ProductIngredient, Ingredient } = require('../models');
+    const bgUser = (await sequelize.query("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1",
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    const brand = bgUser && (await sequelize.query('SELECT id FROM brands WHERE owner_id = :o LIMIT 1',
+      { replacements: { o: bgUser.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    if (!bgUser || !brand) { console.log(c.gray('      (건너뜀: 데모 BG/브랜드 없음)')); return true; }
+    const bgTok = require('jsonwebtoken').sign({ userId: bgUser.id }, process.env.JWT_SECRET, { expiresIn: '10m' });
+    let stock = null, mirror = null;
+    try {
+      stock = await ProductIngredient.create({
+        owner_user_id: bgUser.id, name: 'ZZ-HC-UNI3-' + Date.now(), unit: 'g', unit_cost: 1, is_active: true
+      });
+      const { shareToBrand } = require('../services/stockItemMirror');
+      mirror = (await shareToBrand(stock, brand.id)).ingredient;
+
+      const bad = await request('PUT', `/brands/${brand.id}/ingredients/${mirror.id}`,
+        { name: 'HACKED' }, { Authorization: `Bearer ${bgTok}` });
+      if (bad.status !== 403) { console.log(c.gray(`      (거울 이름 수정이 막히지 않았다: ${bad.status})`)); return false; }
+
+      const ok = await request('PUT', `/brands/${brand.id}/ingredients/${mirror.id}`,
+        { min_stock: 7 }, { Authorization: `Bearer ${bgTok}` });
+      if (ok.status !== 200) { console.log(c.gray(`      (매장 최소치 입력까지 막혔다: ${ok.status})`)); return false; }
+      await mirror.reload();
+      return Number(mirror.min_stock) === 7;
+    } catch (e) {
+      console.log(c.gray(`      (예외: ${e.message})`)); return false;
+    } finally {
+      try { if (mirror) await mirror.destroy({ force: true }); } catch {}
+      try { if (stock) await stock.destroy({ force: true }); } catch {}
+    }
+  });
+
+  // ④: Stock Item 을 고치면 거울이 따라온다. 동기화를 빼면 이름이 안 따라와 실패한다.
+  test('inventory', '통합④: Stock Item 이름 변경 → 거울이 따라온다 (한 방향 동기화)', async () => {
+    const { sequelize } = require('../config/database');
+    const { ProductIngredient, Ingredient } = require('../models');
+    const bgUser = (await sequelize.query("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1",
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    const brand = bgUser && (await sequelize.query('SELECT id FROM brands WHERE owner_id = :o LIMIT 1',
+      { replacements: { o: bgUser.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    if (!bgUser || !brand) { console.log(c.gray('      (건너뜀: 데모 BG/브랜드 없음)')); return true; }
+    const bgTok = require('jsonwebtoken').sign({ userId: bgUser.id }, process.env.JWT_SECRET, { expiresIn: '10m' });
+    let stock = null, mirror = null;
+    try {
+      const base = 'ZZ-HC-UNI4-' + Date.now();
+      stock = await ProductIngredient.create({
+        owner_user_id: bgUser.id, name: base, unit: 'g', unit_cost: 1, is_active: true
+      });
+      const { shareToBrand } = require('../services/stockItemMirror');
+      mirror = (await shareToBrand(stock, brand.id)).ingredient;
+      if (mirror.name !== base) { console.log(c.gray(`      (거울 초기 이름 불일치: ${mirror.name})`)); return false; }
+
+      // **실제 라우트로** 바꾼다 — 서비스 함수를 직접 부르면 라우트가 안 물려 있어도 통과한다(반증력 0).
+      const r = await request('PUT', `/product-ingredients/${stock.id}`,
+        { name: base + '-RENAMED' }, { Authorization: `Bearer ${bgTok}` });
+      if (r.status !== 200) { console.log(c.gray(`      (Stock Item 수정 실패: ${r.status})`)); return false; }
+      await mirror.reload();
+      if (mirror.name !== base + '-RENAMED') {
+        console.log(c.gray(`      (거울 이름이 안 따라왔다: ${mirror.name})`)); return false;
+      }
+      // 재고 수량·최소치는 주인별이라 따라오지 않아야 한다
+      return Number(mirror.current_stock) === 0;
+    } catch (e) {
+      console.log(c.gray(`      (예외: ${e.message})`)); return false;
+    } finally {
+      try { if (mirror) await mirror.destroy({ force: true }); } catch {}
+      try { if (stock) await stock.destroy({ force: true }); } catch {}
     }
   });
 

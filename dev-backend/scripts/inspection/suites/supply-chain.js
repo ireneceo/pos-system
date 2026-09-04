@@ -10,18 +10,26 @@ module.exports = {
     const add = (name, pass, detail) => checks.push({ name, pass, detail });
     const cnt = async (sql) => Number((await q(sql))[0].c);
 
-    // ── R-SC-001: 판매품목(sync_to_ingredients) → 레스토랑 미러 완결성 ──────────────
-    // distribution_mode='all' 상품은 brand_product_brands N:M 행이 없어 옛 sync가 미러 0개를
-    // 만들던 버그. 규칙: sync=1 이면 대상 브랜드마다 Ingredient(brand) 미러가 있어야 한다.
-    const allNoMirror = (await q(`
-      SELECT bp.id, bp.name FROM brand_products bp
-      WHERE bp.sync_to_ingredients = 1 AND bp.distribution_mode = 'all' AND bp.owner_user_id IS NOT NULL
-        AND (SELECT COUNT(*) FROM brands b WHERE b.owner_id = bp.owner_user_id) >
-            (SELECT COUNT(DISTINCT i.brand_id) FROM ingredients i WHERE i.brand_product_id = bp.id AND i.owner_type='brand')
+    // ── R-SC-001: 폐기 → 새 계약으로 교체 (2026-09-04) ───────────────────────────
+    // 옛 계약: "판매품목(sync_to_ingredients=1, distribution_mode='all')은 소유 브랜드마다
+    //   재료 미러가 있어야 한다." 이건 **프로덕트가 재료를 자동 생성하던 시절**의 규칙이다.
+    //   그 경로(F5)를 폐기했으므로 이 검사는 이제 **없어야 정상인 것을 없다고 실패**시킨다
+    //   (운영에서 20건 실패 — 전부 정상 상태).
+    // 새 계약: 재료 행은 **명시적으로 만들어질 때만** 존재한다(Stock Item 공유 또는 레시피에서 선택).
+    //   대신 지켜야 할 것은 **만들어진 거울이 출처를 갖는가**이고, 그건 인스펙션
+    //   `ingredient-unification` (ING-UNI-002/003/004)이 검사한다.
+    //   여기서는 **옛 경로가 되살아났는지**만 본다 — 프로덕트가 만든 흔적(`brand_product_id`)이 있는데
+    //   새 출처(`source_brand_product_id`)가 없는 행은 옛 복제가 다시 돌았다는 신호다.
+    const revived = (await q(`
+      SELECT i.id, i.name FROM ingredients i
+      WHERE i.brand_product_id IS NOT NULL
+        AND i.source_brand_product_id IS NULL
+        AND i.is_active = 1
+        AND i.created_at >= '2026-09-04'
       LIMIT 20`));
-    add('R-SC-001 판매품목(all) → 전 브랜드 미러 존재',
-      allNoMirror.length === 0,
-      allNoMirror.length ? `${allNoMirror.length}개 판매품목이 소유 브랜드 일부에 미러 없음 (예: ${allNoMirror.slice(0,3).map(r=>`#${r.id} ${r.name}`).join(', ')})` : '');
+    add('R-SC-001 프로덕트→재료 자동 복제가 되살아나지 않음 (>=2026-09-04)',
+      revived.length === 0,
+      revived.length ? `${revived.length}건이 옛 경로로 만들어진 것으로 보임 (예: ${revived.slice(0,3).map(r=>`#${r.id} ${r.name}`).join(', ')})` : '');
 
     // ── R-SC-002: 자기참조(self-brand) 셀러매핑 = 0 ────────────────────────────────
     // BG 스톡(ProductIngredient)이 "자기가 파는 BrandProduct"를 공급원으로 가리키는 매핑.

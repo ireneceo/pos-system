@@ -40,10 +40,45 @@ const generateProductSKU = async () => {
 };
 
 /**
+ * ⛔ 폐기된 경로 (2026-09-04) — docs/INGREDIENT_UNIFICATION_DESIGN.md F5
+ *
+ * 프로덕트를 등록하면 이 함수가 그 프로덕트를 **브랜드 재료 행으로 자동 복제**했다.
+ * 그 결과 이미 레시피가 쓰고 있던 재료(`K-Gochujang`, 단위 g, 2026-01 생성) 옆에
+ * `K-Gochujang Sauce 1kg`(단위 piece)이라는 **같은 물건의 두 번째 줄**이 생겼고
+ * (실측: 2026-06-08 26건 · 07-05 59건 생성, 그중 레시피가 붙은 것 1건),
+ * 레시피는 옛 줄을 · 발주와 재고는 새 줄을 쓰게 갈라졌다. 사서 넣어도 레시피 숫자가 안 움직인다.
+ *
+ * **재료를 만드는 길은 Stock Items 하나뿐이다.** 프로덕트는 파는 것이고 재료 행을 낳지 않는다.
+ *
+ * ⚠ 함수를 지우지 않고 **진입부에서 즉시 반환**한다 — 아래 `sync_to_ingredients=false` 분기가
+ *   `Ingredient.destroy` 로 **기존 재료를 삭제**하기 때문이다. 호출만 끊었다가 이 경로가 한 번이라도
+ *   돌면 매장 덧씌우기(운영 137건)가 날아간다. 인쇄 하이브리드 비활성과 같은 방식.
+ * ⛔ 이 가드를 되돌리지 말 것. 되돌리면 위 분열이 그대로 재발한다.
+ */
+const ENABLE_PRODUCT_INGREDIENT_MIRROR = false;
+
+/**
  * Sync brand product to ingredients table
  * Creates or updates ingredient records for each brand linked to the product
  */
 async function syncProductToIngredients(productId) {
+  if (!ENABLE_PRODUCT_INGREDIENT_MIRROR) {
+    // ⛔ F5 — 재료 행을 **만들지는** 않는다(위 주석). 다만 이 프로덕트가 **출처인 거울**이
+    //   이미 있으면 이름·단위·활성은 따라가야 한다(F2). 생성과 갱신은 다르다 —
+    //   2026-06/07 분열을 만든 것은 "생성"이었다.
+    try {
+      const { BrandProduct } = require('../models');
+      const { syncProductMirrors } = require('../services/stockItemMirror');
+      const p = await BrandProduct.findByPk(productId);
+      if (p) {
+        const r = await syncProductMirrors(p);
+        if (r.updated) console.log(`[mirror] 프로덕트 ${productId} → 거울 ${r.updated}건 동기화(갱신만)`);
+      }
+    } catch (e) {
+      console.error(`[mirror] 프로덕트 ${productId} 거울 동기화 실패:`, e.message);
+    }
+    return;
+  }
   try {
     const product = await BrandProduct.findByPk(productId, {
       include: [{ model: Brand, as: 'brands', through: { attributes: [] } }]

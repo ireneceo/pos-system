@@ -30,6 +30,7 @@
     "migrate-currency-rm-to-myr.js",
     "migrate-demo-store-flags.js",
     "migrate-deploy-records.js",
+    "migrate-ingredient-source-column.js",
     "migrate-invoice-item-unit.js",
     "migrate-order-action-table-moved.js",
     "migrate-pending-reprint.js",
@@ -100,6 +101,7 @@
     "migrate-category-cleanup-20260830.js": "일회성 — 운영 카테고리 중복 병합(9쌍·41건 이동)+빈 옛 카테고리 삭제(5)+미분류 자동 채움(277). 2026-08-30 ssh 로 직접 적용 완료, 완료마커 /var/www/backups/data-migrations/.category-cleanup-20260830.applied. 재실행 금지(마커가 막음).",
     "migrate-category-uncategorized-20260830.js": "일회성 — 미분류 항목 202건을 소유자별 Uncategorized 카테고리에 담음(신설 6). Irene 지시 2026-08-30. ssh 직접 적용 완료, 멱등(NULL 인 행만).",
     "migrate-category-fill-wave2-20260830.js": "일회성 — 미분류 잔여 202→121건(81건 채움). 용기어·세제어 우선 규칙 + 어휘 보강. 2026-08-30 ssh 직접 적용 완료, 마커 /var/www/backups/data-migrations/.category-fill-wave2-20260830.applied. 멱등(Uncategorized 인 행만).",
-    "migrate-git-merge-packaging.js": "일회성 데이터 이관 — GIT 포장재 갈라진 재고 합치기(운영 1회, 이름·소유자 이중 확인, 멱등). 배포 루프에서 재실행하지 않는다."
+    "migrate-git-merge-packaging.js": "일회성 데이터 이관 — GIT 포장재 갈라진 재고 합치기(운영 1회, 이름·소유자 이중 확인, 멱등). 배포 루프에서 재실행하지 않는다.",
+    "migrate-ingredient-unification.js": "일회성 · 재료 목록 통합(브랜드 재료 → Stock Items 거울). 드라이런 기본, --apply 로만 적용. 설계 docs/INGREDIENT_UNIFICATION_DESIGN.md §3-2. 매 배포 재실행 대상 아님."
   }
 }

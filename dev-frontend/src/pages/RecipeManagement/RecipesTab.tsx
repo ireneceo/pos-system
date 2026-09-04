@@ -903,6 +903,10 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
 
         if (isBrandRole && brandId) {
           recipesUrl = `/api/brands/${brandId}/recipes`;
+          // F4 (docs/INGREDIENT_UNIFICATION_DESIGN.md): 재료의 유일한 목록은 Stock Items 다.
+          //   기존 레시피 줄은 거울(ingredients)을 가리키므로 **표시용으로 거울도 함께** 받고,
+          //   선택기에는 Stock Items 를 얹는다. 저장 시 Stock Item 은 `product_ingredient_id` 로
+          //   보내고 서버가 이 브랜드의 거울로 해석한다(없으면 공유를 켜고 만든다).
           ingredientsUrl = `/api/brands/${brandId}/ingredients`;
           categoriesUrl = `/api/brands/${brandId}/recipe-categories`;
         } else if (isRestaurantAdmin && effectiveRestaurantId) {
@@ -918,6 +922,15 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             fetch(ingredientsUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
             fetch(categoriesUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
           );
+          // F4: 브랜드는 **Stock Items + GIT 프로덕트**를 선택기 목록으로 함께 받는다(results[3], results[4]).
+          //   재료의 출처는 둘이다 — GIT 이 **사는 것**은 Stock Item, **파는 것**(K-소스·포장재·굿즈)은 프로덕트.
+          //   프로덕트를 빼면 레시피에서 K-소스를 고를 수 없다.
+          if (isBrandRole && brandId) {
+            promises.push(
+              fetch('/api/product-ingredients', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
+              fetch(`/api/brands/${brandId}/products`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
+            );
+          }
           // 레스토랑 관리자일 경우 브랜드 데이터도 함께 조회
           if (isRestaurantAdmin && effectiveRestaurantId) {
             promises.push(
@@ -948,6 +961,36 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           // 레스토랑 관리자일 경우 브랜드 재료 추가
           if (isRestaurantAdmin && results[4]?.success && Array.isArray(results[4].data)) {
             allIngredients = [...results[4].data, ...allIngredients]; // 브랜드 재료를 먼저 표시
+          }
+
+          // F4: 브랜드는 Stock Items 를 선택기에 얹는다.
+          //   이미 거울이 있는 것(= 같은 이름이 목록에 있음)은 **중복으로 얹지 않는다** —
+          //   "겹치는 거 또 추가하지 말라"(Irene)를 화면에서도 지킨다.
+          if (isBrandRole) {
+            const seen = new Set(allIngredients.map((x: any) => String(x.name || '').trim().toLowerCase()));
+            const addUnique = (rows: any[], mapFn: (r: any) => any) => {
+              const out: any[] = [];
+              rows.forEach((r) => {
+                const key = String(r.name || '').trim().toLowerCase();
+                if (!key || seen.has(key)) return;   // 겹치는 건 또 올리지 않는다 (Irene 지시)
+                seen.add(key);
+                out.push(mapFn(r));
+              });
+              return out;
+            };
+            if (results[3]?.success && Array.isArray(results[3].data)) {
+              allIngredients = [...allIngredients, ...addUnique(
+                results[3].data.filter((x: any) => x.is_active !== false),
+                (si) => ({ ...si, id: `pi:${si.id}`, product_ingredient_id: si.id, __fromStockItems: true })
+              )];
+            }
+            if (results[4]?.success && Array.isArray(results[4].data)) {
+              allIngredients = [...allIngredients, ...addUnique(
+                results[4].data.filter((x: any) => x.is_active !== false),
+                (bp) => ({ ...bp, id: `bp:${bp.id}`, brand_product_id: bp.id,
+                           unit_cost: bp.unit_price ?? 0, __fromBrandProducts: true })
+              )];
+            }
           }
 
           setIngredients(allIngredients);
@@ -1291,8 +1334,13 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   ri.unit
                 ) || 0
               : 0;
+            // F4: Stock Item / GIT 프로덕트에서 고른 줄은 서버가 거울로 해석하도록 출처 id 로 보낸다.
+            const fromStock = ingredient && (ingredient as any).__fromStockItems;
+            const fromProduct = ingredient && (ingredient as any).__fromBrandProducts;
             return {
-              ingredient_id: ri.ingredient_id,
+              ...(fromStock ? { product_ingredient_id: (ingredient as any).product_ingredient_id } : {}),
+              ...(fromProduct ? { brand_product_id: (ingredient as any).brand_product_id } : {}),
+              ingredient_id: (fromStock || fromProduct) ? undefined : ri.ingredient_id,
               quantity: parseFloat(ri.quantity),
               unit: ri.unit,
               cost,

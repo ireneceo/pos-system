@@ -1,3 +1,5 @@
+> 구조는 `docs/TRADE_STRUCTURE.md` 가 단일 기준입니다. 재료·상품·가격 판단은 그 문서부터 읽으세요.
+
 # Design 3: Purchase Order & Receiving
 
 > **Created:** 2026-04-07
@@ -1985,3 +1987,15 @@ is_resolved · resolved_at` 로 **`product_id`·`order_id`·부족수량 자리�
 - `inventory_transactions` 에 `purchase_order_item_id` 추가 — 원장이 PO 만 참조해 같은 재료 두 라인이면 라인 대조 불가(9/3 M9).
 - 차감 서비스 "레시피 있음·재료 0줄" 을 "레시피 없음" 과 동일 취급 vs 편집 화면 "recipe_id 있음 = 자체재고 안 씀" — 정의 불일치(9/3). 실해는 재료 0줄 레시피 메뉴에 한정.
 - health-check 프레임워크에 SKIP 개념 없음(준비물 없으면 초록) — 카운터·요약 집계 신설.
+
+### 2026-09-04 — GIT 가격이 매장까지 내려가지 않던 것 정정 + 재료 통합 설계
+
+> 구조는 `docs/TRADE_STRUCTURE.md` 가 단일 기준. 재료 통합은 `docs/INGREDIENT_UNIFICATION_DESIGN.md`.
+
+- **매장 8 K-DINE IPC 정정** — GIT 연결 7건의 연결 단가·재료 원가 14칸을 GIT 판매가로. 증명 9/9 일치.
+  원인 = 연결 시점에 가격이 복사되고 그 뒤 GIT 가격 변경을 따라가지 않는 구조(`TRADE_STRUCTURE.md` §5-1).
+- **매장 10 with MIN Cafe 이관** — 연결 50건이 UGS 매입가가 복사된 `SP-*` 중복행을 가리키고 있던 것을
+  GIT 프로덕트(`PRD-*`)로 in-place 이관(92칸), 빈 `SP-*` 50건 비활성. 증명 50/50 · SP 잔여 0.
+  뿌리 = 2026-08-28 사고(공급업체 원가를 판매가 자리에 복사)의 잔재. 입고 완료 발주 `PO-R10-20260827-001` 4라인은 무접촉.
+- **Stock Items 카테고리 정리** — 사용 0건 중복 3개(FISH·VEGGIES·Sauce) 삭제, `MEAT`→`Meat` 개명. 남은 18건 중복 없음.
+- 남은 것: with MIN 잔재 6건 정정(드라이런 완료·적용 대기) · 재료 통합 구현(설계 완료·Irene 승인 대기).
