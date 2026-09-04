@@ -444,6 +444,33 @@ router.post('/:id/ship', async (req, res) => {
           const bp = await BrandProduct.findByPk(mapping.seller_product_id, { transaction: t });
           if (!bp) continue;
 
+          // ── 재고아이템 다이렉트 (docs/TRADE_STRUCTURE.md §2-1) ─────────────
+          // 프로덕트 = 재고아이템: 1개 팔면 그 재고아이템 1개가 빠진다. **1:1, 환산 없음**.
+          // 우선순위는 레시피 > 다이렉트 > 프로덕트 자체 재고. 레시피 분기와 같은 방식으로
+          // ProductIngredient 를 깎는다 — 새 차감 경로를 만들지 않는다.
+          if (!bp.product_recipe_id && bp.product_ingredient_id) {
+            const soldQtyD = parseFloat(it.quantity_ordered) || 0;
+            if (soldQtyD > 0) {
+              const pIngD = await ProductIngredient.findByPk(bp.product_ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
+              if (pIngD) {
+                const curD = parseFloat(pIngD.current_stock) || 0;
+                const nextD = Math.round((curD - soldQtyD) * 100) / 100;
+                await pIngD.update({ current_stock: nextD }, { transaction: t });
+                await InventoryTransaction.create({
+                  entity_type: 'brand', entity_id: locked.seller_entity_id,
+                  product_ingredient_id: pIngD.id,
+                  transaction_type: 'order_deduct',
+                  quantity_change: -soldQtyD,
+                  unit: pIngD.unit, stock_after: nextD,
+                  purchase_order_id: locked.id,
+                  notes: `Sold on PO ${locked.po_number} (${bp.name})`,
+                  created_by: req.user?.id || null
+                }, { transaction: t });
+              }
+            }
+            continue;
+          }
+
           if (!bp.product_recipe_id) {
             // ── 레시피 없는 프로덕트는 **그 상품 자체가 재고 단위** ─────────────
             // 매장이 메뉴를 팔 때와 같은 규칙(2026-08-22 확정 모델). 그대로 파는 물건은

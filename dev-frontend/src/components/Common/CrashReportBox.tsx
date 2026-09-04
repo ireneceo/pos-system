@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { reportIssue } from '../../utils/reportIssue';
 
 /**
@@ -11,6 +12,9 @@ import { reportIssue } from '../../utils/reportIssue';
  */
 const CrashReportBox: React.FC<{ error: Error | null; componentStack: string | null }> = ({ error, componentStack }) => {
   const [note, setNote] = useState('');
+  // 크래시 화면도 사용자 언어로 나와야 한다 — 영어 선택인데 한글이 나오던 것(2026-09-04 Irene 신고).
+  const { t } = useTranslation('common');
+
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'dup' | 'noauth' | 'failed'>('idle');
   const [ticket, setTicket] = useState<string | number | null>(null);
 
@@ -23,14 +27,14 @@ const CrashReportBox: React.FC<{ error: Error | null; componentStack: string | n
 
   if (state === 'sent') {
     return <p style={{ color: '#166534', fontSize: 13, marginTop: 18 }}>
-      접수되었습니다 (#{String(ticket)}). 확인 후 연락드리겠습니다.
+      {t('crashReport.sent', 'Received (#{{ticket}}). We will follow up.', { ticket: String(ticket) })}
     </p>;
   }
   if (state === 'dup') {
-    return <p style={{ color: '#4B5563', fontSize: 13, marginTop: 18 }}>이 오류는 이미 접수했습니다.</p>;
+    return <p style={{ color: '#4B5563', fontSize: 13, marginTop: 18 }}>{t('crashReport.dup', 'This error was already reported.')}</p>;
   }
   if (state === 'noauth') {
-    return <p style={{ color: '#4B5563', fontSize: 13, marginTop: 18 }}>로그인 후 문의 메뉴에서 보내 주세요.</p>;
+    return <p style={{ color: '#4B5563', fontSize: 13, marginTop: 18 }}>{t('crashReport.noauth', 'Please sign in and use the Support menu.')}</p>;
   }
 
   return (
@@ -38,7 +42,7 @@ const CrashReportBox: React.FC<{ error: Error | null; componentStack: string | n
       <input
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        placeholder="무엇을 하던 중이었나요? (선택)"
+        placeholder={t('crashReport.placeholder', 'What were you doing? (optional)')}
         style={{
           width: '100%', boxSizing: 'border-box', padding: '9px 12px', fontSize: 13,
           border: '1px solid #C7CED6', borderRadius: 8, background: '#fff', color: '#0A2540',
@@ -53,15 +57,15 @@ const CrashReportBox: React.FC<{ error: Error | null; componentStack: string | n
           cursor: state === 'sending' ? 'default' : 'pointer',
         }}
       >
-        {state === 'sending' ? '보내는 중…' : '이 오류 보내기'}
+        {state === 'sending' ? t('crashReport.sending', 'Sending…') : t('crashReport.send', 'Send this error')}
       </button>
       {state === 'failed' && (
         <p style={{ color: '#B91C1C', fontSize: 12, marginTop: 8 }}>
-          보내지 못했습니다. 문의 메뉴에서 직접 남겨 주세요.
+          {t('crashReport.failed', "Couldn't send. Please report it from the Support menu.")}
         </p>
       )}
       <p style={{ color: '#6B7280', fontSize: 11, marginTop: 8, lineHeight: 1.5 }}>
-        오류 내용·화면·계정·앱 버전이 함께 전송됩니다.
+        {t('crashReport.note', 'The error, screen, account and app version are sent together.')}
       </p>
     </div>
   );

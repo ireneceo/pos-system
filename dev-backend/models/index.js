@@ -298,6 +298,11 @@ RecipeIngredient.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingre
 Product.belongsTo(Recipe, { foreignKey: 'recipe_id', as: 'recipe' });
 Recipe.hasMany(Product, { foreignKey: 'recipe_id', as: 'products' });
 
+// 재고아이템 다이렉트 — 메뉴 = 재고아이템 (docs/TRADE_STRUCTURE.md §2-1).
+// 별칭은 브랜드 프로덕트 쪽과 같은 `stockItem` 으로 통일한다(두 화면이 같은 UI 라서).
+Product.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'stockItem' });
+Ingredient.hasMany(Product, { foreignKey: 'ingredient_id', as: 'directProducts' });
+
 // PlanPrice - PlanTemplate association
 PlanPrice.belongsTo(PlanTemplate, { foreignKey: 'plan_id', as: 'plan' });
 PlanTemplate.hasMany(PlanPrice, { foreignKey: 'plan_id', as: 'prices' });
@@ -341,6 +346,10 @@ BrandProductCategory.hasMany(BrandProduct, { foreignKey: 'category_id', as: 'pro
 // BrandProduct - Recipe association
 BrandProduct.belongsTo(Recipe, { foreignKey: 'recipe_id', as: 'recipe' });
 Recipe.hasMany(BrandProduct, { foreignKey: 'recipe_id', as: 'brandProducts' });
+
+// 재고아이템 다이렉트 — 프로덕트 = 재고아이템 (docs/TRADE_STRUCTURE.md §2-1).
+BrandProduct.belongsTo(ProductIngredient, { foreignKey: 'product_ingredient_id', as: 'stockItem' });
+ProductIngredient.hasMany(BrandProduct, { foreignKey: 'product_ingredient_id', as: 'directProducts' });
 
 // BrandProduct - Brand (N:M through BrandProductBrand)
 BrandProduct.belongsToMany(Brand, {

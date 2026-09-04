@@ -132,6 +132,14 @@ Product.init({
     allowNull: true,
     comment: '연결된 제품 레시피 ID'
   },
+  // 메뉴 = 재고아이템 (2026-09-04 Irene 확정 · docs/TRADE_STRUCTURE.md §2-1).
+  // 메뉴가 재료(=재고아이템) **하나**를 그대로 가리킨다 — 1개 팔면 그 재료 1개가 빠진다.
+  // 수량·단위 환산 없음. `recipe_id` 와 **동시에 채울 수 없다**(라우트가 400 LINK_EXCLUSIVE).
+  ingredient_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '재고아이템 다이렉트 — 이 메뉴가 그대로인 재료. 레시피와 둘 중 하나만'
+  },
   kitchen_station_id: {
     type: DataTypes.INTEGER,
     allowNull: true,

@@ -762,5 +762,16 @@
   "pwa.guide.mac.useChrome": "Open this site in Chrome or Edge to install it as an app. (Safari 17 or later can also add it from File › Add to Dock.)",
   "nav.deployRecords": "Solution Dev Issues",
   "showMore": "Show more",
-  "showLess": "Show less"
+  "showLess": "Show less",
+  "link.stockItemDirect": "Stock Item (direct)",
+  "link.recipe": "Recipe",
+  "link.notLinked": "Not linked",
+  "crashReport.sent": "Received (#{{ticket}}). We will follow up.",
+  "crashReport.dup": "This error was already reported.",
+  "crashReport.noauth": "Please sign in and use the Support menu.",
+  "crashReport.placeholder": "What were you doing? (optional)",
+  "crashReport.sending": "Sending…",
+  "crashReport.send": "Send this error",
+  "crashReport.failed": "Couldn't send. Please report it from the Support menu.",
+  "crashReport.note": "The error, screen, account and app version are sent together."
 }

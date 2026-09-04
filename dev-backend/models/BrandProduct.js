@@ -161,6 +161,18 @@ const BrandProduct = sequelize.define('BrandProduct', {
       key: 'id'
     },
     comment: 'Linked product recipe (new system)'
+  },
+  // 프로덕트 = 재고아이템 (2026-09-04 Irene 확정 · docs/TRADE_STRUCTURE.md §2-1).
+  // 프로덕트가 재고아이템 **하나**를 그대로 가리킨다 — 1개 팔면 그 재고아이템 1개가 빠진다.
+  // 수량·단위 환산 없음. `product_recipe_id` 와 **동시에 채울 수 없다**(라우트가 400 LINK_EXCLUSIVE).
+  product_ingredient_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'product_ingredients',
+      key: 'id'
+    },
+    comment: '재고아이템 다이렉트 — 이 프로덕트가 그대로인 재고아이템. 레시피와 둘 중 하나만'
   }
 }, {
   tableName: 'brand_products',

@@ -367,7 +367,26 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
       const mapping = await IngredientSellerProduct.findByPk(item.ingredient_seller_product_id, { transaction: t });
       if (mapping?.seller_product_id) {
         const bp = await BrandProduct.findByPk(mapping.seller_product_id, { transaction: t });
-        if (bp?.product_recipe_id) {   // 레시피 없으면 환원 없음 — 출고도 차감하지 않았다(대칭)
+        // 재고아이템 다이렉트 (docs/TRADE_STRUCTURE.md §2-1) — 출고에서 1:1 로 깎았으므로
+        // 반품도 **같은 재고아이템에 1:1 로 환원**한다. 방향만 반대이고 규칙은 대칭이다.
+        if (bp && !bp.product_recipe_id && bp.product_ingredient_id) {
+          const pIngD = await ProductIngredient.findByPk(bp.product_ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
+          if (pIngD && delta > 0) {
+            const curD = parseFloat(pIngD.current_stock) || 0;
+            const nuD = Math.round((curD + delta) * 100) / 100;
+            await pIngD.update({ current_stock: nuD }, { transaction: t });
+            await InventoryTransaction.create({
+              entity_type: 'brand', entity_id: po.seller_entity_id,
+              product_ingredient_id: pIngD.id,
+              transaction_type: 'return_in',
+              quantity_change: delta,
+              unit: pIngD.unit, stock_after: nuD,
+              purchase_order_id: po.id,
+              notes: `Return #${ret.id} approved (brand seller, ${bp.name})`,
+              created_by: req.user?.id || null
+            }, { transaction: t });
+          }
+        } else if (bp?.product_recipe_id) {   // 레시피 없으면 환원 없음 — 출고도 차감하지 않았다(대칭)
           const recipeIngs = await ProductRecipeIngredient.findAll({
             where: { recipe_id: bp.product_recipe_id }, transaction: t
           });

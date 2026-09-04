@@ -14,6 +14,9 @@ const {
   ProductRecipe,
   ProductIngredient
 } = require('../models');
+// 재고아이템 다이렉트 include 용 — 위 구조분해에 이름이 없어 별칭으로 따로 가져온다
+// (`ProductIngredient` 라는 이름은 파일 안에서 지역 require 로 이미 여러 번 쓰이고 있어 충돌을 피한다).
+const { ProductIngredient: ProductIngredientModel } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 const { requireBGScope, applyBGFilter, assertBGOwnsRow } = require('../middleware/brandScope');
@@ -25,6 +28,60 @@ const { normalizeImageField } = require('../utils/imageProcessor');
 // 비차단. authenticateToken 선행(per-route 와 중복돼도 idempotent), 데모/System Admin bypass.
 // 주문 방식 — 'pack'=개수로, 'measure'=무게·부피로(소수 허용). 공급업체 축과 같은 값.
 const ORDER_MODES = ['pack', 'measure'];
+
+
+/**
+ * 재고아이템 다이렉트 연결 검증 — 프로덕트 = 재고아이템 (docs/TRADE_STRUCTURE.md §2-1).
+ *
+ * 규칙 (Irene 2026-09-04): 프로덕트는 **재고아이템 하나** 또는 **레시피** 중 하나에만 붙는다.
+ * 둘 다 오면 어느 쪽으로 재고를 뺄지 알 수 없으므로 저장을 거부한다.
+ *
+ * @returns {{ok:true, patch:object} | {ok:false, status:number, body:object}}
+ */
+async function resolveDirectLink(body, current, ownerUserId) {
+  const { ProductIngredient } = require('../models');
+  const hasDirect = Object.prototype.hasOwnProperty.call(body, 'product_ingredient_id');
+  const hasRecipe = Object.prototype.hasOwnProperty.call(body, 'product_recipe_id');
+
+  const bodyDirect = hasDirect ? (body.product_ingredient_id || null) : null;
+  const bodyRecipe = hasRecipe ? (body.product_recipe_id || null) : null;
+
+  // ⚠ 배타 판정은 **이번 요청에 둘 다 실렸을 때만** 한다.
+  //   기존에 걸려 있던 값까지 세면, 레시피가 있던 것을 재고아이템으로 **바꾸는** 정상 동작이
+  //   전부 400 이 된다(2026-09-04 실측: 기존 레시피 프로덕트에 다이렉트를 걸면 저장이 막혔다).
+  //   한쪽을 세우면 다른 쪽은 비운다 — 그게 "둘 중 하나"를 지키는 방식이다.
+  if (bodyDirect && bodyRecipe) {
+    return { ok: false, status: 400, body: { success: false, code: 'LINK_EXCLUSIVE',
+      message: 'A product links to a stock item OR a recipe — not both.' } };
+  }
+
+  const nextDirect = bodyDirect || (hasRecipe && bodyRecipe ? null : (hasDirect ? null : (current ? current.product_ingredient_id : null)));
+  const nextRecipe = bodyRecipe || (hasDirect && bodyDirect ? null : (hasRecipe ? null : (current ? current.product_recipe_id : null)));
+
+  const patch = {};
+  if (hasDirect || hasRecipe) {
+    // 한쪽을 세우면 다른 쪽은 반드시 비운다 — 남겨두면 "둘 다"가 다시 생긴다.
+    patch.product_ingredient_id = nextDirect;
+    patch.product_recipe_id = nextRecipe;
+  }
+
+  if (nextDirect) {
+    const si = await ProductIngredient.findByPk(nextDirect);
+    if (!si) {
+      return { ok: false, status: 400, body: { success: false, code: 'STOCK_ITEM_NOT_FOUND',
+        message: 'Stock item not found.' } };
+    }
+    // 소유 검증 — 남의 재고아이템에 붙이지 못하게. **fail-closed**:
+    // `owner_user_id` 가 비어 있으면 주인을 확인할 수 없으므로 거부한다(Fable 2026-09-04).
+    // 테넌트 경계는 조용히 열어두지 않는다 — 운영에 주인 없는 행이 있으면 그건 백필 대상이다.
+    // (실측 dev: product_ingredients 27건 중 owner_user_id null 0건.)
+    if (!si.owner_user_id || !ownerUserId || String(si.owner_user_id) !== String(ownerUserId)) {
+      return { ok: false, status: 400, body: { success: false, code: 'STOCK_ITEM_NOT_OWNED',
+        message: 'That stock item belongs to someone else.' } };
+    }
+  }
+  return { ok: true, patch };
+}
 
 router.use(['/brand-products', '/brand-product-categories', '/brand-product-option-groups'],
   authenticateToken, requireBrandUserModule('brand_products'));
@@ -676,7 +733,9 @@ router.get('/brand-products', authenticateToken, requireBGScope, async (req, res
           model: ProductRecipe,
           as: 'productRecipe',
           attributes: ['id', 'name', 'total_ingredient_cost']
-        }
+        },
+        // 재고아이템 다이렉트 — 목록·단건 모두 연결된 재고아이템을 함께 내려준다(화면이 배지로 쓴다).
+        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'unit_cost'] }
       ],
       order: [['sort_order', 'ASC'], ['name', 'ASC']]
     });
@@ -766,7 +825,9 @@ router.get('/brand-products/:productId', authenticateToken, requireBGScope, asyn
           model: ProductRecipe,
           as: 'productRecipe',
           attributes: ['id', 'name', 'total_ingredient_cost']
-        }
+        },
+        // 재고아이템 다이렉트 — 목록·단건 모두 연결된 재고아이템을 함께 내려준다(화면이 배지로 쓴다).
+        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'unit_cost'] }
       ]
     });
 
@@ -883,6 +944,11 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
         : Array.isArray(brand_ids) && brand_ids.length > 0 ? 'specific_brands'
         : 'specific_brands');
 
+    // 재고아이템 다이렉트 (docs/TRADE_STRUCTURE.md §2-1) — 자동 레시피를 만들지 않는다.
+    // 검증은 **생성 앞**에서 한다: 거부해야 할 요청으로 행이 먼저 만들어지면 안 된다.
+    const linkCreate = await resolveDirectLink(req.body, null, req.bgOwnerId);
+    if (!linkCreate.ok) return res.status(linkCreate.status).json(linkCreate.body);
+
     // Create product
     const product = await BrandProduct.create({
       owner_user_id: req.bgOwnerId,
@@ -903,12 +969,16 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
       is_set_menu: is_set_menu || false,
       set_items: is_set_menu ? set_items : null,
       set_display_order: set_display_order || 0,
-      product_recipe_id: product_recipe_id || null,
+      product_recipe_id: linkCreate.patch.product_recipe_id !== undefined
+        ? linkCreate.patch.product_recipe_id : (product_recipe_id || null),
+      product_ingredient_id: linkCreate.patch.product_ingredient_id !== undefined
+        ? linkCreate.patch.product_ingredient_id : null,
       sort_order: sort_order || 0,
       // 레시피가 있으면 매입자재가 빠지므로 자체 재고는 쓰지 않는다(둘 중 하나).
       // 2026-09-01(Q5): 조건은 **레시피 유무 하나뿐**이다. 스위치는 없앴다 —
       // 스위치를 안 켰다고 산 물건이 재고에 안 들어오는 게 GIT 결함의 원인이었다.
-      current_stock: !product_recipe_id ? (parseFloat(current_stock) || 0) : 0,
+      // 다이렉트로 재고아이템에 붙었으면 재고는 **그 재고아이템에** 쌓인다 — 프로덕트 자체 재고는 쓰지 않는다.
+      current_stock: (!product_recipe_id && !linkCreate.patch.product_ingredient_id) ? (parseFloat(current_stock) || 0) : 0,
       min_stock: parseFloat(min_stock) || 0,
       stock_unit: stock_unit || null
     });
@@ -940,49 +1010,9 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
     // Sync to ingredients table
     await syncProductToIngredients(product.id);
 
-    // Auto-create ProductRecipe if directIngredients provided
-    const directIngredients = req.body.directIngredients;
-    if (directIngredients && Array.isArray(directIngredients) && directIngredients.length > 0 && !product.product_recipe_id) {
-      // 레시피 생성 → 재료 → 프로덕트 연결을 한 덩어리로 묶는다.
-      // 중간에 실패하면 전부 되돌린다 — 껍데기 레시피를 남기지 않는다.
-      const t = await BrandProduct.sequelize.transaction();
-      try {
-        const { ProductRecipe, ProductRecipeIngredient, ProductIngredient } = require('../models');
-        const recipe = await ProductRecipe.create({
-          name: `${product.name} (auto)`,
-          is_active: true,
-          total_ingredient_cost: 0
-        }, { transaction: t });
-        let totalCost = 0;
-        for (const di of directIngredients) {
-          if (!di.ingredient_id || !di.quantity) continue;
-          const ingredient = await ProductIngredient.findByPk(di.ingredient_id, { transaction: t });
-          if (!ingredient) continue;
-          const cost = parseFloat(ingredient.unit_cost || 0) * parseFloat(di.quantity);
-          await ProductRecipeIngredient.create({
-            recipe_id: recipe.id,
-            ingredient_id: di.ingredient_id,
-            quantity: di.quantity,
-            unit: di.unit || ingredient.unit,
-            cost: cost
-          }, { transaction: t });
-          totalCost += cost;
-        }
-        await recipe.update({ total_ingredient_cost: totalCost }, { transaction: t });
-        await product.update({ product_recipe_id: recipe.id }, { transaction: t });
-        await t.commit();
-      } catch (recipeError) {
-        await t.rollback();
-        // 조용히 삼키지 않는다 — 실패가 화면에 보여야 사용자가 다시 넣을 수 있다.
-        console.error('Auto ProductRecipe creation error:', recipeError.message);
-        return res.status(400).json({
-          success: false,
-          message: `프로덕트는 저장됐지만 재료 연결에 실패했습니다: ${recipeError.message}`,
-          data: product
-        });
-      }
-    }
-
+    // 재고아이템 다이렉트 (docs/TRADE_STRUCTURE.md §2-1) — 자동 레시피를 만들지 않는다.
+    // 예전엔 `directIngredients` 배열을 받아 `"<이름> (auto)"` 레시피를 몰래 만들어 붙였다.
+    // 그게 "둘 중 하나"에 없는 세 번째 길이었다(2026-09-04 Irene·Fable 판정). 이제 FK 하나만 받는다.
     // Fetch created product with associations
     const createdProduct = await BrandProduct.findByPk(product.id, {
       include: [
@@ -998,7 +1028,9 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
           model: ProductRecipe,
           as: 'productRecipe',
           attributes: ['id', 'name', 'total_ingredient_cost']
-        }
+        },
+        // 재고아이템 다이렉트 — 목록·단건 모두 연결된 재고아이템을 함께 내려준다(화면이 배지로 쓴다).
+        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'unit_cost'] }
       ]
     });
 
@@ -1064,6 +1096,18 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
         : brand_ids !== undefined && Array.isArray(brand_ids) && brand_ids.length > 0 ? 'specific_brands'
         : product.distribution_mode);
 
+    // 재고아이템 다이렉트 (docs/TRADE_STRUCTURE.md §2-1) — 검증은 **쓰기 앞**에서 한다.
+    // 뒤에 두면 400 을 내면서도 `product_recipe_id` 가 이미 본문값으로 쓰여 행이 오염된다
+    // (2026-09-04 Fable 실측: 400 LINK_EXCLUSIVE 인데 행은 {1, 1}). POST 와 같은 순서로 맞춘다.
+    const linkUpd = await resolveDirectLink(req.body, product, product.owner_user_id);
+    if (!linkUpd.ok) return res.status(linkUpd.status).json(linkUpd.body);
+    const nextRecipeId = linkUpd.patch.product_recipe_id !== undefined
+      ? linkUpd.patch.product_recipe_id
+      : (product_recipe_id !== undefined ? product_recipe_id : product.product_recipe_id);
+    const nextStockItemId = linkUpd.patch.product_ingredient_id !== undefined
+      ? linkUpd.patch.product_ingredient_id
+      : product.product_ingredient_id;
+
     // Update product
     await product.update({
       name: name !== undefined ? name.trim() : product.name,
@@ -1082,10 +1126,12 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       is_set_menu: is_set_menu !== undefined ? is_set_menu : product.is_set_menu,
       set_items: set_items !== undefined ? (finalIsSet ? set_items : null) : product.set_items,
       set_display_order: set_display_order !== undefined ? set_display_order : product.set_display_order,
-      product_recipe_id: product_recipe_id !== undefined ? product_recipe_id : product.product_recipe_id,
+      product_recipe_id: nextRecipeId,
+      product_ingredient_id: nextStockItemId,
       sort_order: sort_order !== undefined ? sort_order : product.sort_order,
-      // 자체 재고 — 레시피가 붙으면 0 이다(둘 중 하나만 성립한다). 2026-09-01(Q5): 스위치 제거.
-      current_stock: (product_recipe_id !== undefined ? product_recipe_id : product.product_recipe_id)
+      // 자체 재고 — 레시피가 붙거나 재고아이템에 다이렉트로 붙으면 0 이다(둘 중 하나만 성립한다).
+      // 다이렉트면 재고는 **그 재고아이템에** 쌓인다 — 프로덕트 자체 재고와 두 곳에 두지 않는다(POST 와 대칭).
+      current_stock: (nextRecipeId || nextStockItemId)
         ? 0
         : (current_stock !== undefined ? (parseFloat(current_stock) || 0) : product.current_stock),
       min_stock: min_stock !== undefined ? (parseFloat(min_stock) || 0) : product.min_stock,
@@ -1134,55 +1180,6 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
     // Sync to ingredients table
     await syncProductToIngredients(productId);
 
-    // Handle directIngredients for auto ProductRecipe
-    const directIngredients = req.body.directIngredients;
-    if (directIngredients && Array.isArray(directIngredients)) {
-      // 🔴 여기는 기존 재료를 **먼저 지우고** 다시 넣는다.
-      // 트랜잭션이 없으면 중간 실패 시 "지운 것만 남아" 쌓아둔 재료가 통째로 사라진다.
-      const t = await BrandProduct.sequelize.transaction();
-      try {
-        const { ProductRecipe: PR, ProductRecipeIngredient: PRI, ProductIngredient: PI } = require('../models');
-        const product = await BrandProduct.findByPk(productId, { transaction: t });
-        if (directIngredients.length > 0) {
-          let recipe;
-          if (product.product_recipe_id) {
-            recipe = await PR.findByPk(product.product_recipe_id, { transaction: t });
-            if (recipe) await PRI.destroy({ where: { recipe_id: recipe.id }, transaction: t });
-          }
-          if (!recipe) {
-            recipe = await PR.create({ name: `${product.name} (auto)`, is_active: true, total_ingredient_cost: 0 }, { transaction: t });
-            await product.update({ product_recipe_id: recipe.id }, { transaction: t });
-          }
-          let totalCost = 0;
-          for (const di of directIngredients) {
-            if (!di.ingredient_id || !di.quantity) continue;
-            const ingredient = await PI.findByPk(di.ingredient_id, { transaction: t });
-            if (!ingredient) continue;
-            const cost = parseFloat(ingredient.unit_cost || 0) * parseFloat(di.quantity);
-            await PRI.create({ recipe_id: recipe.id, ingredient_id: di.ingredient_id, quantity: di.quantity, unit: di.unit || ingredient.unit, cost }, { transaction: t });
-            totalCost += cost;
-          }
-          await recipe.update({ total_ingredient_cost: totalCost, name: `${product.name} (auto)` }, { transaction: t });
-        } else if (product.product_recipe_id) {
-          const recipe = await PR.findByPk(product.product_recipe_id, { transaction: t });
-          if (recipe && recipe.name.endsWith('(auto)')) {
-            await PRI.destroy({ where: { recipe_id: recipe.id }, transaction: t });
-            await recipe.destroy({ transaction: t });
-            await product.update({ product_recipe_id: null }, { transaction: t });
-          }
-        }
-        await t.commit();
-      } catch (recipeError) {
-        await t.rollback();
-        // 조용히 삼키지 않는다 — 삼키면 "저장됐는데 재료가 사라졌다"가 된다.
-        console.error('Auto ProductRecipe update error:', recipeError.message);
-        return res.status(400).json({
-          success: false,
-          message: `프로덕트는 저장됐지만 재료 수정에 실패했습니다: ${recipeError.message}`
-        });
-      }
-    }
-
     // Fetch updated product with associations
     const updatedProduct = await BrandProduct.findByPk(productId, {
       include: [
@@ -1198,7 +1195,9 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
           model: ProductRecipe,
           as: 'productRecipe',
           attributes: ['id', 'name', 'total_ingredient_cost']
-        }
+        },
+        // 재고아이템 다이렉트 — 목록·단건 모두 연결된 재고아이템을 함께 내려준다(화면이 배지로 쓴다).
+        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'unit_cost'] }
       ]
     });
 
@@ -1314,7 +1313,8 @@ router.post('/brand-products/:productId/copy', authenticateToken, requireBGScope
         { model: BrandProductCategory, as: 'category' },
         { model: Brand, as: 'brands', through: { attributes: [] } },
         { model: BrandProductOptionGroup, as: 'optionGroups', through: { attributes: [] }, include: [{ model: BrandProductOption, as: 'options' }] },
-        { model: ProductRecipe, as: 'productRecipe', attributes: ['id', 'name', 'total_ingredient_cost'] }
+        { model: ProductRecipe, as: 'productRecipe', attributes: ['id', 'name', 'total_ingredient_cost'] },
+        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'unit_cost'] }
       ]
     });
 

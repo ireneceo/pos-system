@@ -888,13 +888,13 @@ const MenuManagementPage: React.FC = () => {
     set_items: [],
     set_display_order: 0,
     recipe_id: null,
+    ingredient_id: null as number | null,
     current_stock: 0,
     min_stock: 0,
     stock_unit: '',
     takeaway_charge: 0
   });
 
-  const [directIngredients, setDirectIngredients] = useState<{ingredient_id: number; name: string; quantity: number; unit: string; unit_cost: number}[]>([]);
   const [ingredients, setIngredients] = useState<{id: number; name: string; unit: string; unit_cost: number}[]>([]);
 
   // Fetch recipes on mount (both restaurant and brand recipes)
@@ -945,15 +945,31 @@ const MenuManagementPage: React.FC = () => {
 
         setRecipes(allRecipes);
 
-        // Fetch ingredients for direct linking
+        // Fetch ingredients for direct linking.
+        // ⚠ 자기 매장 재료만 받으면 **브랜드가 공유한 재고아이템(거울)을 메뉴에 직접 이을 수 없다.**
+        //   실측(2026-09-04 dev): FOODCOURT CENTRAL 자기 4 vs 브랜드공유 10, with MIN Cafe 7 vs 7 —
+        //   그 브랜드 재료가 이 폼에서만 통째로 빠져 있었다. 레시피 화면(RecipesTab)은 이미 둘 다 받는다.
+        //   같은 절단면으로 맞춘다: 브랜드 공유분을 먼저, 그 다음 매장 자기 재료(RecipesTab 과 동일 순서).
         if (restaurantId) {
-          const ingResponse = await fetch(`/api/restaurants/${restaurantId}/ingredients`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          const [ingResponse, brandIngResponse] = await Promise.all([
+            fetch(`/api/restaurants/${restaurantId}/ingredients`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }),
+            fetch(`/api/restaurants/${restaurantId}/brand-ingredients`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+          ]);
+          let own: any[] = [];
+          let shared: any[] = [];
           if (ingResponse.ok) {
             const ingData = await ingResponse.json();
-            setIngredients((ingData.success ? ingData.data : ingData) || []);
+            own = (ingData.success ? ingData.data : ingData) || [];
           }
+          if (brandIngResponse.ok) {
+            const bData = await brandIngResponse.json();
+            shared = (bData.success ? bData.data : bData) || [];
+          }
+          setIngredients([...shared, ...own]);
         }
       } catch (error) {
         console.error('Failed to fetch recipes:', error);
@@ -1066,6 +1082,7 @@ const MenuManagementPage: React.FC = () => {
       set_items: [],
       set_display_order: 0,
       recipe_id: null,
+      ingredient_id: null,
     current_stock: 0,
     min_stock: 0,
     stock_unit: '',
@@ -1092,6 +1109,7 @@ const MenuManagementPage: React.FC = () => {
       set_items: [],
       set_display_order: 0,
       recipe_id: null,
+      ingredient_id: null,
     current_stock: 0,
     min_stock: 0,
     stock_unit: '',
@@ -1164,6 +1182,8 @@ const MenuManagementPage: React.FC = () => {
       min_stock: Number((item as any).min_stock) || 0,
       stock_unit: (item as any).stock_unit || '',
       recipe_id: item.recipe_id || null,
+      // 재고아이템 다이렉트 (TRADE_STRUCTURE §2-1) — 레시피와 둘 중 하나만 채워진다.
+      ingredient_id: (item as any).ingredient_id || null,
       takeaway_charge: item.takeaway_charge ?? 0
     });
     setSelectedOptionGroups(item.optionGroups || []);
@@ -1171,25 +1191,7 @@ const MenuManagementPage: React.FC = () => {
     // set_groups 우선, 없으면 레거시 set_items 를 fixed 그룹으로 폴백 변환
     setSetGroups(resolveSetGroups(item));
 
-    // Load direct ingredients if recipe is auto-generated
-    if (item.recipe_id) {
-      const linkedRecipe = recipes.find(r => r.id === item.recipe_id);
-      if (linkedRecipe && linkedRecipe.name?.endsWith('(auto)') && linkedRecipe.recipeIngredients) {
-        // Auto recipe: load ingredients and clear recipe_id so UI shows ingredient section
-        setFormData(prev => ({ ...prev, recipe_id: null }));
-        setDirectIngredients(linkedRecipe.recipeIngredients.map((ri: any) => ({
-          ingredient_id: ri.ingredient_id,
-          name: ri.ingredient?.name || '',
-          quantity: parseFloat(ri.quantity),
-          unit: ri.unit,
-          unit_cost: parseFloat(ri.ingredient?.unit_cost || 0)
-        })));
-      } else {
-        setDirectIngredients([]);
-      }
-    } else {
-      setDirectIngredients([]);
-    }
+    // 자동 레시피에서 재료를 되읽던 블록 삭제 — 연결은 이제 컬럼 하나다 (TRADE_STRUCTURE §2-1).
 
     // Open appropriate modal based on item type
     if (item.is_set_menu) {
@@ -1383,7 +1385,8 @@ const MenuManagementPage: React.FC = () => {
       recipe_id: formData.recipe_id || null,
       takeaway_charge: formData.takeaway_charge ?? 0,
       availability: formData.availability ?? null,
-      directIngredients: !formData.recipe_id ? directIngredients : undefined
+      // 레시피 또는 재고아이템, 둘 중 하나만 보낸다 (서버가 둘 다 오면 400 LINK_EXCLUSIVE).
+      ingredient_id: formData.recipe_id ? null : (formData.ingredient_id || null)
     } as any;
 
     (async () => {
@@ -1404,7 +1407,6 @@ const MenuManagementPage: React.FC = () => {
         } catch { /* 추천 저장 실패는 상품 등록을 막지 않음 */ }
       }
     })();
-    setDirectIngredients([]);
     setSelectedRecommendations([]);
     setLockedRecommendations([]);
     setShowAddModal(false);
@@ -1499,7 +1501,8 @@ const MenuManagementPage: React.FC = () => {
         ...editingItem,
         ...formData,
         optionGroups: selectedOptionGroups,
-        directIngredients: !formData.recipe_id ? directIngredients : undefined
+        // 레시피 또는 재고아이템, 둘 중 하나만 보낸다 (서버가 둘 다 오면 400 LINK_EXCLUSIVE).
+        ingredient_id: formData.recipe_id ? null : (formData.ingredient_id || null)
       } as any;
       // 2026-06-28 (1-4): 저장 실패(예: 브랜드 잠금 필드 변경 시 백엔드 400)를 사용자에게 표시.
       // 이전엔 updateMenuItem 의 throw 가 모달만 멈추고 안내가 없어 "저장이 안 된다"로 보였다.
@@ -1527,8 +1530,7 @@ const MenuManagementPage: React.FC = () => {
       } catch {
         /* 추천 저장 실패는 상품 저장을 막지 않음 */
       }
-      setDirectIngredients([]);
-      setSelectedRecommendations([]);
+        setSelectedRecommendations([]);
       setLockedRecommendations([]);
       setShowEditModal(false);
       setEditingItem(null);
@@ -1724,20 +1726,31 @@ const MenuManagementPage: React.FC = () => {
                   {/* 빠진 값 표시 — 판매가는 빠뜨린 것(빨강), 원가는 아직 안 이은 것(회색).
                       원가를 경고색으로 두면 전 상품이 붉어져 진짜 문제가 묻힌다
                       (운영 실측: 754개 중 원가 근거 있는 것 0개). */}
-                  {(!item.price || Number(item.price) === 0 || !item.recipe_id) && (
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
-                      {(!item.price || Number(item.price) === 0) && (
-                        <StatusBadge status="error" size="small">
-                          {t('menu:badges.noPrice', { defaultValue: 'No price' })}
-                        </StatusBadge>
-                      )}
-                      {!item.recipe_id && (
-                        <StatusBadge status="draft" size="small">
-                          {t('menu:badges.noCost', { defaultValue: 'Cost not set' })}
-                        </StatusBadge>
-                      )}
-                    </div>
-                  )}
+                  {/* 연결 표시 — 브랜드 프로덕트 목록(BrandProductsTab)과 **같은 UI**여야 한다 (Irene 2026-09-04).
+                      규칙: 메뉴 = 재고아이템(direct) 또는 메뉴 = 레시피 = 재고아이템. 둘 중 하나.
+                      판정은 컬럼으로 한다 — `ingredient_id` 가 있으면 재고아이템 다이렉트,
+                      `recipe_id` 가 있으면 레시피, 둘 다 없으면 미연결(브랜드 쪽과 동일한 판정).
+                      미연결은 회색이 아니라 주황 — 팔려도 재고가 안 빠지는 상태라 골라낼 수 있어야 한다. */}
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {(!item.price || Number(item.price) === 0) && (
+                      <StatusBadge status="error" size="small">
+                        {t('menu:badges.noPrice', { defaultValue: 'No price' })}
+                      </StatusBadge>
+                    )}
+                    {(item as any).ingredient_id ? (
+                      <StatusBadge status="success" size="small">
+                        {t('common:link.stockItemDirect', { defaultValue: 'Stock Item (direct)' })}
+                        {ingredients.find(i => i.id === (item as any).ingredient_id)?.name
+                          ? `: ${ingredients.find(i => i.id === (item as any).ingredient_id)?.name}` : ''}
+                      </StatusBadge>
+                    ) : item.recipe_id ? (
+                      <StatusBadge status="success" size="small">
+                        {`${t('common:link.recipe', { defaultValue: 'Recipe' })}: ${recipes.find(r => r.id === item.recipe_id)?.name || item.recipe_id}`}
+                      </StatusBadge>
+                    ) : (
+                      <StatusBadge status="warning" size="small">{t('common:link.notLinked', { defaultValue: 'Not linked' })}</StatusBadge>
+                    )}
+                  </div>
                   <MenuDescription>
                     {item.description || 'No description available'}
                   </MenuDescription>
@@ -1765,6 +1778,7 @@ const MenuManagementPage: React.FC = () => {
                       ).filter(Boolean).join(', ')}
                     </MenuDescription>
                   )}
+                  {/* 위 배지가 연결 상태를 말하므로, 여기는 **레시피로 이동**하는 용도만 남긴다. */}
                   {item.recipe_id && (() => {
                     const linkedRecipe = recipes.find(r => r.id === item.recipe_id);
                     if (linkedRecipe) {
@@ -2110,36 +2124,38 @@ const MenuManagementPage: React.FC = () => {
             />
           </UIFormGroup>
 
+          {/* 재고아이템 다이렉트 — 메뉴 = 재고아이템 (docs/TRADE_STRUCTURE.md §2-1).
+              재료 **하나**를 그대로 가리킨다. 수량 칸도, 줄 추가도, 합계도 없다 — "그대로"라서 1:1 이고,
+              환산을 넣는 순간 그게 레시피가 된다(Irene 2026-09-04).
+              레시피와 상호 배타: 한쪽을 고르면 다른 쪽은 비운다. 브랜드 프로덕트 화면과 같은 UI. */}
           {!formData.recipe_id && (
             <UIFormGroup>
-              <FormLabel>Ingredients (direct) {directIngredients.length > 0 && <span style={{ fontSize: '11px', color: '#4B5563', fontWeight: 400 }}>Cost: RM {directIngredients.reduce((sum, di) => sum + (di.unit_cost * di.quantity), 0).toFixed(2)}</span>}</FormLabel>
-              {directIngredients.map((di, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px', fontSize: '13px', background: '#F9FAFB', padding: '8px 12px', borderRadius: '6px' }}>
-                  <span style={{ flex: 1 }}>{di.name}</span>
-                  <input type="number" value={di.quantity} min="0.01" step="0.01" style={{ width: '60px', textAlign: 'center', border: '1px solid #C7CED6', borderRadius: '4px', padding: '2px 4px', fontSize: '13px' }}
-                    onChange={(e) => setDirectIngredients(prev => prev.map((item, i) => i === idx ? { ...item, quantity: parseFloat(e.target.value) || 0 } : item))} />
-                  <span style={{ fontSize: '12px', color: '#4B5563', width: '30px' }}>{di.unit}</span>
-                  <span style={{ width: '70px', textAlign: 'right', color: '#4B5563', fontSize: '12px' }}>RM {(di.unit_cost * di.quantity).toFixed(2)}</span>
-                  <button type="button" onClick={() => setDirectIngredients(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>x</button>
-                </div>
-              ))}
+              <FormLabel>{t('common:link.stockItemDirect', { defaultValue: 'Stock Item (direct)' })}</FormLabel>
               <SearchableSelect
-                options={ingredients.filter(ing => !directIngredients.some(di => di.ingredient_id === ing.id)).map(ing => ({
+                options={ingredients.map(ing => ({
                   value: ing.id,
                   label: ing.name,
                   subLabel: `${ing.unit} / RM ${Number(ing.unit_cost || 0).toFixed(2)}`
                 }))}
-                value={null}
-                onChange={(value) => {
-                  if (value) {
-                    const ing = ingredients.find(i => i.id === value);
-                    if (ing) setDirectIngredients(prev => [...prev, { ingredient_id: ing.id, name: ing.name, quantity: 1, unit: ing.unit, unit_cost: Number(ing.unit_cost || 0) }]);
-                  }
-                }}
-                placeholder="Add ingredient..."
-                allowClear={false}
-                noOptionsMessage="No ingredients available"
+                value={formData.ingredient_id || null}
+                onChange={(value) => setFormData({
+                  ...formData,
+                  ingredient_id: (value as number) || null,
+                  recipe_id: null
+                })}
+                placeholder="Search or select stock item..."
+                allowClear={true}
+                noOptionsMessage="No stock items available"
               />
+              {formData.ingredient_id && (() => {
+                const si = ingredients.find(i => i.id === formData.ingredient_id);
+                if (!si) return null;
+                return (
+                  <div style={{ marginTop: '6px', fontSize: '12.5px', color: '#4B5563' }}>
+                    1 {si.unit} · RM {Number(si.unit_cost || 0).toFixed(2)}
+                  </div>
+                );
+              })()}
             </UIFormGroup>
           )}
 
@@ -2478,36 +2494,38 @@ const MenuManagementPage: React.FC = () => {
             />
           </UIFormGroup>
 
+          {/* 재고아이템 다이렉트 — 메뉴 = 재고아이템 (docs/TRADE_STRUCTURE.md §2-1).
+              재료 **하나**를 그대로 가리킨다. 수량 칸도, 줄 추가도, 합계도 없다 — "그대로"라서 1:1 이고,
+              환산을 넣는 순간 그게 레시피가 된다(Irene 2026-09-04).
+              레시피와 상호 배타: 한쪽을 고르면 다른 쪽은 비운다. 브랜드 프로덕트 화면과 같은 UI. */}
           {!formData.recipe_id && (
             <UIFormGroup>
-              <FormLabel>Ingredients (direct) {directIngredients.length > 0 && <span style={{ fontSize: '11px', color: '#4B5563', fontWeight: 400 }}>Cost: RM {directIngredients.reduce((sum, di) => sum + (di.unit_cost * di.quantity), 0).toFixed(2)}</span>}</FormLabel>
-              {directIngredients.map((di, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px', fontSize: '13px', background: '#F9FAFB', padding: '8px 12px', borderRadius: '6px' }}>
-                  <span style={{ flex: 1 }}>{di.name}</span>
-                  <input type="number" value={di.quantity} min="0.01" step="0.01" style={{ width: '60px', textAlign: 'center', border: '1px solid #C7CED6', borderRadius: '4px', padding: '2px 4px', fontSize: '13px' }}
-                    onChange={(e) => setDirectIngredients(prev => prev.map((item, i) => i === idx ? { ...item, quantity: parseFloat(e.target.value) || 0 } : item))} />
-                  <span style={{ fontSize: '12px', color: '#4B5563', width: '30px' }}>{di.unit}</span>
-                  <span style={{ width: '70px', textAlign: 'right', color: '#4B5563', fontSize: '12px' }}>RM {(di.unit_cost * di.quantity).toFixed(2)}</span>
-                  <button type="button" onClick={() => setDirectIngredients(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>x</button>
-                </div>
-              ))}
+              <FormLabel>{t('common:link.stockItemDirect', { defaultValue: 'Stock Item (direct)' })}</FormLabel>
               <SearchableSelect
-                options={ingredients.filter(ing => !directIngredients.some(di => di.ingredient_id === ing.id)).map(ing => ({
+                options={ingredients.map(ing => ({
                   value: ing.id,
                   label: ing.name,
                   subLabel: `${ing.unit} / RM ${Number(ing.unit_cost || 0).toFixed(2)}`
                 }))}
-                value={null}
-                onChange={(value) => {
-                  if (value) {
-                    const ing = ingredients.find(i => i.id === value);
-                    if (ing) setDirectIngredients(prev => [...prev, { ingredient_id: ing.id, name: ing.name, quantity: 1, unit: ing.unit, unit_cost: Number(ing.unit_cost || 0) }]);
-                  }
-                }}
-                placeholder="Add ingredient..."
-                allowClear={false}
-                noOptionsMessage="No ingredients available"
+                value={formData.ingredient_id || null}
+                onChange={(value) => setFormData({
+                  ...formData,
+                  ingredient_id: (value as number) || null,
+                  recipe_id: null
+                })}
+                placeholder="Search or select stock item..."
+                allowClear={true}
+                noOptionsMessage="No stock items available"
               />
+              {formData.ingredient_id && (() => {
+                const si = ingredients.find(i => i.id === formData.ingredient_id);
+                if (!si) return null;
+                return (
+                  <div style={{ marginTop: '6px', fontSize: '12.5px', color: '#4B5563' }}>
+                    1 {si.unit} · RM {Number(si.unit_cost || 0).toFixed(2)}
+                  </div>
+                );
+              })()}
             </UIFormGroup>
           )}
 

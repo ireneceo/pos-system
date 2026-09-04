@@ -695,11 +695,14 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
         return { ok: false, status: 400, body: { success: false, message: `Product ${pid} not accessible to this buyer` } };
       }
       // 레시피가 있으면 재고는 재료에서 빠진다 — 그런 프로덕트를 재고아이템처럼 사면 이중 계상이 된다.
+      // 재고아이템 다이렉트도 같다(docs/TRADE_STRUCTURE.md §2-1): 프로덕트가 재고아이템 하나를
+      // 그대로 가리키면 재고는 **그 재고아이템에** 쌓여야 한다. 프로덕트를 사면 같은 물건을 두 곳에 넣는다.
+      const hasDirectStock = isBrandSide ? prod.product_ingredient_id != null : prod.ingredient_id != null;
       const hasRecipe = prod.product_recipe_id != null || (!isBrandSide && prod.recipe_id != null);
-      if (hasRecipe || prod.is_set_menu) {
+      if (hasRecipe || hasDirectStock || prod.is_set_menu) {
         return {
           ok: false, status: 400,
-          body: { success: false, code: 'PRODUCT_HAS_RECIPE', message: `Product ${pid} has a recipe (or is a set) — order its ingredients instead` }
+          body: { success: false, code: 'PRODUCT_HAS_RECIPE', message: `Product ${pid} has a recipe or a linked stock item (or is a set) — order the stock item instead` }
         };
       }
       let convP = 1, priceP = 0, mappingP = raw.ingredient_seller_product_id || null;

@@ -1154,7 +1154,8 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
   };
 
   const filteredRecipes = sortItems(recipes.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    // 값이 비어도 화면이 죽지 않게 (2026-09-04 검색 크래시와 같은 클래스)
+    const matchesSearch = String(item.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (item.code?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = categoryFilter === 'all' ||
                            (item.category_id?.toString() === categoryFilter);

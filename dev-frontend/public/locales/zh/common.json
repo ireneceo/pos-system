@@ -762,5 +762,16 @@
   "pwa.guide.mac.useChrome": "请在 Chrome 或 Edge 中打开本站以将其安装为应用。（Safari 17 及以上也可通过 文件 › 添加到程序坞 添加。）",
   "nav.deployRecords": "解决方案开发问题",
   "showMore": "展开",
-  "showLess": "收起"
+  "showLess": "收起",
+  "link.stockItemDirect": "库存项目（直接）",
+  "link.recipe": "配方",
+  "link.notLinked": "未连接",
+  "crashReport.sent": "已收到（#{{ticket}}）。我们会跟进处理。",
+  "crashReport.dup": "此错误已被报告。",
+  "crashReport.noauth": "请登录后从支持菜单报告。",
+  "crashReport.placeholder": "当时在做什么操作？（选填）",
+  "crashReport.sending": "发送中…",
+  "crashReport.send": "报告此错误",
+  "crashReport.failed": "发送失败。请从支持菜单报告。",
+  "crashReport.note": "错误内容、页面、账号和应用版本将一并发送。"
 }

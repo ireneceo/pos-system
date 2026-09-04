@@ -207,7 +207,27 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
         }
 
         // Get recipe ingredients for this product (component or standalone)
-        const recipeIngredients = await getProductRecipeIngredients(productId);
+        let recipeIngredients = await getProductRecipeIngredients(productId);
+
+        // ── 재고아이템 다이렉트 (docs/TRADE_STRUCTURE.md §2-1) ─────────────
+        // 메뉴 = 재고아이템: 1개 팔면 그 재료 1개가 빠진다. **수량·단위 환산 없이 1:1**.
+        // 레시피가 있으면 레시피가 이긴다(우선순위: 레시피 > 다이렉트 > 프로덕트 자체 재고).
+        // 재료 차감 경로를 그대로 타므로 저재고 알림·원장 기록·오버레이(브랜드 공유분) 처리가
+        // 레시피 상품과 완전히 같다 — 여기서 새 차감 경로를 만들지 않는다.
+        if (recipeIngredients.length === 0) {
+          const prodForDirect = await Product.findByPk(productId, { transaction });
+          if (prodForDirect && prodForDirect.ingredient_id) {
+            const ing = await Ingredient.findByPk(prodForDirect.ingredient_id, { transaction });
+            if (ing) {
+              recipeIngredients = [{
+                ingredient_id: ing.id,
+                ingredient: ing,
+                quantity: 1,
+                unit: ing.unit
+              }];
+            }
+          }
+        }
 
         if (recipeIngredients.length === 0) {
           // ── 레시피가 없는 상품은 **그 상품 자체가 재고 단위**다 ─────────────

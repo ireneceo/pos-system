@@ -360,6 +360,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
   //   그전까지 BG 재고 화면에는 외부공급업체 등록 입구가 아예 없었다(RA 에만 있었다).
   const [extTarget, setExtTarget] = useState<Ingredient | null>(null);
   const [sellAsProductTarget, setSellAsProductTarget] = useState<Ingredient | null>(null);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   // ── Supplier Products (seller-sources) — 발주 연결용 매핑 (editing existing item only) ──
   const [sellerSources, setSellerSources] = useState<SellerSource[]>([]);
@@ -594,6 +595,20 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
     }
   };
 
+  // 활성/비활성 토글. 서버가 거울(브랜드 재료)까지 같이 따라오게 한다(F2 동기화).
+  const handleToggleActive = async (ingredient: Ingredient) => {
+    setTogglingId(ingredient.id);
+    try {
+      const res = await fetchAPI(`/api/product-ingredients/${ingredient.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ is_active: ingredient.is_active === false })
+      });
+      if (res?.success) await fetchData();
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const handleDeleteClick = (ingredient: Ingredient) => {
     setDeleteConfirm({
       isOpen: true,
@@ -635,8 +650,12 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
   };
 
   const filteredIngredients = sortItems(ingredients.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.code.toLowerCase().includes(searchTerm.toLowerCase());
+    // ⚠ `code`·`name` 이 비어 있을 수 있다 — 그때 `.toLowerCase()` 가 화면을 통째로 죽인다.
+    //   2026-09-04 실제로 그랬다: 이관이 만든 재고아이템 35건에 code 가 없어 **검색창에 입력하는 순간**
+    //   "Something went wrong" 이 떴다. 데이터는 채웠지만, 값이 비었다고 화면이 죽어서는 안 된다.
+    const q = searchTerm.toLowerCase();
+    const matchesSearch = String(item.name || '').toLowerCase().includes(q) ||
+                         String(item.code || '').toLowerCase().includes(q);
     const matchesCategory = categoryFilter === 'all' ||
                            (item.category_id?.toString() === categoryFilter);
     return matchesSearch && matchesCategory;
@@ -807,6 +826,18 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                   onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSellAsProductTarget(ingredient); }}
                 >
                   Also sell as product
+                </ActionButton>
+                {/* 활성/비활성 — 2026-09-04 신설. 그전에는 화면에 이 버튼이 없어
+                    **꺼진 재고아이템을 되살릴 방법이 아예 없었다**(Irene: "활성/비활성 버튼도 없고만 어디서 하라는 거야?").
+                    끄기는 삭제가 아니다 — 레시피·발주 이력이 붙어 있어 지울 수 없는 것을 목록에서 내리는 것. */}
+                <ActionButton
+                  variant="secondary"
+                  disabled={togglingId === ingredient.id}
+                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleToggleActive(ingredient); }}
+                >
+                  {togglingId === ingredient.id
+                    ? '…'
+                    : (ingredient.is_active === false ? 'Activate' : 'Deactivate')}
                 </ActionButton>
                 <ActionButton
                   variant="danger"

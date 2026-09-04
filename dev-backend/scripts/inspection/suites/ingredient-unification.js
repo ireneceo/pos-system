@@ -83,6 +83,76 @@ module.exports = {
     add('ING-UNI-004 출처는 둘 중 하나만 (Stock Item · 프로덕트 동시 0)',
       bothSources === 0, bothSources ? `${bothSources}건이 두 출처를 다 가짐` : '');
 
+    // ING-UNI-005: 프로덕트는 **재고아이템 또는 레시피** 중 하나에 연결돼 있을 것.
+    // Irene 규칙 (2026-09-04, 2026-09-01 결정을 대체):
+    //   "프로덕트=재고아이템 or 프로덕트=레시피=재고아이템 이렇게야."
+    //   재고는 재고아이템에만 산다 — 프로덕트가 스스로 재고를 들면 판매 차감과 입고가 어긋난다.
+    // 연결 수단은 프로덕트 폼의 **재고아이템 다이렉트**(`product_ingredient_id`, 1:1·환산 없음) 또는
+    //   `Linked Product Recipe`(`product_recipe_id`) 둘 중 하나다.
+    //   ⛔ 예전 `Ingredients (direct)` 는 뒤에서 `(auto)` 레시피를 만드는 **세 번째 길**이었고 없앴다 —
+    //      되살리지 말 것(009 가 막는다). 어느 쪽인지는 물건마다 사람만 아는 것이라 기계가 만들지 않는다.
+    // ⚠ 그래서 이 검사는 **차단이 아니라 목록**이다 — baseline 에 담아 두고(➖),
+    //   Irene 이 화면에서 다 연결하면 자동으로 baseline 에서 빠져 초록으로 바뀐다.
+    //   컷오프 없이 **전수**로 본다(과거 부채가 곧 지금 해야 할 일 그 자체라서).
+    const unlinkedProducts = await cnt(`SELECT COUNT(*) c FROM brand_products
+      WHERE is_active = 1 AND product_recipe_id IS NULL AND product_ingredient_id IS NULL`);
+    add('ING-UNI-005 활성 프로덕트는 재고아이템(direct) 또는 레시피에 연결됨',
+      unlinkedProducts === 0,
+      unlinkedProducts ? `${unlinkedProducts}건 미연결 — 팔려도 재고가 안 빠진다. 프로덕트 폼에서 재고아이템 다이렉트 또는 Linked Product Recipe 로 연결` : '');
+
+    // ING-UNI-006: 매장 메뉴(products)도 같은 규칙 — 메뉴 = 재고아이템(direct) 또는 메뉴 = 레시피 = 재고아이템.
+    // 매장 쪽 연결 열쇠는 `products.recipe_id`(Recipe 계통)다. `product_recipe_id`(ProductRecipe 계통)는
+    // 브랜드 프로덕트 전용이라 매장 메뉴에 걸리면 안 된다 — 2026-07-15 에 잘못 물려 있던 것을 떼어냈다
+    // (memory: reference_two_recipe_systems). 그래서 아래 007 이 그 재발을 따로 지킨다.
+    // 005 와 같은 이유로 **차단이 아니라 목록**(baseline 에 담아 두고, 다 연결되면 자동으로 초록).
+    const unlinkedMenus = await cnt(`SELECT COUNT(*) c FROM products
+      WHERE is_active = 1 AND recipe_id IS NULL AND product_recipe_id IS NULL AND ingredient_id IS NULL`);
+    add('ING-UNI-006 활성 매장 메뉴는 재고아이템(direct) 또는 레시피에 연결됨',
+      unlinkedMenus === 0,
+      unlinkedMenus ? `${unlinkedMenus}건 미연결 — 팔려도 재고가 안 빠진다. 메뉴 폼에서 Linked Recipe 또는 재고아이템 다이렉트로 연결` : '');
+
+    // ING-UNI-007: 매장 메뉴는 **브랜드 프로덕트 레시피(ProductRecipe)를 쓰지 않는다.**
+    // 계통이 둘이라 헷갈리기 쉽고, 잘못 물리면 매장 재고차감이 통째로 엉뚱한 곳을 본다.
+    // 이건 부채가 아니라 계통 오염이라 창 없이 전수 — 살아있는 메뉴는 지금도 0 이어야 한다.
+    // ⚠ is_active=1 로 좁힌 이유(실측 2026-09-04 dev): 비활성 감사 잔재 `AUDIT-MENU-17` 2건
+    //   (products 407·408 → product_recipe 16)이 걸렸다. 꺼진 메뉴는 팔리지 않아 재고를 움직이지 못하므로
+    //   배포를 막을 일이 아니다. 되살아나 팔리는 순간 이 검사가 잡는다.
+    const wrongSystem = await cnt(`SELECT COUNT(*) c FROM products WHERE is_active = 1 AND product_recipe_id IS NOT NULL`);
+    add('ING-UNI-007 매장 메뉴에 브랜드 프로덕트 레시피가 물리지 않음',
+      wrongSystem === 0, wrongSystem ? `${wrongSystem}건 — recipe_id(Recipe) 계통으로 옮겨야 함` : '');
+
+    // ING-UNI-008 (차단): 레시피와 재고아이템을 **동시에** 건 행이 없을 것.
+    // 둘 다 걸리면 어느 쪽으로 재고를 뺄지 알 수 없다 — 라우트가 400 으로 막지만(LINK_EXCLUSIVE),
+    // 마이그·직접 SQL 로도 들어올 수 있으므로 상태 자체를 게이트가 지킨다.
+    const bothLinks = await cnt(`SELECT
+      (SELECT COUNT(*) FROM products WHERE recipe_id IS NOT NULL AND ingredient_id IS NOT NULL)
+    + (SELECT COUNT(*) FROM brand_products WHERE product_recipe_id IS NOT NULL AND product_ingredient_id IS NOT NULL) c`);
+    add('ING-UNI-008 레시피와 재고아이템을 동시에 건 행 0 (둘 중 하나만)',
+      bothLinks === 0, bothLinks ? `${bothLinks}건 — 어느 쪽으로 뺄지 알 수 없다` : '');
+
+    // ING-UNI-009 (차단): 이름이 ` (auto)` 로 끝나는 레시피가 없을 것.
+    // 자동 레시피 = "둘 중 하나"에 없던 세 번째 길. 다시 생기면 여기서 걸린다.
+    const autoNamed = await cnt(`SELECT
+      (SELECT COUNT(*) FROM recipes WHERE name LIKE '% (auto)')
+    + (SELECT COUNT(*) FROM product_recipes WHERE name LIKE '% (auto)') c`);
+    add('ING-UNI-009 자동 생성 레시피(` (auto)`) 0건',
+      autoNamed === 0, autoNamed ? `${autoNamed}건 — 자동 레시피 경로가 다시 열렸는지 확인` : '');
+
+    // ING-UNI-010 (비차단·baseline): 재료 0줄 레시피에 연결된 활성 프로덕트/메뉴.
+    // **연결돼 보이는데 차감은 0** 이다 — 005/006 은 이걸 초록으로 세므로, 010 이 없으면 거짓 통과다.
+    // 자동으로 끊지 않는다(Fable 2026-09-04): 사람이 걸어둔 미완성 레시피일 수 있고,
+    //   조용히 상태를 바꾸는 것은 없앤 "세 번째 길"과 같은 종류다. 연결은 사람이 화면에서 한다.
+    const emptyRecipeLinked = await cnt(`SELECT
+      (SELECT COUNT(*) FROM brand_products bp
+        WHERE bp.is_active = 1 AND bp.product_recipe_id IS NOT NULL
+          AND (SELECT COUNT(*) FROM product_recipe_ingredients pri WHERE pri.recipe_id = bp.product_recipe_id) = 0)
+    + (SELECT COUNT(*) FROM products p
+        WHERE p.is_active = 1 AND p.recipe_id IS NOT NULL
+          AND (SELECT COUNT(*) FROM recipe_ingredients ri WHERE ri.recipe_id = p.recipe_id) = 0) c`);
+    add('ING-UNI-010 재료 0줄 레시피에 연결된 활성 프로덕트/메뉴 0',
+      emptyRecipeLinked === 0,
+      emptyRecipeLinked ? `${emptyRecipeLinked}건 — 연결돼 보이지만 차감 0. 레시피에 재료를 넣거나 재고아이템 다이렉트로 바꿀 것` : '');
+
     return checks;
   },
 };

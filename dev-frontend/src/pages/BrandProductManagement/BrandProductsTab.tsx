@@ -75,6 +75,9 @@ interface Product {
   set_display_order: number;
   product_recipe_id: number | null;
   productRecipe?: ProductRecipe;
+  // 재고아이템 다이렉트 (docs/TRADE_STRUCTURE.md §2-1) — 레시피와 둘 중 하나만 채워진다.
+  product_ingredient_id?: number | null;
+  stockItem?: { id: number; name: string; unit: string; unit_cost: number } | null;
   sort_order: number;
   brands?: Brand[];
   optionGroups?: OptionGroup[];
@@ -433,7 +436,6 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   // 판매가 빠진 것만 걸러 보기(요약 줄의 숫자 클릭). 건수는 거르기 전 기준으로 유지된다.
   const [showMissingPriceOnly, setShowMissingPriceOnly] = useState(false);
-  const [directIngredients, setDirectIngredients] = useState<{ingredient_id: number; name: string; quantity: number; unit: string; unit_cost: number}[]>([]);
   const [productIngredientsList, setProductIngredientsList] = useState<{id: number; name: string; unit: string; unit_cost: number}[]>([]);
 
   const unitOptions = [
@@ -574,32 +576,15 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         is_set_menu: product.is_set_menu || false,
         set_items: product.set_items || [],
         set_display_order: (product.set_display_order || 0).toString(),
-        product_recipe_id: (product.product_recipe_id && product.productRecipe?.name?.endsWith('(auto)')) ? null : (product.product_recipe_id || null),
+        // (auto) 로 판정하던 것을 컬럼으로 바꿨다 — 자동 레시피 자체를 없앴다(TRADE_STRUCTURE §2-1).
+        product_recipe_id: product.product_recipe_id || null,
+        product_ingredient_id: product.product_ingredient_id || null,
         distribution_mode: (product as any).distribution_mode || 'specific_brands',
         brand_ids: product.brands?.map(b => b.id) || [],
         restaurant_ids: (product as any).restaurants?.map((r: any) => r.id) || [],
         option_group_ids: product.optionGroups?.map(og => og.id) || []
       });
-      // Load directIngredients from auto recipe
-      if (product.product_recipe_id && product.productRecipe?.name?.endsWith('(auto)')) {
-        const token = getAuthToken();
-        fetch(`/api/product-recipes/${product.product_recipe_id}`, { headers: { 'Authorization': `Bearer ${token}` } })
-          .then(r => r.json())
-          .then(data => {
-            const recipe = data.data || data;
-            const ris = recipe?.recipeIngredients || recipe?.ProductRecipeIngredients || [];
-            setDirectIngredients(ris.map((ri: any) => ({
-              ingredient_id: ri.ingredient_id,
-              name: ri.ingredient?.name || '',
-              quantity: parseFloat(ri.quantity),
-              unit: ri.unit || ri.ingredient?.unit || '',
-              unit_cost: parseFloat(ri.ingredient?.unit_cost || 0)
-            })));
-          })
-          .catch(() => setDirectIngredients([]));
-      } else {
-        setDirectIngredients([]);
-      }
+      // 자동 레시피에서 재료를 되읽던 블록 삭제 — 이제 연결은 컬럼 하나다.
     } else {
       setEditingProduct(null);
       setFormData({
@@ -621,12 +606,12 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         set_items: [],
         set_display_order: '0',
         product_recipe_id: null,
+        product_ingredient_id: null,
         distribution_mode: 'specific_brands',
         brand_ids: [],
         restaurant_ids: [],
         option_group_ids: []
       });
-      setDirectIngredients([]);
     }
     setSetMenuSearchQuery('');
     setShowModal(true);
@@ -704,7 +689,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           brand_ids: formData.distribution_mode === 'specific_brands' ? formData.brand_ids : [],
           restaurant_ids: formData.distribution_mode === 'specific_restaurants' ? formData.restaurant_ids : [],
           option_group_ids: formData.option_group_ids,
-          directIngredients: !formData.product_recipe_id ? directIngredients : undefined,
+          // 레시피 또는 재고아이템, 둘 중 하나만 보낸다 (서버가 둘 다 오면 400 LINK_EXCLUSIVE).
+          product_ingredient_id: formData.product_recipe_id ? null : (formData.product_ingredient_id || null),
           // 사용자가 "그래도 새로 등록"을 고른 경우에만 실린다. 하드 중복(SKU·이름 완전일치)은
           // force 로도 통과하지 않는다 — 그건 되돌릴 수 없이 명백한 중복이기 때문.
           ...(force ? { force: true } : {})
@@ -1000,6 +986,27 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                 <DetailRow>
                   <DetailLabel>{'Unit Price'}</DetailLabel>
                   <PriceValue>RM {(Number(product.unit_price) || 0).toFixed(2)}</PriceValue>
+                </DetailRow>
+                {/* 무엇에 연결됐는지 목록에서 바로 보이게 (2026-09-04 Irene 요청).
+                    규칙: **프로덕트는 레시피 또는 재고아이템(직접) 둘 중 하나에 연결된다.**
+                    판정은 컬럼으로 한다 — `product_ingredient_id` 가 있으면 재고아이템 다이렉트,
+                    `product_recipe_id` 가 있으면 레시피, 둘 다 없으면 미연결. 이름으로 판정하던 것은
+                    자동 레시피와 함께 없앴다 (docs/TRADE_STRUCTURE.md §2-1).
+                    아무 데도 안 붙은 것은 눈에 띄어야 한다 — 팔리는데 재고가 안 빠지는 상태다. */}
+                <DetailRow>
+                  <DetailLabel>{'Linked'}</DetailLabel>
+                  {product.product_ingredient_id ? (
+                    <StatusBadge status="success" size="small">
+                      {t('common:link.stockItemDirect', { defaultValue: 'Stock Item (direct)' })}
+                      {product.stockItem?.name ? `: ${product.stockItem.name}` : ''}
+                    </StatusBadge>
+                  ) : product.product_recipe_id ? (
+                    <StatusBadge status="success" size="small">
+                      {`${t('common:link.recipe', { defaultValue: 'Recipe' })}: ${product.productRecipe?.name || product.product_recipe_id}`}
+                    </StatusBadge>
+                  ) : (
+                    <StatusBadge status="warning" size="small">{t('common:link.notLinked', { defaultValue: 'Not linked' })}</StatusBadge>
+                  )}
                 </DetailRow>
                 {/* 판매가가 비어 있으면 눈에 보이게 — 운영 실측 109개 중 39개가 0 이었다.
                     0 원으로 팔리는 게 아니라 아직 안 넣은 것이라, 목록에서 바로 골라낼 수 있어야 한다. */}
@@ -1399,11 +1406,11 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               )}
             </UIFormGroup>
 
-            {directIngredients.length === 0 && (
+            {!formData.product_ingredient_id && (
               <UIFormGroup>
                 <FormLabel>{'Linked Product Recipe'}</FormLabel>
                 <SearchableSelect
-                  options={productRecipes.filter(r => !r.name?.endsWith('(auto)')).map(recipe => ({
+                  options={productRecipes.map(recipe => ({
                     value: recipe.id,
                     label: recipe.name,
                     subLabel: `Cost: RM ${Number(recipe.total_ingredient_cost || 0).toFixed(2)}`
@@ -1417,36 +1424,38 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               </UIFormGroup>
             )}
 
+            {/* 재고아이템 다이렉트 — 프로덕트 = 재고아이템 (docs/TRADE_STRUCTURE.md §2-1).
+                재고아이템 **하나**를 그대로 가리킨다. 수량 칸도, 줄 추가도, 합계도 없다 —
+                "그대로"라서 1:1 이고, 환산을 넣는 순간 그게 레시피가 된다(Irene 2026-09-04).
+                레시피와 상호 배타: 한쪽을 고르면 다른 쪽은 비운다. */}
             {!formData.product_recipe_id && (
               <UIFormGroup>
-                <FormLabel>Ingredients (direct) {directIngredients.length > 0 && <span style={{ fontSize: '11px', color: '#4B5563', fontWeight: 400 }}>Cost: RM {directIngredients.reduce((sum, di) => sum + (di.unit_cost * di.quantity), 0).toFixed(2)}</span>}</FormLabel>
-                {directIngredients.map((di, idx) => (
-                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px', fontSize: '13px', background: '#F9FAFB', padding: '8px 12px', borderRadius: '6px' }}>
-                    <span style={{ flex: 1 }}>{di.name}</span>
-                    <input type="number" value={di.quantity} min="0.01" step="0.01" style={{ width: '60px', textAlign: 'center', border: '1px solid #C7CED6', borderRadius: '4px', padding: '2px 4px', fontSize: '13px' }}
-                      onChange={(e) => setDirectIngredients(prev => prev.map((item, i) => i === idx ? { ...item, quantity: parseFloat(e.target.value) || 0 } : item))} />
-                    <span style={{ fontSize: '12px', color: '#4B5563', width: '30px' }}>{di.unit}</span>
-                    <span style={{ width: '70px', textAlign: 'right', color: '#4B5563', fontSize: '12px' }}>RM {(di.unit_cost * di.quantity).toFixed(2)}</span>
-                    <button type="button" onClick={() => setDirectIngredients(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>x</button>
-                  </div>
-                ))}
+                <FormLabel>{t('common:link.stockItemDirect', { defaultValue: 'Stock Item (direct)' })}</FormLabel>
                 <SearchableSelect
-                  options={productIngredientsList.filter(ing => !directIngredients.some(di => di.ingredient_id === ing.id)).map(ing => ({
+                  options={productIngredientsList.map(ing => ({
                     value: ing.id,
                     label: ing.name,
                     subLabel: `${ing.unit} / RM ${Number(ing.unit_cost || 0).toFixed(2)}`
                   }))}
-                  value={null}
-                  onChange={(value) => {
-                    if (value) {
-                      const ing = productIngredientsList.find(i => i.id === value);
-                      if (ing) setDirectIngredients(prev => [...prev, { ingredient_id: ing.id, name: ing.name, quantity: 1, unit: ing.unit, unit_cost: Number(ing.unit_cost || 0) }]);
-                    }
-                  }}
-                  placeholder="Add ingredient..."
-                  allowClear={false}
-                  noOptionsMessage="No ingredients available"
+                  value={formData.product_ingredient_id || null}
+                  onChange={(value) => setFormData({
+                    ...formData,
+                    product_ingredient_id: (value as number) || null,
+                    product_recipe_id: null
+                  })}
+                  placeholder="Search or select stock item..."
+                  allowClear={true}
+                  noOptionsMessage="No stock items available"
                 />
+                {formData.product_ingredient_id && (() => {
+                  const si = productIngredientsList.find(i => i.id === formData.product_ingredient_id);
+                  if (!si) return null;
+                  return (
+                    <div style={{ marginTop: '6px', fontSize: '12.5px', color: '#4B5563' }}>
+                      1 {si.unit} · RM {Number(si.unit_cost || 0).toFixed(2)}
+                    </div>
+                  );
+                })()}
               </UIFormGroup>
             )}
 

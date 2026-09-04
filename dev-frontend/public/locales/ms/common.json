@@ -762,5 +762,16 @@
   "pwa.guide.mac.useChrome": "Buka laman ini dalam Chrome atau Edge untuk memasangnya sebagai aplikasi. (Safari 17 ke atas juga boleh menambahnya melalui File › Add to Dock.)",
   "nav.deployRecords": "Isu Pembangunan Solusi",
   "showMore": "Lihat lagi",
-  "showLess": "Tutup"
+  "showLess": "Tutup",
+  "link.stockItemDirect": "Item Stok (terus)",
+  "link.recipe": "Resipi",
+  "link.notLinked": "Tiada pautan",
+  "crashReport.sent": "Diterima (#{{ticket}}). Kami akan susuli.",
+  "crashReport.dup": "Ralat ini telah pun dilaporkan.",
+  "crashReport.noauth": "Sila log masuk dan gunakan menu Sokongan.",
+  "crashReport.placeholder": "Apa yang anda lakukan? (pilihan)",
+  "crashReport.sending": "Menghantar…",
+  "crashReport.send": "Hantar ralat ini",
+  "crashReport.failed": "Gagal dihantar. Sila lapor melalui menu Sokongan.",
+  "crashReport.note": "Ralat, skrin, akaun dan versi aplikasi dihantar bersama."
 }
