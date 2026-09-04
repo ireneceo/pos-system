@@ -722,5 +722,8 @@
   },
   "brandIngredientsPage": {
     "subtitle": "The single list of ingredients. Turn on brand sharing to use them in recipes and orders."
-  }
+  },
+  "productsTab.activeOnly": "Active only",
+  "productsTab.inactiveOnly": "Inactive only",
+  "productsTab.allStatuses": "All statuses"
 }

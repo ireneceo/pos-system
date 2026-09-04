@@ -44,6 +44,9 @@ const GATES = [
   { id: 'i18n-hardcoded', tier: 'static', label: '🈯 소스 하드코딩 (화면 문구가 번역을 안 타는 것)', cwd: BACKEND, cmd: ['node', 'scripts/check-i18n-hardcoded.js'] },
   { id: 'route-guard', tier: 'static', label: '🛡️ IDOR 라우트 가드 (신규 무방비 0)', cwd: BACKEND, cmd: ['node', 'scripts/check-route-guard.js', '--summary'] },
   { id: 'migration-registry', tier: 'static', label: '🗄️ 마이그레이션 레지스트리 (배포목록 누락 = 스키마 드리프트 차단)', cwd: BACKEND, cmd: ['node', 'scripts/check-migration-registry.js'] },
+  // 배포를 눌러야만 알 수 있던 것들(기록 파일·fable_note·SW 버전·마이그 기본동작)을 **여기서** 잡는다.
+  // 배포 스크립트의 같은 검사는 10번째(맨 마지막)라 42초 뒤에 하나씩만 알려줬다 — 오늘 그 왕복만 반복했다.
+  { id: 'deploy-ready', tier: 'static', label: '🚀 배포 준비 (기록 7칸·fable_note·SW 버전·마이그 기본동작)', cwd: BACKEND, cmd: ['node', 'scripts/check-deploy-ready.js'] },
   { id: 'timezone', tier: 'static', label: '🕐 타임존 가드 (신규 위반 0)', cwd: BACKEND, cmd: ['node', 'scripts/timezone-check.js'] },
   { id: 'desktop-feed', tier: 'static', label: '🖥️ 데스크탑 설치본 피드 (CTA·자동업데이트가 최신 exe 를 가리킴)', cwd: BACKEND, cmd: ['node', 'scripts/check-desktop-feed.js', '--quiet'] },
   { id: 'hydration', tier: 'static', label: '💧 state hydration 안전 (warning 0)', cwd: FRONTEND, cmd: ['node', 'scripts/state-hydration-check.js'] },

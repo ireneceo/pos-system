@@ -190,17 +190,39 @@ const InfoValue = styled.span`
 
 const IngredientActions = styled.div`
   display: flex;
+  flex-direction: column;
   gap: 8px;
   margin-top: auto;
   padding-top: 16px;
 `;
 
+/* 한 줄에 다 넣으면 긴 라벨('Also sell as product')이 카드 밖으로 튀어나온다
+   (2026-09-04 Irene: "버튼이 튀어나가"). 버튼이 5개가 되면서 각자 1/5 폭이 됐던 것.
+   → 두 줄로 나눈다: 위=이 항목 자체를 다루는 것, 아래=바깥과 잇는 것(라벨이 길다). */
+const ActionRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  /* ⛔ 자식에 min-width 를 주지 말 것. flex 아이템은 기본 min-width:auto(=내용폭)이라
+     그 상태여야 "안 들어가면 다음 줄" 이 된다. min-width:0 을 주면 줄바꿈 대신 축소가 일어나
+     글자가 잘린다 — 1366px 에서 두 번 그렇게 실패했다(2026-09-04).
+     grid(auto-fit)로 바꿨을 때는 잘림은 없어졌지만 1366 에서 Delete 가 혼자 반폭으로 남아
+     카드가 550px 로 늘었다. 결국 내용폭 기준 flex 줄바꿈이 정답. */
+  > * { flex: 1 1 auto; }
+`;
+
 const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   flex: 1;
-  padding: 8px 12px;
+  padding: 8px 10px;
   border-radius: 6px;
-  font-size: 13px;
+  /* ⛔ min-width:0 · overflow:hidden · text-overflow:ellipsis 를 넣지 말 것.
+     셋 다 flex 아이템의 min-width:auto 를 무력화해 **줄바꿈 대신 축소**가 일어나고,
+     그 결과 라벨이 잘린다(2026-09-04 1366px 에서 11/11 카드). 넘침 방지는 ActionRow 의
+     flex-wrap 이 맡는다. */
+  font-size: 12.5px;
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
   transition: all 0.15s;
 
@@ -807,44 +829,49 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
 
 
               <IngredientActions>
-                <ActionButton
-                  variant="secondary"
-                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleOpenModal(ingredient); }}
-                >
-                  Edit
-                </ActionButton>
-                {/* 솔루션 미가입 외부공급업체 상품으로 등록 — RA 재료 화면과 같은 부품 */}
-                <ActionButton
-                  variant="secondary"
-                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExtTarget(ingredient); }}
-                >
-                  External supplier
-                </ActionButton>
-                {/* 그대로 파는 물건이면 브랜드 프로덕트로도 등록 — 재고는 이 아이템 한 곳에만 남는다 */}
-                <ActionButton
-                  variant="secondary"
-                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSellAsProductTarget(ingredient); }}
-                >
-                  Also sell as product
-                </ActionButton>
-                {/* 활성/비활성 — 2026-09-04 신설. 그전에는 화면에 이 버튼이 없어
-                    **꺼진 재고아이템을 되살릴 방법이 아예 없었다**(Irene: "활성/비활성 버튼도 없고만 어디서 하라는 거야?").
-                    끄기는 삭제가 아니다 — 레시피·발주 이력이 붙어 있어 지울 수 없는 것을 목록에서 내리는 것. */}
-                <ActionButton
-                  variant="secondary"
-                  disabled={togglingId === ingredient.id}
-                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleToggleActive(ingredient); }}
-                >
-                  {togglingId === ingredient.id
-                    ? '…'
-                    : (ingredient.is_active === false ? 'Activate' : 'Deactivate')}
-                </ActionButton>
-                <ActionButton
-                  variant="danger"
-                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDeleteClick(ingredient); }}
-                >
-                  Delete
-                </ActionButton>
+                <ActionRow>
+                  <ActionButton
+                    variant="secondary"
+                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleOpenModal(ingredient); }}
+                  >
+                    Edit
+                  </ActionButton>
+                  {/* 활성/비활성 — 2026-09-04 신설. 그전에는 화면에 이 버튼이 없어
+                      **꺼진 재고아이템을 되살릴 방법이 아예 없었다**
+                      (Irene: "활성/비활성 버튼도 없고만 어디서 하라는 거야?").
+                      끄기는 삭제가 아니다 — 레시피·발주 이력이 붙어 있어 지울 수 없는 것을 목록에서 내리는 것. */}
+                  <ActionButton
+                    variant="secondary"
+                    disabled={togglingId === ingredient.id}
+                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleToggleActive(ingredient); }}
+                  >
+                    {togglingId === ingredient.id
+                      ? '…'
+                      : (ingredient.is_active === false ? 'Activate' : 'Deactivate')}
+                  </ActionButton>
+                  <ActionButton
+                    variant="danger"
+                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDeleteClick(ingredient); }}
+                  >
+                    Delete
+                  </ActionButton>
+                </ActionRow>
+                <ActionRow>
+                  {/* 솔루션 미가입 외부공급업체 상품으로 등록 — RA 재료 화면과 같은 부품 */}
+                  <ActionButton
+                    variant="secondary"
+                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExtTarget(ingredient); }}
+                  >
+                    External supplier
+                  </ActionButton>
+                  {/* 그대로 파는 물건이면 브랜드 프로덕트로도 등록 — 재고는 이 아이템 한 곳에만 남는다 */}
+                  <ActionButton
+                    variant="secondary"
+                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSellAsProductTarget(ingredient); }}
+                  >
+                    Also sell as product
+                  </ActionButton>
+                </ActionRow>
               </IngredientActions>
             </IngredientCard>
           ))}

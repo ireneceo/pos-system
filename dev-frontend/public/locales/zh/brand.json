@@ -722,5 +722,8 @@
   },
   "brandIngredientsPage": {
     "subtitle": "唯一的食材清单。开启品牌共享后即可用于配方与采购。"
-  }
+  },
+  "productsTab.activeOnly": "仅启用",
+  "productsTab.inactiveOnly": "仅停用",
+  "productsTab.allStatuses": "全部状态"
 }

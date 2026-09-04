@@ -173,6 +173,8 @@ const DetailRow = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
+  min-width: 0;
   margin-bottom: 8px;
   font-size: 14px;
 
@@ -183,6 +185,22 @@ const DetailRow = styled.div`
 
 const DetailLabel = styled.span`
   color: #4B5563;
+`;
+
+/* 연결 배지 자리 — 남는 폭 안에서만 자란다. 이름이 길면 배지 안에서 말줄임되고
+   행 전체가 밀리지 않는다. 전체 이름은 마우스를 올리면 title 로 보인다. */
+const LinkBadgeSlot = styled.span`
+  min-width: 0;
+  max-width: 70%;
+  display: inline-flex;
+  justify-content: flex-end;
+
+  > * {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 `;
 
 const DetailValue = styled.span`
@@ -400,6 +418,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [brandFilter, setBrandFilter] = useState('all');
+  // 활성/비활성 필터 — 기본은 '활성만'. 비활성 프로덕트가 섞여 보이면
+  // 지금 파는 것이 무엇인지 목록에서 바로 안 보인다(2026-09-04 Irene 요청).
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -859,7 +880,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                          (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = categoryFilter === 'all' || product.category_id?.toString() === categoryFilter;
     const matchesBrand = brandFilter === 'all' || product.brands?.some(b => b.id.toString() === brandFilter);
-    return matchesSearch && matchesCategory && matchesBrand;
+    const matchesStatus = statusFilter === 'all'
+      || (statusFilter === 'active' ? product.is_active !== false : product.is_active === false);
+    return matchesSearch && matchesCategory && matchesBrand && matchesStatus;
   }), sortKey);
 
   if (loading) {
@@ -901,6 +924,14 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                 {brand.name}
               </option>
             ))}
+          </FilterSelect>
+          <FilterSelect
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as 'active' | 'inactive' | 'all')}
+          >
+            <option value="active">{t('productsTab.activeOnly', { defaultValue: 'Active only' })}</option>
+            <option value="inactive">{t('productsTab.inactiveOnly', { defaultValue: 'Inactive only' })}</option>
+            <option value="all">{t('productsTab.allStatuses', { defaultValue: 'All statuses' })}</option>
           </FilterSelect>
           <SortDropdown value={sortKey} onChange={setSortKey} />
         </FilterBar>
@@ -995,15 +1026,21 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                     아무 데도 안 붙은 것은 눈에 띄어야 한다 — 팔리는데 재고가 안 빠지는 상태다. */}
                 <DetailRow>
                   <DetailLabel>{'Linked'}</DetailLabel>
+                  {/* 연결된 이름(포장재는 이름이 아주 길다)이 배지에 그대로 들어가면
+                      space-between 행을 밀어 카드 레이아웃이 무너진다(2026-09-04 Irene).
+                      → 배지는 이름을 자르고, 전체 이름은 title 로 띄운다. */}
                   {product.product_ingredient_id ? (
-                    <StatusBadge status="success" size="small">
-                      {t('common:link.stockItemDirect', { defaultValue: 'Stock Item (direct)' })}
-                      {product.stockItem?.name ? `: ${product.stockItem.name}` : ''}
-                    </StatusBadge>
+                    <LinkBadgeSlot title={product.stockItem?.name || ''}>
+                      <StatusBadge status="success" size="small">
+                        {t('common:link.stockItemDirect', { defaultValue: 'Stock Item (direct)' })}
+                      </StatusBadge>
+                    </LinkBadgeSlot>
                   ) : product.product_recipe_id ? (
-                    <StatusBadge status="success" size="small">
-                      {`${t('common:link.recipe', { defaultValue: 'Recipe' })}: ${product.productRecipe?.name || product.product_recipe_id}`}
-                    </StatusBadge>
+                    <LinkBadgeSlot title={product.productRecipe?.name || String(product.product_recipe_id)}>
+                      <StatusBadge status="success" size="small">
+                        {`${t('common:link.recipe', { defaultValue: 'Recipe' })}: ${product.productRecipe?.name || product.product_recipe_id}`}
+                      </StatusBadge>
+                    </LinkBadgeSlot>
                   ) : (
                     <StatusBadge status="warning" size="small">{t('common:link.notLinked', { defaultValue: 'Not linked' })}</StatusBadge>
                   )}

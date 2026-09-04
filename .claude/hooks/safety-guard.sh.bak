@@ -70,16 +70,7 @@ if [ "$TOOL_NAME" = "Bash" ]; then
   fi
 
   # deploy-to-production 무단 실행 경고 (차단은 아니고 ask)
-  if echo "$CMD" | grep -qE '(^|[;&|]|[[:space:]])(sudo[[:space:]]+)?(bash[[:space:]]+|sh[[:space:]]+)?(/var/www/|\./)?deploy-to-production\.sh([[:space:]]|$)'; then
-    DEPLOY_ASK_MARK="/var/www/.claude/.deploy-ask-recent"
-    RECENT=""
-    if [ -f "$DEPLOY_ASK_MARK" ]; then
-      RECENT=$(find "$DEPLOY_ASK_MARK" -mmin -60 2>/dev/null)
-    fi
-    if [ -n "$RECENT" ]; then
-      exit 0
-    fi
-    touch "$DEPLOY_ASK_MARK"
+  if echo "$CMD" | grep -qE "deploy.*production|deploy-to-production"; then
     jq -n '{
       hookSpecificOutput: {
         hookEventName: "PreToolUse",

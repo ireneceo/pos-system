@@ -722,5 +722,8 @@
   },
   "brandIngredientsPage": {
     "subtitle": "Senarai bahan tunggal. Hidupkan perkongsian jenama untuk guna dalam resipi dan pesanan."
-  }
+  },
+  "productsTab.activeOnly": "Aktif sahaja",
+  "productsTab.inactiveOnly": "Tidak aktif sahaja",
+  "productsTab.allStatuses": "Semua status"
 }
