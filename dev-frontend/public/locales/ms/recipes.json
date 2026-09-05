@@ -77,7 +77,7 @@
   "recipesTab.brand": "Jenama",
   "recipesTab.brandCost": "Jenama Cost",
   "recipesTab.myCost": "Kos Saya",
-  "recipesTab.cost": "Cost",
+  "recipesTab.cost": "Kos",
   "recipesTab.suggested": "Dicadangkan",
   "recipesTab.costTime": "Kos & Masa",
   "recipesTab.ingredientCost": "Kos Bahan",
@@ -143,8 +143,5 @@
   "recipesPage.totalIngredientCost": "Jumlah Kos Bahan",
   "recipesTab.srcProduct": "Produk",
   "recipesTab.srcStockItem": "Item Stok",
-  "recipesTab.srcBrandIngredient": "Bahan Jenama",
-  "recipesTab": {
-    "cost": "Kos"
-  }
+  "recipesTab.srcBrandIngredient": "Bahan Jenama"
 }

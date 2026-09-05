@@ -28,7 +28,7 @@ async function main() {
       await sequelize.query(`
         CREATE TABLE code_sequences (
           id INT AUTO_INCREMENT PRIMARY KEY,
-          scope_type VARCHAR(32) NOT NULL,
+          scope_type VARCHAR(64) NOT NULL,
           scope_id INT NOT NULL DEFAULT 0,
           prefix VARCHAR(16) NOT NULL,
           last_no INT NOT NULL DEFAULT 0,
@@ -39,6 +39,17 @@ async function main() {
       console.log('✅ code_sequences 생성');
     } else {
       console.log('➖ code_sequences 이미 있음 (멱등)');
+    }
+
+    // 멱등 ALTER — 먼저 만든 dev 표는 VARCHAR(32) 라 `restaurant:IngredientCategory`(29) 처럼
+    //   모델 이름 하나만 길어져도 넘친다. 64 미만이면 늘린다.
+    const [col] = await sequelize.query(
+      `SELECT CHARACTER_MAXIMUM_LENGTH len FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'code_sequences' AND COLUMN_NAME = 'scope_type'`,
+      { type: QueryTypes.SELECT });
+    if (col && Number(col.len) < 64) {
+      await sequelize.query('ALTER TABLE code_sequences MODIFY scope_type VARCHAR(64) NOT NULL');
+      console.log(`✅ scope_type ${col.len} → 64 확장`);
     }
 
     const [c] = await sequelize.query('SELECT COUNT(*) n FROM code_sequences', { type: QueryTypes.SELECT });

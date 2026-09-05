@@ -115,9 +115,14 @@ async function generateCode(Model, prefix, options = {}) {
       scopeType = 'restaurant'; scopeId = Number(ownerId);
     }
   } else if (whereClause) {
-    // whereClause 만 준 호출부(일반재고·카테고리) — 범위 키를 그 값에서 뽑는다.
+    // whereClause 만 준 호출부 — 범위 키를 그 값에서 뽑는다.
+    // ⚠ 2026-09-06: `owner_user_id`(재고아이템 = BG 계정별) 와 `foodcourt_id` 를 빠뜨리면
+    //   **모든 BG 가 시퀀스 하나를 나눠 쓴다.** 중복은 안 나지만(dup 체크가 owner 별), BG#2 의
+    //   첫 새 재고아이템이 자기 최대 다음이 아니라 BG#1 이 올려 둔 번호 다음이 된다 — 체계가 아니다.
     if (whereClause.brand_id) { scopeType = 'brand'; scopeId = Number(whereClause.brand_id); }
     else if (whereClause.restaurant_id) { scopeType = 'restaurant'; scopeId = Number(whereClause.restaurant_id); }
+    else if (whereClause.owner_user_id) { scopeType = 'user'; scopeId = Number(whereClause.owner_user_id); }
+    else if (whereClause.foodcourt_id) { scopeType = 'foodcourt'; scopeId = Number(whereClause.foodcourt_id); }
   }
   const scopeKey = `${scopeType}:${Model.name || 'model'}`;
 

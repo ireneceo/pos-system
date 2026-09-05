@@ -650,8 +650,6 @@ router.get('/supplier-catalog', async (req, res) => {
       limit: CATALOG_LIMIT,
       subQuery: false
     });
-    // 상한 적용 **전** 총계 — 잘렸는지 판정하는 유일한 근거다.
-    const catalogTotal = await SupplierProduct.count({ where });
 
     // 3. 매핑 여부 lookup — 내 ingredient 와 IngredientSellerProduct 매핑된 supplier_product_id 모음
     // ingredient 매핑 lookup — buyer entity 별로 적용 + 3 seller_type (supplier/brand/foodcourt) 모두
@@ -729,6 +727,14 @@ router.get('/supplier-catalog', async (req, res) => {
         has_options: groups.length > 0
       };
     });
+
+    // 상한 적용 **전** 총계 — 잘렸는지 판정하는 유일한 근거다.
+    // ⚠ 검색어가 붙으면 `where[Op.or]` 에 join 컬럼(카테고리명·공급사명)을 보는 literal 이 들어간다.
+    //   `count` 는 include 없이 돌아 그 컬럼을 못 찾고 SQL 오류가 난다. 절단 판정은 **전량 호출**
+    //   에서만 의미가 있으므로(선택기는 검색어 없이 부른다) 필터가 걸린 호출은 받은 만큼을 총계로 본다.
+    // ⚠ `data` 선언 **뒤**에 있어야 한다 — 앞에 두었다가 TDZ 로 전 호출이 500 이 났다(2026-09-06).
+    const filtered = Boolean(search) || Boolean(req.query.category_id) || Boolean(req.query.supplier_id);
+    const catalogTotal = filtered ? data.length : await SupplierProduct.count({ where });
 
     // 6. Brand/Foodcourt seller catalog 통합 — Restaurant buyer 가 가맹/입점된 BG/FG 의 판매 상품도 포함
     //    BG/FG 는 공급업체와 동등한 seller 역할. brand_products / foodcourt_products 가 catalog 항목.

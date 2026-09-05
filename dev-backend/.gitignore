@@ -42,3 +42,4 @@ ecosystem.config.js.backup
 # QZ Tray private key (NEVER commit)
 config/qz-cert/private-key.pem
 .deploy-migration-run.json
+.sweep-cache.json

@@ -315,6 +315,7 @@ DUMP_FILE="${PREDEPLOY_DIR}/db_predeploy_${TIMESTAMP}.sql.gz"
 # 자격증명·mysqldump 옵션은 기존 backup-database.sh 와 **같은 것**을 쓴다(두 벌 만들지 않는다).
 DUMP_ERR=$(ssh $PROD_SERVER "
   set -e
+  set -o pipefail   # mysqldump | gzip — pipefail 없으면 종료코드가 gzip 것이라 덤프 실패가 가려진다
   source <(grep -E '^DB_' /var/www/production-backend/.env | sed 's/^/export /')
   mkdir -p ${PREDEPLOY_DIR}
   LAST=\$(ls -t /var/backups/orderhere/daily/db_*.sql.gz 2>/dev/null | head -1)
@@ -391,6 +392,9 @@ fi
 if [ "$SKIP_SAFETY" = true ]; then
     warn "⚠️  mount sweep 건너뜀 (--skip-safety)"
 else
+    # 2026-09-06: verify-all 이 **서빙 중인 번들 지문**으로 sweep 결과를 캐시한다. 방금 빌드한
+    #   번들이 직전 통과와 바이트 동일하면 즉시 통과로 재사용된다(sweep 은 번들만 보므로 안전).
+    #   번들이 한 바이트라도 다르면 무조건 11분 전수를 돈다. 강제 전수는 `--no-sweep-cache`.
     log "Post-build gate: 실브라우저 mount sweep (RA+BG 전 페이지 크래시 0)..."
     cd $LOCAL_DEV_BACKEND
     if ! node scripts/verify-all.js --only mount; then

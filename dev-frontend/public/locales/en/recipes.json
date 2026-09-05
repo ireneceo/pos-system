@@ -143,8 +143,5 @@
   "recipesPage.totalIngredientCost": "Total Ingredient Cost",
   "recipesTab.srcProduct": "Product",
   "recipesTab.srcStockItem": "Stock Item",
-  "recipesTab.srcBrandIngredient": "Brand Ingredient",
-  "recipesTab": {
-    "cost": "Cost"
-  }
+  "recipesTab.srcBrandIngredient": "Brand Ingredient"
 }

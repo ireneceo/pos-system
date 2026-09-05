@@ -733,7 +733,5 @@
   "productIngredientsTab.unitHelp": "포장으로 사고 무게로 쓰면 — 취급단위 g, 취급 기준숫자 2000, 기준단위 pack, 기준양 1, 가격은 1 pack 값.",
   "productIngredientsTab.costPerUsageUnit": "취급단위당 원가",
   "productIngredientsTab.pendingSpec": "미확정",
-  "productIngredients": {
-    "catalogTruncated": "전체 {{total}}개 중 {{shown}}개만 불러왔습니다 — 오래된 상품은 아직 목록에 없습니다."
-  }
+  "productIngredients.catalogTruncated": "전체 {{total}}개 중 {{shown}}개만 불러왔습니다 — 오래된 상품은 아직 목록에 없습니다."
 }

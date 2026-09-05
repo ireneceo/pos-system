@@ -77,7 +77,7 @@
   "recipesTab.brand": "品牌",
   "recipesTab.brandCost": "品牌成本",
   "recipesTab.myCost": "我的成本",
-  "recipesTab.cost": "Cost",
+  "recipesTab.cost": "金额",
   "recipesTab.suggested": "建议",
   "recipesTab.costTime": "成本与时间",
   "recipesTab.ingredientCost": "食材成本",
@@ -143,8 +143,5 @@
   "recipesPage.totalIngredientCost": "总食材成本",
   "recipesTab.srcProduct": "产品",
   "recipesTab.srcStockItem": "库存项目",
-  "recipesTab.srcBrandIngredient": "品牌食材",
-  "recipesTab": {
-    "cost": "金额"
-  }
+  "recipesTab.srcBrandIngredient": "品牌食材"
 }

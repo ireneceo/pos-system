@@ -77,7 +77,7 @@
   "recipesTab.brand": "브랜드",
   "recipesTab.brandCost": "브랜드 비용",
   "recipesTab.myCost": "내 비용",
-  "recipesTab.cost": "비용",
+  "recipesTab.cost": "금액",
   "recipesTab.suggested": "제안됨",
   "recipesTab.costTime": "비용 및 시간",
   "recipesTab.ingredientCost": "식자재 비용",
@@ -143,8 +143,5 @@
   "recipesPage.totalIngredientCost": "총 식자재 비용",
   "recipesTab.srcProduct": "프로덕트",
   "recipesTab.srcStockItem": "재고아이템",
-  "recipesTab.srcBrandIngredient": "브랜드 재료",
-  "recipesTab": {
-    "cost": "금액"
-  }
+  "recipesTab.srcBrandIngredient": "브랜드 재료"
 }

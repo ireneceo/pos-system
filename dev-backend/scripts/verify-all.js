@@ -23,6 +23,8 @@
 const { spawnSync } = require('child_process');
 const path = require('path');
 const http = require('http');
+const fs = require('fs');
+const crypto = require('crypto');
 // mount sweep 이 demo 계정 없는 역할(System Admin/Manager) 토큰을 직접 서명하므로 JWT_SECRET 필요.
 try { require('dotenv').config({ path: path.resolve(__dirname, '../.env'), quiet: true }); } catch { /* optional */ }
 
@@ -81,6 +83,27 @@ function postJson(url, body) {
     req.setTimeout(10000, () => req.destroy(new Error('timeout')));
     req.write(data); req.end();
   });
+}
+
+// ── mount sweep 캐시 ────────────────────────────────────────────────────────
+// sweep 은 11분이 걸린다(실측 668~744초, 나머지 17개 게이트를 다 합쳐도 90초).
+// 그런데 sweep 이 검사하는 것은 **서빙 중인 번들**뿐이다 — 백엔드만 고친 재검증에서
+// 같은 번들을 11분씩 다시 훑는 것은 순수 낭비다(2026-09-06: 하루 8회 = 90분).
+// 그래서 번들 지문이 **직전 통과와 같으면** 건너뛴다. 번들이 한 바이트라도 다르면 무조건 돈다.
+//   ⛔ 캐시 무효화 키는 "빌드 산출물 내용" 이다 — 시각·크기가 아니라 sha256.
+//   `--no-sweep-cache` 로 강제 전수. 배포 스크립트도 같은 키를 쓴다.
+const SWEEP_CACHE = path.join(__dirname, '..', '.sweep-cache.json');   // dev-backend/.sweep-cache.json
+function servedBundleFingerprint() {
+  const dir = '/var/www/dev-frontend-build';
+  try {
+    const js = fs.readdirSync(path.join(dir, 'static', 'js')).filter((f) => /^main\..*\.js$/.test(f)).sort();
+    const h = crypto.createHash('sha256');
+    h.update(fs.readFileSync(path.join(dir, 'index.html')));
+    for (const f of js) h.update(fs.readFileSync(path.join(dir, 'static', 'js', f)));
+    return h.digest('hex');
+  } catch (e) {
+    return null;   // 못 읽으면 캐시를 쓰지 않는다(안전한 쪽)
+  }
 }
 
 // mount 토큰 조달. **공개 로그인 게이트에 의존하지 않는다.**
@@ -184,6 +207,17 @@ function runGate(gate, extraEnv) {
     let r;
     try {
       if (gate.id === 'mount') {
+        // 번들이 직전 통과와 같으면 건너뛴다 — sweep 은 번들만 본다.
+        const fp = servedBundleFingerprint();
+        let cached = null;
+        try { cached = JSON.parse(fs.readFileSync(SWEEP_CACHE, 'utf8')); } catch (e) { /* 없으면 돈다 */ }
+        if (fp && cached && cached.bundle === fp && !has('--no-sweep-cache')) {
+          process.stdout.write('\r' + c.green('  ✓ ') + gate.label
+            + c.gray(` (0.0s · 번들 동일 — 직전 통과 재사용 ${cached.at})`) + '\n');
+          results.push({ gate, ok: true, code: 0, ms: 0, effOk: true,
+            out: `sweep 생략: 번들 지문 ${fp.slice(0, 12)} 이 직전 통과와 같음` });
+          continue;
+        }
         // 토큰 자동조달 후 2개 sweep 병합 실행.
         //   page-sweep  = RA + BG
         //   roles-sweep = FG · Owner · Supplier · System Admin · Brand/Foodcourt Manager · /pos/manager/*
@@ -208,6 +242,11 @@ function runGate(gate, extraEnv) {
           out: '--- page-sweep (RA·BG) ---\n' + pageR.out + '\n--- roles-sweep (FG·Owner·Supplier·Admin·Manager) ---\n' + rolesR.out,
           ms: Date.now() - started,
         };
+        // 통과했을 때만 기록한다 — 실패를 기억하면 다음 실행이 조용히 건너뛴다.
+        if (r.ok && fp) {
+          try { fs.writeFileSync(SWEEP_CACHE, JSON.stringify({ bundle: fp, at: new Date().toISOString().slice(0, 16).replace('T', ' ') }, null, 2)); }
+          catch (e) { /* 캐시는 없어도 된다 */ }
+        }
       } else {
         r = runGate(gate);
       }

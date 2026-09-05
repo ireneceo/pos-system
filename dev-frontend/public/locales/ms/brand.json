@@ -733,7 +733,5 @@
   "productIngredientsTab.unitHelp": "Beli ikut pakej, guna ikut berat — cth. Unit Guna g, Kuantiti Asas 2000, Unit Pakej pack, Kuantiti Pakej 1, harga = satu pakej.",
   "productIngredientsTab.costPerUsageUnit": "Kos seunit guna",
   "productIngredientsTab.pendingSpec": "Belum ditetapkan",
-  "productIngredients": {
-    "catalogTruncated": "{{shown}} daripada {{total}} produk dimuatkan — item lama belum ada dalam senarai ini."
-  }
+  "productIngredients.catalogTruncated": "{{shown}} daripada {{total}} produk dimuatkan — item lama belum ada dalam senarai ini."
 }

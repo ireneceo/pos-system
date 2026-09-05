@@ -32,7 +32,7 @@ const num = (v) => (v == null ? null : parseFloat(v));
 
 async function main() {
   const t = await sequelize.transaction();
-  const rep = { filled: [], mirrorCopied: [], skipped: {}, humanNeeded: [], pushedToMirrors: 0 };
+  const rep = { filled: [], mirrorCopied: [], skipped: {}, humanNeeded: [], pushedToMirrors: 0, realigned: [], copiesAligned: 0 };
   const note = (k) => { rep.skipped[k] = (rep.skipped[k] || 0) + 1; };
   try {
     // ── 1. 규칙대로 채운다 (사람 값 보존) ────────────────────────────────────
@@ -72,6 +72,46 @@ async function main() {
     }
     rep.pushedToMirrors = pushed;
 
+    // ── 1b. 이미 값이 있는데 **판매자 현재가와 어긋난** 원가를 맞춘다 ──────────
+    //   1단계는 `unit_cost = 0` 만 돈다. 그런데 운영에서 문제인 것은 원가가 **있는데 옛값**인
+    //   행이다 — 공급업체 매핑 57건·브랜드 매핑 20건(2026-09-06 실측, 45 오름/12 내림).
+    //   costSync 의 사본 갱신은 그 행을 방문할 때만 일어나므로, 여기서 훑지 않으면 판매자가
+    //   다음에 가격을 고칠 때까지 옛값 그대로다. Irene 에게 "배포하면 바뀐다"고 말한 그 숫자다.
+    const drifted = await q(`
+      SELECT DISTINCT isp.product_ingredient_id pi_id, isp.ingredient_id ing_id
+        FROM ingredient_seller_products isp
+        LEFT JOIN supplier_products sp ON sp.id = isp.seller_product_id AND isp.seller_type = 'supplier'
+        LEFT JOIN brand_products bp ON bp.id = isp.seller_product_id AND isp.seller_type = 'brand'
+        LEFT JOIN foodcourt_products fp ON fp.id = isp.seller_product_id AND isp.seller_type = 'foodcourt'
+       WHERE isp.is_active = 1 AND isp.seller_product_id IS NOT NULL
+         AND COALESCE(sp.unit_price, bp.unit_price, fp.unit_price, 0) > 0
+         AND ABS(COALESCE(sp.unit_price, bp.unit_price, fp.unit_price) - isp.unit_price) > 0.0001`, {}, t);
+    // ⚠ `recomputeUnitCost` 는 타깃당 매핑을 **하나만** 고르고(ORDER BY is_preferred DESC, id DESC
+    //   LIMIT 1) 사본도 그 하나만 갱신한다. 타깃에 연결 매핑이 둘 이상이고 어긋난 것이 고르지 않은
+    //   쪽이면 그 사본이 남아 **증명 ④가 실패 → 전체 롤백 → 배포가 마이그 단계에서 멈춘다**.
+    //   그래서 연결된 활성 매핑 **전부**의 사본을 현재가로 먼저 맞춘다(한 문장, 목록은 위에서 이미 뽑았다).
+    const [, copyMeta] = await run(`
+      UPDATE ingredient_seller_products isp
+        LEFT JOIN supplier_products sp ON sp.id = isp.seller_product_id AND isp.seller_type = 'supplier'
+        LEFT JOIN brand_products bp ON bp.id = isp.seller_product_id AND isp.seller_type = 'brand'
+        LEFT JOIN foodcourt_products fp ON fp.id = isp.seller_product_id AND isp.seller_type = 'foodcourt'
+         SET isp.unit_price = COALESCE(sp.unit_price, bp.unit_price, fp.unit_price)
+       WHERE isp.is_active = 1 AND isp.seller_product_id IS NOT NULL
+         AND COALESCE(sp.unit_price, bp.unit_price, fp.unit_price, 0) > 0
+         AND ABS(COALESCE(sp.unit_price, bp.unit_price, fp.unit_price) - isp.unit_price) > 0.0001`, {}, t);
+    rep.copiesAligned = (copyMeta && (copyMeta.affectedRows ?? copyMeta.changedRows)) || 0;
+
+    for (const d of drifted) {
+      if (d.pi_id) {
+        const r = await recomputeUnitCost('product_ingredient', d.pi_id, { transaction: t, sequelize });
+        if (r.changed) rep.realigned.push(`재고아이템#${d.pi_id}: ${r.from} → ${r.to}`);
+      }
+      if (d.ing_id) {
+        const r = await recomputeUnitCost('ingredient', d.ing_id, { transaction: t, sequelize });
+        if (r.changed) rep.realigned.push(`재료#${d.ing_id}: ${r.from} → ${r.to}`);
+      }
+    }
+
     // ── 3. 사람 몫 — 어느 출처도 없는 것 ─────────────────────────────────────
     const human = await q(`SELECT pi.code, pi.name FROM product_ingredients pi
        WHERE pi.is_active = 1 AND (pi.unit_cost = 0 OR pi.unit_cost IS NULL)
@@ -89,7 +129,9 @@ async function main() {
     const [v2] = await q(`SELECT COUNT(*) n FROM ingredients i JOIN brand_products bp ON bp.id = i.source_brand_product_id
      WHERE i.is_active = 1 AND (i.unit_cost = 0 OR i.unit_cost IS NULL) AND bp.unit_price > 0 AND LOWER(bp.unit) = LOWER(i.unit)`, {}, t);
 
-    console.log(`\n규칙으로 채움 ${rep.filled.length} · 거울 값 복사 ${rep.mirrorCopied.length} · 거울로 내려보냄 ${rep.pushedToMirrors} · 사람 몫 ${rep.humanNeeded.length}`);
+    console.log(`\n규칙으로 채움 ${rep.filled.length} · 현재가로 재정렬(사본) ${rep.copiesAligned} · 원가 ${rep.realigned.length} · 거울 값 복사 ${rep.mirrorCopied.length} · 거울로 내려보냄 ${rep.pushedToMirrors} · 사람 몫 ${rep.humanNeeded.length}`);
+    rep.realigned.slice(0, 20).forEach((x) => console.log('  ↔ ' + x));
+    if (rep.realigned.length > 20) console.log(`     … 외 ${rep.realigned.length - 20}건`);
     rep.filled.slice(0, 40).forEach((x) => console.log('  💰 ' + x));
     if (rep.filled.length > 40) console.log(`     … 외 ${rep.filled.length - 40}건`);
     rep.mirrorCopied.forEach((x) => console.log('  ↩ ' + x));
@@ -104,10 +146,19 @@ async function main() {
        AND ABS(COALESCE(i.unit_cost,0) - pi.unit_cost) > 0.0001`, {}, t);
     console.log(`\n증명 ① 같은 단위 판매자 가격이 있는데 원가 0 인 재고아이템 ${v1.n} (기대 0)`);
     console.log(`증명 ② 같은 단위 프로덕트 가격이 있는데 원가 0 인 거울 ${v2.n} (기대 0)`);
+    const [v4] = await q(`SELECT COUNT(*) n FROM ingredient_seller_products isp
+      LEFT JOIN supplier_products sp ON sp.id = isp.seller_product_id AND isp.seller_type = 'supplier'
+      LEFT JOIN brand_products bp ON bp.id = isp.seller_product_id AND isp.seller_type = 'brand'
+      LEFT JOIN foodcourt_products fp ON fp.id = isp.seller_product_id AND isp.seller_type = 'foodcourt'
+     WHERE isp.is_active = 1 AND isp.seller_product_id IS NOT NULL
+       AND COALESCE(sp.unit_price, bp.unit_price, fp.unit_price, 0) > 0
+       AND ABS(COALESCE(sp.unit_price, bp.unit_price, fp.unit_price) - isp.unit_price) > 0.0001`, {}, t);
     console.log(`증명 ③ 아이템 원가(>0)와 거울 원가가 다른 것 ${v3.n} (기대 0)`);
+    console.log(`증명 ④ 연결된 매핑의 사본 ≠ 판매자 현재가 ${v4.n} (기대 0)`);
     if (Number(v1.n)) throw new Error(`증명 ① 실패 — ${v1.n}건 · 되돌린다`);
     if (Number(v2.n)) throw new Error(`증명 ② 실패 — ${v2.n}건 · 되돌린다`);
     if (Number(v3.n)) throw new Error(`증명 ③ 실패 — 아이템과 거울 원가가 다른 것 ${v3.n}건 · 되돌린다`);
+    if (Number(v4.n)) throw new Error(`증명 ④ 실패 — 사본이 판매자 현재가와 다른 매핑 ${v4.n}건 · 되돌린다`);
 
     if (DRY) { await t.rollback(); console.log('\n○ 드라이런 — 적용했다가 **되돌렸습니다**(증명은 위에서 실제로 돌았습니다).'); }
     else { await t.commit(); console.log('\n✅ 적용 완료'); }
