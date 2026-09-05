@@ -135,11 +135,10 @@ router.use(['/foodcourt-products', '/foodcourt-product-categories', '/foodcourt-
 /**
  * Generate unique product SKU
  */
+// 2026-09-06: `count + 1` 제거 — 지운 번호가 다시 나왔다. 채번 단일 소스 = utils/codeGenerator.js.
 async function generateProductSKU() {
-  const prefix = 'FCP';
-  const count = await FoodcourtProduct.count();
-  const nextNum = count + 1;
-  return `${prefix}-${String(nextNum).padStart(3, '0')}`;
+  const { generateCode } = require('../utils/codeGenerator');
+  return generateCode(FoodcourtProduct, 'FCP', { field: 'sku' });
 }
 
 // ============================================

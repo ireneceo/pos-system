@@ -110,9 +110,11 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Brand not found' });
     }
 
-    // 코드 자동 생성 (브랜드 스코프 내 카운트)
-    const scopedCount = await ProductRecipe.count({ where: { brand_id: brandId } });
-    const code = `PR-${String(scopedCount + 1).padStart(3, '0')}`;
+    // 채번 단일 소스(원자 카운터) — `count + 1` 은 지운 번호를 재사용한다(2026-09-06).
+    const { generateCode, codeTakenResponse } = require('../utils/codeGenerator');
+    const takenPR = await codeTakenResponse(ProductRecipe, req.body?.code, { brand_id: brandId });
+    if (takenPR) return res.status(takenPR.status).json(takenPR.body);
+    const code = req.body?.code || await generateCode(ProductRecipe, 'PR', { whereClause: { brand_id: brandId } });
 
     const recipe = await ProductRecipe.create({
       brand_id: brandId,
