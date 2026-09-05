@@ -341,7 +341,15 @@ router.get('/:id/restaurants', authenticateToken, async (req, res) => {
     }
 
     // Check access permissions
-    if (req.user.role !== 'System Admin' && brand.owner_id !== req.user.id) {
+    // ⚠ 2026-09-05: Brand Manager 가 **여기서만** 막혀 있었다. 바로 아래 `/:id/franchise-map` 은 같은 상황에서
+    //   BM(자기 brand_id)을 허용하고, 돌려주는 것도 매장 목록이다 — 이 라우트만 그 모델에서 빠져 있었다.
+    //   프론트는 두 화면(`BrandPlansPage :603`, `BrandMenusPage :1686`)을 BM 에게 열어 두고 403 을 조용히
+    //   삼켜(`if (response.ok)` 안에서만 상태를 채움) **매장 목록이 비고 매장 수가 0 으로** 보였다.
+    //   형제 라우트와 **같은 조건식**을 쓴다(새 조건을 만들지 않는다). 남의 브랜드는 그대로 403.
+    const canAccess = req.user.role === 'System Admin'
+      || brand.owner_id === req.user.id
+      || (req.user.role === 'Brand Manager' && Number(req.user.brand_id) === Number(id));
+    if (!canAccess) {
       return res.status(403).json({ success: false, error: { message: 'Access denied to this brand', code: 'FORBIDDEN' } });
     }
 
