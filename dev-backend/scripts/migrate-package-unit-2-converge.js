@@ -226,7 +226,7 @@ async function loadRows(t) {
   // 이미 수렴된 아이템도 거울이 따라갈 수 있어야 한다(거울만 뒤늦게 생긴 경우).
   //   loadRows 는 `package_unit IS NULL` 만 가져오므로, 아이템 전체의 현재 값을 따로 읽는다.
   const allItems = await q(`SELECT id, unit, base_quantity FROM product_ingredients`, {}, t);
-  const sellers = await q(`SELECT isp.ingredient_id, isp.product_ingredient_id, isp.unit_conversion,
+  const sellers = await q(`SELECT isp.id, isp.ingredient_id, isp.product_ingredient_id, isp.unit_conversion,
                                   sp.unit sp_unit, sp.base_quantity sp_base, sp.order_mode
                              FROM ingredient_seller_products isp
                              LEFT JOIN supplier_products sp
@@ -239,8 +239,8 @@ async function main() {
   // 순서 방어 — 스키마 마이그가 아직 안 돌았어도 여기서 컬럼을 보장한다(멱등).
   //   드라이런에서도 **만든다** — 컬럼이 없으면 읽지도 못한다. NULL 허용 가산이라 무해하다.
   await ensureColumns({ apply: true });
-  const before = APPLY ? await fingerprint(null) : null;
   const t = await sequelize.transaction();
+  const before = APPLY ? await fingerprint(t) : null;
   const report = { items: [], ings: [], summary: {} };
   try {
     const { items, ings, sellers, allItems } = await loadRows(t);
@@ -253,7 +253,7 @@ async function main() {
       if (s.ingredient_id) (sellerByIng.get(s.ingredient_id) || sellerByIng.set(s.ingredient_id, []).get(s.ingredient_id)).push(s);
     });
 
-    const counts = { name: 0, mirror: 0, seller: 0, copy: 0, converted: 0, lines: 0, mappings: 0 };
+    const counts = { name: 0, mirror: 0, seller: 0, copy: 0, converted: 0, baseOnly: 0, lines: 0, mappings: 0 };
     // 아이템 판정을 기억해 거울에 그대로 물려준다 (아이템 → 거울 한 방향)
     const itemPlans = new Map();
 
@@ -289,22 +289,46 @@ async function main() {
           });
       if (isItem) itemPlans.set(row.id, plan);
       const oldBase = num(row.base_quantity) || 1;
-      const changed = plan.unit !== row.unit || plan.base_quantity !== oldBase;
-      const ratio = changed ? plan.base_quantity / oldBase : 1;
+      // ⛔ **두 종류를 갈라야 한다** (2026-09-05 Fable 적발 — 이걸 안 가른 코드가 배포 직전에 막혔다):
+      //   `unitChanged` 취급단위 자체가 바뀜(pack → g) — 재고·매핑·줄을 함께 환산해야 뜻이 유지된다.
+      //   `baseOnly`   단위는 같고 기준숫자만 채움(K-소스 `g/1 → g/1000`) — **아무것도 환산하면 안 된다.**
+      //                재고는 이미 g 로 세고 있었고, 줄도 g 이며, 매핑도 g 기준이다.
+      //                바뀌는 것은 "가격이 몇 g 의 값인가" 하나뿐이라 **원가 표시만** 맞아진다.
+      //   합쳐서 `changed` 하나로 두면 `ratio = 1000` 이 그대로 재고·매핑·줄에 곱해진다.
+      const unitChanged = plan.unit !== row.unit;
+      const baseOnly = !unitChanged && plan.base_quantity !== oldBase;
+      const changed = unitChanged || baseOnly;
+      const ratio = unitChanged ? plan.base_quantity / oldBase : 1;
       counts[plan.source] += 1;
       if (changed) counts.converted += 1;
+      if (baseOnly) counts.baseOnly += 1;
 
       const entry = {
         kind, id: row.id, code: row.code || null, restaurant_id: row.restaurant_id || null, name: row.name,
         before: { unit: row.unit, base_quantity: oldBase, stock: num(row.current_stock), unit_cost: num(row.unit_cost) },
         after: { unit: plan.unit, base_quantity: plan.base_quantity,
-                 package_unit: row.unit, package_quantity: oldBase,
-                 stock: changed ? round2((num(row.current_stock) || 0) * ratio) : num(row.current_stock) },
-        source: plan.source, note: plan.note, review: plan.review || null, ratio,
+                 // 기준단위·기준양은 **취급단위가 바뀐 행에만** 적는다.
+                 //   기준숫자만 바뀐 행에 `(oldBase, oldUnit)` 을 복사하면 `1 g = 1000 g` 이 되어
+                 //   §2-2 항등식이 깨진다. 그 행들의 진짜 포장은 데이터에 없다 → 미결(NULL).
+                 package_unit: unitChanged ? row.unit : null,
+                 package_quantity: unitChanged ? oldBase : null,
+                 stock: unitChanged ? round2((num(row.current_stock) || 0) * ratio) : num(row.current_stock) },
+        source: plan.source, note: plan.note, ratio, unitChanged, baseOnly,
+        maps: ((isItem ? sellerByItem.get(row.id) : sellerByIng.get(row.id)) || []).length,
+        lines: 0, maps_applied: 0,
+        review: plan.review || (baseOnly
+          ? `기준숫자 교정(원가 기준 ${oldBase} → ${plan.base_quantity} ${plan.unit}) · 포장 단위 미상 — 사람이 정함`
+            + ((num(row.current_stock) || 0) !== 0 ? ' ⚠ 재고 ≠ 0 — 무엇으로 세었는지 확인 필요' : '')
+          : null),
       };
 
       if (APPLY) {
-        if (plan.review) {
+        if (plan.review || baseOnly) {
+          // baseOnly 는 **기준숫자만** 고친다. 재고·매핑·줄 전부 무접촉, package_* 는 NULL(미결).
+          if (baseOnly && !plan.review) {
+            await run(`UPDATE ${table} SET base_quantity = :b WHERE id = :id`,
+              { b: plan.base_quantity, id: row.id }, t);
+          }
           // ⛔ **미결은 미결로 남긴다** (2026-09-05 Fable 결정 2).
           //   복사로 채워 버리면 `package_unit IS NULL` null-guard 때문에 **영원히 재수렴이 안 된다.**
           //   NULL 로 두면 Irene 이 카테고리·이름을 고치거나 화면에서 직접 채우는 순간
@@ -317,20 +341,44 @@ async function main() {
                       WHERE id = :id`,
             { u: plan.unit, b: plan.base_quantity, pu: row.unit, pq: oldBase, st: entry.after.stock, id: row.id }, t);
         }
-        if (changed) {
+        if (unitChanged) {
           // 매핑 환산 규칙: **취급단위가 바뀐 타깃의 매핑만**, 배수 = 그 단위 환산비(구→신) = ratio.
           //   ⛔ base_quantity 를 곱하는 게 아니다. 그래서
           //     ①기준숫자만 바뀐 행(단위 동일)은 여기 안 들어온다 → 매핑 불변
           //     ②K-소스 거울 직접 매핑(g→g, 비 1)은 그대로 1000 유지
           //     ③PI-142 는 pack→g 비 2000
+          // ⛔ **판매단위 == 옛 취급단위 인 매핑만** 곱한다 (2026-09-05 Fable 적발).
+          //   판매자가 이미 다른 포장으로 매핑돼 있으면(1 kg 봉지, conv 1000) 그 행은 자기 환산을
+          //   갖고 있다 — 거기에 ×2000 을 곱하면 2,000,000 이 된다.
+          //   필터에 안 걸린 매핑은 표에 "conv 유지" 로 찍는다(조용히 넘기지 않는다).
           const fk = isItem ? 'product_ingredient_id' : 'ingredient_id';
-          const [m] = await run(`UPDATE ingredient_seller_products SET unit_conversion = unit_conversion * :r
-                                  WHERE ${fk} = :id`, { r: ratio, id: row.id }, t);
-          counts.mappings += m?.affectedRows || 0;
+          const myMaps = (isItem ? sellerByItem.get(row.id) : sellerByIng.get(row.id)) || [];
+          const sameUnitIds = myMaps
+            .filter((sp) => String(sp.sp_unit || '').toLowerCase() === String(row.unit).toLowerCase())
+            .map((sp) => sp.id).filter(Boolean);
+          const keptIds = myMaps.filter((sp) => !sameUnitIds.includes(sp.id)).map((sp) => sp.id);
+          if (keptIds.length) entry.mapping_kept = keptIds;
+          if (sameUnitIds.length) {
+            const [m] = await run(`UPDATE ingredient_seller_products SET unit_conversion = unit_conversion * :r
+                                    WHERE id IN (:ids)`, { r: ratio, ids: sameUnitIds }, t);
+            const applied = m?.affectedRows ?? sameUnitIds.length;
+            counts.mappings += applied; entry.maps_applied = applied;
+          }
+
+          // 거울 오버레이 가드 — 단위가 바뀌는 거울에 매장 실재고가 남아 있으면 멈춘다.
+          //   지금 운영은 56행 전부 0 이라 통과하지만, 조용히 건너뛰는 코드로 두면 안 된다.
+          if (!isItem) {
+            const [ov] = await q(`SELECT COUNT(*) n FROM restaurant_ingredient_stocks
+                                   WHERE ingredient_id = :id AND current_stock <> 0`, { id: row.id }, t);
+            if (Number(ov.n) > 0) {
+              throw new Error(`거울 ing#${row.id} 의 매장 오버레이 재고가 ${ov.n}행 남아 있다 — 단위 변경 중단`);
+            }
+          }
           const lineTable = isItem ? 'product_recipe_ingredients' : 'recipe_ingredients';
           const [l] = await run(`UPDATE ${lineTable} SET quantity = quantity * :r, unit = :u
                                   WHERE ingredient_id = :id`, { r: ratio, u: plan.unit, id: row.id }, t);
-          counts.lines += l?.affectedRows || 0;
+          const lApplied = l?.affectedRows || 0;
+          counts.lines += lApplied; entry.lines = lApplied;
         }
       }
       report[isItem ? 'items' : 'ings'].push(entry);
@@ -387,32 +435,48 @@ async function main() {
       console.log(`\n증명: 이번에 결정한 행 중 미기입 아이템 ${a.n} · 재료 ${b.n} (기대 0)`);
       console.log(`      줄 단위 불일치 매장 ${c.n} · 프로덕트 ${d.n} (기대 0)`);
       if (Number(a.n) || Number(b.n) || Number(c.n) || Number(d.n)) throw new Error('증명 실패 — 되돌린다');
-      await t.commit();
 
-      // 지문 대조 — 기대한 표(report)에 없는 행이 바뀌었으면 **배포를 멈춘다**(fail-loud).
-      const after = await fingerprint(null);
+      // ⛔ **대조는 commit 앞에서 한다** (2026-09-05 Fable 적발).
+      //   예전 코드는 commit 뒤에 대조하고 exit(1) 했다 — 배포는 멈추지만 **데이터는 이미 커밋된 뒤**라
+      //   되돌리는 길이 백업 복구밖에 없었다. fingerprint 는 트랜잭션 인자를 받으므로 여기서 잰다.
+      // 테스트 전용 훅 — 대조가 진짜로 롤백을 부르는지 증명하기 위한 고장주입 자리.
+      //   운영에서는 이 env 가 없으므로 통째로 건너뛴다.
+      if (process.env.CONVERGE_FAULT_ROW) {
+        await run(`UPDATE product_ingredients SET base_quantity = base_quantity + 1 WHERE id = :id`,
+          { id: Number(process.env.CONVERGE_FAULT_ROW) }, t);
+      }
+      const after = await fingerprint(t);
       const diffs = fingerprintDiff(before, after);
       const expected = new Set();
       [...report.items, ...report.ings].forEach((r) => {
-        if (r.review) return;
+        // 기준숫자만 바뀌는 행은 review 문구를 달고도 실제로 base_quantity 를 고친다 → 기대 목록에 포함.
+        if (r.review && !r.baseOnly) return;
         expected.add(`${r.kind === 'item' ? 'product_ingredients' : 'ingredients'}#${r.id}`);
       });
-      const unexpected = diffs.filter((d) => {
-        if (d.table === 'product_ingredients' || d.table === 'ingredients') return !expected.has(`${d.table}#${d.id}`);
-        return false;   // 줄·매핑은 위 행에 딸려 바뀐 것이라 개별 기대목록을 만들지 않는다(건수는 아래 로그에 남는다)
-      });
+      const unexpected = diffs.filter((d) =>
+        (d.table === 'product_ingredients' || d.table === 'ingredients') && !expected.has(`${d.table}#${d.id}`));
+      const mapDiffs = diffs.filter((d) => d.table === 'ingredient_seller_products').length;
+      const lineDiffs = diffs.filter((d) => d.table === 'recipe_ingredients' || d.table === 'product_recipe_ingredients').length;
+
+      // 로그는 트랜잭션 밖(파일)이라 먼저 남겨 둔다 — 롤백돼도 무엇을 하려 했는지 남는다.
       const fs = require('fs'), path = require('path');
       const dir = path.join(__dirname, '..', 'logs');
       fs.mkdirSync(dir, { recursive: true });
       const logFile = path.join(dir, `converge-unit-model-${new Date().toISOString().replace(/[:.]/g, '')}.json`);
       fs.writeFileSync(logFile, JSON.stringify({ summary: report.summary, diffs, unexpected, report }, null, 1));
-      console.log(`지문 대조: 바뀐 행 ${diffs.length} · 기대 밖 ${unexpected.length} (기대 0)`);
+      console.log(`\n지문 대조: 바뀐 행 ${diffs.length} · 기대 밖 ${unexpected.length} (기대 0)`);
+      console.log(`  매핑 실제 ${mapDiffs} = 집계 ${counts.mappings} · 레시피 줄 실제 ${lineDiffs} = 집계 ${counts.lines}`);
       console.log(`감사 로그: ${logFile}`);
       if (unexpected.length) {
-        console.error('❌ 기대 밖 변경 — 배포를 멈춥니다. 로그의 unexpected 를 보세요.');
+        console.error('❌ 기대 밖 변경 — 되돌립니다.');
         unexpected.slice(0, 10).forEach((d) => console.error(`   ${d.table}#${d.id} ${d.before} → ${d.after}`));
-        process.exit(1);
+        throw new Error('지문 대조 실패 — 되돌린다');
       }
+      if (mapDiffs !== counts.mappings || lineDiffs !== counts.lines) {
+        throw new Error(`딸린 표 건수 불일치 — 매핑 ${mapDiffs}/${counts.mappings} · 줄 ${lineDiffs}/${counts.lines} — 되돌린다`);
+      }
+
+      await t.commit();
       console.log('\n✅ 적용 완료');
     } else {
       await t.rollback();
@@ -422,7 +486,22 @@ async function main() {
     console.log(`\n${APPLY ? '적용' : '드라이런'} 요약`);
     console.log(`  대상: 재고아이템 ${s.items} · 매장/거울 재료 ${s.ingredients}`);
     console.log(`  출처: 이름 ${s.name} · 거울 ${s.mirror} · 판매자 ${s.seller} · 복사 ${s.copy}`);
-    console.log(`  취급단위가 바뀌는 행: ${s.converted}${APPLY ? ` · 매핑 ${s.mappings} · 레시피 줄 ${s.lines}` : ''}`);
+    console.log(`  취급단위가 바뀌는 행: ${s.converted - s.baseOnly}${APPLY ? ` · 매핑 ${s.mappings} · 레시피 줄 ${s.lines}` : ''}`);
+    console.log(`  기준숫자만 바뀌는 행: ${s.baseOnly}  (재고·매핑·줄 무접촉 · 기준단위는 미결로 남음)`);
+
+    // 자기검증 — **대상 수를 같이 찍는다.** 0/0 을 OK 로 통과시키지 않는다(판정 기계 의심 3조).
+    const all = [...report.items, ...report.ings];
+    const baseOnlyWithMaps = all.filter((r) => r.baseOnly && (r.maps || 0) > 0);
+    const baseOnlyWithLines = all.filter((r) => r.baseOnly && (r.lines || 0) > 0);
+    const assertLine = (label, pass, n) =>
+      console.log(`  ${n === 0 ? 'SKIP' : pass ? 'PASS' : 'FAIL'}  ${label} (대상 ${n}건)`);
+    assertLine('① 기준숫자만 바뀐 행의 매핑 conv 불변',
+      baseOnlyWithMaps.every((r) => !r.unitChanged), baseOnlyWithMaps.length);
+    assertLine('② 기준숫자만 바뀐 행의 레시피 줄 불변',
+      baseOnlyWithLines.every((r) => !r.unitChanged), baseOnlyWithLines.length);
+    const kept = all.filter((r) => r.mapping_kept && r.mapping_kept.length);
+    assertLine('③ 판매단위 ≠ 옛 취급단위 인 매핑은 conv 유지', true, kept.length);
+    kept.forEach((r) => console.log(`      · ${r.code || r.id} ${String(r.name).slice(0, 34)} — 매핑 ${r.mapping_kept.join(',')} conv 유지`));
     const reviews = [...report.items, ...report.ings].filter((r) => r.review);
     console.log(`  사람이 정해야 하는 것: ${reviews.length}`);
     reviews.forEach((r) => console.log(`    · ${r.code || r.id} ${String(r.name).slice(0, 40)} — ${r.review}`));
