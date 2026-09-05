@@ -153,6 +153,36 @@ module.exports = {
       emptyRecipeLinked === 0,
       emptyRecipeLinked ? `${emptyRecipeLinked}건 — 연결돼 보이지만 차감 0. 레시피에 재료를 넣거나 재고아이템 다이렉트로 바꿀 것` : '');
 
+    // ─── 단위 불변식 (2026-09-05 P0, Fable 판정) ──────────────────────────────
+    // 차감(`inventoryDeductionService.js:292`)은 `ri.quantity` 를 **환산 없이** 뺀다.
+    // 그래서 "레시피 줄 단위 == 그 재료의 단위" 가 성립해야만 숫자가 맞는다.
+    // 어긋나면 조용히 틀린다 — 예: 줄 `0.07 kg` 인데 재료가 g 이면 0.07 g 만 빠진다.
+    // 운영 실측 2026-09-05: 위반 1건(ri 522 `Beef Miyeokguk` 0.07 kg ↔ 재료 26 g).
+    // 단위 주의: 세는 것은 **행 수(건)** 다.
+
+    // ING-UNI-011: 레시피 줄 단위 == 거울(브랜드 재료) 단위.
+    const lineUnitMismatch = await cnt(`SELECT COUNT(*) c
+      FROM recipe_ingredients ri
+      JOIN ingredients i ON i.id = ri.ingredient_id
+     WHERE ri.unit <> i.unit`);
+    add('ING-UNI-011 레시피 줄 단위 = 재료 단위 (차감이 환산 없이 뺀다)',
+      lineUnitMismatch === 0,
+      lineUnitMismatch ? `${lineUnitMismatch}건 — 줄 단위와 재료 단위가 다르다. 차감·원가가 조용히 틀린다` : '');
+
+    // ING-UNI-012: 프로덕트 레시피 줄 단위 == 재고아이템의 **레시피 단위**.
+    // 레시피 단위 = `base_unit ?? unit` (P1 에서 base_unit 신설. 그전까지는 unit 하나).
+    // ⚠ 컬럼이 아직 없을 수 있으므로 존재 여부를 보고 식을 고른다 — P0/P1 어느 쪽에서도 돈다.
+    const hasBaseUnit = Number((await q(`SELECT COUNT(*) c FROM information_schema.columns
+       WHERE table_schema = DATABASE() AND table_name = 'product_ingredients' AND column_name = 'base_unit'`))[0].c) > 0;
+    const recipeUnitExpr = hasBaseUnit ? 'COALESCE(pi.base_unit, pi.unit)' : 'pi.unit';
+    const prLineUnitMismatch = await cnt(`SELECT COUNT(*) c
+      FROM product_recipe_ingredients pri
+      JOIN product_ingredients pi ON pi.id = pri.ingredient_id
+     WHERE pri.unit <> ${recipeUnitExpr}`);
+    add('ING-UNI-012 프로덕트 레시피 줄 단위 = 재고아이템 레시피 단위',
+      prLineUnitMismatch === 0,
+      prLineUnitMismatch ? `${prLineUnitMismatch}건 — 줄 단위와 재고아이템 단위가 다르다` : '');
+
     return checks;
   },
 };

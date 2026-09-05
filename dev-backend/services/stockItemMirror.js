@@ -20,7 +20,15 @@
 const { Op } = require('sequelize');
 
 /** 거울에 따라가는 필드(정체성). 여기 없는 것은 주인별 값이라 옮기지 않는다. */
-const MIRRORED_FIELDS = ['name', 'unit', 'is_active'];
+// ⛔ P0 (2026-09-05, Fable 판정): `unit` 을 이 목록에서 **뺐다**.
+//   거울 `ingredients.unit` 은 **레시피 단위**(g/ml)이고, Stock Item `unit` 은 **취급단위**(pack/piece)라
+//   서로 다른 단위다 — 2kg 치즈가 1 pack 인 것처럼. 여기에 `unit` 이 있으면 아이템을 한 번 저장하는
+//   것만으로 거울이 `g → pack` 으로 덮이고, 그 순간 레시피 줄 `20 g` 이 **`20 pack`** 으로 읽힌다
+//   (차감 20팩, 원가 20×팩값). 운영 실측 2026-09-05: 그렇게 어긋난 아이템이 18건 대기 중이었고,
+//   아직 안 터진 이유는 통합 이후 그 18건을 저장한 적이 없어서였다.
+//   P1 에서 `base_unit`·`base_amount`(기준단위·기준양)가 들어오면
+//   `거울.unit := base_unit ?? unit` 파생 규칙으로 **다시** 동기화한다. 그때까지는 옮기지 않는다.
+const MIRRORED_FIELDS = ['name', 'is_active'];
 
 /**
  * Stock Item 의 정체성 변경을 그 거울들에 반영한다.
