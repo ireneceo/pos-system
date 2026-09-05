@@ -60,6 +60,16 @@ async function main() {
   const t = await sequelize.transaction();
   const rep = { merged: [], noMirror: [], piDeactivated: [], piKept: [], priceSet: [], priceSkipped: [] };
   try {
+    // ⚠ 증명 ②는 **이 마이그가 만든 죽은 참조**만 봐야 한다. 전역 개수로 보면 원래 있던 부채가
+    //   근거가 되어 스스로 롤백한다 — 운영에서 실제로 그랬다(2026-09-06 배포 중단):
+    //   `ing#26 Beef(Tenderized)` 가 비활성인데 레시피 2줄(ri#522·ri#1306)이 가리키고 있었고,
+    //   병합은 그 줄을 만들지도 건드리지도 않았는데 증명 ②가 2 를 세어 전체가 롤백됐다.
+    //   (converge 마이그에서 같은 실수를 한 적이 있다 — 전역 불변식을 증명으로 쓰면 안 된다.)
+    const [pre] = await q(`SELECT COUNT(*) n FROM recipe_ingredients ri
+       JOIN ingredients i ON i.id = ri.ingredient_id WHERE i.is_active = 0`, {}, t);
+    const preDead = Number(pre.n);
+    const preList = preDead ? await q(`SELECT ri.id, ri.recipe_id, i.id ing_id, i.name FROM recipe_ingredients ri
+       JOIN ingredients i ON i.id = ri.ingredient_id WHERE i.is_active = 0 ORDER BY ri.id`, {}, t) : [];
     // 쌍 확정 — 매핑이 가리키는 프로덕트 == BP 거울의 출처
     const pairs = await q(`
       SELECT DISTINCT bp.id bp_id, bp.name bp_name, bp.unit bp_unit, bp.base_quantity bp_base, bp.unit_price bp_price,
@@ -139,6 +149,7 @@ async function main() {
        JOIN ingredients bpm ON bpm.source_brand_product_id = isp.seller_product_id AND bpm.brand_id = pim.brand_id AND bpm.is_active = 1
       WHERE pim.source_product_ingredient_id IS NOT NULL AND pim.is_active = 1`, {}, t);
     const [v2] = await q(`SELECT COUNT(*) n FROM recipe_ingredients ri JOIN ingredients i ON i.id = ri.ingredient_id WHERE i.is_active = 0`, {}, t);
+    const addedDead = Number(v2.n) - preDead;
     const [v3] = await q(`SELECT COUNT(*) n FROM ingredients i JOIN brand_products bp ON bp.id = i.source_brand_product_id
       WHERE i.is_active = 1 AND i.unit_cost = 0 AND bp.unit_price > 0`, {}, t);
 
@@ -154,10 +165,14 @@ async function main() {
       moved.forEach((x) => console.log(`    ${x.bp}: ${x.from} → ${x.to} (${x.delta > 0 ? '+' : ''}${x.delta})`));
     }
     console.log(`\n증명 ① 같은 물건 두 줄(PI 거울·BP 거울 동시 활성) ${v1.n} (기대 0)`);
-    console.log(`증명 ② 비활성 재료를 가리키는 레시피 줄 ${v2.n} (기대 0)`);
+    console.log(`증명 ② 이 마이그가 만든 죽은 참조 ${addedDead} (기대 0) — 원래 있던 것 ${preDead}건은 무접촉`);
+    if (preDead) {
+      console.log('   (원래 있던 죽은 참조 — 이 마이그 범위 밖, 목록만):');
+      preList.forEach((x) => console.log(`     · ri#${x.id} recipe#${x.recipe_id} → ing#${x.ing_id} ${x.name}`));
+    }
     console.log(`증명 ③ 프로덕트 출처 거울인데 가격 0 ${v3.n} (기대 0)`);
     if (Number(v1.n)) throw new Error(`증명 ① 실패 — 두 줄 ${v1.n}건 남음 · 되돌린다`);
-    if (Number(v2.n)) throw new Error(`증명 ② 실패 — 비활성 재료를 가리키는 줄 ${v2.n}건 · 되돌린다`);
+    if (addedDead > 0) throw new Error(`증명 ② 실패 — 이 마이그가 죽은 참조를 ${addedDead}건 늘렸다 · 되돌린다`);
     if (Number(v3.n)) throw new Error(`증명 ③ 실패 — 가격 0 인 프로덕트 거울 ${v3.n}건 · 되돌린다`);
 
     if (DRY) { await t.rollback(); console.log('\n○ 드라이런 — 적용했다가 **되돌렸습니다**(증명은 위에서 실제로 돌았습니다).'); }
