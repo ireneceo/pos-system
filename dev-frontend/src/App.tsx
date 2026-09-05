@@ -1071,6 +1071,12 @@ function App() {
                       } />
 
                       {/* Recipe & Ingredient Management Pages */}
+                      {/* 주의 2026-09-05 실측: 이 주소는 **어느 역할 허용목록(ROLE_ROUTES)에도 없어 도달 불가**다
+                          — 열면 대시보드로 튕긴다. BG 사이드바의 "Brand Recipes" 는 `/pos/recipes`(위 :1024,
+                          RecipeManagementPage → RecipesTab) 이고 이 화면이 아니다.
+                          `Recipes/RecipesPage.tsx` 에는 `base_quantity` 미적용(70 g 치즈를 RM 6,510 으로 계산)과
+                          저장 시 `cost` 미전송(DB 에 원가 0) 결함이 남아 있다. 사람이 못 여는 화면이라 고치지 않고
+                          그대로 둔다 — 중복/도달불가 화면 정리 판정 대기(Fable). */}
                       <Route path="/pos/recipe-management/recipes" element={
                         <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
                           <RecipesPage />

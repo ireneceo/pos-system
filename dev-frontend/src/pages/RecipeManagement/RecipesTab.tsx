@@ -522,7 +522,7 @@ const IngredientsList = styled.div`
 
 const IngredientHeaderRow = styled.div`
   display: grid;
-  grid-template-columns: 3fr 1fr 0.7fr 2fr 40px;
+  grid-template-columns: 3fr 1fr 0.7fr 2fr 1fr 40px;
   gap: 8px;
   padding: 8px 0;
   margin-bottom: 8px;
@@ -539,9 +539,18 @@ const IngredientHeaderRow = styled.div`
   }
 `;
 
+// 재료 한 줄의 값 — 읽기 전용 표시. 입력이 아니므로 input 이 아니라 텍스트다.
+const LineCostCell = styled.div`
+  font-size: 13px;
+  color: #1F2937;
+  text-align: right;
+  padding: 0 4px;
+  white-space: nowrap;
+`;
+
 const IngredientRow = styled.div`
   display: grid;
-  grid-template-columns: 3fr 1fr 0.7fr 2fr 40px;
+  grid-template-columns: 3fr 1fr 0.7fr 2fr 1fr 40px;
   gap: 8px;
   align-items: center;
   margin-bottom: 8px;
@@ -967,6 +976,14 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           //   이미 거울이 있는 것(= 같은 이름이 목록에 있음)은 **중복으로 얹지 않는다** —
           //   "겹치는 거 또 추가하지 말라"(Irene)를 화면에서도 지킨다.
           if (isBrandRole) {
+            // ⛔ **거울 행은 목록에서 뺀다** (2026-09-05 Irene 신고 · Fable 판정).
+            //   거울(`source_product_ingredient_id` / `source_brand_product_id` 가 있는 행)은
+            //   재고아이템·프로덕트의 그림자다. 원본과 거울을 둘 다 보여주니 **같은 물건이 두 줄**로 떴다.
+            //   실측: `K-Soybean Sauce 1kg` 이 브랜드 재료에만 4행(kg 1 + g 3) → 검색에 4줄.
+            //   고르면 서버가 어차피 거울을 찾거나 만들어 붙인다(F4) — 목록에 원본만 있으면 된다.
+            allIngredients = allIngredients.filter(
+              (x: any) => !x.source_product_ingredient_id && !x.source_brand_product_id
+            );
             const seen = new Set(allIngredients.map((x: any) => String(x.name || '').trim().toLowerCase()));
             const addUnique = (rows: any[], mapFn: (r: any) => any) => {
               const out: any[] = [];
@@ -981,14 +998,14 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             if (results[3]?.success && Array.isArray(results[3].data)) {
               allIngredients = [...allIngredients, ...addUnique(
                 results[3].data.filter((x: any) => x.is_active !== false),
-                (si) => ({ ...si, id: `pi:${si.id}`, product_ingredient_id: si.id, __fromStockItems: true })
+                (si) => ({ ...si, id: `pi:${si.id}`, product_ingredient_id: si.id, __fromStockItems: true, __source: 'stockItem' })
               )];
             }
             if (results[4]?.success && Array.isArray(results[4].data)) {
               allIngredients = [...allIngredients, ...addUnique(
                 results[4].data.filter((x: any) => x.is_active !== false),
                 (bp) => ({ ...bp, id: `bp:${bp.id}`, brand_product_id: bp.id,
-                           unit_cost: bp.unit_price ?? 0, __fromBrandProducts: true })
+                           unit_cost: bp.unit_price ?? 0, __fromBrandProducts: true, __source: 'product' })
               )];
             }
           }
@@ -1399,19 +1416,20 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     setRecipeIngredients(updated);
   };
 
-  const calculateTotalCost = () => {
-    return recipeIngredients.reduce((sum, ri) => {
-      const ingredient = ingredients.find(ing => ing.id === ri.ingredient_id);
-      if (ingredient && ri.quantity) {
-        // effective_cost(restaurant override or brand cost) 사용, fallback to unit_cost
-        const unitCost = ingredient.effective_cost ?? ingredient.unit_cost;
-        const baseQty = ingredient.base_quantity || 1;
-        const costPerUnit = parseFloat(unitCost.toString()) / baseQty;
-        return sum + (parseFloat(ri.quantity) * costPerUnit);
-      }
-      return sum;
-    }, 0);
+  // 재료 한 줄의 값 — Irene 2026-09-05 "레시피에 재료를 넣으면 그에 맞는 각각 가격표시도 재료옆에".
+  //   ⚠ 하단 합계와 **같은 식**이어야 한다(줄 소계 합 = 합계). 그래서 합계가 이 함수를 쓴다.
+  //   effective_cost = 매장 오버라이드(restaurant_ingredient_costs) 있으면 그 값, 없으면 브랜드 원가.
+  const lineCost = (ri: any): number | null => {
+    const ingredient = ingredients.find(ing => ing.id === ri.ingredient_id);
+    if (!ingredient || !ri.quantity) return null;
+    const unitCost = ingredient.effective_cost ?? ingredient.unit_cost;
+    const baseQty = ingredient.base_quantity || 1;
+    const qty = parseFloat(ri.quantity);
+    if (!isFinite(qty)) return null;
+    return qty * (parseFloat(unitCost.toString()) / baseQty);
   };
+
+  const calculateTotalCost = () => recipeIngredients.reduce((sum, ri) => sum + (lineCost(ri) || 0), 0);
 
   // Filter recipes
   const filteredRecipes = sortItems(recipes.filter(recipe => {
@@ -2070,6 +2088,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   <span>{'Quantity'}</span>
                   <span>{'Unit'}</span>
                   <span>{'Notes'}</span>
+                  <span>{t('recipes:recipesTab.cost')}</span>
                   <span></span>
                 </IngredientHeaderRow>
               )}
@@ -2079,10 +2098,16 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                     <SearchableSelect
                       options={ingredients.map(ing => {
                         const costPerUnit = Number(ing.unit_cost) / (ing.base_quantity || 1);
+                        // 출처를 보여준다 — 프로덕트(파는 것) / 재고아이템(사는 것) / 브랜드 재료.
+                        //   Irene 신고 2026-09-05: "프로덕트인 간장소스 같은 것도 나와 … 사실 나와야 하거든"
+                        //   나오는 건 맞고(파는 것도 재료 출처다) **어느 쪽인지 안 보이던 것**이 문제였다.
+                        const src = (ing as any).__source === 'product' ? t('recipes:recipesTab.srcProduct')
+                          : (ing as any).__source === 'stockItem' ? t('recipes:recipesTab.srcStockItem')
+                          : t('recipes:recipesTab.srcBrandIngredient');
                         return {
                           value: ing.id,
                           label: ing.name,
-                          subLabel: `${getCurrencySymbol(selectedCurrency)} ${costPerUnit.toFixed(2)}/${ing.unit}`
+                          subLabel: `${src} · ${getCurrencySymbol(selectedCurrency)} ${costPerUnit.toFixed(2)}/${ing.unit}`
                         };
                       })}
                       value={ri.ingredient_id || null}
@@ -2108,6 +2133,9 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                       onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
                       placeholder="Optional"
                     />
+                    <LineCostCell>
+                      {lineCost(ri) === null ? '-' : formatCurrency(lineCost(ri) as number, selectedCurrency)}
+                    </LineCostCell>
                     <RemoveButton type="button" onClick={() => removeIngredient(index)}>
                       ×
                     </RemoveButton>

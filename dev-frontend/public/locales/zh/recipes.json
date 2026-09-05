@@ -140,5 +140,11 @@
   "recipesPage.quantity": "数量",
   "recipesPage.unit": "单位",
   "recipesPage.notes": "备注",
-  "recipesPage.totalIngredientCost": "总食材成本"
+  "recipesPage.totalIngredientCost": "总食材成本",
+  "recipesTab.srcProduct": "产品",
+  "recipesTab.srcStockItem": "库存项目",
+  "recipesTab.srcBrandIngredient": "品牌食材",
+  "recipesTab": {
+    "cost": "金额"
+  }
 }

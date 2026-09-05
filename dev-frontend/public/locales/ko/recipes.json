@@ -140,5 +140,11 @@
   "recipesPage.quantity": "수량",
   "recipesPage.unit": "단위",
   "recipesPage.notes": "메모",
-  "recipesPage.totalIngredientCost": "총 식자재 비용"
+  "recipesPage.totalIngredientCost": "총 식자재 비용",
+  "recipesTab.srcProduct": "프로덕트",
+  "recipesTab.srcStockItem": "재고아이템",
+  "recipesTab.srcBrandIngredient": "브랜드 재료",
+  "recipesTab": {
+    "cost": "금액"
+  }
 }

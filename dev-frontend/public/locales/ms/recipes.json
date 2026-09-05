@@ -140,5 +140,11 @@
   "recipesPage.quantity": "Kuantiti",
   "recipesPage.unit": "Unit",
   "recipesPage.notes": "Nota",
-  "recipesPage.totalIngredientCost": "Jumlah Kos Bahan"
+  "recipesPage.totalIngredientCost": "Jumlah Kos Bahan",
+  "recipesTab.srcProduct": "Produk",
+  "recipesTab.srcStockItem": "Item Stok",
+  "recipesTab.srcBrandIngredient": "Bahan Jenama",
+  "recipesTab": {
+    "cost": "Kos"
+  }
 }

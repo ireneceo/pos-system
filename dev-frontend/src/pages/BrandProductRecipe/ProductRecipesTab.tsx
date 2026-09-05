@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -351,7 +352,7 @@ const IngredientsList = styled.div`
 
 const IngredientHeaderRow = styled.div`
   display: grid;
-  grid-template-columns: 3fr 1fr 0.7fr 2fr 40px;
+  grid-template-columns: 3fr 1fr 0.7fr 2fr 1fr 40px;
   gap: 8px;
   padding: 8px 0;
   margin-bottom: 8px;
@@ -368,9 +369,18 @@ const IngredientHeaderRow = styled.div`
   }
 `;
 
+// 재료 한 줄의 값 — 읽기 전용 표시.
+const LineCostCell = styled.div`
+  font-size: 13px;
+  color: #1F2937;
+  text-align: right;
+  padding: 0 4px;
+  white-space: nowrap;
+`;
+
 const IngredientRow = styled.div`
   display: grid;
-  grid-template-columns: 3fr 1fr 0.7fr 2fr 40px;
+  grid-template-columns: 3fr 1fr 0.7fr 2fr 1fr 40px;
   gap: 8px;
   align-items: center;
   margin-bottom: 8px;
@@ -793,6 +803,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
+  const { t } = useTranslation(['recipes', 'common']);
   const [recipes, setRecipes] = useState<ProductRecipe[]>([]);
   const [ingredients, setIngredients] = useState<ProductIngredient[]>([]);
   const [categories, setCategories] = useState<ProductRecipeCategory[]>([]);
@@ -1035,18 +1046,17 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
     setFormIngredients(formIngredients.filter((_, i) => i !== index));
   };
 
-  const calculateTotalCost = () => {
-    return formIngredients.reduce((sum, fi) => {
-      const ing = ingredients.find(i => i.id === fi.ingredient_id);
-      if (ing && fi.quantity) {
-        // unit_cost는 base_quantity 기준이므로 단위당 비용 계산
-        const baseQty = ing.base_quantity || 1;
-        const costPerUnit = ing.unit_cost / baseQty;
-        return sum + (costPerUnit * parseFloat(fi.quantity));
-      }
-      return sum;
-    }, 0);
+  // 재료 한 줄의 값 — Irene 2026-09-05 "재료옆에 각각 가격표시".
+  //   ⚠ 하단 합계와 **같은 식**이어야 한다 — 그래서 합계가 이 함수를 쓴다.
+  const lineCost = (fi: any): number | null => {
+    const ing = ingredients.find(i => i.id === fi.ingredient_id);
+    if (!ing || !fi.quantity) return null;
+    const qty = parseFloat(fi.quantity);
+    if (!isFinite(qty)) return null;
+    return qty * (ing.unit_cost / (ing.base_quantity || 1));
   };
+
+  const calculateTotalCost = () => formIngredients.reduce((sum, fi) => sum + (lineCost(fi) || 0), 0);
 
   const handleSave = async () => {
     setFormError(null);
@@ -1634,6 +1644,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
               <span>{'Quantity'}</span>
               <span>{'Unit'}</span>
               <span>{'Notes'}</span>
+              <span>{t('recipes:recipesTab.cost')}</span>
               <span></span>
             </IngredientHeaderRow>
 
@@ -1671,6 +1682,9 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
                     onChange={(e) => updateIngredientRow(index, 'notes', e.target.value)}
                     placeholder="Notes"
                   />
+                  <LineCostCell>
+                    {lineCost(fi) === null ? '-' : formatCurrency(lineCost(fi) as number, selectedCurrency)}
+                  </LineCostCell>
                   <RemoveButton onClick={() => removeIngredientRow(index)}>×</RemoveButton>
                 </IngredientRow>
               );

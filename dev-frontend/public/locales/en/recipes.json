@@ -140,5 +140,11 @@
   "recipesPage.quantity": "Quantity",
   "recipesPage.unit": "Unit",
   "recipesPage.notes": "Notes",
-  "recipesPage.totalIngredientCost": "Total Ingredient Cost"
+  "recipesPage.totalIngredientCost": "Total Ingredient Cost",
+  "recipesTab.srcProduct": "Product",
+  "recipesTab.srcStockItem": "Stock Item",
+  "recipesTab.srcBrandIngredient": "Brand Ingredient",
+  "recipesTab": {
+    "cost": "Cost"
+  }
 }
