@@ -199,6 +199,30 @@ module.exports = {
         total ? `재고아이템 ${pendingItems} · 재료 ${pendingIngs} — 화면에서 채우거나 카테고리·이름을 고치면 다음 배포가 자동 수렴` : '');
     }
 
+    // ── 2026-09-05 H1 에서 나온 두 검사 ─────────────────────────────────────────
+    // ING-UNI-014 (차단): 아이템 원가가 0 인데 **같은 기준**의 거울에는 값이 있다.
+    //   수렴 스크립트가 `unit_cost := 거울 값` 규칙을 빠뜨려 프로덕트 레시피 59줄의 원가가
+    //   실제보다 적게 나왔다. 기준(단위·기준숫자)이 같을 때만 센다 — 다르면 가격의 뜻도 다르다.
+    const costGap = await cnt(`SELECT COUNT(*) c FROM product_ingredients pi
+      JOIN ingredients i ON i.source_product_ingredient_id = pi.id
+     WHERE pi.is_active = 1 AND (pi.unit_cost = 0 OR pi.unit_cost IS NULL) AND i.unit_cost > 0
+       AND pi.unit = i.unit AND pi.base_quantity = i.base_quantity`);
+    add('ING-UNI-014 아이템 원가 0 인데 같은 기준 거울엔 값 있음 = 0',
+      costGap === 0, costGap ? `${costGap}건 — 레시피 원가가 실제보다 적게 나온다. 거울 값을 복사할 것` : '');
+
+    // ING-UNI-015 (비차단·목록): 포장 이름 단위인데 기준숫자가 큰 행 = 뜻이 안 되는 값.
+    //   실측: 액젓이 `bottle / 880`("1병 = 880병")이 됐다 — 옛 코드 동기화가 거울 단위를 덮은 결과.
+    //   ⚠ `piece/pack` + 10·32 는 정상이다(1 봉지 = 10개). 그래서 **bottle·can 만**,
+    //     그리고 기준숫자 100 이상만 의심한다 — 낱개로 100병을 한 묶음이라 부르는 일은 없다.
+    if (hasPkg) {
+      const nonsense = await cnt(`SELECT COUNT(*) c FROM (
+        SELECT id FROM product_ingredients WHERE is_active = 1 AND unit IN ('bottle','can') AND base_quantity >= 100
+        UNION ALL
+        SELECT id FROM ingredients WHERE is_active = 1 AND unit IN ('bottle','can') AND base_quantity >= 100) x`);
+      add('ING-UNI-015 병·캔 단위인데 기준숫자 100 이상 0 (뜻이 안 되는 값)',
+        nonsense === 0, nonsense ? `${nonsense}건 — "1병 = N병" 형태. 취급단위가 소단위여야 하는데 포장 이름이 남아 있다` : '');
+    }
+
     return checks;
   },
 };

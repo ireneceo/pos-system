@@ -73,7 +73,8 @@
     "migrate-direct-stock-link.js",
     "migrate-self-delivery-carrier.js",
     "migrate-package-unit.js",
-    "migrate-package-unit-2-converge.js"
+    "migrate-package-unit-2-converge.js",
+    "migrate-restore-mirror-units-20260905.js"
   ],
   "manual": {
     "migrate-backfill-ewallet-grabpay.js": "⛔ 미실행 확정 — 운영 실행 금지 (2026-07-24 Fable 판정, Irene 위임). 이유: ①ewallet_type 의 유일한 read 소비자는 mallSalesService.addToBucket 이고 거기서 NULL 과 grabpay 는 똑같이 othersamount 버킷 = 출력 무변화(기능적 no-op) ②몰 보고는 최근 7일 롤링 upsert 로 소급 전송이 없고 rid=16 은 최근 7일 이월렛 0건 = 백필해도 몰이 볼 창에 대상 행 0 ③운영 영향 12,906건 중 97.3% 가 몰 무관 매장(rid=8 K-DINE 12,556)이고 무슨 월렛이었는지 추론할 단서가 데이터에 전무 → 전량 grabpay 는 사실관계상 오태깅, NULL(=서브타입 미기록)이 정직한 값 ④전 매장 acceptedTypes 미설정이라 신규분도 NULL 로 쌓임 = 재실행 시 진짜 미상 신규 행까지 덮는 footgun. TnG 분리는 rid=16 acceptedTypes 등록 후 신규 주문부터 태깅되는 경로가 유일한 실효 수단. 되살릴 경우에만 migrate-add-ewallet-type 선행 필요.",
