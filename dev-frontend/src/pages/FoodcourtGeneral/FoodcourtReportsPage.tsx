@@ -13,6 +13,7 @@ import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../co
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { formatDateTime } from '../../utils/timezone';
+import { monthLabelFromYM } from '../../components/Common/CalendarPicker';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -1180,7 +1181,7 @@ const FoodcourtReportsPage: React.FC = () => {
                               const monthInfo = yearInfo.months[month];
                               const yearMonthKey = `${year}-${month}`;
                               const isMonthExpanded = expandedMonths.has(yearMonthKey);
-                              const monthName = formatDateTime(new Date(month + '-01'), null, { year: 'numeric', month: 'long', day: undefined, hour: undefined, minute: undefined, hour12: undefined });
+                              const monthName = monthLabelFromYM(month);   // 월 이름은 (연,월) 라벨이지 시각이 아니다 — CalendarPicker 단일 소스
 
                               return (
                                 <React.Fragment key={yearMonthKey}>

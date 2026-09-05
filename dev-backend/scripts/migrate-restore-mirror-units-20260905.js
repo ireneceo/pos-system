@@ -144,6 +144,24 @@ async function main() {
       report.costCopied.push(`${r.code} ${String(r.name).slice(0, 30)}: 0 → ${r.ic} (${r.pb} ${r.pu} 당)`);
     }
 
+    // ── E. 명시 건 — 육개장 레시피 줄의 단위 표기 (Irene 답 2026-09-05 · Fable 판정) ──
+    //   `ri#1300` 이 `0.05 piece` 인데 재료 `ing#75 K-Yukgaejang Beef 1kg` 은 `kg` 이다.
+    //   Irene: "육개장소고기는 우리가 만드는 거야 … 프로덕트야 … 판매가는 1kg 에 129링깃"
+    //          (가격은 되물어 **97.90 이 맞다**고 확인 — 값 무접촉)
+    //   이 재료에서 "piece" 가 뜻할 수 있는 것은 **1 kg 포장 하나**뿐이므로 `0.05 piece` = 0.05 kg.
+    //   ⛔ 고치는 것은 **줄의 단위 표기 하나**다. 수량(0.05)·재료·가격은 건드리지 않는다 —
+    //     차감은 지금도 `0.05` 를 kg 재료에서 빼고 있어 금액(RM 4.90)이 그대로다.
+    //     단위만 맞으면 ING-UNI-011 이 0 이 된다.
+    const [yuk] = await q(`SELECT ri.id, ri.quantity, ri.unit, i.unit ing_unit, i.name
+                             FROM recipe_ingredients ri JOIN ingredients i ON i.id = ri.ingredient_id
+                            WHERE ri.id = 1300 AND ri.unit = 'piece' AND i.unit = 'kg'`, {}, t);
+    if (yuk) {
+      await run(`UPDATE recipe_ingredients SET unit = :u WHERE id = :id`, { u: yuk.ing_unit, id: yuk.id }, t);
+      report.restored.push(`ri#1300 ${String(yuk.name).slice(0, 28)}: ${yuk.quantity} piece → ${yuk.quantity} kg (수량 불변 · 1 kg 포장의 0.05)`);
+    } else {
+      report.untouched.push('ri#1300 조건 불일치 — 이미 고쳐졌거나 값이 달라졌다, 건너뜀');
+    }
+
     // ── 3. 증명 ─────────────────────────────────────────────────────────────
     const [v011] = await q(`SELECT COUNT(*) n FROM recipe_ingredients ri JOIN ingredients i ON i.id = ri.ingredient_id WHERE ri.unit <> i.unit`, {}, t);
     const [v014] = await q(`SELECT COUNT(*) n FROM product_ingredients pi JOIN ingredients i ON i.source_product_ingredient_id = pi.id
@@ -154,12 +172,12 @@ async function main() {
     report.costCopied.forEach((x) => console.log('  💰 ' + x));
     report.costSkipped.forEach((x) => console.log('  ⏭  ' + x));
     report.untouched.forEach((x) => console.log('  ○ ' + x));
-    console.log(`\n증명 ① 레시피 줄 단위 불일치 ${v011.n} (기대 1 — 육개장 ri#1300 은 원래부터이며 Irene 확인 대상)`);
+    console.log(`\n증명 ① 레시피 줄 단위 불일치 ${v011.n} (기대 0 — 육개장 ri#1300 도 이번에 정리)`);
     const [v016] = await q(`SELECT COUNT(*) n FROM product_ingredients pi JOIN ingredients i ON i.source_product_ingredient_id = pi.id
                              WHERE pi.is_active = 1 AND pi.unit <> i.unit`, {}, t);
     console.log(`증명 ② 조건 맞는데 원가 안 채워진 행 ${v014.n} (기대 0)`);
     console.log(`증명 ③ 아이템 ↔ 거울 단위 불일치 ${v016.n} (기대 0)`);
-    if (Number(v011.n) > 1) throw new Error(`증명 ① 실패 — 불일치 ${v011.n}건(기대 1) · 되돌린다`);
+    if (Number(v011.n) !== 0) throw new Error(`증명 ① 실패 — 불일치 ${v011.n}건(기대 0) · 되돌린다`);
     if (Number(v014.n) !== 0) throw new Error(`증명 ② 실패 — ${v014.n}건 남음 · 되돌린다`);
     if (Number(v016.n) !== 0) throw new Error(`증명 ③ 실패 — 아이템↔거울 단위 불일치 ${v016.n}건 · 되돌린다`);
 

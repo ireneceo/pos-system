@@ -20,6 +20,7 @@ import SettlementMenu from '../../components/Settlement/SettlementMenu';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { monthLabelFromYM } from '../../components/Common/CalendarPicker';
 // 스타일 컴포넌트
 const ReportsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -1177,7 +1178,7 @@ const ReportsPage: React.FC = () => {
                                 const monthInfo = yearInfo.months[month];
                                 const yearMonthKey = `${year}-${month}`;
                                 const isMonthExpanded = expandedMonths.has(yearMonthKey);
-                                const monthName = formatDateTime(new Date(month + '-01'), operationSettings, { year: 'numeric', month: 'long', day: undefined, hour: undefined, minute: undefined, hour12: undefined });
+                                const monthName = monthLabelFromYM(month);   // 월 이름은 (연,월) 라벨이지 시각이 아니다 — CalendarPicker 단일 소스
 
                                 return (
                                   <React.Fragment key={yearMonthKey}>

@@ -57,6 +57,22 @@ export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'Jun
   'July', 'August', 'September', 'October', 'November', 'December'];
 export const getMonthLabel = (year: number, month: number): string => `${MONTH_NAMES[month]} ${year}`;
 
+/**
+ * `"2026-09"` → `"September 2026"`. 월별 보고서의 월 이름 단일 소스.
+ *
+ * ⚠ 예전에는 `formatDateTime(new Date('2026-09-01'), 매장TZ, {month:'long'})` 이었다.
+ *   ISO 날짜 문자열은 **UTC 자정**으로 파싱되므로, 매장 타임존이 UTC 보다 뒤면
+ *   전달 말일로 굴러떨어진다 — 실측: `America/New_York` 에서 2026-09 가 "August 2026".
+ *   말레이시아(UTC+8)·UTC·런던은 정상이라 그동안 안 보였다.
+ *   달력 라벨과 같은 부류이고, 같은 이유로 **시각이 아니라 라벨**로 만든다.
+ */
+export const monthLabelFromYM = (ym: string): string => {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(ym || '').slice(0, 7));
+  if (!m) return String(ym || '');
+  const idx = parseInt(m[2], 10) - 1;
+  return MONTH_NAMES[idx] ? `${MONTH_NAMES[idx]} ${m[1]}` : String(ym);
+};
+
 // Component
 const CalendarPicker: React.FC<CalendarPickerProps> = ({
   startDate,
