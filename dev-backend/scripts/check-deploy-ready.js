@@ -110,23 +110,27 @@ if (rec) {
 const swSrc = fs.existsSync(SW_PATH) ? fs.readFileSync(SW_PATH, 'utf8') : '';
 const swNow = (swSrc.match(/const SW_VERSION\s*=\s*['"]([^'"]+)['"]/) || [])[1] || null;
 
-// 델타에 프론트가 있는가.
+// 델타에 프론트가 있는가 — **파일 내용 지문**으로 판정한다 (2026-09-05).
 // ⚠ `check-sensitive-diff` 출력은 못 쓴다 — 민감 카테고리만 파일명을 찍고 나머지는 "일반 변경 N건"
 //   이라 프론트 파일이 이름으로 안 나온다(2026-09-04 실측: 프론트를 고쳤는데 "변경 없음").
-//   그래서 **배포 스냅샷 시각 기준 커밋**과 비교한다: manifest.created_at 직전 커밋 → HEAD 의 diff
-//   + 미커밋 변경. 스냅샷은 배포 성공 직후에 찍히므로 그 시점이 곧 "지금 운영에 있는 것"이다.
+// ⛔ **커밋 시각 기준도 못 쓴다** (2026-09-05 실측 — 이게 직전 방식이었고 오탐을 냈다):
+//   배포된 것은 그 시점의 **워킹트리**지 커밋이 아니다. 배포 기록 커밋은 스냅샷보다 **뒤에** 찍히므로
+//   (v3.84: 스냅샷 18:39:53 · 커밋 9dbc6ae27 18:42:26) `스냅샷 직전 커밋 → HEAD` 에
+//   **이미 운영에 올라간 프론트 파일이 통째로 들어온다.** 그러면 백엔드만 고친 다음 배포마다
+//   "SW 를 올려라"가 뜬다. 시각으로는 못 고친다 — 커밋을 기록해도 그 시점 HEAD 가 여전히 기록 커밋 이전이다.
+//   그래서 스냅샷이 이미 갖고 있는 **파일별 sha256**(`manifest.files`, dev-frontend/src·public 포함
+//   — 배포 rsync 범위와 같은 목록)과 **현재 트리의 같은 해시**를 비교한다. 커밋 여부와 무관하다.
 let frontendChanged = /dev-frontend\//.test(sh('git status --porcelain'));
 if (!frontendChanged) {
   try {
-    const man = fs.existsSync(MANIFEST) ? JSON.parse(fs.readFileSync(MANIFEST, 'utf8')) : null;
-    if (man && man.created_at) {
-      const base = sh(`git rev-list -1 --before="${man.created_at}" HEAD`);
-      if (base) frontendChanged = /dev-frontend\//.test(sh(`git diff --name-only ${base}..HEAD`));
-      else notes.push('배포 스냅샷 시각 이전 커밋을 못 찾아 프론트 변경 판정을 미커밋 기준으로만 했습니다.');
+    const { diffAgainstLastDeploy } = require('./deploy-manifest');
+    const d = diffAgainstLastDeploy();
+    if (d) {
+      frontendChanged = [...d.changed, ...d.added, ...d.removed].some((f) => f.startsWith('dev-frontend/'));
     } else {
-      notes.push('배포 스냅샷(.claude/deploy-manifest.json)에 created_at 이 없어 프론트 변경 판정이 미커밋 기준뿐입니다.');
+      notes.push('배포 스냅샷(.claude/deploy-manifest.json)이 없어 프론트 변경 판정이 미커밋 기준뿐입니다.');
     }
-  } catch { notes.push('프론트 변경 판정 중 오류 — 배포 스크립트가 다시 봅니다.'); }
+  } catch (e) { notes.push('프론트 변경 판정 중 오류 — 배포 스크립트가 다시 봅니다: ' + e.message); }
 }
 
 if (!swNow) {
