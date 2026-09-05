@@ -1466,7 +1466,8 @@
       "Bash(perl -0pi -e \"s/const left = await q\\\\\\('SELECT COUNT\\\\\\(\\\\*\\\\\\) c FROM orders WHERE table_number=\\\\? AND restaurant_id=\\\\?', \\\\['V1', \\\\\\(await q\\\\\\('SELECT id FROM restaurants WHERE is_demo=1 LIMIT 1'\\\\\\)\\\\\\)\\\\[0\\\\]\\\\.id\\\\]\\\\\\);/const left = await q\\('SELECT COUNT\\(*\\) c FROM orders WHERE table_number=? AND id IN \\(?\\)', ['V1', made.length?made:[0]]\\);/\" /tmp/claude-1000/-var-www/0444d432-4d76-4517-ae97-fdd91d1701e2/scratchpad/verify-4flows.js)",
       "Bash(awk 'NR>=2470 && NR<=2560 && \\(/needs_print/ || /router.delete/ || /is_deleted/ || /pending_reprint/\\)' routes/orders-crud.js)",
       "Bash(awk 'NR>=2071 && NR<=2140' routes/orders-crud.js)",
-      "Bash(timeout 300 bash -c \"cat /tmp/claude-1000/-var-www/0444d432-4d76-4517-ae97-fdd91d1701e2/scratchpad/release-v3.73.json | node scripts/create-release-post.js --stdin --sync-prod\")"
+      "Bash(timeout 300 bash -c \"cat /tmp/claude-1000/-var-www/0444d432-4d76-4517-ae97-fdd91d1701e2/scratchpad/release-v3.73.json | node scripts/create-release-post.js --stdin --sync-prod\")",
+      "Bash(./deploy-to-production.sh *)"
     ],
     "deny": [],
     "ask": []
