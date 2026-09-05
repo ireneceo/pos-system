@@ -12,6 +12,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { getRestaurantTimezone } from '../../utils/timezone';
+import { getMonthLabel } from './CalendarPicker';
 
 interface DateFieldProps {
   value?: string | null; // YYYY-MM-DD
@@ -59,10 +60,12 @@ const getDaysInMonth = (year: number, month: number): number =>
 const getFirstDayOfMonth = (year: number, month: number): number =>
   new Date(year, month, 1).getDay();
 
-const getMonthLabel = (year: number, month: number): string => {
-  const date = new Date(year, month);
-  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: getRestaurantTimezone() });
-};
+// 달력의 월 라벨은 **(연, 월) 라벨이지 시각이 아니다.** `new Date(year, month)` 는 그 달 1일
+// 00:00 **브라우저 존** 이고, 그것을 브라우저보다 뒤에 있는 매장 존으로 변환하면 전달 말일로
+// 굴러떨어진다 — 브라우저 KST(UTC+9) · 매장 MYT(UTC+8) 에서 9월이 "August" 로 그려져
+// 사용자가 엉뚱한 칸을 누른다(Irene 2026-09-05 신고 · 실측 재현).
+//   ⚠ 같은 결함을 CalendarPicker 는 2026-07-05 에 고쳤는데 **이 파일이 빠져 있었다.**
+//     그래서 이번엔 복사하지 않고 **CalendarPicker 의 함수를 그대로 가져다 쓴다** — 단일 소스.
 
 const formatDisplayDate = (s: string | null | undefined): string => {
   const datePart = String(s || '').slice(0, 10);

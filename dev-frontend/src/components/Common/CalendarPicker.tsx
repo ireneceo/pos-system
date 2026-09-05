@@ -50,9 +50,12 @@ const getFirstDayOfMonth = (year: number, month: number): number =>
 // that is BEHIND the browser (e.g. browser KST, restaurant MYT) rolls it back to the last day of
 // the previous month → June rendered as "May", July as "June", so the user clicked the wrong grid.
 // Label the month directly from its index — no Date, no zone. (Irene 2026-07-05)
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+//   ⚠ 2026-09-05: 같은 결함이 `DateField.tsx` 에 그대로 남아 있었다 — 7/5 수정이 달력 부품
+//     **둘 중 하나에만** 들어갔고, 발주 배송 모달이 쓰는 쪽이 빠져 있었다(Irene 신고).
+//     그래서 라벨 함수를 여기서 **export 해 공유**한다. 복사로 고치면 세 번째가 생긴다.
+export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
-const getMonthLabel = (year: number, month: number): string => `${MONTH_NAMES[month]} ${year}`;
+export const getMonthLabel = (year: number, month: number): string => `${MONTH_NAMES[month]} ${year}`;
 
 // Component
 const CalendarPicker: React.FC<CalendarPickerProps> = ({
