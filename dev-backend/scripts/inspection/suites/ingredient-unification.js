@@ -223,6 +223,16 @@ module.exports = {
         nonsense === 0, nonsense ? `${nonsense}건 — "1병 = N병" 형태. 취급단위가 소단위여야 하는데 포장 이름이 남아 있다` : '');
     }
 
+    // ING-UNI-016 (차단): 아이템 단위 ≠ 거울 단위.
+    //   이 상태에서 아이템을 저장하면 동기화가 거울을 덮고, 그 거울을 가리키는 레시피 줄의
+    //   뜻이 말없이 바뀐다(`20 g` → `20 pack`). 코드에도 가드를 뒀지만 데이터도 어긋나 있으면 안 된다.
+    //   ⚠ 이 검사가 있었으면 2026-09-05 P1 운영검증에서 PI-139 를 잡았다.
+    const unitPairGap = await cnt(`SELECT COUNT(*) c FROM product_ingredients pi
+      JOIN ingredients i ON i.source_product_ingredient_id = pi.id
+     WHERE pi.is_active = 1 AND pi.unit <> i.unit`);
+    add('ING-UNI-016 재고아이템 단위 = 거울 단위 (다르면 저장 한 번에 레시피가 틀어진다)',
+      unitPairGap === 0, unitPairGap ? `${unitPairGap}쌍 — 화면에서 둘을 맞추거나 정합 마이그를 돌릴 것` : '');
+
     return checks;
   },
 };

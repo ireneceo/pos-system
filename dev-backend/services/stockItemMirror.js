@@ -47,18 +47,39 @@ async function syncMirrors(stockItem, { transaction, sourceKey = 'source_product
   });
   if (!mirrors.length) return { updated: 0 };
 
-  const patch = {};
+  const base = {};
   for (const f of MIRRORED_FIELDS) {
-    if (stockItem[f] !== undefined && stockItem[f] !== null) patch[f] = stockItem[f];
+    if (stockItem[f] !== undefined && stockItem[f] !== null) base[f] = stockItem[f];
   }
-  if (!Object.keys(patch).length) return { updated: 0 };
+  if (!Object.keys(base).length) return { updated: 0 };
 
-  let updated = 0;
+  const { RecipeIngredient } = require('../models');
+  let updated = 0, guarded = 0;
   for (const m of mirrors) {
+    const patch = { ...base };
+    // ⛔ **영구 방어** (2026-09-05): 아이템 단위가 거울과 다른데 그 거울에 레시피 줄이 붙어 있으면
+    //   `unit`·`base_quantity` 는 **옮기지 않는다**(나머지 칸은 그대로 동기화).
+    //   왜: 두 값이 어긋난 상태에서 아이템을 저장하면 거울 단위가 덮이고, 그 거울을 가리키는
+    //   레시피 줄의 뜻이 말없이 바뀐다 — `20 g` 이 `20 pack` 이 된다.
+    //   실제로 났다: 2026-09-05 배포가 재시작 전에 실패해 옛 코드가 도는 창에서 액젓 거울이
+    //   `g → bottle` 로 덮였고, 붙어 있던 레시피 3줄이 어긋났다.
+    //   409(`UNIT_LOCKED_BY_RECIPES`)는 **단위를 바꿀 때만** 걸린다 — 이름만 고쳐 저장해도
+    //   동기화는 돌기 때문에 그 잠금만으로는 막히지 않는다. 그래서 여기서도 막는다.
+    //   데이터가 어긋나 있어도 **코드가 사고를 못 내게** 하는 것이 목적이다.
+    if (patch.unit && String(patch.unit) !== String(m.unit)) {
+      const lines = await RecipeIngredient.count({ where: { ingredient_id: m.id }, transaction });
+      if (lines > 0) {
+        delete patch.unit;
+        delete patch.base_quantity;
+        guarded += 1;
+        console.warn(`[mirror] 거울 ing#${m.id} 은 단위(${m.unit})가 아이템(${stockItem.unit})과 다르고 레시피 ${lines}줄이 붙어 있어 unit·base_quantity 동기화를 건너뜁니다 — 화면에서 둘을 맞추세요`);
+      }
+    }
+    if (!Object.keys(patch).length) continue;
     await m.update(patch, { transaction });
     updated += 1;
   }
-  return { updated };
+  return { updated, guarded };
 }
 
 /**

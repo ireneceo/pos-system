@@ -101,6 +101,33 @@ async function main() {
       }
     }
 
+    // ── 1-b. 아이템 ↔ 거울 단위 불일치 정합 ─────────────────────────────────
+    //   P1 수렴 뒤에도 남은 쌍이 있다(운영 실측: PI-139 볶은참깨 1건 — 이름 500 g 과 거울 1000 g 이
+    //   충돌해 리뷰로 빠지면서 아이템만 `pack/1` 로 남았다). 이 상태에서 아이템을 저장하면
+    //   동기화가 거울을 덮는다 — 방금 넣은 가드가 코드로는 막지만, **데이터도 맞춰 둔다.**
+    //   규칙: 거울에 레시피 줄이 있으면 **아이템을 거울에 맞춘다**(줄이 진실이다).
+    //         줄이 없으면 거울을 아이템에 맞춘다(K-소스와 같은 논리).
+    //   ⛔ 이름의 숫자(500 g)는 채택하지 않는다 — 기존값(1000 g)과 2배 차이라 사람 확인 대상이다.
+    const pairs = await q(`SELECT pi.id pi_id, pi.code, pi.name, pi.unit pu, pi.base_quantity pb,
+                                  i.id ing_id, i.unit iu, i.base_quantity ib,
+                                  (SELECT COUNT(*) FROM recipe_ingredients ri WHERE ri.ingredient_id = i.id) lines_n
+                             FROM product_ingredients pi JOIN ingredients i ON i.source_product_ingredient_id = pi.id
+                            WHERE pi.is_active = 1 AND pi.unit <> i.unit`, {}, t);
+    for (const p of pairs) {
+      if (Number(p.lines_n) > 0) {
+        // 아이템을 거울에 맞춘다. 덮이기 전 아이템 단위는 **기준단위**로 살린다(1 pack = 1000 g).
+        await run(`UPDATE product_ingredients SET unit = :u, base_quantity = :b,
+                          package_unit = COALESCE(package_unit, :pu), package_quantity = COALESCE(package_quantity, 1)
+                    WHERE id = :id`,
+          { u: p.iu, b: num(p.ib), pu: p.pu, id: p.pi_id }, t);
+        report.restored.push(`${p.code} ${String(p.name).slice(0, 30)}: 아이템 ${p.pb} ${p.pu} → ${p.ib} ${p.iu} (거울 기준 · 줄 ${p.lines_n}개) · 기준 1 ${p.pu}`);
+      } else {
+        await run(`UPDATE ingredients SET unit = :u, base_quantity = :b WHERE id = :id`,
+          { u: p.pu, b: num(p.pb), id: p.ing_id }, t);
+        report.restored.push(`${p.code} ${String(p.name).slice(0, 30)}: 거울 ${p.ib} ${p.iu} → ${p.pb} ${p.pu} (줄 0개라 아이템 기준)`);
+      }
+    }
+
     // ── 2. 아이템 원가 복사 (수렴에서 빠진 규칙) ─────────────────────────────
     const costRows = await q(`SELECT pi.id, pi.code, pi.name, pi.unit pu, pi.base_quantity pb, pi.unit_cost pc,
                                      i.unit iu, i.base_quantity ib, i.unit_cost ic
@@ -128,9 +155,13 @@ async function main() {
     report.costSkipped.forEach((x) => console.log('  ⏭  ' + x));
     report.untouched.forEach((x) => console.log('  ○ ' + x));
     console.log(`\n증명 ① 레시피 줄 단위 불일치 ${v011.n} (기대 1 — 육개장 ri#1300 은 원래부터이며 Irene 확인 대상)`);
+    const [v016] = await q(`SELECT COUNT(*) n FROM product_ingredients pi JOIN ingredients i ON i.source_product_ingredient_id = pi.id
+                             WHERE pi.is_active = 1 AND pi.unit <> i.unit`, {}, t);
     console.log(`증명 ② 조건 맞는데 원가 안 채워진 행 ${v014.n} (기대 0)`);
+    console.log(`증명 ③ 아이템 ↔ 거울 단위 불일치 ${v016.n} (기대 0)`);
     if (Number(v011.n) > 1) throw new Error(`증명 ① 실패 — 불일치 ${v011.n}건(기대 1) · 되돌린다`);
     if (Number(v014.n) !== 0) throw new Error(`증명 ② 실패 — ${v014.n}건 남음 · 되돌린다`);
+    if (Number(v016.n) !== 0) throw new Error(`증명 ③ 실패 — 아이템↔거울 단위 불일치 ${v016.n}건 · 되돌린다`);
 
     if (DRY) {
       await t.rollback();
