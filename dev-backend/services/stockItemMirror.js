@@ -10,11 +10,11 @@
  *     한 Stock Item 이 여러 브랜드에 공유되면 거울이 여럿이라 거울 N → Stock Item 1 이어야 한다.
  *     (구 `product_ingredients.linked_ingredient_id` 는 1:1 이라 못 쓴다 — 폐기.)
  *   - **방향은 Stock Item → 거울 한 방향뿐.** 거울에서 올라오는 쓰기는 없다(F3 이 403 으로 막는다).
- *   - 동기화 대상은 **정체성 필드만**: 이름·단위·카테고리·활성. 재고 수량·최소치는 주인별이라 건드리지 않는다.
+ *   - 동기화 대상은 **정체성 필드 + 원가**: 이름·단위 다섯 칸·활성·원가. 재고 수량·최소치는 주인별이라 건드리지 않는다.
  *   - 거울을 끌 때 **삭제하지 않는다**(레시피·원장·발주 이력이 붙어 있다). 비활성만.
  *
- * 단위 주의: 이 파일은 수량·가격을 계산하지 않는다. 옮기는 것은 이름·단위·카테고리·활성뿐이다.
- * `unit_cost` 는 거울 생성 시 1회 복사되는 초기값 폴백이고, 이후 동기화 대상이 아니다.
+ * 단위 주의: 이 파일은 수량·가격을 **계산하지 않는다** — 옮기기만 한다.
+ * `unit_cost` 를 어떤 값으로 정하는지는 `services/costSync.js` 하나가 정하고, 여기는 그 결과를 거울로 옮긴다.
  */
 
 const { Op } = require('sequelize');
@@ -30,8 +30,14 @@ const { Op } = require('sequelize');
  *      인스펙션 ING-UNI-011/012 가 그 상태를 잡는다.
  *
  * 재고 수량·최소치는 주인별 값이라 여전히 옮기지 않는다.
+ *
+ * `unit_cost` (2026-09-05): **원가도 주인 값이 아니라 원본 값이다** (docs/TRADE_STRUCTURE.md §2
+ *   "그 화면의 단가가 GIT 판매가이고, 그것이 매장의 원가다. 매장마다 따로 정하는 가격은 없다").
+ *   매장별 조정은 `restaurant_ingredient_costs` 가 맡으므로 여기서 덮이지 않는다.
+ *   ⛔ **0 은 "공짜"가 아니라 "아직 안 정함"** 이다 — 아이템 원가가 0 이면 전파하지 않는다.
+ *     안 그러면 출처가 없어 못 채운 아이템이 거울의 살아 있는 원가를 지운다.
  */
-const MIRRORED_FIELDS = ['name', 'unit', 'base_quantity', 'package_unit', 'package_quantity', 'is_active'];
+const MIRRORED_FIELDS = ['name', 'unit', 'base_quantity', 'package_unit', 'package_quantity', 'is_active', 'unit_cost'];
 
 /**
  * Stock Item 의 정체성 변경을 그 거울들에 반영한다.
@@ -49,7 +55,10 @@ async function syncMirrors(stockItem, { transaction, sourceKey = 'source_product
 
   const base = {};
   for (const f of MIRRORED_FIELDS) {
-    if (stockItem[f] !== undefined && stockItem[f] !== null) base[f] = stockItem[f];
+    if (stockItem[f] === undefined || stockItem[f] === null) continue;
+    // 0 은 미정 — 위 주석 참조. 0 을 옮기면 거울의 살아 있는 원가를 지운다.
+    if (f === 'unit_cost' && !(parseFloat(stockItem[f]) > 0)) continue;
+    base[f] = stockItem[f];
   }
   if (!Object.keys(base).length) return { updated: 0 };
 
@@ -102,6 +111,9 @@ async function shareToBrand(stockItem, brandId, { transaction } = {}) {
     brand_id: brandId,
     restaurant_id: null,
     source_product_ingredient_id: stockItem.id,
+    // 거울은 **새 번호를 받지 않는다** — 원본 코드를 그대로 물려받는다(2026-09-06).
+    //   여기가 빈 코드의 최대 출처였다: 거울 생성이 code 를 아예 안 써서 브랜드 재료 코드가 비었다.
+    code: stockItem.code || null,
     name: stockItem.name,
     unit: stockItem.unit,
     base_quantity: stockItem.base_quantity || 1,

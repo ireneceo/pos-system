@@ -365,8 +365,10 @@ router.post('/from-catalog', async (req, res) => {
     if (already) { await t.commit(); return res.status(already.status).json(already.body); }
 
     // 새 ProductIngredient + 매핑 생성
-    const scopedCount = await ProductIngredient.count({ where: { owner_user_id: req.bgOwnerId }, transaction: t });
-    const code = `PI-${String(scopedCount + 1).padStart(3, '0')}`;
+    // 채번 단일 소스(원자 카운터) — `count + 1` 은 지운 번호를 재사용한다(2026-09-06).
+    const { generateCode } = require('../utils/codeGenerator');
+    const code = await generateCode(ProductIngredient, 'PI', {
+      whereClause: { owner_user_id: req.bgOwnerId }, transaction: t });
     const ingredient = await ProductIngredient.create({
       owner_user_id: req.bgOwnerId,
       code,
@@ -466,10 +468,12 @@ router.post('/', async (req, res) => {
     } = req.body;
 
     // 코드 자동 생성 (BG 소유 내 카운트)
-    const scopedCount = await ProductIngredient.count({
-      where: req.bgOwnerId != null ? { owner_user_id: req.bgOwnerId } : {}
-    });
-    const code = `PI-${String(scopedCount + 1).padStart(3, '0')}`;
+    const { generateCode, codeTakenResponse } = require('../utils/codeGenerator');
+    const scopeWhere = req.bgOwnerId != null ? { owner_user_id: req.bgOwnerId } : {};
+    // 사람이 넣은 코드가 이미 쓰였으면 막는다 — 이 컬럼엔 유니크 인덱스가 없다(2026-09-06).
+    const taken = await codeTakenResponse(ProductIngredient, req.body?.code, scopeWhere);
+    if (taken) return res.status(taken.status).json(taken.body);
+    const code = req.body?.code || await generateCode(ProductIngredient, 'PI', { whereClause: scopeWhere });
 
     if (req.bgOwnerId == null) {
       return res.status(400).json({ success: false, message: 'owner_user_id required' });
@@ -826,10 +830,11 @@ router.post('/:id/register-as-product', requireBrandScope(), async (req, res) =>
 
     const name = sanitizeString(String(req.body?.name || ing.name)).slice(0, 255);
     // 코드는 기존 화면과 같은 방식(브랜드 스코프 내 카운트) — 형식을 여기서 새로 만들지 않는다.
-    const scopedCount = await ProductRecipe.count({ where: { brand_id: brandId }, transaction: t });
+    const { generateCode: genPRCode } = require('../utils/codeGenerator');
+    const prCode = await genPRCode(ProductRecipe, 'PR', { whereClause: { brand_id: brandId }, transaction: t });
     const recipe = await ProductRecipe.create({
       brand_id: brandId,
-      code: `PR-${String(scopedCount + 1).padStart(3, '0')}`,
+      code: prCode,
       name: name.slice(0, 100),
       yield_amount: 1,
       yield_unit: ing.unit || 'piece',
@@ -1030,7 +1035,22 @@ router.post('/:id/seller-sources', async (req, res) => {
       is_preferred: !!is_preferred,
       is_active: true
     });
-    res.json({ success: true, data: created });
+
+    // 💰 공급처를 붙이면 **원가가 그 가격에서 나온다** (2026-09-05 Irene: "원가는 원래 공급업체 가격 아니야?").
+    //   사람이 원가를 따로 입력하지 않아도 되게 하는 것이 목적이다. 규칙 단일 소스 = services/costSync.js.
+    //   ⚠ 이미 값이 있으면 덮지 않는다(`onlyIfZero`) — 사람이 정한 값이 있을 수 있다.
+    //     가격이 **바뀌는** 순간의 전파(공급업체 상품 PUT·프로덕트 PUT)만 덮어쓴다.
+    let costNote = null;
+    try {
+      const { recomputeUnitCost } = require('../services/costSync');
+      const { sequelize } = require('../config/database');
+      const r = await recomputeUnitCost('product_ingredient', ing.id, { onlyIfZero: true, sequelize });
+      if (r.changed) costNote = `원가 ${r.from} → ${r.to} (${r.source})`;
+    } catch (e) {
+      console.error('[cost] seller-source 연결 후 원가 계산 실패:', e.message);
+    }
+
+    res.json({ success: true, data: created, cost_note: costNote });
   } catch (e) {
     console.error('Error creating seller-source:', e);
     res.status(500).json({ success: false, message: e.message });

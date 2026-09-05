@@ -44,13 +44,20 @@ async function main() {
     const known = new Set(baseline[suite.name] || []);
     checks.forEach(c => {
       if (!c.pass) {
+        // `warn: true` = **보이되 막지 않는다.** baseline 과 다르다 —
+        //   baseline 은 "추적 중인 부채" 를 파일에 적어 두는 것이라 목록에서 사라지기 쉽고
+        //   `--bless` 한 번에 뜻이 지워진다. warn 은 **검사 코드 안에 분류가 박혀 있어**
+        //   왜 안 막는지가 검사와 함께 읽힌다(2026-09-05 Fable: "새 부채는 차단, 옛 부채는 드러낸다").
+        //   쓰는 곳: 옛 데이터 부채처럼 **지금 당장 못 고치지만 숫자가 줄어드는 걸 봐야 하는** 것.
+        //   ⛔ 새로 생기는 위반에는 쓰지 말 것 — 그건 차단이어야 한다.
+        if (c.warn) return;
         c.known = known.has(c.name);           // baseline 에 있으면 known(신규 아님)
         if (!c.known) newFail++;
         (freshBaseline[suite.name] = freshBaseline[suite.name] || []).push(c.name);
       }
     });
     report.push({ suite: suite.name, checks });
-    totalFail += checks.filter(c => !c.pass).length;
+    totalFail += checks.filter(c => !c.pass && !c.warn).length;
   }
 
   if (bless) {
@@ -73,8 +80,9 @@ async function main() {
     for (const { suite, checks } of report) {
       console.log(`\n── ${suite} ──`);
       for (const c of checks) {
-        const mark = c.pass ? '✅' : (c.known ? '➖' : '❌');
-        console.log(`  ${mark} ${c.name}${c.known ? ' (baseline)' : ''}${c.detail ? `\n       └ ${c.detail}` : ''}`);
+        const mark = c.pass ? '✅' : c.warn ? '⚠' : (c.known ? '➖' : '❌');
+        const tag = c.pass ? '' : c.warn ? ' (목록 · 차단 안 함)' : (c.known ? ' (baseline)' : '');
+        console.log(`  ${mark} ${c.name}${tag}${c.detail ? `\n       └ ${c.detail}` : ''}`);
       }
     }
     const pass = report.reduce((n, r) => n + r.checks.filter(c => c.pass).length, 0);

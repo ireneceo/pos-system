@@ -18,15 +18,22 @@
  * 검사해 신규 분열을 살아있는 게이트로 잡는다. 마이그 완료 후 CUTOFF 를 낮춰 전수로 넓힌다.
  */
 
-// 이 날짜 이후 생성된 재료만 검사(고정 컷오프 — 어느 시점에 돌려도 같은 결과).
-// 통합 마이그 적용일 다음날로 낮추면 전수 게이트가 된다.
+// **새 부채는 차단, 옛 부채는 드러낸다** (2026-09-05 Fable 판정).
+//   `-001`/`-002` 는 CUTOFF 이후 행만 보고 **차단**한다 — 새로 생기는 중복·출처 없는 행을 막는 것이
+//   이 검사의 목적이다.
+//   `-001L`/`-002L` 는 **전수**를 세되 **차단하지 않고 목록**으로 낸다 — 옛 부채의 크기가 보여야
+//   줄어드는지 알 수 있다.
+//   왜 이렇게 가르나: 옛 행까지 FAIL 로 두면 dev·운영 어느 쪽도 배포가 못 나가고(실제로 오늘
+//   전수 전환하자 dev 부채 2건에 게이트가 막혔다), baseline 에 넣으면 감추는 것이 된다.
+//   ⚠ K-소스 7종의 "같은 이름 두 줄" 은 CUTOFF 이전이라 `-001` 이 **한 번도 검사한 적이 없었고**,
+//     Irene 이 화면에서 먼저 발견했다. `-001L` 이 그런 것을 이제 숫자로 보여준다.
 const CUTOFF = '2026-09-04';
 
 module.exports = {
   name: 'ingredient-unification',
   async run({ q }) {
     const checks = [];
-    const add = (name, pass, detail) => checks.push({ name, pass, detail });
+    const add = (name, pass, detail, warn = false) => checks.push({ name, pass, detail, warn });
     const cnt = async (sql) => Number((await q(sql))[0].c);
 
     // ⚠ 재발을 실제로 막는 것은 아래 **002(브랜드 행은 Stock Item 출처 필수)** 다.
@@ -196,7 +203,7 @@ module.exports = {
       const total = pendingItems + pendingIngs;
       add('ING-UNI-013 기준단위 미기입 0 (사람이 정할 것 — 비차단)',
         total === 0,
-        total ? `재고아이템 ${pendingItems} · 재료 ${pendingIngs} — 화면에서 채우거나 카테고리·이름을 고치면 다음 배포가 자동 수렴` : '');
+        total ? `재고아이템 ${pendingItems} · 재료 ${pendingIngs} — 화면에서 채우거나 카테고리·이름을 고치면 다음 배포가 자동 수렴` : '', true);
     }
 
     // ── 2026-09-05 H1 에서 나온 두 검사 ─────────────────────────────────────────
@@ -232,6 +239,65 @@ module.exports = {
      WHERE pi.is_active = 1 AND pi.unit <> i.unit`);
     add('ING-UNI-016 재고아이템 단위 = 거울 단위 (다르면 저장 한 번에 레시피가 틀어진다)',
       unitPairGap === 0, unitPairGap ? `${unitPairGap}쌍 — 화면에서 둘을 맞추거나 정합 마이그를 돌릴 것` : '');
+
+    // ── K-소스 이중 거울 (2026-09-05 Irene 신고 · 병합 마이그와 한 세트) ──────────────
+    // ING-UNI-018 (차단): 같은 물건이 **PI 거울 + BP 거울** 두 줄로 활성이면 안 된다.
+    //   쌍은 이름이 아니라 **발주 매핑**으로 잇는다 — PI 거울의 매핑이 `seller_type='brand'` 로
+    //   가리키는 프로덕트가, BP 거울의 `source_brand_product_id` 와 같으면 같은 물건이다(추측 0).
+    //   이게 브랜드 레시피 재료 검색에 "같은 게 여러 개" 나오던 직접 원인이다.
+    const twinMirrors = await cnt(`SELECT COUNT(*) c FROM ingredients pim
+      JOIN ingredient_seller_products isp ON isp.ingredient_id = pim.id AND isp.seller_type = 'brand'
+      JOIN ingredients bpm ON bpm.source_brand_product_id = isp.seller_product_id
+                          AND bpm.brand_id = pim.brand_id AND bpm.is_active = 1
+     WHERE pim.source_product_ingredient_id IS NOT NULL AND pim.is_active = 1`);
+    add('ING-UNI-018 같은 물건이 재고아이템 거울·프로덕트 거울 두 줄로 활성 = 0',
+      twinMirrors === 0,
+      twinMirrors ? `${twinMirrors}건 — 레시피 재료 검색에 같은 게 두 줄로 뜬다. 병합 마이그를 돌릴 것` : '');
+
+    // ING-UNI-019 (차단): 프로덕트 출처 거울의 가격이 비어 있으면 안 된다.
+    //   Irene: "프로덕트에서 가격 바꾸면 브랜드레시피에서 … 반영되어야 하는데 이것도 연결이 안돼"
+    //   프로덕트가 가격을 갖고 있는데 거울이 0 이면 레시피 원가가 그만큼 적게 나온다.
+    const mirrorNoPrice = await cnt(`SELECT COUNT(*) c FROM ingredients i
+      JOIN brand_products bp ON bp.id = i.source_brand_product_id
+     WHERE i.is_active = 1 AND (i.unit_cost = 0 OR i.unit_cost IS NULL) AND bp.unit_price > 0`);
+    add('ING-UNI-019 프로덕트 출처 거울에 가격 있음 (0 인 것 = 0)',
+      mirrorNoPrice === 0,
+      mirrorNoPrice ? `${mirrorNoPrice}건 — 프로덕트에는 판매가가 있는데 재료 가격이 0. 레시피 원가가 적게 나온다` : '');
+
+    // ING-UNI-021 (비차단·목록): 거울 원가가 원본 원가와 다르다.
+    //   2026-09-05 부터 `unit_cost` 도 아이템 → 거울로 따라간다(services/stockItemMirror.js).
+    //   옛 행은 아직 갈라져 있을 수 있고 운영 건수를 모르므로 **목록만** 낸다.
+    //   레시피는 거울 값을 읽으므로(routes/recipes.js :471) 이 차이가 곧 레시피 원가 오차다.
+    const costDrift = await cnt(`SELECT COUNT(*) c FROM ingredients i
+      JOIN product_ingredients pi ON pi.id = i.source_product_ingredient_id
+     WHERE i.is_active = 1 AND pi.is_active = 1 AND pi.unit_cost > 0 AND i.unit_cost > 0
+       AND i.unit = pi.unit AND i.base_quantity = pi.base_quantity
+       AND ABS(i.unit_cost - pi.unit_cost) > 0.0001`);
+    add('ING-UNI-021 거울 원가 = 원본 원가 (둘 다 >0 · 단위·기준 동일 · 목록)',
+      costDrift === 0,
+      costDrift ? `${costDrift}건 — 레시피가 읽는 값이 원본과 다르다` : '', true);
+
+    // ING-UNI-020 (비차단·목록): 비활성 재료를 가리키는 레시피 줄.
+    //   병합이 줄을 옮기기 전에 거울을 끄면 이런 줄이 생긴다 — 원가·차감이 조용히 0 이 된다.
+    const deadRefs = await cnt(`SELECT COUNT(*) c FROM recipe_ingredients ri
+      JOIN ingredients i ON i.id = ri.ingredient_id WHERE i.is_active = 0`);
+    add('ING-UNI-020 비활성 재료를 가리키는 레시피 줄 0',
+      deadRefs === 0, deadRefs ? `${deadRefs}줄 — 원가·차감이 조용히 0 이 된다` : '');
+
+    // ── 옛 부채 목록 (비차단) — CUTOFF **이전** 전수 ─────────────────────────────
+    //   차단하지 않는 이유는 위 CUTOFF 주석에 있다. 건수가 줄어드는 것이 정리의 진행 지표다.
+    const dupOld = await cnt(`SELECT COUNT(*) c FROM (
+      SELECT brand_id, ${NORM} nm FROM ingredients
+       WHERE brand_id IS NOT NULL AND is_active = 1 AND created_at < '${CUTOFF}' AND TRIM(name) <> ''
+       GROUP BY brand_id, ${NORM} HAVING COUNT(*) > 1) x`);
+    add(`ING-UNI-001L 옛 브랜드 재료 중 같은 이름 두 줄 (<${CUTOFF} · 목록)`,
+      dupOld === 0, dupOld ? `${dupOld}개 이름 — 병합·정리 대상` : '', true);
+
+    const noSrcOld = await cnt(`SELECT COUNT(*) c FROM ingredients
+      WHERE brand_id IS NOT NULL AND is_active = 1 AND created_at < '${CUTOFF}'
+        AND source_product_ingredient_id IS NULL AND source_brand_product_id IS NULL`);
+    add(`ING-UNI-002L 옛 브랜드 재료 중 출처 없는 행 (<${CUTOFF} · 목록)`,
+      noSrcOld === 0, noSrcOld ? `${noSrcOld}건 — 재고아이템·프로덕트 어디서도 안 온 행` : '', true);
 
     return checks;
   },

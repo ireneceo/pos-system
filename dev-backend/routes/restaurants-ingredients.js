@@ -251,11 +251,17 @@ router.post('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcce
       base_quantity, unit_cost, supplier_name, supplier_id, min_stock
     } = req.body;
     const normalizedImage = await normalizeIngredientImage(image_url, restaurantId);
+    // 코드 자동 부여 — 자동 생성이 그림자 라우트(`ingredients.js :765`)에만 있어서
+    //   **실제로 도는 이 경로**로 만든 매장 재료는 코드가 비었다(2026-09-06).
+    const { generateIngredientCode, codeTakenResponse } = require('../utils/codeGenerator');
+    const takenIng = await codeTakenResponse(Ingredient, code, { restaurant_id: restaurantId, owner_type: 'restaurant' });
+    if (takenIng) return res.status(takenIng.status).json(takenIng.body);
+    const finalCode = code || await generateIngredientCode(Ingredient, 'restaurant', restaurantId);
     const ingredient = await Ingredient.create({
       owner_type: 'restaurant',
       brand_id: null,
       restaurant_id: restaurantId,
-      code: code || null,
+      code: finalCode,
       name,
       image_url: normalizedImage,
       category,
@@ -656,6 +662,26 @@ router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkR
     }
 
     const ingredient = own;
+
+    // ⛔ 거울 행은 **동기화가 덮어쓸 칸**을 여기서 못 고친다 — 고쳐 봐야 다음 동기화가 되돌린다.
+    //   잠그는 것 = 덮어써질 것, 그 이상은 아니다. 손목록을 적지 않고 `MIRRORED_FIELDS` 에서
+    //   파생시킨다 — 목록이 늘거나 줄면 잠금도 같이 움직인다.
+    //   카테고리·최소치처럼 **동기화하지 않는 칸은 열어 둔다**(매장이 자기 행을 분류할 수 있어야 한다).
+    //   매장별 원가 조정은 `/restaurants/:id/ingredient-costs` (restaurant_ingredient_costs) 가 맡는다.
+    if (ingredient.source_product_ingredient_id || ingredient.source_brand_product_id) {
+      const { MIRRORED_FIELDS } = require('../services/stockItemMirror');
+      const locked = MIRRORED_FIELDS.filter((f) => req.body[f] !== undefined);
+      if (locked.length) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'MIRROR_READONLY',
+            message: `Edit these at the source (Stock Items / Product): ${locked.join(', ')}`,
+            fields: locked
+          }
+        });
+      }
+    }
 
     // Build update object with only provided fields
     const updateData = {};

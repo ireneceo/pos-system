@@ -284,6 +284,9 @@ router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBr
     });
     if (already) { await t.commit(); return res.status(already.status).json(already.body); }
 
+    // 코드 자동 부여 — 여기가 빈 코드의 출처였다(2026-09-06 Irene: "입력 안하면 자동으로 들어가").
+    //   채번 단일 소스 = utils/codeGenerator.js 원자 카운터.
+    const catalogCode = await generateIngredientCode(Ingredient, 'brand', bid);
     const ingredient = await Ingredient.create({
       owner_type: 'brand',
       brand_id: bid,
@@ -297,7 +300,7 @@ router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBr
       min_stock: 0,
       current_stock: 0,
       is_active: true,
-      code: ''
+      code: catalogCode
     }, { transaction: t });
 
     const mapping = await catalogLink.createMappingFor({
@@ -333,6 +336,9 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
     const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
     // Auto-generate code if not provided
+    const { codeTakenResponse } = require('../utils/codeGenerator');
+    const takenBI = await codeTakenResponse(Ingredient, code, { brand_id: brandId, owner_type: 'brand' });
+    if (takenBI) return res.status(takenBI.status).json(takenBI.body);
     const finalCode = code || await generateIngredientCode(Ingredient, 'brand', brandId);
 
     const normalizedImage = await normalizeIngredientImage(image_url, brandId);
@@ -386,8 +392,10 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
       // 여기서 열어두면 사람이 끈 거울을 F2 동기화가 되살려 서로 다투는 행이 생긴다.
       // `min_stock` 만 통과 — 매장 재고·최소치 경로는 열려 있어야 한다.
       // 다섯 칸은 전부 아이템이 주인이다 — 거울에서 고치면 동기화가 되돌린다(F2). 여기서 막는다.
+      // `unit_cost` (2026-09-05): 원가도 원본이 주인이다 — 여기서 고치면 다음 동기화가 되돌린다.
+      //   매장별 조정은 `restaurant_ingredient_costs` (레시피 원가 오버라이드) 가 맡는다.
       const locked = ['code', 'name', 'unit', 'base_quantity', 'package_unit', 'package_quantity',
-        'ingredient_category_id', 'is_active'].filter((f) => req.body[f] !== undefined);
+        'ingredient_category_id', 'is_active', 'unit_cost'].filter((f) => req.body[f] !== undefined);
       if (locked.length) {
         return res.status(403).json({
           success: false,
@@ -805,6 +813,10 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
 
     const ingredient = own;
 
+    // ⚠ 이 PUT 은 **이 경로에서 실행되지 않는다** — `app.use('/api/restaurants', restaurantsRouter)`(server.js :461)
+    //   가 `app.use('/api', ingredientsRouter)`(:492) 보다 먼저라 `routes/restaurants-ingredients.js :640`
+    //   이 같은 경로를 먼저 잡는다. 거울 잠금은 **실제로 도는 그쪽**에 있다. (2026-09-05 실측)
+
     // Build update object with only provided fields
     const updateData = {};
     if (code !== undefined) updateData.code = code;
@@ -1164,12 +1176,15 @@ router.post('/foodcourts/:foodcourtId/ingredients/from-catalog', authenticateTok
     });
     if (already) { await t.commit(); return res.status(already.status).json(already.body); }
 
+    // 코드 자동 부여 — 위와 같은 이유. 푸드코트는 owner 범위가 foodcourt_id 다.
+    const { generateCode } = require('../utils/codeGenerator');
+    const fcCode = await generateCode(Ingredient, 'ING', { whereClause: { foodcourt_id: fcid }, transaction: t });
     const ingredient = await Ingredient.create({
       owner_type: 'foodcourt', foodcourt_id: fcid, brand_id: null, restaurant_id: null,
       name: body.name || seller.productName,
       unit: catalogLink.resolveUnit(body.unit, seller.productUnit),
       base_quantity: 1, unit_cost: parseFloat(seller.productPrice) || 0,
-      min_stock: 0, current_stock: 0, is_active: true, code: ''
+      min_stock: 0, current_stock: 0, is_active: true, code: fcCode
     }, { transaction: t });
 
     const mapping = await catalogLink.createMappingFor({

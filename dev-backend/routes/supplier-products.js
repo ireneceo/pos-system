@@ -807,6 +807,20 @@ router.put('/supplier-products/:productId', ...baseGates, async (req, res) => {
 
     await t.commit();
 
+    // 💰 가격 전파 (2026-09-05 Irene: "원가는 원래 공급업체 가격 아니야?")
+    //   공급업체가 상품 가격을 고치면, 그 상품을 사는 재고아이템·재료의 원가가 따라간다.
+    //   규칙의 단일 소스는 `services/costSync.js` — 여기서 식을 다시 쓰지 않는다.
+    //   ⚠ 커밋 **뒤**에 돈다: 전파가 실패해도 상품 저장 자체는 살아야 하고(사용자 작업 보호),
+    //     실패는 조용히 삼키지 않고 로그로 남긴다. 못 따라간 행은 인스펙션 019 가 드러낸다.
+    try {
+      const { recomputeForSellerProduct } = require('../services/costSync');
+      const out = await recomputeForSellerProduct('supplier', product.id, { sequelize });
+      const moved = out.filter((x) => x && x.changed);
+      if (moved.length) console.log(`[cost] 공급업체 상품 ${product.id} 가격 → 원가 ${moved.length}건 갱신`);
+    } catch (e) {
+      console.error(`[cost] 공급업체 상품 ${product.id} 원가 전파 실패:`, e.message);
+    }
+
     const updated = await SupplierProduct.findByPk(product.id, {
       include: [
         { model: SupplierProductCategory, as: 'category' },

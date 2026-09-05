@@ -121,6 +121,16 @@ else
     fi
     success "마이그레이션 레지스트리 OK (전 마이그 분류됨 — 드리프트 안전)"
 
+    # 4c. 배포 마이그를 **dev DB 에서 실제로 돌려 본다** — 정적 검사(4b)는 실행이 아니다.
+    #   2026-09-05: `migrate-backfill-unit-cost.js` 가 collation 충돌로 매번 즉사하고 있었는데
+    #   deploy 목록에 등록돼 있었고 레지스트리 검사를 통과했다. 한 번도 실행된 적이 없어서다.
+    #   ⚠ 배포는 `--all-migrations` 전수(76개 ≈ 25초). 캐시는 개발 루프(verify-all) 전용이다.
+    log "Safety gate (4c/10): 🧪 배포 마이그 실전 실행 (dev DB · 전수)..."
+    if ! node scripts/check-deploy-ready.js --migrations-only --all-migrations; then
+        error "🧪 배포 마이그가 dev 에서 죽습니다 — 운영에서도 같은 자리에서 죽습니다. 위 출력의 스크립트를 직접 돌려 고친 뒤 재배포. (긴급 우회: --skip-safety)"
+    fi
+    success "배포 마이그 실전 실행 통과"
+
     log "Safety gate (5/10): 🕐 타임존 가드 (신규 위반 0 — 매장 타임존 규칙)..."
     if ! node scripts/timezone-check.js; then
         error "🕐 신규 타임존 위반 — 브라우저 로컬시간 사용. getTodayBounds/formatDateTime 로 교체 후 재배포. 정식이면 'node scripts/timezone-check.js --bless'. (긴급 우회: --skip-safety)"
@@ -283,6 +293,49 @@ if [ "$AUTO_MODE" = false ]; then
         exit 0
     fi
 fi
+
+# ──────────────────────────────────────────
+# 3b. DB 덤프 — **운영에 무엇이든 쓰기 전에** 되돌릴 지점을 만든다
+# ──────────────────────────────────────────
+# ⚠ 2026-09-05 실측: 이 단계가 **없었다.** 아래 4단계 "백업"은 코드(rsync)뿐이고 DB 는 손대지
+#   않는다. DB 백업은 cron 하루 1회(03:00, /var/www/scripts/backup-database.sh) 가 전부라,
+#   19:32 에 배포하면 되돌릴 지점이 16.5시간 전이었다 — 그 사이 주문·결제가 전부 사라진다.
+#   이번 배포는 데이터를 바꾼다(K-소스 병합 9쌍·레시피 39줄 이동·원가 216건 채움·가격 77건).
+#   마이그레이션은 자기 트랜잭션 안은 되돌리지만, 배포 후 라우트에서 도는 가격 전파는
+#   "정상 동작"이라 롤백 대상이 아니다 — 그게 틀렸을 때 되돌릴 방법은 이 덤프뿐이다.
+#
+# 자리: 코드 rsync·백업보다 **앞**. 코드가 먼저 올라간 뒤 여기서 멈추면 디스크는 새 코드·
+#   프로세스는 옛 코드인 반쪽 상태가 남고, 누가 pm2 를 재시작하면 마이그 없이 새 코드가 뜬다.
+#
+# 복구: gunzip -c <덤프경로> | mysql -u <DB_USER> -p<DB_PASSWORD> <DB_NAME>
+log "Creating pre-deploy DB dump (rollback point)..."
+PREDEPLOY_DIR="/var/backups/orderhere/pre-deploy"
+DUMP_FILE="${PREDEPLOY_DIR}/db_predeploy_${TIMESTAMP}.sql.gz"
+
+# 자격증명·mysqldump 옵션은 기존 backup-database.sh 와 **같은 것**을 쓴다(두 벌 만들지 않는다).
+DUMP_ERR=$(ssh $PROD_SERVER "
+  set -e
+  source <(grep -E '^DB_' /var/www/production-backend/.env | sed 's/^/export /')
+  mkdir -p ${PREDEPLOY_DIR}
+  LAST=\$(ls -t /var/backups/orderhere/daily/db_*.sql.gz 2>/dev/null | head -1)
+  LASTSZ=\$( [ -n \"\$LAST\" ] && stat -c%s \"\$LAST\" || echo 0 )
+  FREE=\$(df -B1 --output=avail ${PREDEPLOY_DIR} | tail -1)
+  if [ \"\$LASTSZ\" -gt 0 ] && [ \"\$FREE\" -lt \$((LASTSZ * 3)) ]; then
+    echo \"디스크 여유 부족: 남은 \$FREE B, 직전 덤프의 3배 필요(\$((LASTSZ*3)) B)\"; exit 1
+  fi
+  mysqldump -u \$DB_USER -p\$DB_PASSWORD --single-transaction --quick --lock-tables=false \
+    --routines --triggers --no-tablespaces \$DB_NAME | gzip > ${DUMP_FILE}
+  gzip -t ${DUMP_FILE} || { echo '덤프 파일이 깨졌습니다 (gzip -t 실패)'; exit 1; }
+  SZ=\$(stat -c%s ${DUMP_FILE})
+  if [ \"\$LASTSZ\" -gt 0 ] && [ \"\$SZ\" -lt \$((LASTSZ / 2)) ]; then
+    echo \"덤프가 비정상적으로 작습니다: \$SZ B (직전 daily \$LASTSZ B 의 50% 미만)\"; exit 1
+  fi
+  echo \"OK \$SZ\"
+  # 보존: 최근 10개만 (디스크 채우기 방지). daily 는 건드리지 않는다.
+  ls -t ${PREDEPLOY_DIR}/db_*.sql.gz 2>/dev/null | tail -n +11 | xargs -r rm -f
+" 2>&1) || error "🗄️ 배포 전 DB 덤프 실패 — 되돌릴 지점 없이 배포하지 않는다. 사유: ${DUMP_ERR}"
+DUMP_SIZE=$(echo "$DUMP_ERR" | awk '/^OK /{print $2}')
+success "DB 덤프 완료: ${DUMP_FILE} ($(( ${DUMP_SIZE:-0} / 1024 / 1024 )) MB) — 복구: gunzip -c <파일> | mysql -u <user> -p <db>"
 
 # ──────────────────────────────────────────
 # 4. Create backup on production server

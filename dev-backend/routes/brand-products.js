@@ -89,11 +89,11 @@ router.use(['/brand-products', '/brand-product-categories', '/brand-product-opti
 /**
  * Generate unique product SKU
  */
-const generateProductSKU = async () => {
-  const prefix = 'PRD';
-  const count = await BrandProduct.count();
-  const nextNum = count + 1;
-  return `${prefix}-${String(nextNum).padStart(3, '0')}`;
+// 2026-09-06: `count + 1` 을 버렸다 — 상품을 지우고 새로 만들면 이미 쓰인 SKU 가 다시 나왔다
+//   (운영 중복 16쌍의 원인). 채번 단일 소스 = `utils/codeGenerator.js` 의 원자 카운터.
+const generateProductSKU = async (transaction) => {
+  const { generateCode } = require('../utils/codeGenerator');
+  return generateCode(BrandProduct, 'PRD', { field: 'sku', transaction });
 };
 
 /**
@@ -130,6 +130,21 @@ async function syncProductToIngredients(productId) {
       if (p) {
         const r = await syncProductMirrors(p);
         if (r.updated) console.log(`[mirror] 프로덕트 ${productId} → 거울 ${r.updated}건 동기화(갱신만)`);
+
+        // 💰 가격 전파 (2026-09-05 Irene: "프로덕트에서 가격 바꾸면 브랜드레시피에서 …
+        //    재료계산이 되고 반영되어야 하는데 이것도 연결이 안돼")
+        //    프로덕트 출처 거울과 이 프로덕트를 파는 매핑의 타깃을 **규칙대로 다시 계산**한다 —
+        //    규칙의 단일 소스는 `services/costSync.js` 다.
+        //    ⚠ 호출부 4곳(생성·수정·복사·활성토글)을 각각 고치지 않고 **여기 한 곳**에 둔다.
+        try {
+          const { recomputeForBrandProduct } = require('../services/costSync');
+          const { sequelize } = require('../config/database');
+          const out = await recomputeForBrandProduct(productId, { sequelize });
+          const moved = out.filter((x) => x && x.changed);
+          if (moved.length) console.log(`[cost] 프로덕트 ${productId} 가격 → 원가 ${moved.length}건 갱신`);
+        } catch (e) {
+          console.error(`[cost] 프로덕트 ${productId} 원가 전파 실패:`, e.message);
+        }
       }
     } catch (e) {
       console.error(`[mirror] 프로덕트 ${productId} 거울 동기화 실패:`, e.message);
@@ -928,6 +943,9 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
     }
 
     // Auto-generate SKU if not provided
+    const { codeTakenResponse } = require('../utils/codeGenerator');
+    const takenSku = await codeTakenResponse(BrandProduct, sku, {}, 'sku');
+    if (takenSku) return res.status(takenSku.status).json(takenSku.body);
     const finalSku = sku || await generateProductSKU();
 
     // base64 inline → 디스크 파일 변환 (DB MEDIUMTEXT 비대화 방지)

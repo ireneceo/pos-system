@@ -190,6 +190,56 @@ try {
   }
 } catch { /* 레지스트리를 못 읽으면 ④ 가 이미 잡는다 */ }
 
+// ── ⑤-2 배포 마이그를 **dev DB 에서 실제로 돌려 본다** ─────────────────────
+// 정적 검사(⑤)는 "인자 없이 적용되는가 / process.exit 이 있는가" 만 본다. 그건 **실행이 아니다.**
+// 2026-09-05 실제 사고: `migrate-backfill-unit-cost.js` 가 `supplier_products`(utf8mb4_0900_ai_ci)와
+//   `product_ingredients`(utf8mb4_unicode_ci)를 비교해 `Illegal mix of collations` 로 **매번 즉사**하고
+//   있었다. deploy 목록에 등록돼 있었고 ⑤ 를 통과했다 — 한 번도 실행된 적이 없어서다.
+// deploy 마이그는 멱등이 규칙이므로 dev 에서 먼저 돌리는 것이 엄격히 더 안전하다.
+// 매번 76개를 다 돌리면 게이트가 못 쓸 만큼 느려지므로 **내용이 바뀐 것만** 돌리고 통과를 기억한다.
+//   (전수 강제는 `--all-migrations`. 배포 스크립트는 어차피 운영에서 전수를 돈다.)
+const MIG_TIMEOUT_MS = 180000;
+// 배포 스크립트는 이 검사만 따로, **전수로** 부른다 (`--migrations-only --all-migrations`).
+//   개발 루프(verify-all)는 바뀐 것만 돌려 빠르게, 배포는 76개 25초를 아끼지 않는다.
+const MIG_ONLY = process.argv.includes('--migrations-only');
+const migCachePath = path.join(ROOT, '.deploy-migration-run.json');
+try {
+  const reg = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/migrations.registry.json'), 'utf8'));
+  const forceAll = process.argv.includes('--all-migrations');
+  let cache = {};
+  try { cache = JSON.parse(fs.readFileSync(migCachePath, 'utf8')); } catch { cache = {}; }
+  const crypto = require('crypto');
+  let ran = 0, skipped = 0;
+  for (const f of (reg.deploy || [])) {
+    const p2 = path.join(ROOT, 'scripts', f);
+    if (!fs.existsSync(p2)) continue;
+    const h = crypto.createHash('sha256').update(fs.readFileSync(p2)).digest('hex');
+    if (!forceAll && cache[f] === h) { skipped += 1; continue; }
+    try {
+      execSync(`node ${JSON.stringify(p2)}`, { cwd: ROOT, stdio: 'pipe', timeout: MIG_TIMEOUT_MS });
+      cache[f] = h;
+      ran += 1;
+    } catch (e) {
+      const out = String((e.stdout || '') + (e.stderr || '')).trim().split('\n').slice(-6).join('\n   ');
+      delete cache[f];
+      add(`배포 마이그 '${f}' 가 dev 에서 실행 실패했습니다 — 운영에서도 같은 자리에서 죽습니다`,
+        `직접 돌려 원인을 보세요: \`node scripts/${f}\`\n   마지막 출력:\n   ${out || '(출력 없음)'}`);
+    }
+  }
+  try { fs.writeFileSync(migCachePath, JSON.stringify(cache, null, 2)); } catch { /* 캐시는 없어도 된다 */ }
+  if (ran || forceAll) notes.push(`배포 마이그 실행: 새로/바뀐 것 ${ran}개 실행 · ${skipped}개 변경 없음(기억된 통과)`);
+  if (MIG_ONLY) {
+    const migFails = problems.filter((b) => /배포 마이그/.test(b.what));
+    if (migFails.length) {
+      console.error(c.red(`\n❌ 배포 마이그 ${migFails.length}개가 dev 에서 실행 실패했습니다 — 운영에서도 같은 자리에서 죽습니다\n`));
+      migFails.forEach((b) => console.error(`   · ${b.what}\n     ${b.how}`));
+      process.exit(1);
+    }
+    console.log(`✓ 배포 마이그 실전 실행 통과 — 실행 ${ran}개 · 기억된 통과 ${skipped}개`);
+    process.exit(0);
+  }
+} catch { /* 레지스트리를 못 읽으면 ④ 가 이미 잡는다 */ }
+
 // ── ⑥ 커밋 상태 ────────────────────────────────────────────────────────
 const dirty = sh('git status --porcelain');
 if (dirty) {
