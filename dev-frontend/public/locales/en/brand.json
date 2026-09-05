@@ -457,7 +457,6 @@
   "productIngredientsTab.loading": "Loading...",
   "productIngredientsTab.noIngredientsFound": "No ingredients found",
   "productIngredientsTab.unitCost": "Unit Cost",
-  "productIngredientsTab.baseQtyUnit": "Base Qty / Unit",
   "productIngredientsTab.supplier": "Supplier",
   "productIngredientsTab.code": "Code",
   "productIngredientsTab.stock": "Stock",
@@ -725,5 +724,13 @@
   },
   "productsTab.activeOnly": "Active only",
   "productsTab.inactiveOnly": "Inactive only",
-  "productsTab.allStatuses": "All statuses"
+  "productsTab.allStatuses": "All statuses",
+  "productIngredientsTab.usageUnit": "Usage Unit",
+  "productIngredientsTab.packageUnit": "Package Unit",
+  "productIngredientsTab.packageQty": "Package Qty",
+  "productIngredientsTab.pricePerPackage": "Price / Package",
+  "productIngredientsTab.unitConversion": "Conversion (1 seller unit = ? usage unit)",
+  "productIngredientsTab.unitHelp": "Buy by package, use by weight — e.g. Usage Unit g, Base Qty 2000, Package Unit pack, Package Qty 1, price = one pack.",
+  "productIngredientsTab.costPerUsageUnit": "Cost per usage unit",
+  "productIngredientsTab.pendingSpec": "Not set"
 }

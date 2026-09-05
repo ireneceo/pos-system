@@ -183,6 +183,22 @@ module.exports = {
       prLineUnitMismatch === 0,
       prLineUnitMismatch ? `${prLineUnitMismatch}건 — 줄 단위와 재고아이템 단위가 다르다` : '');
 
+    // ING-UNI-013 (비차단·목록): 기준단위(package_unit)가 아직 안 채워진 행.
+    //   "미결"의 뜻이다 — 수렴 규칙이 정할 수 없어 **사람이 정해야 하는 것**(이름이 애매하거나
+    //   비식품이라 제외했거나 카테고리가 없는 것). 복사로 채워 버리면 재수렴이 영영 안 되므로
+    //   NULL 로 남긴다(2026-09-05 Fable 결정). 목표는 0 이지만 **차단하지 않는다** — 감추지 않고 보이게.
+    //   단위 주의: 세는 것은 행 수(건).
+    const hasPkg = Number((await q(`SELECT COUNT(*) c FROM information_schema.columns
+       WHERE table_schema = DATABASE() AND table_name = 'product_ingredients' AND column_name = 'package_unit'`))[0].c) > 0;
+    if (hasPkg) {
+      const pendingItems = await cnt(`SELECT COUNT(*) c FROM product_ingredients WHERE is_active = 1 AND package_unit IS NULL`);
+      const pendingIngs = await cnt(`SELECT COUNT(*) c FROM ingredients WHERE is_active = 1 AND package_unit IS NULL`);
+      const total = pendingItems + pendingIngs;
+      add('ING-UNI-013 기준단위 미기입 0 (사람이 정할 것 — 비차단)',
+        total === 0,
+        total ? `재고아이템 ${pendingItems} · 재료 ${pendingIngs} — 화면에서 채우거나 카테고리·이름을 고치면 다음 배포가 자동 수렴` : '');
+    }
+
     return checks;
   },
 };

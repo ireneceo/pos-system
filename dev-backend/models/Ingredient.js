@@ -87,10 +87,23 @@ Ingredient.init({
     type: DataTypes.ENUM('kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'),
     allowNull: false
   },
+  // ── 단위 모델 다섯 칸 — 재고아이템(product_ingredients)과 **같은 표**.
+  //   docs/TRADE_STRUCTURE.md §2-2. 거울 행은 아이템에서 다섯 칸 그대로 복사된다(한 방향).
   base_quantity: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 1,
-    comment: 'Base quantity per unit'
+    comment: '취급 기준숫자 — 기준양 전체에 든 취급단위 양 = 가격이 사는 양'
+  },
+  package_unit: {
+    type: DataTypes.ENUM('kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'),
+    allowNull: true,
+    comment: '기준단위(포장) — 포장·발주 단위. 비면 취급단위와 같다'
+  },
+  package_quantity: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 1,
+    comment: '기준양 — 가격이 가리키는 포장 수(보통 1)'
   },
   // Price
   unit_cost: {

@@ -10,7 +10,7 @@
  *    캐시는 SW_VERSION 네임스페이스 → 새 배포(install)가 옛 캐시 전체 삭제로 stale-chunk 차단.
  */
 
-const SW_VERSION = '4.80-linked-badge-filter-20260904';
+const SW_VERSION = '4.81-unit-model-five-fields-20260905';
 const RUNTIME_CACHE = `pos-runtime-${SW_VERSION}`;
 // 오프라인에 캐시할 API GET (메뉴/설정/플로어플랜 — 끊겨도 주문화면이 뜨게). 그 외 API 는 캐시 안 함.
 const API_CACHE_PATTERNS = [/\/api\/menu(\b|\/|\?)/, /\/api\/mobile\/.*menu/, /\/restaurants\/\d+\/floor-plan/, /\/api\/.*\/operation-settings/, /\/api\/.*\/store/];

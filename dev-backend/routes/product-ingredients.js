@@ -526,6 +526,9 @@ router.put('/:id', async (req, res) => {
     // 레거시 supplier_name/supplier_id 는 목록에서 제외 = API 로 더는 수정 안 함(기존 값 보존). 공급처=seller-source 매핑.
     const updateFields = [
       'name', 'category_id', 'image_url', 'unit', 'base_quantity',
+      // 단위 다섯 칸 (docs/TRADE_STRUCTURE.md §2-2): 취급단위 unit · 취급 기준숫자 base_quantity
+      //   · 기준단위 package_unit · 기준양 package_quantity · 가격 unit_cost
+      'package_unit', 'package_quantity',
       'unit_cost',
       'min_stock', 'min_order', 'current_stock',
       'lead_time_days', 'safety_stock_percent',
@@ -542,10 +545,14 @@ router.put('/:id', async (req, res) => {
     // 단위 변경 보호 (2026-09-04): 거울에 레시피 줄이 붙어 있는데 단위를 바꾸면
     //   레시피 수량의 의미가 말없이 바뀐다(예: 5 g → 5 kg). 거부하고 사람이 결정하게 한다.
     if (updateData.unit !== undefined && String(updateData.unit) !== String(ingredient.unit)) {
+      // ⚠ 거울 경유(recipe_ingredients)**와** 직접 연결(product_recipe_ingredients) **둘 다** 센다.
+      //   직접 연결을 빼면 그쪽 줄의 의미가 조용히 바뀐다(2026-09-05 Fable 지적).
       const [{ n: recipeLines }] = await ProductIngredient.sequelize.query(
-        `SELECT COUNT(*) n FROM recipe_ingredients ri
-           JOIN ingredients i ON i.id = ri.ingredient_id
-          WHERE i.source_product_ingredient_id = :id`,
+        `SELECT (SELECT COUNT(*) FROM recipe_ingredients ri
+                   JOIN ingredients i ON i.id = ri.ingredient_id
+                  WHERE i.source_product_ingredient_id = :id)
+              + (SELECT COUNT(*) FROM product_recipe_ingredients pri
+                  WHERE pri.ingredient_id = :id) n`,
         { replacements: { id: ingredient.id }, type: ProductIngredient.sequelize.QueryTypes.SELECT }
       );
       if (Number(recipeLines) > 0) {

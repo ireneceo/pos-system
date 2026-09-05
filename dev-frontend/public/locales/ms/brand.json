@@ -457,7 +457,6 @@
   "productIngredientsTab.loading": "Memuatkan...",
   "productIngredientsTab.noIngredientsFound": "Tidak Bahan found",
   "productIngredientsTab.unitCost": "Kos Unit",
-  "productIngredientsTab.baseQtyUnit": "Base Qty / Unit",
   "productIngredientsTab.supplier": "Pembekal",
   "productIngredientsTab.code": "Code",
   "productIngredientsTab.stock": "Stok",
@@ -468,7 +467,7 @@
   "productIngredientsTab.selectCategory": "Pilih category...",
   "productIngredientsTab.selectUnit": "Pilih unit...",
   "productIngredientsTab.tracking": "Penjejakan",
-  "productIngredientsTab.baseQty": "Base Qty",
+  "productIngredientsTab.baseQty": "Kuantiti Asas",
   "productIngredientsTab.currentStock": "Semasa Stok",
   "productIngredientsTab.minStock": "Min Stok",
   "productIngredientsTab.usedIn": "Digunakan Dalam",
@@ -725,5 +724,13 @@
   },
   "productsTab.activeOnly": "Aktif sahaja",
   "productsTab.inactiveOnly": "Tidak aktif sahaja",
-  "productsTab.allStatuses": "Semua status"
+  "productsTab.allStatuses": "Semua status",
+  "productIngredientsTab.usageUnit": "Unit Guna",
+  "productIngredientsTab.packageUnit": "Unit Pakej",
+  "productIngredientsTab.packageQty": "Kuantiti Pakej",
+  "productIngredientsTab.pricePerPackage": "Harga / Pakej (asas belian)",
+  "productIngredientsTab.unitConversion": "Penukaran (1 unit penjual = ? unit guna)",
+  "productIngredientsTab.unitHelp": "Beli ikut pakej, guna ikut berat — cth. Unit Guna g, Kuantiti Asas 2000, Unit Pakej pack, Kuantiti Pakej 1, harga = satu pakej.",
+  "productIngredientsTab.costPerUsageUnit": "Kos seunit guna",
+  "productIngredientsTab.pendingSpec": "Belum ditetapkan"
 }

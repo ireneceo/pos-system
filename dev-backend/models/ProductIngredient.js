@@ -39,10 +39,26 @@ ProductIngredient.init({
     type: DataTypes.ENUM('kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'),
     allowNull: false
   },
+  // ── 단위 모델 다섯 칸 (docs/TRADE_STRUCTURE.md §2-2, 2026-09-05 Irene 확정) ──────────
+  //   취급단위 unit(g) · 취급 기준숫자 base_quantity(2000) · 기준단위 package_unit(pack)
+  //   · 기준양 package_quantity(1) · 가격 unit_cost(RM 93)
+  //   항등식: base_quantity × unit = package_quantity × package_unit = unit_cost 가 가리키는 것
+  //   ⛔ 파생값(취급단위당 원가 = unit_cost ÷ base_quantity)은 저장하지 않는다. 계산해서 쓴다.
   base_quantity: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 1,
-    comment: '기본 수량'
+    comment: '취급 기준숫자 — 기준양 전체에 든 취급단위 양 = 가격이 사는 양'
+  },
+  package_unit: {
+    type: DataTypes.ENUM('kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'),
+    allowNull: true,
+    comment: '기준단위(포장) — 포장·발주 단위. 비면 취급단위와 같다'
+  },
+  package_quantity: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 1,
+    comment: '기준양 — 가격이 가리키는 포장 수(보통 1)'
   },
   // 가격
   unit_cost: {

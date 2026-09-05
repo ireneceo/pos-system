@@ -385,7 +385,9 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
       // `is_active` 도 잠근다 — 거울을 켜고 끄는 길은 공유/해제(F1) 하나뿐이다.
       // 여기서 열어두면 사람이 끈 거울을 F2 동기화가 되살려 서로 다투는 행이 생긴다.
       // `min_stock` 만 통과 — 매장 재고·최소치 경로는 열려 있어야 한다.
-      const locked = ['code', 'name', 'unit', 'ingredient_category_id', 'is_active'].filter((f) => req.body[f] !== undefined);
+      // 다섯 칸은 전부 아이템이 주인이다 — 거울에서 고치면 동기화가 되돌린다(F2). 여기서 막는다.
+      const locked = ['code', 'name', 'unit', 'base_quantity', 'package_unit', 'package_quantity',
+        'ingredient_category_id', 'is_active'].filter((f) => req.body[f] !== undefined);
       if (locked.length) {
         return res.status(403).json({
           success: false,
@@ -393,6 +395,27 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
             code: 'MIRROR_READONLY',
             message: `Edit these in Stock Items: ${locked.join(', ')}`,
             fields: locked
+          }
+        });
+      }
+    }
+
+    // ⛔ 취급단위 잠금 (2026-09-05 · docs/TRADE_STRUCTURE.md §2-2) — 재고아이템 쪽과 같은 규칙.
+    //   판매 차감(`inventoryDeductionService.js`)은 레시피 줄 수량을 **환산 없이** 뺀다.
+    //   그래서 취급단위를 바꾸면 붙어 있는 줄의 뜻이 말없이 바뀐다(`20 g` → `20 pack`).
+    //   ⚠ 매장 재료에는 이 잠금이 **없었다** — 재고아이템에만 있었다(2026-09-05 실측).
+    if (unit !== undefined && String(unit) !== String(ingredient.unit)) {
+      const [{ n: recipeLines }] = await Ingredient.sequelize.query(
+        `SELECT COUNT(*) n FROM recipe_ingredients WHERE ingredient_id = :id`,
+        { replacements: { id: ingredient.id }, type: Ingredient.sequelize.QueryTypes.SELECT }
+      );
+      if (Number(recipeLines) > 0) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'UNIT_LOCKED_BY_RECIPES',
+            message: `Unit is used by ${recipeLines} recipe line(s). Change the recipes first.`,
+            recipe_lines: Number(recipeLines)
           }
         });
       }
@@ -412,6 +435,9 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
     if (ingredient_category_id !== undefined) updateData.ingredient_category_id = ingredient_category_id;
     if (unit !== undefined) updateData.unit = unit;
     if (base_quantity !== undefined) updateData.base_quantity = base_quantity;
+    // 단위 다섯 칸 — 기준단위(포장)·기준양 (§2-2)
+    if (req.body.package_unit !== undefined) updateData.package_unit = req.body.package_unit;
+    if (req.body.package_quantity !== undefined) updateData.package_quantity = req.body.package_quantity;
     if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
     // 레거시 supplier_name/supplier_id 쓰기 중단 (2026-07-04) — 기존 값 보존, API 로 수정 안 함. 공급처=seller-source 매핑.
     if (min_stock !== undefined) updateData.min_stock = min_stock;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { EmptyState, IconButton } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -37,6 +38,8 @@ interface Ingredient {
   image_url: string | null;
   unit: string;
   base_quantity: number;
+  package_unit?: string | null;
+  package_quantity?: number | null;
   unit_cost: number;
   supplier_name: string | null;
   supplier_id: number | null;
@@ -340,6 +343,7 @@ const StockBadge = styled.span<{ status: 'normal' | 'low' | 'out' }>`
 `;
 
 const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, onCountChange, categoryRefreshKey }) => {
+  const { t } = useTranslation(['brand', 'common']);
   const { defaultCurrency } = useBrandCurrency();
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
@@ -370,6 +374,8 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
     image_url: '',
     unit: '',
     base_quantity: '1',
+    package_unit: '',
+    package_quantity: '1',
     unit_cost: '0',
     supplier_name: '',
     supplier_id: '' as string | number,
@@ -441,6 +447,8 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
         image_url: ingredient.image_url || '',
         unit: ingredient.unit,
         base_quantity: ingredient.base_quantity.toString(),
+        package_unit: ingredient.package_unit || '',
+        package_quantity: (ingredient.package_quantity ?? 1).toString(),
         unit_cost: ingredient.unit_cost.toString(),
         supplier_name: ingredient.supplier_name || '',
         supplier_id: ingredient.supplier_id || '',
@@ -456,6 +464,10 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
         image_url: '',
         unit: '',
         base_quantity: '1',
+      package_unit: '',
+      package_quantity: '1',
+        package_unit: '',
+        package_quantity: '1',
         unit_cost: '0',
         supplier_name: '',
         supplier_id: '',
@@ -478,6 +490,8 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
       image_url: '',
       unit: '',
       base_quantity: '1',
+      package_unit: '',
+      package_quantity: '1',
       unit_cost: '0',
       supplier_name: '',
       supplier_id: '',
@@ -596,6 +610,9 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
           image_url: formData.image_url || null,
           unit: formData.unit,
           base_quantity: parseFloat(formData.base_quantity) || 1,
+          // 기준단위를 안 고르면 취급단위와 같다는 뜻 — 서버·화면 모두 `package_unit ?? unit` 으로 읽는다
+          package_unit: formData.package_unit || null,
+          package_quantity: parseFloat(formData.package_quantity) || 1,
           unit_cost: parseFloat(formData.unit_cost) || 0,
           min_stock: parseFloat(formData.min_stock) || 0,
           min_order: parseFloat(formData.min_order) || 0,
@@ -779,14 +796,34 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
               </IngredientHeader>
 
               <IngredientInfo>
+                {/* 단위 다섯 칸 — docs/TRADE_STRUCTURE.md §2-2.
+                    `1 pack = 2000 g · RM 93 / pack (RM 0.0465 / g)` 한 줄로 보여준다.
+                    기준단위가 아직 안 채워진 행(사람이 정할 것)은 취급단위로 폴백하고 '미확정' 을 붙인다. */}
                 <InfoRow>
-                  <InfoLabel>{'Unit Cost'}</InfoLabel>
+                  <InfoLabel>{t('brand:productIngredientsTab.pricePerPackage')}</InfoLabel>
                   <InfoValue>{formatCurrency(Number(ingredient.unit_cost), selectedCurrency)}</InfoValue>
                 </InfoRow>
-                <InfoRow>
-                  <InfoLabel>{'Base Qty / Unit'}</InfoLabel>
-                  <InfoValue>{Number(ingredient.base_quantity || 1)} {ingredient.unit}</InfoValue>
-                </InfoRow>
+                {(() => {
+                  const baseQty = Number(ingredient.base_quantity || 1);
+                  const pkgQty = Number(ingredient.package_quantity || 1);
+                  const pkgUnit = ingredient.package_unit || ingredient.unit;
+                  const pending = !ingredient.package_unit;
+                  const perUsage = baseQty > 0 ? Number(ingredient.unit_cost) / baseQty : null;
+                  return (
+                    <InfoRow>
+                      <InfoLabel>{t('brand:productIngredientsTab.baseQty')}</InfoLabel>
+                      <InfoValue>
+                        {pkgQty} {pkgUnit} = {baseQty} {ingredient.unit}
+                        {pending && <span style={{ color: '#9CA3AF', marginLeft: 6 }}>({t('brand:productIngredientsTab.pendingSpec')})</span>}
+                        {perUsage != null && perUsage > 0 && (
+                          <span style={{ color: '#6B7280', marginLeft: 6 }}>
+                            · {formatCurrency(perUsage, selectedCurrency)} / {ingredient.unit}
+                          </span>
+                        )}
+                      </InfoValue>
+                    </InfoRow>
+                  );
+                })()}
                 {/* 발주처(seller) 연결 — 재고 품목 ↔ 공급업체 상품 매핑(읽기전용). seller-source 섹션에서 관리. */}
                 {(() => {
                   const sellers = Array.isArray(ingredient.sellers) ? ingredient.sellers : [];
@@ -823,6 +860,12 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                   <InfoLabel>{'Stock'}</InfoLabel>
                   <StockBadge status={getStockStatus(ingredient)}>
                     {ingredient.current_stock} {ingredient.unit}
+                    {/* 포장 환산은 기준양이 실제로 다를 때만 (1 pack = 1 g 같은 무의미한 괄호를 안 띄운다) */}
+                    {ingredient.package_unit && Number(ingredient.base_quantity) > 1 && (
+                      <span style={{ opacity: 0.7 }}>
+                        {' '}({(Number(ingredient.current_stock) / Number(ingredient.base_quantity) * Number(ingredient.package_quantity || 1)).toFixed(2)} {ingredient.package_unit})
+                      </span>
+                    )}
                   </StockBadge>
                 </InfoRow>
               </IngredientInfo>
@@ -912,7 +955,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
 
           <UIFormRow>
             <UIFormGroup>
-              <FormLabel>Stock Item Name *</FormLabel>
+              <FormLabel>{t('brand:productIngredientsTab.stockItemName')} *</FormLabel>
               <FormInput
                 type="text"
                 value={formData.name}
@@ -937,9 +980,13 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
             </UIFormGroup>
           </UIFormRow>
 
+          {/* 단위 다섯 칸 (docs/TRADE_STRUCTURE.md §2-2) — 취급단위·취급 기준숫자 / 기준단위·기준양 / 가격 */}
+          <div style={{ fontSize: 12, color: '#6B7280', margin: '4px 0 8px' }}>
+            {t('brand:productIngredientsTab.unitHelp')}
+          </div>
           <UIFormRow>
             <UIFormGroup>
-              <FormLabel>Base Quantity *</FormLabel>
+              <FormLabel>{t('brand:productIngredientsTab.baseQty')} *</FormLabel>
               <FormInput
                 type="number"
                 step="0.01"
@@ -951,13 +998,13 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Unit *</FormLabel>
+              <FormLabel>{t('brand:productIngredientsTab.usageUnit')} *</FormLabel>
               <FormSelect
                 value={formData.unit}
                 onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                 required
               >
-                <option value="">{'Select unit...'}</option>
+                <option value="">{t('brand:productIngredientsTab.selectUnit')}</option>
                 <option value="kg">kg</option>
                 <option value="g">g</option>
                 <option value="L">L</option>
@@ -972,7 +1019,38 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
 
           <UIFormRow>
             <UIFormGroup>
-              <FormLabel>Unit Cost ({selectedCurrency}) *</FormLabel>
+              <FormLabel>{t('brand:productIngredientsTab.packageQty')}</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={formData.package_quantity}
+                onChange={(e) => setFormData({ ...formData, package_quantity: e.target.value })}
+                placeholder="1"
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>{t('brand:productIngredientsTab.packageUnit')}</FormLabel>
+              <FormSelect
+                value={formData.package_unit}
+                onChange={(e) => setFormData({ ...formData, package_unit: e.target.value })}
+              >
+                <option value="">{t('brand:productIngredientsTab.selectUnit')}</option>
+                <option value="kg">kg</option>
+                <option value="g">g</option>
+                <option value="L">L</option>
+                <option value="ml">ml</option>
+                <option value="piece">piece</option>
+                <option value="pack">pack</option>
+                <option value="can">can</option>
+                <option value="bottle">bottle</option>
+              </FormSelect>
+            </UIFormGroup>
+          </UIFormRow>
+
+          <UIFormRow>
+            <UIFormGroup>
+              <FormLabel>{t('brand:productIngredientsTab.pricePerPackage')} ({selectedCurrency}) *</FormLabel>
               <FormInput
                 type="number"
                 step="0.01"
@@ -984,7 +1062,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>{'Minimum Stock'}</FormLabel>
+              <FormLabel>{t('brand:productIngredientsTab.minStock')}</FormLabel>
               <FormInput
                 type="number"
                 value={formData.min_stock}
@@ -1086,7 +1164,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                     />
                   </UIFormGroup>
                   <UIFormGroup>
-                    <FormLabel>Unit Conversion</FormLabel>
+                    <FormLabel>{t('brand:productIngredientsTab.unitConversion')}</FormLabel>
                     <FormInput
                       type="number"
                       step="0.001"
