@@ -241,6 +241,16 @@ async function main() {
   await ensureColumns({ apply: true });
   const t = await sequelize.transaction();
   const before = APPLY ? await fingerprint(t) : null;
+  // 실행 **전** 비호환 줄의 id 집합 — 증명 ③ 이 "늘지도 줄지도 않았음" 을 본다.
+  const incompatBefore = new Set();
+  for (const [tbl, jn] of [['recipe_ingredients', 'JOIN ingredients i ON i.id = ri.ingredient_id'],
+                           ['product_recipe_ingredients', 'JOIN product_ingredients i ON i.id = ri.ingredient_id']]) {
+    const rows = await q(`SELECT ri.id, ri.unit lu, i.unit iu FROM ${tbl} ri ${jn} WHERE ri.unit <> i.unit`, {}, t);
+    rows.forEach((r) => {
+      const k = `${r.lu}->${r.iu}`;
+      if (!['kg->g', 'g->kg', 'L->ml', 'ml->L'].includes(k)) incompatBefore.add(`${tbl}#${r.id}`);
+    });
+  }
   const report = { items: [], ings: [], summary: {} };
   try {
     const { items, ings, sellers, allItems } = await loadRows(t);
@@ -400,20 +410,41 @@ async function main() {
     //      운영 1건: ri 522 `Beef Miyeokguk` 0.07 kg ↔ 재료 g → 지금 0.07 g 만 빠지는 실결함.
     //      ⛔ 호환되지 않는 쌍(pack ↔ g 등)은 손대지 않는다 — 계수를 모른다.
     const COMPAT = { 'kg->g': 1000, 'g->kg': 0.001, 'L->ml': 1000, 'ml->L': 0.001 };
-    const d2 = await q(`SELECT ri.id, ri.quantity, ri.unit line_unit, i.unit ing_unit, r.name recipe_name, i.name ing_name
-                          FROM recipe_ingredients ri
-                          JOIN ingredients i ON i.id = ri.ingredient_id
-                          LEFT JOIN recipes r ON r.id = ri.recipe_id
-                         WHERE ri.unit <> i.unit`, {}, t);
-    for (const r of d2) {
-      const k = `${r.line_unit}->${r.ing_unit}`;
-      const f = COMPAT[k];
-      if (!f) { explicit.push({ what: `D-2 건너뜀(호환 아님 ${k}) — ri#${r.id} ${r.recipe_name} · ${r.ing_name}`, id: r.id, skipped: true }); continue; }
-      const next = Math.round(num(r.quantity) * f * 10000) / 10000;
-      explicit.push({ what: `D-2 ri#${r.id} ${r.recipe_name} · ${r.ing_name}: ${r.quantity} ${r.line_unit} → ${next} ${r.ing_unit}`, id: r.id });
-      if (APPLY) await run(`UPDATE recipe_ingredients SET quantity = :q, unit = :u WHERE id = :id`,
-        { q: next, u: r.ing_unit, id: r.id }, t);
+    // ⚠ **두 표 모두** 돈다 (2026-09-05 운영 실패에서 드러남 — 매장 표만 돌아 프로덕트 레시피
+    //   8줄(kg↔g)이 고쳐지지 않았고, 그 뒤 증명이 그걸 실패로 잡아 통째로 롤백됐다).
+    const SWEEPS = [
+      { table: 'recipe_ingredients', join: 'JOIN ingredients i ON i.id = ri.ingredient_id',
+        label: '매장', nameSql: 'i.name' },
+      { table: 'product_recipe_ingredients', join: 'JOIN product_ingredients i ON i.id = ri.ingredient_id',
+        label: '프로덕트', nameSql: 'i.name' },
+    ];
+    const incompatible = [];   // 계수를 모르는 쌍 — 사람이 정한다. 증명은 "늘지도 줄지도 않았음" 만 본다.
+    for (const sw of SWEEPS) {
+      const rows = await q(`SELECT ri.id, ri.quantity, ri.unit line_unit, i.unit ing_unit, ${sw.nameSql} ing_name
+                              FROM ${sw.table} ri ${sw.join}
+                             WHERE ri.unit <> i.unit`, {}, t);
+      for (const r of rows) {
+        const k = `${r.line_unit}->${r.ing_unit}`;
+        const f = COMPAT[k];
+        if (!f) {
+          incompatible.push({ table: sw.table, id: r.id, line: `${r.quantity} ${r.line_unit}`,
+                              ing: `${r.ing_name} (${r.ing_unit})`, pair: k });
+          explicit.push({ what: `D-2 사람 몫(호환 아님 ${k}) — ${sw.label} #${r.id} ${r.ing_name}: ${r.quantity} ${r.line_unit} ↔ 재료 ${r.ing_unit}`, id: r.id, skipped: true });
+          continue;
+        }
+        const next = Math.round(num(r.quantity) * f * 10000) / 10000;
+        explicit.push({ what: `D-2 ${sw.label} #${r.id} ${r.ing_name}: ${r.quantity} ${r.line_unit} → ${next} ${r.ing_unit}`, id: r.id });
+        if (APPLY) {
+          await run(`UPDATE ${sw.table} SET quantity = :q, unit = :u WHERE id = :id`,
+            { q: next, u: r.ing_unit, id: r.id }, t);
+          // ⚠ D-2 가 고친 줄도 집계에 더한다 — 안 더하면 딸린 표 건수 대조(fail-loud)가
+          //   "지문 4 vs 집계 3" 으로 잡아 통째로 롤백된다(픽스처 M 이 그렇게 잡았다).
+          counts.lines += 1;
+        }
+      }
     }
+    report.incompatible = incompatible;
+
     report.explicit = explicit;
     report.summary = { ...counts, items: items.length, ingredients: ings.length, explicit: explicit.length };
 
@@ -430,11 +461,35 @@ async function main() {
       const [b] = decidedIds.ing.length
         ? await q(`SELECT COUNT(*) n FROM ingredients WHERE package_unit IS NULL AND id IN (:ids)`, { ids: decidedIds.ing }, t)
         : [{ n: 0 }];
-      const [c] = await q(`SELECT COUNT(*) n FROM recipe_ingredients ri JOIN ingredients i ON i.id=ri.ingredient_id WHERE ri.unit <> i.unit`, {}, t);
-      const [d] = await q(`SELECT COUNT(*) n FROM product_recipe_ingredients pri JOIN product_ingredients pi ON pi.id=pri.ingredient_id WHERE pri.unit <> pi.unit`, {}, t);
-      console.log(`\n증명: 이번에 결정한 행 중 미기입 아이템 ${a.n} · 재료 ${b.n} (기대 0)`);
-      console.log(`      줄 단위 불일치 매장 ${c.n} · 프로덕트 ${d.n} (기대 0)`);
-      if (Number(a.n) || Number(b.n) || Number(c.n) || Number(d.n)) throw new Error('증명 실패 — 되돌린다');
+      // ⛔ 증명 ②③ (2026-09-05 운영 실패에서 다시 씀):
+      //   예전 조건은 `ri.unit <> i.unit` **전역 0** 이었다. 그런데 D-2 는 계수를 모르는 쌍
+      //   (g↔bottle, piece↔kg)을 **의도적으로 남긴다** — 스크립트가 자기가 남긴 것을 실패로
+      //   판정해 매번 롤백했다(운영 배포 1회 실패). 조건을 둘로 가른다:
+      //     ② 호환쌍(kg↔g·L↔ml) 불일치 = 0  — D-2 가 고쳤어야 하는 것
+      //     ③ 비호환 불일치 = 실행 전 목록과 **동일**  — 늘지도 줄지도 않았음
+      const COMPAT_KEYS = ['kg->g', 'g->kg', 'L->ml', 'ml->L'];
+      const incompatAfter = new Set();
+      let compatLeft = 0;
+      for (const [tbl, jn] of [['recipe_ingredients', 'JOIN ingredients i ON i.id = ri.ingredient_id'],
+                               ['product_recipe_ingredients', 'JOIN product_ingredients i ON i.id = ri.ingredient_id']]) {
+        const rows = await q(`SELECT ri.id, ri.unit lu, i.unit iu FROM ${tbl} ri ${jn} WHERE ri.unit <> i.unit`, {}, t);
+        rows.forEach((r) => {
+          const k = `${r.lu}->${r.iu}`;
+          if (COMPAT_KEYS.includes(k)) compatLeft += 1;
+          else incompatAfter.add(`${tbl}#${r.id}`);
+        });
+      }
+      const grew = [...incompatAfter].filter((x) => !incompatBefore.has(x));
+      const shrank = [...incompatBefore].filter((x) => !incompatAfter.has(x));
+      console.log(`증명 ② 호환쌍 불일치 ${compatLeft} (기대 0)`);
+      console.log(`증명 ③ 비호환 불일치 ${incompatAfter.size} = 실행 전 ${incompatBefore.size} · 늘어남 ${grew.length} · 줄어듦 ${shrank.length} (기대 0/0)`);
+      if (report.incompatible?.length) {
+        console.log('  사람이 정해야 하는 줄 (계수를 데이터로 알 수 없다):');
+        report.incompatible.forEach((r) => console.log(`    · ${r.table}#${r.id} ${r.line} ↔ ${r.ing}`));
+      }
+      if (Number(a.n) || Number(b.n)) throw new Error('증명 ① 실패(미기입 남음) — 되돌린다');
+      if (compatLeft > 0) throw new Error(`증명 ② 실패(호환쌍 불일치 ${compatLeft}건 남음) — 되돌린다`);
+      if (grew.length || shrank.length) throw new Error('증명 ③ 실패(비호환 목록이 바뀜) — 되돌린다');
 
       // ⛔ **대조는 commit 앞에서 한다** (2026-09-05 Fable 적발).
       //   예전 코드는 commit 뒤에 대조하고 exit(1) 했다 — 배포는 멈추지만 **데이터는 이미 커밋된 뒤**라

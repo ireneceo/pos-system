@@ -528,7 +528,14 @@ while IFS= read -r MIG_NAME; do
         SPRINT_OUTPUT=$(ssh -n $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1")
         SPRINT_EXIT=$?
         if [ $SPRINT_EXIT -ne 0 ]; then
-            echo "$SPRINT_OUTPUT" | tail -20
+            # ⚠ 2026-09-05: 여기서 로그가 끊겨 **왜 죽었는지 배포 로그만 보고는 알 수 없었다.**
+            #   `error` 가 즉시 종료하는데 그 앞의 echo 가 파이프(`| tail`)라 버퍼에 남아 사라졌다.
+            #   실패 사유는 배포 로그에 반드시 남아야 한다 — fail-closed 는 맞되 fail-silent 금지
+            #   ([[reference_deploy_gate_fail_loud]]). 파이프를 없애고 직접 찍는다.
+            echo ""
+            echo "─── $MIG_NAME 실패 출력 (마지막 25줄) ───"
+            printf '%s\n' "$SPRINT_OUTPUT" | tail -25
+            echo "───────────────────────────────────────"
             error "🗄️ 마이그레이션 실패: $MIG_NAME (exit $SPRINT_EXIT) — 운영 스키마가 어중간해질 수 있다. 원인 수정 후 재배포."
         fi
         success "$MIG_NAME completed"
