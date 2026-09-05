@@ -393,6 +393,10 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
   // ── Supplier Products (seller-sources) — 발주 연결용 매핑 (editing existing item only) ──
   const [sellerSources, setSellerSources] = useState<SellerSource[]>([]);
   const [catalog, setCatalog] = useState<CatalogRow[]>([]);
+  // 카탈로그가 상한에 잘렸는지 — 서버가 `meta.truncated` 로 알려 준다.
+  //   2026-09-05: 상한 200 에 운영 289건이 걸려 89건이 **조용히** 빠져 있었다(Irene 신고의 원인).
+  //   상한은 남기되(무한 목록 방지) 잘리면 반드시 화면에 보이게 한다.
+  const [catalogMeta, setCatalogMeta] = useState<{ total: number; shown: number; truncated: boolean } | null>(null);
   const [sourceForm, setSourceForm] = useState<{ seller_product_id: number | null; unit_price: string; unit_conversion: string; is_preferred: boolean }>({
     seller_product_id: null,
     unit_price: '',
@@ -528,9 +532,11 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
     try {
       const res = await fetchAPI('/api/supplier-catalog');
       setCatalog(res?.success && Array.isArray(res.data) ? res.data : []);
+      setCatalogMeta(res?.meta && res.meta.truncated ? res.meta : null);
     } catch (error) {
       console.error('Failed to load supplier catalog:', error);
       setCatalog([]);
+      setCatalogMeta(null);
     }
   }, []);
 
@@ -1130,6 +1136,14 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
               <div style={{ background: '#F4F6F9', borderRadius: '8px', padding: '12px' }}>
                 <UIFormGroup>
                   <FormLabel>Add supplier product</FormLabel>
+                  {catalogMeta && (
+                    <div style={{ fontSize: '12px', color: '#B45309', marginBottom: '6px' }}>
+                      {t('brand:productIngredients.catalogTruncated', {
+                        shown: catalogMeta.shown, total: catalogMeta.total,
+                        defaultValue: '{{shown}} of {{total}} products loaded — older items are not in this list yet.'
+                      })}
+                    </div>
+                  )}
                   <SearchableSelect
                     options={catalog.map(c => ({
                       value: c.id,

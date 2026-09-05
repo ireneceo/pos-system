@@ -732,5 +732,8 @@
   "productIngredientsTab.unitConversion": "Conversion (1 seller unit = ? usage unit)",
   "productIngredientsTab.unitHelp": "Buy by package, use by weight — e.g. Usage Unit g, Base Qty 2000, Package Unit pack, Package Qty 1, price = one pack.",
   "productIngredientsTab.costPerUsageUnit": "Cost per usage unit",
-  "productIngredientsTab.pendingSpec": "Not set"
+  "productIngredientsTab.pendingSpec": "Not set",
+  "productIngredients": {
+    "catalogTruncated": "{{shown}} of {{total}} products loaded — older items are not in this list yet."
+  }
 }

@@ -569,6 +569,10 @@ router.post('/supplier-contracts/:contractId/terminate', async (req, res) => {
 // — Cart drawer "카탈로그" tab 용. 내 active contract supplier 들의 모든 상품 통합.
 //   각 상품에 already_mapped + mapped_ingredient_id 표시 (내 ingredient 와 연결 여부).
 // ============================================
+// 카탈로그 상한. 200 이었을 때 운영에서 89건이 조용히 잘렸다(2026-09-05). 없애지 않고 올린다 —
+//   응답에 `meta.truncated` 가 함께 나가므로 다시 잘리면 화면이 알려 준다.
+const CATALOG_LIMIT = 2000;
+
 router.get('/supplier-catalog', async (req, res) => {
   try {
     if (!req.buyerEntity) {
@@ -638,9 +642,16 @@ router.get('/supplier-catalog', async (req, res) => {
         }
       ],
       order: [['created_at', 'DESC']], // 최신 등록 순 (newest first) — My Stock 탭과 일관
-      limit: 200,
+      // 2026-09-05: 여기가 `200` 이었다. 운영 brand#1 은 계약 공급업체 활성 상품이 **289건**이라
+      //   오래된 **89건이 조용히 잘려** 화면 검색에 아예 안 떴다(17개 공급업체에 걸침).
+      //   Irene 신고 "Lee's Fandbee Frozen 왜 안나오는 거야?" 의 확정 원인 — 그 5건은 219~283위였다.
+      //   ⛔ 상한을 **없애지는 않는다** — 무한 목록은 다음 사고다([[reference_invoice_list_issuer_bloat]]).
+      //   대신 넉넉히 올리고, 잘렸으면 `meta.truncated` 로 **보이게** 한다. 정석(서버 검색)은 후속.
+      limit: CATALOG_LIMIT,
       subQuery: false
     });
+    // 상한 적용 **전** 총계 — 잘렸는지 판정하는 유일한 근거다.
+    const catalogTotal = await SupplierProduct.count({ where });
 
     // 3. 매핑 여부 lookup — 내 ingredient 와 IngredientSellerProduct 매핑된 supplier_product_id 모음
     // ingredient 매핑 lookup — buyer entity 별로 적용 + 3 seller_type (supplier/brand/foodcourt) 모두
@@ -858,6 +869,14 @@ router.get('/supplier-catalog', async (req, res) => {
     res.json({
       success: true,
       data: [...data, ...extraData],
+      // 잘렸는지를 응답에 담는다 — 화면이 "N개 중 M개만 보임"을 띄울 수 있어야
+      //   같은 사고(조용한 절단)가 다시 나도 사람이 안다. `total` 은 공급업체 상품 기준(상한 전).
+      meta: {
+        total: catalogTotal,
+        shown: data.length,
+        limit: CATALOG_LIMIT,
+        truncated: data.length < catalogTotal
+      },
       filters: {
         categories: categories.map(c => ({ id: c.id, name: c.name, emoji: c.emoji })),
         suppliers: [

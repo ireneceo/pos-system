@@ -732,5 +732,8 @@
   "productIngredientsTab.unitConversion": "换算 (1 卖家单位 = ? 使用单位)",
   "productIngredientsTab.unitHelp": "按包装采购、按重量使用 — 例如使用单位 g、使用基准数量 2000、基准单位 pack、基准量 1，价格为 1 pack 的价格。",
   "productIngredientsTab.costPerUsageUnit": "每使用单位成本",
-  "productIngredientsTab.pendingSpec": "未确定"
+  "productIngredientsTab.pendingSpec": "未确定",
+  "productIngredients": {
+    "catalogTruncated": "已加载 {{total}} 个商品中的 {{shown}} 个 — 较早的商品尚未列出。"
+  }
 }
