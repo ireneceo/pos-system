@@ -1180,8 +1180,11 @@ router.post('/external-suppliers/:id/products', async (req, res) => {
   try {
     const built = buildProductFields(req.body || {});
     if (built.error) return res.status(400).json({ success: false, message: built.error });
-    const count = await SupplierProduct.count({ where: { supplier_company_id: sc.id }, paranoid: false });
-    const sku = req.body.sku ? sanitizeString(String(req.body.sku)) : `SP-${sc.id}-${String(count + 1).padStart(4, '0')}`;
+    // 2026-09-06: `count + 1` 제거 — 지운 번호가 다시 나온다. 채번 단일 소스 = utils/codeGenerator.js.
+    const { generateCode } = require('../utils/codeGenerator');
+    const sku = req.body.sku ? sanitizeString(String(req.body.sku))
+      : await generateCode(SupplierProduct, `SP-${sc.id}`, {
+          field: 'sku', padLength: 4, whereClause: { supplier_company_id: sc.id } });
     const product = await SupplierProduct.create({ supplier_company_id: sc.id, sku, current_stock: 0, low_stock_threshold: 0, sort_order: 0, ...built.value });
     const created = await SupplierProduct.findByPk(product.id, { include: [{ model: SupplierProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] }] });
     res.status(201).json({ success: true, data: created });

@@ -271,12 +271,13 @@ class InvoiceScheduler {
     // Generate invoice number
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
-    const count = await Invoice.count({
-      where: {
-        invoice_number: { [Op.like]: `INV-${year}${month}%` }
-      }
+    // 2026-09-06: `count + 1` 제거 — 인보이스를 지우고 새로 발행하면 이미 쓰인 번호가 다시 나온다.
+    //   형식(`INV-2026090001`, 구분자 없음)은 그대로 유지한다 — separator:'' 로 넘긴다.
+    //   범위는 연·월이 접두에 들어 있어 달마다 자동으로 갈린다.
+    const { generateCode } = require('../utils/codeGenerator');
+    const invoiceNumber = await generateCode(Invoice, `INV-${year}${month}`, {
+      field: 'invoice_number', padLength: 4, separator: ''
     });
-    const invoiceNumber = `INV-${year}${month}${String(count + 1).padStart(4, '0')}`;
 
     // Due date: custom (e.g. trial end) or billing start date (prepaid)
     const dueDate = customDueDate ? new Date(customDueDate) : new Date(billingStart);

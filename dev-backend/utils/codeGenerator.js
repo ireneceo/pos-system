@@ -35,17 +35,17 @@
  * 그 범위·접두의 **기존 최대 번호**를 읽는다 — 시퀀스 씨앗용.
  * ⚠ 소프트삭제된 행도 센다(`paranoid: false`). 지운 번호를 다시 내주지 않기 위해서다.
  */
-async function maxExistingNo(Model, prefix, countWhere, field) {
+async function maxExistingNo(Model, prefix, countWhere, field, sep = '-') {
   const { Op } = require('sequelize');
   const rows = await Model.findAll({
-    where: { ...countWhere, [field]: { [Op.like]: `${prefix}-%` } },
+    where: { ...countWhere, [field]: { [Op.like]: `${prefix}${sep}%` } },
     attributes: [field],
     paranoid: false,
     raw: true
   }).catch(() => []);
   let max = 0;
   for (const r of rows) {
-    const m = String(r[field] || '').match(new RegExp(`^${prefix}-(\\d+)$`));
+    const m = String(r[field] || '').match(new RegExp(`^${prefix}${sep}(\\d+)$`));
     if (m) { const n = parseInt(m[1], 10); if (n > max) max = n; }
   }
   return max;
@@ -100,7 +100,9 @@ async function nextSeq(scopeType, scopeId, prefix, seed, transaction) {
 }
 
 async function generateCode(Model, prefix, options = {}) {
-  const { ownerType, ownerId, whereClause, padLength = 3, field = 'code', transaction } = options;
+  // `separator` — 접두와 번호 사이 글자. 기본 '-'. 인보이스 번호처럼 `INV-2026090001`
+  //   (구분자 없음) 형식을 쓰는 곳이 있어 형식을 바꾸지 않고 옮기려면 이 옵션이 필요하다(2026-09-06).
+  const { ownerType, ownerId, whereClause, padLength = 3, field = 'code', transaction, separator = '-' } = options;
 
   let countWhere = whereClause || {};
   let scopeType = 'global', scopeId = 0;
@@ -122,6 +124,11 @@ async function generateCode(Model, prefix, options = {}) {
     if (whereClause.brand_id) { scopeType = 'brand'; scopeId = Number(whereClause.brand_id); }
     else if (whereClause.restaurant_id) { scopeType = 'restaurant'; scopeId = Number(whereClause.restaurant_id); }
     else if (whereClause.owner_user_id) { scopeType = 'user'; scopeId = Number(whereClause.owner_user_id); }
+    // `owner_id` — general_stock 의 BG 계정 소유 행(restaurant_id 가 null 인 것). 2026-09-06 Fable 적발:
+    //   이 분기가 없어 **전 BG 가 `global:GeneralStock / GS` 시퀀스 하나를 나눠 썼다.** 중복은 안 나도
+    //   BG#2 의 다음 번호가 자기 최대 다음이 아니라 BG#1 이 올려 둔 번호 다음이 된다 — 체계가 아니다.
+    //   씨앗이 첫 호출자 범위의 최대값이라, 다른 owner 가 그보다 100 넘게 큰 번호를 가지면 발급이 던진다.
+    else if (whereClause.owner_id) { scopeType = 'user'; scopeId = Number(whereClause.owner_id); }
     else if (whereClause.foodcourt_id) { scopeType = 'foodcourt'; scopeId = Number(whereClause.foodcourt_id); }
   }
   const scopeKey = `${scopeType}:${Model.name || 'model'}`;
@@ -132,12 +139,12 @@ async function generateCode(Model, prefix, options = {}) {
   const [seq] = await sequelize.query(
     `SELECT last_no FROM code_sequences WHERE scope_type=:st AND scope_id=:sid AND prefix=:px`,
     { type: QueryTypes.SELECT, replacements: { st: scopeKey, sid: scopeId, px: prefix }, transaction });
-  const seed = seq ? Number(seq.last_no) : await maxExistingNo(Model, prefix, countWhere, field);
+  const seed = seq ? Number(seq.last_no) : await maxExistingNo(Model, prefix, countWhere, field, separator);
 
   // 발급 후 그 코드가 이미 있으면(수기 입력이 앞서 간 경우) 다음 번호로. 상한 100.
   for (let i = 0; i < 100; i += 1) {
     const n = await nextSeq(scopeKey, scopeId, prefix, seed, transaction);
-    const code = `${prefix}-${String(n).padStart(padLength, '0')}`;
+    const code = `${prefix}${separator}${String(n).padStart(padLength, '0')}`;
     const dup = await Model.count({ where: { ...countWhere, [field]: code }, paranoid: false, transaction }).catch(() => 0);
     if (!dup) return code;
   }

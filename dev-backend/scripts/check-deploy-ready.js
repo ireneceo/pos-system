@@ -120,13 +120,24 @@ const swNow = (swSrc.match(/const SW_VERSION\s*=\s*['"]([^'"]+)['"]/) || [])[1] 
 //   "SW 를 올려라"가 뜬다. 시각으로는 못 고친다 — 커밋을 기록해도 그 시점 HEAD 가 여전히 기록 커밋 이전이다.
 //   그래서 스냅샷이 이미 갖고 있는 **파일별 sha256**(`manifest.files`, dev-frontend/src·public 포함
 //   — 배포 rsync 범위와 같은 목록)과 **현재 트리의 같은 해시**를 비교한다. 커밋 여부와 무관하다.
-let frontendChanged = /dev-frontend\//.test(sh('git status --porcelain'));
+// ⚠ `dev-frontend/` 아래라고 **다 번들에 들어가는 건 아니다**(2026-09-06). Playwright 스펙
+//   (`dev-frontend/e2e/`)은 테스트 파일이라 빌드 산출물에 포함되지 않는데도 "프론트 변경"으로
+//   잡혀 SW 버전을 올리라고 했다 — 올리면 전 매장이 이유 없이 번들을 다시 받는다.
+//   09-05 에 "커밋 시각 → 파일 내용 지문"으로 고친 것과 같은 부류(판정 기준이 실제와 다름)다.
+//   ⛔ 좁히는 건 최소로 — 빌드에 확실히 안 들어가는 것만 뺀다. 애매하면 프론트 변경으로 본다.
+const NON_BUNDLE_FRONT = /^dev-frontend\/e2e\//;
+const isFrontBundle = (f) => f.startsWith('dev-frontend/') && !NON_BUNDLE_FRONT.test(f);
+let frontendChanged = sh('git status --porcelain')
+  .split('\n')
+  .map((l) => l.slice(3).trim())          // "?? path" / " M path" → path
+  .filter(Boolean)
+  .some(isFrontBundle);
 if (!frontendChanged) {
   try {
     const { diffAgainstLastDeploy } = require('./deploy-manifest');
     const d = diffAgainstLastDeploy();
     if (d) {
-      frontendChanged = [...d.changed, ...d.added, ...d.removed].some((f) => f.startsWith('dev-frontend/'));
+      frontendChanged = [...d.changed, ...d.added, ...d.removed].some(isFrontBundle);
     } else {
       notes.push('배포 스냅샷(.claude/deploy-manifest.json)이 없어 프론트 변경 판정이 미커밋 기준뿐입니다.');
     }

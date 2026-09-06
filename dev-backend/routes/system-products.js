@@ -6,9 +6,11 @@ const { authenticateToken, requireRole } = require('../middleware/auth');
 /**
  * Generate unique SKU: SYS-001, SYS-002...
  */
+// 2026-09-06: `count + 1` 제거 — 행을 지우고 새로 만들면 이미 쓰인 번호가 다시 나온다.
+//   채번 단일 소스 = utils/codeGenerator.js 의 원자 카운터.
 const generateSKU = async () => {
-  const count = await SystemProduct.count();
-  return `SYS-${String(count + 1).padStart(3, '0')}`;
+  const { generateCode } = require('../utils/codeGenerator');
+  return generateCode(SystemProduct, 'SYS', { field: 'sku' });
 };
 
 // ============================================

@@ -69,13 +69,13 @@ function nonNegNumber(val, fallback) {
 }
 
 /** Generate a unique product SKU within the supplier company scope. */
+// 2026-09-06: `count + 1` 제거 — 상품을 지우고 새로 만들면 이미 쓰인 SKU 가 다시 나왔다.
+//   접두에 회사 id 를 넣어(`SP-5`) 회사별로 시퀀스가 갈린다 — 형식(`SP-5-0001`)은 그대로.
 async function generateSupplierProductSKU(supplierCompanyId) {
-  const prefix = 'SP';
-  const count = await SupplierProduct.count({
-    where: { supplier_company_id: supplierCompanyId },
-    paranoid: false
+  const { generateCode } = require('../utils/codeGenerator');
+  return generateCode(SupplierProduct, `SP-${supplierCompanyId}`, {
+    field: 'sku', padLength: 4, whereClause: { supplier_company_id: supplierCompanyId }
   });
-  return `${prefix}-${supplierCompanyId}-${String(count + 1).padStart(4, '0')}`;
 }
 
 // All endpoints below require: auth → supplier scope → module gate

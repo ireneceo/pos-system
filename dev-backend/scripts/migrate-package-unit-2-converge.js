@@ -50,6 +50,11 @@ const run = (sql, r, t) => sequelize.query(sql, { replacements: r, transaction: 
 // `ingredient_seller_products.unit_conversion` 은 DECIMAL(10,4) (models/IngredientSellerProduct.js).
 // 표현 가능한 최대값 = 999,999.9999. 이 위로 쓰면 MySQL 이 거부하고 트랜잭션이 통째로 롤백된다.
 const CONV_MAX = 999999.9999;
+// 같은 이유로 곱셈이 닿는 다른 컬럼들의 표현 한계 (2026-09-06).
+//   recipe_ingredients.quantity · product_recipe_ingredients.quantity = DECIMAL(10,4)
+//   ingredients.current_stock · product_ingredients.current_stock     = DECIMAL(10,2)
+const QTY_MAX = 999999.9999;
+const STOCK_MAX = 99999999.99;
 
 const num = (v) => (v == null ? null : parseFloat(v));
 const round2 = (v) => Math.round(v * 100) / 100;
@@ -267,6 +272,18 @@ async function main() {
       if (s.ingredient_id) (sellerByIng.get(s.ingredient_id) || sellerByIng.set(s.ingredient_id, []).get(s.ingredient_id)).push(s);
     });
 
+    // 레시피 줄 수량 — 곱셈 전 검산에 쓴다(2026-09-06). 실제 UPDATE 는 `ingredient_id` 로
+    //   테이블을 갈라 하므로 여기서도 같은 기준으로 담는다(아이템=product_recipe_ingredients).
+    const lineQtyByItem = new Map(), lineQtyByIng = new Map();
+    for (const [tbl, bucket] of [['product_recipe_ingredients', lineQtyByItem],
+                                 ['recipe_ingredients', lineQtyByIng]]) {
+      const rows = await q(`SELECT id, ingredient_id, quantity, unit FROM ${tbl}`, {}, t);
+      rows.forEach((r) => {
+        if (!bucket.has(r.ingredient_id)) bucket.set(r.ingredient_id, []);
+        bucket.get(r.ingredient_id).push(r);
+      });
+    }
+
     const counts = { name: 0, mirror: 0, seller: 0, copy: 0, converted: 0, baseOnly: 0, lines: 0, mappings: 0 };
     // 아이템 판정을 기억해 거울에 그대로 물려준다 (아이템 → 거울 한 방향)
     const itemPlans = new Map();
@@ -330,12 +347,28 @@ async function main() {
         const wouldRatio = plan.base_quantity / oldBase;
         const over = ((isItem ? sellerByItem.get(row.id) : sellerByIng.get(row.id)) || [])
           .filter((sp) => String(sp.sp_unit || '').toLowerCase() === String(row.unit).toLowerCase())
-          .map((sp) => ({ id: sp.id, conv: num(sp.unit_conversion) || 0 }))
-          .filter((m) => Math.abs(m.conv * wouldRatio) > CONV_MAX);
+          .map((sp) => ({ what: `매핑 #${sp.id} conv ${num(sp.unit_conversion) || 0}`,
+                          v: (num(sp.unit_conversion) || 0) * wouldRatio, max: CONV_MAX }))
+          .filter((m) => Math.abs(m.v) > m.max);
+
+        // 곱셈이 닿는 나머지 두 곳도 같은 방식으로 검산한다 (2026-09-06).
+        //   매핑만 보던 1차 수정은 줄·재고가 넘치면 여전히 롤백으로 배포를 세운다.
+        //   컬럼이 거부하면 이제 사유가 로그에 보이지만(배포 스크립트 수정), 애초에
+        //   기대 밖 값이면 쓰지 않고 사람 몫으로 넘기는 편이 낫다.
+        const myLines = (isItem ? lineQtyByItem.get(row.id) : lineQtyByIng.get(row.id)) || [];
+        for (const ln of myLines) {
+          const v = (num(ln.quantity) || 0) * wouldRatio;
+          if (Math.abs(v) > QTY_MAX) over.push({ what: `레시피 줄 #${ln.id} ${ln.quantity} ${ln.unit}`, v, max: QTY_MAX });
+        }
+        const stockAfter = (num(row.current_stock) || 0) * wouldRatio;
+        if (Math.abs(stockAfter) > STOCK_MAX) {
+          over.push({ what: `재고 ${num(row.current_stock)}`, v: stockAfter, max: STOCK_MAX });
+        }
+
         if (over.length) {
           const w = over[0];
-          const why = `리뷰(매핑 #${w.id} conv ${w.conv} × ratio ${wouldRatio} = ${(w.conv * wouldRatio).toExponential(2)}`
-            + ` — 표현 범위 ${CONV_MAX} 초과, 매핑 값이 의심스럽다)`
+          const why = `리뷰(${w.what} × ratio ${wouldRatio} = ${w.v.toExponential(2)}`
+            + ` — 표현 범위 ${w.max} 초과, 값이 의심스럽다)`
             + (over.length > 1 ? ` 외 ${over.length - 1}건` : '');
           plan.review = plan.review ? `${plan.review} · ${why}` : why;
           plan.unit = row.unit;            // 되돌린다 → unitChanged=false → 매핑·줄·재고 전부 무접촉
@@ -348,8 +381,10 @@ async function main() {
       const changed = unitChanged || baseOnly;
       const ratio = unitChanged ? plan.base_quantity / oldBase : 1;
       counts[plan.source] += 1;
-      if (changed) counts.converted += 1;
-      if (baseOnly) counts.baseOnly += 1;
+      // ⚠ 리뷰로 강등된 행은 **아무것도 적용되지 않는다** — 요약에서 "바뀌는 행"으로 세면
+      //   매핑 0·줄 0 과 나란히 찍혀 오해를 준다(2026-09-06 실측: `바뀌는 행 1 · 매핑 0 · 줄 0`).
+      if (changed && !plan.review) counts.converted += 1;
+      if (baseOnly && !plan.review) counts.baseOnly += 1;
 
       const entry = {
         kind, id: row.id, code: row.code || null, restaurant_id: row.restaurant_id || null, name: row.name,

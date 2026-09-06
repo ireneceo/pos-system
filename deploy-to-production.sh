@@ -407,10 +407,15 @@ fi
 # 6. Sync backend to production
 # ──────────────────────────────────────────
 log "Syncing backend to production server..."
+# ⚠ `logs/` 통째 제외 (2026-09-06). `--exclude '*.log'` 만으로는 부족했다 — 운영이 스스로
+#   남기는 **감사 로그가 .json** 이라(예: converge-unit-model-*.json) `--delete` 가 그걸
+#   지웠다. 로그는 각 서버의 런타임 산출물이지 배포물이 아니다. 개발기의
+#   `logs/deploy-<ts>/` 도 운영에 갈 이유가 없다.
 BACKEND_RSYNC_LOG=$(rsync -avz --delete \
     --exclude 'node_modules' \
     --exclude '.env' \
     --exclude 'uploads' \
+    --exclude 'logs/' \
     --exclude '*.log' \
     $LOCAL_DEV_BACKEND/ $PROD_SERVER:$REMOTE_PROD_BACKEND/ 2>&1)
 BACKEND_RSYNC_EXIT=$?

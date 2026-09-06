@@ -90,8 +90,10 @@ router.post('/:restaurantId/inventory/general-stock', async (req, res) => {
     // Auto-generate code if not provided
     let finalCode = code;
     if (!finalCode) {
-      const count = await GeneralStock.count({ where: { restaurant_id: restaurantId } });
-      finalCode = `GS-${String(count + 1).padStart(3, '0')}`;
+      // 2026-09-06: `count + 1` 제거 — 행을 지우고 새로 만들면 이미 쓰인 번호가 다시 나온다.
+      //   채번 단일 소스 = utils/codeGenerator.js 의 원자 카운터(범위는 whereClause 에서 뽑는다).
+      const { generateGeneralStockCode } = require('../utils/codeGenerator');
+      finalCode = await generateGeneralStockCode(GeneralStock, restaurantId);
     }
 
     const newItem = await GeneralStock.create({

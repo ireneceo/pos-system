@@ -40,6 +40,16 @@ case "$ROLE" in
       echo "          에뮬레이터 종료 후 다시 빌드하세요. (확인: pgrep -af qemu-system)"
       exit 1
     fi
+    # 2026-09-06: heavy_node_running() 이 **emulator 분기에만** 걸려 있었다. 그래서
+    #   같은 박스의 다른 제품 빌드(PlanQ 등)가 4GB 를 쓰고 있어도 Purple 빌드가 그대로 떴다.
+    #   2026-08-20 에 "이름이 아니라 실제 사용량으로 판정한다"고 함수를 만들어 놓고 정작
+    #   빌드 쪽에 안 붙인 것 — 겹침 방지는 **양방향이어야** 의미가 있다.
+    if heavy_node_running; then
+      echo "GATE 차단: 메모리를 크게 쓰는 node 작업(다른 빌드 등)이 실행 중입니다 — 겹치면 서버가 얼어붙습니다."
+      echo "          해당 작업 완료 후 다시 빌드하세요. 지금 도는 것:"
+      ps -eo pid,rss,comm,args --no-headers | awk '$3 == "node" && $2 > 1536000 { line=""; for (i=4; i<=NF && i<=9; i++) line = line " " $i; printf "            %sMB  pid %s %s\n", int($2/1024), $1, line }'
+      exit 1
+    fi
     MIN=2500
     ;;
   emulator)
