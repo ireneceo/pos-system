@@ -1,6 +1,7 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-04 (**v3.84 · 화면 정돈 + 직접 배송**). 재고아이템·프로덕트 화면의 버튼·배지가 카드 밖으로 나가던 것을 잡고, 배송사에 직접 배송을 넣었다. 직전 v3.83 은 **재고아이템 다이렉트** — 프로덕트·메뉴가 재고아이템을 직접 가리키고 1개 팔면 1개 빠진다(자동 레시피 경로 폐기).
+> **최종 업데이트:** 2026-09-06 (**SW 4.85 · 하루 3회 배포** — 메일 반송 근절 / 배포 침묵 결함 / 안정화 묶음). 자세한 내역은 아래 "완료" 섹션 3개.
+> 이전 기록: 2026-09-04 (**v3.84 · 화면 정돈 + 직접 배송**). 재고아이템·프로덕트 화면의 버튼·배지가 카드 밖으로 나가던 것을 잡고, 배송사에 직접 배송을 넣었다. 직전 v3.83 은 **재고아이템 다이렉트** — 프로덕트·메뉴가 재고아이템을 직접 가리키고 1개 팔면 1개 빠진다(자동 레시피 경로 폐기).
 > Irene 신고 *"레시피랑 연결되는 재료가 스톡아이템인데 왜 쉐어드재료를 또 만든건데?"* 의 원인은 **프로덕트를 등록하면 그 프로덕트를 재료로 한 줄 더 자동 복제하던 기능**이었다.
 > 2026-06-08(26건)·07-05(59건)에 그렇게 생긴 두 번째 줄 때문에 **레시피는 옛 줄(1~2월 생성, g)** 을, **발주·재고는 새 줄(piece)** 을 쓰게 갈라졌다.
 > 시각 기록이 증명한다 — 1~2월 재료 56건 중 53건이 레시피에 붙어 있고, 6/8 이후 만든 89건 중 붙은 것은 1건. **레시피 연결이 끊긴 적은 없다**(고아 0). 매장(RA)·프로덕트 레시피는 처음부터 정상이었다.
@@ -9306,6 +9307,68 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 
 ---
 
+
+## ✅ 완료: 메일 반송 근절 + 배포 침묵 결함 + 안정화 묶음 (2026-09-06)
+
+하루에 운영 배포 3회. 시작은 Irene 신고 — `demo-brand@purplehere.com` 로 "Address not found" 반송이 반복 도착.
+
+### ① 메일 반송 — 원인은 관문이 아니라 **거짓 데이터** (커밋 `2e879df10`)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 원인 확정 | 그 계정은 메일함이 없어 인증 링크를 누른 적이 없는데 `email_verified=1` 이 박혀 있었다. "인증 안 했으면 발송 안 한다" 기준은 코드에 멀쩡했고 **플래그가 배신**했다. 2026-09-04 데모 차단은 `emailService` 한쪽에만 들어가 알림 경로(라우트 37곳)는 그대로 샜다 | ✅ 완료 |
+| 데이터 진실화 | `migrate-demo-accounts-unverified.js` — `is_demo=1` 의 verified 를 0 으로. 멱등, 배포 레지스트리 등록 | ✅ 완료 |
+| 시드 고정 | 데모 유저 upsert 4곳 `email_verified:false` | ✅ 완료 |
+| 뒷문 2곳 폐쇄 | `skip_verification` 옵션 · Supplier Staff "trusted" — 항상 미인증 생성 + 인증메일 | ✅ 완료 |
+
+⛔ 거짓 플래그 위에 데모 관문을 더 얹는 안은 **증상 패치로 기각**(Fable).
+
+### ② 배포가 두 번 침묵으로 죽던 것 (커밋 `7be034d36`)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| `set -e` 삼킴 | `SPRINT_OUTPUT=$(ssh … node $MIG)` 가 마이그 종료코드를 그대로 가져 **그 줄에서 스크립트가 끝났다**. 아래 "실패 출력 25줄" 블록은 **도달 불가**였다 → `\|\| SPRINT_EXIT=$?` 형태(면제) | ✅ 완료 |
+| 마이그 출력 보존 | 성공·실패 무관 `logs/deploy-<ts>/<mig>.log` + 성공 시 마지막 3줄 인라인 | ✅ 완료 |
+| converge 오버플로 | 운영 ing#970 매핑 3건이 `unit_conversion=250,000`(오염값) × ratio 500 = 1.25e8 → DECIMAL(10,4) 초과 → 롤백. **한 매장 오염 행이 전 매장 배포를 세웠다.** 곱하기 전 검산 후 범위 초과면 사람 몫으로 강등(컬럼 확대·클램프 금지) | ✅ 완료 |
+| 리뷰 행 무접촉 | 사람 몫으로 표시된 행의 **레시피 줄·매핑만 환산되던** 구조 차단 | ✅ 완료 |
+| 채번 잔여 7곳 | 원자 카운터로 이관. 인보이스 형식 보존 위해 `separator` 옵션 신설 | ✅ 완료 |
+| 달력 실브라우저 검사 | 월 라벨이 브라우저 존에 밀리는지. **방향이 중요** — UTC 보다 뒤진 존에서만 밀린다 | ✅ 완료 |
+
+### ③ 안정화 묶음 (커밋 `36be463d5`, SW 4.85)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Brand Manager 접근 | BM 을 `owner_id` 로 찾아 항상 0건/403 이던 것을 형제 판정식(`user.brand_id`)으로 | ✅ 완료 |
+| 돈 경계 잠금 | `GET /api/brands` 는 Brand 행 통째(결제·은행·구독)를 내려준다 → BM 에게는 **allowlist 투영**만(exclude 아님 = 컬럼이 늘어도 안 샘) | ✅ 완료 |
+| 결제설정 메뉴 숨김 | 프론트 가드는 **세 겹**이고 사이드바는 `useAllowedRoutes` 가 정한다. 거부 목록을 `utils/roleRouteDeny.ts` 한 파일로 모아 두 겹이 같이 읽게 함 | ✅ 완료 |
+| 그림자 라우트 5개 삭제 | 앞 파일이 먼저 잡아 한 줄도 안 돌던 코드. 승자를 잠깐 치우니 **그림자가 200 응답**(되살아나는 위험 실증) | ✅ 완료 |
+| 도달 불가 화면 2개 삭제 | 어느 역할로도 못 여는 죽은 화면(안에 원가 계산 결함 잔존) | ✅ 완료 |
+| 매장 재료 다섯 칸 | 화면 2칸 + **서버가 두 칸을 아예 안 받던 것**까지. `base_quantity` 0·음수를 서버가 400 으로 거부 | ✅ 완료 |
+| 미연결 상품 관측 | 인스펙션 `R-SC-020`(warn, 비차단) — 레시피·재료 미연결 + 재고 0 인 활성 상품 매장별 집계 | ✅ 완료 |
+
+**Fable 판정**: 상품 751 중 **687 미연결(91%)** 은 코드 결함이 아니라 **미입력 데이터**. 이름으로 자동 연결 가능한 것은 운영 전체 **2건**뿐 — 사람이 레시피를 넣어야 한다. `track_stock` 은 2026-09-01 에 로직에서 이미 제거된 잔재라 "거짓말하는 스위치"가 아니다.
+
+### 재발 방지 (Irene "이런 같은 문제없게 해")
+- health-check 회귀 2건 신설 — 마이그 루프 `set -e` 삼킴 금지 / 라우트 거부목록이 두 겹에 모두 적용
+- e2e 2건 — 달력 월 라벨 · 사이드바 역할 거부(**BG 대조군 포함**)
+- `heavy-task-gate` build 분기에 `heavy_node_running()` (PlanQ 빌드 겹침)
+- 배포 rsync `--exclude 'logs/'` (운영 감사 로그 삭제 방지)
+- CLAUDE.md — "Fable 호출 3축 판정" · "프론트 검증 순서: 빌드 1회 · sweep 1회"
+
+### 이번 세션에 내가 저지른 것 (감추지 않고 기록)
+- 1차 배포를 `| tail` 로 실행해 **전체 로그와 진짜 종료코드를 잃었다**(exit 0 으로 보임)
+- "메모리 부족으로 죽은 듯" 오진 → 재현에서 메모리 정상인데 같은 자리에서 죽어 철회
+- 그림자 삭제를 **줄 번호로 잘라** 살아 있는 `brand-ingredients` 라우트까지 삭제(계약 테스트가 잡음, 복구)
+- 인쇄 보호파일(`MainLayout.tsx`)을 인쇄 무관 작업으로 수정 → print-guard 가 잡아 되돌림
+- **공허한 통과 3회** — 달력 spec(시간대 방향 오류) · 사이드바 spec(접힌 메뉴) · 운영 BG 회귀 판정(빈 결과)
+- 게이트 제출에 `CLAUDE.md` 변경을 빠뜨림
+
+### 수정된 파일 (3개 커밋 합계)
+- `dev-backend/`: `routes/brands-core.js` `routes/ingredients.js` `routes/restaurants-ingredients.js` `routes/brand-inventory.js` `routes/users.js` `routes/supplier.js` `routes/general-stock.js` `routes/inventory-extra.js` `routes/supplier-products.js` `routes/supplier-directory.js` `routes/system-products.js` `routes/subscriptions.js` `services/invoiceScheduler.js` `middleware/brandScope.js` `utils/codeGenerator.js` `seed-demo-data.js` `scripts/health-check.js` `scripts/check-deploy-ready.js` `scripts/migrate-package-unit-2-converge.js` `scripts/migrate-demo-accounts-unverified.js`(신규) `scripts/inspection/suites/supply-chain.js`
+- `dev-frontend/`: `src/App.tsx` `src/contexts/AuthContext.tsx` `src/hooks/useAllowedRoutes.ts` `src/utils/roleRouteDeny.ts`(신규) `src/pages/RecipeManagement/IngredientsTab.tsx` `public/sw.js` `e2e/calendar-month-label.spec.js`(신규) `e2e/sidebar-role-deny.spec.js`(신규) · 삭제 `src/pages/Recipes/RecipesPage.tsx` `src/pages/Ingredients/IngredientsPage.tsx`
+- 루트: `deploy-to-production.sh` `scripts/heavy-task-gate.sh` `CLAUDE.md` `docs/TRADE_STRUCTURE.md`
+
+---
 
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 

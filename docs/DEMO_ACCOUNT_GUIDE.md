@@ -27,6 +27,26 @@
 - Rate limit 30/min
 - 결과: LoginPage / DemoPage 의 카드 클릭 시 password 코드가 main.js 에 0 file 노출
 
+## 🔒 데모 계정은 항상 **미인증**이다 (2026-09-06)
+
+데모 계정(`users.is_demo = 1`)은 **실재하는 메일함이 없다** — 인증 링크를 누를 수가 없다.
+따라서 `email_verified` 는 **항상 0** 이어야 하고, 배포 마이그
+`scripts/migrate-demo-accounts-unverified.js` 가 매 배포마다 이를 보증한다(멱등).
+데모 시드(`seed-demo-data.js`)도 `email_verified: false` 로 고정한다.
+
+**왜 중요한가**: 2026-09-06 이전 `demo-brand@purplehere.com` 에 `email_verified=1` 이 박혀 있어
+알림 메일이 계속 나갔고, Gmail 반송("Address not found")이 관리자에게 쏟아졌다.
+발송 관문 자체는 멀쩡했다 — **플래그가 거짓말한 것**이다.
+
+⚠ **미인증이어도 로그인은 된다**(백엔드에 `EMAIL_NOT_VERIFIED` 를 던지는 코드 없음) —
+데모 로그인은 영향받지 않는다. 미인증은 **알림 메일 미수신 + 화면 안내 배너**만 뜻한다.
+
+⛔ **인증 플래그를 링크 클릭 없이 세우는 뒷문은 폐쇄됐다**(2026-09-06):
+`POST /api/users` 의 `skip_verification` 옵션 · Supplier Staff 생성의 `email_verified: true // trusted`.
+둘 다 이제 항상 미인증으로 만들고 인증메일을 보낸다.
+
+---
+
 ## 2026-08-20 업데이트 — 판정 기준이 계정이 아니라 **매장**이다 (v3.76)
 
 ### 왜 바뀌었나 (운영 실측)

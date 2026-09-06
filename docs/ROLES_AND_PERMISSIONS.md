@@ -106,6 +106,39 @@ System Admin (최고 관리자)
 - 메뉴/가격 수정 불가 (본사 통제)
 - 배정되지 않은 가맹점 접근 불가
 - 다른 Brand Manager 관리 불가
+- **결제 설정 접근 불가 (돈 경계)** — 아래 참조
+
+### 🔒 소유 판정과 돈 경계 (2026-09-06 확정)
+
+**BM 은 브랜드의 "소유자"가 아니라 "소속"이다.** 소유 판정은 `users.brand_id` 로 한다
+(`Number(user.brand_id) === Number(brandId)`). `brands.owner_id` 로 찾으면 BM 은 **항상 0건/403** 이다 —
+2026-09-06 이전이 그 상태였고, 브랜드 메뉴 설정 탭이 통째로 빈 화면이었다.
+같은 판정식을 쓰는 곳: `brands-core.js` `GET /` `GET /:id` `GET /:id/restaurants` `/franchise-map`
+`GET /:id/staff` `/franchise-dashboard` · `middleware/brandScope.js` · `auth.js getManagerScope`.
+
+⛔ **`GET /api/brands` 는 Brand 행을 통째로 돌려준다** — `payment_settings`(Stripe/PayPal)·
+`bank_name/bank_account/bank_account_name`·`plan_amount/subscription_*`·`invoice_settings` 포함.
+그래서 BM 에게는 **allowlist 투영**만 준다(`BM_BRAND_FIELDS`: id·name·code·description·logo_url·
+owner_id·status·currency·supported_currencies·created_at·updated_at + owner(id,full_name,email) +
+restaurants(id,name,status)). **exclude 목록이 아니라 allowlist** 인 이유: 나중에 Brand 에 컬럼이 늘어도
+자동으로 새지 않는다(fail-closed).
+
+**결제 설정(`/brands/:id/payment-settings` GET/PUT)은 BM 에게 403 을 유지한다 — 의도다.**
+서버를 넓히는 것이 아니라 **화면을 서버에 맞춘다**: `/pos/brand/payment-settings` 는 BM 에게
+라우트·사이드바 양쪽에서 막는다.
+
+⚠ **프론트 라우트 가드는 세 겹이고 서로 다른 목록을 본다:**
+1. `requiredRole` — `App.tsx` 의 `<ProtectedRoute>` 인자
+2. `canAccessRoute`(`AuthContext` + `ROLE_ROUTES`) — **`ProtectedRoute` 만** 사용. 진입 차단
+3. `isRouteAllowed`(`hooks/useAllowedRoutes`) — 플랜 기반 서버 목록. **사이드바 표시를 정한다**
+
+②만 고치면 **진입은 막히는데 메뉴는 그대로 보인다**(누르면 대시보드로 튕김 — 2026-09-06 실제 사고).
+거부 목록은 `dev-frontend/src/utils/roleRouteDeny.ts` **한 파일**에만 두고 ②③이 같이 읽는다.
+③에서는 `skipFiltering` **앞**에 둔다. health-check 회귀
+"프론트 라우트 거부목록이 진입·사이드바 두 겹에 모두 적용된다" 가 이 계약을 강제한다.
+
+⚠ **운영 실측(2026-09-06)**: 활성 Brand Manager 4명 전원 `is_test=1`, 그중 3명은 `brand_id` 가 NULL 이라
+소속을 지정하기 전에는 화면이 채워지지 않는다.
 
 ---
 
