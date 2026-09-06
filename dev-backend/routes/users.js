@@ -316,7 +316,7 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 
   try {
-    const { username, email, password, role, full_name, first_name, last_name, phone, permissions, restaurantId, restaurant_id, department, company_name, manager_id, pin_code, skip_verification: skipVerification } = req.body;
+    const { username, email, password, role, full_name, first_name, last_name, phone, permissions, restaurantId, restaurant_id, department, company_name, manager_id, pin_code } = req.body;  // skip_verification 은 2026-09-06 폐쇄 — 읽지 않는다(항상 미인증 생성)
     // Support both camelCase (new) and snake_case (legacy) for restaurant ID
     let finalRestaurantId = restaurantId || restaurant_id;
 
@@ -590,14 +590,20 @@ router.post('/', authenticateToken, async (req, res) => {
       userCreateData.discount_reason = (validDt === 'none') ? null : (discount_reason || null);
     }
 
-    // 이메일 인증 정책 (2026-06-01): 등록 계정도 인증 필요 (skipVerification 명시 시만 면제).
+    // 이메일 인증 정책 (2026-06-01): 등록 계정도 인증 필요.
     // 미인증이어도 로그인 가능 + 알림 메일 미수신 + 화면 안내 배너. 아래서 인증메일 발송.
-    userCreateData.email_verified = !!skipVerification;
+    //
+    // 2026-09-06: `skip_verification` 뒷문 폐쇄. 이 옵션은 **본인이 링크를 누른 적 없는 주소**에
+    // `email_verified = 1` 을 박아 넣었다 — 그러면 "인증 안 했으면 발송 안 한다"는 기준이
+    // 데이터한테 배신당한다(demo-brand@purplehere.com 반송 사고의 부류 원인). 프론트에서
+    // 이 옵션을 보내는 화면은 없었다(참조 0) — API 전용 뒷문이라 화면 영향도 없다.
+    // 인증은 오직 본인이 링크를 눌러야 선다. 요청에 무엇이 오든 생성 시점엔 항상 미인증.
+    userCreateData.email_verified = false;
 
     const user = await User.create(userCreateData);
 
-    // 이메일 인증 토큰 생성 + 발송 (skip_verification이 아닌 경우 + 이메일 있을 때만 — 무이메일 직원 스킵)
-    if (!skipVerification && user.email) {
+    // 이메일 인증 토큰 생성 + 발송 (이메일 있을 때만 — 무이메일 직원 스킵)
+    if (user.email) {
       try {
         const { rawToken, hashedToken, expires } = await generateVerificationToken();
         await user.update({

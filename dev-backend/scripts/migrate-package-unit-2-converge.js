@@ -47,6 +47,10 @@ const JSON_OUT = jsonIdx > -1 ? process.argv[jsonIdx + 1] : null;
 const q = (sql, r, t) => sequelize.query(sql, { type: QueryTypes.SELECT, replacements: r, transaction: t });
 const run = (sql, r, t) => sequelize.query(sql, { replacements: r, transaction: t });
 
+// `ingredient_seller_products.unit_conversion` 은 DECIMAL(10,4) (models/IngredientSellerProduct.js).
+// 표현 가능한 최대값 = 999,999.9999. 이 위로 쓰면 MySQL 이 거부하고 트랜잭션이 통째로 롤백된다.
+const CONV_MAX = 999999.9999;
+
 const num = (v) => (v == null ? null : parseFloat(v));
 const round2 = (v) => Math.round(v * 100) / 100;
 
@@ -305,6 +309,40 @@ async function main() {
       //                재고는 이미 g 로 세고 있었고, 줄도 g 이며, 매핑도 g 기준이다.
       //                바뀌는 것은 "가격이 몇 g 의 값인가" 하나뿐이라 **원가 표시만** 맞아진다.
       //   합쳐서 `changed` 하나로 두면 `ratio = 1000` 이 그대로 재고·매핑·줄에 곱해진다.
+      // ⛔ **쓰기 전에 검산한다** (2026-09-06 Fable 판정 — 운영 배포를 두 번 세운 결함).
+      //   매핑 환산은 `unit_conversion * ratio` 인데 그 컬럼은 DECIMAL(10,4) = 최대 999,999.9999 다.
+      //   운영 ing#970 의 매핑 3건이 `unit_conversion = 250,000`("판매 1팩 = 취급 25만 팩" — 명백한
+      //   오염값)이고 ratio 500 을 곱해 1.25e8 이 되어 MySQL 이 거부 → 트랜잭션 통째 롤백 →
+      //   **한 매장의 오염 행 하나가 모든 매장의 배포를 막았다.**
+      //   09-05 에 넣은 "판매단위 == 옛 취급단위" 필터는 이 셋을 통과시킨다(둘 다 pack).
+      //   ⛔ 컬럼을 넓히거나(1.25e8 을 그대로 합법화) 상한으로 자르는 것(값을 지어냄)은 하지 않는다.
+      //   기대 밖 값이면 **쓰지 않고 사람 몫으로 강등**한다 — 이 스크립트의 기존 철학 그대로다.
+      //   예외를 던져 배포를 세우지 않는 이유: 예외는 "스크립트 자신의 결함"용이고,
+      //   이건 "데이터가 사람 몫"인 경우다.
+      //
+      //   ⚠ 강등은 `plan.review` 만 세워선 안 된다 — 매핑·줄 환산(`if (unitChanged)`)은 리뷰 분기
+      //   **바깥**에 있어서, 단위를 바꾼 채 리뷰만 달면 곱셈이 그대로 실행된다(2026-09-06 실측).
+      //   그래서 **계획을 옛 값으로 되돌려** `unitChanged` 자체가 서지 않게 한다 = 완전 무접촉.
+      //   ⚠ `!plan.review` 로 가두면 안 된다 — **리뷰가 달린 행도 단위는 바뀐 채로 환산된다**
+      //   (2026-09-06 실측: 픽스처가 `리뷰(이름 규격이 애매)` 인데 plan.unit 이 g/500 으로 서서
+      //    매핑 곱셈이 그대로 실행됐다). 리뷰 여부와 무관하게 검산한다.
+      if (plan.unit !== row.unit) {
+        const wouldRatio = plan.base_quantity / oldBase;
+        const over = ((isItem ? sellerByItem.get(row.id) : sellerByIng.get(row.id)) || [])
+          .filter((sp) => String(sp.sp_unit || '').toLowerCase() === String(row.unit).toLowerCase())
+          .map((sp) => ({ id: sp.id, conv: num(sp.unit_conversion) || 0 }))
+          .filter((m) => Math.abs(m.conv * wouldRatio) > CONV_MAX);
+        if (over.length) {
+          const w = over[0];
+          const why = `리뷰(매핑 #${w.id} conv ${w.conv} × ratio ${wouldRatio} = ${(w.conv * wouldRatio).toExponential(2)}`
+            + ` — 표현 범위 ${CONV_MAX} 초과, 매핑 값이 의심스럽다)`
+            + (over.length > 1 ? ` 외 ${over.length - 1}건` : '');
+          plan.review = plan.review ? `${plan.review} · ${why}` : why;
+          plan.unit = row.unit;            // 되돌린다 → unitChanged=false → 매핑·줄·재고 전부 무접촉
+          plan.base_quantity = oldBase;
+        }
+      }
+
       const unitChanged = plan.unit !== row.unit;
       const baseOnly = !unitChanged && plan.base_quantity !== oldBase;
       const changed = unitChanged || baseOnly;
@@ -351,7 +389,13 @@ async function main() {
                       WHERE id = :id`,
             { u: plan.unit, b: plan.base_quantity, pu: row.unit, pq: oldBase, st: entry.after.stock, id: row.id }, t);
         }
-        if (unitChanged) {
+        // ⛔ **리뷰 행은 줄·매핑도 건드리지 않는다** (2026-09-06 Opus 실측 · Fable 판정).
+        //   이 블록이 위 `if (plan.review || baseOnly) {미결} else {행 UPDATE}` **바깥**에 있어서,
+        //   리뷰 행은 **행은 pack/미결로 남는데 레시피 줄·매핑만 g 기준으로 환산**됐다 —
+        //   "미결은 미결로 남긴다"(09-05 결정 2)와 정면 충돌이고 레시피 차감이 ×ratio 틀어진다.
+        //   운영 노출은 0 이었다(09-05 감사 로그 26개 전수 0건 · 현재 비호환 줄 0). 조건을
+        //   행 UPDATE 의 `else` 와 **정확히 대칭**으로 맞춰 그 길을 닫는다.
+        if (unitChanged && !plan.review) {
           // 매핑 환산 규칙: **취급단위가 바뀐 타깃의 매핑만**, 배수 = 그 단위 환산비(구→신) = ratio.
           //   ⛔ base_quantity 를 곱하는 게 아니다. 그래서
           //     ①기준숫자만 바뀐 행(단위 동일)은 여기 안 들어온다 → 매핑 불변

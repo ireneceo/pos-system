@@ -1484,6 +1484,37 @@ function definePosTests({ adminToken }) {
     return schemaLoud && backupVerified;
   });
 
+  // ── 배포 마이그 루프: `set -e` 삼킴 금지 (2026-09-06) ───────────────────────
+  // 2026-09-06 배포가 **두 번 연속 아무 말 없이** 죽었다. `set -e`(:11) 아래에서
+  // `SPRINT_OUTPUT=$(ssh … node $SPRINT_MIG)` 는 마이그의 종료코드를 그대로 갖기 때문에,
+  // 마이그가 exit≠0 이면 **그 줄에서 스크립트가 끝난다** — 바로 아래 준비된
+  // "실패 출력 25줄 + error" 블록에 닿지도 못했다. 사유는 운영에서 마이그를 직접
+  // 돌려서야 알았다(converge 가 DECIMAL 상한 초과로 롤백 중이었다).
+  // fail-closed 는 유지하되 fail-silent 는 금지 — [[reference_deploy_gate_fail_loud]].
+  test('pos', '배포 스크립트: 마이그 실패 사유가 `set -e` 에 삼켜지지 않는다', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const shPath = path.join(__dirname, '../../deploy-to-production.sh');
+    if (!fs.existsSync(shPath)) return true;
+    const sh = fs.readFileSync(shPath, 'utf8');
+    if (!/Safety gate/.test(sh)) return true;   // 옛 껍데기 파일이면 이 환경 대상 아님
+
+    // 마이그를 실행하는 줄을 전부 찾는다 (주석 제외).
+    const runLines = sh.split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .filter((l) => /SPRINT_OUTPUT=\$\(ssh/.test(l));
+    if (runLines.length === 0) return false;    // 찾지 못하면 검사기 고장 — 통과시키지 않는다
+
+    // 전부 `|| SPRINT_EXIT=$?` 로 끝나야 한다 (이 형태만 `set -e` 면제).
+    const allGuarded = runLines.every((l) => /\|\|\s*SPRINT_EXIT=\$\?/.test(l));
+    // 실패 사유를 실제로 찍는 블록이 남아 있어야 한다.
+    const printsReason = /실패 출력 \(마지막 25줄\)/.test(sh);
+    // 출력은 성공·실패 무관 파일로 보존돼야 한다.
+    const keepsLog = /MIG_LOG_DIR/.test(sh) && /\$MIG_LOG_DIR\/\$\{MIG_NAME\}\.log/.test(sh);
+
+    return allGuarded && printsReason && keepsLog;
+  });
+
   // ── 반품 재고 환원 (2026-07-13) ─────────────────────────────────────────────
   // 반품 승인은 **입고의 정확한 역방향**이어야 한다: 구매자 재고 차감 + 판매자 자기 재고 환원.
   // 브랜드 판매자 분기가 판매자 재고가 아니라 **구매자의 재료 행**을 올려서, 1단계 차감과

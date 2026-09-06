@@ -574,6 +574,12 @@ fi
 # 삼켜버려 **항상 첫 마이그 1개만 실행되고 나머지 41개는 조용히 건너뛰었다**. 2026-07-11
 # 임대료 배포에서 migrate-rent-category.js 가 "실행 안 됨"으로 보였던 것이 바로 이것이다
 # (레지스트리 등록은 정상이었다). -n = ssh 가 stdin 을 /dev/null 로 읽게 함.
+# 마이그 출력은 **성공·실패 무관** 파일로 남긴다 (2026-09-06 Fable 절단면).
+#   그동안 성공 출력은 변수에 담긴 채 버려져, `[demo-unverified] 대상 N건` 같은 실행 결과가
+#   배포 로그 어디에도 없었다.
+MIG_LOG_DIR="$LOCAL_DEV_BACKEND/logs/deploy-${TIMESTAMP}"
+mkdir -p "$MIG_LOG_DIR"
+
 MIG_RAN=0
 while IFS= read -r MIG_NAME; do
     [ -z "$MIG_NAME" ] && continue
@@ -582,8 +588,15 @@ while IFS= read -r MIG_NAME; do
         log "Running $MIG_NAME..."
         # 종료코드로 성공/실패를 판정한다. 예전엔 출력 문자열 grep(휴리스틱)만 봐서, 마이그가
         # exit 1 로 죽어도 warn 으로 흘러갔다(2026-07-12 Fable 지적). 실패면 배포를 세운다.
-        SPRINT_OUTPUT=$(ssh -n $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1")
-        SPRINT_EXIT=$?
+        # ⛔ `set -e`(:11) 아래에서 `VAR=$(cmd)` 는 cmd 의 종료코드를 그대로 가지므로,
+        #   마이그가 exit≠0 이면 **이 줄에서 스크립트가 아무 말 없이 끝난다** — 바로 아래
+        #   실패 출력 블록에 닿지도 못한다. 2026-09-06 배포가 두 번 연속 그렇게 침묵으로
+        #   죽었다(사유는 운영에서 마이그를 직접 돌려서야 알았다). `|| SPRINT_EXIT=$?` 형태는
+        #   `set -e` 면제 문맥이라 실패해도 계속 진행해 사유를 찍을 수 있다.
+        #   fail-closed 는 유지, fail-silent 만 없앤다 ([[reference_deploy_gate_fail_loud]]).
+        SPRINT_EXIT=0
+        SPRINT_OUTPUT=$(ssh -n $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || SPRINT_EXIT=$?
+        printf '%s\n' "$SPRINT_OUTPUT" > "$MIG_LOG_DIR/${MIG_NAME}.log"
         if [ $SPRINT_EXIT -ne 0 ]; then
             # ⚠ 2026-09-05: 여기서 로그가 끊겨 **왜 죽었는지 배포 로그만 보고는 알 수 없었다.**
             #   `error` 가 즉시 종료하는데 그 앞의 echo 가 파이프(`| tail`)라 버퍼에 남아 사라졌다.
@@ -595,6 +608,8 @@ while IFS= read -r MIG_NAME; do
             echo "───────────────────────────────────────"
             error "🗄️ 마이그레이션 실패: $MIG_NAME (exit $SPRINT_EXIT) — 운영 스키마가 어중간해질 수 있다. 원인 수정 후 재배포."
         fi
+        # 성공 출력도 남긴다 — 마이그가 실제로 무엇을 했는지(건수)가 배포 로그에 보여야 한다.
+        printf '%s\n' "$SPRINT_OUTPUT" | grep -v '^\[dotenv' | tail -3 | sed 's/^/    | /'
         success "$MIG_NAME completed"
     else
         warn "$MIG_NAME not found on prod — copying from dev..."
@@ -606,8 +621,15 @@ while IFS= read -r MIG_NAME; do
         #   이 분기가 실패를 삼켰다. 실제 피해: purchase_orders.status ENUM 의 'pending_approval' 이
         #   마이그·레지스트리 등록이 다 정상인데도 운영에 안 들어가 있었고, 배포는 조용히 통과했다.
         #   fail-closed 는 맞되 fail-silent 는 금지 — [[reference_deploy_gate_fail_loud]].
-        SPRINT_OUTPUT=$(ssh -n $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1")
-        SPRINT_EXIT=$?
+        # ⛔ `set -e`(:11) 아래에서 `VAR=$(cmd)` 는 cmd 의 종료코드를 그대로 가지므로,
+        #   마이그가 exit≠0 이면 **이 줄에서 스크립트가 아무 말 없이 끝난다** — 바로 아래
+        #   실패 출력 블록에 닿지도 못한다. 2026-09-06 배포가 두 번 연속 그렇게 침묵으로
+        #   죽었다(사유는 운영에서 마이그를 직접 돌려서야 알았다). `|| SPRINT_EXIT=$?` 형태는
+        #   `set -e` 면제 문맥이라 실패해도 계속 진행해 사유를 찍을 수 있다.
+        #   fail-closed 는 유지, fail-silent 만 없앤다 ([[reference_deploy_gate_fail_loud]]).
+        SPRINT_EXIT=0
+        SPRINT_OUTPUT=$(ssh -n $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || SPRINT_EXIT=$?
+        printf '%s\n' "$SPRINT_OUTPUT" > "$MIG_LOG_DIR/${MIG_NAME}.log"
         echo "$SPRINT_OUTPUT" | tail -10
         if [ $SPRINT_EXIT -ne 0 ]; then
             error "🗄️ 마이그레이션 실패(최초 실행): $MIG_NAME (exit $SPRINT_EXIT) — 원인 수정 후 재배포."

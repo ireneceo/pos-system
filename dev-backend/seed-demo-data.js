@@ -446,17 +446,23 @@ async function seedDemoData() {
     // ========================================
     console.log('👤 [DEMO SEED] Creating demo users...');
 
+    // 데모 계정은 실재하는 메일함이 없어 인증 링크를 누를 수 없다 → 항상 미인증으로 고정한다.
+    // (2026-09-06: verified=1 이 박혀 있어 알림이 나가고 Gmail 반송이 관리자에게 쏟아졌다.
+    //  기준은 하나 — 인증 안 했으면 발송 안 한다. scripts/migrate-demo-accounts-unverified.js 참조.)
+
     let demoBrandUser = await User.findOne({ where: { email: DEMO_BRAND_EMAIL }, transaction: t });
     if (demoBrandUser) {
       await demoBrandUser.update({
         password: hashedPassword, is_demo: true, role: 'Brand General',
         full_name: 'Sarah Kim (Demo)', username: 'demo-brand',
-        restaurant_id: null, brand_id: null, foodcourt_id: null
+        restaurant_id: null, brand_id: null, foodcourt_id: null,
+        email_verified: false
       }, { transaction: t });
     } else {
       demoBrandUser = await User.create({
         email: DEMO_BRAND_EMAIL, username: 'demo-brand', password: hashedPassword,
-        role: 'Brand General', full_name: 'Sarah Kim (Demo)', is_demo: true
+        role: 'Brand General', full_name: 'Sarah Kim (Demo)', is_demo: true,
+        email_verified: false
       }, { transaction: t });
     }
 
@@ -465,12 +471,14 @@ async function seedDemoData() {
       await demoRestaurantUser.update({
         password: hashedPassword, is_demo: true, role: 'Restaurant Admin',
         full_name: 'James Park (Demo)', username: 'demo-restaurant',
-        restaurant_id: null, brand_id: null, foodcourt_id: null
+        restaurant_id: null, brand_id: null, foodcourt_id: null,
+        email_verified: false
       }, { transaction: t });
     } else {
       demoRestaurantUser = await User.create({
         email: DEMO_RESTAURANT_EMAIL, username: 'demo-restaurant', password: hashedPassword,
-        role: 'Restaurant Admin', full_name: 'James Park (Demo)', is_demo: true
+        role: 'Restaurant Admin', full_name: 'James Park (Demo)', is_demo: true,
+        email_verified: false
       }, { transaction: t });
     }
 

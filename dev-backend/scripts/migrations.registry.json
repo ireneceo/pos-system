@@ -30,6 +30,7 @@
     "migrate-consolidated-print.js",
     "migrate-coupon-scope.js",
     "migrate-currency-rm-to-myr.js",
+    "migrate-demo-accounts-unverified.js",
     "migrate-demo-store-flags.js",
     "migrate-deploy-records.js",
     "migrate-direct-stock-link.js",

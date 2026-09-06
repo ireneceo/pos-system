@@ -649,8 +649,37 @@ router.post('/staff', requireSupplierModule('supplier_admin_staff'), async (req,
       phone: phone ? sanitizeString(String(phone).trim()) : null,
       pin_code: pin_code || null,
       supplier_company_id: company.id,
-      email_verified: true  // created by Supplier Admin → trusted
+      // 2026-09-06: 옛 주석은 "Supplier Admin 이 만들었으니 믿을 만하다"였다. 그건 **주소가
+      // 실재하는지**에 대한 근거가 아니다 — 본인이 링크를 누른 적 없는 주소에 인증 도장을 찍으면
+      // "인증 안 했으면 발송 안 한다"는 기준이 데이터한테 배신당한다
+      // (demo-brand@purplehere.com 반송 사고의 부류 원인). 아래서 인증메일을 보낸다.
+      email_verified: false
     });
+
+    // 이메일 인증 토큰 생성 + 발송 (routes/users.js 계정 생성과 같은 절차)
+    try {
+      const { generateVerificationToken, getVerificationUrl } = require('../utils/emailValidator');
+      const { rawToken, hashedToken, expires } = await generateVerificationToken();
+      await user.update({
+        email_verification_token: hashedToken,
+        email_verification_expires: expires
+      });
+
+      const verificationUrl = getVerificationUrl(rawToken, user.email);
+      const { emailVerificationEmail } = require('../utils/notificationTemplates');
+      const { sendPlatformEmail } = require('../utils/emailService');
+      const emailContent = emailVerificationEmail(user.full_name || user.username, verificationUrl);
+
+      await sendPlatformEmail({
+        to: user.email,
+        subject: emailContent.subject,
+        html: emailContent.html,
+        text: emailContent.text,
+        allowUnverified: true   // 인증메일은 미인증 본인 주소에 도달해야 함
+      }).catch(err => console.error('[supplier] Verification email failed:', err.message));
+    } catch (verifyErr) {
+      console.error('[supplier] Verification setup failed:', verifyErr.message);
+    }
 
     res.status(201).json({
       success: true,

@@ -1,7 +1,48 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-09-06 21:30 UTC
-**버전:** SW `4.84-cost-propagation-20260906`
-**작업 상태:** **운영 배포 완료** (3분 30초 · 마이그 77/77 · 스모크 10/10 · 백업 `20260905_212248`)
+**마지막 업데이트:** 2026-09-06 15:00 UTC
+**버전:** SW `4.84-cost-propagation-20260906` (프론트 무변경 — 버전 미상승)
+**작업 상태:** **운영 배포 완료** (4분 40초 · 마이그 78/78 · 스모크 10/10 · 백업 `20260906_144649` · 스냅샷 `14:51:28`)
+
+### 이번 배포 — 메일 반송 + 배포 중단 결함 (2026-09-06)
+
+**발단:** Irene 신고 — `demo-brand@purplehere.com` 로 "Address not found" 반송이 반복 도착.
+
+**원인 (Fable 확정):** 관문이 아니라 **데이터**. 그 계정은 메일함이 없어 인증 링크를 누른 적이 없는데 `email_verified=1` 이 박혀 있었다. "인증 안 했으면 발송 안 한다"는 기준은 코드에 멀쩡히 있었고 플래그가 그 기준을 배신했다. 2026-09-04 에 넣은 데모 차단은 `emailService` 한쪽에만 들어가 알림 경로(`notificationService`, 라우트 37곳)는 그대로 샜다.
+⛔ 거짓 플래그 위에 관문을 더 얹는 안(수신자 판정 함수 단일화 + `is_demo` 관문)은 **증상 패치로 기각**됐다.
+
+**적용 (5파일):** `migrate-demo-accounts-unverified.js`(신규, deploy 등록 — `is_demo=1` 의 verified 를 0 으로, 멱등) · `seed-demo-data.js` 데모 4곳 `email_verified:false` 고정 · `routes/users.js` **`skip_verification` 뒷문 폐쇄**(항상 미인증 + 인증메일) · `routes/supplier.js` Supplier Staff `trusted` 폐쇄(+인증메일 블록).
+
+**배포가 두 번 침묵으로 죽음 → 같이 고침 (3파일):**
+1. `deploy-to-production.sh` — `set -e` 아래 `SPRINT_OUTPUT=$(ssh …)` 가 마이그 종료코드를 그대로 가져 **그 줄에서 스크립트가 끝났다.** 아래 "실패 출력 25줄" 블록은 **도달 불가**였다. → `|| SPRINT_EXIT=$?` 형태(면제) + 마이그 출력을 성공·실패 무관 `logs/deploy-<ts>/<mig>.log` 보존 + 성공 시 마지막 3줄 인라인.
+2. `migrate-package-unit-2-converge.js` — 운영 ing#970(매장 10 Cockle Meat) 매핑 3건이 `unit_conversion=250,000`(오염값)인데 ratio 500 을 곱해 **1.25e8 → DECIMAL(10,4) 상한 초과** → 롤백. 곱하기 전 **검산 후 범위 초과면 그 행을 사람 몫으로 강등**(컬럼 확대·클램프 금지). `CONV_MAX = 999999.9999`.
+3. 같은 파일 — **리뷰 행의 줄·매핑까지 환산되던 구조** 차단(`if (unitChanged && !plan.review)`). 행은 pack/미결로 남는데 레시피 줄만 g 로 바뀌던 길. 운영 노출 0건(09-05 감사 로그 26개 전수).
+4. `health-check.js` — 회귀 1건: 마이그 루프가 `set -e` 삼킴 형태로 되돌아가지 않는지(pos 43/43).
+
+**검증:** verify-all **17/17** · 배포 마이그 dev 전수 **78개** · pos **43/43** · 고장주입 7묶음(검산 제거→운영과 동일 `Out of range` 재현 · 리뷰 조건 제거→증명③ 롤백 · 배포 스크립트 한 곳 되돌림→회귀 정확히 1건 · `set -e` 1줄 반증 · 뒷문 되심음→인증 완료 계정 생성) · 운영 dry-run 2회 `바뀌는 행 0`.
+**Fable 게이트 PASS** — 마커 `e38dea0f5e24`.
+
+**배포 결과 실측:** 마이그 78/78 · PM2 재시작 확인(uptime 리셋) · health ok · 스모크 10/10 · 마이그 로그 파일 78개 보존 · 배포 로그에 `[demo-unverified] … 대상 0건`(1차 배포 때 이미 적용됨 = 멱등 정상) 표시 확인.
+
+### 내가 저지른 것 (감추지 않고 기록)
+- 1차 배포를 `| tail -200` 으로 실행해 **전체 로그를 잃고 종료코드도 tail 것(exit 0)** 이라 실패를 성공처럼 봤다.
+- 그 직후 "메모리 부족으로 죽은 듯" 이라고 보고 → **틀렸다.** 재배포는 메모리 정상인데 같은 자리에서 죽었다.
+- 오버플로 검산 첫 구현을 `!plan.review` 로 가둬 여전히 실패. 계측해서야 "리뷰 행도 환산된다"는 더 큰 사실이 나왔다.
+- "rsync 완료(13:24)" 의 시각 근거가 틀렸다(rsync -a 가 원본 mtime 보존).
+
+### 사람 몫 (매장 확인 필요)
+- **매장 10 `Cockle Meat(Blood Clam)` 공급업체 매핑 conv 250,000 3건 + PI-144 매핑 199** — `1팩 = 250,000팩` 은 오염값. 이번 배포는 건드리지 않고 목록에만 올림.
+- 운영 반복 발송 트리거 카테고리 — 운영 SSH 조회가 세션에서 차단돼 **미측정**. 확인용:
+  `grep -h "Sent '.*' to demo-brand@purplehere.com" ~/.pm2/logs/production-backend-out*.log | sed -E "s/.*Sent '([^']+)'.*/\1/" | sort | uniq -c | sort -rn`
+
+### 작업 규칙 변경 (2026-09-06 Irene 지시)
+**Fable 호출 = 3축 판정** — `(파급 크다 OR 비가역) AND 길이 갈린다` 일 때만. 한 사안당 2회, 구현 중 세부 되묻기 금지.
+`CLAUDE.md` "🎯 Fable 호출 기준 — 3축 판정" + 메모리 [[feedback_fable_call_criteria]]. §0 골격은 그대로, **트리거만** 좁힘.
+
+### 잔여 (다음 절단면, 비차단)
+- converge 요약 카운터가 **강등돼 아무것도 적용 안 된 행**을 "취급단위가 바뀌는 행"으로 셈 (`changed && !plan.review` 로 고칠 것)
+- 레시피 줄 `quantity × ratio` · 재고 `× ratio` 는 미검산 (이제 컬럼 거부 시 사유가 보임)
+- 배포 rsync `--delete` 가 운영 전용 `logs/` 감사 로그를 지움 (`--exclude logs` 검토)
+- PlanQ 빌드가 Purple heavy-task-gate 를 안 탐
 
 ### 진행 중인 작업
 없음 — 지시 대기.
