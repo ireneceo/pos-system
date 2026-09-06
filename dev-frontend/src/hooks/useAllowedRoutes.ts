@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { isRouteDenied } from '../utils/roleRouteDeny';
 
 import { getAuthToken } from '../utils/auth';
 interface AllowedRoutesResponse {
@@ -115,6 +116,13 @@ export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null)
    * Check if a specific route is allowed
    */
   const isRouteAllowed = (route: string): boolean => {
+    // ⛔ 역할별 **명시 거부**를 가장 먼저 본다 (2026-09-06).
+    //   사이드바 표시는 이 함수가 정한다 — `AuthContext.canAccessRoute`(진입 차단)만 고치면
+    //   **진입은 막히는데 메뉴는 그대로 보인다**(누르면 대시보드로 튕김). 실제로 그렇게 됐다.
+    //   `skipFiltering`(플랜 검사 생략) **앞**에 둔다 — 필터를 건너뛰는 역할도 거부는 적용되게.
+    //   목록은 `utils/roleRouteDeny` 한 곳에만 있다(복사 금지 — 복사하면 곧 갈라진다).
+    if (isRouteDenied(role, route)) return false;
+
     // Skip filtering for roles without plan-based restrictions (System Admin, etc.)
     // or when API call failed (fail-open on error only)
     if (skipFiltering) {

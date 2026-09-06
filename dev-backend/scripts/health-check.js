@@ -1484,6 +1484,47 @@ function definePosTests({ adminToken }) {
     return schemaLoud && backupVerified;
   });
 
+  // ── 프론트 라우트 거부는 **모든 겹**에 걸린다 (2026-09-06) ──────────────────
+  // 프론트 라우트 가드는 **세 겹**이고 서로 다른 목록을 본다:
+  //   ① `requiredRole`(App.tsx) ② `canAccessRoute`(AuthContext — ProtectedRoute 만 사용, 진입 차단)
+  //   ③ `isRouteAllowed`(hooks/useAllowedRoutes — 플랜 기반 서버 목록, **사이드바 표시를 정한다**)
+  // 2026-09-06 실제 사고: Brand Manager 에게 결제 설정 메뉴를 숨기려고 ②만 고치고
+  //   "메뉴가 사라진다"고 보고했다. 실제로는 **메뉴가 그대로 보이고 누르면 대시보드로 튕겼다**
+  //   (Fable 게이트가 실호출로 잡음). 목록을 한 파일(`utils/roleRouteDeny`)로 모으고,
+  //   **두 겹이 그 파일을 실제로 쓰는지**를 여기서 강제한다 — 규칙만으로는 또 놓친다.
+  test('pos', '프론트 라우트 거부목록이 진입·사이드바 두 겹에 모두 적용된다', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const FE = path.join(__dirname, '../../dev-frontend/src');
+    const shared = path.join(FE, 'utils/roleRouteDeny.ts');
+    if (!fs.existsSync(shared)) return true;   // 이 기능이 없는 트리면 대상 아님
+
+    // 거부 목록은 **공용 파일에만** 있어야 한다 — 다른 곳에 사본이 생기면 곧 갈라진다.
+    const consumers = [
+      path.join(FE, 'contexts/AuthContext.tsx'),      // 진입 차단(canAccessRoute)
+      path.join(FE, 'hooks/useAllowedRoutes.ts'),     // 사이드바 표시(isRouteAllowed)
+    ];
+    // 주석은 지우고 본다 — 호출을 `//` 로 막아 두면 정규식은 여전히 "호출 있음"으로 읽는다.
+    //   (2026-09-06 Fable 게이트 반증에서 실제로 뚫렸다: 주석 처리 → 44/44 통과.)
+    const stripComments = (s) => s
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+    for (const f of consumers) {
+      if (!fs.existsSync(f)) return false;            // 파일이 사라졌으면 검사기 고장 — 통과시키지 않는다
+      const src = stripComments(fs.readFileSync(f, 'utf8'));
+      if (!/from '.*roleRouteDeny'/.test(src)) return false;   // 공용 목록을 안 읽음
+      if (!/isRouteDenied\s*\(/.test(src)) return false;       // 읽기만 하고 안 씀
+      if (/const\s+ROLE_ROUTE_DENY\s*[:=]/.test(src)) return false;  // 사본을 다시 만듦
+    }
+    // 사이드바 겹에서는 플랜 검사(skipFiltering) **앞**에 있어야 한다 —
+    //   뒤에 있으면 필터를 건너뛰는 경우에 거부가 무시된다.
+    const hook = stripComments(fs.readFileSync(consumers[1], 'utf8'));
+    const denyAt = hook.indexOf('isRouteDenied(');
+    const skipAt = hook.indexOf('if (skipFiltering)');
+    if (denyAt < 0 || skipAt < 0 || denyAt > skipAt) return false;
+    return true;
+  });
+
   // ── 배포 마이그 루프: `set -e` 삼킴 금지 (2026-09-06) ───────────────────────
   // 2026-09-06 배포가 **두 번 연속 아무 말 없이** 죽었다. `set -e`(:11) 아래에서
   // `SPRINT_OUTPUT=$(ssh … node $SPRINT_MIG)` 는 마이그의 종료코드를 그대로 갖기 때문에,

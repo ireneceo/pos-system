@@ -112,11 +112,24 @@ function requireBrandScope(brandIdFrom) {
         return res.status(403).json({ success: false, message: 'Brand General access only' });
       }
 
-      const owned = await Brand.findAll({ where: { owner_id: user.id }, attributes: ['id'] });
-      const ownedIds = owned.map(b => b.id);
+      // `isBG()` 는 Brand Manager 도 통과시키는데, 그 다음 `owner_id` 조회가 **항상 빈 배열**이라
+      //   BM 은 무조건 403 이었다(2026-09-06 Fable 판정 · 실측: BM 토큰 → `GET /api/brands/1/inventory` 403).
+      //   BM 은 소유자가 아니라 **소속**이다 — 형제 라우트와 같은 판정식(`user.brand_id`)을 쓴다.
+      //   brand_id 가 비어 있으면 볼 브랜드가 없다 → 기존 403 그대로(넓히지 않는다).
+      const isBM = user.role === 'Brand Manager';
+      let ownedIds;
+      if (isBM) {
+        ownedIds = user.brand_id ? [Number(user.brand_id)] : [];
+      } else {
+        const owned = await Brand.findAll({ where: { owner_id: user.id }, attributes: ['id'] });
+        ownedIds = owned.map(b => b.id);
+      }
 
       if (ownedIds.length === 0) {
-        return res.status(403).json({ success: false, message: 'No brand owned by user' });
+        return res.status(403).json({
+          success: false,
+          message: isBM ? 'No brand assigned to this manager' : 'No brand owned by user'
+        });
       }
 
       if (Number.isFinite(brandId)) {

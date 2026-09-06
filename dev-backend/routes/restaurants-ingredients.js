@@ -248,8 +248,21 @@ router.post('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcce
     const { restaurantId } = req.params;
     const {
       code, name, image_url, category, ingredient_category_id, unit,
-      base_quantity, unit_cost, supplier_name, supplier_id, min_stock
+      base_quantity, package_unit, package_quantity, unit_cost, supplier_name, supplier_id, min_stock
     } = req.body;
+
+    // 다섯 칸(§2-2) 잠금 — 2026-09-06. 이 경로가 두 칸(`package_unit`·`package_quantity`)을
+    //   **아예 안 받고 있었다**(실측: 화면이 보내도 NULL 로 저장). 화면만 고치면 값이 사라진다.
+    //   ⛔ `base_quantity` 는 나누는 수라 0·음수면 원가가 무한대가 된다 — 폼이 아니라 **서버가** 막는다
+    //   (폼만 막으면 API 로 우회된다).
+    const bq = base_quantity == null || base_quantity === '' ? 1 : Number(base_quantity);
+    if (!Number.isFinite(bq) || bq <= 0) {
+      return res.status(400).json({ success: false, message: 'base_quantity must be greater than 0' });
+    }
+    const pq = package_quantity == null || package_quantity === '' ? 1 : Number(package_quantity);
+    if (!Number.isFinite(pq) || pq <= 0) {
+      return res.status(400).json({ success: false, message: 'package_quantity must be greater than 0' });
+    }
     const normalizedImage = await normalizeIngredientImage(image_url, restaurantId);
     // 코드 자동 부여 — 자동 생성이 그림자 라우트(`ingredients.js :765`)에만 있어서
     //   **실제로 도는 이 경로**로 만든 매장 재료는 코드가 비었다(2026-09-06).
@@ -267,7 +280,10 @@ router.post('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcce
       category,
       ingredient_category_id: ingredient_category_id || null,
       unit,
-      base_quantity: base_quantity || 1,
+      base_quantity: bq,
+      // 기준단위를 안 고르면 취급단위와 같다는 뜻 — NULL 로 두고 읽는 쪽이 `package_unit ?? unit` 으로 푼다.
+      package_unit: package_unit || null,
+      package_quantity: pq,
       unit_cost,
       // 레거시 단일공급 컬럼 쓰기 중단 (2026-07-04). 공급처는 seller-source 매핑(ingredient_seller_products)으로 관리.
       // 신규 재고는 레거시 supplier_name/supplier_id 를 채우지 않는다(데이터 드리프트 방지). 표시는 매핑 기준.
@@ -646,7 +662,7 @@ router.post('/:restaurantId/ingredients/from-catalog', authenticateToken, checkR
 router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId, ingredientId } = req.params;
-    const { code, name, category, unit, unit_cost, supplier_name, min_stock, image_url, ingredient_category_id, base_quantity, supplier_id } = req.body;
+    const { code, name, category, unit, unit_cost, supplier_name, min_stock, image_url, ingredient_category_id, base_quantity, package_unit, package_quantity, supplier_id } = req.body;
 
     // 소유권 — 재료 행 자체를 고치는 API. 예전엔 findByPk 만 하고 소유권을 안 봐서
     // 남의 매장 재료나 브랜드 표준 재료(형제 매장 공유 행)까지 수정·삭제됐다.
@@ -700,7 +716,24 @@ router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkR
       updateData.image_url = normalized;
     }
     if (ingredient_category_id !== undefined) updateData.ingredient_category_id = ingredient_category_id;
-    if (base_quantity !== undefined) updateData.base_quantity = base_quantity;
+    // 다섯 칸(§2-2) — 2026-09-06. 이 경로가 `package_*` 두 칸을 안 받아 화면이 보내도 사라졌다.
+    //   `base_quantity` 는 나누는 수라 0·음수면 원가가 무한대가 된다 → **서버가** 막는다(폼만 막으면 우회된다).
+    if (base_quantity !== undefined) {
+      const bq = Number(base_quantity);
+      if (!Number.isFinite(bq) || bq <= 0) {
+        return res.status(400).json({ success: false, message: 'base_quantity must be greater than 0' });
+      }
+      updateData.base_quantity = bq;
+    }
+    // 기준단위를 비우면 "취급단위와 같다" — NULL 로 저장하고 읽는 쪽이 `package_unit ?? unit` 으로 푼다.
+    if (package_unit !== undefined) updateData.package_unit = package_unit || null;
+    if (package_quantity !== undefined) {
+      const pq = Number(package_quantity);
+      if (!Number.isFinite(pq) || pq <= 0) {
+        return res.status(400).json({ success: false, message: 'package_quantity must be greater than 0' });
+      }
+      updateData.package_quantity = pq;
+    }
 
     await ingredient.update(updateData);
     res.json({ success: true, data: ingredient });

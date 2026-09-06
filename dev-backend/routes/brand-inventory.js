@@ -31,26 +31,10 @@ router.use('/brands', authenticateToken);
 // (/brands/:brandId/restaurants 목록은 비차단). requireBrandScope 가 소유권/데모 별도 처리.
 router.use('/brands/:brandId/inventory', requireBrandModule('brand_inventory', 'brandId'));
 
-// Get brand's restaurants
-router.get('/brands/:brandId/restaurants', requireBrandScope(), async (req, res) => {
-  try {
-    const { brandId } = req.params;
-
-    const restaurants = await Restaurant.findAll({
-      where: {
-        brand_id: brandId,
-        status: 'active'
-      },
-      attributes: ['id', 'name', 'brand_id'],
-      order: [['name', 'ASC']]
-    });
-
-    res.json({ success: true, data: restaurants });
-  } catch (error) {
-    console.error('Error fetching brand restaurants:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch restaurants' });
-  }
-});
+// ⛔ 2026-09-06 삭제 — `GET /brands/:brandId/restaurants` 는 **그림자**였다.
+//   같은 주소를 `routes/brands-core.js:333` 이 먼저 잡아 이 코드는 실행되지 않았다(라우트 스캔 실측).
+//   승자 쪽은 Brand Manager 절을 갖고 있고 이쪽은 없어서, 되살아나면 BM 이 다시 막힌다.
+//   브랜드의 매장 목록 단일 소스 = `routes/brands-core.js`.
 
 // Get brand-wide inventory summary
 router.get('/brands/:brandId/inventory/summary', requireBrandScope(), async (req, res) => {

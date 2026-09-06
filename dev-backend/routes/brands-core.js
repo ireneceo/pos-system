@@ -130,10 +130,19 @@ router.get('/', authenticateToken, async (req, res) => {
 
     const whereClause = {};
 
-    // Brand General/Brand Manager only see their own brands
-    if (req.user.role === 'Brand General' || req.user.role === 'Brand Manager') {
+    // Brand General 은 자기가 **소유한** 브랜드, Brand Manager 는 자기가 **속한** 브랜드.
+    //   2026-09-06 Fable 판정: BM 도 `owner_id = user.id` 로 찾아 **항상 0건**이었다(BM 은 소유자가
+    //   아니다). 그래서 `/pos/brand-menus` Settings 탭이 통째로 빈 화면이었다.
+    //   ⛔ 새 조건을 만들지 않는다 — 이미 잘 도는 형제 라우트(`GET /:id/restaurants` 등)의
+    //   `Number(req.user.brand_id) === Number(id)` 와 **같은 판정식**을 쓴다.
+    const isBM = req.user.role === 'Brand Manager';
+    if (req.user.role === 'Brand General') {
       whereClause.owner_id = req.user.id;
       console.log(`🔐 Filtering brands for ${req.user.role}: owner_id = ${req.user.id}`);
+    } else if (isBM) {
+      // brand_id 가 비어 있으면 볼 브랜드가 없다 — 넓히지 않고 빈 결과로 둔다.
+      whereClause.id = req.user.brand_id ? Number(req.user.brand_id) : -1;
+      console.log(`🔐 Filtering brands for Brand Manager: brand_id = ${req.user.brand_id}`);
     } else if (req.user.role === 'System Admin') {
       console.log(`👑 System Admin: Returning all brands`);
     } else {
@@ -142,6 +151,8 @@ router.get('/', authenticateToken, async (req, res) => {
 
     const brands = await Brand.findAll({
       where: whereClause,
+      // BM 에게는 안전 투영만. BG·SA 응답은 바이트 단위로 기존과 같다(attributes 미지정).
+      ...(isBM ? { attributes: BM_BRAND_FIELDS } : {}),
       include: [
         {
           model: User,
@@ -165,13 +176,27 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+// ⛔ Brand Manager 안전 투영 (2026-09-06 Fable 판정).
+//   `GET /api/brands` 는 Brand 행을 **통째로** 돌려준다 — `payment_settings`(Stripe/PayPal)·
+//   `bank_name/bank_account/bank_account_name`·`plan_amount/subscription_*` 이 함께 나간다.
+//   형제 라우트 `payment-settings`(아래 GET/PUT)는 같은 값을 BM 에게 **일부러 403** 으로 막는다.
+//   그래서 BM 에게 목록을 열 때는 **빼는 목록(exclude)이 아니라 주는 목록(allowlist)** 으로 간다 —
+//   나중에 Brand 에 컬럼이 생겨도 자동으로 새지 않는다(fail-closed).
+const BM_BRAND_FIELDS = [
+  'id', 'name', 'code', 'description', 'logo_url', 'owner_id', 'status',
+  'currency', 'supported_currencies', 'created_at', 'updated_at'
+];
+
 // Get single brand by ID
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔍 GET /api/brands/${id} - User: ${req.user.email}`);
 
+    // BM 은 안전 투영만 받는다(위 BM_BRAND_FIELDS 주석 참조).
+    const isBMreq = req.user.role === 'Brand Manager';
     const brand = await Brand.findByPk(id, {
+      ...(isBMreq ? { attributes: BM_BRAND_FIELDS } : {}),
       include: [
         {
           model: User,
@@ -190,8 +215,12 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: { message: 'Brand not found', code: 'NOT_FOUND' } });
     }
 
-    // Check access permissions
-    if (req.user.role !== 'System Admin' && brand.owner_id !== req.user.id) {
+    // Check access permissions — 형제 라우트와 **같은 조건식**(2026-09-06). BM 은 자기 브랜드만.
+    //   이 화면(BrandManagement)은 BM 에게 열려 있는데 서버가 막아 빈 화면이었다.
+    const canRead = req.user.role === 'System Admin'
+      || brand.owner_id === req.user.id
+      || (isBMreq && Number(req.user.brand_id) === Number(id));
+    if (!canRead) {
       return res.status(403).json({ success: false, error: { message: 'Access denied to this brand', code: 'FORBIDDEN' } });
     }
 

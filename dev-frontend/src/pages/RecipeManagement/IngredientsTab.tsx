@@ -469,7 +469,8 @@ const EmptyDescription = styled.p`
 
 
 const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, categoryRefreshKey }) => {
-  const { t } = useTranslation(['purchaseOrders', 'common']);
+  // 다섯 칸(§2-2) 라벨은 BG 화면과 **같은 i18n 키**를 쓴다 — 문구를 복사하면 곧 갈라진다(2026-09-06).
+  const { t } = useTranslation(['purchaseOrders', 'common', 'brand']);
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
@@ -510,6 +511,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     ingredient_category_id: '',
     unit: '',
     base_quantity: '1',
+    package_unit: '',
+    package_quantity: '1',
     unit_cost: '',
     supplier_id: '' as string | number,
     min_stock: '0',
@@ -888,6 +891,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         ingredient_category_id: ingredient.ingredient_category_id?.toString() || '',
         unit: ingredient.unit,
         base_quantity: ingredient.base_quantity?.toString() || '1',
+        package_unit: (ingredient as any).package_unit || '',
+        package_quantity: ((ingredient as any).package_quantity ?? 1).toString(),
         unit_cost: ingredient.unit_cost.toString(),
         supplier_id: ingredient.supplier_id || '',
         min_stock: ingredient.min_stock?.toString() || '0',
@@ -973,6 +978,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           unit: formData.unit,
           // 레거시 supplier_id/supplier_name 미전송 (2026-07-04) — 공급처는 seller-source 매핑으로 관리. 백엔드도 쓰기 중단.
           base_quantity: parseFloat(formData.base_quantity) || 1,
+          // 기준단위를 안 고르면 취급단위와 같다는 뜻 — 서버·화면 모두 `package_unit ?? unit` 으로 읽는다
+          package_unit: formData.package_unit || null,
+          package_quantity: parseFloat(formData.package_quantity) || 1,
           unit_cost: parseFloat(formData.unit_cost),
           min_stock: parseInt(formData.min_stock) || 0,
         })
@@ -1462,6 +1470,40 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             </UIFormGroup>
           </UIFormRow>
 
+          {/* 다섯 칸(§2-2) — 브랜드 화면(ProductIngredientsTab)과 **같은 i18n 키**를 쓴다.
+              기준단위를 안 고르면 취급단위와 같다는 뜻이고, 서버·화면 모두 `package_unit ?? unit` 으로 읽는다.
+              이 두 칸이 없으면 매장이 재료를 넣을 때 기준양이 기본값 1 로 굳어 원가가 틀어진다(2026-09-06). */}
+          <UIFormRow>
+            <UIFormGroup>
+              <FormLabel>{t('brand:productIngredientsTab.packageQty')}</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={formData.package_quantity}
+                onChange={(e) => setFormData({ ...formData, package_quantity: e.target.value })}
+                placeholder="1"
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>{t('brand:productIngredientsTab.packageUnit')}</FormLabel>
+              <FormSelect
+                value={formData.package_unit}
+                onChange={(e) => setFormData({ ...formData, package_unit: e.target.value })}
+              >
+                <option value="">{t('brand:productIngredientsTab.selectUnit')}</option>
+                <option value="kg">kg</option>
+                <option value="g">g</option>
+                <option value="L">L</option>
+                <option value="ml">ml</option>
+                <option value="piece">piece</option>
+                <option value="pack">pack</option>
+                <option value="can">can</option>
+                <option value="bottle">bottle</option>
+              </FormSelect>
+            </UIFormGroup>
+          </UIFormRow>
+
           <UIFormRow>
             <UIFormGroup>
               <FormLabel>Unit Cost ({selectedCurrency}) *</FormLabel>
@@ -1485,10 +1527,11 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             </UIFormGroup>
           </UIFormRow>
 
-          {/* 켜고 끄기 토글은 **BG 가 실제로 여는 화면**(pages/Ingredients/IngredientsPage)에 있다.
-              여기(RecipeManagement/IngredientsTab)에도 뒀다가 지웠다 — 이 컴포넌트를 렌더하는
-              라우트에 BG 가 도달하지 못해 **보이지 않는 두 번째 사본**이 되기 때문이다.
-              한 벌만 둔다(복제하면 곧 갈라진다). 2026-09-02 */
+          {/* 2026-09-06 정정: 위 주석은 틀렸었다 — `pages/Ingredients/IngredientsPage` 는
+              **BG 가 여는 화면이 아니었다.** 그 주소(`/pos/recipe-management/ingredients`)는 어느 역할
+              허용목록에도 없어 도달 불가였고(기계 판정), 그래서 그 화면은 삭제됐다.
+              결과적으로 "한 벌만 둔다"는 결론은 유지되지만 **남은 한 벌이 여기**다.
+              켜고 끄기 토글이 필요하면 이 화면에 넣는다. */
           }
 
           {/* Suppliers — 재고를 발주처(seller)/외부공급업체에 연결.

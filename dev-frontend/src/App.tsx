@@ -171,8 +171,6 @@ const FoodcourtStaffPage = React.lazy(() => import('./pages/Foodcourt/FoodcourtS
 const DeployRecordsPage = React.lazy(() => import('./pages/Admin/DeployRecordsPage'));
 const RecipeManagementPage = React.lazy(() => import('./pages/RecipeManagement/RecipeManagementPage'));
 const RestaurantIngredientsPage = React.lazy(() => import('./pages/RecipeManagement/IngredientsPage'));
-const RecipesPage = React.lazy(() => import('./pages/Recipes/RecipesPage'));
-const IngredientsPage = React.lazy(() => import('./pages/Ingredients/IngredientsPage'));
 const SuppliersPage = React.lazy(() => import('./pages/Suppliers/SuppliersPage'));
 const UnifiedSuppliersPage = React.lazy(() => import('./pages/Suppliers/UnifiedSuppliersPage'));
 
@@ -1004,8 +1002,13 @@ function App() {
                           <BrandPlansPage />
                         </ProtectedRoute>
                       } />
+                      {/* 2026-09-06 Fable 판정: 결제 설정(Stripe/PayPal·은행계좌)은 **돈 경계**다.
+                          서버(`brands-core.js` payment-settings GET/PUT)가 Brand Manager 를 **일부러 403**
+                          으로 막는데 화면만 열려 있어, 매니저가 들어가면 빈 화면·오류를 봤다.
+                          서버를 넓히는 게 아니라 **화면을 서버에 맞춘다** — BM 에게는 이 메뉴를 안 준다.
+                          (사이드바도 함께 숨긴다 — MainLayout 의 plans 섹션.) */}
                       <Route path="/pos/brand/payment-settings" element={
-                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
+                        <ProtectedRoute requiredRole={['Brand General']}>
                           <BrandPaymentSettingsPage />
                         </ProtectedRoute>
                       } />
@@ -1070,23 +1073,12 @@ function App() {
                         </ProtectedRoute>
                       } />
 
-                      {/* Recipe & Ingredient Management Pages */}
-                      {/* 주의 2026-09-05 실측: 이 주소는 **어느 역할 허용목록(ROLE_ROUTES)에도 없어 도달 불가**다
-                          — 열면 대시보드로 튕긴다. BG 사이드바의 "Brand Recipes" 는 `/pos/recipes`(위 :1024,
-                          RecipeManagementPage → RecipesTab) 이고 이 화면이 아니다.
-                          `Recipes/RecipesPage.tsx` 에는 `base_quantity` 미적용(70 g 치즈를 RM 6,510 으로 계산)과
-                          저장 시 `cost` 미전송(DB 에 원가 0) 결함이 남아 있다. 사람이 못 여는 화면이라 고치지 않고
-                          그대로 둔다 — 중복/도달불가 화면 정리 판정 대기(Fable). */}
-                      <Route path="/pos/recipe-management/recipes" element={
-                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
-                          <RecipesPage />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/pos/recipe-management/ingredients" element={
-                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
-                          <IngredientsPage />
-                        </ProtectedRoute>
-                      } />
+                      {/* ⛔ 2026-09-06 삭제 — `/pos/recipe-management/recipes`·`/ingredients` 두 화면.
+                          어느 역할 허용목록(ROLE_ROUTES)에도 없어 **열면 대시보드로 튕기는** 죽은 화면이었다
+                          (기계 판정: 두 주소 모두 도달 가능 역할 0). 안에 `base_quantity` 미적용
+                          (치즈 70 g → RM 6,510)·저장 시 `cost` 미전송(DB 원가 0) 결함이 들어 있어,
+                          살려 두는 것 자체가 위험이었다.
+                          BG 사이드바 "Brand Recipes" 는 `/pos/recipes`(RecipeManagementPage)로 별개다. */}
                       {/* 2026-09-02: BG 네임스페이스의 "매장 공유 표준 재료" 화면.
                           위 /pos/recipe-management/ingredients 는 라우트는 있으나 **BG 허용 목록에 없어
                           열면 대시보드로 튕겼다** — 즉 BG 에게는 이 목록을 보는 화면이 아예 없었다

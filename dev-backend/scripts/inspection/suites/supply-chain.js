@@ -292,6 +292,38 @@ module.exports = {
       WHERE poi.brand_product_id IS NOT NULL AND bp.product_recipe_id IS NOT NULL`);
     add('R-SC-010 레시피 있는 브랜드 프로덕트 발주 라인 없음', recipeBuyB === 0, `${recipeBuyB}건`);
 
+    // ── R-SC-020 (관측, WARN — 막지 않는다) 레시피·재료가 안 붙은 활성 상품 ────────────
+    //   2026-09-06 운영 실측: 활성 상품 751 중 **687(91%)** 이 `recipe_id`·`ingredient_id`·
+    //   `product_recipe_id` 셋 다 NULL 이다. 이건 **코드 결함이 아니라 미입력 데이터**다
+    //   (Fable 판정) — 레시피가 없으면 시스템은 무엇을 뺄지 알 방법이 없고, 이름으로 자동
+    //   연결 가능한 것은 운영 전체에서 2건뿐이었다. 미연결 상품은 "상품 자체가 재고 단위"
+    //   경로로 `products.current_stock` 에서 빠지는데, 그 값이 0 이면 아무 일도 일어나지 않는다.
+    //   ⚠ 위험은 이 상태가 **조용하다**는 것이다 — 부족분 경고를 `orders-crud.js` 가
+    //   `console.warn` 으로만 흘린다. 그래서 **배포 로그에 매장별 숫자가 계속 뜨게** 한다.
+    //   ⛔ 화면 배지는 하지 않는다(91%가 미연결이라 전부 빨개져 소음이 된다).
+    //   ⛔ 차단하지 않는다(`warn: true`) — 이미 687건이 있고, 사람이 레시피를 넣어야 풀린다.
+    const unlinked = await q(`
+      SELECT p.restaurant_id, r.name AS restaurant_name, COUNT(*) AS c
+        FROM products p
+        LEFT JOIN restaurants r ON r.id = p.restaurant_id
+       WHERE p.is_active = 1
+         AND p.recipe_id IS NULL
+         AND p.ingredient_id IS NULL
+         AND p.product_recipe_id IS NULL
+         AND COALESCE(p.current_stock, 0) = 0
+       GROUP BY p.restaurant_id, r.name
+       ORDER BY c DESC
+       LIMIT 10`);
+    const unlinkedTotal = unlinked.reduce((n, r) => n + Number(r.c), 0);
+    checks.push({
+      name: 'R-SC-020 (관측) 레시피·재료 미연결 + 재고 0 인 활성 상품 — 팔아도 아무것도 안 빠진다',
+      pass: unlinkedTotal === 0,
+      warn: true,
+      detail: unlinkedTotal === 0
+        ? ''
+        : `${unlinkedTotal}건 · 매장별 ${unlinked.map(r => `${r.restaurant_name || ('rid ' + r.restaurant_id)} ${r.c}`).join(' · ')}`,
+    });
+
     return checks;
   },
 };

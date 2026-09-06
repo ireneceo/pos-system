@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { isRouteDenied } from '../utils/roleRouteDeny';
 import { useNavigate } from 'react-router-dom';
 import i18n from '../i18n';
 
@@ -1054,6 +1055,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const canAccessRoute = (route: string): boolean => {
     if (!user) return false;
+
+    // ⛔ 역할별 **명시 거부** — 와일드카드가 열어 버리는 것을 다시 닫는다 (2026-09-06).
+    //   Brand Manager 의 `/pos/brand/*` 가 결제 설정까지 통과시켰는데, 서버는 그 값을
+    //   **일부러 403** 으로 막는다(Stripe/PayPal·은행계좌·구독금액 = 돈 경계).
+    //   화면만 열려 있어 매니저가 들어가면 빈 화면·오류를 봤다. 서버를 넓히는 게 아니라
+    //   **화면을 서버에 맞춘다** — 프론트 폭 ≤ 서버 폭.
+    //   여기서 막으면 라우트 가드와 사이드바(`isRouteAllowed`)가 **한 곳으로** 처리된다
+    //   (사이드바 파일 MainLayout.tsx 는 🔒 인쇄 보호파일이라 인쇄 무관 작업으로 건드리지 않는다).
+    if (isRouteDenied(user.role, route)) return false;
 
     const userRoutes = ROLE_ROUTES[user.role];
     if (!userRoutes) return false;
