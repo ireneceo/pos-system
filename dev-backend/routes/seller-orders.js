@@ -69,7 +69,11 @@ function buildSellerWhere(req) {
   if (req.sellerIsAdmin && !req.sellerEntity) return {};
   if (!req.sellerEntity) return null;
   const where = { seller_type: req.sellerEntity.type };
-  if (req.sellerEntity.id !== null && req.sellerEntity.id !== undefined) {
+  // 브랜드는 여러 개일 수 있다 — `ids` 가 있으면 전부 본다(2026-09-07, sellerScope 주석 참조).
+  const ids = req.sellerEntity.ids;
+  if (Array.isArray(ids) && ids.length > 0) {
+    where.seller_entity_id = { [Op.in]: ids };
+  } else if (req.sellerEntity.id !== null && req.sellerEntity.id !== undefined) {
     where.seller_entity_id = req.sellerEntity.id;
   } else {
     where.seller_entity_id = null; // system_admin
@@ -83,6 +87,10 @@ function checkSellerOwnership(po, req) {
   if (po.seller_type !== req.sellerEntity.type) return false;
   if (req.sellerEntity.id === null || req.sellerEntity.id === undefined) {
     return po.seller_entity_id === null;
+  }
+  const ids = req.sellerEntity.ids;
+  if (Array.isArray(ids) && ids.length > 0) {
+    return ids.map(Number).includes(parseInt(po.seller_entity_id, 10));
   }
   return parseInt(po.seller_entity_id, 10) === parseInt(req.sellerEntity.id, 10);
 }

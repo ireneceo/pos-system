@@ -38,6 +38,26 @@ Irene 확인: "청구서는 월간처리해도 다 나가? 결제버튼만 마�
 ## 진행 중인 작업
 - 없음
 
+## ✅ 고침 (dev·미배포) — 판매자가 자기 발주를 못 보던 것
+
+> Irene 신고: **"K-DINE 에서 발주를 했는데 왜 우리한테 안들어와? 고객은 주문 넣었는데."**
+> (`/pos/brand/general/incoming-orders` 에서 안 보임)
+
+**원인 한 곳** — `middleware/sellerScope.js:51` 이 `user.brand_id` **하나만** 판매자로 잡았다.
+GIT(user 23)은 `with MIN`(1)·`K-DINE with MIN`(2)을 **둘 다 소유**(`brands.owner_id=23`)하는데
+K-DINE 발주는 **브랜드 2 앞으로** 갔다 → 목록 조건 `seller_entity_id=1` 이 걸러 **화면에서 사라졌다**.
+발주는 정상 제출: `PO-R8-20260907-001` · RM **1,338.40** · 9품목 · `submitted` · 13:01.
+
+**수정**: `brands.owner_id` 로 소유 브랜드를 전부 모아 `entity.ids` 로 넘기고,
+`routes/seller-orders.js` 의 `buildSellerWhere`(목록)·`checkSellerOwnership`(단건)이 `ids` 를 본다.
+새 규칙이 아니라 `brand-soa.js`·`brand-revenue.js` 의 `brandIdsFromScope` 와 같은 방식으로 맞춘 것.
+
+**증명(dev)**: 대표(1)가 아닌 소유 브랜드(4) 발주로 — 단건 접근 **200**(전엔 안 보임) ·
+대표 브랜드에 0건인 상태(`shipped`)로 좁힌 목록에 **1건 정확히 노출** · health-check **225/225** · 인쇄 8/8 무변경.
+⚠ 목록 전체 조회로는 판별이 안 된다(브랜드 1 발주가 100건 상한을 채운다) — 상태로 좁혀야 보인다.
+
+---
+
 ## 🔴 다음 확정 작업 ① — 발주 단위가 판매자 단위여야 한다 (Irene 지시 2026-09-07)
 
 > Irene 원문: **"취급단위만 바꿔. 그리고 발주할 때 나오는 건 기준단위 아니야? 포장단위?
@@ -94,6 +114,10 @@ K-DINE 관리자가 발주하면 화면에 **`g`** 으로 뜬다. 가격은 kg �
 ### ⚠ 지금 나가 있는 발주
 `PO-R8-20260907-001` (K-DINE, **submitted**) — `K-Sundubu 6 g / RM209.40` · `K-Mannani 2 g / RM55.80`.
 GIT 은 6 kg 으로 보낼 텐데 장부는 6 g. **Irene 께 취소 후 재발주를 권고했다.**
+
+### 함께 해야 하는 것 (Irene: "여기서도 그냥 kg로 바꿔줘")
+수신 화면 `/pos/brand/general/incoming-orders` 의 단위도 포장단위로. **발주 화면과 같은 기준을 써야 하므로
+따로 고치지 않고 한 묶음으로 한다** — 따로 하면 또 어긋난다.
 
 ### 남은 판단 (Fable 설계 필요 — 돈·재고, 비가역)
 - 환산 19건을 어떻게 채울지(단위 짝에서 유도 vs 사람이 입력)
