@@ -41,10 +41,15 @@ fi'''
 new_sec = '''# 보안 업데이트는 `unattended-upgrades` 가 매일 자동 적용한다.
 #   리포트 시점에 몇 개 보이는 것은 정상이고, 진짜 이상은 **자동 적용이 멈춘 것**이다.
 AUTO_UPG_ENABLED=$(systemctl is-enabled unattended-upgrades 2>/dev/null || echo disabled)
-LAST_AUTO_UPG=$(ls -t /var/log/unattended-upgrades/unattended-upgrades.log* 2>/dev/null | head -1)
+# 마지막 자동적용 시각은 **로그 파일 mtime 이 아니라** apt 의 주기 실행 스탬프가 진실이다.
+#   로그는 "고칠 것이 있었을 때"만 갱신돼, 조용히 잘 돌던 서버가 몇 십 일째 멈춘 것처럼 보인다.
+#   (2026-09-07 상위 검증 지적)
+AUTO_STAMP=/var/lib/apt/periodic/unattended-upgrades-stamp
 AUTO_AGE_DAYS=99
-if [ -n "$LAST_AUTO_UPG" ]; then
-    AUTO_AGE_DAYS=$(( ( $(date +%s) - $(stat -c %Y "$LAST_AUTO_UPG") ) / 86400 ))
+if [ -f "$AUTO_STAMP" ]; then
+    AUTO_AGE_DAYS=$(( ( $(date +%s) - $(stat -c %Y "$AUTO_STAMP") ) / 86400 ))
+elif [ -f /var/log/unattended-upgrades/unattended-upgrades.log ]; then
+    AUTO_AGE_DAYS=$(( ( $(date +%s) - $(stat -c %Y /var/log/unattended-upgrades/unattended-upgrades.log) ) / 86400 ))
 fi
 if [ "$AUTO_UPG_ENABLED" != "enabled" ]; then
     TODO_COUNT=$((TODO_COUNT + 1))
@@ -66,10 +71,12 @@ fi'''
 new_disk = '''if [ "${DISK_PERCENT:-0}" -ge 70 ]; then
     TODO_COUNT=$((TODO_COUNT + 1))
     # `journalctl --vacuum` 을 무조건 권하지 않는다 — 실측 364MB 라 원인과 거의 무관했다.
-    TOP_DIR=$(du -xh --max-depth=2 /var /opt /home 2>/dev/null | sort -rh | head -1)
+    # `--max-depth=2 /var` 는 /var 자체(139G)가 늘 1등이라 아무것도 못 알려준다.
+    #   한 단계 더 들어간 실제 폴더 3개를 보여준다 (2026-09-07 상위 검증 지적).
+    TOP_DIR=$(du -xsh /var/*/* /opt/* /home/* 2>/dev/null | sort -rh | head -3 | awk '{printf "%s %s; ", $1, $2}')
     JOURNAL_SZ=$(journalctl --disk-usage 2>/dev/null | grep -oE '[0-9.]+[MG]' | head -1)
     TODO_ITEMS="${TODO_ITEMS}  ${TODO_COUNT}. [주의] 디스크 사용량 ${DISK_PERCENT}% - 정리 필요\\n"
-    TODO_ITEMS="${TODO_ITEMS}     가장 큰 곳: ${TOP_DIR}\\n"
+    TODO_ITEMS="${TODO_ITEMS}     가장 큰 곳 셋: ${TOP_DIR}\\n"
     TODO_ITEMS="${TODO_ITEMS}     (시스템 로그는 ${JOURNAL_SZ:-알수없음} 이라 대개 원인이 아닙니다)\\n"
     TODO_ITEMS="${TODO_ITEMS}     -> 위 폴더를 먼저 확인하세요. 배포 백업은 배포 스크립트가 30일 보관으로 자동 정리합니다.\\n\\n"
 fi'''

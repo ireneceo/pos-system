@@ -1467,7 +1467,8 @@
       "Bash(awk 'NR>=2470 && NR<=2560 && \\(/needs_print/ || /router.delete/ || /is_deleted/ || /pending_reprint/\\)' routes/orders-crud.js)",
       "Bash(awk 'NR>=2071 && NR<=2140' routes/orders-crud.js)",
       "Bash(timeout 300 bash -c \"cat /tmp/claude-1000/-var-www/0444d432-4d76-4517-ae97-fdd91d1701e2/scratchpad/release-v3.73.json | node scripts/create-release-post.js --stdin --sync-prod\")",
-      "Bash(./deploy-to-production.sh *)"
+      "Bash(./deploy-to-production.sh *)",
+      "Bash(ssh *)"
     ],
     "deny": [],
     "ask": []

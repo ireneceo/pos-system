@@ -386,7 +386,10 @@ PRUNE_OUT=$(ssh $PROD_SERVER "
   #    이름만 보고 정렬하면 그것들이 '최신'으로 뽑혀 진짜 최신 백업이 보호를 잃는다
   #    (2026-09-07 시뮬레이션에서 실제로 그렇게 나와 잡았다).
   LIST=\$(ls -1d */ 2>/dev/null | tr -d '/' | grep -E '^[0-9]{8}_[0-9]{6}$' | sort -r)
-  KEEP=\$(echo \"\$LIST\" | head -${BACKUP_KEEP_MIN})
+  # KEEP 는 **공백 한 줄**이어야 한다. head 결과는 줄바꿈 구분이라 아래 case 의
+  #   " $d " 패턴이 첫/끝 항목 말고는 하나도 안 맞았다 = 최신 N개 보호가 사실상 없었다
+  #   (2026-09-07 상위 검증 지적. 시뮬레이션으로 재현하고 고쳤다.)
+  KEEP=\$(echo \"\$LIST\" | head -${BACKUP_KEEP_MIN} | tr '\\n' ' ')
   FREED=0; N=0
   for d in \$LIST; do
     case \" \$KEEP \" in *\" \$d \"*) continue;; esac

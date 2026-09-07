@@ -385,6 +385,9 @@
   "orders": {
     "table": {
       "payment": "付款"
+    },
+    "tabs": {
+      "completed": "已完成"
     }
   }
 }

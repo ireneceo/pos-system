@@ -172,7 +172,8 @@
       "confirmed": "Disahkan",
       "shipped": "Dihantar",
       "received": "Diterima",
-      "cancelled": "Dibatalkan"
+      "cancelled": "Dibatalkan",
+      "completed": "Selesai"
     },
     "table": {
       "poNumber": "No PO",

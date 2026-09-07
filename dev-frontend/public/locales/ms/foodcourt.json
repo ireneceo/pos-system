@@ -385,6 +385,9 @@
   "orders": {
     "table": {
       "payment": "Pembayaran"
+    },
+    "tabs": {
+      "completed": "Selesai"
     }
   }
 }

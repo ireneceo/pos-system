@@ -48,6 +48,7 @@ node scripts/verify-all.js --list    # 게이트 목록 / --only <id> 단독 실
 | design-guard | 공용 컴포넌트 미사용·장식 이모지 등 신규 디자인 위반 |
 | route-guard | 신규 무방비 `/restaurant/:param` (IDOR) |
 | migration-registry | 새 마이그가 배포목록에 미등록 (운영 스키마 드리프트) |
+| bundle-fresh | 프론트 소스가 **서빙 번들보다 새로움** = 빌드가 안 돌았거나 실패했다. mount sweep 캐시는 번들 '내용'만 보므로 빌드 미실행을 스스로 못 잡는다 — 2026-09-06·09-07 두 번, 빌드가 실패했는데 옛 번들로 전 게이트 통과가 났다. ⛔ 통과시키려고 파일 시각을 만지지 말 것, 답은 다시 빌드하는 것 |
 | timezone | 브라우저 로컬시간 사용 (매장 타임존 규칙 위반) |
 | hydration | 새 state field 의 defensive merge 누락 (legacy 캐시 crash) |
 | dead-handlers | 선언 없는 `setXxx(` 호출 = **클릭 즉시 ReferenceError → 버튼이 통째로 죽음**. 2026-08-19 with MIN #260819-010 에서 Live Orders `Confirm Payment` 가 2.5개월간 죽어 있었다(`setAudioEnabled` — 리팩터로 사라진 setter). **이 프로젝트는 타입검사가 게이트가 아니다**: `typescript@4.9.5` vs `i18next` TS5 `.d.ts` 로 파서가 먼저 터지고 CRA 가 타입오류를 warning 으로만 낸다 → `TS2304` 가 아무것도 막지 못한다 |

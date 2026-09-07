@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-07 (**v3.85 운영 배포 완료** · SW 4.86 · 이후 거래청구서 원장·서버 관리는 dev 완료·미배포). 브랜드제너럴 리포트를 "브랜드 자기 매출"로 재정의하고, 매장 판매 분석 6탭은 성과 메뉴 밑으로 옮겼다. 진실원장은 **브랜드가 발행한 인보이스** 하나(프로덕트 개별판매 `trade` · 구독판매 `brand_plan` · 수수료), `soa` 는 자식 인보이스의 묶음이라 제외한다.
+> **최종 업데이트:** 2026-09-07 (**하루 세 번 배포** · SW 4.87 → 4.88 → **4.89**). 판매자 발주 가시성(브랜드 여럿이면 다른 브랜드 주문이 통째로 안 보이던 것) · 주문상태와 결제상태 분리 · **발주 단위를 공급업체 기준으로**(소스 kg · 포장재 pack) · 인보이스 올리기 모바일 터치 타깃 · 배포 백업 보호 결함 · **빌드 실패를 검증이 못 잡던 구멍**(신규 게이트 `bundle-fresh`).
+> 발주 단위는 **데이터가 아니라 표시 규칙**으로 고쳤다 — 소스 재료는 레시피가 g 으로 쓰고 재고 차감이 단위 변환을 안 하므로, 취급단위를 kg 으로 바꿨다면 레시피 50g 이 50kg 을 깎았다. 수량·단가·환산·금액은 한 줄도 안 건드렸다.
+> 검증: `verify-all --full` **19/19** · health-check **227/227** · mount sweep 680초 실제 실행 · 고장주입 2건 반증.
 > 함께: 브랜드 성과 화면에 오늘/어제 필터(매장 타임존 기준) · 재발 감시 인스펙션 3건.
 > **데이터 정리(중복·오염값)는 아직 미실행** — 운영 DB 쓰기가 세션 정책으로 차단됐다. 도구·미리보기·백업은 준비 완료.
 > **운영에서 찾은 것**: 수령이 끝난 발주 **14건(RM 4,020.57) 전부에 거래 인보이스가 없다.** 수령 경로가 둘인데 `mark-received` 가 `createTradeInvoice` 를 안 부른다(`/receive` 만 부름). 그래서 SOA 도 0장이고 **브랜드 매출 기록이 통째로 비어 있었다.** 원인만 확정, 수정은 별건 대기.
@@ -9401,6 +9403,41 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 - `dev-backend/`: `routes/brands-core.js` `routes/ingredients.js` `routes/restaurants-ingredients.js` `routes/brand-inventory.js` `routes/users.js` `routes/supplier.js` `routes/general-stock.js` `routes/inventory-extra.js` `routes/supplier-products.js` `routes/supplier-directory.js` `routes/system-products.js` `routes/subscriptions.js` `services/invoiceScheduler.js` `middleware/brandScope.js` `utils/codeGenerator.js` `seed-demo-data.js` `scripts/health-check.js` `scripts/check-deploy-ready.js` `scripts/migrate-package-unit-2-converge.js` `scripts/migrate-demo-accounts-unverified.js`(신규) `scripts/inspection/suites/supply-chain.js`
 - `dev-frontend/`: `src/App.tsx` `src/contexts/AuthContext.tsx` `src/hooks/useAllowedRoutes.ts` `src/utils/roleRouteDeny.ts`(신규) `src/pages/RecipeManagement/IngredientsTab.tsx` `public/sw.js` `e2e/calendar-month-label.spec.js`(신규) `e2e/sidebar-role-deny.spec.js`(신규) · 삭제 `src/pages/Recipes/RecipesPage.tsx` `src/pages/Ingredients/IngredientsPage.tsx`
 - 루트: `deploy-to-production.sh` `scripts/heavy-task-gate.sh` `CLAUDE.md` `docs/TRADE_STRUCTURE.md`
+
+---
+
+## ✅ 완료: 발주 단위·판매자 가시성·게이트 보강 (2026-09-07)
+
+하루에 세 번 배포했다. SW `4.87` → `4.88` → `4.89`.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 판매자 발주 가시성 | BG 가 소유·소속·형제 브랜드 앞으로 온 발주를 전부 본다. K-DINE 주문이 안 보이던 원인 | ✅ 완료 |
+| 주문상태 / 결제상태 분리 | 판매자에게 `received` 는 **완료**로 표시, 결제 열 신설(미결제·결제완료·환불) | ✅ 완료 |
+| 거래 청구서 원장 | 수령 3경로 전부 발행 · 발주↔청구서 결제 양방향 거울 · SOA 이중청구 차단 | ✅ 완료 |
+| **발주 단위 = 공급업체 기준** | 서버가 라인 단위를 정한다(`resolveOrderUnit`). 소스 kg · 포장재 pack. 담는 화면도 같은 규칙(`orderUnitOf`), 가격도 주문 단위당 | ✅ 완료 |
+| 인보이스 올리기 모바일 | 실브라우저 업로드 성공 확인. 버튼만 29px 이던 것을 옆 버튼과 같은 35px 로 | ✅ 완료 |
+| 배포 백업 보호 결함 | "최신 10개는 남긴다"가 문자열 비교 실수로 **0개를 보호**하고 있었다. 시뮬레이션 재현 후 수정 | ✅ 완료 |
+| 빌드 실패 구멍 | 신규 게이트 `bundle-fresh` — 프론트 소스가 서빙 번들보다 새로우면 fail-closed | ✅ 완료 |
+| 주간 리포트 생성기 | 디스크 원인을 `/var` 로만 알려주던 것 · 자동 보안 업데이트 판정 기준 | ✅ 완료(운영 미적용) |
+
+### 운영 데이터 적용
+- 발주 단위: 판매자 상품 단위 1건 · 재료 포장단위 18건 · 팩당 낱개 수 4건 · 발주 라인 라벨 5건. **금액 이동 0건 · 헤더=라인합 · 수령된 발주 무접촉**
+- 1kg 소스 19건: 취급단위 kg·기준 1·포장 kg (레시피 0·재고 0 인 행만)
+- GIT Consulting 구독: 미결제 8건 0원+100% 할인(상태 유지) · Expired 해제 · 2026-10~2027-09 12개월 0원 선발행
+
+### 사고에서 배운 것
+- **소스 재료의 취급단위는 못 바꾼다** — 레시피가 g 으로 쓰고 `inventoryDeductionService.js:292` 가 변환 없이 그대로 차감한다. 정지 조건이 막았다.
+- 운영 데이터 미리보기가 **잘못된 변경을 잡았다** — 수령 끝난 발주의 `대파 5kg → 5g`. 공급업체 라인은 판매자 단위를 못 읽어 엉뚱한 폴백을 탔다. 범위를 좁혔다.
+- **빌드 실패를 통과로 착각할 뻔했다**(두 번). 번들 지문을 직접 봐서 잡았고, 이제 게이트가 막는다.
+
+### 수정된 파일
+- `dev-backend/routes/purchase-orders-crud.js` · `middleware/sellerScope.js` · `routes/seller-orders.js` · `routes/po-returns.js`
+- `dev-backend/scripts/check-bundle-fresh.js`(신규) · `scripts/verify-all.js` · `scripts/ops/fix-weekly-report.sh`
+- `dev-frontend/src/pages/PurchaseOrders/NewPurchaseOrderPage.tsx` · `PurchaseOrdersPage.tsx` · `pages/IncomingOrders/IncomingOrdersView.tsx`
+- `deploy-to-production.sh` · i18n 4언어(brand·foodcourt·supplier)
 
 ---
 

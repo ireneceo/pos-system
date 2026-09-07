@@ -172,7 +172,8 @@
       "confirmed": "Confirmed",
       "shipped": "Shipped",
       "received": "Received",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "completed": "Completed"
     },
     "table": {
       "poNumber": "PO #",

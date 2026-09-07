@@ -172,7 +172,8 @@
       "confirmed": "확정",
       "shipped": "배송",
       "received": "수령",
-      "cancelled": "취소"
+      "cancelled": "취소",
+      "completed": "완료"
     },
     "table": {
       "poNumber": "PO 번호",

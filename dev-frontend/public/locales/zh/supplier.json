@@ -172,7 +172,8 @@
       "confirmed": "已确认",
       "shipped": "已发货",
       "received": "已收货",
-      "cancelled": "已取消"
+      "cancelled": "已取消",
+      "completed": "已完成"
     },
     "table": {
       "poNumber": "PO 编号",

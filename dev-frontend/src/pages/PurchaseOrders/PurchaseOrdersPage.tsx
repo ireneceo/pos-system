@@ -968,9 +968,12 @@ const PurchaseOrdersPage: React.FC = () => {
                                 e.target.value = '';
                               }}
                             />
+                            {/* 모바일에서 직원이 누른다 — 옆 행 액션(View·Invoice)이 35px 인데
+                                이 버튼만 29px 이라 손가락 타깃이 작았다(2026-09-07 실측). 높이를 맞춘다. */}
                             <span style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 4,
-                              padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                              padding: '6px 12px', minHeight: 35, boxSizing: 'border-box',
+                              fontSize: 12, fontWeight: 600,
                               border: '1px solid #635BFF', color: '#635BFF',
                               background: '#EEF2FF', borderRadius: 6, cursor: 'pointer'
                             }}>

@@ -767,6 +767,9 @@
   "orders": {
     "table": {
       "payment": "Payment"
+    },
+    "tabs": {
+      "completed": "Completed"
     }
   }
 }

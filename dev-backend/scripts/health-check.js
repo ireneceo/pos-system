@@ -4740,8 +4740,11 @@ function definePrintTests({ adminToken }) {
     if (ret.status !== 200) return false;          // 반품 복제본이 안 고쳐지면 여기서 404
 
     // ② 타 조직 계정은 **못 본다** — 목록에도 안 섞인다
+    // ⚠ 조직 **주인 계정**을 제외한다 — 주인의 `brand_id` 가 orgIds 밖이면 주인이 "타 조직"으로
+    //   뽑혀 200 이 나오고 거짓 FAIL 이 된다(Fable 2차 게이트 적발. dev 데이터에선 안 걸리는 데이터 의존 통과였다).
     const foreign = await User.findOne({
-      where: { role: 'Brand General', is_active: true, brand_id: { [Op.notIn]: orgIds } }
+      where: { role: 'Brand General', is_active: true,
+               brand_id: { [Op.notIn]: orgIds }, id: { [Op.ne]: ownerId } }
     });
     if (foreign) {
       const d = await request('GET', `/seller-orders/${po.id}`, null, auth(foreign));

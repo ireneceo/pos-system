@@ -49,6 +49,9 @@ const GATES = [
   // 배포를 눌러야만 알 수 있던 것들(기록 파일·fable_note·SW 버전·마이그 기본동작)을 **여기서** 잡는다.
   // 배포 스크립트의 같은 검사는 10번째(맨 마지막)라 42초 뒤에 하나씩만 알려줬다 — 오늘 그 왕복만 반복했다.
   { id: 'deploy-ready', tier: 'static', label: '🚀 배포 준비 (기록 7칸·fable_note·SW 버전·마이그 기본동작)', cwd: BACKEND, cmd: ['node', 'scripts/check-deploy-ready.js'] },
+  // 빌드가 실패했는데 sweep 이 옛 번들로 통과하던 구멍을 막는다(2026-09-06·09-07 두 번 발생).
+  //   sweep 캐시는 번들 '내용'만 보므로 '빌드가 아예 안 돌았다'를 스스로 알 수 없다.
+  { id: 'bundle-fresh', tier: 'static', label: '🧱 번들 신선도 (프론트 소스 > 서빙 번들이면 빌드 미실행)', cwd: BACKEND, cmd: ['node', 'scripts/check-bundle-fresh.js'] },
   { id: 'timezone', tier: 'static', label: '🕐 타임존 가드 (신규 위반 0)', cwd: BACKEND, cmd: ['node', 'scripts/timezone-check.js'] },
   { id: 'desktop-feed', tier: 'static', label: '🖥️ 데스크탑 설치본 피드 (CTA·자동업데이트가 최신 exe 를 가리킴)', cwd: BACKEND, cmd: ['node', 'scripts/check-desktop-feed.js', '--quiet'] },
   { id: 'hydration', tier: 'static', label: '💧 state hydration 안전 (warning 0)', cwd: FRONTEND, cmd: ['node', 'scripts/state-hydration-check.js'] },

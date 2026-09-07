@@ -971,7 +971,8 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
               onClick={() => setActiveTab(tab)}
               type="button"
             >
-              {tNs(`orders.tabs.${tab}`, tab.charAt(0).toUpperCase() + tab.slice(1))}
+              {/* 탭 이름도 같은 단어로 — `received` 탭은 판매자에게 "완료" 다. */}
+              {tNs(`orders.tabs.${sellerStatusKey(tab)}`, tab.charAt(0).toUpperCase() + tab.slice(1))}
               <RLTabBadge>{counts[tab] ?? 0}</RLTabBadge>
             </RLStatusTab>
           ))}
@@ -1368,8 +1369,9 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 <div style={{ fontSize: 11, color: '#4B5563', fontWeight: 600, textTransform: 'uppercase' }}>
                   {tNs('orders.detail.status', 'Status')}
                 </div>
+                {/* 목록과 **같은 단어**를 쓴다 — 목록은 "완료", 열면 "수령" 이면 같은 주문을 두 말로 부르게 된다. */}
                 <DataTableStatus variant={StatusVariantMap[detailFull.status] || 'info'}>
-                  {tNs(`status.${detailFull.status}`, detailFull.status)}
+                  {tNs(`status.${sellerStatusKey(detailFull.status)}`, sellerStatusKey(detailFull.status))}
                 </DataTableStatus>
               </div>
               <div style={{ padding: 12, background: '#F9FAFB', borderRadius: 8 }}>

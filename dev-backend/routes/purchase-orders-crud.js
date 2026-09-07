@@ -16,6 +16,25 @@
 
 const express = require('express');
 const router = express.Router();
+
+// ── 발주 라인 단위 = 공급업체 기준 (2026-09-07 Irene 지시)
+//   원문: "발주정보는 공급업체 기준. 발주페이지는 다 포장단위여야 하네"
+//   판매자 상품 단위 → 없으면 구매자 재고행의 포장단위 → 없으면 취급단위.
+//   ⚠ 이 값은 **라벨**이다. 재고 환산은 unit_conversion 이 하고, 금액은 quantity × unit_price 다.
+//   그래서 취급단위(레시피가 g 으로 쓰는 것)를 건드리지 않고도 발주는 kg/pack 으로 보인다.
+async function resolveOrderUnit(mapping, stockRow, transaction) {
+  if (mapping && mapping.seller_product_id) {
+    try {
+      const Model = require(mapping.seller_type === 'brand' ? '../models/BrandProduct' : '../models/Product');
+      const sp = await Model.findByPk(mapping.seller_product_id, { transaction });
+      const u = sp && (sp.unit || sp.stock_unit);
+      if (u) return u;
+    } catch (e) { /* 판매자 상품을 못 찾으면 아래 폴백 */ }
+  }
+  if (stockRow && (stockRow.package_unit || stockRow.unit)) return stockRow.package_unit || stockRow.unit;
+  return null;
+}
+
 const { Op } = require('sequelize');
 const database = require('../config/database');
 const {
@@ -722,7 +741,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
         ingredient_seller_product_id: mappingP,
         quantity_ordered: qtyP,
         quantity_received: 0,
-        unit: raw.unit || prod.stock_unit || prod.unit || null,
+        unit: prod.stock_unit || prod.unit || raw.unit || null,   // 공급업체 기준
         unit_price: fPriceP,
         unit_conversion: fConvP,
         line_total: Math.round((qtyP * fPriceP) * 100) / 100,
@@ -745,7 +764,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
       if (!pIng || (pIng.owner_user_id != null && pIng.owner_user_id !== userId)) {
         return { ok: false, status: 400, body: { success: false, message: `Stock item ${piId} not accessible to this buyer` } };
       }
-      let convB = 1, priceB = 0, mappingB = raw.ingredient_seller_product_id || null;
+      let convB = 1, priceB = 0, mappingB = raw.ingredient_seller_product_id || null, mappingRowB = null;
       if (seller_type !== 'system_admin') {
         const mw = { product_ingredient_id: piId, seller_type, seller_entity_id: seller_entity_id ? parseInt(seller_entity_id, 10) : null, is_active: true };
         if (raw.ingredient_seller_product_id) mw.id = raw.ingredient_seller_product_id;
@@ -754,6 +773,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
           return { ok: false, status: 400, body: { success: false, code: 'MAPPING_REQUIRED', message: `Stock item ${piId} is not mapped to this seller` } };
         }
         mappingB = mapping.id; convB = parseFloat(mapping.unit_conversion) || 1; priceB = parseFloat(mapping.unit_price) || 0;
+        mappingRowB = mapping;
       }
       const fConv = raw.unit_conversion != null ? (parseFloat(raw.unit_conversion) || 1) : convB;
       const fPrice = raw.unit_price != null ? (parseFloat(raw.unit_price) || 0) : priceB;
@@ -762,7 +782,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
         ingredient_seller_product_id: mappingB,
         quantity_ordered: qtyB,
         quantity_received: 0,
-        unit: raw.unit || pIng.unit || null,
+        unit: await resolveOrderUnit(mappingRowB, pIng, transaction) || raw.unit || null,   // 공급업체 기준
         unit_price: fPrice,
         unit_conversion: fConv,
         line_total: Math.round((qtyB * fPrice) * 100) / 100,
@@ -785,6 +805,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
     let convFallback = 1;
     let priceFallback = 0;
     let resolvedMappingId = raw.ingredient_seller_product_id || null;
+    let mappingRow = null;
 
     if (seller_type !== 'system_admin') {
       const mappingWhere = {
@@ -799,11 +820,13 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
         return { ok: false, status: 400, body: { success: false, code: 'MAPPING_REQUIRED', message: `Ingredient ${ingredientId} is not mapped to this seller` } };
       }
       resolvedMappingId = mapping.id;
+      mappingRow = mapping;
       convFallback = parseFloat(mapping.unit_conversion) || 1;
       priceFallback = parseFloat(mapping.unit_price) || 0;
     } else if (raw.ingredient_seller_product_id) {
       const sellerSrc = await IngredientSellerProduct.findByPk(raw.ingredient_seller_product_id, { transaction });
       if (sellerSrc && sellerSrc.ingredient_id === ingredientId) {
+        mappingRow = sellerSrc;
         convFallback = parseFloat(sellerSrc.unit_conversion) || 1;
         priceFallback = parseFloat(sellerSrc.unit_price) || 0;
       }
@@ -816,7 +839,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
       ingredient_seller_product_id: resolvedMappingId,
       quantity_ordered: qty,
       quantity_received: 0,
-      unit: raw.unit || ing.unit || null,
+      unit: await resolveOrderUnit(mappingRow, ing, transaction) || raw.unit || null,   // 공급업체 기준
       unit_price: finalPrice,
       unit_conversion: finalConv,
       line_total: Math.round((qty * finalPrice) * 100) / 100,
@@ -1164,7 +1187,11 @@ router.put('/purchase-orders/:id', async (req, res) => {
           ingredient_seller_product_id: raw.ingredient_seller_product_id || null,
           quantity_ordered: qty,
           quantity_received: 0,
-          unit: raw.unit || ing.unit || null,
+          unit: await resolveOrderUnit(
+                  raw.ingredient_seller_product_id
+                    ? await IngredientSellerProduct.findByPk(raw.ingredient_seller_product_id, { transaction: t })
+                    : null,
+                  ing, t) || raw.unit || null,   // 공급업체 기준
           unit_price: parseFloat(raw.unit_price) || 0,
           unit_conversion: parseFloat(raw.unit_conversion) || 1,
           line_total: Math.round((qty * (parseFloat(raw.unit_price) || 0)) * 100) / 100,

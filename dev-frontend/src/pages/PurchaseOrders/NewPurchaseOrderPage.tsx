@@ -221,6 +221,18 @@ const perUnitPriceOf = (seller?: Partial<SellerOpt> | null): number => {
 };
 
 /**
+ * 발주 화면에서 쓰는 **주문 단위** — 발주는 공급업체 기준이다.
+ *   Irene 2026-09-07: "발주정보는 공급업체 기준. 발주페이지는 다 포장단위여야 하네"
+ * ⛔ 재고 표시(`row.unit` = 취급단위)와 섞지 말 것. 재고는 g 으로 세고 주문은 kg 으로 한다 —
+ *    같은 칸에 넣으면 "재고 2000 kg" 같은 거짓말이 된다.
+ * 서버도 같은 규칙으로 라인 단위를 정한다(dev-backend/routes/purchase-orders-crud.js resolveOrderUnit).
+ */
+const orderUnitOf = (sellers?: SellerOpt[] | null, fallbackUnit?: string | null): string => {
+  const lead = sellers?.find(s => s.is_preferred) || sellers?.[0];
+  return lead?.seller_unit || fallbackUnit || '';
+};
+
+/**
  * 단위 설정이 덜 끝난 링크인가 — **판정 기준은 인스펙션 R-SC-007 과 동일**하다.
  *   (dev-backend/scripts/inspection/suites/supply-chain.js)
  * ⛔ 프론트에 별도 판정 로직을 만들지 말 것 — 화면과 검사기가 서로 다른 말을 하게 된다.
@@ -2047,7 +2059,8 @@ const NewPurchaseOrderPage: React.FC = () => {
                     // 판매자가 등록한 규격 필드를 먼저 쓰고, 없으면 상품 이름에 박힌 표기로 떨어진다.
                     const leadSeller = row.sellers.find(s => s.is_preferred) || row.sellers[0];
                     const packSpec = specTextOf(leadSeller);
-                    const metaText = [catText, row.unit || '', stockText, packSpec].filter(Boolean).join(' · ');
+                    // 단위 칩은 **주문 단위**다(재고 수량은 stockText 가 취급단위로 따로 보여준다).
+                    const metaText = [catText, orderUnitOf(row.sellers, row.unit), stockText, packSpec].filter(Boolean).join(' · ');
 
                     let priceText = '';
                     let vendorText = '';
@@ -2061,9 +2074,11 @@ const NewPurchaseOrderPage: React.FC = () => {
                       // 업체 비교는 **단위당 가격**으로만 공정하다 — 5kg 포대와 1kg 봉지는
                       // 표시가격끼리 비교가 안 된다. 규격(base_quantity)과 재고환산(unit_conversion)을
                       // 둘 다 걷어낸 값으로 비교한다.
-                      const perUnit = pricedSellers.map(
-                        s => perUnitPriceOf(s) / (parseFloat(String(s.unit_conversion)) || 1)
-                      );
+                      // 2026-09-07: **주문 단위당** 가격으로 보여준다(= 실제로 내는 값).
+                      //   perUnitPriceOf 가 이미 규격(base_quantity)을 걷어내 판매 단위 1개당이라
+                      //   업체 비교는 그대로 공정하다. 예전엔 여기서 unit_conversion 까지 나눠
+                      //   재고 단위(g)당 값을 냈는데, 발주 화면에 kg 라벨을 붙이면 1000배 거짓말이 된다.
+                      const perUnit = pricedSellers.map(s => perUnitPriceOf(s));
                       const minPer = perUnit.length ? Math.min(...perUnit) : 0;
                       // 가격 0 은 "0원에 판다"가 아니라 **아직 안 넣은 것**이다. 숫자 0.00 으로 보이면
                       // 구분이 안 돼 그대로 발주하게 된다 — Irene 2026-08-28:
@@ -2091,8 +2106,8 @@ const NewPurchaseOrderPage: React.FC = () => {
                       const minOrderText = minOrder > 1 ? ` · ${t('newPo.minOrder', 'Min')} ${formatQuantity(minOrder)}` : '';
                       // 가격 옆 단위는 **어느 뷰에서든 항상** 붙는다.
                       //   목록 뷰만 단위를 떨어뜨려 "3.30" 이 무엇 기준인지 알 수 없었다(2026-08-30 Irene 지적).
-                      //   minPer 는 conv 까지 나눈 **재고 단위당** 가격이므로 단위는 row.unit 이다.
-                      vendorText = `/${row.unit || 'unit'} · ${vendorName}${minOrderText}`;
+                      //   minPer 는 **주문 단위당** 가격이므로 단위도 주문 단위여야 한다.
+                      vendorText = `/${orderUnitOf(row.sellers, row.unit) || 'unit'} · ${vendorName}${minOrderText}`;
                     }
                     const noSellerText = row.is_brand_shared
                       ? (t('newPo.brandNeedsLink', 'Your brand has not linked a supplier to this item yet') as string)
@@ -2440,7 +2455,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                       </div>
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#6B7280' }}>
-                      {row.ingredient_unit && <span>{row.ingredient_unit}</span>}
+                      {orderUnitOf(row.available_sellers, row.ingredient_unit) && <span>{orderUnitOf(row.available_sellers, row.ingredient_unit)}</span>}
                       {row.available_sellers.length > 1 ? (
                         <VendorMini
                           style={{ flex: 1, fontSize: 11, padding: '3px 6px' }}
