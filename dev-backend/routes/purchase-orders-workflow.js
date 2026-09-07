@@ -40,6 +40,32 @@ const { isApprovalRequiredForRestaurant, applySubmitGate } = require('../utils/p
 const { fireSellerSubmittedNotification, fireOwnerApprovalPendingNotification, fireBuyerConfirmNotification, fireBuyerReceivedNotification } = require('../services/poNotifications');
 // 수령 시 재고 반영 단일 소스 — /receive 와 mark-received 가 같은 함수를 쓴다(P4-2, 복제 금지)
 const { applyReceipt, markAllReceived } = require('../services/purchaseOrderReceive');
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 수령이 끝난 발주에 거래 청구서를 발행한다 — **세 경로 공용 단일 소스**.
+//
+// 왜 헬퍼인가 (2026-09-07): 수령으로 끝나는 길이 셋인데(`/receive` · `/mark-received` ·
+//   `/receive-and-pay`) 발행하는 곳이 `/receive` 하나뿐이었다. 매장이 실제로 쓰는 길은
+//   나머지 둘이라, 운영에 **청구서 없는 수령 발주 14건(RM 4,020.57)** 이 쌓였고
+//   SOA 는 묶을 자식이 없어 0장이었다(= 브랜드 매출 기록이 통째로 비었다).
+//
+// ⚠ **반드시 커밋 이후에 부른다.** `createTradeInvoice` 는 트랜잭션 인자를 받지 않고
+//   자기 커넥션으로 `po.update({trade_invoice_id})` 까지 한다 — 수령 트랜잭션 안에서 부르면
+//   잠긴 PO 행을 두고 자기 자신과 락 대기에 걸린다.
+// 멱등: `trade_invoice_id` 가 이미 있으면 기존 것을 돌려준다.
+// 비차단: 발행 실패가 수령 응답을 막지 않는다(수령은 이미 커밋됐다).
+function issueTradeInvoiceAfterCommit(po) {
+  if (!po || po.status !== 'received') return;
+  setImmediate(async () => {
+    try {
+      const { createTradeInvoice } = require('../services/purchaseOrderService');
+      await createTradeInvoice(po);
+    } catch (e) {
+      console.error('[trade-invoice] 자동 발행 실패:', po.po_number, e.message);
+    }
+  });
+}
+
 // 결제·되돌리기 단일 소스 (P4-3) — 발주 행 기록 + 현금이면 드로어 이동. 마감 공식은 자동으로 잡는다.
 const { recordPayment, reversePayment } = require('../services/purchaseOrderPayment');
 
@@ -602,6 +628,8 @@ router.post('/purchase-orders/:id/receive-and-pay', async (req, res) => {
     });
     // 수령 사실을 판매자에게 알린다(mark-received 와 같은 규칙 — non-blocking)
     setImmediate(() => fireBuyerReceivedNotification(result.po));
+    // 거래 청구서 발행 — `result.po` 는 결제까지 반영된 인스턴스라 청구서가 **결제됨**으로 나간다.
+    issueTradeInvoiceAfterCommit(result.po);
     res.json({
       success: true,
       data: result.po,
@@ -658,6 +686,8 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
     // 판매자 재고는 "출고"에서만 빠지는데 구매자가 먼저 받는 경로가 실제로는 유일했다
     // → 알려주지 않으면 판매자 재고가 영영 안 빠진다. 발송 실패가 수령을 막지 않도록 non-blocking.
     setImmediate(() => fireBuyerReceivedNotification(po));
+    // 거래 청구서 발행 — 이 경로가 매장이 실제로 쓰는 길인데 종전에 빠져 있었다.
+    issueTradeInvoiceAfterCommit(po);
     res.json({ success: true, data: po });
   } catch (err) {
     if (!t.finished) await t.rollback();
@@ -1038,17 +1068,8 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
     // Sprint 7: response includes auto_returns + discrepancy_lines for UI feedback
     res.locals.sprint7Extra = { auto_returns: autoReturns, discrepancy_lines: discrepancyLines };
 
-    // Sprint 4: Auto-issue Trade Invoice when fully received (idempotent, non-blocking)
-    if (updated.status === 'received') {
-      (async () => {
-        try {
-          const { createTradeInvoice } = require('../services/purchaseOrderService');
-          await createTradeInvoice(updated);
-        } catch (e) {
-          console.error('[Sprint 4] Trade invoice auto-issue failed:', e.message);
-        }
-      })();
-    }
+    // Sprint 4: 전량 수령이면 거래 청구서 자동 발행 (헬퍼 = 세 경로 공용)
+    issueTradeInvoiceAfterCommit(updated);
 
     // 2026-09-01(Q6): mark-received 와 같은 규칙 — 구매자 수령을 판매자에게 알린다
     setImmediate(() => fireBuyerReceivedNotification(updated));

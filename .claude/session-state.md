@@ -1,17 +1,65 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-09-07 07:05 UTC
-**버전:** SW `4.86-brand-revenue-dedupe-20260907` — 개발서버 반영 완료, **운영 미배포**
-**작업 상태:** dev 구현·검증 완료 — `verify-all --full` **18/18** · health-check **221/221** · Fable 게이트 마커 **유효**
-**대기:** Irene `/배포` 지시. 운영 DB 는 이번 세션에서 **아무것도 바뀌지 않았습니다**(읽기 전용 실측 + 미리보기만)
+**버전:** **v3.85 운영 배포 완료** (SW `4.86-brand-revenue-dedupe-20260907`)
+**작업 상태:** 코드 배포 완료 — 스모크 10/10 · 마이그 정상 · 운영 SW/번들(main.aa119385.js) 반영 확인 · 익명 401 확인
+**릴리즈 콘텐츠:** 블로그 `release-v3.85` + 공지(수신자 9명) 운영 등록 완료
 
-### 배포 시 순서 (고정)
-1. `/배포` — 코드 배포(SW 4.86, 마이그 `migrate-brand-performance-stores-route.js` 자동 실행)
-2. 운영 DB 백업 확인
-3. `node scripts/migrate-dedupe-2026-09.js` (미리보기) → 출력 대조
-4. `node scripts/migrate-dedupe-2026-09.js --rehearse` (쓰고 롤백)
-5. `node scripts/migrate-dedupe-2026-09.js --apply`
-6. `node scripts/migrate-dedupe-2026-09.js --deactivate 95,96,97,102,352,92,337,442,445,440 --apply`
-7. 운영 인스펙션 ING-UNI-022·023 확인
+### 거래 청구서 원장 (2026-09-07) — dev 구현·검증 완료 · Fable 게이트 판정 대기
+Irene: "청구서는 월간처리해도 다 나가? 결제버튼만 마지막에 SOA로 가는 거고?" → **둘 다 맞음**(코드로 확인).
+`createTradeInvoice` 에 청구주기 분기 없음 = 수령마다 1장. SOA 는 자식으로 묶고 결제만 SOA(`invoices-payment.js:74` 가 자식에 paid 전파).
+
+**결함은 둘이었다 (Fable 판정)**
+1. 수령으로 끝나는 경로 3개 중 `/receive` 만 발행 — 매장이 쓰는 `mark-received`·`receive-and-pay` 는 안 함
+2. **발주 결제와 청구서 결제가 서로를 모름** — `invoices-payment.js` 에 PurchaseOrder 참조 0건. 1번만 고치면 "SOA 냈는데 발주 미결제"가 바로 나옴
+
+**적용**
+- `issueTradeInvoiceAfterCommit` 헬퍼 1개 → 세 경로 공용(`/receive` 인라인 블록도 교체). **커밋 이후 호출** — `createTradeInvoice` 는 트랜잭션을 안 받아 수령 트랜잭션 안에 넣으면 자기 자신과 락 대기(Fable 적발)
+- `createTradeInvoice`: 발주가 이미 paid 면 청구서도 paid + notes 에 `received YYYY-MM-DD`
+- `purchaseOrderPayment` recordPayment/reversePayment → 청구서 거울(같은 t)
+- `invoices-payment` 결제 성공 → 발주 `payment_status='paid'`(unpaid 인 것만)
+- `soaScheduler` 자식 조회에 `status notIn ['paid','cancelled']` — 없으면 그 자리서 현금 낸 건이 다음 달 또 청구됨
+- `scripts/backfill-trade-invoices.js`(레지스트리 미등록, 기본 미리보기)
+
+**검증**: 세 경로 실호출 통과 · health-check **225/225**(신규 4건) · **고장주입 6/6 반증** · verify-all **17/17** · 인쇄 8/8 무변경 · 프론트 무변경
+
+**Fable 게이트 1차 조건부 → C1·C2·C3 수정 후 재게이트**
+- **C1 시험 하니스가 청구서를 흘림** — 수령 경로가 청구서를 내게 되면서, 발주만 지우던 기존 테스트들이 고아 청구서를 남겼다(실측 300장·그날 137장). 이 검사는 `--host=purplehere.com` 로 **운영에도 돈다** = 운영 데모매장에 시험 청구서가 쌓여 브랜드 매출 리포트·SOA 에 실릴 뻔.
+  → `hcCleanupPurchaseOrders()` 단일 함수로 통합(발주 삭제 11곳 전부). 청구서가 붙을 때까지 대기 후 청구서·품목·부속·발주 순 삭제.
+  → **rid1 잔재 범인은 `b5Sweep`** — 그 테스트는 발주를 API 로 만들어 진짜 번호(`PO-R1-…`)를 받는데 스윕은 `po_number LIKE 'B5%'` 로만 찾아 한 번도 못 지웠다. `b5PoIds` 로 추적.
+  → 증명: 전체 1회 전후 지문 고아 0→0 · 발주 0→0. 고장주입(청구서 삭제 제거) → 고아 0→**11** 감지.
+- **C2 paid_amount 가 발주 헤더를 따름** — 청구서 총액은 `finalizeInvoice` 가 **품목 합**으로 재계산한다. dev 백필에서 "총액 0 · 낸 돈 30" 이 실제로 나왔다. → finalize 뒤 `paid_amount = total_amount`.
+  ⚠ **내가 헛통과를 냈다**: 판정만 바꾸고 주입했더니 PASS — 픽스처가 품목합=헤더라 구분이 안 됐다. 픽스처를 **헤더 100 · 품목합 70** 으로 어긋나게 둔 뒤 재주입해 FAIL 확인.
+- **C3 백필이 건수만 셈** — 품목 0건·헤더≠품목합이면 건너뛰고, 발행 뒤 금액 합 검산. dev 0원 백필 127장 되돌림 → 재실행에서 "발행 대상 0 · 건너뜀 127" 로 정확히 걸림.
+
+**Fable 재게이트 조건 1건 — 수정 완료**
+- **수령일이 UTC 였다** — `toISOString().slice(0,10)`. 말레이시아(+8)에서 **아침 8시 전 수령이 전날 날짜**로 청구서 비고에 박힌다(배송 수령은 대개 오전). CLAUDE.md 타임존 절대규칙 위반.
+  → 구매자가 매장이면 `getRestaurantTimezone(buyer)`, 아니면 `Asia/Kuala_Lumpur` 폴백 + `toLocaleDateString('en-CA',{timeZone})`.
+  → 재현 실측: MYT 07:30 수령 → 옛 방식 `2026-09-06`(틀림) / 새 방식 `2026-09-07`(맞음). `--category=pos` 50/50.
+
+**함께 바로잡음**: ①내 주석이 과장이었다 — `--host` 로 운영 API 를 쳐도 픽스처는 **로컬 dev DB** 에 생기므로 "운영 DB 에 쌓인다"는 서술은 틀렸다(Fable 실측). 사실대로 정정. ②릴리즈 기록 게이트 수치 17/17·고장주입 6건으로 갱신.
+**다음 묶음으로 남김**: `hcLeakFingerprint()` 가 dead code — 매 실행 자동 증명이 되려면 마지막 테스트로 전후 지문 비교를 박아야 한다.
+
+**운영 백필 dry-run(읽기만)**: 14건 **전부 헤더=품목합**, 건너뜀 0, 합계 4,020.57, 전부 미수로 발행 예정
+
+**실측**: 운영 `supplier_contracts` **38건 전부 invoice_cycle NULL** → 공급업체는 기본값(즉시)이라 SOA 미대상. SOA 대상은 매장10↔브랜드1 1건뿐. `trade_invoice_created` 알림은 카테고리만 있고 발사처 0건
+
+---
+
+### ⛔ 남은 것 — 운영 DB 쓰기 3건 (전부 세션 정책으로 차단)
+운영 DB **쓰기가 세션 정책으로 차단**됐습니다(리허설 단계에서 거부). 코드 배포는 무관하게 끝났고,
+**운영 데이터는 여전히 손대지 않은 상태**입니다. 미리보기(쓰기 0)까지는 돌려 앞서 검증한 것과 **정확히 일치**함을 확인했습니다:
+`{"b7":{"deleted":36},"b1":{"merged":8,"deleted":7,"halted":1},"codes":{"renumbered":16}}`
+
+**Irene 이 직접 돌리실 명령 (다음 배포 이후, 순서대로)**
+```
+! ssh irene@87.106.78.146 "cd /var/www/production-backend && node scripts/backfill-trade-invoices.js"
+! ssh irene@87.106.78.146 "cd /var/www/production-backend && node scripts/backfill-trade-invoices.js --apply"
+! ssh irene@87.106.78.146 "cd /var/www/production-backend && node scripts/migrate-dedupe-2026-09.js --rehearse"
+! ssh irene@87.106.78.146 "cd /var/www/production-backend && node scripts/migrate-dedupe-2026-09.js --apply"
+! ssh irene@87.106.78.146 "cd /var/www/production-backend && node scripts/migrate-dedupe-2026-09.js --deactivate 95,96,97,102,352,92,337,442,445,440 --apply"
+! ssh irene@87.106.78.146 "cd /var/www/production-backend && node scripts/inspection/run.js"
+```
+(또는 이 세션에 ssh 쓰기를 허용해 주시면 제가 순서대로 돌리고 결과를 보고드립니다.)
 
 ### 이전 세션 (2026-09-06, SW 4.85 · 운영 배포 3회 완주)
 

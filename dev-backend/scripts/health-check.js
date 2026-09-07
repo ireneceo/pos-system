@@ -32,6 +32,58 @@ const jwt = require('jsonwebtoken');
 // ============================================
 // CLI 옵션 파싱
 // ============================================
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 시험용 발주 정리 — **단일 소스**. 발주를 지우는 모든 곳이 이것을 쓴다.
+//
+// 왜 (2026-09-07): 수령 경로가 거래 청구서를 발행하게 되면서, 발주만 지우는 정리는
+//   **주인 없는 청구서를 남긴다**(실측: dev 고아 300장, 그날 하루 137장).
+//   ⚠ 사실 정정(2026-09-07 Fable 실측): 이 픽스처는 **로컬 sequelize(dev DB)** 에 묶여 있어
+//   `--host` 로 운영 API 를 쳐도 픽스처는 dev 에 생긴다 — 즉 운영 DB 에 직접 쌓이지는 않는다.
+//   그래도 고아를 남기면 dev 의 브랜드 매출 리포트·SOA 집계가 오염되고, 배포 스냅샷 검증도 흐려진다.
+//
+// ⚠ 청구서는 커밋 **이후 비동기**로 붙는다. 그래서 지우기 전에 잠깐 기다린다 —
+//   기다리지 않고 발주만 지우면 그 직후 도착한 청구서가 영영 고아가 된다.
+async function hcCleanupPurchaseOrders(ids, { waitMs = 5000 } = {}) {
+  const list = (Array.isArray(ids) ? ids : [ids]).map(Number).filter(Boolean);
+  if (list.length === 0) return;
+  const { sequelize } = require('../config/database');
+  const { PurchaseOrder } = require('../models');
+
+  // ① 청구서가 붙을 때까지 대기(붙을 것이 없으면 그냥 지나간다)
+  const deadline = Date.now() + waitMs;
+  let pending = [...list];
+  while (pending.length && Date.now() < deadline) {
+    const rows = await PurchaseOrder.findAll({ where: { id: pending }, attributes: ['id', 'status', 'trade_invoice_id'], paranoid: false });
+    pending = rows.filter((r) => r.status === 'received' && !r.trade_invoice_id).map((r) => r.id);
+    if (pending.length === 0) break;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+
+  // ② 청구서 + 품목 삭제 → ③ 발주 부속 → ④ 발주
+  const rows = await PurchaseOrder.findAll({ where: { id: list }, attributes: ['id', 'trade_invoice_id'], paranoid: false });
+  const invIds = rows.map((r) => r.trade_invoice_id).filter(Boolean);
+  if (invIds.length) {
+    await sequelize.query('DELETE FROM invoice_items WHERE invoice_id IN (:ids)', { replacements: { ids: invIds } });
+    await sequelize.query('DELETE FROM invoices WHERE id IN (:ids)', { replacements: { ids: invIds } });
+  }
+  for (const tbl of ['purchase_order_items', 'purchase_order_returns', 'inventory_transactions', 'cash_movements']) {
+    try { await sequelize.query(`DELETE FROM \`${tbl}\` WHERE purchase_order_id IN (:ids)`, { replacements: { ids: list } }); } catch { /* 없는 테이블·컬럼은 넘어간다 */ }
+  }
+  await sequelize.query('DELETE FROM purchase_orders WHERE id IN (:ids)', { replacements: { ids: list } });
+}
+
+/** 고아 거래청구서 · 시험 발주 잔재 지문 — 검사 전후로 비교해 "안 흘렸다"를 증명한다. */
+async function hcLeakFingerprint() {
+  const { sequelize } = require('../config/database');
+  const Q = (sql) => sequelize.query(sql, { type: sequelize.QueryTypes.SELECT });
+  const [orphan] = await Q(`SELECT COUNT(*) c FROM invoices i
+     LEFT JOIN purchase_orders po ON po.trade_invoice_id = i.id
+    WHERE i.invoice_category = 'trade' AND po.id IS NULL`);
+  const [pos] = await Q(`SELECT COUNT(*) c FROM purchase_orders WHERE DATE(created_at) = CURDATE()`);
+  return { 고아청구서: Number(orphan.c), 오늘발주: Number(pos.c) };
+}
+
 const args = process.argv.slice(2);
 const opts = {
   category: null,
@@ -1382,7 +1434,7 @@ function definePosTests({ adminToken }) {
         await PurchaseOrderReturn.destroy({ where: { purchase_order_id: po.id }, force: true });
         await InventoryTransaction.destroy({ where: { purchase_order_id: po.id } });
         await PurchaseOrderItem.destroy({ where: { purchase_order_id: po.id } });
-        await PurchaseOrder.destroy({ where: { id: po.id }, force: true });
+        await hcCleanupPurchaseOrders(po.id);
       }
       await pIng.update({ current_stock: stockBefore });
     }
@@ -1449,7 +1501,7 @@ function definePosTests({ adminToken }) {
         await PurchaseOrderReturn.destroy({ where: { purchase_order_id: po.id }, force: true });
         await InventoryTransaction.destroy({ where: { purchase_order_id: po.id } });
         await PurchaseOrderItem.destroy({ where: { purchase_order_id: po.id } });
-        await PurchaseOrder.destroy({ where: { id: po.id }, force: true });
+        await hcCleanupPurchaseOrders(po.id);
       }
       if (mapping) await IngredientSellerProduct.destroy({ where: { id: mapping.id }, force: true });
       if (fp) await FoodcourtProduct.destroy({ where: { id: fp.id }, force: true });
@@ -1679,7 +1731,7 @@ function definePosTests({ adminToken }) {
       // 예외가 나도 ownership 행·설정이 데모 매장에 남으면 안 된다
       if (po?.id) {
         await PurchaseOrderItem.destroy({ where: { purchase_order_id: po.id } });
-        await PurchaseOrder.destroy({ where: { id: po.id }, force: true });
+        await hcCleanupPurchaseOrders(po.id);
       }
       await sequelize.query(
         `DELETE FROM restaurant_managers WHERE restaurant_id = :rid AND manager_id = :uid AND relationship_type = 'ownership'`,
@@ -1767,7 +1819,7 @@ function definePosTests({ adminToken }) {
 
     if (po) {
       await PurchaseOrderItem.destroy({ where: { purchase_order_id: po.id } });
-      await PurchaseOrder.destroy({ where: { id: po.id }, force: true });
+      await hcCleanupPurchaseOrders(po.id);
     }
     return verdict;
   });
@@ -2402,7 +2454,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     } finally {
       try { if (prod) await InventoryTransaction.destroy({ where: { product_id: prod.id } }); } catch {}
       try { if (poId) await PurchaseOrderItem.destroy({ where: { purchase_order_id: poId }, force: true }); } catch {}
-      try { if (poId) await PurchaseOrder.destroy({ where: { id: poId }, force: true }); } catch {}
+      try { if (poId) await hcCleanupPurchaseOrders(poId); } catch {}
       try { if (prod) await prod.destroy({ force: true }); } catch {}
     }
   });
@@ -2906,7 +2958,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     const mine = pos.filter(p => String(p.po_number).includes(PO_MARKER)).map(p => p.id);
     if (mine.length) {
       await sequelize.query('DELETE FROM purchase_order_items WHERE purchase_order_id IN (:ids)', { replacements: { ids: mine } });
-      await sequelize.query('DELETE FROM purchase_orders WHERE id IN (:ids)', { replacements: { ids: mine } });
+      await hcCleanupPurchaseOrders(mine);
     }
   }
 
@@ -2979,6 +3031,11 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
   // 설계 docs/PURCHASE_ORDER_SYSTEM.md §10. 매핑(1봉=1000g)만 있으면 코드 변경 없이 닫힌다.
   // ⚠ 단위: PO 라인은 **봉 단위**(1), 재고 오버레이는 **g**(×1000), 레시피는 g(40).
   const B5 = 'HC5-';
+  // 이 테스트가 API 로 만든 발주 id — **번호로는 못 찾는다**(API 가 진짜 번호 `PO-R1-…` 를 준다).
+  //   종전 스윕은 `po_number LIKE 'B5%'` 로만 찾아 이 발주를 한 번도 못 지웠고,
+  //   그래서 데모매장에 수령 완료 발주가 매 실행 하나씩 쌓였다(2026-09-07 실측 38건).
+  const b5PoIds = new Set();
+
   async function b5Sweep() {   // 이전 실행이 중간에 죽었을 때의 orphan 을 **시작 시** 쓸어낸다
     const { sequelize } = require('../config/database');
     const q = (x, r) => sequelize.query(x, { replacements: r || {}, type: sequelize.QueryTypes.SELECT });
@@ -2986,12 +3043,15 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     const bps = (await q(`SELECT id FROM brand_products WHERE name LIKE '${B5}%'`)).map(x => x.id);
     const recs = (await q(`SELECT id FROM recipes WHERE name LIKE '${B5}%'`)).map(x => x.id);
     const prods = (await q(`SELECT id FROM products WHERE name LIKE '${B5}%'`)).map(x => x.id);
-    const pos = (await q(`SELECT id FROM purchase_orders WHERE po_number LIKE '${B5}%'`)).map(x => x.id);
+    const pos = [...new Set([
+      ...(await q(`SELECT id FROM purchase_orders WHERE po_number LIKE '${B5}%'`)).map(x => x.id),
+      ...b5PoIds,                                   // API 가 만든 진짜 번호짜리도 함께 지운다
+    ])];
     const ords = (await q(`SELECT id FROM orders WHERE customer_name = '${B5}order'`)).map(x => x.id);
     const del = async (sql, r) => sequelize.query(sql, { replacements: r }).catch(() => {});
     if (pos.length) { await del('DELETE FROM purchase_order_items WHERE purchase_order_id IN (:i)', { i: pos });
                       await del('DELETE FROM inventory_transactions WHERE purchase_order_id IN (:i)', { i: pos });
-                      await del('DELETE FROM purchase_orders WHERE id IN (:i)', { i: pos }); }
+                      await hcCleanupPurchaseOrders(pos); b5PoIds.clear(); }
     if (ords.length) { await del('DELETE FROM order_actions WHERE order_id IN (:i)', { i: ords });
                        await del('DELETE FROM orders WHERE id IN (:i)', { i: ords }); }
     if (recs.length) { await del('DELETE FROM recipe_ingredients WHERE recipe_id IN (:i)', { i: recs }); }
@@ -3038,6 +3098,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       if (created.status !== 200 && created.status !== 201) return false;
       const poId = created.body && (created.body.data?.id ?? created.body.id);
       if (!poId) return false;
+      b5PoIds.add(poId);                            // 스윕이 지울 수 있게 등록(번호로는 못 찾는다)
       await PurchaseOrder.update({ status: 'confirmed' }, { where: { id: poId } });
       // 4) 수령 → 오버레이 +1000g (봉 1 × conv 1000)
       const recv = await request('POST', `/purchase-orders/${poId}/mark-received`, {}, h);
@@ -3218,7 +3279,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     try { await InventoryTransaction.destroy({ where: { brand_product_id: fx.bp.id } }); } catch {}
     try { if (fx.buyerProd) await InventoryTransaction.destroy({ where: { product_id: fx.buyerProd.id } }); } catch {}
     try { await PurchaseOrderItem.destroy({ where: { purchase_order_id: fx.po.id }, force: true }); } catch {}
-    try { await PurchaseOrder.destroy({ where: { id: fx.po.id }, force: true }); } catch {}
+    try { await hcCleanupPurchaseOrders(fx.po.id); } catch {}
     try { await IngredientSellerProduct.destroy({ where: { id: fx.isp.id }, force: true }); } catch {}
     try { await BrandProduct.destroy({ where: { id: fx.bp.id }, force: true }); } catch {}
     try { if (fx.buyerProd) await Product.destroy({ where: { id: fx.buyerProd.id }, force: true }); } catch {}
@@ -3359,7 +3420,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     } finally {
       try { if (ing) await InventoryTransaction.destroy({ where: { product_ingredient_id: ing.id } }); } catch {}
       try { if (po) await PurchaseOrderItem.destroy({ where: { purchase_order_id: po.id }, force: true }); } catch {}
-      try { if (po) await PurchaseOrder.destroy({ where: { id: po.id }, force: true }); } catch {}
+      try { if (po) await hcCleanupPurchaseOrders(po.id); } catch {}
       try { if (isp) await IngredientSellerProduct.destroy({ where: { id: isp.id }, force: true }); } catch {}
       try { if (buyerProd) await Product.destroy({ where: { id: buyerProd.id }, force: true }); } catch {}
       try { if (bpId) await sequelize.query('DELETE FROM brand_product_brands WHERE product_id = :p', { replacements: { p: bpId } }); } catch {}
@@ -3762,7 +3823,7 @@ function definePaymentTests() {
       try { await CashMovement.destroy({ where: { purchase_order_id: id }, force: true }); } catch {}
       try { await InventoryTransaction.destroy({ where: { purchase_order_id: id } }); } catch {}
       try { await PurchaseOrderItem.destroy({ where: { purchase_order_id: id }, force: true }); } catch {}
-      try { await PurchaseOrder.destroy({ where: { id }, force: true }); } catch {}
+      try { await hcCleanupPurchaseOrders(id); } catch {}
     }
     for (const id of made.prods || []) {
       try { await InventoryTransaction.destroy({ where: { product_id: id } }); } catch {}
@@ -4536,6 +4597,104 @@ function definePrintTests({ adminToken }) {
     await MenuReferencePhoto.destroy({ where: { product_id: AI_PIDS }, force: true }).catch(() => {});
     if (rid) await RecognitionLog.destroy({ where: { restaurant_id: rid, provider: 'local-color-v1' } }).catch(() => {});
   }
+
+  // ── 거래 청구서 발행·결제 거울 (2026-09-07) ─────────────────────────────────
+  //   결함: 수령을 끝내는 길이 셋인데 청구서를 만드는 곳이 `/receive` 하나였다.
+  //   매장이 쓰는 길은 `mark-received`·`receive-and-pay` 라 운영에 청구서 없는 수령 발주가
+  //   14건(RM 4,020.57) 쌓였고 SOA 는 묶을 자식이 없어 0장이었다.
+  //   아래 4건이 "세 경로 발행 + 두 원장 거울 + SOA 가 낸 것을 안 묶음"을 박제한다.
+  // `lineTotal` 을 헤더와 **다르게** 줄 수 있게 한다.
+  //   왜: `finalizeInvoice` 가 청구서 총액을 **품목 합**으로 다시 계산한다. 품목합=헤더인 픽스처로는
+  //   "낸 금액이 헤더를 따르는지 청구서 총액을 따르는지" 구분이 안 된다 —
+  //   실제로 그 상태에서 고장주입이 **헛통과**했다(2026-09-07). 어긋나게 두어야 가드가 산다.
+  const _poFixture = async (label, jwtLib, lineTotal) => {
+    const { sequelize } = require('../config/database');
+    const { PurchaseOrder, User } = require('../models');
+    const RID = 38;                                   // 데모 매장만 — 실매장 무접촉
+    const ra = await User.findOne({ where: { restaurant_id: RID, role: 'Restaurant Admin', is_active: true } });
+    if (!ra) return null;
+    const [src] = await sequelize.query(
+      `SELECT seller_type, seller_entity_id FROM purchase_orders WHERE entity_id = ${RID} AND entity_type = 'restaurant' ORDER BY id DESC LIMIT 1`,
+      { type: sequelize.QueryTypes.SELECT });
+    if (!src) return null;
+    const po = await PurchaseOrder.create({
+      po_number: `HC-${label}-${Date.now() % 1000000}`, entity_type: 'restaurant', entity_id: RID,
+      seller_type: src.seller_type, seller_entity_id: src.seller_entity_id, status: 'shipped',
+      subtotal: 100, tax_amount: 0, total_amount: 100, currency: 'MYR',
+      created_by_user_id: ra.id, payment_status: 'unpaid'
+    });
+    const lt = lineTotal == null ? 100 : lineTotal;
+    await sequelize.query(`INSERT INTO purchase_order_items (purchase_order_id,description,quantity_ordered,quantity_received,unit_price,line_total,created_at,updated_at)
+      VALUES (${po.id},'HC line',1,0,${lt},${lt},NOW(),NOW())`);
+    return { po, token: jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' }) };
+  };
+  const _poCleanup = async (poId) => hcCleanupPurchaseOrders(poId);
+
+  // 발행은 커밋 뒤 비동기라 잠깐 기다린다(최대 5초). 즉시 조회하면 아직 없다.
+  const _pollInvoice = async (poId) => {
+    const { PurchaseOrder, Invoice } = require('../models');
+    for (let i = 0; i < 25; i += 1) {
+      const p = await PurchaseOrder.findByPk(poId);
+      if (p && p.trade_invoice_id) return Invoice.findByPk(p.trade_invoice_id);
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    return null;
+  };
+
+  test('pos', '거래청구서: mark-received 가 청구서를 발행한다', async () => {
+    const jwtLib = require('jsonwebtoken');
+    const fx = await _poFixture('MR', jwtLib);
+    if (!fx) return true;
+    try {
+      const r = await request('POST', `/purchase-orders/${fx.po.id}/mark-received`, {}, { Authorization: `Bearer ${fx.token}` });
+      if (r.status !== 200) return false;
+      const inv = await _pollInvoice(fx.po.id);
+      return !!inv && inv.invoice_category === 'trade' && inv.status === 'pending_payment';
+    } finally { await _poCleanup(fx.po.id); }
+  });
+
+  test('pos', '거래청구서: receive-and-pay 는 결제됨 청구서를 낸다 (미수로 잡히면 SOA 이중청구)', async () => {
+    const jwtLib = require('jsonwebtoken');
+    // 헤더 100 · 품목합 70 — 일부러 어긋나게 둔다(위 주석 참조).
+    const fx = await _poFixture('RP', jwtLib, 70);
+    if (!fx) return true;
+    try {
+      const r = await request('POST', `/purchase-orders/${fx.po.id}/receive-and-pay`,
+        { payment_method: 'bank_transfer' }, { Authorization: `Bearer ${fx.token}` });
+      if (r.status !== 200) return false;
+      const inv = await _pollInvoice(fx.po.id);
+      // ⚠ 100 을 하드코딩하면 이 결함을 못 잡는다 — 픽스처는 품목합=헤더라 늘 맞는다.
+      //   기준은 **청구서 자기 총액**이다(`finalizeInvoice` 가 품목 합으로 재계산한 값).
+      return !!inv && inv.status === 'paid'
+        && Math.abs(Number(inv.paid_amount) - Number(inv.total_amount)) < 0.01;
+    } finally { await _poCleanup(fx.po.id); }
+  });
+
+  test('pos', '거래청구서: 청구서를 결제하면 발주도 결제로 (원장 거울)', async () => {
+    const jwtLib = require('jsonwebtoken');
+    const { PurchaseOrder } = require('../models');
+    const fx = await _poFixture('MIR', jwtLib);
+    if (!fx) return true;
+    try {
+      const r = await request('POST', `/purchase-orders/${fx.po.id}/mark-received`, {}, { Authorization: `Bearer ${fx.token}` });
+      if (r.status !== 200) return false;
+      const inv = await _pollInvoice(fx.po.id);
+      if (!inv) return false;
+      const pay = await request('POST', `/invoices/${inv.id}/payment`,
+        { payment_method: 'bank_transfer', amount: 100 }, { Authorization: `Bearer ${fx.token}` });
+      if (pay.status !== 200) return false;
+      const after = await PurchaseOrder.findByPk(fx.po.id);
+      return after.payment_status === 'paid';
+    } finally { await _poCleanup(fx.po.id); }
+  });
+
+  test('pos', '거래청구서: 월간 정산서는 이미 결제된 청구서를 묶지 않는다', async () => {
+    // soaScheduler 의 자식 조회 조건을 그대로 재현한다 — 필터가 빠지면 여기서 갈린다.
+    const src = require('fs').readFileSync(require('path').join(__dirname, '../services/soaScheduler.js'), 'utf8');
+    const block = src.slice(src.indexOf('const invoices = await Invoice.findAll'), src.indexOf('if (invoices.length === 0)'));
+    return /parent_soa_invoice_id:\s*null/.test(block)
+      && /status:\s*\{\s*\[Op\.notIn\]:\s*\[[^\]]*'paid'/.test(block);
+  });
 
   // ── 브랜드 매출 리포트 (2026-09-07) ─────────────────────────────────────────
   //   Irene: "리포트는 브랜드제너럴이 파는 프로덕트랑 구독판매 또는 개별판매(인보이스)랑 연결해줘."

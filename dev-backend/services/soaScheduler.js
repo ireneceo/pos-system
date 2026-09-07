@@ -105,6 +105,10 @@ async function issueSoaForPair({
       payer_type: payer.payer_type,
       payer_id: payer.payer_id,
       parent_soa_invoice_id: null,
+      // 🔴 이미 낸 것·취소된 것은 묶지 않는다 (2026-09-07 Fable).
+      //   종전엔 status 를 안 봐서, `receive-and-pay` 로 그 자리에서 현금 낸 건이
+      //   **다음 달 정산서에 또 실렸다**. 정산서는 "아직 안 낸 것의 묶음"이다.
+      status: { [Op.notIn]: ['paid', 'cancelled'] },
       createdAt: { [Op.between]: [lastMonthStart, lastMonthEnd] }
     },
     include: [{ model: InvoiceItem, as: 'items' }],

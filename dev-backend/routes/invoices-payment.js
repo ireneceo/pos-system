@@ -3,6 +3,7 @@
 
 const express = require('express');
 const router = express.Router();
+
 require('../models'); // Load associations
 const Invoice = require('../models/Invoice');
 const InvoiceItem = require('../models/InvoiceItem');
@@ -28,6 +29,39 @@ const { normalizeAdditionalCharges, getAvailablePaymentMethods } = require('../u
 const { sendNotification, sendNotificationBatch, getSystemAdminIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
 const { invoicePaidEmail } = require('../utils/notificationTemplates');
 const { logActivity } = require('../utils/activityLogger');
+
+/**
+ * 원장 거울 (2026-09-07 Fable) — 청구서 쪽에서 결제되면 그 청구서가 나온 **발주**도 결제로 표시한다.
+ *
+ * 왜: `invoices-payment` 는 지금까지 `PurchaseOrder` 를 한 번도 보지 않았다(참조 0건).
+ *   그래서 SOA 를 결제해도 발주 목록은 영원히 `unpaid` 로 남는다 — 청구서 발행을 고치는 순간
+ *   바로 드러나는 결함이라 같은 묶음에서 잡는다.
+ *
+ * @param invoiceIds 결제된 청구서 id 들 (soa 면 자식 전부, trade 면 자기 하나)
+ */
+async function mirrorPaidToPurchaseOrders(invoiceIds, paidAt, t) {
+  if (!invoiceIds || invoiceIds.length === 0) return 0;
+  const { PurchaseOrder } = require('../models');
+  const { Op } = require('sequelize');
+  const [n] = await PurchaseOrder.update(
+    { payment_status: 'paid', paid_at: paidAt || new Date() },
+    {
+      // 이미 낸 것·환불된 것은 건드리지 않는다 — 되돌린 결제를 되살리면 안 된다.
+      where: { trade_invoice_id: { [Op.in]: invoiceIds }, payment_status: 'unpaid' },
+      transaction: t
+    }
+  );
+  return n;
+}
+
+/** 결제된 청구서 집합을 구한다 — soa 면 자식들, 아니면 자기 자신. */
+async function paidInvoiceIdsFor(invoice, t) {
+  if (invoice.invoice_category !== 'soa') return [invoice.id];
+  const children = await Invoice.findAll({
+    where: { parent_soa_invoice_id: invoice.id }, attributes: ['id'], transaction: t
+  });
+  return children.map((c) => c.id);
+}
 const {
   generateInvoiceNumber,
   getAdditionalCharges,
@@ -76,6 +110,9 @@ router.post('/:id/payment', authenticateToken, async (req, res) => {
           }
         );
       }
+      // 발주 쪽 원장도 같이 맞춘다(위 헬퍼 주석 참조).
+      const paidIds = await paidInvoiceIdsFor(invoice, t);
+      await mirrorPaidToPurchaseOrders(paidIds, payment_date || new Date(), t);
     });
 
     // Centralised post-paid side-effects (subscription restore + referral commission).

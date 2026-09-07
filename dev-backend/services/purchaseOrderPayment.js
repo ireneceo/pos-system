@@ -17,7 +17,7 @@
  *     마감 기대금액 공식(cash-management.js:258 `openingFloat + expected.cash + mv.net`)은
  *     `shift_id` 로만 묶고 `source` 를 보지 않으므로, 이 이동들이 **자동으로** 그 공식에 잡힌다.
  */
-const { PurchaseOrder, CashMovement, CashierShift } = require('../models');
+const { PurchaseOrder, CashMovement, CashierShift, Invoice } = require('../models');
 
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
@@ -77,13 +77,29 @@ async function recordPayment(po, { method, userId, reason }, t) {
     }
   }
 
+  const paidAt = new Date();
   await po.update({
     payment_status: 'paid',
     payment_method: method,
-    paid_at: new Date(),
+    paid_at: paidAt,
     paid_by_user_id: userId || null,
     cash_movement_id: movement ? movement.id : null,
   }, { transaction: t });
+
+  // 원장 거울 (2026-09-07 Fable): 발주에서 결제하면 연결된 거래 청구서도 결제됨으로 따라간다.
+  //   안 따라가면 "발주는 냈는데 청구서는 미수" 가 되고, SOA 가 미결제 여부를 안 보므로
+  //   **다음 달 정산서에 또 실린다**. 같은 트랜잭션이라 결제와 함께 커밋되거나 함께 롤백된다.
+  if (po.trade_invoice_id) {
+    // 낸 금액은 **청구서 자기 총액**을 따른다 — 발주 헤더 금액을 넣으면 품목 합으로 재계산된
+    // 청구서 총액과 갈린다(2026-09-07 Fable 게이트). 읽어서 그 값으로 쓴다.
+    const inv = await Invoice.findByPk(po.trade_invoice_id, { transaction: t });
+    if (inv) {
+      await inv.update(
+        { status: 'paid', paid_amount: round2(inv.total_amount), paid_at: paidAt, payment_method: method },
+        { transaction: t }
+      );
+    }
+  }
 
   return { po, movement, drawerSkipped };
 }
@@ -122,6 +138,15 @@ async function reversePayment(po, { userId, reason }, t) {
   }
 
   await po.update({ payment_status: 'refunded' }, { transaction: t });
+
+  // 되돌리기도 대칭으로 — 청구서를 미수로 복귀시킨다. 지우지 않는다(발행 사실은 남는다).
+  if (po.trade_invoice_id) {
+    await Invoice.update(
+      { status: 'pending_payment', paid_amount: 0, paid_at: null, payment_method: null },
+      { where: { id: po.trade_invoice_id }, transaction: t }
+    );
+  }
+
   return { po, movement, drawerSkipped, noop: false };
 }
 

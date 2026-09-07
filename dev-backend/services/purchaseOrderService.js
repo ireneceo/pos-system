@@ -161,6 +161,29 @@ async function createTradeInvoice(po) {
     if (fc?.owner_id) issuedBy = fc.owner_id;
   }
 
+  // 발주가 이미 결제된 건이면(=`receive-and-pay` · `/pay`) 청구서도 **결제됨**으로 낸다.
+  //   왜: 돈은 이미 서랍(cash_movement)에서 나갔다. 미수로 내면 그게 거짓이고,
+  //   `soaScheduler.issueSoaForPair` 가 미결제 여부를 안 보므로 **다음 달 SOA 에 또 실린다**.
+  //   원장 규칙(2026-09-07 Fable): 먼저 기록된 원장을 다른 원장이 거울처럼 따른다.
+  //   여기서 1차 기록은 발주(`payment_status`)이고 청구서가 거울이다.
+  const alreadyPaid = fullPo.payment_status === 'paid';
+
+  // 수령일은 **매장 타임존** 기준이다. `toISOString()` 은 UTC 라, 말레이시아(+8)에서
+  // 아침 8시 전에 받은 물건이 **전날 날짜**로 청구서 비고에 박힌다 — 배송 수령은 대개 오전이다.
+  // (CLAUDE.md 타임존 절대규칙. 2026-09-07 Fable 게이트 적발.)
+  let receivedOn = null;
+  if (fullPo.received_at) {
+    let tz = 'Asia/Kuala_Lumpur';                     // 구매자가 브랜드·푸드코트면 폴백
+    if (fullPo.entity_type === 'restaurant' && fullPo.entity_id) {
+      try {
+        const { getRestaurantTimezone } = require('../utils/dateTimeHelper');
+        const buyer = await Restaurant.findByPk(fullPo.entity_id, { attributes: ['id', 'operation_settings'] });
+        if (buyer) tz = getRestaurantTimezone(buyer);
+      } catch (e) { /* 타임존 조회 실패가 청구서 발행을 막지 않는다 — 폴백으로 간다 */ }
+    }
+    receivedOn = new Date(fullPo.received_at).toLocaleDateString('en-CA', { timeZone: tz });
+  }
+
   // Create Invoice
   const invoice = await Invoice.create({
     invoice_number: invoiceNumber,
@@ -183,8 +206,15 @@ async function createTradeInvoice(po) {
     discount_amount: 0,
     total_amount: fullPo.total_amount || 0,
     currency: fullPo.currency || 'MYR',
-    status: 'pending_payment',
-    notes: `Purchase Order: ${fullPo.po_number}`
+    status: alreadyPaid ? 'paid' : 'pending_payment',
+    paid_amount: alreadyPaid ? (fullPo.total_amount || 0) : 0,
+    paid_at: alreadyPaid ? (fullPo.paid_at || new Date()) : null,
+    payment_method: alreadyPaid ? (fullPo.payment_method || null) : null,
+    // 발행일은 **만드는 날**이다(소급 금지). 언제 받은 물건인지는 비고에 남긴다 —
+    // 뒤늦게 채우는 청구서(백필)도 이 규칙을 그대로 따른다.
+    notes: receivedOn
+      ? `Purchase Order: ${fullPo.po_number} / received ${receivedOn}`
+      : `Purchase Order: ${fullPo.po_number}`
   });
 
   // Create InvoiceItems from PO items
@@ -221,6 +251,18 @@ async function createTradeInvoice(po) {
   // Finalize (recompute totals using existing helper)
   try { await finalizeInvoice(invoice.id); } catch (e) {
     console.error('[purchaseOrderService] finalizeInvoice error:', e.message);
+  }
+
+  // 🔴 낸 금액은 **청구서 자기 총액**을 따른다 (2026-09-07 Fable 게이트).
+  //   `finalizeInvoice` 가 `total_amount` 를 **품목 합**으로 다시 계산한다. 발주 헤더 금액을
+  //   `paid_amount` 에 넣으면 둘이 갈려 "총액 0, 낸 돈 30" 같은 청구서가 나온다
+  //   (dev 백필 실측에서 실제로 나왔다). finalize 뒤 값을 읽어 맞춘다.
+  if (alreadyPaid) {
+    await invoice.reload();
+    const finalTotal = Number(invoice.total_amount || 0);
+    if (Number(invoice.paid_amount || 0) !== finalTotal) {
+      await invoice.update({ paid_amount: finalTotal });
+    }
   }
 
   // Link back to PO
