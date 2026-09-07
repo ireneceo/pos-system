@@ -366,6 +366,55 @@ fi
 success "Backup created: /var/www/backups/${TIMESTAMP} (백엔드 루트 파일 ${BK_FILES}개 확인)"
 
 # ──────────────────────────────────────────
+# 4-1. 옛 백업 정리 (보관 기간) — **디스크가 차면 백업도 배포도 못 한다**
+# ──────────────────────────────────────────
+# 왜 (2026-09-07 실측): 배포마다 백업 1개(≈1.0GB)를 만들면서 **지우는 코드가 없었다.**
+#   운영에 210개가 쌓여 /var/www/backups 가 **134G** — 디스크 169G/232G(73%) 의 대부분이다.
+#   하루 3배포면 3GB/일이라 남은 64G 로 약 3주 뒤 가득 찬다. 주간 보안 리포트가 권한
+#   `journalctl --vacuum` 은 364MB 라 원인과 무관했다.
+#
+# 보관 규칙: **최근 ${BACKUP_KEEP_DAYS}일** 은 무조건 남기고, 그보다 오래됐어도
+#   **최신 ${BACKUP_KEEP_MIN}개** 는 남긴다(배포가 뜸한 기간에 롤백 대상이 사라지지 않게).
+# 방금 만든 백업은 정의상 최신이라 절대 지워지지 않는다.
+# 실패해도 배포를 막지 않는다 — 정리는 부수 작업이고, 백업 생성은 위에서 이미 검증됐다.
+BACKUP_KEEP_DAYS="${BACKUP_KEEP_DAYS:-30}"
+BACKUP_KEEP_MIN="${BACKUP_KEEP_MIN:-10}"
+PRUNE_OUT=$(ssh $PROD_SERVER "
+  cd /var/www/backups 2>/dev/null || exit 0
+  # ⛔ **배포 백업 형식(YYYYmmdd_HHMMSS)만** 손댄다. 같은 폴더에 claude-history ·
+  #    data-migrations · dev-daily · PRErestore_* 처럼 사람이 만든 것이 섞여 있다(실측 12개·707MB).
+  #    이름만 보고 정렬하면 그것들이 '최신'으로 뽑혀 진짜 최신 백업이 보호를 잃는다
+  #    (2026-09-07 시뮬레이션에서 실제로 그렇게 나와 잡았다).
+  LIST=\$(ls -1d */ 2>/dev/null | tr -d '/' | grep -E '^[0-9]{8}_[0-9]{6}$' | sort -r)
+  KEEP=\$(echo \"\$LIST\" | head -${BACKUP_KEEP_MIN})
+  FREED=0; N=0
+  for d in \$LIST; do
+    case \" \$KEEP \" in *\" \$d \"*) continue;; esac
+    DAY=\$(echo \"\$d\" | cut -c1-8)
+    EPOCH=\$(date -d \"\$DAY\" +%s 2>/dev/null) || continue
+    AGE=\$(( ( \$(date +%s) - \$EPOCH ) / 86400 ))
+    if [ \"\$AGE\" -gt ${BACKUP_KEEP_DAYS} ]; then
+      SZ=\$(du -sm \"\$d\" 2>/dev/null | cut -f1); FREED=\$((FREED+SZ)); N=\$((N+1))
+      rm -rf \"\$d\"
+    fi
+  done
+  echo \"\$N \$FREED\"
+" 2>&1) || PRUNE_OUT=""
+PRUNE_N=$(echo "$PRUNE_OUT" | tail -1 | awk '{print $1}')
+PRUNE_MB=$(echo "$PRUNE_OUT" | tail -1 | awk '{print $2}')
+if [ -n "${PRUNE_N:-}" ] && [ "${PRUNE_N:-0}" -gt 0 ] 2>/dev/null; then
+    success "옛 백업 ${PRUNE_N}개 정리 (${PRUNE_MB}MB 확보 · ${BACKUP_KEEP_DAYS}일 초과분, 최신 ${BACKUP_KEEP_MIN}개는 보존)"
+else
+    log "옛 백업 정리: 지울 것 없음 (${BACKUP_KEEP_DAYS}일 이내 또는 최신 ${BACKUP_KEEP_MIN}개)"
+fi
+
+# 디스크가 이미 빠듯하면 다음 배포가 백업에서 죽는다 — 미리 알린다(차단은 아님).
+DISK_PCT=$(ssh $PROD_SERVER "df --output=pcent / | tail -1 | tr -dc '0-9'" 2>/dev/null || echo 0)
+if [ "${DISK_PCT:-0}" -ge 85 ] 2>/dev/null; then
+    warn "운영 디스크 ${DISK_PCT}% — 백업 보관일수를 줄이거나(BACKUP_KEEP_DAYS) 다른 큰 폴더를 확인하세요"
+fi
+
+# ──────────────────────────────────────────
 # 5. Build frontend locally
 # ──────────────────────────────────────────
 if [ "$SKIP_BUILD" = true ]; then

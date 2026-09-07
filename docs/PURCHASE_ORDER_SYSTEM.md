@@ -171,6 +171,18 @@ PO status가 Shipped 또는 Confirmed일 때 [Receive] 가능
 `routes/purchase-orders-workflow.js` 의 모듈 상수 하나를 **두 입고 라우트가 공유**한다:
 `['submitted','confirmed','shipped','in_transit','delivered','partial_received']`
 - `POST /purchase-orders/:id/mark-received` — 전량 정상 수령 lite
+
+> 🔑 **수령 = 거래 청구서 발행** (2026-09-07). 수령으로 끝나는 길은 셋(`/receive` · `/mark-received` ·
+> `/receive-and-pay`)이고 **셋 다** `issueTradeInvoiceAfterCommit(po)` 로 청구서를 낸다.
+> 종전엔 `/receive` 하나만 발행했는데 매장이 실제로 쓰는 길은 나머지 둘이라,
+> 운영에 **청구서 없는 수령 발주 14건(RM 4,020.57)** 이 쌓이고 SOA 는 묶을 자식이 없어 0장이었다.
+> - **커밋 이후** 부른다 — `createTradeInvoice` 는 트랜잭션을 받지 않아 수령 트랜잭션 안에서 부르면
+>   잠긴 PO 행을 두고 자기 자신과 락 대기에 걸린다. 멱등(`trade_invoice_id`), 비차단.
+> - **원장 거울**: 발주에서 결제 → 청구서도 `paid` / 청구서·SOA 결제 → 발주 `payment_status='paid'`
+>   / 결제 되돌리기 → 청구서 미수 복귀. `receive-and-pay` 는 청구서를 **처음부터 `paid`** 로 낸다
+>   (미수로 내면 SOA 가 다음 달 또 청구한다 — `issueSoaForPair` 가 `status notIn ['paid','cancelled']`).
+> - 청구 주기는 **마감일만** 정한다. 월간이든 즉시든 **수령마다 청구서 1장**이고, 월간은 SOA 가 묶어
+>   결제를 한 번에 받는다.
 - `POST /purchase-orders/:id/receive` — splits(정상/short/damaged/wrong_item/pending) 정식
 - ⛔ `draft`·`pending_approval` 은 계속 막는다 — **오너 승인 우회 방지**(2026-07-13 판정, 번복 아님)
 

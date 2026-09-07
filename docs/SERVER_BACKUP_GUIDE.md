@@ -25,6 +25,27 @@
 | 운영 DB | 개발서버 | `/home/irene/backups/cross-backup/production/` | 14일 |
 | 개발 DB | 운영서버 | `/home/irene/backups/cross-backup/dev/` | 14일 |
 
+## 배포 백업 (코드 스냅샷) — 2026-09-07 추가
+
+| 무엇 | 언제 | 저장 위치 | 보관 |
+|---|---|---|---|
+| 운영 백엔드·프론트 빌드 | **매 배포** | `/var/www/backups/<YYYYmmdd_HHMMSS>/` | **30일 + 최신 10개** |
+| 배포 직전 DB 덤프 | 매 배포 | `/var/backups/orderhere/pre-deploy/db_predeploy_*.sql.gz` | (별도 정리 없음) |
+
+**왜 보관 정책이 생겼나 (2026-09-07 실측)**: 배포마다 백업 1개(**≈1.0GB**)를 만들면서
+**지우는 코드가 없었다.** 운영에 **210개 = 134G** 가 쌓여 디스크 169G/232G(73%) 의 대부분을 차지했고,
+하루 3배포면 3GB/일이라 남은 64G 로 약 3주 뒤 가득 찰 상태였다.
+주간 보안 리포트가 권하던 `journalctl --vacuum` 은 **364MB** 라 원인과 무관했다.
+
+**규칙**: `deploy-to-production.sh` 가 백업 생성·검증 **직후** 정리한다.
+- **30일 초과분 삭제**, 단 **최신 10개는 나이와 무관하게 보존**(배포가 뜸해도 롤백 대상이 남게).
+- 환경변수로 조절: `BACKUP_KEEP_DAYS`(기본 30) · `BACKUP_KEEP_MIN`(기본 10).
+- ⛔ **배포 백업 형식(`YYYYmmdd_HHMMSS`)만** 손댄다. 같은 폴더에 사람이 만든 것이 섞여 있다
+  (`claude-history` · `data-migrations` · `dev-daily` · `print-backlog-cleanup` · `PRErestore_*` 등 12개·707MB).
+  이름순 정렬로 "최신"을 고르면 **그것들이 뽑혀 진짜 최신 백업이 보호를 잃는다**(시뮬레이션에서 실제로 그랬다).
+- 나이는 **mtime 이 아니라 폴더 이름의 날짜**로 잰다(rsync 가 mtime 을 흔든다). 날짜를 못 읽으면 건드리지 않는다.
+- 정리 실패는 배포를 막지 않는다 — 롤백 대상은 이미 확보된 뒤다. 디스크 85%↑ 면 경고만 낸다.
+
 ### 코드 백업
 
 - **GitHub**: `git@github.com:ireneceo/pos-system.git` (개발서버에서 push)

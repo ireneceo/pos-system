@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-07 (**v3.85 운영 배포 완료** · SW 4.86). 브랜드제너럴 리포트를 "브랜드 자기 매출"로 재정의하고, 매장 판매 분석 6탭은 성과 메뉴 밑으로 옮겼다. 진실원장은 **브랜드가 발행한 인보이스** 하나(프로덕트 개별판매 `trade` · 구독판매 `brand_plan` · 수수료), `soa` 는 자식 인보이스의 묶음이라 제외한다.
+> **최종 업데이트:** 2026-09-07 (**v3.85 운영 배포 완료** · SW 4.86 · 이후 거래청구서 원장·서버 관리는 dev 완료·미배포). 브랜드제너럴 리포트를 "브랜드 자기 매출"로 재정의하고, 매장 판매 분석 6탭은 성과 메뉴 밑으로 옮겼다. 진실원장은 **브랜드가 발행한 인보이스** 하나(프로덕트 개별판매 `trade` · 구독판매 `brand_plan` · 수수료), `soa` 는 자식 인보이스의 묶음이라 제외한다.
 > 함께: 브랜드 성과 화면에 오늘/어제 필터(매장 타임존 기준) · 재발 감시 인스펙션 3건.
 > **데이터 정리(중복·오염값)는 아직 미실행** — 운영 DB 쓰기가 세션 정책으로 차단됐다. 도구·미리보기·백업은 준비 완료.
 > **운영에서 찾은 것**: 수령이 끝난 발주 **14건(RM 4,020.57) 전부에 거래 인보이스가 없다.** 수령 경로가 둘인데 `mark-received` 가 `createTradeInvoice` 를 안 부른다(`/receive` 만 부름). 그래서 SOA 도 0장이고 **브랜드 매출 기록이 통째로 비어 있었다.** 원인만 확정, 수정은 별건 대기.
@@ -141,6 +141,35 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 브랜드 매출 리포트 + 거래청구서 원장 + 서버 관리 (2026-09-07)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 브랜드 매출 리포트 | `/reports` 를 **브랜드 자기 매출**로 재정의(프로덕트 개별판매·구독판매·수수료 × 청구/수금/미수). 진실원장 = 브랜드 발행 인보이스, `soa` 는 이중집계라 제외 | ✅ v3.85 배포 |
+| 매장 판매 분석 이동 | 종전 Reports 6탭(전부 매장 주문 집계)을 `/performance/stores` 로. 내부 로직 무변경, 옛 경로 링크 5곳 재지정 | ✅ v3.85 배포 |
+| 성과 화면 오늘/어제 | 라이브오더와 같은 방식, 매장 설정 타임존 기준 | ✅ v3.85 배포 |
+| **거래청구서 원장** | 수령 경로 3개 중 1개만 청구서를 내던 것 → 셋 다 발행. 발주↔청구서 결제 양방향 거울, `receive-and-pay` 는 paid 발행, SOA 는 결제된 것 제외 | ✅ dev 완료·**미배포** |
+| 백필 스크립트 | 운영에 쌓인 청구서 없는 수령 발주 14건(RM 4,020.57) — 품목합 검산·금액 대조 내장 | ✅ dev 검증·**미실행** |
+| 오염값·중복 정리 도구 | 매핑 중복 36 · 재료 7쌍 병합 · 코드 16건 재번호 + 인스펙션 3건 | ✅ dev 검증·**미실행** |
+| 배포 백업 보관 정책 | 배포마다 1GB 쌓기만 하고 지우는 코드가 없어 **134G/210개**. 30일 보관 + 최신 10개 보존 | ✅ dev 완료·미배포 |
+
+### 운영에서 찾은 결함
+- **수령 완료 발주 14건 전부 거래 청구서 없음**(RM 4,020.57) — `mark-received`·`receive-and-pay` 가 `createTradeInvoice` 를 안 불렀다. SOA 는 자식이 없어 0장 → 브랜드 매출 기록이 통째로 비었다.
+- **발주 결제와 청구서 결제가 서로를 모름** — `invoices-payment.js` 에 PurchaseOrder 참조 0건.
+- **운영 디스크 73% 의 진짜 원인은 배포 백업 134G** — 주간 리포트가 권한 `journalctl` 정리는 364MB로 무관했다.
+- **자동 보안 업데이트는 정상 작동 중** — 리포트의 "[긴급] 적용 필요"는 헛경보(대기 0건 확인).
+
+### 수정된 파일
+- `dev-frontend/src/pages/BrandGeneral/BrandRevenueReportPage.tsx` (신규) · `BrandPerformance.tsx` · `App.tsx` · `components/Layout/MainLayout.tsx` · `pages/Brand/BrandManagerDashboard.tsx` · `pages/BrandGeneral/BrandGeneralDashboard.tsx` · `pages/Manager/RestaurantsPage.tsx` · `public/locales/{en,ko,zh,ms}/brand.json` · `public/sw.js`
+- `dev-backend/routes/brand-revenue.js` (신규) · `routes/invoices-payment.js` · `routes/purchase-orders-workflow.js` · `server.js`
+- `dev-backend/services/purchaseOrderService.js` · `purchaseOrderPayment.js` · `soaScheduler.js`
+- `dev-backend/scripts/`: `backfill-trade-invoices.js` · `migrate-dedupe-2026-09.js` · `survey-dirty-data.js` · `migrate-brand-performance-stores-route.js` · `ops/fix-weekly-report.sh` (전부 신규) · `health-check.js` · `inspection/suites/ingredient-unification.js`
+- `deploy-to-production.sh` · `docs/DATA_CLEANUP_2026-09.md` (신규)
+
+---
 
 ## ✅ 완료: 결제 원장 일원화 + 배포 스모크 실매장 오염 수리 (2026-07-31, v3.73 배포)
 
