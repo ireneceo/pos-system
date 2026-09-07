@@ -4537,6 +4537,76 @@ function definePrintTests({ adminToken }) {
     if (rid) await RecognitionLog.destroy({ where: { restaurant_id: rid, provider: 'local-color-v1' } }).catch(() => {});
   }
 
+  // ── 브랜드 매출 리포트 (2026-09-07) ─────────────────────────────────────────
+  //   Irene: "리포트는 브랜드제너럴이 파는 프로덕트랑 구독판매 또는 개별판매(인보이스)랑 연결해줘."
+  //   진실원장은 **브랜드가 발행한 인보이스** 하나다. 아래 3건이 그 계약을 박제한다.
+  test('security', '익명 brand/revenue-report → 401', async () => {
+    return (await request('GET', '/brand/revenue-report')).status === 401;
+  });
+
+  test('pos', '브랜드 매출: 남의 brand_id 를 요구해도 자기 범위만 (돈 경계)', async () => {
+    const jwtLib = require('jsonwebtoken');
+    const { User } = require('../models');
+    const bg = await User.findOne({ where: { role: 'Brand General', is_active: true } });
+    if (!bg) return true;
+    const token = jwtLib.sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = { Authorization: `Bearer ${token}` };
+
+    // ⚠ 기준을 **API 응답으로 잡으면 안 된다** — 범위 필터가 새면 기준도 같이 새서
+    //   무엇을 비교해도 통과한다(2026-09-07 고장주입에서 실제로 헛통과했다).
+    //   기준은 DB 에서 독립적으로 만든다: 이 사용자가 실제로 소유한 브랜드.
+    const { Brand } = require('../models');
+    const owned = await Brand.findAll({ where: { owner_id: bg.id }, attributes: ['id'] });
+    const ownedIds = new Set(owned.map((b) => b.id));
+    if (bg.brand_id) ownedIds.add(bg.brand_id);
+
+    const mine = await request('GET', '/brand/revenue-report', null, auth);
+    if (mine.status !== 200) return false;
+    const mineIds = (mine.body?.data?.invoices || []).map((i) => i.brand_id).filter((x) => x != null);
+    if (mineIds.some((id) => !ownedIds.has(id))) return false;   // 기본 호출도 남의 브랜드가 섞이면 실패
+
+    // 남의 브랜드를 명시로 요구해도 마찬가지 — 막히거나(4xx), 통과해도 내 것만 나와야 한다.
+    const other = await request('GET', '/brand/revenue-report?brand_id=999999', null, auth);
+    if (other.status === 200) {
+      const ids = (other.body?.data?.invoices || []).map((i) => i.brand_id).filter((x) => x != null);
+      if (ids.some((id) => !ownedIds.has(id))) return false;
+    } else if (other.status < 400) {
+      return false;
+    }
+    return true;
+  });
+
+  test('pos', '브랜드 매출: 세 묶음 합 = 인보이스 직접 합 (soa 제외·이중집계 없음)', async () => {
+    const jwtLib = require('jsonwebtoken');
+    const { User, Invoice } = require('../models');
+    const { Op } = require('sequelize');
+    const sa = await User.findOne({ where: { role: 'System Admin', is_active: true } });
+    if (!sa) return true;
+    const token = jwtLib.sign({ userId: sa.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', '/brand/revenue-report', null, { Authorization: `Bearer ${token}` });
+    if (r.status !== 200) return false;
+    const d = r.body?.data;
+    if (!d) return false;
+
+    // 묶음 셋의 합 = 전체 합 (분류가 새면 여기서 갈라진다)
+    const sum = ['product_sales', 'subscription_sales', 'fees_other']
+      .reduce((a, k) => a + Number(d.buckets[k]?.invoiced || 0), 0);
+    if (Math.abs(sum - Number(d.totals.invoiced || 0)) > 0.01) return false;
+
+    // API 합계 = DB 직접 합. soa 를 더하면 자식 trade 와 이중집계가 되므로 제외한 값과 맞아야 한다.
+    const rows = await Invoice.findAll({
+      where: {
+        issuer_type: 'brand',
+        status: { [Op.notIn]: ['cancelled', 'draft'] },
+        invoice_category: { [Op.ne]: 'soa' }
+      },
+      attributes: ['total_amount']
+    });
+    const direct = Math.round(rows.reduce((a, i) => a + Number(i.total_amount || 0), 0) * 100) / 100;
+    if (Math.abs(direct - Number(d.totals.invoiced || 0)) > 0.01) return false;
+    return Number(d.totals.count) === rows.length;
+  });
+
   test('ai', '익명 ai-serving/ready-items → 401', async () => {
     const rid = await demoRestaurantId(); if (!rid) return true;
     return (await request('GET', `/ai-serving/${rid}/ready-items`)).status === 401;

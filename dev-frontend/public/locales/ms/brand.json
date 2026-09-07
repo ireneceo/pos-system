@@ -733,5 +733,26 @@
   "productIngredientsTab.unitHelp": "Beli ikut pakej, guna ikut berat — cth. Unit Guna g, Kuantiti Asas 2000, Unit Pakej pack, Kuantiti Pakej 1, harga = satu pakej.",
   "productIngredientsTab.costPerUsageUnit": "Kos seunit guna",
   "productIngredientsTab.pendingSpec": "Belum ditetapkan",
-  "productIngredients.catalogTruncated": "{{shown}} daripada {{total}} produk dimuatkan — item lama belum ada dalam senarai ini."
+  "productIngredients.catalogTruncated": "{{shown}} daripada {{total}} produk dimuatkan — item lama belum ada dalam senarai ini.",
+  "brandRevenue": {
+    "title": "Hasil Jenama",
+    "invoiced": "Diinvois",
+    "collected": "Dikutip",
+    "outstanding": "Belum Dijelaskan",
+    "count": "Invois",
+    "invoiceCount": "{{count}} invois",
+    "stream": "Jenis hasil",
+    "productSales": "Jualan produk (setiap pesanan)",
+    "subscriptionSales": "Jualan langganan (pelan jenama)",
+    "feesOther": "Yuran & caj lain",
+    "buyer": "Pembeli",
+    "invoiceNo": "Invois",
+    "noRevenue": "Tiada hasil direkodkan bagi tempoh ini.",
+    "noInvoices": "Tiada invois bagi tempoh ini.",
+    "loadFailed": "Laporan hasil tidak dapat dimuatkan.",
+    "uninvoicedPos": "{{count}} pesanan belian yang telah diterima ({{amount}}) belum mempunyai invois dagangan — jumlah itu tiada dalam angka di atas."
+  },
+  "brandPerformance": {
+    "overview": "Gambaran Keseluruhan"
+  }
 }

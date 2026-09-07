@@ -1655,8 +1655,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         visible: isRouteAllowed('/pos/brand/franchise-map')
       },
       {
+        // 2026-09-07: 매장 판매 분석(종전 Reports 6탭)은 여기 밑으로 왔다.
+        //   둘 다 출처가 매장 주문(orders)이라 같은 물건이었기 때문이다.
+        //   `Reports` 메뉴는 브랜드 자신의 매출 화면 하나로 바뀌었다.
         id: 'performance', label: t('nav.performance'), icon: <Target />,
-        path: '/pos/brand/general/performance',
+        items: [
+          { path: '/pos/brand/general/performance', label: t('brand:brandPerformance.overview', 'Overview'), visible: true },
+          { path: '/pos/brand/general/performance/stores?tab=ranking', label: t('brand:brandReportsPage.salesRanking', 'Sales Ranking'), visible: true },
+          { path: '/pos/brand/general/performance/stores?tab=sales', label: t('brand:brandReportsPage.salesReport', 'Sales Report'), visible: true },
+          { path: '/pos/brand/general/performance/stores?tab=details', label: t('brand:brandReportsPage.salesDetails', 'Sales Details'), visible: true },
+          { path: '/pos/brand/general/performance/stores?tab=menu', label: t('brand:brandReportsPage.menuAnalysis', 'Menu Analysis'), visible: true },
+          { path: '/pos/brand/general/performance/stores?tab=customers', label: t('brand:brandReportsPage.customerInsights', 'Customer Insights'), visible: true },
+          { path: '/pos/brand/general/performance/stores?tab=operations', label: t('brand:brandReportsPage.operations', 'Operations'), visible: true }
+        ].filter(i => i.visible !== false),
         visible: isRouteAllowed('/pos/brand/general/performance')
       },
       {
@@ -1717,15 +1728,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         visible: hasManagerPermission('operations') || hasManagerPermission('products')
       },
       {
+        // 브랜드 **자신의 매출** — 프로덕트 개별판매(trade) · 구독판매(brand_plan) · 수수료.
+        // 종전 이 자리의 6탭(매장 주문 집계)은 Performance 밑으로 옮겼다.
         id: 'reports', label: t('nav.reports', 'Reports'), icon: <TrendingUp />,
-        items: [
-          { path: '/pos/brand/general/reports?tab=ranking', label: t('brand:brandReportsPage.salesRanking', 'Sales Ranking'), visible: true },
-          { path: '/pos/brand/general/reports?tab=sales', label: t('brand:brandReportsPage.salesReport', 'Sales Report'), visible: true },
-          { path: '/pos/brand/general/reports?tab=details', label: t('brand:brandReportsPage.salesDetails', 'Sales Details'), visible: true },
-          { path: '/pos/brand/general/reports?tab=menu', label: t('brand:brandReportsPage.menuAnalysis', 'Menu Analysis'), visible: true },
-          { path: '/pos/brand/general/reports?tab=customers', label: t('brand:brandReportsPage.customerInsights', 'Customer Insights'), visible: true },
-          { path: '/pos/brand/general/reports?tab=operations', label: t('brand:brandReportsPage.operations', 'Operations'), visible: true }
-        ].filter(i => i.visible !== false),
+        path: '/pos/brand/general/reports',
         visible: isRouteAllowed('/pos/brand/general/reports')
       },
       {

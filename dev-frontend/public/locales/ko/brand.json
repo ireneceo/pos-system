@@ -733,5 +733,26 @@
   "productIngredientsTab.unitHelp": "포장으로 사고 무게로 쓰면 — 취급단위 g, 취급 기준숫자 2000, 기준단위 pack, 기준양 1, 가격은 1 pack 값.",
   "productIngredientsTab.costPerUsageUnit": "취급단위당 원가",
   "productIngredientsTab.pendingSpec": "미확정",
-  "productIngredients.catalogTruncated": "전체 {{total}}개 중 {{shown}}개만 불러왔습니다 — 오래된 상품은 아직 목록에 없습니다."
+  "productIngredients.catalogTruncated": "전체 {{total}}개 중 {{shown}}개만 불러왔습니다 — 오래된 상품은 아직 목록에 없습니다.",
+  "brandRevenue": {
+    "title": "브랜드 매출",
+    "invoiced": "청구액",
+    "collected": "수금액",
+    "outstanding": "미수금",
+    "count": "청구서",
+    "invoiceCount": "청구서 {{count}}장",
+    "stream": "매출 종류",
+    "productSales": "프로덕트 개별판매",
+    "subscriptionSales": "구독 판매 (브랜드 플랜)",
+    "feesOther": "수수료·기타 청구",
+    "buyer": "구매처",
+    "invoiceNo": "청구서 번호",
+    "noRevenue": "이 기간에 기록된 매출이 없습니다.",
+    "noInvoices": "이 기간에 청구서가 없습니다.",
+    "loadFailed": "매출 리포트를 불러오지 못했습니다.",
+    "uninvoicedPos": "수령까지 끝났는데 청구서가 안 나간 발주가 {{count}}건({{amount}}) 있습니다 — 그 금액은 위 숫자에 빠져 있습니다."
+  },
+  "brandPerformance": {
+    "overview": "전체 보기"
+  }
 }

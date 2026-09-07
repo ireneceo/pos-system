@@ -16,6 +16,7 @@ import {
 } from '../../components/UI';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency as formatCurrencyUtil, getCurrencySymbol } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
@@ -356,8 +357,11 @@ interface RestaurantPerformanceData {
 
 const BrandPerformance: React.FC = () => {
   const { t } = useTranslation('brand');
+  const { operationSettings } = useStore();
+  const storeTimeZone = operationSettings?.timeZone;
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
-  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
+  // '오늘'/'어제' 는 브라우저 로컬이 아니라 매장 설정 타임존 기준이어야 한다 (CLAUDE.md 타임존 규칙).
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month', operationSettings?.timeZone));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [selectedBrandId, setSelectedBrandId] = useState<string>('all');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('all');
@@ -513,7 +517,7 @@ const BrandPerformance: React.FC = () => {
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
-    setDateRange(calculatePeriodDateRange(period));
+    setDateRange(calculatePeriodDateRange(period, storeTimeZone));
   };
 
   const handleCalendarRangeSelect = (start: string, end: string) => {
@@ -771,7 +775,7 @@ const BrandPerformance: React.FC = () => {
 
   const periodLabel = isCustomDateRange
     ? `${dateRange.start} ~ ${dateRange.end}`
-    : { today: 'Today', week: 'This Week', month: 'This Month', year: 'This Year', all: 'All Time' }[activePeriod] || activePeriod;
+    : { today: 'Today', yesterday: 'Yesterday', week: 'This Week', month: 'This Month', year: 'This Year', all: 'All Time' }[activePeriod] || activePeriod;
 
   const handleExportReport = () => {
     const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -874,6 +878,7 @@ const BrandPerformance: React.FC = () => {
                 isCustomDateRange={isCustomDateRange}
                 onPeriodChange={handlePeriodChange}
                 onCalendarRangeSelect={handleCalendarRangeSelect}
+                includeToday
               />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>

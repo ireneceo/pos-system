@@ -358,6 +358,7 @@ const purchaseInvoicesRouter = require('./routes/purchase-invoices');
 // BG/FG → Restaurant trade billing — see docs/BG_FG_TRADE_BILLING.md
 const entityBillingRouter = require('./routes/entity-billing');
 const brandSoaRouter = require('./routes/brand-soa');
+const brandRevenueRouter = require('./routes/brand-revenue');
 const foodcourtSoaRouter = require('./routes/foodcourt-soa');
 const ingredientSellerProductsRouter = require('./routes/ingredient-seller-products');
 const foodcourtProductsRouter = require('./routes/foodcourt-products');
@@ -522,6 +523,7 @@ app.use('/api', purchaseInvoicesRouter);  // exposes /api/purchase-invoices/*
 // BG/FG → Restaurant trade billing endpoints (must be on /api root for full path control)
 app.use('/api', entityBillingRouter);     // /api/{brand|foodcourt}/restaurants/:id/billing-terms
 app.use('/api', brandSoaRouter);          // /api/brand/soa/*
+app.use('/api', brandRevenueRouter);      // /api/brand/revenue-report
 app.use('/api', foodcourtSoaRouter);      // /api/foodcourt/soa/*
 app.use('/api', ingredientSellerProductsRouter);  // exposes /api/ingredients/:id/seller-sources, /api/ingredient-seller-products/:id, /api/seller-catalog
 app.use('/api', foodcourtProductsRouter);  // exposes /api/foodcourt-products + /api/foodcourt-product-categories + /api/foodcourt-product-option-groups

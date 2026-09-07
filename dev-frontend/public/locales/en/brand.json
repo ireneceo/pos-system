@@ -733,5 +733,26 @@
   "productIngredientsTab.unitHelp": "Buy by package, use by weight — e.g. Usage Unit g, Base Qty 2000, Package Unit pack, Package Qty 1, price = one pack.",
   "productIngredientsTab.costPerUsageUnit": "Cost per usage unit",
   "productIngredientsTab.pendingSpec": "Not set",
-  "productIngredients.catalogTruncated": "{{shown}} of {{total}} products loaded — older items are not in this list yet."
+  "productIngredients.catalogTruncated": "{{shown}} of {{total}} products loaded — older items are not in this list yet.",
+  "brandRevenue": {
+    "title": "Brand Revenue",
+    "invoiced": "Invoiced",
+    "collected": "Collected",
+    "outstanding": "Outstanding",
+    "count": "Invoices",
+    "invoiceCount": "{{count}} invoices",
+    "stream": "Revenue stream",
+    "productSales": "Product sales (per order)",
+    "subscriptionSales": "Subscription sales (brand plan)",
+    "feesOther": "Fees & other charges",
+    "buyer": "Buyer",
+    "invoiceNo": "Invoice",
+    "noRevenue": "No revenue recorded for this period.",
+    "noInvoices": "No invoices in this period.",
+    "loadFailed": "Could not load the revenue report.",
+    "uninvoicedPos": "{{count}} received purchase orders ({{amount}}) have no trade invoice yet — that amount is missing from the figures above."
+  },
+  "brandPerformance": {
+    "overview": "Overview"
+  }
 }

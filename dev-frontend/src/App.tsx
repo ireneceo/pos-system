@@ -206,6 +206,7 @@ const FoodcourtPaymentSettingsPage = React.lazy(() => import('./pages/FoodcourtG
 const BrandManagement = React.lazy(() => import('./pages/BrandGeneral/BrandManagement'));
 const BrandPerformance = React.lazy(() => import('./pages/BrandGeneral/BrandPerformance'));
 const BrandReportsPage = React.lazy(() => import('./pages/BrandGeneral/BrandReportsPage'));
+const BrandRevenueReportPage = React.lazy(() => import('./pages/BrandGeneral/BrandRevenueReportPage'));
 const BrandSubscriptionsPage = React.lazy(() => import('./pages/BrandGeneral/BrandSubscriptionsPage'));
 const BrandInvoicesPage = React.lazy(() => import('./pages/BrandGeneral/BrandInvoicesPage'));
 const BrandTradeInvoicesPage = React.lazy(() => import('./pages/BrandGeneral/BrandTradeInvoicesPage'));
@@ -947,9 +948,16 @@ function App() {
                           <BrandPerformance />
                         </ProtectedRoute>
                       } />
-                      <Route path="/pos/brand/general/reports" element={
+                      {/* 2026-09-07: 매장 판매 분석 6탭은 Performance 밑으로 옮겼다.
+                          `/reports` 는 브랜드 자신의 매출 화면이 차지한다(Irene 이 준 링크가 그대로 새 화면을 가리키게). */}
+                      <Route path="/pos/brand/general/performance/stores" element={
                         <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
                           <BrandReportsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/general/reports" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
+                          <BrandRevenueReportPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/general/subscriptions" element={

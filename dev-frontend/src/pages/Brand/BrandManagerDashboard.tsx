@@ -569,7 +569,7 @@ const BrandManagerDashboard: React.FC = () => {
               <div className="title">{t('common:brandManagerDashboard.invoices')}</div>
               <div className="description">{t('common:brandManagerDashboard.invoiceManagement')}</div>
             </QuickActionCard>
-            <QuickActionCard onClick={() => navigate('/pos/brand/general/reports')}>
+            <QuickActionCard onClick={() => navigate('/pos/brand/general/performance/stores')}>
               <div className="icon">◉</div>
               <div className="title">{t('common:brandManagerDashboard.reports')}</div>
               <div className="description">{t('common:brandManagerDashboard.performanceAnalytics')}</div>
@@ -602,7 +602,7 @@ const BrandManagerDashboard: React.FC = () => {
             </DataTableHead>
             <tbody>
               {restaurants.map((restaurant) => (
-                <DataTableRow key={restaurant.id} onClick={() => navigate(`/pos/brand/general/reports?restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`)} style={{ cursor: 'pointer' }}>
+                <DataTableRow key={restaurant.id} onClick={() => navigate(`/pos/brand/general/performance/stores?restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`)} style={{ cursor: 'pointer' }}>
                   <DataTableCell data-label={t('common:brandManagerDashboard.restaurant')} style={{ fontWeight: 600, color: '#0A2540' }}>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', background: '#F1F4F8', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{restaurant.branch_name}</span>}</DataTableCell>
                   <DataTableCell data-label={t('common:brandManagerDashboard.admin')}>{restaurant.adminName}</DataTableCell>
                   <DataTableCell data-label={t('common:brandManagerDashboard.status')} align="center">

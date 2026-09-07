@@ -1167,7 +1167,7 @@ const ManagerRestaurantsPage: React.FC = () => {
   const handleRestaurantClick = (restaurantId: string, restaurantName: string) => {
     // Navigate based on user role - go to sales report with restaurant filter
     if (user?.role === 'Brand General') {
-      navigate(`/pos/brand/general/reports?tab=sales&restaurantId=${restaurantId}&restaurantName=${encodeURIComponent(restaurantName)}`);
+      navigate(`/pos/brand/general/performance/stores?tab=sales&restaurantId=${restaurantId}&restaurantName=${encodeURIComponent(restaurantName)}`);
     } else {
       // Manager roles go to manager reports
       navigate(`/pos/manager/reports?tab=sales&restaurantId=${restaurantId}&restaurantName=${encodeURIComponent(restaurantName)}`);
@@ -1660,7 +1660,7 @@ const ManagerRestaurantsPage: React.FC = () => {
     e.stopPropagation();
     // Navigate to reports with restaurant filter - same as card click
     if (user?.role === 'Brand General') {
-      navigate(`/pos/brand/general/reports?tab=sales&restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`);
+      navigate(`/pos/brand/general/performance/stores?tab=sales&restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`);
     } else {
       navigate(`/pos/manager/reports?tab=sales&restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`);
     }

@@ -733,5 +733,26 @@
   "productIngredientsTab.unitHelp": "按包装采购、按重量使用 — 例如使用单位 g、使用基准数量 2000、基准单位 pack、基准量 1，价格为 1 pack 的价格。",
   "productIngredientsTab.costPerUsageUnit": "每使用单位成本",
   "productIngredientsTab.pendingSpec": "未确定",
-  "productIngredients.catalogTruncated": "已加载 {{total}} 个商品中的 {{shown}} 个 — 较早的商品尚未列出。"
+  "productIngredients.catalogTruncated": "已加载 {{total}} 个商品中的 {{shown}} 个 — 较早的商品尚未列出。",
+  "brandRevenue": {
+    "title": "品牌营收",
+    "invoiced": "已开票",
+    "collected": "已收款",
+    "outstanding": "未收款",
+    "count": "发票",
+    "invoiceCount": "{{count}} 张发票",
+    "stream": "营收类型",
+    "productSales": "产品单次销售",
+    "subscriptionSales": "订阅销售（品牌方案）",
+    "feesOther": "服务费及其他",
+    "buyer": "买方",
+    "invoiceNo": "发票编号",
+    "noRevenue": "此期间没有营收记录。",
+    "noInvoices": "此期间没有发票。",
+    "loadFailed": "无法载入营收报表。",
+    "uninvoicedPos": "有 {{count}} 张已收货的采购单（{{amount}}）尚未开立交易发票 — 该金额未计入以上数字。"
+  },
+  "brandPerformance": {
+    "overview": "总览"
+  }
 }

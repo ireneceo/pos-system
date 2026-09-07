@@ -284,6 +284,46 @@ module.exports = {
     add('ING-UNI-020 비활성 재료를 가리키는 레시피 줄 0',
       deadRefs === 0, deadRefs ? `${deadRefs}줄 — 원가·차감이 조용히 0 이 된다` : '');
 
+    // ── 2026-09-07 정리분 재발 감시 (Fable 판정 · Irene 승인) ────────────────────
+    //   아래 셋은 `migrate-dedupe-2026-09.js` 가 지운 모양이 **다시 생기는지**를 본다.
+    //   옛 부채가 아니라 신규 차단이다 — 정리 후에는 0 이 정상이고, 0 이 아니면 어딘가가
+    //   다시 만들고 있다는 뜻이다(2026-08-28 일회성 스크립트가 그랬다).
+
+    // ING-UNI-022 (차단): 같은 대상 ↔ 같은 판매자 상품 매핑이 두 줄.
+    //   utils/catalogLink.js connectExisting 이 이미 같은 키를 막는다. 그래도 스크립트·수기
+    //   INSERT 는 그 문을 안 지나므로 여기서 결과를 본다.
+    const dupMap = await cnt(`SELECT COUNT(*) c FROM (
+      SELECT 1 FROM ingredient_seller_products
+       GROUP BY IFNULL(ingredient_id,0), IFNULL(product_ingredient_id,0), IFNULL(product_id,0),
+                IFNULL(brand_product_id,0), seller_type, IFNULL(seller_entity_id,0), seller_product_id
+       HAVING COUNT(*) > 1) x`);
+    add('ING-UNI-022 같은 대상↔같은 판매자상품 매핑 중복 0',
+      dupMap === 0,
+      dupMap ? `${dupMap}조합 — 발주 화면에 같은 공급처가 두 줄로 뜬다` : '');
+
+    // ING-UNI-023 (차단): 같은 소유 안에서 코드가 겹치면 안 된다.
+    //   채번이 건수 기반(count+1)이던 시절 지운 번호를 다시 발급해 생긴 것.
+    //   2026-09-06 에 원자 카운터(code_sequences)로 바꿨으므로 이후로는 0 이어야 한다.
+    const dupIngCode = await cnt(`SELECT COUNT(*) c FROM (
+      SELECT 1 FROM ingredients WHERE code IS NOT NULL AND code <> ''
+       GROUP BY IFNULL(restaurant_id,0), IFNULL(brand_id,0), code HAVING COUNT(*) > 1) x`);
+    const dupPiCode = await cnt(`SELECT COUNT(*) c FROM (
+      SELECT 1 FROM product_ingredients WHERE code IS NOT NULL AND code <> ''
+       GROUP BY owner_user_id, code HAVING COUNT(*) > 1) x`);
+    add('ING-UNI-023 재료·재고아이템 코드 중복 0 (같은 소유 안)',
+      dupIngCode === 0 && dupPiCode === 0,
+      (dupIngCode || dupPiCode) ? `재료 ${dupIngCode}개 코드 · 재고아이템 ${dupPiCode}개 코드 — 서로 다른 물건이 같은 번호를 쓴다` : '');
+
+    // ING-UNI-024 (차단): 발주 환산값이 물리적으로 불가능한 값.
+    //   기준: 10만 이상. 실측(2026-09-07)에서 250,000 짜리 넉 줄이 있었고, 그 값에 규격 비율을
+    //   곱한 마이그가 DECIMAL(10,4) 를 넘겨 **전 매장 배포를 세웠다**. 1kg→g(1000)·18L→ml(18000)
+    //   같은 정상값을 잡지 않도록 문턱을 넉넉히 둔다.
+    const badConv = await cnt(`SELECT COUNT(*) c FROM ingredient_seller_products
+      WHERE unit_conversion >= 100000 OR unit_conversion <= 0`);
+    add('ING-UNI-024 발주 환산값이 불가능한 값 0 (10만 이상·0 이하)',
+      badConv === 0,
+      badConv ? `${badConv}줄 — 곱셈이 컬럼 한계를 넘겨 마이그·배포를 세운다` : '');
+
     // ── 옛 부채 목록 (비차단) — CUTOFF **이전** 전수 ─────────────────────────────
     //   차단하지 않는 이유는 위 CUTOFF 주석에 있다. 건수가 줄어드는 것이 정리의 진행 지표다.
     const dupOld = await cnt(`SELECT COUNT(*) c FROM (

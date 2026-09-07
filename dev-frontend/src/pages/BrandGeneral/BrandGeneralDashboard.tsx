@@ -890,7 +890,7 @@ const BrandGeneralDashboard: React.FC = () => {
               <div className="title">{t('brand:brandGeneralDashboard.subscriptionPlans')}</div>
               <div className="description">{t('brand:brandGeneralDashboard.planConfiguration')}</div>
             </QuickActionCard>
-            <QuickActionCard onClick={() => navigate('/pos/brand/general/reports')}>
+            <QuickActionCard onClick={() => navigate('/pos/brand/general/performance/stores')}>
               <div className="icon">◉</div>
               <div className="title">{t('brand:brandGeneralDashboard.reports')}</div>
               <div className="description">{t('brand:brandGeneralDashboard.performanceAnalytics')}</div>
