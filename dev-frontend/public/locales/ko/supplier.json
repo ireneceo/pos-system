@@ -185,7 +185,8 @@
       "delivery": "배송",
       "time": "시간",
       "amount": "금액",
-      "itemsUnit": "건"
+      "itemsUnit": "건",
+      "payment": "결제"
     },
     "actions": {
       "view": "보기",
@@ -299,7 +300,9 @@
     "payment_submitted": "결제 제출됨",
     "paid": "결제 완료",
     "overdue": "연체",
-    "delivered": "도착"
+    "delivered": "도착",
+    "completed": "완료",
+    "partiallyCompleted": "부분 완료"
   },
   "nav": {
     "direct": "외부업체"
@@ -316,5 +319,10 @@
   },
   "card": {
     "viewProducts": "품목 보기"
+  },
+  "payment": {
+    "unpaid": "미결제",
+    "paid": "결제완료",
+    "refunded": "환불"
   }
 }

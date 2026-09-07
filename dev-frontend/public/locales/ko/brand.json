@@ -754,5 +754,19 @@
   },
   "brandPerformance": {
     "overview": "전체 보기"
+  },
+  "status": {
+    "completed": "완료",
+    "partiallyCompleted": "부분 완료"
+  },
+  "payment": {
+    "unpaid": "미결제",
+    "paid": "결제완료",
+    "refunded": "환불"
+  },
+  "orders": {
+    "table": {
+      "payment": "결제"
+    }
   }
 }

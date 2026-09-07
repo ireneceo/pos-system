@@ -170,6 +170,9 @@ interface IncomingOrderRow {
   buyer_entity_id?: number | null;
   buyer?: { id?: number; type?: string; name?: string; email?: string } | null;
   status: POStatus | string;
+  // 결제 상태는 주문 상태와 **따로** 본다 (2026-09-07). 응답에 이미 실려 온다(`po.toJSON()`).
+  payment_status?: 'unpaid' | 'paid' | 'refunded' | string | null;
+  shipped_at?: string | null;
   item_count?: number;
   items?: IncomingOrderItem[];
   total_amount?: number | string | null;
@@ -387,6 +390,32 @@ const StatusVariantMap: Record<string, 'success' | 'warning' | 'error' | 'info'>
   partial_received: 'warning',
   cancelled: 'error',
   draft: 'info'
+};
+
+/**
+ * 판매자 관점의 주문 상태 라벨 (2026-09-07 Irene 지시).
+ *
+ * 왜 그냥 `status` 를 못 쓰나: `received` 는 **구매자** 가 "받았다"고 찍은 것이다.
+ *   파는 쪽에서 보면 그 시점에 거래가 **끝난 것**이라 "완료" 로 읽혀야 하는데,
+ *   화면이 원문 그대로 "Received" 를 띄워 판매자에게 이상하게 보였다.
+ *   (Irene: "배송완료 뒤에 recived가 상태표시는 이상해. 브랜드제너럴에게는 완료가 되어야지")
+ * 그 외 단계는 뜻이 같으므로 그대로 둔다.
+ */
+function sellerStatusKey(status: string): string {
+  if (status === 'received') return 'completed';
+  if (status === 'partial_received') return 'partiallyCompleted';
+  return status;
+}
+
+/**
+ * 결제 상태는 **주문 상태와 따로** 보여준다 (레스토랑 관리자 화면과 같은 방식).
+ *   `purchase_orders.payment_status` = 'unpaid' | 'paid' | 'refunded'.
+ *   받았는데 아직 안 낸 건이 눈에 보여야 판매자가 수금을 챙긴다.
+ */
+const PaymentVariantMap: Record<string, 'success' | 'warning' | 'error' | 'info'> = {
+  paid: 'success',
+  unpaid: 'warning',
+  refunded: 'error',
 };
 
 const TAB_KEYS: TabKey[] = ['all', 'submitted', 'confirmed', 'shipped', 'received', 'cancelled'];
@@ -966,6 +995,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 <DataTableHeaderCell align="left">{tNs('orders.table.items', 'Items')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="left">{tNs('orders.table.delivery', 'Delivery')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">{tNs('orders.table.status', 'Status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{tNs('orders.table.payment', 'Payment')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="left">{tNs('orders.table.time', 'Time')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="right">{tNs('orders.table.amount', 'Amount')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="right" isActions>{tNs('orders.table.actions', 'Actions')}</DataTableHeaderCell>
@@ -1047,13 +1077,18 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                       </DataTableCell>
                       <DataTableCell data-label={tNs('orders.table.status', 'Status') as string} align="center">
                         <DataTableStatus variant={StatusVariantMap[row.status] || 'info'}>
-                          {tNs(`status.${row.status}`, row.status)}
+                          {tNs(`status.${sellerStatusKey(row.status)}`, sellerStatusKey(row.status))}
                           {/* 구매자가 먼저 받은 발주 — 출고를 안 누르면 우리 재고가 안 빠진다(2026-09-01 Q6) */}
                           {!row.shipped_at && (row.status === 'received' || row.status === 'partial_received') && (
                             <div style={{ fontSize: '11px', fontWeight: 600, color: '#B45309', marginTop: 2 }}>
                               {tNs('orders.badge.needsDispatch', 'Buyer confirmed receipt — record dispatch')}
                             </div>
                           )}
+                        </DataTableStatus>
+                      </DataTableCell>
+                      <DataTableCell data-label={tNs('orders.table.payment', 'Payment') as string} align="center">
+                        <DataTableStatus variant={PaymentVariantMap[row.payment_status || 'unpaid'] || 'info'}>
+                          {tNs(`payment.${row.payment_status || 'unpaid'}`, row.payment_status || 'unpaid')}
                         </DataTableStatus>
                       </DataTableCell>
                       <DataTableCell data-label={tNs('orders.table.time', 'Time') as string}>

@@ -372,5 +372,19 @@
     "latitude": "Latitud",
     "longitude": "Longitud"
   },
-  "foodcourtReportsPage.inPeriod": "Dalam tempoh dipilih"
+  "foodcourtReportsPage.inPeriod": "Dalam tempoh dipilih",
+  "status": {
+    "completed": "Selesai",
+    "partiallyCompleted": "Selesai Sebahagian"
+  },
+  "payment": {
+    "unpaid": "Belum Dibayar",
+    "paid": "Dibayar",
+    "refunded": "Dikembalikan"
+  },
+  "orders": {
+    "table": {
+      "payment": "Pembayaran"
+    }
+  }
 }

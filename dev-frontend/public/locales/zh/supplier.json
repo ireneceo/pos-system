@@ -185,7 +185,8 @@
       "delivery": "配送",
       "time": "时间",
       "amount": "金额",
-      "itemsUnit": "件"
+      "itemsUnit": "件",
+      "payment": "付款"
     },
     "actions": {
       "view": "查看",
@@ -299,7 +300,9 @@
     "payment_submitted": "已提交付款",
     "paid": "已付款",
     "overdue": "逾期",
-    "delivered": "已送达"
+    "delivered": "已送达",
+    "completed": "已完成",
+    "partiallyCompleted": "部分完成"
   },
   "nav": {
     "direct": "外部供应商"
@@ -316,5 +319,10 @@
   },
   "card": {
     "viewProducts": "查看商品"
+  },
+  "payment": {
+    "unpaid": "未付款",
+    "paid": "已付款",
+    "refunded": "已退款"
   }
 }

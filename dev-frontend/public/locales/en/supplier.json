@@ -185,7 +185,8 @@
       "delivery": "Delivery",
       "time": "Time",
       "amount": "Amount",
-      "itemsUnit": "items"
+      "itemsUnit": "items",
+      "payment": "Payment"
     },
     "actions": {
       "view": "View",
@@ -299,7 +300,9 @@
     "payment_submitted": "Payment Submitted",
     "paid": "Paid",
     "overdue": "Overdue",
-    "delivered": "Delivered"
+    "delivered": "Delivered",
+    "completed": "Completed",
+    "partiallyCompleted": "Partially Completed"
   },
   "nav": {
     "direct": "External"
@@ -316,5 +319,10 @@
   },
   "card": {
     "viewProducts": "View Products"
+  },
+  "payment": {
+    "unpaid": "Unpaid",
+    "paid": "Paid",
+    "refunded": "Refunded"
   }
 }

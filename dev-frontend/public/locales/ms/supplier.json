@@ -185,7 +185,8 @@
       "delivery": "Penghantaran",
       "time": "Masa",
       "amount": "Jumlah",
-      "itemsUnit": "item"
+      "itemsUnit": "item",
+      "payment": "Pembayaran"
     },
     "actions": {
       "view": "Lihat",
@@ -299,7 +300,9 @@
     "payment_submitted": "Pembayaran Dihantar",
     "paid": "Dibayar",
     "overdue": "Tertunggak",
-    "delivered": "Sampai"
+    "delivered": "Sampai",
+    "completed": "Selesai",
+    "partiallyCompleted": "Selesai Sebahagian"
   },
   "nav": {
     "direct": "Luaran"
@@ -316,5 +319,10 @@
   },
   "card": {
     "viewProducts": "Lihat Produk"
+  },
+  "payment": {
+    "unpaid": "Belum Dibayar",
+    "paid": "Dibayar",
+    "refunded": "Dikembalikan"
   }
 }

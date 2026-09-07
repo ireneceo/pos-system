@@ -372,5 +372,19 @@
     "latitude": "Latitude",
     "longitude": "Longitude"
   },
-  "foodcourtReportsPage.inPeriod": "In selected period"
+  "foodcourtReportsPage.inPeriod": "In selected period",
+  "status": {
+    "completed": "Completed",
+    "partiallyCompleted": "Partially Completed"
+  },
+  "payment": {
+    "unpaid": "Unpaid",
+    "paid": "Paid",
+    "refunded": "Refunded"
+  },
+  "orders": {
+    "table": {
+      "payment": "Payment"
+    }
+  }
 }

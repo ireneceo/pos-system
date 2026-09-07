@@ -754,5 +754,19 @@
   },
   "brandPerformance": {
     "overview": "Gambaran Keseluruhan"
+  },
+  "status": {
+    "completed": "Selesai",
+    "partiallyCompleted": "Selesai Sebahagian"
+  },
+  "payment": {
+    "unpaid": "Belum Dibayar",
+    "paid": "Dibayar",
+    "refunded": "Dikembalikan"
+  },
+  "orders": {
+    "table": {
+      "payment": "Pembayaran"
+    }
   }
 }

@@ -4696,6 +4696,78 @@ function definePrintTests({ adminToken }) {
       && /status:\s*\{\s*\[Op\.notIn\]:\s*\[[^\]]*'paid'/.test(block);
   });
 
+  // ── 판매자 브랜드 범위 (2026-09-07) ────────────────────────────────────────
+  //   결함: `sellerScope` 가 `user.brand_id` **하나**만 판매자로 잡아, 브랜드를 여럿 운영하는
+  //   조직에서 다른 브랜드 앞으로 온 발주가 판매자 화면에서 통째로 사라졌다
+  //   (운영 `PO-R8-20260907-001` · RM 1,338.40 · 9품목). 반품 화면도 같은 복제본이라 404 였다.
+  //   범위 = 소유 ∪ 소속 ∪ **형제**(소속 브랜드와 주인이 같은 브랜드). BM 은 소속 하나.
+  test('security', '판매자 범위: 형제 브랜드는 보이고 타 조직은 안 보인다', async () => {
+    const jwtLib = require('jsonwebtoken');
+    const { sequelize } = require('../config/database');
+    const { User, Brand, PurchaseOrder } = require('../models');
+    const { Op } = require('sequelize');
+
+    // 브랜드를 둘 이상 가진 주인을 찾는다(없으면 판별 불가 → skip)
+    const brands = await Brand.findAll({ attributes: ['id', 'owner_id'] });
+    const byOwner = {};
+    brands.filter((b) => b.owner_id).forEach((b) => { (byOwner[b.owner_id] = byOwner[b.owner_id] || []).push(b.id); });
+    const multi = Object.entries(byOwner).find(([, ids]) => ids.length > 1);
+    if (!multi) return true;
+    const [ownerId, orgIds] = multi;
+
+    // 그 조직에 **소속만 되어 있고 소유는 없는** BG (= 이 결함이 드러난 형태)
+    const member = await User.findOne({
+      where: { role: 'Brand General', is_active: true, brand_id: { [Op.in]: orgIds }, id: { [Op.ne]: ownerId } }
+    });
+    if (!member) return true;
+
+    // 소속 브랜드가 아닌 **형제** 브랜드 앞으로 온 발주
+    const sib = orgIds.filter((x) => Number(x) !== Number(member.brand_id));
+    if (sib.length === 0) return true;
+    const po = await PurchaseOrder.findOne({
+      where: { seller_type: 'brand', seller_entity_id: { [Op.in]: sib },
+               status: { [Op.notIn]: ['draft', 'pending_approval'] }, deleted_at: null }
+    });
+    if (!po) return true;
+
+    const tok = (u) => jwtLib.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = (u) => ({ Authorization: `Bearer ${tok(u)}` });
+
+    // ① 소속 BG 는 형제 브랜드 발주를 **본다** (단건 + 반품)
+    const own = await request('GET', `/seller-orders/${po.id}`, null, auth(member));
+    if (own.status !== 200) return false;
+    const ret = await request('GET', `/seller-orders/${po.id}/returns`, null, auth(member));
+    if (ret.status !== 200) return false;          // 반품 복제본이 안 고쳐지면 여기서 404
+
+    // ② 타 조직 계정은 **못 본다** — 목록에도 안 섞인다
+    const foreign = await User.findOne({
+      where: { role: 'Brand General', is_active: true, brand_id: { [Op.notIn]: orgIds } }
+    });
+    if (foreign) {
+      const d = await request('GET', `/seller-orders/${po.id}`, null, auth(foreign));
+      if (d.status !== 404) return false;
+      const r = await request('GET', `/seller-orders/${po.id}/returns`, null, auth(foreign));
+      if (r.status !== 404) return false;
+      const l = await request('GET', '/seller-orders?limit=500', null, auth(foreign));
+      const rows = l.body?.data || l.body?.orders || [];
+      if (rows.some((o) => orgIds.map(Number).includes(Number(o.seller_entity_id)))) return false;
+    }
+    return true;
+  });
+
+  test('security', '판매자 범위: Brand Manager 는 소속 브랜드 하나만 (형제로 넓어지지 않는다)', async () => {
+    const jwtLib = require('jsonwebtoken');
+    const { User } = require('../models');
+    const bm = await User.findOne({ where: { role: 'Brand Manager', is_active: true } });
+    if (!bm || !bm.brand_id) return true;
+    const r = await request('GET', '/seller-orders?limit=500', null,
+      { Authorization: `Bearer ${jwtLib.sign({ userId: bm.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+    if (r.status !== 200) return false;
+    const rows = r.body?.data || r.body?.orders || [];
+    const brandsSeen = [...new Set(rows.map((o) => Number(o.seller_entity_id)))];
+    return brandsSeen.every((b) => b === Number(bm.brand_id));
+  });
+
   // ── 브랜드 매출 리포트 (2026-09-07) ─────────────────────────────────────────
   //   Irene: "리포트는 브랜드제너럴이 파는 프로덕트랑 구독판매 또는 개별판매(인보이스)랑 연결해줘."
   //   진실원장은 **브랜드가 발행한 인보이스** 하나다. 아래 3건이 그 계약을 박제한다.

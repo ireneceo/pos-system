@@ -31,7 +31,7 @@ const {
   SupplierCompany
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
-const { requireSellerRole } = require('../middleware/sellerScope');
+const { requireSellerRole , ownsPurchaseOrder } = require('../middleware/sellerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, decorateCarrier, emitPoEvent } = require('../services/poRealtimeService');
 const { sendNotificationBatch, getRestaurantAdminAndOwnerIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
@@ -81,19 +81,10 @@ function buildSellerWhere(req) {
   return where;
 }
 
-function checkSellerOwnership(po, req) {
-  if (req.sellerIsAdmin && !req.sellerEntity) return true;
-  if (!req.sellerEntity) return false;
-  if (po.seller_type !== req.sellerEntity.type) return false;
-  if (req.sellerEntity.id === null || req.sellerEntity.id === undefined) {
-    return po.seller_entity_id === null;
-  }
-  const ids = req.sellerEntity.ids;
-  if (Array.isArray(ids) && ids.length > 0) {
-    return ids.map(Number).includes(parseInt(po.seller_entity_id, 10));
-  }
-  return parseInt(po.seller_entity_id, 10) === parseInt(req.sellerEntity.id, 10);
-}
+// 소유권 판정은 `middleware/sellerScope.js` **한 곳**에 있다 — 여기서 다시 쓰지 않는다.
+//   (세 벌 복제가 "목록엔 보이는데 반품은 404" 를 만들었다. 2026-09-07 Fable 적발)
+const checkSellerOwnership = (po, req) => ownsPurchaseOrder(po, req);
+
 
 /** Resolve buyer info for display (name + entity meta). */
 async function resolveBuyerInfo(po) {

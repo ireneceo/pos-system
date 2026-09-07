@@ -754,5 +754,19 @@
   },
   "brandPerformance": {
     "overview": "总览"
+  },
+  "status": {
+    "completed": "已完成",
+    "partiallyCompleted": "部分完成"
+  },
+  "payment": {
+    "unpaid": "未付款",
+    "paid": "已付款",
+    "refunded": "已退款"
+  },
+  "orders": {
+    "table": {
+      "payment": "付款"
+    }
   }
 }

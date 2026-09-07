@@ -26,7 +26,7 @@ const { resolvePayer } = require('../services/purchaseOrderService');
 const { stockFor, applyStock } = require('../utils/brandStockAccess');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
-const { requireSellerRole } = require('../middleware/sellerScope');
+const { requireSellerRole , ownsPurchaseOrder } = require('../middleware/sellerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { emitPoEvent } = require('../services/poRealtimeService');
 
@@ -154,12 +154,9 @@ router.get('/seller-orders/:id/returns', async (req, res) => {
     if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Order not found' });
     const po = await PurchaseOrder.findByPk(id);
     if (!po) return res.status(404).json({ success: false, message: 'Order not found' });
-    const sellerOk = req.sellerEntity
-      ? po.seller_type === req.sellerEntity.type &&
-        (req.sellerEntity.id == null
-          ? po.seller_entity_id == null
-          : parseInt(po.seller_entity_id, 10) === parseInt(req.sellerEntity.id, 10))
-      : !!req.sellerIsAdmin;
+    // 판정은 `middleware/sellerScope.js` 단일 소스 — 여기서 복제하지 않는다.
+    //   종전 복제본이 단일 id 만 비교해, 브랜드를 여럿 가진 판매자는 **목록엔 보이는데 반품은 404** 였다.
+    const sellerOk = ownsPurchaseOrder(po, req);
     if (!sellerOk) return res.status(404).json({ success: false, message: 'Order not found' });
 
     const list = await PurchaseOrderReturn.findAll({
@@ -186,12 +183,8 @@ async function loadAndCheckReturn(req, t) {
   const lockOpts = t ? { lock: t.LOCK.UPDATE, transaction: t } : undefined;
   const po = await PurchaseOrder.findByPk(id, lockOpts);
   if (!po) return { error: 'Order not found', status: 404 };
-  const sellerOk = req.sellerEntity
-    ? po.seller_type === req.sellerEntity.type &&
-      (req.sellerEntity.id == null
-        ? po.seller_entity_id == null
-        : parseInt(po.seller_entity_id, 10) === parseInt(req.sellerEntity.id, 10))
-    : !!req.sellerIsAdmin;
+  // 판정은 `middleware/sellerScope.js` 단일 소스 (위 주석 참조).
+  const sellerOk = ownsPurchaseOrder(po, req);
   if (!sellerOk) return { error: 'Order not found', status: 404 };
   const ret = await PurchaseOrderReturn.findByPk(returnId, lockOpts);
   if (!ret || ret.purchase_order_id !== po.id) return { error: 'Return not found', status: 404 };

@@ -372,5 +372,19 @@
     "latitude": "위도",
     "longitude": "경도"
   },
-  "foodcourtReportsPage.inPeriod": "선택 기간 내"
+  "foodcourtReportsPage.inPeriod": "선택 기간 내",
+  "status": {
+    "completed": "완료",
+    "partiallyCompleted": "부분 완료"
+  },
+  "payment": {
+    "unpaid": "미결제",
+    "paid": "결제완료",
+    "refunded": "환불"
+  },
+  "orders": {
+    "table": {
+      "payment": "결제"
+    }
+  }
 }
