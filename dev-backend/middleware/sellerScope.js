@@ -48,21 +48,37 @@ async function requireSellerRole(req, res, next) {
     if (!company) return res.status(404).json({ success: false, message: 'No supplier company found' });
     entity = { type: 'supplier', id: company.id };
   } else if (user.role === 'Brand General' || user.role === 'Brand Manager') {
-    // 🔴 브랜드는 **여러 개일 수 있다** (2026-09-07).
-    //   GIT(user 23)은 `with MIN`(1)·`K-DINE with MIN`(2)을 둘 다 소유하는데
-    //   `user.brand_id` 하나(=1)만 보다가, 브랜드 2 앞으로 온 발주
-    //   `PO-R8-20260907-001`(RM 1,338.40 · 9품목)이 **판매자 화면에 아예 안 떴다**.
+    // 🔴 판매자 화면은 **그 조직이 파는 모든 브랜드**를 봐야 한다 (Irene 2026-09-07:
+    //   "여긴 모든 브랜드 주문 다 나와야 해").
+    //
+    //   실측한 사고: GIT 은 `with MIN`(1)·`K-DINE with MIN`(2)을 함께 운영하는데
+    //   K-DINE 발주 `PO-R8-20260907-001`(RM 1,338.40 · 9품목)이 **브랜드 2** 앞으로 갔다.
+    //   종전 코드는 `user.brand_id` 하나(=1)만 봐서 그 발주가 판매자 화면에서 통째로 사라졌다.
     //   구매자는 정상 제출했는데 파는 쪽이 못 봤다.
-    //   `brands.owner_id` 로 소유 브랜드를 모두 모은다 — `brand-soa.js`·`brand-revenue.js` 의
-    //   `brandIdsFromScope` 와 같은 규칙(거기는 이미 ownedBrandIds 를 쓴다).
-    const owned = await Brand.findAll({ where: { owner_id: user.id }, attributes: ['id'] });
-    const ids = [...new Set([
-      ...owned.map((b) => parseInt(b.id, 10)),
-      ...(user.brand_id ? [parseInt(user.brand_id, 10)] : []),   // 소속만 있고 소유가 아닌 매니저
-    ])].filter(Boolean);
-    if (ids.length === 0) return res.status(403).json({ success: false, message: 'No brand assigned' });
-    // `id` 는 대표 브랜드(하위 호환), `ids` 는 전체 — 목록·소유권 판정은 `ids` 를 본다.
-    entity = { type: 'brand', id: ids[0], ids };
+    //
+    //   범위는 셋의 합집합이다:
+    //     ① 내가 주인인 브랜드            (`brands.owner_id = 나`)
+    //     ② 내 소속 브랜드                (`user.brand_id` — 주인이 아닌 매니저)
+    //     ③ **내 소속 브랜드와 주인이 같은 형제 브랜드**
+    //        ③ 이 없으면 `irene@gitconsulting.group`(브랜드 1 소속·소유 0) 은 여전히 브랜드 1만 본다.
+    //        같은 주인이 가진 브랜드는 같은 조직이므로 판매 내역을 함께 보는 것이 맞다.
+    //        (2026-09-06 Brand Manager 접근 수정 때 쓴 "형제 판정식"과 같은 생각.)
+    const ids = new Set();
+    (await Brand.findAll({ where: { owner_id: user.id }, attributes: ['id'] }))
+      .forEach((b) => ids.add(parseInt(b.id, 10)));
+    if (user.brand_id) {
+      const mine = parseInt(user.brand_id, 10);
+      ids.add(mine);
+      const home = await Brand.findByPk(mine, { attributes: ['id', 'owner_id'] });
+      if (home && home.owner_id) {
+        (await Brand.findAll({ where: { owner_id: home.owner_id }, attributes: ['id'] }))
+          .forEach((b) => ids.add(parseInt(b.id, 10)));
+      }
+    }
+    const list = [...ids].filter(Boolean);
+    if (list.length === 0) return res.status(403).json({ success: false, message: 'No brand assigned' });
+    // `id` 는 대표(하위 호환), `ids` 가 실제 범위다 — 목록·소유권 판정은 `ids` 를 본다.
+    entity = { type: 'brand', id: user.brand_id ? parseInt(user.brand_id, 10) : list[0], ids: list };
   } else {
     if (!user.foodcourt_id) return res.status(403).json({ success: false, message: 'No foodcourt assigned' });
     entity = { type: 'foodcourt', id: parseInt(user.foodcourt_id, 10) };
