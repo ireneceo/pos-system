@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -532,6 +532,65 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   const [returnError, setReturnError] = useState<string | null>(null);
   const [existingReturns, setExistingReturns] = useState<any[]>([]);
 
+  /**
+   * 외부(솔루션 미가입) 공급업체 발주인가 — 반품을 밖으로 보내야 하는 경우다 (2026-09-08).
+   * `is_external` 은 목록·상세 API 가 판매자 종류로 이미 판정해 내려준다(utils/sellerNames 계열).
+   */
+  const isExternalSupplier = !!(detail as any)?.is_external && (detail as any)?.seller_type === 'supplier';
+
+  /** 반품서를 왓츠앱·메일·PDF 로 보내고, 보냈다는 사실을 서버에 남긴다. */
+  const sendReturnTo = useCallback(async (ret: any, channel: 'whatsapp' | 'email' | 'pdf') => {
+    const item = (detail?.items || []).find((it: any) => it.id === ret.purchase_order_item_id);
+    const payload = {
+      po_number: detail?.po_number || `#${id}`,
+      currency: (detail as any)?.currency || 'MYR',
+      seller: (detail as any)?.seller || null,
+      lines: [{
+        name: (item as any)?.seller_product_name || (item as any)?.description || (item as any)?.ingredient_name || 'Item',
+        quantity: ret.quantity, unit: ret.unit, unit_price: ret.unit_price ?? (item as any)?.unit_price, reason: ret.reason
+      }]
+    };
+    const { shareReturnViaWhatsApp, shareReturnViaEmail, printReturnSheet } = await import('../../utils/returnShare');
+    if (channel === 'whatsapp') shareReturnViaWhatsApp(payload);
+    else if (channel === 'pdf') printReturnSheet(payload);
+    else if (!shareReturnViaEmail(payload)) {
+      setReturnError(t('detail.returns.noSellerEmail', '공급업체 이메일이 등록돼 있지 않습니다') as string);
+      return;
+    }
+    // 보냈다는 사실을 남긴다 — 안 남기면 화면에서 보냈는지 알 수 없다.
+    try {
+      const token = getAuthToken();
+      await fetch(`/api/purchase-orders/${id}/returns/${ret.id}/mark-sent-external`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ channel })
+      });
+      await loadReturnsRef.current?.();
+    } catch (_) { /* 기록 실패가 발송을 되돌리지는 않는다 */ }
+  }, [detail, id, t]);
+
+  /** 외부 공급업체 반품을 구매자가 닫는다 — 재고가 되돌아간다. */
+  const closeReturn = useCallback(async (ret: any) => {
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/purchase-orders/${id}/returns/${ret.id}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: '{}'
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setReturnError(data?.message || (t('detail.returns.closeFailed', '반품을 닫지 못했습니다') as string));
+        return;
+      }
+      await loadReturnsRef.current?.();
+    } catch (_) {
+      setReturnError(t('detail.returns.networkError', 'Network error') as string);
+    }
+  }, [id, t]);
+
+  const loadReturnsRef = useRef<null | (() => Promise<void>)>(null);
+
   const loadReturns = useCallback(async () => {
     if (!Number.isFinite(id)) return;
     try {
@@ -543,6 +602,9 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       if (res.ok && data.success) setExistingReturns(Array.isArray(data.data) ? data.data : []);
     } catch (err) { /* ignore */ }
   }, [id]);
+
+  // 위쪽 콜백들이 최신 loadReturns 를 부를 수 있게 ref 에 담는다(선언 순서와 무관하게).
+  loadReturnsRef.current = loadReturns;
 
   useEffect(() => { loadReturns(); }, [loadReturns]);
 
@@ -1273,6 +1335,19 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                    {/* 원가 대조 (2026-09-08) — 인보이스에 적힌 실제 가격을 발주 라인과 맞춰 본다.
+                        발주 금액은 바뀌지 않는다. 공급업체 발주에만 뜬다(브랜드 발주는 우리 가격이 원본). */}
+                    {detail.seller_type === 'supplier' && (
+                      <ThemedButton
+                        size="small"
+                        variant="outline"
+                        onClick={() => navigate(`/pos/purchase-orders/${detail.id}/reconcile`)}
+                      >
+                        {(detail as any).invoice_reconciled_at
+                          ? t('detail.invoice.reconcileAgain', '대조 다시 보기')
+                          : t('detail.invoice.reconcile', '원가 대조')}
+                      </ThemedButton>
+                    )}
                     <ThemedButton
                       size="small"
                       variant="outline"
@@ -1604,13 +1679,40 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
             </div>
             <div style={{ display: 'grid', gap: 6 }}>
               {existingReturns.map(r => (
-                <div key={r.id} style={{ padding: 8, border: '1px solid #C7CED6', borderRadius: 6, fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
-                  <span>#{r.id} · qty {r.quantity} {r.unit || ''} · {r.reason || '—'}</span>
-                  <span style={{
-                    padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-                    background: r.status === 'approved' ? '#ECFDF5' : r.status === 'rejected' ? '#FEF2F2' : '#FEF3C7',
-                    color: r.status === 'approved' ? '#065F46' : r.status === 'rejected' ? '#991B1B' : '#92400E'
-                  }}>{r.status}</span>
+                <div key={r.id} style={{ padding: 8, border: '1px solid #C7CED6', borderRadius: 6, fontSize: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <span>#{r.id} · qty {r.quantity} {r.unit || ''} · {r.reason || '—'}</span>
+                    <span style={{
+                      padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+                      background: r.status === 'approved' ? '#ECFDF5' : r.status === 'rejected' ? '#FEF2F2' : '#FEF3C7',
+                      color: r.status === 'approved' ? '#065F46' : r.status === 'rejected' ? '#991B1B' : '#92400E'
+                    }}>{r.status}</span>
+                  </div>
+
+                  {/* 외부 공급업체는 로그인이 없어 시스템에서 승인할 사람이 없다 (2026-09-08 Irene:
+                      "외부공급업체는 발주처럼 왓츠앱 메일, pdf 로 보내게 해줘야지").
+                      → 반품서를 밖으로 보내고, 시스템 기록은 구매자가 닫는다. */}
+                  {isExternalSupplier && r.status === 'requested' && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+                      <ThemedButton size="small" variant="outline" onClick={() => sendReturnTo(r, 'whatsapp')}>
+                        {t('detail.returns.sendWhatsapp', 'WhatsApp')}
+                      </ThemedButton>
+                      <ThemedButton size="small" variant="outline" onClick={() => sendReturnTo(r, 'email')}>
+                        {t('detail.returns.sendEmail', '메일')}
+                      </ThemedButton>
+                      <ThemedButton size="small" variant="outline" onClick={() => sendReturnTo(r, 'pdf')}>
+                        {t('detail.returns.sendPdf', 'PDF')}
+                      </ThemedButton>
+                      <ThemedButton size="small" variant="primary" onClick={() => closeReturn(r)}>
+                        {t('detail.returns.close', '반품 처리함')}
+                      </ThemedButton>
+                      <span style={{ fontSize: 11, color: r.sent_to_seller_at ? '#047857' : '#6B7280' }}>
+                        {r.sent_to_seller_at
+                          ? `${t('detail.returns.sent', '보냄')} · ${r.sent_channel || ''}`
+                          : t('detail.returns.notSent', '아직 안 보냄')}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

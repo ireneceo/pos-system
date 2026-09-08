@@ -279,6 +279,7 @@ const PurchaseOrdersPage = React.lazy(() => import('./pages/PurchaseOrders/Purch
 const StockLedgerLinkPage = React.lazy(() => import('./pages/StockLedger/StockLedgerLinkPage'));
 const NewPurchaseOrderPage = React.lazy(() => import('./pages/PurchaseOrders/NewPurchaseOrderPage'));
 const PurchaseOrderStagingPage = React.lazy(() => import('./pages/PurchaseOrders/PurchaseOrderStagingPage'));
+const InvoiceReconcilePage = React.lazy(() => import('./pages/PurchaseOrders/InvoiceReconcilePage'));
 const PurchaseOrderDetailPage = React.lazy(() => import('./pages/PurchaseOrders/PurchaseOrderDetailPage'));
 
 // Shown when a restaurant-scoped user logs in without an assigned restaurant.
@@ -1524,6 +1525,13 @@ function App() {
                       {/* 구매자쪽 인쇄본. 공급업체는 여기 오지 않는다 — 공급업체 화면은 전부
                           `/pos/supplier/*` 네임스페이스에 살고 ROLE_ROUTES 가 그 질서를 강제한다.
                           공급업체 전용 인쇄 경로는 아래 `/pos/supplier/orders/:id/print`. */}
+                      {/* 발주↔인보이스 원가 대조 (2026-09-08). 구매자 전용 —
+                          공급업체는 자기 인보이스를 우리 원가에 반영시킬 수 없다. */}
+                      <Route path="/pos/purchase-orders/:id/reconcile" element={
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <InvoiceReconcilePage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/pos/purchase-orders/:id/print" element={
                         <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                           <PurchaseOrderPrintPage />

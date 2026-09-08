@@ -771,5 +771,12 @@
     "tabs": {
       "completed": "已完成"
     }
+  },
+  "brandGeneralDashboard": {
+    "brandInvoiced": "品牌营收（已开票）",
+    "brandCollected": "已收款",
+    "brandOutstanding": "未收款",
+    "storeRevenue": "门店销售（订单）",
+    "uninvoicedPos": "已收货但未开票的采购单 {{count}} 张（{{amount}}）— 这部分营收是缺失的。"
   }
 }

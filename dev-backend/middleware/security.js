@@ -120,8 +120,11 @@ const securityHeaders = (req, res, next) => {
   // Content Type 스니핑 방지
   res.setHeader('X-Content-Type-Options', 'nosniff');
 
-  // Clickjacking 방지
-  res.setHeader('X-Frame-Options', 'DENY');
+  // Clickjacking 방지.
+  //   업로드 파일(/uploads)만 SAMEORIGIN — 우리 화면 안에서 인보이스 PDF·사진을 나란히 띄워야
+  //   대조가 된다(2026-09-08: DENY 라서 대조 화면의 미리보기가 통째로 빈칸이었다).
+  //   같은 출처 안에서만 허용하므로 남의 사이트가 우리 파일을 감싸는 클릭재킹은 그대로 막힌다.
+  res.setHeader('X-Frame-Options', req.path.startsWith('/uploads/') ? 'SAMEORIGIN' : 'DENY');
 
   // Referrer 정책
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');

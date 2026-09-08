@@ -49,7 +49,11 @@
       "markReceivedAll": "Receive all",
       "markReceivedAllTitle": "All items arrived — mark the whole order received",
       "receivePartial": "Partial",
-      "receivePartialTitle": "Some items missing — enter received quantity per item"
+      "receivePartialTitle": "Some items missing — enter received quantity per item",
+      "reconcile": "Compare cost",
+      "reconciled": "Reconciled",
+      "diffLines": "diff",
+      "checkInvoice": "Check invoice"
     },
     "badge": {
       "sellerShipped": "Seller marked as dispatched"
@@ -183,7 +187,15 @@
       "reason": "Reason",
       "failed": "Failed to submit return",
       "networkError": "Network error",
-      "rejectReason": "Rejection reason:"
+      "rejectReason": "Rejection reason:",
+      "sendWhatsapp": "WhatsApp",
+      "sendEmail": "Email",
+      "sendPdf": "PDF",
+      "close": "Mark returned",
+      "sent": "sent",
+      "notSent": "not sent yet",
+      "noSellerEmail": "Supplier has no email on file",
+      "closeFailed": "Could not close the return"
     },
     "noEmailTitle": "No Email",
     "noEmail": "No email address is registered for this seller."
@@ -502,5 +514,75 @@
   },
   "connect": {
     "priceNotSet": "No price set — cost will be 0"
+  },
+  "reconcile": {
+    "title": "Invoice Reconciliation",
+    "supplier": "Supplier",
+    "invoice": "Invoice",
+    "externalOriginal": "External supplier — the uploaded invoice is the original",
+    "lastReconciled": "Last reconciled",
+    "neverReconciled": "Not reconciled yet",
+    "loading": "Loading…",
+    "notFound": "Purchase order not found.",
+    "backToPo": "Back to purchase order",
+    "invoicePanel": "Supplier invoice",
+    "pastePanel": "Paste a text invoice",
+    "pastePlaceholder": "Paste what you received on WhatsApp or email.\ne.g. Australian Beef Rib   5   43.00   215.00",
+    "runMatch": "Match lines",
+    "matchIsSuggestion": "Matches are only suggestions. Check the values on the right and press save to apply.",
+    "noFile": "No invoice file uploaded. Use the paste box below or enter the values on the right.",
+    "uploadedInvoice": "Uploaded invoice",
+    "headerPanel": "Invoice details",
+    "itemsPanel": "Items",
+    "taxNotInUnitPrice": "Tax, delivery and discount are kept out of unit prices. Recording them separately keeps cost from inflating.",
+    "orderedQty": "Ordered",
+    "pricier": "higher",
+    "cheaper": "lower",
+    "applyYes": "Use this price",
+    "applyNone": "No link",
+    "changedLines": "{{n}} lines differ from the order",
+    "cancel": "Cancel",
+    "save": "Save reconciliation",
+    "saving": "Saving…",
+    "saved": "Reconciliation saved",
+    "loadFailed": "Could not load",
+    "saveFailed": "Could not save",
+    "unknownError": "Unknown error",
+    "field": {
+      "number": "Invoice number",
+      "date": "Invoice date",
+      "total": "Total",
+      "tax": "Tax",
+      "delivery": "Delivery",
+      "discount": "Discount"
+    },
+    "col": {
+      "ordered": "Ordered price",
+      "invoiced": "Invoiced price",
+      "invoicedQty": "Invoiced qty",
+      "apply": "Apply to cost"
+    },
+    "state": {
+      "matched": "Matched",
+      "needsCheck": "Needs check",
+      "unmatched": "Unmatched"
+    },
+    "reason": {
+      "noCandidate": "No line with a similar name — keep the ordered value or edit it yourself",
+      "noLines": "No lines were read",
+      "ok": "Name and amount match — just confirm",
+      "amountMismatch": "Amount does not equal qty × unit price",
+      "nameUnsure": "Name is not certain"
+    },
+    "result": {
+      "lines": "Saved invoiced values for {{n}} lines.",
+      "moved": "{{n}} costs followed the new price.",
+      "skipped": "Did not follow: {{list}}",
+      "failed": "{{n}} propagations failed — the reconciliation itself was saved.",
+      "retro": "Applied to {{n}} lines on open orders (paid/received excluded)."
+    },
+    "retroApply": "Apply to open orders too",
+    "invoicePanel2": "Enter invoice contents",
+    "previewHint": "If it does not show, open it with «View larger in a new tab» and type on the right."
   }
 }

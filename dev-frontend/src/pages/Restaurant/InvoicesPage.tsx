@@ -40,6 +40,7 @@ import ApplyCreditModal from '../../components/Referral/ApplyCreditModal';
 import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 import { getAuthToken } from '../../utils/auth';
 import AlertDialog from '../../components/Common/AlertDialog';
@@ -76,8 +77,22 @@ interface Invoice {
   customDescription?: string;
   serviceDescription?: string;
   categoryDisplayName?: string;
-  issuerType?: 'system_admin' | 'brand' | 'foodcourt';
+  issuerType?: 'system_admin' | 'brand' | 'foodcourt' | 'supplier';
   issuerId?: number | string;
+  /** 외부(솔루션 미가입) 공급업체 발행 — 게이트웨이 결제 불가, "결제함 표시"만 (설계 §5) */
+  issuerIsExternal?: boolean;
+  /** 원본 발주 + 업로드 인보이스 대조 상태 (2026-09-08) */
+  purchaseOrderId?: number | null;
+  purchaseOrderNumber?: string | null;
+  purchaseOrderTotal?: number | null;
+  uploadedInvoiceUrl?: string | null;
+  supplierInvoiceNumber?: string | null;
+  supplierInvoiceTotal?: number | null;
+  invoiceReconciledAt?: string | null;
+  /** 발주 청구서의 «주문한 날 · 받은 날» — 결제 판단의 근거 (2026-09-08) */
+  poOrderedAt?: string | null;
+  poReceivedAt?: string | null;
+  poStatus?: string | null;
   issuerName?: string;
   issuerInfo?: {
     name: string;
@@ -297,6 +312,7 @@ type TabType = 'all' | 'to_pay';
 
 const RestaurantInvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('settings');
+  const navigate = useNavigate();
   const { operationSettings } = useStore();
   const { user, refreshUser } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
@@ -415,6 +431,17 @@ const RestaurantInvoicesPage: React.FC = () => {
           categoryDisplayName: inv.category_display_name || '',
           issuerType: inv.issuer_type || inv.issuerType || 'system_admin',
           issuerId: inv.issuer_id || inv.issuerId || null,
+          issuerIsExternal: !!(inv.issuer_is_external ?? inv.issuerIsExternal),
+          purchaseOrderId: inv.purchase_order_id ?? null,
+          purchaseOrderNumber: inv.purchase_order_number ?? null,
+          purchaseOrderTotal: inv.purchase_order_total != null ? parseFloat(inv.purchase_order_total) : null,
+          uploadedInvoiceUrl: inv.uploaded_invoice_url ?? null,
+          supplierInvoiceNumber: inv.supplier_invoice_number ?? null,
+          supplierInvoiceTotal: inv.supplier_invoice_total != null ? parseFloat(inv.supplier_invoice_total) : null,
+          invoiceReconciledAt: inv.invoice_reconciled_at ?? null,
+          poOrderedAt: inv.po_ordered_at ?? null,
+          poReceivedAt: inv.po_received_at ?? null,
+          poStatus: inv.po_status ?? null,
           issuerName: inv.issuer_name || inv.issuerName || '',
           issuerInfo: inv.issuerInfo || inv.issuer_info || null,
           payerInfo: inv.payerInfo || inv.payer_info || null,
@@ -717,6 +744,39 @@ const RestaurantInvoicesPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to confirm free invoice:', error);
+    } finally {
+      setConfirmingInvoiceId(null);
+    }
+  };
+
+  /**
+   * 외부 공급업체 청구서 "결제함" 기록 (설계 §5).
+   * 결제를 태우는 게 아니라 **매입 미지급을 닫는 기록**이다 — 실제 돈은 매장이 밖에서 이미 냈다.
+   * 대조 전이어도 막지 않는다(현금으로 먼저 낸 경우가 있다). 대신 추정치라는 경고를 붙인다.
+   */
+  const handleMarkPaidExternal = async (invoice: Invoice) => {
+    if (confirmingInvoiceId) return;
+    setConfirmingInvoiceId(invoice.id);
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`/api/invoices/${invoice.id}/mark-paid-external`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ payment_method: 'cash', notes: t('settings:invoicesPage.externalPaidNote', '외부 공급업체 — 매장이 직접 지불') })
+      });
+      const body = await response.json().catch(() => ({}));
+      if (response.ok && body.success) {
+        await fetchAllInvoices();
+        setShowViewModal(false);
+      } else {
+        setPaymentSubmitError(body.message || t('settings:invoicesPage.markPaidFailed', '결제함으로 표시하지 못했습니다.'));
+      }
+    } catch (error) {
+      console.error('Failed to mark external invoice as paid:', error);
+      setPaymentSubmitError(t('settings:invoicesPage.markPaidFailed', '결제함으로 표시하지 못했습니다.'));
     } finally {
       setConfirmingInvoiceId(null);
     }
@@ -1094,8 +1154,32 @@ const RestaurantInvoicesPage: React.FC = () => {
                 <DataTableCell data-label="Issuer" align="left">
                   <InvoiceInfo>
                     <InvoiceNumber>
-                      {invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}
+                      {invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : invoice.issuerType === 'supplier' ? 'Supplier' : 'Foodcourt')}
                     </InvoiceNumber>
+                    {/* 외부 공급업체 — 우리가 만든 이 청구서는 추정치이고, 매장이 올린 인보이스가 원본이다 (설계 §5) */}
+                    {invoice.issuerIsExternal && (
+                      <CompanyName style={{ color: '#B45309' }}>
+                        {t('settings:invoicesPage.externalIssuerBadge', '외부 공급업체 · 업로드 인보이스가 원본')}
+                      </CompanyName>
+                    )}
+                    {/* 어느 발주에서 나온 청구서인지 + 업로드 인보이스와 맞춰봤는지 (2026-09-08) */}
+                    {invoice.purchaseOrderNumber && (
+                      <CompanyName>
+                        {invoice.purchaseOrderNumber}
+                        {/* 언제 주문했고 언제 받았나 — 이게 «돈을 줘도 되나»의 근거다 (2026-09-08 Irene).
+                            아직 안 받았으면 그 사실이 그대로 보여야 한다. */}
+                        {invoice.poOrderedAt && ` · ${t('settings:invoicesPage.ordered', '주문')} ${formatDate(invoice.poOrderedAt)}`}
+                        {invoice.poReceivedAt
+                          ? ` · ${t('settings:invoicesPage.received', '수령')} ${formatDate(invoice.poReceivedAt)}`
+                          : ` · ${t('settings:invoicesPage.notReceived', '미수령')}`}
+                        {' · '}
+                        {invoice.invoiceReconciledAt
+                          ? <span style={{ color: '#047857' }}>{t('settings:invoicesPage.reconciled', '대조 완료')}</span>
+                          : invoice.uploadedInvoiceUrl
+                            ? <span style={{ color: '#B45309' }}>{t('settings:invoicesPage.notReconciled', '인보이스 올림 · 미대조')}</span>
+                            : <span style={{ color: '#6B7280' }}>{t('settings:invoicesPage.noUpload', '올린 인보이스 없음')}</span>}
+                      </CompanyName>
+                    )}
                   </InvoiceInfo>
                 </DataTableCell>
                 <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>
@@ -1125,10 +1209,18 @@ const RestaurantInvoicesPage: React.FC = () => {
                     </LocalActionButton>
 
                     {/* Pay button — hidden if invoice is bundled into a SOA (parent_soa_invoice_id) → pay via SOA only */}
+                    {/* 외부 공급업체 발행 청구서는 우리 솔루션에서 결제할 수 없다 (설계 §5) —
+                        그쪽은 로그인도 수금 계정도 없다. 실제로 낸 뒤 "결제함"으로 기록만 남긴다. */}
                     {showPayButton && !invoice.parentSoaInvoiceId && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
-                      <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>
-                        {invoice.invoiceCategory === 'soa' ? 'Pay All' : 'Pay'}
-                      </LocalActionButton>
+                      invoice.issuerIsExternal ? (
+                        <LocalActionButton variant="success" onClick={() => handleMarkPaidExternal(invoice)}>
+                          {t('settings:invoicesPage.markPaid', '결제함')}
+                        </LocalActionButton>
+                      ) : (
+                        <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>
+                          {invoice.invoiceCategory === 'soa' ? 'Pay All' : 'Pay'}
+                        </LocalActionButton>
+                      )
                     )}
 
                     {/* SOA child indicator — replaces Pay button for bundled invoices */}
@@ -1279,20 +1371,41 @@ const RestaurantInvoicesPage: React.FC = () => {
               <>
                 {(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && (
                   <>
-                    <Button variant="secondary" onClick={() => setShowApplyCreditModal(true)}>
-                      Apply Referral Credit
-                    </Button>
-                    <Button variant="success" onClick={() => {
-                      setShowViewModal(false);
-                      handlePayInvoice(selectedInvoice);
-                    }}>
-                      Pay Now
-                    </Button>
+                    {!selectedInvoice.issuerIsExternal && (
+                      <Button variant="secondary" onClick={() => setShowApplyCreditModal(true)}>
+                        Apply Referral Credit
+                      </Button>
+                    )}
+                    {selectedInvoice.issuerIsExternal ? (
+                      <Button variant="success" onClick={() => {
+                        setShowViewModal(false);
+                        handleMarkPaidExternal(selectedInvoice);
+                      }}>
+                        {t('settings:invoicesPage.markPaidLong', '결제함 표시')}
+                      </Button>
+                    ) : (
+                      <Button variant="success" onClick={() => {
+                        setShowViewModal(false);
+                        handlePayInvoice(selectedInvoice);
+                      }}>
+                        Pay Now
+                      </Button>
+                    )}
                   </>
                 )}
                 {(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) === 0 && (
                   <Button variant="success" onClick={() => handleConfirmFreeInvoice(selectedInvoice)} disabled={!!confirmingInvoiceId}>
                     {confirmingInvoiceId ? 'Confirming...' : 'Confirm'}
+                  </Button>
+                )}
+                {/* 업로드한 인보이스와 발주를 맞춰보러 가는 길 (2026-09-08).
+                    지금까지 대조 화면은 발주 상세에서만 들어갈 수 있어서, 청구서를 보다가
+                    "이게 실제 청구서랑 맞나"를 확인하려면 발주를 따로 찾아가야 했다. */}
+                {selectedInvoice.purchaseOrderId && (
+                  <Button variant="secondary" onClick={() => navigate(`/pos/purchase-orders/${selectedInvoice.purchaseOrderId}/reconcile`)}>
+                    {selectedInvoice.invoiceReconciledAt
+                      ? t('settings:invoicesPage.viewReconcile', '대조 내역 보기')
+                      : t('settings:invoicesPage.reconcileNow', '인보이스와 대조하기')}
                   </Button>
                 )}
                 <Button onClick={() => generateInvoicePDF(selectedInvoice)}>

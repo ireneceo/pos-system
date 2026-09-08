@@ -54,5 +54,11 @@
     "minShort": "최소"
   },
   "brandShared": "브랜드",
-  "brandSharedHint": "브랜드가 정의한 재고 항목입니다"
+  "brandSharedHint": "브랜드가 정의한 재고 항목입니다",
+  "order": {
+    "samePriceAsLast": "지난번과 같은 가격",
+    "lastPaid": "지난번",
+    "receivedTimes": "받은 기록 {{n}}회",
+    "avg": "평균"
+  }
 }

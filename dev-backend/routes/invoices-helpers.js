@@ -221,6 +221,36 @@ async function getIssuerCompanyInfo(issuerType, issuerId, currency = 'MYR') {
         swiftCode: bankFromSettings?.swiftCode || ''
       };
     }
+  } else if (issuerType === 'supplier' && issuerId) {
+    // 공급업체 발행 청구서 (2026-09-08). 이 분기가 **아예 없어서** 화면·PDF·메일의 발행자 이름이
+    // 통째로 'Issuer' 로 떴다 — 매장이 누구한테 받은 청구서인지 알 수 없었다.
+    // 표시 이름 규칙은 단일 소스(utils/sellerNames)와 같다: 공급업체는 name 이 곧 업체명이고,
+    // 비어 있을 때만 company_name 으로 폴백한다.
+    const SupplierCompany = require('../models/SupplierCompany');
+    const sc = await SupplierCompany.findByPk(issuerId);
+    if (sc) {
+      const bankFromSettings = extractBankFromPaymentSettings(sc.payment_settings, currency);
+      return {
+        name: (sc.name || '').trim() || (sc.company_name || '').trim() || 'Supplier',
+        logoUrl: sc.logo_url || null,
+        address: sc.address || '',
+        city: sc.city || '',
+        state: sc.state || '',
+        postalCode: sc.postal_code || '',
+        country: sc.country || 'Malaysia',
+        phone: sc.phone || '',
+        email: sc.email || '',
+        website: sc.website || '',
+        taxId: sc.tax_no || '',
+        businessRegistration: sc.registration_no || '',
+        bankName: bankFromSettings?.bankName || sc.bank_name || '',
+        bankAccount: bankFromSettings?.bankAccount || sc.bank_account || '',
+        bankAccountName: bankFromSettings?.bankAccountName || sc.bank_account_name || '',
+        swiftCode: bankFromSettings?.swiftCode || '',
+        // 외부(솔루션 미가입) 업체면 우리 청구서는 추정치다 — 화면이 배지를 띄우는 근거
+        isExternal: !sc.is_system_registered
+      };
+    }
   } else if (issuerType === 'foodcourt' && issuerId) {
     const foodcourt = await Foodcourt.findByPk(issuerId);
     if (foodcourt) {

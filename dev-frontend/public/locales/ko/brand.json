@@ -771,5 +771,12 @@
     "tabs": {
       "completed": "완료"
     }
+  },
+  "brandGeneralDashboard": {
+    "brandInvoiced": "브랜드 매출(청구)",
+    "brandCollected": "수금",
+    "brandOutstanding": "미수금",
+    "storeRevenue": "매장 매출(주문)",
+    "uninvoicedPos": "수령이 끝났는데 청구서가 안 나간 발주 {{count}}건 ({{amount}}) — 그만큼 매출이 비어 있습니다."
   }
 }

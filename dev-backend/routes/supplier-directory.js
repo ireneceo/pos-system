@@ -1203,6 +1203,32 @@ router.put('/external-suppliers/:id/products/:productId', async (req, res) => {
     const built = buildProductFields(req.body || {});
     if (built.error) return res.status(400).json({ success: false, message: built.error });
     await product.update(built.value);
+
+    // 💰 가격 전파 (2026-09-08) — 외부 공급업체 상품도 가입 공급업체(supplier-products.js)와 같은 규칙을 따른다.
+    //   매장이 외부 공급업체 가격을 고치면 그 상품을 사는 재고아이템·재료의 원가가 따라간다.
+    //   규칙의 단일 소스는 `services/costSync.js` — 여기서 식을 다시 쓰지 않는다.
+    //   ⚠ 저장 뒤에 돌고 실패해도 상품 저장은 살린다(사용자 작업 보호). 못 따라간 행은 인스펙션 019 가 드러낸다.
+    try {
+      const { recomputeForSellerProduct } = require('../services/costSync');
+      const out = await recomputeForSellerProduct('supplier', product.id, {
+        sequelize: SupplierProduct.sequelize,
+        ctx: {
+          source: 'seller_edit',
+          entity_type: req.buyerEntity && req.buyerEntity.type,
+          entity_id: req.buyerEntity && req.buyerEntity.id,
+          seller_type: 'supplier',
+          seller_entity_id: sc.id,
+          changed_by_user_id: req.user && req.user.id,
+          changed_by_name: req.user && (req.user.name || req.user.email),
+          note: `외부 공급업체 상품 가격 수정 (${sc.name})`
+        }
+      });
+      const moved = out.filter((x) => x && x.changed);
+      if (moved.length) console.log(`[cost] 외부 공급업체 상품 ${product.id} 가격 → 원가 ${moved.length}건 갱신`);
+    } catch (e) {
+      console.error(`[cost] 외부 공급업체 상품 ${product.id} 원가 전파 실패:`, e.message);
+    }
+
     const updated = await SupplierProduct.findByPk(product.id, { include: [{ model: SupplierProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] }] });
     res.json({ success: true, data: updated });
   } catch (err) {

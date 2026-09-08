@@ -814,7 +814,17 @@ router.put('/supplier-products/:productId', ...baseGates, async (req, res) => {
     //     실패는 조용히 삼키지 않고 로그로 남긴다. 못 따라간 행은 인스펙션 019 가 드러낸다.
     try {
       const { recomputeForSellerProduct } = require('../services/costSync');
-      const out = await recomputeForSellerProduct('supplier', product.id, { sequelize });
+      const out = await recomputeForSellerProduct('supplier', product.id, {
+        sequelize,
+        ctx: {
+          source: 'seller_edit',
+          seller_type: 'supplier',
+          seller_entity_id: product.supplier_company_id,
+          changed_by_user_id: req.user && req.user.id,
+          changed_by_name: req.user && (req.user.name || req.user.email),
+          note: '공급업체가 자기 상품 가격 수정'
+        }
+      });
       const moved = out.filter((x) => x && x.changed);
       if (moved.length) console.log(`[cost] 공급업체 상품 ${product.id} 가격 → 원가 ${moved.length}건 갱신`);
     } catch (e) {

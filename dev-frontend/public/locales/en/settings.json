@@ -1225,5 +1225,20 @@
     "sending": "Sending...",
     "sendResult": "Sent {{sent}} day(s), {{failed}} failed."
   },
-  "printer.methodGuide.nativeActiveDescAndroid": "This app prints directly — no separate print app to install. Register this tablet's printers below, then pick each one by name."
+  "printer.methodGuide.nativeActiveDescAndroid": "This app prints directly — no separate print app to install. Register this tablet's printers below, then pick each one by name.",
+  "invoicesPage": {
+    "markPaid": "Mark paid",
+    "markPaidLong": "Mark as paid",
+    "markPaidFailed": "Could not mark as paid.",
+    "externalPaidNote": "External supplier — paid directly by the store",
+    "externalIssuerBadge": "External supplier · uploaded invoice is the original",
+    "reconciled": "Reconciled",
+    "notReconciled": "Invoice uploaded · not reconciled",
+    "noUpload": "No invoice uploaded",
+    "viewReconcile": "View reconciliation",
+    "reconcileNow": "Compare with invoice",
+    "ordered": "Ordered",
+    "received": "Received",
+    "notReceived": "Not received"
+  }
 }

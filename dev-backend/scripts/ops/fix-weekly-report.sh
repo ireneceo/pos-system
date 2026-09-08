@@ -17,10 +17,13 @@
 # 사용(운영 터미널에서 직접, sudo 비번 필요):
 #   sudo bash /var/www/production-backend/scripts/ops/fix-weekly-report.sh
 # 원본은 `.bak-<타임스탬프>` 로 남는다. 되돌리려면 그 파일을 되돌려 놓으면 된다.
-# 🔴 미완성 — Fable 반려(2026-09-07). 아래가 남았다. 고치기 전에는 실행하지 말 것:
-#   ①`du --max-depth=2` 는 /var(139G) 자체가 1등이라 정보가 없다 → `du -xsh /var/*/* /opt/* /home/*` 3줄로
+# ✅ 반려 지적 2건 반영 완료 (2026-09-08 확인). 아래가 그때 지적이고, 둘 다 본문에 들어가 있다:
+#   ①`du --max-depth=2` 는 /var(139G) 자체가 1등이라 정보가 없다 → `du -xsh /var/*/* /opt/* /home/*` 3줄
+#     (아래 TOP_DIR 라인)
 #   ②마지막 자동적용 시각은 로그 mtime 이 아니라 `/var/lib/apt/periodic/unattended-upgrades-stamp`
-#     (로그 폴더가 root:adm 750 이라 root 아니면 항상 99일 → 매주 거짓 [긴급])
+#     (로그 폴더가 root:adm 750 이라 root 아니면 항상 99일 → 매주 거짓 [긴급]). 아래 AUTO_STAMP 라인.
+#     로그 mtime 은 스탬프가 없을 때만 폴백으로 쓴다.
+# 남은 것은 **운영에서 1회 실행**뿐이고, 대상 파일이 root 소유라 sudo 가 필요해 Irene 이 직접 돌려야 한다.
 set -e
 # 대상 파일이 root 소유(rwxr-xr-x)라 **sudo 로 실행**해야 한다.
 [ "$(id -u)" = 0 ] || { echo "root 로 실행하세요:  sudo bash $0"; exit 1; }

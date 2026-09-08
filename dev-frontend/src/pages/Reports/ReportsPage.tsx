@@ -4,6 +4,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../.
 import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
+import PurchaseCostTab from './PurchaseCostTab';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
@@ -191,7 +192,7 @@ const StaffMealBanner = styled.div`
 `;
 
 // 타입 정의
-type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations' | 'payment' | 'void-log';
+type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations' | 'payment' | 'void-log' | 'purchase-cost';
 // PeriodType imported from DatePeriodFilter component
 
 // 차트 색상
@@ -996,7 +997,18 @@ const ReportsPage: React.FC = () => {
                 {t('reports:voidLog.tab', { defaultValue: 'Void & Cancel Log' })}
               </Tab>
             )}
+            {/* 구매·원가 (2026-09-08 · 설계 §8 P2) — 우리가 얼마에 사 왔나. 관측 전용이다. */}
+            <Tab active={activeTab === 'purchase-cost'} onClick={() => handleTabChange('purchase-cost')}>
+              {t('reports:purchaseCost.tab', { defaultValue: '구매·원가' })}
+            </Tab>
           </Tabs>
+
+          {/* 구매·원가 탭 */}
+          <div style={{ display: activeTab === 'purchase-cost' ? 'block' : 'none' }}>
+            {activeTab === 'purchase-cost' && (
+              <PurchaseCostTab currency={operationSettings.currency} startDate={dateRange.start} endDate={dateRange.end} />
+            )}
+          </div>
 
           {/* Sales Tab - CSS로 숨기기 (탭 전환 시 state 유지) */}
           <div style={{ display: activeTab === 'sales' ? 'block' : 'none' }}>

@@ -186,5 +186,22 @@
   "settlementMenu.final": "Final Settlement",
   "settlementMenu.finalDesc": "End-of-day final close",
   "settlementMenu.staffMeal": "Staff Meal Settlement",
-  "settlementMenu.staffMealDesc": "Staff meals for the day"
+  "settlementMenu.staffMealDesc": "Staff meals for the day",
+  "purchaseCost": {
+    "tab": "Purchases & cost",
+    "note": "Only received purchase orders are counted. Reconciled lines use the invoiced price, others use the ordered price. The average here is for reading only and is not used as cost.",
+    "totalSpend": "Spend in period",
+    "itemCount": "Items",
+    "lineCount": "Purchases",
+    "item": "Item",
+    "times": "Times",
+    "spend": "Spend",
+    "avg": "Average",
+    "range": "Low~High",
+    "last": "Last price",
+    "onceOnly": "bought once",
+    "invoicedLines": "{{n}} reconciled",
+    "empty": "No received purchase orders in this period",
+    "loadFailed": "Could not load"
+  }
 }

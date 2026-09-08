@@ -116,11 +116,17 @@ function requireBrandScope(brandIdFrom) {
       //   BM 은 무조건 403 이었다(2026-09-06 Fable 판정 · 실측: BM 토큰 → `GET /api/brands/1/inventory` 403).
       //   BM 은 소유자가 아니라 **소속**이다 — 형제 라우트와 같은 판정식(`user.brand_id`)을 쓴다.
       //   brand_id 가 비어 있으면 볼 브랜드가 없다 → 기존 403 그대로(넓히지 않는다).
+      // 브랜드 사람은 두 갈래다 — **소유**(brands.owner_id)와 **배정**(users.brand_id).
+      //   2026-09-06 에 Brand Manager 만 «소속»으로 인정했는데, **Brand General 도 배정만 된 경우가 있다.**
+      //   실측(2026-09-08): `irene@gitconsulting.group`(BG, brand_id=1, 소유자 아님)이
+      //   브랜드 매출 리포트에서 403 을 받았다. 같은 브랜드의 소유자 계정은 200 이었다.
+      //   판정은 단일 소스 `utils/managerBrandScope` 로 — orders-crud·manager-sales 와 같은 답을 내야 한다.
+      //   ⛔ 형제 브랜드(같은 소유자의 다른 브랜드)는 넣지 않는다. 소유 ∪ 배정까지만.
       const isBM = user.role === 'Brand Manager';
-      let ownedIds;
-      if (isBM) {
-        ownedIds = user.brand_id ? [Number(user.brand_id)] : [];
-      } else {
+      const { brandIdsForUser } = require('../utils/managerBrandScope');
+      let ownedIds = await brandIdsForUser(user);
+      if (!ownedIds.length && !isBM) {
+        // 폴백: 역할 목록이 달라 helper 가 비어 오면 기존 규칙(소유)으로 한 번 더 본다
         const owned = await Brand.findAll({ where: { owner_id: user.id }, attributes: ['id'] });
         ownedIds = owned.map(b => b.id);
       }

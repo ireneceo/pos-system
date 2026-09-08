@@ -341,6 +341,10 @@ const adminSupplierInvitationsRouter = require('./routes/admin-supplier-invitati
 const supplierDirectoryRouter = require('./routes/supplier-directory');
 // Sprint 3 — Supply Chain Design 3 (Purchase orders + ingredient ↔ seller mapping)
 const purchaseOrdersRouter = require('./routes/purchase-orders');
+// 발주↔인보이스 원가 대조 (2026-09-08) — /purchase-orders/:id/reconcile + /cost-changes
+const costReconciliationRouter = require('./routes/cost-reconciliation');
+// 구매·원가 리포트 (2026-09-08 · P2) — 관측 전용, 원가 정책 아님
+const purchaseCostReportRouter = require('./routes/purchase-cost-report');
 // 발주 오너 승인 (2026-06-21) — 멀티매장 오너 scope. purchaseOrdersRouter "앞"에 마운트하여
 // /purchase-orders/:id/approve|reject + /pending-approval 이 requireBuyerRole 을 건너뛰게 함.
 const purchaseOrdersApprovalRouter = require('./routes/purchase-orders-approval');
@@ -511,6 +515,8 @@ app.use('/api', supplierDirectoryRouter);  // exposes /api/supplier-directory + 
 // 발주 오너 승인 라우터를 먼저 마운트(승인/반려/대기큐가 requireBuyerRole 일괄가드를 건너뛰도록)
 app.use('/api', purchaseOrdersApprovalRouter);  // /api/purchase-orders/{pending-approval,:id/approve,:id/reject}
 app.use('/api', purchaseOrdersRouter);  // exposes /api/purchase-orders/*
+app.use('/api', costReconciliationRouter);  // /api/purchase-orders/:id/reconcile + /api/cost-changes
+app.use('/api', purchaseCostReportRouter);  // /api/purchase-cost-report
 // Phase 2 (2026-04-27) — Buyer-side seller picker
 app.use('/api', buyerSellersRouter);  // exposes /api/buyer-sellers
 // Sprint 5 (2026-04-27) — Carriers

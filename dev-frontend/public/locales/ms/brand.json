@@ -771,5 +771,12 @@
     "tabs": {
       "completed": "Selesai"
     }
+  },
+  "brandGeneralDashboard": {
+    "brandInvoiced": "Hasil jenama (diinvois)",
+    "brandCollected": "Dikutip",
+    "brandOutstanding": "Belum dikutip",
+    "storeRevenue": "Jualan kedai (pesanan)",
+    "uninvoicedPos": "{{count}} pesanan belian diterima ({{amount}}) tiada invois — hasil sebanyak itu hilang."
   }
 }

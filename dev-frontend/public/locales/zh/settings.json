@@ -1225,5 +1225,20 @@
     "sending": "发送中...",
     "sendResult": "已发送{{sent}}天，{{failed}}天失败。"
   },
-  "printer.methodGuide.nativeActiveDescAndroid": "本应用直接打印——无需安装单独的打印应用。请在下方注册本平板的打印机，然后按名称选择。"
+  "printer.methodGuide.nativeActiveDescAndroid": "本应用直接打印——无需安装单独的打印应用。请在下方注册本平板的打印机，然后按名称选择。",
+  "invoicesPage": {
+    "markPaid": "标记已付",
+    "markPaidLong": "标记为已付",
+    "markPaidFailed": "无法标记为已付。",
+    "externalPaidNote": "外部供应商 — 由门店直接支付",
+    "externalIssuerBadge": "外部供应商 · 上传的发票为原件",
+    "reconciled": "已核对",
+    "notReconciled": "已上传发票 · 未核对",
+    "noUpload": "未上传发票",
+    "viewReconcile": "查看核对记录",
+    "reconcileNow": "与发票核对",
+    "ordered": "下单",
+    "received": "收货",
+    "notReceived": "未收货"
+  }
 }

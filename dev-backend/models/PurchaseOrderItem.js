@@ -34,7 +34,18 @@ const PurchaseOrderItem = sequelize.define('PurchaseOrderItem', {
   },
   discrepancy_note: { type: DataTypes.STRING(500), allowNull: true },
   discrepancy_reported_at: { type: DataTypes.DATE, allowNull: true },
-  discrepancy_reported_by_user_id: { type: DataTypes.INTEGER, allowNull: true }
+  discrepancy_reported_by_user_id: { type: DataTypes.INTEGER, allowNull: true },
+
+  // 발주↔인보이스 원가 대조 (2026-09-08 · docs/PURCHASE_ORDER_SYSTEM.md §2)
+  //   ⛔ 위 `unit_price`(발주 시점 합의가)를 덮어쓰지 않는다. 두 값이 나란히 남는 것이 이 기능이다.
+  invoiced_unit_price: {
+    type: DataTypes.DECIMAL(12, 4), allowNull: true,
+    comment: '업로드 인보이스로 확정된 실제 단가. null = 미대조'
+  },
+  invoiced_quantity: {
+    type: DataTypes.DECIMAL(12, 3), allowNull: true,
+    comment: '업로드 인보이스로 확정된 실제 수량. null = 미대조'
+  }
 }, {
   tableName: 'purchase_order_items',
   timestamps: true,

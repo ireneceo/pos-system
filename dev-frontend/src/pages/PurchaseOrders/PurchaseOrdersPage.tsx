@@ -254,6 +254,14 @@ interface POListRow {
   external_invoice_url?: string | null;
   external_invoice_filename?: string | null;
   trade_invoice_id?: number | null;
+  /** 업로드 인보이스 대조 상태 (2026-09-08) */
+  invoice_reconciled_at?: string | null;
+  invoice_number?: string | null;
+  invoice_total?: number | string | null;
+  /** 대조 결과 — 청구가가 발주가와 다른 줄 수와 금액 차이 */
+  reconcile_diff_lines?: number;
+  reconcile_invoiced_lines?: number;
+  reconcile_diff_amount?: number;
 }
 
 interface SuggestionItem {
@@ -980,6 +988,31 @@ const PurchaseOrdersPage: React.FC = () => {
                               {t('list.action.uploadInvoice', 'Upload Inv.')}
                             </span>
                           </label>
+                        )}
+                        {/* 원가 대조 (2026-09-08) — 올린 인보이스와 발주 라인을 맞춰보는 화면.
+                            지금까지 발주 상세 안에만 있어서 목록에서는 대조 여부조차 알 수 없었다. */}
+                        {row.seller_type === 'supplier' && (
+                          <ThemedButton
+                            size="small"
+                            variant={(row.reconcile_diff_lines || 0) > 0 || (!row.invoice_reconciled_at && row.external_invoice_url) ? 'primary' : 'outline'}
+                            onClick={() => navigate(`/pos/purchase-orders/${row.id}/reconcile`)}
+                            title={t('list.action.reconcile', 'Compare with uploaded invoice') as string}
+                          >
+                            {/* 차이가 있으면 목록에서 바로 알린다 (2026-09-08 Irene).
+                                청구가가 발주가와 다른 줄 수와 금액 차이를 버튼에 얹는다. */}
+                            {/* 세 단계를 구분해 보여준다 (2026-09-08 Irene: 리스트에서 알려달라):
+                                ①대조해서 차이가 있다 → ▲차이 N ②대조했고 차이 없다 → 대조 완료
+                                ③인보이스는 올라왔는데 아직 대조 안 함 → «인보이스 확인» (여기서 일이 멈춰 있다)
+                                ④아무것도 없다 → 원가 대조 */}
+                            {(row.reconcile_diff_lines || 0) > 0
+                              ? `▲ ${t('list.action.diffLines', '차이')} ${row.reconcile_diff_lines}${
+                                  row.reconcile_diff_amount ? ` · ${row.reconcile_diff_amount > 0 ? '+' : ''}${row.reconcile_diff_amount}` : ''}`
+                              : row.invoice_reconciled_at
+                                ? t('list.action.reconciled', '대조 완료')
+                                : row.external_invoice_url
+                                  ? t('list.action.checkInvoice', '인보이스 확인')
+                                  : t('list.action.reconcile', '원가 대조')}
+                          </ThemedButton>
                         )}
                         {hasInvoice && (
                           <>

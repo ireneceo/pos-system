@@ -150,6 +150,13 @@
       "hintShipped": "No action needed — this order was already marked dispatched.",
       "cta": "Open Order",
       "textFallback": "{{buyer}} confirmed receipt of {{poNumber}}. Total: {{total}}."
+    },
+    "returnExternalSend": {
+      "subject": "Return Request {{poNumber}} from {{buyer}}",
+      "heading": "Return Request",
+      "body": "<strong>{{buyer}}</strong> is returning items from purchase order {{poNumber}}.",
+      "hint": "Please reply to this email to confirm the return and the credit amount.",
+      "textFallback": "Return request for {{poNumber}} from {{buyer}}. Value: {{total}}."
     }
   }
 }

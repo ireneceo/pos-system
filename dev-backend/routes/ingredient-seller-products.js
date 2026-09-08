@@ -94,10 +94,21 @@ router.get('/ingredients/:ingredientId/seller-sources', async (req, res) => {
     const spMap = spIds.length
       ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(s => [s.id, s]))
       : {};
+    // 가격 이력 (설계 §6) — 목록 1회에 그룹 쿼리 1개. 라인마다 호출하지 않는다.
+    const { priceHistoryForMappings, trendAgainst } = require('../services/priceHistory');
+    const histories = await priceHistoryForMappings(sources.map(r => r.id), req.buyerEntity);
+
     const data = sources.map(r => {
       const j = r.toJSON();
       const sp = r.seller_type === 'supplier' ? spMap[r.seller_product_id] : null;
-      return { ...j, seller_product_name: sp?.name || null, seller_product_sku: sp?.sku || null };
+      const h = histories.get(r.id) || null;
+      return {
+        ...j,
+        seller_product_name: sp?.name || null,
+        seller_product_sku: sp?.sku || null,
+        // 지난번 실제로 낸 값 대비 지금 가격 — 화면은 ▲/▼/— 로만 표시한다(RA 기하 글리프 표준)
+        price_history: h ? { ...h, ...trendAgainst(j.unit_price, h) } : null
+      };
     });
 
     res.json({ success: true, data });

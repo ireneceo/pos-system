@@ -24,6 +24,12 @@ const PurchaseOrderReturn = sequelize.define('PurchaseOrderReturn', {
   rejection_reason: { type: DataTypes.TEXT, allowNull: true },
   credit_invoice_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'Auto-issued Credit Note Invoice on approve' },
 
+  // 외부(솔루션 미가입) 공급업체에 반품서를 보낸 기록 (2026-09-08).
+  //   그쪽은 로그인이 없어 시스템 안에서 승인할 사람이 없다 → 발주와 같이 왓츠앱·메일·PDF 로 보낸다.
+  sent_to_seller_at: { type: DataTypes.DATE, allowNull: true, comment: '반품서를 보낸 시각. null = 아직 안 보냄' },
+  sent_channel: { type: DataTypes.STRING(20), allowNull: true, comment: 'whatsapp | email | pdf | manual' },
+  sent_by_user_id: { type: DataTypes.INTEGER, allowNull: true },
+
   // Sprint 7
   auto_generated: {
     type: DataTypes.BOOLEAN,

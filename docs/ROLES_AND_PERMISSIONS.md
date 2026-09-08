@@ -1,7 +1,17 @@
 # 역할 및 권한 정의
 
 > **2026-04-13 업데이트** — Brand General 스코프 모델 변경:
-> 한 BG가 여러 brand를 소유 (`brands.owner_id`). 재료/공급업체/BG 프로덕트는 BG 소유자 단위로 공유 (`owner_user_id` 컬럼), 레시피는 브랜드별 사용 (`brand_id` 컬럼). 이전의 `user.brand_id` 기반 단일 브랜드 가정은 deprecated. 새 미들웨어 `middleware/brandScope.js`가 RBAC + 데이터 스코프 처리. 자세한 구현은 `dev-backend/middleware/brandScope.js` 참조.
+> 한 BG가 여러 brand를 소유 (`brands.owner_id`). 재료/공급업체/BG 프로덕트는 BG 소유자 단위로 공유 (`owner_user_id` 컬럼), 레시피는 브랜드별 사용 (`brand_id` 컬럼). 새 미들웨어 `middleware/brandScope.js`가 RBAC + 데이터 스코프 처리. 자세한 구현은 `dev-backend/middleware/brandScope.js` 참조.
+>
+> 🔴 **2026-09-08 정정 — `user.brand_id` 는 deprecated 가 아니다.**
+> 위 문단은 한동안 "`user.brand_id` 기반 단일 브랜드 가정은 deprecated" 라고 적혀 있었는데, 운영 실측이 그것을 뒤집었다.
+> **브랜드 사람은 두 갈래다**: ①브랜드를 **소유**한 사람(`brands.owner_id`) ②브랜드에 **배정**된 사람(`users.brand_id`).
+> 소유만 보면 배정된 BG 가 자기 브랜드 화면에서 막힌다 —
+> 실측: 같은 브랜드 1 의 BG 두 명 중 소유자(`help@gitconsulting.group`)는 주문 25건, 배정자(`irene@gitconsulting.group`)는 **0건**,
+> 브랜드 매출 리포트는 **403**. Brand Manager 만 2026-09-06 에 «소속»으로 인정했고 BG 는 빠져 있었다.
+> → 판정 단일 소스 **`utils/managerBrandScope.js` (소유 ∪ 배정)**. `middleware/brandScope.js` ·
+> `routes/orders-crud.js` · `routes/manager-sales.js` 셋이 같은 답을 써야 한다.
+> ⛔ 형제 브랜드(같은 소유자의 다른 브랜드)는 넣지 않는다 — 남의 브랜드 접근은 계속 404 여야 한다(반증 완료).
 
 ## 역할 계층 구조
 

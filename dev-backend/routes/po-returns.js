@@ -185,13 +185,25 @@ async function loadAndCheckReturn(req, t) {
   if (!po) return { error: 'Order not found', status: 404 };
   // 판정은 `middleware/sellerScope.js` 단일 소스 (위 주석 참조).
   const sellerOk = ownsPurchaseOrder(po, req);
-  if (!sellerOk) return { error: 'Order not found', status: 404 };
+  // 외부(솔루션 미가입) 공급업체 발주는 **구매자가 자기 반품을 닫는다** (2026-09-08).
+  //   그쪽은 로그인이 없어 승인할 사람이 자체가 없다. 반품서는 왓츠앱·메일·PDF 로 밖에 보내고
+  //   시스템 기록은 구매자가 닫는다 — 결제에서 이미 같은 모양을 택했다(설계 §5 "결제함 체크").
+  //   ⛔ 가입 공급업체·브랜드·푸드코트는 여기 해당하지 않는다(판매자만 닫을 수 있다).
+  let buyerOk = false;
+  if (!sellerOk && req.buyerEntity
+      && po.entity_type === req.buyerEntity.type && po.entity_id === req.buyerEntity.id
+      && po.seller_type === 'supplier' && po.seller_entity_id) {
+    const SupplierCompany = require('../models/SupplierCompany');
+    const sc = await SupplierCompany.findByPk(po.seller_entity_id, { attributes: ['id', 'is_system_registered'] });
+    buyerOk = !!sc && !sc.is_system_registered;
+  }
+  if (!sellerOk && !buyerOk) return { error: 'Order not found', status: 404 };
   const ret = await PurchaseOrderReturn.findByPk(returnId, lockOpts);
   if (!ret || ret.purchase_order_id !== po.id) return { error: 'Return not found', status: 404 };
   return { po, ret };
 }
 
-router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => {
+async function approveReturnHandler(req, res) {
   const t = await database.sequelize.transaction();
   try {
     const { error, status, po, ret } = await loadAndCheckReturn(req, t);   // 행 잠금 — 이중 승인 방지
@@ -498,9 +510,9 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
     console.error('POST approve return error:', err);
     res.status(500).json({ success: false, message: 'Failed to approve return' });
   }
-});
+}
 
-router.post('/seller-orders/:id/returns/:returnId/reject', async (req, res) => {
+async function rejectReturnHandler(req, res) {
   // 승인과 같은 트랜잭션·락 — 안 그러면 approve ↔ reject 레이스로
   // "재고는 환원됐는데 상태는 rejected" 가 만들어진다.
   const t = await database.sequelize.transaction();
@@ -529,6 +541,126 @@ router.post('/seller-orders/:id/returns/:returnId/reject', async (req, res) => {
     console.error('POST reject return error:', err);
     res.status(500).json({ success: false, message: 'Failed to reject return' });
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 승인/거절은 **판매자와 구매자 두 입구**에 같은 함수를 건다 (2026-09-08).
+//
+// 왜: 외부(솔루션 미가입) 공급업체는 로그인이 없어 아무도 승인 버튼을 못 누른다.
+//   운영 실측 — 외부 공급업체 반품 1건이 `requested` 로 멈춰 있었고, 그동안 **구매자 재고가
+//   되돌아가지 않아 실제보다 많게** 남아 있었다. 반품 버튼이 뜨는 외부 발주는 15건이다.
+//   Irene 지시(2026-09-08): "외부공급업체는 발주처럼 왓츠앱 메일, pdf 로 보내게 해줘야지."
+//   → 반품서를 밖으로 보내고(아래 send/mark-sent), 시스템 안에서는 **구매자가 닫는다.**
+// ⛔ 가입 공급업체·브랜드·푸드코트 발주에서는 구매자 입구가 열리지 않는다
+//   (loadAndCheckReturn 이 외부 판매자일 때만 구매자를 통과시킨다).
+// ─────────────────────────────────────────────────────────────────────────────
+// 반품서를 **외부 공급업체에 보낸다** — 발주와 같은 3경로 (2026-09-08)
+//   메일: 여기서 보낸다(왓츠앱·PDF 는 화면이 열고, 보냈다는 사실만 아래 mark-sent 로 남긴다)
+//   ⛔ 자동 발송이 아니라 구매자가 누르는 명시 액션이다. 언어는 'en' 고정 —
+//     계정이 없어 수신자 언어 축이 존재하지 않는다(없는 축을 만들지 않는다).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** 이 발주의 판매자가 외부(솔루션 미가입) 공급업체인가 + 구매자 소유인가. */
+async function loadExternalReturnForBuyer(req) {
+  const id = parseInt(req.params.id, 10);
+  const returnId = parseInt(req.params.returnId, 10);
+  if (!Number.isFinite(id) || !Number.isFinite(returnId)) return { error: 'Not found', status: 404 };
+  const po = await PurchaseOrder.findByPk(id);
+  if (!po) return { error: 'Not found', status: 404 };
+  if (!req.buyerEntity || po.entity_type !== req.buyerEntity.type || po.entity_id !== req.buyerEntity.id) {
+    return { error: 'Not found', status: 404 };
+  }
+  if (po.seller_type !== 'supplier' || !po.seller_entity_id) {
+    return { error: 'External send is only for supplier orders', status: 400 };
+  }
+  const SupplierCompany = require('../models/SupplierCompany');
+  const sc = await SupplierCompany.findByPk(po.seller_entity_id);
+  if (!sc) return { error: 'Supplier not found', status: 404 };
+  if (sc.is_system_registered) {
+    return { error: '가입 공급업체는 시스템 안에서 반품을 확인합니다', status: 400 };
+  }
+  const ret = await PurchaseOrderReturn.findByPk(returnId);
+  if (!ret || ret.purchase_order_id !== po.id) return { error: 'Return not found', status: 404 };
+  return { po, ret, sc };
+}
+
+/** 반품 라인을 메일 품목표 모양으로. 발주 메일과 같은 표를 쓴다. */
+async function returnEmailItems(po, ret) {
+  const item = await PurchaseOrderItem.findByPk(ret.purchase_order_item_id);
+  let name = item?.description || 'Item';
+  try {
+    const { attachSellerProductIdentity } = require('../utils/sellerProductIdentity');
+    const plain = [item ? item.toJSON() : {}];
+    await attachSellerProductIdentity({ items: plain });
+    if (plain[0]?.seller_product_name) name = plain[0].seller_product_name;
+  } catch (_) { /* 내부명 폴백 */ }
+  const qty = parseFloat(ret.quantity) || 0;
+  const price = parseFloat(ret.unit_price ?? item?.unit_price ?? 0) || 0;
+  return [{
+    name, unit: ret.unit || item?.unit || null,
+    quantity_ordered: qty, unit_price: price,
+    line_total: Math.round(qty * price * 100) / 100
+  }];
+}
+
+router.post('/purchase-orders/:id/returns/:returnId/send-external-email', async (req, res) => {
+  try {
+    const loaded = await loadExternalReturnForBuyer(req);
+    if (loaded.error) return res.status(loaded.status).json({ success: false, message: loaded.error });
+    const { po, ret, sc } = loaded;
+    if (!sc.email) return res.status(400).json({ success: false, message: 'Supplier has no email address on file' });
+
+    let buyerName = 'A buyer';
+    try {
+      const { resolveBuyerName } = require('../services/poNotifications');
+      if (typeof resolveBuyerName === 'function') buyerName = await resolveBuyerName(po);
+    } catch (_) { /* keep default */ }
+
+    const items = await returnEmailItems(po, ret);
+    const { returnExternalSendEmail } = require('../utils/notificationTemplates');
+    const mail = returnExternalSendEmail({
+      buyerName, poNumber: po.po_number,
+      total: items[0].line_total, currency: po.currency || 'MYR', items
+    }, 'en');
+
+    const { sendPlatformEmail } = require('../utils/emailService');
+    const result = await sendPlatformEmail({ to: sc.email, subject: mail.subject, html: mail.html, text: mail.text });
+
+    // 가드에 걸려 안 나갔으면 그대로 알린다 — "보냈다" 고 거짓말하지 않는다.
+    if (result && result.skipped) {
+      return res.json({ success: true, data: { sent: false, reason: result.reason }, message: 'Email not sent (blocked by guard)' });
+    }
+    await ret.update({
+      sent_to_seller_at: new Date(), sent_channel: 'email', sent_by_user_id: req.user?.id || null
+    });
+    res.json({ success: true, data: { sent: true, to: sc.email, return: ret } });
+  } catch (err) {
+    console.error('send return external email error:', err);
+    res.status(500).json({ success: false, message: 'Failed to send return email' });
+  }
 });
+
+/** 왓츠앱·PDF 처럼 **화면이 보낸** 경우 사실만 기록한다. */
+router.post('/purchase-orders/:id/returns/:returnId/mark-sent-external', async (req, res) => {
+  try {
+    const loaded = await loadExternalReturnForBuyer(req);
+    if (loaded.error) return res.status(loaded.status).json({ success: false, message: loaded.error });
+    const { ret } = loaded;
+    const allowed = ['whatsapp', 'pdf', 'manual', 'email'];
+    const channel = allowed.includes(String(req.body?.channel)) ? String(req.body.channel) : 'manual';
+    await ret.update({
+      sent_to_seller_at: new Date(), sent_channel: channel, sent_by_user_id: req.user?.id || null
+    });
+    res.json({ success: true, data: ret });
+  } catch (err) {
+    console.error('mark return sent error:', err);
+    res.status(500).json({ success: false, message: 'Failed to record' });
+  }
+});
+
+router.post('/seller-orders/:id/returns/:returnId/approve', approveReturnHandler);
+router.post('/seller-orders/:id/returns/:returnId/reject', rejectReturnHandler);
+router.post('/purchase-orders/:id/returns/:returnId/approve', approveReturnHandler);
+router.post('/purchase-orders/:id/returns/:returnId/reject', rejectReturnHandler);
 
 module.exports = router;

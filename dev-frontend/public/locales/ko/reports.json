@@ -186,5 +186,22 @@
   "settlementMenu.final": "최종 마감",
   "settlementMenu.finalDesc": "영업 종료 최종 마감",
   "settlementMenu.staffMeal": "직원식 정산",
-  "settlementMenu.staffMealDesc": "당일 직원식"
+  "settlementMenu.staffMealDesc": "당일 직원식",
+  "purchaseCost": {
+    "tab": "구매·원가",
+    "note": "실제로 받은 발주만 셉니다. 인보이스와 대조한 줄은 청구가로, 대조 전이면 발주가로 계산합니다. 여기 평균은 보기 위한 값이고 원가로 쓰이지 않습니다.",
+    "totalSpend": "기간 구매액",
+    "itemCount": "품목 수",
+    "lineCount": "구매 횟수",
+    "item": "품목",
+    "times": "횟수",
+    "spend": "구매액",
+    "avg": "평균가",
+    "range": "최저~최고",
+    "last": "마지막가",
+    "onceOnly": "한 번만 삼",
+    "invoicedLines": "대조 {{n}}건",
+    "empty": "이 기간에 받은 발주가 없습니다",
+    "loadFailed": "불러오지 못했습니다"
+  }
 }

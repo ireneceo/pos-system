@@ -186,5 +186,22 @@
   "settlementMenu.final": "Penyelesaian Akhir",
   "settlementMenu.finalDesc": "Penutupan akhir hari",
   "settlementMenu.staffMeal": "Penyelesaian Makan Staf",
-  "settlementMenu.staffMealDesc": "Makan staf hari ini"
+  "settlementMenu.staffMealDesc": "Makan staf hari ini",
+  "purchaseCost": {
+    "tab": "Belian & kos",
+    "note": "Hanya pesanan belian yang diterima dikira. Baris yang disemak guna harga invois, selainnya harga pesanan. Purata di sini hanya untuk dibaca, bukan kos.",
+    "totalSpend": "Belanja tempoh",
+    "itemCount": "Item",
+    "lineCount": "Belian",
+    "item": "Item",
+    "times": "Kali",
+    "spend": "Belanja",
+    "avg": "Purata",
+    "range": "Rendah~Tinggi",
+    "last": "Harga terakhir",
+    "onceOnly": "dibeli sekali",
+    "invoicedLines": "{{n}} disemak",
+    "empty": "Tiada pesanan belian diterima dalam tempoh ini",
+    "loadFailed": "Gagal memuatkan"
+  }
 }

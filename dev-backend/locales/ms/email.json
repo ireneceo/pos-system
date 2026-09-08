@@ -150,6 +150,13 @@
       "hintShipped": "Tiada tindakan diperlukan — pesanan ini sudah ditanda dihantar.",
       "cta": "Buka Pesanan",
       "textFallback": "{{buyer}} mengesahkan penerimaan {{poNumber}}. Jumlah: {{total}}."
+    },
+    "returnExternalSend": {
+      "subject": "Permintaan Pemulangan {{poNumber}} daripada {{buyer}}",
+      "heading": "Permintaan Pemulangan",
+      "body": "<strong>{{buyer}}</strong> memulangkan item daripada pesanan belian {{poNumber}}.",
+      "hint": "Sila balas e-mel ini untuk mengesahkan pemulangan dan jumlah kredit.",
+      "textFallback": "Permintaan pemulangan {{poNumber}} daripada {{buyer}}. Nilai: {{total}}."
     }
   }
 }

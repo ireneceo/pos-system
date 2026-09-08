@@ -967,10 +967,23 @@ router.get('/:id/seller-sources', async (req, res) => {
     const spMap = spIds.length
       ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(s => [s.id, s]))
       : {};
+    // 가격 이력 (설계 §6) — 매장쪽 /ingredients/:id/seller-sources 와 같은 계약.
+    // 목록 1회에 그룹 쿼리 1개다(라인마다 호출 금지).
+    const { priceHistoryForMappings, trendAgainst } = require('../services/priceHistory');
+    // 이 매핑들은 방금 소유 확인한 재고아이템(product_ingredient)에 묶여 있다 —
+    // 남의 구매 기록이 섞일 수 없으므로 구매자 범위를 열어 부른다.
+    const histories = await priceHistoryForMappings(rows.map(r => r.id), null, { allowAllBuyers: true });
+
     const data = rows.map(r => {
       const j = r.toJSON();
       const sp = r.seller_type === 'supplier' ? spMap[r.seller_product_id] : null;
-      return { ...j, seller_product_name: sp?.name || null, seller_product_sku: sp?.sku || null };
+      const h = histories.get(r.id) || null;
+      return {
+        ...j,
+        seller_product_name: sp?.name || null,
+        seller_product_sku: sp?.sku || null,
+        price_history: h ? { ...h, ...trendAgainst(j.unit_price, h) } : null
+      };
     });
     res.json({ success: true, data });
   } catch (e) {

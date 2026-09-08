@@ -305,9 +305,34 @@ router.get('/purchase-orders', async (req, res) => {
       await attachSellerProductIdentity({ items: plainItems });
     }
 
+    // 대조 차이 요약 (2026-09-08 Irene: "차이가 있으면 리스트에서 안내해줘야 해").
+    //   실효가 = COALESCE(invoiced_unit_price, unit_price) 이고, 청구가가 들어온 라인 중
+    //   발주가와 다른 줄이 몇 개인지 · 금액이 얼마나 늘었는지를 목록에 함께 보낸다.
+    //   ⛔ 라인마다 조회하지 않는다 — 이 페이지 분량에 대해 그룹 쿼리 1개.
+    const diffMap = {};
+    if (rows.length) {
+      const diffRows = await database.sequelize.query(
+        `SELECT purchase_order_id po_id,
+                SUM(invoiced_unit_price IS NOT NULL) invoiced_lines,
+                SUM(invoiced_unit_price IS NOT NULL
+                    AND ABS(invoiced_unit_price - unit_price) >= 0.005) diff_lines,
+                ROUND(SUM(CASE WHEN invoiced_unit_price IS NOT NULL
+                    THEN (invoiced_unit_price - unit_price)
+                         * COALESCE(invoiced_quantity, quantity_ordered) ELSE 0 END), 2) diff_amount
+           FROM purchase_order_items
+          WHERE purchase_order_id IN (:ids)
+          GROUP BY purchase_order_id`,
+        { type: database.sequelize.QueryTypes.SELECT, replacements: { ids: rows.map(r => r.id) } });
+      for (const d of diffRows) diffMap[d.po_id] = d;
+    }
+
     const enriched = rows.map(p => {
       const plain = p.toJSON();
       const agg = aggMap[p.id] || {};
+      const diff = diffMap[p.id] || null;
+      plain.reconcile_diff_lines = diff ? Number(diff.diff_lines || 0) : 0;
+      plain.reconcile_invoiced_lines = diff ? Number(diff.invoiced_lines || 0) : 0;
+      plain.reconcile_diff_amount = diff ? Number(diff.diff_amount || 0) : 0;
       plain.item_count = parseInt(agg.item_count || 0, 10);
       plain.total_quantity = parseFloat(agg.total_quantity || 0);
       plain.seller_name = getSellerName(sellerMap, p.seller_type, p.seller_entity_id);

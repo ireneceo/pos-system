@@ -186,5 +186,22 @@
   "settlementMenu.final": "最终结算",
   "settlementMenu.finalDesc": "营业结束最终结算",
   "settlementMenu.staffMeal": "员工餐结算",
-  "settlementMenu.staffMealDesc": "当日员工餐"
+  "settlementMenu.staffMealDesc": "当日员工餐",
+  "purchaseCost": {
+    "tab": "采购与成本",
+    "note": "仅统计已收货的采购单。已核对的行使用发票价，未核对则使用订购价。此处的平均值仅供参考，不作为成本。",
+    "totalSpend": "期间采购额",
+    "itemCount": "品项数",
+    "lineCount": "采购次数",
+    "item": "品项",
+    "times": "次数",
+    "spend": "采购额",
+    "avg": "平均价",
+    "range": "最低~最高",
+    "last": "最近价格",
+    "onceOnly": "仅采购一次",
+    "invoicedLines": "已核对 {{n}} 笔",
+    "empty": "此期间没有已收货的采购单",
+    "loadFailed": "无法加载"
+  }
 }

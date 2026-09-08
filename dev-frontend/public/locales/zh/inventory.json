@@ -54,5 +54,11 @@
     "minShort": "最低"
   },
   "brandShared": "品牌",
-  "brandSharedHint": "由品牌定义的库存项目"
+  "brandSharedHint": "由品牌定义的库存项目",
+  "order": {
+    "samePriceAsLast": "与上次价格相同",
+    "lastPaid": "上次",
+    "receivedTimes": "收货 {{n}} 次",
+    "avg": "平均"
+  }
 }

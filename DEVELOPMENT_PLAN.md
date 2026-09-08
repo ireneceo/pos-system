@@ -1,8 +1,12 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-08 (헤더 2열 반응형 **검증 완료·미배포** · 발주↔인보이스 원가 대조 **설계 확정·미구현**). 화면 위 제목줄이 태블릿 세로에서 잘리던 것을 전 역할·전 페이지 56곳에서 고쳤다(769~1024px 규칙이 통째로 빠져 있었다). 폰 폭 최대높이 미해제 54곳도 함께.
+> **최종 업데이트:** 2026-09-08 (**운영 배포 7회** — v3.86 · SW 4.91~4.97. 발주↔인보이스 원가 대조 **P0·P1·P2 전부 완료**).
+> 하루에 P0(전파 결함) → P1 일곱 절 전부 → P2 구매·원가 리포트까지 나갔고, 그 과정에서 브랜드 범위·외부 공급업체 반품·청구서 발행자 이름 같은 별건 결함도 함께 잡혔다.
+> ⚠ **이날 배포 전부가 Fable 판정 없이 나갔다** — 게이트 판정을 두 번 요청했으나 모두 사용 한도 초과(429)로 끊겼고, Irene 지시로 진행했다.
+> 사후 검토용 정리: **`docs/FABLE_REVIEW_2026-09-08.md`** (배포 목록 · 위험 지점 5개 · 미결 사안 · 게이트 결과).
+> 🔴 시한 있는 미결: 발주 청구서 15장의 마감일이 계약 없이 붙은 기본값(+15일)이라 **9월 24일에 한꺼번에 «연체» 처리**된다(`invoiceOverdueScheduler`). 결정 필요. 화면 위 제목줄이 태블릿 세로에서 잘리던 것을 전 역할·전 페이지 56곳에서 고쳤다(769~1024px 규칙이 통째로 빠져 있었다). 폰 폭 최대높이 미해제 54곳도 함께.
 > 발주↔인보이스 대조는 Fable 설계 2회 + Irene 컨펌 완료, 설계 전문은 `docs/PURCHASE_ORDER_SYSTEM.md` 끝. **AI 없이 된다** — 사진 자동 판독만 빼고. 실측상 현장 인보이스는 전부 이미지 PDF라 "사진 옆에 발주 라인 기본값, 다른 줄만 수정"이 주 경로다.
-> 선행 결함 발견: 외부 공급업체 상품 가격을 고쳐도 재료 원가가 안 따라간다(`supplier-directory.js:1204` 에 costSync 누락). 미수정.
+> 선행 결함(P0) **수정 완료(2026-09-08 · 미배포)**: 외부 공급업체 상품 가격을 고쳐도 재료 원가가 안 따라가던 것 — `supplier-directory.js` PUT 에 `costSync` 전파를 넣었다(가입 공급업체 경로 `supplier-products.js:815` 패턴 그대로). dev 실호출로 175→180 전파 확인 + 고장주입 1건 반증 + health-check 227/227. 이번 수정 전에 고친 값의 **소급은 P1 에 포함**.
 > 함께: 브랜드 성과 화면에 오늘/어제 필터(매장 타임존 기준) · 재발 감시 인스펙션 3건.
 > **데이터 정리(중복·오염값)는 아직 미실행** — 운영 DB 쓰기가 세션 정책으로 차단됐다. 도구·미리보기·백업은 준비 완료.
 > **운영에서 찾은 것**: 수령이 끝난 발주 **14건(RM 4,020.57) 전부에 거래 인보이스가 없다.** 수령 경로가 둘인데 `mark-received` 가 `createTradeInvoice` 를 안 부른다(`/receive` 만 부름). 그래서 SOA 도 0장이고 **브랜드 매출 기록이 통째로 비어 있었다.** 원인만 확정, 수정은 별건 대기.
@@ -9465,6 +9469,46 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 - `dev-frontend/src/components/UI/PageComponents.tsx`(+`HeaderRight`) · `components/UI/index.tsx`
 - 대시보드 7 + 페이지 48 (헤더 미디어쿼리) · `dev-frontend/public/sw.js`
 - `docs/PURCHASE_ORDER_SYSTEM.md`(설계 절 추가)
+
+---
+
+## ✅ 완료: 발주 ↔ 인보이스 원가 대조 P0·P1·P2 + 부수 결함 (2026-09-08)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| P0 원가 전파 | 외부 공급업체 상품가를 고쳐도 재료 원가가 안 따라가던 것 — `supplier-directory.js` 에 `costSync` 누락 | ✅ 완료 |
+| P1 §1 매칭기 | 붙여넣은 인보이스 글자를 줄 단위로 발주 라인에 맞춤(순수 함수, 저장 안 함) | ✅ 완료 |
+| P1 §2 저장 | 발주가(스냅샷) 불변 + 청구가 별도 저장, 세금·배송은 헤더로 분리 | ✅ 완료 |
+| P1 §3 전파 | 대조가로 판매상품가 갱신 → 기존 `recomputeForSellerProduct` 경로로 원가까지 | ✅ 완료 |
+| P1 §4 소급 | 과거 발주에 소급(기본 꺼짐 · 미결제·미수령·미대조만 · `batch_id` 되돌리기) | ✅ 완료 |
+| P1 §5 외부/가입 분리 | 게이트웨이 결제 차단 3경로 + «결제함» + «업로드 인보이스가 원본» 배지 | ✅ 완료 |
+| P1 §5-3 청구서 정정 | 대조 확정 시 우리 청구서 금액을 인보이스 값으로(외부·미결제 건만) | ✅ 완료 |
+| P1 §6 가격 이력 | 발주 담을 때 지난번 실제 낸 값 대비 ▲▼ + 평균·최저최고 | ✅ 완료 |
+| P1 §7 변경 이력 | `cost_change_logs` 신설 + `/api/cost-changes` 통합 조회 | ✅ 완료 |
+| P2 구매·원가 리포트 | RA 리포트에 탭 신설 — 품목별 횟수·구매액·평균·±폭·마지막가, 월별 막대 | ✅ 완료 |
+| 크로스테넌트 쓰기 차단 | 대조가 가입 공급업체 카탈로그 가격을 덮던 것(자체 검증에서 발견) | ✅ 완료 |
+| 브랜드 범위 통일 | 배정된 BG 가 주문 0건·리포트 403 이던 것 — 소유 ∪ 배정 단일 소스 | ✅ 완료 |
+| 외부 공급업체 반품 | 왓츠앱·메일·PDF 발송 + 구매자가 닫기(재고 반영) | ✅ 완료 |
+| 청구서 발행자 이름 | 발행자 정보 함수에 `supplier` 분기가 없어 «Issuer» 로 뜨던 것 | ✅ 완료 |
+| 인보이스 미리보기 | `/uploads` 만 X-Frame-Options SAMEORIGIN(나머지 DENY 유지) | ✅ 완료 |
+| BG 대시보드 자기 매출 | 리포트와 같은 단일 소스로 청구·수금·미수 3칸 + 매출 누락 배너 | ✅ 완료 |
+| regional-stats 난수 제거 | 성장률이 `Math.random()` 이던 것을 직전 기간 대비 실계산으로 | ✅ 완료 |
+| 거래 청구서 백필 | 수령 완료인데 청구서 없던 14건 RM 4,020.57 발행(Irene 실행) → 누락 0 | ✅ 완료 |
+
+### 수정된 파일 (주요)
+- `dev-backend/models/CostChangeLog.js` · `PurchaseOrder.js` · `PurchaseOrderItem.js` · `PurchaseOrderReturn.js`
+- `dev-backend/routes/cost-reconciliation.js` · `purchase-cost-report.js` · `po-returns.js` · `invoices-list.js` · `invoices-payment.js` · `invoices-helpers.js` · `orders-crud.js` · `supplier-directory.js` · `admin-analytics.js`
+- `dev-backend/services/reconcileInvoiceSync.js` · `retroApplyPrice.js` · `priceHistory.js` · `costSync.js`
+- `dev-backend/middleware/brandScope.js` · `security.js` · `dev-backend/utils/managerBrandScope.js` · `externalIssuer.js`
+- `dev-backend/scripts/migrate-cost-reconciliation.js` · `migrate-return-external-send.js`
+- `dev-frontend/src/pages/PurchaseOrders/InvoiceReconcilePage.tsx` · `dev-frontend/src/pages/Reports/PurchaseCostTab.tsx` · `dev-frontend/src/utils/invoiceMatcher.ts` · `returnShare.ts`
+
+### 검증
+- `verify-all --full` **19/19**(묶음마다) · health-check **227/227** · 인쇄 보호파일 **8/8** · mount sweep 크래시 **0**
+- 고장주입 **12건** 반증 후 원복
+- ⚠ **Fable 판정 없이 배포됨**(한도 초과 429, 2회 시도). 사후 검토 문서: `docs/FABLE_REVIEW_2026-09-08.md`
 
 ---
 

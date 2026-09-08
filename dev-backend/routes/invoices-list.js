@@ -1,6 +1,8 @@
 // list/get only — split from invoices-main.js (2026-05-03)
 // 마운트: routes/invoices.js barrel via app.use('/api/invoices', ...)
 const express = require('express');
+const { QueryTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 const router = express.Router();
 require('../models'); // Load associations
 const Invoice = require('../models/Invoice');
@@ -41,6 +43,26 @@ const {
   checkConfirmPermission,
 } = require('./invoices-helpers');
 const { invoiceInBranch } = require('./invoices-helpers');
+
+
+/**
+ * 발행자가 외부(솔루션 미가입) 공급업체인가 — 목록 1회 캐시.
+ * 화면이 "결제 버튼"과 "결제함 체크"를 갈라야 해서 목록에 실어 보낸다(설계 §5).
+ */
+const { isExternalIssuer } = require('../utils/externalIssuer');
+// 60초 TTL — 외부 공급업체가 솔루션에 가입하면 판정이 뒤집힌다. 프로세스 수명 캐시로 두면
+// 그 매장은 재시작 전까지 옛 판정을 본다.
+const _externalIssuerCache = new Map();
+const EXTERNAL_ISSUER_TTL_MS = 60 * 1000;
+async function isExternalIssuerCached(issuerType, issuerId) {
+  if (issuerType !== 'supplier' || !issuerId) return false;
+  const key = `${issuerType}:${issuerId}`;
+  const hit = _externalIssuerCache.get(key);
+  if (hit && Date.now() - hit.at < EXTERNAL_ISSUER_TTL_MS) return hit.value;
+  const value = await isExternalIssuer(issuerType, issuerId);
+  _externalIssuerCache.set(key, { value, at: Date.now() });
+  return value;
+}
 
 router.get('/invoice-settings', async (req, res) => {
   try {
@@ -474,10 +496,26 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
       order: [['createdAt', 'DESC']]
     });
 
+    // 청구서 ↔ 원본 발주 (2026-09-08) — 매장이 "이 청구서가 어느 발주 것인지, 업로드한 인보이스와
+    // 맞춰봤는지"를 인보이스 화면에서 바로 알아야 한다. 연결은 purchase_orders.trade_invoice_id 다.
+    // 목록 1회에 쿼리 1개 — 청구서마다 조회하지 않는다.
+    const poByInvoiceId = new Map();
+    if (invoices.length) {
+      const poRows = await sequelize.query(
+        `SELECT id, po_number, trade_invoice_id, total_amount, external_invoice_url,
+                external_invoice_filename, invoice_number, invoice_total, invoice_reconciled_at,
+                created_at, submitted_at, received_at, status, payment_status
+           FROM purchase_orders
+          WHERE trade_invoice_id IN (:ids) AND deleted_at IS NULL`,
+        { type: QueryTypes.SELECT, replacements: { ids: invoices.map((i) => i.id) } });
+      for (const r of poRows) poByInvoiceId.set(Number(r.trade_invoice_id), r);
+    }
+
     // Transform invoices with issuer/payer company info
     const transformedInvoices = await Promise.all(invoices.map(async (invoice) => {
       const issuerInfo = await getIssuerCompanyInfo(invoice.issuer_type, invoice.issuer_id, invoice.currency || 'MYR');
       const payerInfo = await getPayerCompanyInfo(invoice.payer_type, invoice.payer_id, invoice.restaurant);
+      const srcPo = poByInvoiceId.get(Number(invoice.id)) || null;
 
       // Calculate amounts from items if available
       const itemsTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.calculated_amount || item.fixed_amount || 0), 0) || 0;
@@ -516,6 +554,22 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
         issuer_type: invoice.issuer_type,
         issuer_id: invoice.issuer_id,
         issuer_name: issuerInfo?.name || 'Issuer',
+        // 외부 공급업체 발행이면 게이트웨이 결제가 불가능하다 — 화면은 "결제함 체크"만 보여준다
+        issuer_is_external: await isExternalIssuerCached(invoice.issuer_type, invoice.issuer_id),
+        // 원본 발주와 업로드 인보이스 대조 상태 (2026-09-08)
+        purchase_order_id: srcPo ? srcPo.id : null,
+        purchase_order_number: srcPo ? srcPo.po_number : null,
+        purchase_order_total: srcPo ? srcPo.total_amount : null,
+        uploaded_invoice_url: srcPo ? srcPo.external_invoice_url : null,
+        uploaded_invoice_filename: srcPo ? srcPo.external_invoice_filename : null,
+        supplier_invoice_number: srcPo ? srcPo.invoice_number : null,
+        supplier_invoice_total: srcPo ? srcPo.invoice_total : null,
+        invoice_reconciled_at: srcPo ? srcPo.invoice_reconciled_at : null,
+        // 발주 청구서는 «언제 주문했고 언제 받았나»가 결제 판단의 근거다 (2026-09-08 Irene).
+        //   발행일/마감일만으로는 매장이 «이거 물건 받은 건가?»를 알 수 없다.
+        po_ordered_at: srcPo ? (srcPo.submitted_at || srcPo.created_at) : null,
+        po_received_at: srcPo ? srcPo.received_at : null,
+        po_status: srcPo ? srcPo.status : null,
         payer_type: invoice.payer_type,
         payer_id: invoice.payer_id,
         restaurant_id: invoice.restaurant_id,
@@ -954,6 +1008,7 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         total: parseFloat(invoice.total_amount),
         issuerType: invoice.issuer_type,
         issuerId: invoice.issuer_id,
+        issuerIsExternal: await isExternalIssuerCached(invoice.issuer_type, invoice.issuer_id),
         issuerName: issuerName,
         issuerInfo: issuerInfo,
         payerType: invoice.payer_type,

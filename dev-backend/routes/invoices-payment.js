@@ -159,6 +159,11 @@ router.post('/:id/create-payment-intent', authenticateToken, async (req, res) =>
     if (!canPay) return res.status(403).json({ success: false, error: { message: 'Permission denied', code: 'FORBIDDEN' } });
 
     // Get Stripe for the correct issuer
+
+    // 외부 공급업체 발행 청구서는 게이트웨이 결제를 태우지 않는다 (설계 §5) —
+    // 그쪽은 우리 솔루션에 수금 계정이 없다. "결제함 체크"만 허용한다.
+    const { blockExternalIssuerPayment } = require('../utils/externalIssuer');
+    if (await blockExternalIssuerPayment(invoice, res)) return;
     const stripe = await getStripeForIssuer(invoice.issuer_type, invoice.issuer_id);
 
     // Convert amount to smallest currency unit
@@ -251,6 +256,11 @@ router.post('/:id/create-paypal-order', authenticateToken, async (req, res) => {
     const canPay = await checkPaymentPermission(req.user, invoice);
     if (!canPay) return res.status(403).json({ success: false, error: { message: 'Permission denied', code: 'FORBIDDEN' } });
 
+
+    // 외부 공급업체 발행 청구서는 게이트웨이 결제를 태우지 않는다 (설계 §5) —
+    // 그쪽은 우리 솔루션에 수금 계정이 없다. "결제함 체크"만 허용한다.
+    const { blockExternalIssuerPayment } = require('../utils/externalIssuer');
+    if (await blockExternalIssuerPayment(invoice, res)) return;
     const { client } = await createPayPalClient(invoice.issuer_type, invoice.issuer_id);
 
     const request = new paypal.orders.OrdersCreateRequest();
@@ -314,10 +324,14 @@ router.post('/:id/capture-paypal-order', authenticateToken, async (req, res) => 
     const canPay = await checkPaymentPermission(req.user, invoice);
     if (!canPay) return res.status(403).json({ success: false, error: { message: 'Permission denied', code: 'FORBIDDEN' } });
 
+    // 외부 공급업체 발행 청구서는 게이트웨이 결제를 태우지 않는다 (설계 §5) —
+    // 그쪽은 우리 솔루션에 수금 계정이 없다. "결제함 체크"만 허용한다.
+    const { blockExternalIssuerPayment } = require('../utils/externalIssuer');
+    if (await blockExternalIssuerPayment(invoice, res)) return;
+
     if (invoice.payment_intent_id !== orderId) {
       return res.status(400).json({ success: false, error: { message: 'Order ID mismatch', code: 'VALIDATION_ERROR' } });
     }
-
     const { client } = await createPayPalClient(invoice.issuer_type, invoice.issuer_id);
 
     const request = new paypal.orders.OrdersCaptureRequest(orderId);
@@ -362,6 +376,63 @@ router.post('/:id/capture-paypal-order', authenticateToken, async (req, res) => 
 });
 
 // Submit payment for an invoice (by payer - restaurant, brand manager, foodcourt manager)
+/**
+ * POST /api/invoices/:id/mark-paid-external — 외부 공급업체 청구서 "결제함" 체크
+ * 설계: docs/PURCHASE_ORDER_SYSTEM.md §5
+ *
+ * > Irene: "결제했냐 안했냐는 그냥 체크만해야지 여기 솔루션에서 결제를 시키면 안되지"
+ *
+ * 왜 `submit-payment` 를 쓰지 않는가: 그 경로는 **발행자가 확인**해야 paid 가 된다.
+ * 외부 공급업체는 우리 솔루션에 로그인을 못 하므로 영원히 확인되지 않는다.
+ * 그래서 외부 발행 건에 한해 구매자의 체크만으로 paid 로 적는다 — 이건 결제 처리가 아니라
+ * **매입 미지급을 닫는 기록**이다. 실제 돈은 매장이 이미 밖에서 냈다.
+ *
+ * ⛔ 외부 발행자가 아니면 400. 가입 공급업체·플랫폼 청구서는 기존 결제 경로를 쓴다.
+ */
+router.post('/:id/mark-paid-external', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const invoice = await Invoice.findByPk(id, { include: [{ model: Restaurant, as: 'restaurant' }] });
+    if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
+
+    const canPay = await checkPaymentPermission(req.user, invoice);
+    if (!canPay) return res.status(403).json({ success: false, message: 'Permission denied' });
+
+    const { isExternalIssuer } = require('../utils/externalIssuer');
+    if (!(await isExternalIssuer(invoice.issuer_type, invoice.issuer_id))) {
+      return res.status(400).json({
+        success: false, code: 'NOT_EXTERNAL_ISSUER',
+        message: '외부 공급업체 청구서에만 쓸 수 있습니다. 다른 청구서는 결제 경로를 쓰세요.'
+      });
+    }
+    if (invoice.status === 'paid') {
+      return res.status(400).json({ success: false, message: '이미 결제 완료로 표시된 청구서입니다.' });
+    }
+    if (!['sent', 'pending_payment', 'payment_submitted', 'overdue', 'rejected'].includes(invoice.status)) {
+      return res.status(400).json({ success: false, message: `이 상태에서는 표시할 수 없습니다: ${invoice.status}` });
+    }
+
+    const method = req.body.payment_method || req.body.paymentMethod || 'cash';
+    const note = req.body.notes || req.body.payment_notes || null;
+
+    await invoice.update({
+      status: 'paid',
+      paid_at: new Date(),
+      paid_amount: invoice.total_amount,
+      payment_method: method,
+      payment_provider: 'external',
+      payment_notes: note,
+      confirmed_by: req.user && req.user.id,
+      confirmed_at: new Date()
+    });
+
+    res.json({ success: true, data: invoice });
+  } catch (err) {
+    console.error('mark-paid-external error:', err);
+    res.status(500).json({ success: false, message: 'Failed to mark invoice as paid' });
+  }
+});
+
 router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;

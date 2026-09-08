@@ -75,6 +75,7 @@ const FoodcourtProductOptionGroupProduct = require('./FoodcourtProductOptionGrou
 const SupplierContract = require('./SupplierContract');
 // Sprint 3 (Supply Chain Design 3) — Purchase Order
 const IngredientSellerProduct = require('./IngredientSellerProduct');
+const CostChangeLog = require('./CostChangeLog');  // 원가 변경 이력 (2026-09-08)
 const PurchaseOrder = require('./PurchaseOrder');
 const PurchaseOrderItem = require('./PurchaseOrderItem');
 const InventoryTransaction = require('./InventoryTransaction');
@@ -1155,6 +1156,8 @@ module.exports = {
   SupplierContract,
   // Sprint 3 (Supply Chain Design 3)
   IngredientSellerProduct,
+  // 발주↔인보이스 원가 대조 (2026-09-08)
+  CostChangeLog,
   PurchaseOrder,
   PurchaseOrderItem,
   // Referral System

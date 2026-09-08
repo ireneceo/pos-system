@@ -1225,5 +1225,20 @@
     "sending": "Menghantar...",
     "sendResult": "Dihantar {{sent}} hari, {{failed}} gagal."
   },
-  "printer.methodGuide.nativeActiveDescAndroid": "Aplikasi ini mencetak terus — tiada aplikasi cetakan berasingan untuk dipasang. Daftarkan pencetak tablet ini di bawah, kemudian pilih mengikut nama."
+  "printer.methodGuide.nativeActiveDescAndroid": "Aplikasi ini mencetak terus — tiada aplikasi cetakan berasingan untuk dipasang. Daftarkan pencetak tablet ini di bawah, kemudian pilih mengikut nama.",
+  "invoicesPage": {
+    "markPaid": "Tanda dibayar",
+    "markPaidLong": "Tanda sebagai dibayar",
+    "markPaidFailed": "Gagal menanda sebagai dibayar.",
+    "externalPaidNote": "Pembekal luar — dibayar terus oleh kedai",
+    "externalIssuerBadge": "Pembekal luar · invois dimuat naik adalah asal",
+    "reconciled": "Telah disemak",
+    "notReconciled": "Invois dimuat naik · belum disemak",
+    "noUpload": "Tiada invois dimuat naik",
+    "viewReconcile": "Lihat semakan",
+    "reconcileNow": "Semak dengan invois",
+    "ordered": "Dipesan",
+    "received": "Diterima",
+    "notReceived": "Belum diterima"
+  }
 }

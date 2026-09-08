@@ -28,6 +28,37 @@
 const { QueryTypes } = require('sequelize');
 
 const FACTOR = { 'kg->g': 1000, 'g->kg': 0.001, 'l->ml': 1000, 'ml->l': 0.001 };
+
+/**
+ * 원가 변경 이력 1줄. **쓰는 지점은 이 파일 안 여기 한 곳뿐이다**
+ * (설계: docs/PURCHASE_ORDER_SYSTEM.md §2 — 호출부마다 쓰면 반드시 빠지는 곳이 생긴다).
+ *
+ * ⛔ 이력 쓰기가 실패해도 원가 갱신 자체는 살린다. 기록은 원가보다 덜 중요하다.
+ */
+async function logCostChange(sequelize, transaction, row) {
+  try {
+    await sequelize.query(
+      `INSERT INTO cost_change_logs
+         (subject_type, subject_id, entity_type, entity_id, seller_type, seller_entity_id,
+          old_value, new_value, unit, source, purchase_order_id, batch_id,
+          changed_by_user_id, changed_by_name, note, changed_at)
+       VALUES (:subject_type, :subject_id, :entity_type, :entity_id, :seller_type, :seller_entity_id,
+          :old_value, :new_value, :unit, :source, :purchase_order_id, :batch_id,
+          :changed_by_user_id, :changed_by_name, :note, NOW())`,
+      { replacements: {
+          subject_type: row.subject_type, subject_id: row.subject_id,
+          entity_type: row.entity_type ?? null, entity_id: row.entity_id ?? null,
+          seller_type: row.seller_type ?? null, seller_entity_id: row.seller_entity_id ?? null,
+          old_value: row.old_value ?? null, new_value: row.new_value,
+          unit: row.unit ?? null, source: row.source || 'seller_edit',
+          purchase_order_id: row.purchase_order_id ?? null, batch_id: row.batch_id ?? null,
+          changed_by_user_id: row.changed_by_user_id ?? null,
+          changed_by_name: row.changed_by_name ?? null, note: row.note ?? null
+        }, transaction });
+  } catch (e) {
+    console.error('[cost] 변경 이력 기록 실패(원가 갱신은 유지):', e.message);
+  }
+}
 const norm = (u) => String(u || '').toLowerCase();
 const numOr = (v, d = null) => (v == null || v === '' ? d : parseFloat(v));
 
@@ -56,7 +87,7 @@ function convertPrice({ sellerPrice, sellerUnit, sellerBase, myUnit, myBase, myP
  * @param {{transaction?:any, onlyIfZero?:boolean, sequelize:any}} opts
  * @returns {Promise<{changed:boolean, from:number, to:number, source:string}|{skip:string}>}
  */
-async function recomputeUnitCost(kind, id, { transaction, onlyIfZero = false, sequelize } = {}) {
+async function recomputeUnitCost(kind, id, { transaction, onlyIfZero = false, sequelize, ctx } = {}) {
   const q = (sql, r) => sequelize.query(sql, { type: QueryTypes.SELECT, replacements: r, transaction });
   const table = kind === 'product_ingredient' ? 'product_ingredients' : 'ingredients';
   const fk = kind === 'product_ingredient' ? 'product_ingredient_id' : 'ingredient_id';
@@ -125,6 +156,25 @@ async function recomputeUnitCost(kind, id, { transaction, onlyIfZero = false, se
   await sequelize.query(`UPDATE ${table} SET unit_cost = :c WHERE id = :id`,
     { replacements: { c: picked.cost, id }, transaction });
 
+  // 이 UPDATE 가 old/new 를 둘 다 아는 유일한 지점이다 — 이력은 여기서만 남긴다.
+  await logCostChange(sequelize, transaction, {
+    subject_type: kind === 'product_ingredient' ? 'product_ingredient' : 'ingredient',
+    subject_id: id,
+    old_value: from,
+    new_value: picked.cost,
+    unit: me.unit,
+    source: (ctx && ctx.source) || 'seller_edit',
+    entity_type: ctx && ctx.entity_type,
+    entity_id: ctx && ctx.entity_id,
+    seller_type: ctx && ctx.seller_type,
+    seller_entity_id: ctx && ctx.seller_entity_id,
+    purchase_order_id: ctx && ctx.purchase_order_id,
+    batch_id: ctx && ctx.batch_id,
+    changed_by_user_id: ctx && ctx.changed_by_user_id,
+    changed_by_name: ctx && ctx.changed_by_name,
+    note: ctx && ctx.note
+  });
+
   // 재고아이템 원가는 **거울까지 가야 레시피에 닿는다** — `routes/recipes.js :471` 이 거울 행의
   //   `unit_cost` 를 읽는다. raw UPDATE 는 모델 훅을 안 타므로 여기서 명시로 옮긴다.
   //   (동기화 규칙·0 예외는 `services/stockItemMirror.js` 가 정한다.)
@@ -142,27 +192,27 @@ async function recomputeUnitCost(kind, id, { transaction, onlyIfZero = false, se
 }
 
 /** 판매자 상품 하나의 가격이 바뀌었을 때 — 그 상품을 파는 모든 매핑의 타깃을 다시 계산한다. */
-async function recomputeForSellerProduct(sellerType, sellerProductId, { transaction, sequelize } = {}) {
+async function recomputeForSellerProduct(sellerType, sellerProductId, { transaction, sequelize, ctx } = {}) {
   const rows = await sequelize.query(
     `SELECT product_ingredient_id, ingredient_id FROM ingredient_seller_products
       WHERE seller_type = :st AND seller_product_id = :sp AND is_active = 1`,
     { type: QueryTypes.SELECT, replacements: { st: sellerType, sp: sellerProductId }, transaction });
   const out = [];
   for (const r of rows) {
-    if (r.product_ingredient_id) out.push(await recomputeUnitCost('product_ingredient', r.product_ingredient_id, { transaction, sequelize }));
-    if (r.ingredient_id) out.push(await recomputeUnitCost('ingredient', r.ingredient_id, { transaction, sequelize }));
+    if (r.product_ingredient_id) out.push(await recomputeUnitCost('product_ingredient', r.product_ingredient_id, { transaction, sequelize, ctx }));
+    if (r.ingredient_id) out.push(await recomputeUnitCost('ingredient', r.ingredient_id, { transaction, sequelize, ctx }));
   }
   return out;
 }
 
 /** 브랜드 프로덕트 가격이 바뀌었을 때 — 그 프로덕트를 출처로 하는 거울도 함께. */
-async function recomputeForBrandProduct(brandProductId, { transaction, sequelize } = {}) {
-  const out = await recomputeForSellerProduct('brand', brandProductId, { transaction, sequelize });
+async function recomputeForBrandProduct(brandProductId, { transaction, sequelize, ctx } = {}) {
+  const out = await recomputeForSellerProduct('brand', brandProductId, { transaction, sequelize, ctx });
   const mirrors = await sequelize.query(
     `SELECT id FROM ingredients WHERE source_brand_product_id = :b AND is_active = 1`,
     { type: QueryTypes.SELECT, replacements: { b: brandProductId }, transaction });
-  for (const m of mirrors) out.push(await recomputeUnitCost('ingredient', m.id, { transaction, sequelize }));
+  for (const m of mirrors) out.push(await recomputeUnitCost('ingredient', m.id, { transaction, sequelize, ctx }));
   return out;
 }
 
-module.exports = { recomputeUnitCost, recomputeForSellerProduct, recomputeForBrandProduct, convertPrice };
+module.exports = { recomputeUnitCost, recomputeForSellerProduct, recomputeForBrandProduct, convertPrice, logCostChange };

@@ -742,6 +742,43 @@ function poExternalSendEmail({ buyerName, poNumber, total, currency, items }, la
 }
 
 /**
+ * 외부(솔루션 미가입) 공급업체에 보내는 **반품서** 메일 (2026-09-08).
+ *
+ * Irene: "외부공급업체는 발주처럼 왓츠앱 메일, pdf 로 보내게 해줘야지."
+ *   외부 업체는 로그인이 없어 시스템에서 반품을 승인할 수 없다. 발주와 같은 모양으로
+ *   **밖으로 보내고**, 시스템 기록은 구매자가 닫는다.
+ * 품목표는 발주 메일과 같은 `poItemsTable` 을 쓴다 — 받는 쪽이 같은 서식을 본다.
+ */
+function returnExternalSendEmail({ buyerName, poNumber, total, currency, items }, lang = 'en') {
+  const { getEmailText } = require('./i18n');
+  const t = (k, p) => getEmailText(lang, 'po.returnExternalSend.' + k, p);
+  const ts = (k, p) => getEmailText(lang, 'po.sellerReceived.' + k, p);
+  const title = t('heading');
+  const safeBuyer = (buyerName || 'A buyer').toString().slice(0, 120);
+  const safePo = (poNumber || '—').toString().slice(0, 80);
+  const money = fmtMoney(total, currency);
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      ${t('body', { buyer: safeBuyer, poNumber: safePo })}
+    </p>
+    ${infoTable(
+      infoRow(ts('poNumber'), safePo) +
+      infoRow(ts('buyer'), safeBuyer) +
+      infoRow(ts('total'), `<span style="color:${BRAND_COLOR};font-weight:700;">${money}</span>`)
+    )}
+    ${poItemsTable(items, currency, total, lang)}
+    <p style="color:#6B7280;font-size:14px;margin:0 0 16px;line-height:1.6;">
+      ${t('hint')}
+    </p>`;
+
+  return withRenderMeta({
+    subject: t('subject', { poNumber: safePo, buyer: safeBuyer }),
+    html: wrapTemplate(title, body, lang),
+    text: t('textFallback', { poNumber: safePo, buyer: safeBuyer, total: money })
+  }, title, body, lang);
+}
+
+/**
  * 구매자 발주 접수 확인메일 (2026-08-30 신설).
  * 그전까지 구매자에게는 아무 메일도 가지 않았다 — 판매자·오너만 받았다.
  * 처음부터 4언어 + 품목표 포함.
@@ -1034,6 +1071,7 @@ module.exports = {
   poApprovalResultEmail,
   poBuyerConfirmEmail,
   poExternalSendEmail,
+  returnExternalSendEmail,
   tradeInvoiceCreatedEmail,
   tradeInvoicePaidEmail,
   monthlySoaEmail,

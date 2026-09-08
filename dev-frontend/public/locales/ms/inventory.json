@@ -54,5 +54,11 @@
     "minShort": "Min"
   },
   "brandShared": "Jenama",
-  "brandSharedHint": "Item stok yang ditakrifkan oleh jenama anda"
+  "brandSharedHint": "Item stok yang ditakrifkan oleh jenama anda",
+  "order": {
+    "samePriceAsLast": "Harga sama seperti kali lepas",
+    "lastPaid": "kali lepas",
+    "receivedTimes": "diterima {{n}} kali",
+    "avg": "purata"
+  }
 }

@@ -334,7 +334,7 @@ router.get('/regional-stats', authenticateToken, requireManagerRole, async (req,
     }
 
     // 지역별 데이터 추출 (주소에서 첫 번째 단어를 지역으로 사용)
-    const regionalData = await Restaurant.findAll({
+    const regionalFor = (from, to) => Restaurant.findAll({
       where: restaurantWhere,
       attributes: [
         [require('sequelize').fn('SUBSTRING_INDEX', require('sequelize').col('address'), ' ', 1), 'region'],
@@ -349,7 +349,7 @@ router.get('/regional-stats', authenticateToken, requireManagerRole, async (req,
         ],
         where: {
           order_date: {
-            [Op.between]: [startDate, endDate]
+            [Op.between]: [from, to]
           }
         },
         required: false
@@ -358,13 +358,36 @@ router.get('/regional-stats', authenticateToken, requireManagerRole, async (req,
       raw: true
     });
 
-    const processedData = regionalData.map(item => ({
-      region: item.region || 'Unknown',
-      restaurants: parseInt(item.restaurants),
-      revenue: parseFloat(item['orders.revenue'] || 0),
-      orders: parseInt(item['orders.orders'] || 0),
-      growth: Math.round((Math.random() * 20) - 5) // 임시 성장률 (실제로는 이전 기간과 비교 필요)
-    }));
+    // 성장률은 **직전 같은 길이의 기간**과 비교한다. 2026-09-08 이전에는 이 자리가
+    // Math.random() 이었다 — 새로고침할 때마다 값이 바뀌는 가짜 숫자였다.
+    // 기준은 위 /system-stats 의 전기간 비교와 같은 식이다(같은 길이만큼 뒤로).
+    const prevPeriodStart = new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime()));
+    const [regionalData, prevRegionalData] = await Promise.all([
+      regionalFor(startDate, endDate),
+      regionalFor(prevPeriodStart, startDate)
+    ]);
+
+    const prevRevenueByRegion = new Map(
+      prevRegionalData.map(item => [item.region || 'Unknown', parseFloat(item['orders.revenue'] || 0)])
+    );
+
+    const processedData = regionalData.map(item => {
+      const region = item.region || 'Unknown';
+      const revenue = parseFloat(item['orders.revenue'] || 0);
+      const prevRevenue = prevRevenueByRegion.get(region) || 0;
+      // 이전 기간 매출이 0이면 비율을 낼 수 없다. 이번 기간에 매출이 생겼으면 +100%,
+      // 둘 다 0이면 0% — 브랜드 성과 화면(BrandPerformance)과 같은 규칙을 쓴다.
+      const growth = prevRevenue > 0
+        ? ((revenue - prevRevenue) / prevRevenue) * 100
+        : (revenue > 0 ? 100 : 0);
+      return {
+        region,
+        restaurants: parseInt(item.restaurants),
+        revenue,
+        orders: parseInt(item['orders.orders'] || 0),
+        growth: Math.round(growth * 10) / 10
+      };
+    });
 
     res.json({
       success: true,

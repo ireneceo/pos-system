@@ -71,6 +71,18 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
   external_invoice_url: { type: DataTypes.TEXT, allowNull: true, comment: 'Uploaded invoice file URL (external supplier only)' },
   external_invoice_filename: { type: DataTypes.STRING(255), allowNull: true },
   external_invoice_uploaded_at: { type: DataTypes.DATE, allowNull: true },
+  external_invoice_uploaded_by_user_id: { type: DataTypes.INTEGER, allowNull: true, comment: '인보이스를 올린 사람' },
+
+  // 발주↔인보이스 원가 대조 (2026-09-08 · docs/PURCHASE_ORDER_SYSTEM.md §2)
+  //   세금·배송·할인은 **라인 단가에 섞지 않는다** — 헤더에 따로 앉힌다.
+  invoice_number: { type: DataTypes.STRING(100), allowNull: true, comment: '공급업체가 발행한 인보이스 번호(우리 청구서 번호 아님)' },
+  invoice_date: { type: DataTypes.DATEONLY, allowNull: true },
+  invoice_total: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
+  invoice_tax: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
+  invoice_delivery: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
+  invoice_discount: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
+  invoice_reconciled_at: { type: DataTypes.DATE, allowNull: true, comment: 'null = 미대조' },
+  invoice_reconciled_by_user_id: { type: DataTypes.INTEGER, allowNull: true },
 
   // Owner approval workflow (2026-06-21) — restaurant POs gated on connected Owner approval
   approval_required: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false, comment: 'Snapshot at submit: this PO required Owner approval' },

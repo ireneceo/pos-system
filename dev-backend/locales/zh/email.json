@@ -150,6 +150,13 @@
       "hintShipped": "无需操作 — 此采购单已标记为发货。",
       "cta": "打开采购单",
       "textFallback": "{{buyer}} 已确认收到 {{poNumber}}。合计：{{total}}。"
+    },
+    "returnExternalSend": {
+      "subject": "{{buyer}} 的退货申请 — {{poNumber}}",
+      "heading": "退货申请",
+      "body": "<strong>{{buyer}}</strong> 正在退回采购单 {{poNumber}} 的品项。",
+      "hint": "请回复此邮件确认退货与抵扣金额。",
+      "textFallback": "{{poNumber}} 退货申请（{{buyer}}）。金额：{{total}}。"
     }
   }
 }

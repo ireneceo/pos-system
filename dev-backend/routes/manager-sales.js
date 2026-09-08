@@ -29,8 +29,9 @@ async function resolveManagerRestaurants(user) {
     return Restaurant.findAll({ where: { foodcourt_id: user.foodcourt_id }, attributes });
   }
   if (user.role === 'Brand General' || user.role === 'Brand Manager') {
-    const brands = await Brand.findAll({ where: { owner_id: user.id }, attributes: ['id'] });
-    const brandIds = brands.map(b => b.id);
+    // 소유 ∪ 배정 — orders-crud.js 와 같은 판정을 써야 한다(단일 소스 utils/managerBrandScope).
+    const { brandIdsForUser } = require('../utils/managerBrandScope');
+    const brandIds = await brandIdsForUser(user);
     return brandIds.length ? Restaurant.findAll({ where: { brand_id: brandIds }, attributes }) : [];
   }
   if (user.role === 'Restaurant Owner') {

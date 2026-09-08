@@ -54,5 +54,11 @@
     "minShort": "Min"
   },
   "brandShared": "Brand",
-  "brandSharedHint": "Stock item defined by your brand"
+  "brandSharedHint": "Stock item defined by your brand",
+  "order": {
+    "samePriceAsLast": "Same price as last time",
+    "lastPaid": "last time",
+    "receivedTimes": "received {{n}} times",
+    "avg": "avg"
+  }
 }

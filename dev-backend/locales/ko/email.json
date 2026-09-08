@@ -150,6 +150,13 @@
       "hintShipped": "추가로 하실 일은 없습니다 — 이미 출고 처리된 발주입니다.",
       "cta": "발주 열기",
       "textFallback": "{{buyer}} 님이 {{poNumber}} 수령을 확인했습니다. 합계: {{total}}."
+    },
+    "returnExternalSend": {
+      "subject": "{{buyer}} 반품 요청 — {{poNumber}}",
+      "heading": "반품 요청",
+      "body": "<strong>{{buyer}}</strong> 이(가) 발주 {{poNumber}} 의 품목을 반품합니다.",
+      "hint": "반품과 차감 금액을 확인해 이 메일로 회신해 주세요.",
+      "textFallback": "{{poNumber}} 반품 요청 ({{buyer}}). 금액: {{total}}."
     }
   }
 }

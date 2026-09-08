@@ -546,6 +546,14 @@ const BrandGeneralDashboard: React.FC = () => {
     pendingInvoices: 0,
     overdueInvoices: 0,
     activePlans: 0,
+    // 브랜드가 **자기가 판 것**으로 청구한 금액 (2026-09-08).
+    //   진실원장은 «브랜드가 발행한 인보이스» 하나이고, 리포트 화면과 **같은 API** 를 쓴다
+    //   (/api/brand/revenue-report). 아래 monthlyRevenue 는 매장 주문 합이라 다른 물건이다.
+    brandInvoiced: 0,
+    brandCollected: 0,
+    brandOutstanding: 0,
+    uninvoicedPoCount: 0,
+    uninvoicedPoAmount: 0,
   });
 
   const [trendData, setTrendData] = useState<any[]>([]);
@@ -615,17 +623,20 @@ const BrandGeneralDashboard: React.FC = () => {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const today = now.toISOString().split('T')[0];
 
-      const [revenueRes, plansRes, invoicesRes, subsRes, subStatusRes, contractsRes] = await Promise.all([
+      const [revenueRes, plansRes, invoicesRes, subsRes, subStatusRes, contractsRes, brandRevRes] = await Promise.all([
         fetch(`/api/brands/${brand.id}/revenue?start_date=${monthStart}&end_date=${today}`, { headers }),
         fetch(`/api/brands/${brand.id}/plans`, { headers }),
         fetch('/api/invoices', { headers }),
         fetch(`/api/brands/${brand.id}/subscriptions`, { headers }),
         fetch('/api/restaurants/subscription-status', { headers }),
         fetch('/api/contracts?stage=active', { headers }),
+        // 브랜드 자기 매출 — 리포트와 같은 단일 소스
+        fetch(`/api/brand/revenue-report?start=${monthStart}&end=${today}`, { headers }),
       ]);
 
-      const [revenueData, plansData, invoicesData, subsData, subStatusData, contractsData] = await Promise.all([
+      const [revenueData, plansData, invoicesData, subsData, subStatusData, contractsData, brandRevData] = await Promise.all([
         revenueRes.json(), plansRes.json(), invoicesRes.json(), subsRes.json(), subStatusRes.json(), contractsRes.json(),
+        brandRevRes.json(),
       ]);
 
       // Active contracts
@@ -664,6 +675,11 @@ const BrandGeneralDashboard: React.FC = () => {
       setStats({
         totalRestaurants: restaurantRevenues.length,
         monthlyRevenue: totalRevenue,
+        brandInvoiced: Number(brandRevData?.data?.totals?.invoiced || 0),
+        brandCollected: Number(brandRevData?.data?.totals?.paid || 0),
+        brandOutstanding: Number(brandRevData?.data?.totals?.outstanding || 0),
+        uninvoicedPoCount: Number(brandRevData?.data?.uninvoiced_received_pos?.count || 0),
+        uninvoicedPoAmount: Number(brandRevData?.data?.uninvoiced_received_pos?.amount || 0),
         monthlyOrders: totalOrders,
         avgRevenuePerRestaurant: restaurantRevenues.length > 0 ? totalRevenue / restaurantRevenues.length : 0,
         pendingInvoices,
@@ -794,14 +810,42 @@ const BrandGeneralDashboard: React.FC = () => {
           <SetupGuide items={setupItems} entityId={`brand_${user?.brand_id}`} />
         )}
 
+        {/* 매출 누락 신호 (2026-09-08) — 수령은 끝났는데 청구서가 안 나간 발주가 있으면
+            그만큼 브랜드 매출이 비어 있다는 뜻이다. 리포트에만 있던 신호를 대시보드에도 올린다. */}
+        {stats.uninvoicedPoCount > 0 && (
+          <div style={{
+            padding: '10px 14px', marginBottom: 16, borderRadius: 8,
+            background: '#FFFBEB', border: '1px solid #F59E0B', color: '#78350F', fontSize: 13
+          }}>
+            {t('brand:brandGeneralDashboard.uninvoicedPos',
+              '수령이 끝났는데 청구서가 안 나간 발주 {{count}}건 ({{amount}}) — 그만큼 매출이 비어 있습니다.',
+              { count: stats.uninvoicedPoCount, amount: formatCurrency(stats.uninvoicedPoAmount, currency) })}
+          </div>
+        )}
+
         {/* KPI Cards */}
         <DashboardStatsGrid>
           <DashboardStatCard color="#DC2626">
             <DashboardStatLabel>{t('brand:brandGeneralDashboard.franchiseRestaurants')}</DashboardStatLabel>
             <DashboardStatValue>{stats.totalRestaurants}</DashboardStatValue>
           </DashboardStatCard>
+          {/* 브랜드가 **자기가 판 것**으로 청구한 금액 (2026-09-08).
+              리포트 화면과 같은 단일 소스(/api/brand/revenue-report)를 쓴다 — 두 화면이 다른 숫자를
+              내면 어느 쪽을 믿어야 할지 알 수 없다. 아래 «매장 매출»은 매장 주문 합이라 다른 물건이다. */}
           <DashboardStatCard color="#059669">
-            <DashboardStatLabel>{t('brand:brandGeneralDashboard.monthlyRevenue')}</DashboardStatLabel>
+            <DashboardStatLabel>{t('brand:brandGeneralDashboard.brandInvoiced', '브랜드 매출(청구)')}</DashboardStatLabel>
+            <DashboardStatValue>{formatCurrency(stats.brandInvoiced, currency)}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#10B981">
+            <DashboardStatLabel>{t('brand:brandGeneralDashboard.brandCollected', '수금')}</DashboardStatLabel>
+            <DashboardStatValue>{formatCurrency(stats.brandCollected, currency)}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color={stats.brandOutstanding > 0 ? '#F59E0B' : '#059669'}>
+            <DashboardStatLabel>{t('brand:brandGeneralDashboard.brandOutstanding', '미수금')}</DashboardStatLabel>
+            <DashboardStatValue>{formatCurrency(stats.brandOutstanding, currency)}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#059669">
+            <DashboardStatLabel>{t('brand:brandGeneralDashboard.storeRevenue', '매장 매출(주문)')}</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(stats.monthlyRevenue, currency)}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#2563EB">

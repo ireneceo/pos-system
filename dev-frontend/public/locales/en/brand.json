@@ -771,5 +771,12 @@
     "tabs": {
       "completed": "Completed"
     }
+  },
+  "brandGeneralDashboard": {
+    "brandInvoiced": "Brand revenue (invoiced)",
+    "brandCollected": "Collected",
+    "brandOutstanding": "Outstanding",
+    "storeRevenue": "Store sales (orders)",
+    "uninvoicedPos": "{{count}} received purchase orders ({{amount}}) have no invoice — that much revenue is missing."
   }
 }

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
@@ -42,7 +43,8 @@ const Backdrop = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  /* 표준 Modal(1000) **위**에 떠야 한다 — 인보이스 상세 모달에서 열리기 때문이다. */
+  z-index: 1100;
   padding: 20px;
 `;
 
@@ -266,7 +268,7 @@ const ApplyCreditModal: React.FC<Props> = ({ invoice, onClose, onApplied }) => {
     }
   };
 
-  return (
+  const content = (
     <Backdrop onClick={() => !submitting && onClose()}>
       <Dialog onClick={e => e.stopPropagation()}>
         <Title>{t('applyCredit.title', 'Apply referral credit')}</Title>
@@ -348,6 +350,11 @@ const ApplyCreditModal: React.FC<Props> = ({ invoice, onClose, onApplied }) => {
       </Dialog>
     </Backdrop>
   );
+
+  // 인보이스 상세 모달(components/UI/Modal)은 body 로 portal 된다. 이 모달만 페이지 트리에 남으면
+  // 같은 z-index 라도 **나중에 붙은 상세 모달이 위로 와서 이 창이 뒤에 깔린다.**
+  // 같은 방식(body portal)으로 맞춘다 — 메모리 [[reference_modal_portal_stacking]].
+  return ReactDOM.createPortal(content, document.body);
 };
 
 export default ApplyCreditModal;

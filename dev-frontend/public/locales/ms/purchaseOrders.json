@@ -49,7 +49,11 @@
       "markReceivedAll": "Terima semua",
       "markReceivedAllTitle": "Semua item tiba — tandakan keseluruhan pesanan diterima",
       "receivePartial": "Separa",
-      "receivePartialTitle": "Sebahagian item tiada — masukkan kuantiti diterima bagi setiap item"
+      "receivePartialTitle": "Sebahagian item tiada — masukkan kuantiti diterima bagi setiap item",
+      "reconcile": "Semak kos",
+      "reconciled": "Telah disemak",
+      "diffLines": "beza",
+      "checkInvoice": "Semak invois"
     },
     "badge": {
       "sellerShipped": "Penjual tanda telah dihantar"
@@ -183,7 +187,15 @@
       "reason": "Sebab",
       "failed": "Gagal menghantar pulangan",
       "networkError": "Ralat rangkaian",
-      "rejectReason": "Sebab penolakan:"
+      "rejectReason": "Sebab penolakan:",
+      "sendWhatsapp": "WhatsApp",
+      "sendEmail": "E-mel",
+      "sendPdf": "PDF",
+      "close": "Tanda dipulangkan",
+      "sent": "dihantar",
+      "notSent": "belum dihantar",
+      "noSellerEmail": "Pembekal tiada e-mel",
+      "closeFailed": "Gagal menutup pemulangan"
     },
     "noEmailTitle": "Tiada E-mel",
     "noEmail": "Tiada alamat e-mel didaftarkan untuk penjual ini."
@@ -502,5 +514,75 @@
   },
   "connect": {
     "priceNotSet": "Harga belum diisi — kos akan menjadi 0"
+  },
+  "reconcile": {
+    "title": "Semakan Invois",
+    "supplier": "Pembekal",
+    "invoice": "Invois",
+    "externalOriginal": "Pembekal luar — invois yang dimuat naik adalah asal",
+    "lastReconciled": "Semakan terakhir",
+    "neverReconciled": "Belum disemak",
+    "loading": "Memuatkan…",
+    "notFound": "Pesanan belian tidak dijumpai.",
+    "backToPo": "Kembali ke pesanan belian",
+    "invoicePanel": "Invois pembekal",
+    "pastePanel": "Tampal invois teks",
+    "pastePlaceholder": "Tampal apa yang anda terima melalui WhatsApp atau e-mel.\ncth) Australian Beef Rib   5   43.00   215.00",
+    "runMatch": "Padankan baris",
+    "matchIsSuggestion": "Padanan hanyalah cadangan. Semak nilai di sebelah kanan dan tekan simpan untuk digunakan.",
+    "noFile": "Tiada fail invois dimuat naik. Guna kotak tampal di bawah atau masukkan nilai di sebelah kanan.",
+    "uploadedInvoice": "Invois dimuat naik",
+    "headerPanel": "Maklumat invois",
+    "itemsPanel": "Item",
+    "taxNotInUnitPrice": "Cukai, penghantaran dan diskaun tidak dicampur ke dalam harga seunit. Rekod berasingan mengelak kos membengkak.",
+    "orderedQty": "Dipesan",
+    "pricier": "lebih mahal",
+    "cheaper": "lebih murah",
+    "applyYes": "Guna harga ini",
+    "applyNone": "Tiada pautan",
+    "changedLines": "{{n}} baris berbeza daripada pesanan",
+    "cancel": "Batal",
+    "save": "Simpan semakan",
+    "saving": "Menyimpan…",
+    "saved": "Semakan disimpan",
+    "loadFailed": "Gagal memuatkan",
+    "saveFailed": "Gagal menyimpan",
+    "unknownError": "Ralat tidak diketahui",
+    "field": {
+      "number": "Nombor invois",
+      "date": "Tarikh invois",
+      "total": "Jumlah",
+      "tax": "Cukai",
+      "delivery": "Penghantaran",
+      "discount": "Diskaun"
+    },
+    "col": {
+      "ordered": "Harga dipesan",
+      "invoiced": "Harga invois",
+      "invoicedQty": "Kuantiti invois",
+      "apply": "Guna untuk kos"
+    },
+    "state": {
+      "matched": "Sepadan",
+      "needsCheck": "Perlu semak",
+      "unmatched": "Tidak sepadan"
+    },
+    "reason": {
+      "noCandidate": "Tiada baris dengan nama serupa — kekalkan nilai pesanan atau ubah sendiri",
+      "noLines": "Tiada baris dibaca",
+      "ok": "Nama dan jumlah sepadan — sila sahkan",
+      "amountMismatch": "Jumlah tidak sama dengan kuantiti × harga seunit",
+      "nameUnsure": "Nama tidak pasti"
+    },
+    "result": {
+      "lines": "Nilai invois untuk {{n}} baris disimpan.",
+      "moved": "{{n}} kos mengikut harga baharu.",
+      "skipped": "Tidak mengikut: {{list}}",
+      "failed": "{{n}} perambatan gagal — rekod semakan tetap disimpan.",
+      "retro": "Digunakan pada {{n}} baris pesanan terbuka (dibayar/diterima dikecualikan)."
+    },
+    "retroApply": "Guna juga pada pesanan belum terima",
+    "invoicePanel2": "Masukkan kandungan invois",
+    "previewHint": "Jika tidak dipaparkan, buka dengan «Lihat lebih besar di tab baharu» dan taip di sebelah kanan."
   }
 }

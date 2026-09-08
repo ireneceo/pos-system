@@ -49,7 +49,11 @@
       "markReceivedAll": "全部入库",
       "markReceivedAllTitle": "全部到货时 — 将整张订单标记为已收货",
       "receivePartial": "部分入库",
-      "receivePartialTitle": "部分到货时 — 逐项输入实收数量"
+      "receivePartialTitle": "部分到货时 — 逐项输入实收数量",
+      "reconcile": "成本核对",
+      "reconciled": "已核对",
+      "diffLines": "差异",
+      "checkInvoice": "核对发票"
     },
     "badge": {
       "sellerShipped": "供应商已标记发货"
@@ -183,7 +187,15 @@
       "reason": "原因",
       "failed": "提交退货失败",
       "networkError": "网络错误",
-      "rejectReason": "拒绝原因:"
+      "rejectReason": "拒绝原因:",
+      "sendWhatsapp": "WhatsApp",
+      "sendEmail": "邮件",
+      "sendPdf": "PDF",
+      "close": "标记已退货",
+      "sent": "已发送",
+      "notSent": "尚未发送",
+      "noSellerEmail": "供应商没有登记邮箱",
+      "closeFailed": "无法关闭退货"
     },
     "noEmailTitle": "无电子邮件",
     "noEmail": "该卖家未登记电子邮件地址。"
@@ -502,5 +514,75 @@
   },
   "connect": {
     "priceNotSet": "未填价格——成本将记为 0"
+  },
+  "reconcile": {
+    "title": "发票核对",
+    "supplier": "供应商",
+    "invoice": "发票",
+    "externalOriginal": "外部供应商 — 上传的发票为原件",
+    "lastReconciled": "上次核对",
+    "neverReconciled": "尚未核对",
+    "loading": "加载中…",
+    "notFound": "找不到采购单。",
+    "backToPo": "返回采购单",
+    "invoicePanel": "供应商发票",
+    "pastePanel": "粘贴文字版发票",
+    "pastePlaceholder": "直接粘贴通过 WhatsApp 或邮件收到的内容。\n例) Australian Beef Rib   5   43.00   215.00",
+    "runMatch": "匹配行",
+    "matchIsSuggestion": "匹配结果仅为建议。请确认右侧数值并点击保存才会生效。",
+    "noFile": "没有上传的发票文件。请使用下方粘贴框或在右侧直接输入。",
+    "uploadedInvoice": "已上传的发票",
+    "headerPanel": "发票信息",
+    "itemsPanel": "品项",
+    "taxNotInUnitPrice": "税金、运费和折扣不计入单价。分开记录才不会让成本虚高。",
+    "orderedQty": "订购",
+    "pricier": "更贵",
+    "cheaper": "更便宜",
+    "applyYes": "采用此价格",
+    "applyNone": "未连结",
+    "changedLines": "{{n}} 行与采购单不同",
+    "cancel": "取消",
+    "save": "保存核对",
+    "saving": "保存中…",
+    "saved": "已保存核对",
+    "loadFailed": "无法加载",
+    "saveFailed": "无法保存",
+    "unknownError": "未知错误",
+    "field": {
+      "number": "发票号码",
+      "date": "发票日期",
+      "total": "总额",
+      "tax": "税金",
+      "delivery": "运费",
+      "discount": "折扣"
+    },
+    "col": {
+      "ordered": "订购单价",
+      "invoiced": "发票单价",
+      "invoicedQty": "发票数量",
+      "apply": "反映到成本"
+    },
+    "state": {
+      "matched": "匹配",
+      "needsCheck": "需确认",
+      "unmatched": "未匹配"
+    },
+    "reason": {
+      "noCandidate": "找不到名称相近的行 — 保留订购值或自行修改",
+      "noLines": "没有读取到任何行",
+      "ok": "名称与金额一致 — 请确认",
+      "amountMismatch": "金额与数量×单价不符",
+      "nameUnsure": "名称不确定"
+    },
+    "result": {
+      "lines": "已保存 {{n}} 行的发票数值。",
+      "moved": "{{n}} 项成本已跟随新价格。",
+      "skipped": "未跟随：{{list}}",
+      "failed": "{{n}} 项传播失败 — 核对记录已保存。",
+      "retro": "已套用到 {{n}} 行未结束的采购单（已付/已收除外）。"
+    },
+    "retroApply": "也套用到未收货的采购单",
+    "invoicePanel2": "输入发票内容",
+    "previewHint": "若无法显示，请用«在新窗口放大查看»打开后在右侧输入。"
   }
 }

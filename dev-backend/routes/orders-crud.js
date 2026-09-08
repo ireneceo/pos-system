@@ -95,12 +95,11 @@ router.get('/', authenticateToken, async (req, res) => {
       managedRests.forEach(r => ids.add(r.restaurant_id));
 
       if (['Brand General', 'Brand Manager'].includes(req.user.role)) {
-        const brands = await Brand.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] });
-        const brandIds = brands.map(b => b.id);
-        if (brandIds.length) {
-          const rs = await Restaurant.findAll({ where: { brand_id: { [Op.in]: brandIds } }, attributes: ['id'] });
-          rs.forEach(r => ids.add(r.id));
-        }
+        // 브랜드 소속 = **소유 ∪ 배정**. 소유(owner_id)만 보면 배정된 Brand General 이
+        // 주문 0건을 받는다(운영 실측 2026-09-08: 같은 브랜드·같은 역할인데 계정마다 달랐다).
+        // 판정은 utils/managerBrandScope 하나로 — manager-sales.js 와 반드시 같은 답이어야 한다.
+        const { brandRestaurantIdsForUser } = require('../utils/managerBrandScope');
+        (await brandRestaurantIdsForUser(req.user)).forEach(rid => ids.add(rid));
       }
 
       if (['Foodcourt General', 'Foodcourt Manager'].includes(req.user.role) && req.user.foodcourt_id) {
