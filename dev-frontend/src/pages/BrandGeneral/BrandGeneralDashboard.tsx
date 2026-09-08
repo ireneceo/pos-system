@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useContextSwitchQuickAction } from '../../components/ContextSwitchQuickAction';
 import styled from 'styled-components';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
-import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue, HeaderRight } from '../../components/UI';
 import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { SetupGuide, WelcomeModal } from '../../components/Common';
 import { Walkthrough, TourTrigger, type TourStep } from '../../components/Walkthrough';
@@ -38,6 +38,17 @@ const Header = styled.div`
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+
+    /* 태블릿 세로(769~1024) — 여기 규칙이 없어 우측 내용이 아랫줄로 밀리면 80px 고정에 잘렸다.
+     제목은 왼쪽, 나머지는 HeaderRight 로 묶어 오른쪽 두 줄. (2026-09-08 Irene) */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    padding: 14px 20px;
+    height: auto;
+    min-height: 80px;
+    max-height: none;
+    align-items: center;
+    gap: 12px 16px;
+  }
 
   @media (max-width: 768px) {
     padding: 12px 16px;
@@ -746,6 +757,8 @@ const BrandGeneralDashboard: React.FC = () => {
       <Walkthrough tourKey="bg_dashboard" steps={bgTourSteps(t)} version={1} autoStart />
       <Header>
         <Title>{t('brand:brandGeneralDashboard.brandDashboard')}</Title>
+        {/* 제목은 왼쪽, 나머지는 전부 오른쪽 묶음. 태블릿 세로에서 두 줄로 접힌다. */}
+        <HeaderRight>
         <TourTrigger tourKey="bg_dashboard" />
         {subscriptionInfo.planType && (
           <Subtitle>
@@ -765,6 +778,7 @@ const BrandGeneralDashboard: React.FC = () => {
             })()}
           </Subtitle>
         )}
+        </HeaderRight>
       </Header>
 
       <Content>

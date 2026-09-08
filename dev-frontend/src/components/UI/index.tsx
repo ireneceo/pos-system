@@ -47,6 +47,7 @@ export {
 export {
   Container,
   Header,
+  HeaderRight,
   Title,
   ActionSection,
   Content,

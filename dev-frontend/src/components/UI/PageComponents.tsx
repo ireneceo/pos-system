@@ -26,6 +26,18 @@ export const Header = styled.div`
   align-items: center;
   gap: 20px;
 
+  /* 태블릿 세로(769~1024). 여기 규칙이 없어서 우측 내용이 아랫줄로 밀리면
+     80px 고정 높이에 잘렸다 — 아이패드 세로에서 실제로 그렇게 보였다(2026-09-08 Irene).
+     제목은 왼쪽에 두고 나머지는 오른쪽에 두 줄로 접히게 한다(HeaderRight). */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    padding: 14px 20px;
+    height: auto;
+    min-height: 80px;
+    max-height: none;
+    align-items: center;
+    gap: 12px 16px;
+  }
+
   @media (max-width: 768px) {
     padding: 16px;
     height: auto;
@@ -34,6 +46,33 @@ export const Header = styled.div`
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
+  }
+`;
+
+/**
+ * 헤더 우측 묶음 — 제목 말고 전부 여기 담는다(둘러보기·플랜·남은 기간·액션).
+ *   PC: 한 줄 · 태블릿 세로: 오른쪽 정렬 두 줄 · 모바일: 제목 아래로 내려간다.
+ * ⛔ 헤더에 우측 항목을 낱개로 붙이지 말 것 — 그러면 폭이 좁아질 때 제각각 접힌다.
+ */
+export const HeaderRight = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+
+  @media (min-width: 769px) and (max-width: 1024px) {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    text-align: right;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px;
   }
 `;
 

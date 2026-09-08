@@ -36,10 +36,22 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
 
+    /* 태블릿 세로(769~1024) — 여기 규칙이 없어 우측 내용이 아랫줄로 밀리면 80px 고정에 잘렸다.
+     제목은 왼쪽, 나머지는 HeaderRight 로 묶어 오른쪽 두 줄. (2026-09-08 Irene) */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    padding: 14px 20px;
+    height: auto;
+    min-height: 80px;
+    max-height: none;
+    align-items: center;
+    gap: 12px 16px;
+  }
+
   @media (max-width: 768px) {
     padding: 16px;
     height: auto;
     min-height: 56px;
+    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
@@ -80,8 +92,24 @@ const Subtitle = styled.div`
 const HeaderRight = styled.div`
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 12px;
   flex-wrap: wrap;
+  min-width: 0;
+
+  /* 태블릿 세로: 오른쪽 정렬로 두 줄 (둘러보기 / 플랜·남은기간) */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    text-align: right;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px;
+  }
 `;
 
 const SubscriptionBadge = styled.span<{ variant: 'trial' | 'active' | 'expiring' | 'expired' }>`

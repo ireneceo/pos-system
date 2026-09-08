@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue, HeaderRight } from '../../components/UI';
 import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
@@ -195,10 +195,22 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
 
+    /* 태블릿 세로(769~1024) — 여기 규칙이 없어 우측 내용이 아랫줄로 밀리면 80px 고정에 잘렸다.
+     제목은 왼쪽, 나머지는 HeaderRight 로 묶어 오른쪽 두 줄. (2026-09-08 Irene) */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    padding: 14px 20px;
+    height: auto;
+    min-height: 80px;
+    max-height: none;
+    align-items: center;
+    gap: 12px 16px;
+  }
+
   @media (max-width: 768px) {
     padding: 16px;
     height: auto;
     min-height: 56px;
+    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
@@ -965,7 +977,9 @@ const AdminDashboard: React.FC = () => {
         <Walkthrough tourKey="admin_dashboard" steps={adminTourSteps(t)} version={1} autoStart />
         <Header>
           <Title>{t('admin:adminDashboard.adminDashboard')}</Title>
-          <TourTrigger tourKey="admin_dashboard" />
+          <HeaderRight>
+            <TourTrigger tourKey="admin_dashboard" />
+          </HeaderRight>
         </Header>
 
         <Content>

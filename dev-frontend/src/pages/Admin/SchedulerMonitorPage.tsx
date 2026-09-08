@@ -254,6 +254,14 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
+     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    height: auto;
+    min-height: 80px;
+    max-height: none;
+  }
+
   @media (max-width: 768px) { padding: 16px; height: auto; }
 `;
 const PageTitle = styled.h1`
