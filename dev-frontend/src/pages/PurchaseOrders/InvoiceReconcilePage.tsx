@@ -256,6 +256,18 @@ const InvoiceReconcilePage: React.FC = () => {
   const [drafts, setDrafts] = useState<Record<number, LineDraft>>({});
   const [header, setHeader] = useState({ number: '', date: '', total: '', tax: '', delivery: '', discount: '' });
   const [pasted, setPasted] = useState('');
+
+  // 업로드 파일은 nginx 가 «1년 immutable» 로 캐시한다(location ^~ /uploads).
+  // 그래서 서버가 헤더 정책을 고쳐도(예: /uploads 를 SAMEORIGIN 으로) 이미 캐시된 브라우저·CDN 은
+  // **옛 헤더(X-Frame-Options: DENY)를 계속 재사용**해 미리보기가 «refused to connect» 로 막힌다.
+  // 2026-09-09 운영에서 실제로 그랬다 — 파일도 코드도 정상인데 캐시된 응답만 옛것이었다.
+  // 업로드 시각을 붙여 «한 번도 캐시된 적 없는 URL» 로 만들면 손님 브라우저 캐시를 비우지 않아도 풀린다.
+  const invoiceSrc = React.useMemo(() => {
+    const u = po?.external_invoice_url;
+    if (!u) return null;
+    const v = po?.external_invoice_uploaded_at || po?.invoice_reconciled_at || '1';
+    return `${u}${u.includes('?') ? '&' : '?'}v=${encodeURIComponent(String(v))}`;
+  }, [po?.external_invoice_url, po?.external_invoice_uploaded_at, po?.invoice_reconciled_at]);
   const [matches, setMatches] = useState<Record<number, MatchResult>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -443,7 +455,7 @@ const InvoiceReconcilePage: React.FC = () => {
             <Actions style={{ justifyContent: 'flex-start' }}>
               <Button onClick={runMatch} disabled={!pasted.trim()}>{t('reconcile.runMatch', '줄 맞춰보기')}</Button>
               {po.external_invoice_url && (
-                <Button variant="secondary" onClick={() => window.open(po.external_invoice_url!, '_blank')}>
+                <Button variant="secondary" onClick={() => window.open(invoiceSrc!, '_blank')}>
                   {t('reconcile.openInNewTab', '새 창에서 크게 보기')}
                 </Button>
               )}
@@ -456,12 +468,12 @@ const InvoiceReconcilePage: React.FC = () => {
               <>
                 <Viewer>
                   {/\.(png|jpe?g|gif|webp)$/i.test(po.external_invoice_url)
-                    ? <img src={po.external_invoice_url} alt={po.external_invoice_filename || t('reconcile.invoice', '인보이스')} />
+                    ? <img src={invoiceSrc!} alt={po.external_invoice_filename || t('reconcile.invoice', '인보이스')} />
                     : (
                       // `<object>` 는 브라우저가 조용히 폴백으로 떨어지는 일이 잦다(2026-09-08 실측:
                       // 헤더는 SAMEORIGIN 인데 화면엔 폴백 문구만 떴다). iframe 이 PDF 를 더 확실히 그린다.
                       <iframe
-                        src={po.external_invoice_url}
+                        src={invoiceSrc!}
                         title={po.external_invoice_filename || t('reconcile.invoice', '인보이스')}
                       />
                     )}
