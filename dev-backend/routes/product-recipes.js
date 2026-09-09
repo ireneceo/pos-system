@@ -10,11 +10,23 @@ const {
   BrandProduct
 } = require('../models');
 const { Op } = require('sequelize');
+const { resolveLineCost } = require('../utils/recipeCost');
 
 router.use(authenticateToken);
 router.use(requireBrandScope());
 
 // ==================== 프로덕트 레시피 CRUD ====================
+
+/**
+ * 프로덕트 레시피 줄이 가리키는 **재고아이템(Stock Item)** 을 한 번에 읽는다.
+ * 원가는 여기서 나온다 — Irene 2026-09-09: "재고아이템 가져다가 계산해야지."
+ */
+async function loadStockItemMap(items) {
+  const ids = [...new Set((items || []).map(i => parseInt(i.ingredient_id, 10)).filter(Number.isFinite))];
+  if (!ids.length) return new Map();
+  const rows = await ProductIngredient.findAll({ where: { id: { [Op.in]: ids } } });
+  return new Map(rows.map(r => [r.id, r]));
+}
 
 // 목록 조회
 router.get('/', async (req, res) => {
@@ -138,12 +150,13 @@ router.post('/', async (req, res) => {
       is_active: true
     });
 
-    // 재료 추가
+    // 재료 추가 — **원가는 서버가 재고아이템 단가에서 계산한다**(2026-09-09 Irene 지시).
+    //   예전엔 화면이 보낸 값을 그대로 저장해, 화면이 재료를 못 찾으면 0 이 박혔다.
     if (ingredients && ingredients.length > 0) {
+      const stockMap = await loadStockItemMap(ingredients);
       let totalCost = 0;
       for (const ing of ingredients) {
-        // 프론트엔드에서 단위 변환을 고려한 cost가 전달됨
-        const cost = ing.cost || 0;
+        const cost = resolveLineCost(stockMap.get(parseInt(ing.ingredient_id, 10)), ing, null);
         totalCost += cost;
 
         await ProductRecipeIngredient.create({
@@ -206,14 +219,18 @@ router.put('/:id', async (req, res) => {
       suggested_price, is_set_menu, set_items, option_groups, is_active
     });
 
-    // 재료 업데이트
+    // 재료 업데이트 — 원가는 서버가 재고아이템 단가에서 계산한다.
     if (ingredients !== undefined) {
+      // 지우기 전에 저장돼 있던 원가를 들고 있는다 — 마지막 폴백(0 으로 덮지 않기).
+      const prevRows = await ProductRecipeIngredient.findAll({ where: { recipe_id: recipe.id } });
+      const prevCostByIngredient = new Map(prevRows.map(r => [r.ingredient_id, r.cost]));
       await ProductRecipeIngredient.destroy({ where: { recipe_id: recipe.id } });
 
+      const stockMap = await loadStockItemMap(ingredients);
       let totalCost = 0;
       for (const ing of ingredients) {
-        // 프론트엔드에서 단위 변환을 고려한 cost가 전달됨
-        const cost = ing.cost || 0;
+        const ingId = parseInt(ing.ingredient_id, 10);
+        const cost = resolveLineCost(stockMap.get(ingId), ing, prevCostByIngredient.get(ingId));
         totalCost += cost;
 
         await ProductRecipeIngredient.create({
@@ -299,9 +316,11 @@ router.post('/:id/recalculate-cost', async (req, res) => {
 
     if (!assertBrandOwnsRow(recipe, req, res)) return;
 
+    // ⚠ 이 식이 저장·표시와 달랐다 — `unit_cost × quantity` 로 **base_quantity 를 안 나누고
+    //   단위 환산도 없었다**(2000g 짜리 재고아이템이면 값이 2000배). 단일 소스로 통일한다.
     let totalCost = 0;
     for (const ri of recipe.recipeIngredients) {
-      const cost = ri.ingredient ? ri.ingredient.unit_cost * ri.quantity : 0;
+      const cost = resolveLineCost(ri.ingredient, { quantity: ri.quantity, unit: ri.unit, cost: ri.cost }, ri.cost);
       await ri.update({ cost });
       totalCost += cost;
     }

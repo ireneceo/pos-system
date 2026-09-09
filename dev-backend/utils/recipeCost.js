@@ -13,8 +13,9 @@
  *   재료 1단위 값 = unit_cost / base_quantity      (예: 43.00 / 1000g → g 당 0.043)
  *   줄 원가       = 재료 1단위 값 × (레시피 수량을 재료 단위로 환산한 값)
  *
- * 환산 불가(무게↔개수처럼 카테고리가 다름)면 **null** 을 돌려준다. 그때 0 으로 덮지 말 것 —
- * 호출부가 «화면이 보낸 값 → 저장돼 있던 값» 순으로 지킨다.
+ * 환산 불가(무게↔개수처럼 카테고리가 다름)거나 **재료 단가가 0(=미정)** 이면 **null** 을 돌려준다.
+ * 그때 0 으로 덮지 말 것 — 호출부가 «화면이 보낸 값 → 저장돼 있던 값» 순으로 지킨다.
+ * 단가 0 을 «원가 0» 으로 보지 않는 근거: docs/TRADE_STRUCTURE.md §5-1 (0 은 미정이라 전파 제외).
  */
 
 // 단위 표 — 프론트 `utils/unitConversion.ts` 의 STANDARD_UNITS 와 같은 값이어야 한다.
@@ -61,6 +62,11 @@ function computeLineCost(ingredient, quantity, unit) {
   if (!Number.isFinite(qty)) return null;
   const unitCost = parseFloat(ingredient.unit_cost);
   if (!Number.isFinite(unitCost)) return null;
+  // 🔴 단가 0 은 «원가가 0» 이 아니라 «아직 정하지 않았다» 는 뜻이다
+  //   (docs/TRADE_STRUCTURE.md §5-1 — "0 은 미정이라 전파 제외").
+  //   운영에 원가 0 인 활성 재고아이템이 95건 남아 있다. 이걸 0 으로 계산하면
+  //   사람이 넣어 둔 줄 원가를 «저장만 해도» 0 으로 지운다 — 이번에 고치려던 그 사고다.
+  if (unitCost === 0) return null;
   const baseQty = parseFloat(ingredient.base_quantity) || 1;
   const perUnit = unitCost / baseQty;
   const converted = convertQuantity(qty, unit || ingredient.unit, ingredient.unit);

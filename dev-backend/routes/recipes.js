@@ -79,6 +79,30 @@ async function loadIngredientMap(items) {
   return new Map(rows.map(r => [r.id, r]));
 }
 
+/**
+ * 매장이 보는 재료 단가 — **매장 오버라이드가 있으면 그것이 원가다.**
+ * Irene 2026-09-09: "레스토랑은 거기서 등록하는 재고아이템 자기 원가(공급업체랑 연결된)거로 하는 거지."
+ * 브랜드가 표준 재료를 내려줘도 매장이 실제로 사는 값이 다르면 매장 원가는 매장 값이다
+ * (`restaurant_ingredient_costs`, 운영 73행). 오버라이드가 없으면 재료 단가 그대로.
+ */
+async function loadRestaurantCostOverrides(restaurantId, items) {
+  const rid = parseInt(restaurantId, 10);
+  const ids = [...new Set((items || []).map(i => parseInt(i.ingredient_id, 10)).filter(Number.isFinite))];
+  if (!Number.isFinite(rid) || !ids.length) return new Map();
+  const rows = await RestaurantIngredientCost.findAll({
+    where: { restaurant_id: rid, ingredient_id: { [Op.in]: ids } },
+    attributes: ['ingredient_id', 'unit_cost']
+  });
+  return new Map(rows.map(r => [r.ingredient_id, r.unit_cost]));
+}
+
+/** 재료 행에 매장 오버라이드 단가를 씌운 사본. 오버라이드가 없으면 원래 행. */
+function withOverrideCost(ingredient, overrideUnitCost) {
+  if (!ingredient) return null;
+  if (overrideUnitCost === undefined || overrideUnitCost === null) return ingredient;
+  return { unit_cost: overrideUnitCost, base_quantity: ingredient.base_quantity, unit: ingredient.unit };
+}
+
 async function findDisallowedIngredientIds(items, scope) {
   const ids = [...new Set((items || []).map(i => parseInt(i.ingredient_id, 10)).filter(Number.isFinite))];
   if (!ids.length) return [];
@@ -578,12 +602,15 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
       total_ingredient_cost: 0
     });
 
-    // 재료 추가 및 원가 계산
+    // 재료 추가 및 원가 계산 — **서버가 계산한다**(2026-09-09 Irene 지시).
+    //   매장은 자기가 보는 단가를 쓴다: 오버라이드가 있으면 그 값, 없으면 재료 단가.
     let totalCost = 0;
     if (ingredients && ingredients.length > 0) {
+      const ingMap = await loadIngredientMap(ingredients);
+      const overrides = await loadRestaurantCostOverrides(restaurantId, ingredients);
       for (const item of ingredients) {
-        // 프론트엔드에서 단위 변환을 고려한 cost가 전달됨
-        const cost = item.cost || 0;
+        const ingId = parseInt(item.ingredient_id, 10);
+        const cost = resolveLineCost(withOverrideCost(ingMap.get(ingId), overrides.get(ingId)), item, null);
         await RecipeIngredient.create({
           recipe_id: recipe.id,
           ingredient_id: item.ingredient_id,
@@ -672,12 +699,19 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
 
     // 재료 업데이트 (기존 삭제 후 재생성)
     if (ingredients) {
+      // 지우기 전에 저장돼 있던 원가를 들고 있는다 — 마지막 폴백(0 으로 덮지 않기).
+      const prevRows = await RecipeIngredient.findAll({ where: { recipe_id: recipeId } });
+      const prevCostByIngredient = new Map(prevRows.map(r => [r.ingredient_id, r.cost]));
       await RecipeIngredient.destroy({ where: { recipe_id: recipeId } });
 
+      // 서버가 계산한다. 매장은 오버라이드 단가가 있으면 그것이 자기 원가다.
+      const ingMap = await loadIngredientMap(ingredients);
+      const overrides = await loadRestaurantCostOverrides(restaurantId, ingredients);
       let totalCost = 0;
       for (const item of ingredients) {
-        // 프론트엔드에서 단위 변환을 고려한 cost가 전달됨
-        const cost = item.cost || 0;
+        const ingId = parseInt(item.ingredient_id, 10);
+        const cost = resolveLineCost(
+          withOverrideCost(ingMap.get(ingId), overrides.get(ingId)), item, prevCostByIngredient.get(ingId));
         await RecipeIngredient.create({
           recipe_id: recipe.id,
           ingredient_id: item.ingredient_id,
