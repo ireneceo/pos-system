@@ -1,5 +1,11 @@
 # Purple POS - 개발 진행 현황
 
+> **최종 업데이트:** 2026-09-09 #2 — **배포 없음. 실측·정정 세션.** 재접속 후 ①끊긴 원인 확인(**서버 정상 · OOM 0건 · dev·운영 HTTP 200** → Claude Code 세션 쪽)
+> ②상태 파일의 낡은 «P1 미배포» 기록 정정(운영-dev 파일 6/6 SAME 실측) ③**발주 청구서 마감일 09-23 건 피해 범위 재측정 — 기록보다 좁다**
+> (운영 16장 · 9/24 에 라벨 Overdue + 연체 메일 16통까지. **매장 정지 0 · 반복 독촉 0** — 두 경로 다 `subscription` 계열로 한정돼 있음)
+> ④그 과대평가의 원인이던 `invoiceOverdueScheduler.js` 머리 주석("독촉은 ALL invoice categories 에 나간다")이 **사실과 달라 정정**(비주석 diff 0줄).
+> ⚠ **Fable 판정이 세 세션 연속 429** — 마감일 처리·중복 링크 정리·09-08~09 배포분 사후 검토가 판정 대기. Irene 결정 대기.
+>
 > **최종 업데이트:** 2026-09-09 — **v3.87 운영 배포(SW 4.99)**: 레시피 재료명·원가 표시 + **원가 계산을 서버로**.
 > 화면이 재료 이름·원가를 API 값이 아니라 «선택기 목록»에서 다시 찾던 것을 고쳤고(운영 브랜드 레시피 337줄 중 334줄이 그 상태),
 > 여기에 더해 **저장 라우트가 화면이 보낸 숫자를 그대로 쓰던 근본**을 고쳤다 — 브랜드 레시피 POST·PUT 이
@@ -9501,6 +9507,46 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 - ⚠ **Fable 판정 없이 배포됨**(한도 초과 429, 2회 시도). 사후 검토 문서: `docs/FABLE_REVIEW_2026-09-08.md`
 
 ---
+
+## ✅ 완료: 발주 청구서 마감일 피해 범위 실측 + 스케줄러 주석 정정 (2026-09-09 #2)
+
+> 배포 없음. **운영 데이터 쓰기 0.** 실측과 문서·주석 정정만.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 접속 끊김 원인 확인 | 가동 56일 · load 0.12 · 메모리 3.3Gi 여유 · **OOM/earlyoom 0건** · dev·운영 HTTP 200 · PM2 unstable restart 0 → **서버 아님, Claude Code 세션 쪽** | ✅ 완료 |
+| 낡은 상태 기록 정정 | `session-state.md` 의 «P1 발주↔인보이스 원가 대조 — 미배포» 는 사실이 아니었다. 운영-dev 파일 **6/6 SAME** 실측(`recipeCost.js`·`recipes.js`·`product-recipes.js`·`invoices-list.js`·`cost-reconciliation.js`·`managerBrandScope.js`) — P1 은 09-08 SW 4.91 로 배포됨 | ✅ 완료 |
+| 마감일 09-23 피해 범위 **재측정** | 기존 기록 «9/24 에 15장 연체 처리» → 운영 실측 **16장**(외부 15 · RM 4,184.38 / 브랜드 1 · RM 195.70). **실제 피해는 라벨 Overdue + 매장 관리자 연체 메일 16통까지.** 매장 정지 **0**(`processOverduePayments` 는 `invoice_category:'subscription'` 한정) · D+3/7/14 독촉 **0**(화이트리스트 밖) | ✅ 완료 |
+| 스케줄러 주석 정정 | `invoiceOverdueScheduler.js` 머리 주석이 «독촉은 subscriptionScheduler 가 **ALL invoice categories** 에 이미 보낸다» 라고 **사실과 다르게** 적혀 있었다(실제 화이트리스트는 구독 계열 4종). 이 주석을 믿으면 위와 같은 과대평가를 하게 된다 → 실측대로 수정. **비주석 diff 0줄** | ✅ 완료 |
+| Fable 사후 검토 문서 보강 | `docs/FABLE_REVIEW_2026-09-08.md` 에 ①09-09 배포분(v3.87) 사실 ②«§4-1 정정» 절 추가 | ✅ 완료 |
+
+### 실측 근거 (운영, 읽기 전용)
+
+`scripts/inspect-po-invoice-types.js`:
+```
+외부 공급업체  trade  pending_payment   15건  RM 4,184.38
+브랜드         trade  pending_payment    1건  RM   195.70
+→ 16장 전부 발행 09-08 · 마감 09-23(+15일) · 수령 완료(08-30~09-05)
+→ 마감일이 이미 지난 것 0건 · 수령 전 발행 0건
+```
+날짜 자체는 정상이다. 문제는 계약이 없을 때 붙는 폴백 **`NET_15`**(`services/purchaseOrderService.js:121`)
+하나이고, **외부 공급업체와 합의한 적 없는 날짜**라는 점이다.
+
+### 수정된 파일
+- `dev-backend/services/invoiceOverdueScheduler.js` (주석만 · `node --check` OK · print-guard 8/8)
+- `docs/FABLE_REVIEW_2026-09-08.md`
+- `.claude/session-state.md`
+
+### ⚠ Fable 검증 대상
+`check-sensitive-diff` 가 `invoiceOverdueScheduler.js` 를 **기준 ②(돈·주문 무결성)** 로 찍는다.
+실제 변경은 **주석뿐이고 비주석 diff 0줄**이지만 기계 판정은 파일 경로 기준이다.
+그리고 **마감일 자체를 어떻게 할지(비우기 / 소급 수정 / 그대로)는 Fable 판정 대상**이며,
+**세 세션 연속 429(사용 한도)로 판정을 못 받았다.** → Fable 세션 점검 후 배포 권장.
+
+---
+
 
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 

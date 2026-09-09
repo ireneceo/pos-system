@@ -122,7 +122,19 @@ Restaurant: currency 설정 (System Admin 지원 범위 내)
 
 **멱등 (한 달 정확히 1장):** `contract_id + invoice_category='rent' + billing_period_start` 로 기존 인보이스를 찾아 있으면 skip. 스케줄러가 하루 여러 번 돌거나 수동 발행을 눌러도 중복 0.
 
-**계약 종료 시 자동 중단** (`stage` 가 active 가 아니면 대상 제외). 이메일 알림·연체 전환(D+3/D+7/D+14 리마인더 포함)은 기존 인보이스 파이프라인이 그대로 커버한다 — `invoiceOverdueScheduler` 는 `subscription` 만 제외하므로 `rent` 가 포함된다.
+**계약 종료 시 자동 중단** (`stage` 가 active 가 아니면 대상 제외).
+
+**연체 전환은 커버되지만 D+3/D+7/D+14 리마인더는 안 온다 (2026-09-09 실측 정정).**
+- 연체 전환 ✅ — `invoiceOverdueScheduler` 는 `invoice_category ≠ 'subscription'` 이면 다 잡으므로 `rent` 포함.
+  마감일이 지나면 `pending_payment → overdue` + 매장 관리자에게 `invoice_overdue` 메일 **1통**.
+- 반복 독촉 ❌ — `subscriptionScheduler.processOverdueReminders()` 의 화이트리스트는
+  `subscription · pos_subscription · brand_plan · foodcourt_plan` **4종뿐**(`subscriptionScheduler.js:784`).
+  `rent` · `trade` · `service` · `hardware` 는 **대상이 아니다.**
+- 매장 정지도 무관 — `processOverduePayments` 의 `active→overdue→suspended` 전환은
+  `invoice_category:'subscription'` 한정(`:291`).
+
+> 종전 문장은 «D+3/D+7/D+14 리마인더 포함 … 기존 파이프라인이 그대로 커버» 라고 적혀 있었으나
+> 사실과 달랐다. 같은 취지의 잘못된 주석이 `invoiceOverdueScheduler.js` 머리에도 있었고 함께 고쳤다.
 
 ---
 

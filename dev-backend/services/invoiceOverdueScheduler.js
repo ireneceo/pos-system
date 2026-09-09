@@ -7,9 +7,14 @@
 // SOA children (parent_soa_invoice_id IS NOT NULL) are skipped — their status is
 // driven by the parent SOA via finalizeInvoice cascade.
 //
-// Email: sends invoiceOverdueEmail at first transition. D+3/D+7/D+14 reminders are
-// already sent by subscriptionScheduler.processOverdueReminders() for ALL invoice
-// categories, so we don't duplicate that here.
+// Email: sends invoiceOverdueEmail at first transition — that is the ONLY mail these
+// invoices produce. (2026-09-09 실측 정정: subscriptionScheduler.processOverdueReminders()
+// 의 D+3/D+7/D+14 독촉은 invoice_category ∈ {subscription, pos_subscription, brand_plan,
+// foodcourt_plan} 에만 나간다 — 'trade'·'service'·'hardware' 는 대상이 아니다.
+// 종전 주석의 "ALL invoice categories" 는 사실과 달랐다.)
+//
+// 매장 정지와도 무관하다: processOverduePayments() 의 Restaurant.status
+// active→overdue→suspended 전환은 invoice_category='subscription' 으로 한정돼 있다.
 
 const cron = require('node-cron');
 const { Op } = require('sequelize');

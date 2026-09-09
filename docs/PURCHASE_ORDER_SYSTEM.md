@@ -2161,7 +2161,22 @@ old/new 를 안다. 호출부마다 로그를 쓰지 않는다.
 |---|---|
 | 발행일 | 전부 09-08 = **문서를 만든 날**(백필분). 실제 주문 08-29~09-04, 수령 08-30~09-05 |
 | 마감일 | 전부 **+15일(09-23)** = 계약 없을 때 붙는 `NET_15` 기본값 |
-| 위험 | `services/invoiceOverdueScheduler.js` 가 마감일 지난 `pending_payment` 를 `overdue` 로 바꾸고 매장에 메일 → **9월 24일에 15장이 한꺼번에 연체** |
+| 위험 | `services/invoiceOverdueScheduler.js` 가 마감일 지난 `pending_payment` 를 `overdue` 로 바꾸고 매장에 메일 → **9월 24일에 16장이 한꺼번에 연체 처리 + 연체 메일 16통** |
+
+**⚠ 위험 범위 정정 (2026-09-09 실측)** — 종전 기록은 과대평가였다. 코드 3곳을 대조한 결과:
+
+| 경로 | 판정식 | `trade` 청구서에 걸리나 |
+|---|---|---|
+| 상태 전환 (`invoiceOverdueScheduler`) | `invoice_category ≠ 'subscription'` | **걸림** → 16장 `pending_payment → overdue` |
+| 연체 메일 | 매장 admin 에게 `invoice_overdue` 1통씩 | **걸림** → 16통 |
+| **매장 정지** (`processOverduePayments`) | `invoice_category:'subscription'` (`subscriptionScheduler.js:291`) | **안 걸림** — 매장 정지·구독 영향 **0** |
+| **D+3/7/14 반복 독촉** (`processOverdueReminders`) | 화이트리스트 `subscription·pos_subscription·brand_plan·foodcourt_plan` (`:784`) | **안 걸림** — 후속 독촉 **0** |
+
+즉 피해는 **«라벨 16장이 Overdue 로 바뀌고 근거 없는 연체 메일 16통»** 까지다.
+매장이 정지되거나 독촉이 반복되는 일은 없다. (날짜 자체도 틀리지 않았다 — 수령은 다 끝났고 발행일도 정상.)
+과대평가의 원인은 `invoiceOverdueScheduler.js` 머리 주석이 «독촉은 ALL invoice categories 에 이미 나간다» 라고
+사실과 다르게 적혀 있던 것이었다 → 2026-09-09 에 주석 정정(동작 무변경).
+
 
 외부 공급업체와는 결제조건을 합의한 적이 없다. Irene: *"외부공급업체가 왜 마감일 관리가 필요해?"*
 팀원 의견(판정 아님): ①화면은 주문일·수령일을 앞세운다 ②결제조건 없는 판매자는 **마감일을 비운다**
