@@ -68,6 +68,17 @@ async function resolveStockItemsToMirrors(items, brandId) {
   return out;
 }
 
+/**
+ * 저장할 줄들이 가리키는 재료 행을 한 번에 읽어 Map(id → 재료) 으로 준다.
+ * 줄마다 findByPk 를 부르면 재료 수만큼 쿼리가 는다.
+ */
+async function loadIngredientMap(items) {
+  const ids = [...new Set((items || []).map(i => parseInt(i.ingredient_id, 10)).filter(Number.isFinite))];
+  if (!ids.length) return new Map();
+  const rows = await Ingredient.findAll({ where: { id: { [Op.in]: ids } } });
+  return new Map(rows.map(r => [r.id, r]));
+}
+
 async function findDisallowedIngredientIds(items, scope) {
   const ids = [...new Set((items || []).map(i => parseInt(i.ingredient_id, 10)).filter(Number.isFinite))];
   if (!ids.length) return [];
@@ -93,6 +104,7 @@ async function findDisallowedIngredientIds(items, scope) {
 const { canEditRecipe, isBrandManager } = require('../middleware/recipeAuth');
 const { requireRestaurantModule } = require('../middleware/requireModule');
 const { generateRecipeCode } = require('../utils/codeGenerator');
+const { resolveLineCost } = require('../utils/recipeCost');
 const { processImage, deleteOldImages } = require('../utils/imageProcessor');
 
 // Tier gate (P0-3, 2026-06-08): a restaurant managing its OWN recipes is an
@@ -199,12 +211,14 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
       total_ingredient_cost: 0
     });
 
-    // 재료 추가 및 원가 계산
+    // 재료 추가 및 원가 계산 — **원가는 서버가 재료 단가에서 계산한다** (2026-09-09 Irene 지시).
+    //   화면이 보낸 값을 그대로 믿던 탓에, 화면이 재료를 못 찾는 순간 0 이 DB 에 박혔다.
+    //   단위 환산이 불가한 줄만 화면 값으로 폴백한다(utils/recipeCost.js).
     let totalCost = 0;
     if (ingredients && ingredients.length > 0) {
+      const ingMap = await loadIngredientMap(ingredients);
       for (const item of ingredients) {
-        // 프론트엔드에서 단위 변환을 고려한 cost가 전달됨
-        const cost = item.cost || 0;
+        const cost = resolveLineCost(ingMap.get(parseInt(item.ingredient_id, 10)), item, null);
         await RecipeIngredient.create({
           recipe_id: recipe.id,
           ingredient_id: item.ingredient_id,
@@ -301,12 +315,18 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
     await recipe.update(updateData);
     // 재료 업데이트 (기존 삭제 후 재생성)
     if (ingredients) {
+      // 지우기 전에 저장돼 있던 원가를 들고 있는다 — 서버 계산도, 화면 값도 못 쓸 때
+      // **있던 값을 지키기 위해서**다(0 으로 덮지 않는다).
+      const prevRows = await RecipeIngredient.findAll({ where: { recipe_id } });
+      const prevCostByIngredient = new Map(prevRows.map(r => [r.ingredient_id, r.cost]));
       await RecipeIngredient.destroy({ where: { recipe_id } });
 
+      // 원가는 서버가 재료 단가에서 계산한다 (2026-09-09 Irene 지시, utils/recipeCost.js).
+      const ingMap = await loadIngredientMap(ingredients);
       let totalCost = 0;
       for (const item of ingredients) {
-        // 프론트엔드에서 단위 변환을 고려한 cost가 전달됨
-        const cost = item.cost || 0;
+        const ingId = parseInt(item.ingredient_id, 10);
+        const cost = resolveLineCost(ingMap.get(ingId), item, prevCostByIngredient.get(ingId));
         await RecipeIngredient.create({
           recipe_id: recipe.id,
           ingredient_id: item.ingredient_id,

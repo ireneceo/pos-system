@@ -1169,9 +1169,14 @@ const RestaurantInvoicesPage: React.FC = () => {
                         {/* 언제 주문했고 언제 받았나 — 이게 «돈을 줘도 되나»의 근거다 (2026-09-08 Irene).
                             아직 안 받았으면 그 사실이 그대로 보여야 한다. */}
                         {invoice.poOrderedAt && ` · ${t('settings:invoicesPage.ordered', '주문')} ${formatDate(invoice.poOrderedAt)}`}
+                        {/* «미수령» 은 **수령 여부를 아는 경우에만** 말한다 (2026-09-09).
+                            서버가 발주 상태를 안 내려주는 배포에서는 아무 말도 하지 않는다 —
+                            모르는 것을 «안 받았다» 로 단정하면 받은 물건까지 미수령으로 뜬다. */}
                         {invoice.poReceivedAt
                           ? ` · ${t('settings:invoicesPage.received', '수령')} ${formatDate(invoice.poReceivedAt)}`
-                          : ` · ${t('settings:invoicesPage.notReceived', '미수령')}`}
+                          : invoice.poStatus
+                            ? ` · ${t('settings:invoicesPage.notReceived', '미수령')}`
+                            : ''}
                         {' · '}
                         {invoice.invoiceReconciledAt
                           ? <span style={{ color: '#047857' }}>{t('settings:invoicesPage.reconciled', '대조 완료')}</span>

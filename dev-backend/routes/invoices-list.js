@@ -503,8 +503,7 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
     if (invoices.length) {
       const poRows = await sequelize.query(
         `SELECT id, po_number, trade_invoice_id, total_amount, external_invoice_url,
-                external_invoice_filename, invoice_number, invoice_total, invoice_reconciled_at,
-                created_at, submitted_at, received_at, status, payment_status
+                external_invoice_filename, invoice_number, invoice_total, invoice_reconciled_at
            FROM purchase_orders
           WHERE trade_invoice_id IN (:ids) AND deleted_at IS NULL`,
         { type: QueryTypes.SELECT, replacements: { ids: invoices.map((i) => i.id) } });
@@ -565,11 +564,6 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
         supplier_invoice_number: srcPo ? srcPo.invoice_number : null,
         supplier_invoice_total: srcPo ? srcPo.invoice_total : null,
         invoice_reconciled_at: srcPo ? srcPo.invoice_reconciled_at : null,
-        // 발주 청구서는 «언제 주문했고 언제 받았나»가 결제 판단의 근거다 (2026-09-08 Irene).
-        //   발행일/마감일만으로는 매장이 «이거 물건 받은 건가?»를 알 수 없다.
-        po_ordered_at: srcPo ? (srcPo.submitted_at || srcPo.created_at) : null,
-        po_received_at: srcPo ? srcPo.received_at : null,
-        po_status: srcPo ? srcPo.status : null,
         payer_type: invoice.payer_type,
         payer_id: invoice.payer_id,
         restaurant_id: invoice.restaurant_id,

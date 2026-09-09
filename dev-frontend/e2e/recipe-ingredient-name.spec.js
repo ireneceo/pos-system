@@ -16,6 +16,19 @@
  */
 const { test, expect } = require('@playwright/test');
 const { DEMO_KEYS, demoLogin, assertDevBaseURL, apiBase, injectAuth, authHeaders } = require('./fixtures/demo-guard');
+const { execFileSync } = require('child_process');
+
+/**
+ * «옛 레시피가 원가 0 으로 저장돼 있는» 상태를 만든다.
+ * 2026-09-09 부터 저장 라우트가 서버에서 원가를 계산하므로 API 로는 이 상태를 만들 수 없다.
+ * 못 만들면 «저장값이 0 이어도 화면은 제 값» 을 증명할 수 없어 헛테스트가 된다.
+ * 스크립트에 dev DB · E2E-/TMP- 이름 두 겹의 안전 레일이 있다.
+ */
+function damageRecipeCost(recipeId) {
+  const out = execFileSync('node', ['scripts/e2e-damage-recipe-cost.js', String(recipeId)],
+    { cwd: '/var/www/dev-backend', encoding: 'utf8' });
+  if (!/손상 주입 완료/.test(out)) throw new Error('손상 주입 실패: ' + out);
+}
 
 test.describe('브랜드 레시피 — 재료명·줄 원가 표시', () => {
   test('거울 재료를 쓰는 레시피도 이름과 원가가 제대로 보인다', async ({ page, context, request, baseURL }) => {
@@ -56,8 +69,9 @@ test.describe('브랜드 레시피 — 재료명·줄 원가 표시', () => {
         name: recipeName,
         yield_amount: 1,
         yield_unit: 'portion',
-        // 줄 원가를 **0 으로** 저장한다 — 옛 결함이 운영에 남긴 상태 그대로(zerocost 21줄).
-        // 화면이 저장값을 그대로 뿌리면 RM 0.00 이 뜨고, 재료 단가로 다시 더하면 제 값이 뜬다.
+        // 화면이 «0 을 보내는» 상황을 그대로 만든다 — 옛 화면·옛 캐시 번들이 하던 짓이고,
+        // 운영에 zerocost 21줄을 남긴 경로다. 2026-09-09 부터 **서버가 재료 단가로 계산**하므로
+        // 0 을 보내도 0 이 저장되지 않아야 한다(utils/recipeCost.js).
         ingredients: [{ product_ingredient_id: stock.id, quantity: 2, unit: stock.unit, cost: 0 }],
       },
     });
@@ -73,12 +87,23 @@ test.describe('브랜드 레시피 — 재료명·줄 원가 표시', () => {
       expect(line, '저장된 재료 줄이 있어야 한다').toBeTruthy();
       const isMirror = !!(line.ingredient?.source_product_ingredient_id || line.ingredient?.source_brand_product_id);
       expect(isMirror, '이 줄은 거울 재료를 가리켜야 한다(신고 상황 재현)').toBeTruthy();
-      expect(Number(line.cost), '저장된 줄 원가는 0 이어야 한다(손상 상태 재현)').toBe(0);
-      expect(Number(saved.total_ingredient_cost), '저장된 합계도 0 이어야 한다(손상 상태 재현)').toBe(0);
+      const expectedCost = 2 * (parseFloat(stock.unit_cost) / (parseFloat(stock.base_quantity) || 1));
+      // 서버가 계산해 넣었으므로 여기서는 제 값이다 — 그것부터 확인한다(새 계약).
+      expect(Number(line.cost), '서버가 재료 단가로 계산한 값이 저장돼야 한다').toBeCloseTo(expectedCost, 2);
+
+      // 이제 **옛 결함이 운영에 남긴 상태**(cost 0)를 그대로 만든다(운영 zerocost 21줄).
+      damageRecipeCost(recipeId);
+      const damagedRes = await request.get(`${API}/brands/${brandId}/recipes`, { headers: H });
+      const damaged = ((await damagedRes.json()).data || []).find((r) => r.id === recipeId);
+      expect(Number(damaged.recipeIngredients[0].cost), '손상 주입 후 저장값은 0 이어야 한다').toBe(0);
+      expect(Number(damaged.total_ingredient_cost), '손상 주입 후 합계도 0 이어야 한다').toBe(0);
 
       // 화면에서 확인
       await injectAuth(context, token, user.role || 'Brand General');
-      await page.goto('/pos/recipes', { waitUntil: 'domcontentloaded' });
+      // 화면은 `?brandId=` 가 없으면 **이 사용자의 첫 브랜드**를 고른다(RecipeManagementPage:88).
+      // 브랜드를 여러 개 가진 소유자면 시나리오가 만든 브랜드와 화면이 어긋나 «레시피가 없다» 로 실패한다
+      // (2026-09-09 실측: 데모 BG 가 브랜드 2개 소유 → 화면은 다른 브랜드를 띄웠다).
+      await page.goto(`/pos/recipes?brandId=${brandId}`, { waitUntil: 'domcontentloaded' });
       await expect(page.getByText(recipeName).first()).toBeVisible({ timeout: 20000 });
 
       // 카드를 열어 상세(보기)로 들어간다
@@ -96,8 +121,7 @@ test.describe('브랜드 레시피 — 재료명·줄 원가 표시', () => {
       // ② 재료의 진짜 이름이 보인다
       expect(body, '재료의 진짜 이름이 보여야 한다').toContain(String(stock.name).trim());
       // ③ 저장값이 0 이어도 화면 원가는 재료 단가로 다시 더한 제 값이어야 한다
-      const expectedLine = 2 * (parseFloat(stock.unit_cost) / (parseFloat(stock.base_quantity) || 1));
-      const shown = expectedLine.toFixed(2);
+      const shown = expectedCost.toFixed(2);
       expect(Number(shown), '기대 줄 원가 자체가 0 이면 시나리오가 무의미하다').toBeGreaterThan(0);
       expect(body, `줄 원가 ${shown} 이 화면에 보여야 한다(저장값 0 이어도)`).toContain(shown);
     } finally {
@@ -140,8 +164,13 @@ test.describe('브랜드 레시피 — 재료명·줄 원가 표시', () => {
     const recipeId = (await createRes.json()).data?.id;
 
     try {
+      // 저장 라우트가 서버 계산으로 바뀐 뒤로는 API 로 0 을 만들 수 없다 — 직접 박는다.
+      damageRecipeCost(recipeId);
       await injectAuth(context, token, user.role || 'Brand General');
-      await page.goto('/pos/recipes', { waitUntil: 'domcontentloaded' });
+      // 화면은 `?brandId=` 가 없으면 **이 사용자의 첫 브랜드**를 고른다(RecipeManagementPage:88).
+      // 브랜드를 여러 개 가진 소유자면 시나리오가 만든 브랜드와 화면이 어긋나 «레시피가 없다» 로 실패한다
+      // (2026-09-09 실측: 데모 BG 가 브랜드 2개 소유 → 화면은 다른 브랜드를 띄웠다).
+      await page.goto(`/pos/recipes?brandId=${brandId}`, { waitUntil: 'domcontentloaded' });
       await expect(page.getByText(recipeName).first()).toBeVisible({ timeout: 20000 });
       // 카드 = 이 레시피 제목과 Edit 버튼을 **둘 다** 품은 가장 안쪽 div
       const card = page.locator('div')
@@ -212,6 +241,9 @@ test.describe('브랜드 레시피 — 재료명·줄 원가 표시', () => {
 
     try {
       await injectAuth(context, token, user.role || 'Brand General');
+      // 이 화면의 활성 브랜드는 localStorage('bg.selectedBrandId') 다(BrandProductRecipePage:35).
+      // 심어 주지 않으면 브랜드 여러 개를 가진 소유자에서 다른 브랜드가 떠 시나리오가 어긋난다.
+      await context.addInitScript((id) => localStorage.setItem('bg.selectedBrandId', String(id)), brandId);
       await page.goto('/pos/brand-product-recipes', { waitUntil: 'domcontentloaded' });
       await expect(page.getByText(recipeName).first()).toBeVisible({ timeout: 20000 });
       await page.getByText(recipeName).first().click();
