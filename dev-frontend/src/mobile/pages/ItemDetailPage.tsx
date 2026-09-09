@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
+import { isKioskMode } from '../utils/kioskMode';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useMenu } from '../../contexts/MenuContext';
 import api from '../services/api';
@@ -282,7 +283,7 @@ const InstructionsInput = styled.textarea`
   }
 `;
 
-const AddToCartButton = styled.button`
+const AddToCartButton = styled.button<{ $kiosk?: boolean }>`
   position: fixed;
   bottom: 68px; /* Space for bottom navigation */
   left: 0;
@@ -305,8 +306,12 @@ const AddToCartButton = styled.button`
 
   /* Tablet support */
   @media (min-width: 768px) {
-    max-width: 600px;
+    /* 키오스크는 콘텐츠 폭이 넓어 600px 바만 남으면 화면과 따로 논다 — 같이 넓힌다. */
+    max-width: ${p => (p.$kiosk ? '1056px' : '600px')};
     left: 50%;
+    /* right:auto + width:100% 를 같이 줘야 max-width 가 적용된다. */
+    right: auto;
+    width: 100%;
     transform: translateX(-50%);
     border-radius: 12px;
     bottom: 80px;
@@ -327,6 +332,7 @@ const PriceDisplay = styled.span`
 `;
 
 const ItemDetailPage: React.FC = () => {
+  const kiosk = isKioskMode();
   const { t } = useTranslation(['menu', 'common']);
   const { slug, itemId } = useParams<{ slug: string; itemId: string }>();
   const navigate = useNavigate();
@@ -821,7 +827,7 @@ const ItemDetailPage: React.FC = () => {
         />
       </SpecialInstructions>
       
-      <AddToCartButton
+      <AddToCartButton $kiosk={kiosk}
         onClick={handleAddToCart}
         disabled={!isValid()}
         style={justAdded ? { background: '#10B981' } : undefined}

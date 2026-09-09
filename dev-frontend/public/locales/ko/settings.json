@@ -801,6 +801,8 @@
   "settingsPage.testSound": "소리 미리듣기",
   "settingsPage.mobileOrderAccess": "모바일 주문 진입",
   "settingsPage.mobileOrderAccessHint": "손님은 이 URL을 방문하거나 아래 QR을 스캔하여 주문을 시작합니다. 인쇄용 모드별 QR은 Store Settings → Quick-entry QR codes 에서 다운로드하세요.",
+  "settingsPage.kioskAccess": "매장 태블릿 (키오스크)",
+  "settingsPage.kioskAccessHint": "매장에 두는 태블릿에서 이 주소를 열면 손님이 직접 주문합니다. 메뉴는 모바일 주문과 같고, 화면을 넓게 쓰고 누르는 곳이 커집니다. 90초 동안 조작이 없으면 장바구니를 비우고 처음 화면으로 돌아갑니다. 테이블 QR을 스캔한 손님 폰은 영향받지 않습니다.",
   "settingsPage.copyUrl": "URL 복사",
   "settingsPage.urlCopied": "URL 복사됨",
   "settingsPage.openQrManager": "QR 관리 페이지로",

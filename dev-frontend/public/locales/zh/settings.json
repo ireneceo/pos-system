@@ -801,6 +801,8 @@
   "settingsPage.testSound": "试听",
   "settingsPage.mobileOrderAccess": "移动点餐入口",
   "settingsPage.mobileOrderAccessHint": "顾客访问此 URL 或扫描下方二维码开始点餐。印刷用的各模式二维码请到 Store Settings → Quick-entry QR codes 下载。",
+  "settingsPage.kioskAccess": "店内平板（自助点餐）",
+  "settingsPage.kioskAccessHint": "在店内摆放的平板上打开此地址，顾客即可自行点餐。菜单与移动点餐相同，界面更宽、按钮更大。90 秒无操作后会清空购物车并返回首页。扫描桌面二维码的顾客手机不受影响。",
   "settingsPage.copyUrl": "复制 URL",
   "settingsPage.urlCopied": "已复制",
   "settingsPage.openQrManager": "打开二维码管理",

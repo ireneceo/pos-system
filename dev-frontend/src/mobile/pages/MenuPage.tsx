@@ -4,6 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Utensils, ShoppingBag, Clock, Truck, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import MobileLayout from '../components/common/MobileLayout';
+import { isKioskMode } from '../utils/kioskMode';
+import { CartLines, CartSummary, useCartTotals } from '../components/CartContents';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
 import { getStoreOpenState } from '../utils/storeHours';
@@ -266,7 +268,74 @@ const CategoryTab = styled.button<{ active: boolean }>`
   }
 `;
 
-const MenuGrid = styled.div`
+// 키오스크 2단 — 메뉴(왼쪽) + 장바구니(오른쪽). POS Terminal 과 같은 «한 화면» 구성.
+// 손님이 담은 것을 계속 보면서 고르게 한다(다른 화면으로 넘어가면 무엇을 담았는지 잊는다).
+// 폭이 좁으면(태블릿 세로·폰) 한 단으로 돌아가고 종전대로 하단 카트 바를 쓴다.
+const KioskSplit = styled.div<{ $split?: boolean }>`
+  ${p => p.$split && `
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 24px;
+    align-items: start;
+  `}
+`;
+
+const KioskMain = styled.div`
+  min-width: 0;
+`;
+
+const KioskAside = styled.aside`
+  position: sticky;
+  top: 16px;
+  background: #FFFFFF;
+  border: 1px solid #E5E8EC;
+  border-radius: 14px;
+  padding: 18px 16px;
+  box-shadow: 0 2px 10px rgba(16, 24, 40, 0.06);
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const KioskAsideTitle = styled.h2`
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #0A2540;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const KioskAsideEmpty = styled.p`
+  margin: 0;
+  padding: 24px 0;
+  text-align: center;
+  color: #6B7280;
+  font-size: 14px;
+`;
+
+const KioskCheckout = styled.button`
+  width: 100%;
+  min-height: 60px;
+  background: #635BFF;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  &:disabled { background: #9CA3AF; cursor: not-allowed; }
+  &:active:not(:disabled) { filter: brightness(0.96); }
+`;
+
+const MenuGrid = styled.div<{ $kiosk?: boolean }>`
   display: grid;
   /* 2-column is the mobile default. Force exactly 2 columns on phones so
      narrow Android viewports (~320px usable after system UI) don't collapse
@@ -277,6 +346,15 @@ const MenuGrid = styled.div`
   @media (min-width: 520px) {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   }
+
+  /* 키오스크: 손님이 떨어져서 보는 화면이라 카드를 키운다. 넓은 폭을 채우되
+     한 칸이 240px 밑으로 내려가지 않게 해서 사진·이름이 읽히는 크기를 지킨다. */
+  ${p => p.$kiosk && `
+    @media (min-width: 768px) {
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 20px;
+    }
+  `}
 `;
 
 const MenuItemCard = styled.div`
@@ -433,7 +511,7 @@ const EmptyState = styled.div`
 const barSlideUp = keyframes`from { transform: translateY(120%); opacity: 0; } to { transform: translateY(0); opacity: 1; }`;
 const qtyBump = keyframes`0% { transform: scale(1); } 40% { transform: scale(1.28); } 100% { transform: scale(1); }`;
 
-const CartBar = styled.button`
+const CartBar = styled.button<{ $kiosk?: boolean }>`
   position: fixed;
   bottom: 68px; /* 하단 nav 위 (AddToCartButton 과 동일 기준) */
   left: 16px;
@@ -453,10 +531,16 @@ const CartBar = styled.button`
   animation: ${barSlideUp} 0.26s cubic-bezier(0.22, 1, 0.36, 1);
 
   @media (min-width: 768px) {
-    max-width: 568px;
-    left: 50%;
-    margin-left: -284px;
-    bottom: 88px;
+    /* 중앙정렬에 transform 을 쓰지 않는다 — 이 바는 barSlideUp 이 transform 을 쓰므로
+       translateX 를 겹치면 등장 0.26초 동안 가로 중앙이 풀렸다가 튄다.
+       left/right 를 양쪽에 두고 margin:auto 로 맞추면 애니메이션과 충돌하지 않고,
+       max-width 가 화면보다 넓어도(키오스크 1056 vs 태블릿 768) 화면을 벗어나지 않는다. */
+    max-width: ${p => (p.$kiosk ? '1056px' : '568px')};
+    left: 16px;
+    right: 16px;
+    margin: 0 auto;
+    bottom: ${p => (p.$kiosk ? '104px' : '88px')};
+    ${p => p.$kiosk && `height: 68px; border-radius: 16px; font-size: 17px;`}
   }
   &:active { filter: brightness(0.96); }
 `;
@@ -504,6 +588,21 @@ const ORDER_TYPE_ICON: Record<string, React.ReactElement> = {
 
 const MenuPage: React.FC = () => {
   const { t } = useTranslation();
+  const kiosk = isKioskMode();
+  // 옆 패널은 «키오스크 + 실제로 넓을 때»만. 태블릿 세로(768)는 메뉴 2열 + 패널 340px 이 안 들어가
+  // 카드가 눌리므로 한 단을 유지하고 종전대로 하단 카트 바를 쓴다.
+  const [isWide, setIsWide] = React.useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : false
+  );
+  React.useEffect(() => {
+    const onResize = () => setIsWide(window.innerWidth >= 1024);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const splitView = kiosk && isWide;
+  // 옆 패널 결제 버튼에 띄우는 금액. /cart 화면과 **같은 식**(useCartTotals)이라
+  // 화면마다 다른 총액이 나오지 않는다.
+  const { total: kioskTotal } = useCartTotals();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const {
@@ -1129,6 +1228,8 @@ const MenuPage: React.FC = () => {
       contentBg="#F4F6F8"
       cartItemCount={cartItems.length}
     >
+      <KioskSplit $split={splitView}>
+      <KioskMain>
       {currentStore && (
         <StoreHeader>
           <StoreInfo>
@@ -1228,7 +1329,7 @@ const MenuPage: React.FC = () => {
           {mobileSettings.show_featured && featuredItems.length > 0 && (
             <div style={{ marginBottom: '24px' }}>
               <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>Featured</div>
-              <MenuGrid>
+              <MenuGrid $kiosk={kiosk}>
                 {featuredItems.map(renderMenuItemCard)}
               </MenuGrid>
             </div>
@@ -1236,7 +1337,7 @@ const MenuPage: React.FC = () => {
           {mobileSettings.show_popular && popularItems.length > 0 && (
             <div>
               <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>Popular</div>
-              <MenuGrid>
+              <MenuGrid $kiosk={kiosk}>
                 {popularItems.map(item => (
                   <MenuItemCard key={item.id} onClick={() => handleItemClick(item)}>
                     {item.is_set_menu && <SetBadge>SET</SetBadge>}
@@ -1267,7 +1368,7 @@ const MenuPage: React.FC = () => {
         </div>
       ) : displayItems.length > 0 ? (
         <>
-          <MenuGrid>
+          <MenuGrid $kiosk={kiosk}>
             {displayItems.map(renderMenuItemCard)}
           </MenuGrid>
 
@@ -1289,10 +1390,39 @@ const MenuPage: React.FC = () => {
       )}
 
       {/* 카트 바가 마지막 메뉴 항목을 가리지 않도록 하단 여백 확보 */}
-      {cartItems.length > 0 && <div style={{ height: '72px' }} aria-hidden="true" />}
+      {!splitView && cartItems.length > 0 && <div style={{ height: '72px' }} aria-hidden="true" />}
+      </KioskMain>
 
-      {cartItems.length > 0 && (
-        <CartBar
+      {/* 키오스크 넓은 화면: 장바구니를 오른쪽에 붙여 «한 화면»으로. 내용은 /cart 와 같은 컴포넌트다. */}
+      {splitView && (
+        <KioskAside aria-label={t('menu:cartBar.viewCart', 'View cart')}>
+          <KioskAsideTitle>
+            <span>{t('menu:cartBar.viewCart', 'View cart')}</span>
+            {cartQty > 0 && <CartQtyPill $bump={cartBump}>{cartQty}</CartQtyPill>}
+          </KioskAsideTitle>
+          {cartItems.length === 0 ? (
+            <KioskAsideEmpty>{t('menu:kiosk.cartEmpty', 'Tap a menu item to add it here.')}</KioskAsideEmpty>
+          ) : (
+            <>
+              <CartLines inPanel />
+              <CartSummary />
+            </>
+          )}
+          <KioskCheckout
+            type="button"
+            disabled={cartItems.length === 0}
+            onClick={handleCartClick}
+          >
+            <span>{t('menu:kiosk.checkout', 'Checkout')}</span>
+            <span>{formatCurrency(kioskTotal, currency)}</span>
+          </KioskCheckout>
+        </KioskAside>
+      )}
+      </KioskSplit>
+
+      {/* 좁은 화면(폰·태블릿 세로)에서는 종전대로 하단 카트 바 */}
+      {!splitView && cartItems.length > 0 && (
+        <CartBar $kiosk={kiosk}
           type="button"
           onClick={handleCartClick}
           aria-label={`${t('menu:cartBar.viewCart', 'View cart')} — ${cartQty} · ${formatCurrency(cartTotal, currency)}`}

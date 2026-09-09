@@ -5082,6 +5082,44 @@ const SettingsPage: React.FC = () => {
                   </SettingsCard>
                 )}
 
+                {/* 매장 태블릿(키오스크) — 손님이 직접 주문하는 형태.
+                    같은 모바일 주문 화면을 «넓은 폭 + 큰 터치 + 자동 초기화» 로 여는 주소다.
+                    손님 폰(QR)은 이 주소와 무관하게 종전대로 동작한다. */}
+                {restaurantSlug && (
+                  <SettingsCard style={{ gridColumn: '1 / -1' }}>
+                    <CardTitle>{t('settings:settingsPage.kioskAccess')}</CardTitle>
+                    <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                      {t('settings:settingsPage.kioskAccessHint')}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 280 }}>
+                        <Input
+                          readOnly
+                          value={`${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?kiosk=1`}
+                          style={{ fontSize: '13px', fontFamily: 'monospace', background: '#F8F9FC' }}
+                        />
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const url = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?kiosk=1`;
+                              navigator.clipboard?.writeText(url).then(() => {
+                                setInfoModal({ open: true, title: t('common:done', 'Done'), message: t('settings:settingsPage.urlCopied') });
+                              }).catch(() => {});
+                            }}
+                            style={{ padding: '8px 14px', background: '#635BFF', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+                          >
+                            {t('settings:settingsPage.copyUrl')}
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{ padding: '8px', background: 'white', border: '1px solid #C7CED6', borderRadius: '8px' }}>
+                        <QRCodeSVG value={`${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?kiosk=1`} size={104} level="H" includeMargin={true} />
+                      </div>
+                    </div>
+                  </SettingsCard>
+                )}
+
                 {/* Pause ordering — emergency stop, placed 2nd right under Mobile Order entry */}
                 <SettingsCard style={{ gridColumn: '1 / -1', borderLeft: mobileSettings.pause_ordering ? '4px solid #DC2626' : undefined }}>
                   <CardTitle>{t('settings:settingsPage.pauseOrdering')}</CardTitle>

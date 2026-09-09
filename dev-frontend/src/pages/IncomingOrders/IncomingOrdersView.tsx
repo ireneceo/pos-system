@@ -249,6 +249,14 @@ const RLStatusTabs = styled.div`
   &::-webkit-scrollbar-track { background: #F1F4F8; }
   &::-webkit-scrollbar-thumb { background: #64748B; border-radius: 3px; }
   &::-webkit-scrollbar-thumb:hover { background: #64748B; }
+
+  /* 태블릿(≤1024): 가로 스크롤 대신 줄바꿈 — 끝 탭(Cancelled)이 잘려 안 보이던 것.
+     공용 TabComponents/UI Tabs 와 같은 처리(2026-06-15 LiveOrders 에서 검증된 패턴). */
+  @media (max-width: 1024px) {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    row-gap: 4px;
+  }
 `;
 
 const RLStatusTab = styled.button<{ active?: boolean }>`

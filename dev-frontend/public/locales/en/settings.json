@@ -801,6 +801,8 @@
   "settingsPage.testSound": "Test sound",
   "settingsPage.mobileOrderAccess": "Mobile Order Entry",
   "settingsPage.mobileOrderAccessHint": "Customers visit this URL or scan one of the QR codes below to start ordering. Use the per-mode QRs in Store Settings → Quick-entry QR codes for print/display.",
+  "settingsPage.kioskAccess": "In-store Tablet (Kiosk)",
+  "settingsPage.kioskAccessHint": "Open this address on a tablet you place in the store so guests can order for themselves. Same menu as mobile ordering, shown wider with larger touch targets, and it clears the cart and returns to the start screen after 90 seconds of no activity. Guest phones scanning a table QR are unaffected.",
   "settingsPage.copyUrl": "Copy URL",
   "settingsPage.urlCopied": "URL copied",
   "settingsPage.openQrManager": "Open QR manager",

@@ -1,9 +1,10 @@
 import React, { ReactNode, useEffect } from 'react';
 import styled from 'styled-components';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useMobileOrder } from '../../contexts/MobileOrderContext';
 import { setupMobileInputHandlers } from '../../utils/mobileInputFix';
-import { getActiveTable } from '../../utils/tableSession';
+import { getActiveTable, clearActiveTable } from '../../utils/tableSession';
+import { isKioskMode, watchKioskIdle } from '../../utils/kioskMode';
 
 const LayoutContainer = styled.div`
   min-height: 100vh;
@@ -66,7 +67,11 @@ const BrandTopBar = styled.div`
 // previous layout had a center-aligned title + separate right chip, which
 // shoved the title off-center whenever the chip was wider than the back button
 // and felt cramped. This balances by collapsing visually so content breathes.
-const Header = styled.header`
+// 키오스크 폭. 손님이 서서/앉아서 팔 길이만큼 떨어져 보는 화면이라
+// 폰 기준 600px 칼럼을 그대로 두면 태블릿에서 가운데만 쓰고 양옆이 비어 버린다.
+const KIOSK_MAX = '1120px';
+
+const Header = styled.header<{ $kiosk?: boolean }>`
   background: white;
   border-bottom: 1px solid #F1F4F8;
   position: sticky;
@@ -83,9 +88,10 @@ const Header = styled.header`
 
   /* Tablet support */
   @media (min-width: 768px) {
-    max-width: 600px;
+    max-width: ${p => (p.$kiosk ? KIOSK_MAX : '600px')};
     margin: 0 auto;
     border-radius: 0 0 12px 12px;
+    ${p => p.$kiosk && `padding: 16px 24px; min-height: 68px;`}
   }
 `;
 
@@ -148,12 +154,12 @@ const ContextChip = styled.div`
   }
 `;
 
-const Content = styled.main<{ $bg?: string }>`
+const Content = styled.main<{ $bg?: string; $kiosk?: boolean }>`
   flex: 1;
   background: ${props => props.$bg || 'transparent'};
   padding: 16px;
   padding-bottom: 80px; /* Space for bottom navigation */
-  max-width: 600px;
+  max-width: ${p => (p.$kiosk ? KIOSK_MAX : '600px')};
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;
@@ -167,10 +173,11 @@ const Content = styled.main<{ $bg?: string }>`
     padding-bottom: 100px;
     border-radius: 12px;
     margin-top: 16px;
+    ${p => p.$kiosk && `max-width: ${KIOSK_MAX}; padding: 28px 32px 120px;`}
   }
 `;
 
-const BottomNav = styled.nav`
+const BottomNav = styled.nav<{ $kiosk?: boolean }>`
   background: white;
   border-top: 1px solid #C7CED6;
   position: fixed;
@@ -185,15 +192,24 @@ const BottomNav = styled.nav`
 
   /* Tablet support */
   @media (min-width: 768px) {
-    max-width: 600px;
+    max-width: ${p => (p.$kiosk ? KIOSK_MAX : '600px')};
     left: 50%;
+    /* right:0 을 풀고 width:100% 를 함께 준다.
+       - right:0 이 남으면 폭이 «화면의 절반»으로 고정돼 max-width 가 아예 안 먹는다(기존 결함).
+       - right:auto 만 주면 fixed 요소가 내용 크기로 오그라든다(버튼 몇 개 폭).
+       둘을 같이 줘야 «화면 폭과 max-width 중 작은 값»이 된다. */
+    right: auto;
+    width: 100%;
     transform: translateX(-50%);
     border-radius: 12px 12px 0 0;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    ${p => p.$kiosk && `padding: 12px 0 calc(12px + env(safe-area-inset-bottom));`}
   }
 `;
 
-const NavItem = styled.button<{ active?: boolean }>`
+// 키오스크는 손님이 처음 보는 화면이라 «누르는 곳»이 커야 한다.
+// 접근성 기준(최소 44×44) 위로 올려 56px 높이를 확보한다.
+const NavItem = styled.button<{ active?: boolean; $kiosk?: boolean }>`
   background: none;
   border: none;
   padding: 8px 16px;
@@ -210,14 +226,16 @@ const NavItem = styled.button<{ active?: boolean }>`
   }
   
   svg {
-    width: 24px;
-    height: 24px;
+    width: ${p => (p.$kiosk ? '28px' : '24px')};
+    height: ${p => (p.$kiosk ? '28px' : '24px')};
   }
   
   span {
-    font-size: 12px;
+    font-size: ${p => (p.$kiosk ? '14px' : '12px')};
     font-weight: 500;
   }
+
+  ${p => p.$kiosk && `min-height: 56px; padding: 8px 28px;`}
 `;
 
 const CartBadge = styled.div`
@@ -272,7 +290,9 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
   contentBg
 }) => {
   const navigate = useNavigate();
-  const { currentStore, orderType, cartItems } = useMobileOrder();
+  const location = useLocation();
+  const { currentStore, orderType, cartItems, clearCart } = useMobileOrder();
+  const kiosk = isKioskMode();
   // 장바구니 배지는 컨텍스트의 실제 카트 수로 표시 → 모든 페이지(상세 포함)에서 항상 정확.
   // prop cartItemCount 는 폴백.
   // 헤더 카트뱃지 = 총수량(하단바·수량과 일치). 예전엔 품목 줄 수(length)라 "3인데 담긴 건 7"
@@ -284,6 +304,23 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
     const cleanup = setupMobileInputHandlers();
     return cleanup;
   }, []);
+
+  // 키오스크 유휴 리셋 — 손님이 담다 말고 자리를 뜨면 다음 손님이 그 장바구니를 물려받는다.
+  // 그대로 결제하면 남의 주문이 나가므로, 조작이 끊긴 지 일정 시간이 지나면 비우고 처음 화면으로.
+  // ⚠ 결제 진행 중(payment/*)·주문 추적 화면에서는 끄지 않는다 — 손님이 화면을 보고 기다리는 중이고,
+  //    그때 리셋하면 낸 돈의 주문을 잃는다.
+  useEffect(() => {
+    if (!kiosk) return;
+    const path = location.pathname;
+    if (path.includes('/payment') || path.includes('/order/')) return;
+    const slug = currentStore?.slug || sessionStorage.getItem('restaurantSlug');
+    if (!slug) return;
+    return watchKioskIdle(() => {
+      clearCart();
+      clearActiveTable();
+      navigate(`/mobile/${slug}?kiosk=1&picker=1`);
+    });
+  }, [kiosk, currentStore?.slug, clearCart, navigate, location.pathname]);
 
   // 하단 nav 컨텍스트 영속화 — Account 등 공유 페이지를 reserve 흐름에서 진입해도
   // 그 흐름에 맞는 nav 가 유지되도록 sessionStorage 에 마지막 컨텍스트를 저장.
@@ -356,7 +393,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
         <a href="https://purplehere.com" target="_blank" rel="noopener noreferrer">Solving Real F&amp;B Problems - Purple here</a>
       </BrandTopBar>
       {title && (
-        <Header>
+        <Header $kiosk={kiosk}>
           {showBack && (
             <BackButton onClick={onBack} aria-label="Back">
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -389,14 +426,15 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
         </Header>
       )}
 
-      <Content $bg={contentBg}>{children}</Content>
+      <Content $bg={contentBg} $kiosk={kiosk}>{children}</Content>
 
-      <BottomNav>
+      <BottomNav $kiosk={kiosk}>
         {/* 컨텍스트별 하단 nav 분리:
             - reserve 페이지: Home + Reserve + Account (Menu/Cart 미노출 — 주문 흐름과 무관)
             - 주문 페이지 / 그 외: Home + Menu + Cart + Account (Reserve 미노출 — 주문 중 혼동 방지)
             홈(OrderTypePage) 에서 Reserve 카드를 클릭해야 reserve 흐름에 진입. */}
         <NavItem
+          $kiosk={kiosk}
           active={currentPage === 'home'}
           onClick={() => handleNavigation(`/mobile/${slug}`)}
         >
@@ -410,6 +448,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
         {navContext === 'order' && (
           <>
             <NavItem
+              $kiosk={kiosk}
               active={currentPage === 'menu'}
               onClick={() => handleNavigation(`/mobile/${slug}/menu`)}
             >
@@ -420,6 +459,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
             </NavItem>
 
             <NavItem
+              $kiosk={kiosk}
               active={currentPage === 'cart'}
               style={{ position: 'relative' }}
               onClick={() => handleNavigation(`/mobile/${slug}/cart`)}
@@ -437,6 +477,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
 
         {navContext === 'reserve' && (
           <NavItem
+            $kiosk={kiosk}
             active={currentPage === 'reserve'}
             onClick={() => handleNavigation(`/mobile/${slug}/reservations`)}
           >
@@ -448,7 +489,11 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
           </NavItem>
         )}
 
+        {/* 키오스크는 매장 공용 기기라 계정 진입을 열지 않는다 — 손님이 로그인한 채 자리를 뜨면
+            다음 손님이 그 계정으로 주문하게 된다. 손님 폰(QR)에서는 종전대로 보인다. */}
+        {!kiosk && (
         <NavItem
+          $kiosk={kiosk}
           active={currentPage === 'orders'}
           onClick={() => handleNavigation(`/mobile/${slug}/account`)}
         >
@@ -458,6 +503,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
           </svg>
           <span>Account</span>
         </NavItem>
+        )}
       </BottomNav>
     </LayoutContainer>
   );

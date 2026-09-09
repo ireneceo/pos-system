@@ -165,5 +165,9 @@
   "menuManagementPage.crossSell.remove": "移除",
   "menuManagementPage": {
     "minStock": "低库存提醒值"
-  }
+  },
+  "kiosk.returningIn": "{{count}} 秒后返回首页",
+  "kiosk.startNewOrder": "开始新订单",
+  "kiosk.cartEmpty": "点击菜品即可加入这里。",
+  "kiosk.checkout": "去结算"
 }

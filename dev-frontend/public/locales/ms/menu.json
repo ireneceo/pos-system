@@ -165,5 +165,9 @@
   "menuManagementPage.crossSell.remove": "Buang",
   "menuManagementPage": {
     "minStock": "Amaran stok rendah pada"
-  }
+  },
+  "kiosk.returningIn": "Kembali ke skrin mula dalam {{count}}s",
+  "kiosk.startNewOrder": "Mula pesanan baharu",
+  "kiosk.cartEmpty": "Ketik item menu untuk menambahnya di sini.",
+  "kiosk.checkout": "Bayar"
 }

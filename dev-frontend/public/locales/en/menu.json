@@ -165,5 +165,9 @@
   "menuManagementPage.crossSell.remove": "Remove",
   "menuManagementPage": {
     "minStock": "Low-stock alert at"
-  }
+  },
+  "kiosk.returningIn": "Returning to the start screen in {{count}}s",
+  "kiosk.startNewOrder": "Start new order",
+  "kiosk.cartEmpty": "Tap a menu item to add it here.",
+  "kiosk.checkout": "Checkout"
 }

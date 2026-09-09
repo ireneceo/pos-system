@@ -12,6 +12,7 @@ import MobileAlertModal from '../components/common/MobileAlertModal';
 import OrderingBanner from '../components/OrderingBanner';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import { getActiveTable, setActiveTable } from '../utils/tableSession';
+import { isKioskMode } from '../utils/kioskMode';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -77,7 +78,7 @@ const Subtitle = styled.p`
   margin: 0;
 `;
 
-const OptionsContainer = styled.div`
+const OptionsContainer = styled.div<{ $kiosk?: boolean }>`
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -86,11 +87,16 @@ const OptionsContainer = styled.div`
 
   /* Tablet support */
   @media (min-width: 768px) {
-    max-width: 500px;
+    max-width: ${p => (p.$kiosk ? '640px' : '500px')};
     background: white;
-    padding: 32px;
+    padding: ${p => (p.$kiosk ? '40px' : '32px')};
     border-radius: 16px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    /* 키오스크는 손님이 처음 마주하는 화면 — 고를 곳을 크게 해서 헤매지 않게 한다. */
+    ${p => p.$kiosk && `
+      gap: 16px;
+      button { padding: 24px 24px; font-size: 17px; }
+    `}
   }
 `;
 
@@ -360,6 +366,7 @@ interface StoreData {
 }
 
 const OrderTypePage: React.FC = () => {
+  const kiosk = isKioskMode();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -704,7 +711,7 @@ const OrderTypePage: React.FC = () => {
         </div>
       )}
 
-      <OptionsContainer>
+      <OptionsContainer $kiosk={kiosk}>
         {!orderTypes ? (
           <div style={{ textAlign: 'center', padding: '40px 0', color: '#6B7280', fontSize: '14px' }}>Loading...</div>
         ) : storeData?.pauseOrdering ? (

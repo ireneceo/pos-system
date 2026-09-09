@@ -212,3 +212,123 @@ brand     (공급업체 아님) trade  pending_payment    1건  RM   195.70
 3. 아무것도 안 하고 9/24 에 16통이 나가게 둘 것인가
 
 ⚠ 2026-09-09 에도 Fable 판정 시도가 **429(사용 한도)** 로 실패했다. 세 세션 연속이다.
+
+---
+
+# 【E】 2026-09-09 세션 #3 — 태블릿 반응형 + 키오스크 + 장바구니 한 화면 (**미배포 · 미커밋**)
+
+> Irene 지시: ①"fable없이 할 수 있는 거 해줘. 태블릿 사이즈 반응형 좀 다 잡아줘. 그리고 모바일오더 형태를
+> 태블릿 버전도 해줘서 고객이 스스로 키오스크 주문하듯이 UI해줄 수 있어? 우리 장기적으로 고객이 주문하게도
+> 해야 해서 태블릿 배치하려고 해." ②"검증했어? 모바일 아니면 결제할 내용이 포스터미널처럼 같이 한화면에
+> 나와야 하는 거 아니야? 장바구니 말이야." ③"fable이 검토하고 하도록 해줘. 저장해. 내일할게."
+>
+> ⚠ **Fable 판정 시도가 또 429 로 실패했다 — 이번이 다섯 번째 연속**(09-08 · 09-09 오전 · 09-09 재접속 ·
+> 09-09 마감일 건 · 09-09 이 묶음). 판정 없이 배포하지 않았다.
+
+## E-1. 무엇을 바꿨나
+
+### (가) 태블릿 폭 가로넘침 — 실측 후 공용 컴포넌트 우선 수정
+측정 도구를 새로 만들었다: `dev-frontend/scripts/tablet-overflow-sweep.js` (읽기 전용).
+페이지(document) 넘침이 아니라 **내부 가로 스트립 넘침**을 잰다 — 매장이 말하는 "좌우 흔들림"의 정체.
+5개 폭(768·820 세로 / 1024×600 · 1024×768 · 1280 가로) × 25화면. **페이지 넘침은 전 화면 0건.**
+
+| 파일 | 증상 | 소비처 |
+|---|---|---|
+| `components/Common/TabComponents.tsx` | 리포트 탭 최대 418px | **40개 화면** |
+| `components/UI/Tabs.tsx` | 메뉴관리 카테고리 탭 최대 1406px | 8개 화면 |
+| `pages/IncomingOrders/IncomingOrdersView.tsx` RLStatusTabs | 122px | BG 수신주문 |
+| `pages/Customers/CustomersPage.tsx` | 데스크톱 표(min-width 960px)가 태블릿 세로에서 밀림 | 경계 768→1024, 기존 카드 보기 사용 |
+
+방식 = 태블릿(≤1024)에서 `overflow-x:auto` 대신 `flex-wrap:wrap`.
+2026-06-15 LiveOrders StatusTabs 를 같은 방식으로 고쳐 검증된 패턴이다.
+
+**결함 아님으로 판정한 것**(Fable 이 뒤집을 수 있음):
+고객 8열 표의 컨테이너 가로스크롤(표는 줄바꿈 불가) · `<input>` 내부 텍스트 스크롤 ·
+`text-overflow:ellipsis` 말줄임(내 탐지기의 1차 오검출이었고 제외 규칙을 추가했다).
+
+### (나) 🔒 손대지 않은 것 — 보호파일이라 팀원 권한 밖
+- `pages/POSTerminal/POSTerminalPage.tsx` 카테고리 스트립 — **5개 폭 전부 넘침, 최대 1651px**
+  (이번 측정에서 가장 큰 값). 해당 요소는 `overflow-x:auto` 스트립.
+- `pages/KitchenDisplay/KitchenDisplayPage.tsx` 스테이션 칩 — 99px(2개 폭).
+  코드는 `<ViewToggle style={{ maxWidth:'min(440px, 36vw)', overflowX:'auto', flexWrap:'nowrap' }}>` 이고
+  주석이 "many stations on small tablets: overflow-x scroll" 이라 **의도된 설계로 보인다**.
+  같은 화면에서 body 23px 넘침도 1개 폭에서 관측.
+
+`check-print-guard.js` 가 파일 전체 sha256 을 비교하므로 CSS 한 줄만 고쳐도 배포가 fail-closed 로 막힌다.
+`--bless` 는 CLAUDE.md 상 Fable/Irene 몫이다. **판정 필요.**
+
+### (다) 키오스크 모드 (신규)
+**새 경로·새 페이지를 만들지 않았다** — 기존 모바일오더의 **표시 모드**다.
+주문 생성·결제 로직 무접촉이고 바뀐 것은 폭·터치타깃·세션 수명뿐.
+- 신규 `src/mobile/utils/kioskMode.ts` — `?kiosk=1` → sessionStorage 유지, 유휴 감시 90초
+- `MobileLayout` 폭 600→1120px · 하단 nav 56px · 메뉴 카드 240px+
+- 90초 무조작 → `clearCart()` + `clearActiveTable()` + 처음 화면.
+  **경로가 `/payment` 또는 `/order/` 를 포함하면 감시하지 않는다**(결제 중·주문확인 중 리셋 방지)
+- 주문 완료 화면(`OrderTrackingPage`)에 45초 카운트다운 + "새 주문 시작" 버튼
+- 키오스크에서 Account nav 숨김(공용 기기 로그인 잔류 방지)
+- 설정 → 모바일 주문에 키오스크 주소·QR 카드. i18n 4개 언어(`settings.kioskAccess*`, `menu.kiosk.*`)
+
+### (라) 장바구니 «한 화면» (Irene 원문 ②)
+- 신규 `src/mobile/components/CartContents.tsx` — 장바구니 줄·합계·빈 상태 +
+  **금액식 `useCartTotals` 의 단일 소스**. `/cart` 페이지와 키오스크 옆 패널이 같은 것을 쓴다.
+  금액식은 CartPage 에 인라인이던 것을 **그대로 옮겼고 계산 내용은 바꾸지 않았다**
+  (소계 → 서비스차지(takeaway 제외 옵션 기본 true) → 세금 → 합계).
+- `CartPage` 369줄 → 84줄.
+- `MenuPage`: 키오스크 + `window.innerWidth >= 1024` 일 때만 2단(메뉴 + 340px sticky 패널).
+  좁으면 한 단 + 종전 하단 카트 바(768 에서는 메뉴 2열 + 패널 340px 이 안 들어가 카드가 눌린다).
+- **금액 일치 실측**: 실제로 담아서 —
+  패널 `Subtotal RM 12.90 / Tax(6%) RM 0.77 / Total RM 13.67` == `/cart` 동일. JS 오류 0.
+
+### (마) 기존 결함 발견·수정 (키오스크와 무관 — 손님 폰에도 적용)
+하단 고정 바 5곳이 `left:0;right:0` 위에 `left:50%` 만 얹고 `right` 를 해제하지 않아
+폭이 **화면의 절반**으로 고정 → `max-width` 가 **한 번도 적용된 적이 없었다.**
+`right:auto` 만 주면 이번엔 내용 크기로 오그라든다(실측 271px).
+→ `right:auto` + `width:100%` 를 **함께** 줘야 한다.
+`MenuPage` 카트 바만은 `barSlideUp` 이 transform 을 쓰므로 translateX 대신 `left/right + margin:auto`.
+대상: `MobileLayout` BottomNav · `CartPage` CheckoutButton · `ItemDetailPage` AddToCartButton ·
+`PaymentPage` PayHint/PayButton · `MenuPage` CartBar.
+
+## E-2. Fable 이 특히 봐야 할 지점 (내가 위험하다고 보는 순서)
+
+1. **금액식을 파일 밖으로 옮긴 것** — `CartContents.tsx` 의 `useCartTotals`.
+   내용은 그대로 옮겼다고 판단했고 실측으로 두 화면 값이 같음을 확인했지만,
+   **돈 계산을 옮긴 것 자체**가 검토 대상이다. (`check-sensitive-diff` 는 이 파일을 찍지 않았다.)
+2. **`PaymentPage.tsx` 접촉** — 기계 판정이 기준②(돈)로 찍는다.
+   실제 diff 는 CSS(`max-width`/`right`/`width`)와 boolean prop 하나뿐이고 결제 로직·금액·API 무접촉.
+   09-08 `SupplierPaymentSettingsPage` 와 같은 «파일 경로 때문» 사례로 보이는데 확인이 필요하다.
+3. **`CustomersPage` 표→카드 경계 상향(768→1024)** — 태블릿에서 직원이 보는 것이 바뀐다.
+   되돌리기 쉽지만 «표를 유지하고 스크롤» 과 «카드로 전환» 중 어느 쪽이 맞는지는 판단이 갈린다.
+4. **키오스크 유휴 리셋 90초 / 완료화면 45초** — 숫자 근거는 업계 관행이고 실측 근거는 없다.
+5. **`design-guard --bless`** — 팀원이 실행했다. 근거는 baseline 이 **파일 단위 키**라
+   `CartPage` 의 `RemoveButton` 이 새 파일로 **이동**해 새 키가 생긴 것(신규 버튼 아님).
+   재등록 303→295(사라진 옛 항목 8개 정리). 고장주입으로 가드 작동은 반증했다.
+
+## E-3. 게이트 결과 (최종 번들 `main.9968b598.js`)
+- **`verify-all --full` 18/19 통과**
+- 실브라우저 mount sweep 693초 **크래시 0** (8역할 + `/pos/manager/*`)
+- health-check 통과 · 인쇄 라우트 가드 통과 · **인쇄 보호파일 8/8 무변경**
+- i18n 4언어 통과 · 죽은 핸들러 0 · state hydration warning 0
+- ⬜ 실패 1건 `deploy-ready` — ①이번 묶음 릴리즈 기록 파일 없음 ②SW 버전이 직전 배포(4.99)와 동일.
+  **배포하지 않아서 그대로 두었다.** 배포 시 SW 를 올리지 않으면 매장이 옛 번들을 계속 쓴다.
+- 고장주입 1건: `design-guard` 에 가짜 로컬 styled.button 주입 → 즉시 검출 → 제거 후 통과
+
+실브라우저 실측표:
+| 조건 | 콘텐츠 | 하단바 | 장바구니 패널 | 페이지 넘침 | 내부 넘침 | JS오류 |
+|---|---|---|---|---|---|---|
+| 키오스크 1280 | 1120 | 1120 | 340 | 0 | 0 | 0 |
+| 키오스크 1024 | 1024 | 1024 | 340 | 0 | 0 | 0 |
+| 키오스크 768 세로 | 768 | 768 | 없음(한 단) | 0 | 0 | 0 |
+| 일반 1280 | 600 | 600 | 없음 | 0 | 0 | 0 |
+| 폰 390 | 390 | 390 | 없음 | 0 | 0 | 0 |
+
+## E-4. 팀원이 이번 세션에 스스로 낸 실수 (숨기지 않고 적음)
+1. 탐지기가 의도된 말줄임(ellipsis)을 넘침으로 셈 → 제외 규칙 추가
+2. `networkidle` 대기가 소켓 때문에 안 끝나 라우트마다 25s 소진 → `domcontentloaded` 로 교체
+3. `<CartBar` 문자열 치환이 `CartBarLeft` 등 하위 컴포넌트까지 잡음 → 즉시 복구
+4. `right:auto` 만 줘서 바가 오그라듦 → `width:100%` 병행
+5. 대기 루프 `pgrep -f` 가 **자기 명령줄을 매칭**해 무한 대기(54분 허비) → 스크립트 파일 + 대괄호 트릭
+6. `heavy-task-gate` 가 **종료코드 0 으로 조용히** 빌드를 건너뛴다 — 로그 미확인 시 "빌드 성공" 오인
+
+## E-5. 물어보는 것
+①이대로 배포 가능한지 ②POS Terminal(1651px)·KDS(99px) 보호파일 건을 어떻게 할지
+③`CartContents.tsx` 로 금액식을 옮긴 것이 안전한지 ④놓친 것이 있는지.

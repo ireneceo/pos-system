@@ -801,6 +801,8 @@
   "settingsPage.testSound": "Uji bunyi",
   "settingsPage.mobileOrderAccess": "Akses Pesanan Mudah Alih",
   "settingsPage.mobileOrderAccessHint": "Pelanggan layari URL ini atau imbas QR di bawah untuk mula memesan. Untuk QR cetak setiap mod, buka Store Settings → Quick-entry QR codes.",
+  "settingsPage.kioskAccess": "Tablet Dalam Kedai (Kiosk)",
+  "settingsPage.kioskAccessHint": "Buka alamat ini pada tablet yang diletakkan di kedai supaya tetamu boleh memesan sendiri. Menu sama seperti pesanan mudah alih, dipaparkan lebih lebar dengan sasaran sentuh lebih besar. Selepas 90 saat tanpa aktiviti, troli dikosongkan dan kembali ke skrin mula. Telefon tetamu yang mengimbas QR meja tidak terjejas.",
   "settingsPage.copyUrl": "Salin URL",
   "settingsPage.urlCopied": "URL disalin",
   "settingsPage.openQrManager": "Buka pengurus QR",

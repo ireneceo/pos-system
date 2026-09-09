@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import MobileLayout from '../components/common/MobileLayout';
+import { isKioskMode } from '../utils/kioskMode';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
 import ReceiptShare from '../components/common/ReceiptShare';
@@ -207,12 +209,32 @@ const HomeButton = styled(Button)`
 `;
 
 const OrderTrackingPage: React.FC = () => {
+  const { t } = useTranslation();
   const { slug, orderId } = useParams<{ slug: string; orderId: string }>();
   const navigate = useNavigate();
   const { currency, currentStore } = useMobileOrder();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const kiosk = isKioskMode();
+  // 키오스크는 매장 공용 기기라 «주문 완료» 화면에 계속 머무르면
+  // 다음 손님이 앞사람의 주문번호·금액을 보게 된다. 주문번호를 확인할 시간을 준 뒤 처음으로 돌아간다.
+  // (손님 폰에서는 이 화면이 «내 주문 상태»라 그대로 둔다.)
+  const KIOSK_RETURN_MS = 45_000;
+  const [kioskLeftSec, setKioskLeftSec] = useState<number>(KIOSK_RETURN_MS / 1000);
+  useEffect(() => {
+    if (!kiosk || !slug) return;
+    const startedAt = Date.now();
+    const tick = setInterval(() => {
+      const left = Math.ceil((KIOSK_RETURN_MS - (Date.now() - startedAt)) / 1000);
+      setKioskLeftSec(left > 0 ? left : 0);
+      if (left <= 0) {
+        clearInterval(tick);
+        navigate(`/mobile/${slug}?kiosk=1&picker=1`);
+      }
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [kiosk, slug, navigate]);
 
   useEffect(() => {
     // Initial load
@@ -502,6 +524,29 @@ const OrderTrackingPage: React.FC = () => {
     return (
       <MobileLayout title="Order Status" currentPage="orders">
         <Container>
+          {/* 키오스크 전용 — 다음 손님을 위해 처음 화면으로 돌아가는 안내와 즉시 시작 버튼.
+              기다리지 않고 바로 다음 손님이 주문할 수 있게 한다. */}
+          {kiosk && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+              flexWrap: 'wrap', background: '#F5F3FF', border: '1px solid #DDD6FE',
+              borderRadius: '12px', padding: '14px 16px', marginBottom: '16px'
+            }}>
+              <span style={{ color: '#4C1D95', fontSize: '15px', fontWeight: 600 }}>
+                {t('menu:kiosk.returningIn', { count: kioskLeftSec, defaultValue: 'Returning to the start screen in {{count}}s' })}
+              </span>
+              <button
+                type="button"
+                onClick={() => navigate(`/mobile/${slug}?kiosk=1&picker=1`)}
+                style={{
+                  padding: '12px 20px', minHeight: '48px', background: '#635BFF', color: '#fff',
+                  border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: 700, cursor: 'pointer'
+                }}
+              >
+                {t('menu:kiosk.startNewOrder', 'Start new order')}
+              </button>
+            </div>
+          )}
           <PickupNumberCard>
             <PickupLabel>{getDisplayLabel()}</PickupLabel>
             <PickupNumber>

@@ -961,10 +961,14 @@ const CustomersPage: React.FC = () => {
       />
 
       <style>{`
-        @media (max-width: 768px) {
+        /* 경계를 768 → 1024 로 올린다.
+           데스크톱 표는 min-width:960px 인데, 태블릿 세로(769~1024)에서는 사이드바를 빼면
+           본문이 ~780px 라 표가 컨테이너 안에서 좌우로 밀린다(= 매장이 말하는 "흔들림").
+           이 화면에는 이미 터치용 카드 보기가 있으므로 태블릿은 그쪽을 쓴다. */
+        @media (max-width: 1024px) {
           .desktop-only { display: none !important; }
         }
-        @media (min-width: 769px) {
+        @media (min-width: 1025px) {
           .mobile-only { display: none !important; }
         }
       `}</style>

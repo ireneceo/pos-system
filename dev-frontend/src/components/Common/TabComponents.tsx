@@ -22,6 +22,16 @@ const TabsContainer = styled.div`
     background: #64748B;
     border-radius: 3px;
   }
+
+  /* 태블릿(≤1024): 가로 스크롤 대신 **줄바꿈**.
+     탭이 많은 화면에서 폭이 좁으면 overflow-x:auto 가 끝 탭을 감춰 "탭이 없다"고 오인하게 하고,
+     터치로 밀면 화면이 좌우로 흔들린다. 2026-06-15 LiveOrders StatusTabs 에서 검증된 패턴
+     (메모리 reference_tablet_responsive_audit). 데스크톱은 종전대로 한 줄. */
+  @media (max-width: 1024px) {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    row-gap: 4px;
+  }
 `;
 
 // Individual Tab - underline style (text width only)

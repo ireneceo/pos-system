@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
+import { isKioskMode } from '../utils/kioskMode';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { resolvePaymentSubtype, EWALLET_TYPE_LABELS } from '../../constants';
@@ -262,7 +263,7 @@ const ErrorMessage = styled.div`
 
 // 2026-06-25 (Irene): 결제버튼이 비활성화일 때 "왜 안 되는지" 손님에게 안내(테이블/정보/결제수단
 // 미충족). 회색 버튼만 덩그러니 떠서 손님이 알 수 없던 불친절 해결. PayButton 바로 위 고정 안내바.
-const PayHint = styled.div`
+const PayHint = styled.div<{ $kiosk?: boolean }>`
   position: fixed;
   bottom: 122px; /* PayButton(68px) 바로 위 */
   left: 8px;
@@ -280,15 +281,17 @@ const PayHint = styled.div`
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 
   @media (min-width: 768px) {
-    max-width: 600px;
+    /* 키오스크는 콘텐츠 폭이 넓어 600px 바만 남으면 화면과 따로 논다 — 같이 넓힌다. */
+    max-width: ${p => (p.$kiosk ? '1056px' : '600px')};
     left: 50%;
     right: auto;
+    width: 100%; /* max-width 가 실제로 적용되게 — 없으면 내용 크기로 오그라든다 */
     transform: translateX(-50%);
     bottom: 138px;
   }
 `;
 
-const PayButton = styled.button`
+const PayButton = styled.button<{ $kiosk?: boolean }>`
   position: fixed;
   bottom: 68px; /* Space for bottom navigation */
   left: 0;
@@ -311,8 +314,12 @@ const PayButton = styled.button`
 
   /* Tablet support */
   @media (min-width: 768px) {
-    max-width: 600px;
+    /* 키오스크는 콘텐츠 폭이 넓어 600px 바만 남으면 화면과 따로 논다 — 같이 넓힌다. */
+    max-width: ${p => (p.$kiosk ? '1056px' : '600px')};
     left: 50%;
+    /* right:auto + width:100% 를 같이 줘야 max-width 가 적용된다. */
+    right: auto;
+    width: 100%;
     transform: translateX(-50%);
     border-radius: 12px;
     bottom: 80px;
@@ -544,6 +551,7 @@ const validateCouponAPI = async (code: string, restaurantId: number, orderAmount
 };
 
 const PaymentPage: React.FC = () => {
+  const kiosk = isKioskMode();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -3017,10 +3025,10 @@ const PaymentPage: React.FC = () => {
         else if (tableRequired && isDineIn && !selectedTable) hint = t('common:selectTableToContinue', 'Please select your table to continue.');
         else if (!currentCustomer && !guestInfo) hint = t('common:enterContactToContinue', 'Please enter your name and phone to continue.');
         else if (!paymentMethod) hint = t('common:selectPaymentToContinue', 'Please select a payment method to continue.');
-        return hint ? <PayHint>{hint}</PayHint> : null;
+        return hint ? <PayHint $kiosk={kiosk}>{hint}</PayHint> : null;
       })()}
 
-      <PayButton
+      <PayButton $kiosk={kiosk}
         onClick={handlePayment}
         disabled={isProcessing || cartItems.length === 0 || !paymentMethod || (!currentCustomer && !guestInfo) || (tableRequired && isDineIn && !selectedTable)}
       >

@@ -165,5 +165,9 @@
   "menuManagementPage.crossSell.remove": "삭제",
   "menuManagementPage": {
     "minStock": "저재고 알림 기준"
-  }
+  },
+  "kiosk.returningIn": "{{count}}초 후 처음 화면으로 돌아갑니다",
+  "kiosk.startNewOrder": "새 주문 시작",
+  "kiosk.cartEmpty": "메뉴를 누르면 여기에 담깁니다.",
+  "kiosk.checkout": "결제하기"
 }
