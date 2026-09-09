@@ -80,6 +80,7 @@ const PanelTitle = styled.h3`
 
 const Viewer = styled.div`
   width: 100%;
+  box-sizing: border-box;
   height: 560px;
   border: 1px solid #E3E8EF;
   border-radius: 8px;
@@ -91,6 +92,7 @@ const Viewer = styled.div`
 
 const PasteArea = styled.textarea`
   width: 100%;
+  box-sizing: border-box; /* 없으면 padding+border 만큼 패널 밖으로 나간다(실측 +25px) */
   min-height: 120px;
   padding: 10px 12px;
   border: 1px solid #C7CED6;
@@ -103,16 +105,24 @@ const PasteArea = styled.textarea`
 
 const Row = styled.div`
   display: grid;
-  grid-template-columns: 1.6fr 0.9fr 1fr 1fr auto;
+  /* 마지막 칸을 auto 로 두면 «Apply to open orders too» 한 줄이 그대로 폭이 돼
+     금액 칸을 밀어붙여 «95.00» 이 «95.0» 으로 잘렸다. 상한을 두어 라벨이 줄바꿈하게 하고,
+     금액·수량 칸에는 숫자가 다 보이는 최소 폭을 준다. */
+  grid-template-columns: 1.4fr 0.8fr minmax(96px, 1fr) minmax(88px, 1fr) minmax(120px, 150px);
   gap: 10px;
   align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid #EEF2F6;
   &:last-child { border-bottom: 0; }
 
-  /* 좁은 화면에서는 표가 아니라 **카드**로 접는다. 칸마다 무엇인지 라벨이 붙어야
-     숫자만 늘어놓은 줄이 되지 않는다(라벨은 각 Cell 의 data-label). */
-  @media (max-width: 900px) {
+  /* 표가 아니라 **카드**로 접는 조건이 둘이다 — 기준은 «화면 폭»이 아니라 «이 표가 쓸 수 있는 폭».
+       ① ≤900px : 화면 자체가 좁다.
+       ② 1201~1500px : 화면은 넓지만 위 Split 이 2단이라 표가 오른쪽 7/12 만 쓴다.
+          1366(가장 흔한 노트북)에서 표에 남는 폭이 ~504px 뿐이라 5칸을 우겨넣으면
+          «ORDERED PRICE»·«INVOICED PRICE» 머리글이 서로 붙어 읽을 수 없었다.
+     ≤1200 은 Split 이 1단이라 표가 전체 폭을 쓰므로 표 그대로 둔다.
+     (인보이스 미리보기를 옆에 두고 대조하는 것이 이 화면의 목적이라, 2단 자체는 유지한다.) */
+  @media (max-width: 900px), (min-width: 1201px) and (max-width: 1500px) {
     grid-template-columns: 1fr 1fr;
     row-gap: 8px;
     padding: 12px 0;
@@ -131,8 +141,9 @@ const Row = styled.div`
 `;
 
 const HeadRow = styled(Row)`
-  /* 카드형으로 접히면 머리글이 의미가 없다 — 각 칸이 자기 라벨을 갖는다. */
-  @media (max-width: 900px) { display: none; }
+  /* 카드형으로 접히면 머리글이 의미가 없다 — 각 칸이 자기 라벨을 갖는다.
+     조건은 Row 의 카드 전환과 반드시 같아야 한다(어긋나면 머리글만 남아 어긋난 표가 된다). */
+  @media (max-width: 900px), (min-width: 1201px) and (max-width: 1500px) { display: none; }
   padding-bottom: 6px;
   border-bottom: 1px solid #D8DEE6;
   font-size: 11px;
@@ -146,6 +157,36 @@ const Cell = styled.div`
   min-width: 0;
   font-size: 13px;
   color: #0A2540;
+
+  /* 🔴 겹침의 원인 — 공용 ThemedInput 에는 width 가 없어 고유 폭(~150px)을 유지한다.
+     칸(Cell)은 min-width:0 이라 줄어드는데 입력칸은 안 줄어드니, 줄어든 칸 밖으로 삐져나와
+     **옆 칸(원가 반영 체크박스)을 덮었다.** 칸 폭에 맞추고 padding·border 를 폭 안에 넣는다.
+     체크박스는 제외한다(고정 크기라 늘리면 안 된다). */
+  input:not([type='checkbox']):not([type='radio']) {
+    width: 100%;
+    box-sizing: border-box;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  /* 숫자칸의 위아래 화살표(스피너)를 없앤다.
+     화살표가 폭을 ~15px 먹어서 노트북 폭(1366)에서 «38.00» 이 «38.0» 으로 잘렸다.
+     POS 는 터치·숫자입력이 전제라 화살표를 쓸 일이 없다(메모리 touchscreen_no_keyboard). */
+  input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* 체크박스 라벨은 줄바꿈을 허용한다 — 한 줄로 버티면 그 폭이 칸 폭이 돼 옆 칸을 밀어낸다. */
+  label {
+    white-space: normal;
+    align-items: flex-start;
+  }
 `;
 
 const Muted = styled.div`
