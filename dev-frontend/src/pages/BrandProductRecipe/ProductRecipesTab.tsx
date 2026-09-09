@@ -805,7 +805,11 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
   const { t } = useTranslation(['recipes', 'common']);
   const [recipes, setRecipes] = useState<ProductRecipe[]>([]);
+  // `ingredients` = 이름·원가를 **찾아 쓰는** 목록(비활성 포함 전체).
+  // `pickerIngredients` = 드롭다운에 **고르게 내놓는** 목록(비활성 제외).
+  // 하나로 쓰면 비활성이 된 재료를 쓰는 레시피에서 이름·원가가 통째로 깨진다(2026-09-09).
   const [ingredients, setIngredients] = useState<ProductIngredient[]>([]);
+  const [pickerIngredients, setPickerIngredients] = useState<ProductIngredient[]>([]);
   const [categories, setCategories] = useState<ProductRecipeCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -851,6 +855,8 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
     quantity: string;
     unit: string;
     notes: string;
+    ingredient?: ProductIngredient;   // 서버가 준 재료(목록에 없어도 이름·원가를 안다)
+    saved_cost?: number | string;     // 저장돼 있던 줄 원가
   }>>([]);
 
   // View mode for modal
@@ -909,7 +915,9 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
         onCountChange?.(recipesRes.data?.length || 0);
       }
       if (ingredientsRes.success) {
-        setIngredients((ingredientsRes.data || []).filter((i: ProductIngredient) => i.is_active));
+        const all: ProductIngredient[] = ingredientsRes.data || [];
+        setIngredients(all);                                    // 조회용 — 비활성도 들어 있다
+        setPickerIngredients(all.filter(i => i.is_active));      // 선택기 — 활성만 고를 수 있다
       }
       if (categoriesRes.success) {
         setCategories(categoriesRes.data || []);
@@ -982,7 +990,11 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
           ingredient_id: ri.ingredient_id,
           quantity: ri.quantity.toString(),
           unit: ri.unit,
-          notes: ri.notes || ''
+          notes: ri.notes || '',
+          // 서버가 이미 붙여 준 재료·저장 원가를 들고 다닌다 — 목록에서 못 찾아도
+          // 이름·원가를 제대로 보여주고, 저장 때 원가를 0 으로 덮지 않기 위해서다.
+          ingredient: (ri as any).ingredient,
+          saved_cost: (ri as any).cost
         })));
       } else {
         setFormIngredients([]);
@@ -1046,17 +1058,62 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
     setFormIngredients(formIngredients.filter((_, i) => i !== index));
   };
 
+  // 레시피 줄 → 재료 해석. **서버가 준 값이 1순위**다.
+  //   목록(`ingredients`)은 화면 사정으로 걸러질 수 있지만, 서버 응답의 `fi.ingredient` 는
+  //   그 줄이 실제로 가리키는 재료다. 이 순서를 뒤집었다가 이름이 «Ingredient #307» 로
+  //   뜨고 원가가 0 이 됐다(운영 실측: 비활성 재료 #307 #308, 저장 원가 10.50·3.75).
+  const resolveIng = (fi: any): any =>
+    fi?.ingredient || ingredients.find(i => i.id === fi?.ingredient_id) || null;
+
   // 재료 한 줄의 값 — Irene 2026-09-05 "재료옆에 각각 가격표시".
   //   ⚠ 하단 합계와 **같은 식**이어야 한다 — 그래서 합계가 이 함수를 쓴다.
+  //   ⚠ **저장 식과도 같아야 한다** — 보이는 값과 저장되는 값이 달랐다(단위 변환 유무).
   const lineCost = (fi: any): number | null => {
-    const ing = ingredients.find(i => i.id === fi.ingredient_id);
+    const ing = resolveIng(fi);
     if (!ing || !fi.quantity) return null;
     const qty = parseFloat(fi.quantity);
     if (!isFinite(qty)) return null;
-    return qty * (ing.unit_cost / (ing.base_quantity || 1));
+    const baseQty = parseFloat(String(ing.base_quantity || 1)) || 1;
+    const perUnit = parseFloat(String(ing.unit_cost ?? 0)) / baseQty;
+    const converted = calculateIngredientCost(perUnit, ing.unit, qty, fi.unit || ing.unit);
+    if (converted !== null) return converted;
+    const saved = parseFloat(String(fi.saved_cost ?? ''));
+    return isFinite(saved) ? saved : null;
   };
 
   const calculateTotalCost = () => formIngredients.reduce((sum, fi) => sum + (lineCost(fi) || 0), 0);
+
+  // 목록·상세에 보이는 «총 재료 원가» — 줄 값과 **같은 식으로 다시 더한다**.
+  //   저장된 `total_ingredient_cost` 를 그대로 믿지 않는 이유: 재료를 못 찾으면 0 을 저장하던
+  //   옛 결함 때문에 0 이 박힌 레시피가 있다. 줄 값은 제대로 나오는데 합계만 0 이면
+  //   «고쳤는데 원가가 여전히 0» 으로 보인다.
+  const recipeTotalCost = (recipe: any): number => {
+    const lines = recipe?.recipeIngredients || [];
+    if (lines.length) {
+      const sum = lines.reduce((s: number, ri: any) => s + (lineCost(ri) || 0), 0);
+      if (sum > 0) return sum;
+    }
+    const stored = parseFloat(String(recipe?.total_ingredient_cost ?? 0));
+    return isFinite(stored) ? stored : 0;
+  };
+
+  // 드롭다운에 내놓을 목록 = 활성 재료 + **이 레시피가 이미 쓰고 있는 재료**.
+  //   후자를 빼면 비활성이 된 재료를 쓰는 줄이 편집 화면에서 빈 칸으로 보인다.
+  const ingredientOptions = React.useMemo(() => {
+    const base: any[] = pickerIngredients.length ? pickerIngredients : ingredients;
+    const have = new Set(base.map((x: any) => String(x.id)));
+    const extra: any[] = [];
+    formIngredients.forEach((fi: any) => {
+      const id = fi?.ingredient_id;
+      if (id === undefined || id === null || have.has(String(id))) return;
+      const resolved = resolveIng(fi);
+      if (!resolved) return;
+      have.add(String(id));
+      extra.push({ ...resolved, id });
+    });
+    return [...base, ...extra];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickerIngredients, ingredients, formIngredients]);
 
   const handleSave = async () => {
     setFormError(null);
@@ -1094,16 +1151,11 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
         ingredients: formIngredients
           .filter(fi => fi.ingredient_id && fi.quantity)
           .map(fi => {
-            const ingredient = ingredients.find(ing => ing.id === fi.ingredient_id);
-            // 단위 변환을 고려한 비용 계산
-            const cost = ingredient
-              ? calculateIngredientCost(
-                  ingredient.unit_cost / (ingredient.base_quantity || 1),
-                  ingredient.unit,
-                  parseFloat(fi.quantity),
-                  fi.unit
-                ) || 0
-              : 0;
+            // 원가는 화면에 보이는 줄 값(`lineCost`)과 **같은 식**으로 저장한다.
+            // 재료를 못 찾거나 단위 환산이 안 되면 **0 으로 덮지 않고 저장돼 있던 값을 지킨다**.
+            const computed = lineCost(fi);
+            const saved = parseFloat(String(fi.saved_cost ?? ''));
+            const cost = computed !== null ? computed : (isFinite(saved) ? saved : 0);
             return {
               ingredient_id: fi.ingredient_id,
               quantity: parseFloat(fi.quantity),
@@ -1245,7 +1297,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
               <RecipeCosts>
                 <CostItem>
                   <CostLabel>{'Ingredient Cost'}</CostLabel>
-                  <CostValue>{formatCurrency(recipe.total_ingredient_cost || 0, selectedCurrency)}</CostValue>
+                  <CostValue>{formatCurrency(recipeTotalCost(recipe), selectedCurrency)}</CostValue>
                 </CostItem>
                 <CostItem>
                   <CostLabel>{'Suggested Price'}</CostLabel>
@@ -1367,7 +1419,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
               <ViewGrid>
                 <ViewGridItem>
                   <ViewGridLabel>{'Ingredient Cost'}</ViewGridLabel>
-                  <ViewGridValue>{formatCurrency(Number(editingRecipe.total_ingredient_cost || 0), selectedCurrency)}</ViewGridValue>
+                  <ViewGridValue>{formatCurrency(recipeTotalCost(editingRecipe), selectedCurrency)}</ViewGridValue>
                 </ViewGridItem>
                 <ViewGridItem>
                   <ViewGridLabel>{'Suggested Price'}</ViewGridLabel>
@@ -1423,10 +1475,11 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
                   </thead>
                   <tbody>
                     {formIngredients.map((fi, idx) => {
-                      const ingredient = ingredients.find(ing => ing.id === fi.ingredient_id);
-                      const baseQty = ingredient?.base_quantity || 1;
-                      const costPerUnit = (ingredient?.unit_cost || 0) / baseQty;
-                      const subtotal = parseFloat(fi.quantity) * costPerUnit;
+                      const ingredient: any = resolveIng(fi);
+                      const baseQty = parseFloat(String(ingredient?.base_quantity || 1)) || 1;
+                      const costPerUnit = parseFloat(String(ingredient?.unit_cost || 0)) / baseQty;
+                      // 소계는 줄 원가와 같은 식(단위 환산 포함)을 쓴다.
+                      const subtotal = lineCost(fi) ?? 0;
                       return (
                         <tr key={idx}>
                           <td><strong>{ingredient?.name || `Ingredient #${fi.ingredient_id}`}</strong></td>
@@ -1652,8 +1705,8 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
               return (
                 <IngredientRow key={index}>
                   <SearchableSelect
-                    options={ingredients.map(ing => {
-                      const costPerUnit = ing.unit_cost / (ing.base_quantity || 1);
+                    options={ingredientOptions.map((ing: any) => {
+                      const costPerUnit = parseFloat(String(ing.unit_cost ?? 0)) / (parseFloat(String(ing.base_quantity || 1)) || 1);
                       return {
                         value: ing.id,
                         label: ing.name,
