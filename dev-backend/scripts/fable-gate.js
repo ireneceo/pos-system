@@ -40,11 +40,33 @@ const SKIP = path.join(STATE_DIR, '.fable-gate-skip');
 const SKIP_LOG = path.join(STATE_DIR, 'fable-gate-skips.log');
 const SENSITIVE = path.join(REPO, 'dev-backend', 'scripts', 'check-sensitive-diff.js');
 
-// 게이트 자신의 상태 파일 — 지문 계산에서 제외한다.
-// ⚠ 제외하지 않으면 자기참조 결함이 난다(실측): nag 를 쓰는 순간 워킹트리가 바뀌어 지문이
-// 달라지고, 그래서 "같은 지문 1회만 차단"이 영원히 성립하지 않아 **대화가 훅에 갇힌다**.
-// 첫 고장주입(FI-b)에서 바로 재현됐다.
-const SELF_STATE_RE = /\.claude\/(\.fable-gate-(pass|nag|skip)|fable-gate-skips\.log)/;
+// 지문 계산에서 제외하는 «작업 일지» 파일들 — **경로 목록 하나가 단일 소스**다.
+// 아래 정규식과 git pathspec 을 둘 다 이 목록에서 만든다(규칙 두 벌 금지).
+//
+// ① 게이트 자신의 상태 파일: 제외하지 않으면 자기참조 결함이 난다(실측).
+//    nag 를 쓰는 순간 워킹트리가 바뀌어 지문이 달라지고, "같은 지문 1회만 차단"이 영원히
+//    성립하지 않아 **대화가 훅에 갇힌다**. 첫 고장주입(FI-b)에서 바로 재현됐다.
+// ② `.claude/session-state.md`: 배포도 실행도 되지 않는 **작업 일지**이고, CLAUDE.md 가
+//    «작업 시작/완료 시 즉시 갱신» 하라고 **의무화한 파일**이다. 지문의 뜻은
+//    «검증한 코드가 그대로인가» 이지 «일지를 안 썼는가» 가 아니다. 게이트가 의무 행동을
+//    벌하면 안 된다. (2026-09-10 Fable 판정 — 마커를 받은 뒤 상태를 저장할 때마다
+//    마커가 죽어 Fable 을 반복 호출해야 했다.)
+//
+// ⛔ `docs/`·`*.md`·`DEVELOPMENT_PLAN.md` 는 **제외하지 않는다.** 문서 변경도 «검증 뒤 손댔다» 는
+//    사실로 남는 게 맞다. 제외는 좁게, 이유가 있는 파일만.
+const SELF_STATE_PATHS = [
+  '.claude/.fable-gate-pass',
+  '.claude/.fable-gate-nag',
+  '.claude/.fable-gate-skip',
+  '.claude/fable-gate-skips.log',
+  '.claude/session-state.md',
+];
+/** 이 줄(porcelain 한 줄 · 파일 경로 · ls-tree 한 줄)이 제외 대상인가. 정규식 이스케이프 대신 경로 포함 검사. */
+function isSelfState(line) {
+  return SELF_STATE_PATHS.some((f) => line.includes(f));
+}
+// `git diff` / `git ls-tree` 에 그대로 넘길 제외 pathspec — 같은 목록에서 만든다.
+const EXCLUDE_SPEC = SELF_STATE_PATHS.map((f) => `':!${f}'`).join(' ');
 
 /**
  * 워킹트리 상태 지문 — **내용까지** 해시한다. 검증 후 한 줄이라도 고치면 값이 달라져 마커가 죽는다.
@@ -56,19 +78,21 @@ const SELF_STATE_RE = /\.claude\/(\.fable-gate-(pass|nag|skip)|fable-gate-skips\
  */
 function fingerprint() {
   const porcelainRaw = execSync('git -C ' + REPO + ' status --porcelain', { encoding: 'utf8' });
-  const porcelain = porcelainRaw.split('\n').filter((l) => l && !SELF_STATE_RE.test(l)).join('\n');
+  const porcelain = porcelainRaw.split('\n').filter((l) => l && !isSelfState(l)).join('\n');
 
   // 추적 파일의 실제 변경 내용
   let diff = '';
   try {
-    diff = execSync('git -C ' + REPO + ' diff HEAD', { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    // 제외 경로는 pathspec 으로 뺀다 — 종전엔 여기에 필터가 **없어서**, porcelain·untracked 에서
+    // 제외해도 내용 diff 로 그대로 새어 들어왔다(2026-09-10 실측).
+    diff = execSync(`git -C ${REPO} diff HEAD -- . ${EXCLUDE_SPEC}`, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   } catch { diff = '(diff 실패)'; }
 
   // 미추적 파일은 diff 에 안 잡히므로 내용 해시를 따로 만든다(gitignore 는 git 이 걸러준다).
   let untrackedDigest = '';
   try {
     const list = execSync('git -C ' + REPO + ' ls-files --others --exclude-standard', { encoding: 'utf8' })
-      .split('\n').filter((f) => f && !SELF_STATE_RE.test(f)).sort();
+      .split('\n').filter((f) => f && !isSelfState(f)).sort();
     untrackedDigest = list.map((f) => {
       try {
         const buf = fs.readFileSync(path.join(REPO, f));
@@ -77,14 +101,23 @@ function fingerprint() {
     }).join('\n');
   } catch { untrackedDigest = '(untracked 목록 실패)'; }
 
-  // HEAD 커밋도 지문에 넣는다 (2026-09-01 Fable 적발).
+  // HEAD 도 지문에 넣는다 (2026-09-01 Fable 적발).
   // ⚠ 워킹트리가 깨끗하면 porcelain·diff·untracked 가 **전부 비어** 지문이 커밋과 무관하게
   //   항상 같은 값이었다. 그래서 **P1 에 찍은 마커가 P2 커밋에도 "유효"로 떴다** —
   //   검증받지 않은 코드가 검증받은 것처럼 통과하는 구멍이다.
-  //   커밋이 바뀌면 지문도 바뀌어야 "이 커밋을 판정했다"가 성립한다.
+  //
+  // 다만 **커밋 해시**를 그대로 쓰면 안 된다(2026-09-10 Fable 판정): 작업 일지 한 줄을
+  //   커밋해도 해시가 바뀌어 마커가 죽는다. 지문의 뜻은 «검증한 코드가 그대로인가» 이므로
+  //   **HEAD 트리의 내용**(제외 경로를 뺀 경로:blob 목록)을 해시한다.
+  //   → 일지만 커밋하면 값이 그대로, 코드가 바뀌면 값이 달라진다.
+  // ⚠ `ls-tree` 는 exclude pathspec(`:!경로`)을 지원하지 않는다(실측: "pathspec magic not supported").
+  //    그래서 출력을 받아 **같은 목록(`isSelfState`)으로 걸러낸다** — 규칙은 여전히 한 벌이다.
   let head = '';
-  try { head = execSync('git -C ' + REPO + ' rev-parse HEAD', { encoding: 'utf8' }).trim(); }
-  catch { head = '(HEAD 없음)'; }
+  try {
+    const tree = execSync(`git -C ${REPO} ls-tree -r HEAD`, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+      .split('\n').filter((l) => l && !isSelfState(l)).join('\n');
+    head = crypto.createHash('sha256').update(tree).digest('hex');
+  } catch { head = '(HEAD 없음)'; }
 
   const hash = crypto.createHash('sha256')
     .update(head).update('\0')
