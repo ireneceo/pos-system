@@ -6,11 +6,11 @@
 
 > ### ▶ 다음 세션 시작 지점 — 여기부터 읽는다
 >
-> 1. 🔴 **`verify-all --full` 결과부터 확인한다.** 세션 종료 시점에 **mount sweep 이 돌던 중**이었다.
->    로그: `/tmp/claude-1000/-var-www/330accdd-25ab-4660-85c2-f027152de631/scratchpad/verify3.log`
->    (사라졌으면 `cd /var/www/dev-backend && node scripts/verify-all.js --full` 재실행 — 12분)
->    번들 `main.fec0c49d.js` = F1·F2 포함본, e2e 5×3 = **15/15 통과**(이 번들 기준), F2 단위 2/2.
->    통과 확인되면 → Fable(`a95d9449bd91451f6`)에 결과 보고 → 마커 → Irene `/배포`.
+> 1. ✅ **검증은 끝났다.** 번들 `main.fec0c49d.js`(F1·F2 포함) 기준 `verify-all --full` **19/19 전 게이트 통과**
+>    (mount sweep 686.1초 크래시 0) · e2e 5×3 = **15/15** · F2 단위 2/2 · 인쇄 보호파일 8/8 무변경.
+>    **Fable(`a95d9449bd91451f6`)에 결과 보고까지 마쳤다 — 마커 판정 회신만 받으면 된다.**
+>    회신이 없으면 그 에이전트에 `SendMessage` 로 다시 물어라(새 세션을 띄우지 말 것 — 맥락이 그 안에 있다).
+>    마커를 받으면 → Irene `/배포`.
 >    ⚠ 빌드는 `heavy-task-gate` 에 두 번 막혔었다. **종료코드 말고 번들 해시를 봐라.**
 > 2. **09-23 시한**: 그날 운영 청구서 15장이 «연체» 로 뒤집히고 매장에 근거 없는 연체 메일이 나간다.
 >    그 전에 배포돼야 한다. 배포 준비물(릴리즈 기록·SW 5.01)은 이미 다 있다.
@@ -214,25 +214,22 @@ Irene 신고: *"브랜드제너럴에서 브랜드레시피 넣을 때 재료 �
 
 ## 진행 중인 작업
 
-🔴 **Fable 게이트 필수 수정 3건(F1·F2·F3) — 코드는 다 넣었으나 «빌드가 안 됐다».**
-**다음 세션은 여기서 시작한다.**
+🟢 **Fable 게이트 필수 수정 3건(F1·F2·F3) — 반영·빌드·검증 전부 완료. 마커 회신만 대기.**
 
 - F1 `tableSession.ts` — `getActiveTable()` 안의 만료 호출 제거 ✅ 코드 반영
 - F2 `kioskMode.ts` + `MobileLayout.tsx` — `onIdle` 이 `false` 면 타이머 재무장 ✅ 코드 반영
   단위 테스트 신규 `src/mobile/utils/kioskIdle.guard.test.ts` **2/2 통과**(빌드 불필요)
 - F3 마이그의 `BACKDATE_ISSUED_AT` 스위치·주석 SQL 삭제 ✅ 코드 반영 (dry-run 정상)
 
-⚠ **서빙 번들은 아직 `main.da2deb9a.js` = F1·F2 가 들어가지 않은 옛 번들이다.**
-빌드가 `heavy-task-gate` 에 두 번 막혔다(PlanQ `tsc -b` 3.1GB 동시 실행).
-백그라운드 대기-빌드를 걸어 두었으므로 **다음 세션에서 번들 해시부터 확인**할 것.
-그 사이 돌린 e2e 5×3 = 15/15 는 **옛 번들 기준이라 F1 을 증명하지 못한다.**
+서빙 번들 `main.fec0c49d.js` = F1·F2 포함본. `verify-all --full` **19/19** · e2e 5×3 **15/15** ·
+F2 단위 2/2 · mount sweep 686초 크래시 0. 커밋 `fa3a2558f` · `d574386cc`, 워킹트리 클린.
 
-**다음 세션 순서:**
-1. `ls -t /var/www/dev-frontend-build/static/js/main.*.js | head -1` — `da2deb9a` 가 아니어야 한다.
-   그대로면 `cd /var/www/dev-frontend && npm run build:dev` (PlanQ 빌드 끝난 뒤)
-2. `npx playwright test e2e/mobile-order-session-ttl.spec.js --config=e2e/playwright.config.js` × 3회
-3. `cd /var/www/dev-backend && node scripts/verify-all.js --full`
-4. 결과를 Fable(`a95d9449bd91451f6`)에 보고 → 마커 → Irene `/배포`
+⚠ 이 과정에서 **빌드가 `heavy-task-gate` 에 두 번 조용히 막혔다**(PlanQ `tsc -b` 3.1GB).
+래퍼 종료코드는 0 이었고 옛 번들이 그대로 서빙되고 있었다. 그 사이 돌린 e2e 15/15 는
+**옛 번들 기준이라 F1 을 증명하지 못하는 값**이었고, 번들 해시 대조로 알아채 재빌드 후 다시 돌렸다.
+→ **프론트 검증은 언제나 번들 해시부터 대조한다.**
+
+**다음 세션 순서:** Fable 마커 회신 확인 → Irene `/배포` (09-23 전)
 
 
 
