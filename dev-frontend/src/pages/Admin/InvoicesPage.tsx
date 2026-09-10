@@ -963,6 +963,9 @@ const InvoicesPage: React.FC = () => {
 
   const isInvoiceOverdue = (invoice: Invoice): boolean => {
     if (invoice.status !== 'pending_payment') return false;
+    // 마감일이 없는 청구서(외부 공급업체 — 결제조건을 합의한 적이 없다)는 **연체가 되지 않는다.**
+    // `new Date(null|undefined)` 는 1970 / Invalid Date 라, 가드가 없으면 전부 «연체» 로 물든다.
+    if (!invoice.dueDate) return false;
     const now = new Date();
     const dueDate = new Date(invoice.dueDate);
     return dueDate < now;
@@ -1037,7 +1040,8 @@ const InvoicesPage: React.FC = () => {
       case 'invoiceNumber': comparison = a.invoiceNumber.localeCompare(b.invoiceNumber); break;
       case 'companyName': comparison = (a.companyName || '').localeCompare(b.companyName || ''); break;
       case 'issueDate': comparison = new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime(); break;
-      case 'dueDate': comparison = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(); break;
+      // 마감일 없는 건은 1970 으로 앞줄에 서지 않게 맨 뒤로 보낸다(무한대).
+      case 'dueDate': comparison = (a.dueDate ? new Date(a.dueDate).getTime() : Infinity) - (b.dueDate ? new Date(b.dueDate).getTime() : Infinity); break;
       case 'amount': comparison = a.total - b.total; break;
       case 'status': comparison = (a.status || '').localeCompare(b.status || ''); break;
       default: comparison = new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime();

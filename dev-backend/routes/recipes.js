@@ -922,18 +922,29 @@ router.post('/brands/:brandId/recipes/:recipeId/copy', authenticateToken, isBran
       is_active: source.is_active
     });
 
-    // Copy ingredients
+    // Copy ingredients — 줄 원가는 **서버가 다시 계산한다**(2026-09-10 Fable 판정).
+    //   저장돼 있던 `ri.cost` 를 그대로 복사하면, 원본에 0 이 박혀 있을 때 사본에도 0 이 번진다.
+    //   화면은 이미 재계산해서 보여주지만(v3.87) 복사 경로만 옛 값을 그대로 옮기고 있었다 —
+    //   저장 경로 3개(브랜드 POST·PUT, 매장 POST)에 이어 **네 번째 경로**다.
+    //   대상은 브랜드 레시피라 매장 오버라이드는 해당 없음. 계산 불가 줄만 저장돼 있던 값으로 폴백한다.
+    const srcItems = source.recipeIngredients || [];
+    const copyIngMap = await loadIngredientMap(srcItems.map(ri => ({ ingredient_id: ri.ingredient_id })));
     let totalCost = 0;
-    for (const ri of (source.recipeIngredients || [])) {
+    for (const ri of srcItems) {
+      const cost = resolveLineCost(
+        copyIngMap.get(parseInt(ri.ingredient_id, 10)),
+        { quantity: ri.quantity, unit: ri.unit, cost: ri.cost },
+        ri.cost
+      );
       await RecipeIngredient.create({
         recipe_id: copy.id,
         ingredient_id: ri.ingredient_id,
         quantity: ri.quantity,
         unit: ri.unit,
-        cost: ri.cost,
+        cost,
         notes: ri.notes
       });
-      totalCost += Number(ri.cost || 0);
+      totalCost += Number(cost || 0);
     }
     if (totalCost !== Number(source.total_ingredient_cost)) {
       await copy.update({ total_ingredient_cost: totalCost });

@@ -136,6 +136,24 @@ Restaurant: currency 설정 (System Admin 지원 범위 내)
 > 종전 문장은 «D+3/D+7/D+14 리마인더 포함 … 기존 파이프라인이 그대로 커버» 라고 적혀 있었으나
 > 사실과 달랐다. 같은 취지의 잘못된 주석이 `invoiceOverdueScheduler.js` 머리에도 있었고 함께 고쳤다.
 
+### 🔴 `due_date` 는 NULL 일 수 있다 (2026-09-10 · 외부 공급업체)
+
+**외부(미가입) 공급업체 거래 청구서에는 마감일이 없다.** 결제조건을 넣을 자리가 구조적으로 없기 때문이다 —
+`payment_terms` 는 `supplier_contracts`(가입 공급업체 계약)에만 있고, 외부 공급업체는 계약에 그 값이 비어
+`purchaseOrderService` 의 `NET_15` 폴백을 탔다. 합의한 적 없는 값이라 **비운다**(Fable 판정).
+`models/Invoice.js` 의 `due_date` 는 이제 `allowNull: true` 다.
+
+읽는 쪽 규칙 — **널 가드 없이 `new Date(due_date)` 를 쓰지 말 것.**
+`new Date(null)` 은 **1970-01-01** 이라 «마감일이 지났다» 가 참이 되고, 화면은 연체 색으로,
+메일은 «Due Jan 1, 1970» 으로 나간다. `.toISOString()` 은 아예 예외를 던진다.
+- 화면 연체 판정: `if (!invoice.dueDate) return false` (Restaurant · Admin · Owner · BrandGeneral 4곳)
+- 정렬: 마감일 없는 건은 맨 뒤(Infinity)
+- 메일: 널안전 `fmtDate` (없으면 `—`)
+- 연체 스케줄러는 `due_date < today` 로 고르므로 **NULL 은 자동으로 대상에서 빠진다**(실호출로 확인).
+
+⛔ 브랜드·푸드코트 판매자 청구서는 해당 없음 — `brand_billing_terms` 가 비었을 때의 NET_15 는
+**내부 판매자 정책**이라 그대로 둔다.
+
 ---
 
 ### 2.2 Brand 자동/수동 일괄 발행 (Brand Generate Invoices)

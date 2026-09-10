@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useMobileOrder } from '../../contexts/MobileOrderContext';
 import { setupMobileInputHandlers } from '../../utils/mobileInputFix';
 import { getActiveTable, clearActiveTable } from '../../utils/tableSession';
-import { isKioskMode, watchKioskIdle } from '../../utils/kioskMode';
+import { isKioskMode, watchKioskIdle, KIOSK_PAYMENT_IDLE_MS, isPaymentInFlight } from '../../utils/kioskMode';
 
 const LayoutContainer = styled.div`
   min-height: 100vh;
@@ -312,14 +312,19 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
   useEffect(() => {
     if (!kiosk) return;
     const path = location.pathname;
-    if (path.includes('/payment') || path.includes('/order/')) return;
+    // 주문 추적 화면은 그대로 둔다 — 이미 낸 주문을 보고 있는 중이다.
+    if (path.includes('/order/')) return;
+    // 결제 화면은 **끄지 않고 길게** 준다(5분). 종전엔 아예 꺼서, 결제 직전에 떠난 손님의
+    // 장바구니가 영구히 남았다. 단 결제 요청이 이미 나간 뒤에는 절대 리셋하지 않는다.
+    const isPayment = path.includes('/payment');
     const slug = currentStore?.slug || sessionStorage.getItem('restaurantSlug');
     if (!slug) return;
     return watchKioskIdle(() => {
+      if (isPayment && isPaymentInFlight()) return;   // 낸 돈의 주문을 잃지 않는다
       clearCart();
       clearActiveTable();
       navigate(`/mobile/${slug}?kiosk=1&picker=1`);
-    });
+    }, isPayment ? KIOSK_PAYMENT_IDLE_MS : undefined);
   }, [kiosk, currentStore?.slug, clearCart, navigate, location.pathname]);
 
   // 하단 nav 컨텍스트 영속화 — Account 등 공유 페이지를 reserve 흐름에서 진입해도

@@ -338,7 +338,10 @@ router.get('/overdue-invoices', async (req, res) => {
 
     const data = invoices.map(inv => {
       const nowTz = req.siteTimezone ? getLocalDate(req.siteTimezone) : new Date();
-      const daysOverdue = Math.round((nowTz - new Date(inv.due_date)) / (1000 * 60 * 60 * 24));
+      // 마감일 없는 청구서(외부 공급업체)는 연체 일수가 존재하지 않는다 — NaN 대신 null.
+      const daysOverdue = inv.due_date
+        ? Math.round((nowTz - new Date(inv.due_date)) / (1000 * 60 * 60 * 24))
+        : null;
       return {
         id: inv.id,
         invoiceNumber: inv.invoice_number,

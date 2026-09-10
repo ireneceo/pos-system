@@ -258,7 +258,9 @@ router.get('/subscriptions/manager/:managerId', authenticateToken, async (req, r
         currentOrders: currentOrders,
         features: [], // Will be filled by frontend based on plan
         lastPayment: lastPaidInvoice ? lastPaidInvoice.paid_at.toISOString().split('T')[0] : '-',
-        nextPayment: nextInvoice ? nextInvoice.due_date.toISOString().split('T')[0] : new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+        // ⚠ 이 목록은 매장의 **모든** 청구서를 담는다(카테고리 필터 없음) — 거래 청구서도 섞인다.
+        //    외부 공급업체 거래 청구서는 마감일이 NULL 이라 `.toISOString()` 이 예외를 던진다.
+        nextPayment: nextInvoice?.due_date ? new Date(nextInvoice.due_date).toISOString().split('T')[0] : new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
         autoRenew: restaurant.auto_renew !== undefined && restaurant.auto_renew !== null ? restaurant.auto_renew : restaurant.status === 'active',
         location: restaurant.address || 'No address provided',
         discountType: restaurant.discount_type || 'none',

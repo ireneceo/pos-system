@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { touchOrderSession, expireOrderSessionIfStale } from '../utils/tableSession';
 
 interface BreakTime {
   id: string;
@@ -158,7 +159,20 @@ interface MobileOrderProviderProps {
   children: ReactNode;
 }
 
+// 만료 검사는 상태 초기값을 읽기 **전에**, 페이지 로드당 한 번만 돈다.
+// (렌더마다 저장소를 뒤지지 않게 하는 가드 — 값 자체는 tableSession 이 판단한다.)
+let sessionSweepDone = false;
+function sweepStaleOrderSessionOnce(): void {
+  if (sessionSweepDone) return;
+  sessionSweepDone = true;
+  expireOrderSessionIfStale();
+}
+
 export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ children }) => {
+  // 낡은 주문 세션(4시간 초과)은 장바구니·주문유형·테이블을 **함께** 비운다.
+  // useState 초기값들이 localStorage 를 읽기 전에 실행돼야 한다 — 그래서 본문 첫 줄이다.
+  sweepStaleOrderSessionOnce();
+
   // Store state
   const [currentStore, setCurrentStore] = useState<Store | null>(null);
 
@@ -177,6 +191,7 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
     setOrderTypeState(type);
     if (type) {
       localStorage.setItem('orderType', type);
+      touchOrderSession();   // 쓰기 — 세션 시계를 다시 맞춘다
     } else {
       localStorage.removeItem('orderType');
     }
@@ -197,6 +212,7 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
     setCartItemsState(prev => {
       const newItems = typeof updater === 'function' ? updater(prev) : updater;
       localStorage.setItem('mobile_cart', JSON.stringify(newItems));
+      touchOrderSession();   // 쓰기 — 담기·수량변경·삭제 모두 이 한 곳을 지난다
       return newItems;
     });
   }, []);

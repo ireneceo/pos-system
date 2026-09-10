@@ -118,7 +118,33 @@ async function resolvePaymentTerms(po) {
     }
   }
 
-  return { terms: 'NET_15', invoice_cycle: 'immediate', currency: po.currency || 'MYR' };
+  // 합의된 결제조건이 없다. `agreed:false` 로 표시해 두면 마감일을 붙일지 말지를
+  // 부르는 쪽이 정할 수 있다 — 외부 공급업체는 마감일 자체를 비운다(아래 resolveDueDate).
+  return { terms: 'NET_15', invoice_cycle: 'immediate', currency: po.currency || 'MYR', agreed: false };
+}
+
+/**
+ * 이 발주의 판매자가 **외부(미가입) 공급업체이고 합의된 결제조건이 없는가.**
+ *
+ * 왜 필요한가 (2026-09-10 Fable 판정):
+ *   `payment_terms` 는 `supplier_contracts` — 즉 **우리 솔루션에 가입한** 공급업체의 계약 —
+ *   에만 있다. 외부 공급업체는 계약 행 자체가 없어 결제조건을 넣을 자리가 구조적으로 없고,
+ *   그래서 위 폴백 `NET_15` 를 탔다. 그건 **합의한 적 없는 지어낸 값**이다.
+ *   외부 공급업체 청구서는 받을 쪽이 시스템 안에 없는 «매입채무 기록»이므로 마감일을 비운다.
+ *
+ * ⛔ 브랜드·푸드코트 판매자는 여기 해당하지 않는다 — `brand_billing_terms` 가 비었을 때의
+ *    NET_15 는 **내부 판매자 정책**이라 그대로 둔다.
+ */
+async function isExternalSupplierWithoutTerms(po) {
+  if (po.seller_type !== 'supplier' || !po.seller_entity_id) return false;
+  if (po.contract_id) {
+    const contract = await SupplierContract.findByPk(po.contract_id);
+    if (contract?.payment_terms) return false;   // 계약으로 합의된 조건이 있다
+  }
+  const sc = await SupplierCompany.findByPk(po.seller_entity_id, {
+    attributes: ['id', 'is_system_registered']
+  });
+  return !!sc && !sc.is_system_registered;
 }
 
 /**
@@ -142,7 +168,9 @@ async function createTradeInvoice(po) {
   const payer = await resolvePayer(fullPo);
   const invoiceNumber = await generateTradeInvoiceNumber(fullPo);
   const invoiceDate = new Date();
-  const dueDate = computeDueDate(paymentTerms, invoiceDate);
+  // 외부 공급업체 + 합의된 결제조건 없음 → **마감일 없음(NULL)**. 지어낸 NET_15 를 쓰지 않는다.
+  const noAgreedTerms = await isExternalSupplierWithoutTerms(fullPo);
+  const dueDate = noAgreedTerms ? null : computeDueDate(paymentTerms, invoiceDate);
 
   // Resolve issued_by user (NOT NULL):
   //  - supplier seller → SupplierCompany.owner_id
@@ -275,6 +303,7 @@ module.exports = {
   createTradeInvoice,
   resolvePayer,
   resolvePaymentTerms,
+  isExternalSupplierWithoutTerms,
   computeDueDate,
   generateTradeInvoiceNumber
 };

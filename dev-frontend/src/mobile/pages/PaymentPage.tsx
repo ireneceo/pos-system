@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
-import { isKioskMode } from '../utils/kioskMode';
+import { isKioskMode, setPaymentInFlight } from '../utils/kioskMode';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { resolvePaymentSubtype, EWALLET_TYPE_LABELS } from '../../constants';
@@ -574,6 +574,15 @@ const PaymentPage: React.FC = () => {
   const mobileEwalletCfg = resolvePaymentSubtype('ewallet', paymentMethods);
   const [ewalletType, setEwalletType] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // 결제 요청이 나가 있는 동안에는 키오스크 유휴 리셋이 화면을 치우지 않게 표시만 남긴다.
+  //   ⛔ 결제 로직·금액·API 는 건드리지 않는다 — sessionStorage 플래그 하나를 거울처럼 따라갈 뿐이다.
+  //   읽는 쪽은 `MobileLayout` 의 키오스크 유휴 감시 하나뿐(`isPaymentInFlight`).
+  //   이 파일은 react 에서 useState 만 import 하고 훅은 React.* 로 쓴다 — 관례를 따른다.
+  React.useEffect(() => {
+    setPaymentInFlight(isProcessing);
+    return () => setPaymentInFlight(false);
+  }, [isProcessing]);
 
   // 취급 이월렛이 1개면 자동 태깅(손님이 고를 필요 없음). POS PaymentModal 과 동일 규칙.
   // 이 파일은 react 에서 useState 만 import 하고 훅은 React.* 로 쓴다 — 관례를 따른다.

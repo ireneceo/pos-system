@@ -46,3 +46,28 @@ export function watchKioskIdle(onIdle: () => void, ms: number = KIOSK_IDLE_MS): 
     events.forEach(e => window.removeEventListener(e, reset));
   };
 }
+
+/**
+ * 결제 화면의 유휴 시간(ms). 메뉴 화면(90초)보다 길다 — 카드를 꺼내고 지갑을 뒤지는 시간이다.
+ *
+ * 왜 결제 화면에도 감시가 필요한가 (2026-09-10 Fable):
+ *   종전에는 `/payment` 에서 감시를 **아예 껐다**. 그래서 손님이 결제 직전에 마음을 바꿔 자리를 뜨면
+ *   앞사람 장바구니가 결제 화면에 **영구히** 남고, 다음 손님이 그대로 결제할 수 있었다.
+ */
+export const KIOSK_PAYMENT_IDLE_MS = 5 * 60_000;
+
+// 결제 요청이 이미 나갔는가 — 나갔으면 유휴 리셋을 하지 않는다(낸 돈의 주문을 잃지 않게).
+const PAY_KEY = 'mobile_payment_in_flight';
+
+export function setPaymentInFlight(inFlight: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (inFlight) sessionStorage.setItem(PAY_KEY, '1');
+    else sessionStorage.removeItem(PAY_KEY);
+  } catch { /* ignore */ }
+}
+
+export function isPaymentInFlight(): boolean {
+  if (typeof window === 'undefined') return false;
+  try { return sessionStorage.getItem(PAY_KEY) === '1'; } catch { return false; }
+}

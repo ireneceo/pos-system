@@ -35,7 +35,12 @@ Invoice.init({
   },
   due_date: {
     type: DataTypes.DATE,
-    allowNull: false
+    allowNull: true,
+    comment: '외부(미가입) 공급업체 청구서는 NULL — 결제조건을 합의한 적이 없어 마감일이 존재하지 않는다. '
+           + '자리가 구조적으로 없다: payment_terms 는 supplier_contracts(가입 공급업체 계약)에만 있고 '
+           + '외부 공급업체는 계약 행이 없어 예전엔 NET_15 폴백을 탔다(= 지어낸 값). '
+           + '연체 스케줄러는 due_date < today 로 고르므로 NULL 은 자동 제외된다. '
+           + '⚠ 읽는 쪽은 반드시 널 가드를 둔다 — new Date(null) 은 1970 이라 «연체» 로 오판한다.'
   },
   total_amount: {
     type: DataTypes.DECIMAL(10, 2),

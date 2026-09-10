@@ -2153,7 +2153,38 @@ old/new 를 안다. 호출부마다 로그를 쓰지 않는다.
 3. **세금이 사는 곳** — `invoices` 에는 `tax_amount` 칸이 없다. 세금은 `additional_charges` 한 곳에만 산다
    (`utils/invoiceCalculation` Path B). 헤더 칸에 쓰면 조용히 사라진다(실측: 총액 114 → 정정 후 120).
 
-### 남은 미결 — 발주 청구서의 마감일 (2026-09-08 검토)
+### ✅ 해결 — 발주 청구서의 마감일 (2026-09-10 Fable 판정 · 구현 완료 · **미배포**)
+
+> **판정: 외부(미가입) 공급업체 청구서는 마감일을 비운다(NULL).** 09-23 전 배포 필요.
+> 개념 — 외부 공급업체 청구서는 시스템 안에 받을 쪽이 없는 **매입채무 기록**이다.
+> 합의한 적 없는 `NET_15` 는 지어낸 값이므로 붙이지 않는다.
+> ⛔ 브랜드 판매자 1장은 **그대로 둔다** — `brand_billing_terms` 가 비었을 때의 NET_15 는 내부 판매자 정책이다.
+> ⛔ Irene 이 제안한 «마감 = 받은 날짜» 는 채택되지 않았다 — 그러면 다음 날부터 연체가 된다.
+>   주문일·수령일은 4.98 로 이미 화면에 있다.
+>
+> **구현** (2026-09-10):
+> - `services/purchaseOrderService.js` — `isExternalSupplierWithoutTerms()` 신설.
+>   판매자가 supplier 이고 계약에 `payment_terms` 가 없고 `is_system_registered=0` 이면 `due_date = null`.
+> - `models/Invoice.js` — `due_date` `allowNull: true` (사유 주석 포함).
+> - `scripts/migrate-external-supplier-invoice-due-null.js` (registry `deploy`, 멱등) —
+>   ①`ALTER invoices.due_date NULL` ②이미 발행된 «외부 · trade · 미결제 · 마감 = 발행+15일» 을 NULL 로.
+>   손으로 넣은 마감일(gap ≠ 15)은 건드리지 않는다.
+> - **널 가드 6곳** — `Restaurant/Admin/Owner/BrandGeneral` 인보이스 화면의 `isInvoiceOverdue`
+>   (`new Date(null)` = 1970 → «연체» 오판), Admin 목록 마감일 정렬(없는 것은 맨 뒤),
+>   `utils/notificationTemplates.js`(메일에 «Due Jan 1, 1970» 방지 — 기존 널안전 `fmtDate` 재사용),
+>   `routes/restaurants-subscription.js`(카테고리 필터가 없어 거래 청구서가 섞여 들어오는데
+>   `.toISOString()` 이 **예외를 던졌다** — Fable 목록에 없던 것을 실측으로 추가), `routes/admin-reports.js`(NaN 일수).
+> - **미결 1건** — 백필 14장의 `issued_at` 을 수령일로 소급할지. Fable 2026-09-10 판정은 «소급»,
+>   그런데 `scripts/backfill-trade-invoices.js` 머리에는 2026-09-07 Fable 판정 · Irene 승인으로
+>   «발행일은 실행하는 날이다. 소급하지 않는다» 가 박혀 있다. **상반된 판정 2건**이라 마이그에
+>   `BACKDATE_ISSUED_AT = false` 로 꺼 두었다. 게이트에서 판정받는다.
+>
+> **검증** — 실호출 4/4(외부→NULL · 가입→유지 · 스케줄러가 NULL 제외 · 고장주입으로 과거일→연체 전환 재현),
+> 마이그 소급 레그 4/4(대상 집기·NULL 로·가입분 무접촉·재실행 0건 멱등), 마이그 2회 실행 멱등.
+>
+> 아래는 판정 이전의 실측 기록이다(그대로 둔다).
+
+### (기록) 남은 미결 — 발주 청구서의 마감일 (2026-09-08 검토)
 
 운영 발주 청구서 16장(외부 15 · 브랜드 1) 실측:
 

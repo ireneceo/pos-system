@@ -195,7 +195,9 @@ function ticketStatusChangedEmail(ticket, newStatus) {
 function invoiceCreatedEmail(invoice, restaurantName, options = {}) {
   const tz = options.timezone || DEFAULT_TZ;
   const amount = `${invoice.currency} ${parseFloat(invoice.total_amount).toFixed(2)}`;
-  const dueDate = new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: tz });
+  // 마감일은 NULL 일 수 있다(외부 공급업체 — `models/Invoice.js` due_date 주석).
+  // `new Date(null)` 은 1970 이라 가드 없이는 메일에 «Due Jan 1, 1970» 이 찍힌다. fmtDate 가 널이면 '—'.
+  const dueDate = fmtDate(invoice.due_date, 'en', tz);
   const trialNotice = options.isTrial ? `
     <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 16px; margin: 0 0 20px;">
       <p style="color: #065F46; font-size: 14px; font-weight: 600; margin: 0 0 6px;">
@@ -233,7 +235,9 @@ function invoiceCreatedEmail(invoice, restaurantName, options = {}) {
 function invoiceOverdueEmail(invoice, restaurantName, options = {}) {
   const tz = options.timezone || DEFAULT_TZ;
   const amount = `${invoice.currency} ${parseFloat(invoice.total_amount).toFixed(2)}`;
-  const dueDate = new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: tz });
+  // 마감일은 NULL 일 수 있다(외부 공급업체 — `models/Invoice.js` due_date 주석).
+  // `new Date(null)` 은 1970 이라 가드 없이는 메일에 «Due Jan 1, 1970» 이 찍힌다. fmtDate 가 널이면 '—'.
+  const dueDate = fmtDate(invoice.due_date, 'en', tz);
   const title = 'Invoice Overdue';
 
   const body = `
