@@ -1,14 +1,17 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-09-10 UTC
 **운영 버전:** v3.87 계열 (운영 SW `5.00-tablet-kiosk-cart-20260909`)
-**dev 번들:** `main.da2deb9a.js` · dev SW `5.01-invoice-due-null-session-ttl-20260910` — **미배포·미커밋**
+**dev 번들:** `main.fec0c49d.js` (F1·F2 포함) · dev SW `5.01-invoice-due-null-session-ttl-20260910` — **미배포**, 커밋 `fa3a2558f`
 **작업 상태:** 🟡 **Fable 게이트 판정 대기 → 그다음 배포 (09-23 시한 있음)**
 
 > ### ▶ 다음 세션 시작 지점 — 여기부터 읽는다
 >
-> 1. 🔴 **빌드부터 확인한다.** 서빙 번들이 `main.da2deb9a.js` 면 F1·F2 가 안 들어간 것이다.
->    `heavy-task-gate` 가 PlanQ `tsc -b` 때문에 빌드를 두 번 막았다(종료코드만 보면 성공처럼 보인다 — 해시를 봐라).
->    빌드 → e2e 5×3 → `verify-all --full` → Fable(`a95d9449bd91451f6`) 보고 → 마커 → Irene `/배포`.
+> 1. 🔴 **`verify-all --full` 결과부터 확인한다.** 세션 종료 시점에 **mount sweep 이 돌던 중**이었다.
+>    로그: `/tmp/claude-1000/-var-www/330accdd-25ab-4660-85c2-f027152de631/scratchpad/verify3.log`
+>    (사라졌으면 `cd /var/www/dev-backend && node scripts/verify-all.js --full` 재실행 — 12분)
+>    번들 `main.fec0c49d.js` = F1·F2 포함본, e2e 5×3 = **15/15 통과**(이 번들 기준), F2 단위 2/2.
+>    통과 확인되면 → Fable(`a95d9449bd91451f6`)에 결과 보고 → 마커 → Irene `/배포`.
+>    ⚠ 빌드는 `heavy-task-gate` 에 두 번 막혔었다. **종료코드 말고 번들 해시를 봐라.**
 > 2. **09-23 시한**: 그날 운영 청구서 15장이 «연체» 로 뒤집히고 매장에 근거 없는 연체 메일이 나간다.
 >    그 전에 배포돼야 한다. 배포 준비물(릴리즈 기록·SW 5.01)은 이미 다 있다.
 > 3. **Irene 이 직접 하실 것 3가지** — 전부 제 도구가 막혀 있다. 급한 순:
