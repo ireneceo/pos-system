@@ -55,6 +55,7 @@ import { FoodcourtInvoiceViewModal } from './invoices';
 import { FoodcourtInvoiceEditModal } from './invoices';
 import { FoodcourtInvoiceCreateModal } from './invoices';
 import SubscriptionPanel from '../../components/Payment/SubscriptionPanel';
+import { getErrorMessage } from '../../utils/apiError';
 
 const FoodcourtInvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('foodcourt');
@@ -416,7 +417,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
         setDeleteCategoryModalOpen(false);
         setCategoryToDelete(null);
         fetchInvoiceCategories();
-      } else { alert(data.error || 'Failed to delete category'); }
+      } else { alert(getErrorMessage(data, 'Failed to delete category')); }
     } catch (error) {
       console.error('Failed to delete category:', error);
       setSuccessMessage('Failed to delete category. Please try again.'); setShowSuccessModal(true);
@@ -915,7 +916,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
         setShowEmailModal(false); setEmailInvoice(null); setEmailRecipient('');
       } else {
         const data = await response.json();
-        setSuccessMessage(data.message || data.error || 'Failed to send invoice email.');
+        setSuccessMessage(getErrorMessage(data, 'Failed to send invoice email.'));
       }
       setShowSuccessModal(true);
     } catch (error) {

@@ -583,6 +583,13 @@
     },
     "retroApply": "Guna juga pada pesanan belum terima",
     "invoicePanel2": "Masukkan kandungan invois",
-    "previewHint": "Jika tidak dipaparkan, buka dengan «Lihat lebih besar di tab baharu» dan taip di sebelah kanan."
+    "previewHint": "Jika tidak dipaparkan, buka dengan «Lihat lebih besar di tab baharu» dan taip di sebelah kanan.",
+    "help": {
+      "prefilled": "Nilai daripada pesanan belian anda sudah diisi.",
+      "editDiff": "Edit hanya baris yang berbeza daripada invois pembekal.",
+      "poUnchanged": "Menyimpan tidak mengubah jumlah pesanan belian — skrin ini menyimpan angka dijangka (dipesan) dan sebenar (diinvois) bersebelahan.",
+      "externalPay": "Pembekal luar tidak boleh dibayar melalui sistem ini. Bayar terus kepada mereka, kemudian tandakan invois sebagai Dibayar."
+    },
+    "openInNewTab": "Buka lebih besar dalam tab baharu"
   }
 }

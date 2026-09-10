@@ -5,6 +5,7 @@ import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
+import { getErrorMessage } from '../../utils/apiError';
 
 const PageContainer = styled.div`
   background: #F9FAFB;
@@ -356,7 +357,7 @@ const ContactPage: React.FC = () => {
         });
       } else {
         const data = await response.json();
-        setError(data.error || 'Failed to send message. Please try again.');
+        setError(getErrorMessage(data, 'Failed to send message. Please try again.'));
       }
     } catch (err) {
       setError('Network error. Please check your connection and try again.');

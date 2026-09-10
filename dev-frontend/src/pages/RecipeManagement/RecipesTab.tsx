@@ -17,6 +17,7 @@ import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit, formatQu
 import { downloadCSV, toCSVRow, formatDateForFilename } from '../../utils/csvDownload';
 
 import { getAuthToken } from '../../utils/auth';
+import { getErrorMessage } from '../../utils/apiError';
 interface RecipesTabProps {
   brandId: number | null;
   restaurantId?: number | null;
@@ -1394,7 +1395,10 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         handleCloseModal();
         fetchRecipes();
       } else {
-        setFormError(data.error || 'Failed to save recipe');
+        // 서버는 실패를 { message, code } 꾸러미로 준다(routes/recipes.js). 꾸러미를 그대로
+        // 넣으면 <ErrorMessage>{formError}</ErrorMessage> 가 객체를 그리려다 React #31 로 화면이 죽는다
+        // (2026-09-10 운영 신고: /pos/recipes?tab=recipes&brandId=2, iPad). 사유 문자열만 꺼낸다.
+        setFormError(getErrorMessage(data, 'Failed to save recipe'));
       }
     } catch (error) {
       console.error('Failed to save recipe:', error);

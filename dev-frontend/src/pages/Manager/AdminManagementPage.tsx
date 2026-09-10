@@ -12,6 +12,7 @@ import { useRoleDisplayName } from '../../utils/roleDisplay';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDate as formatDateTz } from '../../utils/timezone';
+import { getErrorMessage } from '../../utils/apiError';
 interface Staff {
   id: number;
   username: string;
@@ -549,7 +550,7 @@ const ManagerAdminManagementPage: React.FC = () => {
 
       const data = await response.json();
       if (!response.ok) {
-        setCreateError(data.error || 'Failed to create staff');
+        setCreateError(getErrorMessage(data, 'Failed to create staff'));
         return;
       }
 
@@ -602,7 +603,7 @@ const ManagerAdminManagementPage: React.FC = () => {
 
       const data = await response.json();
       if (!response.ok) {
-        setEditError(data.error || 'Failed to update');
+        setEditError(getErrorMessage(data, 'Failed to update'));
         return;
       }
 

@@ -90,6 +90,23 @@ const Viewer = styled.div`
   @media (max-width: 1024px) { height: 360px; }
 `;
 
+/**
+ * 업로드 파일 주소에 버전을 붙인다 — **낡은 캐시를 피하기 위해서다.**
+ *
+ * 2026-09-09 까지 nginx 가 `/uploads` 응답을 «1년간 안 바뀜(immutable)» 으로 못박고 있었다.
+ * `immutable` 은 브라우저에 «재검증하지 말라» 는 지시라, 그 시절 응답을 한 번이라도 받은
+ * 브라우저는 **새로고침으로도 안 풀린다**(2026-09-10 에 서버는 고쳤지만 이미 캐시된 것은 그대로).
+ * 그때 응답에는 `X-Frame-Options: DENY` 가 실려 있어 PDF 가 iframe 에서 통째로 막힌다.
+ *
+ * 주소 뒤에 업로드 시각을 붙이면 **캐시 열쇠가 달라져** 오염된 항목을 건너뛰고 새로 받아온다.
+ * 파일은 업로드 시각이 바뀌지 않는 한 같은 주소라 캐시 이득도 그대로다.
+ */
+const fileSrc = (url: string, uploadedAt?: string | null): string => {
+  const v = uploadedAt ? Date.parse(uploadedAt) : 0;
+  if (!Number.isFinite(v) || v <= 0) return url;
+  return url + (url.includes('?') ? '&' : '?') + 'v=' + v;
+};
+
 const PasteArea = styled.textarea`
   width: 100%;
   box-sizing: border-box; /* 없으면 padding+border 만큼 패널 밖으로 나간다(실측 +25px) */
@@ -443,7 +460,7 @@ const InvoiceReconcilePage: React.FC = () => {
             <Actions style={{ justifyContent: 'flex-start' }}>
               <Button onClick={runMatch} disabled={!pasted.trim()}>{t('reconcile.runMatch', '줄 맞춰보기')}</Button>
               {po.external_invoice_url && (
-                <Button variant="secondary" onClick={() => window.open(po.external_invoice_url!, '_blank')}>
+                <Button variant="secondary" onClick={() => window.open(fileSrc(po.external_invoice_url!, po.external_invoice_uploaded_at), '_blank')}>
                   {t('reconcile.openInNewTab', '새 창에서 크게 보기')}
                 </Button>
               )}
@@ -456,12 +473,12 @@ const InvoiceReconcilePage: React.FC = () => {
               <>
                 <Viewer>
                   {/\.(png|jpe?g|gif|webp)$/i.test(po.external_invoice_url)
-                    ? <img src={po.external_invoice_url} alt={po.external_invoice_filename || t('reconcile.invoice', '인보이스')} />
+                    ? <img src={fileSrc(po.external_invoice_url, po.external_invoice_uploaded_at)} alt={po.external_invoice_filename || t('reconcile.invoice', '인보이스')} />
                     : (
                       // `<object>` 는 브라우저가 조용히 폴백으로 떨어지는 일이 잦다(2026-09-08 실측:
                       // 헤더는 SAMEORIGIN 인데 화면엔 폴백 문구만 떴다). iframe 이 PDF 를 더 확실히 그린다.
                       <iframe
-                        src={po.external_invoice_url}
+                        src={fileSrc(po.external_invoice_url, po.external_invoice_uploaded_at)}
                         title={po.external_invoice_filename || t('reconcile.invoice', '인보이스')}
                       />
                     )}

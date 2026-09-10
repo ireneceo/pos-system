@@ -64,6 +64,7 @@ import InvoiceViewModal from './invoices/InvoiceViewModal';
 import InvoiceEditModal from './invoices/InvoiceEditModal';
 import InvoiceCreateModal from './invoices/InvoiceCreateModal';
 import InvoiceCategoryManager from './invoices/InvoiceCategoryManager';
+import { getErrorMessage } from '../../utils/apiError';
 
 const InvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('admin');
@@ -265,7 +266,7 @@ const InvoicesPage: React.FC = () => {
         setCategoryToDelete(null);
         fetchInvoiceCategories();
       } else {
-        setSuccessMessage(data.error || 'Failed to delete category. Please try again.'); setShowSuccessModal(true);
+        setSuccessMessage(getErrorMessage(data, 'Failed to delete category. Please try again.')); setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
@@ -937,7 +938,7 @@ const InvoicesPage: React.FC = () => {
         setEmailRecipient('');
       } else {
         const data = await response.json();
-        setSuccessMessage(data.message || data.error || 'Failed to send invoice email.');
+        setSuccessMessage(getErrorMessage(data, 'Failed to send invoice email.'));
       }
       setShowSuccessModal(true);
     } catch (error) {

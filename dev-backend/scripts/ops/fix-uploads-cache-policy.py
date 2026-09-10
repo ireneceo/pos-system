@@ -38,7 +38,8 @@ Cloudflare 퍼지는 엣지만 지우지 각 브라우저 안은 못 지운다.
 
     sudo python3 /var/www/production-backend/scripts/ops/fix-uploads-cache-policy.py
 
-- 원본은 `.bak-<타임스탬프>` 로 남는다.
+- 원본은 `/etc/nginx/backups/purplehere.com.bak-<타임스탬프>` 로 남는다
+  (sites-enabled 안에 두면 nginx 가 그 백업까지 설정으로 읽는다).
 - `nginx -t` 가 실패하면 **자동으로 백업을 되돌리고** nginx 는 건드리지 않는다.
 - 두 번 실행해도 안전하다(이미 적용됐으면 «건너뜀»).
 - `--dry-run` 을 주면 바뀔 내용만 보여주고 파일을 쓰지 않는다.
@@ -54,11 +55,14 @@ Cloudflare 퍼지는 엣지만 지우지 각 브라우저 안은 못 지운다.
    기존 파일은 Cloudflare 퍼지 + 해당 브라우저에서 사이트 데이터 삭제로 푼다.
 """
 import datetime
+import os
 import shutil
 import subprocess
 import sys
 
 CONF = '/etc/nginx/sites-enabled/purplehere.com'
+# 백업은 nginx 가 읽지 않는 폴더에 둔다 (아래 backup 생성부 주석 참조)
+BACKUP_DIR = '/etc/nginx/backups'
 DRY = '--dry-run' in sys.argv
 
 # ── ① /uploads : 캐시 정책 덮어쓰기 제거 ────────────────────────────────
@@ -155,7 +159,14 @@ def main() -> int:
         print('\n[dry-run] 파일을 쓰지 않았다.')
         return 0
 
-    backup = CONF + '.bak-' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    # ⛔ 백업을 sites-enabled 안에 두면 안 된다 — nginx 는 그 폴더의 **모든 파일**을 설정으로
+    #    읽어서, 백업본이 같은 server_name 을 또 선언해 «conflicting server name» 경고가 나고
+    #    진짜 설정이 사라지면 묵은 백업이 대신 살아난다(2026-09-10 실측: sites-enabled 안에
+    #    purplehere.com.bak(1월자) + .bak-20260910_111400 두 개가 이미 그렇게 읽히고 있었다).
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    backup = os.path.join(
+        BACKUP_DIR,
+        os.path.basename(CONF) + '.bak-' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
     shutil.copy2(CONF, backup)
     open(CONF, 'w', encoding='utf-8').write(text)
     print('백업:', backup)

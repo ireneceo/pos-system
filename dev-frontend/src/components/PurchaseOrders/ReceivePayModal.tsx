@@ -20,7 +20,18 @@ export type ReceivePayMode = 'receive_and_pay' | 'receive_only' | 'pay' | 'refun
 interface Props {
   open: boolean;
   mode: ReceivePayMode;
-  po: { id: number; po_number?: string | null; total_amount?: number | string | null; seller_name?: string | null } | null;
+  po: {
+    id: number; po_number?: string | null; total_amount?: number | string | null; seller_name?: string | null;
+    /** 서버가 정한 «실제로 낼 금액» — 규칙은 services/purchaseOrderPayment.js 가 단일 소스다.
+     *  화면에서 다시 계산하지 않는다(두 곳이 다른 답을 내면 드로어가 틀어진다). */
+    payable_amount?: number | string | null;
+    payable_basis?: 'purchase_order' | 'supplier_invoice' | null;
+    invoice_total?: number | string | null;
+    invoice_reconciled_at?: string | null;
+    external_invoice_url?: string | null;
+  } | null;
+  /** 「먼저 대조하기」를 눌렀을 때. 없으면 그 링크를 띄우지 않는다. */
+  onGoReconcile?: () => void;
   /** 구매자가 매장일 때만 드로어(현금서랍)가 있다 — BG·푸드코트는 현금이어도 드로어 이동이 없다. */
   buyerIsRestaurant?: boolean;
   /** 성공 후. drawerSkipped 면 부모가 안내를 띄운다. */
@@ -34,7 +45,7 @@ const METHODS: Array<{ value: string; labelKey: string; fallback: string }> = [
   { value: 'card', labelKey: 'pay.method.card', fallback: 'Card' },
 ];
 
-export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = true, onDone, onClose }: Props) {
+export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = true, onDone, onClose, onGoReconcile }: Props) {
   const { t } = useTranslation('purchaseOrders');
   const [method, setMethod] = useState('cash');
   const [reason, setReason] = useState('');
@@ -92,7 +103,14 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
     }
   };
 
-  const amount = Number(po.total_amount || 0).toFixed(2);
+  // 낼 금액은 **서버가 정한 값**을 쓴다. 없으면(옛 응답) 발주 금액으로 떨어진다.
+  const ordered = Number(po.total_amount || 0);
+  const payable = po.payable_amount != null ? Number(po.payable_amount) : ordered;
+  const amount = payable.toFixed(2);
+  const paysInvoice = po.payable_basis === 'supplier_invoice';
+  const amountsDiffer = paysInvoice && Math.abs(payable - ordered) >= 0.005;
+  // 인보이스는 올렸는데 아직 안 맞춰봤다 — 막지 않고 알리기만 한다(급할 때 결제를 못 하게 하면 안 된다).
+  const uploadedNotReconciled = !!po.external_invoice_url && !po.invoice_reconciled_at;
 
   return (
     <Modal isOpen onClose={onClose} title={titleFor[mode]} size="small"
@@ -111,7 +129,29 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
       <div style={{ fontSize: 13, color: '#4B5563', marginBottom: 12 }}>
         <strong style={{ color: '#0A2540' }}>{po.po_number || `#${po.id}`}</strong>
         {po.seller_name ? ` · ${po.seller_name}` : ''} · RM {amount}
+        {amountsDiffer && (
+          <div style={{ marginTop: 6, fontSize: 12.5, color: '#334155' }}>
+            {t('pay.amount.invoiced', 'Supplier invoice')}: <strong>RM {payable.toFixed(2)}</strong>
+            {' · '}
+            {t('pay.amount.ordered', 'Ordered')}: <span style={{ textDecoration: 'line-through', color: '#6B7280' }}>RM {ordered.toFixed(2)}</span>
+          </div>
+        )}
       </div>
+
+      {uploadedNotReconciled && needsMethod && (
+        <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', color: '#92400E', borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12.5, lineHeight: 1.7 }}>
+          {t('pay.notReconciledWarning', 'A supplier invoice has been uploaded but not compared yet — this pays the ordered amount.')}
+          {onGoReconcile && (
+            <>
+              {' '}
+              <button type="button" onClick={onGoReconcile}
+                style={{ background: 'none', border: 'none', padding: 0, color: '#B45309', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontSize: 12.5 }}>
+                {t('pay.compareFirst', 'Compare first')}
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* 되돌리기 어려운 동작이라 **무엇이 일어나는지 먼저 적는다** */}
       <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: '10px 12px', marginBottom: 14, fontSize: 12.5, color: '#334155', lineHeight: 1.7 }}>
@@ -120,6 +160,9 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
           <div>· {t('pay.effects.stock', 'Stock goes up by the ordered quantity.')}</div>
         )}
         {needsMethod && <div>· {t('pay.effects.payment', 'The order is marked as paid.')}</div>}
+        {needsMethod && paysInvoice && (
+          <div>· {t('pay.effects.paysInvoice', 'The compared supplier invoice amount is paid, not the ordered amount.')}</div>
+        )}
         {cashFromDrawer && <div>· {t('pay.effects.drawer', { amount, defaultValue: 'RM {{amount}} is taken out of the open shift cash drawer.' })}</div>}
         {mode === 'refund' && <div>· {t('pay.effects.refund', 'A matching cash-in movement is created — the payment is reversed, not deleted. Stock and receipt are not touched.')}</div>}
       </div>

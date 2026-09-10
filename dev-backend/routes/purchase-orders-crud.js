@@ -57,6 +57,8 @@ const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
 const { normalizeCurrencyCode, sameCurrency } = require('../utils/currency');
 const { resolveSellers, getSeller, getSellerName, isExternalSeller } = require('../utils/sellerNames');
+// 지불 금액 규칙은 결제 서비스가 단일 소스다 — 화면이 따로 계산하지 않게 여기서 실어 보낸다.
+const { payableFrom } = require('../services/purchaseOrderPayment');
 const { readableIngredient, parentBrandIdOf, overlayMapFor, effectiveSettings } = require('../utils/brandStockAccess');
 const { applySubmitGate } = require('../utils/poOwnerApproval');
 const { stockTargetAttrs } = require('../utils/stockTarget');
@@ -337,6 +339,9 @@ router.get('/purchase-orders', async (req, res) => {
       plain.total_quantity = parseFloat(agg.total_quantity || 0);
       plain.seller_name = getSellerName(sellerMap, p.seller_type, p.seller_entity_id);
       plain.is_external = isExternalSeller(sellerMap, p.seller_type, p.seller_entity_id);
+      const payable = payableFrom(plain, plain.is_external);
+      plain.payable_amount = payable.amount;
+      plain.payable_basis = payable.basis;
       if (includeItems) {
         plain.items = itemsByPo[p.id] || [];
         plain.seller = getSeller(sellerMap, p.seller_type, p.seller_entity_id);
@@ -516,6 +521,9 @@ router.get('/purchase-orders/:id', async (req, res) => {
     plain.seller_name = getSellerName(sellerMap, po.seller_type, po.seller_entity_id);
     plain.seller = getSeller(sellerMap, po.seller_type, po.seller_entity_id);
     plain.is_external = isExternalSeller(sellerMap, po.seller_type, po.seller_entity_id);
+    const payableOne = payableFrom(plain, plain.is_external);
+    plain.payable_amount = payableOne.amount;
+    plain.payable_basis = payableOne.basis;
 
     // Item-level identity flattening (P0-3): internal name (RA Ingredient or BG
     // ProductIngredient or description) + supplier's own sale-product name/SKU via

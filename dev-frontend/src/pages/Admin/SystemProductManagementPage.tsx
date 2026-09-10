@@ -12,6 +12,7 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
 
 import { getAuthToken } from '../../utils/auth';
+import { getErrorMessage } from '../../utils/apiError';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Category {
@@ -1139,7 +1140,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
         handleCloseModal();
         fetchProducts();
       } else {
-        setFormError(data.message || data.error || 'Failed to save product');
+        setFormError(getErrorMessage(data, 'Failed to save product'));
       }
     } catch (error) {
       console.error('Failed to save product:', error);

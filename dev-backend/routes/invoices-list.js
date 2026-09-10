@@ -50,6 +50,7 @@ const { invoiceInBranch } = require('./invoices-helpers');
  * 화면이 "결제 버튼"과 "결제함 체크"를 갈라야 해서 목록에 실어 보낸다(설계 §5).
  */
 const { isExternalIssuer } = require('../utils/externalIssuer');
+const { resolveSellers, isExternalSeller } = require('../utils/sellerNames');
 // 60초 TTL — 외부 공급업체가 솔루션에 가입하면 판정이 뒤집힌다. 프로세스 수명 캐시로 두면
 // 그 매장은 재시작 전까지 옛 판정을 본다.
 const _externalIssuerCache = new Map();
@@ -503,11 +504,18 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
     if (invoices.length) {
       const poRows = await sequelize.query(
         `SELECT id, po_number, trade_invoice_id, total_amount, external_invoice_url,
-                external_invoice_filename, invoice_number, invoice_total, invoice_reconciled_at
+                external_invoice_filename, invoice_number, invoice_total, invoice_reconciled_at,
+                status, seller_type, seller_entity_id
            FROM purchase_orders
           WHERE trade_invoice_id IN (:ids) AND deleted_at IS NULL`,
         { type: QueryTypes.SELECT, replacements: { ids: invoices.map((i) => i.id) } });
-      for (const r of poRows) poByInvoiceId.set(Number(r.trade_invoice_id), r);
+      // 「업로드 버튼을 띄울까」는 **외부 공급업체인가**로 갈린다. 발주 목록이 쓰는 규칙을 그대로 쓴다
+      // (utils/sellerNames — 판매자 표시명·외부 판정의 단일 소스). 목록 전체에 대해 조회 1회.
+      const poSellerMap = await resolveSellers(poRows);
+      for (const r of poRows) {
+        r.is_external = isExternalSeller(poSellerMap, r.seller_type, r.seller_entity_id);
+        poByInvoiceId.set(Number(r.trade_invoice_id), r);
+      }
     }
 
     // Transform invoices with issuer/payer company info
@@ -564,6 +572,9 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
         supplier_invoice_number: srcPo ? srcPo.invoice_number : null,
         supplier_invoice_total: srcPo ? srcPo.invoice_total : null,
         invoice_reconciled_at: srcPo ? srcPo.invoice_reconciled_at : null,
+        // 인보이스 화면에서 «공급업체 인보이스 올리기» 를 띄울지 판정하는 데 쓴다 (2026-09-10 Fable A)
+        purchase_order_is_external: srcPo ? !!srcPo.is_external : false,
+        purchase_order_status: srcPo ? srcPo.status : null,
         payer_type: invoice.payer_type,
         payer_id: invoice.payer_id,
         restaurant_id: invoice.restaurant_id,

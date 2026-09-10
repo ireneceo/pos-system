@@ -78,6 +78,7 @@ import BrandInvoiceEditModal from './invoices/BrandInvoiceEditModal';
 import BrandInvoiceCreateModal from './invoices/BrandInvoiceCreateModal';
 import BrandInvoiceCategoryManager from './invoices/BrandInvoiceCategoryManager';
 import SubscriptionPanel from '../../components/Payment/SubscriptionPanel';
+import { getErrorMessage } from '../../utils/apiError';
 
 const BrandInvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('brand');
@@ -496,7 +497,7 @@ const BrandInvoicesPage: React.FC = () => {
         handleCloseCategoryModal();
         fetchInvoiceCategories();
       } else {
-        setSuccessMessage(data.message || data.error || 'Failed to save category');
+        setSuccessMessage(getErrorMessage(data, 'Failed to save category'));
         setShowSuccessModal(true);
       }
     } catch (error) {
@@ -521,7 +522,7 @@ const BrandInvoicesPage: React.FC = () => {
         setCategoryToDelete(null);
         fetchInvoiceCategories();
       } else {
-        setSuccessMessage(data.error || 'Failed to delete category');
+        setSuccessMessage(getErrorMessage(data, 'Failed to delete category'));
         setShowSuccessModal(true);
       }
     } catch (error) {
@@ -1035,7 +1036,7 @@ const BrandInvoicesPage: React.FC = () => {
         setShowEmailModal(false); setEmailInvoice(null); setEmailRecipient('');
       } else {
         const data = await response.json();
-        setSuccessMessage(data.message || data.error || 'Failed to send invoice email.');
+        setSuccessMessage(getErrorMessage(data, 'Failed to send invoice email.'));
       }
       setShowSuccessModal(true);
     } catch (error) {

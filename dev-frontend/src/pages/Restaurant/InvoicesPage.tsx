@@ -93,6 +93,8 @@ interface Invoice {
   poOrderedAt?: string | null;
   poReceivedAt?: string | null;
   poStatus?: string | null;
+  /** 원본 발주가 외부 공급업체 것인가 — 업로드 버튼을 띄울지 가른다 (2026-09-10) */
+  purchaseOrderIsExternal?: boolean;
   issuerName?: string;
   issuerInfo?: {
     name: string;
@@ -442,6 +444,7 @@ const RestaurantInvoicesPage: React.FC = () => {
           poOrderedAt: inv.po_ordered_at ?? null,
           poReceivedAt: inv.po_received_at ?? null,
           poStatus: inv.po_status ?? null,
+          purchaseOrderIsExternal: !!(inv.purchase_order_is_external ?? inv.purchaseOrderIsExternal),
           issuerName: inv.issuer_name || inv.issuerName || '',
           issuerInfo: inv.issuerInfo || inv.issuer_info || null,
           payerInfo: inv.payerInfo || inv.payer_info || null,
@@ -1409,6 +1412,33 @@ const RestaurantInvoicesPage: React.FC = () => {
                 {/* 업로드한 인보이스와 발주를 맞춰보러 가는 길 (2026-09-08).
                     지금까지 대조 화면은 발주 상세에서만 들어갈 수 있어서, 청구서를 보다가
                     "이게 실제 청구서랑 맞나"를 확인하려면 발주를 따로 찾아가야 했다. */}
+                {/* 공급업체 인보이스 올리기 (2026-09-10 Fable A) — 지금까지는 발주 목록에서만 올릴 수 있어서
+                    청구서를 보다가 종이를 올리려면 발주를 따로 찾아가야 했다. 라우트는 발주 것을 그대로 쓴다
+                    (`POST /purchase-orders/:id/upload-invoice`) — 새 경로를 만들지 않는다. */}
+                {selectedInvoice.purchaseOrderId && selectedInvoice.purchaseOrderIsExternal && !selectedInvoice.uploadedInvoiceUrl && (
+                  <>
+                    <input
+                      ref={supplierInvoiceInputRef}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleUploadSupplierInvoice(selectedInvoice, f);
+                        e.target.value = '';
+                      }}
+                    />
+                    <Button
+                      variant="secondary"
+                      disabled={uploadingInvoiceId === selectedInvoice.id}
+                      onClick={() => supplierInvoiceInputRef.current?.click()}
+                    >
+                      {uploadingInvoiceId === selectedInvoice.id
+                        ? t('settings:invoicesPage.uploadingSupplierInvoice', 'Uploading...')
+                        : t('settings:invoicesPage.uploadSupplierInvoice', 'Upload supplier invoice')}
+                    </Button>
+                  </>
+                )}
                 {selectedInvoice.purchaseOrderId && (
                   <Button variant="secondary" onClick={() => navigate(`/pos/purchase-orders/${selectedInvoice.purchaseOrderId}/reconcile`)}>
                     {selectedInvoice.invoiceReconciledAt

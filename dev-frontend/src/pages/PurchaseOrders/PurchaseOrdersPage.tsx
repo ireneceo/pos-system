@@ -17,6 +17,7 @@ import { formatDate } from '../../utils/timezone';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
 import PurchaseOrderDetailPage from './PurchaseOrderDetailPage';
 import AlertDialog from '../../components/Common/AlertDialog';
+import ReceivePayModal, { ReceivePayMode } from '../../components/PurchaseOrders/ReceivePayModal';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { formatQuantity } from '../../utils/unitConversion';
 
@@ -258,6 +259,12 @@ interface POListRow {
   invoice_reconciled_at?: string | null;
   invoice_number?: string | null;
   invoice_total?: number | string | null;
+  /** 결제 상태 · 실제로 낼 금액 (2026-09-10) — 규칙은 서버(services/purchaseOrderPayment.js)가 단일 소스 */
+  payment_status?: string | null;
+  payment_method?: string | null;
+  payable_amount?: number | string | null;
+  payable_basis?: 'purchase_order' | 'supplier_invoice' | null;
+  entity_type?: string | null;
   /** 대조 결과 — 청구가가 발주가와 다른 줄 수와 금액 차이 */
   reconcile_diff_lines?: number;
   reconcile_invoiced_lines?: number;
@@ -417,6 +424,9 @@ const PurchaseOrdersPage: React.FC = () => {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
   const [confirmDlg, setConfirmDlg] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+  // 결제·되돌리기 모달 (2026-09-10 Fable B1) — 발주 상세·staging 이 쓰던 모달을 목록 행에서도 연다.
+  // 백엔드는 그대로다. 목록에서 바로 결제하지 못해 상세로 들어갔다 나오던 왕복을 없앤다.
+  const [payModal, setPayModal] = useState<{ mode: ReceivePayMode; row: PurchaseOrderRow } | null>(null);
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -1014,6 +1024,29 @@ const PurchaseOrdersPage: React.FC = () => {
                                   : t('list.action.reconcile', '원가 대조')}
                           </ThemedButton>
                         )}
+                        {/* 결제·되돌리기 (2026-09-10 Fable B1) — 상세·staging 이 쓰는 모달을 그대로 목록에 붙인다.
+                            취소·초안은 낼 돈이 없고, 승인 대기는 아직 판매자에게 나가지도 않았다. */}
+                        {row.status !== 'draft' && row.status !== 'cancelled' && row.status !== 'pending_approval' && (
+                          row.payment_status === 'paid' ? (
+                            <ThemedButton
+                              size="small" variant="outline"
+                              onClick={() => setPayModal({ mode: 'refund', row })}
+                              title={t('list.action.refund', 'Reverse this payment') as string}
+                            >
+                              {t('list.action.refundShort', 'Reverse payment')}
+                            </ThemedButton>
+                          ) : (
+                            <ThemedButton
+                              size="small" variant="primary"
+                              onClick={() => setPayModal({ mode: row.status === 'received' ? 'pay' : 'receive_and_pay', row })}
+                              title={t('list.action.pay', 'Record payment') as string}
+                            >
+                              {row.status === 'received'
+                                ? t('list.action.payShort', 'Pay')
+                                : t('list.action.receiveAndPayShort', 'Receive & pay')}
+                            </ThemedButton>
+                          )
+                        )}
                         {hasInvoice && (
                           <>
                             <ThemedButton
@@ -1091,6 +1124,39 @@ const PurchaseOrdersPage: React.FC = () => {
         onClose={() => setAlertDlg(null)}
         title={alertDlg?.title || ''}
         message={alertDlg?.message || ''}
+      />
+      <ReceivePayModal
+        open={!!payModal}
+        mode={payModal?.mode || 'pay'}
+        po={payModal ? {
+          id: payModal.row.id,
+          po_number: payModal.row.po_number,
+          total_amount: payModal.row.total_amount,
+          seller_name: payModal.row.seller_name,
+          payable_amount: payModal.row.payable_amount,
+          payable_basis: payModal.row.payable_basis,
+          invoice_total: payModal.row.invoice_total,
+          invoice_reconciled_at: payModal.row.invoice_reconciled_at,
+          external_invoice_url: payModal.row.external_invoice_url,
+        } : null}
+        buyerIsRestaurant={(payModal?.row.entity_type || 'restaurant') === 'restaurant'}
+        onGoReconcile={payModal ? () => {
+          const id = payModal.row.id;
+          setPayModal(null);
+          navigate(`/pos/purchase-orders/${id}/reconcile`);
+        } : undefined}
+        onClose={() => setPayModal(null)}
+        onDone={({ drawerSkipped }) => {
+          setPayModal(null);
+          if (drawerSkipped) {
+            // 드로어에 안 들어갔다는 사실을 숨기지 않는다 — 직원이 드로어를 잘못 센다.
+            setAlertDlg({
+              title: t('pay.drawerSkipped.title', 'Recorded without a drawer movement') as string,
+              message: t('pay.drawerSkipped.desc', 'No shift is open, so this was not recorded as a cash withdrawal from the drawer.') as string,
+            });
+          }
+          fetchList();
+        }}
       />
       <ConfirmDialog
         isOpen={!!confirmDlg}

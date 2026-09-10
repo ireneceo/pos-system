@@ -18,6 +18,7 @@
  *     `shift_id` 로만 묶고 `source` 를 보지 않으므로, 이 이동들이 **자동으로** 그 공식에 잡힌다.
  */
 const { PurchaseOrder, CashMovement, CashierShift, Invoice } = require('../models');
+const { resolveSellers, isExternalSeller } = require('../utils/sellerNames');
 
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
@@ -44,8 +45,43 @@ async function resolveOpenShift(restaurantId, t) {
 }
 
 /**
+ * **실제로 지불할 금액을 정한다 — 단일 소스.**
+ *
+ * 규칙(2026-09-10 Fable 판정 · Irene 승인):
+ *   **외부 공급업체 발주를 대조까지 마쳤으면 공급업체가 청구한 금액(`invoice_total`)을 지불한다.**
+ *   대조 전이거나, 청구액이 안 적혔거나, 우리 솔루션에 가입한 판매자면 **발주 금액**(`total_amount`).
+ *
+ * 왜: 대조를 해서 청구가 RM 480 인 걸 확인해도 드로어에서는 발주 금액 RM 500 이 나가고 있었다.
+ *   대조 결과와 결제가 서로를 모르는 상태였다(`cost-reconciliation.js` 는 설계상 `total_amount` 를
+ *   손대지 않는다 — 예상(발주)과 실제(청구)를 나란히 남기는 것이 그 화면의 목적이기 때문).
+ *   매장이 실제로 하는 행위(공급업체가 내민 종이 금액을 드로어에서 꺼냄)와도 이쪽이 맞다.
+ *
+ * ⛔ 발주 스냅샷 `total_amount` 는 여기서도 **덮어쓰지 않는다.** 어느 쪽을 냈는지는 이동의
+ *   `reason` 에 남긴다(차액 추적 근거).
+ *
+ * @returns {{amount:number, basis:'supplier_invoice'|'purchase_order', ordered:number, invoiced:number|null}}
+ */
+function payableFrom(po, isExternal) {
+  const ordered = round2(po.total_amount);
+  const invoiced = po.invoice_total == null ? null : round2(po.invoice_total);
+  const fallback = { amount: ordered, basis: 'purchase_order', ordered, invoiced };
+
+  if (!po.invoice_reconciled_at) return fallback;   // 아직 안 맞춰봤다
+  if (invoiced === null) return fallback;           // 대조는 했는데 총액을 안 적었다
+  if (!isExternal) return fallback;                 // 가입 판매자는 우리 청구서가 원본이다
+
+  return { amount: invoiced, basis: 'supplier_invoice', ordered, invoiced };
+}
+
+/** 판매자를 직접 조회해 판정한다(결제 경로용 — 호출부가 sellerMap 을 안 갖고 있다). */
+async function resolvePayableAmount(po) {
+  const sellerMap = await resolveSellers([{ seller_type: po.seller_type, seller_entity_id: po.seller_entity_id }]);
+  return payableFrom(po, isExternalSeller(sellerMap, po.seller_type, po.seller_entity_id));
+}
+
+/**
  * 발주 결제 기록.
- * @returns {{po, movement:CashMovement|null, drawerSkipped:boolean}}
+ * @returns {{po, movement:CashMovement|null, drawerSkipped:boolean, payable:object}}
  */
 async function recordPayment(po, { method, userId, reason }, t) {
   if (!['cash', 'bank_transfer', 'card'].includes(method)) {
@@ -56,6 +92,9 @@ async function recordPayment(po, { method, userId, reason }, t) {
     throw err('This purchase order is already paid', 'ALREADY_PAID', 409);
   }
 
+  // 얼마를 낼지 먼저 정한다 — 드로어 출금액이 이 값이다.
+  const payable = await resolvePayableAmount(po);
+
   let movement = null;
   let drawerSkipped = false;
   if (method === 'cash' && po.entity_type === 'restaurant') {
@@ -65,8 +104,11 @@ async function recordPayment(po, { method, userId, reason }, t) {
         shift_id: shift.id,
         restaurant_id: po.entity_id,
         type: 'out',
-        amount: round2(po.total_amount),
-        reason: reason || `Purchase order ${po.po_number}`,
+        amount: payable.amount,
+        // 발주액과 다른 금액이 나갔으면 **왜 다른지를 원장에 남긴다** — 나중에 차액을 설명할 근거.
+        reason: reason || (payable.basis === 'supplier_invoice'
+          ? `Purchase order ${po.po_number} — supplier invoice ${payable.invoiced.toFixed(2)} (ordered ${payable.ordered.toFixed(2)})`
+          : `Purchase order ${po.po_number}`),
         source: 'purchase_order',
         purchase_order_id: po.id,
         created_by_id: userId || null,
@@ -101,7 +143,7 @@ async function recordPayment(po, { method, userId, reason }, t) {
     }
   }
 
-  return { po, movement, drawerSkipped };
+  return { po, movement, drawerSkipped, payable };
 }
 
 /**
@@ -150,4 +192,4 @@ async function reversePayment(po, { userId, reason }, t) {
   return { po, movement, drawerSkipped, noop: false };
 }
 
-module.exports = { recordPayment, reversePayment, resolveOpenShift };
+module.exports = { recordPayment, reversePayment, resolveOpenShift, resolvePayableAmount, payableFrom };

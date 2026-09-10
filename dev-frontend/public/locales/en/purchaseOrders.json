@@ -583,6 +583,13 @@
     },
     "retroApply": "Apply to open orders too",
     "invoicePanel2": "Enter invoice contents",
-    "previewHint": "If it does not show, open it with «View larger in a new tab» and type on the right."
+    "previewHint": "If it does not show, open it with «View larger in a new tab» and type on the right.",
+    "help": {
+      "prefilled": "The values from your purchase order are already filled in.",
+      "editDiff": "Only edit the lines that differ from the supplier's invoice.",
+      "poUnchanged": "Saving does not change the purchase order amount — this screen keeps the expected (ordered) and actual (invoiced) figures side by side.",
+      "externalPay": "External suppliers cannot be paid through this system. Pay them directly, then mark the invoice as Paid."
+    },
+    "openInNewTab": "Open larger in a new tab"
   }
 }
