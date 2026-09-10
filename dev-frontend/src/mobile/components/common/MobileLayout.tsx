@@ -320,7 +320,9 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
     const slug = currentStore?.slug || sessionStorage.getItem('restaurantSlug');
     if (!slug) return;
     return watchKioskIdle(() => {
-      if (isPayment && isPaymentInFlight()) return;   // 낸 돈의 주문을 잃지 않는다
+      // 결제 요청이 나가 있으면 **연기**한다. `false` 를 돌려줘야 타이머가 다시 걸린다 —
+      // 그냥 return 하면 다시는 울리지 않아 카드 거절 뒤 떠난 손님의 장바구니가 영구히 남는다.
+      if (isPayment && isPaymentInFlight()) return false;
       clearCart();
       clearActiveTable();
       navigate(`/mobile/${slug}?kiosk=1&picker=1`);

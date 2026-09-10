@@ -30,13 +30,23 @@ export function isKioskMode(): boolean {
  */
 export const KIOSK_IDLE_MS = 90_000;
 
-/** 유휴 감시. 손님 조작이 없으면 onIdle 을 부른다. 정리 함수를 돌려준다. */
-export function watchKioskIdle(onIdle: () => void, ms: number = KIOSK_IDLE_MS): () => void {
+/**
+ * 유휴 감시. 손님 조작이 없으면 onIdle 을 부른다. 정리 함수를 돌려준다.
+ *
+ * `onIdle` 이 **`false` 를 돌려주면 «지금은 안 된다»** 로 보고 타이머를 다시 건다.
+ * (2026-09-10 Fable 게이트 F2) 그냥 건너뛰면 **다시는 울리지 않는다** — 결제 요청 중에 5분이 되어
+ * 한 번 연기된 뒤 카드가 거절되고 손님이 떠나면, 앞사람 장바구니가 영구히 남는다.
+ * 이번에 고치려던 바로 그 증상이다.
+ */
+export function watchKioskIdle(onIdle: () => void | boolean, ms: number = KIOSK_IDLE_MS): () => void {
   if (typeof window === 'undefined') return () => {};
   let timer: ReturnType<typeof setTimeout>;
+  const fire = () => {
+    if (onIdle() === false) reset();   // 연기 — 같은 간격으로 다시 건다
+  };
   const reset = () => {
     clearTimeout(timer);
-    timer = setTimeout(onIdle, ms);
+    timer = setTimeout(fire, ms);
   };
   const events: (keyof WindowEventMap)[] = ['pointerdown', 'keydown', 'touchstart', 'wheel'];
   events.forEach(e => window.addEventListener(e, reset, { passive: true }));

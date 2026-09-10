@@ -19,14 +19,13 @@
  *      — 조건을 만족하는 행만 고른다. 사람이 손으로 넣은 마감일(gap ≠ 15)은 건드리지 않는다.
  *      — 이미 NULL 이면 대상에서 빠지므로 재실행이 아무 일도 하지 않는다.
  *
- * 🔴 하지 않는 일 — `issued_at` 소급 (BACKDATE_ISSUED_AT = false):
- *   Fable 2026-09-10 판정은 «백필 14장의 발행일 09-08 은 사실과 다르므로 수령일로 소급» 이었다.
- *   그런데 그 백필을 만든 `scripts/backfill-trade-invoices.js` 머리에는 **정반대의 확정 기록**이 있다:
- *     「🔴 발행일은 실행하는 날이다. 소급하지 않는다 — 오늘 만드는 문서에 지난 달 날짜를 찍는 것이
- *       오히려 조작이다.」 (2026-09-07 Fable 판정 · Irene 승인)
- *   같은 자리에 상반된 판정이 둘 있고 **운영 회계 문서를 되돌리기 어렵게 바꾸는 일**이라,
- *   팀원이 어느 쪽을 고를 자리가 아니다. 아래 코드는 준비만 해 두고 **끄고 둔다.**
- *   판정이 서면 이 상수만 true 로 바꾸면 된다.
+ * ⛔ `issued_at` 은 **소급하지 않는다** (2026-09-10 Fable 게이트 F3 — 09-07 판정 유지).
+ *   발행일은 **문서를 만든 날**이고, 오늘 만든 문서에 지난달 날짜를 찍는 것이 오히려 조작이다
+ *   (`scripts/backfill-trade-invoices.js` 머리 · 2026-09-07 Fable 판정 · Irene 승인).
+ *   언제 받았는지는 청구서 비고(`received YYYY-MM-DD`)와 화면의 주문일·수령일 칸에 이미 있고,
+ *   구매·원가 리포트는 `po.received_at` 기준이라 발행일이 리포트를 흔들지 않는다.
+ *   → 이 스크립트에 소급 스위치를 두지 않는다. 매 배포 도는 자리에 «상수 하나 바꾸면
+ *     운영 회계 문서가 바뀌는» 죽은 스위치를 남기지 않기 위해서다.
  *
  * Usage:
  *   node scripts/migrate-external-supplier-invoice-due-null.js --dry-run
@@ -37,7 +36,6 @@ const { sequelize } = require('../config/database');
 const { QueryTypes } = require('sequelize');
 
 const DRY = process.argv.includes('--dry-run');
-const BACKDATE_ISSUED_AT = false;          // ↑ 위 주석 참조 — 판정 대기
 const log = (m) => console.log(`[migrate-external-supplier-invoice-due-null]${DRY ? ' [DRY]' : ''} ${m}`);
 
 /** 대상 청구서 — 외부 공급업체 발주에서 나온 미결제 거래 청구서 중 NET_15 폴백을 탄 것. */
@@ -92,17 +90,6 @@ async function run() {
         `UPDATE invoices SET due_date = NULL WHERE id IN (:ids)`,
         { replacements: { ids: targets.map((t) => t.id) } });
       log(`마감일 비움: ${meta?.affectedRows ?? targets.length}행`);
-    }
-
-    if (BACKDATE_ISSUED_AT) {
-      log('⚠ issued_at 소급이 켜져 있다 — 판정 확인 후에만 켤 것');
-      // 준비된 조치: 발행일이 수령일보다 뒤인 백필 문서의 issued_at 을 수령일로 되돌린다.
-      //   UPDATE invoices i JOIN purchase_orders po ON po.trade_invoice_id = i.id
-      //      SET i.issued_at = po.received_at
-      //    WHERE i.invoice_category='trade' AND po.received_at IS NOT NULL
-      //      AND DATE(i.issued_at) > DATE(po.received_at);
-    } else {
-      log('issued_at 소급: 꺼짐 (상반된 판정 2건 — 스크립트 머리 주석 참조)');
     }
 
     // ── 3. 자가검증 ────────────────────────────────────────────────────

@@ -17,10 +17,13 @@
 const LS_KEY = 'tableNumber';
 const SS_KEY = 'qrScanTable';
 
+// ⛔ 여기서 만료를 판단하지 않는다 (2026-09-10 Fable 게이트 F1).
+//   읽기 도중 만료가 일어나면 localStorage 의 장바구니는 지워지는데 **React 상태 `cartItems` 는 살아 있다.**
+//   4시간 넘게 열어 둔 탭에서 결제를 누르면 테이블은 null 인데 상태의 장바구니로 주문이 나가
+//   테이블 없는 «pickup N» 이 된다 — 2026-06-12 결함이 그 경계에서 재현된다.
+//   만료 판단은 **페이지 로드 시 provider 의 1회 sweep** 하나뿐이다(상태 초기화 전이라 셋이 함께 죽는다).
 export function getActiveTable(): string | null {
   if (typeof window === 'undefined') return null;
-  // 낡은 세션은 읽히기 전에 사라진다 — 읽기는 스탬프를 **갱신하지 않는다**(아래 주문 세션 수명 참조).
-  expireOrderSessionIfStale();
   try {
     const perTab = sessionStorage.getItem(SS_KEY);
     if (perTab) return perTab;

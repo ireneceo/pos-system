@@ -1,5 +1,23 @@
 # Purple POS - 개발 진행 현황
 
+> **최종 업데이트:** 2026-09-10 — **Fable 판정 수령 후 착수 순서 1·3·4 구현 (dev 반영 · 미배포).**
+> 여섯 세션 만에 Fable 판정이 429 없이 돌아왔다(문서 `docs/FABLE_REVIEW_2026-09-08.md` 전문 + 코드 직접 대조).
+> ①**외부 공급업체 청구서 마감일을 비운다(NULL)** — 09-23 시한 건. 합의한 적 없는 `NET_15` 폴백이
+> 운영 15장에 붙어 9/24 에 «연체 라벨 15장 + 근거 없는 연체 메일» 이 나갈 예정이었다. 스키마 `allowNull:true` +
+> 멱등 마이그(소급 포함) + **널 가드 6곳**(`new Date(null)`=1970 → 연체 오판, `.toISOString()` 은 예외).
+> 브랜드 판매자 1장은 내부 정책이라 무접촉. ②**모바일 주문 세션 만료 4시간**(Irene 승인) — 옛 테이블(T001)이
+> 영구 잔존해 앉은 자리와 무관한 주방티켓이 나가던 것. 테이블·장바구니·주문유형을 **한 스탬프**로 묶어
+> 함께 만료(불변식 «장바구니 살아있음 ⇒ 테이블 살아있음» 유지). 갱신은 **쓰기만**, QR 스캔은 언제나 이긴다.
+> 키오스크 `/payment` 유휴 5분 신설(종전 감시 없음). ③**레시피 복사 경로 원가 재계산** — 저장 경로 3개는
+> 고쳤는데 복사만 옛 값을 옮겨 0 이 전파됐다. + 이미 0 인 줄 재계산 마이그(단가 미정 재료는 무접촉).
+> 검증: **verify-all --full 19/19** · mount sweep 685초 크래시 0 · health 227/227 · 인쇄 보호파일 8/8 무변경 ·
+> e2e 신규 5건 **3회 연속 5/5** · **고장주입 4방향 전부 반증**(원복 번들 해시가 주입 이전과 동일).
+> ⚠ **Fable 게이트 판정 미수령** — `check-sensitive-diff` 기준 ②③ 접촉. 배포 전 게이트 1회 필요.
+> ⛔ **착수 2번(브랜드 범위 통일)은 미착수** — Fable 이 «실측 b 선행» 을 요구했고 운영 실측이 도구에 막혔다.
+> 게다가 판정대로 `resolveBrandScopeIds` 위임을 하면 **Brand Manager 범위까지 넓어진다**(dev 실측 3계정 [1]→[1,2,4]).
+> 그건 `sellerScope.js` 주석의 2026-09-06 판정 「BM 은 소속 브랜드 하나」와 어긋난다 — 게이트에서 사실로 올린다.
+>
+
 > **최종 업데이트:** 2026-09-09 #3 — **배포 없음(dev 만 반영). 태블릿 반응형 + 키오스크 + 장바구니 «한 화면».**
 > Irene 지시 «태블릿 사이즈 반응형 좀 다 잡아줘 / 고객이 스스로 키오스크 주문하듯이 / 장바구니가 포스터미널처럼 한 화면에».
 > ①신규 측정도구 `tablet-overflow-sweep.js` 로 5개 폭 × 25화면 실측 → 공용 컴포넌트 2개(40+8화면)와 2개 화면 수정.
@@ -9560,6 +9578,43 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 
 ---
 
+
+## ✅ 완료: 청구서 마감일 NULL + 모바일 주문 세션 만료 + 레시피 복사 원가 (2026-09-10)
+
+> **미배포 (dev 반영).** Fable 게이트 **조건부 PASS → 필수 수정 3건 반영 완료**, 마커는 미수령.
+> `check-sensitive-diff` = **FABLE 게이트 대상**(기준 ②③). 배포 전 Fable 마커 필요.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 외부 공급업체 마감일 NULL | 합의 없는 `NET_15` 폴백 제거. 09-23 에 운영 15장이 연체로 뒤집히는 것을 막는다 | ✅ |
+| 마감일 널 가드 6곳 | `new Date(null)`=1970 → 연체 오판 / `.toISOString()` 예외(500) | ✅ |
+| 소급 마이그 (멱등) | 이미 발행된 «외부·trade·미결제·gap 15» 만 비움. 손으로 넣은 마감일 무접촉 | ✅ |
+| 모바일 주문 세션 만료 4시간 | 테이블·장바구니·주문유형을 한 스탬프로 묶어 함께 만료. 갱신은 쓰기만 | ✅ |
+| 키오스크 결제화면 유휴 5분 | 종전 감시 없음. in-flight 면 연기하고 **타이머 재무장**(F2) | ✅ |
+| 레시피 복사 원가 재계산 | 저장 경로 3개는 9/9 에 고쳤고 복사만 옛 값을 옮겨 0 이 번졌다 | ✅ |
+| 0 원가 재계산 마이그 | `cost=0 AND 계산가능` 줄만. 단가 미정(0) 재료는 무접촉 | ✅ |
+
+### Fable 게이트 필수 수정 (F1·F2·F3) — 반영 완료
+- **F1** `getActiveTable()` 안의 만료 호출 제거 — 읽기 중 만료되면 localStorage 장바구니는 지워지는데
+  React 상태는 살아 있어 «테이블 없는 pickup 주문» 이 나간다(06-12 결함 재현 경로).
+- **F2** `watchKioskIdle` 이 `onIdle() === false` 면 `reset()` — 그냥 return 하면 재무장이 안 돼 다시는 안 울린다.
+- **F3** 마이그의 `BACKDATE_ISSUED_AT` 스위치·주석 SQL 삭제(소급 철회).
+
+### 수정된 파일
+- `dev-backend/services/purchaseOrderService.js` · `models/Invoice.js` · `routes/recipes.js` ·
+  `routes/restaurants-subscription.js` · `routes/admin-reports.js` · `utils/notificationTemplates.js`
+- `dev-backend/scripts/migrate-external-supplier-invoice-due-null.js` ·
+  `scripts/migrate-recompute-zero-recipe-line-cost.js` · `scripts/migrations.registry.json` ·
+  `scripts/inspect-brand-scope-and-po-dates.js`(읽기 전용 조사)
+- `dev-frontend/src/mobile/utils/tableSession.ts` · `utils/kioskMode.ts` · `contexts/MobileOrderContext.tsx` ·
+  `components/common/MobileLayout.tsx` · `pages/PaymentPage.tsx`
+- `dev-frontend/src/pages/{Restaurant,Admin,Owner,BrandGeneral}/*InvoicesPage.tsx`
+- 신규 테스트 `dev-frontend/e2e/mobile-order-session-ttl.spec.js` · `src/mobile/utils/kioskIdle.guard.test.ts`
+- `dev-backend/releases/2026-09-10-invoice-due-null-session-ttl.json` · `dev-frontend/public/sw.js`(5.01)
+
+---
 
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 
