@@ -71,6 +71,7 @@
     "migrate-stock-ledger-batch-items.js",
     "migrate-strip-cashier-namespace.js",
     "migrate-supplier-company-bridge.js",
+    "migrate-supplier-product-invoice-name.js",
     "migrate-supplier-shop.js",
     "migrate-supplier-staff.js",
     "migrate-takeaway-charge-nullable.js",

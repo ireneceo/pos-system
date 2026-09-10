@@ -8,6 +8,13 @@ const SupplierProduct = sequelize.define('SupplierProduct', {
   name: { type: DataTypes.STRING(255), allowNull: false },
   description: { type: DataTypes.TEXT, allowNull: true },
   sku: { type: DataTypes.STRING(100), allowNull: true, comment: 'Product code' },
+  /**
+   * 이 판매자가 **자기 인보이스에 찍는 이름**. 우리 이름과 전혀 안 겹칠 수 있다
+   * (실측 2026-09-10: 우리 «Yellow Onion» ↔ 인보이스 «BAWANG HOLLAND», 19줄 중 6줄이 그랬다).
+   * 대조 화면에서 사람이 한 번 짝지어 주면 여기 기록되고, 다음 인보이스부터 자동으로 붙는다.
+   * ⛔ 새 표를 만들지 않는다 — «이 판매자가 이 물건을 뭐라 부르는가» 는 판매자 상품 행의 속성이다.
+   */
+  invoice_name: { type: DataTypes.STRING(255), allowNull: true, comment: '공급업체 인보이스에 인쇄되는 이름 (대조 자동매칭용)' },
   unit: { type: DataTypes.STRING(50), allowNull: true, comment: 'kg, L, piece, etc.' },
   base_quantity: { type: DataTypes.DECIMAL(10, 2), defaultValue: 1, comment: '규격 — 1 주문단위에 담긴 양 (예: 5 = 5kg 들이 한 포대)' },
   // 주문 방식. 'pack' = 개수로 주문(팩/박스/포대, 정수) = 기존 전 행의 동작.

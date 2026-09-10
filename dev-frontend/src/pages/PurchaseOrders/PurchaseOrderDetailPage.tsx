@@ -1419,7 +1419,25 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       <ReceivePayModal
         open={!!payModal}
         mode={payModal?.mode || 'pay'}
-        po={detail ? { id: detail.id, po_number: (detail as any).po_number, total_amount: (detail as any).total_amount, seller_name: (detail as any).seller?.name || null } : null}
+        po={detail ? {
+          id: detail.id,
+          po_number: (detail as any).po_number,
+          total_amount: (detail as any).total_amount,
+          seller_name: (detail as any).seller?.name || null,
+          // ⚠ 서버가 정한 «실제로 낼 금액» 을 반드시 넘긴다. 안 넘기면 모달은 발주액을 보여주는데
+          //   서랍에서는 청구액이 나가서, 직원이 화면대로 세어 주면 마감이 그 차액만큼 빈다
+          //   (2026-09-10 Fable 게이트 적발). 목록 화면과 같은 필드 세트를 쓴다.
+          payable_amount: (detail as any).payable_amount,
+          payable_basis: (detail as any).payable_basis,
+          invoice_total: (detail as any).invoice_total,
+          invoice_reconciled_at: (detail as any).invoice_reconciled_at,
+          external_invoice_url: (detail as any).external_invoice_url,
+        } : null}
+        onGoReconcile={detail ? () => {
+          const id = detail.id;
+          setPayModal(null);
+          navigate(`/pos/purchase-orders/${id}/reconcile`);
+        } : undefined}
         onClose={() => setPayModal(null)}
         onDone={({ drawerSkipped }) => {
           if (drawerSkipped) {

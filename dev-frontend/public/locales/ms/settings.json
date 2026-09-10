@@ -1017,7 +1017,11 @@
     "acceptedCards": "Jenis kad diterima",
     "acceptedCardsHint": "Pilih jenis kad yang anda terima. Pilih satu maka ia ditandakan automatik semasa bayaran; pilih dua atau lebih maka juruwang memilih semasa pembayaran. Biarkan semua tidak dipilih untuk memaparkan senarai lalai.",
     "requireEwalletType": "Wajib pilih jenis e-dompet",
-    "requireEwalletTypeHint": "Apabila dihidupkan, juruwang mesti memilih jenis e-dompet sebelum melengkapkan pembayaran. Jika anda hanya menerima satu e-dompet, ia diisi automatik."
+    "requireEwalletTypeHint": "Apabila dihidupkan, juruwang mesti memilih jenis e-dompet sebelum melengkapkan pembayaran. Jika anda hanya menerima satu e-dompet, ia diisi automatik.",
+    "entryCards": {
+      "menuBoardLabel": "Menu dalam talian (lihat sahaja)",
+      "menuBoardDesc": "Kongsi di mana-mana untuk promosi. Hanya memaparkan menu dan pilihan — tiada pesanan, tiada maklumat pelanggan."
+    }
   },
   "printer.emergency.workstationReceiptPrinter": "pencetak resit stesen kerja ini",
   "printer.emergency.destinationHint": "Pencetak resit (bil) pada stesen kerja “{{ws}}”",
@@ -1241,6 +1245,8 @@
     "reconcileNow": "Semak dengan invois",
     "ordered": "Dipesan",
     "received": "Diterima",
-    "notReceived": "Belum diterima"
+    "notReceived": "Belum diterima",
+    "uploadSupplierInvoice": "Muat naik invois pembekal",
+    "uploadingSupplierInvoice": "Memuat naik..."
   }
 }

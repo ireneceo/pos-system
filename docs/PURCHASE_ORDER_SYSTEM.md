@@ -1870,6 +1870,67 @@ GIT 재고아이템 중 수량이 있는 것은 23종(64 pack 종이밥그릇 ~ 
 
 ---
 
+### 8-2. 인보이스 자동 읽기 (2026-09-10 · Fable 판정 D1~D4 · 배포 완료)
+
+**§0 의 「사진 자동 판독만 빼고」 결론이 실측으로 뒤집혔다** — 무료 OCR(tesseract.js)로 된다.
+운영 인보이스(발주 33, 2033×3018 이미지전용 PDF)를 **3.5초에 19줄 전부** 인식했고,
+헤더(번호·일자·조건·총액)도 읽혔다. 오류 1건(금액 28.00→8.00)은 «수량×단가=금액» 검산이 잡는다.
+
+**어디서 도는가 — 브라우저.** 운영 서버 자원 부족이 매장 인쇄 지연의 근본이라(메모리
+[[reference_prod_server_resource_constraint]]) OCR 워커를 인쇄 폴러 옆에 두지 않는다.
+서버 영향 0 · 외부 전송 0 · 자격증명 0 · 비용 0.
+
+**부품**
+- `dev-frontend/src/utils/invoiceOcr.ts` — 이미지/PDF → 긴 변 1800px 축소 → tesseract
+- `dev-frontend/public/tesseract/` (24MB 자체 호스팅) — ⛔ 외부 CDN 금지(매장 네트워크·SW 캐시와 충돌)
+  - ⚠ pdf worker 확장자는 **`.js`** 다. `.mjs` 면 nginx 가 `application/octet-stream` 으로 내보내
+    브라우저가 module script 로 거부한다(2026-09-10 실측).
+  - ⚠ `public/sw.js` 가 `/tesseract/` 를 **아예 처리하지 않는다** — 배포마다 3MB 사전을 다시 캐시하지 않도록.
+- `dev-frontend/src/utils/invoiceMatcher.ts`
+  - `parseInvoiceHeader` — 번호·일자(**일/월/년**, 말레이시아 표기)·총액
+  - `matchInvoiceToPo` — ①이름 사전 ②**전역 greedy 1:1** ③판정
+    - ⛔ 사전 매칭은 **«사전 이름의 낱말이 전부 포함»** 이다. 완전일치로 하면 OCR 잡음
+      (`2 XXXXX BAWANG HOLLAND k#7% (KG) .`) 때문에 **하나도 안 걸린다.**
+    - ⛔ 전역 1:1 이 없으면 앞 발주 줄이 남의 짝을 채간다(실측: 청양고추가 홍청양 값을 가져감).
+  - `shouldAutoFill` — **돈 칸의 마지막 문**. 발주 줄 금액 >0 이면 **20배 벽**,
+    **≤0 이면 `matched` 만**. ⛔ 0원 줄에서 이 문이 열려 있으면 쓰레기 줄(사업자번호·계좌번호가
+    «수량 5648 × 단가 7456» 으로 읽힌다)이 들어가 **원가 전파까지 오염**된다(Fable 게이트 적발).
+    실측: 이 문을 넣기 전 줄 합계가 186 이어야 할 자리에 **18,132** 이 나왔다.
+
+**자동 채움의 한계**: `matched`·`needs_check` 만 채우고 **`unmatched` 는 비워 둔다.**
+**자동 저장은 하지 않는다** — 사람이 저장을 눌러야 `invoiced_*` 에 들어간다.
+
+**이름 사전** `supplier_products.invoice_name` 1칸. 대조 저장 시 `invoice_line_name` 으로 기록된다.
+쓰기 범위는 **그 발주의 라인이 가리키는 상품**뿐(발주 소유권 검사를 이미 통과한 경로).
+실측: 우리 이름과 공급업체 인쇄명이 전혀 안 겹치는 줄이 19개 중 **6개**
+(Yellow Onion↔BAWANG HOLLAND · Tofu↔TAUFU WF SAKURA · Water Spinach↔KANKONG 등).
+
+**계약**: `dev-frontend/src/utils/invoiceMatcher.guard.test.ts` 11건 — 픽스처가 **실제 발주 33 의 19줄 +
+실제 OCR 텍스트**다. 고장주입 3방향(1:1 제거 / 사전 제거 / 문 제거) 전부 반증됨.
+
+---
+
+### 8-1. 지불 금액 규칙 (2026-09-10 · Fable 판정 · Irene 승인)
+
+**대조를 마친 외부 공급업체 발주는 `invoice_total`(공급업체 청구액)을 지불한다.**
+대조 전이거나, 청구액이 안 적혔거나, 우리 솔루션에 가입한 판매자면 `total_amount`(발주액).
+
+- 단일 소스: `services/purchaseOrderPayment.js` 의 순수 함수 `payableFrom(po, isExternal)`.
+  결제 경로는 `resolvePayableAmount(po)` 가 판매자를 조회해 호출하고, 목록·상세 응답
+  (`routes/purchase-orders-crud.js`)은 이미 구한 `is_external` 로 같은 함수를 호출해
+  `payable_amount`/`payable_basis` 를 싣는다. **화면은 다시 계산하지 않는다.**
+- ⛔ 발주 스냅샷 `total_amount` 는 덮어쓰지 않는다. 차액 근거는 현금 이동의 `reason` 에
+  `supplier invoice 480.00 (ordered 500.00)` 형태로 남는다.
+- 결제창을 여는 곳은 **세 군데**(발주 목록·상세·staging)다. 세 곳 모두 위 필드를 모달에
+  넘겨야 한다. 한 곳이라도 빠지면 **화면은 발주액을 보여주고 서랍에서는 청구액이 나가**
+  직원이 화면대로 세어 주는 순간 마감이 그 차액만큼 빈다(2026-09-10 게이트에서 실제로 적발).
+
+**알려진 한계 — 소프트 삭제된 공급업체.** `resolveSellers` 는 삭제된 `supplier_companies`
+행을 못 찾고, `isExternalSeller` 는 그때 `false` 를 돌려준다. 따라서 **판매자가 삭제된 발주는
+대조를 마쳤어도 발주액을 낸다.** 안전한 방향(옛 동작)이라 차단하지 않고 기록만 한다.
+원시 SQL 로 공급업체를 고르는 스크립트·테스트는 `deleted_at IS NULL` 을 반드시 걸 것 —
+안 걸면 삭제된 업체를 골라 «외부 아님» 으로 조용히 떨어진다.
+
 ## 9. 판매 차감 계약 불일치 (2026-09-02 · 발견·수정·4차 배포)
 
 > P1~P4 가 전제하던 **"팔면 재고가 빠진다"가 실제로는 한 번도 성립한 적이 없었다.**

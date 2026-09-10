@@ -728,7 +728,23 @@ const PurchaseOrderStagingPage: React.FC = () => {
       <ReceivePayModal
         open={!!payModal}
         mode={payModal?.mode || 'receive_and_pay'}
-        po={payModal ? { id: payModal.po.id, po_number: payModal.po.po_number, total_amount: payModal.po.total_amount, seller_name: payModal.po.seller_name || payModal.po.seller?.name || null } : null}
+        po={payModal ? {
+          id: payModal.po.id,
+          po_number: payModal.po.po_number,
+          total_amount: payModal.po.total_amount,
+          seller_name: payModal.po.seller_name || payModal.po.seller?.name || null,
+          // 위 상세 화면과 같은 이유 — 표시 금액과 서랍 출금액이 갈리면 마감이 빈다.
+          payable_amount: (payModal.po as any).payable_amount,
+          payable_basis: (payModal.po as any).payable_basis,
+          invoice_total: (payModal.po as any).invoice_total,
+          invoice_reconciled_at: (payModal.po as any).invoice_reconciled_at,
+          external_invoice_url: (payModal.po as any).external_invoice_url,
+        } : null}
+        onGoReconcile={payModal ? () => {
+          const id = payModal.po.id;
+          setPayModal(null);
+          navigate(`/pos/purchase-orders/${id}/reconcile`);
+        } : undefined}
         onClose={() => setPayModal(null)}
         onDone={({ drawerSkipped }) => {
           fetchReceivables();

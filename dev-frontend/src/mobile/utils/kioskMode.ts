@@ -81,3 +81,48 @@ export function isPaymentInFlight(): boolean {
   if (typeof window === 'undefined') return false;
   try { return sessionStorage.getItem(PAY_KEY) === '1'; } catch { return false; }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 메뉴판 모드 (2026-09-10 Irene) — **보여주기 전용**.
+//
+// Irene 원문: 「온라인메뉴 페이지 생성하게 해줘. 주문은 안되고 아무것도 데이터 정보 없고
+//   메뉴판으로 보는 거야. 여기 저기 홍보할 때 쓰기 좋은 메뉴 보여주기. 그대로 주문만 빼도 되지.
+//   옵션도 클릭만 안되고 뭐 있는지 나오면 되는 거니까.」
+//
+// 키오스크와 **같은 원칙**: 새 경로·새 페이지를 만들지 않는다. 기존 모바일오더의 표시 모드다.
+//   (CLAUDE.md 「기존 개념에 새 목록·경로를 만들지 않는다」)
+// 따라서 메뉴 조회 로직은 무접촉이고, 빠지는 것은 **담기·장바구니·주문·계정** 뿐이다.
+//
+// 켜는 법: `/mobile/<slug>?menu=1` — 홍보용으로 그대로 공유하는 주소다.
+//   URL 로만 판정한다(탭에 저장하지 않는다) — 손님이 그 링크를 눌렀을 때만 메뉴판이고,
+//   같은 브라우저로 나중에 QR 을 찍으면 **정상 주문 화면**이어야 하기 때문이다.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** 이 화면이 «보여주기 전용 메뉴판» 인가. */
+export function isMenuBoardMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const p = new URLSearchParams(window.location.search).get('menu');
+    return p === '1' || p === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/** 메뉴판 링크를 만든다 — 설정 화면이 홍보용으로 보여 준다. */
+export function menuBoardUrl(origin: string, slug: string): string {
+  return `${origin.replace(/\/$/, '')}/mobile/${slug}?menu=1`;
+}
+
+/**
+ * 메뉴판 모드에서 화면을 옮길 때 **URL 표시를 이어 준다.**
+ *
+ * 왜: 모드는 URL(`?menu=1`)로만 판정한다(탭에 저장하지 않는다 — 나중에 QR 을 찍으면 정상 주문이어야
+ * 하므로). 그래서 이동할 때 쿼리를 떨어뜨리면 **다음 화면이 일반 주문 화면으로 열린다.**
+ * 2026-09-10 Fable 게이트가 실브라우저로 재현: 메뉴판에서 품목을 누르자 상세에 담기 버튼과
+ * 장바구니·계정이 되살아났다. 홍보용 메뉴판에서 주문까지 갈 수 있었다.
+ */
+export function withMenuBoardQuery(path: string): string {
+  if (!isMenuBoardMode()) return path;
+  return path.includes('?') ? `${path}&menu=1` : `${path}?menu=1`;
+}

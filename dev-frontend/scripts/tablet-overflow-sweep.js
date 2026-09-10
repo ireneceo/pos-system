@@ -38,6 +38,9 @@ const routesFor = (rid) => [
   { r: `/restaurant/${rid}/customers`, role: 'RA' },
   { r: `/restaurant/${rid}/settings?tab=store`, role: 'RA' },
   { r: `/restaurant/${rid}/settings?tab=printer`, role: 'RA' },
+  // 2026-09-10 Irene 지시로 추가 — 이 두 화면이 목록에서 빠져 있어 **한 번도 측정된 적이 없었다.**
+  { r: `/restaurant/${rid}/notification-settings`, role: 'RA' },   // 메일 알림 설정 폼
+  { r: `/pos/purchase-orders`, role: 'RA', note: '발주 목록(결제 버튼 추가됨)' },
   { r: `/pos/purchase-orders`, role: 'RA' },
   { r: `/pos/suppliers`, role: 'RA' },
   { r: '/pos/brand/general/dashboard', role: 'BG' },

@@ -4783,6 +4783,17 @@ const SettingsPage: React.FC = () => {
                 const cards: EntryCard[] = [];
                 const baseUrl = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}`;
 
+                // 온라인 메뉴판 (2026-09-10 Irene) — **보여주기 전용**. 주문·장바구니·계정이 없고
+                // 손님 정보도 안 받는다. 홍보용으로 어디에나 그대로 붙일 수 있는 주소다.
+                // 주문 QR 과 같은 목록에 두는 이유: 매장이 «어디에 무엇을 붙이나» 를 한자리에서 본다.
+                cards.push({
+                  key: 'menu-board',
+                  label: t('settings:settingsPage.entryCards.menuBoardLabel', 'Online menu (view only)') as string,
+                  description: t('settings:settingsPage.entryCards.menuBoardDesc',
+                    'Share anywhere for promotion. Shows the menu and options only — no ordering, no customer details.') as string,
+                  url: `${baseUrl}?menu=1`
+                });
+
                 if (operationSettings.orderTypes?.dineIn) {
                   cards.push({
                     key: 'dine-in',

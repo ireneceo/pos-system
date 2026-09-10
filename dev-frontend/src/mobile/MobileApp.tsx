@@ -6,6 +6,7 @@ import { CustomerProvider } from '../contexts/CustomerContext';
 import { StaffProvider } from '../contexts/StaffContext';
 import OrderTypePage from './pages/OrderTypePage';
 import MenuPage from './pages/MenuPage';
+import { isMenuBoardMode } from './utils/kioskMode';
 import ItemDetailPage from './pages/ItemDetailPage';
 import CartPage from './pages/CartPage';
 import PaymentPage from './pages/PaymentPage';
@@ -31,7 +32,9 @@ const MobileApp: React.FC = () => {
       <StaffProvider>
         <MobileOrderProvider>
       <Routes>
-        <Route path="/:slug" element={<OrderTypePage />} />
+        {/* 메뉴판 모드(?menu=1)는 «주문 유형 고르기» 관문을 지나지 않는다 — 주문이 없는 화면이라
+            물어볼 것이 없다(2026-09-10 Irene). 새 경로를 만들지 않고 첫 화면만 바꾼다. */}
+        <Route path="/:slug" element={isMenuBoardMode() ? <MenuPage /> : <OrderTypePage />} />
         <Route path="/:slug/order-type" element={<OrderTypePage />} />
         <Route path="/:slug/menu" element={<MenuPage />} />
         <Route path="/:slug/item/:itemId" element={<ItemDetailPage />} />

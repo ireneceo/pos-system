@@ -1017,7 +1017,11 @@
     "acceptedCards": "취급 카드 종류",
     "acceptedCardsHint": "취급하는 카드 종류를 선택하세요. 1개면 결제 시 자동 지정, 2개 이상이면 결제할 때 캐셔가 선택합니다. 아무것도 선택하지 않으면 기본 목록이 표시됩니다.",
     "requireEwalletType": "이월렛 종류 선택 필수",
-    "requireEwalletTypeHint": "켜면 결제 완료 전에 캐셔가 이월렛 종류를 반드시 선택해야 합니다. 취급 이월렛이 1개면 자동으로 입력됩니다."
+    "requireEwalletTypeHint": "켜면 결제 완료 전에 캐셔가 이월렛 종류를 반드시 선택해야 합니다. 취급 이월렛이 1개면 자동으로 입력됩니다.",
+    "entryCards": {
+      "menuBoardLabel": "온라인 메뉴판 (보기 전용)",
+      "menuBoardDesc": "홍보용으로 어디에나 공유하세요. 메뉴와 옵션만 보여 주고 주문·손님 정보는 없습니다."
+    }
   },
   "printer.emergency.workstationReceiptPrinter": "이 워크스테이션 영수증 프린터",
   "printer.emergency.destinationHint": "워크스테이션 “{{ws}}”의 영수증(빌) 프린터",
@@ -1241,6 +1245,8 @@
     "reconcileNow": "인보이스와 대조하기",
     "ordered": "주문",
     "received": "수령",
-    "notReceived": "미수령"
+    "notReceived": "미수령",
+    "uploadSupplierInvoice": "공급업체 인보이스 올리기",
+    "uploadingSupplierInvoice": "올리는 중..."
   }
 }

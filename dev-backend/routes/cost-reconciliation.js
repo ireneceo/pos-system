@@ -76,6 +76,22 @@ router.get('/purchase-orders/:id/reconcile', async (req, res) => {
       : [];
     const mapById = new Map(maps.map((m) => [m.id, m]));
 
+    // 판매자 상품의 **이름 2종** — 매칭에 쓴다 (2026-09-10 Fable D3).
+    //   `name`         우리가 등록한 그 판매자 상품명
+    //   `invoice_name` 그 판매자가 **자기 인보이스에 찍는 이름** (사람이 한 번 짝지어 준 것)
+    // 지금까지 GET 이 이름을 아예 안 보내서, 화면이 늘 우리 내부 이름으로만 맞추고 있었다.
+    const supplierProductIds = [...new Set(maps
+      .filter((m) => m.seller_type === 'supplier' && m.seller_product_id)
+      .map((m) => m.seller_product_id))];
+    const spById = new Map();
+    if (supplierProductIds.length) {
+      const sps = await SupplierProduct.findAll({
+        where: { id: supplierProductIds },
+        attributes: ['id', 'name', 'invoice_name'],
+      });
+      for (const sp of sps) spById.set(sp.id, sp);
+    }
+
     res.json({
       success: true,
       data: {
@@ -110,7 +126,9 @@ router.get('/purchase-orders/:id/reconcile', async (req, res) => {
             ingredient_seller_product_id: it.ingredient_seller_product_id,
             seller_product_id: m ? m.seller_product_id : null,
             seller_type: m ? m.seller_type : null,
-            seller_entity_id: m ? m.seller_entity_id : null
+            seller_entity_id: m ? m.seller_entity_id : null,
+            seller_product_name: (m && spById.get(m.seller_product_id)) ? spById.get(m.seller_product_id).name : null,
+            seller_invoice_name: (m && spById.get(m.seller_product_id)) ? spById.get(m.seller_product_id).invoice_name : null
           };
         })
       }
@@ -165,12 +183,34 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
   const t = await sequelize.transaction();
   try {
     // ① 라인별 청구 실측값 — 발주 스냅샷 unit_price 는 손대지 않는다
+    //   함께: 그 줄이 인보이스에서 어떤 이름으로 불렸는지를 판매자 상품에 기억시킨다(이름 사전).
+    //   ⛔ 쓰기 대상은 **이 발주의 라인이 가리키는 판매자 상품**뿐이다 — 발주 소유권 검사를
+    //     이미 통과한 경로라 별도 권한 문을 만들지 않는다(남의 매장 상품은 닿을 수 없다).
+    const itemIds = lines.map((l) => parseInt(l.item_id, 10)).filter(Number.isFinite);
+    const ownItems = itemIds.length
+      ? await PurchaseOrderItem.findAll({
+          where: { id: itemIds, purchase_order_id: po.id },
+          attributes: ['id', 'ingredient_seller_product_id'], transaction: t })
+      : [];
+    const ownItemById = new Map(ownItems.map((i) => [i.id, i]));
+
     for (const l of lines) {
       const itemId = parseInt(l.item_id, 10);
       await PurchaseOrderItem.update({
         invoiced_unit_price: money(l.invoiced_unit_price),
         invoiced_quantity: l.invoiced_quantity === undefined ? null : money(l.invoiced_quantity)
       }, { where: { id: itemId }, transaction: t });
+
+      // 이름 사전 갱신 — 값이 실제로 왔을 때만, 그리고 **이 발주의 라인일 때만**
+      const alias = typeof l.invoice_line_name === 'string' ? sanitizeString(l.invoice_line_name).trim().slice(0, 255) : '';
+      const own = ownItemById.get(itemId);
+      if (alias && own && own.ingredient_seller_product_id) {
+        const map = await IngredientSellerProduct.findByPk(own.ingredient_seller_product_id, { transaction: t });
+        if (map && map.seller_type === 'supplier' && map.seller_product_id) {
+          await SupplierProduct.update({ invoice_name: alias },
+            { where: { id: map.seller_product_id }, transaction: t });
+        }
+      }
     }
 
     // ② 인보이스 헤더 — 세금·배송·할인은 라인에 섞지 않고 여기 따로 앉는다

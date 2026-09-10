@@ -51,9 +51,14 @@
       "receivePartial": "Partial",
       "receivePartialTitle": "Some items missing — enter received quantity per item",
       "reconcile": "Compare cost",
-      "reconciled": "Reconciled",
-      "diffLines": "diff",
-      "checkInvoice": "Check invoice"
+      "reconciled": "Compared",
+      "diffLines": "Diff",
+      "checkInvoice": "Check invoice",
+      "refund": "Reverse this payment",
+      "refundShort": "Reverse payment",
+      "pay": "Record payment",
+      "payShort": "Pay",
+      "receiveAndPayShort": "Receive & pay"
     },
     "badge": {
       "sellerShipped": "Seller marked as dispatched"
@@ -486,7 +491,8 @@
       "stock": "Stock goes up by the ordered quantity.",
       "payment": "The order is marked as paid.",
       "drawer": "RM {{amount}} is taken out of the open shift cash drawer.",
-      "refund": "A matching cash-in movement is created — the payment is reversed, not deleted. Stock and receipt are not touched."
+      "refund": "A matching cash-in movement is created — the payment is reversed, not deleted. Stock and receipt are not touched.",
+      "paysInvoice": "The compared supplier invoice amount is paid, not the ordered amount."
     },
     "error": {
       "multipleShifts": "More than one shift is open — close one before recording a cash payment.",
@@ -503,7 +509,13 @@
     },
     "confirm": "Confirm",
     "reason": "Note",
-    "reasonPlaceholder": "Optional — shown on the cash movement"
+    "reasonPlaceholder": "Optional — shown on the cash movement",
+    "amount": {
+      "invoiced": "Supplier invoice",
+      "ordered": "Ordered"
+    },
+    "notReconciledWarning": "A supplier invoice has been uploaded but not compared yet — this pays the ordered amount.",
+    "compareFirst": "Compare first"
   },
   "ingredients": {
     "activeLabel": "Active",
@@ -590,6 +602,26 @@
       "poUnchanged": "Saving does not change the purchase order amount — this screen keeps the expected (ordered) and actual (invoiced) figures side by side.",
       "externalPay": "External suppliers cannot be paid through this system. Pay them directly, then mark the invoice as Paid."
     },
-    "openInNewTab": "Open larger in a new tab"
+    "openInNewTab": "Open larger in a new tab",
+    "total": {
+      "ordered": "Ordered total",
+      "morePaid": "more than ordered",
+      "lessPaid": "less than ordered",
+      "same": "same as ordered",
+      "lineSum": "Sum of the lines you entered",
+      "lineMismatch": "differs from the total you typed by {{d}} — either tax/delivery, or a typo"
+    },
+    "ocr": {
+      "reading": "Reading the uploaded invoice…",
+      "cancel": "Stop reading",
+      "done": "Read the invoice and filled in the right side.",
+      "checkHint": "Green lines are confident, yellow need a check. Pick from the list below for the empty ones.",
+      "again": "Read again",
+      "start": "Read the invoice",
+      "failed": "Could not read it automatically — paste below or type on the right.",
+      "idle": "You can read the uploaded invoice to fill in the right side."
+    },
+    "pickLine": "Pick this line from the invoice…",
+    "willRemember": "On save, «{{name}}» is remembered as this product’s invoice name"
   }
 }

@@ -15,6 +15,12 @@ export interface PoLine {
   id: number;
   description: string | null;
   seller_product_name?: string | null;
+  /**
+   * 이 판매자가 **자기 인보이스에 찍는 이름**. 한 번 사람이 짝지어 주면 서버가 기억한다
+   * (`supplier_products.invoice_name`). 우리 이름(Yellow Onion)과 인쇄명(BAWANG HOLLAND)이
+   * 전혀 안 겹치는 경우가 실측 19줄 중 6줄이었다 — 그 6줄을 살리는 것이 이 칸의 존재 이유다.
+   */
+  seller_invoice_name?: string | null;
   unit?: string | null;
   quantity_ordered: number | string;
   unit_price: number | string;
@@ -144,41 +150,164 @@ function amountConsistent(p: ParsedInvoiceLine): boolean {
  *   `needs_check` 후보는 있으나 이름이 애매(≥0.3)하거나 금액이 안 맞음
  *   `unmatched`   쓸 만한 후보 없음 → 발주 라인 값을 기본으로 두고 사람이 채운다
  */
+/**
+ * **자동으로 칸에 넣어도 되는 값인가** — 돈 칸의 마지막 문 (2026-09-10 Fable 게이트).
+ *
+ * 왜 필요한가: 인보이스에는 품목 외에 사업자등록번호·우편번호·계좌번호도 찍혀 있고,
+ * 글자인식이 그런 줄을 «수량 5648 × 단가 7456» 처럼 읽어 낸다(실측). 이름 점수가 대부분을
+ * 막지만 뚫린 적이 있다 — 실브라우저에서 줄 합계가 186 이어야 할 자리에 **18,132** 가 나왔다.
+ *
+ * 규칙:
+ *   발주 줄 금액 > 0  → 읽은 줄 금액이 그 **20배 초과·1/20 미만**이면 넣지 않는다.
+ *                       (실제 단가 차이는 ±50% 안이고, 쓰레기 줄은 수백~수천 배다)
+ *   발주 줄 금액 ≤ 0  → 20배 벽을 세울 기준이 없다. 이때는 **matched 일 때만** 넣는다
+ *                       (= 이름이 확실하고 «수량×단가=금액» 검산까지 통과). 쓰레기 줄은
+ *                       세 숫자가 서로 안 맞아 검산을 못 넘는다.
+ *                       ⛔ 운영에 단가 0 인 발주 줄이 실제로 있다. 여기가 열려 있으면
+ *                          엉뚱한 값이 저장되어 **원가 전파까지 오염**된다.
+ */
+export interface InvoiceHeader {
+  number: string | null;
+  date: string | null;     // YYYY-MM-DD
+  total: number | null;
+}
+
+/**
+ * 인보이스 **머리 정보**(번호·일자·총액)를 읽어낸 글자에서 뽑는다.
+ *
+ * 2026-09-10 Irene: 「토탈 금액이 여전히 인보이스에서 자동으로 안들어오는데?」
+ * 줄만 채우고 머리 칸은 비워 두고 있었다. 사람 눈에 바로 보이는 칸이라 채워도 안전하다(Fable D2).
+ *
+ * 실측 대상(TAIYANG FRESH):
+ *   `INVOICE :IV-26/09-02369` · `Date 8/9/2026` · `Total (RM)| 186.16]`
+ */
+export function parseInvoiceHeader(text: string): InvoiceHeader {
+  const lines = String(text || '').split('\n');
+  let number: string | null = null;
+  let date: string | null = null;
+  let total: number | null = null;
+
+  for (const raw of lines) {
+    const line = raw.replace(/\s+/g, ' ').trim();
+    if (!line) continue;
+
+    // 번호 — «INVOICE : XXX». 콜론 뒤에서 공백/괄호를 뺀 토큰.
+    if (number === null && /invoice/i.test(line) && /:/.test(line)) {
+      const after = line.split(':').slice(1).join(':').trim();
+      const tok = after.replace(/[|\]\[]/g, ' ').trim().split(' ')[0];
+      if (tok && /[0-9]/.test(tok) && tok.length >= 4) number = tok;
+    }
+
+    // 일자 — d/m/yyyy 또는 d-m-yyyy. 말레이시아 표기라 **일/월/년** 으로 읽는다.
+    if (date === null && /date/i.test(line)) {
+      const m = line.match(/(\d{1,2})\s*[/\-.]\s*(\d{1,2})\s*[/\-.]\s*(\d{4})/);
+      if (m) {
+        const d = m[1].padStart(2, '0');
+        const mo = m[2].padStart(2, '0');
+        if (Number(mo) >= 1 && Number(mo) <= 12 && Number(d) >= 1 && Number(d) <= 31) date = `${m[3]}-${mo}-${d}`;
+      }
+    }
+
+    // 총액 — «Total» 이 있는 줄의 **마지막** 소수 두 자리 숫자.
+    if (/total/i.test(line)) {
+      const nums = line.match(/\d[\d,]*\.\d{2}/g);
+      if (nums && nums.length) {
+        const v = Number(nums[nums.length - 1].replace(/,/g, ''));
+        if (Number.isFinite(v) && v > 0) total = v;
+      }
+    }
+  }
+  return { number, date, total };
+}
+
+export function shouldAutoFill(result: MatchResult, poLine: PoLine): boolean {
+  if (!result.parsed || result.state === 'unmatched') return false;
+
+  const orderedQty = Number(poLine.quantity_ordered) || 0;
+  const orderedPrice = Number(poLine.unit_price) || 0;
+  const orderedTotal = orderedQty * orderedPrice;
+
+  const readQty = result.parsed.quantity != null ? result.parsed.quantity : orderedQty;
+  const readPrice = result.parsed.unitPrice != null ? result.parsed.unitPrice : orderedPrice;
+  const readTotal = readQty * readPrice;
+
+  if (orderedTotal > 0) {
+    if (!(readTotal > 0)) return true;              // 0 으로 읽힌 것은 사람이 보게 그대로 둔다
+    return readTotal <= orderedTotal * 20 && readTotal >= orderedTotal / 20;
+  }
+  // 기준이 없을 때(발주 0원) — 확실한 줄만 통과시킨다.
+  return result.state === 'matched';
+}
+
 export function matchInvoiceToPo(poLines: PoLine[], parsedLines: ParsedInvoiceLine[]): MatchResult[] {
-  const used = new Set<number>();
+  const takenInvoice = new Set<number>();
+  const assigned = new Map<number, { idx: number; score: number; viaAlias: boolean }>();
 
-  return poLines.map((line) => {
-    const target = line.seller_product_name || line.description || '';
-    let best = -1;
-    let bestScore = 0;
-
+  // ── 1단계: 이름 사전. 가장 확실한 근거라 점수 경쟁을 시키지 않는다.
+  //   ⚠ **완전일치로 하면 안 된다** — OCR 이 읽은 이름에는 줄번호·잡음이 붙는다
+  //     (실측: 사전 «BAWANG HOLLAND» vs 읽힌 «2 XXXXX BAWANG HOLLAND k#7% (KG) .»).
+  //     그래서 «사전 이름의 낱말이 **전부** 들어 있으면 그 줄» 로 판정한다.
+  //     BAWANG PUTIH KOPEK 은 holland 가 없어 안 걸리므로 서로 안 헷갈린다.
+  for (const line of poLines) {
+    const aliasTokens = tokens(line.seller_invoice_name || '');
+    if (!aliasTokens.length) continue;
+    let bestIdx = -1;
+    let bestExtra = -1;
     parsedLines.forEach((p, i) => {
-      if (used.has(i)) return;
-      const s = nameScore(target, p.name);
-      if (s > bestScore) { bestScore = s; best = i; }
+      if (takenInvoice.has(i)) return;
+      const parsedTokens = new Set(tokens(p.name));
+      if (!aliasTokens.every((t) => parsedTokens.has(t))) return;
+      // 여러 줄이 걸리면 사전 이름과 더 가까운 쪽을 고른다.
+      const extra = nameScore(line.seller_invoice_name || '', p.name);
+      if (extra > bestExtra) { bestExtra = extra; bestIdx = i; }
     });
+    if (bestIdx >= 0) { takenInvoice.add(bestIdx); assigned.set(line.id, { idx: bestIdx, score: 1, viaAlias: true }); }
+  }
 
-    if (best < 0 || bestScore < 0.3) {
+  // ── 2단계: 남은 것끼리 **점수 높은 짝부터** 붙인다(전역 greedy).
+  //   ⛔ 발주 라인 순서대로 «각자 최선» 을 고르면 앞 줄이 남의 짝을 먼저 채간다.
+  //      실측(2026-09-10 발주 33): 청양고추가 CILI API MERAH(홍청양) 를 가져가 오매칭이 났다.
+  //      한 인보이스 줄은 한 발주 줄에만 붙는다 — 자동 채움을 켜는 전제 조건이다.
+  const pairs: Array<{ lineId: number; idx: number; score: number }> = [];
+  for (const line of poLines) {
+    if (assigned.has(line.id)) continue;
+    const target = line.seller_product_name || line.description || '';
+    parsedLines.forEach((p, i) => {
+      if (takenInvoice.has(i)) return;
+      const sc = nameScore(target, p.name);
+      if (sc >= 0.3) pairs.push({ lineId: line.id, idx: i, score: sc });
+    });
+  }
+  pairs.sort((a, b) => b.score - a.score || a.lineId - b.lineId || a.idx - b.idx);
+  for (const pair of pairs) {
+    if (assigned.has(pair.lineId) || takenInvoice.has(pair.idx)) continue;
+    takenInvoice.add(pair.idx);
+    assigned.set(pair.lineId, { idx: pair.idx, score: pair.score, viaAlias: false });
+  }
+
+  // ── 3단계: 판정
+  return poLines.map((line) => {
+    const a = assigned.get(line.id);
+    if (!a) {
       return {
         poLineId: line.id,
         parsed: null,
         state: 'unmatched' as MatchState,
-        score: Math.round(bestScore * 100) / 100,
-        reason: (parsedLines.length ? 'no_candidate' : 'no_lines') as MatchReason
+        score: 0,
+        reason: (parsedLines.length ? 'no_candidate' : 'no_lines') as MatchReason,
       };
     }
-
-    used.add(best);
-    const parsed = parsedLines[best];
+    const parsed = parsedLines[a.idx];
     const consistent = amountConsistent(parsed);
+    const score = Math.round(a.score * 100) / 100;
 
-    if (bestScore >= 0.6 && consistent) {
-      return { poLineId: line.id, parsed, state: 'matched', score: Math.round(bestScore * 100) / 100,
-        reason: 'ok' };
+    // 사전으로 붙은 줄도 **금액 검산은 통과해야** matched 다 — OCR 오독(28→8)을 여기서 잡는다.
+    if ((a.viaAlias || a.score >= 0.6) && consistent) {
+      return { poLineId: line.id, parsed, state: 'matched' as MatchState, score, reason: 'ok' as MatchReason };
     }
     return {
-      poLineId: line.id, parsed, state: 'needs_check', score: Math.round(bestScore * 100) / 100,
-      reason: !consistent ? 'amount_mismatch' : 'name_unsure'
+      poLineId: line.id, parsed, state: 'needs_check' as MatchState, score,
+      reason: (!consistent ? 'amount_mismatch' : 'name_unsure') as MatchReason,
     };
   });
 }

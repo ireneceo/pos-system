@@ -1017,7 +1017,11 @@
     "acceptedCards": "Accepted card types",
     "acceptedCardsHint": "Select the card types you accept. Pick one and it is tagged automatically at payment; pick two or more and the cashier chooses at checkout. Leave all unselected to show the default list.",
     "requireEwalletType": "Require e-wallet type selection",
-    "requireEwalletTypeHint": "When on, the cashier must pick an e-wallet type before completing the payment. If you accept only one e-wallet, it is filled in automatically."
+    "requireEwalletTypeHint": "When on, the cashier must pick an e-wallet type before completing the payment. If you accept only one e-wallet, it is filled in automatically.",
+    "entryCards": {
+      "menuBoardLabel": "Online menu (view only)",
+      "menuBoardDesc": "Share anywhere for promotion. Shows the menu and options only — no ordering, no customer details."
+    }
   },
   "printer.emergency.workstationReceiptPrinter": "this workstation’s receipt printer",
   "printer.emergency.destinationHint": "Receipt (bill) printer on workstation “{{ws}}”",
@@ -1241,6 +1245,8 @@
     "reconcileNow": "Compare with invoice",
     "ordered": "Ordered",
     "received": "Received",
-    "notReceived": "Not received"
+    "notReceived": "Not received",
+    "uploadSupplierInvoice": "Upload supplier invoice",
+    "uploadingSupplierInvoice": "Uploading..."
   }
 }

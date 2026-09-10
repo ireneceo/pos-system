@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styled from 'styled-components';
 import { printHTMLContent } from '../../utils/billPrint';
 import { useSearchParams, useParams } from 'react-router-dom';
@@ -43,6 +43,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import { getAuthToken } from '../../utils/auth';
+import { getErrorMessage } from '../../utils/apiError';
 import AlertDialog from '../../components/Common/AlertDialog';
 // ConfirmDialog removed (only used by old SoaBundleRow Pay All)
 interface AdditionalCharge {
@@ -343,6 +344,9 @@ const RestaurantInvoicesPage: React.FC = () => {
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
   const [confirmingInvoiceId, setConfirmingInvoiceId] = useState<string | null>(null);
   const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
+  // 공급업체 인보이스 올리기 (2026-09-10 Fable A) — 발주 화면의 것과 **같은 라우트**를 쓴다.
+  const supplierInvoiceInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadingInvoiceId, setUploadingInvoiceId] = useState<string | number | null>(null);
   const [paymentData, setPaymentData] = useState({
     paymentMethod: '',
     transactionId: '',
@@ -380,6 +384,45 @@ const RestaurantInvoicesPage: React.FC = () => {
 
   // SOA derived view (/soa/current) removed in B1 재설계 — SOA is now a real Invoice record
   // and appears in the regular invoices list. Pay button visibility is driven by `parentSoaInvoiceId`.
+
+  /**
+   * 공급업체가 준 종이(인보이스·영수증)를 이 청구서의 원본 발주에 붙인다.
+   * 발주 화면의 업로드와 **같은 두 단계**다 — 파일 업로드 → 발주에 연결.
+   * 새 라우트도, 두 번째 파일 칸도 만들지 않는다(같은 종이라 `external_invoice_url` 하나를 쓴다).
+   */
+  const handleUploadSupplierInvoice = async (invoice: Invoice, file: File) => {
+    if (!invoice.purchaseOrderId) return;
+    setUploadingInvoiceId(invoice.id);
+    try {
+      const token = getAuthToken();
+      const fd = new FormData();
+      fd.append('files', file);
+      const up = await fetch('/api/upload/files', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+      const upData = await up.json();
+      if (!up.ok || !upData.success || !upData.data?.[0]) {
+        setAlertDlg({ title: t('common:error', 'Error') as string, message: getErrorMessage(upData, 'Upload failed') });
+        return;
+      }
+      const f = upData.data[0];
+      const res = await fetch(`/api/purchase-orders/${invoice.purchaseOrderId}/upload-invoice`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: f.url, filename: f.originalName }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setAlertDlg({ title: t('common:error', 'Error') as string, message: getErrorMessage(data, 'Failed to attach invoice') });
+        return;
+      }
+      await fetchAllInvoices();
+      setShowViewModal(false);
+    } catch (e) {
+      console.error(e);
+      setAlertDlg({ title: t('common:error', 'Error') as string, message: t('common:networkError', 'Network error') as string });
+    } finally {
+      setUploadingInvoiceId(null);
+    }
+  };
 
   // Fetch all invoices for this restaurant
   const fetchAllInvoices = async () => {

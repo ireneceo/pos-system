@@ -9,7 +9,7 @@
  *
  * ⛔ 매칭 결과는 제안일 뿐이다. 사람이 저장을 눌러야 서버로 간다(설계 §1).
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -21,8 +21,10 @@ import { formatDateTime } from '../../utils/dateFormat';
 import { useStore } from '../../contexts/StoreContext';
 import AlertDialog from '../../components/Common/AlertDialog';
 import {
-  parseInvoiceText, matchInvoiceToPo, MatchResult, MatchReason, PoLine
+  parseInvoiceText, parseInvoiceHeader, matchInvoiceToPo, shouldAutoFill, MatchResult, MatchReason, PoLine
 } from '../../utils/invoiceMatcher';
+import { readInvoiceText } from '../../utils/invoiceOcr';
+import DateField from '../../components/Common/DateField';
 
 interface ReconcileItem extends PoLine {
   quantity_received: string | number;
@@ -31,6 +33,8 @@ interface ReconcileItem extends PoLine {
   invoiced_quantity: string | number | null;
   ingredient_seller_product_id: number | null;
   seller_product_id: number | null;
+  /** 그 판매자가 자기 인보이스에 찍는 이름 — 매칭기가 최우선으로 본다 */
+  seller_invoice_name?: string | null;
 }
 
 interface ReconcilePo {
@@ -49,6 +53,12 @@ interface ReconcilePo {
 interface LineDraft {
   invoiced_unit_price: string;
   invoiced_quantity: string;
+  /**
+   * 이 줄이 **인보이스에서 어떤 이름으로 불렸는지.** 저장하면 서버가 그 판매자 상품에 기록하고,
+   * 다음 인보이스부터 그 이름으로 자동 매칭한다(`supplier_products.invoice_name`).
+   * 우리 이름과 안 겹치는 경우가 실측 19줄 중 6줄이었다(Yellow Onion ↔ BAWANG HOLLAND).
+   */
+  invoice_line_name?: string;
   apply_to_seller_price: boolean;
   /** 과거 발주에도 이 가격을 소급할지 — **기본 꺼짐**(설계 §4). 결제·수령된 발주는 대상이 아니다. */
   retro_apply: boolean;
@@ -277,6 +287,12 @@ const InvoiceReconcilePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [alert, setAlert] = useState<{ title: string; message: string } | null>(null);
+  // 자동 읽기 (2026-09-10 Fable D1·D2) — 올려 둔 인보이스를 브라우저에서 읽어 오른쪽을 채운다.
+  const [ocr, setOcr] = useState<{ running: boolean; progress: number; error: string | null; done: boolean }>(
+    { running: false, progress: 0, error: null, done: false });
+  const [ocrLines, setOcrLines] = useState<string[]>([]);   // 못 찾은 줄에 사람이 골라 붙이도록
+  const ocrCancelled = useRef(false);
+  const ocrStartedFor = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -301,9 +317,19 @@ const InvoiceReconcilePage: React.FC = () => {
       // 기본값 = 발주 라인 값. 이미 대조된 라인은 그 값을 그대로 이어받는다.
       const d: Record<number, LineDraft> = {};
       for (const it of its) {
+        // DB 는 단가 4자리·수량 3자리로 저장한다(DECIMAL(12,4)/(12,3)). 그대로 쓰면 저장 후
+        // 다시 들어왔을 때 «18.0000» 처럼 보인다(2026-09-10 Irene 지적). **발주 쪽 자릿수에 맞춘다.**
+        const fit = (v: unknown, ref: unknown) => {
+          const n = Number(v);
+          if (v === null || v === undefined || v === '' || !Number.isFinite(n)) return '';
+          const refStr = String(ref ?? '');
+          const dot = refStr.indexOf('.');
+          const dec = Math.max(2, dot < 0 ? 0 : refStr.length - dot - 1);
+          return n.toFixed(dec);
+        };
         d[it.id] = {
-          invoiced_unit_price: String(it.invoiced_unit_price ?? it.unit_price ?? ''),
-          invoiced_quantity: String(it.invoiced_quantity ?? it.quantity_ordered ?? ''),
+          invoiced_unit_price: fit(it.invoiced_unit_price ?? it.unit_price, it.unit_price),
+          invoiced_quantity: fit(it.invoiced_quantity ?? it.quantity_ordered, it.quantity_ordered),
           apply_to_seller_price: false,
           retro_apply: false
         };
@@ -318,25 +344,102 @@ const InvoiceReconcilePage: React.FC = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  /** 붙여넣은 글자를 매칭기에 태운다. 결과는 제안일 뿐 — 저장은 사람이 누른다. */
-  const runMatch = useCallback(() => {
-    const parsed = parseInvoiceText(pasted);
+  /** 발주 쪽 값이 몇 자리로 적혀 있는지 — 표시 형식을 그쪽에 맞추기 위해 본다. */
+  const decimalsOf = (v: string | number | null | undefined, min = 2): number => {
+    const str = String(v ?? '');
+    const dot = str.indexOf('.');
+    return Math.max(min, dot < 0 ? 0 : str.length - dot - 1);
+  };
+
+  /**
+   * 읽어낸(또는 붙여넣은) 글자를 매칭기에 태우고 **오른쪽 칸을 채운다.**
+   *
+   * 안전 한계 (2026-09-10 Fable D2):
+   *   matched      → 값 채움
+   *   needs_check  → 값 채움 (화면에서 노랑)
+   *   unmatched    → **비워 둔다.** 발주 값이 그대로 남고, 사람이 옆 목록에서 골라 붙인다.
+   * 어느 경우에도 **자동 저장은 하지 않는다.**
+   */
+  const applyText = useCallback((text: string) => {
+    const parsed = parseInvoiceText(text);
     const results = matchInvoiceToPo(items, parsed);
     const map: Record<number, MatchResult> = {};
-    const next = { ...drafts };
-    for (const r of results) {
-      map[r.poLineId] = r;
-      if (r.parsed) {
+    setDrafts((prev) => {
+      const next = { ...prev };
+      for (const r of results) {
+        map[r.poLineId] = r;
+        if (r.state === 'unmatched' || !r.parsed) continue;   // 못 찾은 줄은 손대지 않는다
+
+        // 돈 칸의 마지막 문 — 규칙은 `utils/invoiceMatcher.ts` 의 `shouldAutoFill` 하나뿐이다.
+        // 화면에서 다시 판단하지 않는다(순수 함수라 계약 테스트로 지켜진다).
+        const poLine = items.find((it) => it.id === r.poLineId);
+        if (poLine && !shouldAutoFill(r, poLine)) {
+          map[r.poLineId] = { ...r, parsed: null, state: 'unmatched', reason: 'no_candidate' };
+          continue;
+        }
+        // 자릿수를 **발주 쪽과 맞춘다** — 왼쪽이 «7.00» 인데 오른쪽이 «7» 이면 같은 값인데도
+        // 다르게 보인다(2026-09-10 Irene 지적). 값은 그대로고 보이는 형식만 맞춘다.
         next[r.poLineId] = {
           ...next[r.poLineId],
-          invoiced_unit_price: r.parsed.unitPrice != null ? String(r.parsed.unitPrice) : next[r.poLineId].invoiced_unit_price,
-          invoiced_quantity: r.parsed.quantity != null ? String(r.parsed.quantity) : next[r.poLineId].invoiced_quantity
+          invoiced_unit_price: r.parsed.unitPrice != null
+            ? r.parsed.unitPrice.toFixed(decimalsOf(poLine?.unit_price, 2))
+            : next[r.poLineId]?.invoiced_unit_price,
+          invoiced_quantity: r.parsed.quantity != null
+            ? r.parsed.quantity.toFixed(decimalsOf(poLine?.quantity_ordered, 2))
+            : next[r.poLineId]?.invoiced_quantity,
+          invoice_line_name: r.parsed.name,   // 저장 시 이름 사전에 기록된다
         };
       }
-    }
+      return next;
+    });
     setMatches(map);
-    setDrafts(next);
-  }, [pasted, items, drafts]);
+    setOcrLines(parsed.map((p) => p.raw));
+
+    // 머리 칸(번호·일자·총액)도 채운다 — 사람 눈에 바로 보이는 칸이라 안전하다.
+    // 사람이 이미 적어 둔 값은 덮지 않는다.
+    const h = parseInvoiceHeader(text);
+    setHeader((prev) => ({
+      ...prev,
+      number: prev.number || h.number || '',
+      date: prev.date || h.date || '',
+      total: prev.total || (h.total != null ? h.total.toFixed(2) : ''),
+    }));
+    return results;
+  }, [items]);
+
+  /** 붙여넣은 글자를 매칭기에 태운다. 결과는 제안일 뿐 — 저장은 사람이 누른다. */
+  const runMatch = useCallback(() => { applyText(pasted); }, [pasted, applyText]);
+
+  /**
+   * 올려 둔 인보이스를 **자동으로 읽는다.** 화면이 열릴 때 «업로드 있음 + 미대조» 면 1회.
+   * 실패하면 조용히 붙여넣기 경로로 떨어진다 — 업로드·대조 자체를 막지 않는다(Fable D1).
+   */
+  const runOcr = useCallback(async () => {
+    if (!po?.external_invoice_url) return;
+    ocrCancelled.current = false;
+    setOcr({ running: true, progress: 0, error: null, done: false });
+    try {
+      const text = await readInvoiceText(
+        fileSrc(po.external_invoice_url, po.external_invoice_uploaded_at),
+        (pr) => { if (!ocrCancelled.current) setOcr((o) => ({ ...o, progress: pr.progress })); },
+      );
+      if (ocrCancelled.current) { setOcr({ running: false, progress: 0, error: null, done: false }); return; }
+      applyText(text);
+      setOcr({ running: false, progress: 1, error: null, done: true });
+    } catch (e: any) {
+      if (ocrCancelled.current) { setOcr({ running: false, progress: 0, error: null, done: false }); return; }
+      setOcr({ running: false, progress: 0, error: e?.message || 'ocr_failed', done: false });
+    }
+  }, [po, applyText]);
+
+  // 자동 1회 — 이미 대조를 마친 발주는 사람이 확정한 값이 있으므로 건드리지 않는다.
+  useEffect(() => {
+    if (!po || !items.length) return;
+    if (!po.external_invoice_url || po.invoice_reconciled_at) return;
+    if (ocrStartedFor.current === po.id) return;
+    ocrStartedFor.current = po.id;
+    runOcr();
+  }, [po, items, runOcr]);
 
   /** 매칭기가 준 사유 코드를 사람 말로. 유틸은 hook 을 못 쓰므로 여기서 옮긴다. */
   const reasonText = (r: MatchReason): string => {
@@ -350,14 +453,46 @@ const InvoiceReconcilePage: React.FC = () => {
     }
   };
 
-  const diffOf = (it: ReconcileItem): number => {
+  /** 줄의 «발주 금액»(수량×단가). 청구 쪽은 입력값 기준. */
+  const orderedLineTotal = (it: ReconcileItem): number => num(it.quantity_ordered) * num(it.unit_price);
+  const invoicedLineTotal = (it: ReconcileItem): number => {
     const d = drafts[it.id];
-    if (!d) return 0;
-    const ordered = num(it.unit_price);
-    const invoiced = num(d.invoiced_unit_price);
+    if (!d) return orderedLineTotal(it);
+    const qty = d.invoiced_quantity === '' || d.invoiced_quantity == null
+      ? num(it.quantity_ordered) : num(d.invoiced_quantity);
+    const price = d.invoiced_unit_price === '' || d.invoiced_unit_price == null
+      ? num(it.unit_price) : num(d.invoiced_unit_price);
+    return qty * price;
+  };
+
+  /**
+   * 줄 차이(%) — **줄 금액 기준**이다.
+   * 2026-09-10 이전에는 단가만 비교해서, 단가가 같고 **수량이 다른** 줄
+   * («3개 시켰는데 2개 왔다»)이 «다른 줄» 로 안 잡혔다. 현장에서 가장 흔한 차이가 그것이다.
+   */
+  const diffOf = (it: ReconcileItem): number => {
+    const ordered = orderedLineTotal(it);
+    const invoiced = invoicedLineTotal(it);
     if (!(ordered > 0)) return 0;
     return Math.round(((invoiced - ordered) / ordered) * 1000) / 10;
   };
+
+  /** 발주 총액 · 입력한 줄들의 합 · 인보이스에 적힌 총액 — 셋을 나란히 본다. */
+  const totals = useMemo(() => {
+    const orderedSum = items.reduce((s, it) => s + orderedLineTotal(it), 0);
+    const invoicedSum = items.reduce((s, it) => s + invoicedLineTotal(it), 0);
+    const headerTotal = header.total === '' ? null : num(header.total);
+    return {
+      ordered: Math.round(orderedSum * 100) / 100,
+      lines: Math.round(invoicedSum * 100) / 100,
+      header: headerTotal == null ? null : Math.round(headerTotal * 100) / 100,
+    };
+  }, [items, drafts, header.total]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** 이미 어떤 발주 줄이 가져간 인보이스 줄 — 다른 줄의 선택 목록에서는 뺀다. */
+  const usedRawLines = useMemo(
+    () => new Set(Object.values(matches).map((m) => m?.parsed?.raw).filter(Boolean) as string[]),
+    [matches]);
 
   const changedCount = useMemo(
     () => items.filter((it) => Math.abs(diffOf(it)) >= 0.05).length,
@@ -384,7 +519,8 @@ const InvoiceReconcilePage: React.FC = () => {
             invoiced_unit_price: drafts[it.id]?.invoiced_unit_price,
             invoiced_quantity: drafts[it.id]?.invoiced_quantity,
             apply_to_seller_price: !!drafts[it.id]?.apply_to_seller_price,
-            retro_apply: !!drafts[it.id]?.retro_apply
+            retro_apply: !!drafts[it.id]?.retro_apply,
+            invoice_line_name: drafts[it.id]?.invoice_line_name
           }))
         })
       });
@@ -449,6 +585,49 @@ const InvoiceReconcilePage: React.FC = () => {
         <Split>
           <Panel>
             <PanelTitle>{t('reconcile.invoicePanel2', '인보이스 내용 넣기')}</PanelTitle>
+
+            {/* 자동 읽기 상태 (2026-09-10) — 올려 둔 인보이스를 브라우저에서 읽는다.
+                서버로 보내지 않고, 실패해도 아래 붙여넣기로 그대로 진행할 수 있다. */}
+            {po.external_invoice_url && (
+              <div style={{
+                background: ocr.error ? '#FFFBEB' : ocr.done ? '#ECFDF5' : '#F8FAFC',
+                border: `1px solid ${ocr.error ? '#FCD34D' : ocr.done ? '#A7F3D0' : '#E2E8F0'}`,
+                borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12.5, lineHeight: 1.7,
+              }}>
+                {ocr.running && (
+                  <>
+                    <div style={{ fontWeight: 700, color: '#0A2540' }}>
+                      {t('reconcile.ocr.reading', '올려 둔 인보이스를 읽는 중입니다…')} {Math.round(ocr.progress * 100)}%
+                    </div>
+                    <div style={{ height: 6, background: '#E2E8F0', borderRadius: 3, margin: '6px 0' }}>
+                      <div style={{ height: 6, width: `${Math.round(ocr.progress * 100)}%`, background: '#635BFF', borderRadius: 3 }} />
+                    </div>
+                    <Button variant="secondary" onClick={() => { ocrCancelled.current = true; }}>
+                      {t('reconcile.ocr.cancel', '그만 읽기')}
+                    </Button>
+                  </>
+                )}
+                {!ocr.running && ocr.done && (
+                  <>
+                    <strong style={{ color: '#047857' }}>{t('reconcile.ocr.done', '인보이스를 읽어 오른쪽을 채웠습니다.')}</strong>{' '}
+                    {t('reconcile.ocr.checkHint', '초록은 확실한 줄, 노랑은 확인이 필요한 줄입니다. 비어 있는 줄은 아래 목록에서 골라 붙이세요.')}
+                    <div style={{ marginTop: 6 }}>
+                      <Button variant="secondary" onClick={runOcr}>{t('reconcile.ocr.again', '다시 읽기')}</Button>
+                    </div>
+                  </>
+                )}
+                {!ocr.running && !ocr.done && (
+                  <>
+                    {ocr.error
+                      ? t('reconcile.ocr.failed', '자동으로 읽지 못했습니다 — 아래에 붙여넣거나 오른쪽에 직접 입력하세요.')
+                      : t('reconcile.ocr.idle', '올려 둔 인보이스를 읽어 오른쪽을 채울 수 있습니다.')}
+                    <div style={{ marginTop: 6 }}>
+                      <Button variant="secondary" onClick={runOcr}>{t('reconcile.ocr.start', '인보이스 읽기')}</Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             {/* 사진·PDF 는 글자를 읽어주지 못한다(설계 §0). 그래서 **직접 입력 칸을 맨 위**에 둔다 —
                 미리보기가 안 열리는 브라우저에서도 일이 막히지 않게 (2026-09-08 Irene:
                 "이미지 자동으로 못 불러오면 텍스트를 넣게 해달라고 했잖아"). */}
@@ -502,10 +681,42 @@ const InvoiceReconcilePage: React.FC = () => {
                 <ThemedInput value={header.number} onChange={(e) => setHeader({ ...header, number: e.target.value })} placeholder="INV-0001" />
               </Field>
               <Field>{t('reconcile.field.date', '인보이스 일자')}
-                <ThemedInput type="date" value={header.date} onChange={(e) => setHeader({ ...header, date: e.target.value })} />
+                {/* 브라우저 기본 날짜칸은 **브라우저 언어대로** mm/dd/yyyy 로 보인다(2026-09-10 Irene 지적).
+                    말레이시아는 dd/mm 이라 헷갈린다. 프로젝트 표준 DateField 는 «Sep 08, 2026» 처럼
+                    월을 글자로 보여 줘서 순서 오해가 생기지 않는다. */}
+                <DateField value={header.date} onChange={(v) => setHeader({ ...header, date: v || '' })} />
               </Field>
               <Field>{t('reconcile.field.total', '총액')} ({currency})
                 <ThemedInput type="number" step="0.01" value={header.total} onChange={(e) => setHeader({ ...header, total: e.target.value })} />
+                {/* 총액 비교 (2026-09-10 Irene: «총 금액이 올린거랑 우리 발주 가격이랑 다른데 총비용 비교는 없어»).
+                    셋을 나란히 본다 — 발주 총액 / 입력한 줄들의 합 / 인보이스에 적힌 총액.
+                    줄 합과 적힌 총액이 다르면 세금·배송비이거나 옮겨 적다 틀린 것이다. */}
+                <Muted style={{ display: 'block', marginTop: 6, lineHeight: 1.8 }}>
+                  {t('reconcile.total.ordered', '발주 총액')}: <strong>{currency} {totals.ordered.toFixed(2)}</strong>
+                  {totals.header != null && Math.abs(totals.header - totals.ordered) >= 0.005 && (
+                    <span style={{ color: totals.header > totals.ordered ? '#B45309' : '#047857', fontWeight: 700 }}>
+                      {' · '}
+                      {totals.header > totals.ordered ? '▲' : '▼'} {currency} {Math.abs(totals.header - totals.ordered).toFixed(2)}
+                      {' '}
+                      {totals.header > totals.ordered
+                        ? t('reconcile.total.morePaid', '더 청구됨')
+                        : t('reconcile.total.lessPaid', '덜 청구됨')}
+                    </span>
+                  )}
+                  {totals.header != null && Math.abs(totals.header - totals.ordered) < 0.005 && (
+                    <span style={{ color: '#047857' }}>{' · '}{t('reconcile.total.same', '발주와 같음')}</span>
+                  )}
+                  <br />
+                  {t('reconcile.total.lineSum', '입력한 줄들의 합')}: <strong>{currency} {totals.lines.toFixed(2)}</strong>
+                  {totals.header != null && Math.abs(totals.lines - totals.header) >= 0.005 && (
+                    <span style={{ color: '#B45309' }}>
+                      {' · '}
+                      {t('reconcile.total.lineMismatch', '적어 넣은 총액과 {{d}} 차이 — 세금·배송비이거나 옮겨 적다 틀린 것입니다', {
+                        d: `${currency} ${Math.abs(totals.lines - totals.header).toFixed(2)}`,
+                      })}
+                    </span>
+                  )}
+                </Muted>
               </Field>
               <Field>{t('reconcile.field.tax', '세금')}
                 <ThemedInput type="number" step="0.01" value={header.tax} onChange={(e) => setHeader({ ...header, tax: e.target.value })} />
@@ -550,10 +761,71 @@ const InvoiceReconcilePage: React.FC = () => {
                   </Cell>
                   <Cell data-label={t('reconcile.col.ordered', '발주 단가')}>{num(it.unit_price).toFixed(2)}</Cell>
                   <Cell data-label={t('reconcile.col.invoiced', '청구 단가')}>
+                    {/* 3단 색 (2026-09-10 Fable D2): 초록=확실 · 노랑=확인 필요 · 색없음=사람이 채울 자리 */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <ThemedInput
                       type="number" step="0.0001" value={d?.invoiced_unit_price ?? ''}
+                      style={m?.state === 'matched' ? { borderColor: '#10B981', background: '#ECFDF5' }
+                        : m?.state === 'needs_check' ? { borderColor: '#F59E0B', background: '#FFFBEB' }
+                        : undefined}
                       onChange={(e) => setDrafts({ ...drafts, [it.id]: { ...d, invoiced_unit_price: e.target.value } })}
                     />
+                      {it.unit && (
+                        <span style={{ fontSize: 12.5, color: '#4B5563', whiteSpace: 'nowrap' }}>/{it.unit}</span>
+                      )}
+                    </div>
+                    {/* 인보이스 줄 고르기 (2026-09-10 Irene 지적 2건):
+                        ① 한 번 고르면 다시 못 고쳤다 → **언제나 보이게** 하고 고른 줄을 값으로 표시한다.
+                        ② 이미 다른 줄이 가져간 인보이스 줄이 목록에 남아 있었다 → 뺀다(내가 고른 것은 남긴다). */}
+                    {ocrLines.length > 0 && (
+                      <select
+                        style={{ marginTop: 6, width: '100%', fontSize: 12, padding: '4px 6px',
+                                 border: '1px solid #E3E8EF', borderRadius: 6,
+                                 background: m?.state === 'unmatched' ? '#FFFBEB' : '#FFFFFF' }}
+                        value={m?.parsed?.raw ?? ''}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (!raw) {
+                            // 선택 해제 — 발주 값으로 되돌리고 못 찾은 상태로 둔다
+                            setDrafts({ ...drafts, [it.id]: {
+                              ...d,
+                              invoiced_unit_price: String(num(it.unit_price).toFixed(decimalsOf(it.unit_price, 2))),
+                              invoiced_quantity: String(it.quantity_ordered ?? ''),
+                              invoice_line_name: undefined,
+                            } });
+                            setMatches({ ...matches, [it.id]: {
+                              poLineId: it.id, parsed: null, state: 'unmatched', score: 0, reason: 'no_candidate' } });
+                            return;
+                          }
+                          const one = parseInvoiceText(raw)[0];
+                          if (!one) return;
+                          setDrafts({ ...drafts, [it.id]: {
+                            ...d,
+                            invoiced_unit_price: one.unitPrice != null
+                              ? one.unitPrice.toFixed(decimalsOf(it.unit_price, 2)) : (d?.invoiced_unit_price ?? ''),
+                            invoiced_quantity: one.quantity != null
+                              ? one.quantity.toFixed(decimalsOf(it.quantity_ordered, 2)) : (d?.invoiced_quantity ?? ''),
+                            invoice_line_name: one.name,
+                          } });
+                          setMatches({ ...matches, [it.id]: {
+                            poLineId: it.id, parsed: one, state: 'needs_check', score: 0, reason: 'name_unsure' } });
+                        }}
+                      >
+                        <option value="">{t('reconcile.pickLine', '인보이스에서 이 줄 고르기…')}</option>
+                        {ocrLines
+                          .filter((raw) => raw === m?.parsed?.raw || !usedRawLines.has(raw))
+                          .map((raw, i) => (
+                            <option key={i} value={raw}>{raw.slice(0, 60)}</option>
+                          ))}
+                      </select>
+                    )}
+                    {d?.invoice_line_name && (
+                      <Muted style={{ display: 'block', marginTop: 4, color: '#047857' }}>
+                        {t('reconcile.willRemember', '저장하면 «{{name}}» 을 이 상품의 인보이스 이름으로 기억합니다', {
+                          name: String(d.invoice_line_name).slice(0, 40),
+                        })}
+                      </Muted>
+                    )}
                     {Math.abs(diff) >= 0.05 && (
                       <Muted style={{ color: diff > 0 ? '#B45309' : '#047857' }}>
                         {diff > 0 ? '▲' : '▼'} {Math.abs(diff)}% {diff > 0 ? t('reconcile.pricier', '비쌈') : t('reconcile.cheaper', '쌈')}
@@ -561,10 +833,20 @@ const InvoiceReconcilePage: React.FC = () => {
                     )}
                   </Cell>
                   <Cell data-label={t('reconcile.col.invoicedQty', '청구 수량')}>
+                    {/* 단위를 숫자 옆에 붙인다 (2026-09-10 Irene: «입력란 옆에 단위가 명확해야»).
+                        인보이스 단위는 우리 것과 다를 수 있어 매칭이 안 되므로, **발주한 단위**를 보여 준다.
+                        예: 발주가 kg 이면 여기 적는 수량도 kg 기준이라는 뜻이다. */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <ThemedInput
                       type="number" step="0.001" value={d?.invoiced_quantity ?? ''}
                       onChange={(e) => setDrafts({ ...drafts, [it.id]: { ...d, invoiced_quantity: e.target.value } })}
                     />
+                      {it.unit && (
+                        <span style={{ fontSize: 12.5, color: '#4B5563', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                          {it.unit}
+                        </span>
+                      )}
+                    </div>
                   </Cell>
                   <Cell data-label={t('reconcile.col.apply', '원가 반영')}>
                     <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#4B5563' }}>
@@ -596,6 +878,12 @@ const InvoiceReconcilePage: React.FC = () => {
             <Actions>
               <Muted style={{ marginRight: 'auto', alignSelf: 'center' }}>
                 {t('reconcile.changedLines', '발주와 다른 줄 {{n}}개', { n: changedCount })}
+                {Math.abs(totals.lines - totals.ordered) >= 0.005 && (
+                  <span style={{ color: totals.lines > totals.ordered ? '#B45309' : '#047857', fontWeight: 700 }}>
+                    {' · '}
+                    {totals.lines > totals.ordered ? '▲' : '▼'} {currency} {Math.abs(totals.lines - totals.ordered).toFixed(2)}
+                  </span>
+                )}
               </Muted>
               <Button variant="secondary" onClick={() => navigate(`/pos/purchase-orders/${po.id}`)}>{t('reconcile.cancel', '취소')}</Button>
               <Button onClick={save} disabled={saving}>{saving ? t('reconcile.saving', '저장 중…') : t('reconcile.save', '대조 저장')}</Button>

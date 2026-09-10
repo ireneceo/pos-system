@@ -1,6 +1,14 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-10 — **Fable 판정 수령 후 착수 순서 1·3·4 구현 (dev 반영 · 미배포).**
+> **최종 업데이트:** 2026-09-10 — **운영 배포 7회. 인보이스 자동 읽기 · 결제 금액 정합 · 온라인 메뉴판.**
+> ①**09-23 시한 해소** — 외부 공급업체 청구서 마감일 NULL(연체메일 15통 차단) ②화면이 죽던 자리 **12곳**
+> (이미 있던 `getErrorMessage` 를 안 쓰는 호출부였다) ③**대조된 외부 발주는 청구액을 지불** — 그동안
+> 청구 480 을 확인해도 서랍에서 500 이 나갔다 ④**인보이스 자동 읽기** — 브라우저 안에서 무료로,
+> 운영 인보이스 19줄을 3.5초에 인식. 유료 AI·서버 OCR·외부 전송 전부 없음 ⑤**온라인 메뉴판** —
+> 키오스크 선례대로 새 경로 없이 `?menu=1` 표시 모드.
+> Fable 게이트가 배포 전에 **네 번** 잡았다: 상세·staging 표시금액 불일치 / 게이트 사각지대 /
+> 자동채움 안전문이 0원 줄에서 열려 있던 것 / 메뉴판 상세에서 담기가 되살아나던 것.
+>
 > 여섯 세션 만에 Fable 판정이 429 없이 돌아왔다(문서 `docs/FABLE_REVIEW_2026-09-08.md` 전문 + 코드 직접 대조).
 > ①**외부 공급업체 청구서 마감일을 비운다(NULL)** — 09-23 시한 건. 합의한 적 없는 `NET_15` 폴백이
 > 운영 15장에 붙어 9/24 에 «연체 라벨 15장 + 근거 없는 연체 메일» 이 나갈 예정이었다. 스키마 `allowNull:true` +
@@ -9615,6 +9623,47 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 - `dev-backend/releases/2026-09-10-invoice-due-null-session-ttl.json` · `dev-frontend/public/sw.js`(5.01)
 
 ---
+
+## ✅ 완료: 인보이스 자동 읽기 · 결제 금액 정합 · 온라인 메뉴판 (2026-09-10)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 외부 공급업체 청구서 마감일 NULL | 합의 없는 `NET_15` 폴백 제거. 9/24 연체 라벨 15장 + 연체메일 15통 차단 | ✅ 완료 |
+| 화면 사망(React #31) 12곳 | 기존 `getErrorMessage` 를 안 쓰던 호출부 교체. 유틸 자체도 1줄 강화 | ✅ 완료 |
+| 대조 화면 한글 노출 5문장 | 4언어 등록. 그 화면 61문장 중 영어 누락 0 | ✅ 완료 |
+| 업로드 인보이스 이미지 캐시 | 주소에 업로드 시각을 붙여 «1년 immutable» 로 오염된 캐시 우회 | ✅ 완료 |
+| **결제가 대조 금액을 따름** | `payableFrom` 단일 소스. 대조된 외부 발주는 `invoice_total` 을 지불. 드로어 출금·되돌리기 동일 | ✅ 완료 |
+| 발주 목록 결제 버튼 | 상세·staging 이 쓰던 `ReceivePayModal` 을 목록 행에. 백엔드 변경 0 | ✅ 완료 |
+| 인보이스 화면 업로드 | 기존 발주 업로드 라우트·파일 칸 재사용. 새 경로·새 칸 0 | ✅ 완료 |
+| 대조 총액 비교 3종 | 발주 총액 / 입력한 줄 합계 / 적어 넣은 총액 + 차액 표시 | ✅ 완료 |
+| 줄 차이를 «줄 금액» 기준으로 | 수량만 다른 줄(현장 최빈)이 안 잡히던 것 수정 | ✅ 완료 |
+| **인보이스 자동 읽기** | 브라우저 OCR(tesseract 자체 호스팅 24MB). 운영 인보이스 19줄 3.5초 인식 | ✅ 완료 |
+| 이름 사전 | `supplier_products.invoice_name` 1칸. 한 번 짝지으면 다음부터 자동 매칭 | ✅ 완료 |
+| 매칭기 전역 1:1 배정 | 인보이스 한 줄이 발주 두 줄에 붙던 오매칭 수정 | ✅ 완료 |
+| 자동채움 안전문 | `shouldAutoFill` — 발주 금액 20배 벽, 0원 줄은 matched 만. 원가 오염 경로 차단 | ✅ 완료 |
+| 대조 화면 UX 7건 | 자릿수·줄 재선택·중복 제외·기억 안내·머리칸 자동채움·표준 날짜칸·단위 표시 | ✅ 완료 |
+| **온라인 메뉴판** | `?menu=1` 표시 모드. 주문·장바구니·계정 없음, 옵션은 보이되 비활성 | ✅ 완료 |
+| 게이트 사각지대 수정 | `check-sensitive-diff` 가 `purchaseOrderPayment.js` 를 못 잡던 것 | ✅ 완료 |
+
+### 검증
+- 배포 7회 전부 `verify-all --full` **19/19** · mount sweep 크래시 0 · 스모크 10/10
+- 신규 계약 테스트: `po-payable-amount` 7건 · `invoiceMatcher.guard` 11건 · `apiError.guard` 4건
+- 고장주입 **7방향** 전부 반증(지불 규칙 / 전역 1:1 / 이름 사전 / 자동채움 문 / 메뉴판 표시 이어주기 등)
+- 마이그 신규 1건(`invoice_name`) 2회 실행 멱등 확인 · ENUM 값 소실 0
+
+### 수정된 파일 (주요)
+- `dev-backend/services/purchaseOrderPayment.js` (`payableFrom` · `resolvePayableAmount`)
+- `dev-backend/routes/cost-reconciliation.js` · `invoices-list.js` · `purchase-orders-crud.js`
+- `dev-backend/models/SupplierProduct.js` + `scripts/migrate-supplier-product-invoice-name.js`
+- `dev-frontend/src/utils/invoiceMatcher.ts` · `invoiceOcr.ts`(신규) · `apiError.ts`
+- `dev-frontend/src/pages/PurchaseOrders/InvoiceReconcilePage.tsx` · `PurchaseOrdersPage.tsx` · `PurchaseOrderDetailPage.tsx` · `PurchaseOrderStagingPage.tsx`
+- `dev-frontend/src/mobile/utils/kioskMode.ts` · `pages/MenuPage.tsx` · `pages/ItemDetailPage.tsx` · `components/common/MobileLayout.tsx` · `MobileApp.tsx`
+- `dev-frontend/public/tesseract/` (자체 호스팅 자산) · `public/sw.js`
+
+---
+
 
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 

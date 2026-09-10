@@ -50,10 +50,15 @@
       "markReceivedAllTitle": "Semua item tiba — tandakan keseluruhan pesanan diterima",
       "receivePartial": "Separa",
       "receivePartialTitle": "Sebahagian item tiada — masukkan kuantiti diterima bagi setiap item",
-      "reconcile": "Semak kos",
-      "reconciled": "Telah disemak",
-      "diffLines": "beza",
-      "checkInvoice": "Semak invois"
+      "reconcile": "Banding kos",
+      "reconciled": "Dibandingkan",
+      "diffLines": "Beza",
+      "checkInvoice": "Semak invois",
+      "refund": "Undurkan pembayaran ini",
+      "refundShort": "Undur bayaran",
+      "pay": "Rekod pembayaran",
+      "payShort": "Bayar",
+      "receiveAndPayShort": "Terima & bayar"
     },
     "badge": {
       "sellerShipped": "Penjual tanda telah dihantar"
@@ -486,7 +491,8 @@
       "stock": "Stok bertambah mengikut kuantiti yang dipesan.",
       "payment": "Pesanan ditandakan sebagai dibayar.",
       "drawer": "RM {{amount}} dikeluarkan daripada laci tunai syif yang dibuka.",
-      "refund": "Satu pergerakan masuk tunai yang sama dicipta — pembayaran dibalikkan, bukan dipadam. Stok dan penerimaan tidak disentuh."
+      "refund": "Satu pergerakan masuk tunai yang sama dicipta — pembayaran dibalikkan, bukan dipadam. Stok dan penerimaan tidak disentuh.",
+      "paysInvoice": "Jumlah invois pembekal yang telah dibandingkan akan dibayar, bukan jumlah yang dipesan."
     },
     "error": {
       "multipleShifts": "Lebih daripada satu syif dibuka — tutup satu sebelum merekod pembayaran tunai.",
@@ -503,7 +509,13 @@
     },
     "confirm": "Sahkan",
     "reason": "Nota",
-    "reasonPlaceholder": "Pilihan — dipaparkan pada pergerakan tunai"
+    "reasonPlaceholder": "Pilihan — dipaparkan pada pergerakan tunai",
+    "amount": {
+      "invoiced": "Invois pembekal",
+      "ordered": "Dipesan"
+    },
+    "notReconciledWarning": "Invois pembekal telah dimuat naik tetapi belum dibandingkan — ini membayar jumlah yang dipesan.",
+    "compareFirst": "Banding dahulu"
   },
   "ingredients": {
     "activeLabel": "Aktif",
@@ -590,6 +602,26 @@
       "poUnchanged": "Menyimpan tidak mengubah jumlah pesanan belian — skrin ini menyimpan angka dijangka (dipesan) dan sebenar (diinvois) bersebelahan.",
       "externalPay": "Pembekal luar tidak boleh dibayar melalui sistem ini. Bayar terus kepada mereka, kemudian tandakan invois sebagai Dibayar."
     },
-    "openInNewTab": "Buka lebih besar dalam tab baharu"
+    "openInNewTab": "Buka lebih besar dalam tab baharu",
+    "total": {
+      "ordered": "Jumlah dipesan",
+      "morePaid": "lebih daripada dipesan",
+      "lessPaid": "kurang daripada dipesan",
+      "same": "sama seperti dipesan",
+      "lineSum": "Jumlah baris yang anda masukkan",
+      "lineMismatch": "berbeza {{d}} daripada jumlah yang anda taip — sama ada cukai/penghantaran, atau tersalah taip"
+    },
+    "ocr": {
+      "reading": "Sedang membaca invois yang dimuat naik…",
+      "cancel": "Berhenti membaca",
+      "done": "Invois telah dibaca dan bahagian kanan diisi.",
+      "checkHint": "Baris hijau adalah pasti, kuning perlu disemak. Untuk baris kosong, pilih daripada senarai di bawah.",
+      "again": "Baca semula",
+      "start": "Baca invois",
+      "failed": "Tidak dapat dibaca secara automatik — tampal di bawah atau taip di sebelah kanan.",
+      "idle": "Anda boleh membaca invois yang dimuat naik untuk mengisi bahagian kanan."
+    },
+    "pickLine": "Pilih baris ini daripada invois…",
+    "willRemember": "Selepas simpan, «{{name}}» diingat sebagai nama invois produk ini"
   }
 }

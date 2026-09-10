@@ -10,7 +10,7 @@
  *    캐시는 SW_VERSION 네임스페이스 → 새 배포(install)가 옛 캐시 전체 삭제로 stale-chunk 차단.
  */
 
-const SW_VERSION = '5.03-reconcile-korean-and-image-20260910';
+const SW_VERSION = '5.07-reconcile-ux-menu-board-20260910';
 const RUNTIME_CACHE = `pos-runtime-${SW_VERSION}`;
 // 오프라인에 캐시할 API GET (메뉴/설정/플로어플랜 — 끊겨도 주문화면이 뜨게). 그 외 API 는 캐시 안 함.
 const API_CACHE_PATTERNS = [/\/api\/menu(\b|\/|\?)/, /\/api\/mobile\/.*menu/, /\/restaurants\/\d+\/floor-plan/, /\/api\/.*\/operation-settings/, /\/api\/.*\/store/];
@@ -94,6 +94,11 @@ self.addEventListener('fetch', (event) => {
   let url;
   try { url = new URL(req.url); } catch (_) { return; }
   if (url.origin !== self.location.origin) return;
+
+  // 글자인식 자산(/tesseract/*)은 **SW 가 손대지 않는다** — 브라우저 HTTP 캐시에 맡긴다.
+  //   사전 하나가 3MB 라 SW_VERSION 캐시에 넣으면 배포마다 그만큼 다시 쌓인다(옛 캐시는 install 에서
+  //   통째로 지워지므로 매 배포 재다운로드). 대조 화면에서만 쓰는 자산이라 그 값이 안 나온다.
+  if (url.pathname.startsWith('/tesseract/')) return;
 
   const isNav = req.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html');
   const isStatic = url.pathname.startsWith('/static/');

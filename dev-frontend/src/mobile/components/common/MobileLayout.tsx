@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useMobileOrder } from '../../contexts/MobileOrderContext';
 import { setupMobileInputHandlers } from '../../utils/mobileInputFix';
 import { getActiveTable, clearActiveTable } from '../../utils/tableSession';
-import { isKioskMode, watchKioskIdle, KIOSK_PAYMENT_IDLE_MS, isPaymentInFlight } from '../../utils/kioskMode';
+import { isKioskMode, isMenuBoardMode, watchKioskIdle, KIOSK_PAYMENT_IDLE_MS, isPaymentInFlight } from '../../utils/kioskMode';
 
 const LayoutContainer = styled.div`
   min-height: 100vh;
@@ -293,6 +293,9 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
   const location = useLocation();
   const { currentStore, orderType, cartItems, clearCart } = useMobileOrder();
   const kiosk = isKioskMode();
+  // 보여주기 전용 메뉴판 — 하단 이동줄(장바구니·주문내역·계정)을 통째로 뺀다.
+  // 손님 정보도, 주문 경로도 없는 «메뉴판» 이 되어야 하기 때문이다(2026-09-10 Irene).
+  const menuBoard = isMenuBoardMode();
   // 장바구니 배지는 컨텍스트의 실제 카트 수로 표시 → 모든 페이지(상세 포함)에서 항상 정확.
   // prop cartItemCount 는 폴백.
   // 헤더 카트뱃지 = 총수량(하단바·수량과 일치). 예전엔 품목 줄 수(length)라 "3인데 담긴 건 7"
@@ -435,7 +438,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
 
       <Content $bg={contentBg} $kiosk={kiosk}>{children}</Content>
 
-      <BottomNav $kiosk={kiosk}>
+      {!menuBoard && <BottomNav $kiosk={kiosk}>
         {/* 컨텍스트별 하단 nav 분리:
             - reserve 페이지: Home + Reserve + Account (Menu/Cart 미노출 — 주문 흐름과 무관)
             - 주문 페이지 / 그 외: Home + Menu + Cart + Account (Reserve 미노출 — 주문 중 혼동 방지)
@@ -511,7 +514,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
           <span>Account</span>
         </NavItem>
         )}
-      </BottomNav>
+      </BottomNav>}
     </LayoutContainer>
   );
 };

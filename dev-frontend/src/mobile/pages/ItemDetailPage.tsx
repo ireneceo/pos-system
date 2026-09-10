@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
-import { isKioskMode } from '../utils/kioskMode';
+import { isKioskMode, isMenuBoardMode, withMenuBoardQuery } from '../utils/kioskMode';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useMenu } from '../../contexts/MenuContext';
 import api from '../services/api';
@@ -333,6 +333,8 @@ const PriceDisplay = styled.span`
 
 const ItemDetailPage: React.FC = () => {
   const kiosk = isKioskMode();
+  // 보여주기 전용 메뉴판 — **옵션은 보여 주되 고를 수 없고, 담기도 없다**(2026-09-10 Irene).
+  const menuBoard = isMenuBoardMode();
   const { t } = useTranslation(['menu', 'common']);
   const { slug, itemId } = useParams<{ slug: string; itemId: string }>();
   const navigate = useNavigate();
@@ -656,7 +658,7 @@ const ItemDetailPage: React.FC = () => {
   const handleAddRecommended = (rec: RecItem) => {
     if (rec.is_set_menu) {
       setShowRecSheet(false);
-      navigate(`/mobile/${slug}/item/${rec.id}`);
+      navigate(withMenuBoardQuery(`/mobile/${slug}/item/${rec.id}`));
       return;
     }
     const recMenuItem: any = { id: rec.id, name: rec.name, price: typeof rec.price === 'number' ? rec.price : parseFloat(String(rec.price)) || 0, image: rec.image || undefined, emoji: rec.emoji || undefined, is_set_menu: false };
@@ -776,7 +778,8 @@ const ItemDetailPage: React.FC = () => {
                       type="checkbox"
                       checked={selectedOptions.includes(option.id)}
                       disabled={so}
-                      onChange={() => { if (so) return; handleOptionToggle(option.id, group.id, group.multiple, group.required); }}
+                      disabled={menuBoard}
+                      onChange={() => { if (menuBoard || so) return; handleOptionToggle(option.id, group.id, group.multiple, group.required); }}
                     />
                     <CheckboxText style={so ? { textDecoration: 'line-through' } : undefined}>{option.name}</CheckboxText>
                   </div>
@@ -827,7 +830,7 @@ const ItemDetailPage: React.FC = () => {
         />
       </SpecialInstructions>
       
-      <AddToCartButton $kiosk={kiosk}
+      {!menuBoard && <AddToCartButton $kiosk={kiosk}
         onClick={handleAddToCart}
         disabled={!isValid()}
         style={justAdded ? { background: '#10B981' } : undefined}
@@ -840,7 +843,7 @@ const ItemDetailPage: React.FC = () => {
             <PriceDisplay>{formatCurrency(calculateTotal(), currency)}</PriceDisplay>
           </>
         )}
-      </AddToCartButton>
+      </AddToCartButton>}
 
       {/* #11c 크로스셀 — 담은 직후 추천 바텀시트 */}
       <RecommendationSheet

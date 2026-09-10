@@ -37,6 +37,12 @@ const CLASSES = [
   {
     id: 'money', label: '② 💰 돈·주문 무결성 (결제/환불/주문금액/오프라인 동기화)', fable: true,
     match: (f) => /dev-backend\/(routes\/(orders|payments|invoices|subscriptions|billing)|services\/(billing|invoice|payment|subscription))/i.test(f)
+      // ⚠ 위 패턴은 파일명 **시작**만 본다 — 돈 규칙 본체인 `purchaseOrderPayment.js` 와
+      //   결제 라우트 3개가 들어 있는 `purchase-orders-workflow.js`, 현금 드로어를 다루는
+      //   `cash-management.js` 가 전부 빠져 있었다. 2026-09-10 게이트는 같이 바뀐
+      //   `invoices-list.js` 가 우연히 걸려 열린 것이고, 그게 아니었으면 서랍 금액을 바꾸는
+      //   변경이 판정 없이 지나갔다(Fable 적발).
+      || /dev-backend\/(services\/purchaseOrderPayment|routes\/(purchase-orders-workflow|cash-management))/i.test(f)
       || /dev-backend\/utils\/(orderTotals|orderCharge)/i.test(f)
       || /dev-frontend\/src\/.*(offlineSync|offlineStore|offlineOverlay|Payment|Stripe|PayPal|Checkout)/i.test(f),
   },

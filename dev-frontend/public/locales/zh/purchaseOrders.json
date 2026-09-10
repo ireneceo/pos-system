@@ -53,7 +53,12 @@
       "reconcile": "成本核对",
       "reconciled": "已核对",
       "diffLines": "差异",
-      "checkInvoice": "核对发票"
+      "checkInvoice": "查看发票",
+      "refund": "撤销此付款",
+      "refundShort": "撤销付款",
+      "pay": "记录付款",
+      "payShort": "付款",
+      "receiveAndPayShort": "收货并付款"
     },
     "badge": {
       "sellerShipped": "供应商已标记发货"
@@ -486,7 +491,8 @@
       "stock": "库存按订购数量增加。",
       "payment": "此采购单标记为已付款。",
       "drawer": "从当前开启班次的钱箱中支出 RM {{amount}}。",
-      "refund": "生成一笔等额的现金收入记录——付款是被撤销而非删除。库存与收货记录不受影响。"
+      "refund": "生成一笔等额的现金收入记录——付款是被撤销而非删除。库存与收货记录不受影响。",
+      "paysInvoice": "支出的是已核对的供应商发票金额，而非采购金额。"
     },
     "error": {
       "multipleShifts": "有多个班次处于开启状态——请先结束其中一个，再记录现金付款。",
@@ -503,7 +509,13 @@
     },
     "confirm": "确认",
     "reason": "备注",
-    "reasonPlaceholder": "选填——将显示在现金流水中"
+    "reasonPlaceholder": "选填——将显示在现金流水中",
+    "amount": {
+      "invoiced": "供应商发票",
+      "ordered": "采购金额"
+    },
+    "notReconciledWarning": "已上传供应商发票但尚未核对 — 现在付款将按采购金额支出。",
+    "compareFirst": "先去核对"
   },
   "ingredients": {
     "activeLabel": "启用",
@@ -590,6 +602,26 @@
       "poUnchanged": "保存不会更改采购单金额 — 本页面的目的是并列保留预计（采购）与实际（发票）金额。",
       "externalPay": "外部供应商无法通过本系统付款。请直接付款后，在发票上标记为「已付款」。"
     },
-    "openInNewTab": "在新标签页中放大查看"
+    "openInNewTab": "在新标签页中放大查看",
+    "total": {
+      "ordered": "采购总额",
+      "morePaid": "高于采购额",
+      "lessPaid": "低于采购额",
+      "same": "与采购额相同",
+      "lineSum": "已输入各行合计",
+      "lineMismatch": "与您填写的总额相差 {{d}} — 可能是税费·运费，或填写有误"
+    },
+    "ocr": {
+      "reading": "正在读取已上传的发票…",
+      "cancel": "停止读取",
+      "done": "已读取发票并填入右侧。",
+      "checkHint": "绿色为确定的行，黄色需要核对。空白行请从下方列表中选择。",
+      "again": "重新读取",
+      "start": "读取发票",
+      "failed": "无法自动读取 — 请在下方粘贴或在右侧直接输入。",
+      "idle": "可读取已上传的发票以填入右侧。"
+    },
+    "pickLine": "从发票中选择此行…",
+    "willRemember": "保存后，«{{name}}» 将记住为该商品的发票名称"
   }
 }

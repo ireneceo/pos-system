@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Utensils, ShoppingBag, Clock, Truck, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import MobileLayout from '../components/common/MobileLayout';
-import { isKioskMode } from '../utils/kioskMode';
+import { isKioskMode, isMenuBoardMode, withMenuBoardQuery } from '../utils/kioskMode';
 import { CartLines, CartSummary, useCartTotals } from '../components/CartContents';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
@@ -589,6 +589,8 @@ const ORDER_TYPE_ICON: Record<string, React.ReactElement> = {
 const MenuPage: React.FC = () => {
   const { t } = useTranslation();
   const kiosk = isKioskMode();
+  // 보여주기 전용 메뉴판 — 담기·장바구니·주문 경로를 전부 닫는다(2026-09-10 Irene).
+  const menuBoard = isMenuBoardMode();
   // 옆 패널은 «키오스크 + 실제로 넓을 때»만. 태블릿 세로(768)는 메뉴 2열 + 패널 340px 이 안 들어가
   // 카드가 눌리므로 한 단을 유지하고 종전대로 하단 카트 바를 쓴다.
   const [isWide, setIsWide] = React.useState(
@@ -1142,7 +1144,7 @@ const MenuPage: React.FC = () => {
     // 상세 진입 전 현재 탭을 URL(?cat=)에 박아둔다 → 상세에서 뒤로가기 하면
     // 메뉴가 그 탭 그대로 복원된다 (#5/#6 통합). updateCatInUrl 은 replaceState.
     updateCatInUrl(selectedCategory);
-    navigate(`/mobile/${slug}/item/${item.id}`);
+    navigate(withMenuBoardQuery(`/mobile/${slug}/item/${item.id}`));
   }, [navigate, slug, selectedCategory, updateCatInUrl]);
 
   // Localized "Available …" label for off-schedule (disabled) items.
@@ -1394,7 +1396,7 @@ const MenuPage: React.FC = () => {
       </KioskMain>
 
       {/* 키오스크 넓은 화면: 장바구니를 오른쪽에 붙여 «한 화면»으로. 내용은 /cart 와 같은 컴포넌트다. */}
-      {splitView && (
+      {!menuBoard && splitView && (
         <KioskAside aria-label={t('menu:cartBar.viewCart', 'View cart')}>
           <KioskAsideTitle>
             <span>{t('menu:cartBar.viewCart', 'View cart')}</span>
@@ -1421,7 +1423,7 @@ const MenuPage: React.FC = () => {
       </KioskSplit>
 
       {/* 좁은 화면(폰·태블릿 세로)에서는 종전대로 하단 카트 바 */}
-      {!splitView && cartItems.length > 0 && (
+      {!menuBoard && !splitView && cartItems.length > 0 && (
         <CartBar $kiosk={kiosk}
           type="button"
           onClick={handleCartClick}
