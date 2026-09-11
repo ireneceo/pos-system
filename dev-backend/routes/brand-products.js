@@ -976,6 +976,8 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
       sku: finalSku,
       unit: unit || null,
       base_quantity: base_quantity || 1,
+      // 기준단위(포장) — BOX·PKT 등 발주 수량에 붙는 단위 (2026-09-11, utils/poLineSpec.js)
+      package_unit: require('../utils/poLineSpec').normalizePackageUnit(req.body.package_unit),
       // 안 보내면 'pack' = 지금까지의 동작. 값이 오면 목록 안에 있는지만 본다.
       order_mode: ORDER_MODES.includes(order_mode) ? order_mode : 'pack',
       unit_price: unit_price || 0,
@@ -1133,6 +1135,8 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       sku: sku !== undefined ? sku : product.sku,
       unit: unit !== undefined ? unit : product.unit,
       base_quantity: base_quantity !== undefined ? base_quantity : product.base_quantity,
+      package_unit: req.body.package_unit !== undefined
+        ? require('../utils/poLineSpec').normalizePackageUnit(req.body.package_unit) : product.package_unit,
       order_mode: ORDER_MODES.includes(order_mode) ? order_mode : product.order_mode,
       unit_price: unit_price !== undefined ? unit_price : product.unit_price,
       min_order_quantity: min_order_quantity !== undefined ? min_order_quantity : product.min_order_quantity,
@@ -1303,6 +1307,7 @@ router.post('/brand-products/:productId/copy', authenticateToken, requireBGScope
       sku: newSku,
       unit: original.unit,
       base_quantity: original.base_quantity,
+      package_unit: original.package_unit,
       unit_price: original.unit_price,
       min_order_quantity: original.min_order_quantity,
       image_url: original.image_url,

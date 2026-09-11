@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { parseMinOrderQty } from '../../utils/unitConversion';
+import { parseMinOrderQty, PACKAGE_UNIT_SUGGESTIONS, sellerSpecText, sellerOrderUnitOf } from '../../utils/unitConversion';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -21,6 +21,8 @@ interface ProductRow {
   name: string;
   sku?: string | null;
   unit?: string | null;
+  base_quantity?: number | string | null;   // 취급 기준숫자(용량) — «10 kg/BOX» 의 10
+  package_unit?: string | null;             // 기준단위(포장) — «10 kg/BOX» 의 BOX
   unit_price: number;
   min_order_quantity?: number | null;
   category_id?: number | null;
@@ -420,10 +422,11 @@ const SupplierProfilePage: React.FC = () => {
     && profile.registered_by_entity_type === buyerEntity.type
     && myEntityId != null && Number(profile.registered_by_entity_id) === Number(myEntityId);
 
-  const EMPTY_PRODUCT = { name: '', unit: 'kg', unit_price: '', min_order_quantity: '', lead_time_days: '' };
+  // 2026-09-11 Irene: «이름이랑 용량, 그리고 UOM이 포장 단위잖아» — 용량(base_quantity)·포장단위(package_unit) 칸 추가.
+  const EMPTY_PRODUCT = { name: '', unit: 'kg', base_quantity: '1', package_unit: '', unit_price: '', min_order_quantity: '', lead_time_days: '' };
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductRow | null>(null);
-  const [productForm, setProductForm] = useState<{ name: string; unit: string; unit_price: string; min_order_quantity: string; lead_time_days: string }>(EMPTY_PRODUCT);
+  const [productForm, setProductForm] = useState<{ name: string; unit: string; base_quantity: string; package_unit: string; unit_price: string; min_order_quantity: string; lead_time_days: string }>(EMPTY_PRODUCT);
   const [savingProduct, setSavingProduct] = useState(false);
   const [productError, setProductError] = useState<string | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<ProductRow | null>(null);
@@ -433,6 +436,8 @@ const SupplierProfilePage: React.FC = () => {
     setEditingProduct(p);
     setProductForm({
       name: p.name || '', unit: p.unit || 'kg', unit_price: String(p.unit_price ?? ''),
+      base_quantity: p.base_quantity != null ? String(Number(p.base_quantity)) : '1',
+      package_unit: p.package_unit || '',
       min_order_quantity: p.min_order_quantity != null ? String(p.min_order_quantity) : '',
       lead_time_days: ''
     });
@@ -447,6 +452,8 @@ const SupplierProfilePage: React.FC = () => {
     setSavingProduct(true);
     const payload = {
       name: productForm.name.trim(), unit: productForm.unit,
+      base_quantity: parseFloat(productForm.base_quantity) > 0 ? parseFloat(productForm.base_quantity) : 1,
+      package_unit: productForm.package_unit.trim(),   // 빈 값은 서버가 null 로 저장
       unit_price: parseFloat(productForm.unit_price),
       min_order_quantity: parseMinOrderQty(productForm.min_order_quantity),
       lead_time_days: productForm.lead_time_days ? parseInt(productForm.lead_time_days, 10) : 0
@@ -811,6 +818,30 @@ const SupplierProfilePage: React.FC = () => {
               </FormSelect>
             </UIFormGroup>
           </div>
+          {/* 용량 × 포장단위 — 인보이스의 «10KG · BOX» 를 그대로 옮긴다. 가격은 포장단위 1개 값이다. */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <UIFormGroup style={{ flex: 1 }}>
+              <FormLabel>{t('extProduct.baseQuantity', { defaultValue: 'Amount per package' })}</FormLabel>
+              <FormInput type="number" step="0.01" min="0.01" value={productForm.base_quantity} onChange={(e) => setProductForm({ ...productForm, base_quantity: e.target.value })} placeholder="1" />
+            </UIFormGroup>
+            <UIFormGroup style={{ flex: 1 }}>
+              <FormLabel>{t('extProduct.packageUnit', { defaultValue: 'Package unit' })}</FormLabel>
+              <FormInput type="text" list="ext-package-unit-options" maxLength={50} value={productForm.package_unit} onChange={(e) => setProductForm({ ...productForm, package_unit: e.target.value })} placeholder={t('extProduct.packageUnitPlaceholder', { defaultValue: 'e.g. box, pack, bottle' }) as string} />
+              <datalist id="ext-package-unit-options">
+                {PACKAGE_UNIT_SUGGESTIONS.map(u => <option key={u} value={u} />)}
+              </datalist>
+            </UIFormGroup>
+          </div>
+          {(() => {
+            const s = { seller_unit: productForm.unit, base_quantity: productForm.base_quantity, seller_package_unit: productForm.package_unit };
+            const spec = sellerSpecText(s);
+            const orderUnit = sellerOrderUnitOf(s);
+            return (
+              <div style={{ fontSize: 12, color: '#4B5563', marginTop: -4 }}>
+                {t('extProduct.orderedAs', { defaultValue: 'Ordered as: {{line}}', line: `${spec ? spec + ' · ' : ''}× 1 ${orderUnit}` })}
+              </div>
+            );
+          })()}
           <div style={{ display: 'flex', gap: 12 }}>
             <UIFormGroup style={{ flex: 1 }}>
               <FormLabel>{t('extProduct.moq', { defaultValue: 'Min. order qty' })}</FormLabel>

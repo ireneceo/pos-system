@@ -215,6 +215,15 @@
     "deliveryPolicy": "配送政策（自由文本）",
     "deliveryPolicyPlaceholder": "例如：周一/周三/周五配送。满 RM100 免运费。需提前 24 小时下单。"
   },
+  "extProduct": {
+    "baseQuantity": "每包装数量",
+    "packageUnit": "包装单位",
+    "packageUnitPlaceholder": "例如 box、pack、bottle",
+    "orderedAs": "订购显示：{{line}}",
+    "stockConversion": "库存换算",
+    "stockConversionHint": "每收货一个包装，计入多少库存单位。",
+    "conversionRequired": "请输入 1 个 {{pkg}} 计入多少 {{unit}} 库存。"
+  },
   "common": {
     "save": "保存",
     "cancel": "取消",

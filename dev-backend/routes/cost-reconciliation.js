@@ -117,6 +117,9 @@ router.get('/purchase-orders/:id/reconcile', async (req, res) => {
             id: it.id,
             description: it.description,
             unit: it.unit,
+            // 주문 시점 용량 스냅샷 «10 kg/BOX» (2026-09-11, utils/poLineSpec.js) — 인보이스 Description 의 용량과 대조
+            base_quantity: it.base_quantity,
+            base_unit: it.base_unit,
             quantity_ordered: it.quantity_ordered,
             quantity_received: it.quantity_received,
             // 발주 시점 합의가 — 절대 덮어쓰지 않는 스냅샷

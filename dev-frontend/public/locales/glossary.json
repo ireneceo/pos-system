@@ -14,6 +14,11 @@
       "zh": "仪表盘",
       "ms": "Papan Pemuka"
     },
+    "Package Unit": {
+      "ko": "기준단위(포장)",
+      "zh": "包装单位",
+      "ms": "Unit Pembungkusan"
+    },
     "Order": {
       "ko": "주문",
       "zh": "订单",

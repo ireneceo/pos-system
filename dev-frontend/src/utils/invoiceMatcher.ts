@@ -84,6 +84,11 @@ export function nameScore(a: string, b: string): number {
 
 const NUM = /-?\d[\d,]*(?:\.\d+)?/g;
 
+/** 인보이스 한 줄 금액의 상한 — 이보다 크면 전화번호·계좌번호가 금액 자리에 걸린 것이다. */
+const MAX_LINE_AMOUNT = 1000000;
+/** 수량×단가 와 금액이 이 배수를 넘게 어긋나면 품목 줄이 아니다(한 자리 오독 3.5배는 통과 → 확인 필요). */
+const MAX_AMOUNT_RATIO = 10;
+
 /**
  * 붙여넣은 텍스트 한 줄을 {이름, 수량, 단가, 금액} 으로 쪼갠다.
  * 숫자를 뒤에서부터 최대 3개 읽는다 — 인보이스는 대개 `이름 … 수량 단가 금액` 순서다.
@@ -120,6 +125,20 @@ export function parseInvoiceLine(raw: string): ParsedInvoiceLine | null {
 
   // 금액이 0 이하면 품목 줄이 아니다(문서번호·페이지수 등이 걸린 것).
   if (!(amount !== null && amount > 0)) return null;
+
+  // ── 상식 검사 (2026-09-11 Fable 판정) — 품목 줄이 될 수 없는 숫자 조합은 버린다.
+  //   실측: 운영 발주 32(Guan Kee **손글씨** 인보이스)를 OCR 하면 전화번호 줄
+  //   «Hand Phone: 019-3221326, 0122031628» 이 수량 19 · 단가 −3,221,326 · 금액 122,031,628 로 통과해
+  //   발주 6줄 모두의 «이 줄 고르기» 목록에 그 한 줄만 떴다(Irene: «전혀 맞지도 않아 … 리스트는 2-3개»).
+  //   ⚠ «수량×단가 ≠ 금액» 만으로는 버리지 않는다 — 인쇄 인보이스에서 OCR 이 금액 한 자리를 놓친 줄(28.00→8.00)은
+  //     매칭기가 amount_mismatch(확인 필요)로 사람에게 보여 줘야 한다(계약 테스트 (b)). **자릿수가 통째로 다른 것만** 버린다.
+  if (amount >= MAX_LINE_AMOUNT) return null;
+  if (quantity !== null && !(quantity > 0)) return null;
+  if (unitPrice !== null && !(unitPrice > 0)) return null;
+  if (tail.length === 3 && quantity !== null && unitPrice !== null) {
+    const ratio = (quantity * unitPrice) / amount;
+    if (!(ratio <= MAX_AMOUNT_RATIO && ratio >= 1 / MAX_AMOUNT_RATIO)) return null;
+  }
 
   return { raw: line, name, quantity, unitPrice, amount };
 }

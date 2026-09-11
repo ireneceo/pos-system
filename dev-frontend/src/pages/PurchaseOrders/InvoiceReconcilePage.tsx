@@ -24,6 +24,7 @@ import {
   parseInvoiceText, parseInvoiceHeader, matchInvoiceToPo, shouldAutoFill, MatchResult, MatchReason, PoLine
 } from '../../utils/invoiceMatcher';
 import { readInvoiceText } from '../../utils/invoiceOcr';
+import { lineSpecText } from '../../utils/unitConversion';
 import DateField from '../../components/Common/DateField';
 
 interface ReconcileItem extends PoLine {
@@ -35,6 +36,9 @@ interface ReconcileItem extends PoLine {
   seller_product_id: number | null;
   /** 그 판매자가 자기 인보이스에 찍는 이름 — 매칭기가 최우선으로 본다 */
   seller_invoice_name?: string | null;
+  /** 주문 시점 용량 스냅샷 «10 kg/BOX» (2026-09-11) */
+  base_quantity?: string | number | null;
+  base_unit?: string | null;
 }
 
 interface ReconcilePo {
@@ -294,6 +298,15 @@ const InvoiceReconcilePage: React.FC = () => {
   const [ocr, setOcr] = useState<{ running: boolean; progress: number; error: string | null; done: boolean }>(
     { running: false, progress: 0, error: null, done: false });
   const [ocrLines, setOcrLines] = useState<string[]>([]);   // 못 찾은 줄에 사람이 골라 붙이도록
+  /**
+   * 읽은 결과 상태 (2026-09-11 Fable 판정 A · 게이트 보정) — 셋으로 나눈다.
+   *   'no_lines' 파서가 품목 줄로 인정한 줄 0 → 손글씨·흐린 사진(운영 발주 32). 노랑 «자동으로 읽지 못했습니다» + 목록 없음
+   *   'no_match' 읽힌 줄은 있는데 발주와 짝 0 → 노랑 «읽었지만 맞는 줄을 찾지 못했습니다» + **목록은 보인다**
+   *   'ok'       짝 1개 이상 → 초록 그대로
+   * ⛔ 'no_match' 에서 목록을 숨기지 말 것 — 그 목록이 «저장하면 이 이름을 기억합니다» 로 이름 사전을 처음 가르치는
+   *    유일한 자리다. 숨기면 이름이 안 겹치는 공급업체(말레이어 인쇄명 등)는 영원히 자동 읽기를 못 쓴다(Fable 게이트).
+   */
+  const [readResult, setReadResult] = useState<'ok' | 'no_lines' | 'no_match'>('ok');
   const ocrCancelled = useRef(false);
   const ocrStartedFor = useRef<number | null>(null);
 
@@ -396,6 +409,16 @@ const InvoiceReconcilePage: React.FC = () => {
       return next;
     });
     setMatches(map);
+    // 품질 게이트 — 읽힌 줄 수와 칸을 채운 줄(짝 + 자동채움 문 통과) 수로 상태를 가른다.
+    //   칸을 채운 줄은 위 setDrafts 안의 판단과 같은 규칙을 **바깥에서 한 번 더 센다**(업데이트 함수는 늦게 돌 수 있다).
+    //   목록 숨김 기준은 «읽힌 줄 0» 뿐이다 — 전화번호·주소 같은 쓰레기 줄은 파서 상식 검사가 이미 거른다.
+    //   발주 기본값(수량·단가)은 어느 경우에도 그대로 둔다: 사람이 왼쪽 원본을 보고 다른 줄만 고친다(invoiceMatcher 머리 주석 ①).
+    const usable = results.filter((r) => {
+      if (r.state === 'unmatched' || !r.parsed) return false;
+      const poLine = items.find((it) => it.id === r.poLineId);
+      return !!poLine && shouldAutoFill(r, poLine);
+    }).length;
+    setReadResult(parsed.length === 0 ? 'no_lines' : usable === 0 ? 'no_match' : 'ok');
     setOcrLines(parsed.map((p) => p.raw));
 
     // 머리 칸(번호·일자·총액)도 채운다 — 사람 눈에 바로 보이는 칸이라 안전하다.
@@ -609,8 +632,8 @@ const InvoiceReconcilePage: React.FC = () => {
                 서버로 보내지 않고, 실패해도 아래 붙여넣기로 그대로 진행할 수 있다. */}
             {po.external_invoice_url && (
               <div style={{
-                background: ocr.error ? '#FFFBEB' : ocr.done ? '#ECFDF5' : '#F8FAFC',
-                border: `1px solid ${ocr.error ? '#FCD34D' : ocr.done ? '#A7F3D0' : '#E2E8F0'}`,
+                background: ocr.error || (ocr.done && readResult !== 'ok') ? '#FFFBEB' : ocr.done ? '#ECFDF5' : '#F8FAFC',
+                border: `1px solid ${ocr.error || (ocr.done && readResult !== 'ok') ? '#FCD34D' : ocr.done ? '#A7F3D0' : '#E2E8F0'}`,
                 borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12.5, lineHeight: 1.7,
               }}>
                 {ocr.running && (
@@ -626,7 +649,26 @@ const InvoiceReconcilePage: React.FC = () => {
                     </Button>
                   </>
                 )}
-                {!ocr.running && ocr.done && (
+                {!ocr.running && ocr.done && readResult === 'no_lines' && (
+                  <>
+                    {/* 2026-09-11 Fable 판정 A — 손글씨 인보이스는 무료 OCR 로 못 읽는다. 거짓 성공 대신 정직하게 알린다. */}
+                    <strong style={{ color: '#B45309' }}>{t('reconcile.ocr.unusable', '이 인보이스는 자동으로 읽지 못했습니다(손글씨·흐린 사진).')}</strong>{' '}
+                    {t('reconcile.ocr.unusableHint', '왼쪽 원본을 보면서 발주 값과 다른 줄만 고쳐 주세요.')}
+                    <div style={{ marginTop: 6 }}>
+                      <Button variant="secondary" onClick={runOcr}>{t('reconcile.ocr.again', '다시 읽기')}</Button>
+                    </div>
+                  </>
+                )}
+                {!ocr.running && ocr.done && readResult === 'no_match' && (
+                  <>
+                    {/* 읽기는 됐는데 이름이 하나도 안 겹친 경우 — 목록에서 골라 붙이면 이름을 기억해 다음부터 자동으로 붙는다 */}
+                    <strong style={{ color: '#B45309' }}>{t('reconcile.ocr.noMatch', '읽었지만 발주와 맞는 줄을 찾지 못했습니다. 아래 목록에서 골라 붙이거나 직접 입력하세요.')}</strong>
+                    <div style={{ marginTop: 6 }}>
+                      <Button variant="secondary" onClick={runOcr}>{t('reconcile.ocr.again', '다시 읽기')}</Button>
+                    </div>
+                  </>
+                )}
+                {!ocr.running && ocr.done && readResult === 'ok' && (
                   <>
                     <strong style={{ color: '#047857' }}>{t('reconcile.ocr.done', '인보이스를 읽어 오른쪽을 채웠습니다.')}</strong>{' '}
                     {t('reconcile.ocr.checkHint', '초록은 확실한 줄, 노랑은 확인이 필요한 줄입니다. 비어 있는 줄은 아래 목록에서 골라 붙이세요.')}
@@ -780,6 +822,7 @@ const InvoiceReconcilePage: React.FC = () => {
                     <div style={{ fontWeight: 600 }}>{it.seller_product_name || it.description || `#${it.id}`}</div>
                     <Muted>
                       {t('reconcile.orderedQty', '발주')} {String(it.quantity_ordered)} {it.unit || ''}
+                      {lineSpecText(it) ? ` · ${lineSpecText(it)}` : ''}
                       {m && (
                         <> · <StateTag tone={m.state === 'matched' ? 'ok' : m.state === 'needs_check' ? 'warn' : 'none'}>
                           {m.state === 'matched' ? `● ${t('reconcile.state.matched', '맞음')}`

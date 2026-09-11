@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { formatQuantity } from '../../utils/unitConversion';
 import { isRealSupplierSku } from '../../utils/poShare';
+import { lineSpecText } from '../../utils/unitConversion';
 
 interface POItem {
   id: number;
@@ -20,6 +21,8 @@ interface POItem {
   quantity_ordered: number | string;
   quantity_received: number | string;
   unit: string | null;
+  base_quantity?: number | string | null;   // 주문 시점 용량 스냅샷(2026-09-11)
+  base_unit?: string | null;
   unit_price: number | string;
   line_total: number | string;
   ingredient?: { id: number; name: string; unit: string };
@@ -333,7 +336,10 @@ const PurchaseOrderPrintPage: React.FC<PrintPageProps> = ({ forceSellerView = fa
             const mainName = it.seller_product_name || internalName;
             return (
               <tr key={it.id}>
-                <td>{mainName}</td>
+                <td>
+                  {mainName}
+                  {lineSpecText(it) && <div style={{ fontSize: 11, color: '#4B5563' }}>{lineSpecText(it)}</div>}
+                </td>
                 {/* 우리 자동채번(SP-…)은 공급업체가 모르는 번호라 숨긴다 — utils/poShare 와 같은 규칙 */}
                 <td>{isRealSupplierSku(it.seller_product_sku) ? it.seller_product_sku : '—'}</td>
                 <td className="num">{formatQuantity(it.quantity_ordered)}</td>

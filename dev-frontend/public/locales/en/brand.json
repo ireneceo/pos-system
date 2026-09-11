@@ -710,7 +710,10 @@
   "brandMenusPage.allMenusAdded": "All menus already added",
   "products": {
     "fields": {
-      "orderMode": "Order Method"
+      "orderMode": "Order Method",
+      "packageUnit": "Package Unit",
+      "packageUnitPlaceholder": "e.g. box, pack, bottle",
+      "packageUnitHint": "What buyers count when ordering — e.g. 10 kg per BOX, ordered as 3 BOX"
     },
     "orderMode": {
       "pack": "By count (pack / box)",

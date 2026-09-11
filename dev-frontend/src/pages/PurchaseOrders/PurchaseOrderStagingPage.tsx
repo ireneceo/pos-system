@@ -18,7 +18,7 @@ import { Button } from '../../components/UI/Button';
 import { Modal } from '../../components/UI/Modal';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
-import { formatQuantity } from '../../utils/unitConversion';
+import { formatQuantity, lineSpecText } from '../../utils/unitConversion';
 import { formatDateTime } from '../../utils/dateFormat';
 import { useStore } from '../../contexts/StoreContext';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
@@ -30,6 +30,10 @@ interface POItem {
   id: number; ingredient_id: number; quantity_ordered: string; unit_price: string; created_at?: string | null;
   // 수량을 따라다니는 단위(kg/g/L/piece…). 발주 라인에 이미 저장돼 있는데 이 화면만 안 쓰고 있었다.
   unit?: string | null;
+  // 주문 시점 용량 스냅샷 «10 kg/BOX» 의 10 kg (2026-09-11, utils/unitConversion lineSpecText)
+  base_quantity?: string | number | null;
+  base_unit?: string | null;
+  line_total?: string | number | null;
   // 공급업체 자기 판매품목 정체성 — 목록 API 가 이미 내려준다(utils/sellerProductIdentity).
   // 내부 재고명과 실제로 다르다: 우리 `Cheddar Cheese` ↔ 공급업체 `Fresh Whole Milk`.
   seller_product_name?: string | null;
@@ -519,7 +523,10 @@ const PurchaseOrderStagingPage: React.FC = () => {
                 {isRealSupplierSku(it.seller_product_sku) && (
                   <span style={{ color: '#6B7280' }}> [{it.seller_product_sku}]</span>
                 )}
-                {' '}× {formatQuantity(it.quantity_ordered)}{it.unit ? ` ${it.unit}` : ''} @ {parseFloat(it.unit_price).toFixed(2)}
+                {/* 2026-09-11 Irene: «기본용량 포장단위가 있고 거기에 수량이 올라가는 거잖아» — 용량 · × 수량 포장단위 */}
+                {lineSpecText(it) && <span style={{ color: '#4B5563' }}> · {lineSpecText(it)}</span>}
+                {' '}· × {formatQuantity(it.quantity_ordered)}{it.unit ? ` ${it.unit}` : ''} @ {parseFloat(it.unit_price).toFixed(2)}
+                {' '}= {(it.line_total != null ? Number(it.line_total) : Number(it.quantity_ordered) * Number(it.unit_price)).toFixed(2)}
               </span>
               <button type="button" onClick={() => removeItem(po.id, it.id)} title={t('staging.removeItem', 'Remove item') as string}
                 style={{ border: 'none', background: 'transparent', color: '#9CA3AF', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 4px' }}>×</button>

@@ -198,3 +198,74 @@ export const parseMinOrderQty = (v: unknown, fallback = 1): number => {
  */
 export type OrderMode = 'pack' | 'measure';
 export const ORDER_MODES: OrderMode[] = ['pack', 'measure'];
+
+/**
+ * 발주 «용량 · 포장단위 × 수량» — 화면 단일 소스 (2026-09-11)
+ *
+ * Irene: 「발주할 때 기본용량 포장단위가 있고 거기에 수량이 올라가는 거잖아. 수량에 포장단위가 붙는거고.」
+ * 표시: `Kimchi · 10 kg/BOX · × 3 BOX @ 48.00`
+ * ⛔ 서버 dev-backend/utils/poLineSpec.js 와 **같은 규칙**이다. 한쪽만 바꾸지 말 것.
+ * ⚠ 라벨이다 — 재고 환산은 unit_conversion, 금액은 quantity × unit_price.
+ */
+
+/** 포장단위 입력 제안(자유 입력 허용 — 인보이스의 Btl·PKT·Tin 을 그대로 받는다) */
+export const PACKAGE_UNIT_SUGGESTIONS = ['pack', 'box', 'bag', 'bottle', 'can', 'tin', 'tray', 'carton', 'sack', 'jar', 'piece'];
+
+export interface SellerUnitFields {
+  seller_unit?: string | null;          // 판매 상품 취급단위(내용물, kg)
+  base_quantity?: number | string | null; // 취급 기준숫자(10)
+  seller_package_unit?: string | null;  // 기준단위(포장, BOX)
+  order_mode?: string | null;
+}
+
+/**
+ * 판매자에게서 살 때 **수량에 붙는 단위**.
+ * 포장단위 → (용량이 1 이 아니면) pack → 내용물 단위 → 우리 재고 단위.
+ * 무게로 주문(measure)은 kg 자체가 주문 단위다.
+ */
+export const sellerOrderUnitOf = (seller?: SellerUnitFields | null, fallbackUnit?: string | null): string => {
+  if (!seller) return fallbackUnit || '';
+  if (seller.order_mode === 'measure') return seller.seller_unit || fallbackUnit || '';
+  const bq = Number(seller.base_quantity);
+  const pkg = String(seller.seller_package_unit || '').trim();
+  return pkg
+    || (seller.seller_unit && Number.isFinite(bq) && bq > 0 && bq !== 1 ? 'pack' : '')
+    || seller.seller_unit || fallbackUnit || '';
+};
+
+/** 판매자 상품의 용량 문구 «10 kg/BOX». «1 kg/kg» 처럼 같은 말 반복이면 빈 문자열. */
+export const sellerSpecText = (seller?: SellerUnitFields | null, fallbackUnit?: string | null): string => {
+  if (!seller || seller.order_mode === 'measure' || !seller.seller_unit) return '';
+  const bq = Number(seller.base_quantity);
+  if (!Number.isFinite(bq) || bq <= 0) return '';
+  const unit = sellerOrderUnitOf(seller, fallbackUnit);
+  if (bq === 1 && seller.seller_unit.toLowerCase() === unit.toLowerCase()) return '';
+  return `${formatQuantity(bq)} ${seller.seller_unit}${unit ? '/' + unit : ''}`;
+};
+
+/**
+ * 외부 공급업체 연결의 **재고 환산 기본값** (2026-09-11 Fable 판정) — «발주 줄 단위 1개 = ? 우리 재고 단위».
+ * 서버 입고 = 수량 × unit_conversion, 원가 = 단가 ÷ unit_conversion.
+ * 발주 단위 1개에는 내용물 base_quantity 가 든다(포장단위든 pack 이든 · 용량 1 이면 내용물 단위 자체).
+ * 변환할 수 없는 조합(bottle → ml, tray → kg)은 null — 사람이 반드시 적는다.
+ * ⛔ 기계가 추측하지 않는다(PURCHASE_ORDER_SYSTEM.md §2-⑤). 기존 연결에 소급하지 않는다.
+ */
+export const defaultLinkConversion = (
+  baseQuantity: number | string | null | undefined,
+  contentUnit?: string | null,
+  targetUnit?: string | null,
+): number | null => {
+  const bq = Number(baseQuantity);
+  if (!Number.isFinite(bq) || bq <= 0 || !contentUnit || !targetUnit) return null;
+  if (contentUnit === targetUnit) return bq;
+  const v = convertUnit(bq, contentUnit, targetUnit);
+  return v === null ? null : Math.round(v * 10000) / 10000;
+};
+
+/** 확정된 발주 줄의 용량 문구 — 줄에 저장된 스냅샷만 쓴다(판매자 현재값을 읽지 않는다). 옛 줄은 빈 문자열. */
+export const lineSpecText = (line?: { base_quantity?: number | string | null; base_unit?: string | null; unit?: string | null } | null): string => {
+  if (!line || !line.base_unit) return '';
+  const bq = Number(line.base_quantity);
+  if (line.base_quantity == null || !Number.isFinite(bq) || bq <= 0) return '';
+  return `${formatQuantity(bq)} ${line.base_unit}${line.unit ? '/' + line.unit : ''}`;
+};

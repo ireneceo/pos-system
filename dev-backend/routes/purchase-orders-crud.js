@@ -22,17 +22,14 @@ const router = express.Router();
 //   판매자 상품 단위 → 없으면 구매자 재고행의 포장단위 → 없으면 취급단위.
 //   ⚠ 이 값은 **라벨**이다. 재고 환산은 unit_conversion 이 하고, 금액은 quantity × unit_price 다.
 //   그래서 취급단위(레시피가 g 으로 쓰는 것)를 건드리지 않고도 발주는 kg/pack 으로 보인다.
-async function resolveOrderUnit(mapping, stockRow, transaction) {
-  if (mapping && mapping.seller_product_id) {
-    try {
-      const Model = require(mapping.seller_type === 'brand' ? '../models/BrandProduct' : '../models/Product');
-      const sp = await Model.findByPk(mapping.seller_product_id, { transaction });
-      const u = sp && (sp.unit || sp.stock_unit);
-      if (u) return u;
-    } catch (e) { /* 판매자 상품을 못 찾으면 아래 폴백 */ }
-  }
-  if (stockRow && (stockRow.package_unit || stockRow.unit)) return stockRow.package_unit || stockRow.unit;
-  return null;
+//
+// 2026-09-11 — 규칙 본체는 utils/poLineSpec.js 로 옮겼다(PDF·메일과 같은 답을 내야 해서).
+//   줄에는 포장단위(unit) + 주문 시점 용량 스냅샷(base_quantity·base_unit)이 함께 저장된다: «10 kg/BOX × 3 BOX».
+//   (같은 날 결함: supplier 상품을 매장 메뉴 표에서 찾아 'piece' 가 찍히던 것 — util 주석 참조)
+const { resolveOrderLine } = require('../utils/poLineSpec');
+async function orderLineUnitFields(mapping, stockRow, raw, transaction) {
+  const r = await resolveOrderLine(mapping, stockRow, transaction);
+  return { unit: r.unit || (raw && raw.unit) || null, base_quantity: r.base_quantity, base_unit: r.base_unit };
 }
 
 const { Op } = require('sequelize');
@@ -815,7 +812,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
         ingredient_seller_product_id: mappingB,
         quantity_ordered: qtyB,
         quantity_received: 0,
-        unit: await resolveOrderUnit(mappingRowB, pIng, transaction) || raw.unit || null,   // 공급업체 기준
+        ...(await orderLineUnitFields(mappingRowB, pIng, raw, transaction)),   // 공급업체 기준 — 포장단위 + 용량 스냅샷
         unit_price: fPrice,
         unit_conversion: fConv,
         line_total: Math.round((qtyB * fPrice) * 100) / 100,
@@ -872,7 +869,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
       ingredient_seller_product_id: resolvedMappingId,
       quantity_ordered: qty,
       quantity_received: 0,
-      unit: await resolveOrderUnit(mappingRow, ing, transaction) || raw.unit || null,   // 공급업체 기준
+      ...(await orderLineUnitFields(mappingRow, ing, raw, transaction)),   // 공급업체 기준 — 포장단위 + 용량 스냅샷
       unit_price: finalPrice,
       unit_conversion: finalConv,
       line_total: Math.round((qty * finalPrice) * 100) / 100,
@@ -1220,11 +1217,11 @@ router.put('/purchase-orders/:id', async (req, res) => {
           ingredient_seller_product_id: raw.ingredient_seller_product_id || null,
           quantity_ordered: qty,
           quantity_received: 0,
-          unit: await resolveOrderUnit(
+          ...(await orderLineUnitFields(
                   raw.ingredient_seller_product_id
                     ? await IngredientSellerProduct.findByPk(raw.ingredient_seller_product_id, { transaction: t })
                     : null,
-                  ing, t) || raw.unit || null,   // 공급업체 기준
+                  ing, raw, t)),   // 공급업체 기준 — 포장단위 + 용량 스냅샷
           unit_price: parseFloat(raw.unit_price) || 0,
           unit_conversion: parseFloat(raw.unit_conversion) || 1,
           line_total: Math.round((qty * (parseFloat(raw.unit_price) || 0)) * 100) / 100,

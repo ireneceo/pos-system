@@ -710,7 +710,10 @@
   "brandMenusPage.allMenusAdded": "모든 메뉴가 이미 추가됨",
   "products": {
     "fields": {
-      "orderMode": "주문 방식"
+      "orderMode": "주문 방식",
+      "packageUnit": "기준단위(포장)",
+      "packageUnitPlaceholder": "예: box, pack, bottle",
+      "packageUnitHint": "매장이 주문할 때 세는 단위 — 예: BOX 하나에 10 kg, 3 BOX 로 주문"
     },
     "orderMode": {
       "pack": "개수로 주문 (팩·박스)",

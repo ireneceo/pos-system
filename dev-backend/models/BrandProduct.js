@@ -43,6 +43,12 @@ const BrandProduct = sequelize.define('BrandProduct', {
     defaultValue: 1,
     comment: 'Base quantity per unit'
   },
+  // 기준단위(포장) — BOX·PKT 등 발주 수량에 붙는 단위. 자유 문자열. docs/TRADE_STRUCTURE.md §2-2 · utils/poLineSpec.js
+  package_unit: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: '기준단위(포장) — 발주 수량에 붙는 단위'
+  },
   // 'pack' = 개수로 주문(팩·박스) / 'measure' = 무게·부피로 주문(kg·g·L·ml, 소수 허용).
   // 기본이 'pack' 이라 기존 행·기존 호출은 동작이 바뀌지 않는다.
   order_mode: {

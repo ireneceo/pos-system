@@ -21,6 +21,11 @@ const PurchaseOrderItem = sequelize.define('PurchaseOrderItem', {
   quantity_ordered: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   quantity_received: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
   unit: { type: DataTypes.STRING(50), allowNull: true },
+  // 주문 시점 용량 스냅샷 (2026-09-11) — «10 kg/BOX × 3 BOX» 의 10 kg. unit 은 포장단위(BOX).
+  //   판매자가 나중에 규격을 바꿔도 지난 발주서·인보이스 대조가 흔들리지 않게 줄에 적어 둔다.
+  //   ⚠ 라벨이다 — 재고 환산은 unit_conversion, 금액은 quantity × unit_price. utils/poLineSpec.js
+  base_quantity: { type: DataTypes.DECIMAL(10, 2), allowNull: true, comment: '주문 시점 용량(취급 기준숫자) 스냅샷' },
+  base_unit: { type: DataTypes.STRING(50), allowNull: true, comment: '주문 시점 용량 단위(취급단위) 스냅샷' },
   unit_price: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
   line_total: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
   unit_conversion: { type: DataTypes.DECIMAL(10, 4), defaultValue: 1 },

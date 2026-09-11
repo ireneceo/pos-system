@@ -14,7 +14,7 @@ import ReceivePayModal, { ReceivePayMode } from '../../components/PurchaseOrders
 import ConfirmModal from '../../components/ConfirmModal';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
-import { formatQuantity, qtyStepForUnit } from '../../utils/unitConversion';
+import { formatQuantity, qtyStepForUnit, lineSpecText } from '../../utils/unitConversion';
 import { sharePoViaWhatsApp, sharePoViaEmail, isRealSupplierSku } from '../../utils/poShare';
 import { formatDate } from '../../utils/timezone';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
@@ -96,6 +96,10 @@ interface POItem {
   seller_product_id?: number | null;
   seller_product_name?: string | null;
   seller_product_sku?: string | null;
+  // 발주 줄 단위(포장단위, 공급업체 기준) + 주문 시점 용량 스냅샷 «10 kg/BOX» (2026-09-11)
+  unit?: string | null;
+  base_quantity?: number | string | null;
+  base_unit?: string | null;
   quantity_ordered: number | string;
   quantity_received: number | string;
   unit_price: number | string;
@@ -1265,6 +1269,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                           <DataTableRow key={it.id}>
                             <DataTableCell data-label={t('detail.items.ingredient') as string} mobileFullWidth>
                               <strong>{it.ingredient_name}</strong>
+                              {lineSpecText(it) && <div style={{ fontSize: 12, color: '#374151' }}>{lineSpecText(it)}</div>}
                               {(it.seller_product_name || it.seller_product_sku) && (
                                 <div style={{ fontSize: 12, color: '#6B7280' }}>
                                   {it.seller_product_name || ''}
@@ -1273,10 +1278,11 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                               )}
                             </DataTableCell>
                             <DataTableCell data-label={t('detail.items.qtyOrdered') as string} align="right">
-                              {formatQuantity(it.quantity_ordered)} {it.ingredient_unit || ''}
+                              {/* 발주 수량은 **발주 줄 단위**(포장단위)로 센다 — 재료 취급단위(g)는 옛 줄의 폴백 */}
+                              {formatQuantity(it.quantity_ordered)} {it.unit || it.ingredient_unit || ''}
                             </DataTableCell>
                             <DataTableCell data-label={t('detail.items.qtyReceived') as string} align="right">
-                              {formatQuantity(it.quantity_received)} {it.ingredient_unit || ''}
+                              {formatQuantity(it.quantity_received)} {it.unit || it.ingredient_unit || ''}
                             </DataTableCell>
                             <DataTableCell data-label={t('detail.items.unitPrice') as string} align="right">
                               {formatMoney(it.unit_price)}

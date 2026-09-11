@@ -130,6 +130,7 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
         spInfoById[sp.id] = { name: sp.name || null, sku: sp.sku || null,
           unit: sp.unit || null,
           base_quantity: sp.base_quantity != null ? parseFloat(sp.base_quantity) : 1,
+          package_unit: sp.package_unit || null,
           order_mode: sp.order_mode || 'pack' };
       }
       // Brand seller sources also carry the brand's own product name/SKU (different from our
@@ -139,13 +140,14 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
       const brandProductIds = [...new Set(mappings.filter(m => m.seller_type === 'brand').map(m => m.seller_product_id).filter(Boolean))];
       const bpInfoById = {};
       if (brandProductIds.length) {
-        const bps = await BrandProduct.findAll({ where: { id: { [Op.in]: brandProductIds } }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'order_mode'], paranoid: false });
+        const bps = await BrandProduct.findAll({ where: { id: { [Op.in]: brandProductIds } }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'package_unit', 'order_mode'], paranoid: false });
         // 규격·주문방식까지 싣는다. 예전엔 name/sku 만 담아서, 브랜드가 5kg 포대로 팔아도
         // 구매 화면엔 `seller_unit=null · base_quantity=1 · order_mode='pack'` 으로 나갔다.
         for (const bp of bps) bpInfoById[bp.id] = {
           name: bp.name || null, sku: bp.sku || null,
           unit: bp.unit || null,
           base_quantity: bp.base_quantity != null ? parseFloat(bp.base_quantity) : 1,
+          package_unit: bp.package_unit || null,
           order_mode: bp.order_mode || 'pack'
         };
       }
@@ -194,6 +196,7 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
           // (2026-08-30 단위주문. 공급업체·브랜드 양쪽에서 온다 — 없으면 'pack' = 현행 동작)
           seller_unit: spInfo.unit ?? null,
           base_quantity: spInfo.base_quantity ?? 1,
+          seller_package_unit: spInfo.package_unit ?? null,   // 기준단위(포장) — utils/poLineSpec.js
           order_mode: spInfo.order_mode ?? 'pack',
           unit_price: parseFloat(m.unit_price),
           unit_conversion: parseFloat(m.unit_conversion),
@@ -596,7 +599,7 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
       });
       const spIds = [...new Set(rows.filter(r => r.seller_type === 'supplier' && r.seller_product_id).map(r => r.seller_product_id))];
       const spMap = spIds.length
-        ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'order_mode'], paranoid: false })).map(sp => [sp.id, sp]))
+        ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'package_unit', 'order_mode'], paranoid: false })).map(sp => [sp.id, sp]))
         : {};
       // 판매자 표시 이름 — 발주와 같은 단일 해석기(utils/sellerNames)를 쓴다. 각자 조회를 짜면
       // 목록만 brand/foodcourt 를 빠뜨려 이름이 비어 보이던 사고가 재발한다(2026-07-12).
@@ -607,7 +610,7 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
       const BrandProduct = require('../models/BrandProduct');
       const bpIds = [...new Set(rows.filter(r => r.seller_type === 'brand' && r.seller_product_id).map(r => r.seller_product_id))];
       const bpMap = bpIds.length
-        ? Object.fromEntries((await BrandProduct.findAll({ where: { id: bpIds }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'order_mode'], paranoid: false })).map(b => [b.id, b]))
+        ? Object.fromEntries((await BrandProduct.findAll({ where: { id: bpIds }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'package_unit', 'order_mode'], paranoid: false })).map(b => [b.id, b]))
         : {};
       rows.forEach(r => {
         const prod = r.seller_type === 'supplier' ? spMap[r.seller_product_id]
@@ -622,6 +625,7 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
           // "3 × 5kg" 표시와 kg 소수 입력이 동작한다(공급업체·브랜드 공통).
           seller_unit: prod?.unit ?? null,
           base_quantity: prod?.base_quantity != null ? parseFloat(prod.base_quantity) : 1,
+          seller_package_unit: prod?.package_unit ?? null,
           order_mode: prod?.order_mode || 'pack'
         });
       });

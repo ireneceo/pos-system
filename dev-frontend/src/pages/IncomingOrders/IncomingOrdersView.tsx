@@ -17,7 +17,7 @@ import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
 import { useTabParam } from '../../hooks/useTabParam';
-import { formatQuantity } from '../../utils/unitConversion';
+import { formatQuantity, lineSpecText } from '../../utils/unitConversion';
 
 // Layout / Form / ModalButton primitives are inlined here on purpose.
 // Importing them across chunks from `components/UI` triggered a TDZ runtime
@@ -163,6 +163,9 @@ interface IncomingOrderItem {
   description?: string | null;
   quantity_ordered: number | string;
   unit?: string | null;
+  // 주문 시점 용량 스냅샷 «10 kg/BOX» (2026-09-11) — 판매자가 몇 kg 들이 몇 박스인지 바로 읽게
+  base_quantity?: number | string | null;
+  base_unit?: string | null;
   unit_price?: number | string | null;
   ingredient?: { id: number; name: string; unit: string } | null;
   // Supplier's own sale-product identity — shown to the seller so they recognise
@@ -1425,6 +1428,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                   }}>
                     <div>
                       <strong>{it.seller_product_name || it.ingredient?.name || it.description || `#${it.ingredient_id}`}</strong>
+                      {lineSpecText(it) && <div style={{ fontSize: 12, color: '#374151' }}>{lineSpecText(it)}</div>}
                       {(it.seller_product_sku || it.seller_product_name) && (
                         <div style={{ fontSize: 11, color: '#6B7280' }}>
                           {it.seller_product_sku ? `SKU: ${it.seller_product_sku}` : ''}

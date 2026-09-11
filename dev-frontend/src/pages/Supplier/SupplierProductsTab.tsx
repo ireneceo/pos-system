@@ -19,7 +19,7 @@ import { FormGrid2, FormGrid4 } from '../../components/UI/FormGrid';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
 import { getAuthToken } from '../../utils/auth';
-import { parseMinOrderQty, qtyStepForUnit, type OrderMode } from '../../utils/unitConversion';
+import { parseMinOrderQty, qtyStepForUnit, PACKAGE_UNIT_SUGGESTIONS, type OrderMode } from '../../utils/unitConversion';
 
 interface SupplierProductCategory {
   id: number;
@@ -51,6 +51,7 @@ interface SupplierProduct {
   sku: string | null;
   unit: string | null;
   base_quantity: number;
+  package_unit?: string | null;
   order_mode: OrderMode;
   unit_price: number;
   min_order_quantity: number;
@@ -470,6 +471,7 @@ const SupplierProductsTab: React.FC<Props> = ({
     sku: '',
     unit: '',
     base_quantity: '1',
+    package_unit: '',
     order_mode: 'pack' as OrderMode,
     unit_price: '',
     min_order_quantity: '1',
@@ -590,6 +592,7 @@ const SupplierProductsTab: React.FC<Props> = ({
         sku: detail.sku || '',
         unit: detail.unit || '',
         base_quantity: (detail.base_quantity ?? 1).toString(),
+        package_unit: detail.package_unit || '',
         order_mode: (detail.order_mode || 'pack') as OrderMode,
         unit_price: detail.unit_price.toString(),
         min_order_quantity: detail.min_order_quantity.toString(),
@@ -609,6 +612,7 @@ const SupplierProductsTab: React.FC<Props> = ({
         sku: '',
         unit: '',
         base_quantity: '1',
+        package_unit: '',
         order_mode: 'pack' as OrderMode,
         unit_price: '',
         min_order_quantity: '1',
@@ -667,6 +671,8 @@ const SupplierProductsTab: React.FC<Props> = ({
           sku: formData.sku.trim() || undefined,
           unit: formData.unit || null,
           base_quantity: parseFloat(formData.base_quantity) || 1,
+          // 기준단위(포장) — 빈 값은 서버가 null 로 저장 (utils/poLineSpec.normalizePackageUnit)
+          package_unit: formData.package_unit.trim(),
           order_mode: formData.order_mode,
           // ⛔ parseInt 금지 — measure 모드의 "최소 0.5kg" 이 1 로 잘린다 (utils/unitConversion)
           min_order_quantity: parseMinOrderQty(formData.min_order_quantity),
@@ -1073,7 +1079,7 @@ const SupplierProductsTab: React.FC<Props> = ({
                     : formData.order_mode === 'measure'
                       ? t('products.priceMeaning.measure', 'Price per 1 {{unit}}', { unit: formData.unit })
                       : t('products.priceMeaning.pack', 'Price per 1 unit of {{spec}}', {
-                          spec: `${formData.base_quantity || 1}${formData.unit}`
+                          spec: `${formData.base_quantity || 1}${formData.unit}${formData.package_unit.trim() ? '/' + formData.package_unit.trim() : ''}`
                         })}
                 </PriceMeaning>
               </UIFormGroup>
@@ -1111,6 +1117,29 @@ const SupplierProductsTab: React.FC<Props> = ({
                     </option>
                   ))}
                 </FormSelect>
+              </UIFormGroup>
+
+              {/*
+                기준단위(포장) — «10 kg/BOX × 3 BOX» 의 BOX. 구매자의 발주 수량에 붙는다(2026-09-11 Irene).
+                자유 입력: 인보이스 UOM(Btl·PKT·Tin)을 그대로 적을 수 있게. 무게로 주문하면 kg 자체가 주문 단위라 쓰지 않는다.
+              */}
+              <UIFormGroup>
+                <FormLabel>{t('products.fields.packageUnit', 'Package Unit')}</FormLabel>
+                <FormInput
+                  type="text"
+                  list="supplier-package-unit-options"
+                  maxLength={50}
+                  value={formData.package_unit}
+                  onChange={(e) => setFormData({ ...formData, package_unit: e.target.value })}
+                  placeholder={t('products.fields.packageUnitPlaceholder', 'e.g. box, pack, bottle') as string}
+                  disabled={formData.order_mode === 'measure'}
+                />
+                <datalist id="supplier-package-unit-options">
+                  {PACKAGE_UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
+                </datalist>
+                <PriceMeaning>
+                  {t('products.fields.packageUnitHint', 'What buyers count when ordering — e.g. 10 kg per BOX, ordered as 3 BOX')}
+                </PriceMeaning>
               </UIFormGroup>
 
               <UIFormGroup>

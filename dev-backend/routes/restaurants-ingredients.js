@@ -107,6 +107,7 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
         spInfoById[sp.id] = { name: sp.name || null, sku: sp.sku || null,
           unit: sp.unit || null,
           base_quantity: sp.base_quantity != null ? parseFloat(sp.base_quantity) : 1,
+          package_unit: sp.package_unit || null,
           order_mode: sp.order_mode || 'pack' };
       }
       const optsBySpId = {};
@@ -142,13 +143,14 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
       const brandProductIds = [...new Set(mappings.filter(m => m.seller_type === 'brand').map(m => m.seller_product_id).filter(Boolean))];
       const brandProds = brandProductIds.length
         ? await BrandProduct.findAll({ where: { id: { [Op.in]: brandProductIds } },
-            attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'order_mode'], paranoid: false })
+            attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'package_unit', 'order_mode'], paranoid: false })
         : [];
       // 규격·주문방식까지 담는다 — 빠뜨리면 브랜드 상품이 늘 "낱개 주문"으로 보인다.
       const bpInfoById = Object.fromEntries(brandProds.map(b => [b.id, {
         name: b.name, sku: b.sku,
         unit: b.unit || null,
         base_quantity: b.base_quantity != null ? parseFloat(b.base_quantity) : 1,
+        package_unit: b.package_unit || null,
         order_mode: b.order_mode || 'pack'
       }]));
 
@@ -174,6 +176,8 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
           // (2026-08-30 단위주문. 공급업체·브랜드 양쪽에서 온다 — 없으면 'pack' = 현행 동작)
           seller_unit: spInfo.unit ?? null,
           base_quantity: spInfo.base_quantity ?? 1,
+          // 기준단위(포장) — «10 kg/BOX × 3 BOX» 의 BOX (2026-09-11, utils/poLineSpec.js)
+          seller_package_unit: spInfo.package_unit ?? null,
           order_mode: spInfo.order_mode ?? 'pack',
           unit_price: parseFloat(m.unit_price),
           unit_conversion: parseFloat(m.unit_conversion),

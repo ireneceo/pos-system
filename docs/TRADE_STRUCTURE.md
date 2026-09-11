@@ -132,6 +132,15 @@
     그전에는 `raw.unit || ing.unit` 이라 **취급단위(g)** 가 그대로 찍혀, 1kg 들이 소스를 2개 주문한 줄이
     `2 g · RM32.90` 으로 보였다(수량·금액은 내내 맞았고 라벨만 틀렸다). 발주 담는 화면도 같은 규칙(`orderUnitOf`)을 쓴다.
     ⛔ 이걸 데이터로 고치려 들지 말 것 — 아래 "취급단위는 바꿀 수 없다" 가 그 이유다.
+  - **판매 상품·발주 줄도 다섯 칸을 따른다** (2026-09-11 Fable 판정 · Irene 「권고대로 해」).
+    Irene 원문: 「발주할 때 기본용량 포장단위가 있고 거기에 수량이 올라가는 거잖아. 수량에 포장단위가 붙는거고.」
+    - 판매 상품 3표(`supplier_products`·`brand_products`·`foodcourt_products`): `unit`=취급단위(내용물 kg) · `base_quantity`=취급 기준숫자(10) · **`package_unit`=기준단위(포장, BOX)** — 자유 문자열(인보이스 UOM 그대로). 기준양은 판매 상품에서 항상 1 이라 칸이 없다.
+    - 발주 줄 `purchase_order_items`: `unit`=포장단위(BOX) · **`base_quantity`·`base_unit`=주문 시점 용량 스냅샷**(10 / kg). 판매자가 나중에 규격을 바꿔도 지난 발주서·대조가 흔들리지 않는다.
+    - 표시: `Kimchi · 10 kg/BOX · × 3 BOX @ 48.00 = 144.00`. 규칙 단일 소스 = 서버 `utils/poLineSpec.js` · 화면 `utils/unitConversion.ts`(`sellerOrderUnitOf`·`sellerSpecText`·`lineSpecText`).
+    - 줄 단위 순서: 포장단위 → (용량 ≠ 1 이면) `pack` → 판매자 내용물 단위 → 구매자 재고행 단위. 무게 주문(measure)은 내용물 단위 자체.
+      ⚠ 구매자 재고행 단위를 판매자 내용물 단위 **앞에 두지 않는다** — 재고행 `package_unit` 에 취급단위(g)가 복사돼 있는 경우가 대부분이라(dev 실측) 9/7 에 고친 «2 g» 가 되살아난다.
+    - 같은 날 결함: 옛 `resolveOrderUnit` 이 supplier 상품을 매장 메뉴 표(`products`)에서 찾아, 번호가 겹치면 `stock_unit` 기본값 `piece` 가 찍혔다(운영 `Kimchi × 2 piece`). 판매자 종류 → 판매 상품 표 매핑으로 수정.
+    - 이행 `scripts/migrate-seller-package-unit.js`(멱등): `unit` 에 pack/piece/bottle/can 이 있고 `base_quantity`=1 인 판매 상품만 **빈 `package_unit` 에** 복사. `unit` 무접촉.
 - **판매 차감은 환산하지 않는다.** `inventoryDeductionService.js` 가 레시피 줄 수량을 그대로 뺀다 — 그래서 **"레시피 줄 단위 = 재료 취급단위"가 불변식**이고, 인스펙션 `ING-UNI-011/012` 가 이걸 지킨다.
 - **재고는 어디서나 취급단위로 센다.** 브랜드 창고도 g. 화면이 괄호로 포장 환산을 같이 보여준다.
 - **취급단위는 레시피 줄이 하나라도 붙어 있으면 바꿀 수 없다** — `UNIT_LOCKED_BY_RECIPES` 409, 브랜드·매장 공통. 바꾸려면 **줄 수량·재고·매핑 환산을 같은 트랜잭션에서 함께 환산**한다(P1 수렴 스크립트, 이후 P2 화면). 바꾸는 순간 `20 g` 이 `20 pack` 이 되기 때문이고, 이것이 Irene 이 화면에서 만난 에러의 자리다.

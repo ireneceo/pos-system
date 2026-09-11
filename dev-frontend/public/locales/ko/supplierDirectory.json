@@ -215,6 +215,15 @@
     "deliveryPolicy": "배송 정책 (자유 텍스트)",
     "deliveryPolicyPlaceholder": "예: 월/수/금 배송. 100RM 이상 무료 배송. 24시간 전 주문 필요."
   },
+  "extProduct": {
+    "baseQuantity": "포장당 용량",
+    "packageUnit": "기준단위(포장)",
+    "packageUnitPlaceholder": "예: box, pack, bottle",
+    "orderedAs": "주문 표시: {{line}}",
+    "stockConversion": "재고 환산",
+    "stockConversionHint": "한 포장을 입고하면 우리 재고 단위로 얼마가 들어가는지입니다.",
+    "conversionRequired": "{{pkg}} 1개가 재고에 {{unit}} 얼마로 들어가는지 입력하세요."
+  },
   "common": {
     "save": "저장",
     "cancel": "취소",

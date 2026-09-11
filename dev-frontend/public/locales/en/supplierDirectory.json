@@ -215,6 +215,15 @@
     "deliveryPolicy": "Delivery Policy (free text)",
     "deliveryPolicyPlaceholder": "e.g. Delivery on Mon/Wed/Fri. Free delivery above RM100. Order 24 hours in advance."
   },
+  "extProduct": {
+    "baseQuantity": "Amount per package",
+    "packageUnit": "Package Unit",
+    "packageUnitPlaceholder": "e.g. box, pack, bottle",
+    "orderedAs": "Ordered as: {{line}}",
+    "stockConversion": "Stock conversion",
+    "stockConversionHint": "How much of your stock unit is added when one package is received.",
+    "conversionRequired": "Enter how many {{unit}} one {{pkg}} adds to stock."
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

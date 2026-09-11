@@ -714,6 +714,7 @@ router.get('/supplier-catalog', async (req, res) => {
         unit: p.unit,
         // 규격·주문방식 — 구매 화면이 "5kg/포대" 표시와 kg 소수 입력을 결정한다(2026-08-30 단위주문).
         base_quantity: p.base_quantity != null ? parseFloat(p.base_quantity) : 1,
+        package_unit: p.package_unit || null,   // 기준단위(포장) — utils/poLineSpec.js
         order_mode: p.order_mode || 'pack',
         unit_price: parseFloat(p.unit_price) || 0,
         min_order_quantity: parseMinOrderQty(p.min_order_quantity),
@@ -1081,7 +1082,9 @@ router.delete('/external-suppliers/:id', async (req, res) => {
 async function loadOwnedExternalSupplier(req, res) {
   if (!req.buyerEntity) { res.status(400).json({ success: false, message: 'Buyer context required' }); return null; }
   const id = parseInt(req.params.id, 10);
-  const sc = await SupplierCompany.findByPk(id);
+  // 2026-09-11: 숫자가 아닌 id(예: 'undefined')면 findByPk(NaN) 이 SQL 오류로 던져 호출부 try 밖에서 터지고
+  //   응답이 나가지 않았다(요청이 멈춤). 아래 loadVisibleExternalSupplier 와 같은 형태로 404 를 준다.
+  const sc = Number.isFinite(id) ? await SupplierCompany.findByPk(id) : null;
   if (!sc) { res.status(404).json({ success: false, message: 'Supplier not found' }); return null; }
   if (sc.is_system_registered) {
     res.status(403).json({ success: false, code: 'NOT_EXTERNAL', message: 'Only external (non-platform) suppliers you registered can be managed here' });
@@ -1138,6 +1141,8 @@ function buildProductFields(body) {
   return { value: {
     name, unit_price, base_quantity, min_order_quantity, lead_time_days,
     unit: body.unit ? sanitizeString(String(body.unit)) : null,
+    // 기준단위(포장) — 인보이스 UOM(BOX·Btl·PKT). 자유 입력 (2026-09-11, utils/poLineSpec.js)
+    package_unit: require('../utils/poLineSpec').normalizePackageUnit(body.package_unit),
     description: body.description ? sanitizeString(String(body.description)) : null,
     image_url: body.image_url || null,
     image_thumbnail: body.image_thumbnail || null,

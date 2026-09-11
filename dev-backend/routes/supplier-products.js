@@ -622,6 +622,8 @@ router.post(
         sku,
         unit: req.body.unit ? sanitizeString(req.body.unit) : null,
         base_quantity,
+        // 기준단위(포장) — BOX·PKT 등 발주 수량에 붙는 단위 (2026-09-11, utils/poLineSpec.js)
+        package_unit: require('../utils/poLineSpec').normalizePackageUnit(req.body.package_unit),
         order_mode,
         unit_price,
         min_order_quantity,
@@ -732,6 +734,9 @@ router.put('/supplier-products/:productId', ...baseGates, async (req, res) => {
         return res.status(400).json({ success: false, message: `order_mode must be one of ${ORDER_MODES.join(', ')}` });
       }
       updates.order_mode = v;
+    }
+    if (req.body.package_unit !== undefined) {
+      updates.package_unit = require('../utils/poLineSpec').normalizePackageUnit(req.body.package_unit);
     }
     if (req.body.min_order_quantity !== undefined) {
       // 소수 허용 (위와 동일 사유)
@@ -901,6 +906,7 @@ router.post(
         sku: newSku,
         unit: original.unit,
         base_quantity: original.base_quantity,
+        package_unit: original.package_unit,
         unit_price: original.unit_price,
         min_order_quantity: original.min_order_quantity,
         image_url: original.image_url,

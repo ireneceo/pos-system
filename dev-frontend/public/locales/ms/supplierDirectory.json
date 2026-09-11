@@ -215,6 +215,15 @@
     "deliveryPolicy": "Dasar Penghantaran (teks bebas)",
     "deliveryPolicyPlaceholder": "cth. Penghantaran pada Isnin/Rabu/Jumaat. Penghantaran percuma melebihi RM100. Pesan 24 jam lebih awal."
   },
+  "extProduct": {
+    "baseQuantity": "Kuantiti setiap bungkusan",
+    "packageUnit": "Unit Pembungkusan",
+    "packageUnitPlaceholder": "cth. box, pack, bottle",
+    "orderedAs": "Dipesan sebagai: {{line}}",
+    "stockConversion": "Penukaran stok",
+    "stockConversionHint": "Berapa banyak unit stok anda ditambah apabila satu bungkusan diterima.",
+    "conversionRequired": "Masukkan berapa {{unit}} satu {{pkg}} tambah ke stok."
+  },
   "common": {
     "save": "Simpan",
     "cancel": "Batal",

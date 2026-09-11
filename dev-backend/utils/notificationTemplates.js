@@ -535,7 +535,7 @@ function poItemsTable(items, currency, poTotal, lang = 'en') {
     const line = it.line_total != null ? Number(it.line_total) : qty * unit;
     return `
       <tr>
-        <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;color:#374151;font-size:13px;">${esc(it.name)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;color:#374151;font-size:13px;">${esc(it.name)}${it.spec ? `<div style="color:#6B7280;font-size:12px;">${esc(it.spec)}</div>` : ''}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;color:#374151;font-size:13px;text-align:right;white-space:nowrap;">${qty}${it.unit ? ' ' + esc(it.unit) : ''}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;color:#374151;font-size:13px;text-align:right;white-space:nowrap;">${fmtMoney(unit, currency)}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;color:#111827;font-size:13px;text-align:right;white-space:nowrap;font-weight:600;">${fmtMoney(line, currency)}</td>

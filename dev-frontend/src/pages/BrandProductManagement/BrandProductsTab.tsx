@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { parseMinOrderQty, OrderMode } from '../../utils/unitConversion';
+import { parseMinOrderQty, OrderMode, PACKAGE_UNIT_SUGGESTIONS } from '../../utils/unitConversion';
 import { getErrorMessage } from '../../utils/apiError';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
@@ -63,6 +63,7 @@ interface Product {
   sku: string | null;
   unit: string | null;
   base_quantity: number;
+  package_unit?: string | null;
   // 주문 방식 — 구매자가 "몇 개"로 담을지 "몇 kg"로 담을지. 없으면 'pack'(기존 동작).
   order_mode?: OrderMode;
   unit_price: number;
@@ -433,6 +434,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     sku: '',
     unit: '',
     base_quantity: '1',
+    package_unit: '',
     order_mode: 'pack' as OrderMode,
     unit_price: '',
     current_stock: 0,
@@ -585,6 +587,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         sku: product.sku || '',
         unit: product.unit || '',
         base_quantity: (product.base_quantity || 1).toString(),
+        package_unit: product.package_unit || '',
         order_mode: (product.order_mode || 'pack') as OrderMode,
         unit_price: product.unit_price.toString(),
         current_stock: Number((product as any).current_stock) || 0,
@@ -614,6 +617,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         sku: '',
         unit: '',
         base_quantity: '1',
+        package_unit: '',
         order_mode: 'pack' as OrderMode,
         unit_price: '',
     current_stock: 0,
@@ -693,6 +697,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           sku: formData.sku.trim() || null,
           unit: formData.unit || null,
           base_quantity: parseFloat(formData.base_quantity) || 1,
+          // 기준단위(포장) — 빈 값은 서버가 null 로 저장 (utils/poLineSpec.normalizePackageUnit)
+          package_unit: formData.package_unit.trim(),
           order_mode: formData.order_mode,
           unit_price: parseFloat(formData.unit_price) || 0,
           current_stock: !formData.product_recipe_id ? (Number(formData.current_stock) || 0) : 0,
@@ -1227,6 +1233,26 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                 </FormSelect>
               </UIFormGroup>
 
+              {/* 기준단위(포장) — 매장이 발주할 때 수량에 붙는 단위 «10 kg/BOX × 3 BOX» (2026-09-11 Irene). 자유 입력. */}
+              <UIFormGroup>
+                <FormLabel>{t('products.fields.packageUnit', 'Package Unit')}</FormLabel>
+                <FormInput
+                  type="text"
+                  list="brand-package-unit-options"
+                  maxLength={50}
+                  value={formData.package_unit}
+                  onChange={(e) => setFormData({ ...formData, package_unit: e.target.value })}
+                  placeholder={t('products.fields.packageUnitPlaceholder', 'e.g. box, pack, bottle') as string}
+                  disabled={formData.order_mode === 'measure'}
+                />
+                <datalist id="brand-package-unit-options">
+                  {PACKAGE_UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
+                </datalist>
+                <OrderModeHint>
+                  {t('products.fields.packageUnitHint', 'What buyers count when ordering — e.g. 10 kg per BOX, ordered as 3 BOX')}
+                </OrderModeHint>
+              </UIFormGroup>
+
               <UIFormGroup>
                 <FormLabel>{t('products.fields.orderMode', 'Order Method')}</FormLabel>
                 {/*
@@ -1257,7 +1283,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                     ? t('products.orderMode.measureHint', "Buyers order like '2.5 {{unit}}'", { unit: formData.unit || 'kg' })
                     : t('products.orderMode.packHint', "Buyers order like '3 units'{{spec}}", {
                         spec: formData.base_quantity && formData.unit
-                          ? ` (${formData.base_quantity}${formData.unit} per unit)` : ''
+                          ? ` (${formData.base_quantity}${formData.unit}/${formData.package_unit.trim() || 'unit'})` : ''
                       })}
                 </OrderModeHint>
               </UIFormGroup>

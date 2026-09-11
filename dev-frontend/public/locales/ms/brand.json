@@ -710,7 +710,10 @@
   "brandMenusPage.allMenusAdded": "Semua menu telah ditambah",
   "products": {
     "fields": {
-      "orderMode": "Kaedah Pesanan"
+      "orderMode": "Kaedah Pesanan",
+      "packageUnit": "Unit Pembungkusan",
+      "packageUnitPlaceholder": "cth. box, pack, bottle",
+      "packageUnitHint": "Unit yang dikira kedai semasa memesan — cth. 10 kg setiap BOX, dipesan sebagai 3 BOX"
     },
     "orderMode": {
       "pack": "Mengikut bilangan (pek / kotak)",

@@ -31,7 +31,7 @@ import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { Modal as UIModal } from '../../components/UI/Modal';
-import { qtyStepForUnit, parseMinOrderQty, formatQuantity, type OrderMode } from '../../utils/unitConversion';
+import { qtyStepForUnit, parseMinOrderQty, formatQuantity, sellerOrderUnitOf, sellerSpecText, type OrderMode } from '../../utils/unitConversion';
 
 type SellerType = 'system_admin' | 'brand' | 'foodcourt' | 'supplier';
 
@@ -56,6 +56,8 @@ interface SellerOpt {
   // order_mode 는 supplier_products 에만 있는 컬럼이라 브랜드·푸드코트 판매자는 'pack' 로 온다.
   seller_unit?: string | null;
   base_quantity?: number;
+  // 기준단위(포장) — «10 kg/BOX × 3 BOX» 의 BOX (2026-09-11). 판매 상품 package_unit.
+  seller_package_unit?: string | null;
   order_mode?: OrderMode;
 }
 
@@ -211,9 +213,8 @@ const packSpecOf = (sellerProductName?: string | null): string => {
 const specTextOf = (seller?: Partial<SellerOpt> | null): string => {
   if (!seller) return '';
   if (seller.order_mode === 'measure') return '';
-  const bq = Number(seller.base_quantity);
-  if (Number.isFinite(bq) && bq > 1 && seller.seller_unit) return `${bq}${seller.seller_unit}`;
-  return packSpecOf(seller.seller_product_name);
+  // 2026-09-11: 구조화 값의 문구는 공용 규칙(«10 kg/BOX»)을 쓴다 — 서버 발주 줄 스냅샷과 같은 답.
+  return sellerSpecText(seller) || packSpecOf(seller.seller_product_name);
 };
 
 /**
@@ -234,11 +235,12 @@ const perUnitPriceOf = (seller?: Partial<SellerOpt> | null): number => {
  *   Irene 2026-09-07: "발주정보는 공급업체 기준. 발주페이지는 다 포장단위여야 하네"
  * ⛔ 재고 표시(`row.unit` = 취급단위)와 섞지 말 것. 재고는 g 으로 세고 주문은 kg 으로 한다 —
  *    같은 칸에 넣으면 "재고 2000 kg" 같은 거짓말이 된다.
- * 서버도 같은 규칙으로 라인 단위를 정한다(dev-backend/routes/purchase-orders-crud.js resolveOrderUnit).
+ * 서버도 같은 규칙으로 라인 단위를 정한다(dev-backend/utils/poLineSpec.js sellerOrderLine).
+ * 2026-09-11: 포장단위(BOX)가 있으면 그것 — «수량에 포장단위가 붙는거고»(Irene). 규칙 = utils/unitConversion sellerOrderUnitOf.
  */
 const orderUnitOf = (sellers?: SellerOpt[] | null, fallbackUnit?: string | null): string => {
   const lead = sellers?.find(s => s.is_preferred) || sellers?.[0];
-  return lead?.seller_unit || fallbackUnit || '';
+  return sellerOrderUnitOf(lead, fallbackUnit);
 };
 
 /**
@@ -2406,15 +2408,12 @@ const NewPurchaseOrderPage: React.FC = () => {
                         //   모드가 가르는 것은 **소수 허용 여부**뿐이다: measure=0.01 스텝, pack=1 스텝.
                         const isMeasure = seller?.order_mode === 'measure';
                         const qtyUnit = seller?.seller_unit || row.ingredient_unit || '';
-                        // 표기 규약 (2026-08-30 확정) — `unit` 은 **내용물 단위**가 정본이다.
-                        //   판매 단위(포대·박스)를 담는 별도 컬럼이 없어서, 규격을 그대로 병기하면
-                        //   "pack·3pack" 처럼 겹쳤다. 용기 이름은 계산에 안 쓰이는 장식이므로 표기에서 뺀다.
-                        //     pack + 규격>1 → `3 × 5kg`   (포대라는 낱말 없이도 무해석으로 읽힌다)
-                        //     pack + 규격=1 → `3 piece`
-                        //     measure       → `1.5 kg`
-                        const bq = Number(seller?.base_quantity);
-                        const hasSpec = !isMeasure && Number.isFinite(bq) && bq > 1 && qtyUnit;
-                        const suffix = hasSpec ? `× ${bq}${qtyUnit}` : qtyUnit;
+                        // 표기 규약 (2026-09-11 갱신) — 수량 옆에는 **수량에 붙는 단위(포장단위)** 가 온다.
+                        //   Irene: «발주할 때 기본용량 포장단위가 있고 거기에 수량이 올라가는 거잖아. 수량에 포장단위가 붙는거고.»
+                        //   판매 상품에 포장단위 칸(package_unit)이 생겨 `3 BOX` 로 읽힌다. 용량(10 kg/BOX)은 아래 판매자 부라인.
+                        //     measure → `1.5 kg` (무게 자체가 주문 단위)
+                        //   규칙 단일 소스 = utils/unitConversion sellerOrderUnitOf (서버 utils/poLineSpec.js 와 같다)
+                        const suffix = sellerOrderUnitOf(seller, row.ingredient_unit);
                         return (
                           <QtyWrap>
                             <QtyInput
@@ -2444,6 +2443,9 @@ const NewPurchaseOrderPage: React.FC = () => {
                         pieces.push(seller.seller_product_name);
                       }
                       if (seller.seller_product_sku) pieces.push(seller.seller_product_sku);
+                      // 용량 «10 kg/BOX» — 수량 옆 포장단위와 짝 (2026-09-11)
+                      const spec = sellerSpecText(seller, row.ingredient_unit);
+                      if (spec) pieces.push(spec);
                       if (pieces.length === 0) return null;
                       return (
                         <div style={{

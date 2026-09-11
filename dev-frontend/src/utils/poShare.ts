@@ -7,6 +7,7 @@
  * ⚠ 오너 승인이 필요한 매장에서는 **승인 전에 보내면 안 된다**(docs/PURCHASE_ORDER_SYSTEM.md §G-5).
  *   Staging 은 승인 필요 시 발송 버튼을 잠그고, 승인 후 상세 페이지에서 발송한다.
  */
+import { lineSpecText } from './unitConversion';
 
 interface SharePOItem {
   product_name?: string | null;
@@ -15,6 +16,9 @@ interface SharePOItem {
   quantity_ordered: number | string;
   /** 수량을 따라다니는 단위(kg/g/pkt/ctn…). 발주 라인에 저장돼 있다 — 메시지에도 실린다. */
   unit?: string | null;
+  /** 주문 시점 용량 스냅샷 «10 kg/BOX» 의 10 kg — 받는 쪽이 몇 kg 들이 몇 박스인지 알게 */
+  base_quantity?: number | string | null;
+  base_unit?: string | null;
   unit_price: number | string;
   /**
    * 공급업체 자기 판매품목 정체성(백엔드 utils/sellerProductIdentity).
@@ -90,7 +94,9 @@ export function poItemLines(
     //   나열되서 보기 어렵잖아. 이럴거면 그냥 한줄이 낫겠어" → 번호·줄바꿈 철회, **한 줄**로 환원.
     //   남기는 개선은 ①이름 굵게(원래 Irene 제안) ②단위 ③줄별 소계 ④머리말 품목 수.
     //   교훈: 정보를 더 넣는 것보다 **한 줄에서 이름이 먼저 읽히는 것**이 중요했다.
-    return `- ${bold(mainName)}${sku}  ${qty} × ${price} = ${lineTotal}`;
+    // 2026-09-11 Irene: «수량에 포장단위가 붙는거고» — 용량을 이름 뒤 괄호로: `- *Kimchi* (10 kg/BOX)  3 BOX × 48.00 = 144.00`
+    const spec = lineSpecText(it);
+    return `- ${bold(mainName)}${sku}${spec ? ` (${spec})` : ''}  ${qty} × ${price} = ${lineTotal}`;
   }).join('\n');
 }
 

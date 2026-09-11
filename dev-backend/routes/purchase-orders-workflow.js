@@ -302,7 +302,11 @@ router.get('/purchase-orders/:id/pdf', async (req, res) => {
         name: sp?.name || internalName,
         sku: sp?.sku || '',
         buyer_ref: sp?.name ? internalName : '',
-        unit: internal?.unit || it.unit || '',
+        // 주문 시점 용량 «10 kg/BOX» — 줄 스냅샷에서만 (utils/poLineSpec.js). 옛 줄은 빈칸.
+        spec: require('../utils/poLineSpec').lineSpecText(it),
+        // 발주 줄 단위(공급업체 기준, 서버 resolveOrderUnit 가 저장)가 우선이다. 재료 취급단위(g)는
+        // 옛 줄에 단위가 비어 있을 때만 쓴다 — 공급업체가 받는 문서에 우리 레시피 단위가 찍히면 안 된다.
+        unit: it.unit || internal?.unit || '',
         qty,
         unit_price: unitPrice,
         line_total: qty * unitPrice
@@ -360,7 +364,7 @@ td { padding: 10px 12px; border-bottom: 1px solid #F3F4F6; font-size: 13px; }
 <table>
   <thead><tr><th>Item</th><th>SKU</th><th class="num">Qty</th><th>Unit</th><th class="num">Unit Price</th><th class="num">Total</th></tr></thead>
   <tbody>
-    ${items.map(i => `<tr><td>${i.name}${i.buyer_ref ? `<div style="font-size:11px;color:#9CA3AF;margin-top:2px;">Buyer ref: ${i.buyer_ref}</div>` : ''}</td><td>${i.sku || '—'}</td><td class="num">${i.qty}</td><td>${i.unit}</td><td class="num">${i.unit_price.toFixed(2)}</td><td class="num">${i.line_total.toFixed(2)}</td></tr>`).join('')}
+    ${items.map(i => `<tr><td>${i.name}${i.spec ? `<div style="font-size:12px;color:#374151;margin-top:2px;">${i.spec}</div>` : ''}${i.buyer_ref ?`<div style="font-size:11px;color:#9CA3AF;margin-top:2px;">Buyer ref: ${i.buyer_ref}</div>` : ''}</td><td>${i.sku || '—'}</td><td class="num">${i.qty}</td><td>${i.unit}</td><td class="num">${i.unit_price.toFixed(2)}</td><td class="num">${i.line_total.toFixed(2)}</td></tr>`).join('')}
     <tr class="total-row"><td colspan="5" class="num">Total (${po.currency || 'MYR'})</td><td class="num">${subtotal.toFixed(2)}</td></tr>
   </tbody>
 </table>

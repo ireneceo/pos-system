@@ -10,6 +10,7 @@ const FoodcourtProduct = sequelize.define('FoodcourtProduct', {
   sku: { type: DataTypes.STRING(100), allowNull: true },
   unit: { type: DataTypes.STRING(50), allowNull: true },
   base_quantity: { type: DataTypes.DECIMAL(10, 2), defaultValue: 1 },
+  package_unit: { type: DataTypes.STRING(50), allowNull: true, comment: '기준단위(포장) — utils/poLineSpec.js' },
   unit_price: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
   min_order_quantity: { type: DataTypes.INTEGER, defaultValue: 1 },
   image_url: { type: DataTypes.TEXT('medium'), allowNull: true },

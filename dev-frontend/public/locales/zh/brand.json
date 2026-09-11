@@ -710,7 +710,10 @@
   "brandMenusPage.allMenusAdded": "所有菜单均已添加",
   "products": {
     "fields": {
-      "orderMode": "订购方式"
+      "orderMode": "订购方式",
+      "packageUnit": "包装单位",
+      "packageUnitPlaceholder": "例如 box、pack、bottle",
+      "packageUnitHint": "门店下单时计数的单位 — 例如每 BOX 10 kg，订购 3 BOX"
     },
     "orderMode": {
       "pack": "按数量订购（包／箱）",

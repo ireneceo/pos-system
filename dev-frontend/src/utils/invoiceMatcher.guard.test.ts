@@ -8,7 +8,7 @@
  *   ① 전역 1:1 배정을 없애고 «발주 줄 순서대로 각자 최선» 으로 되돌리면 (a) 가 실패해야 한다.
  *   ② 이름 사전(seller_invoice_name) 우선 단계를 지우면 (c) 가 실패해야 한다.
  */
-import { parseInvoiceText, matchInvoiceToPo, shouldAutoFill, parseInvoiceHeader, PoLine } from './invoiceMatcher';
+import { parseInvoiceText, parseInvoiceLine, matchInvoiceToPo, shouldAutoFill, parseInvoiceHeader, PoLine } from './invoiceMatcher';
 
 const OCR_HEADER = `
 TAIYANG FRESH TRADING SDN BHD
@@ -167,5 +167,77 @@ describe('인보이스 매칭 — 자동 채움 전제 계약', () => {
   it('사업자등록번호를 인보이스 번호로 착각하지 않는다', () => {
     const h = parseInvoiceHeader('(202201046768(1492465-X))\nINVOICE :IV-26/09-02369');
     expect(h.number).toBe('IV-26/09-02369');
+  });
+});
+
+// ── 파서 상식 검사 (2026-09-11 Fable 판정)
+//   픽스처도 **실제 운영 데이터**다:
+//   PO32_OCR   = 운영 발주 32(PO-R10-20260906-002)에 올라온 Guan Kee **손글씨** 인보이스를 같은 무료 OCR
+//                (tesseract eng · PDF 144dpi → 긴 변 1800)로 읽은 비어있지 않은 줄 전부.
+//   SEOUL_MART = Irene 이 채팅에 붙여 준 서울마트 **인쇄** 인보이스 13줄(마지막 줄 0원).
+//   고장주입: parseInvoiceLine 의 상식 검사 블록을 지우면 (g) 가 실패해야 한다(전화번호 줄 1개가 살아난다).
+const PO32_OCR = `
+INvolck » 2575
+Bow om BB
+GUAN KEE POULTRY SUPPLIES
+TS 81 Taman Tun Dr. Ismail Market. © Kua
+Hand Phone: 019-3221326, 0122031628 EMI: quankeepauitry @gmai com
+Ap aA SHBBRET i
+ae BGH quae Hse vii
+Item PARTICULARS ] RM RM
+Cn Jal Pw a ay
+LA
+EE
+TT
+1
+Chicken Wings # % 1 |
+Fat Duck re I
+eg 0e sep
+CETL A
+CS I
+sen W226 ao
+Village Chicken ZR J CO] —
+| Chicken Meat & ps Es So ra
+| Chicken Breast Meat wio Skin #1 ( Et) BENE
+om Chicken Liver [TS To] ERD
+b—— L
+Toralr| [2 B=
+`;
+
+const SEOUL_MART = `
+Item Description Qty UOM U/ Price Disc. Total
+RM RM
+1. +꿀생강차 Honey Ginger Tea -FL-1kg 1.00 Btl 32.00 32.00
+2. +부침가루 PanCake Powder -cj- 1kg- 1.00 PKT 10.00 10.00
+3. +동서보리차 Barly Tea - dong seo- 300g(30T) 1.00 Pkt 14.00 14.00
+4. +고추장 Chili Paste - c j - 14kg 1.00 Tin 138.00 138.00
+5. *모짜렐라치즈 Mozzarella Cheese -EMB-2kg 1.00 pkt 93.00 93.00
+6. +삼시고운고추가루Fine Chili Powder-SAM--1kg 2.00 pkt 29.00 58.00
+7. *월매막걸리 Mak Geol Ri-WM- 1btl 2.00 Btl 16.00 32.00
+8. +삼시김치-BOX-SAM KIMCHI -HALAL-10KG 3.00 BOX 48.00 144.00
+9. +삼시굵은고추가루Chili Flake-SAM-1kg 3.00 pkt 28.00 84.00
+10. **핫이슈밀떡볶이 Hot Issue Rice Cake -1kg- 4.00 Pack 13.00 52.00
+11. 마산땅콩캬라멜MASAN PEANUT CARAMEL-500G- 1.00 PACK 26.50 26.50
+12. 굴리굴리볼스틱GOOLY GOOLY BALL STICK-500G- 1.00 PACK 18.50 18.50
+13. 캔디 CANDY-FREE - 1.00 BILL 0.00 0.00
+`;
+
+describe('파서 상식 검사 — 품목 줄이 될 수 없는 숫자는 버린다', () => {
+  it('(g) 손글씨 인보이스(운영 발주 32 · Guan Kee) OCR 전문 → 품목 줄 0', () => {
+    expect(parseInvoiceText(PO32_OCR)).toEqual([]);
+  });
+
+  it('(h) 인쇄 인보이스(서울마트 13줄 · 0원 1줄) → 12줄 그대로', () => {
+    expect(parseInvoiceText(SEOUL_MART).length).toBe(12);
+  });
+
+  it('전화번호 줄 — 음수 단가·백만 이상 금액은 품목이 아니다', () => {
+    expect(parseInvoiceLine('Hand Phone: 019-3221326, 0122031628 EMI: quankeepauitry @gmai com')).toBeNull();
+  });
+
+  it('금액 한 자리 오독(3.5배)은 버리지 않는다 — 매칭기가 «확인 필요» 로 보여 줘야 한다', () => {
+    const p = parseInvoiceLine('2 XXXXX BAWANG HOLLAND k#7% (KG) . 8.00 KG 3.50 8.00');
+    expect(p).not.toBeNull();
+    expect(p!.amount).toBe(8);
   });
 });

@@ -39,6 +39,8 @@ async function loadPoEmailItems(poId) {
         name: p.seller_product_name || r.ingredient?.name || r.productIngredient?.name || p.description || 'Item',
         sku: p.seller_product_sku || null,
         unit: p.unit || null,
+        // 주문 시점 용량 «10 kg/BOX» (utils/poLineSpec.js) — 옛 줄은 빈 문자열
+        spec: require('./poLineSpec').lineSpecText(p),
         quantity_ordered: p.quantity_ordered,
         unit_price: p.unit_price,
         line_total: p.line_total
