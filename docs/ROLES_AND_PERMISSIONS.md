@@ -347,6 +347,13 @@ Staff의 권한은 **메뉴 보이기/숨기기**로 제어됨. Restaurant Admin
 - **백워드 호환**: 기존 Staff 중 `process_payment`/`use_pos` 보유자는 `pos_counter` 자동 백필(현 동작 유지). 신규 Staff 기본 포함. 서빙 전용은 명시적으로 끈다.
 - **서빙 뷰**: Floor Plan 3번째 탭 `Items`(아이템별 Expo 리스트). 설계 단일진실 = `docs/SERVING_VIEW_DESIGN.md`.
 
+### 인보이스 결제 — Staff 불가 (2026-09-11)
+- 서버 `routes/invoices-helpers.js checkPaymentPermission` 은 System Admin · Restaurant Admin · Restaurant Owner · Brand General/Manager · Foodcourt General/Manager 만 허용한다. **Staff 는 `pos_counter` 가 있어도 청구서 결제 불가**(결제 경로 5개 403).
+- 매장 인보이스 화면(`/restaurant/:id/invoices`, Staff 도 열 수 있음)은 같은 기준으로 Staff 에게 결제 칸을 그리지 않는다(`canPayInvoices`). 조회·View 는 가능.
+
+### 공급업체 켜기/끄기 — 구매자 권한 (2026-09-11 · `docs/SUPPLIER_CONTRACT_SYSTEM.md` §G)
+- `PUT /api/external-suppliers/:id/active` — 그 외부 공급업체를 **볼 수 있는 구매자**(자기 등록 ∪ 부모 브랜드 등록)가 자기 `supplier_contracts` 행으로 끄고 켠다. 매장이 끄면 그 매장만, 브랜드가 끄면 전 매장 상속이 끊긴다.
+
 ### PIN 기반 POS 캐셔 전환
 - POS 터미널 상단 "Cashier: [이름] ▼" 클릭 → PIN 입력 모달
 - 4자리 PIN 입력 시 자동 인증 (`POST /api/staff/verify-pin`)

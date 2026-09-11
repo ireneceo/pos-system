@@ -266,6 +266,9 @@ const Actions = styled.div`
   flex-wrap: wrap;
 `;
 
+/** 대조 허용 차액 — 서버 services/reconcileInvoiceSync.js 의 RECONCILE_TOLERANCE 와 같은 값(통화 주 단위 1). 서버가 게이트다. */
+const RECONCILE_TOLERANCE = 1.00;
+
 const num = (v: unknown): number => {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -482,12 +485,23 @@ const InvoiceReconcilePage: React.FC = () => {
     const orderedSum = items.reduce((s, it) => s + orderedLineTotal(it), 0);
     const invoicedSum = items.reduce((s, it) => s + invoicedLineTotal(it), 0);
     const headerTotal = header.total === '' ? null : num(header.total);
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const lines = r2(invoicedSum);
+    // 금액 기준 = 적은 인보이스 총액 (2026-09-11 §8-3 B-3). 서버(computeReconciledTotal)와 같은 식:
+    //   줄 합 + 세금 + 배송 − 할인. 서버가 게이트고 화면은 거울이다 — 1 넘게 다르면 저장이 400 으로 막힌다.
+    const extra = (v: string) => (v === '' ? 0 : num(v));
+    const computed = r2(lines + extra(header.tax) + extra(header.delivery) - extra(header.discount));
+    const headerR = headerTotal == null ? null : r2(headerTotal);
+    const diff = headerR == null ? null : r2(headerR - computed);
     return {
-      ordered: Math.round(orderedSum * 100) / 100,
-      lines: Math.round(invoicedSum * 100) / 100,
-      header: headerTotal == null ? null : Math.round(headerTotal * 100) / 100,
+      ordered: r2(orderedSum),
+      lines,
+      header: headerR,
+      computed,
+      diff,
+      blocked: diff != null && Math.abs(diff) > RECONCILE_TOLERANCE,
     };
-  }, [items, drafts, header.total]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [items, drafts, header.total, header.tax, header.delivery, header.discount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** 이미 어떤 발주 줄이 가져간 인보이스 줄 — 다른 줄의 선택 목록에서는 뺀다. */
   const usedRawLines = useMemo(
@@ -536,6 +550,11 @@ const InvoiceReconcilePage: React.FC = () => {
       if (body.data.propagated?.length) parts.push(t('reconcile.result.moved', '원가 {{n}}건이 새 가격을 따라갔습니다.', { n: moved }));
       if (skipped.length) parts.push(t('reconcile.result.skipped', '따라가지 않은 것: {{list}}', { list: [...new Set(skipped)].join(' · ') }));
       if (failed.length) parts.push(t('reconcile.result.failed', '전파 실패 {{n}}건 — 대조 기록은 저장됐습니다.', { n: failed.length }));
+      // 청구서를 고치지 않았으면 그 사유를 그대로 보여준다 (§8-3 B-4 — 선불로 이미 낸 청구서 등).
+      //   조용히 넘어가면 대조 금액과 청구서 금액이 어긋난 채 남는다.
+      if (body.data.invoice_sync && !body.data.invoice_sync.synced && body.data.invoice_sync.reason) {
+        parts.push(t('reconcile.result.invoiceNotSynced', '청구서는 고치지 않았습니다 — {{reason}}', { reason: body.data.invoice_sync.reason }));
+      }
       const retroApplied = (body.data.retro || []).reduce((a: number, r: any) => a + (r.applied || 0), 0);
       if (retroApplied) parts.push(t('reconcile.result.retro', '과거 발주 {{n}}줄에도 이 가격을 반영했습니다(결제·수령분 제외).', { n: retroApplied }));
       setAlert({ title: t('reconcile.saved', '대조를 저장했습니다'), message: parts.join('\n') });
@@ -708,13 +727,24 @@ const InvoiceReconcilePage: React.FC = () => {
                   )}
                   <br />
                   {t('reconcile.total.lineSum', '입력한 줄들의 합')}: <strong>{currency} {totals.lines.toFixed(2)}</strong>
-                  {totals.header != null && Math.abs(totals.lines - totals.header) >= 0.005 && (
-                    <span style={{ color: '#B45309' }}>
-                      {' · '}
-                      {t('reconcile.total.lineMismatch', '적어 넣은 총액과 {{d}} 차이 — 세금·배송비이거나 옮겨 적다 틀린 것입니다', {
-                        d: `${currency} ${Math.abs(totals.lines - totals.header).toFixed(2)}`,
-                      })}
-                    </span>
+                  {/* 적은 총액 vs 계산 총액(줄 합 + 세금 + 배송 − 할인) — 1 넘게 다르면 저장 잠금, 1 이내면 반올림 조정 (§8-3 B-3) */}
+                  {totals.diff != null && Math.abs(totals.diff) >= 0.005 && (
+                    totals.blocked ? (
+                      <span style={{ color: '#DC2626', fontWeight: 700 }}>
+                        {' · '}
+                        {t('reconcile.total.blocked', '줄 합·세금·배송·할인으로 계산한 {{c}} 와 적은 총액이 {{d}} 다릅니다 — 줄이나 총액을 확인하세요(이대로는 저장되지 않습니다)', {
+                          c: `${currency} ${totals.computed.toFixed(2)}`,
+                          d: `${currency} ${Math.abs(totals.diff).toFixed(2)}`,
+                        })}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#B45309' }}>
+                        {' · '}
+                        {t('reconcile.total.rounding', '반올림 조정 {{d}} 로 적은 총액에 맞춥니다', {
+                          d: `${totals.diff > 0 ? '+' : '-'}${currency} ${Math.abs(totals.diff).toFixed(2)}`,
+                        })}
+                      </span>
+                    )
                   )}
                 </Muted>
               </Field>
@@ -886,7 +916,7 @@ const InvoiceReconcilePage: React.FC = () => {
                 )}
               </Muted>
               <Button variant="secondary" onClick={() => navigate(`/pos/purchase-orders/${po.id}`)}>{t('reconcile.cancel', '취소')}</Button>
-              <Button onClick={save} disabled={saving}>{saving ? t('reconcile.saving', '저장 중…') : t('reconcile.save', '대조 저장')}</Button>
+              <Button onClick={save} disabled={saving || totals.blocked}>{saving ? t('reconcile.saving', '저장 중…') : t('reconcile.save', '대조 저장')}</Button>
             </Actions>
           </Panel>
         </Split>

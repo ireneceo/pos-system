@@ -34,6 +34,18 @@ async function handleInvoicePaid(invoiceOrId) {
   const fresh = await Invoice.findByPk(id);
   if (!fresh || fresh.status !== 'paid') return;
 
+  // 0. 발주 원장 거울 (2026-09-11 §8-3 A-4) — 청구서가 **어느 경로로** paid 가 됐든
+  //    (판매자 이체 확인·PayPal·웹훅·무료확인) 그 청구서가 나온 발주도 결제로 따라간다.
+  //    전에는 `POST /invoices/:id/payment` 한 곳만 거울을 불러, 나머지 경로의 발주는 영원히 unpaid 였다.
+  //    멱등(unpaid 인 발주만) · 드로어 이동 없음(가입 판매자 결제는 카드·이체다).
+  try {
+    const { mirrorPaidToPurchaseOrders, paidInvoiceIdsFor } = require('./purchaseOrderPayment');
+    const ids = await paidInvoiceIdsFor(fresh);
+    await mirrorPaidToPurchaseOrders(ids, fresh.paid_at || new Date());
+  } catch (e) {
+    console.error('[handleInvoicePaid] purchase order mirror failed:', e.message);
+  }
+
   // 1. Subscription restore. Two independent lifts (both may fire for a
   //    per-branch invoice billed to a brand): the BRANCH (restaurant.status) and
   //    the ENTITY owner (user.subscription_status for BG/FG/Owner).

@@ -1246,6 +1246,10 @@
     "ordered": "Ordered",
     "received": "Received",
     "notReceived": "Not received",
+    "orderDate": "Order date",
+    "receivedDate": "Received",
+    "supplierInvoice": "Supplier invoice",
+    "noPurchaseOrder": "No linked purchase order",
     "uploadSupplierInvoice": "Upload supplier invoice",
     "uploadingSupplierInvoice": "Uploading..."
   }

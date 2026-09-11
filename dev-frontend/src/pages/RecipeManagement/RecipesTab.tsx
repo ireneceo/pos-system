@@ -1528,14 +1528,21 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   // - 화면에 보이는 것(검색·분류 필터·정렬 적용)만 내보낸다 — 사용자가 본 것과 파일이 일치해야 한다.
   // - **레시피 1건 = 1줄.** 예전에는 "재료 1건 = 1줄"이라 레시피 열이 반복됐고,
   //   그 구조에는 조리법이 들어갈 자리가 없어 **조리법이 아예 빠져 있었다**(2026-09-02 Irene 지적).
-  // - 재료는 한 칸에 `이름 수량단위; …` 로 모은다. 원가·코드·기준수량 열은 뺐다(필요한 것만).
+  // - **칸 순서 = 레시피를 읽는 순서** (2026-09-11 Irene «레시피에 적합하게 중요한 순서» · Fable 판정):
+  //   무엇을(이름·분류·출처) 얼마나(분량) 넣어(재료) 어떻게 만드나(요약·조리법) → 시간·원가 → 관리 항목(코드·활성).
+  //   예전엔 재료가 긴 조리법 **뒤** 맨 끝 칸이었다.
+  // - 재료는 한 칸에 `이름 0.05 kg (메모); …` — 표기는 화면과 같은 `formatQuantity`(예전엔 DB 원문 `0.0500kg`).
+  //   순서는 **입력한 순서**(서버가 줄 id 로 고정해 내려준다). 단위가 섞여 양 순 정렬은 의미가 없다.
+  // - 재료를 못 찾은 줄도 **빼지 않는다** — 화면처럼 `Ingredient #id` 로 남긴다. 파일이 화면보다 적게 보이면 안 된다.
+  // - 매장에서 받으면 브랜드 레시피와 매장 레시피가 한 파일에 섞이므로 «Source» 칸으로 구분한다.
   // - 셀 안 줄바꿈은 ` | ` 로 바꾼다 — 엑셀에서 칸이 밀리는 것을 막는다.
   const handleDownloadCSV = () => {
     const headers = [
-      'Recipe Code', 'Recipe Name', 'Category', 'Active',
-      'Yield Amount', 'Yield Unit', 'Prep Time (min)', 'Cook Time (min)',
+      'Recipe Name', 'Category', 'Source', 'Yield',
+      'Ingredients', 'Recipe Summary', 'Instructions',
+      'Prep Time (min)', 'Cook Time (min)',
       'Recipe Cost', 'Suggested Price',
-      'Recipe Summary', 'Instructions', 'Ingredients'
+      'Recipe Code', 'Active'
     ];
     // 숫자는 통화기호 없이 숫자만 — 엑셀에서 바로 계산되게.
     const num = (v: any) => (v === null || v === undefined || v === '' ? '' : Number(v));
@@ -1546,30 +1553,36 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
 
     filteredRecipes.forEach(recipe => {
       const ingredients = (recipe.recipeIngredients || [])
-        .map(ri => {
-          const name = ri.ingredient?.name || '';
-          const qty = ri.quantity === null || ri.quantity === undefined ? '' : ri.quantity;
-          const unit = ri.unit || ri.ingredient?.unit || '';
-          return name ? `${name} ${qty}${unit}`.trim() : '';
+        .map((ri: any) => {
+          // 이름 해석은 화면(보기 표)과 같은 함수 — 서버가 붙여 준 재료가 1순위, 목록은 폴백
+          const ing: any = resolveIng(ri);
+          const name = ing?.name || `Ingredient #${ri.ingredient_id}`;
+          const hasQty = ri.quantity !== null && ri.quantity !== undefined && ri.quantity !== '';
+          const unit = ri.unit || ing?.unit || '';
+          const note = flat(ri.notes);
+          return [name, hasQty ? formatQuantity(ri.quantity) : '', unit].filter(Boolean).join(' ')
+            + (note ? ` (${note})` : '');
         })
-        .filter(Boolean)
         .join('; ');
 
+      const yieldText = [recipe.yield_amount != null && recipe.yield_amount !== '' ? formatQuantity(recipe.yield_amount) : '', recipe.yield_unit || '']
+        .filter(Boolean).join(' ');
+
       lines.push(toCSVRow([
-        recipe.code || '',
         recipe.name,
         recipe.recipeCategory?.name || recipe.category || '',
-        recipe.is_active ? 'Y' : 'N',
-        num(recipe.yield_amount),
-        recipe.yield_unit || '',
-        num(recipe.prep_time),
-        num(recipe.cook_time),
-        num(recipeTotalCost(recipe)),   // 화면과 같은 기준(줄 값 재합산)
-        num(recipe.suggested_price),
+        recipe.owner_type === 'brand' ? 'Brand' : 'Restaurant',
+        yieldText,
+        ingredients,
         flat(recipe.instructions_summary),
         // 상세 조리법이 비어 있으면 옛 데이터의 instructions 로 폴백(화면과 같은 규칙)
         flat(recipe.instructions_detail || recipe.instructions),
-        ingredients
+        num(recipe.prep_time),
+        num(recipe.cook_time),
+        num(recipeTotalCost(recipe)),   // 화면과 같은 기준(매장이 보는 브랜드 레시피는 매장 실효 원가)
+        num(recipe.suggested_price),
+        recipe.code || '',
+        recipe.is_active ? 'Y' : 'N'
       ]));
     });
 

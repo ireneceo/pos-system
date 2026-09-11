@@ -89,11 +89,9 @@ async function loadRestaurantCostOverrides(restaurantId, items) {
   const rid = parseInt(restaurantId, 10);
   const ids = [...new Set((items || []).map(i => parseInt(i.ingredient_id, 10)).filter(Number.isFinite))];
   if (!Number.isFinite(rid) || !ids.length) return new Map();
-  const rows = await RestaurantIngredientCost.findAll({
-    where: { restaurant_id: rid, ingredient_id: { [Op.in]: ids } },
-    attributes: ['ingredient_id', 'unit_cost']
-  });
-  return new Map(rows.map(r => [r.ingredient_id, r.unit_cost]));
+  // 브랜드 공유 재료의 오버레이만 (2026-09-11 §8-4 D-5) — 매장 소유 재료는 재료 행 unit_cost 가 매장 층이라
+  //   그 재료에 남아 있는 옛 오버레이는 읽지 않는다. 단일 소스는 services/storeCost.js.
+  return require('../services/storeCost').loadOverlayMap(rid, ids);
 }
 
 /** 재료 행에 매장 오버라이드 단가를 씌운 사본. 오버라이드가 없으면 원래 행. */
@@ -166,7 +164,8 @@ router.get('/brands/:brandId/recipes', authenticateToken, isBrandManager, async 
           as: 'recipeCategory'
         }
       ],
-      order: [['created_at', 'DESC']]
+      // 재료 줄은 **입력한 순서**로 고정한다 — 정렬이 없으면 DB 반환 순서라 화면과 다운로드가 달라질 수 있다
+      order: [['created_at', 'DESC'], [{ model: RecipeIngredient, as: 'recipeIngredients' }, 'id', 'ASC']]
     });
 
     res.json({ success: true, data: recipes });
@@ -447,10 +446,26 @@ router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaur
           as: 'recipeCategory'
         }
       ],
-      order: [['created_at', 'DESC']]
+      // 재료 줄은 입력한 순서로 고정 (브랜드 레시피 GET 과 같은 규칙 — 한 화면·한 파일에 섞여 나온다)
+      order: [['created_at', 'DESC'], [{ model: RecipeIngredient, as: 'recipeIngredients' }, 'id', 'ASC']]
     });
 
-    res.json({ success: true, data: recipes });
+    // 매장이 보는 원가를 줄마다 붙인다 (2026-09-11 §8-4 D-5) — 화면 lineCost 가 `effective_cost ?? unit_cost` 로 읽는다.
+    //   매장 소유 재료 = 재료 행 · 브랜드 공유 재료 = 매장 오버레이(없으면 브랜드 원가). brand-recipes GET 과 같은 규칙.
+    const { loadOverlayMap, effectiveStoreCost } = require('../services/storeCost');
+    const ingIds = recipes.flatMap((r) => (r.recipeIngredients || []).map((ri) => ri.ingredient_id));
+    const overlay = await loadOverlayMap(restaurantId, ingIds);
+    const data = recipes.map((r) => {
+      const plain = r.toJSON();
+      (plain.recipeIngredients || []).forEach((ri) => {
+        if (ri.ingredient) {
+          ri.ingredient.effective_cost = effectiveStoreCost(ri.ingredient, overlay.get(ri.ingredient_id), restaurantId);
+        }
+      });
+      return plain;
+    });
+
+    res.json({ success: true, data });
   } catch (error) {
     console.error('Get restaurant recipes error:', error);
     res.status(500).json({ success: false, error: { message: 'Failed to fetch recipes', code: 'INTERNAL_ERROR' } });
@@ -492,17 +507,15 @@ router.get('/restaurants/:restaurantId/brand-recipes', authenticateToken, checkR
           as: 'recipeCategory'
         }
       ],
-      order: [['created_at', 'DESC']]
+      // 재료 줄은 입력한 순서로 고정 (브랜드 쪽 GET 과 같은 규칙)
+      order: [['created_at', 'DESC'], [{ model: RecipeIngredient, as: 'recipeIngredients' }, 'id', 'ASC']]
     });
 
     // 레스토랑 코스트 오버라이드 조회
-    const restaurantCosts = await RestaurantIngredientCost.findAll({
-      where: { restaurant_id: restaurantId }
-    });
+    //   브랜드 공유 재료의 오버레이만 읽는다(§8-4 D-5 · services/storeCost.js 단일 소스).
+    const overlayMap = await require('../services/storeCost').loadOverlayMap(restaurantId);
     const costMap = {};
-    restaurantCosts.forEach(rc => {
-      costMap[rc.ingredient_id] = parseFloat(rc.unit_cost);
-    });
+    overlayMap.forEach((v, k) => { costMap[k] = v; });
 
     // 각 레시피에 restaurant 기준 원가 계산
     const enrichedRecipes = brandRecipes.map(recipe => {

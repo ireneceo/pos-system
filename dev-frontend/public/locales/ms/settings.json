@@ -1246,6 +1246,10 @@
     "ordered": "Dipesan",
     "received": "Diterima",
     "notReceived": "Belum diterima",
+    "orderDate": "Tarikh pesanan",
+    "receivedDate": "Tarikh diterima",
+    "supplierInvoice": "Invois pembekal",
+    "noPurchaseOrder": "Tiada pesanan belian berkaitan",
     "uploadSupplierInvoice": "Muat naik invois pembekal",
     "uploadingSupplierInvoice": "Memuat naik..."
   }

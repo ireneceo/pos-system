@@ -591,7 +591,8 @@
       "moved": "{{n}} kos mengikut harga baharu.",
       "skipped": "Tidak mengikut: {{list}}",
       "failed": "{{n}} perambatan gagal — rekod semakan tetap disimpan.",
-      "retro": "Digunakan pada {{n}} baris pesanan terbuka (dibayar/diterima dikecualikan)."
+      "retro": "Digunakan pada {{n}} baris pesanan terbuka (dibayar/diterima dikecualikan).",
+      "invoiceNotSynced": "Invois tidak diubah — {{reason}}"
     },
     "retroApply": "Guna juga pada pesanan belum terima",
     "invoicePanel2": "Masukkan kandungan invois",
@@ -609,7 +610,9 @@
       "lessPaid": "kurang daripada dipesan",
       "same": "sama seperti dipesan",
       "lineSum": "Jumlah baris yang anda masukkan",
-      "lineMismatch": "berbeza {{d}} daripada jumlah yang anda taip — sama ada cukai/penghantaran, atau tersalah taip"
+      "lineMismatch": "berbeza {{d}} daripada jumlah yang anda taip — sama ada cukai/penghantaran, atau tersalah taip",
+      "blocked": "Baris + cukai + penghantaran − diskaun = {{c}}, berbeza {{d}} daripada jumlah yang anda taip — semak baris atau jumlah (tidak boleh disimpan begini)",
+      "rounding": "Pelarasan pembundaran {{d}} akan menyamakan jumlah yang anda taip"
     },
     "ocr": {
       "reading": "Sedang membaca invois yang dimuat naik…",

@@ -45,6 +45,8 @@ import { useNavigate } from 'react-router-dom';
 import { getAuthToken } from '../../utils/auth';
 import { getErrorMessage } from '../../utils/apiError';
 import AlertDialog from '../../components/Common/AlertDialog';
+import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoicePayAction';
+import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
 // ConfirmDialog removed (only used by old SoaBundleRow Pay All)
 interface AdditionalCharge {
   name: string;
@@ -96,6 +98,14 @@ interface Invoice {
   poStatus?: string | null;
   /** 원본 발주가 외부 공급업체 것인가 — 업로드 버튼을 띄울지 가른다 (2026-09-10) */
   purchaseOrderIsExternal?: boolean;
+  /** 결제 모달이 낼 금액 — 서버 payableFrom 단일 소스 (2026-09-11 §8-3 A-1). 화면에서 다시 계산하지 않는다 */
+  payableAmount?: number | null;
+  payableBasis?: 'purchase_order' | 'supplier_invoice' | null;
+  purchaseOrderPaymentStatus?: string | null;
+  /** 발주의 구매자 종류 — 결제 모달의 드로어 안내를 가른다 */
+  purchaseOrderEntityType?: string | null;
+  /** 대조 때 적은 공급업체 인보이스 일자 (§8-3 C-4) */
+  supplierInvoiceDate?: string | null;
   issuerName?: string;
   issuerInfo?: {
     name: string;
@@ -318,6 +328,9 @@ const RestaurantInvoicesPage: React.FC = () => {
   const navigate = useNavigate();
   const { operationSettings } = useStore();
   const { user, refreshUser } = useAuth();
+  // 청구서 결제 권한은 서버 checkPaymentPermission 이 정한다 — Staff 분기가 없어 누르면 403 이었다.
+  //   화면도 같은 기준으로 결제 칸(Pay · Mark paid · Pay via SOA · Confirm)을 그리지 않는다(2026-09-11 Fable 판정 · Irene 「Staff 결제 403 도 같이 고쳐」).
+  const canPayInvoices = user?.role !== 'Staff';
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -488,6 +501,11 @@ const RestaurantInvoicesPage: React.FC = () => {
           poReceivedAt: inv.po_received_at ?? null,
           poStatus: inv.po_status ?? null,
           purchaseOrderIsExternal: !!(inv.purchase_order_is_external ?? inv.purchaseOrderIsExternal),
+          payableAmount: inv.payable_amount != null ? parseFloat(inv.payable_amount) : null,
+          payableBasis: inv.payable_basis ?? null,
+          purchaseOrderPaymentStatus: inv.purchase_order_payment_status ?? null,
+          purchaseOrderEntityType: inv.purchase_order_entity_type ?? null,
+          supplierInvoiceDate: inv.supplier_invoice_date ?? null,
           issuerName: inv.issuer_name || inv.issuerName || '',
           issuerInfo: inv.issuerInfo || inv.issuer_info || null,
           payerInfo: inv.payerInfo || inv.payer_info || null,
@@ -798,38 +816,8 @@ const RestaurantInvoicesPage: React.FC = () => {
     }
   };
 
-  /**
-   * 외부 공급업체 청구서 "결제함" 기록 (설계 §5).
-   * 결제를 태우는 게 아니라 **매입 미지급을 닫는 기록**이다 — 실제 돈은 매장이 밖에서 이미 냈다.
-   * 대조 전이어도 막지 않는다(현금으로 먼저 낸 경우가 있다). 대신 추정치라는 경고를 붙인다.
-   */
-  const handleMarkPaidExternal = async (invoice: Invoice) => {
-    if (confirmingInvoiceId) return;
-    setConfirmingInvoiceId(invoice.id);
-    try {
-      const token = getAuthToken();
-      const response = await fetch(`/api/invoices/${invoice.id}/mark-paid-external`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ payment_method: 'cash', notes: t('settings:invoicesPage.externalPaidNote', '외부 공급업체 — 매장이 직접 지불') })
-      });
-      const body = await response.json().catch(() => ({}));
-      if (response.ok && body.success) {
-        await fetchAllInvoices();
-        setShowViewModal(false);
-      } else {
-        setPaymentSubmitError(body.message || t('settings:invoicesPage.markPaidFailed', '결제함으로 표시하지 못했습니다.'));
-      }
-    } catch (error) {
-      console.error('Failed to mark external invoice as paid:', error);
-      setPaymentSubmitError(t('settings:invoicesPage.markPaidFailed', '결제함으로 표시하지 못했습니다.'));
-    } finally {
-      setConfirmingInvoiceId(null);
-    }
-  };
+  // 외부 공급업체 청구서 «결제함» 은 공용 조각 ExternalInvoicePayAction 이 맡는다 (§8-3 A-1 · §8-5 E-2) —
+  //   발주 결제 모달을 그대로 열어 recordPayment 한 손으로 기록한다. 오너·브랜드·푸드코트 화면도 같은 조각을 쓴다.
 
   const handlePayInvoice = async (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -1008,10 +996,27 @@ const RestaurantInvoicesPage: React.FC = () => {
                 ${payerCompany?.email || companySettings?.email ? `<div class="customer-details">${payerCompany?.email || companySettings?.email}</div>` : ''}
             </div>
             <div class="dates-section">
+                ${invoice.invoiceCategory === 'trade' && invoice.purchaseOrderId ? `
+                <div class="date-row">
+                    <span class="date-label">${t('settings:invoicesPage.orderDate', 'Order date')}:</span>
+                    <span class="date-value">${invoice.poOrderedAt ? formatDate(invoice.poOrderedAt) : '-'}</span>
+                </div>
+                <div class="date-row">
+                    <span class="date-label">${t('settings:invoicesPage.receivedDate', 'Received')}:</span>
+                    <span class="date-value">${invoice.poReceivedAt ? formatDate(invoice.poReceivedAt) : t('settings:invoicesPage.notReceived', 'Not received')}</span>
+                </div>
+                ${invoice.invoiceReconciledAt && (invoice.supplierInvoiceNumber || invoice.supplierInvoiceDate) ? `
+                <div class="date-row">
+                    <span class="date-label">${t('settings:invoicesPage.supplierInvoice', 'Supplier invoice')}:</span>
+                    <span class="date-value">${[invoice.supplierInvoiceNumber, invoice.supplierInvoiceDate ? formatDate(invoice.supplierInvoiceDate) : '']
+                      .filter(Boolean)
+                      .map((v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' } as Record<string, string>)[c]))
+                      .join(' · ')}</span>
+                </div>` : ''}` : `
                 <div class="date-row">
                     <span class="date-label">Billing Period:</span>
                     <span class="date-value">${invoice.billingPeriod || '-'}</span>
-                </div>
+                </div>`}
                 <div class="date-row">
                     <span class="date-label">Issue Date:</span>
                     <span class="date-value">${formatDate(invoice.issueDate)}</span>
@@ -1237,7 +1242,10 @@ const RestaurantInvoicesPage: React.FC = () => {
                   </InvoiceInfo>
                 </DataTableCell>
                 <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>
-                  {invoice.billingPeriod || '-'}
+                  {/* 구입 청구서에는 «기간» 이 없다 — 발주일 / 수령일 (2026-09-11 §8-3 C-4 · Irene 「발주한 날자랑 받은 날짜」) */}
+                  {invoice.invoiceCategory === 'trade' && invoice.purchaseOrderId ? (
+                    <TradeInvoiceDates variant="cell" orderedAt={invoice.poOrderedAt} receivedAt={invoice.poReceivedAt} formatDate={formatDate} />
+                  ) : (invoice.billingPeriod || '-')}
                 </DataTableCell>
                 <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>
                   {formatDate(invoice.issueDate)}
@@ -1267,9 +1275,15 @@ const RestaurantInvoicesPage: React.FC = () => {
                         그쪽은 로그인도 수금 계정도 없다. 실제로 낸 뒤 "결제함"으로 기록만 남긴다. */}
                     {showPayButton && !invoice.parentSoaInvoiceId && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
                       invoice.issuerIsExternal ? (
-                        <LocalActionButton variant="success" onClick={() => handleMarkPaidExternal(invoice)}>
-                          {t('settings:invoicesPage.markPaid', '결제함')}
-                        </LocalActionButton>
+                        <ExternalInvoicePayAction
+                          invoice={invoice}
+                          onPaid={fetchAllInvoices}
+                          renderTrigger={(open) => (
+                            <LocalActionButton variant="success" onClick={open}>
+                              {t('settings:invoicesPage.markPaid', '결제함')}
+                            </LocalActionButton>
+                          )}
+                        />
                       ) : (
                         <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>
                           {invoice.invoiceCategory === 'soa' ? 'Pay All' : 'Pay'}
@@ -1389,11 +1403,11 @@ const RestaurantInvoicesPage: React.FC = () => {
           {/* Invoice Table — SOA child 는 자동 hide */}
           {/* SOA child invoices NOT hidden — all invoices shown. Pay button hidden on children when parent_soa_invoice_id exists (B1 재설계). */}
           {activeTab === 'all' && (<>
-            {renderInvoiceTable(allPg.pageItems, true)}
+            {renderInvoiceTable(allPg.pageItems, canPayInvoices)}
             <Pagination page={allPg.page} totalPages={allPg.totalPages} total={allPg.total} pageSize={allPg.pageSize} onChange={allPg.setPage} label="invoices" />
           </>)}
           {activeTab === 'to_pay' && (<>
-            {renderInvoiceTable(toPayPg.pageItems, true)}
+            {renderInvoiceTable(toPayPg.pageItems, canPayInvoices)}
             <Pagination page={toPayPg.page} totalPages={toPayPg.totalPages} total={toPayPg.total} pageSize={toPayPg.pageSize} onChange={toPayPg.setPage} label="invoices" />
           </>)}
         </Content>
@@ -1423,7 +1437,7 @@ const RestaurantInvoicesPage: React.FC = () => {
             size="large"
             footer={
               <>
-                {(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && (
+                {canPayInvoices && (selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && (
                   <>
                     {!selectedInvoice.issuerIsExternal && (
                       <Button variant="secondary" onClick={() => setShowApplyCreditModal(true)}>
@@ -1431,12 +1445,17 @@ const RestaurantInvoicesPage: React.FC = () => {
                       </Button>
                     )}
                     {selectedInvoice.issuerIsExternal ? (
-                      <Button variant="success" onClick={() => {
-                        setShowViewModal(false);
-                        handleMarkPaidExternal(selectedInvoice);
-                      }}>
-                        {t('settings:invoicesPage.markPaidLong', '결제함 표시')}
-                      </Button>
+                      selectedInvoice.purchaseOrderId ? (
+                        <ExternalInvoicePayAction
+                          invoice={selectedInvoice}
+                          onPaid={() => { setShowViewModal(false); fetchAllInvoices(); }}
+                          renderTrigger={(open) => (
+                            <Button variant="success" onClick={open}>
+                              {t('settings:invoicesPage.markPaidLong', '결제함 표시')}
+                            </Button>
+                          )}
+                        />
+                      ) : null
                     ) : (
                       <Button variant="success" onClick={() => {
                         setShowViewModal(false);
@@ -1447,7 +1466,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     )}
                   </>
                 )}
-                {(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) === 0 && (
+                {canPayInvoices && (selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) === 0 && (
                   <Button variant="success" onClick={() => handleConfirmFreeInvoice(selectedInvoice)} disabled={!!confirmingInvoiceId}>
                     {confirmingInvoiceId ? 'Confirming...' : 'Confirm'}
                   </Button>
@@ -1552,10 +1571,23 @@ const RestaurantInvoicesPage: React.FC = () => {
                     )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                      <span style={{ color: '#4B5563' }}>Billing Period:</span>
-                      <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{selectedInvoice.billingPeriod || '-'}</span>
-                    </div>
+                    {/* 구입 청구서는 «기간» 대신 발주일·수령일·공급업체 인보이스 (§8-3 C-4) */}
+                    {selectedInvoice.invoiceCategory === 'trade' && selectedInvoice.purchaseOrderId ? (
+                      <TradeInvoiceDates
+                        variant="detail"
+                        orderedAt={selectedInvoice.poOrderedAt}
+                        receivedAt={selectedInvoice.poReceivedAt}
+                        supplierInvoiceNumber={selectedInvoice.supplierInvoiceNumber}
+                        supplierInvoiceDate={selectedInvoice.supplierInvoiceDate}
+                        reconciledAt={selectedInvoice.invoiceReconciledAt}
+                        formatDate={formatDate}
+                      />
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
+                        <span style={{ color: '#4B5563' }}>Billing Period:</span>
+                        <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{selectedInvoice.billingPeriod || '-'}</span>
+                      </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
                       <span style={{ color: '#4B5563' }}>Issue Date:</span>
                       <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.issueDate)}</span>

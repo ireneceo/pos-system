@@ -1246,6 +1246,10 @@
     "ordered": "주문",
     "received": "수령",
     "notReceived": "미수령",
+    "orderDate": "발주일",
+    "receivedDate": "수령일",
+    "supplierInvoice": "공급업체 인보이스",
+    "noPurchaseOrder": "연결된 발주 없음",
     "uploadSupplierInvoice": "공급업체 인보이스 올리기",
     "uploadingSupplierInvoice": "올리는 중..."
   }

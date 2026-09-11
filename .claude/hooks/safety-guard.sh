@@ -89,6 +89,15 @@ if [ "$TOOL_NAME" = "Bash" ]; then
     }'
     exit 0
   fi
+
+  # 운영서버로 직접 가는 ssh = 확인 (2026-09-11 Fable 판정 A안 · Irene 「다 해」).
+  #   운영 DB 읽기의 단일 진입점은 dev-backend/scripts/prod-query.js(SELECT 전용 계정)이고, 배포는 /배포 로만 한다.
+  #   그 둘과 로그·헬스 확인이 아닌 운영 ssh 는 무엇을 바꾸는지 사람이 한 번 보게 한다(차단은 아니고 ask).
+  if echo "$CMD" | grep -qE "(ssh|scp|rsync)[[:space:]].*87\.106\.78\.146"; then
+    if ! echo "$CMD" | grep -qE "prod-query\.js|deploy-to-production|pm2 logs|curl[^|;&]*health"; then
+      ask "운영서버(87.106.78.146)로 직접 명령을 보냅니다. 운영 DB 읽기는 scripts/prod-query.js, 배포는 /배포 로만 합니다. 이 명령이 운영을 바꾸지 않는지 확인하세요."
+    fi
+  fi
 fi
 
 # ===== 파일 수정 검증 =====

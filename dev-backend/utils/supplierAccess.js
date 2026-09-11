@@ -15,16 +15,20 @@ const { SupplierContract, SupplierCompany, Restaurant } = require('../models');
 async function findEffectiveContract(supplierCompanyId, buyerEntity) {
   if (!buyerEntity || !supplierCompanyId) return null;
 
-  // 1) the buyer's own active contract
+  // 1) the buyer's own contract row — **if the buyer has one (any status), it is the answer.**
+  //    (2026-09-11 · docs/SUPPLIER_CONTRACT_SYSTEM.md §G · Irene 「브랜드에서 넣어준 공급업체여도 사용 안하는 경우 비활성 가능하게」)
+  //    A buyer turns a supplier off by holding its own `terminated` row. Before this rule, a non-active own row fell
+  //    through to the brand inheritance below, so a restaurant could never switch off a brand-added supplier.
+  //    Inheritance applies only when the buyer has no row of its own.
   const own = await SupplierContract.findOne({
     where: {
       supplier_company_id: supplierCompanyId,
       entity_type: buyerEntity.type,
       entity_id: buyerEntity.id,
-      status: 'active',
     },
+    order: [['id', 'DESC']],
   });
-  if (own) return own;
+  if (own) return own.status === 'active' ? own : null;
 
   // 2) a restaurant inherits its parent brand's contract — external suppliers only
   if (buyerEntity.type === 'restaurant') {

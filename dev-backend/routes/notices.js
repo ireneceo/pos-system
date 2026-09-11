@@ -162,54 +162,13 @@ router.get('/sent', authenticateToken, async (req, res) => {
 });
 
 // GET /api/notices/received - Get notices received by the current user
+// 받은 공지의 수신 조건 — 단일 소스는 utils/noticeRecipientScope.js (목록 · 모두 읽음 · 알림함이 같은 범위를 쓴다).
+const { receivedRecipientConditions } = require('../utils/noticeRecipientScope');
+
 router.get('/received', authenticateToken, async (req, res) => {
   try {
     const user = req.user;
-    let recipientConditions = [];
-
-    // 1) Notices where user is a direct user_id recipient
-    recipientConditions.push({ user_id: user.id });
-
-    // 2) Notices where user's restaurant is a recipient
-    if (user.restaurant_id) {
-      recipientConditions.push({ restaurant_id: user.restaurant_id });
-    }
-
-    // 3) For Restaurant Owner: notices to any owned restaurant
-    if (user.role === 'Restaurant Owner') {
-      const ownedLinks = await RestaurantManager.findAll({
-        where: { manager_id: user.id, relationship_type: 'ownership' },
-        attributes: ['restaurant_id']
-      });
-      const ownedIds = ownedLinks.map(l => l.restaurant_id);
-      if (ownedIds.length > 0) {
-        recipientConditions.push({ restaurant_id: { [Op.in]: ownedIds } });
-      }
-    }
-
-    // 4) For Brand General: notices targeted to ALL their brands
-    if (user.role === 'Brand General') {
-      const brands = await Brand.findAll({ where: { owner_id: user.id } });
-      for (const brand of brands) {
-        const brandRestaurants = await Restaurant.findAll({ where: { brand_id: brand.id }, attributes: ['id'] });
-        const brIds = brandRestaurants.map(r => r.id);
-        if (brIds.length > 0) {
-          recipientConditions.push({ restaurant_id: { [Op.in]: brIds } });
-        }
-      }
-    }
-
-    // 5) For Foodcourt General: notices targeted to ALL their foodcourts
-    if (user.role === 'Foodcourt General') {
-      const foodcourts = await Foodcourt.findAll({ where: { owner_id: user.id } });
-      for (const foodcourt of foodcourts) {
-        const fcRestaurants = await Restaurant.findAll({ where: { foodcourt_id: foodcourt.id }, attributes: ['id'] });
-        const fcIds = fcRestaurants.map(r => r.id);
-        if (fcIds.length > 0) {
-          recipientConditions.push({ restaurant_id: { [Op.in]: fcIds } });
-        }
-      }
-    }
+    const recipientConditions = await receivedRecipientConditions(user);
 
     // Find all notice IDs where user is a recipient
     const recipientRows = await NoticeRecipient.findAll({
@@ -263,6 +222,33 @@ router.get('/received', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching received notices:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch received notices' });
+  }
+});
+
+// POST /api/notices/mark-all-read — 받은 공지 모두 읽음 (2026-09-11 Irene 「모든 공지사항 페이지들 모든 역할에서 모두 읽음 표시 기능」)
+//   범위 = `/received` 와 **같은 수신 조건**(receivedRecipientConditions) + 게시된 공지만 — 목록에 보이는 것만 읽음 처리한다.
+//   화면이 id 를 모아 보내지 않는다(남의 공지 id 를 섞어 보내는 길 자체가 없다).
+router.post('/mark-all-read', authenticateToken, async (req, res) => {
+  try {
+    const conditions = await receivedRecipientConditions(req.user);
+    const unread = await NoticeRecipient.findAll({
+      where: { read_at: null, [Op.or]: conditions },
+      attributes: ['notice_id'],
+      include: [{ model: Notice, as: 'notice', attributes: [], where: { status: 'published' }, required: true }],
+      raw: true
+    });
+    const noticeIds = [...new Set(unread.map((r) => r.notice_id))];
+    if (noticeIds.length === 0) {
+      return res.json({ success: true, data: { marked: 0 } });
+    }
+    const [marked] = await NoticeRecipient.update(
+      { read_at: new Date(), read_by: req.user.id },
+      { where: { notice_id: { [Op.in]: noticeIds }, read_at: null, [Op.or]: conditions } }
+    );
+    res.json({ success: true, data: { marked } });
+  } catch (error) {
+    console.error('Error marking all notices as read:', error);
+    res.status(500).json({ success: false, message: 'Failed to mark notices as read' });
   }
 });
 

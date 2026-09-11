@@ -500,23 +500,9 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
     // 청구서 ↔ 원본 발주 (2026-09-08) — 매장이 "이 청구서가 어느 발주 것인지, 업로드한 인보이스와
     // 맞춰봤는지"를 인보이스 화면에서 바로 알아야 한다. 연결은 purchase_orders.trade_invoice_id 다.
     // 목록 1회에 쿼리 1개 — 청구서마다 조회하지 않는다.
-    const poByInvoiceId = new Map();
-    if (invoices.length) {
-      const poRows = await sequelize.query(
-        `SELECT id, po_number, trade_invoice_id, total_amount, external_invoice_url,
-                external_invoice_filename, invoice_number, invoice_total, invoice_reconciled_at,
-                status, seller_type, seller_entity_id
-           FROM purchase_orders
-          WHERE trade_invoice_id IN (:ids) AND deleted_at IS NULL`,
-        { type: QueryTypes.SELECT, replacements: { ids: invoices.map((i) => i.id) } });
-      // 「업로드 버튼을 띄울까」는 **외부 공급업체인가**로 갈린다. 발주 목록이 쓰는 규칙을 그대로 쓴다
-      // (utils/sellerNames — 판매자 표시명·외부 판정의 단일 소스). 목록 전체에 대해 조회 1회.
-      const poSellerMap = await resolveSellers(poRows);
-      for (const r of poRows) {
-        r.is_external = isExternalSeller(poSellerMap, r.seller_type, r.seller_entity_id);
-        poByInvoiceId.set(Number(r.trade_invoice_id), r);
-      }
-    }
+    //   붙이는 규칙의 단일 소스는 services/invoicePurchaseOrderAttach.js (2026-09-11 §8-5 E-1) — `/to-pay`·오너 목록도 같은 함수.
+    const { attachPurchaseOrders } = require('../services/invoicePurchaseOrderAttach');
+    const poByInvoiceId = await attachPurchaseOrders(invoices.map((i) => i.id));
 
     // Transform invoices with issuer/payer company info
     const transformedInvoices = await Promise.all(invoices.map(async (invoice) => {
@@ -575,6 +561,23 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
         // 인보이스 화면에서 «공급업체 인보이스 올리기» 를 띄울지 판정하는 데 쓴다 (2026-09-10 Fable A)
         purchase_order_is_external: srcPo ? !!srcPo.is_external : false,
         purchase_order_status: srcPo ? srcPo.status : null,
+        purchase_order_payment_status: srcPo ? srcPo.payment_status : null,
+        // 결제 모달이 낼 금액 (2026-09-11 §8-3 A-1) — 규칙의 단일 소스는 purchaseOrderPayment.payableFrom.
+        //   인보이스 화면의 «결제함» 이 발주 결제 모달을 그대로 열므로, 발주 목록과 **같은 값**을 실어 준다.
+        payable_amount: srcPo ? srcPo.payable_amount : null,
+        payable_basis: srcPo ? srcPo.payable_basis : null,
+        purchase_order_entity_type: srcPo ? srcPo.entity_type : null,
+        // 발주일 → 수령일 (§8-3 C-3). 프론트는 po_ordered_at/po_received_at/po_status 를 이미 읽는데
+        //   서버가 안 보내서, 받은 발주도 목록에서 날짜가 비어 있었다(결함 5).
+        po_ordered_at: srcPo ? (srcPo.submitted_at || srcPo.approved_at || srcPo.created_at) : null,
+        po_received_at: srcPo ? srcPo.received_at : null,
+        po_status: srcPo ? srcPo.status : null,
+        supplier_invoice_date: srcPo ? srcPo.invoice_date : null,
+        // 거래청구서 행만 «발주일 / 수령일» 로 보여주려면 종류가 필요하다(C-4). 이 목록은 지금까지 안 보냈다.
+        invoice_category: invoice.invoice_category,
+        // SOA 에 묶인 청구서인가 (2026-09-11) — 프론트는 이 값이 있으면 개별 Pay 대신 «Pay via SOA» 를 보인다.
+        //   이 목록이 안 보내서 그 분기가 늘 꺼져 있었다(SOA 로 낼 청구서를 개별로도 낼 수 있게 보였다).
+        parent_soa_invoice_id: invoice.parent_soa_invoice_id || null,
         payer_type: invoice.payer_type,
         payer_id: invoice.payer_id,
         restaurant_id: invoice.restaurant_id,
@@ -1066,6 +1069,16 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         modificationHistory: invoice.modification_history || []
       };
     }));
+    // 연결 발주 붙이기 (2026-09-11 §8-5 E-1) — 매장 목록과 **같은 함수**. 브랜드·푸드코트 화면이 외부 공급업체 청구서를
+    //   게이트웨이 «Pay» 가 아니라 발주 결제 모달로 보낼 수 있게 한다. SOA 에 묶인 청구서인지도 함께 싣는다.
+    {
+      const { attachPurchaseOrders, purchaseOrderFieldsCamel } = require('../services/invoicePurchaseOrderAttach');
+      const poMap = await attachPurchaseOrders(invoices.map((i) => i.id));
+      const soaById = new Map(invoices.map((i) => [String(i.id), i.parent_soa_invoice_id || null]));
+      for (const o of transformedInvoices) {
+        Object.assign(o, purchaseOrderFieldsCamel(poMap.get(Number(o.id))), { parentSoaInvoiceId: soaById.get(String(o.id)) || null });
+      }
+    }
     res.json(transformedInvoices);
   } catch (error) {
     console.error('Error fetching invoices to pay:', error);

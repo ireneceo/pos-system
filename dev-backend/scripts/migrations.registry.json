@@ -28,6 +28,8 @@
     "migrate-cash-phase2.js",
     "migrate-category-recommendation-flag.js",
     "migrate-code-sequences.js",
+    "migrate-cost-change-log-reconcile-overlay.js",
+    "migrate-trade-invoice-period.js",
     "migrate-consolidated-print.js",
     "migrate-cost-reconciliation.js",
     "migrate-coupon-scope.js",

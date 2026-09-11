@@ -686,8 +686,18 @@ pending 없으면 `null`.
 | Brand General | BrandGeneral/BrandInvoicesPage.tsx | 발행 + 결제(SA→Brand) + 결제확인 | /api/invoices, /api/invoices/to-pay |
 | Foodcourt General | FoodcourtGeneral/FoodcourtInvoicesPage.tsx | 발행 + 결제(SA→FC) + 결제확인 | /api/invoices, /api/invoices/to-pay |
 | Brand/Foodcourt Manager | Manager/InvoicesPage.tsx | 결제 전용 (발행자별 결제방법 동적 로드) | /api/invoices/to-pay |
-| Restaurant Admin | Restaurant/InvoicesPage.tsx | 결제 전용 (모든 발행자) | /api/invoices/restaurant/:id |
-| Restaurant Owner | Owner/OwnerInvoicesPage.tsx | 결제 전용 (여러 레스토랑) | /api/owner/invoices |
+| Restaurant Admin | Restaurant/InvoicesPage.tsx | 결제 전용 (모든 발행자) · **Staff 는 결제 칸 없음** | /api/invoices/restaurant/:id |
+| Restaurant Owner | Owner/OwnerInvoicesPage.tsx | 결제 전용 (여러 레스토랑) | /api/owner/invoices · /api/owner/invoices/to-pay |
+
+#### 외부 공급업체 청구서 결제 — 네 화면 한 경로 (2026-09-11 · `docs/PURCHASE_ORDER_SYSTEM.md` §8-3 · §8-5 E-2′)
+- **목록 응답**: 매장 목록 · `/api/invoices/to-pay` · 오너 두 목록이 전부 `services/invoicePurchaseOrderAttach.js` `attachPurchaseOrders` 로 연결 발주를 붙인다
+  (`issuerIsExternal` · `purchaseOrderId` · `purchaseOrderEntityType` · `payableAmount`/`payableBasis` · `poOrderedAt`/`poReceivedAt` · `supplierInvoice*` · `parentSoaInvoiceId`, 오너 목록은 snake_case). 복제 금지.
+- **버튼**: 외부 발행자면 게이트웨이 «Pay» 대신 **«Mark paid»** — 공용 `components/Invoices/ExternalInvoicePayAction.tsx` → `ReceivePayModal`(mode `pay`, `invoiceId`) → **`POST /api/invoices/:id/mark-paid-external`**.
+  연결 발주가 없으면 버튼 대신 «No linked purchase order». 가입 판매자 청구서는 기존 Pay → submit-payment 그대로.
+- **왜 청구서 문인가**: 발주 문(`/api/purchase-orders/:id/pay`)은 `buyerScope` 가 로그인 사용자의 primary 엔티티 하나로 구매자를 정해 다매장 오너(users.restaurant_id NULL) 403 · BG 두 번째 브랜드 404. 청구서 문은 청구서 payer 로 권한을 정한다(`checkPaymentPermission`).
+- **원장**: `mark-paid-external` 은 연결 발주가 있으면 `recordPayment`(발주 결제와 같은 함수·같은 트랜잭션)로 쓴다 — 발주 paid · 청구서 paid · 매장 현금이면 열린 시프트 드로어 출금. 어느 쪽이든 두 번째 결제는 409 `ALREADY_PAID`. `payment_method` 필수.
+- **Staff**: `checkPaymentPermission` 에 Staff 분기가 없어 결제 경로 5개가 모두 403 → 매장 인보이스 화면은 Staff 에게 결제 칸(Pay · Mark paid · Pay via SOA · 0원 Confirm)을 그리지 않는다.
+- **기간 칸**: 거래 청구서는 «Ordered / Received»(`TradeInvoiceDates`). `billing_period_start/end` = 발주일(submitted→approved→created) / 수령일.
 
 ### 7.2 결제 모달 동작
 

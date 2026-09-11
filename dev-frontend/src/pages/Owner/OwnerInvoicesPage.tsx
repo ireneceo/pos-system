@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoicePayAction';
+import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
 import styled from 'styled-components';
 import { printHTMLContent } from '../../utils/billPrint';
 import SuspendedBanner from '../../components/Common/SuspendedBanner';
@@ -75,7 +77,22 @@ interface Invoice {
   customDescription?: string;
   serviceDescription?: string;
   categoryDisplayName?: string;
-  issuerType?: 'system_admin' | 'brand' | 'foodcourt';
+  issuerType?: 'system_admin' | 'brand' | 'foodcourt' | 'supplier';
+  /** 외부 공급업체 발행 + 연결 발주 (2026-09-11 §8-5) — 결제는 발주 결제 모달로 */
+  issuerIsExternal?: boolean;
+  purchaseOrderId?: number | null;
+  purchaseOrderNumber?: string | null;
+  purchaseOrderTotal?: number | null;
+  purchaseOrderEntityType?: string | null;
+  payableAmount?: number | null;
+  payableBasis?: 'purchase_order' | 'supplier_invoice' | null;
+  poOrderedAt?: string | null;
+  poReceivedAt?: string | null;
+  supplierInvoiceNumber?: string | null;
+  supplierInvoiceDate?: string | null;
+  supplierInvoiceTotal?: number | null;
+  invoiceReconciledAt?: string | null;
+  uploadedInvoiceUrl?: string | null;
   issuerId?: number | string;
   issuerName?: string;
   restaurantId?: number;
@@ -370,6 +387,20 @@ const OwnerInvoicesPage: React.FC = () => {
     restaurantId: inv.restaurant_id,
     restaurantName: inv.restaurant_name || '',
     issuerInfo: inv.issuerInfo || inv.issuer_info || null,
+    issuerIsExternal: !!inv.issuer_is_external,
+    purchaseOrderId: inv.purchase_order_id ?? null,
+    purchaseOrderNumber: inv.purchase_order_number ?? null,
+    purchaseOrderTotal: inv.purchase_order_total != null ? parseFloat(inv.purchase_order_total) : null,
+    purchaseOrderEntityType: inv.purchase_order_entity_type ?? null,
+    payableAmount: inv.payable_amount != null ? parseFloat(inv.payable_amount) : null,
+    payableBasis: inv.payable_basis ?? null,
+    poOrderedAt: inv.po_ordered_at ?? null,
+    poReceivedAt: inv.po_received_at ?? null,
+    supplierInvoiceNumber: inv.supplier_invoice_number ?? null,
+    supplierInvoiceDate: inv.supplier_invoice_date ?? null,
+    supplierInvoiceTotal: inv.supplier_invoice_total != null ? parseFloat(inv.supplier_invoice_total) : null,
+    invoiceReconciledAt: inv.invoice_reconciled_at ?? null,
+    uploadedInvoiceUrl: inv.uploaded_invoice_url ?? null,
     payerInfo: inv.payerInfo || inv.payer_info || null,
     discountType: inv.discount_type || inv.discountType || 'none',
     discountValue: parseFloat(inv.discount_value || inv.discountValue || 0),
@@ -976,7 +1007,10 @@ const OwnerInvoicesPage: React.FC = () => {
                   </InvoiceInfo>
                 </DataTableCell>
                 <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>
-                  {invoice.billingPeriod || '-'}
+                  {/* 구입 청구서는 «기간» 대신 발주일 / 수령일 (§8-3 C-4 · §8-5 E-2) */}
+                  {invoice.invoiceCategory === 'trade' && invoice.purchaseOrderId ? (
+                    <TradeInvoiceDates variant="cell" orderedAt={invoice.poOrderedAt} receivedAt={invoice.poReceivedAt} formatDate={formatDate} />
+                  ) : (invoice.billingPeriod || '-')}
                 </DataTableCell>
                 <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>
                   {formatDate(invoice.issueDate)}
@@ -1002,9 +1036,22 @@ const OwnerInvoicesPage: React.FC = () => {
                     </LocalActionButton>
 
                     {showPayButton && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
-                      <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>
-                        Pay
-                      </LocalActionButton>
+                      // 외부 공급업체 청구서는 발주 결제 모달로 (2026-09-11 §8-5 E-2) — 게이트웨이 결제는 외부 발행자에게 닿지 않는다
+                      invoice.issuerIsExternal ? (
+                        <ExternalInvoicePayAction
+                          invoice={invoice}
+                          onPaid={() => { fetchInvoicesToPay(); fetchAllInvoices(); }}
+                          renderTrigger={(open) => (
+                            <LocalActionButton variant="success" onClick={open}>
+                              {t('settings:invoicesPage.markPaid', 'Mark paid')}
+                            </LocalActionButton>
+                          )}
+                        />
+                      ) : (
+                        <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>
+                          Pay
+                        </LocalActionButton>
+                      )
                     )}
 
                     {showPayButton && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) === 0 && (
@@ -1129,7 +1176,7 @@ const OwnerInvoicesPage: React.FC = () => {
           const payerCompany = selectedInvoice.payerInfo;
 
           return (
-          <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<>{(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handlePayInvoice(selectedInvoice); }}> Pay Now </Button> )}{(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) === 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handleConfirmFreeInvoice(selectedInvoice); }}> Confirm </Button> )} <Button onClick={() => generateInvoicePDF(selectedInvoice)}> Download PDF </Button><Button onClick={() => handlePrintInvoice(selectedInvoice)}> Print </Button><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<>{(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && ( selectedInvoice.issuerIsExternal ? ( <ExternalInvoicePayAction invoice={selectedInvoice} onPaid={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); }} renderTrigger={(open) => ( <Button variant="success" onClick={open}> {t('settings:invoicesPage.markPaidLong', 'Mark as paid')} </Button> )} /> ) : ( <Button variant="success" onClick={() => { setShowViewModal(false); handlePayInvoice(selectedInvoice); }}> Pay Now </Button> ) )}{(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) === 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handleConfirmFreeInvoice(selectedInvoice); }}> Confirm </Button> )} <Button onClick={() => generateInvoicePDF(selectedInvoice)}> Download PDF </Button><Button onClick={() => handlePrintInvoice(selectedInvoice)}> Print </Button><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button></>}>
                 {/* Invoice Header with Issuer Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #C7CED6' }}>
                   <div style={{ flex: '0 0 55%' }}>
@@ -1179,10 +1226,22 @@ const OwnerInvoicesPage: React.FC = () => {
                     )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                      <span style={{ color: '#4B5563' }}>Billing Period:</span>
-                      <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{selectedInvoice.billingPeriod || '-'}</span>
-                    </div>
+                    {selectedInvoice.invoiceCategory === 'trade' && selectedInvoice.purchaseOrderId ? (
+                      <TradeInvoiceDates
+                        variant="detail"
+                        orderedAt={selectedInvoice.poOrderedAt}
+                        receivedAt={selectedInvoice.poReceivedAt}
+                        supplierInvoiceNumber={selectedInvoice.supplierInvoiceNumber}
+                        supplierInvoiceDate={selectedInvoice.supplierInvoiceDate}
+                        reconciledAt={selectedInvoice.invoiceReconciledAt}
+                        formatDate={formatDate}
+                      />
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
+                        <span style={{ color: '#4B5563' }}>Billing Period:</span>
+                        <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{selectedInvoice.billingPeriod || '-'}</span>
+                      </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
                       <span style={{ color: '#4B5563' }}>Issue Date:</span>
                       <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.issueDate)}</span>

@@ -2540,6 +2540,370 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
   });
 
+  // 레시피가 쓰는 재료 삭제 차단 (2026-09-11 Fable 판정).
+  //   `recipe_ingredients.ingredient_id` 가 ON DELETE CASCADE 라, 막지 않으면 레시피 줄이 흔적 없이 사라지고
+  //   브랜드의 모든 매장 화면·다운로드에서 그 재료가 조용히 빠진다.
+  //   «전부 막기»가 아님도 함께 증명한다 — 레시피에서 빼면 지워져야 한다.
+  // 고장주입: routes/ingredients.js 삭제 라우트의 `if (usedBy.length)` 블록을 빼면 첫 DELETE 가 200 이 되고
+  //   레시피 줄이 0 이 되어 이 테스트가 실패해야 한다.
+  test('inventory', '레시피가 쓰는 브랜드 재료 DELETE → 409 IN_USE_BY_RECIPES · 줄 불변 · 빼면 삭제됨', async () => {
+    const { sequelize } = require('../config/database');
+    const { Ingredient, Recipe, RecipeIngredient } = require('../models');
+    const bgUser = (await sequelize.query("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1",
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    const brand = bgUser && (await sequelize.query('SELECT id FROM brands WHERE owner_id = :o LIMIT 1',
+      { replacements: { o: bgUser.id }, type: sequelize.QueryTypes.SELECT }))[0];
+    if (!bgUser || !brand) { console.log(c.gray('      (건너뜀: 데모 BG/브랜드 없음)')); return true; }
+    const H = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: bgUser.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const tag = 'ZZ-HC-DELGATE-' + Date.now();
+    let ing = null, recipe = null;
+    try {
+      // 생성 입구(POST)는 403 이라 모델로 직접 만든다 — 막는 대상은 «삭제 라우트»다
+      ing = await Ingredient.create({ owner_type: 'brand', brand_id: brand.id, name: tag, unit: 'g', base_quantity: 1, unit_cost: 1, is_active: true });
+      recipe = await Recipe.create({ owner_type: 'brand', brand_id: brand.id, name: tag + '-R', is_active: true });
+      await RecipeIngredient.create({ recipe_id: recipe.id, ingredient_id: ing.id, quantity: 5, unit: 'g', cost: 5 });
+
+      const r = await request('DELETE', `/brands/${brand.id}/ingredients/${ing.id}`, null, H);
+      const lines = await RecipeIngredient.count({ where: { recipe_id: recipe.id } });
+      const still = await Ingredient.count({ where: { id: ing.id } });
+      if (r.status !== 409 || r.body?.code !== 'IN_USE_BY_RECIPES' || lines !== 1 || still !== 1) {
+        console.log(c.gray(`      (차단 안 됨: ${r.status} ${r.body?.code} · 레시피 줄 ${lines} · 재료 ${still})`)); return false;
+      }
+      if (!(r.body?.data?.recipes || []).some((x) => x.id === recipe.id)) {
+        console.log(c.gray(`      (어느 레시피가 쓰는지 안 알려준다: ${JSON.stringify(r.body?.data)})`)); return false;
+      }
+
+      await RecipeIngredient.destroy({ where: { recipe_id: recipe.id } });
+      const r2 = await request('DELETE', `/brands/${brand.id}/ingredients/${ing.id}`, null, H);
+      const gone = await Ingredient.count({ where: { id: ing.id } });
+      if (r2.status !== 200 || gone !== 0) { console.log(c.gray(`      (안 쓰는 재료도 막힌다: ${r2.status} · 남음 ${gone})`)); return false; }
+      return true;
+    } finally {
+      try { if (recipe) { await RecipeIngredient.destroy({ where: { recipe_id: recipe.id } }); await Recipe.destroy({ where: { id: recipe.id }, force: true }); } } catch {}
+      try { await Ingredient.destroy({ where: { name: tag }, force: true }); } catch {}
+    }
+  });
+
+  // ── §8-4 대조한 원가가 매장 레시피 원가까지 (2026-09-11 Fable 절단면) ───────────────────
+  //   매장이 보는 원가의 단일 소스는 매장 원가행(restaurant_ingredient_costs)인데 수령만 그 행을 썼고(발주가로),
+  //   대조는 안 썼다. 또 매장 대조의 전파가 브랜드 공유 재료행을 고쳐 다른 매장 원가까지 움직였다(dev 실측 케이스 B).
+  //   고장주입: D-1(대조의 매장 원가행 쓰기) 제거 → ① 실패 / D-3(costSync 소유자 검사) 제거 → ② 실패
+  //            D-2(수령이 청구가 우선) 제거 → ③ 실패
+  async function hcOverlayFixture() {
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const [store] = await Q('SELECT id, brand_id FROM restaurants WHERE is_demo = 1 AND brand_id IS NOT NULL ORDER BY id LIMIT 1');
+    if (!store) return null;
+    const [ra] = await Q("SELECT id FROM users WHERE restaurant_id = :r AND role = 'Restaurant Admin' AND is_active = 1 LIMIT 1", { r: store.id });
+    if (!ra) return null;
+    const tag = 'ZZ-HC-OVL-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const made = { tag, store, ra };
+    made.ing = await M.Ingredient.create({ owner_type: 'brand', brand_id: store.brand_id, name: tag, unit: 'kg', base_quantity: 1, unit_cost: 15, is_active: true });
+    made.recipe = await M.Recipe.create({ owner_type: 'brand', brand_id: store.brand_id, name: tag + '-R', is_active: true });
+    await M.RecipeIngredient.create({ recipe_id: made.recipe.id, ingredient_id: made.ing.id, quantity: 0.05, unit: 'kg', cost: 0.75 });
+    made.sc = await M.SupplierCompany.create({ name: tag, status: 'active', is_system_registered: false, registered_by_entity_type: 'restaurant', registered_by_entity_id: store.id });
+    // 앱의 외부 공급업체 등록(supplier-directory.js)이 만드는 자동 계약과 같은 행
+    await M.SupplierContract.create({ entity_type: 'restaurant', entity_id: store.id, supplier_company_id: made.sc.id, status: 'active', requested_by_user_id: ra.id });
+    made.sp = await M.SupplierProduct.create({ supplier_company_id: made.sc.id, name: tag + ' SP', unit_price: 20, unit: 'kg', base_quantity: 1, is_active: true });
+    made.isp = await M.IngredientSellerProduct.create({ ingredient_id: made.ing.id, seller_type: 'supplier', seller_entity_id: made.sc.id, seller_product_id: made.sp.id, unit_price: 20, unit_conversion: 1, is_active: true, is_preferred: false });
+    made.po = await M.PurchaseOrder.create({
+      po_number: 'HC-OVL-' + Date.now() % 1000000 + '-' + Math.random().toString(36).slice(2, 5),
+      entity_type: 'restaurant', entity_id: store.id, seller_type: 'supplier', seller_entity_id: made.sc.id,
+      status: 'shipped', subtotal: 20, tax_amount: 0, total_amount: 20, currency: 'MYR',
+      created_by_user_id: ra.id, payment_status: 'unpaid', submitted_at: new Date(),
+    });
+    made.item = await M.PurchaseOrderItem.create({
+      purchase_order_id: made.po.id, ingredient_id: made.ing.id, ingredient_seller_product_id: made.isp.id,
+      description: tag, quantity_ordered: 1, quantity_received: 0, unit: 'kg', unit_price: 20, unit_conversion: 1, line_total: 20,
+    });
+    made.auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    made.Q = Q;
+    return made;
+  }
+  async function hcOverlayCleanup(made) {
+    if (!made) return;
+    const { sequelize } = require('../config/database');
+    const X = async (sql, rep) => { try { await sequelize.query(sql, { replacements: rep }); } catch {} };
+    if (made.po) {
+      await X('DELETE FROM inventory_batches WHERE purchase_order_id = :p', { p: made.po.id });
+      await X('DELETE FROM cost_change_logs WHERE purchase_order_id = :p', { p: made.po.id });
+      try { await hcCleanupPurchaseOrders(made.po.id); } catch {}
+    }
+    if (made.ing) {
+      await X('DELETE FROM restaurant_ingredient_costs WHERE ingredient_id = :i', { i: made.ing.id });
+      await X('DELETE FROM restaurant_ingredient_stocks WHERE ingredient_id = :i', { i: made.ing.id });
+      await X("DELETE FROM cost_change_logs WHERE subject_type = 'ingredient' AND subject_id = :i", { i: made.ing.id });
+      await X('DELETE FROM inventory_transactions WHERE ingredient_id = :i', { i: made.ing.id });
+    }
+    if (made.isp) await X('DELETE FROM ingredient_seller_products WHERE id = :i', { i: made.isp.id });
+    if (made.sp) await X('DELETE FROM supplier_products WHERE id = :i', { i: made.sp.id });
+    if (made.sc) { await X('DELETE FROM supplier_contracts WHERE supplier_company_id = :s', { s: made.sc.id }); await X('DELETE FROM supplier_companies WHERE id = :s', { s: made.sc.id }); }
+    if (made.recipe) { await X('DELETE FROM recipe_ingredients WHERE recipe_id = :r', { r: made.recipe.id }); await X('DELETE FROM recipes WHERE id = :r', { r: made.recipe.id }); }
+    if (made.ing) await X('DELETE FROM ingredients WHERE id = :i', { i: made.ing.id });
+  }
+  const hcReconcile22 = (made) => request('POST', `/purchase-orders/${made.po.id}/reconcile`, {
+    invoice: { total: 22 },
+    lines: [{ item_id: made.item.id, invoiced_unit_price: 22, invoiced_quantity: 1, apply_to_seller_price: true }],
+  }, made.auth);
+
+  test('inventory', '§8-4 ① 수령(발주가 20) → 대조(청구 22) → 매장 원가행 22 · 매장이 보는 브랜드 레시피 원가 1.10', async () => {
+    let made = null;
+    try {
+      made = await hcOverlayFixture();
+      if (!made) { console.log(c.gray('      (건너뜀: 브랜드 소속 데모 매장/관리자 없음)')); return true; }
+      const rcv = await request('POST', `/purchase-orders/${made.po.id}/mark-received`, {}, made.auth);
+      if (rcv.status !== 200) { console.log(c.gray(`      (수령 실패 ${rcv.status} ${JSON.stringify(rcv.body).slice(0, 160)})`)); return false; }
+      const rc = await hcReconcile22(made);
+      if (rc.status !== 200) { console.log(c.gray(`      (대조 실패 ${rc.status} ${JSON.stringify(rc.body).slice(0, 160)})`)); return false; }
+      const [ov] = await made.Q('SELECT unit_cost FROM restaurant_ingredient_costs WHERE restaurant_id = :r AND ingredient_id = :i', { r: made.store.id, i: made.ing.id });
+      const br = await request('GET', `/restaurants/${made.store.id}/brand-recipes`, null, made.auth);
+      const rec = (br.body?.data || []).find((x) => x.id === made.recipe.id);
+      const ok = !!ov && Math.abs(Number(ov.unit_cost) - 22) < 0.0001 && !!rec && Math.abs(Number(rec.effective_ingredient_cost) - 1.1) < 0.001;
+      if (!ok) console.log(c.gray(`      (청구가가 안 내려온다: 매장 원가행 ${ov && ov.unit_cost} · 레시피 원가 ${rec && rec.effective_ingredient_cost})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await hcOverlayCleanup(made); }
+  });
+
+  test('inventory', '§8-4 ② 매장이 자기 외부 공급업체를 대조해도 브랜드 공유 재료 원가는 안 바뀐다 (크로스테넌트 쓰기 차단)', async () => {
+    let made = null;
+    try {
+      made = await hcOverlayFixture();
+      if (!made) { console.log(c.gray('      (건너뜀: 브랜드 소속 데모 매장/관리자 없음)')); return true; }
+      const rcv = await request('POST', `/purchase-orders/${made.po.id}/mark-received`, {}, made.auth);
+      if (rcv.status !== 200) { console.log(c.gray(`      (수령 실패 ${rcv.status})`)); return false; }
+      const rc = await hcReconcile22(made);
+      if (rc.status !== 200) { console.log(c.gray(`      (대조 실패 ${rc.status})`)); return false; }
+      const [ing] = await made.Q('SELECT unit_cost FROM ingredients WHERE id = :i', { i: made.ing.id });
+      const [sp] = await made.Q('SELECT unit_price FROM supplier_products WHERE id = :s', { s: made.sp.id });
+      // 매장 자기 장부(자기가 등록한 외부 공급업체 판매가)는 청구가를 따라가는 것이 맞다
+      const ok = Math.abs(Number(ing.unit_cost) - 15) < 0.0001 && Math.abs(Number(sp.unit_price) - 22) < 0.0001;
+      if (!ok) console.log(c.gray(`      (브랜드 재료행 ${ing.unit_cost}(15 여야 함) · 판매가 ${sp.unit_price}(22 여야 함))`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await hcOverlayCleanup(made); }
+  });
+
+  test('inventory', '§8-4 ③ 대조를 먼저 하고 수령 → 매장 원가행 = 청구가 22 (누르는 순서와 무관)', async () => {
+    let made = null;
+    try {
+      made = await hcOverlayFixture();
+      if (!made) { console.log(c.gray('      (건너뜀: 브랜드 소속 데모 매장/관리자 없음)')); return true; }
+      const rc = await hcReconcile22(made);
+      if (rc.status !== 200) { console.log(c.gray(`      (대조 실패 ${rc.status} ${JSON.stringify(rc.body).slice(0, 160)})`)); return false; }
+      // 대조가 이미 22 를 앉혔으면 수령이 발주가로 되돌리는지만 보면 된다 → 수령 전에 행을 지워 수령 단독의 값을 잰다
+      await made.Q('DELETE FROM restaurant_ingredient_costs WHERE restaurant_id = :r AND ingredient_id = :i', { r: made.store.id, i: made.ing.id }).catch(() => {});
+      const rcv = await request('POST', `/purchase-orders/${made.po.id}/mark-received`, {}, made.auth);
+      if (rcv.status !== 200) { console.log(c.gray(`      (수령 실패 ${rcv.status})`)); return false; }
+      const [ov] = await made.Q('SELECT unit_cost FROM restaurant_ingredient_costs WHERE restaurant_id = :r AND ingredient_id = :i', { r: made.store.id, i: made.ing.id });
+      const ok = !!ov && Math.abs(Number(ov.unit_cost) - 22) < 0.0001;
+      if (!ok) console.log(c.gray(`      (수령이 발주가로 앉힌다: ${ov && ov.unit_cost})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await hcOverlayCleanup(made); }
+  });
+
+  // ── §G 구매자별 공급업체 활성/비활성 (2026-09-11 · docs/SUPPLIER_CONTRACT_SYSTEM.md §G) ─────────────
+  //   Irene 「브랜드에서 넣어준 공급업체여도 사용 안하는 경우 비활성 가능하게 해주고 공급업체 활성/비활성 기능 넣어줘」
+  //   활성/비활성 = 그 구매자의 계약 행. 자기 행이 있으면(어떤 status 든) 자기 행이 답, 상속은 자기 행이 없을 때만.
+  //   고장주입: utils/supplierAccess.js 의 «자기 행이 있으면 자기 행» 을 옛 규칙(active 인 자기 행만)으로 → ① 실패
+  async function hcSupplierFixture() {
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const [store] = await Q('SELECT id, brand_id FROM restaurants WHERE is_demo = 1 AND brand_id IS NOT NULL ORDER BY id LIMIT 1');
+    if (!store) return null;
+    const [ra] = await Q("SELECT id FROM users WHERE restaurant_id = :r AND role = 'Restaurant Admin' AND is_active = 1 LIMIT 1", { r: store.id });
+    if (!ra) return null;
+    const [brand] = await Q('SELECT owner_id FROM brands WHERE id = :b', { b: store.brand_id });
+    const [sibling] = await Q('SELECT id FROM restaurants WHERE brand_id = :b AND id <> :r ORDER BY id LIMIT 1', { b: store.brand_id, r: store.id });
+    const tag = 'ZZ-HC-SUPACT-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const sc = await M.SupplierCompany.create({ name: tag, status: 'active', is_system_registered: false, registered_by_entity_type: 'brand', registered_by_entity_id: store.brand_id });
+    await M.SupplierContract.create({ entity_type: 'brand', entity_id: store.brand_id, supplier_company_id: sc.id, status: 'active', requested_by_user_id: (brand && brand.owner_id) || ra.id });
+    const auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    return { store, ra, sibling, sc, auth, Q, pos: [] };
+  }
+  async function hcSupplierCleanup(f) {
+    if (!f) return;
+    const { sequelize } = require('../config/database');
+    for (const id of f.pos) { try { await hcCleanupPurchaseOrders(id); } catch {} }
+    try { await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id = :s', { replacements: { s: f.sc.id } }); } catch {}
+    try { await sequelize.query('DELETE FROM supplier_companies WHERE id = :s', { replacements: { s: f.sc.id } }); } catch {}
+  }
+  const hcTryPo = async (f) => {
+    const r = await request('POST', '/purchase-orders', { seller_type: 'supplier', seller_entity_id: f.sc.id,
+      items: [{ description: 'hc', quantity_ordered: 1, unit_price: 1 }] }, f.auth);
+    const id = r.body && r.body.data && r.body.data.id; if (id) f.pos.push(id);
+    return r;
+  };
+
+  test('supplier', '§G ① 매장이 브랜드가 넣어준 외부 공급업체를 끄면 발주가 막히고(400 NO_ACTIVE_CONTRACT) 목록엔 꺼짐으로 남는다', async () => {
+    let f = null;
+    try {
+      f = await hcSupplierFixture();
+      if (!f) { console.log(c.gray('      (건너뜀: 브랜드 소속 데모 매장/관리자 없음)')); return true; }
+      const off = await request('PUT', `/external-suppliers/${f.sc.id}/active`, { is_active: false }, f.auth);
+      if (off.status !== 200) { console.log(c.gray(`      (끄기 실패 ${off.status} ${JSON.stringify(off.body).slice(0, 140)})`)); return false; }
+      const { findEffectiveContract } = require('../utils/supplierAccess');
+      const eff = await findEffectiveContract(f.sc.id, { type: 'restaurant', id: f.store.id });
+      const po = await hcTryPo(f);
+      const list = await request('GET', '/external-suppliers', null, f.auth);
+      const row = (list.body?.data || []).find((x) => x.id === f.sc.id);
+      const ok = !eff && po.status === 400 && po.body?.code === 'NO_ACTIVE_CONTRACT' && !!row && row.is_active_for_me === false;
+      if (!ok) console.log(c.gray(`      (꺼지지 않았다: 계약 ${eff ? eff.id : null} · 발주 ${po.status} ${po.body?.code} · 목록 ${row && row.is_active_for_me})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await hcSupplierCleanup(f); }
+  });
+
+  test('supplier', '§G ② 다시 켜면 자기 행이 지워지고 브랜드 계약 상속으로 돌아간다(발주 관계 통과)', async () => {
+    let f = null;
+    try {
+      f = await hcSupplierFixture();
+      if (!f) { console.log(c.gray('      (건너뜀: 브랜드 소속 데모 매장/관리자 없음)')); return true; }
+      await request('PUT', `/external-suppliers/${f.sc.id}/active`, { is_active: false }, f.auth);
+      const on = await request('PUT', `/external-suppliers/${f.sc.id}/active`, { is_active: true }, f.auth);
+      if (on.status !== 200) { console.log(c.gray(`      (켜기 실패 ${on.status})`)); return false; }
+      const [own] = await f.Q("SELECT COUNT(*) n FROM supplier_contracts WHERE supplier_company_id = :s AND entity_type = 'restaurant' AND entity_id = :r AND deleted_at IS NULL", { s: f.sc.id, r: f.store.id });
+      const { findEffectiveContract } = require('../utils/supplierAccess');
+      const eff = await findEffectiveContract(f.sc.id, { type: 'restaurant', id: f.store.id });
+      const po = await hcTryPo(f);
+      const ok = Number(own.n) === 0 && !!eff && eff.entity_type === 'brand' && !(po.status === 400 && po.body?.code === 'NO_ACTIVE_CONTRACT');
+      if (!ok) console.log(c.gray(`      (상속 복귀 안 됨: 자기 행 ${own.n} · 계약 ${eff && eff.entity_type} · 발주 ${po.status} ${po.body?.code})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await hcSupplierCleanup(f); }
+  });
+
+  test('supplier', '§G ③ 한 매장이 끈 공급업체는 같은 브랜드의 다른 매장에서 그대로 쓸 수 있다', async () => {
+    let f = null;
+    try {
+      f = await hcSupplierFixture();
+      if (!f) { console.log(c.gray('      (건너뜀: 브랜드 소속 데모 매장/관리자 없음)')); return true; }
+      if (!f.sibling) { console.log(c.gray('      (건너뜀: 같은 브랜드의 다른 매장 없음)')); return true; }
+      const off = await request('PUT', `/external-suppliers/${f.sc.id}/active`, { is_active: false }, f.auth);
+      if (off.status !== 200) { console.log(c.gray(`      (끄기 실패 ${off.status})`)); return false; }
+      const { findEffectiveContract } = require('../utils/supplierAccess');
+      const mine = await findEffectiveContract(f.sc.id, { type: 'restaurant', id: f.store.id });
+      const sib = await findEffectiveContract(f.sc.id, { type: 'restaurant', id: f.sibling.id });
+      const ok = !mine && !!sib;
+      if (!ok) console.log(c.gray(`      (다른 매장까지 꺼졌다: 이 매장 ${mine ? 'on' : 'off'} · 다른 매장 ${sib ? 'on' : 'off'})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await hcSupplierCleanup(f); }
+  });
+
+  // §8-4 D-3 의 두 번째 문 (2026-09-11 Fable): 매장이 자기 외부 공급업체 **가격을 고칠 때**도 브랜드 층 원가를 건드리면 안 된다.
+  //   «전부 건너뛰기»가 아님도 함께 증명한다 — 같은 상품에 매핑된 **매장 자기 재료**의 원가는 따라가야 한다.
+  //   고장주입: supplier-directory.js 외부 공급업체 상품 PUT 의 ctx.actor 제거 → 브랜드 재료 원가가 25 로 바뀌어 실패
+  test('inventory', '§8-4 매장이 외부 공급업체 가격을 고치면 매장 재료만 따라가고 브랜드 공유 재료 원가는 그대로', async () => {
+    let made = null;
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    let ownIng = null, ownMap = null;
+    try {
+      made = await hcOverlayFixture();
+      if (!made) { console.log(c.gray('      (건너뜀: 브랜드 소속 데모 매장/관리자 없음)')); return true; }
+      ownIng = await M.Ingredient.create({ owner_type: 'restaurant', restaurant_id: made.store.id, name: made.tag + '-OWN', unit: 'kg', base_quantity: 1, unit_cost: 15, is_active: true });
+      ownMap = await M.IngredientSellerProduct.create({ ingredient_id: ownIng.id, seller_type: 'supplier', seller_entity_id: made.sc.id, seller_product_id: made.sp.id, unit_price: 20, unit_conversion: 1, is_active: true, is_preferred: true });
+      const r = await request('PUT', `/external-suppliers/${made.sc.id}/products/${made.sp.id}`,
+        { name: made.tag + ' SP', unit_price: 25, unit: 'kg', base_quantity: 1 }, made.auth);
+      if (r.status !== 200) { console.log(c.gray(`      (가격 수정 실패 ${r.status} ${JSON.stringify(r.body).slice(0, 160)})`)); return false; }
+      const [brandRow] = await made.Q('SELECT unit_cost FROM ingredients WHERE id = :i', { i: made.ing.id });
+      const [ownRow] = await made.Q('SELECT unit_cost FROM ingredients WHERE id = :i', { i: ownIng.id });
+      const ok = Math.abs(Number(brandRow.unit_cost) - 15) < 0.0001 && Math.abs(Number(ownRow.unit_cost) - 25) < 0.0001;
+      if (!ok) console.log(c.gray(`      (브랜드 재료 ${brandRow.unit_cost}(15 여야 함) · 매장 재료 ${ownRow.unit_cost}(25 여야 함))`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      const X = async (sql, rep) => { try { await sequelize.query(sql, { replacements: rep }); } catch {} };
+      if (ownMap) await X('DELETE FROM ingredient_seller_products WHERE id = :i', { i: ownMap.id });
+      if (ownIng) {
+        await X("DELETE FROM cost_change_logs WHERE subject_type = 'ingredient' AND subject_id = :i", { i: ownIng.id });
+        await X('DELETE FROM ingredients WHERE id = :i', { i: ownIng.id });
+      }
+      await hcOverlayCleanup(made);
+    }
+  });
+
+  // §8-4 D-5 (2026-09-11 Fable): 매장 층의 자리는 재료 소유자가 정한다 — 칸은 하나.
+  //   매장 소유 재료는 재료 행 unit_cost, 브랜드 공유 재료만 매장 오버레이. 매장 소유 재료의 옛 오버레이는 읽지 않는다.
+  //   고장주입: services/storeCost.js isStoreOwned 를 항상 false 로 → ① 실패(재료 행 그대로 · 오버레이에 씀 · 화면 원가 99)
+  test('inventory', '§8-4 D-5 ① 매장 소유 재료 수령 → 재료 행 원가 20 · 오버레이 새로 안 만듦 · 자기 레시피 조회 원가 20(옛 오버레이 99 무시)', async () => {
+    let made = null;
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const extra = {};
+    try {
+      made = await hcOverlayFixture();
+      if (!made) { console.log(c.gray('      (건너뜀: 브랜드 소속 데모 매장/관리자 없음)')); return true; }
+      const RID = made.store.id;
+      extra.ing = await M.Ingredient.create({ owner_type: 'restaurant', restaurant_id: RID, name: made.tag + '-OWN', unit: 'kg', base_quantity: 1, unit_cost: 15, current_stock: 0, is_active: true });
+      // 옛 결함이 남긴 «매장 소유 재료의 오버레이» — 읽히면 안 된다
+      extra.stale = await M.RestaurantIngredientCost.create({ restaurant_id: RID, ingredient_id: extra.ing.id, unit_cost: 99, notes: 'hc stale' });
+      extra.map = await M.IngredientSellerProduct.create({ ingredient_id: extra.ing.id, seller_type: 'supplier', seller_entity_id: made.sc.id, seller_product_id: made.sp.id, unit_price: 20, unit_conversion: 1, is_active: true, is_preferred: true });
+      extra.recipe = await M.Recipe.create({ owner_type: 'restaurant', restaurant_id: RID, name: made.tag + '-OWN-R', is_active: true });
+      await M.RecipeIngredient.create({ recipe_id: extra.recipe.id, ingredient_id: extra.ing.id, quantity: 0.05, unit: 'kg', cost: 0.75 });
+      extra.po = await M.PurchaseOrder.create({
+        po_number: 'HC-D5-' + Date.now() % 1000000 + '-' + Math.random().toString(36).slice(2, 5),
+        entity_type: 'restaurant', entity_id: RID, seller_type: 'supplier', seller_entity_id: made.sc.id,
+        status: 'shipped', subtotal: 20, tax_amount: 0, total_amount: 20, currency: 'MYR',
+        created_by_user_id: made.ra.id, payment_status: 'unpaid', submitted_at: new Date(),
+      });
+      await M.PurchaseOrderItem.create({ purchase_order_id: extra.po.id, ingredient_id: extra.ing.id, ingredient_seller_product_id: extra.map.id,
+        description: made.tag + '-OWN', quantity_ordered: 1, quantity_received: 0, unit: 'kg', unit_price: 20, unit_conversion: 1, line_total: 20 });
+
+      const rcv = await request('POST', `/purchase-orders/${extra.po.id}/mark-received`, {}, made.auth);
+      if (rcv.status !== 200) { console.log(c.gray(`      (수령 실패 ${rcv.status} ${JSON.stringify(rcv.body).slice(0, 160)})`)); return false; }
+      const [ingRow] = await made.Q('SELECT unit_cost FROM ingredients WHERE id = :i', { i: extra.ing.id });
+      const ovRows = await made.Q('SELECT unit_cost FROM restaurant_ingredient_costs WHERE restaurant_id = :r AND ingredient_id = :i', { r: RID, i: extra.ing.id });
+      const list = await request('GET', `/restaurants/${RID}/recipes`, null, made.auth);
+      const rec = (list.body?.data || []).find((x) => x.id === extra.recipe.id);
+      const line = rec && (rec.recipeIngredients || []).find((l) => l.ingredient_id === extra.ing.id);
+      const eff = line && line.ingredient ? Number(line.ingredient.effective_cost) : NaN;
+      const ok = Math.abs(Number(ingRow.unit_cost) - 20) < 0.0001
+        && ovRows.length === 1 && Math.abs(Number(ovRows[0].unit_cost) - 99) < 0.0001
+        && Math.abs(eff - 20) < 0.0001;
+      if (!ok) console.log(c.gray(`      (재료 행 ${ingRow.unit_cost}(20) · 오버레이 ${JSON.stringify(ovRows)}(99 한 줄 그대로) · 조회 원가 ${eff}(20))`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      const X = async (sql, rep) => { try { await sequelize.query(sql, { replacements: rep }); } catch {} };
+      if (extra.po) {
+        await X('DELETE FROM inventory_batches WHERE purchase_order_id = :p', { p: extra.po.id });
+        await X('DELETE FROM cost_change_logs WHERE purchase_order_id = :p', { p: extra.po.id });
+        try { await hcCleanupPurchaseOrders(extra.po.id); } catch {}
+      }
+      if (extra.recipe) { await X('DELETE FROM recipe_ingredients WHERE recipe_id = :r', { r: extra.recipe.id }); await X('DELETE FROM recipes WHERE id = :r', { r: extra.recipe.id }); }
+      if (extra.map) await X('DELETE FROM ingredient_seller_products WHERE id = :i', { i: extra.map.id });
+      if (extra.ing) {
+        await X('DELETE FROM restaurant_ingredient_costs WHERE ingredient_id = :i', { i: extra.ing.id });
+        await X('DELETE FROM restaurant_ingredient_stocks WHERE ingredient_id = :i', { i: extra.ing.id });
+        await X('DELETE FROM inventory_transactions WHERE ingredient_id = :i', { i: extra.ing.id });
+        await X("DELETE FROM cost_change_logs WHERE subject_type = 'ingredient' AND subject_id = :i", { i: extra.ing.id });
+        await X('DELETE FROM ingredients WHERE id = :i', { i: extra.ing.id });
+      }
+      await hcOverlayCleanup(made);
+    }
+  });
+
+  test('inventory', '§8-4 D-5 ② 브랜드 공유 재료 수령 → 매장 오버레이만 20 · 브랜드 재료 행 15 그대로', async () => {
+    let made = null;
+    try {
+      made = await hcOverlayFixture();
+      if (!made) { console.log(c.gray('      (건너뜀: 브랜드 소속 데모 매장/관리자 없음)')); return true; }
+      const rcv = await request('POST', `/purchase-orders/${made.po.id}/mark-received`, {}, made.auth);
+      if (rcv.status !== 200) { console.log(c.gray(`      (수령 실패 ${rcv.status})`)); return false; }
+      const [ingRow] = await made.Q('SELECT unit_cost FROM ingredients WHERE id = :i', { i: made.ing.id });
+      const [ov] = await made.Q('SELECT unit_cost FROM restaurant_ingredient_costs WHERE restaurant_id = :r AND ingredient_id = :i', { r: made.store.id, i: made.ing.id });
+      const ok = Math.abs(Number(ingRow.unit_cost) - 15) < 0.0001 && !!ov && Math.abs(Number(ov.unit_cost) - 20) < 0.0001;
+      if (!ok) console.log(c.gray(`      (브랜드 행 ${ingRow.unit_cost}(15) · 오버레이 ${ov && ov.unit_cost}(20))`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await hcOverlayCleanup(made); }
+  });
+
   // ③: 거울 행의 정체성 필드는 403. 매장 재고 경로(min_stock)는 열려 있어야 한다.
   test('inventory', '통합③: 거울 이름 PUT → 403 · min_stock 은 통과', async () => {
     const { sequelize } = require('../config/database');
@@ -3938,6 +4302,378 @@ function definePaymentTests() {
       return r2.status === 200 && m2.length === 0;
     } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
     finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); }
+  });
+
+  // ── §8-3 결제 단일화 · 금액 기준 (2026-09-11 Fable 절단면) ─────────────────────────────
+  //   외부 공급업체 청구서 «결제함» 이 청구서 행만 고치고 발주·드로어를 몰라서, 뒤이어 발주 Pay 를 누르면
+  //   드로어에서 한 번 더 나갔다. 결제 쓰기는 recordPayment 한 손 — 어느 원장을 먼저 썼든 두 번째는 409.
+  //   고장주입: ① invoices-payment.js mark-paid-external 의 recordPayment 분기 제거 → ① 실패
+  //            ③ purchaseOrderPayment.js 의 «연결 청구서 paid» 검사 제거 → ③ 실패
+  //            ④ cost-reconciliation.js 의 TOTAL_MISMATCH 검사 제거 → ④ 실패
+
+  /** 발주가 비어 있는 동안 청구서가 붙을 때까지 기다린다(발행은 커밋 뒤 비동기). */
+  async function hcPollTradeInvoice(poId) {
+    const { PurchaseOrder, Invoice } = require('../models');
+    for (let i = 0; i < 25; i += 1) {
+      const p = await PurchaseOrder.findByPk(poId);
+      if (p && p.trade_invoice_id) return Invoice.findByPk(p.trade_invoice_id);
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    return null;
+  }
+
+  /** 매장이 등록한 외부 공급업체 발주 1건 → 실제 mark-received 로 거래청구서까지. */
+  async function makeExternalPoReceived(fx, { lineTotal = 42 } = {}) {
+    const { sequelize } = require('../config/database');
+    const { SupplierCompany, PurchaseOrder } = require('../models');
+    const tag = Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const sc = await SupplierCompany.create({
+      name: 'ZZ-HC-EXT-' + tag, status: 'active', is_system_registered: false,
+      registered_by_entity_type: 'restaurant', registered_by_entity_id: fx.demoId,
+    });
+    const submittedAt = new Date(Date.now() - 3 * 86400000);
+    submittedAt.setMilliseconds(0);
+    const po = await PurchaseOrder.create({
+      po_number: `HC-EXT-${tag}`, entity_type: 'restaurant', entity_id: fx.demoId,
+      seller_type: 'supplier', seller_entity_id: sc.id, status: 'shipped',
+      subtotal: lineTotal, tax_amount: 0, total_amount: lineTotal, currency: 'MYR',
+      created_by_user_id: fx.raId, payment_status: 'unpaid', submitted_at: submittedAt,
+    });
+    await sequelize.query(`INSERT INTO purchase_order_items (purchase_order_id,description,quantity_ordered,quantity_received,unit_price,line_total,created_at,updated_at)
+      VALUES (${po.id},'HC ext line',1,0,${lineTotal},${lineTotal},NOW(),NOW())`);
+    const r = await request('POST', `/purchase-orders/${po.id}/mark-received`, {}, fx.auth);
+    const inv = r.status === 200 ? await hcPollTradeInvoice(po.id) : null;
+    return { sc, po, inv, receiveStatus: r.status };
+  }
+  async function dropSupplierCompany(sc) {
+    if (!sc) return;
+    const { sequelize } = require('../config/database');
+    try { await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id = :s', { replacements: { s: sc.id } }); } catch {}
+    try { await sequelize.query('DELETE FROM supplier_companies WHERE id = :s', { replacements: { s: sc.id } }); } catch {}
+  }
+  const hcQ = async (sql, rep) => {
+    const { sequelize } = require('../config/database');
+    return sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+  };
+
+  test('cash', '§8-3 ① 외부 청구서 «결제함»(현금) → 드로어 1행 · 발주 paid · 청구서 paid · 이어서 발주 Pay 409', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    try {
+      await closeOpenShifts(fx.demoId);
+      const shift = await openCashShift(fx); made.shifts.push(shift.id);
+      ext = await makeExternalPoReceived(fx); made.pos.push(ext.po.id);
+      if (!ext.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${ext.receiveStatus})`)); return false; }
+      const r = await request('POST', `/invoices/${ext.inv.id}/mark-paid-external`, { payment_method: 'cash' }, fx.auth);
+      if (r.status !== 200) { console.log(c.gray(`      (결제함 실패 ${r.status} ${JSON.stringify(r.body).slice(0, 160)})`)); return false; }
+      const movs = await hcQ("SELECT type, amount FROM cash_movements WHERE purchase_order_id = :p", { p: ext.po.id });
+      const [po] = await hcQ('SELECT payment_status FROM purchase_orders WHERE id = :p', { p: ext.po.id });
+      const [inv] = await hcQ('SELECT status, total_amount FROM invoices WHERE id = :i', { i: ext.inv.id });
+      if (movs.length !== 1 || movs[0].type !== 'out' || Math.abs(Number(movs[0].amount) - Number(inv.total_amount)) > 0.001
+        || po.payment_status !== 'paid' || inv.status !== 'paid') {
+        console.log(c.gray(`      (한 손 기록이 아니다: movs ${JSON.stringify(movs)} po ${po.payment_status} inv ${inv.status})`)); return false;
+      }
+      const again = await request('POST', `/purchase-orders/${ext.po.id}/pay`, { payment_method: 'cash' }, fx.auth);
+      const movs2 = await hcQ('SELECT id FROM cash_movements WHERE purchase_order_id = :p', { p: ext.po.id });
+      if (again.status !== 409 || movs2.length !== 1) { console.log(c.gray(`      (두 번째 결제가 안 막힌다: ${again.status} · 이동 ${movs2.length})`)); return false; }
+      return true;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await dropSupplierCompany(ext && ext.sc); await closeOpenShifts(fx.demoId); }
+  });
+
+  test('cash', '§8-3 ② 반대 순서 — 발주 Pay 먼저 → 청구서 «결제함» 409 · 드로어 1행', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    try {
+      await closeOpenShifts(fx.demoId);
+      const shift = await openCashShift(fx); made.shifts.push(shift.id);
+      ext = await makeExternalPoReceived(fx); made.pos.push(ext.po.id);
+      if (!ext.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${ext.receiveStatus})`)); return false; }
+      const p = await request('POST', `/purchase-orders/${ext.po.id}/pay`, { payment_method: 'cash' }, fx.auth);
+      if (p.status !== 200) { console.log(c.gray(`      (발주 Pay 실패 ${p.status})`)); return false; }
+      const r = await request('POST', `/invoices/${ext.inv.id}/mark-paid-external`, { payment_method: 'cash' }, fx.auth);
+      const movs = await hcQ('SELECT id FROM cash_movements WHERE purchase_order_id = :p', { p: ext.po.id });
+      if (r.status !== 409 || movs.length !== 1) { console.log(c.gray(`      (두 번째 결제가 안 막힌다: ${r.status} · 이동 ${movs.length})`)); return false; }
+      return true;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await dropSupplierCompany(ext && ext.sc); await closeOpenShifts(fx.demoId); }
+  });
+
+  test('cash', '§8-3 ③ 청구서만 paid 인 발주에 Pay → 409 · 드로어 0행 (연결 청구서 검사)', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    try {
+      await closeOpenShifts(fx.demoId);
+      const shift = await openCashShift(fx); made.shifts.push(shift.id);
+      ext = await makeExternalPoReceived(fx); made.pos.push(ext.po.id);
+      if (!ext.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${ext.receiveStatus})`)); return false; }
+      // 거울을 타지 않는 직접 갱신 — «청구서는 paid · 발주는 unpaid» 상태를 일부러 만든다
+      const { Invoice } = require('../models');
+      await Invoice.update({ status: 'paid', paid_amount: ext.inv.total_amount, paid_at: new Date() }, { where: { id: ext.inv.id }, hooks: false });
+      const r = await request('POST', `/purchase-orders/${ext.po.id}/pay`, { payment_method: 'cash' }, fx.auth);
+      const movs = await hcQ('SELECT id FROM cash_movements WHERE purchase_order_id = :p', { p: ext.po.id });
+      if (r.status !== 409 || movs.length !== 0) { console.log(c.gray(`      (청구서가 이미 paid 인데 드로어가 열린다: ${r.status} · 이동 ${movs.length})`)); return false; }
+      return true;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await dropSupplierCompany(ext && ext.sc); await closeOpenShifts(fx.demoId); }
+  });
+
+  test('cash', '§8-3 ④ 대조 총액이 줄과 1.50 다름 → 400 TOTAL_MISMATCH · 아무것도 저장 안 됨', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    try {
+      ext = await makeExternalPoReceived(fx, { lineTotal: 42 }); made.pos.push(ext.po.id);
+      const [item] = await hcQ('SELECT id FROM purchase_order_items WHERE purchase_order_id = :p', { p: ext.po.id });
+      const r = await request('POST', `/purchase-orders/${ext.po.id}/reconcile`,
+        { invoice: { total: 43.5 }, lines: [{ item_id: item.id, invoiced_unit_price: 42 }] }, fx.auth);
+      const [po] = await hcQ('SELECT invoice_reconciled_at, invoice_total FROM purchase_orders WHERE id = :p', { p: ext.po.id });
+      const [it] = await hcQ('SELECT invoiced_unit_price FROM purchase_order_items WHERE id = :i', { i: item.id });
+      if (r.status !== 400 || r.body?.code !== 'TOTAL_MISMATCH' || po.invoice_reconciled_at || po.invoice_total != null || it.invoiced_unit_price != null) {
+        console.log(c.gray(`      (차액 1.50 이 저장됐다: ${r.status} ${r.body?.code} · 대조 ${po.invoice_reconciled_at} · 줄 ${it.invoiced_unit_price})`)); return false;
+      }
+      return true;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await dropSupplierCompany(ext && ext.sc); }
+  });
+
+  test('cash', '§8-3 ⑤ 대조 차액 0.35 → 반올림 조정 1줄 · 청구서 총액 = 적은 총액 = 낼 금액', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    try {
+      ext = await makeExternalPoReceived(fx, { lineTotal: 42 }); made.pos.push(ext.po.id);
+      if (!ext.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${ext.receiveStatus})`)); return false; }
+      const [item] = await hcQ('SELECT id FROM purchase_order_items WHERE purchase_order_id = :p', { p: ext.po.id });
+      const r = await request('POST', `/purchase-orders/${ext.po.id}/reconcile`,
+        { invoice: { total: 42.35 }, lines: [{ item_id: item.id, invoiced_unit_price: 42 }] }, fx.auth);
+      if (r.status !== 200) { console.log(c.gray(`      (대조 저장 실패 ${r.status} ${JSON.stringify(r.body).slice(0, 160)})`)); return false; }
+      const [inv] = await hcQ('SELECT total_amount, additional_charges FROM invoices WHERE id = :i', { i: ext.inv.id });
+      const [po] = await hcQ('SELECT invoice_total FROM purchase_orders WHERE id = :p', { p: ext.po.id });
+      const charges = typeof inv.additional_charges === 'string' ? JSON.parse(inv.additional_charges || '[]') : (inv.additional_charges || []);
+      const rounding = charges.filter((ch) => ch && ch.name === 'Rounding adjustment');
+      const list = await request('GET', `/invoices/restaurant/${fx.demoId}`, null, fx.auth);
+      const row = (Array.isArray(list.body) ? list.body : (list.body?.data || [])).find((x) => String(x.id) === String(ext.inv.id));
+      const ok = Math.abs(Number(inv.total_amount) - 42.35) < 0.001
+        && Math.abs(Number(po.invoice_total) - 42.35) < 0.001
+        && rounding.length === 1 && Math.abs(Number(rounding[0].amount) - 0.35) < 0.001
+        && row && Math.abs(Number(row.payable_amount) - 42.35) < 0.001;
+      if (!ok) {
+        console.log(c.gray(`      (한 숫자가 아니다: 청구서 ${inv.total_amount} · 발주 ${po.invoice_total} · 조정 ${JSON.stringify(rounding)} · 낼 금액 ${row && row.payable_amount})`));
+      }
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await dropSupplierCompany(ext && ext.sc); }
+  });
+
+  // ── 공지 «모두 읽음» (2026-09-11 Irene 「모든 공지사항 페이지들 모든 역할에서 모두 읽음 표시 기능」) ──
+  //   범위는 받은 목록(/notices/received)과 같아야 한다 — 남의 매장 수신행은 건드리지 않고, 게시 안 된 공지는 그대로,
+  //   브랜드 총괄은 자기 브랜드 매장으로 온 공지까지 읽힌다(인박스 API 는 이 마지막 범위가 없어 쓰지 않았다).
+  //   고장주입: notices.js mark-all-read 의 update where 에서 `[Op.or]: conditions` 제거 → «남의 매장 불변» 실패
+  //            receivedRecipientConditions 의 «4) Brand General» 블록 제거 → «브랜드 매장 공지 읽힘» 실패
+  test('pos', '공지 모두 읽음: 익명 401 · 내 매장만 읽음 · 남의 매장·초안은 그대로 · BG 는 브랜드 매장 공지까지', async () => {
+    const { sequelize } = require('../config/database');
+    const { Notice, NoticeRecipient } = require('../models');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const [store] = await Q('SELECT id FROM restaurants WHERE is_demo = 1 ORDER BY id LIMIT 1');
+    const [other] = store ? await Q('SELECT id FROM restaurants WHERE id <> :r ORDER BY id LIMIT 1', { r: store.id }) : [];
+    const [ra] = store ? await Q("SELECT id FROM users WHERE restaurant_id = :r AND role = 'Restaurant Admin' AND is_active = 1 LIMIT 1", { r: store.id }) : [];
+    const [admin] = await Q("SELECT id FROM users WHERE role = 'System Admin' ORDER BY id LIMIT 1");
+    if (!store || !other || !ra || !admin) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const jwtLib = require('jsonwebtoken');
+    const H = (uid) => ({ Authorization: `Bearer ${jwtLib.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '10m' })}` });
+    const tag = 'ZZ-HC-NOTICE-' + Date.now();
+    const made = [];
+    const mk = async (status) => {
+      const n = await Notice.create({ title: `${tag}-${status}`, content: 'hc', author_id: admin.id, author_name: 'HC', author_role: 'System Admin',
+        target_type: 'restaurant', status, category: 'general', priority: 'normal' });
+      made.push(n.id);
+      return n;
+    };
+    try {
+      const anon = await request('POST', '/notices/mark-all-read', {});
+      if (anon.status !== 401) { console.log(c.gray(`      (익명이 통과: ${anon.status})`)); return false; }
+
+      const pub = await mk('published');
+      const draft = await mk('draft');
+      const mine = await NoticeRecipient.create({ notice_id: pub.id, restaurant_id: store.id });
+      const theirs = await NoticeRecipient.create({ notice_id: pub.id, restaurant_id: other.id });
+      const draftMine = await NoticeRecipient.create({ notice_id: draft.id, restaurant_id: store.id });
+
+      const r = await request('POST', '/notices/mark-all-read', {}, H(ra.id));
+      const [m] = await Q('SELECT read_at FROM notice_recipients WHERE id = :i', { i: mine.id });
+      const [t] = await Q('SELECT read_at FROM notice_recipients WHERE id = :i', { i: theirs.id });
+      const [d] = await Q('SELECT read_at FROM notice_recipients WHERE id = :i', { i: draftMine.id });
+      if (r.status !== 200 || !m.read_at || t.read_at || d.read_at) {
+        console.log(c.gray(`      (범위가 틀렸다: ${r.status} · 내 매장 ${m.read_at} · 남의 매장 ${t.read_at} · 초안 ${d.read_at})`)); return false;
+      }
+
+      // 브랜드 총괄 — 자기 브랜드 매장으로 온 공지도 읽힌다(인박스 API 범위에 없던 것)
+      const [bg] = await Q("SELECT u.id, b.id brand_id FROM users u JOIN brands b ON b.owner_id = u.id WHERE u.role = 'Brand General' AND u.is_active = 1 AND EXISTS (SELECT 1 FROM restaurants r WHERE r.brand_id = b.id) ORDER BY u.id LIMIT 1");
+      if (!bg) { console.log(c.gray('      (브랜드 매장 확인은 건너뜀: 매장 있는 브랜드 총괄 없음)')); return true; }
+      const [brStore] = await Q('SELECT id FROM restaurants WHERE brand_id = :b ORDER BY id LIMIT 1', { b: bg.brand_id });
+      const pub2 = await mk('published');
+      const brRow = await NoticeRecipient.create({ notice_id: pub2.id, restaurant_id: brStore.id });
+      const r2 = await request('POST', '/notices/mark-all-read', {}, H(bg.id));
+      const [b] = await Q('SELECT read_at FROM notice_recipients WHERE id = :i', { i: brRow.id });
+      if (r2.status !== 200 || !b.read_at) { console.log(c.gray(`      (브랜드 매장 공지가 안 읽혔다: ${r2.status} · ${b.read_at})`)); return false; }
+      return true;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      if (made.length) {
+        try { await sequelize.query('DELETE FROM notice_recipients WHERE notice_id IN (:ids)', { replacements: { ids: made } }); } catch {}
+        try { await sequelize.query('DELETE FROM notices WHERE id IN (:ids)', { replacements: { ids: made } }); } catch {}
+      }
+    }
+  });
+
+  // ── §8-5 브랜드 구매자 외부 공급업체 청구서 (2026-09-11 Fable) ─────────────────────────────
+  //   Irene 「브랜드제너럴에서도 외부공급업체 결제가 내부 솔루션공급업체처럼 페이가 나오네」
+  //   `/invoices/to-pay` 가 발주 정보를 안 붙여 브랜드 화면이 외부 공급업체 청구서도 게이트웨이 Pay 로 보냈다.
+  //   매장 목록과 같은 헬퍼(attachPurchaseOrders)를 쓰게 했다. 결제는 발주 결제 모달 → **청구서 문** /invoices/:id/mark-paid-external
+  //   (§8-5 E-2′ — 발주 문은 primary 엔티티로만 구매자를 정해 다매장 오너 403 · BG 두 번째 브랜드 404).
+  //   고장주입: invoices-list.js /to-pay 의 attachPurchaseOrders 블록 제거 → ① 실패
+  async function hcBrandBuyerExternalPo() {
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const [bg] = await Q("SELECT u.id, b.id brand_id FROM users u JOIN brands b ON b.owner_id = u.id WHERE u.role = 'Brand General' AND u.is_active = 1 AND u.brand_id = b.id ORDER BY (u.email = 'demo-brand@purplehere.com') DESC, u.id LIMIT 1");
+    if (!bg) return null;
+    const tag = 'ZZ-HC-BGEXT-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const sc = await M.SupplierCompany.create({ name: tag, status: 'active', is_system_registered: false, registered_by_entity_type: 'brand', registered_by_entity_id: bg.brand_id });
+    await M.SupplierContract.create({ entity_type: 'brand', entity_id: bg.brand_id, supplier_company_id: sc.id, status: 'active', requested_by_user_id: bg.id });
+    const po = await M.PurchaseOrder.create({
+      po_number: tag, entity_type: 'brand', entity_id: bg.brand_id, seller_type: 'supplier', seller_entity_id: sc.id,
+      status: 'shipped', subtotal: 30, tax_amount: 0, total_amount: 30, currency: 'MYR',
+      created_by_user_id: bg.id, payment_status: 'unpaid', submitted_at: new Date(Date.now() - 2 * 86400000),
+    });
+    await sequelize.query(`INSERT INTO purchase_order_items (purchase_order_id,description,quantity_ordered,quantity_received,unit_price,line_total,created_at,updated_at)
+      VALUES (${po.id},'HC bg ext line',1,0,30,30,NOW(),NOW())`);
+    const auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const rcv = await request('POST', `/purchase-orders/${po.id}/mark-received`, {}, auth);
+    let inv = null;
+    for (let i = 0; i < 25 && !inv; i += 1) {
+      const [p] = await Q('SELECT trade_invoice_id FROM purchase_orders WHERE id = :p', { p: po.id });
+      if (p && p.trade_invoice_id) inv = p.trade_invoice_id; else await new Promise((r) => setTimeout(r, 200));
+    }
+    return { bg, sc, po, inv, auth, rcvStatus: rcv.status, Q };
+  }
+  async function hcBrandBuyerCleanup(f) {
+    if (!f) return;
+    const { sequelize } = require('../config/database');
+    try { await sequelize.query('DELETE FROM cash_movements WHERE purchase_order_id = :p', { replacements: { p: f.po.id } }); } catch {}
+    try { await hcCleanupPurchaseOrders(f.po.id); } catch {}
+    try { await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id = :s', { replacements: { s: f.sc.id } }); } catch {}
+    try { await sequelize.query('DELETE FROM supplier_companies WHERE id = :s', { replacements: { s: f.sc.id } }); } catch {}
+  }
+
+  test('cash', '§8-5 ① 브랜드 구매자 외부 공급업체 청구서 — /invoices/to-pay 에 연결 발주·낼 금액이 붙는다', async () => {
+    let f = null;
+    try {
+      f = await hcBrandBuyerExternalPo();
+      if (!f) { console.log(c.gray('      (건너뜀: 브랜드를 소유·배정받은 브랜드 총괄 없음)')); return true; }
+      if (!f.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${f.rcvStatus})`)); return false; }
+      const r = await request('GET', '/invoices/to-pay', null, f.auth);
+      const row = (Array.isArray(r.body) ? r.body : (r.body?.data || [])).find((x) => String(x.id) === String(f.inv));
+      const ok = r.status === 200 && !!row && row.issuerIsExternal === true && Number(row.purchaseOrderId) === Number(f.po.id)
+        && Math.abs(Number(row.payableAmount) - 30) < 0.001 && row.purchaseOrderEntityType === 'brand';
+      if (!ok) console.log(c.gray(`      (발주가 안 붙었다: ${r.status} · ${row ? JSON.stringify({ ext: row.issuerIsExternal, po: row.purchaseOrderId, pay: row.payableAmount, et: row.purchaseOrderEntityType }) : '행 없음'})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await hcBrandBuyerCleanup(f); }
+  });
+
+  test('cash', '§8-5 ② 브랜드 구매자가 청구서 «결제함»(bank_transfer) → 발주·청구서 paid · 현금이동 0 · 재시도 409', async () => {
+    let f = null;
+    try {
+      f = await hcBrandBuyerExternalPo();
+      if (!f) { console.log(c.gray('      (건너뜀: 브랜드를 소유·배정받은 브랜드 총괄 없음)')); return true; }
+      if (!f.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${f.rcvStatus})`)); return false; }
+      const pay = await request('POST', `/invoices/${f.inv}/mark-paid-external`, { payment_method: 'bank_transfer' }, f.auth);
+      if (pay.status !== 200) { console.log(c.gray(`      (결제 실패 ${pay.status} ${JSON.stringify(pay.body).slice(0, 140)})`)); return false; }
+      const [po] = await f.Q('SELECT payment_status FROM purchase_orders WHERE id = :p', { p: f.po.id });
+      const [inv] = await f.Q('SELECT status FROM invoices WHERE id = :i', { i: f.inv });
+      const movs = await f.Q('SELECT id FROM cash_movements WHERE purchase_order_id = :p', { p: f.po.id });
+      const again = await request('POST', `/invoices/${f.inv}/mark-paid-external`, { payment_method: 'bank_transfer' }, f.auth);
+      const ok = po.payment_status === 'paid' && inv.status === 'paid' && movs.length === 0 && again.status === 409;
+      if (!ok) console.log(c.gray(`      (발주 ${po.payment_status} · 청구서 ${inv.status} · 현금이동 ${movs.length} · 재시도 ${again.status})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await hcBrandBuyerCleanup(f); }
+  });
+
+  test('cash', '§8-5 ③ 다매장 오너(restaurant_id 없음)가 소유 매장 외부 청구서 «결제함» → 200 · 발주·청구서 paid · 재시도 409', async () => {
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const [own] = await Q(`SELECT u.id, r.id rid FROM users u
+        JOIN restaurant_managers rm ON rm.manager_id = u.id AND rm.relationship_type = 'ownership'
+        JOIN restaurants r ON r.id = rm.restaurant_id AND r.is_demo = 1
+       WHERE u.role = 'Restaurant Owner' AND u.is_active = 1 AND u.restaurant_id IS NULL
+         AND EXISTS (SELECT 1 FROM users a WHERE a.restaurant_id = r.id AND a.role = 'Restaurant Admin')
+       ORDER BY r.id LIMIT 1`);
+    if (!own) { console.log(c.gray('      (건너뜀: restaurant_id 없는 오너가 소유한 데모 매장 없음)')); return true; }
+    const [ra] = await Q("SELECT id FROM users WHERE restaurant_id = :r AND role = 'Restaurant Admin' LIMIT 1", { r: own.rid });
+    const sign = (id) => ({ Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` });
+    const tag = 'ZZ-HC-OWNEXT-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    let sc = null; let po = null;
+    try {
+      sc = await M.SupplierCompany.create({ name: tag, status: 'active', is_system_registered: false, registered_by_entity_type: 'restaurant', registered_by_entity_id: own.rid });
+      po = await M.PurchaseOrder.create({
+        po_number: tag, entity_type: 'restaurant', entity_id: own.rid, seller_type: 'supplier', seller_entity_id: sc.id,
+        status: 'shipped', subtotal: 19, tax_amount: 0, total_amount: 19, currency: 'MYR',
+        created_by_user_id: ra.id, payment_status: 'unpaid', submitted_at: new Date(Date.now() - 86400000),
+      });
+      await sequelize.query(`INSERT INTO purchase_order_items (purchase_order_id,description,quantity_ordered,quantity_received,unit_price,line_total,created_at,updated_at)
+        VALUES (${po.id},'HC owner ext line',1,0,19,19,NOW(),NOW())`);
+      const rcv = await request('POST', `/purchase-orders/${po.id}/mark-received`, {}, sign(ra.id));
+      const inv = rcv.status === 200 ? await hcPollTradeInvoice(po.id) : null;
+      if (!inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${rcv.status})`)); return false; }
+      const tp = await request('GET', '/owner/invoices/to-pay', null, sign(own.id));
+      const row = (tp.body?.data || []).find((x) => String(x.id) === String(inv.id));
+      // All Invoices 탭도 결제 칸을 그린다 — 두 목록 모두 발주가 붙어야 한다
+      const all = await request('GET', `/owner/invoices?restaurant_id=${own.rid}&limit=200`, null, sign(own.id));
+      const rowAll = (all.body?.data || []).find((x) => String(x.id) === String(inv.id));
+      const pay = await request('POST', `/invoices/${inv.id}/mark-paid-external`, { payment_method: 'bank_transfer' }, sign(own.id));
+      const [p] = await Q('SELECT payment_status FROM purchase_orders WHERE id = :p', { p: po.id });
+      const [i] = await Q('SELECT status FROM invoices WHERE id = :i', { i: inv.id });
+      const again = await request('POST', `/invoices/${inv.id}/mark-paid-external`, { payment_method: 'bank_transfer' }, sign(own.id));
+      const ok = !!row && Number(row.purchase_order_id) === Number(po.id) && row.issuer_is_external === true
+        && !!rowAll && Number(rowAll.purchase_order_id) === Number(po.id) && rowAll.issuer_is_external === true
+        && pay.status === 200 && p.payment_status === 'paid' && i.status === 'paid' && again.status === 409;
+      if (!ok) console.log(c.gray(`      (오너 to-pay 행 ${row ? row.purchase_order_id : '없음'} · All 행 ${rowAll ? rowAll.purchase_order_id : '없음'} · 결제함 ${pay.status} ${JSON.stringify(pay.body).slice(0, 120)} · 발주 ${p.payment_status} · 청구서 ${i.status} · 재시도 ${again.status})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      if (po) { try { await sequelize.query('DELETE FROM cash_movements WHERE purchase_order_id = :p', { replacements: { p: po.id } }); } catch {} try { await hcCleanupPurchaseOrders(po.id); } catch {} }
+      if (sc) { try { await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id = :s', { replacements: { s: sc.id } }); } catch {} try { await sequelize.query('DELETE FROM supplier_companies WHERE id = :s', { replacements: { s: sc.id } }); } catch {} }
+    }
+  });
+
+  test('pos', '§8-3 거래청구서 기간 = 발주가 나간 날 → 받은 날 (구독 기간처럼 발행시각 두 번이 아님)', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    try {
+      ext = await makeExternalPoReceived(fx); made.pos.push(ext.po.id);
+      if (!ext.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${ext.receiveStatus})`)); return false; }
+      const [row] = await hcQ(`SELECT i.billing_period_start = po.submitted_at s_ok, i.billing_period_end = po.received_at e_ok,
+          i.billing_period_start bs, i.billing_period_end be, po.submitted_at sa, po.received_at ra
+        FROM invoices i JOIN purchase_orders po ON po.trade_invoice_id = i.id WHERE i.id = :i`, { i: ext.inv.id });
+      const ok = !!row && Number(row.s_ok) === 1 && Number(row.e_ok) === 1;
+      if (!ok) console.log(c.gray(`      (기간이 발주·수령과 다르다: ${JSON.stringify(row)})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await dropSupplierCompany(ext && ext.sc); }
   });
 
   test('cash', 'receive-and-pay 는 한 트랜잭션 — 결제 실패면 재고도 안 들어온다', async () => {

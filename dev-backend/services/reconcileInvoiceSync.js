@@ -24,6 +24,26 @@ const num = (v) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 };
+const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+/** 대조 허용 차액 — 통화의 주 단위 1(RM 1 · ₩1 · $1). 이 안이면 «반올림 조정» 한 줄로 맞춘다 (§8-3 B-2). */
+const RECONCILE_TOLERANCE = 1.00;
+
+/**
+ * 대조한 인보이스의 계산 총액 — **단일 소스** (2026-09-11 §8-3 B-1).
+ * 저장 검증(`cost-reconciliation` POST)과 아래 청구서 라인 재작성이 **같은 함수**를 쓴다 — 두 곳이 다른 식이면
+ * «저장은 통과했는데 청구서 총액은 다르다» 가 다시 생긴다.
+ *   줄 금액 = round2(실효단가 × 실효수량), 실효 = 청구값이 있으면 그것, 없으면 발주값
+ *   총액   = Σ줄 + 세금 + 배송 − 할인
+ */
+function computeReconciledTotal(items, header = {}) {
+  const lines = (items || []).reduce((s, it) => {
+    const price = it.invoiced_unit_price != null ? num(it.invoiced_unit_price) : num(it.unit_price);
+    const qty = it.invoiced_quantity != null ? num(it.invoiced_quantity) : num(it.quantity_ordered);
+    return s + round2(price * qty);
+  }, 0);
+  return round2(lines + num(header.tax) + num(header.delivery) - num(header.discount));
+}
 
 /**
  * @param {number} poId
@@ -88,6 +108,17 @@ async function syncTradeInvoiceFromReconcile(poId, opts = {}) {
   const charges = [];
   if (num(po.invoice_tax) > 0) charges.push({ name: 'Tax', amount: num(po.invoice_tax) });
   if (num(po.invoice_delivery) > 0) charges.push({ name: 'Delivery', amount: num(po.invoice_delivery) });
+  // 반올림 조정 — **적은 인보이스 총액이 기준**이다(§8-3 B-2 · Irene 승인 ③). 허용 차액 안이면 한 줄로 맞춰
+  //   청구서 총액 = 적은 총액 = 드로어에서 낼 금액이 한 숫자가 되게 한다(`finalizeInvoice` 는 음수 charge 를 허용한다).
+  //   허용 밖은 저장 단계에서 이미 400 으로 막혔다. 여기서도 문을 두는 이유: 옛 데이터가 큰 조정줄을 만들지 않게.
+  if (po.invoice_total != null) {
+    const computed = computeReconciledTotal(poItems,
+      { tax: po.invoice_tax, delivery: po.invoice_delivery, discount: po.invoice_discount });
+    const diff = round2(num(po.invoice_total) - computed);
+    if (diff !== 0 && Math.abs(diff) <= RECONCILE_TOLERANCE) {
+      charges.push({ name: 'Rounding adjustment', amount: diff });
+    }
+  }
   const patch = {
     additional_charges: charges,
     notes: [invoice.notes || '', po.invoice_number ? `Supplier invoice: ${po.invoice_number}` : '']
@@ -111,4 +142,4 @@ async function syncTradeInvoiceFromReconcile(poId, opts = {}) {
   };
 }
 
-module.exports = { syncTradeInvoiceFromReconcile };
+module.exports = { syncTradeInvoiceFromReconcile, computeReconciledTotal, RECONCILE_TOLERANCE };

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Header, Title, Content } from '../../components/UI/PageComponents';
+import { Container, Header, Title, Content, ActionSection } from '../../components/UI/PageComponents';
+import { markAllNoticesRead } from '../../utils/noticeReadApi';
 import { Modal as CommonModal } from '../../components/UI';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
@@ -484,6 +485,15 @@ const NoticesPage: React.FC = () => {
   // ── Stats ───────────────────────────────────────────────────────────
   const totalReceived = notices.length;
   const unreadCount = notices.filter(n => !n.read_at).length;
+
+  // 모두 읽음 (2026-09-11) — 서버가 목록과 같은 범위로 처리한다. 성공하면 화면을 바로 읽음으로 바꾸고 다시 불러온다.
+  const handleMarkAllRead = async () => {
+    const marked = await markAllNoticesRead();
+    if (marked === null) return;
+    const now = new Date().toISOString();
+    setNotices(prev => prev.map(n => (n.read_at ? n : { ...n, read_at: now })));
+    fetchNotices();
+  };
   const importantCount = notices.filter(n => n.priority === 'important').length;
   const urgentCount = notices.filter(n => n.priority === 'urgent').length;
 
@@ -510,6 +520,13 @@ const NoticesPage: React.FC = () => {
     <Container>
       <Header>
         <Title>{t('settings:noticesPage.notices')}</Title>
+        {unreadCount > 0 && (
+          <ActionSection>
+            <Button variant="secondary" onClick={handleMarkAllRead}>
+              {t('common:inbox.markAllRead', 'Mark all read')}
+            </Button>
+          </ActionSection>
+        )}
       </Header>
 
       <Content>

@@ -60,6 +60,25 @@ async function logCostChange(sequelize, transaction, row) {
   }
 }
 const norm = (u) => String(u || '').toLowerCase();
+
+/**
+ * 원가를 고칠 행이 전파를 일으킨 **구매자의 것**인가 (§8-4 D-3).
+ *   재료(ingredients)  : owner_type 과 그 소유 id 칸이 구매자와 같아야 한다.
+ *   재고아이템(product_ingredients): 사용자(BG) 소유 — 구매자 브랜드의 소유자와 같아야 한다.
+ */
+async function isOwnedByActor(kind, me, actor, q) {
+  const type = actor && actor.entity_type;
+  const id = Number(actor && actor.entity_id);
+  if (!type || !Number.isFinite(id)) return false;
+  if (kind === 'ingredient') {
+    if (me.owner_type !== type) return false;
+    const col = { restaurant: 'restaurant_id', brand: 'brand_id', foodcourt: 'foodcourt_id' }[type];
+    return !!col && Number(me[col]) === id;
+  }
+  if (type !== 'brand' || !me.owner_user_id) return false;
+  const [b] = await q('SELECT owner_id FROM brands WHERE id = :b', { b: id });
+  return !!b && Number(b.owner_id) === Number(me.owner_user_id);
+}
 const numOr = (v, d = null) => (v == null || v === '' ? d : parseFloat(v));
 
 /**
@@ -93,9 +112,21 @@ async function recomputeUnitCost(kind, id, { transaction, onlyIfZero = false, se
   const fk = kind === 'product_ingredient' ? 'product_ingredient_id' : 'ingredient_id';
 
   const [me] = await q(`SELECT id, name, unit, base_quantity, package_quantity, unit_cost
-                          ${kind === 'ingredient' ? ', source_brand_product_id' : ''}
+                          ${kind === 'ingredient' ? ', source_brand_product_id, owner_type, brand_id, restaurant_id, foodcourt_id' : ', owner_user_id'}
                           FROM ${table} WHERE id = :id`, { id });
   if (!me) return { skip: '행 없음' };
+
+  // 🔴 구매자가 일으킨 전파는 **구매자 소유 행 밖으로** 나가지 않는다 (2026-09-11 §8-4 D-3).
+  //   매장이 자기 외부 공급업체를 대조했더니 **브랜드 공유 재료행**이 바뀌어, 오버라이드 없는 다른 매장의
+  //   레시피 원가가 남의 청구서로 움직였다(dev 실측 케이스 B). 매장의 구매가는 매장 원가행(D-1)에 앉는다.
+  //   `ctx.actor` 가 없는 판매자 주도 전파(가입 공급업체·브랜드 프로덕트 가격 변경)는 지금처럼 모든 구매자 행으로 퍼진다.
+  if (ctx && ctx.actor && !(await isOwnedByActor(kind, me, ctx.actor, q))) {
+    return {
+      skip: kind === 'ingredient' && me.owner_type === 'brand' && ctx.actor.entity_type === 'restaurant'
+        ? '브랜드 공유 재료 — 매장 원가행에 반영됨'
+        : '구매자 소유 행이 아님 — 구매자 원가행에만 반영'
+    };
+  }
   const from = numOr(me.unit_cost, 0);
   if (onlyIfZero && from > 0) return { skip: '이미 값 있음(사람 값 보존)' };
 

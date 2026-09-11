@@ -11,11 +11,11 @@ const { getStartOfMonth, getRestaurantTimezone } = require('../utils/dateTimeHel
 // split from inventory-routes.js (2026-05-03)
 
 async function getRestaurantCostMap(restaurantId) {
-  const costs = await RestaurantIngredientCost.findAll({
-    where: { restaurant_id: restaurantId }
-  });
+  // 브랜드 공유 재료의 오버레이만 (2026-09-11 §8-4 D-5) — 매장 소유 재료는 재료 행 unit_cost 가 매장 층이라
+  //   그 재료에 남은 옛 오버레이를 읽지 않는다(원가 칸 둘 → 하나). 단일 소스는 services/storeCost.js.
+  const overlay = await require('../services/storeCost').loadOverlayMap(restaurantId);
   const map = {};
-  costs.forEach(c => { map[c.ingredient_id] = parseFloat(c.unit_cost); });
+  overlay.forEach((v, k) => { map[k] = v; });
   return map;
 }
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');

@@ -99,7 +99,7 @@ const MetaLabel = styled.span`
   font-size: 11px; color: #6B7280; min-width: 50px;
 `;
 const CardActions = styled.div`
-  display: flex; gap: 8px;
+  display: flex; gap: 8px; flex-wrap: wrap;
   margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid #C7CED6;
@@ -179,6 +179,8 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
   const [extRegSaving, setExtRegSaving] = useState(false);
   const [extRegError, setExtRegError] = useState<string | null>(null);
   const [bridging, setBridging] = useState<number | null>(null);
+  // 이 구매자에게서만 켜기/끄기 확인 대상 (2026-09-11 · docs/SUPPLIER_CONTRACT_SYSTEM.md §G)
+  const [toggling, setToggling] = useState<Row | null>(null);
 
   const role = user?.role;
   const restaurantId = (user as any)?.restaurantId || (user as any)?.restaurant_id;
@@ -343,6 +345,43 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
     navigate('/pos/suppliers?tab=contracts');
   };
 
+  // 외부 공급업체 켜기/끄기 (2026-09-11 §G · Irene 「브랜드에서 넣어준 공급업체여도 사용 안하는 경우 비활성 가능하게」).
+  //   서버가 «그 구매자의 계약 행» 으로 기록한다 — 브랜드가 넣어준 업체도 이 매장에서만 꺼지고, 꺼진 업체는 발주에 안 나온다.
+  //   꺼져도 목록에는 남는다(다시 켜야 하니까). 판정 규칙의 단일 소스는 utils/supplierAccess.findEffectiveContract.
+  const isExternalRow = (r: Row) => r.key.startsWith('x-');
+  const isOff = (r: Row) => isExternalRow(r) && r.raw?.is_active_for_me === false;
+  const isBrandRole = role === 'Brand General' || role === 'Brand Manager';
+
+  const toggleMessage = (r: Row | null): string => {
+    if (!r) return '';
+    if (isOff(r)) return t('supplier:active.confirmOn', 'Turn {{name}} back on? It will be available when ordering again.', { name: r.name }) as string;
+    if (r.source === 'brand_shared') return t('supplier:active.confirmOffStore', 'Turn off {{name}} for this store only? Other stores of your brand keep it.', { name: r.name }) as string;
+    if (isBrandRole) return t('supplier:active.confirmOffBrand', 'Turn off {{name}}? It will disappear from ordering at all of your brand stores.', { name: r.name }) as string;
+    return t('supplier:active.confirmOffOwn', 'Turn off {{name}}? It will not be available when ordering until you turn it back on.', { name: r.name }) as string;
+  };
+
+  const handleToggleActive = async (r: Row) => {
+    const next = isOff(r);
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`/api/external-suppliers/${r.id}/active`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ is_active: next }),
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.success) {
+        setInfoModal({ open: true, title: t('common:error', 'Error') as string, message: j?.message || (t('supplier:active.failed', 'Could not change this supplier. Please try again.') as string) });
+        return;
+      }
+      setRows(prev => prev.map(x => (x.key === r.key ? { ...x, raw: { ...x.raw, is_active_for_me: next } } : x)));
+    } catch {
+      setInfoModal({ open: true, title: t('common:error', 'Error') as string, message: t('supplier:active.failed', 'Could not change this supplier. Please try again.') as string });
+    } finally {
+      setToggling(null);
+    }
+  };
+
   const q = search.trim().toLowerCase();
   const filtered = rows.filter(r => {
     if (sourceFilter !== 'all' && r.source !== sourceFilter) return false;
@@ -394,9 +433,16 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
       ) : (
         <Grid>
           {filtered.map(r => (
-            <Card key={r.key}>
+            <Card key={r.key} style={isOff(r) ? { opacity: 0.65 } : undefined}>
               <SourceTag $source={r.source}>{iconOf(r.source)}{labelOf(r.source, t)}</SourceTag>
               <Name>{r.name}</Name>
+              {isOff(r) && (
+                <Meta style={{ color: '#B45309', fontWeight: 600 }}>
+                  {r.source === 'brand_shared'
+                    ? t('supplier:active.offForStore', 'Turned off for this store')
+                    : t('supplier:active.offLabel', 'Turned off — not shown when ordering')}
+                </Meta>
+              )}
               {r.contact && <Meta><MetaLabel>{t('supplier:card.contact', 'Contact')}</MetaLabel>{r.contact}</Meta>}
               {r.email && <Meta><MetaLabel>{t('supplier:card.email', 'Email')}</MetaLabel>{r.email}</Meta>}
               {r.phone && <Meta><MetaLabel>{t('supplier:card.phone', 'Phone')}</MetaLabel>{r.phone}</Meta>}
@@ -431,6 +477,13 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
                     <ActionButton variant="danger" onClick={() => setDeleting(r)}>{t('common:delete', 'Delete')}</ActionButton>
                   </>
                 )}
+                {/* 켜기/끄기는 늘 **자기 줄 전체 폭** — 버튼 2개 카드에 끼우면 «View Products (3)» 가 세 줄로 접혀
+                    카드마다 버튼 높이가 달라진다(실브라우저 확인). 어느 카드에서나 같은 자리에 둔다. */}
+                {isExternalRow(r) && (
+                  <ActionButton style={{ flexBasis: '100%' }} onClick={() => setToggling(r)}>
+                    {isOff(r) ? t('supplier:active.turnOn', 'Turn on') : t('supplier:active.turnOff', 'Turn off')}
+                  </ActionButton>
+                )}
               </CardActions>
             </Card>
           ))}
@@ -453,6 +506,21 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
         confirmText={t('common:delete', 'Delete') as string}
         cancelText={t('common:cancel', 'Cancel') as string}
         type="danger"
+      />
+
+      <ConfirmModal
+        isOpen={!!toggling}
+        title={(toggling && isOff(toggling)
+          ? t('supplier:active.titleOn', 'Turn supplier on?')
+          : t('supplier:active.titleOff', 'Turn supplier off?')) as string}
+        message={toggleMessage(toggling)}
+        onConfirm={() => toggling && handleToggleActive(toggling)}
+        onCancel={() => setToggling(null)}
+        confirmText={(toggling && isOff(toggling)
+          ? t('supplier:active.turnOn', 'Turn on')
+          : t('supplier:active.turnOff', 'Turn off')) as string}
+        cancelText={t('common:cancel', 'Cancel') as string}
+        type="info"
       />
 
       <SupplierFormModal

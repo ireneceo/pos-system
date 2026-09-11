@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoicePayAction';
+import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
 import { useSearchParams } from 'react-router-dom';
 import { printHTMLContent } from '../../utils/billPrint';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
@@ -1368,7 +1370,19 @@ const BrandInvoicesPage: React.FC = () => {
         <ActionButtons>
           <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
           {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
-            <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>{t('brand:brandInvoicesPage.pay')}</LocalActionButton>
+            // 외부 공급업체 청구서는 발주 결제 모달로 (2026-09-11 §8-5 E-2 · Irene 「브랜드제너럴에서도 외부공급업체 결제가
+            //   내부 솔루션공급업체처럼 페이가 나오네」). 가입 판매자는 기존 Pay(submit-payment) 그대로.
+            (invoice as any).issuerIsExternal ? (
+              <ExternalInvoicePayAction
+                invoice={invoice as any}
+                onPaid={() => { fetchInvoicesToPay(); fetchPaidInvoices(); }}
+                renderTrigger={(open) => (
+                  <LocalActionButton variant="success" onClick={open}>{t('settings:invoicesPage.markPaid', 'Mark paid')}</LocalActionButton>
+                )}
+              />
+            ) : (
+              <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>{t('brand:brandInvoicesPage.pay')}</LocalActionButton>
+            )
           )}
           {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) === 0 && (
             <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>{t('brand:brandInvoicesPage.confirm')}</LocalActionButton>
@@ -1456,7 +1470,7 @@ const BrandInvoicesPage: React.FC = () => {
                 <DataTableRow key={invoice.id}>
                   <DataTableCell data-label="Invoice" align="left"><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo></DataTableCell>
                   <DataTableCell data-label="Customer" align="left"><InvoiceInfo><InvoiceNumber>{invoice.externalPayerName || invoice.customerName || invoice.restaurantName || 'Unknown'}{invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('brand:brandInvoicesPage.nonmember')}</span>}</InvoiceNumber><CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName></InvoiceInfo></DataTableCell>
-                  <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
+                  <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{(invoice as any).invoiceCategory === 'trade' && (invoice as any).purchaseOrderId ? <TradeInvoiceDates variant="cell" orderedAt={(invoice as any).poOrderedAt} receivedAt={(invoice as any).poReceivedAt} formatDate={formatDate} /> : (invoice.billingPeriod || '-')}</DataTableCell>
                   <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</DataTableCell>
                   <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</DataTableCell>
                   <DataTableCell data-label="Status" align="center"><StatusBadge status={getEffectiveStatus(invoice)}>{getStatusDisplay(getEffectiveStatus(invoice))}</StatusBadge>{invoice.isModified && (<button type="button" onClick={(e) => { e.stopPropagation(); setHistoryInvoice(invoice); }} title={t('invoiceHistory.viewTooltip', 'View modification history')} style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle', border: '1px solid #FDE68A', cursor: 'pointer' }}>{t('brand:brandInvoicesPage.modified')}</button>)}</DataTableCell>
@@ -1492,7 +1506,7 @@ const BrandInvoicesPage: React.FC = () => {
                 <DataTableRow key={invoice.id}>
                   <DataTableCell data-label="Invoice" align="left"><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo></DataTableCell>
                   <DataTableCell data-label="Issuer" align="left"><InvoiceInfo><InvoiceNumber>{invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}</InvoiceNumber><CompanyName>{invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `For: ${invoice.restaurantName}` : ''}</CompanyName></InvoiceInfo></DataTableCell>
-                  <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
+                  <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{(invoice as any).invoiceCategory === 'trade' && (invoice as any).purchaseOrderId ? <TradeInvoiceDates variant="cell" orderedAt={(invoice as any).poOrderedAt} receivedAt={(invoice as any).poReceivedAt} formatDate={formatDate} /> : (invoice.billingPeriod || '-')}</DataTableCell>
                   <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</DataTableCell>
                   <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</DataTableCell>
                   <DataTableCell data-label="Status" align="center"><StatusBadge status={getEffectiveStatus(invoice)}>{getStatusDisplay(getEffectiveStatus(invoice))}</StatusBadge>{invoice.isModified && (<button type="button" onClick={(e) => { e.stopPropagation(); setHistoryInvoice(invoice); }} title={t('invoiceHistory.viewTooltip', 'View modification history')} style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle', border: '1px solid #FDE68A', cursor: 'pointer' }}>{t('brand:brandInvoicesPage.modified')}</button>)}</DataTableCell>
@@ -1526,7 +1540,7 @@ const BrandInvoicesPage: React.FC = () => {
                 <DataTableRow key={invoice.id}>
                   <DataTableCell data-label="Invoice" align="left"><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo></DataTableCell>
                   <DataTableCell data-label="Issuer" align="left"><InvoiceInfo><InvoiceNumber>{invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}</InvoiceNumber><CompanyName>{invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `For: ${invoice.restaurantName}` : ''}</CompanyName></InvoiceInfo></DataTableCell>
-                  <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
+                  <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{(invoice as any).invoiceCategory === 'trade' && (invoice as any).purchaseOrderId ? <TradeInvoiceDates variant="cell" orderedAt={(invoice as any).poOrderedAt} receivedAt={(invoice as any).poReceivedAt} formatDate={formatDate} /> : (invoice.billingPeriod || '-')}</DataTableCell>
                   <DataTableCell data-label="Paid" align="center" style={{ fontSize: '13px' }}>{invoice.paidDate ? formatDate(invoice.paidDate) : formatDate(invoice.issueDate)}</DataTableCell>
                   <DataTableCell data-label="Status" align="center"><StatusBadge status="paid">{t('brand:brandInvoicesPage.paid')}</StatusBadge></DataTableCell>
                   <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>

@@ -1246,6 +1246,10 @@
     "ordered": "下单",
     "received": "收货",
     "notReceived": "未收货",
+    "orderDate": "订货日期",
+    "receivedDate": "收货日期",
+    "supplierInvoice": "供应商发票",
+    "noPurchaseOrder": "无关联采购单",
     "uploadSupplierInvoice": "上传供应商发票",
     "uploadingSupplierInvoice": "上传中..."
   }

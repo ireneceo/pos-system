@@ -493,6 +493,14 @@ router.delete('/brands/:brandId/ingredients/:ingredientId', authenticateToken, i
       return res.status(404).json({ success: false, error: { message: 'Ingredient not found', code: 'NOT_FOUND' } });
     }
 
+    // 🔴 레시피가 쓰는 재료는 지우지 않는다 (2026-09-11 Fable 판정).
+    //   `recipe_ingredients.ingredient_id` 가 ON DELETE CASCADE 라, 여기서 지우면 그 재료를 쓰던
+    //   레시피 줄이 **흔적 없이** 사라지고 브랜드의 모든 매장 화면·다운로드에서 재료가 조용히 빠진다.
+    //   먼저 레시피에서 빼게 하고, 어느 레시피가 쓰는지 이름으로 돌려준다. (CASCADE 자체는 그대로 둔다)
+    const { recipesUsingIngredients, inUseBody } = require('../utils/ingredientRecipeUsage');
+    const usedBy = await recipesUsingIngredients(ingredient.id);
+    if (usedBy.length) return res.status(409).json(inUseBody(usedBy));
+
     await ingredient.destroy();
 
     res.json({ success: true, message: 'Ingredient deleted' });
@@ -684,16 +692,16 @@ router.put('/restaurants/:restaurantId/ingredient-costs/bulk', authenticateToken
       return res.status(400).json({ success: false, message: 'costs array is required' });
     }
 
+    // 매장 층 쓰기는 한 손 (2026-09-11 §8-4 D-5 · services/storeCost.js) —
+    //   매장 소유 재료는 재료 행 unit_cost, 브랜드 공유 재료는 매장 오버레이. 칸을 둘로 만들지 않는다.
+    const { writeStoreCost } = require('../services/storeCost');
     const results = [];
     for (const item of costs) {
-      const [cost] = await RestaurantIngredientCost.upsert({
-        restaurant_id: restaurantId,
-        ingredient_id: item.ingredient_id,
-        unit_cost: parseFloat(item.unit_cost),
-        notes: item.notes || null,
-        updated_by: req.user.id
-      });
-      results.push(cost);
+      // 이 매장이 다룰 수 있는 재료만(자기 재료 ∪ 부모 브랜드 재료) — 예전엔 소유권을 안 봐서 남의 재료 id 로도 행이 생겼다
+      const ingredient = await readableIngredient(item.ingredient_id, { type: 'restaurant', id: parseInt(restaurantId, 10) });
+      if (!ingredient) continue;
+      const w = await writeStoreCost(restaurantId, ingredient, parseFloat(item.unit_cost), { userId: req.user.id, notes: item.notes || null });
+      results.push({ ingredient_id: ingredient.id, target: w.target, unit_cost: w.newValue });
     }
 
     res.json({ success: true, data: results });
@@ -722,20 +730,15 @@ router.put('/restaurants/:restaurantId/ingredient-costs/:ingredientId', authenti
       return res.status(400).json({ success: false, message: 'Can only set cost override for brand ingredients' });
     }
 
-    const [cost, created] = await RestaurantIngredientCost.upsert({
-      restaurant_id: restaurantId,
-      ingredient_id: ingredientId,
-      unit_cost: parseFloat(unit_cost),
-      notes: notes || null,
-      updated_by: req.user.id
-    }, {
-      returning: true
-    });
+    // 매장 층 쓰기는 한 손 (§8-4 D-5) — 이 라우트는 브랜드 재료만 받으므로 자리는 매장 오버레이다.
+    const { writeStoreCost } = require('../services/storeCost');
+    const w = await writeStoreCost(restaurantId, ingredient, parseFloat(unit_cost), { userId: req.user.id, notes: notes || null });
+    const cost = await RestaurantIngredientCost.findOne({ where: { restaurant_id: restaurantId, ingredient_id: ingredientId } });
 
     res.json({
       success: true,
       data: cost,
-      created
+      created: w.oldValue === null
     });
   } catch (error) {
     console.error('Set restaurant ingredient cost error:', error);

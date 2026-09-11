@@ -57,7 +57,10 @@ async function resolveNoticeContext(user) {
 
   return {
     userId: user.id,
-    restaurantIds: Array.from(restaurantIds)
+    restaurantIds: Array.from(restaurantIds),
+    // 공지 수신 조건은 공지 화면과 **같은 단일 소스**를 쓴다 (2026-09-11) — 위 주석과 달리 이 함수는 브랜드·푸드코트
+    //   총괄의 매장 범위를 넣지 않고 있었다. 그래서 알림함 안 읽음 수·읽음 처리가 공지 화면보다 좁았다.
+    noticeConditions: await require('../utils/noticeRecipientScope').receivedRecipientConditions(user)
   };
 }
 
@@ -88,10 +91,7 @@ function previewFromContent(text, max = 140) {
 async function fetchNotices({ user, ctx, unreadOnly, before }) {
   // Recipient rows that match the caller
   const recipientWhere = {
-    [Op.or]: [
-      { user_id: ctx.userId },
-      ...(ctx.restaurantIds.length ? [{ restaurant_id: { [Op.in]: ctx.restaurantIds } }] : [])
-    ]
+    [Op.or]: ctx.noticeConditions
   };
   if (unreadOnly) recipientWhere.read_at = null;
 
@@ -222,10 +222,7 @@ async function getUnreadTotal(user, ctx) {
   ctx = ctx || (await resolveNoticeContext(user));
   const noticeWhere = {
     read_at: null,
-    [Op.or]: [
-      { user_id: ctx.userId },
-      ...(ctx.restaurantIds.length ? [{ restaurant_id: { [Op.in]: ctx.restaurantIds } }] : [])
-    ]
+    [Op.or]: ctx.noticeConditions
   };
   const [n, st, ot] = await Promise.all([
     NoticeRecipient.count({
@@ -266,10 +263,7 @@ router.post('/notice/:id/read', authenticateToken, async (req, res) => {
     const where = {
       notice_id: noticeId,
       read_at: null,
-      [Op.or]: [
-        { user_id: ctx.userId },
-        ...(ctx.restaurantIds.length ? [{ restaurant_id: { [Op.in]: ctx.restaurantIds } }] : [])
-      ]
+      [Op.or]: ctx.noticeConditions
     };
     const [updated] = await NoticeRecipient.update(
       { read_at: new Date(), read_by: req.user.id },
@@ -294,10 +288,7 @@ router.post('/mark-all-read', authenticateToken, async (req, res) => {
     const ctx = await resolveNoticeContext(req.user);
     const where = {
       read_at: null,
-      [Op.or]: [
-        { user_id: ctx.userId },
-        ...(ctx.restaurantIds.length ? [{ restaurant_id: { [Op.in]: ctx.restaurantIds } }] : [])
-      ]
+      [Op.or]: ctx.noticeConditions
     };
     const [updated] = await NoticeRecipient.update(
       { read_at: new Date(), read_by: req.user.id },

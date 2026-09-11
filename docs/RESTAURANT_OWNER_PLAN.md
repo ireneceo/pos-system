@@ -149,6 +149,10 @@ if (req.user.role === 'Restaurant Owner') {
   - checkPaymentPermission: Restaurant Owner 분기 추가
   - POST /api/invoices/:id/submit-payment: Owner 결제 허용
 
+> **현행 (2026-09-11)**: 오너 화면(`/pos/owner/invoices`)은 `GET /api/owner/invoices`(All) · `GET /api/owner/invoices/to-pay` 를 쓴다. 두 목록 모두 연결 발주를 붙인다(`attachOwnerInvoicePurchaseOrders` → `attachPurchaseOrders`).
+> 외부 공급업체 청구서는 «Mark paid» → `POST /api/invoices/:id/mark-paid-external`(권한 = 소유 매장 `checkPaymentPermission`). 매장 현금이면 그 매장 열린 시프트 드로어에서 출금.
+> ⚠ 다매장 오너(users.restaurant_id NULL)는 발주 라우터(`/api/purchase-orders/*`)가 `buyerScope` 에서 403 — 발주 화면 스코프는 별도 설계 사안(`PURCHASE_ORDER_SYSTEM.md` §8-5 E-2′ 백로그).
+
 #### 2-3. invoiceScheduler.js 수정
 - `dev-backend/services/invoiceScheduler.js`: payment_model='restaurant_owner' 처리
 

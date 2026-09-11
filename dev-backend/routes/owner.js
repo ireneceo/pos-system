@@ -677,6 +677,43 @@ router.get('/available', requireRole('System Admin'), async (req, res) => {
 // ============================================
 // Owner: 소유 레스토랑의 인보이스 목록 (Restaurant Admin과 동일 수준)
 // ============================================
+/**
+ * 연결 발주·외부 발행자 붙이기 (2026-09-11 §8-5 E-1) — 매장 목록·/invoices/to-pay 와 **같은 함수**(attachPurchaseOrders).
+ * 오너 화면 두 탭(All Invoices · Invoices to Pay)이 둘 다 결제 칸을 그리므로 두 목록 모두 이걸 거친다 —
+ * 한쪽만 붙이면 그 탭에서는 외부 공급업체 청구서가 다시 게이트웨이 «Pay» 로 간다(실브라우저 확인).
+ * @param {Array} invoices   Invoice 모델 행
+ * @param {Array} transformed 응답 객체(snake_case) — 제자리에서 필드를 더한다
+ */
+async function attachOwnerInvoicePurchaseOrders(invoices, transformed) {
+  const { attachPurchaseOrders } = require('../services/invoicePurchaseOrderAttach');
+  const { isExternalIssuer } = require('../utils/externalIssuer');
+  const poMap = await attachPurchaseOrders(invoices.map((i) => i.id));
+  const byId = new Map(invoices.map((i) => [String(i.id), i]));
+  for (const o of transformed) {
+    const inv = byId.get(String(o.id));
+    const po = poMap.get(Number(o.id));
+    Object.assign(o, {
+      invoice_category: inv ? inv.invoice_category : null,
+      parent_soa_invoice_id: (inv && inv.parent_soa_invoice_id) || null,
+      issuer_is_external: inv ? await isExternalIssuer(inv.issuer_type, inv.issuer_id) : false,
+      purchase_order_id: po ? po.id : null,
+      purchase_order_number: po ? po.po_number : null,
+      purchase_order_total: po ? po.total_amount : null,
+      purchase_order_is_external: po ? !!po.is_external : false,
+      purchase_order_entity_type: po ? po.entity_type : null,
+      payable_amount: po ? po.payable_amount : null,
+      payable_basis: po ? po.payable_basis : null,
+      po_ordered_at: po ? po.ordered_at : null,
+      po_received_at: po ? po.received_at : null,
+      supplier_invoice_number: po ? po.invoice_number : null,
+      supplier_invoice_date: po ? po.invoice_date : null,
+      supplier_invoice_total: po ? po.invoice_total : null,
+      invoice_reconciled_at: po ? po.invoice_reconciled_at : null,
+      uploaded_invoice_url: po ? po.external_invoice_url : null,
+    });
+  }
+}
+
 router.get('/invoices', requireRole('Restaurant Owner'), async (req, res) => {
   try {
     const { status: invoiceStatus, restaurant_id, start_date, end_date, page = 1, limit = 50 } = req.query;
@@ -800,6 +837,9 @@ router.get('/invoices', requireRole('Restaurant Owner'), async (req, res) => {
       };
     }));
 
+    // 연결 발주·외부 발행자 (§8-5 E-1) — 이 탭도 결제 칸을 그린다. Invoices to Pay 와 같은 함수
+    await attachOwnerInvoicePurchaseOrders(rows, transformedData);
+
     // Get restaurant list for filter dropdown
     const restaurants = await Restaurant.findAll({
       where: { id: { [Op.in]: restaurantIds } },
@@ -919,6 +959,8 @@ router.get('/invoices/to-pay', requireRole('Restaurant Owner'), async (req, res)
       };
     }));
 
+    // 연결 발주·외부 발행자 (§8-5 E-1) — All Invoices 목록과 같은 함수
+    await attachOwnerInvoicePurchaseOrders(invoices, transformedData);
     res.json({ success: true, data: transformedData });
   } catch (error) {
     console.error('[OWNER] Invoices to-pay error:', error.message);

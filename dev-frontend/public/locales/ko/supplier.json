@@ -321,6 +321,19 @@
   "card": {
     "viewProducts": "품목 보기"
   },
+  "active": {
+    "titleOff": "공급업체를 끌까요?",
+    "titleOn": "공급업체를 켤까요?",
+    "turnOff": "끄기",
+    "turnOn": "켜기",
+    "offLabel": "꺼짐 — 발주에 나오지 않습니다",
+    "offForStore": "이 매장에서 꺼짐",
+    "confirmOffStore": "{{name}} 을(를) 이 매장에서만 끌까요? 같은 브랜드의 다른 매장은 그대로 씁니다.",
+    "confirmOffBrand": "{{name}} 을(를) 끌까요? 브랜드의 모든 매장 발주에서 사라집니다.",
+    "confirmOffOwn": "{{name}} 을(를) 끌까요? 다시 켤 때까지 발주에 나오지 않습니다.",
+    "confirmOn": "{{name}} 을(를) 다시 켤까요? 발주에서 다시 고를 수 있습니다.",
+    "failed": "공급업체 상태를 바꾸지 못했습니다. 다시 시도해 주세요."
+  },
   "payment": {
     "unpaid": "미결제",
     "paid": "결제완료",

@@ -321,6 +321,19 @@
   "card": {
     "viewProducts": "View Products"
   },
+  "active": {
+    "titleOff": "Turn supplier off?",
+    "titleOn": "Turn supplier on?",
+    "turnOff": "Turn off",
+    "turnOn": "Turn on",
+    "offLabel": "Turned off — not shown when ordering",
+    "offForStore": "Turned off for this store",
+    "confirmOffStore": "Turn off {{name}} for this store only? Other stores of your brand keep it.",
+    "confirmOffBrand": "Turn off {{name}}? It will disappear from ordering at all of your brand stores.",
+    "confirmOffOwn": "Turn off {{name}}? It will not be available when ordering until you turn it back on.",
+    "confirmOn": "Turn {{name}} back on? It will be available when ordering again.",
+    "failed": "Could not change this supplier. Please try again."
+  },
   "payment": {
     "unpaid": "Unpaid",
     "paid": "Paid",

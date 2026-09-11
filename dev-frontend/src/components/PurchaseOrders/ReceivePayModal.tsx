@@ -37,6 +37,10 @@ interface Props {
   /** 성공 후. drawerSkipped 면 부모가 안내를 띄운다. */
   onDone: (result: { drawerSkipped?: boolean }) => void;
   onClose: () => void;
+  /** 받는 청구서 화면에서 열 때만(§8-5 E-2′) — mode `pay` 가 **청구서 문** `POST /invoices/:id/mark-paid-external` 로 들어간다.
+   *  권한이 청구서 payer 로 정해져 다매장 오너·BG 두 번째 브랜드도 같은 경로로 낸다. 안에서 쓰는 손은 같은 recordPayment.
+   *  없으면(발주 목록·대조) 오늘과 동일하게 발주 문 `/purchase-orders/:id/pay`. */
+  invoiceId?: number | string | null;
 }
 
 const METHODS: Array<{ value: string; labelKey: string; fallback: string }> = [
@@ -45,7 +49,7 @@ const METHODS: Array<{ value: string; labelKey: string; fallback: string }> = [
   { value: 'card', labelKey: 'pay.method.card', fallback: 'Card' },
 ];
 
-export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = true, onDone, onClose, onGoReconcile }: Props) {
+export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = true, onDone, onClose, onGoReconcile, invoiceId }: Props) {
   const { t } = useTranslation('purchaseOrders');
   const [method, setMethod] = useState('cash');
   const [reason, setReason] = useState('');
@@ -72,14 +76,16 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
   const submit = async () => {
     setBusy(true); setError(null);
     try {
+      const viaInvoice = mode === 'pay' && invoiceId != null && invoiceId !== '';
       const endpoint =
         mode === 'receive_and_pay' ? `/api/purchase-orders/${po.id}/receive-and-pay`
         : mode === 'receive_only' ? `/api/purchase-orders/${po.id}/mark-received`
+        : viaInvoice ? `/api/invoices/${invoiceId}/mark-paid-external`
         : mode === 'pay' ? `/api/purchase-orders/${po.id}/pay`
         : `/api/purchase-orders/${po.id}/refund-payment`;
       const body: any = {};
       if (needsMethod) body.payment_method = method;
-      if (reason.trim()) body.reason = reason.trim();
+      if (reason.trim()) body[viaInvoice ? 'notes' : 'reason'] = reason.trim();
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },

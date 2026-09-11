@@ -1931,6 +1931,178 @@ GIT 재고아이템 중 수량이 있는 것은 23종(64 pack 종이밥그릇 ~ 
 원시 SQL 로 공급업체를 고르는 스크립트·테스트는 `deleted_at IS NULL` 을 반드시 걸 것 —
 안 걸면 삭제된 업체를 골라 «외부 아님» 으로 조용히 떨어진다.
 
+---
+
+### 8-3. 결제 단일화 · 금액 기준 · 날짜 (2026-09-11 · Fable 절단면 · Irene 착수 승인 「응」)
+
+> Irene 원문(2026-09-10): 「여기 발주한 날자랑 받은 날짜 등으로 해야지 구입한 건. 왜 구독기간처럼 표시해?
+> … Mark paid는 왜 작동 안해? … 여기 인보이스에 결제처리가 되어야지. … 발주내역은 발주정보 확인
+> 가격과 받은 제품 확인, 그리고 인보이스는 진짜 딱 결제. 발주내역에서도 결제버튼은 그냥 둬도 좋아.
+> 선불로 결제하는 경우도 많아서.」
+
+#### 실측으로 확정된 결함 (dev 코드 · 2026-09-11)
+1. **결제 손이 둘이다.** 발주 `/pay`·`/receive-and-pay` 는 `recordPayment`(드로어 출금 + 청구서 거울)를 쓰는데,
+   청구서 `mark-paid-external` 은 청구서 행만 고친다(발주 `payment_status`·드로어 무접촉).
+   순서 「Mark paid → 발주 Pay」면 **드로어에서 한 번 더 나간다**(발주 Pay 표시 조건이 `payment_status` 만 보므로).
+2. **가입 판매자 쪽도 거울이 한 곳뿐이다.** `mirrorPaidToPurchaseOrders` 호출은 `POST /invoices/:id/payment` 하나.
+   `confirm-payment`(발행자가 이체 확인) · PayPal capture · Stripe/PayPal 웹훅 · 무료청구서 확인은 발주를 안 따라간다
+   → 판매자가 확인해 준 이체가 발주 목록에서는 영원히 unpaid.
+3. **금액이 세 갈래다.** 발주 결제액 = `invoice_total`(적은 총액) · 청구서 총액 = 라인합+세금+배송−할인(`finalizeInvoice`)
+   · 대조 저장은 둘의 불일치를 검사하지 않는다. 운영 실측: 발주 33 `invoice_total` 186.16 vs 청구서 128 총액 186.51.
+4. **날짜.** `createTradeInvoice` 가 `billing_period_start = end = issued_at = 발행 시각`. 구입에 "기간"은 없다.
+5. (추가 발견) `invoices-list.js` 의 발주 SELECT 에 `received_at` 이 없어 프론트 `poReceivedAt` 가 **항상 null** →
+   목록 정보줄이 수령한 발주도 「미수령」으로 찍는다.
+6. (추가 발견) `mark-paid-external` 실패 문구가 `paymentSubmitError` 에 들어가는데 그 자리는 결제 모달 안에만 있다 →
+   실패해도 화면은 조용하다(Irene 「왜 작동 안해?」의 절반은 이것).
+
+#### 결정 (절단면 — 이 범위 밖은 건드리지 않는다)
+
+**A. 결제 = 한 손.** 결제 쓰기는 `services/purchaseOrderPayment.js` `recordPayment` 하나다. 어느 화면에서 누르든 같은 함수가
+발주·청구서·드로어를 **같은 트랜잭션**에 쓴다.
+- A-1. **인보이스 화면의 「결제함」은 발주 결제 모달을 그대로 연다.** 외부 발행 거래청구서 행에 `purchase_order_id` 가 있으면
+  공용 `components/PurchaseOrders/ReceivePayModal`(mode `pay`) 을 띄우고 `POST /purchase-orders/:id/pay` 를 부른다.
+  모달이 이미 낼 금액(`payable_amount`)·근거·「먼저 대조하기」·드로어 안내·실패 문구를 갖고 있다 — **새 모달을 만들지 않는다.**
+  이를 위해 `invoices-list.js` 발주 SELECT 에 `payable_amount`/`payable_basis`(`payableFrom(po, is_external)` — 8-1 단일 소스)를 싣는다.
+  연결 발주가 없는 외부 청구서(삭제된 발주 등)는 버튼을 숨기고 「발주 없음」 텍스트만 둔다(실측: 그런 행이 있는지 dev 에서 세어 보고할 것).
+- A-2. **`mark-paid-external` 서버도 같은 손을 쓴다.** 연결 발주(`purchase_orders.trade_invoice_id = :id`, `deleted_at IS NULL`)가 있으면
+  `/pay` 와 동일하게 잠금 트랜잭션 안에서 `recordPayment(po, {method, userId, reason})` 를 부르고 `/pay` 와 같은 모양으로 응답한다
+  (`cash_movement_id`·`drawerSkipped`·409 `ALREADY_PAID`). 연결 발주가 없을 때만 지금의 청구서 단독 갱신을 남긴다.
+  **`payment_method` 는 필수**(cash/bank_transfer/card, 없으면 400). 프론트의 `'cash'` 하드코딩 폐기.
+- A-3. **두 번째 결제는 어느 원장을 먼저 썼든 거부.** `recordPayment` 에 검사 1개 추가: 연결 청구서를 읽어 `status === 'paid'` 면
+  409 `ALREADY_PAID`(문구: 「연결된 청구서가 이미 결제됨」). 지금은 발주 `payment_status` 만 본다.
+  (dev 실측 PO 127 = 청구서 paid·발주 unpaid 시드 1건이 이 검사에 걸리는 것이 **정상**이다.)
+- A-4. **가입 판매자 거울을 한 곳으로.** `mirrorPaidToPurchaseOrders` 를 `services/invoiceLifecycle.js` `handleInvoicePaid` 안에서도
+  부른다(멱등: `payment_status='unpaid'` 인 발주만). 모든 paid 경로(confirm-payment·PayPal·웹훅·무료확인·referrals)가 이미
+  `handleInvoicePaid` 를 부르므로 **호출부를 하나도 안 고치고** 거울이 닫힌다. `POST /:id/payment` 의 트랜잭션 내 거울은 그대로 둔다
+  (커밋 전 보장). 드로어 이동은 없다 — 가입 판매자 결제는 카드·이체다.
+- A-5. 발주 쪽 Pay·Reverse 버튼·`receive-and-pay`·`refund-payment` 는 **무변경**(선불용 — Irene 「그냥 둬도 좋아」).
+  되돌리기는 지금처럼 발주 화면의 Reverse payment 하나다(청구서 `pending_payment` 복귀는 `reversePayment` 가 이미 한다).
+
+**B. 금액 = 적은 인보이스 총액.** (Irene 승인 ③)
+- B-1. 계산식 한 곳: `services/reconcileInvoiceSync.js` 에 순수 함수 `computeReconciledTotal(items, header)` =
+  Σ round2(실효단가 × 실효수량) + tax + delivery − discount. sync 의 라인 재작성과 저장 검증이 **같은 함수**를 쓴다.
+- B-2. `POST /purchase-orders/:id/reconcile` 저장 검증(트랜잭션 전):
+  - 적은 총액이 있고 `|적은 총액 − 계산값| > 1.00` → **400 `TOTAL_MISMATCH`** `{ header_total, computed, diff }`. 아무것도 저장하지 않는다.
+  - `0 < |차액| ≤ 1.00` → 저장하고, sync 가 `additional_charges` 에 `{ name: 'Rounding adjustment', amount: 차액(부호 유지) }` 한 줄을 넣는다.
+    `finalizeInvoice` 는 charges 합에 음수를 허용하므로 청구서 `total_amount` 가 **적은 총액과 정확히 같아진다**.
+  - 적은 총액이 **비어 있으면** 서버가 `invoice_total = 계산값` 으로 채운다. 대조를 마친 외부 발주는 항상 `invoice_total` 을 갖는다
+    → `payableFrom` 이 항상 청구액을 돌려주고, 청구서 총액·드로어 출금·`paid_amount` 가 한 숫자가 된다.
+  - 통화 무관 「주 단위 1」(RM 1 · ₩1 · $1). 상수 한 곳 `RECONCILE_TOLERANCE = 1.00`.
+- B-3. 대조 화면 `InvoiceReconcilePage.tsx` 는 이미 3종 합계를 보여준다. 차액 > 1 이면 저장 버튼을 잠그고 차액을 빨간 글씨로,
+  ≤ 1 이면 「반올림 조정 ±0.xx 로 맞춥니다」 안내. **서버가 게이트고 화면은 거울이다.**
+- B-4. **선불 뒤 대조**(발주 Pay 먼저 → 대조)는 지금처럼 청구서를 고치지 않는다(돈이 나간 원장은 사후 수정 금지). sync 가 돌려주는
+  `reason` 이 대조 화면에 보이는지 확인하고, 안 보이면 저장 결과 영역에 그대로 띄운다. 차액 처리는 Reverse payment → 대조 → Pay(기존 경로).
+  새 경로를 만들지 않는다.
+
+**C. 날짜 = 발주일 → 수령일.** (Irene 원문 「발주한 날자랑 받은 날짜」 그대로)
+- C-1. `createTradeInvoice`: `billing_period_start = COALESCE(submitted_at, approved_at, created_at)`(발주가 나간 날),
+  `billing_period_end = COALESCE(received_at, 발행 시각)`. `issued_at` 은 지금처럼 **기록을 만든 시각**(소급 금지 규칙 유지).
+  스키마 추가 0.
+- C-2. 백필 `scripts/migrate-trade-invoice-period.js`(멱등 UPDATE … JOIN purchase_orders ON trade_invoice_id, `invoice_category='trade'`,
+  `po.deleted_at IS NULL`) → `migrations.registry.json` **`deploy`** 분류(재실행해도 같은 값·돈 컬럼 무접촉).
+  이 하나로 Owner/Brand/Foodcourt/Admin 인보이스 페이지의 Period 도 프론트 변경 없이 바르게 뜬다.
+- C-3. `invoices-list.js` 발주 SELECT 에 `submitted_at, approved_at, created_at, received_at, invoice_date` 추가 →
+  `po_ordered_at` · `po_received_at`(결함 5 수정) · `supplier_invoice_date` 로 싣는다.
+- C-4. RA `InvoicesPage.tsx` 거래청구서 행(`invoiceCategory === 'trade'`)만: 목록 Period 칸 = 두 줄 「Ordered d1 / Received d2」(미수령이면 「Not received」),
+  상세 모달·인쇄 HTML 의 「Billing Period」 행 → 「Order Date」·「Received」 두 행 + 대조했으면 「Supplier Invoice: 번호 · 일자」 행.
+  구독·플랫폼 청구서 행은 무변경. 결함 6: 「결제함」 실패 문구는 A-1 로 모달 안에서 뜨므로 별도 자리 불필요.
+  i18n 4언어.
+
+#### 범위 밖 (이번에 하지 않는다)
+- 발주 `total_amount` 스냅샷 덮어쓰기 금지(8-1 유지). 인보이스 화면에 Reverse payment 추가 안 함. SOA 발행 로직 무변경.
+- 「POs 에 선불결제/구입완료」(Irene 별개 요청)는 이 절단면이 아니다 — 다음 사안.
+
+#### 게이트 (팀원 실행 → Fable 판정 1회)
+- health-check `cash` 추가 5건: ①`mark-paid-external`(cash, 연결 발주 있음) → 드로어 out 1행 + 발주 paid + 청구서 paid, 같은 발주 `/pay` → 409
+  ②반대 순서(`/pay` → `mark-paid-external`) → 409 ③청구서만 paid 인 픽스처에서 `/pay` → 409(A-3) ④대조 총액 차 1.50 → 400 `TOTAL_MISMATCH`·저장 0
+  ⑤차 0.35 → 청구서 `total_amount == invoice_total == payable_amount`, charges 에 Rounding 1줄. + `pos`(또는 `inventory`) 1건: 수령 발주의 거래청구서
+  `billing_period_start/end` == 발주 submitted/received.
+- 고장주입 3: A-2 의 `recordPayment` 호출 제거 → ① 실패 / A-3 검사 제거 → ③ 실패 / B-2 허용치 검사 제거 → ④ 실패.
+- `check-sensitive-diff.js`(돈) → Fable 게이트 대상. 프론트는 빌드 1회 · `verify-all --full` 1회, SW bump 마지막.
+- 운영 배포 전 `운영검증` 에서 「청구서 paid · 발주 unpaid」 건수 실측(dev 1건 = 시드). 운영에 있으면 A-3 로 발주 Pay 가 409 되는 것이 정상이고 건수만 보고.
+
+---
+
+### 8-4. 대조한 원가가 매장 레시피 원가까지 내려오게 (2026-09-11 · Fable 절단면 · dev 실측 기반)
+
+> Irene: 「(K-DINE 브랜드 레시피 확인은) 지금 고치던 가격관련하고 이어지기도 하잖아.」
+
+**실측(dev · 브랜드 1 공유 재료 3 · 레시피 6 · 매장 24 · 발주 20/청구 22, 화면원가 | 브랜드재료행 | 매장원가행):**
+
+| 판매자 | 수령 뒤 | 대조 뒤 | 무엇이 틀렸나 |
+|---|---|---|---|
+| A. 브랜드가 등록한 외부 공급업체 | 1.00 \| 15 \| 20 | 1.00 \| 15 \| 20 | 청구 22 가 어디에도 안 내려옴 |
+| B. 매장이 등록한 외부 공급업체 | 1.00 \| 15 \| 20 | 1.00 \| **22** \| 20 | **매장의 대조가 브랜드 공유 재료행을 고쳤다** → 오버라이드 없는 다른 매장(1·5)의 레시피 원가가 남의 청구서로 움직인다. 정작 대조한 매장은 자기 원가행 20 때문에 그대로 |
+| C. 가입 공급업체 | 1.75 \| 15 \| 35 | 1.75 \| 15 \| 35 | 청구 22 가 안 내려옴 |
+
+원인: 매장이 보는 원가의 단일 소스는 `restaurant_ingredient_costs`(오버레이 — `recipes.js:517` 오버라이드 우선)인데,
+**수령**(`purchaseOrderReceive.js:128~149`)만 그 표를 쓰고 그것도 **발주가**(`item.unit_price`)로 쓴다. **대조**는 이 표를 한 번도 안 쓰고,
+전파(`costSync.recomputeUnitCost`)는 매핑이 가리키는 `ingredients` 행을 **소유자를 안 보고** 고친다.
+
+#### 결정
+- **D-1. 매장의 실제 구매가는 매장 오버레이에 앉는다.** `POST /purchase-orders/:id/reconcile` 저장 트랜잭션 안에서, 구매자가 매장이고 라인에
+  `ingredient_id` 와 `invoiced_unit_price` 가 있으면 `restaurant_ingredient_costs(restaurant_id, ingredient_id).unit_cost = invoiced_unit_price ÷ conv`
+  (conv 는 수령이 쓰는 같은 환산). **덮어쓴다 — 평균 내지 않는다.** 대조는 «그 물건을 실제로 얼마에 사는가»가 도착한 순간이고,
+  레시피 원가는 지금 내는 값이어야 한다(원가 정책 분기 없음 — 메모리 reference_cost_two_paths). 판매자 종류(A·B·C) 무관.
+  `cost_change_logs` 에 source `reconcile_overlay` 로 남긴다(기존 `logCostChange` 재사용).
+- **D-2. 수령이 대조보다 늦게 오면 수령도 청구가를 쓴다.** `purchaseOrderReceive.js` 의 incoming cost = `COALESCE(invoiced_unit_price, unit_price) ÷ conv`.
+  한 줄. 어느 순서로 눌러도 같은 값에 닿는다.
+- **D-3. 구매자가 일으킨 전파는 구매자 소유 행 밖으로 나가지 않는다.** `cost-reconciliation.js` 의 `recomputeForSellerProduct` 호출에
+  `ctx.actor = { entity_type, entity_id }` 를 넘기고, `costSync.recomputeUnitCost` 는 `ctx.actor` 가 있을 때 대상 행의 소유자
+  (`ingredients.owner_type/brand_id/restaurant_id`, `product_ingredients` 는 프로덕트 소유자)가 actor 와 다르면 **건너뛰고 사유를 돌려준다**
+  (「브랜드 공유 재료 — 매장 원가행에 반영됨」). `ctx.actor` 가 없는 판매자 주도 전파(가입 공급업체 가격 변경 · 브랜드 프로덕트 가격 변경)는
+  지금처럼 모든 구매자 행으로 퍼진다 — 그건 판매자의 권리다. 케이스 B 의 판매상품가(`supplier_products.unit_price`) 갱신은 유지(매장 자기 장부).
+- **D-5. 매장 층의 자리 = 재료 소유자로 결정(2026-09-11 추가 실측).** 매장 소유 재료는 `ingredients.unit_cost` 가 매장 층이고 오버레이를 쓰지 않는다;
+  브랜드 공유 재료만 오버레이. 수령·대조(D-1)·수동 upsert 는 헬퍼 `writeStoreCost` 하나를 거친다. 자기 레시피 GET 에 `effective_cost` 부착.
+  전문·근거: `docs/TRADE_STRUCTURE.md` §2-3. 게이트 +2: ①매장 소유 재료 수령 → `unit_cost` 변경·오버레이 행 생성 0·자기 레시피 GET `effective_cost` 반영
+  ②브랜드 공유 재료 수령 → 오버레이만·브랜드 행 불변. 고장주입 1(소유자 분기 제거 → ① 실패).
+- **D-4. 하지 않는 것.** 케이스 A 에서 브랜드 재료행(15)은 그대로다 — 브랜드 장부 가격은 브랜드의 결정이고 매장 청구서로 바꾸지 않는다.
+  운영의 기존 오버레이(발주가로 앉은 행) 백필 없음 — 다음 대조가 고친다. 수령 가중평균 로직 무변경.
+
+#### 기대값 (구현 뒤 같은 스크립트 재실행 — `scratchpad/chain-cost2.js`·`chain-cost3.js`)
+A: 1.10 | 15 | 22 · **B: 1.10 | 15 | 22**(브랜드행 불변이 핵심 단언) · C: 1.10 | 15 | 22 · 대조→수령 순서: 수령 뒤 오버레이 22.
+
+#### 게이트
+health-check `inventory` 3건: ①대조 뒤 매장 오버레이 = 청구가 ÷ conv, brand-recipes `effective_ingredient_cost` 가 그 값으로 ②매장 대조가 브랜드 `ingredients.unit_cost` 를 바꾸지 않음(케이스 B)
+③대조 뒤 수령 → 오버레이 = 청구가. 고장주입 2(D-1 쓰기 제거 → ① 실패 / D-3 소유자 검사 제거 → ② 실패). `check-sensitive-diff` 판정에 따라 Fable 게이트 1회.
+**묶음: §8-3(P0 돈) 과 별도** — 레시피 표시·CSV·재료 삭제 게이트와 한 묶음(«K-DINE 레시피 원가 정합»).
+
+### 8-5. 구매자가 브랜드·푸드코트·오너일 때의 청구서 결제 — RA 와 같은 손 (2026-09-11 · Fable 절단면)
+
+> Irene: 「브랜드제너럴에서도 외부공급업체 결제가 내부 솔루션공급업체처럼 페이가 나오네. 오더히스토리도 인보이스도 레스토랑 관리자 수정 다하면 여기도 맞춰야 해.」
+
+**실측**: 받는 청구서 API `GET /invoices/to-pay`(`invoices-list.js:797~`)는 BG·FG·Owner 인보이스 페이지 4곳이 쓴다. 응답에 `issuerIsExternal` 은 있지만
+RA 목록이 붙이는 **발주 정보(purchase_order_id · payable_amount/basis · 발주일/수령일 · 공급업체 인보이스 · 대조 상태 · payment_status)가 없다.**
+그래서 `BrandInvoicesPage.tsx` 는 외부 발행자 분기 없이 전부 `Pay → submit-payment`(발행자 확인 대기 = 외부 공급업체는 영원히 미확인)를 낸다.
+발주내역(`PurchaseOrdersPage`)·대조 화면·`ReceivePayModal`·서버 A-3/A-4 는 이미 공용이라 **BG 발주 쪽은 손댈 것이 없다.** dev 에 브랜드 구매자 거래청구서 0건 — 픽스처를 만들어 검증한다.
+
+**결정 — 새 규칙 없음. RA 에 적용한 §8-3 A-1·C-4 를 «받는 청구서» 전체로 넓힌다.**
+- **E-1. 발주 붙이기 헬퍼 1개.** `invoices-list.js:503~518`(발주 SELECT + `resolveSellers` + `payableFrom` + 응답 필드)를 `services/invoicePurchaseOrderAttach.js` `attachPurchaseOrders(invoices)` 로 빼서 **RA 목록과 `/to-pay` 가 같은 함수**를 쓴다. 응답 필드 이름은 RA 목록과 동일(camelCase 변환은 `/to-pay` 의 기존 방식대로). 복제 금지.
+- **E-2. 화면 공용 조각 2개** `components/Invoices/`: ①`TradeInvoiceDates`(목록 Period 칸 «Ordered/Received» 2줄 + 상세 «Order date · Received · Supplier invoice» 행) ②`ExternalInvoicePayAction`(외부 발행자면: 연결 발주 있음 → `ReceivePayModal` mode `pay`, `buyerIsRestaurant` 는 `purchaseOrderEntityType==='restaurant'` — BG·FG 는 드로어 없음 / 없음 → 버튼 숨김 + «연결된 발주 없음»). RA `InvoicesPage.tsx` 의 오늘 구현을 이 조각으로 **옮기고**, BG·FG·Owner 페이지가 같은 조각을 쓴다. 가입 판매자 청구서의 `Pay → submit-payment` 는 무변경.
+- **E-3. `mark-paid-external` 권한.** 화면은 더 이상 이 라우트를 안 쓰지만 API 는 남는다. `checkPaymentPermission` 이 `payer_type='brand_manager'/'foodcourt_manager'` 를 통과시키는지 **실측**하고, 못 시키면 그 함수 안에 조건 추가(다른 곳에 권한 문 신설 금지).
+- **E-4. 하지 않는 것.** BG 발주내역·대조·모달 무변경. SOA·구독 청구서 무변경. 오너 페이지는 owner 매장 발주(entity_type restaurant)라 드로어 규칙 그대로.
+
+**게이트**: ~~health-check `cash` +2 — ①… ②그 발주 `/pay`(bank_transfer)…~~ → **아래 E-2′ 게이트로 대체(2026-09-11 정정).**
+프론트는 ③(§G)·백로그와 **같은 빌드 1회 · verify-all --full 1회**. SW bump 마지막.
+
+#### E-2′ 결제 경로 정정 — 청구서 화면은 청구서 문으로 들어간다 (2026-09-11 · 구현 뒤 실측으로 Fable 판정)
+
+**실측(dev)이 E-2 의 전제를 깼다.** «모달 → `POST /purchase-orders/:id/pay`» 는 발주 라우터의 문(`middleware/buyerScope.js` `requireBuyerRole`)을 지나는데, 그 문은 **로그인 사용자의 primary 엔티티 하나**로만 구매자를 정한다.
+- 오너(다매장, `users.restaurant_id` NULL — dev 활성 오너 2/2) → `/pay` **403** «No buyer entity assigned». 주석 「handler must use RestaurantManager join」은 어느 핸들러도 구현하지 않았다.
+- BG 가 primary 아닌 소유 브랜드로 낸 발주 → `/pay`(쿼리 없음) **404**(`checkPOOwnership` 가 브랜드 1 로 비교). 다른 화면은 `?entity_type=brand&entity_id=N` 을 붙여 넘기지만 `ReceivePayModal` 은 쿼리를 안 붙인다.
+- 같은 토큰으로 `POST /invoices/:id/mark-paid-external`(§8-3 A-2 = 같은 `recordPayment` 손) → 오너 **200** · BG 두 번째 브랜드 **200**, 발주 paid·청구서 paid·현금이동 0.
+
+**판정.** 청구서 화면의 권한은 **청구서의 payer** 로 정해지고(`invoices-helpers.js checkPaymentPermission`: RA=매장 · Owner=`RestaurantManager` ownership 매장 · BG/FG=payer user), 각 화면이 보여주는 목록도 정확히 그 기준으로 걸러진다. 발주 라우터의 구매자 문은 **다른 질문**(«이 사용자가 지금 어느 엔티티로 발주하는가»)에 답하는 문이라 오너·다중 브랜드에 맞지 않는다. 그 문에 오너 분기를 새로 뚫으면 매장 접근판정이 다섯 갈래가 된다(메모리 reference_restaurant_access_four_gates) — **E-3 「다른 곳에 권한 문 신설 금지」 그대로 적용.**
+- **E-2′-1. 청구서 화면의 «결제함»은 모달을 그대로 열되 `POST /invoices/:id/mark-paid-external` 을 부른다** — RA·오너·BG·FG **네 화면 전부 한 경로**(역할별 분기 없음). 원장 쓰기는 A-2 로 이미 `/pay` 와 같은 함수·같은 트랜잭션·같은 응답 모양(`cash_movement_id`·`drawerSkipped`·409 `ALREADY_PAID`·취소 발주 400)이다. A-1 의 「`/pay` 를 부른다」는 이 줄로 **대체**한다(A-1 의 나머지 — 새 모달 금지·`payable_amount` 싣기 — 유지).
+- **E-2′-2. `ReceivePayModal` 에 선택 prop 1개**(`invoiceId` 류). mode `pay` 이고 이 prop 이 있을 때만 엔드포인트가 청구서 문으로 바뀐다. `reason` 은 그 라우트의 `notes` 로 넘긴다. **prop 없는 기존 호출부(발주 목록·대조)는 오늘과 동일**(E-4 「모달 무변경」의 예외는 이 추가 prop 하나뿐). `ExternalInvoicePayAction` 은 청구서 id 를 받아 그대로 넘긴다.
+- **E-2′-3. 백엔드 무변경.** `buyerScope`·발주 라우터·`checkPaymentPermission` 손대지 않는다. E-3 은 실측으로 닫혔다(brand_manager payer 통과 = BG 200, foodcourt_manager 분기 동형).
+- **E-2′-4. 드로어 규칙은 그대로**(E-4 유지): `recordPayment` 가 발주 `entity_type` 으로 정한다 — 오너가 매장 발주를 cash 로 적으면 그 매장의 열린 시프트 드로어에서 출금, 없으면 `drawerSkipped`. BG·FG 는 드로어 없음.
+
+**게이트(정정)**: health-check `cash` — ①(유지) 브랜드 구매자 외부 발주 수령 → `/to-pay` 에 `purchaseOrderId`·`payableAmount` ②(엔드포인트만 교체) 그 청구서 `mark-paid-external`(bank_transfer) → 발주 paid·청구서 paid·`cash_movements` 0행·재시도 409 ③(신설) **`restaurant_id` NULL 오너**(RestaurantManager ownership 매장의 외부 발주 청구서) `mark-paid-external`(bank_transfer) → 200·발주 paid·청구서 paid·재시도 409. 고장주입 1(E-1 attach 제거 → ① 실패) 유지 — A-2 손은 §8-3 고장주입이 이미 반증했다.
+**일회 실측(테스트 신설 없음)**: FG(`foodcourt_id` 있는 Foodcourt General)로 푸드코트 외부 발주 수령 → `/to-pay` 붙음 → `mark-paid-external` 200. / Staff 계정으로 RA 인보이스 페이지(`ROLE_ROUTES` 는 Staff 에 `/pos/invoices` 를 준다)에서 결제 버튼이 보이는지 — 보이면 `checkPaymentPermission` 에 Staff 분기가 없어 403 이다(게이트웨이 Pay 도 동일한 기존 상태) → 이 절단면 밖, 백로그 기록만.
+
+**백로그(이 절단면 밖 — 기록만)**: 다매장 오너는 발주 라우터 전체가 403 이다(`buyerScope` 가 primary 매장 없으면 null). 오너 사이드바가 발주·발주내역을 노출하므로 그 화면들과 모달의 「먼저 대조하기」(`/purchase-orders/:id/reconcile` 저장)는 오너에게 막힌다. BG 두 번째 브랜드도 발주내역·대조 화면은 스코프 쿼리를 안 붙여 404. 해법은 「오너·다중 브랜드의 발주 스코프」 사안으로 따로 설계(buyerScope 오너 분기 + 화면 스코프 전달) — 운영검증에서 `restaurant_id` NULL 오너 수만 센다.
+
 ## 9. 판매 차감 계약 불일치 (2026-09-02 · 발견·수정·4차 배포)
 
 > P1~P4 가 전제하던 **"팔면 재고가 빠진다"가 실제로는 한 번도 성립한 적이 없었다.**

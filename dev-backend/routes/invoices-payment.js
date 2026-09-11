@@ -30,38 +30,9 @@ const { sendNotification, sendNotificationBatch, getSystemAdminIds, getBrandMana
 const { invoicePaidEmail } = require('../utils/notificationTemplates');
 const { logActivity } = require('../utils/activityLogger');
 
-/**
- * 원장 거울 (2026-09-07 Fable) — 청구서 쪽에서 결제되면 그 청구서가 나온 **발주**도 결제로 표시한다.
- *
- * 왜: `invoices-payment` 는 지금까지 `PurchaseOrder` 를 한 번도 보지 않았다(참조 0건).
- *   그래서 SOA 를 결제해도 발주 목록은 영원히 `unpaid` 로 남는다 — 청구서 발행을 고치는 순간
- *   바로 드러나는 결함이라 같은 묶음에서 잡는다.
- *
- * @param invoiceIds 결제된 청구서 id 들 (soa 면 자식 전부, trade 면 자기 하나)
- */
-async function mirrorPaidToPurchaseOrders(invoiceIds, paidAt, t) {
-  if (!invoiceIds || invoiceIds.length === 0) return 0;
-  const { PurchaseOrder } = require('../models');
-  const { Op } = require('sequelize');
-  const [n] = await PurchaseOrder.update(
-    { payment_status: 'paid', paid_at: paidAt || new Date() },
-    {
-      // 이미 낸 것·환불된 것은 건드리지 않는다 — 되돌린 결제를 되살리면 안 된다.
-      where: { trade_invoice_id: { [Op.in]: invoiceIds }, payment_status: 'unpaid' },
-      transaction: t
-    }
-  );
-  return n;
-}
-
-/** 결제된 청구서 집합을 구한다 — soa 면 자식들, 아니면 자기 자신. */
-async function paidInvoiceIdsFor(invoice, t) {
-  if (invoice.invoice_category !== 'soa') return [invoice.id];
-  const children = await Invoice.findAll({
-    where: { parent_soa_invoice_id: invoice.id }, attributes: ['id'], transaction: t
-  });
-  return children.map((c) => c.id);
-}
+// 원장 거울 헬퍼(청구서 paid → 발주 paid)는 services/purchaseOrderPayment.js 로 옮겼다
+// (2026-09-11 §8-3 A-4) — 모든 paid 경로가 부르는 handleInvoicePaid 도 같은 함수를 쓴다.
+const { mirrorPaidToPurchaseOrders, paidInvoiceIdsFor } = require('../services/purchaseOrderPayment');
 const {
   generateInvoiceNumber,
   getAdditionalCharges,
@@ -406,15 +377,59 @@ router.post('/:id/mark-paid-external', authenticateToken, async (req, res) => {
       });
     }
     if (invoice.status === 'paid') {
-      return res.status(400).json({ success: false, message: '이미 결제 완료로 표시된 청구서입니다.' });
+      // 두 번째 결제는 409 — 발주 쪽 recordPayment 의 ALREADY_PAID 와 같은 신호 (§8-3 A-3)
+      return res.status(409).json({ success: false, code: 'ALREADY_PAID', message: '이미 결제 완료로 표시된 청구서입니다.' });
     }
     if (!['sent', 'pending_payment', 'payment_submitted', 'overdue', 'rejected'].includes(invoice.status)) {
       return res.status(400).json({ success: false, message: `이 상태에서는 표시할 수 없습니다: ${invoice.status}` });
     }
 
-    const method = req.body.payment_method || req.body.paymentMethod || 'cash';
-    const note = req.body.notes || req.body.payment_notes || null;
+    // 결제수단은 필수다 (2026-09-11 §8-3 A-2). 예전엔 없으면 'cash' 로 채워서, 이체로 낸 것도 현금으로 기록될 수 있었다.
+    const method = req.body.payment_method || req.body.paymentMethod;
+    if (!['cash', 'bank_transfer', 'card'].includes(method)) {
+      return res.status(400).json({ success: false, code: 'INVALID_PAYMENT_METHOD', message: 'payment_method must be cash, bank_transfer or card' });
+    }
+    const { sanitizeString } = require('../middleware/validation');
+    const note = req.body.notes || req.body.payment_notes
+      ? sanitizeString(String(req.body.notes || req.body.payment_notes)).slice(0, 255)
+      : null;
 
+    // 🔴 결제는 한 손 (§8-3 A-2). 이 청구서가 나온 발주가 있으면 발주 결제와 **같은 함수**(recordPayment)로 쓴다 —
+    //   드로어 출금 · 발주 payment_status · 청구서 paid 가 한 트랜잭션에서 함께 기록되고,
+    //   어느 쪽에서든 이미 냈으면 409 로 막힌다. 규칙을 새로 만들지 않는다(`POST /purchase-orders/:id/pay` 와 동일).
+    //   API 로 이 라우트를 직접 쳐도 뒷문이 없게 서버에서 가른다.
+    const { PurchaseOrder } = require('../models');
+    const linkedPo = await PurchaseOrder.findOne({ where: { trade_invoice_id: invoice.id }, attributes: ['id'] });
+    if (linkedPo) {
+      const { sequelize: seq } = require('../config/database');
+      const { recordPayment } = require('../services/purchaseOrderPayment');
+      try {
+        const result = await seq.transaction(async (t) => {
+          const po = await PurchaseOrder.findByPk(linkedPo.id, { lock: t.LOCK.UPDATE, transaction: t });
+          if (!po) { const e = new Error('Purchase order not found'); e.statusCode = 404; e.code = 'NOT_FOUND'; throw e; }
+          if (po.status === 'cancelled') { const e = new Error('Cannot pay a cancelled purchase order'); e.statusCode = 400; e.code = 'BAD_STATUS'; throw e; }
+          const out = await recordPayment(po, { method, userId: req.user && req.user.id, reason: note }, t);
+          // recordPayment 가 청구서를 paid 로 거울한다. 외부 발행 표시·확인자만 같은 트랜잭션에서 덧붙인다.
+          await Invoice.update(
+            { payment_provider: 'external', payment_notes: note, confirmed_by: req.user && req.user.id, confirmed_at: new Date() },
+            { where: { id: invoice.id }, transaction: t }
+          );
+          return out;
+        });
+        return res.json({
+          success: true,
+          data: result.po,
+          purchase_order_id: result.po.id,
+          ...(result.movement ? { cash_movement_id: result.movement.id } : {}),
+          ...(result.drawerSkipped ? { drawerSkipped: true } : {}),
+        });
+      } catch (e) {
+        if (e.statusCode) return res.status(e.statusCode).json({ success: false, code: e.code, message: e.message });
+        throw e;
+      }
+    }
+
+    // 연결 발주가 없는 외부 청구서(발주가 지워진 경우 등)만 청구서 단독 기록을 남긴다.
     await invoice.update({
       status: 'paid',
       paid_at: new Date(),

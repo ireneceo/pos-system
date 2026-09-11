@@ -591,7 +591,8 @@
       "moved": "{{n}} costs followed the new price.",
       "skipped": "Did not follow: {{list}}",
       "failed": "{{n}} propagations failed — the reconciliation itself was saved.",
-      "retro": "Applied to {{n}} lines on open orders (paid/received excluded)."
+      "retro": "Applied to {{n}} lines on open orders (paid/received excluded).",
+      "invoiceNotSynced": "The invoice was not changed — {{reason}}"
     },
     "retroApply": "Apply to open orders too",
     "invoicePanel2": "Enter invoice contents",
@@ -609,7 +610,9 @@
       "lessPaid": "less than ordered",
       "same": "same as ordered",
       "lineSum": "Sum of the lines you entered",
-      "lineMismatch": "differs from the total you typed by {{d}} — either tax/delivery, or a typo"
+      "lineMismatch": "differs from the total you typed by {{d}} — either tax/delivery, or a typo",
+      "blocked": "Lines + tax + delivery − discount = {{c}}, which differs from the total you typed by {{d}} — check the lines or the total (this cannot be saved as is)",
+      "rounding": "A rounding adjustment of {{d}} will match the total you typed"
     },
     "ocr": {
       "reading": "Reading the uploaded invoice…",

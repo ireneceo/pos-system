@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-10 — **운영 배포 7회. 인보이스 자동 읽기 · 결제 금액 정합 · 온라인 메뉴판.**
+> **최종 업데이트:** 2026-09-11 — **운영 배포 1회(SW 5.08). 결제 한 손 · 대조 총액 · 거래청구서 날짜 · 매장 원가 칸 · 공급업체 켜기/끄기 · 브랜드/푸드코트/오너 외부 인보이스 결제 · 공지 모두읽음 · Staff 결제버튼 가림.**
+>
+> **이전 업데이트:** 2026-09-10 — **운영 배포 7회. 인보이스 자동 읽기 · 결제 금액 정합 · 온라인 메뉴판.**
 > ①**09-23 시한 해소** — 외부 공급업체 청구서 마감일 NULL(연체메일 15통 차단) ②화면이 죽던 자리 **12곳**
 > (이미 있던 `getErrorMessage` 를 안 쓰는 호출부였다) ③**대조된 외부 발주는 청구액을 지불** — 그동안
 > 청구 480 을 확인해도 서랍에서 500 이 나갔다 ④**인보이스 자동 읽기** — 브라우저 안에서 무료로,
@@ -9661,6 +9663,42 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 - `dev-frontend/src/pages/PurchaseOrders/InvoiceReconcilePage.tsx` · `PurchaseOrdersPage.tsx` · `PurchaseOrderDetailPage.tsx` · `PurchaseOrderStagingPage.tsx`
 - `dev-frontend/src/mobile/utils/kioskMode.ts` · `pages/MenuPage.tsx` · `pages/ItemDetailPage.tsx` · `components/common/MobileLayout.tsx` · `MobileApp.tsx`
 - `dev-frontend/public/tesseract/` (자체 호스팅 자산) · `public/sw.js`
+
+---
+
+## ✅ 완료: 결제 한 손 · 원가 칸 · 공급업체 켜기/끄기 · 역할별 외부 인보이스 결제 (2026-09-11)
+
+> 운영 배포 08:06~08:11 UTC · SW `5.08-payment-single-hand-recipe-cost-20260911` · 번들 `main.6c4d69c1.js` · 백업 `/var/www/backups/20260911_080634`
+> 마이그 86/86 · 스모크 10/10 · Fable 게이트 PASS 3회(`058d5f5d5cbd` → `12b82a2137cf` → `5709cfad7b83`)
+> 설계 단일 진실: `docs/PURCHASE_ORDER_SYSTEM.md` §8-3 · §8-4 · §8-5(E-2′ 포함) · `docs/SUPPLIER_CONTRACT_SYSTEM.md` §G · `docs/TRADE_STRUCTURE.md` §2-3
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| §8-3 결제 한 손 | 인보이스 «결제함»(`mark-paid-external`)과 발주 Pay 가 같은 `recordPayment` 한 트랜잭션 · 이미 낸 쪽은 409 · 드로어 이중 출금 차단 | ✅ 완료 |
+| §8-3 금액 | 대조 총액 차이 > RM 1 저장 차단 · RM 1 이내 «Rounding adjustment» · 빈 총액 = 계산값 | ✅ 완료 |
+| §8-3 날짜 | 거래 청구서 기간 = 발주일 → 수령일(마이그 멱등) · 목록·상세·인쇄에 발주일/수령일/공급업체 인보이스 | ✅ 완료 |
+| §8-4 매장 원가 칸 | 수령·대조 원가는 매장 칸(`storeCost.js` 단일소스) · 구매자 주도 전파는 자기 행만(actor) · 매장 소유 재료는 재료 행이 매장 칸 | ✅ 완료 |
+| 레시피 CSV · 삭제 게이트 | CSV 칸 순서·재료 표기·못 찾은 줄 유지 · 레시피가 쓰는 재료/상품 삭제 409 | ✅ 완료 |
+| 공지 모두 읽음 | 매장·오너·브랜드·푸드코트 공지 페이지 «Mark all read» · 수신 범위 단일 함수 | ✅ 완료 |
+| §G 공급업체 켜기/끄기 | 구매자 자기 계약 행이 우선 · 브랜드가 넣어준 외부 공급업체도 매장에서만 끄기 · 카드 Turn off/on | ✅ 완료 |
+| §8-5 역할별 외부 인보이스 결제 | RA·Owner·BG·FG 공용 `ExternalInvoicePayAction` → 청구서 문 `mark-paid-external`(다매장 오너 403·2번째 브랜드 404 우회) · `attachPurchaseOrders` 단일소스 4목록 | ✅ 완료 |
+| 백로그 3 | 목록 응답 `parent_soa_invoice_id` · 인박스 공지 범위 단일소스 · 일괄 원가 PUT 소유 확인 | ✅ 완료 |
+| Staff 결제 버튼 가림 | 서버 `checkPaymentPermission` 에 Staff 분기 없음 → 화면도 결제 칸 미표시(권한 변경 없음) | ✅ 완료 |
+| 운영 DB 읽기 전용 래퍼 | `scripts/prod-query.js`(읽기 문장만) + safety-guard ask · 계정 설정은 Irene 실행 대기 | ⏳ 계정 대기 |
+
+### 수정된 파일 (주요)
+- 백엔드: `services/purchaseOrderPayment.js` · `invoicePurchaseOrderAttach.js`(신규) · `storeCost.js`(신규) · `reconcileInvoiceSync.js` · `invoiceLifecycle.js` · `purchaseOrderReceive.js` · `purchaseOrderService.js` · `costSync.js`
+- 백엔드: `routes/invoices-payment.js` · `invoices-list.js` · `owner.js` · `cost-reconciliation.js` · `supplier-directory.js` · `ingredients.js` · `recipes.js` · `product-recipe.js` · `inventory-core.js` · `brand-products.js` · `notices.js` · `inbox.js`
+- 백엔드: `utils/supplierAccess.js` · `ingredientRecipeUsage.js`(신규) · `noticeRecipientScope.js`(신규) · `models/CostChangeLog.js` · 마이그 2(`migrate-cost-change-log-reconcile-overlay.js` · `migrate-trade-invoice-period.js`) · `scripts/health-check.js` · `scripts/prod-query.js`(신규)
+- 프론트: `components/Invoices/ExternalInvoicePayAction.tsx` · `TradeInvoiceDates.tsx`(신규) · `components/PurchaseOrders/ReceivePayModal.tsx`
+- 프론트: `pages/Restaurant/InvoicesPage.tsx` · `Owner/OwnerInvoicesPage.tsx` · `BrandGeneral/BrandInvoicesPage.tsx` · `FoodcourtGeneral/FoodcourtInvoicesPage.tsx` · `PurchaseOrders/InvoiceReconcilePage.tsx` · `RecipeManagement/RecipesTab.tsx` · `Suppliers/AllSuppliersView.tsx` · 공지 페이지 4 · `utils/noticeReadApi.ts`(신규) · 로케일 12 · `public/sw.js`
+
+### 검증
+- health-check 247/247 · cash 16/16 · supplier 3/3 · inventory 37/37 · pos 52/52 · 고장주입 15건(전부 실패 확인 후 sha256 원복)
+- verify-all 표준 17/18(deploy-ready — 기록 파일로 해소) · mount sweep 672.4s 크래시 0 · 실브라우저(RA·BG·Owner·Staff·공급업체)
+- 운영 검증: 번들·SW 5.08 서빙 · API health · 재시작 후 오류 로그 0 · 데모 계정 조회(RA·BG·FG 새 필드, Owner 200) · 데이터 건수 3종은 읽기 전용 계정 부재로 확인 불가
 
 ---
 

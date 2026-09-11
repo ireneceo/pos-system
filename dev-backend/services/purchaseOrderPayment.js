@@ -91,6 +91,15 @@ async function recordPayment(po, { method, userId, reason }, t) {
   if (po.payment_status === 'paid') {
     throw err('This purchase order is already paid', 'ALREADY_PAID', 409);
   }
+  // 🔴 연결 청구서가 이미 결제됐으면 두 번째 결제는 거부한다 (2026-09-11 Fable §8-3 A-3).
+  //   청구서 쪽(외부 공급업체 «결제함»·판매자 이체 확인 등)에서 먼저 결제가 기록됐는데 발주 Pay 를
+  //   또 누르면 드로어에서 한 번 더 나간다. **어느 원장을 먼저 썼든 같은 돈은 한 번만.**
+  if (po.trade_invoice_id) {
+    const linked = await Invoice.findByPk(po.trade_invoice_id, { attributes: ['id', 'status'], transaction: t });
+    if (linked && linked.status === 'paid') {
+      throw err('The linked invoice is already paid', 'ALREADY_PAID', 409);
+    }
+  }
 
   // 얼마를 낼지 먼저 정한다 — 드로어 출금액이 이 값이다.
   const payable = await resolvePayableAmount(po);
@@ -192,4 +201,39 @@ async function reversePayment(po, { userId, reason }, t) {
   return { po, movement, drawerSkipped, noop: false };
 }
 
-module.exports = { recordPayment, reversePayment, resolveOpenShift, resolvePayableAmount, payableFrom };
+/**
+ * 원장 거울 — 청구서 쪽에서 결제되면 그 청구서가 나온 **발주**도 결제로 표시한다 (2026-09-07 Fable).
+ *
+ * 2026-09-11 (§8-3 A-4): `routes/invoices-payment.js` 안에만 있어서 `POST /invoices/:id/payment` 한 곳만 불렀다.
+ *   판매자 이체 확인(confirm-payment)·PayPal·웹훅·무료확인으로 paid 가 된 청구서의 발주는 영원히 unpaid 였다.
+ *   모든 paid 경로가 부르는 `handleInvoicePaid` 가 쓸 수 있게 여기로 옮긴다. 드로어 이동은 만들지 않는다.
+ *
+ * @param invoiceIds 결제된 청구서 id 들 (soa 면 자식 전부, trade 면 자기 하나)
+ */
+async function mirrorPaidToPurchaseOrders(invoiceIds, paidAt, t) {
+  if (!invoiceIds || invoiceIds.length === 0) return 0;
+  const { Op } = require('sequelize');
+  const [n] = await PurchaseOrder.update(
+    { payment_status: 'paid', paid_at: paidAt || new Date() },
+    {
+      // 이미 낸 것·환불된 것은 건드리지 않는다 — 되돌린 결제를 되살리면 안 된다.
+      where: { trade_invoice_id: { [Op.in]: invoiceIds }, payment_status: 'unpaid' },
+      transaction: t
+    }
+  );
+  return n;
+}
+
+/** 결제된 청구서 집합을 구한다 — soa 면 자식들, 아니면 자기 자신. */
+async function paidInvoiceIdsFor(invoice, t) {
+  if (invoice.invoice_category !== 'soa') return [invoice.id];
+  const children = await Invoice.findAll({
+    where: { parent_soa_invoice_id: invoice.id }, attributes: ['id'], transaction: t
+  });
+  return children.map((c) => c.id);
+}
+
+module.exports = {
+  recordPayment, reversePayment, resolveOpenShift, resolvePayableAmount, payableFrom,
+  mirrorPaidToPurchaseOrders, paidInvoiceIdsFor
+};

@@ -226,8 +226,11 @@ async function createTradeInvoice(po) {
     payer_id: payer.payer_id,
     restaurant_id: payer.restaurant_id,
     contract_id: fullPo.contract_id || null,
-    billing_period_start: invoiceDate,
-    billing_period_end: invoiceDate,
+    // 구입 청구서에 «기간» 은 없다 — **발주가 나간 날 → 받은 날** (2026-09-11 §8-3 C-1 ·
+    //   Irene 「발주한 날자랑 받은 날짜 등으로 해야지 구입한 건. 왜 구독기간처럼 표시해?」).
+    //   예전엔 두 칸 다 발행 시각이라 구독 청구서처럼 보였다. 발행일(issued_at)은 지금처럼 만든 시각(소급 금지).
+    billing_period_start: fullPo.submitted_at || fullPo.approved_at || fullPo.created_at || invoiceDate,
+    billing_period_end: fullPo.received_at || invoiceDate,
     due_date: dueDate,
     subtotal: fullPo.subtotal || 0,
     tax_amount: fullPo.tax_amount || 0,

@@ -780,6 +780,9 @@ async function updateAvgDailyUsage(ingredientId) {
 3. 브랜드 행(`ingredients`, brand_id 있고 restaurant_id NULL)에 매장 수량을 **복사해 넣지 말 것.**
    2026-08-20 에 화면을 맞추려고 18건을 복사해 둔 적이 있고, 그게 "누구 재고인지" 판단을 망가뜨렸다.
 4. 코드 주석을 도메인 사실의 근거로 쓰지 말 것 — 주석은 이전 세션의 해석일 수 있다(실제로 그랬다).
+5. **원가도 같은 소유 규칙 (2026-09-11)** — 수량 오버레이(`restaurant_ingredient_stocks`)와 짝인 원가 오버레이(`restaurant_ingredient_costs`)는
+   **브랜드 공유 재료에만** 쓴다. 매장 소유 재료의 원가는 재료 행 자체. 수령·대조·수동 입력 모두 `services/storeCost.js` 를 거친다
+   (상세 `docs/TRADE_STRUCTURE.md` §2-3 · `docs/RECIPE_MANAGEMENT_SYSTEM.md` 코스트 오버라이드 절).
 
 **미해결(Fable 설계 대기)**: `ingredients`(브랜드 88) vs `product_ingredients`(286) 목록 이원화,
 `linked_ingredient_id` 반쪽 구현, FG 도 같은 어긋남(입고는 `ingredients`, 화면은 `foodcourt_products`).

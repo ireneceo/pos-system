@@ -1094,6 +1094,32 @@ async function loadOwnedExternalSupplier(req, res) {
   return sc;
 }
 
+/**
+ * 이 구매자가 **볼 수 있는** 외부 공급업체인가 — 자기가 등록한 것 ∪ 부모 브랜드가 등록한 것 (2026-09-11 §G).
+ * `GET /external-suppliers` 목록의 scopes 와 같은 판정이다. 활성/비활성은 볼 수 있는 구매자 누구나 자기 관계에 대해 정한다
+ * (`loadOwnedExternalSupplier` 는 등록자만 통과해서, 브랜드가 넣어준 업체를 매장이 끌 수 없었다).
+ * @returns {{sc, inherited:boolean, parentBrandId:number|null}|null} 실패면 응답을 보내고 null
+ */
+async function loadVisibleExternalSupplier(req, res) {
+  if (!req.buyerEntity) { res.status(400).json({ success: false, message: 'Buyer context required' }); return null; }
+  const id = parseInt(req.params.id, 10);
+  const sc = Number.isFinite(id) ? await SupplierCompany.findByPk(id) : null;
+  if (!sc) { res.status(404).json({ success: false, message: 'Supplier not found' }); return null; }
+  if (sc.is_system_registered) {
+    res.status(403).json({ success: false, code: 'NOT_EXTERNAL', message: 'Platform suppliers are turned on or off through the supplier contract' });
+    return null;
+  }
+  const own = sc.registered_by_entity_type === req.buyerEntity.type && Number(sc.registered_by_entity_id) === Number(req.buyerEntity.id);
+  let parentBrandId = null;
+  if (!own && req.buyerEntity.type === 'restaurant') {
+    const rest = await Restaurant.findByPk(req.buyerEntity.id, { attributes: ['brand_id'] });
+    parentBrandId = rest && rest.brand_id ? rest.brand_id : null;
+  }
+  const inherited = !own && !!parentBrandId && sc.registered_by_entity_type === 'brand' && Number(sc.registered_by_entity_id) === Number(parentBrandId);
+  if (!own && !inherited) { res.status(403).json({ success: false, message: 'Not your supplier' }); return null; }
+  return { sc, inherited, parentBrandId };
+}
+
 // SupplierProduct 입력 검증 (supplier-products.js create 미러). { value } 또는 { error }.
 function buildProductFields(body) {
   const name = sanitizeString(body.name || '');
@@ -1146,15 +1172,68 @@ router.get('/external-suppliers', async (req, res) => {
       ? await SupplierProduct.findAll({ where: { supplier_company_id: { [Op.in]: ids } }, attributes: ['supplier_company_id', [fn('COUNT', col('id')), 'cnt']], group: ['supplier_company_id'], raw: true })
       : [];
     const cntMap = Object.fromEntries(counts.map(c => [c.supplier_company_id, Number(c.cnt)]));
+    // 이 구매자에게 켜져 있나 (2026-09-11 §G) — 자기 계약 행이 있으면 그 상태, 없으면 상속(= 켜짐).
+    //   꺼진 업체도 목록에 남긴다(다시 켜야 하니까). 판정 규칙은 utils/supplierAccess.findEffectiveContract 와 같다.
+    const myRows = ids.length
+      ? await SupplierContract.findAll({
+          where: { supplier_company_id: { [Op.in]: ids }, entity_type: req.buyerEntity.type, entity_id: req.buyerEntity.id },
+          attributes: ['id', 'supplier_company_id', 'status'], order: [['id', 'DESC']]
+        })
+      : [];
+    const myStatus = {};
+    for (const row of myRows) if (!(row.supplier_company_id in myStatus)) myStatus[row.supplier_company_id] = row.status;
     // scope: 'own' = this buyer registered it (→ Direct), 'brand' = parent brand registered it
     // (→ labeled "Brand" so the restaurant knows it flows down from the brand). (Fable 2026-07-05)
     res.json({ success: true, data: companies.map(c => ({
       id: c.id, name: c.name, phone: c.phone, email: c.email, product_count: cntMap[c.id] || 0,
       scope: (parentBrandId && c.registered_by_entity_type === 'brand' && c.registered_by_entity_id === parentBrandId) ? 'brand' : 'own',
+      is_active_for_me: c.id in myStatus ? myStatus[c.id] === 'active' : true,
     })) });
   } catch (err) {
     console.error('GET /api/external-suppliers error:', err);
     res.status(500).json({ success: false, message: 'Failed to load external suppliers' });
+  }
+});
+
+// PUT /api/external-suppliers/:id/active — 이 구매자에게서만 켜기/끄기 (2026-09-11 · docs/SUPPLIER_CONTRACT_SYSTEM.md §G)
+//   Irene 「브랜드에서 넣어준 공급업체여도 사용 안하는 경우 비활성 가능하게 해주고 공급업체 활성/비활성 기능 넣어줘」
+//   활성/비활성 = 그 구매자의 계약 행 상태. 새 표·새 칸 없음. 회사 행(status)·매핑(is_active)은 건드리지 않는다.
+//   - 끄기: 자기 행을 terminated(buyer) — 행이 없으면(브랜드가 넣어준 업체) 만들어서 상속을 막는다
+//   - 켜기: 브랜드가 넣어준 업체이고 브랜드 계약이 살아 있으면 자기 행을 지워 상속으로 돌아간다(브랜드 결제조건 그대로),
+//          아니면 자기 행을 active 로
+//   영향 범위는 이 구매자뿐 — 같은 브랜드의 다른 매장은 그대로다. 브랜드가 자기 행을 끄면 상속이 끊겨 전 매장이 잃는다(브랜드의 권리).
+router.put('/external-suppliers/:id/active', async (req, res) => {
+  const v = await loadVisibleExternalSupplier(req, res); if (!v) return;
+  const isActive = req.body && req.body.is_active;
+  if (typeof isActive !== 'boolean') return res.status(400).json({ success: false, message: 'is_active (boolean) is required' });
+  const { sc, inherited, parentBrandId } = v;
+  const B = req.buyerEntity;
+  const t = await SupplierContract.sequelize.transaction();
+  try {
+    const where = { supplier_company_id: sc.id, entity_type: B.type, entity_id: B.id };
+    const ownRow = await SupplierContract.findOne({ where, order: [['id', 'DESC']], transaction: t });
+    if (!isActive) {
+      const stamp = { status: 'terminated', terminated_by: 'buyer', terminated_by_user_id: req.user.id, terminated_at: new Date() };
+      if (ownRow) await ownRow.update(stamp, { transaction: t });
+      else await SupplierContract.create({ ...where, requested_by_user_id: req.user.id, ...stamp }, { transaction: t });
+    } else {
+      const brandActive = inherited
+        ? await SupplierContract.findOne({ where: { supplier_company_id: sc.id, entity_type: 'brand', entity_id: parentBrandId, status: 'active' }, transaction: t })
+        : null;
+      if (brandActive) {
+        await SupplierContract.destroy({ where, transaction: t }); // 자기 행이 없어져야 상속이 다시 답이 된다
+      } else if (ownRow) {
+        await ownRow.update({ status: 'active', terminated_by: null, terminated_by_user_id: null, terminated_at: null }, { transaction: t });
+      } else {
+        await SupplierContract.create({ ...where, status: 'active', requested_by_user_id: req.user.id }, { transaction: t });
+      }
+    }
+    await t.commit();
+    res.json({ success: true, data: { id: sc.id, is_active_for_me: isActive, inherited } });
+  } catch (err) {
+    await t.rollback();
+    console.error('PUT /api/external-suppliers/:id/active error:', err);
+    res.status(500).json({ success: false, message: 'Failed to change supplier status' });
   }
 });
 
@@ -1220,7 +1299,10 @@ router.put('/external-suppliers/:id/products/:productId', async (req, res) => {
           seller_entity_id: sc.id,
           changed_by_user_id: req.user && req.user.id,
           changed_by_name: req.user && (req.user.name || req.user.email),
-          note: `외부 공급업체 상품 가격 수정 (${sc.name})`
+          note: `외부 공급업체 상품 가격 수정 (${sc.name})`,
+          // §8-4 D-3 (2026-09-11 Fable): 구매자가 일으킨 전파 — 구매자 소유 행 밖(브랜드 공유 재료 등)은 건너뛴다.
+          //   매장이 자기 외부 공급업체 가격을 고쳐도 브랜드 층 원가가 움직이면 안 된다(대조와 같은 문).
+          actor: req.buyerEntity ? { entity_type: req.buyerEntity.type, entity_id: req.buyerEntity.id } : undefined
         }
       });
       const moved = out.filter((x) => x && x.changed);

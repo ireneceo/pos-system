@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { Container, Header, Title, Content, Button, ActionSection } from '../../components/UI/PageComponents';
+import { markAllNoticesRead } from '../../utils/noticeReadApi';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
 import { Tabs, Tab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
@@ -706,6 +707,15 @@ const NoticesPage: React.FC = () => {
   // ============================================================================
 
   const receivedTotal = receivedNotices.length;
+
+  // 모두 읽음 (2026-09-11) — 서버가 받은 목록과 같은 범위로 처리한다(브랜드 매장 공지 포함).
+  const handleMarkAllRead = async () => {
+    const marked = await markAllNoticesRead();
+    if (marked === null) return;
+    const now = new Date().toISOString();
+    setReceivedNotices(prev => prev.map(n => (n.read_at ? n : { ...n, read_at: now })));
+    fetchReceivedNotices();
+  };
   const receivedUnread = receivedNotices.filter(n => !n.read_at).length;
   const receivedImportant = receivedNotices.filter(n => n.priority === 'important').length;
   const receivedUrgent = receivedNotices.filter(n => n.priority === 'urgent').length;
@@ -780,6 +790,11 @@ const NoticesPage: React.FC = () => {
       <Header>
         <Title>{t('common:noticesPage.notices')}</Title>
         <ActionSection>
+          {activeTab === 'received' && receivedUnread > 0 && (
+            <Button variant="secondary" onClick={handleMarkAllRead}>
+              {t('common:inbox.markAllRead', 'Mark all read')}
+            </Button>
+          )}
           <Button variant="primary" onClick={handleOpenCreateModal}>
             New Notice
           </Button>

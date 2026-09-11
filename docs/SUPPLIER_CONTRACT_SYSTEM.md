@@ -866,3 +866,41 @@ const NEW_MODULES = [
 ### F-3. UI 검증
 - 4 언어 + 빈 상태 + 로딩 + 반응형 + 회귀
 
+
+---
+
+## G. 구매자별 공급업체 활성/비활성 (2026-09-11 · Fable 절단면 · Irene 요청)
+
+> Irene: 「브랜드에서 넣어준 공급업체여도 사용 안하는 경우 비활성 가능하게 해주고 공급업체 활성/비활성 기능 넣어줘.」
+
+### G-1. 실측 (dev)
+- 「활성」을 표현하는 자리가 이미 셋: `supplier_companies.status`(회사 행 1칸·전역) · `supplier_contracts.status`(**구매자별**) · `ingredient_seller_products.is_active`(매핑별).
+- 발주 가능 판정의 단일 소스 `utils/supplierAccess.js findEffectiveContract`: ①구매자 자기 active 계약 → ②없으면 **외부 공급업체에 한해** 부모 브랜드 active 계약 상속.
+- 매장이 브랜드가 넣어준 외부 공급업체를 끄는 칸·표·라우트는 **없다.** 외부 공급업체 «삭제»는 회사 행 `status='inactive'`(등록자만) — 브랜드가 지우면 전 매장이 잃는다.
+
+### G-2. 결정 — 새 표·새 칸·새 ENUM 없음
+**활성/비활성 = 그 구매자의 `supplier_contracts` 행 상태.** 구매자×공급업체 관계를 담는 표는 이미 이것 하나다(CLAUDE.md 「기존 개념에 새 목록을 만들지 않는다」).
+
+| 공급업체 | 끄기 | 켜기 |
+|---|---|---|
+| 가입 공급업체 | 기존 `POST /supplier-contracts/:id/terminate` | 기존 계약 요청(공급업체 승인 필요) — 화면 문구만 「다시 요청」 |
+| 내가 등록한 외부 | 내 자동계약 행 `status='terminated'`, `terminated_by='buyer'` | 같은 행 `status='active'` |
+| **브랜드가 넣어준 외부(상속)** | 내 행이 없으므로 **내 행을 만들어** `terminated`/`buyer` 로 둔다 — 상속을 막는 스위치 | 브랜드 계약이 아직 active 면 **내 행을 지워 상속으로 돌아간다**(브랜드 결제조건을 그대로 다시 받기 위해). 브랜드 계약이 없으면 `active` 로 |
+
+- `findEffectiveContract` 규칙 1줄 추가: **자기 행이 있으면(어떤 status 든) 자기 행이 답이다. 상속은 자기 행이 아예 없을 때만.** 지금은 자기 행이 active 가 아니면 상속으로 떨어진다 — 그래서 끌 수 없었다.
+- 회사 행 `supplier_companies.status` 는 손대지 않는다(삭제는 삭제, 비활성은 관계). 매핑 `is_active` 도 무변경.
+- 브랜드가 자기 외부 공급업체를 끄면(브랜드 행 terminated) 상속이 끊겨 전 매장에서 사라진다 — 기존 동작, 브랜드의 권리.
+
+### G-3. API
+- `PUT /api/external-suppliers/:id/active` `{ is_active: boolean }` — 권한은 **볼 수 있는 구매자**(자기 등록 ∪ 부모 브랜드 등록). 지금의 `loadOwnedExternalSupplier`(등록자만)로는 상속분을 못 끄므로 조회 스코프(`GET /external-suppliers` 의 scopes)와 같은 판정을 쓴다.
+- `GET /api/external-suppliers` 응답에 `is_active_for_me`(자기 행 기준, 행 없으면 상속 = true) 추가. 꺼진 것도 목록에 남긴다(다시 켜야 하니까).
+- 발주 판매자 선택·발주 생성은 `findEffectiveContract` 를 이미 쓰므로 **무변경으로 따라온다** — 팀원이 판매자 목록 API 가 이 함수를 쓰는지 1회 확인.
+
+### G-4. 화면
+- RA 공급업체 화면(팀원이 RA 가 외부 공급업체를 보는 실제 페이지를 확인해 그 한 곳): 행마다 **활성/비활성 토글**, 브랜드 제공 행은 「브랜드 제공」 표시 + 「이 매장에서만 꺼집니다」 문구. 꺼진 행은 회색. 가입 공급업체 행은 기존 종료/요청 버튼이 그 토글이다(새 버튼 없음).
+- BG 공급업체 화면: 자기 외부 공급업체 토글(브랜드 행). 끄면 「전 매장에서 사라집니다」 확인창.
+- i18n 4언어.
+
+### G-5. 게이트
+health-check `supplier` 3건: ①매장이 상속 외부 공급업체를 끄면 `findEffectiveContract` null → 발주 생성 400 `NO_ACTIVE_CONTRACT` ②다시 켜면 자기 행 0 + 상속 복귀 + 발주 생성 200 ③같은 브랜드의 다른 매장은 영향 0. 고장주입 1(「자기 행이 있으면 자기 행」 검사 제거 → ① 실패).
+**묶음: 「K-DINE 레시피 원가 정합」 묶음과 별도**(파일 안 겹침). RA 다 끝난 뒤 BG 인보이스 Pay 사안과 함께 가도 된다.

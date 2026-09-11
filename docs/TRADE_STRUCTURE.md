@@ -31,6 +31,37 @@
 
 평균가·특정시점가 같은 정책 분기는 **없다.**
 
+### 2-3. 누구의 원가가 어느 계산에 들어가는가 (2026-09-11 Fable 실측·판정)
+
+> Irene: 「브랜드에서 체크하는 레시피 재료공급원가는 브랜드거야. 레스토랑 계산루트에는 레스토랑거 들어가는 거 구조화 제대로 된거지?」
+
+**규칙 — 원가는 두 층이고, 계산하는 쪽이 자기 층을 읽는다.**
+- **브랜드 층** = `ingredients.unit_cost`(브랜드 거울) / `product_ingredients.unit_cost`(재고아이템). 브랜드가 사는 값. 브랜드 레시피·프로덕트 레시피 계산은 이 층만 본다.
+- **매장 층** = `restaurant_ingredient_costs(restaurant_id, ingredient_id).unit_cost` — 매장이 **실제로 산 값**. 매장이 하는 모든 계산은 이 층을 먼저 보고, 없을 때만 브랜드 층으로 폴백한다(초기값).
+
+| 계산 루트 | 읽는 층 | 코드 | 판정 |
+|---|---|---|---|
+| 브랜드 레시피 저장 | 브랜드 | `recipes.js:246·354 resolveLineCost` | 정석 |
+| BG 프로덕트 레시피 | 브랜드(재고아이템) | `product-recipes.js:159·233·323` | 정석 |
+| 매장 자기 레시피 저장 | 매장 → 브랜드 폴백 | `recipes.js:616·716 withOverrideCost` | 정석 |
+| 매장이 보는 브랜드 레시피 | 매장 → 브랜드 폴백 | `recipes.js:502~539 effective_ingredient_cost` | 정석 |
+| 매장 프로덕트 레시피 | 매장 → 브랜드 폴백 | `product-recipe.js:20~32·106·495` | 정석 |
+
+**매장 층에 쓰는 손 3개** — 수령(`purchaseOrderReceive.js`, 가중평균) · 수동(`ingredients.js:689·725`) · **대조 덮어쓰기**(PURCHASE_ORDER_SYSTEM §8-4 D-1). 이 셋 말고는 없다.
+
+**전파 규칙 — 누가 일으켰는가로 갈린다.**
+- **판매자 주도**(가입 공급업체가 자기 가격 변경 `supplier-products.js:816` · 브랜드 프로덕트 가격 변경) → 그 상품을 사는 **모든 구매자의 브랜드 층**으로 퍼진다. 판매자의 권리다.
+- **구매자 주도**(대조 `cost-reconciliation.js` · 매장이 자기 외부 공급업체 가격 수정 `supplier-directory.js:1212`) → **구매자 소유 행만.** 매장이 브랜드 공유 재료를 자기 외부 공급업체에 매핑해 두고 가격을 고치면, 브랜드 층이 아니라 **매장 층**에 앉는다. `costSync.recomputeUnitCost` 가 `ctx.actor` 로 소유자를 대조한다(§8-4 D-3).
+- ⛔ 구매자 주도 진입점이 `ctx.actor` 를 안 넘기면 그 문으로 크로스테넌트 쓰기가 생긴다(2026-09-11 실측: 매장 대조가 브랜드 거울 15→22). **진입점 목록**: `cost-reconciliation.js`(actor 있음) · `supplier-directory.js:1212`(**actor 없음 — 보완 대상**) · `product-ingredients.js:1060`(연결 시 `onlyIfZero`, 자기 재고아이템 — 해당 없음).
+
+**검증 결과(2026-09-11 실측) → 규칙 보정.** 매장 자기 레시피 조회(`GET /restaurants/:rid/recipes`)는 매장 층을 안 붙이고, 화면은 `ingredients.unit_cost` 로 재계산한다. 그런데 **매장 소유 재료**(`owner_type='restaurant'`)는 `ingredients.unit_cost`(자기 행)와 `restaurant_ingredient_costs`(수령이 쓰는 행)가 **따로 있고 값이 다르다**(dev: Beef Brisket 45 vs 15.06 · Onion 3 vs 2.05). 같은 개념이 두 칸에 산 것이다.
+
+**매장 층의 자리는 재료 소유자로 정해진다 — 칸은 하나다.**
+- **매장 소유 재료** → `ingredients.unit_cost` 자체가 매장 층이다. 오버레이를 쓰지 않는다(그 행은 매장 것이라 겹쳐 쓸 이유가 없다).
+- **브랜드 공유 재료** → `restaurant_ingredient_costs` 가 매장 층이다(여러 매장이 한 행을 보므로).
+- 쓰는 손 3개(수령·대조·수동)는 **한 헬퍼** `writeStoreCost(restaurantId, ingredient, value)` 를 거쳐 위 규칙대로 갈라진다. 읽는 쪽은 `effectiveStoreCost(ingredient, overlay)` 하나 — 매장 소유면 자기 행, 공유면 오버레이 → 폴백 자기 행. 자기 레시피 GET 도 brand-recipes GET 처럼 `effective_cost` 를 붙인다(화면 `lineCost` 는 이미 `effective_cost ?? unit_cost` 라 서버가 붙이면 그대로 맞는다).
+- 매장 소유 재료에 이미 앉아 있는 오버레이 행은 **읽지 않는다**(백필 없음 — 어느 쪽이 진짜인지 데이터로 못 가른다). 운영 건수는 `운영검증` 에서 세어 보고만.
+
 
 ### 2-1. 프로덕트는 둘 중 하나다 (2026-09-04 Irene 확정 · 이전 결정 대체)
 

@@ -321,6 +321,19 @@
   "card": {
     "viewProducts": "查看商品"
   },
+  "active": {
+    "titleOff": "停用该供应商？",
+    "titleOn": "启用该供应商？",
+    "turnOff": "停用",
+    "turnOn": "启用",
+    "offLabel": "已停用 — 下单时不显示",
+    "offForStore": "本门店已停用",
+    "confirmOffStore": "仅在本门店停用 {{name}}？品牌的其他门店不受影响。",
+    "confirmOffBrand": "停用 {{name}}？品牌所有门店下单时将不再显示。",
+    "confirmOffOwn": "停用 {{name}}？重新启用前下单时不会显示。",
+    "confirmOn": "重新启用 {{name}}？下单时可再次选择。",
+    "failed": "无法更改该供应商，请重试。"
+  },
   "payment": {
     "unpaid": "未付款",
     "paid": "已付款",

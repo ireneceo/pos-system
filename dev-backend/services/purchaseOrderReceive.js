@@ -127,26 +127,21 @@ async function receiveIntoIngredient({
 
   // 매장 구매자 가중평균 원가 — 매장별 원가 행이 단일 소스(재료 행의 unit_cost 는 초기값 폴백)
   if (po.entity_type === 'restaurant') {
-    const incomingCostPerIng = (parseFloat(item.unit_price) || 0) / conv;
-    const existingCostRow = await RestaurantIngredientCost.findOne({
-      where: { restaurant_id: po.entity_id, ingredient_id: item.ingredient_id },
-      transaction: t
-    });
-    const oldCost = existingCostRow
-      ? parseFloat(existingCostRow.unit_cost) || 0
-      : (parseFloat(ingredient.unit_cost) || 0);
+    // 대조를 먼저 했으면 **청구가**로 들어온다 (2026-09-11 §8-4 D-2) — 대조 저장이 매장 원가행을 청구가로 덮으므로,
+    // 수령이 뒤에 와도 같은 값에 닿아야 한다(누르는 순서에 따라 원가가 달라지면 안 된다).
+    const incomingPrice = item.invoiced_unit_price != null ? item.invoiced_unit_price : item.unit_price;
+    const incomingCostPerIng = (parseFloat(incomingPrice) || 0) / conv;
+    // 매장 층의 자리는 재료 소유자가 정한다 (2026-09-11 §8-4 D-5 · services/storeCost.js 단일 소스).
+    //   매장 소유 재료 → 재료 행 unit_cost · 브랜드 공유 재료 → 매장 오버레이. 예전엔 전부 오버레이에 써서
+    //   매장 소유 재료는 원가 칸이 둘(화면은 재료 행, 수령은 오버레이)이 됐다.
+    const { loadOverlayMap, effectiveStoreCost, writeStoreCost } = require('./storeCost');
+    const overlay = await loadOverlayMap(po.entity_id, [item.ingredient_id], { transaction: t });
+    const oldCost = effectiveStoreCost(ingredient, overlay.get(Number(item.ingredient_id)), po.entity_id);
     const weighted = before > 0 && newStock > 0
       ? (before * oldCost + stockDelta * incomingCostPerIng) / newStock
       : incomingCostPerIng;
     const newAvg = Math.round(weighted * 10000) / 10000;
-    if (existingCostRow) {
-      await existingCostRow.update({ unit_cost: newAvg, notes: note, updated_by: userId }, { transaction: t });
-    } else {
-      await RestaurantIngredientCost.create({
-        restaurant_id: po.entity_id, ingredient_id: item.ingredient_id,
-        unit_cost: newAvg, notes: note, updated_by: userId
-      }, { transaction: t });
-    }
+    await writeStoreCost(po.entity_id, ingredient, newAvg, { transaction: t, userId, notes: note });
   }
 
   if (po.entity_type === 'restaurant') {

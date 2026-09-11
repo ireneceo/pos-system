@@ -321,6 +321,19 @@
   "card": {
     "viewProducts": "Lihat Produk"
   },
+  "active": {
+    "titleOff": "Matikan pembekal?",
+    "titleOn": "Hidupkan pembekal?",
+    "turnOff": "Matikan",
+    "turnOn": "Hidupkan",
+    "offLabel": "Dimatikan — tidak dipaparkan semasa membuat pesanan",
+    "offForStore": "Dimatikan untuk kedai ini",
+    "confirmOffStore": "Matikan {{name}} untuk kedai ini sahaja? Kedai lain jenama anda masih boleh menggunakannya.",
+    "confirmOffBrand": "Matikan {{name}}? Ia akan hilang daripada pesanan di semua kedai jenama anda.",
+    "confirmOffOwn": "Matikan {{name}}? Ia tidak akan tersedia semasa membuat pesanan sehingga anda menghidupkannya semula.",
+    "confirmOn": "Hidupkan semula {{name}}? Ia akan tersedia semasa membuat pesanan.",
+    "failed": "Tidak dapat menukar pembekal ini. Sila cuba lagi."
+  },
   "payment": {
     "unpaid": "Belum Dibayar",
     "paid": "Dibayar",

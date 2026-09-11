@@ -285,6 +285,9 @@ CREATE TABLE ingredient_categories (
 | PUT | `/api/restaurants/:restaurantId/ingredients/:ingredientId` | 재료 수정 |
 | DELETE | `/api/restaurants/:restaurantId/ingredients/:ingredientId` | 재료 삭제 |
 
+> **삭제 게이트 (2026-09-11)**: 레시피가 쓰는 재료(브랜드 재료 DELETE)·상품(`brand-products.js` DELETE)은 **409 `IN_USE_BY_RECIPES`** + 쓰는 레시피 목록을 돌려준다(`utils/ingredientRecipeUsage.js`).
+> `recipe_ingredients.ingredient_id` 가 ON DELETE CASCADE 라, 전에는 삭제하면 레시피의 재료 줄이 조용히 사라졌다.
+
 #### 코스트 오버라이드 (Brand 재료에 대한 레스토랑별 My Cost)
 | Method | 엔드포인트 | 설명 |
 |--------|-----------|------|
@@ -292,6 +295,11 @@ CREATE TABLE ingredient_categories (
 | PUT | `/api/restaurants/:restaurantId/ingredient-costs/bulk` | 일괄 코스트 오버라이드 설정 |
 | PUT | `/api/restaurants/:restaurantId/ingredient-costs/:ingredientId` | 개별 코스트 오버라이드 설정 (upsert) |
 | DELETE | `/api/restaurants/:restaurantId/ingredient-costs/:ingredientId` | 코스트 오버라이드 삭제 (Brand Cost로 복원) |
+
+> **원가 칸은 재료 소유자가 정한다 (2026-09-11 · `docs/TRADE_STRUCTURE.md` §2-3 · `PURCHASE_ORDER_SYSTEM.md` §8-4 D-5)**
+> - 브랜드 공유 재료 → 매장 원가는 오버레이(`restaurant_ingredient_costs`). 브랜드 원가(`ingredients.unit_cost`)는 브랜드 레시피용이며 매장이 바꾸지 않는다.
+> - 매장 소유 재료 → 재료 행 자체가 매장 원가 칸(오버레이 행을 만들지 않는다). 일괄 PUT 도 소유 확인 후 같은 규칙.
+> - 쓰기·읽기 단일소스 `services/storeCost.js`(`writeStoreCost` · `effectiveStoreCost` · `loadOverlayMap`). 수령(`invoiced_unit_price ?? unit_price`)·인보이스 대조·수동 입력이 전부 이 함수.
 
 #### 메뉴 등록
 | Method | 엔드포인트 | 설명 |
@@ -327,7 +335,9 @@ CREATE TABLE ingredient_categories (
 - 원가는 `effective_cost`(매장 오버라이드 우선, 없으면 브랜드 원가)
 - 파일명 `recipes_{brand|restaurant}_YYYY-MM-DD.csv`
 
-13열: `Recipe Code · Recipe Name · Category · Active · Yield Amount · Yield Unit · Prep Time (min) · Cook Time (min) · Recipe Cost · Suggested Price · Recipe Summary · Instructions · Ingredients`
+13열(**2026-09-11 순서 변경** — 레시피 읽는 순서): `Recipe Name · Category · Source · Yield · Ingredients · Recipe Summary · Instructions · Prep Time (min) · Cook Time (min) · Recipe Cost · Suggested Price · Recipe Code · Active`
+- `Ingredients` = `이름 0.05 kg (메모); …` — 수량은 `formatQuantity`(원값 `0.0500kg` 아님), 줄 순서는 서버가 `recipeIngredients` id ASC 로 고정. 이름을 못 찾은 줄은 빠지지 않고 `Ingredient #id` 로 남는다.
+- (이전 13열: `Recipe Code · Recipe Name · Category · Active · Yield Amount · Yield Unit · Prep Time · Cook Time · Recipe Cost · Suggested Price · Recipe Summary · Instructions · Ingredients`)
 
 > 목록 API가 이미 `recipeIngredients`(+`ingredient`)를 include 하므로 **백엔드 변경은 없다.**
 

@@ -10,6 +10,8 @@ import { linkifyText } from '../../utils/linkify';
 import { Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { Tabs, Tab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
+import { useTranslation } from 'react-i18next';
+import { markAllNoticesRead } from '../../utils/noticeReadApi';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
@@ -564,6 +566,7 @@ const RecipientTag = styled.span`
 // ============================================================================
 
 const NoticesPage: React.FC = () => {
+  const { t: tc } = useTranslation('common');
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useTabParam<'received' | 'sent'>('received');
@@ -841,6 +844,15 @@ const NoticesPage: React.FC = () => {
   // Stats
   const totalReceived = receivedNotices.length;
   const unreadCount = receivedNotices.filter(n => !n.read_at).length;
+
+  // 모두 읽음 (2026-09-11) — 서버가 받은 목록과 같은 범위로 처리한다(오너가 소유한 매장 공지 포함).
+  const handleMarkAllRead = async () => {
+    const marked = await markAllNoticesRead();
+    if (marked === null) return;
+    const now = new Date().toISOString();
+    setReceivedNotices(prev => prev.map(n => (n.read_at ? n : { ...n, read_at: now })));
+    fetchReceivedNotices();
+  };
   const totalSent = sentNotices.length;
   const urgentCount = [...receivedNotices, ...sentNotices].filter(n => n.priority === 'urgent').length;
 
@@ -854,6 +866,11 @@ const NoticesPage: React.FC = () => {
         <Header>
           <Title>{'Notices'}</Title>
           <ActionSection>
+            {activeTab === 'received' && unreadCount > 0 && (
+              <Button variant="secondary" onClick={handleMarkAllRead}>
+                {tc('inbox.markAllRead', 'Mark all read')}
+              </Button>
+            )}
             <Button variant="primary" onClick={() => setShowNewModal(true)}>{'New Notice'}</Button>
           </ActionSection>
         </Header>

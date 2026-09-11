@@ -21,12 +21,14 @@ const router = express.Router();
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 const {
-  PurchaseOrder, PurchaseOrderItem, SupplierCompany, SupplierProduct, IngredientSellerProduct
+  PurchaseOrder, PurchaseOrderItem, SupplierCompany, SupplierProduct, IngredientSellerProduct, Ingredient
 } = require('../models');
+const { writeStoreCost } = require('../services/storeCost');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
-const { recomputeForSellerProduct } = require('../services/costSync');
+const { recomputeForSellerProduct, logCostChange } = require('../services/costSync');
+const { computeReconciledTotal, RECONCILE_TOLERANCE } = require('../services/reconcileInvoiceSync');
 
 // 경로 한정 가드 — `router.use(guard)` 로 걸면 /api 전체가 잠긴다(메모리: router_use_leaks_to_api_root)
 router.use('/purchase-orders', authenticateToken, requireBuyerRole);
@@ -180,6 +182,35 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
     changed_by_name: req.user && (req.user.name || req.user.email)
   };
 
+  // 🔴 금액 기준 = 적은 인보이스 총액 (2026-09-11 §8-3 B-2 · Irene 승인 ③).
+  //   계산식은 청구서 라인 재작성과 **같은 함수**(computeReconciledTotal)다. 차액이 허용치(주 단위 1)를 넘으면
+  //   줄이나 총액을 잘못 넣은 것 — 아무것도 저장하지 않고 차액을 돌려준다. 허용치 안이면 청구서에 «반올림 조정»
+  //   한 줄이 붙는다(reconcileInvoiceSync). 총액을 비워 두면 계산값으로 채운다 → 대조를 마친 발주는 늘 청구 총액을 갖는다.
+  //   요청 줄은 저장과 같은 규칙으로 해석한다(수량 미지정 = 발주 수량).
+  const lineById = new Map(lines.map((l) => [parseInt(l.item_id, 10), l]));
+  const mergedItems = items.map((it) => {
+    const l = lineById.get(it.id);
+    if (!l) return it;
+    return {
+      unit_price: it.unit_price, quantity_ordered: it.quantity_ordered,
+      invoiced_unit_price: money(l.invoiced_unit_price),
+      invoiced_quantity: l.invoiced_quantity === undefined ? null : money(l.invoiced_quantity)
+    };
+  });
+  const computedTotal = computeReconciledTotal(mergedItems,
+    { tax: money(inv.tax), delivery: money(inv.delivery), discount: money(inv.discount) });
+  const headerTotal = money(inv.total);
+  if (headerTotal !== null) {
+    const diff = Math.round((headerTotal - computedTotal) * 100) / 100;
+    if (Math.abs(diff) > RECONCILE_TOLERANCE) {
+      return res.status(400).json({
+        success: false, code: 'TOTAL_MISMATCH',
+        message: `Invoice total ${headerTotal.toFixed(2)} differs from the lines by ${diff.toFixed(2)} — check the lines or the total`,
+        data: { header_total: headerTotal, computed: computedTotal, diff }
+      });
+    }
+  }
+
   const t = await sequelize.transaction();
   try {
     // ① 라인별 청구 실측값 — 발주 스냅샷 unit_price 는 손대지 않는다
@@ -213,11 +244,46 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
       }
     }
 
+    // ①-b 매장의 실제 구매가는 **매장 원가행**에 앉는다 (2026-09-11 §8-4 D-1).
+    //   매장이 보는 레시피 원가의 단일 소스가 이 행이다(recipes.js brand-recipes: 오버라이드 우선).
+    //   수령만 이 행을 쓰고(그것도 발주가로) 대조는 안 써서, 청구가를 확인해도 레시피 원가가 발주가에 머물렀다(dev 실측 A·B·C).
+    //   **덮어쓴다 — 평균 내지 않는다**(대조는 «지금 실제로 얼마에 사는가»가 도착한 순간). 판매자 종류 무관.
+    //   단위는 수령과 같은 환산(청구 단가 ÷ unit_conversion — purchaseOrderReceive.js).
+    if (po.entity_type === 'restaurant') {
+      for (const l of lines) {
+        const it = itemById.get(parseInt(l.item_id, 10));
+        const price = money(l.invoiced_unit_price);
+        if (!it || !it.ingredient_id || price === null) continue;
+        const conv = parseFloat(it.unit_conversion) || 1;
+        const newCost = Math.round((price / conv) * 10000) / 10000;
+        const ing = await Ingredient.findByPk(it.ingredient_id, {
+          attributes: ['id', 'owner_type', 'restaurant_id', 'unit_cost'], transaction: t
+        });
+        if (!ing) continue;
+        const overlayNote = `Invoice reconcile — ${po.po_number}`;
+        // 자리는 재료 소유자가 정한다 (§8-4 D-5 · services/storeCost.js) — 매장 소유 재료는 재료 행, 브랜드 공유 재료는 매장 오버레이
+        const w = await writeStoreCost(po.entity_id, ing, newCost,
+          { transaction: t, userId: actor.changed_by_user_id || null, notes: overlayNote });
+        if (!w.changed) continue;
+        const oldCost = w.oldValue;
+        await logCostChange(sequelize, t, {
+          subject_type: 'ingredient', subject_id: it.ingredient_id,
+          entity_type: 'restaurant', entity_id: po.entity_id,
+          seller_type: po.seller_type, seller_entity_id: po.seller_entity_id,
+          old_value: oldCost, new_value: newCost, unit: it.unit || null,
+          source: 'reconcile_overlay', purchase_order_id: po.id,
+          changed_by_user_id: actor.changed_by_user_id, changed_by_name: actor.changed_by_name,
+          note: overlayNote
+        });
+      }
+    }
+
     // ② 인보이스 헤더 — 세금·배송·할인은 라인에 섞지 않고 여기 따로 앉는다
     await po.update({
       invoice_number: inv.number ? sanitizeString(String(inv.number)) : po.invoice_number,
       invoice_date: inv.date || po.invoice_date,
-      invoice_total: money(inv.total),
+      // 비어 있으면 계산값 — 대조를 마친 발주는 늘 청구 총액을 갖는다(payableFrom 이 이 값을 낸다)
+      invoice_total: headerTotal !== null ? headerTotal : computedTotal,
       invoice_tax: money(inv.tax),
       invoice_delivery: money(inv.delivery),
       invoice_discount: money(inv.discount),
@@ -306,6 +372,8 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
           seller_entity_id: map.seller_entity_id,
           purchase_order_id: po.id,
           note: `인보이스 대조 — ${po.po_number}`,
+          // §8-4 D-3: 구매자가 일으킨 전파 — 구매자 소유 행 밖(브랜드 공유 재료 등)은 건너뛴다(costSync)
+          actor: { entity_type: po.entity_type, entity_id: po.entity_id },
           ...actor
         }
       });

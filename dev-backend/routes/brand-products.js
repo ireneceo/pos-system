@@ -1237,6 +1237,16 @@ router.delete('/brand-products/:productId', authenticateToken, requireBGScope, a
     const product = await BrandProduct.findByPk(productId);
     if (!assertBGOwnsRow(product, req, res)) return;
 
+    // 🔴 레시피가 쓰는 재료는 지우지 않는다 (2026-09-11 Fable 판정) — 아래 `Ingredient.destroy` 가
+    //   이 프로덕트에서 복제된 재료 행을 지우면 CASCADE 로 레시피 줄이 흔적 없이 사라진다.
+    //   아무것도 지우기 **전에** 묻는다(자동 레시피 삭제보다 앞).
+    {
+      const { recipesUsingIngredients, inUseBody } = require('../utils/ingredientRecipeUsage');
+      const copies = await Ingredient.findAll({ where: { brand_product_id: productId }, attributes: ['id'] });
+      const usedBy = await recipesUsingIngredients(copies.map((c) => c.id));
+      if (usedBy.length) return res.status(409).json(inUseBody(usedBy, 'An ingredient made from this product'));
+    }
+
     // Delete auto recipe if exists
     if (product.product_recipe_id) {
       const { ProductRecipe: PR, ProductRecipeIngredient: PRI } = require('../models');
