@@ -15,6 +15,7 @@ import { fetchAPI } from '../../utils/api';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { sellerSpecLabel, stockSpecLabel } from '../../utils/unitConversion';
 
 import { getAuthToken } from '../../utils/auth';
 interface ProductIngredientsTabProps {
@@ -56,6 +57,11 @@ interface Ingredient {
     // 공급업체 자체 판매품목명·SKU (공급업체 타입만 값 있음; brand/foodcourt는 null)
     seller_product_name?: string | null;
     seller_product_sku?: string | null;
+    // 판매 상품 규격 — 칩에 «10 kg/BOX» 한 줄로 (서버 routes/product-ingredients.js include=sellers)
+    seller_unit?: string | null;
+    base_quantity?: number | string | null;
+    seller_package_unit?: string | null;
+    order_mode?: string | null;
     unit_price?: number;
     is_preferred?: boolean;
   }>;
@@ -70,6 +76,11 @@ interface SellerSource {
   // 공급업체 자체 판매품목명·SKU (공급업체 타입만 값 있음; brand/system_admin는 null → 폴백)
   seller_product_name?: string | null;
   seller_product_sku?: string | null;
+  // 판매 상품 규격 «10 kg/BOX» (서버 routes/product-ingredients.js seller-sources)
+  seller_unit?: string | null;
+  base_quantity?: number | string | null;
+  seller_package_unit?: string | null;
+  order_mode?: string | null;
   unit_price: number;
   unit_conversion: number;
   min_order_quantity: number;
@@ -811,15 +822,14 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                 </InfoRow>
                 {(() => {
                   const baseQty = Number(ingredient.base_quantity || 1);
-                  const pkgQty = Number(ingredient.package_quantity || 1);
-                  const pkgUnit = ingredient.package_unit || ingredient.unit;
                   const pending = !ingredient.package_unit;
                   const perUsage = baseQty > 0 ? Number(ingredient.unit_cost) / baseQty : null;
                   return (
                     <InfoRow>
                       <InfoLabel>{t('brand:productIngredientsTab.baseQty')}</InfoLabel>
                       <InfoValue>
-                        {pkgQty} {pkgUnit} = {baseQty} {ingredient.unit}
+                        {/* 규격 한 줄 «2000 g/pack» — 판매 상품·발주와 같은 함수 (2026-09-11 Irene 「모든 아이템 정보에 다 똑같이」) */}
+                        {stockSpecLabel(ingredient)}
                         {pending && <span style={{ color: '#9CA3AF', marginLeft: 6 }}>({t('brand:productIngredientsTab.pendingSpec')})</span>}
                         {perUsage != null && perUsage > 0 && (
                           <span style={{ color: '#6B7280', marginLeft: 6 }}>
@@ -849,6 +859,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                             {s.seller_name ? ` · ${s.seller_name}` : ''}
                             {s.seller_product_name ? ` · ${s.seller_product_name}` : ''}
                             {s.seller_product_sku ? ` · SKU: ${s.seller_product_sku}` : ''}
+                            {s.seller_unit ? ` · ${sellerSpecLabel(s)}` : ''}
                             {s.unit_price != null ? ` · ${formatCurrency(Number(s.unit_price), selectedCurrency)}` : ''}
                           </span>
                         ))}
@@ -1110,6 +1121,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                           <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
                             {src.seller_product_name || cat?.name || `Product #${src.seller_product_id}`}
                             {src.seller_product_sku ? ` · SKU: ${src.seller_product_sku}` : ''}
+                            {src.seller_unit ? ` · ${sellerSpecLabel(src)}` : ''}
                             {' · '}{formatCurrency(Number(src.unit_price), selectedCurrency)}
                             {Number(src.unit_conversion) && Number(src.unit_conversion) !== 1 ? ` · ×${Number(src.unit_conversion)}` : ''}
                           </div>

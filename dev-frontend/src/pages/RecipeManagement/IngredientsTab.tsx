@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { parseMinOrderQty } from '../../utils/unitConversion';
+import { parseMinOrderQty, sellerSpecLabel, stockSpecLabel } from '../../utils/unitConversion';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
@@ -84,6 +84,11 @@ interface Ingredient {
     // 공급업체 자체 판매품목명·SKU (공급업체 타입만 값 있음; brand/foodcourt는 null)
     seller_product_name?: string | null;
     seller_product_sku?: string | null;
+    // 판매 상품 규격 — 칩에 «10 kg/BOX» 한 줄로 (서버 routes/ingredients.js · restaurants-ingredients.js 가 이미 싣는다)
+    seller_unit?: string | null;
+    base_quantity?: number | string | null;
+    seller_package_unit?: string | null;
+    order_mode?: string | null;
     unit_price?: number;
     is_preferred?: boolean;
   }>;
@@ -1227,7 +1232,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 )}
                 <InfoRow>
                   <InfoLabel>{'Base Qty / Unit'}</InfoLabel>
-                  <InfoValue>{Number(ingredient.base_quantity || 1)} {ingredient.unit}</InfoValue>
+                  {/* 규격 한 줄 «2000 g/pack» — 판매 상품·발주와 같은 함수 (2026-09-11 Irene 「모든 아이템 정보에 다 똑같이」) */}
+                  <InfoValue>{stockSpecLabel(ingredient as any)}</InfoValue>
                 </InfoRow>
                 {(ingredient.supplier?.name || ingredient.supplier_name) && (
                   <InfoRow>
@@ -1261,6 +1267,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                                 {s.seller_name ? ` · ${s.seller_name}` : ''}
                                 {s.seller_product_name ? ` · ${s.seller_product_name}` : ''}
                                 {s.seller_product_sku ? ` · SKU: ${s.seller_product_sku}` : ''}
+                        {s.seller_unit ? ` · ${sellerSpecLabel(s)}` : ''}
                                 {/* 0 은 "공짜"가 아니라 **가격을 안 넣은 것**이다(운영 100건). 숫자로 찍으면 구분이 안 된다. */}
                                 {s.unit_price != null
                                   ? (Number(s.unit_price) > 0 ? ` · RM${Number(s.unit_price).toFixed(2)}` : ` · ${t('ingredients.linkPriceNotSet', '가격 미입력')}`)
@@ -1555,6 +1562,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                         {s.seller_name ? ` · ${s.seller_name}` : ''}
                         {s.seller_product_name ? ` · ${s.seller_product_name}` : ''}
                         {s.seller_product_sku ? ` · SKU: ${s.seller_product_sku}` : ''}
+                        {s.seller_unit ? ` · ${sellerSpecLabel(s)}` : ''}
                         {s.unit_price != null
                           ? (Number(s.unit_price) > 0 ? ` · ${formatCurrency(Number(s.unit_price), selectedCurrency)}` : ` · ${t('ingredients.linkPriceNotSet', '가격 미입력')}`)
                           : ''}
@@ -1721,7 +1729,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '16px' }}>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
               <div style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px' }}>{'Base Qty'}</div>
-              <div style={{ fontSize: '14px', fontWeight: 600 }}>{Number(detailIngredient.base_quantity || 1)} {detailIngredient.unit}</div>
+              <div style={{ fontSize: '14px', fontWeight: 600 }}>{stockSpecLabel(detailIngredient as any)}</div>
             </div>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
               <div style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px' }}>{'Current Stock'}</div>

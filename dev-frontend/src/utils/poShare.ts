@@ -7,7 +7,7 @@
  * ⚠ 오너 승인이 필요한 매장에서는 **승인 전에 보내면 안 된다**(docs/PURCHASE_ORDER_SYSTEM.md §G-5).
  *   Staging 은 승인 필요 시 발송 버튼을 잠그고, 승인 후 상세 페이지에서 발송한다.
  */
-import { lineSpecText } from './unitConversion';
+import { lineBaseText } from './unitConversion';
 
 interface SharePOItem {
   product_name?: string | null;
@@ -78,6 +78,55 @@ export function isRealSupplierSku(sku?: string | null): boolean {
   return !/^SP-\d+-\d+$/i.test(sku.trim());
 }
 
+/**
+ * 공급업체에게 나가는 문서에 **우리 재고 이름**이 대신 나갈 때(판매 상품 연결이 없는 줄) 끝의 한글 괄호를 뗀다.
+ * 판매 상품 이름(seller_product_name)은 **그대로** 쓴다 — Irene 2026-09-11 「원래 공급업체 아이템 이름이랑 우리 재고아이템 이름 달라」
+ * 「New Seoul Mart 만 영어(한글) 그대로」: 공급업체 상품 이름은 저장된 모양이 곧 공급업체에게 보일 모양이다.
+ * 우리 재고 이름은 «English (한글)» 이라, 연결 없는 줄에서만 한글을 뗀다.
+ * 끝에 붙은 **한 덩어리 괄호**에 한글이 있을 때만 뗀다 — «Green Chilli Padi(Cili Api Hijau) (청양고추(칠리파디))» 처럼
+ * 괄호 안에 괄호가 있어도 균형을 맞춰 찾는다. 가운데 박힌 한글·한글뿐인 이름은 그대로 둔다(빈칸 방지).
+ * ⛔ 서버 dev-backend/utils/sellerProductIdentity.js `supplierFacingName` 과 같은 규칙.
+ */
+export function supplierFacingName(name?: string | null): string {
+  const s = String(name || '').trim();
+  if (!s || !/[가-힣]/.test(s) || !/[)）]$/.test(s)) return s;
+  let depth = 0;
+  for (let i = s.length - 1; i >= 0; i--) {
+    const ch = s[i];
+    if (ch === ')' || ch === '）') depth++;
+    else if (ch === '(' || ch === '（') {
+      depth--;
+      if (depth === 0) {
+        const head = s.slice(0, i).trim();
+        return /[가-힣]/.test(s.slice(i)) && head ? head : s;
+      }
+    }
+  }
+  return s;
+}
+
+/**
+ * 발주 내용(POs)에 찍히는 줄 이름 — **판매자(공급업체) 상품 이름이 앞**, 우리 재고 이름은 뒤.
+ *
+ * Irene 2026-09-11 「POs에서부터 발주내용이니까 공급업체 이름으로야」 ·
+ *                  「발주관리에 나오는 우리 재고 리스트는 우리 이름 한글까지 나오는 거고」
+ *   → 발주 품목·입고 줄·반품 줄은 이 함수를, **재고 목록·발주 제안**은 우리 이름을 그대로 쓴다(이 함수 아님).
+ *
+ * 규칙: main = 판매 상품 이름, 없으면 우리 이름(옛 발주·브랜드 판매자는 판매 상품 이름이 없다).
+ *       sub  = main 과 다를 때의 우리 이름(«영문(한글)» — 주방이 알아보는 이름이라 지우지 않는다). 같으면 빈 문자열.
+ * ⛔ 이름 규칙을 화면마다 복사하지 말 것 — 서버 단일 소스는 utils/sellerProductIdentity.js 다.
+ */
+export function poItemName(item?: {
+  seller_product_name?: string | null;
+  ingredient_name?: string | null;
+  description?: string | null;
+} | null): { main: string; sub: string } {
+  const seller = (item?.seller_product_name || '').trim();
+  const ours = (item?.ingredient_name || item?.description || '').trim();
+  if (!seller) return { main: ours, sub: '' };
+  return { main: seller, sub: seller === ours ? '' : ours };
+}
+
 export function poItemLines(
   po: SharePO,
   formatQuantity: (q: any) => string,
@@ -85,8 +134,10 @@ export function poItemLines(
 ): string {
   return (po.items || []).map((it) => {
     const internalName = it.product_name || it.ingredient_name || ('Item #' + it.ingredient_id);
-    const mainName = it.seller_product_name || internalName;
-    const qty = `${formatQuantity(it.quantity_ordered)}${it.unit ? ' ' + it.unit : ''}`;
+    const mainName = it.seller_product_name || supplierFacingName(internalName);
+    // 2026-09-11 Irene 「1 kg X 2pack 발주할 때 내역은 이렇게」 — «10 kg × 3 BOX» (규칙 = unitConversion lineQtyText 와 같음)
+    const base = lineBaseText(it);
+    const qty = `${base ? base + ' × ' : ''}${formatQuantity(it.quantity_ordered)}${it.unit ? ' ' + it.unit : ''}`;
     const price = parseFloat(String(it.unit_price)).toFixed(2);
     const lineTotal = (Number(it.quantity_ordered) * Number(it.unit_price)).toFixed(2);
     const sku = isRealSupplierSku(it.seller_product_sku) ? `  [${it.seller_product_sku}]` : '';
@@ -94,9 +145,8 @@ export function poItemLines(
     //   나열되서 보기 어렵잖아. 이럴거면 그냥 한줄이 낫겠어" → 번호·줄바꿈 철회, **한 줄**로 환원.
     //   남기는 개선은 ①이름 굵게(원래 Irene 제안) ②단위 ③줄별 소계 ④머리말 품목 수.
     //   교훈: 정보를 더 넣는 것보다 **한 줄에서 이름이 먼저 읽히는 것**이 중요했다.
-    // 2026-09-11 Irene: «수량에 포장단위가 붙는거고» — 용량을 이름 뒤 괄호로: `- *Kimchi* (10 kg/BOX)  3 BOX × 48.00 = 144.00`
-    const spec = lineSpecText(it);
-    return `- ${bold(mainName)}${sku}${spec ? ` (${spec})` : ''}  ${qty} × ${price} = ${lineTotal}`;
+    //   한 줄: `- *Kimchi*  10 kg × 3 BOX @ 48.00 = 144.00` — 수량 표기에 «×» 가 들어가 가격 앞은 «@»(Staging 과 같음)
+    return `- ${bold(mainName)}${sku}  ${qty} @ ${price} = ${lineTotal}`;
   }).join('\n');
 }
 

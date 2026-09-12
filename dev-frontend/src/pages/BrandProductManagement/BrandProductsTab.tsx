@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { parseMinOrderQty, OrderMode, PACKAGE_UNIT_SUGGESTIONS } from '../../utils/unitConversion';
+import { parseMinOrderQty, OrderMode, PACKAGE_UNIT_SUGGESTIONS, CONTENT_UNIT_OPTIONS, withCurrentUnit, sellerSpecLabel } from '../../utils/unitConversion';
 import { getErrorMessage } from '../../utils/apiError';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
@@ -460,17 +460,6 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   // 판매가 빠진 것만 걸러 보기(요약 줄의 숫자 클릭). 건수는 거르기 전 기준으로 유지된다.
   const [showMissingPriceOnly, setShowMissingPriceOnly] = useState(false);
   const [productIngredientsList, setProductIngredientsList] = useState<{id: number; name: string; unit: string; unit_cost: number}[]>([]);
-
-  const unitOptions = [
-    { value: 'kg', label: 'kg' },
-    { value: 'g', label: 'g' },
-    { value: 'L', label: 'L' },
-    { value: 'ml', label: 'ml' },
-    { value: 'piece', label: 'piece' },
-    { value: 'pack', label: 'pack' },
-    { value: 'can', label: 'can' },
-    { value: 'bottle', label: 'bottle' }
-  ];
 
   const getToken = useCallback(() => getAuthToken(), []);
 
@@ -1062,7 +1051,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                 {product.unit && (
                   <DetailRow>
                     <DetailLabel>{'Unit'}</DetailLabel>
-                    <DetailValue>{product.unit}</DetailValue>
+                    {/* 규격 한 줄 «10 kg/BOX» (2026-09-11 Irene 「1kg/pack 이런식으로」) */}
+                    <DetailValue>{sellerSpecLabel({ seller_unit: product.unit, base_quantity: product.base_quantity, seller_package_unit: product.package_unit, order_mode: product.order_mode })}</DetailValue>
                   </DetailRow>
                 )}
                 <DetailRow>
@@ -1227,8 +1217,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                   required
                 >
                   <option value="">{'Select unit'}</option>
-                  {unitOptions.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  {/* 내용물 단위만(kg·g·L·ml·piece). 포장 이름은 Package Unit 칸 — 옛 상품의 값은 그대로 남긴다. */}
+                  {withCurrentUnit(CONTENT_UNIT_OPTIONS, formData.unit).map(u => (
+                    <option key={u} value={u}>{u}</option>
                   ))}
                 </FormSelect>
               </UIFormGroup>
@@ -1282,8 +1273,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                   {formData.order_mode === 'measure'
                     ? t('products.orderMode.measureHint', "Buyers order like '2.5 {{unit}}'", { unit: formData.unit || 'kg' })
                     : t('products.orderMode.packHint', "Buyers order like '3 units'{{spec}}", {
-                        spec: formData.base_quantity && formData.unit
-                          ? ` (${formData.base_quantity}${formData.unit}/${formData.package_unit.trim() || 'unit'})` : ''
+                        spec: formData.unit
+                          ? ` (${sellerSpecLabel({ seller_unit: formData.unit, base_quantity: formData.base_quantity || 1, seller_package_unit: formData.package_unit, order_mode: formData.order_mode })})` : ''
                       })}
                 </OrderModeHint>
               </UIFormGroup>

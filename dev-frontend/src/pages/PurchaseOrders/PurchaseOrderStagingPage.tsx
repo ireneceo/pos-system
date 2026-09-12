@@ -18,7 +18,7 @@ import { Button } from '../../components/UI/Button';
 import { Modal } from '../../components/UI/Modal';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
-import { formatQuantity, lineSpecText } from '../../utils/unitConversion';
+import { formatQuantity, lineQtyText } from '../../utils/unitConversion';
 import { formatDateTime } from '../../utils/dateFormat';
 import { useStore } from '../../contexts/StoreContext';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
@@ -523,9 +523,8 @@ const PurchaseOrderStagingPage: React.FC = () => {
                 {isRealSupplierSku(it.seller_product_sku) && (
                   <span style={{ color: '#6B7280' }}> [{it.seller_product_sku}]</span>
                 )}
-                {/* 2026-09-11 Irene: «기본용량 포장단위가 있고 거기에 수량이 올라가는 거잖아» — 용량 · × 수량 포장단위 */}
-                {lineSpecText(it) && <span style={{ color: '#4B5563' }}> · {lineSpecText(it)}</span>}
-                {' '}· × {formatQuantity(it.quantity_ordered)}{it.unit ? ` ${it.unit}` : ''} @ {parseFloat(it.unit_price).toFixed(2)}
+                {/* 2026-09-11 Irene 「1 kg X 2pack 발주할 때 내역은 이렇게 나오면 되지. 1kg/pack 이 표기는 아이템/상품 정보에」 — «10 kg × 2 carton» */}
+                {' '}· {lineQtyText(it, it.quantity_ordered)} @ {parseFloat(it.unit_price).toFixed(2)}
                 {' '}= {(it.line_total != null ? Number(it.line_total) : Number(it.quantity_ordered) * Number(it.unit_price)).toFixed(2)}
               </span>
               <button type="button" onClick={() => removeItem(po.id, it.id)} title={t('staging.removeItem', 'Remove item') as string}

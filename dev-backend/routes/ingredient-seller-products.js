@@ -92,7 +92,7 @@ router.get('/ingredients/:ingredientId/seller-sources', async (req, res) => {
     const SupplierProduct = require('../models/SupplierProduct');
     const spIds = [...new Set(sources.filter(r => r.seller_type === 'supplier' && r.seller_product_id).map(r => r.seller_product_id))];
     const spMap = spIds.length
-      ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(s => [s.id, s]))
+      ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'package_unit', 'order_mode'], paranoid: false })).map(s => [s.id, s]))
       : {};
     // 가격 이력 (설계 §6) — 목록 1회에 그룹 쿼리 1개. 라인마다 호출하지 않는다.
     const { priceHistoryForMappings, trendAgainst } = require('../services/priceHistory');
@@ -106,6 +106,11 @@ router.get('/ingredients/:ingredientId/seller-sources', async (req, res) => {
         ...j,
         seller_product_name: sp?.name || null,
         seller_product_sku: sp?.sku || null,
+        // 판매 상품 규격 «10 kg/BOX» (2026-09-11 Irene 「모든 아이템 정보에 다 똑같이」) — 연결 표에는 같은 이름 칸이 없다
+        seller_unit: sp?.unit ?? null,
+        base_quantity: sp?.base_quantity != null ? parseFloat(sp.base_quantity) : null,
+        seller_package_unit: sp?.package_unit ?? null,
+        order_mode: sp?.order_mode || null,
         // 지난번 실제로 낸 값 대비 지금 가격 — 화면은 ▲/▼/— 로만 표시한다(RA 기하 글리프 표준)
         price_history: h ? { ...h, ...trendAgainst(j.unit_price, h) } : null
       };

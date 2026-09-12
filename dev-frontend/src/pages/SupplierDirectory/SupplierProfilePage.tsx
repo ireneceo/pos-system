@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { parseMinOrderQty, PACKAGE_UNIT_SUGGESTIONS, sellerSpecText, sellerOrderUnitOf } from '../../utils/unitConversion';
+import { parseMinOrderQty, PACKAGE_UNIT_SUGGESTIONS, CONTENT_UNIT_OPTIONS, withCurrentUnit, sellerSpecText, sellerOrderUnitOf } from '../../utils/unitConversion';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -23,6 +23,7 @@ interface ProductRow {
   unit?: string | null;
   base_quantity?: number | string | null;   // 취급 기준숫자(용량) — «10 kg/BOX» 의 10
   package_unit?: string | null;             // 기준단위(포장) — «10 kg/BOX» 의 BOX
+  order_mode?: string | null;               // 무게 주문(measure)이면 kg 자체가 수량 단위
   unit_price: number;
   min_order_quantity?: number | null;
   category_id?: number | null;
@@ -722,8 +723,12 @@ const SupplierProfilePage: React.FC = () => {
                   {p.sku && <ProductMeta>SKU: {p.sku}</ProductMeta>}
                   <ProductPrice>
                     {formatCurrency(Number(p.unit_price) || 0, p.currency || profile.currency || 'MYR')}
-                    {p.unit && ` /${p.unit}`}
+                    {p.unit && ` /${sellerOrderUnitOf({ seller_unit: p.unit, base_quantity: p.base_quantity, seller_package_unit: p.package_unit, order_mode: p.order_mode })}`}
                   </ProductPrice>
+                  {/* 규격 한 줄 «10 kg/BOX» (2026-09-11 Irene 「1kg/pack 이런식으로」) */}
+                  {sellerSpecText({ seller_unit: p.unit, base_quantity: p.base_quantity, seller_package_unit: p.package_unit, order_mode: p.order_mode }) && (
+                    <ProductMeta>{sellerSpecText({ seller_unit: p.unit, base_quantity: p.base_quantity, seller_package_unit: p.package_unit, order_mode: p.order_mode })}</ProductMeta>
+                  )}
                   {p.min_order_quantity != null && Number(p.min_order_quantity) > 0 && (
                     <ProductMeta>{t('profile.moq', { n: Number(p.min_order_quantity) })}</ProductMeta>
                   )}
@@ -814,7 +819,8 @@ const SupplierProfilePage: React.FC = () => {
             <UIFormGroup style={{ flex: 1 }}>
               <FormLabel>{t('extProduct.unit', { defaultValue: 'Unit' })}</FormLabel>
               <FormSelect value={productForm.unit} onChange={(e) => setProductForm({ ...productForm, unit: e.target.value })}>
-                {['kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'].map(u => <option key={u} value={u}>{u}</option>)}
+                {/* 내용물 단위만 — 포장 이름은 아래 Package unit 칸. 옛 상품의 값은 그대로 남긴다. */}
+                {withCurrentUnit(CONTENT_UNIT_OPTIONS, productForm.unit).map(u => <option key={u} value={u}>{u}</option>)}
               </FormSelect>
             </UIFormGroup>
           </div>

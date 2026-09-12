@@ -324,6 +324,43 @@ module.exports = {
       badConv === 0,
       badConv ? `${badConv}줄 — 곱셈이 컬럼 한계를 넘겨 마이그·배포를 세운다` : '');
 
+    // ING-UNI-025 (차단): 활성 행의 원가가 **판매자 가격으로 계산한 값**과 3배 이상 어긋나지 않을 것.
+    //   2026-09-11 운영 사고: 원가식이 기준양을 한 번 더 곱해 MSG 18.8 → 18,800 등 20행이 ×510~×3000 으로 부풀었다
+    //   (원인 services/costSync.js convertPrice · 반증 tests/cost-sync.test.js). 원인이 무엇이든 부풀거나 쪼그라든 결과 자체를 잡는다(Fable 판정 ④-b).
+    //   계산은 costSync 와 **같은 함수·같은 매핑 선택**(선호 → 최근 · 판매자 현재가 → 없으면 매핑 사본)을 쓴다 — 규칙이 둘로 갈라지지 않게.
+    //   판매자 연결이 없거나 단위가 호환 안 되는 행은 비교할 수 없어 세지 않는다 — 몇 행을 비교했는지 detail 에 남긴다.
+    //   단위 주의: 원가는 기준양 전체 가격(RM), 비교는 배수(무차원), 세는 것은 행 수(건).
+    const { convertPrice } = require('../../../services/costSync');
+    const driftRows = [];
+    let compared = 0;
+    for (const [table, fk] of [['product_ingredients', 'product_ingredient_id'], ['ingredients', 'ingredient_id']]) {
+      const rows = await q(`SELECT t.id, t.name, t.unit, t.base_quantity, t.unit_cost,
+          (SELECT CONCAT_WS('|', COALESCE(NULLIF(COALESCE(sp.unit_price, bp.unit_price, fp.unit_price), 0), isp.unit_price),
+                                 COALESCE(sp.unit, bp.unit, fp.unit), COALESCE(sp.base_quantity, bp.base_quantity, fp.base_quantity))
+             FROM ingredient_seller_products isp
+             LEFT JOIN supplier_products sp ON sp.id = isp.seller_product_id AND isp.seller_type = 'supplier'
+             LEFT JOIN brand_products bp ON bp.id = isp.seller_product_id AND isp.seller_type = 'brand'
+             LEFT JOIN foodcourt_products fp ON fp.id = isp.seller_product_id AND isp.seller_type = 'foodcourt'
+            WHERE isp.${fk} = t.id AND isp.is_active = 1
+              AND (isp.unit_price > 0 OR sp.unit_price > 0 OR bp.unit_price > 0 OR fp.unit_price > 0)
+            ORDER BY isp.is_preferred DESC, isp.id DESC LIMIT 1) AS seller
+        FROM ${table} t WHERE t.is_active = 1 AND t.unit_cost > 0`);
+      for (const r of rows) {
+        if (!r.seller) continue;
+        const [price, sellerUnit, sellerBase] = String(r.seller).split('|');
+        const calc = convertPrice({ sellerPrice: price, sellerUnit, sellerBase, myUnit: r.unit, myBase: r.base_quantity });
+        if (!(calc.cost > 0)) continue;
+        compared += 1;
+        const ratio = Number(r.unit_cost) / calc.cost;
+        if (ratio >= 3 || ratio <= 1 / 3) driftRows.push(`${table}#${r.id} ${String(r.name).slice(0, 24)} ${Number(r.unit_cost)} ↔ 계산 ${calc.cost} (×${Math.round(ratio * 100) / 100})`);
+      }
+    }
+    add('ING-UNI-025 원가 = 판매자 가격 계산값 (3배 이상 어긋난 활성 행 0)',
+      driftRows.length === 0,
+      driftRows.length
+        ? `${driftRows.length}행 / 비교 ${compared}행 — 레시피 원가가 그만큼 틀린다. 예: ${driftRows.slice(0, 5).join(' · ')}`
+        : `비교 ${compared}행`);
+
     // ── 옛 부채 목록 (비차단) — CUTOFF **이전** 전수 ─────────────────────────────
     //   차단하지 않는 이유는 위 CUTOFF 주석에 있다. 건수가 줄어드는 것이 정리의 진행 지표다.
     const dupOld = await cnt(`SELECT COUNT(*) c FROM (

@@ -297,13 +297,14 @@ router.get('/purchase-orders/:id/pdf', async (req, res) => {
       const qty = parseFloat(it.quantity_ordered) || 0;
       const unitPrice = parseFloat(it.unit_price) || 0;
       return {
-        // Supplier's own product name is primary (they receive this doc); our internal
-        // name is shown as a buyer reference only when it differs.
-        name: sp?.name || internalName,
-        sku: sp?.sku || '',
-        buyer_ref: sp?.name ? internalName : '',
-        // 주문 시점 용량 «10 kg/BOX» — 줄 스냅샷에서만 (utils/poLineSpec.js). 옛 줄은 빈칸.
-        spec: require('../utils/poLineSpec').lineSpecText(it),
+        // Supplier's own product name is primary (they receive this doc).
+        // 2026-09-11 Irene — 공급업체 상품 이름은 저장된 그대로(「New Seoul Mart 만 영어(한글)」) · 연결 없는 줄의 우리 재고 이름만 끝의 한글 괄호를 뗀다.
+        //   인쇄 화면·WhatsApp 과 같은 원칙(2026-08-31): 우리 내부명 «Buyer ref» 는 싣지 않고, 우리 자동채번 SKU(SP-…)는 숨긴다.
+        name: sp?.name || require('../utils/sellerProductIdentity').supplierFacingName(internalName),
+        sku: sp?.sku && !/^SP-\d+-\d+$/i.test(String(sp.sku).trim()) ? sp.sku : '',
+        // 발주 내역 수량 «10 kg × 2 carton» — 줄 스냅샷에서만 (utils/poLineSpec.js lineQtyText). 옛 줄은 «2 carton».
+        //   Irene 2026-09-11 「1 kg X 2pack 발주할 때 내역은 이렇게 … 1kg/pack 이 표기는 아이템/상품 정보에」
+        qty_text: require('../utils/poLineSpec').lineQtyText(it, it.quantity_ordered, internal?.unit),
         // 발주 줄 단위(공급업체 기준, 서버 resolveOrderUnit 가 저장)가 우선이다. 재료 취급단위(g)는
         // 옛 줄에 단위가 비어 있을 때만 쓴다 — 공급업체가 받는 문서에 우리 레시피 단위가 찍히면 안 된다.
         unit: it.unit || internal?.unit || '',
@@ -362,10 +363,10 @@ td { padding: 10px 12px; border-bottom: 1px solid #F3F4F6; font-size: 13px; }
   </div>
 </div>
 <table>
-  <thead><tr><th>Item</th><th>SKU</th><th class="num">Qty</th><th>Unit</th><th class="num">Unit Price</th><th class="num">Total</th></tr></thead>
+  <thead><tr><th>Item</th><th>SKU</th><th class="num">Qty</th><th class="num">Unit Price</th><th class="num">Total</th></tr></thead>
   <tbody>
-    ${items.map(i => `<tr><td>${i.name}${i.spec ? `<div style="font-size:12px;color:#374151;margin-top:2px;">${i.spec}</div>` : ''}${i.buyer_ref ?`<div style="font-size:11px;color:#9CA3AF;margin-top:2px;">Buyer ref: ${i.buyer_ref}</div>` : ''}</td><td>${i.sku || '—'}</td><td class="num">${i.qty}</td><td>${i.unit}</td><td class="num">${i.unit_price.toFixed(2)}</td><td class="num">${i.line_total.toFixed(2)}</td></tr>`).join('')}
-    <tr class="total-row"><td colspan="5" class="num">Total (${po.currency || 'MYR'})</td><td class="num">${subtotal.toFixed(2)}</td></tr>
+    ${items.map(i => `<tr><td>${i.name}</td><td>${i.sku || '—'}</td><td class="num">${i.qty_text}</td><td class="num">${i.unit_price.toFixed(2)}</td><td class="num">${i.line_total.toFixed(2)}</td></tr>`).join('')}
+    <tr class="total-row"><td colspan="4" class="num">Total (${po.currency || 'MYR'})</td><td class="num">${subtotal.toFixed(2)}</td></tr>
   </tbody>
 </table>
 ${po.notes ? `<div class="notes"><h3>Notes</h3>${po.notes.replace(/\n/g, '<br>')}</div>` : ''}

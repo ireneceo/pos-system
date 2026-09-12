@@ -47,6 +47,7 @@ import { getErrorMessage } from '../../utils/apiError';
 import AlertDialog from '../../components/Common/AlertDialog';
 import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoicePayAction';
 import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
+import { sortInvoicesRecentFirst, invoiceListDateMs } from '../../utils/invoiceListOrder';
 // ConfirmDialog removed (only used by old SoaBundleRow Pay All)
 interface AdditionalCharge {
   name: string;
@@ -752,7 +753,8 @@ const RestaurantInvoicesPage: React.FC = () => {
       //     (to_pay 탭이 기간 'all' 인 것과 같은 철학 — 액션 필요한 건 안 가린다.)
       //  ② 발행일이 없거나 파싱 불가한 인보이스: 조용히 목록에서 빠지는 사고 방지.
       const ACTIONABLE = ['pending_payment', 'overdue', 'payment_submitted', 'sent'];
-      const invoiceDate = new Date(invoice.issueDate);
+      // 2026-09-11 Irene 「최근 주문일 기준으로 리스트업」 — 구입 청구서는 발주 주문일, 나머지는 발행일(utils/invoiceListOrder)
+      const invoiceDate = new Date(invoiceListDateMs(invoice));
       const startDate = new Date(dateRange.start);
       const endDate = new Date(dateRange.end);
       endDate.setHours(23, 59, 59, 999);
@@ -765,8 +767,9 @@ const RestaurantInvoicesPage: React.FC = () => {
     });
   };
 
-  const filteredAllInvoices = filterInvoices(allInvoices);
-  const filteredInvoicesToPay = filterInvoices(invoicesToPay);
+  // 최신 → 오래된 순(구입 청구서는 발주 주문일 기준). 서버 순서(createdAt)는 한꺼번에 만든 청구서끼리 섞인다.
+  const filteredAllInvoices = sortInvoicesRecentFirst(filterInvoices(allInvoices));
+  const filteredInvoicesToPay = sortInvoicesRecentFirst(filterInvoices(invoicesToPay));
 
   // Client-side pagination (long invoice lists were rendered unpaginated).
   const allPg = usePagination(filteredAllInvoices, 20);

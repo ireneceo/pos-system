@@ -24,7 +24,7 @@ import {
   parseInvoiceText, parseInvoiceHeader, matchInvoiceToPo, shouldAutoFill, MatchResult, MatchReason, PoLine
 } from '../../utils/invoiceMatcher';
 import { readInvoiceText } from '../../utils/invoiceOcr';
-import { lineSpecText } from '../../utils/unitConversion';
+import { lineQtyText } from '../../utils/unitConversion';
 import DateField from '../../components/Common/DateField';
 
 interface ReconcileItem extends PoLine {
@@ -821,8 +821,8 @@ const InvoiceReconcilePage: React.FC = () => {
                   <Cell>
                     <div style={{ fontWeight: 600 }}>{it.seller_product_name || it.description || `#${it.id}`}</div>
                     <Muted>
-                      {t('reconcile.orderedQty', '발주')} {String(it.quantity_ordered)} {it.unit || ''}
-                      {lineSpecText(it) ? ` · ${lineSpecText(it)}` : ''}
+                      {/* 2026-09-11 Irene 「1 kg X 2pack 발주할 때 내역은 이렇게」 — «발주 10 kg × 2 carton» */}
+                      {t('reconcile.orderedQty', '발주')} {lineQtyText(it, it.quantity_ordered)}
                       {m && (
                         <> · <StateTag tone={m.state === 'matched' ? 'ok' : m.state === 'needs_check' ? 'warn' : 'none'}>
                           {m.state === 'matched' ? `● ${t('reconcile.state.matched', '맞음')}`

@@ -1,0 +1,37 @@
+{
+ "tag": "2026-09-11-supplier-catalog-align",
+ "resolves": [],
+ "in_progress": "운영 DB 반영은 배포 뒤 — 운영 DB 로 검토표를 다시 만들어 확인필요 행·새 공급업체 등록 주체를 Irene 에게 받은 다음 apply --commit",
+ "completed": [
+  "공급업체에게 나가는 발주 문서(WhatsApp·인쇄·PDF·메일·수신 화면): 판매 상품 이름을 저장된 그대로(New Seoul Mart 만 «영문 (한글)» 로 정리 예정), 연결 없는 줄의 우리 재고 이름만 끝의 한글 괄호 제거, «Buyer ref» 제거, 인쇄·PDF 는 수량과 단위를 한 칸(«3 pack»), PDF 는 우리 자동채번 SKU(SP-…) 숨김",
+  "규격 한 줄 표시 «10 kg/BOX»·«1 bottle» — 공급업체·브랜드·외부 공급업체 프로필·푸드코트 상품 카드, 매장 재료·브랜드 재고아이템 카드, 재고 카드의 발주처 칩. 용량 미상(piece·1·포장 이름)은 «1 bottle» 로 접는다(화면·서버 같은 규칙)",
+  "상품 폼 취급단위 선택지를 kg·g·L·ml·piece 로 분리(옛 상품의 포장 이름 값은 그대로 보임) · 포장단위 제안에 tub·drum·roll·bundle·sheet 추가",
+  "외부 공급업체 상품 목록 정렬 도구 scripts/catalog-alignment.js — 검토표(쓰기 없음)·적용(기본 연습, --commit)·되돌리기. 가격 2배 이상/절반 이하 변동·해석 불가 표기·짝 후보 2개·한글이 다른 물건인 행은 자동 수정하지 않고 확인필요. 지난 발주 줄은 받은 줄 라벨·규격만, 안 받은 줄은 환산값까지 채움"
+ ],
+ "issues": [
+  "이 배포는 코드만 올린다 — 운영 공급업체 상품 이름·규격·가격·연결 환산값·지난 발주 줄은 배포 뒤 별도 단계(검토표 → Irene 답 → apply)에서 바뀐다",
+  "개발 시험 잔여: dev DB 에 시험으로 만든 공급업체 4 · 계약 4 · 상품 40 이 soft delete 상태로 남음(화면에 안 보임)",
+  "화면 고장주입을 빌드 뒤에 해서 한 번 더 빌드했다(규칙 «프론트 고장주입은 빌드 전» 위반 · 내용 원복 sha256 일치)"
+ ],
+ "upcoming": [
+  "운영 반영: 운영 DB 로 검토표 재생성 → 확인필요 행·새 공급업체 Hero Market·Mr. DIY 등록 주체·냅킨 carton 가격·지난 발주 채움 방식 Irene 확인 → apply --commit → 읽어서 대조",
+  "별도 사안: 발주 33 소규모 정리(순두부 재고 6 g→1,800 g·원가·재료 단위 5) · 기존 재료·재고아이템 단위 수렴 후보 보고서(세기만)"
+ ],
+ "behavior_changes": [
+  "공급업체에게 가는 PDF 발주서에 «Buyer ref: 우리 내부 이름» 줄이 없어지고, 수량 칸이 «10 kg» 처럼 단위를 붙여 나온다(Unit 칸 없음). 인쇄 화면도 같다",
+  "상품·재료 카드의 «Unit» 이 «10 kg/BOX» 한 줄로 보이고, 재고 카드 발주처 칩에 규격이 붙는다",
+  "상품 등록/수정 폼의 단위 선택지에서 pack·can·bottle·box·carton 이 빠진다(포장 이름은 Package Unit 칸) — 이미 그런 값인 상품은 그대로 선택돼 보인다"
+ ],
+ "check_areas": [
+  "발주 상세 → PDF·인쇄: 이름·SKU·수량 칸(«3 pack»)",
+  "공급업체 상품 탭·브랜드 상품 탭·외부 공급업체 프로필: 카드 규격 줄과 폼 단위 선택지",
+  "재고(재료) 카드와 브랜드 재고아이템 카드: 규격 줄·발주처 칩"
+ ],
+ "verification": {
+  "sw_version": "5.11-supplier-catalog-align-20260911",
+  "gates": "verify-all --full 19/19 (1차 17/19 는 deploy-ready·번들 신선도 — 배포 전·빌드 순서 문제, 재빌드·SW 상승·기록 뒤 전부 통과) · mount sweep 은 번들 동일로 18:32 통과(686s 크래시 0) 재사용 · print-guard 8/8 · design-guard 신규 0 · 빌드 새 경고 0",
+  "tests": "jest 서버 catalog-spec-parser 25 · po-line-spec 4 · supplier-facing-name 5 · 화면 packSpec 19 · 고장주입 6건 성립(stale 대조 exit 3·DB 무변경 / 해석 불가 / 짝 2개 / 서버 접기 / 화면 접기 / 받은 줄 환산 보호) · 원복 sha256 일치",
+  "real_browser": "dev API 실호출 11/11(PDF·메일·seller-sources·include=sellers) · dev DB 목록 적용→되돌리기 스냅샷 일치 · 지난 발주 줄 submitted(환산까지)/received(라벨·규격만, 환산 무접촉) 적용→되돌리기 원복 일치 · mount sweep 686s 크래시 0",
+  "fable_note": "Fable 게이트 조건부 통과 — 보정 1(가격 배수 check)·보정 2(지난 발주 줄: received 환산 무접촉) 반영 후 빌드·전체검증 재실행 결과로 마커. 마커 note: catalog-alignment 게이트 — 가격배수 check · 지난 발주 줄 received 환산 무접촉 증명"
+ }
+}

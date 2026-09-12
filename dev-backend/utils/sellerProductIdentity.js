@@ -61,4 +61,29 @@ async function attachSellerProductIdentity(pos) {
   }
 }
 
-module.exports = { attachSellerProductIdentity };
+/**
+ * 공급업체에게 나가는 문서에 **우리 재고 이름**이 대신 나갈 때(판매 상품 연결 없는 줄)만 쓴다 — 판매 상품 이름은 저장된 그대로
+ * (Irene 2026-09-11 「원래 공급업체 아이템 이름이랑 우리 재고아이템 이름 달라」「New Seoul Mart 만 영어(한글) 그대로」).
+ * 우리 재고 이름은 «English (한글)». 끝에 붙은 한 덩어리 괄호(안에 괄호가 있어도 균형으로 찾음)에
+ * 한글이 있을 때만 뗀다. 가운데 박힌 한글·한글뿐인 이름은 그대로(빈칸 방지).
+ * ⛔ 화면 dev-frontend/src/utils/poShare.ts `supplierFacingName` 과 같은 규칙.
+ */
+function supplierFacingName(name) {
+  const s = String(name || '').trim();
+  if (!s || !/[가-힣]/.test(s) || !/[)）]$/.test(s)) return s;
+  let depth = 0;
+  for (let i = s.length - 1; i >= 0; i--) {
+    const ch = s[i];
+    if (ch === ')' || ch === '）') depth++;
+    else if (ch === '(' || ch === '（') {
+      depth--;
+      if (depth === 0) {
+        const head = s.slice(0, i).trim();
+        return /[가-힣]/.test(s.slice(i)) && head ? head : s;
+      }
+    }
+  }
+  return s;
+}
+
+module.exports = { attachSellerProductIdentity, supplierFacingName };

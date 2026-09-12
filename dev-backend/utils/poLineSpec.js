@@ -47,7 +47,8 @@ function sellerOrderLine(sp, stockRow) {
     || (sp.unit && bq !== null && bq > 0 && bq !== 1 ? 'pack' : '')
     || content
     || stockUnit;
-  const hasSpec = !!sp.unit && bq !== null && bq > 0 && !(bq === 1 && lower(sp.unit) === lower(unit));
+  // «1 piece/bottle»(용량 미상 개수 상품)도 스냅샷 없이 «× 2 bottle» 로 — 화면 unitConversion.ts sellerSpecText 와 같은 접기 (2026-09-11 Fable)
+  const hasSpec = !!sp.unit && bq !== null && bq > 0 && !(bq === 1 && (lower(sp.unit) === lower(unit) || lower(sp.unit) === 'piece'));
   return { unit: unit || null, base_quantity: hasSpec ? bq : null, base_unit: hasSpec ? sp.unit : null };
 }
 
@@ -78,7 +79,22 @@ function lineSpecText(line) {
   if (!line) return '';
   const bq = num(line.base_quantity);
   if (!line.base_unit || bq === null || !(bq > 0)) return '';
+  if (bq === 1 && lower(line.base_unit) === 'piece') return ''; // «1 piece/bottle» 는 접는다
   return `${fmtQty(bq)} ${line.base_unit}${line.unit ? '/' + line.unit : ''}`;
+}
+
+/**
+ * 발주 **내역**의 수량 표기 «10 kg × 2 carton» (2026-09-11 Irene 「1 kg X 2pack 발주할 때 내역은 이렇게 나오면 되지. 1kg/pack 이 표기는 아이템/상품 정보에」).
+ * 용량 스냅샷이 없는 줄(옛 줄·무게 주문·«1 piece» 접기)은 «2 carton» 만. 화면 unitConversion.ts lineQtyText 와 같은 규칙.
+ */
+function lineQtyText(line, quantity, fallbackUnit) {
+  const unit = (line && line.unit) || fallbackUnit || '';
+  const q = `${fmtQty(num(quantity) || 0)}${unit ? ' ' + unit : ''}`;
+  if (!line) return q;
+  const bq = num(line.base_quantity);
+  if (!line.base_unit || bq === null || !(bq > 0)) return q;
+  if (bq === 1 && lower(line.base_unit) === 'piece') return q;
+  return `${fmtQty(bq)} ${line.base_unit} × ${q}`;
 }
 
 /** 폼에서 온 포장단위 — 자유 입력(인보이스의 Btl·PKT·Tin 을 그대로 받는다). 빈 값은 null. */
@@ -89,4 +105,4 @@ function normalizePackageUnit(v) {
   return s || null;
 }
 
-module.exports = { sellerOrderLine, resolveOrderLine, lineSpecText, normalizePackageUnit, SELLER_PRODUCT_MODEL };
+module.exports = { sellerOrderLine, resolveOrderLine, lineSpecText, lineQtyText, normalizePackageUnit, SELLER_PRODUCT_MODEL };

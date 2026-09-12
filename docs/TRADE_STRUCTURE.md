@@ -12,6 +12,10 @@
 2. **K-소스 → GIT 이 직접 만든다**: 프로덕트에만 있고, 거기 **프로덕트 레시피**가 붙고, 레시피가 재료를 가리키고, 그 재료가 GIT 재고이고, 재고가 공급업체와 연결된다. GIT 의 원가 = 레시피 재료비 합계.
 3. **GIT → 매장(K-DINE IPC · with MIN Cafe …)**: 위 어느 경우든 **매장에게 공급업체는 GIT** 이다. **매장 원가 = GIT 판매가.** 끝.
 
+> **적용 조건 = GIT 프로덕트가 있을 때** (2026-09-11 실측·Fable 판정). GIT 가 팔지 않는 물건이면 3번이 걸리지 않는다 —
+> 브랜드가 등록해 준 외부 공급업체를 **매장이 상속받아 직접 발주**하는 것이 설계된 경로다(`docs/SUPPLIER_CONTRACT_SYSTEM.md §G` · `routes/supplier-directory.js:1203-1211`).
+> 운영 실례: 컵·뚜껑은 UGS → GIT 프로덕트 185·186 → 매장(판매자 GIT) 로 이어지고, **티슈는 GIT 프로덕트가 없어 매장 10 이 IKEA 에 직접 발주**(PO-R10-20260828-003, 입고 완료)했다. 둘 다 정상이다.
+
 > Irene 원문(2026-09-04): "UGS는 GIT 의 공급업체이고 이 상품을 프로덕트로 등록하면 K-DINE IPC나 위드민은 GIT가 공급업체지. …
 > K소스 시리즈는 GIT가 직접 제조하는 제품이니까 그냥 프로덕트에만 있고 레시피가 있고 그게 재료가 연결되어 재료들이 재고이고 그게 공급업체랑 연결된거고.
 > 레스토랑들에는 GIT가 공급업체인건 동일하지"
@@ -141,6 +145,16 @@
       ⚠ 구매자 재고행 단위를 판매자 내용물 단위 **앞에 두지 않는다** — 재고행 `package_unit` 에 취급단위(g)가 복사돼 있는 경우가 대부분이라(dev 실측) 9/7 에 고친 «2 g» 가 되살아난다.
     - 같은 날 결함: 옛 `resolveOrderUnit` 이 supplier 상품을 매장 메뉴 표(`products`)에서 찾아, 번호가 겹치면 `stock_unit` 기본값 `piece` 가 찍혔다(운영 `Kimchi × 2 piece`). 판매자 종류 → 판매 상품 표 매핑으로 수정.
     - 이행 `scripts/migrate-seller-package-unit.js`(멱등): `unit` 에 pack/piece/bottle/can 이 있고 `base_quantity`=1 인 판매 상품만 **빈 `package_unit` 에** 복사. `unit` 무접촉.
+  - **판매 상품 규격 표기·어휘** (2026-09-11 Fable 설계 · Irene 「fable 권고대로」 확정 — 5·6칸=예전 값·마지막 칸 저장 / 공급업체 문서 영문만 / 포장단위 풀네임 통일 / 가격 목록 기준 덮어쓰기(빈 칸 유지))
+    Irene 원문: 「영문(한글) 이렇게 이름 좀 다 맞춰줘. 단위도 여기 표시되는 거 포장단위야. … 모든 곳에 포장기준단위 표시가 각각 따로 있어서 헷갈리는데 붙여두고 알기 쉽게 좀 안돼? 1kg/pack 이런식으로, 그리고 수량을 1pack, 2pack, 이렇게 올리는 거지.」
+    - **새 칸·새 표 없음.** 위 세 칸(`unit`·`base_quantity`·`package_unit`)을 **한 줄로 붙여 보여줄 뿐**이다 — 규격 `1 kg/pack`, 수량 `× 2 pack`. 표시 함수는 이미 있다(서버 `poLineSpec.js` · 화면 `unitConversion.ts` `sellerSpecText`/`lineSpecText`). 결함은 화면마다 칸을 따로 보여주는 것과, 폼의 취급단위 선택지에 포장단위(pack·can·bottle·box·carton)가 섞인 것(`SupplierProductsTab.tsx` UNIT_OPTIONS).
+    - **이름** (Irene 추가 지시로 교체, 2026-09-11): 판매 상품 `name` = **공급업체가 부르는 이름(영문)**. Irene 「아이템명은 공급업체쪽에는 영어만 표시되면 돼. 발주할 때도, New Seoul Mart 만 영어(한글) 그대로 해줘.」「원래 공급업체 아이템 이름이랑 우리 재고아이템 이름 달라.」「DB 항목 다 있어」 — 한글은 우리 재고아이템 이름(`ingredients.name`·`product_ingredients.name`)에 이미 있다. **예외: New Seoul Mart 만 «English (한글)»** (해석기 옵션 `koreanNameSellers` · CLI `--korean-name-sellers`, 새 칸·설정 없음). 영문명은 `invoice_name` 빈 칸에도(대조 자동매칭 칸). 공급업체에게 나가는 문서(WhatsApp·PDF·인쇄·메일·수신)는 **판매 상품 이름을 저장된 그대로** 쓰고, 연결 없는 줄에 대신 나가는 우리 재고 이름만 끝의 한글 괄호를 뗀다(`supplierFacingName`). 우리 내부명 «Buyer ref» 는 싣지 않는다.
+    - **포장단위 저장 어휘**: pkt·pck·pack→`pack` · btl→`bottle` · ea·pc·pcs→`piece` · ct·ctn→`carton` · 매→`sheet` · tub·tin·drum·roll·bundle·tray·box·can·bag 그대로. 제안 목록 `PACKAGE_UNIT_SUGGESTIONS` 에 tub·drum·roll·bundle·sheet 추가. **취급단위 선택지는 kg·g·L·ml·piece 만.**
+    - **표기 해석**: `1kg/pkt`→1 kg / pack · `50ea/box`→50 piece / box · `1btl/1L`→1 L / bottle · `500g` 단독→500 g / pack · `1btl` 처럼 **용량 미상 → 취급단위 `piece` · 용량 1 · 포장단위 = 그 포장 이름**(표시는 «1 bottle» 로 접힘, 검토표 «용량 미상» — Irene 「fable 권고대로 해」 2026-09-11 확정. 레시피에 ml/g 로 쓸 식재료는 Irene 이 용량을 채우면 그때 바뀐다) · 무게로 사는 업체(TaiYang·De Green·Guan Kee·Lee's·Nikudo·NSK)의 `1kg` → 무게 주문(measure).
+      (처음 설계의 «내용물 미상 → 취급단위=포장단위» 는 Irene 추가 원칙에 따라 Fable 이 폐기 — 취급단위 칸에 포장 이름을 넣지 않는다.) 해석기 단일 소스 `dev-backend/utils/catalogSpecParser.js`.
+    - 반영 절차(검토표 → 확인필요 행만 Irene 답 → 백업·트랜잭션 1개·재조회)는 `docs/EXTERNAL_SUPPLIER_PRODUCTS.md` §11.
+    - Irene 추가 원문(같은 날, 구현 중): 「레시피나 재고관리에 사용하는 단위는 포장 기준수량에 사용하는 단위와 같아야 해. 그리고 포장단위가 있는거야. 그러니까 레시피에서나 재고에서는 g이나 kg 등을 쓰고, 발주에서는 1kg/pack 이런식인거야. 그리고 이 정보면 모든 아이템 정보에 다 똑같이 나오게 하는 거고」 — **Fable 판정: 설계 변경 아님(§2-2 그대로의 확인).** ①용량 미상 규칙 교체(위) ②재료 카드·브랜드 재고아이템 카드의 자기 규격 줄도 같은 규격 함수(`unitConversion.ts` `stockSpecLabel`) ③**기존 재료·재고아이템 취급단위 pack→g/kg 수렴은 이번 범위 밖**(레시피 줄·재고·연결 환산을 한 트랜잭션에서 함께 바꿔야 하는 비가역 작업 — 상품 정리 → 수렴 후보 보고서(셈만) → 별도 설계 1회).
+      운영 실측(SELECT): 매장 10 재료 385 중 `unit` 포장 이름 212(레시피 줄 0) · 브랜드 거울 brand 1 63/63 · brand 2 «K-DINE with MIN»(GIT Consulting · 실매장 8 «K-DINE IPC Branch») 163 중 81 · 브랜드 재고아이템 321 중 193(레시피 줄 55/74 가 여기에).
 - **판매 차감은 환산하지 않는다.** `inventoryDeductionService.js` 가 레시피 줄 수량을 그대로 뺀다 — 그래서 **"레시피 줄 단위 = 재료 취급단위"가 불변식**이고, 인스펙션 `ING-UNI-011/012` 가 이걸 지킨다.
 - **재고는 어디서나 취급단위로 센다.** 브랜드 창고도 g. 화면이 괄호로 포장 환산을 같이 보여준다.
 - **취급단위는 레시피 줄이 하나라도 붙어 있으면 바꿀 수 없다** — `UNIT_LOCKED_BY_RECIPES` 409, 브랜드·매장 공통. 바꾸려면 **줄 수량·재고·매핑 환산을 같은 트랜잭션에서 함께 환산**한다(P1 수렴 스크립트, 이후 P2 화면). 바꾸는 순간 `20 g` 이 `20 pack` 이 되기 때문이고, 이것이 Irene 이 화면에서 만난 에러의 자리다.
@@ -247,7 +261,7 @@ GIT 프로덕트(`PRD-*`)로 **이관 완료**(연결 50건·92칸, 중복행 50
 - 뿌리: 2026-08-28 사고(공급업체 원가를 판매가 자리에 복사).
 - **재발 방지:** 공급업체 상품을 자기 판매상품으로 등록하는 정식 화면이 없어 스크립트로 때운 것이 원인이다. 화면이 생기기 전까지 같은 작업은 반드시 드라이런 → 검토 → 승인 순서로.
 
-### 5-4. 포장 단위 표기가 케이스와 봉지로 섞여 있다
+### 5-4. 포장 단위 표기가 케이스와 봉지로 섞여 있다 — **해결 예정**(2026-09-11 설계, §2-2 «판매 상품 규격 표기·어휘»)
 공급업체 쪽 이름은 케이스 표기(`50PCS X 12PKTS`), GIT 쪽은 봉지 표기(`50PCS/PKT`)인데 환산비는 1.0 이다.
 숫자를 옮기기 전에 **두 값의 단위가 같은지 먼저 확인한다.** 팩당 개수를 안 곱해 50배 틀린 사고가 있었다.
 

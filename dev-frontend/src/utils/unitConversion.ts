@@ -208,8 +208,20 @@ export const ORDER_MODES: OrderMode[] = ['pack', 'measure'];
  * ⚠ 라벨이다 — 재고 환산은 unit_conversion, 금액은 quantity × unit_price.
  */
 
-/** 포장단위 입력 제안(자유 입력 허용 — 인보이스의 Btl·PKT·Tin 을 그대로 받는다) */
-export const PACKAGE_UNIT_SUGGESTIONS = ['pack', 'box', 'bag', 'bottle', 'can', 'tin', 'tray', 'carton', 'sack', 'jar', 'piece'];
+/**
+ * 포장단위 입력 제안(자유 입력은 계속 허용).
+ * 2026-09-11 Irene 「포장단위 중 없는 거 있으면 추가해주고」 · Fable «풀네임 통일» — pkt→pack · btl→bottle · ea→piece · ctn→carton · 매→sheet.
+ * 어휘 단일 기준: docs/TRADE_STRUCTURE.md §2-2 «판매 상품 규격 표기·어휘».
+ */
+export const PACKAGE_UNIT_SUGGESTIONS = ['pack', 'box', 'bag', 'bottle', 'can', 'tin', 'tub', 'drum', 'tray', 'carton', 'roll', 'bundle', 'sheet', 'sack', 'jar', 'piece'];
+
+/**
+ * 취급단위(내용물) 선택지 — 포장단위(pack·bottle·box…)는 여기 없다(같은 칸에 섞이면 «1 pack/pack» 같은 규격이 생긴다).
+ * 이미 포장 이름이 저장된 옛 상품은 `withCurrentUnit` 으로 그 값을 선택지에 남겨, 편집만 해도 몰래 바뀌지 않게 한다.
+ */
+export const CONTENT_UNIT_OPTIONS = ['kg', 'g', 'L', 'ml', 'piece'];
+export const withCurrentUnit = (options: string[], current?: string | null): string[] =>
+  current && !options.includes(current) ? [...options, current] : options;
 
 export interface SellerUnitFields {
   seller_unit?: string | null;          // 판매 상품 취급단위(내용물, kg)
@@ -239,8 +251,42 @@ export const sellerSpecText = (seller?: SellerUnitFields | null, fallbackUnit?: 
   const bq = Number(seller.base_quantity);
   if (!Number.isFinite(bq) || bq <= 0) return '';
   const unit = sellerOrderUnitOf(seller, fallbackUnit);
-  if (bq === 1 && seller.seller_unit.toLowerCase() === unit.toLowerCase()) return '';
+  // 용량 1 이면서 «1 kg/kg» 같은 말 반복이거나 «1 piece/bottle»(용량 미상 · 개수 상품)이면 문구 없이 «1 bottle» 로 접는다
+  //   (2026-09-11 Fable — 취급단위 칸에 포장 이름을 넣지 않고 piece 로 두기 때문에 생기는 모양. 서버 poLineSpec.js 와 같은 규칙)
+  const su = seller.seller_unit.toLowerCase();
+  if (bq === 1 && (su === unit.toLowerCase() || su === 'piece')) return '';
   return `${formatQuantity(bq)} ${seller.seller_unit}${unit ? '/' + unit : ''}`;
+};
+
+/**
+ * 상품 카드·발주처 칩의 규격 한 줄 (2026-09-11 Irene 「붙여두고 알기 쉽게 … 1kg/pack 이런식으로」).
+ * 용량 문구가 있으면 «10 kg/BOX», 없으면 수량에 붙는 단위 하나(«pack» · 무게 주문은 «kg»). 칸을 따로 늘어놓지 않는다.
+ */
+export const sellerSpecLabel = (seller?: SellerUnitFields | null, fallbackUnit?: string | null): string => {
+  const spec = sellerSpecText(seller, fallbackUnit);
+  if (spec) return spec;
+  const unit = sellerOrderUnitOf(seller, fallbackUnit);
+  if (!unit) return '';
+  return seller?.order_mode === 'measure' ? unit : `1 ${unit}`;
+};
+
+/**
+ * 재료·브랜드 재고아이템 **자기 규격** 한 줄 — 판매 상품과 같은 모양(2026-09-11 Irene 「모든 아이템 정보에 다 똑같이」).
+ * 다섯 칸(§2-2): unit(취급단위) · base_quantity · package_unit(기준단위, 비면 unit) · package_quantity(보통 1).
+ * 기준양이 1 이 아니면 «1980 ml/6 bottle». 옛 데이터(pack/pack/1 · pack/null)는 «1 pack» 으로 깨지지 않게.
+ */
+export const stockSpecLabel = (item?: {
+  unit?: string | null; base_quantity?: number | string | null;
+  package_unit?: string | null; package_quantity?: number | string | null;
+} | null): string => {
+  if (!item || !item.unit) return '';
+  const pq = Number(item.package_quantity);
+  const pkg = String(item.package_unit || '').trim() || item.unit;
+  if (Number.isFinite(pq) && pq > 0 && pq !== 1) {
+    const bq = Number(item.base_quantity);
+    return `${formatQuantity(Number.isFinite(bq) && bq > 0 ? bq : 1)} ${item.unit}/${formatQuantity(pq)} ${pkg}`;
+  }
+  return sellerSpecLabel({ seller_unit: item.unit, base_quantity: item.base_quantity ?? 1, seller_package_unit: pkg, order_mode: 'pack' });
 };
 
 /**
@@ -267,5 +313,30 @@ export const lineSpecText = (line?: { base_quantity?: number | string | null; ba
   if (!line || !line.base_unit) return '';
   const bq = Number(line.base_quantity);
   if (line.base_quantity == null || !Number.isFinite(bq) || bq <= 0) return '';
+  if (bq === 1 && String(line.base_unit).toLowerCase() === 'piece') return ''; // «1 piece/bottle» 는 접는다(sellerSpecText 와 같음)
   return `${formatQuantity(bq)} ${line.base_unit}${line.unit ? '/' + line.unit : ''}`;
+};
+
+type LineSpec = { base_quantity?: number | string | null; base_unit?: string | null; unit?: string | null };
+
+/** 발주 줄의 기본포장용량 «10 kg» — 스냅샷 없음·«1 piece» 는 빈 문자열(lineSpecText 와 같은 접기) */
+export const lineBaseText = (line?: LineSpec | null): string => {
+  if (!line || !line.base_unit) return '';
+  const bq = Number(line.base_quantity);
+  if (line.base_quantity == null || !Number.isFinite(bq) || bq <= 0) return '';
+  if (bq === 1 && String(line.base_unit).toLowerCase() === 'piece') return '';
+  return `${formatQuantity(bq)} ${line.base_unit}`;
+};
+
+/**
+ * 발주 **내역**의 수량 표기 «10 kg × 2 carton» (2026-09-11 Irene 「1 kg X 2pack 발주할 때 내역은 이렇게 나오면 되지. 1kg/pack 이 표기는 아이템/상품 정보에 나오게 하는거고」).
+ * 기본포장용량 × 수량 포장단위. 용량 스냅샷이 없는 줄(옛 줄·무게 주문·용량 미상)은 «2 carton» 만.
+ * 규격 «1 kg/pack»(lineSpecText·sellerSpecLabel)은 상품·아이템 정보 자리에서만 쓴다.
+ * ⛔ 서버 dev-backend/utils/poLineSpec.js lineQtyText 와 같은 규칙.
+ */
+export const lineQtyText = (line: LineSpec | null | undefined, quantity: number | string | null | undefined, fallbackUnit?: string | null): string => {
+  const unit = (line && line.unit) || fallbackUnit || '';
+  const q = `${formatQuantity(Number(quantity) || 0)}${unit ? ' ' + unit : ''}`;
+  const base = lineBaseText(line);
+  return base ? `${base} × ${q}` : q;
 };

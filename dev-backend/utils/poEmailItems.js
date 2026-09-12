@@ -36,11 +36,15 @@ async function loadPoEmailItems(poId) {
     return plain.map((p, idx) => {
       const r = rows[idx];
       return {
-        name: p.seller_product_name || r.ingredient?.name || r.productIngredient?.name || p.description || 'Item',
+        // 2026-09-11 Irene — 공급업체 상품 이름은 저장된 그대로(New Seoul Mart 만 «영어(한글)») · 연결 없는 줄의 우리 재고 이름만 한글 괄호를 뗀다
+        name: p.seller_product_name || require('./sellerProductIdentity').supplierFacingName(
+          r.ingredient?.name || r.productIngredient?.name || p.description || 'Item'),
         sku: p.seller_product_sku || null,
         unit: p.unit || null,
         // 주문 시점 용량 «10 kg/BOX» (utils/poLineSpec.js) — 옛 줄은 빈 문자열
         spec: require('./poLineSpec').lineSpecText(p),
+        // 발주 내역 수량 «10 kg × 2 carton» — 템플릿은 있으면 이것을 쓴다(Irene 2026-09-11 「1 kg X 2pack 발주할 때 내역은 이렇게」)
+        qty_text: require('./poLineSpec').lineQtyText(p, p.quantity_ordered, r.ingredient?.unit || r.productIngredient?.unit),
         quantity_ordered: p.quantity_ordered,
         unit_price: p.unit_price,
         line_total: p.line_total

@@ -10,9 +10,8 @@ import styled from 'styled-components';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
-import { formatQuantity } from '../../utils/unitConversion';
-import { isRealSupplierSku } from '../../utils/poShare';
-import { lineSpecText } from '../../utils/unitConversion';
+import { isRealSupplierSku, supplierFacingName } from '../../utils/poShare';
+import { lineQtyText } from '../../utils/unitConversion';
 
 interface POItem {
   id: number;
@@ -314,14 +313,13 @@ const PurchaseOrderPrintPage: React.FC<PrintPageProps> = ({ forceSellerView = fa
             <th>{t('print.item', 'Item')}</th>
             <th>{t('print.sku', 'SKU')}</th>
             <th className="num">{t('print.qty', 'Qty')}</th>
-            <th>{t('print.unit', 'Unit')}</th>
             <th className="num">{t('print.unitPrice', 'Unit Price')}</th>
             <th className="num">{t('print.lineTotal', 'Line Total')}</th>
           </tr>
         </thead>
         <tbody>
           {items.length === 0 ? (
-            <tr><td colSpan={6} style={{ textAlign: 'center', color: '#6B7280' }}>—</td></tr>
+            <tr><td colSpan={5} style={{ textAlign: 'center', color: '#6B7280' }}>—</td></tr>
           ) : items.map(it => {
             const lt = it.line_total != null
               ? Number(it.line_total)
@@ -333,17 +331,17 @@ const PurchaseOrderPrintPage: React.FC<PrintPageProps> = ({ forceSellerView = fa
             //   같은 원칙: 왓츠앱/메일 공유(utils/poShare) · 거래 인보이스 · 발주 알림 메일.
             //   매핑 없는 라인(외부 판매자·옛 발주)만 내부명으로 폴백한다(빈칸 방지).
             const internalName = it.ingredient_name || it.ingredient?.name || it.description || `#${it.ingredient_id}`;
-            const mainName = it.seller_product_name || internalName;
+            // 2026-09-11 Irene — 공급업체 상품 이름은 저장된 그대로(New Seoul Mart 만 «영어(한글)»), 연결 없는 줄의 우리 재고 이름만 한글을 뗀다.
+            //   수량은 「1 kg X 2pack 발주할 때 내역은 이렇게」 — «10 kg × 2 carton» (규격 «1 kg/pack» 은 상품 정보에만)
+            const mainName = it.seller_product_name || supplierFacingName(internalName);
             return (
               <tr key={it.id}>
                 <td>
                   {mainName}
-                  {lineSpecText(it) && <div style={{ fontSize: 11, color: '#4B5563' }}>{lineSpecText(it)}</div>}
                 </td>
                 {/* 우리 자동채번(SP-…)은 공급업체가 모르는 번호라 숨긴다 — utils/poShare 와 같은 규칙 */}
                 <td>{isRealSupplierSku(it.seller_product_sku) ? it.seller_product_sku : '—'}</td>
-                <td className="num">{formatQuantity(it.quantity_ordered)}</td>
-                <td>{it.unit || it.ingredient?.unit || ''}</td>
+                <td className="num">{lineQtyText(it, it.quantity_ordered, it.ingredient?.unit)}</td>
                 <td className="num">{formatMoney(it.unit_price, ccy)}</td>
                 <td className="num">{formatMoney(lt, ccy)}</td>
               </tr>

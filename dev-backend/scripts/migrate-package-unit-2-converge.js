@@ -1,9 +1,11 @@
 /**
- * scripts/converge-unit-model.js — 다섯 칸 데이터 수렴 (1회성, docs/TRADE_STRUCTURE.md §2-2).
+ * scripts/migrate-package-unit-2-converge.js — 다섯 칸 데이터 수렴 (docs/TRADE_STRUCTURE.md §2-2).
  *
- * 왜 마이그와 분리했나: 배포 레지스트리 `deploy` 는 **매 배포 재실행**된다.
- *   데이터를 옮기는 로직이 거기 있으면 사람이 화면에서 고친 값을 다음 배포가 되돌린다.
- *   그래서 스키마는 `migrate-package-unit.js`(deploy), 수렴은 이 파일(manual·1회)로 나눈다.
+ * 레지스트리 분류: **`deploy` — 매 배포 재실행된다** (scripts/migrations.registry.json).
+ *   대상은 `is_active = 1 AND package_unit IS NULL` 행뿐이라 이미 채워진 값(사람이 화면에서 고친 값 포함)은 다시 건드리지 않는다.
+ *   미결(NULL)로 남긴 행을 사람이 카테고리·이름으로 풀어 주면 **다음 배포가 자동으로 수렴**하는 것이 의도다(아래 적용 블록 «미결은 미결로»).
+ *   스키마는 `migrate-package-unit.js`(deploy) 가 맡는다.
+ *   ⚠ 2026-09-11 정정: 이 자리에 «1회성 · manual» 이라 적혀 있었으나 실제 분류는 deploy 다(원가 사고 조사에서 확인 · 동작 변경 없음).
  *
  * 우선순위 (Irene 지시 + Fable 확정): **이름 규격 > 거울이 가진 값 > 판매자 상품 규격 > 취급 값 복사**
  *
@@ -390,11 +392,11 @@ async function main() {
         kind, id: row.id, code: row.code || null, restaurant_id: row.restaurant_id || null, name: row.name,
         before: { unit: row.unit, base_quantity: oldBase, stock: num(row.current_stock), unit_cost: num(row.unit_cost) },
         after: { unit: plan.unit, base_quantity: plan.base_quantity,
-                 // 기준단위·기준양은 **취급단위가 바뀐 행에만** 적는다.
-                 //   기준숫자만 바뀐 행에 `(oldBase, oldUnit)` 을 복사하면 `1 g = 1000 g` 이 되어
-                 //   §2-2 항등식이 깨진다. 그 행들의 진짜 포장은 데이터에 없다 → 미결(NULL).
-                 package_unit: unitChanged ? row.unit : null,
-                 package_quantity: unitChanged ? oldBase : null,
+                 // 기준단위·기준양 — **아래 적용 UPDATE 와 같은 값**을 적는다(2026-09-11 정정: 예전 미리보기는 복사 행에 null 을
+                 //   찍었지만 적용은 `(row.unit, oldBase)` 를 썼다). 복사 행 g/1000 → 기준단위 g · 기준양 1000 = §2-2 항등식 그대로.
+                 //   기준숫자만 바뀐 행·리뷰 행은 적용에서도 미결(NULL) — 그 행에 `(oldBase, oldUnit)` 을 넣으면 `1 g = 1000 g` 이 된다.
+                 package_unit: (plan.review || baseOnly) ? null : row.unit,
+                 package_quantity: (plan.review || baseOnly) ? null : oldBase,
                  stock: unitChanged ? round2((num(row.current_stock) || 0) * ratio) : num(row.current_stock) },
         source: plan.source, note: plan.note, ratio, unitChanged, baseOnly,
         maps: ((isItem ? sellerByItem.get(row.id) : sellerByIng.get(row.id)) || []).length,

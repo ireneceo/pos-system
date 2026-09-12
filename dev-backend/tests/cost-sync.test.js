@@ -27,11 +27,18 @@ describe('판매자 가격 → 내 기준양 가격', () => {
       myUnit: 'kg', myBase: 5, myPackageQty: 1 })).toEqual({ cost: 30 });
   });
 
-  test('기준양이 1 이 아니면 그만큼 곱한다 (6병 묶음)', () => {
-    // 판매자 1 bottle(330 ml) = RM 2, 내 취급 ml/1980, 기준양 6 → ml 당 2/330, ×1980×6
+  test('기준양이 1 이 아니어도 곱하지 않는다 — 기준숫자가 이미 기준양 전체 (6병 묶음, 문서 §2-2 예)', () => {
+    // docs/TRADE_STRUCTURE.md §2-2: 기준양 6 bottle · ml/1980(= 6 × 330) · 가격 RM 12(6병 값) · «ml 당 원가 = 12 ÷ 1980»
+    // 판매자 1 bottle(330 ml) = RM 2 → ml 당 2/330 × 1980 = 12. 예전 식(× 기준양 6)은 72 를 냈다 — 2026-09-11 운영 원가 사고의 원인.
     const r = convertPrice({ sellerPrice: 2, sellerUnit: 'ml', sellerBase: 330,
       myUnit: 'ml', myBase: 1980, myPackageQty: 6 });
-    expect(r.cost).toBeCloseTo(72, 2);
+    expect(r.cost).toBeCloseTo(12, 2);
+  });
+
+  test('기준단위 = 취급단위 복사 행(g/1000 · 기준양 1000 g) — 운영 사고 모양', () => {
+    // 운영 MSG: 판매자 kg/1 @18.80 · 내 g/1000 · 기준단위 g · 기준양 1000 → 18.80 (사고 때 18,800)
+    expect(convertPrice({ sellerPrice: 18.8, sellerUnit: 'kg', sellerBase: 1,
+      myUnit: 'g', myBase: 1000, myPackageQty: 1000 })).toEqual({ cost: 18.8 });
   });
 
   test('L → ml 도 호환', () => {

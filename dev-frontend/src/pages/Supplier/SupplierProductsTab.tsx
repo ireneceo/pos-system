@@ -19,7 +19,7 @@ import { FormGrid2, FormGrid4 } from '../../components/UI/FormGrid';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
 import { getAuthToken } from '../../utils/auth';
-import { parseMinOrderQty, qtyStepForUnit, PACKAGE_UNIT_SUGGESTIONS, type OrderMode } from '../../utils/unitConversion';
+import { parseMinOrderQty, qtyStepForUnit, PACKAGE_UNIT_SUGGESTIONS, CONTENT_UNIT_OPTIONS, withCurrentUnit, sellerSpecLabel, type OrderMode } from '../../utils/unitConversion';
 
 interface SupplierProductCategory {
   id: number;
@@ -423,19 +423,6 @@ const PageButton = styled.button<{ active?: boolean }>`
     border-color: #635bff;
   }
 `;
-
-const UNIT_OPTIONS = [
-  { value: 'kg', label: 'kg' },
-  { value: 'g', label: 'g' },
-  { value: 'L', label: 'L' },
-  { value: 'ml', label: 'ml' },
-  { value: 'piece', label: 'piece' },
-  { value: 'pack', label: 'pack' },
-  { value: 'can', label: 'can' },
-  { value: 'bottle', label: 'bottle' },
-  { value: 'box', label: 'box' },
-  { value: 'carton', label: 'carton' }
-];
 
 const PAGE_SIZE = 50;
 
@@ -919,8 +906,9 @@ const SupplierProductsTab: React.FC<Props> = ({
                   {product.unit && (
                     <DetailRow>
                       <DetailLabel>{t('products.fields.unit', 'Unit')}</DetailLabel>
+                      {/* 규격 한 줄 «10 kg/BOX» (2026-09-11 Irene 「붙여두고 알기 쉽게 … 1kg/pack 이런식으로」) */}
                       <DetailValue>
-                        {product.base_quantity} {product.unit}
+                        {sellerSpecLabel({ seller_unit: product.unit, base_quantity: product.base_quantity, seller_package_unit: product.package_unit, order_mode: product.order_mode })}
                       </DetailValue>
                     </DetailRow>
                   )}
@@ -1079,7 +1067,7 @@ const SupplierProductsTab: React.FC<Props> = ({
                     : formData.order_mode === 'measure'
                       ? t('products.priceMeaning.measure', 'Price per 1 {{unit}}', { unit: formData.unit })
                       : t('products.priceMeaning.pack', 'Price per 1 unit of {{spec}}', {
-                          spec: `${formData.base_quantity || 1}${formData.unit}${formData.package_unit.trim() ? '/' + formData.package_unit.trim() : ''}`
+                          spec: sellerSpecLabel({ seller_unit: formData.unit, base_quantity: formData.base_quantity || 1, seller_package_unit: formData.package_unit, order_mode: formData.order_mode })
                         })}
                 </PriceMeaning>
               </UIFormGroup>
@@ -1111,10 +1099,9 @@ const SupplierProductsTab: React.FC<Props> = ({
                   onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                 >
                   <option value="">Select unit</option>
-                  {UNIT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
+                  {/* 내용물 단위만(kg·g·L·ml·piece). 포장 이름은 옆 Package Unit 칸 — 옛 상품의 값은 그대로 남긴다. */}
+                  {withCurrentUnit(CONTENT_UNIT_OPTIONS, formData.unit).map((u) => (
+                    <option key={u} value={u}>{u}</option>
                   ))}
                 </FormSelect>
               </UIFormGroup>
@@ -1186,7 +1173,7 @@ const SupplierProductsTab: React.FC<Props> = ({
                 {formData.order_mode === 'measure'
                   ? t('products.orderMode.measureHint', "Buyers order like '2.5 {{unit}}'", { unit: formData.unit || 'kg' })
                   : t('products.orderMode.packHint', "Buyers order like '3 units'{{spec}}", {
-                      spec: formData.base_quantity && formData.unit ? ` (${formData.base_quantity}${formData.unit} ${t('products.fields.unit', 'per unit')})` : ''
+                      spec: formData.unit ? ` (${sellerSpecLabel({ seller_unit: formData.unit, base_quantity: formData.base_quantity || 1, seller_package_unit: formData.package_unit, order_mode: formData.order_mode })})` : ''
                     })}
               </OrderModeHint>
             </UIFormGroup>

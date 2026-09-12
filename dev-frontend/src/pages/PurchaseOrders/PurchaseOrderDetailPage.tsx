@@ -14,8 +14,8 @@ import ReceivePayModal, { ReceivePayMode } from '../../components/PurchaseOrders
 import ConfirmModal from '../../components/ConfirmModal';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
-import { formatQuantity, qtyStepForUnit, lineSpecText } from '../../utils/unitConversion';
-import { sharePoViaWhatsApp, sharePoViaEmail, isRealSupplierSku } from '../../utils/poShare';
+import { formatQuantity, qtyStepForUnit, lineQtyText } from '../../utils/unitConversion';
+import { sharePoViaWhatsApp, sharePoViaEmail, isRealSupplierSku, poItemName } from '../../utils/poShare';
 import { formatDate } from '../../utils/timezone';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
@@ -150,6 +150,7 @@ interface ReceiveSplit {
 interface ReceiveLine {
   item_id: number;
   ingredient_name: string;
+  seller_product_name?: string | null;
   ordered: number;
   alreadyReceived: number;
   remaining: number;
@@ -777,6 +778,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       return {
         item_id: it.id,
         ingredient_name: it.ingredient_name,
+        seller_product_name: it.seller_product_name ?? null,
         ordered,
         alreadyReceived: already,
         remaining: Math.max(0, ordered - already),
@@ -1265,24 +1267,29 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                         const lineTotal = it.line_total != null
                           ? Number(it.line_total)
                           : Number(it.quantity_ordered) * Number(it.unit_price);
+                        const nm = poItemName(it);   // 발주 내용 = 공급업체 상품 이름이 앞 (utils/poShare 단일 소스)
                         return (
                           <DataTableRow key={it.id}>
                             <DataTableCell data-label={t('detail.items.ingredient') as string} mobileFullWidth>
-                              <strong>{it.ingredient_name}</strong>
-                              {lineSpecText(it) && <div style={{ fontSize: 12, color: '#374151' }}>{lineSpecText(it)}</div>}
-                              {(it.seller_product_name || it.seller_product_sku) && (
+                              {/* 발주 내용은 **판매자(공급업체) 상품 이름**이 앞에 온다
+                                  — Irene 2026-09-11 「POs에서부터 발주내용이니까 공급업체 이름으로야」.
+                                  우리 재고 이름(«영문(한글)»)은 아래 작은 줄로 남긴다 — 주방이 알아보는 이름이라 빼지 않는다.
+                                  판매 상품 연결이 없는 줄(옛 발주·브랜드 판매자)은 우리 이름이 그대로 큰 글씨가 된다. */}
+                              <strong>{nm.main}</strong>
+                              {(nm.sub || isRealSupplierSku(it.seller_product_sku)) && (
                                 <div style={{ fontSize: 12, color: '#6B7280' }}>
-                                  {it.seller_product_name || ''}
-                                  {isRealSupplierSku(it.seller_product_sku) ? `${it.seller_product_name ? ' · ' : ''}SKU: ${it.seller_product_sku}` : ''}
+                                  {nm.sub}
+                                  {isRealSupplierSku(it.seller_product_sku) ? `${nm.sub ? ' · ' : ''}SKU: ${it.seller_product_sku}` : ''}
                                 </div>
                               )}
                             </DataTableCell>
                             <DataTableCell data-label={t('detail.items.qtyOrdered') as string} align="right">
-                              {/* 발주 수량은 **발주 줄 단위**(포장단위)로 센다 — 재료 취급단위(g)는 옛 줄의 폴백 */}
-                              {formatQuantity(it.quantity_ordered)} {it.unit || it.ingredient_unit || ''}
+                              {/* 발주 수량은 **발주 줄 단위**(포장단위)로 센다 — 재료 취급단위(g)는 옛 줄의 폴백.
+                                  2026-09-11 Irene 「1 kg X 2pack 발주할 때 내역은 이렇게」 — «10 kg × 2 carton» */}
+                              {lineQtyText(it, it.quantity_ordered, it.ingredient_unit)}
                             </DataTableCell>
                             <DataTableCell data-label={t('detail.items.qtyReceived') as string} align="right">
-                              {formatQuantity(it.quantity_received)} {it.unit || it.ingredient_unit || ''}
+                              {lineQtyText(it, it.quantity_received, it.ingredient_unit)}
                             </DataTableCell>
                             <DataTableCell data-label={t('detail.items.unitPrice') as string} align="right">
                               {formatMoney(it.unit_price)}
@@ -1503,7 +1510,11 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
               <ReceiveLineCard key={line.item_id}>
                 <div className="line-head">
                   <div className="name">
-                    {line.ingredient_name}
+                    {/* 입고 줄도 발주 내용이라 공급업체 상품 이름이 앞 (Irene 2026-09-11) · 우리 이름은 괄호로 */}
+                    {poItemName(line).main}
+                    {poItemName(line).sub && (
+                      <span style={{ fontWeight: 400, fontSize: 12, color: '#6B7280', marginLeft: 6 }}>({poItemName(line).sub})</span>
+                    )}
                     {line.unit && <span style={{ fontWeight: 400, color: '#6B7280', marginLeft: 6 }}>· {line.unit}</span>}
                   </div>
                   <div className="stat">
@@ -1754,7 +1765,8 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
             return (
               <div key={line.purchase_order_item_id} style={{ padding: 12, border: '1px solid #C7CED6', borderRadius: 8 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540', marginBottom: 8 }}>
-                  {item?.ingredient_name || `Item #${line.purchase_order_item_id}`}
+                  {/* 반품도 발주 내용 — 공급업체 상품 이름이 앞 (Irene 2026-09-11) */}
+                  {poItemName(item).main || `Item #${line.purchase_order_item_id}`}
                 </div>
                 <div style={{ fontSize: 11, color: '#4B5563', marginBottom: 8 }}>
                   {t('detail.returns.received', 'Received')}: {maxQty} {item?.ingredient_unit || ''}

@@ -50,9 +50,11 @@ router.get('/', async (req, res) => {
       const maps = await IngredientSellerProduct.findAll({ where: { product_ingredient_id: ids, is_active: true } });
       // 판매품목 정체성(name/sku) 해석 — 공급업체/브랜드 판매품목명·SKU를 내부 재고와 함께 표시(P0-1 + 브랜드 확장 2026-07-05)
       const spIds = [...new Set(maps.filter(m => m.seller_type === 'supplier' && m.seller_product_id).map(m => m.seller_product_id))];
-      const spMap = spIds.length ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(s => [s.id, s])) : {};
+      // 규격 칸(unit·base_quantity·package_unit·order_mode)도 싣는다 — 재고 카드 칩의 «10 kg/BOX» (2026-09-11 Irene 「모든 아이템 정보에 다 똑같이」)
+      const SPEC_ATTRS = ['unit', 'base_quantity', 'package_unit', 'order_mode'];
+      const spMap = spIds.length ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku', ...SPEC_ATTRS], paranoid: false })).map(s => [s.id, s])) : {};
       const bpIds = [...new Set(maps.filter(m => m.seller_type === 'brand' && m.seller_product_id).map(m => m.seller_product_id))];
-      const bpMap = bpIds.length ? Object.fromEntries((await BrandProduct.findAll({ where: { id: bpIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(b => [b.id, b])) : {};
+      const bpMap = bpIds.length ? Object.fromEntries((await BrandProduct.findAll({ where: { id: bpIds }, attributes: ['id', 'name', 'sku', ...SPEC_ATTRS], paranoid: false })).map(b => [b.id, b])) : {};
       // 판매자 이름 해석
       const supIds = [...new Set(maps.filter(m => m.seller_type === 'supplier' && m.seller_entity_id).map(m => m.seller_entity_id))];
       const brIds = [...new Set(maps.filter(m => m.seller_type === 'brand' && m.seller_entity_id).map(m => m.seller_entity_id))];
@@ -72,6 +74,11 @@ router.get('/', async (req, res) => {
           id: m.id, seller_product_id: m.seller_product_id, seller_type: m.seller_type,
           seller_entity_id: m.seller_entity_id, seller_name: name,
           seller_product_name: sp?.name || null, seller_product_sku: sp?.sku || null,
+          // 판매 상품 규격 — routes/ingredients.js 매장 목록과 같은 키
+          seller_unit: sp?.unit ?? null,
+          base_quantity: sp?.base_quantity != null ? parseFloat(sp.base_quantity) : 1,
+          seller_package_unit: sp?.package_unit ?? null,
+          order_mode: sp?.order_mode || 'pack',
           unit_price: m.unit_price, unit_conversion: m.unit_conversion, is_preferred: m.is_preferred
         });
       }
@@ -965,7 +972,7 @@ router.get('/:id/seller-sources', async (req, res) => {
     // (soft-deleted) products resolvable. Design P0-1.
     const spIds = [...new Set(rows.filter(r => r.seller_type === 'supplier' && r.seller_product_id).map(r => r.seller_product_id))];
     const spMap = spIds.length
-      ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(s => [s.id, s]))
+      ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'package_unit', 'order_mode'], paranoid: false })).map(s => [s.id, s]))
       : {};
     // 가격 이력 (설계 §6) — 매장쪽 /ingredients/:id/seller-sources 와 같은 계약.
     // 목록 1회에 그룹 쿼리 1개다(라인마다 호출 금지).
@@ -982,6 +989,11 @@ router.get('/:id/seller-sources', async (req, res) => {
         ...j,
         seller_product_name: sp?.name || null,
         seller_product_sku: sp?.sku || null,
+        // 판매 상품 규격 «10 kg/BOX» (2026-09-11 Irene 「모든 아이템 정보에 다 똑같이」) — 연결 표에는 같은 이름 칸이 없다
+        seller_unit: sp?.unit ?? null,
+        base_quantity: sp?.base_quantity != null ? parseFloat(sp.base_quantity) : null,
+        seller_package_unit: sp?.package_unit ?? null,
+        order_mode: sp?.order_mode || null,
         price_history: h ? { ...h, ...trendAgainst(j.unit_price, h) } : null
       };
     });

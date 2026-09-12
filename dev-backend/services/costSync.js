@@ -13,7 +13,7 @@
  *
  * ## 규칙 (단일 소스 — 이 함수 하나)
  *   1. **선호 판매자 매핑**이 있고 단위가 호환되면
- *      `unit_cost = 매핑.unit_price × (내 포장량 ÷ 판매자 포장량) × package_quantity`
+ *      `unit_cost = 매핑.unit_price × (내 기준숫자 ÷ 판매자 포장량)` — 기준양(package_quantity)은 곱하지 않는다(아래 단위 주의)
  *   2. 없고 **프로덕트 출처 거울**이면 → 그 프로덕트 판매가로 같은 식(매핑의 특수경우)
  *   3. 둘 다 없으면 **건드리지 않는다** — 사람이 넣은 값·레거시를 덮지 않는다.
  *   비호환 단위(piece ↔ g 등)는 계수를 모르므로 **건너뛰고 사유를 돌려준다.**
@@ -22,8 +22,11 @@
  *   "비어 있을 때만" 을 고를 수 있고, 백필은 그 모드로 돈다. 판매자 가격이 **바뀐 순간**의
  *   호출만 덮어쓴다(그게 Irene 이 기대한 "자동으로 따라간다" 다).
  *
- * 단위 주의: 반환 `cost` 는 **그 행의 `package_quantity` 기준 가격**이다
- *   (= `unit_cost` 칸의 뜻 — docs/TRADE_STRUCTURE.md §2-2 "기준양의 가격").
+ * 단위 주의: 반환 `cost` 는 **기준양 전체의 가격** = `unit_cost` 칸의 뜻(docs/TRADE_STRUCTURE.md §2-2 "기준양의 가격").
+ *   §2-2 `base_quantity` = «기준양 전체에 든 취급단위 양 = 가격이 사는 양» 이라 **기준숫자가 이미 기준양 전체**다.
+ *   그래서 식에 기준양을 또 곱하지 않는다 — 6병 묶음(ml/1980 · 기준양 6 · RM 12)은 ml 당 12 ÷ 1980.
+ *   ⚠ 2026-09-05~09-11 이 식은 `× package_quantity` 를 했고, 기준단위=취급단위 복사 행(g/1000 · 기준양 1000 g)에서
+ *     원가가 ×1000 으로 부풀었다(운영 MSG 18.8 → 18,800 · 2026-09-11 사고, tests/cost-sync.test.js 가 반증).
  */
 const { QueryTypes } = require('sequelize');
 
@@ -92,10 +95,10 @@ function convertPrice({ sellerPrice, sellerUnit, sellerBase, myUnit, myBase, myP
   const f = su === mu ? 1 : FACTOR[`${su}->${mu}`];
   if (f == null) return { skip: `단위 비호환 (판매자 ${sellerUnit} ↔ 취급 ${myUnit})` };
   const sBase = numOr(sellerBase, 1) || 1;          // 판매자 1 주문단위에 든 양
-  const mBase = numOr(myBase, 1) || 1;              // 내 취급 기준숫자
-  const pkg = numOr(myPackageQty, 1) || 1;          // 내 기준양(포장 수)
+  const mBase = numOr(myBase, 1) || 1;              // 내 취급 기준숫자 = 기준양 전체에 든 양
+  // myPackageQty(기준양)는 받기만 한다 — 기준숫자에 이미 들어 있어 곱하면 두 번 센다(머리 주석 «단위 주의»)
   const perMyUnit = price / (sBase * f);            // 내 취급단위 1 당 값
-  return { cost: Math.round(perMyUnit * mBase * pkg * 10000) / 10000 };
+  return { cost: Math.round(perMyUnit * mBase * 10000) / 10000 };
 }
 
 /**

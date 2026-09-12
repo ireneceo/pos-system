@@ -203,7 +203,9 @@ async function getIssuerCompanyInfo(issuerType, issuerId, currency = 'MYR') {
     if (brand) {
       const bankFromSettings = extractBankFromPaymentSettings(brand.payment_settings, currency);
       return {
-        name: brand.name || 'Brand',
+        // 발행자 = 파는 회사. 브랜드는 **회사명 단독**(없을 때만 브랜드명) — 단일 소스 utils/sellerNames 와 같은 규칙.
+        //   2026-09-11 Irene 「브랜드는 브랜드제너럴 회사명 나와야 하는데 브랜드 이름이 나와」 (운영 매장 10: with MIN → GIT Consulting)
+        name: (brand.company_name || '').trim() || brand.name || 'Brand',
         logoUrl: brand.logo_url || null,
         address: brand.address || '',
         city: brand.city || '',
@@ -256,7 +258,8 @@ async function getIssuerCompanyInfo(issuerType, issuerId, currency = 'MYR') {
     if (foodcourt) {
       const bankFromSettings = extractBankFromPaymentSettings(foodcourt.payment_settings, currency);
       return {
-        name: foodcourt.name || 'Foodcourt',
+        // 브랜드와 같은 규칙 — 회사명 단독, 없을 때만 푸드코트명 (utils/sellerNames)
+        name: (foodcourt.company_name || '').trim() || foodcourt.name || 'Foodcourt',
         logoUrl: foodcourt.logo_url || null,
         address: foodcourt.address || '',
         city: foodcourt.city || '',

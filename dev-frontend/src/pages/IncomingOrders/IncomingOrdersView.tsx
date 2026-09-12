@@ -17,7 +17,8 @@ import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
 import { useTabParam } from '../../hooks/useTabParam';
-import { formatQuantity, lineSpecText } from '../../utils/unitConversion';
+import { lineQtyText } from '../../utils/unitConversion';
+import { supplierFacingName } from '../../utils/poShare';
 
 // Layout / Form / ModalButton primitives are inlined here on purpose.
 // Importing them across chunks from `components/UI` triggered a TDZ runtime
@@ -1064,7 +1065,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                         <div style={{ fontSize: 13, color: '#0A2540', fontWeight: 600 }}>{items.length} {tNs('orders.table.itemsUnit', 'items')}</div>
                         {items.length > 0 && (
                           <div style={{ fontSize: 11, color: '#4B5563', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
-                            {items.slice(0, 2).map(it => (it.seller_product_name || it.ingredient?.name || it.description || `#${it.ingredient_id}`)).join(', ')}
+                            {items.slice(0, 2).map(it => it.seller_product_name || supplierFacingName(it.ingredient?.name || it.description || `#${it.ingredient_id}`)).join(', ')}
                             {items.length > 2 && ` +${items.length - 2}`}
                           </div>
                         )}
@@ -1427,20 +1428,19 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                     fontSize: 13, color: '#0A2540', alignItems: 'center'
                   }}>
                     <div>
-                      <strong>{it.seller_product_name || it.ingredient?.name || it.description || `#${it.ingredient_id}`}</strong>
-                      {lineSpecText(it) && <div style={{ fontSize: 12, color: '#374151' }}>{lineSpecText(it)}</div>}
-                      {(it.seller_product_sku || it.seller_product_name) && (
-                        <div style={{ fontSize: 11, color: '#6B7280' }}>
-                          {it.seller_product_sku ? `SKU: ${it.seller_product_sku}` : ''}
-                          {it.seller_product_name && (it.ingredient?.name || it.description) ? `${it.seller_product_sku ? ' · ' : ''}Buyer ref: ${it.ingredient?.name || it.description}` : ''}
-                        </div>
+                      {/* 공급업체가 보는 화면 — 판매 상품 이름은 저장된 그대로, 연결 없는 줄의 우리 재고 이름만 한글 괄호를 뗀다.
+                          우리 내부명(Buyer ref)은 싣지 않는다(2026-09-11 Irene · 인쇄/WhatsApp 2026-08-31 과 같은 원칙). SKU 는 이 판매자 자기 목록의 번호라 그대로. */}
+                      <strong>{it.seller_product_name || supplierFacingName(it.ingredient?.name || it.description || `#${it.ingredient_id}`)}</strong>
+                      {it.seller_product_sku && (
+                        <div style={{ fontSize: 11, color: '#6B7280' }}>SKU: {it.seller_product_sku}</div>
                       )}
                       <div style={{ fontSize: 11, color: '#4B5563' }}>
                         {tNs('orders.detail.received', 'Received')}: {Number(it.quantity_received) || 0}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      {formatQuantity(it.quantity_ordered)} {it.unit || ''}
+                      {/* 2026-09-11 Irene 「1 kg X 2pack 발주할 때 내역은 이렇게」 — «10 kg × 2 carton» */}
+                      {lineQtyText(it, it.quantity_ordered)}
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       {formatMoney(it.unit_price, detailFull.currency)}

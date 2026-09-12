@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { parseMinOrderQty } from '../../utils/unitConversion';
+import { parseMinOrderQty, sellerSpecLabel } from '../../utils/unitConversion';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import {
@@ -571,7 +571,8 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
                 {product.unit && (
                   <DetailRow>
                     <DetailLabel>{t('common:unit', 'Unit')}</DetailLabel>
-                    <DetailValue>{product.unit}</DetailValue>
+                    {/* 규격 한 줄 «10 kg/pack» (2026-09-11 Irene 「1kg/pack 이런식으로」) */}
+                    <DetailValue>{sellerSpecLabel({ seller_unit: product.unit, base_quantity: product.base_quantity })}</DetailValue>
                   </DetailRow>
                 )}
                 <DetailRow>
