@@ -788,5 +788,10 @@
   "shopLink.hint": "이 링크를 보내면 받은 사람이 상품과 가격을 보고, 무료로 가입해 주문할 수 있습니다.",
   "shopLink.placeholder": "my-shop-name",
   "shopLink.empty": "아직 링크가 없습니다 — 이름을 적으면 만들어집니다.",
-  "shopLink.copy": "링크 복사"
+  "shopLink.copy": "링크 복사",
+  "shopLink.nameLabel": "링크 이름",
+  "shopLink.urlLabel": "보낼 주소",
+  "shopLink.saved": "저장됨",
+  "shopLink.saveFailed": "저장하지 못했습니다",
+  "shopLink.open": "열어 보기"
 }

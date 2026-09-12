@@ -788,5 +788,10 @@
   "shopLink.hint": "Share this link. Anyone who opens it can see your products and prices, and sign up free to order.",
   "shopLink.placeholder": "my-shop-name",
   "shopLink.empty": "No link yet — type a name to create one.",
-  "shopLink.copy": "Copy link"
+  "shopLink.copy": "Copy link",
+  "shopLink.nameLabel": "Link name",
+  "shopLink.urlLabel": "Link to share",
+  "shopLink.saved": "Saved",
+  "shopLink.saveFailed": "Could not save",
+  "shopLink.open": "Open"
 }

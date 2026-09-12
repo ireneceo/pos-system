@@ -4783,16 +4783,9 @@ const SettingsPage: React.FC = () => {
                 const cards: EntryCard[] = [];
                 const baseUrl = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}`;
 
-                // 온라인 메뉴판 (2026-09-10 Irene) — **보여주기 전용**. 주문·장바구니·계정이 없고
-                // 손님 정보도 안 받는다. 홍보용으로 어디에나 그대로 붙일 수 있는 주소다.
-                // 주문 QR 과 같은 목록에 두는 이유: 매장이 «어디에 무엇을 붙이나» 를 한자리에서 본다.
-                cards.push({
-                  key: 'menu-board',
-                  label: t('settings:settingsPage.entryCards.menuBoardLabel', 'Online menu (view only)') as string,
-                  description: t('settings:settingsPage.entryCards.menuBoardDesc',
-                    'Share anywhere for promotion. Shows the menu and options only — no ordering, no customer details.') as string,
-                  url: `${baseUrl}?menu=1`
-                });
+                // 온라인 메뉴판 링크는 **Mobile Order 탭**으로 옮겼다(2026-09-12 Irene:
+                // 「모바일오더하는 링크만 있는데?」). 손님에게 보내는 주소는 한자리에 모은다 —
+                // 여기(Tables & QR)에도 두면 같은 링크가 두 군데가 되어 다시 흩어진다.
 
                 if (operationSettings.orderTypes?.dineIn) {
                   cards.push({
@@ -5088,6 +5081,51 @@ const SettingsPage: React.FC = () => {
                       </div>
                       <div style={{ padding: '8px', background: 'white', border: '1px solid #C7CED6', borderRadius: '8px' }}>
                         <QRCodeSVG value={`${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}`} size={104} level="H" includeMargin={true} />
+                      </div>
+                    </div>
+                  </SettingsCard>
+                )}
+
+                {/* 온라인 메뉴판 — **보여주기 전용**(주문·장바구니·손님정보 없음).
+                    2026-09-12 Irene: 「모바일오더하는 링크만 있는데?」 — 이 링크가 Tables & QR 탭의
+                    QR 묶음에 묻혀 있어 아무도 못 찾았다. 손님에게 보내는 주소는 **한자리에** 둔다. */}
+                {restaurantSlug && (
+                  <SettingsCard style={{ gridColumn: '1 / -1' }}>
+                    <CardTitle>{t('settings:settingsPage.entryCards.menuBoardLabel', 'Online menu (view only)')}</CardTitle>
+                    <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                      {t('settings:settingsPage.entryCards.menuBoardDesc', 'Share anywhere for promotion. Shows the menu and options only — no ordering, no customer details.')}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 280 }}>
+                        <Input
+                          readOnly
+                          value={`${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?menu=1`}
+                          style={{ fontSize: '13px', fontFamily: 'monospace', background: '#F8F9FC' }}
+                        />
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const url = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?menu=1`;
+                              navigator.clipboard?.writeText(url).then(() => {
+                                setInfoModal({ open: true, title: t('common:done', 'Done'), message: t('settings:settingsPage.urlCopied') });
+                              }).catch(() => {});
+                            }}
+                            style={{ padding: '8px 14px', background: '#635BFF', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+                          >
+                            {t('settings:settingsPage.copyUrl')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { window.open(`${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?menu=1`, '_blank'); }}
+                            style={{ padding: '8px 14px', background: '#EEF2FF', color: '#635BFF', border: '1px solid #C7D2FE', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+                          >
+                            {t('common:shopLink.open', 'Open')}
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{ padding: '8px', background: 'white', border: '1px solid #C7CED6', borderRadius: '8px' }}>
+                        <QRCodeSVG value={`${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?menu=1`} size={104} level="H" includeMargin={true} />
                       </div>
                     </div>
                   </SettingsCard>

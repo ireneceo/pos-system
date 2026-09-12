@@ -788,5 +788,10 @@
   "shopLink.hint": "分享此链接，开启者可查看您的商品与价格，并免费注册后订购。",
   "shopLink.placeholder": "my-shop-name",
   "shopLink.empty": "尚无链接 — 输入名称即可建立。",
-  "shopLink.copy": "复制链接"
+  "shopLink.copy": "复制链接",
+  "shopLink.nameLabel": "链接名称",
+  "shopLink.urlLabel": "分享用网址",
+  "shopLink.saved": "已保存",
+  "shopLink.saveFailed": "无法保存",
+  "shopLink.open": "开启"
 }

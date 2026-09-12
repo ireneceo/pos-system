@@ -3,6 +3,7 @@ import { Container, Header, Title, Content } from '../../components/UI';
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
+import SellerShopLinkCard from '../../components/Settings/SellerShopLinkCard';
 import BrandProductsTab from './BrandProductsTab';
 import BrandProductCategoriesTab from './BrandProductCategoriesTab';
 import BrandProductOptionsTab from './BrandProductOptionsTab';
@@ -83,6 +84,9 @@ const BrandProductManagementPage: React.FC = () => {
         </Header>
 
         <Content>
+          {/* 주문용 상품 링크 — 자기 상품을 보는 자리에 그 상품을 보여 주는 링크를 둔다(§5-6) */}
+          <SellerShopLinkCard sellerType="brand" />
+
           <Tabs>
             <Tab active={activeTab === 'products'} onClick={() => handleTabChange('products')}>
               Products

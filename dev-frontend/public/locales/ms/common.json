@@ -788,5 +788,10 @@
   "shopLink.hint": "Kongsi pautan ini. Sesiapa yang membukanya boleh melihat produk dan harga anda, serta mendaftar percuma untuk memesan.",
   "shopLink.placeholder": "my-shop-name",
   "shopLink.empty": "Tiada pautan lagi — taip nama untuk membuatnya.",
-  "shopLink.copy": "Salin pautan"
+  "shopLink.copy": "Salin pautan",
+  "shopLink.nameLabel": "Nama pautan",
+  "shopLink.urlLabel": "Pautan untuk dikongsi",
+  "shopLink.saved": "Disimpan",
+  "shopLink.saveFailed": "Gagal disimpan",
+  "shopLink.open": "Buka"
 }
