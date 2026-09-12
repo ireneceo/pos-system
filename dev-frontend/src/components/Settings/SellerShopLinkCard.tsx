@@ -277,6 +277,16 @@ const SellerShopLinkCard: React.FC<Props> = ({ sellerType, disabled }) => {
               <Button variant="secondary" size="small" type="button" onClick={copy}>
                 {copied ? t('common:shopLink.copied') : t('common:shopLink.copy')}
               </Button>
+              {/* 접힌 줄에서도 바로 열어 본다 — 새 창으로(지금 보던 화면을 잃지 않게).
+                  noopener: 열린 창이 이 화면을 건드리지 못하게 하는 안전장치 */}
+              <Button
+                variant="secondary"
+                size="small"
+                type="button"
+                onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+              >
+                {t('common:shopLink.open')}
+              </Button>
             </>
           ) : (
             <Empty>{t('common:shopLink.empty')}</Empty>
@@ -326,7 +336,7 @@ const SellerShopLinkCard: React.FC<Props> = ({ sellerType, disabled }) => {
                     a.click();
                   }}
                 >PNG</Button>
-                <Button variant="secondary" size="small" type="button" onClick={() => window.open(url, '_blank')}>
+                <Button variant="secondary" size="small" type="button" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>
                   {t('common:shopLink.open')}
                 </Button>
               </Actions>
