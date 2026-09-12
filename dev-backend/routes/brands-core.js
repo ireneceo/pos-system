@@ -58,7 +58,8 @@ router.get('/company-info', authenticateToken, async (req, res) => {
       website: brand.website,
       tax_no: brand.tax_no,
       logo_url: brand.logo_url,
-      operation_settings: brand.operation_settings
+      operation_settings: brand.operation_settings,
+      shop_slug: brand.shop_slug || null
     });
   } catch (error) {
     console.error('Error fetching brand company info:', error);
@@ -111,6 +112,30 @@ router.put('/company-info', authenticateToken, async (req, res) => {
       tax_no: req.body.tax_no,
       logo_url: req.body.logo_url
     };
+
+    // 주문용 상품 링크 — 공급업체와 **같은 규칙·같은 유일성 검사**를 쓴다 (§5-6)
+    if (req.body.shop_slug !== undefined) {
+      const { normalizeShopSlug, shopSlugTaken } = require('../utils/shopSlug');
+      const raw = req.body.shop_slug;
+      if (raw === '' || raw === null) {
+        updateData.shop_slug = null;
+      } else {
+        const clean = normalizeShopSlug(raw);
+        if (!clean) {
+          return res.status(400).json({
+            success: false,
+            error: { message: 'Link must contain letters or numbers (a-z, 0-9, -)', code: 'INVALID_SHOP_SLUG' }
+          });
+        }
+        if (await shopSlugTaken(clean, { excludeType: 'brand', excludeId: brand.id })) {
+          return res.status(400).json({
+            success: false,
+            error: { message: 'That link is already taken', code: 'SHOP_SLUG_TAKEN' }
+          });
+        }
+        updateData.shop_slug = clean;
+      }
+    }
 
     // ⛔ operation_settings 는 통째로 덮어쓰지 않고 **병합**한다.
     // 회사정보 화면은 영업시간·타임존 3개만 알고 보내는데, 덮어쓰면 그 화면이 모르는

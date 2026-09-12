@@ -774,5 +774,19 @@
   "crashReport.sending": "发送中…",
   "crashReport.send": "报告此错误",
   "crashReport.failed": "发送失败。请从支持菜单报告。",
-  "crashReport.note": "错误内容、页面、账号和应用版本将一并发送。"
+  "crashReport.note": "错误内容、页面、账号和应用版本将一并发送。",
+  "salesAccess": {
+    "title": "谁可以向您订购",
+    "hint": "选择买家在查看商品并下单前是否需要已批准的合约。",
+    "contract_required": "仅限已签约的买家",
+    "open": "已注册者皆可订购",
+    "contract_requiredHint": "买家须先提出申请并获得批准。",
+    "openHint": "买家注册后即可下单。首次下单时会自动建立交易记录。",
+    "franchiseNote": "您自己的加盟门店不受此设置影响。"
+  },
+  "shopLink.title": "订购链接",
+  "shopLink.hint": "分享此链接，开启者可查看您的商品与价格，并免费注册后订购。",
+  "shopLink.placeholder": "my-shop-name",
+  "shopLink.empty": "尚无链接 — 输入名称即可建立。",
+  "shopLink.copy": "复制链接"
 }

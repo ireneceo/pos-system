@@ -774,5 +774,19 @@
   "crashReport.sending": "Menghantar…",
   "crashReport.send": "Hantar ralat ini",
   "crashReport.failed": "Gagal dihantar. Sila lapor melalui menu Sokongan.",
-  "crashReport.note": "Ralat, skrin, akaun dan versi aplikasi dihantar bersama."
+  "crashReport.note": "Ralat, skrin, akaun dan versi aplikasi dihantar bersama.",
+  "salesAccess": {
+    "title": "Siapa boleh membuat pesanan",
+    "hint": "Pilih sama ada pembeli perlu kontrak yang diluluskan sebelum melihat produk dan membuat pesanan.",
+    "contract_required": "Hanya pembeli yang berkontrak dengan saya",
+    "open": "Sesiapa yang berdaftar boleh memesan",
+    "contract_requiredHint": "Pembeli perlu memohon dan diluluskan dahulu.",
+    "openHint": "Pembeli boleh memesan sebaik sahaja mendaftar. Rekod urus niaga dibuat pada pesanan pertama.",
+    "franchiseNote": "Kedai francais anda sendiri tidak terjejas oleh tetapan ini."
+  },
+  "shopLink.title": "Pautan pesanan",
+  "shopLink.hint": "Kongsi pautan ini. Sesiapa yang membukanya boleh melihat produk dan harga anda, serta mendaftar percuma untuk memesan.",
+  "shopLink.placeholder": "my-shop-name",
+  "shopLink.empty": "Tiada pautan lagi — taip nama untuk membuatnya.",
+  "shopLink.copy": "Salin pautan"
 }

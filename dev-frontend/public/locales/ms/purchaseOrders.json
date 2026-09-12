@@ -629,5 +629,12 @@
     },
     "pickLine": "Pilih baris ini daripada invois…",
     "willRemember": "Selepas simpan, «{{name}}» diingat sebagai nama invois produk ini"
-  }
+  },
+  "newPo.error.profileTitle": "Maklumat perniagaan diperlukan",
+  "newPo.error.goToCompanyInfo": "Buka maklumat syarikat?",
+  "newPo.error.openCompanyInfo": "Buka Maklumat Syarikat",
+  "newPo.profileField.legal_name": "Nama perniagaan",
+  "newPo.profileField.business_registration": "Nombor pendaftaran perniagaan",
+  "newPo.profileField.address": "Alamat perniagaan",
+  "newPo.profileField.phone": "Nombor telefon"
 }

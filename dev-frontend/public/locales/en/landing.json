@@ -639,5 +639,11 @@
   "signupPage.freeOrderingFeature1": "Order from suppliers and brands",
   "signupPage.freeOrderingFeature2": "Receive goods and keep purchase invoices",
   "signupPage.freeOrderingFeature3": "No order limit — upgrade anytime for stock and recipe costing",
-  "signupPage.freeOrderingHint": "Only ordering from suppliers? Pick the free plan — no card, no time limit."
+  "signupPage.freeOrderingHint": "Only ordering from suppliers? Pick the free plan — no card, no time limit.",
+  "shop.loading": "Loading...",
+  "shop.notFound": "This link is no longer available.",
+  "shop.empty": "No products are listed yet.",
+  "shop.ctaOpen": "Sign up free and you can order right away.",
+  "shop.ctaContract": "Sign up free, then request an account with this seller to order.",
+  "shop.ctaButton": "Sign up free to order"
 }

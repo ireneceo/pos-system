@@ -59,6 +59,15 @@ const SupplierCompany = sequelize.define('SupplierCompany', {
   bank_account_name: { type: DataTypes.STRING(255), allowNull: true },
   currency: { type: DataTypes.STRING(10), defaultValue: 'MYR', allowNull: false },
 
+  // 주문용 상품 링크의 열쇠 (docs/BUYER_FREE_TIER_DESIGN.md §5-6).
+  // 공급업체·브랜드가 **같은 칸 이름·같은 규칙**을 쓴다 — 판매자 종류마다 다른 개념을 만들지 않는다.
+  // 링크는 `/shop/:slug` 하나이므로 두 표를 가로질러 유일해야 한다(utils/shopSlug.js 가 보장).
+  shop_slug: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    unique: true,
+    comment: '주문용 상품 링크 slug (/shop/:slug). 비면 링크 없음'
+  },
   // Settings (Brand 패턴 동일 JSON)
   operation_settings: {
     type: DataTypes.TEXT, allowNull: true,

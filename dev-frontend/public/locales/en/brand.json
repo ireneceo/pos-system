@@ -792,5 +792,7 @@
     "brandOutstanding": "Outstanding",
     "storeRevenue": "Store sales (orders)",
     "uninvoicedPos": "{{count}} received purchase orders ({{amount}}) have no invoice — that much revenue is missing."
-  }
+  },
+  "brandProducts.distribution.externalTitle": "Buyers outside my franchises",
+  "brandProducts.distribution.externalDesc": "Other businesses can order this too. Who may order is set in Company Info."
 }

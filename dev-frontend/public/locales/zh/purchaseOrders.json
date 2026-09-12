@@ -629,5 +629,12 @@
     },
     "pickLine": "从发票中选择此行…",
     "willRemember": "保存后，«{{name}}» 将记住为该商品的发票名称"
-  }
+  },
+  "newPo.error.profileTitle": "需要公司资料",
+  "newPo.error.goToCompanyInfo": "要开启公司资料吗？",
+  "newPo.error.openCompanyInfo": "开启公司资料",
+  "newPo.profileField.legal_name": "公司名称",
+  "newPo.profileField.business_registration": "商业注册号",
+  "newPo.profileField.address": "公司地址",
+  "newPo.profileField.phone": "电话号码"
 }

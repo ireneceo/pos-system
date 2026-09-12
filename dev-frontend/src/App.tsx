@@ -34,6 +34,8 @@ const HomePage = React.lazy(() => import('./pages/Landing/HomePage'));
 const AboutPage = React.lazy(() => import('./pages/Landing/AboutPage'));
 const FeaturesPage = React.lazy(() => import('./pages/Landing/FeaturesPage'));
 const PricingPage = React.lazy(() => import('./pages/Landing/PricingPage'));
+// 주문용 상품 링크 — 판매자가 아무에게나 보내는 공개 주소. 로그인 없이 열린다(§5-6).
+const ShopCatalogPage = React.lazy(() => import('./pages/Landing/ShopCatalogPage'));
 const PackagesPage = React.lazy(() => import('./pages/Landing/PackagesPage'));
 const ContactPage = React.lazy(() => import('./pages/Landing/ContactPage'));
 const DemoPage = React.lazy(() => import('./pages/Landing/DemoPage'));
@@ -529,6 +531,7 @@ function App() {
                       <Route path="/features" element={<FeaturesPage />} />
                       <Route path="/service" element={<Navigate to="/features" replace />} />
                       <Route path="/pricing" element={<PricingPage />} />
+                      <Route path="/shop/:slug" element={<ShopCatalogPage />} />
                       <Route path="/packages" element={<PackagesPage />} />
                       <Route path="/contact" element={<ContactPage />} />
                       <Route path="/demo" element={<DemoPage />} />

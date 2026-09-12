@@ -127,7 +127,8 @@ const FormGroup = styled.div<{ fullWidth?: boolean }>`
   }
 `;
 
-const Label = styled.label`
+// 필수 표시는 한 방식 — `required` 속성(UI_DESIGN_GUIDE §4.3-1). 라벨 안에 <span>*</span> 를 손으로 넣지 않는다.
+const Label = styled.label<{ required?: boolean }>`
   display: block;
   font-size: 13px;
   font-weight: 500;
@@ -140,6 +141,14 @@ const Label = styled.label`
     color: #DC2626;
     margin-left: 2px;
   }
+
+  ${props => props.required && `
+    &::after {
+      content: ' *';
+      color: #EF4444;
+      font-weight: 600;
+    }
+  `}
 `;
 
 const Input = styled.input`
@@ -350,7 +359,7 @@ const CompanyInformationPage: React.FC = () => {
             <SectionTitle>{t('settings:companyInformationPage.basicInformation')}</SectionTitle>
             <FormGrid>
               <FormGroup>
-                <Label>{t('settings:companyInformationPage.companyName')}<span>*</span></Label>
+                <Label required>{t('settings:companyInformationPage.companyName')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -362,7 +371,7 @@ const CompanyInformationPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>{t('settings:companyInformationPage.registrationNumber')}<span>*</span></Label>
+                <Label required>{t('settings:companyInformationPage.registrationNumber')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -440,7 +449,7 @@ const CompanyInformationPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>{t('settings:companyInformationPage.phone')}<span>*</span></Label>
+                <Label required>{t('settings:companyInformationPage.phone')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <PhoneInput
                     value={companyInfo.phone}
@@ -451,7 +460,7 @@ const CompanyInformationPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>{t('settings:companyInformationPage.email')}<span>*</span></Label>
+                <Label required>{t('settings:companyInformationPage.email')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="email"

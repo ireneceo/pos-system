@@ -629,5 +629,12 @@
     },
     "pickLine": "Pick this line from the invoice…",
     "willRemember": "On save, «{{name}}» is remembered as this product’s invoice name"
-  }
+  },
+  "newPo.error.profileTitle": "Business details needed",
+  "newPo.error.goToCompanyInfo": "Open company information?",
+  "newPo.error.openCompanyInfo": "Open Company Info",
+  "newPo.profileField.legal_name": "Business name",
+  "newPo.profileField.business_registration": "Business registration number",
+  "newPo.profileField.address": "Business address",
+  "newPo.profileField.phone": "Phone number"
 }

@@ -792,5 +792,7 @@
     "brandOutstanding": "Belum dikutip",
     "storeRevenue": "Jualan kedai (pesanan)",
     "uninvoicedPos": "{{count}} pesanan belian diterima ({{amount}}) tiada invois — hasil sebanyak itu hilang."
-  }
+  },
+  "brandProducts.distribution.externalTitle": "Pembeli di luar francais saya",
+  "brandProducts.distribution.externalDesc": "Perniagaan lain juga boleh memesan produk ini. Siapa yang boleh memesan ditetapkan dalam Maklumat Syarikat."
 }

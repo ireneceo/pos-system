@@ -650,5 +650,11 @@
   "signupPage.freeOrderingFeature1": "공급업체·브랜드에 발주",
   "signupPage.freeOrderingFeature2": "입고 처리와 구입 청구서 보관",
   "signupPage.freeOrderingFeature3": "주문 수 제한 없음 — 재고·레시피 원가 자동 계산은 언제든 업그레이드",
-  "signupPage.freeOrderingHint": "발주만 하시나요? 무료 요금제를 고르세요 — 카드 등록도, 기간 제한도 없습니다."
+  "signupPage.freeOrderingHint": "발주만 하시나요? 무료 요금제를 고르세요 — 카드 등록도, 기간 제한도 없습니다.",
+  "shop.loading": "불러오는 중...",
+  "shop.notFound": "이 링크는 더 이상 열리지 않습니다.",
+  "shop.empty": "아직 올라온 상품이 없습니다.",
+  "shop.ctaOpen": "무료로 가입하면 바로 주문할 수 있습니다.",
+  "shop.ctaContract": "무료로 가입한 뒤 이 판매자에게 거래를 신청하면 주문할 수 있습니다.",
+  "shop.ctaButton": "무료 가입하고 주문하기"
 }

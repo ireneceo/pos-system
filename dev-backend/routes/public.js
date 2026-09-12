@@ -654,4 +654,79 @@ router.post('/hardware-quotes', async (req, res) => {
   }
 });
 
+// ==============================================
+// 주문용 상품 링크 — 보기 전용 공개 화면 (인증 불필요)
+//   docs/BUYER_FREE_TIER_DESIGN.md §5-6 · Irene 「보여주기만 해서 주문하려면 사용자 무료 가입 유도」
+//
+// ⛔ 여기서 주문을 받지 않는다. **보여 주기만** 한다 — 주문은 가입하고 발주 화면에서.
+// ⛔ 가격 외의 판매자 내부 정보(설정 JSON·소유자·연락처)를 내보내지 않는다.
+//    판매자가 링크를 열어 둔다는 것은 «상품과 가격을 보여 준다»는 뜻이지 회사 자료를 연다는 뜻이 아니다.
+// ==============================================
+router.get('/shop/:slug', async (req, res) => {
+  try {
+    const { resolveShopSlug } = require('../utils/shopSlug');
+    const found = await resolveShopSlug(req.params.slug);
+    if (!found) {
+      return res.status(404).json({ success: false, message: 'Shop not found' });
+    }
+
+    const { salesAccessOf } = require('../utils/salesAccess');
+    const e = found.entity;
+    const seller = {
+      seller_type: found.type,
+      name: e.name,
+      logo_url: e.logo_url || null,
+      description: found.type === 'supplier' ? (e.description || null) : null,
+      city: found.type === 'supplier' ? (e.city || null) : null,
+      state: found.type === 'supplier' ? (e.state || null) : null,
+      country: found.type === 'supplier' ? (e.country || null) : null,
+      // 가입 뒤 바로 주문할 수 있는지 미리 알려 준다 — «가입했는데 또 승인 대기» 를 막는다.
+      sales_access: salesAccessOf(e.operation_settings)
+    };
+
+    let products = [];
+    if (found.type === 'supplier') {
+      const SupplierProduct = require('../models/SupplierProduct');
+      const SupplierProductCategory = require('../models/SupplierProductCategory');
+      const rows = await SupplierProduct.findAll({
+        where: { supplier_company_id: e.id, is_active: true },
+        include: [{ model: SupplierProductCategory, as: 'category', attributes: ['id', 'name'], required: false }],
+        order: [['sort_order', 'ASC'], ['name', 'ASC']],
+        limit: 200
+      });
+      products = rows.map(p => ({
+        id: p.id, name: p.name, sku: p.sku, unit: p.unit,
+        base_quantity: p.base_quantity != null ? parseFloat(p.base_quantity) : 1,
+        package_unit: p.package_unit || null,
+        unit_price: parseFloat(p.unit_price) || 0,
+        image_url: p.image_url, category_name: p.category?.name || null
+      }));
+    } else {
+      // 브랜드는 «가맹점 밖 구매자에게도 판매»로 내놓은 것만 보여 준다 —
+      // 가맹점 전용 상품이 링크로 새면 안 된다.
+      if (!e.owner_id) return res.json({ success: true, data: { seller, products: [] } });
+      const BrandProduct = require('../models/BrandProduct');
+      const BrandProductCategory = require('../models/BrandProductCategory');
+      const rows = await BrandProduct.findAll({
+        where: { owner_user_id: e.owner_id, is_active: true, distribution_mode: 'external_buyers' },
+        include: [{ model: BrandProductCategory, as: 'category', attributes: ['id', 'name'], required: false }],
+        order: [['sort_order', 'ASC'], ['name', 'ASC']],
+        limit: 200
+      });
+      products = rows.map(p => ({
+        id: p.id, name: p.name, sku: p.sku, unit: p.unit,
+        base_quantity: p.base_quantity != null ? parseFloat(p.base_quantity) : 1,
+        package_unit: p.package_unit || null,
+        unit_price: parseFloat(p.unit_price) || 0,
+        image_url: p.image_url, category_name: p.category?.name || null
+      }));
+    }
+
+    res.json({ success: true, data: { seller, products } });
+  } catch (error) {
+    console.error('GET /api/public/shop/:slug error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load shop' });
+  }
+});
+
 module.exports = router;

@@ -108,6 +108,10 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
   // URL-backed state
   const view = (searchParams.get('view') || 'pipeline') as 'pipeline' | 'list';
   const tab = (searchParams.get('tab') || 'active') as 'active' | 'archive';
+  // 계약 구분 — 가맹형/공급형. 브랜드에서만 쓴다(푸드코트는 임대 계약 한 종류).
+  //   공급형 = contract_type 'supply' 하나. 나머지(franchise/license/master/direct·옛 값·빈 값)는 가맹형으로 본다.
+  //   ⛔ 가맹형을 목록으로 나열하지 않는다 — 값이 늘 때마다 빠뜨리는 자리가 된다.
+  const kind = (searchParams.get('kind') || 'all') as 'all' | 'franchise' | 'supply';
   const selectedId = searchParams.get('id') ? Number(searchParams.get('id')) : null;
 
   const setView = (v: 'pipeline' | 'list') => {
@@ -128,6 +132,16 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
       // list there (pipeline only shows when `view==='pipeline' && tab==='active'`), and the
       // toggle is hidden on Archive. Forcing view='list' here used to overwrite the user's
       // Active-Pipeline preference so returning to Active showed List instead of Pipeline.
+      return p;
+    }, { replace: true });
+    setStageFilter('');
+  };
+
+  const setKind = (k: 'all' | 'franchise' | 'supply') => {
+    setSearchParams(prev => {
+      const p = new URLSearchParams(prev);
+      if (k === 'all') { p.delete('kind'); } else { p.set('kind', k); }
+      p.delete('id');
       return p;
     }, { replace: true });
     setStageFilter('');
@@ -198,7 +212,7 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
     setIsCustomDateRange(true);
   };
 
-  const handleCreateProposal = async () => {
+  const handleCreateProposal = async (contractType?: string) => {
     try {
       const token = getAuthToken();
       const res = await fetch('/api/contracts', {
@@ -209,7 +223,7 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
         },
         body: JSON.stringify({
           applicant_company_name: t('newProposal.defaultName', 'New Proposal'),
-          contract_type: entityType === 'brand' ? 'franchise' : 'standard'
+          contract_type: contractType || (entityType === 'brand' ? 'franchise' : 'standard')
         })
       });
       const data = await res.json();
@@ -235,9 +249,14 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
     return true;
   });
 
+  // 구분(가맹형/공급형) 을 먼저 거른 뒤 활성/보관으로 나눈다 — 탭 숫자가 구분과 맞아야 한다.
+  const kindFilteredContracts = entityType !== 'brand' || kind === 'all'
+    ? dateFilteredContracts
+    : dateFilteredContracts.filter(c => (c.contract_type === 'supply') === (kind === 'supply'));
+
   // Tab split (active vs archive)
-  const activeContracts = dateFilteredContracts.filter(c => ACTIVE_STAGES.includes(c.stage));
-  const archiveContracts = dateFilteredContracts.filter(c => ARCHIVE_STAGES.includes(c.stage));
+  const activeContracts = kindFilteredContracts.filter(c => ACTIVE_STAGES.includes(c.stage));
+  const archiveContracts = kindFilteredContracts.filter(c => ARCHIVE_STAGES.includes(c.stage));
   const filteredContracts = tab === 'archive' ? archiveContracts : activeContracts;
 
   // Stats per tab
@@ -257,9 +276,20 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
         <Title>{pageTitle}</Title>
         {!selectedId && (
           <ActionSection>
-            <Button variant="primary" onClick={handleCreateProposal}>
-              {t('newProposal.button', 'New Proposal')}
-            </Button>
+            {entityType === 'brand' ? (
+              <>
+                <Button variant="primary" onClick={() => handleCreateProposal('franchise')}>
+                  {t('newProposal.franchise', 'New Franchise Proposal')}
+                </Button>
+                <Button variant="secondary" onClick={() => handleCreateProposal('supply')}>
+                  {t('newProposal.supply', 'New Supply Proposal')}
+                </Button>
+              </>
+            ) : (
+              <Button variant="primary" onClick={() => handleCreateProposal()}>
+                {t('newProposal.button', 'New Proposal')}
+              </Button>
+            )}
           </ActionSection>
         )}
       </Header>
@@ -274,6 +304,19 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
         ) : (
         <>
         {extraTabs}
+        {entityType === 'brand' && (
+          <TabContainer>
+            <Tab active={kind === 'all'} onClick={() => setKind('all')}>
+              {t('kinds.all', 'All')}
+            </Tab>
+            <Tab active={kind === 'franchise'} onClick={() => setKind('franchise')}>
+              {t('kinds.franchise', 'Franchise')}
+            </Tab>
+            <Tab active={kind === 'supply'} onClick={() => setKind('supply')}>
+              {t('kinds.supply', 'Supply')}
+            </Tab>
+          </TabContainer>
+        )}
         <TabContainer>
           <Tab active={tab === 'active'} onClick={() => setTab('active')}>
             {t('tabs.active', 'Active Pipeline')} ({activeContracts.length})

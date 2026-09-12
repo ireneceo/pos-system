@@ -448,7 +448,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     set_items: [] as SetMenuItem[],
     set_display_order: '0',
     product_recipe_id: null as number | null,
-    distribution_mode: 'specific_brands' as 'all' | 'specific_brands' | 'specific_restaurants',
+    distribution_mode: 'specific_brands' as 'all' | 'specific_brands' | 'specific_restaurants' | 'external_buyers',
     brand_ids: [] as number[],
     restaurant_ids: [] as number[],
     option_group_ids: [] as number[]
@@ -1387,6 +1387,15 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                     onChange={() => setFormData(prev => ({ ...prev, distribution_mode: 'specific_restaurants' }))}
                   />
                   <span><strong>{t('brandProducts.distribution.restaurantsTitle', { defaultValue: 'Specific restaurants only' })}</strong> — {t('brandProducts.distribution.restaurantsDesc', { defaultValue: 'Only the selected franchises can order' })}</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="distmode"
+                    checked={formData.distribution_mode === 'external_buyers'}
+                    onChange={() => setFormData(prev => ({ ...prev, distribution_mode: 'external_buyers' }))}
+                  />
+                  <span><strong>{t('brandProducts.distribution.externalTitle', { defaultValue: 'Buyers outside my franchises' })}</strong> — {t('brandProducts.distribution.externalDesc', { defaultValue: 'Other businesses can order this too. Who may order is set in Company Info.' })}</span>
                 </label>
               </div>
             </UIFormGroup>

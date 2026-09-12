@@ -956,7 +956,7 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
     });
 
     // distribution_mode 결정 — 명시 또는 brand_ids/restaurant_ids 로 추론
-    const VALID_MODES = ['all', 'specific_brands', 'specific_restaurants'];
+    const VALID_MODES = ['all', 'specific_brands', 'specific_restaurants', 'external_buyers'];
     let finalMode = VALID_MODES.includes(distribution_mode) ? distribution_mode :
       (Array.isArray(restaurant_ids) && restaurant_ids.length > 0 ? 'specific_restaurants'
         : Array.isArray(brand_ids) && brand_ids.length > 0 ? 'specific_brands'
@@ -1110,7 +1110,7 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
     });
 
     // distribution_mode resolution — 명시 또는 ids 로 추론, 기존 유지
-    const VALID_MODES = ['all', 'specific_brands', 'specific_restaurants'];
+    const VALID_MODES = ['all', 'specific_brands', 'specific_restaurants', 'external_buyers'];
     const finalMode = VALID_MODES.includes(distribution_mode) ? distribution_mode :
       (restaurant_ids !== undefined && Array.isArray(restaurant_ids) && restaurant_ids.length > 0 ? 'specific_restaurants'
         : brand_ids !== undefined && Array.isArray(brand_ids) && brand_ids.length > 0 ? 'specific_brands'

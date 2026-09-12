@@ -1130,6 +1130,9 @@ const NewPurchaseOrderPage: React.FC = () => {
     return () => { cancelled = true; };
   }, []);
   const [currencyConfirm, setCurrencyConfirm] = useState<{ message: string; settingsUrl: string } | null>(null);
+  // 발주를 보내려면 법인정보가 필요하다(무료 발주 등급). 서버가 **빠진 칸 목록**을 준다 —
+  // 「저장 실패」로 끝내지 않고 무엇이 빠졌는지 그대로 보여 주고 그 화면으로 보낸다.
+  const [profileIncomplete, setProfileIncomplete] = useState<{ message: string; missing: string[] } | null>(null);
   const [expectedDate, setExpectedDate] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -1884,6 +1887,10 @@ const NewPurchaseOrderPage: React.FC = () => {
       });
       const j = await res.json();
       if (!res.ok || !j.success) {
+        if (j?.code === 'BUYER_PROFILE_INCOMPLETE') {
+          setProfileIncomplete({ message: j.message || '', missing: Array.isArray(j.missing) ? j.missing : [] });
+          return;
+        }
         if (j?.code === 'NO_BUYER_CURRENCY' || j?.code === 'CURRENCY_MISMATCH') {
           setCurrencyConfirm({ message: j.message, settingsUrl: j.settingsUrl || '/pos/settings' });
           return;
@@ -2705,6 +2712,26 @@ const NewPurchaseOrderPage: React.FC = () => {
           </>
         )}
       </UIModal>
+
+      <ConfirmDialog
+        isOpen={!!profileIncomplete}
+        onClose={() => setProfileIncomplete(null)}
+        onConfirm={() => {
+          setProfileIncomplete(null);
+          navigate(`/restaurant/${restaurantId}/company-information`);
+        }}
+        title={t('newPo.error.profileTitle', 'Business details needed') as string}
+        message={[
+          profileIncomplete?.message || '',
+          (profileIncomplete?.missing || [])
+            .map(k => '· ' + (t(`newPo.profileField.${k}`, k) as string))
+            .join('\n'),
+          t('newPo.error.goToCompanyInfo', 'Open company information?') as string
+        ].filter(Boolean).join('\n\n')}
+        confirmText={t('newPo.error.openCompanyInfo', 'Open Company Info') as string}
+        cancelText={t('common:cancel', 'Cancel') as string}
+        variant="warning"
+      />
 
       <ConfirmDialog
         isOpen={!!currencyConfirm}

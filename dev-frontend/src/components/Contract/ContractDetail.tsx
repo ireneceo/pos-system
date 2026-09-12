@@ -1415,7 +1415,8 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
                   <option value="">{t('detail.select', 'Select...')}</option>
                   {entityType === 'brand' ? (
                     <>
-                      <option value="franchise">Franchise</option>
+                      <option value="franchise">{t('types.franchise', 'Franchise')}</option>
+                      <option value="supply">{t('types.supply', 'Supply (ordering only)')}</option>
                       <option value="license">License</option>
                       <option value="master">Master</option>
                       <option value="direct">Direct</option>

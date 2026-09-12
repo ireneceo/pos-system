@@ -1546,7 +1546,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // `locked` = 요금제에 없는 기능 (2026-09-12 · 발주 전용 무료 등급). **숨기지 않고 잠금으로 보여 준다** —
   //   있는 줄 알아야 «업그레이드하면 자동 계산»을 보고 전환한다(docs/BUYER_FREE_TIER_DESIGN.md §5-2).
   type AdminSubItem = { path: string; label: string; hasPending?: boolean; visible?: boolean; openInNewTab?: boolean; matchTabs?: string[]; locked?: boolean };
-  type AdminCategory = { id: string; label: string; icon: React.ReactNode; path?: string; items?: AdminSubItem[]; hasPending?: boolean; visible?: boolean; openInNewTab?: boolean; mobileOrder?: boolean };
+  type AdminCategory = { id: string; label: string; icon: React.ReactNode; path?: string; items?: AdminSubItem[]; hasPending?: boolean; visible?: boolean; openInNewTab?: boolean; mobileOrder?: boolean; locked?: boolean };
 
   const adminCategories: AdminCategory[] = useMemo(() => !isSystemAdmin ? [] : [
     {
@@ -1980,20 +1980,22 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       // Mobile customer-facing visibility is controlled by reservation_settings.enabled.
       { id: 'reservations', label: t('nav.reservations', 'Reservations'), icon: <FileText />, path: `/restaurant/${rid}/reservations`, visible: true },
       // System Access — 각각 1뎁스 단독, 새 창으로 열림 (좌측 메뉴 없는 풀화면)
-      { id: 'pos-terminal', label: t('nav.posTerminal', 'POS Terminal'), icon: <Monitor />, path: `/restaurant/${rid}/pos-terminal`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/pos-terminal`) && canOpenStaffRoute(`/restaurant/${rid}/pos-terminal`) },
+      { id: 'pos-terminal', label: t('nav.posTerminal', 'POS Terminal'), icon: <Monitor />, path: `/restaurant/${rid}/pos-terminal`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/pos-terminal`) && canOpenStaffRoute(`/restaurant/${rid}/pos-terminal`), locked: !routesLoading && !hasModule('pos_terminal') },
       { id: 'floor-plan', label: t('nav.floorPlan', 'Floor Plan'), icon: <LayoutGrid />, path: `/restaurant/${rid}/floor-plan`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/floor-plan`) && canOpenStaffRoute(`/restaurant/${rid}/floor-plan`) },
       // Cash Management(시재관리) — 현금 입출금 회계 리스트. 오늘 운영(개시·캐시인/아웃)은 라이브/플로어 Today's Cash Drawer.
       { id: 'cash-management', label: t('nav.cashManagement', 'Cash Management'), icon: <CreditCard />, path: `/restaurant/${rid}/cash-management`, visible: user?.role === 'Restaurant Owner' || hasMenuPermission('access_pos') },
-      { id: 'kitchen', label: t('nav.kitchenDisplay', 'Kitchen Display'), icon: <ChefHat />, path: `/restaurant/${rid}/kitchen`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/kitchen`) && canOpenStaffRoute(`/restaurant/${rid}/kitchen`) },
+      { id: 'kitchen', label: t('nav.kitchenDisplay', 'Kitchen Display'), icon: <ChefHat />, path: `/restaurant/${rid}/kitchen`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/kitchen`) && canOpenStaffRoute(`/restaurant/${rid}/kitchen`), locked: !routesLoading && !hasModule('kitchen_display') },
       { id: 'pickup-display', label: t('nav.pickupDisplay', 'Pickup Display'), icon: <Tv />, path: `/restaurant/${rid}/display`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/display`) && canOpenStaffRoute(`/restaurant/${rid}/display`) },
       { id: 'mobile-order', label: t('nav.mobileOrder', 'Mobile Order'), icon: <Smartphone />, path: '/mobile', openInNewTab: true, mobileOrder: true, visible: isRouteAllowed('/mobile/:slug/menu') },
       {
         id: 'products', label: t('nav.section.products'), icon: <Package />,
         items: [
-          { path: `/restaurant/${rid}/menu`, label: t('nav.menu'), visible: isRouteAllowed(`/restaurant/${rid}/menu`) },
-          { path: `/restaurant/${rid}/categories`, label: t('nav.categories'), visible: isRouteAllowed(`/restaurant/${rid}/categories`) },
-          { path: `/restaurant/${rid}/options`, label: t('nav.options'), visible: isRouteAllowed(`/restaurant/${rid}/options`) },
-          { path: `/restaurant/${rid}/recipe-management`, label: t('nav.recipes'), visible: isRouteAllowed(`/restaurant/${rid}/recipe-management`) },
+          // 잠금 기준은 ProtectedRoute.RESTAURANT_MODULE_GATED 와 **같은 모듈**이다 — 화면 문과 사이드바가 어긋나면
+          // 「보이는데 눌러도 안 열리는」 칸이 생긴다(2026-09-12 · 발주 전용 무료 등급).
+          { path: `/restaurant/${rid}/menu`, label: t('nav.menu'), visible: isRouteAllowed(`/restaurant/${rid}/menu`), locked: !routesLoading && !hasModule('menu_management') },
+          { path: `/restaurant/${rid}/categories`, label: t('nav.categories'), visible: isRouteAllowed(`/restaurant/${rid}/categories`), locked: !routesLoading && !hasModule('menu_management') },
+          { path: `/restaurant/${rid}/options`, label: t('nav.options'), visible: isRouteAllowed(`/restaurant/${rid}/options`), locked: !routesLoading && !hasModule('menu_management') },
+          { path: `/restaurant/${rid}/recipe-management`, label: t('nav.recipes'), visible: isRouteAllowed(`/restaurant/${rid}/recipe-management`), locked: !routesLoading && !hasModule('recipe_management') },
           // Brand Menu Updates — Brand 산하 매장만, 항상 노출 (pending 시 빨간 점). 보조 도구라 섹션 맨 아래.
           { path: `/restaurant/${rid}/brand-menu-updates`, label: t('nav.brandMenuUpdates', 'Brand Menu Updates'),
             hasPending: (badgeCounts as any).brandMenuPending > 0,
@@ -2624,11 +2626,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {useTwoTier && adminCategoriesWithPending.map(cat => (
               <React.Fragment key={cat.id}>
               <RailItem
-                to={cat.path || cat.items?.[0]?.path || '#'}
+                to={cat.locked ? `/restaurant/${restaurantId}/upgrade` : (cat.path || cat.items?.[0]?.path || '#')}
                 $active={activeAdminCategory?.id === cat.id}
                 $collapsed={isSidebarCollapsed}
                 $hasPending={cat.hasPending}
+                style={cat.locked ? { opacity: 0.55 } : undefined}
                 onClick={(e) => {
+                  // 잠긴 항목은 새 창을 열지 않는다 — 빈 창이 뜨고 끝나면 왜 안 되는지 알 수 없다.
+                  if (cat.locked) { closeSidebar(); return; }
                   if (cat.openInNewTab && cat.path) {
                     e.preventDefault();
                     closeSidebar();
@@ -2677,7 +2682,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 data-tour={cat.id === 'plans' ? 'sidebar-admin-plans' : undefined}
               >
                 {cat.icon}
-                <RailLabel $collapsed={isSidebarCollapsed}>{cat.label}</RailLabel>
+                <RailLabel $collapsed={isSidebarCollapsed}>
+                  {cat.label}
+                  {cat.locked && <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.8 }}>◍</span>}
+                </RailLabel>
               </RailItem>
               {cat.items && cat.items.length > 0 && mobileExpandedCatId === cat.id && (
                 <MobileSubmenu>
@@ -4015,10 +4023,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {activeAdminCategory.items.map(item => (
               <SecondaryNavItem
                 key={item.path}
-                to={item.path}
+                to={item.locked ? `/restaurant/${restaurantId}/upgrade` : item.path}
                 $active={matchPathFull(item)}
                 $hasPending={item.hasPending}
+                style={item.locked ? { opacity: 0.55 } : undefined}
+                title={item.locked ? (t('nav.lockedHint', 'Upgrade to calculate stock and recipe cost automatically') as string) : undefined}
                 onClick={(e) => {
+                  if (item.locked) { closeSidebar(); return; }
                   if (item.openInNewTab) {
                     e.preventDefault();
                     closeSidebar();
@@ -4029,6 +4040,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 }}
               >
                 {item.label}
+                {item.locked && <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.8 }}>◍</span>}
               </SecondaryNavItem>
             ))}
           </SecondaryNav>
@@ -4048,10 +4060,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {hoveredCategory.items.map(item => (
               <SecondaryNavItem
                 key={item.path}
-                to={item.path}
+                to={item.locked ? `/restaurant/${restaurantId}/upgrade` : item.path}
                 $active={matchPathFull(item)}
                 $hasPending={item.hasPending}
+                style={item.locked ? { opacity: 0.55 } : undefined}
+                title={item.locked ? (t('nav.lockedHint', 'Upgrade to calculate stock and recipe cost automatically') as string) : undefined}
                 onClick={(e) => {
+                  if (item.locked) { setHoveredCatId(null); closeSidebar(); return; }
                   if (item.openInNewTab) {
                     e.preventDefault();
                     setHoveredCatId(null);
@@ -4064,6 +4079,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 }}
               >
                 {item.label}
+                {item.locked && <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.8 }}>◍</span>}
               </SecondaryNavItem>
             ))}
           </SecondaryPopoverNav>

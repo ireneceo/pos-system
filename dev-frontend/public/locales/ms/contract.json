@@ -285,13 +285,7 @@
       "renewal": "Pembaharuan",
       "alertMonths": "Peringatan {{n}} bulan"
     },
-    "tenant": {
-      "legalEntity": "Entiti sah",
-      "applicant": "Pemohon",
-      "contact": "Hubungan",
-      "phone": "Telefon",
-      "email": "Emel"
-    },
+    "tenant": "Penyewa",
     "fin": {
       "baseRent": "Sewa Asas",
       "revShare": "Kongsi Hasil",
@@ -328,7 +322,6 @@
     "number": "Nombor",
     "stage": "Peringkat",
     "type": "Jenis",
-    "tenant": "Penyewa",
     "contact": "Hubungan",
     "period": "Tempoh",
     "restaurant": "Restoran",
@@ -350,5 +343,12 @@
     "undo": "Buat asal",
     "saving": "Menyimpan...",
     "unsaved": "Perubahan belum disimpan"
-  }
+  },
+  "kinds.all": "Semua",
+  "kinds.franchise": "Francais",
+  "kinds.supply": "Bekalan",
+  "newProposal.franchise": "Cadangan Francais Baharu",
+  "newProposal.supply": "Cadangan Bekalan Baharu",
+  "types.franchise": "Francais",
+  "types.supply": "Bekalan (pesanan sahaja)"
 }

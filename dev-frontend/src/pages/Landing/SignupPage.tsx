@@ -757,7 +757,7 @@ const SignupPage: React.FC = () => {
       <StepDescription>{t('landing:signupPage.createYourLoginCredentials')}</StepDescription>
       <FormGrid>
         <FormGroup>
-          <FormLabel>Full Name<RequiredStar>*</RequiredStar></FormLabel>
+          <FormLabel required>Full Name</FormLabel>
           <FormInput
             id="signup-field-full_name"
             type="text"
@@ -771,7 +771,7 @@ const SignupPage: React.FC = () => {
         </FormGroup>
 
         <FormGroup>
-          <FormLabel>Email<RequiredStar>*</RequiredStar></FormLabel>
+          <FormLabel required>Email</FormLabel>
           <FormInput
             id="signup-field-email"
             type="email"
@@ -788,7 +788,7 @@ const SignupPage: React.FC = () => {
         </FormGroup>
 
         <FormGroup>
-          <FormLabel>Username<RequiredStar>*</RequiredStar></FormLabel>
+          <FormLabel required>Username</FormLabel>
           <FormInput
             id="signup-field-username"
             type="text"
@@ -813,7 +813,7 @@ const SignupPage: React.FC = () => {
         </FormGroup>
 
         <FormGroup>
-          <FormLabel>Password<RequiredStar>*</RequiredStar></FormLabel>
+          <FormLabel required>Password</FormLabel>
           <PasswordWrapper>
             <FormInput
               id="signup-field-password"
@@ -846,7 +846,7 @@ const SignupPage: React.FC = () => {
         </FormGroup>
 
         <FormGroup>
-          <FormLabel>Confirm Password<RequiredStar>*</RequiredStar></FormLabel>
+          <FormLabel required>Confirm Password</FormLabel>
           <FormInput
             id="signup-field-confirm_password"
             type={showPassword ? 'text' : 'password'}
@@ -903,7 +903,7 @@ const SignupPage: React.FC = () => {
         {role === 'Restaurant Admin' && (
           <FormGrid>
             <FormGroup fullWidth>
-              <FormLabel>Restaurant Name<RequiredStar>*</RequiredStar></FormLabel>
+              <FormLabel required>Restaurant Name</FormLabel>
               <FormInput
                 id="signup-field-restaurant_name"
                 type="text"
@@ -947,7 +947,7 @@ const SignupPage: React.FC = () => {
         {role === 'Brand General' && (
           <FormGrid>
             <FormGroup fullWidth>
-              <FormLabel>Brand Name<RequiredStar>*</RequiredStar></FormLabel>
+              <FormLabel required>Brand Name</FormLabel>
               <FormInput
                 id="signup-field-brand_name"
                 type="text"
@@ -964,7 +964,7 @@ const SignupPage: React.FC = () => {
         {role === 'Foodcourt General' && (
           <FormGrid>
             <FormGroup fullWidth>
-              <FormLabel>Food Court Name<RequiredStar>*</RequiredStar></FormLabel>
+              <FormLabel required>Food Court Name</FormLabel>
               <FormInput
                 id="signup-field-foodcourt_name"
                 type="text"
@@ -1004,7 +1004,7 @@ const SignupPage: React.FC = () => {
         {role === 'Supplier Admin' && (
           <FormGrid>
             <FormGroup fullWidth>
-              <FormLabel>{t('landing:signupPage.supplierCompanyName')}<RequiredStar>*</RequiredStar></FormLabel>
+              <FormLabel required>{t('landing:signupPage.supplierCompanyName')}</FormLabel>
               <FormInput
                 id="signup-field-supplier_name"
                 type="text"
@@ -1727,12 +1727,22 @@ const FormGroup = styled.div<{ fullWidth?: boolean }>`
   grid-column: ${({ fullWidth }) => fullWidth ? '1 / -1' : 'auto'};
 `;
 
-const FormLabel = styled.label`
+// 필수 표시 — 공용 규칙과 같은 모양(UI_DESIGN_GUIDE §4.3-1). 이 화면은 로그인 전이라
+// 공용 폼 부품을 쓰지 않지만, **표시 규칙은 한 가지**여야 해서 같은 방식(required 속성)으로 맞춘다.
+const FormLabel = styled.label<{ required?: boolean }>`
   display: block;
   font-size: 13px;
   font-weight: 500;
   color: #4B5563;
   margin-bottom: 6px;
+
+  ${props => props.required && `
+    &::after {
+      content: ' *';
+      color: #EF4444;
+      font-weight: 600;
+    }
+  `}
 `;
 
 const FormInput = styled.input<{ hasError?: boolean }>`

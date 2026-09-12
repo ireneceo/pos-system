@@ -285,13 +285,7 @@
       "renewal": "Renewal",
       "alertMonths": "{{n}}mo alert"
     },
-    "tenant": {
-      "legalEntity": "Legal entity",
-      "applicant": "Applicant",
-      "contact": "Contact",
-      "phone": "Phone",
-      "email": "Email"
-    },
+    "tenant": "Tenant",
     "fin": {
       "baseRent": "Base Rent",
       "revShare": "Revenue Share",
@@ -328,7 +322,6 @@
     "number": "Number",
     "stage": "Stage",
     "type": "Type",
-    "tenant": "Tenant",
     "contact": "Contact",
     "period": "Period",
     "restaurant": "Restaurant",
@@ -350,5 +343,12 @@
     "undo": "Undo",
     "saving": "Saving...",
     "unsaved": "Unsaved changes"
-  }
+  },
+  "kinds.all": "All",
+  "kinds.franchise": "Franchise",
+  "kinds.supply": "Supply",
+  "newProposal.franchise": "New Franchise Proposal",
+  "newProposal.supply": "New Supply Proposal",
+  "types.franchise": "Franchise",
+  "types.supply": "Supply (ordering only)"
 }

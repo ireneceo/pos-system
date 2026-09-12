@@ -277,6 +277,24 @@ function calculateProration(currentAmount, newAmount, subscriptionEnd, billingCy
 }
 
 // ============================================================
+/**
+ * 요금제 «변경» 목록에서 제외할 것 — 0원 매장 등급(«발주 전용(무료)»).
+ * docs/BUYER_FREE_TIER_DESIGN.md · 2026-09-12
+ *
+ * 무료 발주 등급은 **가입 입구**다(`/api/public/plans` 에는 그대로 뜬다).
+ * 요금제 «변경» 목록에 섞이면 운영 중인 유료 매장을 이 등급으로 **내릴 수 있게** 되고,
+ * 그 순간 POS·주방·메뉴 모듈이 요금제에서 빠져 매장이 조용히 멈춘다.
+ * 전환은 무료 → 유료 한 방향이지, 유료 → 무료 다운그레이드가 아니다.
+ *
+ * ⛔ 이름(`buyer_free`)으로 걸러내지 않는다 — 이름이 바뀌면 조용히 뚫린다. **가격 0** 이 기준이다.
+ *    유료 요금제는 정의상 0원이 아니고, 0원 매장 요금제는 이 등급뿐이다(실측 2026-09-12).
+ */
+function isPlanChangeTarget(plan) {
+  const monthly = parseFloat(plan.base_price_monthly) || 0;
+  const annual = parseFloat(plan.base_price_annual) || 0;
+  return !(monthly === 0 && annual === 0);
+}
+
 // GET /api/subscriptions/my-plan
 // ============================================================
 router.get('/my-plan', authenticateToken, async (req, res) => {
@@ -319,11 +337,11 @@ router.get('/my-plan', authenticateToken, async (req, res) => {
       current.subscription_end = fillData.subscription_end;
     }
 
-    // Get available plans for this role
-    const plans = await PlanTemplate.findAll({
+    // Get available plans for this role (0원 등급은 «변경» 대상이 아니다 — isPlanChangeTarget 주석 참조)
+    const plans = (await PlanTemplate.findAll({
       where: { plan_target: planTarget, is_active: true },
       order: [['sort_order', 'ASC'], ['id', 'ASC']]
-    });
+    })).filter(isPlanChangeTarget);
 
     const nextBillingDate = getNextBillingDate(current.subscription_start, current.subscription_end, current.billing_cycle);
 
@@ -450,10 +468,10 @@ router.get('/manager/restaurant/:restaurantId/plan-options', authenticateToken, 
 
     // Build available_plans exactly like GET /my-plan does, but for the restaurant
     // plan_target and the restaurant's currency.
-    const plans = await PlanTemplate.findAll({
+    const plans = (await PlanTemplate.findAll({
       where: { plan_target: 'restaurant', is_active: true },
       order: [['sort_order', 'ASC'], ['id', 'ASC']]
-    });
+    })).filter(isPlanChangeTarget);
 
     const availablePlans = await Promise.all(plans.map(async (plan) => {
       const planData = plan.toJSON();

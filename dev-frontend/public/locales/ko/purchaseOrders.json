@@ -629,5 +629,12 @@
     },
     "pickLine": "인보이스에서 이 줄 고르기…",
     "willRemember": "저장하면 «{{name}}» 을 이 상품의 인보이스 이름으로 기억합니다"
-  }
+  },
+  "newPo.error.profileTitle": "사업자 정보가 필요합니다",
+  "newPo.error.goToCompanyInfo": "회사 정보 화면을 열까요?",
+  "newPo.error.openCompanyInfo": "회사 정보 열기",
+  "newPo.profileField.legal_name": "상호(법인명)",
+  "newPo.profileField.business_registration": "사업자등록번호",
+  "newPo.profileField.address": "사업장 주소",
+  "newPo.profileField.phone": "전화번호"
 }

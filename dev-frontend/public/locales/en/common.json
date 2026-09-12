@@ -774,5 +774,19 @@
   "crashReport.sending": "Sending…",
   "crashReport.send": "Send this error",
   "crashReport.failed": "Couldn't send. Please report it from the Support menu.",
-  "crashReport.note": "The error, screen, account and app version are sent together."
+  "crashReport.note": "The error, screen, account and app version are sent together.",
+  "salesAccess": {
+    "title": "Who can order from you",
+    "hint": "Choose whether buyers need an approved contract before they can see your products and place orders.",
+    "contract_required": "Only buyers I have a contract with",
+    "open": "Anyone signed up can order",
+    "contract_requiredHint": "Buyers must apply and be approved first.",
+    "openHint": "Buyers can order right after signing up. A contract record is created on their first order.",
+    "franchiseNote": "Your own franchise stores are not affected by this setting."
+  },
+  "shopLink.title": "Ordering link",
+  "shopLink.hint": "Share this link. Anyone who opens it can see your products and prices, and sign up free to order.",
+  "shopLink.placeholder": "my-shop-name",
+  "shopLink.empty": "No link yet — type a name to create one.",
+  "shopLink.copy": "Copy link"
 }

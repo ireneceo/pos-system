@@ -774,5 +774,19 @@
   "crashReport.sending": "보내는 중…",
   "crashReport.send": "이 오류 신고하기",
   "crashReport.failed": "보내지 못했습니다. 고객지원 메뉴에서 신고해 주세요.",
-  "crashReport.note": "오류 내용, 화면, 계정, 앱 버전이 함께 전송됩니다."
+  "crashReport.note": "오류 내용, 화면, 계정, 앱 버전이 함께 전송됩니다.",
+  "salesAccess": {
+    "title": "누가 주문할 수 있나",
+    "hint": "내 상품을 보고 주문하려면 계약이 필요한지 고릅니다.",
+    "contract_required": "계약을 맺은 곳에만 판매",
+    "open": "가입한 곳이면 누구나 주문 가능",
+    "contract_requiredHint": "먼저 신청하고 승인을 받아야 합니다.",
+    "openHint": "가입만 하면 바로 주문할 수 있습니다. 첫 주문 때 거래 기록이 자동으로 생깁니다.",
+    "franchiseNote": "내 가맹점은 이 설정과 상관없이 그대로 주문할 수 있습니다."
+  },
+  "shopLink.title": "주문용 상품 링크",
+  "shopLink.hint": "이 링크를 보내면 받은 사람이 상품과 가격을 보고, 무료로 가입해 주문할 수 있습니다.",
+  "shopLink.placeholder": "my-shop-name",
+  "shopLink.empty": "아직 링크가 없습니다 — 이름을 적으면 만들어집니다.",
+  "shopLink.copy": "링크 복사"
 }

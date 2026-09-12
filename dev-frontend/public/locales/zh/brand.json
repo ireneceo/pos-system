@@ -792,5 +792,7 @@
     "brandOutstanding": "未收款",
     "storeRevenue": "门店销售（订单）",
     "uninvoicedPos": "已收货但未开票的采购单 {{count}} 张（{{amount}}）— 这部分营收是缺失的。"
-  }
+  },
+  "brandProducts.distribution.externalTitle": "加盟店以外的买家",
+  "brandProducts.distribution.externalDesc": "其他商家也可订购此商品。可订购对象在公司资料中设定。"
 }

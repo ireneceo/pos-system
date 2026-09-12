@@ -285,13 +285,7 @@
       "renewal": "续约",
       "alertMonths": "{{n}} 个月前提醒"
     },
-    "tenant": {
-      "legalEntity": "法人实体",
-      "applicant": "申请方",
-      "contact": "联系人",
-      "phone": "电话",
-      "email": "邮箱"
-    },
+    "tenant": "商家",
     "fin": {
       "baseRent": "基本租金",
       "revShare": "营收分成",
@@ -328,7 +322,6 @@
     "number": "编号",
     "stage": "阶段",
     "type": "类型",
-    "tenant": "商家",
     "contact": "联系人",
     "period": "期间",
     "restaurant": "餐厅",
@@ -350,5 +343,12 @@
     "undo": "撤销",
     "saving": "保存中...",
     "unsaved": "未保存的更改"
-  }
+  },
+  "kinds.all": "全部",
+  "kinds.franchise": "加盟型",
+  "kinds.supply": "供应型",
+  "newProposal.franchise": "新增加盟提案",
+  "newProposal.supply": "新增供应提案",
+  "types.franchise": "加盟型",
+  "types.supply": "供应型（仅订购）"
 }

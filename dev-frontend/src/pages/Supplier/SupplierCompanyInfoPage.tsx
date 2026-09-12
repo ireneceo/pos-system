@@ -6,6 +6,7 @@ import AutoSaveAddressFields from '../../components/Form/AutoSaveAddressFields';
 import PhoneInput from '../../components/Common/PhoneInput';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { getAuthToken } from '../../utils/auth';
+import { StandardSelect } from '../../components/UI/SelectComponents';
 
 interface SupplierCompany {
   name: string;
@@ -24,6 +25,11 @@ interface SupplierCompany {
   bank_name: string;
   bank_account: string;
   bank_account_name: string;
+  // 판매 방식 — operation_settings.sales_access 한 값만 화면이 다룬다.
+  // 나머지 설정 키는 서버가 병합 저장하므로 이 화면이 몰라도 안 날아간다.
+  sales_access: 'contract_required' | 'open';
+  // 주문용 상품 링크 — 비면 링크 없음(§5-6)
+  shop_slug: string;
 }
 
 const Container = styled.div`
@@ -107,6 +113,13 @@ const FormGroup = styled.div<{ fullWidth?: boolean }>`
   }
 `;
 
+const HelpText = styled.p`
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #6B7280;
+  line-height: 1.5;
+`;
+
 const Label = styled.label`
   display: block;
   font-size: 14px;
@@ -188,7 +201,9 @@ const EMPTY: SupplierCompany = {
   country: 'MY',
   bank_name: '',
   bank_account: '',
-  bank_account_name: ''
+  bank_account_name: '',
+  sales_access: 'contract_required',
+  shop_slug: ''
 };
 
 const SupplierCompanyInfoPage: React.FC = () => {
@@ -230,7 +245,9 @@ const SupplierCompanyInfoPage: React.FC = () => {
         country: (d.country || 'MY').toUpperCase(),
         bank_name: d.bank_name || '',
         bank_account: d.bank_account || '',
-        bank_account_name: d.bank_account_name || ''
+        bank_account_name: d.bank_account_name || '',
+        sales_access: d.operation_settings?.sales_access === 'open' ? 'open' : 'contract_required',
+        shop_slug: d.shop_slug || ''
       });
     } catch (e: any) {
       console.error('[SupplierCompanyInfo] fetch error:', e);
@@ -249,6 +266,20 @@ const SupplierCompanyInfoPage: React.FC = () => {
         Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({ [field]: value })
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.message || 'Failed to save');
+    }
+  };
+
+  const saveSalesAccess = async (value: 'contract_required' | 'open') => {
+    setCompany(prev => ({ ...prev, sales_access: value }));
+    const token = getAuthToken();
+    const res = await fetch('/api/supplier/company', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ operation_settings: { sales_access: value } })
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
@@ -277,6 +308,46 @@ const SupplierCompanyInfoPage: React.FC = () => {
 
       <Content>
         {error && <ErrorBanner>{error}</ErrorBanner>}
+
+        {/* 누가 주문할 수 있나 — 공급업체·브랜드가 같은 문구를 쓴다 (BUYER_FREE_TIER_DESIGN §6-2) */}
+        <Section>
+          <SectionTitle>{t('common:salesAccess.title')}</SectionTitle>
+          <FormGrid>
+            <FormGroup fullWidth>
+              <Label>{t('common:salesAccess.hint')}</Label>
+              <StandardSelect
+                value={company.sales_access}
+                onChange={e => { void saveSalesAccess(e.target.value as 'contract_required' | 'open'); }}
+              >
+                <option value="contract_required">{t('common:salesAccess.contract_required')}</option>
+                <option value="open">{t('common:salesAccess.open')}</option>
+              </StandardSelect>
+              <HelpText>
+                {company.sales_access === 'open'
+                  ? t('common:salesAccess.openHint')
+                  : t('common:salesAccess.contract_requiredHint')}
+              </HelpText>
+            </FormGroup>
+
+            <FormGroup fullWidth>
+              <Label>{t('common:shopLink.title')}</Label>
+              <AutoSaveField onSave={() => saveField('shop_slug', company.shop_slug)}>
+                <Input
+                  type="text"
+                  value={company.shop_slug}
+                  onChange={e => handleChange('shop_slug', e.target.value)}
+                  placeholder={t('common:shopLink.placeholder') as string}
+                />
+              </AutoSaveField>
+              <HelpText>
+                {company.shop_slug
+                  ? `${window.location.origin}/shop/${company.shop_slug}`
+                  : t('common:shopLink.empty')}
+              </HelpText>
+              <HelpText>{t('common:shopLink.hint')}</HelpText>
+            </FormGroup>
+          </FormGrid>
+        </Section>
 
         {/* General */}
         <Section>

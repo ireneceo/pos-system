@@ -650,5 +650,11 @@
   "signupPage.freeOrderingFeature1": "向供应商和品牌下单",
   "signupPage.freeOrderingFeature2": "收货并保存采购发票",
   "signupPage.freeOrderingFeature3": "不限订单数量 — 需要库存与配方成本时随时升级",
-  "signupPage.freeOrderingHint": "只需要下单？选择免费方案 — 无需银行卡，无期限。"
+  "signupPage.freeOrderingHint": "只需要下单？选择免费方案 — 无需银行卡，无期限。",
+  "shop.loading": "载入中...",
+  "shop.notFound": "此链接已失效。",
+  "shop.empty": "尚未上架商品。",
+  "shop.ctaOpen": "免费注册后即可立即订购。",
+  "shop.ctaContract": "免费注册后，向此卖家提出交易申请即可订购。",
+  "shop.ctaButton": "免费注册以订购"
 }

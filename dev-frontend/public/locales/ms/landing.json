@@ -650,5 +650,11 @@
   "signupPage.freeOrderingFeature1": "Pesan daripada pembekal dan jenama",
   "signupPage.freeOrderingFeature2": "Terima barang dan simpan invois belian",
   "signupPage.freeOrderingFeature3": "Tiada had pesanan — naik taraf bila-bila untuk kos stok dan resipi",
-  "signupPage.freeOrderingHint": "Hanya mahu membuat pesanan? Pilih pelan percuma — tanpa kad, tanpa had masa."
+  "signupPage.freeOrderingHint": "Hanya mahu membuat pesanan? Pilih pelan percuma — tanpa kad, tanpa had masa.",
+  "shop.loading": "Memuatkan...",
+  "shop.notFound": "Pautan ini tidak lagi tersedia.",
+  "shop.empty": "Belum ada produk disenaraikan.",
+  "shop.ctaOpen": "Daftar percuma dan anda boleh terus membuat pesanan.",
+  "shop.ctaContract": "Daftar percuma, kemudian mohon akaun dengan penjual ini untuk membuat pesanan.",
+  "shop.ctaButton": "Daftar percuma untuk memesan"
 }

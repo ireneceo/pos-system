@@ -285,13 +285,7 @@
       "renewal": "갱신 정책",
       "alertMonths": "{{n}}개월 전 알림"
     },
-    "tenant": {
-      "legalEntity": "법인명",
-      "applicant": "신청자",
-      "contact": "담당자",
-      "phone": "전화",
-      "email": "이메일"
-    },
+    "tenant": "입점업체",
     "fin": {
       "baseRent": "기본 월세",
       "revShare": "매출 분배",
@@ -328,7 +322,6 @@
     "number": "번호",
     "stage": "단계",
     "type": "유형",
-    "tenant": "입점업체",
     "contact": "담당자",
     "period": "기간",
     "restaurant": "레스토랑",
@@ -350,5 +343,12 @@
     "undo": "실행 취소",
     "saving": "저장 중...",
     "unsaved": "저장되지 않음"
-  }
+  },
+  "kinds.all": "전체",
+  "kinds.franchise": "가맹형",
+  "kinds.supply": "공급형",
+  "newProposal.franchise": "가맹형 새 제안",
+  "newProposal.supply": "공급형 새 제안",
+  "types.franchise": "가맹형",
+  "types.supply": "공급형 (발주만)"
 }

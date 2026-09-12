@@ -792,5 +792,7 @@
     "brandOutstanding": "미수금",
     "storeRevenue": "매장 매출(주문)",
     "uninvoicedPos": "수령이 끝났는데 청구서가 안 나간 발주 {{count}}건 ({{amount}}) — 그만큼 매출이 비어 있습니다."
-  }
+  },
+  "brandProducts.distribution.externalTitle": "내 가맹점 밖 구매자",
+  "brandProducts.distribution.externalDesc": "다른 사업장도 이 상품을 주문할 수 있습니다. 누가 주문할 수 있는지는 회사 정보에서 정합니다."
 }

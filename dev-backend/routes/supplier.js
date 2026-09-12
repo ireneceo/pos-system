@@ -52,7 +52,9 @@ const COMPANY_ALLOWED_FIELDS = [
   // 판매 방식 설정 (2026-09-12 · docs/BUYER_FREE_TIER_DESIGN.md §6-2 · Irene 「공급형이랑 공급업체랑 같아야 해. 기준이」)
   //   `operation_settings.sales_access` = 'contract_required'(계약 승인 후 판매) | 'open'(가입만 하면 주문 가능).
   //   브랜드는 `PUT /api/brands/:id` 가 이미 operation_settings 를 받는다 — 두 판매자의 기준을 같게 맞춘다.
-  'operation_settings'
+  'operation_settings',
+  // 주문용 상품 링크 (docs/BUYER_FREE_TIER_DESIGN.md §5-6) — 저장 전 규칙 정규화 + 두 판매자 표를 가로질러 유일성 확인
+  'shop_slug'
 ];
 
 // Fields stored as plain strings (sanitized on save)
@@ -375,7 +377,21 @@ router.put('/company', async (req, res) => {
     for (const key of incomingKeys) {
       let value = body[key];
 
-      if (key === 'operation_settings') {
+      if (key === 'shop_slug') {
+        const { normalizeShopSlug, shopSlugTaken } = require('../utils/shopSlug');
+        if (value === '' || value === null || value === undefined) {
+          value = null;   // 비우면 링크를 닫는다
+        } else {
+          const clean = normalizeShopSlug(value);
+          if (!clean) {
+            return res.status(400).json({ success: false, message: 'Link must contain letters or numbers (a-z, 0-9, -)' });
+          }
+          if (await shopSlugTaken(clean, { excludeType: 'supplier', excludeId: company.id })) {
+            return res.status(400).json({ success: false, code: 'SHOP_SLUG_TAKEN', message: 'That link is already taken' });
+          }
+          value = clean;
+        }
+      } else if (key === 'operation_settings') {
         // ⛔ 통째로 덮어쓰지 않는다 — **병합**한다.
         // 이 PUT 은 자동저장이라 화면이 자기가 아는 키만 보낸다. 덮어쓰면 그 화면이
         // 모르는 키(영업시간·타임존·sales_access)가 조용히 사라진다

@@ -8,6 +8,9 @@ import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 interface OperationSettings {
+  // 판매 방식 — 공급업체 설정과 **같은 키·같은 문구**(BUYER_FREE_TIER_DESIGN §6-2).
+  // 서버가 병합 저장하므로 이 화면이 모르는 다른 설정 키는 안 날아간다.
+  sales_access?: 'contract_required' | 'open';
   openingTime: string;
   closingTime: string;
   timeZone: string;
@@ -29,6 +32,8 @@ interface CompanyInfo {
   taxNo: string;
   logoUrl: string;
   operationSettings: OperationSettings;
+  // 주문용 상품 링크 — 공급업체와 같은 칸 이름·같은 규칙(§5-6)
+  shopSlug: string;
 }
 
 // Common timezones for F&B businesses
@@ -128,6 +133,13 @@ const FormGrid = styled.div`
   }
 `;
 
+const HelpText = styled.p`
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #6B7280;
+  line-height: 1.5;
+`;
+
 const FormGroup = styled.div<{ fullWidth?: boolean }>`
   grid-column: ${props => props.fullWidth ? 'span 2' : 'span 1'};
 
@@ -203,7 +215,9 @@ const BrandCompanyInfoPage: React.FC = () => {
     website: '',
     taxNo: '',
     logoUrl: '',
+    shopSlug: '',
     operationSettings: {
+      sales_access: 'contract_required',
       openingTime: '09:00',
       closingTime: '22:00',
       timeZone: 'Asia/Kuala_Lumpur'
@@ -240,7 +254,9 @@ const BrandCompanyInfoPage: React.FC = () => {
             website: data.website || '',
             taxNo: data.tax_no || '',
             logoUrl: data.logo_url || '',
+            shopSlug: data.shop_slug || '',
             operationSettings: {
+              sales_access: data.operation_settings?.sales_access === 'open' ? 'open' : 'contract_required',
               openingTime: data.operation_settings?.openingTime || '09:00',
               closingTime: data.operation_settings?.closingTime || '22:00',
               timeZone: data.operation_settings?.timeZone || 'Asia/Kuala_Lumpur'
@@ -290,6 +306,7 @@ const BrandCompanyInfoPage: React.FC = () => {
         website: companyInfo.website,
         tax_no: companyInfo.taxNo,
         logo_url: companyInfo.logoUrl,
+        shop_slug: companyInfo.shopSlug || null,
         operation_settings: companyInfo.operationSettings
       })
     });
@@ -437,6 +454,49 @@ const BrandCompanyInfoPage: React.FC = () => {
                     onChange={(e) => handleOperationSettingChange('openingTime', e.target.value)}
                   />
                 </AutoSaveField>
+              </FormGroup>
+
+              <FormGroup fullWidth>
+                <Label>{t('common:salesAccess.title')}</Label>
+                <AutoSaveField onSave={handleSave} type="select">
+                  <Select
+                    value={companyInfo.operationSettings.sales_access || 'contract_required'}
+                    onChange={(e) => setCompanyInfo(prev => ({
+                      ...prev,
+                      operationSettings: {
+                        ...prev.operationSettings,
+                        sales_access: e.target.value === 'open' ? 'open' : 'contract_required'
+                      }
+                    }))}
+                  >
+                    <option value="contract_required">{t('common:salesAccess.contract_required')}</option>
+                    <option value="open">{t('common:salesAccess.open')}</option>
+                  </Select>
+                </AutoSaveField>
+                <HelpText>
+                  {(companyInfo.operationSettings.sales_access === 'open'
+                    ? t('common:salesAccess.openHint')
+                    : t('common:salesAccess.contract_requiredHint'))
+                    + ' ' + t('common:salesAccess.franchiseNote')}
+                </HelpText>
+              </FormGroup>
+
+              <FormGroup fullWidth>
+                <Label>{t('common:shopLink.title')}</Label>
+                <AutoSaveField onSave={handleSave}>
+                  <Input
+                    type="text"
+                    value={companyInfo.shopSlug}
+                    onChange={(e) => handleInputChange('shopSlug', e.target.value)}
+                    placeholder={t('common:shopLink.placeholder') as string}
+                  />
+                </AutoSaveField>
+                <HelpText>
+                  {companyInfo.shopSlug
+                    ? `${window.location.origin}/shop/${companyInfo.shopSlug}`
+                    : t('common:shopLink.empty')}
+                </HelpText>
+                <HelpText>{t('common:shopLink.hint')}</HelpText>
               </FormGroup>
 
               <FormGroup>
