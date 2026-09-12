@@ -75,7 +75,8 @@ const UpgradeGuidePage: React.FC = () => {
   const { user } = useAuth();
   const { hasModule, loading } = useAllowedRoutes({
     role: user?.role || '',
-    restaurantId: restaurantId ? parseInt(restaurantId, 10) : (user?.restaurantId || null)
+    // AuthContext 의 restaurantId 는 문자열이다 — 훅은 숫자를 받으므로 여기서 맞춘다.
+    restaurantId: restaurantId ? parseInt(restaurantId, 10) : (user?.restaurantId ? parseInt(user.restaurantId, 10) : null)
   });
 
   // 재고 모듈이 이미 있으면 잠긴 것이 없다 — 안내가 아니라 사실을 보여준다.
