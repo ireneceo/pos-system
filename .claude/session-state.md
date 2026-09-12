@@ -1,8 +1,8 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-09-11 (16:29 UTC 운영 배포 #3 이후 /저장)
-**버전:** 변경 없음 (오늘 배포 3회 모두 버전 미상승 — 올릴지 Irene 결정 대기, 아래 «하실 일» 6번)
-**운영:** 번들 `main.a3373f8b.js` · SW `5.10-reconcile-honest-read-20260911` · 백업 `/var/www/backups/20260911_162405` · 배포 16:24~16:29 UTC · 스모크 10/10 · 마이그 87/87 · 배포 후 오류 로그 0
-**작업 상태:** 완료 — 진행 중 작업 없음. 다음 확정 작업 없음(지시 대기).
+**마지막 업데이트:** 2026-09-12 (무료 발주 등급 구현 중 — Irene 요청으로 **중간 저장하고 끊음**, 다음 세션에서 이어서)
+**버전:** 변경 없음 (SW 5.14 가 운영 최신 — 이번 미배포 작업은 아직 버전 안 올림)
+**운영:** 번들 `main.e278e8b9.js` · SW `5.14-stock-item-recipe-uses-20260912` · 백업 `/var/www/backups/20260912_072105` · 배포 07:21~07:26 UTC · 스모크 10/10 · 마이그 87/87 · 배포 후 오류 0
+**작업 상태:** 진행 중(미배포). 아래 «진행 중인 작업» 의 남은 항목부터 이어서 하면 된다.
 
 ---
 
@@ -55,7 +55,32 @@
 ---
 
 ### 진행 중인 작업
-- **(2026-09-12) 재고아이템 삭제 안내 — dev 구현·검증 중, 미배포.** Irene 「GGIT consulting 스톡아이템에서 Rice Cakes 가 중복이 있어서 지우려는데 안지워져 … 연결 끊고 지울건지 아니면 연결된 레시피 보러가기 할 수 있게 안내해줘야해 … 이 라이스케이크는 연결이 없는데 왜 안지워지는지 알려줘」 · 「fable 토큰 없어. 삭제할 수 없으면 그냥 그리로 보내서 확인하게 해.」 · 「연결 안되었는데 삭제 안되는 건 뭐야? 거울항목? 그걸 어쩌라고.」
+
+- **(2026-09-12) B2B 무료 발주 등급 — dev 구현 중, 미배포. Irene 요청으로 중간 저장하고 끊음.**
+  - 목적(Irene): 우리 POS 를 안 쓰는 매장을 **무료로 가입시켜 발주만** 하게 하고, 재고·원가가 자동 계산되는 것을 보여 유료 전환 유도. 설계 단일기준 = `docs/BUYER_FREE_TIER_DESIGN.md`.
+  - **끝난 것(코드 들어가 있음, 배포 안 됨)**
+    1. 요금제 «발주 전용(무료)» — 마이그 `scripts/migrate-buyer-free-plan.js`(registry deploy 등록 · dev 적용 완료 id 21). 0원 · 모듈 6(dashboard/notices/공급업체 목록·계약/발주/매입 청구서) · 한도 -1 · 매장 1곳. **모듈 6개 전부 `addon_modules` 에 실재하고 주소도 달려 있음을 실측 확인** — 무료 등급이 빈 화면이 될 위험 없음.
+    2. **무료 요금제는 7일 체험이 붙지 않게 수정(급소였음)** — `services/authService.js` 매장 가입 분기가 가격과 무관하게 `status:'trial'` 로 만들고 `subscriptionScheduler.startTrial()` 이 7일을 박아, 8일째 `overdue` 로 떨어져 «무료 발주» 가 멈출 상태였다. 두 곳 모두 «가격 0 이면 체험 없이 바로 active» 로 분기. 0원 청구서는 `invoiceScheduler` 의 `if (!planAmount) return` 이 이미 막고 있어 손대지 않음.
+    3. 화면 잠금 — `ProtectedRoute` 에 매장 주소 잠금 목록(재고·재료·레시피·메뉴·카테고리·옵션·POS·주방) · `MainLayout` 재고 3항목을 **숨기지 않고 잠금 표시**(기하 글리프 ◍ · 요금제 로딩 중에는 잠그지 않음).
+    4. 잠금 클릭 목적지 **신설** — `pages/Restaurant/UpgradeGuidePage.tsx` + 라우트 `/restaurant/:restaurantId/upgrade`(App.tsx 등록) + MainLayout 목적지 연결. (직전까지 `/pos/plan` 으로 보내고 있었는데 **그 주소는 라우트가 없어 빈 화면**이었다 — 매장용 요금제 화면은 이 프로젝트에 아예 없다.) 번역 `subscription.json` `upgradeGuide.*` 12키 4언어.
+    5. 발주 제출 전 법인정보 검사 — `routes/purchase-orders-crud.js` `createPurchaseOrderCore` 에 무료 등급 한정 `BUYER_PROFILE_INCOMPLETE`(유료 매장 무영향).
+    6. 가입 화면 무료 카드 문구 + 체험 문구 분기(`SignupPage.tsx`, landing 4키 4언어). `/api/public/plans` 는 `is_active` 만 보므로 무료 카드가 실제로 뜬다(실측).
+    7. `routes/supplier.js` 회사 저장 허용 칸에 `operation_settings` 추가(아래 «계약 필요 여부» 설정 자리).
+  - **남은 것(다음 세션 착수 순서)**
+    1. 판매자 «계약 필요 여부» 설정 — `operation_settings.sales_access = contract_required|open`(공급업체·브랜드 **같은 기준**, Irene 확정). 서버 카탈로그 조회 반영(open 이면 계약 없이 노출·주문, 첫 주문 시 계약 행 자동 생성) + 양쪽 설정 화면 스위치.
+    2. 카탈로그 링크 — 공급업체 `shop_slug` 재사용 + `brands.shop_slug` 추가(UNIQUE, 매장 slug 규칙) · 보기 전용 공개 화면 + «주문하려면 무료 가입».
+    3. 브랜드 상품 노출 — `brand_products.distribution_mode` 에 `external_buyers` 추가(모델 ENUM 확장은 **expandEnum 필수**) + 화면 라디오 1줄.
+    4. 공급형 계약 — `contracts.contract_type='supply'` 선택지 추가(`ContractDetail.tsx:1414` 선택 상자) · 생성 시 «가맹형/공급형» 선택(`ContractManagementPage.tsx:212` 자동 franchise 제거) · 관리 화면 구분 탭. **폼 교체 없음**(Irene 확인).
+    5. 폼 필수 표시 전수 정리 — 공용 `FormLabel required` 확장 → 무료 등급 경로 폼 → 자주 쓰는 폼 → 나머지. 기준은 `UI_DESIGN_GUIDE.md` §4.3-1.
+    6. 발주 제출 전 법인정보 — 화면 쪽 안내(빠진 칸만 모아 받기).
+    7. 무료 등급 사이드바 — 재고 외 레시피·메뉴·POS 항목에도 잠금 적용 · 발주 묶음 기본 펼침.
+  - **마무리 절차(반드시 이 순서)**: 프론트 코드 확정 → **빌드 1회** → **verify-all --full 1회** → 기계 게이트 → Irene 배포 지시.
+  - ⚠ **배포 전 반드시 볼 것**: `check-print-guard` 가 **MainLayout 변경을 잡는다**(보호파일 8개 중 하나). 실제 diff 는 사이드바 항목 잠금·링크뿐이고 `_printPollFn` 인쇄 블록은 무접촉(diff 확인함). 배포 게이트는 fail-closed 라, 인쇄 무접촉을 다시 확인한 뒤 `node scripts/check-print-guard.js --bless` 로 기준을 다시 등록해야 배포가 진행된다 — **내 임의로 하지 않고 남겨 둠**.
+  - ⚠ 민감영역 기계 판정: **FABLE 게이트 대상**(①보호영역 MainLayout ②돈 subscriptionScheduler ③마이그 ⑤보안경계 authService). Fable 은 사용 한도 소진 상태라 판정 미수령 — 배포 시 기록에 명시 필요.
+  - 지금까지 정적 검사: design-guard 신규 위반 0 · dead-handlers 0 · i18n-hardcoded 신규 0 · `npm run i18n:verify` Errors 0. **빌드·mount sweep 은 아직 안 돌림**(코드가 덜 끝나서 — 일부러 미룬 것).
+
+### 이미 배포된 직전 작업 (참고 — 손댈 것 없음)
+- **(2026-09-12) 재고아이템 삭제 안내 — 운영 배포 완료(SW 5.14).** Irene 「GGIT consulting 스톡아이템에서 Rice Cakes 가 중복이 있어서 지우려는데 안지워져 … 연결 끊고 지울건지 아니면 연결된 레시피 보러가기 할 수 있게 안내해줘야해 … 이 라이스케이크는 연결이 없는데 왜 안지워지는지 알려줘」 · 「fable 토큰 없어. 삭제할 수 없으면 그냥 그리로 보내서 확인하게 해.」 · 「연결 안되었는데 삭제 안되는 건 뭐야? 거울항목? 그걸 어쩌라고.」
   - **원인(운영 실측, 읽기만)**: GIT(브랜드 1 · owner user 23) Stock Items 에 «Rice Cake» 2행 — **137**(PI-132, 활성) · **327**(PI-307, 비활성). 둘 다 프로덕트 레시피 0 · 옵션 0. **327 은 거울 `ingredients` 29(브랜드 2 K-DINE with MIN)** 를 갖고, 그 거울이 **브랜드 레시피 5줄**(Tteokbokki 140g · Rose 40 · Ramen 55 · Jjajang Tteokbokki 140 · Jjajang Ramen 55)과 **매장 8 K-DINE IPC 재고 1행**에 쓰임 → 서버는 400 으로 막는데 **화면이 사유(객체)를 문장 자리에 넣어 «Delete Failed» 만** 보였다. 137 은 막을 조건 없음(발주 줄 0 · 재고이동 0 · 공급처 1은 SET NULL).
   - **구현(Fable 토큰 소진 → 팀원 판단)**: 서버 `routes/product-ingredients.js` DELETE 사유를 **한 형태로 통일** `error:{code:'IN_USE', message, uses[]}` — 프로덕트 레시피·**상품 옵션(신규 검사, FK NO ACTION 이라 전엔 500)**·거울의 브랜드 레시피/매장 재고/공급처 연결을 이름까지 실어 준다. 화면 `ProductIngredientsTab.tsx` 에 «쓰는 곳 + 보러가기» 안내창(공용 Modal) · 이동 `/pos/recipes?brandId=&search=` · `/pos/brand-product-recipes?search=` · `/pos/brand-products?search=` · `/restaurant/:rid/inventory` · i18n 11키 4언어. **«연결 끊고 삭제»는 만들지 않음**(남의 브랜드 레시피 줄을 지우는 비가역 변경 — 그 화면에서 하게 한다).
   - 검증: dev 재현 2경우 PASS(거울 레시피 · 상품 옵션) · 고장주입 1건 성립(거울 수집 제거 → uses 빈 채 FAIL, 원복 sha256 일치 후 재통과) · print-guard 8/8 · design 신규 0 · 죽은 핸들러 0 · i18n Errors 0 · 시험 잔재 0.
@@ -155,7 +180,7 @@
 - 메모리: `reference_fable_gate_fingerprint_scope`(미추적 배포 기록 JSON 도 지문) · `reference_invoice_ocr_browser` 함정 5(손글씨) · `feedback_fable_budget_minimal`(Irene 「fable 좀 그만 써」→「중요하고 복잡한 거에는 불러야지」) · MEMORY.md 요약 2줄
 
 ### 다음 확정 작업
-- **무료 구매자 등급(B2B 유입)** — 설계 초안 `docs/BUYER_FREE_TIER_DESIGN.md`, **Irene 승인 대기**(확인 3문항: 요금제 이름 · 브랜드 카탈로그 링크 열쇠 · 매장 1곳 기준).
+- **무료 구매자 등급(B2B 유입)** — **이미 착수해 구현 중**(위 «진행 중인 작업» 이 최신 상태 · 남은 항목 7개). 아래 기록은 설계 근거·Irene 원문 보관용.
   - Irene 원문: 「그냥 기본 가입은 시켜서 소비자 역할로 하는 건 어때? 공급업체에 발주하려는 사용자? 무료 가입?」 · 「1. 발주 전후 연결되는 모든 기능은 추가해놔 … 재고관리 업체관리 레시피관리까지 메뉴에서 자동으로 계산하는 거 어필해서 레스토랑관리자로 전환유도 해. 2. 한도를 왜 줘 … 계약신청하는 것도 있는 거지? 가능하면 프로필에서 인보이스 관련 정보는 필수로 받아. 3. … 브랜드제너럴이랑 공급업체도 프로덕트 링크 만들어주고 보여주기만 해서 주문하려면 사용자 무료 가입 유도」 · 「소비자용 공개가게는 안해도 돼. 장기적으로 B를 전략적으로 유도하자. 공급업체들과 b2b 전략 제대로 가자.」
   - 구조 실측(근거): 발주·공급업체 라우트에 요금제 문 **없음**(무료 등급에서 그대로 열림) · 재고·레시피·상품은 `requireRestaurantModule` 이 이미 지킴(모듈에서 빼면 자동 차단) · 화면은 `ProtectedRoute.MODULE_GATED_ROUTES` 에 줄 추가 · 사이드바만 요금제를 안 봐서 조건 1줄 필요 · 계약 신청(`POST /supplier-contracts`)·인보이스용 매장 칸(법인명·사업자등록번호·세금번호·법인주소) **이미 있음** · 0원 요금제 선례(오너 3종) + 화면이 0원을 «Free» 로 표기.
   - **Irene 추가 지시(2026-09-12)**: 「사용자 친화적으로 알기쉬운 직접적인 이름과 안내 … UI/UX 자체로 바로 바로 알게. 발주하는 화면들 레스토랑과 겹치니 같은 컴포넌트 … 카탈로그 링크는 브랜드제너럴도 만들어. 브랜드제너럴이 브랜드에만 판매할지 다른 바이어에게도 판매할지 선택 … 가입신청 과정이 공급업체에 있지? 브랜드제너럴에게는 프랜차이즈 등록인데 공급형 이라고 표시 … 관리는 프랜차이즈와 같은 맥락으로 하되 따로 보고 체크」 → 설계 §5 에 반영.

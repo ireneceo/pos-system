@@ -2684,7 +2684,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   {cat.items.map(item => (
                     <SecondaryNavItem
                       key={item.path}
-                      to={item.locked ? '/pos/plan' : item.path}
+                      to={item.locked ? `/restaurant/${restaurantId}/upgrade` : item.path}
                       $active={matchPathFull(item)}
                       $hasPending={item.hasPending}
                       style={item.locked ? { opacity: 0.55 } : undefined}

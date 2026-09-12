@@ -581,6 +581,15 @@ class SubscriptionScheduler {
       }
 
       const today = new Date();
+
+      // 0원 요금제는 체험이 없다 — 체험을 걸면 7일 뒤 overdue 로 떨어져 무료 사용이 멈춘다.
+      // 가입 경로 외(관리자 생성 등)로 들어와도 같게 동작하도록 여기서도 막는다(2026-09-12).
+      if (!(Number(restaurant.plan_amount) > 0)) {
+        await restaurant.update({ status: 'active', trial_end_date: null, subscription_start: today });
+        console.log(`✓ ${restaurant.name}: 무료 요금제 — 체험 없이 바로 이용`);
+        return { success: true, trialStartDate: today, trialEndDate: null, free: true };
+      }
+
       const trialEndDate = new Date(today);
       trialEndDate.setDate(trialEndDate.getDate() + TRIAL_PERIOD_DAYS);
 

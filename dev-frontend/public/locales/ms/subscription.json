@@ -47,5 +47,19 @@
     "foodcourt": "Foodcourt General",
     "owner": "Pemilik Restoran",
     "supplier": "Pentadbir Pembekal"
+  },
+  "upgradeGuide": {
+    "title": "Naik taraf dan ia dikira untuk anda",
+    "titleIncluded": "Anda sudah boleh guna ciri ini",
+    "lead": "Pelan semasa anda merangkumi pesanan kepada pembekal dan invois belian secara percuma. Tambah stok dan resipi, maka apa yang dipesan terus masuk ke stok dan kos menu.",
+    "leadIncluded": "Pelan anda sudah termasuk stok dan resipi. Buka terus dari menu di sebelah kiri.",
+    "stockTitle": "Pesanan menambah kiraan stok",
+    "stockBody": "Rekod barang yang tiba dan baki kuantiti naik dengan sendiri, kemudian turun apabila dijual. Tiada kiraan berasingan.",
+    "recipeTitle": "Kos setiap hidangan dikira",
+    "recipeBody": "Kaitkan bahan pada resipi, dan apabila harga pembekal berubah kos menu turut berubah.",
+    "supplierTitle": "Banding harga pembekal bersebelahan",
+    "supplierBody": "Apabila bahan sama datang dari beberapa pembekal, anda nampak mana lebih murah dan bila harga naik.",
+    "keep": "Rekod pesanan dan maklumat pembekal sedia ada kekal seperti biasa. Tiada apa perlu dimasukkan semula.",
+    "seePlans": "Lihat pelan"
   }
 }

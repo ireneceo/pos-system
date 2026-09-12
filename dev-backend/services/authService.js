@@ -284,7 +284,10 @@ async function signup(data) {
         email: data.restaurant_email || null,
         admin_id: user.id,
         admin_name: data.full_name,
-        status: 'trial',
+        // 무료 요금제(0원)는 «체험»이 성립하지 않는다 — 7일 뒤 overdue 로 떨어지면
+        // 「무료로 발주만」이 8일째 멈춘다(2026-09-12 · 무료 발주 등급).
+        // 값이 있는 요금제만 기존대로 체험으로 시작한다.
+        status: Number(planAmount) > 0 ? 'trial' : 'active',
         plan_type: plan.display_name || plan.name,
         plan_amount: planAmount,
         billing_cycle: data.billing_cycle || 'monthly',

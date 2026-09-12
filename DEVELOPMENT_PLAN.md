@@ -1,6 +1,9 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-11 #6 — **운영 배포(서버만, SW 5.12 그대로). 원가 ×1000 사고 — 원가식 수정 + 운영 원가 20행 복원.**
+> **최종 업데이트:** 2026-09-12 #2 — **B2B 무료 발주 등급 구현 중(미배포·중단 저장).** 요금제 «발주 전용(무료)» · 무료 등급 화면 잠금 + 업그레이드 안내 화면 · 무료는 7일 체험 없이 바로 이용 · 발주 전 법인정보 검사.
+> 남은 것: 카탈로그 링크(공급업체·브랜드) · 공급형 계약(contract_type 'supply') · 판매자 «계약 필요 여부» 설정 · 폼 필수표시 전수 정리 → 빌드 1회 → verify-all --full → Fable 게이트 → 배포 지시 대기.
+>
+> **이전 업데이트:** 2026-09-11 #6 — **운영 배포(서버만, SW 5.12 그대로). 원가 ×1000 사고 — 원가식 수정 + 운영 원가 20행 복원.**
 > 원인: `services/costSync.js convertPrice` 가 기준양(package_quantity)을 한 번 더 곱함(09-05~) — 문서 §2-2 는 base_quantity 가 이미 기준양 전체. 기준양 복사 행(g/1000 · 1000 g)에서 ×1000. 1차 반영 원가 전파가 15행+공유 2 를, 오늘 전 전파가 3행을 부풀림.
 > ①식 수정 + 테스트(문서 6병 예 12) ②인스펙션 ING-UNI-025 원가 ↔ 판매자 가격 계산 3배 ③검토표 원가 미리보기 ④되돌리기 원가 기록 거꾸로 ⑤마이그 미리보기·주석 정정. 운영 복원 20/20 · 재대조 20행 사라짐.
 > 검증: jest 40 · 반증 3(식·미리보기·인스펙션) · dev API 가격 32→33 원가 33 · verify-all --full 19/19 · Fable 게이트 통과(f2283598e56c) · 스모크 10/10 · 백업 20260911_212145.
@@ -9730,6 +9733,43 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 
 ---
 
+
+## 🔄 진행 중: B2B 무료 발주 등급 (2026-09-12 · 미배포 · 중간 저장)
+
+우리 POS 를 쓰지 않는 매장을 무료로 가입시켜 **발주만** 하게 하고, 재고·원가가 자동 계산되는 것을 보여 유료 전환을 유도한다. 설계 단일기준 = `docs/BUYER_FREE_TIER_DESIGN.md`.
+
+### 이번 세션에 들어간 것 (dev 만)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 요금제 «발주 전용(무료)» | 0원 · 모듈 6 · 한도 -1 · 매장 1곳. 마이그 멱등 + registry 등록, dev 적용(id 21) | ✅ |
+| 무료는 체험 없음 | 0원인데 7일 체험이 붙어 8일째 `overdue` 로 멈출 상태였다 — 가입·체험 시작 두 곳에서 0원 분기 | ✅ |
+| 화면 잠금 | `ProtectedRoute` 매장 주소 잠금 목록 + 사이드바 잠금 표시(숨기지 않음, 요금제 로딩 중 제외) | ✅ |
+| 업그레이드 안내 화면 | `/restaurant/:id/upgrade` 신설 — 기존 `/pos/plan` 은 **라우트가 없어 빈 화면**이었다 | ✅ |
+| 발주 전 법인정보 검사 | `BUYER_PROFILE_INCOMPLETE`(무료 등급 한정, 유료 무영향) | ✅ |
+| 가입 화면 무료 카드 | 문구 + 체험 안내 분기, 4언어 | ✅ |
+
+### 남은 것
+
+1. 판매자 «계약 필요 여부» 설정(`operation_settings.sales_access`, 공급업체·브랜드 같은 기준)
+2. 카탈로그 링크(공급업체 `shop_slug` 재사용 + `brands.shop_slug` 추가 + 보기 전용 공개 화면)
+3. 브랜드 상품 `distribution_mode` 에 `external_buyers` 추가(ENUM 은 expandEnum)
+4. 공급형 계약(`contract_type:'supply'` 선택지 + 구분 탭, 폼 교체 없음)
+5. 폼 필수 표시 전수 정리(`UI_DESIGN_GUIDE.md` §4.3-1 기준)
+6. 발주 법인정보 화면 안내 · 사이드바 잠금 범위 확대
+7. 빌드 1회 → verify-all --full 1회 → 게이트 → 배포 지시 대기
+
+### 수정된 파일
+- `dev-backend/scripts/migrate-buyer-free-plan.js`, `dev-backend/services/authService.js`, `dev-backend/services/subscriptionScheduler.js`
+- `dev-backend/routes/purchase-orders-crud.js`, `dev-backend/routes/supplier.js`
+- `dev-frontend/src/components/ProtectedRoute.tsx`, `dev-frontend/src/components/Layout/MainLayout.tsx`, `dev-frontend/src/App.tsx`
+- `dev-frontend/src/pages/Restaurant/UpgradeGuidePage.tsx`(신규), `dev-frontend/src/pages/Landing/SignupPage.tsx`
+- `public/locales/{en,ko,zh,ms}/{subscription,landing,common}.json`
+- `docs/BUYER_FREE_TIER_DESIGN.md`, `dev-frontend/UI_DESIGN_GUIDE.md`
+
+⚠ 배포 전: `check-print-guard` 가 MainLayout 을 잡는다(사이드바만 변경 · 인쇄 블록 무접촉 확인 완료) — 재확인 후 `--bless` 필요. 민감 판정은 **Fable 게이트 대상**.
+
+---
 
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 

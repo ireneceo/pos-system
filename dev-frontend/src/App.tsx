@@ -132,6 +132,7 @@ const ManagerSupportTicketsPage = React.lazy(() => import('./pages/Manager/Suppo
 const RestaurantSupportTicketsPage = React.lazy(() => import('./pages/Restaurant/SupportTicketsPage'));
 const OperationInquiryPage = React.lazy(() => import('./pages/Manager/OperationInquiryPage'));
 const RestaurantOperationInquiryPage = React.lazy(() => import('./pages/Restaurant/OperationInquiryPage'));
+const RestaurantUpgradeGuidePage = React.lazy(() => import('./pages/Restaurant/UpgradeGuidePage'));
 const SystemProductManagementPage = React.lazy(() => import('./pages/Admin/SystemProductManagementPage'));
 const HardwareQuotesPage = React.lazy(() => import('./pages/Admin/HardwareQuotesPage'));
 const SystemLogsPage = React.lazy(() => import('./pages/Admin/SystemLogsPage'));
@@ -1288,6 +1289,12 @@ function App() {
                       <Route path="/restaurant/:restaurantId/reports" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <ReportsPage />
+                        </ProtectedRoute>
+                      } />
+                      {/* 무료 등급에서 잠긴 메뉴를 눌렀을 때 오는 안내 화면 (2026-09-12) */}
+                      <Route path="/restaurant/:restaurantId/upgrade" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
+                          <RestaurantUpgradeGuidePage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/support" element={

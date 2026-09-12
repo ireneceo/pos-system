@@ -47,5 +47,19 @@
     "foodcourt": "Foodcourt General",
     "owner": "Restaurant Owner",
     "supplier": "Supplier Admin"
+  },
+  "upgradeGuide": {
+    "title": "Upgrade and it adds up for you",
+    "titleIncluded": "You already have these",
+    "lead": "Your current plan covers supplier ordering and purchase invoices at no cost. Add stock and recipes, and what you order flows straight into stock levels and menu cost.",
+    "leadIncluded": "Your plan already includes stock and recipes. Open them from the menu on the left.",
+    "stockTitle": "Orders build your stock count",
+    "stockBody": "Record what arrives and the remaining quantity goes up on its own, then down as you sell. No separate counting.",
+    "recipeTitle": "Cost per dish is worked out",
+    "recipeBody": "Link ingredients to a recipe, and when a supplier price changes the menu cost changes with it.",
+    "supplierTitle": "Compare supplier prices side by side",
+    "supplierBody": "When the same ingredient comes from several suppliers, you can see who is cheaper and when a price went up.",
+    "keep": "Your existing orders and supplier details stay exactly as they are. Nothing to re-enter.",
+    "seePlans": "See plans"
   }
 }
