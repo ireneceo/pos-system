@@ -793,5 +793,9 @@
   "shopLink.urlLabel": "Pautan untuk dikongsi",
   "shopLink.saved": "Disimpan",
   "shopLink.saveFailed": "Gagal disimpan",
-  "shopLink.open": "Buka"
+  "shopLink.open": "Buka",
+  "shopLink.copied": "Disalin",
+  "shopLink.expand": "Ubah",
+  "shopLink.collapse": "Tutup",
+  "shopLink.create": "Buat pautan"
 }

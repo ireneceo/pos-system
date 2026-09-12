@@ -43,7 +43,11 @@ router.get('/company-info', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: { message: 'Brand not found', code: 'NOT_FOUND' } });
     }
 
-    res.json({
+    // ⚠ 이 응답은 **최상위**에 칸을 준다(표준 `{success,data}` 가 아니다).
+    //    오래된 화면들이 그 모양을 그대로 읽고 있어 바꾸지 않는다. 대신 `data` 를 함께 실어
+    //    새 화면이 표준 모양으로도 읽을 수 있게 한다 — 2026-09-12 상품 링크 카드가
+    //    `json.data` 만 보다가 «저장했는데 링크가 사라짐» 으로 보였다.
+    const companyPayload = {
       company_name: brand.company_name || brand.name,
       registration_no: brand.registration_no,
       trade_name: brand.trade_name,
@@ -60,7 +64,8 @@ router.get('/company-info', authenticateToken, async (req, res) => {
       logo_url: brand.logo_url,
       operation_settings: brand.operation_settings,
       shop_slug: brand.shop_slug || null
-    });
+    };
+    res.json({ success: true, data: companyPayload, ...companyPayload });
   } catch (error) {
     console.error('Error fetching brand company info:', error);
     res.status(500).json({ success: false, error: { message: 'Failed to fetch company info', code: 'INTERNAL_ERROR' } });
@@ -96,22 +101,19 @@ router.put('/company-info', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: { message: 'Brand not found', code: 'NOT_FOUND' } });
     }
 
-    const updateData = {
-      company_name: req.body.company_name,
-      registration_no: req.body.registration_no,
-      trade_name: req.body.trade_name,
-      address: req.body.address,
-      address_line_2: req.body.address_line_2 || null,
-      city: req.body.city,
-      state: req.body.state,
-      postal_code: req.body.postal_code,
-      country: req.body.country ? String(req.body.country).toUpperCase().slice(0, 2) : req.body.country,
-      phone: req.body.phone,
-      email: req.body.email,
-      website: req.body.website,
-      tax_no: req.body.tax_no,
-      logo_url: req.body.logo_url
+    // ⛔ **보낸 칸만** 고친다. 예전에는 전체 폼이 보내는 것을 전제로 목록을 통째로 만들어
+    //    `address_line_2: req.body.address_line_2 || null` 처럼 **안 보낸 칸을 null 로 덮어썼다.**
+    //    한 칸만 저장하는 화면(상품 링크 카드)이 생기면서 그 자리가 실제 데이터 소실이 된다.
+    //    (2026-09-12 — 설정 wipe 사고와 같은 형태 [[project_printer_settings_wipe_locks]])
+    const updateData = {};
+    const setIf = (key, transform) => {
+      if (req.body[key] === undefined) return;
+      updateData[key] = transform ? transform(req.body[key]) : req.body[key];
     };
+    ['company_name', 'registration_no', 'trade_name', 'address', 'city', 'state',
+     'postal_code', 'phone', 'email', 'website', 'tax_no', 'logo_url'].forEach(k => setIf(k));
+    setIf('address_line_2', v => v || null);
+    setIf('country', v => (v ? String(v).toUpperCase().slice(0, 2) : v));
 
     // 주문용 상품 링크 — 공급업체와 **같은 규칙·같은 유일성 검사**를 쓴다 (§5-6)
     if (req.body.shop_slug !== undefined) {

@@ -33,6 +33,36 @@ const Card = styled.div`
   margin-bottom: 16px;
 `;
 
+const SummaryRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+`;
+
+const SummaryLeft = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
+`;
+
+const SummaryUrl = styled.span`
+  font-family: monospace;
+  font-size: 13px;
+  color: #374151;
+  background: #F8F9FC;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  padding: 4px 8px;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
 const Row = styled.div`
   display: flex;
   gap: 20px;
@@ -121,6 +151,11 @@ const SellerShopLinkCard: React.FC<Props> = ({ sellerType, disabled }) => {
   const [salesAccess, setSalesAccess] = useState<'contract_required' | 'open'>('contract_required');
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  // 기본은 **접힘**. 상품 화면 맨 위를 차지하지 않게 한다(2026-09-12 Irene 「접어둘래?」).
+  // 접힌 줄에서도 링크와 복사 버튼은 바로 쓸 수 있어야 한다 —
+  // 「만들면 링크가 복사하게 붙어줘야지」.
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   const readUrl = sellerType === 'supplier' ? '/api/supplier/company' : '/api/brands/company-info';
@@ -134,7 +169,9 @@ const SellerShopLinkCard: React.FC<Props> = ({ sellerType, disabled }) => {
         const res = await fetch(readUrl, { headers: { Authorization: `Bearer ${token}` } });
         const json = await res.json();
         if (cancelled || !res.ok) return;
-        const d = json?.data || {};
+        // 판매자마다 응답 모양이 다르다 — 공급업체는 { data }, 브랜드는 최상위.
+        // 한쪽만 보면 «저장했는데 링크가 사라짐» 이 된다(2026-09-12 Irene 신고).
+        const d = (json && (json.data || json)) || {};
         setSlug(d.shop_slug || '');
         setSavedSlug(d.shop_slug || '');
         setSalesAccess(d.operation_settings?.sales_access === 'open' ? 'open' : 'contract_required');
@@ -181,7 +218,7 @@ const SellerShopLinkCard: React.FC<Props> = ({ sellerType, disabled }) => {
         const token = getAuthToken();
         const res = await fetch(readUrl, { headers: { Authorization: `Bearer ${token}` } });
         const json = await res.json();
-        const v = json?.data?.shop_slug || '';
+        const v = ((json && (json.data || json)) || {}).shop_slug || '';
         setSlug(v);
         setSavedSlug(v);
       } catch { setSavedSlug(slug.trim()); }
@@ -196,11 +233,62 @@ const SellerShopLinkCard: React.FC<Props> = ({ sellerType, disabled }) => {
   const url = savedSlug ? `${window.location.origin}/shop/${savedSlug}` : '';
   const qrId = `shop-link-qr-${sellerType}`;
 
+  const copy = async () => {
+    if (!url) return;
+    // 클립보드 API 는 거절될 수 있다(권한 거부·비보안 출처·구형 브라우저).
+    // 그때 조용히 아무 일도 안 일어나면 사용자는 «복사가 안 된다»고만 느낀다 →
+    // 되는 방법으로 한 번 더 시도하고, 성공했을 때만 «복사됨» 을 보여 준다.
+    let ok = false;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+        ok = true;
+      }
+    } catch { /* 아래 대체 방법으로 */ }
+    if (!ok) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch { ok = false; }
+    }
+    if (ok) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
   if (loading) return null;
 
   return (
     <Card>
-      <Row>
+      <SummaryRow>
+        <SummaryLeft>
+          <CardTitle style={{ margin: 0 }}>{t('common:shopLink.title')}</CardTitle>
+          {url ? (
+            <>
+              <SummaryUrl title={url}>{url}</SummaryUrl>
+              <Button variant="secondary" size="small" type="button" onClick={copy}>
+                {copied ? t('common:shopLink.copied') : t('common:shopLink.copy')}
+              </Button>
+            </>
+          ) : (
+            <Empty>{t('common:shopLink.empty')}</Empty>
+          )}
+        </SummaryLeft>
+        <Button variant="secondary" size="small" type="button" onClick={() => setOpen(o => !o)}>
+          {open ? t('common:shopLink.collapse') : (url ? t('common:shopLink.expand') : t('common:shopLink.create'))}
+        </Button>
+      </SummaryRow>
+
+      {open && (
+      <Row style={{ marginTop: 16 }}>
         <Left>
           <CardTitle>{t('common:shopLink.title')}</CardTitle>
           <Hint>{t('common:shopLink.hint')}</Hint>
@@ -222,8 +310,8 @@ const SellerShopLinkCard: React.FC<Props> = ({ sellerType, disabled }) => {
             <>
               <UrlInput readOnly value={url} />
               <Actions>
-                <Button variant="secondary" size="small" type="button" onClick={() => { navigator.clipboard?.writeText(url).catch(() => {}); }}>
-                  {t('common:shopLink.copy')}
+                <Button variant="secondary" size="small" type="button" onClick={copy}>
+                  {copied ? t('common:shopLink.copied') : t('common:shopLink.copy')}
                 </Button>
                 <Button
                   variant="secondary"
@@ -271,6 +359,7 @@ const SellerShopLinkCard: React.FC<Props> = ({ sellerType, disabled }) => {
           </QRBox>
         )}
       </Row>
+      )}
     </Card>
   );
 };

@@ -793,5 +793,9 @@
   "shopLink.urlLabel": "Link to share",
   "shopLink.saved": "Saved",
   "shopLink.saveFailed": "Could not save",
-  "shopLink.open": "Open"
+  "shopLink.open": "Open",
+  "shopLink.copied": "Copied",
+  "shopLink.expand": "Edit",
+  "shopLink.collapse": "Close",
+  "shopLink.create": "Create link"
 }

@@ -793,5 +793,9 @@
   "shopLink.urlLabel": "보낼 주소",
   "shopLink.saved": "저장됨",
   "shopLink.saveFailed": "저장하지 못했습니다",
-  "shopLink.open": "열어 보기"
+  "shopLink.open": "열어 보기",
+  "shopLink.copied": "복사됨",
+  "shopLink.expand": "수정",
+  "shopLink.collapse": "닫기",
+  "shopLink.create": "링크 만들기"
 }

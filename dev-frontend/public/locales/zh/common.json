@@ -793,5 +793,9 @@
   "shopLink.urlLabel": "分享用网址",
   "shopLink.saved": "已保存",
   "shopLink.saveFailed": "无法保存",
-  "shopLink.open": "开启"
+  "shopLink.open": "开启",
+  "shopLink.copied": "已复制",
+  "shopLink.expand": "修改",
+  "shopLink.collapse": "关闭",
+  "shopLink.create": "建立链接"
 }
