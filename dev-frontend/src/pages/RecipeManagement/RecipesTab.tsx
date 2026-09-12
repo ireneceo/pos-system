@@ -1028,7 +1028,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             setPickerIngredients(allIngredients);
             allIngredients = [...allIngredients, ...mirrors];
           } else {
-            setPickerIngredients(allIngredients);
+            // 매장(RA) 경로 — 꺼진 재료는 **고를 수 없게** 한다 (2026-09-12 · Irene 「비활성화하면 레시피에서 재료검색에 안뜨게」).
+            //   브랜드 재고아이템을 끄면 거울도 함께 꺼지므로 매장 화면에서도 이 필터 하나로 사라진다.
+            //   ⚠ 조회용 목록(`ingredients`)은 그대로 둔다 — 이미 저장된 줄이 꺼진 재료를 가리키면
+            //   이름 해석이 실패해 «Ingredient #123» 이 되고 줄 원가가 0 으로 덮인다(2026-09-09 사고).
+            setPickerIngredients(allIngredients.filter((x: any) => x.is_active !== false));
           }
 
           setIngredients(allIngredients);

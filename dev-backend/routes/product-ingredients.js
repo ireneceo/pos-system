@@ -127,8 +127,40 @@ router.get('/', async (req, res) => {
       });
     });
 
+    // 이 재고아이템을 **쓰는 레시피** (2026-09-12 · Irene 「스톡아이템에 연결된 프로덕트레시피와 연결된 브랜드레시피를 다 표시되게 해줘」)
+    //   삭제하려 할 때만 알려 주면 늦다 — 목록에서 바로 «어느 레시피가 쓰는지» 보이게 한다(같은 재료로 바꿔 끼우려면 그게 먼저다).
+    //   프로덕트 레시피는 직접 연결, 브랜드 레시피는 **거울**(다른 브랜드 사본)을 거쳐 붙는다.
+    const usedIn = {};
+    const pushUse = (stockId, use) => { (usedIn[stockId] = usedIn[stockId] || []).push(use); };
+    if (stockIds.length) {
+      const prRows = await ProductIngredient.sequelize.query(
+        `SELECT pri.ingredient_id AS stock_id, pr.id, pr.name
+           FROM product_recipe_ingredients pri
+           JOIN product_recipes pr ON pr.id = pri.recipe_id
+          WHERE pri.ingredient_id IN (:ids)`,
+        { replacements: { ids: stockIds }, type: ProductIngredient.sequelize.QueryTypes.SELECT }
+      );
+      prRows.forEach((r) => pushUse(r.stock_id, { type: 'product_recipe', id: r.id, name: r.name }));
+
+      if (mirrorIds.length) {
+        const mirrorBrandById = Object.fromEntries(mirrors.map((m) => [m.id, { brandId: m.brand_id, sourceId: m.source_product_ingredient_id }]));
+        const brRows = await ProductIngredient.sequelize.query(
+          `SELECT ri.ingredient_id AS mirror_id, r.id, r.name, r.brand_id
+             FROM recipe_ingredients ri
+             JOIN recipes r ON r.id = ri.recipe_id
+            WHERE ri.ingredient_id IN (:ids)`,
+          { replacements: { ids: mirrorIds }, type: ProductIngredient.sequelize.QueryTypes.SELECT }
+        );
+        brRows.forEach((r) => {
+          const m = mirrorBrandById[r.mirror_id];
+          if (m) pushUse(m.sourceId, { type: 'brand_recipe', id: r.id, name: r.name, brandId: r.brand_id || m.brandId });
+        });
+      }
+    }
+
     data = data.map((i) => {
       const row = i.toJSON ? i.toJSON() : i;
+      row.used_in_recipes = usedIn[row.id] || [];
       const ms = mirrorsBySource[row.id] || [];
       // 연결이 없으면 **null** 이다(0 이 아니다) — "연결 안 됨"과 "재고 0"은 다른 사실이다.
       if (!ms.length) return { ...row, shared_brand_ids: [], linked_stock: null, linked_store_total: null, linked_stores: [], linked_unit: null };
@@ -637,14 +669,77 @@ router.delete('/:id', async (req, res) => {
     const ingredient = await ProductIngredient.findByPk(req.params.id);
     if (!assertBGOwnsRow(ingredient, req, res)) return;
 
-    // 레시피에서 사용 중인지 확인
-    const usageCount = await ProductRecipeIngredient.count({
-      where: { ingredient_id: ingredient.id }
-    });
-    if (usageCount > 0) {
+    // 어디서 쓰이는지 먼저 모은다 (2026-09-12 · Irene 「연결 끊고 지울건지 아니면 연결된 레시피 보러가기 할 수 있게 안내해줘야해」)
+    //   화면이 «못 지웁니다» 로 끝내지 않고 **그 자리로 보내 줄 수 있게** 사용처를 이름까지 실어 돌려준다.
+    //   ⚠ 사유는 한 가지 형태(`error: { code, message, uses[] }`)로만 낸다 — 전에는 레시피는 문자열, 거울은 객체라
+    //   화면이 객체를 문장 자리에 넣어 **이유가 통째로 안 보였다**(운영 GIT «Rice Cake» 신고의 실제 증상).
+    const uses = [];
+    const db = ProductIngredient.sequelize;
+    const rows = (sql, replacements) => db.query(sql, { replacements, type: db.QueryTypes.SELECT });
+
+    // ① 내 브랜드 프로덕트 레시피
+    const productRecipeRows = await rows(
+      `SELECT pr.id, pr.name FROM product_recipe_ingredients pri
+         JOIN product_recipes pr ON pr.id = pri.recipe_id
+        WHERE pri.ingredient_id = :id`,
+      { id: ingredient.id }
+    );
+    productRecipeRows.forEach((r) => uses.push({ type: 'product_recipe', id: r.id, name: r.name }));
+
+    // ② 브랜드 상품 옵션(예: «떡 추가») — FK 가 NO ACTION 이라 검사 없이 지우면 DB 가 막아 500 이 난다
+    //   옵션은 상품에 직접 붙지 않고 **옵션 그룹**을 거친다(brand_product_options.option_group_id).
+    //   그룹이 여러 상품에 붙을 수 있어 상품 이름은 첫 연결 하나만 참고로 싣는다.
+    const optionRows = await rows(
+      `SELECT o.id, o.name, o.option_group_id,
+              (SELECT bp.name FROM brand_product_option_group_products gp
+                 JOIN brand_products bp ON bp.id = gp.product_id
+                WHERE gp.option_group_id = o.option_group_id LIMIT 1) AS product_name
+         FROM brand_product_option_ingredients oi
+         JOIN brand_product_options o ON o.id = oi.option_id
+        WHERE oi.ingredient_id = :id`,
+      { id: ingredient.id }
+    );
+    optionRows.forEach((r) => uses.push({ type: 'product_option', id: r.id, name: r.name, productName: r.product_name || null }));
+
+    // ③ 다른 브랜드에 공유한 사본(거울)이 쓰이는 곳 — 화면에 연결이 안 보여서 «연결 없는데 왜?» 로 보이던 자리
+    const mirrorRows = await rows(
+      `SELECT id, brand_id, name FROM ingredients WHERE source_product_ingredient_id = :id`,
+      { id: ingredient.id }
+    );
+    for (const m of mirrorRows) {
+      const recipeLines = await rows(
+        `SELECT r.id, r.name, r.brand_id FROM recipe_ingredients ri
+           JOIN recipes r ON r.id = ri.recipe_id
+          WHERE ri.ingredient_id = :mid`,
+        { mid: m.id }
+      );
+      recipeLines.forEach((r) => uses.push({ type: 'brand_recipe', id: r.id, name: r.name, brandId: r.brand_id, mirrorBrandId: m.brand_id }));
+
+      const stockRows = await rows(
+        `SELECT ris.restaurant_id, rest.name FROM restaurant_ingredient_stocks ris
+           LEFT JOIN restaurants rest ON rest.id = ris.restaurant_id
+          WHERE ris.ingredient_id = :mid`,
+        { mid: m.id }
+      );
+      stockRows.forEach((r) => uses.push({ type: 'store_stock', id: r.restaurant_id, name: r.name, restaurantId: r.restaurant_id }));
+
+      const sellerRows = await rows(
+        `SELECT COUNT(*) n FROM ingredient_seller_products WHERE ingredient_id = :mid`,
+        { mid: m.id }
+      );
+      if (Number(sellerRows[0].n) > 0) {
+        uses.push({ type: 'seller_link', id: m.id, name: m.name, count: Number(sellerRows[0].n), mirrorBrandId: m.brand_id });
+      }
+    }
+
+    if (uses.length) {
       return res.status(400).json({
         success: false,
-        error: `Cannot delete ingredient. It is used in ${usageCount} recipe(s).`
+        error: {
+          code: 'IN_USE',
+          message: 'This Stock Item is still in use. Open each place below and remove it there first.',
+          uses
+        }
       });
     }
 

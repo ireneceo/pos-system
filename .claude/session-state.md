@@ -55,6 +55,29 @@
 ---
 
 ### 진행 중인 작업
+- **(2026-09-12) 재고아이템 삭제 안내 — dev 구현·검증 중, 미배포.** Irene 「GGIT consulting 스톡아이템에서 Rice Cakes 가 중복이 있어서 지우려는데 안지워져 … 연결 끊고 지울건지 아니면 연결된 레시피 보러가기 할 수 있게 안내해줘야해 … 이 라이스케이크는 연결이 없는데 왜 안지워지는지 알려줘」 · 「fable 토큰 없어. 삭제할 수 없으면 그냥 그리로 보내서 확인하게 해.」 · 「연결 안되었는데 삭제 안되는 건 뭐야? 거울항목? 그걸 어쩌라고.」
+  - **원인(운영 실측, 읽기만)**: GIT(브랜드 1 · owner user 23) Stock Items 에 «Rice Cake» 2행 — **137**(PI-132, 활성) · **327**(PI-307, 비활성). 둘 다 프로덕트 레시피 0 · 옵션 0. **327 은 거울 `ingredients` 29(브랜드 2 K-DINE with MIN)** 를 갖고, 그 거울이 **브랜드 레시피 5줄**(Tteokbokki 140g · Rose 40 · Ramen 55 · Jjajang Tteokbokki 140 · Jjajang Ramen 55)과 **매장 8 K-DINE IPC 재고 1행**에 쓰임 → 서버는 400 으로 막는데 **화면이 사유(객체)를 문장 자리에 넣어 «Delete Failed» 만** 보였다. 137 은 막을 조건 없음(발주 줄 0 · 재고이동 0 · 공급처 1은 SET NULL).
+  - **구현(Fable 토큰 소진 → 팀원 판단)**: 서버 `routes/product-ingredients.js` DELETE 사유를 **한 형태로 통일** `error:{code:'IN_USE', message, uses[]}` — 프로덕트 레시피·**상품 옵션(신규 검사, FK NO ACTION 이라 전엔 500)**·거울의 브랜드 레시피/매장 재고/공급처 연결을 이름까지 실어 준다. 화면 `ProductIngredientsTab.tsx` 에 «쓰는 곳 + 보러가기» 안내창(공용 Modal) · 이동 `/pos/recipes?brandId=&search=` · `/pos/brand-product-recipes?search=` · `/pos/brand-products?search=` · `/restaurant/:rid/inventory` · i18n 11키 4언어. **«연결 끊고 삭제»는 만들지 않음**(남의 브랜드 레시피 줄을 지우는 비가역 변경 — 그 화면에서 하게 한다).
+  - 검증: dev 재현 2경우 PASS(거울 레시피 · 상품 옵션) · 고장주입 1건 성립(거울 수집 제거 → uses 빈 채 FAIL, 원복 sha256 일치 후 재통과) · print-guard 8/8 · design 신규 0 · 죽은 핸들러 0 · i18n Errors 0 · 시험 잔재 0.
+  - ⚠ **실브라우저 1차 FAIL → 원인 확정·수정**: 공용 `utils/api.js fetchAPI` 가 실패 응답을 `new Error(error.message || error.error …)` 로 바꿔 **본문을 버린다**. 사유가 객체(`error.uses`)라 «[object Object]» 만 남고 화면 안내 분기에 도달조차 못 했다(콘솔 «Failed to delete ingredient: Error: [object Object]»). 공용 헬퍼는 전 화면이 쓰므로 무접촉, **이 삭제 호출만 직접 fetch** 로 바꿔 400 본문을 읽게 함. 재빌드 진행 중.
+  - 빌드: 1차 main.3d62d82f.js → (fetchAPI 수정) 재빌드 **main.9fc550bd.js**, 두 번 다 변경 파일 경고 0.
+  - **실브라우저 PASS**(dev `/pos/brand-ingredients`, BG user 22): Delete → 안내창 «Still in use — cannot delete» · 항목 «Brand recipe / test_recipe / 다른 브랜드 사본» · «Open» → `/pos/recipes?brandId=17&search=test_recipe` 이동 · 화면 오류는 의도한 400 하나 · 픽스처 잔재 0 · 재고아이템 무사.
+    - ⚠ 프로브 1차 오판: 판정이 `document.body.innerText` 를 1200자에서 잘라 읽어 모달을 놓침 → 모달 요소만 보도록 수정 후 PASS(화면은 처음부터 정상이었다, 스크린샷 `ui-stockitem-blocked.png`).
+  - verify-all --full(1차, 삭제 안내분) **18/19** — 실패 1 = deploy-ready(릴리즈 기록·SW, 배포 요청 없어 정상) · mount sweep 668.5s 크래시 0.
+- **(2026-09-12 이어서) Irene 추가 지시 — 쓰는 레시피 표시 + 비활성은 재료 검색에서 제외**
+  - 원문: 「같은 떡 메뉴로 바꾸면 되잖아. 브랜드 레시피에서 사용한다고 알려줘야지. 스톡아이템에 연결된 프로덕트레시피와 연결된 브랜드레시피를 다 표시되게 해줘. 그리고 비활성화하면 레시피에서 재료검색에 안뜨게 해주고」
+  - 서버 `GET /api/product-ingredients` 에 **`used_in_recipes`** 추가 — 프로덕트 레시피(직접) + 브랜드 레시피(거울 경유), 이름·브랜드까지. dev 실호출 PASS(«Grilled Chicken» + «test_recipe», 잔재 0).
+  - 화면 카드에 «쓰는 레시피» 칩 줄(누르면 그 레시피 화면으로 이동) · i18n `usedInRecipes` 4언어.
+  - 비활성 필터 실측: 브랜드 레시피 선택기는 **이미** `is_active !== false` 로 거름 / **매장(RA) 경로는 안 걸러** `RecipesTab` else 분기에 필터 추가(조회용 목록은 그대로 — 저장된 줄이 «Ingredient #123» 이 되는 2026-09-09 사고 방지).
+  - 거울 동기화 실호출 확인: 재고아이템 끄기 → 거울 [1,0]→[0,0], 되돌리기 → [1,1] **PASS**(끄면 브랜드·매장 검색에서 함께 사라짐).
+  - 정적 검사 통과(디자인 신규 0 · 죽은 핸들러 0 · 인쇄 8/8 · 신규 하드코딩 0 · i18n Errors 0).
+  - 빌드 1회 **main.e278e8b9.js**(변경 파일 경고 0). **실브라우저 PASS**: 카드에 «Recipes · Product recipe · Grilled Chicken · Brand recipe · test_recipe» 표시 · 끄면 선택 대상에서 빠짐(끄기 전 포함 true → 끈 뒤 false) · 화면 오류 0 · 픽스처 잔재 0 · 재고아이템 원래대로 켜짐.
+    - ⚠ 프로브 2차 오판: 브라우저에서 같은 주소를 다시 불러 **캐시 응답**을 받아 «안 꺼졌다» 로 나옴 → 서버 직접 호출로 API 는 DB 를 즉시 반영함을 확인(끈 뒤 is_active false) → 프로브에 `cache:'no-store'`+쿼리 붙여 재실행 PASS.
+  - Irene 「검증하고 배포해」 → SW `5.13` → **`5.14-stock-item-recipe-uses-20260912`** · 빌드 1회(main.e278e8b9.js, 변경 파일 경고 0) · 배포 기록 `releases/2026-09-12-stock-item-recipe-uses.json` · 민감 판정 **비대상**(돈·스키마 무변경, Fable 한도 소진으로 판정 미수령 — 기록에 명시).
+  - **verify-all --full 19/19 전 게이트 통과**(mount sweep 668.5s 크래시 0) → ✅ **운영 배포 07:21~07:26 UTC**: 안전 게이트 10/10 · 배포 전 mount sweep 통과 · 마이그 87/87 · 스모크 10/10 · 백업 `/var/www/backups/20260912_072105` · 배포 기록 운영 적재.
+  - 배포 후 운영 확인: 번들 `main.e278e8b9.js` · SW `5.14-stock-item-recipe-uses-20260912` · `/api/health` ok · **재시작 후 실제 오류 0건**(«Error» 로 걸린 1줄은 재료 이름 «Roasted Sesame Seed…» 가 든 재고 부족 안내).
+  - 남은 안내(Irene): 운영 GIT «Rice Cake» 중복은 K-DINE 레시피 5개(떡볶이·로제·라면·짜장 떡볶이·짜장 라면)에서 같은 떡 아이템으로 바꾼 뒤 꺼진 `PI-307` 을 지울 수 있다. 배포됐으므로 카드의 «Recipes» 칩에서 바로 이동 가능.
+  - 운영 조치 안내(Irene): `PI-307`(꺼짐)은 K-DINE 레시피 5개에서 빼기 전에는 못 지운다 · 중복 정리는 `PI-132`(켜짐) 한 줄만 남기고 `PI-307` 은 꺼둔 채 두는 것이 지금으로선 안전.
 - (2026-09-11 17시 UTC~) Irene 「해」→ 선택: 3번 ✅ · 4번 piece 대기발주 DB 보정 · 5번 발주 33 단위 보정 — Fable 판정 수령(4번: 줄 글자 아닌 연결 환산값 8건 + 다시 담기 / 5번: 약 17행 한 번에 · 순두부 재고 6 g→1,800 g). Irene 원문 전달 완료, «고쳐» 전 운영 쓰기 0.
 - (같은 세션) **Irene 새 지시 — 공급업체 상품 이름 «영문(한글)» · 포장단위 정리 · «1kg/pack» 붙여 표시 · 수량 1pack/2pack · 목록 기준으로 DB 수정/추가(브랜드 with MIN · with MIN Cafe)**. 목록 원본: 세션 scratchpad `irene-supplier-list-raw.txt`(359행) · 칸 분리 `irene-supplier-list-cells.json` · 운영 실측 `prod-supplier-catalog.json`(외부 공급업체 38 · 상품 352 · 연결 672). 4·5번과 겹쳐 같은 Fable 에 원문+실측 전달 → **Fable 설계 수령**(Irene 에게 원문 전달): 순서 ①규칙 확정 ②개발 정리 ③검토표 ④운영 반영 ⑤4·5번 잔여. **Irene 확인 대기 4문항**(5·6칸=예전 값? · 공급업체 문서 영문만? · 포장단위 풀네임 통일? · 가격 덮어쓰기?). 매장 13 = Seoul Garden BBQ(데모) → 목록 무관. 준비 완료: 해석기 초안 `catalog-parser-draft.py`(update 299 · add 27 · check 30 · exclude 3) · 문서 `TRADE_STRUCTURE.md` §2-2 규칙(컨펌 대기 표시)·§5-4 해결 예정 · `EXTERNAL_SUPPLIER_PRODUCTS.md` §11 절차. 화면 조사 완료 → `EXTERNAL_SUPPLIER_PRODUCTS.md` §11-4.
 - **Irene 「fable 권고대로」(4문항 확정) → dev 구현 진행 중(빌드 전)**: 공통 util(CONTENT_UNIT_OPTIONS·withCurrentUnit·sellerSpecLabel·supplierFacingName 화면/서버) · 공급업체 문서 5곳(WhatsApp·인쇄·PDF·메일·수신) 영문·Buyer ref 제거·수량+단위 한 칸 · 판매 상품 카드/폼 4화면 · 재고 카드 발주처 칩(IngredientsTab·ProductIngredientsTab + 서버 product-ingredients.js 2곳·ingredient-seller-products.js). jest 서버 5/5 · 화면 packSpec 17/17.

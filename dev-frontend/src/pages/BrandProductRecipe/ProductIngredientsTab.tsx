@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { EmptyState, IconButton } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -353,10 +354,26 @@ const StockBadge = styled.span<{ status: 'normal' | 'low' | 'out' }>`
   }};
 `;
 
+/** 재고아이템을 지울 수 없을 때 서버가 알려 주는 «쓰는 곳» 한 줄 (`DELETE /api/product-ingredients/:id` → error.uses) */
+interface IngredientUse {
+  type: 'product_recipe' | 'product_option' | 'brand_recipe' | 'store_stock' | 'seller_link';
+  id: number;
+  name: string | null;
+  brandId?: number;
+  mirrorBrandId?: number;
+  restaurantId?: number;
+  productId?: number;
+  count?: number;
+}
+
 const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, onCountChange, categoryRefreshKey }) => {
   const { t } = useTranslation(['brand', 'common']);
   const { defaultCurrency } = useBrandCurrency();
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
+  const navigate = useNavigate();
+  // 삭제가 막혔을 때 «어디서 쓰는지» 를 보여주고 그 자리로 보내 준다 (2026-09-12 · Irene 「연결된 레시피 보러가기」)
+  //   서버(`DELETE /api/product-ingredients/:id`)가 `error.uses` 로 사용처를 이름까지 실어 준다.
+  const [deleteBlocked, setDeleteBlocked] = useState<{ open: boolean; name: string; uses: IngredientUse[] }>({ open: false, name: '', uses: [] });
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -677,14 +694,28 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
     if (!deleteConfirm.ingredientId) return;
 
     try {
-      const response = await fetchAPI(`/api/product-ingredients/${deleteConfirm.ingredientId}`, {
-        method: 'DELETE'
+      // ⚠ 공용 `fetchAPI` 는 실패 응답을 `new Error(...)` 로 바꿔 **본문을 버린다** — 사유가 객체(`error.uses`)면
+      //   «[object Object]» 만 남아 «어디서 쓰는지» 를 보여줄 수 없다(2026-09-12 실브라우저에서 확인).
+      //   공용 헬퍼는 전 화면이 쓰므로 건드리지 않고, 이 호출만 직접 받아 본문을 읽는다.
+      const token = getAuthToken();
+      const res = await fetch(`/api/product-ingredients/${deleteConfirm.ingredientId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
       });
+      const response = await res.json().catch(() => ({ success: false }));
 
       if (response.success) {
         fetchData();
+      } else if (response.error && Array.isArray(response.error.uses) && response.error.uses.length) {
+        // 쓰는 곳이 남아 있다 — 문장 하나로 닫지 않고 목록 + «보러가기» 로 안내한다
+        setDeleteBlocked({ open: true, name: deleteConfirm.ingredientName, uses: response.error.uses });
       } else {
-        setInfoModal({ open: true, title: 'Delete Failed', message: response.error || 'Failed to delete ingredient. Please try again.' });
+        const err: any = response.error;
+        setInfoModal({
+          open: true,
+          title: 'Delete Failed',
+          message: (typeof err === 'string' ? err : err?.message) || 'Failed to delete ingredient. Please try again.'
+        });
       }
     } catch (error) {
       console.error('Failed to delete ingredient:', error);
@@ -871,6 +902,39 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                   <InfoRow>
                     <InfoLabel>{'Code'}</InfoLabel>
                     <InfoValue>{ingredient.code}</InfoValue>
+                  </InfoRow>
+                )}
+                {/* 이 재고아이템을 쓰는 레시피 — 프로덕트 레시피 + (거울 경유) 브랜드 레시피
+                    (2026-09-12 · Irene 「스톡아이템에 연결된 프로덕트레시피와 연결된 브랜드레시피를 다 표시되게 해줘」).
+                    지우려 할 때만 알려 주면 늦다 — 같은 재료로 바꿔 끼우려면 «어디서 쓰는지» 가 먼저다. */}
+                {Array.isArray((ingredient as any).used_in_recipes) && (ingredient as any).used_in_recipes.length > 0 && (
+                  <InfoRow>
+                    <InfoLabel>{t('brand:productIngredientsTab.usedInRecipes', 'Recipes')}</InfoLabel>
+                    <InfoValue style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
+                      {(ingredient as any).used_in_recipes.map((u: IngredientUse) => (
+                        <span
+                          key={`${u.type}-${u.id}`}
+                          role="button"
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            navigate(u.type === 'brand_recipe'
+                              ? `/pos/recipes?brandId=${u.brandId ?? ''}&search=${encodeURIComponent(u.name || '')}`
+                              : `/pos/brand-product-recipes?search=${encodeURIComponent(u.name || '')}`);
+                          }}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+                            padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+                            background: u.type === 'brand_recipe' ? '#EDE9FE' : '#E0F2FE',
+                            color: u.type === 'brand_recipe' ? '#6D28D9' : '#075985'
+                          }}
+                        >
+                          {u.type === 'brand_recipe'
+                            ? t('brand:productIngredientsTab.useBrandRecipe', 'Brand recipe')
+                            : t('brand:productIngredientsTab.useProductRecipe', 'Product recipe')}
+                          {u.name ? ` · ${u.name}` : ''}
+                        </span>
+                      ))}
+                    </InfoValue>
                   </InfoRow>
                 )}
                 <InfoRow>
@@ -1323,6 +1387,64 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
         type="info"
         singleButton
       />
+
+      {/* 지울 수 없을 때 — 사유만 말하지 않고 «어디서 쓰는지» 를 보여주고 그 자리로 보낸다
+          (2026-09-12 · Irene 「연결 끊고 지울건지 아니면 연결된 레시피 보러가기 할 수 있게 안내해줘야해」).
+          레시피 줄을 여기서 대신 지우지는 않는다 — 남의 브랜드 레시피를 건드리는 되돌리기 어려운 일이라 그 화면에서 하게 한다. */}
+      <Modal
+        isOpen={deleteBlocked.open}
+        onClose={() => setDeleteBlocked({ open: false, name: '', uses: [] })}
+        title={t('brand:productIngredientsTab.deleteBlockedTitle', 'Still in use — cannot delete')}
+        size="small"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: 1.6 }}>
+            {t('brand:productIngredientsTab.deleteBlockedIntro', '"{{name}}" is still used in the places below. Open each one and remove it there, then delete this stock item.', { name: deleteBlocked.name })}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {deleteBlocked.uses.map((u, i) => {
+              const label = u.type === 'product_recipe' ? t('brand:productIngredientsTab.useProductRecipe', 'Product recipe')
+                : u.type === 'product_option' ? t('brand:productIngredientsTab.useProductOption', 'Product option')
+                : u.type === 'brand_recipe' ? t('brand:productIngredientsTab.useBrandRecipe', 'Brand recipe')
+                : u.type === 'store_stock' ? t('brand:productIngredientsTab.useStoreStock', 'Store inventory')
+                : t('brand:productIngredientsTab.useSellerLink', 'Supplier link ({{count}})', { count: u.count || 0 });
+              const target = u.type === 'brand_recipe'
+                ? `/pos/recipes?brandId=${u.brandId ?? u.mirrorBrandId ?? ''}&search=${encodeURIComponent(u.name || '')}`
+                : u.type === 'product_recipe' ? `/pos/brand-product-recipes?search=${encodeURIComponent(u.name || '')}`
+                : u.type === 'product_option' ? `/pos/brand-products?search=${encodeURIComponent(u.name || '')}`
+                : u.type === 'store_stock' && u.restaurantId ? `/restaurant/${u.restaurantId}/inventory`
+                : null;
+              return (
+                <div key={`${u.type}-${u.id}-${i}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', border: '1px solid #C7CED6', borderRadius: '6px', padding: '10px 12px' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '11px', color: '#6B7280' }}>{label}</div>
+                    <div style={{ fontSize: '13px', color: '#0A2540', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {u.name || `#${u.id}`}
+                    </div>
+                    {(u.type === 'brand_recipe' || u.type === 'store_stock' || u.type === 'seller_link') && (
+                      <div style={{ fontSize: '11px', color: '#B45309' }}>{t('brand:productIngredientsTab.useSharedNote', 'Shared copy in another brand')}</div>
+                    )}
+                  </div>
+                  {target ? (
+                    <ModalButton type="button" variant="secondary" onClick={() => navigate(target)}>
+                      {t('brand:productIngredientsTab.openPlace', 'Open')}
+                    </ModalButton>
+                  ) : (
+                    <span style={{ fontSize: '11px', color: '#6B7280', whiteSpace: 'nowrap' }}>
+                      {t('brand:productIngredientsTab.noLinkHere', 'Manage it on this screen')}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <ModalButton type="button" variant="primary" onClick={() => setDeleteBlocked({ open: false, name: '', uses: [] })}>
+              {t('common:close', 'Close')}
+            </ModalButton>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 };
