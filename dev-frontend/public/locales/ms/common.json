@@ -327,7 +327,8 @@
     "cashManagement": "Pengurusan Tunai",
     "bulkLink": "Pautan Pukal",
     "sharedIngredients": "Bahan Standard Dikongsi",
-    "deployRecords": "Isu Pembangunan"
+    "deployRecords": "Isu Pembangunan",
+    "lockedHint": "Naik taraf untuk mengira stok dan kos resipi secara automatik"
   },
   "language": {
     "en": "English",

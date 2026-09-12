@@ -646,5 +646,9 @@
   "installPage.features.feature2.title": "独立窗口",
   "installPage.features.feature2.desc": "无浏览器标签和地址栏,独立运行 — 像原生应用一样。",
   "installPage.features.feature3.title": "始终最新",
-  "installPage.features.feature3.desc": "无需应用商店更新。我们发布新版本时,应用会自动刷新。"
+  "installPage.features.feature3.desc": "无需应用商店更新。我们发布新版本时,应用会自动刷新。",
+  "signupPage.freeOrderingFeature1": "向供应商和品牌下单",
+  "signupPage.freeOrderingFeature2": "收货并保存采购发票",
+  "signupPage.freeOrderingFeature3": "不限订单数量 — 需要库存与配方成本时随时升级",
+  "signupPage.freeOrderingHint": "只需要下单？选择免费方案 — 无需银行卡，无期限。"
 }

@@ -327,7 +327,8 @@
     "cashManagement": "시재관리",
     "bulkLink": "일괄 연결",
     "sharedIngredients": "공유 표준 재료",
-    "deployRecords": "솔루션 개발이슈"
+    "deployRecords": "솔루션 개발이슈",
+    "lockedHint": "업그레이드하면 재고와 레시피 원가가 자동으로 계산됩니다"
   },
   "language": {
     "en": "English",

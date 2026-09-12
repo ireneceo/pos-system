@@ -646,5 +646,9 @@
   "installPage.features.feature2.title": "Tetingkap berdiri sendiri",
   "installPage.features.feature2.desc": "Tanpa tab pelayar atau bar alamat — kelihatan dan berasa seperti aplikasi asli.",
   "installPage.features.feature3.title": "Sentiasa terkini",
-  "installPage.features.feature3.desc": "Tiada kemas kini kedai. Aplikasi akan menyegarkan secara automatik sebaik sahaja kami menghantar versi baharu."
+  "installPage.features.feature3.desc": "Tiada kemas kini kedai. Aplikasi akan menyegarkan secara automatik sebaik sahaja kami menghantar versi baharu.",
+  "signupPage.freeOrderingFeature1": "Pesan daripada pembekal dan jenama",
+  "signupPage.freeOrderingFeature2": "Terima barang dan simpan invois belian",
+  "signupPage.freeOrderingFeature3": "Tiada had pesanan — naik taraf bila-bila untuk kos stok dan resipi",
+  "signupPage.freeOrderingHint": "Hanya mahu membuat pesanan? Pilih pelan percuma — tanpa kad, tanpa had masa."
 }

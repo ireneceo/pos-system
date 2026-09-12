@@ -87,7 +87,8 @@
     "sprint4-migration.js",
     "sprint5-migration.js",
     "sprint6-migration.js",
-    "sprint7-migration.js"
+    "sprint7-migration.js",
+    "migrate-buyer-free-plan.js"
   ],
   "manual": {
     "migrate-address-schema.js": "레거시 — 초기 주소 스키마 마이그(과거 적용).",

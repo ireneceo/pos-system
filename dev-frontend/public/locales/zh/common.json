@@ -327,7 +327,8 @@
     "cashManagement": "备用金管理",
     "bulkLink": "批量关联",
     "sharedIngredients": "共享标准食材",
-    "deployRecords": "开发问题"
+    "deployRecords": "开发问题",
+    "lockedHint": "升级后自动计算库存与配方成本"
   },
   "language": {
     "en": "English",

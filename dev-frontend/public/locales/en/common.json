@@ -327,7 +327,8 @@
     "cashManagement": "Cash Management",
     "bulkLink": "Bulk Link",
     "sharedIngredients": "Shared Ingredients",
-    "deployRecords": "Dev Issues"
+    "deployRecords": "Dev Issues",
+    "lockedHint": "Upgrade to calculate stock and recipe cost automatically"
   },
   "language": {
     "en": "English",

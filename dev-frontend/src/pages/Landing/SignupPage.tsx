@@ -1060,7 +1060,16 @@ const SignupPage: React.FC = () => {
 
         {/* Plan Selection */}
         <PlanSectionTitle>Select a plan<RequiredStar>*</RequiredStar></PlanSectionTitle>
-        <PlanTrialHint>{t('landing:signupPage.allPlansIncludeA7dayFreeTrialNoPaymentRequired')}</PlanTrialHint>
+        {/* 무료(발주 전용)를 고른 사람에게 «7일 체험» 은 맞지 않는다 — 그 카드를 고르면 문구를 바꾼다
+            (2026-09-12 · 무료 발주 등급). 값이 0 인 요금제가 하나라도 있으면 그 사실을 먼저 알린다. */}
+        {filteredPlans.some(p => p.name === 'buyer_free') && (
+          <PlanTrialHint>
+            {t('landing:signupPage.freeOrderingHint', 'Only ordering from suppliers? Pick the free plan — no card, no time limit.')}
+          </PlanTrialHint>
+        )}
+        {form.plan_id !== filteredPlans.find(p => p.name === 'buyer_free')?.id && (
+          <PlanTrialHint>{t('landing:signupPage.allPlansIncludeA7dayFreeTrialNoPaymentRequired')}</PlanTrialHint>
+        )}
         {!form.plan_id && (
           <PlanHint>{t('landing:signupPage.choosePlanHint')}</PlanHint>
         )}
@@ -1115,7 +1124,16 @@ const SignupPage: React.FC = () => {
                   <AnnualHint>{formatPrice(annualPrice)}/year (save {annualSavings}%)</AnnualHint>
                 )}
                 <PlanFeatures>
-                  {plan.plan_target === 'restaurant' && (
+                  {/* 발주 전용(무료)은 «직원·주문·메뉴 수»가 뜻이 없다 — 이 등급이 실제로 하는 일을 보여 준다
+                      (2026-09-12 · docs/BUYER_FREE_TIER_DESIGN.md §5-1 «하는 일로 고르게 한다») */}
+                  {plan.plan_target === 'restaurant' && plan.name === 'buyer_free' && (
+                    <>
+                      <PlanFeature>{t('landing:signupPage.freeOrderingFeature1', 'Order from suppliers and brands')}</PlanFeature>
+                      <PlanFeature>{t('landing:signupPage.freeOrderingFeature2', 'Receive goods and keep purchase invoices')}</PlanFeature>
+                      <PlanFeature>{t('landing:signupPage.freeOrderingFeature3', 'No order limit — upgrade anytime for stock and recipe costing')}</PlanFeature>
+                    </>
+                  )}
+                  {plan.plan_target === 'restaurant' && plan.name !== 'buyer_free' && (
                     <>
                       <PlanFeature>Staff: {formatLimit(plan.staff_limit)}</PlanFeature>
                       <PlanFeature>Orders: {formatLimit(plan.order_limit)}</PlanFeature>

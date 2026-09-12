@@ -48,7 +48,11 @@ const COMPANY_ALLOWED_FIELDS = [
   'email', 'phone',
   'address', 'address_line_2', 'city', 'state', 'postal_code', 'country',
   'website', 'latitude', 'longitude',
-  'bank_name', 'bank_account', 'bank_account_name'
+  'bank_name', 'bank_account', 'bank_account_name',
+  // 판매 방식 설정 (2026-09-12 · docs/BUYER_FREE_TIER_DESIGN.md §6-2 · Irene 「공급형이랑 공급업체랑 같아야 해. 기준이」)
+  //   `operation_settings.sales_access` = 'contract_required'(계약 승인 후 판매) | 'open'(가입만 하면 주문 가능).
+  //   브랜드는 `PUT /api/brands/:id` 가 이미 operation_settings 를 받는다 — 두 판매자의 기준을 같게 맞춘다.
+  'operation_settings'
 ];
 
 // Fields stored as plain strings (sanitized on save)

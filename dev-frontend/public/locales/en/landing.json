@@ -635,5 +635,9 @@
   "installPage.features.feature2.title": "Standalone window",
   "installPage.features.feature2.desc": "Runs without browser tabs or address bar — looks and feels like a native app.",
   "installPage.features.feature3.title": "Always up to date",
-  "installPage.features.feature3.desc": "No store updates. The app refreshes automatically the moment we ship a new version."
+  "installPage.features.feature3.desc": "No store updates. The app refreshes automatically the moment we ship a new version.",
+  "signupPage.freeOrderingFeature1": "Order from suppliers and brands",
+  "signupPage.freeOrderingFeature2": "Receive goods and keep purchase invoices",
+  "signupPage.freeOrderingFeature3": "No order limit — upgrade anytime for stock and recipe costing",
+  "signupPage.freeOrderingHint": "Only ordering from suppliers? Pick the free plan — no card, no time limit."
 }

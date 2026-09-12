@@ -1543,7 +1543,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const isRestaurantUser = user?.role === 'Restaurant Admin' || user?.role === 'Staff';
   const useTwoTier = isSystemAdmin || isBrand || isFoodcourt || isOwner || isSupplier || isRestaurantUser;
 
-  type AdminSubItem = { path: string; label: string; hasPending?: boolean; visible?: boolean; openInNewTab?: boolean; matchTabs?: string[] };
+  // `locked` = 요금제에 없는 기능 (2026-09-12 · 발주 전용 무료 등급). **숨기지 않고 잠금으로 보여 준다** —
+  //   있는 줄 알아야 «업그레이드하면 자동 계산»을 보고 전환한다(docs/BUYER_FREE_TIER_DESIGN.md §5-2).
+  type AdminSubItem = { path: string; label: string; hasPending?: boolean; visible?: boolean; openInNewTab?: boolean; matchTabs?: string[]; locked?: boolean };
   type AdminCategory = { id: string; label: string; icon: React.ReactNode; path?: string; items?: AdminSubItem[]; hasPending?: boolean; visible?: boolean; openInNewTab?: boolean; mobileOrder?: boolean };
 
   const adminCategories: AdminCategory[] = useMemo(() => !isSystemAdmin ? [] : [
@@ -2005,9 +2007,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: `/restaurant/${rid}/invoices`, label: t('nav.invoices'), hasPending: badgeCounts.invoices > 0, visible: hasMenuPermission('support') && isRouteAllowed(`/restaurant/${rid}/invoices`) },
           { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/purchase-orders') },
           { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/purchase-orders') },
-          { path: `/restaurant/${rid}/ingredients`, label: t('nav.stockItems', 'Stock Items'), visible: hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${rid}/ingredients`) },
-          { path: '/pos/stock-ledger', label: t('nav.bulkLink', 'Bulk Link'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/stock-ledger') },
-          { path: `/restaurant/${rid}/inventory`, label: t('nav.inventory'), visible: hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${rid}/inventory`) },
+          // 재고 계열은 요금제에 없으면 **숨기지 않고 잠근다** — 눌러 보고 «업그레이드하면 자동 계산»을 알게 한다
+          //   (2026-09-12 · 발주 전용 무료 등급 · docs/BUYER_FREE_TIER_DESIGN.md §5-2)
+          // ⚠ 요금제를 아직 못 읽은 동안(routesLoading)에는 잠그지 않는다 — 로딩 중 전부 잠긴 것처럼 보이면 오해한다
+          { path: `/restaurant/${rid}/ingredients`, label: t('nav.stockItems', 'Stock Items'), visible: hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${rid}/ingredients`), locked: !routesLoading && !hasModule('inventory_management') },
+          { path: '/pos/stock-ledger', label: t('nav.bulkLink', 'Bulk Link'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/stock-ledger'), locked: !routesLoading && !hasModule('inventory_management') },
+          { path: `/restaurant/${rid}/inventory`, label: t('nav.inventory'), visible: hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${rid}/inventory`), locked: !routesLoading && !hasModule('inventory_management') },
           { path: '/pos/suppliers', label: t('nav.suppliers'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/suppliers') }
         ].filter(i => i.visible !== false),
         visible: hasMenuPermission('support') || hasMenuPermission('reports') || hasMenuPermission('inventory')
@@ -2679,9 +2684,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   {cat.items.map(item => (
                     <SecondaryNavItem
                       key={item.path}
-                      to={item.path}
+                      to={item.locked ? '/pos/plan' : item.path}
                       $active={matchPathFull(item)}
                       $hasPending={item.hasPending}
+                      style={item.locked ? { opacity: 0.55 } : undefined}
+                      title={item.locked ? (t('nav.lockedHint', 'Upgrade to calculate stock and recipe cost automatically') as string) : undefined}
                       onClick={(e) => {
                         if (item.openInNewTab) {
                           e.preventDefault();
@@ -2693,6 +2700,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       }}
                     >
                       {item.label}
+                      {/* 잠금 = 요금제에 없는 기능. 숨기지 않고 표시해 «업그레이드하면 자동 계산»을 알린다.
+                          기호는 기하 글리프(장식 이모지 금지 — CLAUDE.md 디자인 단일 기준 §4) */}
+                      {item.locked && <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.8 }}>◍</span>}
                     </SecondaryNavItem>
                   ))}
                 </MobileSubmenu>

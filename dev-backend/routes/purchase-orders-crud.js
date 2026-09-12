@@ -709,6 +709,37 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
     return { ok: false, status: 400, body: { success: false, message: 'At least one item is required' } };
   }
 
+  // 발주 전용(무료) 매장은 **법인 정보가 있어야 발주를 보낸다** (2026-09-12 · docs/BUYER_FREE_TIER_DESIGN.md §2-4).
+  //   발주서·청구서가 상대에게 나가는 순간이라 상호·사업자번호 없이 보내면 받는 쪽이 처리할 수 없다.
+  //   ⚠ **무료 등급에만** 적용한다 — 기존 유료 매장의 발주를 새로 막으면 운영 회귀다(Irene 「불편함 없게」).
+  //   화면도 같은 검사를 하지만(§5-7 «필수 = 서버가 막는 것»), 서버가 단일 기준이다.
+  if (buyerEntity && buyerEntity.type === 'restaurant') {
+    const Restaurant = require('../models/Restaurant');
+    const r = await Restaurant.findByPk(buyerEntity.id, {
+      attributes: ['plan_type', 'is_demo', 'legal_name', 'name', 'business_registration', 'address', 'phone']
+    });
+    const isFreeOrdering = r && !r.is_demo && String(r.plan_type || '').toLowerCase().includes('ordering');
+    if (isFreeOrdering) {
+      const missing = [];
+      if (!r.legal_name && !r.name) missing.push('legal_name');
+      if (!r.business_registration) missing.push('business_registration');
+      if (!r.address) missing.push('address');
+      if (!r.phone) missing.push('phone');
+      if (missing.length) {
+        return {
+          ok: false,
+          status: 400,
+          body: {
+            success: false,
+            code: 'BUYER_PROFILE_INCOMPLETE',
+            message: 'Add your business details before sending an order.',
+            missing
+          }
+        };
+      }
+    }
+  }
+
   const relation = await verifySellerRelation(seller_type, seller_entity_id, buyerEntity);
   if (!relation.allowed) {
     return {

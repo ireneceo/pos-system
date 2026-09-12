@@ -646,5 +646,9 @@
   "installPage.features.feature2.title": "단독 창",
   "installPage.features.feature2.desc": "브라우저 탭과 주소창 없이 단독으로 — 네이티브 앱 같은 화면.",
   "installPage.features.feature3.title": "항상 최신",
-  "installPage.features.feature3.desc": "스토어 업데이트 불필요. 새 버전이 배포되면 앱이 자동으로 갱신됩니다."
+  "installPage.features.feature3.desc": "스토어 업데이트 불필요. 새 버전이 배포되면 앱이 자동으로 갱신됩니다.",
+  "signupPage.freeOrderingFeature1": "공급업체·브랜드에 발주",
+  "signupPage.freeOrderingFeature2": "입고 처리와 구입 청구서 보관",
+  "signupPage.freeOrderingFeature3": "주문 수 제한 없음 — 재고·레시피 원가 자동 계산은 언제든 업그레이드",
+  "signupPage.freeOrderingHint": "발주만 하시나요? 무료 요금제를 고르세요 — 카드 등록도, 기간 제한도 없습니다."
 }

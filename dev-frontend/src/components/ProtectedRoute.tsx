@@ -118,8 +118,27 @@ const MODULE_GATED_ROUTES: Array<{ prefix: string; module: string }> = [
   { prefix: '/pos/supplier/orders', module: 'supplier_orders' },
   { prefix: '/pos/supplier/trade-invoices', module: 'supplier_trade_invoices' },
   // Note: /pos/supplier/soa redirects to trade-invoices (B1 — SOA invoice 통합)
-  { prefix: '/pos/supplier/staff', module: 'supplier_admin_staff' }
+  { prefix: '/pos/supplier/staff', module: 'supplier_admin_staff' },
   // /pos/purchase-invoices route removed (v3.20 cleanup) — per-role invoice pages used instead
+
+  // 매장 화면 — «발주 전용 (무료)» 등급이 열 수 없는 것들 (2026-09-12 · docs/BUYER_FREE_TIER_DESIGN.md §6-2-1).
+  //   서버는 이미 requireRestaurantModule 로 같은 모듈을 요구한다(재고 inventory_management/ingredients ·
+  //   레시피 recipe_management · 메뉴 menu_management). 화면에도 같은 문을 달아 **주소를 직접 쳐도 막히게** 한다.
+  //   ⚠ 데모 매장·System Admin 은 서버가 통과시키고, 실측상 유료 매장 중 이 문에 걸리는 곳은 없다(회귀 0).
+  { prefix: '/pos/stock-ledger', module: 'inventory_management' },
+  { prefix: '/pos/recipes', module: 'recipe_management' }
+];
+
+/** 매장 주소(`/restaurant/:id/...`)는 접두어가 가변이라 별도 목록으로 둔다 — 뒷부분만 비교한다. */
+const RESTAURANT_MODULE_GATED: Array<{ suffix: string; module: string }> = [
+  { suffix: '/inventory', module: 'inventory_management' },
+  { suffix: '/ingredients', module: 'inventory_management' },
+  { suffix: '/recipe-management', module: 'recipe_management' },
+  { suffix: '/menu', module: 'menu_management' },
+  { suffix: '/categories', module: 'menu_management' },
+  { suffix: '/options', module: 'menu_management' },
+  { suffix: '/pos-terminal', module: 'pos_terminal' },
+  { suffix: '/kitchen', module: 'kitchen_display' }
 ];
 
 interface ProtectedRouteProps {
@@ -440,7 +459,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // to the role dashboard. Wait for the allowed-routes fetch to settle before
   // deciding so we don't flash-redirect during hydration.
   const gated = MODULE_GATED_ROUTES.find(g => location.pathname.startsWith(g.prefix));
-  if (gated && !modulesLoading && user && user.role !== 'System Admin' && !hasModule(gated.module)) {
+  // 매장 주소(`/restaurant/:id/...`)는 접두어가 가변이라 뒷부분으로 찾는다 (2026-09-12 · 발주 전용 무료 등급).
+  const restGated = /^\/restaurant\/\d+\//.test(location.pathname)
+    ? RESTAURANT_MODULE_GATED.find(g => location.pathname.endsWith(g.suffix))
+    : undefined;
+  const gatedModule = gated?.module || restGated?.module;
+  if (gatedModule && !modulesLoading && user && user.role !== 'System Admin' && !hasModule(gatedModule)) {
     switch (user.role) {
       case 'Brand General':
         return <Navigate to="/pos/brand/general/dashboard" replace />;
