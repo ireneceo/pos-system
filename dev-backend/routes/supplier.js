@@ -375,7 +375,28 @@ router.put('/company', async (req, res) => {
     for (const key of incomingKeys) {
       let value = body[key];
 
-      if (key === 'country') {
+      if (key === 'operation_settings') {
+        // ⛔ 통째로 덮어쓰지 않는다 — **병합**한다.
+        // 이 PUT 은 자동저장이라 화면이 자기가 아는 키만 보낸다. 덮어쓰면 그 화면이
+        // 모르는 키(영업시간·타임존·sales_access)가 조용히 사라진다
+        //  = 프린터 설정 wipe 사고와 같은 형태([[project_printer_settings_wipe_locks]]).
+        let incoming = value;
+        if (typeof incoming === 'string') { try { incoming = JSON.parse(incoming); } catch { incoming = null; } }
+        if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
+          return res.status(400).json({ success: false, message: 'operation_settings must be an object' });
+        }
+        if (incoming.sales_access !== undefined) {
+          const { VALID_SALES_ACCESS } = require('../utils/salesAccess');
+          if (!VALID_SALES_ACCESS.includes(incoming.sales_access)) {
+            return res.status(400).json({
+              success: false,
+              message: `sales_access must be one of: ${VALID_SALES_ACCESS.join(', ')}`
+            });
+          }
+        }
+        const current = company.operation_settings || {};
+        value = { ...current, ...incoming };
+      } else if (key === 'country') {
         if (value !== null && value !== undefined && value !== '') {
           if (typeof value !== 'string' || value.length !== 2) {
             return res.status(400).json({

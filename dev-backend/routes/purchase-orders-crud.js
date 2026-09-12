@@ -120,7 +120,7 @@ async function ingredientBelongsToBuyer(ingredientId, buyerEntity) {
  *
  * Returns { allowed: boolean, contractId: number|null, reason?: string }.
  */
-async function verifySellerRelation(sellerType, sellerEntityId, buyerEntity) {
+async function verifySellerRelation(sellerType, sellerEntityId, buyerEntity, actorUserId = null) {
   if (!buyerEntity) return { allowed: false, contractId: null, reason: 'NO_BUYER_SCOPE' };
 
   if (sellerType === 'system_admin') {
@@ -136,8 +136,16 @@ async function verifySellerRelation(sellerType, sellerEntityId, buyerEntity) {
     // 외부업체는 부모 브랜드 계약을 상속해 레스토랑이 발주 가능 (Fable 2026-07-05)
     const { findEffectiveContract } = require('../utils/supplierAccess');
     const contract = await findEffectiveContract(sellerId, buyerEntity);
-    if (!contract) return { allowed: false, contractId: null, reason: 'NO_ACTIVE_CONTRACT' };
-    return { allowed: true, contractId: contract.id };
+    if (contract) return { allowed: true, contractId: contract.id };
+    // 판매자가 «누구나 주문 가능» 으로 열어 뒀으면 계약 없이 통과시키고,
+    // 거래 이력·결제조건이 앉을 계약 행을 이 첫 주문에서 만들어 둔다.
+    // (docs/BUYER_FREE_TIER_DESIGN.md §6-2 — 승인 대기로 막지 않는다)
+    const { isSupplierOpen, ensureOpenSupplierContract } = require('../utils/salesAccess');
+    if (await isSupplierOpen(sellerId)) {
+      const opened = await ensureOpenSupplierContract(sellerId, buyerEntity, actorUserId);
+      return { allowed: true, contractId: opened ? opened.id : null };
+    }
+    return { allowed: false, contractId: null, reason: 'NO_ACTIVE_CONTRACT' };
   }
 
   // brand / foodcourt sellers: only Restaurant buyers can purchase from them.
@@ -150,6 +158,13 @@ async function verifySellerRelation(sellerType, sellerEntityId, buyerEntity) {
 
   if (sellerType === 'brand') {
     if (parseInt(restaurant.brand_id, 10) !== sellerId) {
+      // 가맹점이 아니어도 두 경우에는 살 수 있다 (§5-4 · §6-2):
+      //   ① 브랜드가 «누구나 주문 가능»(sales_access=open) 으로 열어 둔 경우
+      //   ② 이 매장과 **활성 공급형 계약**(contract_type='supply')이 있는 경우
+      // 가맹점(brand_id 일치)은 둘 다 무관하게 위에서 이미 통과한다.
+      const { externalBuyerBrandIds } = require('../utils/salesAccess');
+      const reachable = await externalBuyerBrandIds(buyerEntity.id);
+      if (reachable.includes(sellerId)) return { allowed: true, contractId: null };
       return { allowed: false, contractId: null, reason: 'NOT_OWN_BRAND' };
     }
     return { allowed: true, contractId: null };
@@ -740,7 +755,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
     }
   }
 
-  const relation = await verifySellerRelation(seller_type, seller_entity_id, buyerEntity);
+  const relation = await verifySellerRelation(seller_type, seller_entity_id, buyerEntity, userId);
   if (!relation.allowed) {
     return {
       ok: false, status: 400,

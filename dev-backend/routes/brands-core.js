@@ -109,9 +109,32 @@ router.put('/company-info', authenticateToken, async (req, res) => {
       email: req.body.email,
       website: req.body.website,
       tax_no: req.body.tax_no,
-      logo_url: req.body.logo_url,
-      operation_settings: req.body.operation_settings
+      logo_url: req.body.logo_url
     };
+
+    // ⛔ operation_settings 는 통째로 덮어쓰지 않고 **병합**한다.
+    // 회사정보 화면은 영업시간·타임존 3개만 알고 보내는데, 덮어쓰면 그 화면이 모르는
+    // 키(sales_access 등)가 조용히 사라진다 = 설정 wipe 사고와 같은 형태.
+    if (req.body.operation_settings !== undefined) {
+      let incoming = req.body.operation_settings;
+      if (typeof incoming === 'string') { try { incoming = JSON.parse(incoming); } catch { incoming = null; } }
+      if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'operation_settings must be an object', code: 'INVALID_OPERATION_SETTINGS' }
+        });
+      }
+      if (incoming.sales_access !== undefined) {
+        const { VALID_SALES_ACCESS } = require('../utils/salesAccess');
+        if (!VALID_SALES_ACCESS.includes(incoming.sales_access)) {
+          return res.status(400).json({
+            success: false,
+            error: { message: `sales_access must be one of: ${VALID_SALES_ACCESS.join(', ')}`, code: 'INVALID_SALES_ACCESS' }
+          });
+        }
+      }
+      updateData.operation_settings = { ...(brand.operation_settings || {}), ...incoming };
+    }
 
     await brand.update(updateData);
     console.log(`✓ Brand company info updated: ${brand.name}`);

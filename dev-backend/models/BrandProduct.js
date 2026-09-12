@@ -104,10 +104,10 @@ const BrandProduct = sequelize.define('BrandProduct', {
     comment: '재고 단위(판매 단위와 다를 수 있다)'
   },
   distribution_mode: {
-    type: DataTypes.ENUM('all', 'specific_brands', 'specific_restaurants'),
+    type: DataTypes.ENUM('all', 'specific_brands', 'specific_restaurants', 'external_buyers'),
     allowNull: false,
     defaultValue: 'specific_brands',
-    comment: 'all=BG 소유 모든 brand 가맹점 노출, specific_brands=brand_product_brands, specific_restaurants=brand_product_restaurants'
+    comment: 'all=BG 소유 모든 brand 가맹점 노출, specific_brands=brand_product_brands, specific_restaurants=brand_product_restaurants, external_buyers=가맹점 밖 구매자에게도 판매(무료 발주 등급 포함 · docs/BUYER_FREE_TIER_DESIGN.md §5-4)'
   },
   sync_to_ingredients: {
     type: DataTypes.BOOLEAN,

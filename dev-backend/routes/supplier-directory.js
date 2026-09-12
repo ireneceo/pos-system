@@ -44,6 +44,8 @@ const {
 const { sendNotificationBatch } = require('../utils/notificationService');
 
 // Public-safe SupplierCompany attributes for buyer view (excludes banking/private)
+const { salesAccessOf } = require('../utils/salesAccess');
+
 const PUBLIC_SUPPLIER_ATTRS = [
   'id', 'name', 'code', 'description', 'logo_url',
   'company_name', 'trade_name',
@@ -51,7 +53,10 @@ const PUBLIC_SUPPLIER_ATTRS = [
   'address', 'address_line_2', 'city', 'state', 'postal_code', 'country',
   'status', 'created_at',
   // 외부공급업체(내가 등록) 상품관리 UI 노출 판별용
-  'is_system_registered', 'registered_by_entity_type', 'registered_by_entity_id'
+  'is_system_registered', 'registered_by_entity_type', 'registered_by_entity_id',
+  // 판매 방식(«계약한 곳만» / «누구나») — 화면이 «계약 신청» 대신 «바로 주문» 을 보여주는 근거.
+  // 가공하지 않고 내보내지 않는다. 아래에서 sales_access 한 값으로만 뽑는다.
+  'operation_settings'
 ];
 
 // Buyer-only middleware applied per-path so unrelated /api/* requests
@@ -236,7 +241,9 @@ router.get('/supplier-directory', async (req, res) => {
         country: j.country,
         product_count: pcMap[j.id] || 0,
         category_count: ccMap[j.id] || 0,
-        my_contract_status: contractMap[j.id] || 'none'
+        my_contract_status: contractMap[j.id] || 'none',
+        // 'open' 이면 계약 없이 바로 담고 주문할 수 있다(§6-2). 모르면 'contract_required'.
+        sales_access: salesAccessOf(j.operation_settings)
       };
     });
 
@@ -283,10 +290,15 @@ router.get('/supplier-directory/:supplierCompanyId', async (req, res) => {
 
     const myContract = await findLatestContract(supplierCompanyId, req.buyerEntity);
 
+    // 판매자의 설정 JSON 을 통째로 내보내지 않는다 — 필요한 한 값만 뽑아 바꿔 담는다.
+    const supplierJson = supplier.toJSON();
+    const supplierOut = { ...supplierJson, sales_access: salesAccessOf(supplierJson.operation_settings) };
+    delete supplierOut.operation_settings;
+
     res.json({
       success: true,
       data: {
-        supplier: supplier.toJSON(),
+        supplier: supplierOut,
         products,
         categories,
         my_contract: myContract ? myContract.toJSON() : null
@@ -587,7 +599,11 @@ router.get('/supplier-catalog', async (req, res) => {
       where: { entity_type: req.buyerEntity.type, entity_id: req.buyerEntity.id, status: 'active' },
       attributes: ['supplier_company_id']
     });
-    const supplierIds = [...new Set(contracts.map(c => c.supplier_company_id))];
+    // 계약이 있는 곳 ∪ 판매자가 «누구나 주문 가능» 으로 열어 둔 곳
+    // (docs/BUYER_FREE_TIER_DESIGN.md §6-2 — 무료 발주 등급이 계약 없이 담을 수 있는 유일한 문)
+    const { openSupplierCompanyIds } = require('../utils/salesAccess');
+    const openIds = await openSupplierCompanyIds();
+    const supplierIds = [...new Set([...contracts.map(c => c.supplier_company_id), ...openIds])];
     // No early-return when supplier contracts are empty — Brand/Foodcourt seller catalog may still apply.
 
     // 2. 필터 + 검색 (이름/SKU/설명/단위/카테고리/공급사 이름까지 매칭)
@@ -820,6 +836,52 @@ router.get('/supplier-catalog', async (req, res) => {
             });
           }
           if (bpRows.length) extraSellers.push({ id: brand.id, name: brand.name, seller_type: 'brand' });
+        }
+      }
+      // Brand seller (가맹점 밖) — «다른 구매자에게도 판매»(external_buyers) 로 내놓은 상품만.
+      //   닿을 수 있는 브랜드 = 브랜드가 열어 둔 곳(sales_access=open) ∪ 활성 공급형 계약이 있는 곳.
+      //   자기 가맹본부는 위 블록이 이미 처리했으므로 여기서 뺀다(같은 상품이 두 번 담기지 않게).
+      //   docs/BUYER_FREE_TIER_DESIGN.md §5-4 · §6-2
+      {
+        const { externalBuyerBrandIds } = require('../utils/salesAccess');
+        const ownBrandId = rest?.brand_id ? parseInt(rest.brand_id, 10) : null;
+        const reachable = (await externalBuyerBrandIds(req.buyerEntity.id))
+          .filter(id => id !== ownBrandId);
+        if (reachable.length) {
+          const BrandProduct2 = require('../models/BrandProduct');
+          const BrandProductCategory2 = require('../models/BrandProductCategory');
+          const extBrands = await Brand.findAll({
+            where: { id: { [Op.in]: reachable } },
+            attributes: ['id', 'name', 'code', 'logo_url', 'owner_id']
+          });
+          for (const b of extBrands) {
+            if (!b.owner_id) continue;   // 주인 없는 브랜드는 팔 상품을 특정할 수 없다
+            const rows2 = await BrandProduct2.findAll({
+              include: [{ model: BrandProductCategory2, as: 'category', attributes: ['id', 'name', 'emoji'], required: false }],
+              where: { is_active: true, ...brandLikeWhere, distribution_mode: 'external_buyers', owner_user_id: b.owner_id },
+              order: [['sort_order', 'ASC'], ['name', 'ASC']],
+              limit: 200
+            });
+            for (const p of rows2) {
+              extraData.push({
+                id: p.id,
+                name: p.name,
+                sku: p.sku,
+                unit: p.unit,
+                unit_price: parseFloat(p.unit_price) || 0,
+                min_order_quantity: parseMinOrderQty(p.min_order_quantity),
+                image_url: p.image_url,
+                category_id: p.category_id,
+                category_name: p.category?.name || null,
+                supplier: { id: b.id, name: b.name, code: b.code, logo_url: b.logo_url, seller_type: 'brand' },
+                already_mapped: !!mappedBrandMap[p.id],
+                mapped_ingredient_id: mappedBrandMap[p.id] || null,
+                option_groups: [],
+                has_options: false
+              });
+            }
+            if (rows2.length) extraSellers.push({ id: b.id, name: b.name, seller_type: 'brand' });
+          }
         }
       }
       // Foodcourt seller — 내 푸드코트 의 foodcourt_products 중 distribution_mode 별 노출:
