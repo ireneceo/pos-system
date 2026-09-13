@@ -1,0 +1,217 @@
+{
+ "base": "https://dev.purplehere.com",
+ "rid": 38,
+ "at": "2026-09-13T14:49:29.571Z",
+ "results": [
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 0,
+   "text": "Enter fullscreen",
+   "tag": "button",
+   "cls": "sc-cxJczu.gSohou",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "mutations": 10,
+   "ctrlMut": 4,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 1,
+   "text": "← Dashboard",
+   "tag": "button",
+   "cls": "sc-cxJczu.gSohou",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "mutations": 11,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 2,
+   "text": "demo-restaurant ▼",
+   "tag": "button",
+   "cls": "sc-kpMTpV.jlxQJM",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": false,
+    "modal": false
+   },
+   "mutations": 18,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 3,
+   "text": "Settlement",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/health?t=1789310942031",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789310942032",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/restaurants/38",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789310942099",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/menu?restaurantId=38&categoryId=167",
+    "GET /api/membership/settings/38"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 4,
+   "text": "L",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders?restaurantId=38&start_date=2026-09-13&end_date=2026-09-13&limit=500",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "mutations": 18,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 5,
+   "text": "H",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "mutations": 8,
+   "ctrlMut": 4,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 6,
+   "text": "D",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "mutations": 20,
+   "ctrlMut": 4,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 7,
+   "text": "Toggle ready alert sound",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "mutations": 17,
+   "ctrlMut": 4,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  }
+ ]
+}

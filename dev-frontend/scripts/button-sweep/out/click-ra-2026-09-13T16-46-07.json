@@ -1,0 +1,3268 @@
+{
+ "base": "https://dev.purplehere.com",
+ "rid": 38,
+ "at": "2026-09-13T16:46:07.337Z",
+ "results": [
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 0,
+   "text": "← Dashboard",
+   "tag": "button",
+   "cls": "sc-ABqPz.cMnbJZ",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/inbox/unread-count",
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/categories?restaurantId=38",
+    "GET /api/menu?restaurant_id=38&excludeImage=true",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/notification-settings/preferences",
+    "GET /api/restaurants/38/allowed-routes",
+    "GET /api/badge-counts",
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/dashboard/restaurant/38/sales-chart?period=week",
+    "GET /api/badge-counts",
+    "GET /api/referrals/wallet",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/users/me/tutorial-progress",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": true
+   },
+   "elChanged": true,
+   "openedPopup": 1,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 32,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "modalOf": "Customer Display (auto-open enabled)",
+   "text": "OK",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": true
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 1,
+   "text": "Customer Display (auto-open enabled)",
+   "tag": "button",
+   "cls": "sc-ABqPz.cMnbJZ",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": true
+   },
+   "elChanged": false,
+   "openedPopup": 2,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 21,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 3,
+   "text": "More POS terminal actions",
+   "tag": "button",
+   "cls": "sc-howViw.ejCUAL",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 1,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 16,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 4,
+   "text": "Light",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 2,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 29,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 5,
+   "text": "High Contrast",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 3,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 29,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 6,
+   "text": "Dark",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 4,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 29,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 7,
+   "text": "Image",
+   "tag": "button",
+   "cls": "sc-NuEbr.fuQjlU",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 5,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 14,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 8,
+   "text": "Compact",
+   "tag": "button",
+   "cls": "sc-NuEbr.irPPbc",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 6,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 68,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 9,
+   "text": "Enter fullscreen",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 7,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 22,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 10,
+   "text": "🍽️ AUDIT-CAT-17-ren",
+   "tag": "button",
+   "cls": "sc-cnejuk.euqhNF",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/health?t=1789317447718",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789317447720",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789317447798",
+    "GET /api/restaurants/38",
+    "GET /api/membership/settings/38",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/menu?restaurantId=38&categoryId=167",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 8,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 11,
+   "text": "🍽️ BBQ Grills",
+   "tag": "button",
+   "cls": "sc-cnejuk.laaReg",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/health?t=1789317453764",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789317453766",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789317453842",
+    "GET /api/restaurants/38",
+    "GET /api/membership/settings/38",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/menu?restaurantId=38&categoryId=76",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 9,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 12,
+   "text": "🍽️ Beverages",
+   "tag": "button",
+   "cls": "sc-cnejuk.laaReg",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/health?t=1789317459799",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789317459801",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/restaurants/38",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789317459918",
+    "GET /api/membership/settings/38",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/menu?restaurantId=38&categoryId=79",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 0,
+   "text": "Enter fullscreen",
+   "tag": "button",
+   "cls": "sc-cxJczu.gSohou",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 6,
+   "ctrlMut": 12,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 1,
+   "text": "← Dashboard",
+   "skipped": "사라짐(그 자리는 \"Takeout 0\")",
+   "consoleErrors": []
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 2,
+   "text": "demo-restaurant ▼",
+   "skipped": "사라짐(그 자리는 \"Items 0\")",
+   "consoleErrors": []
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 3,
+   "text": "Settlement",
+   "skipped": "사라짐(그 자리는 \"+ Takeaway Walk-in\")",
+   "consoleErrors": []
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 4,
+   "text": "L",
+   "skipped": "사라짐(그 자리는 \"Exit fullscreen\")",
+   "consoleErrors": []
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 5,
+   "text": "H",
+   "skipped": "사라짐(그 자리는 \"× Close\")",
+   "consoleErrors": []
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 6,
+   "text": "D",
+   "skipped": "사라짐(그 자리는 \"null\")",
+   "consoleErrors": []
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 7,
+   "text": "Toggle ready alert sound",
+   "skipped": "사라짐(그 자리는 \"null\")",
+   "consoleErrors": []
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 8,
+   "text": "Floor plan settings",
+   "skipped": "사라짐(그 자리는 \"null\")",
+   "consoleErrors": []
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 9,
+   "text": "Main 3",
+   "tag": "button",
+   "cls": "sc-cHsGLF.dYHWLK",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789317538960",
+    "GET /api/health?t=1789317539142",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789317539145",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789317539233",
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/allowed-routes",
+    "GET /api/menu?restaurant_id=38",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/membership/settings/38",
+    "GET /api/reservations/restaurant/38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-14&endDate=2026-09-14",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-14&endDate=2026-09-14",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 12,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 10,
+   "text": "Takeout 0",
+   "tag": "button",
+   "cls": "sc-cHsGLF.dYHWLK",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789317554003",
+    "GET /api/health?t=1789317554162",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789317554164",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789317554246",
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/allowed-routes",
+    "GET /api/menu?restaurant_id=38",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/membership/settings/38",
+    "GET /api/reservations/restaurant/38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-14&endDate=2026-09-14",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-14&endDate=2026-09-14",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 12,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 11,
+   "text": "Items 0",
+   "tag": "button",
+   "cls": "sc-cHsGLF.dYHWLK",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789317568994",
+    "GET /api/health?t=1789317569149",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789317569151",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789317569244",
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/allowed-routes",
+    "GET /api/menu?restaurant_id=38",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/membership/settings/38",
+    "GET /api/reservations/restaurant/38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-14&endDate=2026-09-14",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-14&endDate=2026-09-14",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 12,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 11,
+   "text": "Collapse Sidebar",
+   "tag": "button",
+   "cls": "sc-hfXZzM.PZLbk",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 51,
+   "ctrlMut": 6,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 29,
+   "text": "Contact Support",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/support-tickets",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/comments/unread-counts?entity_type=support_ticket&entity_ids=demo-ticket-1773050309120-1,demo-ticket-1773",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 25,
+   "ctrlMut": 6,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 30,
+   "text": "🇬🇧 English ▾",
+   "tag": "button",
+   "cls": "sc-eHqVIu.cAXMiL",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 6,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 32,
+   "text": "Expand panel",
+   "tag": "button",
+   "cls": "sc-fgDYYN.diDwfy",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 4,
+   "ctrlMut": 6,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 33,
+   "text": "Select to Merge",
+   "tag": "button",
+   "cls": "sc-gPrgcH.fWRbsg",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 9,
+   "ctrlMut": 6,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": true,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 34,
+   "text": "Sound ON",
+   "tag": "button",
+   "cls": "sc-ctzhCi.hZlqND",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 10,
+   "ctrlMut": 6,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 35,
+   "text": "Order settings",
+   "tag": "a",
+   "cls": "sc-fBfZuV.jkAMZq",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/currencies/supported",
+    "GET /api/restaurants/38",
+    "GET /api/coupons?restaurantId=38&active=true",
+    "GET /api/categories?restaurant_id=38",
+    "GET /api/menu?restaurant_id=38",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "PUT /api/store/settings?restaurantId=38&_t=1789317612330 [차단:method:PUT]",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 2,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 412,
+   "ctrlMut": 6,
+   "noEffect": false,
+   "consoleErrors": [
+    "❌ Error saving settings: TypeError: Failed to fetch\n    at window.fetch (https://dev.purplehere.com/static/js/main.e5258a13.js:1135:3194)\n  "
+   ],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 36,
+   "text": "Today",
+   "tag": "button",
+   "cls": "sc-kEGOIh.llOhrg",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 6,
+   "ctrlMut": 6,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 37,
+   "text": "Yesterday",
+   "tag": "button",
+   "cls": "sc-kEGOIh.fEtFuz",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-13&endDate=2026-09-13",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 21,
+   "ctrlMut": 6,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 38,
+   "text": "Week",
+   "tag": "button",
+   "cls": "sc-kEGOIh.fEtFuz",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-08&endDate=2026-09-14",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-08&endDate=2026-09-14",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 21,
+   "ctrlMut": 6,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 39,
+   "text": "Month",
+   "tag": "button",
+   "cls": "sc-kEGOIh.fEtFuz",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-08-16&endDate=2026-09-14",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-08-16&endDate=2026-09-14",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 21,
+   "ctrlMut": 6,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 40,
+   "text": "Year",
+   "tag": "button",
+   "cls": "sc-kEGOIh.fEtFuz",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2025-09-15&endDate=2026-09-14",
+    "GET /api/orders/restaurant/38/counts?startDate=2025-09-15&endDate=2026-09-14",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 85,
+   "ctrlMut": 6,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 0,
+   "text": "← Dashboard",
+   "tag": "a",
+   "cls": "sc-bfoaUw.lkfycy",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/inbox/unread-count",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/categories?restaurantId=38",
+    "GET /api/menu?restaurant_id=38&excludeImage=true",
+    "GET /api/notification-settings/preferences",
+    "GET /api/restaurants/38/allowed-routes",
+    "GET /api/badge-counts",
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/dashboard/restaurant/38/sales-chart?period=week",
+    "GET /api/badge-counts",
+    "GET /api/referrals/wallet",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/users/me/tutorial-progress",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": true
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 60,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 1,
+   "text": "Order",
+   "tag": "button",
+   "cls": "sc-ctelvB.khEQmc",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 2,
+   "text": "Item",
+   "tag": "button",
+   "cls": "sc-ctelvB.dFFlXY",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 5,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 3,
+   "text": "All",
+   "tag": "button",
+   "cls": "sc-ctelvB.khEQmc",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/health?t=1789317657544",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789317657545",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789317657600",
+    "GET /api/restaurants/38",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 4,
+   "text": "All: 소리 켜짐 (탭하면 전체 끔)",
+   "tag": "span",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/health?t=1789317663562",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789317663564",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789317663619",
+    "GET /api/restaurants/38",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 5,
+   "text": "Main Kitchen",
+   "tag": "button",
+   "cls": "sc-ctelvB.dFFlXY",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/health?t=1789317669589",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789317669591",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789317669672",
+    "GET /api/restaurants/38",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 6,
+   "text": "Main Kitchen: 소리 켜짐 (탭하면 음소거)",
+   "skipped": "사라짐(그 자리는 \"Main Kitchen\")",
+   "consoleErrors": []
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 7,
+   "text": "Grill Station",
+   "tag": "button",
+   "cls": "sc-ctelvB.dFFlXY",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/health?t=1789317679991",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789317679993",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789317680057",
+    "GET /api/restaurants/38",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 8,
+   "text": "Grill Station: 소리 켜짐 (탭하면 음소거)",
+   "skipped": "사라짐(그 자리는 \"Grill Station\")",
+   "consoleErrors": []
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 10,
+   "text": "demo-restaurant ▼",
+   "tag": "button",
+   "cls": "sc-nuIvE.bJBBNi",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/health?t=1789317690337",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789317690339",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/restaurants/38",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789317690401",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 11,
+   "text": "Kitchen station settings",
+   "tag": "a",
+   "cls": "sc-fBfZuV.jkAMZq",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/health?t=1789317696372",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789317696373",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/restaurants/38",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789317696441",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=pending,preparing,ready",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "GET /api/orders/restaurant/38?startDate=2026-09-14&endDate=2026-09-14&status=cancelled",
+    "GET /api/inbox/unread-count",
+    "GET /api/currencies/supported",
+    "GET /api/restaurants/38",
+    "GET /api/coupons?restaurantId=38&active=true",
+    "GET /api/categories?restaurant_id=38",
+    "GET /api/menu?restaurant_id=38",
+    "GET /api/restaurants/38/allowed-routes",
+    "GET /api/badge-counts",
+    "GET /api/referrals/wallet",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": true
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 11,
+   "text": "Collapse Sidebar",
+   "tag": "button",
+   "cls": "sc-hfXZzM.PZLbk",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 51,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 29,
+   "text": "Contact Support",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/support-tickets",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/comments/unread-counts?entity_type=support_ticket&entity_ids=demo-ticket-1773050309120-1,demo-ticket-1773",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 24,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 30,
+   "text": "🇬🇧 English ▾",
+   "tag": "button",
+   "cls": "sc-eHqVIu.cAXMiL",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 32,
+   "text": "Expand panel",
+   "tag": "button",
+   "cls": "sc-fgDYYN.diDwfy",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 4,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "modalOf": "? Show me around",
+   "text": "Skip tour",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [
+    "PUT /api/users/me/tutorial-progress"
+   ],
+   "blockedCount": 1,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": true
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 33,
+   "text": "? Show me around",
+   "tag": "button",
+   "cls": "sc-cAmbfX.kFRqRe",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": true
+   },
+   "elChanged": true,
+   "openedPopup": 10,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/checkout-display",
+    "https://dev.purplehere.com/restaurant/38/checkout-display"
+   ],
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 34,
+   "text": "Week",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 35,
+   "text": "Month",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/dashboard/restaurant/38/sales-chart?period=month",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 22,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 36,
+   "text": "Year",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/dashboard/restaurant/38/sales-chart?period=year",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 32,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 12,
+   "text": "Dashboard",
+   "tag": "a",
+   "cls": "sc-HABRJ.flmbhE",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 6,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 13,
+   "text": "Live Orders",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-14&endDate=2026-09-14",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-14&endDate=2026-09-14",
+    "GET /api/restaurants/38",
+    "GET /api/membership/settings/38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-14&endDate=2026-09-14",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-14&endDate=2026-09-14",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-14&endDate=2026-09-14",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 60,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 14,
+   "text": "Reservations",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/reservations/restaurant/38?date=2026-09-14",
+    "GET /api/reservations/restaurant/38/pending",
+    "GET /api/restaurants/38",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 21,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 15,
+   "text": "POS Terminal",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 1,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/pos-terminal"
+   ],
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 11,
+   "text": "Collapse Sidebar",
+   "tag": "button",
+   "cls": "sc-hfXZzM.PZLbk",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 1,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/pos-terminal"
+   ],
+   "nativeValidation": 0,
+   "mutations": 54,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 29,
+   "text": "Contact Support",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/support-tickets",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/comments/unread-counts?entity_type=support_ticket&entity_ids=demo-ticket-1773050309120-1,demo-ticket-1773",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 1,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/pos-terminal"
+   ],
+   "nativeValidation": 0,
+   "mutations": 24,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 30,
+   "text": "🇬🇧 English ▾",
+   "tag": "button",
+   "cls": "sc-eHqVIu.cAXMiL",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 1,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/pos-terminal"
+   ],
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 32,
+   "text": "Expand panel",
+   "tag": "button",
+   "cls": "sc-fgDYYN.diDwfy",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 1,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/pos-terminal"
+   ],
+   "nativeValidation": 0,
+   "mutations": 4,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "modalOf": "Today's Cash Drawer",
+   "text": "Open drawer",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "modalOf": "Today's Cash Drawer",
+   "text": "1",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "modalOf": "Today's Cash Drawer",
+   "text": "2",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "modalOf": "Today's Cash Drawer",
+   "text": "3",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "modalOf": "Today's Cash Drawer",
+   "text": "4",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "modalOf": "Today's Cash Drawer",
+   "text": "5",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "modalOf": "Today's Cash Drawer",
+   "text": "6",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "modalOf": "Today's Cash Drawer",
+   "text": "7",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [
+    "GET /api/badge-counts"
+   ],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 33,
+   "text": "Today's Cash Drawer",
+   "tag": "button",
+   "cls": "sc-daUvki.ddYIIt",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/cash/restaurant/38/movements?startDate=2026-09-14&endDate=2026-09-14",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": true
+   },
+   "elChanged": false,
+   "openedPopup": 1,
+   "popupUrls": [
+    "https://dev.purplehere.com/restaurant/38/pos-terminal"
+   ],
+   "nativeValidation": 0,
+   "mutations": 8,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 34,
+   "text": "Settlement",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 1,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 35,
+   "text": "Today",
+   "tag": "button",
+   "cls": "sc-kscUMq.tIGtJ",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 36,
+   "text": "Yesterday",
+   "tag": "button",
+   "cls": "sc-kscUMq.iQrsUu",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/cash/restaurant/38/movements?limit=2000&startDate=2026-09-13&endDate=2026-09-13",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 13,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 37,
+   "text": "Week",
+   "tag": "button",
+   "cls": "sc-kscUMq.iQrsUu",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/cash/restaurant/38/movements?limit=2000&startDate=2026-09-08&endDate=2026-09-14",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 13,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 38,
+   "text": "Month",
+   "tag": "button",
+   "cls": "sc-kscUMq.iQrsUu",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/cash/restaurant/38/movements?limit=2000&startDate=2026-08-16&endDate=2026-09-14",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 13,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 39,
+   "text": "Year",
+   "tag": "button",
+   "cls": "sc-kscUMq.iQrsUu",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/cash/restaurant/38/movements?limit=2000&startDate=2025-09-15&endDate=2026-09-14",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 21,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 40,
+   "text": "All",
+   "tag": "button",
+   "cls": "sc-kscUMq.iQrsUu",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/cash/restaurant/38/movements?limit=2000&startDate=2020-01-01&endDate=2026-09-14",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 21,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 11,
+   "text": "Collapse Sidebar",
+   "tag": "button",
+   "cls": "sc-hfXZzM.PZLbk",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 51,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 34,
+   "text": "Contact Support",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/support-tickets",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/comments/unread-counts?entity_type=support_ticket&entity_ids=demo-ticket-1773050309120-1,demo-ticket-1773",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 26,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 35,
+   "text": "🇬🇧 English ▾",
+   "tag": "button",
+   "cls": "sc-eHqVIu.cAXMiL",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 37,
+   "text": "Expand panel",
+   "tag": "button",
+   "cls": "sc-fgDYYN.diDwfy",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 6,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Create Set Menu",
+   "text": "Add Slot",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Create Set Menu",
+   "text": "🍖",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Create Set Menu",
+   "text": "🍲",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Create Set Menu",
+   "text": "🍚",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Create Set Menu",
+   "text": "🥓",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Create Set Menu",
+   "text": "🍜",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Create Set Menu",
+   "text": "🍗",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Create Set Menu",
+   "text": "🥟",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [
+    "GET /api/badge-counts"
+   ],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 38,
+   "text": "Create Set Menu",
+   "tag": "button",
+   "cls": "sc-ikkVnJ.dqOWSb",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": true
+   },
+   "elChanged": false,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 4,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Add New Item",
+   "text": "🍖",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Add New Item",
+   "text": "🍲",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Add New Item",
+   "text": "🍚",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Add New Item",
+   "text": "🥓",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Add New Item",
+   "text": "🍜",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Add New Item",
+   "text": "🍗",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Add New Item",
+   "text": "🥟",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "modalOf": "Add New Item",
+   "text": "🥘",
+   "tag": "modal-button",
+   "clickErr": null,
+   "newCalls": [
+    "GET /api/badge-counts"
+   ],
+   "blockedCount": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "closedModal": false
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 39,
+   "text": "Add New Item",
+   "tag": "button",
+   "cls": "sc-ikkVnJ.jstoFs",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": true
+   },
+   "elChanged": false,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 4,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 40,
+   "text": "All Items (21)",
+   "tag": "button",
+   "cls": "sc-jaXbil.ckPPKb",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 41,
+   "text": "🍽️ AUDIT-CAT-17-ren",
+   "tag": "button",
+   "cls": "sc-jaXbil.jcJuVR",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 25,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 42,
+   "text": "🍽️ BBQ Grills",
+   "tag": "button",
+   "cls": "sc-jaXbil.jcJuVR",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 27,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 43,
+   "text": "🍽️ Beverages",
+   "tag": "button",
+   "cls": "sc-jaXbil.jcJuVR",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 27,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 44,
+   "text": "🍽️ Rice & Noodles",
+   "tag": "button",
+   "cls": "sc-jaXbil.jcJuVR",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 27,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 45,
+   "text": "🍽️ Soups & Stews",
+   "tag": "button",
+   "cls": "sc-jaXbil.jcJuVR",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 27,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 11,
+   "text": "Collapse Sidebar",
+   "tag": "button",
+   "cls": "sc-hfXZzM.PZLbk",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 84,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 42,
+   "text": "Contact Support",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/support-tickets",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/comments/unread-counts?entity_type=support_ticket&entity_ids=demo-ticket-1773050309120-1,demo-ticket-1773",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 26,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 43,
+   "text": "🇬🇧 English ▾",
+   "tag": "button",
+   "cls": "sc-eHqVIu.cAXMiL",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 45,
+   "text": "Expand panel",
+   "tag": "button",
+   "cls": "sc-fgDYYN.diDwfy",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 39,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 46,
+   "text": "Store Info",
+   "tag": "button",
+   "cls": "sc-jaXbil.ckPPKb",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 36,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 47,
+   "text": "Operations",
+   "tag": "button",
+   "cls": "sc-jaXbil.jcJuVR",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 10,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 48,
+   "text": "Managers",
+   "tag": "button",
+   "cls": "sc-jaXbil.jcJuVR",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 15,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 49,
+   "text": "🇲🇾 +60",
+   "tag": "button",
+   "cls": "sc-fWMeal.eoVXKW",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 4,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 50,
+   "text": "🇲🇾 +60",
+   "tag": "button",
+   "cls": "sc-fWMeal.eoVXKW",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 4,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 12,
+   "text": "Dashboard",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38/company-info",
+    "GET /api/categories?restaurantId=38",
+    "GET /api/menu?restaurant_id=38&excludeImage=true",
+    "GET /api/notification-settings/preferences",
+    "GET /api/badge-counts",
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/dashboard/restaurant/38/sales-chart?period=week",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/users/me/tutorial-progress",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 49,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 13,
+   "text": "Live Orders",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-14&endDate=2026-09-14",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-14&endDate=2026-09-14",
+    "GET /api/restaurants/38",
+    "GET /api/membership/settings/38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-14&endDate=2026-09-14",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-14&endDate=2026-09-14",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-14&endDate=2026-09-14",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 100,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 14,
+   "text": "Reservations",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/reservations/restaurant/38?date=2026-09-14",
+    "GET /api/reservations/restaurant/38/pending",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "openedPopup": 0,
+   "popupUrls": [],
+   "nativeValidation": 0,
+   "mutations": 52,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  }
+ ]
+}

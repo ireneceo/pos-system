@@ -1,0 +1,339 @@
+{
+ "base": "https://dev.purplehere.com",
+ "rid": 38,
+ "at": "2026-09-13T15:35:57.753Z",
+ "results": [
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 0,
+   "text": "← Dashboard",
+   "tag": "button",
+   "cls": "sc-ABqPz.cMnbJZ",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/inbox/unread-count",
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/categories?restaurantId=38",
+    "GET /api/menu?restaurant_id=38&excludeImage=true",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/notification-settings/preferences",
+    "GET /api/restaurants/38/allowed-routes",
+    "GET /api/badge-counts",
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/dashboard/restaurant/38/sales-chart?period=week",
+    "GET /api/badge-counts",
+    "GET /api/referrals/wallet",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/users/me/tutorial-progress",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": true
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 38,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 1,
+   "text": "Customer Display (auto-open enabled)",
+   "tag": "button",
+   "cls": "sc-ABqPz.cMnbJZ",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 14,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 3,
+   "text": "More POS terminal actions",
+   "tag": "button",
+   "cls": "sc-howViw.ejCUAL",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 9,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 4,
+   "text": "Light",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 22,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 5,
+   "text": "High Contrast",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 29,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 6,
+   "text": "Dark",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 22,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 7,
+   "text": "Image",
+   "tag": "button",
+   "cls": "sc-NuEbr.fuQjlU",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 7,
+   "ctrlMut": 21,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 8,
+   "text": "Compact",
+   "tag": "button",
+   "cls": "sc-NuEbr.irPPbc",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/menu?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 68,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": 2,
+   "doubleNet": 0
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 9,
+   "text": "Enter fullscreen",
+   "fatal": "page.waitForTimeout: Target page, context or browser has been closed"
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 10,
+   "text": "🍽️ AUDIT-CAT-17-ren",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 11,
+   "text": "🍽️ BBQ Grills",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 12,
+   "text": "🍽️ Beverages",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 13,
+   "text": "🍽️ Rice & Noodles",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 14,
+   "text": "🍽️ Soups & Stews",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 15,
+   "text": "🍽️ Uncategorized",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 16,
+   "text": "Options",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 17,
+   "text": "Dine In",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 18,
+   "text": "Takeaway",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 19,
+   "text": "Clear",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 20,
+   "text": "Pay Later",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 21,
+   "text": "Pay Now",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "fatal": "NAV_FAIL"
+  }
+ ]
+}

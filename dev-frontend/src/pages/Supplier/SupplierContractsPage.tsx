@@ -589,10 +589,10 @@ const SupplierContractsPage: React.FC = () => {
       </Header>
 
       <PageTabBar>
-        <PageTab $active={true} type="button">
+        <PageTab $active={true} role="tab" aria-selected={true} type="button">
           {t('supplierMenu.tab.mine', 'My Suppliers')}
         </PageTab>
-        <PageTab $active={false} type="button" onClick={() => navigate('/pos/suppliers/directory')}>
+        <PageTab $active={false} role="tab" aria-selected={false} type="button" onClick={() => navigate('/pos/suppliers/directory')}>
           {t('supplierMenu.tab.find', 'Find Suppliers')}
         </PageTab>
       </PageTabBar>

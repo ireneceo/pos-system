@@ -51,6 +51,7 @@ const NewsPage = React.lazy(() => import('./pages/Landing/NewsPage'));
 const BlogPostPage = React.lazy(() => import('./pages/Landing/BlogPostPage'));
 // Mobile App — lazy (separate entry, heavy customer-facing bundle)
 const MobileApp = React.lazy(() => import('./mobile/MobileApp'));
+const NotFoundPage = React.lazy(() => import('./pages/NotFound/NotFoundPage'));
 
 // Loading Component
 const PageLoader = () => (
@@ -1570,6 +1571,10 @@ function App() {
                       {/* /pos/purchase-invoices removed — superseded by per-role invoice pages (memory: Invoice + SOA unified) */}
 
                       </Route>{/* End PosLayout */}
+
+                      {/* 없는 주소 안내 (2026-09-13) — 이 자리가 비어 있어서 잘못된 주소가 완전 백지였다.
+                          매장에서 옛 북마크·오타 주소를 열면 흰 화면만 보이고 복구 방법을 알 수 없었다. */}
+                      <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                     </Suspense>
                        </OfflineProvider>

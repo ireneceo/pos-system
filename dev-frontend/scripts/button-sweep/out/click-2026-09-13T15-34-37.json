@@ -1,0 +1,4646 @@
+{
+ "base": "https://dev.purplehere.com",
+ "rid": 38,
+ "at": "2026-09-13T15:34:37.447Z",
+ "results": [
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 0,
+   "text": "← Dashboard",
+   "tag": "button",
+   "cls": "sc-ABqPz.cMnbJZ",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/inbox/unread-count",
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/categories?restaurantId=38",
+    "GET /api/menu?restaurant_id=38&excludeImage=true",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/notification-settings/preferences",
+    "GET /api/restaurants/38/allowed-routes",
+    "GET /api/badge-counts",
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/dashboard/restaurant/38/sales-chart?period=week",
+    "GET /api/badge-counts",
+    "GET /api/referrals/wallet",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/users/me/tutorial-progress",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": true
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 38,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 1,
+   "text": "Customer Display (auto-open enabled)",
+   "tag": "button",
+   "cls": "sc-ABqPz.cMnbJZ",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 14,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 3,
+   "text": "More POS terminal actions",
+   "tag": "button",
+   "cls": "sc-howViw.ejCUAL",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 9,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 4,
+   "text": "Light",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 22,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 5,
+   "text": "High Contrast",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 22,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 6,
+   "text": "Dark",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 29,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 7,
+   "text": "Image",
+   "tag": "button",
+   "cls": "sc-NuEbr.fuQjlU",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 7,
+   "ctrlMut": 21,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 8,
+   "text": "Compact",
+   "tag": "button",
+   "cls": "sc-NuEbr.irPPbc",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/menu?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 68,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": 2,
+   "doubleNet": 0
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 9,
+   "text": "Enter fullscreen",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 16,
+   "ctrlMut": 21,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 10,
+   "text": "🍽️ AUDIT-CAT-17-ren",
+   "tag": "button",
+   "cls": "sc-cnejuk.euqhNF",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/menu?restaurantId=38&categoryId=93",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 22,
+   "ctrlMut": 18,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": 2,
+   "doubleNet": 1
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 11,
+   "text": "🍽️ BBQ Grills",
+   "tag": "button",
+   "cls": "sc-cnejuk.laaReg",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 12,
+   "ctrlMut": 18,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 12,
+   "text": "🍽️ Beverages",
+   "tag": "button",
+   "cls": "sc-cnejuk.laaReg",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 25,
+   "ctrlMut": 18,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 13,
+   "text": "🍽️ Rice & Noodles",
+   "tag": "button",
+   "cls": "sc-cnejuk.laaReg",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 15,
+   "ctrlMut": 18,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 14,
+   "text": "🍽️ Soups & Stews",
+   "tag": "button",
+   "cls": "sc-cnejuk.laaReg",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 12,
+   "ctrlMut": 18,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 15,
+   "text": "🍽️ Uncategorized",
+   "tag": "button",
+   "cls": "sc-cnejuk.laaReg",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 12,
+   "ctrlMut": 18,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 16,
+   "text": "Options",
+   "tag": "button",
+   "cls": "sc-gVPvgB.dfRBbD",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 6,
+   "ctrlMut": 18,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 17,
+   "text": "Dine In",
+   "tag": "button",
+   "cls": "sc-glwiet.kiWqBN",
+   "clickErr": "locator.click: Timeout 4000ms exceeded.",
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312213881",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312221881",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312229881",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312237881",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 30,
+   "ctrlMut": 18,
+   "noEffect": false,
+   "consoleErrors": [
+    "pageerror: Cannot read properties of undefined (reading 'update')"
+   ],
+   "stillBusy": null,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 18,
+   "text": "Takeaway",
+   "tag": "button",
+   "cls": "sc-glwiet.hDkQVs",
+   "clickErr": "locator.click: Timeout 4000ms exceeded.",
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312314170",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312322170",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312330170",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312338170",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 30,
+   "ctrlMut": 18,
+   "noEffect": false,
+   "consoleErrors": [
+    "pageerror: Cannot read properties of undefined (reading 'update')"
+   ],
+   "stillBusy": null,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 19,
+   "text": "Clear",
+   "tag": "button",
+   "cls": "sc-iEWboB.jBVBqN",
+   "clickErr": "locator.click: Timeout 4000ms exceeded.",
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312414458",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312422458",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312430458",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312438458",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 30,
+   "ctrlMut": 18,
+   "noEffect": false,
+   "consoleErrors": [
+    "pageerror: Cannot read properties of undefined (reading 'update')"
+   ],
+   "stillBusy": null,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 20,
+   "text": "Pay Later",
+   "tag": "button",
+   "cls": "sc-iEWboB.blYIkT",
+   "clickErr": "locator.click: Timeout 4000ms exceeded.",
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312514748",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312522748",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312530748",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312538748",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 30,
+   "ctrlMut": 18,
+   "noEffect": false,
+   "consoleErrors": [
+    "pageerror: Cannot read properties of undefined (reading 'update')"
+   ],
+   "stillBusy": null,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 21,
+   "text": "Pay Now",
+   "tag": "button",
+   "cls": "sc-iEWboB.gzDMyS",
+   "clickErr": "locator.click: Timeout 4000ms exceeded.",
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312615035",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312623035",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312631035",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/health?t=1789312639035",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 30,
+   "ctrlMut": 18,
+   "noEffect": false,
+   "consoleErrors": [
+    "pageerror: Cannot read properties of undefined (reading 'update')"
+   ],
+   "stillBusy": null,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 0,
+   "text": "Enter fullscreen",
+   "tag": "button",
+   "cls": "sc-cxJczu.gSohou",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 6,
+   "ctrlMut": 12,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 1,
+   "text": "← Dashboard",
+   "tag": "button",
+   "cls": "sc-cxJczu.gSohou",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 17,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 2,
+   "text": "demo-restaurant ▼",
+   "tag": "button",
+   "cls": "sc-kpMTpV.jlxQJM",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 18,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 3,
+   "text": "Settlement",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/health?t=1789312709684",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789312709686",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/restaurants/38",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789312709755",
+    "GET /api/membership/settings/38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 4,
+   "text": "L",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders?restaurantId=38&start_date=2026-09-13&end_date=2026-09-13&limit=500",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 22,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 5,
+   "text": "H",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 16,
+   "ctrlMut": 12,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 6,
+   "text": "D",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 16,
+   "ctrlMut": 12,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 7,
+   "text": "Toggle ready alert sound",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 13,
+   "ctrlMut": 12,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 8,
+   "text": "Floor plan settings",
+   "tag": "button",
+   "cls": "sc-ieXsQK.bvLIdm",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 6,
+   "ctrlMut": 12,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 9,
+   "text": "Main 3",
+   "tag": "button",
+   "cls": "sc-cHsGLF.dYHWLK",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 8,
+   "ctrlMut": 12,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 10,
+   "text": "Takeout 0",
+   "tag": "button",
+   "cls": "sc-cHsGLF.dYHWLK",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 18,
+   "ctrlMut": 12,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 11,
+   "text": "Items 0",
+   "tag": "button",
+   "cls": "sc-cHsGLF.dYHWLK",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 41,
+   "ctrlMut": 12,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/floor-plan",
+   "i": 12,
+   "text": "+ Takeaway Walk-in",
+   "tag": "button",
+   "cls": "sc-cHsGLF.dYHWLK",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/health?t=1789312766652",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/site-settings",
+    "GET /api/store/settings?restaurantId=38&_t=1789312766655",
+    "GET /api/auth/me",
+    "GET /api/orders?limit=100",
+    "GET /api/auth/contexts",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789312766721",
+    "GET /api/restaurants/38",
+    "GET /api/membership/settings/38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 14,
+   "ctrlMut": 12,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 11,
+   "text": "Collapse Sidebar",
+   "tag": "button",
+   "cls": "sc-hfXZzM.PZLbk",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 51,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 12,
+   "text": "Dashboard",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/categories?restaurantId=38",
+    "GET /api/menu?restaurant_id=38&excludeImage=true",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/notification-settings/preferences",
+    "GET /api/restaurants/38/allowed-routes",
+    "GET /api/badge-counts",
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/dashboard/restaurant/38/sales-chart?period=week",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/users/me/tutorial-progress",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 39,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 13,
+   "text": "Live Orders",
+   "tag": "a",
+   "cls": "sc-HABRJ.flmbhE",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 12,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 14,
+   "text": "Reservations",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/reservations/restaurant/38?date=2026-09-13",
+    "GET /api/reservations/restaurant/38/pending",
+    "GET /api/restaurants/38",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 22,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 15,
+   "text": "POS Terminal",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 16,
+   "text": "Floor Plan",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 17,
+   "text": "Cash Management",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/cash/restaurant/38/movements?limit=2000&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/cash/restaurant/38/shift/current",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/cash/restaurant/38/shift/40/expected",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 21,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 18,
+   "text": "Kitchen Display",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 19,
+   "text": "Pickup Display",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 20,
+   "text": "Mobile Order",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": 2,
+   "doubleNet": 0
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 21,
+   "text": "Products",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/recipes",
+    "GET /api/restaurants/38/brand-recipes",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/restaurants/38/ingredients",
+    "GET /api/restaurants/38/brand-ingredients",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 35,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 22,
+   "text": "Operations",
+   "tag": "a",
+   "cls": "sc-HABRJ.lgPSgG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/payments/subscriptions?payer_type=restaurant&payer_id=38 [차단:path:danger]",
+    "GET /api/invoices/restaurant/38",
+    "GET /api/invoices/to-pay",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/currencies/config",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/auth/me",
+    "GET /api/badge-counts",
+    "GET /api/referrals/wallet",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789312857787",
+    "GET /api/restaurants/38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 71,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 23,
+   "text": "Reports",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/customers/38",
+    "GET /api/menu?restaurantId=38&excludeImage=true",
+    "GET /api/dashboard/restaurant/38/reports-summary?startDate=2026-08-15&endDate=2026-09-13",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 86,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 24,
+   "text": "Team & Marketing",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/users",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 26,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 25,
+   "text": "Communication",
+   "tag": "a",
+   "cls": "sc-HABRJ.lgPSgG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/notices/received",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/comments/unread-counts?entity_type=notice&entity_ids=29,30,31",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 30,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 26,
+   "text": "Settings",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/users/23",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 46,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 29,
+   "text": "Contact Support",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/support-tickets",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/comments/unread-counts?entity_type=support_ticket&entity_ids=demo-ticket-1773050309120-1,demo-ticket-1773",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 28,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 30,
+   "text": "🇬🇧 English ▾",
+   "tag": "button",
+   "cls": "sc-eHqVIu.cAXMiL",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 32,
+   "text": "Expand panel",
+   "tag": "button",
+   "cls": "sc-fgDYYN.diDwfy",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 4,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 33,
+   "text": "Select to Merge",
+   "tag": "button",
+   "cls": "sc-gPrgcH.fWRbsg",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 9,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": true,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 34,
+   "text": "Sound ON",
+   "tag": "button",
+   "cls": "sc-ctzhCi.hZlqND",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 10,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 35,
+   "text": "Order settings",
+   "tag": "a",
+   "cls": "sc-fBfZuV.jkAMZq",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/currencies/supported",
+    "GET /api/restaurants/38",
+    "GET /api/coupons?restaurantId=38&active=true",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/categories?restaurant_id=38",
+    "GET /api/menu?restaurant_id=38",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 467,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 36,
+   "text": "Today",
+   "tag": "button",
+   "cls": "sc-kEGOIh.llOhrg",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 6,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 37,
+   "text": "Yesterday",
+   "tag": "button",
+   "cls": "sc-kEGOIh.fEtFuz",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-12&endDate=2026-09-12",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-12&endDate=2026-09-12",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 15,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/live-orders",
+   "i": 38,
+   "text": "Week",
+   "tag": "button",
+   "cls": "sc-kEGOIh.fEtFuz",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-07&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-07&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 21,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 0,
+   "text": "← Dashboard",
+   "tag": "a",
+   "cls": "sc-bfoaUw.lkfycy",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/inbox/unread-count",
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/categories?restaurantId=38",
+    "GET /api/menu?restaurant_id=38&excludeImage=true",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/notification-settings/preferences",
+    "GET /api/restaurants/38/allowed-routes",
+    "GET /api/badge-counts",
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/dashboard/restaurant/38/sales-chart?period=week",
+    "GET /api/badge-counts",
+    "GET /api/referrals/wallet",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/users/me/tutorial-progress",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": true
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 37,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 1,
+   "text": "Order",
+   "tag": "button",
+   "cls": "sc-ctelvB.khEQmc",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 2,
+   "text": "Item",
+   "tag": "button",
+   "cls": "sc-ctelvB.dFFlXY",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 5,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 3,
+   "text": "All",
+   "tag": "button",
+   "cls": "sc-ctelvB.khEQmc",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 4,
+   "text": "All: 소리 켜짐 (탭하면 전체 끔)",
+   "tag": "span",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 1,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 5,
+   "text": "Main Kitchen",
+   "tag": "button",
+   "cls": "sc-ctelvB.dFFlXY",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 9,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 6,
+   "text": "Main Kitchen: 소리 켜짐 (탭하면 음소거)",
+   "tag": "span",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 7,
+   "text": "Grill Station",
+   "tag": "button",
+   "cls": "sc-ctelvB.dFFlXY",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 9,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 8,
+   "text": "Grill Station: 소리 켜짐 (탭하면 음소거)",
+   "tag": "span",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 10,
+   "text": "demo-restaurant ▼",
+   "tag": "button",
+   "cls": "sc-nuIvE.bJBBNi",
+   "clickErr": "locator.click: Timeout 4000ms exceeded.",
+   "reqs": [
+    "GET /api/health?t=1789313017405"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": true,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 11,
+   "text": "Kitchen station settings",
+   "tag": "a",
+   "cls": "sc-fBfZuV.jkAMZq",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 1,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 11,
+   "text": "Collapse Sidebar",
+   "tag": "button",
+   "cls": "sc-hfXZzM.PZLbk",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 51,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 12,
+   "text": "Dashboard",
+   "tag": "a",
+   "cls": "sc-HABRJ.flmbhE",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 6,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 13,
+   "text": "Live Orders",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/restaurants/38",
+    "GET /api/membership/settings/38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 48,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 14,
+   "text": "Reservations",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/reservations/restaurant/38?date=2026-09-13",
+    "GET /api/reservations/restaurant/38/pending",
+    "GET /api/restaurants/38",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 21,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 15,
+   "text": "POS Terminal",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 16,
+   "text": "Floor Plan",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 17,
+   "text": "Cash Management",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/cash/restaurant/38/movements?limit=2000&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/cash/restaurant/38/shift/current",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/cash/restaurant/38/shift/40/expected",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 20,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 18,
+   "text": "Kitchen Display",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 19,
+   "text": "Pickup Display",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 20,
+   "text": "Mobile Order",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": 2,
+   "doubleNet": 1
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 21,
+   "text": "Products",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/recipes",
+    "GET /api/restaurants/38/brand-recipes",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/restaurants/38/ingredients",
+    "GET /api/restaurants/38/brand-ingredients",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 34,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 22,
+   "text": "Operations",
+   "tag": "a",
+   "cls": "sc-HABRJ.lgPSgG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/payments/subscriptions?payer_type=restaurant&payer_id=38 [차단:path:danger]",
+    "GET /api/invoices/restaurant/38",
+    "GET /api/invoices/to-pay",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/currencies/config",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/auth/me",
+    "GET /api/badge-counts",
+    "GET /api/referrals/wallet",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789313115732",
+    "GET /api/restaurants/38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 73,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 23,
+   "text": "Reports",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/customers/38",
+    "GET /api/menu?restaurantId=38&excludeImage=true",
+    "GET /api/dashboard/restaurant/38/reports-summary?startDate=2026-08-15&endDate=2026-09-13",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 85,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 24,
+   "text": "Team & Marketing",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/users",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 25,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 25,
+   "text": "Communication",
+   "tag": "a",
+   "cls": "sc-HABRJ.lgPSgG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/notices/received",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/comments/unread-counts?entity_type=notice&entity_ids=29,30,31",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 29,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 26,
+   "text": "Settings",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/users/23",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 45,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 29,
+   "text": "Contact Support",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/support-tickets",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/comments/unread-counts?entity_type=support_ticket&entity_ids=demo-ticket-1773050309120-1,demo-ticket-1773",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 27,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 30,
+   "text": "🇬🇧 English ▾",
+   "tag": "button",
+   "cls": "sc-eHqVIu.cAXMiL",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 32,
+   "text": "Expand panel",
+   "tag": "button",
+   "cls": "sc-fgDYYN.diDwfy",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 4,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 33,
+   "text": "? Show me around",
+   "tag": "button",
+   "cls": "sc-cAmbfX.kFRqRe",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": true
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 34,
+   "text": "Week",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 35,
+   "text": "Month",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/dashboard/restaurant/38/sales-chart?period=month",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 22,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": 1,
+   "doubleNet": 1
+  },
+  {
+   "route": "/restaurant/38/dashboard",
+   "i": 36,
+   "text": "Year",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/dashboard/restaurant/38/sales-chart?period=year",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 32,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": 1,
+   "doubleNet": 1
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 11,
+   "text": "Collapse Sidebar",
+   "tag": "button",
+   "cls": "sc-hfXZzM.PZLbk",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 51,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 12,
+   "text": "Dashboard",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/categories?restaurantId=38",
+    "GET /api/menu?restaurant_id=38&excludeImage=true",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/notification-settings/preferences",
+    "GET /api/restaurants/38/allowed-routes",
+    "GET /api/badge-counts",
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/dashboard/restaurant/38/sales-chart?period=week",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/users/me/tutorial-progress",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 38,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 13,
+   "text": "Live Orders",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/restaurants/38",
+    "GET /api/membership/settings/38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 66,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 14,
+   "text": "Reservations",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/reservations/restaurant/38?date=2026-09-13",
+    "GET /api/reservations/restaurant/38/pending",
+    "GET /api/restaurants/38",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 21,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 15,
+   "text": "POS Terminal",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 16,
+   "text": "Floor Plan",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 17,
+   "text": "Cash Management",
+   "tag": "a",
+   "cls": "sc-HABRJ.flmbhE",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 9,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 18,
+   "text": "Kitchen Display",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 19,
+   "text": "Pickup Display",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 20,
+   "text": "Mobile Order",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": 2,
+   "doubleNet": 1
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 21,
+   "text": "Products",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/recipes",
+    "GET /api/restaurants/38/brand-recipes",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/restaurants/38/ingredients",
+    "GET /api/restaurants/38/brand-ingredients",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 37,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 22,
+   "text": "Operations",
+   "tag": "a",
+   "cls": "sc-HABRJ.lgPSgG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/payments/subscriptions?payer_type=restaurant&payer_id=38 [차단:path:danger]",
+    "GET /api/invoices/restaurant/38",
+    "GET /api/invoices/to-pay",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/currencies/config",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/auth/me",
+    "GET /api/badge-counts",
+    "GET /api/referrals/wallet",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789313284218",
+    "GET /api/restaurants/38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 73,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 23,
+   "text": "Reports",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/customers/38",
+    "GET /api/menu?restaurantId=38&excludeImage=true",
+    "GET /api/dashboard/restaurant/38/reports-summary?startDate=2026-08-15&endDate=2026-09-13",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 85,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 24,
+   "text": "Team & Marketing",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/users",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 25,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 25,
+   "text": "Communication",
+   "tag": "a",
+   "cls": "sc-HABRJ.lgPSgG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/notices/received",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/comments/unread-counts?entity_type=notice&entity_ids=29,30,31",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 29,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 26,
+   "text": "Settings",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/users/23",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 45,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 29,
+   "text": "Contact Support",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/support-tickets",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/comments/unread-counts?entity_type=support_ticket&entity_ids=demo-ticket-1773050309120-1,demo-ticket-1773",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 24,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 30,
+   "text": "🇬🇧 English ▾",
+   "tag": "button",
+   "cls": "sc-eHqVIu.cAXMiL",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 32,
+   "text": "Expand panel",
+   "tag": "button",
+   "cls": "sc-fgDYYN.diDwfy",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 4,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 33,
+   "text": "Today's Cash Drawer",
+   "tag": "button",
+   "cls": "sc-daUvki.ddYIIt",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/cash/restaurant/38/shift/current",
+    "GET /api/cash/restaurant/38/shift/40/expected",
+    "GET /api/cash/restaurant/38/movements?startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 8,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 34,
+   "text": "Settlement",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 1,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 35,
+   "text": "Today",
+   "tag": "button",
+   "cls": "sc-kscUMq.tIGtJ",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 36,
+   "text": "Yesterday",
+   "tag": "button",
+   "cls": "sc-kscUMq.iQrsUu",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/cash/restaurant/38/movements?limit=2000&startDate=2026-09-12&endDate=2026-09-12",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 13,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": 1,
+   "doubleNet": 1
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 37,
+   "text": "Week",
+   "tag": "button",
+   "cls": "sc-kscUMq.iQrsUu",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/cash/restaurant/38/movements?limit=2000&startDate=2026-09-07&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 13,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": 1,
+   "doubleNet": 1
+  },
+  {
+   "route": "/restaurant/38/cash-management",
+   "i": 38,
+   "text": "Month",
+   "tag": "button",
+   "cls": "sc-kscUMq.iQrsUu",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/cash/restaurant/38/movements?limit=2000&startDate=2026-08-15&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 13,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": 1,
+   "doubleNet": 1
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 11,
+   "text": "Collapse Sidebar",
+   "tag": "button",
+   "cls": "sc-hfXZzM.PZLbk",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 51,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 12,
+   "text": "Dashboard",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/categories?restaurantId=38",
+    "GET /api/menu?restaurant_id=38&excludeImage=true",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/notification-settings/preferences",
+    "GET /api/restaurants/38/allowed-routes",
+    "GET /api/badge-counts",
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/dashboard/restaurant/38/sales-chart?period=week",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/users/me/tutorial-progress",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 16,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 13,
+   "text": "Live Orders",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/restaurants/38",
+    "GET /api/membership/settings/38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 61,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 14,
+   "text": "Reservations",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/reservations/restaurant/38?date=2026-09-13",
+    "GET /api/reservations/restaurant/38/pending",
+    "GET /api/restaurants/38",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 22,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 15,
+   "text": "POS Terminal",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 16,
+   "text": "Floor Plan",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 17,
+   "text": "Cash Management",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/cash/restaurant/38/movements?limit=2000&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/cash/restaurant/38/shift/current",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/cash/restaurant/38/shift/40/expected",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 21,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 18,
+   "text": "Kitchen Display",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 19,
+   "text": "Pickup Display",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 20,
+   "text": "Mobile Order",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": 2,
+   "doubleNet": 0
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 21,
+   "text": "Products",
+   "tag": "a",
+   "cls": "sc-HABRJ.flmbhE",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 10,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 27,
+   "text": "Operations",
+   "tag": "a",
+   "cls": "sc-HABRJ.lgPSgG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/payments/subscriptions?payer_type=restaurant&payer_id=38 [차단:path:danger]",
+    "GET /api/invoices/restaurant/38",
+    "GET /api/invoices/to-pay",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/currencies/config",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/auth/me",
+    "GET /api/badge-counts",
+    "GET /api/referrals/wallet",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789313471582",
+    "GET /api/restaurants/38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 75,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 28,
+   "text": "Reports",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/customers/38",
+    "GET /api/menu?restaurantId=38&excludeImage=true",
+    "GET /api/dashboard/restaurant/38/reports-summary?startDate=2026-08-15&endDate=2026-09-13",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 87,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 29,
+   "text": "Team & Marketing",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/users",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 27,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 30,
+   "text": "Communication",
+   "tag": "a",
+   "cls": "sc-HABRJ.lgPSgG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/notices/received",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/comments/unread-counts?entity_type=notice&entity_ids=29,30,31",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 31,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 31,
+   "text": "Settings",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/users/23",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 47,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 34,
+   "text": "Contact Support",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/support-tickets",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/comments/unread-counts?entity_type=support_ticket&entity_ids=demo-ticket-1773050309120-1,demo-ticket-1773",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 29,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 35,
+   "text": "🇬🇧 English ▾",
+   "tag": "button",
+   "cls": "sc-eHqVIu.cAXMiL",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 37,
+   "text": "Expand panel",
+   "tag": "button",
+   "cls": "sc-fgDYYN.diDwfy",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 6,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 38,
+   "text": "Create Set Menu",
+   "tag": "button",
+   "cls": "sc-ikkVnJ.dqOWSb",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 4,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 39,
+   "text": "Add New Item",
+   "tag": "button",
+   "cls": "sc-ikkVnJ.jstoFs",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 4,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 40,
+   "text": "All Items (21)",
+   "tag": "button",
+   "cls": "sc-jaXbil.ckPPKb",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 41,
+   "text": "🍽️ AUDIT-CAT-17-ren",
+   "tag": "button",
+   "cls": "sc-jaXbil.jcJuVR",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 25,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 42,
+   "text": "🍽️ BBQ Grills",
+   "tag": "button",
+   "cls": "sc-jaXbil.jcJuVR",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 27,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/menu",
+   "i": 43,
+   "text": "🍽️ Beverages",
+   "tag": "button",
+   "cls": "sc-jaXbil.jcJuVR",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 27,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 11,
+   "text": "Collapse Sidebar",
+   "tag": "button",
+   "cls": "sc-hfXZzM.PZLbk",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 84,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 12,
+   "text": "Dashboard",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/categories?restaurantId=38",
+    "GET /api/menu?restaurant_id=38&excludeImage=true",
+    "GET /api/kitchen-stations?restaurant_id=38",
+    "GET /api/notification-settings/preferences",
+    "GET /api/restaurants/38/allowed-routes",
+    "GET /api/badge-counts",
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/dashboard/restaurant/38/sales-chart?period=week",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/users/me/tutorial-progress",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 72,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 13,
+   "text": "Live Orders",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/restaurants/38",
+    "GET /api/membership/settings/38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38?page=1&limit=1000&includeCompleted=true&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/counts?startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 88,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 14,
+   "text": "Reservations",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/reservations/restaurant/38?date=2026-09-13",
+    "GET /api/reservations/restaurant/38/pending",
+    "GET /api/restaurants/38",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 55,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 15,
+   "text": "POS Terminal",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 36,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 16,
+   "text": "Floor Plan",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 36,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 17,
+   "text": "Cash Management",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/cash/restaurant/38/movements?limit=2000&startDate=2026-09-13&endDate=2026-09-13",
+    "GET /api/cash/restaurant/38/shift/current",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/cash/restaurant/38/shift/40/expected",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 54,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 18,
+   "text": "Kitchen Display",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 36,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 19,
+   "text": "Pickup Display",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 36,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 20,
+   "text": "Mobile Order",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 36,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": 2,
+   "doubleNet": 1
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 21,
+   "text": "Products",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/recipes",
+    "GET /api/restaurants/38/brand-recipes",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/restaurants/38/ingredients",
+    "GET /api/restaurants/38/brand-ingredients",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 69,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 22,
+   "text": "Operations",
+   "tag": "a",
+   "cls": "sc-HABRJ.lgPSgG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/payments/subscriptions?payer_type=restaurant&payer_id=38 [차단:path:danger]",
+    "GET /api/invoices/restaurant/38",
+    "GET /api/invoices/to-pay",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/currencies/config",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/auth/me",
+    "GET /api/badge-counts",
+    "GET /api/referrals/wallet",
+    "GET /api/restaurants/subscription-status",
+    "GET /api/store/settings?restaurantId=38&_t=1789313645720",
+    "GET /api/restaurants/38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 108,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 23,
+   "text": "Reports",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/customers/38",
+    "GET /api/menu?restaurantId=38&excludeImage=true",
+    "GET /api/dashboard/restaurant/38/reports-summary?startDate=2026-08-15&endDate=2026-09-13",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 120,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 24,
+   "text": "Team & Marketing",
+   "tag": "a",
+   "cls": "sc-HABRJ.hzSoDG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/users",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 60,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 25,
+   "text": "Communication",
+   "tag": "a",
+   "cls": "sc-HABRJ.lgPSgG",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/notices/received",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/comments/unread-counts?entity_type=notice&entity_ids=29,30,31",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 64,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 26,
+   "text": "Settings",
+   "tag": "a",
+   "cls": "sc-HABRJ.flmbhE",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/users/23",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/orders/restaurant/38/pending-print"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 75,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 42,
+   "text": "Contact Support",
+   "fatal": "page.evaluate: Target page, context or browser has been closed"
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 43,
+   "text": "🇬🇧 English ▾",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 45,
+   "text": "Expand panel",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 46,
+   "text": "Store Info",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 47,
+   "text": "Operations",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 48,
+   "text": "Managers",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 49,
+   "text": "🇲🇾 +60",
+   "fatal": "NAV_FAIL"
+  },
+  {
+   "route": "/restaurant/38/settings?tab=store",
+   "i": 50,
+   "text": "🇲🇾 +60",
+   "fatal": "NAV_FAIL"
+  }
+ ]
+}

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-import { getAuthToken } from '../utils/auth';
+import { getAuthToken, getTokenClaims } from '../utils/auth';
 import { ensureIdempotencyKey, enqueueOrder } from '../utils/offlineOrderQueue';
 import { isOfflineMainPos } from '../utils/offlineMainPos';
 export interface OrderItem {
@@ -105,6 +105,18 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         // Skip API calls if no auth token (user not logged in)
         const token = getAuthToken();
         if (!token) {
+          return;
+        }
+
+        // 2026-09-13: 이 Provider 는 앱 «전체» 를 감싼다(App.tsx). 그래서 공급업체·브랜드·푸드코트·오너로
+        // 로그인해도 매장 주문을 불러 **화면마다 403** 이 났다(실측: 공급업체 6화면·푸드코트 6화면).
+        // 매장 주문을 볼 수 있는 신원일 때만 부른다 — 권한 판정은 여전히 서버가 한다.
+        const { role, restaurantId } = getTokenClaims();
+        const RESTAURANT_SCOPED = ['Restaurant Admin', 'Staff', 'System Admin'];
+        if (role && !RESTAURANT_SCOPED.includes(role)) {
+          return;
+        }
+        if (role && role !== 'System Admin' && !restaurantId) {
           return;
         }
 

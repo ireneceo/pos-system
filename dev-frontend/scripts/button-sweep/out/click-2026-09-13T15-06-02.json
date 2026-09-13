@@ -1,0 +1,194 @@
+{
+ "base": "https://dev.purplehere.com",
+ "rid": 38,
+ "at": "2026-09-13T15:06:02.624Z",
+ "results": [
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 0,
+   "text": "EN",
+   "tag": "button",
+   "cls": "sc-fSwKIM.duUAwR",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": false,
+   "mutations": 1,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 1,
+   "text": "",
+   "tag": "button",
+   "cls": "sc-bURucN.gA-DTwj",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "mutations": 9,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 2,
+   "text": "Sign In",
+   "tag": "button",
+   "cls": "sc-jEuGLi.cmNMJ",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 3,
+   "text": "Staff sign-in with PIN",
+   "tag": "button",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "mutations": 3,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 4,
+   "text": "Forgot your password?",
+   "tag": "a",
+   "cls": "forgot-link",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "mutations": 5,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 5,
+   "text": "Sign up",
+   "tag": "a",
+   "cls": "",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/public/plans",
+    "GET /api/currencies/supported"
+   ],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "mutations": 5,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 6,
+   "text": "Back to Home",
+   "tag": "a",
+   "cls": "sc-giIJXf.iiEfQD",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": false
+   },
+   "elChanged": true,
+   "mutations": 6,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/pos-terminal",
+   "i": 7,
+   "text": "▼ TEST Test Accounts",
+   "tag": "button",
+   "cls": "sc-imTTCS.bbHguu",
+   "clickErr": null,
+   "reqs": [],
+   "blockedCount": 0,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "mutations": 8,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  }
+ ]
+}

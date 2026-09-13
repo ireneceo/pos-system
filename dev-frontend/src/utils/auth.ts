@@ -45,3 +45,29 @@ export function getAuthHeaders(): Record<string, string> {
   const token = getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
+
+/**
+ * 토큰 안에 든 신원(역할·소속 매장)을 읽는다. **검증이 아니라 «누구 화면인가» 판단용**이다 —
+ * 권한 판정은 서버가 한다(이 값은 화면이 «부를 필요 없는 API» 를 안 부르게 하는 데만 쓴다).
+ * 2026-09-13: OrderProvider 가 앱 전체를 감싸고 로그인만 하면 /api/orders 를 불러,
+ * 공급업체·푸드코트·브랜드 계정에서 **화면마다 403** 이 쌓이고 있었다(실측).
+ */
+export function getTokenClaims(): { role: string | null; restaurantId: number | null } {
+  try {
+    const token = getAuthToken();
+    if (!token) return { role: null, restaurantId: null };
+    const part = token.split('.')[1];
+    if (!part) return { role: null, restaurantId: null };
+    const json = decodeURIComponent(
+      atob(part.replace(/-/g, '+').replace(/_/g, '/'))
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const claims = JSON.parse(json) as { role?: string; restaurant_id?: number | string | null };
+    const rid = claims.restaurant_id == null ? null : Number(claims.restaurant_id);
+    return { role: claims.role || null, restaurantId: Number.isFinite(rid as number) ? (rid as number) : null };
+  } catch {
+    return { role: null, restaurantId: null };
+  }
+}

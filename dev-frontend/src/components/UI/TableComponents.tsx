@@ -260,9 +260,10 @@ export const IconButton = styled.button<{ variant?: 'default' | 'edit' | 'delete
   }
 
   @media (max-width: 768px) {
+    /* 2026-09-13: 모바일에서 오히려 30px 로 «줄어들던» 것을 바로잡음 — 손가락 화면이 더 커야 한다. */
     padding: 6px;
-    min-width: 30px;
-    min-height: 30px;
+    min-width: 32px;
+    min-height: 32px;
   }
 `;
 

@@ -101,7 +101,7 @@ const DeviceContextMismatchScreen: React.FC<{ device: { id: string; name: string
 // This is the URL-level counterpart to the backend `requireModule` middleware —
 // together they close the gap where a basic-tier tenant could reach the page by
 // typing the URL directly.
-const MODULE_GATED_ROUTES: Array<{ prefix: string; module: string }> = [
+const MODULE_GATED_ROUTES: Array<{ prefix: string; module: string; roles?: string[] }> = [
   { prefix: '/pos/brand/plans', module: 'brand_plans' },
   { prefix: '/pos/brand/general/subscriptions', module: 'brand_subscriptions' },
   { prefix: '/pos/manager/plans', module: 'brand_plans' },
@@ -125,8 +125,14 @@ const MODULE_GATED_ROUTES: Array<{ prefix: string; module: string }> = [
   //   서버는 이미 requireRestaurantModule 로 같은 모듈을 요구한다(재고 inventory_management/ingredients ·
   //   레시피 recipe_management · 메뉴 menu_management). 화면에도 같은 문을 달아 **주소를 직접 쳐도 막히게** 한다.
   //   ⚠ 데모 매장·System Admin 은 서버가 통과시키고, 실측상 유료 매장 중 이 문에 걸리는 곳은 없다(회귀 0).
-  { prefix: '/pos/stock-ledger', module: 'inventory_management' },
-  { prefix: '/pos/recipes', module: 'recipe_management' }
+  //   🔴 2026-09-13 수정: 이 두 줄은 **매장 계정에만** 건다.
+  //   모듈 이름(inventory_management·recipe_management)은 «매장» 요금제의 어휘다. 브랜드 요금제는
+  //   같은 화면을 `brand_recipes`·`brand_inventory` 라는 다른 이름으로 준다. 역할을 안 가리면
+  //   브랜드·푸드코트 총괄이 **사이드바에는 보이는데 누르면 대시보드로 튕긴다**
+  //   (운영 실측: 브랜드 'with MIN' 요금제 Brand Enterprise 는 recipe_management 를 갖지 않는다.
+  //    서버 허용목록에는 /pos/recipes 가 있어 메뉴는 보였다 → 클릭 시 튕김).
+  { prefix: '/pos/stock-ledger', module: 'inventory_management', roles: ['Restaurant Admin', 'Staff'] },
+  { prefix: '/pos/recipes', module: 'recipe_management', roles: ['Restaurant Admin', 'Staff'] }
 ];
 
 /** 매장 주소(`/restaurant/:id/...`)는 접두어가 가변이라 별도 목록으로 둔다 — 뒷부분만 비교한다. */
@@ -458,7 +464,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Module tier gate — if the current URL's feature is not in the plan, redirect
   // to the role dashboard. Wait for the allowed-routes fetch to settle before
   // deciding so we don't flash-redirect during hydration.
-  const gated = MODULE_GATED_ROUTES.find(g => location.pathname.startsWith(g.prefix));
+  // roles 가 지정된 문은 그 역할에게만 적용한다(모듈 어휘가 역할마다 다르기 때문 — 위 주석).
+  const gated = MODULE_GATED_ROUTES.find(g => location.pathname.startsWith(g.prefix)
+    && (!g.roles || (user ? g.roles.includes(user.role) : false)));
   // 매장 주소(`/restaurant/:id/...`)는 접두어가 가변이라 뒷부분으로 찾는다 (2026-09-12 · 발주 전용 무료 등급).
   const restGated = /^\/restaurant\/\d+\//.test(location.pathname)
     ? RESTAURANT_MODULE_GATED.find(g => location.pathname.endsWith(g.suffix))

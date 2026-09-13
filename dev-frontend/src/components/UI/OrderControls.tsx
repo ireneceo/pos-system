@@ -8,8 +8,9 @@ const Container = styled.div`
 `;
 
 const OrderButton = styled.button`
-  width: 28px;
-  height: 28px;
+  /* 2026-09-13: 28×28 → 32×32. 사내 행 액션 기준(IconButton 32×32)이자 POS·태블릿 손가락 조작 기준. */
+  width: 32px;
+  height: 32px;
   border-radius: 4px;
   border: 1px solid #C7CED6;
   background: white;

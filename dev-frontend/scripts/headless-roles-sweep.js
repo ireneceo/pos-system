@@ -90,9 +90,9 @@ const ROLES = {
     role: 'Brand Manager',
     routes: [
       '/pos/brand/general/dashboard',
-      '/pos/brand/general/restaurants',
-      '/pos/brand/general/brand-products',
-      '/pos/brand/general/brand-menus',
+      '/pos/brand/general/management',
+      '/pos/brand-products',
+      '/pos/brand-menus',
       '/pos/brand/general/notices',
       '/pos/brand/general/system-inquiry',
     ],
@@ -152,7 +152,13 @@ async function visit(context, route) {
     // 표시는 displayStaffName/stripStaffNs 가 벗겨야 하며, 어느 화면에서든 `r<숫자>.` 이
     // 보이면 그 경로가 유틸을 안 타는 것이다.
     const nsLeak = /\br\d+\.[A-Za-z0-9_]/.exec(body);
-    status = fallback ? 'ERROR_BOUNDARY' : (nsLeak ? `STAFF_NS_LEAK(${nsLeak[0]})` : 'OK');
+    // 2026-09-13: 이 스윕에는 «빈 렌더» 감지가 없어서, 앱에 없는 주소 3개가 **완전 백지**인데도
+    //   OK 로 통과해 왔다(page-sweep 에만 있던 검사). 비-RA/BG 역할의 백지 화면을 여기서 잡는다.
+    const rootKids = await page.evaluate(() => document.getElementById('root')?.children?.length || 0);
+    const emptyRender = rootKids === 0 || (body || '').trim().length === 0;
+    status = fallback ? 'ERROR_BOUNDARY'
+           : emptyRender ? 'EMPTY_RENDER'
+           : (nsLeak ? `STAFF_NS_LEAK(${nsLeak[0]})` : 'OK');
   } catch (e) {
     status = 'NAV_FAIL';
   }

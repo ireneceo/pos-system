@@ -1,0 +1,204 @@
+{
+ "base": "https://dev.purplehere.com",
+ "rid": 38,
+ "at": "2026-09-13T15:37:02.749Z",
+ "results": [
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 0,
+   "text": "← Dashboard",
+   "tag": "a",
+   "cls": "sc-bfoaUw.lkfycy",
+   "clickErr": null,
+   "reqs": [
+    "GET /api/inbox/unread-count",
+    "GET /api/restaurants/38",
+    "GET /api/restaurants/38/company-info",
+    "GET /api/categories?restaurantId=38",
+    "GET /api/menu?restaurant_id=38&excludeImage=true",
+    "GET /api/notification-settings/preferences",
+    "GET /api/restaurants/38/allowed-routes",
+    "GET /api/badge-counts",
+    "GET /api/dashboard/restaurant/38/stats",
+    "GET /api/dashboard/restaurant/38/sales-chart?period=week",
+    "GET /api/badge-counts",
+    "GET /api/referrals/wallet",
+    "GET /api/menu?restaurantId=38",
+    "GET /api/option-groups?restaurantId=38",
+    "GET /api/users/me/tutorial-progress",
+    "GET /api/orders/restaurant/38/pending-print",
+    "GET /api/orders/restaurant/38/pending-print",
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": true,
+    "modal": true
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 37,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 1,
+   "text": "Order",
+   "tag": "button",
+   "cls": "sc-ctelvB.khEQmc",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 2,
+   "text": "Item",
+   "tag": "button",
+   "cls": "sc-ctelvB.dFFlXY",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": true,
+   "nativeValidation": 0,
+   "mutations": 5,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 3,
+   "text": "All",
+   "tag": "button",
+   "cls": "sc-ctelvB.khEQmc",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": false,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 0,
+   "ctrlMut": 0,
+   "noEffect": true,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 4,
+   "text": "All: 소리 켜짐 (탭하면 전체 끔)",
+   "skipped": "자리밀림(지금 그 자리는 \"All\")"
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 5,
+   "text": "Main Kitchen",
+   "tag": "button",
+   "cls": "sc-ctelvB.dFFlXY",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 6,
+   "text": "Main Kitchen: 소리 켜짐 (탭하면 음소거)",
+   "skipped": "자리밀림(지금 그 자리는 \"Main Kitchen\")"
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 7,
+   "text": "Grill Station",
+   "tag": "button",
+   "cls": "sc-ctelvB.dFFlXY",
+   "clickErr": null,
+   "reqs": [
+    "POST /api/print-diagnostics/device-report [차단:path:danger]"
+   ],
+   "blockedCount": 1,
+   "changed": {
+    "url": true,
+    "text": false,
+    "modal": false
+   },
+   "elChanged": false,
+   "nativeValidation": 0,
+   "mutations": 2,
+   "ctrlMut": 0,
+   "noEffect": false,
+   "consoleErrors": [],
+   "stillBusy": false,
+   "doubleFire": null,
+   "doubleNet": null
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 8,
+   "text": "Grill Station: 소리 켜짐 (탭하면 음소거)",
+   "skipped": "자리밀림(지금 그 자리는 \"Grill Station\")"
+  },
+  {
+   "route": "/restaurant/38/kitchen",
+   "i": 10,
+   "text": "demo-restaurant ▼",
+   "skipped": "자리밀림(지금 그 자리는 \"Cancelled 0\")"
+  }
+ ]
+}
