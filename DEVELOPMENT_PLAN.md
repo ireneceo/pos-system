@@ -9774,6 +9774,49 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 
 ---
 
+## ✅ 완료: B2B 무료 발주 등급 — 가입해서 발주만 하는 매장 (2026-09-13)
+
+우리 POS 를 쓰지 않는 매장도 무료로 가입해 공급업체·브랜드에 발주하게 하고, 재고·원가가 자동으로 맞물리는 것을 보여 유료 전환을 유도한다. 설계 단일기준 `docs/BUYER_FREE_TIER_DESIGN.md`.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| «발주 전용(무료)» 요금제 | 0원 · 모듈 6 · 매장 1곳 · **체험 없이 바로 이용**(8일째 멈추던 급소) | ✅ 완료 |
+| 화면 잠금 + 업그레이드 안내 | 재고·레시피·메뉴·POS·주방을 숨기지 않고 잠금 표시 · 전용 안내 화면 | ✅ 완료 |
+| 판매자 «계약 필요 여부» 설정 | `operation_settings.sales_access` — 공급업체·브랜드 **같은 기준**, 기본은 닫힘 | ✅ 완료 |
+| 주문용 상품 링크 | 공개 `/shop/:slug` · 복사 · QR · 새 창 열기 · **가게 이름 직접 지정** | ✅ 완료 |
+| 가맹점 밖 구매자 판매 | `brand_products.distribution_mode='external_buyers'` (expandEnum) | ✅ 완료 |
+| 공급형 계약 | `contract_type='supply'` + 전체/가맹형/공급형 구분 탭 + 종류별 새 제안 | ✅ 완료 |
+| 발주 전 법인정보 | 서버 검사 + 화면이 **빠진 칸을 이름으로** 안내하고 회사정보로 보냄 | ✅ 완료 |
+| 링크 자리 정리 | 매장 온라인 메뉴판을 Mobile Order 로 · 판매자 링크를 상품 화면으로 | ✅ 완료 |
+| 폼 «필수» 표시 1단계 | 공용 `FormLabel required` + 가입·매장 회사정보 | ✅ 완료 |
+
+### 검증 중 잡은 급소 (전부 고장주입으로 증명)
+
+| 급소 | 무엇이 문제였나 |
+|------|----------------|
+| 0원 등급이 요금제 **변경** 목록에 | 유료 매장을 무료로 내릴 수 있었고, 그 순간 POS·주방·메뉴가 빠진다 → 가격 0 기준 제외(가입 화면은 유지) |
+| 회사정보 저장이 **안 보낸 칸까지** 덮어씀 | 전체 폼 전제로 만들어져 `address_line_2` 가 null 이 됐다 → 보낸 칸만 수정 |
+| 설정 JSON 통째 덮어쓰기 2곳 | 화면이 모르는 설정 키가 다음 저장에 사라질 자리 → 병합 저장 |
+| `VALID_MODES` 하드코딩 | ENUM 과 따로 살아 새 값이 저장에서 걸러짐 |
+| 사이드바 잠금이 모바일에만 | 데스크탑 2단 패널·팝오버에서는 잠긴 칸이 원래 주소로 감 |
+
+### 수정된 파일 (주요)
+- `dev-backend/utils/salesAccess.js`, `dev-backend/utils/shopSlug.js` (신설)
+- `dev-backend/routes/purchase-orders-crud.js`, `supplier-directory.js`, `public.js`, `supplier.js`, `brands-core.js`, `brand-products.js`, `subscriptions.js`
+- `dev-backend/scripts/migrate-buyer-free-catalog.js` (신설, 레지스트리 등록)
+- `dev-frontend/src/components/Settings/SellerShopLinkCard.tsx` (신설, 공급업체·브랜드 공용)
+- `dev-frontend/src/pages/Landing/ShopCatalogPage.tsx` (신설, 공개 화면)
+- `dev-frontend/src/components/Layout/MainLayout.tsx`, `components/Contract/*`, `pages/Settings/SettingsPage.tsx`, `pages/PurchaseOrders/NewPurchaseOrderPage.tsx` 외
+
+### 검증
+실호출 48건 · 실브라우저 43건 · 고장주입 7건 성립(전부 원복 sha256 일치) · `verify-all --full` **19/19** · mount sweep 크래시 0 · 운영 배포 4회 스모크 10/10.
+⚠ **Fable 판정 미수령**(한도 소진 429) — 각 릴리즈 기록 `fable_note` 에 명시.
+⚠ 이 저장소의 **타입 검사가 두 겹으로 막혀 있었음**(힙 2048MB OOM + i18next d.ts 가 TS 5.x 문법). 되살리는 법·기준 439건은 `docs/BUYER_FREE_TIER_DESIGN.md §7-1-1`. 이번 변경 **신규 타입 오류 0**.
+
+---
+
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 
 ### 현재 상황

@@ -10,6 +10,15 @@
 
 > Claude 는 이 목록을 `/개발시작` 때 **그대로 안내**한다. 하나 끝내면 Claude 에게 «N번 했어»라고만 말하면 된다.
 
+### 0번. (새로 배포됨 2026-09-13) B2B 무료 발주 등급 운영 확인 — 약 10분
+1. **공급업체·브랜드 상품 화면 맨 위 한 줄** — «링크 만들기» → 이름 적고 칸 밖 클릭 → 주소·복사·Open·QR. «수정» 펼치면 «손님에게 보이는 가게 이름»
+2. 그 주소를 **로그인 안 된 브라우저**에서 열기 → 상품·가격만 보이고 주문 버튼 없음 · «무료 가입하고 주문»
+   - ⚠ 지금 GIT 링크(`/shop/k-dinesupply`)는 **상품이 0개**로 뜹니다. «가맹점 밖 구매자» 로 내놓은 상품이 아직 없어서입니다(실측: all 77 · specific_brands 29 · external_buyers 0). 상품 화면에서 팔 것을 그 선택지로 바꾸면 바로 나옵니다.
+3. **매장 설정 → Mobile Order** 에 «온라인 메뉴판(보여주기 전용)» 카드 (Tables & QR 에는 이제 없음)
+4. **기존 유료 매장 요금제 변경 화면에 «발주 전용(무료)» 가 안 보이는지** (보이면 안 됩니다 — 내려가면 POS 가 멈춥니다)
+5. **브랜드 계약 관리** 전체/가맹형/공급형 탭
+- **끝나면 Claude 에게**: «무료 등급 확인했어» (이상하면 번호만)
+
 ### 1번. 오늘 배포 두 건 운영 화면에서 눌러보기 — 약 10분
 **SW 5.09 (발주 «용량 · 포장단위 × 수량»)**
 1. 외부 공급업체 상품(예: 김치)에 «포장당 용량 10 · kg · 기준단위(포장) BOX» 저장 → 발주 담기 → Staging 에 «10 kg/BOX · × 3 BOX»
@@ -153,21 +162,17 @@
 - 발행일 몰림 청구서: 매장 10 구입 청구서 12장(외부 11 · 브랜드 1, Fable 은 13 으로 적음) 대응표 준비(SELECT). Irene «같이» 대기.
 - 버전 번호 결정 대기(Fable 의견 없음). → 운영 검토표 재생성(운영 DB) → check 38 행 + 새 공급업체 주체 Irene 답 → 운영 적용. 운영 쓰기 0.
 
-### 완료된 작업 (이번 세션 — 2026-09-11 오후, 운영 배포 2회: SW 5.09 · 5.10)
-1. **발주 줄 «용량 · 포장단위 × 수량»** — SW 5.09 · 14:19 UTC
-   - 원인(Fable): `resolveOrderUnit` 이 supplier 상품을 매장 메뉴 표에서 찾아 'piece' · 판매 상품에 포장단위 칸 없음 · 확정 발주 줄 8표면에 용량 없음 · 외부 공급업체 등록창에 용량 칸 없음
-   - 마이그 `scripts/migrate-seller-package-unit.js`(registry deploy): 판매 상품 3표 `package_unit` · 발주 줄 `base_quantity`/`base_unit` 스냅샷 · 규칙 단일소스 서버 `utils/poLineSpec.js` / 화면 `unitConversion.ts`
-   - 운영 이행: supplier 184/352 · brand 121/155 · foodcourt 0/0
-2. **인보이스 대조 정직 읽기** — SW 5.10 · 16:29 UTC
-   - 운영 발주 32 = Guan Kee **손글씨** 양식지 → 무료 OCR 원리적 불가. `InvoiceReconcilePage` `readResult` 세 상태 · `invoiceMatcher.parseInvoiceLine` 상식 검사
-   - Fable 게이트 1차 불합격(짝 0 이면 목록 숨김 → 이름만 안 겹치는 인쇄 인보이스도 «못 읽음») → 세 상태로 보정
-3. **외부 공급업체 등록 창 «재고 환산» 칸** — SW 5.10 · `RegisterExternalSupplierModal` `unit_conversion: 1` 고정 제거 · `defaultLinkConversion` · 입고 증명 재고 36→66 · 원가 18→12
-4. **외부 공급업체 상품 API NaN 무응답 → 404** — SW 5.10 · `routes/supplier-directory.js` `loadOwnedExternalSupplier`
-5. **운영 조회·조사**(ssh·운영 백엔드 계정 SELECT + 첨부 scp, 사본 삭제): piece draft 10줄 2건(제출 0) · 인보이스 첨부 5장 중 손글씨 2(같은 종이) → **손글씨 유료 OCR 안 붙임**(Fable)
-- 검증 합계: API 실호출(포장단위 12/12 · 재고환산 10/10 · NaN 3/3) · jest 28/28 · 고장주입 A·B·C·D·E2·F 성립(E 는 이중 방어로 불성립 → E2 로 재증명) · verify-all --full 19/19(5.09) · 18/19 ×3(5.10, deploy-ready 만) · 실브라우저 대조 3경우 · Fable 게이트 PASS(마커 f463eda63a99 → a9a5db37d76c)
-- 첫 배포 시도 실패: 같은 서버 PlanQ `tsc -b`(3.8GB)와 겹쳐 메모리 게이트 차단 → 운영 무변경 확인 → 끝난 뒤 재시도 성공
-- 문서: `docs/TRADE_STRUCTURE.md` §2-2 · `docs/PURCHASE_ORDER_SYSTEM.md` 1352행 뒤 스냅샷 메모 · §2-⑤ 재고 환산 · §8-2 손글씨 한계 · `CHANGELOG.md` #2·#3 · `DEVELOPMENT_PLAN.md` · 배포 기록 `dev-backend/releases/archive/2026-09-11-po-pack-unit.json` · `…-reconcile-honest-read-and-stock-conversion.json`
-- 메모리: `reference_fable_gate_fingerprint_scope`(미추적 배포 기록 JSON 도 지문) · `reference_invoice_ocr_browser` 함정 5(손글씨) · `feedback_fable_budget_minimal`(Irene 「fable 좀 그만 써」→「중요하고 복잡한 거에는 불러야지」) · MEMORY.md 요약 2줄
+### 완료된 작업 (이번 세션 — 2026-09-12~13, 운영 배포 4회: SW 5.15 · 5.16 · 5.17 · 5.18)
+- 판매자 «계약 필요 여부» 설정 (`operation_settings.sales_access`, 공급업체·브랜드 같은 기준, 기본은 닫힘)
+- 가맹점 밖 구매자 판매 (`brand_products.distribution_mode='external_buyers'`, expandEnum 마이그)
+- 공급형 계약 (`contract_type='supply'` + 전체/가맹형/공급형 구분 탭 + 종류별 새 제안)
+- 주문용 상품 링크 — 공개 `/shop/:slug` 화면 + 상품 화면의 접이식 카드(주소·복사·QR·새 창·가게 이름)
+- 발주 전 법인정보 화면 안내 (빠진 칸을 이름으로)
+- 사이드바 잠금 확대 + **데스크탑 누락분 보완**(모바일에만 있었음)
+- 폼 «필수» 표시 1단계 (공용 `FormLabel required` + 가입·매장 회사정보)
+- 링크 자리 재배치 — 매장 온라인 메뉴판을 Mobile Order 로, 판매자 링크를 상품 화면으로 (회사정보에서 제거)
+- 고친 급소 5건 (전부 고장주입 성립): 0원 등급이 요금제 변경 목록에 · 부분 저장이 안 보낸 칸 덮어씀 · 설정 JSON 통째 덮어쓰기 2곳 · VALID_MODES 하드코딩 · 잠금이 모바일에만
+- 부수: 이 저장소 **타입 검사가 두 겹으로 막혀 있던 것**을 밝히고 되살리는 법·기준 439건 기록 (이번 변경 신규 0)
 
 ### 다음 확정 작업
 
