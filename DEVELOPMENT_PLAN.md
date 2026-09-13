@@ -1,6 +1,11 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-13 #3 — **포장단위 «ea» 운영 배포(SW 5.20-package-unit-ea).**
+> **최종 업데이트:** 2026-09-13 #4 — **브랜드 화면 튕김 긴급수정 운영 배포(SW 5.21) + K-DINE 브랜드 메뉴 105건 연결(운영 데이터).**
+> ① 브랜드·푸드코트 총괄이 «브랜드 레시피»·«재고원장» 을 누르면 대시보드로 튕기던 것을 고쳐 배포했습니다. 원인은 9/12 «발주 전용(무료)» 작업에서 **매장용 모듈 이름**(recipe_management)을 요구하는 문을 달았는데 역할을 가리지 않아, 요금제 어휘가 다른 브랜드(brand_recipes)까지 막은 것. 검증은 허용목록 응답을 가로채 **양방향 2/2**(브랜드 열림 · 무료 등급 매장 차단 유지).
+> ② K-DINE IPC(매장8) 메뉴 **105개가 브랜드와 연결되지 않은 독립 메뉴**였습니다(연결 0 · 과거 동기화 흔적 0). Irene 지시로 **브랜드 K-DINE with MIN(2)** 에 메뉴 105 · 카테고리 14 · 옵션그룹 7(옵션 12) 을 만들고 **1:1 연결**(공유 0 · 끊김 0). 매장 데이터는 무변경, 잠금 없음, 3단계 모두 되돌리기 스냅샷 보유.
+> ③ 버튼 전수검사 도구(1계층 수집 · 2계층 실클릭)를 새로 만들고 그 결과로 BTN-01~05 를 고쳤습니다. 판정기는 고장주입 4/4 로 반증했습니다.
+>
+> **이전 업데이트:** 2026-09-13 #3 — **포장단위 «ea» 운영 배포(SW 5.20-package-unit-ea).**
 > Irene 「ea 도 추가해줄래?」 → 기준단위(포장) 제안 목록에 `ea` 되살림(2026-09-11 «풀네임 통일» 로 접었던 말). 단일 소스 `utils/unitConversion.PACKAGE_UNIT_SUGGESTIONS` 한 줄 · 상품 창 4곳 공용 · 서버는 자유 문자열 저장이라 값 불변.
 > 서비스 상품 넣는 법(측정): 주문방식 «개수로» · 포장단위 `ea` · 용량 `4` · 취급단위 `hour` → «4 hour/ea», 1 ea = 4시간. 포장단위를 비우면 `pack` 으로 떨어진다(`sellerOrderUnitOf`).
 > 검증: verify-all --full 19/19 · 화면 단위 테스트 20/20 · 스모크 10/10 · 백업 20260913_103714.
@@ -9853,6 +9858,40 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 실호출 48건 · 실브라우저 43건 · 고장주입 7건 성립(전부 원복 sha256 일치) · `verify-all --full` **19/19** · mount sweep 크래시 0 · 운영 배포 4회 스모크 10/10.
 ⚠ **Fable 판정 미수령**(한도 소진 429) — 각 릴리즈 기록 `fable_note` 에 명시.
 ⚠ 이 저장소의 **타입 검사가 두 겹으로 막혀 있었음**(힙 2048MB OOM + i18next d.ts 가 TS 5.x 문법). 되살리는 법·기준 439건은 `docs/BUYER_FREE_TIER_DESIGN.md §7-1-1`. 이번 변경 **신규 타입 오류 0**.
+
+---
+
+## ✅ 완료: 브랜드 화면 튕김 수정 + 버튼 전수검사 + K-DINE 브랜드 메뉴 연결 (2026-09-13 #4)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 브랜드 레시피·재고원장 튕김 | 매장용 모듈 문(recipe_management)이 역할을 안 가려 브랜드·푸드코트까지 막던 것을 **역할 한정**으로 수정 · 운영 배포(SW 5.21) | ✅ 완료 |
+| 없는 주소 안내 화면 | catch-all 라우트가 없어 잘못된 주소가 **완전 백지**였던 것 → 안내 화면(돌아가기·시작화면) 추가 | ✅ 완료 |
+| 권한 없는 역할의 반복 403 | OrderProvider 가 앱 전체를 감싸 공급업체·브랜드·푸드코트에서 화면마다 주문 조회 403 → 매장 신원일 때만 호출 | ✅ 완료 |
+| 터치 영역 기준 | 행 순서 버튼 28→32px · 모바일 표 버튼 최소 30→32px (공용 컴포넌트) | ✅ 완료 |
+| 탭 선택 상태 표시 | 공급업체 계약 탭에 role/aria-selected 추가 | ✅ 완료 |
+| 검증 스윕 사각지대 | roles-sweep 에 **빈 렌더 감지 없음** + 앱에 없는 주소 3개 → 백지 화면이 «OK» 로 통과하던 것 수정 | ✅ 완료 |
+| 버튼 전수검사 도구 | 1계층 수집(168화면·8,683요소) + 2계층 실클릭(RA 121·FG 377·공급업체 198 등) · 모달 안 버튼 · 새창 감지 · 연속클릭 중복 검사 | ✅ 완료 |
+| 판정기 반증 | 고장주입 4/4 성립(무반응·중복발사·잠금유지 잡고 정상은 안 잡음). 오탐 6종을 실측으로 잡아 수정 | ✅ 완료 |
+| K-DINE 브랜드 메뉴 연결 | 매장8 메뉴 105개를 브랜드2 로 올려 1:1 연결 · 카테고리 14 · 옵션그룹 7(옵션 12) · 메뉴↔옵션 38 | ✅ 완료(운영) |
+
+### 실측으로 확정한 사실
+- K-DINE 브랜드 메뉴는 **한 번도 존재한 적 없음** — 9/5~9/13 일간 백업과 W33~W37 주간 백업 전부 브랜드 4·5·10 만 보유
+- 브랜드 메뉴 화면 접근은 `brands.owner_id === 로그인 사용자 id` — 운영 브랜드 1·2 소유자는 `help@gitconsulting.group`(23)
+- 공급업체 상품 «Active» 토글은 더블클릭 시 **서버에 쓰기 2회**(PUT 200 ×2) — 가드 없음(미수정, 지시 대기)
+- 저장이 네트워크에서 실패해도 **화면에 안내가 없음**(콘솔에만 기록) — 미수정, 지시 대기
+
+### 수정된 파일
+- `dev-frontend/src/components/ProtectedRoute.tsx` (모듈 문 역할 한정)
+- `dev-frontend/src/pages/NotFound/NotFoundPage.tsx` (신규) · `dev-frontend/src/App.tsx` (catch-all)
+- `dev-frontend/src/contexts/OrderContext.tsx` · `dev-frontend/src/utils/auth.ts` (getTokenClaims)
+- `dev-frontend/src/components/UI/OrderControls.tsx` · `components/UI/TableComponents.tsx`
+- `dev-frontend/src/pages/Supplier/SupplierContractsPage.tsx`
+- `dev-frontend/scripts/headless-roles-sweep.js` (빈 렌더 감지 + 주소 교정)
+- `dev-frontend/scripts/button-sweep/*` (신규 검사 도구 14개) · `dev-backend/scripts/button-sweep-tokens.js`
+- `dev-backend/scripts/adopt-restaurant-menus-to-brand.js` (신규 · 매장→브랜드 역방향 + 되돌리기)
 
 ---
 

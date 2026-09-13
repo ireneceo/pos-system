@@ -396,3 +396,40 @@ ALTER TABLE products
 5. BG가 2를 범위 제거 → 2에서 숨김(Product 보존, 주문이력 유지), 재추가 시 복원.
 6. scope='all' + 신규 매장 생성 → 자동 대상.
 7. 노출 = scope_active AND is_active 교집합 확인(둘 중 하나라도 false면 비노출).
+
+---
+
+## 매장 메뉴를 브랜드로 «역으로 올리기» (adopt) — 2026-09-13 신설
+
+### 왜 생겼나
+K-DINE IPC(운영 매장8)의 메뉴 105개가 **브랜드와 연결되지 않은 매장 독립 메뉴**였다(실측: `products.brand_menu_id` 0건 ·
+`brand_menu_synced_at` 0건 · `brand_menu_link_status` 전부 빈값). 브랜드(K-DINE with MIN, brand 2)에는 브랜드 메뉴가 0건이라
+고쳐도 매장에 내려가지 않고 가맹점에 뿌릴 원본도 없었다. 일간(9/5~9/13)·주간(W33~W37) 백업 전부 브랜드 4·5·10 만 갖고 있어
+**과거에 존재했다가 지워진 것이 아니라 처음부터 없었던 것**으로 확인됐다.
+
+### 도구
+`dev-backend/scripts/adopt-restaurant-menus-to-brand.js` — push 의 **역방향**. 기본은 미리보기, `--apply` 로 반영.
+
+| 모드 | 하는 일 |
+|---|---|
+| (기본) | 매장 카테고리→브랜드 카테고리, 매장 상품→브랜드 메뉴 생성 후 **1:1 연결** |
+| `--fix-shared` | 같은 이름 상품이 브랜드 메뉴 하나를 공유하게 된 경우 **갈라서 1:1** 로 |
+| `--options` | 매장 옵션그룹·옵션을 브랜드 옵션으로 올리고 메뉴마다 연결 |
+| `--undo <스냅샷>` | 만든 브랜드 행 삭제 + 매장 연결 칸 원복 |
+
+### 대응 규칙 (push 의 `syncBrandMenuToRestaurant` 와 대칭)
+`name→name` · `price→recommended_price` · `category(번호)→카테고리 이름→brand_menu_categories` · `image→image_url` ·
+`emoji→emoji` · `display_order→sort_order` · `after_meal`·`set_only`·`is_set_menu`·`set_items`·`recipe_id`·`product_recipe_id` 동일 ·
+옵션은 `required→is_required` · `multiple→max_select>1` · `price→extra_price` · `displayOrder→sort_order`.
+
+### 지켜야 할 것
+- **매장 데이터는 바꾸지 않는다** — 이름·가격·옵션·활성 그대로. 연결 칸(`brand_menu_id`·`synced_*`·`link_status`)만 채운다.
+- **잠금은 전부 false** — 매장이 하던 대로 계속 고칠 수 있어야 한다.
+- 같은 매장에 **이름이 같은 상품**이 있으면 브랜드 메뉴를 공유하게 된다(→ 브랜드 수정이 두 상품에 동시 반영). 반드시 `--fix-shared` 로 1:1 을 만든다.
+- 2026-09-13 운영 실행 결과: 브랜드 메뉴 105 · 카테고리 14 · 옵션그룹 7(옵션 12) · 메뉴↔옵션 38 · 매장 상품 105 전부 1:1(공유 0 · 끊김 0).
+
+### 접근 권한 함정 (화면이 비어 보이는 진짜 이유)
+브랜드 메뉴·카테고리·옵션 화면은 `middleware/brandScope.js` 가 `req.bgOwnerId = user.id` 로 두고
+**`brands.owner_id === 로그인 사용자 id`** 일 때만 연다(`Brand not owned` 403). 운영 브랜드 1·2 의 소유자는
+`help@gitconsulting.group`(user 23)이며, 같은 회사의 다른 계정(`irene@gitconsulting.group`, user 11)으로는 **데이터가 있어도 403**이다.
+한 브랜드를 여러 계정이 관리하려면 별도 작업(브랜드 다중 소유)이 필요하다.
