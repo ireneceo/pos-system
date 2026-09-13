@@ -797,5 +797,8 @@
   "shopLink.copied": "已复制",
   "shopLink.expand": "修改",
   "shopLink.collapse": "关闭",
-  "shopLink.create": "建立链接"
+  "shopLink.create": "建立链接",
+  "shopLink.displayNameLabel": "买家看到的店铺名称",
+  "shopLink.displayNamePlaceholder": "店铺名称",
+  "shopLink.displayNameHint": "留空则使用「{{name}}」。这是买家在链接页面看到的名称，代表您所销售的全部商品，而非单一品牌。"
 }

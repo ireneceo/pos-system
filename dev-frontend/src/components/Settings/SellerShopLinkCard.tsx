@@ -149,6 +149,12 @@ const SellerShopLinkCard: React.FC<Props> = ({ sellerType, disabled }) => {
   const [slug, setSlug] = useState('');
   const [savedSlug, setSavedSlug] = useState('');
   const [salesAccess, setSalesAccess] = useState<'contract_required' | 'open'>('contract_required');
+  // 손님에게 보이는 «가게 이름». 비우면 회사명이 대신 쓰인다.
+  // 링크 하나가 회사 전체 상품을 보여 주므로 브랜드 이름 하나가 뜨면 오해가 생긴다
+  // (2026-09-12 Irene: GIT Consulting 링크인데 브랜드 «with MIN» 이 떴다).
+  const [displayName, setDisplayName] = useState('');
+  const [savedDisplayName, setSavedDisplayName] = useState('');
+  const [fallbackName, setFallbackName] = useState('');
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   // 기본은 **접힘**. 상품 화면 맨 위를 차지하지 않게 한다(2026-09-12 Irene 「접어둘래?」).
@@ -175,6 +181,10 @@ const SellerShopLinkCard: React.FC<Props> = ({ sellerType, disabled }) => {
         setSlug(d.shop_slug || '');
         setSavedSlug(d.shop_slug || '');
         setSalesAccess(d.operation_settings?.sales_access === 'open' ? 'open' : 'contract_required');
+        const dn = d.operation_settings?.shop_display_name || '';
+        setDisplayName(dn);
+        setSavedDisplayName(dn);
+        setFallbackName(d.company_name || d.name || '');
       } catch {
         /* 못 읽어도 화면은 뜬다 — 링크 칸이 비어 보일 뿐이다 */
       } finally {
@@ -223,6 +233,12 @@ const SellerShopLinkCard: React.FC<Props> = ({ sellerType, disabled }) => {
         setSavedSlug(v);
       } catch { setSavedSlug(slug.trim()); }
     }
+  };
+
+  const saveDisplayName = async () => {
+    const v = displayName.trim();
+    const ok = await save({ operation_settings: { shop_display_name: v || null } });
+    if (ok) setSavedDisplayName(v);
   };
 
   const saveAccess = async (value: 'contract_required' | 'open') => {
@@ -302,6 +318,19 @@ const SellerShopLinkCard: React.FC<Props> = ({ sellerType, disabled }) => {
         <Left>
           <CardTitle>{t('common:shopLink.title')}</CardTitle>
           <Hint>{t('common:shopLink.hint')}</Hint>
+
+          <FieldLabel>{t('common:shopLink.displayNameLabel')}</FieldLabel>
+          <Input
+            type="text"
+            value={displayName}
+            disabled={disabled}
+            onChange={e => setDisplayName(e.target.value)}
+            onBlur={() => { if (displayName.trim() !== savedDisplayName) void saveDisplayName(); }}
+            placeholder={fallbackName || (t('common:shopLink.displayNamePlaceholder') as string)}
+          />
+          <Hint style={{ margin: '6px 0 0' }}>
+            {t('common:shopLink.displayNameHint', { name: fallbackName })}
+          </Hint>
 
           <FieldLabel>{t('common:shopLink.nameLabel')}</FieldLabel>
           <Input

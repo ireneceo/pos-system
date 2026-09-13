@@ -401,6 +401,13 @@ router.put('/company', async (req, res) => {
         if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
           return res.status(400).json({ success: false, message: 'operation_settings must be an object' });
         }
+        if (incoming.shop_display_name !== undefined) {
+          const v = incoming.shop_display_name;
+          if (v !== null && typeof v !== 'string') {
+            return res.status(400).json({ success: false, message: 'shop_display_name must be text' });
+          }
+          incoming.shop_display_name = v ? sanitizeString(String(v)).trim().slice(0, 100) : null;
+        }
         if (incoming.sales_access !== undefined) {
           const { VALID_SALES_ACCESS } = require('../utils/salesAccess');
           if (!VALID_SALES_ACCESS.includes(incoming.sales_access)) {

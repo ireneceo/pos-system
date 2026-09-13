@@ -797,5 +797,8 @@
   "shopLink.copied": "복사됨",
   "shopLink.expand": "수정",
   "shopLink.collapse": "닫기",
-  "shopLink.create": "링크 만들기"
+  "shopLink.create": "링크 만들기",
+  "shopLink.displayNameLabel": "손님에게 보이는 가게 이름",
+  "shopLink.displayNamePlaceholder": "가게 이름",
+  "shopLink.displayNameHint": "비워 두면 «{{name}}» 이 쓰입니다. 링크 화면에 뜨는 이름이고, 브랜드 한 곳이 아니라 파는 것 전체를 대표합니다."
 }

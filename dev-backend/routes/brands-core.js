@@ -151,6 +151,16 @@ router.put('/company-info', authenticateToken, async (req, res) => {
           error: { message: 'operation_settings must be an object', code: 'INVALID_OPERATION_SETTINGS' }
         });
       }
+      if (incoming.shop_display_name !== undefined) {
+        const v = incoming.shop_display_name;
+        if (v !== null && typeof v !== 'string') {
+          return res.status(400).json({
+            success: false,
+            error: { message: 'shop_display_name must be text', code: 'INVALID_SHOP_DISPLAY_NAME' }
+          });
+        }
+        incoming.shop_display_name = v ? String(v).trim().slice(0, 100) : null;
+      }
       if (incoming.sales_access !== undefined) {
         const { VALID_SALES_ACCESS } = require('../utils/salesAccess');
         if (!VALID_SALES_ACCESS.includes(incoming.sales_access)) {

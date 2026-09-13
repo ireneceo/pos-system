@@ -797,5 +797,8 @@
   "shopLink.copied": "Disalin",
   "shopLink.expand": "Ubah",
   "shopLink.collapse": "Tutup",
-  "shopLink.create": "Buat pautan"
+  "shopLink.create": "Buat pautan",
+  "shopLink.displayNameLabel": "Nama kedai yang dilihat pembeli",
+  "shopLink.displayNamePlaceholder": "Nama kedai anda",
+  "shopLink.displayNameHint": "Biarkan kosong untuk guna \"{{name}}\". Ini nama yang pembeli lihat di halaman pautan — mewakili semua yang anda jual, bukan satu jenama."
 }

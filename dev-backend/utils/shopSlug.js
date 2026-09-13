@@ -63,6 +63,21 @@ async function ensureUniqueShopSlug(desired, opts = {}) {
   return candidate;
 }
 
+/** 손님에게 보여 줄 **가게 이름**.
+ *  판매자가 직접 적은 이름이 1순위다 — 링크 하나가 회사 전체 상품을 보여 주는데
+ *  이름만 브랜드 하나로 나오면 «왜 이렇게 나와?» 가 된다(2026-09-12 Irene 신고:
+ *  GIT Consulting 의 링크인데 화면엔 브랜드 «with MIN» 이 떴다).
+ *  적지 않았으면 회사명 → 그 다음 이름 순으로 대신한다. */
+function shopDisplayName(entity) {
+  let ops = entity && entity.operation_settings;
+  if (typeof ops === 'string') { try { ops = JSON.parse(ops); } catch { ops = null; } }
+  const custom = ops && typeof ops.shop_display_name === 'string' ? ops.shop_display_name.trim() : '';
+  if (custom) return custom;
+  const company = entity && entity.company_name ? String(entity.company_name).trim() : '';
+  if (company) return company;
+  return (entity && entity.name) || '';
+}
+
 /** slug → 판매자. 공급업체를 먼저 본다(먼저 쓰던 쪽). 없으면 브랜드. */
 async function resolveShopSlug(slug) {
   const clean = normalizeShopSlug(slug);
@@ -71,15 +86,15 @@ async function resolveShopSlug(slug) {
   const Brand = require('../models/Brand');
   const sup = await SupplierCompany.findOne({
     where: { shop_slug: clean, status: 'active' },
-    attributes: ['id', 'name', 'code', 'logo_url', 'description', 'city', 'state', 'country', 'operation_settings']
+    attributes: ['id', 'name', 'company_name', 'code', 'logo_url', 'description', 'city', 'state', 'country', 'operation_settings']
   });
   if (sup) return { type: 'supplier', entity: sup };
   const brand = await Brand.findOne({
     where: { shop_slug: clean },
-    attributes: ['id', 'name', 'code', 'logo_url', 'owner_id', 'operation_settings']
+    attributes: ['id', 'name', 'company_name', 'code', 'logo_url', 'owner_id', 'operation_settings']
   });
   if (brand) return { type: 'brand', entity: brand };
   return null;
 }
 
-module.exports = { MAX_LEN, slugifyShop, normalizeShopSlug, shopSlugTaken, ensureUniqueShopSlug, resolveShopSlug };
+module.exports = { MAX_LEN, shopDisplayName, slugifyShop, normalizeShopSlug, shopSlugTaken, ensureUniqueShopSlug, resolveShopSlug };

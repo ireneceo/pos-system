@@ -671,10 +671,12 @@ router.get('/shop/:slug', async (req, res) => {
     }
 
     const { salesAccessOf } = require('../utils/salesAccess');
+    const { shopDisplayName } = require('../utils/shopSlug');
     const e = found.entity;
     const seller = {
       seller_type: found.type,
-      name: e.name,
+      // 판매자가 정한 가게 이름 → 없으면 회사명 → 없으면 이름
+      name: shopDisplayName(e),
       logo_url: e.logo_url || null,
       description: found.type === 'supplier' ? (e.description || null) : null,
       city: found.type === 'supplier' ? (e.city || null) : null,

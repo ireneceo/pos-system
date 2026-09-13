@@ -797,5 +797,8 @@
   "shopLink.copied": "Copied",
   "shopLink.expand": "Edit",
   "shopLink.collapse": "Close",
-  "shopLink.create": "Create link"
+  "shopLink.create": "Create link",
+  "shopLink.displayNameLabel": "Shop name shown to buyers",
+  "shopLink.displayNamePlaceholder": "Your shop name",
+  "shopLink.displayNameHint": "Leave empty to use \"{{name}}\". This is the name buyers see on the link page — it covers everything you sell, not one brand."
 }
