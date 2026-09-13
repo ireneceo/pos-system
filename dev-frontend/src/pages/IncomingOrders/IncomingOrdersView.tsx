@@ -186,6 +186,8 @@ interface IncomingOrderRow {
   // 결제 상태는 주문 상태와 **따로** 본다 (2026-09-07). 응답에 이미 실려 온다(`po.toJSON()`).
   payment_status?: 'unpaid' | 'paid' | 'refunded' | string | null;
   shipped_at?: string | null;
+  // 배송이 없는 주문(서비스/기타만 담김) — 서버 utils/orderFulfillment 단일 판정. 2026-09-13
+  is_service_only?: boolean;
   item_count?: number;
   items?: IncomingOrderItem[];
   total_amount?: number | string | null;
@@ -1101,7 +1103,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                         <DataTableStatus variant={StatusVariantMap[row.status] || 'info'}>
                           {tNs(`status.${sellerStatusKey(row.status)}`, sellerStatusKey(row.status))}
                           {/* 구매자가 먼저 받은 발주 — 출고를 안 누르면 우리 재고가 안 빠진다(2026-09-01 Q6) */}
-                          {!row.shipped_at && (row.status === 'received' || row.status === 'partial_received') && (
+                          {!row.shipped_at && !row.is_service_only && (row.status === 'received' || row.status === 'partial_received') && (
                             <div style={{ fontSize: '11px', fontWeight: 600, color: '#B45309', marginTop: 2 }}>
                               {tNs('orders.badge.needsDispatch', 'Buyer confirmed receipt — record dispatch')}
                             </div>
@@ -1137,7 +1139,26 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                               </ThemedButton>
                             </>
                           )}
-                          {row.status === 'confirmed' && (
+                          {/* 서비스 전용 발주(배송 없음)는 «완료 처리» 하나로 끝난다 — 배송·도착 단계를 띄우지 않는다.
+                              판정은 서버 utils/orderFulfillment 한 곳(is_service_only). 2026-09-13 · Irene */}
+                          {row.status === 'confirmed' && row.is_service_only && (
+                            <ThemedButton
+                              size="small"
+                              variant="primary"
+                              onClick={async () => {
+                                const token = getAuthToken();
+                                const r = await fetch(`/api/seller-orders/${row.id}/complete`, {
+                                  method: 'POST',
+                                  headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({})
+                                });
+                                if (r.ok) refreshAll();
+                              }}
+                            >
+                              {tNs('brand:products.fulfillment.completeAction', 'Mark complete')}
+                            </ThemedButton>
+                          )}
+                          {row.status === 'confirmed' && !row.is_service_only && (
                             <ThemedButton size="small" variant="primary" onClick={() => openShipModal(row)}>
                               {tNs('orders.actions.ship', 'Ship')}
                             </ThemedButton>
@@ -1145,7 +1166,8 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                           {/* 2026-09-01(Q6): 구매자가 배송 전에 먼저 수령한 발주.
                               우리 재고는 출고를 눌러야 빠지는데, 이 상태로 두면 영영 안 빠진다
                               (운영 실측: 수령된 발주가 전부 이 상태였다). 자동 처리하지 않고 사람이 누른다. */}
-                          {!row.shipped_at && (row.status === 'received' || row.status === 'partial_received') && (
+                          {/* 서비스 전용 발주는 배송 자체가 없다 — «출고 기록» 을 띄우면 모순이다 (2026-09-13) */}
+                          {!row.shipped_at && !row.is_service_only && (row.status === 'received' || row.status === 'partial_received') && (
                             <ThemedButton size="small" variant="primary" onClick={() => openShipModal(row)}>
                               {tNs('orders.actions.recordDispatch', 'Record dispatch')}
                             </ThemedButton>

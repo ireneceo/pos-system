@@ -211,9 +211,10 @@ export const ORDER_MODES: OrderMode[] = ['pack', 'measure'];
 /**
  * 포장단위 입력 제안(자유 입력은 계속 허용).
  * 2026-09-11 Irene 「포장단위 중 없는 거 있으면 추가해주고」 · Fable «풀네임 통일» — pkt→pack · btl→bottle · ea→piece · ctn→carton · 매→sheet.
+ * 2026-09-13 Irene 「ea 도 추가해줄래?」 → `ea` 를 제안 목록에 되살렸다(매장에서 실제로 쓰는 말). 서버는 포장단위를 자유 문자열로 저장하므로(`utils/poLineSpec.normalizePackageUnit`) 고쳐 쓰지 않는다.
  * 어휘 단일 기준: docs/TRADE_STRUCTURE.md §2-2 «판매 상품 규격 표기·어휘».
  */
-export const PACKAGE_UNIT_SUGGESTIONS = ['pack', 'box', 'bag', 'bottle', 'can', 'tin', 'tub', 'drum', 'tray', 'carton', 'roll', 'bundle', 'sheet', 'sack', 'jar', 'piece'];
+export const PACKAGE_UNIT_SUGGESTIONS = ['pack', 'box', 'bag', 'bottle', 'can', 'tin', 'tub', 'drum', 'tray', 'carton', 'roll', 'bundle', 'sheet', 'sack', 'jar', 'piece', 'ea'];
 
 /**
  * 취급단위(내용물) 선택지 — 포장단위(pack·bottle·box…)는 여기 없다(같은 칸에 섞이면 «1 pack/pack» 같은 규격이 생긴다).

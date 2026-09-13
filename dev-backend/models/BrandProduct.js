@@ -88,6 +88,20 @@ const BrandProduct = sequelize.define('BrandProduct', {
     // 안 쓰는 품목은 `is_active=false` 로 끈다(원래 그 용도). 저재고 알림은 min_stock>0 만 뜬다.
     comment: '재고 추적 여부 (폐기된 게이트 — 항상 추적)'
   },
+  // ── 상품 종류 (2026-09-13 · Irene 「주문제작 / 서비스·기타 이렇게 나눠져야」) ────
+  //   stock          재고 셈 · 배송 함   (기본 = 종전 동작)
+  //   made_to_order  재고 안 셈 · 배송 함 (주문 받으면 만드는 소스류)
+  //   service        재고 안 셈 · 배송 없음 → 판매자가 «완료 처리» 하면 끝 (컨설팅 시간 등)
+  // «재고를 세는가»와 «배송이 있는가»는 서로 다른 축이라 참/거짓 하나로는 담기지 않는다.
+  // stock 이 아니면 출고에서 자체 재고를 깎지 않는다(`routes/seller-orders.js` 자체재고 분기).
+  // ⛔ 위 `track_stock` 과 다른 개념이다 — 그 스위치는 폐기됐고 게이트로 되살리지 않는다.
+  // 레시피·재고아이템이 걸린 상품은 이 값과 무관하게 종전대로 구성재료가 빠진다.
+  product_kind: {
+    type: DataTypes.ENUM('stock', 'made_to_order', 'service'),
+    allowNull: false,
+    defaultValue: 'stock',
+    comment: '상품 종류 — stock 재고/배송 · made_to_order 재고없음/배송 · service 재고없음/배송없음'
+  },
   current_stock: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,

@@ -724,13 +724,25 @@
       "orderMode": "주문 방식",
       "packageUnit": "기준단위(포장)",
       "packageUnitPlaceholder": "예: box, pack, bottle",
-      "packageUnitHint": "매장이 주문할 때 세는 단위 — 예: BOX 하나에 10 kg, 3 BOX 로 주문"
+      "packageUnitHint": "매장이 주문할 때 세는 단위 — 예: BOX 하나에 10 kg, 3 BOX 로 주문",
+      "kind": "상품 종류",
+      "kindStock": "재고 상품",
+      "kindStockHint": "재고를 세고 배송합니다 — 보통의 경우입니다.",
+      "kindMadeToOrder": "주문제작",
+      "kindMadeToOrderHint": "재고를 두지 않고 주문이 들어오면 만들어 배송합니다.",
+      "kindService": "서비스 / 기타",
+      "kindServiceHint": "재고도 배송도 없습니다 — 일이 끝나면 완료로 표시합니다."
     },
     "orderMode": {
       "pack": "개수로 주문 (팩·박스)",
       "measure": "무게·부피로 주문 (kg, g, L, ml)",
       "measureHint": "구매자가 '2.5{{unit}}' 처럼 담습니다",
       "packHint": "구매자가 '3개' 처럼 담습니다{{spec}}"
+    },
+    "fulfillment": {
+      "completeAction": "완료 처리",
+      "completeDate": "완료 예정일",
+      "completed": "완료"
     }
   },
   "brandIngredientsPage": {

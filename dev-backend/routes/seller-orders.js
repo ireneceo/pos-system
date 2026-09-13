@@ -178,9 +178,12 @@ router.get('/', async (req, res) => {
     });
 
     // Attach buyer info to each PO
+    const { isServiceOnlyOrder } = require('../utils/orderFulfillment');
     const data = await Promise.all(rows.map(async (po) => {
       const obj = po.toJSON();
       obj.buyer = await resolveBuyerInfo(po);
+      // 배송이 없는 주문인가 — 화면이 «배송 처리» 대신 «완료 처리» 를 띄우는 근거 (2026-09-13)
+      obj.is_service_only = await isServiceOnlyOrder(sequelize, po.id);
       return obj;
     }));
     await attachSellerProductInfo(data);
@@ -284,6 +287,53 @@ router.get('/:id', async (req, res) => {
   } catch (err) {
     console.error('GET /api/seller-orders/:id error:', err);
     res.status(500).json({ success: false, message: 'Failed to load order' });
+  }
+});
+
+// ============================================
+// 3-1. POST /api/seller-orders/:id/complete — 서비스 전용 발주 «완료 처리»
+//   배송이 없는 주문(컨설팅 시간 등)은 배송·도착·입고 단계를 건너뛰고 바로 끝난다(2026-09-13 · Irene).
+//   상태는 새로 만들지 않고 기존 `received`(구매자 화면 «완료»)를 쓴다 — 목록·통계·배지가 그대로 동작한다.
+//   ⛔ 물건이 한 줄이라도 섞이면 거부한다 — 그건 배송 있는 주문이다(utils/orderFulfillment 단일 판정).
+// ============================================
+router.post('/:id/complete', async (req, res) => {
+  let po;
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Order not found' });
+    const note = sanitizeString(String(req.body?.note || '').trim()).slice(0, 500) || 'Service completed';
+    po = await sequelize.transaction(async (t) => {
+      const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkSellerOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+
+      const { isServiceOnlyOrder } = require('../utils/orderFulfillment');
+      if (!(await isServiceOnlyOrder(sequelize, locked.id, t))) {
+        const e = new Error('This order contains physical items — ship it instead of completing it');
+        e.code = 'NOT_SERVICE_ONLY';
+        throw e;
+      }
+      if (!['submitted', 'confirmed'].includes(locked.status)) {
+        const e = new Error(`Cannot complete in status '${locked.status}'`);
+        e.code = 'BAD_STATUS';
+        throw e;
+      }
+      const tracking = appendTrackingEvent(locked, 'received', note);
+      await locked.update({ status: 'received', received_at: new Date(), tracking_info: tracking }, { transaction: t });
+      return locked;
+    });
+    emitPoEvent(req, po, 'seller-order-updated');
+    fireBuyerNotification(po, 'purchase_order', {
+      subject: `Service completed — ${po.po_number}`,
+      html: `<p>Order ${po.po_number} has been completed.</p>`
+    });
+    res.json({ success: true, data: po });
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
+    if (err.code === 'NOT_SERVICE_ONLY') return res.status(400).json({ success: false, code: err.code, message: err.message });
+    if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, code: err.code, message: err.message });
+    console.error('POST /api/seller-orders/:id/complete error:', err);
+    res.status(500).json({ success: false, message: 'Failed to complete order' });
   }
 });
 
@@ -476,6 +526,11 @@ router.post('/:id/ship', async (req, res) => {
             // BOM 이 있을 수 없는데, 예전에는 여기서 그냥 건너뛰어 팔려도 재고가 안 줄었다.
             // 2026-09-01: `track_stock` 게이트 제거 — 항상 깎는다(매장 판매 차감과 같은 규칙).
             //   스위치가 꺼져 있으면 팔려도 조용히 안 깎였다.
+            // 재고를 세지 않는 종류(주문제작·서비스)는 깎지 않는다(2026-09-13 · Irene).
+            //   그냥 두면 0 에서 빼려다 실패해 «stock_shortfall» 문구만 이력에 쌓인다.
+            //   반품 환원에는 이 «상품 자체 재고» 분기가 아예 없으므로, 여기만 건너뛰어도 짝이 맞는다.
+            //   ⛔ `track_stock` 은 게이트로 쓰지 않는다 — 2026-09-01(Q5)에 일부러 뺀 스위치다.
+            if (bp.product_kind && bp.product_kind !== 'stock') continue;
             const soldQtyDirect = parseFloat(it.quantity_ordered) || 0;
             if (soldQtyDirect <= 0) continue;
             const curBp = parseFloat(bp.current_stock) || 0;

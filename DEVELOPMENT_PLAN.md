@@ -1,6 +1,18 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-13 — **B2B 무료 발주 등급 운영 배포 완료(4회, SW 5.15→5.18).**
+> **최종 업데이트:** 2026-09-13 #3 — **포장단위 «ea» 운영 배포(SW 5.20-package-unit-ea).**
+> Irene 「ea 도 추가해줄래?」 → 기준단위(포장) 제안 목록에 `ea` 되살림(2026-09-11 «풀네임 통일» 로 접었던 말). 단일 소스 `utils/unitConversion.PACKAGE_UNIT_SUGGESTIONS` 한 줄 · 상품 창 4곳 공용 · 서버는 자유 문자열 저장이라 값 불변.
+> 서비스 상품 넣는 법(측정): 주문방식 «개수로» · 포장단위 `ea` · 용량 `4` · 취급단위 `hour` → «4 hour/ea», 1 ea = 4시간. 포장단위를 비우면 `pack` 으로 떨어진다(`sellerOrderUnitOf`).
+> 검증: verify-all --full 19/19 · 화면 단위 테스트 20/20 · 스모크 10/10 · 백업 20260913_103714.
+> 🟡 **Fable 판정 대기 신규 1건**: 판매자 자체 재고의 «재고 단위» 칸 — 환산에 안 쓰이는 라벨인데 차감은 주문 단위 기준(운영 81행 중 78행 빈 칸). 갈리는 길 3갈래는 `docs/TRADE_STRUCTURE.md` §5-12.
+>
+> **이전 업데이트:** 2026-09-13 #2 — **상품 종류 3갈래 운영 배포 완료(SW 5.19-product-kind).**
+> 판매자 상품이 «재고 상품 / 주문제작 / 서비스·기타» 로 나뉜다. «재고를 세는가»와 «배송이 있는가»는 다른 축이라 셋으로 나눴다. 기본값 stock 이라 기존 동작 불변(운영 155행 전부 stock).
+> 주문제작·서비스는 출고에서 판매자 자체재고 무접촉(전엔 0에서 빼려다 «모자람» 기록만 쌓였다) · 서비스만 담긴 발주는 `POST /api/seller-orders/:id/complete` 한 번으로 완료(물건이 섞이면 400, 판정은 `utils/orderFulfillment` 한 곳) · service 일 때만 단위 목록에 hour.
+> 검증: 실호출 5/5(목록 판정·섞임 거부·완료 200·출고 후 stock 98·주문제작·서비스 100 유지·재완료 400) · 고장주입 2/2 성립 후 sha256 원복 · verify-all --full 19/19 · 스모크 10/10 · 마이그 90/90.
+> ⚠ Fable 판정 미수령(사용 한도 429 · 3회 시도) — 릴리즈 기록 `fable_note` 에 명시. 다음: 운영 상품에 종류 지정(별도 지시 대기) · 구매자 화면 «완료 예정일» 표기.
+>
+> **이전 업데이트:** 2026-09-13 — **B2B 무료 발주 등급 운영 배포 완료(4회, SW 5.15→5.18).**
 > 우리 POS 를 안 쓰는 매장도 «발주 전용(무료)» 로 가입해 주문한다. 판매자는 «누가 주문할 수 있나» 를 고르고, 상품 화면에서 **주문용 상품 링크**(공개 `/shop/:slug` · 복사 · QR · 새 창 열기 · 가게 이름 직접 지정)를 만든다. 브랜드는 상품마다 «가맹점 밖 구매자» 를 고를 수 있고, 공급형 계약이 생겼다. 매장 «온라인 메뉴판» 링크는 Mobile Order 로 옮겨 한자리에 모았다.
 > 고친 급소: 0원 등급이 요금제 «변경» 목록에 섞여 유료 매장을 내릴 수 있던 것 · 브랜드 회사정보 저장이 안 보낸 칸까지 덮어쓰던 것 · 설정 JSON 통째 덮어쓰기 2곳 · ENUM 과 따로 살던 하드코딩 목록 · 사이드바 잠금이 모바일에만 있던 것. 전부 고장주입으로 증명(7건).
 > 검증: 실호출 48 · 실브라우저 43 · verify-all --full 19/19 · mount sweep 크래시 0 · 스모크 10/10 ×4. ⚠ Fable 판정 미수령(한도 소진) — 릴리즈 기록에 명시.
@@ -218,6 +230,33 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 상품 종류 3갈래 + 포장단위 «ea» (2026-09-13, 운영 배포 2회 · SW 5.19 / 5.20)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 상품 종류 3갈래 | `brand_products.product_kind ENUM('stock','made_to_order','service')` · 기본 stock 으로 기존 동작 불변(운영 155행) | ✅ 완료 |
+| 재고 안 세는 종류 출고 | stock 이 아니면 자체 재고 무접촉 — 0에서 빼려다 «모자람» 기록만 쌓이던 것 제거 | ✅ 완료 |
+| 서비스 전용 발주 «완료 처리» | `POST /api/seller-orders/:id/complete` — 배송·도착·입고 건너뛰고 received. 물건 섞이면 400 | ✅ 완료 |
+| 이행 방식 단일 판정 | `utils/orderFulfillment.isServiceOnlyOrder` 한 곳 · 목록에 `is_service_only` | ✅ 완료 |
+| 시간 단위 | service 일 때만 취급단위에 `hour`. 재고 단위 ENUM 8개는 무접촉 | ✅ 완료 |
+| 포장단위 «ea» | 제안 목록에 되살림(09-11 «풀네임 통일» 로 접었던 말) · 상품 창 4곳 공용 | ✅ 완료 |
+| 문서화 | TRADE_STRUCTURE §2-4(상품 종류) · §5-12(재고 단위 칸 Fable 대기) · INVENTORY 절 추가 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/models/BrandProduct.js` · `dev-backend/routes/brand-products.js` · `dev-backend/routes/seller-orders.js`
+- `dev-backend/utils/orderFulfillment.js` (신규) · `dev-backend/scripts/migrate-brand-product-kind.js` (신규, registry deploy)
+- `dev-frontend/src/pages/BrandProductManagement/BrandProductsTab.tsx` · `dev-frontend/src/pages/IncomingOrders/IncomingOrdersView.tsx`
+- `dev-frontend/src/utils/unitConversion.ts` (ea) · `dev-frontend/public/locales/{en,ko,zh,ms}/brand.json` · `dev-frontend/public/sw.js`
+- `docs/TRADE_STRUCTURE.md` · `docs/INVENTORY_MANAGEMENT_SYSTEM.md`
+
+### 검증
+- verify-all --full **19/19** ×2 · 실호출 5/5(목록 판정·섞임 400·완료 200·출고 후 stock 98·주문제작·서비스 100 유지·재완료 400) · 고장주입 2/2 성립 후 sha256 원복 · 화면 단위 테스트 20/20 · 스모크 10/10 ×2 · 운영 마이그 90/90(product_kind 추가, 155행 stock)
+- ⚠ **Fable 검증 대상**(기준 ③ DB 스키마·마이그 접촉)인데 **판정 미수령** — Fable 사용 한도 429, 4회 시도. 두 배포 기록 `fable_note` 에 명시.
+
+---
 
 ## ✅ 완료: 브랜드 매출 리포트 + 거래청구서 원장 + 서버 관리 (2026-09-07)
 

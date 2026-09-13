@@ -724,13 +724,25 @@
       "orderMode": "Kaedah Pesanan",
       "packageUnit": "Unit Pembungkusan",
       "packageUnitPlaceholder": "cth. box, pack, bottle",
-      "packageUnitHint": "Unit yang dikira kedai semasa memesan — cth. 10 kg setiap BOX, dipesan sebagai 3 BOX"
+      "packageUnitHint": "Unit yang dikira kedai semasa memesan — cth. 10 kg setiap BOX, dipesan sebagai 3 BOX",
+      "kind": "Jenis produk",
+      "kindStock": "Barang berstok",
+      "kindStockHint": "Dikira dalam stok dan dihantar — kes biasa.",
+      "kindMadeToOrder": "Dibuat selepas pesanan",
+      "kindMadeToOrderHint": "Tiada stok disimpan; dibuat apabila pesanan masuk, kemudian dihantar.",
+      "kindService": "Perkhidmatan / lain-lain",
+      "kindServiceHint": "Tiada stok dan tiada penghantaran — tandakan selesai apabila kerja siap."
     },
     "orderMode": {
       "pack": "Mengikut bilangan (pek / kotak)",
       "measure": "Mengikut berat atau isipadu (kg, g, L, ml)",
       "measureHint": "Pembeli memesan seperti '2.5 {{unit}}'",
       "packHint": "Pembeli memesan seperti '3 unit'{{spec}}"
+    },
+    "fulfillment": {
+      "completeAction": "Tandakan selesai",
+      "completeDate": "Tarikh siap dijangka",
+      "completed": "Selesai"
     }
   },
   "brandIngredientsPage": {

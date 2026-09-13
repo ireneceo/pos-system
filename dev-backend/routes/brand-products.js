@@ -28,6 +28,9 @@ const { normalizeImageField } = require('../utils/imageProcessor');
 // 비차단. authenticateToken 선행(per-route 와 중복돼도 idempotent), 데모/System Admin bypass.
 // 주문 방식 — 'pack'=개수로, 'measure'=무게·부피로(소수 허용). 공급업체 축과 같은 값.
 const ORDER_MODES = ['pack', 'measure'];
+// 상품 종류 (2026-09-13) — stock 재고/배송 · made_to_order 재고없음/배송 · service 재고없음/배송없음.
+// 단일 기준은 models/BrandProduct.js 의 ENUM. 여기 목록은 저장 허용값 검사용이다.
+const PRODUCT_KINDS = ['stock', 'made_to_order', 'service'];
 
 
 /**
@@ -980,6 +983,8 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
       package_unit: require('../utils/poLineSpec').normalizePackageUnit(req.body.package_unit),
       // 안 보내면 'pack' = 지금까지의 동작. 값이 오면 목록 안에 있는지만 본다.
       order_mode: ORDER_MODES.includes(order_mode) ? order_mode : 'pack',
+      // 상품 종류 — 안 보내면 'stock' = 종전 동작. 목록 안에 있는 값만 받는다(2026-09-13).
+      product_kind: PRODUCT_KINDS.includes(req.body.product_kind) ? req.body.product_kind : 'stock',
       unit_price: unit_price || 0,
       min_order_quantity: min_order_quantity || 1,
       image_url: normalizedImage,
@@ -1138,6 +1143,7 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       package_unit: req.body.package_unit !== undefined
         ? require('../utils/poLineSpec').normalizePackageUnit(req.body.package_unit) : product.package_unit,
       order_mode: ORDER_MODES.includes(order_mode) ? order_mode : product.order_mode,
+      product_kind: PRODUCT_KINDS.includes(req.body.product_kind) ? req.body.product_kind : product.product_kind,
       unit_price: unit_price !== undefined ? unit_price : product.unit_price,
       min_order_quantity: min_order_quantity !== undefined ? min_order_quantity : product.min_order_quantity,
       image_url: normalizedImage !== undefined ? normalizedImage : product.image_url,

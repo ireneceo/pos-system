@@ -3,6 +3,7 @@ import { parseMinOrderQty, OrderMode, PACKAGE_UNIT_SUGGESTIONS, CONTENT_UNIT_OPT
 import { getErrorMessage } from '../../utils/apiError';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
+
 import { StatusBadge } from '../../components/UI/CommonStyles';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
@@ -14,6 +15,9 @@ import SearchableSelect from '../../components/Common/SearchableSelect';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+
+// 상품 종류 — 재고 상품 / 주문제작 / 서비스·기타 (2026-09-13 · models/BrandProduct.js ENUM 과 같은 값)
+type ProductKind = 'stock' | 'made_to_order' | 'service';
 interface Brand {
   id: number;
   name: string;
@@ -66,6 +70,8 @@ interface Product {
   package_unit?: string | null;
   // 주문 방식 — 구매자가 "몇 개"로 담을지 "몇 kg"로 담을지. 없으면 'pack'(기존 동작).
   order_mode?: OrderMode;
+  // 상품 종류 — 재고 상품 / 주문제작 / 서비스·기타. 없으면 'stock'(기존 동작). 2026-09-13
+  product_kind?: ProductKind;
   unit_price: number;
   min_order_quantity: number;
   image_url: string | null;
@@ -436,6 +442,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     base_quantity: '1',
     package_unit: '',
     order_mode: 'pack' as OrderMode,
+    // 상품 종류 — 기본 '재고 상품'(종전 동작). 2026-09-13
+    product_kind: 'stock' as ProductKind,
     unit_price: '',
     current_stock: 0,
     stock_unit: '',
@@ -578,6 +586,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         base_quantity: (product.base_quantity || 1).toString(),
         package_unit: product.package_unit || '',
         order_mode: (product.order_mode || 'pack') as OrderMode,
+        product_kind: ((product as any).product_kind || 'stock') as ProductKind,
         unit_price: product.unit_price.toString(),
         current_stock: Number((product as any).current_stock) || 0,
         stock_unit: (product as any).stock_unit || '',
@@ -608,6 +617,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         base_quantity: '1',
         package_unit: '',
         order_mode: 'pack' as OrderMode,
+        product_kind: 'stock' as ProductKind,
         unit_price: '',
     current_stock: 0,
     stock_unit: '',
@@ -689,6 +699,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           // 기준단위(포장) — 빈 값은 서버가 null 로 저장 (utils/poLineSpec.normalizePackageUnit)
           package_unit: formData.package_unit.trim(),
           order_mode: formData.order_mode,
+          product_kind: formData.product_kind,
           unit_price: parseFloat(formData.unit_price) || 0,
           current_stock: !formData.product_recipe_id ? (Number(formData.current_stock) || 0) : 0,
           stock_unit: formData.stock_unit || null,
@@ -1217,8 +1228,13 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                   required
                 >
                   <option value="">{'Select unit'}</option>
-                  {/* 내용물 단위만(kg·g·L·ml·piece). 포장 이름은 Package Unit 칸 — 옛 상품의 값은 그대로 남긴다. */}
-                  {withCurrentUnit(CONTENT_UNIT_OPTIONS, formData.unit).map(u => (
+                  {/* 내용물 단위만(kg·g·L·ml·piece). 포장 이름은 Package Unit 칸 — 옛 상품의 값은 그대로 남긴다.
+                      서비스는 파는 단위가 시간이라 'hour' 를 더한다(2026-09-13 · Irene 「단위가 시간이거든」).
+                      재고 상품에는 넣지 않는다 — 매장 재고 단위 목록(8개 고정)에 없는 값이라 재고로 넘어갈 수 없다. */}
+                  {withCurrentUnit(
+                    formData.product_kind === 'service' ? [...CONTENT_UNIT_OPTIONS, 'hour'] : CONTENT_UNIT_OPTIONS,
+                    formData.unit
+                  ).map(u => (
                     <option key={u} value={u}>{u}</option>
                   ))}
                 </FormSelect>
@@ -1276,6 +1292,44 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                         spec: formData.unit
                           ? ` (${sellerSpecLabel({ seller_unit: formData.unit, base_quantity: formData.base_quantity || 1, seller_package_unit: formData.package_unit, order_mode: formData.order_mode })})` : ''
                       })}
+                </OrderModeHint>
+              </UIFormGroup>
+
+              {/*
+                상품 종류 (2026-09-13 · Irene 「주문제작 / 서비스·기타 이렇게 나눠져야」).
+                «재고를 세는가»와 «배송이 있는가»는 다른 축이라 셋으로 나눈다.
+                  재고 상품   재고 셈 · 배송 함 (기본 = 종전 동작)
+                  주문제작    재고 안 셈 · 배송 함
+                  서비스/기타 재고 안 셈 · 배송 없음 → 판매자가 «완료 처리» 하면 끝
+              */}
+              <UIFormGroup>
+                <FormLabel>{t('products.fields.kind', 'Product type')}</FormLabel>
+                <OrderModeRow role="radiogroup" aria-label={t('products.fields.kind', 'Product type') as string}>
+                  {(['stock', 'made_to_order', 'service'] as ProductKind[]).map((kind) => (
+                    <OrderModeOption key={kind} $active={formData.product_kind === kind}>
+                      <input
+                        type="radio"
+                        name="brand_product_kind"
+                        value={kind}
+                        checked={formData.product_kind === kind}
+                        onChange={() => setFormData({ ...formData, product_kind: kind })}
+                      />
+                      <span>
+                        {kind === 'stock'
+                          ? t('products.fields.kindStock', 'Stocked goods')
+                          : kind === 'made_to_order'
+                            ? t('products.fields.kindMadeToOrder', 'Made to order')
+                            : t('products.fields.kindService', 'Service / other')}
+                      </span>
+                    </OrderModeOption>
+                  ))}
+                </OrderModeRow>
+                <OrderModeHint>
+                  {formData.product_kind === 'stock'
+                    ? t('products.fields.kindStockHint', 'Counted in stock and shipped — the usual case.')
+                    : formData.product_kind === 'made_to_order'
+                      ? t('products.fields.kindMadeToOrderHint', 'No stock is kept; made when an order comes in, then shipped.')
+                      : t('products.fields.kindServiceHint', 'No stock and no delivery — mark it complete when the work is done.')}
                 </OrderModeHint>
               </UIFormGroup>
 

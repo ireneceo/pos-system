@@ -724,13 +724,25 @@
       "orderMode": "Order Method",
       "packageUnit": "Package Unit",
       "packageUnitPlaceholder": "e.g. box, pack, bottle",
-      "packageUnitHint": "What buyers count when ordering — e.g. 10 kg per BOX, ordered as 3 BOX"
+      "packageUnitHint": "What buyers count when ordering — e.g. 10 kg per BOX, ordered as 3 BOX",
+      "kind": "Product type",
+      "kindStock": "Stocked goods",
+      "kindStockHint": "Counted in stock and shipped — the usual case.",
+      "kindMadeToOrder": "Made to order",
+      "kindMadeToOrderHint": "No stock is kept; made when an order comes in, then shipped.",
+      "kindService": "Service / other",
+      "kindServiceHint": "No stock and no delivery — mark it complete when the work is done."
     },
     "orderMode": {
       "pack": "By count (pack / box)",
       "measure": "By weight or volume (kg, g, L, ml)",
       "measureHint": "Buyers order like '2.5 {{unit}}'",
       "packHint": "Buyers order like '3 units'{{spec}}"
+    },
+    "fulfillment": {
+      "completeAction": "Mark complete",
+      "completeDate": "Target completion date",
+      "completed": "Completed"
     }
   },
   "brandIngredientsPage": {

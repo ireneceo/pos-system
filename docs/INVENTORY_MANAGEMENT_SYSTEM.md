@@ -786,3 +786,19 @@ async function updateAvgDailyUsage(ingredientId) {
 
 **미해결(Fable 설계 대기)**: `ingredients`(브랜드 88) vs `product_ingredients`(286) 목록 이원화,
 `linked_ingredient_id` 반쪽 구현, FG 도 같은 어긋남(입고는 `ingredients`, 화면은 `foodcourt_products`).
+
+---
+
+## 판매자 자체 재고와 «상품 종류» (2026-09-13, SW 5.19)
+
+판매자(브랜드·공급업체)가 **레시피도 재고아이템도 걸지 않은 상품**은 상품 행 자체에 수량을 둔다
+(`brand_products.current_stock` · `supplier_products.current_stock`). 출고를 누를 때 여기서 빠진다.
+
+- **상품 종류가 `stock` 이 아니면(주문제작·서비스) 이 차감을 건너뛴다.** 재고 0에서 빼려다
+  «stock_shortfall» 문구만 이력에 쌓이던 것을 막는다. 단일 기준 = `docs/TRADE_STRUCTURE.md` §2-4.
+- **차감 산식은 `current_stock -= quantity_ordered`** 이고 `quantity_ordered` 는 **주문 단위**
+  (개수로 주문이면 포장단위)다. 즉 이 숫자는 포장단위로 세는 수다 — «10 kg/BOX» 3 BOX 판매 = 재고 3 감소.
+- `brand_products.stock_unit` 은 **환산에 쓰이지 않는 이름표**(원장 줄 `inventory_transactions.unit`)다.
+  칸과 숫자가 다른 말을 할 수 있고 막는 장치가 없다. 어떻게 정리할지는 **Fable 판정 대기** —
+  `docs/TRADE_STRUCTURE.md` §5-12(실측·갈리는 길 3갈래).
+- 매장(RA) 재고와는 별개 경로다. 이 표의 나머지 내용은 매장 재고 기준으로 읽는다.
