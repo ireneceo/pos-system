@@ -423,8 +423,8 @@ const DistItem = styled.span<{ $color: string }>`
   font-weight: 500;
 `;
 
-// 연결된 레시피 태그 — 붙어 있으면 이름, 없으면 «레시피 없음»(재고가 안 빠진다는 뜻).
-const RecipeTag = styled.span<{ $linked: boolean }>`
+// 연결된 레시피 태그 — 붙어 있으면 이름(누르면 그 레시피 화면으로), 없으면 «레시피 없음».
+const RecipeTag = styled.button<{ $linked: boolean }>`
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -435,6 +435,17 @@ const RecipeTag = styled.span<{ $linked: boolean }>`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: ${p => (p.$linked ? 'pointer' : 'default')};
+  text-decoration: ${p => (p.$linked ? 'underline' : 'none')};
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: ${p => (p.$linked ? '#4F46E5' : '#9CA3AF')};
+  }
 `;
 
 const DistDot = styled.span<{ $bg: string }>`
@@ -961,9 +972,19 @@ const BrandMenusPage: React.FC = () => {
                 </CardRow>
                 <CardRow>
                   <RecipeTag
+                    type="button"
                     $linked={!!m.linkedRecipe}
+                    disabled={!m.linkedRecipe}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!m.linkedRecipe) return;
+                      // 그 레시피가 검색된 상태로 레시피 화면을 연다.
+                      //   주소 규칙 실측: RecipeManagementPage 는 tab·brandId 를, RecipesTab 은 search 를 읽는다
+                      //   (RecipesTab.tsx:803~808 — 최초 검색어를 URL 에서 가져옴).
+                      navigate(`/pos/recipes?tab=recipes&brandId=${selectedBrandId}&search=${encodeURIComponent(m.linkedRecipe.name)}`);
+                    }}
                     title={m.linkedRecipe
-                      ? t('brand:brandMenusPage.linkedRecipeHint', { name: m.linkedRecipe.name, defaultValue: `Linked recipe: ${m.linkedRecipe.name} — franchise restaurants inherit it on push` })
+                      ? t('brand:brandMenusPage.linkedRecipeHint', { name: m.linkedRecipe.name, defaultValue: `Linked recipe: ${m.linkedRecipe.name} — click to open it. Franchise restaurants inherit it on push` })
                       : t('brand:brandMenusPage.noLinkedRecipeHint', 'No recipe linked — inventory will not be deducted for this menu')}
                   >
                     <BookOpen style={{ width: 11, height: 11 }} />
