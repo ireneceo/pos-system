@@ -515,7 +515,9 @@
       "ordered": "Ordered"
     },
     "notReconciledWarning": "A supplier invoice has been uploaded but not compared yet — this pays the ordered amount.",
-    "compareFirst": "Compare first"
+    "compareFirst": "Compare first",
+    "paidAt": "Payment date",
+    "paidAtNote": "The day the money actually went out. Defaults to today."
   },
   "ingredients": {
     "activeLabel": "Active",
@@ -628,7 +630,11 @@
       "idle": "You can read the uploaded invoice to fill in the right side."
     },
     "pickLine": "Pick this line from the invoice…",
-    "willRemember": "On save, «{{name}}» is remembered as this product’s invoice name"
+    "willRemember": "On save, «{{name}}» is remembered as this product’s invoice name",
+    "skipReason": {
+      "registeredSupplier": "Only the supplier can change a registered supplier price — the invoiced value was saved",
+      "notMyExternal": "Not a supplier you registered — the invoiced value was saved"
+    }
   },
   "newPo.error.profileTitle": "Business details needed",
   "newPo.error.goToCompanyInfo": "Open company information?",

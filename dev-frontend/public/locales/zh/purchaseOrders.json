@@ -515,7 +515,9 @@
       "ordered": "采购金额"
     },
     "notReconciledWarning": "已上传供应商发票但尚未核对 — 现在付款将按采购金额支出。",
-    "compareFirst": "先去核对"
+    "compareFirst": "先去核对",
+    "paidAt": "付款日期",
+    "paidAtNote": "实际付款的日期。默认为今天。"
   },
   "ingredients": {
     "activeLabel": "启用",
@@ -628,7 +630,11 @@
       "idle": "可读取已上传的发票以填入右侧。"
     },
     "pickLine": "从发票中选择此行…",
-    "willRemember": "保存后，«{{name}}» 将记住为该商品的发票名称"
+    "willRemember": "保存后，«{{name}}» 将记住为该商品的发票名称",
+    "skipReason": {
+      "registeredSupplier": "已注册供应商的售价只有供应商本人可更改 — 已记录账单金额",
+      "notMyExternal": "不是您登记的外部供应商 — 已记录账单金额"
+    }
   },
   "newPo.error.profileTitle": "需要公司资料",
   "newPo.error.goToCompanyInfo": "要开启公司资料吗？",

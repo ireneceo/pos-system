@@ -471,6 +471,10 @@ const PurchaseOrderStagingPage: React.FC = () => {
       //     새로고침은 조용히(silent) 뒤따르게 한다. 실패해도 위 fetchDrafts 가 목록을 비우지 않는다.
       const remaining = pos.filter(p => p.id !== po.id);
       setPos(remaining);
+      // 2026-09-14 (Irene: 「Mark as sent 는 실시간으로 바로 없어지고 위에 리시브 뜨고 그런 게 안 돼」)
+      //   보낸 발주는 곧바로 «받을 발주» 로 올라가야 한다. 지금까지는 이 목록을 화면 열 때와
+      //   결제 모달 뒤에만 불러서, 새로고침해야 나타났다.
+      fetchReceivables();
       if (remaining.length === 0) { navigate('/pos/purchase-orders/history'); return; }
       fetchDrafts({ silent: true });
     } catch (e: any) {

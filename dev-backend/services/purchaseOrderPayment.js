@@ -83,7 +83,9 @@ async function resolvePayableAmount(po) {
  * 발주 결제 기록.
  * @returns {{po, movement:CashMovement|null, drawerSkipped:boolean, payable:object}}
  */
-async function recordPayment(po, { method, userId, reason }, t) {
+// paidAt(선택) — 2026-09-14 Irene: 외부 청구서를 «결제함» 으로 표시할 때 **실제로 낸 날**을 넣는다.
+//   안 넘기면 지금까지처럼 현재시각. 기존 호출부는 그대로 동작한다.
+async function recordPayment(po, { method, userId, reason, paidAt: paidAtIn }, t) {
   if (!['cash', 'bank_transfer', 'card'].includes(method)) {
     throw err('payment_method must be cash, bank_transfer or card', 'INVALID_PAYMENT_METHOD');
   }
@@ -128,7 +130,10 @@ async function recordPayment(po, { method, userId, reason }, t) {
     }
   }
 
-  const paidAt = new Date();
+  const { parsePaidAt } = require('../utils/paidAtInput');
+  const parsedPaidAt = parsePaidAt(paidAtIn);
+  if (!parsedPaidAt.ok) throw err(parsedPaidAt.message, parsedPaidAt.code);
+  const paidAt = parsedPaidAt.value || new Date();
   await po.update({
     payment_status: 'paid',
     payment_method: method,

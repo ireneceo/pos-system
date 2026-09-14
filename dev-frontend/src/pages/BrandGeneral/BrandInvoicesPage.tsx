@@ -7,6 +7,7 @@ import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../co
 import { formatCurrency, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
 import { formatAddressHtml, AppLocale } from '../../utils/formatAddress';
 import InvoiceHistoryModal from '../../components/Invoice/InvoiceHistoryModal';
+import AlertDialog from '../../components/Common/AlertDialog';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
 import { useAuth } from '../../contexts/AuthContext';
@@ -96,6 +97,8 @@ const BrandInvoicesPage: React.FC = () => {
   const [historyInvoice, setHistoryInvoice] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  // 실패를 사람에게 보여 주는 알림 — 2026-09-14 (Irene: 「컨펌 버튼이 안 눌려」)
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string }>({ isOpen: false, title: '', message: '' });
   const [showPaymentConfirmModal, setShowPaymentConfirmModal] = useState(false);
   const [showSendConfirmModal, setShowSendConfirmModal] = useState(false);
   const [showResendConfirmModal, setShowResendConfirmModal] = useState(false);
@@ -377,9 +380,22 @@ const BrandInvoicesPage: React.FC = () => {
         headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
         body: JSON.stringify({ status: 'paid', paid_amount: 0, payment_notes: 'Free invoice - confirmed by recipient' })
       });
-      if (response.ok) { fetchInvoices(); }
+      if (response.ok) { fetchInvoices(); return; }
+      // 2026-09-14 (Irene: 「컨펌 버튼이 안 눌려」) — 예전에는 실패를 조용히 삼켜
+      //   «눌러도 아무 일도 안 나는» 화면이 됐다. 서버 사정을 그대로 보여 준다.
+      const body = await response.json().catch(() => null);
+      setAlertModal({
+        isOpen: true,
+        title: t('common:error', 'Error') as string,
+        message: body?.error?.message || body?.message
+          || (t('invoices.confirmFreeFailed', 'Could not confirm this invoice. Please try again or contact support.') as string),
+      });
     } catch (error) {
-      console.error('Failed to confirm free invoice:', error);
+      setAlertModal({
+        isOpen: true,
+        title: t('common:error', 'Error') as string,
+        message: (error as Error)?.message || (t('invoices.confirmFreeFailed', 'Could not confirm this invoice. Please try again or contact support.') as string),
+      });
     }
   };
 
@@ -1792,6 +1808,14 @@ const BrandInvoicesPage: React.FC = () => {
 
         </Content>
       </Container>
+
+      <AlertDialog
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, title: '', message: '' })}
+        title={alertModal.title}
+        message={alertModal.message}
+        variant="error"
+      />
     </>
   );
 };

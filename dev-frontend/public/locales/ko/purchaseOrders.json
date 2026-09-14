@@ -515,7 +515,9 @@
       "ordered": "발주"
     },
     "notReconciledWarning": "공급업체 인보이스는 올라왔지만 아직 대조하지 않았습니다 — 이대로 내면 발주 금액이 나갑니다.",
-    "compareFirst": "먼저 대조하기"
+    "compareFirst": "먼저 대조하기",
+    "paidAt": "결제일",
+    "paidAtNote": "실제로 돈이 나간 날입니다. 기본은 오늘입니다."
   },
   "ingredients": {
     "activeLabel": "사용",
@@ -628,7 +630,11 @@
       "idle": "올려 둔 인보이스를 읽어 오른쪽을 채울 수 있습니다."
     },
     "pickLine": "인보이스에서 이 줄 고르기…",
-    "willRemember": "저장하면 «{{name}}» 을 이 상품의 인보이스 이름으로 기억합니다"
+    "willRemember": "저장하면 «{{name}}» 을 이 상품의 인보이스 이름으로 기억합니다",
+    "skipReason": {
+      "registeredSupplier": "가입 공급업체의 판매가는 공급업체만 바꿉니다 — 청구값은 기록됐습니다",
+      "notMyExternal": "내가 등록한 외부 공급업체가 아닙니다 — 청구값은 기록됐습니다"
+    }
   },
   "newPo.error.profileTitle": "사업자 정보가 필요합니다",
   "newPo.error.goToCompanyInfo": "회사 정보 화면을 열까요?",

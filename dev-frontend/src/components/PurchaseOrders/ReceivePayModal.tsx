@@ -43,22 +43,32 @@ interface Props {
   invoiceId?: number | string | null;
 }
 
+// 2026-09-14 (Irene): 「기본적으로 은행송금이 먼저 나오게 해줘」 — 목록 맨 위 + 기본값.
+//   부수 효과(의도한 것): 기본이 현금이 아니게 되어 실수로 시재에서 빠지는 일이 줄어든다.
 const METHODS: Array<{ value: string; labelKey: string; fallback: string }> = [
-  { value: 'cash', labelKey: 'pay.method.cash', fallback: 'Cash' },
   { value: 'bank_transfer', labelKey: 'pay.method.bank', fallback: 'Bank transfer' },
+  { value: 'cash', labelKey: 'pay.method.cash', fallback: 'Cash' },
   { value: 'card', labelKey: 'pay.method.card', fallback: 'Card' },
 ];
+const DEFAULT_METHOD = 'bank_transfer';
+/** 오늘(그 사람 기기 기준) — 날짜 칸 기본값·최대값 */
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = true, onDone, onClose, onGoReconcile, invoiceId }: Props) {
   const { t } = useTranslation('purchaseOrders');
-  const [method, setMethod] = useState('cash');
+  const [method, setMethod] = useState(DEFAULT_METHOD);
+  // 결제일 — 2026-09-14 (Irene): 「날짜도 넣게 해줘」. 기본은 오늘, 미래 날짜는 못 고르게 막는다.
+  const [paidAt, setPaidAt] = useState(todayStr);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    setMethod('cash'); setReason(''); setError(null);
+    setMethod(DEFAULT_METHOD); setPaidAt(todayStr()); setReason(''); setError(null);
   }, [open, po?.id]);
 
   if (!open || !po) return null;
@@ -85,6 +95,8 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
         : `/api/purchase-orders/${po.id}/refund-payment`;
       const body: any = {};
       if (needsMethod) body.payment_method = method;
+      // 결제일 — 오늘이면 굳이 보내지 않는다(서버가 현재시각을 쓰게 두어 기존 동작과 같게).
+      if (needsMethod && paidAt && paidAt !== todayStr()) body.paid_at = paidAt;
       if (reason.trim()) body[viaInvoice ? 'notes' : 'reason'] = reason.trim();
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -184,6 +196,17 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
               {t('pay.method.nonCashNote', 'Non-cash payments are recorded on the order only — the cash drawer is not touched.')}
             </div>
           )}
+        </FormGroup>
+      )}
+
+      {needsMethod && (
+        <FormGroup>
+          <FormLabel>{t('pay.paidAt', 'Payment date')}</FormLabel>
+          <FormInput type="date" value={paidAt} max={todayStr()}
+            onChange={(e) => setPaidAt(e.target.value)} />
+          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+            {t('pay.paidAtNote', 'The day the money actually went out. Defaults to today.')}
+          </div>
         </FormGroup>
       )}
 

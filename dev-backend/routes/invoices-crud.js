@@ -545,6 +545,21 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       const issuerEntity = invoice.issuer_type === 'system_admin' ? 'system' : invoice.issuer_type;
       canModify = await userCanAccessEntity(req.user, issuerEntity, invoice.issuer_id);
     }
+    // 2026-09-14 (Irene 신고): 「브랜드제너럴 가격이 프리가 되었는데 컨펌 버튼이 안 눌려」
+    //   구독 청구서는 `restaurant_id` 가 비고 발행자가 system_admin 이라 위 두 검사 어디에도 안 걸린다.
+    //   **낼 사람**은 `payer_type`/`payer_id` 에 있는데 여기서는 보지 않아, 정작 확정해야 할 본인이 403 이었다
+    //   (운영 실측: 0원인데 확정 못 한 청구서 10건 · payer_type brand_manager 25건 중 0원 21건).
+    //   범위를 최소로 둔다 — **0원 청구서를 그 청구서의 낼 사람 본인이 paid 로 바꾸는 경우만**.
+    //   금액이 있는 청구서는 종전대로 막힌다(돈이 오가는 확정은 결제 경로로만).
+    //   ⚠ `payer_id` 는 **종류마다 뜻이 다르다** — 'restaurant' 면 매장 id, 'brand_manager'/'foodcourt_manager' 면
+    //   사용자 id. 한 칸으로 비교하면 번호가 우연히 같을 때 남의 청구서를 건드릴 수 있어 종류별로 나눈다.
+    if (!canModify && status === 'paid' && Number(invoice.total_amount) === 0 && invoice.payer_id) {
+      if (invoice.payer_type === 'restaurant') {
+        canModify = await userCanAccessRestaurant(req.user, invoice.payer_id);
+      } else if (invoice.payer_type === 'brand_manager' || invoice.payer_type === 'foodcourt_manager') {
+        canModify = Number(invoice.payer_id) === Number(req.user.id);
+      }
+    }
     if (!canModify) {
       return res.status(403).json({ success: false, error: { message: 'Not authorized to modify this invoice', code: 'FORBIDDEN' } });
     }

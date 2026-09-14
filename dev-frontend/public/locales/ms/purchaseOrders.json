@@ -515,7 +515,9 @@
       "ordered": "Dipesan"
     },
     "notReconciledWarning": "Invois pembekal telah dimuat naik tetapi belum dibandingkan — ini membayar jumlah yang dipesan.",
-    "compareFirst": "Banding dahulu"
+    "compareFirst": "Banding dahulu",
+    "paidAt": "Tarikh bayaran",
+    "paidAtNote": "Hari wang sebenarnya keluar. Lalai kepada hari ini."
   },
   "ingredients": {
     "activeLabel": "Aktif",
@@ -628,7 +630,11 @@
       "idle": "Anda boleh membaca invois yang dimuat naik untuk mengisi bahagian kanan."
     },
     "pickLine": "Pilih baris ini daripada invois…",
-    "willRemember": "Selepas simpan, «{{name}}» diingat sebagai nama invois produk ini"
+    "willRemember": "Selepas simpan, «{{name}}» diingat sebagai nama invois produk ini",
+    "skipReason": {
+      "registeredSupplier": "Hanya pembekal boleh menukar harga pembekal berdaftar — nilai invois telah disimpan",
+      "notMyExternal": "Bukan pembekal yang anda daftarkan — nilai invois telah disimpan"
+    }
   },
   "newPo.error.profileTitle": "Maklumat perniagaan diperlukan",
   "newPo.error.goToCompanyInfo": "Buka maklumat syarikat?",

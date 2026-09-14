@@ -386,6 +386,14 @@ router.post('/:id/mark-paid-external', authenticateToken, async (req, res) => {
 
     // 결제수단은 필수다 (2026-09-11 §8-3 A-2). 예전엔 없으면 'cash' 로 채워서, 이체로 낸 것도 현금으로 기록될 수 있었다.
     const method = req.body.payment_method || req.body.paymentMethod;
+    // 결제일(선택) — 2026-09-14 Irene: 「결제 마크페이드할 때 … 날짜도 넣게 해줘」.
+    //   실제로 낸 날을 기록한다. 안 주면 지금까지처럼 현재시각.
+    const { parsePaidAt } = require('../utils/paidAtInput');
+    const parsedPaidAt = parsePaidAt(req.body.paid_at || req.body.payment_date);
+    if (!parsedPaidAt.ok) {
+      return res.status(400).json({ success: false, code: parsedPaidAt.code, message: parsedPaidAt.message });
+    }
+    const paidAt = parsedPaidAt.value;
     if (!['cash', 'bank_transfer', 'card'].includes(method)) {
       return res.status(400).json({ success: false, code: 'INVALID_PAYMENT_METHOD', message: 'payment_method must be cash, bank_transfer or card' });
     }
@@ -408,7 +416,7 @@ router.post('/:id/mark-paid-external', authenticateToken, async (req, res) => {
           const po = await PurchaseOrder.findByPk(linkedPo.id, { lock: t.LOCK.UPDATE, transaction: t });
           if (!po) { const e = new Error('Purchase order not found'); e.statusCode = 404; e.code = 'NOT_FOUND'; throw e; }
           if (po.status === 'cancelled') { const e = new Error('Cannot pay a cancelled purchase order'); e.statusCode = 400; e.code = 'BAD_STATUS'; throw e; }
-          const out = await recordPayment(po, { method, userId: req.user && req.user.id, reason: note }, t);
+          const out = await recordPayment(po, { method, userId: req.user && req.user.id, reason: note, paidAt }, t);
           // recordPayment 가 청구서를 paid 로 거울한다. 외부 발행 표시·확인자만 같은 트랜잭션에서 덧붙인다.
           await Invoice.update(
             { payment_provider: 'external', payment_notes: note, confirmed_by: req.user && req.user.id, confirmed_at: new Date() },
@@ -432,7 +440,7 @@ router.post('/:id/mark-paid-external', authenticateToken, async (req, res) => {
     // 연결 발주가 없는 외부 청구서(발주가 지워진 경우 등)만 청구서 단독 기록을 남긴다.
     await invoice.update({
       status: 'paid',
-      paid_at: new Date(),
+      paid_at: paidAt || new Date(),   // 2026-09-14: 입력받은 결제일(없으면 현재시각)
       paid_amount: invoice.total_amount,
       payment_method: method,
       payment_provider: 'external',

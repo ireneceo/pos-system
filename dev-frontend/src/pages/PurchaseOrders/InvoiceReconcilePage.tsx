@@ -566,8 +566,21 @@ const InvoiceReconcilePage: React.FC = () => {
 
       // 전파가 왜 안 움직였는지까지 사람에게 보여준다 — 조용히 0 만 주면 결함처럼 보인다.
       const moved = (body.data.propagated || []).reduce((a: number, p: any) => a + (p.moved || 0), 0);
+      // 2026-09-14: 서버가 보내는 사유를 **코드로 번역**한다. 예전엔 서버 한글 문장이 그대로 나와
+      //   영어 화면에 한글이 섞였다(Irene 신고). reason_code 가 없으면 옛 문장을 그대로 쓴다(하위호환).
+      const reasonText = (tg: any) => {
+        switch (tg.reason_code) {
+          case 'REGISTERED_SUPPLIER_PRICE_IS_THEIRS':
+            return t('reconcile.skipReason.registeredSupplier', 'Only the supplier can change a registered supplier price — the invoiced value was saved');
+          case 'NOT_MY_EXTERNAL_SUPPLIER':
+            return t('reconcile.skipReason.notMyExternal', 'Not a supplier you registered — the invoiced value was saved');
+          default:
+            return tg.reason;
+        }
+      };
       const skipped = (body.data.propagated || [])
-        .flatMap((p: any) => (p.targets || []).filter((t: any) => !t.changed).map((t: any) => t.reason));
+        .flatMap((p: any) => (p.targets || []).filter((t: any) => !t.changed).map(reasonText))
+        .filter(Boolean);
       const failed = body.data.propagation_failed || [];
       const parts = [t('reconcile.result.lines', '청구값 {{n}}줄을 저장했습니다.', { n: body.data.lines_saved })];
       if (body.data.propagated?.length) parts.push(t('reconcile.result.moved', '원가 {{n}}건이 새 가격을 따라갔습니다.', { n: moved }));

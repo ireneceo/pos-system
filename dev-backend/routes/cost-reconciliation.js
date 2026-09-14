@@ -357,9 +357,13 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
           seller_product_id: sp.id,
           new_price: null,
           moved: 0,
-          targets: [{ changed: false, reason: sc && sc.is_system_registered
-            ? '가입 공급업체의 판매가는 공급업체만 바꿉니다 — 청구값은 기록됐습니다'
-            : '내가 등록한 외부 공급업체가 아닙니다 — 청구값은 기록됐습니다' }]
+          // 2026-09-14: 사유를 **코드**로 보낸다. 예전에는 한글 문장을 그대로 실어 영어 화면에도 한글이 섞였다.
+          //   `reason` 은 옛 화면 호환으로 남기고, 새 화면은 `reason_code` 를 번역해 보여 준다.
+          targets: [{ changed: false,
+            reason_code: sc && sc.is_system_registered ? 'REGISTERED_SUPPLIER_PRICE_IS_THEIRS' : 'NOT_MY_EXTERNAL_SUPPLIER',
+            reason: sc && sc.is_system_registered
+              ? 'Only the supplier can change a registered supplier price — the invoiced value was saved'
+              : 'Not a supplier you registered — the invoiced value was saved' }]
         });
         continue;
       }
