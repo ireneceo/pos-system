@@ -806,5 +806,11 @@
     "uninvoicedPos": "已收货但未开票的采购单 {{count}} 张（{{amount}}）— 这部分营收是缺失的。"
   },
   "brandProducts.distribution.externalTitle": "加盟店以外的买家",
-  "brandProducts.distribution.externalDesc": "其他商家也可订购此商品。可订购对象在公司资料中设定。"
+  "brandProducts.distribution.externalDesc": "其他商家也可订购此商品。可订购对象在公司资料中设定。",
+  "brandMenusPage": {
+    "linkedRecipe": "关联配方",
+    "noLinkedRecipe": "无配方",
+    "linkedRecipeHint": "关联配方：{{name}} — 推送后加盟店菜品将沿用此配方",
+    "noLinkedRecipeHint": "未关联配方 — 此菜品不会扣减库存"
+  }
 }

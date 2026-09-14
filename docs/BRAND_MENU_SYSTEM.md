@@ -455,4 +455,17 @@ K-DINE IPC(운영 매장8)의 메뉴 105개가 **브랜드와 연결되지 않�
 - 원가는 2경로다 — [[reference_cost_two_paths]]. «재료는 공유, 가격은 매장별» 이 지금 구조에서 어디에 저장되는지(매장 재고아이템 단가 vs 브랜드 재료 단가) 확인 필요.
 - 공급업체 연결(`ingredient_seller_products`)이 매장별로 따로 설 수 있는지.
 
-⛔ 재고·원가에 닿고 «가격은 매장 · 재료는 브랜드» 가 저장 위치를 가르므로 **Fable 판정 대상**. 팀원이 길을 고르지 않는다.
+**정정 (2026-09-14 실측 — 앞 문단의 «착수 전 확인» 중 3·4번은 이미 답이 있었다):**
+팀원이 2026-09-13 에 «가격은 매장 · 재료는 브랜드는 지금 구조에 담을 칸이 없다» 고 적었던 것은 **틀렸다**.
+`ingredients.unit_cost` 한 층만 보고 단정한 것이며, 아래는 운영 DB·코드에서 다시 읽은 값이다.
+
+| 요구 | 실제 자리 | 운영 행수(2026-09-14) |
+|---|---|---|
+| 재료는 브랜드 것을 공유 | `ingredients.source_product_ingredient_id` / `source_brand_product_id` 거울 (거울 수정은 403) | 158 |
+| 가격은 매장이 따로 | **매장 원가층 `restaurant_ingredient_costs`** — 코드 `routes/recipes.js` `withOverrideCost`(98행)·`effective_ingredient_cost`(551행), 매장 층이 비면 브랜드 층 폴백 | 77 |
+| 공급업체 연결은 자유롭게 | `ingredient_seller_products` — 매장은 `ingredient_id`, 브랜드는 `product_ingredient_id`. 붙이는 경로 `routes/ingredient-seller-products.js:185` | 831 |
+| 공유 재료의 매장 재고 | `restaurant_ingredient_stocks` (매장별 오버레이) | 159 |
+
+→ ③④는 **새로 설계할 것이 아니라**, 브랜드 레시피가 매장에 내려간 뒤 그 두 층이 실제로 쓰이는지 **실호출로 확인할 일**이다.
+아직 확인 못 한 것(= 확인 불가로 표시): 매장 화면에서 «브랜드 레시피의 재료 가격»을 직접 넣는 흐름이 있는지, 그 값이 매장 층에 저장되는지.
+단일 진실 지도: 사내 구조 지도 아티팩트(2026-09-04 → 09-11) · `docs/TRADE_STRUCTURE.md`

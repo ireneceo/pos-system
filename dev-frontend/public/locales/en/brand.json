@@ -806,5 +806,11 @@
     "uninvoicedPos": "{{count}} received purchase orders ({{amount}}) have no invoice — that much revenue is missing."
   },
   "brandProducts.distribution.externalTitle": "Buyers outside my franchises",
-  "brandProducts.distribution.externalDesc": "Other businesses can order this too. Who may order is set in Company Info."
+  "brandProducts.distribution.externalDesc": "Other businesses can order this too. Who may order is set in Company Info.",
+  "brandMenusPage": {
+    "linkedRecipe": "Linked recipe",
+    "noLinkedRecipe": "No recipe",
+    "linkedRecipeHint": "Linked recipe: {{name}} — franchise restaurants inherit it on push",
+    "noLinkedRecipeHint": "No recipe linked — inventory will not be deducted for this menu"
+  }
 }

@@ -806,5 +806,11 @@
     "uninvoicedPos": "수령이 끝났는데 청구서가 안 나간 발주 {{count}}건 ({{amount}}) — 그만큼 매출이 비어 있습니다."
   },
   "brandProducts.distribution.externalTitle": "내 가맹점 밖 구매자",
-  "brandProducts.distribution.externalDesc": "다른 사업장도 이 상품을 주문할 수 있습니다. 누가 주문할 수 있는지는 회사 정보에서 정합니다."
+  "brandProducts.distribution.externalDesc": "다른 사업장도 이 상품을 주문할 수 있습니다. 누가 주문할 수 있는지는 회사 정보에서 정합니다.",
+  "brandMenusPage": {
+    "linkedRecipe": "연결된 레시피",
+    "noLinkedRecipe": "레시피 없음",
+    "linkedRecipeHint": "연결된 레시피: {{name}} — 푸시하면 가맹점 메뉴도 이 레시피를 씁니다",
+    "noLinkedRecipeHint": "연결된 레시피가 없습니다 — 이 메뉴는 재고가 차감되지 않습니다"
+  }
 }

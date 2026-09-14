@@ -12,7 +12,7 @@ import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { Lock, Building2, Edit2, Copy, Trash2, Send, ChevronDown, UtensilsCrossed, Clock, Info, ArrowRight, Target, GripVertical } from 'lucide-react';
+import { Lock, Building2, Edit2, Copy, Trash2, Send, ChevronDown, UtensilsCrossed, Clock, Info, ArrowRight, Target, GripVertical, BookOpen } from 'lucide-react';
 import PageHeader from '../../components/Common/PageHeader';
 import { Modal as CommonModal, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI';
 import SearchableSelect from '../../components/Common/SearchableSelect';
@@ -423,6 +423,20 @@ const DistItem = styled.span<{ $color: string }>`
   font-weight: 500;
 `;
 
+// 연결된 레시피 태그 — 붙어 있으면 이름, 없으면 «레시피 없음»(재고가 안 빠진다는 뜻).
+const RecipeTag = styled.span<{ $linked: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: ${p => (p.$linked ? '#635BFF' : '#9CA3AF')};
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
 const DistDot = styled.span<{ $bg: string }>`
   width: 8px;
   height: 8px;
@@ -521,7 +535,8 @@ interface BrandMenu {
   is_set_menu?: boolean;
   set_items?: Array<{ brand_menu_id: number; name: string; quantity: number }> | null;
   category?: { id: number; name: string; emoji: string | null } | null;
-  recipe?: { id: number; name: string; code: string } | null;
+  recipe?: { id: number; name: string; code: string } | null;          // 옛 계통(ProductRecipe)
+  linkedRecipe?: { id: number; name: string } | null;                   // «연결된 레시피» = 브랜드 레시피(Recipe)
   distribution: { in_sync: number; pending_update: number; unlinked: number };
 }
 
@@ -943,6 +958,19 @@ const BrandMenusPage: React.FC = () => {
                 <CardRow>
                   <span style={{ fontWeight: 600, color: '#0A2540' }}>{formatCurrency(Number(m.recommended_price), m.currency || 'MYR')}</span>
                   <span>{m.category?.name || '—'}</span>
+                </CardRow>
+                <CardRow>
+                  <RecipeTag
+                    $linked={!!m.linkedRecipe}
+                    title={m.linkedRecipe
+                      ? t('brand:brandMenusPage.linkedRecipeHint', { name: m.linkedRecipe.name, defaultValue: `Linked recipe: ${m.linkedRecipe.name} — franchise restaurants inherit it on push` })
+                      : t('brand:brandMenusPage.noLinkedRecipeHint', 'No recipe linked — inventory will not be deducted for this menu')}
+                  >
+                    <BookOpen style={{ width: 11, height: 11 }} />
+                    {m.linkedRecipe
+                      ? m.linkedRecipe.name
+                      : t('brand:brandMenusPage.noLinkedRecipe', 'No recipe')}
+                  </RecipeTag>
                 </CardRow>
                 <DistributionLine title={t('brand:brandMenusPage.distributionHint', 'Synced (green) = restaurants on the latest version · Pending (orange) = has older version, needs push · Unlinked (grey) = restaurant has its own version, brand updates ignored')}>
                   <DistItem $color={m.distribution.in_sync > 0 ? '#10B981' : '#6B7280'}>

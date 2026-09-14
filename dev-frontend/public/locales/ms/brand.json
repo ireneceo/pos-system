@@ -806,5 +806,11 @@
     "uninvoicedPos": "{{count}} pesanan belian diterima ({{amount}}) tiada invois — hasil sebanyak itu hilang."
   },
   "brandProducts.distribution.externalTitle": "Pembeli di luar francais saya",
-  "brandProducts.distribution.externalDesc": "Perniagaan lain juga boleh memesan produk ini. Siapa yang boleh memesan ditetapkan dalam Maklumat Syarikat."
+  "brandProducts.distribution.externalDesc": "Perniagaan lain juga boleh memesan produk ini. Siapa yang boleh memesan ditetapkan dalam Maklumat Syarikat.",
+  "brandMenusPage": {
+    "linkedRecipe": "Resipi berkaitan",
+    "noLinkedRecipe": "Tiada resipi",
+    "linkedRecipeHint": "Resipi berkaitan: {{name}} — restoran francais mewarisinya semasa push",
+    "noLinkedRecipeHint": "Tiada resipi dipautkan — inventori tidak akan ditolak untuk menu ini"
+  }
 }
