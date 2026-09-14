@@ -1,6 +1,12 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-14 #2 — **레시피 태그를 눌러 그 레시피 화면으로 이동(개발서버 · 미배포).**
+> **최종 업데이트:** 2026-09-14 #3 — **운영 배포 2회(SW 5.23 · 5.24). 0원 청구서 «Confirm» 열림 · 결제일 입력 · 은행송금 우선 · 한글 섞임 제거 · Staging 수령목록 즉시 갱신.**
+> ① Irene 신고 「브랜드제너럴 가격이 프리가 됐는데 컨펌 버튼이 안 눌려」 → 구독 청구서는 `restaurant_id` 가 없고 발행자가 system_admin 이라 권한 검사가 **낼 사람(payer)** 을 보지 않아 403 이었다. **0원 + 낼 사람 본인 + status=paid** 세 조건에서만 열고, `payer_id` 의미가 종류마다 다른 점을 나눠 교차 접근을 막았다. 운영 실호출로 `INV-BRD-20260901-23` 200·paid 확인 후 원복.
+> ② 「Mark as sent 는 실시간으로 바로 없어지고 위에 리시브 뜨고」 → 카드는 사라지는데 «받을 발주» 목록을 다시 안 불러 새로고침이 필요했다. 제출 직후 갱신하도록 한 줄 추가.
+> ③ 결제 기록에 **결제일**(기본 오늘·미래 차단) · **은행송금 맨 위·기본값** · 대조 거부 사유의 **한글 고정 문장 → 코드+4언어**.
+> ④ ⚠ **Fable 판정 미수령**(한도 429, 오늘 3회) — Irene 지시로 **우회하지 않고 대기**. 배포는 완료됨.
+>
+> **이전 업데이트:** 2026-09-14 #2 — **레시피 태그를 눌러 그 레시피 화면으로 이동(개발서버 · 미배포).**
 > 브랜드 메뉴 카드의 레시피 이름을 누르면 `/pos/recipes` 가 **그 레시피가 검색된 상태**로 열립니다. 주소 규칙은 실측대로(`RecipeManagementPage` 가 tab·brandId, `RecipesTab:803~808` 이 search). 실클릭 검증 3/3(이동·주소 검색어·검색칸 입력) · 게이트 18/19.
 >
 > **이전 업데이트:** 2026-09-14 — **브랜드 메뉴에 «연결된 레시피» 표시 운영 배포(SW 5.22) + 구조 이해 정정 + Fable 구조정리 5건 접수.**
@@ -9930,6 +9936,34 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 - `dev-frontend/public/sw.js` (5.22)
 - `docs/BRAND_MENU_SYSTEM.md` · `docs/TRADE_STRUCTURE.md` · `.claude/session-state.md` (정정·접수)
 - `dev-frontend/scripts/button-sweep/recipe-tag-check.js` (렌더 검증)
+
+---
+
+## ✅ 완료: 0원 청구서 Confirm · 결제일 · Staging 즉시 갱신 (2026-09-14 #3)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 0원 청구서 «Confirm» | 낼 사람 본인이 확정할 수 있게(0원 + 본인 + paid 세 조건). 운영 10건 대기였음 | ✅ 배포 SW 5.24 |
+| 확정 실패 안내 | 실패를 조용히 삼키던 것 → 오류창 표시 | ✅ 배포 |
+| 결제일 입력 | 기본 오늘 · 미래 차단 · 규칙은 `utils/paidAtInput.js` 한 곳 | ✅ 배포 |
+| 은행송금 우선 | 결제수단 첫 항목 + 기본값(전에는 현금) | ✅ 배포 |
+| 한글 섞임 제거 | 대조 거부 사유를 서버 코드 → 화면 4언어 번역 | ✅ 배포 |
+| Staging 수령목록 즉시 갱신 | Mark as Sent 뒤 «받을 발주» 를 바로 다시 불러옴 | ✅ 배포 |
+| 레시피 태그 클릭 이동 | 브랜드 메뉴 → 그 레시피가 검색된 화면 | ✅ 배포 SW 5.23 |
+
+### 검증
+- 권한 실호출 **4/4** — 본인 0원 확정 200·paid / 유료 청구서 403(반증) / 남의 0원 청구서 403(반증) / 시험 데이터 삭제
+- 결제일 단위 **6/6** + **고장주입**(미래 검사 제거 시 1건 실패 → 원복 sha256 일치)
+- 결제 모달 실브라우저 **5/5** · 레시피 이동 실클릭 **3/3**
+- `verify-all --full` **18/19**(실패는 배포기록 부재뿐) · mount sweep 8역할 크래시 0
+- 운영: 배포 2회 스모크 각 **10/10** · 운영 실호출로 Confirm 200 확인 후 원복
+
+### 수정된 파일
+- `dev-backend/routes/invoices-crud.js`(payer 권한) · `utils/paidAtInput.js`(신규) · `routes/invoices-payment.js` · `services/purchaseOrderPayment.js` · `routes/cost-reconciliation.js`
+- `dev-frontend/src/components/PurchaseOrders/ReceivePayModal.tsx` · `pages/BrandGeneral/BrandInvoicesPage.tsx` · `pages/PurchaseOrders/PurchaseOrderStagingPage.tsx` · `pages/PurchaseOrders/InvoiceReconcilePage.tsx` · `pages/BrandGeneral/BrandMenusPage.tsx`
+- `dev-backend/tests/paid-at-input.test.js`(신규) · 4개 언어 문구
 
 ---
 
