@@ -98,9 +98,27 @@ async function resolveReceiverSmtp(user) {
  * - Restaurant Owner → 첫 소유 restaurant branding (없으면 null → PurpleHere)
  * - System Admin → null (PurpleHere 기본)
  */
-async function resolveReceiverBranding(user) {
+async function resolveReceiverBranding(user, brandingEntity) {
   try {
     const { getEntityBranding } = require('./emailBranding');
+
+    // 2026-09-15 (Irene 「이메일 위에 브랜드명 바꿔」): 메일을 **만드는 쪽**이 「이 메일의 주인공은
+    // 이 브랜드다」를 알려주면 그것을 쓴다. 안 알려주면 아래 기존 규칙 그대로(무변경).
+    //
+    // 왜 필요한가 — 아래 규칙은 수신자의 `users.brand_id` **한 축**만 본다. 브랜드를 여러 개
+    // 가진 사람은 거기 적힌 한 개로 고정되어, **그 거래와 상관없는 브랜드 이름**이 머리글에 붙는다.
+    // 실측(운영 2026-09-14): 발주 PO-R8-20260914-001 은 사는 쪽·파는 쪽 모두 브랜드 2
+    // 「K-DINE with MIN」인데, 받는 사람(user 23, 브랜드 1·2 소유)의 users.brand_id 가 1 이라
+    // 머리글에 「with MIN」이 찍혔다. 같은 뿌리의 세 번째 사례
+    // (수신자 해석 2026-08-30 · 배지 2026-09-15 · 머리글 = 여기).
+    if (brandingEntity && brandingEntity.type && brandingEntity.id) {
+      // getEntityBranding 이 아는 종류만 — supplier 등은 아래 기존 규칙으로 흘려보낸다.
+      if (['restaurant', 'brand', 'foodcourt'].includes(brandingEntity.type)) {
+        const b = await getEntityBranding(brandingEntity.type, brandingEntity.id);
+        if (b) return b;
+      }
+    }
+
     switch (user.role) {
       case 'Restaurant Admin':
       case 'Staff':
@@ -254,7 +272,9 @@ async function sendNotification(recipientUserId, category, mailOptions) {
     }
 
     // 4. Resolve recipient branding & re-render if template metadata available
-    const branding = await resolveReceiverBranding(user);
+    // `_brandingEntity` 는 메일 본문이 아니라 「머리글을 누구 이름으로 낼지」다 — nodemailer 로는
+    // 넘기지 않는다(아래 cleanOptions 에서 함께 걸러진다).
+    const branding = await resolveReceiverBranding(user, mailOptions._brandingEntity);
     let renderedHtml = mailOptions.html;
     if (branding && mailOptions._title && mailOptions._body) {
       const { wrapTemplate } = require('./notificationTemplates');
@@ -262,7 +282,7 @@ async function sendNotification(recipientUserId, category, mailOptions) {
     }
 
     // 5. Send email — exclude metadata fields from nodemailer payload
-    const { _title, _body, _lang, ...cleanOptions } = mailOptions;
+    const { _title, _body, _lang, _brandingEntity, ...cleanOptions } = mailOptions;
     const transporter = emailService.createTransporter(smtp.settings);
 
     // 첨부 정책 — 깨진 로고("?") 방지를 위해 "실제 렌더된 html 이 참조하는 cid" 기준으로 첨부:

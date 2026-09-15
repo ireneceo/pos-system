@@ -9,6 +9,7 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import SubscriptionTab from './SubscriptionTab';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import EmailVerificationNotice from '../../components/Common/EmailVerificationNotice';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -813,6 +814,18 @@ const ProfilePage: React.FC = () => {
                         placeholder="Enter email address"
                       />
                     </AutoSaveField>
+                    {/* 이 칸에서 주소를 바꾸면 서버가 email_verified 를 내리고 인증메일을 보낸다
+                        (routes/users.js:815, 900~902). 안내가 없으면 본인은 알림이 꺼진 걸 모른다.
+                        알림 설정 화면과 **같은 컴포넌트**(2026-09-15 Irene 「똑같이 해」). */}
+                    {dbUser && (
+                      <EmailVerificationNotice
+                        email={dbUser.email}
+                        emailVerified={dbUser.email_verified === true || dbUser.email_verified === 1}
+                        isDemo={authUser?.isDemo}
+                        isTest={authUser?.isTest}
+                        style={{ margin: '8px 0 0' }}
+                      />
+                    )}
                   </FormGroup>
                   <FormGroup>
                     <Label>{t('settings:profilePage.username')}</Label>

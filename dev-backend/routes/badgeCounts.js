@@ -323,7 +323,21 @@ router.get('/', authenticateToken, async (req, res) => {
       if (role === 'Supplier Admin') {
         const company = await SupplierCompany.findOne({ where: { owner_id: userId }, attributes: ['id'] });
         if (company) sellerWhere = { seller_type: 'supplier', seller_entity_id: company.id };
-      } else if (role === 'Brand General' || role === 'Brand Manager') {
+      } else if (role === 'Brand General') {
+        // 배지 범위 = Sales Orders 목록과 **같은 규칙**(`middleware/sellerScope.js` 단일 소스).
+        // 종전엔 `users.brand_id` 한 축만 봐서 브랜드를 여러 개 가진 소유자가 첫 브랜드에서만
+        // 잡혔다. 2026-09-15 실측(운영): user 23 은 brand_id=1 인데 브랜드 1·2 를 둘 다 소유하고,
+        // 들어온 발주 PO-R8-20260914-001 의 판매자는 브랜드 2 → **목록엔 보이는데 빨간 점은
+        // 안 뜨는** 어긋남이 났다. 알림 쪽(getBrandManagerIds)은 2026-08-30 에 이미 두 축으로
+        // 고쳤고, 여기만 남아 있었다.
+        const { resolveBrandScopeIds } = require('../middleware/sellerScope');
+        const brandIds = await resolveBrandScopeIds({ id: userId, brand_id: user.brand_id || user.brandId });
+        if (brandIds.length > 0) {
+          sellerWhere = { seller_type: 'brand', seller_entity_id: { [Op.in]: brandIds } };
+        }
+      } else if (role === 'Brand Manager') {
+        // ⛔ BM 은 **소속 브랜드 하나**다 — 2026-09-06 판정(sellerScope.js BM 분기)과 같은 규칙.
+        //    판매자 화면이 한 브랜드만 보여주는데 배지가 형제까지 세면 규칙이 갈린다.
         const brandId = user.brand_id || user.brandId;
         if (brandId) sellerWhere = { seller_type: 'brand', seller_entity_id: parseInt(brandId, 10) };
       } else if (role === 'Foodcourt General' || role === 'Foodcourt Manager') {

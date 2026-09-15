@@ -11,6 +11,22 @@ const {
   getSupplierAdminIds, getBrandManagerIds, getFoodcourtManagerIds, getRestaurantOwnerIds
 } = require('../utils/notificationService');
 
+/**
+ * 이 메일의 머리글을 **누구 이름으로** 낼지 (2026-09-15 Irene 「이메일 위에 브랜드명 바꿔」).
+ *
+ * 판매자에게 가는 메일은 **그 거래의 판매자 자리**가 주인공이다. 수신자의 `users.brand_id`
+ * 한 축으로 잡으면 브랜드를 여러 개 가진 사람에게 엉뚱한 브랜드 이름이 붙는다
+ * (운영 실측: PO-R8-20260914-001 은 양쪽 다 브랜드 2 인데 머리글은 브랜드 1 「with MIN」).
+ * `supplier`·`system_admin` 은 머리글 자료가 없으므로 넘기지 않는다 → 기존 규칙 그대로.
+ */
+function sellerBrandingEntity(po) {
+  if (!po || !po.seller_entity_id) return undefined;
+  if (po.seller_type === 'brand' || po.seller_type === 'foodcourt') {
+    return { type: po.seller_type, id: parseInt(po.seller_entity_id, 10) };
+  }
+  return undefined;
+}
+
 async function resolveBuyerName(po) {
   let buyerName = 'A buyer';
   try {
@@ -57,8 +73,9 @@ async function fireSellerSubmittedNotification(po) {
     };
     // 팩토리 전달 — 수신자마다 자기 언어로 렌더된다(2026-08-30).
     // 예전엔 본문을 수신자 모른 채 1개 만들어 N명에게 그대로 보냈다 → 언어 고정이었다.
+    const _brandingEntity = sellerBrandingEntity(po);
     await sendNotificationBatch(userIds, 'seller_order_received',
-      (user) => sellerOrderReceivedEmail(args, user.preferred_language || 'en'));
+      (user) => ({ ...sellerOrderReceivedEmail(args, user.preferred_language || 'en'), _brandingEntity }));
   } catch (e) {
     console.error('[poNotifications] fireSellerSubmittedNotification error:', e.message);
   }
@@ -101,8 +118,9 @@ async function fireBuyerReceivedNotification(po) {
     // 어느 발주가 누구에게 나갔는지 사후에 확인할 방법이 아예 없어서 한 줄 남긴다.
     // 개인정보는 넣지 않는다(사용자 id 만).
     console.log(`[notify] buyer_received po=${po.po_number} seller=${po.seller_type}:${po.seller_entity_id} recipients=${userIds.length ? userIds.join(',') : 'none'}`);
+    const _brandingEntity = sellerBrandingEntity(po);
     await sendNotificationBatch(userIds, 'buyer_received',
-      (user) => buyerReceivedEmail(args, user.preferred_language || 'en'));
+      (user) => ({ ...buyerReceivedEmail(args, user.preferred_language || 'en'), _brandingEntity }));
   } catch (e) {
     console.error('[poNotifications] fireBuyerReceivedNotification error:', e.message);
   }
