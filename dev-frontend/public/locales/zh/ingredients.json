@@ -1,5 +1,11 @@
 {
   "ingredients": {
     "costNotSet": "未设置成本"
+  },
+  "stock": {
+    "pickSellerProduct": "连接供应商商品",
+    "createSellerProduct": "新建供应商商品并连接",
+    "alsoSellAsProduct": "也登记为商品",
+    "alreadyProduct": "已作为商品销售"
   }
 }

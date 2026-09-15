@@ -1,5 +1,11 @@
 {
   "ingredients": {
     "costNotSet": "Kos belum ditetapkan"
+  },
+  "stock": {
+    "pickSellerProduct": "Pautkan produk pembekal",
+    "createSellerProduct": "Cipta produk pembekal & pautkan",
+    "alsoSellAsProduct": "Jual juga sebagai produk",
+    "alreadyProduct": "Dijual sebagai"
   }
 }

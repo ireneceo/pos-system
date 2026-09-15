@@ -743,7 +743,17 @@
       "completeAction": "Mark complete",
       "completeDate": "Target completion date",
       "completed": "Completed"
-    }
+    },
+    "createStockItemWithProduct": "Also create a stock item for this product when saving",
+    "stockItemExistsTitle": "A stock item with this name already exists",
+    "stockItemExistsBody": "Link this product to the existing stock item instead of creating a second one?",
+    "useExistingStockItem": "Use the existing one",
+    "connectSupplierSource": "Where do we buy this?",
+    "sellBasis": "We sell",
+    "buyBasis": "We buy",
+    "buyBasisNone": "not linked yet — use the button below",
+    "marginLabel": "Margin",
+    "createSupplierProduct": "Create supplier product"
   },
   "brandIngredientsPage": {
     "subtitle": "The single list of ingredients. Turn on brand sharing to use them in recipes and orders."

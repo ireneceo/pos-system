@@ -743,7 +743,17 @@
       "completeAction": "Tandakan selesai",
       "completeDate": "Tarikh siap dijangka",
       "completed": "Selesai"
-    }
+    },
+    "createStockItemWithProduct": "Cipta juga item stok untuk produk ini semasa menyimpan",
+    "stockItemExistsTitle": "Item stok dengan nama ini sudah wujud",
+    "stockItemExistsBody": "Pautkan produk ini kepada item stok sedia ada dan bukan mencipta yang kedua?",
+    "useExistingStockItem": "Guna yang sedia ada",
+    "connectSupplierSource": "Di mana kita membelinya?",
+    "sellBasis": "Kita jual",
+    "buyBasis": "Kita beli",
+    "buyBasisNone": "belum dipautkan — guna butang di bawah",
+    "marginLabel": "Margin",
+    "createSupplierProduct": "Cipta produk pembekal & pautkan"
   },
   "brandIngredientsPage": {
     "subtitle": "Senarai bahan tunggal. Hidupkan perkongsian jenama untuk guna dalam resipi dan pesanan."

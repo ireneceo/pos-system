@@ -336,7 +336,9 @@
     "empty": {
       "mine": {
         "title": "No linked stock items",
-        "desc": "Open the Supplier Catalog tab and click a product to order it — it’s added to your inventory automatically. If that tab is empty too, connect a brand or supplier first (see the Supplier Catalog tab for how)."
+        "desc": "Open the Supplier Catalog tab and click a product to order it — it’s added to your inventory automatically. If that tab is empty too, connect a brand or supplier first (see the Supplier Catalog tab for how).",
+        "inCatalog": "Not in your stock items — but {{count}} matching supplier product(s) exist.",
+        "seeCatalog": "See them in the catalog"
       },
       "catalog": {
         "title": "No products to order yet",
@@ -395,7 +397,20 @@
       "desc": "Sell {{name}} as-is. Stock stays on this item — one sale takes 1 {{unit}} from it, so the quantity never lives in two places.",
       "priceHelp": "What you sell it for — it is never filled in from your cost.",
       "failed": "Failed to register as a product.",
-      "error": "An error occurred. Please try again."
+      "error": "An error occurred. Please try again.",
+      "button": "Also sell as product"
+    },
+    "addAsMenu": "Add as menu",
+    "addAsMenuHint": "Register as a menu item you sell (selling price required)",
+    "newMenu": {
+      "title": "Register as a menu item",
+      "name": "Menu name",
+      "desc": "This menu item is sold as-is (no recipe), so its stock lives on the item itself — purchases add to it and sales take from it."
+    },
+    "unknownSeller": "Supplier",
+    "sellAsMenu": {
+      "button": "Also sell as menu",
+      "title": "Also sell this as a menu item"
     }
   },
   "staging": {

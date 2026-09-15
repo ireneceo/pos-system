@@ -22,6 +22,7 @@ const { isBrandManager } = require('../middleware/recipeAuth');
 const { requireBGScope, applyBGFilter, assertBGOwnsRow } = require('../middleware/brandScope');
 const { requireBrandUserModule } = require('../middleware/requireModule');
 const { normalizeImageField } = require('../utils/imageProcessor');
+const { sanitizeString } = require('../middleware/validation');
 
 // P0-3 Wave B: 브랜드 상품 관리(카탈로그/카테고리/옵션그룹/상품레시피)는 Advanced(brand_products).
 // BG 유저 스코프 경로만 게이트 — 레스토랑이 브랜드 카탈로그를 읽는 `/brands/:brandId/products`(별도 prefix)는
@@ -1388,6 +1389,167 @@ router.put('/brand-products/:productId/toggle-active', authenticateToken, requir
   } catch (error) {
     console.error('Toggle brand product active error:', error);
     res.status(500).json({ success: false, message: 'Failed to toggle product status' });
+  }
+});
+
+/**
+ * POST /api/brand-products/:productId/stock-item
+ * 프로덕트 창에서 **재고아이템과 사 오는 곳까지 한 번에** (2026-09-15 Irene
+ * 「각각 등록하고 연결하고 뭐하는 짓이냐고 … 등록문제라고」).
+ *
+ * 반대 방향은 이미 있었다 — 재고아이템 화면의 `POST /product-ingredients/:id/register-as-product`.
+ * 이 라우트는 그 거울이다. **새 개념·새 목록을 만들지 않는다**: 재고아이템은 ProductIngredient,
+ * 사 오는 곳은 IngredientSellerProduct 로 기존 자리에 그대로 쓴다(docs/TRADE_STRUCTURE.md).
+ *
+ * ⛔ 자동 생성 금지 — 화면이 「만들기」를 눌러 이 라우트를 부를 때만 만든다. 프로덕트 저장이
+ *    재고아이템을 자동 복제하던 것이 2026-06-08·07-05 의 «같은 물건 두 줄» 사고였다.
+ *    같은 이름이 이미 있으면 409 로 먼저 보여주고, 사람이 고르거나 force 로만 새로 만든다.
+ *
+ * body:
+ *   existing_stock_item_id  기존 재고아이템에 붙이기(이걸 주면 아무것도 새로 만들지 않는다)
+ *   name·unit·base_quantity·min_stock  새로 만들 때의 값(비면 프로덕트 값)
+ *   force                   같은 이름이 있어도 새로 만든다
+ *   seller_source           { seller_type, seller_entity_id, seller_product_id, unit_price, unit_conversion? }
+ *                           = 우리가 **사 오는** 쪽. 비면 연결만 하고 끝난다.
+ */
+router.post('/brand-products/:productId/stock-item', authenticateToken, requireBGScope, async (req, res) => {
+  const { sequelize } = require('../config/database');
+  const t = await sequelize.transaction();
+  try {
+    const { IngredientSellerProduct, SupplierContract, SupplierProduct } = require('../models');
+    const product = await BrandProduct.findByPk(parseInt(req.params.productId, 10), { transaction: t });
+    if (!product || (product.owner_user_id != null && product.owner_user_id !== req.bgOwnerId)) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+    // 프로덕트는 재고아이템 하나 **또는** 레시피 — 둘 다면 어느 쪽에서 재고를 뺄지 알 수 없다.
+    if (product.product_recipe_id) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false, code: 'RECIPE_ALREADY_LINKED',
+        message: 'This product already uses a recipe. A product links to either a recipe or one stock item.'
+      });
+    }
+
+    const body = req.body || {};
+    let stockItem = null;
+
+    const existingId = parseInt(body.existing_stock_item_id, 10);
+    if (Number.isFinite(existingId)) {
+      stockItem = await ProductIngredientModel.findByPk(existingId, { transaction: t });
+      if (!stockItem || (stockItem.owner_user_id != null && stockItem.owner_user_id !== req.bgOwnerId)) {
+        await t.rollback();
+        return res.status(404).json({ success: false, message: 'Stock item not found' });
+      }
+    } else {
+      const name = sanitizeString(String(body.name || product.name || '')).slice(0, 255);
+      if (!name) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'name is required' });
+      }
+      // 같은 이름이 이미 있으면 **먼저 보여준다**. 고르는 것은 사람이다.
+      if (!body.force) {
+        const dup = await ProductIngredientModel.findAll({
+          where: { owner_user_id: req.bgOwnerId, name },
+          attributes: ['id', 'name', 'unit', 'base_quantity', 'unit_cost'],
+          limit: 5, transaction: t
+        });
+        if (dup.length) {
+          await t.rollback();
+          return res.status(409).json({
+            success: false, code: 'DUPLICATE_STOCK_ITEM',
+            message: `A stock item named "${name}" already exists`,
+            data: { candidates: dup }
+          });
+        }
+      }
+      const { generateCode } = require('../utils/codeGenerator');
+      const code = await generateCode(ProductIngredientModel, 'PI', { whereClause: { owner_user_id: req.bgOwnerId } });
+      const bq = parseFloat(body.base_quantity != null ? body.base_quantity : product.base_quantity);
+      stockItem = await ProductIngredientModel.create({
+        owner_user_id: req.bgOwnerId,
+        code,
+        name,
+        unit: sanitizeString(String(body.unit || product.unit || '')).slice(0, 20) || null,
+        base_quantity: Number.isFinite(bq) && bq > 0 ? bq : 1,
+        unit_cost: 0,          // 원가는 사 오는 쪽이 정한다 — 판매가를 베끼지 않는다
+        min_stock: parseFloat(body.min_stock) || 0,
+        current_stock: 0,
+        is_active: true
+      }, { transaction: t });
+    }
+
+    await product.update({ product_ingredient_id: stockItem.id }, { transaction: t });
+
+    // 사 오는 곳 — 재고아이템에 붙는다(프로덕트가 아니다). 프로덕트의 가격·규격은 **파는 기준**이고
+    // 여기 값은 **사는 기준**이라 서로 다른 숫자다.
+    let sellerSource = null;
+    const src = body.seller_source;
+    if (src && src.seller_product_id) {
+      const VALID = ['system_admin', 'brand', 'foodcourt', 'supplier'];
+      if (!VALID.includes(src.seller_type)) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'Invalid seller_type' });
+      }
+      const sellerProductId = parseInt(src.seller_product_id, 10);
+      const price = parseFloat(src.unit_price);
+      if (!Number.isFinite(sellerProductId) || !(price >= 0)) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'seller_product_id and unit_price are required' });
+      }
+      if (src.seller_type === 'supplier') {
+        const supplierId = parseInt(src.seller_entity_id, 10);
+        const brandIds = (await Brand.findAll({
+          where: { owner_id: req.bgOwnerId }, attributes: ['id'], transaction: t
+        })).map(b => b.id);
+        const contract = Number.isFinite(supplierId) && brandIds.length
+          ? await SupplierContract.findOne({
+              where: {
+                supplier_company_id: supplierId, entity_type: 'brand',
+                entity_id: brandIds, status: 'active'
+              }, transaction: t
+            })
+          : null;
+        if (!contract) {
+          await t.rollback();
+          return res.status(400).json({
+            success: false, code: 'NO_ACTIVE_CONTRACT', message: 'No active contract with this supplier'
+          });
+        }
+      }
+      // 환산 기본값 = 「발주 줄 1개에 든 내용물 양」. 공급업체 상품의 기준수량이 그 숫자다
+      // (14 kg/carton 이면 14). 안 주면 여기서 읽어 채운다 — 사람이 다시 계산하지 않게.
+      let conv = parseFloat(src.unit_conversion);
+      if (!(conv > 0) && src.seller_type === 'supplier') {
+        const sp = await SupplierProduct.findByPk(sellerProductId, {
+          attributes: ['base_quantity'], transaction: t
+        });
+        const spBq = sp ? parseFloat(sp.base_quantity) : NaN;
+        conv = Number.isFinite(spBq) && spBq > 0 ? spBq : 1;
+      }
+      sellerSource = await IngredientSellerProduct.create({
+        ingredient_id: null,
+        product_ingredient_id: stockItem.id,
+        seller_type: src.seller_type,
+        seller_entity_id: src.seller_entity_id ? parseInt(src.seller_entity_id, 10) : null,
+        seller_product_id: sellerProductId,
+        unit_price: price,
+        unit_conversion: conv > 0 ? conv : 1,
+        is_preferred: true,
+        is_active: true
+      }, { transaction: t });
+    }
+
+    await t.commit();
+    res.status(201).json({
+      success: true,
+      data: { stock_item: stockItem, seller_source: sellerSource },
+      message: 'Stock item linked'
+    });
+  } catch (error) {
+    try { await t.rollback(); } catch (e) { /* already settled */ }
+    console.error('POST /brand-products/:productId/stock-item error:', error);
+    res.status(500).json({ success: false, message: 'Failed to link stock item' });
   }
 });
 

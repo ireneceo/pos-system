@@ -743,7 +743,17 @@
       "completeAction": "标记完成",
       "completeDate": "预计完成日",
       "completed": "已完成"
-    }
+    },
+    "createStockItemWithProduct": "保存时一并创建该商品的库存项目",
+    "stockItemExistsTitle": "已存在同名库存项目",
+    "stockItemExistsBody": "要连接到现有库存项目，而不是再建一个吗？",
+    "useExistingStockItem": "使用现有项目",
+    "connectSupplierSource": "我们从哪里采购？",
+    "sellBasis": "我们卖",
+    "buyBasis": "我们买",
+    "buyBasisNone": "尚未连接 — 请用下方按钮",
+    "marginLabel": "毛利",
+    "createSupplierProduct": "新建供应商商品并连接"
   },
   "brandIngredientsPage": {
     "subtitle": "唯一的食材清单。开启品牌共享后即可用于配方与采购。"

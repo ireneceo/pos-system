@@ -1377,6 +1377,15 @@ const NewPurchaseOrderPage: React.FC = () => {
     finally { setLoadingMine(false); }
   }, [buyerApiBase, buyerEntity]);
 
+  /**
+   * «내 재고아이템엔 없지만 공급업체 상품엔 있다» (2026-09-15 Irene 「검색은 되고 … 리스트업 해주는거지」).
+   *
+   * 카탈로그 탭에 이미 그 목록이 있는데 **탭을 직접 바꿔야만** 보였다 — 내 목록에서 찾다 0건이면
+   * 그냥 「없음」으로 끝나서, 살 수 있는 물건을 없는 것으로 알고 나갔다.
+   * 여기서 같은 검색어로 카탈로그 건수만 세어 그 자리에 알려 준다(목록은 카탈로그 탭이 그대로 그린다).
+   */
+  const [catalogPeek, setCatalogPeek] = useState<{ term: string; count: number | null }>({ term: '', count: null });
+
   const fetchCatalog = useCallback(async () => {
     setLoadingCatalog(true);
     try {
@@ -1404,6 +1413,7 @@ const NewPurchaseOrderPage: React.FC = () => {
     if (tab === 'mine') fetchMine();
     else fetchCatalog();
   }, [tab, fetchMine, fetchCatalog]);
+
 
   // Deep-link from /restaurant/:id/ingredients — auto-enter connect mode for a specific ingredient.
   useEffect(() => {
@@ -1457,6 +1467,34 @@ const NewPurchaseOrderPage: React.FC = () => {
       return haystack.some(s => s.toLowerCase().includes(q));
     }).sort((a, b) => ts(b) - ts(a)); // 최신 등록 순 (newest first)
   }, [myList, search, categoryFilter, mineSellerFilter]);
+  // 내 목록에서 0건일 때만 카탈로그 건수를 센다 — 평소엔 부르지 않는다(검색마다 두 번 부르지 않게).
+  useEffect(() => {
+    const term = search.trim();
+    if (tab !== 'mine' || !term || loadingMine || filteredMy.length > 0) {
+      if (catalogPeek.count !== null) setCatalogPeek({ term: '', count: null });
+      return;
+    }
+    if (catalogPeek.term === term && catalogPeek.count !== null) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = getAuthToken();
+        const res = await fetch(`/api/supplier-catalog?search=${encodeURIComponent(term)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const j = await res.json();
+        if (!cancelled) {
+          setCatalogPeek({ term, count: res.ok && j.success && Array.isArray(j.data) ? j.data.length : 0 });
+        }
+      } catch {
+        if (!cancelled) setCatalogPeek({ term, count: 0 });
+      }
+    })();
+    return () => { cancelled = true; };
+    // filteredMy 는 아래에서 정의되지만 렌더 시점엔 이미 값이 있다(같은 렌더 패스).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, search, loadingMine, filteredMy.length]);
+
 
   // mine 탭 발주처(seller) 목록 — myList의 모든 sellers union (중복 제거)
   const mineSellers = useMemo(() => {
@@ -2047,6 +2085,35 @@ const NewPurchaseOrderPage: React.FC = () => {
                   <div style={{ marginTop: 8, fontSize: 12.5, color: '#4B5563', lineHeight: 1.6, maxWidth: 440 }}>
                     {t('newPo.empty.mine.desc', 'Open the Supplier Catalog tab and click a product to order it — it’s added to your inventory automatically. If that tab is empty too, connect a brand or supplier first (see the Supplier Catalog tab for how).')}
                   </div>
+                  {/* 내 목록엔 없어도 **살 수 있는 물건**이면 여기서 알려 준다 — 탭을 바꿔야만 알 수 있던 것.
+                      검색어는 그대로 들고 넘어간다(탭 버튼은 검색을 비우기 때문에 여기서 다시 넣는다). */}
+                  {catalogPeek.count != null && catalogPeek.count > 0 && catalogPeek.term === search.trim() && (
+                    <div style={{
+                      marginTop: 14, padding: '12px 14px', background: '#F5F3FF',
+                      border: '1px solid #635BFF', borderRadius: 8, maxWidth: 440,
+                      fontSize: 13, color: '#0A2540', lineHeight: 1.6
+                    }}>
+                      {t('newPo.empty.mine.inCatalog', {
+                        defaultValue: 'Not in your stock items — but {{count}} matching supplier product(s) exist.',
+                        count: catalogPeek.count
+                      })}
+                      <div style={{ marginTop: 8 }}>
+                        <ThemedButton
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            const term = catalogPeek.term;
+                            setTab('catalog');
+                            setCategoryFilter('all');
+                            setSupplierFilter('all');
+                            setSearch(term);
+                          }}
+                        >
+                          {t('newPo.empty.mine.seeCatalog', { defaultValue: 'See them in the catalog' })}
+                        </ThemedButton>
+                      </div>
+                    </div>
+                  )}
                 </Empty>
               ) : (
                 <ItemContainer $list={viewMode === 'list'}>
@@ -2117,8 +2184,13 @@ const NewPurchaseOrderPage: React.FC = () => {
                       const minOrder = minOrderBasis.length
                         ? Math.min(...minOrderBasis.map(sv => parseMinOrderQty(sv!.min_order_quantity)))
                         : 1;
+                      // 이름이 비어도 «undefined» 를 찍지 않는다 — 2026-09-15 운영에서 «/piece · undefined» 로
+                      // 나갔다(그 목록 경로만 seller_name 을 안 내려주던 것이 원인). 서버는 고쳤고,
+                      // 여기서도 한 번 더 막는다 — 화면이 자료 부족으로 깨지면 안 된다.
                       const vendorName = row.sellers.length === 1
-                        ? row.sellers[0].seller_name
+                        ? (row.sellers[0].seller_name
+                            || row.sellers[0].seller_product_name
+                            || t('newPo.unknownSeller', 'Supplier'))
                         : `${row.sellers.length} ${t('newPo.vendors', 'vendors')}`;
                       // 최소주문 표시도 소수 대응 — measure 의 "최소 0.5kg" 이 "1" 로 보이면 거짓말이다.
                       const minOrderText = minOrder > 1 ? ` · ${t('newPo.minOrder', 'Min')} ${formatQuantity(minOrder)}` : '';
@@ -2290,9 +2362,15 @@ const NewPurchaseOrderPage: React.FC = () => {
                           <AddToStockButton
                             type="button"
                             onClick={(e) => { e.stopPropagation(); openNewProductModal(p); }}
-                            title={t('newPo.addAsProductHint', 'Register as a product you sell (selling price required)') as string}
+                            title={(buyerEntity?.type === 'brands'
+                              ? t('newPo.addAsProductHint', 'Register as a product you sell (selling price required)')
+                              : t('newPo.addAsMenuHint', 'Register as a menu item you sell (selling price required)')) as string}
                           >
-                            {t('newPo.addAsProduct', 'Add as product')}
+                            {/* 파는 것을 부르는 말이 역할마다 다르다 — 매장은 «메뉴», 브랜드는 «프로덕트».
+                                한 말로 통일하면 한쪽 화면에서 남의 말이 된다(2026-09-15 Irene 「Add as menu지」). */}
+                            {buyerEntity?.type === 'brands'
+                              ? t('newPo.addAsProduct', 'Add as product')
+                              : t('newPo.addAsMenu', 'Add as menu')}
                           </AddToStockButton>
                         )}
                       </>
@@ -2564,7 +2642,9 @@ const NewPurchaseOrderPage: React.FC = () => {
       <UIModal
         isOpen={!!newProductModal}
         onClose={() => setNewProductModal(null)}
-        title={t('newPo.newProduct.title', 'Register as a product') as string}
+        title={(buyerEntity?.type === 'brands'
+          ? t('newPo.newProduct.title', 'Register as a product')
+          : t('newPo.newMenu.title', 'Register as a menu item')) as string}
         maxWidth="480px"
         footer={newProductModal ? (
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
@@ -2593,10 +2673,14 @@ const NewPurchaseOrderPage: React.FC = () => {
         {newProductModal && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <p style={{ margin: 0, color: '#475569', fontSize: 13, lineHeight: 1.5 }}>
-              {t('newPo.newProduct.desc', 'This product is sold as-is (no recipe), so its stock lives on the product itself — purchases add to it and sales take from it.')}
+              {buyerEntity?.type === 'brands'
+                ? t('newPo.newProduct.desc', 'This product is sold as-is (no recipe), so its stock lives on the product itself — purchases add to it and sales take from it.')
+                : t('newPo.newMenu.desc', 'This menu item is sold as-is (no recipe), so its stock lives on the item itself — purchases add to it and sales take from it.')}
             </p>
             <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
-              {t('newPo.newProduct.name', 'Product name')}
+              {buyerEntity?.type === 'brands'
+                ? t('newPo.newProduct.name', 'Product name')
+                : t('newPo.newMenu.name', 'Menu name')}
               <input
                 type="text"
                 value={newProductForm.name}

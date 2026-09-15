@@ -18,6 +18,9 @@ import { Modal, ModalButton, FormGroup, FormLabel, FormInput } from '../UI/Modal
 import { getAuthToken } from '../../utils/auth';
 
 interface Props {
+  /** 파는 것을 부르는 말 — 매장은 «메뉴», 브랜드는 «프로덕트»(2026-09-15 Irene 「여긴 레스토랑인데」).
+   *  기본값은 종전 동작(product) 이라 안 넘기는 호출부는 한 글자도 안 바뀐다. */
+  kind?: 'product' | 'menu';
   /** 대상 재고아이템 — id 는 endpoint 가 가리키는 테이블의 id. */
   target: { id: number; name: string; unit?: string | null } | null;
   /** 전체 경로. 예: `/api/restaurants/5/ingredients/12/register-as-product` */
@@ -28,7 +31,7 @@ interface Props {
   onRegistered: () => void;
 }
 
-export default function RegisterAsProductModal({ target, endpoint, brandId = null, onClose, onRegistered }: Props) {
+export default function RegisterAsProductModal({ target, endpoint, brandId = null, kind = 'product', onClose, onRegistered }: Props) {
   // 판매가·프로덕트명 라벨은 카탈로그 쪽 모달과 같은 말이라 `newPo.newProduct.*` 를 재사용한다
   // (같은 말에 키를 두 벌 두면 번역이 갈린다).
   const { t } = useTranslation('purchaseOrders');
@@ -71,7 +74,9 @@ export default function RegisterAsProductModal({ target, endpoint, brandId = nul
     <Modal
       isOpen
       onClose={onClose}
-      title={t('newPo.sellAsProduct.title', 'Also sell this as a product') as string}
+      title={(kind === 'menu'
+        ? t('newPo.sellAsMenu.title', 'Also sell this as a menu item')
+        : t('newPo.sellAsProduct.title', 'Also sell this as a product')) as string}
       size="small"
       footer={<>
         <ModalButton variant="secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</ModalButton>
@@ -91,7 +96,7 @@ export default function RegisterAsProductModal({ target, endpoint, brandId = nul
         })}
       </div>
       <FormGroup>
-        <FormLabel>{t('newPo.newProduct.name', 'Product name')}</FormLabel>
+        <FormLabel>{kind === 'menu' ? t('newPo.newMenu.name', 'Menu name') : t('newPo.newProduct.name', 'Product name')}</FormLabel>
         <FormInput type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={target.name} />
       </FormGroup>
       <FormGroup>

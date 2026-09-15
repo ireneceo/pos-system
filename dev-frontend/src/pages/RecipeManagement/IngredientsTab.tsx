@@ -1325,7 +1325,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                                 fontSize: 12, fontWeight: 600, cursor: 'pointer'
                               }}
                             >
-                              Also sell as product
+                              {isBrandRole
+                                ? t('newPo.sellAsProduct.button', 'Also sell as product')
+                                : t('newPo.sellAsMenu.button', 'Also sell as menu')}
                             </button>
                           )}
                         </div>
@@ -1623,7 +1625,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                         fontSize: 13, fontWeight: 600, cursor: 'pointer'
                       }}
                     >
-                      Also sell as product
+                      {isBrandRole
+                        ? t('newPo.sellAsProduct.button', 'Also sell as product')
+                        : t('newPo.sellAsMenu.button', 'Also sell as menu')}
                     </button>
                   )}
                 </div>
@@ -1828,6 +1832,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       />
       {/* 경로③ — 이 재고를 그대로 파는 프로덕트로도 등록 (판매가 필수 · 서버가 재료 ×1 레시피 생성) */}
       <RegisterAsProductModal
+        kind={isBrandRole ? 'product' : 'menu'}
         target={sellAsProductTarget ? { id: sellAsProductTarget.id, name: sellAsProductTarget.name, unit: sellAsProductTarget.unit } : null}
         endpoint={sellAsProductTarget ? `/api/restaurants/${effectiveRestaurantId}/ingredients/${sellAsProductTarget.id}/register-as-product` : ''}
         onClose={() => setSellAsProductTarget(null)}

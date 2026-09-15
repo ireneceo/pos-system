@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "./.verify-types/tsconfig.verify.tsbuildinfo",
+    "baseUrl": ".",
+    "paths": {
+      "i18next": [".verify-types/i18next.d.ts"],
+      "react-i18next": [".verify-types/react-i18next.d.ts"]
+    }
+  }
+}

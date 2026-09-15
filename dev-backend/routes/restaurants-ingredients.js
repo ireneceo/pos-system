@@ -428,6 +428,8 @@ router.get('/:restaurantId/stock-products', authenticateToken, checkRestaurantAc
         is_set_menu: false,
         recipe_id: null,
         product_recipe_id: null,
+        // 재료(재고아이템)를 그대로 가리키는 메뉴는 그 재료 줄이 곧 이 물건이다 — BG 쪽과 같은 규칙.
+        ingredient_id: null,
       },
       // ⚠ products 는 createdAt(카멜)이다 — 다른 테이블과 달리 underscored 가 아니다
       attributes: ['id', 'name', 'stock_unit', 'current_stock', 'min_stock', 'category', 'createdAt'],

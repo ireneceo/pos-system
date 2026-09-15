@@ -336,7 +336,9 @@
     "empty": {
       "mine": {
         "title": "Tiada item stok terpaut",
-        "desc": "Buka tab Katalog Pembekal dan klik produk untuk memesannya — ia ditambah ke inventori secara automatik. Jika tab itu juga kosong, sambung jenama atau pembekal dahulu (lihat tab Katalog Pembekal untuk caranya)."
+        "desc": "Buka tab Katalog Pembekal dan klik produk untuk memesannya — ia ditambah ke inventori secara automatik. Jika tab itu juga kosong, sambung jenama atau pembekal dahulu (lihat tab Katalog Pembekal untuk caranya).",
+        "inCatalog": "Tiada dalam item stok anda — tetapi {{count}} produk pembekal sepadan wujud.",
+        "seeCatalog": "Lihat dalam katalog"
       },
       "catalog": {
         "title": "Belum ada produk untuk dipesan",
@@ -395,7 +397,20 @@
       "desc": "Jual {{name}} sebagaimana adanya. Stok kekal pada item ini — setiap jualan menolak 1 {{unit}} daripadanya, jadi kuantiti tidak pernah wujud di dua tempat.",
       "priceHelp": "Harga jualan anda — ia tidak pernah diisi daripada kos anda.",
       "failed": "Gagal mendaftar sebagai produk.",
-      "error": "Ralat berlaku. Sila cuba lagi."
+      "error": "Ralat berlaku. Sila cuba lagi.",
+      "button": "Jual juga sebagai produk"
+    },
+    "addAsMenu": "Tambah sebagai menu",
+    "addAsMenuHint": "Daftar sebagai item menu yang anda jual (harga jualan diperlukan)",
+    "newMenu": {
+      "title": "Daftar sebagai item menu",
+      "name": "Nama menu",
+      "desc": "Item menu ini dijual sebagaimana adanya (tiada resipi), jadi stoknya disimpan pada item itu sendiri — pembelian menambah, jualan mengurangkan."
+    },
+    "unknownSeller": "Pembekal",
+    "sellAsMenu": {
+      "button": "Jual juga sebagai menu",
+      "title": "Jual juga bahan ini sebagai item menu"
     }
   },
   "staging": {

@@ -11,6 +11,7 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import RegisterExternalSupplierModal from '../../components/Common/RegisterExternalSupplierModal';
+import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
 import RegisterAsProductModal from '../../components/Common/RegisterAsProductModal';
 import { fetchAPI } from '../../utils/api';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
@@ -33,6 +34,8 @@ interface Category {
 
 interface Ingredient {
   id: number;
+  /** 이 재고아이템을 이미 프로덕트로 팔고 있으면 그 프로덕트 (서버가 연결 컬럼을 읽어 내려준다). */
+  sold_as_product?: { id: number; name: string } | null;
   code: string;
   name: string;
   category_id: number | null;
@@ -367,7 +370,7 @@ interface IngredientUse {
 }
 
 const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, onCountChange, categoryRefreshKey }) => {
-  const { t } = useTranslation(['brand', 'common']);
+  const { t } = useTranslation(['brand', 'common', 'ingredients']);
   const { defaultCurrency } = useBrandCurrency();
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const navigate = useNavigate();
@@ -415,6 +418,9 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
   // 2026-09-02(P3-③) 두 입구를 RA 재료 화면과 **같은 공유 부품**으로 연다.
   //   그전까지 BG 재고 화면에는 외부공급업체 등록 입구가 아예 없었다(RA 에만 있었다).
   const [extTarget, setExtTarget] = useState<Ingredient | null>(null);
+  // 이미 카탈로그에 있는 공급업체 상품을 **고르기만** 하는 입구 — 지금까지 이 화면엔 «만들어 연결» 밖에
+  // 없어서, 있는 상품을 고르려면 발주 화면까지 가야 했다(2026-09-15 Irene).
+  const [pickSellerTarget, setPickSellerTarget] = useState<Ingredient | null>(null);
   const [sellAsProductTarget, setSellAsProductTarget] = useState<Ingredient | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
 
@@ -736,7 +742,10 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
     return 'normal';
   };
 
-  const filteredIngredients = sortItems(ingredients.filter(item => {
+  // sortItems 의 제약(Item.category 는 문자열·숫자)과 우리 Ingredient(category 가 객체)가 어긋나
+  // 결과 타입이 Item[] 으로 좁혀지고, 그 뒤 필드 접근이 전부 타입 오류가 된다(기존 부채).
+  // 정렬 동작은 그대로 두고 **결과 타입만** 제자리로 돌린다 — 공용 부품을 건드리면 전 화면이 영향받는다.
+  const filteredIngredients: Ingredient[] = sortItems(ingredients.filter(item => {
     // ⚠ `code`·`name` 이 비어 있을 수 있다 — 그때 `.toLowerCase()` 가 화면을 통째로 죽인다.
     //   2026-09-04 실제로 그랬다: 이관이 만든 재고아이템 35건에 code 가 없어 **검색창에 입력하는 순간**
     //   "Something went wrong" 이 떴다. 데이터는 채웠지만, 값이 비었다고 화면이 죽어서는 안 된다.
@@ -746,7 +755,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
     const matchesCategory = categoryFilter === 'all' ||
                            (item.category_id?.toString() === categoryFilter);
     return matchesSearch && matchesCategory;
-  }), sortKey);
+  }) as any, sortKey) as unknown as Ingredient[];
 
   const filterCategories = [
     { id: 'all', name: 'All Categories' },
@@ -982,19 +991,36 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                 </ActionRow>
                 <ActionRow>
                   {/* 솔루션 미가입 외부공급업체 상품으로 등록 — RA 재료 화면과 같은 부품 */}
+                  {/* 있는 상품 «고르기» 와 없는 상품 «만들어 연결» 은 다른 일이라 버튼도 둘이다.
+                      예전엔 «External supplier» 하나뿐이라, 이름은 업체 등록처럼 읽히는데 실제로는
+                      상품을 만들어 연결하는 것이었다(2026-09-15 Irene 「공급업체 상품연결이 떠야 하는 거 아니야?」). */}
+                  <ActionButton
+                    variant="secondary"
+                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); setPickSellerTarget(ingredient); }}
+                  >
+                    {t('ingredients:stock.pickSellerProduct', { defaultValue: 'Link supplier product' })}
+                  </ActionButton>
                   <ActionButton
                     variant="secondary"
                     onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExtTarget(ingredient); }}
                   >
-                    External supplier
+                    {t('ingredients:stock.createSellerProduct', { defaultValue: 'Create supplier product' })}
                   </ActionButton>
-                  {/* 그대로 파는 물건이면 브랜드 프로덕트로도 등록 — 재고는 이 아이템 한 곳에만 남는다 */}
-                  <ActionButton
-                    variant="secondary"
-                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSellAsProductTarget(ingredient); }}
-                  >
-                    Also sell as product
-                  </ActionButton>
+                  {/* 그대로 파는 물건이면 브랜드 프로덕트로도 등록 — 재고는 이 아이템 한 곳에만 남는다.
+                      이미 붙은 프로덕트가 있으면 버튼 대신 그 사실을 보여준다 — 예전엔 계속 떠서
+                      누르면 같은 이름 프로덕트가 하나 더 생겼다(2026-09-15 실측). */}
+                  {ingredient.sold_as_product ? (
+                    <span style={{ fontSize: 12, color: '#4B5563', alignSelf: 'center' }}>
+                      {t('ingredients:stock.alreadyProduct', { defaultValue: 'Sold as' })}: {ingredient.sold_as_product.name}
+                    </span>
+                  ) : (
+                    <ActionButton
+                      variant="secondary"
+                      onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSellAsProductTarget(ingredient); }}
+                    >
+                      {t('ingredients:stock.alsoSellAsProduct', { defaultValue: 'Also sell as product' })}
+                    </ActionButton>
+                  )}
                 </ActionRow>
               </IngredientActions>
             </IngredientCard>
@@ -1003,6 +1029,15 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
       )}
 
       {/* 경로② — 이 재고를 외부공급업체 상품으로 등록 (RA 재료 화면과 같은 공유 부품) */}
+      <ConnectSellerModal
+        open={!!pickSellerTarget}
+        ingredient={pickSellerTarget ? { id: pickSellerTarget.id, name: pickSellerTarget.name, unit: pickSellerTarget.unit } : null}
+        targetKind="product_ingredient"
+        buyerApiBase={brandId ? `/api/brands/${brandId}` : '/api/brands/0'}
+        buyerScopeQS={brandId ? `?entity_type=brand&entity_id=${brandId}` : ''}
+        onClose={() => setPickSellerTarget(null)}
+        onConnected={() => { setPickSellerTarget(null); fetchData(); }}
+      />
       <RegisterExternalSupplierModal
         target={extTarget ? { id: extTarget.id, name: extTarget.name, unit: extTarget.unit } : null}
         targetKind="product_ingredient"

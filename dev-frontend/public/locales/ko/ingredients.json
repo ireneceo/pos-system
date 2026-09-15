@@ -1,5 +1,11 @@
 {
   "ingredients": {
     "costNotSet": "원가 미설정"
+  },
+  "stock": {
+    "pickSellerProduct": "공급업체 상품 연결",
+    "createSellerProduct": "공급업체 상품 만들어 연결",
+    "alsoSellAsProduct": "프로덕트로도 등록",
+    "alreadyProduct": "판매 중"
   }
 }

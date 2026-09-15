@@ -1,5 +1,11 @@
 {
   "ingredients": {
     "costNotSet": "Cost not set"
+  },
+  "stock": {
+    "pickSellerProduct": "Link supplier product",
+    "createSellerProduct": "Create supplier product",
+    "alsoSellAsProduct": "Also sell as product",
+    "alreadyProduct": "Sold as"
   }
 }

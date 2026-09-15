@@ -59,15 +59,17 @@ router.get('/', async (req, res) => {
       const supIds = [...new Set(maps.filter(m => m.seller_type === 'supplier' && m.seller_entity_id).map(m => m.seller_entity_id))];
       const brIds = [...new Set(maps.filter(m => m.seller_type === 'brand' && m.seller_entity_id).map(m => m.seller_entity_id))];
       const fcIds = [...new Set(maps.filter(m => m.seller_type === 'foodcourt' && m.seller_entity_id).map(m => m.seller_entity_id))];
-      const supMap = supIds.length ? Object.fromEntries((await SupplierCompany.findAll({ where: { id: supIds }, attributes: ['id', 'name'] })).map(s => [s.id, s.name])) : {};
-      const brMap = brIds.length ? Object.fromEntries((await Brand.findAll({ where: { id: brIds }, attributes: ['id', 'name'] })).map(b => [b.id, b.name])) : {};
-      const fcMap = fcIds.length ? Object.fromEntries((await Foodcourt.findAll({ where: { id: fcIds }, attributes: ['id', 'name'] })).map(f => [f.id, f.name])) : {};
+      // 거래처 표시명은 **단일 소스**(utils/sellerNames) 만 쓴다 — 여기서 Brand.name 을 직접 읽으면
+      // 회사명(GIT Consulting) 대신 브랜드명(with MIN)이 떠서 결제·배송처와 말이 갈린다.
+      // 2026-08-28 에 같은 사고로 재고 목록 3곳을 고쳤는데 이 라우트가 남아 있었다(2026-09-15 Irene 재지적).
+      const { resolveSellers, getSellerName } = require('../utils/sellerNames');
+      const sellerMap = await resolveSellers(maps.map(m => ({ seller_type: m.seller_type, seller_entity_id: m.seller_entity_id })));
       const byIng = {};
       for (const m of maps) {
-        const name = m.seller_type === 'supplier' ? (supMap[m.seller_entity_id] || 'Supplier')
-          : m.seller_type === 'brand' ? (brMap[m.seller_entity_id] || 'Brand')
-          : m.seller_type === 'foodcourt' ? (fcMap[m.seller_entity_id] || 'Foodcourt')
-          : 'System';
+        const name = getSellerName(sellerMap, m.seller_type, m.seller_entity_id)
+          || (m.seller_type === 'supplier' ? 'Supplier'
+            : m.seller_type === 'brand' ? 'Brand'
+            : m.seller_type === 'foodcourt' ? 'Foodcourt' : 'System');
         const sp = m.seller_type === 'supplier' ? spMap[m.seller_product_id]
           : m.seller_type === 'brand' ? bpMap[m.seller_product_id] : null;
         (byIng[m.product_ingredient_id] = byIng[m.product_ingredient_id] || []).push({
@@ -158,9 +160,23 @@ router.get('/', async (req, res) => {
       }
     }
 
+    // 이 재고아이템을 **이미 프로덕트로 팔고 있는가** (2026-09-15 Irene 「Also see as product가 재고아이템에 또 뜨잖아」).
+    //   화면이 이걸 몰라서 붙어 있는 프로덕트가 있어도 «프로덕트로 등록» 을 계속 띄웠고, 누르면 같은 이름이
+    //   두 개 생겼다. 별도 플래그를 두지 않고 **연결 컬럼 자체**를 읽는다 — 플래그는 언젠가 실제와 어긋난다.
+    const soldAsProduct = {};
+    if (data.length) {
+      const { BrandProduct: BP } = require('../models');
+      const bps = await BP.findAll({
+        where: { owner_user_id: req.bgOwnerId, product_ingredient_id: data.map(i => (i.toJSON ? i.toJSON() : i).id), is_active: true },
+        attributes: ['id', 'name', 'product_ingredient_id']
+      });
+      bps.forEach((b) => { soldAsProduct[b.product_ingredient_id] = { id: b.id, name: b.name }; });
+    }
+
     data = data.map((i) => {
       const row = i.toJSON ? i.toJSON() : i;
       row.used_in_recipes = usedIn[row.id] || [];
+      row.sold_as_product = soldAsProduct[row.id] || null;
       const ms = mirrorsBySource[row.id] || [];
       // 연결이 없으면 **null** 이다(0 이 아니다) — "연결 안 됨"과 "재고 0"은 다른 사실이다.
       if (!ms.length) return { ...row, shared_brand_ids: [], linked_stock: null, linked_store_total: null, linked_stores: [], linked_unit: null };
@@ -237,6 +253,10 @@ router.get('/stock-products', async (req, res) => {
         is_active: true,
         is_set_menu: false,
         product_recipe_id: null,
+        // 재고아이템을 가리키는 프로덕트는 **그 재고아이템 줄이 곧 이 물건**이다 — 여기서 또 내보내면
+        // 발주 목록에 같은 물건이 두 줄로 뜬다(2026-09-15 Irene 「왜 여기에 프로덕트랑 재고아이템 다 따로 나와?」).
+        // 재고는 한 곳(재고아이템)에 있는데 줄이 둘이면 같은 물건을 두 번 발주하게 된다.
+        product_ingredient_id: null,
       },
       attributes: ['id', 'name', 'unit', 'stock_unit', 'current_stock', 'min_stock', 'category_id', 'created_at'],
       order: [['name', 'ASC']],
@@ -245,6 +265,19 @@ router.get('/stock-products', async (req, res) => {
     const links = ids.length
       ? await IngredientSellerProduct.findAll({ where: { brand_product_id: ids, is_active: true } })
       : [];
+    // 파는 쪽 이름 — 이 경로만 빠져 있어 화면이 «/piece · undefined» 로 찍었다
+    // (2026-09-15 Irene 「공급업체 선택하게 안했어? 어디서 선택된거야?」). 다른 목록과 같은 키·같은 대비책.
+    const { SupplierProduct } = require('../models');
+    const { resolveSellers: resolveSellers2, getSellerName: getSellerName2 } = require('../utils/sellerNames');
+    const sellerMap2 = await resolveSellers2(links.map(l => ({ seller_type: l.seller_type, seller_entity_id: l.seller_entity_id })));
+    const pick = (arr, type, key) => [...new Set(arr.filter(l => l.seller_type === type && l[key]).map(l => l[key]))];
+    const spIds2 = pick(links, 'supplier', 'seller_product_id');
+    const spInfo2 = spIds2.length ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds2 }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'package_unit', 'order_mode'], paranoid: false })).map(x => [x.id, x])) : {};
+    // 같은 규칙 — 회사명 단독(utils/sellerNames). 자체 조회 금지.
+    const sellerNameOf = (l) => getSellerName2(sellerMap2, l.seller_type, l.seller_entity_id)
+      || (l.seller_type === 'supplier' ? 'Supplier'
+        : l.seller_type === 'brand' ? 'Brand'
+        : l.seller_type === 'foodcourt' ? 'Foodcourt' : 'PurpleHere');
     const bySource = links.reduce((m2, l) => {
       (m2[l.brand_product_id] = m2[l.brand_product_id] || []).push(l);
       return m2;
@@ -263,6 +296,13 @@ router.get('/stock-products', async (req, res) => {
         seller_product_id: s.seller_product_id,
         seller_type: s.seller_type,
         seller_entity_id: s.seller_entity_id,
+        seller_name: sellerNameOf(s),
+        seller_product_name: spInfo2[s.seller_product_id]?.name || null,
+        seller_product_sku: spInfo2[s.seller_product_id]?.sku || null,
+        seller_unit: spInfo2[s.seller_product_id]?.unit ?? null,
+        base_quantity: spInfo2[s.seller_product_id]?.base_quantity != null ? parseFloat(spInfo2[s.seller_product_id].base_quantity) : 1,
+        seller_package_unit: spInfo2[s.seller_product_id]?.package_unit ?? null,
+        order_mode: spInfo2[s.seller_product_id]?.order_mode || 'pack',
         unit_price: Number(s.unit_price) || 0,
         unit_conversion: Number(s.unit_conversion) || 1,
         min_order_quantity: Number(s.min_order_quantity) || 1,
@@ -902,7 +942,24 @@ router.post('/:id/register-as-product', requireBrandScope(), async (req, res) =>
       return res.status(404).json({ success: false, message: 'Stock item not found' });
     }
 
-    // 중복 — 이 재고아이템 하나만 쓰는 레시피에 걸린 내 브랜드 프로덕트가 이미 있으면 그것이 답이다.
+    // 중복 ① 직접 연결 — 이 재고아이템을 그대로 가리키는 프로덕트가 이미 있으면 그것이 답이다.
+    //   2026-09-15: 아래 레시피 경로만 보고 있어서, 프로덕트 창의 «재고아이템도 같이 만들기» 로 붙은
+    //   직접 연결(product_ingredient_id)을 못 봤다. 그 상태에서 이 버튼을 또 누르면 **같은 이름 프로덕트가
+    //   두 개** 생겼다(실측: 201 통과, 이름 중복 2건). 「같은 물건 두 줄」 사고의 재발 경로라 먼저 막는다.
+    const dupDirect = await BrandProduct.findOne({
+      where: { owner_user_id: req.bgOwnerId, product_ingredient_id: ing.id, is_active: true },
+      attributes: ['id', 'name'], transaction: t
+    });
+    if (dupDirect) {
+      await t.rollback();
+      return res.status(409).json({
+        success: false, code: 'ALREADY_A_PRODUCT',
+        message: `Already sold as a product: ${dupDirect.name}`,
+        data: { product_id: dupDirect.id, product_name: dupDirect.name }
+      });
+    }
+
+    // 중복 ② 레시피 경로 — 이 재고아이템 하나만 쓰는 레시피에 걸린 내 브랜드 프로덕트.
     const linksOfIngredient = await ProductRecipeIngredient.findAll({
       where: { ingredient_id: ing.id }, attributes: ['recipe_id'], transaction: t
     });

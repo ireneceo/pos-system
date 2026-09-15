@@ -12,6 +12,8 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
+import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
+import RegisterExternalSupplierModal from '../../components/Common/RegisterExternalSupplierModal';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -456,6 +458,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     set_items: [] as SetMenuItem[],
     set_display_order: '0',
     product_recipe_id: null as number | null,
+    // 재고아이템 다이렉트 — 초기값에 없어 formData 타입에서 통째로 빠져 있었다(타입 검사 미실행이라
+    // 드러나지 않았다). 여기 없으면 아래 setFormData·읽기가 전부 타입 오류가 된다. 2026-09-15
+    product_ingredient_id: null as number | null,
     distribution_mode: 'specific_brands' as 'all' | 'specific_brands' | 'specific_restaurants' | 'external_buyers',
     brand_ids: [] as number[],
     restaurant_ids: [] as number[],
@@ -576,6 +581,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   }, [optionRefreshKey, fetchOptionGroups]);
 
   const handleOpenModal = (product?: Product) => {
+    // 창을 열 때마다 초기화 — 지난번 체크가 남아 재고아이템이 조용히 또 만들어지면 안 된다.
+    setCreateStockItem(false);
+    setStockDup({ open: false, productId: null, candidates: [] });
     if (product) {
       setEditingProduct(product);
       setFormData({
@@ -657,6 +665,68 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     open: boolean; names: string[]; retry: null | (() => void);
   }>({ open: false, names: [], retry: null });
 
+  // 프로덕트 창에서 **재고아이템까지 한 번에** (2026-09-15 Irene 「각각 등록하고 연결하고 뭐하는 짓이냐고」).
+  // ⛔ 자동 생성 금지 — 이 체크를 켰을 때만 만든다. 프로덕트 저장이 재고아이템을 자동 복제하던 것이
+  //    2026-06-08·07-05 의 «같은 물건 두 줄» 사고였다(레시피는 옛 줄, 발주·재고는 새 줄).
+  const [createStockItem, setCreateStockItem] = useState(false);
+  const [stockDup, setStockDup] = useState<{
+    open: boolean; productId: number | null; candidates: { id: number; name: string; unit?: string }[];
+  }>({ open: false, productId: null, candidates: [] });
+
+  // 「어디서 사 오나」 — 같은 창에서 이어서 연결한다(재고아이템 화면으로 나갔다 오지 않게).
+  // 연결 자체는 기존 창(ConnectSellerModal)과 기존 경로(/api/product-ingredients/from-catalog)를
+  // 그대로 쓴다 — 여기서 두 번째 연결 경로를 만들지 않는다.
+  const [connectSeller, setConnectSeller] = useState<{ id: number; name: string; unit?: string | null } | null>(null);
+  // 카탈로그에 아직 없는 공급업체 상품은 여기서 만들어 붙인다 — 재고아이템 화면과 같은 부품·같은 경로.
+  const [createSeller, setCreateSeller] = useState<{ id: number; name: string; unit?: string | null } | null>(null);
+
+  /**
+   * 한 창에서 **파는 기준 · 사는 기준**을 나란히 (2026-09-15 Irene 「주문할 때 쓰는 기준 단위 … 이게 제일 중요해」).
+   *
+   * 두 숫자는 원래 다른 화면에 살았다 — 파는 기준은 이 프로덕트, 사는 기준은 재고아이템에 붙은
+   * 공급처(ingredient_seller_products). 같이 못 봐서 마진이 맞는지 화면에서 알 수 없었다.
+   * 읽기만 한다 — 여기서 값을 만들거나 고치지 않는다.
+   */
+  const [buySpec, setBuySpec] = useState<{
+    seller_product_name?: string | null; unit_price?: number; unit_conversion?: number;
+    seller_unit?: string | null; base_quantity?: number | null; seller_package_unit?: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    const siId = formData.product_ingredient_id;
+    if (!showModal || !siId) { setBuySpec(null); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = getToken();
+        const res = await fetch(`/api/product-ingredients/${siId}/seller-sources`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const j = await res.json();
+        if (!cancelled) setBuySpec(j?.success && Array.isArray(j.data) && j.data.length ? j.data[0] : null);
+      } catch { if (!cancelled) setBuySpec(null); }
+    })();
+    return () => { cancelled = true; };
+  }, [showModal, formData.product_ingredient_id]);
+
+  /** 저장된 프로덕트에 재고아이템을 붙인다. 같은 이름이 있으면 **먼저 보여주고** 사람이 고른다. */
+  const linkStockItem = useCallback(async (productId: number, body: any): Promise<boolean> => {
+    const token = getToken();
+    const res = await fetch(`/api/brand-products/${productId}/stock-item`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => null);
+    if (data?.success) return true;
+    if (res.status === 409 && data?.code === 'DUPLICATE_STOCK_ITEM') {
+      setStockDup({ open: true, productId, candidates: data?.data?.candidates || [] });
+      return false;
+    }
+    setFormError(getErrorMessage(data, 'Product saved, but the stock item could not be created'));
+    return false;
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -728,6 +798,16 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
 
       if (data.success) {
         setSimilarConfirm({ open: false, names: [], retry: null });
+        // 재고아이템까지 한 번에 — 체크를 켠 경우만. 같은 이름이 있으면 창을 닫지 않고 먼저 물어본다.
+        const savedId = data.data?.id || editingProduct?.id;
+        if (createStockItem && savedId && !formData.product_ingredient_id && !formData.product_recipe_id) {
+          const ok = await linkStockItem(savedId, {
+            name: formData.name.trim(),
+            unit: formData.unit || null,
+            base_quantity: parseFloat(formData.base_quantity) || 1
+          });
+          if (!ok) { fetchProducts(); return; }
+        }
         handleCloseModal();
         fetchProducts();
       } else if (response.status === 409 && data?.error?.code === 'SIMILAR_EXISTS') {
@@ -1573,6 +1653,97 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                     </div>
                   );
                 })()}
+                {/* 고를 재고아이템이 없을 때 여기서 바로 만든다 — 재고아이템 화면으로 나갔다 오지 않게.
+                    이름·단위·기준수량은 위에 적은 값을 그대로 쓴다(따로 또 적지 않는다). */}
+                {/* 파는 기준 ↔ 사는 기준 — 같은 물건의 두 방향을 한 줄씩. 마진은 여기서 계산해 보여 준다
+                    (숫자를 저장하지 않는다 — 두 규격에서 그때그때 읽는다). */}
+                {formData.product_ingredient_id && (() => {
+                  const sellPrice = parseFloat(formData.unit_price) || 0;
+                  const sellBq = parseFloat(formData.base_quantity) || 1;
+                  const sellUnit = formData.unit || '';
+                  const sellPkg = formData.package_unit.trim() || (sellBq !== 1 ? 'pack' : sellUnit);
+                  // 사는 기준 — 발주 줄 1개에 든 양(환산)으로 나눠야 우리 재고 단위 원가가 된다.
+                  const buyPrice = buySpec ? Number(buySpec.unit_price) : NaN;
+                  const conv = buySpec && Number(buySpec.unit_conversion) > 0 ? Number(buySpec.unit_conversion) : 1;
+                  const buyPerUnit = Number.isFinite(buyPrice) ? buyPrice / conv : NaN;
+                  const sellPerUnit = sellBq > 0 ? sellPrice / sellBq : NaN;
+                  const margin = Number.isFinite(buyPerUnit) && buyPerUnit > 0 && Number.isFinite(sellPerUnit)
+                    ? ((sellPerUnit - buyPerUnit) / buyPerUnit) * 100 : null;
+                  return (
+                    <div style={{
+                      marginTop: '10px', padding: '10px 12px', background: '#F9FAFB',
+                      border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '12.5px', color: '#0A2540', lineHeight: 1.7
+                    }}>
+                      <div>
+                        <strong>{t('products.sellBasis', { defaultValue: 'We sell' })}</strong>
+                        {' — '}{sellBq} {sellUnit}{sellPkg ? `/${sellPkg}` : ''} · RM {sellPrice.toFixed(2)}
+                      </div>
+                      <div style={{ color: buySpec ? '#0A2540' : '#4B5563' }}>
+                        <strong>{t('products.buyBasis', { defaultValue: 'We buy' })}</strong>
+                        {' — '}
+                        {buySpec
+                          ? `${buySpec.base_quantity || 1} ${buySpec.seller_unit || sellUnit}${buySpec.seller_package_unit ? `/${buySpec.seller_package_unit}` : ''} · RM ${Number(buySpec.unit_price).toFixed(2)}${buySpec.seller_product_name ? ` (${buySpec.seller_product_name})` : ''}`
+                          : t('products.buyBasisNone', { defaultValue: 'not linked yet — use the button below' })}
+                      </div>
+                      {margin !== null && (
+                        <div style={{ marginTop: '4px', color: margin >= 0 ? '#0A2540' : '#B91C1C' }}>
+                          <strong>{t('products.marginLabel', { defaultValue: 'Margin' })}</strong>
+                          {` — RM ${buyPerUnit.toFixed(2)} → RM ${sellPerUnit.toFixed(2)} / ${sellUnit} (${margin >= 0 ? '+' : ''}${margin.toFixed(1)}%)`}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+                {formData.product_ingredient_id && (() => {
+                  const si = productIngredientsList.find(i => i.id === formData.product_ingredient_id);
+                  return (
+                    <div style={{ marginTop: '8px' }}>
+                      <ThemedButton
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setConnectSeller({
+                          id: formData.product_ingredient_id as number,
+                          name: si?.name || formData.name,
+                          unit: si?.unit || formData.unit
+                        })}
+                      >
+                        {t('products.connectSupplierSource', { defaultValue: 'Where do we buy this?' })}
+                      </ThemedButton>
+                      {/* 카탈로그에 아직 없는 상품 — 여기서 만들어 붙인다(고르기와 만들기는 다른 일이라 버튼도 둘). */}
+                      <ThemedButton
+                        type="button"
+                        variant="secondary"
+                        style={{ marginLeft: 8 }}
+                        onClick={() => setCreateSeller({
+                          id: formData.product_ingredient_id as number,
+                          name: si?.name || formData.name,
+                          unit: si?.unit || formData.unit
+                        })}
+                      >
+                        {t('products.createSupplierProduct', { defaultValue: 'Create supplier product' })}
+                      </ThemedButton>
+                    </div>
+                  );
+                })()}
+                {!formData.product_ingredient_id && (
+                  <div style={{ marginTop: '8px' }}>
+                    <CheckboxLabel>
+                      <input
+                        type="checkbox"
+                        checked={createStockItem}
+                        onChange={(e) => setCreateStockItem(e.target.checked)}
+                      />
+                      {t('products.createStockItemWithProduct', {
+                        defaultValue: 'Also create a stock item for this product when saving'
+                      })}
+                    </CheckboxLabel>
+                    {createStockItem && (
+                      <div style={{ marginTop: '4px', fontSize: '12.5px', color: '#4B5563' }}>
+                        {formData.name.trim() || '—'} · {formData.base_quantity || 1} {formData.unit || '—'}
+                      </div>
+                    )}
+                  </div>
+                )}
               </UIFormGroup>
             )}
 
@@ -1642,6 +1813,45 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         onCancel={() => setSimilarConfirm({ open: false, names: [], retry: null })}
         confirmText="Register anyway"
         cancelText="Cancel"
+        type="warning"
+      />
+      <RegisterExternalSupplierModal
+        target={createSeller}
+        targetKind="product_ingredient"
+        buyerApiBase={brands[0] ? `/api/brands/${brands[0].id}` : ''}
+        buyerScopeQS={brands[0] ? `?entity_type=brand&entity_id=${brands[0].id}` : ''}
+        onClose={() => setCreateSeller(null)}
+        onRegistered={() => { setCreateSeller(null); fetchProducts(); }}
+      />
+      <ConnectSellerModal
+        open={!!connectSeller}
+        ingredient={connectSeller}
+        targetKind="product_ingredient"
+        buyerApiBase={brands[0] ? `/api/brands/${brands[0].id}` : '/api/brands/0'}
+        onClose={() => setConnectSeller(null)}
+        onConnected={() => { setConnectSeller(null); fetchProducts(); }}
+      />
+      <ConfirmModal
+        isOpen={stockDup.open}
+        title={t('products.stockItemExistsTitle', { defaultValue: 'A stock item with this name already exists' })}
+        message={
+          `${stockDup.candidates.slice(0, 5).map((c) => `• ${c.name}${c.unit ? ` (${c.unit})` : ''}`).join('\n')}`
+          + '\n\n'
+          + t('products.stockItemExistsBody', {
+              defaultValue: 'Link this product to the existing stock item instead of creating a second one?'
+            })
+        }
+        onConfirm={async () => {
+          const { productId, candidates } = stockDup;
+          setStockDup({ open: false, productId: null, candidates: [] });
+          if (productId && candidates[0]) {
+            const ok = await linkStockItem(productId, { existing_stock_item_id: candidates[0].id });
+            if (ok) { handleCloseModal(); fetchProducts(); }
+          }
+        }}
+        onCancel={() => setStockDup({ open: false, productId: null, candidates: [] })}
+        confirmText={t('products.useExistingStockItem', { defaultValue: 'Use the existing one' })}
+        cancelText={t('common:cancel', 'Cancel')}
         type="warning"
       />
       <ConfirmModal
