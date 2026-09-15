@@ -1,6 +1,13 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-14 #3 — **운영 배포 2회(SW 5.23 · 5.24). 0원 청구서 «Confirm» 열림 · 결제일 입력 · 은행송금 우선 · 한글 섞임 제거 · Staging 수령목록 즉시 갱신.**
+> **최종 업데이트:** 2026-09-15 — **브랜드 여러 개 가진 계정의 «한 축» 결함 2건 + Profile 이메일 인증 안내 (개발서버 · 미배포).**
+> ① Sales Orders 빨간 점이 `users.brand_id` 한 축만 봐서, 브랜드를 두 개 이상 **소유**한 분에게 다른 브랜드로 들어온 주문이 **목록엔 보이는데 점은 안 뜨던** 것. 목록 화면이 이미 쓰던 단일 소스(`middleware/sellerScope.js resolveBrandScopeIds`)를 배지도 쓰게 했다. Brand Manager 는 종전대로 소속 브랜드 하나(2026-09-06 판정 유지).
+> ② 발주 알림 메일 **머리글 브랜드**도 같은 한 축이라 상관없는 브랜드 이름이 찍혔다(운영 PO-R8-20260914-001 은 양쪽 다 브랜드 2 인데 머리글은 브랜드 1). 메일을 만드는 쪽이 «이 거래의 브랜드» 를 알려주면 쓰고 **안 알려주면 예전 그대로** 인 추가형 — 값을 채운 곳은 발주 알림 2종뿐.
+> ③ **Profile 에 이메일 인증 안내·재발송**을 넣었다. 이메일을 실제로 바꾸는 자리인데 안내가 알림 설정 화면에만 있어, 주소를 바꾸면 인증이 풀리는 걸 본인이 모른 채 알림이 끊겼다. 두 화면이 **같은 컴포넌트**를 쓴다.
+> ④ 검증: verify-all --full 18/19(deploy-ready 만 — 릴리즈 기록으로 해소) · 배지 실호출 3/3 + 고장주입 반증 · 메일 머리글 3/3 + 끝단 2/2 + 고장주입 반증 · 실브라우저 4/4 · mount sweep 크래시 0. ⚠ **Fable 판정 미수령**(한도 429). 민감 판정은 «일반 변경»(기계 기준 비대상).
+> ⑤ 별건 기록(손대지 않음): K-DINE IPC Branch 는 소속 계정 4명 전원 이메일이 없고 브랜드가 «감독»으로만 연결돼 구매자 확인 메일이 **아무에게도 안 간다**(운영 전체 «감독» 19 대 «소유» 3, 알림 코드는 «소유»만 봄) · purplehere.com 에 SPF·DMARC 레코드 없음.
+>
+> **이전 업데이트:** 2026-09-14 #3 — **운영 배포 2회(SW 5.23 · 5.24). 0원 청구서 «Confirm» 열림 · 결제일 입력 · 은행송금 우선 · 한글 섞임 제거 · Staging 수령목록 즉시 갱신.**
 > ① Irene 신고 「브랜드제너럴 가격이 프리가 됐는데 컨펌 버튼이 안 눌려」 → 구독 청구서는 `restaurant_id` 가 없고 발행자가 system_admin 이라 권한 검사가 **낼 사람(payer)** 을 보지 않아 403 이었다. **0원 + 낼 사람 본인 + status=paid** 세 조건에서만 열고, `payer_id` 의미가 종류마다 다른 점을 나눠 교차 접근을 막았다. 운영 실호출로 `INV-BRD-20260901-23` 200·paid 확인 후 원복.
 > ② 「Mark as sent 는 실시간으로 바로 없어지고 위에 리시브 뜨고」 → 카드는 사라지는데 «받을 발주» 목록을 다시 안 불러 새로고침이 필요했다. 제출 직후 갱신하도록 한 줄 추가.
 > ③ 결제 기록에 **결제일**(기본 오늘·미래 차단) · **은행송금 맨 위·기본값** · 대조 거부 사유의 **한글 고정 문장 → 코드+4언어**.
@@ -9964,6 +9971,38 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 - `dev-backend/routes/invoices-crud.js`(payer 권한) · `utils/paidAtInput.js`(신규) · `routes/invoices-payment.js` · `services/purchaseOrderPayment.js` · `routes/cost-reconciliation.js`
 - `dev-frontend/src/components/PurchaseOrders/ReceivePayModal.tsx` · `pages/BrandGeneral/BrandInvoicesPage.tsx` · `pages/PurchaseOrders/PurchaseOrderStagingPage.tsx` · `pages/PurchaseOrders/InvoiceReconcilePage.tsx` · `pages/BrandGeneral/BrandMenusPage.tsx`
 - `dev-backend/tests/paid-at-input.test.js`(신규) · 4개 언어 문구
+
+---
+
+## ✅ 완료: 브랜드 «한 축» 결함 2건 + Profile 이메일 인증 안내 (2026-09-15)
+
+> 개발서버 반영(SW 5.25-email-branding-verify-badge-20260915) · **운영 미배포**
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Sales Orders 배지 범위 | `users.brand_id` 한 축 → Sales Orders 목록과 같은 단일 소스(`resolveBrandScopeIds`). Brand General 은 **소유한 브랜드 전체**, Brand Manager 는 **소속 하나**(2026-09-06 판정 유지) | ✅ 완료 |
+| 발주 알림 메일 머리글 브랜드 | 메일을 만드는 쪽이 `_brandingEntity` 로 «그 거래의 판매자 브랜드» 를 지정. 지정 없으면 기존 역할 규칙 그대로 | ✅ 완료 |
+| Profile 이메일 인증 안내·재발송 | 알림 설정 화면과 **같은 컴포넌트**. 인증된 계정·데모·테스트 계정에는 안 나옴 | ✅ 완료 |
+| 안내 컴포넌트 단일화 | 알림 설정 화면의 인라인 마크업을 공용 컴포넌트로 교체(문구 키는 기존 4언어 그대로 사용) | ✅ 완료 |
+
+### 검증
+- 배지 실호출 3/3 — BG(브랜드 1·2·4 소유, brand_id=1) 8→9 · BM(brand_id=1) 8 유지(안 넓어짐) · 다른 브랜드 BM 0. 소프트삭제 1건 뺀 실제 건수와 일치. **고장주입 반증**: 옛 규칙으로 되돌리니 9→8, 원복 후 9.
+- 메일 머리글 3/3(지정 없음=예전 브랜드 · 지정=그 브랜드 · 모르는 종류(supplier)=예전 규칙) + 끝단 2/2 + **고장주입 반증**(지정 제거 시 FAIL).
+- 실브라우저 4/4 — 미인증 계정 표시 · 인증됨 전환 시 사라짐 · 데모/테스트 제외 · 버튼이 `/api/auth/resend-verification` 실호출(가로채 실제 발송 없음). 임시 계정 생성 후 삭제(잔여 0).
+- verify-all --full 18/19(deploy-ready 만 릴리즈 기록 부재 → 해소) · 인쇄 보호파일 8/8 무변경 · mount sweep 8역할 크래시 0(669.1s) · 타입 검사기 되살려 실행(변경 3파일 신규 오류 0).
+- ⚠ **Fable 판정 미수령** — 사용 한도(429). 기계 판정은 «일반 변경»(비대상).
+
+### 수정된 파일
+- `dev-backend/routes/badgeCounts.js`
+- `dev-backend/utils/notificationService.js`
+- `dev-backend/services/poNotifications.js`
+- `dev-frontend/src/components/Common/EmailVerificationNotice.tsx` (신규)
+- `dev-frontend/src/pages/Profile/ProfilePage.tsx`
+- `dev-frontend/src/pages/NotificationSettings/NotificationSettingsPage.tsx`
+- `dev-frontend/public/sw.js` (5.24 → 5.25)
+- `docs/EMAIL_SYSTEM.md` §5.1 (머리글 지정 규칙 추가)
 
 ---
 

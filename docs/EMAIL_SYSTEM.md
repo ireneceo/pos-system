@@ -179,9 +179,19 @@ Notification 이메일(공지/댓글/티켓/인보이스 등) + 고객 비밀번
 - entity SMTP 시도 → "not configured" 에러면 자동 플랫폼 fallback
 - 고객 비밀번호 리셋이 대표 사용처 — "레스토랑 우선, 없으면 시스템"
 
-**`utils/notificationService.js:resolveReceiverBranding(user)`**
+**`utils/notificationService.js:resolveReceiverBranding(user, brandingEntity)`**
 - 수신자 역할에서 entity 추출 (Restaurant Admin → restaurant, Brand Manager → brand, 등)
 - `sendNotification` 이 수신자별 branding 으로 `wrapTemplate` 재렌더 후 발송
+- **2026-09-15 추가 — 보내는 쪽이 머리글 주인공을 지정할 수 있다.** 메일 본문에 non-enumerable
+  `_brandingEntity = { type, id }` 를 실어 보내면 그 엔티티 브랜딩을 쓰고, **안 실으면 위 역할 규칙
+  그대로**(무변경). `restaurant`/`brand`/`foodcourt` 만 인정하고 그 밖의 종류(`supplier` 등)는
+  역할 규칙으로 흘려보낸다. `_title/_body/_lang` 과 함께 nodemailer 페이로드에서 제거된다.
+  - 왜: 역할 규칙은 수신자의 `users.brand_id` **한 축**만 본다 → 브랜드를 여러 개 가진 사람에게
+    **그 거래와 무관한 브랜드 이름**이 머리글에 붙는다(운영 실측 PO-R8-20260914-001: 양쪽 다
+    브랜드 2 인데 머리글은 브랜드 1). 같은 뿌리 3번째 사례 — 수신자 해석(2026-08-30) ·
+    Sales Orders 배지(2026-09-15 `routes/badgeCounts.js`) · 머리글(여기).
+  - 현재 값을 싣는 곳은 **발주 알림 2종뿐**(`services/poNotifications.js:sellerBrandingEntity` —
+    `seller_order_received` · `buyer_received`). 청구서·예약·승인 등 나머지 알림은 한 줄도 안 바뀐다.
 
 **`utils/notificationTemplates.js` — `withRenderMeta` + 8개 템플릿**
 - 각 템플릿 return 값에 non-enumerable `_title/_body/_lang` 포함
