@@ -28,7 +28,7 @@
     "noLowStock": "所有库存水平正常。",
     "pendingOrders": "待处理订单",
     "confirmedOrders": "已确认订单",
-    "shippedOrders": "运输中订单",
+    "shippedOrders": "配送中订单",
     "receivedThisMonth": "本月已签收",
     "monthlyRevenue": "本月营收",
     "outstandingBalance": "应收账款",
@@ -129,7 +129,7 @@
         "initial": "初始",
         "manual_receive": "入库",
         "manual_adjust": "调整",
-        "po_shipped": "发货 (PO)",
+        "po_shipped": "配送中（采购单）",
         "sale": "销售",
         "waste": "报废"
       }
@@ -167,13 +167,13 @@
     "stats": {
       "pending": "待审核",
       "confirmed": "已确认",
-      "shipped": "已发货",
+      "shipped": "配送中",
       "received": "本月已收货"
     },
     "tabs": {
       "submitted": "待处理",
       "confirmed": "已确认",
-      "shipped": "已发货",
+      "shipped": "配送中",
       "received": "已收货",
       "cancelled": "已取消",
       "completed": "已完成"
@@ -195,11 +195,11 @@
     "actions": {
       "view": "查看",
       "confirm": "确认",
-      "ship": "标记发货",
+      "ship": "开始配送",
       "reject": "拒绝",
       "deliver": "标记已送达",
       "editTracking": "编辑追踪",
-      "recordDispatch": "记录发货"
+      "recordDispatch": "记录配送"
     },
     "confirm": {
       "title": "确认订单",
@@ -208,14 +208,14 @@
       "cancel": "取消"
     },
     "ship": {
-      "title": "标记为已发货",
+      "title": "开始配送",
       "carrier": "承运商",
       "carrierPlaceholder": "如 DHL、Pos Laju、自送",
       "trackingNumber": "运单号",
       "trackingPlaceholder": "可选",
       "estArrival": "预计送达日期",
       "notes": "备注",
-      "submit": "标记发货",
+      "submit": "开始配送",
       "cancel": "取消"
     },
     "reject": {
@@ -233,7 +233,7 @@
     "emptyHint": "新订单到达时将在此处实时显示。",
     "loading": "加载中…",
     "badge": {
-      "needsDispatch": "买方已确认收货 — 请记录发货"
+      "needsDispatch": "买家已确认收货 — 请记录配送"
     }
   },
   "tradeInvoicesPage": {
@@ -296,7 +296,7 @@
     "draft": "草稿",
     "submitted": "待处理",
     "confirmed": "已确认",
-    "shipped": "已发货",
+    "shipped": "配送中",
     "partial_received": "部分收货",
     "received": "已收货",
     "cancelled": "已取消",

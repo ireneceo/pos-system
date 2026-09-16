@@ -61,7 +61,7 @@
       "receiveAndPayShort": "수령·결제"
     },
     "badge": {
-      "sellerShipped": "업체가 배송완료로 표시"
+      "sellerShipped": "업체가 배송 시작"
     }
   },
   "new": {
@@ -143,7 +143,7 @@
       "confirmed": "확정됨",
       "shipped": "배송 중",
       "in_transit": "운송 중",
-      "delivered": "도착",
+      "delivered": "배송 완료",
       "received": "수령 완료",
       "partial_received": "부분 수령",
       "cancelled": "취소됨"
@@ -173,7 +173,7 @@
       "edit": "수정",
       "submit": "제출",
       "cancel": "취소",
-      "markShipped": "배송 처리",
+      "markShipped": "배송 시작",
       "receive": "수령",
       "returns": "반품 요청",
       "print": "인쇄",
@@ -231,12 +231,12 @@
     "submitFailed": "구매 주문 취소에 실패했습니다."
   },
   "markShipped": {
-    "modalTitle": "배송 처리",
+    "modalTitle": "배송 시작",
     "hint": "공급처가 직접 PO를 업데이트하지 않은 경우에 사용합니다.",
     "trackingLabel": "운송장 번호 (선택)",
     "trackingPlaceholder": "택배사 또는 추적 번호",
-    "submit": "배송 처리",
-    "submitFailed": "배송 처리에 실패했습니다."
+    "submit": "배송 시작",
+    "submitFailed": "배송 시작 처리에 실패했습니다."
   },
   "status": {
     "draft": "작성 중",
@@ -247,7 +247,7 @@
     "partial_received": "부분 수령",
     "received": "수령 완료",
     "cancelled": "취소됨",
-    "delivered": "도착"
+    "delivered": "배송 완료"
   },
   "common": {
     "save": "저장",

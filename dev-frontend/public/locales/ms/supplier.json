@@ -28,7 +28,7 @@
     "noLowStock": "Semua tahap stok dalam keadaan baik.",
     "pendingOrders": "Pesanan Menunggu",
     "confirmedOrders": "Pesanan Disahkan",
-    "shippedOrders": "Pesanan Dihantar",
+    "shippedOrders": "Penghantaran",
     "receivedThisMonth": "Diterima Bulan Ini",
     "monthlyRevenue": "Hasil Bulanan",
     "outstandingBalance": "Baki Tertunggak",
@@ -129,7 +129,7 @@
         "initial": "Permulaan",
         "manual_receive": "Terima",
         "manual_adjust": "Laras",
-        "po_shipped": "Dihantar (PO)",
+        "po_shipped": "Dalam Penghantaran (PO)",
         "sale": "Jualan",
         "waste": "Pembaziran"
       }
@@ -167,13 +167,13 @@
     "stats": {
       "pending": "Menunggu Semakan",
       "confirmed": "Disahkan",
-      "shipped": "Dihantar",
+      "shipped": "Dalam Penghantaran",
       "received": "Diterima Bulan Ini"
     },
     "tabs": {
       "submitted": "Menunggu",
       "confirmed": "Disahkan",
-      "shipped": "Dihantar",
+      "shipped": "Dalam Penghantaran",
       "received": "Diterima",
       "cancelled": "Dibatalkan",
       "completed": "Selesai"
@@ -195,9 +195,9 @@
     "actions": {
       "view": "Lihat",
       "confirm": "Sahkan",
-      "ship": "Tanda Dihantar",
+      "ship": "Mula Penghantaran",
       "reject": "Tolak",
-      "deliver": "Tanda Sampai",
+      "deliver": "Tanda Telah Sampai",
       "editTracking": "Edit jejak",
       "recordDispatch": "Rekod penghantaran"
     },
@@ -208,14 +208,14 @@
       "cancel": "Batal"
     },
     "ship": {
-      "title": "Tanda Sebagai Dihantar",
+      "title": "Mula Penghantaran",
       "carrier": "Pembawa",
       "carrierPlaceholder": "cth. DHL, Pos Laju, Penghantaran Sendiri",
       "trackingNumber": "Nombor Penjejakan",
       "trackingPlaceholder": "Pilihan",
       "estArrival": "Anggaran Ketibaan",
       "notes": "Nota",
-      "submit": "Tanda Dihantar",
+      "submit": "Mula Penghantaran",
       "cancel": "Batal"
     },
     "reject": {
@@ -233,7 +233,7 @@
     "emptyHint": "Pesanan baru akan muncul di sini secara masa nyata.",
     "loading": "Memuatkan…",
     "badge": {
-      "needsDispatch": "Pembeli sahkan terima — rekod penghantaran"
+      "needsDispatch": "Pembeli sahkan penerimaan — rekod penghantaran"
     }
   },
   "tradeInvoicesPage": {
@@ -296,7 +296,7 @@
     "draft": "Draf",
     "submitted": "Menunggu",
     "confirmed": "Disahkan",
-    "shipped": "Dihantar",
+    "shipped": "Dalam Penghantaran",
     "partial_received": "Sebahagian",
     "received": "Diterima",
     "cancelled": "Dibatalkan",
@@ -304,7 +304,7 @@
     "payment_submitted": "Pembayaran Dihantar",
     "paid": "Dibayar",
     "overdue": "Tertunggak",
-    "delivered": "Sampai",
+    "delivered": "Telah Sampai",
     "completed": "Selesai",
     "partiallyCompleted": "Selesai Sebahagian"
   },

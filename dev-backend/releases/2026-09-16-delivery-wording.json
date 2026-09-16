@@ -1,0 +1,40 @@
+{
+  "tag": "delivery-wording",
+  "sw_version": "5.31-delivery-wording-20260916",
+  "date": "2026-09-16",
+  "in_progress": [
+    "브랜드↔매장 메뉴·옵션 «서로 공유» 설계 — Fable 판정 대기(한도 429, 5회 연속). 검토자료·검토표는 docs/BRAND_MENU_SYSTEM.md A~F 절에 완성."
+  ],
+  "completed": [
+    "반송되던 help@withmin.info → help@k-dine.com 을 운영 데이터에 반영. 운영 DB 830개 문자열 칸 전수 스캔 후 살아 있는 13곳 교체(users.email 1 · restaurants.email 1 · support_tickets.customerEmail 10 · operation_tickets.requesterEmail 1). 코드에는 그 주소가 없어 배포 불필요.",
+    "«배송» 용어 통일 — 같은 단계를 Ship · Dispatch · Deliver 세 단어로 부르던 것을 Delivery 한 계열로. 보냄=Out for Delivery/배송 중, 동작=Start Delivery/배송 시작, 도착=Delivered/배송 완료, dispatch 제거. 프론트 purchaseOrders·supplier 4언어 + 백엔드 email.json 4언어 + 하드코딩 8군데, 합계 108군데.",
+    "한글 오역 1건 수정 — 보내는 단계인데 「업체가 배송완료로 표시」로 떠 있던 것."
+  ],
+  "issues": [
+    "반송이 계속된 진짜 원인은 «운영에 한 번도 적용된 적이 없었음». 9/15 교체 스냅샷이 dev 에서 생성돼 배포 rsync 로 운영에 복사되면서 처리된 것처럼 보였다.",
+    "with MIN Cafe 관리자 계정은 이메일이 곧 로그인 아이디 — 이제 help@k-dine.com 으로 로그인한다(비밀번호 불변).",
+    "손대지 않은 것: 과거 기록 3,400여 건(activity_logs 3407 · cost_change_logs 31 · system_logs 5 · webhook_events 1 · deploy_records 2 — 메일이 안 나가고 고치면 이력이 어긋남) · restaurants.website 'https://withmin.info'(새 주소 미정, Irene 확답 필요)."
+  ],
+  "upcoming": [
+    "브랜드↔매장 공유 설계 Fable 판정 → 착수",
+    "K-DINE 레시피 연동 6건 조치(레시피↔메뉴 짝짓기 · 옵션 재료 연결)",
+    "배송비 설계 · 재료 카테고리 브랜드 통합 (둘 다 Fable 판정 대기)"
+  ],
+  "behavior_changes": [
+    "발주·판매주문 화면과 메일에서 보이는 말이 바뀝니다: Shipped → Out for Delivery(배송 중), Mark Shipped → Start Delivery(배송 시작), dispatch 표현 제거. 상태 값(ENUM)과 흐름은 무변경 — 보이는 말만 바뀝니다.",
+    "손님 배달주문 유형 «DELIVERY»(Floor Plan·주방·라이브오더)와 하드웨어 «Ships to» 는 다른 개념이라 건드리지 않았습니다."
+  ],
+  "check_areas": [
+    "발주 목록·상세의 상태 뱃지와 단계 표시(배송 중/배송 완료)",
+    "공급업체 주문 화면의 «배송 시작»·«배송 완료 표시» 버튼",
+    "발주 알림 메일 본문(4개 언어)"
+  ],
+  "verification": {
+    "sw_version": "5.31-delivery-wording-20260916",
+    "gates": "verify-all --full 18/19 (deploy-ready 만 — 이 기록으로 해소). i18n verify 오류 0 · health-check 247/247 · 🔒 인쇄 보호파일 8/8 무변경 · 실브라우저 mount sweep 크래시 0 · check-sensitive-diff «일반 변경»(비대상).",
+    "real_calls": "dev 서빙 로케일 실측(en: Out for Delivery/Start Delivery · ko: 배송 중/배송 시작) · 메일 본문 4개 언어 실제 렌더 확인(옛 단어 dispatch/발송 0건) · 운영 DB 830칸 전수 재스캔으로 살아 있는 자리 0건.",
+    "not_verified": "고장주입은 하지 않았다 — 문구 교체라 방어 로직 변경이 없다. 운영 화면 육안 확인도 하지 않았다(미배포).",
+    "note": "i18n verify 오류 0 · health-check 247/247 · 🔒 인쇄 보호파일 8/8 무변경 · 빌드 성공 · dev 서빙 로케일 실측(en/ko) · 메일 본문 4언어 실제 렌더 확인(옛 단어 0) · check-sensitive-diff «일반 변경»(비대상) · verify-all --full 결과는 커밋 메시지 참조. Fable 판정은 문구 변경이라 §0 기준 팀원 결정 범위."
+  },
+  "fable_note": "문구 통일은 CLAUDE.md §0 «길이 갈린다·파급 작다 → 팀원이 결정하고 결과에 붙여 보고» 에 해당(문구는 명시적으로 팀원 몫). 메일 주소 교체는 Irene 명시 지시 + 길이 하나뿐이라 팀원 실행. 별건인 브랜드↔매장 공유 설계는 Fable 판정 대기(한도 429)."
+}

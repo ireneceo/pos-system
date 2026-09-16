@@ -6,7 +6,7 @@
     "stats": {
       "draft": "Draf",
       "pending": "Menunggu",
-      "shipped": "Dihantar",
+      "shipped": "Dalam Penghantaran",
       "received": "Diterima"
     },
     "filter": {
@@ -61,7 +61,7 @@
       "receiveAndPayShort": "Terima & bayar"
     },
     "badge": {
-      "sellerShipped": "Penjual tanda telah dihantar"
+      "sellerShipped": "Penjual mula penghantaran"
     }
   },
   "new": {
@@ -141,9 +141,9 @@
       "draft": "Draf",
       "submitted": "Dihantar",
       "confirmed": "Disahkan",
-      "shipped": "Dihantar",
+      "shipped": "Dalam Penghantaran",
       "in_transit": "Dalam Transit",
-      "delivered": "Sampai",
+      "delivered": "Telah Sampai",
       "received": "Diterima",
       "partial_received": "Diterima Sebahagian",
       "cancelled": "Dibatalkan"
@@ -173,7 +173,7 @@
       "edit": "Edit",
       "submit": "Hantar",
       "cancel": "Batal",
-      "markShipped": "Tanda Dihantar",
+      "markShipped": "Mula Penghantaran",
       "receive": "Terima",
       "returns": "Permintaan pulangan",
       "print": "Cetak",
@@ -231,23 +231,23 @@
     "submitFailed": "Gagal membatalkan pesanan belian."
   },
   "markShipped": {
-    "modalTitle": "Tanda sebagai Dihantar",
+    "modalTitle": "Mula Penghantaran",
     "hint": "Gunakan apabila penjual tidak mengemas kini PO sendiri.",
     "trackingLabel": "No. Penjejakan (pilihan)",
     "trackingPlaceholder": "Pembawa atau rujukan penjejakan",
-    "submit": "Tanda Dihantar",
-    "submitFailed": "Gagal menanda pesanan sebagai dihantar."
+    "submit": "Mula Penghantaran",
+    "submitFailed": "Gagal memulakan penghantaran."
   },
   "status": {
     "draft": "Draf",
     "pending_approval": "Menunggu Kelulusan",
     "submitted": "Dihantar",
     "confirmed": "Disahkan",
-    "shipped": "Dihantar",
+    "shipped": "Dalam Penghantaran",
     "partial_received": "Sebahagian",
     "received": "Diterima",
     "cancelled": "Dibatalkan",
-    "delivered": "Sampai"
+    "delivered": "Telah Sampai"
   },
   "common": {
     "save": "Simpan",

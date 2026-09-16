@@ -91,7 +91,7 @@
       "total": "Total",
       "status": "Status",
       "awaitingConfirmation": "Awaiting Confirmation",
-      "hint": "Please review the order and confirm or reject it. After confirmation you can mark it shipped with tracking info.",
+      "hint": "Please review the order and confirm or reject it. After confirmation you can start delivery with tracking info.",
       "cta": "Review Order",
       "textFallback": "New purchase order {{poNumber}} from {{buyer}}. Total: {{total}}."
     },
@@ -144,10 +144,10 @@
       "buyer": "Buyer",
       "total": "Total",
       "status": "Status",
-      "needsShip": "Awaiting your dispatch record",
-      "alreadyShipped": "Already dispatched",
-      "hintNeedsShip": "Your stock is deducted when you mark this order dispatched. Please record the dispatch so your inventory stays correct.",
-      "hintShipped": "No action needed — this order was already marked dispatched.",
+      "needsShip": "Awaiting your delivery record",
+      "alreadyShipped": "Already out for delivery",
+      "hintNeedsShip": "Your stock is deducted when you start delivery. Please record the delivery so your inventory stays correct.",
+      "hintShipped": "No action needed — this order is already out for delivery.",
       "cta": "Open Order",
       "textFallback": "{{buyer}} confirmed receipt of {{poNumber}}. Total: {{total}}."
     },

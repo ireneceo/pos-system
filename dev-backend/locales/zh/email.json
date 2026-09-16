@@ -91,7 +91,7 @@
       "total": "合计",
       "status": "状态",
       "awaitingConfirmation": "等待确认",
-      "hint": "请查看订单并确认或拒绝。确认后可填写物流信息标记为已发货。",
+      "hint": "请查看订单并确认或拒绝。确认后即可填写运送信息并开始配送。",
       "cta": "查看订单",
       "textFallback": "来自 {{buyer}} 的新采购单 {{poNumber}}。合计：{{total}}。"
     },
@@ -144,10 +144,10 @@
       "buyer": "买方",
       "total": "合计",
       "status": "状态",
-      "needsShip": "等待您记录发货",
-      "alreadyShipped": "已发货",
-      "hintNeedsShip": "标记发货后才会扣减您的库存。请记录发货以保持库存准确。",
-      "hintShipped": "无需操作 — 此采购单已标记为发货。",
+      "needsShip": "等待您记录配送",
+      "alreadyShipped": "已在配送中",
+      "hintNeedsShip": "开始配送时会扣减库存。请记录配送，以保持库存准确。",
+      "hintShipped": "无需处理 — 该订单已在配送中。",
       "cta": "打开采购单",
       "textFallback": "{{buyer}} 已确认收到 {{poNumber}}。合计：{{total}}。"
     },

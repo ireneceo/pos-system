@@ -6,7 +6,7 @@
     "stats": {
       "draft": "草稿",
       "pending": "待处理",
-      "shipped": "已发货",
+      "shipped": "配送中",
       "received": "已收货"
     },
     "filter": {
@@ -61,7 +61,7 @@
       "receiveAndPayShort": "收货并付款"
     },
     "badge": {
-      "sellerShipped": "供应商已标记发货"
+      "sellerShipped": "供应商已开始配送"
     }
   },
   "new": {
@@ -141,7 +141,7 @@
       "draft": "草稿",
       "submitted": "已提交",
       "confirmed": "已确认",
-      "shipped": "已发货",
+      "shipped": "配送中",
       "in_transit": "运输中",
       "delivered": "已送达",
       "received": "已收货",
@@ -173,7 +173,7 @@
       "edit": "编辑",
       "submit": "提交",
       "cancel": "取消",
-      "markShipped": "标记已发货",
+      "markShipped": "开始配送",
       "receive": "收货",
       "returns": "申请退货",
       "print": "打印",
@@ -231,19 +231,19 @@
     "submitFailed": "取消采购订单失败。"
   },
   "markShipped": {
-    "modalTitle": "标记已发货",
+    "modalTitle": "开始配送",
     "hint": "当供应商未自行更新采购单时使用。",
     "trackingLabel": "运单号（可选）",
     "trackingPlaceholder": "承运商或追踪号",
-    "submit": "标记已发货",
-    "submitFailed": "标记发货失败。"
+    "submit": "开始配送",
+    "submitFailed": "开始配送失败。"
   },
   "status": {
     "draft": "草稿",
     "pending_approval": "等待批准",
     "submitted": "已提交",
     "confirmed": "已确认",
-    "shipped": "已发货",
+    "shipped": "配送中",
     "partial_received": "部分收货",
     "received": "已收货",
     "cancelled": "已取消",

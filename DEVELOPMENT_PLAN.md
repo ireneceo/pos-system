@@ -1,6 +1,14 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-16 #3 — **코드 변경 0건. K-DINE 레시피 연동 실측 + 브랜드↔매장 «서로 공유» 검토자료·검토표.**
+> **최종 업데이트:** 2026-09-16 #4 — **반송 메일 주소 운영 반영 + 배송 용어 통일(개발서버, 미배포).**
+> ① Irene 「아직 이 메일로 알림이 가는 곳이 있어 … 시스템 모든 곳에서 이 주소 바꿔줘 … 운영서버 확인해」 → **원인은 «운영에 한 번도 적용된 적이 없음»**. 9/15 교체 스냅샷(`backups/email-replace-*.json`)이 dev 에서 생성돼 배포 rsync 로 운영에 복사되는 바람에 처리된 것처럼 보였다(운영 users 는 id 22 가 그대로였고 dev 는 id 21 이 교체돼 있었다).
+> ② **운영 DB 830개 문자열 칸 전수 스캔** 후 살아 있는 13곳 교체 — `users.email`(with MIN Cafe 관리자, **로그인 아이디 겸용**) · `restaurants.email` · `support_tickets.customerEmail` 10 · `operation_tickets.requesterEmail` 1. 사전 백업 `withmin_email_predeploy_20260916_172149.sql.gz` + 스크립트 되돌리기 스냅샷. 재스캔 결과 **살아 있는 자리 0건**. 코드·메일 템플릿에는 그 주소가 없어 **배포 불필요**.
+> ③ **손대지 않음**: 과거 기록 3,400여 건(activity_logs 3407 · cost_change_logs 31 · system_logs 5 · webhook_events 1 · deploy_records 2 — 메일이 나가지 않고 이력이 어긋난다) · `restaurants.website` `https://withmin.info`(새 주소 미정).
+> ④ Irene 「Delivery 와 Ship 이 섞여 사용되었어 … 하나로 통일해줘」 + 「메일 알림도 모든 내용 다」 → 같은 단계를 **Ship · Dispatch · Deliver 세 단어**로 부르고 있었다. **Delivery 한 계열로 통일**(팀원 결정 — 문구는 §0 기준 팀원 몫): 보냄=**Out for Delivery / 배송 중**, 동작=**Start Delivery / 배송 시작**, 도착=**Delivered / 배송 완료**, **dispatch 제거**.
+> ⑤ 범위는 **발주·판매주문 흐름만** — 프론트 `purchaseOrders.json`·`supplier.json` 4언어, 백엔드 `email.json` 4언어, 하드코딩 8군데(`routes/seller-orders.js` 7 · `services/poRealtimeService.js` 1). 합계 **108군데**. 손님 배달주문 유형 «DELIVERY»(floorplan·kitchen·orders)·하드웨어 «Ships to»는 다른 개념이라 **무접촉**. **상태 ENUM 값은 무변경**(보이는 말만). 한글 오역 1건 수정(보내는 단계인데 「업체가 배송완료로 표시」).
+> ⑥ 검증: i18n verify **오류 0** · health-check **247/247** · 🔒 인쇄 보호파일 **8/8 무변경** · 빌드 성공 후 dev 서빙 문구 실측(en/ko) · **메일 본문 4언어 실제 렌더 확인**(옛 단어 0) · 기계 판정 `check-sensitive-diff` **일반 변경(비대상)**. verify-all --full 결과는 아래 «완료» 절에 기재.
+>
+> **이전 업데이트:** 2026-09-16 #3 — **코드 변경 0건. K-DINE 레시피 연동 실측 + 브랜드↔매장 «서로 공유» 검토자료·검토표.**
 > ① Irene 질문 「GIT Consulting에서 K-DINE 브랜드레시피를 올렸는데 제대로 K-DINE IPC에 갔는지, 연동 문제 없는지」 → **도달은 정상**(레시피 72건 전부 활성 · 매장 8 이 브랜드 2 소속 · 카테고리 72/72 브랜드 소유 · 재료 줄 351개 전부 브랜드 재료 · 매장 상품 recipe_id 65건 전부 브랜드 레시피, 끊김 0). 브랜드 레시피는 **복사되지 않고 매장이 `restaurant.brand_id` 로 읽어간다**(`routes/recipes.js:479~501`, 요금제 문 없음). 개발서버 실호출 200·건수 일치, 익명 401.
 > ② **연동 문제 6건**(전부 운영 데이터, 손대지 않음): 재료 든 레시피 **21건이 어떤 메뉴에도 안 붙음**(9/1~9/10 업로드분) → 차감 0 · 그중 Add-on 10건은 **옵션용인데 옵션은 레시피가 아니라 `option_ingredients` 로 차감**(매장 8 옵션 12개 전부 재료 연결 0) · **메뉴에 붙었는데 재료 0인 레시피 8건**(Cooked Rice·Fried Egg·Radish Kimchi·음료 5)이 매장 상품 13개에 물려 «연결됨»으로 보이나 차감 0 · 브랜드 메뉴 104개 중 **39개 레시피 없음**(이름 같은 레시피 0건) · 상속 누락 1건(매장 상품 373 «2Pax Sundubu(S)») · 브랜드 메뉴 **이름 중복 8쌍**.
 > ③ Irene 지시 「브랜드메뉴를 변경해도 된다고 설정하면 서로 동기화 … 모든 옵션과 메뉴를 공유하고 공유한 곳에서만 수정하고 추가는 못하게 하거나 추가도 하게 해서 공유하거나 … 제대로된 fable 검토내역 만들어줘」 → `docs/BRAND_MENU_SYSTEM.md` **A~E 절**(원문·코드 실측·운영 수치 3표·기계적 제약·Irene 이 말한 두 모드)을 **사실만으로** 작성. 이미 있는 것/없는 것을 갈랐다 — 설정 3종(auto·manual / all·selected / 잠금 7칸)은 **메뉴 1개 단위**로 이미 있고 The Fire 가 그 방식으로 운영 중(매장 3곳 × 128건, 잠금 6칸 켬). **없는 것은 ①매장→브랜드 역방향(라우트 0건, 일회성 스크립트만) ②브랜드 화면에서 «매장이 추가한 것» 보는 경로 ③브랜드 단위 기본값**(`Brand.menu_settings` JSON 자리는 비어 있음).

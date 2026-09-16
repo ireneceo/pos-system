@@ -28,7 +28,7 @@
     "noLowStock": "모든 재고가 정상 수준입니다.",
     "pendingOrders": "처리 대기 주문",
     "confirmedOrders": "확정 주문",
-    "shippedOrders": "배송 중",
+    "shippedOrders": "배송 건",
     "receivedThisMonth": "이번 달 입고 완료",
     "monthlyRevenue": "월 매출",
     "outstandingBalance": "미수금",
@@ -129,7 +129,7 @@
         "initial": "최초 등록",
         "manual_receive": "입고",
         "manual_adjust": "조정",
-        "po_shipped": "출하 (PO)",
+        "po_shipped": "배송 중 (발주)",
         "sale": "판매",
         "waste": "폐기"
       }
@@ -173,7 +173,7 @@
     "tabs": {
       "submitted": "대기",
       "confirmed": "확정",
-      "shipped": "배송",
+      "shipped": "배송 중",
       "received": "수령",
       "cancelled": "취소",
       "completed": "완료"
@@ -195,11 +195,11 @@
     "actions": {
       "view": "보기",
       "confirm": "확정",
-      "ship": "배송 처리",
+      "ship": "배송 시작",
       "reject": "거부",
-      "deliver": "배송 완료",
+      "deliver": "배송 완료 표시",
       "editTracking": "배송정보 수정",
-      "recordDispatch": "출고 처리"
+      "recordDispatch": "배송 기록"
     },
     "confirm": {
       "title": "주문 확정",
@@ -208,14 +208,14 @@
       "cancel": "취소"
     },
     "ship": {
-      "title": "배송 처리",
+      "title": "배송 시작",
       "carrier": "배송업체",
       "carrierPlaceholder": "예: DHL, Pos Laju, 자체 배송",
       "trackingNumber": "운송장 번호",
       "trackingPlaceholder": "선택 입력",
       "estArrival": "예상 도착일",
       "notes": "비고",
-      "submit": "배송 처리",
+      "submit": "배송 시작",
       "cancel": "취소"
     },
     "reject": {
@@ -233,7 +233,7 @@
     "emptyHint": "새 발주가 도착하면 실시간으로 여기에 표시됩니다.",
     "loading": "불러오는 중…",
     "badge": {
-      "needsDispatch": "구매자 수령 확인 — 출고 처리 필요"
+      "needsDispatch": "구매자가 수령 확인 — 배송 기록 필요"
     }
   },
   "tradeInvoicesPage": {
@@ -304,7 +304,7 @@
     "payment_submitted": "결제 제출됨",
     "paid": "결제 완료",
     "overdue": "연체",
-    "delivered": "도착",
+    "delivered": "배송 완료",
     "completed": "완료",
     "partiallyCompleted": "부분 완료"
   },

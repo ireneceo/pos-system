@@ -6,7 +6,7 @@
     "stats": {
       "draft": "Draft",
       "pending": "Pending",
-      "shipped": "Shipped",
+      "shipped": "Out for Delivery",
       "received": "Received"
     },
     "filter": {
@@ -61,7 +61,7 @@
       "receiveAndPayShort": "Receive & pay"
     },
     "badge": {
-      "sellerShipped": "Seller marked as dispatched"
+      "sellerShipped": "Seller started delivery"
     }
   },
   "new": {
@@ -141,7 +141,7 @@
       "draft": "Draft",
       "submitted": "Submitted",
       "confirmed": "Confirmed",
-      "shipped": "Shipped",
+      "shipped": "Out for Delivery",
       "in_transit": "In Transit",
       "delivered": "Delivered",
       "received": "Received",
@@ -173,7 +173,7 @@
       "edit": "Edit",
       "submit": "Submit",
       "cancel": "Cancel",
-      "markShipped": "Mark Shipped",
+      "markShipped": "Start Delivery",
       "receive": "Receive",
       "returns": "Request return",
       "print": "Print",
@@ -231,19 +231,19 @@
     "submitFailed": "Failed to cancel purchase order."
   },
   "markShipped": {
-    "modalTitle": "Mark as Shipped",
+    "modalTitle": "Start Delivery",
     "hint": "Use this when the seller has not updated the PO themselves.",
     "trackingLabel": "Tracking # (optional)",
     "trackingPlaceholder": "Carrier or tracking reference",
-    "submit": "Mark Shipped",
-    "submitFailed": "Failed to mark order as shipped."
+    "submit": "Start Delivery",
+    "submitFailed": "Failed to start delivery."
   },
   "status": {
     "draft": "Draft",
     "pending_approval": "Awaiting Approval",
     "submitted": "Submitted",
     "confirmed": "Confirmed",
-    "shipped": "Shipped",
+    "shipped": "Out for Delivery",
     "partial_received": "Partial",
     "received": "Received",
     "cancelled": "Cancelled",

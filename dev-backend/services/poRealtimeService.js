@@ -12,7 +12,7 @@ const { Carrier } = require('../models');
 const STATUS_NOTE = {
   submitted: 'Order placed by buyer',
   confirmed: 'Order confirmed by seller',
-  shipped: 'Order shipped',
+  shipped: 'Order out for delivery',
   partial_received: 'Order partially received',
   received: 'Order received',
   cancelled: 'Order cancelled'

@@ -91,7 +91,7 @@
       "total": "Jumlah",
       "status": "Status",
       "awaitingConfirmation": "Menunggu Pengesahan",
-      "hint": "Sila semak pesanan dan sahkan atau tolak. Selepas pengesahan anda boleh tandakan sebagai dihantar dengan maklumat penjejakan.",
+      "hint": "Sila semak pesanan dan sahkan atau tolak. Selepas pengesahan, anda boleh mula penghantaran dengan maklumat penjejakan.",
       "cta": "Semak Pesanan",
       "textFallback": "Pesanan belian baharu {{poNumber}} daripada {{buyer}}. Jumlah: {{total}}."
     },
@@ -145,9 +145,9 @@
       "total": "Jumlah",
       "status": "Status",
       "needsShip": "Menunggu rekod penghantaran anda",
-      "alreadyShipped": "Sudah dihantar",
-      "hintNeedsShip": "Stok anda ditolak apabila pesanan ini ditanda sebagai dihantar. Sila rekodkan penghantaran supaya inventori kekal tepat.",
-      "hintShipped": "Tiada tindakan diperlukan — pesanan ini sudah ditanda dihantar.",
+      "alreadyShipped": "Sudah dalam penghantaran",
+      "hintNeedsShip": "Stok anda ditolak apabila anda mula penghantaran. Sila rekod penghantaran supaya inventori kekal tepat.",
+      "hintShipped": "Tiada tindakan diperlukan — pesanan ini sudah dalam penghantaran.",
       "cta": "Buka Pesanan",
       "textFallback": "{{buyer}} mengesahkan penerimaan {{poNumber}}. Jumlah: {{total}}."
     },

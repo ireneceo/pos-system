@@ -28,7 +28,7 @@
     "noLowStock": "All stock levels are healthy.",
     "pendingOrders": "Pending Orders",
     "confirmedOrders": "Confirmed Orders",
-    "shippedOrders": "Shipped Orders",
+    "shippedOrders": "Deliveries",
     "receivedThisMonth": "Received This Month",
     "monthlyRevenue": "Monthly Revenue",
     "outstandingBalance": "Outstanding Balance",
@@ -129,7 +129,7 @@
         "initial": "Initial",
         "manual_receive": "Receive",
         "manual_adjust": "Adjust",
-        "po_shipped": "Shipped (PO)",
+        "po_shipped": "Out for Delivery (PO)",
         "sale": "Sale",
         "waste": "Waste"
       }
@@ -167,13 +167,13 @@
     "stats": {
       "pending": "Pending Review",
       "confirmed": "Confirmed",
-      "shipped": "Shipped",
+      "shipped": "Out for Delivery",
       "received": "Received This Month"
     },
     "tabs": {
       "submitted": "Pending",
       "confirmed": "Confirmed",
-      "shipped": "Shipped",
+      "shipped": "Out for Delivery",
       "received": "Received",
       "cancelled": "Cancelled",
       "completed": "Completed"
@@ -195,11 +195,11 @@
     "actions": {
       "view": "View",
       "confirm": "Confirm",
-      "ship": "Mark Shipped",
+      "ship": "Start Delivery",
       "reject": "Reject",
       "deliver": "Mark Delivered",
       "editTracking": "Edit tracking",
-      "recordDispatch": "Record dispatch"
+      "recordDispatch": "Record delivery"
     },
     "confirm": {
       "title": "Confirm Order",
@@ -208,14 +208,14 @@
       "cancel": "Cancel"
     },
     "ship": {
-      "title": "Mark As Shipped",
+      "title": "Start Delivery",
       "carrier": "Carrier",
       "carrierPlaceholder": "e.g. DHL, Pos Laju, Self Delivery",
       "trackingNumber": "Tracking Number",
       "trackingPlaceholder": "Optional",
       "estArrival": "Estimated Arrival",
       "notes": "Notes",
-      "submit": "Mark Shipped",
+      "submit": "Start Delivery",
       "cancel": "Cancel"
     },
     "reject": {
@@ -233,7 +233,7 @@
     "emptyHint": "New orders will appear here in real time.",
     "loading": "Loading…",
     "badge": {
-      "needsDispatch": "Buyer confirmed receipt — record dispatch"
+      "needsDispatch": "Buyer confirmed receipt — record delivery"
     }
   },
   "tradeInvoicesPage": {
@@ -296,7 +296,7 @@
     "draft": "Draft",
     "submitted": "Pending",
     "confirmed": "Confirmed",
-    "shipped": "Shipped",
+    "shipped": "Out for Delivery",
     "partial_received": "Partial",
     "received": "Received",
     "cancelled": "Cancelled",

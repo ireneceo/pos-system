@@ -439,8 +439,8 @@ router.post('/:id/ship', async (req, res) => {
       // Resolve carrier name + tracking_url from catalog (Sprint 5)
       const merged = await decorateCarrier({ ...(locked.tracking_info || {}), ...trackingPatch });
       const carrierNote = merged.carrier_name
-        ? `Shipped via ${merged.carrier_name}${merged.tracking_number ? ' (' + merged.tracking_number + ')' : ''}`
-        : 'Order shipped';
+        ? `Out for delivery via ${merged.carrier_name}${merged.tracking_number ? ' (' + merged.tracking_number + ')' : ''}`
+        : 'Order out for delivery';
       const tracking = appendTrackingEvent({ tracking_info: merged }, 'shipped', carrierNote);
 
       await locked.update({
@@ -627,16 +627,16 @@ router.post('/:id/ship', async (req, res) => {
         const trackingNo = ti.tracking_number ? `<p style="color:#374151;font-size:14px;margin:0 0 8px;"><strong>Tracking #:</strong> ${ti.tracking_number}</p>` : '';
         const eta = (ti.estimated_arrival || ti.est_arrival) ? `<p style="color:#374151;font-size:14px;margin:0 0 8px;"><strong>Estimated Arrival:</strong> ${ti.estimated_arrival || ti.est_arrival}</p>` : '';
         const html = wrapTemplate(
-          'Order Shipped',
-          `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your purchase order <strong>${po.po_number}</strong> has been shipped.</p>
+          'Order Out for Delivery',
+          `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your purchase order <strong>${po.po_number}</strong> is out for delivery.</p>
            ${carrier}${trackingNo}${eta}
            <div style="text-align:center;margin:24px 0;"><a href="${FRONTEND_URL}/pos/purchase-orders/${po.id}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Track Order</a></div>`,
           'en'
         );
         const mail = {
-          subject: `Order Shipped: ${po.po_number}`,
+          subject: `Order Out for Delivery: ${po.po_number}`,
           html,
-          text: `Your purchase order ${po.po_number} has been shipped.${ti.tracking_number ? ' Tracking: ' + ti.tracking_number : ''}`
+          text: `Your purchase order ${po.po_number} is out for delivery.${ti.tracking_number ? ' Tracking: ' + ti.tracking_number : ''}`
         };
         await fireBuyerNotification(po, 'seller_order_received', mail);
       } catch (e) {
@@ -644,7 +644,7 @@ router.post('/:id/ship', async (req, res) => {
       }
     });
 
-    res.json({ success: true, data: po, message: 'Order shipped' });
+    res.json({ success: true, data: po, message: 'Order out for delivery' });
   } catch (err) {
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
     if (err.code === 'ALREADY_SHIPPED') return res.status(409).json({ success: false, message: err.message });
