@@ -5,6 +5,7 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
 import { OrderControls } from '../../components/UI';
+import { StandardSelect } from '../../components/UI/SelectComponents';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
@@ -246,6 +247,9 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  // 삭제할 카테고리에 재료가 남아 있으면 «어디로 옮길지» 를 고르게 한다 (2026-09-16 Irene 지시)
+  const [reassignTo, setReassignTo] = useState<string>('');
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     emoji: '',
@@ -415,8 +419,18 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
 
   const handleDeleteClick = (category: Category) => {
     setCategoryToDelete(category);
+    setReassignTo('');
     setDeleteModalOpen(true);
   };
+
+  // 옮길 수 있는 곳 = 지금 이 화면이 보여주는 카테고리에서 «지우는 것» 만 뺀다.
+  // 매장 화면이면 자기 카테고리 + 브랜드 카테고리 둘 다 — 서버 허용 범위와 같은 기준이다.
+  const reassignOptions = React.useMemo(() => {
+    const src = isBrandUser ? categories : [...categories, ...brandCategories];
+    return src.filter((c) => c.id !== categoryToDelete?.id);
+  }, [categories, brandCategories, categoryToDelete, isBrandUser]);
+
+  const pendingCount = categoryToDelete?.ingredient_count ?? 0;
 
   const handleDeleteConfirm = async () => {
     if (!categoryToDelete) return;
@@ -433,24 +447,46 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
 
       if (!url) return;
 
+      setDeleting(true);
       const response = await fetch(url, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(reassignTo ? { reassign_to_category_id: Number(reassignTo) } : {})
       });
 
       const data = await response.json();
 
       if (data.success) {
+        const moved = data?.data?.moved ?? 0;
         setDeleteModalOpen(false);
         setCategoryToDelete(null);
+        setReassignTo('');
         fetchCategories();
         onCategoryChange?.();
+        if (moved > 0) {
+          setInfoModal({
+            open: true,
+            title: t('ingredientCategories.deleted', 'Category deleted'),
+            message: t('ingredientCategories.movedCount', '{{count}} ingredient(s) moved to the category you chose.', { count: moved }) as string
+          });
+        }
       } else {
-        setInfoModal({ open: true, title: 'Delete Failed', message: data.error || 'Failed to delete. Please try again.' });
+        // 서버는 표준 형식({ success, message })으로 사유를 준다. 옛 { error } 도 함께 읽는다.
+        setInfoModal({
+          open: true,
+          title: t('ingredientCategories.deleteFailed', 'Delete Failed'),
+          message: data.message || data.error || t('ingredientCategories.deleteFailedBody', 'Failed to delete. Please try again.')
+        });
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
-      setInfoModal({ open: true, title: 'Delete Failed', message: 'Failed to delete. Please try again.' });
+      setInfoModal({
+        open: true,
+        title: t('ingredientCategories.deleteFailed', 'Delete Failed'),
+        message: t('ingredientCategories.deleteFailedBody', 'Failed to delete. Please try again.') as string
+      });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -636,20 +672,70 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
         </form>
       </Modal>
 
-      <ConfirmModal
-        isOpen={deleteModalOpen}
-        onCancel={() => { setDeleteModalOpen(false); setCategoryToDelete(null); }}
-        onConfirm={handleDeleteConfirm}
-        title="Delete Category"
-        message={
-          categoryToDelete
-            ? `Are you sure you want to delete "${categoryToDelete.name}"? This action cannot be undone.`
-            : ''
-        }
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
-      />
+      {/* 재료가 남아 있으면 «어디로 옮길지» 를 고르게 한다 (2026-09-16 Irene 지시).
+          전에는 재료가 1건만 있어도 서버가 거부하고 끝이라, 사람이 재료를 하나씩 옮겨야 했다.
+          비어 있는 카테고리는 종전대로 확인만 받고 지운다. */}
+      {pendingCount > 0 ? (
+        <Modal
+          isOpen={deleteModalOpen}
+          onClose={() => { setDeleteModalOpen(false); setCategoryToDelete(null); setReassignTo(''); }}
+          title={t('ingredientCategories.deleteTitle', 'Delete Category')}
+          footer={
+            <>
+              <ModalButton onClick={() => { setDeleteModalOpen(false); setCategoryToDelete(null); setReassignTo(''); }}>
+                {t('common.cancel', 'Cancel')}
+              </ModalButton>
+              <ModalButton
+                variant="danger"
+                disabled={!reassignTo || deleting}
+                onClick={handleDeleteConfirm}
+              >
+                {t('ingredientCategories.moveAndDelete', 'Move & Delete')}
+              </ModalButton>
+            </>
+          }
+        >
+          <UIFormGroup>
+            <FormLabel>
+              {t('ingredientCategories.stillHolds', '"{{name}}" still holds {{count}} ingredient(s).', {
+                name: categoryToDelete?.name || '', count: pendingCount
+              })}
+            </FormLabel>
+            <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 10 }}>
+              {t('ingredientCategories.chooseDestination', 'Choose the category to move them into. The category is deleted afterwards.')}
+            </div>
+            <StandardSelect value={reassignTo} onChange={(e) => setReassignTo(e.target.value)}>
+              <option value="">{t('ingredientCategories.selectDestination', 'Select a category...')}</option>
+              {reassignOptions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.emoji ? c.emoji + ' ' : ''}{c.name}
+                  {c.owner_type === 'brand' ? ` — ${t('ingredientCategories.fromBrand', 'from brand')}` : ''}
+                </option>
+              ))}
+            </StandardSelect>
+            {reassignOptions.length === 0 && (
+              <div style={{ fontSize: 13, color: '#B91C1C', marginTop: 8 }}>
+                {t('ingredientCategories.noDestination', 'There is no other category to move them into. Create one first.')}
+              </div>
+            )}
+          </UIFormGroup>
+        </Modal>
+      ) : (
+        <ConfirmModal
+          isOpen={deleteModalOpen}
+          onCancel={() => { setDeleteModalOpen(false); setCategoryToDelete(null); }}
+          onConfirm={handleDeleteConfirm}
+          title={t('ingredientCategories.deleteTitle', 'Delete Category')}
+          message={
+            categoryToDelete
+              ? t('ingredientCategories.deleteConfirm', 'Are you sure you want to delete "{{name}}"? This action cannot be undone.', { name: categoryToDelete.name }) as string
+              : ''
+          }
+          confirmText={t('common.delete', 'Delete')}
+          cancelText={t('common.cancel', 'Cancel')}
+          type="danger"
+        />
+      )}
       <ConfirmModal
         isOpen={infoModal.open}
         title={infoModal.title}

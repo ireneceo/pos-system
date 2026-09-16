@@ -143,5 +143,23 @@
   "recipesPage.totalIngredientCost": "Jumlah Kos Bahan",
   "recipesTab.srcProduct": "Produk",
   "recipesTab.srcStockItem": "Item Stok",
-  "recipesTab.srcBrandIngredient": "Bahan Jenama"
+  "recipesTab.srcBrandIngredient": "Bahan Jenama",
+  "ingredientCategories": {
+    "deleteTitle": "Padam Kategori",
+    "deleteConfirm": "Adakah anda pasti mahu memadam \"{{name}}\"? Tindakan ini tidak boleh dibatalkan.",
+    "stillHolds": "\"{{name}}\" masih mempunyai {{count}} bahan.",
+    "chooseDestination": "Pilih kategori untuk memindahkan bahan tersebut. Kategori ini akan dipadam selepas itu.",
+    "selectDestination": "Pilih kategori...",
+    "fromBrand": "dari jenama",
+    "noDestination": "Tiada kategori lain untuk memindahkannya. Cipta satu dahulu.",
+    "moveAndDelete": "Pindah & Padam",
+    "deleted": "Kategori dipadam",
+    "movedCount": "{{count}} bahan dipindahkan ke kategori yang anda pilih.",
+    "deleteFailed": "Gagal Memadam",
+    "deleteFailedBody": "Gagal memadam. Sila cuba lagi."
+  },
+  "common": {
+    "cancel": "Batal",
+    "delete": "Padam"
+  }
 }

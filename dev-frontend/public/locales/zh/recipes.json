@@ -143,5 +143,23 @@
   "recipesPage.totalIngredientCost": "总食材成本",
   "recipesTab.srcProduct": "产品",
   "recipesTab.srcStockItem": "库存项目",
-  "recipesTab.srcBrandIngredient": "品牌食材"
+  "recipesTab.srcBrandIngredient": "品牌食材",
+  "ingredientCategories": {
+    "deleteTitle": "删除分类",
+    "deleteConfirm": "确定要删除\"{{name}}\"吗？此操作无法撤销。",
+    "stillHolds": "\"{{name}}\"中还有 {{count}} 项食材。",
+    "chooseDestination": "请选择要将这些食材移入的分类。移动后此分类将被删除。",
+    "selectDestination": "选择分类...",
+    "fromBrand": "来自品牌",
+    "noDestination": "没有其他分类可供移入，请先创建一个。",
+    "moveAndDelete": "移动并删除",
+    "deleted": "分类已删除",
+    "movedCount": "已将 {{count}} 项食材移至所选分类。",
+    "deleteFailed": "删除失败",
+    "deleteFailedBody": "删除失败，请重试。"
+  },
+  "common": {
+    "cancel": "取消",
+    "delete": "删除"
+  }
 }

@@ -1,7 +1,45 @@
 const express = require('express');
 const router = express.Router();
+
+/**
+ * 카테고리를 지울 때, 그 안의 재료를 어디로 보낼지 정한다 (2026-09-16 Irene 지시).
+ *   원문: 「카테고리 삭제할 때 다른 카테고리에 넣을지 선택하게 해줘.」
+ * 전에는 재료가 1건이라도 있으면 400 으로 거부하고 「먼저 바꾸라」고만 해서,
+ * 옮길 곳을 고르는 입력도 한꺼번에 옮기는 경로도 없었다.
+ *
+ * allowedIds = 이 요청자가 «보낼 수 있는» 카테고리 id 집합. 여기 없는 값은 거부한다
+ * (남의 매장·남의 브랜드 카테고리로 밀어넣는 것을 막는다).
+ * 재료 수는 category_id 로만 센다 — 브랜드 카테고리를 여러 매장 재료가 함께 쓰므로
+ * 매장으로 좁히면 «남은 재료»를 놓친다.
+ */
+async function resolveReassign({ categoryId, reassignTo, allowedIds }) {
+  const inUse = await Ingredient.count({ where: { ingredient_category_id: categoryId } });
+  if (inUse === 0) return { ok: true, inUse: 0, target: null };
+
+  if (reassignTo === undefined || reassignTo === null || reassignTo === '') {
+    return {
+      ok: false, inUse,
+      status: 400, code: 'CATEGORY_IN_USE',
+      message: `This category still holds ${inUse} ingredient(s). Choose where to move them first.`
+    };
+  }
+
+  const target = parseInt(reassignTo, 10);
+  if (!Number.isFinite(target)) {
+    return { ok: false, inUse, status: 400, code: 'INVALID_TARGET', message: 'Destination category is not valid' };
+  }
+  if (target === parseInt(categoryId, 10)) {
+    return { ok: false, inUse, status: 400, code: 'INVALID_TARGET', message: 'Cannot move ingredients into the category being deleted' };
+  }
+  if (!allowedIds.has(target)) {
+    return { ok: false, inUse, status: 400, code: 'INVALID_TARGET', message: 'Destination category is not available here' };
+  }
+  return { ok: true, inUse, target };
+}
+
 const { IngredientCategory, Ingredient, Restaurant } = require('../models');
 const { Op } = require('sequelize');
+const { sequelize } = require('../config/database');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
@@ -151,20 +189,41 @@ router.delete('/brands/:brandId/ingredient-categories/:categoryId', authenticate
       return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
-    // 해당 카테고리를 사용하는 재료가 있는지 확인
-    const ingredientCount = await Ingredient.count({
-      where: { ingredient_category_id: category_id }
+    // 옮길 수 있는 곳 = 같은 브랜드의 다른 카테고리
+    const siblings = await IngredientCategory.findAll({
+      where: { brand_id, owner_type: 'brand' }, attributes: ['id']
     });
+    const allowedIds = new Set(siblings.map((c) => c.id));
 
-    if (ingredientCount > 0) {
-      return res.status(400).json({
-        error: `This category has ${ingredientCount} ingredient(s). Please change those ingredients' category first.`
+    const plan = await resolveReassign({
+      categoryId: category_id,
+      reassignTo: req.body && req.body.reassign_to_category_id,
+      allowedIds
+    });
+    if (!plan.ok) {
+      return res.status(plan.status).json({
+        success: false, code: plan.code, message: plan.message,
+        data: { ingredient_count: plan.inUse }
       });
     }
 
-    await category.destroy();
+    let moved = 0;
+    await sequelize.transaction(async (t) => {
+      if (plan.target !== null) {
+        const [n] = await Ingredient.update(
+          { ingredient_category_id: plan.target },
+          { where: { ingredient_category_id: category_id }, transaction: t }
+        );
+        moved = n;
+      }
+      await category.destroy({ transaction: t });
+    });
 
-    res.json({ success: true, message: 'Category deleted' });
+    res.json({
+      success: true,
+      data: { moved, moved_to_category_id: plan.target },
+      message: moved > 0 ? `Category deleted. ${moved} ingredient(s) moved.` : 'Category deleted'
+    });
   } catch (error) {
     console.error('Delete brand ingredient category error:', error);
     res.status(500).json({ success: false, error: { message: 'Failed to delete category', code: 'INTERNAL_ERROR' } });
@@ -384,20 +443,50 @@ router.delete('/restaurants/:restaurantId/ingredient-categories/:categoryId', au
       return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
-    // 해당 카테고리를 사용하는 재료가 있는지 확인
-    const ingredientCount = await Ingredient.count({
-      where: { ingredient_category_id: category_id }
+    // 옮길 수 있는 곳 = 이 매장의 다른 카테고리 + 이 매장이 속한 브랜드의 활성 카테고리.
+    // 브랜드 것을 포함하는 이유: Irene 「브랜드에서 제대로 넘어온 카테고리로 보내려고 해」(2026-09-16).
+    // 화면이 이미 두 목록을 함께 보여주므로(own_categories + brand_categories) 범위를 그대로 맞춘다.
+    const own = await IngredientCategory.findAll({
+      where: { restaurant_id, owner_type: 'restaurant' }, attributes: ['id']
     });
+    const allowedIds = new Set(own.map((c) => c.id));
+    const rest = await Restaurant.findByPk(restaurant_id, { attributes: ['brand_id'] });
+    if (rest && rest.brand_id) {
+      const brandCats = await IngredientCategory.findAll({
+        where: { brand_id: rest.brand_id, owner_type: 'brand', is_active: true }, attributes: ['id']
+      });
+      brandCats.forEach((c) => allowedIds.add(c.id));
+    }
 
-    if (ingredientCount > 0) {
-      return res.status(400).json({
-        error: `This category has ${ingredientCount} ingredient(s). Please change those ingredients' category first.`
+    const plan = await resolveReassign({
+      categoryId: category_id,
+      reassignTo: req.body && req.body.reassign_to_category_id,
+      allowedIds
+    });
+    if (!plan.ok) {
+      return res.status(plan.status).json({
+        success: false, code: plan.code, message: plan.message,
+        data: { ingredient_count: plan.inUse }
       });
     }
 
-    await category.destroy();
+    let moved = 0;
+    await sequelize.transaction(async (t) => {
+      if (plan.target !== null) {
+        const [n] = await Ingredient.update(
+          { ingredient_category_id: plan.target },
+          { where: { ingredient_category_id: category_id }, transaction: t }
+        );
+        moved = n;
+      }
+      await category.destroy({ transaction: t });
+    });
 
-    res.json({ success: true, message: 'Category deleted' });
+    res.json({
+      success: true,
+      data: { moved, moved_to_category_id: plan.target },
+      message: moved > 0 ? `Category deleted. ${moved} ingredient(s) moved.` : 'Category deleted'
+    });
   } catch (error) {
     console.error('Delete restaurant ingredient category error:', error);
     res.status(500).json({ success: false, error: { message: 'Failed to delete category', code: 'INTERNAL_ERROR' } });

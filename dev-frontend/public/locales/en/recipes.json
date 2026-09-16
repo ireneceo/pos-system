@@ -143,5 +143,23 @@
   "recipesPage.totalIngredientCost": "Total Ingredient Cost",
   "recipesTab.srcProduct": "Product",
   "recipesTab.srcStockItem": "Stock Item",
-  "recipesTab.srcBrandIngredient": "Brand Ingredient"
+  "recipesTab.srcBrandIngredient": "Brand Ingredient",
+  "ingredientCategories": {
+    "deleteTitle": "Delete Category",
+    "deleteConfirm": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+    "stillHolds": "\"{{name}}\" still holds {{count}} ingredient(s).",
+    "chooseDestination": "Choose the category to move them into. The category is deleted afterwards.",
+    "selectDestination": "Select a category...",
+    "fromBrand": "from brand",
+    "noDestination": "There is no other category to move them into. Create one first.",
+    "moveAndDelete": "Move & Delete",
+    "deleted": "Category deleted",
+    "movedCount": "{{count}} ingredient(s) moved to the category you chose.",
+    "deleteFailed": "Delete Failed",
+    "deleteFailedBody": "Failed to delete. Please try again."
+  },
+  "common": {
+    "cancel": "Cancel",
+    "delete": "Delete"
+  }
 }

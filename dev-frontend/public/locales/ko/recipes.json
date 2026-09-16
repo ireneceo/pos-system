@@ -143,5 +143,23 @@
   "recipesPage.totalIngredientCost": "총 식자재 비용",
   "recipesTab.srcProduct": "프로덕트",
   "recipesTab.srcStockItem": "재고아이템",
-  "recipesTab.srcBrandIngredient": "브랜드 재료"
+  "recipesTab.srcBrandIngredient": "브랜드 재료",
+  "ingredientCategories": {
+    "deleteTitle": "카테고리 삭제",
+    "deleteConfirm": "\"{{name}}\" 을(를) 삭제할까요? 되돌릴 수 없습니다.",
+    "stillHolds": "\"{{name}}\" 에 재료 {{count}}개가 남아 있습니다.",
+    "chooseDestination": "재료를 옮길 카테고리를 고르세요. 옮긴 뒤 이 카테고리는 삭제됩니다.",
+    "selectDestination": "카테고리 선택...",
+    "fromBrand": "브랜드",
+    "noDestination": "옮길 다른 카테고리가 없습니다. 먼저 하나 만드세요.",
+    "moveAndDelete": "옮기고 삭제",
+    "deleted": "카테고리를 삭제했습니다",
+    "movedCount": "재료 {{count}}개를 고른 카테고리로 옮겼습니다.",
+    "deleteFailed": "삭제 실패",
+    "deleteFailedBody": "삭제하지 못했습니다. 다시 시도해 주세요."
+  },
+  "common": {
+    "cancel": "취소",
+    "delete": "삭제"
+  }
 }
