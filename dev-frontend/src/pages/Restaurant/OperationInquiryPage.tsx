@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
-import { Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
+import { Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel, Button, FormInput, FormSelect } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import { useTranslation } from 'react-i18next';
+import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 
 
 import { getAuthToken } from '../../utils/auth';
@@ -99,72 +100,10 @@ const ActionSection = styled.div`
   gap: 12px;
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-
-  ${props => props.variant === 'primary' ? `
-    background: #635BFF;
-    color: white;
-
-    &:hover {
-      background: #5A51E6;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(99, 91, 255, 0.3);
-    }
-  ` : `
-    background: white;
-    color: #4B5563;
-    border: 1px solid #C7CED6;
-
-    &:hover {
-      background: #F1F4F8;
-      color: #0A2540;
-      border-color: #64748B;
-    }
-  `}
-`;
-
-const FiltersContainer = styled.div`
-  margin-bottom: 24px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-`;
 
 
-const SearchInput = styled.input`
-  padding: 8px 12px;
-  border: 1px solid #C7CED6;
-  border-radius: 6px;
-  font-size: 14px;
-  width: 250px;
 
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
 
-const Select = styled.select`
-  padding: 8px 12px;
-  border: 1px solid #C7CED6;
-  border-radius: 6px;
-  font-size: 14px;
-  background: white;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-  }
-`;
 
 const TicketsGrid = styled.div`
   display: grid;
@@ -349,39 +288,7 @@ const FormLabel = styled.label`
   margin-bottom: 8px;
 `;
 
-const FormInput = styled.input`
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #C7CED6;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.15s;
-  box-sizing: border-box;
 
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const FormSelect = styled.select`
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #C7CED6;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  transition: all 0.15s;
-  cursor: pointer;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
 
 const FormTextArea = styled.textarea`
   width: 100%;
@@ -647,22 +554,22 @@ const OperationInquiryPage: React.FC = () => {
             </StatCard>
           </StatsGrid>
 
-          <FiltersContainer>
-            <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+          <FilterBar>
+            <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
               <option value="all">{t('settings:operationInquiryPage.allStatus')}</option>
               <option value="open">{t('settings:operationInquiryPage.open')}</option>
               <option value="in-progress">{t('settings:operationInquiryPage.inProgress')}</option>
               <option value="resolved">{t('settings:operationInquiryPage.resolved')}</option>
               <option value="closed">{t('settings:operationInquiryPage.closed')}</option>
-            </Select>
-            <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+            </FilterSelect>
+            <FilterSelect value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
               <option value="all">{t('settings:operationInquiryPage.allPriority')}</option>
               <option value="urgent">{t('settings:operationInquiryPage.urgent')}</option>
               <option value="high">{t('settings:operationInquiryPage.high')}</option>
               <option value="medium">{t('settings:operationInquiryPage.medium')}</option>
               <option value="low">{t('settings:operationInquiryPage.low')}</option>
-            </Select>
-            <Select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+            </FilterSelect>
+            <FilterSelect value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
               <option value="all">{t('settings:operationInquiryPage.allCategories')}</option>
               <option value="schedule">{t('settings:operationInquiryPage.schedule')}</option>
               <option value="inventory">{t('settings:operationInquiryPage.inventory')}</option>
@@ -670,13 +577,13 @@ const OperationInquiryPage: React.FC = () => {
               <option value="menu">{t('settings:operationInquiryPage.menu')}</option>
               <option value="customer">{t('settings:operationInquiryPage.customer')}</option>
               <option value="other">{t('settings:operationInquiryPage.other')}</option>
-            </Select>
+            </FilterSelect>
             <SearchInput
               placeholder="Search inquiries..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-          </FiltersContainer>
+          </FilterBar>
 
           <TicketsGrid>
             {filteredTickets.map(ticket => (
