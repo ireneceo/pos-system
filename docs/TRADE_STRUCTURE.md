@@ -448,7 +448,18 @@ Irene 의 「가격관리도 각자」 가 **공급업체 상품 정가까지 �
 | 이름이 헷갈리는 파일 | `RegisterExternalSupplierModal.tsx` 는 **공급업체 상품** 등록 모달이다(업체 등록 아님). 배송 관련 칸 없음 | 같은 파일 `:45` |
 | **배송업체(Carrier) 는 별도로 있다** | 모델 `Carrier` + 관리 화면 `Admin/CarriersPage.tsx`(System Admin). 칸은 code·name·tracking_url_template·logo_url·country·sort_order·is_active·웹훅 설정뿐 — **요금/배송비 칸 0건**. 발주와는 `PurchaseOrder.tracking_info` JSON(carrier_code·tracking_number·events)으로만 이어진다 | `models/Carrier.js` · `CarriersPage.tsx:53, 340~368` · `models/PurchaseOrder.js:61~63` · `routes/carrier-webhooks.js:128~137` |
 
-> ⚠ Irene 원문의 **«외부배송업체 등록»** 이 어느 쪽을 가리키는지 확인 필요 — (가) 외부 **공급업체** 등록 폼(`SupplierDirectoryPage`) 인지 (나) **배송업체** 등록 화면(`Admin/CarriersPage`) 인지. **둘 다 배송비 기준 칸이 없다**는 사실은 같지만, 어디에 칸을 두느냐가 달라진다. 팀원이 고르지 않고 Irene 에게 물을 항목.
+> ✅ **2026-09-16 Irene 확답:** 「외부업체 등록은 **레스토랑 공급업체를 등록하는 걸** 말하는 거야.」
+> → 대상은 (가) **외부 공급업체 등록 폼**(`SupplierDirectoryPage`) 이다. Carrier 화면은 이번 사안이 아니다(사실 기록으로만 남긴다).
+>
+> **Irene 추가 원문 (2026-09-16):**
+> 「외부업체들 **상품가격은 책정되는데 배송비가 책정이 안되잖아.**」
+> 「우리 솔루션 내 **배송비는 어떻게 책정되는 거야?** 브랜드 제너럴에서 git consulting 에 발주할 때 배송비가 안나오는데 **free인지 아닌지.**」
+>
+> **그 질문에 대한 실측 답 (판단 아님, 사실):** 발주 총액 계산은 `purchase-orders-crud.js:225` · `purchase-orders-workflow.js:233` 둘 다
+> **`return { subtotal, total_amount: subtotal, tax_amount: 0 }`** — 즉 **총액 = 품목 합계 그대로이고 세금도 0 고정**이다.
+> 배송비는 **무료로 정해진 것이 아니라 계산식에 자리가 없다.** 배송비가 값으로 등장하는 유일한 곳은 **인보이스 대조**이며,
+> 거기서 사람이 적은 값은 `PurchaseOrder.invoice_delivery` 로 **저장은 되지만**(`routes/cost-reconciliation.js:291`)
+> 발주 `total_amount` 에는 반영되지 않는다. 결과적으로 **주문 시점엔 배송비를 모르고, 청구서를 받은 뒤에야 사람이 적어 넣어 기록으로만 남는 구조**다.
 
 **즉 Irene 원문 ③(「인보이스 비교할 때 배송비항목」)은 이미 되어 있고, 없는 것은 ①판매자가 «배송비 기준» 을 적을 계산 가능한 자리 ②발주 자체에 배송비를 담을 자리 두 개다.**
 
