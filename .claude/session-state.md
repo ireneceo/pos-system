@@ -1,8 +1,8 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-09-16 (반송 메일 주소 운영 반영 + 배송 용어 통일)
-**버전:** 변경 없음 (Irene 미지시)
-**운영:** SW `5.30-category-reassign-delete-20260916` — 2026-09-16 09:31 UTC 배포. **이 세션에서 운영 코드·데이터 변경 0건**(운영은 SELECT 와 `--apply` 없는 미리보기만).
-**작업 상태:** 🔴 **운영 데이터 1건 반영됨**(메일 주소) · 배송 용어 통일은 **개발서버까지, 미배포**. 이전 `/개발완료` (2026-09-16 16:15 UTC). 조사·문서만 · 코드 변경 0건 · 배포 대상 없음. 🔴 **막힌 곳: Fable 한도(429) — 어제 4회 + 오늘 1회 = 5회 연속 판정 미수령.** 우회 안 함.
+**버전:** v3.87 (2026-09-16 배포)
+**운영:** SW `5.31-delivery-wording-20260916` — **2026-09-16 18:03 UTC 배포**(v3.87 · 스모크 10/10 · 백업 `/var/www/backups/20260916_175720`). **이 세션에서 운영 코드·데이터 변경 0건**(운영은 SELECT 와 `--apply` 없는 미리보기만).
+**작업 상태:** ✅ **v3.87 운영 배포 완료** (2026-09-16 18:03 UTC · 스모크 10/10 · 백업 `/var/www/backups/20260916_175720`). 이전 `/개발완료` (2026-09-16 16:15 UTC). 조사·문서만 · 코드 변경 0건 · 배포 대상 없음. 🔴 **막힌 곳: Fable 한도(429) — 어제 4회 + 오늘 1회 = 5회 연속 판정 미수령.** 우회 안 함.
 
 > **이 세션에 한 일 3가지:** ①Irene 질문 「K-DINE 브랜드레시피가 K-DINE IPC 에 제대로 갔는지」 → 운영 실측으로 **도달은 정상, 연동 문제 6건** 확인 ②Irene 지시 「브랜드↔매장 메뉴·옵션 공유 설정을 검토해 제대로된 fable 검토내역 만들어줘」 → `docs/BRAND_MENU_SYSTEM.md` 에 A~E 절(사실만) 작성 후 Fable 호출 → **한도(429)로 판정 미수령** ③Irene 이 «2번(판정 없이 할 수 있는 준비)» 선택 → 같은 문서 F 절에 **검토표 2개**(K-DINE 옵션 짝 · with MIN Cafe 227건 미리보기) 작성.
 >
@@ -45,11 +45,11 @@
 ---
 
 ### 진행 중인 작업
-- 🟢 **배송 용어 통일 — 개발서버 반영 완료, 미배포 (2026-09-16 Irene 지시).**
+- ✅ **배송 용어 통일 — v3.87 운영 배포 완료 (2026-09-16 Irene 지시).**
   - Irene 원문 「Delivery 와 Ship 이 섞여 사용되었어. Order Delivered, Order Shipped 처럼. 하나로 통일해줘.」 + 「메일 알림도 모든 내용 다.」
   - 같은 단계를 **Ship · Dispatch · Deliver 세 단어**로 부르던 것을 **Delivery 한 계열**로. 보냄=Out for Delivery/배송 중 · 동작=Start Delivery/배송 시작 · 도착=Delivered/배송 완료 · **dispatch 제거**. 문구 결정은 §0 기준 팀원 몫.
   - 범위 108군데: 프론트 `purchaseOrders.json`·`supplier.json` 4언어 · 백엔드 `email.json` 4언어 · 하드코딩 8(`routes/seller-orders.js` 7 · `services/poRealtimeService.js` 1). **상태 ENUM 무변경**. 손님 배달주문 «DELIVERY»·하드웨어 «Ships to» 무접촉. 한글 오역 1건 수정.
-  - SW `5.31-delivery-wording-20260916` · 릴리즈 기록 `releases/2026-09-16-delivery-wording.json`. **배포는 Irene 지시 때.**
+  - SW `5.31-delivery-wording-20260916` · 릴리즈 기록 `releases/2026-09-16-delivery-wording.json`. **운영 실측 확인**: SW 5.31 · 운영 로케일 en/ko 새 문구 · 운영 메일 파일 새 문구.
 - ✅ **help@withmin.info → help@k-dine.com — 운영 반영 끝 (2026-09-16).**
   - 반송이 계속된 원인: **운영에는 한 번도 적용된 적이 없었다.** 9/15 스냅샷이 dev 에서 생성돼 배포 rsync 로 운영에 복사되며 처리된 것처럼 보였다.
   - 운영 DB **830개 문자열 칸 전수 스캔** 후 살아 있는 13곳 교체(users.email 1 · restaurants.email 1 · support_tickets 10 · operation_tickets 1). 백업 `withmin_email_predeploy_20260916_172149.sql.gz`. 재스캔 결과 살아 있는 자리 **0건**. 코드에 없어 배포 불필요.

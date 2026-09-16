@@ -1,6 +1,7 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-16 #4 — **반송 메일 주소 운영 반영 + 배송 용어 통일(개발서버, 미배포).**
+> **최종 업데이트:** 2026-09-16 #4 — **v3.87 운영 배포(SW 5.31). 배송 용어 통일 + 반송 메일 주소 교체.**
+> 🚀 **2026-09-16 18:03 UTC 운영 배포 완료** — 안전 게이트 통과 · 스모크 10/10 · 백업 `/var/www/backups/20260916_175720` · 배포 스냅샷 2,122파일. 운영 실측: SW `5.31-delivery-wording-20260916` · 운영 로케일 en「Out for Delivery / Start Delivery」· ko「배송 중 / 배송 시작 / 배송 완료」· 운영 메일 파일 새 문구. 릴리즈 블로그 `/blog/release-v3.87` + 공지 등록(수신자 9).
 > ① Irene 「아직 이 메일로 알림이 가는 곳이 있어 … 시스템 모든 곳에서 이 주소 바꿔줘 … 운영서버 확인해」 → **원인은 «운영에 한 번도 적용된 적이 없음»**. 9/15 교체 스냅샷(`backups/email-replace-*.json`)이 dev 에서 생성돼 배포 rsync 로 운영에 복사되는 바람에 처리된 것처럼 보였다(운영 users 는 id 22 가 그대로였고 dev 는 id 21 이 교체돼 있었다).
 > ② **운영 DB 830개 문자열 칸 전수 스캔** 후 살아 있는 13곳 교체 — `users.email`(with MIN Cafe 관리자, **로그인 아이디 겸용**) · `restaurants.email` · `support_tickets.customerEmail` 10 · `operation_tickets.requesterEmail` 1. 사전 백업 `withmin_email_predeploy_20260916_172149.sql.gz` + 스크립트 되돌리기 스냅샷. 재스캔 결과 **살아 있는 자리 0건**. 코드·메일 템플릿에는 그 주소가 없어 **배포 불필요**.
 > ③ **손대지 않음**: 과거 기록 3,400여 건(activity_logs 3407 · cost_change_logs 31 · system_logs 5 · webhook_events 1 · deploy_records 2 — 메일이 나가지 않고 이력이 어긋난다) · `restaurants.website` `https://withmin.info`(새 주소 미정).
