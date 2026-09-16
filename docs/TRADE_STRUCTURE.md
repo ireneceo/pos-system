@@ -457,3 +457,47 @@ Irene 의 「가격관리도 각자」 가 **공급업체 상품 정가까지 �
 ③사람이 적는 값인가 규칙 자동계산인가(최소주문 미만이면 부과 등) ④배송비를 재고 원가에 태울지(현재 원칙은 「섞지 않는다」)
 ⑤4개 발주 경로(RA→브랜드 / RA→공급업체 / BG→공급업체 / 외부 공급업체)에 같은 규칙을 쓸지.
 금액 공식(`utils/orderTotals` · `computeReconciledTotal`)은 배포 게이트가 단위 테스트로 잠근 보호 대상이라 여기에 손이 닿는다.
+
+### ⑧ 재료 카테고리가 «매장 것»과 «브랜드 것» 두 벌로 갈려 있다 (2026-09-16 Irene 지시 · 실측만)
+
+> Irene 원문 ① 「https://purplehere.com/restaurant/10/ingredients 우리 **재고아이템에 제대로 카테고리 정리가 안되어 있어**.」
+> Irene 원문 ② 「**카테고리 삭제할 때 다른 카테고리에 넣을지 선택하게 해줘.** 그리고 **브랜드에서 제대로 넘어온 카테고리로 보내려고 해. 이중으로 생기네**」
+
+**운영 실측 (2026-09-16, `purple_production_db` SELECT 전용 · 매장 10 = «with MIN Cafe», brand_id=1):**
+
+| 무엇 | 수 |
+|---|---|
+| 매장 10 재료 | **386건** (활성 382) |
+| 카테고리 FK(`ingredient_category_id`)가 빈 재료 | **2건** (IKEA LED String Light · IKEA Square Tissue) |
+| 레거시 `category` ENUM | **386건 전부 `other`** — 이 축은 사실상 죽어 있다 |
+| 같은 이름 재료가 두 줄 | **0건** — 겹치는 것은 재료가 아니라 **카테고리다** |
+| 매장 10 이 보는 카테고리 | **33개 = 매장 소유 19 + 브랜드 소유 14** |
+| **이름이 겹치는 카테고리** | **14쌍** — Seafood · Meat · Vegetables · Fruit · Dairy & Egg · Tea & Coffee · Base & Syrup · Sauce & Condiment · Spice & Powder · Noodle, Rice & Grain · Packaging & Disposables · Cleaning & Chemical · Other · **Uncategorized** |
+| 재료가 실제로 붙어 있는 곳 | 매장 소유 **357건** · 브랜드 소유 **27건** · 없음 2건 |
+| 가장 큰 덩어리 | 매장 소유 «Uncategorized» 에 **81건** (브랜드 «Uncategorized» 는 0건) |
+| 브랜드 카테고리 중 아무도 안 쓰는 것 | 5개 — Cleaning & Chemical · Dairy & Egg · Spice & Powder · Tea & Coffee · Uncategorized |
+| 매장에만 있고 브랜드엔 없는 카테고리 | 5개 — Staff Meal · Poultry · Alcohol · Beverage · Kitchen & Supplies |
+
+**두 벌이 생긴 경로 (각각 다른 곳에서 만들어진다 — 자동 복제가 아니라 «두 군데서 따로 짓는다»):**
+
+| 벌 | 만드는 곳 | 근거 |
+|---|---|---|
+| **매장 소유 19개** | 일회성 임포트 스크립트가 **같은 분류표에서 BG용과 매장용을 둘 다 만든다** — 주석 원문 「Creates ProductIngredientCategory (owner=BG) + IngredientCategory (restaurant) as needed.」 18개 이름 분류표(Staff Meal·Poultry·Alcohol·Kitchen & Supplies 포함) | `dev-backend/scripts/withmin-import/categorize-and-cleanup.js:1~9, 20~38` (`--bg 23 --restaurant 10`) |
+| **브랜드 소유 14개** | 브랜드 프로덕트를 매장 재료로 내려보낼 때 **BrandProductCategory 이름으로 IngredientCategory(brand) 를 find-or-create** 한다 | `dev-backend/routes/brand-products.js:201~216` (주석 「so the mirrored restaurant ingredient isn't "Uncategorized"」, Fable 2026-07-05) |
+
+**화면은 두 벌을 합치지 않고 그대로 둘 다 내려준다** — `routes/ingredient-categories.js:210~270` 이 `own_categories` + `brand_categories` 두 목록으로 응답한다(브랜드 것은 `editable:false`, 자기 브랜드·활성만). **이름이 같아도 합치는 규칙이 없다.**
+
+**삭제 동작 (Irene 원문 ① 이 가리키는 자리):**
+- `routes/ingredient-categories.js:373~404` — 그 카테고리를 쓰는 재료가 **1건이라도 있으면 400 으로 거부**하고 「Please change those ingredients' category first」 만 돌려준다. **옮길 대상을 고르는 입력도, 일괄 이동 경로도 없다.**
+- 그 400 응답은 `{ error: ... }` **레거시 형식**이라(표준은 `{ success:false, message }`) 화면에서 사유가 안 보일 수 있다 — 관련 [[reference_fetchapi_drops_error_body]].
+- 참고: 그 재료 수 세기(`Ingredient.count`)에 **매장 조건이 없다** — 카테고리 id 로만 센다.
+
+⛔ 팀원은 길을 고르지 않는다. 정할 것:
+①**어느 벌을 정본으로 삼는가** — Irene 원문 ②는 「브랜드에서 제대로 넘어온 카테고리로 보내려고 해」이나, 브랜드 14개에는 매장이 쓰는 **Staff Meal·Poultry·Alcohol·Beverage·Kitchen & Supplies 5개가 없다**(매장 재료 357건 중 이 5개에 43건). 브랜드로 몰면 이 43건의 갈 곳을 정해야 한다.
+②합치기를 **데이터로** 할지(매장 카테고리 재료를 브랜드 카테고리로 옮기고 빈 매장 카테고리 삭제) **화면에서만** 할지(같은 이름이면 한 줄로 보이게).
+③**Uncategorized 81건**을 어떻게 할지 — 자동 재분류(임포트 스크립트의 키워드 표 재사용)인지 사람이 할지.
+④삭제 시 «옮길 카테고리 선택» 의 범위 — 매장 카테고리로만 옮길지 브랜드 카테고리로도 옮길 수 있게 할지.
+⑤**두 벌이 또 생기는 것을 막는 규칙** — `brand-products.js` 의 find-or-create 가 매장 쪽에 같은 이름이 이미 있어도 브랜드 줄을 새로 만든다. 프로젝트 규칙 「기존 개념에 새 목록·경로를 만들지 않는다」에 정면으로 걸리는 자리다.
+⑥레거시 `Ingredient.category` ENUM(386건 전부 `other`)을 정리할지 둘지.
+
+**되돌리기 어려움(B축):** 카테고리 이동·삭제는 운영 재료 386건의 분류를 바꾸는 일이라 스냅샷 없이는 되돌리기 어렵다.
