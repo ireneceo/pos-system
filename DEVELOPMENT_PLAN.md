@@ -10116,6 +10116,35 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 
 ---
 
+## ✅ 완료: 배송 용어 통일 + 반송 메일 주소 교체 (2026-09-16 #4 · v3.87 운영 배포)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 반송 메일 주소 교체 | `help@withmin.info` → `help@k-dine.com`. 운영 DB 830칸 전수 스캔 후 살아 있는 13곳 교체(users.email 1 · restaurants.email 1 · support_tickets 10 · operation_tickets 1) | ✅ 운영 반영 |
+| 원인 규명 | 운영에 한 번도 적용된 적 없었음 — 9/15 교체 스냅샷이 dev 에서 생성돼 배포 rsync 로 운영에 복사되며 처리된 것처럼 보였다 | ✅ 확인 |
+| 홈페이지 주소 | `restaurants.website` → `https://k-dine.com` (Irene 지정) | ✅ 운영 반영 |
+| 배송 용어 통일 | Ship · Dispatch · Deliver → Delivery 한 계열. 108군데(프론트 2파일 × 4언어 · 백엔드 email.json × 4언어 · 하드코딩 8) | ✅ v3.87 배포 |
+| 한글 오역 수정 | 보내는 단계인데 「업체가 배송완료로 표시」 | ✅ v3.87 배포 |
+| 과거 로그 3,400여 건 | Irene 「1번 과거는 안해도 돼」 → 무변경 | — 무접촉 |
+
+### 수정된 파일
+- `dev-frontend/public/locales/{en,ko,zh,ms}/{purchaseOrders,supplier}.json`
+- `dev-backend/locales/{en,ko,zh,ms}/email.json`
+- `dev-backend/routes/seller-orders.js` · `dev-backend/services/poRealtimeService.js`
+- `dev-frontend/public/sw.js` (5.31) · `dev-backend/releases/archive/2026-09-16-delivery-wording.json`
+
+### 검증
+verify-all --full **19/19** · i18n 오류 0 · health-check 247/247 · 🔒 인쇄 보호파일 8/8 무변경 · 배포 스모크 10/10
+운영 실측: SW 5.31 · 운영 로케일 en/ko 새 문구 · 운영 메일 파일 새 문구 · `withmin.info` 살아 있는 자리 0건
+
+### 확인하지 않은 것
+- 고장주입 — 문구 교체라 방어 로직 변경이 없다(주입할 방어가 없음).
+- 운영 화면 육안 확인 — 배포 후 직접 눌러 보지는 않았다(파일·API 수준 실측까지).
+
+---
+
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 
 ### 현재 상황

@@ -338,6 +338,21 @@
       "ko": "담기 불가",
       "zh": "不可添加",
       "ms": "Tidak tersedia"
+    },
+    "Out for Delivery": {
+      "ko": "배송 중",
+      "zh": "配送中",
+      "ms": "Dalam Penghantaran"
+    },
+    "Start Delivery": {
+      "ko": "배송 시작",
+      "zh": "开始配送",
+      "ms": "Mula Penghantaran"
+    },
+    "Delivered": {
+      "ko": "배송 완료",
+      "zh": "已送达",
+      "ms": "Telah Sampai"
     }
   }
 }
