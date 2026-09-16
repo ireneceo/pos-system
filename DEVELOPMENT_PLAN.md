@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-16 #4 — **v3.87 운영 배포(SW 5.31). 배송 용어 통일 + 반송 메일 주소 교체.**
+> **최종 업데이트:** 2026-09-16 #5 — [Codex] 레스토랑 문의 화면 공통 UI 컴포넌트 통일 — **v3.87 운영 배포(SW 5.31). 배송 용어 통일 + 반송 메일 주소 교체.**
 > 🚀 **2026-09-16 18:03 UTC 운영 배포 완료** — 안전 게이트 통과 · 스모크 10/10 · 백업 `/var/www/backups/20260916_175720` · 배포 스냅샷 2,122파일. 운영 실측: SW `5.31-delivery-wording-20260916` · 운영 로케일 en「Out for Delivery / Start Delivery」· ko「배송 중 / 배송 시작 / 배송 완료」· 운영 메일 파일 새 문구. 릴리즈 블로그 `/blog/release-v3.87` + 공지 등록(수신자 9).
 > ① Irene 「아직 이 메일로 알림이 가는 곳이 있어 … 시스템 모든 곳에서 이 주소 바꿔줘 … 운영서버 확인해」 → **원인은 «운영에 한 번도 적용된 적이 없음»**. 9/15 교체 스냅샷(`backups/email-replace-*.json`)이 dev 에서 생성돼 배포 rsync 로 운영에 복사되는 바람에 처리된 것처럼 보였다(운영 users 는 id 22 가 그대로였고 dev 는 id 21 이 교체돼 있었다).
 > ② **운영 DB 830개 문자열 칸 전수 스캔** 후 살아 있는 13곳 교체 — `users.email`(with MIN Cafe 관리자, **로그인 아이디 겸용**) · `restaurants.email` · `support_tickets.customerEmail` 10 · `operation_tickets.requesterEmail` 1. 사전 백업 `withmin_email_predeploy_20260916_172149.sql.gz` + 스크립트 되돌리기 스냅샷. 재스캔 결과 **살아 있는 자리 0건**. 코드·메일 템플릿에는 그 주소가 없어 **배포 불필요**.
@@ -10142,6 +10142,24 @@ verify-all --full **19/19** · i18n 오류 0 · health-check 247/247 · 🔒 인
 ### 확인하지 않은 것
 - 고장주입 — 문구 교체라 방어 로직 변경이 없다(주입할 방어가 없음).
 - 운영 화면 육안 확인 — 배포 후 직접 눌러 보지는 않았다(파일·API 수준 실측까지).
+
+---
+
+## ✅ 완료: [Codex] 레스토랑 문의 화면 공통 UI 컴포넌트 통일 (2026-09-16)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 검색·필터 공통화 | OperationInquiryPage와 SystemInquiryPage의 로컬 Button/SearchInput/Select/Filter 컨테이너를 기존 UI 공통 컴포넌트로 교체 | ✓ 완료 |
+| 반응형 확인 | 수정 화면을 관리자·브랜드 역할과 4개 화면 폭에서 실제 측정 | ✓ 8/8 |
+| 기능 보존 | API·상태·핸들러 로직은 수정하지 않음 | ✓ 확인 |
+
+### 수정된 파일
+- `dev-frontend/src/pages/Restaurant/OperationInquiryPage.tsx`
+- `dev-frontend/src/pages/Restaurant/SystemInquiryPage.tsx`
+
+검증: 디자인 가드 신규 위반 0건, 반응형 PAGE_OVERFLOW/TABLE_CLIPPED/CELL_SQUEEZE 0건. 개발 빌드는 완료됐으나 기존 경고 3건과 Node 메모리 부족 메시지가 출력됨. 운영 배포는 하지 않음.
 
 ---
 
