@@ -1,6 +1,13 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-15 — **브랜드 여러 개 가진 계정의 «한 축» 결함 2건 + Profile 이메일 인증 안내 (개발서버 · 미배포).**
+> **최종 업데이트:** 2026-09-16 — **기록 정리. 2026-09-15 오후 작업 2건(프로덕트↔재고아이템 연결 · 목록 «두 줄» 합치기)이 기록되지 않은 채 운영에 올라가 있었다.**
+> ① 이 세션에는 코드 변경이 **0건**이다(워킹트리 깨끗 · 오늘 바뀐 파일 없음). 한 일은 **빠진 기록을 채우고 틀린 상태 표기를 고친 것**뿐이다.
+> ② 실측으로 확인한 사실: 운영 `purplehere.com/sw.js` 의 `SW_VERSION` 이 **`5.29-seller-name-fix-20260915`** 로, 개발과 같다 → **2026-09-15 15:21 UTC 운영 배포가 실제로 이뤄졌다**(`.claude/deploy-manifest.json` `created_at` 2026-09-15T15:21:53.816Z, 파일 2,120개 지문).
+> ③ 그런데 기록 3곳(DEVELOPMENT_PLAN 머리글 · CHANGELOG · session-state)은 모두 **«SW 5.25 · 미배포»** 에서 멈춰 있었다. 그날 오후의 릴리즈 기록 2건(`2026-09-15-product-stock-link` 14:08 SW 5.26 · `2026-09-15-link-pairs` 15:16 SW 5.29)은 `dev-backend/releases/archive/` 에만 남아 있고 어느 문서에도 옮겨지지 않았다. 원인은 그날 오후 세션이 배포까지 하고 `/개발완료` 없이 끝난 것.
+> ④ 이번에 세 문서를 **릴리즈 기록을 단일 소스로** 채웠다 — 아래 «완료» 절 · CHANGELOG `2026-09-15 #2 / #3` · session-state.
+> ⑤ ⚠ **Fable 판정은 두 건 모두 미수령**(사용 한도 429, 2026-09-15 총 2회 시도) — 릴리즈 기록 `fable_note` 에 명시돼 있다. 기계 판정(`check-sensitive-diff`)은 **비대상**(운영 스냅샷 0건 + 워킹트리 0건). 게이트 마커는 지문 불일치로 무효 상태 그대로.
+>
+> **이전 업데이트:** 2026-09-15 — **브랜드 여러 개 가진 계정의 «한 축» 결함 2건 + Profile 이메일 인증 안내 (⚠ 당시 «미배포» 로 적었으나 같은 날 15:21 UTC 운영 배포에 함께 올라갔다).**
 > ① Sales Orders 빨간 점이 `users.brand_id` 한 축만 봐서, 브랜드를 두 개 이상 **소유**한 분에게 다른 브랜드로 들어온 주문이 **목록엔 보이는데 점은 안 뜨던** 것. 목록 화면이 이미 쓰던 단일 소스(`middleware/sellerScope.js resolveBrandScopeIds`)를 배지도 쓰게 했다. Brand Manager 는 종전대로 소속 브랜드 하나(2026-09-06 판정 유지).
 > ② 발주 알림 메일 **머리글 브랜드**도 같은 한 축이라 상관없는 브랜드 이름이 찍혔다(운영 PO-R8-20260914-001 은 양쪽 다 브랜드 2 인데 머리글은 브랜드 1). 메일을 만드는 쪽이 «이 거래의 브랜드» 를 알려주면 쓰고 **안 알려주면 예전 그대로** 인 추가형 — 값을 채운 곳은 발주 알림 2종뿐.
 > ③ **Profile 에 이메일 인증 안내·재발송**을 넣었다. 이메일을 실제로 바꾸는 자리인데 안내가 알림 설정 화면에만 있어, 주소를 바꾸면 인증이 풀리는 걸 본인이 모른 채 알림이 끊겼다. 두 화면이 **같은 컴포넌트**를 쓴다.
@@ -10003,6 +10010,59 @@ Irene 반박 *"제대로 구조자체는 되어 있던 거 아니야?"* 로 **�
 - `dev-frontend/src/pages/NotificationSettings/NotificationSettingsPage.tsx`
 - `dev-frontend/public/sw.js` (5.24 → 5.25)
 - `docs/EMAIL_SYSTEM.md` §5.1 (머리글 지정 규칙 추가)
+
+---
+
+## ✅ 완료: 프로덕트↔재고아이템 연결 + 목록 «두 줄» 합치기 (2026-09-15 오후, 운영 배포 · SW 5.26 → 5.29)
+
+> **기록 경위:** 이 두 건은 2026-09-15 오후에 구현·검증·**운영 배포**(15:21 UTC)까지 끝났으나 그 세션이 `/개발완료` 없이 종료돼 어느 문서에도 옮겨지지 않았다. 2026-09-16 에 릴리즈 기록 2건(`dev-backend/releases/archive/2026-09-15-product-stock-link.json` · `2026-09-15-link-pairs.json`)을 단일 소스로 옮겨 적은 것이다. **이번에 코드는 한 줄도 바뀌지 않았다.**
+> 배포 확인 근거: 운영 `purplehere.com/sw.js` 의 `SW_VERSION` = `5.29-seller-name-fix-20260915` (개발과 동일) · `.claude/deploy-manifest.json` `created_at` 2026-09-15T15:21:53.816Z (파일 2,120개 지문).
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 프로덕트 저장 시 재고아이템 동시 생성 | 체크를 켠 경우에만 만든다. 같은 이름이 이미 있으면 새로 만들지 않고 먼저 물어본다(409 + 후보 반환) — 2026-06-08·07-05 «같은 물건 두 줄» 사고 재발 방지 | ✅ 완료 |
+| 프로덕트 창에서 «어디서 사 오나» 연결 | 재료 화면까지 나갔다 오지 않아도 된다. 기존 창(`ConnectSellerModal`)·기존 경로 그대로 사용 | ✅ 완료 |
+| 프로덕트 창에 «파는 기준 / 사는 기준 / 마진» | 예: 파는 기준 1 kg/pack RM 15.00 · 사는 기준 14 kg/carton RM 150.00 · 마진 RM 10.71 → RM 15.00 per kg (+40.0%) | ✅ 완료 |
+| 발주 검색 시 카탈로그 건수 안내 | 내 재고아이템에 없는 물건을 검색하면 «공급업체 상품에는 N건» + «카탈로그에서 보기». 전에는 탭을 직접 바꿔야만 알 수 있어 살 수 있는 물건을 없는 것으로 알고 나갔다 | ✅ 완료 |
+| 발주 목록 «두 줄» → 한 줄 | 프로덕트가 재고아이템에 연결돼 있으면 재고아이템 줄 하나만. 재고는 한 곳인데 줄이 둘이라 같은 물건을 두 번 발주할 수 있었다. 매장도 같은 규칙 | ✅ 완료 |
+| 이미 프로덕트인 재고아이템 재등록 차단 | `register-as-product` 의 중복 검사가 레시피 경로만 보고 재고아이템 직접 연결을 안 봐서 같은 이름 프로덕트가 2개 생겼다(실측 201 통과) → 409. 화면엔 «판매 중: 상품명» | ✅ 완료 |
+| «/piece · undefined» → 공급업체 이름 | `GET /product-ingredients/stock-products` 만 `seller_name` 을 안 내려줬다(연결 자체는 정상이었음) | ✅ 완료 |
+| 공급업체 상품 «고르기» / «만들어 연결» 분리 | 기존 «External supplier» 는 업체 등록처럼 읽혔지만 실제로는 상품을 만들어 연결하는 것. 재고아이템 화면·프로덕트 창 양쪽에 두 버튼 | ✅ 완료 |
+| 매장 어휘 정리(4언어) | «Add as product» → «메뉴로 등록», «Also sell as product» → «메뉴로도 등록». 매장에는 프로덕트가 없고 메뉴가 있다. 브랜드는 종전대로 «프로덕트» | ✅ 완료 |
+| 거래처 이름을 회사명 단일 소스로 | 발주·재고 목록 두 자리가 `utils/sellerNames` 규칙(2026-08-28)을 우회해 브랜드명(«with MIN»)을 직접 읽고 있었다. 회사명이 빈 브랜드만 종전처럼 브랜드명 폴백 | ✅ 완료 |
+| 반송 메일 주소 교체 스크립트 | `help@withmin.info` 도메인 소멸로 실제 반송(운영 보고). 기본은 미리보기, `--apply` 로만 변경, 되돌리기 스냅샷, `notification_settings.smtp_user`(메일 서버 로그인 계정)는 기본 제외. **운영 실행은 미착수** | ✅ 완료(도구) |
+| 화면 타입 구멍 2건 | 프로덕트 화면 formData 에 `product_ingredient_id` 누락 · 재고아이템 정렬 결과 타입이 느슨하게 좁혀짐. 타입 검사기가 메모리 부족으로 죽어 있어 드러나지 않던 자리. 458 → 442 → **410건**(신규 0) | ✅ 완료 |
+
+### 검증 (릴리즈 기록에 적힌 값)
+- `verify-all --full` **19/19** 통과(실브라우저 mount sweep 701.4s 포함) · 인쇄 보호파일 8/8 무변경.
+- 실호출 — 목록 합치기 3/3 · 중복 차단 3/3 · 프로덕트→재고아이템 라우트 7/7(생성 201 · 중복 409 · force 201 · 남의 재고아이템 404 · 남의 프로덕트 404 · 레시피 연결 400 · 익명 401) · 거래처 표시명 4/4 · 배지 실호출 3/3 · 메일 머리글 3/3 + 끝단 2/2.
+- **고장주입 반증** — 중복 검사를 제거하니 두 번째 생성이 201 로 통과, 원복 후 409 복귀(파일 지문 동일 · 주입 흔적 0). 배지·메일 머리글도 각각 옛 규칙으로 되돌려 반증.
+- 실브라우저 — 프로덕트 창 4/4 · 발주 카탈로그 안내 5/5(양성·음성) · Profile 인증 안내 4/4. 검증용 임시 계정·임시 계약 모두 삭제(잔여 0).
+- 타입 검사: 기준 442건 → **410건**(신규 0 · 32건 감소). 검사기가 설정 오류로 0건을 내던 상태를 먼저 발견해 고친 뒤 측정.
+
+### ⚠ Fable 판정
+두 건 모두 **미수령** — 사용 한도(429), 2026-09-15 총 2회 시도. 릴리즈 기록 `fable_note` 에 명시돼 있다. 기계 판정(`check-sensitive-diff`)은 **«일반 변경»(비대상)**. 팀원 판단으로 범위를 최소화했다는 기록: 새 개념·새 표를 만들지 않고 기존 연결 컬럼(`product_ingredient_id`·`ingredient_id`)을 **읽기만** 해 목록에서 제외했고, 중복 검사도 기존 `ALREADY_A_PRODUCT` 경로에 조건 하나를 더했다. 데이터는 한 줄도 바꾸지 않았다. 배포는 2026-09-15 Irene 「검증 철저히 하고 배포까지 해」 지시.
+
+### 수정된 파일
+- `dev-backend/routes/brand-products.js`
+- `dev-backend/routes/product-ingredients.js`
+- `dev-backend/routes/restaurants-ingredients.js`
+- `dev-backend/scripts/migrate-replace-withmin-email.js` (신규 · `migrations.registry.json` 에 `manual` 등록)
+- `dev-frontend/src/components/Common/RegisterAsProductModal.tsx`
+- `dev-frontend/src/pages/BrandProductManagement/BrandProductsTab.tsx`
+- `dev-frontend/src/pages/BrandProductRecipe/ProductIngredientsTab.tsx`
+- `dev-frontend/src/pages/PurchaseOrders/NewPurchaseOrderPage.tsx`
+- `dev-frontend/src/pages/RecipeManagement/IngredientsTab.tsx`
+- `dev-frontend/public/locales/{en,ko,zh,ms}/{brand,ingredients,purchaseOrders}.json`
+- `dev-frontend/tsconfig.verify.json` · `dev-frontend/.verify-types/*` (타입 검사기 복구)
+- `dev-frontend/public/sw.js` (SW 5.29)
+
+### 배포 후 남은 일 (운영)
+- 운영에 **이미 만들어진 «2중» 행은 코드로 합쳐지지 않는다** — 프로덕트 창에서 기존 재고아이템을 골라 연결하면 그때 한 줄이 된다(Irene 작업).
+- 브랜드 `company_name` 을 «GIT Consulting» 으로 채워야 거래처 이름이 회사명으로 나온다(비면 브랜드명 폴백).
+- `help@withmin.info` → `help@k-dine.com` 운영 실행 대기(`scripts/migrate-replace-withmin-email.js`, 개발 적용 1건·재실행 0건 멱등 확인). 운영 DB 읽기 계정이 없어 현황 확인조차 못 한 상태.
 
 ---
 

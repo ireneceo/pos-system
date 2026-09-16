@@ -427,3 +427,30 @@ Irene 의 「가격관리도 각자」 가 **공급업체 상품 정가까지 �
 ⛔ 팀원은 길을 고르지 않는다. 정할 것: ①브랜드가 넣어준 외부 공급업체 상품을 매장이 «내 사본» 으로 떠서 고치게 할지
 ②아니면 지금처럼 정가는 브랜드 소유로 두고 매장은 자기 원가층만 갖게 할지 ③화면에서 그 차이를 어떻게 알려줄지.
 관련: 이 문서 ① 항목(외부 공급업체 가격 PUT 의 주체 검사 누락)과 한 묶음으로 봐야 한다.
+
+### ⑦ 배송비를 담을 자리가 발주에 없다 (2026-09-16 Irene 지시 · 실측만)
+
+> Irene 원문 ① 「브랜드제너럴이랑 공급업체들 **배송비 기준**은 레스토랑관리자가 발주할 때 안나오네. 배송비 나와야 하는데 **외부배송업체 등록할 때도 배송비 따로 기준 안나오고**. 이거 어떻게 해야 해? **발주하고 인보이스 비교할 때 배송비항목 추가**하게 할 수 있어?」
+> Irene 원문 ② 「브랜드제너럴이 공급업체에 주문할 때도 마찬가지지.」
+
+**실측 (2026-09-16, 소스 직접 확인):**
+
+| 무엇 | 지금 상태 | 근거 |
+|---|---|---|
+| 발주 헤더 금액 | `subtotal` · `tax_amount` · `total_amount` · `currency` 뿐 — **배송비 칸 없음** | `models/PurchaseOrder.js:28~31` |
+| 발주 품목 | 품목 전용(수량·단위·단가·line_total·환산). **비품목 라인 개념 없음** | `models/PurchaseOrderItem.js` |
+| **인보이스 대조의 배송비** | **이미 있다.** 컬럼 `invoice_delivery` DECIMAL(12,2) · 총액식 `줄 합 + 세금 + 배송 − 할인` · 차액이 허용치 넘으면 400 `TOTAL_MISMATCH` | `models/PurchaseOrder.js:82` · `routes/cost-reconciliation.js:151~152, 204` · `InvoiceReconcilePage.tsx:809~810, 516` |
+| 대조 화면의 원칙 | 「세금·배송·할인은 품목 단가에 섞지 않습니다. 따로 기록해 두어야 원가가 부풀지 않습니다.」 | `InvoiceReconcilePage.tsx:817` (화면 문구 원문) |
+| 판매자 «배송비 기준» | `SupplierCompany.min_order_amount`(DECIMAL) · `delivery_policy`(**TEXT 자유 텍스트** — 주석 「배송일, 배송료, 지역 등」) 둘뿐. **계산에 쓸 배송비 금액·무료배송 기준 값 없음** | `models/SupplierCompany.js:28, 32` |
+| 그 두 칸이 나오는 화면 | **외부 공급업체 등록 폼 한 곳뿐**. 가입 공급업체 본인 프로필에는 없어 자기 배송 정책을 화면에서 못 적는다(백엔드 PUT 은 받음) | `SupplierDirectoryPage.tsx:341, 516, 542` · `SupplierProfilePage.tsx` 에 0건 · `routes/supplier-directory.js:1097, 1102` |
+| 브랜드(판매자) | 배송비·최소주문 칸이 **아예 없다** — `SupplierCompany` 는 공급업체 전용 모델이고 판매자 축은 `seller_type` ENUM(system_admin/brand/foodcourt/supplier) | `models/PurchaseOrder.js:13` |
+| 발주 담는 화면 | 판매자별 `subtotal` 합만 보여준다. `min_order_amount`·`delivery_policy` 를 읽는 코드 **0건**. 있는 것은 `expected_delivery_date`·`delivery_address` 뿐 | `NewPurchaseOrderPage.tsx:1866, 1915~1916` |
+| 이름이 헷갈리는 파일 | `RegisterExternalSupplierModal.tsx` 는 **공급업체 상품** 등록 모달이다(업체 등록 아님). 배송 관련 칸 없음 | 같은 파일 `:45` |
+
+**즉 Irene 원문 ③(「인보이스 비교할 때 배송비항목」)은 이미 되어 있고, 없는 것은 ①판매자가 «배송비 기준» 을 적을 계산 가능한 자리 ②발주 자체에 배송비를 담을 자리 두 개다.**
+
+⛔ 팀원은 길을 고르지 않는다. 정할 것: ①배송비를 발주에 담을지(PO 헤더 칸 / 비품목 라인 / 안 담고 대조의 `invoice_delivery` 만 유지)
+②판매자 «배송비 기준» 을 어디에 둘지(SupplierCompany 확장 / 계약 / 브랜드·푸드코트까지 포함하는 판매자 공통 자리)
+③사람이 적는 값인가 규칙 자동계산인가(최소주문 미만이면 부과 등) ④배송비를 재고 원가에 태울지(현재 원칙은 「섞지 않는다」)
+⑤4개 발주 경로(RA→브랜드 / RA→공급업체 / BG→공급업체 / 외부 공급업체)에 같은 규칙을 쓸지.
+금액 공식(`utils/orderTotals` · `computeReconciledTotal`)은 배포 게이트가 단위 테스트로 잠근 보호 대상이라 여기에 손이 닿는다.
