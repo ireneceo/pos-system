@@ -446,6 +446,9 @@ Irene 의 「가격관리도 각자」 가 **공급업체 상품 정가까지 �
 | 브랜드(판매자) | 배송비·최소주문 칸이 **아예 없다** — `SupplierCompany` 는 공급업체 전용 모델이고 판매자 축은 `seller_type` ENUM(system_admin/brand/foodcourt/supplier) | `models/PurchaseOrder.js:13` |
 | 발주 담는 화면 | 판매자별 `subtotal` 합만 보여준다. `min_order_amount`·`delivery_policy` 를 읽는 코드 **0건**. 있는 것은 `expected_delivery_date`·`delivery_address` 뿐 | `NewPurchaseOrderPage.tsx:1866, 1915~1916` |
 | 이름이 헷갈리는 파일 | `RegisterExternalSupplierModal.tsx` 는 **공급업체 상품** 등록 모달이다(업체 등록 아님). 배송 관련 칸 없음 | 같은 파일 `:45` |
+| **배송업체(Carrier) 는 별도로 있다** | 모델 `Carrier` + 관리 화면 `Admin/CarriersPage.tsx`(System Admin). 칸은 code·name·tracking_url_template·logo_url·country·sort_order·is_active·웹훅 설정뿐 — **요금/배송비 칸 0건**. 발주와는 `PurchaseOrder.tracking_info` JSON(carrier_code·tracking_number·events)으로만 이어진다 | `models/Carrier.js` · `CarriersPage.tsx:53, 340~368` · `models/PurchaseOrder.js:61~63` · `routes/carrier-webhooks.js:128~137` |
+
+> ⚠ Irene 원문의 **«외부배송업체 등록»** 이 어느 쪽을 가리키는지 확인 필요 — (가) 외부 **공급업체** 등록 폼(`SupplierDirectoryPage`) 인지 (나) **배송업체** 등록 화면(`Admin/CarriersPage`) 인지. **둘 다 배송비 기준 칸이 없다**는 사실은 같지만, 어디에 칸을 두느냐가 달라진다. 팀원이 고르지 않고 Irene 에게 물을 항목.
 
 **즉 Irene 원문 ③(「인보이스 비교할 때 배송비항목」)은 이미 되어 있고, 없는 것은 ①판매자가 «배송비 기준» 을 적을 계산 가능한 자리 ②발주 자체에 배송비를 담을 자리 두 개다.**
 
