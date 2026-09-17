@@ -98,6 +98,7 @@
     "sprint7-migration.js"
   ],
   "manual": {
+    "fix-ingredient-data-debt-20260917.js": "일회성 — 고아 셀러매핑 정리 · 코드 중복 재채번(2026-09-17 Fable 판정 ②④). 드라이런 기본 · --apply · --undo.",
     "migrate-address-schema.js": "레거시 — 초기 주소 스키마 마이그(과거 적용).",
     "migrate-ai-serving.js": "조건부 — 비전 AI 서빙 활성화 시에만 수동 실행(테이블2+plan seed). 미활성 매장 무영향.",
     "migrate-backfill-ewallet-grabpay.js": "⛔ 미실행 확정 — 운영 실행 금지 (2026-07-24 Fable 판정, Irene 위임). 이유: ①ewallet_type 의 유일한 read 소비자는 mallSalesService.addToBucket 이고 거기서 NULL 과 grabpay 는 똑같이 othersamount 버킷 = 출력 무변화(기능적 no-op) ②몰 보고는 최근 7일 롤링 upsert 로 소급 전송이 없고 rid=16 은 최근 7일 이월렛 0건 = 백필해도 몰이 볼 창에 대상 행 0 ③운영 영향 12,906건 중 97.3% 가 몰 무관 매장(rid=8 K-DINE 12,556)이고 무슨 월렛이었는지 추론할 단서가 데이터에 전무 → 전량 grabpay 는 사실관계상 오태깅, NULL(=서브타입 미기록)이 정직한 값 ④전 매장 acceptedTypes 미설정이라 신규분도 NULL 로 쌓임 = 재실행 시 진짜 미상 신규 행까지 덮는 footgun. TnG 분리는 rid=16 acceptedTypes 등록 후 신규 주문부터 태깅되는 경로가 유일한 실효 수단. 되살릴 경우에만 migrate-add-ewallet-type 선행 필요.",
@@ -119,21 +120,21 @@
     "migrate-foodcourt-branches.js": "레거시 — 푸드코트 지점 모델 초기 마이그(과거 적용).",
     "migrate-git-merge-packaging.js": "일회성 데이터 이관 — GIT 포장재 갈라진 재고 합치기(운영 1회, 이름·소유자 이중 확인, 멱등). 배포 루프에서 재실행하지 않는다.",
     "migrate-images.js": "일회성 — 초기 이미지 마이그레이션(과거 적용). 배포 루프 미포함.",
+    "migrate-ingredient-category-merge-20260917.js": "일회성 — 재료 카테고리 두 벌 합치기(2026-09-17 Fable 판정 ⑧). 기본 드라이런이고 --apply 는 Irene 명시 지시 뒤에만. 매장·브랜드를 인자로 받으므로 매 배포 자동 실행 대상이 아니다. 되돌리기는 --undo <스냅샷json>.",
     "migrate-ingredient-unification.js": "일회성 · 재료 목록 통합(브랜드 재료 → Stock Items 거울). 드라이런 기본, --apply 로만 적용. 설계 docs/INGREDIENT_UNIFICATION_DESIGN.md §3-2. 매 배포 재실행 대상 아님.",
     "migrate-logo-images.js": "일회성 — 로고 이미지 마이그(과거 적용).",
     "migrate-logos-to-files.js": "일회성 — 로고 base64 → 고정 파일(과거 적용).",
     "migrate-orders-floor-plan-table-id.js": "레거시 — orders.floor_plan_table_id 추가+백필(과거 적용).",
     "migrate-payment-allowed-order-types.js": "레거시 — 결제 허용 주문타입 컬럼(과거 적용).",
     "migrate-payment-v324.js": "레거시 — Payment v3.24 스키마(과거 적용).",
+    "migrate-reactivate-recipe-ingredients-20260917.js": "일회성 — 살아있는 레시피가 쓰는데 꺼져 있는 재료·재고아이템을 다시 켠다(2026-09-17 Fable 판정 ①). 조건으로 찾고 id 를 박지 않는다. 드라이런 기본 · --apply · --undo.",
+    "migrate-replace-withmin-email.js": "2026-09-15 일회성 — help@withmin.info 도메인 소멸로 메일 반송. --apply 로 의식적으로만 실행(기본은 미리보기). smtp_user 는 기본 제외.",
     "migrate-restaurant-admins.js": "일회성 — Restaurant-Admin 1:1 매칭 백필(과거 적용).",
     "migrate-seller-distribution-mode.js": "레거시 — brand/foodcourt product distribution_mode + M:N 테이블(과거 적용).",
     "migrate-set-items-to-groups.js": "레거시 — set_items → set_groups 백필(과거 적용, 멱등).",
     "migrate-staff-payment-void-perms.js": "의도적 제외 — 매 배포 재실행 시 access_pos 직원 전원에게 결제·취소 권한을 재부여해, 매장이 의도적으로 끈 권한(예: 서버 역할)을 도로 켠다. 최초 1회 백필 운영 적용됨. 직원 권한 단일소스=직원관리 UI. (2026-06-24 결정)",
-    "sprint1-supply-chain-migration.js": "레거시 — Sprint 1 공급망 ENUM 확장(과거 적용, sprint4+ 로 이어짐).",
-    "migrate-replace-withmin-email.js": "2026-09-15 일회성 — help@withmin.info 도메인 소멸로 메일 반송. --apply 로 의식적으로만 실행(기본은 미리보기). smtp_user 는 기본 제외.",
-    "migrate-ingredient-category-merge-20260917.js": "일회성 — 재료 카테고리 두 벌 합치기(2026-09-17 Fable 판정 ⑧). 기본 드라이런이고 --apply 는 Irene 명시 지시 뒤에만. 매장·브랜드를 인자로 받으므로 매 배포 자동 실행 대상이 아니다. 되돌리기는 --undo <스냅샷json>.",
-    "migrate-reactivate-recipe-ingredients-20260917.js": "일회성 — 살아있는 레시피가 쓰는데 꺼져 있는 재료·재고아이템을 다시 켠다(2026-09-17 Fable 판정 ①). 조건으로 찾고 id 를 박지 않는다. 드라이런 기본 · --apply · --undo.",
-    "fix-ingredient-data-debt-20260917.js": "일회성 — 고아 셀러매핑 정리 · 코드 중복 재채번(2026-09-17 Fable 판정 ②④). 드라이런 기본 · --apply · --undo.",
-    "migrate-unit-conversion-derivable-20260917.js": "일회성 — 판매자 링크 환산비 중 «기계가 정할 수 있는 것»만 고친다(2026-09-17 Fable 판정 ③). 규칙은 utils/unitConversionRule.js 하나이고 인스펙션 R-SC-007 과 같은 함수. 드라이런 기본 · --apply · --undo. 현재고·과거 원장·원가는 건드리지 않는다."
+    "migrate-stock-unit-follows-seller-20260917.js": "일회성 — 저울로 주문하는데 재고를 개수로 세던 행의 단위 정정(2026-09-17 운영 31건 적용). 기본은 조사만이고 --apply 필요. --undo 스냅샷 있음. 매 배포 재실행 대상 아님.",
+    "migrate-unit-conversion-derivable-20260917.js": "일회성 — 판매자 링크 환산비 중 «기계가 정할 수 있는 것»만 고친다(2026-09-17 Fable 판정 ③). 규칙은 utils/unitConversionRule.js 하나이고 인스펙션 R-SC-007 과 같은 함수. 드라이런 기본 · --apply · --undo. 현재고·과거 원장·원가는 건드리지 않는다.",
+    "sprint1-supply-chain-migration.js": "레거시 — Sprint 1 공급망 ENUM 확장(과거 적용, sprint4+ 로 이어짐)."
   }
 }
