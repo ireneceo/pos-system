@@ -62,6 +62,7 @@ node scripts/verify-all.js --list    # 게이트 목록 / --only <id> 단독 실
 | timezone | 브라우저 로컬시간 사용 (매장 타임존 규칙 위반) |
 | hydration | 새 state field 의 defensive merge 누락 (legacy 캐시 crash) |
 | dead-handlers | 선언 없는 `setXxx(` 호출 = **클릭 즉시 ReferenceError → 버튼이 통째로 죽음**. 2026-08-19 with MIN #260819-010 에서 Live Orders `Confirm Payment` 가 2.5개월간 죽어 있었다(`setAudioEnabled` — 리팩터로 사라진 setter). **이 프로젝트는 타입검사가 게이트가 아니다**: `typescript@4.9.5` vs `i18next` TS5 `.d.ts` 로 파서가 먼저 터지고 CRA 가 타입오류를 warning 으로만 낸다 → `TS2304` 가 아무것도 막지 못한다 |
+| currency-display | 화면·메일·문서에 통화 **코드(MYR)** 가 그대로 찍히는 자리. **저장·전송·비교 = ISO 코드(MYR), 사람이 보는 모든 자리 = 기호(RM)** — Irene 「MYR 안쓴다니까. RM이라고」(2026-09-17, 같은 지적 2회). ⚠ 이 게이트가 생긴 이유: 내 손검사가 `${...}` 템플릿만 보고 `<strong>{currency} {금액}</strong>` 같은 **JSX 텍스트를 통째로 빼먹어** 「0건」 오보를 냈다. 그래서 두 형태를 **같은 정규식**으로 본다. 변수 자체가 이미 기호인 파일은 **정의부를 확인하고** `ALLOW_SYMBOL_VARS` 에 적는다(추측 금지) |
 | sensitive-diff | (정보성) 민감영역 접촉 → Fable 게이트 대상 판정 |
 | inspection | DB 구조 불변식 (공급망/플랜모듈/주문 돈 무결성) |
 | health | 전체 회귀 110+ (인증/보안/POS/모바일/결제/인쇄 계약) |

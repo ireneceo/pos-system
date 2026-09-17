@@ -1,5 +1,12 @@
 # Purple POS - 개발 진행 현황
 
+> **최종 업데이트:** 2026-09-17 #5 — **v3.91 운영 배포 완료 (SW `5.37-rm-and-discount-20260917`, 오늘 6번째).**
+> ① **화면·메일의 통화를 전부 RM 으로 — 53곳.** Irene 「MYR 안쓴다니까. RM이라고」. 2차에서 «전수 0건» 이라고 한 내 보고가 틀렸다 — 검사가 `${...}` 템플릿만 보고 **화면에 직접 찍히는 글자(JSX 텍스트)를 통째로 빼먹었다.** Fable 이 6곳을 짚어 드러났고, 두 형태를 같은 정규식으로 훑으니 45곳이 더 나왔다. 메일·거래명세서·발주 문서까지 포함.
+> ② **재발 방지 게이트** `scripts/check-currency-display.js` 신설(verify-all 등재). 만들자마자 백엔드 11곳을 더 잡았다. 프론트·백엔드 양방향 고장주입으로 반증.
+> ③ **Fable 게이트 통과**(마커 `bc965f852154`) — 검토 중 Fable 이 2건 직접 보완: SupplierDashboard 가 기호를 `formatCurrency` 의 **코드 자리**에 넣던 것 복원 · 결제설정 3화면 통화 목록 이름 중복 제거.
+> ④ **운영검증**: 주문 생성→결제→빌→인쇄큐→정리 **19/19** (데모 매장만 쓰기) · 통화/메일/번들 5/5 · products(매장 메뉴) 무접촉. **실프린터 종이 확인은 Irene 대기.**
+> ⑤ **막힌 것(환경)**: 같은 서버 PlanQ 빌드·puppeteer 가 메모리를 먹어 mount sweep 이 3회 강제 종료됐다. 우회하지 않고 기다렸다가 통과(692초, 크래시 0).
+
 > **최종 업데이트:** 2026-09-17 #4 — **하루 마감.** 운영 배포 5회 + 운영 데이터 작업 4건(단위 31 · 원가 28 · 공급업체 93 · 데이터부채 4종). 배포 대기 `SW 5.37`.
 > ① **원가 = 공급업체 가격** 정렬 28건 — 9건은 「1g 값이 1,000g 자리」(대파 0.01→10 · 물엿 0.0074→133). 공식을 새로 쓰지 않고 `costSync.recomputeUnitCost` 호출(이력·거울 반영 포함). 레시피 재료비 전후 이동으로 연결 검증(불고기덮밥 10.85→10.94). ⚠ 되돌리기가 **거울 행·이력을 빠뜨리던 결함**을 Fable 이 잡아 고침(고장주입 반증).
 > ② **K-DINE IPC 공급업체 93건 + 업체 8곳 + 계약 8건** — 외부 공급업체는 «계약» 이 아니라 **«등록 주체»** 로 보인다(매장 8 의 브랜드는 2, 기존 업체는 브랜드 1 등록이라 원래 안 보였다). 그래서 매장 8 소유로 신설. «비슷한 47건» 은 다른 구매자 카탈로그라 짝 대상 아님. 브랜드 1 업체 상품 313건 **행별 해시 무변경**. 기록 `docs/EXTERNAL_SUPPLIER_PRODUCTS.md` 11-6.
@@ -10197,6 +10204,36 @@ verify-all --full **19/19** · i18n 오류 0 · health-check 247/247 · 🔒 인
 - `dev-frontend/src/pages/Restaurant/SystemInquiryPage.tsx`
 
 검증: 디자인 가드 신규 위반 0건, 반응형 PAGE_OVERFLOW/TABLE_CLIPPED/CELL_SQUEEZE 0건. 개발 빌드는 완료됐으나 기존 경고 3건과 Node 메모리 부족 메시지가 출력됨. 운영 배포는 하지 않음.
+
+---
+
+## ✅ 완료: 화면·메일 통화 RM 통일 + 할인 인보이스 + 발주 카탈로그 (2026-09-17, v3.91 배포 · SW 5.37)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 통화 표시 3차 | 화면·메일·문서 53곳의 코드(MYR)를 기호(RM)로. 저장·비교·웹훅 대조는 코드 유지 | ✅ 완료 |
+| 통화 표시 게이트 | `check-currency-display.js` — JSX 텍스트와 템플릿을 같은 정규식으로. verify-all 등재 | ✅ 완료 |
+| 할인 인보이스 | 수동 발행이 할인을 안 읽고 0원이면 발행조차 안 하던 것 수리. 0원은 `paid` 로 발행 | ✅ 완료 |
+| 할인 합계 | 수익 리포트에 Σ discount_amount 칸 추가 | ✅ 완료 |
+| payer_id | 생성기가 null 로 넣던 것을 매장 id 로 | ✅ 완료 |
+| 발주 카탈로그 | 「외부 구매자에게도 공개」가 **자기 가맹점에서 오히려 숨기던** 버그 수리(운영 18개 가려짐) | ✅ 완료 |
+| 원가 정렬 | 재고아이템 원가를 연결된 공급업체 가격으로 (운영 28건, 9건은 1g↔1kg 자리 오류) | ✅ 완료 |
+| K-DINE IPC | 공급업체 8곳 · 상품 93건 · 계약 8건 운영 등록 | ✅ 완료 |
+
+### 수정된 파일 (주요)
+- `dev-backend/scripts/check-currency-display.js` (신설) · `dev-backend/scripts/verify-all.js`
+- `dev-backend/utils/notificationTemplates.js` · `utils/invoiceEmailTemplate.js` · `utils/currency.js`
+- `dev-backend/routes/brand-soa.js` · `foodcourt-soa.js` · `supplier.js` · `purchase-invoices.js` · `users.js` · `invoices-crud.js` · `referrals.js` · `subscriptions.js` · `supplier-directory.js` · `brands-plans.js` · `foodcourts-plans.js` · `brand-revenue.js`
+- `dev-backend/services/referralService.js` · `invoiceScheduler.js`
+- `dev-frontend/src/pages/` 25개 화면 (인보이스 대조 · 결제설정 4 · 요금제 3 · 구독 2 · 재료/레시피 4 · 관리자 · 목록 · 플로어플랜)
+
+### 검증
+- verify-all 정적 **20/21** (실패 1건은 배포 전 `fable_note` 미기입 — 판정 후 해소) · mount sweep **692초 크래시 0**
+- 🔒 인쇄 보호파일 **8/8 무변경** · health-check **248/248** · 고장주입 프론트·백엔드 양방향 반증
+- 운영검증: 주문·결제·인쇄큐 **19/19** · 통화/메일/번들 **5/5** · `products` 무접촉
+- ⚠ 실프린터 종이 확인 — **Irene 대기** (코드·헤드리스로 대체 불가)
 
 ---
 
