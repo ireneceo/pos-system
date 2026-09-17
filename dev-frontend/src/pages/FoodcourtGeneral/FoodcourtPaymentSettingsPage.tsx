@@ -10,6 +10,7 @@ import PaymentGatewayGuide from '../../components/Payment/PaymentGatewayGuide';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { getCurrencySymbol } from '../../utils/currency';
 interface CurrencyConfig {
   [code: string]: {
     symbol: string;
@@ -613,7 +614,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                   >
                     {supportedCurrencies.map(code => (
                       <option key={code} value={code}>
-                        {currencyConfig[code]?.symbol} {code} - {currencyConfig[code]?.name}
+                        {currencyConfig[code]?.symbol} {currencyConfig[code]?.name}
                       </option>
                     ))}
                   </Select>
@@ -632,7 +633,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                   {supportedCurrencies.length > 0 ? (
                     supportedCurrencies.map(code => (
                       <CurrencyTag key={code}>
-                        {currencyConfig[code]?.symbol} {code}
+                        {currencyConfig[code]?.symbol} {currencyConfig[code]?.name}
                       </CurrencyTag>
                     ))
                   ) : (
@@ -794,7 +795,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                       active={selectedCurrency === code}
                       onClick={() => setSelectedCurrency(code)}
                     >
-                      {currencyConfig[code]?.symbol} {code}
+                      {currencyConfig[code]?.symbol} {currencyConfig[code]?.name}
                     </Tab>
                   ))}
                 </Tabs>
@@ -803,7 +804,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                 <PaymentMethodCard>
                   <MethodHeader>
                     <MethodInfo>
-                      <MethodLabel>Bank Transfer ({selectedCurrency})</MethodLabel>
+                      <MethodLabel>Bank Transfer ({getCurrencySymbol(selectedCurrency)})</MethodLabel>
                       <MethodDescription>{t('foodcourt:foodcourtPaymentSettingsPage.manualTransferWithReceiptUpload')}</MethodDescription>
                     </MethodInfo>
                     <ToggleSwitch>
@@ -858,7 +859,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                 <PaymentMethodCard>
                   <MethodHeader>
                     <MethodInfo>
-                      <MethodLabel>QR Payment ({selectedCurrency})</MethodLabel>
+                      <MethodLabel>QR Payment ({getCurrencySymbol(selectedCurrency)})</MethodLabel>
                       <MethodDescription>{t('foodcourt:foodcourtPaymentSettingsPage.scanQrCodeToPayDuitnowKakaopayEtc')}</MethodDescription>
                     </MethodInfo>
                     <ToggleSwitch>
@@ -876,7 +877,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                         value={getQRConfig(selectedCurrency).qrImage}
                         onChange={(base64) => handleQRPaymentChange(selectedCurrency, 'qrImage', base64)}
                         label="QR Code Image"
-                        helpText={`Upload QR code for ${selectedCurrency} payments`}
+                        helpText={`Upload QR code for ${getCurrencySymbol(selectedCurrency)} payments`}
                         changeButtonText="Change QR Code"
                         removeButtonText="Remove QR Code"
                         imageAltText="Payment QR Code"
@@ -900,10 +901,10 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
 
                 {/* Additional Charges (per currency) */}
                 <SectionTitle style={{ fontSize: '15px', marginTop: '24px', marginBottom: '8px' }}>
-                  Additional Charges ({selectedCurrency})
+                  Additional Charges ({getCurrencySymbol(selectedCurrency)})
                 </SectionTitle>
                 <SectionDescription style={{ marginBottom: '12px' }}>
-                  Configure tax, service charge, etc. for {selectedCurrency} invoices. Up to 3 items.
+                  Configure tax, service charge, etc. for {getCurrencySymbol(selectedCurrency)} invoices. Up to 3 items.
                 </SectionDescription>
 
                 {[0, 1, 2].map((index) => {
@@ -1029,7 +1030,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                   />
                   <div>
                     <div style={{ fontWeight: 500 }}>
-                      {config.symbol} {code}
+                      {config.symbol}
                     </div>
                     <div style={{ fontSize: '12px', color: '#4B5563' }}>
                       {config.name}

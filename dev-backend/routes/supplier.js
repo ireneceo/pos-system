@@ -37,6 +37,7 @@ const {
 } = require('../utils/notificationTemplates');
 const { sendNotificationBatch } = require('../utils/notificationService');
 const bcrypt = require('bcrypt');
+const { currencySymbol } = require('../utils/currency');
 
 router.use(authenticateToken);
 router.use(requireSupplierScope);
@@ -991,7 +992,7 @@ router.post('/soa/:contractId/remind', async (req, res) => {
     const link = `${FRONTEND_BASE_URL}/pos/restaurant/invoices`;
     const html = `
       <p>This is a friendly reminder that you have <strong>${invoices.length} unpaid invoice${invoices.length > 1 ? 's' : ''}</strong> from ${supplierName}.</p>
-      <p><strong>Total due:</strong> ${currency} ${totalDue.toFixed(2)}</p>
+      <p><strong>Total due:</strong> ${currencySymbol(currency)} ${totalDue.toFixed(2)}</p>
       <p><a href="${link}">View invoices in Purple POS</a></p>
     `;
     await sendNotificationBatch(recipients, 'monthly_soa', {

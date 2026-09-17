@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useTranslation } from 'react-i18next';
@@ -709,7 +709,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                     <MobileValue className="col-info">
                       <MobileLabel>{t('foodcourt:foodcourtSubscriptionsPage.tenant')}</MobileLabel>
                       <RestaurantInfo>
-                        <RestaurantName>{sub.restaurant_name} {sub.restaurant_branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', background: '#F1F4F8', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{sub.restaurant_branch_name}</span>}{sub.restaurant_currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{sub.restaurant_currency}</span>}</RestaurantName>
+                        <RestaurantName>{sub.restaurant_name} {sub.restaurant_branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', background: '#F1F4F8', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{sub.restaurant_branch_name}</span>}{sub.restaurant_currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{getCurrencySymbol(sub.restaurant_currency)}</span>}</RestaurantName>
                         <RestaurantMeta>{sub.restaurant_email}</RestaurantMeta>
                       </RestaurantInfo>
                     </MobileValue>
@@ -1137,13 +1137,13 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                       <FormSelect value={discountForm.discount_type} onChange={(e) => setDiscountForm({...discountForm, discount_type: e.target.value, discount_value: e.target.value === 'none' ? 0 : discountForm.discount_value})}>
                         <option value="none">{t('foodcourt:foodcourtSubscriptionsPage.none')}</option>
                         <option value="percentage">Percentage (%)</option>
-                        <option value="fixed">Fixed Amount ({currency})</option>
+                        <option value="fixed">Fixed Amount ({getCurrencySymbol(currency)})</option>
                       </FormSelect>
                     </div>
                     {discountForm.discount_type !== 'none' && (
                       <div>
                         <div style={{fontSize: '13px', fontWeight: '500', color: '#1F2937', marginBottom: '6px'}}>
-                          {discountForm.discount_type === 'percentage' ? 'Discount Rate (%)' : `Discount Amount (${currency})`}
+                          {discountForm.discount_type === 'percentage' ? 'Discount Rate (%)' : `Discount Amount (${getCurrencySymbol(currency)})`}
                         </div>
                         <FormInput
                           type="number"

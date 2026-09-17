@@ -30,6 +30,7 @@ const {
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBrandScope } = require('../middleware/brandScope');
+const { currencySymbol } = require('../utils/currency');
 const {
   sendNotificationBatch,
   getRestaurantAdminAndOwnerIds
@@ -195,7 +196,7 @@ router.post(
       const link = `${FRONTEND_BASE_URL}/restaurant/${restaurant.id}/trade-invoices`;
       const html = `
         <p>This is a friendly reminder that you have <strong>${invoices.length} unpaid invoice${invoices.length > 1 ? 's' : ''}</strong> from ${sellerName}.</p>
-        <p><strong>Total due:</strong> ${currency} ${totalDue.toFixed(2)}</p>
+        <p><strong>Total due:</strong> ${currencySymbol(currency)} ${totalDue.toFixed(2)}</p>
         <p><a href="${link}">View invoices in Purple POS</a></p>
       `;
 

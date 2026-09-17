@@ -41,6 +41,7 @@ const {
   checkConfirmPermission,
 } = require('./invoices-helpers');
 const { invoiceInBranch } = require('./invoices-helpers');
+const { currencySymbol } = require('../utils/currency');
 
 router.post('/categories', authenticateToken, async (req, res) => {
   try {
@@ -279,7 +280,7 @@ router.post('/', authenticateToken, async (req, res) => {
       entity_type: 'invoice',
       entity_id: invoice.id,
       entity_name: invoice.invoice_number,
-      description: `Created invoice ${invoice.invoice_number} (${invoiceCurrency} ${invoice.total_amount})`,
+      description: `Created invoice ${invoice.invoice_number} (${currencySymbol(invoiceCurrency)} ${invoice.total_amount})`,
       restaurant_id: invoice.restaurant_id
     });
 

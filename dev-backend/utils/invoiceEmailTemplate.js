@@ -6,6 +6,7 @@
 
 const { emailLayout } = require('./emailTemplates');
 const { getRestaurantTimezone } = require('./dateTimeHelper');
+const { currencySymbol } = require('./currency');
 
 function formatDate(date, timezone = 'Asia/Kuala_Lumpur') {
   return new Date(date).toLocaleDateString('en-US', {
@@ -14,7 +15,8 @@ function formatDate(date, timezone = 'Asia/Kuala_Lumpur') {
 }
 
 function formatAmount(amount, currency) {
-  return `${currency} ${parseFloat(amount).toFixed(2)}`;
+  // 사람이 읽는 메일이다 — 코드(MYR)가 아니라 기호(RM) 로 찍는다. 저장·비교는 여전히 코드.
+  return `${currencySymbol(currency)} ${parseFloat(amount).toFixed(2)}`;
 }
 
 /**

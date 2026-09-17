@@ -13,6 +13,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 
 import { getAuthToken } from '../../utils/auth';
 import { getErrorMessage } from '../../utils/apiError';
+import { getCurrencySymbol } from '../../utils/currency';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Category {
@@ -1004,11 +1005,11 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
     if (!product.prices || product.prices.length === 0) return 'N/A';
     const cur = currency || currencyFilter || defaultCurrency;
     const match = product.prices.find(p => p.currency === cur && p.is_active);
-    if (match) return `${cur} ${formatPrice(Number(match.price), cur)}`;
+    if (match) return `${getCurrencySymbol(cur)} ${formatPrice(Number(match.price), cur)}`;
     const activePrice = product.prices.find(p => p.is_active);
-    if (activePrice) return `${activePrice.currency} ${formatPrice(Number(activePrice.price), activePrice.currency)}`;
+    if (activePrice) return `${getCurrencySymbol(activePrice.currency)} ${formatPrice(Number(activePrice.price), activePrice.currency)}`;
     const firstPrice = product.prices[0];
-    return `${firstPrice.currency} ${formatPrice(Number(firstPrice.price), firstPrice.currency)}`;
+    return `${getCurrencySymbol(firstPrice.currency)} ${formatPrice(Number(firstPrice.price), firstPrice.currency)}`;
   };
 
   const buildPricesMap = (prices: ProductPrice[]): Record<string, { price: string; is_active: boolean }> => {
@@ -1828,7 +1829,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                         checked={formData.shipping_countries.includes(country.code)}
                         onChange={() => handleShippingCountryToggle(country.code)}
                       />
-                      <span>{country.flag} {country.name} ({country.currency})</span>
+                      <span>{country.flag} {country.name} ({getCurrencySymbol(country.currency)})</span>
                     </CheckboxItem>
                   ))}
                 </CheckboxGroup>

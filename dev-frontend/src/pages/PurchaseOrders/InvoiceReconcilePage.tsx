@@ -619,6 +619,8 @@ const InvoiceReconcilePage: React.FC = () => {
   }
 
   const currency = po.currency || 'MYR';
+  // 저장·비교는 ISO 코드(MYR), 사람이 보는 자리는 기호(RM). 아래 표시들은 전부 이 값을 쓴다.
+  const currencySym = getCurrencySymbol(currency);
 
   return (
     <Container>
@@ -769,17 +771,17 @@ const InvoiceReconcilePage: React.FC = () => {
                     월을 글자로 보여 줘서 순서 오해가 생기지 않는다. */}
                 <DateField value={header.date} onChange={(v) => setHeader({ ...header, date: v || '' })} />
               </Field>
-              <Field>{t('reconcile.field.total', '총액')} ({currency})
+              <Field>{t('reconcile.field.total', '총액')} ({currencySym})
                 <ThemedInput type="number" step="0.01" value={header.total} onChange={(e) => setHeader({ ...header, total: e.target.value })} />
                 {/* 총액 비교 (2026-09-10 Irene: «총 금액이 올린거랑 우리 발주 가격이랑 다른데 총비용 비교는 없어»).
                     셋을 나란히 본다 — 발주 총액 / 입력한 줄들의 합 / 인보이스에 적힌 총액.
                     줄 합과 적힌 총액이 다르면 세금·배송비이거나 옮겨 적다 틀린 것이다. */}
                 <Muted style={{ display: 'block', marginTop: 6, lineHeight: 1.8 }}>
-                  {t('reconcile.total.ordered', '발주 총액')}: <strong>{currency} {totals.ordered.toFixed(2)}</strong>
+                  {t('reconcile.total.ordered', '발주 총액')}: <strong>{currencySym} {totals.ordered.toFixed(2)}</strong>
                   {totals.header != null && Math.abs(totals.header - totals.ordered) >= 0.005 && (
                     <span style={{ color: totals.header > totals.ordered ? '#B45309' : '#047857', fontWeight: 700 }}>
                       {' · '}
-                      {totals.header > totals.ordered ? '▲' : '▼'} {currency} {Math.abs(totals.header - totals.ordered).toFixed(2)}
+                      {totals.header > totals.ordered ? '▲' : '▼'} {currencySym} {Math.abs(totals.header - totals.ordered).toFixed(2)}
                       {' '}
                       {totals.header > totals.ordered
                         ? t('reconcile.total.morePaid', '더 청구됨')
@@ -790,22 +792,22 @@ const InvoiceReconcilePage: React.FC = () => {
                     <span style={{ color: '#047857' }}>{' · '}{t('reconcile.total.same', '발주와 같음')}</span>
                   )}
                   <br />
-                  {t('reconcile.total.lineSum', '입력한 줄들의 합')}: <strong>{currency} {totals.lines.toFixed(2)}</strong>
+                  {t('reconcile.total.lineSum', '입력한 줄들의 합')}: <strong>{currencySym} {totals.lines.toFixed(2)}</strong>
                   {/* 적은 총액 vs 계산 총액(줄 합 + 세금 + 배송 − 할인) — 1 넘게 다르면 저장 잠금, 1 이내면 반올림 조정 (§8-3 B-3) */}
                   {totals.diff != null && Math.abs(totals.diff) >= 0.005 && (
                     totals.blocked ? (
                       <span style={{ color: '#DC2626', fontWeight: 700 }}>
                         {' · '}
                         {t('reconcile.total.blocked', '줄 합·세금·배송·할인으로 계산한 {{c}} 와 적은 총액이 {{d}} 다릅니다 — 줄이나 총액을 확인하세요(이대로는 저장되지 않습니다)', {
-                          c: `${getCurrencySymbol(currency)} ${totals.computed.toFixed(2)}`,
-                          d: `${getCurrencySymbol(currency)} ${Math.abs(totals.diff).toFixed(2)}`,
+                          c: `${currencySym} ${totals.computed.toFixed(2)}`,
+                          d: `${currencySym} ${Math.abs(totals.diff).toFixed(2)}`,
                         })}
                       </span>
                     ) : (
                       <span style={{ color: '#B45309' }}>
                         {' · '}
                         {t('reconcile.total.rounding', '반올림 조정 {{d}} 로 적은 총액에 맞춥니다', {
-                          d: `${totals.diff > 0 ? '+' : '-'}${currency} ${Math.abs(totals.diff).toFixed(2)}`,
+                          d: `${totals.diff > 0 ? '+' : '-'}${currencySym} ${Math.abs(totals.diff).toFixed(2)}`,
                         })}
                       </span>
                     )
@@ -990,7 +992,7 @@ const InvoiceReconcilePage: React.FC = () => {
                 {Math.abs(totals.lines - totals.ordered) >= 0.005 && (
                   <span style={{ color: totals.lines > totals.ordered ? '#B45309' : '#047857', fontWeight: 700 }}>
                     {' · '}
-                    {totals.lines > totals.ordered ? '▲' : '▼'} {currency} {Math.abs(totals.lines - totals.ordered).toFixed(2)}
+                    {totals.lines > totals.ordered ? '▲' : '▼'} {currencySym} {Math.abs(totals.lines - totals.ordered).toFixed(2)}
                   </span>
                 )}
               </Muted>

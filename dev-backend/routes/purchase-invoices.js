@@ -25,6 +25,7 @@ const {
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
+const { currencySymbol } = require('../utils/currency');
 
 router.use('/purchase-invoices', authenticateToken, requireBuyerRole);
 
@@ -419,7 +420,7 @@ router.get('/purchase-invoices/soa/:supplierCompanyId/pdf', async (req, res) => 
   <div class="cover-row"><span>Supplier</span><strong>${supplierName}</strong></div>
   <div class="cover-row"><span>Period</span><strong>${monthLabel}</strong></div>
   <div class="cover-row"><span>Invoice Count</span><strong>${invoices.length}</strong></div>
-  <div class="cover-row"><span>Total Amount</span><strong>${currency} ${total.toFixed(2)}</strong></div>
+  <div class="cover-row"><span>Total Amount</span><strong>${currencySymbol(currency)} ${total.toFixed(2)}</strong></div>
 </div>
 
 <h2>Included Invoices</h2>
@@ -434,7 +435,7 @@ router.get('/purchase-invoices/soa/:supplierCompanyId/pdf', async (req, res) => 
       <td class="num">${Number(i.total_amount || 0).toFixed(2)}</td>
       <td>${i.status}</td>
     </tr>`).join('')}
-    <tr class="total-row"><td colspan="4" class="num">Grand Total (${currency})</td><td class="num">${total.toFixed(2)}</td><td></td></tr>
+    <tr class="total-row"><td colspan="4" class="num">Grand Total (${currencySymbol(currency)})</td><td class="num">${total.toFixed(2)}</td><td></td></tr>
   </tbody>
 </table>
 

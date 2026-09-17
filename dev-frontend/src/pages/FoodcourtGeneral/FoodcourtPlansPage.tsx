@@ -15,7 +15,7 @@ import {
 , Modal as CommonModal } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
@@ -991,7 +991,7 @@ const FoodcourtPlansPage: React.FC = () => {
               return (
                 <div key={code} style={{ padding: '12px', border: '1px solid #C7CED6', borderRadius: '8px', background: '#F9FAFB' }}>
                   <div style={{ fontWeight: 600, marginBottom: '8px', color: '#0A2540' }}>
-                    {config?.symbol || code} {code} - {config?.name || code}
+                    {config?.symbol || code} {config?.name || code}
                   </div>
                   <PricingRow>
                     <FormGroup style={{ marginBottom: 0 }}>
@@ -1140,7 +1140,7 @@ const FoodcourtPlansPage: React.FC = () => {
           >
             {supportedCurrencies.map(code => {
               const config = currencyConfig[code];
-              return <option key={code} value={code}>{config?.symbol || code} {code}</option>;
+              return <option key={code} value={code}>{config?.symbol || code} {config?.name || code}</option>;
             })}
           </FilterSelect>
         </FilterBar>
@@ -1210,7 +1210,7 @@ const FoodcourtPlansPage: React.FC = () => {
                     ) : (
                       <>
                         <MonthlyPrice style={{color: '#F59E0B'}}>{t('foodcourt:foodcourtPlansPage.priceNotSet')}</MonthlyPrice>
-                        <PricingNote style={{color: '#F59E0B'}}>Set {displayCurrency} price in "Prices"</PricingNote>
+                        <PricingNote style={{color: '#F59E0B'}}>Set {getCurrencySymbol(displayCurrency)} price in "Prices"</PricingNote>
                       </>
                     )}
                   </PlanPricing>
@@ -1433,7 +1433,7 @@ const FoodcourtPlansPage: React.FC = () => {
                         return (
                           <div key={code} style={{ marginBottom: '12px' }}>
                             <div style={{ fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>
-                              {currencyConfig[code]?.symbol || code} {code}
+                              {currencyConfig[code]?.symbol || code} {currencyConfig[code]?.name || code}
                             </div>
                             <DetailRow>
                               <DetailLabel>{t('foodcourt:foodcourtPlansPage.monthly')}</DetailLabel>

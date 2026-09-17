@@ -15,6 +15,7 @@ const ActivityLog = require('../models/ActivityLog');
 const Product = require('../models/Product');
 const SystemSettings = require('../models/SystemSettings');
 const { getRestaurantTimezone } = require('../utils/dateTimeHelper');
+const { currencySymbol } = require('../utils/currency');
 
 // GET /api/subscriptions - Legacy dashboard
 router.get('/', authenticateToken, async (req, res) => {
@@ -831,7 +832,7 @@ router.post('/change-plan', authenticateToken, async (req, res) => {
           before: { plan_type: current.plan_type, plan_amount: current.plan_amount, billing_cycle: current.billing_cycle },
           after: { plan_type: newPlan.display_name, plan_amount: newAmount, billing_cycle: effectiveBillingCycle }
         },
-        description: `Plan upgraded: ${current.plan_type} → ${newPlan.display_name}${prorationInvoice ? ` (${current.currency} ${prorationInvoice.amount.toFixed(2)} prorated)` : ''}`,
+        description: `Plan upgraded: ${current.plan_type} → ${newPlan.display_name}${prorationInvoice ? ` (${currencySymbol(current.currency)} ${prorationInvoice.amount.toFixed(2)} prorated)` : ''}`,
         ip_address: req.ip,
         user_agent: req.get('User-Agent')
       }, { transaction });

@@ -1441,7 +1441,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
                     disabled={!isEditable}
                   >
                     {entitySupported.map(code => (
-                      <option key={code} value={code}>{getCurrencySymbol(code)} — {code}</option>
+                      <option key={code} value={code}>{getCurrencySymbol(code)} {CURRENCY_CONFIG?.[code]?.name || code}</option>
                     ))}
                   </Select>
                 </AutoSaveField>

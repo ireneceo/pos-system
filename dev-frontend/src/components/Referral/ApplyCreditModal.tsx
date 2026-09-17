@@ -297,7 +297,7 @@ const ApplyCreditModal: React.FC<Props> = ({ invoice, onClose, onApplied }) => {
         {wallet === null && <Empty>{t('applyCredit.loadingWallet', 'Loading wallet…')}</Empty>}
         {wallet === 'none' && (
           <Empty>
-            {t('applyCredit.noBalance', "You don't have any {{currency}} balance to apply.", { currency })}
+            {t('applyCredit.noBalance', "You don't have any {{currency}} balance to apply.", { currency: getCurrencySymbol(currency) })}
             <br />
             <span style={{ fontSize: 12 }}>{t('applyCredit.noBalanceHint', 'Earn commissions by referring new POS users.')}</span>
           </Empty>

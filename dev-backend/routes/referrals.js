@@ -40,6 +40,7 @@ const ReferralWalletTransaction = require('../models/ReferralWalletTransaction')
 const ReferralPayout = require('../models/ReferralPayout');
 const ReferralClick = require('../models/ReferralClick');
 const referralService = require('../services/referralService');
+const { currencySymbol } = require('../utils/currency');
 
 // Per-route limits in addition to the global apiLimiter (1000/15min).
 // Public, unauth'd endpoints — narrow window so an abusive IP can't inflate
@@ -429,13 +430,13 @@ router.post('/payouts', authenticateToken, async (req, res) => {
       action_type: 'create',
       entity_type: 'referral_payout',
       entity_id: payout.id,
-      entity_name: `Payout ${parseFloat(payout.amount)} ${payout.currency}`,
+      entity_name: `Payout ${currencySymbol(payout.currency)} ${parseFloat(payout.amount)}`,
       changes: {
         amount: parseFloat(payout.amount),
         currency: payout.currency,
         bank_name, bank_account_number, bank_account_holder
       },
-      description: `Payout requested: ${parseFloat(payout.amount)} ${payout.currency} → ${bank_name} ${bank_account_holder}`
+      description: `Payout requested: ${currencySymbol(payout.currency)} ${parseFloat(payout.amount)} → ${bank_name} ${bank_account_holder}`
     });
 
     res.json({ success: true, data: {
@@ -1020,7 +1021,7 @@ router.put('/admin/payouts/:id', ...adminGuard, async (req, res) => {
       action_type: 'update',
       entity_type: 'referral_payout',
       entity_id: result.id,
-      entity_name: `Payout ${parseFloat(result.amount)} ${result.currency}`,
+      entity_name: `Payout ${currencySymbol(result.currency)} ${parseFloat(result.amount)}`,
       changes: {
         action,
         status_to: result.status,

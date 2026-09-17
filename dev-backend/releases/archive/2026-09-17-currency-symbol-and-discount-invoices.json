@@ -7,6 +7,9 @@
  ],
  "completed": [
   "🔥 **«외부 구매자에게도 공개»(external_buyers) 로 설정한 상품이 자기 가맹점 발주 카탈로그에서 사라졌다** — Irene 「외부 유저에게 공개하는 옵션 한 다음 안나오는 거 아닌가 해서」. 화면 라벨은 «Other businesses can order this **too**» 로 «더한다» 고 약속하는데, 카탈로그의 가맹점 몫이 all·specific_brands·specific_restaurants **세 가지만** 모으고 그 다음 «가맹점 밖» 블록은 자기 가맹본부를 일부러 빼기 때문에 **가맹점은 영영 못 보는** 상태였다. 운영 실측: with MIN Cafe 에서 18개 누락. K-DINE IPC 에서 보이던 것은 같은 주인의 다른 브랜드가 «누구나 주문 가능» 이라 외부 구매자 자격으로 우연히 잡힌 것이고, 그 설정을 닫으면 거기서도 사라질 상태였다. 가맹점 몫에 external_buyers 를 더해 고쳤다.",
+  "🔁 통화 표기 3차 — Fable 판정으로 2차의 «0건» 이 틀렸음이 드러났다. 내 검사가 **템플릿 문자열만** 보고 **JSX 텍스트 노드를 안 봤다.** 같은 정규식으로 두 형태를 함께 훑어 **총 45곳**을 더 고쳤다: 인보이스 대조 화면 6곳(«총액 (MYR)» → «총액 (RM)») · 브랜드/푸드코트 구독 화면 4곳 · 결제설정 4개 화면 18곳(«Bank Transfer (MYR)»·«Additional Charges (MYR)») · 요금제 3개 화면 · 관리자 대시보드 2곳 · 레시피/재료 4개 탭의 «Unit Cost (MYR)» 계열 · 브랜드·매장 목록의 통화 배지 · 시스템 상품 가격 문자열 · 플로어플랜 금액. **백엔드도 같이**: 알림 메일 금액 포맷터(`notificationTemplates`)·인보이스 메일 포맷터(`invoiceEmailTemplate`)·SOA 메일 3종(브랜드·푸드코트·공급업체)·발주 인보이스 문서·지갑 잔액 문구·추천 커미션/출금 기록.",
+  "🛡️ **통화 표시 게이트 신설** — `scripts/check-currency-display.js` (verify-all 등재). 같은 지적을 두 번 받은 자리라 규칙이 아니라 기계가 막게 했다. JSX 텍스트 노드와 템플릿 문자열을 **같은 정규식**으로 보고, 변수 자체가 이미 기호인 파일은 정의부를 확인해 명시적으로 예외 등록한다(POS터미널·지도 3종). 만들자마자 백엔드 11건을 더 잡아냈다.",
+  "🔁 통화 표기 2차 — Irene 「MYR 안쓴다니까. RM이라고」. 1차(금액 앞 표기 13곳) 뒤에도 **다른 자리에 코드가 남아 있었다**: 통화 선택 칸이 「RM MYR」·「RM — MYR」로 코드를 같이 보여줬고(요금제 2·결제설정 4·관리자·계약 상세), **발주 인쇄물**(`PurchaseOrderPrintPage` formatMoney)과 **공급업체 대시보드 차트 축**은 아예 코드를 찍었다. 선택 칸은 «기호 + 통화 이름»(RM Malaysian Ringgit)으로, 인쇄·차트는 기호로 바꿨다. 총 26곳. 전수 grep 으로 화면·인쇄에 통화 코드 출력 **0건** 확인.",
   "화면에서 통화 **코드(MYR)** 대신 **기호(RM)** 를 쓴다 — Irene 「MYR을 안써. 다 RM으로 표시해」. 공용 함수를 안 쓰고 코드를 문자열에 그대로 붙이던 13개 화면 16곳을 고쳤다(발주 목록·브랜드/공급업체 거래 인보이스·들어온 주문·오너 발주승인·인보이스 대조·프랜차이즈 지도·플로어플랜 2곳·크레딧·계약 상세·모바일 2곳).",
   "인보이스 **품목 설명문**의 코드도 기호로 — 이 문구는 `invoice_items.description` 으로 **저장**돼 PDF·메일에 그대로 나간다(`(5% of MYR 10,000)` → `(5% of RM 10,000)`). 백엔드 `utils/currency.js` 에 `currencySymbol()` 추가(표는 routes/currencies.js 와 같은 값).",
   "저장·비교값은 ISO 코드(MYR) 유지 — Stripe 는 `myr` 만 받고 플랜 가격도 코드로 찾는다. 원화·달러 매장은 ₩·$ 로 그대로 나온다.",
@@ -15,16 +18,20 @@
   "받을 것이 없는 0원 인보이스는 `paid` 로 닫는다(수동·스케줄러 양쪽) — 0원은 결제할 방법이 없어 영원히 «미납» 으로 남던 자리다.",
   "수익 리포트에 **「할인 합계」**(Σ discount_amount) 칸 추가 — 얼마를 깎아 줬는지가 어디에도 합산돼 보이지 않던 나머지 절반.",
   "생성기가 `payer_id` 를 null 로 넣던 것을 매장 id 로 고쳤다 — 운영 인보이스 47·48·59 가 «청구 대상 없음» 으로 보이던 진짜 이유다(3건 자체는 Irene 지시대로 손대지 않았다).",
-  "원가를 «연결된 공급업체 가격» 으로 정렬 (운영 28건 적용) — Irene 「공급업체 가격이 원가인데 기본적으로 같게 넣어줘야 해」. `scripts/migrate-cost-from-seller-20260917.js` 신설(레지스트리 manual). 공식을 새로 쓰지 않고 `services/costSync.recomputeUnitCost` 를 그대로 호출해 이력(cost_change_logs)과 거울 반영까지 같이 탄다. 그중 9건은 «1g 값이 1,000g 자리에» 들어가 수백~수천 배 작던 것(대파 0.01→10 · 물엿18kg 0.0074→133 · 고추장 0.0099→167.57)."
+  "원가를 «연결된 공급업체 가격» 으로 정렬 (운영 28건 적용) — Irene 「공급업체 가격이 원가인데 기본적으로 같게 넣어줘야 해」. `scripts/migrate-cost-from-seller-20260917.js` 신설(레지스트리 manual). 공식을 새로 쓰지 않고 `services/costSync.recomputeUnitCost` 를 그대로 호출해 이력(cost_change_logs)과 거울 반영까지 같이 탄다. 그중 9건은 «1g 값이 1,000g 자리에» 들어가 수백~수천 배 작던 것(대파 0.01→10 · 물엿18kg 0.0074→133 · 고추장 0.0099→167.57).",
+  "[공동 검토] 통화 3차 Fable 게이트에서 2건 보완 — ① SupplierDashboard 의 ccy 가 기호(RM)로 바뀌어 formatCurrency(코드 기대) 에 기호가 들어가고 있었다(MYR 은 fallback 으로 같은 결과라 안 보였고, KRW 라면 자릿수가 틀렸을 것). ccy 를 코드로 되돌리고 축 라벨 한 곳만 getCurrencySymbol 로. ② 결제설정 3화면(관리자·브랜드·푸드코트)의 통화 선택 목록이 «RM Malaysian Ringgit» 아래 «Malaysian Ringgit» 을 한 번 더 찍고 있어 윗줄을 기호만으로. 프론트 5줄, Fable 세션이 직접 수정."
  ],
  "issues": [
+  "⚠ **내가 2차에서 «전수 grep 으로 0건» 이라고 보고한 것이 틀렸다.** 검사가 `${...}` 템플릿만 보고 `<strong>{currency} {금액}</strong>` 같은 JSX 텍스트를 통째로 빼먹었다. Fable 이 InvoiceReconcilePage 6곳을 짚어 드러났고, 그 뒤 같은 방식으로 다시 훑으니 45곳이 더 나왔다. 교훈은 «검사가 0건을 내면 검사부터 의심한다» — 그래서 이번엔 게이트로 고정했다.",
+  "프론트 빌드가 2회 나갔다 — 1차 빌드 뒤에 남은 누출 4건을 더 찾아 다시 빌드했다. 순서대로면 «전수 검사 → 코드 확정 → 빌드 1회» 였다.",
   "🔒 `POSTerminalPage.tsx:3942` 의 코드 표기는 **일부러 남겼다** — 인쇄 보호파일이라 문구 하나만 바꿔도 print-guard 지문이 깨지고 실프린터 확인이 필요하다(Fable 지시). 다음 인쇄 작업 때 함께.",
   "내가 `utils/currency.ts` 에 이미 있던 `getCurrencySymbol` 을 모르고 같은 함수를 하나 더 만들었다가 중복을 제거했다(145행에 원래 있었다).",
   "쓰지도 않는 `formatMoney` 를 백엔드 유틸에 넣었다가 타임존 가드가 «숫자의 toLocaleString» 을 날짜로 오인해 신규 위반 1건으로 잡았다 — 죽은 코드라 제거했다.",
   "저장값에 섞인 'RM'(contracts 6 · invoices 2 · restaurant_daily_stats 166)은 이번 범위 밖. 표시엔 영향 없으나 플랜 가격 코드 비교에서 걸릴 수 있어 별도 멱등 마이그를 준비해 Irene 승인 때 적용(Fable 권고).",
   "취소됐는데 결제완료로 남는 주문 175건은 Fable 판정에 따라 **이번 라운드 변경 없음** — 매출·마감·몰 보고 어디에도 안 들어가고, 취소 시점 결제상태는 손실방지 감사기록으로 남기는 설계다.",
   "원가 정렬 대상 28건 중 자릿수가 크게 오른 3건은 Irene 눈 확인 필요 — RECLOSABLE LID 12OZ(50개입) 7.5→375 · Ramly 프랑크소시지 8.4→100.8 · 김치10kg 24→48. 기준양(base_quantity) 설정이 맞으면 정답이고 아니면 --undo 로 되돌린다.",
-  "되돌리기가 절반만 되돌리고 있었다(Fable 게이트 지적) — 원가 행만 UPDATE 하고 **레시피가 읽는 거울 행**과 이력을 빠뜨렸다. `catalog-alignment.restoreCosts` 와 같은 모양으로 고쳤다: 지금 값이 적용값과 같을 때만 되돌리고 · 거울도 같은 조건으로 · 되돌린 것도 이력에 남기고(`batch_id`-rollback) · `--only` 로 몇 건만. 적용 ctx 도 `source:'manual'` + `batch_id` 로. ⚠ 이미 운영에 남은 28건 로그는 `seller_edit` 로 적혀 있다(고쳐 쓰지 않음)."
+  "되돌리기가 절반만 되돌리고 있었다(Fable 게이트 지적) — 원가 행만 UPDATE 하고 **레시피가 읽는 거울 행**과 이력을 빠뜨렸다. `catalog-alignment.restoreCosts` 와 같은 모양으로 고쳤다: 지금 값이 적용값과 같을 때만 되돌리고 · 거울도 같은 조건으로 · 되돌린 것도 이력에 남기고(`batch_id`-rollback) · `--only` 로 몇 건만. 적용 ctx 도 `source:'manual'` + `batch_id` 로. ⚠ 이미 운영에 남은 28건 로그는 `seller_edit` 로 적혀 있다(고쳐 쓰지 않음).",
+  "통화 2차 수정에서 `SupplierDashboard.tsx` 에 `getCurrencySymbol` 을 쓰면서 **import 를 빠뜨려** 그 화면이 죽었다. 빌드는 통과했고 **실브라우저 mount sweep 이 `[supplier] /pos/supplier/dashboard → ERROR_BOUNDARY` 로 잡았다**. 기존 import 줄에 추가해 고쳤고, `getCurrencySymbol` 를 쓰는 전 파일의 import 유무를 전수 확인했다(나머지 정상)."
  ],
  "upcoming": [
   "POS 터미널 통화 표기(인쇄 작업과 함께)",
@@ -41,19 +48,25 @@
   "재고아이템에 연결된 공급업체 가격이 그대로 원가(my cost)가 됩니다. 레시피 원가는 «원가 ÷ 기준양 × 수량» 으로 따라 움직입니다 (운영 실측: 불고기덮밥 10.85 → 10.94)."
  ],
  "check_areas": [
+  "인보이스 대조 화면(발주 → 인보이스 대조)에 «총액 (RM)» · «발주 총액: RM …» 으로 보이는지 (MYR 글자 0)",
+  "결제설정 화면 탭에 «Bank Transfer (RM)» · «Additional Charges (RM)» 으로 보이는지",
+  "재료·레시피 화면의 «Unit Cost (RM)» · «Suggested Price (RM)»",
+  "구독/요금제 화면의 할인 입력 칸 «Discount Amount (RM)»",
+  "통화 선택 칸에 «RM Malaysian Ringgit» 으로 보이는지(코드 MYR 안 보이는지) · 발주 인쇄물 금액이 RM 인지",
   "with MIN Cafe 발주 카탈로그에 K-Fried 소스류 등 18개가 보이는지",
   "발주 목록·인보이스 화면에 RM 으로 보이는지(MYR 글자가 없는지)",
   "할인 설정한 매장에 발행하면 인보이스에 할인 줄이 보이는지",
   "100% 할인 매장도 인보이스가 나오고 «결제완료»로 뜨는지",
   "수익 리포트에 할인 합계가 보이는지",
-  "재료 화면에서 대파·양파·무·물엿·고추장 원가가 공급업체 가격과 같은지"
+  "재료 화면에서 대파·양파·무·물엿·고추장 원가가 공급업체 가격과 같은지",
+  "인보이스·알림 메일에 찍히는 금액이 RM 인지 (메일 발송 시)"
  ],
  "verification": {
   "sw_version": "5.37-rm-and-discount-20260917",
-  "gates": "[Opus 실행] verify-all 19/20(실패 1 = 이 gates/fable_note 빈칸) · mount sweep 재사용(번들 동일) · health-check 통과 · print-guard 8/8 무변경 · 마이그 레지스트리 OK(manual 1건 추가) · check-sensitive-diff ②(invoiceScheduler.js)+③(migrate-cost-from-seller 스크립트) 접촉 → Fable 게이트 대상",
+  "gates": "[Fable 실측 · 5줄 보완 후] 🔒 print-guard 8/8 무변경 · health-check 248/248 · currency-display 0건(고장주입: IngredientsTab 1줄 되돌림 → 1건 검출 → 원복 동일 확인) · design-guard 신규 0 · timezone 신규 0 · getCurrencySymbol 쓰는 변경 파일 26개 import 전수 확인 · ALLOW_SYMBOL_VARS 4파일 정의부 확인(POS useState('RM') · 지도 3종 getCurrencySymbol). [Opus 실행 예정] 보완 5줄 반영 빌드 1회 → verify-all --full(mount sweep) → 배포 스크립트 post-build mount 게이트(fail-closed). tsc 는 i18next 타입 파싱 오류 409건으로 판정 불가(기존 상태).",
   "real_calls": "개발서버 실제 발행 3종: 100% 할인 → 정가 200·할인 −200·합계 0·status paid / 50% → 200·−100·100·미납 / 할인없음 → 200·0·200·미납. payer_id 가 각각 1·5·24 로 채워짐(전에는 null). 수익 리포트 totals.discounted = 300 으로 집계. 정가 0 인 매장은 «No chargeable amount» 로 건너뜀. · 카탈로그: 브랜드를 «계약 필요» 로 닫아 둔 상태에서 all·external_buyers 상품을 만들어 가맹점 계정으로 조회 → 둘 다 노출. 운영 실측(읽기): with MIN Cafe 92/112(external 18·specific_brands 2 누락) · K-DINE IPC 109/112(specific_restaurants 3 누락, 이는 다른 매장 지정이라 정상). · 원가 정렬: 개발에서 적용→재조사 0건→undo→재조사 6건 복귀 확인. 운영 조사 28건 → 적용 → 재조사 0건. 레시피 재료비 전후(화면과 같은 식 «원가÷기준양×수량»): 불고기덮밥 10.85→10.94 · 볶음밥 9.79→9.88 · 비빔밥 5.94→5.97 · Add-on 2.05→2.07.",
   "fault_injection": "할인 전달을 제거하니 같은 시나리오가 **정가 200·할인 0** 으로 돌아옴(할인 전달이 실제로 작동한다는 반증) → 파일 원복 후 내용 동일 확인. 시험 데이터(플랜·가격·배정·인보이스) 전량 삭제, 잔여 0. ②-2 카탈로그: external_buyers 를 가맹점 목록에서 빼는 원래 버그를 재주입 → 같은 상품이 안 보임(증상 재현) → 원복 후 파일 동일. ③되돌리기: 거울 달린 재고아이템 fixture 로 적용→거울도 새 값→`--only` 되돌리기→원가·거울 둘 다 복귀(2건)+rollback 이력 1줄. 거울 복원 줄을 제거하는 고장주입 → 거울이 새 값에 남음(그 줄이 실제로 일한다는 반증) → 파일 원복 동일.",
   "not_verified": "운영 화면 육안 확인 미실시. 인보이스 PDF·메일의 실제 렌더는 개발 데이터로만 확인(운영 발송 없음).",
-  "fable_note": "2026-09-17 Fable 게이트 통과(3차): [①②카탈로그] 앞선 판정 유지(실호출 800/800/0 paid · 800/80/720 · 가맹점38 카탈로그 1건). [원가 정렬 스크립트] 적용 경로는 costSync.recomputeUnitCost 재사용·검사=수정 같은 코드·skip 존중으로 정석 · 처음 undo 가 원가 행만 되돌려 거울(레시피가 읽는 행)·이력을 빠뜨린 결함을 Fable 이 찾아 보완 5건(현재값==적용값일 때만·거울 복원·rollback 이력·--only·apply ctx manual+batch_id) 지시 → 코드 대조 완료, Opus 개발 fixture 증명(적용 20/거울 20 → undo 3/3 · rollback 이력 1) + 고장주입(거울 복원 제거 → 거울 20 잔류) 접수 · 운영 28건 로그는 seller_edit 로 남아 있음(고쳐 쓰지 않음) · 크게 오른 3건은 판매자 쪽 기준양 누락 진단과 실측 일치(김치 48 정답·소시지/뚜껑 Irene 확인 대기) · 마이그 없음 · 운영 배포는 Irene 지시 때."
+  "fable_note": "2026-09-17 Fable 게이트 통과(5차 · 통화 표기 3차): [범위] 1회차 지시 8곳 + Opus 가 같은 정규식으로 더 찾은 45곳(화면 25파일 · 백엔드 메일/SOA/문서/활동기록 11파일) 전부 «변수는 코드 유지·표시 자리만 기호» 원칙에 맞음 — diff 전수 대조. 저장·비교·URL·웹훅 대조 문구(webhooks-payments:135)·🔒 POSTerminal:3942 는 의도대로 미변경. 데이터 변경 0. [결함 2건 → 이 세션이 직접 5줄 보완] SupplierDashboard ccy 기호→코드 복원(formatCurrency 는 코드를 받아야 자릿수·기호를 찾는다) · 결제설정 3화면 통화 이름 중복 표기 제거. [게이트] 신설 check-currency-display 는 JSX 텍스트·템플릿 동일 정규식, 예외 4파일 정의부 확인, 고장주입 1건 검출 반증(Fable 재현). 한계: const 대입줄·[Cc]urrency 이름 아닌 변수(ccy 등)·formatCurrency 에 기호를 넣는 오용은 못 잡는다(휴리스틱, 배포 차단 게이트로는 충분). [배포] 마이그 없음 · SW 5.37 유지 · 운영 DB 무접촉 · 롤백 = 직전 배포 백업. 조건: 보완 반영 빌드 후 mount sweep 크래시 0 — 실패 시 이 판정은 무효. 운영검증(Irene 지시 «주문관리 결제 프린트 등»)은 배포 후 /운영검증 으로, 인쇄는 실프린터 종이 확인만이 증거."
  }
 }

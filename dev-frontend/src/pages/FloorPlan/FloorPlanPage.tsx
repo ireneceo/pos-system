@@ -2511,7 +2511,7 @@ const FloorPlanPage: React.FC = () => {
                         </div>
                         {/* 금액 + 결제 */}
                         <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--pos-text, #0A2540)' }}>{currency}{total}</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--pos-text, #0A2540)' }}>{getCurrencySymbol(currency || 'MYR')}{total}</div>
                           <div style={{ fontSize: 10, fontWeight: 600, color: paymentStatus === 'paid' ? '#10B981' : '#F59E0B' }}>
                             {paymentStatus === 'paid' ? t('floorplan:floorPlanPage.paid', 'Paid') : t('floorplan:floorPlanPage.unpaid', 'Unpaid')}
                           </div>

@@ -28,7 +28,7 @@ import {
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import DateRangeField from '../../components/Common/DateRangeField';
 import SubscriptionFormFields, { type SubscriptionValues, type UserType as SubUserType, type BillingCycle, type PaymentModel, type DiscountType } from '../../components/Subscription/SubscriptionFormFields';
-import { getPlanPrice, formatPlanPrice, normalizeCurrencyCode, formatCurrency, getActivePlanCurrencies } from '../../utils/currency';
+import { getPlanPrice, formatPlanPrice, normalizeCurrencyCode, formatCurrency, getActivePlanCurrencies, getCurrencySymbol } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -1188,7 +1188,7 @@ const SubscriptionsPage: React.FC = () => {
                         {subscription.branchName && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', background: '#F1F4F8', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.branchName}</span>}
                         {(subscription as any).isDemo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:subscriptionsPage.demo')}</span>}
                         {(subscription as any).isTest && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:subscriptionsPage.test')}</span>}
-                        {subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.currency}</span>}
+                        {subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{getCurrencySymbol(subscription.currency)}</span>}
                         {(subscription as any).entityType && (subscription as any).entityType !== 'restaurant' && (
                           <span style={{ fontSize: '10px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px', marginLeft: '4px', verticalAlign: 'middle',
                             color: (subscription as any).entityType === 'brand' ? '#7C3AED' : (subscription as any).entityType === 'foodcourt' ? '#059669' : '#D97706',

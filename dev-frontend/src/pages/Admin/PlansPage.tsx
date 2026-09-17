@@ -14,7 +14,7 @@ import {
   Button
 , Modal as CommonModal } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
@@ -1336,7 +1336,7 @@ const PlansPage: React.FC = () => {
               const config = currencyConfig[code];
               return (
                 <option key={code} value={code}>
-                  {config?.symbol || code} {code}
+                  {config?.symbol || code} {config?.name || code}
                 </option>
               );
             })}
@@ -1389,7 +1389,7 @@ const PlansPage: React.FC = () => {
                         Price Not Set
                       </MonthlyPrice>
                       <PricingNote style={{color: '#F59E0B'}}>
-                        Set {displayCurrency} price in "Prices" button
+                        Set {getCurrencySymbol(displayCurrency)} price in "Prices" button
                       </PricingNote>
                     </>
                   )}
@@ -1582,7 +1582,7 @@ const PlansPage: React.FC = () => {
                           background: '#F9FAFB'
                         }}>
                           <div style={{ fontWeight: 600, marginBottom: '8px', color: '#0A2540' }}>
-                            {config?.symbol || code} {code} - {config?.name || code}
+                            {config?.symbol || code} {config?.name || code}
                           </div>
                           <PricingRow>
                             <FormGroup style={{ marginBottom: 0 }}>
@@ -2004,7 +2004,7 @@ const PlansPage: React.FC = () => {
                           background: '#F9FAFB'
                         }}>
                           <div style={{ fontWeight: 600, marginBottom: '8px', color: '#0A2540' }}>
-                            {config?.symbol || code} {code} - {config?.name || code}
+                            {config?.symbol || code} {config?.name || code}
                           </div>
                           <PricingRow>
                             <FormGroup style={{ marginBottom: 0 }}>

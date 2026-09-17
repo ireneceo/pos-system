@@ -24,6 +24,7 @@ const {
   getRestaurantAdminAndOwnerIds
 } = require('../utils/notificationService');
 const { requireFoodcourtScope } = require('./entity-billing');
+const { currencySymbol } = require('../utils/currency');
 
 const FRONTEND_BASE_URL = process.env.FRONTEND_URL ||
   (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
@@ -171,7 +172,7 @@ router.post(
       const link = `${FRONTEND_BASE_URL}/restaurant/${restaurant.id}/trade-invoices`;
       const html = `
         <p>This is a friendly reminder that you have <strong>${invoices.length} unpaid invoice${invoices.length > 1 ? 's' : ''}</strong> from ${sellerName}.</p>
-        <p><strong>Total due:</strong> ${currency} ${totalDue.toFixed(2)}</p>
+        <p><strong>Total due:</strong> ${currencySymbol(currency)} ${totalDue.toFixed(2)}</p>
         <p><a href="${link}">View invoices in Purple POS</a></p>
       `;
 

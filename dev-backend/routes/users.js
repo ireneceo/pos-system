@@ -6,6 +6,7 @@ const Foodcourt = require('../models/Foodcourt');
 const bcrypt = require('bcrypt');
 const { authenticateToken, requireRole, demoProtection, userCanAccessRestaurant } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLogger');
+const { currencySymbol } = require('../utils/currency');
 
 // Get all users (System Admin only)
 router.get('/', authenticateToken, async (req, res) => {
@@ -1051,7 +1052,7 @@ async function deleteUserHandler(req, res) {
     if (nonZeroWallets.length > 0 || inflightPayout) {
       await t.rollback();
       const balanceSummary = nonZeroWallets
-        .map(w => `${w.currency} ${parseFloat(w.balance).toFixed(2)}`)
+        .map(w => `${currencySymbol(w.currency)} ${parseFloat(w.balance).toFixed(2)}`)
         .join(', ');
       const reasons = [];
       if (nonZeroWallets.length > 0) reasons.push(`unsettled wallet balance (${balanceSummary})`);

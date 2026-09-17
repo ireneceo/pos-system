@@ -17,7 +17,7 @@ import RegisterAsProductModal from '../../components/Common/RegisterAsProductMod
 import { fetchAPI } from '../../utils/api';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { sellerSpecLabel, stockSpecLabel } from '../../utils/unitConversion';
 
 import { getAuthToken } from '../../utils/auth';
@@ -1186,7 +1186,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
 
           <UIFormRow>
             <UIFormGroup>
-              <FormLabel>{t('brand:productIngredientsTab.pricePerPackage')} ({selectedCurrency}) *</FormLabel>
+              <FormLabel>{t('brand:productIngredientsTab.pricePerPackage')} ({getCurrencySymbol(selectedCurrency)}) *</FormLabel>
               <FormInput
                 type="number"
                 step="0.01"
@@ -1325,7 +1325,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
 
                 <UIFormRow style={{ marginTop: '12px' }}>
                   <UIFormGroup>
-                    <FormLabel>Unit Price ({selectedCurrency})</FormLabel>
+                    <FormLabel>Unit Price ({getCurrencySymbol(selectedCurrency)})</FormLabel>
                     <FormInput
                       type="number"
                       step="0.01"

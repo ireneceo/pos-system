@@ -1622,7 +1622,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
             />
           </UIFormGroup>
           <UIFormGroup>
-            <FormLabel>Suggested Price ({selectedCurrency})</FormLabel>
+            <FormLabel>Suggested Price ({getCurrencySymbol(selectedCurrency)})</FormLabel>
             <FormInput
               type="number"
               step="0.01"

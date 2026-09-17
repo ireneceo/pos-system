@@ -5,7 +5,7 @@ import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardSta
 import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { formatDateTime } from '../../utils/timezone';
 import { useStore } from '../../contexts/StoreContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -1245,7 +1245,7 @@ const AdminDashboard: React.FC = () => {
                        timePeriod === 'month' ? 'Last 12 weeks' :
                        timePeriod === 'quarter' ? 'Last 6 months' :
                        'Last 12 months'}
-                      <span style={{ marginLeft: '8px', color: '#635BFF', fontWeight: 600 }}>({selectedCurrency})</span>
+                      <span style={{ marginLeft: '8px', color: '#635BFF', fontWeight: 600 }}>({getCurrencySymbol(selectedCurrency)})</span>
                     </div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#059669' }}>
                       {(() => {
@@ -1462,7 +1462,7 @@ const AdminDashboard: React.FC = () => {
             <h3 style={{ marginBottom: '20px', color: '#0A2540' }}>{t('admin:adminDashboard.performanceAnalytics')}</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
               <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
-                <h4 style={{ color: '#059669', marginBottom: '10px' }}>Revenue Insights ({selectedCurrency})</h4>
+                <h4 style={{ color: '#059669', marginBottom: '10px' }}>Revenue Insights ({getCurrencySymbol(selectedCurrency)})</h4>
                 <p>• Monthly revenue: {formatCurrency(getCurrencyTotal(metrics.monthlyRevenue, selectedCurrency), selectedCurrency)}</p>
                 <p>• Yearly revenue: {formatCurrency(getCurrencyTotal(metrics.yearlyRevenue, selectedCurrency), selectedCurrency)}</p>
                 <p>• ARPU: {formatCurrency(metrics.averageRevenuePerUser, operationSettings.currency)}</p>

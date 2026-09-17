@@ -35,6 +35,7 @@ const ReferralCommission = require('../models/ReferralCommission');
 const ReferralWalletTransaction = require('../models/ReferralWalletTransaction');
 const ReferralPayout = require('../models/ReferralPayout');
 const ReferralSettings = require('../models/ReferralSettings');
+const { currencySymbol } = require('../utils/currency');
 
 // PURPLE-XXXX — 4-char random suffix, ambiguous chars excluded
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // 31 chars
@@ -281,7 +282,7 @@ async function processCommission(invoice, opts = {}) {
         action_type: 'create',
         entity_type: 'referral_commission',
         entity_id: commission.id,
-        entity_name: `Commission ${commissionAmount} ${currency}`,
+        entity_name: `Commission ${currencySymbol(currency)} ${commissionAmount}`,
         user_id: referrer.id,
         username: referrer.username || referrer.email,
         full_name: referrer.full_name,
@@ -297,7 +298,7 @@ async function processCommission(invoice, opts = {}) {
           currency,
           wallet_balance_after: newBalance
         },
-        description: `Referral commission credited: ${commissionAmount} ${currency} (${rate}% of ${paidAmount}) from invoice ${invoice.invoice_number || invoice.id}`
+        description: `Referral commission credited: ${currencySymbol(currency)} ${commissionAmount} (${rate}% of ${paidAmount}) from invoice ${invoice.invoice_number || invoice.id}`
       });
     } catch (e) {
       console.error('[processCommission] audit log error:', e.message);
@@ -463,7 +464,7 @@ async function applyCredit(userId, invoiceId, amount, opts = {}) {
           invoice_paid_after: newPaid,
           invoice_remaining: Math.max(0, total - newPaid)
         },
-        description: `Referral wallet credit applied: ${apply} ${currency} → invoice ${invoice.invoice_number || invoice.id} (remaining ${Math.max(0, total - newPaid)})`
+        description: `Referral wallet credit applied: ${currencySymbol(currency)} ${apply} → invoice ${invoice.invoice_number || invoice.id} (remaining ${Math.max(0, total - newPaid)})`
       });
     } catch (e) {
       console.error('[applyCredit] audit log error:', e.message);
@@ -532,7 +533,7 @@ async function requestPayout(userId, currency, amount, bank, opts = {}) {
     balance_after: newBalance,
     reference_type: 'payout',
     reference_id: payout.id,
-    description: `Payout requested (${currency} ${amount})`
+    description: `Payout requested (${currencySymbol(currency)} ${amount})`
   }, { transaction });
 
   // Persist last-used bank info on user for next time

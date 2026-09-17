@@ -6,6 +6,7 @@
  * No PDF dependency — relies on browser print + @media print CSS.
  */
 import React, { useEffect, useState } from 'react';
+import { getCurrencySymbol } from '../../utils/currency';
 import styled from 'styled-components';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -192,11 +193,13 @@ const SecBtn = styled.button`
   cursor: pointer;
 `;
 
+// 인쇄물에도 코드(MYR)가 아니라 기호(RM) — Irene 「MYR 안쓴다니까. RM이라고」 (2026-09-17)
 const formatMoney = (v: number | string | null | undefined, ccy = 'MYR') => {
-  if (v == null || v === '') return `${ccy} 0.00`;
+  const sym = getCurrencySymbol(ccy);
+  if (v == null || v === '') return `${sym} 0.00`;
   const n = Number(v);
-  if (!Number.isFinite(n)) return `${ccy} 0.00`;
-  return `${ccy} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (!Number.isFinite(n)) return `${sym} 0.00`;
+  return `${sym} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 interface PrintPageProps {

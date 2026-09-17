@@ -20,7 +20,7 @@ import RegisterAsProductModal from '../../components/Common/RegisterAsProductMod
 import AutoSaveField from '../../components/Common/AutoSaveField';
 import Toggle from '../../components/Common/Toggle';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { costOrNotSet } from '../../utils/costDisplay';
 import { getAuthToken } from '../../utils/auth';
 interface IngredientsTabProps {
@@ -1537,7 +1537,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
 
           <UIFormRow>
             <UIFormGroup>
-              <FormLabel>Unit Cost ({selectedCurrency}) *</FormLabel>
+              <FormLabel>Unit Cost ({getCurrencySymbol(selectedCurrency)}) *</FormLabel>
               <FormInput
                 type="number"
                 step="0.01"

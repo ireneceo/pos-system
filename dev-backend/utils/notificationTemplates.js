@@ -4,6 +4,7 @@
  */
 
 const { emailLayout } = require('./emailTemplates');
+const { currencySymbol } = require('./currency');
 
 const BRAND_COLOR = '#635BFF';
 const BASE_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
@@ -928,9 +929,9 @@ function monthlySoaEmail({ sellerName, month, invoices = [], totalDue, currency,
 function fmtRefMoney(amount, currency) {
   const a = parseFloat(amount) || 0;
   if (currency === 'KRW' || currency === 'JPY' || currency === 'VND') {
-    return `${currency} ${Math.round(a).toLocaleString()}`;
+    return `${currencySymbol(currency)} ${Math.round(a).toLocaleString()}`;
   }
-  return `${currency} ${a.toFixed(2)}`;
+  return `${currencySymbol(currency)} ${a.toFixed(2)}`;
 }
 
 // 1. RP welcome — sent on referral-signup

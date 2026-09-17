@@ -1746,7 +1746,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                     onClick={() => handleFilterBrandSelect(brand)}
                   >
                     <ItemName>{brand.name}</ItemName>
-                    <ItemDetails>{brand.code} • {brand.currency}</ItemDetails>
+                    <ItemDetails>{brand.code} • {getCurrencySymbol(brand.currency)}</ItemDetails>
                   </DropdownItem>
                 ))}
               </DropdownMenu>

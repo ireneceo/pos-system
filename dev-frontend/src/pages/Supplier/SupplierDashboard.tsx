@@ -9,7 +9,7 @@ import {
 } from '../../components/UI';
 import { StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
 import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell } from '../../components/UI/DataTable';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { formatDate } from '../../utils/timezone';
 import { getAuthToken } from '../../utils/auth';
 import { Walkthrough, TourTrigger, type TourStep } from '../../components/Walkthrough';
@@ -334,6 +334,8 @@ const SupplierDashboard: React.FC = () => {
     if (alert.link) navigate(alert.link);
   };
 
+  // 화면엔 코드가 아니라 기호 — Irene 「MYR 안쓴다니까. RM이라고」 (2026-09-17)
+  // 저장·비교는 코드(MYR) — formatCurrency 가 코드로 자릿수·기호를 찾는다. 기호는 표시 자리(축 라벨)에서만 만든다.
   const ccy = data?.currency || 'MYR';
 
   return (
@@ -408,7 +410,7 @@ const SupplierDashboard: React.FC = () => {
                   <LineChart data={data.revenue_trend_6m.map(p => ({ ...p, label: formatMonthLabel(p.month) }))}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#C7CED6" />
                     <XAxis dataKey="label" stroke="#4B5563" tick={{ fontSize: 12 }} />
-                    <YAxis stroke="#4B5563" tick={{ fontSize: 12 }} tickFormatter={(v) => `${ccy} ${v}`} />
+                    <YAxis stroke="#4B5563" tick={{ fontSize: 12 }} tickFormatter={(v) => `${getCurrencySymbol(ccy)} ${v}`} />
                     <Tooltip formatter={(v: number) => formatCurrency(v, ccy)} />
                     <Line type="monotone" dataKey="revenue" stroke="#9333EA" strokeWidth={2} dot={{ r: 4 }} />
                   </LineChart>

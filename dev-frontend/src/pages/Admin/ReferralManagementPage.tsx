@@ -1056,7 +1056,7 @@ const ReferralManagementPage: React.FC = () => {
                     <tbody>
                       {partnerDetail.wallets.map(w => (
                         <tr key={w.currency}>
-                          <Td>{w.currency}</Td>
+                          <Td>{getCurrencySymbol(w.currency)}</Td>
                           <Td>{fmtMoney(w.balance, w.currency)}</Td>
                           <Td>{fmtMoney(w.total_earned, w.currency)}</Td>
                           <Td>{fmtMoney(w.total_withdrawn, w.currency)}</Td>

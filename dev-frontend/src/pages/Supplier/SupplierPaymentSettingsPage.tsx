@@ -5,7 +5,7 @@ import AutoSaveField from '../../components/Common/AutoSaveField';
 import PaymentGatewayGuide from '../../components/Payment/PaymentGatewayGuide';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
-import { CURRENCY_CONFIG } from '../../utils/currency';
+import { CURRENCY_CONFIG, getCurrencySymbol } from '../../utils/currency';
 import { getAuthToken } from '../../utils/auth';
 
 interface StripeConfig {
@@ -429,7 +429,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
                 >
                   {settings.currencies.map(code => (
                     <option key={code} value={code}>
-                      {CURRENCY_CONFIG[code]?.symbol || code} {code} - {CURRENCY_CONFIG[code]?.name || code}
+                      {CURRENCY_CONFIG[code]?.symbol || code} {CURRENCY_CONFIG[code]?.name || code}
                     </option>
                   ))}
                 </Select>
@@ -457,7 +457,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
                         fontWeight: 500
                       }}
                     >
-                      {CURRENCY_CONFIG[code]?.symbol || ''} {code}
+                      {CURRENCY_CONFIG[code]?.symbol || ''} {CURRENCY_CONFIG[code]?.name || code}
                     </button>
                   );
                 })}
@@ -609,7 +609,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
                     active={selectedCurrency === code}
                     onClick={() => setSelectedCurrency(code)}
                   >
-                    {CURRENCY_CONFIG[code]?.symbol || ''} {code}
+                    {CURRENCY_CONFIG[code]?.symbol || ''} {CURRENCY_CONFIG[code]?.name || code}
                   </Tab>
                 ))}
               </Tabs>
@@ -618,7 +618,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
               <PaymentMethodCard>
                 <MethodHeader>
                   <MethodInfo>
-                    <MethodLabel>Bank Transfer ({selectedCurrency})</MethodLabel>
+                    <MethodLabel>Bank Transfer ({getCurrencySymbol(selectedCurrency)})</MethodLabel>
                     <MethodDescription>Manual transfer with receipt upload</MethodDescription>
                   </MethodInfo>
                   <ToggleSwitch>
@@ -673,7 +673,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
               <PaymentMethodCard>
                 <MethodHeader>
                   <MethodInfo>
-                    <MethodLabel>QR Payment ({selectedCurrency})</MethodLabel>
+                    <MethodLabel>QR Payment ({getCurrencySymbol(selectedCurrency)})</MethodLabel>
                     <MethodDescription>Scan QR code to pay (DuitNow, KakaoPay, etc.)</MethodDescription>
                   </MethodInfo>
                   <ToggleSwitch>
@@ -691,7 +691,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
                       value={getQR(selectedCurrency).qrImage}
                       onChange={(base64: string) => { handleQRChange(selectedCurrency, 'qrImage', base64); setTimeout(() => saveKey('qrPayment'), 0); }}
                       label="QR Code Image"
-                      helpText={`Upload QR code for ${selectedCurrency} payments`}
+                      helpText={`Upload QR code for ${getCurrencySymbol(selectedCurrency)} payments`}
                       changeButtonText="Change QR Code"
                       removeButtonText="Remove QR Code"
                       imageAltText="Payment QR Code"
