@@ -728,8 +728,8 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                         <DetailSectionTitle>{t('floorPlan.sec.financial', 'Financial Terms')}</DetailSectionTitle>
                         <TileGrid>
                           {ft.franchise_fee != null && <Tile $color="#15803D"><TileLabel>{t('map.fin.franchiseFee', 'Franchise Fee')}</TileLabel><TileValue>{currency} {fmtMoney(ft.franchise_fee)}</TileValue></Tile>}
-                          {ft.royalty_value != null && <Tile $color="#1E40AF"><TileLabel>{t('map.fin.royalty', 'Royalty')}</TileLabel><TileValue>{ft.royalty_type === 'percent' ? `${ft.royalty_value}%` : `${currency} ${fmtMoney(ft.royalty_value)}`}</TileValue></Tile>}
-                          {ft.marketing_fund_value != null && <Tile $color="#B45309"><TileLabel>{t('map.fin.marketingFund', 'Marketing Fund')}</TileLabel><TileValue>{ft.marketing_fund_type === 'percent' ? `${ft.marketing_fund_value}%` : `${currency} ${fmtMoney(ft.marketing_fund_value)}`}</TileValue></Tile>}
+                          {ft.royalty_value != null && <Tile $color="#1E40AF"><TileLabel>{t('map.fin.royalty', 'Royalty')}</TileLabel><TileValue>{ft.royalty_type === 'percent' ? `${ft.royalty_value}%` : `${getCurrencySymbol(currency)} ${fmtMoney(ft.royalty_value)}`}</TileValue></Tile>}
+                          {ft.marketing_fund_value != null && <Tile $color="#B45309"><TileLabel>{t('map.fin.marketingFund', 'Marketing Fund')}</TileLabel><TileValue>{ft.marketing_fund_type === 'percent' ? `${ft.marketing_fund_value}%` : `${getCurrencySymbol(currency)} ${fmtMoney(ft.marketing_fund_value)}`}</TileValue></Tile>}
                           {ft.security_deposit != null && <Tile $color="#6D28D9"><TileLabel>{t('floorPlan.fin.deposit', 'Deposit')}</TileLabel><TileValue>{currency} {fmtMoney(ft.security_deposit)}</TileValue></Tile>}
                         </TileGrid>
                         {ft.territory && <InfoRow><span>{t('map.fin.territory', 'Territory')}</span><b>{ft.territory}</b></InfoRow>}

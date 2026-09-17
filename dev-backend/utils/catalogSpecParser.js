@@ -20,7 +20,8 @@ const PACKAGE_WORDS = {
   tray: 'tray', box: 'box', can: 'can', bag: 'bag'
 };
 // ── 취급단위(내용물) 어휘 — kg·g·L·ml·piece 만 (Irene «레시피·재고는 g·kg»)
-const CONTENT_WORDS = { kg: 'kg', g: 'g', gram: 'g', gr: 'g', l: 'L', ml: 'ml' };
+// 어휘만 는다 — 규칙 변경 아님. 2026-09-17 K-DINE IPC 목록에 «3.3Litre/tub»·«1.9Litre/btl» 표기가 있었다.
+const CONTENT_WORDS = { kg: 'kg', g: 'g', gram: 'g', gr: 'g', l: 'L', lt: 'L', litre: 'L', liter: 'L', ml: 'ml' };
 const COUNT_WORDS = new Set(['ea', 'pc', 'pcs']);
 
 // 원가 미리보기는 실제 전파와 **같은 식**을 쓴다(순수 함수 — DB 무접촉)

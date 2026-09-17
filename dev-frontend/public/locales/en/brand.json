@@ -786,7 +786,8 @@
     "noRevenue": "No revenue recorded for this period.",
     "noInvoices": "No invoices in this period.",
     "loadFailed": "Could not load the revenue report.",
-    "uninvoicedPos": "{{count}} received purchase orders ({{amount}}) have no trade invoice yet — that amount is missing from the figures above."
+    "uninvoicedPos": "{{count}} received purchase orders ({{amount}}) have no trade invoice yet — that amount is missing from the figures above.",
+    "discounted": "Discounted"
   },
   "brandPerformance": {
     "overview": "Overview"

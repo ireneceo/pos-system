@@ -786,7 +786,8 @@
     "noRevenue": "이 기간에 기록된 매출이 없습니다.",
     "noInvoices": "이 기간에 청구서가 없습니다.",
     "loadFailed": "매출 리포트를 불러오지 못했습니다.",
-    "uninvoicedPos": "수령까지 끝났는데 청구서가 안 나간 발주가 {{count}}건({{amount}}) 있습니다 — 그 금액은 위 숫자에 빠져 있습니다."
+    "uninvoicedPos": "수령까지 끝났는데 청구서가 안 나간 발주가 {{count}}건({{amount}}) 있습니다 — 그 금액은 위 숫자에 빠져 있습니다.",
+    "discounted": "할인 합계"
   },
   "brandPerformance": {
     "overview": "전체 보기"

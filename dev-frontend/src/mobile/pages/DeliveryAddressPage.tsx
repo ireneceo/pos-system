@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getCurrencySymbol } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -267,7 +268,7 @@ const DeliveryAddressPage: React.FC = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return `${currency} ${amount.toFixed(2)}`;
+    return `${getCurrencySymbol(currency)} ${amount.toFixed(2)}`;
   };
 
   return (

@@ -79,6 +79,7 @@ router.get(
       const invoices = await Invoice.findAll({
         where,
         attributes: ['id', 'invoice_number', 'invoice_category', 'status', 'total_amount', 'paid_amount',
+          'discount_amount', 'subtotal',
           'currency', 'issuer_id', 'payer_type', 'payer_id', 'issued_at', 'due_date', 'createdAt'],
         order: [['createdAt', 'DESC']],
         limit: 2000
@@ -96,7 +97,9 @@ router.get(
         ? await Brand.findAll({ where: { id: brandIdsSeen }, attributes: ['id', 'name'] }) : [];
       const bName = new Map(brands.map(b => [b.id, b.name]));
 
-      const empty = () => ({ invoiced: 0, paid: 0, outstanding: 0, count: 0 });
+      // discounted = 할인해 준 금액 합계 (2026-09-17 Irene 「0원 무료라도 할인해준 건 보여줘야 해」).
+      //   청구액·수금액만 보여 주면 «얼마를 깎아 줬는가» 가 어디에도 안 남는다.
+      const empty = () => ({ invoiced: 0, paid: 0, outstanding: 0, discounted: 0, count: 0 });
       const buckets = { product_sales: empty(), subscription_sales: empty(), fees_other: empty() };
       const totals = empty();
       const byRestaurant = new Map();
@@ -107,12 +110,13 @@ router.get(
         if (inv.invoice_category === 'soa') continue;
 
         const amount = Number(inv.total_amount || 0);
+        const discounted = Number(inv.discount_amount || 0);
         const paid = PAID_STATUSES.includes(inv.status) ? amount : Number(inv.paid_amount || 0);
         const outstanding = Math.max(0, Math.round((amount - paid) * 100) / 100);
         const b = bucketOf(inv.invoice_category);
 
         for (const t of [buckets[b], totals]) {
-          t.invoiced += amount; t.paid += paid; t.outstanding += outstanding; t.count += 1;
+          t.invoiced += amount; t.paid += paid; t.outstanding += outstanding; t.discounted += discounted; t.count += 1;
         }
 
         const key = inv.payer_type === 'restaurant' ? inv.payer_id : `other:${inv.payer_type}`;
@@ -124,7 +128,7 @@ router.get(
           });
         }
         const r = byRestaurant.get(key);
-        r.invoiced += amount; r.paid += paid; r.outstanding += outstanding; r.count += 1;
+        r.invoiced += amount; r.paid += paid; r.outstanding += outstanding; r.discounted += discounted; r.count += 1;
 
         rows.push({
           id: inv.id,
@@ -132,7 +136,7 @@ router.get(
           category: inv.invoice_category,
           bucket: b,
           status: inv.status,
-          amount, paid, outstanding,
+          amount, paid, outstanding, discounted,
           currency: inv.currency || 'MYR',
           brand_id: inv.issuer_id,
           brand_name: bName.get(inv.issuer_id) || null,

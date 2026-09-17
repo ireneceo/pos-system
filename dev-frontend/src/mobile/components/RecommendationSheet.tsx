@@ -1,4 +1,5 @@
 import React from 'react';
+import { getCurrencySymbol } from '../../utils/currency';
 import styled, { keyframes } from 'styled-components';
 import { useTranslation } from 'react-i18next';
 
@@ -136,7 +137,7 @@ interface Props {
 
 const fmtPrice = (currency: string, v: number | string) => {
   const n = typeof v === 'number' ? v : parseFloat(v) || 0;
-  return `${currency} ${n.toFixed(2)}`;
+  return `${getCurrencySymbol(currency)} ${n.toFixed(2)}`;
 };
 
 const RecommendationSheet: React.FC<Props> = ({ isOpen, items, currency, cartCount, addedIds = [], onClose, onAdd, onGoToCart }) => {

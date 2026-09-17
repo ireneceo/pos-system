@@ -777,6 +777,8 @@ router.get('/supplier-catalog', async (req, res) => {
       //   all                  → BG owner 의 모든 brand_products (가맹점 brand가 BG 소유 brand면 자동 노출)
       //   specific_brands      → brand_product_brands 매핑된 brand 가맹점
       //   specific_restaurants → brand_product_restaurants 매핑된 Restaurant 만
+      //   external_buyers      → **가맹점에도 그대로 노출** + 아래 블록이 가맹점 «밖» 구매자에게 추가 노출.
+      //                          «밖에도 판다» 는 더하는 설정이지 가맹점에서 빼는 설정이 아니다.
       if (rest?.brand_id) {
         const brand = await Brand.findByPk(rest.brand_id, { attributes: ['id', 'name', 'code', 'logo_url', 'owner_id'] });
         if (brand) {
@@ -800,6 +802,21 @@ router.get('/supplier-catalog', async (req, res) => {
             order: [['sort_order', 'ASC'], ['name', 'ASC']],
             limit: 200
           });
+          // (4) external_buyers — **가맹점에도 그대로 보인다** (2026-09-17 Irene 지적)
+          //   화면 라벨이 「Other businesses can order this **too**」 로 «더한다» 고 약속한다.
+          //   그런데 이 목록에 빠져 있어서, 그 설정을 켜는 순간 **자기 가맹점에서 상품이 사라졌다**.
+          //   운영 실측: with MIN Cafe 에서 18개가 통째로 안 보였다. K-DINE 에서 보이던 것은
+          //   같은 주인의 다른 브랜드가 «누구나 주문 가능» 이라 **외부 구매자 자격으로** 우연히 잡힌 것이고,
+          //   그 설정을 닫으면 거기서도 사라졌을 상태였다.
+          //   ⛔ 이 줄을 지우지 말 것 — 아래 «가맹점 밖» 블록은 자기 가맹본부를 일부러 빼므로
+          //      여기서 안 담으면 가맹점은 영영 못 본다.
+          const externalModeRows = brand.owner_id ? await BrandProduct.findAll({
+            include: [{ model: BrandProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'], required: false }],
+            where: { ...baseWhere, distribution_mode: 'external_buyers', owner_user_id: brand.owner_id },
+            order: [['sort_order', 'ASC'], ['name', 'ASC']],
+            limit: 200
+          }) : [];
+
           // (3) specific_restaurants
           const specificRestaurantRows = await BrandProduct.findAll({
             include: [
@@ -812,7 +829,7 @@ router.get('/supplier-catalog', async (req, res) => {
           });
           // Dedupe by id
           const seen = new Set();
-          const bpRows = [...allModeRows, ...specificBrandRows, ...specificRestaurantRows].filter(p => {
+          const bpRows = [...allModeRows, ...specificBrandRows, ...specificRestaurantRows, ...externalModeRows].filter(p => {
             if (seen.has(p.id)) return false;
             seen.add(p.id);
             return true;

@@ -786,7 +786,8 @@
     "noRevenue": "Tiada hasil direkodkan bagi tempoh ini.",
     "noInvoices": "Tiada invois bagi tempoh ini.",
     "loadFailed": "Laporan hasil tidak dapat dimuatkan.",
-    "uninvoicedPos": "{{count}} pesanan belian yang telah diterima ({{amount}}) belum mempunyai invois dagangan — jumlah itu tiada dalam angka di atas."
+    "uninvoicedPos": "{{count}} pesanan belian yang telah diterima ({{amount}}) belum mempunyai invois dagangan — jumlah itu tiada dalam angka di atas.",
+    "discounted": "Jumlah Diskaun"
   },
   "brandPerformance": {
     "overview": "Gambaran Keseluruhan"

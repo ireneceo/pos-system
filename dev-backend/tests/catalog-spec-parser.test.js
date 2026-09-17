@@ -38,6 +38,23 @@ describe('parseSpec — 규격 표기 → 세 칸', () => {
     }
     expect(s('').rule).toBe('empty');
   });
+
+  // 2026-09-17 K-DINE IPC 목록: «3.3Litre/tub» 같은 Litre 표기가 들어왔다.
+  //   어휘만 는 것이고 규칙은 그대로다 — 규칙 a(용량/포장).
+  test('Litre 표기도 용량으로 읽는다 (어휘 추가, 규칙 변경 아님)', () => {
+    const r = s('3.3Litre/tub');
+    expect(r.rule).toBe('a');
+    expect(r.spec).toEqual({ unit: 'L', base_quantity: 3.3, package_unit: 'tub', order_mode: 'pack' });
+    expect(s('1.9Litre/btl').spec.unit).toBe('L');
+  });
+
+  // ⛔ 어휘를 넓혀 «아무거나 읽게» 만들면 안 된다 — 모르는 단위는 check 로 떨어져 사람이 답해야 한다.
+  test('모르는 단위는 여전히 unparsed (check 로 떨어진다)', () => {
+    for (const raw of ['40pair/pkt', '450mm/pkt', '840g/6pkt/1CT']) {
+      expect(s(raw).rule).toBe('unparsed');
+      expect(s(raw).spec).toBeNull();
+    }
+  });
 });
 
 describe('splitListText', () => {

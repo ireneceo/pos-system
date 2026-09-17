@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { getCurrencySymbol } from '../../utils/currency';
 import styled from 'styled-components';
 import { PosDisplayThemeStyle, getPosTheme, setPosTheme, POS_THEME_MODES, PosThemeMode, usePosThemeOnBody } from '../../styles/posDisplayTheme';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
@@ -2836,7 +2837,7 @@ const FloorPlanPage: React.FC = () => {
                     defaultValue: 'It has an open order (#{{num}}) with {{count}} item(s), total {{total}}. Moving here will MERGE this order into that bill — the two cannot be separated afterwards.',
                     num: moveOccupied.dest?.orderNumber || moveOccupied.dest?.orderId,
                     count: moveOccupied.dest?.itemCount ?? 0,
-                    total: `${currency || 'MYR'} ${Number(moveOccupied.dest?.total_amount || 0).toFixed(2)}`
+                    total: `${getCurrencySymbol(currency || 'MYR')} ${Number(moveOccupied.dest?.total_amount || 0).toFixed(2)}`
                   })}
                 </div>
               </div>

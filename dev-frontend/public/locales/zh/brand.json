@@ -786,7 +786,8 @@
     "noRevenue": "此期间没有营收记录。",
     "noInvoices": "此期间没有发票。",
     "loadFailed": "无法载入营收报表。",
-    "uninvoicedPos": "有 {{count}} 张已收货的采购单（{{amount}}）尚未开立交易发票 — 该金额未计入以上数字。"
+    "uninvoicedPos": "有 {{count}} 张已收货的采购单（{{amount}}）尚未开立交易发票 — 该金额未计入以上数字。",
+    "discounted": "折扣合计"
   },
   "brandPerformance": {
     "overview": "总览"

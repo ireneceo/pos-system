@@ -1,5 +1,6 @@
 const express = require('express');
 const { revenueOrderWhere } = require('../utils/revenueOrders');
+const invoiceScheduler = require('../services/invoiceScheduler');
 const router = express.Router();
 const { Brand, Restaurant, User, EntityPlan, EntityPlanRestaurant, EntityPlanPrice, Order, Invoice, InvoiceItem } = require('../models');
 const { authenticateToken, requireRole } = require('../middleware/auth');
@@ -690,82 +691,19 @@ router.put('/:id/plans/:planId/prices', authenticateToken, requireBrandModule('b
  * @param {string} currency - Currency code for fixed pricing lookup
  * @returns {object} { items: [], subtotal, taxAmount, totalAmount }
  */
-function calculatePlanCharges(plan, revenue, taxRate = 0, currency = null) {
-  const items = [];
-  let subtotal = 0;
-  const taxRateDecimal = parseFloat(taxRate) / 100;
-  const planCurrency = currency || plan.currency || 'MYR';
-
-  if (plan.charge_type === 'fixed') {
-    // Fixed: lookup monthly_price from EntityPlanPrice for this currency
-    const priceRecord = (plan.prices || []).find(p => p.currency === planCurrency);
-    const amount = parseFloat(priceRecord?.monthly_price || 0);
-    if (amount > 0) {
-      const tax = Math.round(amount * taxRateDecimal * 100) / 100;
-      items.push({
-        item_type: 'fixed_charge',
-        description: plan.name,
-        calculation_method: 'fixed',
-        fixed_amount: amount,
-        percentage_rate: null,
-        base_amount: null,
-        calculated_amount: amount,
-        tax_rate: parseFloat(taxRate),
-        tax_amount: tax,
-        total_amount: Math.round((amount + tax) * 100) / 100
-      });
-      subtotal += amount;
-    }
-  } else if (plan.charge_type === 'percentage') {
-    const rate = parseFloat(plan.percentage_value || 0);
-    const amount = Math.round(revenue * rate / 100 * 100) / 100;
-    if (amount > 0) {
-      const tax = Math.round(amount * taxRateDecimal * 100) / 100;
-      items.push({
-        item_type: 'percentage_charge',
-        description: `${plan.name} (${rate}% of ${planCurrency} ${revenue.toLocaleString()})`,
-        calculation_method: 'percentage',
-        fixed_amount: null,
-        percentage_rate: rate,
-        base_amount: revenue,
-        calculated_amount: amount,
-        tax_rate: parseFloat(taxRate),
-        tax_amount: tax,
-        total_amount: Math.round((amount + tax) * 100) / 100
-      });
-      subtotal += amount;
-    }
-  } else if (plan.charge_type === 'combined') {
-    // Min-guarantee pattern — rent = MAX(EntityPlanPrice.monthly_price, percentage × revenue)
-    const priceRecord = (plan.prices || []).find(p => p.currency === planCurrency);
-    const fixedAmount = parseFloat(priceRecord?.monthly_price || 0);
-    const rate = parseFloat(plan.percentage_value || 0);
-    const percentageAmount = Math.round(revenue * rate / 100 * 100) / 100;
-    const amount = Math.max(fixedAmount, percentageAmount);
-    if (amount > 0) {
-      const tax = Math.round(amount * taxRateDecimal * 100) / 100;
-      items.push({
-        item_type: 'combined_charge',
-        description: `${plan.name} (MAX of ${planCurrency} ${fixedAmount.toLocaleString()} or ${rate}% × ${planCurrency} ${revenue.toLocaleString()})`,
-        calculation_method: 'combined',
-        fixed_amount: fixedAmount,
-        percentage_rate: rate,
-        base_amount: revenue,
-        minimum_amount: fixedAmount,
-        calculated_amount: amount,
-        tax_rate: parseFloat(taxRate),
-        tax_amount: tax,
-        total_amount: Math.round((amount + tax) * 100) / 100
-      });
-      subtotal += amount;
-    }
-  }
-
-  const taxAmount = Math.round(subtotal * taxRateDecimal * 100) / 100;
-  const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
-
-  return { items, subtotal, taxAmount, totalAmount };
+/**
+ * 플랜의 고정 월요금 — 인보이스 통화 우선, 없으면 첫 가격행 (2026-09-17).
+ * 발행·미리보기·구독목록이 **같은 값**을 보게 하려고 한 곳에 둔다.
+ */
+function planFixedPrice(plan, currency) {
+  if (!plan) return 0;
+  const ct = plan.charge_type || 'fixed';
+  if (ct !== 'fixed' && ct !== 'combined' && ct !== 'additive') return 0;
+  const rows = plan.prices || [];
+  const row = (currency ? rows.find(p => p.currency === currency) : null) || rows[0];
+  return parseFloat(row?.monthly_price || 0);
 }
+
 
 // GET /api/brands/:id/revenue - Get revenue summary for brand restaurants
 router.get('/:id/revenue', authenticateToken, async (req, res) => {
@@ -888,7 +826,21 @@ router.get('/:id/invoice-preview', authenticateToken, async (req, res) => {
     });
 
     const revenue = parseFloat(revenueResult?.revenue || 0);
-    const charges = calculatePlanCharges(plan, revenue);
+    // 미리보기도 **발행과 같은 계산식**이어야 한다 (2026-09-17 Fable 게이트 보완 1).
+    //   전에는 미리보기가 정가, 실제 발행은 할인가로 나와 숫자가 달랐다.
+    const previewPr = await EntityPlanRestaurant.findOne({
+      where: { entity_plan_id: plan.id, restaurant_id }
+    });
+    const charges = invoiceScheduler.calculatePlanCharges(
+      plan, revenue,
+      {
+        type: previewPr?.discount_type || 'none',
+        value: parseFloat(previewPr?.discount_value) || 0,
+        reason: previewPr?.discount_reason || null
+      },
+      planFixedPrice(plan, null),
+      1
+    );
 
     res.json({
       success: true,
@@ -1021,12 +973,23 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
         });
         const revenue = parseFloat(revenueResult?.revenue || 0);
 
-        // Calculate charges using restaurant's currency
-        const charges = calculatePlanCharges(plan, revenue, 0, invoiceCurrency);
+        // 계산식은 **스케줄러 것 하나**를 쓴다 (2026-09-17 Fable 판정 ②).
+        //   전에는 이 라우트가 자기 계산식을 갖고 있어 **매장별 할인을 한 번도 싣지 않았다** —
+        //   구독 화면에서 할인을 정해 둬도 수동 발행 인보이스는 정가로 나갔다.
+        const discountInfo = {
+          type: pr.discount_type || 'none',
+          value: parseFloat(pr.discount_value) || 0,
+          reason: pr.discount_reason || null
+        };
+        const charges = invoiceScheduler.calculatePlanCharges(
+          plan, revenue, discountInfo, planFixedPrice(plan, invoiceCurrency), 1);
 
-        if (charges.totalAmount <= 0) {
+        // ⛔ 「총액 0 이면 건너뛴다」 였다 — **100% 할인해 준 것이 통째로 사라졌다.**
+        //   Irene: 「인보이스가 0원 무료라도 발행해서 할인해준 건 보여줘야 해」
+        //   이제 **정가가 0 일 때만** 건너뛴다(보여줄 할인이 없는 경우).
+        if (charges.subtotal <= 0) {
           skipped++;
-          results.push({ restaurant: restaurant.name, status: 'skipped', reason: 'Zero amount' });
+          results.push({ restaurant: restaurant.name, status: 'skipped', reason: 'No chargeable amount (price not set or no revenue)' });
           continue;
         }
 
@@ -1043,16 +1006,27 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
           billing_period_start: periodStart,
           billing_period_end: periodEnd,
           due_date: dueDate,
+          subtotal: charges.subtotal,
+          discount_type: charges.discountType,
+          discount_value: charges.discountValue,
+          discount_amount: charges.discountAmount,
+          discount_reason: charges.discountReason,
           total_amount: charges.totalAmount,
           currency: invoiceCurrency,
-          status: 'pending_payment',
+          // 할인 후 받을 것이 없으면 «미납» 으로 두지 않는다 — 0원은 결제할 수도 없어
+          //   영원히 미수로 남는다. 「받을 것 없음」으로 닫고 할인 내역만 보여준다.
+          status: charges.totalAmount <= 0 ? 'paid' : 'pending_payment',
+          paid_amount: charges.totalAmount <= 0 ? 0 : null,
+          paid_at: charges.totalAmount <= 0 ? now : null,
           notes: `Auto-generated invoice for ${plan.name}. Billing period: ${periodStart.toISOString().split('T')[0]} ~ ${periodEnd.toISOString().split('T')[0]}`,
           issued_by: req.user.id,
           issued_at: now,
           issuer_type: 'brand',
           issuer_id: parseInt(id),
           payer_type: 'restaurant',
-          payer_id: null
+          // ⛔ 전에는 null 이었다 — 그래서 발행된 인보이스가 «청구 대상 없음» 으로 남았다
+          //   (운영 47·48·59 가 그 결과다). 받는 쪽은 이 매장이다.
+          payer_id: restaurant.id
         });
 
         // Create invoice items
@@ -1197,7 +1171,17 @@ router.get('/:id/subscriptions', authenticateToken, requireBrandModule('brand_su
       // Calculate estimated charges if plan exists
       let estimatedCharges = null;
       if (activePlan?.plan) {
-        estimatedCharges = calculatePlanCharges(activePlan.plan, monthRevenue);
+        // «예상 청구액» 도 발행과 같은 계산식 — 할인이 반영된 값이 보여야 한다.
+        estimatedCharges = invoiceScheduler.calculatePlanCharges(
+          activePlan.plan, monthRevenue,
+          {
+            type: activePlan.discount_type || 'none',
+            value: parseFloat(activePlan.discount_value) || 0,
+            reason: activePlan.discount_reason || null
+          },
+          planFixedPrice(activePlan.plan, r.currency),
+          1
+        );
       }
 
       // Pending plan (scheduled change)

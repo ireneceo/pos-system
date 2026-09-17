@@ -1906,7 +1906,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
         const ft = form.financial_terms || {};
         const rows: Array<{ label: string; value: string }> = [];
         const currency = contract?.entity_currency || 'MYR';
-        const money = (v: any) => (v != null && v !== '' && Number.isFinite(Number(v))) ? `${currency} ${Number(v).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : null;
+        const money = (v: any) => (v != null && v !== '' && Number.isFinite(Number(v))) ? `${getCurrencySymbol(currency)} ${Number(v).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : null;
         if (entityType === 'brand') {
           const fee = money(ft.franchise_fee); if (fee) rows.push({ label: t('detail.franchiseFee', 'Franchise Fee') as string, value: fee });
           if (ft.royalty_value != null && ft.royalty_value !== '') {

@@ -112,6 +112,7 @@
     "migrate-contents-tags-multiformat.js": "레거시 — 콘텐츠 태그/멀티포맷 스키마(과거 적용).",
     "migrate-contents-video-social.js": "레거시 — 콘텐츠 비디오/소셜 스키마(과거 적용).",
     "migrate-contract-currency-endat.js": "레거시 — 계약 통화/종료일 컬럼(과거 적용).",
+    "migrate-cost-from-seller-20260917.js": "일회성 — 선호 판매자가 연결된 행의 원가를 공급업체 가격으로 정렬(2026-09-17 운영 28건 적용). 공식은 services/costSync.recomputeUnitCost 그대로 호출. 기본은 조사만, --apply 필요, --undo 스냅샷 있음.",
     "migrate-create-print-events.js": "레거시 — print_events 테이블 초기 생성(과거 적용).",
     "migrate-dedupe-2026-09.js": "일회성 — 2026-09 데이터 중복 정리(B7 매핑 완전중복 삭제 · B1 같은 이름 재료 병합 · B3/B4 코드 재번호). Fable 판정 2026-09-07 · Irene 승인. 기본이 미리보기이고 쓰기는 --apply 로만. 매 배포 재실행 금지 — 사람이 화면에서 고친 값을 되돌릴 수 있고, 채번은 실행할 때마다 새 번호를 소비한다. 운영 적용 순서 고정: 채번 원자카운터 코드 배포 → 백업 → --apply. 상품 숨김(B6)은 Irene 지정 id 로 --deactivate 만 사용.",
     "migrate-drop-push-preferences.js": "일회성 — push_preferences 드롭(과거 적용).",

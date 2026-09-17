@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { formatCurrency } from '../../utils/currency';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import {
@@ -173,7 +174,7 @@ const SupplierTradeInvoicesPage: React.FC = () => {
     if (amount == null) return '-';
     const n = Number(amount);
     if (!Number.isFinite(n)) return '-';
-    return `${currency || 'MYR'} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return formatCurrency(n, currency || 'MYR');
   };
 
   return (

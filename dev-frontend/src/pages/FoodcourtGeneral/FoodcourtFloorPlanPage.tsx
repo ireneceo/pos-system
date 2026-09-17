@@ -309,7 +309,7 @@ function deriveKeyNumber(
     const rent = Number(c.financial_terms.base_rent);
     if (!isNaN(rent) && rent > 0) {
       const k = rent >= 1000 ? `${(rent / 1000).toFixed(rent % 1000 === 0 ? 0 : 1)}k` : String(Math.round(rent));
-      return `${currency || 'RM'} ${k}/mo`;
+      return `${getCurrencySymbol(currency || 'MYR')} ${k}/mo`;
     }
   }
   if (displayStatus === 'expiring' && c?.end_date) {

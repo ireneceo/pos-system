@@ -24,11 +24,12 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency as formatCurrencyUtil } from '../../utils/currency';
 import { getAuthToken } from '../../utils/auth';
 
-interface Bucket { invoiced: number; paid: number; outstanding: number; count: number; }
+// discounted = 할인해 준 금액 합계 (2026-09-17 Irene 「0원 무료라도 할인해준 건 보여줘야 해」)
+interface Bucket { invoiced: number; paid: number; outstanding: number; discounted: number; count: number; }
 interface ByRestaurant extends Bucket { restaurant_id: number | null; name: string; }
 interface InvoiceRow {
   id: number; invoice_number: string; category: string; bucket: string; status: string;
-  amount: number; paid: number; outstanding: number; currency: string;
+  amount: number; paid: number; outstanding: number; discounted: number; currency: string;
   brand_name: string | null; buyer_name: string | null; issued_at: string; due_date: string | null;
 }
 interface RevenueData {
@@ -146,6 +147,11 @@ const BrandRevenueReportPage: React.FC = () => {
                 <StatValue>{loading ? '—' : fmt(data?.totals.outstanding ?? 0)}</StatValue>
                 <StatLabel>{t('brand:brandRevenue.outstanding', 'Outstanding')}</StatLabel>
               </StatCard>
+              {/* 깎아 준 금액 — 청구·수금만 보면 «얼마를 할인해 줬는가» 가 어디에도 안 남는다 */}
+              <StatCard>
+                <StatValue>{loading ? '—' : fmt(data?.totals.discounted ?? 0)}</StatValue>
+                <StatLabel>{t('brand:brandRevenue.discounted', 'Discounted')}</StatLabel>
+              </StatCard>
             </StatsGrid>
 
             {/* 매출 누락 신호 — 수령까지 끝났는데 청구서가 안 나간 발주.
@@ -167,6 +173,7 @@ const BrandRevenueReportPage: React.FC = () => {
                     <DataTableHeaderCell align="right">{t('brand:brandRevenue.invoiced', 'Invoiced')}</DataTableHeaderCell>
                     <DataTableHeaderCell align="right">{t('brand:brandRevenue.collected', 'Collected')}</DataTableHeaderCell>
                     <DataTableHeaderCell align="right">{t('brand:brandRevenue.outstanding', 'Outstanding')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('brand:brandRevenue.discounted', 'Discounted')}</DataTableHeaderCell>
                   </tr>
                 </DataTableHead>
                 <tbody>
@@ -185,6 +192,7 @@ const BrandRevenueReportPage: React.FC = () => {
                         </DataTableCell>
                         <DataTableCell data-label={t('brand:brandRevenue.collected', 'Collected')} align="right">{fmt(row?.paid ?? 0)}</DataTableCell>
                         <DataTableCell data-label={t('brand:brandRevenue.outstanding', 'Outstanding')} align="right">{fmt(row?.outstanding ?? 0)}</DataTableCell>
+                        <DataTableCell data-label={t('brand:brandRevenue.discounted', 'Discounted')} align="right">{fmt(row?.discounted ?? 0)}</DataTableCell>
                       </DataTableRow>
                     );
                   })}
@@ -200,6 +208,7 @@ const BrandRevenueReportPage: React.FC = () => {
                     <DataTableHeaderCell align="center">{t('brand:brandRevenue.count', 'Invoices')}</DataTableHeaderCell>
                     <DataTableHeaderCell align="right">{t('brand:brandRevenue.invoiced', 'Invoiced')}</DataTableHeaderCell>
                     <DataTableHeaderCell align="right">{t('brand:brandRevenue.outstanding', 'Outstanding')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('brand:brandRevenue.discounted', 'Discounted')}</DataTableHeaderCell>
                   </tr>
                 </DataTableHead>
                 <tbody>
@@ -211,6 +220,7 @@ const BrandRevenueReportPage: React.FC = () => {
                         <DataTableAmount highlight>{fmt(r.invoiced)}</DataTableAmount>
                       </DataTableCell>
                       <DataTableCell data-label={t('brand:brandRevenue.outstanding', 'Outstanding')} align="right">{fmt(r.outstanding)}</DataTableCell>
+                      <DataTableCell data-label={t('brand:brandRevenue.discounted', 'Discounted')} align="right">{fmt(r.discounted ?? 0)}</DataTableCell>
                     </DataTableRow>
                   ))}
                 </tbody>

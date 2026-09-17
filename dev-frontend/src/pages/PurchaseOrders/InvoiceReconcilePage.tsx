@@ -10,6 +10,7 @@
  * ⛔ 매칭 결과는 제안일 뿐이다. 사람이 저장을 눌러야 서버로 간다(설계 §1).
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getCurrencySymbol } from '../../utils/currency';
 import styled from 'styled-components';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -796,8 +797,8 @@ const InvoiceReconcilePage: React.FC = () => {
                       <span style={{ color: '#DC2626', fontWeight: 700 }}>
                         {' · '}
                         {t('reconcile.total.blocked', '줄 합·세금·배송·할인으로 계산한 {{c}} 와 적은 총액이 {{d}} 다릅니다 — 줄이나 총액을 확인하세요(이대로는 저장되지 않습니다)', {
-                          c: `${currency} ${totals.computed.toFixed(2)}`,
-                          d: `${currency} ${Math.abs(totals.diff).toFixed(2)}`,
+                          c: `${getCurrencySymbol(currency)} ${totals.computed.toFixed(2)}`,
+                          d: `${getCurrencySymbol(currency)} ${Math.abs(totals.diff).toFixed(2)}`,
                         })}
                       </span>
                     ) : (

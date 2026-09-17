@@ -9,6 +9,7 @@
  * SOA badge — same as SupplierTradeInvoicesPage (B1 재설계 in supplier flow).
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { formatCurrency } from '../../utils/currency';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import {
@@ -166,7 +167,7 @@ const BrandTradeInvoicesPage: React.FC<Props> = ({ entityType = 'brand' }) => {
     if (amount == null) return '-';
     const n = Number(amount);
     if (!Number.isFinite(n)) return '-';
-    return `${currency || 'MYR'} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return formatCurrency(n, currency || 'MYR');
   };
 
   const titleKey = entityType === 'foodcourt'

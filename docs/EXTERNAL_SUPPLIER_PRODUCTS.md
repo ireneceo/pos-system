@@ -158,3 +158,55 @@
 - 상품 폼: 공급업체 4칸+주문방식(`SupplierProductsTab.tsx:1082-1189`, 문구 직접 조립 `10kg/BOX` 띄어쓰기 없음 · `(10kg per unit)` 포장 무시) · 브랜드 3칸+주문방식(`BrandProductsTab.tsx:1215-1286`, 직접 조립) · 외부 공급업체 프로필 3칸(공용 함수 미리보기) · 푸드코트 2칸(포장단위·주문방식 없음).
 - 재고 재료 카드의 발주처 칩: `IngredientsTab.tsx:1253-1268,1547-1560` · `ProductIngredientsTab.tsx:841-853,1111-1114` — 규격 없음(sellers 타입에 단위 필드 없음).
 - 인쇄·PDF 는 Qty 와 Unit 이 다른 칸.
+
+### 11-6. K-DINE IPC 공급업체 상품 93건 (2026-09-17 · 운영 반영 완료)
+
+Irene 이 3칸 목록(업체 · 품목 · Standard Unit) 93줄을 주며 「K-dine ipc 공급업체 정보로 들어가면 되는거야」라고 지시.
+
+**왜 매장 소유로 넣었나 — 외부 공급업체는 «계약» 이 아니라 «등록 주체» 로 보인다**
+구매자가 보는 외부 업체 = 자기가 등록한 것 ∪ **부모 브랜드가 등록한 것**(`routes/supplier-directory.js:1248~1258` · `loadVisibleExternalSupplier`).
+매장 8(K-DINE IPC)의 브랜드는 **2(K-DINE with MIN)** 인데, 기존 TaiYangFresh·LSH·New Seoul Mart 등은 **브랜드 1(with MIN)이 등록**한 것이라 매장 8 에는 **원래 안 보인다.**
+→ 그 업체들에 상품을 더하는 길은 목적을 못 이루고 브랜드 1 카탈로그만 오염시킨다. **매장 8 소유로 새로 등록**하는 것이 정답.
+같은 회사 이름이 구매자마다 따로 있는 것은 이 구조의 정상이다(Direct·Shopee 선례 · `catalog-alignment.js:95` «다른 구매자의 같은 이름 공급업체에 짝을 짓지 않는다»).
+⛔ 그래서 **«비슷한 이름 47건» 은 짝지을 대상이 아니다** — 다른 구매자의 카탈로그다. 검토표를 만들지 않고 목록 그대로 넣었다.
+
+**적용 전 실측 (운영 SELECT)**
+`restaurants.id=8 → brand_id=2` · 매장 8 등록 공급업체 **0건** · 브랜드 2 등록 공급업체 **0건**.
+
+**도구·데이터**
+- 09-11 도구 재사용: `scripts/catalog-alignment.js review|apply`(연습 기본 · `--commit` 에서만 쓴다)
+- 데이터 `scripts/data/irene-kdine-ipc-supplier-catalog-2026-09-17.txt` — 8칸 중 영문·업체·규격만. Irene 원문 순서·철자 보존, `Shoppee → Shopee`(플랫폼 실명)만 반영.
+- 코드 변경 **2줄**: `utils/catalogSpecParser.js` 의 `CONTENT_WORDS` 에 `lt`·`litre`·`liter` → `L`. **어휘만 늘렸고 규칙은 그대로.** jest 2케이스 추가(`tests/catalog-spec-parser.test.js`) — Litre 가 규칙 a 로 읽히는지 · 모르는 단위는 여전히 `unparsed`(check). 반증: 어휘를 빼면 첫 케이스가 실패 → 원복.
+
+**해석기가 못 읽은 3건 — 원문 표기 → 저장값** (Irene 제안 승인)
+
+| 원문 표기 | 품목 | 저장값 |
+|---|---|---|
+| `450mm/pkt` | Cling Film 18inch | `piece` · 1 · `pack` (450mm 는 폭) |
+| `40pair/pkt` | Bamboo Chopstick | `piece` · 40 · `pack` |
+| `840g/6pkt/1CT` | Vit's Instant Noodle_VIT | `g` · **5040**(=6×840) · `carton` |
+
+**검토표·연습 (개발·운영 동일)**
+`rows 93 · update 0 · same 0 · add 90 · check 3 · exclude 0 · capacity_unknown 6 · link_conversion_changes 0 · existing_not_in_list 0 · new_companies 8 · po_lines 0`
+연습 실행: `updates 0 · adds 93 · companies 8 · links 0 · skipped 0`
+
+**운영 적용 결과 (2026-09-17)**
+`적용 완료 {updates:0, adds:93, companies:8, links:0, skipped:0, created_products:93, cost_sync_errors:0}`
+- 매장 8 소유 공급업체 **8곳** · 계약 **8건 전부 active** · 상품 **93건 · unit_price 전부 0**
+- **브랜드 1 업체 상품 313건 무변경** — 행별 해시 `8dcedaa9a8016b0d8a630cdee509c352` 적용 전후 동일(GROUP_CONCAT 은 1024 에서 잘려 쓰지 않았다)
+- 매장 8 계정 실호출: `GET /external-suppliers` **8곳** · 발주 카탈로그 총 202건 중 **새 상품 93건 노출**
+- 되돌리기: 운영 `~/backups-kdine-catalog-2026-09-17.json` (레포 밖 — 게이트 지문이 흔들리지 않게)
+
+**가격**
+목록에 가격이 없어 `unit_price = 0` 으로 넣었다. 0 은 「결정 없음」이라 `costSync` 가 전파하지 않는다(`services/costSync.js:152`). 화면엔 `RM 0.00`. 채우는 길: 인보이스 대조 «Use this price»(등록 주체 본인의 외부 업체만 허용 — 매장 8 소유라 열린다) 또는 상품 편집.
+
+**⚠ 운영 반입 경로**
+수정한 `utils/catalogSpecParser.js` 와 데이터 파일을 **scp 로 `production-backend` 에 직접 반입**해 실행했다(배포 밖 경로). 어휘 2줄이라 런타임 위험은 없지만 «운영에 배포 스냅샷과 다른 파일이 있는 상태」이고, **이 커밋이 다음 배포에 포함되면 정합이 맞는다**(추가만이라 순서 무관). 09-11 도 같은 경로였는지는 **확인 불가**.
+
+**되돌릴 수 있는가 — 연습으로 증명 (2026-09-17, 쓰기 없음)**
+`rollback --backup /home/irene/backups-kdine-catalog-2026-09-17.json` (commit 없이)
+→ `{removed_products: 93, removed_contracts: 8, removed_companies: 8, conflicts: 0}`. 넣은 것을 정확히 되돌리는 계획이고 충돌 0.
+
+**돌리지 않은 검사와 그 이유**
+- `ingredient-unification` 인스펙션 — **불필요**. 그 3건은 `supplier_products` 를 읽지 않는다(grep 0건). 다음 배포 게이트에서 어차피 돈다.
+- 화면 mount sweep — **불필요**. 프론트 변경 0 · 빌드 0. 카탈로그 응답은 매장 계정 실호출로 이미 증명했다.

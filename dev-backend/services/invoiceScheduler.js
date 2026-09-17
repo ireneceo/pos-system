@@ -631,16 +631,20 @@ class InvoiceScheduler {
               discount_reason: charges.discountReason || null,
               total_amount: finalTotalAmount,
               currency: invoiceCurrency,
-              status: 'pending_payment',
-              paid_at: null,
-              payment_notes: null,
+              // 할인 후 받을 것이 없으면 미납으로 두지 않는다 (2026-09-17 Fable 판정 ②).
+              //   0원은 결제할 방법이 없어 영원히 «미납» 으로 남던 자리다.
+              status: finalTotalAmount <= 0 ? 'paid' : 'pending_payment',
+              paid_amount: finalTotalAmount <= 0 ? 0 : null,
+              paid_at: finalTotalAmount <= 0 ? today : null,
+              payment_notes: finalTotalAmount <= 0 ? 'Fully discounted — nothing to collect' : null,
               notes: `Auto-generated ${plan.entity_type} plan invoice for ${plan.name}. Period: ${periodStart.toISOString().split('T')[0]} ~ ${periodEnd.toISOString().split('T')[0]}`,
               issued_by: 0,
               issued_at: today,
               issuer_type: plan.entity_type,
               issuer_id: plan.entity_id,
               payer_type: 'restaurant',
-              payer_id: null,
+              // ⛔ 전에는 null — 받는 쪽이 비어 있는 인보이스가 남았다(2026-09-17).
+              payer_id: restaurant.id,
               additional_charges: entityAdditionalCharges.length > 0 ? entityAdditionalCharges : null,
               // Phase 2-C: traceability link to the originating contract (if any)
               contract_id: matchingContractId

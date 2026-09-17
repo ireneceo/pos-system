@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getCurrencySymbol } from '../../utils/currency';
 import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
@@ -191,9 +192,9 @@ const Empty = styled.div`
 
 function fmtMoney(amount: number, currency: string) {
   if (currency === 'KRW' || currency === 'JPY' || currency === 'VND') {
-    return `${currency} ${Math.round(amount).toLocaleString()}`;
+    return `${getCurrencySymbol(currency)} ${Math.round(amount).toLocaleString()}`;
   }
-  return `${currency} ${amount.toFixed(2)}`;
+  return `${getCurrencySymbol(currency)} ${amount.toFixed(2)}`;
 }
 
 const ApplyCreditModal: React.FC<Props> = ({ invoice, onClose, onApplied }) => {

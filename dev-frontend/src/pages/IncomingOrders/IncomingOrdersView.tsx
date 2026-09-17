@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { formatCurrency } from '../../utils/currency';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../../contexts/AuthContext';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
@@ -811,7 +812,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     if (amount == null) return '-';
     const n = Number(amount);
     if (!Number.isFinite(n)) return '-';
-    return `${currency || 'MYR'} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return formatCurrency(n, currency || 'MYR');
   };
 
   const tNs = (key: string, fallback?: string) => {
