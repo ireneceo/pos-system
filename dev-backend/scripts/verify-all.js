@@ -59,6 +59,7 @@ const GATES = [
   //   이 프로젝트는 TS 타입검사가 실질적으로 게이트 역할을 못 한다(typescript 4.9 vs i18next TS5 d.ts →
   //   파서가 먼저 터지고 CRA 가 타입오류를 warning 으로만 낸다) → 이 스캐너가 그 구멍을 좁게 막는다.
   { id: 'dead-handlers', tier: 'static', label: '🧟 죽은 핸들러 (선언 없는 setter 호출 = 클릭 즉시 ReferenceError)', cwd: BACKEND, cmd: ['node', 'scripts/check-dead-handlers.js', '--summary'] },
+  { id: 'hook-tdz', tier: 'static', label: '⏱️ 훅 TDZ (나중에 선언된 값을 먼저 씀 = 조건 맞는 순간 화면 사망)', cwd: BACKEND, cmd: ['node', 'scripts/check-hook-tdz.js', '--summary'] },
   { id: 'sensitive-diff', tier: 'static', label: '🧭 민감영역 diff 분류 (Fable 게이트 판정, 정보성)', cwd: BACKEND, cmd: ['node', 'scripts/check-sensitive-diff.js'], advisory: true },
   // 계약 테스트 — "사고를 박제한" jest 스위트. 개별 명령을 기억할 필요 없이 게이트가 돌린다.
   //   order-totals  = 금액 공식(돈)  /  settings-guard = 설정 wipe(thefire 무인쇄 사고)

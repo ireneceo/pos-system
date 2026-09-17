@@ -1,4 +1,8 @@
 const { Sequelize } = require('sequelize');
+// 이 프로세스가 «상시 떠 있는 서버»인가 — pm2 가 띄우는 server.js 만 해당한다.
+//   스크립트(마이그·검사·일회성 도구)는 여기서 false 가 되어 작은 풀을 쓴다.
+const IS_LONG_RUNNING_SERVER = /(^|[\\/])server\.js$/.test(process.argv[1] || '');
+
 
 // 간단한 .env 파일 로드 (Codespace에서는 env-loader 사용)
 if (process.env.CODESPACES === 'true' || process.env.CODESPACE_NAME) {
@@ -66,9 +70,16 @@ const sequelize = new Sequelize(
       typeCast: true
     },
     // Connection Pool 최적화 - 동시 요청 처리 능력 향상
+    //
+    // ⚠ 일회성 스크립트는 서버와 같은 크기의 풀을 쓰면 안 된다 (2026-09-17 배포 중단 사고).
+    //   이 개발서버의 MySQL `max_connections` 는 **50** 이고 PlanQ·Lingo 가 같이 산다(상시 ~32개 사용).
+    //   배포 게이트는 마이그 95개를 **줄줄이** 돌린 직후 health-check 를 돌리는데, 스크립트마다
+    //   max 20 · min 2 짜리 풀을 열면 천장(50)에 부딪혀 «Too many connections» 로 검사 하나가
+    //   떨어진다 — 코드가 멀쩡한데 배포가 막힌다(실측: Max_used 51, Aborted_connects 195).
+    //   서버(server.js)만 큰 풀이 필요하다. 한 번 돌고 끝나는 스크립트는 작게 쓴다.
     pool: {
-      max: 20, // 최대 연결 수 증가 (기존 5 -> 20)
-      min: 2,  // 최소 유지 연결 수 (기존 0 -> 2)
+      max: IS_LONG_RUNNING_SERVER ? 20 : 5,
+      min: IS_LONG_RUNNING_SERVER ? 2 : 0,
       acquire: 60000, // 연결 획득 타임아웃 (1분)
       idle: 10000, // 유휴 연결 타임아웃 (10초)
       evict: 1000, // 연결 체크 간격 (1초)

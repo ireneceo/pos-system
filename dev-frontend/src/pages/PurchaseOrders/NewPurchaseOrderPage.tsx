@@ -1844,6 +1844,16 @@ const NewPurchaseOrderPage: React.FC = () => {
     setCart(prev => prev.filter(r => r.cart_key !== cartKey));
   };
 
+  // 담긴 줄의 판매자 통화가 한 가지면 그것이 이 발주의 통화다(서버가 쓰는 값과 같은 기준).
+  //   여러 가지면 통화 판정이 성립하지 않으므로 null — computeDeliveryFee 가 규칙을 적용하지 않는다.
+  const cartCurrency = useMemo(() => {
+    const set = new Set(
+      cart.map(r => (r.sellers || []).find(x => x.seller_product_id === r.seller_product_id)?.seller_currency)
+        .filter(Boolean) as string[]
+    );
+    return set.size === 1 ? [...set][0] : null;
+  }, [cart]);
+
   const groups = useMemo(() => {
     const map = new Map<string, {
       key: string;
@@ -1881,17 +1891,10 @@ const NewPurchaseOrderPage: React.FC = () => {
       return { ...g, delivery_fee: fee, delivery_rule: rule,
         to_free: amountToFreeDelivery(g.subtotal, g.terms), total: g.subtotal + fee };
     });
-  }, [cart]);
-
-  // 담긴 줄의 판매자 통화가 한 가지면 그것이 이 발주의 통화다(서버가 쓰는 값과 같은 기준).
-  //   여러 가지면 통화 판정이 성립하지 않으므로 null — computeDeliveryFee 가 규칙을 적용하지 않는다.
-  const cartCurrency = useMemo(() => {
-    const set = new Set(
-      cart.map(r => (r.sellers || []).find(x => x.seller_product_id === r.seller_product_id)?.seller_currency)
-        .filter(Boolean) as string[]
-    );
-    return set.size === 1 ? [...set][0] : null;
-  }, [cart]);
+    // ⚠ cartCurrency 는 **위에서 선언**돼 있어야 한다. 아래에 두면 장바구니가 빈 동안은 멀쩡하다가
+    //   («.map» 콜백이 아예 실행되지 않으므로) 첫 품목을 담는 순간 TDZ 로 화면 전체가 죽는다.
+    //   2026-09-17 운영 사고: /pos/purchase-orders «Cannot access 'mn' before initialization».
+  }, [cart, cartCurrency]);
 
   const grandTotal = useMemo(() => groups.reduce((s, g) => s + g.subtotal + (g.delivery_fee || 0), 0), [groups]);
 
