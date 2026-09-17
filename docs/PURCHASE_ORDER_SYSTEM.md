@@ -471,8 +471,12 @@ cancelled_at (DATE)
 -- 인보이스 연결 (설계 4에서 사용)
 invoice_id (FK → invoices.id, nullable)
 
--- 금액
+-- 금액  (2026-09-17 Fable 판정 ⑦ — 총액식 단일 소스는 `utils/purchaseOrderTotals.js`)
+--   total_amount = subtotal + tax_amount + delivery_fee
 subtotal (DECIMAL 10,2)
+tax_amount (DECIMAL 10,2)
+delivery_fee (DECIMAL 10,2, NOT NULL default 0)   -- 판매자 두 칸으로 자동 계산. 사람이 발주마다 적지 않는다
+delivery_fee_basis (JSON, nullable)               -- {free_above, fee, subtotal_at_calc, seller_currency, rule, computed_at}
 total_amount (DECIMAL 10,2)
 currency (STRING 3, default 'MYR')
 
@@ -480,6 +484,14 @@ currency (STRING 3, default 'MYR')
 notes (TEXT)
 created_by (FK → users.id)
 ```
+
+> **배송비 규칙 (2026-09-17 Fable 판정 ⑦ · 단일 소스 `utils/purchaseOrderTotals.js`)**
+> 판매자별 두 숫자만 쓴다 — `min_order_amount`(이 금액 **이상**이면 무료) · `delivery_fee`(그 미만일 때 고정액).
+> `delivery_fee` 가 **null 이면 «미설정» = 규칙 미적용(0)** 이고 화면에도 «미설정»으로 쓴다 — «무료»가 아니다
+> (운영 공급업체 42곳이 전부 비어 있어, 미설정을 부과로 두면 전원이 배송비를 물게 된다).
+> 두 칸은 `SupplierCompany` · `Brand` · `Foodcourt` 에 **같은 이름**으로 있고, 해석은 `utils/sellerNames.js resolveSellers`
+> 한 곳에서만 한다. 배송비는 **원가에 태우지 않는다**(세금·배송·할인은 품목 단가에 섞지 않는다는 기존 원칙).
+> 판매자 **확인 전**(draft·submitted)에는 품목이 바뀌면 다시 계산하고 확인 뒤에는 동결하며, 소급 단가 반영(`retroApplyPrice`)은 배송비를 그대로 둔다.
 
 **PurchaseOrderItem:**
 ```

@@ -25,13 +25,21 @@ const SupplierCompany = sequelize.define('SupplierCompany', {
     type: DataTypes.INTEGER, allowNull: true,
     comment: '외부 supplier 등록한 buyer id'
   },
+  // 배송 조건 두 칸 (2026-09-17 Fable 판정 ⑦) — 계산에 쓰는 값은 이 둘뿐이다.
+  //   min_order_amount = 이 금액 «이상» 주문하면 무료배송 (경계는 무료)
+  //   delivery_fee     = 그 미만일 때 붙는 고정 배송비. null = 규칙 미적용(«미설정», 무료 아님)
+  //   단일 해석 자리: utils/purchaseOrderTotals.js computeDeliveryFee
   min_order_amount: {
     type: DataTypes.DECIMAL(10, 2), allowNull: true,
-    comment: '최소 주문 금액 (RM 등 currency 단위)'
+    comment: '무료배송 기준 금액 — 이 금액 이상이면 배송비 0 (currency 단위)'
+  },
+  delivery_fee: {
+    type: DataTypes.DECIMAL(10, 2), allowNull: true,
+    comment: '기준 미만일 때 고정 배송비. null = 미설정(규칙 미적용)'
   },
   delivery_policy: {
     type: DataTypes.TEXT, allowNull: true,
-    comment: '배송 정책 (배송일, 배송료, 지역 등 자유 텍스트)'
+    comment: '배송 메모 (배송 요일·지역 등 자유 텍스트) — 계산에는 쓰지 않는다'
   },
 
   // Company info

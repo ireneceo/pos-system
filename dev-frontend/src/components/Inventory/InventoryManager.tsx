@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,6 +9,7 @@ import { InventoryManagerProps, InventoryTab } from './types';
 import { useAuthFetch } from './hooks/useAuthFetch';
 import { useInventoryData } from './hooks/useInventoryData';
 import { useIngredientAdjustModal } from './hooks/useIngredientAdjustModal';
+import { useProduceModal } from './hooks/useProduceModal';
 import { useSettingsModal } from './hooks/useSettingsModal';
 import { useInitialStockModal } from './hooks/useInitialStockModal';
 import { useGeneralStockReceiveModal } from './hooks/useGeneralStockReceiveModal';
@@ -23,6 +25,7 @@ import StockListSection from './sections/StockListSection';
 import TransactionHistorySection from './sections/TransactionHistorySection';
 
 import ReceiveModal from './modals/ReceiveModal';
+import ProduceModal from './modals/ProduceModal';
 import WasteModal from './modals/WasteModal';
 import InitialStockModal from './modals/InitialStockModal';
 import GeneralStockReceiveModal from './modals/GeneralStockReceiveModal';
@@ -101,6 +104,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   // 따로 가야 했다. 여기서 "관리 안 함도 보기"를 켜면 꺼진 항목까지 나와 바로 되돌릴 수 있다.
   const [showUntracked, setShowUntracked] = useState(false);
 
+  const { t } = useTranslation(['inventory', 'common']);
   const authFetch = useAuthFetch();
 
   const data = useInventoryData({ mode, restaurantId, authFetch, includeUntracked: showUntracked });
@@ -116,6 +120,14 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
     authFetch,
     setInventory: data.setInventory,
     setAlerts: data.setAlerts,
+  });
+
+  // 준비된 재고 «만들기» (2026-09-17 Fable 판정) — 원재료를 빼고 준비 재료를 늘리는 한 번의 동작.
+  const produce = useProduceModal({
+    restaurantId,
+    authFetch,
+    onDone: () => data.refetch(),
+    t: (key: string, fallback: string) => t(key, fallback) as string,
   });
 
   const settings = useSettingsModal({
@@ -237,6 +249,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             orderQuantities={order.orderQuantities}
             setOrderQuantities={order.setOrderQuantities}
             onReceive={adjust.openReceive}
+            onProduce={produce.open}
             onWaste={adjust.openWaste}
             onResolveAlert={resolveAlert}
             onOrder={order.open}
@@ -279,6 +292,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             onGeneralStockReceive={gsReceive.open}
             onEditGeneralStock={gsForm.openEdit}
             onReceive={adjust.openReceive}
+            onProduce={produce.open}
             onWaste={adjust.openWaste}
             onSettings={settings.open}
             onDelete={deleteConfirm.open}
@@ -300,6 +314,24 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           />
         )}
       </Content>
+
+      {/* 준비된 재고 «만들기» (2026-09-17) */}
+      <ProduceModal
+        isOpen={produce.isOpen}
+        onClose={produce.close}
+        ingredient={produce.ingredient}
+        batches={produce.batches}
+        onBatchesChange={produce.setBatches}
+        actualYield={produce.actualYield}
+        onActualYieldChange={produce.setActualYield}
+        expiryDate={produce.expiryDate}
+        onExpiryDateChange={produce.setExpiryDate}
+        preview={produce.preview}
+        loading={produce.loading}
+        saving={produce.saving}
+        error={produce.error}
+        onConfirm={produce.confirm}
+      />
 
       <ReceiveModal
         isOpen={adjust.showReceiveModal}

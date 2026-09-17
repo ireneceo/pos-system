@@ -162,7 +162,9 @@
       "lineTotal": "Line Total",
       "subtotal": "Subtotal",
       "tax": "Tax",
-      "total": "Total"
+      "total": "Total",
+      "delivery": "Delivery fee",
+      "deliveryUnset": "(not set by seller)"
     },
     "delivery": {
       "expected": "Expected Date",
@@ -411,7 +413,12 @@
     "sellAsMenu": {
       "button": "Also sell as menu",
       "title": "Also sell this as a menu item"
-    }
+    },
+    "itemsSubtotal": "Items subtotal",
+    "deliveryFee": "Delivery fee",
+    "deliveryUnset": "not set by seller",
+    "deliveryToFree": "Add {{amount}} more for free delivery",
+    "deliveryUnsetHint": "This seller has not set delivery terms yet. That does not mean free — the actual fee shows on the invoice."
   },
   "staging": {
     "noPhoneTitle": "No Phone Number",
@@ -583,7 +590,9 @@
       "total": "Total",
       "tax": "Tax",
       "delivery": "Delivery",
-      "discount": "Discount"
+      "discount": "Discount",
+      "deliveryExpected": "expected {{amount}} at order",
+      "deliveryDiff": "difference {{diff}}"
     },
     "col": {
       "ordered": "Ordered price",

@@ -162,7 +162,9 @@
       "lineTotal": "합계",
       "subtotal": "소계",
       "tax": "세금",
-      "total": "합계"
+      "total": "합계",
+      "delivery": "배송비",
+      "deliveryUnset": "(판매자 미설정)"
     },
     "delivery": {
       "expected": "예상일",
@@ -411,7 +413,12 @@
     "sellAsMenu": {
       "button": "메뉴로도 등록",
       "title": "이 재료를 메뉴로도 팝니다"
-    }
+    },
+    "itemsSubtotal": "품목 합계",
+    "deliveryFee": "배송비",
+    "deliveryUnset": "판매자 미설정",
+    "deliveryToFree": "{{amount}} 더 담으면 배송비 무료",
+    "deliveryUnsetHint": "이 판매자가 배송 조건을 아직 적지 않았습니다. 무료라는 뜻이 아니라, 실제 배송비는 청구서에서 확인됩니다"
   },
   "staging": {
     "noPhoneTitle": "전화번호 없음",
@@ -583,7 +590,9 @@
       "total": "총액",
       "tax": "세금",
       "delivery": "배송비",
-      "discount": "할인"
+      "discount": "할인",
+      "deliveryExpected": "발주 때 예상 {{amount}}",
+      "deliveryDiff": "차이 {{diff}}"
     },
     "col": {
       "ordered": "발주 단가",

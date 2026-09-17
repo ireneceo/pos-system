@@ -974,7 +974,7 @@ router.post('/external-suppliers', async (req, res) => {
     const {
       name, phone, email, address, address_line_2, city, state, postal_code, country,
       website, contact_person,
-      min_order_amount, delivery_policy, notes
+      min_order_amount, delivery_fee, delivery_policy, notes
     } = req.body || {};
     if (!name || !String(name).trim()) {
       await t.rollback();
@@ -996,7 +996,10 @@ router.post('/external-suppliers', async (req, res) => {
       postal_code: postal_code ? sanitizeString(String(postal_code)).slice(0, 20) : null,
       country: country ? String(country).toUpperCase().slice(0, 2) : 'MY',
       website: website ? sanitizeString(String(website)).slice(0, 255) : null,
+      // 무료배송 기준 금액 / 기준 미만 고정 배송비 (2026-09-17 Fable 판정 ⑦)
       min_order_amount: min_order_amount ? parseFloat(min_order_amount) : null,
+      delivery_fee: delivery_fee === undefined || delivery_fee === null || delivery_fee === ''
+        ? null : Math.max(0, parseFloat(delivery_fee) || 0),
       delivery_policy: delivery_policy ? sanitizeString(String(delivery_policy)) : null,
       description: notes ? sanitizeString(String(notes)) : null
     }, { transaction: t });
@@ -1100,6 +1103,11 @@ router.put('/external-suppliers/:id', async (req, res) => {
     }
     if (req.body.country !== undefined) updates.country = req.body.country ? String(req.body.country).toUpperCase().slice(0, 2) : null;
     if (req.body.min_order_amount !== undefined) updates.min_order_amount = req.body.min_order_amount ? parseFloat(req.body.min_order_amount) : null;
+    // 배송비: 빈 값 = 미설정(null, 규칙 미적용). 음수는 0 으로 막는다.
+    if (req.body.delivery_fee !== undefined) {
+      const raw = req.body.delivery_fee;
+      updates.delivery_fee = (raw === null || raw === '') ? null : Math.max(0, parseFloat(raw) || 0);
+    }
     await sc.update(updates);
     res.json({ success: true, data: sc });
   } catch (err) {

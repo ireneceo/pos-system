@@ -141,7 +141,8 @@
     "restaurant": "Restoran",
     "brand": "Jenama",
     "foodcourt": "Medan Selera",
-    "owner": "Pemilik"
+    "owner": "Pemilik",
+    "saving": "Menyimpan…"
   },
   "time": {
     "today": "Hari Ini",
@@ -661,7 +662,11 @@
       "inTransit": "Dalam Transit",
       "received": "Diterima",
       "delivered": "Sampai"
-    }
+    },
+    "unset": "Yuran penghantaran tidak ditetapkan — tiada yuran penghantaran dipaparkan pada pesanan belian",
+    "free": "Penghantaran percuma",
+    "always": "Yuran penghantaran sentiasa {{fee}}",
+    "threshold": "Percuma pada {{free}} ke atas · {{fee}} di bawah"
   },
   "sort.newest": "Terbaru dahulu",
   "sort.oldest": "Lama dahulu",

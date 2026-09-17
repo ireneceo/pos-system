@@ -108,6 +108,9 @@ router.get('/purchase-orders/:id/reconcile', async (req, res) => {
           invoice_number: po.invoice_number, invoice_date: po.invoice_date,
           invoice_total: po.invoice_total, invoice_tax: po.invoice_tax,
           invoice_delivery: po.invoice_delivery, invoice_discount: po.invoice_discount,
+          // 발주 때 계산된 «예상» 배송비 — 화면이 청구 배송비 칸을 미리 채우고 차이를 보여준다.
+          //   저장되는 invoice_delivery(=공급업체가 실제 청구한 값)와는 **다른 사실**이다. (2026-09-17)
+          delivery_fee: po.delivery_fee, delivery_fee_basis: po.delivery_fee_basis,
           invoice_reconciled_at: po.invoice_reconciled_at,
           invoice_reconciled_by_user_id: po.invoice_reconciled_by_user_id
         },

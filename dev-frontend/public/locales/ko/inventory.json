@@ -60,5 +60,27 @@
     "lastPaid": "지난번",
     "receivedTimes": "받은 기록 {{n}}회",
     "avg": "평균"
-  }
+  },
+  "produce": {
+    "title": "만들기",
+    "titleNamed": "만들기 — {{name}}",
+    "saving": "만드는 중…",
+    "recipeLine": "레시피 «{{name}}» 한 판 = {{amount}}{{unit}}",
+    "loadingRecipe": "준비 레시피를 불러오는 중…",
+    "batches": "몇 판 만드나요?",
+    "consumes": "빠지는 원재료",
+    "calculating": "계산 중…",
+    "noLines": "이 레시피에 재료 줄이 없습니다 — 재료를 먼저 적어 주세요.",
+    "have": "현재 {{have}}{{unit}}",
+    "haveShort": "현재 {{have}}{{unit}} — {{short}}{{unit}} 부족",
+    "shortageNote": "부족한 원재료가 있습니다. 그래도 만들 수 있지만, 빠지는 양은 남아 있는 만큼까지만 기록됩니다.",
+    "actualYield": "실제로 나온 양",
+    "actualYieldHint": "기본값은 레시피 수율 × 판수입니다. 실제로 나온 무게가 다르면 그대로 적어 주세요 — 원가가 그 양으로 계산됩니다.",
+    "expiry": "유통기한 (선택)",
+    "previewFailed": "미리보기를 불러오지 못했습니다",
+    "failed": "만들기에 실패했습니다"
+  },
+  "prepTag": "준비 재료",
+  "prepTagHint": "레시피로 만드는 재료입니다. 발주가 아니라 «만들기» 로 재고를 늘립니다",
+  "prepSource": "레시피: {{name}}"
 }

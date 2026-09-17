@@ -82,10 +82,33 @@ router.get('/brands/:brandId/ingredient-categories', authenticateToken, isBrandM
 });
 
 /**
- * POST /api/brands/:brandId/ingredient-categories
- * 브랜드 재료 카테고리 생성
+ * 브랜드 소유 재료 카테고리는 **더 만들지 않는다** (2026-09-17 Fable 판정 ⑧ · 게이트 보류 A).
+ *
+ * 매장이 보는 재료 분류의 정본은 **매장 소유 한 벌**이다. 브랜드 소유 벌은 2026-07-05 에 폐기된
+ * 프로덕트→재료 미러가 남긴 사본이고, 브랜드의 «진짜» 분류는 Stock Items 쪽
+ * (`product_ingredient_categories`)에 따로 있다.
+ *
+ * ⛔ 이 문을 열어 두면 브랜드 사용자가 매장에 이미 있는 이름으로 카테고리를 하나 만드는 것만으로
+ *    인스펙션 ING-UNI-026(이름 중복 0)이 켜져 **정상 사용자 행위가 배포를 막는다.**
+ *    읽기(GET)와 비활성화(DELETE)는 남긴다 — 합치기 스크립트와 읽기 전용 표시가 쓴다.
+ */
+function brandCategoryWriteStopped(req, res) {
+  return res.status(403).json({
+    success: false,
+    error: {
+      code: 'BRAND_INGREDIENT_CATEGORY_WRITE_STOPPED',
+      message: 'Brand-owned ingredient categories are no longer created. Use Stock Item categories instead.'
+    },
+    message: '브랜드 재료 카테고리는 더 만들지 않습니다 — Stock Items 분류를 쓰세요.'
+  });
+}
+
+/**
+ * POST /api/brands/:brandId/ingredient-categories — **쓰기 중단**
  */
 router.post('/brands/:brandId/ingredient-categories', authenticateToken, isBrandManager, async (req, res) => {
+  return brandCategoryWriteStopped(req, res);
+  // eslint-disable-next-line no-unreachable
   try {
     const { brandId } = req.params;
     const brand_id = brandId; // DB 쿼리용
@@ -132,6 +155,8 @@ router.post('/brands/:brandId/ingredient-categories', authenticateToken, isBrand
  * 브랜드 재료 카테고리 수정
  */
 router.put('/brands/:brandId/ingredient-categories/:categoryId', authenticateToken, isBrandManager, async (req, res) => {
+  return brandCategoryWriteStopped(req, res);
+  // eslint-disable-next-line no-unreachable
   try {
     const { brandId, categoryId } = req.params;
     const brand_id = brandId; // DB 쿼리용
@@ -235,6 +260,8 @@ router.delete('/brands/:brandId/ingredient-categories/:categoryId', authenticate
  * 브랜드 재료 카테고리 순서 변경
  */
 router.put('/brands/:brandId/ingredient-categories/reorder', authenticateToken, isBrandManager, async (req, res) => {
+  return brandCategoryWriteStopped(req, res);
+  // eslint-disable-next-line no-unreachable
   try {
     const { brandId } = req.params;
     const brand_id = brandId; // DB 쿼리용

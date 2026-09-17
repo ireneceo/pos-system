@@ -28,7 +28,12 @@ const OrderAction = sequelize.define('OrderAction', {
       'discount_applied', 'discount_removed',
       'coupon_applied', 'coupon_removed',
       'cancelled', 'printed', 'reprinted',
-      'merged', 'note_added', 'table_moved'
+      'merged', 'note_added', 'table_moved',
+      // 2026-09-17: `PATCH /orders/:id` 가 넣던 값. ENUM 에 없어 MySQL 이 잘라내고
+      //   insert 가 실패해 **주문 수정 기록이 화면에 아무 표시 없이 통째로 안 남고 있었다**
+      //   (운영 로그 `[orderAuditLog] silent fail: Data truncated for column 'action_type'`).
+      //   ⚠ ENUM 은 expand-only — 목록을 갈아끼우지 말 것(scripts/lib/enumExpand).
+      'updated'
     ),
     allowNull: false
   },

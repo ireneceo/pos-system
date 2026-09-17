@@ -268,7 +268,9 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
   const isBrandUser = user?.role === 'Brand General' || user?.role === 'Brand Manager';
   // Restaurant Admin은 자신의 카테고리만 수정/삭제 가능 (브랜드 카테고리는 읽기전용)
-  const isItemReadOnly = (item: Category) => isRestaurantAdmin && item.owner_type === 'brand';
+  //  브랜드 소유 재료 분류는 쓰기 중단 (2026-09-17) — 매장이 보는 브랜드 카드도, 브랜드 사용자
+  //  자신이 보는 목록도 모두 읽기 전용이다. 생성만 막고 수정을 열어 두면 문이 반만 닫힌다.
+  const isItemReadOnly = (item: Category) => isBrandUser || (isRestaurantAdmin && item.owner_type === 'brand');
 
   // Helper to get auth token
   const getToken = useCallback(() => getAuthToken(), []);
@@ -586,10 +588,22 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
     <Container>
       <HeaderRow>
         <SectionTitle>{t('recipes:ingredientCategoriesTab.ingredientCategories')}</SectionTitle>
-        <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-          Add Category
-        </ThemedButton>
+        {/* 브랜드 소유 재료 분류는 더 만들지 않는다 (2026-09-17) — 매장 한 벌이 정본이고,
+            브랜드의 분류는 Stock Items 쪽에 따로 있다. 만들 수 있게 두면 매장 목록에 같은 이름이
+            두 줄로 생겨 배포 게이트가 정상 사용자 행위로 막힌다. */}
+        {!isBrandUser && (
+          <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
+            {t('recipes:ingredientCategoriesTab.addCategory', 'Add Category')}
+          </ThemedButton>
+        )}
       </HeaderRow>
+
+      {isBrandUser && (
+        <BrandCategoriesHeader as="div" style={{ marginBottom: 12 }}>
+          {t('recipes:ingredientCategoriesTab.brandWriteStopped',
+            '브랜드 재료 분류는 더 만들지 않습니다 — 재료 분류는 매장에서, 브랜드 분류는 Stock Items 화면에서 관리합니다.')}
+        </BrandCategoriesHeader>
+      )}
 
       {isRestaurantAdmin && brandCategories.length > 0 && (
         <BrandCategoriesSection>
@@ -608,9 +622,11 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
           <EmptyDescription>
             Create categories to organize your ingredients
           </EmptyDescription>
-          <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-            Add Category
-          </ThemedButton>
+          {!isBrandUser && (
+            <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
+              {t('recipes:ingredientCategoriesTab.addCategory', 'Add Category')}
+            </ThemedButton>
+          )}
         </EmptyState>
       ) : (
         <CategoryGrid>

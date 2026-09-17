@@ -212,18 +212,9 @@ async function generatePoNumber(buyerEntity, offset = 0) {
   return `${baseNumber}-${seq}`;
 }
 
-/** Recompute totals from the items array. */
-function computeTotals(items) {
-  let subtotal = 0;
-  for (const it of items) {
-    const qty = parseFloat(it.quantity_ordered) || 0;
-    const price = parseFloat(it.unit_price) || 0;
-    const line = Math.round(qty * price * 100) / 100;
-    subtotal += line;
-  }
-  subtotal = Math.round(subtotal * 100) / 100;
-  return { subtotal, total_amount: subtotal, tax_amount: 0 };
-}
+// 발주 총액 공식은 `utils/purchaseOrderTotals.js` **한 곳**에만 있다 (2026-09-17 Fable 판정 ⑦).
+//   total_amount = subtotal + tax_amount + delivery_fee. 배송비는 판매자 두 칸으로 자동 계산된다.
+const { computeTotalsWithDelivery } = require('../utils/purchaseOrderTotals');
 
 // ============================================
 // 1. GET /api/purchase-orders
@@ -403,8 +394,11 @@ router.get('/purchase-orders/suggestions', async (req, res) => {
     const ingredients = await Ingredient.findAll({
       where: {
         [Op.or]: ownershipOr,
-        is_active: true
+        is_active: true,
         // 2026-09-01(Q5): track_stock 조건 제거 — 스위치가 꺼졌다고 발주 화면에서 사라지면 안 된다
+        // 준비 재료(출처 = 레시피)는 **사는 물건이 아니라 만드는 물건**이라 발주 대상이 아니다
+        //   (2026-09-17 Fable 판정 불변식 5). 저재고 경보는 그대로 두되 — 그게 «만들 때» 신호다.
+        source_recipe_id: null
       }
     });
 
@@ -985,7 +979,11 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
     };
   }
 
-  const totals = computeTotals(validatedItems);
+  const totals = await computeTotalsWithDelivery(
+    validatedItems,
+    { seller_type, seller_entity_id },
+    { orderCurrency: buyerCurrency }
+  );
 
   // ─────────────────────────────────────────────────────────────────
   // Credit limit 검증 — 미수금 누적 + 신규 PO 총액이 한도 초과면 차단.
@@ -1062,12 +1060,16 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
 
       // 합산이 생겼으므로 총액은 누적이 아니라 **라인에서 다시 계산**한다(중복 가산 방지)
       const freshItems = await PurchaseOrderItem.findAll({ where: { purchase_order_id: existing.id }, transaction });
-      const recomputed = computeTotals(freshItems.map(x => ({
-        quantity_ordered: x.quantity_ordered, unit_price: x.unit_price
-      })));
+      const recomputed = await computeTotalsWithDelivery(
+        freshItems.map(x => ({ quantity_ordered: x.quantity_ordered, unit_price: x.unit_price })),
+        existing,
+        { orderCurrency: existing.currency }
+      );
       await existing.update({
         subtotal: recomputed.subtotal,
         tax_amount: recomputed.tax_amount,
+        delivery_fee: recomputed.delivery_fee,
+        delivery_fee_basis: recomputed.delivery_fee_basis,
         total_amount: recomputed.total_amount,
         // 배송지/예정일/메모는 기존 draft 유지(있으면), 없으면 새 값 채움
         expected_delivery_date: existing.expected_delivery_date || expected_delivery_date || null,
@@ -1089,6 +1091,8 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
     status: 'draft',
     subtotal: totals.subtotal,
     tax_amount: totals.tax_amount,
+    delivery_fee: totals.delivery_fee,
+    delivery_fee_basis: totals.delivery_fee_basis,
     total_amount: totals.total_amount,
     currency: buyerCurrency,
     expected_delivery_date: expected_delivery_date || null,
@@ -1279,9 +1283,11 @@ router.put('/purchase-orders/:id', async (req, res) => {
       await PurchaseOrderItem.destroy({ where: { purchase_order_id: po.id }, transaction: t });
       await PurchaseOrderItem.bulkCreate(validated, { transaction: t });
 
-      const totals = computeTotals(validated);
+      const totals = await computeTotalsWithDelivery(validated, po, { orderCurrency: po.currency });
       updates.subtotal = totals.subtotal;
       updates.tax_amount = totals.tax_amount;
+      updates.delivery_fee = totals.delivery_fee;
+      updates.delivery_fee_basis = totals.delivery_fee_basis;
       updates.total_amount = totals.total_amount;
     }
 

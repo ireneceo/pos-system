@@ -29,8 +29,7 @@ import {
   OrderInput,
   OrderButton,
   DeleteButton,
-  EditButton,
-} from '../styles';
+  EditButton, PrepTag} from '../styles';
 import { formatCurrency } from '../../../utils/currency';
 import { formatStock, formatDate, getStatusLabel, getConfidenceLabel } from '../utils';
 import {
@@ -89,6 +88,8 @@ interface Props {
 
   // Ingredient actions
   onReceive: (ingredient: IngredientStock) => void;
+  /** 준비 재료 «만들기» — 준비 재료 행에서만 쓰인다 (2026-09-17) */
+  onProduce?: (ingredient: IngredientStock) => void;
   onWaste: (ingredient: IngredientStock) => void;
   onSettings: (ingredient: IngredientStock) => void;
 
@@ -128,6 +129,7 @@ const StockListSection: React.FC<Props> = ({
   onGeneralStockReceive,
   onEditGeneralStock,
   onReceive,
+  onProduce,
   onWaste,
   onSettings,
   onDelete,
@@ -258,7 +260,18 @@ const StockListSection: React.FC<Props> = ({
                                 {t('inventory:brandShared', 'Brand')}
                               </BrandTag>
                             )}
+                            {/* 준비 재료 — 사는 게 아니라 만드는 것. 어디서 나오는지(레시피)를 같이 보여준다 */}
+                            {item.source_recipe_id && (
+                              <PrepTag title={t('inventory:prepTagHint', '레시피로 만드는 재료입니다. 발주가 아니라 «만들기» 로 재고를 늘립니다') as string}>
+                                {t('inventory:prepTag', '준비 재료')}
+                              </PrepTag>
+                            )}
                           </IngredientName>
+                          {item.source_recipe_id && item.source_recipe_name && (
+                            <StockItemCode>
+                              {t('inventory:prepSource', '레시피: {{name}}', { name: item.source_recipe_name })}
+                            </StockItemCode>
+                          )}
                           {item.code && <StockItemCode>{item.code}</StockItemCode>}
                           <IngredientMeta>{item.category}</IngredientMeta>
                         </StockItemDetails>
@@ -482,7 +495,18 @@ const StockListSection: React.FC<Props> = ({
                                 {t('inventory:brandShared', 'Brand')}
                               </BrandTag>
                             )}
+                            {/* 준비 재료 — 사는 게 아니라 만드는 것. 어디서 나오는지(레시피)를 같이 보여준다 */}
+                            {item.source_recipe_id && (
+                              <PrepTag title={t('inventory:prepTagHint', '레시피로 만드는 재료입니다. 발주가 아니라 «만들기» 로 재고를 늘립니다') as string}>
+                                {t('inventory:prepTag', '준비 재료')}
+                              </PrepTag>
+                            )}
                           </IngredientName>
+                          {item.source_recipe_id && item.source_recipe_name && (
+                            <StockItemCode>
+                              {t('inventory:prepSource', '레시피: {{name}}', { name: item.source_recipe_name })}
+                            </StockItemCode>
+                          )}
                           {item.code && <StockItemCode>{item.code}</StockItemCode>}
                           <IngredientMeta>
                             {item.category} • {(parseFloat(String(item.avg_daily_usage)) || 0).toFixed(2)} {item.unit}/day
@@ -629,13 +653,25 @@ const StockListSection: React.FC<Props> = ({
                   </div>
                   )}
                   <ActionButtons>
-                    <Button
-                      variant="primary"
-                      onClick={() => onReceive(item)}
-                      style={{ padding: '6px 12px', fontSize: '13px' }}
-                    >
-                      Receive
-                    </Button>
+                    {/* 준비 재료(출처 = 레시피)는 사는 게 아니라 만드는 것이라 «입고» 대신 «만들기».
+                        2026-09-17 Fable 판정 — 누르면 원재료가 빠지고 이 재료가 들어온다. */}
+                    {item.source_recipe_id ? (
+                      <Button
+                        variant="primary"
+                        onClick={() => onProduce && onProduce(item)}
+                        style={{ padding: '6px 12px', fontSize: '13px' }}
+                      >
+                        {t('inventory:produce.title', '만들기')}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        onClick={() => onReceive(item)}
+                        style={{ padding: '6px 12px', fontSize: '13px' }}
+                      >
+                        Receive
+                      </Button>
+                    )}
                     <Button
                       variant="danger"
                       onClick={() => onWaste(item)}

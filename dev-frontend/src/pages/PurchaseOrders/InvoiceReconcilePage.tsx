@@ -50,6 +50,8 @@ interface ReconcilePo {
   invoice_number: string | null; invoice_date: string | null;
   invoice_total: string | number | null; invoice_tax: string | number | null;
   invoice_delivery: string | number | null; invoice_discount: string | number | null;
+  /** 발주 때 계산된 «예상» 배송비 — 청구 배송비(invoice_delivery)와는 다른 사실 (2026-09-17) */
+  delivery_fee?: string | number | null;
   invoice_reconciled_at: string | null;
 }
 
@@ -289,6 +291,8 @@ const InvoiceReconcilePage: React.FC = () => {
   const [items, setItems] = useState<ReconcileItem[]>([]);
   const [drafts, setDrafts] = useState<Record<number, LineDraft>>({});
   const [header, setHeader] = useState({ number: '', date: '', total: '', tax: '', delivery: '', discount: '' });
+  // 발주 때 계산된 예상 배송비 (읽기 전용 사실) — 저장하는 값과 섞지 않는다
+  const [expectedDelivery, setExpectedDelivery] = useState<number | null>(null);
   const [pasted, setPasted] = useState('');
   const [matches, setMatches] = useState<Record<number, MatchResult>>({});
   const [loading, setLoading] = useState(true);
@@ -322,12 +326,16 @@ const InvoiceReconcilePage: React.FC = () => {
       const its: ReconcileItem[] = body.data.items;
       setPo(p);
       setItems(its);
+      setExpectedDelivery(p.delivery_fee != null ? Number(p.delivery_fee) : null);
       setHeader({
         number: p.invoice_number || '',
         date: p.invoice_date ? String(p.invoice_date).slice(0, 10) : '',
         total: p.invoice_total != null ? String(p.invoice_total) : '',
         tax: p.invoice_tax != null ? String(p.invoice_tax) : '',
-        delivery: p.invoice_delivery != null ? String(p.invoice_delivery) : '',
+        // 청구 배송비가 아직 없으면 **발주 때 계산된 예상 배송비**로 미리 채운다 (2026-09-17).
+        //   그래도 저장되는 값의 뜻은 그대로 «공급업체가 실제로 청구한 배송비» 다.
+        delivery: p.invoice_delivery != null ? String(p.invoice_delivery)
+          : (p.delivery_fee != null && Number(p.delivery_fee) > 0 ? String(p.delivery_fee) : ''),
         discount: p.invoice_discount != null ? String(p.invoice_discount) : ''
       });
       // 기본값 = 발주 라인 값. 이미 대조된 라인은 그 값을 그대로 이어받는다.
@@ -808,6 +816,20 @@ const InvoiceReconcilePage: React.FC = () => {
               </Field>
               <Field>{t('reconcile.field.delivery', '배송비')}
                 <ThemedInput type="number" step="0.01" value={header.delivery} onChange={(e) => setHeader({ ...header, delivery: e.target.value })} />
+                {/* 발주 때 예상한 배송비와 실제 청구액의 차이 — 숫자만 보고는 «많이 나왔나» 를 알 수 없다 */}
+                {expectedDelivery != null && (
+                  <div style={{ fontSize: 11, color: '#4B5563', marginTop: 4 }}>
+                    {t('reconcile.field.deliveryExpected', '발주 때 예상 {{amount}}', { amount: expectedDelivery.toFixed(2) })}
+                    {header.delivery !== '' && Math.abs(Number(header.delivery) - expectedDelivery) >= 0.01 && (
+                      <span style={{ color: '#B45309', marginLeft: 6 }}>
+                        · {t('reconcile.field.deliveryDiff', '차이 {{diff}}', {
+                          diff: (Number(header.delivery) - expectedDelivery >= 0 ? '+' : '')
+                            + (Number(header.delivery) - expectedDelivery).toFixed(2)
+                        })}
+                      </span>
+                    )}
+                  </div>
+                )}
               </Field>
               <Field>{t('reconcile.field.discount', '할인')}
                 <ThemedInput type="number" step="0.01" value={header.discount} onChange={(e) => setHeader({ ...header, discount: e.target.value })} />

@@ -60,7 +60,10 @@ async function resolveSellers(refs) {
     if (!ids.length) return;
     // address 는 발주서(PDF)의 공급업체 블록이 쓴다 — 빼면 문서에서 주소가 사라진다.
     // company_name 은 수신처(법인) 표기용.
-    const attributes = ['id', 'name', 'company_name', 'phone', 'email', 'address'];
+    // 배송 조건 두 칸 + 통화 (2026-09-17 Fable 판정 ⑦) — 판매자 정보와 **함께 한 번에** 나온다.
+    //   발주 화면·총액 계산이 각자 판매자를 다시 조회하면 그 순간 규칙이 갈라진다. 여기가 단일 자리.
+    const attributes = ['id', 'name', 'company_name', 'phone', 'email', 'address',
+      'min_order_amount', 'delivery_fee', 'currency'];
     if (type === 'supplier') attributes.push('is_system_registered');
     const rows = await models[type].findAll({
       where: { id: { [Op.in]: ids } },
@@ -75,6 +78,12 @@ async function resolveSellers(refs) {
         phone: row.phone || null,
         email: row.email || null,
         address: row.address || null,
+        // 배송 조건 — 숫자 또는 null. null = 미설정(규칙 미적용, «무료» 아님).
+        min_order_amount: row.min_order_amount === null || row.min_order_amount === undefined
+          ? null : Number(row.min_order_amount),
+        delivery_fee: row.delivery_fee === null || row.delivery_fee === undefined
+          ? null : Number(row.delivery_fee),
+        currency: row.currency || null,
         // brand/foodcourt 는 플랫폼 계정이므로 항상 시스템 등록 = 자동 발송 대상.
         // 외부(수동 발송)는 미등록 SupplierCompany 뿐이다.
         is_system_registered: type === 'supplier' ? !!row.is_system_registered : true,

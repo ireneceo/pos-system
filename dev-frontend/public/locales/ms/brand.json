@@ -821,6 +821,21 @@
     "linkedRecipe": "Resipi berkaitan",
     "noLinkedRecipe": "Tiada resipi",
     "linkedRecipeHint": "Resipi berkaitan: {{name}} — restoran francais mewarisinya semasa push",
-    "noLinkedRecipeHint": "Tiada resipi dipautkan — inventori tidak akan ditolak untuk menu ini"
+    "noLinkedRecipeHint": "Tiada resipi dipautkan — inventori tidak akan ditolak untuk menu ini",
+    "tabStoreOwn": "Menu milik restoran (lihat sahaja)",
+    "storeOwnTitle": "Menu yang dibuat sendiri oleh restoran",
+    "storeOwnBody": "Restoran memiliki menunya. Senarai ini untuk lihat sahaja - tambah, sunting dan padam dilakukan di restoran. Tidak mengapa jika berbeza daripada menu jenama.",
+    "storeOwnEmpty": "Tiada menu yang dibuat sendiri oleh restoran.",
+    "storeOwnCount": "{{count}} item",
+    "storeOwnOnSale": "Sedang dijual",
+    "storeOwnOff": "Tidak dijual",
+    "ownershipNote": "Senarai ini ialah sumber menu jenama. Menu hanya muncul di restoran selepas anda menghantarnya, dan restoran boleh menyimpan menu sendiri.",
+    "originStore": "dibuat oleh {{name}}"
+  },
+  "brandPaymentSettingsPage": {
+    "deliveryTerms": "Terma penghantaran bagi pesanan restoran",
+    "deliveryTermsDesc": "Yuran penghantaran ditambah secara automatik apabila restoran memesan daripada jenama ini. Biarkan kosong dan tiada yuran penghantaran dipaparkan.",
+    "freeAbove": "Penghantaran percuma pada atau melebihi jumlah ini",
+    "deliveryFee": "Yuran penghantaran di bawahnya (tetap)"
   }
 }

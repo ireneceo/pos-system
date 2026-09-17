@@ -141,7 +141,8 @@
     "restaurant": "레스토랑",
     "brand": "브랜드",
     "foodcourt": "푸드코트",
-    "owner": "오너"
+    "owner": "오너",
+    "saving": "저장 중…"
   },
   "time": {
     "today": "오늘",
@@ -661,7 +662,11 @@
       "inTransit": "운송 중",
       "received": "수령",
       "delivered": "도착"
-    }
+    },
+    "unset": "배송비 미설정 — 발주 화면에 배송비가 나오지 않습니다",
+    "free": "무료배송",
+    "always": "배송비 항상 {{fee}}",
+    "threshold": "{{free}} 이상 무료 · 미만 {{fee}}"
   },
   "sort.newest": "최신 순",
   "sort.oldest": "오래된 순",

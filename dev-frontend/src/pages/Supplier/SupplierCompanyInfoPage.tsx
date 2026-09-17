@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
 import AutoSaveAddressFields from '../../components/Form/AutoSaveAddressFields';
 import PhoneInput from '../../components/Common/PhoneInput';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
@@ -23,6 +24,9 @@ interface SupplierCompany {
   country: string;
   bank_name: string;
   bank_account: string;
+  // 배송 조건 두 칸 (2026-09-17 Fable 판정 ⑦) — 구매자가 나에게 발주할 때 자동으로 붙는 배송비 규칙
+  min_order_amount: string;
+  delivery_fee: string;
   bank_account_name: string;
   // 판매 방식·주문용 상품 링크는 **상품 화면**에서 다룬다(components/Settings/SellerShopLinkCard).
   //   회사 정보는 상호·주소·계좌를 적는 곳이라 손님에게 뿌리는 링크가 여기 있으면 아무도 못 찾는다
@@ -100,6 +104,15 @@ const FormGrid = styled.div`
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
+`;
+
+const DeliveryPreview = styled.div`
+  padding: 10px 12px;
+  background: #F8FAFC;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #4B5563;
 `;
 
 const FormGroup = styled.div<{ fullWidth?: boolean }>`
@@ -190,6 +203,8 @@ const EMPTY: SupplierCompany = {
   postal_code: '',
   country: 'MY',
   bank_name: '',
+  min_order_amount: '',
+  delivery_fee: '',
   bank_account: '',
   bank_account_name: '',
 };
@@ -232,6 +247,8 @@ const SupplierCompanyInfoPage: React.FC = () => {
         postal_code: d.postal_code || '',
         country: (d.country || 'MY').toUpperCase(),
         bank_name: d.bank_name || '',
+        min_order_amount: d.min_order_amount != null ? String(d.min_order_amount) : '',
+        delivery_fee: d.delivery_fee != null ? String(d.delivery_fee) : '',
         bank_account: d.bank_account || '',
         bank_account_name: d.bank_account_name || ''
       });
@@ -414,6 +431,52 @@ const SupplierCompanyInfoPage: React.FC = () => {
             defaultCountry={company.country || 'MY'}
             required={['address', 'country']}
           />
+        </Section>
+
+        {/* 배송 조건 (2026-09-17 Fable 판정 ⑦)
+            여기 적은 두 숫자로 구매자의 발주 화면에 배송비가 자동으로 붙는다.
+            비워 두면 «미설정» — 배송비가 아예 안 나온다(무료라는 뜻이 아니다). */}
+        <Section>
+          <SectionTitle>{t('company.delivery.title', '배송 조건')}</SectionTitle>
+          <FormGrid>
+            <FormGroup>
+              <Label>{t('company.delivery.freeAbove', '이 금액 이상 주문하면 무료배송')}</Label>
+              <AutoSaveField onSave={() => saveField('min_order_amount', company.min_order_amount === '' ? null : Number(company.min_order_amount))}>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={company.min_order_amount}
+                  onChange={e => handleChange('min_order_amount', e.target.value)}
+                  placeholder="300"
+                />
+              </AutoSaveField>
+            </FormGroup>
+
+            <FormGroup>
+              <Label>{t('company.delivery.fee', '그 미만이면 배송비 (고정)')}</Label>
+              <AutoSaveField onSave={() => saveField('delivery_fee', company.delivery_fee === '' ? null : Number(company.delivery_fee))}>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={company.delivery_fee}
+                  onChange={e => handleChange('delivery_fee', e.target.value)}
+                  placeholder="15"
+                />
+              </AutoSaveField>
+            </FormGroup>
+
+            <FormGroup fullWidth>
+              {/* 숫자 두 개가 실제로 어떤 문장이 되는지 그 자리에서 보여 준다 */}
+              <DeliveryPreview>
+                <DeliveryTermsText terms={{
+                  min_order_amount: company.min_order_amount === '' ? null : Number(company.min_order_amount),
+                  delivery_fee: company.delivery_fee === '' ? null : Number(company.delivery_fee)
+                }} />
+              </DeliveryPreview>
+            </FormGroup>
+          </FormGrid>
         </Section>
 
         {/* Banking */}

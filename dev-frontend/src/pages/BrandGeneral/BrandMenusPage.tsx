@@ -30,7 +30,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import AutoSaveField from '../../components/Common/AutoSaveField';
 import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
 
-type Tab = 'menus' | 'categories' | 'options' | 'settings';
+type Tab = 'menus' | 'storeOwn' | 'categories' | 'options' | 'settings';
 
 interface MenuSettings {
   default_distribution_mode: 'auto' | 'manual';
@@ -40,6 +40,17 @@ interface MenuSettings {
   // 브랜드 전체 — 켜면 산하 모든 매장이 브랜드 메뉴 순서를 따르고 매장이 못 바꿈 (메뉴별 토글 대체)
   enforce_menu_order: boolean;
 }
+
+const OriginTag = styled.div`
+  display: inline-block;
+  margin: 4px 0 2px;
+  padding: 2px 8px;
+  background: #EEF2FF;
+  color: #3730A3;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+`;
 
 const SettingsCard = styled.div`
   background: white;
@@ -542,6 +553,9 @@ interface BrandMenu {
   recommended_price: number; currency: string;
   version: number; distribution_mode: 'auto' | 'manual';
   scope_mode?: 'all' | 'selected';
+  // 이 브랜드 메뉴가 «어느 매장에서 올라온 것» 인지 (2026-09-17). null = 브랜드가 직접 만듦.
+  origin_restaurant_id?: number | null;
+  origin_restaurant_name?: string | null;
   locks: { name: boolean; price: boolean; category: boolean; image: boolean; options: boolean; set_items?: boolean };
   is_set_menu?: boolean;
   set_items?: Array<{ brand_menu_id: number; name: string; quantity: number }> | null;
@@ -562,7 +576,7 @@ const BrandMenusPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') as Tab) || 'menus';
   const [tab, setTab] = useState<Tab>(
-    initialTab === 'categories' || initialTab === 'options' || initialTab === 'settings' ? initialTab : 'menus'
+    initialTab === 'categories' || initialTab === 'options' || initialTab === 'settings' || initialTab === 'storeOwn' ? initialTab : 'menus'
   );
 
   const switchTab = (next: Tab) => {
@@ -842,6 +856,10 @@ const BrandMenusPage: React.FC = () => {
           <TabBtn type="button" $active={tab === 'menus'} onClick={() => switchTab('menus')}>
             {t('brand:brandMenusPage.tabMenus', 'Menus')}
           </TabBtn>
+          {/* 매장 자체 메뉴는 브랜드가 «보기만» 한다 — 메뉴의 주인은 매장이다 (2026-09-17 Irene 지시) */}
+          <TabBtn type="button" $active={tab === 'storeOwn'} onClick={() => switchTab('storeOwn')}>
+            {t('brand:brandMenusPage.tabStoreOwn', '매장 자체 메뉴 (보기 전용)')}
+          </TabBtn>
           <TabBtn type="button" $active={tab === 'categories'} onClick={() => switchTab('categories')}>
             {t('brand:brandMenusPage.tabCategories', 'Categories')}
           </TabBtn>
@@ -853,12 +871,20 @@ const BrandMenusPage: React.FC = () => {
           </TabBtn>
         </TabBar>
 
+        {tab === 'storeOwn' && <StoreOwnMenusTab brandId={selectedBrandId} />}
         {tab === 'categories' && <BrandMenuCategoriesPage brandId={selectedBrandId} />}
         {tab === 'options' && <BrandMenuOptionGroupsPage brandId={selectedBrandId} />}
         {tab === 'settings' && <MenuSettingsTab brandId={selectedBrandId} brandName={currentBrand?.name || ''} />}
 
         {tab === 'menus' && (
         <>
+        {/* 「이 목록은 누구 것인가」 를 화면에서 바로 알 수 있게 한 줄 (2026-09-17 Irene 지시) */}
+        <IntroCard>
+          <IntroBody>
+            {t('brand:brandMenusPage.ownershipNote',
+              '이 목록은 브랜드의 메뉴 원본입니다. 매장에 내려보내야 매장에 생기고, 매장은 자기 메뉴를 따로 가질 수 있습니다.')}
+          </IntroBody>
+        </IntroCard>
         <ListControlsBar>
           <SearchInput
             type="text"
@@ -993,6 +1019,14 @@ const BrandMenusPage: React.FC = () => {
                       : t('brand:brandMenusPage.noLinkedRecipe', 'No recipe')}
                   </RecipeTag>
                 </CardRow>
+                {/* 매장에서 올라온 메뉴는 «누가 만든 것인가» 를 행에서 바로 보여 준다 (2026-09-17) */}
+                {m.origin_restaurant_id && (
+                  <OriginTag>
+                    {t('brand:brandMenusPage.originStore', '{{name}} 가 만든 것', {
+                      name: m.origin_restaurant_name || `#${m.origin_restaurant_id}`
+                    })}
+                  </OriginTag>
+                )}
                 <DistributionLine title={t('brand:brandMenusPage.distributionHint', 'Synced (green) = restaurants on the latest version · Pending (orange) = has older version, needs push · Unlinked (grey) = restaurant has its own version, brand updates ignored')}>
                   <DistItem $color={m.distribution.in_sync > 0 ? '#10B981' : '#6B7280'}>
                     <DistDot $bg={m.distribution.in_sync > 0 ? '#10B981' : '#6B7280'} />
@@ -1715,6 +1749,91 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
 // ──────────────────────────────────────────────────────────────────────────
 // Menu Settings tab — brand-level defaults applied to new menus
 // ──────────────────────────────────────────────────────────────────────────
+/**
+ * 매장 자체 메뉴 — **보기 전용** (2026-09-17 Irene 지시 「레스토랑 정보를 기준으로」)
+ *
+ * 메뉴의 주인은 매장이다. 브랜드 메뉴는 브랜드의 원본 목록이고 매장 메뉴와 달라도 된다.
+ * 여기서는 매장이 스스로 만든 메뉴(브랜드 연결 없음)를 보기만 한다 — 편집 버튼을 두지 않는다.
+ */
+const StoreOwnMenusTab: React.FC<{ brandId: number | null }> = ({ brandId }) => {
+  const { t } = useTranslation(['brand', 'common']);
+  const [rows, setRows] = useState<Array<{
+    id: number; restaurant_id: number; restaurant_name: string | null;
+    name: string; price: number | string; category: string; is_active: boolean;
+  }>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!brandId) { setRows([]); return; }
+    (async () => {
+      setLoading(true);
+      try {
+        const r = await fetch(`/api/brand-menus/store-own?brand_id=${brandId}`, { headers: authHeaders() });
+        const j = await r.json();
+        setRows(r.ok && j.success ? (j.data || []) : []);
+      } catch {
+        setRows([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [brandId]);
+
+  if (!brandId) return <EmptyState>{t('brand:brandMenusPage.selectBrandFirst', 'Select a brand first')}</EmptyState>;
+  if (loading) return <EmptyState>{t('common:label.loading', 'Loading...')}</EmptyState>;
+
+  const byRestaurant = new Map<number, typeof rows>();
+  for (const r of rows) {
+    const list = byRestaurant.get(r.restaurant_id) || [];
+    list.push(r);
+    byRestaurant.set(r.restaurant_id, list);
+  }
+
+  return (
+    <div>
+      <IntroCard>
+        <IntroTitle>{t('brand:brandMenusPage.storeOwnTitle', '매장이 스스로 만든 메뉴')}</IntroTitle>
+        <IntroBody>
+          {t('brand:brandMenusPage.storeOwnBody',
+            '메뉴의 주인은 매장입니다. 이 목록은 보기 전용이고, 추가·수정·삭제는 매장에서 합니다. 브랜드 메뉴와 달라도 괜찮습니다.')}
+        </IntroBody>
+      </IntroCard>
+
+      {rows.length === 0 ? (
+        <EmptyState>{t('brand:brandMenusPage.storeOwnEmpty', '매장이 따로 만든 메뉴가 없습니다.')}</EmptyState>
+      ) : (
+        Array.from(byRestaurant.entries()).map(([rid, list]) => (
+          <SettingsCard key={rid}>
+            <SettingsSectionTitle>
+              {list[0]?.restaurant_name || `#${rid}`}
+              <span style={{ marginLeft: 8, fontSize: 12, color: '#4B5563', fontWeight: 400 }}>
+                {t('brand:brandMenusPage.storeOwnCount', '{{count}}개', { count: list.length })}
+              </span>
+            </SettingsSectionTitle>
+            <div style={{ display: 'grid', gap: 4 }}>
+              {list.map(m => (
+                <div key={m.id} style={{
+                  display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 12,
+                  alignItems: 'center', padding: '8px 10px', border: '1px solid #E6EBF1',
+                  borderRadius: 6, fontSize: 13, color: '#0A2540'
+                }}>
+                  <span>{m.name}</span>
+                  <span style={{ color: '#6B7280', fontSize: 12 }}>{m.category}</span>
+                  <span style={{ color: m.is_active ? '#059669' : '#9CA3AF', fontSize: 12 }}>
+                    {m.is_active
+                      ? t('brand:brandMenusPage.storeOwnOnSale', '판매 중')
+                      : t('brand:brandMenusPage.storeOwnOff', '판매 안 함')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </SettingsCard>
+        ))
+      )}
+    </div>
+  );
+};
+
 const MenuSettingsTab: React.FC<{ brandId: number | null; brandName: string }> = ({ brandId, brandName }) => {
   const { t } = useTranslation(['brand', 'common']);
   const [settings, setSettings] = useState<MenuSettings | null>(null);

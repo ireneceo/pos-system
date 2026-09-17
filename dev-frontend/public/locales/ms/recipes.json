@@ -161,5 +161,24 @@
   "common": {
     "cancel": "Batal",
     "delete": "Padam"
+  },
+  "prep": {
+    "title": "Bahan sedia",
+    "switchLabel": "Guna hasil resipi ini sebagai bahan (bahan sedia)",
+    "hintOn": "Selepas disimpan, bahan dengan nama ini muncul dalam senarai bahan. Tambah stok dengan \"Buat\" di skrin inventori. Resipi ini tidak boleh dipautkan ke menu.",
+    "hintOff": "Hidupkan untuk bahan yang disediakan awal — daging perap, sup, sos.",
+    "yieldTitle": "Jumlah sebenar dihasilkan (unit stok)",
+    "yieldTitlePlain": "Hasil",
+    "yieldAmount": "Jumlah hasil *",
+    "yieldAmountPrep": "Jumlah setiap kelompok *",
+    "yieldUnit": "Unit *",
+    "yieldUnitPrep": "Unit * (unit stok sahaja)",
+    "badgeHint": "Hasil resipi ini digunakan sebagai bahan. Tambah stok dengan \"Buat\" di skrin inventori; resipi ini tidak boleh dipautkan ke menu."
+  },
+  "brandBadge": "Resipi jenama",
+  "brandReadOnlyHint": "Resipi jenama — baca sahaja di sini. Ia disunting di jenama.",
+  "ingredientCategoriesTab": {
+    "addCategory": "Tambah Kategori",
+    "brandWriteStopped": "Kategori bahan jenama tidak lagi dibuat — kategori bahan diurus oleh restoran, dan kategori jenama di skrin Stock Items."
   }
 }

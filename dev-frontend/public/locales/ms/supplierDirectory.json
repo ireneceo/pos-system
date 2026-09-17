@@ -212,8 +212,10 @@
     "phone": "Hubungan (Telefon)",
     "email": "E-mel",
     "minOrder": "Jumlah Pesanan Minimum",
-    "deliveryPolicy": "Dasar Penghantaran (teks bebas)",
-    "deliveryPolicyPlaceholder": "cth. Penghantaran pada Isnin/Rabu/Jumaat. Penghantaran percuma melebihi RM100. Pesan 24 jam lebih awal."
+    "deliveryPolicy": "Nota penghantaran (hari, kawasan — tidak digunakan dalam pengiraan)",
+    "deliveryPolicyPlaceholder": "cth. Penghantaran pada Isnin/Rabu/Jumaat. Penghantaran percuma melebihi RM100. Pesan 24 jam lebih awal.",
+    "freeDeliveryAbove": "Penghantaran percuma pada atau melebihi jumlah ini",
+    "deliveryFee": "Yuran penghantaran di bawahnya (tetap)"
   },
   "extProduct": {
     "baseQuantity": "Kuantiti setiap bungkusan",

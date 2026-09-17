@@ -233,6 +233,20 @@ export const IngredientName = styled.div`
 `;
 
 /** 브랜드 표준 재료 표식 — 재고는 매장별이지만 재료 정의는 브랜드 소유(읽기전용). */
+// 준비 재료(레시피로 만드는 재료) 배지 — 브랜드 배지와 같은 모양, 색만 구분 (2026-09-17)
+export const PrepTag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #EEF2FF;
+  color: #3730A3;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+`;
+
 export const BrandTag = styled.span`
   display: inline-flex;
   align-items: center;

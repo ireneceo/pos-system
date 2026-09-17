@@ -86,6 +86,15 @@ router.get('/:restaurantId/inventory', async (req, res) => {
       order: [['name', 'ASC']]
     });
 
+    // 준비 재료의 «어느 레시피에서 나왔나» 이름 — 화면이 출처 줄을 그린다. 한 번에 읽는다(N+1 방지).
+    const prepRecipeIds = [...new Set(ingredients.map(i => i.source_recipe_id).filter(Boolean))];
+    const prepRecipeNames = {};
+    if (prepRecipeIds.length) {
+      const { Recipe } = require('../models');
+      const rows = await Recipe.findAll({ where: { id: prepRecipeIds }, attributes: ['id', 'name'] });
+      for (const r of rows) prepRecipeNames[r.id] = r.name;
+    }
+
     // 입고예정(on-order) — 활성 발주(주문됐으나 미입고)의 남은 수량을 ingredient 별로 집계.
     // 재고 증가 공식과 동일하게 (quantity_ordered - quantity_received) × unit_conversion 로 재고단위 환산.
     // 목적: "이미 발주해서 들어올 양"을 미리 보여 중복 발주 방지.
@@ -174,6 +183,10 @@ router.get('/:restaurantId/inventory', async (req, res) => {
         read_only: isBrandShared,
         stock_status: stockStatus,
         has_seller_source: sellerLinkedIds.has(ing.id),
+        // 준비된 재고(1차 가공) — 이 재료를 «만드는» 레시피 (2026-09-17 Fable 판정).
+        //   화면은 이 값이 있으면 «입고» 대신 «만들기» 를 띄운다.
+        source_recipe_id: ing.source_recipe_id || null,
+        source_recipe_name: prepRecipeNames[ing.source_recipe_id] || null,
         on_order_quantity: onOrder ? onOrder.qty : 0,
         on_order_delivery_date: onOrder ? onOrder.date : null
       };

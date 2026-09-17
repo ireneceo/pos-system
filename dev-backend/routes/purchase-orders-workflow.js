@@ -220,18 +220,10 @@ async function generatePoNumber(buyerEntity, offset = 0) {
   return `${baseNumber}-${seq}`;
 }
 
-/** Recompute totals from the items array. */
-function computeTotals(items) {
-  let subtotal = 0;
-  for (const it of items) {
-    const qty = parseFloat(it.quantity_ordered) || 0;
-    const price = parseFloat(it.unit_price) || 0;
-    const line = Math.round(qty * price * 100) / 100;
-    subtotal += line;
-  }
-  subtotal = Math.round(subtotal * 100) / 100;
-  return { subtotal, total_amount: subtotal, tax_amount: 0 };
-}
+// 발주 총액 공식은 `utils/purchaseOrderTotals.js` **한 곳**에만 있다 (2026-09-17 Fable 판정 ⑦).
+//   여기에 있던 복제본(computeTotals)은 crud.js 의 것과 글자까지 같았고, 배송비가 총액에 들어가는
+//   순간 두 벌이 갈라진다. 총액을 다시 쓰는 자리는 전부 아래 함수를 쓴다.
+const { computeTotalsWithDelivery } = require('../utils/purchaseOrderTotals');
 
 // ============================================
 // 1. GET /api/purchase-orders
@@ -314,6 +306,11 @@ router.get('/purchase-orders/:id/pdf', async (req, res) => {
       };
     });
     const subtotal = items.reduce((s, i) => s + i.line_total, 0);
+    // 배송비는 «품목 합계 / 배송비 / 총액» 3줄로 항상 보인다 (2026-09-17 Fable 판정 ⑦).
+    //   판매자가 배송 조건을 안 적었으면 줄을 지우지 말고 «0.00 (not set)» 으로 남긴다 —
+    //   빈 줄이 «무료»로 읽히면 안 된다.
+    const deliveryFee = Number(po.delivery_fee || 0);
+    const deliveryUnset = !po.delivery_fee_basis || po.delivery_fee_basis.rule === 'unset';
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -366,7 +363,9 @@ td { padding: 10px 12px; border-bottom: 1px solid #F3F4F6; font-size: 13px; }
   <thead><tr><th>Item</th><th>SKU</th><th class="num">Qty</th><th class="num">Unit Price</th><th class="num">Total</th></tr></thead>
   <tbody>
     ${items.map(i => `<tr><td>${i.name}</td><td>${i.sku || '—'}</td><td class="num">${i.qty_text}</td><td class="num">${i.unit_price.toFixed(2)}</td><td class="num">${i.line_total.toFixed(2)}</td></tr>`).join('')}
-    <tr class="total-row"><td colspan="4" class="num">Total (${po.currency || 'MYR'})</td><td class="num">${subtotal.toFixed(2)}</td></tr>
+    <tr><td colspan="4" class="num">Subtotal</td><td class="num">${subtotal.toFixed(2)}</td></tr>
+    <tr><td colspan="4" class="num">Delivery${deliveryUnset ? ' (not set)' : ''}</td><td class="num">${deliveryFee.toFixed(2)}</td></tr>
+    <tr class="total-row"><td colspan="4" class="num">Total (${po.currency || 'MYR'})</td><td class="num">${(subtotal + deliveryFee).toFixed(2)}</td></tr>
   </tbody>
 </table>
 ${po.notes ? `<div class="notes"><h3>Notes</h3>${po.notes.replace(/\n/g, '<br>')}</div>` : ''}
@@ -1270,11 +1269,16 @@ router.delete('/purchase-orders/:id/items/:itemId', async (req, res) => {
         await po.destroy({ transaction: t });
         return { po_deleted: true };
       }
-      let subtotal = 0;
-      for (const r of remaining) subtotal += Math.round((parseFloat(r.quantity_ordered) || 0) * (parseFloat(r.unit_price) || 0) * 100) / 100;
-      subtotal = Math.round(subtotal * 100) / 100;
-      await po.update({ subtotal, tax_amount: 0, total_amount: subtotal }, { transaction: t });
-      return { po_deleted: false, total_amount: subtotal };
+      // 품목이 줄었으니 배송비 규칙도 다시 본다 — 기준 미만으로 떨어지면 배송비가 붙는다.
+      const totals = await computeTotalsWithDelivery(remaining, po, { orderCurrency: po.currency });
+      await po.update({
+        subtotal: totals.subtotal,
+        tax_amount: totals.tax_amount,
+        delivery_fee: totals.delivery_fee,
+        delivery_fee_basis: totals.delivery_fee_basis,
+        total_amount: totals.total_amount
+      }, { transaction: t });
+      return { po_deleted: false, total_amount: totals.total_amount, delivery_fee: totals.delivery_fee };
     });
     res.json({ success: true, data: out });
   } catch (err) {
@@ -1320,10 +1324,14 @@ router.post('/purchase-orders/consolidate-drafts', async (req, res) => {
         }
         // recompute primary total from all its items
         const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: primary.id }, transaction: t });
-        let subtotal = 0;
-        for (const r of items) subtotal += Math.round((parseFloat(r.quantity_ordered) || 0) * (parseFloat(r.unit_price) || 0) * 100) / 100;
-        subtotal = Math.round(subtotal * 100) / 100;
-        await primary.update({ subtotal, tax_amount: 0, total_amount: subtotal }, { transaction: t });
+        const totals = await computeTotalsWithDelivery(items, primary, { orderCurrency: primary.currency });
+        await primary.update({
+          subtotal: totals.subtotal,
+          tax_amount: totals.tax_amount,
+          delivery_fee: totals.delivery_fee,
+          delivery_fee_basis: totals.delivery_fee_basis,
+          total_amount: totals.total_amount
+        }, { transaction: t });
         mergedGroups++;
       }
       return { mergedGroups, removed };

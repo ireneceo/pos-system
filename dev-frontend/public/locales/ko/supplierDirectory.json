@@ -212,8 +212,10 @@
     "phone": "연락처 (전화)",
     "email": "이메일",
     "minOrder": "최소 주문 금액",
-    "deliveryPolicy": "배송 정책 (자유 텍스트)",
-    "deliveryPolicyPlaceholder": "예: 월/수/금 배송. 100RM 이상 무료 배송. 24시간 전 주문 필요."
+    "deliveryPolicy": "배송 메모 (요일·지역 등 — 계산에는 쓰지 않습니다)",
+    "deliveryPolicyPlaceholder": "예: 월/수/금 배송. 100RM 이상 무료 배송. 24시간 전 주문 필요.",
+    "freeDeliveryAbove": "이 금액 이상 주문하면 무료배송",
+    "deliveryFee": "그 미만이면 배송비 (고정)"
   },
   "extProduct": {
     "baseQuantity": "포장당 용량",

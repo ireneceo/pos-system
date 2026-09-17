@@ -105,6 +105,9 @@ async function fixShared() {
           product_recipe_id: p.product_recipe_id || null, recipe_id: p.recipe_id || null,
           lock_name: false, lock_price: false, lock_category: false, lock_image: false,
           lock_options: false, lock_sort_order: false, lock_set_items: false,
+          // 어느 매장에서 올라온 메뉴인지 남긴다 — 브랜드 화면이 «매장 X 가 만든 것» 으로 보여준다
+          //   (2026-09-17). 메뉴의 주인은 매장이므로, 브랜드 목록에서 출처가 보여야 헷갈리지 않는다.
+          origin_restaurant_id: RID,
         }, { transaction: t });
         snap.created_menu_ids.push(bm.id);
         snap.products.push({ id: p.id, name: p.name, before: {
@@ -268,6 +271,9 @@ async function adoptOptions() {
           product_recipe_id: p.product_recipe_id || null, recipe_id: p.recipe_id || null,
           lock_name: false, lock_price: false, lock_category: false, lock_image: false,
           lock_options: false, lock_sort_order: false, lock_set_items: false,
+          // 어느 매장에서 올라온 메뉴인지 남긴다 — 브랜드 화면이 «매장 X 가 만든 것» 으로 보여준다
+          //   (2026-09-17). 메뉴의 주인은 매장이므로, 브랜드 목록에서 출처가 보여야 헷갈리지 않는다.
+          origin_restaurant_id: RID,
         }, { transaction: t });
         menuByName.set(name, bm); snap.created_menu_ids.push(bm.id);
       }

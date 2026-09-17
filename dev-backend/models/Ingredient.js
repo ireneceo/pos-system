@@ -65,6 +65,17 @@ Ingredient.init({
     allowNull: true,
     comment: '이 행이 거울인 브랜드 프로덕트(brand_products.id). Stock Item 출처와 둘 중 하나만'
   },
+  // 세 번째 출처 — **만드는 것** (2026-09-17 Fable 판정 «준비된 재고»)
+  //   Irene: 「불고기를 재어 두는데 소고기를 이용해서 재 놓는 거지 … 준비된 재료인 불고기도 재고관리가 되어야 해」
+  //   준비된 재고는 새 표가 아니라 **이 표의 한 행**이고, 그 행의 출처가 «준비 레시피» 다.
+  //   사는 것 = Stock Item · 파는 것 = 브랜드 프로덕트 · **만드는 것 = 레시피** — 셋 중 정확히 하나.
+  //   수량·FIFO 배치·실사·저재고 경보·원가 2층은 기존 재료 기제를 그대로 탄다.
+  //   ⛔ 이 열쇠가 찬 행의 이름·단위는 사람이 고치지 않는다(레시피를 고친다 — API 403).
+  source_recipe_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '이 재료를 만드는 준비 레시피(recipes.id). 재료 1행 ↔ 레시피 1개(UNIQUE)'
+  },
   // Ingredient info
   code: {
     type: DataTypes.STRING(50),

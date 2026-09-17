@@ -168,7 +168,7 @@ router.get('/brands/:brandId/recipes', authenticateToken, isBrandManager, async 
       order: [['created_at', 'DESC'], [{ model: RecipeIngredient, as: 'recipeIngredients' }, 'id', 'ASC']]
     });
 
-    res.json({ success: true, data: recipes });
+    res.json({ success: true, data: await attachPrepFlag(recipes) });
   } catch (error) {
     console.error('Get brand recipes error:', error);
     res.status(500).json({ success: false, error: { message: 'Failed to fetch recipes', code: 'INTERNAL_ERROR' } });
@@ -179,6 +179,65 @@ router.get('/brands/:brandId/recipes', authenticateToken, isBrandManager, async 
  * POST /api/brands/:brandId/recipes
  * 브랜드 레시피 생성
  */
+
+
+/**
+ * 목록 응답에 «준비 레시피인가» 를 붙인다 (2026-09-17 Fable 판정).
+ *   스위치의 진실은 «그 레시피에서 나온 재료 행이 살아 있는가» 하나뿐이라, 여기서 한 번에 읽는다(N+1 방지).
+ */
+async function attachPrepFlag(recipes) {
+  const ids = recipes.map(r => r.id).filter(Boolean);
+  if (!ids.length) return recipes.map(r => (typeof r.toJSON === 'function' ? r.toJSON() : r));
+  const rows = await Ingredient.findAll({
+    where: { source_recipe_id: ids, is_active: true },
+    attributes: ['id', 'name', 'unit', 'source_recipe_id']
+  });
+  const byRecipe = {};
+  for (const i of rows) byRecipe[i.source_recipe_id] = { id: i.id, name: i.name, unit: i.unit };
+  return recipes.map(r => {
+    const plain = typeof r.toJSON === 'function' ? r.toJSON() : r;
+    const ing = byRecipe[plain.id] || null;
+    return { ...plain, is_prep_ingredient: !!ing, prep_ingredient: ing };
+  });
+}
+
+// ── 준비된 재고(1차 가공) — 레시피 저장 뒤 재료 행을 맞춘다 (2026-09-17 Fable 판정) ──────────────
+//   요청 body 의 `is_prep_ingredient` 가 스위치다. 없으면 현 상태 유지(이름·원가만 다시 맞춤).
+//   스위치의 단일 진실은 «그 레시피에서 나온 재료 행이 살아 있는가» 하나 — Recipe 에 플래그를 두지 않는다.
+async function applyPrepSwitch(res, recipe, body, { createdNow = false } = {}) {
+  const { syncPrepIngredientForRecipe, PrepError, getPrepIngredient } = require('../services/prepIngredientSync');
+  let wanted;
+  if (body && Object.prototype.hasOwnProperty.call(body, 'is_prep_ingredient')) {
+    wanted = body.is_prep_ingredient === true || body.is_prep_ingredient === 'true';
+  }
+  try {
+    await syncPrepIngredientForRecipe(recipe, wanted);
+    const ing = await getPrepIngredient(recipe.id);
+    return {
+      ok: true,
+      is_prep_ingredient: !!ing,
+      prep_ingredient: ing ? { id: ing.id, name: ing.name, unit: ing.unit, unit_cost: ing.unit_cost, current_stock: ing.current_stock } : null
+    };
+  } catch (e) {
+    if (e instanceof PrepError) {
+      // **새로 만드는 중이었다면 그 레시피는 없던 일로 한다.** 안 지우면 400 을 받고도 레시피만
+      //   덩그러니 남아, 목록에 «준비 재료가 아닌 준비 레시피» 라는 애매한 줄이 생긴다.
+      //   (2026-09-17 실호출에서 실제로 남았다 — yield_unit=portion 거부 케이스.)
+      if (createdNow) {
+        try {
+          await RecipeIngredient.destroy({ where: { recipe_id: recipe.id }, force: true });
+          await recipe.destroy({ force: true });
+        } catch (cleanupErr) {
+          console.error('[prep] 실패한 레시피 정리 실패:', cleanupErr.message);
+        }
+      }
+      res.status(e.status).json({ success: false, error: { message: e.message, code: e.code }, message: e.message, detail: e.detail });
+      return { ok: false };
+    }
+    throw e;
+  }
+}
+
 router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { brandId } = req.params;
@@ -272,7 +331,9 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
       ]
     });
 
-    res.json({ success: true, data: createdRecipe });
+    const prep = await applyPrepSwitch(res, recipe, req.body, { createdNow: true });
+    if (!prep.ok) return;
+    res.json({ success: true, data: createdRecipe, ...prep });
   } catch (error) {
     console.error('Create brand recipe error:', error);
     res.status(500).json({ success: false, error: { message: 'Failed to create recipe', code: 'INTERNAL_ERROR' } });
@@ -379,7 +440,9 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
       ]
     });
 
-    res.json({ success: true, data: updatedRecipe });
+    const prep = await applyPrepSwitch(res, recipe, req.body);
+    if (!prep.ok) return;
+    res.json({ success: true, data: updatedRecipe, ...prep });
   } catch (error) {
     console.error('Update brand recipe error:', error);
     res.status(500).json({ success: false, error: { message: 'Failed to update recipe', code: 'INTERNAL_ERROR' } });
@@ -465,7 +528,7 @@ router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaur
       return plain;
     });
 
-    res.json({ success: true, data });
+    res.json({ success: true, data: await attachPrepFlag(data) });
   } catch (error) {
     console.error('Get restaurant recipes error:', error);
     res.status(500).json({ success: false, error: { message: 'Failed to fetch recipes', code: 'INTERNAL_ERROR' } });
@@ -648,7 +711,9 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
       ]
     });
 
-    res.json({ success: true, data: createdRecipe });
+    const prep = await applyPrepSwitch(res, recipe, req.body, { createdNow: true });
+    if (!prep.ok) return;
+    res.json({ success: true, data: createdRecipe, ...prep });
   } catch (error) {
     console.error('Create restaurant recipe error:', error);
     res.status(500).json({ success: false, error: { message: 'Failed to create recipe', code: 'INTERNAL_ERROR' } });
@@ -750,7 +815,9 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
       ]
     });
 
-    res.json({ success: true, data: updatedRecipe });
+    const prep = await applyPrepSwitch(res, recipe, req.body);
+    if (!prep.ok) return;
+    res.json({ success: true, data: updatedRecipe, ...prep });
   } catch (error) {
     console.error('Update restaurant recipe error:', error);
     res.status(500).json({ success: false, error: { message: 'Failed to update recipe', code: 'INTERNAL_ERROR' } });

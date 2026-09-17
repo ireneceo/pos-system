@@ -45,13 +45,24 @@ module.exports = {
 
     // ── R-SC-003: 고아 셀러매핑 = 0 ───────────────────────────────────────────────
     // 삭제된 스톡/판매품목을 가리키는 매핑 (from-catalog 멱등 우회로 중복 재료를 만드는 뿌리).
+    // ⚠ 2026-09-17 Fable: **발주 줄 FK 가 가리키는 매핑은 이력 보존을 위해 지울 수 없다**
+    //   (`purchase_order_items.ingredient_seller_product_id`). 대신 **비활성이어야 하며**, 읽기 경로는
+    //   전부 `is_active=1` 만 읽는다(실측 grep). 그래서 «발주 이력이 붙든 **꺼진** 행»만 면제한다 —
+    //   켜져 있으면 여전히 실패다(면제가 구멍이 되지 않게). 면제 건수는 아래 detail 에 **항상** 적는다.
+    const HELD_BY_PO = `EXISTS (SELECT 1 FROM purchase_order_items poi
+                                 WHERE poi.ingredient_seller_product_id = isp.id)`;
+    const DEAD_TARGET = `((isp.ingredient_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM ingredients i WHERE i.id=isp.ingredient_id))
+         OR (isp.product_ingredient_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM product_ingredients p WHERE p.id=isp.product_ingredient_id)))`;
     const orphanStock = (await q(`
       SELECT COUNT(*) c FROM ingredient_seller_products isp
-      WHERE (isp.ingredient_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM ingredients i WHERE i.id=isp.ingredient_id))
-         OR (isp.product_ingredient_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM product_ingredients p WHERE p.id=isp.product_ingredient_id))`))[0].c;
+      WHERE ${DEAD_TARGET} AND NOT (${HELD_BY_PO} AND isp.is_active = 0)`))[0].c;
+    const orphanExempt = (await q(`
+      SELECT COUNT(*) c FROM ingredient_seller_products isp
+      WHERE ${DEAD_TARGET} AND ${HELD_BY_PO} AND isp.is_active = 0`))[0].c;
     add('R-SC-003 고아 셀러매핑 없음 (삭제된 재고 참조)',
       Number(orphanStock) === 0,
-      Number(orphanStock) ? `${orphanStock}건 — 재료 중복생성 유발 (멱등체크 restaurant 스코프 누락 버그)` : '');
+      (Number(orphanStock) ? `${orphanStock}건 — 재료 중복생성 유발 (멱등체크 restaurant 스코프 누락 버그) · ` : '')
+      + `발주 이력이 붙든 죽은 매핑 ${orphanExempt}건 — 삭제 불가·비활성 유지`);
     const orphanSeller = (await q(`
       SELECT COUNT(*) c FROM ingredient_seller_products isp WHERE isp.seller_product_id IS NOT NULL AND (
         (isp.seller_type='supplier' AND NOT EXISTS (SELECT 1 FROM supplier_products sp WHERE sp.id=isp.seller_product_id))
@@ -128,64 +139,42 @@ module.exports = {
     //      한 표에 담으면 `kg ↔ L` 이 want=1 로 "계산됨" 처리되어 통과한다 —
     //      질량↔부피는 밀도를 알아야 하므로 **기계가 정할 수 없다**(2026-08-30 실측으로 발견:
     //      Test Oil kg↔L conv=1 이 조용히 통과하고 있었다).
-    const DIM = { g: 'mass', kg: 'mass', ml: 'vol', l: 'vol' };
-    const UNIT_FACTOR = { g: 1, kg: 1000, ml: 1, l: 1000 };
-    const isContinuous = (u) => !!DIM[String(u || '').trim().toLowerCase()];
-    const dim = (u) => DIM[String(u || '').trim().toLowerCase()];
-    const sameDim = (a, b) => !!dim(a) && dim(a) === dim(b);
-    const factor = (u) => UNIT_FACTOR[String(u || '').trim().toLowerCase()];
+    // 규칙은 `utils/unitConversionRule.js` 한 곳에만 있다 (2026-09-17 Fable 판정 ③).
+    //   고치는 스크립트(migrate-unit-conversion-derivable-20260917.js)도 **같은 함수**를 부른다 —
+    //   «잘못됐다»는 규칙과 «이 값이 맞다»는 규칙이 두 벌이면 서로를 못 믿는다.
+    //   2026-09-17 확장: `product_ingredients`(BG 재고아이템) 다리를 추가했다 — 그전엔 재료 다리만 봐서
+    //   BG 쪽 어긋난 행이 한 건도 안 잡혔다.
+    const { classifyConversion } = require('../../../utils/unitConversionRule');
 
     const convRows = [];
-    for (const leg of [
-      { type: 'supplier', table: 'supplier_products' },
-      { type: 'brand', table: 'brand_products' },
+    for (const bridge of [
+      { col: 'ingredient_id', table: 'ingredients', label: '재료' },
+      { col: 'product_ingredient_id', table: 'product_ingredients', label: '재고아이템' }
     ]) {
-      // 브랜드 판매상품에는 order_mode/base_quantity 컬럼이 없다 — pack·1 로 본다.
-      const modeCol = leg.type === 'supplier' ? 's.order_mode' : "'pack'";
-      const baseCol = leg.type === 'supplier' ? 's.base_quantity' : '1';
-      const rows = (await q(`
-        SELECT isp.id, i.name, i.unit AS stock_unit, s.unit AS seller_unit,
-               ${modeCol} AS order_mode, ${baseCol} AS base_quantity,
-               isp.unit_conversion AS conv, '${leg.type}' AS leg
-          FROM ingredient_seller_products isp
-          JOIN ingredients i ON i.id = isp.ingredient_id
-          JOIN \`${leg.table}\` s ON s.id = isp.seller_product_id
-         WHERE isp.is_active = 1
-           AND isp.seller_type = '${leg.type}'
-           AND i.unit IS NOT NULL AND s.unit IS NOT NULL
-           AND ${mismatchClause('i.unit', 's.unit')}
-         LIMIT 300`));
-      for (const r of rows) {
-        const stockCont = isContinuous(r.stock_unit);
-        const conv = Number(r.conv);
-        if (r.order_mode === 'measure') {
-          if (!stockCont) {
-            convRows.push({ ...r, why: '무게·부피로 주문하는데 재고는 개수 단위 — 1kg 주문이 재고 1개로 들어간다' });
-            continue;
-          }
-          if (!sameDim(r.seller_unit, r.stock_unit)) {
-            convRows.push({ ...r, why: `${r.seller_unit} ↔ ${r.stock_unit} 는 질량↔부피라 기계가 환산할 수 없다 — 사람이 넣어야 한다` });
-            continue;
-          }
-          const want = factor(r.seller_unit) / factor(r.stock_unit);
-          if (Math.abs(conv - want) > 1e-6) {
-            convRows.push({ ...r, why: `환산비가 ${conv} 인데 단위상 ${want} 여야 한다` });
-          }
-          continue;
-        }
-        // pack — 주문 수량은 팩 수. 재고가 개수면 conv=1 이 정상이므로 잡지 않는다.
-        if (!stockCont) continue;
-        if (isContinuous(r.seller_unit)) {
-          if (!sameDim(r.seller_unit, r.stock_unit)) {
-            convRows.push({ ...r, why: `${r.seller_unit} ↔ ${r.stock_unit} 는 질량↔부피라 기계가 환산할 수 없다 — 사람이 넣어야 한다` });
-          } else {
-            const want = Number(r.base_quantity) * factor(r.seller_unit) / factor(r.stock_unit);
-            if (Math.abs(conv - want) > 1e-6) {
-              convRows.push({ ...r, why: `1팩 = ${r.base_quantity}${r.seller_unit} 이므로 환산비 ${want} 여야 하는데 ${conv}` });
-            }
-          }
-        } else if (conv === 1) {
-          convRows.push({ ...r, why: '재고는 무게·부피인데 판매 단위가 개수 — 1팩이 몇 g인지 사람이 넣어야 한다' });
+      for (const leg of [
+        { type: 'supplier', table: 'supplier_products' },
+        { type: 'brand', table: 'brand_products' },
+      ]) {
+        // 브랜드 판매상품에는 order_mode/base_quantity 컬럼이 없다 — pack·1 로 본다.
+        const modeCol = leg.type === 'supplier' ? 's.order_mode' : "'pack'";
+        const baseCol = leg.type === 'supplier' ? 's.base_quantity' : '1';
+        const rows = (await q(`
+          SELECT isp.id, t.name, t.unit AS stock_unit, t.base_quantity AS stock_base,
+                 t.package_unit AS stock_package_unit, t.package_quantity AS stock_package_quantity,
+                 s.unit AS seller_unit, ${baseCol} AS seller_base, ${modeCol} AS order_mode,
+                 isp.unit_conversion AS conv, '${leg.type}' AS leg, '${bridge.label}' AS bridge
+            FROM ingredient_seller_products isp
+            JOIN \`${bridge.table}\` t ON t.id = isp.${bridge.col}
+            JOIN \`${leg.table}\` s ON s.id = isp.seller_product_id
+           WHERE isp.is_active = 1
+             AND isp.seller_type = '${leg.type}'
+             AND t.unit IS NOT NULL AND s.unit IS NOT NULL
+             AND ${mismatchClause('t.unit', 's.unit')}
+           LIMIT 300`));
+        for (const r of rows) {
+          const verdict = classifyConversion(r);
+          if (verdict.kind === 'N') continue;   // 정상 — 잡지 않는다
+          convRows.push({ ...r, why: verdict.why });
         }
       }
     }
@@ -235,8 +224,21 @@ module.exports = {
     for (const [table, label] of [['purchase_order_items', '발주 라인'], ['ingredient_seller_products', '공급처 연결']]) {
       const many = await cnt(`SELECT COUNT(*) c FROM ${table} WHERE ${TARGET_SUM} > 1`);
       add(`R-SC-008 ${label} 재고 타깃 2개 이상 없음 (${table})`, many === 0, `${many}건`);
-      const none = await cnt(`SELECT COUNT(*) c FROM ${table} WHERE ${TARGET_SUM} = 0`);
-      add(`R-SC-008 ${label} 재고 타깃 0개 없음 (${table})`, none === 0, `${none}건`);
+      // ⚠ 공급처 연결 다리만 면제: 발주 이력이 붙든 **꺼진** 행은 지울 수 없다(2026-09-17 Fable).
+      //   발주 라인 다리(purchase_order_items)는 무접촉 — 거기엔 면제 사유가 없다.
+      const exemptClause = table === 'ingredient_seller_products'
+        ? ` AND NOT (is_active = 0 AND EXISTS (SELECT 1 FROM purchase_order_items poi
+                                                WHERE poi.ingredient_seller_product_id = ${table}.id))`
+        : '';
+      const none = await cnt(`SELECT COUNT(*) c FROM ${table} WHERE ${TARGET_SUM} = 0${exemptClause}`);
+      let detail = `${none}건`;
+      if (table === 'ingredient_seller_products') {
+        const exempt = await cnt(`SELECT COUNT(*) c FROM ${table} WHERE ${TARGET_SUM} = 0
+          AND is_active = 0 AND EXISTS (SELECT 1 FROM purchase_order_items poi
+                                         WHERE poi.ingredient_seller_product_id = ${table}.id)`);
+        detail += ` · 발주 이력이 붙든 죽은 매핑 ${exempt}건 — 삭제 불가·비활성 유지`;
+      }
+      add(`R-SC-008 ${label} 재고 타깃 0개 없음 (${table})`, none === 0, detail);
     }
 
     // ── R-SC-011: 재고추적 스위치 재발 감지 ──────────────────────────────────────

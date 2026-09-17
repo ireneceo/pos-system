@@ -161,5 +161,24 @@
   "common": {
     "cancel": "취소",
     "delete": "삭제"
+  },
+  "prep": {
+    "title": "준비 재료",
+    "switchLabel": "이 레시피의 결과물을 재료로 씁니다 (준비 재료)",
+    "hintOn": "저장하면 재료 목록에 이 이름으로 재료가 생깁니다. 재고는 재고 화면의 «만들기» 로 늘립니다. 이 레시피는 메뉴에 연결할 수 없습니다.",
+    "hintOff": "미리 만들어 두는 재료(양념육·육수·소스 등)일 때 켭니다.",
+    "yieldTitle": "실제로 나오는 양 (재고 단위)",
+    "yieldTitlePlain": "나오는 양",
+    "yieldAmount": "나오는 양 *",
+    "yieldAmountPrep": "한 번 만들면 나오는 양 *",
+    "yieldUnit": "단위 *",
+    "yieldUnitPrep": "단위 * (재고 단위로만)",
+    "badgeHint": "이 레시피의 결과물이 재료로 쓰입니다. 재고는 재고 화면의 «만들기» 로 늘리고, 이 레시피는 메뉴에 연결할 수 없습니다"
+  },
+  "brandBadge": "브랜드 레시피",
+  "brandReadOnlyHint": "브랜드 레시피입니다 — 읽기 전용이고, 수정은 브랜드에서만 합니다",
+  "ingredientCategoriesTab": {
+    "addCategory": "분류 추가",
+    "brandWriteStopped": "브랜드 재료 분류는 더 만들지 않습니다 — 재료 분류는 매장에서, 브랜드 분류는 Stock Items 화면에서 관리합니다."
   }
 }

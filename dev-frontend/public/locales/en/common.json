@@ -141,7 +141,8 @@
     "restaurant": "Restaurant",
     "brand": "Brand",
     "foodcourt": "Foodcourt",
-    "owner": "Owner"
+    "owner": "Owner",
+    "saving": "Saving…"
   },
   "time": {
     "today": "Today",
@@ -661,7 +662,11 @@
       "inTransit": "In Transit",
       "received": "Received",
       "delivered": "Delivered"
-    }
+    },
+    "unset": "Delivery fee not set — no delivery fee appears on purchase orders",
+    "free": "Free delivery",
+    "always": "Delivery fee always {{fee}}",
+    "threshold": "Free at {{free}} and above · {{fee}} below"
   },
   "sort.newest": "Newest first",
   "sort.oldest": "Oldest first",

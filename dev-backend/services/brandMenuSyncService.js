@@ -193,10 +193,19 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
         attributes: ['id'],
         transaction
       }) : [];
-      const mirrorIds = new Set(mirrorRows.map(r => r.id));
-      const restaurantOwn = current.filter(id => !mirrorIds.has(id));   // keep store's own
+      // 2026-09-17: id 비교는 반드시 String 기준. Product.optionGroups 는 JSON 이고 getter 정규화가
+      // 없어 매장에 따라 문자열(["73"])로 저장돼 있다(운영 매장 8). 숫자 Set 으로 비교하면 미러가
+      // "매장 자체"로 오분류돼 보존되고 같은 그룹의 숫자 id 가 다시 추가돼 ["73",73] 중복이 된다.
+      // routes/menu.js 의 잠금 가드(:619)가 쓰는 .map(String) 과 같은 기준으로 맞춘다.
+      const mirrorIds = new Set(mirrorRows.map(r => String(r.id)));
+      const restaurantOwn = current.filter(id => !mirrorIds.has(String(id)));   // keep store's own
       const merged = [...restaurantOwn];
-      for (const id of localOptionGroupIds) if (!merged.includes(id)) merged.push(id);
+      const mergedKeys = new Set(merged.map(String));
+      for (const id of localOptionGroupIds) {
+        if (mergedKeys.has(String(id))) continue;
+        merged.push(id);
+        mergedKeys.add(String(id));
+      }
       updates.optionGroups = merged;
     }
     // Set composition (is_set_menu / set_items / set_groups) is BG-defined and ALWAYS

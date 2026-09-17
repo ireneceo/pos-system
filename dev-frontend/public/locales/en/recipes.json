@@ -161,5 +161,24 @@
   "common": {
     "cancel": "Cancel",
     "delete": "Delete"
+  },
+  "prep": {
+    "title": "Prepared ingredient",
+    "switchLabel": "Use what this recipe makes as an ingredient (prepared ingredient)",
+    "hintOn": "On save, an ingredient with this name appears in your ingredient list. You add stock with \"Make\" on the inventory screen. This recipe cannot be linked to a menu.",
+    "hintOff": "Turn on for things you prepare ahead — marinated meat, stock, sauces.",
+    "yieldTitle": "Amount actually produced (stock unit)",
+    "yieldTitlePlain": "Yield",
+    "yieldAmount": "Yield amount *",
+    "yieldAmountPrep": "Amount per batch *",
+    "yieldUnit": "Unit *",
+    "yieldUnitPrep": "Unit * (stock units only)",
+    "badgeHint": "What this recipe makes is used as an ingredient. Add stock with \"Make\" on the inventory screen; this recipe cannot be linked to a menu."
+  },
+  "brandBadge": "Brand recipe",
+  "brandReadOnlyHint": "A brand recipe — read only here. It is edited at the brand.",
+  "ingredientCategoriesTab": {
+    "addCategory": "Add Category",
+    "brandWriteStopped": "Brand ingredient categories are no longer created — ingredient categories are managed by the restaurant, and brand categories on the Stock Items screen."
   }
 }

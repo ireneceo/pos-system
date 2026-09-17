@@ -141,7 +141,8 @@
     "restaurant": "餐厅",
     "brand": "品牌",
     "foodcourt": "美食广场",
-    "owner": "业主"
+    "owner": "业主",
+    "saving": "保存中…"
   },
   "time": {
     "today": "今天",
@@ -661,7 +662,11 @@
       "inTransit": "运输中",
       "received": "已收货",
       "delivered": "已送达"
-    }
+    },
+    "unset": "未设定配送费 — 订货画面不会显示配送费",
+    "free": "免运费",
+    "always": "配送费固定 {{fee}}",
+    "threshold": "{{free}} 以上免费 · 以下 {{fee}}"
   },
   "sort.newest": "最新优先",
   "sort.oldest": "最早优先",

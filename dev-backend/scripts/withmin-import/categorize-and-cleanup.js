@@ -43,6 +43,11 @@ function classify(name) {
 }
 const isDimensionSku = (sku) => !!sku && /\bmm\b|\d+\s*mm|x\s*\d+\s*mm/i.test(sku) && !/^\d{3,4}-\d{2,3}$/.test(sku);
 
+// 분류표는 다른 스크립트도 쓴다 — **복사하지 말고 여기서 가져간다** (2026-09-17 Fable 판정 ⑧-③).
+//   require 해도 아래 본문이 돌지 않도록 main 을 직접 실행일 때만 돌린다.
+module.exports = { CATS, classify, isDimensionSku };
+if (require.main !== module) return;
+
 (async () => {
   const q = async (s, r) => (await sequelize.query(s, r ? { replacements: r } : undefined))[0];
   const run = async (s, r) => COMMIT ? sequelize.query(s, r ? { replacements: r } : undefined) : null;

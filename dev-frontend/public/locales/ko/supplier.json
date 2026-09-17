@@ -148,6 +148,11 @@
       "address": "주소",
       "banking": "은행 정보",
       "branding": "브랜딩"
+    },
+    "delivery": {
+      "title": "배송 조건",
+      "freeAbove": "이 금액 이상 주문하면 무료배송",
+      "fee": "그 미만이면 배송비 (고정)"
     }
   },
   "invoices": {

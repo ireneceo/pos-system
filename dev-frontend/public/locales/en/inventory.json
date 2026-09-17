@@ -60,5 +60,27 @@
     "lastPaid": "last time",
     "receivedTimes": "received {{n}} times",
     "avg": "avg"
-  }
+  },
+  "produce": {
+    "title": "Make",
+    "titleNamed": "Make — {{name}}",
+    "saving": "Making…",
+    "recipeLine": "Recipe \"{{name}}\" — one batch = {{amount}}{{unit}}",
+    "loadingRecipe": "Loading the prep recipe…",
+    "batches": "How many batches?",
+    "consumes": "Raw ingredients used",
+    "calculating": "Calculating…",
+    "noLines": "This recipe has no ingredient lines — add ingredients first.",
+    "have": "have {{have}}{{unit}}",
+    "haveShort": "have {{have}}{{unit}} — short by {{short}}{{unit}}",
+    "shortageNote": "Some raw ingredients are short. You can still make it, but only what is in stock is recorded as used.",
+    "actualYield": "Amount actually produced",
+    "actualYieldHint": "Defaults to recipe yield × batches. If the real weight differs, enter it — the cost is calculated on that amount.",
+    "expiry": "Expiry date (optional)",
+    "previewFailed": "Could not load the preview",
+    "failed": "Could not make it"
+  },
+  "prepTag": "Prepared",
+  "prepTagHint": "An ingredient you make from a recipe. Stock is added with \"Make\", not by ordering.",
+  "prepSource": "Recipe: {{name}}"
 }

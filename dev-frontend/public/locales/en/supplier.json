@@ -148,6 +148,11 @@
       "address": "Address",
       "banking": "Banking",
       "branding": "Branding"
+    },
+    "delivery": {
+      "title": "Delivery terms",
+      "freeAbove": "Free delivery at or above this amount",
+      "fee": "Delivery fee below that (fixed)"
     }
   },
   "invoices": {

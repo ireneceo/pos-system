@@ -161,5 +161,24 @@
   "common": {
     "cancel": "取消",
     "delete": "删除"
+  },
+  "prep": {
+    "title": "预制材料",
+    "switchLabel": "将此配方的成品用作材料（预制材料）",
+    "hintOn": "保存后材料清单会出现同名材料。库存请在库存页面用「制作」增加。此配方不能连接到菜单。",
+    "hintOff": "用于预先制作的材料（腌肉、高汤、酱汁等）时开启。",
+    "yieldTitle": "实际产出量（库存单位）",
+    "yieldTitlePlain": "产出量",
+    "yieldAmount": "产出量 *",
+    "yieldAmountPrep": "每批产出量 *",
+    "yieldUnit": "单位 *",
+    "yieldUnitPrep": "单位 *（仅限库存单位）",
+    "badgeHint": "此配方的成品用作材料。库存请在库存页面用「制作」增加；此配方不能连接到菜单。"
+  },
+  "brandBadge": "品牌配方",
+  "brandReadOnlyHint": "品牌配方 — 此处仅可查看，修改在品牌端进行。",
+  "ingredientCategoriesTab": {
+    "addCategory": "新增分类",
+    "brandWriteStopped": "不再建立品牌材料分类 — 材料分类由门店管理，品牌分类在 Stock Items 画面管理。"
   }
 }

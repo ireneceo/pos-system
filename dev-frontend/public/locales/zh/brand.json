@@ -821,6 +821,21 @@
     "linkedRecipe": "关联配方",
     "noLinkedRecipe": "无配方",
     "linkedRecipeHint": "关联配方：{{name}} — 推送后加盟店菜品将沿用此配方",
-    "noLinkedRecipeHint": "未关联配方 — 此菜品不会扣减库存"
+    "noLinkedRecipeHint": "未关联配方 — 此菜品不会扣减库存",
+    "tabStoreOwn": "门店自建菜单（仅查看）",
+    "storeOwnTitle": "门店自行建立的菜单",
+    "storeOwnBody": "菜单归门店所有。此列表仅供查看，新增、修改与删除均在门店进行。与品牌菜单不同亦无妨。",
+    "storeOwnEmpty": "门店没有自行建立的菜单。",
+    "storeOwnCount": "{{count}} 项",
+    "storeOwnOnSale": "售卖中",
+    "storeOwnOff": "未售卖",
+    "ownershipNote": "此列表是品牌的菜单原本。需先下发，门店才会出现该菜单；门店也可保有自己的菜单。",
+    "originStore": "由 {{name}} 建立"
+  },
+  "brandPaymentSettingsPage": {
+    "deliveryTerms": "门店订货配送条件",
+    "deliveryTermsDesc": "门店向该品牌下单时会自动加上配送费。留空则不显示配送费。",
+    "freeAbove": "达到或超过此金额免运费",
+    "deliveryFee": "未达金额时的配送费（固定）"
   }
 }

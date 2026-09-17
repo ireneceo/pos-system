@@ -19,6 +19,8 @@ const inventoryGate = requireRestaurantModule('inventory_management', 'restauran
 router.use('/:restaurantId/inventory', authenticateToken, inventoryGate);
 router.use('/:restaurantId/stock-takes', authenticateToken, inventoryGate);
 
+// 준비된 재고 «만들기» (2026-09-17) — 같은 게이트·같은 :restaurantId 가드 아래 둔다
+router.use(require('./inventory-produce'));
 router.use(require('./inventory-core'));
 router.use(require('./inventory-extra'));
 

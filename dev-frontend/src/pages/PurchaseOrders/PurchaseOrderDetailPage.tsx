@@ -119,6 +119,9 @@ interface PODetail {
   delivery_address?: string | null;
   notes?: string | null;
   subtotal?: number | string;
+  /** 배송비 (2026-09-17) — 총액 = 품목 합계 + 세금 + 배송비 */
+  delivery_fee?: number | string;
+  delivery_fee_basis?: { rule?: string; free_above?: number | null; fee?: number | null } | null;
   tax_amount?: number | string;
   total_amount?: number | string;
   currency?: string;
@@ -703,6 +706,12 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
     return detail.items.reduce((sum, it) => sum + Number(it.quantity_ordered) * Number(it.unit_price), 0);
   }, [detail]);
   const tax = useMemo(() => detail?.tax_amount != null ? Number(detail.tax_amount) : 0, [detail]);
+  // 배송비는 줄을 지우지 않는다 — 빈 줄이 «무료»로 읽히면 안 된다(2026-09-17 Fable 판정 ⑦).
+  const deliveryFee = useMemo(() => detail?.delivery_fee != null ? Number(detail.delivery_fee) : 0, [detail]);
+  const deliveryUnset = useMemo(
+    () => !detail?.delivery_fee_basis || (detail as any)?.delivery_fee_basis?.rule === 'unset',
+    [detail]
+  );
   const total = useMemo(() => detail?.total_amount != null ? Number(detail.total_amount) : (subtotal + tax), [detail, subtotal, tax]);
 
   // Submit (draft → submitted)
@@ -1314,6 +1323,17 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                 <div>
                   <span>{t('detail.items.tax')}</span>
                   <span>{formatMoney(tax)}</span>
+                </div>
+                <div>
+                  <span>
+                    {t('detail.items.delivery', '배송비')}
+                    {deliveryUnset && (
+                      <span style={{ color: '#6B7280', marginLeft: 6, fontSize: 12 }}>
+                        {t('detail.items.deliveryUnset', '(판매자 미설정)')}
+                      </span>
+                    )}
+                  </span>
+                  <span>{formatMoney(deliveryFee)}</span>
                 </div>
                 <div className="total">
                   <span>{t('detail.items.total')}</span>

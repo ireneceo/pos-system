@@ -54,7 +54,10 @@ const COMPANY_ALLOWED_FIELDS = [
   //   브랜드는 `PUT /api/brands/:id` 가 이미 operation_settings 를 받는다 — 두 판매자의 기준을 같게 맞춘다.
   'operation_settings',
   // 주문용 상품 링크 (docs/BUYER_FREE_TIER_DESIGN.md §5-6) — 저장 전 규칙 정규화 + 두 판매자 표를 가로질러 유일성 확인
-  'shop_slug'
+  'shop_slug',
+  // 배송 조건 (2026-09-17 Fable 판정 ⑦) — 가입한 공급업체가 **자기 화면에서** 적을 수 있어야 한다.
+  //   그전까지 이 두 칸은 구매자가 만든 «외부 공급업체» 등록 폼에만 있었다.
+  'min_order_amount', 'delivery_fee'
 ];
 
 // Fields stored as plain strings (sanitized on save)
@@ -377,7 +380,20 @@ router.put('/company', async (req, res) => {
     for (const key of incomingKeys) {
       let value = body[key];
 
-      if (key === 'shop_slug') {
+      // 배송 조건 두 칸은 **숫자**다 (2026-09-17 게이트 B-1) — 다른 판매자 라우트 3곳과 같은 규칙으로.
+      //   빈 칸 = 미설정(null) · 음수는 0 으로 막음 · 숫자가 아니면 400.
+      //   문자열 그대로 저장되면 배송비 계산이 판매자마다 달라진다.
+      if (key === 'min_order_amount' || key === 'delivery_fee') {
+        if (value === '' || value === null || value === undefined) {
+          value = null;
+        } else {
+          const n = parseFloat(value);
+          if (!Number.isFinite(n)) {
+            return res.status(400).json({ success: false, message: `${key} must be a number` });
+          }
+          value = Math.max(0, n);
+        }
+      } else if (key === 'shop_slug') {
         const { normalizeShopSlug, shopSlugTaken } = require('../utils/shopSlug');
         if (value === '' || value === null || value === undefined) {
           value = null;   // 비우면 링크를 닫는다

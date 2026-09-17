@@ -212,8 +212,10 @@
     "phone": "Contact (Phone)",
     "email": "Email",
     "minOrder": "Minimum Order Amount",
-    "deliveryPolicy": "Delivery Policy (free text)",
-    "deliveryPolicyPlaceholder": "e.g. Delivery on Mon/Wed/Fri. Free delivery above RM100. Order 24 hours in advance."
+    "deliveryPolicy": "Delivery note (days, areas — not used in calculation)",
+    "deliveryPolicyPlaceholder": "e.g. Delivery on Mon/Wed/Fri. Free delivery above RM100. Order 24 hours in advance.",
+    "freeDeliveryAbove": "Free delivery at or above this amount",
+    "deliveryFee": "Delivery fee below that (fixed)"
   },
   "extProduct": {
     "baseQuantity": "Amount per package",

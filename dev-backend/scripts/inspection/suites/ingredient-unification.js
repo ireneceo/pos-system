@@ -277,12 +277,17 @@ module.exports = {
       costDrift === 0,
       costDrift ? `${costDrift}건 — 레시피가 읽는 값이 원본과 다르다` : '', true);
 
-    // ING-UNI-020 (비차단·목록): 비활성 재료를 가리키는 레시피 줄.
-    //   병합이 줄을 옮기기 전에 거울을 끄면 이런 줄이 생긴다 — 원가·차감이 조용히 0 이 된다.
+    // ING-UNI-020 (**차단** · 2026-09-17 Fable 판정 ① 로 승격): 살아있는 레시피가 꺼진 재료를 가리키는 줄.
+    //   ⚠ 옛 주석은 «원가·차감이 조용히 0 이 된다» 였는데 **코드 실측 결과 사실이 아니다** — 차감·원가
+    //   어디에도 is_active 필터가 없다(운영 Tteokbokki 총원가 4.22 에 꺼진 떡 1.82 가 그대로 들어 있었다).
+    //   진짜 피해는 그 재료가 **목록·발주 카탈로그·저재고에서 사라져 «살 수 없게»** 되는 것이다.
+    //   생기는 길: Stock Item 을 끄면 거울도 꺼진다(stockItemMirror MIRRORED_FIELDS) — 그 문은 이제
+    //   라우트 가드(IN_USE_BY_RECIPES 409)가 막는다. 여기서는 데이터가 다시 그렇게 됐는지를 본다.
     const deadRefs = await cnt(`SELECT COUNT(*) c FROM recipe_ingredients ri
+      JOIN recipes r ON r.id = ri.recipe_id AND r.is_active = 1
       JOIN ingredients i ON i.id = ri.ingredient_id WHERE i.is_active = 0`);
-    add('ING-UNI-020 비활성 재료를 가리키는 레시피 줄 0',
-      deadRefs === 0, deadRefs ? `${deadRefs}줄 — 원가·차감이 조용히 0 이 된다` : '');
+    add('ING-UNI-020 살아있는 레시피가 꺼진 재료를 가리키는 줄 0',
+      deadRefs === 0, deadRefs ? `${deadRefs}줄 — 그 재료가 목록·발주에서 사라져 살 수 없다` : '');
 
     // ── 2026-09-07 정리분 재발 감시 (Fable 판정 · Irene 승인) ────────────────────
     //   아래 셋은 `migrate-dedupe-2026-09.js` 가 지운 모양이 **다시 생기는지**를 본다.
@@ -360,6 +365,82 @@ module.exports = {
       driftRows.length
         ? `${driftRows.length}행 / 비교 ${compared}행 — 레시피 원가가 그만큼 틀린다. 예: ${driftRows.slice(0, 5).join(' · ')}`
         : `비교 ${compared}행`);
+
+    // ING-UNI-026 (차단 · Fable 은 «006» 이라 불렀지만 그 번호는 이미 쓰고 있어 다음 빈 번호로 잡았다): 매장이 보는 재료 카테고리 목록에 **같은 이름이 두 번** 나오지 않을 것.
+    //   매장 화면은 «매장 소유» + «브랜드 소유(읽기 전용)» 두 벌을 겹쳐 그린다. 2026-07-05 에 폐기된
+    //   프로덕트→재료 미러가 브랜드 쪽 사본을 남겨 같은 이름이 두 줄로 보였다(Irene 「이중으로 생기네」).
+    //   정본은 매장 소유 한 벌(2026-09-17 Fable 판정 ⑧) — 브랜드 소유 재료 카테고리는 쓰기 중단.
+    //   세는 단위: 매장 × 이름 쌍(건).
+    const NORM_IC = NORM.replace(/TRIM\(name\)/, 'TRIM(ic.name)');
+    const dupCatRows = await q(`
+      SELECT r.id rid, r.name rname, ${NORM_IC} nm, COUNT(*) c,
+             SUM(ic.created_at >= '${CUTOFF}') has_new
+        FROM restaurants r
+        JOIN ingredient_categories ic
+          ON ic.is_active = 1
+         AND ( (ic.owner_type = 'restaurant' AND ic.restaurant_id = r.id)
+            OR (ic.owner_type = 'brand' AND ic.brand_id = r.brand_id) )
+       WHERE TRIM(ic.name) <> ''
+       GROUP BY r.id, r.name, ${NORM_IC}
+      HAVING COUNT(*) > 1`);
+    //   per-check baseline 으로 뮤트하면 **새 중복까지 통과**한다(이름 단위라서) — 이 파일의 -001/-001L 과
+    //   같은 방식으로 나눈다: 차단은 «CUTOFF 이후에 만들어진 카테고리가 낀 중복»만, 옛 부채는 목록으로.
+    const newDupCatRows = dupCatRows.filter(r => Number(r.has_new) > 0);
+    add(`ING-UNI-026 매장이 보는 재료 카테고리 이름 중복 0 (>=${CUTOFF} 생성분)`,
+      newDupCatRows.length === 0,
+      newDupCatRows.length
+        ? `${newDupCatRows.length}쌍 — 두 벌을 만드는 길이 또 열렸는지 확인. 예: `
+          + newDupCatRows.slice(0, 5).map(r => `매장 ${r.rid}(${String(r.rname).slice(0, 14)}) «${r.nm}» ${r.c}개`).join(' · ')
+        : '');
+    add(`ING-UNI-026L 매장이 보는 재료 카테고리 이름 중복 (전수 · 목록)`,
+      dupCatRows.length === 0,
+      dupCatRows.length
+        ? `${dupCatRows.length}쌍 — 합치기 스크립트(scripts/migrate-ingredient-category-merge-20260917.js) 대상. 예: `
+          + dupCatRows.slice(0, 5).map(r => `매장 ${r.rid}(${String(r.rname).slice(0, 14)}) «${r.nm}» ${r.c}개`).join(' · ')
+        : '', true);
+
+    // ── 준비된 재고(1차 가공) 불변식 (2026-09-17 Fable 판정) ────────────────────────
+    //   Fable 은 017·018·019 라 불렀으나 그 번호는 이 파일에서 이미 쓰고 있어 다음 빈 번호로 잡았다.
+    //   세는 단위: 행(건).
+
+    // 출처는 **셋 중 정확히 하나** — 사는 것(Stock Item) · 파는 것(브랜드 프로덕트) · 만드는 것(레시피)
+    const multiSrc = await cnt(`SELECT COUNT(*) c FROM ingredients
+      WHERE is_active = 1 AND source_recipe_id IS NOT NULL
+        AND (source_product_ingredient_id IS NOT NULL OR source_brand_product_id IS NOT NULL)`);
+    add('ING-UNI-027 준비 재료가 다른 출처를 겸하지 않음 (출처는 셋 중 하나)',
+      multiSrc === 0,
+      multiSrc ? `${multiSrc}건 — 같은 물건이 «사는 것»이면서 «만드는 것»이 됐다. 원가·발주가 갈린다` : '');
+
+    // 준비 재료의 단위는 레시피 수율 단위를 따른다(사람이 재료 쪽에서 못 고침 — 라우트 403)
+    const unitDrift = await q(`SELECT i.id, i.name, i.unit, r.yield_unit
+        FROM ingredients i JOIN recipes r ON r.id = i.source_recipe_id
+       WHERE i.is_active = 1 AND i.unit <> r.yield_unit`);
+    add('ING-UNI-028 준비 재료 단위 = 레시피 수율 단위',
+      unitDrift.length === 0,
+      unitDrift.length
+        ? `${unitDrift.length}건 — 재고 숫자의 뜻이 레시피와 달라진다. 예: `
+          + unitDrift.slice(0, 5).map(r => `#${r.id} ${String(r.name).slice(0, 18)} ${r.unit}≠${r.yield_unit}`).join(' · ')
+        : '');
+
+    // 준비 레시피는 메뉴에 붙을 수 없다 — 붙으면 «만들기» 에서 한 번, 팔릴 때 또 한 번 빠진다
+    const prepOnMenu = await q(`SELECT p.id, p.name, p.recipe_id
+        FROM products p JOIN ingredients i ON i.source_recipe_id = p.recipe_id AND i.is_active = 1
+       WHERE p.recipe_id IS NOT NULL`);
+    add('ING-UNI-029 준비 레시피가 메뉴에 연결되지 않음 (이중 차감 방지)',
+      prepOnMenu.length === 0,
+      prepOnMenu.length
+        ? `${prepOnMenu.length}건 — 원재료가 두 번 빠진다. 예: `
+          + prepOnMenu.slice(0, 5).map(r => `상품 ${r.id} ${String(r.name).slice(0, 18)}`).join(' · ')
+        : '');
+
+    // 준비 레시피 줄에 또 다른 준비 재료가 들어가면 중첩(순환) 이 된다 — 1단계로 제한
+    const nested = await cnt(`SELECT COUNT(*) c
+        FROM recipe_ingredients ri
+        JOIN ingredients used ON used.id = ri.ingredient_id AND used.source_recipe_id IS NOT NULL
+        JOIN ingredients made ON made.source_recipe_id = ri.recipe_id AND made.is_active = 1`);
+    add('ING-UNI-030 준비 레시피 안에 다른 준비 재료 없음 (중첩 금지)',
+      nested === 0,
+      nested ? `${nested}줄 — 차감이 몇 단계 내려가야 하는지가 정해지지 않는다` : '');
 
     // ── 옛 부채 목록 (비차단) — CUTOFF **이전** 전수 ─────────────────────────────
     //   차단하지 않는 이유는 위 CUTOFF 주석에 있다. 건수가 줄어드는 것이 정리의 진행 지표다.

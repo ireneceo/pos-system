@@ -148,6 +148,11 @@
       "address": "地址",
       "banking": "银行信息",
       "branding": "品牌"
+    },
+    "delivery": {
+      "title": "配送条件",
+      "freeAbove": "达到或超过此金额免运费",
+      "fee": "未达金额时的配送费（固定）"
     }
   },
   "invoices": {

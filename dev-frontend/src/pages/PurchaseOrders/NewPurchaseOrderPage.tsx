@@ -26,6 +26,8 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAuthToken } from '../../utils/auth';
+import { computeDeliveryFee, amountToFreeDelivery } from '../../utils/deliveryFee';
+import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
 import SupplierOptionModal, { SupplierOptionGroup, SelectedOption } from './SupplierOptionModal';
 import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
@@ -41,6 +43,10 @@ interface SellerOpt {
   seller_type: SellerType;
   seller_entity_id: number | null;
   seller_name: string;
+  // 배송 조건 (2026-09-17) — 판매자별 두 숫자. null = 미설정(«무료» 아님)
+  seller_min_order_amount?: number | null;
+  seller_delivery_fee?: number | null;
+  seller_currency?: string | null;
   unit_price: number;
   unit_conversion: number;
   min_order_quantity: number;
@@ -1857,13 +1863,37 @@ const NewPurchaseOrderPage: React.FC = () => {
       if (ex) { ex.items.push({ row, seller }); ex.subtotal += lineTotal; }
       else map.set(k, {
         key: k, seller_type: seller.seller_type, seller_entity_id: seller.seller_entity_id,
-        seller_name: seller.seller_name, items: [{ row, seller }], subtotal: lineTotal
+        seller_name: seller.seller_name, items: [{ row, seller }], subtotal: lineTotal,
+        // 배송 조건은 판매자 것이라 묶음 단위로 한 번만 들고 있으면 된다 (2026-09-17)
+        terms: {
+          min_order_amount: seller.seller_min_order_amount ?? null,
+          delivery_fee: seller.seller_delivery_fee ?? null,
+          currency: seller.seller_currency ?? null
+        }
       });
     }
-    return Array.from(map.values());
+    // 배송비는 **품목 합계가 정해진 뒤** 얹는다(Irene 지정). 저장될 때 진실은 서버 계산값이다.
+    return Array.from(map.values()).map(g => {
+      // 통화가 다르면 서버가 배송비를 0 으로 저장한다 — 화면도 같은 분기를 태워 어긋나지 않게.
+      //   구매자 통화는 이 화면에 없으므로, 담은 줄들이 알려 주는 판매자 통화를 기준으로 본다:
+      //   한 발주 안에서 판매자 통화가 서로 다르면 서버가 규칙을 적용하지 않는다.
+      const { fee, rule } = computeDeliveryFee(g.subtotal, g.terms, { orderCurrency: cartCurrency });
+      return { ...g, delivery_fee: fee, delivery_rule: rule,
+        to_free: amountToFreeDelivery(g.subtotal, g.terms), total: g.subtotal + fee };
+    });
   }, [cart]);
 
-  const grandTotal = useMemo(() => groups.reduce((s, g) => s + g.subtotal, 0), [groups]);
+  // 담긴 줄의 판매자 통화가 한 가지면 그것이 이 발주의 통화다(서버가 쓰는 값과 같은 기준).
+  //   여러 가지면 통화 판정이 성립하지 않으므로 null — computeDeliveryFee 가 규칙을 적용하지 않는다.
+  const cartCurrency = useMemo(() => {
+    const set = new Set(
+      cart.map(r => (r.sellers || []).find(x => x.seller_product_id === r.seller_product_id)?.seller_currency)
+        .filter(Boolean) as string[]
+    );
+    return set.size === 1 ? [...set][0] : null;
+  }, [cart]);
+
+  const grandTotal = useMemo(() => groups.reduce((s, g) => s + g.subtotal + (g.delivery_fee || 0), 0), [groups]);
 
   const submit = async () => {
     if (cart.length === 0) {
@@ -2458,7 +2488,33 @@ const NewPurchaseOrderPage: React.FC = () => {
                     textTransform: 'uppercase', letterSpacing: 0.4
                   }}>
                     <span>{g.seller_name}</span>
-                    <span style={{ color: '#635BFF' }}>{g.subtotal.toFixed(2)}</span>
+                    <span style={{ color: '#635BFF' }}>{g.total.toFixed(2)}</span>
+                  </div>
+                  {/* 품목 합계 / 배송비 / 총액 — 한 줄만 보여 주면 «왜 이 금액인가» 를 알 수 없다.
+                      배송비가 없거나 미설정이어도 줄을 지우지 않는다(빈 줄이 «무료»로 읽히면 안 된다). */}
+                  <div style={{ display: 'grid', gap: 2, padding: '0 8px 6px', fontSize: 11, color: '#475569' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{t('newPo.itemsSubtotal', '품목 합계')}</span>
+                      <span>{g.subtotal.toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>
+                        {t('newPo.deliveryFee', '배송비')}
+                        <span style={{ color: '#6B7280', marginLeft: 6 }}>
+                          {g.delivery_rule === 'unset'
+                            ? <span title={t('newPo.deliveryUnsetHint', '이 판매자가 배송 조건을 아직 적지 않았습니다. 무료라는 뜻이 아니라, 실제 배송비는 청구서에서 확인됩니다') as string}>
+                                {t('newPo.deliveryUnset', '판매자 미설정')}
+                              </span>
+                            : <DeliveryTermsText terms={g.terms} />}
+                        </span>
+                      </span>
+                      <span>{g.delivery_fee.toFixed(2)}</span>
+                    </div>
+                    {g.to_free != null && (
+                      <div style={{ color: '#B45309' }}>
+                        {t('newPo.deliveryToFree', '{{amount}} 더 담으면 배송비 무료', { amount: g.to_free.toFixed(2) })}
+                      </div>
+                    )}
                   </div>
                   {g.items.map(({ row, seller }) => {
                     const effectivePrice = row.adjusted_unit_price ?? seller.unit_price;

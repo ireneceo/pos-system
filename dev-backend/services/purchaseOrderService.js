@@ -279,6 +279,19 @@ async function createTradeInvoice(po) {
     });
   }
 
+  // 배송비는 **품목 단가에 섞지 않는다** — 세금이 사는 곳과 같은 자리(header.additional_charges)에
+  //   별도 줄로 앉힌다 (2026-09-17 Fable 판정 ⑦). finalizeInvoice 가 총액을
+  //   «소계 − 할인 + Σ additional_charges» 로 다시 계산하므로 **finalize 전에** 넣어야 한다.
+  //   대조(reconcileInvoiceSync)는 나중에 공급업체가 실제 청구한 배송비로 이 줄을 덮어쓴다.
+  const poDeliveryFee = Number(fullPo.delivery_fee || 0);
+  if (poDeliveryFee > 0) {
+    const charges = Array.isArray(invoice.additional_charges) ? [...invoice.additional_charges] : [];
+    if (!charges.some(c => c && String(c.name).toLowerCase() === 'delivery')) {
+      charges.push({ name: 'Delivery', amount: poDeliveryFee });
+      await invoice.update({ additional_charges: charges });
+    }
+  }
+
   // Finalize (recompute totals using existing helper)
   try { await finalizeInvoice(invoice.id); } catch (e) {
     console.error('[purchaseOrderService] finalizeInvoice error:', e.message);

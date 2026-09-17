@@ -1,4 +1,9 @@
 {
+  "ingredient-unification": [
+    "ING-UNI-005 활성 프로덕트는 재고아이템(direct) 또는 레시피에 연결됨",
+    "ING-UNI-006 활성 매장 메뉴는 재고아이템(direct) 또는 레시피에 연결됨",
+    "ING-UNI-010 재료 0줄 레시피에 연결된 활성 프로덕트/메뉴 0"
+  ],
   "referential": [
     "S-REF-006 유저 매장 스코프 참조 유효 (restaurant_id)"
   ],
@@ -8,7 +13,8 @@
     "R-SC-007 #41[supplier] kg↔tray conv=1.0000",
     "R-SC-007 #42[supplier] kg↔l conv=1.0000",
     "R-SC-007 #43[supplier] g↔l conv=1.0000",
-    "R-SC-007 #74[supplier] kg↔l conv=3.0000"
+    "R-SC-007 #124[brand] piece↔cup conv=1.0000",
+    "R-SC-007 #137[supplier] piece↔l conv=1.0000"
   ],
   "_labels": {
     "_note": "인스펙션 baseline 항목의 상태 라벨. 러너는 이 키를 읽지 않는다(suite 이름이 아니므로 무해). baseline 에 있다는 것은 '옳다'가 아니라 '기존 부채로 추적 중'이라는 뜻이다 — design-guard·timezone 과 동일 모델(기존 부채=baseline, 게이트는 신규 유입만 차단). ⚠ 이 키는 링크 id 를 포함하므로 **환경마다 다르다** — dev baseline 은 dev 데이터 기준. 배포 게이트는 dev 에서 도므로 dev 기준이 맞다.",
@@ -37,10 +43,5 @@
       },
       "갱신일": "2026-08-30 (검사기 모드 인지형 개정 + 차원 구분으로 키 변경)"
     }
-  },
-  "ingredient-unification": [
-    "ING-UNI-005 활성 프로덕트는 재고아이템(direct) 또는 레시피에 연결됨",
-    "ING-UNI-006 활성 매장 메뉴는 재고아이템(direct) 또는 레시피에 연결됨",
-    "ING-UNI-010 재료 0줄 레시피에 연결된 활성 프로덕트/메뉴 0"
-  ]
+  }
 }

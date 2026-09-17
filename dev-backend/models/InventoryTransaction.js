@@ -45,9 +45,12 @@ InventoryTransaction.init({
     comment: '브랜드 프로덕트(brand_products.id) 자체 재고 이동'
   },
   transaction_type: {
+    // ⚠ ENUM 은 expand-only — 목록을 통째로 갈아끼우지 말 것(마이그는 lib/enumExpand 사용).
+    //   'production' = 준비된 재고를 «만들기» 한 기록 (2026-09-17 Fable 판정). 원재료 쪽은
+    //   같은 트랜잭션에서 음수로, 준비 재료 쪽은 양수로 남는다.
     type: DataTypes.ENUM(
       'initial', 'purchase', 'order_deduct', 'stock_take', 'waste', 'adjustment',
-      'return_in', 'return_out'
+      'return_in', 'return_out', 'production'
     ),
     allowNull: false
   },

@@ -97,12 +97,15 @@ async function applyRetro({ mappingId, buyer, newPrice, excludePoId, actor, note
     }
 
     // 발주 헤더 금액을 라인 합으로 다시 맞춘다. 안 하면 목록 금액과 라인이 갈린다.
+    // ⚠ 배송비를 더하는 것을 빠뜨리면 **소급 반영 순간 총액에서 배송비가 사라진다**.
+    //   배송비는 주문 때 합의된 금액이므로 소급 단가 반영으로 다시 계산하지 않는다(동결).
     for (const poId of touchedOrders) {
       await sequelize.query(
         `UPDATE purchase_orders po
             SET subtotal = (SELECT COALESCE(SUM(line_total),0) FROM purchase_order_items WHERE purchase_order_id = po.id),
                 total_amount = (SELECT COALESCE(SUM(line_total),0) FROM purchase_order_items WHERE purchase_order_id = po.id)
                                + COALESCE(po.tax_amount, 0)
+                               + COALESCE(po.delivery_fee, 0)
           WHERE po.id = :id`,
         { replacements: { id: poId }, transaction: t });
     }
@@ -161,6 +164,7 @@ async function revertRetro({ batchId, actor }) {
             SET subtotal = (SELECT COALESCE(SUM(line_total),0) FROM purchase_order_items WHERE purchase_order_id = po.id),
                 total_amount = (SELECT COALESCE(SUM(line_total),0) FROM purchase_order_items WHERE purchase_order_id = po.id)
                                + COALESCE(po.tax_amount, 0)
+                               + COALESCE(po.delivery_fee, 0)
           WHERE po.id = :id`,
         { replacements: { id: poId }, transaction: t });
     }

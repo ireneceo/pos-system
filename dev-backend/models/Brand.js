@@ -116,6 +116,17 @@ Brand.init({
     allowNull: false,
     comment: 'Default currency for brand restaurants (MYR, USD, SGD, KRW, THB)'
   },
+
+  // 배송 조건 두 칸 (2026-09-17 Fable 판정 ⑦) — 공급업체와 **같은 이름·같은 의미**.
+  //   판매자(공급업체·브랜드·푸드코트) 해석은 utils/sellerNames.js resolveSellers 한 곳에서만 한다.
+  min_order_amount: {
+    type: DataTypes.DECIMAL(10, 2), allowNull: true,
+    comment: '무료배송 기준 금액 — 이 금액 이상이면 배송비 0 (currency 단위)'
+  },
+  delivery_fee: {
+    type: DataTypes.DECIMAL(10, 2), allowNull: true,
+    comment: '기준 미만일 때 고정 배송비. null = 미설정(규칙 미적용)'
+  },
   // 주문용 상품 링크의 열쇠 (docs/BUYER_FREE_TIER_DESIGN.md §5-6).
   // 공급업체·브랜드가 **같은 칸 이름·같은 규칙**을 쓴다 — 판매자 종류마다 다른 개념을 만들지 않는다.
   // 링크는 `/shop/:slug` 하나이므로 두 표를 가로질러 유일해야 한다(utils/shopSlug.js 가 보장).

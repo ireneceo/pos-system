@@ -699,7 +699,11 @@ router.get('/:id/payment-settings', authenticateToken, async (req, res) => {
       data: {
         payment_settings: brand.payment_settings,
         invoice_settings: brand.invoice_settings,
-        supported_currencies: brand.supported_currencies
+        supported_currencies: brand.supported_currencies,
+        // 배송 조건 (2026-09-17 Fable 판정 ⑦) — 구매자가 이 판매자에게 발주할 때 붙는 배송비 규칙
+        min_order_amount: brand.min_order_amount,
+        delivery_fee: brand.delivery_fee,
+        currency: brand.currency
       }
     });
   } catch (error) {
@@ -726,6 +730,18 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
     }
 
     const { payment_settings, invoice_settings, supported_currencies } = req.body;
+
+    // 배송 조건 두 칸 (2026-09-17 Fable 판정 ⑦) — 이 판매자에게 발주할 때 자동으로 붙는 배송비 규칙.
+    //   빈 값 = 미설정(null) = 규칙 미적용. 음수는 0 으로 막는다. 공급업체 칸과 **같은 이름·같은 의미**.
+    if (req.body.min_order_amount !== undefined) {
+      const raw = req.body.min_order_amount;
+      brand.min_order_amount = (raw === null || raw === '') ? null : Math.max(0, parseFloat(raw) || 0);
+    }
+    if (req.body.delivery_fee !== undefined) {
+      const raw = req.body.delivery_fee;
+      brand.delivery_fee = (raw === null || raw === '') ? null : Math.max(0, parseFloat(raw) || 0);
+    }
+
 
     // Validate payment_settings structure if provided
     if (payment_settings) {
@@ -775,7 +791,11 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
       data: {
         payment_settings: brand.payment_settings,
         invoice_settings: brand.invoice_settings,
-        supported_currencies: brand.supported_currencies
+        supported_currencies: brand.supported_currencies,
+        // 배송 조건 (2026-09-17 Fable 판정 ⑦) — 구매자가 이 판매자에게 발주할 때 붙는 배송비 규칙
+        min_order_amount: brand.min_order_amount,
+        delivery_fee: brand.delivery_fee,
+        currency: brand.currency
       }
     });
   } catch (error) {

@@ -146,6 +146,18 @@ async function resolveMenuDirectLink(body, current, restaurantId) {
         message: 'Stock item not found, or it belongs to another store.' } };
     }
   }
+
+  // 준비 레시피(결과물을 재료로 쓰는 레시피)는 **메뉴에 붙일 수 없다** (2026-09-17 Fable 판정 불변식 3).
+  //   붙이면 팔릴 때 원재료가 또 빠져 «만들기» 에서 이미 뺀 것과 이중 차감이 된다.
+  //   준비 재료 자체를 팔려면 재료 화면의 «상품으로 등록» 을 쓴다.
+  if (nextRecipe) {
+    const { getPrepIngredient } = require('../services/prepIngredientSync');
+    const prep = await getPrepIngredient(nextRecipe);
+    if (prep) {
+      return { ok: false, status: 400, body: { success: false, code: 'PREP_RECIPE_NOT_FOR_MENU',
+        message: `«${prep.name}» 은(는) 준비 재료를 만드는 레시피라 메뉴에 연결할 수 없습니다. 메뉴 레시피에서 그 준비 재료를 재료로 고르세요.` } };
+    }
+  }
   return { ok: true, patch };
 }
 

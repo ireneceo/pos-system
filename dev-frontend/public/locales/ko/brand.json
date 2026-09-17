@@ -821,6 +821,21 @@
     "linkedRecipe": "연결된 레시피",
     "noLinkedRecipe": "레시피 없음",
     "linkedRecipeHint": "연결된 레시피: {{name}} — 푸시하면 가맹점 메뉴도 이 레시피를 씁니다",
-    "noLinkedRecipeHint": "연결된 레시피가 없습니다 — 이 메뉴는 재고가 차감되지 않습니다"
+    "noLinkedRecipeHint": "연결된 레시피가 없습니다 — 이 메뉴는 재고가 차감되지 않습니다",
+    "tabStoreOwn": "매장 자체 메뉴 (보기 전용)",
+    "storeOwnTitle": "매장이 스스로 만든 메뉴",
+    "storeOwnBody": "메뉴의 주인은 매장입니다. 이 목록은 보기 전용이고, 추가·수정·삭제는 매장에서 합니다. 브랜드 메뉴와 달라도 괜찮습니다.",
+    "storeOwnEmpty": "매장이 따로 만든 메뉴가 없습니다.",
+    "storeOwnCount": "{{count}}개",
+    "storeOwnOnSale": "판매 중",
+    "storeOwnOff": "판매 안 함",
+    "ownershipNote": "이 목록은 브랜드의 메뉴 원본입니다. 매장에 내려보내야 매장에 생기고, 매장은 자기 메뉴를 따로 가질 수 있습니다.",
+    "originStore": "{{name}} 가 만든 것"
+  },
+  "brandPaymentSettingsPage": {
+    "deliveryTerms": "매장 발주 배송 조건",
+    "deliveryTermsDesc": "매장이 이 브랜드에 발주할 때 배송비가 자동으로 붙습니다. 비워 두면 배송비가 나오지 않습니다.",
+    "freeAbove": "이 금액 이상 주문하면 무료배송",
+    "deliveryFee": "그 미만이면 배송비 (고정)"
   }
 }

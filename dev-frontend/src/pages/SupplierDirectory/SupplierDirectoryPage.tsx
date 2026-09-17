@@ -6,6 +6,7 @@ import { Container, Header, Title, Content } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
+import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
 import Modal, { ModalButton, FormRow, FormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
 import AddressFields from '../../components/Form/AddressFields';
 import { Address } from '../../utils/formatAddress';
@@ -338,7 +339,7 @@ const SupplierDirectoryPage: React.FC = () => {
   const [showExternalModal, setShowExternalModal] = useState(false);
   const [externalForm, setExternalForm] = useState({
     name: '', phone: '', email: '', address: '', city: '', state: '', country: 'MY',
-    min_order_amount: '', delivery_policy: ''
+    min_order_amount: '', delivery_fee: '', delivery_policy: ''
   });
   const [externalSubmitting, setExternalSubmitting] = useState(false);
   const [externalError, setExternalError] = useState<string | null>(null);
@@ -357,7 +358,9 @@ const SupplierDirectoryPage: React.FC = () => {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           ...externalForm,
-          min_order_amount: externalForm.min_order_amount ? parseFloat(externalForm.min_order_amount) : null
+          min_order_amount: externalForm.min_order_amount ? parseFloat(externalForm.min_order_amount) : null,
+          // 배송비 — 빈 칸은 «미설정»(null). 0 은 «무료배송» 이라는 뜻이라 서로 다르다. (2026-09-17)
+          delivery_fee: externalForm.delivery_fee === '' ? null : parseFloat(externalForm.delivery_fee)
         })
       });
       const j = await res.json();
@@ -366,7 +369,7 @@ const SupplierDirectoryPage: React.FC = () => {
         return;
       }
       setShowExternalModal(false);
-      setExternalForm({ name: '', phone: '', email: '', address: '', city: '', state: '', country: 'MY', min_order_amount: '', delivery_policy: '' });
+      setExternalForm({ name: '', phone: '', email: '', address: '', city: '', state: '', country: 'MY', min_order_amount: '', delivery_fee: '', delivery_policy: '' });
       fetchDirectory();
     } catch (e: any) {
       setExternalError(e?.message || 'Network error');
@@ -508,17 +511,38 @@ const SupplierDirectoryPage: React.FC = () => {
             />
           </FormGroup>
           <FormGroup>
-            <FormLabel>{t('externalSupplier.minOrder', 'Minimum Order Amount')}</FormLabel>
+            {/* 2026-09-17 Fable 판정 ⑦ — 이 칸의 뜻을 «최소 주문 금액»에서 «무료배송 기준»으로 고정했다.
+                운영 42곳 전부 비어 있어 옮길 값이 없었다. */}
+            <FormLabel>{t('externalSupplier.freeDeliveryAbove', '이 금액 이상 주문하면 무료배송')}</FormLabel>
             <FormInput
               type="number"
               min="0"
               step="0.01"
               value={externalForm.min_order_amount}
               onChange={(e) => setExternalForm(p => ({ ...p, min_order_amount: e.target.value }))}
-              placeholder="100"
+              placeholder="300"
+            />
+          </FormGroup>
+          <FormGroup>
+            <FormLabel>{t('externalSupplier.deliveryFee', '그 미만이면 배송비 (고정)')}</FormLabel>
+            <FormInput
+              type="number"
+              min="0"
+              step="0.01"
+              value={externalForm.delivery_fee}
+              onChange={(e) => setExternalForm(p => ({ ...p, delivery_fee: e.target.value }))}
+              placeholder="15"
             />
           </FormGroup>
         </FormRow>
+        {/* 입력한 값이 발주 화면에서 어떻게 보이는지 한 문장으로 — 숫자 두 개만 보고는 알 수 없다. */}
+        <div style={{ padding: '8px 12px', background: '#F8FAFC', border: '1px solid #E6EBF1',
+                      borderRadius: 6, fontSize: 12, color: '#4B5563' }}>
+          <DeliveryTermsText terms={{
+            min_order_amount: externalForm.min_order_amount === '' ? null : Number(externalForm.min_order_amount),
+            delivery_fee: externalForm.delivery_fee === '' ? null : Number(externalForm.delivery_fee)
+          }} />
+        </div>
         <AddressFields
           value={{
             address: externalForm.address,
@@ -536,7 +560,7 @@ const SupplierDirectoryPage: React.FC = () => {
           defaultCountry="MY"
         />
         <FormGroup>
-          <FormLabel>{t('externalSupplier.deliveryPolicy', 'Delivery Policy (free text)')}</FormLabel>
+          <FormLabel>{t('externalSupplier.deliveryPolicy', '배송 메모 (요일·지역 등 — 계산에는 쓰지 않습니다)')}</FormLabel>
           <FormTextArea
             rows={3}
             value={externalForm.delivery_policy}

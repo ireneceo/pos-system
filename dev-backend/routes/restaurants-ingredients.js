@@ -131,7 +131,7 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
       // ⚠ 2026-08-28 Irene: 거래처가 "with MIN"(브랜드명)으로 떠서 헷갈렸다 — 여기서 브랜드 테이블의
       //   `name` 만 직접 읽고 `company_name`(GIT Consulting)을 안 봤기 때문이다.
       //   각자 조회를 짜면 이런 어긋남이 또 난다. 단일소스 경유로 고정한다.
-      const { resolveSellers, getSellerName } = require('../utils/sellerNames');
+      const { resolveSellers, getSellerName, getSeller } = require('../utils/sellerNames');
       const sellerResolved = await resolveSellers(
         mappings.map(m => ({ seller_type: m.seller_type, seller_entity_id: m.seller_entity_id }))
       );
@@ -170,6 +170,23 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
           seller_type: m.seller_type,
           seller_entity_id: m.seller_entity_id,
           seller_name: sellerName,
+          // 배송 조건 (2026-09-17 Fable 판정 ⑦) — 담기 화면이 판매자 묶음마다 배송비를 즉시 보여준다.
+          //   값은 resolveSellers 가 준 것 그대로다(따로 조회하지 않는다 — 규칙이 갈라지지 않게).
+          //   delivery_fee 가 null 이면 «미설정» — 무료가 아니다.
+          seller_min_order_amount: (() => {
+            const row = getSeller(sellerResolved, m.seller_type, m.seller_entity_id);
+            return row && row.min_order_amount != null ? row.min_order_amount : null;
+          })(),
+          seller_delivery_fee: (() => {
+            const row = getSeller(sellerResolved, m.seller_type, m.seller_entity_id);
+            return row && row.delivery_fee != null ? row.delivery_fee : null;
+          })(),
+          // 판매자 통화 — 발주 통화와 다르면 서버가 배송비 규칙을 적용하지 않는다(0 저장).
+          //   화면이 통화를 따로 조회하면 규칙이 두 벌이 되므로 여기서 같이 내려준다. (2026-09-17 게이트 B-2)
+          seller_currency: (() => {
+            const row = getSeller(sellerResolved, m.seller_type, m.seller_entity_id);
+            return row && row.currency ? row.currency : null;
+          })(),
           seller_product_name: spInfo.name || null,
           seller_product_sku: spInfo.sku || null,
           // 규격·주문방식 — 구매 화면의 "5kg/포대" 표시와 kg 소수 입력을 결정한다.
@@ -690,6 +707,23 @@ router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkR
     //   파생시킨다 — 목록이 늘거나 줄면 잠금도 같이 움직인다.
     //   카테고리·최소치처럼 **동기화하지 않는 칸은 열어 둔다**(매장이 자기 행을 분류할 수 있어야 한다).
     //   매장별 원가 조정은 `/restaurants/:id/ingredient-costs` (restaurant_ingredient_costs) 가 맡는다.
+    // ⛔ 준비 재료(출처 = 레시피)의 이름·단위는 **레시피가 정한다** (2026-09-17 Fable 판정 불변식 2).
+    //   재료 쪽에서 고치면 레시피와 갈라져 «어느 쪽이 맞나» 가 생긴다. 레시피를 고치면 따라온다.
+    //   분류·최소치·이미지처럼 레시피가 안 정하는 칸은 열어 둔다.
+    if (ingredient.source_recipe_id) {
+      const PREP_LOCKED = ['name', 'unit', 'base_quantity', 'package_unit', 'package_quantity'];
+      const locked = PREP_LOCKED.filter((f) => req.body[f] !== undefined);
+      if (locked.length) {
+        return res.status(403).json({
+          success: false,
+          error: { code: 'PREP_INGREDIENT_READONLY',
+            message: `준비 재료의 ${locked.join(', ')} 은(는) 레시피가 정합니다. 레시피에서 고쳐 주세요.` },
+          message: `준비 재료의 ${locked.join(', ')} 은(는) 레시피가 정합니다. 레시피에서 고쳐 주세요.`,
+          locked_fields: locked
+        });
+      }
+    }
+
     if (ingredient.source_product_ingredient_id || ingredient.source_brand_product_id) {
       const { MIRRORED_FIELDS } = require('../services/stockItemMirror');
       const locked = MIRRORED_FIELDS.filter((f) => req.body[f] !== undefined);

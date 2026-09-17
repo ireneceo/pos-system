@@ -157,6 +157,17 @@ const RecipeCategoryBadge = styled.div`
   letter-spacing: 0.5px;
 `;
 
+const PrepBadge = styled.span`
+  display: inline-block;
+  padding: 4px 8px;
+  background: #EEF2FF;
+  color: #3730A3;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 8px;
+`;
+
 const BrandBadge = styled.span`
   display: inline-block;
   padding: 4px 8px;
@@ -515,6 +526,70 @@ const SectionTitle = styled.h3`
   gap: 8px;
 `;
 
+// 준비된 재고 스위치 (2026-09-17) — 토글 모양은 설정 화면(ReservationSettingsTab)과 같은 계열,
+//   primary #635BFF. 새 팔레트를 만들지 않는다.
+const PREP_STOCK_UNITS = ['kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'];
+
+const PrepSwitchRow = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #F8FAFC;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+`;
+
+const PrepToggle = styled.label`
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+  margin-top: 2px;
+`;
+
+const PrepToggleInput = styled.input`
+  opacity: 0;
+  width: 0;
+  height: 0;
+  &:checked + span { background-color: #635BFF; }
+  &:checked + span:before { transform: translateX(20px); }
+`;
+
+const PrepToggleSlider = styled.span`
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #CBD5E0;
+  transition: .3s;
+  border-radius: 24px;
+  &:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+  }
+`;
+
+const PrepSwitchLabel = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+`;
+
+const PrepSwitchHint = styled.div`
+  font-size: 13px;
+  color: #4B5563;
+  margin-top: 4px;
+  line-height: 1.5;
+`;
+
 const IngredientsList = styled.div`
   display: flex;
   flex-direction: column;
@@ -828,7 +903,9 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     instructions: '',
     instructions_summary: '',
     instructions_detail: '',
-    suggested_price: ''
+    suggested_price: '',
+    // 준비된 재고 스위치 (2026-09-17) — 켜면 저장 시 재료 목록에 이 레시피의 결과물이 생긴다.
+    is_prep_ingredient: false
   });
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
@@ -1245,6 +1322,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         image: recipe.image || '',
         yield_amount: recipe.yield_amount?.toString() || '1',
         yield_unit: recipe.yield_unit || 'portion',
+        is_prep_ingredient: !!(recipe as any).is_prep_ingredient,
         prep_time: recipe.prep_time?.toString() || '',
         cook_time: recipe.cook_time?.toString() || '',
         instructions: recipe.instructions || '',
@@ -1275,6 +1353,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         image: '',
         yield_amount: '1',
         yield_unit: 'portion',
+        is_prep_ingredient: false,
         prep_time: '',
         cook_time: '',
         instructions: '',
@@ -1301,6 +1380,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       image: '',
       yield_amount: '1',
       yield_unit: 'portion',
+      is_prep_ingredient: false,
       prep_time: '',
       cook_time: '',
       instructions: '',
@@ -1368,6 +1448,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           recipe_category_id: formData.recipe_category_id ? parseInt(formData.recipe_category_id) : null,
           yield_amount: parseFloat(formData.yield_amount) || 1,
           yield_unit: formData.yield_unit || 'portion',
+          is_prep_ingredient: !!formData.is_prep_ingredient,
           suggested_price: parseFloat(formData.suggested_price) || 0,
           ingredients: recipeIngredients.map((ri: any) => {
             const ingredient: any = resolveIng(ri);
@@ -1696,7 +1777,15 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   <RecipeName>
                     {recipe.name}
                     {isRestaurantAdmin && recipe.owner_type === 'brand' && (
-                      <BrandBadge>{'Brand'}</BrandBadge>
+                      <BrandBadge title={t('recipes:brandReadOnlyHint', '브랜드 레시피입니다 — 읽기 전용이고, 수정은 브랜드에서만 합니다') as string}>
+                        {t('recipes:brandBadge', '브랜드 레시피')}
+                      </BrandBadge>
+                    )}
+                    {/* 준비 재료를 만드는 레시피 — 메뉴에 못 붙는다는 사실이 목록에서 바로 보여야 한다 */}
+                    {(recipe as any).is_prep_ingredient && (
+                      <PrepBadge title={t('recipes:prep.badgeHint', '이 레시피의 결과물이 재료로 쓰입니다. 재고는 재고 화면의 «만들기» 로 늘리고, 이 레시피는 메뉴에 연결할 수 없습니다') as string}>
+                        {t('recipes:prep.title', '준비 재료')}
+                      </PrepBadge>
                     )}
                   </RecipeName>
                   <RecipeCategoryBadge>
@@ -2143,12 +2232,49 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               />
             </UIFormGroup>
 
+            {/* 준비된 재고 스위치 (2026-09-17) — 켜면 저장 시 재료 목록에 결과물이 생긴다.
+                수율은 그때부터 «재고 단위»가 되므로 portion 을 쓸 수 없다. */}
+            <div>
+              <SectionTitle>{t('recipes:prep.title', '준비 재료')}</SectionTitle>
+              <PrepSwitchRow>
+                <PrepToggle>
+                  <PrepToggleInput
+                    type="checkbox"
+                    checked={!!formData.is_prep_ingredient}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      is_prep_ingredient: e.target.checked,
+                      // portion 은 재고로 셀 수 없다 — 켜는 순간 무게 단위로 바꿔 준다.
+                      yield_unit: e.target.checked && formData.yield_unit === 'portion' ? 'kg' : formData.yield_unit
+                    })}
+                  />
+                  <PrepToggleSlider />
+                </PrepToggle>
+                <div>
+                  <PrepSwitchLabel>{t('recipes:prep.switchLabel', '이 레시피의 결과물을 재료로 씁니다 (준비 재료)')}</PrepSwitchLabel>
+                  <PrepSwitchHint>
+                    {formData.is_prep_ingredient
+                      ? t('recipes:prep.hintOn', '저장하면 재료 목록에 이 이름으로 재료가 생깁니다. 재고는 재고 화면의 «만들기» 로 늘립니다. 이 레시피는 메뉴에 연결할 수 없습니다.')
+                      : t('recipes:prep.hintOff', '미리 만들어 두는 재료(양념육·육수·소스 등)일 때 켭니다.')}
+                  </PrepSwitchHint>
+                </div>
+              </PrepSwitchRow>
+            </div>
+
             {/* Yield Section */}
             <div>
-              <SectionTitle>{'Yield (Production Amount)'}</SectionTitle>
+              <SectionTitle>
+                {formData.is_prep_ingredient
+                  ? t('recipes:prep.yieldTitle', '실제로 나오는 양 (재고 단위)')
+                  : t('recipes:prep.yieldTitlePlain', '나오는 양')}
+              </SectionTitle>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <UIFormGroup>
-                  <FormLabel>Yield Amount *</FormLabel>
+                  <FormLabel>
+                    {formData.is_prep_ingredient
+                      ? t('recipes:prep.yieldAmountPrep', '한 번 만들면 나오는 양 *')
+                      : t('recipes:prep.yieldAmount', '나오는 양 *')}
+                  </FormLabel>
                   <FormInput
                     type="number"
                     step="0.01"
@@ -2160,14 +2286,21 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   />
                 </UIFormGroup>
                 <UIFormGroup>
-                  <FormLabel>Yield Unit *</FormLabel>
+                  <FormLabel>
+                    {formData.is_prep_ingredient
+                      ? t('recipes:prep.yieldUnitPrep', '단위 * (재고 단위로만)')
+                      : t('recipes:prep.yieldUnit', '단위 *')}
+                  </FormLabel>
                   <FormSelect
                     value={formData.yield_unit}
                     onChange={(e) => setFormData({ ...formData, yield_unit: e.target.value })}
                   >
-                    {STANDARD_UNITS.map(u => (
-                      <option key={u.value} value={u.value}>{u.label}</option>
-                    ))}
+                    {STANDARD_UNITS
+                      // 준비 재료의 수율 단위 = 재고 단위. portion 은 무게·부피가 아니라 셀 수 없다.
+                      .filter(u => !formData.is_prep_ingredient || PREP_STOCK_UNITS.includes(u.value))
+                      .map(u => (
+                        <option key={u.value} value={u.value}>{u.label}</option>
+                      ))}
                   </FormSelect>
                 </UIFormGroup>
               </div>

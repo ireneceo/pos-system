@@ -144,6 +144,10 @@ export function useInventoryData({ mode, restaurantId, authFetch, includeUntrack
               manual_daily_usage: ing.manual_daily_usage ? parseFloat(ing.manual_daily_usage) : null,
               prediction_confidence: ing.prediction_confidence || 'none',
               stock_status: stockStatus,
+              // 준비된 재고(1차 가공) — 이 재료를 «만드는» 레시피 (2026-09-17).
+              //   값이 있으면 목록 버튼이 «입고» 대신 «만들기» 가 된다.
+              source_recipe_id: ing.source_recipe_id || null,
+              source_recipe_name: ing.source_recipe_name || null,
               // 발주 담기·연결 안내에 필요한 원본 정보(화면이 판단하지 않게 여기서 넘긴다)
               linked_ingredient_id: ing.linked_ingredient_id || null,
               linked_stock: ing.linked_stock != null ? parseFloat(ing.linked_stock) || 0 : null,

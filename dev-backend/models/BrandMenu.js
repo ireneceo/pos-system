@@ -28,6 +28,9 @@ const BrandMenu = sequelize.define('BrandMenu', {
   after_meal:        { type: DataTypes.BOOLEAN, defaultValue: false, comment: 'Serve after the main meal (e.g. dessert). Registration flag only.' },
   set_only:          { type: DataTypes.BOOLEAN, defaultValue: false, comment: '2026-06-12: 세트 구성 전용 — 단품 판매 안 함. 푸시/동기화 시 매장 Product.set_only 로 전파.' },
   sort_order:        { type: DataTypes.INTEGER, defaultValue: 0 },
+  // 이 브랜드 메뉴가 «어느 매장이 추가한 것»에서 올라왔는지 (2026-09-17 Fable 판정 R4)
+  //   null = 브랜드가 직접 만든 것. 브랜드 화면 목록에 «매장 X 추가» 배지로 보인다.
+  origin_restaurant_id: { type: DataTypes.INTEGER, allowNull: true, comment: '매장에서 올라온 메뉴의 출처 매장' },
   version:           { type: DataTypes.INTEGER, defaultValue: 1, comment: 'Bumps on every edit; Restaurants compare to detect pending updates' },
   distribution_mode: { type: DataTypes.ENUM('auto', 'manual'), defaultValue: 'manual' },
   // 적용범위(Scope): 'all'=산하 전 레스토랑 / 'selected'=brand_menu_restaurants allowlist 만 (2026-06-15, §14)

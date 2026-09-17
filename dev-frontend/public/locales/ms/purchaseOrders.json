@@ -162,7 +162,9 @@
       "lineTotal": "Jumlah Baris",
       "subtotal": "Subjumlah",
       "tax": "Cukai",
-      "total": "Jumlah"
+      "total": "Jumlah",
+      "delivery": "Yuran penghantaran",
+      "deliveryUnset": "(tidak ditetapkan penjual)"
     },
     "delivery": {
       "expected": "Tarikh Dijangka",
@@ -411,7 +413,12 @@
     "sellAsMenu": {
       "button": "Jual juga sebagai menu",
       "title": "Jual juga bahan ini sebagai item menu"
-    }
+    },
+    "itemsSubtotal": "Subjumlah item",
+    "deliveryFee": "Yuran penghantaran",
+    "deliveryUnset": "tidak ditetapkan penjual",
+    "deliveryToFree": "Tambah {{amount}} lagi untuk penghantaran percuma",
+    "deliveryUnsetHint": "Penjual ini belum menetapkan terma penghantaran. Ia tidak bermakna percuma — yuran sebenar ditunjukkan pada invois."
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",
@@ -583,7 +590,9 @@
       "total": "Jumlah",
       "tax": "Cukai",
       "delivery": "Penghantaran",
-      "discount": "Diskaun"
+      "discount": "Diskaun",
+      "deliveryExpected": "dijangka {{amount}} semasa pesanan",
+      "deliveryDiff": "perbezaan {{diff}}"
     },
     "col": {
       "ordered": "Harga dipesan",

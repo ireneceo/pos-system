@@ -625,6 +625,40 @@ router.put('/:id', async (req, res) => {
       }
     }
 
+    // ⚠ 본문의 is_active 를 **가드 앞에서 정규화**한다 (2026-09-17 게이트 지적).
+    //   updateFields 가 본문 값을 그대로 복사하므로 문자열 "false"·"0" 이 오면
+    //   `=== false || === 0` 을 통과해 **가드 없이 꺼진다**(MySQL 이 0 으로 캐스팅).
+    if (updateData.is_active !== undefined) {
+      updateData.is_active = [false, 0, '0', 'false'].includes(updateData.is_active) ? false : !!updateData.is_active;
+    }
+
+    // 끄기 보호 (2026-09-17 Fable 판정 ①): 레시피가 쓰는 재고아이템을 끄면 거울까지 따라 꺼져
+    //   (stockItemMirror 의 MIRRORED_FIELDS 에 is_active 가 있다) 그 재료가 **목록·발주 카탈로그·저재고에서
+    //   통째로 사라진다** — 레시피는 그대로 그 재료를 가리키고 있는데 살 수가 없어진다.
+    //   운영 실측(2026-09-17): 이 구멍으로 4건이 꺼져 활성 레시피 21줄이 «못 사는 재료»를 쓰고 있었다.
+    //   ⚠ 단위 변경 보호와 **같은 두 갈래**로 센다(거울 경유 + 직접 연결).
+    if (updateData.is_active === false) {
+      const [{ n: recipeLines }] = await ProductIngredient.sequelize.query(
+        `SELECT (SELECT COUNT(*) FROM recipe_ingredients ri
+                   JOIN ingredients i ON i.id = ri.ingredient_id
+                   JOIN recipes r ON r.id = ri.recipe_id AND r.is_active = 1
+                  WHERE i.source_product_ingredient_id = :id)
+              + (SELECT COUNT(*) FROM product_recipe_ingredients pri
+                  WHERE pri.ingredient_id = :id) n`,
+        { replacements: { id: ingredient.id }, type: ProductIngredient.sequelize.QueryTypes.SELECT }
+      );
+      if (Number(recipeLines) > 0) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'IN_USE_BY_RECIPES',
+            message: `Used by ${recipeLines} recipe line(s). Change the recipes first.`,
+            recipe_lines: Number(recipeLines)
+          }
+        });
+      }
+    }
+
     // 단위 변경 보호 (2026-09-04): 거울에 레시피 줄이 붙어 있는데 단위를 바꾸면
     //   레시피 수량의 의미가 말없이 바뀐다(예: 5 g → 5 kg). 거부하고 사람이 결정하게 한다.
     if (updateData.unit !== undefined && String(updateData.unit) !== String(ingredient.unit)) {

@@ -821,6 +821,21 @@
     "linkedRecipe": "Linked recipe",
     "noLinkedRecipe": "No recipe",
     "linkedRecipeHint": "Linked recipe: {{name}} — franchise restaurants inherit it on push",
-    "noLinkedRecipeHint": "No recipe linked — inventory will not be deducted for this menu"
+    "noLinkedRecipeHint": "No recipe linked — inventory will not be deducted for this menu",
+    "tabStoreOwn": "Store-own menus (view only)",
+    "storeOwnTitle": "Menus the restaurants created themselves",
+    "storeOwnBody": "The restaurant owns its menu. This list is view only - adding, editing and deleting happen at the restaurant. It is fine for it to differ from the brand menu.",
+    "storeOwnEmpty": "No menus created by the restaurants.",
+    "storeOwnCount": "{{count}} items",
+    "storeOwnOnSale": "On sale",
+    "storeOwnOff": "Not on sale",
+    "ownershipNote": "This list is the brand's own menu source. A menu only appears at a restaurant after you send it, and restaurants may keep menus of their own.",
+    "originStore": "created by {{name}}"
+  },
+  "brandPaymentSettingsPage": {
+    "deliveryTerms": "Delivery terms for restaurant orders",
+    "deliveryTermsDesc": "A delivery fee is added automatically when a restaurant orders from this brand. Leave blank and no delivery fee appears.",
+    "freeAbove": "Free delivery at or above this amount",
+    "deliveryFee": "Delivery fee below that (fixed)"
   }
 }

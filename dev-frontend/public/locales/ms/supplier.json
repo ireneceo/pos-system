@@ -148,6 +148,11 @@
       "address": "Alamat",
       "banking": "Perbankan",
       "branding": "Penjenamaan"
+    },
+    "delivery": {
+      "title": "Terma penghantaran",
+      "freeAbove": "Penghantaran percuma pada atau melebihi jumlah ini",
+      "fee": "Yuran penghantaran di bawahnya (tetap)"
     }
   },
   "invoices": {

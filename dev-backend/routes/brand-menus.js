@@ -167,9 +167,18 @@ router.get('/', authenticateToken, requireBGScope, async (req, res) => {
       }
     }
 
+    // «매장 X 추가» 배지 — id 만 주면 화면이 매장 이름을 또 조회해야 한다. 여기서 이름까지 붙인다.
+    const originIds = [...new Set(menus.map(m => m.origin_restaurant_id).filter(Boolean))];
+    const originNames = {};
+    if (originIds.length) {
+      const rows = await Restaurant.findAll({ where: { id: originIds }, attributes: ['id', 'name'] });
+      for (const r of rows) originNames[r.id] = r.name;
+    }
+
     const data = menus.map(m => ({
       ...m.toJSON(),
       locks: { name: !!m.lock_name, price: !!m.lock_price, category: !!m.lock_category, image: !!m.lock_image, options: !!m.lock_options, set_items: !!m.lock_set_items },
+      origin_restaurant_name: m.origin_restaurant_id ? (originNames[m.origin_restaurant_id] || null) : null,
       distribution: distribution[m.id] || { in_sync: 0, pending_update: 0, unlinked: 0 }
     }));
 
@@ -177,6 +186,42 @@ router.get('/', authenticateToken, requireBGScope, async (req, res) => {
   } catch (e) {
     console.error('[brand-menus] list error:', e);
     res.status(500).json({ success: false, message: 'Failed to fetch brand menus' });
+  }
+});
+
+/**
+ * GET /api/brand-menus/store-own?brand_id=&restaurant_id=
+ * 브랜드 화면에서 «매장이 자기가 만든 메뉴» 를 **읽기 전용**으로 본다 (2026-09-17 Fable 판정 R4).
+ *   지금까지 브랜드 화면은 brand_menus 만 읽어서, 매장이 따로 만든 메뉴를 볼 길이 아예 없었다.
+ *   공유 모드와 무관하게 «보이기»는 항상 된다 — Irene 「독립적으로 레스토랑에서 추가하면
+ *   그것도 들어와서 … 표시해줘」 의 읽기 부분.
+ */
+router.get('/store-own', authenticateToken, requireBGScope, async (req, res) => {
+  try {
+    const brandId = parseInt(req.query.brand_id, 10);
+    if (!Number.isFinite(brandId)) return res.status(400).json({ success: false, message: 'brand_id is required' });
+    if (!(await assertBrandOwnership(req, brandId))) {
+      return res.status(403).json({ success: false, message: 'Brand not owned' });
+    }
+    const where = { brand_id: brandId };
+    const wantedRestaurant = parseInt(req.query.restaurant_id, 10);
+    if (Number.isFinite(wantedRestaurant)) where.id = wantedRestaurant;
+    const restaurants = await Restaurant.findAll({ where, attributes: ['id', 'name'] });
+    if (!restaurants.length) return res.json({ success: true, data: [] });
+
+    const rows = await Product.findAll({
+      where: { restaurant_id: restaurants.map(r => r.id), brand_menu_id: null },
+      attributes: ['id', 'restaurant_id', 'name', 'price', 'category', 'is_active', 'created_at'],
+      order: [['restaurant_id', 'ASC'], ['name', 'ASC']]
+    });
+    const nameById = Object.fromEntries(restaurants.map(r => [r.id, r.name]));
+    res.json({
+      success: true,
+      data: rows.map(p => ({ ...p.toJSON(), restaurant_name: nameById[p.restaurant_id] || null }))
+    });
+  } catch (e) {
+    console.error('[brand-menus] store-own error:', e);
+    res.status(500).json({ success: false, message: 'Failed to fetch store-own menus' });
   }
 });
 

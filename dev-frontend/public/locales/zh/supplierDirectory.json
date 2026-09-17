@@ -212,8 +212,10 @@
     "phone": "联系电话",
     "email": "邮箱",
     "minOrder": "最低订购金额",
-    "deliveryPolicy": "配送政策（自由文本）",
-    "deliveryPolicyPlaceholder": "例如：周一/周三/周五配送。满 RM100 免运费。需提前 24 小时下单。"
+    "deliveryPolicy": "配送备注（星期、区域等 — 不用于计算）",
+    "deliveryPolicyPlaceholder": "例如：周一/周三/周五配送。满 RM100 免运费。需提前 24 小时下单。",
+    "freeDeliveryAbove": "达到或超过此金额免运费",
+    "deliveryFee": "未达金额时的配送费（固定）"
   },
   "extProduct": {
     "baseQuantity": "每包装数量",

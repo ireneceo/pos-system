@@ -60,5 +60,27 @@
     "lastPaid": "上次",
     "receivedTimes": "收货 {{n}} 次",
     "avg": "平均"
-  }
+  },
+  "produce": {
+    "title": "制作",
+    "titleNamed": "制作 — {{name}}",
+    "saving": "制作中…",
+    "recipeLine": "配方「{{name}}」一批 = {{amount}}{{unit}}",
+    "loadingRecipe": "正在载入预制配方…",
+    "batches": "要做几批？",
+    "consumes": "消耗的原材料",
+    "calculating": "计算中…",
+    "noLines": "此配方没有材料明细 — 请先填写材料。",
+    "have": "现有 {{have}}{{unit}}",
+    "haveShort": "现有 {{have}}{{unit}} — 短缺 {{short}}{{unit}}",
+    "shortageNote": "部分原材料不足。仍可制作，但仅按现有库存记录消耗。",
+    "actualYield": "实际产出量",
+    "actualYieldHint": "默认为配方产量 × 批数。若实际重量不同，请如实填写 — 成本按该数量计算。",
+    "expiry": "保质期（可选）",
+    "previewFailed": "无法载入预览",
+    "failed": "制作失败"
+  },
+  "prepTag": "预制材料",
+  "prepTagHint": "由配方制作的材料。库存用「制作」增加，而非订货。",
+  "prepSource": "配方：{{name}}"
 }

@@ -60,5 +60,27 @@
     "lastPaid": "kali lepas",
     "receivedTimes": "diterima {{n}} kali",
     "avg": "purata"
-  }
+  },
+  "produce": {
+    "title": "Buat",
+    "titleNamed": "Buat — {{name}}",
+    "saving": "Sedang dibuat…",
+    "recipeLine": "Resipi \"{{name}}\" satu kelompok = {{amount}}{{unit}}",
+    "loadingRecipe": "Memuatkan resipi sediaan…",
+    "batches": "Berapa kelompok?",
+    "consumes": "Bahan mentah digunakan",
+    "calculating": "Mengira…",
+    "noLines": "Resipi ini tiada baris bahan — sila isi bahan dahulu.",
+    "have": "ada {{have}}{{unit}}",
+    "haveShort": "ada {{have}}{{unit}} — kurang {{short}}{{unit}}",
+    "shortageNote": "Sebahagian bahan mentah tidak mencukupi. Anda masih boleh membuatnya, tetapi hanya stok sedia ada direkodkan sebagai digunakan.",
+    "actualYield": "Jumlah sebenar dihasilkan",
+    "actualYieldHint": "Lalai ialah hasil resipi × kelompok. Jika berat sebenar berbeza, masukkannya — kos dikira atas jumlah itu.",
+    "expiry": "Tarikh luput (pilihan)",
+    "previewFailed": "Tidak dapat memuatkan pratonton",
+    "failed": "Gagal membuatnya"
+  },
+  "prepTag": "Bahan sedia",
+  "prepTagHint": "Bahan yang anda buat daripada resipi. Stok ditambah dengan \"Buat\", bukan dengan memesan.",
+  "prepSource": "Resipi: {{name}}"
 }

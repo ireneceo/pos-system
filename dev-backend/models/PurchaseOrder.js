@@ -27,6 +27,15 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
 
   subtotal: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
   tax_amount: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
+  // 배송비 (2026-09-17 Fable 판정 ⑦) — 총액식: total_amount = subtotal + tax_amount + delivery_fee
+  //   판매자 두 칸(무료배송 기준·고정 배송비)으로 **자동 계산**한다. 사람이 발주마다 적지 않는다.
+  //   판매자 확인 전(draft·submitted)에는 품목이 바뀌면 다시 계산하고, 확인 뒤에는 동결한다.
+  //   소급 단가 반영(retroApplyPrice)은 품목 단가만 바꾸고 배송비는 건드리지 않는다.
+  delivery_fee: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
+  delivery_fee_basis: {
+    type: DataTypes.JSON, allowNull: true,
+    comment: '계산 근거 스냅샷 {free_above, fee, subtotal_at_calc, seller_currency, rule, computed_at}'
+  },
   total_amount: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
   currency: { type: DataTypes.STRING(10), defaultValue: 'MYR' },
 

@@ -43,7 +43,9 @@ const CLASSES = [
       //   `invoices-list.js` 가 우연히 걸려 열린 것이고, 그게 아니었으면 서랍 금액을 바꾸는
       //   변경이 판정 없이 지나갔다(Fable 적발).
       || /dev-backend\/(services\/purchaseOrderPayment|routes\/(purchase-orders-workflow|cash-management))/i.test(f)
-      || /dev-backend\/utils\/(orderTotals|orderCharge)/i.test(f)
+      || /dev-backend\/utils\/(orderTotals|orderCharge|purchaseOrderTotals)/i.test(f)
+      // 발주 총액식(배송비 포함)과 소급 단가 반영도 돈이다 (2026-09-17 Fable 판정 ⑦)
+      || /dev-backend\/services\/retroApplyPrice/i.test(f)
       || /dev-frontend\/src\/.*(offlineSync|offlineStore|offlineOverlay|Payment|Stripe|PayPal|Checkout)/i.test(f),
   },
   {

@@ -455,7 +455,32 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
     // 2026-09-02: 켜고 끄기. 그전에는 이 필드가 없어 **BG 가 자기 브랜드 재료를 끌 방법이 아예 없었다**
     //   (운영에서 꺼져 있던 63건은 API 밖에서 꺼진 것이다). 동기화는 이제 이 값을 존중한다 —
     //   brand-products.js 의 syncProductToIngredients 가 끄는 방향만 따라가고 재활성은 안 따라간다.
-    if (is_active !== undefined) updateData.is_active = !!is_active;
+    // 문자열 "false"·"0" 도 끄기로 읽는다 — `!!` 만 쓰면 "false" 가 true 가 된다 (2026-09-17 게이트 지적).
+    if (is_active !== undefined) {
+      updateData.is_active = [false, 0, '0', 'false'].includes(is_active) ? false : !!is_active;
+    }
+
+    // 끄기 보호 (2026-09-17 Fable 판정 ①) — 살아있는 레시피가 쓰는 재료를 끄면 그 재료가
+    //   목록·발주 카탈로그·저재고에서 사라져 «레시피는 그대로인데 살 수 없는» 상태가 된다.
+    //   재고아이템 PUT 의 IN_USE_BY_RECIPES 와 같은 규칙·같은 코드.
+    if (updateData.is_active === false) {
+      const [{ n: recipeLines }] = await Ingredient.sequelize.query(
+        `SELECT COUNT(*) n FROM recipe_ingredients ri
+           JOIN recipes r ON r.id = ri.recipe_id AND r.is_active = 1
+          WHERE ri.ingredient_id = :id`,
+        { replacements: { id: ingredient_id }, type: Ingredient.sequelize.QueryTypes.SELECT }
+      );
+      if (Number(recipeLines) > 0) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'IN_USE_BY_RECIPES',
+            message: `Used by ${recipeLines} recipe line(s). Change the recipes first.`,
+            recipe_lines: Number(recipeLines)
+          }
+        });
+      }
+    }
 
     await ingredient.update(updateData);
 

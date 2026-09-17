@@ -162,7 +162,9 @@
       "lineTotal": "小计",
       "subtotal": "合计",
       "tax": "税费",
-      "total": "总计"
+      "total": "总计",
+      "delivery": "配送费",
+      "deliveryUnset": "（卖方未设定）"
     },
     "delivery": {
       "expected": "预计日期",
@@ -411,7 +413,12 @@
     "sellAsMenu": {
       "button": "也登记为菜单",
       "title": "将此食材也作为菜单销售"
-    }
+    },
+    "itemsSubtotal": "品项小计",
+    "deliveryFee": "配送费",
+    "deliveryUnset": "卖方未设定",
+    "deliveryToFree": "再加 {{amount}} 即可免运费",
+    "deliveryUnsetHint": "该卖方尚未设定配送条件。这不代表免运费 — 实际费用以账单为准。"
   },
   "staging": {
     "noPhoneTitle": "无电话号码",
@@ -583,7 +590,9 @@
       "total": "总额",
       "tax": "税金",
       "delivery": "运费",
-      "discount": "折扣"
+      "discount": "折扣",
+      "deliveryExpected": "订货时预估 {{amount}}",
+      "deliveryDiff": "差异 {{diff}}"
     },
     "col": {
       "ordered": "订购单价",

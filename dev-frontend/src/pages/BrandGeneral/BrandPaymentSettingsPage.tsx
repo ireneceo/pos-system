@@ -10,6 +10,7 @@ import PaymentGatewayGuide from '../../components/Payment/PaymentGatewayGuide';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
 interface CurrencyConfig {
   [code: string]: {
     symbol: string;
@@ -383,6 +384,12 @@ const BrandPaymentSettingsPage: React.FC = () => {
         // API returns { success: true, data: { payment_settings, supported_currencies } }
         const data = responseData.data || responseData;
 
+        // 배송 조건 두 칸 (2026-09-17 Fable 판정 ⑦) — 매장이 이 브랜드에 발주할 때 붙는 규칙
+        setDeliveryTerms({
+          min_order_amount: data.min_order_amount != null ? String(data.min_order_amount) : '',
+          delivery_fee: data.delivery_fee != null ? String(data.delivery_fee) : ''
+        });
+
         // Set supported currencies from brand settings (filtered by system-allowed currencies)
         if (data.supported_currencies && Array.isArray(data.supported_currencies)) {
           // Filter: only keep currencies that the system still supports
@@ -553,6 +560,36 @@ const BrandPaymentSettingsPage: React.FC = () => {
     });
   };
 
+  // 배송 조건 (2026-09-17) — 브랜드도 판매자다. 공급업체 화면과 **같은 이름·같은 의미**의 두 칸.
+  const [deliveryTerms, setDeliveryTerms] = useState<{ min_order_amount: string; delivery_fee: string }>({
+    min_order_amount: '', delivery_fee: ''
+  });
+  const [deliverySaving, setDeliverySaving] = useState(false);
+  const [deliverySaved, setDeliverySaved] = useState(false);
+
+  const saveDeliveryTerms = async () => {
+    if (!brandId || deliverySaving) return;
+    setDeliverySaving(true);
+    setDeliverySaved(false);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/brands/${brandId}/payment-settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          // 빈 칸 = 미설정(null). 0 은 «무료배송» 이라 뜻이 다르다.
+          min_order_amount: deliveryTerms.min_order_amount === '' ? null : Number(deliveryTerms.min_order_amount),
+          delivery_fee: deliveryTerms.delivery_fee === '' ? null : Number(deliveryTerms.delivery_fee)
+        })
+      });
+      if (res.ok) setDeliverySaved(true);
+    } catch (e) {
+      console.error('배송 조건 저장 실패:', e);
+    } finally {
+      setDeliverySaving(false);
+    }
+  };
+
   const savePaymentSettings = async () => {
     if (!brandId) return;
 
@@ -599,6 +636,50 @@ const BrandPaymentSettingsPage: React.FC = () => {
         <PageHeader title="Payment Settings" />
         <Content>
           {/* Section 1: Currency Settings */}
+          {/* 매장 발주 배송 조건 (2026-09-17 Fable 판정 ⑦) */}
+          <Section>
+            <SectionTitle>{t('brand:brandPaymentSettingsPage.deliveryTerms', '매장 발주 배송 조건')}</SectionTitle>
+            <SectionDescription>
+              {t('brand:brandPaymentSettingsPage.deliveryTermsDesc',
+                '매장이 이 브랜드에 발주할 때 배송비가 자동으로 붙습니다. 비워 두면 배송비가 나오지 않습니다.')}
+            </SectionDescription>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, color: '#0A2540', marginBottom: 6 }}>
+                  {t('brand:brandPaymentSettingsPage.freeAbove', '이 금액 이상 주문하면 무료배송')}
+                </label>
+                <input
+                  type="number" min="0" step="0.01" placeholder="300"
+                  value={deliveryTerms.min_order_amount}
+                  onChange={(e) => { setDeliveryTerms(p => ({ ...p, min_order_amount: e.target.value })); setDeliverySaved(false); }}
+                  onBlur={saveDeliveryTerms}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, color: '#0A2540', marginBottom: 6 }}>
+                  {t('brand:brandPaymentSettingsPage.deliveryFee', '그 미만이면 배송비 (고정)')}
+                </label>
+                <input
+                  type="number" min="0" step="0.01" placeholder="15"
+                  value={deliveryTerms.delivery_fee}
+                  onChange={(e) => { setDeliveryTerms(p => ({ ...p, delivery_fee: e.target.value })); setDeliverySaved(false); }}
+                  onBlur={saveDeliveryTerms}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14 }}
+                />
+              </div>
+            </div>
+            <div style={{ marginTop: 10, padding: '10px 12px', background: '#F8FAFC',
+                          border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 13, color: '#4B5563' }}>
+              <DeliveryTermsText terms={{
+                min_order_amount: deliveryTerms.min_order_amount === '' ? null : Number(deliveryTerms.min_order_amount),
+                delivery_fee: deliveryTerms.delivery_fee === '' ? null : Number(deliveryTerms.delivery_fee)
+              }} />
+              {deliverySaving && <span style={{ marginLeft: 8, color: '#6B7280' }}>{t('common:label.saving', '저장 중…')}</span>}
+              {deliverySaved && !deliverySaving && <span style={{ marginLeft: 8, color: '#059669' }}>✓</span>}
+            </div>
+          </Section>
+
           <Section>
             <SectionTitle>{t('brand:brandPaymentSettingsPage.currencySettings')}</SectionTitle>
             <SectionDescription>
