@@ -1,4 +1,5 @@
 const express = require('express');
+const { revenueOrderWhere } = require('../utils/revenueOrders');
 const router = express.Router();
 const { Foodcourt, Restaurant, User, EntityPlan, EntityPlanRestaurant, EntityPlanPrice, Order, Invoice, InvoiceItem } = require('../models');
 const { authenticateToken, requireRole } = require('../middleware/auth');
@@ -925,7 +926,8 @@ router.get('/:id/subscriptions', authenticateToken, requireFoodcourtModule('fc_s
     if (restaurantIds.length > 0) {
       revenueData = await Order.findAll({
         attributes: ['restaurant_id', [sequelize.fn('SUM', sequelize.col('total_amount')), 'revenue'], [sequelize.fn('COUNT', sequelize.col('id')), 'order_count']],
-        where: { restaurant_id: { [Op.in]: restaurantIds }, status: 'completed', order_date: { [Op.between]: [monthStart, monthEnd] }, is_deleted: false },
+        // 매출 정의는 utils/revenueOrders 하나뿐이다 (2026-09-17) — 전에는 'completed' 만 세어 서빙 완료분이 빠졌다.
+        where: { restaurant_id: { [Op.in]: restaurantIds }, ...revenueOrderWhere(), order_date: { [Op.between]: [monthStart, monthEnd] } },
         group: ['restaurant_id'], raw: true
       });
     }

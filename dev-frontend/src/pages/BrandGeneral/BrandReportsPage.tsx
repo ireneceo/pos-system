@@ -11,6 +11,7 @@ import { formatCurrency } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
+import { isRevenueOrder, isDeletedOrder } from '../../utils/orderRevenue';
 import { getAuthToken } from '../../utils/auth';
 import { formatDateTime } from '../../utils/timezone';
 import { monthLabelFromYM } from '../../components/Common/CalendarPicker';
@@ -632,31 +633,34 @@ const BrandReportsPage: React.FC = () => {
     const endDate = new Date(dateRange.end);
     endDate.setHours(23, 59, 59, 999);
 
+    // 기간 안의 «살아 있는 주문 전체» — 주문 수·이행률·시간대 같은 **활동** 지표용.
+    //   ⛔ 여기에 「결제상태가 completed 면 포함」을 두면 안 된다 — 결제됐다가 취소된 주문이
+    //      실제로 있어서 매출이 샌다(운영 실측 176건 5,196.40, 2026-09-17).
     return orders.filter(order => {
       const orderDateValue = order.order_date || order.createdAt;
       if (!orderDateValue) return false;
       const orderDate = new Date(orderDateValue);
       const isInRange = orderDate >= startDate && orderDate <= endDate;
-      // 'served' 는 완료 상태다 — 빼면 완료된 주문이 리포트에서 통째로 사라지고 이행률이 0% 로 찍힌다
-      // (백엔드 매출 정의도 completed + served). 삭제(소프트)된 주문은 어디서도 집계하지 않는다.
-      const isValidOrder = order.payment_status === 'completed' || order.status === 'completed'
-        || order.status === 'served' || order.status === 'pending'
-        || order.status === 'preparing' || order.status === 'ready';
-      const isDeleted = order.is_deleted === true || order.is_deleted === 1;
-      return isInRange && isValidOrder && !isDeleted;
+      return isInRange && !isDeletedOrder(order as any);
     });
   }, [orders, dateRange.start, dateRange.end]);
 
+  // 돈을 세는 패널은 이것만 본다 — 정의는 utils/orderRevenue 하나뿐이고 서버와 같은 값이다.
+  const revenueOrders = useMemo(
+    () => filteredOrders.filter(o => isRevenueOrder(o as any)),
+    [filteredOrders]
+  );
+
   // Calculate sales data
   const salesData = useMemo(() => {
-    if (filteredOrders.length === 0) return [];
+    if (revenueOrders.length === 0) return [];
 
     const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
     const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
 
     if (activePeriod === 'today') {
       const hourlyData: Record<string, number> = {};
-      filteredOrders.forEach(order => {
+      revenueOrders.forEach(order => {
         const hour = getOrderDate(order).getHours();
         const hourLabel = hour === 12 ? '12PM' : hour > 12 ? `${hour - 12}PM` : `${hour}AM`;
         hourlyData[hourLabel] = (hourlyData[hourLabel] || 0) + getOrderAmount(order);
@@ -673,7 +677,7 @@ const BrandReportsPage: React.FC = () => {
       }
 
       const dailyData: Record<string, number> = {};
-      filteredOrders.forEach(order => {
+      revenueOrders.forEach(order => {
         const orderDate = getOrderDate(order);
         const dateKey = formatDateString(orderDate);
         dailyData[dateKey] = (dailyData[dateKey] || 0) + getOrderAmount(order);
@@ -686,7 +690,7 @@ const BrandReportsPage: React.FC = () => {
       });
     } else if (activePeriod === 'month') {
       const dailyData: Record<string, number> = {};
-      filteredOrders.forEach(order => {
+      revenueOrders.forEach(order => {
         const day = getOrderDate(order).getDate().toString();
         dailyData[day] = (dailyData[day] || 0) + getOrderAmount(order);
       });
@@ -694,17 +698,17 @@ const BrandReportsPage: React.FC = () => {
     } else {
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const monthlyData: Record<string, number> = {};
-      filteredOrders.forEach(order => {
+      revenueOrders.forEach(order => {
         const month = monthNames[getOrderDate(order).getMonth()];
         monthlyData[month] = (monthlyData[month] || 0) + getOrderAmount(order);
       });
       return monthNames.map(month => ({ date: month, sales: Math.round(monthlyData[month] || 0) }));
     }
-  }, [filteredOrders, activePeriod]);
+  }, [revenueOrders, activePeriod]);
 
   // Calculate category data
   const categoryData = useMemo(() => {
-    if (filteredOrders.length === 0) return [{ name: 'No Data', value: 100, sales: 0 }];
+    if (revenueOrders.length === 0) return [{ name: 'No Data', value: 100, sales: 0 }];
 
     const categoryIdToName: Record<string, string> = {};
     categories.forEach((cat: any) => {
@@ -722,7 +726,7 @@ const BrandReportsPage: React.FC = () => {
     const categoryTotals: Record<string, number> = {};
     let totalSales = 0;
 
-    filteredOrders.forEach(order => {
+    revenueOrders.forEach(order => {
       if (order.order_items && Array.isArray(order.order_items)) {
         order.order_items.forEach((item: any) => {
           const itemTotal = parseFloat(item.price || 0) * parseInt(item.quantity || 1);
@@ -741,7 +745,7 @@ const BrandReportsPage: React.FC = () => {
     })).sort((a, b) => b.sales - a.sales);
 
     return result.length > 0 ? result : [{ name: 'No Data', value: 100, sales: 0 }];
-  }, [filteredOrders, menuItems, categories]);
+  }, [revenueOrders, menuItems, categories]);
 
   // Operations stats derived from real orders (previously fabricated with Math.random,
   // which re-rolled on every render). Stable + real.
@@ -774,7 +778,7 @@ const BrandReportsPage: React.FC = () => {
 
   // Calculate menu performance
   const allMenuData = useMemo(() => {
-    if (filteredOrders.length === 0) return [];
+    if (revenueOrders.length === 0) return [];
 
     const categoryIdToName: Record<string, string> = {};
     categories.forEach((cat: any) => {
@@ -791,7 +795,7 @@ const BrandReportsPage: React.FC = () => {
 
     const menuStats: Record<string, { category: string; price: number; orders: number; revenue: number }> = {};
 
-    filteredOrders.forEach(order => {
+    revenueOrders.forEach(order => {
       if (order.order_items && Array.isArray(order.order_items)) {
         order.order_items.forEach((item: any) => {
           const menuName = item.menu_name || item.name || item.menuItem?.name || 'Unknown';
@@ -818,7 +822,7 @@ const BrandReportsPage: React.FC = () => {
     menuArray.forEach(menu => { menu.performance = Math.round((menu.orders / maxOrders) * 100); });
 
     return menuArray;
-  }, [filteredOrders, menuItems, categories]);
+  }, [revenueOrders, menuItems, categories]);
 
   // Calculate hourly data
   const hourlyData = useMemo(() => {
@@ -847,14 +851,14 @@ const BrandReportsPage: React.FC = () => {
 
   // Calculate drilldown data
   const drilldownData = useMemo(() => {
-    if (filteredOrders.length === 0) return {};
+    if (revenueOrders.length === 0) return {};
 
     const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
     const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
 
     const yearData: Record<string, any> = {};
 
-    filteredOrders.forEach(order => {
+    revenueOrders.forEach(order => {
       const orderDate = getOrderDate(order);
       const year = orderDate.getFullYear().toString();
       const monthNum = (orderDate.getMonth() + 1).toString().padStart(2, '0');
@@ -881,7 +885,7 @@ const BrandReportsPage: React.FC = () => {
     });
 
     return yearData;
-  }, [filteredOrders]);
+  }, [revenueOrders]);
 
   // Calculate peak times
   const peakTimesData = useMemo(() => {
@@ -1178,13 +1182,13 @@ const BrandReportsPage: React.FC = () => {
                   </StatCard>
                   <StatCard color="#DC2626">
                     <StatLabel>{t('brand:brandReportsPage.averageOrderValue')}</StatLabel>
-                    <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0, selectedCurrency)}</StatValue>
+                    <StatValue>{formatCurrency(revenueOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / revenueOrders.length) : 0, selectedCurrency)}</StatValue>
                     <StatDescription>{t('brand:brandReportsPage.perOrder')}</StatDescription>
                   </StatCard>
                   <StatCard color="#7C3AED">
                     <StatLabel>{t('brand:brandReportsPage.completedOrders')}</StatLabel>
-                    <StatValue>{filteredOrders.filter(o => o.status === 'completed').length}</StatValue>
-                    <StatDescription>{Math.round(filteredOrders.filter(o => o.status === 'completed').length / filteredOrders.length * 100 || 0)}% completion rate</StatDescription>
+                    <StatValue>{revenueOrders.length}</StatValue>
+                    <StatDescription>{Math.round(revenueOrders.length / filteredOrders.length * 100 || 0)}% completion rate</StatDescription>
                   </StatCard>
                 </StatsRow>
 
@@ -1249,11 +1253,11 @@ const BrandReportsPage: React.FC = () => {
                   <StatCard color="#2563EB">
                     <StatLabel>{t('brand:brandReportsPage.totalOrders')}</StatLabel>
                     <StatValue>{filteredOrders.length.toLocaleString()}</StatValue>
-                    <StatDescription>{filteredOrders.filter(o => o.status === 'completed').length} completed</StatDescription>
+                    <StatDescription>{revenueOrders.length} completed</StatDescription>
                   </StatCard>
                   <StatCard color="#DC2626">
                     <StatLabel>{t('brand:brandReportsPage.averageOrderValue')}</StatLabel>
-                    <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0, selectedCurrency)}</StatValue>
+                    <StatValue>{formatCurrency(revenueOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / revenueOrders.length) : 0, selectedCurrency)}</StatValue>
                     <StatDescription>{t('brand:brandReportsPage.perOrderAverage')}</StatDescription>
                   </StatCard>
                   <StatCard color="#7C3AED">

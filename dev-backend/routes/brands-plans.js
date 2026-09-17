@@ -1,4 +1,5 @@
 const express = require('express');
+const { revenueOrderWhere } = require('../utils/revenueOrders');
 const router = express.Router();
 const { Brand, Restaurant, User, EntityPlan, EntityPlanRestaurant, EntityPlanPrice, Order, Invoice, InvoiceItem } = require('../models');
 const { authenticateToken, requireRole } = require('../middleware/auth');
@@ -1147,9 +1148,11 @@ router.get('/:id/subscriptions', authenticateToken, requireBrandModule('brand_su
         ],
         where: {
           restaurant_id: { [Op.in]: restaurantIds },
-          status: 'completed',
-          order_date: { [Op.between]: [monthStart, monthEnd] },
-          is_deleted: false
+          // 매출 정의는 utils/revenueOrders 하나뿐이다 (2026-09-17).
+          //   전에는 'completed' 만 세어 **서빙 완료된 주문이 빠졌고**, 같은 브랜드를
+          //   퍼포먼스 화면에서 보면 다른 숫자가 나왔다.
+          ...revenueOrderWhere(),
+          order_date: { [Op.between]: [monthStart, monthEnd] }
         },
         group: ['restaurant_id'],
         raw: true

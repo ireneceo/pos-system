@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { isRevenueOrder } from '../../utils/orderRevenue';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import {
@@ -637,9 +638,9 @@ const BrandPerformance: React.FC = () => {
         return orderDate >= prevStartDate && orderDate <= prevEndDate;
       });
 
-      // Calculate metrics. Revenue = completed OR served, matching the franchise-map
-      // endpoint (brands-core status IN ('completed','served')) so the two brand views agree.
-      const isRevenue = (o: Order) => o.status === 'completed' || o.status === 'served';
+      // 매출 정의는 utils/orderRevenue 하나뿐이다 (2026-09-17) — 서버 utils/revenueOrders 와 같은 값이고,
+      //   프랜차이즈 지도(brands-core)·리포트·구독 화면이 전부 이것을 본다.
+      const isRevenue = (o: Order) => isRevenueOrder(o as any);
       const completedOrders = currentPeriodOrders.filter(isRevenue);
       const prevCompletedOrders = previousPeriodOrders.filter(isRevenue);
 

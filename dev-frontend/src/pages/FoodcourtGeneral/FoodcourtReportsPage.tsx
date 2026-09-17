@@ -566,15 +566,17 @@ const FoodcourtReportsPage: React.FC = () => {
       if (!orderDateValue) return false;
       const orderDate = new Date(orderDateValue);
       const isInRange = orderDate >= startDate && orderDate <= endDate;
-      // 'served' 는 완료 상태다 — 빼면 완료된 주문이 리포트에서 통째로 사라지고 이행률이 0% 로 찍힌다
-      // (백엔드 매출 정의도 completed + served). 삭제(소프트)된 주문은 어디서도 집계하지 않는다.
-      const isValidOrder = order.payment_status === 'completed' || order.status === 'completed'
-        || order.status === 'served' || order.status === 'pending'
-        || order.status === 'preparing' || order.status === 'ready';
-      const isDeleted = order.is_deleted === true || order.is_deleted === 1;
-      return isInRange && isValidOrder && !isDeleted;
+      // 기간 안의 «살아 있는 주문 전체» — 주문 수·이행률·시간대 같은 **활동** 지표용.
+      //   ⛔ 「결제상태가 completed 면 포함」 금지 — 결제됐다가 취소된 주문이 매출로 샌다(2026-09-17).
+      return isInRange && !isDeletedOrder(order as any);
     });
   }, [orders, dateRange.start, dateRange.end]);
+
+  // 돈을 세는 패널은 이것만 본다 — 정의는 utils/orderRevenue 하나뿐(서버와 같은 값).
+  const revenueOrders = useMemo(
+    () => filteredOrders.filter(o => isRevenueOrder(o as any)),
+    [filteredOrders]
+  );
 
   // Calculate sales data
   // 운영 지표는 실주문에서 산출한다 (이전엔 Math.random 으로 렌더마다 다시 굴러가는 가짜 수치였다).
@@ -607,14 +609,14 @@ const FoodcourtReportsPage: React.FC = () => {
   }, [filteredOrders]);
 
   const salesData = useMemo(() => {
-    if (filteredOrders.length === 0) return [];
+    if (revenueOrders.length === 0) return [];
 
     const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
     const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
 
     if (activePeriod === 'today') {
       const hourlyData: Record<string, number> = {};
-      filteredOrders.forEach(order => {
+      revenueOrders.forEach(order => {
         const hour = getOrderDate(order).getHours();
         const hourLabel = hour === 12 ? '12PM' : hour > 12 ? `${hour - 12}PM` : `${hour}AM`;
         hourlyData[hourLabel] = (hourlyData[hourLabel] || 0) + getOrderAmount(order);
@@ -631,7 +633,7 @@ const FoodcourtReportsPage: React.FC = () => {
       }
 
       const dailyData: Record<string, number> = {};
-      filteredOrders.forEach(order => {
+      revenueOrders.forEach(order => {
         const orderDate = getOrderDate(order);
         const dateKey = formatDateString(orderDate);
         dailyData[dateKey] = (dailyData[dateKey] || 0) + getOrderAmount(order);
@@ -644,7 +646,7 @@ const FoodcourtReportsPage: React.FC = () => {
       });
     } else if (activePeriod === 'month') {
       const dailyData: Record<string, number> = {};
-      filteredOrders.forEach(order => {
+      revenueOrders.forEach(order => {
         const day = getOrderDate(order).getDate().toString();
         dailyData[day] = (dailyData[day] || 0) + getOrderAmount(order);
       });
@@ -652,17 +654,17 @@ const FoodcourtReportsPage: React.FC = () => {
     } else {
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const monthlyData: Record<string, number> = {};
-      filteredOrders.forEach(order => {
+      revenueOrders.forEach(order => {
         const month = monthNames[getOrderDate(order).getMonth()];
         monthlyData[month] = (monthlyData[month] || 0) + getOrderAmount(order);
       });
       return monthNames.map(month => ({ date: month, sales: Math.round(monthlyData[month] || 0) }));
     }
-  }, [filteredOrders, activePeriod]);
+  }, [revenueOrders, activePeriod]);
 
   // Calculate category data
   const categoryData = useMemo(() => {
-    if (filteredOrders.length === 0) return [{ name: 'No Data', value: 100, sales: 0 }];
+    if (revenueOrders.length === 0) return [{ name: 'No Data', value: 100, sales: 0 }];
 
     const categoryIdToName: Record<string, string> = {};
     categories.forEach((cat: any) => {
@@ -680,7 +682,7 @@ const FoodcourtReportsPage: React.FC = () => {
     const categoryTotals: Record<string, number> = {};
     let totalSales = 0;
 
-    filteredOrders.forEach(order => {
+    revenueOrders.forEach(order => {
       if (order.order_items && Array.isArray(order.order_items)) {
         order.order_items.forEach((item: any) => {
           const itemTotal = parseFloat(item.price || 0) * parseInt(item.quantity || 1);
@@ -699,7 +701,7 @@ const FoodcourtReportsPage: React.FC = () => {
     })).sort((a, b) => b.sales - a.sales);
 
     return result.length > 0 ? result : [{ name: 'No Data', value: 100, sales: 0 }];
-  }, [filteredOrders, menuItems, categories]);
+  }, [revenueOrders, menuItems, categories]);
 
   // Calculate menu performance
   const allMenuData = useMemo(() => {
@@ -776,14 +778,14 @@ const FoodcourtReportsPage: React.FC = () => {
 
   // Calculate drilldown data
   const drilldownData = useMemo(() => {
-    if (filteredOrders.length === 0) return {};
+    if (revenueOrders.length === 0) return {};
 
     const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
     const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
 
     const yearData: Record<string, any> = {};
 
-    filteredOrders.forEach(order => {
+    revenueOrders.forEach(order => {
       const orderDate = getOrderDate(order);
       const year = orderDate.getFullYear().toString();
       const monthNum = (orderDate.getMonth() + 1).toString().padStart(2, '0');
@@ -810,7 +812,7 @@ const FoodcourtReportsPage: React.FC = () => {
     });
 
     return yearData;
-  }, [filteredOrders]);
+  }, [revenueOrders]);
 
   // Calculate peak times
   const peakTimesData = useMemo(() => {
