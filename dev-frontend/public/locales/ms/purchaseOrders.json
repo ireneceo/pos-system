@@ -366,8 +366,8 @@
     },
     "showUntracked": "Tunjuk yang tidak dijejak",
     "conversion": {
-      "title": "Penukaran unit",
-      "help": "Contoh — bahan dalam kg, kotak 10kg: masukkan 10. Bahan dalam piece, dulang 30: masukkan 30.",
+      "title": "Satu yang diterima menambah berapa banyak stok?",
+      "help": "Contoh — satu kotak 50 biji ialah 50; jika datang sebiji, 1.",
       "connect": "Pautkan",
       "asSeparate": "+ Tambah sebagai bahan berasingan"
     },
@@ -546,7 +546,9 @@
     "activeOn": "Digunakan — muncul dalam pesanan dan resipi",
     "activeOff": "Dimatikan — disembunyikan daripada pesanan. Menyunting produk jenama tidak akan menghidupkannya semula.",
     "linkPriceNotSet": "Harga belum diisi",
-    "costNotSet": "Kos belum ditetapkan"
+    "costNotSet": "Kos belum ditetapkan",
+    "packSizeNeedsConfirm": "perlu disahkan",
+    "packSizeEdit": "Ubah penambahan stok bagi satu terimaan"
   },
   "connect": {
     "priceNotSet": "Harga belum diisi — kos akan menjadi 0"

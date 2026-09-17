@@ -29,6 +29,8 @@ const { requireBuyerRole } = require('../middleware/buyerScope');
 const { parseMinOrderQty } = require('../utils/quantity');
 const { sanitizeString } = require('../middleware/validation');
 const { readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
+const { parseConversion, propagateToOpenPoLines, buildConfirmationFields, conversionStatusFor, ConversionError } = require('../services/sellerLinkConversion');
+const { sequelize } = require('../config/database');
 
 router.use(['/ingredients', '/ingredient-seller-products', '/seller-catalog'], authenticateToken, requireBuyerRole);
 
@@ -111,6 +113,14 @@ router.get('/ingredients/:ingredientId/seller-sources', async (req, res) => {
         base_quantity: sp?.base_quantity != null ? parseFloat(sp.base_quantity) : null,
         seller_package_unit: sp?.package_unit ?? null,
         order_mode: sp?.order_mode || null,
+        ...conversionStatusFor({
+          unit_conversion: parseFloat(j.unit_conversion),
+          seller_unit: sp?.unit ?? null,
+          base_quantity: sp?.base_quantity != null ? parseFloat(sp.base_quantity) : 1,
+          order_mode: sp?.order_mode || 'pack',
+          conversion_confirmed_at: j.conversion_confirmed_at,
+          conversion_confirmed_pair: j.conversion_confirmed_pair
+        }, ing),
         // 지난번 실제로 낸 값 대비 지금 가격 — 화면은 ▲/▼/— 로만 표시한다(RA 기하 글리프 표준)
         price_history: h ? { ...h, ...trendAgainst(j.unit_price, h) } : null
       };
@@ -230,7 +240,16 @@ router.put('/ingredient-seller-products/:id', async (req, res) => {
       }
       updates.unit_price = p;
     }
-    if (unit_conversion !== undefined) updates.unit_conversion = parseFloat(unit_conversion) || 1;
+    if (unit_conversion !== undefined) {
+      // ⛔ 옛 코드는 `parseFloat(x) || 1` 이었다 — 0·빈값·글자가 조용히 1 로 저장돼
+      //    「1 박스 = 1 개」라는 틀린 사실이 소리 없이 들어갔다. 이제 거절한다.
+      try {
+        updates.unit_conversion = parseConversion(unit_conversion);
+      } catch (e) {
+        if (e instanceof ConversionError) return res.status(400).json({ success: false, message: e.message });
+        throw e;
+      }
+    }
     if (min_order_quantity !== undefined) updates.min_order_quantity = parseMinOrderQty(min_order_quantity);
     if (lead_time_days !== undefined) updates.lead_time_days = parseInt(lead_time_days, 10) || 0;
     if (is_active !== undefined) updates.is_active = !!is_active;
@@ -246,7 +265,33 @@ router.put('/ingredient-seller-products/:id', async (req, res) => {
       }
     }
 
-    await isp.update(updates);
+    // 저장 = 확인 (2026-09-17 Fable 설계 B1). 값이 1 이어도 「사람이 그렇게 정했다」로 남긴다 —
+    //   그래야 「업체의 개 = 우리 팩」처럼 답이 1 인 행이 검사 목록에서 빠진다.
+    //   가격만 고치는 저장이면 확인 칸은 건드리지 않는다.
+    let poLinesUpdated = 0;
+    if (updates.unit_conversion !== undefined) {
+      try {
+        Object.assign(updates, await buildConfirmationFields({ models: require('../models'), link: isp, userId: req.user?.id }));
+      } catch (e) {
+        if (e instanceof ConversionError) return res.status(400).json({ success: false, message: e.message });
+        throw e;
+      }
+    }
+
+    // 저장과 발주줄 반영은 **한 묶음**이어야 한다 (2026-09-17 Fable 게이트 R1).
+    //   따로 돌면 전파가 중간에 실패했을 때 「연결은 새 값 · 발주줄은 옛 값」으로 갈라진 채 500 이 난다.
+    if (updates.unit_conversion !== undefined) {
+      await sequelize.transaction(async (t) => {
+        await isp.update(updates, { transaction: t });
+        // 이미 만들어 둔 발주 중 **아직 받지 않은 줄**만 새 값으로 맞춘다(설계 B3).
+        //   값이 실제로 바뀔 때만 — 1 을 1 로 확인하면 전파 0건이다.
+        poLinesUpdated = await propagateToOpenPoLines({
+          models: require('../models'), linkId: isp.id, conversion: updates.unit_conversion, transaction: t
+        });
+      });
+    } else {
+      await isp.update(updates);
+    }
 
     // ── 비어 있던 원가만 채운다 (2026-09-02) ──────────────────────────────────
     // 운영 실측: 단가 0 인 활성 링크 100건, 그중 99건은 **재료 원가도 0** 이다.
@@ -265,7 +310,9 @@ router.put('/ingredient-seller-products/:id', async (req, res) => {
       }
     }
 
-    res.json({ success: true, data: isp, ...(costFilled != null ? { ingredient_cost_filled: costFilled } : {}) });
+    res.json({ success: true, data: isp,
+      ...(costFilled != null ? { ingredient_cost_filled: costFilled } : {}),
+      po_lines_updated: poLinesUpdated });
   } catch (err) {
     console.error('PUT /ingredient-seller-products/:id error:', err);
     res.status(500).json({ success: false, message: 'Failed to update seller source' });

@@ -765,7 +765,7 @@
   "productIngredientsTab.packageUnit": "基准单位(包装)",
   "productIngredientsTab.packageQty": "基准量",
   "productIngredientsTab.pricePerPackage": "价格 (每基准量 · 采购基准)",
-  "productIngredientsTab.unitConversion": "换算 (1 卖家单位 = ? 使用单位)",
+  "productIngredientsTab.unitConversion": "每收到 1 个卖家单位增加的库存",
   "productIngredientsTab.unitHelp": "按包装采购、按重量使用 — 例如使用单位 g、使用基准数量 2000、基准单位 pack、基准量 1，价格为 1 pack 的价格。",
   "productIngredientsTab.costPerUsageUnit": "每使用单位成本",
   "productIngredientsTab.pendingSpec": "未确定",
@@ -837,5 +837,9 @@
     "deliveryTermsDesc": "门店向该品牌下单时会自动加上配送费。留空则不显示配送费。",
     "freeAbove": "达到或超过此金额免运费",
     "deliveryFee": "未达金额时的配送费（固定）"
+  },
+  "productIngredientsTab": {
+    "packSizeNeedsConfirm": "待确认",
+    "packSizeEdit": "修改收到一件后库存增加多少"
   }
 }

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { requireBGScope, applyBGFilter, assertBGOwnsRow, requireBrandScope } = require('../middleware/brandScope');
+const { parseConversion, propagateToOpenPoLines, buildConfirmationFields, conversionStatusFor, ConversionError } = require('../services/sellerLinkConversion');
 const { sanitizeString } = require('../middleware/validation');
 const {
   ProductIngredient,
@@ -1180,6 +1181,14 @@ router.get('/:id/seller-sources', async (req, res) => {
         base_quantity: sp?.base_quantity != null ? parseFloat(sp.base_quantity) : null,
         seller_package_unit: sp?.package_unit ?? null,
         order_mode: sp?.order_mode || null,
+        ...conversionStatusFor({
+          unit_conversion: parseFloat(j.unit_conversion),
+          seller_unit: sp?.unit ?? null,
+          base_quantity: sp?.base_quantity != null ? parseFloat(sp.base_quantity) : 1,
+          order_mode: sp?.order_mode || 'pack',
+          conversion_confirmed_at: j.conversion_confirmed_at,
+          conversion_confirmed_pair: j.conversion_confirmed_pair
+        }, ing),
         price_history: h ? { ...h, ...trendAgainst(j.unit_price, h) } : null
       };
     });
@@ -1269,6 +1278,79 @@ router.post('/:id/seller-sources', async (req, res) => {
 });
 
 // 매핑 삭제
+/**
+ * PUT /api/product-ingredients/:id/seller-sources/:mappingId
+ *   재고아이템에 붙은 거래처 연결을 고친다 (2026-09-17 Fable 설계 B2).
+ *
+ * 왜 이제야 생겼나 — 이 자리엔 POST(추가)와 DELETE(삭제)만 있었다. 그래서 「1 박스가 몇 개인지」를
+ *   한 번 잘못 넣으면 끊었다 다시 연결하는 길밖에 없었다. 운영 273건 중 159건이 이 다리에 있다.
+ * 매장 재료 쪽 PUT(/api/ingredient-seller-products/:id)과 **같은 서비스**를 쓴다 — 검증·확인 기록·
+ *   미입고 발주줄 전파가 두 벌로 갈라지지 않게.
+ */
+router.put('/:id/seller-sources/:mappingId', async (req, res) => {
+  try {
+    const ing = await ProductIngredient.findByPk(req.params.id);
+    if (!assertBGOwnsRow(ing, req, res)) return;
+    const models = require('../models');
+    const { IngredientSellerProduct } = models;
+    // DELETE 와 같은 가드 — 남의 재고아이템에 붙은 매핑 id 를 넣어도 여기서 404 로 끊긴다.
+    const row = await IngredientSellerProduct.findOne({
+      where: { id: req.params.mappingId, product_ingredient_id: ing.id }
+    });
+    if (!row) return res.status(404).json({ success: false, message: 'Not found' });
+
+    const { unit_price, unit_conversion, is_preferred } = req.body;
+    const updates = {};
+
+    if (unit_price !== undefined) {
+      const price = parseFloat(unit_price);
+      if (!(price >= 0)) {
+        return res.status(400).json({ success: false, message: 'unit_price must be >= 0' });
+      }
+      updates.unit_price = price;
+    }
+
+    if (unit_conversion !== undefined) {
+      try {
+        updates.unit_conversion = parseConversion(unit_conversion);
+        // 저장 = 확인. 값이 1 이어도 「사람이 그렇게 정했다」로 남는다.
+        Object.assign(updates, await buildConfirmationFields({ models, link: row, userId: req.user?.id }));
+      } catch (e) {
+        if (e instanceof ConversionError) return res.status(400).json({ success: false, message: e.message });
+        throw e;
+      }
+    }
+
+    if (is_preferred !== undefined) {
+      updates.is_preferred = !!is_preferred;
+      if (is_preferred) {
+        await IngredientSellerProduct.update(
+          { is_preferred: false },
+          { where: { product_ingredient_id: ing.id, id: { [Op.ne]: row.id } } }
+        );
+      }
+    }
+
+    // 저장과 발주줄 반영은 한 묶음 (2026-09-17 Fable 게이트 R1) — 매장 쪽 PUT 과 같은 규칙.
+    let poLinesUpdated = 0;
+    if (updates.unit_conversion !== undefined) {
+      await IngredientSellerProduct.sequelize.transaction(async (t) => {
+        await row.update(updates, { transaction: t });
+        poLinesUpdated = await propagateToOpenPoLines({
+          models, linkId: row.id, conversion: updates.unit_conversion, transaction: t
+        });
+      });
+    } else {
+      await row.update(updates);
+    }
+
+    res.json({ success: true, data: row, po_lines_updated: poLinesUpdated });
+  } catch (e) {
+    console.error('Error updating seller-source:', e);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 router.delete('/:id/seller-sources/:mappingId', async (req, res) => {
   try {
     const ing = await ProductIngredient.findByPk(req.params.id);

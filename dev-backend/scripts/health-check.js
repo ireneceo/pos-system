@@ -1150,6 +1150,41 @@ function definePosTests({ adminToken }) {
     return qtyAfter === qtyBefore + 3 && brandRowAfter === brandRowBefore;
   });
 
+  test('security', '거래처 연결 수정: 남의 재고아이템 경로로는 못 고침 (IDOR) + 0 거절', async () => {
+    // 2026-09-17 Fable 게이트 R2 — 「1 □ 받으면 재고 □ 늘어남」을 고치는 BG 쪽 PUT 은 이번에 새로 생겼다.
+    //   손으로 한 번 확인한 방어는 곧 썩는다. 두 가지를 영구 케이스로 박는다:
+    //   ① 남의 재고아이템 아래로 남의 매핑을 고치려 하면 404  ② 0 은 400(조용히 1 이 되면 안 된다)
+    const { ProductIngredient, IngredientSellerProduct, User } = require('../models');
+    const { Op } = require('sequelize');
+    const jwtLib = require('jsonwebtoken');
+    const link = await IngredientSellerProduct.findOne({
+      where: { product_ingredient_id: { [Op.ne]: null }, is_active: true }
+    });
+    if (!link) return true;
+    const mine = await ProductIngredient.findByPk(link.product_ingredient_id);
+    if (!mine || !mine.owner_user_id) return true;
+    const owner = await User.findByPk(mine.owner_user_id);
+    if (!owner) return true;
+    // 이 BG 소유가 아닌 다른 재고아이템 (경로만 바꿔치기한다)
+    const foreign = await ProductIngredient.findOne({
+      where: { id: { [Op.ne]: mine.id }, [Op.or]: [{ owner_user_id: null }, { owner_user_id: { [Op.ne]: mine.owner_user_id } }] }
+    });
+    const token = jwtLib.sign({ userId: owner.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = { Authorization: `Bearer ${token}` };
+
+    if (foreign) {
+      const idor = await request('PUT', `/product-ingredients/${foreign.id}/seller-sources/${link.id}`, { unit_conversion: 5 }, auth);
+      if (![403, 404].includes(idor.status)) {
+        console.log(c.gray(`      (남의 경로로 고쳐졌다: ${idor.status})`)); return false;
+      }
+    }
+    const zero = await request('PUT', `/product-ingredients/${mine.id}/seller-sources/${link.id}`, { unit_conversion: 0 }, auth);
+    if (zero.status !== 400) {
+      console.log(c.gray(`      (0 을 거절하지 않았다: ${zero.status})`)); return false;
+    }
+    return true;
+  });
+
   test('pos', '브랜드 재고: 남의 재료 id 로 입고·차감 불가 (IDOR)', async () => {
     const { Restaurant, Ingredient, User } = require('../models');
     const { Op } = require('sequelize');
@@ -3031,6 +3066,14 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       await d.ing.reload();
       if (r3.status !== 200 || Number(d.ing.unit_cost) !== 0) {
         console.log(c.gray(`      (비선호 링크가 원가를 바꿨다: ${d.ing.unit_cost}, 기대 0)`)); return false;
+      }
+      // ④ 「1 □ 받으면 재고 □ 늘어남」 이 0 이면 거절 (2026-09-17 Fable 게이트 R2)
+      //    옛 코드는 `parseFloat(x) || 1` 이라 0 을 조용히 1 로 저장했다 — 「1 박스 = 1 개」라는
+      //    틀린 사실이 소리 없이 들어가는 자리였다. 손으로만 확인하면 다시 썩는다.
+      const e0 = await mk(0, false);
+      const r4 = await request('PUT', `/ingredient-seller-products/${e0.link.id}`, { unit_conversion: 0 }, auth);
+      if (r4.status !== 400) {
+        console.log(c.gray(`      (0 을 거절하지 않았다: ${r4.status})`)); return false;
       }
       return true;
     } catch (e) {

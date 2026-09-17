@@ -61,7 +61,10 @@ async function loadRows() {
         SELECT isp.id, isp.unit_conversion AS conv, '${leg.type}' AS seller_leg, '${bridge.label}' AS bridge,
                t.name AS target_name, t.unit AS stock_unit, t.base_quantity AS stock_base,
                t.package_unit AS stock_package_unit, t.package_quantity AS stock_package_quantity,
-               s.name AS seller_name, s.unit AS seller_unit, ${baseCol} AS seller_base, ${modeCol} AS order_mode
+               s.name AS seller_name, s.unit AS seller_unit, ${baseCol} AS seller_base, ${modeCol} AS order_mode,
+               -- ⚠ 이 두 칸을 안 넘기면 **사람이 1 로 확인해 둔 행을 기계가 덮어쓴다**
+               -- (확인 칸이 없으면 conv=1 → D 로 분류된다). 검사와 수정은 같은 SQL 이어야 한다.
+               isp.conversion_confirmed_at AS confirmed_at, isp.conversion_confirmed_pair AS confirmed_pair
           FROM ingredient_seller_products isp
           JOIN \`${bridge.table}\` t ON t.id = isp.${bridge.col}
           JOIN \`${leg.table}\` s ON s.id = isp.seller_product_id

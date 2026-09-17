@@ -5,6 +5,7 @@ const express = require('express');
 const router = express.Router();
 require('../models'); // Load associations
 const { readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
+const { conversionStatusFor } = require('../services/sellerLinkConversion');
 const Restaurant = require('../models/Restaurant');
 const User = require('../models/User');
 const Brand = require('../models/Brand');
@@ -154,6 +155,14 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
         order_mode: b.order_mode || 'pack'
       }]));
 
+      // 재고 쪽 단위 — 확인 상태 판정에 필요하다.
+
+      const stockUnitById = Object.fromEntries(ingredients.map(i => [i.id, {
+
+        unit: i.unit, base_quantity: i.base_quantity, package_unit: i.package_unit, package_quantity: i.package_quantity
+
+      }]));
+
       const sellersByIngredient = {};
       for (const m of mappings) {
         const arr = sellersByIngredient[m.ingredient_id] || (sellersByIngredient[m.ingredient_id] = []);
@@ -202,7 +211,17 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
           lead_time_days: m.lead_time_days,
           is_preferred: m.is_preferred,
           option_groups: groups,
-          has_options: groups.length > 0
+          has_options: groups.length > 0,
+          // 「1 판매단위 = 몇 재고단위」 확인 상태 — 판정은 서버 한 곳(services/sellerLinkConversion).
+          conversion_confirmed_at: m.conversion_confirmed_at,
+          ...conversionStatusFor({
+            unit_conversion: parseFloat(m.unit_conversion),
+            seller_unit: spInfo.unit ?? null,
+            base_quantity: spInfo.base_quantity ?? 1,
+            order_mode: spInfo.order_mode ?? 'pack',
+            conversion_confirmed_at: m.conversion_confirmed_at,
+            conversion_confirmed_pair: m.conversion_confirmed_pair
+          }, stockUnitById[m.ingredient_id])
         });
       }
 

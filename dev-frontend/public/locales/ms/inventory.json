@@ -82,5 +82,19 @@
   },
   "prepTag": "Bahan sedia",
   "prepTagHint": "Bahan yang anda buat daripada resipi. Stok ditambah dengan \"Buat\", bukan dengan memesan.",
-  "prepSource": "Resipi: {{name}}"
+  "prepSource": "Resipi: {{name}}",
+  "packSize": {
+    "title": "Satu yang diterima menambah berapa banyak stok?",
+    "sentenceLead": "Daripada pembekal ini,",
+    "sentenceMid": "yang diterima menambah",
+    "sentenceTail": "dalam stok saya",
+    "help": "Contoh — satu kotak 50 biji ialah 50; jika datang sebiji, 1.",
+    "confirmNote": "Menyimpan akan merekod nilai ini sebagai disahkan.",
+    "poNote": "Pesanan belian yang belum diterima akan guna nilai baharu.",
+    "untouchedNote": "Stok semasa dan pesanan yang sudah diterima tidak berubah.",
+    "invalid": "Masukkan nombor lebih besar daripada 0.",
+    "saveFailed": "Tidak dapat menyimpan.",
+    "unitUnknown": "unit",
+    "suggest": "Mengikut spesifikasi tersimpan ialah {{n}} — guna"
+  }
 }

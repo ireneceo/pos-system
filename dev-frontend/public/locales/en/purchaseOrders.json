@@ -366,8 +366,8 @@
     },
     "showUntracked": "Show untracked",
     "conversion": {
-      "title": "Unit conversion",
-      "help": "Example — a 10kg box of an ingredient measured in kg: enter 10. A 30-piece tray measured in piece: enter 30.",
+      "title": "How much stock does one arrive as?",
+      "help": "For example — a box of 50 is 50; if it comes as singles, 1.",
       "connect": "Connect",
       "asSeparate": "+ Add as separate ingredient"
     },
@@ -546,7 +546,9 @@
     "activeOn": "In use — appears in ordering and recipes",
     "activeOff": "Turned off — hidden from ordering. Editing the brand product will not turn it back on.",
     "linkPriceNotSet": "No price set",
-    "costNotSet": "Cost not set"
+    "costNotSet": "Cost not set",
+    "packSizeNeedsConfirm": "needs confirming",
+    "packSizeEdit": "Edit how much stock one arrives as"
   },
   "connect": {
     "priceNotSet": "No price set — cost will be 0"

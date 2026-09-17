@@ -765,7 +765,7 @@
   "productIngredientsTab.packageUnit": "Unit Pakej",
   "productIngredientsTab.packageQty": "Kuantiti Pakej",
   "productIngredientsTab.pricePerPackage": "Harga / Pakej (asas belian)",
-  "productIngredientsTab.unitConversion": "Penukaran (1 unit penjual = ? unit guna)",
+  "productIngredientsTab.unitConversion": "Stok ditambah bagi 1 unit penjual diterima",
   "productIngredientsTab.unitHelp": "Beli ikut pakej, guna ikut berat — cth. Unit Guna g, Kuantiti Asas 2000, Unit Pakej pack, Kuantiti Pakej 1, harga = satu pakej.",
   "productIngredientsTab.costPerUsageUnit": "Kos seunit guna",
   "productIngredientsTab.pendingSpec": "Belum ditetapkan",
@@ -837,5 +837,9 @@
     "deliveryTermsDesc": "Yuran penghantaran ditambah secara automatik apabila restoran memesan daripada jenama ini. Biarkan kosong dan tiada yuran penghantaran dipaparkan.",
     "freeAbove": "Penghantaran percuma pada atau melebihi jumlah ini",
     "deliveryFee": "Yuran penghantaran di bawahnya (tetap)"
+  },
+  "productIngredientsTab": {
+    "packSizeNeedsConfirm": "perlu disahkan",
+    "packSizeEdit": "Ubah penambahan stok bagi satu terimaan"
   }
 }

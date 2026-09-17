@@ -8,6 +8,7 @@ const ALLOW_BRAND_INGREDIENT_WRITE = false;
 const { Ingredient, IngredientCategory, Restaurant, Supplier, RestaurantIngredientCost, IngredientSellerProduct, SupplierProduct } = require('../models');
 const { stockMapFor, readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
 const { resolveSellers, getSellerName } = require('../utils/sellerNames');
+const { conversionStatusFor } = require('../services/sellerLinkConversion');
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
@@ -169,6 +170,11 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
         mappings.map(m => ({ seller_type: m.seller_type, seller_entity_id: m.seller_entity_id }))
       );
 
+      // 재고 쪽 단위 — 확인 상태 판정에 필요하다(재료마다 단위·기준양·포장이 다르다).
+      const stockById = Object.fromEntries(ingredients.map(i => [i.id, {
+        unit: i.unit, base_quantity: i.base_quantity, package_unit: i.package_unit, package_quantity: i.package_quantity
+      }]));
+
       const sellersByIngredient = {};
       for (const m of mappings) {
         const arr = sellersByIngredient[m.ingredient_id] || (sellersByIngredient[m.ingredient_id] = []);
@@ -204,7 +210,17 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
           lead_time_days: m.lead_time_days,
           is_preferred: m.is_preferred,
           option_groups: groups,
-          has_options: groups.length > 0
+          has_options: groups.length > 0,
+          // 「1 판매단위 = 몇 재고단위」 확인 상태 — 판정은 서버에서 한 번(services/sellerLinkConversion).
+          conversion_confirmed_at: m.conversion_confirmed_at,
+          ...conversionStatusFor({
+            unit_conversion: parseFloat(m.unit_conversion),
+            seller_unit: spInfo.unit ?? null,
+            base_quantity: spInfo.base_quantity ?? 1,
+            order_mode: spInfo.order_mode ?? 'pack',
+            conversion_confirmed_at: m.conversion_confirmed_at,
+            conversion_confirmed_pair: m.conversion_confirmed_pair
+          }, stockById[m.ingredient_id])
         });
       }
 
@@ -637,6 +653,10 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
       const bpMap = bpIds.length
         ? Object.fromEntries((await BrandProduct.findAll({ where: { id: bpIds }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'package_unit', 'order_mode'], paranoid: false })).map(b => [b.id, b]))
         : {};
+      // 재고 쪽 단위 — 확인 상태 판정에 필요하다.
+      const stockUnitById = Object.fromEntries(brandIngredients.map(i => [i.id, {
+        unit: i.unit, base_quantity: i.base_quantity, package_unit: i.package_unit, package_quantity: i.package_quantity
+      }]));
       rows.forEach(r => {
         const prod = r.seller_type === 'supplier' ? spMap[r.seller_product_id]
                    : r.seller_type === 'brand' ? bpMap[r.seller_product_id]
@@ -651,7 +671,15 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
           seller_unit: prod?.unit ?? null,
           base_quantity: prod?.base_quantity != null ? parseFloat(prod.base_quantity) : 1,
           seller_package_unit: prod?.package_unit ?? null,
-          order_mode: prod?.order_mode || 'pack'
+          order_mode: prod?.order_mode || 'pack',
+          ...conversionStatusFor({
+            unit_conversion: parseFloat(r.unit_conversion),
+            seller_unit: prod?.unit ?? null,
+            base_quantity: prod?.base_quantity != null ? parseFloat(prod.base_quantity) : 1,
+            order_mode: prod?.order_mode || 'pack',
+            conversion_confirmed_at: r.conversion_confirmed_at,
+            conversion_confirmed_pair: r.conversion_confirmed_pair
+          }, stockUnitById[r.ingredient_id])
         });
       });
     }

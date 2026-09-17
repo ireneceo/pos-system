@@ -82,5 +82,19 @@
   },
   "prepTag": "预制材料",
   "prepTagHint": "由配方制作的材料。库存用「制作」增加，而非订货。",
-  "prepSource": "配方：{{name}}"
+  "prepSource": "配方：{{name}}",
+  "packSize": {
+    "title": "收到一件，库存增加多少？",
+    "sentenceLead": "从该供应商",
+    "sentenceMid": "收到后，我的库存增加",
+    "sentenceTail": "。",
+    "help": "例如 — 一箱 50 个就填 50；散装到货填 1。",
+    "confirmNote": "保存后将记录为已确认。",
+    "poNote": "尚未收货的采购单也会套用新数值。",
+    "untouchedNote": "当前库存和已收货的采购单不会改变。",
+    "invalid": "请输入大于 0 的数字。",
+    "saveFailed": "保存失败。",
+    "unitUnknown": "单位",
+    "suggest": "按已登记的规格应为 {{n}} — 使用"
+  }
 }

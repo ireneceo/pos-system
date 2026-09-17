@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { EmptyState, IconButton } from '../../components/UI/TableComponents';
+import SellerPackSizeModal, { SellerPackSizeTarget } from '../../components/Common/SellerPackSizeModal';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import ListControlsBar from '../../components/Common/ListControlsBar';
@@ -87,6 +88,10 @@ interface SellerSource {
   order_mode?: string | null;
   unit_price: number;
   unit_conversion: number;
+  // 「1 판매단위 = 몇 재고단위」 확인 상태 — 서버 판정(services/sellerLinkConversion)
+  conversion_status?: 'ok' | 'needs_confirm';
+  conversion_confirmed_at?: string | null;
+  conversion_suggested?: number | null;
   min_order_quantity: number;
   lead_time_days: number;
   is_preferred: boolean;
@@ -386,6 +391,21 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
+
+  // 「1 □ 받으면 재고 □ 늘어남」 고치기 — 저장 = 확인. 매장 재료 화면과 같은 창·같은 규칙.
+  const [packSizeTarget, setPackSizeTarget] = useState<SellerPackSizeTarget | null>(null);
+
+  const savePackSize = async (target: SellerPackSizeTarget, value: number) => {
+    if (!editingIngredient) return;
+    const res = await fetchAPI(`/api/product-ingredients/${editingIngredient.id}/seller-sources/${target.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ unit_conversion: value }),
+    });
+    if (!res?.success) throw new Error(res?.message || 'Failed to save');
+    await loadSellerSources(editingIngredient.id);
+    return res;
+  };
+
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'compact' | 'image'>(() => {
     const saved = localStorage.getItem('brandIngredientsViewMode');
@@ -1222,9 +1242,36 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                             {src.seller_product_sku ? ` · SKU: ${src.seller_product_sku}` : ''}
                             {src.seller_unit ? ` · ${sellerSpecLabel(src)}` : ''}
                             {' · '}{formatCurrency(Number(src.unit_price), selectedCurrency)}
-                            {Number(src.unit_conversion) && Number(src.unit_conversion) !== 1 ? ` · ×${Number(src.unit_conversion)}` : ''}
+                            {/* 「×24」 대신 「1 box → 24 piece」 — 읽으면 뜻이 바로 보인다(2026-09-17) */}
+                            {src.seller_unit && editingIngredient?.unit
+                              ? ` · 1 ${src.seller_unit} → ${Number(src.unit_conversion ?? 1)} ${editingIngredient.unit}`
+                              : ''}
+                            {src.conversion_status === 'needs_confirm' && (
+                              <span style={{ color: '#B45309', fontWeight: 700 }}>
+                                {` · ${t('brand:productIngredientsTab.packSizeNeedsConfirm', '확인 필요')}`}
+                              </span>
+                            )}
                           </div>
                         </div>
+                        {src.seller_unit && editingIngredient?.unit && (
+                          <IconButton
+                            type="button"
+                            variant="edit"
+                            onClick={() => setPackSizeTarget({
+                              id: src.id,
+                              sellerName,
+                              sellerProductName: src.seller_product_name,
+                              sellerUnit: src.seller_unit,
+                              stockUnit: editingIngredient.unit,
+                              value: Number(src.unit_conversion ?? 1),
+                              suggested: src.conversion_suggested ?? null,
+                            })}
+                            title={t('brand:productIngredientsTab.packSizeEdit', '받으면 재고가 얼마나 느는지 고치기') as string}
+                            aria-label={t('brand:productIngredientsTab.packSizeEdit', '받으면 재고가 얼마나 느는지 고치기') as string}
+                          >
+                            ✎
+                          </IconButton>
+                        )}
                         <IconButton
                           type="button"
                           variant="delete"
@@ -1480,6 +1527,12 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
           </div>
         </div>
       </Modal>
+
+      <SellerPackSizeModal
+        target={packSizeTarget}
+        onClose={() => setPackSizeTarget(null)}
+        onSave={savePackSize}
+      />
     </>
   );
 };

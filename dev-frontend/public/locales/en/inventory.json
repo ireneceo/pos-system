@@ -82,5 +82,19 @@
   },
   "prepTag": "Prepared",
   "prepTagHint": "An ingredient you make from a recipe. Stock is added with \"Make\", not by ordering.",
-  "prepSource": "Recipe: {{name}}"
+  "prepSource": "Recipe: {{name}}",
+  "packSize": {
+    "title": "How much stock does one arrive as?",
+    "sentenceLead": "From this seller,",
+    "sentenceMid": "arrives as",
+    "sentenceTail": "in my stock",
+    "help": "For example — a box of 50 is 50; if it comes as singles, 1.",
+    "confirmNote": "Saving records this as confirmed.",
+    "poNote": "Purchase orders not yet received will use the new value.",
+    "untouchedNote": "Current stock and orders already received stay as they are.",
+    "invalid": "Enter a number greater than 0.",
+    "saveFailed": "Could not save.",
+    "unitUnknown": "unit",
+    "suggest": "By the spec on file this is {{n}} — use it"
+  }
 }

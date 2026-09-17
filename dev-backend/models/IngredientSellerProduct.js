@@ -33,7 +33,16 @@ const IngredientSellerProduct = sequelize.define('IngredientSellerProduct', {
   lead_time_days: { type: DataTypes.INTEGER, defaultValue: 0 },
   is_preferred: { type: DataTypes.BOOLEAN, defaultValue: false },
   is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
-  notes: { type: DataTypes.STRING(255), allowNull: true }
+  notes: { type: DataTypes.STRING(255), allowNull: true },
+  // ── 「사람이 이 값을 확인했다」 (2026-09-17) ────────────────────────────────
+  // unit_conversion 의 기본값이 1 이라, 값만으로는 「1 이 맞다고 확인함」과 「아직 안 정함」을
+  // 구분할 수 없다. 저장 = 확인으로 보고 세 칸을 같이 남긴다. 판정은 utils/unitConversionRule.js.
+  conversion_confirmed_at: { type: DataTypes.DATE, allowNull: true, comment: '사람이 이 값을 확인·저장한 시각' },
+  conversion_confirmed_by: { type: DataTypes.INTEGER, allowNull: true, comment: '확인한 사용자 id' },
+  conversion_confirmed_pair: {
+    type: DataTypes.STRING(64), allowNull: true,
+    comment: '확인 당시 단위쌍 (판매자단위>재고단위). 지금 쌍과 다르면 그 확인은 무효다'
+  }
 }, {
   tableName: 'ingredient_seller_products',
   timestamps: true,

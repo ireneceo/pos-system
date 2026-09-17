@@ -353,6 +353,11 @@
       "ko": "배송 완료",
       "zh": "已送达",
       "ms": "Telah Sampai"
+    },
+    "Stock added per one received": {
+      "ko": "받으면 재고가 느는 양",
+      "zh": "每收到一件增加的库存",
+      "ms": "Stok ditambah bagi satu terimaan"
     }
   }
 }

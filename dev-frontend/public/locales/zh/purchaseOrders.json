@@ -366,8 +366,8 @@
     },
     "showUntracked": "显示未追踪",
     "conversion": {
-      "title": "单位换算",
-      "help": "示例 — 食材以kg为单位时,10kg箱装商品输入10。以piece为单位时,30件装托盘输入30。",
+      "title": "收到一件，库存增加多少？",
+      "help": "例如 — 一箱 50 个就填 50；散装到货填 1。",
       "connect": "连接",
       "asSeparate": "+ 作为独立食材添加"
     },
@@ -546,7 +546,9 @@
     "activeOn": "使用中——会出现在采购与配方中",
     "activeOff": "已关闭——不在采购中显示。修改品牌商品也不会重新开启。",
     "linkPriceNotSet": "未填价格",
-    "costNotSet": "未设成本"
+    "costNotSet": "未设成本",
+    "packSizeNeedsConfirm": "待确认",
+    "packSizeEdit": "修改收到一件后库存增加多少"
   },
   "connect": {
     "priceNotSet": "未填价格——成本将记为 0"

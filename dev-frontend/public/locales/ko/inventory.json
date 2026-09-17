@@ -82,5 +82,19 @@
   },
   "prepTag": "준비 재료",
   "prepTagHint": "레시피로 만드는 재료입니다. 발주가 아니라 «만들기» 로 재고를 늘립니다",
-  "prepSource": "레시피: {{name}}"
+  "prepSource": "레시피: {{name}}",
+  "packSize": {
+    "title": "받으면 재고가 얼마나 느나요?",
+    "sentenceLead": "이 업체에서",
+    "sentenceMid": "를 받으면 내 재고는",
+    "sentenceTail": "늘어납니다",
+    "help": "예 — 한 박스에 50개가 들었으면 50, 낱개로 오면 1 입니다.",
+    "confirmNote": "저장하면 이 값을 확인한 것으로 기록됩니다.",
+    "poNote": "아직 받지 않은 발주에도 새 값이 적용됩니다.",
+    "untouchedNote": "지금 재고 수량과 이미 받은 발주는 바뀌지 않습니다.",
+    "invalid": "0 보다 큰 숫자를 넣어 주세요.",
+    "saveFailed": "저장하지 못했습니다.",
+    "unitUnknown": "단위",
+    "suggest": "적어 두신 규격대로라면 {{n}} 입니다 — 넣기"
+  }
 }

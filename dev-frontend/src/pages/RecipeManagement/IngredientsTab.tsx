@@ -11,6 +11,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { DataTableStatus } from '../../components/UI/DataTable';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
+import SellerPackSizeModal, { SellerPackSizeTarget } from '../../components/Common/SellerPackSizeModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
@@ -91,6 +92,11 @@ interface Ingredient {
     order_mode?: string | null;
     unit_price?: number;
     is_preferred?: boolean;
+    // 「1 판매단위 = 몇 재고단위」 — 판정은 서버가 한다(services/sellerLinkConversion). 화면은 표시만.
+    unit_conversion?: number | string | null;
+    conversion_status?: 'ok' | 'needs_confirm';
+    conversion_confirmed_at?: string | null;
+    conversion_suggested?: number | null;
   }>;
 }
 
@@ -772,6 +778,22 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const buyerScopeQS = (isBrandRole && brandId) ? `?entity_type=brand&entity_id=${brandId}` : '';
 
   const [unlinkTarget, setUnlinkTarget] = useState<{ id: number; label: string } | null>(null);
+
+  // 「1 □ 받으면 재고 □ 늘어남」 고치기 — 저장 = 확인(값이 1 이어도 확인으로 기록된다).
+  const [packSizeTarget, setPackSizeTarget] = useState<SellerPackSizeTarget | null>(null);
+
+  const savePackSize = async (target: SellerPackSizeTarget, value: number) => {
+    const res = await fetch(`/api/ingredient-seller-products/${target.id}${buyerScopeQS}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+      body: JSON.stringify({ unit_conversion: value }),
+    });
+    // ⚠ fetchAPI 는 실패 본문을 버린다(메모리 reference_fetchapi_drops_error_body) — 여기선 직접 읽는다.
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(j.message || 'Failed to save');
+    reloadWithSellers();
+    return j;
+  };
 
   const confirmUnlinkSeller = async () => {
     if (!unlinkTarget) return;
@@ -1568,6 +1590,41 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                         {s.unit_price != null
                           ? (Number(s.unit_price) > 0 ? ` · ${formatCurrency(Number(s.unit_price), selectedCurrency)}` : ` · ${t('ingredients.linkPriceNotSet', '가격 미입력')}`)
                           : ''}
+                        {/* 「1 박스 → 50 개」 — 값이 1 이어도 항상 보여야 Irene 이 «아직 1 인 것» 을 찾는다 */}
+                        {s.seller_unit && selectedIngredient.unit ? (
+                          <span style={{ marginLeft: 4 }}>
+                            {` · 1 ${s.seller_unit} → ${Number(s.unit_conversion ?? 1)} ${selectedIngredient.unit}`}
+                            {s.conversion_status === 'needs_confirm' && (
+                              <span style={{ color: '#B45309', fontWeight: 700 }}>
+                                {` · ${t('ingredients.packSizeNeedsConfirm', '확인 필요')}`}
+                              </span>
+                            )}
+                          </span>
+                        ) : null}
+                        {!isItemReadOnly(selectedIngredient) && s.seller_unit && selectedIngredient.unit && (
+                          <button
+                            type="button"
+                            title={t('ingredients.packSizeEdit', '받으면 재고가 얼마나 느는지 고치기') as string}
+                            aria-label={t('ingredients.packSizeEdit', '받으면 재고가 얼마나 느는지 고치기') as string}
+                            onClick={() => setPackSizeTarget({
+                              id: s.id,
+                              sellerName: s.seller_name,
+                              sellerProductName: s.seller_product_name,
+                              sellerUnit: s.seller_unit,
+                              stockUnit: selectedIngredient.unit,
+                              value: Number(s.unit_conversion ?? 1),
+                              suggested: s.conversion_suggested ?? null,
+                            })}
+                            style={{
+                              marginLeft: 2, padding: 0, width: 16, height: 16, lineHeight: '14px',
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              border: 'none', borderRadius: '50%', cursor: 'pointer',
+                              background: 'rgba(0,0,0,0.08)', color: 'inherit', fontSize: 10, fontWeight: 700,
+                            }}
+                          >
+                            ✎
+                          </button>
+                        )}
                         <button
                           type="button"
                           title="Disconnect this seller source"
@@ -1851,6 +1908,12 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         cancelText="Keep"
         type="warning"
       />
+      <SellerPackSizeModal
+        target={packSizeTarget}
+        onClose={() => setPackSizeTarget(null)}
+        onSave={savePackSize}
+      />
+
       <ConfirmModal
         isOpen={infoModal.open}
         title={infoModal.title}

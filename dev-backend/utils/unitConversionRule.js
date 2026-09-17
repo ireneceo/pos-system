@@ -28,6 +28,13 @@ const isContinuous = (u) => !!DIM[norm(u)];
 const dim = (u) => DIM[norm(u)];
 const sameDim = (a, b) => !!dim(a) && dim(a) === dim(b);
 const factor = (u) => UNIT_FACTOR[norm(u)];
+/**
+ * 「확인한 단위쌍」 표기 — 확인 기록이 어떤 단위 조합에 대한 것이었는지 한 줄로 남긴다.
+ * 판매자 단위나 재고 단위가 나중에 바뀌면 이 문자열이 달라지고, 그때 그 확인은 무효가 된다.
+ * 저장(라우트)과 판정(여기)이 **같은 함수**를 써야 한다 — 양쪽이 다르게 만들면 확인이 영영 안 맞는다.
+ */
+const conversionPair = (sellerUnit, stockUnit) => `${norm(sellerUnit)}>${norm(stockUnit)}`;
+
 /** 두 단위가 «같은 뜻»인가 — 문자열이 같거나, 둘 다 개수 동의어 */
 const sameUnit = (a, b) => norm(a) === norm(b) || (isCount(a) && isCount(b));
 
@@ -45,9 +52,14 @@ const sameUnit = (a, b) => norm(a) === norm(b) || (isCount(a) && isCount(b));
  */
 function classifyConversion(row) {
   const conv = Number(row.conv);
-  // 사람이 이미 값을 넣었는가 — 1 은 «아직 안 정한 기본값»이고, 그 밖의 값은 사람이 넣은 것으로 본다.
-  //   H(사람 몫)로 분류되는 쌍이라도 이미 값이 들어 있으면 **다시 알리지 않는다**(영원한 경고 금지).
-  const humanSet = Number.isFinite(conv) && conv !== 1;
+  // 사람이 화면에서 저장했는가 — 저장 = 확인이다. 값이 1 이어도(«개»와 «팩»이 같은 물건인 경우)
+  //   확인으로 인정한다. 단, 확인은 **그때의 단위쌍에 묶인다** — 나중에 판매자 단위가 바뀌면
+  //   저장된 쌍과 지금 쌍이 달라지고, 그 확인은 무효가 되어 다시 물어본다.
+  const confirmed = !!row.confirmed_at
+    && String(row.confirmed_pair || '') === conversionPair(row.seller_unit, row.stock_unit);
+  // 확인 기록이 없더라도 1 이 아닌 값은 누군가 손으로 넣은 것으로 본다(확인 칸이 생기기 전의 데이터).
+  //   H(사람 몫)로 분류되는 쌍이라도 값이 들어 있으면 **다시 알리지 않는다**(영원한 경고 금지).
+  const humanSet = confirmed || (Number.isFinite(conv) && conv !== 1);
   const asHuman = (rule, why) => humanSet
     ? { kind: 'N', want: null, rule: 'human-set', why: `사람이 넣은 값(${conv}) — ${why}`, humanSet: true }
     : { kind: 'H', want: null, rule, why, humanSet: false };
@@ -71,6 +83,13 @@ function classifyConversion(row) {
     return { kind: 'H', want, rule: rule + '-conflict', humanSet: true,
       why: `데이터로는 ${want} 인데 지금 값은 ${conv} — 어느 쪽이 맞는지 사람이 정해야 한다` };
   };
+  // 사람이 이 쌍을 확인했으면 끝이다 — 데이터로 계산한 값보다 **화면에서 저장한 값이 우선**한다.
+  //   (운영 실측 예: 고운소금은 데이터상 1000 이지만 사람이 450 을 맞춰 두었다.)
+  if (confirmed) {
+    return { kind: 'N', want: null, rule: 'human-confirmed', humanSet: true,
+      why: `사람이 확인한 값(${conv}) — ${row.confirmed_at}` };
+  }
+
   const stockCont = isContinuous(row.stock_unit);
   const mode = row.order_mode === 'measure' ? 'measure' : 'pack';
 
@@ -128,6 +147,7 @@ function classifyConversion(row) {
 
 module.exports = {
   classifyConversion,
+  conversionPair,
   COUNT_UNIT_SYNONYMS,
   isCount, isContinuous, sameDim, factor, sameUnit
 };

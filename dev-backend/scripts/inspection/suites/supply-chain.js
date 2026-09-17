@@ -162,7 +162,10 @@ module.exports = {
           SELECT isp.id, t.name, t.unit AS stock_unit, t.base_quantity AS stock_base,
                  t.package_unit AS stock_package_unit, t.package_quantity AS stock_package_quantity,
                  s.unit AS seller_unit, ${baseCol} AS seller_base, ${modeCol} AS order_mode,
-                 isp.unit_conversion AS conv, '${leg.type}' AS leg, '${bridge.label}' AS bridge
+                 isp.unit_conversion AS conv, '${leg.type}' AS leg, '${bridge.label}' AS bridge,
+                 -- 사람이 화면에서 확인한 행은 규칙이 N 으로 본다 — 두 칸을 안 넘기면
+                 -- 확인해도 계속 잡혀 «영원한 경고» 가 된다.
+                 isp.conversion_confirmed_at AS confirmed_at, isp.conversion_confirmed_pair AS confirmed_pair
             FROM ingredient_seller_products isp
             JOIN \`${bridge.table}\` t ON t.id = isp.${bridge.col}
             JOIN \`${leg.table}\` s ON s.id = isp.seller_product_id

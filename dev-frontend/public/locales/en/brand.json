@@ -765,7 +765,7 @@
   "productIngredientsTab.packageUnit": "Package Unit",
   "productIngredientsTab.packageQty": "Package Qty",
   "productIngredientsTab.pricePerPackage": "Price / Package",
-  "productIngredientsTab.unitConversion": "Conversion (1 seller unit = ? usage unit)",
+  "productIngredientsTab.unitConversion": "Stock added per one seller unit received",
   "productIngredientsTab.unitHelp": "Buy by package, use by weight — e.g. Usage Unit g, Base Qty 2000, Package Unit pack, Package Qty 1, price = one pack.",
   "productIngredientsTab.costPerUsageUnit": "Cost per usage unit",
   "productIngredientsTab.pendingSpec": "Not set",
@@ -837,5 +837,9 @@
     "deliveryTermsDesc": "A delivery fee is added automatically when a restaurant orders from this brand. Leave blank and no delivery fee appears.",
     "freeAbove": "Free delivery at or above this amount",
     "deliveryFee": "Delivery fee below that (fixed)"
+  },
+  "productIngredientsTab": {
+    "packSizeNeedsConfirm": "needs confirming",
+    "packSizeEdit": "Edit how much stock one arrives as"
   }
 }

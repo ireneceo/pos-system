@@ -765,7 +765,7 @@
   "productIngredientsTab.packageUnit": "기준단위(포장)",
   "productIngredientsTab.packageQty": "기준양",
   "productIngredientsTab.pricePerPackage": "가격 (기준양당 · 발주 기준)",
-  "productIngredientsTab.unitConversion": "환산 (1 판매단위 = ? 취급단위)",
+  "productIngredientsTab.unitConversion": "1 판매단위를 받으면 재고가 느는 양",
   "productIngredientsTab.unitHelp": "포장으로 사고 무게로 쓰면 — 취급단위 g, 취급 기준숫자 2000, 기준단위 pack, 기준양 1, 가격은 1 pack 값.",
   "productIngredientsTab.costPerUsageUnit": "취급단위당 원가",
   "productIngredientsTab.pendingSpec": "미확정",
@@ -837,5 +837,9 @@
     "deliveryTermsDesc": "매장이 이 브랜드에 발주할 때 배송비가 자동으로 붙습니다. 비워 두면 배송비가 나오지 않습니다.",
     "freeAbove": "이 금액 이상 주문하면 무료배송",
     "deliveryFee": "그 미만이면 배송비 (고정)"
+  },
+  "productIngredientsTab": {
+    "packSizeNeedsConfirm": "확인 필요",
+    "packSizeEdit": "받으면 재고가 얼마나 느는지 고치기"
   }
 }

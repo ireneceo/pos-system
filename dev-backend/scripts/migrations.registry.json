@@ -8,6 +8,7 @@
     "cleanup-restaurants-duplicate-indexes.js",
     "cleanup-sequelize-duplicate-indexes.js",
     "cleanup-users-duplicate-indexes.js",
+    "migrate-add-conversion-confirmed.js",
     "migrate-add-ewallet-type.js",
     "migrate-add-order-idempotency.js",
     "migrate-add-order-notes.js",
