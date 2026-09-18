@@ -1,5 +1,21 @@
 # Changelog
 
+## v3.93 — 2026-09-18 (SW 5.39-direct-purchase-and-recipe-rows-20260918)
+
+### 발주
+- **직접 구매** — 초안 행 「Receive + pay」 한 번으로 보냄·받음·결제가 닫힌다(`POST /api/purchase-orders/:id/direct-purchase`). 오너 승인이 켜진 매장은 400 `APPROVAL_REQUIRED` 로 **통째 롤백**(재고·결제·제출 전부 무변경)
+- 발주 대기 화면에서 **「To receive」 블록 제거** — 보낸 뒤의 수령·결제는 발주 이력 행과 상세에 이미 있다(중복 해소)
+- 「Receive only」·「Record payment」는 외상·선불용으로 이력·상세에 유지
+
+### 레시피
+- 재료 줄을 2줄 구조로 — 메모를 아래 줄 전체 폭으로 내리고 이름·수량 폭 확보
+
+### 검증 도구 (사고 수정)
+- health-check 계약이 데모 매장에 남기던 **고아 거래청구서·재고 배치·드로어 출금** 제거 — 공용 `hcCleanupPurchaseOrders` 로 교체 + 그 목록에 `inventory_batches` 추가
+- **잔재 감시기 가동** — `hcLeakFingerprint()` 가 정의만 있고 호출이 0곳이었다. 실행 전후로 재서 고아 청구서가 늘면 실패로 끝낸다
+- 고장주입 2/2 · inventory 연속 2회 43/43 · verify-all --full 21/22(fable_note 공란 1건만)
+
+
 ## v3.92 — 2026-09-18 (SW 5.38-currency-rm-everywhere-20260918)
 
 ### 통화 표기
