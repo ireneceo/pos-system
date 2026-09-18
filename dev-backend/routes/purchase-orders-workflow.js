@@ -68,7 +68,7 @@ function issueTradeInvoiceAfterCommit(po) {
 }
 
 // 결제·되돌리기 단일 소스 (P4-3) — 발주 행 기록 + 현금이면 드로어 이동. 마감 공식은 자동으로 잡는다.
-const { recordPayment, reversePayment } = require('../services/purchaseOrderPayment');
+const { recordPayment, reversePayment, reimbursePersonalPayment } = require('../services/purchaseOrderPayment');
 
 // Path-level guards so unrelated /api/* fall-throughs aren't blocked by buyer-role.
 router.use('/purchase-orders', authenticateToken, requireBuyerRole);
@@ -478,6 +478,90 @@ router.post('/purchase-orders/:id/send-external-email', async (req, res) => {
 });
 
 // ============================================
+// ============================================
+// POST /api/purchase-orders/:id/reimburse — 개인금액을 그 사람에게 갚음 (2026-09-18 Fable ⑨)
+// ============================================
+//   Irene 「개인돈으로 쓴 건 비용처리가 안되고 개인에게 돈을 줘야 하는 거야.」
+//   결제 때는 회사 돈이 안 나갔다. **여기서 나간다** — 현금이면 드로어 out(source='reimbursement'),
+//   이체면 드로어 무접촉. 두 번 갚기는 409 로 막는다.
+router.post('/purchase-orders/:id/reimburse', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    const method = (req.body && req.body.reimbursement_method) || 'cash';
+
+    const result = await database.sequelize.transaction(async (t) => {
+      const po = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!po) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkPOOwnership(po, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      return reimbursePersonalPayment(po, {
+        method,
+        userId: req.user && req.user.id,
+        reason: req.body && req.body.reason ? sanitizeString(String(req.body.reason)).slice(0, 255) : null,
+      }, t);
+    });
+
+    res.json({
+      success: true,
+      data: result.po,
+      ...(result.movement ? { cash_movement_id: result.movement.id } : {}),
+      ...(result.drawerSkipped ? { drawerSkipped: true } : {}),
+    });
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    if (err.statusCode) return res.status(err.statusCode).json({ success: false, code: err.code, message: err.message });
+    if (['NOT_PERSONAL', 'NOT_PAID', 'INVALID_REIMBURSEMENT_METHOD'].includes(err.code)) {
+      return res.status(400).json({ success: false, code: err.code, message: err.message });
+    }
+    console.error('POST /api/purchase-orders/:id/reimburse error:', err);
+    res.status(500).json({ success: false, message: 'Failed to record reimbursement' });
+  }
+});
+
+// ============================================
+// POST /api/purchase-orders/:id/upload-receipt — 영수증 (2026-09-18)
+// ============================================
+//   Irene 「캐시랑 개인비용 쓴 거에 영수증 넣게 해야 하지 않아? 인보이스랑 다르잖아.
+//           영수증은 이미 사용한 돈이니까.」
+//   ⚠ 인보이스 업로드(`/upload-invoice`)와 **다른 것**이다 —
+//     인보이스는 «앞으로 낼 청구서»라 외부 공급업체 발주에만 붙고 대조(reconcile)를 탄다.
+//     영수증은 «이미 나간 돈의 증빙»이라 **결제된 발주면** 판매자 종류와 무관하게 붙는다.
+//   파일은 `/api/upload/files` 로 먼저 올리고 그 상대경로를 여기로 보낸다(인보이스와 같은 방식).
+router.post('/purchase-orders/:id/upload-receipt', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Not found' });
+
+    const { url, filename } = req.body || {};
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ success: false, code: 'RECEIPT_URL_REQUIRED', message: 'Receipt URL required' });
+    }
+    if (!url.startsWith('/uploads/')) {
+      return res.status(400).json({ success: false, code: 'INVALID_RECEIPT_URL', message: 'Invalid receipt URL' });
+    }
+
+    const po = await PurchaseOrder.findByPk(id);
+    if (!po) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!checkPOOwnership(po, req)) return res.status(404).json({ success: false, message: 'Not found' });
+    // 영수증은 «이미 나간 돈»의 증빙이다 — 아직 결제되지 않은 발주에는 붙일 것이 없다.
+    if (po.payment_status !== 'paid') {
+      return res.status(400).json({ success: false, code: 'NOT_PAID', message: 'A receipt can only be attached to a paid purchase order' });
+    }
+
+    await po.update({
+      receipt_url: url,
+      receipt_filename: filename || url.split('/').pop(),
+      receipt_uploaded_at: new Date(),
+      receipt_uploaded_by_user_id: (req.user && req.user.id) || null,
+    });
+
+    res.json({ success: true, data: po });
+  } catch (err) {
+    console.error('upload-receipt error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save receipt' });
+  }
+});
+
 // POST /api/purchase-orders/:id/upload-invoice — 외부 공급업체 인보이스 파일 URL 저장
 //   url 은 /api/upload/files 호출로 사전 업로드된 결과 (relativePath, originalName 포함)
 // ============================================

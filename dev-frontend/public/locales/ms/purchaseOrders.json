@@ -13,7 +13,9 @@
       "allStatuses": "Semua Status",
       "searchSeller": "Cari penjual...",
       "from": "Dari",
-      "to": "Hingga"
+      "to": "Hingga",
+      "owed": "Belum dibayar balik",
+      "owedHint": "Dibayar dengan wang peribadi dan belum dibayar balik"
     },
     "table": {
       "poNumber": "PO #",
@@ -58,10 +60,26 @@
       "refundShort": "Undur bayaran",
       "pay": "Rekod pembayaran",
       "payShort": "Bayar",
-      "receiveAndPayShort": "Terima & bayar"
+      "receiveAndPayShort": "Terima & bayar",
+      "reimburse": "Bayar balik",
+      "reimburseHint": "Rekod bahawa anda telah membayar balik orang yang guna wang sendiri",
+      "attachReceipt": "Lampirkan resit",
+      "attachReceiptHint": "Untuk belian tunai atau wang peribadi, lampirkan resit untuk semakan kemudian",
+      "viewReceipt": "Lihat resit"
     },
     "badge": {
       "sellerShipped": "Penjual mula penghantaran"
+    },
+    "reimburse": {
+      "title": "Bayar balik wang peribadi",
+      "effectCash": "Bayaran balik tunai akan dikeluarkan dari laci syif yang dibuka.",
+      "effectBank": "Bayaran balik melalui pindahan tidak menyentuh laci.",
+      "confirm": "Tanda sebagai dibayar balik",
+      "failed": "Tidak dapat merekod bayaran balik",
+      "drawerSkipped": "Tiada syif dibuka, jadi laci tidak dikemas kini. Rekod bayaran balik disimpan."
+    },
+    "receipt": {
+      "failed": "Tidak dapat melampirkan resit"
     }
   },
   "new": {
@@ -508,7 +526,8 @@
       "cash": "Tunai",
       "bank": "Pindahan bank",
       "card": "Kad",
-      "nonCashNote": "Pembayaran bukan tunai direkodkan pada pesanan sahaja — laci tunai tidak disentuh."
+      "nonCashNote": "Pembayaran bukan tunai direkodkan pada pesanan sahaja — laci tunai tidak disentuh.",
+      "personal": "Wang peribadi"
     },
     "effects": {
       "title": "Apa yang berlaku",
@@ -517,7 +536,9 @@
       "drawer": "RM {{amount}} dikeluarkan daripada laci tunai syif yang dibuka.",
       "refund": "Satu pergerakan masuk tunai yang sama dicipta — pembayaran dibalikkan, bukan dipadam. Stok dan penerimaan tidak disentuh.",
       "paysInvoice": "Jumlah invois pembekal yang telah dibandingkan akan dibayar, bukan jumlah yang dipesan.",
-      "directSubmit": "Pesanan belian disahkan sebagai dihantar (belian terus)."
+      "directSubmit": "Pesanan belian disahkan sebagai dihantar (belian terus).",
+      "personalNoDrawer": "Tiada wang keluar dari laci tunai syarikat — ini wang peribadi.",
+      "personalOwed": "Ia kekal dalam senarai “Belum dibayar balik” dan menjadi perbelanjaan apabila dibayar balik."
     },
     "error": {
       "multipleShifts": "Lebih daripada satu syif dibuka — tutup satu sebelum merekod pembayaran tunai.",
@@ -542,7 +563,10 @@
     "notReconciledWarning": "Invois pembekal telah dimuat naik tetapi belum dibandingkan — ini membayar jumlah yang dipesan.",
     "compareFirst": "Banding dahulu",
     "paidAt": "Tarikh bayaran",
-    "paidAtNote": "Hari wang sebenarnya keluar. Lalai kepada hari ini."
+    "paidAtNote": "Hari wang sebenarnya keluar. Lalai kepada hari ini.",
+    "personal": {
+      "paidByHint": "Orang yang log masuk sekarang direkod sebagai pembayar."
+    }
   },
   "ingredients": {
     "activeLabel": "Aktif",

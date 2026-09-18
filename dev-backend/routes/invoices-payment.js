@@ -394,8 +394,10 @@ router.post('/:id/mark-paid-external', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, code: parsedPaidAt.code, message: parsedPaidAt.message });
     }
     const paidAt = parsedPaidAt.value;
-    if (!['cash', 'bank_transfer', 'card'].includes(method)) {
-      return res.status(400).json({ success: false, code: 'INVALID_PAYMENT_METHOD', message: 'payment_method must be cash, bank_transfer or card' });
+    // 목록은 `services/purchaseOrderPayment.js` 한 곳이 단일 소스 — 여기 또 적으면 갈라진다.
+    const { PAYMENT_METHODS } = require('../services/purchaseOrderPayment');
+    if (!PAYMENT_METHODS.includes(method)) {
+      return res.status(400).json({ success: false, code: 'INVALID_PAYMENT_METHOD', message: `payment_method must be one of: ${PAYMENT_METHODS.join(', ')}` });
     }
     const { sanitizeString } = require('../middleware/validation');
     const note = req.body.notes || req.body.payment_notes

@@ -2310,6 +2310,100 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
   });
 
+
+  // ── 개인금액(직원이 자기 돈으로 삼) 계약 (2026-09-18 Fable 판정 ⑨ · Irene 승인) ─────────────
+  //   Irene 「개인돈으로 쓴 건 비용처리가 안되고 개인에게 돈을 줘야 하는 거야. 회계처리에 안들어가야 해.」
+  //   뜻: 결제 시점에는 **회사 금고가 움직이지 않고**(회사 돈이 아니니까), **갚을 때** 나간다.
+  //   이 계약이 그 두 시점을 고정한다 — 하나라도 어긋나면 마감 기대금액이 틀어진다.
+  const PM_NOTE = 'ZZ-HC-PERSONAL';
+
+  async function pmCleanup() {
+    const { sequelize } = require('../config/database');
+    const rows = (await sequelize.query(`SELECT id FROM purchase_orders WHERE notes = '${PM_NOTE}'`))[0];
+    const ids = rows.map(r => Number(r.id)).filter(Number.isInteger);
+    if (ids.length) await hcCleanupPurchaseOrders(ids);
+  }
+
+  async function pmMakePaidPersonal(ctx2) {
+    const auth = { Authorization: `Bearer ${ctx2.token}` };
+    const made = await request('POST', '/purchase-orders', {
+      seller_type: 'supplier', seller_entity_id: ctx2.seller_entity_id, notes: PM_NOTE,
+      items: [{ ingredient_id: ctx2.ingredient_id, quantity_ordered: 1, unit: ctx2.unit, unit_price: 6 }]
+    }, auth);
+    const poId = made.body?.data?.id;
+    if (!poId) return null;
+    await request('POST', `/purchase-orders/${poId}/submit`, {}, auth);
+    const paid = await request('POST', `/purchase-orders/${poId}/receive-and-pay`, { payment_method: 'personal' }, auth);
+    return paid.status === 200 ? poId : null;
+  }
+
+  test('inventory', '개인금액 orphan sweep (멱등 — 데모 매장만)', async () => {
+    await pmCleanup();
+    const { sequelize } = require('../config/database');
+    const left = (await sequelize.query(`SELECT COUNT(*) c FROM purchase_orders WHERE notes = '${PM_NOTE}'`))[0][0].c;
+    return Number(left) === 0;
+  });
+
+  test('inventory', '개인금액 결제 → 금고 무접촉 · 갚을 목록에 남는다', async () => {
+    const ctx2 = await dpCtx(false);
+    if (!ctx2) { console.log('      (준비물 없음 — 오너 없는 데모 매장의 공급업체 매핑 재료가 없어 건너뜀)'); return true; }
+    const { sequelize } = require('../config/database');
+    const cnt = async () => Number((await sequelize.query('SELECT COUNT(*) c FROM cash_movements'))[0][0].c);
+    const before = await cnt();
+    const poId = await pmMakePaidPersonal(ctx2);
+    if (!poId) { await pmCleanup(); return false; }
+    try {
+      const po = (await sequelize.query(`SELECT payment_status, payment_method, reimbursed_at FROM purchase_orders WHERE id=${poId}`))[0][0];
+      // 금고 행이 **하나도 늘지 않아야** 한다 — 회사 돈이 나간 적이 없다.
+      return po.payment_status === 'paid' && po.payment_method === 'personal'
+        && !po.reimbursed_at && (await cnt()) === before;
+    } finally { await pmCleanup(); }
+  });
+
+  test('inventory', '개인금액 정산 → 그때 금고에서 나가고, 두 번은 막힌다', async () => {
+    const ctx2 = await dpCtx(false);
+    if (!ctx2) { console.log('      (준비물 없음 — 오너 없는 데모 매장의 공급업체 매핑 재료가 없어 건너뜀)'); return true; }
+    const { sequelize } = require('../config/database');
+    const auth = { Authorization: `Bearer ${ctx2.token}` };
+    const poId = await pmMakePaidPersonal(ctx2);
+    if (!poId) { await pmCleanup(); return false; }
+    try {
+      const r1 = await request('POST', `/purchase-orders/${poId}/reimburse`, { reimbursement_method: 'cash' }, auth);
+      const po = (await sequelize.query(`SELECT reimbursed_at, reimbursement_method FROM purchase_orders WHERE id=${poId}`))[0][0];
+      const mv = (await sequelize.query(
+        `SELECT type, source FROM cash_movements WHERE purchase_order_id=${poId} AND source='reimbursement'`))[0];
+      // 시프트가 안 열려 있으면 금고 이동이 없을 수 있다 — 그때는 drawerSkipped 로 답한다.
+      const drawerOk = mv.length === 1 ? mv[0].type === 'out' : r1.body?.drawerSkipped === true;
+      const r2 = await request('POST', `/purchase-orders/${poId}/reimburse`, { reimbursement_method: 'cash' }, auth);
+      return r1.status === 200 && !!po.reimbursed_at && po.reimbursement_method === 'cash' && drawerOk
+        && r2.status === 409 && r2.body?.code === 'ALREADY_REIMBURSED';
+    } finally { await pmCleanup(); }
+  });
+
+  test('inventory', '영수증은 결제된 발주에만 붙는다', async () => {
+    const ctx2 = await dpCtx(false);
+    if (!ctx2) { console.log('      (준비물 없음 — 오너 없는 데모 매장의 공급업체 매핑 재료가 없어 건너뜀)'); return true; }
+    const auth = { Authorization: `Bearer ${ctx2.token}` };
+    const draft = await request('POST', '/purchase-orders', {
+      seller_type: 'supplier', seller_entity_id: ctx2.seller_entity_id, notes: PM_NOTE,
+      items: [{ ingredient_id: ctx2.ingredient_id, quantity_ordered: 1, unit: ctx2.unit, unit_price: 4 }]
+    }, auth);
+    const draftId = draft.body?.data?.id;
+    if (!draftId) { await pmCleanup(); return false; }
+    try {
+      const bad = await request('POST', `/purchase-orders/${draftId}/upload-receipt`,
+        { url: '/uploads/receipts/hc.jpg', filename: 'hc.jpg' }, auth);
+      const poId = await pmMakePaidPersonal(ctx2);
+      if (!poId) return false;
+      const good = await request('POST', `/purchase-orders/${poId}/upload-receipt`,
+        { url: '/uploads/receipts/hc.jpg', filename: 'hc.jpg' }, auth);
+      const { sequelize } = require('../config/database');
+      const po = (await sequelize.query(`SELECT receipt_url, receipt_uploaded_at FROM purchase_orders WHERE id=${poId}`))[0][0];
+      return bad.status === 400 && bad.body?.code === 'NOT_PAID'
+        && good.status === 200 && !!po.receipt_url && !!po.receipt_uploaded_at;
+    } finally { await pmCleanup(); }
+  });
+
   // ── 준비 레시피 삭제 게이트 (2026-09-18 Fable 판정 · 계약 고정) ────────────────────────────
   //   삭제는 스위치 OFF 보다 강한 행위인데 예전엔 방어가 더 약했다 — 재고가 남아 있어도 그냥 지워
   //   준비 재료 행이 남았다(개발서버 재현). 이제 `routes/recipes.js deleteRecipeWithPrepGate` 가

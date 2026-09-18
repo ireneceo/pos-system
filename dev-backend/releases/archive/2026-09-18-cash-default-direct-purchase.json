@@ -1,0 +1,35 @@
+{
+ "tag": "cash-default-direct-purchase",
+ "sw_version": "5.40-cash-default-direct-purchase-20260918",
+ "date": "2026-09-18",
+ "in_progress": [
+  "운영 배포 — Irene 지시로 진행"
+ ],
+ "completed": [
+  "**직접 구매(「Receive + pay」)의 기본 결제수단을 현금으로** — Irene 「POs에서 Receive + pay 이 버튼을 눌렀을 때는 디폴트가 Cash인걸로 해줘」. 직접 사왔을 때는 현금인 경우가 대부분이라 그 모드만 기본을 바꾸고, 보낸 발주를 받고 결제하는 다른 모드는 계좌이체 기본 그대로 둔다(`DEFAULT_METHOD_BY_MODE`)."
+ ],
+ "issues": [
+  "⚠ 첫 빌드가 **메모리 게이트에 막혔다** — 같은 서버의 PlanQ 빌드(tsc 4,134MB)가 돌고 있었다. 우회하지 않고 끝난 뒤 다시 돌려 통과(86초)."
+ ],
+ "upcoming": [
+  "멀티 컨텍스트(자격) 확장 — Irene 「이건 다음 주에 하자. 급한 거 아니니」. Staff 자격 개방·부여 화면·RA 위임 범위 컨펌 1건 대기.",
+  "미사용 i18n 키 `staging.receivableSection/receiveOnly/payOnly` 4언어 정리(다음 프론트 작업과 함께)."
+ ],
+ "behavior_changes": [
+  "발주 대기 화면에서 「Receive + pay」(직접 사왔을 때)를 누르면 결제수단이 **현금으로 미리 선택**돼 있습니다. 필요하면 계좌이체·카드로 바꿀 수 있습니다.",
+  "현금을 고르면 열려 있는 시프트의 드로어에서 그 금액이 빠져나간다는 안내가 모달에 그대로 표시됩니다."
+ ],
+ "check_areas": [
+  "발주 대기 → 초안 행 「Receive + pay」 → 결제수단이 **Cash** 로 떠 있는지",
+  "발주 이력 행의 「Receive & pay」·「Pay」 는 기존대로 **계좌이체** 기본인지"
+ ],
+ "verification": {
+  "gates": "verify-all --full (결과로 갱신)",
+  "fault_injection": "해당 없음 — 기본값 1개 변경(모드별 상수 표). 동작 경로·계약 무변경",
+  "real_calls": "직접구매 라우트·계약 무변경(계약은 결제수단을 명시적으로 bank_transfer 로 보냄 — 이번 변경에 영향 없음)",
+  "health_check": "verify-all 에 포함",
+  "build": "npm run build:dev — 1차 메모리 게이트 차단(PlanQ 빌드 4,134MB), 대기 후 통과 main.e3efae99.js",
+  "sw_version": "5.40-cash-default-direct-purchase-20260918",
+  "fable_note": "Fable 호출 없음 — Irene 「이제 fable 사용 최소화 해」 기준 적용. 화면 기본값 1개 변경이라 돈·재고 경로·계약 무접촉이고 길이 갈리지 않는다(직접 구매는 현금이 기본). 기계 게이트(verify-all --full·health-check)로 증명."
+ }
+}

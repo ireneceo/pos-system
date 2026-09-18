@@ -59,7 +59,18 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
   payment_status: {
     type: DataTypes.ENUM('unpaid', 'paid', 'refunded'), allowNull: false, defaultValue: 'unpaid'
   },
-  payment_method: { type: DataTypes.ENUM('cash', 'bank_transfer', 'card'), allowNull: true },
+  // `personal` = 개인 돈으로 결제 — 공급업체에는 냈고 회사는 아직 안 낸 돈(2026-09-18 Fable ⑨).
+  //   결제 시점에 드로어가 움직이지 않고, **개인에게 갚을 때** 회사 돈이 나간다.
+  payment_method: { type: DataTypes.ENUM('cash', 'bank_transfer', 'card', 'personal'), allowNull: true },
+  // 개인금액 정산(= 그 사람에게 갚음). `reimbursed_at IS NULL` 인 personal 발주가 «갚을 목록» 이다.
+  reimbursed_at: { type: DataTypes.DATE, allowNull: true },
+  reimbursed_by_user_id: { type: DataTypes.INTEGER, allowNull: true },
+  reimbursement_method: { type: DataTypes.ENUM('cash', 'bank_transfer'), allowNull: true },
+  // 영수증 — 인보이스(앞으로 낼 청구서)와 다르다. 이미 나간 돈의 증빙이라 따로 둔다.
+  receipt_url: { type: DataTypes.STRING(500), allowNull: true },
+  receipt_filename: { type: DataTypes.STRING(255), allowNull: true },
+  receipt_uploaded_at: { type: DataTypes.DATE, allowNull: true },
+  receipt_uploaded_by_user_id: { type: DataTypes.INTEGER, allowNull: true },
   paid_at: { type: DataTypes.DATE, allowNull: true },
   paid_by_user_id: { type: DataTypes.INTEGER, allowNull: true },
   // 현금 결제로 만든 드로어 출금 이동. 취소·환불 때 **삭제가 아니라** 반대 방향 in 을 만들기 위해

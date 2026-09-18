@@ -13,7 +13,9 @@
       "allStatuses": "All Statuses",
       "searchSeller": "Search seller...",
       "from": "From",
-      "to": "To"
+      "to": "To",
+      "owed": "Owed to staff",
+      "owedHint": "Paid with personal money and not yet paid back"
     },
     "table": {
       "poNumber": "PO #",
@@ -58,10 +60,26 @@
       "refundShort": "Reverse payment",
       "pay": "Record payment",
       "payShort": "Pay",
-      "receiveAndPayShort": "Receive & pay"
+      "receiveAndPayShort": "Receive & pay",
+      "reimburse": "Reimburse",
+      "reimburseHint": "Record that you paid back the person who used their own money",
+      "attachReceipt": "Attach receipt",
+      "attachReceiptHint": "For cash or personal purchases, attach the receipt so it can be checked later",
+      "viewReceipt": "View receipt"
     },
     "badge": {
       "sellerShipped": "Seller started delivery"
+    },
+    "reimburse": {
+      "title": "Reimburse personal money",
+      "effectCash": "Paying back in cash takes the amount out of the open shift drawer.",
+      "effectBank": "Paying back by transfer does not touch the drawer.",
+      "confirm": "Mark as paid back",
+      "failed": "Could not record the reimbursement",
+      "drawerSkipped": "No shift is open, so the drawer was not updated. The reimbursement is recorded."
+    },
+    "receipt": {
+      "failed": "Could not attach the receipt"
     }
   },
   "new": {
@@ -508,7 +526,8 @@
       "cash": "Cash",
       "bank": "Bank transfer",
       "card": "Card",
-      "nonCashNote": "Non-cash payments are recorded on the order only — the cash drawer is not touched."
+      "nonCashNote": "Non-cash payments are recorded on the order only — the cash drawer is not touched.",
+      "personal": "Personal money"
     },
     "effects": {
       "title": "What this does",
@@ -517,7 +536,9 @@
       "drawer": "RM {{amount}} is taken out of the open shift cash drawer.",
       "refund": "A matching cash-in movement is created — the payment is reversed, not deleted. Stock and receipt are not touched.",
       "paysInvoice": "The compared supplier invoice amount is paid, not the ordered amount.",
-      "directSubmit": "The purchase order is confirmed as sent (direct purchase)."
+      "directSubmit": "The purchase order is confirmed as sent (direct purchase).",
+      "personalNoDrawer": "Nothing leaves the company cash drawer — this was personal money.",
+      "personalOwed": "It stays under “Owed to staff” and becomes an expense when you pay that person back."
     },
     "error": {
       "multipleShifts": "More than one shift is open — close one before recording a cash payment.",
@@ -542,7 +563,10 @@
     "notReconciledWarning": "A supplier invoice has been uploaded but not compared yet — this pays the ordered amount.",
     "compareFirst": "Compare first",
     "paidAt": "Payment date",
-    "paidAtNote": "The day the money actually went out. Defaults to today."
+    "paidAtNote": "The day the money actually went out. Defaults to today.",
+    "personal": {
+      "paidByHint": "The person logged in now is recorded as the payer."
+    }
   },
   "ingredients": {
     "activeLabel": "Active",

@@ -746,3 +746,54 @@ Irene 의 「가격관리도 각자」 가 **공급업체 상품 정가까지 �
 - **운영 적용**: 드라이런 → 옮길 27건 · 비활성 14개 · 넘어가는 잔재 63건 전량 출력 → `--apply`. 스냅샷 `backups/ingredient-category-merge-2026-09-17T080128413Z.json`.
 - **적용 후 운영 실측**: 브랜드 1 활성 분류 **0** · 매장 10 활성 재료가 브랜드 분류를 가리킴 **0** · 매장 10 분류 이름 중복 **0쌍**(전 15쌍) · 잔재 표본 4건 `is_active=0` 유지 · 발주 줄 204 · 레시피 줄 356 · 매장 10 활성 재료 382.
 - 남은 것: 매장 8 «Uncategorized» 1쌍(브랜드 2 분류는 **살아있는 브랜드 재료 135건**이 써서 같은 방식 불가 — 별건).
+
+---
+
+## [Fable 판정] ⑨ 발주 결제수단 «개인금액» 추가 — 설계 확정 (2026-09-18)
+
+> Irene 원문 ① 「Payment method / Card 여기에 개인금액이라고 하자. 개인돈으로 쓴 건 비용처리가 안되고 개인에게 돈을 줘야 하는 거야. 회계처리에 안들어가야 해. 어떻게 하면 좋을까?」 ② 「Card를 그렇게 바꾸라는게 아니라 추가를 하라는 거야.」
+> Fable 호출 1회로 종결(Irene 「fable 사용 최소화」). 게이트는 팀원이 기계로 증명하고, 아래 §4 기준을 그대로 본다.
+
+### 0. 한 줄 결론
+**개인금액은 «공급업체에는 냈고, 회사는 아직 안 낸 돈»이다.** 공급업체 쪽 사실(발주·청구서 = 결제됨)은 그대로 적고, 회사 쪽 사실(드로어·비용)은 **개인에게 갚는 순간에** 적는다. 갚을 목록은 새 표가 아니라 **발주 행 자체**(`payment_method='personal' AND reimbursed_at IS NULL`)다.
+
+### 1. 코드 실측으로 보탠 사실 (요청자료 정정 포함)
+- 결제수단 검증 하드코딩은 **2곳**: `services/purchaseOrderPayment.js:90` + `routes/invoices-payment.js:398`(mark-paid-external). 한 곳만 고치면 청구서 문에서 «개인금액»이 400 으로 튕긴다.
+- `Invoice.payment_method` 는 `STRING(50)` — 청구서 쪽은 마이그 없이 `'personal'` 저장 가능.
+- 발주 `payment_method` 를 읽는 리포트·대시보드 **0곳**(routes/reports*·dashboard*·services/report* 전수). «회계처리에서 빼야 할 자리»는 현재 드로어(`cash_movements`) 하나뿐이다.
+- 드로어 원장 UI 는 `source` 로 행 성격을 구분한다(`CashLedger.tsx:144`). 시스템 생성 행(`source!=='manual'`)은 수정·삭제 잠김(`SETTLEMENT_LOCKED`).
+- `paid_by_user_id` 가 이미 발주에 있다 — 누가 냈는지의 자리는 이미 존재.
+- 되돌리기(`reversePayment`)는 `po.payment_method==='cash' && cash_movement_id` 일 때만 드로어 반대이동. 카드·이체는 상태만.
+
+### 2. 갈림 5개 — 결정
+| # | 갈림 | 결정 | 이유 |
+|---|---|---|---|
+| ① | 거래 청구서를 닫나 | **닫는다** (`status='paid'`, `payment_method='personal'`, `paid_amount=총액`) | 청구서는 **공급업체와의 원장**이다. 공급업체는 돈을 받았으므로 미수로 두면 SOA 에 다시 실리고 판매자 화면이 거짓이 된다. 「회계처리 안 들어감」은 **회사의 현금·비용** 이야기지 공급업체 채권 이야기가 아니다. |
+| ② | 갚을 돈을 어디에 | **(다)+ — 새 표 없음.** 발주에 칸 3개 추가: `reimbursed_at`·`reimbursed_by_user_id`·`reimbursement_method ENUM('cash','bank_transfer')`, 갚을 때 드로어 이동은 기존 `cash_movements` 에 **새 `source='reimbursement'`** 로 | 「누가·얼마·어느 발주·정산 여부」는 발주 행이 전부 갖고 있다(`paid_by_user_id`·결제금액·자기 id·`reimbursed_at`). 새 표는 같은 개념 두 번째 목록(TRADE_STRUCTURE 규칙 위반). (나)의 «반대 부호 이동»은 기각 — 결제 시점에 드로어가 안 움직였으니 상쇄할 것이 없다. `source` 를 새로 두는 이유: 드로어에서 나가는 돈의 성격이 «공급업체 지급»이 아니라 «직원 상환»이고 원장 UI 가 source 로 구분하기 때문. |
+| ③ | 회계 경계 | **결제 시점**: 드로어 무접촉 · 발주 `paid` · 청구서 `paid` · 원가·재고 무변경(이미 수령 몫). **정산 시점**: `reimbursement_method='cash'` 면 열린 시프트에 `CashMovement{type:'out', source:'reimbursement', purchase_order_id}` (시프트 없으면 `drawerSkipped`, 막지 않음 — 현행 현금결제와 같은 규칙); `bank_transfer` 면 드로어 무접촉. 리포트는 지금 아무것도 안 읽으니 **뺄 것이 없다** — 향후 구매비용 리포트를 만들 때 «personal 미정산 = 미지급금, 정산 = 비용」으로 잡는다고 §5 에 메모만. | 회사 돈은 갚는 순간 처음 나간다. 그때만 원장에 쓴다. |
+| ④ | 누가 냈는지 | **`paid_by_user_id` 그대로.** 이름 칸 추가 안 함. 모달에 «Paid by: 로그인 사용자 이름»을 보여 주어 누구 앞으로 빚이 잡히는지 눈에 보이게. | Irene 요구는 「개인에게 돈을 줘야 한다」— 그 개인은 기록한 사람이다. 대리 기록(A 가 냈는데 B 가 입력)은 요청에 없다. 필요해지면 그때 칸 하나. |
+| ⑤ | 이름 | 값 **`personal`**. 라벨 en `Personal money` · ko `개인금액` · zh `个人垫付` · ms `Wang peribadi`. 정산 액션 en `Reimburse` · ko `개인금액 정산` · zh `报销` · ms `Bayar balik`. 목록 필터 en `Owed to staff` · ko `개인금액 미정산` · zh `待报销` · ms `Belum dibayar balik`. | Irene 호칭 유지. |
+
+**되돌리기 규칙(대칭)**: `personal` 발주를 취소·환불하면 — 아직 안 갚았으면 상태만 되돌린다(빚이 사라짐); 이미 드로어 현금으로 갚았으면 `source='reimbursement'` 반대이동(`type:'in'`)을 **그 시점 열린 시프트**에 만든다(현행 현금 규칙과 동일); 이체로 갚았으면 상태만. 청구서는 현행대로 `pending_payment` 복귀.
+**이중 정산 금지**: `reimbursed_at` 이 있으면 409(`ALREADY_REIMBURSED`). `payment_method!=='personal'` 인 발주에 정산을 누르면 400.
+
+### 3. 절단면 (팀원 실행 · 순서 고정 · 인쇄 보호파일 0 접촉)
+1. **마이그 신규** `scripts/migrate-po-personal-payment.js` (레지스트리 `deploy`, 멱등, `process.exit`): `expandEnum(sequelize,'purchase_orders','payment_method',['personal'])` · `expandEnum(sequelize,'cash_movements','source',['reimbursement'])` · `ADD COLUMN IF NOT EXISTS` 3칸. 기존 `migrate-po-payment.js` 목록은 **건드리지 않는다**(자기 담당 값만).
+2. **모델**: `PurchaseOrder.payment_method` ENUM 에 `'personal'`, 칸 3개 추가 · `CashMovement.source` 에 `'reimbursement'`(주석의 ⚠ 문구 유지).
+3. **검증 단일화**: `purchaseOrderPayment.js` 에 `PAYMENT_METHODS = ['cash','bank_transfer','card','personal']` 상수 export → `:90` 과 `invoices-payment.js:398` 둘 다 이 상수를 쓴다(하드코딩 2곳 → 0곳). 에러 문구는 상수를 join 해서 만든다.
+4. **`recordPayment`**: 드로어 분기는 `method==='cash'` 그대로(personal 은 자연히 무접촉). 청구서 거울 그대로. **변경 0줄이 목표** — 상수 치환 외.
+5. **`reimbursePersonalPayment(po,{method,userId,reason},t)`** 신설(같은 파일): 위 §2 규칙. 라우트 `POST /purchase-orders/:id/reimburse` (`purchase-orders-workflow.js`, `/pay` 와 같은 소유권·잠금·트랜잭션 패턴 복사).
+6. **`reversePayment`**: `personal` 분기 추가(§2 되돌리기 규칙).
+7. **프론트**: `ReceivePayModal.tsx` METHODS 에 4번째 항목 `personal`(기본값 변경 없음 — 「추가」다) + 선택 시 «Paid by: 이름» 한 줄. `PurchaseOrdersPage.tsx` 에 필터 칩 «Owed to staff»(건수 배지) + 행 액션 «Reimburse»(공용 `IconButton`) → `ConfirmModal` 계열 소형 모달(수단 cash/bank_transfer 라디오, 기본 cash). `CashLedger.tsx` 에 `source==='reimbursement'` 라벨. 4개 언어 키.
+8. **문서**: 이 섹션이 단일 진실. `docs/PO_*`/결제 문서가 있으면 «수단 4개» 로 한 줄 갱신. §5 에 「구매비용 리포트 생기면 personal 처리」메모 한 줄.
+
+### 4. 증명 기준 (팀원이 기계로 — 게이트 2회차 없이 이 표로 판정)
+- 실호출: `pay personal` → PO `paid/personal`, 청구서 `paid/personal`, **`cash_movements` 신규 행 0**, 마감 예상현금 불변(전후 비교). / `reimburse cash`(시프트 열림) → `source='reimbursement' out` 1행, `reimbursed_at` 채워짐. / `reimburse` 2회 → 409. / `reimburse` on `card` PO → 400. / `reverse` after cash reimburse → `reimbursement in` 1행. / 청구서 문 `mark-paid-external` 에 `personal` → 200(2곳 단일화 증명).
+- 고장주입 3건: ①상수에서 `'personal'` 제거 → 두 문 모두 400 ②`reimbursed_at` 가드 제거 → 409 가 200 으로 바뀌는 것 확인 ③마이그 미실행 상태에서 `check-enum-parity` 가 dev 값 부재를 막는지.
+- 게이트: `verify-all --full`(프론트 빌드 1회·sweep 1회 — 이미 도는 직접구매 건과 **한 빌드로 묶을지**는 팀원 판단: 그 건의 sweep 이 끝났으면 별도 빌드, 아니면 합친다) · `check-print-guard` 0 · `check-migration-registry` 통과 · `check-sensitive-diff`(돈 = 대상이지만 이 문서가 게이트 판정을 대신함 — `fable-gate pass --note "TRADE_STRUCTURE ⑨"` 는 팀원이 증명 표 채운 뒤 찍는다).
+- 확인 불가 항목은 «확인 불가»로 적는다.
+
+### 5. Irene 컨펌 요청 (Fable 권고 첨부)
+- **A. 청구서를 «결제됨»으로 닫는 것** — Fable 권고: 닫는다. 공급업체는 돈을 받았고, 회사가 빚진 상대가 공급업체→직원으로 바뀐 것뿐이다. 회사 장부(드로어)는 갚을 때 움직인다.
+- **B. 갚는 방법 두 가지(드로어 현금 / 이체)** — Fable 권고: 둘 다 둔다. 드로어 현금이면 마감 예상현금에서 빠지고(비용 처리 시점), 이체면 드로어 무접촉.
+- **C. 낸 사람 = 기록한 사람** — Fable 권고: 지금은 그렇게. 대리 입력이 실제로 생기면 이름 칸 하나 추가.

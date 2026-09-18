@@ -18,6 +18,9 @@ import { formatDate } from '../../utils/timezone';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
 import PurchaseOrderDetailPage from './PurchaseOrderDetailPage';
 import AlertDialog from '../../components/Common/AlertDialog';
+import { Modal as CommonModal } from '../../components/UI/Modal';
+import { Button } from '../../components/UI/Button';
+import { getErrorMessage } from '../../utils/apiError';
 import ReceivePayModal, { ReceivePayMode } from '../../components/PurchaseOrders/ReceivePayModal';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { formatQuantity } from '../../utils/unitConversion';
@@ -263,6 +266,12 @@ interface POListRow {
   /** 결제 상태 · 실제로 낼 금액 (2026-09-10) — 규칙은 서버(services/purchaseOrderPayment.js)가 단일 소스 */
   payment_status?: string | null;
   payment_method?: string | null;
+  /** 개인금액 정산 (2026-09-18) — `payment_method='personal'` 이고 `reimbursed_at` 이 없으면 «갚을 것» */
+  reimbursed_at?: string | null;
+  reimbursement_method?: string | null;
+  /** 영수증 — 인보이스(앞으로 낼 청구서)와 다르다. 이미 나간 돈의 증빙. */
+  receipt_url?: string | null;
+  receipt_filename?: string | null;
   payable_amount?: number | string | null;
   payable_basis?: 'purchase_order' | 'supplier_invoice' | null;
   entity_type?: string | null;
@@ -428,6 +437,11 @@ const PurchaseOrdersPage: React.FC = () => {
   // 결제·되돌리기 모달 (2026-09-10 Fable B1) — 발주 상세·staging 이 쓰던 모달을 목록 행에서도 연다.
   // 백엔드는 그대로다. 목록에서 바로 결제하지 못해 상세로 들어갔다 나오던 왕복을 없앤다.
   const [payModal, setPayModal] = useState<{ mode: ReceivePayMode; row: PurchaseOrderRow } | null>(null);
+  // 개인금액 미정산만 보기 (2026-09-18) — 서버에 새 조회를 만들지 않고 받은 목록을 거른다.
+  const [owedOnly, setOwedOnly] = useState(false);
+  const [reimburseRow, setReimburseRow] = useState<PurchaseOrderRow | null>(null);
+  const [reimburseMethod, setReimburseMethod] = useState<'cash' | 'bank_transfer'>('cash');
+  const [reimbursing, setReimbursing] = useState(false);
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -546,9 +560,14 @@ const PurchaseOrdersPage: React.FC = () => {
     return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [rows]);
 
+  const isOwed = (r: PurchaseOrderRow) =>
+    r.payment_method === 'personal' && r.payment_status === 'paid' && !r.reimbursed_at;
+  const owedCount = useMemo(() => rows.filter(isOwed).length, [rows]);
+
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase();
     return rows.filter(r => {
+      if (owedOnly && !isOwed(r)) return false;
       if (supplierFilter && r.seller_name !== supplierFilter) return false;
       if (term && !(
         (r.seller_name || '').toLowerCase().includes(term) ||
@@ -556,7 +575,7 @@ const PurchaseOrdersPage: React.FC = () => {
       )) return false;
       return true;
     });
-  }, [rows, search, supplierFilter]);
+  }, [rows, search, supplierFilter, owedOnly]);
 
   const stats = useMemo(() => {
     let draft = 0, pending = 0, shipped = 0, received = 0;
@@ -653,6 +672,35 @@ const PurchaseOrdersPage: React.FC = () => {
       document.body.appendChild(a); a.click(); a.remove();
     } else if (row.trade_invoice_id) {
       window.location.href = `/api/invoices/${row.trade_invoice_id}/pdf`;
+    }
+  };
+
+  /** 영수증 — 인보이스와 다르다(이미 나간 돈의 증빙). 결제된 발주에만 붙는다. */
+  const handleUploadReceipt = async (row: POListRow, file: File) => {
+    try {
+      const token = getAuthToken();
+      const fd = new FormData();
+      fd.append('files', file);
+      const up = await fetch('/api/upload/files', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+      const upData = await up.json();
+      if (!up.ok || !upData.success || !upData.data?.[0]) {
+        setAlertDlg({ title: t('common:error', 'Error') as string, message: upData.message || 'Upload failed' });
+        return;
+      }
+      const f = upData.data[0];
+      const res = await fetch(`/api/purchase-orders/${row.id}/upload-receipt`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: f.url, filename: f.originalName })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        setAlertDlg({ title: t('common:error', 'Error') as string, message: getErrorMessage(data, t('list.receipt.failed', '영수증을 붙이지 못했습니다') as string) });
+        return;
+      }
+      fetchList();
+    } catch {
+      setAlertDlg({ title: t('common:error', 'Error') as string, message: t('list.receipt.failed', '영수증을 붙이지 못했습니다') as string });
     }
   };
 
@@ -821,6 +869,16 @@ const PurchaseOrdersPage: React.FC = () => {
             <option value="received">{t('status.received')}</option>
             <option value="cancelled">{t('status.cancelled')}</option>
           </StatusFilter>
+          {/* 개인금액 미정산 — 「개인 돈으로 샀고 아직 안 갚은 것」. 새 목록이 아니라 이 목록의 걸러보기다. */}
+          <Button
+            type="button"
+            size="small"
+            variant={owedOnly ? 'primary' : 'secondary'}
+            onClick={() => setOwedOnly(v => !v)}
+            title={t('list.filter.owedHint', '개인 돈으로 결제했고 아직 그 사람에게 갚지 않은 발주') as string}
+          >
+            {t('list.filter.owed', '개인금액 미정산')}{owedCount > 0 ? ` (${owedCount})` : ''}
+          </Button>
         </FilterToolbar>
 
         <DataTableContainer>
@@ -1029,6 +1087,37 @@ const PurchaseOrdersPage: React.FC = () => {
                             취소·초안은 낼 돈이 없고, 승인 대기는 아직 판매자에게 나가지도 않았다. */}
                         {row.status !== 'draft' && row.status !== 'cancelled' && row.status !== 'pending_approval' && (
                           row.payment_status === 'paid' ? (
+                            <>
+                            {/* 개인금액인데 아직 안 갚았으면 «정산» 이 먼저다 — 그때 회사 돈이 나간다 */}
+                            {/* 영수증 — 이미 나간 돈의 증빙. 붙어 있으면 열어 보고, 없으면 올린다. */}
+                            {row.receipt_url ? (
+                              <ThemedButton size="small" variant="outline"
+                                onClick={() => window.open(row.receipt_url as string, '_blank')}
+                                title={row.receipt_filename || undefined}>
+                                {t('list.action.viewReceipt', '영수증 보기')}
+                              </ThemedButton>
+                            ) : (
+                              <ThemedButton size="small" variant="outline"
+                                onClick={() => {
+                                  const input = document.createElement('input');
+                                  input.type = 'file';
+                                  input.accept = 'image/*,application/pdf';
+                                  input.onchange = () => { const f = input.files?.[0]; if (f) handleUploadReceipt(row as any, f); };
+                                  input.click();
+                                }}
+                                title={t('list.action.attachReceiptHint', '현금·개인금액으로 산 것은 영수증을 붙여 두면 나중에 확인할 수 있습니다') as string}>
+                                {t('list.action.attachReceipt', '영수증 첨부')}
+                              </ThemedButton>
+                            )}
+                            {isOwed(row) && (
+                              <ThemedButton
+                                size="small" variant="primary"
+                                onClick={() => { setReimburseMethod('cash'); setReimburseRow(row); }}
+                                title={t('list.action.reimburseHint', '개인 돈으로 낸 사람에게 갚은 것을 기록합니다') as string}
+                              >
+                                {t('list.action.reimburse', '개인금액 정산')}
+                              </ThemedButton>
+                            )}
                             <ThemedButton
                               size="small" variant="outline"
                               onClick={() => setPayModal({ mode: 'refund', row })}
@@ -1036,6 +1125,7 @@ const PurchaseOrdersPage: React.FC = () => {
                             >
                               {t('list.action.refundShort', 'Reverse payment')}
                             </ThemedButton>
+                            </>
                           ) : (
                             <ThemedButton
                               size="small" variant="primary"
@@ -1126,6 +1216,64 @@ const PurchaseOrdersPage: React.FC = () => {
         title={alertDlg?.title || ''}
         message={alertDlg?.message || ''}
       />
+      {/* 개인금액 정산 — 갚는 방법만 고르면 된다(현금이면 금고에서 나간다) */}
+      <CommonModal
+        isOpen={!!reimburseRow}
+        onClose={() => setReimburseRow(null)}
+        title={t('list.reimburse.title', '개인금액 정산') as string}
+        size="small"
+      >
+        <div style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.7, marginBottom: 14 }}>
+          <div><strong>{reimburseRow?.po_number}</strong> · {reimburseRow?.seller_name}</div>
+          <div>{formatMoney(reimburseRow?.total_amount, reimburseRow?.currency || undefined)}</div>
+          <div style={{ marginTop: 8, background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: '8px 12px' }}>
+            · {t('list.reimburse.effectCash', '현금으로 갚으면 열려 있는 시프트의 금고에서 그 금액이 나갑니다.')}<br />
+            · {t('list.reimburse.effectBank', '이체로 갚으면 금고는 움직이지 않습니다.')}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {(['cash', 'bank_transfer'] as const).map(m => (
+            <Button key={m} type="button" size="small"
+              variant={reimburseMethod === m ? 'primary' : 'secondary'}
+              onClick={() => setReimburseMethod(m)}>
+              {m === 'cash' ? t('pay.method.cash', 'Cash') : t('pay.method.bank', 'Bank transfer')}
+            </Button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <Button type="button" variant="secondary" onClick={() => setReimburseRow(null)} disabled={reimbursing}>
+            {t('common:button.cancel', '취소')}
+          </Button>
+          <Button type="button" variant="primary" disabled={reimbursing} onClick={async () => {
+            if (!reimburseRow) return;
+            setReimbursing(true);
+            try {
+              const token = getAuthToken();
+              const res = await fetch(`/api/purchase-orders/${reimburseRow.id}/reimburse`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                body: JSON.stringify({ reimbursement_method: reimburseMethod }),
+              });
+              const j = await res.json().catch(() => ({}));
+              if (!res.ok || !j.success) {
+                setAlertDlg({ title: t('common:error', 'Error') as string, message: getErrorMessage(j, t('list.reimburse.failed', '정산을 기록하지 못했습니다') as string) });
+              } else if (j.drawerSkipped) {
+                setAlertDlg({
+                  title: t('pay.drawerSkipped.title', 'Payment recorded — drawer not updated') as string,
+                  message: t('list.reimburse.drawerSkipped', '열린 시프트가 없어 금고에는 반영되지 않았습니다. 정산 기록은 남았습니다.') as string,
+                });
+              }
+              setReimburseRow(null);
+              fetchList();
+            } catch {
+              setAlertDlg({ title: t('common:error', 'Error') as string, message: t('list.reimburse.failed', '정산을 기록하지 못했습니다') as string });
+            } finally { setReimbursing(false); }
+          }}>
+            {reimbursing ? t('common:saving', '저장 중…') : t('list.reimburse.confirm', '갚았다고 기록')}
+          </Button>
+        </div>
+      </CommonModal>
+
       <ReceivePayModal
         open={!!payModal}
         mode={payModal?.mode || 'pay'}

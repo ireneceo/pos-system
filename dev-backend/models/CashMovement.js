@@ -17,7 +17,9 @@ const CashMovement = sequelize.define('CashMovement', {
   // purchase_order = 발주 결제(현금)로 드로어에서 나간 돈 / 취소·환불이면 반대 방향 in 이동으로 되돌린다.
   //   ⚠ ENUM 값 추가는 반드시 expandEnum 경유(migrate-po-payment.js). 여기 목록을 고칠 때
   //     마이그도 같이 손대지 않으면 dev 에만 있는 값이 되어 배포 게이트(check-enum-parity)가 막는다.
-  source: { type: DataTypes.ENUM('manual', 'settlement', 'purchase_order'), allowNull: false, defaultValue: 'manual' },
+  // `reimbursement` = 개인금액을 그 사람에게 갚아 나간 돈(2026-09-18). 성격이 «공급업체 지급»이
+  //   아니라 «직원 상환»이라 원장 화면이 구분해 보여줘야 해서 source 를 따로 둔다.
+  source: { type: DataTypes.ENUM('manual', 'settlement', 'purchase_order', 'reimbursement'), allowNull: false, defaultValue: 'manual' },
   // 발주 결제로 생긴 이동이 어느 발주 것인지. 되돌리기가 원본을 찾는 자리(범용 reference_id 는 이 테이블에 없다).
   purchase_order_id: { type: DataTypes.INTEGER, allowNull: true },
   created_by_id: { type: DataTypes.INTEGER, allowNull: true },

@@ -55,6 +55,7 @@
     "migrate-po-item-product-target.js",
     "migrate-po-owner-approval.js",
     "migrate-po-payment.js",
+    "migrate-po-personal-payment.js",
     "migrate-po-return-line-types.js",
     "migrate-po-status-pending-approval.js",
     "migrate-po-unit-order-foundation.js",

@@ -51,8 +51,15 @@ const METHODS: Array<{ value: string; labelKey: string; fallback: string }> = [
   { value: 'bank_transfer', labelKey: 'pay.method.bank', fallback: 'Bank transfer' },
   { value: 'cash', labelKey: 'pay.method.cash', fallback: 'Cash' },
   { value: 'card', labelKey: 'pay.method.card', fallback: 'Card' },
+  // 개인금액 — 개인 돈으로 산 것. 회사 금고는 **갚을 때** 움직인다 (2026-09-18 Irene).
+  { value: 'personal', labelKey: 'pay.method.personal', fallback: 'Personal money' },
 ];
 const DEFAULT_METHOD = 'bank_transfer';
+// 직접 사왔을 때는 현금으로 사 온 경우가 대부분이라 기본을 현금으로 둔다 (2026-09-18 Irene
+//   「POs에서 Receive + pay 이 버튼을 눌렀을 때는 디폴트가 Cash인걸로 해줘」).
+//   다른 모드(보낸 발주 수령·결제)는 계좌이체 기본 그대로.
+const DEFAULT_METHOD_BY_MODE: Record<string, string> = { direct_purchase: 'cash' };
+const defaultMethodFor = (m: string) => DEFAULT_METHOD_BY_MODE[m] || DEFAULT_METHOD;
 /** 오늘(그 사람 기기 기준) — 날짜 칸 기본값·최대값 */
 const todayStr = () => {
   const d = new Date();
@@ -61,7 +68,7 @@ const todayStr = () => {
 
 export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = true, onDone, onClose, onGoReconcile, invoiceId }: Props) {
   const { t } = useTranslation('purchaseOrders');
-  const [method, setMethod] = useState(DEFAULT_METHOD);
+  const [method, setMethod] = useState(() => defaultMethodFor(mode));
   // 결제일 — 2026-09-14 (Irene): 「날짜도 넣게 해줘」. 기본은 오늘, 미래 날짜는 못 고르게 막는다.
   const [paidAt, setPaidAt] = useState(todayStr);
   const [reason, setReason] = useState('');
@@ -70,8 +77,8 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
 
   useEffect(() => {
     if (!open) return;
-    setMethod(DEFAULT_METHOD); setPaidAt(todayStr()); setReason(''); setError(null);
-  }, [open, po?.id]);
+    setMethod(defaultMethodFor(mode)); setPaidAt(todayStr()); setReason(''); setError(null);
+  }, [open, po?.id, mode]);
 
   if (!open || !po) return null;
 
@@ -185,12 +192,25 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
           <div>· {t('pay.effects.stock', 'Stock goes up by the ordered quantity.')}</div>
         )}
         {needsMethod && <div>· {t('pay.effects.payment', 'The order is marked as paid.')}</div>}
+        {needsMethod && method === 'personal' && (
+          <>
+            <div>· {t('pay.effects.personalNoDrawer', '회사 금고에서는 나가지 않습니다 — 개인 돈이니까요.')}</div>
+            <div>· {t('pay.effects.personalOwed', '«개인금액 미정산» 목록에 남고, 그 사람에게 갚을 때 비용으로 잡힙니다.')}</div>
+          </>
+        )}
         {needsMethod && paysInvoice && (
           <div>· {t('pay.effects.paysInvoice', 'The compared supplier invoice amount is paid, not the ordered amount.')}</div>
         )}
         {cashFromDrawer && <div>· {t('pay.effects.drawer', { amount, defaultValue: 'RM {{amount}} is taken out of the open shift cash drawer.' })}</div>}
         {mode === 'refund' && <div>· {t('pay.effects.refund', 'A matching cash-in movement is created — the payment is reversed, not deleted. Stock and receipt are not touched.')}</div>}
       </div>
+
+      {needsMethod && method === 'personal' && (
+        <div style={{ fontSize: 12.5, color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A',
+                      borderRadius: 8, padding: '8px 12px', marginBottom: 12 }}>
+          {t('pay.personal.paidByHint', '지금 로그인한 사람이 «낸 사람»으로 기록됩니다.')}
+        </div>
+      )}
 
       {needsMethod && (
         <FormGroup>

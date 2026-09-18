@@ -13,7 +13,9 @@
       "allStatuses": "全部状态",
       "searchSeller": "搜索供应商...",
       "from": "起始日期",
-      "to": "结束日期"
+      "to": "结束日期",
+      "owed": "待报销",
+      "owedHint": "用个人的钱支付且尚未归还的采购单"
     },
     "table": {
       "poNumber": "采购单号",
@@ -58,10 +60,26 @@
       "refundShort": "撤销付款",
       "pay": "记录付款",
       "payShort": "付款",
-      "receiveAndPayShort": "收货并付款"
+      "receiveAndPayShort": "收货并付款",
+      "reimburse": "报销",
+      "reimburseHint": "记录已向垫付的人还款",
+      "attachReceipt": "附上收据",
+      "attachReceiptHint": "现金或个人垫付的采购，附上收据便于日后核对",
+      "viewReceipt": "查看收据"
     },
     "badge": {
       "sellerShipped": "供应商已开始配送"
+    },
+    "reimburse": {
+      "title": "个人垫付报销",
+      "effectCash": "以现金还款时，会从当前班次的钱柜中支出该金额。",
+      "effectBank": "以转账还款时，不影响钱柜。",
+      "confirm": "记录为已还款",
+      "failed": "无法记录报销",
+      "drawerSkipped": "没有开启的班次，钱柜未更新。报销记录已保存。"
+    },
+    "receipt": {
+      "failed": "无法附上收据"
     }
   },
   "new": {
@@ -508,7 +526,8 @@
       "cash": "现金",
       "bank": "银行转账",
       "card": "刷卡",
-      "nonCashNote": "非现金付款仅记录在采购单上，不会动用钱箱。"
+      "nonCashNote": "非现金付款仅记录在采购单上，不会动用钱箱。",
+      "personal": "个人垫付"
     },
     "effects": {
       "title": "将会发生什么",
@@ -517,7 +536,9 @@
       "drawer": "从当前开启班次的钱箱中支出 RM {{amount}}。",
       "refund": "生成一笔等额的现金收入记录——付款是被撤销而非删除。库存与收货记录不受影响。",
       "paysInvoice": "支出的是已核对的供应商发票金额，而非采购金额。",
-      "directSubmit": "采购单将确认为已发出（直接采购）。"
+      "directSubmit": "采购单将确认为已发出（直接采购）。",
+      "personalNoDrawer": "不会从公司钱柜支出 — 这是个人的钱。",
+      "personalOwed": "会保留在「待报销」列表中，还款时才计入费用。"
     },
     "error": {
       "multipleShifts": "有多个班次处于开启状态——请先结束其中一个，再记录现金付款。",
@@ -542,7 +563,10 @@
     "notReconciledWarning": "已上传供应商发票但尚未核对 — 现在付款将按采购金额支出。",
     "compareFirst": "先去核对",
     "paidAt": "付款日期",
-    "paidAtNote": "实际付款的日期。默认为今天。"
+    "paidAtNote": "实际付款的日期。默认为今天。",
+    "personal": {
+      "paidByHint": "当前登录的人将被记录为垫付人。"
+    }
   },
   "ingredients": {
     "activeLabel": "启用",

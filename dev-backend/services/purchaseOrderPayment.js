@@ -18,6 +18,14 @@
  *     `shift_id` 로만 묶고 `source` 를 보지 않으므로, 이 이동들이 **자동으로** 그 공식에 잡힌다.
  */
 const { PurchaseOrder, CashMovement, CashierShift, Invoice } = require('../models');
+
+// 결제수단 단일 목록 — 여기 하나만 고치면 발주·청구서 두 문이 같이 따라온다.
+//   2026-09-18 실측: 같은 목록이 `routes/invoices-payment.js` 에도 하드코딩돼 있어,
+//   한 곳만 늘리면 청구서 문에서 «개인금액»이 400 으로 튕겼다(Fable ⑨ 지적).
+//   `personal` = 개인 돈으로 결제. 드로어는 결제 때가 아니라 **갚을 때** 움직인다.
+const PAYMENT_METHODS = ['cash', 'bank_transfer', 'card', 'personal'];
+// 개인금액을 갚는 방법. 현금이면 드로어에서 나가고, 이체면 드로어 밖이다.
+const REIMBURSEMENT_METHODS = ['cash', 'bank_transfer'];
 const { resolveSellers, isExternalSeller } = require('../utils/sellerNames');
 
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
@@ -86,8 +94,8 @@ async function resolvePayableAmount(po) {
 // paidAt(선택) — 2026-09-14 Irene: 외부 청구서를 «결제함» 으로 표시할 때 **실제로 낸 날**을 넣는다.
 //   안 넘기면 지금까지처럼 현재시각. 기존 호출부는 그대로 동작한다.
 async function recordPayment(po, { method, userId, reason, paidAt: paidAtIn }, t) {
-  if (!['cash', 'bank_transfer', 'card'].includes(method)) {
-    throw err('payment_method must be cash, bank_transfer or card', 'INVALID_PAYMENT_METHOD');
+  if (!PAYMENT_METHODS.includes(method)) {
+    throw err(`payment_method must be one of: ${PAYMENT_METHODS.join(', ')}`, 'INVALID_PAYMENT_METHOD');
   }
   // 이미 낸 발주를 또 내면 드로어에서 두 번 빠진다 — 한 번만 허용한다.
   if (po.payment_status === 'paid') {
@@ -193,7 +201,32 @@ async function reversePayment(po, { userId, reason }, t) {
     }
   }
 
-  await po.update({ payment_status: 'refunded' }, { transaction: t });
+  // 개인금액: 결제 때 드로어가 안 움직였으니 상쇄할 것이 없다. **갚은 뒤**라면 그 상환을 되돌린다.
+  if (po.payment_method === 'personal' && po.reimbursed_at && po.reimbursement_method === 'cash'
+      && po.entity_type === 'restaurant') {
+    const shift = await resolveOpenShift(po.entity_id, t);
+    if (shift) {
+      movement = await CashMovement.create({
+        shift_id: shift.id,
+        restaurant_id: po.entity_id,
+        type: 'in',
+        amount: round2(po.total_amount),
+        reason: reason || `Reimbursement reversed — purchase order ${po.po_number}`,
+        source: 'reimbursement',
+        purchase_order_id: po.id,
+        created_by_id: userId || null,
+      }, { transaction: t });
+    } else {
+      drawerSkipped = true;
+    }
+  }
+
+  await po.update({
+    payment_status: 'refunded',
+    ...(po.payment_method === 'personal'
+      ? { reimbursed_at: null, reimbursed_by_user_id: null, reimbursement_method: null }
+      : {})
+  }, { transaction: t });
 
   // 되돌리기도 대칭으로 — 청구서를 미수로 복귀시킨다. 지우지 않는다(발행 사실은 남는다).
   if (po.trade_invoice_id) {
@@ -204,6 +237,61 @@ async function reversePayment(po, { userId, reason }, t) {
   }
 
   return { po, movement, drawerSkipped, noop: false };
+}
+
+/**
+ * 개인금액 정산 — **개인에게 갚는 순간**이 회사 돈이 나가는 시점이다 (2026-09-18 Fable ⑨).
+ *
+ * 결제 때는 드로어가 안 움직였다(회사 돈이 아니었으니까). 여기서 현금으로 갚으면 그때 드로어에서
+ * 나가고, 이체로 갚으면 드로어 밖이다. 갚을 목록은 새 표가 아니라 발주 행
+ * (`payment_method='personal' AND reimbursed_at IS NULL`) 이다.
+ *
+ * @returns {{po, movement:CashMovement|null, drawerSkipped:boolean}}
+ */
+async function reimbursePersonalPayment(po, { method, userId, reason }, t) {
+  if (!REIMBURSEMENT_METHODS.includes(method)) {
+    throw err(`reimbursement_method must be one of: ${REIMBURSEMENT_METHODS.join(', ')}`, 'INVALID_REIMBURSEMENT_METHOD');
+  }
+  if (po.payment_method !== 'personal') {
+    throw err('Only a personally paid purchase order can be reimbursed', 'NOT_PERSONAL');
+  }
+  if (po.payment_status !== 'paid') {
+    throw err('This purchase order is not paid', 'NOT_PAID');
+  }
+  // 두 번 갚으면 그 사람에게 두 번 나간다 — 한 번만 허용한다.
+  if (po.reimbursed_at) {
+    throw err('This personal payment is already reimbursed', 'ALREADY_REIMBURSED', 409);
+  }
+
+  let movement = null;
+  let drawerSkipped = false;
+  if (method === 'cash' && po.entity_type === 'restaurant') {
+    const shift = await resolveOpenShift(po.entity_id, t);
+    if (shift) {
+      movement = await CashMovement.create({
+        shift_id: shift.id,
+        restaurant_id: po.entity_id,
+        type: 'out',
+        amount: round2(po.total_amount),
+        reason: reason || `Reimbursement — purchase order ${po.po_number}`,
+        // 나가는 돈의 성격이 «공급업체 지급»이 아니라 «직원 상환» 이라 원장이 구분해야 한다.
+        source: 'reimbursement',
+        purchase_order_id: po.id,
+        created_by_id: userId || null,
+      }, { transaction: t });
+    } else {
+      // 막지 않는다 — 시프트를 안 연 매장도 갚은 사실은 기록해야 한다(현금결제 규칙과 동일).
+      drawerSkipped = true;
+    }
+  }
+
+  await po.update({
+    reimbursed_at: new Date(),
+    reimbursed_by_user_id: userId || null,
+    reimbursement_method: method,
+  }, { transaction: t });
+
+  return { po, movement, drawerSkipped };
 }
 
 /**
@@ -239,6 +327,8 @@ async function paidInvoiceIdsFor(invoice, t) {
 }
 
 module.exports = {
-  recordPayment, reversePayment, resolveOpenShift, resolvePayableAmount, payableFrom,
-  mirrorPaidToPurchaseOrders, paidInvoiceIdsFor
+  recordPayment, reversePayment, reimbursePersonalPayment,
+  resolveOpenShift, resolvePayableAmount, payableFrom,
+  mirrorPaidToPurchaseOrders, paidInvoiceIdsFor,
+  PAYMENT_METHODS, REIMBURSEMENT_METHODS
 };

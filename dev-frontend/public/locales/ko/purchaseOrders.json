@@ -13,7 +13,9 @@
       "allStatuses": "전체 상태",
       "searchSeller": "공급처 검색...",
       "from": "시작일",
-      "to": "종료일"
+      "to": "종료일",
+      "owed": "개인금액 미정산",
+      "owedHint": "개인 돈으로 결제했고 아직 그 사람에게 갚지 않은 발주"
     },
     "table": {
       "poNumber": "PO 번호",
@@ -58,10 +60,26 @@
       "refundShort": "결제 되돌리기",
       "pay": "결제 기록",
       "payShort": "결제",
-      "receiveAndPayShort": "수령·결제"
+      "receiveAndPayShort": "수령·결제",
+      "reimburse": "개인금액 정산",
+      "reimburseHint": "개인 돈으로 낸 사람에게 갚은 것을 기록합니다",
+      "attachReceipt": "영수증 첨부",
+      "attachReceiptHint": "현금·개인금액으로 산 것은 영수증을 붙여 두면 나중에 확인할 수 있습니다",
+      "viewReceipt": "영수증 보기"
     },
     "badge": {
       "sellerShipped": "업체가 배송 시작"
+    },
+    "reimburse": {
+      "title": "개인금액 정산",
+      "effectCash": "현금으로 갚으면 열려 있는 시프트의 금고에서 그 금액이 나갑니다.",
+      "effectBank": "이체로 갚으면 금고는 움직이지 않습니다.",
+      "confirm": "갚았다고 기록",
+      "failed": "정산을 기록하지 못했습니다",
+      "drawerSkipped": "열린 시프트가 없어 금고에는 반영되지 않았습니다. 정산 기록은 남았습니다."
+    },
+    "receipt": {
+      "failed": "영수증을 붙이지 못했습니다"
     }
   },
   "new": {
@@ -508,7 +526,8 @@
       "cash": "현금",
       "bank": "계좌이체",
       "card": "카드",
-      "nonCashNote": "현금이 아닌 결제는 발주에만 기록되고 현금서랍은 건드리지 않습니다."
+      "nonCashNote": "현금이 아닌 결제는 발주에만 기록되고 현금서랍은 건드리지 않습니다.",
+      "personal": "개인금액"
     },
     "effects": {
       "title": "무엇이 일어나나요",
@@ -517,7 +536,9 @@
       "drawer": "열려 있는 시프트의 현금서랍에서 RM {{amount}} 이(가) 빠져나갑니다.",
       "refund": "같은 금액의 입금 이동이 생깁니다 — 결제를 지우는 것이 아니라 되돌립니다. 재고와 수령 기록은 그대로입니다.",
       "paysInvoice": "대조한 공급업체 청구 금액이 나갑니다(발주 금액이 아닙니다).",
-      "directSubmit": "발주가 «보냄»으로 확정됩니다 (직접 구매)."
+      "directSubmit": "발주가 «보냄»으로 확정됩니다 (직접 구매).",
+      "personalNoDrawer": "회사 금고에서는 나가지 않습니다 — 개인 돈이니까요.",
+      "personalOwed": "«개인금액 미정산» 목록에 남고, 그 사람에게 갚을 때 비용으로 잡힙니다."
     },
     "error": {
       "multipleShifts": "열려 있는 시프트가 둘 이상입니다 — 하나를 마감한 뒤 현금 결제를 기록하세요.",
@@ -542,7 +563,10 @@
     "notReconciledWarning": "공급업체 인보이스는 올라왔지만 아직 대조하지 않았습니다 — 이대로 내면 발주 금액이 나갑니다.",
     "compareFirst": "먼저 대조하기",
     "paidAt": "결제일",
-    "paidAtNote": "실제로 돈이 나간 날입니다. 기본은 오늘입니다."
+    "paidAtNote": "실제로 돈이 나간 날입니다. 기본은 오늘입니다.",
+    "personal": {
+      "paidByHint": "지금 로그인한 사람이 «낸 사람»으로 기록됩니다."
+    }
   },
   "ingredients": {
     "activeLabel": "사용",
