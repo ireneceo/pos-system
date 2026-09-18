@@ -631,7 +631,8 @@ const LineCostCell = styled.div`
 const IngredientRow = styled.div`
   display: grid;
   /* 이름 · 수량 · 단위 · 원가 · 삭제 → 첫 줄 / 메모 → 둘째 줄(전체 폭).
-     `minmax(0, 1fr)` 이 없으면 긴 재료명이 칸을 밀어 수량 입력이 찌그러진다. */
+     minmax(0, 1fr) 이 없으면 긴 재료명이 칸을 밀어 수량 입력이 찌그러진다.
+     ⚠ styled 템플릿 안 주석에 백틱을 쓰면 템플릿이 거기서 끊겨 빌드가 죽는다(2026-09-18 실측). */
   grid-template-columns: minmax(0, 1fr) 120px 96px 110px 40px;
   gap: 8px 8px;
   align-items: center;
