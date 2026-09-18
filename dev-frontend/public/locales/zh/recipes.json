@@ -185,5 +185,8 @@
     "deleteBlockedTitle": "无法删除",
     "noteLabel": "备注",
     "notePlaceholder": "选填 — 处理方式、替代食材等"
-  }
+  },
+  "myCostBadge": "本店成本",
+  "myCostBadgeHint": "本店自行设定了食材成本，因此同时显示品牌成本与本店成本",
+  "noIngredientsWarn": "没有食材 — 成本为 0，售出时也不会扣减库存"
 }

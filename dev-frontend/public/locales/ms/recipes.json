@@ -185,5 +185,8 @@
     "deleteBlockedTitle": "Tidak boleh dipadam",
     "noteLabel": "Nota",
     "notePlaceholder": "Pilihan — cara penyediaan, ganti bahan, dll."
-  }
+  },
+  "myCostBadge": "Kos kami",
+  "myCostBadgeHint": "Kedai ini menetapkan kos bahan sendiri, jadi kos jenama dan kos anda dipaparkan bersebelahan",
+  "noIngredientsWarn": "Tiada bahan — kos ialah 0 dan stok tidak ditolak apabila dijual"
 }

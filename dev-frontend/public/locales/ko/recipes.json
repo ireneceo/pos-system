@@ -185,5 +185,8 @@
     "deleteBlockedTitle": "삭제할 수 없습니다",
     "noteLabel": "메모",
     "notePlaceholder": "선택 — 손질 방법, 대체 재료 등"
-  }
+  },
+  "myCostBadge": "우리 원가",
+  "myCostBadgeHint": "이 매장이 재료 원가를 따로 정해 두어 브랜드 원가와 우리 원가를 나란히 보여줍니다",
+  "noIngredientsWarn": "재료가 없어 원가가 0이고, 팔려도 재고가 줄지 않습니다"
 }

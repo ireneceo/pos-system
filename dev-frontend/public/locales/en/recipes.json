@@ -185,5 +185,8 @@
     "deleteBlockedTitle": "Cannot delete",
     "noteLabel": "Note",
     "notePlaceholder": "Optional — prep method, substitute, etc."
-  }
+  },
+  "myCostBadge": "My cost",
+  "myCostBadgeHint": "This store set its own ingredient costs, so brand cost and your cost are shown side by side",
+  "noIngredientsWarn": "No ingredients — cost is 0 and nothing is deducted from stock when sold"
 }

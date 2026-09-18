@@ -180,6 +180,29 @@ const BrandBadge = styled.span`
   margin-left: 8px;
 `;
 
+// 이 매장이 원가를 따로 정해 둔 브랜드 레시피 표시 — «My Cost» 와 같은 파랑 계열로 묶는다.
+const MyCostBadge = styled.span`
+  display: inline-block;
+  padding: 4px 8px;
+  background: #EFF6FF;
+  color: #2563EB;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 8px;
+`;
+
+// 재료 줄이 없는 레시피 경고 — 원가 0·재고 미차감의 이유를 말해 준다.
+const NoIngredientsWarn = styled.div`
+  margin-top: 6px;
+  font-size: 12px;
+  color: #92400E;
+  background: #FEF3C7;
+  border: 1px solid #FDE68A;
+  border-radius: 6px;
+  padding: 6px 8px;
+`;
+
 const RecipeDescription = styled.p`
   font-size: 14px;
   color: #4B5563;
@@ -1796,6 +1819,14 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                         {t('recipes:brandBadge', '브랜드 레시피')}
                       </BrandBadge>
                     )}
+                    {/* 이 매장이 원가를 따로 정해 둔 브랜드 레시피 — 카드에 «Brand Cost / My Cost» 두 줄이
+                        나오는 이유가 그것이다. 배지가 없으면 「왜 어떤 건 두 줄이냐」가 계속 걸린다
+                        (2026-09-18 Irene 신고). 판정 기준은 아래 원가 블록과 **같은 조건**을 쓴다. */}
+                    {isRestaurantAdmin && recipe.owner_type === 'brand' && recipe.restaurant_ingredient_cost !== null && (
+                      <MyCostBadge title={t('recipes:myCostBadgeHint', '이 매장이 재료 원가를 따로 정해 두어 브랜드 원가와 우리 원가를 나란히 보여줍니다') as string}>
+                        {t('recipes:myCostBadge', '우리 원가')}
+                      </MyCostBadge>
+                    )}
                     {/* 준비 재료를 만드는 레시피 — 메뉴에 못 붙는다는 사실이 목록에서 바로 보여야 한다 */}
                     {(recipe as any).is_prep_ingredient && (
                       <PrepBadge title={t('recipes:prep.badgeHint', '이 레시피의 결과물이 재료로 쓰입니다. 재고는 재고 화면의 «만들기» 로 늘리고, 이 레시피는 메뉴에 연결할 수 없습니다') as string}>
@@ -1837,10 +1868,14 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                     </CostValue>
                   </CostItem>
                 )}
-                <CostItem>
-                  <CostLabel>{'Suggested'}</CostLabel>
-                  <CostValue>{formatCurrency(Number(recipe.suggested_price || 0), selectedCurrency)}</CostValue>
-                </CostItem>
+                {/* 준비 레시피는 **파는 물건이 아니다** — 메뉴에 붙지 않으므로 권장 판매가 칸을 숨긴다.
+                    예전엔 전부 «Suggested RM 0.00» 으로 보여 값을 안 넣은 것처럼 읽혔다(2026-09-18 Irene). */}
+                {!(recipe as any).is_prep_ingredient && (
+                  <CostItem>
+                    <CostLabel>{'Suggested'}</CostLabel>
+                    <CostValue>{formatCurrency(Number(recipe.suggested_price || 0), selectedCurrency)}</CostValue>
+                  </CostItem>
+                )}
               </RecipeCosts>
 
               {/* Cook Time & Prep Time */}
@@ -1873,6 +1908,12 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                 <IngredientsCount>
                   {recipe.recipeIngredients?.length || 0} ingredients
                 </IngredientsCount>
+                {/* 재료 줄이 없으면 원가가 0이고 재고도 안 깎인다 — 그 사실을 화면이 말해 준다 */}
+                {(!recipe.recipeIngredients || recipe.recipeIngredients.length === 0) && (
+                  <NoIngredientsWarn>
+                    {t('recipes:noIngredientsWarn', '재료가 없어 원가가 0이고, 팔려도 재고가 줄지 않습니다')}
+                  </NoIngredientsWarn>
+                )}
                 {recipe.recipeIngredients && recipe.recipeIngredients.length > 0 && (
                   <IngredientTags>
                     {recipe.recipeIngredients.slice(0, 5).map((ri, idx) => (
@@ -2016,10 +2057,13 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                     <ViewGridValue>{formatCurrency(recipeTotalCost(selectedRecipe), selectedCurrency)}</ViewGridValue>
                   </ViewGridItem>
                 )}
-                <ViewGridItem>
-                  <ViewGridLabel>{'Suggested Price'}</ViewGridLabel>
-                  <ViewGridValue>{formatCurrency(Number(formData.suggested_price || 0), selectedCurrency)}</ViewGridValue>
-                </ViewGridItem>
+                {/* 준비 레시피는 파는 물건이 아니다 — 카드와 같은 규칙으로 권장가를 숨긴다 */}
+                {!formData.is_prep_ingredient && (
+                  <ViewGridItem>
+                    <ViewGridLabel>{'Suggested Price'}</ViewGridLabel>
+                    <ViewGridValue>{formatCurrency(Number(formData.suggested_price || 0), selectedCurrency)}</ViewGridValue>
+                  </ViewGridItem>
+                )}
                 {formData.prep_time && (
                   <ViewGridItem>
                     <ViewGridLabel>{'Prep Time'}</ViewGridLabel>
