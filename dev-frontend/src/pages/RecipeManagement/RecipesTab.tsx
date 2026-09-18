@@ -599,7 +599,10 @@ const IngredientsList = styled.div`
 
 const IngredientHeaderRow = styled.div`
   display: grid;
-  grid-template-columns: 3fr 1fr 0.7fr 2fr 1fr 40px;
+  /* 2026-09-18 Irene 「숫자 쓴걸 볼 수가 없어. 이름도 제대로 못 보고」 —
+     한 줄에 6칸(이름·수량·단위·메모·원가·삭제)을 밀어넣어 이름과 숫자가 모두 잘렸다.
+     메모를 **아래 줄**로 내리고 남은 폭을 이름·수량에 준다. 머리글도 같은 4칸으로 맞춘다. */
+  grid-template-columns: minmax(0, 1fr) 120px 96px 110px 40px;
   gap: 8px;
   padding: 8px 0;
   margin-bottom: 8px;
@@ -627,13 +630,49 @@ const LineCostCell = styled.div`
 
 const IngredientRow = styled.div`
   display: grid;
-  grid-template-columns: 3fr 1fr 0.7fr 2fr 1fr 40px;
-  gap: 8px;
+  /* 이름 · 수량 · 단위 · 원가 · 삭제 → 첫 줄 / 메모 → 둘째 줄(전체 폭).
+     `minmax(0, 1fr)` 이 없으면 긴 재료명이 칸을 밀어 수량 입력이 찌그러진다. */
+  grid-template-columns: minmax(0, 1fr) 120px 96px 110px 40px;
+  gap: 8px 8px;
   align-items: center;
-  margin-bottom: 8px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px dashed #E5E7EB;
+
+  /* 둘째 줄 = 메모. 첫 열부터 마지막 열까지 이어 붙인다. */
+  > .ingredient-note {
+    grid-column: 1 / -1;
+  }
+
+  > * {
+    min-width: 0;   /* 그리드 칸이 내용 때문에 넘치지 않게 */
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
+    > .ingredient-note { grid-column: auto; }
+  }
+`;
+
+// 메모 줄 — 값이 없을 때도 어떤 칸인지 알 수 있게 작은 라벨을 붙인다.
+const NoteLine = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  span {
+    font-size: 12px;
+    color: #6B7280;
+    white-space: nowrap;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
   }
 `;
 
@@ -2289,7 +2328,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   <span>{'Ingredient'}</span>
                   <span>{'Quantity'}</span>
                   <span>{'Unit'}</span>
-                  <span>{'Notes'}</span>
                   <span>{t('recipes:recipesTab.cost')}</span>
                   <span></span>
                 </IngredientHeaderRow>
@@ -2329,18 +2367,22 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                       disabled
                       style={{ background: '#F1F4F8', color: '#4B5563' }}
                     />
-                    <FormInput
-                      type="text"
-                      value={ri.notes}
-                      onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
-                      placeholder="Optional"
-                    />
                     <LineCostCell>
                       {lineCost(ri) === null ? '-' : formatCurrency(lineCost(ri) as number, selectedCurrency)}
                     </LineCostCell>
                     <RemoveButton type="button" onClick={() => removeIngredient(index)}>
                       ×
                     </RemoveButton>
+                    {/* 메모는 둘째 줄 전체 폭 — 한 줄에 다 넣으면 이름·숫자가 잘린다(2026-09-18 Irene) */}
+                    <NoteLine className="ingredient-note">
+                      <span>{t('recipes:recipesTab.noteLabel', '메모')}</span>
+                      <FormInput
+                        type="text"
+                        value={ri.notes}
+                        onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
+                        placeholder={t('recipes:recipesTab.notePlaceholder', '선택 — 손질 방법, 대체 재료 등') as string}
+                      />
+                    </NoteLine>
                   </IngredientRow>
                 ))}
               </IngredientsList>

@@ -182,6 +182,8 @@
     "brandWriteStopped": "브랜드 재료 분류는 더 만들지 않습니다 — 재료 분류는 매장에서, 브랜드 분류는 Stock Items 화면에서 관리합니다."
   },
   "recipesTab": {
-    "deleteBlockedTitle": "삭제할 수 없습니다"
+    "deleteBlockedTitle": "삭제할 수 없습니다",
+    "noteLabel": "메모",
+    "notePlaceholder": "선택 — 손질 방법, 대체 재료 등"
   }
 }

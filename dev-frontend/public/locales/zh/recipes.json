@@ -182,6 +182,8 @@
     "brandWriteStopped": "不再建立品牌材料分类 — 材料分类由门店管理，品牌分类在 Stock Items 画面管理。"
   },
   "recipesTab": {
-    "deleteBlockedTitle": "无法删除"
+    "deleteBlockedTitle": "无法删除",
+    "noteLabel": "备注",
+    "notePlaceholder": "选填 — 处理方式、替代食材等"
   }
 }

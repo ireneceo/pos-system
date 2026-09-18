@@ -182,6 +182,8 @@
     "brandWriteStopped": "Kategori bahan jenama tidak lagi dibuat — kategori bahan diurus oleh restoran, dan kategori jenama di skrin Stock Items."
   },
   "recipesTab": {
-    "deleteBlockedTitle": "Tidak boleh dipadam"
+    "deleteBlockedTitle": "Tidak boleh dipadam",
+    "noteLabel": "Nota",
+    "notePlaceholder": "Pilihan — cara penyediaan, ganti bahan, dll."
   }
 }
