@@ -650,6 +650,84 @@ router.post('/purchase-orders/:id/receive-and-pay', async (req, res) => {
   }
 });
 
+// ============================================
+// POST /api/purchase-orders/:id/direct-purchase — **직접 사왔을 때** (2026-09-18 Fable 판정)
+// ============================================
+//   Irene 「Receive + pay 버튼만 추가되면 되는 거지. 직접 사왔을 때 사용할 거.」
+//   매장이 발주서를 보내지 않고 직접 가서 사 온 경우 — 초안 한 줄을 「보냄 → 받음 → 결제」로 한 번에 닫는다.
+//
+//   ⛔ 초안을 `RECEIVABLE_STATUSES` 에 넣는 방식은 **금지**(Fable 기각):
+//      그러면 mark-received·/receive·receive-and-pay 세 길이 전부 초안을 받게 되어
+//      2026-07-13 에 닫은 **오너 승인 우회**가 다시 열리고, 판매자 포털에 **존재하지 않는 주문**이
+//      received 로 튀어나온다. 그래서 여기서는 기존 함수 3개를 **순서대로 재사용**한다(복제 0).
+//
+//   순서(한 트랜잭션): applySubmitGate → markAllReceived → recordPayment.
+//   승인이 켜진 매장이면 게이트가 `pending_approval` 로 돌아오므로 **통째로 롤백**하고 400 을 준다 —
+//   직접 구매도 지출이라 승인 통제를 우회시키지 않는다.
+router.post('/purchase-orders/:id/direct-purchase', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    const method = req.body && req.body.payment_method;
+
+    const result = await database.sequelize.transaction(async (t) => {
+      const po = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!po) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkPOOwnership(po, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (po.status !== 'draft') {
+        const e = new Error('Only a draft can be recorded as a direct purchase');
+        e.code = 'BAD_STATUS'; throw e;
+      }
+      const itemCount = await PurchaseOrderItem.count({ where: { purchase_order_id: po.id }, transaction: t });
+      if (itemCount === 0) { const e = new Error('Purchase order has no items'); e.code = 'EMPTY_ITEMS'; throw e; }
+
+      // ① 보냄 — 승인 게이트를 **거친다**(우회 금지). 승인 필요면 롤백.
+      const needsApproval = await applySubmitGate(po, t, (pp, st, note) =>
+        appendTrackingEvent(pp, st, note, { source: 'direct_purchase', method: method || 'manual' }));
+      if (needsApproval) {
+        const e = new Error('이 매장은 발주에 오너 승인이 필요합니다. Mark as Sent → 승인 후 이력에서 Receive & pay 하세요.');
+        e.code = 'APPROVAL_REQUIRED'; throw e;
+      }
+
+      // ② 받음 — mark-received 와 같은 함수(복제 금지)
+      const rcv = await markAllReceived(po, {
+        userId: req.user.id,
+        note: `PO ${po.po_number} direct-purchase`,
+        trackingSource: 'direct_purchase',
+      }, t);
+      if (!rcv.ok) { const e = new Error(rcv.message); e.code = 'BAD_STATUS'; throw e; }
+
+      // ③ 결제 — 실패하면 ①②까지 통째로 롤백된다(receive-and-pay 와 같은 이유)
+      return recordPayment(po, {
+        method,
+        userId: req.user && req.user.id,
+        reason: req.body && req.body.reason ? sanitizeString(String(req.body.reason)).slice(0, 255) : null,
+      }, t);
+    });
+
+    // 커밋 뒤 — 판매자에게는 「받았다」만 알린다. 이미 받은 주문에 「확인해 주세요」는 무의미하므로
+    //   fireSellerSubmittedNotification·fireBuyerConfirmNotification 은 보내지 않는다(Fable 판정).
+    setImmediate(() => fireBuyerReceivedNotification(result.po));
+    issueTradeInvoiceAfterCommit(result.po);
+    emitPoEvent(req, result.po, 'seller-order-created');
+
+    res.json({
+      success: true,
+      data: result.po,
+      ...(result.movement ? { cash_movement_id: result.movement.id } : {}),
+      ...(result.drawerSkipped ? { drawerSkipped: true } : {}),
+    });
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    if (err.code === 'APPROVAL_REQUIRED') return res.status(400).json({ success: false, code: err.code, message: err.message });
+    if (err.code === 'EMPTY_ITEMS') return res.status(400).json({ success: false, code: err.code, message: err.message });
+    if (err.statusCode) return res.status(err.statusCode).json({ success: false, code: err.code, message: err.message });
+    if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, code: err.code, message: err.message });
+    console.error('POST /api/purchase-orders/:id/direct-purchase error:', err);
+    res.status(500).json({ success: false, message: 'Failed to record direct purchase' });
+  }
+});
+
 // POST /api/purchase-orders/:id/mark-received — 수령 완료 (간단 마킹, /receive 의 lite 버전)
 //   /receive 는 품목별 수량 검증 + GeneralStock 업데이트가 있어 무거움. 단순 수령 확인용.
 // ============================================

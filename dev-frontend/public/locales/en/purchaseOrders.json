@@ -452,7 +452,8 @@
     "receiveOnly": "Receive only",
     "payOnly": "Record payment",
     "refund": "Reverse payment",
-    "unknownSeller": "Supplier"
+    "unknownSeller": "Supplier",
+    "directPurchase": "Receive + pay"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit mismatch — manual entry required",
@@ -499,7 +500,8 @@
       "receiveAndPay": "Receive and pay",
       "receiveOnly": "Receive without paying",
       "pay": "Record payment",
-      "refund": "Reverse this payment"
+      "refund": "Reverse this payment",
+      "directPurchase": "Record as a direct purchase"
     },
     "method": {
       "label": "Payment method",
@@ -514,7 +516,8 @@
       "payment": "The order is marked as paid.",
       "drawer": "RM {{amount}} is taken out of the open shift cash drawer.",
       "refund": "A matching cash-in movement is created — the payment is reversed, not deleted. Stock and receipt are not touched.",
-      "paysInvoice": "The compared supplier invoice amount is paid, not the ordered amount."
+      "paysInvoice": "The compared supplier invoice amount is paid, not the ordered amount.",
+      "directSubmit": "The purchase order is confirmed as sent (direct purchase)."
     },
     "error": {
       "multipleShifts": "More than one shift is open — close one before recording a cash payment.",

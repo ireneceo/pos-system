@@ -452,7 +452,8 @@
     "receiveOnly": "수령만",
     "payOnly": "결제 기록",
     "refund": "결제 취소",
-    "unknownSeller": "공급업체"
+    "unknownSeller": "공급업체",
+    "directPurchase": "받고 결제"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: 수량 단위 차이 — 수동 입력 필요",
@@ -499,7 +500,8 @@
       "receiveAndPay": "수령 + 결제",
       "receiveOnly": "결제 없이 수령",
       "pay": "결제 기록",
-      "refund": "결제 취소"
+      "refund": "결제 취소",
+      "directPurchase": "직접 사온 것으로 기록"
     },
     "method": {
       "label": "결제 수단",
@@ -514,7 +516,8 @@
       "payment": "이 발주가 결제 완료로 기록됩니다.",
       "drawer": "열려 있는 시프트의 현금서랍에서 RM {{amount}} 이(가) 빠져나갑니다.",
       "refund": "같은 금액의 입금 이동이 생깁니다 — 결제를 지우는 것이 아니라 되돌립니다. 재고와 수령 기록은 그대로입니다.",
-      "paysInvoice": "대조한 공급업체 청구 금액이 나갑니다(발주 금액이 아닙니다)."
+      "paysInvoice": "대조한 공급업체 청구 금액이 나갑니다(발주 금액이 아닙니다).",
+      "directSubmit": "발주가 «보냄»으로 확정됩니다 (직접 구매)."
     },
     "error": {
       "multipleShifts": "열려 있는 시프트가 둘 이상입니다 — 하나를 마감한 뒤 현금 결제를 기록하세요.",

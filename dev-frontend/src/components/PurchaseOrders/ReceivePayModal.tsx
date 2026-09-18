@@ -15,7 +15,9 @@ import { useTranslation } from 'react-i18next';
 import { Modal, ModalButton, FormGroup, FormLabel, FormInput, FormSelect } from '../UI/Modal';
 import { getAuthToken } from '../../utils/auth';
 
-export type ReceivePayMode = 'receive_and_pay' | 'receive_only' | 'pay' | 'refund';
+// `direct_purchase` — 직접 사왔을 때(초안 한 줄을 보냄·받음·결제로 한 번에 닫는다).
+//   2026-09-18 Irene 「Receive + pay 버튼만 추가되면 되는 거지. 직접 사왔을 때 사용할 거.」
+export type ReceivePayMode = 'receive_and_pay' | 'receive_only' | 'pay' | 'refund' | 'direct_purchase';
 
 interface Props {
   open: boolean;
@@ -73,7 +75,7 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
 
   if (!open || !po) return null;
 
-  const needsMethod = mode === 'receive_and_pay' || mode === 'pay';
+  const needsMethod = mode === 'receive_and_pay' || mode === 'pay' || mode === 'direct_purchase';
   const cashFromDrawer = needsMethod && method === 'cash' && buyerIsRestaurant;
 
   const titleFor: Record<ReceivePayMode, string> = {
@@ -81,6 +83,7 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
     receive_only: t('pay.title.receiveOnly', 'Receive without paying') as string,
     pay: t('pay.title.pay', 'Record payment') as string,
     refund: t('pay.title.refund', 'Reverse this payment') as string,
+    direct_purchase: t('pay.title.directPurchase', '직접 사온 것으로 기록') as string,
   };
 
   const submit = async () => {
@@ -88,7 +91,8 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
     try {
       const viaInvoice = mode === 'pay' && invoiceId != null && invoiceId !== '';
       const endpoint =
-        mode === 'receive_and_pay' ? `/api/purchase-orders/${po.id}/receive-and-pay`
+        mode === 'direct_purchase' ? `/api/purchase-orders/${po.id}/direct-purchase`
+        : mode === 'receive_and_pay' ? `/api/purchase-orders/${po.id}/receive-and-pay`
         : mode === 'receive_only' ? `/api/purchase-orders/${po.id}/mark-received`
         : viaInvoice ? `/api/invoices/${invoiceId}/mark-paid-external`
         : mode === 'pay' ? `/api/purchase-orders/${po.id}/pay`
@@ -174,7 +178,10 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
       {/* 되돌리기 어려운 동작이라 **무엇이 일어나는지 먼저 적는다** */}
       <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: '10px 12px', marginBottom: 14, fontSize: 12.5, color: '#334155', lineHeight: 1.7 }}>
         <div style={{ fontWeight: 700, marginBottom: 4, color: '#0A2540' }}>{t('pay.effects.title', 'What this does')}</div>
-        {(mode === 'receive_and_pay' || mode === 'receive_only') && (
+        {mode === 'direct_purchase' && (
+          <div>· {t('pay.effects.directSubmit', '발주가 «보냄»으로 확정됩니다 (직접 구매).')}</div>
+        )}
+        {(mode === 'receive_and_pay' || mode === 'receive_only' || mode === 'direct_purchase') && (
           <div>· {t('pay.effects.stock', 'Stock goes up by the ordered quantity.')}</div>
         )}
         {needsMethod && <div>· {t('pay.effects.payment', 'The order is marked as paid.')}</div>}

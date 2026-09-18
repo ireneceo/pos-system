@@ -452,7 +452,8 @@
     "receiveOnly": "仅收货",
     "payOnly": "记录付款",
     "refund": "撤销付款",
-    "unknownSeller": "供应商"
+    "unknownSeller": "供应商",
+    "directPurchase": "收货并付款"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}：数量单位不一致 — 需手动输入",
@@ -499,7 +500,8 @@
       "receiveAndPay": "收货并付款",
       "receiveOnly": "仅收货（不付款）",
       "pay": "记录付款",
-      "refund": "撤销此付款"
+      "refund": "撤销此付款",
+      "directPurchase": "记录为直接采购"
     },
     "method": {
       "label": "付款方式",
@@ -514,7 +516,8 @@
       "payment": "此采购单标记为已付款。",
       "drawer": "从当前开启班次的钱箱中支出 RM {{amount}}。",
       "refund": "生成一笔等额的现金收入记录——付款是被撤销而非删除。库存与收货记录不受影响。",
-      "paysInvoice": "支出的是已核对的供应商发票金额，而非采购金额。"
+      "paysInvoice": "支出的是已核对的供应商发票金额，而非采购金额。",
+      "directSubmit": "采购单将确认为已发出（直接采购）。"
     },
     "error": {
       "multipleShifts": "有多个班次处于开启状态——请先结束其中一个，再记录现金付款。",

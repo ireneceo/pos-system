@@ -1118,6 +1118,20 @@ draft ──submit──▶ (오너승인 ON & 오너연결) pending_approval �
 ### H-1. 개념 모델 (확정)
 - **`/pos/purchase-orders` = "Planned Order"(담는 곳)**. 우측 패널은 담기용(이전 "Cart" → "Planned Order"로 개명). 카트는 **buyer 별 localStorage**(`po-cart:{type}:{id}`)로 영속화 — 제출 안 하고 이동해도 유지(로드-가드+skipSave 로 user 늦은 로딩 시 wipe 방지). **제출 시에만** 비워짐(중복 제출 방지).
 - **`/pos/purchase-orders/staging` (Pending POs) = 실질 카트**. 제출하면 공급업체별 draft PO 로 쌓이고, 검토 후 **Submit All** 로 최종 발송.
+
+**🔵 2026-09-18 (Irene 지시 · Fable 판정) — staging 은 «아직 안 보낸 것»만 다룬다**
+- **「To receive」 블록 제거.** Irene 「이게 왜 여기 남아? … 마킹했거나 받고 결제했다고 하면 그냥 오더히스토리에 들어가면 되는 건데」.
+  2026-09-02(P4-5)에 넣은 블록인데 2026-09-10(B1)에 **발주 이력 행에 같은 버튼을 전부 넣으면서 완전한 중복**이 됐다.
+  보낸 뒤의 수령·결제·되돌리기는 `/pos/purchase-orders/history` 행과 발주 상세에 있다. 알림 성격의 대체 목록도 두지 않는다
+  (같은 혼동을 자리만 옮기는 것이라 Fable 이 기각).
+- **초안 행에 「Receive + pay」 추가 — 직접 사왔을 때.** `POST /api/purchase-orders/:id/direct-purchase`
+  (`routes/purchase-orders-workflow.js`). 한 트랜잭션에서 `applySubmitGate` → `markAllReceived` → `recordPayment`.
+  ⛔ **초안을 `RECEIVABLE_STATUSES` 에 넣는 방식은 금지** — 그러면 mark-received·/receive·receive-and-pay 세 길이
+  전부 초안을 받게 되어 2026-07-13 에 닫은 **오너 승인 우회**가 다시 열리고, 판매자 포털에 없는 주문이 received 로 나온다.
+  승인이 켜진 매장(오너 연결 시 기본 ON)은 **400 `APPROVAL_REQUIRED` 로 통째 롤백** — 직접 구매도 지출 통제를 우회하지 않는다.
+  커밋 뒤 알림은 「받았다」(`fireBuyerReceivedNotification`)만 — 이미 받은 주문에 「확인해 주세요」는 보내지 않는다.
+- 계약 고정: health-check `inventory` 3건(멱등 sweep · 정상 경로 상태·결제·재고 · 승인 매장 400 + 무변경). 고장주입 1회로 반증.
+- 「Receive only」·「Record payment」는 **외상**(받고 나중 결제)·**선불**(먼저 결제) 용도이며 이력 행·상세에 그대로 있다.
 - 카트 페이지 상단에 **"Pending POs (N) →"** 링크(staging 바로가기, draft 수 표시).
 
 ### H-2. 같은 공급업체 = 한 PO (합치기)

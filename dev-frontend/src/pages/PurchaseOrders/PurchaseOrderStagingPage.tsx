@@ -240,7 +240,6 @@ const PurchaseOrderStagingPage: React.FC = () => {
   const [confirmSubmitAll, setConfirmSubmitAll] = useState(false);
   // 받을 발주 (P4-5) — 보낸 뒤 아직 안 받은 발주를 여기서 바로 수령·결제한다.
   //   그전에는 이 화면이 draft 만 조회해서, 받는 동작을 하려면 발주 목록으로 나가야 했다.
-  const [receivables, setReceivables] = useState<POStaging[]>([]);
   const [payModal, setPayModal] = useState<{ po: POStaging; mode: ReceivePayMode } | null>(null);
   const [discarding, setDiscarding] = useState(false);
   const [submittingId, setSubmittingId] = useState<number | null>(null);
@@ -319,21 +318,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
     finally { if (!opts?.silent) setLoading(false); }
   }, [t]);
 
-  // 받을 발주 — **수령 가능 상태 목록은 서버가 정한다**(`receivable=1`).
-  //   프론트에 상태 목록을 복사해 두면 서버가 상태를 늘릴 때 조용히 갈라진다.
-  const fetchReceivables = useCallback(async () => {
-    try {
-      const token = getAuthToken();
-      const res = await fetch('/api/purchase-orders?receivable=1&limit=50', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const j = await res.json();
-      // 실패하면 목록을 비우지 않는다(draft 쪽과 같은 규칙 — 사라진 것처럼 보이지 않게)
-      if (res.ok && j.success && Array.isArray(j.data)) setReceivables(j.data);
-    } catch { /* non-fatal */ }
-  }, []);
-
-  useEffect(() => { fetchDrafts(); fetchReceivables(); }, [fetchDrafts, fetchReceivables]);
+  useEffect(() => { fetchDrafts(); }, [fetchDrafts]);
 
   // draft PO 폐기 — staging 에 쌓인 발송 전 draft 를 개별 제거(완전 삭제). 카트와 달리 staging 은
   // 누적 검토 영역이라 빼는 수단이 필요. DELETE /purchase-orders/:id (draft 전용, 서버 가드).
@@ -472,10 +457,8 @@ const PurchaseOrderStagingPage: React.FC = () => {
       //     새로고침은 조용히(silent) 뒤따르게 한다. 실패해도 위 fetchDrafts 가 목록을 비우지 않는다.
       const remaining = pos.filter(p => p.id !== po.id);
       setPos(remaining);
-      // 2026-09-14 (Irene: 「Mark as sent 는 실시간으로 바로 없어지고 위에 리시브 뜨고 그런 게 안 돼」)
-      //   보낸 발주는 곧바로 «받을 발주» 로 올라가야 한다. 지금까지는 이 목록을 화면 열 때와
-      //   결제 모달 뒤에만 불러서, 새로고침해야 나타났다.
-      fetchReceivables();
+      // 2026-09-18: 보낸 발주는 이 화면에서 **사라지고 발주 이력으로 간다**(「To receive」 블록 제거).
+      //   2026-09-14 에 넣었던 «위에 리시브 뜨게» 는 그 블록이 있을 때의 처리였다.
       if (remaining.length === 0) { navigate('/pos/purchase-orders/history'); return; }
       fetchDrafts({ silent: true });
     } catch (e: any) {
@@ -576,6 +559,10 @@ const PurchaseOrderStagingPage: React.FC = () => {
                   ? t('staging.submitForApproval', 'Submit for approval')
                   : t('staging.markSent', 'Mark as Sent')}
             </Button>
+            {/* 직접 사왔을 때 — 보냄·받음·결제를 한 번에 닫는다 (2026-09-18 Irene) */}
+            <Button variant="secondary" size="small" onClick={() => setPayModal({ po, mode: 'direct_purchase' })}>
+              {t('staging.directPurchase', 'Receive + pay')}
+            </Button>
             <Button variant="danger-outline" size="small" onClick={() => setDiscardTarget(po)}>
               {t('staging.discard', 'Discard')}
             </Button>
@@ -591,6 +578,10 @@ const PurchaseOrderStagingPage: React.FC = () => {
               {submittingId === po.id
                 ? t('staging.submitting', 'Submitting…')
                 : t('staging.submitOne', 'Submit')}
+            </Button>
+            {/* 직접 사왔을 때 — 보냄·받음·결제를 한 번에 닫는다 (2026-09-18 Irene) */}
+            <Button variant="secondary" size="small" onClick={() => setPayModal({ po, mode: 'direct_purchase' })}>
+              {t('staging.directPurchase', 'Receive + pay')}
             </Button>
             <Button variant="danger-outline" size="small" onClick={() => setDiscardTarget(po)}>
               {t('staging.discard', 'Discard')}
@@ -635,54 +626,11 @@ const PurchaseOrderStagingPage: React.FC = () => {
       </PageHeader>
 
       <Content style={{ flex: 1, paddingBottom: 80 }}>
-        {/* 받을 발주 (P4-5) — 보낸 발주를 여기서 바로 받고 결제한다.
-            draft 목록과 섞지 않는다: 아래는 "아직 안 보낸 것", 여기는 "보냈고 이제 받을 것". */}
-        {receivables.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#0F766E', textTransform: 'uppercase', letterSpacing: 0.5, padding: '0 4px', marginBottom: 8 }}>
-              {t('staging.receivableSection', 'To receive')} ({receivables.length})
-            </div>
-            {receivables.map(p => (
-              <POCard key={`recv-${p.id}`} $external={false}>
-                <POHead>
-                  <POSellerBox>
-                    <POSellerName>{p.seller_name || p.seller?.name || t('staging.unknownSeller', 'Supplier')}</POSellerName>
-                    <POMeta>
-                      {p.po_number || `#${p.id}`}
-                      {' · '}{p.status}
-                      {p.expected_delivery_date ? ` · ${t('staging.expected', 'Expected')}: ${p.expected_delivery_date}` : ''}
-                      {p.payment_status === 'paid' ? ` · ${t('pay.badge.paid', 'Paid')}` : ''}
-                      {p.payment_status === 'refunded' ? ` · ${t('pay.badge.refunded', 'Payment reversed')}` : ''}
-                    </POMeta>
-                  </POSellerBox>
-                  <POAmount>{getCurrencySymbol(p.currency || 'MYR')} {parseFloat(p.total_amount || '0').toFixed(2)}</POAmount>
-                </POHead>
-                <Actions>
-                  <Button type="button" size="small" variant="primary"
-                    onClick={() => setPayModal({ po: p, mode: 'receive_and_pay' })}>
-                    {t('staging.receiveAndPay', 'Receive + pay')}
-                  </Button>
-                  <Button type="button" size="small" variant="secondary"
-                    onClick={() => setPayModal({ po: p, mode: 'receive_only' })}>
-                    {t('staging.receiveOnly', 'Receive only')}
-                  </Button>
-                  {p.payment_status !== 'paid' && (
-                    <Button type="button" size="small" variant="secondary"
-                      onClick={() => setPayModal({ po: p, mode: 'pay' })}>
-                      {t('staging.payOnly', 'Record payment')}
-                    </Button>
-                  )}
-                  {p.payment_status === 'paid' && (
-                    <Button type="button" size="small" variant="secondary"
-                      onClick={() => setPayModal({ po: p, mode: 'refund' })}>
-                      {t('staging.refund', 'Reverse payment')}
-                    </Button>
-                  )}
-                </Actions>
-              </POCard>
-            ))}
-          </div>
-        )}
+        {/* 「To receive」 블록은 2026-09-18 제거했다 (Irene 「이게 왜 여기 남아? … 그냥 오더히스토리에
+            들어가면 되는 건데」 · Fable 판정).
+            이 화면은 **아직 안 보낸 것(초안)만** 다룬다. 보낸 뒤의 수령·결제·되돌리기는
+            발주 이력(`/pos/purchase-orders/history`) 행과 상세 화면에 이미 전부 있다(2026-09-10 B1).
+            알림 성격의 목록을 여기 다시 두면 같은 혼동을 자리만 옮기는 것이라 대체물도 두지 않는다. */}
 
         {loading && pos.length === 0 ? (
           <Empty>{t('common:loading', 'Loading…')}</Empty>
@@ -758,7 +706,6 @@ const PurchaseOrderStagingPage: React.FC = () => {
         } : undefined}
         onClose={() => setPayModal(null)}
         onDone={({ drawerSkipped }) => {
-          fetchReceivables();
           fetchDrafts({ silent: true });
           // 서버가 드로어에 못 넣었으면 **숨기지 않고 알린다** — 직원이 드로어를 잘못 센다.
           if (drawerSkipped) {

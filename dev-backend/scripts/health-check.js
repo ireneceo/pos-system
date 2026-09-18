@@ -67,7 +67,9 @@ async function hcCleanupPurchaseOrders(ids, { waitMs = 5000 } = {}) {
     await sequelize.query('DELETE FROM invoice_items WHERE invoice_id IN (:ids)', { replacements: { ids: invIds } });
     await sequelize.query('DELETE FROM invoices WHERE id IN (:ids)', { replacements: { ids: invIds } });
   }
-  for (const tbl of ['purchase_order_items', 'purchase_order_returns', 'inventory_transactions', 'cash_movements']) {
+  // `inventory_batches` 는 2026-09-18 에 추가했다 — 빠져 있어서 09-10 잔재(8210~8217)와
+  //   직접구매 계약 잔재(4811~4852)가 남았고, FIFO 차감이 그 유령 배치를 먹고 있었다.
+  for (const tbl of ['purchase_order_items', 'purchase_order_returns', 'inventory_transactions', 'cash_movements', 'inventory_batches']) {
     try { await sequelize.query(`DELETE FROM \`${tbl}\` WHERE purchase_order_id IN (:ids)`, { replacements: { ids: list } }); } catch { /* 없는 테이블·컬럼은 넘어간다 */ }
   }
   await sequelize.query('DELETE FROM purchase_orders WHERE id IN (:ids)', { replacements: { ids: list } });
@@ -2196,6 +2198,117 @@ function defineReservationTests({ customerToken }) {
 // ==========================================================================
 function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgToken, adminToken } = {}) {
   const svc = require('../services/inventoryDeductionService');
+
+
+  // ── 직접 구매(초안 → 보냄·받음·결제 한 번에) 계약 (2026-09-18 Fable 판정) ────────────────────
+  //   Irene 「Receive + pay 버튼만 추가되면 되는 거지. 직접 사왔을 때 사용할 거.」
+  //   ⛔ 초안을 `RECEIVABLE_STATUSES` 에 넣는 방식은 기각됐다 — 그러면 mark-received·/receive·
+  //      receive-and-pay 세 길이 전부 초안을 받아 **오너 승인 우회**가 다시 열린다.
+  //      그래서 전용 라우트가 `applySubmitGate` 를 **거쳐** 간다. 이 계약이 그 우회 금지를 고정한다.
+  //   쓰기는 데모 매장만([[reference_smoke_writes_to_real_store]]) · 마커 접두어로 멱등.
+  const DP_NOTE = 'ZZ-HC-DIRECTBUY';
+
+  // ⚠ 직접 지우지 않는다 — **공용 `hcCleanupPurchaseOrders` 를 쓴다.**
+  //   처음엔 여기서 PO·품목·장부만 지웠는데, 그러면 **결제된 거래 청구서·재고 배치·드로어 출금**이
+  //   데모 매장에 그대로 남는다(2026-09-18 Fable 실측: 고아 청구서 8장 · 배치 8개 · 출금 7건).
+  //   공용 함수는 청구서 발행을 기다렸다가 invoice_items→invoices→자식표→PO 순으로 지운다.
+  async function dpCleanup() {
+    const { sequelize } = require('../config/database');
+    const rows = (await sequelize.query(
+      `SELECT id FROM purchase_orders WHERE notes = '${DP_NOTE}'`))[0];
+    const ids = rows.map(r => Number(r.id)).filter(Number.isInteger);
+    if (!ids.length) return;
+    await hcCleanupPurchaseOrders(ids);
+  }
+
+  /** 데모 매장 + 그 매장 재료 중 공급업체 매핑이 있는 것 — 없으면 케이스가 «준비물 없음» 으로 건너뛴다.
+   *  ⚠ 오너가 연결된 매장은 **승인이 기본 ON** 이다(`isApprovalRequiredForRestaurant`: 오너 있으면
+   *     명시적 false 가 아닌 한 ON). 그래서 정상 경로는 오너 **없는** 매장, 승인 경로는 오너 **있는**
+   *     매장을 잡아야 한다. 한 함수로 섞으면 정상 경로가 승인에 걸려 실패한다(2026-09-18 실측).
+   *  @param {boolean} wantOwner 오너가 연결된 매장을 원하는가
+   */
+  async function dpCtx(wantOwner = false) {
+    const { sequelize } = require('../config/database');
+    const rows = (await sequelize.query(`
+      SELECT i.restaurant_id, i.id ingredient_id, i.unit, isp.seller_entity_id,
+             (SELECT COUNT(*) FROM restaurant_managers rm
+               WHERE rm.restaurant_id = i.restaurant_id AND rm.relationship_type = 'ownership') has_owner
+        FROM ingredient_seller_products isp
+        JOIN ingredients i ON i.id = isp.ingredient_id
+        JOIN restaurants r ON r.id = i.restaurant_id AND r.is_demo = 1
+       WHERE isp.seller_type = 'supplier' AND isp.is_active = 1
+       ORDER BY i.id`))[0];
+    const row = rows.find(r => (Number(r.has_owner) > 0) === !!wantOwner);
+    if (!row) return null;
+    const { User } = require('../models');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: row.restaurant_id } });
+    if (!ra) return null;
+    return { ...row, token: jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' }) };
+  }
+
+  async function dpMakeDraft(ctx2) {
+    const r = await request('POST', '/purchase-orders', {
+      seller_type: 'supplier', seller_entity_id: ctx2.seller_entity_id, notes: DP_NOTE,
+      items: [{ ingredient_id: ctx2.ingredient_id, quantity_ordered: 2, unit: ctx2.unit, unit_price: 5 }]
+    }, { Authorization: `Bearer ${ctx2.token}` });
+    return r.body?.data?.id || null;
+  }
+
+  test('inventory', '직접구매 orphan sweep (멱등 — 데모 매장만)', async () => {
+    await dpCleanup();
+    const { sequelize } = require('../config/database');
+    const left = (await sequelize.query(`SELECT COUNT(*) c FROM purchase_orders WHERE notes = '${DP_NOTE}'`))[0][0].c;
+    return Number(left) === 0;
+  });
+
+  test('inventory', '초안 직접구매 → 한 번에 받음·결제되고 재고가 오른다', async () => {
+    const ctx2 = await dpCtx(false);   // 승인 OFF 매장(오너 미연결)
+    if (!ctx2) { console.log('      (준비물 없음 — 오너 없는 데모 매장의 공급업체 매핑 재료가 없어 건너뜀)'); return true; }
+    const { sequelize } = require('../config/database');
+    const poId = await dpMakeDraft(ctx2);
+    if (!poId) { await dpCleanup(); return false; }
+    const before = Number((await sequelize.query(`SELECT current_stock c FROM ingredients WHERE id=${ctx2.ingredient_id}`))[0][0].c);
+    try {
+      // 결제수단은 bank_transfer — cash 면 드로어 출금이 생겨 데모 매장 마감 기대금액이 어긋난다.
+      //   드로어 경로는 별도 cash 계약이 이미 증명한다.
+      const r = await request('POST', `/purchase-orders/${poId}/direct-purchase`, { payment_method: 'bank_transfer' },
+        { Authorization: `Bearer ${ctx2.token}` });
+      const po = (await sequelize.query(`SELECT status, payment_status, submitted_at, received_at FROM purchase_orders WHERE id=${poId}`))[0][0];
+      const after = Number((await sequelize.query(`SELECT current_stock c FROM ingredients WHERE id=${ctx2.ingredient_id}`))[0][0].c);
+      return r.status === 200 && po.status === 'received' && po.payment_status === 'paid'
+        && !!po.submitted_at && !!po.received_at && Math.abs((after - before) - 2) < 0.001;
+    } finally {
+      await dpCleanup();
+      // 재고는 **되돌린다** — 계약이 재기만 하고 두면 실행할 때마다 데모 매장 재고가 늘어난다.
+      await sequelize.query(`UPDATE ingredients SET current_stock = ${before} WHERE id = ${ctx2.ingredient_id}`);
+    }
+  });
+
+  test('inventory', '오너 승인 매장의 초안 직접구매 → 400 이고 상태·재고 전부 그대로', async () => {
+    const ctx2 = await dpCtx(true);    // 오너 연결 매장 = 승인 기본 ON
+    if (!ctx2) { console.log('      (준비물 없음 — 오너가 연결된 데모 매장이 없어 건너뜀)'); return true; }
+    const { sequelize } = require('../config/database');
+    const { Restaurant } = require('../models');
+    const rest = await Restaurant.findByPk(ctx2.restaurant_id);
+    const orig = rest.operation_settings ? JSON.parse(JSON.stringify(rest.operation_settings)) : {};
+    const poId = await dpMakeDraft(ctx2);
+    if (!poId) { await dpCleanup(); return false; }
+    try {
+      const before = Number((await sequelize.query(`SELECT current_stock c FROM ingredients WHERE id=${ctx2.ingredient_id}`))[0][0].c);
+      await rest.update({ operation_settings: { ...orig, requirePoOwnerApproval: true } });
+      const r = await request('POST', `/purchase-orders/${poId}/direct-purchase`, { payment_method: 'bank_transfer' },
+        { Authorization: `Bearer ${ctx2.token}` });
+      const po = (await sequelize.query(`SELECT status, payment_status, submitted_at FROM purchase_orders WHERE id=${poId}`))[0][0];
+      const after = Number((await sequelize.query(`SELECT current_stock c FROM ingredients WHERE id=${ctx2.ingredient_id}`))[0][0].c);
+      // 승인 게이트를 거치므로 400 이고, **제출·수령·결제·재고가 전부 미변경**이어야 한다(통째 롤백).
+      return r.status === 400 && r.body?.code === 'APPROVAL_REQUIRED'
+        && po.status === 'draft' && !po.submitted_at && po.payment_status !== 'paid'
+        && Math.abs(after - before) < 0.001;
+    } finally {
+      await rest.update({ operation_settings: orig });
+      await dpCleanup();
+    }
+  });
 
   // ── 준비 레시피 삭제 게이트 (2026-09-18 Fable 판정 · 계약 고정) ────────────────────────────
   //   삭제는 스위치 OFF 보다 강한 행위인데 예전엔 방어가 더 약했다 — 재고가 남아 있어도 그냥 지워
@@ -5872,7 +5985,26 @@ async function runTests(allTests, category) {
   defineInventoryTests(ctx);
   defineStockLedgerTests(ctx);
 
+  // 🔴 잔재 감시 — 검사 자체가 데모 매장에 **돈·재고 흔적을 남기는지** 실행 전후로 잰다.
+  //   2026-09-18: 이 지문 함수는 **정의만 있고 호출이 0곳**이었다. 그래서 직접구매 계약이
+  //   고아 청구서 8장·재고 배치 8개·드로어 출금 7건을 남기는 동안 아무도 몰랐다.
+  //   판정 기계가 죽어 있으면 통과는 통과가 아니다 — 늘면 **실패로 끝낸다**(fail-loud).
+  const leakBefore = await hcLeakFingerprint();
   const allPass = await runTests(tests, opts.category);
+  // 거래 청구서는 **커밋 뒤 비동기로** 발행된다(`issueTradeInvoiceAfterCommit`). 바로 재면
+  //   아직 없어서 잔재를 **다음 실행에서야** 잡는다(2026-09-18 고장주입 실측). 잠깐 가라앉힌다.
+  let leakAfter = await hcLeakFingerprint();
+  for (let i = 0; i < 6 && leakAfter.고아청구서 === leakBefore.고아청구서; i++) {
+    await new Promise((r) => setTimeout(r, 300));
+    leakAfter = await hcLeakFingerprint();
+  }
+  const leaked = leakAfter.고아청구서 - leakBefore.고아청구서;
+  if (leaked > 0) {
+    console.log(c.red(`\n✗ 검사 잔재 ${leaked}건 — 고아 거래청구서가 늘었다 (실행 전 ${leakBefore.고아청구서} → 후 ${leakAfter.고아청구서}).`));
+    console.log(c.gray('   계약이 만든 발주를 hcCleanupPurchaseOrders 로 지우는지 확인하세요.'));
+    process.exit(1);
+  }
+  if (!opts.quiet) console.log(c.gray(`   잔재 감시: 고아청구서 ${leakBefore.고아청구서} → ${leakAfter.고아청구서} (증가 0)`));
   process.exit(allPass ? 0 : 1);
 })().catch((e) => {
   console.error(c.red('\n✗ Health check 실행 중 에러:'), e.message);

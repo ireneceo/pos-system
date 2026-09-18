@@ -452,7 +452,8 @@
     "receiveOnly": "Terima sahaja",
     "payOnly": "Rekod pembayaran",
     "refund": "Batalkan pembayaran",
-    "unknownSeller": "Pembekal"
+    "unknownSeller": "Pembekal",
+    "directPurchase": "Terima + bayar"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit tidak sepadan — kemasukan manual diperlukan",
@@ -499,7 +500,8 @@
       "receiveAndPay": "Terima dan bayar",
       "receiveOnly": "Terima tanpa bayar",
       "pay": "Rekod pembayaran",
-      "refund": "Batalkan pembayaran ini"
+      "refund": "Batalkan pembayaran ini",
+      "directPurchase": "Rekod sebagai belian terus"
     },
     "method": {
       "label": "Kaedah pembayaran",
@@ -514,7 +516,8 @@
       "payment": "Pesanan ditandakan sebagai dibayar.",
       "drawer": "RM {{amount}} dikeluarkan daripada laci tunai syif yang dibuka.",
       "refund": "Satu pergerakan masuk tunai yang sama dicipta — pembayaran dibalikkan, bukan dipadam. Stok dan penerimaan tidak disentuh.",
-      "paysInvoice": "Jumlah invois pembekal yang telah dibandingkan akan dibayar, bukan jumlah yang dipesan."
+      "paysInvoice": "Jumlah invois pembekal yang telah dibandingkan akan dibayar, bukan jumlah yang dipesan.",
+      "directSubmit": "Pesanan belian disahkan sebagai dihantar (belian terus)."
     },
     "error": {
       "multipleShifts": "Lebih daripada satu syif dibuka — tutup satu sebelum merekod pembayaran tunai.",
