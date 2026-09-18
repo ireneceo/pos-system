@@ -1,6 +1,9 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-18 #4 — **v3.95 운영 배포 (SW `5.41-personal-money-and-receipt-20260918`, 13:01 UTC · 스모크 10/10 · 오늘 4번째).**
+> **최종 업데이트:** 2026-09-18 #5 — **v3.96 운영 배포 (SW `5.42-recipe-card-clarity-20260918`, 13:34 UTC · 스모크 10/10 · 오늘 5번째).**
+> ⑦ **레시피 카드 3가지** — Irene 「이거 다 브랜드레시피인데 왜 어떤 건 표시되고 어떤 건 표시 안되고 있어?」. 두 줄(브랜드 원가 ↔ 우리 원가)은 **그 매장이 원가를 따로 정해 둔** 레시피에만 나온다(운영 실측: 매장 8 준비 레시피 7개 중 1건). 고장이 아니라 근거가 안 보였던 것 → 「우리 원가」 배지로 드러냄. 준비 레시피 Suggested 숨김 · 재료 0개 경고(운영 3건).
+
+> **이전:** 2026-09-18 #4 — **v3.95 운영 배포 (SW `5.41-personal-money-and-receipt-20260918`, 13:01 UTC · 스모크 10/10).**
 > ① **결제수단 «개인금액»** — Irene 「개인돈으로 쓴 건 비용처리가 안되고 개인에게 돈을 줘야 하는 거야」. 뜻은 «공급업체에는 냈고 회사는 아직 안 낸 돈»: 결제 때 **금고 무접촉**, 「개인금액 미정산」에 남고, **갚는 순간** 회사 돈이 나간다(현금이면 금고 out `source='reimbursement'`). 이중 정산 409·되돌리기 대칭.
 > ② **영수증** — 「인보이스랑 다르잖아. 영수증은 이미 사용한 돈이니까」. `receipt_*` 로 분리해 **결제된 발주**에만 붙는다.
 > ③ 🔴 **결제수단 목록이 두 곳에 하드코딩**돼 있어 한 곳만 늘리면 청구서 문에서 «개인금액»이 400 으로 튕길 상태였다(Fable ⑨ 지적) → 상수 한 곳으로.
@@ -10260,6 +10263,47 @@ verify-all --full **19/19** · i18n 오류 0 · health-check 247/247 · 🔒 인
 - 🔒 인쇄 보호파일 **8/8 무변경** · health-check **248/248** · 고장주입 프론트·백엔드 양방향 반증
 - 운영검증: 주문·결제·인쇄큐 **19/19** · 통화/메일/번들 **5/5** · `products` 무접촉
 - ⚠ 실프린터 종이 확인 — **Irene 대기** (코드·헤드리스로 대체 불가)
+
+---
+
+## ✅ 완료: 통화 표기 둘로 · 발주 직접구매 · 개인금액+영수증 · 레시피 카드 (2026-09-18, 운영 배포 5회 · SW 5.38~5.42)
+
+### 완료된 작업 [Claude Code]
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 통화 표기 규칙 둘로 | Irene 「통화를 안내할 때는 MYR, 실제 금액 표시는 RM」 — 금액 자리 45곳 기호로(메일 6·발주 문서·왓츠앱 공유문구 4·신용한도·발주 화면·계약·번역), 통화 안내 자리 28곳은 코드로 | ✅ 완료 |
+| 통화 게이트 양방향 차단 | `check-currency-display.js` — 금액 자리 코드·안내 자리 기호 둘 다 실패 처리. 승격 중 게이트 자체 결함 2개(제외 규칙이 역방향 검사 무력화·종료코드가 역방향 목록 미확인) 수정 | ✅ 완료 |
+| 준비 재료가 선택기에 안 나온 것 | 화면이 재료 목록을 마운트 시 한 번만 읽던 것 → 저장·삭제 후 전체 재조회 | ✅ 완료 |
+| 준비 레시피 삭제 게이트 | 재고가 남았거나 쓰는 레시피가 있으면 409 거부(사유 화면 표시), 지울 수 있으면 재료를 비활성으로 | ✅ 완료 |
+| 배포를 막고 있던 인스펙션 결함 | ING-UNI-002 가 레시피 출처(준비 재료)를 출처로 안 쳐서 운영 #1132 를 「출처 없음」으로 세고 있었다 | ✅ 완료 |
+| 🔒 주문 활동기록 금액 표기 | `MYR 88.00` → `RM 88.00` — 인쇄 보호파일 2줄(인쇄 로직 무접촉·계약 11/11 후 bless) | ✅ 완료 |
+| 발주 대기에서 「To receive」 제거 | 2026-09-02 에 넣은 블록이 09-10 에 이력 행으로 같은 버튼이 들어가며 완전한 중복이 됐다 | ✅ 완료 |
+| 직접 구매 | 초안 행 「Receive + pay」 — 한 트랜잭션에서 제출→수령→결제. 승인 켜진 매장은 400 + 통째 롤백 | ✅ 완료 |
+| 검사 도구 잔재 유출 수정 | 내 계약이 데모 매장에 고아 청구서 11·배치 16·드로어 7건을 남기고 있었고 감시 지문 함수는 호출 0곳으로 죽어 있었다 → 공용 정리로 교체 + `inventory_batches` 추가 + 감시기 배선(fail-loud) | ✅ 완료 |
+| 결제수단 «개인금액» | 결제 때 금고 무접촉 · 「개인금액 미정산」에 남고 · 갚을 때 회사 돈이 나감(현금이면 `source='reimbursement'`). 이중 정산 409·되돌리기 대칭 | ✅ 완료 |
+| 영수증 첨부 | 인보이스(앞으로 낼 청구서)와 분리해 `receipt_*` — 결제된 발주에만(미결제 400) | ✅ 완료 |
+| 결제수단 하드코딩 2곳 → 1곳 | 발주·청구서에 같은 목록이 따로 있어 한 곳만 늘리면 청구서 문에서 튕길 상태였다 | ✅ 완료 |
+| 레시피 편집창 재료 줄 2줄 | 한 줄에 6칸을 밀어넣어 이름·수량이 잘려 보이던 것 — 메모를 아래 줄 전체 폭으로 | ✅ 완료 |
+| 레시피 카드 3가지 | 「우리 원가」 배지(두 줄로 나오는 이유) · 준비 레시피 Suggested 숨김 · 재료 0개 경고 | ✅ 완료 |
+
+### 검증 [Claude Code]
+- health-check 계약 **11건 신설**(준비 삭제 3 · 직접구매 3 · 개인금액 4 · sweep) → inventory 47/47
+- **고장주입 15/15** — 통화 8 · 삭제 게이트 1 · ING-UNI-002 2 · 직접구매 1 · 잔재 감시 1 · 개인금액 2
+- `verify-all --full` 매 배포 21~22/22 · 실브라우저 mount sweep 크래시 0 · 인쇄 보호파일 8/8 · 마이그 멱등+레지스트리
+- 운영 실측: 메일 `Amount RM 220.00`·MYR 0건 · 발주 문서 `Total (RM)` · `payment_method` ENUM 에 personal · 영수증 칸 존재 · 고아 청구서/배치 0
+
+### 수정된 파일
+- `dev-backend/services/purchaseOrderPayment.js` · `routes/purchase-orders-workflow.js` · `routes/invoices-payment.js` · `models/PurchaseOrder.js` · `models/CashMovement.js`
+- `dev-backend/scripts/check-currency-display.js` · `scripts/health-check.js` · `scripts/inspection/suites/ingredient-unification.js` · `scripts/migrate-po-personal-payment.js` · `scripts/migrations.registry.json`
+- `dev-backend/routes/orders-crud.js`(🔒 표기 2줄) · `routes/recipes.js` · `routes/purchase-orders-crud.js` · `services/referralService.js` · `services/subscriptionScheduler.js` · `utils/notificationTemplates.js`
+- `dev-frontend/src/pages/RecipeManagement/RecipesTab.tsx` · `pages/PurchaseOrders/{PurchaseOrdersPage,PurchaseOrderStagingPage,PurchaseOrderDetailPage}.tsx` · `components/PurchaseOrders/ReceivePayModal.tsx` · `utils/{poShare,returnShare}.ts` · 통화 표기 화면 12곳 · 번역 4개 언어
+- `docs/PURCHASE_ORDER_SYSTEM.md` · `docs/TRADE_STRUCTURE.md`(Fable ⑨) · `docs/RECIPE_MANAGEMENT_SYSTEM.md`
+
+### 협업 기록
+- **[Claude Code]**: 조사·구현·검증·배포 전부
+- **[Fable]**: 설계·게이트 판정 — 통화 규칙 경계, 준비 레시피 삭제(전제 오류를 내 실측으로 정정), 멀티 컨텍스트 확장 설계, 발주 화면 구조, 개인금액 설계(⑨). Irene 「이제 fable 사용 최소화 해」 이후 한 사안 1회로 축소
+- **[Codex]**: 참여 없음
 
 ---
 
