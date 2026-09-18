@@ -804,7 +804,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                 <PaymentMethodCard>
                   <MethodHeader>
                     <MethodInfo>
-                      <MethodLabel>Bank Transfer ({getCurrencySymbol(selectedCurrency)})</MethodLabel>
+                      <MethodLabel>Bank Transfer ({selectedCurrency})</MethodLabel>
                       <MethodDescription>{t('foodcourt:foodcourtPaymentSettingsPage.manualTransferWithReceiptUpload')}</MethodDescription>
                     </MethodInfo>
                     <ToggleSwitch>
@@ -859,7 +859,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                 <PaymentMethodCard>
                   <MethodHeader>
                     <MethodInfo>
-                      <MethodLabel>QR Payment ({getCurrencySymbol(selectedCurrency)})</MethodLabel>
+                      <MethodLabel>QR Payment ({selectedCurrency})</MethodLabel>
                       <MethodDescription>{t('foodcourt:foodcourtPaymentSettingsPage.scanQrCodeToPayDuitnowKakaopayEtc')}</MethodDescription>
                     </MethodInfo>
                     <ToggleSwitch>
@@ -877,7 +877,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                         value={getQRConfig(selectedCurrency).qrImage}
                         onChange={(base64) => handleQRPaymentChange(selectedCurrency, 'qrImage', base64)}
                         label="QR Code Image"
-                        helpText={`Upload QR code for ${getCurrencySymbol(selectedCurrency)} payments`}
+                        helpText={`Upload QR code for ${selectedCurrency} payments`}
                         changeButtonText="Change QR Code"
                         removeButtonText="Remove QR Code"
                         imageAltText="Payment QR Code"
@@ -901,7 +901,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
 
                 {/* Additional Charges (per currency) */}
                 <SectionTitle style={{ fontSize: '15px', marginTop: '24px', marginBottom: '8px' }}>
-                  Additional Charges ({getCurrencySymbol(selectedCurrency)})
+                  Additional Charges ({selectedCurrency})
                 </SectionTitle>
                 <SectionDescription style={{ marginBottom: '12px' }}>
                   Configure tax, service charge, etc. for {getCurrencySymbol(selectedCurrency)} invoices. Up to 3 items.

@@ -14,6 +14,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
+import { getCurrencySymbol } from '../../utils/currency';
 
 type ContractStatus = 'requested' | 'active' | 'rejected' | 'terminated';
 
@@ -145,7 +146,7 @@ function formatPaymentTerms(t: PaymentTerms | null | undefined): string {
     parts.push('Immediate');
   }
   if (t.credit_limit != null && Number(t.credit_limit) > 0) {
-    parts.push(`${t.currency || 'MYR'} ${Number(t.credit_limit).toLocaleString()}`);
+    parts.push(`${getCurrencySymbol(t.currency || 'MYR')} ${Number(t.credit_limit).toLocaleString()}`);
   }
   return parts.join(' · ');
 }
@@ -526,7 +527,7 @@ const MySuppliersPage: React.FC = () => {
                     <>
                       <KvKey>{t('approve.creditLimit')}</KvKey>
                       <KvValue>
-                        {detail.payment_terms.currency || 'MYR'} {Number(detail.payment_terms.credit_limit).toLocaleString()}
+                        {getCurrencySymbol(detail.payment_terms.currency || 'MYR')} {Number(detail.payment_terms.credit_limit).toLocaleString()}
                       </KvValue>
                     </>
                   )}

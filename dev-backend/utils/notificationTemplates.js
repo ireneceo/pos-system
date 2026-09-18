@@ -195,7 +195,7 @@ function ticketStatusChangedEmail(ticket, newStatus) {
  */
 function invoiceCreatedEmail(invoice, restaurantName, options = {}) {
   const tz = options.timezone || DEFAULT_TZ;
-  const amount = `${invoice.currency} ${parseFloat(invoice.total_amount).toFixed(2)}`;
+  const amount = `${currencySymbol(invoice.currency)} ${parseFloat(invoice.total_amount).toFixed(2)}`;
   // 마감일은 NULL 일 수 있다(외부 공급업체 — `models/Invoice.js` due_date 주석).
   // `new Date(null)` 은 1970 이라 가드 없이는 메일에 «Due Jan 1, 1970» 이 찍힌다. fmtDate 가 널이면 '—'.
   const dueDate = fmtDate(invoice.due_date, 'en', tz);
@@ -235,7 +235,7 @@ function invoiceCreatedEmail(invoice, restaurantName, options = {}) {
  */
 function invoiceOverdueEmail(invoice, restaurantName, options = {}) {
   const tz = options.timezone || DEFAULT_TZ;
-  const amount = `${invoice.currency} ${parseFloat(invoice.total_amount).toFixed(2)}`;
+  const amount = `${currencySymbol(invoice.currency)} ${parseFloat(invoice.total_amount).toFixed(2)}`;
   // 마감일은 NULL 일 수 있다(외부 공급업체 — `models/Invoice.js` due_date 주석).
   // `new Date(null)` 은 1970 이라 가드 없이는 메일에 «Due Jan 1, 1970» 이 찍힌다. fmtDate 가 널이면 '—'.
   const dueDate = fmtDate(invoice.due_date, 'en', tz);
@@ -264,7 +264,7 @@ function invoiceOverdueEmail(invoice, restaurantName, options = {}) {
  * Invoice payment confirmed (for the issuer)
  */
 function invoicePaidEmail(invoice, restaurantName) {
-  const amount = `${invoice.currency} ${parseFloat(invoice.total_amount).toFixed(2)}`;
+  const amount = `${currencySymbol(invoice.currency)} ${parseFloat(invoice.total_amount).toFixed(2)}`;
   const title = 'Payment Confirmed';
 
   const body = `
@@ -423,7 +423,7 @@ function supplierContractApprovedEmail({ supplierName, paymentTerms, link }) {
       ? infoRow('Payment Due Day', String(pt.payment_due_day))
       : '') +
     (pt.credit_limit !== undefined && pt.credit_limit !== null
-      ? infoRow('Credit Limit', `${pt.currency || ''} ${pt.credit_limit}`.trim())
+      ? infoRow('Credit Limit', `${pt.currency ? currencySymbol(pt.currency) : ''} ${pt.credit_limit}`.trim())
       : '') +
     (pt.currency ? infoRow('Currency', pt.currency) : '');
 
@@ -498,7 +498,8 @@ function supplierContractTerminatedEmail({ otherPartyName, terminatedBy, reason,
  */
 
 function fmtMoney(amount, currency) {
-  const cur = currency || 'MYR';
+  // 사람이 읽는 메일·문서다 — 코드(MYR)가 아니라 기호(RM). 저장·비교는 여전히 코드.
+  const cur = currencySymbol(currency || 'MYR');
   const n = Number(amount || 0);
   return `${cur} ${n.toFixed(2)}`;
 }

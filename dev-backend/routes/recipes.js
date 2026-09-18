@@ -238,6 +238,41 @@ async function applyPrepSwitch(res, recipe, body, { createdNow = false } = {}) {
   }
 }
 
+// ── 준비 레시피 삭제 게이트 (2026-09-18 Fable 판정) ───────────────────────────────────────────
+//   삭제는 스위치 OFF 보다 **강한 행위**인데, 예전엔 OFF 보다 **약한 방어**였다 —
+//   OFF 는 재고가 남았거나 쓰는 레시피가 있으면 409 로 막는데, 삭제는 그냥 지워
+//   준비 재료 행이 «사라진 레시피를 가리킨 채 활성» 으로 남았다(개발서버 재현 확인).
+//   그 행은 선택기에 계속 나와 새 레시피에 쓰일 수 있고, 그러면 팔릴 때 차감은 되는데
+//   보충할 «만들기» 레시피가 없어 재고·원가 장부가 어긋난다.
+//   사실 관계(2026-09-18 실측): `recipes` 는 soft delete 가 **아니다**(paranoid 아님·deleted_at 없음).
+//      그래서 FK `fk_ingredients_source_recipe`(ON DELETE SET NULL)가 실제로 발동해
+//      삭제 뒤 준비 재료는 **비활성 + 출처 없음**이 된다 — 그게 설계된 최종 상태다(재고 0·배치·장부 보존).
+//      게이트의 몫은 «거부(409) 와 비활성» 뿐이다.
+//      SQL 로 레시피를 직접 지우는 우회는 브랜드 행이면 ING-UNI-002(출처 셋 다 NULL)가 잡고,
+//      이 코드 경로의 회귀는 health-check 「준비 레시피 삭제 게이트」 계약이 받친다.
+//   순서 고정: disable → Product 연결 해제 → destroy. 409 로 거부됐는데 메뉴 연결만
+//   풀리는 부분 실행을 막는다(트랜잭션이 있어도 순서는 이렇게 둔다).
+async function deleteRecipeWithPrepGate(res, recipe) {
+  const { disablePrepIngredient, PrepError } = require('../services/prepIngredientSync');
+  const sequelize = require('../config/database').sequelize;
+  const t = await sequelize.transaction();
+  try {
+    await disablePrepIngredient(recipe.id, { transaction: t });   // 준비 레시피가 아니면 그냥 통과
+    await Product.update({ recipe_id: null }, { where: { recipe_id: recipe.id }, transaction: t });
+    await recipe.destroy({ transaction: t });
+    await t.commit();
+    return { ok: true };
+  } catch (e) {
+    await t.rollback();
+    if (e instanceof PrepError) {
+      // 프론트가 이미 아는 코드를 그대로 쓴다 — 새 에러 코드를 만들지 않는다.
+      res.status(e.status).json({ success: false, error: { message: e.message, code: e.code }, message: e.message, detail: e.detail });
+      return { ok: false };
+    }
+    throw e;
+  }
+}
+
 router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { brandId } = req.params;
@@ -463,9 +498,9 @@ router.delete('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRe
       return res.status(404).json({ success: false, error: { message: 'Recipe not found', code: 'NOT_FOUND' } });
     }
 
-    // 삭제 전 이 레시피를 가리키던 메뉴의 recipe_id 를 정리 (대롱거리는 FK 방지 — S-REF-004 하니스)
-    await Product.update({ recipe_id: null }, { where: { recipe_id: recipe_id } });
-    await recipe.destroy();
+    // 준비 재료 게이트 + 메뉴 연결 해제 + 삭제를 한 트랜잭션으로 (S-REF-004 하니스: 대롱거리는 FK 방지)
+    const gate = await deleteRecipeWithPrepGate(res, recipe);
+    if (!gate.ok) return;
 
     res.json({ success: true, message: 'Recipe deleted successfully' });
   } catch (error) {
@@ -842,9 +877,9 @@ router.delete('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken,
       return res.status(403).json({ success: false, error: { message: 'You can only delete your own restaurant recipes', code: 'FORBIDDEN' } });
     }
 
-    // 삭제 전 이 레시피를 가리키던 메뉴의 recipe_id 를 정리 (대롱거리는 FK 방지 — S-REF-004 하니스)
-    await Product.update({ recipe_id: null }, { where: { recipe_id: recipeId } });
-    await recipe.destroy();
+    // 준비 재료 게이트 + 메뉴 연결 해제 + 삭제를 한 트랜잭션으로 (S-REF-004 하니스: 대롱거리는 FK 방지)
+    const gate = await deleteRecipeWithPrepGate(res, recipe);
+    if (!gate.ok) return;
 
     res.json({ success: true, message: 'Recipe deleted successfully' });
   } catch (error) {

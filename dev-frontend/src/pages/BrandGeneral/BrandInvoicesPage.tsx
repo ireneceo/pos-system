@@ -725,7 +725,7 @@ const BrandInvoicesPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         if (!data.methods || data.methods.length === 0) {
-          setPaymentMethodWarning(`No payment methods configured for ${getCurrencySymbol(currency)}. Please set up payment methods in Payment Settings before sending this invoice.`);
+          setPaymentMethodWarning(`No payment methods configured for ${currency}. Please set up payment methods in Payment Settings before sending this invoice.`);
           return;
         }
       }

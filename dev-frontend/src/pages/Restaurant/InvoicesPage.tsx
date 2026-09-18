@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styled from 'styled-components';
 import { printHTMLContent } from '../../utils/billPrint';
 import { useSearchParams, useParams } from 'react-router-dom';
-import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 import { formatAddressHtml, formatAddressLines, AppLocale } from '../../utils/formatAddress';
 import SuspendedBanner from '../../components/Common/SuspendedBanner';
 import { useStore } from '../../contexts/StoreContext';
@@ -1752,7 +1752,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                       Payment Not Available
                     </p>
                     <p style={{ margin: 0, color: '#92400E', fontSize: '14px', lineHeight: '1.5' }}>
-                      <strong>{selectedInvoice.issuerName || (selectedInvoice.issuerType === 'brand' ? 'Brand' : selectedInvoice.issuerType === 'foodcourt' ? 'Foodcourt' : 'System Admin')}</strong> has not configured payment methods for <strong>{getCurrencySymbol(selectedInvoice.currency || 'MYR')}</strong> yet. Please contact the invoice issuer to set up payment options.
+                      <strong>{selectedInvoice.issuerName || (selectedInvoice.issuerType === 'brand' ? 'Brand' : selectedInvoice.issuerType === 'foodcourt' ? 'Foodcourt' : 'System Admin')}</strong> has not configured payment methods for <strong>{selectedInvoice.currency || 'MYR'}</strong> yet. Please contact the invoice issuer to set up payment options.
                     </p>
                   </div>
                 ) : (

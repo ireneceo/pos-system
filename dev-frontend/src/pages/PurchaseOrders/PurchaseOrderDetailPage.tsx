@@ -21,6 +21,7 @@ import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
 import { useAuth } from '../../contexts/AuthContext';
 import AlertDialog from '../../components/Common/AlertDialog';
+import { getCurrencySymbol } from '../../utils/currency';
 
 // Icon-only buttons (matches PurchaseOrdersPage pattern)
 const HeaderIconBtn = styled.button`
@@ -697,7 +698,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
     if (amount == null) return '-';
     const n = Number(amount);
     if (!Number.isFinite(n)) return '-';
-    return `${detail?.currency || 'MYR'} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `${getCurrencySymbol(detail?.currency || 'MYR')} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const subtotal = useMemo(() => {

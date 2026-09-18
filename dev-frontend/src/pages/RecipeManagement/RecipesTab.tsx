@@ -11,6 +11,7 @@ import { Modal as CommonModal, ModalButton, FormGroup as UIFormGroup, FormLabel,
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import ConfirmModal from '../../components/ConfirmModal';
+import AlertDialog from '../../components/Common/AlertDialog';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit, formatQuantity } from '../../utils/unitConversion';
@@ -866,6 +867,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   // 둘을 하나로 쓰다가 저장된 레시피 줄의 재료를 못 찾는 사고가 났다(2026-09-09).
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [pickerIngredients, setPickerIngredients] = useState<Ingredient[]>([]);
+  // 저장 뒤 목록 전체를 다시 읽는 열쇠 (재료 선택기 갱신 — 2026-09-18)
+  const [dataReloadKey, setDataReloadKey] = useState(0);
   const [recipeCategories, setRecipeCategories] = useState<RecipeCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -917,6 +920,10 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     ingredient?: any;                 // 서버가 준 재료(목록에 없어도 이름·원가를 안다)
     saved_cost?: number | string;     // 저장돼 있던 줄 원가
   }>>([]);
+  // 삭제가 거부된 사유를 보여줄 알림 — 준비 재료는 재고가 남았거나 다른 레시피가 쓰고 있으면
+  //   서버가 409 `PREP_INGREDIENT_IN_USE` 와 사유를 준다. 예전엔 console 로만 흘려
+  //   화면에서는 «아무 일도 안 일어난 것» 처럼 보였다 (2026-09-18).
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; recipeId: number | null; recipeName: string }>({
     isOpen: false,
     recipeId: null,
@@ -1157,7 +1164,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     };
 
     fetchAllData();
-  }, [brandId, effectiveRestaurantId, user?.role, getToken, isRestaurantAdmin]);
+    // `dataReloadKey` — 저장 뒤 **재료 목록까지** 다시 읽기 위한 열쇠 (2026-09-18 Irene 신고).
+    //   준비 재료 스위치를 켜 저장하면 서버에 재료 행이 새로 생기는데, 예전엔 저장 후 `fetchRecipes()`
+    //   만 돌아 **레시피만** 갱신됐다. 그래서 「Prepared Beef Brisket」 이 방금 만들었는데도
+    //   재료 선택기에 없었고, 새로고침해야 보였다. 목록을 한 번만 읽는 화면이라 이 열쇠가 필요하다.
+  }, [brandId, effectiveRestaurantId, user?.role, getToken, isRestaurantAdmin, dataReloadKey]);
 
   // 카테고리가 변경되면 카테고리 목록을 새로 가져옴
   useEffect(() => {
@@ -1207,49 +1218,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   };
 
 
-  const fetchRecipes = async () => {
-    try {
-      setLoading(true);
-      const token = getAuthToken();
-
-      // Brand General/Manager
-      if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        if (brandId) {
-          const response = await fetch(`/api/brands/${brandId}/recipes`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const data = await response.json();
-          if (data.success) {
-            setRecipes(data.data);
-          }
-        }
-      }
-      // Restaurant Admin - 자체 레시피 + 브랜드 레시피 함께 조회
-      else if (user?.role === 'Restaurant Admin' && effectiveRestaurantId) {
-        const [ownRes, brandRes] = await Promise.all([
-          fetch(`/api/restaurants/${effectiveRestaurantId}/recipes`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }).then(r => r.json()),
-          fetch(`/api/restaurants/${effectiveRestaurantId}/brand-recipes`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }).then(r => r.json())
-        ]);
-
-        let allRecipes: Recipe[] = [];
-        if (brandRes.success && Array.isArray(brandRes.data)) {
-          allRecipes = [...brandRes.data];
-        }
-        if (ownRes.success && Array.isArray(ownRes.data)) {
-          allRecipes = [...allRecipes, ...ownRes.data];
-        }
-        setRecipes(allRecipes);
-      }
-    } catch (error) {
-      console.error('Failed to fetch recipes:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // (제거) `fetchRecipes` — 저장 뒤 «레시피만» 다시 읽던 함수. 그게 준비 재료가 선택기에
+  //   안 나타난 원인이라 `dataReloadKey` 로 목록 전체를 다시 읽는 방식으로 대체했다 (2026-09-18).
 
   const handleDeleteClick = (recipe: Recipe) => {
     setDeleteConfirm({
@@ -1280,8 +1250,12 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       if (data.success) {
         // Update local state immediately for instant feedback
         setRecipes(prev => prev.filter(r => r.id !== deleteConfirm.recipeId));
+        // 준비 레시피를 지우면 그 준비 재료도 선택기에서 빠져야 한다 — 목록을 다시 읽는다.
+        setDataReloadKey(k => k + 1);
       } else {
-        console.error('Delete failed:', data.error);
+        // 서버가 사유를 문자열로 준다(재고 남음 / 쓰는 레시피 목록). 꾸러미째 넣으면 화면이 죽으니
+        // 저장 실패와 같은 방식으로 사유만 꺼낸다.
+        setDeleteError(getErrorMessage(data, 'Failed to delete recipe'));
       }
     } catch (error) {
       console.error('Failed to delete recipe:', error);
@@ -1478,7 +1452,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
 
       if (data.success) {
         handleCloseModal();
-        fetchRecipes();
+        // 레시피만 다시 읽으면 준비 재료가 선택기에 안 나타난다 — 목록 전체를 다시 읽는다.
+        setDataReloadKey(k => k + 1);
       } else {
         // 서버는 실패를 { message, code } 꾸러미로 준다(routes/recipes.js). 꾸러미를 그대로
         // 넣으면 <ErrorMessage>{formError}</ErrorMessage> 가 객체를 그리려다 React #31 로 화면이 죽는다
@@ -2416,6 +2391,13 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
+      />
+
+      <AlertDialog
+        isOpen={!!deleteError}
+        onClose={() => setDeleteError(null)}
+        title={t('recipes:recipesTab.deleteBlockedTitle', '삭제할 수 없습니다') as string}
+        message={deleteError || ''}
       />
 
       {copyTarget && (

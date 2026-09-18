@@ -63,16 +63,24 @@ module.exports = {
     // ING-UNI-002: **이 검사가 재발을 막는 본체다.** 브랜드 재료 행은 반드시 출처(Stock Item)를 가질 것.
     // 재료를 만드는 길이 Stock Items 하나뿐이라면, 브랜드 행은 전부 그 거울이어야 한다.
     // 출처 없는 브랜드 행 = 다른 길로 만들어진 것(수기 또는 자동 복제 재도입).
-    // 출처는 **둘 중 하나**다 (2026-09-04): GIT 이 **사는 것** → Stock Item / **파는 것** → 브랜드 프로덕트.
+    // 출처는 **셋 중 하나**다: **사는 것** → Stock Item(2026-09-04) / **파는 것** → 브랜드 프로덕트 /
+    //   **만드는 것** → 레시피(`source_recipe_id`, 준비 재료 · 2026-09-17 v3.88).
     //   파는 물건에 Stock Item 을 또 만들면 2026-09-01 에 합쳐 놓은 것이 다시 갈라진다.
+    // 🔴 2026-09-18: 이 검사가 `source_recipe_id` 를 출처로 치지 않아 **정상 준비 재료를 「출처 없음」으로
+    //   세고 있었다.** 운영 재료 #1132 「Prepared Beef Brisket」(brand 2, 09-18 생성)이 그 경우여서
+    //   다음 배포가 이 검사에서 막힐 상태였다. 셋째 출처를 더해 바로잡는다.
+    // 덤으로 얻는 방어: 준비 레시피가 삭제 게이트를 우회해 지워지면(SQL 직접 삭제) FK 가
+    //   `source_recipe_id` 를 NULL 로 풀고 재료는 활성으로 남는다 → 출처 셋 다 NULL → **이 검사가 잡는다.**
+    // 한계(기록): 매장 소유 행은 RA 가 손으로 만든 재료가 정상적으로 출처가 없어 같은 방식으로 구분할 수 없다.
     const orphanMirror = await cnt(`SELECT COUNT(*) c FROM ingredients
        WHERE brand_id IS NOT NULL AND is_active = 1
          AND source_product_ingredient_id IS NULL
          AND source_brand_product_id IS NULL
+         AND source_recipe_id IS NULL
          AND created_at >= '${CUTOFF}'`);
-    add(`ING-UNI-002 브랜드 재료는 출처(Stock Item 또는 프로덕트)를 가짐 (>=${CUTOFF})`,
+    add(`ING-UNI-002 브랜드 재료는 출처(Stock Item·프로덕트·레시피)를 가짐 (>=${CUTOFF})`,
       orphanMirror === 0,
-      orphanMirror ? `${orphanMirror}건 출처 없음 — 정해진 두 경로 밖에서 만들어짐` : '');
+      orphanMirror ? `${orphanMirror}건 출처 없음 — 정해진 세 경로 밖에서 만들어짐` : '');
 
     // ING-UNI-003: 거울이 가리키는 Stock Item 이 실제로 존재할 것(끊긴 참조 0).
     // 창 없이 전수 — 이 검사는 부채가 아니라 참조 무결성이라 지금도 0 이어야 한다.

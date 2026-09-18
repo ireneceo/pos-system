@@ -20,6 +20,8 @@ const ActivityLog = require('../models/ActivityLog');
 const { logActivity } = require('../utils/activityLogger');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { checkPaymentMethodAllowed } = require('../utils/paymentMethodGuard');
+// 활동기록 설명문의 «금액» 표기용 — 저장·비교는 여전히 ISO 코드(MYR), 사람이 읽는 금액만 기호(RM).
+const { currencySymbol } = require('../utils/currency');
 const { enforceVoidPin } = require('../utils/voidPinGuard');
 const { enrichItemsWithStation } = require('../utils/stationEnrichment');
 const { round2, computeOrderTotals, mixedDineInSubtotal } = require('../utils/orderTotals');
@@ -1010,7 +1012,7 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
         entity_type: 'order',
         entity_id: order.id,
         entity_name: order.order_number,
-        description: `New ${order.order_type || 'dine_in'} order #${order.order_number} (${itemCount} items, ${order.currency || 'MYR'} ${parseFloat(order.total || 0).toFixed(2)})`,
+        description: `New ${order.order_type || 'dine_in'} order #${order.order_number} (${itemCount} items, ${currencySymbol(order.currency || 'MYR')} ${parseFloat(order.total || 0).toFixed(2)})`,
         restaurant_id: order.restaurant_id
       });
     }

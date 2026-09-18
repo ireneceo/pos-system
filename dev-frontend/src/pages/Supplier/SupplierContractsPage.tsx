@@ -12,6 +12,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
+import { getCurrencySymbol } from '../../utils/currency';
 
 type ContractStatus = 'requested' | 'active' | 'rejected' | 'terminated';
 type TabType = 'pending' | 'active' | 'rejected' | 'terminated';
@@ -246,7 +247,7 @@ function formatTermsSummary(t: PaymentTerms | null | undefined): string {
     parts.push('Immediate');
   }
   if (t.credit_limit != null && Number(t.credit_limit) > 0) {
-    parts.push(`${t.currency || 'MYR'} ${Number(t.credit_limit).toLocaleString()}`);
+    parts.push(`${getCurrencySymbol(t.currency || 'MYR')} ${Number(t.credit_limit).toLocaleString()}`);
   }
   return parts.join(' · ');
 }

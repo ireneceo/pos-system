@@ -8,6 +8,7 @@
  *   Staging 은 승인 필요 시 발송 버튼을 잠그고, 승인 후 상세 페이지에서 발송한다.
  */
 import { lineBaseText } from './unitConversion';
+import { getCurrencySymbol } from './currency';
 
 interface SharePOItem {
   product_name?: string | null;
@@ -155,7 +156,7 @@ export function poItemLines(
  * WhatsApp 은 `*텍스트*` 를 굵게 렌더한다 → 품목명·합계를 굵게 해 스캔이 쉽게.
  */
 export function sharePoViaWhatsApp(po: SharePO, formatQuantity: (q: any) => string): void {
-  const cur = po.currency || 'MYR';
+  const cur = getCurrencySymbol(po.currency || 'MYR');
   const b = (s: string) => `*${s}*`;
   const count = (po.items || []).length;
   const text = encodeURIComponent(
@@ -181,7 +182,7 @@ export function sharePoViaEmail(po: SharePO, formatQuantity: (q: any) => string)
     `Dear ${po.seller.name},\n\nWe would like to place a purchase order:\n\n` +
     `PO #: ${po.po_number || po.id}\n\n` +
     `Items (${(po.items || []).length}):\n${poItemLines(po, formatQuantity) || '(none)'}\n\n` +
-    `Total: ${po.currency || 'MYR'} ${parseFloat(String(po.total_amount || '0')).toFixed(2)}\n` +
+    `Total: ${getCurrencySymbol(po.currency || 'MYR')} ${parseFloat(String(po.total_amount || '0')).toFixed(2)}\n` +
     `${po.expected_delivery_date ? 'Expected: ' + po.expected_delivery_date + '\n' : ''}` +
     `${po.delivery_address ? 'Deliver to: ' + po.delivery_address + '\n' : ''}` +
     `\nPlease confirm receipt of this order.\n\nThank you.`

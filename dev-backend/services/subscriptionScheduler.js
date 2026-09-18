@@ -10,6 +10,7 @@
  */
 
 const cron = require('node-cron');
+const { currencySymbol } = require('../utils/currency');
 const { Op } = require('sequelize');
 const Restaurant = require('../models/Restaurant');
 const Invoice = require('../models/Invoice');
@@ -827,7 +828,7 @@ class SubscriptionScheduler {
           }
 
           const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
-          const formattedAmount = `${invoice.currency || 'MYR'} ${Number(invoice.total_amount).toFixed(2)}`;
+          const formattedAmount = `${currencySymbol(invoice.currency || 'MYR')} ${Number(invoice.total_amount).toFixed(2)}`;
           const restaurantTz = getRestaurantTimezone(invoice.restaurant);
           const formattedDueDate = dueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: restaurantTz });
 

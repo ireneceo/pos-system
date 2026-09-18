@@ -180,5 +180,8 @@
   "ingredientCategoriesTab": {
     "addCategory": "新增分类",
     "brandWriteStopped": "不再建立品牌材料分类 — 材料分类由门店管理，品牌分类在 Stock Items 画面管理。"
+  },
+  "recipesTab": {
+    "deleteBlockedTitle": "无法删除"
   }
 }

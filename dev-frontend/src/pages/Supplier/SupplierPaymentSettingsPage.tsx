@@ -5,7 +5,7 @@ import AutoSaveField from '../../components/Common/AutoSaveField';
 import PaymentGatewayGuide from '../../components/Payment/PaymentGatewayGuide';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
-import { CURRENCY_CONFIG, getCurrencySymbol } from '../../utils/currency';
+import { CURRENCY_CONFIG } from '../../utils/currency';
 import { getAuthToken } from '../../utils/auth';
 
 interface StripeConfig {
@@ -618,7 +618,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
               <PaymentMethodCard>
                 <MethodHeader>
                   <MethodInfo>
-                    <MethodLabel>Bank Transfer ({getCurrencySymbol(selectedCurrency)})</MethodLabel>
+                    <MethodLabel>Bank Transfer ({selectedCurrency})</MethodLabel>
                     <MethodDescription>Manual transfer with receipt upload</MethodDescription>
                   </MethodInfo>
                   <ToggleSwitch>
@@ -673,7 +673,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
               <PaymentMethodCard>
                 <MethodHeader>
                   <MethodInfo>
-                    <MethodLabel>QR Payment ({getCurrencySymbol(selectedCurrency)})</MethodLabel>
+                    <MethodLabel>QR Payment ({selectedCurrency})</MethodLabel>
                     <MethodDescription>Scan QR code to pay (DuitNow, KakaoPay, etc.)</MethodDescription>
                   </MethodInfo>
                   <ToggleSwitch>
@@ -691,7 +691,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
                       value={getQR(selectedCurrency).qrImage}
                       onChange={(base64: string) => { handleQRChange(selectedCurrency, 'qrImage', base64); setTimeout(() => saveKey('qrPayment'), 0); }}
                       label="QR Code Image"
-                      helpText={`Upload QR code for ${getCurrencySymbol(selectedCurrency)} payments`}
+                      helpText={`Upload QR code for ${selectedCurrency} payments`}
                       changeButtonText="Change QR Code"
                       removeButtonText="Remove QR Code"
                       imageAltText="Payment QR Code"

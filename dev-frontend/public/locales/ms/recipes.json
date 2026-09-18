@@ -180,5 +180,8 @@
   "ingredientCategoriesTab": {
     "addCategory": "Tambah Kategori",
     "brandWriteStopped": "Kategori bahan jenama tidak lagi dibuat — kategori bahan diurus oleh restoran, dan kategori jenama di skrin Stock Items."
+  },
+  "recipesTab": {
+    "deleteBlockedTitle": "Tidak boleh dipadam"
   }
 }

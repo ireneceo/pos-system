@@ -3,7 +3,7 @@ import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../co
 import { printHTMLContent } from '../../utils/billPrint';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { useSearchParams } from 'react-router-dom';
-import { formatCurrency, getCurrencyDecimals, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
+import { formatCurrency, getCurrencyDecimals, normalizeCurrencyCode } from '../../utils/currency';
 import { formatAddressHtml, AppLocale } from '../../utils/formatAddress';
 import InvoiceHistoryModal from '../../components/Invoice/InvoiceHistoryModal';
 import { useStore } from '../../contexts/StoreContext';
@@ -563,7 +563,7 @@ const InvoicesPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         if (!data.methods || data.methods.length === 0) {
-          setPaymentMethodWarning(`No payment methods configured for ${getCurrencySymbol(currency)}. Please set up payment methods in Payment Settings before sending this invoice.`);
+          setPaymentMethodWarning(`No payment methods configured for ${currency}. Please set up payment methods in Payment Settings before sending this invoice.`);
           return;
         }
       }

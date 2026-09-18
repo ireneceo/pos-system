@@ -1829,7 +1829,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                         checked={formData.shipping_countries.includes(country.code)}
                         onChange={() => handleShippingCountryToggle(country.code)}
                       />
-                      <span>{country.flag} {country.name} ({getCurrencySymbol(country.currency)})</span>
+                      <span>{country.flag} {country.name} ({country.currency})</span>
                     </CheckboxItem>
                   ))}
                 </CheckboxGroup>

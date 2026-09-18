@@ -180,5 +180,8 @@
   "ingredientCategoriesTab": {
     "addCategory": "Add Category",
     "brandWriteStopped": "Brand ingredient categories are no longer created — ingredient categories are managed by the restaurant, and brand categories on the Stock Items screen."
+  },
+  "recipesTab": {
+    "deleteBlockedTitle": "Cannot delete"
   }
 }

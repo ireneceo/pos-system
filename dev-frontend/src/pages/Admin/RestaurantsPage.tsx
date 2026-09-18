@@ -1782,7 +1782,7 @@ const RestaurantsPage: React.FC = () => {
                   onClick={() => handleFilterBrandSelect(brand)}
                 >
                   <ManagerName>{brand.name}</ManagerName>
-                  <ManagerDetails>{brand.code} • {getCurrencySymbol(brand.currency)}</ManagerDetails>
+                  <ManagerDetails>{brand.code} • {brand.currency}</ManagerDetails>
                 </DropdownItem>
               ))}
             </DropdownMenu>
@@ -2803,7 +2803,7 @@ const RestaurantsPage: React.FC = () => {
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Amount</DetailLabel>
-                <DetailValue>{selectedRestaurant.currency || 'MYR'} {selectedRestaurant.planAmount || '0.00'} / {selectedRestaurant.billingCycle || 'monthly'}</DetailValue>
+                <DetailValue>{getCurrencySymbol(selectedRestaurant.currency || 'MYR')} {selectedRestaurant.planAmount || '0.00'} / {selectedRestaurant.billingCycle || 'monthly'}</DetailValue>
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Payment Model</DetailLabel>
@@ -2820,7 +2820,7 @@ const RestaurantsPage: React.FC = () => {
               {selectedRestaurant.discount_type && selectedRestaurant.discount_type !== 'none' && (
                 <DetailRow>
                   <DetailLabel>Discount</DetailLabel>
-                  <DetailValue>{selectedRestaurant.discount_type === 'percentage' ? `${selectedRestaurant.discount_value}%` : `${selectedRestaurant.currency || 'MYR'} ${selectedRestaurant.discount_value}`}{selectedRestaurant.discount_reason ? ` (${selectedRestaurant.discount_reason})` : ''}</DetailValue>
+                  <DetailValue>{selectedRestaurant.discount_type === 'percentage' ? `${selectedRestaurant.discount_value}%` : `${getCurrencySymbol(selectedRestaurant.currency || 'MYR')} ${selectedRestaurant.discount_value}`}{selectedRestaurant.discount_reason ? ` (${selectedRestaurant.discount_reason})` : ''}</DetailValue>
                 </DetailRow>
               )}
             </DetailSection>

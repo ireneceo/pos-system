@@ -9,6 +9,8 @@
  *    `mark-sent-external` 로 남긴다 — 안 그러면 보냈는지 아닌지가 화면에서 사라진다.
  */
 
+import { getCurrencySymbol } from './currency';
+
 export interface ShareReturnLine {
   name: string;
   quantity: number | string;
@@ -27,7 +29,7 @@ export interface ShareReturn {
 const money = (v: unknown) => (parseFloat(String(v ?? 0)) || 0).toFixed(2);
 
 function lineText(r: ShareReturn, bold: (s: string) => string = (s) => s): string {
-  const cur = r.currency || 'MYR';
+  const cur = getCurrencySymbol(r.currency || 'MYR');
   return (r.lines || []).map((l) => {
     const qty = `${l.quantity}${l.unit ? ' ' + l.unit : ''}`;
     const amount = l.unit_price != null
@@ -45,7 +47,7 @@ function totalOf(r: ShareReturn): number {
 
 /** 왓츠앱 — 번호가 없으면 wa.me 가 번호 입력 화면을 연다(발주와 같은 동작). */
 export function shareReturnViaWhatsApp(r: ShareReturn): void {
-  const cur = r.currency || 'MYR';
+  const cur = getCurrencySymbol(r.currency || 'MYR');
   const b = (s: string) => `*${s}*`;
   const text = encodeURIComponent(
     `${b('RETURN REQUEST')}\n` +
@@ -67,7 +69,7 @@ export function shareReturnViaEmail(r: ShareReturn): boolean {
   const body = encodeURIComponent(
     `Dear ${r.seller.name || 'Supplier'},\n\nWe are returning the following items from ${r.po_number}:\n\n` +
     `${lineText(r) || '(none)'}\n\n` +
-    `Total: ${r.currency || 'MYR'} ${money(totalOf(r))}\n\n` +
+    `Total: ${getCurrencySymbol(r.currency || 'MYR')} ${money(totalOf(r))}\n\n` +
     `Please confirm this return and the credit amount.\n\nThank you.`
   );
   window.location.href = `mailto:${r.seller.email}?subject=${subject}&body=${body}`;
@@ -76,7 +78,7 @@ export function shareReturnViaEmail(r: ShareReturn): boolean {
 
 /** 인쇄(PDF) — 브라우저 인쇄 창을 띄운다. 받는 쪽이 종이로 받아도 같은 서식이 되게. */
 export function printReturnSheet(r: ShareReturn): void {
-  const cur = r.currency || 'MYR';
+  const cur = getCurrencySymbol(r.currency || 'MYR');
   const rows = (r.lines || []).map((l) => `
     <tr>
       <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;">${escapeHtml(l.name)}</td>

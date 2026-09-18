@@ -434,7 +434,7 @@ const ReferralLandingPage: React.FC = () => {
               {plans.length === 0 && <option value="">Professional</option>}
               {plans.map(p => (
                 <option key={p.id} value={p.id}>
-                  {p.display_name} {p.currency ? `(${getCurrencySymbol(p.currency)})` : ''}
+                  {p.display_name} {p.currency ? `(${p.currency})` : ''}
                 </option>
               ))}
             </Select>

@@ -2197,6 +2197,102 @@ function defineReservationTests({ customerToken }) {
 function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgToken, adminToken } = {}) {
   const svc = require('../services/inventoryDeductionService');
 
+  // ── 준비 레시피 삭제 게이트 (2026-09-18 Fable 판정 · 계약 고정) ────────────────────────────
+  //   삭제는 스위치 OFF 보다 강한 행위인데 예전엔 방어가 더 약했다 — 재고가 남아 있어도 그냥 지워
+  //   준비 재료 행이 남았다(개발서버 재현). 이제 `routes/recipes.js deleteRecipeWithPrepGate` 가
+  //   OFF 와 같은 조건으로 409 를 내고, 지울 수 있을 때만 재료를 비활성으로 두고 삭제한다.
+  //   ⚠ 이 계약이 없으면 그 게이트는 코드 한 곳뿐이라 조용히 회귀한다.
+  //   쓰기는 **데모 브랜드만**([[reference_smoke_writes_to_real_store]]) · 마커 접두어로 멱등.
+  const PREP_PROBE = 'ZZ-HC-PREPDEL-';
+
+  async function prepProbeCleanup() {
+    const { sequelize } = require('../config/database');
+    const q = async (sql) => (await sequelize.query(sql))[0];
+    const recs = await q(`SELECT id FROM recipes WHERE name LIKE '${PREP_PROBE}%'`);
+    const ids = recs.map(r => Number(r.id)).filter(Number.isInteger);
+    if (ids.length) {
+      try { await sequelize.query(`DELETE FROM recipe_ingredients WHERE recipe_id IN (${ids.join(',')})`); } catch { /* 무참조 */ }
+      try { await sequelize.query(`DELETE FROM recipes WHERE id IN (${ids.join(',')})`); } catch { /* FK */ }
+    }
+    try { await sequelize.query(`DELETE FROM ingredients WHERE name LIKE '${PREP_PROBE}%'`); } catch { /* FK */ }
+  }
+
+  /** 데모 브랜드(is_demo=1) 를 소유한 BG 를 찾는다 — 없으면 케이스가 «준비물 없음» 으로 건너뛴다 */
+  async function demoBrandCtx() {
+    const { sequelize } = require('../config/database');
+    const rows = (await sequelize.query(
+      `SELECT b.id brand_id, u.id user_id, u.email, u.role
+         FROM brands b JOIN users u ON u.id = b.owner_id
+        WHERE b.is_demo = 1 AND u.role = 'Brand General'
+        ORDER BY b.id LIMIT 1`))[0];
+    if (!rows.length) return null;
+    const ing = (await sequelize.query(
+      `SELECT id FROM ingredients WHERE brand_id = ${Number(rows[0].brand_id)} AND is_active = 1
+         AND source_recipe_id IS NULL ORDER BY id LIMIT 1`))[0];
+    if (!ing.length) return null;
+    const token = jwt.sign({ userId: rows[0].user_id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    return { brandId: rows[0].brand_id, token, rawIngredientId: ing[0].id };
+  }
+
+  async function makePrepRecipe(ctx2, suffix) {
+    const r = await request('POST', `/brands/${ctx2.brandId}/recipes`, {
+      name: `${PREP_PROBE}${suffix}`, yield_amount: 2, yield_unit: 'kg',
+      ingredients: [{ ingredient_id: ctx2.rawIngredientId, quantity: 0.1, unit: 'kg' }],
+      is_prep_ingredient: true
+    }, { Authorization: `Bearer ${ctx2.token}` });
+    return { status: r.status, recipeId: r.body?.data?.id, ingredientId: r.body?.prep_ingredient?.id };
+  }
+
+  test('inventory', '준비 레시피 삭제 orphan sweep (멱등 — 데모 브랜드만)', async () => {
+    await prepProbeCleanup();
+    const { sequelize } = require('../config/database');
+    const left = (await sequelize.query(`SELECT COUNT(*) c FROM recipes WHERE name LIKE '${PREP_PROBE}%'`))[0][0].c;
+    return Number(left) === 0;
+  });
+
+  test('inventory', '준비 재료 재고가 남으면 레시피 삭제 거부(409) + 부분 실행 0', async () => {
+    const ctx2 = await demoBrandCtx();
+    if (!ctx2) { console.log('      (준비물 없음 — 데모 브랜드 BG 또는 원재료가 없어 건너뜀)'); return true; }
+    const { sequelize } = require('../config/database');
+    const made = await makePrepRecipe(ctx2, 'STOCK');
+    if (!made.recipeId || !made.ingredientId) { await prepProbeCleanup(); return false; }
+    try {
+      // 재고를 남긴다 — 이 상태에서는 스위치 OFF 도 409 다. 삭제도 같아야 한다.
+      await sequelize.query(`UPDATE ingredients SET current_stock = 5 WHERE id = ${Number(made.ingredientId)}`);
+      const del = await request('DELETE', `/brands/${ctx2.brandId}/recipes/${made.recipeId}`, null,
+        { Authorization: `Bearer ${ctx2.token}` });
+      const rec = (await sequelize.query(`SELECT COUNT(*) c FROM recipes WHERE id = ${Number(made.recipeId)}`))[0][0].c;
+      const ing = (await sequelize.query(`SELECT is_active, source_recipe_id FROM ingredients WHERE id = ${Number(made.ingredientId)}`))[0][0];
+      return del.status === 409
+        && del.body?.error?.code === 'PREP_INGREDIENT_IN_USE'
+        && Number(rec) === 1                       // 레시피 그대로
+        && Number(ing.is_active) === 1             // 재료 그대로
+        && Number(ing.source_recipe_id) === Number(made.recipeId);  // 출처 그대로 = 부분 실행 0
+    } finally {
+      await sequelize.query(`UPDATE ingredients SET current_stock = 0 WHERE id = ${Number(made.ingredientId)}`).catch(() => {});
+      await prepProbeCleanup();
+    }
+  });
+
+  test('inventory', '재고 0 준비 레시피는 삭제되고 재료는 비활성으로 남는다', async () => {
+    const ctx2 = await demoBrandCtx();
+    if (!ctx2) { console.log('      (준비물 없음 — 데모 브랜드 BG 또는 원재료가 없어 건너뜀)'); return true; }
+    const { sequelize } = require('../config/database');
+    const made = await makePrepRecipe(ctx2, 'CLEAN');
+    if (!made.recipeId || !made.ingredientId) { await prepProbeCleanup(); return false; }
+    try {
+      const del = await request('DELETE', `/brands/${ctx2.brandId}/recipes/${made.recipeId}`, null,
+        { Authorization: `Bearer ${ctx2.token}` });
+      const rec = (await sequelize.query(`SELECT COUNT(*) c FROM recipes WHERE id = ${Number(made.recipeId)}`))[0][0].c;
+      const ing = (await sequelize.query(`SELECT is_active, source_recipe_id FROM ingredients WHERE id = ${Number(made.ingredientId)}`))[0][0];
+      // recipes 는 완전 삭제라 FK(ON DELETE SET NULL)가 출처를 풀어 놓는다 — 그게 설계된 최종 상태.
+      return del.status === 200 && Number(rec) === 0
+        && ing && Number(ing.is_active) === 0 && ing.source_recipe_id === null;
+    } finally {
+      await prepProbeCleanup();
+    }
+  });
+
   // 레시피 쓰기 프로브가 만든 것만 지운다. 실패해도 지운다(잔재 0 · 재실행 멱등).
   const PROBE = 'ZZ-HC-RECIPEWRITE-';
   // 정리는 **그 케이스가 만든 이름만** 지운다. 접두어 전체를 지우면 두 health-check 가

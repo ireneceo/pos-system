@@ -1631,7 +1631,7 @@ const SubscriptionsPage: React.FC = () => {
 
                     {/* Monthly Fee — kept editable for custom plans (auto-set when picking a template). */}
                     <FormGroup>
-                      <FormLabel>Monthly Fee ({editingSubscription.currency || 'MYR'}) *</FormLabel>
+                      <FormLabel>Monthly Fee ({getCurrencySymbol(editingSubscription.currency || 'MYR')}) *</FormLabel>
                       <FormInput
                         type="number"
                         step="0.01"

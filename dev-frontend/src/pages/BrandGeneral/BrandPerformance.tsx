@@ -18,7 +18,7 @@ import {
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { useStore } from '../../contexts/StoreContext';
-import { formatCurrency as formatCurrencyUtil, getCurrencySymbol } from '../../utils/currency';
+import { formatCurrency as formatCurrencyUtil } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
 
@@ -830,7 +830,7 @@ const BrandPerformance: React.FC = () => {
                 {filteredBrandsList.map(brand => (
                   <DropdownItem key={brand.id} onClick={() => handleBrandSelect(brand)}>
                     <ItemName>{brand.name}</ItemName>
-                    <ItemDetails>{brand.code} {brand.currency ? `• ${getCurrencySymbol(brand.currency)}` : ''}</ItemDetails>
+                    <ItemDetails>{brand.code} {brand.currency ? `• ${brand.currency}` : ''}</ItemDetails>
                   </DropdownItem>
                 ))}
               </DropdownMenu>

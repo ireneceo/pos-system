@@ -25,6 +25,7 @@ import { renderIframeToPdf } from '../../utils/invoicePdf';
 import AlertDialog from '../../components/Common/AlertDialog';
 import ConfirmModal from '../../components/ConfirmModal';
 import ReceivePayModal, { ReceivePayMode } from '../../components/PurchaseOrders/ReceivePayModal';
+import { getCurrencySymbol } from '../../utils/currency';
 
 interface POItem {
   id: number; ingredient_id: number; quantity_ordered: string; unit_price: string; created_at?: string | null;
@@ -513,7 +514,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
             {po.expected_delivery_date ? ` · ${t('staging.expected', 'Expected')}: ${po.expected_delivery_date}` : ''}
           </POMeta>
         </POSellerBox>
-        <POAmount>{po.currency || 'MYR'} {parseFloat(po.total_amount || '0').toFixed(2)}</POAmount>
+        <POAmount>{getCurrencySymbol(po.currency || 'MYR')} {parseFloat(po.total_amount || '0').toFixed(2)}</POAmount>
       </POHead>
 
       {(po.items || []).length > 0 && (
@@ -654,7 +655,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
                       {p.payment_status === 'refunded' ? ` · ${t('pay.badge.refunded', 'Payment reversed')}` : ''}
                     </POMeta>
                   </POSellerBox>
-                  <POAmount>{p.currency || 'MYR'} {parseFloat(p.total_amount || '0').toFixed(2)}</POAmount>
+                  <POAmount>{getCurrencySymbol(p.currency || 'MYR')} {parseFloat(p.total_amount || '0').toFixed(2)}</POAmount>
                 </POHead>
                 <Actions>
                   <Button type="button" size="small" variant="primary"
@@ -774,7 +775,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
         title={t('staging.submitAllConfirm.title', 'Send all purchase orders?') as string}
         message={t('staging.submitAllConfirm.desc', {
           count: pos.length,
-          amount: `MYR ${grandTotal.toFixed(2)}`,
+          amount: `${getCurrencySymbol(pos[0]?.currency || 'MYR')} ${grandTotal.toFixed(2)}`,
           defaultValue: '{{count}} purchase order(s) totalling {{amount}} will be sent to the suppliers. This cannot be undone.'
         }) as string}
         onConfirm={submitAll}

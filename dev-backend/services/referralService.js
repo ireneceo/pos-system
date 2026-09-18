@@ -450,7 +450,7 @@ async function applyCredit(userId, invoiceId, amount, opts = {}) {
         action_type: 'update',
         entity_type: 'referral_wallet',
         entity_id: wallet.id,
-        entity_name: `Credit applied ${apply} ${currency}`,
+        entity_name: `Credit applied ${currencySymbol(currency)} ${apply}`,
         user_id: userId,
         restaurant_id: invoice.restaurant_id || null,
         changes: {

@@ -416,7 +416,7 @@ const ReferralWalletPage: React.FC = () => {
         )}
         {(wallets || []).map(w => (
           <WalletCard key={w.currency}>
-            <Currency>{getCurrencySymbol(w.currency)}</Currency>
+            <Currency>{w.currency}</Currency>
             <Balance>{formatMoney(w.balance, w.currency)}</Balance>
             <StatsRow>
               <StatItem>{t('wallet.stats.totalEarned', 'Total earned')}<strong>{formatMoney(w.total_earned, w.currency)}</strong></StatItem>

@@ -7,7 +7,7 @@ import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableC
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
-import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
@@ -1092,7 +1092,7 @@ const BrandReportsPage: React.FC = () => {
             {filteredBrands.map(brand => (
               <DropdownItem key={brand.id} onClick={() => handleBrandSelect(brand)}>
                 <ItemName>{brand.name}</ItemName>
-                <ItemDetails>{brand.code} • {getCurrencySymbol(brand.currency)}</ItemDetails>
+                <ItemDetails>{brand.code} • {brand.currency}</ItemDetails>
               </DropdownItem>
             ))}
           </DropdownMenu>

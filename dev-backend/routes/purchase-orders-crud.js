@@ -52,7 +52,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
-const { normalizeCurrencyCode, sameCurrency } = require('../utils/currency');
+const { normalizeCurrencyCode, sameCurrency, currencySymbol } = require('../utils/currency');
 const { resolveSellers, getSeller, getSellerName, isExternalSeller } = require('../utils/sellerNames');
 // 지불 금액 규칙은 결제 서비스가 단일 소스다 — 화면이 따로 계산하지 않게 여기서 실어 보낸다.
 const { payableFrom } = require('../services/purchaseOrderPayment');
@@ -677,7 +677,7 @@ async function checkCreditLimit({ buyerEntity, seller_type, seller_entity_id, co
   if (projected <= limit) return { ok: true };
 
   const cur = currency || terms.currency || 'MYR';
-  const fmt = (n) => `${cur} ${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmt = (n) => `${currencySymbol(cur)} ${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   return {
     ok: false,
     outstanding,

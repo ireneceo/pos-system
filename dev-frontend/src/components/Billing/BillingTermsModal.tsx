@@ -16,6 +16,7 @@ import {
   FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea
 } from '../UI';
 import { getAuthToken } from '../../utils/auth';
+import { getCurrencySymbol } from '../../utils/currency';
 
 export interface PaymentTerms {
   terms?: string;
@@ -392,7 +393,7 @@ export function formatTermsSummary(t: PaymentTerms | null | undefined): string {
     parts.push('Immediate');
   }
   if (t.credit_limit != null && Number(t.credit_limit) > 0) {
-    parts.push(`${t.currency || 'MYR'} ${Number(t.credit_limit).toLocaleString()}`);
+    parts.push(`${getCurrencySymbol(t.currency || 'MYR')} ${Number(t.credit_limit).toLocaleString()}`);
   }
   return parts.join(' · ');
 }

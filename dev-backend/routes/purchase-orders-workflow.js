@@ -15,6 +15,7 @@
  */
 
 const express = require('express');
+const { currencySymbol } = require('../utils/currency');
 const router = express.Router();
 const { Op } = require('sequelize');
 const database = require('../config/database');
@@ -365,7 +366,7 @@ td { padding: 10px 12px; border-bottom: 1px solid #F3F4F6; font-size: 13px; }
     ${items.map(i => `<tr><td>${i.name}</td><td>${i.sku || '—'}</td><td class="num">${i.qty_text}</td><td class="num">${i.unit_price.toFixed(2)}</td><td class="num">${i.line_total.toFixed(2)}</td></tr>`).join('')}
     <tr><td colspan="4" class="num">Subtotal</td><td class="num">${subtotal.toFixed(2)}</td></tr>
     <tr><td colspan="4" class="num">Delivery${deliveryUnset ? ' (not set)' : ''}</td><td class="num">${deliveryFee.toFixed(2)}</td></tr>
-    <tr class="total-row"><td colspan="4" class="num">Total (${po.currency || 'MYR'})</td><td class="num">${(subtotal + deliveryFee).toFixed(2)}</td></tr>
+    <tr class="total-row"><td colspan="4" class="num">Total (${currencySymbol(po.currency || 'MYR')})</td><td class="num">${(subtotal + deliveryFee).toFixed(2)}</td></tr>
   </tbody>
 </table>
 ${po.notes ? `<div class="notes"><h3>Notes</h3>${po.notes.replace(/\n/g, '<br>')}</div>` : ''}
