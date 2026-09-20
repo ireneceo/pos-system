@@ -14,6 +14,10 @@
 6. **운영 데이터 — K-DINE IPC ← GIT 소급 발주** (Irene 지시) — 발주 #59 `PO-R8-20260920-002`: 김치 1kg × 2 + Rice-Jasmin 5kg/pkt × 4 = **RM 131.00**, 수령완료 · 미결제, 거래 청구서 `TRD-BRD2-20260920-001`(마감 10/15). 매장 8 재고 +김치 2 · +쌀 4, GIT 상품 쌀 재고 **15**. 되돌리기 정보 `dev-backend/releases/backfill-rollback-1789928975640.json`.
 
 ### 다음 확정 작업
+- 🔴 **월 청구(SOA)가 제대로 도는지 점검 + 알기 쉽게 반영** — Irene 원문 「다음에 이거 SOA 제대로 되고 있는지 봐줘. 월 인보이스 매월 1일에 발행해서 입력한 일수 안에 결제요청 해야 하는데. 제대로 안되고 있는 것 같아. 인보이스 발행일 지정도 없고. 그럼 그 전 인보이스가 합쳐져서 SOA 발행되어야 하는데 안되고 마지막에 지금 만드는 거 버튼 있는데 이것도 눌러도 작동 안하고. 제대로 월단위 결제발송되는건지 확인하고 내가 요청한대로 알기 쉽게 반영해줘.」
+  - 화면: 거래 조건 편집(Edit Billing Terms) — 매장 「with MIN Cafe」 / Payment Terms `Net 30 days` · Invoice Cycle `Monthly Statement (SOA)` · Payment Due Day `15` · Currency MYR · 안내문 「Statements auto-issue on the 1st of each month. Generate one now for any unbilled orders.」 + `Generate now` 버튼
+  - 확인할 것(팀원 실측 먼저): ①매월 1일 자동 발행이 실제로 도는가(스케줄러 기록) ②`Generate now` 가 왜 눌러도 반응이 없는가 ③그 전 개별 인보이스들이 SOA 한 장으로 합쳐지는가 ④마감일이 Payment Terms(Net 30)와 Payment Due Day(15) 중 무엇을 따르는가 — 둘이 겹쳐 보이는 것부터가 혼란 ⑤**인보이스 발행일 지정 칸이 없다**(요청) ⑥월단위 결제 요청 메일이 실제로 나가는가
+
 - **판매자가 고객 대신 주문 넣기 (Sales Orders 생성)** — Irene 「주문 추가해야 하는 건 내가 여기서 따로 요청할게 그럼. 다음에 개발하자」. 착수 전 결정 필요: 상태 시작점(구매자 확인 대기 vs 바로 보낸 주문) · 오너 승인이 켜진 매장 처리 · 구매자 거부 권한 · 「판매처에서 추가함」 안내 위치. 현재 `routes/seller-orders.js` 에 **생성 라우트 없음**(받은 주문 처리만).
 - **멀티 컨텍스트(자격) 확장** — Irene 「다음 주에 하자」. 컨펌 1건: 매장 관리자가 자기 매장 Staff 자격을 직접 부여하도록 허용할지(Fable 권고: 허용).
 
