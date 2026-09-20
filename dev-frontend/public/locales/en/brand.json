@@ -755,13 +755,15 @@
     "marginLabel": "Margin",
     "createSupplierProduct": "Create supplier product",
     "margin": "Margin",
-    "marginHint": "Price RM {{price}} − cost RM {{cost}}",
+    "marginHint": "Price RM {{price}} − cost RM {{cost}} (per {{base}}{{unit}})",
     "marginLoss": "Below cost",
     "marginThin": "Thin margin",
     "marginNoPrice": "No selling price",
     "marginNoPriceHint": "Cost is RM {{cost}} but the selling price is empty",
     "marginNoCost": "No cost",
-    "marginNoCostHint": "The linked source has no cost, so margin cannot be calculated — add the supplier price"
+    "marginNoCostHint": "The linked source has no cost, so margin cannot be calculated — add the supplier price",
+    "marginNoConvert": "Units not convertible",
+    "marginNoConvertHint": "The selling unit ({{from}}) and the cost unit ({{to}}) cannot be converted, so margin cannot be calculated"
   },
   "brandIngredientsPage": {
     "subtitle": "The single list of ingredients. Turn on brand sharing to use them in recipes and orders."

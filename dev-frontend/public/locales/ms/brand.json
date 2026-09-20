@@ -755,13 +755,15 @@
     "marginLabel": "Margin",
     "createSupplierProduct": "Cipta produk pembekal & pautkan",
     "margin": "Margin",
-    "marginHint": "Harga RM {{price}} − kos RM {{cost}}",
+    "marginHint": "Harga RM {{price}} − kos RM {{cost}} (setiap {{base}}{{unit}})",
     "marginLoss": "Bawah kos",
     "marginThin": "Margin tipis",
     "marginNoPrice": "Tiada harga jualan",
     "marginNoPriceHint": "Kos RM {{cost}} tetapi harga jualan kosong",
     "marginNoCost": "Tiada kos",
-    "marginNoCostHint": "Sumber yang dipaut tiada kos, margin tidak dapat dikira — masukkan harga pembekal"
+    "marginNoCostHint": "Sumber yang dipaut tiada kos, margin tidak dapat dikira — masukkan harga pembekal",
+    "marginNoConvert": "Unit tidak boleh ditukar",
+    "marginNoConvertHint": "Unit jualan ({{from}}) dan unit kos ({{to}}) tidak boleh ditukar, margin tidak dapat dikira"
   },
   "brandIngredientsPage": {
     "subtitle": "Senarai bahan tunggal. Hidupkan perkongsian jenama untuk guna dalam resipi dan pesanan."

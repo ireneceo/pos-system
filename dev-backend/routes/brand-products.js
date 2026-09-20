@@ -751,10 +751,13 @@ router.get('/brand-products', authenticateToken, requireBGScope, async (req, res
         {
           model: ProductRecipe,
           as: 'productRecipe',
-          attributes: ['id', 'name', 'total_ingredient_cost']
+          // `total_ingredient_cost` 는 **수율(yield_amount) 만큼**의 재료비다 — 1단위 값이 아니다.
+          //   화면이 마진을 내려면 수율이 함께 있어야 한다(2026-09-20 김치 −540% 사고).
+          attributes: ['id', 'name', 'total_ingredient_cost', 'yield_amount', 'yield_unit']
         },
         // 재고아이템 다이렉트 — 목록·단건 모두 연결된 재고아이템을 함께 내려준다(화면이 배지로 쓴다).
-        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'unit_cost'] }
+        // `unit_cost` 도 **기준양(base_quantity) 만큼**의 값이다 — 같은 이유로 기준양을 함께 보낸다.
+        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'base_quantity', 'unit_cost'] }
       ],
       order: [['sort_order', 'ASC'], ['name', 'ASC']]
     });
@@ -843,10 +846,13 @@ router.get('/brand-products/:productId', authenticateToken, requireBGScope, asyn
         {
           model: ProductRecipe,
           as: 'productRecipe',
-          attributes: ['id', 'name', 'total_ingredient_cost']
+          // `total_ingredient_cost` 는 **수율(yield_amount) 만큼**의 재료비다 — 1단위 값이 아니다.
+          //   화면이 마진을 내려면 수율이 함께 있어야 한다(2026-09-20 김치 −540% 사고).
+          attributes: ['id', 'name', 'total_ingredient_cost', 'yield_amount', 'yield_unit']
         },
         // 재고아이템 다이렉트 — 목록·단건 모두 연결된 재고아이템을 함께 내려준다(화면이 배지로 쓴다).
-        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'unit_cost'] }
+        // `unit_cost` 도 **기준양(base_quantity) 만큼**의 값이다 — 같은 이유로 기준양을 함께 보낸다.
+        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'base_quantity', 'unit_cost'] }
       ]
     });
 
@@ -1053,10 +1059,13 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
         {
           model: ProductRecipe,
           as: 'productRecipe',
-          attributes: ['id', 'name', 'total_ingredient_cost']
+          // `total_ingredient_cost` 는 **수율(yield_amount) 만큼**의 재료비다 — 1단위 값이 아니다.
+          //   화면이 마진을 내려면 수율이 함께 있어야 한다(2026-09-20 김치 −540% 사고).
+          attributes: ['id', 'name', 'total_ingredient_cost', 'yield_amount', 'yield_unit']
         },
         // 재고아이템 다이렉트 — 목록·단건 모두 연결된 재고아이템을 함께 내려준다(화면이 배지로 쓴다).
-        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'unit_cost'] }
+        // `unit_cost` 도 **기준양(base_quantity) 만큼**의 값이다 — 같은 이유로 기준양을 함께 보낸다.
+        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'base_quantity', 'unit_cost'] }
       ]
     });
 
@@ -1223,10 +1232,13 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
         {
           model: ProductRecipe,
           as: 'productRecipe',
-          attributes: ['id', 'name', 'total_ingredient_cost']
+          // `total_ingredient_cost` 는 **수율(yield_amount) 만큼**의 재료비다 — 1단위 값이 아니다.
+          //   화면이 마진을 내려면 수율이 함께 있어야 한다(2026-09-20 김치 −540% 사고).
+          attributes: ['id', 'name', 'total_ingredient_cost', 'yield_amount', 'yield_unit']
         },
         // 재고아이템 다이렉트 — 목록·단건 모두 연결된 재고아이템을 함께 내려준다(화면이 배지로 쓴다).
-        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'unit_cost'] }
+        // `unit_cost` 도 **기준양(base_quantity) 만큼**의 값이다 — 같은 이유로 기준양을 함께 보낸다.
+        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'base_quantity', 'unit_cost'] }
       ]
     });
 
@@ -1354,7 +1366,8 @@ router.post('/brand-products/:productId/copy', authenticateToken, requireBGScope
         { model: Brand, as: 'brands', through: { attributes: [] } },
         { model: BrandProductOptionGroup, as: 'optionGroups', through: { attributes: [] }, include: [{ model: BrandProductOption, as: 'options' }] },
         { model: ProductRecipe, as: 'productRecipe', attributes: ['id', 'name', 'total_ingredient_cost'] },
-        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'unit_cost'] }
+        // `unit_cost` 도 **기준양(base_quantity) 만큼**의 값이다 — 같은 이유로 기준양을 함께 보낸다.
+        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'base_quantity', 'unit_cost'] }
       ]
     });
 

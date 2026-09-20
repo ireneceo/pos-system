@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { parseMinOrderQty, OrderMode, PACKAGE_UNIT_SUGGESTIONS, CONTENT_UNIT_OPTIONS, withCurrentUnit, sellerSpecLabel } from '../../utils/unitConversion';
+import { marginStateOf } from '../../utils/productMargin';
 import { getErrorMessage } from '../../utils/apiError';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
@@ -86,7 +87,7 @@ interface Product {
   productRecipe?: ProductRecipe;
   // 재고아이템 다이렉트 (docs/TRADE_STRUCTURE.md §2-1) — 레시피와 둘 중 하나만 채워진다.
   product_ingredient_id?: number | null;
-  stockItem?: { id: number; name: string; unit: string; unit_cost: number } | null;
+  stockItem?: { id: number; name: string; unit: string; base_quantity?: number | string; unit_cost: number } | null;
   sort_order: number;
   brands?: Brand[];
   optionGroups?: OptionGroup[];
@@ -411,43 +412,6 @@ const OrderModeHint = styled.div`
   color: #6B7280;
 `;
 
-
-/**
- * 마진 판정 (2026-09-20 Irene 「마진이 문제되는 제품은 경고표시 해줘. 공급업체 가격이랑 비교해서
- * 계산된 마진금액에 대해」).
- *
- * 원가는 **연결된 곳에서** 온다 — 재고아이템 다이렉트면 그 재고아이템 단가(= 공급업체 가격),
- * 레시피면 레시피 재료비. 둘 다 없으면 비교 자체가 불가능하다.
- *
- * 운영 실측(2026-09-20, 활성 111개): 연결없음 36 · 원가0 24 · 판매가0 18 · 마진10%미만 17 · 정상 16 ·
- *   **원가보다 싸게 파는 것은 0건**. 그래서 한 덩어리 「마진 경고」로 묶으면 쓸모가 없다 —
- *   무엇이 비었는지 구분해서 알려준다.
- */
-type MarginState =
-  | { kind: 'ok'; margin: number; rate: number; cost: number }
-  | { kind: 'loss'; margin: number; rate: number; cost: number }
-  | { kind: 'thin'; margin: number; rate: number; cost: number }
-  | { kind: 'noPrice'; cost: number }
-  | { kind: 'noCost' }
-  | { kind: 'noLink' };
-
-const THIN_MARGIN_RATE = 0.1;   // 10% 미만이면 «박하다»
-
-function marginStateOf(product: any): MarginState {
-  const linked = !!(product.product_ingredient_id || product.product_recipe_id || product.recipe_id);
-  if (!linked) return { kind: 'noLink' };
-  const cost = Number(
-    product.stockItem?.unit_cost ?? product.productRecipe?.total_ingredient_cost ?? 0
-  ) || 0;
-  if (cost <= 0) return { kind: 'noCost' };
-  const price = Number(product.unit_price) || 0;
-  if (price <= 0) return { kind: 'noPrice', cost };
-  const margin = price - cost;
-  const rate = margin / price;
-  if (margin < 0) return { kind: 'loss', margin, rate, cost };
-  if (rate < THIN_MARGIN_RATE) return { kind: 'thin', margin, rate, cost };
-  return { kind: 'ok', margin, rate, cost };
-}
 
 const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   brands,
@@ -1146,6 +1110,17 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                 {(() => {
                   const ms = marginStateOf(product);
                   if (ms.kind === 'noLink') return null;        // 아래 Linked 행이 이미 경고한다
+                  if (ms.kind === 'noConvert') return (
+                    <DetailRow>
+                      <DetailLabel>{t('brand:products.margin', { defaultValue: '마진' })}</DetailLabel>
+                      <StatusBadge status="warning" size="small"
+                        title={t('brand:products.marginNoConvertHint', {
+                          defaultValue: '판매 단위({{from}})와 원가 단위({{to}})를 서로 바꿀 수 없어 마진을 계산할 수 없습니다',
+                          from: ms.fromUnit || '-', to: ms.toUnit || '-' }) as string}>
+                        {t('brand:products.marginNoConvert', { defaultValue: '단위 환산 불가' })}
+                      </StatusBadge>
+                    </DetailRow>
+                  );
                   if (ms.kind === 'noCost') return (
                     <DetailRow>
                       <DetailLabel>{t('brand:products.margin', { defaultValue: '마진' })}</DetailLabel>
@@ -1166,8 +1141,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                   );
                   const label = `RM ${ms.margin.toFixed(2)} (${(ms.rate * 100).toFixed(0)}%)`;
                   const hint = t('brand:products.marginHint', {
-                    defaultValue: '판매가 RM {{price}} − 원가 RM {{cost}}',
-                    price: (Number(product.unit_price) || 0).toFixed(2), cost: ms.cost.toFixed(2)
+                    defaultValue: '판매가 RM {{price}} − 원가 RM {{cost}} ({{base}}{{unit}} 기준)',
+                    price: (Number(product.unit_price) || 0).toFixed(2), cost: ms.cost.toFixed(2),
+                    base: Number(product.base_quantity) || 1, unit: product.unit || ''
                   }) as string;
                   return (
                     <DetailRow>
@@ -1731,7 +1707,12 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                   if (!si) return null;
                   return (
                     <div style={{ marginTop: '6px', fontSize: '12.5px', color: '#4B5563' }}>
-                      1 {si.unit} · RM {Number(si.unit_cost || 0).toFixed(2)}
+                      {/* `unit_cost` 는 **기준양만큼**의 값이다 — 「1 g · RM 48」처럼 보여주면
+                          10kg 한 박스 값을 1g 값으로 읽게 된다(2026-09-20 김치 −540% 사고). */}
+                      {Number(si.base_quantity) || 1} {si.unit} · RM {Number(si.unit_cost || 0).toFixed(2)}
+                      {Number(si.base_quantity) > 1 && (
+                        <> (1 {si.unit} · RM {(Number(si.unit_cost || 0) / (Number(si.base_quantity) || 1)).toFixed(4)})</>
+                      )}
                     </div>
                   );
                 })()}
@@ -1744,13 +1725,23 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                   const sellBq = parseFloat(formData.base_quantity) || 1;
                   const sellUnit = formData.unit || '';
                   const sellPkg = formData.package_unit.trim() || (sellBq !== 1 ? 'pack' : sellUnit);
-                  // 사는 기준 — 발주 줄 1개에 든 양(환산)으로 나눠야 우리 재고 단위 원가가 된다.
+                  // 사는 기준 — 발주 줄 1개에 든 양(환산)으로 나눠야 «우리 재고 단위 하나» 값이 된다.
                   const buyPrice = buySpec ? Number(buySpec.unit_price) : NaN;
                   const conv = buySpec && Number(buySpec.unit_conversion) > 0 ? Number(buySpec.unit_conversion) : 1;
-                  const buyPerUnit = Number.isFinite(buyPrice) ? buyPrice / conv : NaN;
-                  const sellPerUnit = sellBq > 0 ? sellPrice / sellBq : NaN;
-                  const margin = Number.isFinite(buyPerUnit) && buyPerUnit > 0 && Number.isFinite(sellPerUnit)
-                    ? ((sellPerUnit - buyPerUnit) / buyPerUnit) * 100 : null;
+                  const buyPerStockUnit = Number.isFinite(buyPrice) ? buyPrice / conv : NaN;
+                  // 그 값은 재고아이템 단위(예: g) 기준이라 파는 단위(예: kg)와 그냥 빼면 안 된다
+                  // — 목록 카드와 **같은 계산기**로 환산한다(2026-09-20 Sawah Mas +124537% 사고).
+                  const si = productIngredientsList.find(i => i.id === formData.product_ingredient_id);
+                  const ms = marginStateOf({
+                    product_ingredient_id: formData.product_ingredient_id,
+                    stockItem: (Number.isFinite(buyPerStockUnit) && buyPerStockUnit > 0)
+                      ? { unit: si?.unit, base_quantity: 1, unit_cost: buyPerStockUnit }
+                      : si,
+                    unit: sellUnit,
+                    base_quantity: sellBq,
+                    unit_price: sellPrice,
+                  });
+                  const hasMargin = ms.kind === 'ok' || ms.kind === 'thin' || ms.kind === 'loss';
                   return (
                     <div style={{
                       marginTop: '10px', padding: '10px 12px', background: '#F9FAFB',
@@ -1767,10 +1758,18 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                           ? `${buySpec.base_quantity || 1} ${buySpec.seller_unit || sellUnit}${buySpec.seller_package_unit ? `/${buySpec.seller_package_unit}` : ''} · RM ${Number(buySpec.unit_price).toFixed(2)}${buySpec.seller_product_name ? ` (${buySpec.seller_product_name})` : ''}`
                           : t('products.buyBasisNone', { defaultValue: 'not linked yet — use the button below' })}
                       </div>
-                      {margin !== null && (
-                        <div style={{ marginTop: '4px', color: margin >= 0 ? '#0A2540' : '#B91C1C' }}>
+                      {hasMargin && (
+                        <div style={{ marginTop: '4px', color: (ms as any).margin >= 0 ? '#0A2540' : '#B91C1C' }}>
                           <strong>{t('products.marginLabel', { defaultValue: 'Margin' })}</strong>
-                          {` — RM ${buyPerUnit.toFixed(2)} → RM ${sellPerUnit.toFixed(2)} / ${sellUnit} (${margin >= 0 ? '+' : ''}${margin.toFixed(1)}%)`}
+                          {` — RM ${(ms as any).cost.toFixed(2)} → RM ${sellPrice.toFixed(2)} / ${sellBq} ${sellUnit}${sellPkg ? `/${sellPkg}` : ''} (RM ${(ms as any).margin.toFixed(2)} · ${((ms as any).rate * 100).toFixed(0)}%)`}
+                        </div>
+                      )}
+                      {ms.kind === 'noConvert' && (
+                        <div style={{ marginTop: '4px', color: '#B45309' }}>
+                          <strong>{t('products.marginLabel', { defaultValue: 'Margin' })}</strong>
+                          {' — '}
+                          {t('products.marginNoConvert', { defaultValue: '단위 환산 불가' })}
+                          {` (${ms.fromUnit} / ${ms.toUnit})`}
                         </div>
                       )}
                     </div>
