@@ -753,7 +753,15 @@
     "buyBasis": "사는 기준",
     "buyBasisNone": "아직 연결 안 됨 — 아래 버튼으로 연결",
     "marginLabel": "마진",
-    "createSupplierProduct": "공급업체 상품 만들어 연결"
+    "createSupplierProduct": "공급업체 상품 만들어 연결",
+    "margin": "마진",
+    "marginHint": "판매가 RM {{price}} − 원가 RM {{cost}}",
+    "marginLoss": "역마진",
+    "marginThin": "마진 적음",
+    "marginNoPrice": "판매가 없음",
+    "marginNoPriceHint": "원가 RM {{cost}} 인데 판매가가 비어 있습니다",
+    "marginNoCost": "원가 없음",
+    "marginNoCostHint": "연결된 곳의 원가가 0이라 마진을 계산할 수 없습니다 — 공급업체 가격을 넣어 주세요"
   },
   "brandIngredientsPage": {
     "subtitle": "재료의 유일한 목록입니다. 브랜드 공유를 켜면 레시피와 발주에서 쓸 수 있습니다."

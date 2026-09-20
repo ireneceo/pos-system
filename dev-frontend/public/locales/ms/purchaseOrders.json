@@ -471,7 +471,12 @@
     "payOnly": "Rekod pembayaran",
     "refund": "Batalkan pembayaran",
     "unknownSeller": "Pembekal",
-    "directPurchase": "Terima + bayar"
+    "directPurchase": "Terima + bayar",
+    "refreshPrices": "Kemas kini harga",
+    "refreshPricesHint": "Guna harga semasa penjual pada baris (draf sahaja, sebelum dihantar)",
+    "refreshPricesNone": "Sudah harga semasa — tiada baris berubah.",
+    "refreshPricesDone": "{{count}} baris berubah: {{lines}}",
+    "refreshPricesFailed": "Tidak dapat mengemas kini harga"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit tidak sepadan — kemasukan manual diperlukan",

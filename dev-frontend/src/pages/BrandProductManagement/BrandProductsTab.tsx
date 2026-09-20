@@ -411,6 +411,44 @@ const OrderModeHint = styled.div`
   color: #6B7280;
 `;
 
+
+/**
+ * 마진 판정 (2026-09-20 Irene 「마진이 문제되는 제품은 경고표시 해줘. 공급업체 가격이랑 비교해서
+ * 계산된 마진금액에 대해」).
+ *
+ * 원가는 **연결된 곳에서** 온다 — 재고아이템 다이렉트면 그 재고아이템 단가(= 공급업체 가격),
+ * 레시피면 레시피 재료비. 둘 다 없으면 비교 자체가 불가능하다.
+ *
+ * 운영 실측(2026-09-20, 활성 111개): 연결없음 36 · 원가0 24 · 판매가0 18 · 마진10%미만 17 · 정상 16 ·
+ *   **원가보다 싸게 파는 것은 0건**. 그래서 한 덩어리 「마진 경고」로 묶으면 쓸모가 없다 —
+ *   무엇이 비었는지 구분해서 알려준다.
+ */
+type MarginState =
+  | { kind: 'ok'; margin: number; rate: number; cost: number }
+  | { kind: 'loss'; margin: number; rate: number; cost: number }
+  | { kind: 'thin'; margin: number; rate: number; cost: number }
+  | { kind: 'noPrice'; cost: number }
+  | { kind: 'noCost' }
+  | { kind: 'noLink' };
+
+const THIN_MARGIN_RATE = 0.1;   // 10% 미만이면 «박하다»
+
+function marginStateOf(product: any): MarginState {
+  const linked = !!(product.product_ingredient_id || product.product_recipe_id || product.recipe_id);
+  if (!linked) return { kind: 'noLink' };
+  const cost = Number(
+    product.stockItem?.unit_cost ?? product.productRecipe?.total_ingredient_cost ?? 0
+  ) || 0;
+  if (cost <= 0) return { kind: 'noCost' };
+  const price = Number(product.unit_price) || 0;
+  if (price <= 0) return { kind: 'noPrice', cost };
+  const margin = price - cost;
+  const rate = margin / price;
+  if (margin < 0) return { kind: 'loss', margin, rate, cost };
+  if (rate < THIN_MARGIN_RATE) return { kind: 'thin', margin, rate, cost };
+  return { kind: 'ok', margin, rate, cost };
+}
+
 const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   brands,
   onCountChange,
@@ -1104,6 +1142,50 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                   <DetailLabel>{'Unit Price'}</DetailLabel>
                   <PriceValue>RM {(Number(product.unit_price) || 0).toFixed(2)}</PriceValue>
                 </DetailRow>
+                {/* 마진 — 공급업체 가격(또는 레시피 원가)과 비교한 금액. 무엇이 비었는지 구분해 말한다. */}
+                {(() => {
+                  const ms = marginStateOf(product);
+                  if (ms.kind === 'noLink') return null;        // 아래 Linked 행이 이미 경고한다
+                  if (ms.kind === 'noCost') return (
+                    <DetailRow>
+                      <DetailLabel>{t('brand:products.margin', { defaultValue: '마진' })}</DetailLabel>
+                      <StatusBadge status="warning" size="small"
+                        title={t('brand:products.marginNoCostHint', { defaultValue: '연결된 곳의 원가가 0이라 마진을 계산할 수 없습니다 — 공급업체 가격을 넣어 주세요' }) as string}>
+                        {t('brand:products.marginNoCost', { defaultValue: '원가 없음' })}
+                      </StatusBadge>
+                    </DetailRow>
+                  );
+                  if (ms.kind === 'noPrice') return (
+                    <DetailRow>
+                      <DetailLabel>{t('brand:products.margin', { defaultValue: '마진' })}</DetailLabel>
+                      <StatusBadge status="error" size="small"
+                        title={t('brand:products.marginNoPriceHint', { defaultValue: '원가 RM {{cost}} 인데 판매가가 비어 있습니다', cost: ms.cost.toFixed(2) }) as string}>
+                        {t('brand:products.marginNoPrice', { defaultValue: '판매가 없음' })}
+                      </StatusBadge>
+                    </DetailRow>
+                  );
+                  const label = `RM ${ms.margin.toFixed(2)} (${(ms.rate * 100).toFixed(0)}%)`;
+                  const hint = t('brand:products.marginHint', {
+                    defaultValue: '판매가 RM {{price}} − 원가 RM {{cost}}',
+                    price: (Number(product.unit_price) || 0).toFixed(2), cost: ms.cost.toFixed(2)
+                  }) as string;
+                  return (
+                    <DetailRow>
+                      <DetailLabel>{t('brand:products.margin', { defaultValue: '마진' })}</DetailLabel>
+                      {ms.kind === 'loss' ? (
+                        <StatusBadge status="error" size="small" title={hint}>
+                          {t('brand:products.marginLoss', { defaultValue: '역마진' })} {label}
+                        </StatusBadge>
+                      ) : ms.kind === 'thin' ? (
+                        <StatusBadge status="warning" size="small" title={hint}>
+                          {t('brand:products.marginThin', { defaultValue: '마진 적음' })} {label}
+                        </StatusBadge>
+                      ) : (
+                        <DetailValue title={hint}>{label}</DetailValue>
+                      )}
+                    </DetailRow>
+                  );
+                })()}
                 {/* 무엇에 연결됐는지 목록에서 바로 보이게 (2026-09-04 Irene 요청).
                     규칙: **프로덕트는 레시피 또는 재고아이템(직접) 둘 중 하나에 연결된다.**
                     판정은 컬럼으로 한다 — `product_ingredient_id` 가 있으면 재고아이템 다이렉트,

@@ -479,6 +479,86 @@ router.post('/purchase-orders/:id/send-external-email', async (req, res) => {
 
 // ============================================
 // ============================================
+// POST /api/purchase-orders/:id/refresh-prices — 판매자 **현재가**로 줄 단가를 다시 맞춘다
+// ============================================
+//   Irene 「지금 내가 2개 정도 판매가 바꿨거든. 지난 발주들에도 가격이 정정될 수 있게 처리해줘.」(2026-09-20)
+//
+//   왜 필요한가: 발주 줄의 `unit_price` 는 **담을 때의 사본**이다. 줄은 판매자 상품을 직접 가리키지
+//   않고(`brand_product_id` 운영 252줄 중 0건) 매핑(`ingredient_seller_product_id`)만 들고 있어서,
+//   판매자가 가격을 고쳐도 아무도 갱신하지 않는다(`services/costSync.js:137` 주석과 같은 사정).
+//
+//   ⛔ **초안(draft)만 고친다.** 이미 보낸 발주는 판매자가 그 금액으로 받은 주문이고,
+//      받았거나 결제한 발주를 소급해 고치면 재고 장부·청구서·마감이 뒤에서 바뀐다.
+//      보낸 뒤 금액이 다른 것은 **인보이스 대조**(`invoiced_unit_price`)가 이미 담당한다.
+//   ⛔ 자동 반영이 아니다 — 사람이 발주 화면에서 눌러야 바뀐다. 가격은 판매자 사정으로 오르내리는데
+//      장바구니가 조용히 바뀌면 사람이 모르는 금액으로 주문이 나간다.
+router.post('/purchase-orders/:id/refresh-prices', async (req, res) => {
+  const t = await database.sequelize.transaction();
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
+
+    const po = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+    if (!po || !checkPOOwnership(po, req)) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
+    if (po.status !== 'draft') {
+      await t.rollback();
+      return res.status(400).json({ success: false, code: 'BAD_STATUS',
+        message: 'Only a draft purchase order can be re-priced. For a sent order, use invoice reconciliation.' });
+    }
+
+    const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, transaction: t });
+    if (!items.length) { await t.rollback(); return res.status(400).json({ success: false, code: 'EMPTY_ITEMS', message: 'Purchase order has no items' }); }
+
+    // 판매자 현재가 — costSync 와 **같은 조인**을 쓴다(사본이 아니라 판매자 상품의 현재 값).
+    const mapIds = items.map(i => i.ingredient_seller_product_id).filter(Boolean);
+    const priceByMap = {};
+    if (mapIds.length) {
+      const [rows] = await database.sequelize.query(`
+        SELECT isp.id map_id,
+               COALESCE(sp.unit_price, bp.unit_price, fp.unit_price) s_price
+          FROM ingredient_seller_products isp
+          LEFT JOIN supplier_products sp ON sp.id = isp.seller_product_id AND isp.seller_type = 'supplier'
+          LEFT JOIN brand_products bp ON bp.id = isp.seller_product_id AND isp.seller_type = 'brand'
+          LEFT JOIN foodcourt_products fp ON fp.id = isp.seller_product_id AND isp.seller_type = 'foodcourt'
+         WHERE isp.id IN (:ids)`, { replacements: { ids: mapIds }, transaction: t });
+      rows.forEach(r => { priceByMap[r.map_id] = r.s_price === null ? null : Number(r.s_price); });
+    }
+
+    const changed = [];
+    for (const it of items) {
+      const live = priceByMap[it.ingredient_seller_product_id];
+      // 현재가가 없거나 0 이면 건드리지 않는다 — 0 은 「공짜」가 아니라 「아직 안 정함」이다.
+      if (live === undefined || live === null || !(live > 0)) continue;
+      const before = Number(it.unit_price) || 0;
+      if (Math.abs(before - live) < 0.005) continue;
+      const qty = Number(it.quantity_ordered) || 0;
+      await it.update({ unit_price: live, line_total: Math.round(qty * live * 100) / 100 }, { transaction: t });
+      changed.push({ item_id: it.id, name: it.description, from: before, to: live });
+    }
+
+    if (!changed.length) { await t.rollback(); return res.json({ success: true, data: po, changed: [], message: 'Already up to date' }); }
+
+    // 총액은 **기존 계산기**로 다시 낸다(배송비 규칙 포함) — 여기서 새로 더하지 않는다.
+    const fresh = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, transaction: t });
+    const totals = await computeTotalsWithDelivery(fresh, po, { orderCurrency: po.currency });
+    const tracking = appendTrackingEvent(po, po.status,
+      `Prices refreshed to current seller prices (${changed.length} line(s))`, { source: 'refresh_prices' });
+    await po.update({
+      subtotal: totals.subtotal, tax_amount: totals.tax_amount,
+      delivery_fee: totals.delivery_fee, delivery_fee_basis: totals.delivery_fee_basis,
+      total_amount: totals.total_amount, tracking_info: tracking,
+    }, { transaction: t });
+
+    await t.commit();
+    res.json({ success: true, data: po, changed });
+  } catch (err) {
+    await t.rollback();
+    console.error('POST /api/purchase-orders/:id/refresh-prices error:', err);
+    res.status(500).json({ success: false, message: 'Failed to refresh prices' });
+  }
+});
+
+// ============================================
 // POST /api/purchase-orders/:id/reimburse — 개인금액을 그 사람에게 갚음 (2026-09-18 Fable ⑨)
 // ============================================
 //   Irene 「개인돈으로 쓴 건 비용처리가 안되고 개인에게 돈을 줘야 하는 거야.」

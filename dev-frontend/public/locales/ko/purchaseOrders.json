@@ -471,7 +471,12 @@
     "payOnly": "결제 기록",
     "refund": "결제 취소",
     "unknownSeller": "공급업체",
-    "directPurchase": "받고 결제"
+    "directPurchase": "받고 결제",
+    "refreshPrices": "현재가로 갱신",
+    "refreshPricesHint": "판매자의 현재 가격으로 줄 단가를 다시 맞춥니다 (보내기 전 초안만)",
+    "refreshPricesNone": "이미 현재가입니다 — 바뀐 줄이 없습니다.",
+    "refreshPricesDone": "{{count}}줄이 바뀌었습니다: {{lines}}",
+    "refreshPricesFailed": "가격을 갱신하지 못했습니다"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: 수량 단위 차이 — 수동 입력 필요",

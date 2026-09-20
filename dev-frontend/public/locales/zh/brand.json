@@ -753,7 +753,15 @@
     "buyBasis": "我们买",
     "buyBasisNone": "尚未连接 — 请用下方按钮",
     "marginLabel": "毛利",
-    "createSupplierProduct": "新建供应商商品并连接"
+    "createSupplierProduct": "新建供应商商品并连接",
+    "margin": "毛利",
+    "marginHint": "售价 RM {{price}} − 成本 RM {{cost}}",
+    "marginLoss": "低于成本",
+    "marginThin": "毛利偏低",
+    "marginNoPrice": "未设售价",
+    "marginNoPriceHint": "成本为 RM {{cost}}，但售价为空",
+    "marginNoCost": "无成本",
+    "marginNoCostHint": "关联来源成本为 0，无法计算毛利 — 请填写供应商价格"
   },
   "brandIngredientsPage": {
     "subtitle": "唯一的食材清单。开启品牌共享后即可用于配方与采购。"

@@ -471,7 +471,12 @@
     "payOnly": "Record payment",
     "refund": "Reverse payment",
     "unknownSeller": "Supplier",
-    "directPurchase": "Receive + pay"
+    "directPurchase": "Receive + pay",
+    "refreshPrices": "Refresh prices",
+    "refreshPricesHint": "Re-apply the seller's current prices to the lines (drafts only, before sending)",
+    "refreshPricesNone": "Already current — no lines changed.",
+    "refreshPricesDone": "{{count}} line(s) changed: {{lines}}",
+    "refreshPricesFailed": "Could not refresh prices"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit mismatch — manual entry required",

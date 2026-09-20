@@ -320,6 +320,34 @@ const PurchaseOrderStagingPage: React.FC = () => {
 
   useEffect(() => { fetchDrafts(); }, [fetchDrafts]);
 
+  /** 판매자 현재가로 줄 단가를 다시 맞춘다 (초안만 — 서버가 상태를 검사한다) */
+  const refreshPrices = async (po: POStaging) => {
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/purchase-orders/${po.id}/refresh-prices`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.success) {
+        setAlertDlg({ title: t('common:error', 'Error') as string, message: j?.message || (t('staging.refreshPricesFailed', '가격을 갱신하지 못했습니다') as string) });
+        return;
+      }
+      const changed = Array.isArray(j.changed) ? j.changed : [];
+      setAlertDlg({
+        title: t('staging.refreshPrices', '현재가로 갱신') as string,
+        message: changed.length === 0
+          ? (t('staging.refreshPricesNone', '이미 현재가입니다 — 바뀐 줄이 없습니다.') as string)
+          : (t('staging.refreshPricesDone', '{{count}}줄이 바뀌었습니다: {{lines}}', {
+              count: changed.length,
+              lines: changed.slice(0, 5).map((c: any) => `${c.name} ${Number(c.from).toFixed(2)} → ${Number(c.to).toFixed(2)}`).join(', '),
+            }) as string),
+      });
+      fetchDrafts({ silent: true });
+    } catch {
+      setAlertDlg({ title: t('common:error', 'Error') as string, message: t('staging.refreshPricesFailed', '가격을 갱신하지 못했습니다') as string });
+    }
+  };
+
   // draft PO 폐기 — staging 에 쌓인 발송 전 draft 를 개별 제거(완전 삭제). 카트와 달리 staging 은
   // 누적 검토 영역이라 빼는 수단이 필요. DELETE /purchase-orders/:id (draft 전용, 서버 가드).
   const doDiscard = async () => {
@@ -530,6 +558,12 @@ const PurchaseOrderStagingPage: React.FC = () => {
               : t('staging.externalHint', 'Send this PO to the supplier via PDF / WhatsApp / email. The system will not auto-send.')}
           </InfoLine>
           <Actions>
+            {/* 판매자가 가격을 고쳐도 담아 둔 초안은 **담을 때 가격**을 그대로 들고 있다.
+                보내기 전에 현재가로 맞출 수 있게 한다 (2026-09-20 Irene). 보낸 발주는 서버가 거부한다. */}
+            <ThemedButton variant="outline" size="small" onClick={() => refreshPrices(po)}
+              title={t('staging.refreshPricesHint', '판매자의 현재 가격으로 줄 단가를 다시 맞춥니다 (보내기 전 초안만)') as string}>
+              {t('staging.refreshPrices', '현재가로 갱신')}
+            </ThemedButton>
             <ThemedButton variant="outline" size="small" onClick={() => openPdfPreview(po)}>
               {t('staging.downloadPdf', 'PDF')}
             </ThemedButton>
@@ -574,6 +608,10 @@ const PurchaseOrderStagingPage: React.FC = () => {
             {t('staging.systemHint', 'This PO will be auto-sent to the supplier upon final submit.')}
           </InfoLine>
           <Actions>
+            <ThemedButton variant="outline" size="small" onClick={() => refreshPrices(po)}
+              title={t('staging.refreshPricesHint', '판매자의 현재 가격으로 줄 단가를 다시 맞춥니다 (보내기 전 초안만)') as string}>
+              {t('staging.refreshPrices', '현재가로 갱신')}
+            </ThemedButton>
             <Button variant="primary" size="small" onClick={() => submitOne(po)} disabled={submittingId === po.id}>
               {submittingId === po.id
                 ? t('staging.submitting', 'Submitting…')

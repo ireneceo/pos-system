@@ -471,7 +471,12 @@
     "payOnly": "记录付款",
     "refund": "撤销付款",
     "unknownSeller": "供应商",
-    "directPurchase": "收货并付款"
+    "directPurchase": "收货并付款",
+    "refreshPrices": "更新为现价",
+    "refreshPricesHint": "以卖家当前价格重新计算行单价（仅限未发出的草稿）",
+    "refreshPricesNone": "已是现价 — 没有行被更改。",
+    "refreshPricesDone": "已更改 {{count}} 行：{{lines}}",
+    "refreshPricesFailed": "无法更新价格"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}：数量单位不一致 — 需手动输入",

@@ -753,7 +753,15 @@
     "buyBasis": "Kita beli",
     "buyBasisNone": "belum dipautkan — guna butang di bawah",
     "marginLabel": "Margin",
-    "createSupplierProduct": "Cipta produk pembekal & pautkan"
+    "createSupplierProduct": "Cipta produk pembekal & pautkan",
+    "margin": "Margin",
+    "marginHint": "Harga RM {{price}} − kos RM {{cost}}",
+    "marginLoss": "Bawah kos",
+    "marginThin": "Margin tipis",
+    "marginNoPrice": "Tiada harga jualan",
+    "marginNoPriceHint": "Kos RM {{cost}} tetapi harga jualan kosong",
+    "marginNoCost": "Tiada kos",
+    "marginNoCostHint": "Sumber yang dipaut tiada kos, margin tidak dapat dikira — masukkan harga pembekal"
   },
   "brandIngredientsPage": {
     "subtitle": "Senarai bahan tunggal. Hidupkan perkongsian jenama untuk guna dalam resipi dan pesanan."
