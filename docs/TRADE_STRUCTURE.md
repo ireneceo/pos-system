@@ -220,6 +220,29 @@ graph TD
 - **시간을 파는 상품 넣는 법**: 「4시간 기본, 1개 신청 = 4시간」 → 주문방식 «개수로» · 취급단위 `hour` · 기준양 `4` · 포장단위 `ea` → 규격 «4 hour/ea». 포장단위를 비우면 `sellerOrderUnitOf` 가 `pack` 으로 떨어져 «4 hour/pack» 이 된다.
 - ⛔ `track_stock` 을 게이트로 되살리지 않는다 — 2026-09-01(Q5)에 일부러 뺀 폐기 스위치다.
 
+### 2-5. 마진은 «판매 단위» 기준으로 — 단위 환산이 먼저다 (2026-09-20 Irene 신고 2건)
+
+> Irene ① 「김치가 우리 공급가가 48링깃이지? 10kg 1박스에. 이거 우리 프로덕트 판매는 1kg 기준이거든 … 마진이 −540%로 나와」
+> Irene ② 「Sawah Mas … We sell 10 kg/pack · RM 43.00 / We buy 10 kg/pack · RM 34.50 / Margin RM 0.00 → RM 4.30 / kg (+124537.7%)」
+
+`unit_cost` 는 **1단위 값이 아니라 `base_quantity` 만큼의 값**이다(§2-2 항등식). 그걸 판매가에서 그냥 빼면
+10,000g 한 박스 값을 1kg 값과 비교하게 된다 — 위 두 신고가 모두 그 하나의 실수다(2026-09-11 ×1000 사고와 같은 뿌리).
+
+**계산 두 줄 (화면 단일 소스 `dev-frontend/src/utils/productMargin.ts`):**
+1. 1단위 원가 = `unit_cost ÷ base_quantity` (재고아이템·레시피 동일. 레시피는 `total_ingredient_cost ÷ yield_amount`)
+2. 프로덕트 원가 = 1단위 원가 × `convertUnit(프로덕트 base_quantity, 프로덕트 unit → 원가 쪽 unit)`
+
+- 김치: (48 ÷ 10000) × 1000 g = **RM 4.80** → 판매 7.50 → 마진 RM 2.70 (36%)
+- Sawah Mas: (34.50 ÷ 10000) × 10000 g = **RM 34.50** → 판매 43.00 → 마진 RM 8.50 (20%)
+- 공급 연결에서 읽을 때 `unit_conversion` 으로 나눈 값(`unit_price ÷ unit_conversion`)은 **우리 재고 단위 하나** 값이다 — 판매 단위와 다르면 그대로 쓰지 말 것.
+
+⛔ **화면마다 제 계산을 두지 않는다.** 목록 카드와 편집창이 따로 계산해서 ②가 하루 더 살아남았다.
+⛔ **바꿀 수 없는 단위 조합(kg ↔ piece)은 숫자를 지어내지 않고 「단위 환산 불가」로 둔다** (운영 6건).
+
+회귀 박제: `dev-frontend/src/utils/productMargin.test.ts` 5건(환산을 빼면 4건 실패). 단, 화면 jest 는 배포 게이트 밖이라 직접 돌려야 한다.
+
+---
+
 ---
 
 ## 3. "재료"가 두 군데인 이유 — 주방이 둘이다
