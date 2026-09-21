@@ -8,6 +8,11 @@
   - 실측(팀원): ①`soaScheduler.generateSoaNow` rangeStart=2000-01-01 이 메일 month 라벨로 → 「January 2000」 ②referenceDate=dueRef(오늘>dueDay 면 다음달 1일) → issued_at 미래 ③SOA 가 billing_period_start/end 미기입 → Period「-」 ④버튼은 실제 동작(9/20 21:04 UTC 생성·발송), 결과문구가 모달 하단·목록 재조회 없음 ⑤monthly_soa 면 Net 30 무시(`purchaseOrderService.computeDueDate`) — 화면엔 보임 ⑥cron 은 «지난달 createdAt» 만 → 이전 달 미결은 영구 누락, 달 경계 UTC ⑦개발 cron 매월 1일 동작 확인(9/1 SOA-BRD1-2026-08-R5), 운영은 DB 읽기 거부로 확인 불가.
   - 재개: 위 사실+Irene 원문을 Fable 에 그대로 전달해 설계 판정 1회(발행일·기간·마감일 칸 / 운영 잘못된 SOA 1건 정리 / Generate now 범위).
 
+- ⏸ **인보이스 대조(발주 41 운영) — Fable 판정 대기** (2026-09-21). 코드 무변경.
+  - Irene 원문: 「인보이스 체크해서 인보이스 항목이랑 item 매칭하면 학습해서 다음에 알 수 없어? 아니면 따로 저장을 해둘 수 없어?」 「그리고 뜨는 이름이 인보이스랑 완전 안맞아. 엉망이야. 이건 어떻게 해결하지?」 「이미지를 완전 거지같이 읽어서 이상한 리스트가 떠...... 가격도 안맞고.. 토탈 금액 정정해서 넣으면 결제는 그걸로 할 수 있게라도 해줄 수 없는 거지?」
+  - 실측: ①학습 기능 이미 있음 — 대조 저장 시 `supplier_products.invoice_name` 에 기록(`cost-reconciliation.js:247`), 매칭 1단계가 사전 우선(`invoiceMatcher.ts:262`) ②결함: 저장값이 OCR 줄 통째(파서 실측 `"2 XXXXX BAWANG HOLLAND k#7% (KG) ."`) + 매칭은 «사전 낱말 전부 포함» → 두 자리 줄번호·잡음 토큰이 남아 다음 인보이스에서 안 걸림 ③사전은 seller_type='supplier' 만(브랜드 판매자 미기록) ④총액만 정정 저장 불가 — `computeReconciledTotal` 과 적은 총액 차 > RM 1 이면 TOTAL_MISMATCH 400(09-11 Irene 승인 ③), 결제는 대조된 청구서 금액 ⑤운영 발주 41·사진은 DB 읽기 거부로 확인 불가.
+  - 판정 필요: 사전 저장 정규화·다중 이름·브랜드 판매자 / 「총액만으로 결제」 시 원가 처리(무접촉·조정줄·비례배분) / 사진 판독 품질.
+
 ### 완료된 작업 (이번 세션 · 2026-09-21) [Claude Code]
 - 월 청구(SOA) 원인 조사 — 위 「진행 중인 작업」 실측 ①~⑦. 코드·운영 데이터 무접촉.
 - Fable 판정 요청 1회 → 한도(429)로 실패. 재요청하지 않음.
