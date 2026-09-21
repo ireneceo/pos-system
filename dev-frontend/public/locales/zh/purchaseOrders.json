@@ -296,7 +296,8 @@
     "tax": "税额",
     "total": "总计",
     "notes": "备注",
-    "thank_you": "谢谢"
+    "thank_you": "谢谢",
+    "orderDate": "下单日期"
   },
   "newPo": {
     "title": "采购订单",

@@ -1,0 +1,44 @@
+{
+ "tag": "order-date-everywhere",
+ "sw_version": "5.47-order-date-everywhere-20260921",
+ "date": "2026-09-21",
+ "in_progress": [
+  "월 청구(SOA) 설계 · 인보이스 대조 — Fable 판정 대기(한도 429)"
+ ],
+ "completed": [
+  "**받은 주문(BG·푸드코트·공급업체 Incoming Orders) = 발주일 순** — Irene 「여기도 발주일에 따라 정렬되어야지. Submit 한 날 기준」「공급업체도 주문 그렇게 정렬되어야 해」「인보이스도 뭐도 다 서브밋 기준이야. 서브밋이 발주일이야」. 세 역할이 같은 화면·같은 서버 경로(/api/seller-orders)를 쓴다. 정렬·기간 필터·시각 표시를 발주일로.",
+  "**발주일 단일 소스 utils/poOrderedAt** — COALESCE(submitted_at, approved_at, created_at). 구매자 발주 기록(v5.46)과 판매자 받은 주문이 같은 함수를 쓴다.",
+  "**공급업체 대시보드 «최근 주문»** — 발주일 순 + 구매자가 아직 안 보낸 발주(draft·승인 대기)는 빼기(받은 주문 목록과 같은 규칙). dev 공급업체 20번은 그런 발주가 17건이었다.",
+  "**발주서 인쇄본 «Issued: 생성일» → «Order date: 발주일»**, 공급업체 발주 메일 날짜도 발주일(+매장 타임존)."
+ ],
+ "issues": [
+  "⚠ 오너 승인 대기 목록의 날짜는 그대로 created_at — 승인 흐름에서는 submitted_at 이 승인 순간에 찍혀서, «승인 요청한 시각» 칸이 따로 없다. 판매자에게는 승인 순간이 받은 시각이라 판매자 쪽은 맞다.",
+  "⚠ Fable 한도(429) — 표시·정렬 기준 변경이라 돈·권한 경계 무접촉. 대시보드 draft 제외는 기존 SELLER_HIDDEN 규칙의 누락 보완."
+ ],
+ "upcoming": [
+  "SOA 월 청구 설계 · 인보이스 대조 이름 사전/총액 결제 — Fable 판정 후",
+  "인보이스 교체(다시 올리기) 버튼 — Irene 답 대기",
+  "버전 번호 올릴지 — Irene 답 대기"
+ ],
+ "behavior_changes": [
+  "BG·푸드코트·공급업체의 받은 주문 목록이 구매자가 보낸 순서로 정렬되고, 시간 표시도 보낸 시각 기준입니다.",
+  "받은 주문 기간 필터가 보낸 날짜 기준입니다.",
+  "공급업체 대시보드 최근 주문에 구매자가 아직 안 보낸 발주가 나오지 않습니다.",
+  "발주서 인쇄본에 «Order date»(보낸 날짜) 한 줄이 나옵니다."
+ ],
+ "check_areas": [
+  "GIT Incoming Orders 정렬·시각",
+  "공급업체 계정 Orders·대시보드",
+  "발주서 인쇄본 날짜",
+  "실프린터 종이 확인(인쇄 보호파일 무접촉)"
+ ],
+ "verification": {
+  "gates": "verify-all --full (배포 게이트가 재실행)",
+  "fault_injection": "발주 정렬 반증은 v5.46 에서(가장 먼저 담긴 발주 submitted_at 을 오늘로 → 위치 37→0, 원복). 이번은 같은 함수 재사용.",
+  "real_calls": "GET /api/seller-orders 브랜드 판매자 100건·공급업체 37건 — 발주일 내림차순·ordered_at 전부 존재·draft/승인대기 0 · GET /api/supplier/dashboard 최근 5건 발주일 순, 상태에 draft 없음",
+  "health_check": "verify-all 에 포함",
+  "build": "npm run build:dev",
+  "sw_version": "5.47-order-date-everywhere-20260921",
+  "fable_note": "Fable 호출 불가(429). 정렬·표시 기준만 바뀜(금액·권한·재고 무접촉), 기존 규칙(invoicePurchaseOrderAttach.ordered_at · SELLER_HIDDEN) 재사용."
+ }
+}

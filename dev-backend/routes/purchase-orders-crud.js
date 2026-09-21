@@ -253,8 +253,9 @@ router.get('/purchase-orders', async (req, res) => {
     }
     // 발주일 = 보낸 시각(Mark as Sent · Submit · 직접구매 — 전부 applySubmitGate 가 submitted_at 을 찍는다).
     //   장바구니에 담긴 시각(created_at)이 아니다 (2026-09-21 Irene 「Submit 한 순서대로 나와야해. 발주일은 POs에서 Mark나 서브밋을 한 시점」).
-    //   옛 행은 submitted_at 이 비어 있을 수 있어 기존 규칙과 같은 순서로 떨어진다(invoicePurchaseOrderAttach.ordered_at).
-    const orderedAtExpr = database.sequelize.literal('COALESCE(`PurchaseOrder`.`submitted_at`, `PurchaseOrder`.`approved_at`, `PurchaseOrder`.`created_at`)');
+    //   규칙은 utils/poOrderedAt 한 곳 — 판매자 받은 주문 목록과 같은 기준.
+    const { orderedAtLiteral, orderedAtOf } = require('../utils/poOrderedAt');
+    const orderedAtExpr = orderedAtLiteral(database.sequelize);
     // 날짜 범위 필터 — 목록에 보이는 날짜(발주일)와 같은 기준
     if (req.query.from || req.query.to) {
       const dateWhere = {};
@@ -337,7 +338,7 @@ router.get('/purchase-orders', async (req, res) => {
 
     const enriched = rows.map(p => {
       const plain = p.toJSON();
-      plain.ordered_at = plain.submitted_at || plain.approved_at || plain.created_at || null;
+      plain.ordered_at = orderedAtOf(plain);
       const agg = aggMap[p.id] || {};
       const diff = diffMap[p.id] || null;
       plain.reconcile_diff_lines = diff ? Number(diff.diff_lines || 0) : 0;

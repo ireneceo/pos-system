@@ -342,7 +342,7 @@ td { padding: 10px 12px; border-bottom: 1px solid #F3F4F6; font-size: 13px; }
 <body>
 <h1>Purchase Order</h1>
 <div class="meta">
-  <strong>${po.po_number || `#${po.id}`}</strong> · ${new Date(po.created_at).toLocaleDateString('en-MY')}
+  <strong>${po.po_number || `#${po.id}`}</strong> · ${new Date(require('../utils/poOrderedAt').orderedAtOf(po) || Date.now()).toLocaleDateString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' })}
   ${po.expected_delivery_date ? ` · Expected: ${po.expected_delivery_date}` : ''}
 </div>
 <div class="parties">

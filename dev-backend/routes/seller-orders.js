@@ -158,11 +158,15 @@ router.get('/', async (req, res) => {
     } else {
       filterWhere.status = { [Op.notIn]: SELLER_HIDDEN };
     }
+    // 발주일(보낸 시각) 기준 — 정렬·기간 필터·화면 시각 모두 (utils/poOrderedAt, 2026-09-21 Irene 「Submit 한 날 기준」)
+    const { orderedAtLiteral, orderedAtOf } = require('../utils/poOrderedAt');
+    const orderedAtExpr = orderedAtLiteral(sequelize);
     // Sprint 6: date range filter (from/to ISO date strings)
     if (req.query.from || req.query.to) {
-      filterWhere.created_at = {};
-      if (req.query.from) filterWhere.created_at[Op.gte] = new Date(req.query.from);
-      if (req.query.to) filterWhere.created_at[Op.lte] = new Date(req.query.to);
+      const range = {};
+      if (req.query.from) range[Op.gte] = new Date(req.query.from);
+      if (req.query.to) range[Op.lte] = new Date(req.query.to);
+      filterWhere[Op.and] = [...(filterWhere[Op.and] || []), sequelize.where(orderedAtExpr, range)];
     }
 
     const { rows, count } = await PurchaseOrder.findAndCountAll({
@@ -171,7 +175,7 @@ router.get('/', async (req, res) => {
         { model: PurchaseOrderItem, as: 'items', include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'name', 'unit'] }] },
         { model: User, as: 'createdBy', attributes: ['id', 'username', 'full_name', 'email'] }
       ],
-      order: [['created_at', 'DESC']],
+      order: [[orderedAtExpr, 'DESC'], ['id', 'DESC']],
       limit,
       offset,
       distinct: true
@@ -181,6 +185,7 @@ router.get('/', async (req, res) => {
     const { isServiceOnlyOrder } = require('../utils/orderFulfillment');
     const data = await Promise.all(rows.map(async (po) => {
       const obj = po.toJSON();
+      obj.ordered_at = orderedAtOf(obj);
       obj.buyer = await resolveBuyerInfo(po);
       // 배송이 없는 주문인가 — 화면이 «배송 처리» 대신 «완료 처리» 를 띄우는 근거 (2026-09-13)
       obj.is_service_only = await isServiceOnlyOrder(sequelize, po.id);

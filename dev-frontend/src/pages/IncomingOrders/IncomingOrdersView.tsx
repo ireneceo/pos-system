@@ -194,6 +194,8 @@ interface IncomingOrderRow {
   total_amount?: number | string | null;
   currency?: string;
   created_at?: string | null;
+  /** 발주일 — 구매자가 보낸 시각(서버 utils/poOrderedAt) */
+  ordered_at?: string | null;
   expected_delivery_date?: string | null;
   delivery_address?: string | null;
   tracking_info?: any;
@@ -1117,7 +1119,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                         </DataTableStatus>
                       </DataTableCell>
                       <DataTableCell data-label={tNs('orders.table.time', 'Time') as string}>
-                        <TimeAgoText>{timeAgo(row.created_at)}</TimeAgoText>
+                        <TimeAgoText>{timeAgo(row.ordered_at || row.created_at)}</TimeAgoText>
                       </DataTableCell>
                       <DataTableCell data-label={tNs('orders.table.amount', 'Amount') as string} align="right">
                         <strong>{formatMoney(row.total_amount, row.currency)}</strong>

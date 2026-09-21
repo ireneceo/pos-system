@@ -296,7 +296,8 @@
     "tax": "Cukai",
     "total": "Jumlah",
     "notes": "Nota",
-    "thank_you": "Terima kasih"
+    "thank_you": "Terima kasih",
+    "orderDate": "Tarikh pesanan"
   },
   "newPo": {
     "title": "Pesanan Belian",

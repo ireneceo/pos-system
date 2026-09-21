@@ -296,7 +296,8 @@
     "tax": "세금",
     "total": "총액",
     "notes": "비고",
-    "thank_you": "감사합니다"
+    "thank_you": "감사합니다",
+    "orderDate": "발주일"
   },
   "newPo": {
     "title": "발주",

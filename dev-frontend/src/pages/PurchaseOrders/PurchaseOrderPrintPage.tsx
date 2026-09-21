@@ -280,8 +280,8 @@ const PurchaseOrderPrintPage: React.FC<PrintPageProps> = ({ forceSellerView = fa
         </div>
         <KvBox>
           <strong>{data.status.toUpperCase()}</strong>
-          <div>{t('print.issued', 'Issued')}: {data.created_at?.slice(0, 10)}</div>
-          {data.submitted_at && <div>{t('print.submitted', 'Submitted')}: {data.submitted_at.slice(0, 10)}</div>}
+          {/* 발주일 = 보낸 시각(submitted_at). 장바구니에 담은 시각(created_at)은 발주일이 아니다 — 안 보낸 초안만 그걸로 (2026-09-21 Irene) */}
+          <div>{t('print.orderDate', 'Order date')}: {(data.submitted_at || data.created_at)?.slice(0, 10)}</div>
         </KvBox>
       </HeaderRow>
 

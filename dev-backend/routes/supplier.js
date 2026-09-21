@@ -220,10 +220,13 @@ router.get('/dashboard', async (req, res) => {
     const restaurantIds = new Set();
     const brandIds = new Set();
     const foodcourtIds = new Set();
+    // 최근 주문 = 받은 주문 목록과 같은 규칙 — 구매자가 아직 안 보낸 것(draft·승인 대기)은 판매자에게 안 보이고,
+    //   순서는 발주일(보낸 시각) 기준 (utils/poOrderedAt, 2026-09-21 Irene 「공급업체도 주문 그렇게 정렬되어야 해」).
+    const { orderedAtLiteral, orderedAtOf } = require('../utils/poOrderedAt');
     const recentPOsRaw = await PurchaseOrder.findAll({
-      where: { seller_type: 'supplier', seller_entity_id: company.id },
-      attributes: ['id', 'po_number', 'status', 'total_amount', 'currency', 'entity_type', 'entity_id', 'submitted_at', 'created_at'],
-      order: [['created_at', 'DESC']],
+      where: { seller_type: 'supplier', seller_entity_id: company.id, status: { [Op.notIn]: ['draft', 'pending_approval'] } },
+      attributes: ['id', 'po_number', 'status', 'total_amount', 'currency', 'entity_type', 'entity_id', 'submitted_at', 'approved_at', 'created_at'],
+      order: [[orderedAtLiteral(PurchaseOrder.sequelize), 'DESC'], ['id', 'DESC']],
       limit: 5
     });
     const recentInvoicesRaw = tradeInvoices.slice(0, 5);
@@ -260,7 +263,8 @@ router.get('/dashboard', async (req, res) => {
       total_amount: parseFloat(po.total_amount) || 0,
       currency: po.currency,
       customer: resolveCustomer(po.entity_type, po.entity_id),
-      created_at: po.created_at
+      created_at: po.created_at,
+      ordered_at: orderedAtOf(po)
     }));
 
     const recent_invoices = recentInvoicesRaw.map(inv => ({

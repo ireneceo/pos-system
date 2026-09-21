@@ -296,7 +296,8 @@
     "tax": "Tax",
     "total": "Total",
     "notes": "Notes",
-    "thank_you": "Thank you"
+    "thank_you": "Thank you",
+    "orderDate": "Order date"
   },
   "newPo": {
     "title": "Purchase Order",
