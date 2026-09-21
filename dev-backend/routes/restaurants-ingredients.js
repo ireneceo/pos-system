@@ -541,9 +541,11 @@ router.post('/:restaurantId/ingredients/from-catalog', authenticateToken, checkR
       brandAccessCheck: async (bp) => {
         const rest = await Restaurant.findByPk(rid, { attributes: ['id', 'brand_id'], transaction: t });
         if (!rest || !rest.brand_id) return false;
-        if (bp.distribution_mode === 'all') {
-          const ownerBrand = await require('../models').Brand.findByPk(rest.brand_id, { attributes: ['owner_id'], transaction: t });
-          return !!(ownerBrand && bp.owner_user_id === ownerBrand.owner_id);
+        if (bp.distribution_mode === 'all' || bp.distribution_mode === 'external_buyers') {
+          // 카탈로그 노출과 **같은 판정** — 브랜드의 소유자 ∪ 배정된 BG/BM (utils/managerBrandScope, 2026-09-21).
+          //   external_buyers 도 가맹점에는 그대로 보인다(supplier-directory 카탈로그 (4)) — 보이는데 연결이 403 이면 안 된다.
+          const { brandOwnerUserIds } = require('../utils/managerBrandScope');
+          return (await brandOwnerUserIds(rest.brand_id)).includes(Number(bp.owner_user_id));
         }
         if (bp.distribution_mode === 'specific_brands') {
           return !!(await BrandProductBrand.findOne({ where: { product_id: bp.id, brand_id: rest.brand_id }, transaction: t }));

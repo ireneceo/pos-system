@@ -48,4 +48,32 @@ async function brandRestaurantIdsForUser(user) {
   return rs.map((r) => r.id);
 }
 
-module.exports = { brandIdsForUser, brandRestaurantIdsForUser };
+/**
+ * 위 판정의 **역방향** — 이 브랜드를 «내 브랜드» 로 가진 사람들의 user id (소유자 ∪ 배정된 BG/BM).
+ *
+ * 브랜드 상품의 «All franchises»(distribution_mode='all') 는 «내 모든 브랜드의 가맹점» 이다.
+ * 그런데 가맹점 쪽 판정이 `상품 주인 === 브랜드 소유자` 하나만 봐서, **배정만 된 Brand General**
+ * 이 만든 상품은 자기 브랜드 가맹점에도 안 나왔다(2026-09-21 dev 재현: 상품 2개가 브랜드 1 매장 3곳에서 0/2).
+ * 상품 주인 u 에 대해 `brand ∈ brandIdsForUser(u)` ⇔ `u ∈ brandOwnerUserIds(brand)` — 같은 규칙의 양면이다.
+ * ⛔ 형제 브랜드는 여기서도 넣지 않는다.
+ * @param {number} brandId
+ * @returns {Promise<number[]>}
+ */
+async function brandOwnerUserIds(brandId) {
+  const id = parseInt(brandId, 10);
+  if (!Number.isFinite(id)) return [];
+  const Brand = require('../models/Brand');
+  const User = require('../models/User');
+  const ids = new Set();
+  const brand = await Brand.findByPk(id, { attributes: ['id', 'owner_id'] });
+  if (!brand) return [];
+  if (brand.owner_id != null) ids.add(Number(brand.owner_id));
+  const assigned = await User.findAll({
+    where: { brand_id: id, role: { [Op.in]: ['Brand General', 'Brand Manager'] } },
+    attributes: ['id']
+  });
+  assigned.forEach((u) => ids.add(Number(u.id)));
+  return [...ids];
+}
+
+module.exports = { brandIdsForUser, brandRestaurantIdsForUser, brandOwnerUserIds };

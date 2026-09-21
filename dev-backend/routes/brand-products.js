@@ -177,9 +177,16 @@ async function syncProductToIngredients(productId) {
     if (product.distribution_mode === 'all') {
       // owner_user_id null 이면 빈 배열 — where owner_id:null 은 owner 없는 brand 전체에 매칭돼
       // 타 테넌트로 미러가 새는 구멍이 된다 (Fable gate 2026-07-05, 방어 가드)
-      targetBrands = product.owner_user_id
-        ? await Brand.findAll({ where: { owner_id: product.owner_user_id }, attributes: ['id'] })
-        : [];
+      //   «내 브랜드» = 소유 ∪ 배정 (utils/managerBrandScope — 카탈로그 노출과 같은 규칙, 2026-09-21).
+      //   소유만 보던 때는 배정된 BG 가 만든 상품이 어느 브랜드로도 반영되지 않았다.
+      if (product.owner_user_id) {
+        const { brandIdsForUser } = require('../utils/managerBrandScope');
+        const ownerUser = await require('../models/User').findByPk(product.owner_user_id, { attributes: ['id', 'role', 'brand_id'] });
+        const bids = ownerUser ? await brandIdsForUser(ownerUser) : [];
+        targetBrands = bids.length ? await Brand.findAll({ where: { id: bids }, attributes: ['id'] }) : [];
+      } else {
+        targetBrands = [];
+      }
     } else if (product.distribution_mode === 'specific_restaurants') {
       const BrandProductRestaurant = require('../models/BrandProductRestaurant');
       const { Restaurant } = require('../models');

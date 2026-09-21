@@ -785,10 +785,14 @@ router.get('/supplier-catalog', async (req, res) => {
           // 3 OR 조건 union — Sequelize OR with includes is complex; 3개 쿼리 후 dedupe.
           const BrandProductRestaurant = require('../models/BrandProductRestaurant');
           const baseWhere = { is_active: true, ...brandLikeWhere };
+          // «내 브랜드» 로 가진 사람들(소유자 ∪ 배정된 BG/BM) — 상품 주인이 이 중 하나면 이 가맹점의 상품이다.
+          //   소유자 한 명만 보던 때는 배정된 BG 가 만든 «All franchises» 상품이 가맹점에 안 나왔다 (2026-09-21).
+          const { brandOwnerUserIds } = require('../utils/managerBrandScope');
+          const brandOwnerIds = await brandOwnerUserIds(brand.id);
           // (1) all: owner 의 모든 product
-          const allModeRows = brand.owner_id ? await BrandProduct.findAll({
+          const allModeRows = brandOwnerIds.length ? await BrandProduct.findAll({
             include: [{ model: BrandProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'], required: false }],
-            where: { ...baseWhere, distribution_mode: 'all', owner_user_id: brand.owner_id },
+            where: { ...baseWhere, distribution_mode: 'all', owner_user_id: { [Op.in]: brandOwnerIds } },
             order: [['sort_order', 'ASC'], ['name', 'ASC']],
             limit: 200
           }) : [];
@@ -810,9 +814,9 @@ router.get('/supplier-catalog', async (req, res) => {
           //   그 설정을 닫으면 거기서도 사라졌을 상태였다.
           //   ⛔ 이 줄을 지우지 말 것 — 아래 «가맹점 밖» 블록은 자기 가맹본부를 일부러 빼므로
           //      여기서 안 담으면 가맹점은 영영 못 본다.
-          const externalModeRows = brand.owner_id ? await BrandProduct.findAll({
+          const externalModeRows = brandOwnerIds.length ? await BrandProduct.findAll({
             include: [{ model: BrandProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'], required: false }],
-            where: { ...baseWhere, distribution_mode: 'external_buyers', owner_user_id: brand.owner_id },
+            where: { ...baseWhere, distribution_mode: 'external_buyers', owner_user_id: { [Op.in]: brandOwnerIds } },
             order: [['sort_order', 'ASC'], ['name', 'ASC']],
             limit: 200
           }) : [];
