@@ -25,7 +25,8 @@
       "status": "상태",
       "expected": "예상 배송일",
       "createdAt": "생성일",
-      "actions": "작업"
+      "actions": "작업",
+      "orderedAt": "발주일"
     },
     "view": "보기",
     "empty": {

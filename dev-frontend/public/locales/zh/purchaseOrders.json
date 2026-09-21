@@ -25,7 +25,8 @@
       "status": "状态",
       "expected": "预计送达",
       "createdAt": "创建时间",
-      "actions": "操作"
+      "actions": "操作",
+      "orderedAt": "下单日期"
     },
     "view": "查看",
     "empty": {

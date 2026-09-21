@@ -9,7 +9,7 @@
  * 같은 조인을 화면마다 복사하면 구매자 상세·인쇄본·공유메시지·공급업체 수신함이
  * 서로 다른 이름을 보여주게 된다 → 네 경로가 이 함수 하나를 쓴다.
  *
- * - SKU 는 supplier 판매품목에만 있다. 브랜드/푸드코트 판매자, 매핑 없는 라인은 null →
+ * - supplier · brand · foodcourt 판매자 모두 자기 상품명·SKU 를 받는다(2026-09-21). 매핑 없는 라인은 null →
  *   **호출부가 내부명으로 폴백**한다(옛 발주·외부 판매자도 빈칸이 되지 않게).
  * - SupplierProduct 는 paranoid(soft delete) 라 `paranoid: false` 로 조회한다 —
  *   판매품목이 지워져도 과거 발주서의 이름·SKU 는 그대로 나와야 한다.
@@ -47,8 +47,23 @@ async function attachSellerProductIdentity(pos) {
     : [];
   const spMap = Object.fromEntries(spRows.map(s => [s.id, s]));
 
+  // 브랜드·푸드코트 판매자도 **자기 상품명** 을 받는다 (2026-09-21 Irene 「우리 아이템 주문들어왔을 때는 프로덕트이름 그대로 나와야」).
+  //   예전엔 supplier 만 풀어서, BG Sales Orders 에 **매장 재고 이름에서 한글 괄호를 뗀 값** 이 대신 나갔다
+  //   («Rice-Jasmin cal fresh 5kg/pkt» 가 매장 이름 «Rice-Jasmin cal fresh 5kg» 로).
+  const idsOf = (type) => [...new Set(isps.filter(m => m.seller_type === type && m.seller_product_id).map(m => m.seller_product_id))];
+  const bpIds = idsOf('brand');
+  const fpIds = idsOf('foodcourt');
+  const { BrandProduct, FoodcourtProduct } = require('../models');
+  const bpRows = bpIds.length ? await BrandProduct.findAll({ where: { id: bpIds }, attributes: ['id', 'name', 'sku'] }) : [];
+  const fpRows = fpIds.length ? await FoodcourtProduct.findAll({ where: { id: fpIds }, attributes: ['id', 'name', 'sku'], paranoid: false }) : [];
+  const bpMap = Object.fromEntries(bpRows.map(r => [r.id, r]));
+  const fpMap = Object.fromEntries(fpRows.map(r => [r.id, r]));
+
   const ispMap = Object.fromEntries(isps.map(m => {
-    const sp = m.seller_type === 'supplier' ? spMap[m.seller_product_id] : null;
+    const sp = m.seller_type === 'supplier' ? spMap[m.seller_product_id]
+      : m.seller_type === 'brand' ? bpMap[m.seller_product_id]
+      : m.seller_type === 'foodcourt' ? fpMap[m.seller_product_id]
+      : null;
     return [m.id, sp ? { name: sp.name, sku: sp.sku } : null];
   }));
 

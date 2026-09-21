@@ -255,6 +255,8 @@ interface POListRow {
   currency?: string;
   expected_delivery_date?: string | null;
   created_at?: string | null;
+  /** 발주일 — 보낸 시각(Mark as Sent · Submit). 서버가 submitted_at → approved_at → created_at 순으로 채운다 */
+  ordered_at?: string | null;
   is_external?: boolean;
   external_invoice_url?: string | null;
   external_invoice_filename?: string | null;
@@ -892,7 +894,7 @@ const PurchaseOrdersPage: React.FC = () => {
                 <DataTableHeaderCell align="right">{t('list.table.total')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">{t('list.table.status')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="left">{t('list.table.expected')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">{t('list.table.createdAt')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('list.table.orderedAt', 'Order date')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="right" isActions>{t('list.table.actions')}</DataTableHeaderCell>
               </tr>
             </DataTableHead>
@@ -975,8 +977,8 @@ const PurchaseOrdersPage: React.FC = () => {
                     <DataTableCell data-label={t('list.table.expected') as string}>
                       {formatDate(row.expected_delivery_date) || '-'}
                     </DataTableCell>
-                    <DataTableCell data-label={t('list.table.createdAt') as string}>
-                      {formatDate(row.created_at) || '-'}
+                    <DataTableCell data-label={t('list.table.orderedAt', 'Order date') as string}>
+                      {formatDate(row.ordered_at || row.created_at) || '-'}
                     </DataTableCell>
                     <DataTableCell data-label="" align="right" mobileFullWidth>
                       <DataTableActions>

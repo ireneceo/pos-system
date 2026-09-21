@@ -2196,8 +2196,12 @@ const NewPurchaseOrderPage: React.FC = () => {
                       //   perUnitPriceOf 가 이미 규격(base_quantity)을 걷어내 판매 단위 1개당이라
                       //   업체 비교는 그대로 공정하다. 예전엔 여기서 unit_conversion 까지 나눠
                       //   재고 단위(g)당 값을 냈는데, 발주 화면에 kg 라벨을 붙이면 1000배 거짓말이 된다.
-                      const perUnit = pricedSellers.map(s => perUnitPriceOf(s));
-                      const minPer = perUnit.length ? Math.min(...perUnit) : 0;
+                      // 2026-09-21: 고르기는 단위당(perUnitPriceOf)으로 공정하게, **보여주는 값은 그 판매자의 주문 단위 가격**.
+                      //   perUnitPriceOf 는 규격(base_quantity)으로 나눈 값이라 «10 kg/pack · 43.00» 이 «4.30 /pack» 으로
+                      //   찍혔다(Irene: 장바구니는 43.00). 옆 라벨이 주문 단위(/pack)이므로 값도 주문 단위당이어야 한다.
+                      const cheapest = pricedSellers.reduce<SellerOpt | null>(
+                        (best, s) => (!best || perUnitPriceOf(s) < perUnitPriceOf(best) ? s : best), null);
+                      const minPer = cheapest ? (parseFloat(String(cheapest.unit_price)) || 0) : 0;
                       // 가격 0 은 "0원에 판다"가 아니라 **아직 안 넣은 것**이다. 숫자 0.00 으로 보이면
                       // 구분이 안 돼 그대로 발주하게 된다 — Irene 2026-08-28:
                       // "원가 0이고 판매가 0이면 알게 해줄 수 없어? 알기 쉽게 ui에서"

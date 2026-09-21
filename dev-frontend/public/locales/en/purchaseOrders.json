@@ -25,7 +25,8 @@
       "status": "Status",
       "expected": "Expected Delivery",
       "createdAt": "Created",
-      "actions": "Actions"
+      "actions": "Actions",
+      "orderedAt": "Order date"
     },
     "view": "View",
     "empty": {

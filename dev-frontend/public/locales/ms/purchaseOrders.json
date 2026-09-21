@@ -25,7 +25,8 @@
       "status": "Status",
       "expected": "Penghantaran Dijangka",
       "createdAt": "Dicipta",
-      "actions": "Tindakan"
+      "actions": "Tindakan",
+      "orderedAt": "Tarikh pesanan"
     },
     "view": "Lihat",
     "empty": {
