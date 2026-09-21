@@ -571,6 +571,17 @@ date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', timeZone:
 
 ---
 
+## 🔎 SEO 작업 규칙 (2026-09-21 Irene 지시 · PurpleHere 전용)
+
+**상세 단일 진실: `docs/SEO_OPERATIONS.md`** — SEO 작업 전 반드시 읽는다. 명령: `/SEO점검`.
+- 순서 고정: **운영 사이트 검사 → 분석 → 개발 수정 → 개발 검증 → `/배포` → 운영 재검사**. 운영 소스 직접 수정 금지, 새 배포 체계 금지.
+- 검사 기준은 운영 `purplehere.com`. 결과는 Critical/High/Medium/Low + 검색 노출 영향 + 원인 파일:줄. 도구 점수는 목표가 아니다.
+- 개발 사이트의 noindex·차단은 정상 설정 — 제거하지 않는다.
+- 서버·nginx·DB·DNS·SSL·CDN·인증·API·결제·배포체계·URL 구조·빌드 방식 변경은 **먼저 이유·영향범위 보고 후 승인**.
+- SEO 와 무관한 리팩터링 동시 금지 · 🔒 인쇄/KDS 보호 파일 무접촉 · 배포 후 운영 재검사 의무.
+
+---
+
 ## 보안 가이드라인
 
 ### 적용된 보안 체계
