@@ -55,4 +55,4 @@
 | 날짜 | 작업 | 결과 |
 |---|---|---|
 | 2026-09-21 | 규칙 제정 · Claude SEO v2.2.4 → v2.3.1 (공식 install.sh) | doctor: Runtime ready · Chromium ready |
-| 2026-09-21 | 첫 운영 검사(랜딩 12개 페이지 · robots · sitemap · 주소 처리) | Critical 2 · High 5 · Medium 4 · Low 2 — 수정 전, Irene 보고 |
+| 2026-09-21 | 첫 운영 검사(랜딩 12개 페이지 · robots · sitemap · 주소 처리) | Critical 1 · High 6 · Medium 4 · Low 3 — 수정 전, Irene 보고 |
