@@ -2506,3 +2506,10 @@ old/new 를 안다. 호출부마다 로그를 쓰지 않는다.
 
 **게이트**: 돈·원가 무결성이라 P1 구현 후 Fable 게이트 판정 1회
 (설계 판정 2회는 2026-09-08 에 소진). `/기능설계` 6단계는 미달(신규 모델 1·라우트 1).
+
+## 발주일 = Submit 시각 — 단일 소스 `utils/poOrderedAt` (2026-09-21 · SW 5.46·5.47)
+
+Irene 「Submit 한 순서대로 나와야해. 생성일이 발주일이여야지. 발주일은 POs에서 Mark나 서브밋을 한 시점」「인보이스도 뭐도 다 서브밋 기준이야」.
+- 발주일 = `COALESCE(submitted_at, approved_at, created_at)` (보내는 경로는 전부 `applySubmitGate`·승인 라우트가 `submitted_at` 을 찍는다). `created_at` 은 장바구니에 담긴 시각이다.
+- 쓰는 곳: 구매자 발주 기록(`GET /purchase-orders` 정렬·기간 필터·`ordered_at`·「Order date」 열) · 판매자 받은 주문(`GET /seller-orders`, BG·FC·공급업체 공용) · 공급업체 대시보드 최근 주문(+ draft·승인 대기 제외 = SELLER_HIDDEN) · 발주서 인쇄본 「Order date」 · 공급업체 발주 메일 날짜. 거래 인보이스 `billing_period_start` 는 원래 같은 식.
+- 남음: 오너 승인 대기 목록 날짜는 `created_at` — 승인 흐름은 승인 순간에 `submitted_at` 이 찍혀 «승인 요청 시각» 칸이 없다.

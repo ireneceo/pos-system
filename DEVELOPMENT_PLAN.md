@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-21 — [Claude Code] **월 청구(SOA) 점검 — 원인 조사 완료 · Fable 판정 대기(한도 429) · 코드 무변경.** 운영 v3.99 그대로.
+> **최종 업데이트:** 2026-09-21 #2 — [Claude Code] **운영 배포 4회 (SW 5.46 → 5.49 · 전부 스모크 10/10).** ① «All franchises» 브랜드 상품 노출 = 소유 ∪ 배정 ② BG 가 받은 주문에 BG 프로덕트명 ③ 발주 목록 가격 = 주문 단위 ④ 발주일 = Submit 시각(구매자·판매자·공급업체·인쇄·메일) ⑤ **PurpleHere 랜딩 SEO 체계**(Claude SEO v2.3.1 · 규칙 문서 · /SEO점검) + JSON-LD 출력 · 메뉴 링크 · sitemap 116개 ⑥ health-check 데모 원가 원복 결함. Fable 한도(429)로 판정 없이 진행 — 대기: SOA · 인보이스 대조 · SEO C1·M3.
 
 > **최종 업데이트:** 2026-09-20 #3 — **v3.99 운영 배포 (SW `5.45-margin-editor-20260920`, 18:04 UTC · 게이트 22/22 · 스모크 10/10 · 오늘 3번째).**
 > **마진 계산의 단위 환산** — Irene 신고 두 건(김치 −540%, Sawah Mas +124537.7%)이 같은 실수였다. `unit_cost` 는 1단위 값이 아니라 **기준양만큼의 값**(10,000g 에 RM 48). 계산기를 `utils/productMargin.ts` 한 곳으로 모으고 목록·편집창이 같이 쓰게 했다 → 김치 원가 RM 4.80·마진 36%, Sawah Mas 원가 RM 34.50·마진 20%. 바꿀 수 없는 단위는 「단위 환산 불가」.
@@ -10332,6 +10332,31 @@ verify-all --full **19/19** · i18n 오류 0 · health-check 247/247 · 🔒 인
 - `dev-backend/routes/brand-products.js` (원가 쪽 기준양·단위 내려주기)
 - `dev-frontend/public/locales/{en,ko,zh,ms}/brand.json`
 - `docs/TRADE_STRUCTURE.md` §2-5 (마진 계산 규칙)
+
+---
+
+## ✅ 완료: 브랜드 노출 · 발주일 · 랜딩 SEO (2026-09-21) [Claude Code]
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| «All franchises» 노출 | 배정된 BG 상품도 자기 브랜드 가맹점에 (managerBrandScope 3곳) · 가맹점 external_buyers 연결 403 해소 | ✅ SW 5.46 |
+| 판매자 상품명 | sellerProductIdentity 가 brand·foodcourt 상품명/SKU 도 해석 (Sales Orders·메일·인쇄·거래 인보이스) | ✅ SW 5.46 |
+| 발주 목록 가격 | «4.30/pack» → 주문 단위 가격 43.00/pack | ✅ SW 5.46 |
+| 발주일 = Submit | utils/poOrderedAt — 발주 기록·받은 주문·공급업체 대시보드(+draft 제외)·인쇄본·메일 | ✅ SW 5.46·5.47 |
+| 발주 상세 번역 | 「원가 대조」 등 영어 누락 4언어 | ✅ |
+| SEO 체계 | Claude SEO v2.2.4→v2.3.1(공식 install.sh) · docs/SEO_OPERATIONS.md · CLAUDE.md «🔎 SEO 작업 규칙» · /SEO점검 | ✅ |
+| 랜딩 SEO 수정 | JSON-LD 출력(0→2~4) · 메뉴 <a href>(링크 0~3→11) · 메타 설명 중복 · html lang · 홈 schema 중복 | ✅ SW 5.48·5.49 |
+| sitemap | scripts/generate-sitemap.js — 운영 공개 글 기준 116개(종전 11) | ✅ SW 5.49 |
+| health-check 원복 | 직접구매·개인금액 계약이 데모 재료 원가·재고를 되돌리지 않던 결함(ING-UNI-025 배포 차단 원인) | ✅ |
+| SOA · 인보이스 대조 · SEO C1/M3 | 원인 조사 완료 · Fable 판정 대기(429) | ⏸ |
+
+### 수정된 파일
+- `dev-backend/utils/managerBrandScope.js` · `routes/supplier-directory.js` · `routes/restaurants-ingredients.js` · `routes/brand-products.js`
+- `dev-backend/utils/sellerProductIdentity.js` · `utils/poOrderedAt.js`(신설) · `routes/purchase-orders-crud.js` · `routes/seller-orders.js` · `routes/supplier.js` · `routes/purchase-orders-workflow.js`
+- `dev-frontend/src/pages/PurchaseOrders/{NewPurchaseOrderPage,PurchaseOrdersPage,PurchaseOrderPrintPage}.tsx` · `pages/IncomingOrders/IncomingOrdersView.tsx`
+- `dev-frontend/src/components/Common/SEOHead.tsx` · `components/Landing/{LandingHeader,LandingFooter}.tsx` · `pages/Landing/HomePage.tsx` · `public/{index.html,sitemap.xml,sw.js}` · locales
+- `dev-backend/scripts/generate-sitemap.js`(신설) · `scripts/health-check.js`
+- 문서: `docs/SEO_OPERATIONS.md`(신설) · `CLAUDE.md` · `.claude/commands/SEO점검.md` · `docs/BUYER_FREE_TIER_DESIGN.md` §7-3 · `docs/PURCHASE_ORDER_SYSTEM.md` · `docs/nginx-dev.purplehere.com.noindex.conf`(적용 대기)
 
 ---
 

@@ -360,3 +360,8 @@ NODE_OPTIONS='--max-old-space-size=3584' npx tsc --noEmit -p tsconfig.verify.jso
 
 - `check-print-guard` 가 **MainLayout 변경을 잡는다**(보호파일 8개 중 하나). 실제 변경은 사이드바 잠금·링크뿐이고, `_printPollFn` 블록은 기준 커밋과 **바이트 단위로 동일**함을 대조 확인했다(17개 등장 지점 ±40줄 전부 일치). 배포하려면 Irene 확인 후 `--bless` 가 필요하다 — **임의로 하지 않는다.**
 - 민감영역 기계 판정상 **Fable 게이트 대상**(보호영역 · 돈 아님 · 마이그 · 보안경계).
+
+### 7-3. «All franchises» 의 «내 브랜드» = 소유 ∪ 배정 (2026-09-21 · SW 5.46)
+
+Irene 「GIT 프로덕트에 모든 프랜차이즈에 판다고 표시되어 있는데 with MIN cafe에 안나와」. `distribution_mode='all'` 판정이 `상품 주인 === 브랜드 소유자(brands.owner_id)` 하나뿐이라, **배정된** Brand General(`users.brand_id`)이 만든·저장한 상품은 자기 브랜드 매장에도 안 나왔다(2026-05-18 부터). 판정을 `utils/managerBrandScope`(소유 ∪ 배정, 형제 브랜드 제외)로 통일 — 역방향 `brandOwnerUserIds(brandId)`.
+적용 3곳: 카탈로그 노출(`supplier-directory.js` all·external_buyers) · 매장 연결 검사(`restaurants-ingredients.js brandAccessCheck`, 가맹점에 보이는 external_buyers 연결 403 도 해소) · 재료 반영(`brand-products.js` all 대상 브랜드). dev 실호출 0/2 → 2/2, 다른 브랜드 매장 0/2 유지. ⚠ 운영 원인 일치 여부는 운영 DB 읽기 불가로 미확인.

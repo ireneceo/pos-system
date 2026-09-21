@@ -1,6 +1,6 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-09-21 · **버전: 운영 v3.99 코드 + SW `5.49-sitemap-20260921` (2026-09-21 17:26 UTC 배포 #4 · 스모크 10/10 · 백업 `20260921_172118`)**
-**작업 상태:** 일시정지 — SOA 점검 Fable 판정 대기 (코드 무변경 · 미커밋 문서만)
+**마지막 업데이트:** 2026-09-21 18:00 UTC · **버전: 운영 v3.99 코드 + SW `5.49-sitemap-20260921`** (오늘 배포 4회 5.46→5.49 · 전부 스모크 10/10 · 마지막 백업 `20260921_172118`)
+**작업 상태:** 완료 — /개발완료 처리. Fable 판정 대기 3건(한도 429).
 
 ### 진행 중인 작업
 - ⏸ **월 청구(SOA) 점검 — Fable 판정 대기** (2026-09-21 · Fable 한도 429 · Irene 「fable 한도 풀리면 할게」). 코드 무변경.
@@ -13,17 +13,24 @@
   - 실측: ①학습 기능 이미 있음 — 대조 저장 시 `supplier_products.invoice_name` 에 기록(`cost-reconciliation.js:247`), 매칭 1단계가 사전 우선(`invoiceMatcher.ts:262`) ②결함: 저장값이 OCR 줄 통째(파서 실측 `"2 XXXXX BAWANG HOLLAND k#7% (KG) ."`) + 매칭은 «사전 낱말 전부 포함» → 두 자리 줄번호·잡음 토큰이 남아 다음 인보이스에서 안 걸림 ③사전은 seller_type='supplier' 만(브랜드 판매자 미기록) ④총액만 정정 저장 불가 — `computeReconciledTotal` 과 적은 총액 차 > RM 1 이면 TOTAL_MISMATCH 400(09-11 Irene 승인 ③), 결제는 대조된 청구서 금액 ⑤운영 발주 41·사진은 DB 읽기 거부로 확인 불가.
   - 판정 필요: 사전 저장 정규화·다중 이름·브랜드 판매자 / 「총액만으로 결제」 시 원가 처리(무접촉·조정줄·비례배분) / 사진 판독 품질.
 
-### 완료된 작업 (이번 세션 · 2026-09-21) [Claude Code]
 - ⏸ **SEO C1 사전 렌더링 — Fable 판정 대기** (근거 = Irene 제공 Search Console 2026-09-21): 색인 6 · 미색인 12 · 3개월 클릭 24. 미색인 이유: Discovered–not indexed 6 · Crawled–not indexed 1 · Duplicate without user-selected canonical 2 · Page with redirect 2 · Alternative page with proper canonical 1. Irene 「그런데 방문자가 없어」. 크롤러가 받는 HTML 이 전 주소 동일(홈=/pricing 바이트 동일, 본문 46자, canonical 없음). Duplicate 2건 주소는 Irene 확인 대기(www 면 H6 로 해결). H2 site_name 은 /pos/admin/site-settings → Site Name (DB 기본값 'OrderHere POS' 그대로).
-- ✅ **운영 배포 SW 5.49** — sitemap 생성기 `dev-backend/scripts/generate-sitemap.js`(운영 공개 글 116개, `--check`) · 홈 schema 중복 정리 · 🔴 health-check 가 데모 재료 원가·재고를 원복 안 하던 결함 수정(ING-UNI-025 배포 차단 원인). 대기: H5 dev noindex = `docs/nginx-dev.purplehere.com.noindex.conf` 를 Irene sudo 로 적용 · H2 site_name · C1·M3 Fable.
-- ✅ **SEO 체계 구축 (PurpleHere 랜딩 전용)** — Claude SEO v2.3.1(공식 install.sh) · `docs/SEO_OPERATIONS.md` · CLAUDE.md «🔎 SEO 작업 규칙» · `/SEO점검`. 첫 검사 Critical 1 · High 6 · Medium 4 · Low 3.
-- ✅ **운영 배포 SW 5.48** — H1 JSON-LD 출력 · H4 메뉴 <a href> · M2 설명 중복 · L1 html lang. 운영 재검사 통과. (배포 2회는 PlanQ 빌드와 겹쳐 메모리 게이트 차단 → 기다렸다 3번째 성공)
-- ⏸ **SEO 승인 대기**: C1 사전 렌더링 · H2 site_name «OrderHere POS»→PurpleHere(운영 설정값, System Admin 화면) · H3 sitemap 자동 생성 · H5 dev noindex(nginx) · H6 www→apex · M3 블로그 주소 숫자 · M4 한국어 블로그 없음.
-- ✅ **운영 배포 SW 5.47** — 발주일(Submit) 단일 소스 `utils/poOrderedAt`: 받은 주문(BG·FC·공급업체) 정렬·필터·시각, 공급업체 대시보드 최근 주문(발주일 순 + draft/승인대기 제외), 인쇄본 Order date, 발주 메일 날짜. 남음: 오너 승인 대기 목록 날짜(승인 요청 시각 칸 없음).
-- ✅ **운영 배포 SW 5.46** — ①«All franchises» 노출 = 소유 ∪ 배정(managerBrandScope, 3곳) ②판매자 문서에 BG·FC 프로덕트명/SKU(sellerProductIdentity) ③발주 목록 가격=주문단위 가격 ④발주 기록 정렬·날짜=발주일(COALESCE submitted/approved/created) ⑤발주 상세 번역. Fable 429 로 판정 없이 진행(기록 fable_note). 🔴 운영 확인 필요: with MIN·K-DINE 카탈로그에 PRD-162·PRD-050 보이는지 · 「No seller」 재료 원인은 미확인(운영 DB 읽기 거부).
-- 대기: 「인보이스 교체」 버튼 추가 여부 Irene 답 대기.
-- 월 청구(SOA) 원인 조사 — 위 「진행 중인 작업」 실측 ①~⑦. 코드·운영 데이터 무접촉.
-- Fable 판정 요청 1회 → 한도(429)로 실패. 재요청하지 않음.
+  - 같이 판정: **M3 블로그 주소 끝 숫자**(주소 변경=되돌리기 어려움). H6 www→apex 는 판정 불필요(방법 하나) — Cloudflare/운영 nginx 적용 안내만.
+
+### 👉 Irene 님이 하실 일
+1. **사이트 이름**: 운영 `/pos/admin/site-settings` → Basic Settings → **Site Name = PurpleHere** 저장 (지금 DB 기본값 «OrderHere POS» 가 모든 랜딩 제목 끝에 붙음)
+2. **개발 사이트 noindex**: `! sudo cp /etc/nginx/sites-enabled/dev.purplehere.com /etc/nginx/dev.purplehere.com.bak-20260921 && sudo cp /var/www/docs/nginx-dev.purplehere.com.noindex.conf /etc/nginx/sites-enabled/dev.purplehere.com && sudo nginx -t && sudo systemctl reload nginx`
+3. Search Console «Duplicate without user-selected canonical» 2건의 주소 알려주기 (www 면 H6 로 해결)
+4. 운영 확인: with MIN·K-DINE 발주 카탈로그에 PRD-162·PRD-050 보이는지 · GIT Sales Orders 품목명 = 프로덕트명 · 발주 기록·받은 주문 정렬
+5. 답 대기: 버전 v3.100 올릴지 · 「인보이스 교체(다시 올리기)」 버튼 추가할지
+
+### 완료된 작업 (이번 세션 · 2026-09-21) [Claude Code]
+- ✅ **SW 5.46** — «All franchises» 브랜드 상품 노출 = 소유 ∪ 배정(managerBrandScope 3곳, 가맹점 external_buyers 연결 403 해소) · 판매자 문서에 BG·FC 프로덕트명/SKU(sellerProductIdentity) · 발주 목록 가격=주문 단위 · 발주 기록=발주일 순 · 발주 상세 번역
+- ✅ **SW 5.47** — 발주일 단일 소스 `utils/poOrderedAt`: 받은 주문(BG·FC·공급업체)·공급업체 대시보드(+draft 제외)·인쇄본·발주 메일
+- ✅ **SEO 체계** — Claude SEO v2.2.4→v2.3.1(공식 install.sh) · `docs/SEO_OPERATIONS.md` · CLAUDE.md «🔎 SEO 작업 규칙» · `/SEO점검` · 범위=랜딩, 시장=말레이시아·해외(한국어 콘텐츠 없음)
+- ✅ **SW 5.48** — JSON-LD 실제 출력(0→2~4) · 메뉴 `<a href>`(링크 0~3→11) · 메타 설명 중복 제거 · html lang
+- ✅ **SW 5.49** — sitemap 생성기 `scripts/generate-sitemap.js`(운영 공개 글 116개, `--check`) · 홈 schema 중복 정리 · 🔴 health-check 가 데모 재료 원가·재고를 원복 안 하던 결함 수정(ING-UNI-025 배포 차단 원인)
+- 조사만(코드 무변경): SOA 원인 ①~⑦ · 인보이스 대조 이름 사전 결함 · Search Console 미색인 이유 분석
+- ⚠ 내 실수: 번역 파일을 Irene 「방금 한거 돌려」에 판단 없이 되돌렸다가 복구 · 배포 재시도 루프가 옛 빌드 로그를 읽어 6회 헛재시도
 
 ### 다음 확정 작업
 - **판매자가 고객 대신 주문 넣기 (Sales Orders 생성)** — Irene 「주문 추가해야 하는 건 내가 여기서 따로 요청할게 그럼. 다음에 개발하자」. 착수 전 결정 필요: 상태 시작점(구매자 확인 대기 vs 바로 보낸 주문) · 오너 승인이 켜진 매장 처리 · 구매자 거부 권한 · 「판매처에서 추가함」 안내 위치. 현재 `routes/seller-orders.js` 에 **생성 라우트 없음**(받은 주문 처리만).
