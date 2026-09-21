@@ -59,3 +59,4 @@
 | 2026-09-21 | 첫 운영 검사(랜딩 12개 페이지 · robots · sitemap · 주소 처리) | Critical 1 · High 6 · Medium 4 · Low 3 — 수정 전, Irene 보고 |
 | 2026-09-21 | 배포 SW 5.48 — H1 JSON-LD 출력 · H4 메뉴 `<a href>` · M2 설명 중복 · L1 html lang (백업 `20260921_163921`, 스모크 10/10) | 운영 재검사: JSON-LD 0→2~4(홈·요금·FAQ·기능·블로그·뉴스·블로그 글) · 설명 2→1 · 내부 링크 0~3→9~11. About·Contact 는 schema 를 원래 안 넘김(설계) |
 | 2026-09-21 | M4(한국어 블로그 없음) 종결 — 대상 시장이 말레이시아·해외라 한국어 콘텐츠 불필요 (Irene) | 문제 목록에서 제외 |
+| 2026-09-21 | 배포 SW 5.49 — H3 sitemap 생성기(116개) · 홈 SoftwareApplication 1개로 (백업 `20260921_172118`, 스모크 10/10) | 운영 재검사: sitemap 116개·XML 유효·robots 참조 · 홈 JSON-LD Organization·WebSite·SoftwareApplication · 설명 1 · 링크 11. 대기: H5 dev noindex(sudo 명령 Irene) · H2 site_name(Irene) · C1·M3 Fable · H6 적용 안내 |

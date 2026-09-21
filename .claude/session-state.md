@@ -1,5 +1,5 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-09-21 · **버전: 운영 v3.99 코드 + SW `5.48-landing-seo-20260921` (2026-09-21 16:45 UTC 배포 #3 · 스모크 10/10 · 백업 `20260921_163921`)**
+**마지막 업데이트:** 2026-09-21 · **버전: 운영 v3.99 코드 + SW `5.49-sitemap-20260921` (2026-09-21 17:26 UTC 배포 #4 · 스모크 10/10 · 백업 `20260921_172118`)**
 **작업 상태:** 일시정지 — SOA 점검 Fable 판정 대기 (코드 무변경 · 미커밋 문서만)
 
 ### 진행 중인 작업
@@ -14,6 +14,7 @@
   - 판정 필요: 사전 저장 정규화·다중 이름·브랜드 판매자 / 「총액만으로 결제」 시 원가 처리(무접촉·조정줄·비례배분) / 사진 판독 품질.
 
 ### 완료된 작업 (이번 세션 · 2026-09-21) [Claude Code]
+- ✅ **운영 배포 SW 5.49** — sitemap 생성기 `dev-backend/scripts/generate-sitemap.js`(운영 공개 글 116개, `--check`) · 홈 schema 중복 정리 · 🔴 health-check 가 데모 재료 원가·재고를 원복 안 하던 결함 수정(ING-UNI-025 배포 차단 원인). 대기: H5 dev noindex = `docs/nginx-dev.purplehere.com.noindex.conf` 를 Irene sudo 로 적용 · H2 site_name · C1·M3 Fable.
 - ✅ **SEO 체계 구축 (PurpleHere 랜딩 전용)** — Claude SEO v2.3.1(공식 install.sh) · `docs/SEO_OPERATIONS.md` · CLAUDE.md «🔎 SEO 작업 규칙» · `/SEO점검`. 첫 검사 Critical 1 · High 6 · Medium 4 · Low 3.
 - ✅ **운영 배포 SW 5.48** — H1 JSON-LD 출력 · H4 메뉴 <a href> · M2 설명 중복 · L1 html lang. 운영 재검사 통과. (배포 2회는 PlanQ 빌드와 겹쳐 메모리 게이트 차단 → 기다렸다 3번째 성공)
 - ⏸ **SEO 승인 대기**: C1 사전 렌더링 · H2 site_name «OrderHere POS»→PurpleHere(운영 설정값, System Admin 화면) · H3 sitemap 자동 생성 · H5 dev noindex(nginx) · H6 www→apex · M3 블로그 주소 숫자 · M4 한국어 블로그 없음.
