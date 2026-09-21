@@ -1,6 +1,7 @@
 # SEO 운영 규칙 — PurpleHere (purplehere.com)
 
 > 2026-09-21 Irene 지시로 제정. 범위는 **PurpleHere 한 솔루션의 랜딩(마케팅) 페이지와 블로그·뉴스**다 — 홈·About·Features·Pricing·Packages·FAQ·Blog·News·Contact·Demo·Company·Privacy·Terms. **POS 시스템 안(`/pos` `/admin` `/kitchen` 등 로그인 뒤 화면)은 대상이 아니다**(robots 로 차단 유지, Irene 「우리가 적용하는 SEO는 랜딩페이지이지 포스 시스템 안에 내용들이 아니야」). PlanQ(`/opt/planq`)는 이 저장소 밖이며 여기서 다루지 않는다.
+> **대상 시장: 말레이시아 기반 해외용** — 콘텐츠·키워드·hreflang 은 영어·말레이어·중국어 기준. **한국어 콘텐츠는 만들지 않는다**(Irene 2026-09-21 「한국어글 필요없어. 이거 말레이시아가 기반이고 해외용이야」). 한국어 목록이 영어 글을 보여주는 것은 문제로 올리지 않는다.
 > 도구: Claude SEO (사용자 공통 설치 `~/.claude/skills/seo`, 공식 https://claude-seo.md · 설치/업데이트는 공식 `install.sh`, 점검 `~/.claude/skills/seo/scripts/claude-seo doctor`).
 
 ## 1. 작업 순서 (고정)
@@ -57,3 +58,4 @@
 | 2026-09-21 | 규칙 제정 · Claude SEO v2.2.4 → v2.3.1 (공식 install.sh) | doctor: Runtime ready · Chromium ready |
 | 2026-09-21 | 첫 운영 검사(랜딩 12개 페이지 · robots · sitemap · 주소 처리) | Critical 1 · High 6 · Medium 4 · Low 3 — 수정 전, Irene 보고 |
 | 2026-09-21 | 배포 SW 5.48 — H1 JSON-LD 출력 · H4 메뉴 `<a href>` · M2 설명 중복 · L1 html lang (백업 `20260921_163921`, 스모크 10/10) | 운영 재검사: JSON-LD 0→2~4(홈·요금·FAQ·기능·블로그·뉴스·블로그 글) · 설명 2→1 · 내부 링크 0~3→9~11. About·Contact 는 schema 를 원래 안 넘김(설계) |
+| 2026-09-21 | M4(한국어 블로그 없음) 종결 — 대상 시장이 말레이시아·해외라 한국어 콘텐츠 불필요 (Irene) | 문제 목록에서 제외 |
