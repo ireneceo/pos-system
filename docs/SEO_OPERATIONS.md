@@ -43,7 +43,7 @@
 | 프레임워크 | React 19 · CRA(react-scripts 5) · react-router 7 · 클라이언트 렌더링만(SSR/prerender 없음) |
 | 메타 | `components/Common/SEOHead.tsx`(react-helmet-async) — 공개 페이지 14개. 크롤러가 받는 HTML 은 `public/index.html` 하나 |
 | robots | 정적 `dev-frontend/public/robots.txt` (개발·운영 동일 파일) |
-| sitemap | 정적 `dev-frontend/public/sitemap.xml` (11개 URL, 블로그 글 없음, 손 관리) |
+| sitemap | `dev-frontend/public/sitemap.xml` — **`node dev-backend/scripts/generate-sitemap.js` 로 생성**(운영 공개 API 기준: 고정 14 + 블로그 + 뉴스). 새 글 발행 뒤·SEO 작업 때 다시 만들어 배포. `--check` 로 최신 여부 확인 |
 | canonical | 각 페이지 코드에 `https://purplehere.com/...` 하드코딩, 블로그는 `BlogPostPage.tsx` |
 | schema | `SEOHead.tsx` 도우미(Organization·SoftwareApplication·WebSite·FAQPage·Article·BreadcrumbList·HowTo·ItemList) |
 | 블로그 | DB `contents` + `/api/contents/public/blog(/:slug)`, 번역은 슬러그별 + `translation_group_id` |

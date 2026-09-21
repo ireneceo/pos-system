@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import { BaseButton } from '../../components/UI';
-import SEOHead, { generateOrganizationSchema, generateSoftwareSchema, generateWebSiteSchema, generateLocalBusinessSchema } from '../../components/Common/SEOHead';
+import SEOHead, { generateOrganizationSchema, generateWebSiteSchema, generateLocalBusinessSchema } from '../../components/Common/SEOHead';
 import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
@@ -176,7 +176,8 @@ const HomePage: React.FC = () => {
 
   const jsonLdData = [
     generateOrganizationSchema(),
-    generateSoftwareSchema(),
+    // SoftwareApplication 은 한 번만 — generateSoftwareSchema 와 이 LocalBusiness 도우미가 같은 «PurpleHere POS» 를
+    //   서로 다른 가격 정보로 두 번 선언하고 있었다(2026-09-21 SEO 검사). 요금 페이지와 같은 쪽(판매자 정보 포함)만 남긴다.
     generateWebSiteSchema(),
     generateLocalBusinessSchema()
   ];

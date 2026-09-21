@@ -12,7 +12,7 @@
 
 ## 절차
 1. **크롤러가 실제로 받는 것** — 대표 URL(`/` `/pricing` `/features` `/faq` `/blog` + 블로그 글 2개)을 JS 없이(`curl -A Googlebot`) 받아 title·description·canonical·robots·JSON-LD·본문 텍스트 양을 비교. 이어 Claude SEO 의 렌더링 검사(seo-technical 의 JavaScript rendering)로 JS 실행 후 결과와 대조.
-2. **robots.txt · sitemap.xml** — 운영 응답 그대로. sitemap 의 URL 이 200·canonical 일치·색인 허용인지, 공개 페이지·블로그 글 누락 여부(`/api/contents/public/blog` 목록과 대조).
+2. **robots.txt · sitemap.xml** — 운영 응답 그대로. `node dev-backend/scripts/generate-sitemap.js --check` 로 sitemap 이 운영 공개 글과 같은지 확인(다르면 다시 생성 → 배포). sitemap 의 URL 이 200·canonical 일치·색인 허용인지, 공개 페이지·블로그 글 누락 여부(`/api/contents/public/blog` 목록과 대조).
 3. **Claude SEO 검사** — `/seo audit https://purplehere.com` (필요 시 seo-technical · seo-schema · seo-sitemap · seo-hreflang · seo-content 개별).
 4. **원인 추적** — 문제마다 개발 소스의 원인 파일:줄을 찾는다(`dev-frontend/src/pages/Landing/*`, `components/Common/SEOHead.tsx`, `public/*`, 블로그는 `dev-backend/routes/contents.js`).
 5. **보고** — Critical / High / Medium / Low 표: 문제 · 검색 노출 영향 · 원인 위치 · 수정 방향 · (서버/URL/빌드 등 승인 필요 영역이면 표시).
