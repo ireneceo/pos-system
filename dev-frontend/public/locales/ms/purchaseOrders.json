@@ -223,7 +223,11 @@
       "closeFailed": "Gagal menutup pemulangan"
     },
     "noEmailTitle": "Tiada E-mel",
-    "noEmail": "Tiada alamat e-mel didaftarkan untuk penjual ini."
+    "noEmail": "Tiada alamat e-mel didaftarkan untuk penjual ini.",
+    "invoice": {
+      "reconcile": "Banding kos",
+      "reconcileAgain": "Semak semula banding"
+    }
   },
   "receive": {
     "modalTitle": "Terima Pesanan",

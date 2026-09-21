@@ -223,7 +223,11 @@
       "closeFailed": "Could not close the return"
     },
     "noEmailTitle": "No Email",
-    "noEmail": "No email address is registered for this seller."
+    "noEmail": "No email address is registered for this seller.",
+    "invoice": {
+      "reconcile": "Compare cost",
+      "reconcileAgain": "Review comparison"
+    }
   },
   "receive": {
     "modalTitle": "Receive Order",

@@ -223,7 +223,11 @@
       "closeFailed": "无法关闭退货"
     },
     "noEmailTitle": "无电子邮件",
-    "noEmail": "该卖家未登记电子邮件地址。"
+    "noEmail": "该卖家未登记电子邮件地址。",
+    "invoice": {
+      "reconcile": "成本核对",
+      "reconcileAgain": "重新查看核对"
+    }
   },
   "receive": {
     "modalTitle": "收货登记",
