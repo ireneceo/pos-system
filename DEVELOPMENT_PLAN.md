@@ -1,5 +1,7 @@
 # Purple POS - 개발 진행 현황
 
+> **최종 업데이트:** 2026-09-21 — [Claude Code] **월 청구(SOA) 점검 — 원인 조사 완료 · Fable 판정 대기(한도 429) · 코드 무변경.** 운영 v3.99 그대로.
+
 > **최종 업데이트:** 2026-09-20 #3 — **v3.99 운영 배포 (SW `5.45-margin-editor-20260920`, 18:04 UTC · 게이트 22/22 · 스모크 10/10 · 오늘 3번째).**
 > **마진 계산의 단위 환산** — Irene 신고 두 건(김치 −540%, Sawah Mas +124537.7%)이 같은 실수였다. `unit_cost` 는 1단위 값이 아니라 **기준양만큼의 값**(10,000g 에 RM 48). 계산기를 `utils/productMargin.ts` 한 곳으로 모으고 목록·편집창이 같이 쓰게 했다 → 김치 원가 RM 4.80·마진 36%, Sawah Mas 원가 RM 34.50·마진 20%. 바꿀 수 없는 단위는 「단위 환산 불가」.
 > 함께: **K-DINE IPC ← GIT 소급 발주**(#59, RM 131.00, 수령완료·미결제) 운영 기록.
@@ -10330,6 +10332,23 @@ verify-all --full **19/19** · i18n 오류 0 · health-check 247/247 · 🔒 인
 - `dev-backend/routes/brand-products.js` (원가 쪽 기준양·단위 내려주기)
 - `dev-frontend/public/locales/{en,ko,zh,ms}/brand.json`
 - `docs/TRADE_STRUCTURE.md` §2-5 (마진 계산 규칙)
+
+---
+
+## ✅ 완료: 월 청구(SOA) 원인 조사 — 판정 대기 (2026-09-21) [Claude Code]
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 「January 2000」 메일 원인 | `generateSoaNow` 의 rangeStart=2000-01-01 이 메일 기간 라벨로 찍힘 | ✅ 확인 |
+| 발행일 Oct 1(미래) 원인 | referenceDate=dueRef(오늘>dueDay 면 다음달 1일)가 issued_at 으로 저장 | ✅ 확인 |
+| Period「-」 | SOA 가 billing_period_start/end 미기입 | ✅ 확인 |
+| Generate now 「반응 없음」 | 실제 동작(9/20 21:04 UTC 발행·발송) — 결과문구가 모달 하단·목록 재조회 없음 | ✅ 확인 |
+| Net 30 vs Due 15 | monthly_soa 면 Net 30 무시(`computeDueDate`) — 화면엔 노출 | ✅ 확인 |
+| 자동 발행 | 개발 cron 매월 1일 동작(9/1 SOA 발행). «지난달 createdAt» 만 묶어 이전 달 미결은 영구 누락 · 달 경계 UTC. 운영은 DB 읽기 거부로 확인 불가 | ✅ 확인 |
+| 설계(발행일·기간·마감 칸 / 운영 잘못된 SOA 1건 정리) | Fable 한도(429) — Irene 「fable 한도 풀리면 할게」 | ⏸ 대기 |
+
+### 수정된 파일
+- 없음 (조사만)
 
 ---
 
