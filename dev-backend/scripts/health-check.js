@@ -2217,8 +2217,38 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     const rows = (await sequelize.query(
       `SELECT id FROM purchase_orders WHERE notes = '${DP_NOTE}'`))[0];
     const ids = rows.map(r => Number(r.id)).filter(Number.isInteger);
-    if (!ids.length) return;
-    await hcCleanupPurchaseOrders(ids);
+    if (ids.length) await hcCleanupPurchaseOrders(ids);
+    await dpRestoreIngredients();
+  }
+
+  // 🔴 발주·배치를 지워도 **재료 행에 들어간 원가·재고는 남는다** — 입고가 원가를 섞고(단가 5·6) 재고를 올린다.
+  //   이걸 안 되돌려서 검사를 돌릴 때마다 데모 재료 #47 원가가 35 → 34.3 → … → 11.03 으로 내려가
+  //   인스펙션 ING-UNI-025(원가 3배 어긋남)가 배포를 막았다(2026-09-21 실측). 처음 고를 때 찍어 두고 정리 때 되돌린다.
+  const dpSnapshots = new Map();   // ingredient_id → { unit_cost, current_stock, overlay }
+  async function dpSnapshotIngredient(restaurantId, ingredientId) {
+    if (dpSnapshots.has(ingredientId)) return;
+    const { sequelize } = require('../config/database');
+    const [ing] = (await sequelize.query('SELECT unit_cost, current_stock FROM ingredients WHERE id = :i',
+      { replacements: { i: ingredientId } }))[0];
+    if (!ing) return;
+    const [ov] = (await sequelize.query(
+      'SELECT unit_cost FROM restaurant_ingredient_costs WHERE restaurant_id = :r AND ingredient_id = :i',
+      { replacements: { r: restaurantId, i: ingredientId } }))[0];
+    dpSnapshots.set(ingredientId, { restaurantId, unit_cost: ing.unit_cost, current_stock: ing.current_stock, overlay: ov ? ov.unit_cost : null });
+  }
+  async function dpRestoreIngredients() {
+    const { sequelize } = require('../config/database');
+    for (const [ingredientId, snap] of dpSnapshots) {
+      await sequelize.query('UPDATE ingredients SET unit_cost = :c, current_stock = :s WHERE id = :i',
+        { replacements: { c: snap.unit_cost, s: snap.current_stock, i: ingredientId } });
+      if (snap.overlay === null) {
+        await sequelize.query('DELETE FROM restaurant_ingredient_costs WHERE restaurant_id = :r AND ingredient_id = :i',
+          { replacements: { r: snap.restaurantId, i: ingredientId } });
+      } else {
+        await sequelize.query('UPDATE restaurant_ingredient_costs SET unit_cost = :c WHERE restaurant_id = :r AND ingredient_id = :i',
+          { replacements: { c: snap.overlay, r: snap.restaurantId, i: ingredientId } });
+      }
+    }
   }
 
   /** 데모 매장 + 그 매장 재료 중 공급업체 매핑이 있는 것 — 없으면 케이스가 «준비물 없음» 으로 건너뛴다.
@@ -2240,6 +2270,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
        ORDER BY i.id`))[0];
     const row = rows.find(r => (Number(r.has_owner) > 0) === !!wantOwner);
     if (!row) return null;
+    await dpSnapshotIngredient(row.restaurant_id, row.ingredient_id);
     const { User } = require('../models');
     const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: row.restaurant_id } });
     if (!ra) return null;
@@ -2322,6 +2353,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     const rows = (await sequelize.query(`SELECT id FROM purchase_orders WHERE notes = '${PM_NOTE}'`))[0];
     const ids = rows.map(r => Number(r.id)).filter(Number.isInteger);
     if (ids.length) await hcCleanupPurchaseOrders(ids);
+    await dpRestoreIngredients();   // 같은 데모 재료를 쓴다(dpCtx) — 원가·재고 원복
   }
 
   async function pmMakePaidPersonal(ctx2) {
