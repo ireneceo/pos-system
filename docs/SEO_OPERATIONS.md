@@ -1,6 +1,6 @@
 # SEO 운영 규칙 — PurpleHere (purplehere.com)
 
-> 2026-09-21 Irene 지시로 제정. 범위는 **PurpleHere 한 솔루션**이다. PlanQ(`/opt/planq`)는 이 저장소 밖이며 여기서 다루지 않는다.
+> 2026-09-21 Irene 지시로 제정. 범위는 **PurpleHere 한 솔루션의 랜딩(마케팅) 페이지와 블로그·뉴스**다 — 홈·About·Features·Pricing·Packages·FAQ·Blog·News·Contact·Demo·Company·Privacy·Terms. **POS 시스템 안(`/pos` `/admin` `/kitchen` 등 로그인 뒤 화면)은 대상이 아니다**(robots 로 차단 유지, Irene 「우리가 적용하는 SEO는 랜딩페이지이지 포스 시스템 안에 내용들이 아니야」). PlanQ(`/opt/planq`)는 이 저장소 밖이며 여기서 다루지 않는다.
 > 도구: Claude SEO (사용자 공통 설치 `~/.claude/skills/seo`, 공식 https://claude-seo.md · 설치/업데이트는 공식 `install.sh`, 점검 `~/.claude/skills/seo/scripts/claude-seo doctor`).
 
 ## 1. 작업 순서 (고정)
@@ -55,3 +55,4 @@
 | 날짜 | 작업 | 결과 |
 |---|---|---|
 | 2026-09-21 | 규칙 제정 · Claude SEO v2.2.4 → v2.3.1 (공식 install.sh) | doctor: Runtime ready · Chromium ready |
+| 2026-09-21 | 첫 운영 검사(랜딩 12개 페이지 · robots · sitemap · 주소 처리) | Critical 2 · High 5 · Medium 4 · Low 2 — 수정 전, Irene 보고 |
