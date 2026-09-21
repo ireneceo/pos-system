@@ -14,6 +14,7 @@
   - 판정 필요: 사전 저장 정규화·다중 이름·브랜드 판매자 / 「총액만으로 결제」 시 원가 처리(무접촉·조정줄·비례배분) / 사진 판독 품질.
 
 ### 완료된 작업 (이번 세션 · 2026-09-21) [Claude Code]
+- ⏸ **SEO C1 사전 렌더링 — Fable 판정 대기** (근거 = Irene 제공 Search Console 2026-09-21): 색인 6 · 미색인 12 · 3개월 클릭 24. 미색인 이유: Discovered–not indexed 6 · Crawled–not indexed 1 · Duplicate without user-selected canonical 2 · Page with redirect 2 · Alternative page with proper canonical 1. Irene 「그런데 방문자가 없어」. 크롤러가 받는 HTML 이 전 주소 동일(홈=/pricing 바이트 동일, 본문 46자, canonical 없음). Duplicate 2건 주소는 Irene 확인 대기(www 면 H6 로 해결). H2 site_name 은 /pos/admin/site-settings → Site Name (DB 기본값 'OrderHere POS' 그대로).
 - ✅ **운영 배포 SW 5.49** — sitemap 생성기 `dev-backend/scripts/generate-sitemap.js`(운영 공개 글 116개, `--check`) · 홈 schema 중복 정리 · 🔴 health-check 가 데모 재료 원가·재고를 원복 안 하던 결함 수정(ING-UNI-025 배포 차단 원인). 대기: H5 dev noindex = `docs/nginx-dev.purplehere.com.noindex.conf` 를 Irene sudo 로 적용 · H2 site_name · C1·M3 Fable.
 - ✅ **SEO 체계 구축 (PurpleHere 랜딩 전용)** — Claude SEO v2.3.1(공식 install.sh) · `docs/SEO_OPERATIONS.md` · CLAUDE.md «🔎 SEO 작업 규칙» · `/SEO점검`. 첫 검사 Critical 1 · High 6 · Medium 4 · Low 3.
 - ✅ **운영 배포 SW 5.48** — H1 JSON-LD 출력 · H4 메뉴 <a href> · M2 설명 중복 · L1 html lang. 운영 재검사 통과. (배포 2회는 PlanQ 빌드와 겹쳐 메모리 게이트 차단 → 기다렸다 3번째 성공)
