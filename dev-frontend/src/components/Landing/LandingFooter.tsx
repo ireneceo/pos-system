@@ -69,7 +69,10 @@ const LinkList = styled.ul`
   gap: 12px;
 `;
 
-const FooterLink = styled.button`
+// <a href> — 크롤러가 따라갈 수 있는 링크(2026-09-21 SEO 검사 H4). 클릭은 SPA 이동 그대로.
+const FooterLink = styled.a`
+  display: inline-block;
+  text-decoration: none;
   background: none;
   border: none;
   color: white;
@@ -137,7 +140,8 @@ const LegalLinks = styled.div`
   gap: 24px;
 `;
 
-const LegalLink = styled.button`
+const LegalLink = styled.a`
+  text-decoration: none;
   background: none;
   border: none;
   color: #8898AA;
@@ -172,20 +176,20 @@ const LandingFooter: React.FC = () => {
           <FooterSection>
             <SectionTitle>{t('footer.product')}</SectionTitle>
             <LinkList>
-              <li><FooterLink onClick={() => navigate('/features')}>{t('nav.features')}</FooterLink></li>
-              <li><FooterLink onClick={() => navigate('/pricing')}>{t('nav.pricing')}</FooterLink></li>
-              <li><FooterLink onClick={() => navigate('/demo')}>{t('footer.demo')}</FooterLink></li>
-              <li><FooterLink onClick={() => navigate('/referral-program')}>{t('nav.referral', 'Referral')}</FooterLink></li>
+              <li><FooterLink href="/features" onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate('/features'); }}>{t('nav.features')}</FooterLink></li>
+              <li><FooterLink href="/pricing" onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate('/pricing'); }}>{t('nav.pricing')}</FooterLink></li>
+              <li><FooterLink href="/demo" onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate('/demo'); }}>{t('footer.demo')}</FooterLink></li>
+              <li><FooterLink href="/referral-program" onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate('/referral-program'); }}>{t('nav.referral', 'Referral')}</FooterLink></li>
             </LinkList>
           </FooterSection>
 
           <FooterSection>
             <SectionTitle>{t('footer.info')}</SectionTitle>
             <LinkList>
-              <li><FooterLink onClick={() => navigate('/about')}>{t('nav.about')}</FooterLink></li>
-              <li><FooterLink onClick={() => navigate('/faq')}>{t('nav.faq')}</FooterLink></li>
-              <li><FooterLink onClick={() => navigate('/blog')}>{t('nav.blog')}</FooterLink></li>
-              <li><FooterLink onClick={() => navigate('/contact')}>{t('nav.contact')}</FooterLink></li>
+              <li><FooterLink href="/about" onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate('/about'); }}>{t('nav.about')}</FooterLink></li>
+              <li><FooterLink href="/faq" onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate('/faq'); }}>{t('nav.faq')}</FooterLink></li>
+              <li><FooterLink href="/blog" onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate('/blog'); }}>{t('nav.blog')}</FooterLink></li>
+              <li><FooterLink href="/contact" onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate('/contact'); }}>{t('nav.contact')}</FooterLink></li>
             </LinkList>
           </FooterSection>
 
@@ -223,8 +227,8 @@ const LandingFooter: React.FC = () => {
             &copy; {currentYear} PurpleHere. {t('footer.allRightsReserved')}
           </Copyright>
           <LegalLinks>
-            <LegalLink onClick={() => navigate('/privacy')}>{t('footer.privacyPolicy')}</LegalLink>
-            <LegalLink onClick={() => navigate('/terms')}>{t('footer.termsOfService')}</LegalLink>
+            <LegalLink href="/privacy" onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate('/privacy'); }}>{t('footer.privacyPolicy')}</LegalLink>
+            <LegalLink href="/terms" onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate('/terms'); }}>{t('footer.termsOfService')}</LegalLink>
           </LegalLinks>
         </BottomSection>
       </FooterContent>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useTranslation } from 'react-i18next';
 import { useSiteSettings } from '../../contexts/SiteSettingsContext';
 
 interface SEOHeadProps {
@@ -46,6 +47,9 @@ const SEOHead: React.FC<SEOHeadProps> = ({
   alternateUrls
 }) => {
   const { settings } = useSiteSettings();
+  const { i18n } = useTranslation();
+  // 페이지 언어 — 넘겨받은 값(블로그 글) 우선, 없으면 지금 화면 언어(한 주소가 4개 언어를 보여주므로)
+  const pageLang = (language || (i18n.language || 'en')).slice(0, 2);
 
   // Use site settings as fallbacks
   const siteName = settings.site_name || 'PurpleHere';
@@ -61,17 +65,17 @@ const SEOHead: React.FC<SEOHeadProps> = ({
     if (!jsonLd) return null;
 
     const dataArray = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
+    // ⚠ react-helmet-async 는 dangerouslySetInnerHTML 을 옮기지 않는다 — 그렇게 넣은 script 는 **빈 채로** 나가
+    //   운영 전 페이지에서 JSON-LD 가 0개였다(2026-09-21 SEO 검사 H1). 내용은 자식 문자열로 넘긴다.
     return dataArray.map((data, index) => (
-      <script
-        key={index}
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
-      />
+      <script key={index} type="application/ld+json">{JSON.stringify(data)}</script>
     ));
   };
 
   return (
     <Helmet>
+      {/* 페이지 언어 — index.html 의 lang="en" 고정을 페이지 언어로 (2026-09-21 SEO 검사 L1) */}
+      <html lang={pageLang} />
       {/* Basic Meta Tags */}
       <title>{fullTitle}</title>
       <meta name="description" content={finalDescription} />

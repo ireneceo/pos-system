@@ -195,7 +195,11 @@ const MobileMenuContent = styled.div`
   overflow-y: auto;
 `;
 
-const NavLink = styled.button<{ active?: boolean }>`
+// 링크는 <a href> 여야 크롤러가 따라간다 — 버튼이면 메뉴 페이지를 발견하지 못한다(2026-09-21 SEO 검사 H4).
+//   클릭은 여전히 SPA 이동(handleNavigate)이고, href 는 크롤러·새 탭·주소 복사용이다.
+const NavLink = styled.a<{ active?: boolean }>`
+  display: inline-block;
+  text-decoration: none;
   background: none;
   border: none;
   color: ${props => props.active ? '#635BFF' : '#4B5563'};
@@ -218,7 +222,9 @@ const NavLink = styled.button<{ active?: boolean }>`
   }
 `;
 
-const MobileNavLink = styled.button<{ active?: boolean }>`
+const MobileNavLink = styled.a<{ active?: boolean }>`
+  display: block;
+  text-decoration: none;
   background: ${props => props.active ? '#F0F4FF' : 'transparent'};
   border: none;
   color: ${props => props.active ? '#635BFF' : '#0A2540'};
@@ -349,28 +355,28 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
         </LogoSection>
 
         <Nav>
-          <NavLink active={isActive('/about')} onClick={() => handleNavigate('/about')}>
+          <NavLink href="/about" active={isActive('/about')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/about'); }}>
             {t('nav.about')}
           </NavLink>
-          <NavLink active={isActive('/features')} onClick={() => handleNavigate('/features')}>
+          <NavLink href="/features" active={isActive('/features')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/features'); }}>
             {t('nav.features')}
           </NavLink>
-          <NavLink active={isActive('/pricing')} onClick={() => handleNavigate('/pricing')}>
+          <NavLink href="/pricing" active={isActive('/pricing')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/pricing'); }}>
             {t('nav.pricing')}
           </NavLink>
-          <NavLink active={isActive('/faq')} onClick={() => handleNavigate('/faq')}>
+          <NavLink href="/faq" active={isActive('/faq')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/faq'); }}>
             {t('nav.faq')}
           </NavLink>
-          <NavLink active={isActive('/referral-program')} onClick={() => handleNavigate('/referral-program')}>
+          <NavLink href="/referral-program" active={isActive('/referral-program')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/referral-program'); }}>
             {t('nav.referral', 'Referral')}
           </NavLink>
-          <NavLink active={isActive('/blog')} onClick={() => handleNavigate('/blog')}>
+          <NavLink href="/blog" active={isActive('/blog')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/blog'); }}>
             {t('nav.blog')}
           </NavLink>
-          <NavLink active={isActive('/news')} onClick={() => handleNavigate('/news')}>
+          <NavLink href="/news" active={isActive('/news')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/news'); }}>
             {t('nav.news')}
           </NavLink>
-          <NavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
+          <NavLink href="/contact" active={isActive('/contact')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/contact'); }}>
             {t('nav.contact')}
           </NavLink>
         </Nav>
@@ -396,28 +402,28 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <MobileMenuClose onClick={() => setMobileMenuOpen(false)}>×</MobileMenuClose>
         </MobileMenuHeader>
         <MobileMenuContent>
-          <MobileNavLink active={isActive('/about')} onClick={() => handleNavigate('/about')}>
+          <MobileNavLink href="/about" active={isActive('/about')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/about'); }}>
             {t('nav.about')}
           </MobileNavLink>
-          <MobileNavLink active={isActive('/features')} onClick={() => handleNavigate('/features')}>
+          <MobileNavLink href="/features" active={isActive('/features')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/features'); }}>
             {t('nav.features')}
           </MobileNavLink>
-          <MobileNavLink active={isActive('/pricing')} onClick={() => handleNavigate('/pricing')}>
+          <MobileNavLink href="/pricing" active={isActive('/pricing')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/pricing'); }}>
             {t('nav.pricing')}
           </MobileNavLink>
-          <MobileNavLink active={isActive('/faq')} onClick={() => handleNavigate('/faq')}>
+          <MobileNavLink href="/faq" active={isActive('/faq')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/faq'); }}>
             {t('nav.faq')}
           </MobileNavLink>
-          <MobileNavLink active={isActive('/referral-program')} onClick={() => handleNavigate('/referral-program')}>
+          <MobileNavLink href="/referral-program" active={isActive('/referral-program')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/referral-program'); }}>
             {t('nav.referral', 'Referral')}
           </MobileNavLink>
-          <MobileNavLink active={isActive('/blog')} onClick={() => handleNavigate('/blog')}>
+          <MobileNavLink href="/blog" active={isActive('/blog')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/blog'); }}>
             {t('nav.blog')}
           </MobileNavLink>
-          <MobileNavLink active={isActive('/news')} onClick={() => handleNavigate('/news')}>
+          <MobileNavLink href="/news" active={isActive('/news')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/news'); }}>
             {t('nav.news')}
           </MobileNavLink>
-          <MobileNavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
+          <MobileNavLink href="/contact" active={isActive('/contact')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/contact'); }}>
             {t('nav.contact')}
           </MobileNavLink>
           <MobileSignUpButton onClick={() => handleNavigate('/demo')}>

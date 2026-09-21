@@ -44,33 +44,35 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
+    <!-- data-rh="true": 페이지별 SEOHead(react-helmet-async)가 태그를 넣으면 이 기본값을 **대체**한다.
+         없으면 두 벌이 공존해 설명이 페이지마다 2개였다(2026-09-21 SEO 검사 M2). JS 를 안 돌리는 크롤러에게는 이 기본값이 그대로 보인다. -->
     <meta
       name="description"
       content="Solving Real F&B Problems — Purple Here. POS, ordering, kitchen, inventory, and analytics built for restaurants, brands, and food courts."
-      id="meta-description"
+      id="meta-description" data-rh="true"
     />
     <meta
       name="keywords"
       content="POS system, restaurant POS, cloud POS, food ordering, restaurant management, brand management, food court POS"
-      id="meta-keywords"
+      id="meta-keywords" data-rh="true"
     />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="PurpleHere" />
-    <meta property="og:title" content="Solving Real F&B Problems - Purple Here" id="og-title" />
+    <meta property="og:type" content="website" data-rh="true" />
+    <meta property="og:site_name" content="PurpleHere" data-rh="true" />
+    <meta property="og:title" content="Solving Real F&B Problems - Purple Here" id="og-title" data-rh="true" />
     <meta
       property="og:description"
       content="Solving Real F&B Problems — Purple Here. POS, ordering, kitchen, inventory, and analytics built for restaurants, brands, and food courts."
-      id="og-description"
+      id="og-description" data-rh="true"
     />
-    <meta property="og:image" content="%PUBLIC_URL%/og-image.png" id="og-image" />
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:title" content="Solving Real F&B Problems - Purple Here" id="twitter-title" />
+    <meta property="og:image" content="%PUBLIC_URL%/og-image.png" id="og-image" data-rh="true" />
+    <meta property="twitter:card" content="summary_large_image" data-rh="true" />
+    <meta property="twitter:title" content="Solving Real F&B Problems - Purple Here" id="twitter-title" data-rh="true" />
     <meta
       property="twitter:description"
       content="Solving Real F&B Problems — Purple Here. POS, ordering, kitchen, inventory, and analytics built for restaurants, brands, and food courts."
-      id="twitter-description"
+      id="twitter-description" data-rh="true"
     />
-    <meta property="twitter:image" content="%PUBLIC_URL%/og-image.png" id="twitter-image" />
+    <meta property="twitter:image" content="%PUBLIC_URL%/og-image.png" id="twitter-image" data-rh="true" />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/apple-touch-icon.png" id="apple-touch-icon" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>Solving Real F&B Problems - Purple Here</title>
