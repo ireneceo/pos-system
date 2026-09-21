@@ -56,3 +56,4 @@
 |---|---|---|
 | 2026-09-21 | 규칙 제정 · Claude SEO v2.2.4 → v2.3.1 (공식 install.sh) | doctor: Runtime ready · Chromium ready |
 | 2026-09-21 | 첫 운영 검사(랜딩 12개 페이지 · robots · sitemap · 주소 처리) | Critical 1 · High 6 · Medium 4 · Low 3 — 수정 전, Irene 보고 |
+| 2026-09-21 | 배포 SW 5.48 — H1 JSON-LD 출력 · H4 메뉴 `<a href>` · M2 설명 중복 · L1 html lang (백업 `20260921_163921`, 스모크 10/10) | 운영 재검사: JSON-LD 0→2~4(홈·요금·FAQ·기능·블로그·뉴스·블로그 글) · 설명 2→1 · 내부 링크 0~3→9~11. About·Contact 는 schema 를 원래 안 넘김(설계) |

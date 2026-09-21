@@ -1,5 +1,5 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-09-21 · **버전: 운영 v3.99 코드 + SW `5.47-order-date-everywhere-20260921` (2026-09-21 15:46 UTC 배포 #2 · 스모크 10/10 · 백업 `20260921_154617`)**
+**마지막 업데이트:** 2026-09-21 · **버전: 운영 v3.99 코드 + SW `5.48-landing-seo-20260921` (2026-09-21 16:45 UTC 배포 #3 · 스모크 10/10 · 백업 `20260921_163921`)**
 **작업 상태:** 일시정지 — SOA 점검 Fable 판정 대기 (코드 무변경 · 미커밋 문서만)
 
 ### 진행 중인 작업
@@ -14,6 +14,9 @@
   - 판정 필요: 사전 저장 정규화·다중 이름·브랜드 판매자 / 「총액만으로 결제」 시 원가 처리(무접촉·조정줄·비례배분) / 사진 판독 품질.
 
 ### 완료된 작업 (이번 세션 · 2026-09-21) [Claude Code]
+- ✅ **SEO 체계 구축 (PurpleHere 랜딩 전용)** — Claude SEO v2.3.1(공식 install.sh) · `docs/SEO_OPERATIONS.md` · CLAUDE.md «🔎 SEO 작업 규칙» · `/SEO점검`. 첫 검사 Critical 1 · High 6 · Medium 4 · Low 3.
+- ✅ **운영 배포 SW 5.48** — H1 JSON-LD 출력 · H4 메뉴 <a href> · M2 설명 중복 · L1 html lang. 운영 재검사 통과. (배포 2회는 PlanQ 빌드와 겹쳐 메모리 게이트 차단 → 기다렸다 3번째 성공)
+- ⏸ **SEO 승인 대기**: C1 사전 렌더링 · H2 site_name «OrderHere POS»→PurpleHere(운영 설정값, System Admin 화면) · H3 sitemap 자동 생성 · H5 dev noindex(nginx) · H6 www→apex · M3 블로그 주소 숫자 · M4 한국어 블로그 없음.
 - ✅ **운영 배포 SW 5.47** — 발주일(Submit) 단일 소스 `utils/poOrderedAt`: 받은 주문(BG·FC·공급업체) 정렬·필터·시각, 공급업체 대시보드 최근 주문(발주일 순 + draft/승인대기 제외), 인쇄본 Order date, 발주 메일 날짜. 남음: 오너 승인 대기 목록 날짜(승인 요청 시각 칸 없음).
 - ✅ **운영 배포 SW 5.46** — ①«All franchises» 노출 = 소유 ∪ 배정(managerBrandScope, 3곳) ②판매자 문서에 BG·FC 프로덕트명/SKU(sellerProductIdentity) ③발주 목록 가격=주문단위 가격 ④발주 기록 정렬·날짜=발주일(COALESCE submitted/approved/created) ⑤발주 상세 번역. Fable 429 로 판정 없이 진행(기록 fable_note). 🔴 운영 확인 필요: with MIN·K-DINE 카탈로그에 PRD-162·PRD-050 보이는지 · 「No seller」 재료 원인은 미확인(운영 DB 읽기 거부).
 - 대기: 「인보이스 교체」 버튼 추가 여부 Irene 답 대기.
