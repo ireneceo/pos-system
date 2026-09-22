@@ -904,3 +904,13 @@ const NEW_MODULES = [
 ### G-5. 게이트
 health-check `supplier` 3건: ①매장이 상속 외부 공급업체를 끄면 `findEffectiveContract` null → 발주 생성 400 `NO_ACTIVE_CONTRACT` ②다시 켜면 자기 행 0 + 상속 복귀 + 발주 생성 200 ③같은 브랜드의 다른 매장은 영향 0. 고장주입 1(「자기 행이 있으면 자기 행」 검사 제거 → ① 실패).
 **묶음: 「K-DINE 레시피 원가 정합」 묶음과 별도**(파일 안 겹침). RA 다 끝난 뒤 BG 인보이스 Pay 사안과 함께 가도 된다.
+
+## §H. 브랜드 공급업체는 «원할 때만 공유» — `shared_with_stores` (2026-09-22 · SW 5.51)
+
+Irene 원문: 「공급업체는 브랜드제너럴에서 브랜드에 공유해주고 싶으면 해주고 대신 수정 등록 모두 독립적으로 각각 운영하는 거야」.
+- §G 의 «브랜드 등록 외부 업체 = 산하 매장 자동 상속» 에 문을 하나 달았다: `supplier_companies.shared_with_stores` (기본 1).
+  - **기존 행은 전부 1** — 매장이 지금 쓰는 상속 발주가 끊기지 않게(운영 54행 전부 1 확인).
+  - **BG 가 새로 등록·예전 방식(OWN)에서 이관하는 업체는 0** → 매장 목록·발주 자격·켜기/끄기 어디에도 안 나온다.
+- 상속 판정 3곳이 이 칸을 본다: `utils/supplierAccess.findEffectiveContract` · `GET /api/external-suppliers`(브랜드 scope) · `loadVisibleExternalSupplier`. 고장주입: 첫 번째 확인 제거 → 비공유 업체에 매장 발주 자격 true.
+- 예전 방식 `suppliers`(OWN) → 외부 업체 연결 단일 소스 `utils/legacySupplierBridge` (Products 버튼 = 이관 스크립트 `migrate-legacy-suppliers-to-external.js`, deploy·멱등). BG 가 만든 행(brand_id=null)은 그 BG 계정 소유. 운영 이관: 매장·FC 3건(5.50) + BG 2건(5.51, 비공유).
+- ⏸ **2단계 (Fable 판정 대기)**: «매장에 공유» 버튼 = **복사본**을 만들어 주고 이후 각자 독립 수정. 이미 공유(1) 중인 업체의 정리 방침.

@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-21 #2 — [Claude Code] **운영 배포 4회 (SW 5.46 → 5.49 · 전부 스모크 10/10).** ① «All franchises» 브랜드 상품 노출 = 소유 ∪ 배정 ② BG 가 받은 주문에 BG 프로덕트명 ③ 발주 목록 가격 = 주문 단위 ④ 발주일 = Submit 시각(구매자·판매자·공급업체·인쇄·메일) ⑤ **PurpleHere 랜딩 SEO 체계**(Claude SEO v2.3.1 · 규칙 문서 · /SEO점검) + JSON-LD 출력 · 메뉴 링크 · sitemap 116개 ⑥ health-check 데모 원가 원복 결함. Fable 한도(429)로 판정 없이 진행 — 대기: SOA · 인보이스 대조 · SEO C1·M3.
+> **최종 업데이트:** 2026-09-22 — [Claude Code] **운영 배포 2회 (SW 5.50 · 5.51).** 공급업체 «OWN» 정리 — «Add Supplier» = EXTERNAL(전 역할) · 예전 방식 OWN 이관(운영 매장·FC 3 + BG 2) · **BG 새 업체는 매장에 자동 공유 안 함**(`shared_with_stores`) · 오류 제목 번역 39곳. ⚠ 운영 SSH 불안정으로 배포 1회가 파일 복사 뒤 끊겨, Irene 승인 하에 DB 칸 추가만 먼저 실행 후 재배포로 정상화.
 
 > **최종 업데이트:** 2026-09-20 #3 — **v3.99 운영 배포 (SW `5.45-margin-editor-20260920`, 18:04 UTC · 게이트 22/22 · 스모크 10/10 · 오늘 3번째).**
 > **마진 계산의 단위 환산** — Irene 신고 두 건(김치 −540%, Sawah Mas +124537.7%)이 같은 실수였다. `unit_cost` 는 1단위 값이 아니라 **기준양만큼의 값**(10,000g 에 RM 48). 계산기를 `utils/productMargin.ts` 한 곳으로 모으고 목록·편집창이 같이 쓰게 했다 → 김치 원가 RM 4.80·마진 36%, Sawah Mas 원가 RM 34.50·마진 20%. 바꿀 수 없는 단위는 「단위 환산 불가」.
@@ -10332,6 +10332,25 @@ verify-all --full **19/19** · i18n 오류 0 · health-check 247/247 · 🔒 인
 - `dev-backend/routes/brand-products.js` (원가 쪽 기준양·단위 내려주기)
 - `dev-frontend/public/locales/{en,ko,zh,ms}/brand.json`
 - `docs/TRADE_STRUCTURE.md` §2-5 (마진 계산 규칙)
+
+---
+
+## ✅ 완료: 공급업체 OWN 정리 · BG 공급업체 비공유 (2026-09-22) [Claude Code]
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Add Supplier = EXTERNAL | 전 역할이 외부 공급업체로 등록 → 바로 상품 등록 | ✅ 5.50·5.51 |
+| OWN 이관 | utils/legacySupplierBridge + migrate-legacy-suppliers-to-external.js (운영 매장·FC 3, BG 2) | ✅ |
+| BG 비공유 | supplier_companies.shared_with_stores — BG 신규·이관 0, 기존 1 유지, 상속 3곳 확인 | ✅ 5.51 |
+| BG Products 403 | BG 가 만든 예전 업체(brand_id=null) 소유 = 그 BG 계정 | ✅ |
+| 오류 제목 번역 | common:error.title 4언어 · 39곳 | ✅ |
+| 공유(복사) 버튼 | 2단계 — Fable 판정 대기 | ⏸ |
+
+### 수정된 파일
+- `dev-backend/utils/legacySupplierBridge.js`(신설) · `utils/supplierAccess.js` · `routes/supplier-directory.js` · `models/SupplierCompany.js`
+- `dev-backend/scripts/migrate-add-supplier-company-shared.js`(신설) · `scripts/migrate-legacy-suppliers-to-external.js`(신설) · `scripts/migrations.registry.json`
+- `dev-frontend/src/pages/Suppliers/AllSuppliersView.tsx` · 7개 화면 common:error.title · locales common 4언어
+- 문서: `docs/SUPPLIER_CONTRACT_SYSTEM.md` §H
 
 ---
 

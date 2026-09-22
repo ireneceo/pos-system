@@ -1,6 +1,6 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-09-21 18:00 UTC · **버전: 운영 v3.99 코드 + SW `5.50-supplier-external-only-20260922`** (2026-09-22 08:34 UTC · 스모크 10/10 · 백업 `20260922_081849`)
-**작업 상태:** 완료 — /개발완료 처리. Fable 판정 대기 3건(한도 429).
+**마지막 업데이트:** 2026-09-22 12:40 UTC · **버전: 운영 v3.99 코드 + SW `5.51-bg-supplier-unshared-20260922`** (2026-09-22 12:30 UTC · 스모크 10/10 · 백업 `20260922_122422`)
+**작업 상태:** 완료 — /개발완료 처리(2026-09-22). Fable 판정 대기 4건(한도 429): SOA · 인보이스 대조 · SEO C1/M3 · 공급업체 공유(복사) 2단계.
 
 ### 진행 중인 작업
 - ⏸ **월 청구(SOA) 점검 — Fable 판정 대기** (2026-09-21 · Fable 한도 429 · Irene 「fable 한도 풀리면 할게」). 코드 무변경.
@@ -16,14 +16,21 @@
 - ⏸ **SEO C1 사전 렌더링 — Fable 판정 대기** (근거 = Irene 제공 Search Console 2026-09-21): 색인 6 · 미색인 12 · 3개월 클릭 24. 미색인 이유: Discovered–not indexed 6 · Crawled–not indexed 1 · Duplicate without user-selected canonical 2 · Page with redirect 2 · Alternative page with proper canonical 1. Irene 「그런데 방문자가 없어」. 크롤러가 받는 HTML 이 전 주소 동일(홈=/pricing 바이트 동일, 본문 46자, canonical 없음). Duplicate 2건 주소는 Irene 확인 대기(www 면 H6 로 해결). H2 site_name 은 /pos/admin/site-settings → Site Name (DB 기본값 'OrderHere POS' 그대로).
   - 같이 판정: **M3 블로그 주소 끝 숫자**(주소 변경=되돌리기 어려움). H6 www→apex 는 판정 불필요(방법 하나) — Cloudflare/운영 nginx 적용 안내만.
 
-- ⏸ **공급업체 2단계 — Fable 판정 대기**: Irene 원문 「공급업체는 브랜드제너럴에서 브랜드에 공유해주고 싶으면 해주고 대신 수정 등록 모두 독립적으로 각각 운영하는 거야」. 지금 구조 = 브랜드 등록 외부 업체가 산하 전 매장에 **자동 상속**(07-05 결정 · SUPPLIER_CONTRACT_SYSTEM §G · supplier-directory.js GET /external-suppliers scopes). 필요: 원할 때만 공유 · 공유 = 복사 · 이후 각자 독립 · 새 BG 업체 기본 비공유 · 이미 자동 공유 중인 업체(매장 발주 사용 중) 정리. BG «Add Supplier»·BG OWN 이관·BG Products(403) 는 이 뒤에. 1단계(매장·FC) 배포 완료 — 운영 이관 3건.
+- ⏸ **공급업체 2단계 — Fable 판정 대기**: Irene 원문 「공급업체는 브랜드제너럴에서 브랜드에 공유해주고 싶으면 해주고 대신 수정 등록 모두 독립적으로 각각 운영하는 거야」. **5.51 로 BG 새 업체 비공유(shared_with_stores=0)까지 완료**, 남은 것 = «매장에 공유» 버튼(복사본 → 이후 각자 독립) · 이미 공유(1) 중인 업체 정리 방침. 설계 원본 `docs/SUPPLIER_CONTRACT_SYSTEM.md §H`.
+- ⚠ 운영 SSH 불안정(2026-09-22 10:27~12:24 — 연결 reset 반복). 배포 1회가 백엔드 복사 뒤 끊겨 Irene 승인(「해.」)으로 DB 칸 추가만 SSH 1회 선실행 → 재배포로 정상화. 반복되면 운영 호스팅 콘솔에서 fail2ban·부하 확인 필요.
 
 ### 👉 Irene 님이 하실 일
-1. **사이트 이름**: 운영 `/pos/admin/site-settings` → Basic Settings → **Site Name = PurpleHere** 저장 (지금 DB 기본값 «OrderHere POS» 가 모든 랜딩 제목 끝에 붙음)
+1. **SEO Description** 입력(운영 `/pos/admin/site-settings`, 칸 밖 클릭으로 저장) · 브랜드 표기 «Purple Here» vs «PurpleHere» 통일 답
 2. **개발 사이트 noindex**: `! sudo cp /etc/nginx/sites-enabled/dev.purplehere.com /etc/nginx/dev.purplehere.com.bak-20260921 && sudo cp /var/www/docs/nginx-dev.purplehere.com.noindex.conf /etc/nginx/sites-enabled/dev.purplehere.com && sudo nginx -t && sudo systemctl reload nginx`
 3. Search Console «Duplicate without user-selected canonical» 2건의 주소 알려주기 (www 면 H6 로 해결)
 4. 운영 확인: with MIN·K-DINE 발주 카탈로그에 PRD-162·PRD-050 보이는지 · GIT Sales Orders 품목명 = 프로덕트명 · 발주 기록·받은 주문 정렬
 5. 답 대기: 버전 v3.100 올릴지 · 「인보이스 교체(다시 올리기)」 버튼 추가할지
+
+### 완료된 작업 (2026-09-22) [Claude Code]
+- ✅ **SW 5.50** — 매장·FC «Add Supplier» = EXTERNAL · 매장·FC OWN 이관(운영 3건)
+- ✅ **SW 5.51** — BG «Add Supplier» = EXTERNAL + 상품 등록 · BG 새 업체 비공유(`shared_with_stores`, 기존 1 유지) · BG OWN 이관(운영 2건, 비공유) · BG Products 403 해소 · 오류 제목 번역 39곳
+- SEO 설정값 안내(Site Name 「Purple Here」로 저장됨 · SEO Description 비어 있음 — Irene 입력 대기 · 표기 통일 답 대기)
+- ⚠ 첫 5.50 배포는 BG 까지 옮겨 전 매장 자동 공유가 될 상태라 운영 반영 전 중단(규칙 확인 후 1단계로 축소)
 
 ### 완료된 작업 (이번 세션 · 2026-09-21) [Claude Code]
 - ✅ **SW 5.46** — «All franchises» 브랜드 상품 노출 = 소유 ∪ 배정(managerBrandScope 3곳, 가맹점 external_buyers 연결 403 해소) · 판매자 문서에 BG·FC 프로덕트명/SKU(sellerProductIdentity) · 발주 목록 가격=주문 단위 · 발주 기록=발주일 순 · 발주 상세 번역
