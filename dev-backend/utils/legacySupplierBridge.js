@@ -31,18 +31,17 @@ async function legacyOwnerEntity(legacy, { ownerUser } = {}) {
 }
 
 /**
- * 요청자가 이 레거시 행을 가졌나 — 라우트 전용 판정.
- *   브랜드 행 중 brand_id=null 인 것은 **그 행을 만든 BG 계정**이 주인이다
- *   (routes/suppliers.js 의 수정·삭제가 쓰는 assertBGOwnsRow 와 같은 규칙). 예전엔 brand_id 만 봐서 BG 가 만든 행은 늘 403 이었다.
+ * 요청자가 이 레거시 행을 가졌나 — 라우트 전용 판정. (브랜드 행은 아래 ⏸ 참고 — 1단계에서는 종전 규칙 유지)
  */
 function requesterOwnsLegacy(legacy, buyerEntity, user) {
   if (!buyerEntity) return false;
   if (buyerEntity.type === 'restaurant') return legacy.owner_type === 'restaurant' && Number(legacy.restaurant_id) === buyerEntity.id;
   if (buyerEntity.type === 'foodcourt') return legacy.owner_type === 'foodcourt' && Number(legacy.foodcourt_id) === buyerEntity.id;
   if (buyerEntity.type === 'brand') {
-    if (legacy.owner_type !== 'brand') return false;
-    if (legacy.brand_id != null) return Number(legacy.brand_id) === buyerEntity.id;
-    return !!user && legacy.owner_user_id != null && Number(legacy.owner_user_id) === Number(user.id);
+    // ⏸ 브랜드 행은 종전 규칙 그대로(brand_id 일치만). BG 가 만든 행(brand_id=null)을 여기서 연결하면
+    //   브랜드 등록 외부 공급업체가 되어 **산하 전 매장에 자동 공유**된다 — Irene 규칙(«공유는 BG 가 원할 때만,
+    //   공유 뒤엔 각자 독립») 과 반대. BG 쪽은 «공유 = 복사» 설계(2단계, Fable 판정) 뒤에 연다 (2026-09-22).
+    return legacy.owner_type === 'brand' && legacy.brand_id != null && Number(legacy.brand_id) === buyerEntity.id;
   }
   return false;
 }

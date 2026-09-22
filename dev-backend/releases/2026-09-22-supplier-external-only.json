@@ -2,24 +2,39 @@
  "tag": "supplier-external-only",
  "sw_version": "5.50-supplier-external-only-20260922",
  "date": "2026-09-22",
- "in_progress": ["Fable 판정 대기: SOA · 인보이스 대조 · SEO C1/M3"],
- "completed": [
-  "**공급업체 «OWN» 없애기** — Irene 「OWN이 왜있냐고. 탭에도 없는데」 「상품등록을 할 수가 없어 … 브랜드제너럴이야」. «Add Supplier» 가 예전 방식(suppliers)으로 등록해 OWN 으로 보였고, BG 가 만든 예전 방식 업체는 brand_id=null(설계상 BG 계정 소유)이라 «Products» 연결이 brand_id 만 보고 늘 403 이었다.",
-  "① «Add Supplier» = 외부 공급업체(EXTERNAL) 등록 → 등록 직후 상품 등록 화면",
-  "② 연결 규칙 단일 소스 utils/legacySupplierBridge — BG 가 만든 행은 그 BG 계정이 주인(수정·삭제의 assertBGOwnsRow 와 같은 규칙) · 같은 구매자의 같은 이름 외부 업체가 있으면 재사용",
-  "③ 남은 OWN 일괄 이관 scripts/migrate-legacy-suppliers-to-external.js (deploy 레지스트리 · 멱등 · 비활성 제외 · 레거시 행 유지)"
+ "in_progress": [
+  "Fable 판정 대기: SOA · 인보이스 대조 · SEO C1/M3"
  ],
- "issues": ["⚠ Fable 한도(429). 소유 판정은 새 규칙이 아니라 레거시 수정·삭제가 이미 쓰는 규칙 — 다른 BG 403 을 실호출로 확인.", "⚠ 운영의 OWN 업체 수는 운영 DB 읽기 불가로 미확인 — 배포 로그의 이관 건수로 확인."],
- "upcoming": ["운영 배포 로그에서 이관 건수 확인 · BG 공급업체 화면에 OWN 0"],
- "behavior_changes": ["«Add Supplier» 로 등록한 업체가 EXTERNAL 로 들어가고 바로 상품을 등록할 수 있습니다.", "기존 OWN 업체는 EXTERNAL 로 옮겨져 OWN 표시가 사라집니다(이름·연락처 그대로).", "브랜드가 등록·이관한 업체는 산하 매장에도 브랜드 업체로 보입니다(기존 규칙)."],
- "check_areas": ["BG /pos/suppliers?tab=direct — OWN 0 · Add Supplier → 상품 등록", "RA 공급업체 화면 동일 확인"],
+ "completed": [
+  "**공급업체 OWN 정리 1단계 (매장·푸드코트)** — Irene 「OWN이 왜있냐고」 → 「공급업체는 브랜드제너럴에서 브랜드에 공유해주고 싶으면 해주고 대신 수정 등록 모두 독립적으로 각각 운영하는 거야」 → 1단계만 「응」.",
+  "① 매장·푸드코트 «Add Supplier» = 외부 공급업체(EXTERNAL, 자기 것) 등록 → 등록 직후 상품 등록 화면. BG·BM 은 종전 등록 창 유지.",
+  "② 매장·푸드코트의 남은 OWN → EXTERNAL(자기 것) 이관 scripts/migrate-legacy-suppliers-to-external.js (deploy 레지스트리 · 멱등 · 비활성 제외 · 같은 이름 재사용 · 레거시 행 유지). 브랜드 소유 OWN 은 대상 아님.",
+  "③ 연결 규칙 단일 소스 utils/legacySupplierBridge (Products 버튼 = 이관 스크립트 같은 함수). 브랜드 행 소유 판정은 종전 그대로."
+ ],
+ "issues": [
+  "⏸ 2단계(설계·Fable 판정 필요): BG 공급업체 «원할 때만 공유 · 공유 = 복사 · 각자 독립», 새 BG 업체 기본 비공유, 이미 자동 공유 중인 업체 정리. 지금 구조는 브랜드 등록 외부 업체가 산하 전 매장에 자동 상속(07-05 결정) — Irene 새 규칙과 다름.",
+  "⚠ 첫 배포 시도(08:00)는 BG 업체까지 옮겨 전 매장 자동 공유가 될 상태라 운영 반영 전(빌드 후 화면 검사 단계)에 중단했다. dev 에서 옮긴 브랜드 행 4건은 되돌림(상품·발주 0 확인).",
+  "⚠ 운영 매장 OWN 수는 운영 DB 읽기 불가로 미확인 — 배포 로그 이관 건수로 확인."
+ ],
+ "upcoming": [
+  "운영 배포 로그에서 이관 건수 확인 · BG 공급업체 화면에 OWN 0"
+ ],
+ "behavior_changes": [
+  "매장·푸드코트의 «Add Supplier» 로 등록한 업체가 EXTERNAL 로 들어가고 바로 상품을 등록할 수 있습니다.",
+  "매장·푸드코트의 기존 OWN 업체는 EXTERNAL 로 옮겨져 OWN 표시가 사라집니다(이름·연락처 그대로, 매장 자기 것).",
+  "브랜드제너럴 화면은 이번에 바뀌지 않습니다."
+ ],
+ "check_areas": [
+  "RA /pos/suppliers?tab=direct — OWN 0 · Add Supplier → 상품 등록",
+  "BG 화면 변화 없음"
+ ],
  "verification": {
   "gates": "verify-all + 배포 게이트",
-  "fault_injection": "수정 전 코드: BG 등록 후 Products = 403(실측) → 수정 후 201 · 다른 BG = 403 유지",
-  "real_calls": "BG: EXTERNAL 등록 201 → 상품 등록 201 → 목록 노출 · 레거시 Products 201 · 재호출 멱등 200 · 다른 BG 403 · 잔여 0 / dev 이관 9건 → 재실행 0건",
+  "fault_injection": "1차 범위(BG 포함)에서 BG 연결 403→201 을 확인했으나 규칙 충돌로 되돌림. 1단계: BG Products 403 유지(종전) · 매장 201",
+  "real_calls": "RA(매장 38): EXTERNAL 등록 201 → 상품 등록 201 · BG 예전 업체 Products 403(종전) · 잔여 0 / dev 매장 OWN 6건 이관 → 재실행 대상 0 · 브랜드 행 대상 0",
   "health_check": "verify-all 에 포함",
   "build": "npm run build:dev (배포 스크립트)",
   "sw_version": "5.50-supplier-external-only-20260922",
-  "fable_note": "Fable 호출 불가(429). 소유 판정은 기존 assertBGOwnsRow 규칙 재사용, 이관은 기존 from-legacy 브리지와 같은 함수(멱등)."
+  "fable_note": "Fable 호출 불가(429). 1단계는 공유 범위를 넓히지 않는 부분만(매장·푸드코트 자기 것). BG 공유 구조 변경(2단계)은 Fable 판정 뒤."
  }
 }

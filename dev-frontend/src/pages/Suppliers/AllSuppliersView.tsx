@@ -413,9 +413,14 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
         )}
         {enabled.has('own') && (
           <div style={{ marginLeft: 'auto' }}>
-            {/* 새 업체는 **외부 공급업체(EXTERNAL)** 로만 등록한다 — 예전 방식(OWN, `suppliers`)은 상품을 못 담아
-                BG 가 등록 후 상품 등록이 막혔다(2026-09-21 Irene 「OWN이 왜있냐고」). 등록 직후 그 업체 프로필(상품 등록)로 간다. */}
-            <ThemedButton variant="primary" onClick={() => { setExtRegError(null); setExtReg({ name: '', contact_person: '', phone: '', email: '' }); }}>
+            {/* 새 업체는 **외부 공급업체(EXTERNAL)** 로 등록 — 예전 방식(OWN, `suppliers`)은 상품을 못 담는다
+                (2026-09-21 Irene 「OWN이 왜있냐고」). 등록 직후 그 업체 프로필(상품 등록)로 간다. */}
+            {/* ⏸ 1단계(2026-09-22): 매장·푸드코트만 EXTERNAL. 브랜드(BG·BM)는 외부 등록 = 산하 전 매장 자동 공유가 되므로
+                «공유는 원할 때만 · 공유 뒤엔 각자 독립»(Irene) 설계 전까지 종전 등록 창 유지. */}
+            <ThemedButton variant="primary" onClick={() => {
+              if (role === 'Brand General' || role === 'Brand Manager') { setAdding(true); return; }
+              setExtRegError(null); setExtReg({ name: '', contact_person: '', phone: '', email: '' });
+            }}>
               {t('supplier:directory.addSupplier', 'Add Supplier')}
             </ThemedButton>
           </div>
