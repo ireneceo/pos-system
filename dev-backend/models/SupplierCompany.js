@@ -25,6 +25,14 @@ const SupplierCompany = sequelize.define('SupplierCompany', {
     type: DataTypes.INTEGER, allowNull: true,
     comment: '외부 supplier 등록한 buyer id'
   },
+  // 브랜드가 등록한 외부 공급업체를 산하 매장이 물려받는가 (2026-09-22 Irene
+  //   「공급업체는 브랜드제너럴에서 브랜드에 공유해주고 싶으면 해주고 대신 수정 등록 모두 독립적으로 각각 운영」).
+  //   기존 행은 true(종전 자동 상속 유지 — 매장이 지금 쓰는 발주가 끊기지 않게). BG 가 새로 등록·이관하는 업체는 false.
+  //   상속 판정 3곳이 이 칸을 본다: supplierAccess.findEffectiveContract · GET /external-suppliers · loadVisibleExternalSupplier.
+  shared_with_stores: {
+    type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true,
+    comment: '브랜드 등록 외부 업체를 산하 매장이 상속하는가'
+  },
   // 배송 조건 두 칸 (2026-09-17 Fable 판정 ⑦) — 계산에 쓰는 값은 이 둘뿐이다.
   //   min_order_amount = 이 금액 «이상» 주문하면 무료배송 (경계는 무료)
   //   delivery_fee     = 그 미만일 때 붙는 고정 배송비. null = 규칙 미적용(«미설정», 무료 아님)

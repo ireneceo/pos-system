@@ -329,7 +329,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j.success) {
-        setAlertDlg({ title: t('common:error', 'Error') as string, message: j?.message || (t('staging.refreshPricesFailed', '가격을 갱신하지 못했습니다') as string) });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: j?.message || (t('staging.refreshPricesFailed', '가격을 갱신하지 못했습니다') as string) });
         return;
       }
       const changed = Array.isArray(j.changed) ? j.changed : [];
@@ -344,7 +344,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
       });
       fetchDrafts({ silent: true });
     } catch {
-      setAlertDlg({ title: t('common:error', 'Error') as string, message: t('staging.refreshPricesFailed', '가격을 갱신하지 못했습니다') as string });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('staging.refreshPricesFailed', '가격을 갱신하지 못했습니다') as string });
     }
   };
 
@@ -363,10 +363,10 @@ const PurchaseOrderStagingPage: React.FC = () => {
         setPos(prev => prev.filter(p => p.id !== discardTarget.id));
         setDiscardTarget(null);
       } else {
-        setAlertDlg({ title: t('common:error', 'Error') as string, message: j?.message || (t('staging.discardFailed', 'Failed to discard PO') as string) });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: j?.message || (t('staging.discardFailed', 'Failed to discard PO') as string) });
       }
     } catch {
-      setAlertDlg({ title: t('common:error', 'Error') as string, message: t('staging.discardFailed', 'Failed to discard PO') as string });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('staging.discardFailed', 'Failed to discard PO') as string });
     } finally { setDiscarding(false); }
   };
 
@@ -382,13 +382,13 @@ const PurchaseOrderStagingPage: React.FC = () => {
       const token = getAuthToken();
       const res = await fetch(`/api/purchase-orders/${po.id}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) {
-        setAlertDlg({ title: t('common:error', 'Error') as string, message: t('staging.pdfFailed', 'Failed to load the purchase order document') as string });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('staging.pdfFailed', 'Failed to load the purchase order document') as string });
         return;
       }
       const html = (await res.text()).replace(/<script[\s\S]*?window\.print[\s\S]*?<\/script>/gi, '');
       setPdfPreview({ po, html });
     } catch {
-      setAlertDlg({ title: t('common:error', 'Error') as string, message: t('staging.pdfFailed', 'Failed to load the purchase order document') as string });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('staging.pdfFailed', 'Failed to load the purchase order document') as string });
     } finally {
       setPdfBusy(false);
     }
@@ -403,7 +403,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
       await renderIframeToPdf(frame, `${pdfPreview.po.po_number || `PO-${pdfPreview.po.id}`}.pdf`);
     } catch (e) {
       console.error('download PO pdf failed:', e);
-      setAlertDlg({ title: t('common:error', 'Error') as string, message: t('staging.pdfDownloadFailed', 'Failed to download PDF') as string });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('staging.pdfDownloadFailed', 'Failed to download PDF') as string });
     } finally {
       setPdfBusy(false);
     }
@@ -471,7 +471,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
       if (!res.ok) {
         const j = await res.json().catch(() => null);
         setAlertDlg({
-          title: t('common:error', 'Error') as string,
+          title: t('common:error.title', 'Error') as string,
           message: j?.message || (t('staging.submitFailed', 'Failed to submit this purchase order') as string)
         });
         return;
@@ -490,7 +490,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
       if (remaining.length === 0) { navigate('/pos/purchase-orders/history'); return; }
       fetchDrafts({ silent: true });
     } catch (e: any) {
-      setAlertDlg({ title: t('common:error', 'Error') as string, message: e?.message || 'Network error' });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: e?.message || 'Network error' });
     } finally {
       setSubmittingId(null);
     }
@@ -503,9 +503,9 @@ const PurchaseOrderStagingPage: React.FC = () => {
       const res = await fetch(`/api/purchase-orders/${poId}/items/${itemId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
       const j = await res.json().catch(() => null);
       if (res.ok && j?.success) { fetchDrafts(); }
-      else setAlertDlg({ title: t('common:error', 'Error') as string, message: j?.message || (t('staging.removeItemFailed', 'Failed to remove item') as string) });
+      else setAlertDlg({ title: t('common:error.title', 'Error') as string, message: j?.message || (t('staging.removeItemFailed', 'Failed to remove item') as string) });
     } catch {
-      setAlertDlg({ title: t('common:error', 'Error') as string, message: t('staging.removeItemFailed', 'Failed to remove item') as string });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('staging.removeItemFailed', 'Failed to remove item') as string });
     }
   };
 

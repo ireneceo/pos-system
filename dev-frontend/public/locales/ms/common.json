@@ -172,7 +172,8 @@
     "unauthorized": "Anda tidak dibenarkan melakukan tindakan ini.",
     "forbidden": "Akses ditolak.",
     "serverError": "Ralat pelayan. Sila cuba lagi kemudian.",
-    "validationFailed": "Sila semak borang untuk ralat."
+    "validationFailed": "Sila semak borang untuk ralat.",
+    "title": "Ralat"
   },
   "message": {
     "savedSuccessfully": "Berjaya disimpan",

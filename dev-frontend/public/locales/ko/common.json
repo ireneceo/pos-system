@@ -172,7 +172,8 @@
     "unauthorized": "이 작업을 수행할 권한이 없습니다.",
     "forbidden": "접근이 거부되었습니다.",
     "serverError": "서버 오류입니다. 나중에 다시 시도해주세요.",
-    "validationFailed": "입력 내용을 확인해주세요."
+    "validationFailed": "입력 내용을 확인해주세요.",
+    "title": "오류"
   },
   "message": {
     "savedSuccessfully": "저장되었습니다",

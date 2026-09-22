@@ -386,14 +386,14 @@ const BrandInvoicesPage: React.FC = () => {
       const body = await response.json().catch(() => null);
       setAlertModal({
         isOpen: true,
-        title: t('common:error', 'Error') as string,
+        title: t('common:error.title', 'Error') as string,
         message: body?.error?.message || body?.message
           || (t('invoices.confirmFreeFailed', 'Could not confirm this invoice. Please try again or contact support.') as string),
       });
     } catch (error) {
       setAlertModal({
         isOpen: true,
-        title: t('common:error', 'Error') as string,
+        title: t('common:error.title', 'Error') as string,
         message: (error as Error)?.message || (t('invoices.confirmFreeFailed', 'Could not confirm this invoice. Please try again or contact support.') as string),
       });
     }

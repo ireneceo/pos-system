@@ -172,7 +172,8 @@
     "unauthorized": "您无权执行此操作。",
     "forbidden": "访问被拒绝。",
     "serverError": "服务器错误，请稍后重试。",
-    "validationFailed": "请检查表单中的错误。"
+    "validationFailed": "请检查表单中的错误。",
+    "title": "错误"
   },
   "message": {
     "savedSuccessfully": "保存成功",

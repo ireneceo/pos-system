@@ -32,8 +32,9 @@ async function findEffectiveContract(supplierCompanyId, buyerEntity) {
 
   // 2) a restaurant inherits its parent brand's contract — external suppliers only
   if (buyerEntity.type === 'restaurant') {
-    const sc = await SupplierCompany.findByPk(supplierCompanyId, { attributes: ['is_system_registered'] });
-    if (sc && sc.is_system_registered === false) {
+    const sc = await SupplierCompany.findByPk(supplierCompanyId, { attributes: ['is_system_registered', 'shared_with_stores'] });
+    // 브랜드가 «매장과 공유» 로 둔 업체만 물려준다 (2026-09-22 Irene — 공유는 원할 때만). 기존 행은 true.
+    if (sc && sc.is_system_registered === false && sc.shared_with_stores !== false) {
       const rest = await Restaurant.findByPk(buyerEntity.id, { attributes: ['brand_id'] });
       if (rest && rest.brand_id) {
         return SupplierContract.findOne({

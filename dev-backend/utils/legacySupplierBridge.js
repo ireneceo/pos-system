@@ -31,17 +31,18 @@ async function legacyOwnerEntity(legacy, { ownerUser } = {}) {
 }
 
 /**
- * 요청자가 이 레거시 행을 가졌나 — 라우트 전용 판정. (브랜드 행은 아래 ⏸ 참고 — 1단계에서는 종전 규칙 유지)
+ * 요청자가 이 레거시 행을 가졌나 — 라우트 전용 판정.
  */
 function requesterOwnsLegacy(legacy, buyerEntity, user) {
   if (!buyerEntity) return false;
   if (buyerEntity.type === 'restaurant') return legacy.owner_type === 'restaurant' && Number(legacy.restaurant_id) === buyerEntity.id;
   if (buyerEntity.type === 'foodcourt') return legacy.owner_type === 'foodcourt' && Number(legacy.foodcourt_id) === buyerEntity.id;
   if (buyerEntity.type === 'brand') {
-    // ⏸ 브랜드 행은 종전 규칙 그대로(brand_id 일치만). BG 가 만든 행(brand_id=null)을 여기서 연결하면
-    //   브랜드 등록 외부 공급업체가 되어 **산하 전 매장에 자동 공유**된다 — Irene 규칙(«공유는 BG 가 원할 때만,
-    //   공유 뒤엔 각자 독립») 과 반대. BG 쪽은 «공유 = 복사» 설계(2단계, Fable 판정) 뒤에 연다 (2026-09-22).
-    return legacy.owner_type === 'brand' && legacy.brand_id != null && Number(legacy.brand_id) === buyerEntity.id;
+    if (legacy.owner_type !== 'brand') return false;
+    if (legacy.brand_id != null) return Number(legacy.brand_id) === buyerEntity.id;
+    // BG 가 만든 행(brand_id=null · owner_user_id=그 BG) = 그 BG 계정 소유 — 수정·삭제의 assertBGOwnsRow 와 같은 규칙.
+    //   연결로 생기는 외부 업체는 shared_with_stores=false 라 매장에 퍼지지 않는다(2026-09-22).
+    return !!user && legacy.owner_user_id != null && Number(legacy.owner_user_id) === Number(user.id);
   }
   return false;
 }
@@ -78,6 +79,8 @@ async function bridgeLegacySupplier(legacy, entity, { userId = null, transaction
       is_system_registered: false,
       registered_by_entity_type: entity.type,
       registered_by_entity_id: entity.id,
+      // 브랜드 업체는 매장에 자동 공유하지 않는다 — 옮겨도 공유 범위가 넓어지지 않게 (2026-09-22)
+      shared_with_stores: entity.type !== 'brand',
       phone: legacy.phone ? String(legacy.phone).slice(0, 20) : null,
       email: legacy.email ? String(legacy.email).slice(0, 100) : null,
       address: legacy.address || null,

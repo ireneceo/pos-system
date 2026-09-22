@@ -1018,7 +1018,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       const res = await fetch(`/api/purchase-orders/${detail.id}/pdf`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) { setAlertDlg({ title: t('common:error', 'Error') as string, message: 'Failed to load order' }); return; }
+      if (!res.ok) { setAlertDlg({ title: t('common:error.title', 'Error') as string, message: 'Failed to load order' }); return; }
       const html = (await res.text()).replace(/<script[\s\S]*?window\.print[\s\S]*?<\/script>/gi, '');
       const iframe = document.createElement('iframe');
       iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:0;';
@@ -1033,7 +1033,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       }
     } catch (e) {
       console.error('download order pdf failed:', e);
-      setAlertDlg({ title: t('common:error', 'Error') as string, message: 'Failed to download' });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: 'Failed to download' });
     }
   };
 

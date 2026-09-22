@@ -1008,6 +1008,8 @@ router.post('/external-suppliers', async (req, res) => {
       is_system_registered: false,
       registered_by_entity_type: req.buyerEntity.type,
       registered_by_entity_id: req.buyerEntity.id,
+      // 브랜드가 새로 등록한 업체는 매장에 자동 공유하지 않는다 (2026-09-22 Irene — 공유는 원할 때만, 각자 독립)
+      shared_with_stores: req.buyerEntity.type !== 'brand',
       phone: phone ? sanitizeString(String(phone)).slice(0, 20) : null,
       email: email ? sanitizeString(String(email)).slice(0, 100) : null,
       address: address ? sanitizeString(String(address)) : null,
@@ -1176,7 +1178,8 @@ async function loadVisibleExternalSupplier(req, res) {
     const rest = await Restaurant.findByPk(req.buyerEntity.id, { attributes: ['brand_id'] });
     parentBrandId = rest && rest.brand_id ? rest.brand_id : null;
   }
-  const inherited = !own && !!parentBrandId && sc.registered_by_entity_type === 'brand' && Number(sc.registered_by_entity_id) === Number(parentBrandId);
+  const inherited = !own && !!parentBrandId && sc.registered_by_entity_type === 'brand' && Number(sc.registered_by_entity_id) === Number(parentBrandId)
+    && sc.shared_with_stores !== false;   // 공유 안 한 브랜드 업체는 매장이 못 본다 (2026-09-22)
   if (!own && !inherited) { res.status(403).json({ success: false, message: 'Not your supplier' }); return null; }
   return { sc, inherited, parentBrandId };
 }
@@ -1220,7 +1223,8 @@ router.get('/external-suppliers', async (req, res) => {
     let parentBrandId = null;
     if (req.buyerEntity.type === 'restaurant') {
       const rest = await Restaurant.findByPk(req.buyerEntity.id, { attributes: ['brand_id'] });
-      if (rest?.brand_id) { parentBrandId = rest.brand_id; scopes.push({ registered_by_entity_type: 'brand', registered_by_entity_id: rest.brand_id }); }
+      // 브랜드 업체는 «매장과 공유» 인 것만 (2026-09-22 Irene 「공유해주고 싶으면 해주고」)
+      if (rest?.brand_id) { parentBrandId = rest.brand_id; scopes.push({ registered_by_entity_type: 'brand', registered_by_entity_id: rest.brand_id, shared_with_stores: true }); }
     }
     const companies = await SupplierCompany.findAll({
       where: {

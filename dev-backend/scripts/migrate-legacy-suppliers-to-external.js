@@ -2,7 +2,7 @@
 /**
  * 남은 예전 방식 공급업체(«OWN», `suppliers`)를 외부 공급업체(«EXTERNAL», `supplier_companies` + 계약)로 연결 — 멱등
  * (2026-09-21 Irene 「OWN이 왜있냐고」 → 「응」: 새로 추가는 EXTERNAL, 이미 OWN 인 것은 EXTERNAL 로 옮긴다)
- * ⏸ 2026-09-22 1단계 범위: **매장·푸드코트 소유만**. 브랜드 소유는 공유 설계(2단계) 뒤.
+ * 2026-09-22: 브랜드 소유도 포함 — 브랜드 업체는 비공유(shared_with_stores=false)로 만들어 매장에 안 퍼진다.
  *
  * 연결 규칙은 «Products» 버튼과 **같은 함수** `utils/legacySupplierBridge.bridgeLegacySupplier`:
  *   이미 연결 → 건너뜀 / 같은 구매자·같은 이름의 외부 공급업체가 있으면 거기에 연결(새로 안 만듦) / 없으면 새로 + 활성 계약.
@@ -21,9 +21,9 @@ const { legacyOwnerEntity, bridgeLegacySupplier } = require('../utils/legacySupp
 
 async function main() {
   const dry = process.argv.includes('--dry-run');
-  // ⏸ 1단계: 매장·푸드코트 행만. 브랜드 행을 옮기면 브랜드 등록 외부 공급업체가 되어 산하 전 매장에 자동 공유된다
-  //   (Irene 2026-09-22 «공유는 BG 가 원할 때만, 공유 뒤엔 각자 독립» 과 반대). 브랜드 행은 «공유 = 복사» 설계 뒤에 옮긴다.
-  const rows = await Supplier.findAll({ where: { supplier_company_id: null, is_active: true, owner_type: ['restaurant', 'foodcourt'] }, order: [['id', 'ASC']] });
+  // 브랜드 행도 옮긴다 — 만들어지는 외부 업체는 shared_with_stores=false 라 매장에 퍼지지 않는다(2026-09-22).
+  //   (이 칸은 migrate-add-supplier-company-shared.js 가 먼저 만든다 — 파일명 순서로 앞에 돈다)
+  const rows = await Supplier.findAll({ where: { supplier_company_id: null, is_active: true }, order: [['id', 'ASC']] });
   const admin = await User.findOne({ where: { role: 'System Admin' }, attributes: ['id'], order: [['id', 'ASC']] });
 
   let bridged = 0, reused = 0, skipped = 0;

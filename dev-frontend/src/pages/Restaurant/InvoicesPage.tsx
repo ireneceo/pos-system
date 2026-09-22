@@ -414,7 +414,7 @@ const RestaurantInvoicesPage: React.FC = () => {
       const up = await fetch('/api/upload/files', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
       const upData = await up.json();
       if (!up.ok || !upData.success || !upData.data?.[0]) {
-        setAlertDlg({ title: t('common:error', 'Error') as string, message: getErrorMessage(upData, 'Upload failed') });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: getErrorMessage(upData, 'Upload failed') });
         return;
       }
       const f = upData.data[0];
@@ -425,14 +425,14 @@ const RestaurantInvoicesPage: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setAlertDlg({ title: t('common:error', 'Error') as string, message: getErrorMessage(data, 'Failed to attach invoice') });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: getErrorMessage(data, 'Failed to attach invoice') });
         return;
       }
       await fetchAllInvoices();
       setShowViewModal(false);
     } catch (e) {
       console.error(e);
-      setAlertDlg({ title: t('common:error', 'Error') as string, message: t('common:networkError', 'Network error') as string });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('common:networkError', 'Network error') as string });
     } finally {
       setUploadingInvoiceId(null);
     }

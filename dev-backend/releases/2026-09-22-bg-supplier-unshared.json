@@ -1,0 +1,26 @@
+{
+ "tag": "bg-supplier-unshared",
+ "sw_version": "5.51-bg-supplier-unshared-20260922",
+ "date": "2026-09-22",
+ "in_progress": ["Fable 판정 대기: SOA · 인보이스 대조 · SEO C1/M3 · 공급업체 «원할 때 공유(복사)» 버튼"],
+ "completed": [
+  "**BG 공급업체 — EXTERNAL 등록·상품 등록 가능, 매장에는 자동 공유 안 함** — Irene 「여전히 OWN으로 들어가고 상품등록 못해 … Not your supplier」 · 규칙 「공급업체는 브랜드제너럴에서 브랜드에 공유해주고 싶으면 해주고 대신 수정 등록 모두 독립적으로 각각 운영」.",
+  "supplier_companies.shared_with_stores 신설(기존 행 1 = 종전 자동 상속 유지 · 마이그 migrate-add-supplier-company-shared.js). BG 가 새로 등록·이관하는 업체는 0.",
+  "상속 판정 3곳이 이 칸을 본다: utils/supplierAccess.findEffectiveContract(발주 자격) · GET /external-suppliers(매장 목록) · loadVisibleExternalSupplier(매장 켜기/끄기).",
+  "BG «Add Supplier» = EXTERNAL 등록 · BG 예전 업체 «Products» 연결 허용(그 BG 계정 소유 = assertBGOwnsRow 규칙) · BG OWN 도 이관(비공유).",
+  "오류 창 제목 «key 'error (en)' returned an object» — common:error 가 묶음이라 제목에 쓰면 깨졌다. common:error.title(4언어) 추가, 7파일 39곳 교체."
+ ],
+ "issues": ["⏸ «원할 때 공유(복사본)» 버튼은 2단계 — Fable 판정 뒤. 지금은 BG 새 업체 = 비공유만.", "⚠ Fable 한도(429). 발주 자격 판정 변경이지만 기존 행은 전부 종전 값(1) — 넓히지 않고 새 업체만 좁힘. 고장주입으로 방어 증명."],
+ "upcoming": ["BG 공급업체 «매장에 공유(복사)» 버튼 설계·Fable 판정"],
+ "behavior_changes": ["브랜드제너럴이 «Add Supplier» 로 등록하면 EXTERNAL 로 들어가고 바로 상품을 등록할 수 있습니다.", "브랜드제너럴이 새로 등록한 공급업체는 매장에 자동으로 보이지 않습니다(각자 독립). 이미 매장과 공유 중인 업체는 그대로.", "BG 의 예전 OWN 업체도 EXTERNAL(비공유)로 옮겨집니다.", "오류 창 제목이 «Error» 로 제대로 나옵니다."],
+ "check_areas": ["BG /pos/suppliers?tab=direct — OWN 0 · Add Supplier → 상품 등록", "매장 공급업체 화면에 BG 새 업체가 안 보이는지 · 기존 브랜드 공유 업체는 보이는지"],
+ "verification": {
+  "gates": "verify-all + 배포 게이트",
+  "fault_injection": "findEffectiveContract 의 공유 확인 제거 → 비공유 업체에 매장 발주 자격 true(뚫림) → 원복 false",
+  "real_calls": "BG EXTERNAL 등록 201(공유 0) → 상품 201 · 매장 목록/발주자격에 BG 새 업체 없음 · 기존 공유 업체 있음 · 다른 BG Products 403 · BG 예전 업체 Products 201(공유 0) · 잔여 0 · dev BG OWN 4건 이관(공유 0) · health-check supplier 3/3 · po 7/7",
+  "health_check": "verify-all 에 포함",
+  "build": "npm run build:dev (배포 스크립트)",
+  "sw_version": "5.51-bg-supplier-unshared-20260922",
+  "fable_note": "Fable 호출 불가(429). Irene 가 규칙을 직접 지정(공유는 원할 때만) — 길이 갈리는 «공유=복사» 는 2단계로 미룸. 기존 공유 상태 무변경."
+ }
+}

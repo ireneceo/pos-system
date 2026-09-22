@@ -106,14 +106,14 @@ const SupplierStaffPage: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setAlertDlg({ title: t('common:error', 'Error') as string, message: data.message || 'Failed to add staff' });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: data.message || 'Failed to add staff' });
         return;
       }
       resetForm();
       setAddOpen(false);
       await fetchStaff();
     } catch (err: any) {
-      setAlertDlg({ title: t('common:error', 'Error') as string, message: err?.message || 'Network error' });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: err?.message || 'Network error' });
     }
   };
 
@@ -134,14 +134,14 @@ const SupplierStaffPage: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setAlertDlg({ title: t('common:error', 'Error') as string, message: data.message || 'Failed to update' });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: data.message || 'Failed to update' });
         return;
       }
       setEditTarget(null);
       resetForm();
       await fetchStaff();
     } catch (err: any) {
-      setAlertDlg({ title: t('common:error', 'Error') as string, message: err?.message || 'Network error' });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: err?.message || 'Network error' });
     }
   };
 
@@ -157,12 +157,12 @@ const SupplierStaffPage: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setAlertDlg({ title: t('common:error', 'Error') as string, message: data.message || 'Failed to delete' });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: data.message || 'Failed to delete' });
         return;
       }
       await fetchStaff();
     } catch (err: any) {
-      setAlertDlg({ title: t('common:error', 'Error') as string, message: err?.message || 'Network error' });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: err?.message || 'Network error' });
     }
   };
 

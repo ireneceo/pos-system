@@ -610,7 +610,7 @@ const PurchaseOrdersPage: React.FC = () => {
           });
           const data = await res.json();
           if (!res.ok || !data.success) {
-            setAlertDlg({ title: t('common:error', 'Error') as string, message: data.message || 'Failed to mark received' });
+            setAlertDlg({ title: t('common:error.title', 'Error') as string, message: data.message || 'Failed to mark received' });
             return;
           }
           fetchList();
@@ -636,7 +636,7 @@ const PurchaseOrdersPage: React.FC = () => {
       const res = await fetch(`/api/purchase-orders/${row.id}/pdf`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) { setAlertDlg({ title: t('common:error', 'Error') as string, message: 'Failed to load order' }); return; }
+      if (!res.ok) { setAlertDlg({ title: t('common:error.title', 'Error') as string, message: 'Failed to load order' }); return; }
       // window.print 자동호출 스크립트 제거 (다운로드 시에는 인쇄 X)
       const html = (await res.text()).replace(/<script[\s\S]*?window\.print[\s\S]*?<\/script>/gi, '');
 
@@ -654,7 +654,7 @@ const PurchaseOrdersPage: React.FC = () => {
       }
     } catch (e) {
       console.error('download order pdf failed:', e);
-      setAlertDlg({ title: t('common:error', 'Error') as string, message: 'Failed to download' });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: 'Failed to download' });
     }
   };
 
@@ -686,7 +686,7 @@ const PurchaseOrdersPage: React.FC = () => {
       const up = await fetch('/api/upload/files', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
       const upData = await up.json();
       if (!up.ok || !upData.success || !upData.data?.[0]) {
-        setAlertDlg({ title: t('common:error', 'Error') as string, message: upData.message || 'Upload failed' });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: upData.message || 'Upload failed' });
         return;
       }
       const f = upData.data[0];
@@ -697,12 +697,12 @@ const PurchaseOrdersPage: React.FC = () => {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
-        setAlertDlg({ title: t('common:error', 'Error') as string, message: getErrorMessage(data, t('list.receipt.failed', '영수증을 붙이지 못했습니다') as string) });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: getErrorMessage(data, t('list.receipt.failed', '영수증을 붙이지 못했습니다') as string) });
         return;
       }
       fetchList();
     } catch {
-      setAlertDlg({ title: t('common:error', 'Error') as string, message: t('list.receipt.failed', '영수증을 붙이지 못했습니다') as string });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('list.receipt.failed', '영수증을 붙이지 못했습니다') as string });
     }
   };
 
@@ -714,7 +714,7 @@ const PurchaseOrdersPage: React.FC = () => {
       const up = await fetch('/api/upload/files', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd });
       const upData = await up.json();
       if (!up.ok || !upData.success || !upData.data?.[0]) {
-        setAlertDlg({ title: t('common:error', 'Error') as string, message: upData.message || 'Upload failed' });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: upData.message || 'Upload failed' });
         return;
       }
       const f = upData.data[0];
@@ -725,11 +725,11 @@ const PurchaseOrdersPage: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setAlertDlg({ title: t('common:error', 'Error') as string, message: data.message || 'Failed to attach invoice' });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: data.message || 'Failed to attach invoice' });
         return;
       }
       fetchList();
-    } catch (e) { console.error(e); setAlertDlg({ title: t('common:error', 'Error') as string, message: 'Network error' }); }
+    } catch (e) { console.error(e); setAlertDlg({ title: t('common:error.title', 'Error') as string, message: 'Network error' }); }
   };
 
   const handleCreatePOFromSuggestion = (group: SuggestionGroup) => {
@@ -1258,7 +1258,7 @@ const PurchaseOrdersPage: React.FC = () => {
               });
               const j = await res.json().catch(() => ({}));
               if (!res.ok || !j.success) {
-                setAlertDlg({ title: t('common:error', 'Error') as string, message: getErrorMessage(j, t('list.reimburse.failed', '정산을 기록하지 못했습니다') as string) });
+                setAlertDlg({ title: t('common:error.title', 'Error') as string, message: getErrorMessage(j, t('list.reimburse.failed', '정산을 기록하지 못했습니다') as string) });
               } else if (j.drawerSkipped) {
                 setAlertDlg({
                   title: t('pay.drawerSkipped.title', 'Payment recorded — drawer not updated') as string,
@@ -1268,7 +1268,7 @@ const PurchaseOrdersPage: React.FC = () => {
               setReimburseRow(null);
               fetchList();
             } catch {
-              setAlertDlg({ title: t('common:error', 'Error') as string, message: t('list.reimburse.failed', '정산을 기록하지 못했습니다') as string });
+              setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('list.reimburse.failed', '정산을 기록하지 못했습니다') as string });
             } finally { setReimbursing(false); }
           }}>
             {reimbursing ? t('common:saving', '저장 중…') : t('list.reimburse.confirm', '갚았다고 기록')}
