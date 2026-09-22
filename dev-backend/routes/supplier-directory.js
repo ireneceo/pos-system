@@ -1049,52 +1049,19 @@ router.post('/external-suppliers', async (req, res) => {
 // suppliers.supplier_company_id 링크. (레거시 행/재고 FK 는 그대로 — 회귀 0.) docs §10 브리지.
 router.post('/external-suppliers/from-legacy/:legacyId', async (req, res) => {
   if (!req.buyerEntity) return res.status(400).json({ success: false, message: 'Buyer context required' });
+  const { requesterOwnsLegacy, bridgeLegacySupplier } = require('../utils/legacySupplierBridge');
   const t = await SupplierCompany.sequelize.transaction();
   try {
     const legacyId = parseInt(req.params.legacyId, 10);
-    const legacy = await Supplier.findByPk(legacyId);
+    const legacy = await Supplier.findByPk(legacyId, { transaction: t });
     if (!legacy) { await t.rollback(); return res.status(404).json({ success: false, message: 'Supplier not found' }); }
-    const owns =
-      (req.buyerEntity.type === 'restaurant' && legacy.owner_type === 'restaurant' && Number(legacy.restaurant_id) === req.buyerEntity.id) ||
-      (req.buyerEntity.type === 'brand' && legacy.owner_type === 'brand' && Number(legacy.brand_id) === req.buyerEntity.id) ||
-      (req.buyerEntity.type === 'foodcourt' && legacy.owner_type === 'foodcourt' && Number(legacy.foodcourt_id) === req.buyerEntity.id);
-    if (!owns) { await t.rollback(); return res.status(403).json({ success: false, message: 'Not your supplier' }); }
+    // 소유 판정은 utils/legacySupplierBridge 한 곳 — BG 가 만든 브랜드 행(brand_id=null · owner_user_id=그 BG)도 주인으로 인정
+    //   (2026-09-21: 예전엔 brand_id 만 봐서 BG 의 «Products» 가 늘 403 이었다).
+    if (!requesterOwnsLegacy(legacy, req.buyerEntity, req.user)) { await t.rollback(); return res.status(403).json({ success: false, message: 'Not your supplier' }); }
 
-    // 이미 브리지됨 → 그 supplier_company 반환 (멱등)
-    if (legacy.supplier_company_id) {
-      const existing = await SupplierCompany.findByPk(legacy.supplier_company_id);
-      if (existing) { await t.commit(); return res.json({ success: true, data: { supplier_company_id: existing.id, bridged: false } }); }
-    }
-
-    const company = await SupplierCompany.create({
-      name: sanitizeString(String(legacy.name || 'Supplier')).slice(0, 255),
-      status: 'active',
-      is_system_registered: false,
-      registered_by_entity_type: req.buyerEntity.type,
-      registered_by_entity_id: req.buyerEntity.id,
-      phone: legacy.phone ? String(legacy.phone).slice(0, 20) : null,
-      email: legacy.email ? String(legacy.email).slice(0, 100) : null,
-      address: legacy.address || null,
-      city: legacy.city || null,
-      state: legacy.state || null,
-      postal_code: legacy.postal_code || null,
-      country: legacy.country ? String(legacy.country).toUpperCase().slice(0, 2) : 'MY',
-      description: legacy.notes || null
-    }, { transaction: t });
-
-    await SupplierContract.create({
-      entity_type: req.buyerEntity.type,
-      entity_id: req.buyerEntity.id,
-      supplier_company_id: company.id,
-      status: 'active',
-      requested_by_user_id: req.user.id
-    }, { transaction: t });
-
-    legacy.supplier_company_id = company.id;
-    await legacy.save({ transaction: t });
-
+    const r = await bridgeLegacySupplier(legacy, req.buyerEntity, { userId: req.user.id, transaction: t });
     await t.commit();
-    res.status(201).json({ success: true, data: { supplier_company_id: company.id, bridged: true } });
+    res.status(r.bridged ? 201 : 200).json({ success: true, data: r });
   } catch (err) {
     if (!t.finished) await t.rollback();
     console.error('POST /api/external-suppliers/from-legacy error:', err);

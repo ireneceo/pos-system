@@ -45,6 +45,7 @@
     "migrate-external-supplier-invoice-due-null.js",
     "migrate-ingredient-source-column.js",
     "migrate-invoice-item-unit.js",
+    "migrate-legacy-suppliers-to-external.js",
     "migrate-merge-product-mirrors.js",
     "migrate-order-action-table-moved.js",
     "migrate-order-action-updated.js",

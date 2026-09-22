@@ -413,7 +413,9 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
         )}
         {enabled.has('own') && (
           <div style={{ marginLeft: 'auto' }}>
-            <ThemedButton variant="primary" onClick={() => setAdding(true)}>
+            {/* 새 업체는 **외부 공급업체(EXTERNAL)** 로만 등록한다 — 예전 방식(OWN, `suppliers`)은 상품을 못 담아
+                BG 가 등록 후 상품 등록이 막혔다(2026-09-21 Irene 「OWN이 왜있냐고」). 등록 직후 그 업체 프로필(상품 등록)로 간다. */}
+            <ThemedButton variant="primary" onClick={() => { setExtRegError(null); setExtReg({ name: '', contact_person: '', phone: '', email: '' }); }}>
               {t('supplier:directory.addSupplier', 'Add Supplier')}
             </ThemedButton>
           </div>
