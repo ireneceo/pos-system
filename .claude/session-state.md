@@ -1,5 +1,5 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-09-21 18:00 UTC · **버전: 운영 v3.99 코드 + SW `5.49-sitemap-20260921`** (오늘 배포 4회 5.46→5.49 · 전부 스모크 10/10 · 마지막 백업 `20260921_172118`)
+**마지막 업데이트:** 2026-09-21 18:00 UTC · **버전: 운영 v3.99 코드 + SW `5.50-supplier-external-only-20260922`** (2026-09-22 08:34 UTC · 스모크 10/10 · 백업 `20260922_081849`)
 **작업 상태:** 완료 — /개발완료 처리. Fable 판정 대기 3건(한도 429).
 
 ### 진행 중인 작업
@@ -15,6 +15,8 @@
 
 - ⏸ **SEO C1 사전 렌더링 — Fable 판정 대기** (근거 = Irene 제공 Search Console 2026-09-21): 색인 6 · 미색인 12 · 3개월 클릭 24. 미색인 이유: Discovered–not indexed 6 · Crawled–not indexed 1 · Duplicate without user-selected canonical 2 · Page with redirect 2 · Alternative page with proper canonical 1. Irene 「그런데 방문자가 없어」. 크롤러가 받는 HTML 이 전 주소 동일(홈=/pricing 바이트 동일, 본문 46자, canonical 없음). Duplicate 2건 주소는 Irene 확인 대기(www 면 H6 로 해결). H2 site_name 은 /pos/admin/site-settings → Site Name (DB 기본값 'OrderHere POS' 그대로).
   - 같이 판정: **M3 블로그 주소 끝 숫자**(주소 변경=되돌리기 어려움). H6 www→apex 는 판정 불필요(방법 하나) — Cloudflare/운영 nginx 적용 안내만.
+
+- ⏸ **공급업체 2단계 — Fable 판정 대기**: Irene 원문 「공급업체는 브랜드제너럴에서 브랜드에 공유해주고 싶으면 해주고 대신 수정 등록 모두 독립적으로 각각 운영하는 거야」. 지금 구조 = 브랜드 등록 외부 업체가 산하 전 매장에 **자동 상속**(07-05 결정 · SUPPLIER_CONTRACT_SYSTEM §G · supplier-directory.js GET /external-suppliers scopes). 필요: 원할 때만 공유 · 공유 = 복사 · 이후 각자 독립 · 새 BG 업체 기본 비공유 · 이미 자동 공유 중인 업체(매장 발주 사용 중) 정리. BG «Add Supplier»·BG OWN 이관·BG Products(403) 는 이 뒤에. 1단계(매장·FC) 배포 완료 — 운영 이관 3건.
 
 ### 👉 Irene 님이 하실 일
 1. **사이트 이름**: 운영 `/pos/admin/site-settings` → Basic Settings → **Site Name = PurpleHere** 저장 (지금 DB 기본값 «OrderHere POS» 가 모든 랜딩 제목 끝에 붙음)
