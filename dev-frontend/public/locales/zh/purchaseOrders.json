@@ -228,7 +228,11 @@
     "invoice": {
       "reconcile": "成本核对",
       "reconcileAgain": "重新查看核对"
-    }
+    },
+    "amendedBySeller": "卖方已修改此订单",
+    "amendedAdded": "新增",
+    "amendedRemoved": "移除",
+    "amendedTotal": "订单金额"
   },
   "receive": {
     "modalTitle": "收货登记",

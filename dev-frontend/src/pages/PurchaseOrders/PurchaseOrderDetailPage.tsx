@@ -1224,6 +1224,56 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                 <strong>{t('detail.rejectedByOwner', 'Rejected by Owner')}:</strong> {detail.rejected_reason}
               </div>
             )}
+            {/* 판매자가 품목을 고쳤을 때 — 이력(타임라인)에도 남지만, 금액이 바뀐 일이라 상단에서 먼저 알린다.
+                마지막 'amended' 이벤트 기준. 이유는 선택이므로 없으면 문장만 나온다. */}
+            {(() => {
+              const events = (detail as any).tracking_info?.events;
+              if (!Array.isArray(events)) return null;
+              const last = [...events].reverse().find((e: any) => e?.status === 'amended');
+              if (!last) return null;
+              const when = last.at ? formatDate(last.at) : '';
+              return (
+                <div style={{
+                  background: '#EEF2FF', border: '1px solid #C7D2FE', borderRadius: 8,
+                  padding: '12px 16px', marginBottom: 16, color: '#3730A3', fontSize: 14, lineHeight: 1.6
+                }}>
+                  <strong>
+                    {t('detail.amendedBySeller', 'The seller amended this order')}
+                    {when ? ` · ${when}` : ''}
+                  </strong>
+                  {last.reason ? <div style={{ marginTop: 4 }}>{last.reason}</div> : null}
+                  {Array.isArray(last.changes) && last.changes.length > 0 && (
+                    <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13 }}>
+                      {last.changes.map((c: any, i: number) => {
+                        const name = (c.after || c.before)?.name || '-';
+                        const qtyText = (s: any) => s ? `${s.quantity}${s.unit ? ` ${s.unit}` : ''}` : null;
+                        if (c.type === 'added') {
+                          return <li key={i}>{t('detail.amendedAdded', 'Added')}: {name} {qtyText(c.after)}</li>;
+                        }
+                        if (c.type === 'removed') {
+                          return <li key={i}>{t('detail.amendedRemoved', 'Removed')}: {name} {qtyText(c.before)}</li>;
+                        }
+                        return (
+                          <li key={i}>
+                            {name}: {qtyText(c.before)} → <strong>{qtyText(c.after)}</strong>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                  {typeof last.total_before === 'number' && typeof last.total_after === 'number' && (
+                    <div style={{ marginTop: 6, fontSize: 13 }}>
+                      {t('detail.amendedTotal', 'Order total')}:{' '}
+                      <span style={{ textDecoration: 'line-through', opacity: 0.7 }}>
+                        {formatMoney(last.total_before)}
+                      </span>
+                      {' → '}
+                      <strong>{formatMoney(last.total_after)}</strong>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <Section>
               <h3>{t('detail.timeline.title')}</h3>

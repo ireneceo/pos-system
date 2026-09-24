@@ -204,7 +204,8 @@
       "reject": "거부",
       "deliver": "배송 완료 표시",
       "editTracking": "배송정보 수정",
-      "recordDispatch": "배송 기록"
+      "recordDispatch": "배송 기록",
+      "amend": "품목 수정"
     },
     "confirm": {
       "title": "주문 확정",
@@ -239,6 +240,22 @@
     "loading": "불러오는 중…",
     "badge": {
       "needsDispatch": "구매자가 수령 확인 — 배송 기록 필요"
+    },
+    "amend": {
+      "title": "주문 품목 수정",
+      "hint": "무엇이 바뀌었는지는 주문한 곳에 자동으로 안내됩니다. 주문 금액은 올릴 수 없습니다 — 더 받아야 하면 주문을 거부하고 다시 주문받으세요.",
+      "item": "품목",
+      "qty": "수량",
+      "choose": "상품 고르기",
+      "addLine": "품목 추가",
+      "removeLine": "이 줄 지우기",
+      "itemsTotal": "품목 합계",
+      "exceeds": "주문한 곳이 승인한 금액을 넘습니다. 수량을 줄이거나, 주문을 거부해 다시 주문받으세요.",
+      "reason": "이유 (선택)",
+      "reasonPlaceholder": "무엇이 바뀌었는지는 늘 함께 갑니다. 덧붙일 설명이 있으면 적으세요.",
+      "submit": "저장",
+      "cancel": "취소",
+      "loading": "불러오는 중…"
     }
   },
   "tradeInvoicesPage": {

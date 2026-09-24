@@ -228,7 +228,11 @@
     "invoice": {
       "reconcile": "Banding kos",
       "reconcileAgain": "Semak semula banding"
-    }
+    },
+    "amendedBySeller": "Penjual telah mengubah pesanan ini",
+    "amendedAdded": "Ditambah",
+    "amendedRemoved": "Dibuang",
+    "amendedTotal": "Jumlah pesanan"
   },
   "receive": {
     "modalTitle": "Terima Pesanan",

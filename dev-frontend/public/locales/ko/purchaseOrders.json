@@ -228,7 +228,11 @@
     "invoice": {
       "reconcile": "원가 대조",
       "reconcileAgain": "대조 다시 보기"
-    }
+    },
+    "amendedBySeller": "판매처에서 이 주문을 수정했습니다",
+    "amendedAdded": "추가",
+    "amendedRemoved": "제외",
+    "amendedTotal": "주문 금액"
   },
   "receive": {
     "modalTitle": "주문 수령",

@@ -21,8 +21,14 @@ const STATUS_NOTE = {
 /**
  * Append a status event to po.tracking_info.events.
  * Returns the new tracking_info object (caller must persist).
+ *
+ * @param extra        tracking_info **최상위**에 얹을 값 (carrier_code 등 주문 전체 속성)
+ * @param eventFields  방금 추가하는 **이벤트 한 건 안**에 들어갈 값 (2026-09-24)
+ *   왜 둘이 다른가: 배송 정보는 "이 주문의 현재 상태"라 최상위가 맞지만, 수정 내역(changes·reason)은
+ *   "그때 무슨 일이 있었나"라서 그 이벤트에 붙어야 한다. 두 번 수정하면 두 건이 각자의 내역을 갖는다.
+ *   최상위에 뒀다면 뒤 수정이 앞 수정을 덮어써 이력이 사라진다.
  */
-function appendTrackingEvent(po, status, note, extra) {
+function appendTrackingEvent(po, status, note, extra, eventFields) {
   const base = (po.tracking_info && typeof po.tracking_info === 'object' && !Array.isArray(po.tracking_info))
     ? { ...po.tracking_info }
     : {};
@@ -30,7 +36,8 @@ function appendTrackingEvent(po, status, note, extra) {
   events.push({
     at: new Date().toISOString(),
     status,
-    note: note || STATUS_NOTE[status] || ''
+    note: note || STATUS_NOTE[status] || '',
+    ...(eventFields && typeof eventFields === 'object' ? eventFields : {})
   });
   return { ...base, ...(extra || {}), events };
 }

@@ -204,7 +204,8 @@
       "reject": "拒绝",
       "deliver": "标记已送达",
       "editTracking": "编辑追踪",
-      "recordDispatch": "记录配送"
+      "recordDispatch": "记录配送",
+      "amend": "修改项目"
     },
     "confirm": {
       "title": "确认订单",
@@ -239,6 +240,22 @@
     "loading": "加载中…",
     "badge": {
       "needsDispatch": "买家已确认收货 — 请记录配送"
+    },
+    "amend": {
+      "title": "修改订单项目",
+      "hint": "系统会自动告知买方改动内容。您无法提高订单金额——若需收取更多费用，请拒绝该订单并请买方重新下单。",
+      "item": "项目",
+      "qty": "数量",
+      "choose": "选择商品",
+      "addLine": "添加项目",
+      "removeLine": "删除此行",
+      "itemsTotal": "项目合计",
+      "exceeds": "超出买方已批准的金额。请减少数量，或拒绝订单让买方重新下单。",
+      "reason": "原因（选填）",
+      "reasonPlaceholder": "改动内容始终会一并送出。如有补充说明可在此填写。",
+      "submit": "保存",
+      "cancel": "取消",
+      "loading": "载入中…"
     }
   },
   "tradeInvoicesPage": {

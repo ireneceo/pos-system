@@ -228,7 +228,11 @@
     "invoice": {
       "reconcile": "Compare cost",
       "reconcileAgain": "Review comparison"
-    }
+    },
+    "amendedBySeller": "The seller amended this order",
+    "amendedAdded": "Added",
+    "amendedRemoved": "Removed",
+    "amendedTotal": "Order total"
   },
   "receive": {
     "modalTitle": "Receive Order",

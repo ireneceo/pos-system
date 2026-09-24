@@ -1239,3 +1239,56 @@ Sprint 1~5 완료 후 발주/주문 라이프사이클 정합성 갭 9개 일괄
 ### 이모지 제거
 빈 상태/carrier chip/delivery 주소의 📭/📦/📍 모두 텍스트 전환. Restaurant LiveOrdersPage 패턴(`<DataTableEmpty>` 한 줄)과 통일.
 
+
+---
+
+## 판매자 주문 수정 (amend) — 2026-09-24
+
+Irene 원문: 「주문내역 좀 바꿔줘. … 이런 거 주문관리 수정하고 수정했다고 주문자에게 안내하는 거, 이유도 설명 옵션넣는 거 포함해서 검토시켜줘.」
+계기: GIT Consulting 에 들어온 `PO-R8-20260924-001` 에 짜장소스가 잘못 담겨, 더 싼 `_2nd` 로 바꿔야 했다.
+그때까지 **판매자에게도 구매자에게도 품목을 바꿀 화면 경로가 없었다**(구매자용 `PUT /api/purchase-orders/:id` 는 서버에만 있고 호출하는 화면이 0건).
+
+### 원칙 (Fable 판정)
+
+> **발주서는 구매자의 돈 약속이다. 판매자는 그 약속을 줄이거나 같은 값으로 바꿀 수는 있어도,
+> 구매자 동의 없이 늘릴 수는 없다.**
+
+이 한 줄이 나머지를 정한다 — 오너 승인(제출 전 금액 승인)을 우회하지 않고, 「수정 제안 → 구매자 승인」 같은 왕복 상태도 만들지 않는다.
+총액을 올려야 하면 기존 길(Reject + 구매자 재발주)로 간다.
+
+### 계약
+
+| 항목 | 값 |
+|---|---|
+| 라우트 | `POST /api/seller-orders/:id/amend` · 후보 조회 `GET /api/seller-orders/:id/amendable-products` |
+| 허용 상태 | `submitted` · `confirmed` (출고 전). 그 외 400 |
+| 소유권 | `checkSellerOwnership`(= `ownsPurchaseOrder`) — 남의 주문 404. 구매자 토큰은 `requireSellerRole` 에서 403 |
+| 🔒 돈 게이트 | **새 총액 ≤ 기존 총액**. 넘으면 400 `TOTAL_EXCEEDS`(1 센트 반올림 오차는 허용) |
+| 품목 범위 | 수량 변경 · 상품 교체 · 줄 삭제 · 줄 추가. 최소 1줄 |
+| 단가 | **서버가 판매자 카탈로그에서 채운다** — 요청 본문의 `unit_price` 는 믿지 않는다 |
+| 상품 조건 | 이 주문의 판매자 카탈로그 ∩ 구매자에게 재고 자리가 있는 것. 아니면 400 `NOT_LINKED_TO_BUYER` |
+| 수령된 줄 | `quantity_received > 0` 이 하나라도 있으면 400 `ALREADY_RECEIVED` |
+| 총액 계산 | 구매자 경로와 **같은** `computeTotalsWithDelivery`. 별도 계산식 금지 |
+| 상태 ENUM | **바꾸지 않는다** — `amended` 는 이력 이벤트 이름일 뿐 |
+
+### 기록·안내
+
+- `appendTrackingEvent(po, 'amended', note, null, { changes, reason, by_user_id, total_before, total_after })`
+  — **새 테이블 없음**. 이벤트 **안**에 담는다(최상위에 두면 두 번째 수정이 첫 번째를 덮어써 이력이 사라진다).
+  이를 위해 `appendTrackingEvent` 에 5번째 인자 `eventFields` 를 더했다(기존 호출부 무영향).
+- **이유는 선택, 변경 내역(diff)은 서버가 항상 만든다** — 이유가 비어도 구매자는 무엇이 바뀌었는지 안다.
+- 구매자 안내: 소켓 `seller-order-updated` + 메일 `Order Amended: {po_number}`(변경 표 + 이유 블록, 카테고리는 기존 `seller_order_received` 재사용)
+  + 상세 화면 상단 배너(마지막 `amended` 이벤트의 변경 줄과 전후 총액을 직접 표시).
+
+### 지원 범위 밖 (의도적)
+
+- `product_ingredient` · `brand_product` 재고 타깃(= BG 가 구매자인 경우) → 400 `UNSUPPORTED_STOCK_TARGET`.
+  구매자 수정 라우트도 `ingredient` 만 받는다. 넓히려면 그때 사안으로 올린다.
+- 총액 인상 수정(오너 재승인 흐름 필요) · 수령 후 수정 · 구매자 쪽 「수정 제안 승인/거부」 UI · 청구서 재발행.
+
+### 관련 파일
+
+`utils/poAmend.js`(판정 단일 소스 — 후보 목록과 저장 검증이 같은 함수를 본다) ·
+`routes/seller-orders.js`(라우트 2개) · `services/poRealtimeService.js`(`appendTrackingEvent` 확장) ·
+`pages/IncomingOrders/IncomingOrdersView.tsx`(「품목 수정」 버튼·모달) ·
+`pages/PurchaseOrders/PurchaseOrderDetailPage.tsx`(구매자 배너).

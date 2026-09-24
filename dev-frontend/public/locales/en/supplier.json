@@ -204,7 +204,8 @@
       "reject": "Reject",
       "deliver": "Mark Delivered",
       "editTracking": "Edit tracking",
-      "recordDispatch": "Record delivery"
+      "recordDispatch": "Record delivery",
+      "amend": "Edit items"
     },
     "confirm": {
       "title": "Confirm Order",
@@ -239,6 +240,22 @@
     "loading": "Loading…",
     "badge": {
       "needsDispatch": "Buyer confirmed receipt — record delivery"
+    },
+    "amend": {
+      "title": "Edit order items",
+      "hint": "The buyer is told what changed. You cannot raise the order total — to charge more, reject the order and ask the buyer to reorder.",
+      "item": "Item",
+      "qty": "Qty",
+      "choose": "Choose a product",
+      "addLine": "Add item",
+      "removeLine": "Remove this line",
+      "itemsTotal": "Items total",
+      "exceeds": "This exceeds the amount the buyer approved. Lower the quantities, or reject the order so the buyer can reorder.",
+      "reason": "Reason (optional)",
+      "reasonPlaceholder": "The buyer always sees what changed. Add a note if it helps.",
+      "submit": "Save changes",
+      "cancel": "Cancel",
+      "loading": "Loading…"
     }
   },
   "tradeInvoicesPage": {

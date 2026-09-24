@@ -201,6 +201,22 @@ interface IncomingOrderRow {
   tracking_info?: any;
 }
 
+/** 품목 수정 모달이 고르는 판매자 카탈로그 상품 (서버가 구매자 연결까지 걸러서 준다) */
+interface AmendProduct {
+  ingredient_seller_product_id: number;
+  name: string | null;
+  unit_price: number;
+  unit: string | null;
+  min_order_quantity: number | null;
+}
+
+/** 모달에서 편집 중인 한 줄 */
+interface AmendLine {
+  key: string;
+  ingredient_seller_product_id: number | null;
+  quantity_ordered: string;
+}
+
 interface SellerOrderStats {
   pending?: number;
   confirmed?: number;
@@ -504,6 +520,15 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
   const [rejectModalRow, setRejectModalRow] = useState<IncomingOrderRow | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // 품목 수정(amend) — 출고 전 주문의 줄을 판매자가 고친다.
+  // 🔒 총액은 구매자가 승인한 금액을 넘길 수 없다(서버가 막고, 여기서도 저장 버튼을 잠근다).
+  const [amendModalRow, setAmendModalRow] = useState<IncomingOrderRow | null>(null);
+  const [amendLines, setAmendLines] = useState<AmendLine[]>([]);
+  const [amendProducts, setAmendProducts] = useState<AmendProduct[]>([]);
+  const [amendReason, setAmendReason] = useState('');
+  const [amendLoading, setAmendLoading] = useState(false);
+  const [amendOriginalTotal, setAmendOriginalTotal] = useState(0);
 
   // Ship form
   const [carrier, setCarrier] = useState('');
@@ -940,6 +965,89 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     }
   };
 
+  // ── 품목 수정 ────────────────────────────────────────────────────────────
+  const openAmendModal = async (row: IncomingOrderRow) => {
+    setAmendModalRow(row);
+    setAmendReason('');
+    setErrorMessage(null);
+    setAmendLines([]);
+    setAmendProducts([]);
+    setAmendOriginalTotal(Number(row.total_amount) || 0);
+    setAmendLoading(true);
+    try {
+      const token = getAuthToken();
+      const [detailRes, prodRes] = await Promise.all([
+        fetch(`/api/seller-orders/${row.id}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`/api/seller-orders/${row.id}/amendable-products`, { headers: { 'Authorization': `Bearer ${token}` } })
+      ]);
+      const detail = await detailRes.json();
+      const prods = await prodRes.json();
+      if (prods?.success) setAmendProducts(prods.data?.products || []);
+      const items = detail?.data?.items || [];
+      setAmendLines(items.map((it: any, i: number) => ({
+        key: `l${i}-${it.id || i}`,
+        ingredient_seller_product_id: it.ingredient_seller_product_id ?? null,
+        quantity_ordered: String(Number(it.quantity_ordered) || 0)
+      })));
+      if (detail?.data?.total_amount != null) setAmendOriginalTotal(Number(detail.data.total_amount) || 0);
+    } catch (err) {
+      console.error(err);
+      setErrorMessage('Network error');
+    } finally {
+      setAmendLoading(false);
+    }
+  };
+
+  const amendProductById = (id: number | null) =>
+    id == null ? null : amendProducts.find(p => p.ingredient_seller_product_id === id) || null;
+
+  // 새 합계 — 서버의 금액 규칙(수량 × 단가, 2자리 반올림)과 같은 식으로 미리 보여 준다.
+  // ⚠ 배송비는 서버가 판매자 규칙으로 다시 계산하므로 여기 숫자는 «품목 합계» 다.
+  const amendNewSubtotal = amendLines.reduce((sum, l) => {
+    const p = amendProductById(l.ingredient_seller_product_id);
+    const qty = parseFloat(l.quantity_ordered);
+    if (!p || !Number.isFinite(qty) || qty <= 0) return sum;
+    return sum + Math.round(qty * p.unit_price * 100) / 100;
+  }, 0);
+  const amendExceeds = amendNewSubtotal - amendOriginalTotal > 0.005;
+  const amendHasInvalidLine = amendLines.some(l => {
+    const qty = parseFloat(l.quantity_ordered);
+    return l.ingredient_seller_product_id == null || !Number.isFinite(qty) || qty <= 0;
+  });
+  const amendCanSave = amendLines.length > 0 && !amendHasInvalidLine && !amendExceeds && !submitting && !amendLoading;
+
+  const handleAmend = async () => {
+    if (!amendModalRow || !amendCanSave) return;
+    setSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/seller-orders/${amendModalRow.id}/amend`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: amendLines.map(l => ({
+            ingredient_seller_product_id: l.ingredient_seller_product_id,
+            quantity_ordered: parseFloat(l.quantity_ordered)
+          })),
+          ...(amendReason.trim() ? { reason: amendReason.trim() } : {})
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setErrorMessage(data.message || 'Failed to amend order');
+        return;
+      }
+      setAmendModalRow(null);
+      refreshAll();
+    } catch (err) {
+      console.error(err);
+      setErrorMessage('Network error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <Container>
       <Header>
@@ -1142,6 +1250,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                               </ThemedButton>
                             </>
                           )}
+                          {/* 품목 수정 — 출고 전(submitted·confirmed)에만. 총액은 못 올린다. */}
+                          {(row.status === 'submitted' || row.status === 'confirmed') && (
+                            <ThemedButton size="small" variant="outline" onClick={() => openAmendModal(row)}>
+                              {tNs('orders.actions.amend', 'Edit items')}
+                            </ThemedButton>
+                          )}
                           {/* 서비스 전용 발주(배송 없음)는 «완료 처리» 하나로 끝난다 — 배송·도착 단계를 띄우지 않는다.
                               판정은 서버 utils/orderFulfillment 한 곳(is_service_only). 2026-09-13 · Irene */}
                           {row.status === 'confirmed' && row.is_service_only && (
@@ -1342,6 +1456,143 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         </FormGroup>
         {errorMessage && (
           <div style={{ color: '#DC2626', fontSize: 13 }}>{errorMessage}</div>
+        )}
+      </Modal>
+
+      {/* Amend (품목 수정) Modal */}
+      <Modal
+        isOpen={!!amendModalRow}
+        onClose={() => setAmendModalRow(null)}
+        title={tNs('orders.amend.title', 'Edit order items')}
+        size="large"
+        footer={
+          <>
+            <ModalButton onClick={() => setAmendModalRow(null)} disabled={submitting}>
+              {tNs('orders.amend.cancel', 'Cancel')}
+            </ModalButton>
+            <ModalButton variant="primary" onClick={handleAmend} disabled={!amendCanSave}>
+              {tNs('orders.amend.submit', 'Save changes')}
+            </ModalButton>
+          </>
+        }
+      >
+        {amendLoading ? (
+          <div style={{ padding: 24, textAlign: 'center', color: '#6B7280', fontSize: 14 }}>
+            {tNs('orders.amend.loading', 'Loading…')}
+          </div>
+        ) : (
+          <>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>
+              {tNs('orders.amend.hint', 'The buyer is told what changed. You cannot raise the order total — to charge more, reject the order and ask the buyer to reorder.')}
+            </p>
+
+            {amendLines.map((line, idx) => {
+              const prod = amendProductById(line.ingredient_seller_product_id);
+              const qty = parseFloat(line.quantity_ordered);
+              const lineTotal = prod && Number.isFinite(qty) && qty > 0
+                ? Math.round(qty * prod.unit_price * 100) / 100 : 0;
+              return (
+                <div
+                  key={line.key}
+                  style={{
+                    display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap',
+                    padding: '10px 0', borderBottom: '1px solid #F3F4F6'
+                  }}
+                >
+                  <div style={{ flex: '2 1 220px', minWidth: 0 }}>
+                    <FormLabel>{tNs('orders.amend.item', 'Item')}</FormLabel>
+                    <FormSelect
+                      value={line.ingredient_seller_product_id ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value === '' ? null : Number(e.target.value);
+                        setAmendLines(prev => prev.map((l, i) => i === idx ? { ...l, ingredient_seller_product_id: v } : l));
+                      }}
+                    >
+                      <option value="">{tNs('orders.amend.choose', 'Choose a product')}</option>
+                      {amendProducts.map(p => (
+                        <option key={p.ingredient_seller_product_id} value={p.ingredient_seller_product_id}>
+                          {p.name} — {formatMoney(p.unit_price, amendModalRow?.currency)}{p.unit ? ` / ${p.unit}` : ''}
+                        </option>
+                      ))}
+                    </FormSelect>
+                  </div>
+                  <div style={{ flex: '0 1 110px' }}>
+                    <FormLabel>{tNs('orders.amend.qty', 'Qty')}</FormLabel>
+                    <FormInput
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={line.quantity_ordered}
+                      onChange={(e) => setAmendLines(prev => prev.map((l, i) => i === idx ? { ...l, quantity_ordered: e.target.value } : l))}
+                    />
+                  </div>
+                  <div style={{ flex: '0 1 110px', textAlign: 'right', paddingBottom: 8, fontSize: 13, color: '#374151' }}>
+                    {formatMoney(lineTotal, amendModalRow?.currency)}
+                  </div>
+                  <div style={{ paddingBottom: 4 }}>
+                    <ModalButton
+                      variant="danger"
+                      onClick={() => setAmendLines(prev => prev.filter((_, i) => i !== idx))}
+                      disabled={amendLines.length <= 1}
+                      title={tNs('orders.amend.removeLine', 'Remove this line') as string}
+                    >
+                      ✕
+                    </ModalButton>
+                  </div>
+                </div>
+              );
+            })}
+
+            <div style={{ margin: '12px 0 16px' }}>
+              <ModalButton
+                onClick={() => setAmendLines(prev => [...prev, {
+                  key: `new-${Date.now()}-${prev.length}`,
+                  ingredient_seller_product_id: null,
+                  quantity_ordered: '1'
+                }])}
+              >
+                + {tNs('orders.amend.addLine', 'Add item')}
+              </ModalButton>
+            </div>
+
+            <div style={{
+              background: '#F9FAFB', borderRadius: 8, padding: '12px 14px', margin: '0 0 16px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8
+            }}>
+              <span style={{ fontSize: 13, color: '#6B7280' }}>
+                {tNs('orders.amend.itemsTotal', 'Items total')}
+              </span>
+              <span style={{ fontSize: 14 }}>
+                <span style={{ color: '#9CA3AF', textDecoration: 'line-through' }}>
+                  {formatMoney(amendOriginalTotal, amendModalRow?.currency)}
+                </span>
+                {'  →  '}
+                <strong style={{ color: amendExceeds ? '#DC2626' : '#111827' }}>
+                  {formatMoney(amendNewSubtotal, amendModalRow?.currency)}
+                </strong>
+              </span>
+            </div>
+
+            {amendExceeds && (
+              <div style={{ color: '#DC2626', fontSize: 13, margin: '0 0 16px', lineHeight: 1.6 }}>
+                {tNs('orders.amend.exceeds', 'This exceeds the amount the buyer approved. Lower the quantities, or reject the order so the buyer can reorder.')}
+              </div>
+            )}
+
+            <FormGroup>
+              <FormLabel>{tNs('orders.amend.reason', 'Reason (optional)')}</FormLabel>
+              <FormTextArea
+                rows={3}
+                placeholder={tNs('orders.amend.reasonPlaceholder', 'The buyer always sees what changed. Add a note if it helps.') as string}
+                value={amendReason}
+                onChange={(e) => setAmendReason(e.target.value)}
+              />
+            </FormGroup>
+
+            {errorMessage && (
+              <div style={{ color: '#DC2626', fontSize: 13 }}>{errorMessage}</div>
+            )}
+          </>
         )}
       </Modal>
 

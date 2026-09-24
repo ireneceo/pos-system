@@ -822,4 +822,187 @@ router.put('/:id/tracking', async (req, res) => {
   }
 });
 
+// ============================================
+// 10. GET /api/seller-orders/:id/amendable-products
+// 11. POST /api/seller-orders/:id/amend   (Fable 판정 2026-09-24)
+// ============================================
+// 판매자가 받은 주문의 품목을 고친다. 원칙은 utils/poAmend.js 머리글 참조 —
+// **총액을 늘리지 못한다**(늘려야 하면 Reject 하고 구매자가 다시 발주한다).
+// 이유는 선택, 변경 내역(diff)은 서버가 항상 만든다.
+const {
+  AMENDABLE_STATUSES, buyerEntityOf, mappingUsableBy,
+  listAmendableProducts, buildAmendedLine, diffLines
+} = require('../utils/poAmend');
+const { computeTotalsWithDelivery } = require('../utils/purchaseOrderTotals');
+const { currencySymbol } = require('../utils/currency');
+
+router.get('/:id/amendable-products', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Order not found' });
+    const po = await PurchaseOrder.findByPk(id);
+    if (!po || !checkSellerOwnership(po, req)) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+    const products = await listAmendableProducts(po, buyerEntityOf(po), undefined);
+    res.json({ success: true, data: { products, amendable: AMENDABLE_STATUSES.includes(po.status) } });
+  } catch (err) {
+    console.error('GET /api/seller-orders/:id/amendable-products error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load products' });
+  }
+});
+
+router.post('/:id/amend', async (req, res) => {
+  let result;
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Order not found' });
+
+    const reason = sanitizeString(String(req.body?.reason || '').trim()).slice(0, 1000);
+    const items = req.body?.items;
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'At least one item is required' });
+    }
+
+    result = await sequelize.transaction(async (t) => {
+      const po = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!po) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkSellerOwnership(po, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!AMENDABLE_STATUSES.includes(po.status)) {
+        const e = new Error(`Cannot amend an order in status '${po.status}'`);
+        e.code = 'BAD_STATUS'; throw e;
+      }
+
+      const beforeRows = await PurchaseOrderItem.findAll({
+        where: { purchase_order_id: po.id }, transaction: t
+      });
+      // 이미 받은 줄이 하나라도 있으면 손대지 않는다 — 재고·원가가 이미 움직였다.
+      if (beforeRows.some(r => (parseFloat(r.quantity_received) || 0) > 0)) {
+        const e = new Error('Cannot amend an order that already has received quantities');
+        e.code = 'ALREADY_RECEIVED'; throw e;
+      }
+
+      const buyerEntity = buyerEntityOf(po);
+      const validated = [];
+      for (const raw of items) {
+        const mappingId = parseInt(raw.ingredient_seller_product_id, 10);
+        const qty = parseFloat(raw.quantity_ordered);
+        if (!Number.isFinite(mappingId) || !(qty > 0)) {
+          const e = new Error('Each item requires ingredient_seller_product_id and quantity_ordered > 0');
+          e.code = 'BAD_ITEM'; throw e;
+        }
+        const mapping = await IngredientSellerProduct.findByPk(mappingId, { transaction: t });
+        const check = await mappingUsableBy(mapping, po, buyerEntity, t);
+        if (!check.ok) { const e = new Error(check.message); e.code = check.code; throw e; }
+        validated.push(await buildAmendedLine(po, raw, mapping, check.stockRow, check.target, t));
+      }
+
+      const totals = await computeTotalsWithDelivery(validated, po, { orderCurrency: po.currency });
+      const totalBefore = parseFloat(po.total_amount) || 0;
+      const totalAfter = parseFloat(totals.total_amount) || 0;
+      // 🔒 돈 게이트 — 구매자가 약속한 금액을 넘기지 못한다(오너 승인 우회 방지).
+      //    반올림 1 센트 오차까지 막지는 않는다.
+      if (totalAfter - totalBefore > 0.005) {
+        const e = new Error("Amended total exceeds the buyer's approved amount");
+        e.code = 'TOTAL_EXCEEDS'; e.meta = { total_before: totalBefore, total_after: totalAfter };
+        throw e;
+      }
+
+      const changes = diffLines(beforeRows, validated);
+      await PurchaseOrderItem.destroy({ where: { purchase_order_id: po.id }, transaction: t });
+      await PurchaseOrderItem.bulkCreate(validated, { transaction: t });
+
+      const tracking = appendTrackingEvent(
+        po, 'amended',
+        `Amended by seller${reason ? `: ${reason.slice(0, 200)}` : ''}`,
+        null,
+        {
+          changes,
+          reason: reason || null,
+          by_user_id: req.user?.id || req.user?.userId || null,
+          total_before: totalBefore,
+          total_after: totalAfter
+        }
+      );
+      // ⚠ status 는 바꾸지 않는다 — 'amended' 는 이력 이벤트 이름일 뿐이다.
+      await po.update({
+        subtotal: totals.subtotal,
+        tax_amount: totals.tax_amount,
+        delivery_fee: totals.delivery_fee,
+        delivery_fee_basis: totals.delivery_fee_basis,
+        total_amount: totals.total_amount,
+        tracking_info: tracking
+      }, { transaction: t });
+
+      return { po, changes, reason, totalBefore, totalAfter };
+    });
+
+    emitPoEvent(req, result.po, 'seller-order-updated');
+
+    setImmediate(async () => {
+      try {
+        const { wrapTemplate } = require('../utils/notificationTemplates');
+        const sym = currencySymbol(result.po.currency);
+        const money = (n) => `${sym} ${(parseFloat(n) || 0).toFixed(2)}`;
+        const label = { added: 'Added', removed: 'Removed', changed: 'Changed' };
+        const rows = result.changes.map((c) => {
+          const name = (c.after || c.before).name || '-';
+          const was = c.before ? `${c.before.quantity} ${c.before.unit || ''} × ${money(c.before.unit_price)}` : '—';
+          const now = c.after ? `${c.after.quantity} ${c.after.unit || ''} × ${money(c.after.unit_price)}` : '—';
+          return `<tr>
+            <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#374151;">${name}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:12px;color:#6B7280;">${label[c.type] || c.type}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#9CA3AF;">${was}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#111827;font-weight:600;">${now}</td>
+          </tr>`;
+        }).join('');
+        const html = wrapTemplate(
+          'Order Amended',
+          `<p style="color:#374151;font-size:16px;margin:0 0 16px;">The seller has amended your purchase order <strong>${result.po.po_number}</strong>.</p>
+           <table style="width:100%;border-collapse:collapse;margin:0 0 20px;">
+             <thead><tr>
+               <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">Item</th>
+               <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">Change</th>
+               <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">Before</th>
+               <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">After</th>
+             </tr></thead>
+             <tbody>${rows}</tbody>
+           </table>
+           <p style="color:#374151;font-size:14px;margin:0 0 20px;">Order total: <span style="color:#9CA3AF;">${money(result.totalBefore)}</span> → <strong>${money(result.totalAfter)}</strong></p>
+           ${result.reason ? `<div style="background:#F9FAFB;border-left:4px solid #635BFF;padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;">
+             <p style="color:#4B5563;font-size:13px;font-weight:600;margin:0 0 6px;">Reason</p>
+             <p style="color:#374151;font-size:14px;margin:0;">${result.reason.slice(0, 600)}</p>
+           </div>` : ''}
+           <div style="text-align:center;margin:24px 0;"><a href="${FRONTEND_URL}/pos/purchase-orders/${result.po.id}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Order</a></div>`,
+          'en'
+        );
+        await fireBuyerNotification(result.po, 'seller_order_received', {
+          subject: `Order Amended: ${result.po.po_number}`,
+          html,
+          text: `Your purchase order ${result.po.po_number} was amended by the seller.${result.reason ? ` Reason: ${result.reason}` : ''}`
+        });
+      } catch (e) {
+        console.error('[seller-orders] amend notification error:', e.message);
+      }
+    });
+
+    const updated = await PurchaseOrder.findByPk(result.po.id, {
+      include: [{ model: PurchaseOrderItem, as: 'items' }]
+    });
+    res.json({ success: true, data: updated, message: 'Order amended' });
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
+    if (err.code === 'TOTAL_EXCEEDS') {
+      return res.status(400).json({ success: false, code: err.code, message: err.message, ...err.meta });
+    }
+    if (['BAD_STATUS', 'ALREADY_RECEIVED', 'BAD_ITEM', 'PRODUCT_NOT_FOUND', 'PRODUCT_INACTIVE',
+         'PRODUCT_NOT_YOURS', 'NOT_LINKED_TO_BUYER', 'UNSUPPORTED_STOCK_TARGET',
+         'STOCK_TARGET_INVALID'].includes(err.code)) {
+      return res.status(400).json({ success: false, code: err.code, message: err.message });
+    }
+    console.error('POST /api/seller-orders/:id/amend error:', err);
+    res.status(500).json({ success: false, message: 'Failed to amend order' });
+  }
+});
+
 module.exports = router;
