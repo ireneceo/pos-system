@@ -241,9 +241,28 @@ router.post(
         return res.status(404).json({ success: false, message: 'Restaurant not found' });
       }
 
+      // 기간은 사람이 고를 수 있다(안 고르면 지난달). **날짜 문자열 그대로 넘긴다** —
+      // 시각으로 바꾸는 것도, 「미래인가」 판정도 구매 매장 타임존을 아는 서비스가 한 곳에서 한다.
+      const { period_start, period_end } = req.body || {};
+      const bad = (v) => v !== undefined && v !== null && v !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(String(v));
+      if (bad(period_start) || bad(period_end)) {
+        return res.status(400).json({ success: false, message: 'period_start / period_end must be YYYY-MM-DD' });
+      }
+      const periodStartDay = period_start || null;
+      const periodEndDay = period_end || null;
+      if ((periodStartDay && !periodEndDay) || (!periodStartDay && periodEndDay)) {
+        return res.status(400).json({ success: false, message: 'Provide both period_start and period_end, or neither' });
+      }
+
       const { generateSoaNow } = require('../services/soaScheduler');
-      const result = await generateSoaNow({ issuerType: 'brand', issuerId: restaurant.brand_id, restaurantId });
+      const result = await generateSoaNow({ issuerType: 'brand', issuerId: restaurant.brand_id, restaurantId, periodStartDay, periodEndDay });
       if (!result.issued) {
+        if (result.reason === 'period_end_in_future') {
+          return res.status(400).json({ success: false, code: result.reason, message: 'period_end cannot be in the future' });
+        }
+        if (result.reason === 'period_out_of_order') {
+          return res.status(400).json({ success: false, code: result.reason, message: 'period_start must be on or before period_end' });
+        }
         const msg = result.reason === 'no_invoices'
           ? 'No unbilled invoices to statement (nothing outstanding to bundle).'
           : (result.reason === 'no_recipients' ? 'No recipients to notify.' : 'Could not generate statement.');

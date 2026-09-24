@@ -232,7 +232,8 @@
     "amendedBySeller": "Penjual telah mengubah pesanan ini",
     "amendedAdded": "Ditambah",
     "amendedRemoved": "Dibuang",
-    "amendedTotal": "Jumlah pesanan"
+    "amendedTotal": "Jumlah pesanan",
+    "addedBySeller": "Penjual anda menambah pesanan ini bagi pihak anda"
   },
   "receive": {
     "modalTitle": "Terima Pesanan",
@@ -682,7 +683,8 @@
       "lineSum": "Jumlah baris yang anda masukkan",
       "lineMismatch": "berbeza {{d}} daripada jumlah yang anda taip — sama ada cukai/penghantaran, atau tersalah taip",
       "blocked": "Baris + cukai + penghantaran − diskaun = {{c}}, berbeza {{d}} daripada jumlah yang anda taip — semak baris atau jumlah (tidak boleh disimpan begini)",
-      "rounding": "Pelarasan pembundaran {{d}} akan menyamakan jumlah yang anda taip"
+      "rounding": "Pelarasan pembundaran {{d}} akan menyamakan jumlah yang anda taip",
+      "blockedShort": "Jumlah yang anda masukkan tidak sepadan dengan baris."
     },
     "ocr": {
       "reading": "Sedang membaca invois yang dimuat naik…",
@@ -702,7 +704,9 @@
     "skipReason": {
       "registeredSupplier": "Hanya pembekal boleh menukar harga pembekal berdaftar — nilai invois telah disimpan",
       "notMyExternal": "Bukan pembekal yang anda daftarkan — nilai invois telah disimpan"
-    }
+    },
+    "saveTotalOnly": "Simpan jumlah sahaja (harga baris tidak menjejaskan kos)",
+    "totalOnlyBanner": "Hanya jumlah dipadankan — harga baris tidak disimpan dan tidak menjejaskan kos. Padankan baris apabila boleh."
   },
   "newPo.error.profileTitle": "Maklumat perniagaan diperlukan",
   "newPo.error.goToCompanyInfo": "Buka maklumat syarikat?",

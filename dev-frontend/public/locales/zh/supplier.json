@@ -246,7 +246,7 @@
       "hint": "系统会自动告知买方改动内容。您无法提高订单金额——若需收取更多费用，请拒绝该订单并请买方重新下单。",
       "item": "项目",
       "qty": "数量",
-      "choose": "选择商品",
+      "choose": "搜索商品名称",
       "addLine": "添加项目",
       "removeLine": "删除此行",
       "itemsTotal": "项目合计",
@@ -255,7 +255,21 @@
       "reasonPlaceholder": "改动内容始终会一并送出。如有补充说明可在此填写。",
       "submit": "保存",
       "cancel": "取消",
-      "loading": "载入中…"
+      "loading": "载入中…",
+      "noProducts": "您的目录中没有符合的商品"
+    },
+    "create": {
+      "action": "添加订单",
+      "title": "代买方下单",
+      "hint": "系统会告知买方此订单由卖方代为添加。若该门店已开启东主审批，将先等待审批。",
+      "buyer": "买方",
+      "buyerPlaceholder": "搜索买方名称",
+      "noBuyers": "尚未有关联的买方",
+      "noProductsForBuyer": "您的商品尚未关联到此买方的库存，因此无法为其建立订单。",
+      "notes": "备注（选填）",
+      "notesPlaceholder": "买方需要知道的事项。",
+      "submit": "建立订单",
+      "cancel": "取消"
     }
   },
   "tradeInvoicesPage": {

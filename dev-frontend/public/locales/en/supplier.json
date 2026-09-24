@@ -246,7 +246,7 @@
       "hint": "The buyer is told what changed. You cannot raise the order total — to charge more, reject the order and ask the buyer to reorder.",
       "item": "Item",
       "qty": "Qty",
-      "choose": "Choose a product",
+      "choose": "Search a product",
       "addLine": "Add item",
       "removeLine": "Remove this line",
       "itemsTotal": "Items total",
@@ -255,7 +255,21 @@
       "reasonPlaceholder": "The buyer always sees what changed. Add a note if it helps.",
       "submit": "Save changes",
       "cancel": "Cancel",
-      "loading": "Loading…"
+      "loading": "Loading…",
+      "noProducts": "No matching product in your catalogue"
+    },
+    "create": {
+      "action": "Add order",
+      "title": "Add an order for a buyer",
+      "hint": "The buyer is told you added this order on their behalf. If their Owner approval is on, it waits for that approval first.",
+      "buyer": "Buyer",
+      "buyerPlaceholder": "Search a buyer",
+      "noBuyers": "No buyers are linked to you yet",
+      "noProductsForBuyer": "None of your products are linked to this buyer’s stock yet, so an order cannot be created for them.",
+      "notes": "Note (optional)",
+      "notesPlaceholder": "Anything the buyer should know about this order.",
+      "submit": "Create order",
+      "cancel": "Cancel"
     }
   },
   "tradeInvoicesPage": {

@@ -8,7 +8,7 @@
  *   ① 전역 1:1 배정을 없애고 «발주 줄 순서대로 각자 최선» 으로 되돌리면 (a) 가 실패해야 한다.
  *   ② 이름 사전(seller_invoice_name) 우선 단계를 지우면 (c) 가 실패해야 한다.
  */
-import { parseInvoiceText, parseInvoiceLine, matchInvoiceToPo, shouldAutoFill, parseInvoiceHeader, PoLine } from './invoiceMatcher';
+import { parseInvoiceText, parseInvoiceLine, matchInvoiceToPo, shouldAutoFill, parseInvoiceHeader, aliasFor, aliasToRemember, PoLine } from './invoiceMatcher';
 
 const OCR_HEADER = `
 TAIYANG FRESH TRADING SDN BHD
@@ -239,5 +239,58 @@ describe('파서 상식 검사 — 품목 줄이 될 수 없는 숫자는 버린
     const p = parseInvoiceLine('2 XXXXX BAWANG HOLLAND k#7% (KG) . 8.00 KG 3.50 8.00');
     expect(p).not.toBeNull();
     expect(p!.amount).toBe(8);
+  });
+});
+
+
+/**
+ * 이름 사전 계약 — 2026-09-24 Fable 판정.
+ *
+ * 고장주입으로 확인하는 법:
+ *   ③ 1단계의 양방향 부분집합을 한 방향(사전⊂읽힌줄)으로 되돌리면 (e) 가 실패해야 한다.
+ *   ④ `aliasToRemember` 의 viaAlias 분기를 지우면 (g) 가 실패해야 한다.
+ *   ⑤ `tokens()` 의 숫자토큰 제거를 빼면 (d) 의 사전에 «2» 가 남아 (d) 가 실패해야 한다.
+ */
+describe('이름 사전 — 저장과 매칭이 같은 규칙을 본다', () => {
+  const DIRTY = '2 XXXXX BAWANG HOLLAND k#7% (KG) .';
+  const CLEAN_LINE = 'BAWANG HOLLAND (KG) 8.00 KG 3.50 28.00';
+
+  it('(d) 잡음 줄을 정규화해 저장하면, 깨끗한 줄을 다음에 잡는다', () => {
+    const alias = aliasFor(DIRTY);
+    expect(alias).toBe('xxxxx bawang holland');   // 줄번호 «2» 가 빠진다
+
+    // ⚠ 한 자리 줄번호는 기존 «길이 2 이상» 필터에 이미 걸린다 — 그래서 **두 자리**로 증명한다.
+    //   (숫자토큰 제거를 빼면 여기서 «14»·«17» 이 남아 실패한다. 2026-09-24 고장주입으로 확인.)
+    expect(aliasFor('14 XXXXX LEEK KOREA &iE#F (KG) X CANTIK CANTIK  -'))
+      .toBe('xxxxx leek korea ie cantik cantik');
+    expect(aliasFor('17 TAUFU WF SAKURA ETE 5% ~')).toBe('taufu wf sakura ete');
+    const lines = [po(1, 'Yellow Onion', 8, 3.5, alias)];
+    const parsed = parseInvoiceText(CLEAN_LINE);
+    const m = matchInvoiceToPo(lines, parsed);
+    expect(m[0].state).toBe('matched');
+    expect(m[0].viaAlias).toBe(true);
+  });
+
+  it('(e) 반대 방향 — 사전이 깨끗하고 읽힌 줄이 지저분해도 잡는다', () => {
+    const lines = [po(1, 'Yellow Onion', 8, 3.5, 'bawang holland')];
+    const parsed = parseInvoiceText('2 XXXXX BAWANG HOLLAND k#7% (KG) . 8.00 KG 3.50 28.00');
+    const m = matchInvoiceToPo(lines, parsed);
+    expect(m[0].state).toBe('matched');
+    expect(m[0].viaAlias).toBe(true);
+  });
+
+  it('(f) 다른 물건은 안 잡는다 — 어느 쪽도 부분집합이 아니다', () => {
+    const lines = [po(1, 'Red Chilli Padi', 0.2, 13, 'cili api merah')];
+    const parsed = parseInvoiceText('7 CILI API HIJAU #1 (KG) 0.40 KG 14.00 5.60');
+    const m = matchInvoiceToPo(lines, parsed);
+    expect(m[0].viaAlias).toBeFalsy();
+  });
+
+  it('(g) 사전으로 붙은 줄은 사전을 덮어쓰지 않는다 — 학습 퇴화 방지', () => {
+    expect(aliasToRemember({ parsed: { name: DIRTY }, viaAlias: true })).toBeUndefined();
+    // 사람이 직접 고르면 갱신한다(공급업체가 인쇄명을 바꾼 경우)
+    expect(aliasToRemember({ parsed: { name: DIRTY }, viaAlias: true }, true)).toBe('xxxxx bawang holland');
+    // 사전 없이 점수로 붙은 줄은 그대로 배운다
+    expect(aliasToRemember({ parsed: { name: DIRTY }, viaAlias: false })).toBe('xxxxx bawang holland');
   });
 });

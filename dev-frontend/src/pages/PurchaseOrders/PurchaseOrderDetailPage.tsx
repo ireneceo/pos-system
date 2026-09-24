@@ -1224,6 +1224,24 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                 <strong>{t('detail.rejectedByOwner', 'Rejected by Owner')}:</strong> {detail.rejected_reason}
               </div>
             )}
+            {/* 판매처가 대신 넣은 주문 — 내가 만들지 않았는데 목록에 있는 이유를 첫 화면에서 밝힌다. */}
+            {(() => {
+              const events = (detail as any).tracking_info?.events;
+              if (!Array.isArray(events)) return null;
+              const made = events.find((e: any) => e?.status === 'created' && e?.created_by_seller);
+              if (!made) return null;
+              return (
+                <div style={{
+                  background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 8,
+                  padding: '12px 16px', marginBottom: 16, color: '#5B21B6', fontSize: 14, lineHeight: 1.6
+                }}>
+                  <strong>
+                    {t('detail.addedBySeller', 'Your seller added this order on your behalf')}
+                    {made.at ? ` · ${formatDate(made.at)}` : ''}
+                  </strong>
+                </div>
+              );
+            })()}
             {/* 판매자가 품목을 고쳤을 때 — 이력(타임라인)에도 남지만, 금액이 바뀐 일이라 상단에서 먼저 알린다.
                 마지막 'amended' 이벤트 기준. 이유는 선택이므로 없으면 문장만 나온다. */}
             {(() => {

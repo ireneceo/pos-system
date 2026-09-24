@@ -22,7 +22,8 @@ import { formatDateTime } from '../../utils/dateFormat';
 import { useStore } from '../../contexts/StoreContext';
 import AlertDialog from '../../components/Common/AlertDialog';
 import {
-  parseInvoiceText, parseInvoiceHeader, matchInvoiceToPo, shouldAutoFill, MatchResult, MatchReason, PoLine
+  parseInvoiceText, parseInvoiceHeader, matchInvoiceToPo, shouldAutoFill, MatchResult, MatchReason, PoLine,
+  aliasFor, aliasToRemember,
 } from '../../utils/invoiceMatcher';
 import { readInvoiceText } from '../../utils/invoiceOcr';
 import { lineQtyText } from '../../utils/unitConversion';
@@ -54,6 +55,8 @@ interface ReconcilePo {
   /** 발주 때 계산된 «예상» 배송비 — 청구 배송비(invoice_delivery)와는 다른 사실 (2026-09-17) */
   delivery_fee?: string | number | null;
   invoice_reconciled_at: string | null;
+  /** 지난번이 «총액만 맞춤» 이었나 — 서버가 줄 값으로 도출해 내려준다 */
+  total_only?: boolean;
 }
 
 /** 라인마다 사람이 확정할 값 — 기본은 발주 라인 값이다(§1 "다른 줄만 고침"). */
@@ -298,6 +301,8 @@ const InvoiceReconcilePage: React.FC = () => {
   const [matches, setMatches] = useState<Record<number, MatchResult>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // 총액이 줄 합계와 안 맞아 막혔을 때 — 「총액대로만 저장」 선택지를 그 자리에 띄운다.
+  const [totalMismatch, setTotalMismatch] = useState<{ message: string; diff?: number } | null>(null);
   const [alert, setAlert] = useState<{ title: string; message: string } | null>(null);
   // 자동 읽기 (2026-09-10 Fable D1·D2) — 올려 둔 인보이스를 브라우저에서 읽어 오른쪽을 채운다.
   const [ocr, setOcr] = useState<{ running: boolean; progress: number; error: string | null; done: boolean }>(
@@ -412,7 +417,9 @@ const InvoiceReconcilePage: React.FC = () => {
           invoiced_quantity: r.parsed.quantity != null
             ? r.parsed.quantity.toFixed(decimalsOf(poLine?.quantity_ordered, 2))
             : next[r.poLineId]?.invoiced_quantity,
-          invoice_line_name: r.parsed.name,   // 저장 시 이름 사전에 기록된다
+          // 저장 시 이름 사전에 기록된다 — **정규화한 값**만, 그리고 **사전으로 붙은 줄은 갱신하지 않는다**
+          //   (안 그러면 깨끗한 사전을 이번에 읽힌 잡음으로 덮어써 학습이 퇴화한다. 2026-09-24)
+          invoice_line_name: aliasToRemember(r),
         };
       }
       return next;
@@ -545,13 +552,16 @@ const InvoiceReconcilePage: React.FC = () => {
     [items, drafts] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  const save = async () => {
+  const save = async (totalOnly = false) => {
     setSaving(true);
+    if (!totalOnly) setTotalMismatch(null);
     try {
       const res = await fetch(`/api/purchase-orders/${id}/reconcile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
         body: JSON.stringify({
+          // 총액만 저장 — 줄 단가는 **원가에 반영되지 않는다**(서버가 줄 값을 비운다).
+          ...(totalOnly ? { total_only: true } : {}),
           invoice: {
             number: header.number || null,
             date: header.date || null,
@@ -571,7 +581,14 @@ const InvoiceReconcilePage: React.FC = () => {
         })
       });
       const body = await res.json();
+      // 총액이 줄 합계와 안 맞을 때 — 사진 판독이 엉망이어도 «적은 총액대로» 저장·결제할 길을 준다.
+      //   버튼을 따로 만들지 않고, 막힌 그 자리에 한 번 더 누를 선택지를 띄운다.
+      if (!res.ok && body?.code === 'TOTAL_MISMATCH') {
+        setTotalMismatch({ message: body.message || '', diff: body?.data?.diff });
+        return;
+      }
       if (!res.ok || !body.success) throw new Error(body.message || t('reconcile.saveFailed', '저장하지 못했습니다'));
+      setTotalMismatch(null);
 
       // 전파가 왜 안 움직였는지까지 사람에게 보여준다 — 조용히 0 만 주면 결함처럼 보인다.
       const moved = (body.data.propagated || []).reduce((a: number, p: any) => a + (p.moved || 0), 0);
@@ -640,6 +657,17 @@ const InvoiceReconcilePage: React.FC = () => {
           </div>
           <Button variant="secondary" onClick={() => navigate(`/pos/purchase-orders/${po.id}`)}>{t('reconcile.backToPo', '발주로 돌아가기')}</Button>
         </div>
+
+        {/* 지난번이 «총액만 맞춤» 이었으면 그 사실을 드러낸다 — 줄 단가가 비어 있는 이유이자,
+            원가에 반영되지 않았다는 안내. 판정은 서버가 한다(새 칸 없이 도출). */}
+        {po.total_only && (
+          <div style={{
+            margin: '0 0 12px', padding: '10px 14px', borderRadius: 8,
+            background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E', fontSize: 13, lineHeight: 1.6
+          }}>
+            {t('reconcile.totalOnlyBanner', 'Total matched only — line prices were not saved and do not affect cost. Reconcile the lines when you can.')}
+          </div>
+        )}
 
         <Note>
           {t('reconcile.help.prefilled', '발주에 적힌 값이 이미 채워져 있습니다.')}{' '}
@@ -916,7 +944,7 @@ const InvoiceReconcilePage: React.FC = () => {
                               ? one.unitPrice.toFixed(decimalsOf(it.unit_price, 2)) : (d?.invoiced_unit_price ?? ''),
                             invoiced_quantity: one.quantity != null
                               ? one.quantity.toFixed(decimalsOf(it.quantity_ordered, 2)) : (d?.invoiced_quantity ?? ''),
-                            invoice_line_name: one.name,
+                            invoice_line_name: aliasFor(one.name),   // 사람이 고른 것은 항상 갱신(정규화해서)
                           } });
                           setMatches({ ...matches, [it.id]: {
                             poLineId: it.id, parsed: one, state: 'needs_check', score: 0, reason: 'name_unsure' } });
@@ -997,8 +1025,26 @@ const InvoiceReconcilePage: React.FC = () => {
                 )}
               </Muted>
               <Button variant="secondary" onClick={() => navigate(`/pos/purchase-orders/${po.id}`)}>{t('reconcile.cancel', '취소')}</Button>
-              <Button onClick={save} disabled={saving || totals.blocked}>{saving ? t('reconcile.saving', '저장 중…') : t('reconcile.save', '대조 저장')}</Button>
+              <Button onClick={() => save()} disabled={saving || totals.blocked}>{saving ? t('reconcile.saving', '저장 중…') : t('reconcile.save', '대조 저장')}</Button>
             </Actions>
+            {/* 총액이 줄 합계와 안 맞아 막혔을 때 — 사진 판독이 엉망이어도 «적은 총액대로» 갈 길을 준다.
+                ⛔ 줄 단가는 원가에 반영하지 않는다(서버가 줄 값을 비운다) — OCR 오독이 원가로 굳는 걸 막는 게 이 화면의 존재 이유다. */}
+            {/* 주의: 화면이 먼저 저장을 잠그므로(`totals.blocked`) 서버 400 은 도달하지 않는다 —
+                조건을 `totalMismatch` 로만 두면 이 버튼이 **영영 안 보인다**(2026-09-24 Fable 게이트 적발).
+                그래서 «화면이 잠근 경우»에도 띄운다. 서버 400 경로는 안전망으로 남긴다. */}
+            {(totals.blocked || totalMismatch) && (
+              <div style={{
+                margin: '12px 0 0', padding: '12px 14px', borderRadius: 8,
+                background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E', fontSize: 13, lineHeight: 1.6
+              }}>
+                <div>{totalMismatch?.message || t('reconcile.total.blockedShort', 'The total you entered does not match the lines.')}</div>
+                <div style={{ marginTop: 10 }}>
+                  <Button variant="secondary" onClick={() => save(true)} disabled={saving}>
+                    {t('reconcile.saveTotalOnly', 'Save the total only (line prices will not affect cost)')}
+                  </Button>
+                </div>
+              </div>
+            )}
           </Panel>
         </Split>
 

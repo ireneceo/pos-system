@@ -1497,5 +1497,23 @@
     "inqEmpty": "Tiada pertanyaan belum selesai",
     "inqCrash": "ranap",
     "addressedIn": "Dalam {{tag}}"
+  },
+  "staffManagementPage": {
+    "contexts": {
+      "action": "Konteks akses",
+      "title": "Konteks akses",
+      "hint": "Beri orang ini akses ke restoran lain supaya mereka boleh bertukar tanpa log keluar. Peranan asal mereka sentiasa ada dan tidak boleh dibuang.",
+      "loading": "Memuatkan…",
+      "empty": "Tiada konteks lagi.",
+      "own": "Peranan asal mereka",
+      "fixed": "Sentiasa ada",
+      "revoke": "Buang",
+      "orphans": "Sesetengah konteks merujuk restoran yang sudah tiada:",
+      "grantLabel": "Tambah restoran",
+      "grantPlaceholder": "Cari restoran",
+      "grant": "Beri akses",
+      "grantNote": "Ditambah sebagai Restaurant Admin. Hanya kombinasi ini tersedia buat masa ini."
+    },
+    "close": "Tutup"
   }
 }

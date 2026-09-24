@@ -31,5 +31,10 @@
     "invalidDueDay": "付款到期日必须为 1-31",
     "invalidCreditLimit": "信用额度无效",
     "saveFailed": "保存失败"
+  },
+  "generate": {
+    "periodLastMonth": "上个月",
+    "periodThisMonth": "本月（至今天）",
+    "periodCustom": "自选日期"
   }
 }

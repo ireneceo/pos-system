@@ -246,7 +246,7 @@
       "hint": "무엇이 바뀌었는지는 주문한 곳에 자동으로 안내됩니다. 주문 금액은 올릴 수 없습니다 — 더 받아야 하면 주문을 거부하고 다시 주문받으세요.",
       "item": "품목",
       "qty": "수량",
-      "choose": "상품 고르기",
+      "choose": "상품 이름으로 검색",
       "addLine": "품목 추가",
       "removeLine": "이 줄 지우기",
       "itemsTotal": "품목 합계",
@@ -255,7 +255,21 @@
       "reasonPlaceholder": "무엇이 바뀌었는지는 늘 함께 갑니다. 덧붙일 설명이 있으면 적으세요.",
       "submit": "저장",
       "cancel": "취소",
-      "loading": "불러오는 중…"
+      "loading": "불러오는 중…",
+      "noProducts": "내 카탈로그에 맞는 상품이 없습니다"
+    },
+    "create": {
+      "action": "주문 추가",
+      "title": "구매처 대신 주문 넣기",
+      "hint": "주문한 곳에 「판매처에서 추가함」으로 안내됩니다. 그 매장이 오너 승인을 켜 두었으면 승인을 먼저 기다립니다.",
+      "buyer": "구매처",
+      "buyerPlaceholder": "구매처 이름으로 검색",
+      "noBuyers": "연결된 구매처가 아직 없습니다",
+      "noProductsForBuyer": "이 구매처의 재고에 연결된 내 상품이 아직 없어 주문을 만들 수 없습니다.",
+      "notes": "메모 (선택)",
+      "notesPlaceholder": "구매처가 알아야 할 내용이 있으면 적으세요.",
+      "submit": "주문 만들기",
+      "cancel": "취소"
     }
   },
   "tradeInvoicesPage": {

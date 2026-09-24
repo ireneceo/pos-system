@@ -26,8 +26,12 @@ function _tzOffsetAt(timezone, utcDate) {
       hour: '2-digit', minute: '2-digit', second: '2-digit'
     }).formatToParts(utcDate).map(p => [p.type, p.value])
   );
+  // ⚠ Intl 은 **초까지만** 준다. 밀리초를 빼먹으면 오프셋이 그만큼(최대 999ms) 틀어지고,
+  //   `_localToUTC` 가 그 오차를 그대로 더해 «하루의 끝»이 다음 날 00:00:00.997 이 된다.
+  //   실측(2026-09-24): getDateBounds('2026-08-31','Asia/Kuala_Lumpur').endOfDay 가
+  //   15:59:59.999Z 여야 하는데 16:00:00.997Z → 매장 화면에 하루 밀려 보였다. UTC 에서도 같았다.
   const asUTC = Date.UTC(+parts.year, +parts.month - 1, +parts.day,
-    +parts.hour, +parts.minute, +parts.second);
+    +parts.hour, +parts.minute, +parts.second, utcDate.getUTCMilliseconds());
   return asUTC - utcDate.getTime();
 }
 

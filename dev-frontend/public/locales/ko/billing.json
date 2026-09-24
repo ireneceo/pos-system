@@ -31,5 +31,10 @@
     "invalidDueDay": "결제일은 1~31 사이여야 합니다",
     "invalidCreditLimit": "잘못된 여신 한도",
     "saveFailed": "저장 실패"
+  },
+  "generate": {
+    "periodLastMonth": "지난달",
+    "periodThisMonth": "이번달 (오늘까지)",
+    "periodCustom": "날짜 직접 고르기"
   }
 }

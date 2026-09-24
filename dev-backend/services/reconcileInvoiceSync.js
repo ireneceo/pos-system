@@ -36,6 +36,19 @@ const RECONCILE_TOLERANCE = 1.00;
  *   줄 금액 = round2(실효단가 × 실효수량), 실효 = 청구값이 있으면 그것, 없으면 발주값
  *   총액   = Σ줄 + 세금 + 배송 − 할인
  */
+/**
+ * «총액만 대조» 였는지 — **새 칸 없이 도출**한다 (2026-09-24 Fable 판정 D6).
+ *   대조를 마쳤는데(`invoice_reconciled_at`) 모든 줄의 `invoiced_unit_price` 가 null 인 조합은
+ *   총액만 모드에서만 나온다 — 정상 줄 대조는 서버가 단가를 필수로 받기 때문이다.
+ *   화면이 «총액만 맞춤 — 줄 단가는 원가에 반영 안 됨» 배너를 띄우는 근거이기도 하다.
+ */
+function isTotalOnlyReconcile(po, items) {
+  if (!po || !po.invoice_reconciled_at) return false;
+  const rows = Array.isArray(items) ? items : [];
+  if (!rows.length) return false;
+  return rows.every((it) => it.invoiced_unit_price === null || it.invoiced_unit_price === undefined);
+}
+
 function computeReconciledTotal(items, header = {}) {
   const lines = (items || []).reduce((s, it) => {
     const price = it.invoiced_unit_price != null ? num(it.invoiced_unit_price) : num(it.unit_price);
@@ -115,8 +128,14 @@ async function syncTradeInvoiceFromReconcile(poId, opts = {}) {
     const computed = computeReconciledTotal(poItems,
       { tax: po.invoice_tax, delivery: po.invoice_delivery, discount: po.invoice_discount });
     const diff = round2(num(po.invoice_total) - computed);
-    if (diff !== 0 && Math.abs(diff) <= RECONCILE_TOLERANCE) {
-      charges.push({ name: 'Rounding adjustment', amount: diff });
+    // 총액만 모드에서는 «줄과 총액이 안 맞는다» 가 전제라 **차액 크기와 무관하게** 한 줄로 붙인다.
+    //   그래야 청구서 총액 = 사람이 적은 총액 = 낼 금액이 한 숫자가 된다.
+    const totalOnly = isTotalOnlyReconcile(po, poItems);
+    if (diff !== 0 && (totalOnly || Math.abs(diff) <= RECONCILE_TOLERANCE)) {
+      charges.push({
+        name: totalOnly ? 'Supplier invoice difference' : 'Rounding adjustment',
+        amount: diff
+      });
     }
   }
   const patch = {
@@ -142,4 +161,4 @@ async function syncTradeInvoiceFromReconcile(poId, opts = {}) {
   };
 }
 
-module.exports = { syncTradeInvoiceFromReconcile, computeReconciledTotal, RECONCILE_TOLERANCE };
+module.exports = { syncTradeInvoiceFromReconcile, computeReconciledTotal, isTotalOnlyReconcile, RECONCILE_TOLERANCE };

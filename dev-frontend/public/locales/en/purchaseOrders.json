@@ -232,7 +232,8 @@
     "amendedBySeller": "The seller amended this order",
     "amendedAdded": "Added",
     "amendedRemoved": "Removed",
-    "amendedTotal": "Order total"
+    "amendedTotal": "Order total",
+    "addedBySeller": "Your seller added this order on your behalf"
   },
   "receive": {
     "modalTitle": "Receive Order",
@@ -682,7 +683,8 @@
       "lineSum": "Sum of the lines you entered",
       "lineMismatch": "differs from the total you typed by {{d}} — either tax/delivery, or a typo",
       "blocked": "Lines + tax + delivery − discount = {{c}}, which differs from the total you typed by {{d}} — check the lines or the total (this cannot be saved as is)",
-      "rounding": "A rounding adjustment of {{d}} will match the total you typed"
+      "rounding": "A rounding adjustment of {{d}} will match the total you typed",
+      "blockedShort": "The total you entered does not match the lines."
     },
     "ocr": {
       "reading": "Reading the uploaded invoice…",
@@ -702,7 +704,9 @@
     "skipReason": {
       "registeredSupplier": "Only the supplier can change a registered supplier price — the invoiced value was saved",
       "notMyExternal": "Not a supplier you registered — the invoiced value was saved"
-    }
+    },
+    "saveTotalOnly": "Save the total only (line prices will not affect cost)",
+    "totalOnlyBanner": "Total matched only — line prices were not saved and do not affect cost. Reconcile the lines when you can."
   },
   "newPo.error.profileTitle": "Business details needed",
   "newPo.error.goToCompanyInfo": "Open company information?",

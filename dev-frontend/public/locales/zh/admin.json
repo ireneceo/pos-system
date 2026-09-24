@@ -1497,5 +1497,23 @@
     "inqEmpty": "没有未处理的咨询",
     "inqCrash": "崩溃",
     "addressedIn": "已纳入：{{tag}}"
+  },
+  "staffManagementPage": {
+    "contexts": {
+      "action": "权限身份",
+      "title": "可进入的身份",
+      "hint": "给此人进入其他门店的身份，之后无需登出即可在画面中切换。本人原有身份始终保留，无法移除。",
+      "loading": "载入中…",
+      "empty": "尚无身份。",
+      "own": "本人原有身份",
+      "fixed": "始终保留",
+      "revoke": "移除",
+      "orphans": "有身份指向已不存在的门店：",
+      "grantLabel": "添加门店",
+      "grantPlaceholder": "搜索门店名称",
+      "grant": "授予身份",
+      "grantNote": "以门店管理员身份加入。目前仅支持此组合。"
+    },
+    "close": "关闭"
   }
 }

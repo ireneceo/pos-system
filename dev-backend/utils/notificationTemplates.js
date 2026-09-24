@@ -877,11 +877,16 @@ function tradeInvoicePaidEmail({ buyerName, invoiceNumber, total, currency, link
 /**
  * Monthly SOA — sent to Buyer for monthly_soa contracts. Aggregates last month's invoices.
  */
-function monthlySoaEmail({ sellerName, month, invoices = [], totalDue, currency, dueDate, link, timezone }) {
+function monthlySoaEmail({ sellerName, month, dueInDays, invoices = [], totalDue, currency, dueDate, link, timezone }) {
   const tz = timezone || DEFAULT_TZ;
   const title = 'Monthly Statement of Account';
   const safeSeller = (sellerName || 'Your supplier').toString().slice(0, 120);
   const safeMonth = (month || '—').toString().slice(0, 40);
+  // 「며칠 안에」 — 발행일과 마감일의 차를 호출부가 계산해 넘긴다(새 설정 칸을 만들지 않는다).
+  const days = Number.isFinite(Number(dueInDays)) ? Math.max(0, Math.round(Number(dueInDays))) : null;
+  const dueLine = days === null
+    ? fmtDate(dueDate, 'en', tz)
+    : `${fmtDate(dueDate, 'en', tz)} <span style="color:#6B7280;">(within ${days} day${days === 1 ? '' : 's'})</span>`;
 
   const rowsHtml = (invoices || []).slice(0, 50).map(inv => `
     <tr>
@@ -911,7 +916,7 @@ function monthlySoaEmail({ sellerName, month, invoices = [], totalDue, currency,
       infoRow('Period', safeMonth) +
       infoRow('Invoices', String((invoices || []).length)) +
       infoRow('Total Due', `<span style="color:${BRAND_COLOR};font-weight:700;font-size:16px;">${fmtMoney(totalDue, currency)}</span>`) +
-      infoRow('Due Date', fmtDate(dueDate, 'en', tz))
+      infoRow('Due Date', dueLine)
     )}
     ${invoicesTable}
     ${ctaButton('View SOA & Pay', link || `${BASE_URL}/pos/purchase-invoices/soa`)}`;
@@ -919,7 +924,7 @@ function monthlySoaEmail({ sellerName, month, invoices = [], totalDue, currency,
   return withRenderMeta({
     subject: `Monthly SOA from ${safeSeller} - ${safeMonth} (${fmtMoney(totalDue, currency)})`,
     html: wrapTemplate(title, body, 'en'),
-    text: `Monthly statement from ${safeSeller} for ${safeMonth}. Invoices: ${(invoices || []).length}. Total due: ${fmtMoney(totalDue, currency)}. Due: ${fmtDate(dueDate, 'en', tz)}.`
+    text: `Monthly statement from ${safeSeller} for ${safeMonth}. Invoices: ${(invoices || []).length}. Total due: ${fmtMoney(totalDue, currency)}. Please pay by ${fmtDate(dueDate, 'en', tz)}${days === null ? '' : ` (within ${days} day${days === 1 ? '' : 's'})`}.`
   }, title, body, 'en');
 }
 

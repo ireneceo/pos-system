@@ -31,5 +31,10 @@
     "invalidDueDay": "Payment due day must be 1-31",
     "invalidCreditLimit": "Invalid credit limit",
     "saveFailed": "Failed to save"
+  },
+  "generate": {
+    "periodLastMonth": "Last month",
+    "periodThisMonth": "This month (up to today)",
+    "periodCustom": "Choose dates"
   }
 }

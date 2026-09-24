@@ -11,6 +11,7 @@ import {
   Modal
 } from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
+import SearchableSelect from '../../components/Common/SearchableSelect';
 import { FormGrid3 } from '../../components/UI/FormGrid';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -208,6 +209,14 @@ interface AmendProduct {
   unit_price: number;
   unit: string | null;
   min_order_quantity: number | null;
+}
+
+/** 주문을 넣어 줄 수 있는 구매자 */
+interface CreateBuyer {
+  entity_type: string;
+  entity_id: number;
+  name: string;
+  status?: string;
 }
 
 /** 모달에서 편집 중인 한 줄 */
@@ -529,6 +538,15 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
   const [amendReason, setAmendReason] = useState('');
   const [amendLoading, setAmendLoading] = useState(false);
   const [amendOriginalTotal, setAmendOriginalTotal] = useState(0);
+
+  // 주문 추가(판매자가 구매자 대신) — 상품 후보는 구매자를 고른 뒤에야 정해진다.
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createBuyers, setCreateBuyers] = useState<CreateBuyer[]>([]);
+  const [createBuyerId, setCreateBuyerId] = useState<number | null>(null);
+  const [createLines, setCreateLines] = useState<AmendLine[]>([]);
+  const [createProducts, setCreateProducts] = useState<AmendProduct[]>([]);
+  const [createNotes, setCreateNotes] = useState('');
+  const [createLoading, setCreateLoading] = useState(false);
 
   // Ship form
   const [carrier, setCarrier] = useState('');
@@ -965,6 +983,109 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     }
   };
 
+  // ── 주문 추가 (판매자가 구매자 대신) ──────────────────────────────────────
+  const openCreateModal = async () => {
+    setCreateOpen(true);
+    setErrorMessage(null);
+    setCreateBuyerId(null);
+    setCreateProducts([]);
+    setCreateNotes('');
+    setCreateLines([{ key: `c-${Date.now()}`, ingredient_seller_product_id: null, quantity_ordered: '1' }]);
+    setCreateLoading(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/seller-orders/buyers', { headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await res.json();
+      if (data?.success) setCreateBuyers(data.data?.buyers || []);
+      else setErrorMessage(data?.message || 'Failed to load buyers');
+    } catch (err) {
+      console.error(err);
+      setErrorMessage('Network error');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  // 구매자를 고르면 그 구매자에게 팔 수 있는 상품만 다시 받는다
+  // (연결이 없는 상품은 서버가 빼고 준다 — 화면이 규칙을 따로 판단하지 않는다).
+  const pickCreateBuyer = async (buyerId: number | null) => {
+    setCreateBuyerId(buyerId);
+    setCreateProducts([]);
+    setCreateLines([{ key: `c-${Date.now()}`, ingredient_seller_product_id: null, quantity_ordered: '1' }]);
+    if (buyerId == null) return;
+    setCreateLoading(true);
+    setErrorMessage(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(
+        `/api/seller-orders/sellable-products?entity_type=restaurant&entity_id=${buyerId}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (data?.success) setCreateProducts(data.data?.products || []);
+      else setErrorMessage(data?.message || 'Failed to load products');
+    } catch (err) {
+      console.error(err);
+      setErrorMessage('Network error');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  const createProductById = (id: number | null) =>
+    id == null ? null : createProducts.find(p => p.ingredient_seller_product_id === id) || null;
+
+  const createSubtotal = createLines.reduce((sum, l) => {
+    const p = createProductById(l.ingredient_seller_product_id);
+    const qty = parseFloat(l.quantity_ordered);
+    if (!p || !Number.isFinite(qty) || qty <= 0) return sum;
+    return sum + Math.round(qty * p.unit_price * 100) / 100;
+  }, 0);
+  const createHasInvalidLine = createLines.some(l => {
+    const qty = parseFloat(l.quantity_ordered);
+    return l.ingredient_seller_product_id == null || !Number.isFinite(qty) || qty <= 0;
+  });
+  const createCanSave = createBuyerId != null && createLines.length > 0
+    && !createHasInvalidLine && !submitting && !createLoading;
+
+  const handleCreate = async () => {
+    if (!createCanSave) return;
+    setSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/seller-orders', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entity_type: 'restaurant',
+          entity_id: createBuyerId,
+          items: createLines.map(l => {
+            const p = createProductById(l.ingredient_seller_product_id);
+            return {
+              ingredient_seller_product_id: l.ingredient_seller_product_id,
+              quantity_ordered: parseFloat(l.quantity_ordered),
+              unit_price: p ? p.unit_price : 0
+            };
+          }),
+          ...(createNotes.trim() ? { notes: createNotes.trim() } : {})
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setErrorMessage(data.message || 'Failed to create order');
+        return;
+      }
+      setCreateOpen(false);
+      refreshAll();
+    } catch (err) {
+      console.error(err);
+      setErrorMessage('Network error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // ── 품목 수정 ────────────────────────────────────────────────────────────
   const openAmendModal = async (row: IncomingOrderRow) => {
     setAmendModalRow(row);
@@ -1053,6 +1174,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
       <Header>
         <div>
           <Title>{tNs('orders.title', 'Live Orders')}</Title>
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* 판매자가 구매자 대신 주문을 넣는다 — 전화·메신저로 받은 주문을 여기서 올린다. */}
+          <ThemedButton variant="primary" onClick={openCreateModal}>
+            {tNs('orders.create.action', 'Add order')}
+          </ThemedButton>
         </div>
         <AudioToggleButton
           enabled={soundEnabled}
@@ -1459,6 +1586,150 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         )}
       </Modal>
 
+      {/* Create (주문 추가) Modal — 판매자가 구매자 대신 */}
+      <Modal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title={tNs('orders.create.title', 'Add an order for a buyer')}
+        size="large"
+        footer={
+          <>
+            <ModalButton onClick={() => setCreateOpen(false)} disabled={submitting}>
+              {tNs('orders.create.cancel', 'Cancel')}
+            </ModalButton>
+            <ModalButton variant="primary" onClick={handleCreate} disabled={!createCanSave}>
+              {tNs('orders.create.submit', 'Create order')}
+            </ModalButton>
+          </>
+        }
+      >
+        <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>
+          {tNs('orders.create.hint', 'The buyer is told you added this order on their behalf. If their Owner approval is on, it waits for that approval first.')}
+        </p>
+
+        <FormGroup>
+          <FormLabel>{tNs('orders.create.buyer', 'Buyer')} *</FormLabel>
+          <SearchableSelect
+            options={createBuyers.map(b => ({
+              value: b.entity_id,
+              label: b.name,
+              subLabel: b.status && b.status !== 'active' ? b.status : undefined
+            }))}
+            value={createBuyerId}
+            onChange={(v) => pickCreateBuyer(v === null ? null : Number(v))}
+            placeholder={tNs('orders.create.buyerPlaceholder', 'Search a buyer')}
+            noOptionsMessage={tNs('orders.create.noBuyers', 'No buyers are linked to you yet')}
+            allowClear
+          />
+        </FormGroup>
+
+        {createBuyerId != null && (
+          <>
+            {createLoading ? (
+              <div style={{ padding: 20, textAlign: 'center', color: '#6B7280', fontSize: 14 }}>
+                {tNs('orders.amend.loading', 'Loading…')}
+              </div>
+            ) : createProducts.length === 0 ? (
+              <div style={{ padding: 16, color: '#92400E', background: '#FFFBEB', borderRadius: 8, fontSize: 13, lineHeight: 1.6 }}>
+                {tNs('orders.create.noProductsForBuyer', 'None of your products are linked to this buyer’s stock yet, so an order cannot be created for them.')}
+              </div>
+            ) : (
+              <>
+                {createLines.map((line, idx) => {
+                  const prod = createProductById(line.ingredient_seller_product_id);
+                  const qty = parseFloat(line.quantity_ordered);
+                  const lineTotal = prod && Number.isFinite(qty) && qty > 0
+                    ? Math.round(qty * prod.unit_price * 100) / 100 : 0;
+                  return (
+                    <div
+                      key={line.key}
+                      style={{
+                        display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap',
+                        padding: '10px 0', borderBottom: '1px solid #F3F4F6'
+                      }}
+                    >
+                      <div style={{ flex: '2 1 240px', minWidth: 0 }}>
+                        <FormLabel>{tNs('orders.amend.item', 'Item')}</FormLabel>
+                        <SearchableSelect
+                          options={createProducts.map(p => ({
+                            value: p.ingredient_seller_product_id,
+                            label: p.name || '-',
+                            subLabel: `${formatMoney(p.unit_price)}${p.unit ? ` / ${p.unit}` : ''}`
+                          }))}
+                          value={line.ingredient_seller_product_id}
+                          onChange={(v) => setCreateLines(prev => prev.map((l, i) =>
+                            i === idx ? { ...l, ingredient_seller_product_id: v === null ? null : Number(v) } : l
+                          ))}
+                          placeholder={tNs('orders.amend.choose', 'Search a product')}
+                          noOptionsMessage={tNs('orders.amend.noProducts', 'No matching product')}
+                          allowClear
+                        />
+                      </div>
+                      <div style={{ flex: '0 1 110px' }}>
+                        <FormLabel>{tNs('orders.amend.qty', 'Qty')}</FormLabel>
+                        <FormInput
+                          type="number" min="0" step="any"
+                          value={line.quantity_ordered}
+                          onChange={(e) => setCreateLines(prev => prev.map((l, i) =>
+                            i === idx ? { ...l, quantity_ordered: e.target.value } : l))}
+                        />
+                      </div>
+                      <div style={{ flex: '0 1 110px', textAlign: 'right', paddingBottom: 8, fontSize: 13, color: '#374151' }}>
+                        {formatMoney(lineTotal)}
+                      </div>
+                      <div style={{ paddingBottom: 4 }}>
+                        <ModalButton
+                          variant="danger"
+                          onClick={() => setCreateLines(prev => prev.filter((_, i) => i !== idx))}
+                          disabled={createLines.length <= 1}
+                          title={tNs('orders.amend.removeLine', 'Remove this line') as string}
+                        >
+                          ✕
+                        </ModalButton>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div style={{ margin: '12px 0 16px' }}>
+                  <ModalButton
+                    onClick={() => setCreateLines(prev => [...prev, {
+                      key: `c-${Date.now()}-${prev.length}`,
+                      ingredient_seller_product_id: null,
+                      quantity_ordered: '1'
+                    }])}
+                  >
+                    + {tNs('orders.amend.addLine', 'Add item')}
+                  </ModalButton>
+                </div>
+
+                <div style={{
+                  background: '#F9FAFB', borderRadius: 8, padding: '12px 14px', margin: '0 0 16px',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8
+                }}>
+                  <span style={{ fontSize: 13, color: '#6B7280' }}>{tNs('orders.amend.itemsTotal', 'Items total')}</span>
+                  <strong style={{ fontSize: 15 }}>{formatMoney(createSubtotal)}</strong>
+                </div>
+
+                <FormGroup>
+                  <FormLabel>{tNs('orders.create.notes', 'Note (optional)')}</FormLabel>
+                  <FormTextArea
+                    rows={2}
+                    placeholder={tNs('orders.create.notesPlaceholder', 'Anything the buyer should know about this order.') as string}
+                    value={createNotes}
+                    onChange={(e) => setCreateNotes(e.target.value)}
+                  />
+                </FormGroup>
+              </>
+            )}
+          </>
+        )}
+
+        {errorMessage && (
+          <div style={{ color: '#DC2626', fontSize: 13 }}>{errorMessage}</div>
+        )}
+      </Modal>
+
       {/* Amend (품목 수정) Modal */}
       <Modal
         isOpen={!!amendModalRow}
@@ -1499,22 +1770,24 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                     padding: '10px 0', borderBottom: '1px solid #F3F4F6'
                   }}
                 >
-                  <div style={{ flex: '2 1 220px', minWidth: 0 }}>
+                  <div style={{ flex: '2 1 240px', minWidth: 0 }}>
                     <FormLabel>{tNs('orders.amend.item', 'Item')}</FormLabel>
-                    <FormSelect
-                      value={line.ingredient_seller_product_id ?? ''}
-                      onChange={(e) => {
-                        const v = e.target.value === '' ? null : Number(e.target.value);
-                        setAmendLines(prev => prev.map((l, i) => i === idx ? { ...l, ingredient_seller_product_id: v } : l));
-                      }}
-                    >
-                      <option value="">{tNs('orders.amend.choose', 'Choose a product')}</option>
-                      {amendProducts.map(p => (
-                        <option key={p.ingredient_seller_product_id} value={p.ingredient_seller_product_id}>
-                          {p.name} — {formatMoney(p.unit_price, amendModalRow?.currency)}{p.unit ? ` / ${p.unit}` : ''}
-                        </option>
+                    {/* 카탈로그가 수백 줄이라 그냥 select 로는 못 고른다 — 이름으로 검색해 고른다.
+                        공용 SearchableSelect(발주 담기 화면과 같은 것). */}
+                    <SearchableSelect
+                      options={amendProducts.map(p => ({
+                        value: p.ingredient_seller_product_id,
+                        label: p.name || '-',
+                        subLabel: `${formatMoney(p.unit_price, amendModalRow?.currency)}${p.unit ? ` / ${p.unit}` : ''}`
+                      }))}
+                      value={line.ingredient_seller_product_id}
+                      onChange={(v) => setAmendLines(prev => prev.map((l, i) =>
+                        i === idx ? { ...l, ingredient_seller_product_id: v === null ? null : Number(v) } : l
                       ))}
-                    </FormSelect>
+                      placeholder={tNs('orders.amend.choose', 'Search a product')}
+                      noOptionsMessage={tNs('orders.amend.noProducts', 'No matching product in your catalogue')}
+                      allowClear
+                    />
                   </div>
                   <div style={{ flex: '0 1 110px' }}>
                     <FormLabel>{tNs('orders.amend.qty', 'Qty')}</FormLabel>

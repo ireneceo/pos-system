@@ -54,6 +54,8 @@ export interface MatchResult {
   score: number;
   /** 왜 이 상태인지 — 화면이 문구로 옮긴다 */
   reason: MatchReason;
+  /** 이름 사전으로 붙었나 — 화면이 «사전을 덮어쓰지 않는다» 판단에 쓴다 */
+  viaAlias?: boolean;
 }
 
 /** 이름 비교용 정규화: 소문자, 기호 제거, 연속 공백 하나로. */
@@ -69,7 +71,37 @@ function normalize(s: string): string {
 const STOP = new Set(['kg', 'g', 'l', 'ml', 'pc', 'pcs', 'piece', 'pack', 'box', 'ctn', 'unit', 'x', 'the', 'of']);
 
 function tokens(s: string): string[] {
-  return normalize(s).split(' ').filter((t) => t.length >= 2 && !STOP.has(t));
+  // 숫자만인 토큰은 버린다 — OCR 이 읽은 줄 앞머리의 **줄번호**(「14 XXXXX LEEK…」)가 이름의 일부로
+  // 사전에 들어가 다음 인보이스에서 안 걸리게 만들던 잡음이다. 「338ml」·「5l」 같은 혼합 토큰은 남는다.
+  return normalize(s).split(' ')
+    .filter((t) => t.length >= 2 && !STOP.has(t) && !/^\d+$/.test(t));
+}
+
+/**
+ * 이름 사전에 **저장할 값**. 읽힌 이름을 매칭과 **같은 규칙**으로 정규화해 잡음을 걷어낸다.
+ *
+ * 왜 필요한가(2026-09-24 실측): 화면이 파싱된 줄 이름을 통째로 저장했고
+ * (`"2 XXXXX BAWANG HOLLAND k#7% (KG) ."`), 매칭 1단계는 「사전 낱말이 전부 들어 있으면」이라
+ * 그 잡음 낱말까지 다음 인보이스에 똑같이 나와야 통과했다. 저장과 매칭이 같은 함수를 봐야 한다.
+ */
+export function aliasFor(parsedName: string | null | undefined): string {
+  return tokens(String(parsedName || '')).join(' ');
+}
+
+/**
+ * 이번 저장에서 사전을 **갱신할지** 정한다.
+ * 사전으로 붙은 줄(viaAlias)은 갱신하지 않는다 — 안 그러면 잘 붙은 깨끗한 사전을
+ * 이번에 읽힌 잡음 이름으로 덮어써서 학습이 **퇴화**한다(Fable 적발).
+ * 사람이 직접 고른 줄은 항상 갱신한다(공급업체가 인쇄명을 바꿨을 때의 갱신 경로).
+ */
+export function aliasToRemember(
+  result: { parsed: { name?: string } | null; viaAlias?: boolean } | null | undefined,
+  pickedByHuman = false
+): string | undefined {
+  if (!result || !result.parsed) return undefined;
+  if (result.viaAlias && !pickedByHuman) return undefined;
+  const a = aliasFor(result.parsed.name);
+  return a || undefined;
 }
 
 /** 두 이름의 토큰 겹침 비율(0~1). 짧은 쪽 기준이라 "Beef" ↔ "Australian Beef Rib" 도 잡는다. */
@@ -265,22 +297,37 @@ export function matchInvoiceToPo(poLines: PoLine[], parsedLines: ParsedInvoiceLi
   // ── 1단계: 이름 사전. 가장 확실한 근거라 점수 경쟁을 시키지 않는다.
   //   ⚠ **완전일치로 하면 안 된다** — OCR 이 읽은 이름에는 줄번호·잡음이 붙는다
   //     (실측: 사전 «BAWANG HOLLAND» vs 읽힌 «2 XXXXX BAWANG HOLLAND k#7% (KG) .»).
-  //     그래서 «사전 이름의 낱말이 **전부** 들어 있으면 그 줄» 로 판정한다.
-  //     BAWANG PUTIH KOPEK 은 holland 가 없어 안 걸리므로 서로 안 헷갈린다.
+  //   2026-09-24: **양방향 부분집합**으로 넓혔다 — 어느 한쪽 낱말이 다른 쪽에 전부 들어 있으면 짝.
+  //     사전이 깨끗하고 줄이 지저분해도(전에도 됨), 사전이 지저분하고 줄이 깨끗해도(전엔 안 됨) 잡는다.
+  //     옛 사전에는 잡음이 통째로 저장돼 있어 후자가 실제로 많다.
+  //     `cili api merah` vs `cili api hijau` 는 어느 쪽도 부분집합이 아니라 안 섞인다(임계값 없는 규칙).
+  //   그리고 2단계처럼 **전역 greedy** 로 — 발주 줄 순서에 따라 앞 줄이 남의 짝을 채가지 않게.
+  const aliasPairs: Array<{ lineId: number; idx: number; gap: number; extra: number }> = [];
   for (const line of poLines) {
     const aliasTokens = tokens(line.seller_invoice_name || '');
     if (!aliasTokens.length) continue;
-    let bestIdx = -1;
-    let bestExtra = -1;
+    const aliasSet = new Set(aliasTokens);
     parsedLines.forEach((p, i) => {
-      if (takenInvoice.has(i)) return;
-      const parsedTokens = new Set(tokens(p.name));
-      if (!aliasTokens.every((t) => parsedTokens.has(t))) return;
-      // 여러 줄이 걸리면 사전 이름과 더 가까운 쪽을 고른다.
-      const extra = nameScore(line.seller_invoice_name || '', p.name);
-      if (extra > bestExtra) { bestExtra = extra; bestIdx = i; }
+      const parsedTokens = tokens(p.name);
+      if (!parsedTokens.length) return;
+      const parsedSet = new Set(parsedTokens);
+      const aliasInParsed = aliasTokens.every((t) => parsedSet.has(t));
+      const parsedInAlias = parsedTokens.every((t) => aliasSet.has(t));
+      if (!aliasInParsed && !parsedInAlias) return;
+      aliasPairs.push({
+        lineId: line.id,
+        idx: i,
+        // 낱말 수 차이가 작을수록 «더 가까운 이름» — 겹치는 후보가 여럿일 때의 순서.
+        gap: Math.abs(aliasTokens.length - parsedTokens.length),
+        extra: nameScore(line.seller_invoice_name || '', p.name)
+      });
     });
-    if (bestIdx >= 0) { takenInvoice.add(bestIdx); assigned.set(line.id, { idx: bestIdx, score: 1, viaAlias: true }); }
+  }
+  aliasPairs.sort((x, y) => (x.gap - y.gap) || (y.extra - x.extra) || (x.lineId - y.lineId));
+  for (const pair of aliasPairs) {
+    if (assigned.has(pair.lineId) || takenInvoice.has(pair.idx)) continue;
+    takenInvoice.add(pair.idx);
+    assigned.set(pair.lineId, { idx: pair.idx, score: 1, viaAlias: true });
   }
 
   // ── 2단계: 남은 것끼리 **점수 높은 짝부터** 붙인다(전역 greedy).
@@ -322,11 +369,12 @@ export function matchInvoiceToPo(poLines: PoLine[], parsedLines: ParsedInvoiceLi
 
     // 사전으로 붙은 줄도 **금액 검산은 통과해야** matched 다 — OCR 오독(28→8)을 여기서 잡는다.
     if ((a.viaAlias || a.score >= 0.6) && consistent) {
-      return { poLineId: line.id, parsed, state: 'matched' as MatchState, score, reason: 'ok' as MatchReason };
+      return { poLineId: line.id, parsed, state: 'matched' as MatchState, score, reason: 'ok' as MatchReason, viaAlias: a.viaAlias };
     }
     return {
       poLineId: line.id, parsed, state: 'needs_check' as MatchState, score,
       reason: (!consistent ? 'amount_mismatch' : 'name_unsure') as MatchReason,
+      viaAlias: a.viaAlias,
     };
   });
 }

@@ -261,6 +261,98 @@ router.get('/stats', async (req, res) => {
 });
 
 // ============================================
+// 12. GET  /api/seller-orders/buyers   — 내가 주문을 넣어 줄 수 있는 구매자 후보
+// 13. POST /api/seller-orders          — 판매자가 구매자 대신 주문 생성
+//     (Fable 권고 2026-09-24 · 상태 시작점 submitted · 오너 승인 매장은 pending_approval)
+// ============================================
+// ⚠ 후보 목록은 **편의**다. 진짜 문은 생성 경로의 `verifySellerRelation`(구매자 라우트와 같은 함수)이
+//   지킨다 — 관계 규칙을 여기에 한 벌 더 적으면 두 곳이 갈린다.
+//   목록에 조회 부수효과(계약 자동 생성)가 있는 함수는 쓰지 않는다: 조회가 데이터를 만들면 안 된다.
+router.get('/buyers', async (req, res) => {
+  try {
+    if (!req.sellerEntity) {
+      return res.status(400).json({ success: false, message: 'Seller scope required' });
+    }
+    const type = req.sellerEntity.type;
+    const ids = Array.isArray(req.sellerEntity.ids) && req.sellerEntity.ids.length
+      ? req.sellerEntity.ids
+      : (req.sellerEntity.id != null ? [req.sellerEntity.id] : []);
+
+    let restaurants = [];
+    if (type === 'brand' && ids.length) {
+      restaurants = await Restaurant.findAll({
+        where: { brand_id: { [Op.in]: ids } },
+        attributes: ['id', 'name', 'status', 'branch_name'], order: [['name', 'ASC']]
+      });
+    } else if (type === 'foodcourt' && ids.length) {
+      restaurants = await Restaurant.findAll({
+        where: { foodcourt_id: { [Op.in]: ids } },
+        attributes: ['id', 'name', 'status', 'branch_name'], order: [['name', 'ASC']]
+      });
+    } else if (type === 'supplier' && ids.length) {
+      // 공급업체는 «활성 계약» 이 거래 관계다.
+      const contracts = await SupplierContract.findAll({
+        where: { supplier_company_id: { [Op.in]: ids }, status: 'active' }
+      });
+      const restIds = [...new Set(contracts
+        .filter(c => c.restaurant_id)
+        .map(c => parseInt(c.restaurant_id, 10)))];
+      if (restIds.length) {
+        restaurants = await Restaurant.findAll({
+          where: { id: { [Op.in]: restIds } },
+          attributes: ['id', 'name', 'status', 'branch_name'], order: [['name', 'ASC']]
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        // 상태로 거르지 않고 **함께 실어 보낸다** — 기존 매장 목록들과 같은 방식.
+        // 문 닫은 매장에 주문을 넣을 일은 드물지만, 목록에서 조용히 사라지면 왜 없는지 알 수 없다.
+        buyers: restaurants.map(r => ({
+          entity_type: 'restaurant',
+          entity_id: r.id,
+          name: r.branch_name ? `${r.name} (${r.branch_name})` : r.name,
+          status: r.status
+        }))
+      }
+    });
+  } catch (err) {
+    console.error('GET /api/seller-orders/buyers error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load buyers' });
+  }
+});
+
+// 주문 추가 화면용 — 이 구매자에게 팔 수 있는 내 상품.
+// 기존 주문이 없으므로 판매자 정보만 담은 형태를 만들어 **amend 와 같은 판정 함수**에 넘긴다.
+router.get('/sellable-products', async (req, res) => {
+  try {
+    if (!req.sellerEntity) {
+      return res.status(400).json({ success: false, message: 'Seller scope required' });
+    }
+    const entityId = parseInt(req.query.entity_id, 10);
+    if (req.query.entity_type !== 'restaurant' || !Number.isFinite(entityId)) {
+      return res.status(400).json({ success: false, message: 'A buyer restaurant is required' });
+    }
+    const sellerEntityId = req.sellerEntity.type === 'system_admin'
+      ? null
+      : (req.sellerEntity.id != null ? req.sellerEntity.id : (req.sellerEntity.ids || [])[0]);
+
+    const { listAmendableProducts } = require('../utils/poAmend');
+    const products = await listAmendableProducts(
+      { seller_type: req.sellerEntity.type, seller_entity_id: sellerEntityId },
+      { type: 'restaurant', id: entityId },
+      undefined
+    );
+    res.json({ success: true, data: { products } });
+  } catch (err) {
+    console.error('GET /api/seller-orders/sellable-products error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load products' });
+  }
+});
+
+// ============================================
 // 2. GET /api/seller-orders/:id
 // ============================================
 router.get('/:id', async (req, res) => {
@@ -835,6 +927,140 @@ const {
 } = require('../utils/poAmend');
 const { computeTotalsWithDelivery } = require('../utils/purchaseOrderTotals');
 const { currencySymbol } = require('../utils/currency');
+
+router.post('/', async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    if (!req.sellerEntity) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: 'Seller scope required' });
+    }
+    const { entity_type, entity_id, items, expected_delivery_date, notes } = req.body || {};
+    if (entity_type !== 'restaurant' || !Number.isFinite(parseInt(entity_id, 10))) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: 'A buyer restaurant is required' });
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: 'At least one item is required' });
+    }
+
+    const buyerEntity = { type: 'restaurant', id: parseInt(entity_id, 10) };
+    // 판매자는 **자기 자신으로만** 주문을 만든다 — 남의 이름으로 주문을 넣을 수 없다.
+    const sellerEntityId = req.sellerEntity.type === 'system_admin'
+      ? null
+      : (req.sellerEntity.id != null ? req.sellerEntity.id : (req.sellerEntity.ids || [])[0]);
+
+    // 줄은 **판매자 상품 id 만** 받고 재고 대상·단가는 서버가 카탈로그에서 해석한다.
+    // (클라이언트가 ingredient_id 나 단가를 직접 지정하면 남의 재고행에 꽂거나 값을 속일 수 있다.
+    //  amend 와 같은 판정 함수를 써서 두 경로가 갈리지 않게 한다.)
+    const { mappingUsableBy } = require('../utils/poAmend');
+    const resolvedItems = [];
+    for (const raw of items) {
+      const mappingId = parseInt(raw.ingredient_seller_product_id, 10);
+      const qty = parseFloat(raw.quantity_ordered);
+      if (!Number.isFinite(mappingId) || !(qty > 0)) {
+        await t.rollback();
+        return res.status(400).json({
+          success: false, code: 'BAD_ITEM',
+          message: 'Each item requires ingredient_seller_product_id and quantity_ordered > 0'
+        });
+      }
+      const mapping = await IngredientSellerProduct.findByPk(mappingId, { transaction: t });
+      const check = await mappingUsableBy(
+        mapping,
+        { seller_type: req.sellerEntity.type, seller_entity_id: sellerEntityId },
+        buyerEntity, t
+      );
+      if (!check.ok) {
+        await t.rollback();
+        return res.status(400).json({ success: false, code: check.code, message: check.message });
+      }
+      resolvedItems.push({
+        ingredient_id: check.target.kind === 'ingredient' ? check.target.id : undefined,
+        product_id: check.target.kind === 'product' ? check.target.id : undefined,
+        ingredient_seller_product_id: mapping.id,
+        quantity_ordered: qty,
+        unit_price: parseFloat(mapping.unit_price) || 0,
+        unit_conversion: parseFloat(mapping.unit_conversion) || 1,
+        notes: raw.notes
+      });
+    }
+
+    const { createPurchaseOrderCore } = require('./purchase-orders-crud');
+    const result = await createPurchaseOrderCore({
+      buyerEntity,
+      userId: req.user.id,
+      payload: {
+        seller_type: req.sellerEntity.type,
+        seller_entity_id: sellerEntityId,
+        items: resolvedItems,
+        expected_delivery_date,
+        notes
+      },
+      transaction: t
+    });
+    if (!result.ok) {
+      await t.rollback();
+      return res.status(result.status).json(result.body);
+    }
+
+    // 「판매처에서 추가함」 을 이력에 남긴다 — 구매자 화면·메일이 이 표시를 읽는다.
+    const po = result.po;
+    const created = appendTrackingEvent(po, 'created', 'Added by the seller on your behalf', null, {
+      created_by_seller: true,
+      by_user_id: req.user.id
+    });
+    await po.update({ tracking_info: created }, { transaction: t });
+
+    // 상태 시작점 — 오너 승인이 켜진 매장이면 pending_approval, 아니면 submitted.
+    // 구매자 쪽 제출과 **같은 함수**를 쓴다(승인 우회 금지, 2026-09-18 선례).
+    const { applySubmitGate } = require('../utils/poOwnerApproval');
+    const needsApproval = await applySubmitGate(po, t, appendTrackingEvent);
+
+    await t.commit();
+
+    emitPoEvent(req, po, 'seller-order-updated');
+
+    setImmediate(async () => {
+      try {
+        const { wrapTemplate } = require('../utils/notificationTemplates');
+        const sym = currencySymbol(po.currency);
+        const total = `${sym} ${(parseFloat(po.total_amount) || 0).toFixed(2)}`;
+        const html = wrapTemplate(
+          'Order Added by Seller',
+          `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your seller has added purchase order <strong>${po.po_number}</strong> on your behalf.</p>
+           <p style="color:#374151;font-size:14px;margin:0 0 20px;">Order total: <strong>${total}</strong></p>
+           ${needsApproval
+             ? '<div style="background:#FFFBEB;border-left:4px solid #F59E0B;padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;"><p style="color:#92400E;font-size:14px;margin:0;">This order is waiting for Owner approval before it is confirmed.</p></div>'
+             : ''}
+           <div style="text-align:center;margin:24px 0;"><a href="${FRONTEND_URL}/pos/purchase-orders/${po.id}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Order</a></div>`,
+          'en'
+        );
+        await fireBuyerNotification(po, 'seller_order_received', {
+          subject: `Order Added: ${po.po_number}`,
+          html,
+          text: `Your seller added purchase order ${po.po_number} (${total}) on your behalf.`
+        });
+      } catch (e) {
+        console.error('[seller-orders] create notification error:', e.message);
+      }
+    });
+
+    const fresh = await PurchaseOrder.findByPk(po.id, {
+      include: [{ model: PurchaseOrderItem, as: 'items' }]
+    });
+    res.status(201).json({
+      success: true,
+      data: fresh,
+      message: needsApproval ? 'Order created — awaiting buyer Owner approval' : 'Order created'
+    });
+  } catch (err) {
+    if (!t.finished) await t.rollback();
+    console.error('POST /api/seller-orders error:', err);
+    res.status(500).json({ success: false, message: 'Failed to create order' });
+  }
+});
 
 router.get('/:id/amendable-products', async (req, res) => {
   try {

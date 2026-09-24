@@ -1319,3 +1319,9 @@ router.put('/purchase-orders/:id', async (req, res) => {
 // ============================================
 
 module.exports = router;
+
+// 판매자가 구매자 대신 주문을 넣는 경로(routes/seller-orders.js POST /)가 **같은 생성 로직**을 쓴다.
+// 규칙(판매자 관계 검증·재료 소유·통화·여신한도·배송비·채번·금액식)을 한 벌 더 적는 순간
+// 두 경로가 갈라지므로, 파일을 쪼개는 리팩터링 없이 이 함수만 내보낸다.
+// (Express router 는 함수라 프로퍼티를 붙여도 `require(...)` 를 라우터로 쓰는 기존 호출부는 그대로다.)
+module.exports.createPurchaseOrderCore = createPurchaseOrderCore;

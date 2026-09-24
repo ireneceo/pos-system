@@ -31,10 +31,76 @@ const {
   getFoodcourtManagerIds
 } = require('../utils/notificationService');
 const { monthlySoaEmail } = require('../utils/notificationTemplates');
-const { getRestaurantTimezone } = require('../utils/dateTimeHelper');
+const { getRestaurantTimezone, getDateBounds, getCurrentLocalDate } = require('../utils/dateTimeHelper');
 const Restaurant = require('../models/Restaurant');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
+
+/**
+ * 청구 기간을 사람이 읽는 한 줄로. 달력 한 달에 딱 맞으면 «September 2026», 아니면 날짜 범위.
+ * 메일 제목·본문·notes 가 **같은 함수**를 쓴다 — 자리마다 다른 문자열이 나오면 그게 곧 「January 2000」 류의 사고다.
+ */
+function periodLabelOf(startDay, endDay, locale = 'en-US') {
+  // ⚠ **날짜 문자열(YYYY-MM-DD)을 받는다 — Date 를 받아 타임존으로 다시 찍지 않는다.**
+  //   그게 하루 밀림의 원인이었다: 기간 끝을 서버 UTC 로 23:59:59.999 로 만든 뒤 매장 tz(+8)로
+  //   표시하면 다음 날이 된다(Aug 5–20 선택 → 라벨 «Aug 5 – Aug 21»). 2026-09-24 Fable 게이트 적록.
+  const [sy, sm, sd] = String(startDay).split('-').map(Number);
+  const [ey, em, ed] = String(endDay).split('-').map(Number);
+  const lastDayOf = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+  // 「달력 한 달을 꽉 채웠나」 판정도 그 달력(매장 날짜)으로 한다.
+  if (sy === ey && sm === em && sd === 1 && ed === lastDayOf(sy, sm)) {
+    return new Date(Date.UTC(sy, sm - 1, 1)).toLocaleDateString(locale, {
+      year: 'numeric', month: 'long', timeZone: 'UTC'
+    });
+  }
+  const fmt = (y, m, d) => new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(locale, {
+    year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC'
+  });
+  return `${fmt(sy, sm, sd)} – ${fmt(ey, em, ed)}`;
+}
+
+/**
+ * 결제 마감일 — 발행일 **이후** 처음 오는 「매월 며칠」.
+ * cron 과 수동 발행이 같은 함수를 쓴다(전에는 각자 계산해 수동 쪽만 미래 발행일이 됐다).
+ * 31일 계약인데 그 달이 짧으면 그 달 말일로 내린다.
+ */
+function nextDueDate(issuedAt, dueDay) {
+  const base = issuedAt instanceof Date ? issuedAt : new Date(issuedAt);
+  const day = Math.min(Math.max(parseInt(dueDay, 10) || 15, 1), 31);
+  const clamp = (y, m) => new Date(y, m, Math.min(day, new Date(y, m + 1, 0).getDate()));
+  const thisMonth = clamp(base.getFullYear(), base.getMonth());
+  if (thisMonth > base) return thisMonth;
+  return clamp(base.getFullYear(), base.getMonth() + 1);
+}
+
+/**
+ * 정산서 번호가 이미 있으면 접미사를 붙여 비어 있는 번호를 돌려준다.
+ *
+ * 왜 필요한가 (2026-09-24 실측): 번호가 시각 도장이라, **취소하고 바로 다시 발행**하면
+ * 같은 초 안에 같은 번호가 나와 `invoice_number` UNIQUE 에 걸려 500 이 났다.
+ * 그런데 「취소 → 재발행」은 잘못 나간 정산서를 바로잡는 정규 절차다 — 막히면 안 된다.
+ */
+async function uniqueSoaNumber(base) {
+  for (let i = 0; i < 20; i += 1) {
+    const candidate = i === 0 ? base : `${base}-${i + 1}`;
+    const taken = await Invoice.findOne({ where: { invoice_number: candidate }, attributes: ['id'], paranoid: false });
+    if (!taken) return candidate;
+  }
+  // 20개가 전부 차는 일은 사실상 없지만, 조용히 중복을 만들지 않는다.
+  return `${base}-${Date.now().toString().slice(-5)}`;
+}
+
+/** 구매자 엔티티의 타임존. 기간 경계·라벨이 전부 이 값을 기준으로 한다. */
+async function resolveBuyerTimezone(entityType, entityId) {
+  try {
+    let e = null;
+    if (entityType === 'restaurant') e = await Restaurant.findByPk(entityId, { attributes: ['operation_settings'] });
+    else if (entityType === 'brand') e = await Brand.findByPk(entityId, { attributes: ['operation_settings'] });
+    else if (entityType === 'foodcourt') e = await Foodcourt.findByPk(entityId, { attributes: ['operation_settings'] });
+    if (e) return getRestaurantTimezone(e);
+  } catch (_) { /* 기본값으로 */ }
+  return 'Asia/Kuala_Lumpur';
+}
 
 /**
  * Compute payer (payer_type, payer_id) for a buyer entity.
@@ -83,6 +149,16 @@ async function getBuyerRecipientUserIds(entityType, entityId) {
  * Used for all 3 seller types (supplier / brand / foodcourt) — caller resolves payer,
  * sellerName, sellerCurrency, dueDay, soaPrefix, soaIdSuffix beforehand.
  */
+/**
+ * ⚠ 2026-09-24 — 값의 «뜻» 을 분리했다 (Fable 판정).
+ *
+ * 전에는 하나의 값이 두 자리에 쓰여 운영에 두 가지 결함을 냈다:
+ *   ① `lastMonthStart` 가 «모으는 범위의 시작» 이면서 동시에 «메일에 찍는 기간 라벨» 이었다.
+ *      수동 발행이 범위를 넓히려고 2000-01-01 을 넣자 메일 제목이 «January 2000» 으로 나갔다.
+ *   ② `referenceDate` 가 «마감일 계산 기준» 이면서 동시에 «발행일» 이었다.
+ *      수동 발행이 미래(다음달 1일)를 넣자 발행일이 미래가 됐다.
+ * 그래서 이제 넷을 따로 받는다 — periodStart/periodEnd(무엇을 모으나·라벨), issuedAt(언제 만들었나), dueDate(언제까지).
+ */
 async function issueSoaForPair({
   issuerType,           // 'supplier' | 'brand' | 'foodcourt'
   issuerId,             // supplier_company_id | brand_id | foodcourt_id
@@ -91,12 +167,27 @@ async function issueSoaForPair({
   buyerEntityId,
   sellerName,
   sellerCurrency,
-  dueDay,
-  referenceDate,
-  lastMonthStart,
-  lastMonthEnd,
+  periodStartDay,       // 청구 기간 시작 — **구매 매장 달력의 YYYY-MM-DD**
+  periodEndDay,         // 청구 기간 끝   — 같은 형식
+  issuedAt,             // 발행일 = 만든 날 (소급 금지)
+  dueDate,              // 결제 마감일
+  includeOlderUnbundled = true, // 기간 이전의 «아직 안 묶인» 미납분도 넣는다(기본)
   soaInvoiceNumber
 }) {
+  // ⚠ 기간은 **구매 매장의 달력 날짜**다. 문자열로 받아 여기서 딱 한 번 시각으로 바꾼다.
+  //   서버(UTC) 로 경계를 만들면 매장(+8)에서 하루 밀린다 — 화면 Period 칸과 메일 라벨이
+  //   실제로 틀리게 나왔다(2026-09-24 Fable 게이트 적록). DST 안전한 기존 유틸을 쓴다.
+  const buyerTz = await resolveBuyerTimezone(buyerEntityType, buyerEntityId);
+  const { startOfDay: periodStart } = getDateBounds(periodStartDay, buyerTz);
+  const { endOfDay: periodEnd } = getDateBounds(periodEndDay, buyerTz);
+
+  // 수집 상한은 항상 periodEnd. 하한은 규칙에 따른다:
+  //   includeOlderUnbundled=true  → 하한 없음. 지난달 cron 이 놓친 그 전 달 잔여분이 영구 누락되지 않는다.
+  //   includeOlderUnbundled=false → 기간 안의 것만(엄격). 누락분은 사람이 기간을 직접 잡아 따로 발행해야 한다.
+  const createdAtWhere = includeOlderUnbundled
+    ? { [Op.lte]: periodEnd }
+    : { [Op.between]: [periodStart, periodEnd] };
+
   const invoices = await Invoice.findAll({
     where: {
       invoice_category: 'trade',
@@ -109,7 +200,7 @@ async function issueSoaForPair({
       //   종전엔 status 를 안 봐서, `receive-and-pay` 로 그 자리에서 현금 낸 건이
       //   **다음 달 정산서에 또 실렸다**. 정산서는 "아직 안 낸 것의 묶음"이다.
       status: { [Op.notIn]: ['paid', 'cancelled'] },
-      createdAt: { [Op.between]: [lastMonthStart, lastMonthEnd] }
+      createdAt: createdAtWhere
     },
     include: [{ model: InvoiceItem, as: 'items' }],
     order: [['createdAt', 'ASC']]
@@ -121,7 +212,6 @@ async function issueSoaForPair({
   for (const inv of invoices) totalDue += Number(inv.total_amount || 0);
   totalDue = Math.round(totalDue * 100) / 100;
 
-  const dueDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), dueDay);
   const currency = invoices[0]?.currency || sellerCurrency || 'MYR';
 
   const recipients = await getBuyerRecipientUserIds(buyerEntityType, buyerEntityId);
@@ -152,10 +242,14 @@ async function issueSoaForPair({
       tax_amount: 0,
       paid_amount: 0,
       status: 'pending_payment',
-      issued_at: referenceDate,
+      issued_at: issuedAt,
       due_date: dueDate,
+      // 기간을 **행에 저장**한다 — 화면 Period 칸·메일이 이 값을 읽는다.
+      //   전에는 안 채워서 화면에 「-」 가 나왔다(거래·임대료·구독은 이미 채우고 있었다).
+      billing_period_start: periodStart,
+      billing_period_end: periodEnd,
       service_description: `Monthly Statement of Account — ${invoices.length} invoices`,
-      notes: `Bundled SOA for ${invoices.length} trade invoices in ${lastMonthStart.toISOString().slice(0, 7)}`
+      notes: `Bundled SOA for ${invoices.length} trade invoices (${periodLabelOf(periodStartDay, periodEndDay)})`
     }, { transaction: t });
 
     await Invoice.update(
@@ -168,24 +262,15 @@ async function issueSoaForPair({
 
   console.log(`[soaScheduler] SOA #${soaInvoice.id} (${soaInvoiceNumber}) — ${issuerType} → ${buyerEntityType} #${buyerEntityId}, ${invoices.length} invoices, ${currency} ${totalDue}`);
 
-  // Resolve buyer timezone (per-buyer)
-  let buyerTz = 'Asia/Kuala_Lumpur';
-  try {
-    let buyerEntity = null;
-    if (buyerEntityType === 'restaurant') {
-      buyerEntity = await Restaurant.findByPk(buyerEntityId, { attributes: ['operation_settings'] });
-    } else if (buyerEntityType === 'brand') {
-      buyerEntity = await Brand.findByPk(buyerEntityId, { attributes: ['operation_settings'] });
-    } else if (buyerEntityType === 'foodcourt') {
-      buyerEntity = await Foodcourt.findByPk(buyerEntityId, { attributes: ['operation_settings'] });
-    }
-    if (buyerEntity) buyerTz = getRestaurantTimezone(buyerEntity);
-  } catch (e) { /* fallback default */ }
-  const monthLabel = lastMonthStart.toLocaleDateString('en-US', { year: 'numeric', month: 'long', timeZone: buyerTz });
+  // 라벨은 **저장된 기간(매장 달력 날짜)** 으로 만든다 — 수집 범위 값이 라벨로 새어 나가던 자리다.
+  const monthLabel = periodLabelOf(periodStartDay, periodEndDay);
+  // 「며칠 안에 내야 하나」 — 새 설정 칸을 만들지 않고 발행일과 마감일의 차로 낸다.
+  const dueInDays = Math.max(0, Math.ceil((dueDate - issuedAt) / 86400000));
 
   const mail = monthlySoaEmail({
     sellerName,
     month: monthLabel,
+    dueInDays,
     invoices: invoices.map(i => i.toJSON()),
     totalDue,
     currency,
@@ -219,6 +304,12 @@ async function processMonthlySoa(referenceDate = new Date()) {
     const lastMonthStart = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1, 0, 0, 0, 0);
     const lastMonthEnd = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 0, 23, 59, 59, 999);
 
+    // 발행일 = 만든 날. 기간과 섞지 않는다(전에는 referenceDate 하나가 둘 다였다).
+    const issuedAt = new Date();
+    // 기간은 **날짜 문자열**로 넘긴다 — instant 화는 issueSoaForPair 가 구매 매장 tz 로 한 번만 한다.
+    const p2d = (n) => String(n).padStart(2, '0');
+    const lastMonthStartDay = `${lastMonthStart.getFullYear()}-${p2d(lastMonthStart.getMonth() + 1)}-01`;
+    const lastMonthEndDay = `${lastMonthEnd.getFullYear()}-${p2d(lastMonthEnd.getMonth() + 1)}-${p2d(lastMonthEnd.getDate())}`;
     console.log(`[soaScheduler] Processing monthly SOA (${lastMonthStart.toISOString()} → ${lastMonthEnd.toISOString()})`);
 
     let processed = 0, success = 0, errors = 0, skipped = 0;
@@ -240,7 +331,7 @@ async function processMonthlySoa(referenceDate = new Date()) {
 
         const dueDay = parseInt(contract.payment_terms?.payment_due_day, 10) || 15;
         const supplierName = contract.supplierCompany?.company_name || contract.supplierCompany?.name || 'Supplier';
-        const soaInvoiceNumber = `SOA-${contract.supplier_company_id}-${lastMonthStart.toISOString().slice(0, 7)}-${contract.id}`;
+        const soaInvoiceNumber = await uniqueSoaNumber(`SOA-${contract.supplier_company_id}-${lastMonthStart.toISOString().slice(0, 7)}-${contract.id}`);
 
         const result = await issueSoaForPair({
           issuerType: 'supplier',
@@ -250,10 +341,10 @@ async function processMonthlySoa(referenceDate = new Date()) {
           buyerEntityId: contract.entity_id,
           sellerName: supplierName,
           sellerCurrency: contract.supplierCompany?.currency,
-          dueDay,
-          referenceDate,
-          lastMonthStart,
-          lastMonthEnd,
+          periodStartDay: lastMonthStartDay,
+          periodEndDay: lastMonthEndDay,
+          issuedAt,
+          dueDate: nextDueDate(issuedAt, dueDay),
           soaInvoiceNumber
         });
         if (result.issued) success++; else skipped++;
@@ -282,7 +373,7 @@ async function processMonthlySoa(referenceDate = new Date()) {
 
         const dueDay = parseInt(restaurant.brand_billing_terms?.payment_due_day, 10) || 15;
         const sellerName = brand.name || 'Brand';
-        const soaInvoiceNumber = `SOA-BRD${brand.id}-${lastMonthStart.toISOString().slice(0, 7)}-R${restaurant.id}`;
+        const soaInvoiceNumber = await uniqueSoaNumber(`SOA-BRD${brand.id}-${lastMonthStart.toISOString().slice(0, 7)}-R${restaurant.id}`);
 
         const result = await issueSoaForPair({
           issuerType: 'brand',
@@ -292,10 +383,10 @@ async function processMonthlySoa(referenceDate = new Date()) {
           buyerEntityId: restaurant.id,
           sellerName,
           sellerCurrency: restaurant.brand_billing_terms?.currency,
-          dueDay,
-          referenceDate,
-          lastMonthStart,
-          lastMonthEnd,
+          periodStartDay: lastMonthStartDay,
+          periodEndDay: lastMonthEndDay,
+          issuedAt,
+          dueDate: nextDueDate(issuedAt, dueDay),
           soaInvoiceNumber
         });
         if (result.issued) success++; else skipped++;
@@ -324,7 +415,7 @@ async function processMonthlySoa(referenceDate = new Date()) {
 
         const dueDay = parseInt(restaurant.foodcourt_billing_terms?.payment_due_day, 10) || 15;
         const sellerName = fc.name || 'Foodcourt';
-        const soaInvoiceNumber = `SOA-FC${fc.id}-${lastMonthStart.toISOString().slice(0, 7)}-R${restaurant.id}`;
+        const soaInvoiceNumber = await uniqueSoaNumber(`SOA-FC${fc.id}-${lastMonthStart.toISOString().slice(0, 7)}-R${restaurant.id}`);
 
         const result = await issueSoaForPair({
           issuerType: 'foodcourt',
@@ -334,10 +425,10 @@ async function processMonthlySoa(referenceDate = new Date()) {
           buyerEntityId: restaurant.id,
           sellerName,
           sellerCurrency: restaurant.foodcourt_billing_terms?.currency,
-          dueDay,
-          referenceDate,
-          lastMonthStart,
-          lastMonthEnd,
+          periodStartDay: lastMonthStartDay,
+          periodEndDay: lastMonthEndDay,
+          issuedAt,
+          dueDate: nextDueDate(issuedAt, dueDay),
           soaInvoiceNumber
         });
         if (result.issued) success++; else skipped++;
@@ -396,7 +487,12 @@ async function processMonthlySoa(referenceDate = new Date()) {
  * @param {number} restaurantId
  * @returns {Promise<{issued:boolean, soaId?:number, reason?:string}>}
  */
-async function generateSoaNow({ issuerType, issuerId, restaurantId }) {
+async function generateSoaNow({
+  issuerType, issuerId, restaurantId,
+  periodStartDay: periodStartIn = null,   // 'YYYY-MM-DD' (구매 매장 달력)
+  periodEndDay: periodEndIn = null,
+  includeOlderUnbundled = true
+}) {
   if (!['brand', 'foodcourt'].includes(issuerType)) return { issued: false, reason: 'bad_issuer_type' };
   const restaurant = await Restaurant.findByPk(restaurantId, {
     attributes: ['id', 'name', 'brand_id', 'foodcourt_id', 'brand_billing_terms', 'foodcourt_billing_terms']
@@ -413,15 +509,40 @@ async function generateSoaNow({ issuerType, issuerId, restaurantId }) {
 
   const now = new Date();
   const dueDay = parseInt(terms?.payment_due_day, 10) || 15;
-  // dueDate = 이번달 dueDay (이미 지났으면 다음달) — 수동 발행이라 미래 마감일 보장
-  let dueRef = new Date(now.getFullYear(), now.getMonth(), 1);
-  if (now.getDate() > dueDay) dueRef = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  // 안 묶인 거래인보이스 전부 포함 (월 무관) — 넓은 범위
-  const rangeStart = new Date(2000, 0, 1);
-  const rangeEnd = now;
-  const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+
+  // 기간 — 사람이 고른 값이 있으면 그것, 없으면 «지난달 1일~말일». **전부 매장 달력의 날짜 문자열.**
+  //   ⛔ 옛 코드는 여기서 2000-01-01 을 넣어 수집 범위를 넓혔고, 그 값이 메일 라벨로 새어
+  //      「January 2026」 대신 「January 2000」 이 나갔다. 이제 범위(하한)와 라벨을 분리한다 —
+  //      «기간 이전의 안 묶인 미납분» 은 includeOlderUnbundled 로 들어오지, 라벨을 왜곡하지 않는다.
+  const buyerTz = await resolveBuyerTimezone('restaurant', restaurantId);
+  const todayDay = getCurrentLocalDate(buyerTz);          // 매장 달력의 오늘
+  let periodStartDay = periodStartIn || null;
+  let periodEndDay = periodEndIn || null;
+  if (!periodStartDay || !periodEndDay) {
+    const [ty, tm] = todayDay.split('-').map(Number);
+    const prevY = tm === 1 ? ty - 1 : ty;
+    const prevM = tm === 1 ? 12 : tm - 1;
+    const lastDay = new Date(Date.UTC(prevY, prevM, 0)).getUTCDate();
+    const p2 = (n) => String(n).padStart(2, '0');
+    periodStartDay = `${prevY}-${p2(prevM)}-01`;
+    periodEndDay = `${prevY}-${p2(prevM)}-${p2(lastDay)}`;
+  }
+  // 미래 판정은 **날짜 문자열 비교**다. 끝을 시각(23:59:59.999)으로 만들어 지금과 비교하면
+  // 「오늘까지」가 언제 눌러도 미래로 읽혀 항상 400 이었다(2026-09-24 Fable 게이트 적록).
+  if (periodEndDay > todayDay) return { issued: false, reason: 'period_end_in_future' };
+  if (periodStartDay > periodEndDay) return { issued: false, reason: 'period_out_of_order' };
+
+  // 발행일 = 만든 날. 마감일 기준점과 같은 값을 쓰지 않는다(그게 미래 발행일의 원인이었다).
+  const issuedAt = now;
+  const dueDate = nextDueDate(issuedAt, dueDay);
+
+  // 번호에 **초**까지 넣는다. 분 단위였을 때는 «취소하고 바로 다시 발행» 을 같은 분에 하면
+  // invoice_number UNIQUE 에 걸려 500 이 났다 — 그런데 그게 잘못된 정산서를 바로잡는 정규 절차다.
+  // (2026-09-24 검증 중 실측: 같은 분에 재발행 → Duplicate entry.)
+  const p2 = (n) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}${p2(now.getMonth() + 1)}${p2(now.getDate())}${p2(now.getHours())}${p2(now.getMinutes())}${p2(now.getSeconds())}`;
   const prefix = issuerType === 'brand' ? 'BRD' : 'FC';
-  const soaInvoiceNumber = `SOA-${prefix}${issuerId}-R${restaurantId}-M${stamp}`;
+  const soaInvoiceNumber = await uniqueSoaNumber(`SOA-${prefix}${issuerId}-R${restaurantId}-M${stamp}`);
 
   const result = await issueSoaForPair({
     issuerType, issuerId,
@@ -429,10 +550,8 @@ async function generateSoaNow({ issuerType, issuerId, restaurantId }) {
     buyerEntityType: 'restaurant', buyerEntityId: restaurantId,
     sellerName: seller.name || (issuerType === 'brand' ? 'Brand' : 'Foodcourt'),
     sellerCurrency: terms?.currency,
-    dueDay,
-    referenceDate: dueRef,
-    lastMonthStart: rangeStart,
-    lastMonthEnd: rangeEnd,
+    periodStartDay, periodEndDay, issuedAt, dueDate,
+    includeOlderUnbundled,
     soaInvoiceNumber
   });
   return { issued: !!result.issued, soaId: result.soaId, reason: result.reason };
@@ -453,5 +572,8 @@ module.exports = {
   processMonthlySoa,
   generateSoaNow,
   startSoaCron,
-  computePayerForBuyer
+  computePayerForBuyer,
+  // 라벨·마감일 규칙은 테스트와 다른 호출부가 **같은 함수**를 보게 내보낸다.
+  periodLabelOf,
+  nextDueDate
 };

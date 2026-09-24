@@ -232,7 +232,8 @@
     "amendedBySeller": "판매처에서 이 주문을 수정했습니다",
     "amendedAdded": "추가",
     "amendedRemoved": "제외",
-    "amendedTotal": "주문 금액"
+    "amendedTotal": "주문 금액",
+    "addedBySeller": "판매처에서 이 주문을 대신 넣었습니다"
   },
   "receive": {
     "modalTitle": "주문 수령",
@@ -682,7 +683,8 @@
       "lineSum": "입력한 줄들의 합",
       "lineMismatch": "적어 넣은 총액과 {{d}} 차이 — 세금·배송비이거나 옮겨 적다 틀린 것입니다",
       "blocked": "줄 합·세금·배송·할인으로 계산한 {{c}} 와 적은 총액이 {{d}} 다릅니다 — 줄이나 총액을 확인하세요(이대로는 저장되지 않습니다)",
-      "rounding": "반올림 조정 {{d}} 로 적은 총액에 맞춥니다"
+      "rounding": "반올림 조정 {{d}} 로 적은 총액에 맞춥니다",
+      "blockedShort": "적으신 총액이 줄 합계와 맞지 않습니다."
     },
     "ocr": {
       "reading": "올려 둔 인보이스를 읽는 중입니다…",
@@ -702,7 +704,9 @@
     "skipReason": {
       "registeredSupplier": "가입 공급업체의 판매가는 공급업체만 바꿉니다 — 청구값은 기록됐습니다",
       "notMyExternal": "내가 등록한 외부 공급업체가 아닙니다 — 청구값은 기록됐습니다"
-    }
+    },
+    "saveTotalOnly": "총액대로만 저장 (줄 단가는 원가에 반영하지 않음)",
+    "totalOnlyBanner": "총액만 맞췄습니다 — 줄 단가는 저장되지 않았고 원가에도 반영되지 않았습니다. 가능할 때 줄까지 대조해 주세요."
   },
   "newPo.error.profileTitle": "사업자 정보가 필요합니다",
   "newPo.error.goToCompanyInfo": "회사 정보 화면을 열까요?",

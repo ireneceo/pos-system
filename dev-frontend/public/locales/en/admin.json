@@ -1497,5 +1497,23 @@
     "inqEmpty": "No open inquiries",
     "inqCrash": "crash",
     "addressedIn": "In {{tag}}"
+  },
+  "staffManagementPage": {
+    "contexts": {
+      "action": "Access contexts",
+      "title": "Access contexts",
+      "hint": "Give this person access to another restaurant so they can switch without logging out. Their own role is always available and cannot be removed.",
+      "loading": "Loading…",
+      "empty": "No contexts yet.",
+      "own": "Their own role",
+      "fixed": "Always available",
+      "revoke": "Remove",
+      "orphans": "Some contexts point to a restaurant that no longer exists:",
+      "grantLabel": "Add a restaurant",
+      "grantPlaceholder": "Search a restaurant",
+      "grant": "Give access",
+      "grantNote": "Added as Restaurant Admin. This is the only combination available for now."
+    },
+    "close": "Close"
   }
 }

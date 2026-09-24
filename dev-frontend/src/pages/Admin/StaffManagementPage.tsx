@@ -34,6 +34,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { formatCurrency, getActivePlanCurrencies } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import PhoneInput from '../../components/Common/PhoneInput';
+import SearchableSelect from '../../components/Common/SearchableSelect';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -453,6 +454,15 @@ const AdminStaffManagementPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [restaurantFilter, setRestaurantFilter] = useState('all');
   const [restaurants, setRestaurants] = useState<any[]>([]);
+
+  // 자격(모자) 관리 — 부여된 것만 행으로 남고, 기본 정체는 파생이라 회수 대상이 아니다.
+  const [contextsUser, setContextsUser] = useState<Staff | null>(null);
+  const [contextsList, setContextsList] = useState<any[]>([]);
+  const [contextsOrphans, setContextsOrphans] = useState<any[]>([]);
+  const [contextsLoading, setContextsLoading] = useState(false);
+  const [contextsError, setContextsError] = useState<string | null>(null);
+  const [contextsGrantRestaurantId, setContextsGrantRestaurantId] = useState<number | null>(null);
+
   const [restaurantSearchQuery, setRestaurantSearchQuery] = useState('');
   const [restaurantSearchResults, setRestaurantSearchResults] = useState<any[]>([]);
   const [showRestaurantDropdown, setShowRestaurantDropdown] = useState(false);
@@ -1176,6 +1186,87 @@ const AdminStaffManagementPage: React.FC = () => {
     setShowConfirmModal(true);
   };
 
+  // ── 자격(모자) 관리 ────────────────────────────────────────────────────────
+  const loadContexts = async (userId: string | number) => {
+    setContextsLoading(true);
+    setContextsError(null);
+    try {
+      const res = await fetch(`/api/users/${userId}/contexts`, { headers: getAuthHeaders() });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setContextsError(data?.message || 'Failed to load contexts');
+        return;
+      }
+      setContextsList(data.data?.contexts || []);
+      setContextsOrphans(data.data?.orphans || []);
+    } catch (err) {
+      console.error(err);
+      setContextsError('Network error');
+    } finally {
+      setContextsLoading(false);
+    }
+  };
+
+  const openContextsModal = async (staff: Staff) => {
+    setContextsUser(staff);
+    setContextsList([]);
+    setContextsOrphans([]);
+    setContextsGrantRestaurantId(null);
+    await loadContexts(staff.id);
+  };
+
+  const handleGrantContext = async () => {
+    if (!contextsUser || contextsGrantRestaurantId == null) return;
+    setContextsLoading(true);
+    setContextsError(null);
+    try {
+      const res = await fetch(`/api/users/${contextsUser.id}/contexts`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        // 조합 제한(매장 × 매장 관리자)은 서버가 단일 소스 — 화면이 다시 정하지 않는다.
+        body: JSON.stringify({
+          entity_type: 'restaurant',
+          entity_id: contextsGrantRestaurantId,
+          role: 'Restaurant Admin'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setContextsError(data?.message || 'Failed to grant');
+        return;
+      }
+      setContextsGrantRestaurantId(null);
+      await loadContexts(contextsUser.id);
+    } catch (err) {
+      console.error(err);
+      setContextsError('Network error');
+    } finally {
+      setContextsLoading(false);
+    }
+  };
+
+  const handleRevokeContext = async (contextId: number) => {
+    if (!contextsUser) return;
+    setContextsLoading(true);
+    setContextsError(null);
+    try {
+      const res = await fetch(`/api/users/${contextsUser.id}/contexts/${contextId}`, {
+        method: 'DELETE', headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setContextsError(data?.message || 'Failed to revoke');
+        return;
+      }
+      await loadContexts(contextsUser.id);
+    } catch (err) {
+      console.error(err);
+      setContextsError('Network error');
+    } finally {
+      setContextsLoading(false);
+    }
+  };
+
   const handleResetStaffPassword = (staff: Staff) => {
     setSelectedStaff(staff);
     setConfirmAction('resetPassword');
@@ -1623,6 +1714,14 @@ const AdminStaffManagementPage: React.FC = () => {
                       title="Reset Password"
                     >
                       <IconSymbol>⚷</IconSymbol>
+                    </IconButton>
+                    {/* 자격(모자) — 한 사람이 여러 매장·정체로 로그아웃 없이 오가게 한다.
+                        부여 규칙·조합 제한은 서버(services/userContexts)가 단일 소스다. */}
+                    <IconButton
+                      onClick={() => openContextsModal(staff)}
+                      title={t('admin:staffManagementPage.contexts.action', 'Access contexts') as string}
+                    >
+                      <IconSymbol>≡</IconSymbol>
                     </IconButton>
                     {currentUser?.id?.toString() !== staff.id?.toString() && (
                       <IconButton
@@ -2191,6 +2290,119 @@ const AdminStaffManagementPage: React.FC = () => {
                 
               </>
             )}
+        </CommonModal>
+        )}
+
+        {/* 자격(모자) 관리 Modal */}
+        {contextsUser && (
+        <CommonModal
+          isOpen={true}
+          onClose={() => setContextsUser(null)}
+          title={t('admin:staffManagementPage.contexts.title', 'Access contexts')}
+          footer={<Button variant="secondary" onClick={() => setContextsUser(null)}>{t('admin:staffManagementPage.close', 'Close')}</Button>}
+        >
+          <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>
+            {t('admin:staffManagementPage.contexts.hint', 'Give this person access to another restaurant so they can switch without logging out. Their own role is always available and cannot be removed.')}
+          </p>
+          <div style={{ marginBottom: 16, fontSize: 13, color: '#374151' }}>
+            <strong>{contextsUser.full_name || contextsUser.username || contextsUser.email}</strong>
+            {contextsUser.email ? <span style={{ color: '#6B7280' }}> · {contextsUser.email}</span> : null}
+          </div>
+
+          {contextsLoading ? (
+            <div style={{ padding: 20, textAlign: 'center', color: '#6B7280', fontSize: 14 }}>
+              {t('admin:staffManagementPage.contexts.loading', 'Loading…')}
+            </div>
+          ) : (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                {contextsList.length === 0 ? (
+                  <div style={{ fontSize: 13, color: '#6B7280' }}>
+                    {t('admin:staffManagementPage.contexts.empty', 'No contexts yet.')}
+                  </div>
+                ) : contextsList.map((c: any, i: number) => (
+                  <div
+                    key={c.kind === 'granted' ? `g${c.id}` : `d${i}`}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: 12, padding: '10px 0', borderBottom: '1px solid #F3F4F6'
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, color: '#111827' }}>{c.label || '-'}</div>
+                      <div style={{ fontSize: 12, color: '#6B7280' }}>
+                        {c.role}
+                        {c.kind === 'default'
+                          ? ` · ${t('admin:staffManagementPage.contexts.own', 'Their own role')}`
+                          : ''}
+                      </div>
+                    </div>
+                    {c.kind === 'granted' ? (
+                      <Button variant="secondary" onClick={() => handleRevokeContext(c.id)}>
+                        {t('admin:staffManagementPage.contexts.revoke', 'Remove')}
+                      </Button>
+                    ) : (
+                      <span style={{ fontSize: 12, color: '#9CA3AF' }}>
+                        {t('admin:staffManagementPage.contexts.fixed', 'Always available')}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {contextsOrphans.length > 0 && (
+                <div style={{
+                  background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8,
+                  padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#92400E'
+                }}>
+                  {t('admin:staffManagementPage.contexts.orphans', 'Some contexts point to a restaurant that no longer exists:')}
+                  {contextsOrphans.map((o: any) => (
+                    <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                      <span>#{o.entity_id} · {o.role}</span>
+                      <Button variant="secondary" onClick={() => handleRevokeContext(o.id)}>
+                        {t('admin:staffManagementPage.contexts.revoke', 'Remove')}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 16 }}>
+                <div style={{ fontSize: 13, color: '#374151', marginBottom: 8 }}>
+                  {t('admin:staffManagementPage.contexts.grantLabel', 'Add a restaurant')}
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+                    <SearchableSelect
+                      options={restaurants.map((r: any) => ({
+                        value: r.id,
+                        label: r.branch_name ? `${r.name} (${r.branch_name})` : r.name,
+                        subLabel: r.status && r.status !== 'active' ? r.status : undefined
+                      }))}
+                      value={contextsGrantRestaurantId}
+                      onChange={(v) => setContextsGrantRestaurantId(v === null ? null : Number(v))}
+                      placeholder={t('admin:staffManagementPage.contexts.grantPlaceholder', 'Search a restaurant') as string}
+                      allowClear
+                    />
+                  </div>
+                  <Button
+                    variant="primary"
+                    onClick={handleGrantContext}
+                    disabled={contextsGrantRestaurantId == null || contextsLoading}
+                  >
+                    {t('admin:staffManagementPage.contexts.grant', 'Give access')}
+                  </Button>
+                </div>
+                <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 8 }}>
+                  {t('admin:staffManagementPage.contexts.grantNote', 'Added as Restaurant Admin. This is the only combination available for now.')}
+                </div>
+              </div>
+            </>
+          )}
+
+          {contextsError && (
+            <div style={{ color: '#DC2626', fontSize: 13, marginTop: 12 }}>{contextsError}</div>
+          )}
         </CommonModal>
         )}
 

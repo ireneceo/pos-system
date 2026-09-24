@@ -577,6 +577,17 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
 
     await invoice.update(updateData);
 
+    // 🔴 정산서(SOA)를 취소하면 안에 묶인 거래 인보이스를 **풀어 준다**.
+    //   안 풀면 `parent_soa_invoice_id` 가 남아 ①다음 정산서 수집(=null 만)에서 빠지고
+    //   ②연체 스케줄러에서도 빠져, 낼 곳이 없는 고아가 된다. (2026-09-24 Fable 적발)
+    if (status === 'cancelled' && invoice.invoice_category === 'soa') {
+      const freed = await Invoice.update(
+        { parent_soa_invoice_id: null },
+        { where: { parent_soa_invoice_id: invoice.id } }
+      );
+      console.log(`[invoices-crud] SOA #${invoice.id} cancelled — released ${freed[0]} child invoice(s)`);
+    }
+
     // Centralised side-effects: subscription restore + referral commission on
     // entry to 'paid'; commission reversal on exit from 'paid'.
     if (status === 'paid' && previousStatus !== 'paid') {
@@ -635,6 +646,17 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       } catch (e) {
         console.error('[DELETE Invoice] handleInvoiceCancelled failed:', e.message);
       }
+    }
+
+    // 🔴 정산서(SOA)를 지우면 안에 묶인 거래 인보이스를 **풀어 준다** — 취소 경로와 같은 이유.
+    //   안 풀면 지워진 정산서를 가리킨 채 다음 정산서·연체 스케줄러 양쪽에서 빠진다.
+    //   (FK 제약이 없어 DB 가 막아 주지 않는다. 2026-09-24 Fable 적발)
+    if (invoice.invoice_category === 'soa') {
+      const freed = await Invoice.update(
+        { parent_soa_invoice_id: null },
+        { where: { parent_soa_invoice_id: invoice.id } }
+      );
+      console.log(`[invoices-crud] SOA #${invoice.id} deleted — released ${freed[0]} child invoice(s)`);
     }
 
     // Delete invoice items first

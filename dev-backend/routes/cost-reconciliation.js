@@ -28,7 +28,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { recomputeForSellerProduct, logCostChange } = require('../services/costSync');
-const { computeReconciledTotal, RECONCILE_TOLERANCE } = require('../services/reconcileInvoiceSync');
+const { computeReconciledTotal, isTotalOnlyReconcile, RECONCILE_TOLERANCE } = require('../services/reconcileInvoiceSync');
 
 // 경로 한정 가드 — `router.use(guard)` 로 걸면 /api 전체가 잠긴다(메모리: router_use_leaks_to_api_root)
 router.use('/purchase-orders', authenticateToken, requireBuyerRole);
@@ -112,7 +112,9 @@ router.get('/purchase-orders/:id/reconcile', async (req, res) => {
           //   저장되는 invoice_delivery(=공급업체가 실제 청구한 값)와는 **다른 사실**이다. (2026-09-17)
           delivery_fee: po.delivery_fee, delivery_fee_basis: po.delivery_fee_basis,
           invoice_reconciled_at: po.invoice_reconciled_at,
-          invoice_reconciled_by_user_id: po.invoice_reconciled_by_user_id
+          invoice_reconciled_by_user_id: po.invoice_reconciled_by_user_id,
+          // «총액만 맞춤» 이었는지 — 화면이 배너로 알린다(새 칸 없이 도출, services/reconcileInvoiceSync)
+          total_only: isTotalOnlyReconcile(po, items)
         },
         items: items.map((it) => {
           const m = mapById.get(it.ingredient_seller_product_id);
@@ -165,20 +167,44 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
 
   const body = req.body || {};
   const lines = Array.isArray(body.lines) ? body.lines : [];
-  if (!lines.length) return res.status(400).json({ success: false, message: 'lines required' });
 
-  // 라인은 이 발주의 것만 — 남의 발주 라인 id 를 섞어 보내는 것을 막는다
+  // ── «총액만 대조» 모드 (2026-09-24 Fable 판정 D6) ────────────────────────────
+  //   사진 판독이 엉망이라 줄 단가를 믿을 수 없을 때, **총액만 사람이 적어 결제까지** 가는 길.
+  //   ⛔ 줄 값은 저장하지 않는다 — OCR 이 잘못 읽은 단가가 매장 원가(①-b)·전파(③)로 흘러들면
+  //      이 화면의 존재 이유(파싱 실수가 원가로 굳는 것 막기)와 정면으로 충돌한다.
+  //   «총액만 모드» 판정은 새 칸 없이 도출한다: 대조 시각은 있는데 모든 줄의 invoiced_unit_price 가 null.
+  //   (정상 줄 대조는 아래에서 단가를 필수로 받으므로 그 조합은 이 모드에서만 나온다.)
+  const totalOnly = body.total_only === true;
+
   const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: id } });
   const itemById = new Map(items.map((i) => [i.id, i]));
-  for (const l of lines) {
-    if (!itemById.has(parseInt(l.item_id, 10))) {
-      return res.status(400).json({ success: false, message: `Line ${l.item_id} is not part of this order` });
+
+  if (totalOnly) {
+    if (money((body.invoice || {}).total) === null) {
+      return res.status(400).json({
+        success: false, code: 'TOTAL_REQUIRED',
+        message: 'total_only requires an invoice total'
+      });
     }
-    if (money(l.invoiced_unit_price) === null) {
-      return res.status(400).json({ success: false, message: `Line ${l.item_id}: invoiced_unit_price must be a non-negative number` });
+    // 줄을 보냈다면 **이 발주의 것인지만** 본다(값은 쓰지 않는다).
+    for (const l of lines) {
+      if (!itemById.has(parseInt(l.item_id, 10))) {
+        return res.status(400).json({ success: false, message: `Line ${l.item_id} is not part of this order` });
+      }
     }
-    if (l.invoiced_quantity !== undefined && l.invoiced_quantity !== null && money(l.invoiced_quantity) === null) {
-      return res.status(400).json({ success: false, message: `Line ${l.item_id}: invoiced_quantity must be a non-negative number` });
+  } else {
+    if (!lines.length) return res.status(400).json({ success: false, message: 'lines required' });
+    // 라인은 이 발주의 것만 — 남의 발주 라인 id 를 섞어 보내는 것을 막는다
+    for (const l of lines) {
+      if (!itemById.has(parseInt(l.item_id, 10))) {
+        return res.status(400).json({ success: false, message: `Line ${l.item_id} is not part of this order` });
+      }
+      if (money(l.invoiced_unit_price) === null) {
+        return res.status(400).json({ success: false, message: `Line ${l.item_id}: invoiced_unit_price must be a non-negative number` });
+      }
+      if (l.invoiced_quantity !== undefined && l.invoiced_quantity !== null && money(l.invoiced_quantity) === null) {
+        return res.status(400).json({ success: false, message: `Line ${l.item_id}: invoiced_quantity must be a non-negative number` });
+      }
     }
   }
 
@@ -206,7 +232,8 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
   const computedTotal = computeReconciledTotal(mergedItems,
     { tax: money(inv.tax), delivery: money(inv.delivery), discount: money(inv.discount) });
   const headerTotal = money(inv.total);
-  if (headerTotal !== null) {
+  // 총액만 모드는 «줄과 총액이 안 맞는다» 가 전제다 — 그래서 이 검사를 건너뛴다.
+  if (!totalOnly && headerTotal !== null) {
     const diff = Math.round((headerTotal - computedTotal) * 100) / 100;
     if (Math.abs(diff) > RECONCILE_TOLERANCE) {
       return res.status(400).json({
@@ -223,7 +250,16 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
     //   함께: 그 줄이 인보이스에서 어떤 이름으로 불렸는지를 판매자 상품에 기억시킨다(이름 사전).
     //   ⛔ 쓰기 대상은 **이 발주의 라인이 가리키는 판매자 상품**뿐이다 — 발주 소유권 검사를
     //     이미 통과한 경로라 별도 권한 문을 만들지 않는다(남의 매장 상품은 닿을 수 없다).
-    const itemIds = lines.map((l) => parseInt(l.item_id, 10)).filter(Number.isFinite);
+    // 총액만 모드: 줄 값은 **전부 비운다**. 이전 대조 값이 남아 «줄까지 맞춘 것» 처럼 보이면 안 된다.
+    //   이름 사전·매장 원가·소급 전파도 건너뛴다(믿을 수 없는 단가를 원가로 만들지 않는다).
+    if (totalOnly) {
+      await PurchaseOrderItem.update(
+        { invoiced_unit_price: null, invoiced_quantity: null },
+        { where: { purchase_order_id: po.id }, transaction: t }
+      );
+    }
+
+    const itemIds = totalOnly ? [] : lines.map((l) => parseInt(l.item_id, 10)).filter(Number.isFinite);
     const ownItems = itemIds.length
       ? await PurchaseOrderItem.findAll({
           where: { id: itemIds, purchase_order_id: po.id },
@@ -231,7 +267,7 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
       : [];
     const ownItemById = new Map(ownItems.map((i) => [i.id, i]));
 
-    for (const l of lines) {
+    for (const l of (totalOnly ? [] : lines)) {
       const itemId = parseInt(l.item_id, 10);
       await PurchaseOrderItem.update({
         invoiced_unit_price: money(l.invoiced_unit_price),
@@ -255,7 +291,7 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
     //   수령만 이 행을 쓰고(그것도 발주가로) 대조는 안 써서, 청구가를 확인해도 레시피 원가가 발주가에 머물렀다(dev 실측 A·B·C).
     //   **덮어쓴다 — 평균 내지 않는다**(대조는 «지금 실제로 얼마에 사는가»가 도착한 순간). 판매자 종류 무관.
     //   단위는 수령과 같은 환산(청구 단가 ÷ unit_conversion — purchaseOrderReceive.js).
-    if (po.entity_type === 'restaurant') {
+    if (po.entity_type === 'restaurant' && !totalOnly) {
       for (const l of lines) {
         const it = itemById.get(parseInt(l.item_id, 10));
         const price = money(l.invoiced_unit_price);
@@ -309,7 +345,7 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
   const propagated = [];
   const failed = [];
   const retroResults = [];
-  for (const l of lines) {
+  for (const l of (totalOnly ? [] : lines)) {   // 총액만 모드는 전파·소급도 하지 않는다
     const item0 = itemById.get(parseInt(l.item_id, 10));
 
     // 과거 발주 소급 (설계 §4) — **판매가 반영과 별개 옵션**이다.

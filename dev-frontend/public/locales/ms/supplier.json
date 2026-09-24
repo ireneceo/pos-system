@@ -246,7 +246,7 @@
       "hint": "Pembeli dimaklumkan tentang perubahan secara automatik. Anda tidak boleh menaikkan jumlah pesanan — untuk mengenakan caj lebih, tolak pesanan dan minta pembeli memesan semula.",
       "item": "Item",
       "qty": "Kuantiti",
-      "choose": "Pilih produk",
+      "choose": "Cari produk",
       "addLine": "Tambah item",
       "removeLine": "Buang baris ini",
       "itemsTotal": "Jumlah item",
@@ -255,7 +255,21 @@
       "reasonPlaceholder": "Perubahan sentiasa dimaklumkan. Tambah nota jika perlu.",
       "submit": "Simpan",
       "cancel": "Batal",
-      "loading": "Memuatkan…"
+      "loading": "Memuatkan…",
+      "noProducts": "Tiada produk sepadan dalam katalog anda"
+    },
+    "create": {
+      "action": "Tambah pesanan",
+      "title": "Tambah pesanan bagi pihak pembeli",
+      "hint": "Pembeli dimaklumkan bahawa anda menambah pesanan ini bagi pihak mereka. Jika kelulusan Pemilik dihidupkan, ia menunggu kelulusan itu dahulu.",
+      "buyer": "Pembeli",
+      "buyerPlaceholder": "Cari pembeli",
+      "noBuyers": "Tiada pembeli dikaitkan dengan anda lagi",
+      "noProductsForBuyer": "Tiada produk anda yang dikaitkan dengan stok pembeli ini, jadi pesanan tidak dapat dibuat untuk mereka.",
+      "notes": "Nota (pilihan)",
+      "notesPlaceholder": "Apa-apa yang pembeli perlu tahu tentang pesanan ini.",
+      "submit": "Buat pesanan",
+      "cancel": "Batal"
     }
   },
   "tradeInvoicesPage": {

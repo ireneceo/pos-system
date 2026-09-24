@@ -31,5 +31,10 @@
     "invalidDueDay": "Hari tamat bayar mesti 1-31",
     "invalidCreditLimit": "Had kredit tidak sah",
     "saveFailed": "Gagal menyimpan"
+  },
+  "generate": {
+    "periodLastMonth": "Bulan lepas",
+    "periodThisMonth": "Bulan ini (hingga hari ini)",
+    "periodCustom": "Pilih tarikh"
   }
 }

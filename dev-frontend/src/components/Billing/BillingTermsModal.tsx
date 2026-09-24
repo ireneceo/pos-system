@@ -150,15 +150,31 @@ const BillingTermsModal: React.FC<Props> = ({
     }
   }, [open, currentTerms]);
 
+  // 어느 기간의 거래를 묶을지. 기본은 «지난달» — 서버 기본값과 같은 뜻이라 아무것도 안 보낸다.
+  const [periodMode, setPeriodMode] = useState<'lastMonth' | 'thisMonth' | 'custom'>('lastMonth');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+  const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const thisMonthRange = () => {
+    const n = new Date();
+    return { start: ymd(new Date(n.getFullYear(), n.getMonth(), 1)), end: ymd(n) };
+  };
+
   // 온디맨드 월명세서 생성 — 매월 1일 자동 발행을 기다리지 않고 지금 발행.
   // 미청구(안 묶인) 거래내역을 한 장의 명세서(SOA)로 묶음. (2026-06-15)
   const generateNow = async () => {
     if (!restaurantId || generating) return;
     setGenerating(true); setGenResult(null);
     try {
+      // 기간은 서버가 기본값(지난달)을 정한다 — 화면이 같은 규칙을 다시 적지 않는다.
+      // 「직접 입력」일 때만 고른 날짜를 보낸다.
+      const body = (periodMode === 'custom' && customStart && customEnd)
+        ? { period_start: customStart, period_end: customEnd }
+        : (periodMode === 'thisMonth' ? { period_start: thisMonthRange().start, period_end: thisMonthRange().end } : {});
       const res = await fetch(`/api/${entityType}/soa/${restaurantId}/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` }
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
+        body: JSON.stringify(body)
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -372,9 +388,35 @@ const BillingTermsModal: React.FC<Props> = ({
             <strong>{t('billing:generate.title', 'Monthly statement')}</strong>
             <GenerateHint>{t('billing:generate.hint', 'Statements auto-issue on the 1st of each month. Generate one now for any unbilled orders.')}</GenerateHint>
           </div>
-          <ModalButton type="button" onClick={generateNow} disabled={generating}>
-            {generating ? t('common:saving', 'Saving...') : t('billing:generate.action', 'Generate now')}
-          </ModalButton>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+            <select
+              value={periodMode}
+              onChange={(e) => setPeriodMode(e.target.value as 'lastMonth' | 'thisMonth' | 'custom')}
+              style={{ padding: '8px 10px', border: '1px solid #C7CED6', borderRadius: 8, fontSize: 13, background: '#fff' }}
+            >
+              <option value="lastMonth">{t('billing:generate.periodLastMonth', 'Last month')}</option>
+              <option value="thisMonth">{t('billing:generate.periodThisMonth', 'This month (up to today)')}</option>
+              <option value="custom">{t('billing:generate.periodCustom', 'Choose dates')}</option>
+            </select>
+            {periodMode === 'custom' && (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <input type="date" value={customStart} max={ymd(new Date())}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  style={{ padding: '7px 8px', border: '1px solid #C7CED6', borderRadius: 8, fontSize: 13 }} />
+                <span style={{ color: '#6B7280', fontSize: 13 }}>–</span>
+                <input type="date" value={customEnd} max={ymd(new Date())}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  style={{ padding: '7px 8px', border: '1px solid #C7CED6', borderRadius: 8, fontSize: 13 }} />
+              </div>
+            )}
+            <ModalButton
+              type="button"
+              onClick={generateNow}
+              disabled={generating || (periodMode === 'custom' && (!customStart || !customEnd))}
+            >
+              {generating ? t('common:saving', 'Saving...') : t('billing:generate.action', 'Generate now')}
+            </ModalButton>
+          </div>
         </GenerateSection>
       )}
       {genResult && (

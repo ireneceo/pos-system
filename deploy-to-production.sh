@@ -373,11 +373,15 @@ success "Backup created: /var/www/backups/${TIMESTAMP} (백엔드 루트 파일 
 #   하루 3배포면 3GB/일이라 남은 64G 로 약 3주 뒤 가득 찬다. 주간 보안 리포트가 권한
 #   `journalctl --vacuum` 은 364MB 라 원인과 무관했다.
 #
+# 2026-09-24 30일 → **7일**: 규칙은 정상이었고 «지울 게 없었을» 뿐이다. 9월 한 달에 121번 배포해
+#   30일 이내 백업만 120G 였다(전체 147개·148G · 디스크 81%). 하루 3~6배포인 곳에서 30일치를
+#   통째로 들고 있을 이유가 없고, 롤백은 사실상 직전 것을 쓴다. 최신 N개 보존은 그대로라
+#   배포가 뜸해도 롤백 대상은 남는다. 되돌리려면 이 값만 30 으로.
 # 보관 규칙: **최근 ${BACKUP_KEEP_DAYS}일** 은 무조건 남기고, 그보다 오래됐어도
 #   **최신 ${BACKUP_KEEP_MIN}개** 는 남긴다(배포가 뜸한 기간에 롤백 대상이 사라지지 않게).
 # 방금 만든 백업은 정의상 최신이라 절대 지워지지 않는다.
 # 실패해도 배포를 막지 않는다 — 정리는 부수 작업이고, 백업 생성은 위에서 이미 검증됐다.
-BACKUP_KEEP_DAYS="${BACKUP_KEEP_DAYS:-30}"
+BACKUP_KEEP_DAYS="${BACKUP_KEEP_DAYS:-7}"
 BACKUP_KEEP_MIN="${BACKUP_KEEP_MIN:-10}"
 PRUNE_OUT=$(ssh $PROD_SERVER "
   cd /var/www/backups 2>/dev/null || exit 0
