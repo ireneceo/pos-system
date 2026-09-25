@@ -2,9 +2,12 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-### 2026-09-25
+
+## 2026-09-25 07:26 (SW 5.62-owner-supplier · 백업 20260925_072023 · 스모크 10/10)
 - 오너 공급업체 — 오너가 등록한 공급업체를 소유한 모든 매장이 함께 씁니다(매장마다 따로 만들 필요 없음). 수정은 오너만, 매장은 발주하거나 이 매장에서만 끌 수 있습니다
 - 오너 발주 목록 — 기본으로 모든 매장 발주를 한 표로, 줄마다 어느 매장 발주인지 표시 · «내 공급업체» 버튼
+- 운영 마이그: `supplier_companies.registered_by_entity_type` · `supplier_contracts.entity_type` 에 `owner` 추가(expand-only, 배포 로그 「추가 owner」 확인). `purchase_orders` 무변경 — 발주 주인은 항상 매장
+- Fable 게이트 PASS(마커 `a0a5a4f24572`) — 설계 외 변경 0 · print-guard 8/8 · security 67/67 · Fable 실호출 28/28
 
 
 ## 2026-09-24 22:56 (SW 5.61-share-window-ux · 버전 미상승 · 백업 20260924_225639)

@@ -1,13 +1,13 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-09-25 00:20 UTC
-**버전:** 운영 v3.102 + 핫픽스 3 + SW 5.59 · 5.60 · 5.61(마지막 배포 2026-09-24 22:56, 백업 20260924_225639)
-**작업 상태:** 개발완료(커밋) — 오너 공급업체 상속 + 오너 발주 전체 표(SW 5.62)는 **개발 완료·미배포, Fable 게이트 대기**
+**버전:** 운영 v3.102 + 핫픽스 3 + SW 5.59 · 5.60 · 5.61 · **5.62**(마지막 배포 2026-09-25 07:26, 백업 20260925_072023)
+**작업 상태:** SW 5.62 운영 배포 완료 — **Irene 운영 눈 확인 대기** + 오너 계정 이름 교체(Irene 직접)
 
 ### 진행 중인 작업
-- ⏸ **오너 공급업체 상속 + 오너 발주 전체 표 (SW 5.62-owner-supplier-20260924)** [Claude Code] — Fable «오너=슈퍼바이저» 판정 §1-A·§2-B 그대로 구현(Irene 「마저 해」). 개발 완료·검증 완료, **남은 것: Fable 게이트 판정 1회 → /배포 → 운영 확인**.
+- ⏳ **SW 5.62 운영 확인 (Irene 눈)** — 배포는 끝났고 확인만 남음. withmin_owner 로그인 → 발주 목록 «내 매장 전체(N)»·줄마다 매장 이름 → «My suppliers» → 업체 1개 등록 → with MIN Cafe 매장 계정에서 «FROM OWNER» 카드(Edit/Delete 없음).
   - 설계·동작: `docs/SUPPLIER_CONTRACT_SYSTEM.md` §H-3 · 기록 `dev-backend/releases/2026-09-24-owner-supplier.json`
-  - 운영 DB 마이그 있음: `scripts/migrate-owner-supplier-enum.js`(ENUM 'owner' 추가, expand-only, deploy 등록). **배포 스크립트 마이그 실패 동작 결함(별도 사안)을 Fable 이 «다음 마이그 동반 배포 전 처리 권고»** — 게이트 때 함께 판정받을 것.
-  - 증명: API 35/35 · 실브라우저 30/30(1440·390) · health-check security 67/67(신규 오너 공급업체 검사) · 고장주입 5종(백엔드 4·화면 1, 전부 원복 cmp) · verify-all --full 23/23(mount sweep 크래시 0).
+  - 운영 마이그 적용 확인: 배포 로그 「[migrate-owner-supplier-enum] 추가 owner」 2컬럼 · 패리티 ENUM 소실 0 · 스모크 10/10 · 운영 sw.js `5.62-owner-supplier-20260924`
+  - Fable 게이트 PASS(마커 `a0a5a4f24572`) — 설계 외 변경 0 · print-guard 8/8 · security 67/67 · Fable 실호출 28/28
   - 오너 사이드바 «Suppliers» 메뉴는 🔒 MainLayout 이라 미반영 — 발주 화면 «My suppliers» 버튼이 입구. 한 줄 추가는 Irene 승인 + print-guard bless 필요.
 
 ### 완료된 작업 (2026-09-24 세션) [Claude Code]
@@ -20,10 +20,17 @@
 - ✅ 오너 공급업체 상속 + 오너 발주 전체 표(SW 5.62, 개발) — 위 «진행 중»
 
 ### 다음 확정 작업
-- **SW 5.62 오너 공급업체 — Fable 게이트 → /배포 → 운영 확인** (Irene 「다음 섹션에 마저 할게」)
+- 없음 — Irene 지시 대기.
+  (직전 사이클 종료: SW 5.62 운영 배포 2026-09-25 07:26. 남은 것은 Irene 눈 확인 2건 = 오너 화면 동작 · 오너 계정 이름 교체.)
+
+### 완료된 작업 (2026-09-25 세션) [Claude Code]
+- ✅ **SW 5.62 오너 공급업체 상속 + 오너 발주 전체 표 — 운영 배포**(07:26, 백업 20260925_072023, 스모크 10/10). Fable 게이트 PASS(`a0a5a4f24572`). 운영 ENUM 'owner' 2컬럼 적용 확인.
+- ✅ **오너 컨텍스트 원인 판정**(Fable) — Irene 「이메일 인증해도 오너가 안 나온다」는 버그 아님. 오너는 **별도 계정 withmin_owner** 로 만들어졌고, 「Choose where to work」는 로그인한 계정 하나의 것만 보여준다. 한 아이디에 오너 모자를 얹는 것은 설계가 v1 에서 명시 제외(`user_contexts.entity_type` ENUM 에 'owner' 없음 · 오너 권한은 `restaurant_managers` 신원 기반). 한 아이디 통합은 **백로그**(운영 마이그·권한 판정·청구 정체가 얽힘 — Irene 이 「반드시」 할 때만).
 
 ### 👉 Irene 님이 하실 일
-1. **withmin_owner(irene@gitconsulting.group) 인증 메일 클릭 → 「비밀번호 찾기」로 비번 설정** — 운영 email_verified=0 확인(2026-09-24)
+1. **withmin_owner(irene@gitconsulting.group) 는 «별도 계정» — 지금 쓰시는 아이디에 오너가 붙은 것이 아닙니다.** 그 계정으로 **따로 로그인**해야 오너 화면이 나옵니다: 인증 메일 클릭 → 「비밀번호 찾기」로 비번 설정 → 로그인(다른 브라우저 권장). 운영 email_verified=0 확인(2026-09-24).
+   - 「Choose where to work」에 오너 줄이 안 나오는 것은 정상 — 그 목록은 로그인한 계정 하나의 것만 보여주고, 오너는 한 아이디에 모자로 얹을 수 없는 구조다(`docs/MULTI_CONTEXT_LOGIN_DESIGN.md` §5.2 v1 부여 = restaurant × Restaurant Admin 만 · `user_contexts.entity_type` ENUM 에 'owner' 없음 · 오너 권한은 `restaurant_managers` 신원 기반). Fable 판정 2026-09-25.
+   - 오너 계정 표시 이름 「with MIN Cafe Owner」는 구조가 아니라 지난 세션이 지어 넣은 **이름값** — 오너는 매장 N개를 거느리므로 매장 이름을 붙이면 안 된다. Fable 제안값: full_name `Irene Kim` / 회사 `GIT Consulting`. **System Admin > Users 에서 Irene 이 직접 수정**(운영 쓰기라 팀원 불가).
 2. New Seoul Mart 멸치액젓 재료를 매장 화면에서 새 상품(800g RM 19.00 · 2.5kg 단가 0 확인)에 다시 연결 — 권고
 3. 오너 사이드바 «Suppliers» 메뉴 추가 승인 여부(🔒 인쇄 보호 파일)
 4. with MIN 오너 승인은 OFF 상태 — 오너 승인 흐름을 쓰려면 다시 켜기
