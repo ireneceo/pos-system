@@ -152,11 +152,12 @@ const HeaderContextSwitcher: React.FC<{ variant?: SwitcherVariant }> = ({ varian
   // 고를 것이 하나뿐이면 렌더하지 않는다(= 기존 화면과 동일).
   if (!contexts || contexts.length < 2) return null;
 
-  // 지금 있는 곳: 매장 자격이면 그 매장, 아니면 본래 정체 카드의 이름.
+  // 지금 있는 곳: 오너 모자면 오너 카드, 매장 자격이면 그 매장, 아니면 본래 정체 카드.
+  const rid = String(user?.restaurant_id ?? user?.restaurantId ?? '');
   const current =
-    contexts.find(
-      (c) => c.kind === 'granted' && String(c.entity_id) === String(user?.restaurant_id ?? user?.restaurantId ?? '')
-    ) || contexts.find((c) => c.kind === 'default');
+    (user?.role === 'Restaurant Owner' && contexts.find((c) => c.kind === 'granted' && c.entity_type === 'owner')) ||
+    contexts.find((c) => c.kind === 'granted' && c.entity_type === 'restaurant' && String(c.entity_id) === rid) ||
+    contexts.find((c) => c.kind === 'default');
 
   const label = current?.label || t('context.select.title');
   const go = () => navigate('/pos/select-context');

@@ -701,13 +701,14 @@ router.post('/switch-context', authenticateToken, async (req, res, next) => {
 
     // 표준 claim 에 **투영값**을 싣고(기존 판정처가 그대로 읽는다) ctx 마커를 덧붙인다.
     // ctx 는 "어느 모자인가"의 표시일 뿐, 권한은 매 요청 서버가 user_contexts 로 재검증한다.
+    const isOwnerHat = resolved.entity_type === 'owner';
     const token = jwt.sign({
       ...baseClaims,
       role: resolved.role,
-      restaurant_id: resolved.entity_id,
+      restaurant_id: isOwnerHat ? null : resolved.entity_id,
       brand_id: null,
       foodcourt_id: null,
-      ctx: { v: 1, t: 'restaurant', id: resolved.entity_id, r: resolved.role }
+      ctx: { v: 1, t: resolved.entity_type, id: resolved.entity_id, r: resolved.role }
     }, process.env.JWT_SECRET, { expiresIn });
 
     await userContexts.touchContextUsage(resolved.id);
@@ -719,7 +720,7 @@ router.post('/switch-context', authenticateToken, async (req, res, next) => {
         email: user.email,
         username: user.username,
         role: resolved.role,
-        restaurant_id: resolved.entity_id,
+        restaurant_id: isOwnerHat ? null : resolved.entity_id,
         brand_id: null,
         foodcourt_id: null,
         manager_id: null,
@@ -728,7 +729,7 @@ router.post('/switch-context', authenticateToken, async (req, res, next) => {
       // suspended 매장이어도 전환은 막지 않는다(설계 §4.2) — 프론트가 인보이스 pin 으로 처리.
       restaurantStatus: resolved.status,
       restaurantName: resolved.name,
-      context: { kind: 'granted', entity_type: 'restaurant', entity_id: resolved.entity_id, role: resolved.role, label: resolved.name }
+      context: { kind: 'granted', entity_type: resolved.entity_type, entity_id: resolved.entity_id, role: resolved.role, label: resolved.name }
     }, 'Context switched');
   } catch (error) {
     next(error);

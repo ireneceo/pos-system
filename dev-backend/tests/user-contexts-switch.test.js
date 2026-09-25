@@ -35,6 +35,7 @@ process.env.SOCKET_AUTH_ENFORCE = process.env.SOCKET_AUTH_ENFORCE || 'false';
 const HAT_RID = 18;           // 모자로만 열리는 매장 (네이티브 BG 는 403)
 const NATIVE_RID = 38;        // 네이티브 BG 가 원래 접근 가능한 매장 (모자를 쓰면 403 이어야 함)
 const V1 = { entity_type: 'restaurant', role: 'Restaurant Admin' };
+const OWN_RID = HAT_RID; // 오너 모자 대상도 rid 18 (demo, 브랜드 무소속)
 
 let hatUserId;      // 모자를 받을 demo BG 계정
 let grantorId;      // System Admin
@@ -48,6 +49,14 @@ const grantHat = (rid) => q(
   { u: hatUserId, t: V1.entity_type, e: rid, r: V1.role, g: grantorId }
 );
 const revokeHats = () => q('DELETE FROM user_contexts WHERE user_id = :u', { u: hatUserId });
+const grantOwnership = () => q(
+  `INSERT INTO restaurant_managers (restaurant_id, manager_id, relationship_type, is_primary, assigned_at, createdAt, updatedAt)
+   VALUES (:r, :u, 'ownership', 0, NOW(), NOW(), NOW())`,
+  { r: OWN_RID, u: hatUserId }
+);
+const revokeOwnership = () => q(
+  `DELETE FROM restaurant_managers WHERE manager_id = :u AND relationship_type = 'ownership'`, { u: hatUserId }
+);
 
 beforeAll(async () => {
   const r = await http('post', '/api/auth/demo-login').send({ key: 'demo_brand_general' });
@@ -61,6 +70,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await revokeOwnership();
   await revokeHats();
   await sequelize.close();
 });
@@ -265,5 +275,104 @@ describe('⑥ 소켓 — ctx 토큰만 재검증, 기존 함대는 무영향', (
     r.sock.close();
     expect(r.ok).toBe(true);
     await revokeHats();
+  });
+});
+
+describe('⑦ 오너 모자 — 소유행 파생 (v1.1)', () => {
+  let ownerToken;
+  const OWNER_CTX = () => ({ entity_type: 'owner', entity_id: hatUserId, role: 'Restaurant Owner' });
+
+  test('소유행 0 → 오너 카드 없음, 전환 403', async () => {
+    await revokeOwnership();
+    const r = await http('get', '/api/auth/contexts').set('Authorization', `Bearer ${nativeToken}`);
+    expect(r.body.data.contexts.find(c => c.entity_type === 'owner')).toBeUndefined();
+    const sw = await http('post', '/api/auth/switch-context').set('Authorization', `Bearer ${nativeToken}`).send(OWNER_CTX());
+    expect(sw.status).toBe(403);
+  });
+
+  test('소유행 1 → 오너 카드 1장(제목=매장명, entity_id=자기 id), 전환 200, ctx.t=owner', async () => {
+    await grantOwnership();
+    const r = await http('get', '/api/auth/contexts').set('Authorization', `Bearer ${nativeToken}`);
+    const card = r.body.data.contexts.find(c => c.entity_type === 'owner');
+    expect(card).toBeDefined();
+    expect(card.entity_id).toBe(hatUserId);
+    expect(card.label).toBe('Test Debug Restaurant');
+    expect(card.owned_count).toBe(1);
+    const sw = await http('post', '/api/auth/switch-context').set('Authorization', `Bearer ${nativeToken}`).send(OWNER_CTX());
+    expect(sw.status).toBe(200);
+    ownerToken = sw.body.data.token;
+    expect(jwt.decode(ownerToken).ctx.t).toBe('owner');
+    expect(sw.body.data.user.restaurant_id).toBeNull();
+  });
+
+  test('/me 투영: role 오너, restaurant_id·brand_id null', async () => {
+    const r = await http('get', '/api/auth/me').set('Authorization', `Bearer ${ownerToken}`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.role).toBe('Restaurant Owner');
+    expect(r.body.data.restaurant_id).toBeNull();
+    expect(r.body.data.brand_id).toBeNull();
+  });
+
+  test('오너 화면: 소유 매장 목록에 18 이 있고, 소유 매장 200 · 네이티브로 열리던 38 은 403(모자는 교체)', async () => {
+    const list = await http('get', '/api/owner/restaurants').set('Authorization', `Bearer ${ownerToken}`);
+    expect(list.status).toBe(200);
+    expect(JSON.stringify(list.body)).toContain('"id":' + OWN_RID);
+    const ok = await http('get', `/api/restaurants/${OWN_RID}`).set('Authorization', `Bearer ${ownerToken}`);
+    expect(ok.status).toBe(200);
+    const denied = await http('get', `/api/restaurants/${NATIVE_RID}`).set('Authorization', `Bearer ${ownerToken}`);
+    expect(denied.status).toBe(403);
+  });
+
+  test('FI-9 남의 소유행을 가리키는 오너 ctx(id≠자기) → 폴백 + 헤더', async () => {
+    const forged = jwt.sign(
+      { userId: hatUserId, role: 'Restaurant Owner', restaurant_id: null,
+        ctx: { v: 1, t: 'owner', id: 289, r: 'Restaurant Owner' } },   // 289 = demo_owner(소유행 있음)
+      process.env.JWT_SECRET, { expiresIn: '5m' }
+    );
+    const r = await http('get', '/api/auth/me').set('Authorization', `Bearer ${forged}`);
+    expect(r.status).toBe(200);
+    expect(r.headers['x-context-fallback']).toBe('revoked');
+    expect(r.body.data.role).toBe('Brand General');
+  });
+
+  test('소켓: 유효한 오너 ctx 토큰은 연결된다', async () => {
+    const svc = require('../services/socketService');
+    const server = http_.createServer();
+    const io_ = svc.initSocketServer(server);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const connect = (token) => new Promise((resolve) => {
+      const sock = ioClient(`http://127.0.0.1:${port}/orders`, { transports: ['websocket'], forceNew: true, reconnection: false, auth: { token } });
+      sock.on('connect', () => resolve({ ok: true, sock }));
+      sock.on('connect_error', (e) => resolve({ ok: false, message: e.message, sock }));
+    });
+    const r = await connect(ownerToken);
+    r.sock.close();
+    expect(r.ok).toBe(true);
+    await revokeOwnership();
+    const r2 = await connect(ownerToken);
+    r2.sock.close();
+    expect(r2.ok).toBe(false);
+    expect(r2.message).toMatch(/context revoked/);
+    try { io_.close(); } catch { /* 이미 닫힘 */ }
+    await new Promise(res => server.close(res));
+  });
+
+  test('회수 후: /me 폴백 + 오너 라우트 403(권한 잔존 0)', async () => {
+    const me = await http('get', '/api/auth/me').set('Authorization', `Bearer ${ownerToken}`);
+    expect(me.headers['x-context-fallback']).toBe('revoked');
+    expect(me.body.data.role).toBe('Brand General');
+    const own = await http('get', '/api/owner/restaurants').set('Authorization', `Bearer ${ownerToken}`);
+    expect(own.status).toBe(403);
+  });
+
+  test('네이티브 오너에게는 오너 카드가 붙지 않는다(기본 카드 1장)', async () => {
+    const r = await http('post', '/api/auth/demo-login').send({ key: 'demo_multi_owner' });
+    expect(r.status).toBe(200);
+    const list = await http('get', '/api/auth/contexts').set('Authorization', `Bearer ${r.body.data.token}`);
+    // 기본 카드는 원래 entity_type 'owner'(네이티브 정체 파생, 무변경). 붙지 말아야 할 것은 **부여(granted)** 오너 카드다.
+    expect(list.body.data.contexts.filter(c => c.kind === 'granted' && c.entity_type === 'owner')).toHaveLength(0);
+    expect(list.body.data.contexts[0].kind).toBe('default');
+    expect(list.body.data.contexts[0].entity_type).toBe('owner');
   });
 });

@@ -1,6 +1,16 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-25 #1 — [Claude Code] **2026-09-24 세션 마감 — SEO(v3.102)·보안 핫픽스 3·오너 발주 보기(5.59)·브랜드 공급업체 복사본(5.60)·공유 창 보완(5.61) 운영 배포 · 오너 공급업체 상속 + 오너 발주 전체 표(5.62) 개발 완료·미배포(Fable 게이트 대기).**
+> **최종 업데이트:** 2026-09-25 #2 — [Claude Code] **SW 5.62 오너 공급업체 운영 배포 완료 + 「오너 모자(v1.1)」 개발 중단 저장(백엔드 완료·프론트 절반·빌드 전).**
+> ① **SW 5.62 배포** (07:26 UTC · 백업 `20260925_072023` · 스모크 10/10) — Fable 게이트 PASS(`a0a5a4f24572`). 운영 마이그 적용 확인: `[migrate-owner-supplier-enum] 추가 owner` 2컬럼, 사후 패리티 ENUM 소실 0, 운영 sw.js `5.62-owner-supplier-20260924`.
+> ② 🔴 **Irene 신고 두 건의 원인** — 「이메일 인증해도 오너가 안 나온다」는 버그가 아니었다. 오너는 **별도 계정 `withmin_owner`** 로 만들어졌고, 「Choose where to work」는 **로그인한 계정 하나**의 것만 보여준다. 한 아이디에 오너 모자를 얹는 것은 설계가 v1 에서 **명시 제외**한 것이었다(`user_contexts.entity_type` ENUM 에 'owner' 없음 · 오너 권한은 `restaurant_managers` 신원 기반). 「with MIN Cafe Owner」는 구조가 아니라 지난 세션이 그 계정에 **지어 넣은 이름값**.
+> ③ 🔴 **「기존 아이디 연결 기능」은 저장소에 0건이었다** — 있는 것은 SA 가 주는 「매장 × 매장관리자」 자격 하나뿐이고, 부여 화면에는 **역할 선택 칸 자체가 없다**(`role: 'Restaurant Admin'` 하드코딩). 그래서 오너·브랜드·공급업체는 지금까지 전부 새 아이디였다.
+> ④ **Fable 이 1회차 「백로그」 판정을 뒤집었다** — 다시 재 보니 오너 권한은 `restaurant_managers` 소유행 **하나로만** 판정돼, 「부여 = 소유행 생성」이면 **ENUM 확장·운영 마이그가 전부 불필요**했다. 오너 구독 청구는 `role='Restaurant Owner'` **계정**만 대상이라 청구 정체 혼합 우려도 해소.
+> ⑤ 🔴 **Irene 「너가 판단하지마. 이건 복잡한 구조야」** — 착수 직후 내가 Fable 절단면에 없던 구조(상수·헬퍼·주석)를 만들다 중단·원복(`git checkout` 미사용, 사본 보존 후 역편집). 이후 Fable 이 **코드 형태까지 지정한 실행 지시서**를 내렸고 그대로 옮겨 적었다.
+> ⑥ **검증**: jest **25/25**(신설 8) · health-check auth **12/12**(신설 2) · **고장주입 2/2 반증 성립**(원복 cmp 동일·잔여 0) · 🔒 print-guard 8/8 무변경 · **마이그 0건**. ⚠ 빌드·sweep 은 프론트가 남아 미실행.
+> ⑦ **남은 것**: F4 `UserContextsSection` · F5 i18n 4언어 · H 설계문서 → 빌드 1회 → verify-all --full → 실브라우저 → **Fable 게이트** → `/배포`. 지시서 전문 `.claude/owner-hat-remaining.md`.
+> ⑧ 🔴 **고장주입은 전체 실행으로만 성립한다** — jest `-t` 단독 실행은 선행 테스트의 상태 생성(grantOwnership)이 안 돌아 방어를 빼도 통과한다. FI-B 를 `-t` 로 돌렸다가 「검사 고장」을 의심했고, 전체 실행으로 원인을 확인했다.
+
+> **이전:** 2026-09-25 #1 — [Claude Code] **2026-09-24 세션 마감 — SEO(v3.102)·보안 핫픽스 3·오너 발주 보기(5.59)·브랜드 공급업체 복사본(5.60)·공유 창 보완(5.61) 운영 배포 · 오너 공급업체 상속 + 오너 발주 전체 표(5.62) 개발 완료·미배포(Fable 게이트 대기).**
 >
 > **최종 업데이트:** 2026-09-24 #5 — [Claude Code] **⑥ 브랜드 공급업체 «매장에 공유» = 복사본 · 상속 종료 운영 배포 (SW `5.60-brand-supplier-copy-20260924`, 21:38 UTC · 스모크 10/10 · 백업 `20260924_213814`) ✅** — with MIN Cafe 사본 23 · 연결 301·발주 31·청구서 20·원가이력 20 이전 · 실패 0 · Fable 게이트 PASS. 상세 `docs/SUPPLIER_CONTRACT_SYSTEM.md` §H-2.
 >
@@ -10473,6 +10483,60 @@ verify-all --full **19/19** · i18n 오류 0 · health-check 247/247 · 🔒 인
 - `dev-backend/models/SupplierCompany.js` · `models/SupplierContract.js` · `scripts/migrate-owner-supplier-enum.js`(신규) · `scripts/migrations.registry.json` · `scripts/health-check.js`
 - `dev-frontend/src/pages/Suppliers/AllSuppliersView.tsx` · `UnifiedSuppliersPage.tsx` · `pages/SupplierDirectory/SupplierProfilePage.tsx` · `pages/PurchaseOrders/PurchaseOrdersPage.tsx` · `utils/ownerPoScope.ts` · locales supplier/purchaseOrders ×4 · `public/sw.js`
 - docs: `SUPPLIER_CONTRACT_SYSTEM.md` §H-2·§H-3 · `TRADE_STRUCTURE.md`
+
+---
+
+## ✅ 완료: SW 5.62 오너 공급업체 상속 — 운영 배포 (2026-09-25)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 운영 배포 | 07:26 UTC · 백업 `20260925_072023` · 스모크 10/10 · 안전게이트 9개 통과 | ✅ 완료 |
+| 운영 마이그 | `supplier_companies.registered_by_entity_type` · `supplier_contracts.entity_type` 에 `owner` 추가 — 배포 로그 「추가 owner」 2건, 사후 패리티 ENUM 소실 0 | ✅ 완료 |
+| Fable 게이트 | PASS (마커 `a0a5a4f24572`) — 설계 외 변경 0 · print-guard 8/8 · security 67/67 · Fable 실호출 28/28 | ✅ 완료 |
+| 운영 실측 | sw.js `5.62-owner-supplier-20260924` · 주요 경로·API health 200 · pm2 정상 | ✅ 완료 |
+| mount sweep | 번들 지문 동일로 직전 통과 재사용(0.0초) — Fable 예측대로 | ✅ 완료 |
+
+**Irene 눈 확인 대기**: withmin_owner 로그인 → 발주 «내 매장 전체(N)»·줄마다 매장 이름 → «My suppliers» → 업체 등록 → 매장 계정에서 «FROM OWNER» 카드(Edit/Delete 없음)
+
+---
+
+## 🔨 진행 중: 오너 모자 = 소유행 파생 (v1.1) — 중단 저장 (2026-09-25)
+
+> Irene 「기존 아이드 연결 기능 넣었어?」 → Fable 2회차 「B안을 지금 연다」 → Irene 「해」 → 외출로 중단.
+> **왜**: 지금은 역할마다 새 아이디를 만들어야 했다. 한 아이디에서 오너까지 고르게 만든다.
+> **핵심**: 오너 권한은 `restaurant_managers` 소유행 하나로만 판정 → **부여 = 소유행 생성**. ENUM 확장·**운영 마이그 0건**. 롤백 = 코드 되돌리기만.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| A. 판정 단일 소스 | `userContexts.js` — `OWNER_HAT`·`isOwnerHat`·`listOwnedRestaurants`·`ownerHatLabel` / `listContexts` 오너 카드 1장(네이티브 오너 제외·소유행 0이면 없음) / `validateGrantedContext`·`getGrantedContextForSwitch` 오너 분기 | ✅ 완료 |
+| B. 투영 | `middleware/auth.js` — 오너 모자면 `restaurant_id: null` (1줄) | ✅ 완료 |
+| C. 전환 | `routes/auth.js` — claim·응답의 `restaurant_id` null, `ctx.t` 를 `resolved.entity_type` 으로 | ✅ 완료 |
+| D. 부여·회수 | `routes/users.js` — `ownerships` 응답 / (restaurant × Restaurant Owner) 부여 → 소유행 멱등 INSERT(네이티브 오너 400 · oversight 409) / `DELETE /:id/ownerships/:rid` 신설 | ✅ 완료 |
+| E. 소켓 | `socketService.js` — `ctx.t==='owner'` 면 소유 매장 룸만(1쿼리) | ✅ 완료 |
+| F1~F3 | `AuthContext` 타입 · `ContextSelectPage`(◯ 글리프·안내문구, **버튼 아님**) · `HeaderContextSwitcher` 오너 분기 | ✅ 완료 |
+| G1·G2 | jest ⑦ 8건 신설 · health-check auth 2건 신설 | ✅ 완료 |
+| G3 | 고장주입 2/2 **반증 성립** — 원복 cmp 동일, 잔여 0 | ✅ 완료 |
+
+**검증**: jest **25/25** · health-check auth **12/12** · 🔒 print-guard **8/8 무변경**(MainLayout 무접촉) · 마이그 0건
+
+### 남은 작업 (다음 세션)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| F4 | `UserContextsSection.tsx` — 역할 선택 2개·소유행 목록·회수 버튼 | ⬜ 미착수 |
+| F5 | i18n 4언어 `auth.json` — `grantHint`·`roleAdmin`·`roleOwner`·`hint` 교체 | ⬜ 미착수 |
+| H | `docs/MULTI_CONTEXT_LOGIN_DESIGN.md` §5.4 신설 + §8.1 항목 3 교체 | ⬜ 미착수 |
+| I | i18n:verify → **빌드 1회** → verify-all --full 1회 → 실브라우저 → Fable 게이트 → `/배포` | ⬜ 미착수 |
+
+🔴 **F4·F5·H 의 코드·문안은 Fable 이 이미 확정했다. 새로 판단하지 말고 그대로 옮겨 적을 것 — 지시서 전문 `.claude/owner-hat-remaining.md`**
+
+### 수정된 파일
+- `dev-backend/services/userContexts.js` · `middleware/auth.js` · `routes/auth.js` · `routes/users.js` · `services/socketService.js`
+- `dev-backend/tests/user-contexts-switch.test.js` · `scripts/health-check.js`
+- `dev-frontend/src/contexts/AuthContext.tsx` · `pages/ContextSelect/ContextSelectPage.tsx` · `components/Layout/HeaderContextSwitcher.tsx`
+- 기록: `dev-backend/releases/2026-09-25-owner-hat.json` · 지시서 `.claude/owner-hat-remaining.md`
 
 ---
 

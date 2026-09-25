@@ -41,6 +41,12 @@ const DEFAULT_CONTEXT_BY_ROLE = {
 // 브랜드/푸드코트 모자는 권한이 소유 기록으로 판정되는 코드가 주류라 "반쪽만 열림"이 된다.
 const V1_GRANTABLE = { entity_type: 'restaurant', role: 'Restaurant Admin' };
 
+// 오너 모자 (v1.1, 설계 §5.4) — 부여 기록은 user_contexts 행이 아니라 **restaurant_managers 소유행**이다.
+// 오너 권한 판정(middleware/auth.js:275·479, routes/owner.js 전부)이 이미 그 행 하나를 user.id 로 읽으므로
+// 소유행을 만들어 주는 것이 곧 부여이고, 새 판정처는 생기지 않는다(§8-4 "5번째 판정처 금지" 준수).
+// entity_id 는 **자기 user id** 다 — 오너는 사람 단위 정체라 매장 id 가 없고, 카드는 계정당 1장이다.
+const OWNER_HAT = { entity_type: 'owner', role: 'Restaurant Owner' };
+
 /**
  * id 정규화 — 권한 판정에 쓰는 값은 **순수 십진 정수 문자열만** 허용한다.
  * parseInt 는 '1.16e2' 를 1 로 읽고 MySQL 은 116 으로 캐스팅해 게이트가 통째로 우회됐던
@@ -61,6 +67,35 @@ function normalizeEntityId(value) {
  */
 function isV1GrantableCombination(entityType, role) {
   return entityType === V1_GRANTABLE.entity_type && role === V1_GRANTABLE.role;
+}
+
+function isOwnerHat(entityType, role) {
+  return entityType === OWNER_HAT.entity_type && role === OWNER_HAT.role;
+}
+
+/**
+ * 이 사용자가 소유한 매장(이름 포함) — 오너 카드의 존재 판정·제목·회수 관리 화면이 공유한다.
+ * 소유행 = restaurant_managers(relationship_type='ownership'). 매장 JOIN 이라 삭제된 매장은 빠진다(고아 방지).
+ * @returns {Promise<Array<{id:number,name:string}>>}
+ */
+async function listOwnedRestaurants(userId) {
+  const uid = normalizeEntityId(userId);
+  if (!uid) return [];
+  const [rows] = await sequelize.query(
+    `SELECT r.id, r.name
+       FROM restaurant_managers rm
+       JOIN restaurants r ON r.id = rm.restaurant_id
+      WHERE rm.manager_id = :uid AND rm.relationship_type = 'ownership'
+      ORDER BY r.name ASC`,
+    { replacements: { uid } }
+  );
+  return rows;
+}
+
+// 오너 카드 제목 — 1개면 그 매장 이름, 2개 이상이면 "첫 매장 +N" (카드 제목 = 들어갈 곳의 이름 규칙).
+function ownerHatLabel(owned) {
+  if (!owned.length) return OWNER_HAT.role;
+  return owned.length === 1 ? owned[0].name : `${owned[0].name} +${owned.length - 1}`;
 }
 
 /**
@@ -148,6 +183,24 @@ async function listContexts(user) {
       last_used_at: row.last_used_at
     });
   }
+
+  // 오너 모자 — 네이티브 오너에게는 붙이지 않는다(기본 카드와 중복). 소유행 0 이면 카드도 없다.
+  if (user.role !== OWNER_HAT.role) {
+    const owned = await listOwnedRestaurants(userId);
+    if (owned.length) {
+      contexts.push({
+        kind: 'granted',
+        id: null,
+        entity_type: OWNER_HAT.entity_type,
+        entity_id: userId,
+        role: OWNER_HAT.role,
+        label: ownerHatLabel(owned),
+        owned_count: owned.length,
+        last_used_at: null
+      });
+    }
+  }
+
   return contexts;
 }
 
@@ -165,6 +218,12 @@ async function validateGrantedContext(userId, ctx) {
   const uid = normalizeEntityId(userId);
   const entityId = normalizeEntityId(ctx.entity_id);
   if (!uid || !entityId) return false;
+  // 오너 모자 — 자기 id 이고 소유행이 1개 이상일 때만. user_contexts 는 보지 않는다(부여 기록이 소유행).
+  if (isOwnerHat(ctx.entity_type, ctx.role)) {
+    if (entityId !== uid) return false;
+    const owned = await listOwnedRestaurants(uid);
+    return owned.length > 0;
+  }
   if (!isV1GrantableCombination(ctx.entity_type, ctx.role)) return false;
 
   const [rows] = await sequelize.query(
@@ -196,6 +255,12 @@ async function getGrantedContextForSwitch(userId, ctx) {
   const uid = normalizeEntityId(userId);
   const entityId = normalizeEntityId(ctx.entity_id);
   if (!uid || !entityId) return { ok: false, reason: 'INVALID_ENTITY_ID' };
+  if (isOwnerHat(ctx.entity_type, ctx.role)) {
+    if (entityId !== uid) return { ok: false, reason: 'CONTEXT_NOT_GRANTED' };
+    const owned = await listOwnedRestaurants(uid);
+    if (!owned.length) return { ok: false, reason: 'CONTEXT_NOT_GRANTED' };
+    return { ok: true, id: null, entity_type: OWNER_HAT.entity_type, entity_id: uid, role: OWNER_HAT.role, name: ownerHatLabel(owned), status: null };
+  }
   if (!isV1GrantableCombination(ctx.entity_type, ctx.role)) {
     return { ok: false, reason: 'UNSUPPORTED_COMBINATION' };
   }
@@ -214,7 +279,7 @@ async function getGrantedContextForSwitch(userId, ctx) {
   if (!rows.length) return { ok: false, reason: 'CONTEXT_NOT_GRANTED' };
 
   const row = rows[0];
-  return { ok: true, id: row.id, entity_id: row.entity_id, role: row.role, name: row.name, status: row.status };
+  return { ok: true, id: row.id, entity_type: 'restaurant', entity_id: row.entity_id, role: row.role, name: row.name, status: row.status };
 }
 
 /**
@@ -241,5 +306,9 @@ module.exports = {
   isV1GrantableCombination,
   resolveEntityName,
   DEFAULT_CONTEXT_BY_ROLE,
-  V1_GRANTABLE
+  V1_GRANTABLE,
+  // 오너 모자(v1.1) — 목록·검증·부여 라우트·소켓이 공유한다.
+  OWNER_HAT,
+  isOwnerHat,
+  listOwnedRestaurants
 };

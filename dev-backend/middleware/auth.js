@@ -47,7 +47,7 @@ async function projectContext(baseUser, ctx) {
     user: {
       ...baseUser,
       role: ctx.r,
-      restaurant_id: ctx.id,
+      restaurant_id: ctx.t === 'owner' ? null : ctx.id, // 오너 모자는 매장 스칼라가 없다(소유행으로 판정)
       brand_id: null,
       foodcourt_id: null,
       branch_id: null,

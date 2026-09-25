@@ -48,7 +48,8 @@ export interface UserContextOption {
   entity_id: number | null;
   role: string;
   label: string;
-  id?: number;
+  id?: number | null;
+  owned_count?: number;
   last_used_at?: string | null;
 }
 

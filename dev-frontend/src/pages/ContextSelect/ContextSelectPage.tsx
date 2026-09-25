@@ -136,6 +136,15 @@ const ErrorText = styled.p`
   text-align: center;
 `;
 
+// 자격 추가 입구는 이 화면에 두지 않는다(셀프 부여 금지 — 설계 §8-3). 어디서 받는지만 알려 준다.
+const FooterHint = styled.p`
+  margin: 16px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--pos-text-muted, #425466);
+`;
+
 const Footer = styled.div`
   margin-top: 20px;
   display: flex;
@@ -220,7 +229,7 @@ const ContextSelectPage: React.FC = () => {
             // "기본" 배지는 두지 않는다 — 고르는 사람에겐 3장이 전부 동등한 선택지라 아무 질문에도
             // 답하지 않는 라벨이었다. "내 원래 자리"라는 정보는 **맨 위 고정**으로 전달한다.
             <Card key={contextKey(ctx)} onClick={() => onPick(ctx)} disabled={busyKey !== null}>
-              <CardGlyph aria-hidden="true">{ctx.kind === 'default' ? '◉' : '▦'}</CardGlyph>
+              <CardGlyph aria-hidden="true">{ctx.kind === 'default' ? '◉' : ctx.entity_type === 'owner' ? '◯' : '▦'}</CardGlyph>
               <CardText>
                 <CardLabel>{ctx.label}</CardLabel>
                 <CardRole>{ctx.role}</CardRole>
@@ -230,6 +239,8 @@ const ContextSelectPage: React.FC = () => {
         </List>
 
         {error && <ErrorText>{error}</ErrorText>}
+
+        <FooterHint>{t('context.select.grantHint')}</FooterHint>
 
         {/* 로그인 직후엔 돌아갈 곳이 없어 "뒤로"가 빈 동작이 된다. 이 화면에서 필요한 탈출구는
             "이 계정으로 안 들어가겠다" = 로그아웃 하나뿐이다. 앱 안에서 들어온 경우엔 쓰던 카드를

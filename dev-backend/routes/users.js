@@ -1312,7 +1312,8 @@ router.get('/:id/contexts', authenticateToken, requireRole('System Admin'), asyn
       { replacements: { uid: target.id } }
     );
 
-    res.json({ success: true, data: { contexts, orphans } });
+    const ownerships = await userContexts.listOwnedRestaurants(target.id);
+    res.json({ success: true, data: { contexts, orphans, ownerships } });
   } catch (error) {
     console.error('[users] GET /:id/contexts error:', error.message);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -1335,10 +1336,11 @@ router.post('/:id/contexts', authenticateToken, requireRole('System Admin'), asy
     if (!entityId) {
       return res.status(400).json({ success: false, message: 'entity_id must be a positive integer' });
     }
-    if (!userContexts.isV1GrantableCombination(entity_type, role)) {
+    const grantOwner = entity_type === 'restaurant' && role === 'Restaurant Owner';
+    if (!grantOwner && !userContexts.isV1GrantableCombination(entity_type, role)) {
       return res.status(400).json({
         success: false,
-        message: 'Only (restaurant × Restaurant Admin) can be granted in this version'
+        message: 'Only (restaurant × Restaurant Admin) or (restaurant × Restaurant Owner) can be granted'
       });
     }
 
@@ -1346,6 +1348,37 @@ router.post('/:id/contexts', authenticateToken, requireRole('System Admin'), asy
     const restaurant = await Restaurant.findByPk(entityId, { attributes: ['id', 'name'] });
     if (!restaurant) {
       return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    }
+
+    // 오너 모자 = 소유행 부여(설계 §5.4). 네이티브 오너는 자기 claim 경로(routes/owner.js)를 쓰므로 여기서 받지 않는다.
+    if (grantOwner) {
+      if (target.role === 'Restaurant Owner') {
+        return res.status(400).json({ success: false, message: 'Native owners claim restaurants from the owner dashboard' });
+      }
+      const [existing] = await _seq.query(
+        'SELECT id, relationship_type FROM restaurant_managers WHERE restaurant_id = :e AND manager_id = :u LIMIT 1',
+        { replacements: { e: entityId, u: target.id } }
+      );
+      if (existing.length && existing[0].relationship_type !== 'ownership') {
+        // UNIQUE(restaurant_id, manager_id) — oversight 행을 조용히 ownership 으로 바꾸지 않는다.
+        return res.status(409).json({ success: false, message: 'User is already assigned to this restaurant as a manager (oversight)' });
+      }
+      if (!existing.length) {
+        await _seq.query(
+          `INSERT INTO restaurant_managers (restaurant_id, manager_id, relationship_type, is_primary, assigned_at, createdAt, updatedAt)
+           VALUES (:e, :u, 'ownership', 0, NOW(), NOW(), NOW())`,
+          { replacements: { e: entityId, u: target.id } }
+        );
+      }
+      logActivity(req, {
+        action_type: 'create',
+        entity_type: 'user_context',
+        entity_id: target.id,
+        entity_name: target.full_name || target.username || target.email,
+        description: `Granted Restaurant Owner (ownership) of "${restaurant.name}" (#${entityId}) to ${target.email || target.id}`,
+        restaurant_id: entityId
+      });
+      return res.json({ success: true, data: { user_id: target.id, entity_id: entityId, role }, message: 'Ownership granted' });
     }
 
     // 자기 매장(네이티브 정체)과 같은 모자는 의미가 없다 — 중복 표시만 만든다.
@@ -1408,6 +1441,38 @@ router.delete('/:id/contexts/:contextId', authenticateToken, requireRole('System
     res.json({ success: true, message: 'Context revoked' });
   } catch (error) {
     console.error('[users] DELETE /:id/contexts/:contextId error:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// 오너 모자 회수 = 소유행 삭제. 그 세션은 다음 요청에서 네이티브로 폴백한다(모자 회수와 같은 규칙, 401 아님).
+router.delete('/:id/ownerships/:restaurantId', authenticateToken, requireRole('System Admin'), async (req, res) => {
+  try {
+    const uid = userContexts.normalizeEntityId(req.params.id);
+    const rid = userContexts.normalizeEntityId(req.params.restaurantId);
+    if (!uid || !rid) {
+      return res.status(400).json({ success: false, message: 'Invalid id' });
+    }
+    const [rows] = await _seq.query(
+      `SELECT id FROM restaurant_managers WHERE manager_id = :u AND restaurant_id = :r AND relationship_type = 'ownership' LIMIT 1`,
+      { replacements: { u: uid, r: rid } }
+    );
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Ownership not found' });
+    }
+    await _seq.query('DELETE FROM restaurant_managers WHERE id = :id', { replacements: { id: rows[0].id } });
+
+    logActivity(req, {
+      action_type: 'delete',
+      entity_type: 'user_context',
+      entity_id: uid,
+      description: `Revoked Restaurant Owner (ownership) of restaurant #${rid} from user #${uid}`,
+      restaurant_id: rid
+    });
+
+    res.json({ success: true, message: 'Ownership revoked' });
+  } catch (error) {
+    console.error('[users] DELETE /:id/ownerships/:restaurantId error:', error.message);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });

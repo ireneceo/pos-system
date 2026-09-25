@@ -328,6 +328,27 @@ function defineAuthTests({ adminToken, customerToken, member, restId }) {
     return r.status === 403;
   });
 
+  test('auth', '오너 모자 — 소유행 없는 계정의 오너 ctx 위조 → 네이티브 폴백 + 헤더', async () => {
+    const decoded = jwtLib.decode(adminToken) || {};
+    const forged = jwtLib.sign(
+      { userId: decoded.userId, role: 'Restaurant Owner', restaurant_id: null,
+        ctx: { v: 1, t: 'owner', id: decoded.userId, r: 'Restaurant Owner' } },
+      process.env.JWT_SECRET, { expiresIn: '2m' }
+    );
+    const me = await request('GET', '/auth/me', null, { Authorization: `Bearer ${forged}` });
+    const own = await request('GET', '/owner/restaurants', null, { Authorization: `Bearer ${forged}` });
+    return me.status === 200 && me.headers?.['x-context-fallback'] === 'revoked' &&
+      me.body?.data?.role !== 'Restaurant Owner' && own.status === 403;
+  });
+
+  test('auth', '오너 모자 — 소유행 없이 전환 시도 → 403', async () => {
+    const decoded = jwtLib.decode(adminToken) || {};
+    const r = await request('POST', '/auth/switch-context',
+      { entity_type: 'owner', entity_id: decoded.userId, role: 'Restaurant Owner' },
+      { Authorization: `Bearer ${adminToken}` });
+    return r.status === 403;
+  });
+
   test('auth', '무회귀 — ctx 없는 토큰의 /auth/me 에는 폴백 헤더가 없다', async () => {
     const r = await request('GET', '/auth/me', null, { Authorization: `Bearer ${adminToken}` });
     return r.status === 200 && !r.headers?.['x-context-fallback'];

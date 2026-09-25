@@ -129,9 +129,20 @@ async function canJoinRestaurant(socket, restaurantId, nsName) {
   }
   // 모자를 쓴 소켓은 **그 매장 룸만** 허용한다(설계 §4.4). 투영 토큰이라 아래 판정도 통과하지만,
   // "한 번에 모자 하나" 원칙상 다른 룸으로 새는 경로를 여기서 닫는다. ctx 없는 소켓은 무영향.
-  if (socket.data.ctx && String(restaurantId) !== socket.data.ctx.id) {
-    bump(nsName, 'ctxRoomMismatch', `user${user.id}→r${restaurantId}`);
-    return false;
+  if (socket.data.ctx) {
+    if (socket.data.ctx.t === 'owner') {
+      // 오너 모자 소켓 — 소유 매장 룸만(소유행 1쿼리). 매장 스칼라가 없어 ctx.id(=자기 id)와 룸을 비교할 수 없다.
+      const { listOwnedRestaurants } = require('./userContexts');
+      let owned = [];
+      try { owned = await listOwnedRestaurants(user.id); } catch { owned = []; }
+      if (!owned.some((r) => String(r.id) === String(restaurantId))) {
+        bump(nsName, 'ctxRoomMismatch', `user${user.id}→r${restaurantId}`);
+        return false;
+      }
+    } else if (String(restaurantId) !== socket.data.ctx.id) {
+      bump(nsName, 'ctxRoomMismatch', `user${user.id}→r${restaurantId}`);
+      return false;
+    }
   }
 
   let ok = false;
