@@ -99,5 +99,10 @@
   "noMovementsToday": "None yet today.",
   "settlementAdj": "Settlement",
   "cashOverAtSettlement": "Cash over at settlement",
-  "cashShortAtSettlement": "Cash short at settlement"
+  "cashShortAtSettlement": "Cash short at settlement",
+  "sourcePurchaseOrder": "Purchase order",
+  "sourceReimbursement": "Reimbursement",
+  "sourceAutomatic": "Automatic",
+  "systemRecordLocked": "This record was created automatically and cannot be edited or deleted.",
+  "actionFailed": "Could not complete this action. Please try again."
 }

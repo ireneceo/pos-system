@@ -99,5 +99,10 @@
   "noMovementsToday": "오늘 아직 없음.",
   "settlementAdj": "마감 조정",
   "cashOverAtSettlement": "마감 시 현금 초과",
-  "cashShortAtSettlement": "마감 시 현금 부족"
+  "cashShortAtSettlement": "마감 시 현금 부족",
+  "sourcePurchaseOrder": "발주 결제",
+  "sourceReimbursement": "직원 상환",
+  "sourceAutomatic": "자동 기록",
+  "systemRecordLocked": "자동으로 생긴 기록이라 수정하거나 삭제할 수 없습니다.",
+  "actionFailed": "처리하지 못했습니다. 다시 시도해 주세요."
 }

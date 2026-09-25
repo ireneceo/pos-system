@@ -389,5 +389,9 @@
     "tabs": {
       "completed": "완료"
     }
-  }
+  },
+  "foodcourtPaymentSettingsPage.deliveryTerms": "매장 발주 배송 조건",
+  "foodcourtPaymentSettingsPage.deliveryTermsDesc": "매장이 이 푸드코트에 발주할 때 배송비가 자동으로 붙습니다. 비워 두면 배송비가 나오지 않습니다.",
+  "foodcourtPaymentSettingsPage.freeAbove": "이 금액 이상 주문하면 무료배송",
+  "foodcourtPaymentSettingsPage.deliveryFee": "그 미만이면 배송비 (고정)"
 }

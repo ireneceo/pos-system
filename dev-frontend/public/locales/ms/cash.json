@@ -99,5 +99,10 @@
   "noMovementsToday": "Belum ada hari ini.",
   "settlementAdj": "Penyelarasan",
   "cashOverAtSettlement": "Tunai lebih semasa penutupan",
-  "cashShortAtSettlement": "Tunai kurang semasa penutupan"
+  "cashShortAtSettlement": "Tunai kurang semasa penutupan",
+  "sourcePurchaseOrder": "Pesanan belian",
+  "sourceReimbursement": "Bayaran balik",
+  "sourceAutomatic": "Automatik",
+  "systemRecordLocked": "Rekod ini dicipta secara automatik dan tidak boleh diedit atau dipadam.",
+  "actionFailed": "Tindakan tidak dapat diselesaikan. Sila cuba lagi."
 }

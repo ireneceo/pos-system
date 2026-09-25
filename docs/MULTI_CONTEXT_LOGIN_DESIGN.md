@@ -391,6 +391,14 @@ v1 은 "표준 claim 에 투영값이 있으니 소켓 무변경"이라 했다. 
 - 전환 직후: 확인 모달(§4.7-3) → `switchUser` → StoreContext 재로드 → `getDashboardPath` 네비게이션 →
   소켓 자연 재연결(§4.4) → 타 탭 팔로우(§4.7).
 
+- **구현 현황 (2026-09-25 SW 5.64 [Claude Code])** — 2단 진입점은 헤더가 아니라 **데스크탑 사이드바 하단**에 붙었다
+  (데스크탑엔 상시 헤더가 없다 — MobileHeader 에만 있었음). `MainLayout.tsx` 2줄: 접힘 rail `FooterRailLang` 위
+  `<HeaderContextSwitcher variant="rail" />` · 펼침 `LanguageSelectorWrapper` 위 `variant="sidebar"`, 둘 다 `{isLoggedIn && …}`.
+  Fable 판정 + Irene 승인·사인오프 → `check-print-guard --bless` 8/8. 모바일(MobileHeader)은 종전 그대로.
+- **기본 카드 제목 = 이 아이디의 프로필 이름(`users.full_name`)** (2026-09-25 Irene 「브랜드이름이 왜 나와? 이 아이디
+  프로필이름이 나와야지」) — `listContexts` 가 비어 있을 때만 예전처럼 엔티티명 → 역할명으로 폴백. 부여·오너 카드는
+  그대로 «들어갈 곳의 이름». §6.1 의 «엔티티명» 은 이 결정으로 기본 카드에 한해 대체됨.
+
 ### 6.3 POS 현장(공용 단말)과의 관계 (v2 — 검증 F7 보강)
 - POS 단말 화면(POSTerminal/KDS/FloorPlan)에 스위처 **비노출**(§10 Q4 확정). 현장의 "사람 바꾸기"는
   기존 PIN 캐셔 전환이 정답.

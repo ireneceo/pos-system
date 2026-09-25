@@ -3846,6 +3846,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </FooterRailButton>
               )}
 
+              {isLoggedIn && <HeaderContextSwitcher variant="rail" />}
               {/* Language — flag only */}
               <FooterRailLang>
                 <LanguageSelector variant="icon" />
@@ -3969,6 +3970,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <span style={{ flex: 1 }}>{t('nav.contactSupport', '문의하기')}</span>
                 </button>
               )}
+              {isLoggedIn && <HeaderContextSwitcher variant="sidebar" />}
               <LanguageSelectorWrapper>
                 <LanguageSelector variant="sidebar" />
               </LanguageSelectorWrapper>

@@ -1,6 +1,6 @@
 import { getApiBaseUrl } from '../config/api';
 import { getAuthToken, clearAuthToken } from './auth';
-import { shouldDedupe, buildDedupeKey, dedupedFetch } from './fetchDedupe';
+import { shouldDedupe, buildDedupeKey, dedupedFetch, invalidateDedupe } from './fetchDedupe';
 
 // POS 관리자 인증을 건너뛸 경로
 // - 토큰 자동 주입 안 함
@@ -131,6 +131,9 @@ export function installFetchInterceptor(): void {
     }
 
     const response = await originalFetch(resolvedInput as RequestInfo, resolvedInit);
+
+    // 3-b) 쓰기 뒤에는 GET 캐시를 비운다 — 이어지는 재조회가 쓰기 전 응답을 받지 않게(fetchDedupe 주석).
+    if (method !== 'GET' && method !== 'HEAD' && includesApi) invalidateDedupe();
 
     // 4) 401 POS 자동 로그아웃 (POS 관리자 API 한정)
     if (response.status === 401 && includesApi && !isBypass && getAuthToken()) {

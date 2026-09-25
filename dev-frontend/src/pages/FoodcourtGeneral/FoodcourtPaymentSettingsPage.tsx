@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 import { getCurrencySymbol } from '../../utils/currency';
+import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
 interface CurrencyConfig {
   [code: string]: {
     symbol: string;
@@ -331,6 +332,13 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
   // UI state
   const [loading, setLoading] = useState(true);
 
+  // 배송 조건 (2026-09-25 Fable 판정 (d)) — 푸드코트도 판매자다. 브랜드·공급업체와 **같은 이름·같은 의미**의 두 칸.
+  const [deliveryTerms, setDeliveryTerms] = useState<{ min_order_amount: string; delivery_fee: string }>({
+    min_order_amount: '', delivery_fee: ''
+  });
+  const [deliverySaving, setDeliverySaving] = useState(false);
+  const [deliverySaved, setDeliverySaved] = useState(false);
+
   useEffect(() => {
     loadAllSettings();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -383,6 +391,12 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
 
         // API returns { success: true, data: { payment_settings, supported_currencies } }
         const data = responseData.data || responseData;
+
+        // 배송 조건 두 칸 — 매장이 이 푸드코트에 발주할 때 붙는 규칙
+        setDeliveryTerms({
+          min_order_amount: data.min_order_amount != null ? String(data.min_order_amount) : '',
+          delivery_fee: data.delivery_fee != null ? String(data.delivery_fee) : ''
+        });
 
         // Set supported currencies from foodcourt settings (filtered by system-allowed currencies)
         if (data.supported_currencies && Array.isArray(data.supported_currencies)) {
@@ -552,6 +566,29 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
     });
   };
 
+  const saveDeliveryTerms = async () => {
+    if (!foodcourtId || deliverySaving) return;
+    setDeliverySaving(true);
+    setDeliverySaved(false);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/foodcourts/${foodcourtId}/payment-settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          // 빈 칸 = 미설정(null). 0 은 «무료배송» 이라 뜻이 다르다.
+          min_order_amount: deliveryTerms.min_order_amount === '' ? null : Number(deliveryTerms.min_order_amount),
+          delivery_fee: deliveryTerms.delivery_fee === '' ? null : Number(deliveryTerms.delivery_fee)
+        })
+      });
+      if (res.ok) setDeliverySaved(true);
+    } catch (e) {
+      console.error('배송 조건 저장 실패:', e);
+    } finally {
+      setDeliverySaving(false);
+    }
+  };
+
   const savePaymentSettings = async () => {
     if (!foodcourtId) return;
 
@@ -597,6 +634,51 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
       <Container>
         <PageHeader title="Payment Settings" />
         <Content>
+          {/* 매장 발주 배송 조건 (2026-09-25 Fable 판정 (d)) — 브랜드 결제 설정 카드와 같은 모양 */}
+          <Section>
+            <SectionTitle>{t('foodcourt:foodcourtPaymentSettingsPage.deliveryTerms', 'Delivery terms for restaurant orders')}</SectionTitle>
+            <SectionDescription>
+              {t('foodcourt:foodcourtPaymentSettingsPage.deliveryTermsDesc',
+                'A delivery fee is added automatically when a restaurant orders from this food court. Leave blank and no delivery fee appears.')}
+            </SectionDescription>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, color: '#0A2540', marginBottom: 6 }}>
+                  {t('foodcourt:foodcourtPaymentSettingsPage.freeAbove', 'Free delivery at or above this amount')}
+                </label>
+                <input
+                  type="number" min="0" step="0.01" placeholder="300"
+                  value={deliveryTerms.min_order_amount}
+                  onChange={(e) => { setDeliveryTerms(p => ({ ...p, min_order_amount: e.target.value })); setDeliverySaved(false); }}
+                  onBlur={saveDeliveryTerms}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, color: '#0A2540', marginBottom: 6 }}>
+                  {t('foodcourt:foodcourtPaymentSettingsPage.deliveryFee', 'Delivery fee below that (fixed)')}
+                </label>
+                <input
+                  type="number" min="0" step="0.01" placeholder="15"
+                  value={deliveryTerms.delivery_fee}
+                  onChange={(e) => { setDeliveryTerms(p => ({ ...p, delivery_fee: e.target.value })); setDeliverySaved(false); }}
+                  onBlur={saveDeliveryTerms}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14 }}
+                />
+              </div>
+            </div>
+            <div style={{ marginTop: 10, padding: '10px 12px', background: '#F8FAFC',
+                          border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 13, color: '#4B5563' }}>
+              <DeliveryTermsText terms={{
+                min_order_amount: deliveryTerms.min_order_amount === '' ? null : Number(deliveryTerms.min_order_amount),
+                delivery_fee: deliveryTerms.delivery_fee === '' ? null : Number(deliveryTerms.delivery_fee),
+                currency: defaultCurrency
+              }} />
+              {deliverySaving && <span style={{ marginLeft: 8, color: '#6B7280' }}>{t('common:label.saving', 'Saving…')}</span>}
+              {deliverySaved && !deliverySaving && <span style={{ marginLeft: 8, color: '#059669' }}>✓</span>}
+            </div>
+          </Section>
+
           {/* Section 1: Currency Settings */}
           <Section>
             <SectionTitle>{t('foodcourt:foodcourtPaymentSettingsPage.currencySettings')}</SectionTitle>

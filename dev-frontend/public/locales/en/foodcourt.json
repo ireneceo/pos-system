@@ -389,5 +389,9 @@
     "tabs": {
       "completed": "Completed"
     }
-  }
+  },
+  "foodcourtPaymentSettingsPage.deliveryTerms": "Delivery terms for restaurant orders",
+  "foodcourtPaymentSettingsPage.deliveryTermsDesc": "A delivery fee is added automatically when a restaurant orders from this food court. Leave blank and no delivery fee appears.",
+  "foodcourtPaymentSettingsPage.freeAbove": "Free delivery at or above this amount",
+  "foodcourtPaymentSettingsPage.deliveryFee": "Delivery fee below that (fixed)"
 }

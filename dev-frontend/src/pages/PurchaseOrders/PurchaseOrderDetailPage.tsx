@@ -23,6 +23,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { isOwnerRole, withOwnerPoScope } from '../../utils/ownerPoScope';
 import AlertDialog from '../../components/Common/AlertDialog';
 import { getCurrencySymbol } from '../../utils/currency';
+import { reconcileGap, formatGap, gapColor } from '../../utils/reconcileGap';
 
 // Icon-only buttons (matches PurchaseOrdersPage pattern)
 const HeaderIconBtn = styled.button`
@@ -1458,6 +1459,19 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                           : t('detail.invoice.reconcile', '원가 대조')}
                       </ThemedButton>
                     )}
+                    {/* 대조 결과 — 헤더 기준 갭(청구 총액 − 발주 총액), 목록·결제 창과 같은 식 (§8-6 A-4) */}
+                    {!ownerView && detail.seller_type === 'supplier' && (() => {
+                      const gap = reconcileGap(detail as any);
+                      if (gap == null) return null;
+                      const totalOnly = (detail.items || []).length > 0
+                        && (detail.items || []).every((it: any) => it.invoiced_unit_price === null || it.invoiced_unit_price === undefined);
+                      return (
+                        <span style={{ alignSelf: 'center', fontSize: 12, fontWeight: 600, color: gapColor(gap), whiteSpace: 'nowrap' }}>
+                          {totalOnly ? t('list.action.totalOnly', 'Total only') : t('list.action.reconciled', '대조 완료')}
+                          {Math.abs(gap) >= 0.005 ? ` · ${formatGap(gap, (detail as any).currency)}` : ''}
+                        </span>
+                      );
+                    })()}
                     <ThemedButton
                       size="small"
                       variant="outline"

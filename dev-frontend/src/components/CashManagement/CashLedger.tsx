@@ -29,6 +29,9 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
   const [edit, setEdit] = useState<any | null>(null);
   const [delTarget, setDelTarget] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
+  // 수정/삭제 실패 사유 — 서버가 준 사유를 모달 안에 한 줄로 보여준다(예전엔 PIN 외 사유를 조용히 버려
+  // 눌러도 아무 일 없어 보였다).
+  const [actionError, setActionError] = useState<string | null>(null);
   // 2026-06-28 (3-1): 현금관리 PIN 게이트 (CashDrawerOps 와 동일 패턴).
   const requireCashPin = !!(opSettings as any)?.requirePinForCashMgmt;
   const cashPinRef = useRef<string>('');
@@ -40,7 +43,13 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
     pendingRef.current = fn;
     setShowCashPin(true);
   }, [requireCashPin]);
-  const onCashError = (code?: string) => { if (code === 'CASH_PIN_INVALID' || code === 'CASH_PIN_REQUIRED') cashPinRef.current = ''; };
+  const onCashError = (j?: { code?: string; message?: string } | null) => {
+    const code = j?.code;
+    if (code === 'CASH_PIN_INVALID' || code === 'CASH_PIN_REQUIRED') { cashPinRef.current = ''; return; }
+    setActionError(code === 'SETTLEMENT_LOCKED'
+      ? t('cash:systemRecordLocked', { defaultValue: 'This record was created automatically and cannot be edited or deleted.' })
+      : (j?.message || t('cash:actionFailed', { defaultValue: 'Could not complete this action. Please try again.' })));
+  };
 
   const fetchList = useCallback(async () => {
     if (!restaurantId) return;
@@ -72,22 +81,24 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
     if (!(amt > 0)) return;
     withCashPin(async (pin) => {
       setBusy(true);
+      setActionError(null);
       const body: any = { type: edit.type, amount: amt, reason: edit.reason || null };
       if (pin) body.cash_pin = pin;
       const { status, j } = await api(`/movement/${edit.id}`, { method: 'PUT', body: JSON.stringify(body) });
       setBusy(false);
       if (status === 200) { setEdit(null); fetchList(); }
-      else onCashError(j?.code);
+      else onCashError(j);
     });
   };
   const doDelete = () => {
     if (!delTarget) return;
     withCashPin(async (pin) => {
       setBusy(true);
+      setActionError(null);
       const { status, j } = await api(`/movement/${delTarget.id}`, { method: 'DELETE', body: JSON.stringify(pin ? { cash_pin: pin } : {}) });
       setBusy(false);
       if (status === 200) { setDelTarget(null); fetchList(); }
-      else onCashError(j?.code);
+      else onCashError(j);
     });
   };
 
@@ -142,14 +153,20 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
           ) : rows.map(m => {
             const isIn = m.type === 'in';
             const isSettlement = m.source === 'settlement';
+            // 서버는 직원이 직접 넣은 기록(manual)만 수정·삭제를 허용한다(cash-management.js). 화면도 같은 기준.
+            const isLocked = m.source !== 'manual';
+            const sourceBadge = isSettlement ? t('cash:settlementAdj', { defaultValue: 'Settlement' })
+              : m.source === 'purchase_order' ? t('cash:sourcePurchaseOrder', { defaultValue: 'Purchase order' })
+              : m.source === 'reimbursement' ? t('cash:sourceReimbursement', { defaultValue: 'Reimbursement' })
+              : isLocked ? t('cash:sourceAutomatic', { defaultValue: 'Automatic' }) : null;
             return (
               <DataTableRow key={m.id}>
                 <DataTableCell data-label={t('cash:colDateTime', { defaultValue: 'Date / Time' })}>{dt(m.created_at || m.createdAt)}</DataTableCell>
                 <DataTableCell data-label={t('cash:colType', { defaultValue: 'Type' })}>
                   <span style={{ fontWeight: 700, color: isIn ? '#10B981' : '#FF6B6B' }}>{isIn ? t('cash:paidIn', { defaultValue: 'Cash in' }) : t('cash:paidOut', { defaultValue: 'Cash out' })}</span>
-                  {isSettlement && (
+                  {sourceBadge && (
                     <span style={{ marginLeft: 8, display: 'inline-block', fontSize: 11, fontWeight: 600, color: '#635BFF', background: '#EEF0FF', border: '1px solid #DADCFF', borderRadius: 10, padding: '1px 8px', verticalAlign: 'middle' }}>
-                      {t('cash:settlementAdj', { defaultValue: 'Settlement' })}
+                      {sourceBadge}
                     </span>
                   )}
                 </DataTableCell>
@@ -159,14 +176,14 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
                   <DataTableAmount highlight style={{ color: isIn ? '#10B981' : '#FF6B6B' }}>{isIn ? '+ ' : '− '}{fc(m.amount)}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label={t('cash:colActions', { defaultValue: 'Actions' })} align="center">
-                  {isSettlement ? (
-                    <span style={{ color: '#9CA3AF', fontSize: 13 }}>—</span>
+                  {isLocked ? (
+                    <span style={{ color: '#9CA3AF', fontSize: 13 }} title={t('cash:systemRecordLocked', { defaultValue: 'This record was created automatically and cannot be edited or deleted.' })}>—</span>
                   ) : (
                     <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'center' }}>
-                      <IconButton type="button" title={t('common:button.edit', { defaultValue: 'Edit' })} onClick={() => setEdit({ ...m, amount: String(m.amount) })}>
+                      <IconButton type="button" title={t('common:button.edit', { defaultValue: 'Edit' })} onClick={() => { setActionError(null); setEdit({ ...m, amount: String(m.amount) }); }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
                       </IconButton>
-                      <IconButton type="button" title={t('common:button.delete', { defaultValue: 'Delete' })} onClick={() => setDelTarget(m)}>
+                      <IconButton type="button" title={t('common:button.delete', { defaultValue: 'Delete' })} onClick={() => { setActionError(null); setDelTarget(m); }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                       </IconButton>
                     </div>
@@ -193,6 +210,7 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
           </div>
           <FormInput type="number" value={edit.amount} onChange={e => setEdit({ ...edit, amount: e.target.value })} placeholder="0.00" />
           <FormInput value={edit.reason || ''} onChange={e => setEdit({ ...edit, reason: e.target.value })} placeholder={t('cash:movementReason', { defaultValue: 'Reason (optional)' })} style={{ marginTop: 10 }} />
+          {actionError && <p style={{ fontSize: 13, color: '#DC2626', margin: '10px 0 0' }}>{actionError}</p>}
         </CommonModal>
       )}
       {/* 삭제 확인 */}
@@ -205,6 +223,7 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
           <p style={{ fontSize: 14, color: '#0A2540', margin: 0 }}>
             {t('cash:deleteConfirm', { defaultValue: 'Delete this {{type}} of {{amount}}?', type: delTarget.type === 'in' ? t('cash:paidIn', { defaultValue: 'Cash in' }) : t('cash:paidOut', { defaultValue: 'Cash out' }), amount: fc(delTarget.amount) })}
           </p>
+          {actionError && <p style={{ fontSize: 13, color: '#DC2626', margin: '10px 0 0' }}>{actionError}</p>}
         </CommonModal>
       )}
     </div>

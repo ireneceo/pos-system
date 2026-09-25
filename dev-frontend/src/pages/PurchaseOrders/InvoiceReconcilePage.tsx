@@ -14,7 +14,8 @@ import { getCurrencySymbol } from '../../utils/currency';
 import styled from 'styled-components';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Container, Content } from '../../components/UI';
+import { Container, Content, Modal as CommonModal, ModalButton } from '../../components/UI';
+import { formatGap, gapColor } from '../../utils/reconcileGap';
 import { Button } from '../../components/UI/Button';
 import { ThemedInput } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
@@ -303,6 +304,7 @@ const InvoiceReconcilePage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   // 총액이 줄 합계와 안 맞아 막혔을 때 — 「총액대로만 저장」 선택지를 그 자리에 띄운다.
   const [totalMismatch, setTotalMismatch] = useState<{ message: string; diff?: number } | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
   const [alert, setAlert] = useState<{ title: string; message: string } | null>(null);
   // 자동 읽기 (2026-09-10 Fable D1·D2) — 올려 둔 인보이스를 브라우저에서 읽어 오른쪽을 채운다.
   const [ocr, setOcr] = useState<{ running: boolean; progress: number; error: string | null; done: boolean }>(
@@ -628,6 +630,14 @@ const InvoiceReconcilePage: React.FC = () => {
     }
   };
 
+  // 이미 저장된 줄 단가 수 — 총액 확정은 이것들을 지운다(서버가 줄 전부 null 화). 모르고 지우지 않게 묻는다(A-3).
+  const savedLineCount = items.filter((it: any) => it.invoiced_unit_price !== null && it.invoiced_unit_price !== undefined).length;
+  const onConfirmTotal = () => {
+    if (header.total === '') return;
+    if (savedLineCount > 0) { setConfirmClear(true); return; }
+    save(true);
+  };
+
   if (loading) {
     return <Container><Content><Panel>{t('reconcile.loading', '불러오는 중…')}</Panel></Content></Container>;
   }
@@ -638,6 +648,8 @@ const InvoiceReconcilePage: React.FC = () => {
   const currency = po.currency || 'MYR';
   // 저장·비교는 ISO 코드(MYR), 사람이 보는 자리는 기호(RM). 아래 표시들은 전부 이 값을 쓴다.
   const currencySym = getCurrencySymbol(currency);
+  // 입력 중인 총액의 갭 — 저장 전에도 보인다. 저장 뒤 목록·상세는 같은 식(utils/reconcileGap)으로 계산한다.
+  const headerGap = header.total === '' ? null : Math.round((num(header.total) - num(po.total_amount)) * 100) / 100;
 
   return (
     <Container>
@@ -675,6 +687,73 @@ const InvoiceReconcilePage: React.FC = () => {
           {t('reconcile.help.poUnchanged', '저장해도 발주 금액은 바뀌지 않습니다 — 예상(발주)과 실제(청구)를 나란히 남기는 것이 이 화면의 목적입니다.')}
           {po.seller_is_external && ` ${t('reconcile.help.externalPay', '외부 공급업체는 우리 솔루션에서 결제할 수 없고, 실제로 지불한 뒤 청구서에서 «결제함»으로 표시합니다.')}`}
         </Note>
+
+        {/* ① 총액 우선 (§8-6 A) — 줄을 하나하나 맞추지 않아도 청구 총액으로 확정할 수 있다.
+            예전에는 이 길이 «줄 합이 안 맞아 막힌 뒤» 맨 아래에만 나타나 아무도 몰랐다. */}
+        <Panel style={{ marginBottom: 16 }}>
+            <PanelTitle>{t('reconcile.step1.title', '1 · Invoice total')}</PanelTitle>
+            <FieldGrid>
+              <Field>{t('reconcile.field.number', '인보이스 번호')}
+                <ThemedInput value={header.number} onChange={(e) => setHeader({ ...header, number: e.target.value })} placeholder="INV-0001" />
+              </Field>
+              <Field>{t('reconcile.field.date', '인보이스 일자')}
+                {/* 브라우저 기본 날짜칸은 **브라우저 언어대로** mm/dd/yyyy 로 보인다(2026-09-10 Irene 지적).
+                    말레이시아는 dd/mm 이라 헷갈린다. 프로젝트 표준 DateField 는 «Sep 08, 2026» 처럼
+                    월을 글자로 보여 줘서 순서 오해가 생기지 않는다. */}
+                <DateField value={header.date} onChange={(v) => setHeader({ ...header, date: v || '' })} />
+              </Field>
+              <Field>{t('reconcile.field.total', '총액')} ({currencySym})
+                <ThemedInput type="number" step="0.01" value={header.total} onChange={(e) => setHeader({ ...header, total: e.target.value })} />
+                {/* 갭 = 청구 총액 − 발주 총액(품목+세금+배송) — 헤더 기준 한 줄 (§8-6 A-1·A-4).
+                    목록·상세·결제 창과 같은 기준(utils/reconcileGap). */}
+                {headerGap != null && (
+                  <Muted style={{ display: 'block', marginTop: 6, lineHeight: 1.8 }}>
+                    {t('reconcile.gap.line', 'Ordered {{ordered}} → Invoiced {{invoiced}} =', {
+                      ordered: `${currencySym} ${num(po.total_amount).toFixed(2)}`,
+                      invoiced: `${currencySym} ${num(header.total).toFixed(2)}`,
+                    })}{' '}
+                    <strong style={{ color: gapColor(headerGap) }}>{formatGap(headerGap, currency)}</strong>
+                  </Muted>
+                )}
+              </Field>
+              <Field>{t('reconcile.field.tax', '세금')}
+                <ThemedInput type="number" step="0.01" value={header.tax} onChange={(e) => setHeader({ ...header, tax: e.target.value })} />
+              </Field>
+              <Field>{t('reconcile.field.delivery', '배송비')}
+                <ThemedInput type="number" step="0.01" value={header.delivery} onChange={(e) => setHeader({ ...header, delivery: e.target.value })} />
+                {/* 발주 때 예상한 배송비와 실제 청구액의 차이 — 숫자만 보고는 «많이 나왔나» 를 알 수 없다 */}
+                {expectedDelivery != null && (
+                  <div style={{ fontSize: 11, color: '#4B5563', marginTop: 4 }}>
+                    {t('reconcile.field.deliveryExpected', '발주 때 예상 {{amount}}', { amount: expectedDelivery.toFixed(2) })}
+                    {header.delivery !== '' && Math.abs(Number(header.delivery) - expectedDelivery) >= 0.01 && (
+                      <span style={{ color: '#B45309', marginLeft: 6 }}>
+                        · {t('reconcile.field.deliveryDiff', '차이 {{diff}}', {
+                          diff: (Number(header.delivery) - expectedDelivery >= 0 ? '+' : '')
+                            + (Number(header.delivery) - expectedDelivery).toFixed(2)
+                        })}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </Field>
+              <Field>{t('reconcile.field.discount', '할인')}
+                <ThemedInput type="number" step="0.01" value={header.discount} onChange={(e) => setHeader({ ...header, discount: e.target.value })} />
+              </Field>
+            </FieldGrid>
+            <Muted style={{ marginTop: -8, marginBottom: 16 }}>
+              {t('reconcile.taxNotInUnitPrice', '세금·배송·할인은 품목 단가에 섞지 않습니다. 따로 기록해 두어야 원가가 부풀지 않습니다.')}
+            </Muted>
+            <Actions style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+              <Button onClick={onConfirmTotal} disabled={saving || header.total === ''}>
+                {saving ? t('reconcile.saving', '저장 중…') : t('reconcile.step1.confirm', 'Confirm this total (lines later)')}
+              </Button>
+              <Muted style={{ alignSelf: 'center' }}>
+                {header.total === ''
+                  ? t('reconcile.step1.needTotal', 'Enter the invoice total to confirm it.')
+                  : t('reconcile.step1.hint', 'No need to match every line. Payment and the invoice use this total; line prices are not saved and do not change cost.')}
+              </Muted>
+            </Actions>
+          </Panel>
 
         <Split>
           <Panel>
@@ -788,89 +867,8 @@ const InvoiceReconcilePage: React.FC = () => {
           </Panel>
 
           <Panel>
-            <PanelTitle>{t('reconcile.headerPanel', '인보이스 정보')}</PanelTitle>
-            <FieldGrid>
-              <Field>{t('reconcile.field.number', '인보이스 번호')}
-                <ThemedInput value={header.number} onChange={(e) => setHeader({ ...header, number: e.target.value })} placeholder="INV-0001" />
-              </Field>
-              <Field>{t('reconcile.field.date', '인보이스 일자')}
-                {/* 브라우저 기본 날짜칸은 **브라우저 언어대로** mm/dd/yyyy 로 보인다(2026-09-10 Irene 지적).
-                    말레이시아는 dd/mm 이라 헷갈린다. 프로젝트 표준 DateField 는 «Sep 08, 2026» 처럼
-                    월을 글자로 보여 줘서 순서 오해가 생기지 않는다. */}
-                <DateField value={header.date} onChange={(v) => setHeader({ ...header, date: v || '' })} />
-              </Field>
-              <Field>{t('reconcile.field.total', '총액')} ({currencySym})
-                <ThemedInput type="number" step="0.01" value={header.total} onChange={(e) => setHeader({ ...header, total: e.target.value })} />
-                {/* 총액 비교 (2026-09-10 Irene: «총 금액이 올린거랑 우리 발주 가격이랑 다른데 총비용 비교는 없어»).
-                    셋을 나란히 본다 — 발주 총액 / 입력한 줄들의 합 / 인보이스에 적힌 총액.
-                    줄 합과 적힌 총액이 다르면 세금·배송비이거나 옮겨 적다 틀린 것이다. */}
-                <Muted style={{ display: 'block', marginTop: 6, lineHeight: 1.8 }}>
-                  {t('reconcile.total.ordered', '발주 총액')}: <strong>{currencySym} {totals.ordered.toFixed(2)}</strong>
-                  {totals.header != null && Math.abs(totals.header - totals.ordered) >= 0.005 && (
-                    <span style={{ color: totals.header > totals.ordered ? '#B45309' : '#047857', fontWeight: 700 }}>
-                      {' · '}
-                      {totals.header > totals.ordered ? '▲' : '▼'} {currencySym} {Math.abs(totals.header - totals.ordered).toFixed(2)}
-                      {' '}
-                      {totals.header > totals.ordered
-                        ? t('reconcile.total.morePaid', '더 청구됨')
-                        : t('reconcile.total.lessPaid', '덜 청구됨')}
-                    </span>
-                  )}
-                  {totals.header != null && Math.abs(totals.header - totals.ordered) < 0.005 && (
-                    <span style={{ color: '#047857' }}>{' · '}{t('reconcile.total.same', '발주와 같음')}</span>
-                  )}
-                  <br />
-                  {t('reconcile.total.lineSum', '입력한 줄들의 합')}: <strong>{currencySym} {totals.lines.toFixed(2)}</strong>
-                  {/* 적은 총액 vs 계산 총액(줄 합 + 세금 + 배송 − 할인) — 1 넘게 다르면 저장 잠금, 1 이내면 반올림 조정 (§8-3 B-3) */}
-                  {totals.diff != null && Math.abs(totals.diff) >= 0.005 && (
-                    totals.blocked ? (
-                      <span style={{ color: '#DC2626', fontWeight: 700 }}>
-                        {' · '}
-                        {t('reconcile.total.blocked', '줄 합·세금·배송·할인으로 계산한 {{c}} 와 적은 총액이 {{d}} 다릅니다 — 줄이나 총액을 확인하세요(이대로는 저장되지 않습니다)', {
-                          c: `${currencySym} ${totals.computed.toFixed(2)}`,
-                          d: `${currencySym} ${Math.abs(totals.diff).toFixed(2)}`,
-                        })}
-                      </span>
-                    ) : (
-                      <span style={{ color: '#B45309' }}>
-                        {' · '}
-                        {t('reconcile.total.rounding', '반올림 조정 {{d}} 로 적은 총액에 맞춥니다', {
-                          d: `${totals.diff > 0 ? '+' : '-'}${currencySym} ${Math.abs(totals.diff).toFixed(2)}`,
-                        })}
-                      </span>
-                    )
-                  )}
-                </Muted>
-              </Field>
-              <Field>{t('reconcile.field.tax', '세금')}
-                <ThemedInput type="number" step="0.01" value={header.tax} onChange={(e) => setHeader({ ...header, tax: e.target.value })} />
-              </Field>
-              <Field>{t('reconcile.field.delivery', '배송비')}
-                <ThemedInput type="number" step="0.01" value={header.delivery} onChange={(e) => setHeader({ ...header, delivery: e.target.value })} />
-                {/* 발주 때 예상한 배송비와 실제 청구액의 차이 — 숫자만 보고는 «많이 나왔나» 를 알 수 없다 */}
-                {expectedDelivery != null && (
-                  <div style={{ fontSize: 11, color: '#4B5563', marginTop: 4 }}>
-                    {t('reconcile.field.deliveryExpected', '발주 때 예상 {{amount}}', { amount: expectedDelivery.toFixed(2) })}
-                    {header.delivery !== '' && Math.abs(Number(header.delivery) - expectedDelivery) >= 0.01 && (
-                      <span style={{ color: '#B45309', marginLeft: 6 }}>
-                        · {t('reconcile.field.deliveryDiff', '차이 {{diff}}', {
-                          diff: (Number(header.delivery) - expectedDelivery >= 0 ? '+' : '')
-                            + (Number(header.delivery) - expectedDelivery).toFixed(2)
-                        })}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </Field>
-              <Field>{t('reconcile.field.discount', '할인')}
-                <ThemedInput type="number" step="0.01" value={header.discount} onChange={(e) => setHeader({ ...header, discount: e.target.value })} />
-              </Field>
-            </FieldGrid>
-            <Muted style={{ marginTop: -8, marginBottom: 16 }}>
-              {t('reconcile.taxNotInUnitPrice', '세금·배송·할인은 품목 단가에 섞지 않습니다. 따로 기록해 두어야 원가가 부풀지 않습니다.')}
-            </Muted>
 
-            <PanelTitle>{t('reconcile.itemsPanel', '품목')}</PanelTitle>
+            <PanelTitle>{t('reconcile.step2.title', '2 · Match the lines (updates cost)')}</PanelTitle>
             <HeadRow>
               <Cell>{t('reconcile.itemsPanel', '품목')}</Cell>
               <Cell>{t('reconcile.col.ordered', '발주 단가')}</Cell>
@@ -1027,26 +1025,40 @@ const InvoiceReconcilePage: React.FC = () => {
               <Button variant="secondary" onClick={() => navigate(`/pos/purchase-orders/${po.id}`)}>{t('reconcile.cancel', '취소')}</Button>
               <Button onClick={() => save()} disabled={saving || totals.blocked}>{saving ? t('reconcile.saving', '저장 중…') : t('reconcile.save', '대조 저장')}</Button>
             </Actions>
-            {/* 총액이 줄 합계와 안 맞아 막혔을 때 — 사진 판독이 엉망이어도 «적은 총액대로» 갈 길을 준다.
-                ⛔ 줄 단가는 원가에 반영하지 않는다(서버가 줄 값을 비운다) — OCR 오독이 원가로 굳는 걸 막는 게 이 화면의 존재 이유다. */}
-            {/* 주의: 화면이 먼저 저장을 잠그므로(`totals.blocked`) 서버 400 은 도달하지 않는다 —
-                조건을 `totalMismatch` 로만 두면 이 버튼이 **영영 안 보인다**(2026-09-24 Fable 게이트 적발).
-                그래서 «화면이 잠근 경우»에도 띄운다. 서버 400 경로는 안전망으로 남긴다. */}
+            {/* 줄 합계가 총액과 1 넘게 다르면 줄 저장은 잠긴다(서버 TOTAL_MISMATCH 와 같은 기준 — 서버는 안전망).
+                예비 버튼은 두지 않는다 — 길은 위 ① «이 총액으로 확정» 하나다(§8-6 A-2). */}
             {(totals.blocked || totalMismatch) && (
-              <div style={{
-                margin: '12px 0 0', padding: '12px 14px', borderRadius: 8,
-                background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E', fontSize: 13, lineHeight: 1.6
-              }}>
-                <div>{totalMismatch?.message || t('reconcile.total.blockedShort', 'The total you entered does not match the lines.')}</div>
-                <div style={{ marginTop: 10 }}>
-                  <Button variant="secondary" onClick={() => save(true)} disabled={saving}>
-                    {t('reconcile.saveTotalOnly', 'Save the total only (line prices will not affect cost)')}
-                  </Button>
-                </div>
-              </div>
+              <Muted style={{ display: 'block', marginTop: 10, color: '#B45309' }}>
+                {t('reconcile.step2.blocked', 'The lines add up to {{c}}, {{d}} away from the total — fix the lines, or use «Confirm this total» above.', {
+                  c: `${currencySym} ${totals.computed.toFixed(2)}`,
+                  d: `${currencySym} ${Math.abs(totals.diff ?? totalMismatch?.diff ?? 0).toFixed(2)}`,
+                })}
+              </Muted>
+            )}
+            {!totals.blocked && totals.diff != null && Math.abs(totals.diff) >= 0.005 && (
+              <Muted style={{ display: 'block', marginTop: 10, color: '#B45309' }}>
+                {t('reconcile.total.rounding', '반올림 조정 {{d}} 로 적은 총액에 맞춥니다', {
+                  d: `${totals.diff > 0 ? '+' : '-'}${currencySym} ${Math.abs(totals.diff).toFixed(2)}`,
+                })}
+              </Muted>
             )}
           </Panel>
         </Split>
+
+        {confirmClear && (
+          <CommonModal isOpen onClose={() => setConfirmClear(false)} size="small"
+            title={t('reconcile.step1.clearTitle', 'Confirm the total only?')}
+            footer={<>
+              <ModalButton onClick={() => setConfirmClear(false)}>{t('reconcile.cancel', '취소')}</ModalButton>
+              <ModalButton variant="primary" disabled={saving} onClick={() => { setConfirmClear(false); save(true); }}>
+                {t('reconcile.step1.confirm', 'Confirm this total (lines later)')}
+              </ModalButton>
+            </>}>
+            <p style={{ fontSize: 14, color: '#0A2540', margin: 0, lineHeight: 1.6 }}>
+              {t('reconcile.step1.clearBody', '{{n}} saved line prices will be cleared and will not affect cost.', { n: savedLineCount })}
+            </p>
+          </CommonModal>
+        )}
 
         {alert && (
           <AlertDialog

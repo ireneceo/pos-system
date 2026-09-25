@@ -225,7 +225,7 @@ const ContextSelectPage: React.FC = () => {
 
         <List>
           {orderedList.map((ctx) => (
-            // 카드 제목 = **들어갈 곳의 이름**(서버가 엔티티명으로 해석해 준다). 계정명은 쓰지 않는다.
+            // 카드 제목은 서버가 정한다 — 기본 카드 = 이 아이디의 프로필 이름, 부여·오너 카드 = 들어갈 곳의 이름.
             // "기본" 배지는 두지 않는다 — 고르는 사람에겐 3장이 전부 동등한 선택지라 아무 질문에도
             // 답하지 않는 라벨이었다. "내 원래 자리"라는 정보는 **맨 위 고정**으로 전달한다.
             <Card key={contextKey(ctx)} onClick={() => onPick(ctx)} disabled={busyKey !== null}>

@@ -151,9 +151,12 @@ async function listContexts(user) {
   const contexts = [];
   const base = deriveDefaultContext(user);
   if (base) {
-    // 카드 제목을 "들어갈 곳의 이름"으로 통일 — 부여 카드는 매장명인데 기본 카드만
-    // 다른 성격(역할명/계정명)이면 목록의 규칙이 갈라진다.
-    const name = await resolveEntityName(base.entity_type, base.entity_id);
+    // 기본 카드 제목 = **이 아이디의 프로필 이름** (2026-09-25 Irene 「브랜드이름이 왜 나와?
+    // 이 아이디 프로필이름이 나와야지」). 계정 스칼라가 가리키는 엔티티 하나의 이름은 그 계정이
+    // 가진 전부를 대표하지 못한다(BG 는 owner_id 기준 브랜드가 여럿일 수 있다).
+    // 부여·오너 카드는 그대로 «들어갈 곳의 이름». 프로필 이름이 비면 예전처럼 엔티티명 → 역할명.
+    const profileName = typeof user.full_name === 'string' ? user.full_name.trim() : '';
+    const name = profileName || await resolveEntityName(base.entity_type, base.entity_id);
     if (name) base.label = name;
     contexts.push(base);
   }

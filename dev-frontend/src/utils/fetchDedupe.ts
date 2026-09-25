@@ -157,16 +157,34 @@ export function dedupedFetch(
   const entry: InflightEntry = { promise, controller, active: 0 };
   inflight.set(key, entry);
 
+  // `inflight.get(key) === entry` — 그 사이 invalidateDedupe() 로 비워졌으면 이 응답은 쓰기 전에
+  // 출발한 옛 응답이라 캐시에 넣지 않고, 같은 key 로 새로 등록된 요청도 지우지 않는다.
   promise
     .then((res) => {
-      if (res.ok) {
+      if (res.ok && inflight.get(key) === entry) {
         cache.set(key, { res: res.clone(), expires: Date.now() + TTL_MS });
       }
     })
     .catch(() => { /* swallow — 구독자별로 전달된다 */ })
-    .finally(() => { inflight.delete(key); });
+    .finally(() => { if (inflight.get(key) === entry) inflight.delete(key); });
 
   return subscribe(entry, callerSignal);
+}
+
+/**
+ * 쓰기(POST/PUT/PATCH/DELETE) 뒤에 부르는 무효화 — 캐시와 진행 중 공유 목록을 비운다.
+ *
+ * 2026-09-25 실측: 현금 원장에서 삭제 직후 목록을 다시 읽으면, 2초 안에 읽었던 같은 주소의
+ * **삭제 전 응답**이 캐시에서 나와 지운 줄이 화면에 남았다(서버에선 이미 삭제됨). 쓰기 뒤의
+ * 재조회는 거의 항상 «방금 바꾼 것을 보려는» 읽기라 캐시가 답해서는 안 된다.
+ *
+ * 진행 중 요청은 abort 하지 않는다 — 이미 기다리는 구독자는 그대로 받고, **새 GET 만** 새로 나간다.
+ * 주소별로 고르지 않고 전부 비운다: 한 쓰기가 어떤 목록을 바꾸는지 여기서는 알 수 없고,
+ * 잃는 것은 최대 2초짜리 중복제거뿐이다.
+ */
+export function invalidateDedupe(): void {
+  cache.clear();
+  inflight.clear();
 }
 
 // TTL 지난 entry cleanup (1회 등록).

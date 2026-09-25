@@ -389,5 +389,9 @@
     "tabs": {
       "completed": "Selesai"
     }
-  }
+  },
+  "foodcourtPaymentSettingsPage.deliveryTerms": "Terma penghantaran bagi pesanan restoran",
+  "foodcourtPaymentSettingsPage.deliveryTermsDesc": "Yuran penghantaran ditambah secara automatik apabila restoran memesan daripada medan selera ini. Biarkan kosong dan tiada yuran penghantaran dipaparkan.",
+  "foodcourtPaymentSettingsPage.freeAbove": "Penghantaran percuma pada atau melebihi jumlah ini",
+  "foodcourtPaymentSettingsPage.deliveryFee": "Yuran penghantaran di bawahnya (tetap)"
 }

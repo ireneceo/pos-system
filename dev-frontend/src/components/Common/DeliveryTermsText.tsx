@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { describeDeliveryTerms, DeliveryTerms } from '../../utils/deliveryFee';
+import { formatCurrency } from '../../utils/currency';
 
 /**
  * 판매자 배송 조건을 한 문장으로 보여준다 (2026-09-17 Fable 판정 ⑦).
@@ -12,14 +13,16 @@ import { describeDeliveryTerms, DeliveryTerms } from '../../utils/deliveryFee';
  */
 interface Props {
   terms: DeliveryTerms;
-  /** 금액 표기(통화기호 포함). 기본은 소수점 2자리 숫자. */
+  /** 금액 표기(통화기호 포함). 기본은 판매자 통화(terms.currency, 없으면 MYR)의 기호 표기 — «RM 300.00». */
   money?: (n: number) => string;
   className?: string;
 }
 
 const DeliveryTermsText: React.FC<Props> = ({ terms, money, className }) => {
   const { t } = useTranslation('common');
-  const fmt = money || ((n: number) => n.toFixed(2));
+  // 사람이 보는 자리는 통화 기호로(저장=코드 MYR · 표시=기호 RM). 예전 기본값은 숫자만이라
+  // «Free at 300.00 and above» 처럼 무슨 돈인지 안 보였다.
+  const fmt = money || ((n: number) => formatCurrency(n, terms.currency || 'MYR'));
   const d = describeDeliveryTerms(terms);
 
   if (d.kind === 'unset') {

@@ -389,5 +389,9 @@
     "tabs": {
       "completed": "已完成"
     }
-  }
+  },
+  "foodcourtPaymentSettingsPage.deliveryTerms": "门店订货配送条件",
+  "foodcourtPaymentSettingsPage.deliveryTermsDesc": "门店向该美食广场下单时会自动加上配送费。留空则不显示配送费。",
+  "foodcourtPaymentSettingsPage.freeAbove": "达到或超过此金额免运费",
+  "foodcourtPaymentSettingsPage.deliveryFee": "未达金额时的配送费（固定）"
 }

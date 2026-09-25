@@ -674,7 +674,8 @@ const BrandPaymentSettingsPage: React.FC = () => {
                           border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 13, color: '#4B5563' }}>
               <DeliveryTermsText terms={{
                 min_order_amount: deliveryTerms.min_order_amount === '' ? null : Number(deliveryTerms.min_order_amount),
-                delivery_fee: deliveryTerms.delivery_fee === '' ? null : Number(deliveryTerms.delivery_fee)
+                delivery_fee: deliveryTerms.delivery_fee === '' ? null : Number(deliveryTerms.delivery_fee),
+                currency: defaultCurrency
               }} />
               {deliverySaving && <span style={{ marginLeft: 8, color: '#6B7280' }}>{t('common:label.saving', '저장 중…')}</span>}
               {deliverySaved && !deliverySaving && <span style={{ marginLeft: 8, color: '#059669' }}>✓</span>}

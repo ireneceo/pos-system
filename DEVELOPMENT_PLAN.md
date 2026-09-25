@@ -1,5 +1,11 @@
 # Purple POS - 개발 진행 현황
 
+> **최종 업데이트:** 2026-09-25 #5 — [Claude Code] **인보이스 «총액 우선 대조»(§8-6 A) 운영 배포 — SW `5.65-reconcile-total-first-20260925`(19:16 · 백업 `20260925_185824` · 스모크 10/10).** 대조 화면 맨 위에서 총액만 적고 확정(줄은 나중에, 원가 무반영) · 저장된 줄 단가가 있으면 확인창 · 목록·상세·결제 창 갭을 «청구 총액 − 발주 총액» 한 기준으로(`utils/reconcileGap.ts`). 서버 0줄·DB 0. 실호출 10/10 · 실브라우저 10/10 · 반증 2건. ⚠ 최종 수정 뒤 verify-all --full 은 메모리 부족 강제종료로 못 돌림 — 배포 게이트(mount sweep 크래시 0)로 대신.
+
+> **최종 업데이트:** 2026-09-25 #4 — [Claude Code] **v3.103 — Irene 지적 4건 + 발견 2건 운영 배포 — SW `5.64-context-cash-delivery-20260925`(17:06 · 백업 `20260925_165921` · 스모크 10/10 · 마이그 101/101).**
+> ① 기본 카드 제목 = 프로필 이름 ② 데스크탑 사이드바 전환 입구(🔒 MainLayout 2줄 — Fable 판정·Irene 승인·`--bless`) ③ 현금 원장 잠금 기준 = 서버와 동일 + 출처 배지 + 거절 사유 표시 ④ 푸드코트 배송 조건 두 칸 ⑤ 배송 조건 문장 통화 기호 ⑥ 🔴 쓰기 뒤 GET 캐시 무효화 — 앱 전역 2초 캐시가 삭제 직후 재조회에 옛 목록을 주던 결함(현금 원장 클릭 테스트에서 발견).
+> 검증: verify-all --full 23/23 · 클릭 흐름 3종 · 고장주입 반증 4건 · jest 26/26 · 프론트 utils 68/68. 첫 배포 시도는 같은 서버 PlanQ `tsc` 가 메모리 게이트에 걸려 빌드 전에 멈춤(운영 무변경) → 끝난 뒤 재배포.
+
 > **최종 업데이트:** 2026-09-25 #3 — [Claude Code] **오너 모자(v1.1) 운영 배포 완료 — SW `5.63-owner-hat-20260925`(13:24 · 백업 `20260925_131833` · 스모크 10/10 · 마이그 101/101), Fable 게이트 PASS(`33b588d651c1`).**
 > ① **한 아이디에서 오너까지** — 오너 권한은 `restaurant_managers` 소유행 하나로만 판정되므로 **부여 = 소유행 생성**. `user_contexts` 행도 ENUM 확장도 **운영 마이그도 0건**이고, 롤백은 코드 되돌리기만.
 > ② 🔴 **지시서 앵커 1건이 실측과 달라 중단·보고했다** — F4 가 `o.restaurant_id` 를 쓰라 했는데 백엔드 응답은 `{id, name}` 이었다. Fable 판정 「지시서 오기 — 프론트를 `o.id` 로 3곳만, 백엔드 무접촉」. 고장주입으로 확인: 계약을 지시서대로 깨면 회수가 `Invalid id` 로 실패한다.
@@ -10573,6 +10579,32 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 ### 교훈
 - **mount sweep 은 «열리는 화면이 안 죽는지»만 본다** — «열 수 없는 화면»은 못 잡는다. 화면 작업 완료 기준에 **사용자 클릭 흐름 1회**를 넣어야 잡힌다
 - 지시서를 그대로 옮길 때도 **앵커가 실측과 다르면 멈추고 보고** — 그대로 적었으면 회수가 `Invalid id` 로 죽었다(고장주입으로 확인)
+
+---
+
+## ✅ 완료: 멀티 아이디 전환·현금 원장·배송 조건·인보이스 총액 우선 대조 (2026-09-25) [Claude Code]
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 기본 카드 제목 | 선택 화면 첫 카드 = 계정 프로필 이름 | ✅ 완료 (SW 5.64) |
+| 데스크탑 전환 입구 | 사이드바 하단 «◐ 이름»(접힘 rail 포함), 🔒 MainLayout 2줄 + bless | ✅ 완료 (SW 5.64) |
+| 현금 원장 | 자동 기록 잠금·출처 배지·거절 사유 표시 | ✅ 완료 (SW 5.64) |
+| 푸드코트 배송 조건 | 결제 설정 두 칸 + 문장 통화 기호 | ✅ 완료 (SW 5.64) |
+| 쓰기 뒤 GET 캐시 무효화 | 삭제 직후 옛 목록 결함(앱 전역) | ✅ 완료 (SW 5.64) |
+| 인보이스 총액 우선 대조 | §8-6 A — 총액만 확정 1차 경로 + 헤더 기준 갭 통일 | ✅ 완료 (SW 5.65) |
+| v3.103 릴리즈 | 블로그·공지·CHANGELOG | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/services/userContexts.js` · `dev-backend/tests/user-contexts-switch.test.js`
+- `dev-frontend/src/components/Layout/MainLayout.tsx`(2줄) · `dev-backend/scripts/print-guard.manifest.json`
+- `dev-frontend/src/components/CashManagement/CashLedger.tsx` · `components/Common/DeliveryTermsText.tsx`
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtPaymentSettingsPage.tsx` · `pages/BrandGeneral/BrandPaymentSettingsPage.tsx`
+- `dev-frontend/src/utils/fetchDedupe.ts` · `utils/httpClient.ts` · `utils/reconcileGap.ts`(신규) + 테스트 2
+- `dev-frontend/src/pages/PurchaseOrders/InvoiceReconcilePage.tsx` · `PurchaseOrdersPage.tsx` · `PurchaseOrderDetailPage.tsx` · `components/PurchaseOrders/ReceivePayModal.tsx`
+- `dev-frontend/src/pages/ContextSelect/ContextSelectPage.tsx`(주석) · i18n cash/foodcourt/purchaseOrders 4언어
+- `docs/TRADE_STRUCTURE.md` ⑦ §5 · `docs/PURCHASE_ORDER_SYSTEM.md` §8-6 · `docs/MULTI_CONTEXT_LOGIN_DESIGN.md` §6.2
 
 ---
 

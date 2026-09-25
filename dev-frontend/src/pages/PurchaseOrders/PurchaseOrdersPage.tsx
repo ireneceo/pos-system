@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatCurrency } from '../../utils/currency';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
+import { reconcileGap, isTotalOnly, formatGap } from '../../utils/reconcileGap';
 import { useNavigate } from 'react-router-dom';
 import {
   Container, Header, Title, Content,
@@ -1131,7 +1132,7 @@ const PurchaseOrdersPage: React.FC = () => {
                         {!isOwner && row.seller_type === 'supplier' && (
                           <ThemedButton
                             size="small"
-                            variant={(row.reconcile_diff_lines || 0) > 0 || (!row.invoice_reconciled_at && row.external_invoice_url) ? 'primary' : 'outline'}
+                            variant={(row.reconcile_diff_lines || 0) > 0 || Math.abs(reconcileGap(row) ?? 0) >= 0.005 || (!row.invoice_reconciled_at && row.external_invoice_url) ? 'primary' : 'outline'}
                             onClick={() => navigate(`/pos/purchase-orders/${row.id}/reconcile`)}
                             title={t('list.action.reconcile', 'Compare with uploaded invoice') as string}
                           >
@@ -1141,14 +1142,24 @@ const PurchaseOrdersPage: React.FC = () => {
                                 ①대조해서 차이가 있다 → ▲차이 N ②대조했고 차이 없다 → 대조 완료
                                 ③인보이스는 올라왔는데 아직 대조 안 함 → «인보이스 확인» (여기서 일이 멈춰 있다)
                                 ④아무것도 없다 → 원가 대조 */}
-                            {(row.reconcile_diff_lines || 0) > 0
-                              ? `▲ ${t('list.action.diffLines', '차이')} ${row.reconcile_diff_lines}${
-                                  row.reconcile_diff_amount ? ` · ${row.reconcile_diff_amount > 0 ? '+' : ''}${row.reconcile_diff_amount}` : ''}`
-                              : row.invoice_reconciled_at
-                                ? t('list.action.reconciled', '대조 완료')
-                                : row.external_invoice_url
-                                  ? t('list.action.checkInvoice', '인보이스 확인')
-                                  : t('list.action.reconcile', '원가 대조')}
+                            {/* 2026-09-25 §8-6 A-4 — 대조 뒤 표시는 **헤더 기준 갭**(청구 총액 − 발주 총액).
+                                예전 줄 기준 배지는 총액만 대조한 발주에서 갭을 잃었고 배송비·세금 차이도 못 잡았다.
+                                줄 차이 N 은 보조로만. */}
+                            {row.invoice_reconciled_at
+                              ? (() => {
+                                  const gap = reconcileGap(row);
+                                  const label = isTotalOnly(row)
+                                    ? t('list.action.totalOnly', 'Total only')
+                                    : t('list.action.reconciled', '대조 완료');
+                                  const lines = (row.reconcile_diff_lines || 0) > 0
+                                    ? ` · ${t('list.action.diffLines', '차이')} ${row.reconcile_diff_lines}` : '';
+                                  return gap != null && Math.abs(gap) >= 0.005
+                                    ? `${label} · ${formatGap(gap, row.currency)}${lines}`
+                                    : `${label}${lines}`;
+                                })()
+                              : row.external_invoice_url
+                                ? t('list.action.checkInvoice', '인보이스 확인')
+                                : t('list.action.reconcile', '원가 대조')}
                           </ThemedButton>
                         )}
                         {/* 결제·되돌리기 (2026-09-10 Fable B1) — 상세·staging 이 쓰는 모달을 그대로 목록에 붙인다.

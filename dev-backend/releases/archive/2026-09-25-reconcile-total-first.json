@@ -1,0 +1,49 @@
+{
+  "tag": "reconcile-total-first",
+  "sw_version": "5.65-reconcile-total-first-20260925",
+  "date": "2026-09-25",
+  "in_progress": [
+    "none — 인보이스 «총액 우선 대조»(§8-6 A) 개발·검증 완료. 배포는 Irene 지시 대기"
+  ],
+  "completed": [
+    "A-1/A-2 InvoiceReconcilePage — 인보이스 정보(번호·일자·총액·세금·배송·할인)를 맨 위 «1 · 인보이스 총액» 패널로 올리고, 갭 한 줄(발주 → 청구 = ±) + 1차 버튼 «이 총액으로 확정 (줄은 나중에)»(총액만 적혀 있으면 항상 활성, 기존 total_only 저장). 줄 매칭·OCR 은 «2 · 줄까지 맞추기(원가 반영)». 맨 아래 노란 예비 상자 제거, 줄 저장이 막히면 위 버튼으로 안내하는 한 줄",
+    "A-3 이미 저장된 줄 단가가 있으면 확인창 «저장된 줄 단가 N개가 지워지고 원가에 반영되지 않습니다»",
+    "A-4 갭 = 청구 총액 − 발주 총액 한 곳(utils/reconcileGap.ts) — 목록 버튼(«대조 완료/총액만 · ±RM»·줄 차이는 보조), 상세(대조 버튼 옆), 결제 창(취소선 옆 갭). DB 칸·마이그 0, 백엔드 0줄",
+    "i18n purchaseOrders 4언어(reconcile.step1/step2/gap · list.action.totalOnly)"
+  ],
+  "remaining": [
+    "none"
+  ],
+  "verification": {
+    "api": "데모 38 발주 75 실호출 10/10 — 줄 대조 저장 → 총액만 확정(총액 +2.50·배송 2.00) → 줄 단가 전부 null · 발주 invoice_total/delivery 저장 · 목록 헤더 갭 +2.5 · 총액만 판정 · 경계 TOTAL_REQUIRED 400 · 줄 모드 TOTAL_MISMATCH 400(안전망 유지). 원복 확인",
+    "tests": "프론트 utils 73/73(reconcileGap 신설 5)",
+    "fault_injection": "2건 반증: 서버 total_only 줄 null 화 제거 → 실호출 2건 실패(8/10) · 갭 부호 뒤집기 → 유틸 테스트 1건 실패. 둘 다 cp 원복 · cmp 동일",
+    "migration": "없음 — 롤백은 코드 되돌리기만",
+    "sw_version": "5.65-reconcile-total-first-20260925",
+    "fable_note": "Fable 판정(§8-6, 2026-09-25) 그대로 구현 — 서버는 이미 total_only 를 가졌고 화면 재배치만. 게이트 판정은 check-sensitive-diff 결과에 따름. 구현 중 세부(패널 순서·문구·확인창)는 팀원 판단"
+  },
+  "notes": [
+    "AI 판독 시범(§8-6 C)은 이번 범위 밖 — Irene 이 손글씨 공급업체 수로 답하면 판단"
+  ],
+  "irene_actions_after_deploy": [
+    "인보이스 대조 화면에서 총액+배송비만 적고 «이 총액으로 확정» → 목록 버튼에 «총액만 · +RM» 이 보이는지 확인"
+  ],
+  "issues": [
+    "«총액대로만 저장» 은 v3.102 부터 운영에 있었지만 줄 합이 안 맞아 막힌 뒤에만 맨 아래에 나타나 쓰이지 않았다 — 이번에 1차 경로로 올림"
+  ],
+  "upcoming": [
+    "AI 판독 시범 — Irene 결정 대기",
+    "운영 «대조 시각 있음 AND 전 줄 단가 null» 발주 수 1회 실측(§8-6 D-4)"
+  ],
+  "behavior_changes": [
+    "인보이스 대조 화면 맨 위에서 총액만 적고 바로 확정할 수 있다(줄은 나중에)",
+    "목록·상세·결제 창의 대조 표시가 «청구 총액 − 발주 총액» 한 기준으로 통일 — 배송비·세금 차이도 보인다",
+    "총액만 확정하면 이미 적어 둔 줄 단가가 지워진다(확인창으로 묻는다)"
+  ],
+  "check_areas": [
+    "InvoiceReconcilePage 첫 화면 — 총액 패널·버튼 활성 조건·확인창",
+    "발주 목록 대조 버튼 문구·색(갭 있으면 강조)",
+    "결제 창 금액 줄",
+    "🔒 인쇄·KDS 무접촉"
+  ]
+}

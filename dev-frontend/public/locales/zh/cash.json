@@ -99,5 +99,10 @@
   "noMovementsToday": "今天暂无。",
   "settlementAdj": "结算调整",
   "cashOverAtSettlement": "结算时现金溢余",
-  "cashShortAtSettlement": "结算时现金短缺"
+  "cashShortAtSettlement": "结算时现金短缺",
+  "sourcePurchaseOrder": "采购付款",
+  "sourceReimbursement": "员工报销",
+  "sourceAutomatic": "自动记录",
+  "systemRecordLocked": "此记录为系统自动生成，无法修改或删除。",
+  "actionFailed": "无法完成此操作，请重试。"
 }

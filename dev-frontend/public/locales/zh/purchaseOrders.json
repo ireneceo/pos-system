@@ -69,7 +69,8 @@
       "reimburseHint": "记录已向垫付的人还款",
       "attachReceipt": "附上收据",
       "attachReceiptHint": "现金或个人垫付的采购，附上收据便于日后核对",
-      "viewReceipt": "查看收据"
+      "viewReceipt": "查看收据",
+      "totalOnly": "仅总额"
     },
     "badge": {
       "sellerShipped": "供应商已开始配送"
@@ -710,7 +711,22 @@
       "notMyExternal": "不是您登记的外部供应商 — 已记录账单金额"
     },
     "saveTotalOnly": "仅按总额保存（单价不影响成本）",
-    "totalOnlyBanner": "仅核对了总额——单价未保存，也不影响成本。方便时请再核对各明细。"
+    "totalOnlyBanner": "仅核对了总额——单价未保存，也不影响成本。方便时请再核对各明细。",
+    "step1": {
+      "title": "1 · 发票总额",
+      "confirm": "按此总额确认（明细稍后）",
+      "needTotal": "填写发票总额后即可确认。",
+      "hint": "无需逐行核对。付款和账单按此总额处理；明细单价不会保存，也不影响成本。",
+      "clearTitle": "只确认总额？",
+      "clearBody": "已保存的 {{n}} 个明细单价将被清除，且不影响成本。"
+    },
+    "step2": {
+      "title": "2 · 核对明细（更新成本）",
+      "blocked": "明细合计为 {{c}}，与总额相差 {{d}} — 请修改明细，或使用上方的«按此总额确认»。"
+    },
+    "gap": {
+      "line": "订购 {{ordered}} → 发票 {{invoiced}} ="
+    }
   },
   "newPo.error.profileTitle": "需要公司资料",
   "newPo.error.goToCompanyInfo": "要开启公司资料吗？",

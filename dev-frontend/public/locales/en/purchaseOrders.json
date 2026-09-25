@@ -69,7 +69,8 @@
       "reimburseHint": "Record that you paid back the person who used their own money",
       "attachReceipt": "Attach receipt",
       "attachReceiptHint": "For cash or personal purchases, attach the receipt so it can be checked later",
-      "viewReceipt": "View receipt"
+      "viewReceipt": "View receipt",
+      "totalOnly": "Total only"
     },
     "badge": {
       "sellerShipped": "Seller started delivery"
@@ -710,7 +711,22 @@
       "notMyExternal": "Not a supplier you registered — the invoiced value was saved"
     },
     "saveTotalOnly": "Save the total only (line prices will not affect cost)",
-    "totalOnlyBanner": "Total matched only — line prices were not saved and do not affect cost. Reconcile the lines when you can."
+    "totalOnlyBanner": "Total matched only — line prices were not saved and do not affect cost. Reconcile the lines when you can.",
+    "step1": {
+      "title": "1 · Invoice total",
+      "confirm": "Confirm this total (lines later)",
+      "needTotal": "Enter the invoice total to confirm it.",
+      "hint": "No need to match every line. Payment and the invoice use this total; line prices are not saved and do not change cost.",
+      "clearTitle": "Confirm the total only?",
+      "clearBody": "{{n}} saved line prices will be cleared and will not affect cost."
+    },
+    "step2": {
+      "title": "2 · Match the lines (updates cost)",
+      "blocked": "The lines add up to {{c}}, {{d}} away from the total — fix the lines, or use «Confirm this total» above."
+    },
+    "gap": {
+      "line": "Ordered {{ordered}} → Invoiced {{invoiced}} ="
+    }
   },
   "newPo.error.profileTitle": "Business details needed",
   "newPo.error.goToCompanyInfo": "Open company information?",

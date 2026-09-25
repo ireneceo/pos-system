@@ -12,6 +12,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatGap, gapColor } from '../../utils/reconcileGap';
 import { Modal, ModalButton, FormGroup, FormLabel, FormInput, FormSelect } from '../UI/Modal';
 import { getAuthToken } from '../../utils/auth';
 
@@ -163,6 +164,9 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
             {t('pay.amount.invoiced', 'Supplier invoice')}: <strong>RM {payable.toFixed(2)}</strong>
             {' · '}
             {t('pay.amount.ordered', 'Ordered')}: <span style={{ textDecoration: 'line-through', color: '#6B7280' }}>RM {ordered.toFixed(2)}</span>
+            {/* 갭 — 목록·상세와 같은 헤더 기준(청구 − 발주) (§8-6 A-4) */}
+            {' · '}
+            <strong style={{ color: gapColor(payable - ordered) }}>{formatGap(Math.round((payable - ordered) * 100) / 100, 'MYR')}</strong>
           </div>
         )}
       </div>

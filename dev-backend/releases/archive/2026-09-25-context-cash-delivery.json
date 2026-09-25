@@ -1,0 +1,59 @@
+{
+  "tag": "context-cash-delivery",
+  "sw_version": "5.64-context-cash-delivery-20260925",
+  "date": "2026-09-25",
+  "in_progress": [
+    "none — Irene 지적 4건 + 발견 2건 개발·검증 완료, Irene 「다 수정하고 검증하고 배포해」로 배포"
+  ],
+  "completed": [
+    "1. 선택 카드 제목 — 기본 카드(이 아이디의 본래 자리) 제목 = 프로필 이름(full_name). 비면 예전대로 엔티티명→역할명. 부여·오너 카드는 그대로 매장명 (services/userContexts.js listContexts)",
+    "2. 데스크탑 전환 입구 — MainLayout 사이드바 하단 2줄: 접힘 rail(FooterRailLang 위) · 펼침 sidebar(LanguageSelectorWrapper 위). HeaderContextSwitcher 의 기존 rail/sidebar 변형을 처음 호출. Fable 판정 + Irene 승인, print-guard --bless(Irene 사인오프)",
+    "3. 현금 원장 — 수정·삭제 잠금 기준을 서버와 같게(source !== 'manual'), 자동 기록에 출처 배지(마감 조정·발주 결제·직원 상환·자동), 서버 400 사유를 창 안에 한 줄 표시 (CashLedger.tsx + cash.json 4언어)",
+    "4. 푸드코트 결제 설정에 «매장 발주 배송 조건» 두 칸(브랜드와 같은 카드, 기존 PUT 사용, 백엔드 무변경) + foodcourt.json 4언어 + docs/TRADE_STRUCTURE.md ⑦ §5",
+    "5. 배송 조건 문장에 통화 기호 — DeliveryTermsText 기본 표기를 formatCurrency(terms.currency||MYR) 로(«RM 300.00»), 브랜드·푸드코트 화면은 기본 통화 전달",
+    "6. 쓰기 뒤 GET 캐시 무효화 — fetchDedupe 2초 캐시 때문에 삭제 직후 재조회가 삭제 전 목록을 받던 결함. POST/PUT/PATCH/DELETE 응답 뒤 캐시·공유 목록 비움 + 쓰기 전에 출발한 GET 이 늦게 도착해도 캐시에 안 들어가게 (utils/fetchDedupe.ts · httpClient.ts)"
+  ],
+  "remaining": [
+    "none"
+  ],
+  "verification": {
+    "api": "푸드코트 배송 조건 실호출 8/8(저장·재조회·null=미설정·0=무료·음수→0·타 FG 403·원복) · 기본 카드 제목 3역할 실측",
+    "tests": "jest user-contexts-switch 26/26(신설 1) · 프론트 utils 68/68(fetchDedupe 무효화 신설 3)",
+    "browser": "푸드코트 클릭 흐름 통과 · 현금 원장(데모 38) · 전환 입구 7/7(모자 0 → 없음 · 펼침 «◐ 프로필이름» · 클릭 → 픽커 → 매장 38 대시보드 · 접힘 rail)",
+    "fault_injection": "4건 반증: 서버 배송비 저장 끊기 → 클릭 흐름 실패 · 기본 카드 제목 되돌리기 → jest 1건 실패 · fetchDedupe 동일성 가드 제거 → 테스트 3 실패 · 무효화 본문 제거 → 테스트 2 실패. 전부 cp 원복 · cmp 동일",
+    "print_guard": "MainLayout 1건만 검출(diff +2/−0, 인쇄 키워드 0) → Irene 사인오프 → --bless 8/8 · print 11/11",
+    "migration": "없음 — 롤백은 코드 되돌리기만",
+    "sw_version": "5.64-context-cash-delivery-20260925",
+    "fable_note": "Fable 1회(데스크탑 전환 입구 배치 판정 — rail+sidebar 2줄, 로직·스타일 무변경, bless 전 배포 금지). 배송비 정의는 같은 날 앞선 판정(«게이트 추가 호출 불필요»)을 따랐고, fable-gate 는 Irene 이 직접 skip 을 기록. 1·3·5·6 은 표시·캐시 결함 수정이라 팀원 판단."
+  },
+  "notes": [
+    "fetchDedupe 무효화는 주소를 고르지 않고 전부 비운다 — 한 쓰기가 어떤 목록을 바꾸는지 알 수 없고, 잃는 것은 최대 2초짜리 중복제거뿐"
+  ],
+  "irene_actions_after_deploy": [
+    "데스크탑에서 모자가 2개 이상인 계정으로 사이드바 하단 «◐ 이름» 확인",
+    "판매자(브랜드·푸드코트·공급업체)가 배송 조건 두 칸을 적어야 배송비가 붙는다 — 지금 0곳"
+  ],
+  "issues": [
+    "현금 원장 삭제가 «안 된다» 로 보이던 원인은 둘: 자동 기록에도 버튼이 떠 있었고, 서버 거절 사유를 화면이 버렸다. 서버 판정은 설계대로였다",
+    "삭제 직후 목록에 지운 줄이 남던 것은 앱 전역 GET 2초 캐시 때문 — 이번에 고침"
+  ],
+  "upcoming": [
+    "RA 계정엔 부여 화면 UI 입구가 없다(기존 갭)",
+    "인보이스 «총액 우선 대조»(§8-6 A) · AI 판독 시범 — Irene 컨펌 대기",
+    "지역별 배송비 — Fable 권고로 보류"
+  ],
+  "behavior_changes": [
+    "선택 화면·사이드바 스위처의 기본 카드 제목이 브랜드/매장 이름 대신 계정 프로필 이름으로 나온다",
+    "데스크탑 사이드바 하단에 전환 입구(◐)가 생긴다 — 전환할 곳이 2개 이상인 계정만",
+    "현금 원장: 자동 기록 행엔 수정·삭제 버튼 대신 «—» 와 출처 배지, 거절되면 사유가 창에 뜬다",
+    "푸드코트 결제 설정에 배송 조건 카드",
+    "배송 조건 문장이 «RM 300.00 이상 무료 · 미만 RM 15.00» 처럼 통화 기호로",
+    "쓰기(저장·삭제) 직후의 목록 재조회가 항상 서버로 간다"
+  ],
+  "check_areas": [
+    "사이드바 하단 전환 입구 — 접힘/펼침 둘 다, 모자 1개 계정에선 안 보여야 함",
+    "현금 원장 자동 기록 행 배지·버튼 숨김, 직접 입력 행 수정·삭제",
+    "쓰기 뒤 GET 캐시 무효화 — 저장 후 목록 갱신이 도는 화면 전반(요청 수가 약간 늘 수 있음)",
+    "🔒 MainLayout 2줄 외 인쇄 무접촉(print-guard --bless 8/8)"
+  ]
+}

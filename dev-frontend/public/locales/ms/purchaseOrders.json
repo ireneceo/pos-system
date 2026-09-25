@@ -69,7 +69,8 @@
       "reimburseHint": "Rekod bahawa anda telah membayar balik orang yang guna wang sendiri",
       "attachReceipt": "Lampirkan resit",
       "attachReceiptHint": "Untuk belian tunai atau wang peribadi, lampirkan resit untuk semakan kemudian",
-      "viewReceipt": "Lihat resit"
+      "viewReceipt": "Lihat resit",
+      "totalOnly": "Jumlah sahaja"
     },
     "badge": {
       "sellerShipped": "Penjual mula penghantaran"
@@ -710,7 +711,22 @@
       "notMyExternal": "Bukan pembekal yang anda daftarkan — nilai invois telah disimpan"
     },
     "saveTotalOnly": "Simpan jumlah sahaja (harga baris tidak menjejaskan kos)",
-    "totalOnlyBanner": "Hanya jumlah dipadankan — harga baris tidak disimpan dan tidak menjejaskan kos. Padankan baris apabila boleh."
+    "totalOnlyBanner": "Hanya jumlah dipadankan — harga baris tidak disimpan dan tidak menjejaskan kos. Padankan baris apabila boleh.",
+    "step1": {
+      "title": "1 · Jumlah invois",
+      "confirm": "Sahkan jumlah ini (baris kemudian)",
+      "needTotal": "Masukkan jumlah invois untuk mengesahkannya.",
+      "hint": "Tidak perlu padankan setiap baris. Pembayaran dan invois menggunakan jumlah ini; harga baris tidak disimpan dan tidak mengubah kos.",
+      "clearTitle": "Sahkan jumlah sahaja?",
+      "clearBody": "{{n}} harga baris yang disimpan akan dikosongkan dan tidak menjejaskan kos."
+    },
+    "step2": {
+      "title": "2 · Padankan baris (kemas kini kos)",
+      "blocked": "Jumlah baris ialah {{c}}, berbeza {{d}} daripada jumlah — betulkan baris, atau guna «Sahkan jumlah ini» di atas."
+    },
+    "gap": {
+      "line": "Dipesan {{ordered}} → Diinvois {{invoiced}} ="
+    }
   },
   "newPo.error.profileTitle": "Maklumat perniagaan diperlukan",
   "newPo.error.goToCompanyInfo": "Buka maklumat syarikat?",
