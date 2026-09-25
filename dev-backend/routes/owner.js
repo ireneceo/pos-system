@@ -478,19 +478,16 @@ router.post('/restaurants/:restaurantId/claim', requireRole('Restaurant Owner'),
     // 매장 생성(POST /api/restaurants)이 managerIds 로 같은 (restaurant, owner) 에 'oversight' 행을 먼저
     // 만들어 둔다. UNIQUE(restaurant_id, manager_id) 때문에 ownership 행을 새로 만들면 위반 → 생성한 매장이
     // ownership 행을 못 얻어 Owner 목록(ownership 필터)에서 빠지던 근본원인. 기존 행이 있으면 ownership 으로 승격.
+    // ⛔ 2026-09-24 보안: 이 오너와 **이미 연결된** 매장만 소유로 승격한다(자기가 만든 매장 = 생성 때 연결행이 생김).
+    //   예전엔 연결행이 없으면 새로 만들어 줘서, 누구나 /signup 으로 오너 가입 → 소유자 없는 남의 매장(운영 실매장 8곳,
+    //   영업 중 매장 포함)을 승인 없이 가져갈 수 있었다(개발 재현 200). 남의 매장 연결은 SA 의 /link 로만.
     const existingLink = await RestaurantManager.findOne({
       where: { restaurant_id: restaurantId, manager_id: req.user.id }
     });
-    if (existingLink) {
-      await existingLink.update({ relationship_type: 'ownership' });
-    } else {
-      await RestaurantManager.create({
-        restaurant_id: restaurantId,
-        manager_id: req.user.id,
-        relationship_type: 'ownership',
-        is_primary: false
-      });
+    if (!existingLink) {
+      return res.status(403).json({ success: false, message: 'You can only claim a restaurant you created or are linked to. Ask the System Admin to link other restaurants.' });
     }
+    await existingLink.update({ relationship_type: 'ownership' });
 
     console.log(`[OWNER] Restaurant claimed: ${restaurantId} "${restaurant.name}" by owner ${req.user.id}`);
 
@@ -547,10 +544,17 @@ router.get('/available-restaurants', requireRole('Restaurant Owner'), async (req
     });
     const ownedIds = ownedRestaurants.map(o => o.restaurant_id);
 
-    const where = {};
-    if (ownedIds.length > 0) {
-      where.id = { [Op.notIn]: ownedIds };
+    // 2026-09-24 보안: claim 과 같은 조건 — 내가 이미 연결된 매장 중 소유자 없는 것만 보여준다
+    //   (예전엔 소유자 없는 전 매장을 이름으로 검색해 줘서 가로챌 대상을 찾는 창구가 됐다).
+    const myLinks = await RestaurantManager.findAll({
+      where: { manager_id: req.user.id },
+      attributes: ['restaurant_id']
+    });
+    const myIds = myLinks.map(l => l.restaurant_id).filter(id => !ownedIds.includes(id));
+    if (myIds.length === 0) {
+      return res.json({ success: true, data: [] });
     }
+    const where = { id: { [Op.in]: myIds } };
     if (search) {
       where.name = { [Op.like]: `%${search}%` };
     }

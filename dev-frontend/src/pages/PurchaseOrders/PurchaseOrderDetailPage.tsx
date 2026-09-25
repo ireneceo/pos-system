@@ -20,6 +20,7 @@ import { formatDate } from '../../utils/timezone';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
 import { useAuth } from '../../contexts/AuthContext';
+import { isOwnerRole, withOwnerPoScope } from '../../utils/ownerPoScope';
 import AlertDialog from '../../components/Common/AlertDialog';
 import { getCurrencySymbol } from '../../utils/currency';
 
@@ -500,6 +501,9 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   const { id: routeId } = useParams<{ id: string }>();
   const id = embeddedId ?? Number(routeId);
   const { user } = useAuth();
+  // 오너 = 보기만 (2026-09-24 Fable «오너=슈퍼바이저» §2-A) — 조회는 고른 소유 매장 범위로, 쓰기 버튼은 없다.
+  const poRole = user?.role;
+  const ownerView = isOwnerRole(poRole);
   const invoiceListPath = (() => {
     if (user?.role === 'Restaurant Admin' || user?.role === 'Staff') return user?.restaurant_id ? `/restaurant/${user.restaurant_id}/invoices` : '/pos/owner/invoices';
     if (user?.role === 'Brand General' || user?.role === 'Brand Manager') return '/pos/brand/invoices';
@@ -604,13 +608,13 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
     if (!Number.isFinite(id)) return;
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/purchase-orders/${id}/returns`, {
+      const res = await fetch(withOwnerPoScope(`/api/purchase-orders/${id}/returns`, poRole), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       if (res.ok && data.success) setExistingReturns(Array.isArray(data.data) ? data.data : []);
     } catch (err) { /* ignore */ }
-  }, [id]);
+  }, [id, poRole]);
 
   // 위쪽 콜백들이 최신 loadReturns 를 부를 수 있게 ref 에 담는다(선언 순서와 무관하게).
   loadReturnsRef.current = loadReturns;
@@ -674,7 +678,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
     setError(null);
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/purchase-orders/${id}`, {
+      const res = await fetch(withOwnerPoScope(`/api/purchase-orders/${id}`, poRole), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -690,7 +694,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
     } finally {
       setLoading(false);
     }
-  }, [id, t]);
+  }, [id, t, poRole]);
 
   useEffect(() => { fetchDetail(); }, [fetchDetail]);
 
@@ -1002,7 +1006,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
     const w = window.open('', '_blank');
     if (!w) return;
     try {
-      const res = await fetch(`/api/purchase-orders/${detail.id}/pdf`, {
+      const res = await fetch(withOwnerPoScope(`/api/purchase-orders/${detail.id}/pdf`, poRole), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const html = await res.text();
@@ -1015,7 +1019,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
     if (!detail) return;
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/purchase-orders/${detail.id}/pdf`, {
+      const res = await fetch(withOwnerPoScope(`/api/purchase-orders/${detail.id}/pdf`, poRole), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) { setAlertDlg({ title: t('common:error.title', 'Error') as string, message: 'Failed to load order' }); return; }
@@ -1043,6 +1047,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
     const paid = (detail as any).payment_status === 'paid';
     return (
       <HeaderActions>
+        {!ownerView && (<>
         {/* 결제 (P4-5) — 받으면서 내는 것이 주 경로다. 이미 냈으면 되돌리기만 남긴다.
             "수령만"은 기존 [receive] 버튼이 그대로 맡는다(부분수령·차이 처리가 붙어 있다). */}
         {RECEIVABLE_STATUSES.includes(s) && !paid && (
@@ -1132,6 +1137,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
             {t('detail.actions.returns', 'Request Return')}
           </ThemedButton>
         )}
+        </>)}
         {!embedded && (
           <>
             <HeaderIconBtn
@@ -1191,9 +1197,11 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
             <Subtitle>{detail?.seller_name || ''}</Subtitle>
           </div>
           <HeaderActionBar>
-            <ThemedButton variant="outline" onClick={() => navigate('/pos/purchase-orders/new')}>
-              {t('detail.orderMore', '+ Order More')}
-            </ThemedButton>
+            {!ownerView && (
+              <ThemedButton variant="outline" onClick={() => navigate('/pos/purchase-orders/new')}>
+                {t('detail.orderMore', '+ Order More')}
+              </ThemedButton>
+            )}
             {renderActions()}
           </HeaderActionBar>
         </Header>
@@ -1439,7 +1447,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                     {/* 원가 대조 (2026-09-08) — 인보이스에 적힌 실제 가격을 발주 라인과 맞춰 본다.
                         발주 금액은 바뀌지 않는다. 공급업체 발주에만 뜬다(브랜드 발주는 우리 가격이 원본). */}
-                    {detail.seller_type === 'supplier' && (
+                    {!ownerView && detail.seller_type === 'supplier' && (
                       <ThemedButton
                         size="small"
                         variant="outline"
@@ -1510,9 +1518,11 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
 
       {embedded && detail && (
         <EmbeddedFooter>
-          <ThemedButton variant="outline" onClick={() => navigate('/pos/purchase-orders/new')}>
-            {t('detail.orderMore', '+ Order More')}
-          </ThemedButton>
+          {!ownerView && (
+            <ThemedButton variant="outline" onClick={() => navigate('/pos/purchase-orders/new')}>
+              {t('detail.orderMore', '+ Order More')}
+            </ThemedButton>
+          )}
           {renderActions()}
         </EmbeddedFooter>
       )}

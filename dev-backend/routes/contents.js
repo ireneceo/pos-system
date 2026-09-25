@@ -8,13 +8,57 @@ const { authenticateToken, requireRole, optionalAuthenticateToken } = require('.
 
 // Helper: Generate slug from title
 const generateSlug = (title) => {
-  return title
+  return String(title || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // é → e (악센트만 벗긴다)
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
     .trim();
 };
+
+// 라틴 문자가 아닌 글자(한자·한글 등)가 든 제목 — generateSlug 가 그 글자를 버려 주소가 비거나 «-pos» 처럼 깨진다.
+const NON_LATIN_LETTER = /(?=\p{L})\P{Script=Latin}/u;
+
+class SlugError extends Error {}
+
+/**
+ * 블로그 글 주소 정하기 — 새 글 두 경로(단건·번역 묶음)와 제목 수정이 모두 이 함수 하나를 쓴다.
+ * (docs/SEO_OPERATIONS.md · 2026-09-24 Fable 판정 M3: 기존 주소는 그대로, 앞으로 생기는 주소만)
+ *   - 겹치면 `-2`, `-3` … (예전: `-${Date.now()}` → 운영에 epoch 숫자 주소 3개가 남았다)
+ *   - 제목이 비라틴이면 영어 형제 글 주소 + `-zh`/`-ms`/`-ko`. 형제가 없으면 주소를 직접 넣으라고 거절.
+ * 넘겨받은 slug 는 그대로 쓰고 겹침만 피한다.
+ */
+async function resolveBlogSlug({ title, providedSlug, lang, enSiblingSlug, excludeId, transaction }) {
+  let base = providedSlug ? String(providedSlug).trim() : null;
+  if (!base) {
+    const fromTitle = generateSlug(title);
+    if (NON_LATIN_LETTER.test(String(title || '')) || fromTitle.length < 3) {
+      if (enSiblingSlug && lang !== DEFAULT_LANG) base = `${enSiblingSlug}-${lang}`;
+      else throw new SlugError(`Cannot build a URL slug from this title (${lang}). Enter the slug yourself, or create the English version first.`);
+    } else {
+      base = fromTitle;
+    }
+  }
+  let slug = base;
+  for (let n = 2; ; n++) {
+    const where = { type: 'blog', slug, language: lang };
+    if (excludeId) where.id = { [Op.ne]: excludeId };
+    const taken = await Content.findOne({ where, attributes: ['id'], paranoid: false, transaction });
+    if (!taken) return slug;
+    slug = `${base}-${n}`;
+  }
+}
+
+async function findEnSiblingSlug(translationGroupId, transaction) {
+  if (!translationGroupId) return null;
+  const en = await Content.findOne({
+    where: { type: 'blog', translation_group_id: translationGroupId, language: DEFAULT_LANG },
+    attributes: ['slug'], transaction
+  });
+  return en ? en.slug : null;
+}
 
 // ============================================
 // PUBLIC ROUTES (No auth required)
@@ -617,11 +661,14 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
     // Slug handling (unique per language)
     let slug = providedSlug || null;
     if (type === 'blog') {
-      slug = slug || generateSlug(title);
-      // Ensure (slug, language) is unique
-      const existing = await Content.findOne({ where: { type: 'blog', slug, language: lang } });
-      if (existing) {
-        slug = `${slug}-${Date.now()}`;
+      try {
+        slug = await resolveBlogSlug({
+          title, providedSlug, lang,
+          enSiblingSlug: await findEnSiblingSlug(translation_group_id)
+        });
+      } catch (e) {
+        if (e instanceof SlugError) return res.status(400).json({ success: false, error: { message: e.message, code: 'SLUG_REQUIRED' } });
+        throw e;
       }
     }
 
@@ -701,6 +748,9 @@ router.post('/bulk', authenticateToken, requireRole('System Admin'), async (req,
     const publishedAt = status === 'published' ? new Date() : null;
 
     const createdRows = [];
+    // 영어를 먼저 만든다 — 비라틴 제목 번역은 영어 주소 + `-zh` 로 주소를 정한다
+    langKeys.sort((a, b) => (a === DEFAULT_LANG ? -1 : b === DEFAULT_LANG ? 1 : 0));
+    let enSlug = null;
     for (const lang of langKeys) {
       const tr = translations[lang];
       if (!tr.title || !tr.content) {
@@ -709,13 +759,18 @@ router.post('/bulk', authenticateToken, requireRole('System Admin'), async (req,
       }
 
       // Slug unique per language
-      let slug = tr.slug || (type === 'blog' ? generateSlug(tr.title) : null);
+      let slug = tr.slug || null;
       if (type === 'blog') {
-        const existing = await Content.findOne({
-          where: { type: 'blog', slug, language: lang },
-          transaction: t
-        });
-        if (existing) slug = `${slug}-${Date.now()}`;
+        try {
+          slug = await resolveBlogSlug({ title: tr.title, providedSlug: tr.slug, lang, enSiblingSlug: enSlug, transaction: t });
+        } catch (e) {
+          if (e instanceof SlugError) {
+            await t.rollback();
+            return res.status(400).json({ success: false, error: { message: e.message, code: 'SLUG_REQUIRED' } });
+          }
+          throw e;
+        }
+        if (lang === DEFAULT_LANG) enSlug = slug;
       }
 
       const row = await Content.create({
@@ -781,8 +836,19 @@ router.put('/:id', authenticateToken, requireRole('System Admin'), async (req, r
     if (category_id !== undefined) updates.category_id = category_id;
     if (title !== undefined) {
       updates.title = title;
-      if (existingContent.type === 'blog') {
-        updates.slug = generateSlug(title);
+      // 제목이 실제로 바뀔 때만 주소를 다시 정한다 — 편집 화면은 저장마다 제목을 다시 보내므로,
+      // 그대로 두면 본문만 고쳐도 공개된 주소가 바뀌어 검색엔진이 알던 주소가 404 가 된다.
+      if (existingContent.type === 'blog' && title !== existingContent.title) {
+        try {
+          updates.slug = await resolveBlogSlug({
+            title, lang: existingContent.language || DEFAULT_LANG,
+            enSiblingSlug: await findEnSiblingSlug(existingContent.translation_group_id),
+            excludeId: existingContent.id
+          });
+        } catch (e) {
+          if (e instanceof SlugError) return res.status(400).json({ success: false, error: { message: e.message, code: 'SLUG_REQUIRED' } });
+          throw e;
+        }
       }
     }
     if (content !== undefined) updates.content = content;

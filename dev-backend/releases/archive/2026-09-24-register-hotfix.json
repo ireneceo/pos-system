@@ -1,0 +1,40 @@
+{
+ "tag": "register-hotfix",
+ "sw_version": "5.58-seo-canonical-news-20260924",
+ "date": "2026-09-24",
+ "in_progress": [
+  "오너 계정(irene@gitconsulting.group) — 운영 user 11 참조 조사 뒤 (a) 전환 / (b) 신설 결정, Irene 컨펌 후 실행",
+  "매장 가져가기(claim) 구멍 — 별도 절단면, Irene 컨펌 후 착수"
+ ],
+ "completed": [
+  "🔴 **옛 가입 API 폐기(보안)** — `POST /api/auth/register` 가 로그인 없이 요청 본문의 role 을 그대로 저장해 **누구나 System Admin 계정을 만들 수 있었다**(개발 재현: 익명 가입 201 → 로그인 200 → SA 전용 GET /api/users 200). 운영도 라우트가 살아 있었다(빈 요청 400 VALIDATION_ERROR). 운영 SA 는 id 4 하나 → SA 탈취 흔적 없음. 화면은 이 경로를 안 쓴다(가입=/signup). 핸들러를 410 으로 교체, 계정 생성 코드 도달 불가.",
+  "**비밀번호 찾기 메일이 미인증 계정에 조용히 안 가던 것** — forgot-password 가 `allowUnverified` 없이 발송해 `screenRecipients` 가 `email_verified=false` 로 버렸다. 본인 주소로만 가는 메일이라 인증메일과 같은 예외(`allowUnverified: true`) 1줄."
+ ],
+ "issues": [
+  "⚠ health-check 새 보안 검사는 «행 없음» 을 **로컬 DB** 로 본다 — `--host` 로 운영을 겨냥하면 운영 판정은 `status>=400` 쪽만 유효(410 이면 생성 코드 자체가 없어 충분, Fable).",
+  "⚠ 비밀번호 찾기 수정은 개발에서 끝단 증명 불가 — 개발은 거르기 **앞**에서 모든 플랫폼 메일을 차단(`[dev-email-blocked]`)해 수정 전후 로그가 같다. 증명은 거르기 함수 단독 실측(우회 옵션 있으면 미인증도 ok:true, 없으면 dropped email_verified=false) + 호출부 코드. 운영 끝단은 배포 뒤 실제 미인증 계정으로만 가능.",
+  "🔴 **별도 보안 구멍(이번 배포 아님)** — 누구나 /signup 으로 Owner 가입 → available-restaurants 로 소유자 없는 매장 검색 → claim 으로 승인 없이 소유(개발 재현 200, 데모 매장). Fable 설계: 내 행이 있는 매장만 ownership 승격, 없으면 403. Irene 컨펌 후 별도 착수."
+ ],
+ "upcoming": [
+  "매장 가져가기(claim) 구멍 수정",
+  "with MIN Cafe 오너 계정 연결(A)",
+  "2026-10-15 전후 Search Console 재판독"
+ ],
+ "behavior_changes": [
+  "옛 가입 주소는 이제 «폐기됨» 응답만 하고 계정을 만들지 않습니다. 화면의 가입은 그대로입니다.",
+  "새로 만든 계정이 이메일 인증 전에 «비밀번호 찾기» 를 해도 재설정 메일이 옵니다."
+ ],
+ "check_areas": [
+  "가입 화면(/signup) 정상 가입 1건",
+  "로그인·비밀번호 찾기 화면 정상"
+ ],
+ "verification": {
+  "gates": "health-check security 62/62(신규 1건) · check-print-guard 8/8 무변경 · verify-all(프론트 무변경, 빌드 없음) — 이 기록으로 deploy-ready 해소 후 재실행",
+  "fault_injection": "routes/auth.js 를 옛 코드 사본으로 되돌려 pm2 restart → 새 보안 검사 ✗ → 사본 cp 원복·cmp 동일·restart → ✓. 시험계정 잔여 0.",
+  "real_calls": "수정 전: 익명 register role=System Admin 201·DB role SA·로그인 200·GET /api/users 200(개발, 삭제). 수정 후: 410·DB 행 없음. 운영: 빈 본문 POST 400(라우트 생존 확인, 계정 생성 없음)·SA 1명. 비번 찾기: 미인증 시험계정 forgot-password 200(개발은 SMTP 앞 차단), 거르기 단독 실측 A 옵션없음 dropped / A2 allowUnverified ok / A3 인증후 ok. 오너 claim 가로채기 개발 재현 200(정리).",
+  "health_check": "security 62/62",
+  "build": "프론트 무변경 — 빌드 없음(SW 5.58 유지)",
+  "sw_version": "5.58-seo-canonical-news-20260924",
+  "fable_note": "Fable 판정 1회(2026-09-24): ① /register 410 게이트 통과(범위 밖 변경 0·반증 인정·실호출 인정, 마커 102d50b58233 — 이 기록 작성으로 무효화 → 재도장 요청) ② 오너 생성·인증 흐름은 구조 정상, 결함 1 = forgot-password allowUnverified 1줄(같은 배포, 길 하나) ③ claim 가로채기는 별도 절단면(내 행 있는 매장만 승격, 없으면 403) ④ irene@gitconsulting.group 충돌: user 11 참조 없으면 오너로 전환(a), 있으면 이메일 비우고 신설(b)."
+ }
+}

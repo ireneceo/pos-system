@@ -685,7 +685,9 @@ const BlogPostPage: React.FC = () => {
     return authorName;
   };
 
-  const postUrl = `https://purplehere.com/blog/${post.slug}`;
+  // canonical 은 글의 종류로 — 뉴스 글은 /news/ (sitemap·서버 HTML routes/seo-html.js 와 같은 규칙, 2026-09-24 SEO C1)
+  const postSection = post.category && ['product-news', 'updates'].includes(post.category.slug) ? 'news' : 'blog';
+  const postUrl = `https://purplehere.com/${postSection}/${post.slug}`;
   const articleSchema = generateArticleSchema({
     title: post.seo_title || post.title,
     description: post.seo_description || post.excerpt || post.ai_summary || '',
@@ -697,7 +699,7 @@ const BlogPostPage: React.FC = () => {
 
   const breadcrumbSchema = generateBreadcrumbSchema([
     { name: 'Home', url: 'https://purplehere.com' },
-    { name: 'Blog', url: 'https://purplehere.com/blog' },
+    { name: postSection === 'news' ? 'News' : 'Blog', url: `https://purplehere.com/${postSection}` },
     { name: post.title, url: postUrl }
   ]);
 
@@ -715,7 +717,7 @@ const BlogPostPage: React.FC = () => {
         jsonLd={[articleSchema, breadcrumbSchema]}
         language={post.language as 'en' | 'ms' | 'zh' | 'ko' | undefined}
         alternateUrls={translations.length > 1 ? Object.fromEntries(
-          translations.map(tr => [tr.language, `https://purplehere.com/blog/${tr.slug}`])
+          translations.map(tr => [tr.language, `https://purplehere.com/${postSection}/${tr.slug}`])
         ) : undefined}
       />
       <PageContainer>

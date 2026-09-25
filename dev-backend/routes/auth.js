@@ -83,15 +83,12 @@ router.post('/demo-login', demoLoginLimiter, async (req, res, next) => {
   }
 });
 
-// 회원가입 (validateRegister 미들웨어로 입력 검증 + 강력한 비밀번호 정책)
-router.post('/register', validateRegister, async (req, res, next) => {
-  try {
-    const userData = req.body;
-    const result = await authService.register(userData);
-    successResponse(res, result, 'Registration successful', 201);
-  } catch (error) {
-    next(error);
-  }
+// ⛔ 옛 회원가입 — 막음 (2026-09-24 보안). 로그인 없이 요청 본문의 role 을 그대로 저장해
+//   누구나 System Admin 계정을 만들 수 있었다(개발 재현: 익명 가입 201 → 로그인 → SA 전용 API 200).
+//   화면은 이 경로를 쓰지 않는다 — 가입은 /signup(역할 화이트리스트·이메일 인증·MX 검사).
+//   계정을 만들지 않고 410 만 돌려준다. 되살리지 말 것.
+router.post('/register', (req, res) => {
+  res.status(410).json({ success: false, message: 'This endpoint has been removed. Use /api/auth/signup.' });
 });
 
 // Self-signup (public endpoint)
@@ -409,7 +406,10 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res, next) =>
       to: user.email,
       subject: emailData.subject,
       html: emailData.html,
-      text: emailData.text
+      text: emailData.text,
+      // 본인 주소로만 가는 메일(인증메일과 같은 부류) — 미인증 새 계정도 비번을 되찾을 수 있어야 한다.
+      // 없으면 email_verified=false 라서 조용히 버려졌다(2026-09-24 재현).
+      allowUnverified: true
     }).catch(err => {
       console.error('[ForgotPassword] Email send failed:', err.message);
     });

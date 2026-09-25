@@ -1,0 +1,37 @@
+{
+ "tag": "invoice-payment-gone",
+ "sw_version": "5.58-seo-canonical-news-20260924",
+ "date": "2026-09-24",
+ "in_progress": [
+  "⑥ 브랜드 공급업체 «매장에 공유» 2단계 — 개발 구현 중(복사본·상속 종료, Irene 「서로 연동하지 않아」로 브랜드 재료 출처 매핑은 구현 안 함)",
+  "프론트 invoiceService.recordPayment(죽은 호출자) 삭제 — ⑥ 프론트 빌드에 동승(보류)"
+ ],
+ "completed": [
+  "🔴 **옛 결제 기록 API 폐기(보안·돈)** — `POST /api/invoices/:id/payment` 가 로그인만 하면 아무 청구서나 결제완료로 찍었다(역할·소유 검사 없음 · 상태 게이트 없음 · 결제수단 검증 없음 · 금고 기록 없이 발주까지 paid · 구독 청구서면 정지 해제·추천 수수료). 개발 재현: 매장 없는 Staff 가 남의 overdue 청구서 → paid(원복). 운영 전 기간 사용 0 · 화면 호출 0. 권한 검사만 붙이는 안은 기각(권한 있는 사람에게 여전히 뒷문) → 410.",
+  "health-check 「원장 거울」 계약을 정식 결제 경로(구매자 submit-payment → System Admin confirm-payment → handleInvoicePaid 거울)로 이전 — 아무도 안 쓰는 경로가 아니라 운영에서 실제로 도는 길을 검증한다."
+ ],
+ "issues": [
+  "⚠ 고장주입(옛 핸들러 복원) 중 새 보안 검사가 개발 청구서 8682(brand_plan, 매장 85)를 실제로 paid 로 만들었다 → 같은 날·같은 마감일 이웃 3건이 pending_payment 라 pending_payment 로 원복(결제 칸 전부 null, 이웃과 동일). 추천수수료·연결발주 0. 검사에 «바뀌었으면 원래 값으로 되돌림» 을 넣어 재반증 — 이제 방어가 빠져도 청구서가 남지 않는다.",
+  "⚠ 원장 거울 계약은 발행처(공급업체 20)의 결제수단 설정에 종속 — bank_transfer 가 목록에서 빠지면 400 으로 실패(주석 명시).",
+  "⚠ jest tests/payment-flow.test.js 는 verify-all 밖 — 이번에 410 기대로 고쳐 직접 실행(13/13)."
+ ],
+ "upcoming": [
+  "⑥ 공급업체 공유 2단계 — 구현·검증 후 같은 배포 또는 다음 배포"
+ ],
+ "behavior_changes": [
+  "화면에서 바뀌는 것은 없습니다(이 주소는 화면이 쓰지 않았습니다).",
+  "결제는 정해진 결제 화면(결제 제출·확인, 외부 청구서 결제함 표시, 발주 결제)으로만 기록됩니다."
+ ],
+ "check_areas": [
+  "매장·오너 인보이스 화면에서 결제 제출 → 관리자 확인이 평소처럼 되는지"
+ ],
+ "verification": {
+  "gates": "health-check security 64/64 · pos 52/52 · jest payment-flow 13/13 — verify-all 결과는 이 기록 뒤 재실행",
+  "fault_injection": "① invoiceLifecycle.handleInvoicePaid 의 mirrorPaidToPurchaseOrders 주석 → restart → 옮긴 원장 거울 검사 ✗ → 사본 원복·cmp·restart → ✓ ② invoices-payment.js 옛 핸들러 사본 복원 → restart → 새 보안 검사 ✗(1차 때 청구서 8682 paid 됨 → 원복, 검사에 자기 원복 추가 후 재반증: ✗ 이면서 청구서 pending_payment 유지) → 원복·cmp·restart → ✓",
+  "real_calls": "수정 전: Staff(10) → 청구서 895 overdue→paid 200(원복). 수정 후 restart 뒤: Staff(10)·매장38 RA(23) 둘 다 POST /invoices/7246/payment → 410, 청구서 pending_payment 전후 동일. 호출처 재grep: 남은 것 = 410 핸들러 · 새 보안 검사 · jest(410 기대) · 프론트 죽은 recordPayment(빌드 동승 삭제 예정) · 주석 2 · 모바일 화면 경로 문자열.",
+  "health_check": "security 64/64 · pos 52/52",
+  "build": "프론트 무변경 — 빌드 없음",
+  "sw_version": "5.58-seo-canonical-news-20260924",
+  "fable_note": "Fable 판정 1회차(2026-09-24): 410 폐기 + 원장 거울 계약을 정식 결제 경로로 이전(권한 검사 부착 기각 — 권한자에게 여전한 뒷문, 단순화가 답). 절단면 A 410 · B 계약 이전(submit→confirm→5초 폴링) · C 보안 검사 · D 프론트 recordPayment 삭제는 ⑥ 빌드 동승 · E 문서 1줄. 증명 1~7 수행. 게이트 판정 대기."
+ }
+}

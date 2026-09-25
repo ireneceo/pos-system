@@ -140,13 +140,8 @@ export const invoiceService = {
   // Delete invoice
   deleteInvoice: async (id: string): Promise<void> => {
     await axios.delete(`${API_BASE}/invoices/${id}`);
-  },
-
-  // Record payment (legacy)
-  recordPayment: async (id: string, paymentData: any): Promise<Invoice> => {
-    const response = await axios.post(`${API_BASE}/invoices/${id}/payment`, paymentData);
-    return transformInvoice(response.data.invoice);
   }
+  // recordPayment(POST /invoices/:id/payment) 삭제 — 서버 경로가 무권한 뒷문이라 410 폐기(2026-09-24). 호출처 0 이었다.
 };
 
 // Brand Payment Settings APIs

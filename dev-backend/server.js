@@ -154,6 +154,13 @@ process.on('uncaughtException', (err) => {
 });
 
 // ============================================
+// 크롤러용 마케팅 HTML (2026-09-24 SEO C1 · routes/seo-html.js)
+// nginx 가 마케팅 주소만 /seo-html<주소> 로 넘긴다. helmet·securityHeaders·API 제한 **앞**이어야 한다 —
+// 백엔드 CSP·X-Frame-Options 가 붙으면 index.html 의 gtag·Google Fonts 가 막히고 정적 서빙과 헤더가 달라진다.
+// ============================================
+app.use('/seo-html', require('./routes/seo-html'));
+
+// ============================================
 // 보안 미들웨어 설정
 // ============================================
 const helmet = require('helmet');

@@ -404,6 +404,10 @@ const SupplierProfilePage: React.FC = () => {
     if (user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') {
       return { type: 'foodcourt', name: '' };
     }
+    // 소속 매장 없는 오너 = 오너 자기 이름으로 업체를 등록·관리(소유 매장들이 같이 씀, 2026-09-24 §H-3)
+    if (user.role === 'Restaurant Owner' && !user.restaurantId) {
+      return { type: 'owner', name: '' };
+    }
     if (user.role === 'Restaurant Admin' || user.role === 'Restaurant Owner' || user.role === 'Staff') {
       return { type: 'restaurant', name: '' };
     }
@@ -415,6 +419,7 @@ const SupplierProfilePage: React.FC = () => {
     if (!user) return null;
     if (user.role === 'Brand General' || user.role === 'Brand Manager') return (user as any).brand_id ?? null;
     if (user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') return (user as any).foodcourt_id ?? null;
+    if (user.role === 'Restaurant Owner' && !user.restaurantId) return user.id != null ? Number(user.id) : null;
     return user.restaurantId ? Number(user.restaurantId) : null;
   }, [user]);
 

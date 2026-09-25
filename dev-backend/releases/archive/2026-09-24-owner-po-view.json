@@ -1,0 +1,43 @@
+{
+ "tag": "owner-po-view",
+ "sw_version": "5.59-owner-po-view-20260924",
+ "date": "2026-09-24",
+ "in_progress": [
+  "⑥ 브랜드 공급업체 «매장에 공유» 2단계(복사본·상속 종료) — 다음 착수. Fable 추가 지시: findEffectiveContract 의 «부모 계약 조회» 자리(함수 구조) 보존",
+  "오너 공급업체 상속·오너 전체 발주표 — ⑥ 배포 뒤 별건(Fable 판정, Irene 컨펌)"
+ ],
+ "completed": [
+  "**오너 발주 «보기»** (Fable 판정 «오너=슈퍼바이저» §2-A · Irene 「배포하고 검증하고 다 해」) — 🔴 오너 메뉴에 «Purchase Order · Order History» 가 보이는데 들어가면 403 이던 구멍. 여러 매장을 가진 오너는 소속 매장이 하나로 안 정해져 발주 화면 전체가 거부됐다.",
+  "서버 `middleware/buyerScope.js`: 오너가 `?entity_type=restaurant&entity_id=N` 을 주면 **ownership 연결을 서버가 확인**하고 **GET /api/purchase-orders*** 만 그 매장으로 연다. 쓰기(작성·수정·수령·결제)와 다른 구매자 라우트(공급업체 등)는 403 — 오너는 보고 승인만(발주 주인은 항상 매장).",
+  "화면: 발주 목록 상단 **매장 선택기**(소유 매장) · 목록/상세/인쇄가 같은 범위로 조회(`utils/ownerPoScope.ts`) · 오너에게 쓰기 버튼 숨김(전량/부분 입고·인보이스 올리기·원가 대조·결제·되돌리기·영수증 첨부·개인금액 정산·+ 추가 주문·제출·취소·반품) · 영수증·인보이스 **보기**는 유지 · 오너가 «Purchase Order»(작성 화면)로 오면 목록으로 이동 · `/new`·`/staging`·원가 대조는 오너 라우트에서 제거. 사이드바(🔒 MainLayout)는 무접촉.",
+  "옛 결제 기록 API 의 죽은 화면 호출자 `invoiceService.recordPayment` 삭제(서버 410 은 이미 배포)."
+ ],
+ "issues": [
+  "⚠ 오너 사이드바에 «Purchase Order» 와 «Order History» 가 둘 다 남아 같은 목록으로 간다 — 사이드바가 🔒 인쇄 보호파일(MainLayout.tsx)이라 인쇄 무관 작업으로 열지 않았다. 메뉴 한 줄 정리는 인쇄 보호 절차(승인·bless)로 별도.",
+  "⚠ 발주 승인 큐·배지는 지금처럼 소유 매장 전체 집계. 매장 선택 없이 전체를 한 표로 보는 목록은 Fable 판정상 다음 단계(오너 상속과 같은 사안).",
+  "⚠ 검증 중 내 브라우저 검사가 두 번 거짓 통과했다: ①시험 오너에 구독이 없어 화면이 «No Active Subscription» 으로 막힌 채 «쓰기 버튼 없음» 이 저절로 통과 ②파이프 출력이 process.exit 에 잘려 «전부 통과» 만 찍힘. 결과를 파일로 쓰고, 시험 오너에 구독을 주고, 같은 화면을 매장 관리자로 열어 쓰기 버튼이 **보이는지** 반례를 함께 재도록 고쳐 다시 쟀다."
+ ],
+ "upcoming": [
+  "⑥ 브랜드 공급업체 공유 2단계",
+  "오너 공급업체 상속 + 전체 발주표(⑥ 뒤)",
+  "2026-10-15 전후 Search Console 재판독"
+ ],
+ "behavior_changes": [
+  "오너 계정의 «Order History» 에서 소유 매장을 골라 그 매장의 발주를 볼 수 있습니다(목록·상세·인쇄·PDF·인보이스·영수증 보기).",
+  "오너 화면에는 발주를 만들거나 받거나 결제하는 버튼이 없습니다 — 오너의 주문 행위는 «PO Approvals» 의 승인입니다.",
+  "오너 메뉴의 «Purchase Order» 를 누르면 발주 목록으로 갑니다."
+ ],
+ "check_areas": [
+  "오너 계정(withmin_owner)으로 Order History → with MIN Cafe 발주가 보이는지",
+  "매장 관리자 계정의 발주 화면이 전과 같은지(버튼·흐름)"
+ ],
+ "verification": {
+  "gates": "health-check security 65/65(신규 오너 발주 보기 1) · verify-all --full 은 이 기록 뒤 실행",
+  "fault_injection": "buyerScope 의 소유 확인(ownership findOne → 403) 제거 → restart → 새 보안 검사 ✗(남의 매장 조회 통과) → 사본 cp 원복·cmp 동일·restart → ✓",
+  "real_calls": "개발 API(임시 오너, 데모 매장 38 소유): 소유 매장 목록 200·20건 전부 38 · 상세 200 · 남의 매장 403 · 전환 없이 403 · POST 작성·mark-received·PUT 403 · external-suppliers 전환 403 · 승인 큐 200 · RA 가 전환 값 붙여도 무시(자기 매장 20건). 실브라우저(dev, 구독 활성 임시 오너 vs 같은 매장 RA): 작성 화면 → /history 이동 · 매장 선택기 «Seoul Garden BBQ» · 발주 39행(두 계정 동일) · RA 목록 쓰기 [Receive all, Partial, Compare cost, Receive & pay, Pay]·상세 쓰기 [+ Order More, Receive + pay, Record payment, Cancel, Receive] ↔ 오너 둘 다 0 · /new 직접 진입 → 오너 대시보드 · 오너 console.error 0. 임시 계정 전부 정리.",
+  "health_check": "security 65/65",
+  "build": "npm run build:dev 1회 성공(Compiled with warnings — 변경 파일 경고 여부는 기록 뒤 확인)",
+  "sw_version": "5.59-owner-po-view-20260924",
+  "fable_note": "Fable 판정 1회(2026-09-24 «오너=슈퍼바이저» §2-A 권고 «즉시»): Owner 매장 컨텍스트 전환 — ownership 서버 확인·GET /purchase-orders* 만·쓰기 403 · 오너 두 페이지 매장 선택기·작성 버튼 숨김 · /new·/staging Owner 라우트 제거. 구현은 그대로 + /pos/purchase-orders 는 사이드바(🔒) 대신 라우트에서 목록으로 이동, 원가 대조(쓰기)도 Owner 라우트 제거. 게이트 판정 대기."
+ }
+}

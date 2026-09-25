@@ -397,6 +397,14 @@ const LegacyRestaurantRedirect: React.FC = () => {
   return <Navigate to={`/restaurant/${user.restaurantId}/${pathAfterRestaurant}`} replace />;
 };
 
+// 오너가 발주 작성 화면(/pos/purchase-orders)으로 오면 발주 목록으로 — 오너는 보고 승인만 한다
+// (2026-09-24 Fable «오너=슈퍼바이저» §2-A). 사이드바는 인쇄 보호파일이라 메뉴 대신 여기서 돌린다.
+const OwnerToPoHistory: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  if (user?.role === 'Restaurant Owner') return <Navigate to="/pos/purchase-orders/history" replace />;
+  return <>{children}</>;
+};
+
 function App() {
   // Load site settings and update SEO on mount
   React.useEffect(() => {
@@ -1508,10 +1516,14 @@ function App() {
                       } />
 
                       {/* Sprint 3 — Purchase Orders */}
+                      {/* 오너는 발주를 만들지 않는다 — 보고 승인만(2026-09-24 Fable «오너=슈퍼바이저»).
+                          오너 메뉴의 «Purchase Order» 는 사이드바(인쇄 보호파일 MainLayout)를 건드리지 않고 여기서 목록으로 보낸다. */}
                       <Route path="/pos/purchase-orders" element={
-                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
-                          <NewPurchaseOrderPage />
-                        </ProtectedRoute>
+                        <OwnerToPoHistory>
+                          <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                            <NewPurchaseOrderPage />
+                          </ProtectedRoute>
+                        </OwnerToPoHistory>
                       } />
                       <Route path="/pos/purchase-orders/history" element={
                         <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
@@ -1519,12 +1531,12 @@ function App() {
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/purchase-orders/staging" element={
-                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                           <PurchaseOrderStagingPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/purchase-orders/new" element={
-                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                           <NewPurchaseOrderPage />
                         </ProtectedRoute>
                       } />
@@ -1539,7 +1551,7 @@ function App() {
                       {/* 발주↔인보이스 원가 대조 (2026-09-08). 구매자 전용 —
                           공급업체는 자기 인보이스를 우리 원가에 반영시킬 수 없다. */}
                       <Route path="/pos/purchase-orders/:id/reconcile" element={
-                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                           <InvoiceReconcilePage />
                         </ProtectedRoute>
                       } />

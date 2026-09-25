@@ -1,0 +1,52 @@
+{
+ "tag": "brand-supplier-copy",
+ "sw_version": "5.60-brand-supplier-copy-20260924",
+ "date": "2026-09-24",
+ "in_progress": [
+  "오너 공급업체 상속 + 오너 전체 발주표 — 별건(Fable «오너=슈퍼바이저» 판정, ⑥ 배포 뒤). findParentContract 자리에 owner 부모"
+ ],
+ "completed": [
+  "**⑥ 브랜드 공급업체 «매장에 공유» = 복사본 · 브랜드→매장 상속 종료** (Irene 「공급업체는 브랜드제너럴에서 브랜드에 공유해주고 싶으면 해주고 대신 수정 등록 모두 독립적으로 각각 운영」 · 「공급업체를 관리하는 건 브랜드라고 해도 서로 연동하지 않아」 · Fable 판정 3회).",
+  "공유 = 매장 소유 사본(업체+상품 전체+분류+매장 계약). 이후 서로 영향 없음, 재공유는 «이미 공유됨». 출처 칸은 추적용. 살아 있는 사본은 (매장, 원본)당 하나 — DB UNIQUE(생성 칸 copy_live_key). 옵션 있는 업체는 복사 거부(OPTIONS_NOT_COPIED).",
+  "API: GET /api/external-suppliers/:id/shares · POST /api/external-suppliers/:id/share (브랜드만, 매장 소속은 서버 확인). 화면: 브랜드 업체 카드 «Share to stores» → 매장 고르기(이미 사본 있음·같은 이름 경고) · 매장 사본 카드에 «브랜드에서 받음 · 날짜».",
+  "상속 종료: findEffectiveContract 의 브랜드 상속 분기 제거(부모 조회 자리 findParentContract 는 보존 — 다음 오너 사안), 매장 목록·권한·켜기/끄기는 자기 업체만. 옛 레거시 브랜드 행 중 외부 업체로 이어진 것은 매장 목록에서 숨김(중복).",
+  "이전 마이그 migrate-share-brand-suppliers-to-stores(deploy, --dry-run): 공유 중인 브랜드 업체를 «쓴 매장»에만 사본(꺼 둔 이력 있으면 꺼진 사본) + 같은 트랜잭션에서 매장 연결·매장 발주·매장 지불 청구서 발행자·매장 원가이력 이전. 브랜드 쪽 무접촉. 운영 예상: 사본 23(꺼진 채 2) · 안 만듦 6 · 매장 청구서 20건 발행자 이전.",
+  "영구 안전망: 인스펙션 S-SUP-004(발주↔청구서 발행자 일치, 복사 함수 사후 확인과 같은 조건) · health-check security «브랜드 공급업체 공유»."
+ ],
+ "issues": [
+  "⚠ 매장이 브랜드 소유 재료를 브랜드 계약으로 발주하던 길은 닫혔다(Irene «연동하지 않음», 운영 실사용 0) — 매장은 자기 업체 사본에서 연결해야 한다. writableIngredient 제약은 이 사안에서 안 풀었다.",
+  "⚠ Fable 2회차 전제 정정: 거래 청구서가 업체 id(issuer_id)를 직접 든다 → 청구서도 사본으로 옮기도록 3회차 확정.",
+  "⚠ shared_with_stores 는 더 이상 읽지 않는 칸(이전 완료 표시) — 다음 정리에서 드롭. copy_live_key 는 모델 밖 생성 칸이라 sync-database --alter 금지(주석 명시).",
+  "⚠ 브랜드 계정의 공급업체 화면은 **기본 브랜드**의 업체만 보인다(기존 동작) — 여러 브랜드를 가진 계정은 두 번째 브랜드 업체를 이 화면에서 공유할 수 없다. 운영 gitconsulting 은 기본 브랜드 = 매장 브랜드라 무관.",
+  "⚠ «Failed to load site settings: Failed to fetch» — 운영(⑥ 이전 코드)에서도 /pos/suppliers 3회 중 2회 재현: 이동 중 /api/site-settings 가 ERR_ABORTED 뒤 200 재요청(App.tsx:483 · SiteSettingsContext.tsx:72 이중 호출). ⑥ 무관 기존 현상 — 별도 소사안.",
+  "⚠ New Seoul Mart(사본 #76) — 매장 재료 3개(807·1076·1077)가 9월 12일 지운 옛 멸치액젓 상품을 가리킨 채 옮겨졌다(지금과 같은 모양). 매장 화면에서 새 상품 377(800g 19.00)·376(2.5kg, 단가 0 확인 필요)으로 다시 연결 권고 — 강제 아님.",
+  "⚠ 별도 사안(Fable 권고: 다음 마이그 동반 배포 전): 배포 스크립트는 코드 rsync 뒤 마이그를 돌려, 마이그 실패 시 pm2 재시작 없이 멈춘다 — 디스크는 새 코드·프로세스는 옛 코드, autorestart 가 미검증 코드를 올릴 수 있음. rollback-production.sh 는 배포 전 DB 덤프(/var/backups/orderhere/pre-deploy/db_predeploy_*)를 못 찾는다(이름·경로 불일치). 운영 production-backend/_tmp_uname.js(08-30 잔여)도 정리 대상."
+ ],
+ "upcoming": [
+  "오너 공급업체 상속 + 전체 발주표",
+  "shared_with_stores 칸 드롭(다음 정리)",
+  "2026-10-15 전후 Search Console 재판독",
+  "배포 스크립트 마이그 실패 동작·롤백 DB 경로(별도 사안)",
+  "site-settings 이중 호출(소사안)"
+ ],
+ "behavior_changes": [
+  "브랜드 공급업체 카드에 «Share to stores» 가 생깁니다 — 고른 매장마다 그 업체의 사본이 생기고, 이후 브랜드와 매장은 서로 따로 수정합니다.",
+  "지금 브랜드에서 매장으로 공유되던 업체는 매장이 실제로 쓴 것만 매장 사본으로 옮겨집니다(발주 기록·청구서·재료 연결 포함). 한 번도 안 쓴 업체는 매장 목록에서 사라지고, 브랜드가 «Share to stores» 로 다시 줄 수 있습니다.",
+  "매장은 받은 사본을 직접 수정·삭제·켜고 끌 수 있습니다. 브랜드가 바꿔도 매장 사본에는 반영되지 않습니다."
+ ],
+ "check_areas": [
+  "with MIN Cafe 공급업체 목록 — 23곳이 매장 업체로 보이는지, 발주 기록·청구서가 그대로인지",
+  "GIT Consulting(브랜드) 공급업체 화면 — «Share to stores» 로 매장을 고를 수 있는지"
+ ],
+ "verification": {
+  "gates": "health-check security 66/66 · 인스펙션 S-SUP-004 ✅ · verify-all --full 은 이 기록 뒤",
+  "fault_injection": "5종(사본 전부 cp 원복·cmp 동일·pm2 restart): ①UNIQUE 인덱스 삭제 → 살아 있는 사본 2 ✗ ②공유 라우트 매장 소속 확인 제거 → 다른 브랜드 매장 200 ✗(health-check 신규 검사도 ✗) ③매장 발주 이전 제거 → 복사 함수 사후 확인이 ISSUER_MISMATCH 로 막아 apply 실패 ④청구서 이전만 제거 → 같은 사후 확인이 막음 ⑤청구서 이전+사후 확인 제거 → 인스펙션 S-SUP-004 ❌ · apply 종료 1. (Fable 1회차 «브랜드 재료 원본 폴백» 반증은 기능 미구현이라 해당 없음)",
+  "real_calls": "개발 데모 매장 38(브랜드 17, 매장 1 = 운영 모양) 픽스처 37건 전부 통과: 상속 종료 3 · dry-run 예정 2(S1 쓴 업체·S2 꺼 둔 업체)·아무것도 안 만듦 · apply: S1 사본(code null, 상품 2 비활성 포함·분류 매핑, 계약 active) · S2 꺼진 사본 · S3(꺼둠·이력 없음)·S4(안 씀) 사본 없음 · 매장 재료/상품 연결 → 사본(행 id 유지) · 브랜드 재고아이템 연결·고아 무접촉 · 매장 발주 3건 → 사본 · 매장 청구서 2건 발행자 → 사본, 결제 기록 불변, 링크 불변 · 원가이력 매장 행만 · shared 0 · S-SUP-004 0(SQL+인스펙션 실행) · 이름 충돌·고아 목록 표시 · 2회차 0건 · 매장 목록에 사본(«브랜드에서 받음») · 사본으로 발주 자격 · 매장이 사본 수정 → 원본 불변 · 브랜드가 원본 수정 → 사본 불변 · 공유 API created/already_shared/forbidden/OPTIONS_NOT_COPIED · 매장 계정 공유 403 · DB UNIQUE 거부. 정리 잔여 0. 실브라우저(dev, BG 6 · 브랜드 1 · 매장 24): 카드 버튼 · 공유 창(매장·«own copy» 안내) · 사본 생성 · 창 닫힘 · 재오픈 «Already has a copy» · 매장 화면 사본 카드·«Received from your brand»·Edit·한 번만 표시. · 추가 픽스처 deleted-copy 11/11(지워진 상품 지워진 채 복사·안 가리키는 지워진 상품 미복사·ISP 매핑·발주 줄 무접촉·매장 목록 미표시·하드 삭제 연결은 UNMAPPED) · 반증: 지워진 상품 복사 분기 제거 → apply UNMAPPED_LINKS 7 FAIL(cp 원복·cmp·pm2 restart).",
+  "health_check": "266/266 (개발) · 운영 스모크 10/10",
+  "build": "npm run build:dev 1회(1차는 같은 서버 PlanQ tsc 4.6GB 로 메모리 게이트가 막음 → 종료 대기 후 실행) · 변경 파일 경고 0",
+  "sw_version": "5.60-brand-supplier-copy-20260924",
+  "fable_note": "Fable ⑥ 판정 1~3회차(설계·운영 수치·청구서 issuer 이전) + 게이트 판정 1(조건부 보류: (a)매핑 판정 공유 (b)칸 없는 dry-run ①운영 dry-run ②묶음 격리 ③콘솔 오류 귀속 ④배포 마이그 실패 동작) + 판정 2(운영 dry-run 이 New Seoul Mart 의 지워진 상품 참조 4건을 잡음 → «매장 연결이 가리키는 지워진 상품은 지워진 채 복사», 운영 수기 쓰기 기각, 배포 직전 dry-run 재확인 의무) + 최종 PASS·마커(지문 35999f51). 판정 밖 방어 한 줄(복사 목록에 없는 상품을 가리키면 null 대신 UNMAPPED_LINKS) 승인.",
+  "prod_dry_run": "배포 전 운영 읽기 전용 dry-run 3회: 1차 실패 1(New Seoul Mart 지워진 상품 참조 4) → 규칙 반영 후 2차·배포 직전 3차 모두 사본 예정 23(꺼진 채 2)·안 만듦 6·실패 0·청구서 20·매핑 실패 0·지워진 상품 참조 4건/2개·고아 1(IKEA)·S-SUP-004 0·exit 0",
+  "prod_verification": "배포 2026-09-24 21:38Z(백업 20260924_213814, deploy exit 0). 마이그 실제: 사본 23·실패 0·상품 304+지워진 채 2·연결 301·발주 31·청구서 20·원가이력 20. 운영 읽기 확인: 매장 10 사본 23(code·slug null 23) · JASMINE·UGS 사본 계약 terminated · 브랜드 1 원본 30행 shared 0 · 매장 10 연결 301 전부 사본 상품 가리킴(상품 불일치 0, 브랜드 쪽 남은 매장 연결 0) · 브랜드 쪽 연결 296 = 배포 전 296 무접촉 · ISP 853·854·1138·1139 → 사본 #76 의 지워진 상품 724·725(deleted_at 보존) · 매장 발주 31 헤더 사본(브랜드 0) · 청구서 20 RM 4,745.47 발행자 사본(브랜드 0) · 원가이력 20 · S-SUP-004 0 · 매장 10 업체 이름 중복 0 · 운영 sw.js 5.60. 운영 화면(보기만): 매장 10 사본 23곳 각 1번씩·«Received from your brand» 23·오류 0 / 브랜드 화면 AIM coffee 공유 창에 with MIN Cafe «Already has a copy»·오류 0."
+ }
+}

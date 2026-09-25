@@ -31,6 +31,13 @@ module.exports = {
     add('S-SUP-003 고아 공급업체 상품 없음',
       Number(orphanSupProd) === 0, Number(orphanSupProd) ? `${orphanSupProd}건` : '');
 
+    // S-SUP-004: 발주 ↔ 거래 청구서 발행자 일치 (2026-09-24 Fable ⑥ 3회차 — 매장 공유 복사본 이전이 청구서를 빠뜨리면 여기서 걸린다)
+    //   조건은 utils/supplierShare.ISSUER_MISMATCH_SQL 하나 — 복사 함수의 사후 확인과 같은 술어.
+    const { ISSUER_MISMATCH_SQL } = require('../../../utils/supplierShare');
+    const issuerMismatch = (await q(`SELECT COUNT(*) c ${ISSUER_MISMATCH_SQL}`))[0].c;
+    add('S-SUP-004 발주와 거래 청구서의 발행자가 같다',
+      Number(issuerMismatch) === 0, Number(issuerMismatch) ? `${issuerMismatch}건 — 발주는 한 업체, 청구서는 다른 업체를 가리킴` : '');
+
     return checks;
   },
 };

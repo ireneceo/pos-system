@@ -24,8 +24,10 @@ import ConfirmModal from '../../components/ConfirmModal';
 import SupplierFormModal from '../../components/Suppliers/SupplierFormModal';
 import SupplierViewModal from '../../components/Suppliers/SupplierViewModal';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormRow as UIFormRow } from '../../components/UI/Modal';
+import { useStore } from '../../contexts/StoreContext';
+import { formatDate } from '../../utils/dateFormat';
 
-export type SourceKey = 'own' | 'brand_shared' | 'contract' | 'brand_parent' | 'foodcourt_parent' | 'external';
+export type SourceKey = 'own' | 'brand_shared' | 'owner_shared' | 'contract' | 'brand_parent' | 'foodcourt_parent' | 'external';
 interface Row {
   key: string;
   id: number;
@@ -70,6 +72,7 @@ const SourceTag = styled.div<{ $source: SourceKey }>`
       case 'foodcourt_parent': return '#FCE7F3';
       case 'contract': return '#DCFCE7';
       case 'brand_shared': return '#FEF3C7';
+      case 'owner_shared': return '#E0F2FE';
       case 'own': return '#EEF2FF';
       case 'external': return '#CCFBF1';
     }
@@ -80,6 +83,7 @@ const SourceTag = styled.div<{ $source: SourceKey }>`
       case 'foodcourt_parent': return '#9D174D';
       case 'contract': return '#166534';
       case 'brand_shared': return '#92400E';
+      case 'owner_shared': return '#075985';
       case 'own': return '#3730A3';
       case 'external': return '#0F766E';
     }
@@ -127,6 +131,7 @@ function iconOf(source: SourceKey) {
     case 'foodcourt_parent': return <Store />;
     case 'contract': return <FileText />;
     case 'brand_shared': return <Share2 />;
+    case 'owner_shared': return <Share2 />;
     case 'own': return <User />;
     case 'external': return <Truck />;
   }
@@ -137,6 +142,7 @@ function labelOf(source: SourceKey, t: any): string {
     case 'foodcourt_parent': return t('supplier:source.foodcourtParent', 'FOODCOURT');
     case 'contract': return t('supplier:source.contract', 'CONTRACTED');
     case 'brand_shared': return t('supplier:source.brandShared', 'BRAND SHARED');
+    case 'owner_shared': return t('supplier:source.ownerShared', 'FROM OWNER');
     case 'own': return t('supplier:source.own', 'OWN');
     case 'external': return t('supplier:source.external', 'EXTERNAL');
   }
@@ -145,6 +151,7 @@ function sourceNoteOf(source: SourceKey, t: any): string {
   switch (source) {
     case 'own': return t('supplier:viewNote.own', 'You can edit or delete this supplier from the External tab.');
     case 'brand_shared': return t('supplier:viewNote.brandShared', 'Shared by your Brand. Items are managed at the Brand account.');
+    case 'owner_shared': return t('supplier:viewNote.ownerShared', 'Added by the owner of your restaurants and shared by all of them. Only the owner can edit it or its products — you can order from it or turn it off for this store.');
     case 'contract': return t('supplier:viewNote.contract', 'Linked via active supplier contract. Manage in the Contracts tab.');
     case 'brand_parent': return t('supplier:viewNote.brandParent', 'Your parent Brand HQ — read-only.');
     case 'foodcourt_parent': return t('supplier:viewNote.foodcourtParent', 'Your parent Foodcourt HQ — read-only.');
@@ -157,7 +164,7 @@ interface Props {
   sources?: SourceKey[];
 }
 
-const DEFAULT_SOURCES: SourceKey[] = ['own', 'external', 'brand_shared', 'contract', 'brand_parent', 'foodcourt_parent'];
+const DEFAULT_SOURCES: SourceKey[] = ['own', 'external', 'owner_shared', 'brand_shared', 'contract', 'brand_parent', 'foodcourt_parent'];
 
 export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
   const { t } = useTranslation(['supplier', 'suppliers', 'common']);
@@ -181,6 +188,16 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
   const [bridging, setBridging] = useState<number | null>(null);
   // 이 구매자에게서만 켜기/끄기 확인 대상 (2026-09-11 · docs/SUPPLIER_CONTRACT_SYSTEM.md §G)
   const [toggling, setToggling] = useState<Row | null>(null);
+  // 브랜드 → 매장 «공유» = 복사본 (2026-09-24 ⑥). 공유 뒤에는 브랜드·매장이 서로 영향 없음(연동 아님).
+  const { operationSettings } = useStore();
+  const tz = operationSettings?.timeZone;
+  const [sharing, setSharing] = useState<Row | null>(null);
+  const [shareStores, setShareStores] = useState<Array<{ restaurant_id: number; name: string; shared: boolean; copied_at: string | null; has_same_name: boolean }>>([]);
+  const [shareSel, setShareSel] = useState<Set<number>>(new Set());
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareSaving, setShareSaving] = useState(false);
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
+  const [shareBlocked, setShareBlocked] = useState<string | null>(null);
 
   const role = user?.role;
   const restaurantId = (user as any)?.restaurantId || (user as any)?.restaurant_id;
@@ -220,6 +237,7 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
         });
         (own.data?.brand_suppliers || []).forEach((s: any) => {
           if (!enabled.has('brand_shared')) return;
+          if (s.supplier_company_id) return; // 외부 업체로 이어진 옛 브랜드 행 — 매장은 공유받은 사본을 쓴다(2026-09-24 ⑥, 중복 숨김)
           list.push({ key: `bs-${s.id}`, id: s.id, name: s.name, source: 'brand_shared', contact: s.contact_name, email: s.email, phone: s.phone, raw: s });
         });
       } else if ((role === 'Brand General' || role === 'Brand Manager') && brandId) {
@@ -239,7 +257,8 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
         }
       }
 
-      if (enabled.has('contract')) {
+      // 소속 매장 없는 오너는 계약 라우트를 쓰지 않는다(서버가 403) — 부르지 않는다
+      if (enabled.has('contract') && !(role === 'Restaurant Owner' && !restaurantId)) {
         const contracts = await fetch(`/api/supplier-contracts?status=active`, auth).then(r => r.json()).catch(() => ({}));
         (contracts.data || []).forEach((c: any) => {
           const sc = c.supplierCompany;
@@ -250,11 +269,11 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
 
       // 2026-06-22 (Irene): 내가 등록한 외부공급업체(supplier_companies) — Direct 탭에 노출.
       // id = supplier_company id → 카드 클릭 시 프로필(/pos/suppliers/directory/:id)에서 상품(Catalog) 등록.
-      if (enabled.has('external') || enabled.has('brand_shared')) {
+      if (enabled.has('external') || enabled.has('brand_shared') || enabled.has('owner_shared')) {
         const ext = await fetch(`/api/external-suppliers`, auth).then(r => r.json()).catch(() => ({}));
         (ext.data || []).forEach((s: any) => {
-          // scope='brand' → registered by the parent brand, shown as "Brand"; else our own Direct supplier.
-          const src: SourceKey = s.scope === 'brand' ? 'brand_shared' : 'external';
+          // scope='owner' → 오너가 등록해 소유 매장들이 같이 쓰는 업체(보기·발주·끄기만, 2026-09-24 §H-3). 그 밖은 우리 업체.
+          const src: SourceKey = s.scope === 'owner' ? 'owner_shared' : s.scope === 'brand' ? 'brand_shared' : 'external';
           if (!enabled.has(src)) return;
           list.push({ key: `x-${s.id}`, id: s.id, name: s.name, source: src, email: s.email, phone: s.phone, raw: { ...s, product_count: s.product_count } });
         });
@@ -351,13 +370,61 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
   const isExternalRow = (r: Row) => r.key.startsWith('x-');
   const isOff = (r: Row) => isExternalRow(r) && r.raw?.is_active_for_me === false;
   const isBrandRole = role === 'Brand General' || role === 'Brand Manager';
+  // 소속 매장 없는 오너 — 오너 자기 이름으로 등록한 업체를 소유 매장들이 같이 쓴다(§H-3)
+  const isOwnerRole = role === 'Restaurant Owner' && !restaurantId;
 
   const toggleMessage = (r: Row | null): string => {
     if (!r) return '';
     if (isOff(r)) return t('supplier:active.confirmOn', 'Turn {{name}} back on? It will be available when ordering again.', { name: r.name }) as string;
     if (r.source === 'brand_shared') return t('supplier:active.confirmOffStore', 'Turn off {{name}} for this store only? Other stores of your brand keep it.', { name: r.name }) as string;
-    if (isBrandRole) return t('supplier:active.confirmOffBrand', 'Turn off {{name}}? It will disappear from ordering at all of your brand stores.', { name: r.name }) as string;
+    if (r.source === 'owner_shared') return t('supplier:active.confirmOffOwnerStore', 'Turn off {{name}} for this store only? Your other restaurants keep it.', { name: r.name }) as string;
+    if (isOwnerRole) return t('supplier:active.confirmOffOwner', 'Turn off {{name}} for all your restaurants? They will not see it when ordering until you turn it back on.', { name: r.name }) as string;
     return t('supplier:active.confirmOffOwn', 'Turn off {{name}}? It will not be available when ordering until you turn it back on.', { name: r.name }) as string;
+  };
+
+  // keepMsg — 공유 실패 뒤 매장 목록만 다시 읽을 때 방금 띄운 실패 사유를 지우지 않는다
+  const openShare = async (r: Row, keepMsg = false) => {
+    setSharing(r); setShareSel(new Set()); if (!keepMsg) setShareMsg(null); setShareBlocked(null); setShareLoading(true);
+    try {
+      const res = await fetch(`/api/external-suppliers/${r.id}/shares`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      const j = await res.json().catch(() => null);
+      setShareStores(res.ok && j?.success && Array.isArray(j.data) ? j.data : []);
+      setShareBlocked(j?.meta?.blocked_reason || null);
+      if (!res.ok || !j?.success) setShareMsg(t('supplier:share.loadFailed', 'Could not load your stores.') as string);
+    } catch {
+      setShareStores([]); setShareMsg(t('supplier:share.loadFailed', 'Could not load your stores.') as string);
+    } finally { setShareLoading(false); }
+  };
+
+  const submitShare = async () => {
+    if (!sharing || shareSel.size === 0) return;
+    setShareSaving(true); setShareMsg(null);
+    try {
+      const res = await fetch(`/api/external-suppliers/${sharing.id}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ restaurant_ids: Array.from(shareSel) }),
+      });
+      const j = await res.json().catch(() => null);
+      const results: any[] = Array.isArray(j?.data) ? j.data : [];
+      const created = results.filter(x => x.status === 'created').length;
+      const failed = results.filter(x => x.status === 'error' || x.status === 'forbidden');
+      if (failed.length === 0 && created > 0) { setSharing(null); fetchAll(); return; }
+      // 서버 사유(영문 코드)를 매장 이름과 함께 사람 말로
+      const storeName = (id: number) => shareStores.find(s => s.restaurant_id === id)?.name || `#${id}`;
+      const reason = (f: any) => {
+        if (f.status === 'forbidden') return t('supplier:share.reason.forbidden', 'not a store of this brand');
+        if (f.code === 'OPTIONS_NOT_COPIED') return t('supplier:share.reason.options', 'this supplier has product options, which cannot be copied');
+        return t('supplier:share.reason.other', 'the copy could not be made — please try again or contact support');
+      };
+      setShareMsg(failed.length
+        ? `${t('supplier:share.partFailed', 'Some stores could not receive a copy:')} ${failed.map(f => `${storeName(Number(f.restaurant_id))} — ${reason(f)}`).join(' · ')}`
+        : (t('supplier:share.nothing', 'Nothing was shared.') as string));
+      if (created > 0) fetchAll();
+      openShare(sharing, true);
+    } catch {
+      setShareMsg(t('supplier:share.failed', 'Could not share this supplier. Please try again.') as string);
+    } finally { setShareSaving(false); }
   };
 
   const handleToggleActive = async (r: Row) => {
@@ -441,9 +508,29 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
               <Name>{r.name}</Name>
               {isOff(r) && (
                 <Meta style={{ color: '#B45309', fontWeight: 600 }}>
-                  {r.source === 'brand_shared'
+                  {r.source === 'brand_shared' || r.source === 'owner_shared'
                     ? t('supplier:active.offForStore', 'Turned off for this store')
                     : t('supplier:active.offLabel', 'Turned off — not shown when ordering')}
+                </Meta>
+              )}
+              {r.source === 'owner_shared' && (
+                <Meta style={{ color: '#4B5563' }}>{t('supplier:card.fromOwner', 'Added by your owner — shared by all their restaurants')}</Meta>
+              )}
+              {isOwnerRole && typeof r.raw?.owner_store_count === 'number' && r.raw.owner_store_count > 0 && (
+                <Meta style={{ color: '#4B5563' }}>
+                  {t('supplier:card.ownerStores', 'Used by {{n}} of your {{total}} restaurants', { n: r.raw.owner_store_using, total: r.raw.owner_store_count })}
+                </Meta>
+              )}
+              {isBrandRole && typeof r.raw?.shared_store_count === 'number' && r.raw?.brand_store_count > 0 && (
+                <Meta style={{ color: '#4B5563' }}>
+                  {r.raw.shared_store_count > 0
+                    ? t('supplier:card.sharedStores', 'Copied to {{n}} of {{total}} stores', { n: r.raw.shared_store_count, total: r.raw.brand_store_count })
+                    : t('supplier:card.notShared', 'Not shared with any store')}
+                </Meta>
+              )}
+              {r.raw?.copied_from_brand_at && (
+                <Meta style={{ color: '#4B5563' }}>
+                  {t('supplier:card.copiedFromBrand', 'Received from your brand on {{date}} — edited here only', { date: formatDate(r.raw.copied_from_brand_at, tz) })}
                 </Meta>
               )}
               {r.contact && <Meta><MetaLabel>{t('supplier:card.contact', 'Contact')}</MetaLabel>{r.contact}</Meta>}
@@ -463,6 +550,11 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
                 {/* 브랜드가 공유한 업체는 매장에서 **읽기 전용**이 맞다 — 매장이 품목을 끼워 넣으면
                     같은 업체를 공유받는 다른 매장 목록까지 바뀐다. 다만 `View` 하나만 있으면
                     "왜 안 되지"가 되므로, 품목은 볼 수 있게 하고 어디서 넣는지 안내한다. */}
+                {r.source === 'owner_shared' && (
+                  <ActionButton variant="primary" onClick={() => navigate(`/pos/suppliers/directory/${r.id}`)}>
+                    {t('supplier:card.viewProducts', 'View Products')}{r.raw?.product_count ? ` (${r.raw.product_count})` : ''}
+                  </ActionButton>
+                )}
                 {r.source === 'brand_shared' && (
                   <ActionButton onClick={() => setViewing(r)}>
                     {t('supplier:card.viewProducts', 'View Products')}{r.raw?.product_count ? ` (${r.raw.product_count})` : ''}
@@ -478,6 +570,9 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
                     </ActionButton>
                     <ActionButton onClick={() => navigate(`/pos/suppliers/directory/${r.id}`)}>{t('common:edit', 'Edit')}</ActionButton>
                     <ActionButton variant="danger" onClick={() => setDeleting(r)}>{t('common:delete', 'Delete')}</ActionButton>
+                    {isBrandRole && (
+                      <ActionButton onClick={() => openShare(r)}>{t('supplier:share.button', 'Share to stores')}</ActionButton>
+                    )}
                   </>
                 )}
                 {/* 켜기/끄기는 늘 **자기 줄 전체 폭** — 버튼 2개 카드에 끼우면 «View Products (3)» 가 세 줄로 접혀
@@ -503,7 +598,7 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
       <ConfirmModal
         isOpen={!!deleting}
         title={t('supplier:deleteConfirm.title', 'Delete Supplier?') as string}
-        message={t('supplier:deleteConfirm.desc', 'Are you sure you want to delete {{name}}? This action cannot be undone.', { name: deleting?.name }) as string}
+        message={`${t('supplier:deleteConfirm.desc', 'Are you sure you want to delete {{name}}? This action cannot be undone.', { name: deleting?.name })}${deleting?.raw?.shared_store_count > 0 ? ' ' + t('supplier:deleteConfirm.storesKeep', 'Stores that received a copy keep their own copy.') : ''}${isOwnerRole ? ' ' + t('supplier:deleteConfirm.ownerStores', 'All your restaurants will stop seeing it. Orders already placed are kept.') : ''}`}
         onConfirm={() => deleting && handleDelete(deleting)}
         onCancel={() => setDeleting(null)}
         confirmText={t('common:delete', 'Delete') as string}
@@ -543,6 +638,65 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
         type="info"
         singleButton
       />
+
+      {sharing && (
+        <Modal
+          isOpen={!!sharing}
+          onClose={() => setSharing(null)}
+          title={t('supplier:share.title', 'Share {{name}} with stores', { name: sharing.name }) as string}
+          size="small"
+          footer={<>
+            <ModalButton variant="secondary" onClick={() => setSharing(null)} disabled={shareSaving}>{t('common:cancel', 'Cancel')}</ModalButton>
+            <ModalButton variant="primary" onClick={submitShare} disabled={shareSaving || shareSel.size === 0 || !!shareBlocked}>
+              {shareSaving ? '…' : t('supplier:share.submit', 'Give a copy')}
+            </ModalButton>
+          </>}
+        >
+          <div style={{ fontSize: 13, color: '#4B5563', marginBottom: 12 }}>
+            {t('supplier:share.hint', 'Each store you pick gets its own copy of this supplier and its products. After that, the copy belongs to the store — changes you make here do not reach the store, and the store\'s changes do not come back.')}
+          </div>
+          {shareBlocked && (
+            <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', color: '#92400E', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 13 }}>
+              {t('supplier:share.blockedOptions', 'This supplier has product options, which cannot be copied to a store. Remove the options first, or let each store add this supplier itself.')}
+            </div>
+          )}
+          {shareMsg && <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#DC2626', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 13 }}>{shareMsg}</div>}
+          {shareLoading ? (
+            <div style={{ fontSize: 13, color: '#4B5563' }}>{t('supplier:share.loading', 'Loading stores…')}</div>
+          ) : shareStores.length === 0 ? (
+            <div style={{ fontSize: 13, color: '#4B5563' }}>{t('supplier:share.noStores', 'Your brand has no stores yet.')}</div>
+          ) : (
+            <div style={{ display: 'grid', gap: 8 }}>
+              {!shareBlocked && shareStores.filter(st => !st.shared).length > 1 && (() => {
+                const open = shareStores.filter(st => !st.shared).map(st => st.restaurant_id);
+                const all = open.every(id => shareSel.has(id));
+                return (
+                  <button type="button" onClick={() => setShareSel(all ? new Set() : new Set(open))}
+                    style={{ justifySelf: 'start', background: 'none', border: 'none', padding: 0, color: '#635BFF', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    {all ? t('supplier:share.clearAll', 'Clear selection') : t('supplier:share.selectAll', 'Select all stores without a copy ({{n}})', { n: open.length })}
+                  </button>
+                );
+              })()}
+              {shareStores.map(st => (
+                <label key={st.restaurant_id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 14, color: st.shared ? '#6B7280' : '#1F2937', cursor: st.shared ? 'default' : 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    disabled={st.shared || !!shareBlocked}
+                    checked={st.shared || shareSel.has(st.restaurant_id)}
+                    onChange={(e) => setShareSel(prev => { const n = new Set(prev); if (e.target.checked) n.add(st.restaurant_id); else n.delete(st.restaurant_id); return n; })}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span>
+                    {st.name}
+                    {st.shared && <span style={{ display: 'block', fontSize: 12 }}>{t('supplier:share.sharedOn', 'Already has a copy · {{date}}', { date: formatDate(st.copied_at, tz) })}</span>}
+                    {!st.shared && st.has_same_name && <span style={{ display: 'block', fontSize: 12, color: '#B45309' }}>{t('supplier:share.sameName', 'This store already has its own supplier with the same name. A separate copy will be added.')}</span>}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+        </Modal>
+      )}
 
       {extReg && (
         <Modal

@@ -340,6 +340,162 @@ function defineAuthTests({ adminToken, customerToken, member, restId }) {
 function defineSecurityTests({ customerToken, member, restId }) {
   // 익명 차단
   test('security', '익명 customers/:rid → 401', async () => (await request('GET', '/customers/1')).status === 401);
+  // 2026-09-24 ⑥ 브랜드 공급업체 «매장에 공유» = 복사본 · 상속 종료 (utils/supplierShare.js).
+  //   데모 브랜드 17 · 매장 38 에 임시 브랜드 업체를 만들어: 매장이 원본을 못 봄 → 공유 created → 매장 목록에 사본 → 재공유 already_shared
+  //   → 다른 브랜드 매장 forbidden. finally 로 사본까지 지운다(실매장 무접촉).
+  test('security', '브랜드 공급업체 공유 — 상속 없음 · 사본 생성 · 재공유 거부 · 교차 브랜드 거부', async () => {
+    const { sequelize } = require('../config/database');
+    const jwt = require('jsonwebtoken');
+    const tag = 'zzhcshare' + Date.now().toString(36);
+    const [[bg]] = await sequelize.query(`SELECT u.id FROM users u JOIN brands b ON b.owner_id = u.id WHERE b.id = 17 AND u.role = 'Brand General' LIMIT 1`);
+    const [[ra]] = await sequelize.query(`SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 AND is_active = 1 LIMIT 1`);
+    const [[other]] = await sequelize.query(`SELECT id FROM restaurants WHERE brand_id IS NULL OR brand_id <> 17 ORDER BY id LIMIT 1`);
+    if (!bg || !ra || !other) return false;
+    const [sid] = await sequelize.query(`INSERT INTO supplier_companies (name, status, is_system_registered, registered_by_entity_type, registered_by_entity_id, shared_with_stores, currency, created_at, updated_at) VALUES (?, 'active', 0, 'brand', 17, 0, 'MYR', NOW(), NOW())`, { replacements: [`ZZ HC ${tag}`] });
+    await sequelize.query(`INSERT INTO supplier_products (supplier_company_id, name, unit, unit_price, base_quantity, is_active, created_at, updated_at) VALUES (?, 'ZZ Item', 'kg', 1, 1, 1, NOW(), NOW())`, { replacements: [sid] });
+    try {
+      const bgAuth = { Authorization: `Bearer ${jwt.sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const raAuth = { Authorization: `Bearer ${jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const qs = '?entity_type=brand&entity_id=17';
+      const before = await request('GET', '/external-suppliers', null, raAuth);
+      const sawOriginal = (before.body.data || []).some(x => x.id === sid);
+      const first = await request('POST', `/external-suppliers/${sid}/share${qs}`, { restaurant_ids: [38] }, bgAuth);
+      const r1 = first.body && first.body.data && first.body.data[0];
+      const again = await request('POST', `/external-suppliers/${sid}/share${qs}`, { restaurant_ids: [38] }, bgAuth);
+      const cross = await request('POST', `/external-suppliers/${sid}/share${qs}`, { restaurant_ids: [other.id] }, bgAuth);
+      const after = await request('GET', '/external-suppliers', null, raAuth);
+      const copyRow = r1 && (after.body.data || []).find(x => x.id === r1.copy_id);
+      return !sawOriginal && r1 && r1.status === 'created' && !!copyRow && !!copyRow.copied_from_brand_at
+        && again.body.data[0].status === 'already_shared' && cross.status === 403;
+    } finally {
+      const ids = (await sequelize.query(`SELECT id FROM supplier_companies WHERE id = ? OR copied_from_supplier_company_id = ?`, { replacements: [sid, sid] }))[0].map(r => r.id);
+      await sequelize.query(`DELETE FROM supplier_products WHERE supplier_company_id IN (?)`, { replacements: [ids] });
+      await sequelize.query(`DELETE FROM supplier_contracts WHERE supplier_company_id IN (?)`, { replacements: [ids] });
+      await sequelize.query(`DELETE FROM supplier_companies WHERE id IN (?)`, { replacements: [ids] });
+      await sequelize.query(`DELETE FROM activity_logs WHERE entity_type = 'supplier_company' AND entity_name LIKE ?`, { replacements: [`%${tag}%`] });
+    }
+  });
+  // 2026-09-24 Fable «오너=슈퍼바이저» §2-A: 오너는 소유 매장 발주를 «보기만». ownership 확인 · GET 만 · 남의 매장 403.
+  //   데모 매장 38 에 임시 오너를 붙여 재고 finally 로 지운다(실매장 무접촉).
+  test('security', '오너 발주 보기 — 소유 매장 GET 200 · 남의 매장 403 · 쓰기 403', async () => {
+    const { sequelize } = require('../config/database');
+    const jwt = require('jsonwebtoken');
+    const tag = 'zzhcopo' + Date.now().toString(36);
+    const [[other]] = await sequelize.query(`SELECT id FROM restaurants WHERE is_demo = 1 AND id <> 38 ORDER BY id LIMIT 1`);
+    if (!other) return false;
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@outlook.com`] });
+    try {
+      await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (38, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [uid] });
+      const auth = { Authorization: `Bearer ${jwt.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const mine = await request('GET', '/purchase-orders?entity_type=restaurant&entity_id=38', null, auth);
+      const rows = Array.isArray(mine.body && mine.body.data) ? mine.body.data : [];
+      const others = await request('GET', `/purchase-orders?entity_type=restaurant&entity_id=${other.id}`, null, auth);
+      const write = await request('POST', '/purchase-orders?entity_type=restaurant&entity_id=38', { items: [] }, auth);
+      const supplier = await request('GET', '/external-suppliers?entity_type=restaurant&entity_id=38', null, auth);
+      return mine.status === 200 && rows.every(r => Number(r.entity_id) === 38)
+        && others.status === 403 && write.status === 403 && supplier.status === 403;
+    } finally {
+      await sequelize.query(`DELETE FROM restaurant_managers WHERE manager_id = ?`, { replacements: [uid] });
+      await sequelize.query(`DELETE FROM users WHERE id = ?`, { replacements: [uid] });
+    }
+  });
+  // 2026-09-24 Fable «오너=슈퍼바이저» §1-A·§2-B: 오너가 등록한 외부 업체는 **그 오너의 소유 매장만** 같이 쓴다.
+  //   임시 오너(데모 매장 38 소유)가 업체를 등록 → 매장 38 목록에 scope=owner · 소유 아닌 데모 매장은 목록에 없고 상품 403
+  //   · 오너 발주 생성 403 · 오너 발주 전체 표는 소유 매장 것만. finally 로 업체·오너 모두 지운다(실매장 무접촉).
+  test('security', '오너 공급업체 — 소유 매장만 상속 · 남의 매장 403 · 오너 발주 생성 403 · 전체 표는 소유 매장만', async () => {
+    const { sequelize } = require('../config/database');
+    const jwt = require('jsonwebtoken');
+    const tag = 'zzhcosup' + Date.now().toString(36);
+    const [[ra38]] = await sequelize.query(`SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 AND is_active = 1 LIMIT 1`);
+    const [[raOther]] = await sequelize.query(`SELECT u.id, u.restaurant_id FROM users u JOIN restaurants r ON r.id = u.restaurant_id WHERE r.is_demo = 1 AND r.id <> 38 AND u.role = 'Restaurant Admin' AND u.is_active = 1 ORDER BY r.id LIMIT 1`);
+    if (!ra38 || !raOther) return false;
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@outlook.com`] });
+    let sid = null;
+    try {
+      await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (38, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [uid] });
+      const auth = id => ({ Authorization: `Bearer ${jwt.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+      const reg = await request('POST', '/external-suppliers', { name: `ZZ HC Owner ${tag}` }, auth(uid));
+      sid = reg.body && reg.body.data && reg.body.data.supplier && reg.body.data.supplier.id;
+      if (!sid) return false;
+      const mine = await request('GET', '/external-suppliers', null, auth(ra38.id));
+      const inherited = (mine.body.data || []).find(x => x.id === sid);
+      const other = await request('GET', '/external-suppliers', null, auth(raOther.id));
+      const otherSees = (other.body.data || []).some(x => x.id === sid);
+      const otherProducts = await request('GET', `/external-suppliers/${sid}/products`, null, auth(raOther.id));
+      const storeEdit = await request('PUT', `/external-suppliers/${sid}`, { phone: '1' }, auth(ra38.id));
+      const ownerWrite = await request('POST', '/purchase-orders', { seller_type: 'supplier', seller_entity_id: sid, items: [] }, auth(uid));
+      const ownerList = await request('GET', '/purchase-orders?limit=100', null, auth(uid));
+      const rows = Array.isArray(ownerList.body && ownerList.body.data) ? ownerList.body.data : [];
+      return reg.status === 201 && !!inherited && inherited.scope === 'owner' && !otherSees && otherProducts.status === 403
+        && storeEdit.status === 403 && ownerWrite.status === 403
+        && ownerList.status === 200 && rows.every(r => r.entity_type === 'restaurant' && Number(r.entity_id) === 38);
+    } finally {
+      if (sid) {
+        await sequelize.query(`DELETE FROM supplier_contracts WHERE supplier_company_id = ?`, { replacements: [sid] });
+        await sequelize.query(`DELETE FROM supplier_products WHERE supplier_company_id = ?`, { replacements: [sid] });
+        await sequelize.query(`DELETE FROM supplier_companies WHERE id = ?`, { replacements: [sid] });
+      }
+      await sequelize.query(`DELETE FROM restaurant_managers WHERE manager_id = ?`, { replacements: [uid] });
+      await sequelize.query(`DELETE FROM users WHERE id = ?`, { replacements: [uid] });
+    }
+  });
+  // 2026-09-24: 옛 POST /invoices/:id/payment 는 로그인만 하면 아무 청구서나 결제완료로 찍었다 → 410.
+  //   매장 없는 계정 토큰으로 쳐도 410 이고 청구서 상태가 그대로여야 한다.
+  test('security', '폐기 라우트: /invoices/:id/payment 는 로그인해도 410 · 청구서 상태 불변', async () => {
+    const { sequelize } = require('../config/database');
+    const jwt = require('jsonwebtoken');
+    // 방어가 빠지면 이 호출이 진짜 청구서를 paid 로 만든다(고장주입 때 실제로 그랬다) — 바뀌었으면 원래 값으로 되돌린다.
+    // 데모 매장만 — 실매장 청구서를 표적으로 잡지 말 것(방어가 빠지면 실제로 paid 가 된다). 구독 계열·연결 발주 있는 것도 제외
+    //   (정지 해제·발주 거울 같은 되돌릴 수 없는 부작용 차단). 2026-09-24 Fable 게이트.
+    const [[inv]] = await sequelize.query(`SELECT i.id, i.status, i.paid_amount, i.paid_at, i.payment_method, i.transaction_id, i.payment_notes, i.receipt_url
+      FROM invoices i JOIN restaurants r ON r.id = i.restaurant_id
+      WHERE r.is_demo = 1 AND i.status <> 'paid' AND i.invoice_category NOT IN ('soa', 'subscription', 'pos_subscription')
+        AND NOT EXISTS (SELECT 1 FROM purchase_orders p WHERE p.trade_invoice_id = i.id)
+      ORDER BY i.id DESC LIMIT 1`);
+    const [[u]] = await sequelize.query(`SELECT id FROM users WHERE is_active = 1 AND role = 'Staff' AND restaurant_id IS NULL LIMIT 1`);
+    if (!inv || !u) return false;
+    const tok = jwt.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('POST', `/invoices/${inv.id}/payment`, { payment_method: 'cash' }, { Authorization: `Bearer ${tok}` });
+    const [[after]] = await sequelize.query(`SELECT status FROM invoices WHERE id = ?`, { replacements: [inv.id] });
+    if (after.status !== inv.status) {
+      await sequelize.query(`UPDATE invoices SET status = ?, paid_amount = ?, paid_at = ?, payment_method = ?, transaction_id = ?, payment_notes = ?, receipt_url = ? WHERE id = ?`,
+        { replacements: [inv.status, inv.paid_amount, inv.paid_at, inv.payment_method, inv.transaction_id, inv.payment_notes, inv.receipt_url, inv.id] });
+    }
+    return r.status === 410 && after.status === inv.status;
+  });
+  // 2026-09-24: 오너 claim 가로채기 — 누구나 오너 가입 후 소유자 없는 남의 매장을 승인 없이 가져갈 수 있었다.
+  //   연결행 없는 매장 claim → 403(소유행 안 생김) / 자기 연결행(=자기가 만든 매장) 있는 매장 claim → 200(ownership 승격).
+  test('security', '오너 claim — 남의 매장 403 · 자기 연결 매장 200', async () => {
+    const { sequelize } = require('../config/database');
+    const jwt = require('jsonwebtoken');
+    const tag = 'zzhcclaim' + Date.now().toString(36);
+    const [targets] = await sequelize.query(`SELECT r.id FROM restaurants r WHERE r.is_demo = 1 AND NOT EXISTS (SELECT 1 FROM restaurant_managers m WHERE m.restaurant_id = r.id AND m.relationship_type = 'ownership') ORDER BY r.id LIMIT 2`);
+    if (targets.length < 2) return false;
+    const [ownerId] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@outlook.com`] });
+    try {
+      const auth = { Authorization: `Bearer ${jwt.sign({ userId: ownerId }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const other = await request('POST', `/owner/restaurants/${targets[0].id}/claim`, null, auth);
+      const [[o1]] = await sequelize.query(`SELECT COUNT(*) n FROM restaurant_managers WHERE restaurant_id = ? AND manager_id = ?`, { replacements: [targets[0].id, ownerId] });
+      await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (?, ?, 0, 'oversight', NOW(), NOW(), NOW())`, { replacements: [targets[1].id, ownerId] });
+      const mine = await request('POST', `/owner/restaurants/${targets[1].id}/claim`, null, auth);
+      const [[o2]] = await sequelize.query(`SELECT relationship_type t FROM restaurant_managers WHERE restaurant_id = ? AND manager_id = ?`, { replacements: [targets[1].id, ownerId] });
+      return other.status === 403 && Number(o1.n) === 0 && mine.status === 200 && o2 && o2.t === 'ownership';
+    } finally {
+      await sequelize.query(`DELETE FROM restaurant_managers WHERE manager_id = ?`, { replacements: [ownerId] });
+      await sequelize.query(`DELETE FROM users WHERE id = ?`, { replacements: [ownerId] });
+    }
+  });
+  // 2026-09-24: 옛 /auth/register 가 본문의 role 을 그대로 저장해 익명으로 System Admin 을 만들 수 있었다 → 410.
+  //   요청이 통과해도 계정이 안 생겼는지 DB 로 확인하고, 생겼으면 지운다(어느 쪽이든 실패 처리).
+  test('security', '익명 /auth/register(role=System Admin) → 계정 생성 안 됨', async () => {
+    const tag = 'zzhcreg' + Date.now().toString(36);
+    const email = `${tag}@example.com`;
+    const { sequelize } = require('../config/database');
+    const r = await request('POST', '/auth/register', { username: tag, email, password: `Zz${tag}9A`, role: 'System Admin' });
+    const [[row]] = await sequelize.query('SELECT id FROM users WHERE email = ?', { replacements: [email] });
+    if (row) await sequelize.query('DELETE FROM users WHERE id = ?', { replacements: [row.id] });
+    return !row && r.status >= 400;
+  });
   test('security', '익명 customers/stats/:cid → 401', async () => (await request('GET', '/customers/stats/1')).status === 401);
   test('security', '익명 customers/:cid/orders → 401', async () => (await request('GET', '/customers/1/orders')).status === 401);
   test('security', '익명 inventory-routes/:rid → 401', async () => (await request('GET', '/inventory-routes/1/inventory')).status === 401);
@@ -2005,6 +2161,25 @@ function definePosTests({ adminToken }) {
 // ============================================
 // 카테고리 4: 모바일 흐름
 // ============================================
+// 크롤러용 마케팅 HTML (2026-09-24 SEO C1 · routes/seo-html.js) — /api 밖이라 BASE 가 아닌 host 로 직접 부른다
+function defineSeoHtmlTests() {
+  // 백엔드 직접(포트 3001 개발·3002 운영)이면 /seo-html 프리픽스, nginx 를 거치는 주소(--host=https://purplehere.com)면
+  // 실제 공개 주소 그대로 — 운영 끝단 검증을 이 검사 하나로 하려는 것. nginx 에 프리픽스를 붙이면 정적 파일이 와 늘 오탐한다.
+  const isLocal = /^https?:\/\/[^/]+:(3001|3002)(\/|$)/.test(opts.host);
+  const get = async (p) => {
+    const r = await fetch(`${opts.host}${isLocal ? '/seo-html' : ''}${p}`, { redirect: 'manual' });
+    return { status: r.status, h: r.headers, body: await r.text() };
+  };
+  test('mobile', 'seo-html /pricing → 200 · canonical 1개=자기주소 · CSP·X-Frame 없음', async () => {
+    const r = await get('/pricing');
+    const canon = [...r.body.matchAll(/rel="canonical" href="([^"]+)"/g)].map((m) => m[1]);
+    return r.status === 200 && canon.length === 1 && canon[0] === 'https://purplehere.com/pricing'
+      && !r.h.get('content-security-policy') && !r.h.get('x-frame-options') && /<div id="root"><header>/.test(r.body);
+  });
+  test('mobile', 'seo-html 없는 글 → 404 (soft 404 아님)', async () => (await get('/blog/zz-no-such-post-hc')).status === 404);
+  test('mobile', 'seo-html 홈과 /pricing HTML 이 다름', async () => (await get('/')).body !== (await get('/pricing')).body);
+}
+
 function defineMobileTests({ customerToken, member, restId }) {
   // 모바일은 실제 slug가 필요 — 첫 restaurant slug 동적 조회
   let testSlug = 'seoul-bbq-house'; // 기본값
@@ -3075,9 +3250,9 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
   });
 
   // ── §G 구매자별 공급업체 활성/비활성 (2026-09-11 · docs/SUPPLIER_CONTRACT_SYSTEM.md §G) ─────────────
-  //   Irene 「브랜드에서 넣어준 공급업체여도 사용 안하는 경우 비활성 가능하게 해주고 공급업체 활성/비활성 기능 넣어줘」
-  //   활성/비활성 = 그 구매자의 계약 행. 자기 행이 있으면(어떤 status 든) 자기 행이 답, 상속은 자기 행이 없을 때만.
-  //   고장주입: utils/supplierAccess.js 의 «자기 행이 있으면 자기 행» 을 옛 규칙(active 인 자기 행만)으로 → ① 실패
+  //   활성/비활성 = 그 구매자의 계약 행. 2026-09-24 ⑥ 부터 브랜드 → 매장 상속은 없다 — 매장은 브랜드가 준 **사본**(자기 업체)을
+  //   자기 계약 행으로 켜고 끈다. 브랜드 원본의 켜기/끄기는 매장 사본에 영향이 없다(Irene «서로 연동하지 않아»).
+  //   픽스처는 공용 복사 함수(utils/supplierShare.copySupplierToStore)로 사본을 만든다 — 라우트·이전 마이그와 같은 길.
   async function hcSupplierFixture() {
     const { sequelize } = require('../config/database');
     const M = require('../models');
@@ -3087,39 +3262,44 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     const [ra] = await Q("SELECT id FROM users WHERE restaurant_id = :r AND role = 'Restaurant Admin' AND is_active = 1 LIMIT 1", { r: store.id });
     if (!ra) return null;
     const [brand] = await Q('SELECT owner_id FROM brands WHERE id = :b', { b: store.brand_id });
-    const [sibling] = await Q('SELECT id FROM restaurants WHERE brand_id = :b AND id <> :r ORDER BY id LIMIT 1', { b: store.brand_id, r: store.id });
     const tag = 'ZZ-HC-SUPACT-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
-    const sc = await M.SupplierCompany.create({ name: tag, status: 'active', is_system_registered: false, registered_by_entity_type: 'brand', registered_by_entity_id: store.brand_id });
+    const sc = await M.SupplierCompany.create({ name: tag, status: 'active', is_system_registered: false, registered_by_entity_type: 'brand', registered_by_entity_id: store.brand_id, shared_with_stores: false });
     await M.SupplierContract.create({ entity_type: 'brand', entity_id: store.brand_id, supplier_company_id: sc.id, status: 'active', requested_by_user_id: (brand && brand.owner_id) || ra.id });
+    const { copySupplierToStore } = require('../utils/supplierShare');
+    const t = await sequelize.transaction();
+    let copyId;
+    try { copyId = (await copySupplierToStore({ sourceId: sc.id, restaurantId: store.id, userId: ra.id, transaction: t })).copy_id; await t.commit(); }
+    catch (e) { await t.rollback(); throw e; }
     const auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
-    return { store, ra, sibling, sc, auth, Q, pos: [] };
+    return { store, ra, sc, copyId, auth, Q, pos: [] };
   }
   async function hcSupplierCleanup(f) {
     if (!f) return;
     const { sequelize } = require('../config/database');
     for (const id of f.pos) { try { await hcCleanupPurchaseOrders(id); } catch {} }
-    try { await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id = :s', { replacements: { s: f.sc.id } }); } catch {}
-    try { await sequelize.query('DELETE FROM supplier_companies WHERE id = :s', { replacements: { s: f.sc.id } }); } catch {}
+    const ids = [f.sc.id, f.copyId].filter(Boolean);
+    try { await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id IN (:s)', { replacements: { s: ids } }); } catch {}
+    try { await sequelize.query('DELETE FROM supplier_companies WHERE id IN (:s)', { replacements: { s: ids } }); } catch {}
   }
-  const hcTryPo = async (f) => {
-    const r = await request('POST', '/purchase-orders', { seller_type: 'supplier', seller_entity_id: f.sc.id,
+  const hcTryPo = async (f, sellerId) => {
+    const r = await request('POST', '/purchase-orders', { seller_type: 'supplier', seller_entity_id: sellerId,
       items: [{ description: 'hc', quantity_ordered: 1, unit_price: 1 }] }, f.auth);
     const id = r.body && r.body.data && r.body.data.id; if (id) f.pos.push(id);
     return r;
   };
 
-  test('supplier', '§G ① 매장이 브랜드가 넣어준 외부 공급업체를 끄면 발주가 막히고(400 NO_ACTIVE_CONTRACT) 목록엔 꺼짐으로 남는다', async () => {
+  test('supplier', '§G ① 매장이 자기 업체(브랜드가 준 사본)를 끄면 발주가 막히고(400 NO_ACTIVE_CONTRACT) 목록엔 꺼짐으로 남는다', async () => {
     let f = null;
     try {
       f = await hcSupplierFixture();
       if (!f) { console.log(c.gray('      (건너뜀: 브랜드 소속 데모 매장/관리자 없음)')); return true; }
-      const off = await request('PUT', `/external-suppliers/${f.sc.id}/active`, { is_active: false }, f.auth);
+      const off = await request('PUT', `/external-suppliers/${f.copyId}/active`, { is_active: false }, f.auth);
       if (off.status !== 200) { console.log(c.gray(`      (끄기 실패 ${off.status} ${JSON.stringify(off.body).slice(0, 140)})`)); return false; }
       const { findEffectiveContract } = require('../utils/supplierAccess');
-      const eff = await findEffectiveContract(f.sc.id, { type: 'restaurant', id: f.store.id });
-      const po = await hcTryPo(f);
+      const eff = await findEffectiveContract(f.copyId, { type: 'restaurant', id: f.store.id });
+      const po = await hcTryPo(f, f.copyId);
       const list = await request('GET', '/external-suppliers', null, f.auth);
-      const row = (list.body?.data || []).find((x) => x.id === f.sc.id);
+      const row = (list.body?.data || []).find((x) => x.id === f.copyId);
       const ok = !eff && po.status === 400 && po.body?.code === 'NO_ACTIVE_CONTRACT' && !!row && row.is_active_for_me === false;
       if (!ok) console.log(c.gray(`      (꺼지지 않았다: 계약 ${eff ? eff.id : null} · 발주 ${po.status} ${po.body?.code} · 목록 ${row && row.is_active_for_me})`));
       return ok;
@@ -3127,38 +3307,37 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     finally { await hcSupplierCleanup(f); }
   });
 
-  test('supplier', '§G ② 다시 켜면 자기 행이 지워지고 브랜드 계약 상속으로 돌아간다(발주 관계 통과)', async () => {
+  test('supplier', '§G ② 다시 켜면 자기 행이 켜짐으로 돌아와 발주 관계가 통과한다', async () => {
     let f = null;
     try {
       f = await hcSupplierFixture();
       if (!f) { console.log(c.gray('      (건너뜀: 브랜드 소속 데모 매장/관리자 없음)')); return true; }
-      await request('PUT', `/external-suppliers/${f.sc.id}/active`, { is_active: false }, f.auth);
-      const on = await request('PUT', `/external-suppliers/${f.sc.id}/active`, { is_active: true }, f.auth);
+      await request('PUT', `/external-suppliers/${f.copyId}/active`, { is_active: false }, f.auth);
+      const on = await request('PUT', `/external-suppliers/${f.copyId}/active`, { is_active: true }, f.auth);
       if (on.status !== 200) { console.log(c.gray(`      (켜기 실패 ${on.status})`)); return false; }
-      const [own] = await f.Q("SELECT COUNT(*) n FROM supplier_contracts WHERE supplier_company_id = :s AND entity_type = 'restaurant' AND entity_id = :r AND deleted_at IS NULL", { s: f.sc.id, r: f.store.id });
       const { findEffectiveContract } = require('../utils/supplierAccess');
-      const eff = await findEffectiveContract(f.sc.id, { type: 'restaurant', id: f.store.id });
-      const po = await hcTryPo(f);
-      const ok = Number(own.n) === 0 && !!eff && eff.entity_type === 'brand' && !(po.status === 400 && po.body?.code === 'NO_ACTIVE_CONTRACT');
-      if (!ok) console.log(c.gray(`      (상속 복귀 안 됨: 자기 행 ${own.n} · 계약 ${eff && eff.entity_type} · 발주 ${po.status} ${po.body?.code})`));
+      const eff = await findEffectiveContract(f.copyId, { type: 'restaurant', id: f.store.id });
+      const po = await hcTryPo(f, f.copyId);
+      const ok = !!eff && eff.entity_type === 'restaurant' && eff.status === 'active' && !(po.status === 400 && po.body?.code === 'NO_ACTIVE_CONTRACT');
+      if (!ok) console.log(c.gray(`      (켜짐 복귀 안 됨: 계약 ${eff && eff.entity_type}/${eff && eff.status} · 발주 ${po.status} ${po.body?.code})`));
       return ok;
     } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
     finally { await hcSupplierCleanup(f); }
   });
 
-  test('supplier', '§G ③ 한 매장이 끈 공급업체는 같은 브랜드의 다른 매장에서 그대로 쓸 수 있다', async () => {
+  test('supplier', '§G ③ 브랜드가 원본을 꺼도 매장 사본은 그대로 쓴다 · 매장은 원본을 켜고 끌 수 없다(서로 연동 없음)', async () => {
     let f = null;
     try {
       f = await hcSupplierFixture();
       if (!f) { console.log(c.gray('      (건너뜀: 브랜드 소속 데모 매장/관리자 없음)')); return true; }
-      if (!f.sibling) { console.log(c.gray('      (건너뜀: 같은 브랜드의 다른 매장 없음)')); return true; }
-      const off = await request('PUT', `/external-suppliers/${f.sc.id}/active`, { is_active: false }, f.auth);
-      if (off.status !== 200) { console.log(c.gray(`      (끄기 실패 ${off.status})`)); return false; }
+      const { sequelize } = require('../config/database');
+      await sequelize.query("UPDATE supplier_contracts SET status = 'terminated' WHERE supplier_company_id = :s AND entity_type = 'brand'", { replacements: { s: f.sc.id } });
       const { findEffectiveContract } = require('../utils/supplierAccess');
-      const mine = await findEffectiveContract(f.sc.id, { type: 'restaurant', id: f.store.id });
-      const sib = await findEffectiveContract(f.sc.id, { type: 'restaurant', id: f.sibling.id });
-      const ok = !mine && !!sib;
-      if (!ok) console.log(c.gray(`      (다른 매장까지 꺼졌다: 이 매장 ${mine ? 'on' : 'off'} · 다른 매장 ${sib ? 'on' : 'off'})`));
+      const copyEff = await findEffectiveContract(f.copyId, { type: 'restaurant', id: f.store.id });
+      const origEff = await findEffectiveContract(f.sc.id, { type: 'restaurant', id: f.store.id });
+      const toggleOriginal = await request('PUT', `/external-suppliers/${f.sc.id}/active`, { is_active: false }, f.auth);
+      const ok = !!copyEff && !origEff && toggleOriginal.status === 403;
+      if (!ok) console.log(c.gray(`      (사본 ${copyEff ? 'on' : 'off'}(on 이어야) · 원본 자격 ${origEff ? 'on' : 'off'}(off 여야) · 원본 켜기/끄기 ${toggleOriginal.status}(403 이어야))`));
       return ok;
     } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
     finally { await hcSupplierCleanup(f); }
@@ -5794,11 +5973,20 @@ function definePrintTests({ adminToken }) {
       if (r.status !== 200) return false;
       const inv = await _pollInvoice(fx.po.id);
       if (!inv) return false;
-      const pay = await request('POST', `/invoices/${inv.id}/payment`,
-        { payment_method: 'bank_transfer', amount: 100 }, { Authorization: `Bearer ${fx.token}` });
-      if (pay.status !== 200) return false;
-      const after = await PurchaseOrder.findByPk(fx.po.id);
-      return after.payment_status === 'paid';
+      // 정식 결제 경로로 증명한다(2026-09-24 — 옛 POST /invoices/:id/payment 는 무권한 뒷문이라 410 폐기, Fable).
+      //   구매자(매장 RA) 결제 제출 → System Admin 확인 → handleInvoicePaid(fire-and-forget) 가 발주에 거울.
+      //   ⚠ 제출은 발행처(공급업체 20)의 결제수단 설정에 종속 — bank_transfer 가 거부되면 400 이고 이 검사는 실패한다.
+      const sub = await request('POST', `/invoices/${inv.id}/submit-payment`,
+        { payment_method: 'bank_transfer', notes: 'health-check ledger mirror' }, { Authorization: `Bearer ${fx.token}` });
+      if (sub.status !== 200) return false;
+      const conf = await request('POST', `/invoices/${inv.id}/confirm-payment`, {}, { Authorization: `Bearer ${adminToken}` });
+      if (conf.status !== 200) return false;
+      for (let i = 0; i < 25; i++) {
+        const after = await PurchaseOrder.findByPk(fx.po.id);
+        if (after && after.payment_status === 'paid') return true;
+        await new Promise(r => setTimeout(r, 200));
+      }
+      return false;
     } finally { await _poCleanup(fx.po.id); }
   });
 
@@ -6099,6 +6287,7 @@ async function runTests(allTests, category) {
   defineSecurityTests(ctx);
   definePosTests(ctx);
   defineMobileTests(ctx);
+  defineSeoHtmlTests();
   defineReservationTests(ctx);
   definePaymentTests();
   defineReferralTests(ctx);

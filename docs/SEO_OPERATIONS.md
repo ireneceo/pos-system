@@ -42,7 +42,8 @@
 | 항목 | 현재 |
 |---|---|
 | 프레임워크 | React 19 · CRA(react-scripts 5) · react-router 7 · 클라이언트 렌더링만(SSR/prerender 없음) |
-| 메타 | `components/Common/SEOHead.tsx`(react-helmet-async) — 공개 페이지 14개. 크롤러가 받는 HTML 은 `public/index.html` 하나 |
+| 메타 | `components/Common/SEOHead.tsx`(react-helmet-async) — 공개 페이지 14개. 크롤러가 받는 HTML 은 `public/index.html` 하나 → **2026-09-24 C1 이후(nginx 적용 시)**: 마케팅 주소는 백엔드 `routes/seo-html.js` 가 페이지별로 채운 HTML(아래 §5-1) |
+| 마케팅 주소 목록 | **`dev-backend/config/seoPages.js` 한 곳** — sitemap 생성기·seo-html 이 같이 읽는다. nginx 정규식만 따로 적혀 있어 `scripts/check-seo-nginx.js`(verify-all)가 대조 |
 | robots | 정적 `dev-frontend/public/robots.txt` (개발·운영 동일 파일) |
 | sitemap | `dev-frontend/public/sitemap.xml` — **`node dev-backend/scripts/generate-sitemap.js` 로 생성**(운영 공개 API 기준: 고정 14 + 블로그 + 뉴스). 새 글 발행 뒤·SEO 작업 때 다시 만들어 배포. `--check` 로 최신 여부 확인 |
 | canonical | 각 페이지 코드에 `https://purplehere.com/...` 하드코딩, 블로그는 `BlogPostPage.tsx` |
@@ -50,6 +51,18 @@
 | 블로그 | DB `contents` + `/api/contents/public/blog(/:slug)`, 번역은 슬러그별 + `translation_group_id` |
 | 배포 | `/var/www/deploy-to-production.sh` — 게이트 → 백업 → 재빌드 → rsync → 운영 재시작 → 스모크 |
 | 앞단 | Cloudflare (HTML `max-age=300`) |
+
+## 5-1. 크롤러용 페이지별 HTML (C1 · 2026-09-24 Fable 판정)
+
+- **구조**: nginx 가 마케팅 주소(`/` + 랜딩 13 + `/blog/:slug`·`/news/:slug`)만 백엔드 `/seo-html<주소>` 로 넘긴다 → 빌드된 `index.html` 을 요청 때 읽어(mtime 캐시) 제목·설명·canonical·hreflang·og·JSON-LD 와 `#root` 본문을 채운다. 주입 태그는 전부 `data-rh="true"`(화면이 뜨면 Helmet 이 교체). 봇 판별 없음(모두 같은 HTML). POS 안쪽 경로는 정적 그대로.
+- **실패 시**: 백엔드 502/503/504(정지·3초 연결 실패·10초 무응답) → nginx 가 정적 `index.html` 로 복귀. 없는 글·미공개 글은 **404**(예전엔 200 = soft 404).
+- **헤더**: 라우터는 helmet·securityHeaders·API 제한 **앞**에 마운트 — 백엔드 CSP·X-Frame-Options 가 붙으면 gtag·Fonts 가 막힌다(고장주입으로 확인: 뒤에 달면 X-Frame-Options: DENY 가 붙음).
+- **canonical 규칙**: 글은 **종류로** 정한다 — 뉴스 카테고리(`product-news`·`updates`)면 `/news/`, 나머지 `/blog/`. 화면 `BlogPostPage.tsx` 도 같은 규칙(예전엔 뉴스 글도 `/blog/` 를 선언해 sitemap 의 `/news/` 와 어긋났다).
+- **www·끝 슬래시(B)**: 끝 슬래시 → 같은 호스트의 슬래시 없는 주소 301(전 경로). **www → apex 301 은 마케팅 주소에만** — 앱 경로(`/pos` 등)를 www 로 쓰는 기기가 있으면 주소를 옮기는 순간 그 기기의 localStorage(로그인·`printerSettings`)가 안 보이는데, 운영 접속 로그를 읽을 권한이 없어 사용 여부를 **확인 불가**라 넓히지 않았다.
+- **설정 파일**: `docs/nginx-purplehere.com.conf`(운영 전체본) · `docs/nginx-dev.purplehere.com.noindex.conf`(개발 전체본, noindex 포함) · `docs/nginx-snippet-purplehere-seo-proxy.conf`(공통 → `/etc/nginx/snippets/purplehere-seo-proxy.conf`). 되돌리기 = 백업 파일 복원 + reload.
+- **적용 순서(운영)**: 백엔드 배포(`/배포`) → `curl localhost:3002/seo-html/pricing` 이 200 HTML 인지 확인 → 그 뒤에 nginx 교체. 순서가 뒤집히면 옛 백엔드가 `/seo-html` 에 JSON 404 를 준다.
+- **블로그 주소(M3)**: 기존 주소는 그대로. 새 글만 — 겹치면 `-2`·`-3`(예전 `-타임스탬프`), 비라틴 제목은 영어 형제 주소 + `-zh`/`-ms`/`-ko`, 형제 없으면 400 `SLUG_REQUIRED`. 제목 수정은 **제목이 실제로 바뀔 때만** 주소를 다시 정한다(예전엔 저장마다 다시 만들어 본문만 고쳐도 공개 주소가 바뀔 수 있었다).
+- **끝**: 배포 후 3주 뒤 Search Console 재판독(색인 수·미색인 이유). 방문자 증가는 이 작업으로 바로 오지 않는다(Fable).
 
 ## 6. 기록
 
@@ -60,3 +73,4 @@
 | 2026-09-21 | 배포 SW 5.48 — H1 JSON-LD 출력 · H4 메뉴 `<a href>` · M2 설명 중복 · L1 html lang (백업 `20260921_163921`, 스모크 10/10) | 운영 재검사: JSON-LD 0→2~4(홈·요금·FAQ·기능·블로그·뉴스·블로그 글) · 설명 2→1 · 내부 링크 0~3→9~11. About·Contact 는 schema 를 원래 안 넘김(설계) |
 | 2026-09-21 | M4(한국어 블로그 없음) 종결 — 대상 시장이 말레이시아·해외라 한국어 콘텐츠 불필요 (Irene) | 문제 목록에서 제외 |
 | 2026-09-21 | 배포 SW 5.49 — H3 sitemap 생성기(116개) · 홈 SoftwareApplication 1개로 (백업 `20260921_172118`, 스모크 10/10) | 운영 재검사: sitemap 116개·XML 유효·robots 참조 · 홈 JSON-LD Organization·WebSite·SoftwareApplication · 설명 1 · 링크 11. 대기: H5 dev noindex(sudo 명령 Irene) · H2 site_name(Irene) · C1·M3 Fable · H6 적용 안내 |
+| 2026-09-24 | 배포 SW 5.58 — C1 백엔드 페이지별 HTML(`/seo-html`) · M3 새 글 주소 · 뉴스 canonical /news/ · sitemap 117 (백업 `20260924_160526`, 스모크 10/10) + **운영 nginx 교체**(Irene sudo · 백업 `/etc/nginx/purplehere.com.bak-20260924` · 1월 사본 `sites-enabled/purplehere.com.bak` → `/etc/nginx/purplehere.com.bak-20260131`) | 운영 재검사: www /pricing → 301 apex · /pricing/ → 301 · Googlebot 로 /·/pricing·/features·/blog·/news·/news/release-v3.100 md5 전부 다름·canonical 각 1개 · 없는 글 404 · /pos·/restaurant/8/pos·/kitchen·/login·/api 200 · www /pos 200(그대로) · `health-check --host=https://purplehere.com` seo 3/3. **대기: 2026-10-15 전후 Search Console 재판독**(색인 수·미색인 이유). 개발 nginx 는 미적용(선택) |

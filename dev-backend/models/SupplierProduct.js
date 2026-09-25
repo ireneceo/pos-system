@@ -37,7 +37,9 @@ const SupplierProduct = sequelize.define('SupplierProduct', {
   current_stock: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0, comment: 'Owned stock quantity' },
   low_stock_threshold: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
   lead_time_days: { type: DataTypes.INTEGER, defaultValue: 0 },
-  emoji: { type: DataTypes.STRING(10), allowNull: true }
+  emoji: { type: DataTypes.STRING(10), allowNull: true },
+  // 복사본 상품의 출처 상품 (2026-09-24 ⑥ «매장에 공유») — 매장 재료 연결을 사본으로 옮길 때 짝 찾기
+  copied_from_supplier_product_id: { type: DataTypes.INTEGER, allowNull: true }
 }, {
   tableName: 'supplier_products',
   timestamps: true,

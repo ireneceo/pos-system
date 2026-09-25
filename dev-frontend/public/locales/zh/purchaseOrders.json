@@ -15,7 +15,10 @@
       "from": "起始日期",
       "to": "结束日期",
       "owed": "待报销",
-      "owedHint": "用个人的钱支付且尚未归还的采购单"
+      "owedHint": "用个人的钱支付且尚未归还的采购单",
+      "ownerRestaurant": "餐厅",
+      "noOwnedRestaurant": "没有餐厅",
+      "allOwnedRestaurants": "我的全部门店（{{n}}）"
     },
     "table": {
       "poNumber": "采购单号",
@@ -81,7 +84,8 @@
     },
     "receipt": {
       "failed": "无法附上收据"
-    }
+    },
+    "ownerSuppliers": "我的供应商"
   },
   "new": {
     "title": "新建采购订单",

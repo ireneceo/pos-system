@@ -914,3 +914,45 @@ Irene 원문: 「공급업체는 브랜드제너럴에서 브랜드에 공유해
 - 상속 판정 3곳이 이 칸을 본다: `utils/supplierAccess.findEffectiveContract` · `GET /api/external-suppliers`(브랜드 scope) · `loadVisibleExternalSupplier`. 고장주입: 첫 번째 확인 제거 → 비공유 업체에 매장 발주 자격 true.
 - 예전 방식 `suppliers`(OWN) → 외부 업체 연결 단일 소스 `utils/legacySupplierBridge` (Products 버튼 = 이관 스크립트 `migrate-legacy-suppliers-to-external.js`, deploy·멱등). BG 가 만든 행(brand_id=null)은 그 BG 계정 소유. 운영 이관: 매장·FC 3건(5.50) + BG 2건(5.51, 비공유).
 - ⏸ **2단계 (Fable 판정 대기)**: «매장에 공유» 버튼 = **복사본**을 만들어 주고 이후 각자 독립 수정. 이미 공유(1) 중인 업체의 정리 방침.
+
+### §H-2. 2단계 확정 — «매장에 공유» = 복사본 · 브랜드 → 매장 상속 종료 (2026-09-24 · Fable 판정 1~3회차 · SW 5.60 · **운영 배포 2026-09-24 21:38Z**)
+
+> 운영 결과: 사본 23(꺼진 채 2) · 안 만듦 6 · 실패 0 · 연결 301 · 발주 31 · 청구서 20 · 원가이력 20 · S-SUP-004 0. **매장 연결이 가리키는 지워진(soft delete) 원본 상품은 사본에도 지워진 채 복사**한다(Fable 게이트 판정 2 — New Seoul Mart 4건). 상품 행 자체가 없는 연결만 `UNMAPPED_LINKS` 로 막는다(`findUnmappedLinks`/`findDeletedLinkedProducts`).
+
+Irene 원문: 「공급업체는 브랜드제너럴에서 브랜드에 공유해주고 싶으면 해주고 대신 수정 등록 모두 독립적으로 각각 운영하는 거야」 · 「전체 구조 문제 만들지 않고 제대로 보완하고 구현해. 그리고 다시 말하지만 공급업체를 관리하는 건 브랜드라고 해도 서로 연동하지 않아.」
+
+- **공유 = 복사본.** 브랜드가 고른 산하 매장마다 매장 소유 업체 행 + 상품 전체(비활성 포함, 분류 매핑) + 매장 계약 1행을 만든다. 이후 **서로 영향 없음** — 브랜드가 가격·연락처를 바꿔도 매장 사본에 안 퍼지고, 매장이 고친 것도 돌아오지 않는다. 재공유는 갱신이 아니라 `already_shared`.
+  - 단일 함수 `utils/supplierShare.copySupplierToStore` — 라우트와 이전 마이그가 같이 쓴다. `code`·`shop_slug` 는 null(고유 칸).
+  - 출처 칸 `supplier_companies.copied_from_supplier_company_id/copied_at/copied_by_user_id` · `supplier_products.copied_from_supplier_product_id` — **추적용, 동기화 아님.**
+  - 살아 있는 사본은 (매장, 원본)당 하나 — 생성 칸 `copy_live_key` + `UNIQUE(registered_by_entity_type, registered_by_entity_id, copy_live_key)`(지운 사본은 NULL 이라 재공유 가능). ⚠ 모델에 없는 칸이라 `sync-database.js --alter` 금지.
+  - 옵션 그룹이 있는 업체는 복사하지 않고 `OPTIONS_NOT_COPIED`(조용한 누락 없음).
+- **API** (브랜드 계정만, 매장 소속은 서버가 `restaurants.brand_id` 로 확인): `GET /api/external-suppliers/:id/shares` · `POST /api/external-suppliers/:id/share { restaurant_ids }` → 매장별 `created | already_shared | forbidden | error`.
+- **상속 종료**: `utils/supplierAccess.findEffectiveContract` 의 브랜드 상속 분기 제거 — «부모 계약 조회» 자리(`findParentContract`, 지금 null)는 남긴다(Fable «오너=슈퍼바이저» 판정: 다음 사안에서 오너 부모를 끼움). `GET /api/external-suppliers` · `loadVisibleExternalSupplier` · 켜기/끄기는 **자기가 등록한 업체만.** `shared_with_stores` 는 더 이상 읽지 않는 칸(이전 완료 표시) — 다음 정리에서 드롭.
+- **사본을 만들 때 같은 트랜잭션에서 옮기는 것**(그 매장 것만): 매장 재료·상품 연결(ISP, 행 id 유지 → 발주 줄 안 깨짐) · 매장 발주 헤더 `seller_entity_id`(상태 무관) · **매장이 지불자인 거래 청구서 `issuer_id`**(금액·상태·결제 기록 무접촉 — Fable 3회차: 청구서가 발행자 id 를 직접 든다, `purchaseOrderService.js:221`) · 매장 범위 원가 변경 이력. **무접촉**: 브랜드 재고아이템 연결·브랜드 발주·브랜드 지불 청구서·레거시 `suppliers`·고아 연결.
+- **이전 마이그** `scripts/migrate-share-brand-suppliers-to-stores.js`(registry deploy, `--dry-run`): 공유(1) 브랜드 업체 × 산하 매장마다 «쓴 매장»에만 사본 — 매장 발주 ≥1 · 매장 연결 ≥1 · 마지막 자기 켜기 active. 이력이 있는데 매장이 꺼 두었으면 **꺼진 사본**. 이력 없고 켜 둔 적 없으면 만들지 않음(브랜드가 «매장에 공유» 로 복구). 실패가 있으면 그 업체는 공유(1) 로 남기고 종료 코드 1.
+  - 운영 예상(2026-09-24 실측): 공유 29곳(브랜드 1 · 매장 10 하나) → 사본 **23**(꺼진 채 2: JASMINE·UGS) · 안 만듦 6(KK Mart·Village Grocer·Kraft Nation·Hero Market·Mr. DIY·GIT Consult) · 매장 청구서 20건(미납 9·완납 11, RM 4,745.47) 발행자 이전 · 고아 연결 1 무접촉.
+- **영구 안전망**: 인스펙션 `S-SUP-004`(발주 ↔ 거래 청구서 발행자 일치 — `ISSUER_MISMATCH_SQL` 하나를 복사 함수 사후 확인과 공유) · health-check security «브랜드 공급업체 공유».
+- **브랜드 재료의 매장 발주 경로 종료**: 매장이 브랜드 소유 재료를 브랜드 계약(상속)으로 발주하던 길은 닫혔다 — Irene 「서로 연동하지 않아」. 매장은 자기 업체(사본)에서 연결해야 한다. 매장이 브랜드 재료에 연결을 못 다는 `writableIngredient` 제약은 이 사안에서 풀지 않는다(풀면 새 경로 — 필요 시 별도 사안). 운영 실사용 0(브랜드 재료 연결 0).
+- 다음(별건, Fable 판정): **오너 공급업체 = 상속**(오너가 넣은 업체를 소유 매장이 같이 씀) — `findParentContract` 자리에 부모 owner.
+
+
+### §H-3. 오너 공급업체 = 상속 · 오너 발주 전체 표 (2026-09-24 · Fable «오너=슈퍼바이저» 판정 §1-A·§2-B · SW 5.62 · 개발)
+
+Irene 원문: 「오너가 공급업체를 같이 관리하면 레스토랑마다 같은 공급업체 있어도 다 여러 개 나오잖아. … 오너가 넣는 공급업체만 레스토랑들이 동기화되는 건 어때? … 오너는 슈퍼바이저 같은 거지. 브랜드 회사랑은 다르고 자기 가게들이니까.」 → 「마저 해」
+
+- **브랜드 = 복사(§H-2), 오너 = 상속.** 브랜드는 남의 회사라 건네주고 각자 운영, 오너는 같은 사람이라 **업체 한 행을 소유 매장들이 같이 쓴다.**
+- **등록자·계약 주체 `owner`**: `supplier_companies.registered_by_entity_type` · `supplier_contracts.entity_type` 에 `'owner'`(expand-only, `scripts/migrate-owner-supplier-enum.js`, deploy). `entity_id` = 오너 계정 `users.id`. `purchase_orders.entity_type` 은 그대로 — **발주 주인은 항상 매장.**
+- **구매자 실체** (`middleware/buyerScope.js`): 소속 매장 없는 오너(`restaurant_id` null)가 매장 지정 없이 부르면
+  - `/api/external-suppliers*` · `GET /api/supplier-directory/:id` → `{ type:'owner', id:user.id }` (등록·수정·상품·끄기·삭제)
+  - `GET /api/purchase-orders`(목록만) → 소유 매장 전체(`req.buyerOwnerRestaurantIds`, `?restaurant_id=` 는 그 안에서만 좁힘) · 행마다 `restaurant_name`
+  - 그 밖의 구매자 라우트(발주 작성·수령·재료 연결·계약·재고)는 오너 실체를 받지 않는다 → 403(fail-closed). 상세·인쇄는 기존 매장 전환(`?entity_type=restaurant&entity_id=N`, GET 만)으로.
+- **상속 판정** (`utils/supplierAccess.js`): `findEffectiveContract` 2단계 `findParentContract` — 매장 구매자 · 업체가 오너 등록 외부 업체(가입 공급업체는 상속 안 함) · 그 업체 등록 오너가 이 매장 `restaurant_managers(ownership)` · 오너 계약 active. 매장이 자기 행(끄기 = terminated)을 가지면 1단계에서 이미 결정.
+  - 목록·카탈로그는 `inheritedOwnerSupplierIds(restaurantId)` 한 곳에서 같은 조건으로 뽑는다.
+- **매장 쪽**: 목록에 `scope:'owner'`(«오너 등록» 카드) · 상품 **보기**만(`GET /external-suppliers/:id/products`) · 발주·재료 연결 가능 · **이 매장만 끄기**(자기 terminated 행) · **다시 켜기 = 자기 행 삭제**(오너 설정을 다시 따름 — 자기 active 행이 남으면 오너가 끄거나 지워도 그 매장만 계속 발주하게 된다). 수정·상품 등록·삭제는 403.
+- **오너 삭제**: 업체 inactive + 그 업체의 **모든** active 계약 terminated(매장 쪽 포함). 이미 만든 발주는 남는다.
+- **오너 끄기**: 오너 계약 terminated → 자기 행 없는 소유 매장 전부에서 빠진다.
+- **원가 대조**: 매장이 대조해도 오너 업체 상품 정가는 안 바뀐다(`cost-reconciliation.js` `ownedExternal` — 등록자 ≠ 발주 구매자). 매장 원가는 매장 층에.
+- **자동 병합 없음**(판정 §1-C): 매장이 이미 따로 넣은 같은 업체는 그대로 — 필요하면 매장이 옛 행을 끈다.
+- **화면**: 오너 = `/pos/suppliers`(외부 업체만, 계약·찾기 탭 없음, 카드에 «매장 N곳 중 M곳이 사용») · 발주 목록 «내 매장 전체» 선택(기본)·행에 매장 이름·«내 공급업체» 버튼. 매장 = «오너 등록» 카드(상품 보기·끄기).
+  - ⚠ 오너 사이드바 «공급업체» 메뉴는 아직 없다 — 사이드바가 🔒 인쇄 보호 파일(`MainLayout.tsx`)이라 Irene 승인·bless 뒤 한 줄. 그때까지 발주 화면의 «내 공급업체» 버튼으로 들어간다.
+- **검증**: health-check security «오너 공급업체 — 소유 매장만 상속 …» (고장주입: 상속 보기 소유 확인 제거 → ✗).

@@ -349,16 +349,23 @@
   },
   "viewNote": {
     "own": "可在“外部供应商”标签中编辑或删除该供应商。",
-    "brandShared": "由品牌共享。商品在品牌账户中管理。"
+    "brandShared": "由品牌共享。商品在品牌账户中管理。",
+    "ownerShared": "由您门店的业主添加，所有门店共用。只有业主可以修改该供应商及其商品——本店可以向其下单或关闭。"
   },
   "profile": {
     "externalSupplier": "外部供应商"
   },
   "source": {
-    "external": "外部"
+    "external": "外部",
+    "ownerShared": "业主添加"
   },
   "card": {
-    "viewProducts": "查看商品"
+    "viewProducts": "查看商品",
+    "copiedFromBrand": "{{date}} 从品牌收到的副本 — 仅在本店修改",
+    "sharedStores": "已复制到 {{total}} 家门店中的 {{n}} 家",
+    "notShared": "尚未分享给任何门店",
+    "fromOwner": "业主添加 — 其所有门店共用",
+    "ownerStores": "您的 {{total}} 家门店中有 {{n}} 家在用"
   },
   "active": {
     "titleOff": "停用该供应商？",
@@ -371,11 +378,39 @@
     "confirmOffBrand": "停用 {{name}}？品牌所有门店下单时将不再显示。",
     "confirmOffOwn": "停用 {{name}}？重新启用前下单时不会显示。",
     "confirmOn": "重新启用 {{name}}？下单时可再次选择。",
-    "failed": "无法更改该供应商，请重试。"
+    "failed": "无法更改该供应商，请重试。",
+    "confirmOffOwnerStore": "仅在本店关闭 {{name}}？其他门店仍可使用。",
+    "confirmOffOwner": "在您所有门店关闭 {{name}}？重新开启前下单时将不会显示。"
   },
   "payment": {
     "unpaid": "未付款",
     "paid": "已付款",
     "refunded": "已退款"
+  },
+  "share": {
+    "button": "分享给门店",
+    "title": "将 {{name}} 分享给门店",
+    "hint": "您选择的每家门店都会得到这个供应商及其商品的独立副本。之后副本属于门店 — 您在这里的修改不会同步到门店，门店的修改也不会传回。",
+    "submit": "提供副本",
+    "sharedOn": "已有副本 · {{date}}",
+    "sameName": "该门店已有同名供应商。将另外添加一个副本。",
+    "noStores": "您的品牌还没有门店。",
+    "loadFailed": "无法加载门店。",
+    "partFailed": "部分门店未能收到副本：",
+    "nothing": "未分享任何内容。",
+    "failed": "无法分享此供应商，请重试。",
+    "reason": {
+      "forbidden": "不是本品牌的门店",
+      "options": "该供应商有选项商品，无法复制",
+      "other": "无法创建副本 — 请重试或联系客服"
+    },
+    "blockedOptions": "有选项商品的供应商无法复制到门店。请先移除选项，或让各门店自行添加该供应商。",
+    "loading": "正在加载门店…",
+    "selectAll": "选择所有没有副本的门店（{{n}}）",
+    "clearAll": "清除选择"
+  },
+  "deleteConfirm": {
+    "storesKeep": "已收到副本的门店会保留各自的副本。",
+    "ownerStores": "您的所有门店将不再看到该供应商。已下的订单会保留。"
   }
 }

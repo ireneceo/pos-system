@@ -17,8 +17,9 @@ const SupplierCompany = sequelize.define('SupplierCompany', {
     comment: 'true=시스템 가입 supplier, false=buyer 가 등록한 외부 supplier'
   },
   // 외부 supplier 인 경우 어느 buyer 가 만들었는지 (entity_type, entity_id)
+  // 'owner' = 오너 계정(users.id)이 등록한 업체 — 소유 매장들이 같이 쓴다(상속, 2026-09-24 §H-3)
   registered_by_entity_type: {
-    type: DataTypes.ENUM('restaurant', 'brand', 'foodcourt'),
+    type: DataTypes.ENUM('restaurant', 'brand', 'foodcourt', 'owner'),
     allowNull: true, comment: '외부 supplier 등록한 buyer 타입'
   },
   registered_by_entity_id: {
@@ -33,6 +34,12 @@ const SupplierCompany = sequelize.define('SupplierCompany', {
     type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true,
     comment: '브랜드 등록 외부 업체를 산하 매장이 상속하는가'
   },
+  // 브랜드 → 매장 «공유» = 복사본의 출처 (2026-09-24 Fable ⑥ · docs/SUPPLIER_CONTRACT_SYSTEM.md §H). 추적용, 동기화 아님.
+  //   ⚠ DB 에는 생성 칸 copy_live_key 와 UNIQUE(registered_by_entity_type, registered_by_entity_id, copy_live_key) 가 더 있다
+  //     (scripts/migrate-add-supplier-copy-columns.js). 모델에 없으므로 `sync-database.js --alter` 를 돌리면 지워진다 — 쓰지 말 것.
+  copied_from_supplier_company_id: { type: DataTypes.INTEGER, allowNull: true, comment: '복사본의 출처 업체' },
+  copied_at: { type: DataTypes.DATE, allowNull: true },
+  copied_by_user_id: { type: DataTypes.INTEGER, allowNull: true },
   // 배송 조건 두 칸 (2026-09-17 Fable 판정 ⑦) — 계산에 쓰는 값은 이 둘뿐이다.
   //   min_order_amount = 이 금액 «이상» 주문하면 무료배송 (경계는 무료)
   //   delivery_fee     = 그 미만일 때 붙는 고정 배송비. null = 규칙 미적용(«미설정», 무료 아님)

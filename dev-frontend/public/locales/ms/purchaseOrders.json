@@ -15,7 +15,10 @@
       "from": "Dari",
       "to": "Hingga",
       "owed": "Belum dibayar balik",
-      "owedHint": "Dibayar dengan wang peribadi dan belum dibayar balik"
+      "owedHint": "Dibayar dengan wang peribadi dan belum dibayar balik",
+      "ownerRestaurant": "Restoran",
+      "noOwnedRestaurant": "Tiada restoran",
+      "allOwnedRestaurants": "Semua restoran saya ({{n}})"
     },
     "table": {
       "poNumber": "PO #",
@@ -81,7 +84,8 @@
     },
     "receipt": {
       "failed": "Tidak dapat melampirkan resit"
-    }
+    },
+    "ownerSuppliers": "Pembekal saya"
   },
   "new": {
     "title": "Pesanan Belian Baharu",

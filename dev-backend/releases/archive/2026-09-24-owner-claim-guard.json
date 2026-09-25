@@ -1,0 +1,36 @@
+{
+ "tag": "owner-claim-guard",
+ "sw_version": "5.58-seo-canonical-news-20260924",
+ "date": "2026-09-24",
+ "in_progress": [
+  "with MIN 오너 계정 — Irene 인증 메일 링크 클릭·비밀번호 설정 대기(운영 끝단: 이때 미인증 상태 비번 찾기 메일 도착도 1회 확인)"
+ ],
+ "completed": [
+  "🔴 **오너 claim 가로채기 차단(보안)** — `POST /api/owner/restaurants/:id/claim` 이 (매장, 오너) 연결행이 없으면 **새로 만들어 줘서**, 누구나 /signup 으로 오너 가입 → `available-restaurants` 로 소유자 없는 매장 검색 → 승인 없이 소유할 수 있었다(개발 재현 200). 운영 소유자 없는 실매장 8곳(The Fire 영업 중 포함). 이제 **이미 연결된 매장만** ownership 으로 승격, 아니면 403. 검색도 같은 조건(내 연결 매장 중 소유자 없는 것).",
+  "전제 실측: 오너 화면(OwnerRestaurantsPage)은 매장 생성 시 `managerIds:[self]` 로 oversight 행을 먼저 만들고 곧바로 claim — 수정 후에도 생성 201 → 연결행 oversight → claim 200 → ownership(개발 실호출, 매장·계정 정리). 화면에서 available-restaurants 호출 0, claim 은 생성 직후 1곳뿐."
+ ],
+ "issues": [
+  "⚠ 같은 매장에 두 번째 오너를 SA /link 로 연결하는 것은 막지 않는다(Fable: 이번 범위 밖, 기록만).",
+  "⚠ 남의 매장 연결은 이제 SA 의 /link 로만 — 그 API 를 누를 화면이 없다(운영 작업은 SA 토큰 API 로 했다)."
+ ],
+ "upcoming": [
+  "SA 오너-매장 연결 화면(필요 시)",
+  "2026-10-15 전후 Search Console 재판독"
+ ],
+ "behavior_changes": [
+  "오너는 자기가 만든 매장만 «내 매장» 으로 가져올 수 있습니다. 다른 매장을 연결하려면 System Admin 에게 요청해야 합니다.",
+  "오너 화면에서 새 매장을 만드는 흐름은 그대로입니다."
+ ],
+ "check_areas": [
+  "오너 계정으로 새 매장 만들기 → 내 매장 목록에 뜨는지"
+ ],
+ "verification": {
+  "gates": "health-check security 63/63(신규 1) — verify-all 이 기록으로 재실행",
+  "fault_injection": "routes/owner.js 를 옛 코드 사본으로 되돌려 pm2 restart → 새 검사 ✗ → 사본 cp 원복·cmp 동일·restart → ✓. 잔여 시험계정 0 · 고아 연결행 0.",
+  "real_calls": "수정 전: 새 오너(미인증)로 available-restaurants 20건·남의 데모 매장 1 claim 200·ownership 생성(정리). 수정 후: available 0건·같은 claim 403·행 0. 정상 흐름: 오너 토큰 POST /api/restaurants(adminAction create, managerIds [self]) 201 → oversight 행 → claim 200 → ownership(매장 187·관리자·오너 전부 정리, 잔여 0).",
+  "health_check": "security 63/63",
+  "build": "프론트 무변경 — 빌드 없음(SW 5.58 유지)",
+  "sw_version": "5.58-seo-canonical-news-20260924",
+  "fable_note": "Fable 설계 판정(2026-09-24, 가입 구멍 판정의 ②-결함2): claim 은 (restaurant, req.user.id) 행이 있을 때만 ownership 승격·없으면 403 · available-restaurants 같은 조건으로 좁힘 · SA /link 유지 · 영구검사 2건(타인 403 / 자기 200 — 1개 테스트로 둘 다) · 고장주입 1회 · 착수 전 매장 생성이 oversight 행을 쓰는지 DB 실측. 그대로 구현. 게이트 판정 대기."
+ }
+}

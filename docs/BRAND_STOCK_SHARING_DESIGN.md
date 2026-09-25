@@ -33,7 +33,7 @@
 | 레시피 화면에서 브랜드 재료 사용 | `RecipeManagement/RecipesTab.tsx:924`, `IngredientsTab.tsx:590/763/869/1812` |
 | 재고관리 화면에 브랜드 재료 포함 | `routes/inventory-core.js:47-50` (`Op.or` restaurant_id ∪ brand_id) |
 | BG가 브랜드 재료에 공급처 연결 | `IngredientsTab.tsx:571` (`/api/brands/:id/ingredients?include=sellers`) + `routes/ingredient-seller-products.js:42` |
-| 외부공급업체 브랜드→매장 공유 + 계약 상속 | `supplier-directory.js:1103`, `utils/supplierAccess.js:29` |
+| 외부공급업체 브랜드→매장 공유 + 계약 상속 | ⛔ **2026-09-24 종료** — 공유는 매장 소유 복사본, 상속 없음. 매장의 브랜드 재료 발주는 브랜드 계약을 타지 않는다(Irene 「서로 연동하지 않아」). `docs/SUPPLIER_CONTRACT_SYSTEM.md §H-2` |
 
 ### 끊겨 있는 것 = 이번 범위
 | # | 결함 | 위치 |

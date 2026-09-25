@@ -15,7 +15,10 @@
       "from": "시작일",
       "to": "종료일",
       "owed": "개인금액 미정산",
-      "owedHint": "개인 돈으로 결제했고 아직 그 사람에게 갚지 않은 발주"
+      "owedHint": "개인 돈으로 결제했고 아직 그 사람에게 갚지 않은 발주",
+      "ownerRestaurant": "매장",
+      "noOwnedRestaurant": "매장 없음",
+      "allOwnedRestaurants": "내 매장 전체 ({{n}})"
     },
     "table": {
       "poNumber": "PO 번호",
@@ -81,7 +84,8 @@
     },
     "receipt": {
       "failed": "영수증을 붙이지 못했습니다"
-    }
+    },
+    "ownerSuppliers": "내 공급업체"
   },
   "new": {
     "title": "새 구매 주문",

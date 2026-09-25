@@ -453,6 +453,7 @@ GIT 프로덕트(`PRD-*`)로 **이관 완료**(연결 50건·92칸, 중복행 50
 | 매장이 **실제로 낸 값**(원가) | 매장 층에 따로 쌓인다 | `restaurant_ingredient_costs` (운영 77행) · `routes/recipes.js` `withOverrideCost`·`effective_ingredient_cost` |
 | 브랜드 공유 재료의 **재고** | 매장별 오버레이에 따로 쌓인다 | `restaurant_ingredient_stocks` (운영 159행) |
 | 공급업체 **연결** | 구매자별로 각자 붙인다 | `ingredient_seller_products` (운영 831행) · 활성/비활성은 구매자 계약 행 |
+| **오너가 등록한** 외부 공급업체 (2026-09-24 §H-3) | 업체 한 행을 **소유 매장들이 같이 쓴다**(상속). 정가·상품은 **오너만** 고친다 — 매장 대조는 오너 정가를 안 움직이고 매장 원가 층에만. 매장은 끄기만(자기 계약 행) | `utils/supplierAccess.findParentContract` · `docs/SUPPLIER_CONTRACT_SYSTEM.md` §H-3 |
 
 **즉 «재고·내 원가는 각자» 는 이미 그렇게 돼 있고, «공급업체 상품 정가» 만 등록 주체 소유다.**
 Irene 의 「가격관리도 각자」 가 **공급업체 상품 정가까지 매장이 고치는 것**을 뜻한다면 그것은 현재 규칙과 다르다 —

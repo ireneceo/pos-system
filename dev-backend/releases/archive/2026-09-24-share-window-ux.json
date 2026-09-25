@@ -1,0 +1,45 @@
+{
+ "tag": "share-window-ux",
+ "sw_version": "5.61-share-window-ux-20260924",
+ "date": "2026-09-24",
+ "in_progress": [
+  "오너 공급업체 상속 + 오너 전체 발주표 — 별건(Fable «오너=슈퍼바이저» 판정)"
+ ],
+ "completed": [
+  "**브랜드 공급업체 «매장에 공유» 창 사용성 보완** (Irene 「철저한 검증과 유저친화적 사용 ui/ux」 · SW 5.60 배포 뒤 실측).",
+  "🔴 버그: 공유가 실패하면 창이 매장 목록을 다시 읽으면서 **방금 띄운 실패 사유를 지웠다** — 사용자는 체크가 풀린 창만 보고 왜 안 됐는지 몰랐다(운영 5.60 에 있음). 실패 사유를 남긴 채 목록만 다시 읽도록 수정.",
+  "실패 사유를 서버 영문 문장 대신 «매장 이름 — 사람 말»로 표시(4개 언어).",
+  "옵션 상품이 있는 업체는 **창을 열 때 미리** 안내하고 매장 칸·버튼을 잠근다(전에는 고르고 눌러야 실패를 알았다). 서버 `GET /api/external-suppliers/:id/shares` 에 `meta.blocked_reason` — 복사 함수와 같은 판정(옵션 그룹 수).",
+  "브랜드 업체 카드에 «매장 N곳 중 M곳에 사본» / «아직 공유한 매장 없음» — 공유 창을 열지 않아도 보인다. 서버 `GET /api/external-suppliers` 가 브랜드일 때만 `shared_store_count`·`brand_store_count`.",
+  "공유 창: «사본 없는 매장 모두 선택 (N)» / «선택 해제» · 불러오는 중 문구 · 성공 시 창을 닫고 카드 숫자 즉시 갱신.",
+  "브랜드 업체 삭제 확인에 «사본을 받은 매장은 자기 사본을 그대로 가집니다» (사본이 있을 때만)."
+ ],
+ "issues": [
+  "⚠ 매장 화면 카드의 «Received from your brand on …» 줄은 그대로 둠(사본 23곳 모두 표시) — 한 번에 알아보는 표시라 유지.",
+  "⚠ «Failed to load site settings» 콘솔 오류는 기존 현상(운영 재현) — 이 변경 무관, 별도 소사안."
+ ],
+ "upcoming": [
+  "오너 공급업체 상속 + 전체 발주표",
+  "배포 스크립트 마이그 실패 동작·롤백 DB 경로(별도 사안)",
+  "site-settings 이중 호출(소사안)"
+ ],
+ "behavior_changes": [
+  "브랜드 공급업체 카드에 몇 개 매장이 사본을 가졌는지 한 줄로 보입니다.",
+  "공유가 안 되는 매장이 있으면 창에 매장 이름과 이유가 남습니다.",
+  "옵션 상품이 있는 업체는 공유 창을 열 때 바로 «복사할 수 없음» 안내가 나옵니다.",
+  "매장이 많을 때 «사본 없는 매장 모두 선택» 으로 한 번에 고를 수 있습니다."
+ ],
+ "check_areas": [
+  "GIT Consulting(브랜드) 공급업체 화면 — 카드의 «Copied to 1 of 1 stores», 공유 창 열기"
+ ],
+ "verification": {
+  "gates": "verify-all --full 22/23 (나머지 1 = 이 기록 파일 없음 → 작성 후 재실행) · mount sweep 크래시 0 · i18n 4언어 일치",
+  "fault_injection": "①화면: 실패 뒤 목록 재조회가 사유를 지우던 옛 동작 복원(openShare(sharing)) → 빌드 → 브라우저 «실패 사유가 창에 남음» 1440·390 둘 다 FAIL → cp 원복·cmp 동일 → 재빌드 후 통과 ②서버: meta.blocked_reason 을 항상 null → API 검사 «옵션 업체 차단 사유» FAIL → cp 원복·cmp·pm2 restart 후 통과",
+  "real_calls": "API 7/7(브랜드 목록 공유 매장 수 0→1 · 매장 3 · 공유현황 meta 일반 null/옵션 OPTIONS_NOT_COPIED · 서버 공유도 같은 사유로 거부 · 매장 목록엔 그 칸 없음 · 매장 계정 공유현황 403). 실브라우저(개발, 브랜드 계정 BG 6 · 1440·390) 17/17: 공유 전 «Not shared» · 옵션 업체 창 미리 안내·칸 3개·버튼 잠김 · 실패(존재하지 않는 상품을 가리키는 매장 연결) 사유가 «test under brandmanager — the copy could not be made …» 로 남음 · 모두 선택 3칸/해제 · 공유 성공 창 닫힘·카드 «Copied to 1 of 3 stores» · 삭제 확인 안내 · 390 가로 넘침 없음 · console.error 0(site-settings 기존 현상 제외). 정리 잔여 0.",
+  "health_check": "verify-all 안 health-check 전체 통과",
+  "build": "npm run build:dev (본빌드 + 고장주입 빌드 + 원복 빌드) · 변경 파일 경고 0",
+  "sw_version": "5.61-share-window-ux-20260924",
+  "fable_note": "Fable 게이트 PASS·마커(지문 879788c2) — 운영 파일과 직접 diff 로 백엔드 차이 16줄 전부 읽기(쓰기·권한·마이그 0) 확인. 3축상 원래 비대상, 누적 미커밋분 때문에 훅이 막은 것 — 이런 UI 보완은 팀원이 실행·증명.",
+  "prod_verification": "배포 2026-09-24 22:56Z(백업 20260924_225639, exit 0, 스모크 10/10) · 운영 sw.js 5.61 · 브랜드 API 업체 28 중 사본 있는 업체 23 = DB 23, 매장 수 1 · 브랜드 화면(1440·390) «Copied to 1 of 1 stores» 23 + «Not shared with any store» 5 · AIM coffee 창 «Already has a copy»·버튼 잠김 · 390 가로 넘침 없음 · console.error 0(site-settings 제외). 운영에 옵션 업체 0 이라 사전 잠금·실패 사유는 개발 17/17 로 증명(운영 쓰기 안 함)."
+ }
+}

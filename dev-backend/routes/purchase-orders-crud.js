@@ -233,7 +233,14 @@ router.get('/purchase-orders', async (req, res) => {
     const offset = (page - 1) * limit;
 
     const where = {};
-    if (req.buyerEntity) {
+    if (req.buyerEntity && req.buyerEntity.type === 'owner') {
+      // 오너 — 소유 매장 전체를 한 표로 (2026-09-24 Fable «오너=슈퍼바이저» §2-B). 목록은 buyerScope 가 소유 매장 id 를 서버에서 정했다.
+      //   ?restaurant_id=N 은 그 소유 집합 안에서만 좁힌다(밖이면 빈 목록).
+      const owned = req.buyerOwnerRestaurantIds || [];
+      const only = parseInt(req.query.restaurant_id, 10);
+      where.entity_type = 'restaurant';
+      where.entity_id = { [Op.in]: (Number.isFinite(only) ? owned.filter(id => id === only) : owned).concat([-1]) };
+    } else if (req.buyerEntity) {
       where.entity_type = req.buyerEntity.type;
       where.entity_id = req.buyerEntity.id;
     }
@@ -336,8 +343,17 @@ router.get('/purchase-orders', async (req, res) => {
       for (const d of diffRows) diffMap[d.po_id] = d;
     }
 
+    // 오너 전체 표 — 어느 매장 발주인지
+    const storeNames = {};
+    if (req.buyerEntity && req.buyerEntity.type === 'owner' && rows.length) {
+      const { Restaurant } = require('../models');
+      const rs = await Restaurant.findAll({ where: { id: { [Op.in]: [...new Set(rows.map(r => r.entity_id))] } }, attributes: ['id', 'name'], raw: true });
+      for (const r of rs) storeNames[r.id] = r.name;
+    }
+
     const enriched = rows.map(p => {
       const plain = p.toJSON();
+      if (req.buyerEntity && req.buyerEntity.type === 'owner') plain.restaurant_name = storeNames[plain.entity_id] || null;
       plain.ordered_at = orderedAtOf(plain);
       const agg = aggMap[p.id] || {};
       const diff = diffMap[p.id] || null;

@@ -21,28 +21,10 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const SITE = 'https://purplehere.com';
+const { SITE, STATIC_PAGES } = require('../config/seoPages'); // 목록 단일 소스 — routes/seo-html.js 와 공유
 const REPO = path.resolve(__dirname, '../..');
 const OUT = path.join(REPO, 'dev-frontend/public/sitemap.xml');
 const LANDING = 'dev-frontend/src/pages/Landing';
-
-// 공개 랜딩 페이지 — App.tsx 공개 라우트 중 색인 대상(로그인·가입·비밀번호·/shop/:slug 제외)
-const STATIC_PAGES = [
-  { loc: '/', file: 'HomePage.tsx', changefreq: 'weekly', priority: '1.0' },
-  { loc: '/pricing', file: 'PricingPage.tsx', changefreq: 'weekly', priority: '0.9' },
-  { loc: '/features', file: 'FeaturesPage.tsx', changefreq: 'monthly', priority: '0.8' },
-  { loc: '/packages', file: 'PackagesPage.tsx', changefreq: 'monthly', priority: '0.7' },
-  { loc: '/about', file: 'AboutPage.tsx', changefreq: 'monthly', priority: '0.7' },
-  { loc: '/faq', file: 'FAQPage.tsx', changefreq: 'monthly', priority: '0.7' },
-  { loc: '/blog', file: 'BlogPage.tsx', changefreq: 'weekly', priority: '0.8' },
-  { loc: '/news', file: 'NewsPage.tsx', changefreq: 'weekly', priority: '0.6' },
-  { loc: '/contact', file: 'ContactPage.tsx', changefreq: 'monthly', priority: '0.6' },
-  { loc: '/demo', file: 'DemoPage.tsx', changefreq: 'monthly', priority: '0.6' },
-  { loc: '/referral-program', file: 'ReferralLandingPage.tsx', changefreq: 'monthly', priority: '0.5' },
-  { loc: '/company', file: 'CompanyPage.tsx', changefreq: 'yearly', priority: '0.4' },
-  { loc: '/privacy', file: 'PrivacyPolicyPage.tsx', changefreq: 'yearly', priority: '0.3' },
-  { loc: '/terms', file: 'TermsOfServicePage.tsx', changefreq: 'yearly', priority: '0.3' },
-];
 
 const day = (d) => new Date(d).toISOString().slice(0, 10);
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

@@ -349,16 +349,23 @@
   },
   "viewNote": {
     "own": "You can edit or delete this supplier from the External tab.",
-    "brandShared": "Shared by your Brand. Items are managed at the Brand account."
+    "brandShared": "Shared by your Brand. Items are managed at the Brand account.",
+    "ownerShared": "Added by the owner of your restaurants and shared by all of them. Only the owner can edit it or its products — you can order from it or turn it off for this store."
   },
   "profile": {
     "externalSupplier": "External supplier"
   },
   "source": {
-    "external": "EXTERNAL"
+    "external": "EXTERNAL",
+    "ownerShared": "FROM OWNER"
   },
   "card": {
-    "viewProducts": "View Products"
+    "viewProducts": "View Products",
+    "copiedFromBrand": "Received from your brand on {{date}} — edited here only",
+    "sharedStores": "Copied to {{n}} of {{total}} stores",
+    "notShared": "Not shared with any store",
+    "fromOwner": "Added by your owner — shared by all their restaurants",
+    "ownerStores": "Used by {{n}} of your {{total}} restaurants"
   },
   "active": {
     "titleOff": "Turn supplier off?",
@@ -371,11 +378,39 @@
     "confirmOffBrand": "Turn off {{name}}? It will disappear from ordering at all of your brand stores.",
     "confirmOffOwn": "Turn off {{name}}? It will not be available when ordering until you turn it back on.",
     "confirmOn": "Turn {{name}} back on? It will be available when ordering again.",
-    "failed": "Could not change this supplier. Please try again."
+    "failed": "Could not change this supplier. Please try again.",
+    "confirmOffOwnerStore": "Turn off {{name}} for this store only? Your other restaurants keep it.",
+    "confirmOffOwner": "Turn off {{name}} for all your restaurants? They will not see it when ordering until you turn it back on."
   },
   "payment": {
     "unpaid": "Unpaid",
     "paid": "Paid",
     "refunded": "Refunded"
+  },
+  "share": {
+    "button": "Share to stores",
+    "title": "Share {{name}} with stores",
+    "hint": "Each store you pick gets its own copy of this supplier and its products. After that, the copy belongs to the store — changes you make here do not reach the store, and the store's changes do not come back.",
+    "submit": "Give a copy",
+    "sharedOn": "Already has a copy · {{date}}",
+    "sameName": "This store already has its own supplier with the same name. A separate copy will be added.",
+    "noStores": "Your brand has no stores yet.",
+    "loadFailed": "Could not load your stores.",
+    "partFailed": "Some stores could not receive a copy:",
+    "nothing": "Nothing was shared.",
+    "failed": "Could not share this supplier. Please try again.",
+    "reason": {
+      "forbidden": "not a store of this brand",
+      "options": "this supplier has product options, which cannot be copied",
+      "other": "the copy could not be made — please try again or contact support"
+    },
+    "blockedOptions": "This supplier has product options, which cannot be copied to a store. Remove the options first, or let each store add this supplier itself.",
+    "loading": "Loading stores…",
+    "selectAll": "Select all stores without a copy ({{n}})",
+    "clearAll": "Clear selection"
+  },
+  "deleteConfirm": {
+    "storesKeep": "Stores that received a copy keep their own copy.",
+    "ownerStores": "All your restaurants will stop seeing it. Orders already placed are kept."
   }
 }

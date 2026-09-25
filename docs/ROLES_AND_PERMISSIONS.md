@@ -258,6 +258,9 @@ restaurants(id,name,status)). **exclude 목록이 아니라 allowlist** 인 이�
 
 ---
 
+
+**공급업체·발주 (2026-09-24, `SUPPLIER_CONTRACT_SYSTEM.md` §H-3):** 다매장 오너는 자기 이름(`owner`)으로 외부 공급업체를 등록·수정·상품 관리 → 소유 매장들이 같이 씀(매장은 보기·발주·끄기만). 발주는 소유 매장 전체 보기 + 승인/반려만, 작성·수령·재료 연결·계약 라우트는 403.
+
 ## 7. Restaurant Admin (레스토랑 관리자)
 
 ### 권한

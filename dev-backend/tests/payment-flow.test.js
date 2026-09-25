@@ -32,11 +32,12 @@ describe('Payment flow — endpoint surface', () => {
     expect([401, 403]).toContain(r.status);
   });
 
-  test('payment on non-existent invoice → 404 (or 403 if scope check first)', async () => {
+  // 2026-09-24: 옛 결제 기록 경로는 무권한 뒷문이라 폐기(410) — 로그인해도, 청구서가 있든 없든 410.
+  test('removed POST /api/invoices/:id/payment → 410 even when logged in', async () => {
     const r = await http('post', '/api/invoices/99999999/payment')
       .set('Authorization', `Bearer ${raToken}`)
       .send({ payment_method: 'cash' });
-    expect([404, 403]).toContain(r.status);
+    expect(r.status).toBe(410);
   });
 });
 

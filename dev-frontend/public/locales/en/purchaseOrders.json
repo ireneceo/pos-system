@@ -15,7 +15,10 @@
       "from": "From",
       "to": "To",
       "owed": "Owed to staff",
-      "owedHint": "Paid with personal money and not yet paid back"
+      "owedHint": "Paid with personal money and not yet paid back",
+      "ownerRestaurant": "Restaurant",
+      "noOwnedRestaurant": "No restaurant",
+      "allOwnedRestaurants": "All my restaurants ({{n}})"
     },
     "table": {
       "poNumber": "PO #",
@@ -81,7 +84,8 @@
     },
     "receipt": {
       "failed": "Could not attach the receipt"
-    }
+    },
+    "ownerSuppliers": "My suppliers"
   },
   "new": {
     "title": "New Purchase Order",

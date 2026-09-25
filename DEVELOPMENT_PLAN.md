@@ -1,5 +1,16 @@
 # Purple POS - 개발 진행 현황
 
+> **최종 업데이트:** 2026-09-25 #1 — [Claude Code] **2026-09-24 세션 마감 — SEO(v3.102)·보안 핫픽스 3·오너 발주 보기(5.59)·브랜드 공급업체 복사본(5.60)·공유 창 보완(5.61) 운영 배포 · 오너 공급업체 상속 + 오너 발주 전체 표(5.62) 개발 완료·미배포(Fable 게이트 대기).**
+>
+> **최종 업데이트:** 2026-09-24 #5 — [Claude Code] **⑥ 브랜드 공급업체 «매장에 공유» = 복사본 · 상속 종료 운영 배포 (SW `5.60-brand-supplier-copy-20260924`, 21:38 UTC · 스모크 10/10 · 백업 `20260924_213814`) ✅** — with MIN Cafe 사본 23 · 연결 301·발주 31·청구서 20·원가이력 20 이전 · 실패 0 · Fable 게이트 PASS. 상세 `docs/SUPPLIER_CONTRACT_SYSTEM.md` §H-2.
+>
+> **최종 업데이트:** 2026-09-24 #4 — [Claude Code] **v3.102 운영 배포 (SW `5.58-seo-canonical-news-20260924`, 16:11 UTC · 스모크 10/10 · 백업 `20260924_160526`) + 운영 nginx 교체.**
+> ① **인보이스 대조**(5.57 분) — 이름 학습 정규화·양방향·퇴화 방지 · 「총액대로만 저장」.
+> ② **SEO C1** — 🔴 크롤러가 받는 첫 HTML 이 전 주소 동일이었다 → 백엔드 `routes/seo-html.js` 가 마케팅 주소별 HTML(제목·canonical·본문) · 없는 글 404 · 실패 시 정적 복귀. 마케팅 주소 목록 단일 소스 `config/seoPages.js` + nginx 대조기 `check-seo-nginx.js`.
+> ③ **M3 블로그 주소** — `-2` · 비라틴 = 영어+`-zh` · 🔴 제목 수정이 저장마다 주소를 다시 만들던 결함 수정.
+> ④ **www→apex 301 은 마케팅 주소만** — 기기 localStorage(printerSettings) 보호, www 사용 여부 확인 불가라 좁힘(Fable 수용). 운영 확인 5/5.
+> ⑤ Fable 설계 1회 + 게이트 2회차(조건부 → 재도장 통과, 마커 `2c801032fba6`). 대기: 2026-10-15 전후 Search Console 재판독.
+
 > **최종 업데이트:** 2026-09-24 #3 — [Claude Code] **인보이스 대조 개선 (SW `5.57-invoice-alias-total-only-20260924`) — 개발 완료·미배포.**
 > ① **이름 학습이 왜 안 됐나** — 매칭기는 OCR 잡음을 예상해 느슨하게 만들었는데 화면이 **읽힌 줄 이름을 통째로** 사전에 넣어 그 느슨함을 무력화했다. 저장값을 매칭과 **같은 규칙으로 정규화**하고, 1단계를 **양방향**으로 넓히고, 사전으로 붙은 줄은 사전을 **안 덮어쓰게**(학습 퇴화 방지) 고쳤다.
 > ② **「총액대로만 저장」** — 사진 판독이 엉망일 때 적은 총액으로 저장·결제할 길. ⛔ 줄 단가는 **원가에 반영하지 않는다**(잘못 읽은 단가가 원가로 굳는 걸 막는 게 이 화면의 존재 이유). 청구서에는 차액 한 줄이 붙어 낼 금액이 한 숫자가 된다.
@@ -10441,6 +10452,27 @@ verify-all --full **19/19** · i18n 오류 0 · health-check 247/247 · 🔒 인
 - `dev-backend/routes/cost-reconciliation.js` · `services/reconcileInvoiceSync.js`
 - `deploy-to-production.sh` (백업 보관일)
 - locales 4언어 × `purchaseOrders.json`
+
+---
+
+## ✅ 완료: 공급업체·오너 구조 정리 — 브랜드 복사본 · 오너 상속 · 오너 발주 (2026-09-24) [Claude Code]
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| SEO 백엔드 HTML(v3.102) | 마케팅 주소마다 다른 제목·설명·본문·canonical, sitemap 117, 운영 nginx 교체 | ✅ 운영 |
+| 보안 핫픽스 3 | /auth/register 410 · 오너 claim 가로채기 차단 · 옛 결제 기록 API 410 · 비밀번호 찾기 미인증 발송 | ✅ 운영 |
+| 오너 발주 보기(5.59) | 소유 매장 발주 보기(GET 만), 쓰기 버튼 숨김 | ✅ 운영 |
+| 브랜드 공급업체 «매장에 공유» = 복사본(5.60) | 상속 종료, 운영 사본 23·청구서 20 이전·실패 0, 지워진 상품은 지워진 채 복사 | ✅ 운영 |
+| 공유 창 보완(5.61) | 실패 사유 지워지던 버그 · 옵션 업체 사전 잠금 · 카드 공유 매장 수 · 모두 선택 | ✅ 운영 |
+| 오너 공급업체 상속 + 오너 발주 전체 표(5.62) | 오너 등록 업체를 소유 매장들이 한 행으로 공유 · 매장은 보기·발주·끄기 · 오너 발주 «내 매장 전체» | ✅ 개발(미배포, Fable 게이트 대기) |
+
+### 수정된 파일 (5.62)
+- `dev-backend/middleware/buyerScope.js` · `utils/supplierAccess.js` · `routes/supplier-directory.js` · `routes/purchase-orders-crud.js`
+- `dev-backend/models/SupplierCompany.js` · `models/SupplierContract.js` · `scripts/migrate-owner-supplier-enum.js`(신규) · `scripts/migrations.registry.json` · `scripts/health-check.js`
+- `dev-frontend/src/pages/Suppliers/AllSuppliersView.tsx` · `UnifiedSuppliersPage.tsx` · `pages/SupplierDirectory/SupplierProfilePage.tsx` · `pages/PurchaseOrders/PurchaseOrdersPage.tsx` · `utils/ownerPoScope.ts` · locales supplier/purchaseOrders ×4 · `public/sw.js`
+- docs: `SUPPLIER_CONTRACT_SYSTEM.md` §H-2·§H-3 · `TRADE_STRUCTURE.md`
 
 ---
 

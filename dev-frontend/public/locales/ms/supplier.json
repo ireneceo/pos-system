@@ -349,16 +349,23 @@
   },
   "viewNote": {
     "own": "Anda boleh sunting atau padam pembekal ini dari tab Luaran.",
-    "brandShared": "Dikongsi oleh Jenama anda. Item diurus di akaun Jenama."
+    "brandShared": "Dikongsi oleh Jenama anda. Item diurus di akaun Jenama.",
+    "ownerShared": "Ditambah oleh pemilik restoran anda dan dikongsi oleh semua restorannya. Hanya pemilik boleh menyunting pembekal ini atau produknya — anda boleh membuat pesanan atau mematikannya untuk kedai ini."
   },
   "profile": {
     "externalSupplier": "Pembekal luaran"
   },
   "source": {
-    "external": "LUARAN"
+    "external": "LUARAN",
+    "ownerShared": "DARIPADA PEMILIK"
   },
   "card": {
-    "viewProducts": "Lihat Produk"
+    "viewProducts": "Lihat Produk",
+    "copiedFromBrand": "Diterima daripada jenama anda pada {{date}} — disunting di sini sahaja",
+    "sharedStores": "Disalin ke {{n}} daripada {{total}} kedai",
+    "notShared": "Belum dikongsi dengan mana-mana kedai",
+    "fromOwner": "Ditambah oleh pemilik — dikongsi oleh semua restorannya",
+    "ownerStores": "Digunakan oleh {{n}} daripada {{total}} restoran anda"
   },
   "active": {
     "titleOff": "Matikan pembekal?",
@@ -371,11 +378,39 @@
     "confirmOffBrand": "Matikan {{name}}? Ia akan hilang daripada pesanan di semua kedai jenama anda.",
     "confirmOffOwn": "Matikan {{name}}? Ia tidak akan tersedia semasa membuat pesanan sehingga anda menghidupkannya semula.",
     "confirmOn": "Hidupkan semula {{name}}? Ia akan tersedia semasa membuat pesanan.",
-    "failed": "Tidak dapat menukar pembekal ini. Sila cuba lagi."
+    "failed": "Tidak dapat menukar pembekal ini. Sila cuba lagi.",
+    "confirmOffOwnerStore": "Matikan {{name}} untuk kedai ini sahaja? Restoran anda yang lain masih menggunakannya.",
+    "confirmOffOwner": "Matikan {{name}} untuk semua restoran anda? Ia tidak akan dipaparkan semasa membuat pesanan sehingga anda menghidupkannya semula."
   },
   "payment": {
     "unpaid": "Belum Dibayar",
     "paid": "Dibayar",
     "refunded": "Dikembalikan"
+  },
+  "share": {
+    "button": "Kongsi ke kedai",
+    "title": "Kongsi {{name}} dengan kedai",
+    "hint": "Setiap kedai yang anda pilih mendapat salinan sendiri pembekal ini dan produknya. Selepas itu, salinan milik kedai — perubahan anda di sini tidak sampai ke kedai, dan perubahan kedai tidak kembali.",
+    "submit": "Beri salinan",
+    "sharedOn": "Sudah ada salinan · {{date}}",
+    "sameName": "Kedai ini sudah ada pembekal sendiri dengan nama yang sama. Salinan berasingan akan ditambah.",
+    "noStores": "Jenama anda belum ada kedai.",
+    "loadFailed": "Tidak dapat memuatkan kedai anda.",
+    "partFailed": "Sesetengah kedai tidak dapat menerima salinan:",
+    "nothing": "Tiada apa dikongsi.",
+    "failed": "Tidak dapat berkongsi pembekal ini. Sila cuba lagi.",
+    "reason": {
+      "forbidden": "bukan kedai jenama ini",
+      "options": "pembekal ini mempunyai pilihan produk, yang tidak boleh disalin",
+      "other": "salinan tidak dapat dibuat — sila cuba lagi atau hubungi sokongan"
+    },
+    "blockedOptions": "Pembekal ini mempunyai pilihan produk, yang tidak boleh disalin ke kedai. Buang pilihan dahulu, atau biar setiap kedai menambah pembekal ini sendiri.",
+    "loading": "Memuatkan kedai…",
+    "selectAll": "Pilih semua kedai tanpa salinan ({{n}})",
+    "clearAll": "Kosongkan pilihan"
+  },
+  "deleteConfirm": {
+    "storesKeep": "Kedai yang menerima salinan mengekalkan salinan mereka sendiri.",
+    "ownerStores": "Semua restoran anda tidak akan melihatnya lagi. Pesanan yang sudah dibuat disimpan."
   }
 }

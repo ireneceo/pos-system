@@ -4,7 +4,8 @@ const { sequelize } = require('../config/database');
 const SupplierContract = sequelize.define('SupplierContract', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   supplier_company_id: { type: DataTypes.INTEGER, allowNull: false },
-  entity_type: { type: DataTypes.ENUM('restaurant', 'brand', 'foodcourt'), allowNull: false },
+  // 'owner' = 오너 계정(users.id)의 계약 — 소유 매장이 상속(utils/supplierAccess.findParentContract, 2026-09-24 §H-3)
+  entity_type: { type: DataTypes.ENUM('restaurant', 'brand', 'foodcourt', 'owner'), allowNull: false },
   entity_id: { type: DataTypes.INTEGER, allowNull: false },
 
   status: {

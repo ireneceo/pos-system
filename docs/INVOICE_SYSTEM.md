@@ -287,6 +287,8 @@ Brand와 동일 구조. `issuer_type: 'foodcourt'`, 인보이스 번호 `INV-FC{
 
 ## 3. 결제 흐름 (Payment Flow)
 
+> ⛔ **`POST /api/invoices/:id/payment`(옛 «결제 기록») 폐기 — 410 (2026-09-24 보안).** 로그인만 하면 아무 청구서나 결제완료로 찍던 무권한 뒷문(상태·수단 검증·금고 기록 없음, 구독 청구서면 정지 해제). 결제는 이 절의 submit-payment → confirm-payment · 외부 청구서 mark-paid-external · 발주 `/purchase-orders/:id/pay` 로만. health-check 「원장 거울」 계약도 submit→confirm 경로로 증명한다.
+
 ### 3.1 상태 머신 (Status Flow)
 
 ```

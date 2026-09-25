@@ -11,6 +11,8 @@ import styled from 'styled-components';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
+import { withOwnerPoScope } from '../../utils/ownerPoScope';
 import { isRealSupplierSku, supplierFacingName } from '../../utils/poShare';
 import { lineQtyText } from '../../utils/unitConversion';
 
@@ -218,6 +220,8 @@ const PurchaseOrderPrintPage: React.FC<PrintPageProps> = ({ forceSellerView = fa
   // 공급업체는 전용 경로가 forceSellerView 로 강제한다(쿼리 없이도 판매자 모드).
   const isSellerView = forceSellerView || searchParams.get('as') === 'seller';
   const { t } = useTranslation('purchaseOrders');
+  const { user } = useAuth();
+  const poRole = user?.role; // 오너는 고른 소유 매장 범위로 조회 (utils/ownerPoScope)
   const [data, setData] = useState<PODetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -227,7 +231,7 @@ const PurchaseOrderPrintPage: React.FC<PrintPageProps> = ({ forceSellerView = fa
     (async () => {
       try {
         const token = getAuthToken();
-        const url = isSellerView ? `/api/seller-orders/${id}` : `/api/purchase-orders/${id}`;
+        const url = isSellerView ? `/api/seller-orders/${id}` : withOwnerPoScope(`/api/purchase-orders/${id}`, poRole);
         const r = await fetch(url, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -245,7 +249,7 @@ const PurchaseOrderPrintPage: React.FC<PrintPageProps> = ({ forceSellerView = fa
       }
     })();
     return () => { cancelled = true; };
-  }, [id, isSellerView]);
+  }, [id, isSellerView, poRole]);
 
   // Auto-trigger print once data loaded (small delay so DOM is painted)
   useEffect(() => {

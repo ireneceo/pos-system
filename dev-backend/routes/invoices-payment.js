@@ -32,7 +32,6 @@ const { logActivity } = require('../utils/activityLogger');
 
 // 원장 거울 헬퍼(청구서 paid → 발주 paid)는 services/purchaseOrderPayment.js 로 옮겼다
 // (2026-09-11 §8-3 A-4) — 모든 paid 경로가 부르는 handleInvoicePaid 도 같은 함수를 쓴다.
-const { mirrorPaidToPurchaseOrders, paidInvoiceIdsFor } = require('../services/purchaseOrderPayment');
 const {
   generateInvoiceNumber,
   getAdditionalCharges,
@@ -46,66 +45,16 @@ const {
   checkConfirmPermission,
 } = require('./invoices-helpers');
 
-router.post('/:id/payment', authenticateToken, async (req, res) => {
-  try {
-    const { payment_method, transaction_id, payment_date, notes, receipt_url } = req.body;
-
-    const invoice = await Invoice.findByPk(req.params.id);
-    if (!invoice) {
-      return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
-    }
-
-    if (invoice.status === 'paid') {
-      return res.status(400).json({ success: false, error: { message: 'Invoice is already paid', code: 'VALIDATION_ERROR' } });
-    }
-
-    // Update invoice with payment information + SOA cascade (B1 재설계)
-    const updateData = {
-      status: 'paid',
-      paid_amount: invoice.total_amount,
-      paid_at: payment_date || new Date(),
-      payment_method: payment_method || 'bank_transfer',
-      transaction_id,
-      payment_notes: notes,
-      receipt_url
-    };
-    const { sequelize: _seqA } = require('../config/database');
-    await _seqA.transaction(async (t) => {
-      await invoice.update(updateData, { transaction: t });
-      if (invoice.invoice_category === 'soa') {
-        const [updatedCount] = await Invoice.update(
-          { status: 'paid', paid_at: payment_date || new Date() },
-          {
-            where: { parent_soa_invoice_id: invoice.id, status: { [require('sequelize').Op.ne]: 'paid' } },
-            transaction: t
-          }
-        );
-      }
-      // 발주 쪽 원장도 같이 맞춘다(위 헬퍼 주석 참조).
-      const paidIds = await paidInvoiceIdsFor(invoice, t);
-      await mirrorPaidToPurchaseOrders(paidIds, payment_date || new Date(), t);
-    });
-
-    // Centralised post-paid side-effects (subscription restore + referral commission).
-    // Fire-and-forget — never block or fail the payment record on a side-effect error.
-    handleInvoicePaid(invoice.id).catch(e =>
-      console.error('[invoices-payment /payment] handleInvoicePaid:', e.message)
-    );
-
-    logActivity(req, {
-      action_type: 'update',
-      entity_type: 'invoice',
-      entity_id: invoice.id,
-      entity_name: invoice.invoice_number,
-      description: `Recorded payment for invoice ${invoice.invoice_number} via ${payment_method || 'bank_transfer'}`,
-      restaurant_id: invoice.restaurant_id
-    });
-
-    res.json({ success: true, invoice: await Invoice.findByPk(req.params.id) });
-  } catch (error) {
-    console.error('Error recording payment:', error);
-    res.status(500).json({ success: false, error: { message: 'Failed to record payment', code: 'INTERNAL_ERROR' } });
-  }
+// ⛔ 옛 결제 기록 — 폐기 (2026-09-24 보안 · Fable 판정). 로그인만 하면 누구든 아무 청구서나 결제완료로 찍을 수 있었다
+//   (역할·소유 검사 없음 · 상태 게이트 없음 · 결제수단 검증 없음 · 금고 기록 없이 발주까지 paid → 구독 청구서면 정지 해제).
+//   화면·데스크탑·모바일 호출 0, 운영 전 기간 사용 0. 권한 검사만 붙이는 방법은 기각 — 권한 있는 사람에게 여전히 뒷문.
+//   결제는 한 손으로만: submit-payment → confirm-payment · mark-paid-external · /purchase-orders/:id/pay. 되살리지 말 것.
+router.post('/:id/payment', authenticateToken, (req, res) => {
+  res.status(410).json({
+    success: false,
+    code: 'GONE',
+    message: 'This endpoint has been removed. Use submit-payment/confirm-payment, mark-paid-external or /purchase-orders/:id/pay.'
+  });
 });
 
 // Delete invoice

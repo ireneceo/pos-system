@@ -18,6 +18,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import AllSuppliersView from './AllSuppliersView';
 import MySuppliersPage from '../SupplierDirectory/MySuppliersPage';
 import SupplierDirectoryPage from '../SupplierDirectory/SupplierDirectoryPage';
+import { useAuth } from '../../contexts/AuthContext';
 
 type TabKey = 'all' | 'direct' | 'contracts' | 'find';
 
@@ -39,12 +40,16 @@ const HostShell = styled.div`
 export default function UnifiedSuppliersPage() {
   const { t } = useTranslation(['supplier', 'common']);
   const [tab, setTab] = useTabParam<TabKey>('all');
+  const { user } = useAuth();
+  // 소속 매장 없는 오너 — 자기 이름으로 등록한 외부 업체만 관리한다(소유 매장들이 같이 씀, §H-3).
+  //   계약·가입 공급업체 찾기는 매장이 하는 일이라 오너 화면에는 두지 않는다(서버도 오너에게 그 라우트를 열지 않는다).
+  const isOwner = user?.role === 'Restaurant Owner' && !(user as any)?.restaurantId && !(user as any)?.restaurant_id;
 
   return (
     <Container>
       <PageHeader title={t('supplier:nav.suppliers', 'Suppliers') as string} />
       <Content>
-        <Tabs>
+        {!isOwner && <Tabs>
           <Tab active={tab === 'all'} onClick={() => setTab('all')}>
             {t('supplier:nav.allSuppliers', 'All Suppliers')}
           </Tab>
@@ -57,22 +62,26 @@ export default function UnifiedSuppliersPage() {
           <Tab active={tab === 'find'} onClick={() => setTab('find')}>
             {t('supplier:nav.findSuppliers', 'Find Suppliers')}
           </Tab>
-        </Tabs>
+        </Tabs>}
         <HostShell>
           {/* All / Direct — AllSuppliersView 단일 list (suppliers-direct-mount class 로 HostShell padding 무력화 제외)
               Contracts / Find — 자식 페이지 그대로 (Container/Content padding 무력화 적용) */}
-          {tab === 'all' && <div className="suppliers-direct-mount"><AllSuppliersView /></div>}
-          {tab === 'direct' && (
+          {(tab === 'all' || isOwner) && <div className="suppliers-direct-mount"><AllSuppliersView /></div>}
+          {!isOwner && tab === 'direct' && (
             <div className="suppliers-direct-mount">
-              <AllSuppliersView sources={['own', 'external', 'brand_shared', 'brand_parent', 'foodcourt_parent']} />
+              <AllSuppliersView sources={['own', 'external', 'owner_shared', 'brand_shared', 'brand_parent', 'foodcourt_parent']} />
             </div>
           )}
-          <div style={{ display: tab === 'contracts' ? 'block' : 'none' }}>
-            <MySuppliersPage />
-          </div>
-          <div style={{ display: tab === 'find' ? 'block' : 'none' }}>
-            <SupplierDirectoryPage />
-          </div>
+          {!isOwner && (
+            <>
+              <div style={{ display: tab === 'contracts' ? 'block' : 'none' }}>
+                <MySuppliersPage />
+              </div>
+              <div style={{ display: tab === 'find' ? 'block' : 'none' }}>
+                <SupplierDirectoryPage />
+              </div>
+            </>
+          )}
         </HostShell>
       </Content>
     </Container>

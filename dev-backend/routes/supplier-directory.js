@@ -603,7 +603,18 @@ router.get('/supplier-catalog', async (req, res) => {
     // (docs/BUYER_FREE_TIER_DESIGN.md §6-2 — 무료 발주 등급이 계약 없이 담을 수 있는 유일한 문)
     const { openSupplierCompanyIds } = require('../utils/salesAccess');
     const openIds = await openSupplierCompanyIds();
-    const supplierIds = [...new Set([...contracts.map(c => c.supplier_company_id), ...openIds])];
+    // 매장이면 오너에게서 받은 업체도 — 매장이 끈 것(자기 행이 active 아님)은 뺀다(findEffectiveContract 와 같은 규칙, §H-3)
+    let inheritedIds = [];
+    if (req.buyerEntity.type === 'restaurant') {
+      const { inheritedOwnerSupplierIds } = require('../utils/supplierAccess');
+      const inh = await inheritedOwnerSupplierIds(req.buyerEntity.id);
+      if (inh.length) {
+        const mine = await SupplierContract.findAll({ where: { supplier_company_id: { [Op.in]: inh }, entity_type: 'restaurant', entity_id: req.buyerEntity.id }, attributes: ['supplier_company_id', 'status'], order: [['id', 'DESC']], raw: true });
+        const last = {}; for (const m of mine) if (!(m.supplier_company_id in last)) last[m.supplier_company_id] = m.status;
+        inheritedIds = inh.filter(id => !(id in last) || last[id] === 'active');
+      }
+    }
+    const supplierIds = [...new Set([...contracts.map(c => c.supplier_company_id), ...openIds, ...inheritedIds])];
     // No early-return when supplier contracts are empty — Brand/Foodcourt seller catalog may still apply.
 
     // 2. 필터 + 검색 (이름/SKU/설명/단위/카테고리/공급사 이름까지 매칭)
@@ -1121,7 +1132,10 @@ router.delete('/external-suppliers/:id', async (req, res) => {
     await sc.update({ status: 'inactive' });
     await SupplierContract.update(
       { status: 'terminated' },
-      { where: { supplier_company_id: id, entity_type: req.buyerEntity.type, entity_id: req.buyerEntity.id, status: 'active' } }
+      // 오너 업체는 소유 매장들이 같이 쓰던 것 — 매장 쪽 행까지 모두 끝낸다(지운 업체로 계속 발주되지 않게, §H-3)
+      { where: sc.registered_by_entity_type === 'owner'
+        ? { supplier_company_id: id, status: 'active' }
+        : { supplier_company_id: id, entity_type: req.buyerEntity.type, entity_id: req.buyerEntity.id, status: 'active' } }
     );
     res.json({ success: true });
   } catch (err) {
@@ -1158,10 +1172,10 @@ async function loadOwnedExternalSupplier(req, res) {
 }
 
 /**
- * 이 구매자가 **볼 수 있는** 외부 공급업체인가 — 자기가 등록한 것 ∪ 부모 브랜드가 등록한 것 (2026-09-11 §G).
- * `GET /external-suppliers` 목록의 scopes 와 같은 판정이다. 활성/비활성은 볼 수 있는 구매자 누구나 자기 관계에 대해 정한다
- * (`loadOwnedExternalSupplier` 는 등록자만 통과해서, 브랜드가 넣어준 업체를 매장이 끌 수 없었다).
- * @returns {{sc, inherited:boolean, parentBrandId:number|null}|null} 실패면 응답을 보내고 null
+ * 이 구매자가 **볼 수 있는** 외부 공급업체인가 — 자기가 등록한 것만 (2026-09-24 ⑥).
+ * 브랜드 → 매장 상속은 끝났다: 브랜드가 «매장에 공유» 하면 매장 소유 복사본이 생긴다(utils/supplierShare.js).
+ * 켜기/끄기는 등록자(자기 계약 행)만 정한다.
+ * @returns {{sc}|null} 실패면 응답을 보내고 null
  */
 async function loadVisibleExternalSupplier(req, res) {
   if (!req.buyerEntity) { res.status(400).json({ success: false, message: 'Buyer context required' }); return null; }
@@ -1173,15 +1187,13 @@ async function loadVisibleExternalSupplier(req, res) {
     return null;
   }
   const own = sc.registered_by_entity_type === req.buyerEntity.type && Number(sc.registered_by_entity_id) === Number(req.buyerEntity.id);
-  let parentBrandId = null;
-  if (!own && req.buyerEntity.type === 'restaurant') {
-    const rest = await Restaurant.findByPk(req.buyerEntity.id, { attributes: ['brand_id'] });
-    parentBrandId = rest && rest.brand_id ? rest.brand_id : null;
+  if (own) return { sc, inherited: false };
+  // 오너가 등록한 업체 — 그 오너의 소유 매장이면 보기·끄기 가능(수정은 오너만, §H-3)
+  if (req.buyerEntity.type === 'restaurant' && sc.registered_by_entity_type === 'owner' && sc.status === 'active') {
+    const { inheritedOwnerSupplierIds } = require('../utils/supplierAccess');
+    if ((await inheritedOwnerSupplierIds(req.buyerEntity.id)).includes(sc.id)) return { sc, inherited: true };
   }
-  const inherited = !own && !!parentBrandId && sc.registered_by_entity_type === 'brand' && Number(sc.registered_by_entity_id) === Number(parentBrandId)
-    && sc.shared_with_stores !== false;   // 공유 안 한 브랜드 업체는 매장이 못 본다 (2026-09-22)
-  if (!own && !inherited) { res.status(403).json({ success: false, message: 'Not your supplier' }); return null; }
-  return { sc, inherited, parentBrandId };
+  res.status(403).json({ success: false, message: 'Not your supplier' }); return null;
 }
 
 // SupplierProduct 입력 검증 (supplier-products.js create 미러). { value } 또는 { error }.
@@ -1216,30 +1228,31 @@ function buildProductFields(body) {
 router.get('/external-suppliers', async (req, res) => {
   if (!req.buyerEntity) return res.status(400).json({ success: false, message: 'Buyer context required' });
   try {
-    // A restaurant also sees the external suppliers its PARENT BRAND registered — brand-added
-    // suppliers flow down to the brand's restaurants. (Irene 2026-07-05: 브랜드가 추가한 건
-    // 산하 레스토랑에 연결돼 나와야 함)
-    const scopes = [{ registered_by_entity_type: req.buyerEntity.type, registered_by_entity_id: req.buyerEntity.id }];
-    let parentBrandId = null;
-    if (req.buyerEntity.type === 'restaurant') {
-      const rest = await Restaurant.findByPk(req.buyerEntity.id, { attributes: ['brand_id'] });
-      // 브랜드 업체는 «매장과 공유» 인 것만 (2026-09-22 Irene 「공유해주고 싶으면 해주고」)
-      if (rest?.brand_id) { parentBrandId = rest.brand_id; scopes.push({ registered_by_entity_type: 'brand', registered_by_entity_id: rest.brand_id, shared_with_stores: true }); }
-    }
-    const companies = await SupplierCompany.findAll({
+    // 자기가 등록한 외부 업체 (2026-09-24 ⑥ — 브랜드 → 매장 상속 종료, 공유 = 매장 소유 복사본)
+    //   + 매장이면 **오너가 등록한 업체**(상속, §H-3 — 매장은 보기·발주·끄기만, 수정은 오너).
+    const ownCompanies = await SupplierCompany.findAll({
       where: {
         is_system_registered: false,
         status: 'active',
-        [Op.or]: scopes
+        registered_by_entity_type: req.buyerEntity.type,
+        registered_by_entity_id: req.buyerEntity.id,
       },
       order: [['name', 'ASC']]
     });
+    let ownerCompanies = [];
+    if (req.buyerEntity.type === 'restaurant') {
+      const { inheritedOwnerSupplierIds } = require('../utils/supplierAccess');
+      const inh = await inheritedOwnerSupplierIds(req.buyerEntity.id);
+      if (inh.length) ownerCompanies = await SupplierCompany.findAll({ where: { id: { [Op.in]: inh } }, order: [['name', 'ASC']] });
+    }
+    const ownerIdSet = new Set(ownerCompanies.map(c => c.id));
+    const companies = [...ownCompanies, ...ownerCompanies].sort((a, b) => String(a.name).localeCompare(String(b.name)));
     const ids = companies.map(c => c.id);
     const counts = ids.length
       ? await SupplierProduct.findAll({ where: { supplier_company_id: { [Op.in]: ids } }, attributes: ['supplier_company_id', [fn('COUNT', col('id')), 'cnt']], group: ['supplier_company_id'], raw: true })
       : [];
     const cntMap = Object.fromEntries(counts.map(c => [c.supplier_company_id, Number(c.cnt)]));
-    // 이 구매자에게 켜져 있나 (2026-09-11 §G) — 자기 계약 행이 있으면 그 상태, 없으면 상속(= 켜짐).
+    // 이 구매자에게 켜져 있나 (2026-09-11 §G) — 자기 계약 행이 있으면 그 상태, 없으면 켜짐(등록자 기본).
     //   꺼진 업체도 목록에 남긴다(다시 켜야 하니까). 판정 규칙은 utils/supplierAccess.findEffectiveContract 와 같다.
     const myRows = ids.length
       ? await SupplierContract.findAll({
@@ -1249,12 +1262,39 @@ router.get('/external-suppliers', async (req, res) => {
       : [];
     const myStatus = {};
     for (const row of myRows) if (!(row.supplier_company_id in myStatus)) myStatus[row.supplier_company_id] = row.status;
-    // scope: 'own' = this buyer registered it (→ Direct), 'brand' = parent brand registered it
-    // (→ labeled "Brand" so the restaurant knows it flows down from the brand). (Fable 2026-07-05)
+    // 브랜드 화면: 업체마다 «산하 매장 몇 곳이 사본을 가졌나» (카드 한 줄 — 공유 창을 열지 않아도 보이게)
+    let shareCount = null; let storeTotal = 0;
+    if (req.buyerEntity.type === 'brand' && ids.length) {
+      const stores = await Restaurant.findAll({ where: { brand_id: req.buyerEntity.id }, attributes: ['id'], raw: true });
+      storeTotal = stores.length;
+      const copies = storeTotal ? await SupplierCompany.findAll({
+        where: { registered_by_entity_type: 'restaurant', registered_by_entity_id: { [Op.in]: stores.map(r => r.id) }, copied_from_supplier_company_id: { [Op.in]: ids } },
+        attributes: ['copied_from_supplier_company_id', [fn('COUNT', col('id')), 'cnt']], group: ['copied_from_supplier_company_id'], raw: true,
+      }) : [];
+      shareCount = Object.fromEntries(copies.map(c => [c.copied_from_supplier_company_id, Number(c.cnt)]));
+    }
+    // 오너 화면: 이 업체를 같이 쓰는 소유 매장 수(끈 매장 제외) — 카드 한 줄
+    let ownerStoreTotal = 0; const ownerOffCount = {};
+    if (req.buyerEntity.type === 'owner') {
+      const { RestaurantManager } = require('../models');
+      const stores = await RestaurantManager.findAll({ where: { manager_id: req.buyerEntity.id, relationship_type: 'ownership' }, attributes: ['restaurant_id'], raw: true });
+      const storeIds = [...new Set(stores.map(r => Number(r.restaurant_id)))];
+      ownerStoreTotal = storeIds.length;
+      if (storeIds.length && ids.length) {
+        const rowsS = await SupplierContract.findAll({ where: { supplier_company_id: { [Op.in]: ids }, entity_type: 'restaurant', entity_id: { [Op.in]: storeIds } }, attributes: ['id', 'supplier_company_id', 'entity_id', 'status'], order: [['id', 'DESC']], raw: true });
+        const last = {};
+        for (const r of rowsS) { const k = `${r.supplier_company_id}:${r.entity_id}`; if (!(k in last)) last[k] = r.status; }
+        for (const [k, st] of Object.entries(last)) if (st !== 'active') { const sid = k.split(':')[0]; ownerOffCount[sid] = (ownerOffCount[sid] || 0) + 1; }
+      }
+    }
+    // scope: 'own' | 'owner'(오너에게서 받음 — 읽기·발주·끄기만). copied_from = 브랜드에서 공유받은 복사본이면 그 날짜.
     res.json({ success: true, data: companies.map(c => ({
       id: c.id, name: c.name, phone: c.phone, email: c.email, product_count: cntMap[c.id] || 0,
-      scope: (parentBrandId && c.registered_by_entity_type === 'brand' && c.registered_by_entity_id === parentBrandId) ? 'brand' : 'own',
+      scope: ownerIdSet.has(c.id) ? 'owner' : 'own',
+      ...(req.buyerEntity.type === 'owner' ? { owner_store_count: ownerStoreTotal, owner_store_using: Math.max(0, ownerStoreTotal - (ownerOffCount[c.id] || 0)) } : {}),
+      copied_from_brand_at: c.copied_from_supplier_company_id ? c.copied_at : null,
       is_active_for_me: c.id in myStatus ? myStatus[c.id] === 'active' : true,
+      ...(shareCount ? { shared_store_count: shareCount[c.id] || 0, brand_store_count: storeTotal } : {}),
     })) });
   } catch (err) {
     console.error('GET /api/external-suppliers error:', err);
@@ -1266,14 +1306,96 @@ router.get('/external-suppliers', async (req, res) => {
 //   Irene 「브랜드에서 넣어준 공급업체여도 사용 안하는 경우 비활성 가능하게 해주고 공급업체 활성/비활성 기능 넣어줘」
 //   활성/비활성 = 그 구매자의 계약 행 상태. 새 표·새 칸 없음. 회사 행(status)·매핑(is_active)은 건드리지 않는다.
 //   - 끄기: 자기 행을 terminated(buyer) — 행이 없으면(브랜드가 넣어준 업체) 만들어서 상속을 막는다
-//   - 켜기: 브랜드가 넣어준 업체이고 브랜드 계약이 살아 있으면 자기 행을 지워 상속으로 돌아간다(브랜드 결제조건 그대로),
-//          아니면 자기 행을 active 로
-//   영향 범위는 이 구매자뿐 — 같은 브랜드의 다른 매장은 그대로다. 브랜드가 자기 행을 끄면 상속이 끊겨 전 매장이 잃는다(브랜드의 권리).
+//   - 켜기: 자기 행을 active 로(없으면 만든다). 2026-09-24 ⑥ — 브랜드 상속이 끝나 «상속으로 돌아가기» 분기는 없다.
+//   영향 범위는 이 구매자뿐.
+// ── 브랜드 → 매장 «공유» = 복사본 (2026-09-24 ⑥ · Fable 판정 · utils/supplierShare.js) ──────────────────────────
+//   Irene 「공급업체는 브랜드제너럴에서 브랜드에 공유해주고 싶으면 해주고 대신 수정 등록 모두 독립적으로 각각 운영하는 거야」
+//   브랜드가 고른 산하 매장마다 매장 소유 사본을 만든다. 이후 서로 영향 없음 — 재공유는 갱신이 아니라 «이미 공유됨».
+//   매장 소속(restaurants.brand_id)은 **서버가** 확인한다(요청 값 불신).
+async function loadBrandOwnedSupplier(req, res) {
+  if (!req.buyerEntity || req.buyerEntity.type !== 'brand') { res.status(403).json({ success: false, message: 'Only a brand can share its suppliers with stores' }); return null; }
+  const id = parseInt(req.params.id, 10);
+  const sc = Number.isFinite(id) ? await SupplierCompany.findByPk(id) : null;
+  if (!sc) { res.status(404).json({ success: false, message: 'Supplier not found' }); return null; }
+  if (sc.is_system_registered || sc.registered_by_entity_type !== 'brand' || Number(sc.registered_by_entity_id) !== Number(req.buyerEntity.id)) {
+    res.status(403).json({ success: false, message: 'Not your supplier' }); return null;
+  }
+  return sc;
+}
+
+// GET /api/external-suppliers/:id/shares — 이 브랜드의 산하 매장과 공유(사본) 여부
+router.get('/external-suppliers/:id/shares', async (req, res) => {
+  const sc = await loadBrandOwnedSupplier(req, res); if (!sc) return;
+  try {
+    const stores = await Restaurant.findAll({ where: { brand_id: req.buyerEntity.id }, attributes: ['id', 'name'], order: [['name', 'ASC']] });
+    const copies = stores.length ? await SupplierCompany.findAll({
+      where: { registered_by_entity_type: 'restaurant', registered_by_entity_id: { [Op.in]: stores.map(r => r.id) }, copied_from_supplier_company_id: sc.id },
+      attributes: ['id', 'registered_by_entity_id', 'copied_at'],
+    }) : [];
+    const byStore = new Map(copies.map(c => [Number(c.registered_by_entity_id), c]));
+    // 같은 이름 업체를 매장이 이미 따로 등록해 두었으면 알린다(막지 않음 — 자동 병합 없음, Fable 2회차 §3-c)
+    const sameName = stores.length ? await SupplierCompany.findAll({
+      where: {
+        registered_by_entity_type: 'restaurant', registered_by_entity_id: { [Op.in]: stores.map(r => r.id) },
+        copied_from_supplier_company_id: null, is_system_registered: false,
+        [Op.and]: [require('sequelize').where(fn('LOWER', fn('TRIM', col('name'))), String(sc.name || '').trim().toLowerCase())],
+      },
+      attributes: ['registered_by_entity_id'],
+    }) : [];
+    const nameClash = new Set(sameName.map(x => Number(x.registered_by_entity_id)));
+    // 복사할 수 없는 업체(옵션 상품)는 창을 열 때 미리 알린다 — 고르고 눌러야 알게 하지 않는다. 판정은 copySupplierToStore 와 같은 조건.
+    const optionGroups = await require('../models/SupplierProductOptionGroup').count({ where: { supplier_company_id: sc.id } });
+    res.json({ success: true, data: stores.map(r => {
+      const c = byStore.get(Number(r.id));
+      return { restaurant_id: r.id, name: r.name, shared: !!c, copied_at: c ? c.copied_at : null, has_same_name: nameClash.has(Number(r.id)) };
+    }), meta: { blocked_reason: optionGroups > 0 ? 'OPTIONS_NOT_COPIED' : null } });
+  } catch (err) {
+    console.error('GET /api/external-suppliers/:id/shares error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load stores' });
+  }
+});
+
+// POST /api/external-suppliers/:id/share { restaurant_ids: [] } — 매장별로 사본을 만든다(매장마다 트랜잭션 하나)
+router.post('/external-suppliers/:id/share', async (req, res) => {
+  const sc = await loadBrandOwnedSupplier(req, res); if (!sc) return;
+  const ids = Array.isArray(req.body && req.body.restaurant_ids)
+    ? [...new Set(req.body.restaurant_ids.map(x => parseInt(x, 10)).filter(Number.isFinite))] : [];
+  if (!ids.length) return res.status(400).json({ success: false, message: 'restaurant_ids is required' });
+  const { copySupplierToStore, SupplierShareError } = require('../utils/supplierShare');
+  const results = [];
+  for (const rid of ids) {
+    const rest = await Restaurant.findByPk(rid, { attributes: ['id', 'brand_id', 'name'] });
+    if (!rest || Number(rest.brand_id) !== Number(req.buyerEntity.id)) {
+      results.push({ restaurant_id: rid, status: 'forbidden', message: 'Not a store of this brand' });
+      continue;
+    }
+    const t = await SupplierCompany.sequelize.transaction();
+    try {
+      const r = await copySupplierToStore({ sourceId: sc.id, restaurantId: rid, userId: req.user.id, contractStatus: 'active', transaction: t });
+      await t.commit();
+      results.push({ restaurant_id: rid, ...r });
+    } catch (err) {
+      await t.rollback();
+      if (err instanceof SupplierShareError) results.push({ restaurant_id: rid, status: 'error', code: err.code, message: err.message });
+      else { console.error('POST /api/external-suppliers/:id/share error:', err); results.push({ restaurant_id: rid, status: 'error', message: 'Failed to share' }); }
+    }
+  }
+  if (results.some(r => r.status === 'created')) {
+    try {
+      const { logActivity } = require('../utils/activityLogger');
+      logActivity(req, { action_type: 'create', entity_type: 'supplier_company', entity_id: sc.id, entity_name: sc.name,
+        description: `Shared supplier "${sc.name}" with stores ${results.filter(r => r.status === 'created').map(r => r.restaurant_id).join(', ')} (copies)` });
+    } catch (_) { /* 기록 실패가 공유를 막지 않는다 */ }
+  }
+  const forbidden = results.filter(r => r.status === 'forbidden').length;
+  res.status(forbidden === results.length ? 403 : 200).json({ success: forbidden !== results.length, data: results });
+});
+
 router.put('/external-suppliers/:id/active', async (req, res) => {
   const v = await loadVisibleExternalSupplier(req, res); if (!v) return;
   const isActive = req.body && req.body.is_active;
   if (typeof isActive !== 'boolean') return res.status(400).json({ success: false, message: 'is_active (boolean) is required' });
-  const { sc, inherited, parentBrandId } = v;
+  const { sc } = v;
   const B = req.buyerEntity;
   const t = await SupplierContract.sequelize.transaction();
   try {
@@ -1283,20 +1405,19 @@ router.put('/external-suppliers/:id/active', async (req, res) => {
       const stamp = { status: 'terminated', terminated_by: 'buyer', terminated_by_user_id: req.user.id, terminated_at: new Date() };
       if (ownRow) await ownRow.update(stamp, { transaction: t });
       else await SupplierContract.create({ ...where, requested_by_user_id: req.user.id, ...stamp }, { transaction: t });
+    } else if (v.inherited) {
+      // 오너에게서 받은 업체를 다시 켬 = 매장 자기 행을 지워 오너 설정을 다시 따른다(자기 active 행이 남으면
+      //   오너가 끄거나 지워도 이 매장만 계속 발주하게 된다 — 상속의 원본은 하나, §H-3)
+      await SupplierContract.destroy({ where, transaction: t });
     } else {
-      const brandActive = inherited
-        ? await SupplierContract.findOne({ where: { supplier_company_id: sc.id, entity_type: 'brand', entity_id: parentBrandId, status: 'active' }, transaction: t })
-        : null;
-      if (brandActive) {
-        await SupplierContract.destroy({ where, transaction: t }); // 자기 행이 없어져야 상속이 다시 답이 된다
-      } else if (ownRow) {
+      if (ownRow) {
         await ownRow.update({ status: 'active', terminated_by: null, terminated_by_user_id: null, terminated_at: null }, { transaction: t });
       } else {
         await SupplierContract.create({ ...where, status: 'active', requested_by_user_id: req.user.id }, { transaction: t });
       }
     }
     await t.commit();
-    res.json({ success: true, data: { id: sc.id, is_active_for_me: isActive, inherited } });
+    res.json({ success: true, data: { id: sc.id, is_active_for_me: isActive } });
   } catch (err) {
     await t.rollback();
     console.error('PUT /api/external-suppliers/:id/active error:', err);
@@ -1306,7 +1427,9 @@ router.put('/external-suppliers/:id/active', async (req, res) => {
 
 // GET /api/external-suppliers/:id/products — 그 외부공급업체 상품 목록
 router.get('/external-suppliers/:id/products', async (req, res) => {
-  const sc = await loadOwnedExternalSupplier(req, res); if (!sc) return;
+  // 보기는 오너에게서 받은 업체도(매장 재료에 공급처를 붙이려면 상품이 보여야 한다). 등록·수정·삭제는 아래처럼 등록자만.
+  const v = await loadVisibleExternalSupplier(req, res); if (!v) return;
+  const { sc } = v;
   try {
     const products = await SupplierProduct.findAll({
       where: { supplier_company_id: sc.id },

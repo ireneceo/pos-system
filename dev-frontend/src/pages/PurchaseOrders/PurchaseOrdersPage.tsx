@@ -24,6 +24,8 @@ import { getErrorMessage } from '../../utils/apiError';
 import ReceivePayModal, { ReceivePayMode } from '../../components/PurchaseOrders/ReceivePayModal';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { formatQuantity } from '../../utils/unitConversion';
+import { useAuth } from '../../contexts/AuthContext';
+import { isOwnerRole, setOwnerPoRestaurantId, withOwnerPoScope, getOwnerPoListView, setOwnerPoListView, OWNER_PO_ALL } from '../../utils/ownerPoScope';
 
 // LiveOrders 와 동일한 FilterToolbar 패턴
 const FilterToolbar = styled.div`
@@ -245,6 +247,8 @@ type POStatus = 'draft' | 'pending_approval' | 'submitted' | 'confirmed' | 'ship
 
 interface POListRow {
   id: number;
+  entity_id?: number | null;
+  restaurant_name?: string | null;   // 오너 전체 표 — 어느 매장 발주인지
   po_number: string;
   seller_type: string;
   seller_name?: string | null;
@@ -416,6 +420,13 @@ const PurchaseOrdersPage: React.FC = () => {
   const navigate = useNavigate();
   const { operationSettings } = useStore();
   const tz = operationSettings?.timeZone;
+  // 오너 = 소유 매장 발주를 «보기만» (2026-09-24 Fable «오너=슈퍼바이저» §2-A) — 매장을 골라 보고, 쓰기 버튼은 없다.
+  const { user } = useAuth();
+  const role = user?.role;
+  const isOwner = isOwnerRole(role);
+  const [ownerRestaurants, setOwnerRestaurants] = useState<Array<{ id: number; name: string }>>([]);
+  // 0(OWNER_PO_ALL) = 소유 매장 전체 한 표(§2-B), 그 밖은 한 매장
+  const [ownerRid, setOwnerRid] = useState<number | null>(() => getOwnerPoListView());
 
   const [rows, setRows] = useState<POListRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -454,6 +465,13 @@ const PurchaseOrdersPage: React.FC = () => {
       if (dateRange?.start) params.set('from', dateRange.start);
       if (dateRange?.end) params.set('to', dateRange.end);
       params.set('limit', '100');
+      if (isOwner) {
+        if (ownerRid == null) { setRows([]); return; }
+        if (ownerRid !== OWNER_PO_ALL) {
+          params.set('entity_type', 'restaurant');
+          params.set('entity_id', String(ownerRid));
+        } // 전체 = 매장 지정 없이 — 서버가 소유 매장 전체로 준다
+      }
 
       const url = `/api/purchase-orders${params.toString() ? `?${params.toString()}` : ''}`;
       const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -469,11 +487,35 @@ const PurchaseOrdersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, dateRange]);
+  }, [statusFilter, dateRange, isOwner, ownerRid]);
+
+  // 오너 — 소유 매장 목록을 받아 고른 매장이 없거나 목록에 없으면 첫 매장으로
+  useEffect(() => {
+    if (!isOwner) return;
+    let alive = true;
+    fetch('/api/owner/restaurants', { headers: { Authorization: `Bearer ${getAuthToken()}` } })
+      .then(r => r.json())
+      .then(j => {
+        if (!alive) return;
+        const list: Array<{ id: number; name: string }> = (Array.isArray(j?.data) ? j.data : []).map((r: any) => ({ id: Number(r.id), name: r.name }));
+        setOwnerRestaurants(list);
+        setOwnerRid(prev => {
+          const keep = prev === OWNER_PO_ALL || (prev && list.some(r => r.id === prev)) ? prev : OWNER_PO_ALL;
+          setOwnerPoListView(keep as number);
+          return keep;
+        });
+      })
+      .catch(() => { if (alive) setOwnerRestaurants([]); });
+    return () => { alive = false; };
+  }, [isOwner]);
 
   const openDetailPanel = useCallback((poId: number) => {
     setSelectedPoId(poId);
   }, []);
+  // 오너 — 상세·인쇄는 그 행의 매장으로 범위를 맞춘 뒤(서버는 매장 전환으로만 상세를 연다)
+  const scopeToRow = (row: POListRow) => {
+    if (isOwner && row.entity_id != null) setOwnerPoRestaurantId(Number(row.entity_id));
+  };
 
   const closeDetailPanel = useCallback(() => {
     setSelectedPoId(null);
@@ -499,6 +541,7 @@ const PurchaseOrdersPage: React.FC = () => {
   };
 
   const fetchSuggestions = useCallback(async () => {
+    if (isOwner) { setSuggestions([]); setSuggestionsCount(0); return; } // 추천 = 새 발주 만들기 — 오너는 만들지 않는다
     try {
       const token = getAuthToken();
       const res = await fetch('/api/purchase-orders/suggestions', {
@@ -541,7 +584,7 @@ const PurchaseOrdersPage: React.FC = () => {
       setSuggestions([]);
       setSuggestionsCount(0);
     }
-  }, []);
+  }, [isOwner]);
 
   useEffect(() => {
     fetchList();
@@ -620,20 +663,22 @@ const PurchaseOrdersPage: React.FC = () => {
   };
 
   const handlePrintOrder = (row: POListRow) => {
+    scopeToRow(row);
     const token = getAuthToken();
     // /pdf endpoint serves HTML w/ window.print; opening with token in URL not ideal, so post-load print via new tab fetch
     const w = window.open('', '_blank');
     if (!w) return;
-    fetch(`/api/purchase-orders/${row.id}/pdf`, { headers: { 'Authorization': `Bearer ${token}` } })
+    fetch(withOwnerPoScope(`/api/purchase-orders/${row.id}/pdf`, role), { headers: { 'Authorization': `Bearer ${token}` } })
       .then(r => r.text())
       .then(html => { w.document.write(html); w.document.close(); })
       .catch(() => w.close());
   };
 
   const handleDownloadOrderPdf = async (row: POListRow) => {
+    scopeToRow(row);
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/purchase-orders/${row.id}/pdf`, {
+      const res = await fetch(withOwnerPoScope(`/api/purchase-orders/${row.id}/pdf`, role), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) { setAlertDlg({ title: t('common:error.title', 'Error') as string, message: 'Failed to load order' }); return; }
@@ -748,6 +793,12 @@ const PurchaseOrdersPage: React.FC = () => {
     <Container>
       <Header>
         <Title>{t('list.title')}</Title>
+        {isOwner && (
+          // 오너 사이드바에는 공급업체 메뉴가 아직 없다(🔒 MainLayout — 별도 승인) — 발주 화면에서 들어간다
+          <ThemedButton size="small" variant="outline" onClick={() => navigate('/pos/suppliers')}>
+            {t('list.ownerSuppliers', 'My suppliers')}
+          </ThemedButton>
+        )}
         {suggestionsCount > 0 && (
           <SuggestionBadge
             type="button"
@@ -824,6 +875,16 @@ const PurchaseOrdersPage: React.FC = () => {
         )}
 
         <FilterToolbar>
+          {isOwner && (
+            <StatusFilter
+              value={ownerRid ?? OWNER_PO_ALL}
+              onChange={(e) => { const v = parseInt(e.target.value, 10); if (Number.isFinite(v)) { setOwnerPoListView(v); if (v !== OWNER_PO_ALL) setOwnerPoRestaurantId(v); setOwnerRid(v); setSelectedPoId(null); } }}
+              aria-label={t('list.filter.ownerRestaurant', 'Restaurant') as string}
+            >
+              <option value={OWNER_PO_ALL}>{t('list.filter.allOwnedRestaurants', 'All my restaurants ({{n}})', { n: ownerRestaurants.length })}</option>
+              {ownerRestaurants.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </StatusFilter>
+          )}
           <div>
             <DatePeriodFilter
               activePeriod={activePeriod}
@@ -911,13 +972,15 @@ const PurchaseOrdersPage: React.FC = () => {
                       <div style={{ fontSize: 13, color: '#4B5563', marginBottom: 16 }}>
                         {t('list.empty.hint')}
                       </div>
-                      <ThemedButton
-                        size="small"
-                        variant="primary"
-                        onClick={() => navigate('/pos/purchase-orders/new')}
-                      >
-                        {t('list.empty.cta')}
-                      </ThemedButton>
+                      {!isOwner && (
+                        <ThemedButton
+                          size="small"
+                          variant="primary"
+                          onClick={() => navigate('/pos/purchase-orders/new')}
+                        >
+                          {t('list.empty.cta')}
+                        </ThemedButton>
+                      )}
                     </DataTableEmpty>
                   </td>
                 </tr>
@@ -925,14 +988,14 @@ const PurchaseOrdersPage: React.FC = () => {
                 filteredRows.map(row => {
                   const hasInvoice = !!(row.external_invoice_url || row.trade_invoice_id);
                   // 승인 대기(pending_approval) 발주는 아직 판매자에게 나가지도 않았다 → 수령 불가(서버도 400)
-                  const canMarkReceived = row.status !== 'received' && row.status !== 'cancelled' && row.status !== 'draft' && row.status !== 'pending_approval';
-                  const canUploadInvoice = row.is_external && !row.external_invoice_url && row.status !== 'draft' && row.status !== 'cancelled';
+                  const canMarkReceived = !isOwner && row.status !== 'received' && row.status !== 'cancelled' && row.status !== 'draft' && row.status !== 'pending_approval';
+                  const canUploadInvoice = !isOwner && row.is_external && !row.external_invoice_url && row.status !== 'draft' && row.status !== 'cancelled';
                   return (
                   <DataTableRow key={row.id}>
                     <DataTableCell data-label={t('list.table.poNumber') as string}>
                       <button
                         type="button"
-                        onClick={() => openDetailPanel(row.id)}
+                        onClick={() => { scopeToRow(row); openDetailPanel(row.id); }}
                         style={{
                           background: 'none', border: 'none', padding: 0,
                           font: 'inherit', color: '#635BFF', fontWeight: 700,
@@ -948,6 +1011,9 @@ const PurchaseOrdersPage: React.FC = () => {
                           marginLeft: 8, fontSize: 10, padding: '2px 6px',
                           background: '#FEF3C7', color: '#92400E', borderRadius: 999, fontWeight: 700
                         }}>{t('list.externalBadge', 'EXT')}</span>
+                      )}
+                      {isOwner && ownerRid === OWNER_PO_ALL && row.restaurant_name && (
+                        <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2 }}>{row.restaurant_name}</div>
                       )}
                     </DataTableCell>
                     <DataTableCell data-label={t('list.table.seller') as string}>
@@ -985,7 +1051,7 @@ const PurchaseOrdersPage: React.FC = () => {
                         <ThemedButton
                           size="small"
                           variant="outline"
-                          onClick={() => openDetailPanel(row.id)}
+                          onClick={() => { scopeToRow(row); openDetailPanel(row.id); }}
                           title={t('list.view') as string}
                         >
                           {t('list.view')}
@@ -1062,7 +1128,7 @@ const PurchaseOrdersPage: React.FC = () => {
                         )}
                         {/* 원가 대조 (2026-09-08) — 올린 인보이스와 발주 라인을 맞춰보는 화면.
                             지금까지 발주 상세 안에만 있어서 목록에서는 대조 여부조차 알 수 없었다. */}
-                        {row.seller_type === 'supplier' && (
+                        {!isOwner && row.seller_type === 'supplier' && (
                           <ThemedButton
                             size="small"
                             variant={(row.reconcile_diff_lines || 0) > 0 || (!row.invoice_reconciled_at && row.external_invoice_url) ? 'primary' : 'outline'}
@@ -1087,7 +1153,14 @@ const PurchaseOrdersPage: React.FC = () => {
                         )}
                         {/* 결제·되돌리기 (2026-09-10 Fable B1) — 상세·staging 이 쓰는 모달을 그대로 목록에 붙인다.
                             취소·초안은 낼 돈이 없고, 승인 대기는 아직 판매자에게 나가지도 않았다. */}
-                        {row.status !== 'draft' && row.status !== 'cancelled' && row.status !== 'pending_approval' && (
+                        {isOwner && row.receipt_url && (
+                          <ThemedButton size="small" variant="outline"
+                            onClick={() => window.open(row.receipt_url as string, '_blank')}
+                            title={row.receipt_filename || undefined}>
+                            {t('list.action.viewReceipt', '영수증 보기')}
+                          </ThemedButton>
+                        )}
+                        {!isOwner && row.status !== 'draft' && row.status !== 'cancelled' && row.status !== 'pending_approval' && (
                           row.payment_status === 'paid' ? (
                             <>
                             {/* 개인금액인데 아직 안 갚았으면 «정산» 이 먼저다 — 그때 회사 돈이 나간다 */}
