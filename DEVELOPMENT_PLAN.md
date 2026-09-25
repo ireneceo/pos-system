@@ -1,5 +1,14 @@
 # Purple POS - 개발 진행 현황
 
+> **최종 업데이트:** 2026-09-25 #3 — [Claude Code] **오너 모자(v1.1) 운영 배포 완료 — SW `5.63-owner-hat-20260925`(13:24 · 백업 `20260925_131833` · 스모크 10/10 · 마이그 101/101), Fable 게이트 PASS(`33b588d651c1`).**
+> ① **한 아이디에서 오너까지** — 오너 권한은 `restaurant_managers` 소유행 하나로만 판정되므로 **부여 = 소유행 생성**. `user_contexts` 행도 ENUM 확장도 **운영 마이그도 0건**이고, 롤백은 코드 되돌리기만.
+> ② 🔴 **지시서 앵커 1건이 실측과 달라 중단·보고했다** — F4 가 `o.restaurant_id` 를 쓰라 했는데 백엔드 응답은 `{id, name}` 이었다. Fable 판정 「지시서 오기 — 프론트를 `o.id` 로 3곳만, 백엔드 무접촉」. 고장주입으로 확인: 계약을 지시서대로 깨면 회수가 `Invalid id` 로 실패한다.
+> ③ 🔴 **SA 자격 부여/회수 화면이 6개월간 열리지 않았다** — 그 화면은 `ManagersPage` 의 «Manager Details» 모달 안에 있는데, 2026-03-03 ESLint 정리(`8d3980f4b`)가 모달 여는 함수를 지워 **2026-08-20 이후 도달 불가**였다. 설계문서가 「P4 완료·운영 배포」라 적은 9/03 이후 모든 운영 버전(v3.101 포함)이 같은 상태였고, 「P5 = user_contexts 0행」의 원인 일부다. **깨진 데이터는 없다 — 문이 없었을 뿐.** Fable 판정으로 이번 배포에 진입점 복원(핸들러 2줄 + 행 아이콘 `≡` 1개) 포함.
+> ④ **원인은 도구가 아니라 완료 기준이었다** — 화면 작업에 「사용자 클릭 흐름 1회」가 빠져 있었다. P4 검증은 API 실호출 + mount sweep(크래시만)으로 끝났다. 이번 검증부터 클릭 흐름을 포함했다.
+> ⑤ **검증**: `verify-all --full` **23/23**(mount sweep 683.8초 크래시 0) · 실브라우저 **3회 연속 2/2**(오너 카드 → `/pos/owner/dashboard` · `≡` 로 상세 창 열림 크래시 0·console.error 0 · 역할 선택 「매장 관리자/오너」 · 부여→표시→회수, 잔여 0) · API 실호출 **13/13** · **고장주입 반증 6건** · jest 25/25 · health-check auth 12/12 · 🔒 인쇄 보호파일 8/8 무변경 · i18n 에러 0.
+> ⑥ **Fable 3회**(F4 앵커 판정 · 진입점 판정 · 게이트 판정). 게이트 세션이 보안 경계 2건 diff 를 직접 대조해 **권한 판정처 증가 0**(오너 판정은 기존 소유행 조회 그대로)을 확인했다.
+> ⑦ **비차단 후속**: RA 계정엔 부여 화면 UI 입구가 없다(`/api/users?role=Manager` 목록에 RA 가 없음) — v1(P4)부터의 기존 갭.
+
 > **최종 업데이트:** 2026-09-25 #2 — [Claude Code] **SW 5.62 오너 공급업체 운영 배포 완료 + 「오너 모자(v1.1)」 개발 중단 저장(백엔드 완료·프론트 절반·빌드 전).**
 > ① **SW 5.62 배포** (07:26 UTC · 백업 `20260925_072023` · 스모크 10/10) — Fable 게이트 PASS(`a0a5a4f24572`). 운영 마이그 적용 확인: `[migrate-owner-supplier-enum] 추가 owner` 2컬럼, 사후 패리티 ENUM 소실 0, 운영 sw.js `5.62-owner-supplier-20260924`.
 > ② 🔴 **Irene 신고 두 건의 원인** — 「이메일 인증해도 오너가 안 나온다」는 버그가 아니었다. 오너는 **별도 계정 `withmin_owner`** 로 만들어졌고, 「Choose where to work」는 **로그인한 계정 하나**의 것만 보여준다. 한 아이디에 오너 모자를 얹는 것은 설계가 v1 에서 **명시 제외**한 것이었다(`user_contexts.entity_type` ENUM 에 'owner' 없음 · 오너 권한은 `restaurant_managers` 신원 기반). 「with MIN Cafe Owner」는 구조가 아니라 지난 세션이 그 계정에 **지어 넣은 이름값**.
@@ -10537,6 +10546,33 @@ verify-all --full **19/19** · i18n 오류 0 · health-check 247/247 · 🔒 인
 - `dev-backend/tests/user-contexts-switch.test.js` · `scripts/health-check.js`
 - `dev-frontend/src/contexts/AuthContext.tsx` · `pages/ContextSelect/ContextSelectPage.tsx` · `components/Layout/HeaderContextSwitcher.tsx`
 - 기록: `dev-backend/releases/2026-09-25-owner-hat.json` · 지시서 `.claude/owner-hat-remaining.md`
+
+---
+
+## ✅ 완료: 오너 모자(v1.1) — 한 아이디에서 오너까지 + SA 부여 화면 진입점 복원 (2026-09-25) [Claude Code]
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 오너 모자 = 소유행 파생 | 오너 권한은 `restaurant_managers` 소유행 하나로만 판정 → **부여 = 소유행 생성**. `user_contexts` 행·ENUM·운영 마이그 **0건** | ✅ 완료 |
+| 선택 화면 오너 카드 | 소유 매장이 있으면 카드 1장(제목 = 매장명, 여럿이면 «첫 매장 +N»). 네이티브 오너에겐 안 붙임 | ✅ 완료 |
+| SA 역할 선택 부여 | 부여 화면에 «매장 관리자 / 오너» 선택 + 소유행 목록 + 회수 | ✅ 완료 |
+| 🔴 부여 화면 진입점 복원 | 2026-03-03 ESLint 정리가 «Manager Details» 모달 여는 함수를 지워 **2026-08-20 이후 도달 불가**였다. 행 아이콘 `≡` 로 복원 | ✅ 완료 |
+| 투영·소켓 경계 | 오너 모자면 `restaurant_id=null`, 소켓은 소유 매장 룸만. 권한 판정처 증가 **0** | ✅ 완료 |
+| 운영 배포 | SW `5.63-owner-hat-20260925` (13:24 · 백업 `20260925_131833` · 스모크 10/10 · 마이그 101/101) | ✅ 완료 |
+
+### 검증
+verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우저 **3회 연속 2/2**(오너 카드 전환 · `≡` 상세 창 크래시 0·console.error 0 · 부여→표시→회수) · API 실호출 **13/13** · 고장주입 반증 6건 · jest 25/25 · health-check auth 12/12 · 🔒 print-guard 8/8 무변경 · Fable 게이트 PASS(`33b588d651c1`)
+
+### 수정된 파일
+- `dev-backend/services/userContexts.js` · `middleware/auth.js` · `routes/auth.js` · `routes/users.js` · `services/socketService.js` · `scripts/health-check.js` · `tests/user-contexts-switch.test.js`
+- `dev-frontend/src/contexts/AuthContext.tsx` · `pages/ContextSelect/ContextSelectPage.tsx` · `components/Layout/HeaderContextSwitcher.tsx` · `components/Admin/UserContextsSection.tsx` · `pages/Admin/ManagersPage.tsx` · `public/locales/{en,ko,zh,ms}/auth.json` · `public/sw.js`
+- `docs/MULTI_CONTEXT_LOGIN_DESIGN.md`(§5.4·§8.1·상태 정정) · `docs/PURCHASE_ORDER_SYSTEM.md`(§8-6 인보이스 총액 우선 대조 판정 저장)
+
+### 교훈
+- **mount sweep 은 «열리는 화면이 안 죽는지»만 본다** — «열 수 없는 화면»은 못 잡는다. 화면 작업 완료 기준에 **사용자 클릭 흐름 1회**를 넣어야 잡힌다
+- 지시서를 그대로 옮길 때도 **앵커가 실측과 다르면 멈추고 보고** — 그대로 적었으면 회수가 `Invalid id` 로 죽었다(고장주입으로 확인)
 
 ---
 

@@ -9,8 +9,8 @@ import { getAuthToken } from '../../utils/auth';
  * 유저별 컨텍스트("모자") 부여 관리 — System Admin 전용 섹션.
  * docs/MULTI_CONTEXT_LOGIN_DESIGN.md §7-P4.
  *
- * v1 은 (매장 × Restaurant Admin) 조합만 부여할 수 있어 역할 선택이 없다 — 서버도 같은 규칙을
- * 강제하므로(서비스 단일 소스) 화면에서 역할을 고르게 하면 규칙이 두 곳으로 갈라진다.
+ * v1 은 (매장 × Restaurant Admin), v1.1 은 여기에 (매장 × Restaurant Owner) 를 더한다 — 역할은 이 둘뿐이다.
+ * 오너 부여는 user_contexts 행이 아니라 소유행(restaurant_managers)이라 목록·회수도 따로 온다(ownerships).
  *
  * ⚠ 부여는 **다른 사람에게 그 매장의 관리자 권한을 주는 행위**다. 그래서 회수 시 확인을 받고,
  *   대상 매장이 사라진 "고아 모자"도 따로 보여준다(회수 누락을 사람이 알아채게).
@@ -105,17 +105,21 @@ interface Ctx {
 
 interface Orphan { id: number; entity_id: number; role: string; }
 
+interface Ownership { id: number; name: string; }
+
 interface Props { userId: number | string; }
 
 const UserContextsSection: React.FC<Props> = ({ userId }) => {
   const { t } = useTranslation('auth');
   const [contexts, setContexts] = useState<Ctx[]>([]);
   const [orphans, setOrphans] = useState<Orphan[]>([]);
+  const [ownerships, setOwnerships] = useState<Ownership[]>([]);
+  const [pickRole, setPickRole] = useState<'Restaurant Admin' | 'Restaurant Owner'>('Restaurant Admin');
   const [restaurants, setRestaurants] = useState<Array<{ id: number; name: string }>>([]);
   const [pick, setPick] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [revoking, setRevoking] = useState<Ctx | null>(null);
+  const [revoking, setRevoking] = useState<{ label: string; run: () => Promise<void> } | null>(null);
 
   const headers = useCallback(() => {
     const token = getAuthToken();
@@ -129,6 +133,7 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
       const json = await res.json();
       setContexts(json?.data?.contexts || []);
       setOrphans(json?.data?.orphans || []);
+      setOwnerships(json?.data?.ownerships || []);
       setError(null);
     } catch {
       setError(t('context.admin.loadFailed'));
@@ -156,7 +161,7 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
       const res = await fetch(`/api/users/${userId}/contexts`, {
         method: 'POST',
         headers: headers(),
-        body: JSON.stringify({ entity_type: 'restaurant', entity_id: Number(pick), role: 'Restaurant Admin' })
+        body: JSON.stringify({ entity_type: 'restaurant', entity_id: Number(pick), role: pickRole })
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) { setError(json?.message || t('context.admin.grantFailed')); return; }
@@ -169,7 +174,7 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
     }
   };
 
-  const revoke = async (ctx: Ctx) => {
+  const revokeContext = async (ctx: Ctx) => {
     setBusy(true); setError(null);
     try {
       const res = await fetch(`/api/users/${userId}/contexts/${ctx.id}`, { method: 'DELETE', headers: headers() });
@@ -182,7 +187,20 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
     }
   };
 
-  const granted = contexts.filter((c) => c.kind === 'granted');
+  const revokeOwnership = async (o: Ownership) => {
+    setBusy(true); setError(null);
+    try {
+      const res = await fetch(`/api/users/${userId}/ownerships/${o.id}`, { method: 'DELETE', headers: headers() });
+      if (!res.ok) { setError(t('context.admin.revokeFailed')); return; }
+      await load();
+    } catch {
+      setError(t('context.admin.revokeFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const granted = contexts.filter((c) => c.kind === 'granted' && c.entity_type !== 'owner');
 
   return (
     <Section>
@@ -191,13 +209,13 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
       </Head>
       <Hint>{t('context.admin.hint')}</Hint>
 
-      {granted.length === 0 && <Empty>{t('context.admin.none')}</Empty>}
+      {granted.length === 0 && ownerships.length === 0 && <Empty>{t('context.admin.none')}</Empty>}
 
       {granted.map((c) => (
         <Row key={c.id}>
           <RowLabel>{c.label}</RowLabel>
           <Tag>{c.role}</Tag>
-          <Button variant="danger" size="small" disabled={busy} onClick={() => setRevoking(c)}>
+          <Button variant="danger" size="small" disabled={busy} onClick={() => setRevoking({ label: c.label, run: () => revokeContext(c) })}>
             {t('context.admin.revoke')}
           </Button>
         </Row>
@@ -211,14 +229,28 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
             variant="danger"
             size="small"
             disabled={busy}
-            onClick={() => setRevoking({ kind: 'granted', id: o.id, entity_type: 'restaurant', entity_id: o.entity_id, role: o.role, label: String(o.entity_id) })}
+            onClick={() => setRevoking({ label: String(o.entity_id), run: () => revokeContext({ kind: 'granted', id: o.id, entity_type: 'restaurant', entity_id: o.entity_id, role: o.role, label: String(o.entity_id) }) })}
           >
             {t('context.admin.revoke')}
           </Button>
         </Row>
       ))}
 
+      {ownerships.map((o) => (
+        <Row key={'own-' + o.id}>
+          <RowLabel>{o.name}</RowLabel>
+          <Tag>Restaurant Owner</Tag>
+          <Button variant="danger" size="small" disabled={busy} onClick={() => setRevoking({ label: o.name, run: () => revokeOwnership(o) })}>
+            {t('context.admin.revoke')}
+          </Button>
+        </Row>
+      ))}
+
       <Row>
+        <Picker value={pickRole} onChange={(e) => setPickRole(e.target.value as 'Restaurant Admin' | 'Restaurant Owner')} disabled={busy}>
+          <option value="Restaurant Admin">{t('context.admin.roleAdmin')}</option>
+          <option value="Restaurant Owner">{t('context.admin.roleOwner')}</option>
+        </Picker>
         <Picker value={pick} onChange={(e) => setPick(e.target.value)} disabled={busy || restaurants.length === 0}>
           <option value="">{t('context.admin.selectRestaurant')}</option>
           {restaurants.map((r) => (
@@ -239,7 +271,7 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
         message={t('context.admin.revokeConfirmMessage', { name: revoking?.label || '' })}
         confirmText={t('context.admin.revoke')}
         cancelText={t('context.confirm.cancel')}
-        onConfirm={() => { const c = revoking; setRevoking(null); if (c) revoke(c); }}
+        onConfirm={() => { const c = revoking; setRevoking(null); if (c) c.run(); }}
         onCancel={() => setRevoking(null)}
       />
     </Section>

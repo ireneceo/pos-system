@@ -1,62 +1,74 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-09-25 09:40 UTC
-**버전:** 운영 v3.102 + 핫픽스 3 + SW 5.59 · 5.60 · 5.61 · **5.62**(마지막 배포 2026-09-25 07:26, 백업 20260925_072023)
-**작업 상태:** SW 5.62 운영 배포 완료 · 오너 모자(v1.1) **개발 중단 저장**(Irene 외출, 「다음 섹션에 계속 할게」)
+**마지막 업데이트:** 2026-09-25 13:35 UTC
+**버전:** 운영 v3.102 + 핫픽스 3 + SW 5.59·5.60·5.61·5.62·**5.63**(마지막 배포 2026-09-25 13:24, 백업 20260925_131833, 스모크 10/10)
+**작업 상태:** **오너 모자(v1.1) 운영 배포 완료** · Irene 지적 4건 대기(코드 미변경) · Irene 은 노트북에서 이어감
 
 ### 진행 중인 작업
-- 🔨 **오너 모자 = 소유행 파생 (v1.1)** [Claude Code] — 백엔드 완료 · 프론트 절반 · **빌드 전**
-  - **왜**: Irene 「기존 아이드 연결 기능 넣었어?」 — 지금은 오너·브랜드·공급업체가 전부 별도 계정이라 역할마다 새 아이디를 만들어야 했다. 한 아이디에서 오너까지 고르게 만든다.
-  - **핵심**: 오너 권한은 `restaurant_managers` 소유행 **하나로만** 판정 → **부여 = 소유행 생성**. `user_contexts` ENUM 확장·**운영 마이그 0건**. 롤백 = 코드 되돌리기만.
-  - 👉 **남은 작업 지시서 전문 = `.claude/owner-hat-remaining.md`** (다음 세션은 이 파일부터 읽는다)
-  - 기록: `dev-backend/releases/2026-09-25-owner-hat.json`
-  - ✅ 완료: 백엔드 5파일(`userContexts.js`·`middleware/auth.js`·`routes/auth.js`·`routes/users.js`·`socketService.js`) + 프론트 3파일(`AuthContext`·`ContextSelectPage`·`HeaderContextSwitcher`) + jest ⑦ 8건 + health-check auth 2건
-  - ⬜ 남음: **F4** `UserContextsSection.tsx`(역할 선택 2개·소유행 목록·회수) · **F5** i18n 4언어 · **H** 설계문서 §5.4 → 빌드 1회 → `verify-all --full` 1회 → 실브라우저 → **Fable 게이트** → `/배포`
-  - 검증(현재까지): jest **25/25** · health-check auth **12/12** · **고장주입 2/2 반증 성립**(원복 cmp 동일·잔여 0) · 🔒 print-guard **8/8 무변경**
-  - ⚠ **빌드·SW bump 안 했다** — 프론트가 남아 「코드 확정 후 빌드 1회」 규칙대로 미실행
-  - 🔴 **`check-sensitive-diff` = FABLE 게이트 대상**(⑤ 보안 경계 2건: `middleware/auth.js`·`routes/auth.js`). **Fable 게이트 통과 전 배포 금지**
-  - 🔴 **F4·F5·H 는 Fable 이 코드·문안까지 확정했다. 새로 판단하지 말고 그대로 옮겨 적을 것** (Irene 「너가 판단하지마. 이건 복잡한 구조야」)
-
-- ⏳ **SW 5.62 운영 확인 (Irene 눈)** — 배포는 끝났고 확인만 남음. withmin_owner 로그인 → 발주 «내 매장 전체(N)»·줄마다 매장 이름 → «My suppliers» → 업체 1개 등록 → with MIN Cafe 매장 계정에서 «FROM OWNER» 카드(Edit/Delete 없음)
+- 없음 (코드 변경 0줄 상태 — 다음 세션이 바로 집어들 수 있음)
 
 ### 완료된 작업 (2026-09-25 세션) [Claude Code]
-- ✅ **SW 5.62 오너 공급업체 상속 + 오너 발주 전체 표 — 운영 배포**(07:26, 스모크 10/10). Fable 게이트 PASS(`a0a5a4f24572`). 운영 마이그 적용 확인(배포 로그 「추가 owner」 2컬럼 · 사후 패리티 ENUM 소실 0 · 운영 sw.js `5.62-owner-supplier-20260924`)
-- ✅ **Irene 신고 2건 원인 판정**(Fable) — 「이메일 인증해도 오너가 안 나온다」는 버그 아님. 오너는 **별도 계정 withmin_owner**, 「Choose where to work」는 로그인한 계정 하나의 것만 보여준다. 「with MIN Cafe Owner」는 구조가 아니라 **지어 넣은 이름값**
-- ✅ **「기존 아이디 연결 기능」 부재 실측** — 저장소에 0건. 있는 것은 SA 의 「매장 × 매장관리자」 자격 하나뿐이고 부여 화면에 역할 선택 칸 자체가 없었다
-- ✅ **오너 모자 설계 판정**(Fable 2회차, B안 개시) + **코드 형태까지 지정한 실행 지시서**(Fable 3회차)
-- ✅ 오너 모자 백엔드 구현 + 테스트 + 고장주입 2/2 (위 「진행 중」)
+- ✅ **SW 5.62 오너 공급업체 상속 + 오너 발주 전체 표 — 운영 배포**(07:26, 스모크 10/10, Fable 게이트 `a0a5a4f24572`)
+- ✅ **SW 5.63 오너 모자(v1.1) — 운영 배포**(13:24, 스모크 10/10, 마이그 101/101, 운영 sw.js `5.63-owner-hat-20260925` 실측, Fable 게이트 `33b588d651c1`)
+  - 한 아이디에서 오너까지. 오너 권한은 `restaurant_managers` 소유행 하나로만 판정 → **부여 = 소유행 생성**. `user_contexts` 행·ENUM·**운영 마이그 0건**. 롤백 = 코드 되돌리기만
+  - 🔴 **F4 앵커 1건이 실측과 달랐다** — 지시서가 `o.restaurant_id`, 백엔드는 `{id,name}`. 중단·보고 → Fable 「지시서 오기, 프론트를 `o.id` 로 3곳만」. 고장주입으로 확인: 지시서대로면 회수가 `Invalid id` 로 실패
+  - 🔴 **SA 자격 부여/회수 화면이 6개월간 열리지 않았다** — `ManagersPage` 의 «Manager Details» 모달 안에 있는데 2026-03-03 ESLint 정리(`8d3980f4b`)가 여는 함수를 삭제 → 2026-08-20 이후 도달 불가(운영 v3.101 포함). 「P5 0행」의 원인 일부. **행 아이콘 `≡` 로 진입점 복원**해 이번 배포에 포함. 잘못 부여된 데이터 없음
+  - 원인: 화면 완료 기준에 **「사용자 클릭 흐름 1회」가 없었다**. 이번 검증부터 포함
+  - 검증: verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우저 **3회 연속 2/2** · API 13/13 · 고장주입 반증 6건 · jest 25/25 · print-guard 8/8 · i18n 0
 
-### 다음 확정 작업
-- **오너 모자(v1.1) 이어서** (Irene 「다음 섹션에 계속 할게」)
-  1. F4 `UserContextsSection.tsx` → 2. F5 i18n 4언어 → 3. H 설계문서
-  4. `npm run i18n:verify` → `npm run build:dev` **1회** → `verify-all --full` **1회**(sweep 11분)
-  5. 실브라우저(dev): demo BG 22 에 rid 18 소유행 부여 → 선택 화면 3카드(◯ 「Test Debug Restaurant」) → 오너 대시보드 → 헤더 제목 → 브랜드 복귀 → SA 부여/회수 → **끝나면 소유행 삭제**
-  6. `check-sensitive-diff` → **Fable 게이트 1회** → Irene `/배포`
+### 다음 확정 작업 — Irene 지적 4건 (전부 코드 미착수)
+1. **선택 카드 제목** — Irene 「브랜드이름이 왜 나와? 이 아이디 프로필이름이 나와야지」
+   - 실측: 기본 카드 제목은 계정 `brand_id` 가 가리키는 **브랜드 1개**의 이름(`services/userContexts.js listContexts` → `resolveEntityName`). 브랜드 목록 화면은 `owner_id` 기준 전부(`routes/brands-core.js:200`)라 기준이 갈린다
+   - → **프로필 이름으로 바꾼다**(Irene 지시). 문구 형태는 Fable 판단 필요
+2. **데스크탑에 컨텍스트 전환 입구가 없다** — Irene 「멀티 아이디 다시 다른 곳으로 가고 싶으면 관리페이지에서 갈 방법이 없어」
+   - 실측: `MainLayout.tsx:2566` 이 스위처를 **`MobileHeader` 안에서만** 그린다. 컴포넌트는 데스크탑용 `rail`·`sidebar` 두 모양을 이미 갖고 있으나 **호출처 0곳**
+   - ⚠ `MainLayout` 은 🔒 인쇄 보호파일 — 배치 1~2줄이라도 **Irene 승인 필요**(로직은 전부 스위처 파일 안)
+3. **현금관리 삭제 400** — Irene 「캐시매니지먼트에서 삭제가 작동 안하는데 오류지?」 (운영 `/api/cash/restaurant/10/movement/88` → 400)
+   - 실측: 서버는 **`source === 'manual'` 인 기록만** 수정·삭제 허용, 아니면 400 `SETTLEMENT_LOCKED`(`routes/cash-management.js:466`) — 설계대로다
+   - 결함은 화면 2개: ①행 액션 숨김 조건이 `source === 'settlement'` 뿐이라(`CashLedger.tsx:144·162`) 다른 자동 기록(예: `reimbursement`)엔 버튼이 그대로 뜬다 ②실패 처리기가 PIN 코드만 보고 **나머지 사유를 조용히 버린다**(`CashLedger.tsx:43`) → 눌러도 아무 일 없어 보임
+   - → 숨김 조건을 `source !== 'manual'` 로 + 400 사유 한 줄 표시 + 자동 기록 배지 (제 판단, Irene 컨펌 전)
+4. **푸드코트 배송 조건 설정 화면** — Fable 판정으로 이번 범위(아래 배송비 판정 (d))
+
+### Fable 판정 — 발주 배송비 정의 (2026-09-25, Irene 「배송비 fable에게 정의해」)
+- **(a) 현행 모델이 정의다. 바꾸지 않는다.** 배송비는 **판매자의 거래 조건** — 판매자 3종(공급업체·브랜드·푸드코트)이 같은 두 칸: `min_order_amount`(이 금액 이상이면 무료) · `delivery_fee`(미만이면 고정액, null = 미설정이며 «무료» 아님). 계산 자리 `utils/purchaseOrderTotals.js computeDeliveryFee` 한 곳, 화면 사본 `utils/deliveryFee.ts`. 초안·제출 중 재계산, **판매자 확인 시 동결**. 총액 = 품목합 + 세금 + 배송비
+- **(b) 모바일 오더 배달 설정은 값 재사용 불가 — 방향이 반대다.** 모바일 배달(`restaurants.operation_settings.deliveryPricing` = `{enabled, minimumOrder, freeAbove, zones[{id,name,fee}]}`, 손님이 zone 을 고름, `mobile/pages/PaymentPage.tsx:777~795`)은 **레스토랑이 파는 쪽**, 발주에서 레스토랑은 **사는 쪽**. 규칙의 모양은 이미 같음
+  - **지역(zone) 은 지금 넣지 않는다**(Fable 권고). ①발주에서 구매자가 zone 을 고르면 제일 싼 지역을 고를 수 있고, 판매자가 바로잡으려 해도 「판매자는 구매자 승인 금액을 못 넘긴다」 게이트(`seller-orders.js:1130`)에 막혀 재승인 루프가 필요 ②판매자 45곳 중 `delivery_fee` 를 적은 곳 **0곳**(min_order_amount 만 3곳)
+  - 나중에 필요해지면 모양은 확정: 판매자 칸에 `delivery_zones` JSON `[{name, fee, states[]}]` + **구매자 주소 state 자동 매칭**(구매자가 고르지 않음), 매칭 실패 시 고정 `delivery_fee` 로 폴백. 계산은 여전히 `computeDeliveryFee` 한 곳. **별도 사안**
+- **(c) 「계산하면서 추가할지 0원할지」 — 이미 그렇게 되어 있다.** 담을 때마다 기준선 비교, 발주 화면이 판매자 묶음마다 «얼마 더 담으면 무료»까지 표시(`amountToFreeDelivery`)
+- **(d) 이번 유일한 코드 변경 = 푸드코트 설정 화면에 두 칸 추가**(브랜드 `BrandPaymentSettingsPage` 의 «매장 발주 배송 조건» 카드와 동일 모양). DB 칸·API(`routes/foodcourts-core.js:607~613`)는 이미 있고 화면만 없다. + i18n 4언어. 문서는 `docs/TRADE_STRUCTURE.md ⑦` 에 (a)(b)(c) 결론 추가(새 문서 금지)
+- **(e) 배송비가 실제로 붙으려면 판매자가 두 칸을 적어야 한다 — 지금 0곳.** 코드가 아니라 운영 일(예: GIT Consulting 브랜드가 먼저 적기)
+- **구현 전 실측 항목**: ①푸드코트 설정 페이지 파일 + 브랜드 카드가 쓰는 컴포넌트·PUT 경로·필드명 ②`InvoiceReconcilePage` 가 `invoice_delivery` 를 발주 `delivery_fee` 로 프리필하는지(→ **실측함: 프리필한다**, `InvoiceReconcilePage.tsx:343-344`) ③i18n 키 재사용 가능 여부 ④검증은 `check-sensitive-diff` → verify-all(프론트 빌드 1회). **Fable 게이트 추가 호출 불필요**
+- ⛔ **Irene 컨펌 대기**: 지역별 배송비를 **지금 넣지 않는다**는 판정(Fable 권고 = 넣지 않는다)
+
+### 인보이스 대조 — Fable 판정 완료 · **착수 대기** (단일 진실 `docs/PURCHASE_ORDER_SYSTEM.md` §8-6)
+> Irene 원문: 「인보이스를 넣고 실제 발주한 거랑 금액이 다르거나 배송비를 추가해야 할 때 그걸 못하고 있어. 최종 아이템 매칭을 일일이 안해도 그냥 최종 금액 픽스하게 할 수 없을까? 그냥 갭차이 - + 표시해서 저장하는 거 되면 좋겠어. … ai 추가하면 해결돼? 이거 검토하고 fable 이 답하게 저장해」
+
+- **한 줄**: 원하시는 것(줄 매칭 없이 최종 금액 고정)은 **서버에 이미 있고 운영에도 있다**(`total_only`, SW 5.57/v3.102). 문제는 그 길이 «실패한 뒤에만 나타나는 예비 버튼»이라 눈에 없고, 저장 뒤 **갭이 목록·상세에 안 보인다**는 것. 답은 **AI 가 아니라 화면 재배치**. 서버 변경 거의 0
+- **A. 총액 우선 대조** — 헤더 4칸(총액·배송비·세금·할인)을 1차 경로로 올리고 그 아래 갭 한 줄 「발주 X → 청구 Y = +Z」(+주황/−초록). 1차 버튼 «이 총액으로 확정 (줄은 나중에)» = 총액만 적혀 있으면 **항상 활성**. 줄 매칭·OCR 은 2차 영역. 맨 아래 노란 예비 상자 제거(서버 `TOTAL_MISMATCH` 는 안전망 유지). 줄 값이 이미 있으면 확인창(「줄 단가 N개가 지워지고 원가에 반영되지 않습니다」)
+- **A-4 갭은 헤더 기준으로 통일** — 목록·상세·결제 셋 다 `invoice_total − total_amount`. 총액만 모드는 기존 칸으로 도출(`invoice_reconciled_at` 있음 AND `reconcile_invoiced_lines === 0`). **DB 칸 0 · 마이그 0**
+- **B. 배송비** — 지금도 대조 화면 배송비 칸으로 된다(발주 예상값 프리필). A 적용 후엔 총액+배송비 두 칸만 적고 확정하면 끝. ⛔ 발주 자체에 배송비를 덧붙이는 「발주 수정」 경로는 만들지 않는다(예상 vs 실제를 나란히 남기는 게 이 기능의 존재 이유)
+- **C. AI** — **총액 픽스와 무관**(사람이 숫자를 확정해야 하고 손글씨는 어떤 판독기든 틀린다). 실측: 인쇄 인보이스는 tesseract 가 19/19 줄을 읽고 약한 고리는 **이름 매칭**(사전 학습으로 해결), **손글씨는 0줄**. 비전 AI 는 손글씨·첫 만남 이름 매칭을 실제로 개선하지만 09-10 결정(무료·브라우저·외부 전송 0)을 뒤집고 이미지가 외부로 나가며 건당 비용 발생 → **Irene 결정**
+  - **결정 기준**: 손글씨·사진 불량으로 오는 공급업체가 **절반을 넘으면** 붙일 가치. 운영 DB 로 못 재니 **Irene 이 공급업체 수로 답하는 게 가장 빠름**
+  - 붙인다면 전제: 「AI 로 읽기」 버튼 1개 · 매장 opt-in · 서버 중계 · 사람 확인 전 저장 0 · tesseract 는 기본 유지 · 비용/호출 기록 · 실패율 실측 후 확대
+- **D. 착수 전 실측 5건 · E. 범위(중, 프론트 4화면+i18n, 백엔드 0~1줄, 🔒 무접촉) · 반증 의무 3건** — 전부 §8-6 에 있음
+- ⛔ **Irene 컨펌 대기**: ①A 진행 승인 ②AI 시범 opt-in 여부(손글씨 공급업체 몇 곳인지)
 
 ### 👉 Irene 님이 하실 일
-1. **SW 5.62 운영 눈 확인** (위 ⏳ 항목)
-2. **`withmin_owner`(irene@gitconsulting.group)는 «별도 계정»** — 지금 쓰시는 아이디에 오너가 붙은 게 아닙니다. 그 계정으로 **따로 로그인**해야 오너 화면이 나옵니다(인증 메일 → 「비밀번호 찾기」로 비번 설정 → 로그인, 다른 브라우저 권장). 운영 email_verified=0(2026-09-24)
-   - ⚠ 단, **오너 모자가 배포되면 이 절차가 필요 없어집니다** — gitconsulting 계정에서 바로 오너를 고르게 됩니다
-3. **오너 모자 배포 후 순서 고정**(Fable 판정): SA 화면에서 ①gitconsulting 에 「오너 · with MIN Cafe」 부여 → ②`withmin_owner`(64)의 소유 회수 → ③64 비활성화
-   - 근거: `subscriptions.js:90` 이 매장 청구 대상을 **첫 소유행 1개**로 뽑아 소유자가 둘이면 비결정
-4. **64 의 로그인 이력 확인** — SA Users 에서 마지막 로그인이 비어 있는지. 비어 있으면 오너 데이터 0 증명(로그인 없이는 못 만듦). **비어 있지 않으면 알려주세요**
-5. (기록용) with MIN Cafe 구독 «billed to» 가 브랜드인지 확인
-6. New Seoul Mart 멸치액젓 재료를 매장 화면에서 새 상품(800g RM 19.00 · 2.5kg 단가 0 확인)에 다시 연결 — 권고
-7. 오너 사이드바 «Suppliers» 메뉴 추가 승인 여부(🔒 인쇄 보호 파일)
-8. with MIN 오너 승인은 OFF 상태 — 오너 승인 흐름을 쓰려면 다시 켜기
-9. 2026-10-15 전후 Search Console 재판독 · (선택) 개발 nginx noindex 적용
-10. **버전 v3.103 올릴지 미정** — 오너 모자까지 묶어서 한 번에 올리는 것을 권고드렸고 답 대기
+1. **배포 후 순서 고정**(Fable 판정): ①gitconsulting 에 「오너 · with MIN Cafe」 부여(SA Managers → 행 `≡` → 역할 «오너») → ②`withmin_owner`(64) 소유 회수 → ③64 비활성화
+   - 근거 `subscriptions.js:88-93` 이 매장 청구 대상을 **첫 소유행 1개**로 뽑는다. 부여~회수 사이 소유자 2명인 창을 길게 두지 말 것
+2. **64 의 마지막 로그인 확인** — 비어 있으면 오너 데이터 0 증명. 비어 있지 않으면 알려주세요
+3. **컨펌 5건**: ①데스크탑 전환 입구(🔒 MainLayout 배치 1~2줄) ②지역별 배송비 지금 안 넣기(Fable 권고) ③현금 기록 삭제 화면 수정 방향 ④인보이스 «총액 우선 대조»(§8-6 A) 진행 ⑤AI 판독 시범 — 손글씨로 오는 공급업체가 몇 곳인지
+4. **버전 v3.103 올릴지** — 오너 모자까지 배포됐으니 올릴 만합니다(권고). 올리면 릴리즈 노트 + 블로그/공지 자동 등록
+5. SW 5.62 운영 눈 확인(미완) · with MIN Cafe 구독 «billed to» 확인 · New Seoul Mart 멸치액젓 재연결 · 오너 사이드바 «Suppliers» 승인 여부 · with MIN 오너 승인 OFF 상태 · 2026-10-15 전후 Search Console 재판독
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
-- **Fable 지시서 G3 의 기대 1건이 실측과 달랐다** — FI-A 가 G1 첫 테스트를 깨지 않았다(그 테스트는 다른 함수 경로). 반증은 health-check 에서 성립. Fable 에 사실만 보고했고 판정은 아직 안 받음
-- 브랜드·푸드코트 모자를 한 아이디에 얹기 · 「기존 아이디 연결」 셀프서비스 · 초대/요청 흐름 — **오너 모자 범위 밖**(Fable 이 명시 제외)
-- 배포 스크립트: 마이그 실패 시 pm2 재시작 없이 멈춰 «디스크 새 코드 + 옛 프로세스», autorestart 가 미검증 코드를 올릴 수 있음 · **`rollback-production.sh` 는 지금 그대로는 못 쓴다**(로컬 경로 `/var/www/production-backend`·`db_backup_` 을 찾는데 실제 백업은 운영서버 `/var/www/backups/<TS>/production-backend` 와 `/var/backups/orderhere/pre-deploy/db_predeploy_<TS>.sql.gz`) — Fable: 다음 «단순하지 않은 마이그» 배포 전에 처리
-- site-settings 이중 호출(App.tsx:483 · SiteSettingsContext.tsx:72) — 이동 중 abort 를 console.error 로 찍음, 기능 영향 없음
-- 운영 production-backend/_tmp_uname.js(2026-08-30 잔여) 정리
-- supplier_companies.shared_with_stores 칸 드롭(더 이상 안 읽음)
-- GET /api/supplier-catalog ?supplier_id= 가 계약 목록을 무시(기존 부채)
-- 이전 메모: 720px Windows 앱 홍보 팝업이 버튼 가림 · 인보이스 대조 e2e spec · 브랜드 상품 값 채우기 등
+- **RA 계정엔 부여 화면 UI 입구가 없다**(Fable 비차단 기록) — `UserContextsSection` 은 `ManagersPage` 에만 있고 그 목록은 `/api/users?role=Manager`(FG/FM/BG/BM/오너). RA 는 API 로만 부여 가능. v1(P4)부터의 기존 갭
+- 브랜드·푸드코트 모자를 한 아이디에 얹기 · 「기존 아이디 연결」 셀프서비스 · 초대/요청 흐름 — 오너 모자 범위 밖
+- 타입 검사 갈래가 i18next 선언부에서 막혀 있음(409건 전부 node_modules · src 0건). 힙 3584MB + i18next 스텁 필요
+- 배포 스크립트: 마이그 실패 시 pm2 재시작 없이 멈춤 · `rollback-production.sh` 경로 불일치로 지금 그대로는 못 씀 — Fable: 다음 «단순하지 않은 마이그» 배포 전에 처리
+- site-settings 이중 호출 · 운영 `_tmp_uname.js` 잔여 정리 · `supplier_companies.shared_with_stores` 드롭 · GET /api/supplier-catalog 가 계약 목록 무시
+- 이전 메모: 720px Windows 앱 홍보 팝업이 버튼 가림 · 인보이스 대조 e2e spec · 브랜드 상품 값 채우기
 
 ---
 

@@ -7,6 +7,7 @@
 픽커(`ContextSelectPage`) · 대시보드 퀵액션 · 헤더 스위처(`MainLayout.tsx:2554`) 전부 존재.
 **멈춘 지점 = P5**: 운영 `user_contexts` 테이블은 있으나 **0행** — 아무에게도 모자가 부여되지 않아 화면에 아무것도 뜨지 않는다.
 남은 일은 코드가 아니라 **실수요 6명(BG 4 · FG 1 · Owner 1)에게 부여 + 관찰**.
+**정정(2026-09-25 실측):** P4 SA 부여 화면은 2026-08-20 부터 도달 불가한 "Manager Details" 모달 안에 있어(2026-03-03 ESLint 정리에서 열기 핸들러 삭제) 운영에서 메뉴로 열 수 없었다 — "P5 0행" 의 원인 일부. 오너 모자 v1.1(SW 5.63)에서 행 아이콘 `≡` 로 진입점 복원.
 (아래 본문은 2026-08-20 설계 시점 원문 — "코드 변경 0" 등 당시 표기는 그대로 보존한다.)
 **목표(Irene 원문):** "로그인하면 역할을 멀티로 선택해서 해당 관리페이지들 각각 들어가는 것"
 — 한 사람이 여러 매장·여러 자격(브랜드 총괄이면서 특정 매장 관리자 등)을 가질 때, **계정을 여러 개
@@ -348,6 +349,18 @@ v1 은 "표준 claim 에 투영값이 있으니 소켓 무변경"이라 했다. 
 - 신규 불변식: **"픽커에 보인 컨텍스트는 전환이 100% 성공한다"** — 목록과 검증이 같은 함수라 구조 보장
   (기본 컨텍스트 = 파생이므로 항상 전환 가능, 부여 모자 = 같은 행 조회) + health-check 실호출로 이중 증명.
 
+### 5.4 오너 모자 = 소유행 파생 (v1.1, 2026-09-25 — Irene 「한 아이디에서 오너까지」)
+- 오너는 사람 단위 정체이고 권한 판정은 `restaurant_managers(manager_id=user.id, relationship_type='ownership')`
+  **한 경로**뿐이다(`middleware/auth.js:275·479`, `routes/owner.js` 전부). §5.2 가 예고한 「소유행 기반 모자 = 데이터 부여」가
+  바로 이것이라, **부여 기록 = 소유행**이다. `user_contexts` 행도 ENUM 확장도 없다.
+- 목록·검증·전환·소켓은 여전히 `validateGrantedContext` 하나를 공유한다(오너 분기 추가). `entity_type='owner'`,
+  `entity_id=자기 user id`, 카드는 계정당 1장(제목 = 소유 매장명, 2개 이상이면 「첫 매장 +N」).
+- 투영: `role='Restaurant Owner'`, `restaurant_id/brand_id/foodcourt_id=null`, `permissions=[]`. 네이티브 오너에겐 카드를 붙이지 않는다.
+- 부여/회수는 SA 전용(§8-3 봉인 유지): `POST /users/:id/contexts` (restaurant × Restaurant Owner) → 소유행 upsert(oversight 행이 있으면 409),
+  `DELETE /users/:id/ownerships/:rid`. 회수 = 소유행 삭제 → 다음 요청 네이티브 폴백(401 아님).
+  관리 화면 응답 계약은 `GET /users/:id/contexts` → `ownerships: Array<{ id, name }>` — `id` 가 매장 id 다(`restaurant_id` 표기 금지).
+- 「5번째 판정처 금지」 준수: 새 판정은 없고 기존 오너 판정을 그대로 쓴다. brand/foodcourt 모자·계정 병합·셀프 부여는 여전히 제외.
+
 ---
 
 ## 6. UI/UX
@@ -475,8 +488,10 @@ P2/P3a 에 순증. 반대로 F1 재설계는 백필 폐기로 P1 을 **1일 단�
    구독을 만드는 것이 아니다. BG 가 매장 X 의 RA 모자를 받아도 매장 X 의 구독은 매장 X 가 원래 내던
    그대로이고, BG 의 브랜드 구독도 그대로다. 한 매장에 관리자가 몇 명이든 청구는 1장 — 이건 이 기능
    이전부터의 모델이며(예: Owner 다매장), 업계 표준(Toast/Square 도 지점 단위 과금)과 같다.
-3. **유일한 유저 단위 청구(Owner)와의 상호작용 = 0** — v1 부여 가능 모자는 restaurant×RA 뿐이라
-   Owner 역할을 만들지도 건드리지도 않는다.
+3. **유저 단위 청구(Owner)와의 상호작용**: 오너 **모자**는 청구 주체가 아니다 — `invoiceScheduler` 는 `role='Restaurant Owner'` 인
+   계정만 오너 구독 대상으로 뽑으므로(실측 :726), 모자를 쓴 BG/RA 에게 OWN 인보이스가 생기지 않는다. 매장 청구는 `restaurants.payment_model`
+   그대로다. ⚠ `payment_model='restaurant_owner'` 매장의 청구 대상은 `subscriptions.js:90` 이 **첫 소유행 1개**로 뽑으므로, 한 매장에
+   소유자를 둘 두지 않는다(운영 절차: 새 소유자 부여 → 옛 소유행 회수).
 4. **정지된 사업체의 모자**: 전환은 허용하되 응답에 `restaurantStatus` 를 실어 프론트가 네이티브 RA 와
    동일하게 인보이스 pin 으로 처리한다(§4.2, P2 구현). `checkSubscriptionStatus` 미마운트 사실(§8-9)은 불변.
 5. **"한 사람이 여러 사업체의 청구를 한 화면에서 통합 관리/결제"(유저 단위 통합 청구서)는 현 솔루션에

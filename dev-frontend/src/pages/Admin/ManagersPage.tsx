@@ -656,6 +656,11 @@ const ManagersPage: React.FC = () => {
     setShowConfirmModal(true);
   };
 
+  const handleViewManager = (manager: Manager) => {
+    setSelectedManager(manager);
+    setShowViewModal(true);
+  };
+
   const handleEditManager = (manager: Manager) => {
     // Use actual subscription data from the manager (loaded from backend join)
     const role = manager.role as 'Foodcourt General' | 'Brand General' | 'Restaurant Owner';
@@ -1078,6 +1083,12 @@ const ManagersPage: React.FC = () => {
 
                   <DataTableCell data-label={t('admin:managersPage.actions')} mobileFullWidth>
                     <ActionButtons>
+                      <IconButton
+                        onClick={() => handleViewManager(manager)}
+                        title="Manager Details"
+                      >
+                        <IconSymbol>≡</IconSymbol>
+                      </IconButton>
                       <IconButton
                         onClick={() => handleEditManager(manager)}
                         title="Edit Manager"

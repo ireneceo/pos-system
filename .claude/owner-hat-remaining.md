@@ -14,7 +14,7 @@
  * v1 은 (매장 × Restaurant Admin), v1.1 은 여기에 (매장 × Restaurant Owner) 를 더한다 — 역할은 이 둘뿐이다.
  * 오너 부여는 user_contexts 행이 아니라 소유행(restaurant_managers)이라 목록·회수도 따로 온다(ownerships).
 ```
-- `interface Orphan …` 아래에 `interface Ownership { restaurant_id: number; name: string; }`
+- `interface Orphan …` 아래에 `interface Ownership { id: number; name: string; }`
 - state 추가(기존 `const [orphans, …]` 아래):
 ```ts
 const [ownerships, setOwnerships] = useState<Ownership[]>([]);
@@ -41,7 +41,7 @@ const [pickRole, setPickRole] = useState<'Restaurant Admin' | 'Restaurant Owner'
   const revokeOwnership = async (o: Ownership) => {
     setBusy(true); setError(null);
     try {
-      const res = await fetch(`/api/users/${userId}/ownerships/${o.restaurant_id}`, { method: 'DELETE', headers: headers() });
+      const res = await fetch(`/api/users/${userId}/ownerships/${o.id}`, { method: 'DELETE', headers: headers() });
       if (!res.ok) { setError(t('context.admin.revokeFailed')); return; }
       await load();
     } catch {
@@ -62,7 +62,7 @@ const [pickRole, setPickRole] = useState<'Restaurant Admin' | 'Restaurant Owner'
 - orphan 목록 아래·부여 Row 위에 추가:
 ```tsx
       {ownerships.map((o) => (
-        <Row key={'own-' + o.restaurant_id}>
+        <Row key={'own-' + o.id}>
           <RowLabel>{o.name}</RowLabel>
           <Tag>Restaurant Owner</Tag>
           <Button variant="danger" size="small" disabled={busy} onClick={() => setRevoking({ label: o.name, run: () => revokeOwnership(o) })}>
