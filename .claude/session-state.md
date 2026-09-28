@@ -1,55 +1,52 @@
 ---
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-09-27 (Irene 외출로 중단 저장)
-**버전:** 운영 **v3.103** · SW **5.65-reconcile-total-first-20260925**(마지막 배포 2026-09-25 19:16, 백업 20260925_185824, 스모크 10/10, 마이그 101/101, mount sweep 크래시 0)
-**작업 상태:** 🟡 진행 중 — Irene 4개 지시 + 참고메모 전부 수정(조사 완료 · Fable 판정 결과 미수신)
+**마지막 업데이트:** 2026-09-28 (Irene 외출로 중단 저장 — /개발완료)
+**버전:** 운영 **v3.103** · SW **5.65-reconcile-total-first-20260925**(마지막 배포 2026-09-25 19:16, 백업 20260925_185824)
+**작업 상태:** 🟡 진행 중 — 코드 묶음 착수(백엔드 3건 편집만 · 빌드·검증·게이트 전)
 
 ### 진행 중인 작업
-- 🟡 **[Claude Code] 2026-09-27 Irene 지시 묶음** — ①오너 계정(gitconsulting↔withmin_owner) ②AI 제안·유료화 ③GIT Consulting 배송비(300 미만 RM10·이상 무료·페탈링자야만) 운영 설정 입력 ④지역 보류 답 + 참고용메모 전부 원인파악·수정.
-  - **단일 인수인계: `.claude/next-session-brief.md`** (Irene 원문 · 실측 전부 · Fable 요청 원문)
-  - 조사 완료. **Fable 판정(1회차) 수신·저장: `.claude/fable-verdict-20260927.md`** — 다음 세션은 Fable 재호출 없이 그 «Ⅱ 팀원 실행 지시» 1단계(운영 데이터 2건)부터 실행. 남은 Fable 은 구현 후 게이트 1회뿐. Irene: 「fable은 최소로 사용해」.
-  - Irene 컨펌 대기: AI 결정 ①②, 지역 결정 ③ (판정 Ⅲ).
-  - ⚠ 다음 배포 전까지 SA 화면에서 with MIN Cafe 매장 정보 저장 금지(오너 연결 소실 결함 R1).
-  - 🔴 절차 ① 막힘: 23 이 r10 에 oversight 행 → 오너 부여 409. 64 마지막 로그인은 칸이 없어 확인 불가.
-  - 운영 쓰기 0건. 개발 변경: `dev-backend/_tmp_uname.js` git rm (미커밋).
+- 🟡 **[Claude Code] 2026-09-27 Irene 지시 묶음 — 코드 13건 한 묶음(빌드 1회·verify-all --full 1회 → Fable 게이트 1회 → Irene /배포)**
+  - 판정 원문(재호출 불필요): **1회차 `.claude/fable-verdict-20260927.md` Ⅱ** + **2회차 `.claude/fable-verdict-20260928.md` Ⅱ(R7·F4)**. 남은 Fable = 구현 후 게이트 1회뿐. Irene 「fable 사용최소화하고 계속 해」.
+  - ✅ 운영 데이터 2건 COMMIT (2026-09-28 03:24 UTC) — restaurant_managers id29 oversight→ownership · id45 삭제 · users 64 is_active=0 · brands 1·2 min_order_amount 300 / delivery_fee 10 (영향행 1·1·1·2). 사전 SELECT = 판정 예상과 동일. 사후: gitconsulting 컨텍스트 3장(GIT Consulting BG · with MIN Cafe RA · with MIN Cafe 오너) — **Irene 로그인 눈 확인 대기**.
+  - 🟡 편집 완료·**테스트 전**(node --check 만 통과, pm2 restart 안 함):
+    - R1 `routes/restaurants-crud.js` PUT /:id 두 곳 — destroy 를 oversight 로 한정 + 소유 행 가진 manager_id 는 bulkCreate 제외 · managers through 에 relationship_type, 목록(:299)·상세(:852) 필터에서 ownership 제외
+    - R2 `routes/cash-management.js` — `assertShiftOpen` 헬퍼, 입출금 PUT/DELETE 에 SHIFT_NOT_OPEN
+    - R7 백엔드 — `models/Brand.js`·`Foodcourt.js` delivery_policy(**dev DB 컬럼 ALTER 로 추가 완료**) · brands-core/foodcourts-core GET·PUT · supplier.js 허용필드 · `utils/sellerNames.js` attributes+map+`normalizeDeliveryPolicy`(500자, 태그문자 제거) · restaurants-ingredients `seller_delivery_policy`
+  - ⬜ 남은 것:
+    - R3 verify-all 에 빌드 밖 tsc 기준선(439) 게이트
+    - R4 배포 안전망 — 조사 결과: 운영 `/var/www/rollback-production.sh` 는 dev 사본과 **md5 다름**(c768… vs c9ab…), 1월 버전. 백업 실제 구조 = `/var/www/backups/<TS>/production-backend/`(node_modules·.git 제외, .env·uploads 포함) + `production-frontend-build/`, DB 덤프 `/var/backups/orderhere/pre-deploy/db_predeploy_<TS>.sql.gz`. 롤백은 `.backup` 접미사·`db_backup_<TS>` 를 찾아 전부 skip. 계획: 공용 경로 파일(예 `deploy-layout.sh`)을 두 스크립트가 source + 배포가 롤백 스크립트를 운영에 복사 · 배포에 rsync 후 플래그/EXIT trap 자동 원복(.env·uploads·logs·node_modules 보존) · 롤백은 제외 rsync + 전부 skip 이면 실패.
+    - R5 rsync `--exclude '_tmp_*' --exclude 'tmp/'` (dev `tmp/restart.txt` = 2025-11 빈 파일, 미사용 — 제외만)
+    - R6 문서 shared_with_stores 「드롭하지 않음」
+    - R8 판매자 메일 머리글 = `company_name || name`(`utils/emailBranding.js` brand 분기 name) + 월 SOA `services/soaScheduler.js:375` sellerName 같은 규칙 · buyerReceivedEmail 무브랜딩(`notificationTemplates.js:613`) 은 참고
+    - F1 StaffManagementPage Edit 모달 UserContextsSection(RA) · F2 index.tsx hadController · F3 PwaInstallBanner zIndex 900 · F4 배송 가능 지역 textarea 3화면 + 담기 화면 한 줄 · **F5 BG 인보이스 0원 Confirm 성공 후 `fetchInvoicesToPay(); fetchPaidInvoices(); refreshBadgeCounts`**(`BrandInvoicesPage.tsx:383`, 현재 `fetchInvoices()` 만 → 목록 그대로 남아 «안 눌림») + **실브라우저 클릭 확인**
+    - 순서: 백엔드 실호출·고장주입(pm2 restart 후) → 프론트 → i18n:verify → SW bump → build:dev 1회 → verify-all --full 1회 → check-sensitive-diff → Fable 게이트 → 기록
+  - 배포 뒤 할 일: 운영 브랜드 1·2 delivery_policy 「Petaling Jaya, Selangor」 입력(판정 2회차).
+  - ⚠ 다음 배포 전까지 SA 화면에서 with MIN Cafe 매장 정보 저장 금지(R1 미배포).
+  - 운영 미확정 0원 청구서 93·88·69·61(payer BG 23, pending_payment) — F5 배포 후 Irene 이 Confirm.
 
-### 완료된 작업 (2026-09-25 오후~밤 세션) [Claude Code]
-- ✅ **SW 5.64 (17:06 배포, v3.103)** — Irene 지적 4건 + 발견 2건
-  - 기본 카드 제목 = 프로필 이름(`services/userContexts.js listContexts`, jest 26/26)
-  - 데스크탑 사이드바 전환 입구(🔒 `MainLayout.tsx` 2줄 — Fable 판정·Irene 승인·사인오프 → `check-print-guard --bless` 8/8)
-  - 현금 원장: 잠금 기준 `source !== 'manual'`(서버와 동일) + 출처 배지 + 거절 사유 표시(`CashLedger.tsx`)
-  - 푸드코트 배송 조건 두 칸(`FoodcourtPaymentSettingsPage.tsx`) + 배송 조건 문장 통화 기호(`DeliveryTermsText.tsx`)
-  - 🔴 쓰기 뒤 GET 캐시 무효화(`utils/fetchDedupe.ts invalidateDedupe` + `httpClient.ts`) — 삭제 직후 2초 안 재조회가 옛 목록을 받던 앱 전역 결함
-  - v3.103 릴리즈: 블로그 `release-v3.103` · 공지(운영 9곳) · CHANGELOG v3.103 섹션
-- ✅ **SW 5.65 (19:16 배포)** — 인보이스 «총액 우선 대조»(`docs/PURCHASE_ORDER_SYSTEM.md` §8-6 A, Irene 「해」)
-  - `InvoiceReconcilePage.tsx`: 맨 위 «1 · 인보이스 총액» 패널 + 갭 한 줄 + «이 총액으로 확정 (줄은 나중에)»(총액만 있으면 활성) · «2 · 줄까지 맞추기» · 노란 예비 상자 제거 · 저장된 줄 단가가 있으면 확인창
-  - 갭 = 청구 총액 − 발주 총액 한 곳(`utils/reconcileGap.ts`) → 목록 버튼(«Total only · +RM 2.50»)·상세·결제 창. 백엔드 0줄 · DB 0
-  - 검증: 서버 실호출 10/10 · 실브라우저 10/10(최종 번들) · 고장주입 2건 반증 · utils 73/73 · 배포 게이트(mount sweep 크래시 0)
-  - ⚠ 최종 수정(통화 코드 인자) 이후 `verify-all --full` 은 메모리 부족 강제종료로 못 돌림 → 배포 스크립트 게이트(9개 + mount sweep)와 통화 게이트 단독 통과로 대신함
-- 첫 배포 시도 1회는 PlanQ `tsc` 메모리 게이트로 빌드 전에 멈춤(운영 무변경) → 재배포
+### 완료된 작업 (이번 세션 2026-09-28) [Claude Code]
+- Fable 2회차 판정 수신·저장(AI 키 = SA 화면 Stripe 방식 · 과금 확정 · 배송지역 = 안내 글)
+- 운영 데이터 2건 적용·사후 확인
+- Irene 신고 2건 원인 확정: ①판매자 메일 머리글이 brands.name(로고 없어 «with MIN» 텍스트, 회사명은 바닥글만) ②0원 Confirm 은 저장됨(운영 153·154 paid) — 성공 뒤 엉뚱한 목록 재조회
+- 백엔드 R1·R2·R7 편집 · dev DB 컬럼 추가
 
 ### 다음 확정 작업
-- 없음 — 지시 대기
+- 위 «진행 중인 작업» 이어서 (Irene 「다음섹션에 하자」)
 
 ### 👉 Irene 님이 하실 일
-1. 오너 모자 후속(Fable 판정 순서): gitconsulting 에 «오너 · with MIN Cafe» 부여 → withmin_owner(64) 소유 회수 → 64 비활성화 · 64 마지막 로그인 확인
-2. AI 판독 시범 여부 — 손글씨로 오는 공급업체가 몇 곳인지(§8-6 C, 절반 넘으면 가치)
-3. 판매자(브랜드·푸드코트·공급업체)가 배송 조건 두 칸을 적어야 배송비가 붙는다 — 지금 0곳
-4. 지역별 배송비는 Fable 권고로 보류(컨펌만)
+1. gitconsulting 로그인 → 시작 화면에 «with MIN Cafe» 오너 카드 확인
+2. Plans & Payments → Payment Settings 에서 300 / 10 확인
+3. AI: 이번 배포 뒤 /기능설계 (결정 ①② 확정됨)
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > /개발시작 자동 추천 대상 아님. 다음 사이클 결정은 Irene 지시 기준.
-- RA 계정엔 부여 화면 UI 입구가 없다(기존 갭)
-- 운영 «대조 시각 있음 AND 전 줄 단가 null» 발주 수 1회 실측(§8-6 D-4)
-- 빌드 내부 타입 검사가 매번 OOM 으로 죽는다(빌드 자체는 성공) — 타입 게이트 사실상 없음
-- 브랜드·푸드코트 모자를 한 아이디에 · 「기존 아이디 연결」 셀프서비스
-- 배포 스크립트 마이그 실패 시 pm2 재시작 없이 멈춤 · `rollback-production.sh` 경로 불일치
-- site-settings 이중 호출 · 운영 `_tmp_uname.js` 잔여 · `supplier_companies.shared_with_stores` 드롭 · 720px Windows 앱 팝업이 버튼 가림
+- 판정상 안 함: 브랜드·푸드코트 모자/기존 아이디 연결(d) · shared_with_stores 드롭(i) · 대조 줄 단가 전부 빈 발주(b, 운영 0건 — 끝남)
+- 받은 발주 알림 일부(buyerReceivedEmail)가 PurpleHere 기본 모양 — 브랜딩 없음
+- 인보이스 결제 알림 머리글이 거래 브랜드가 아니라 수신자 users.brand_id 기준
 
 ### 주요 변경사항
-- 🔒 `MainLayout.tsx` 2줄 + print-guard manifest 새 기준(Irene 사인오프)
-- 앱 전역: 쓰기(POST/PUT/PATCH/DELETE) 응답 뒤 GET 2초 캐시·공유 목록 비움
-- Git: 미커밋(아래 /개발완료 에서 커밋) · 최근 커밋 `229ebf664`
+- 운영 DB 쓰기 2건(위) · dev DB brands/foodcourts.delivery_policy 컬럼
+- Git: 이번 /개발완료 커밋
 
 ---
 

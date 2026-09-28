@@ -58,7 +58,9 @@ const COMPANY_ALLOWED_FIELDS = [
   'shop_slug',
   // 배송 조건 (2026-09-17 Fable 판정 ⑦) — 가입한 공급업체가 **자기 화면에서** 적을 수 있어야 한다.
   //   그전까지 이 두 칸은 구매자가 만든 «외부 공급업체» 등록 폼에만 있었다.
-  'min_order_amount', 'delivery_fee'
+  'min_order_amount', 'delivery_fee',
+  // 배송 가능 지역 안내 글 (2026-09-28 Fable) — 브랜드·푸드코트와 같은 칸
+  'delivery_policy'
 ];
 
 // Fields stored as plain strings (sanitized on save)
@@ -398,6 +400,8 @@ router.put('/company', async (req, res) => {
           }
           value = Math.max(0, n);
         }
+      } else if (key === 'delivery_policy') {
+        value = require('../utils/sellerNames').normalizeDeliveryPolicy(value);
       } else if (key === 'shop_slug') {
         const { normalizeShopSlug, shopSlugTaken } = require('../utils/shopSlug');
         if (value === '' || value === null || value === undefined) {

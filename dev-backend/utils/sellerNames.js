@@ -63,7 +63,7 @@ async function resolveSellers(refs) {
     // 배송 조건 두 칸 + 통화 (2026-09-17 Fable 판정 ⑦) — 판매자 정보와 **함께 한 번에** 나온다.
     //   발주 화면·총액 계산이 각자 판매자를 다시 조회하면 그 순간 규칙이 갈라진다. 여기가 단일 자리.
     const attributes = ['id', 'name', 'company_name', 'phone', 'email', 'address',
-      'min_order_amount', 'delivery_fee', 'currency'];
+      'min_order_amount', 'delivery_fee', 'currency', 'delivery_policy'];
     if (type === 'supplier') attributes.push('is_system_registered');
     const rows = await models[type].findAll({
       where: { id: { [Op.in]: ids } },
@@ -84,6 +84,8 @@ async function resolveSellers(refs) {
         delivery_fee: row.delivery_fee === null || row.delivery_fee === undefined
           ? null : Number(row.delivery_fee),
         currency: row.currency || null,
+        // 배송 가능 지역 안내 글 (2026-09-28 Fable) — 보여주기만. 계산·매칭에 쓰지 않는다.
+        delivery_policy: row.delivery_policy || null,
         // brand/foodcourt 는 플랫폼 계정이므로 항상 시스템 등록 = 자동 발송 대상.
         // 외부(수동 발송)는 미등록 SupplierCompany 뿐이다.
         is_system_registered: type === 'supplier' ? !!row.is_system_registered : true,
@@ -113,4 +115,16 @@ function isExternalSeller(map, sellerType, sellerEntityId) {
   return seller ? !seller.is_system_registered : false;
 }
 
-module.exports = { resolveSellers, getSeller, getSellerName, isExternalSeller, sellerKey };
+/**
+ * 배송 가능 지역 안내 글(delivery_policy) 저장값 정규화 — 판매자 3종 라우트가 같은 규칙을 쓴다.
+ *   undefined → undefined(무변경) · ''/null → null · 그 외 태그 문자 제거 후 500자.
+ */
+function normalizeDeliveryPolicy(v) {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  const { sanitizeString } = require('../middleware/validation');
+  const clean = sanitizeString(String(v)).slice(0, 500);
+  return clean || null;
+}
+
+module.exports = { resolveSellers, getSeller, getSellerName, isExternalSeller, sellerKey, normalizeDeliveryPolicy };

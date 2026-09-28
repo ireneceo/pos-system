@@ -127,6 +127,11 @@ Foodcourt.init({
     type: DataTypes.DECIMAL(10, 2), allowNull: true,
     comment: '기준 미만일 때 고정 배송비. null = 미설정(규칙 미적용)'
   },
+  // 배송 가능 지역 안내 (2026-09-28 Fable) — SupplierCompany.delivery_policy 와 같은 이름·같은 뜻
+  delivery_policy: {
+    type: DataTypes.TEXT, allowNull: true,
+    comment: '배송 메모 (배송 요일·지역 등 자유 텍스트) — 계산에는 쓰지 않는다'
+  },
   // Operation Settings
   operation_settings: {
     type: DataTypes.TEXT,

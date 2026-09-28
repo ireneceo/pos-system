@@ -127,6 +127,11 @@ Brand.init({
     type: DataTypes.DECIMAL(10, 2), allowNull: true,
     comment: '기준 미만일 때 고정 배송비. null = 미설정(규칙 미적용)'
   },
+  // 배송 가능 지역 안내 (2026-09-28 Fable) — SupplierCompany.delivery_policy 와 같은 이름·같은 뜻
+  delivery_policy: {
+    type: DataTypes.TEXT, allowNull: true,
+    comment: '배송 메모 (배송 요일·지역 등 자유 텍스트) — 계산에는 쓰지 않는다'
+  },
   // 주문용 상품 링크의 열쇠 (docs/BUYER_FREE_TIER_DESIGN.md §5-6).
   // 공급업체·브랜드가 **같은 칸 이름·같은 규칙**을 쓴다 — 판매자 종류마다 다른 개념을 만들지 않는다.
   // 링크는 `/shop/:slug` 하나이므로 두 표를 가로질러 유일해야 한다(utils/shopSlug.js 가 보장).

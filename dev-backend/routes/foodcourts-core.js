@@ -574,6 +574,7 @@ router.get('/:id/payment-settings', authenticateToken, async (req, res) => {
         // 배송 조건 (2026-09-17 Fable 판정 ⑦) — 구매자가 이 판매자에게 발주할 때 붙는 배송비 규칙
         min_order_amount: foodcourt.min_order_amount,
         delivery_fee: foodcourt.delivery_fee,
+        delivery_policy: foodcourt.delivery_policy,
         currency: foodcourt.currency
       }
     });
@@ -611,6 +612,10 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
     if (req.body.delivery_fee !== undefined) {
       const raw = req.body.delivery_fee;
       foodcourt.delivery_fee = (raw === null || raw === '') ? null : Math.max(0, parseFloat(raw) || 0);
+    }
+    // 배송 가능 지역 안내 글 (2026-09-28 Fable) — 보여주기만, 계산 0.
+    if (req.body.delivery_policy !== undefined) {
+      foodcourt.delivery_policy = require('../utils/sellerNames').normalizeDeliveryPolicy(req.body.delivery_policy);
     }
 
 
@@ -666,6 +671,7 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
         // 배송 조건 (2026-09-17 Fable 판정 ⑦) — 구매자가 이 판매자에게 발주할 때 붙는 배송비 규칙
         min_order_amount: foodcourt.min_order_amount,
         delivery_fee: foodcourt.delivery_fee,
+        delivery_policy: foodcourt.delivery_policy,
         currency: foodcourt.currency
       }
     });

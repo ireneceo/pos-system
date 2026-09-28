@@ -190,6 +190,11 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
             const row = getSeller(sellerResolved, m.seller_type, m.seller_entity_id);
             return row && row.delivery_fee != null ? row.delivery_fee : null;
           })(),
+          // 배송 가능 지역 안내 글 (2026-09-28 Fable) — 같은 판매자 행에서 꺼낸다. 표시 전용.
+          seller_delivery_policy: (() => {
+            const row = getSeller(sellerResolved, m.seller_type, m.seller_entity_id);
+            return row && row.delivery_policy ? row.delivery_policy : null;
+          })(),
           // 판매자 통화 — 발주 통화와 다르면 서버가 배송비 규칙을 적용하지 않는다(0 저장).
           //   화면이 통화를 따로 조회하면 규칙이 두 벌이 되므로 여기서 같이 내려준다. (2026-09-17 게이트 B-2)
           seller_currency: (() => {

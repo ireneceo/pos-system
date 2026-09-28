@@ -91,7 +91,7 @@ router.get('/', authenticateToken, async (req, res) => {
       model: User,
       as: 'managers',
       attributes: ['id', 'full_name', 'username', 'email', 'role'],
-      through: { attributes: ['is_primary'] }
+      through: { attributes: ['is_primary', 'relationship_type'] }
     };
 
     // Build where clause
@@ -296,8 +296,11 @@ router.get('/', authenticateToken, async (req, res) => {
       const adminData = restaurantData.admin || null;
 
       // Oversight managers (Brand/Foodcourt) - via RestaurantManager (N:M)
+      // 소유(ownership) 연결은 감독 매니저가 아니다 — 수정 창이 그 목록을 그대로 되돌려 보내면
+      // 오너 연결이 감독으로 바뀐다(2026-09-27 R1).
       const managers = (restaurantData.managers || []).filter(m =>
         m.role !== 'Restaurant Admin' && m.role !== 'Staff'
+        && m.RestaurantManager?.relationship_type !== 'ownership'
       );
       const primaryManager = managers.find(m => m.RestaurantManager?.is_primary) || managers[0];
 
@@ -804,7 +807,7 @@ router.get('/:id', authenticateToken, requireRestaurantScope('id'), async (req, 
           model: User,
           as: 'managers',
           attributes: ['id', 'full_name', 'username', 'email', 'role', 'company_name', 'phone'],
-          through: { attributes: ['is_primary'] }
+          through: { attributes: ['is_primary', 'relationship_type'] }
         },
         {
           model: Brand,
@@ -850,6 +853,7 @@ router.get('/:id', authenticateToken, requireRestaurantScope('id'), async (req, 
     const adminData = restaurantData.admin || null;
     const oversightManagers = (restaurantData.managers || []).filter(m =>
       m.role !== 'Restaurant Admin' && m.role !== 'Staff'
+      && m.RestaurantManager?.relationship_type !== 'ownership'
     );
 
     // Phase A (Restaurant-Contract-Plan linking): attach summary of current Contract +
@@ -1927,9 +1931,14 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
         // Handle oversight managers
         if (req.body.managerIds && Array.isArray(req.body.managerIds)) {
           const RestaurantManager = require('../models/RestaurantManager');
-          await RestaurantManager.destroy({ where: { restaurant_id: restaurant.id }, transaction: adminTransaction });
-          if (req.body.managerIds.length > 0) {
-            const managerAssociations = req.body.managerIds.map((managerId, index) => ({
+          // 2026-09-27 R1 — 이 칸은 «감독 매니저» 목록이다. 소유(오너) 연결까지 지우고 감독으로 다시 만들면
+          //   오너 모자가 조용히 벗겨진다. 감독 행만 지우고, 이미 소유 행이 있는 사람은 다시 만들지 않는다.
+          await RestaurantManager.destroy({ where: { restaurant_id: restaurant.id, relationship_type: 'oversight' }, transaction: adminTransaction });
+          const ownerRows = await RestaurantManager.findAll({ where: { restaurant_id: restaurant.id, relationship_type: 'ownership' }, attributes: ['manager_id'], transaction: adminTransaction });
+          const ownerIds = new Set(ownerRows.map(r => Number(r.manager_id)));
+          const oversightIds = req.body.managerIds.filter(id => !ownerIds.has(Number(id)));
+          if (oversightIds.length > 0) {
+            const managerAssociations = oversightIds.map((managerId, index) => ({
               restaurant_id: restaurant.id,
               manager_id: managerId,
               is_primary: index === 0
@@ -1997,12 +2006,16 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
     if (req.body.managerIds && Array.isArray(req.body.managerIds)) {
       const RestaurantManager = require('../models/RestaurantManager');
 
+      // 2026-09-27 R1 — 감독 행만 지우고, 소유(오너) 행이 있는 사람은 감독으로 다시 만들지 않는다(위 PUT 과 같은 규칙).
       await RestaurantManager.destroy({
-        where: { restaurant_id: restaurant.id }
+        where: { restaurant_id: restaurant.id, relationship_type: 'oversight' }
       });
+      const ownerRows = await RestaurantManager.findAll({ where: { restaurant_id: restaurant.id, relationship_type: 'ownership' }, attributes: ['manager_id'] });
+      const ownerIds = new Set(ownerRows.map(r => Number(r.manager_id)));
+      const oversightIds = req.body.managerIds.filter(id => !ownerIds.has(Number(id)));
 
-      if (req.body.managerIds.length > 0) {
-        const managerAssociations = req.body.managerIds.map((managerId, index) => ({
+      if (oversightIds.length > 0) {
+        const managerAssociations = oversightIds.map((managerId, index) => ({
           restaurant_id: restaurant.id,
           manager_id: managerId,
           is_primary: index === 0

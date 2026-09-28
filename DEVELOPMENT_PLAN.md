@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-25 #5 — [Claude Code] **인보이스 «총액 우선 대조»(§8-6 A) 운영 배포 — SW `5.65-reconcile-total-first-20260925`(19:16 · 백업 `20260925_185824` · 스모크 10/10).** 대조 화면 맨 위에서 총액만 적고 확정(줄은 나중에, 원가 무반영) · 저장된 줄 단가가 있으면 확인창 · 목록·상세·결제 창 갭을 «청구 총액 − 발주 총액» 한 기준으로(`utils/reconcileGap.ts`). 서버 0줄·DB 0. 실호출 10/10 · 실브라우저 10/10 · 반증 2건. ⚠ 최종 수정 뒤 verify-all --full 은 메모리 부족 강제종료로 못 돌림 — 배포 게이트(mount sweep 크래시 0)로 대신.
+> **최종 업데이트:** 2026-09-28 — [Claude Code] **운영 데이터 2건 적용 + 코드 묶음 착수(중단 저장, 미빌드·미검증).** 운영: gitconsulting 오너 연결(감독→소유)·withmin_owner 비활성·브랜드 1·2 배송비 300/10 (03:24 UTC COMMIT, 사후 컨텍스트 3장 확인). Fable 2회차 판정 `.claude/fable-verdict-20260928.md`. 백엔드 R1·R2·R7 편집 완료(테스트 전). 나머지는 session-state 참조.
+
+> **이전:** 2026-09-25 #5 — [Claude Code] **인보이스 «총액 우선 대조»(§8-6 A) 운영 배포 — SW `5.65-reconcile-total-first-20260925`(19:16 · 백업 `20260925_185824` · 스모크 10/10).** 대조 화면 맨 위에서 총액만 적고 확정(줄은 나중에, 원가 무반영) · 저장된 줄 단가가 있으면 확인창 · 목록·상세·결제 창 갭을 «청구 총액 − 발주 총액» 한 기준으로(`utils/reconcileGap.ts`). 서버 0줄·DB 0. 실호출 10/10 · 실브라우저 10/10 · 반증 2건. ⚠ 최종 수정 뒤 verify-all --full 은 메모리 부족 강제종료로 못 돌림 — 배포 게이트(mount sweep 크래시 0)로 대신.
 
 > **최종 업데이트:** 2026-09-25 #4 — [Claude Code] **v3.103 — Irene 지적 4건 + 발견 2건 운영 배포 — SW `5.64-context-cash-delivery-20260925`(17:06 · 백업 `20260925_165921` · 스모크 10/10 · 마이그 101/101).**
 > ① 기본 카드 제목 = 프로필 이름 ② 데스크탑 사이드바 전환 입구(🔒 MainLayout 2줄 — Fable 판정·Irene 승인·`--bless`) ③ 현금 원장 잠금 기준 = 서버와 동일 + 출처 배지 + 거절 사유 표시 ④ 푸드코트 배송 조건 두 칸 ⑤ 배송 조건 문장 통화 기호 ⑥ 🔴 쓰기 뒤 GET 캐시 무효화 — 앱 전역 2초 캐시가 삭제 직후 재조회에 옛 목록을 주던 결함(현금 원장 클릭 테스트에서 발견).
@@ -10605,6 +10607,24 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 - `dev-frontend/src/pages/PurchaseOrders/InvoiceReconcilePage.tsx` · `PurchaseOrdersPage.tsx` · `PurchaseOrderDetailPage.tsx` · `components/PurchaseOrders/ReceivePayModal.tsx`
 - `dev-frontend/src/pages/ContextSelect/ContextSelectPage.tsx`(주석) · i18n cash/foodcourt/purchaseOrders 4언어
 - `docs/TRADE_STRUCTURE.md` ⑦ §5 · `docs/PURCHASE_ORDER_SYSTEM.md` §8-6 · `docs/MULTI_CONTEXT_LOGIN_DESIGN.md` §6.2
+
+---
+
+## 🟡 진행: 2026-09-27 Irene 지시 묶음 (2026-09-28 중단 저장)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| [Claude Code] 운영 오너 연결 | restaurant_managers id29 oversight→ownership · id45 삭제 · users 64 비활성 (영향행 1·1·1) | ✅ 완료 |
+| [Claude Code] 운영 배송비 | brands 1·2 min_order_amount 300 · delivery_fee 10 (영향행 2) | ✅ 완료 |
+| [Claude Code] R1 오너행 보존 | 매장 수정 PUT 이 감독 행만 지우고 소유자는 감독으로 재생성 안 함 · 목록/상세 응답에서 소유 행 제외 | 🟡 편집만(실호출·고장주입 전) |
+| [Claude Code] R2 마감 교대 잠금 | 입출금 PUT/DELETE — 열린 교대만(SHIFT_NOT_OPEN) | 🟡 편집만 |
+| [Claude Code] R7 배송 가능 지역(백엔드) | brands·foodcourts `delivery_policy` 컬럼(dev DB 추가 완료) · 3종 라우트 · sellerNames · 담기 목록 `seller_delivery_policy` | 🟡 편집만 |
+
+### 수정된 파일
+- `dev-backend/routes/restaurants-crud.js` · `routes/cash-management.js` · `routes/brands-core.js` · `routes/foodcourts-core.js` · `routes/supplier.js` · `routes/restaurants-ingredients.js` · `utils/sellerNames.js` · `models/Brand.js` · `models/Foodcourt.js`
+- `docs/TRADE_STRUCTURE.md` ⑦ §5(b) 한 줄
 
 ---
 
