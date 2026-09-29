@@ -12,6 +12,8 @@ echo '7u7LnxNr' | sudo -S /var/www/deploy-production.sh
 ```bash
 sudo /var/www/rollback-production.sh [타임스탬프]
 ```
+- (2026-09-29 v3 · 개발 반영·미배포) 운영 서버에서 실행. 경로·복원 규칙은 배포와 같은 파일 `/var/www/scripts/deploy-layout.sh` 를 읽는다 — 백업 `/var/www/backups/<TS>/production-backend`·`production-frontend-build`, DB 덤프 `/var/backups/orderhere/pre-deploy/db_predeploy_<TS>.sql.gz`. `.env`·`uploads`·`logs`·`node_modules` 는 지금 것 유지. 되돌린 것이 없으면 실패로 끝난다.
+- 배포(`deploy-to-production.sh`)는 백업 직후 이 두 파일을 운영에 복사하고, 코드 복사~백엔드 재시작 사이에 실패하면 **이번 백업으로 코드를 자동 원복**한다(DB 는 그대로 — 덤프 경로 안내).
 
 ---
 

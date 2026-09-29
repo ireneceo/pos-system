@@ -10630,6 +10630,29 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 
 ---
 
+## ✅ 완료(개발서버·미배포): 09-27 묶음 구현·검증 + Sales Orders 3건 (2026-09-29) [Claude Code]
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Sales Orders | Buyer 세로 · 상세 WhatsApp 그룹 공유 · 판매자 카테고리 묶음 (실브라우저 6/6) | ✅ |
+| R1 오너행 보존 | 실호출 8/8 · 고장주입 | ✅ |
+| R2 마감 교대 잠금 | 5/5 · 고장주입 | ✅ |
+| R3 타입 기준선 게이트 | 436건 기준 · verify-all 등록 · 반증 | ✅ |
+| R4 배포 자동원복·롤백 v3 | `scripts/deploy-layout.sh` 단일 소스 · 재현 25/25 · 고장주입 2 | ✅ |
+| R5·R6 | rsync 임시파일 제외 · 문서 | ✅ |
+| R7 배송 지역 | 백엔드 + 마이그(판정 이탈 → Fable 수용) | ✅ |
+| R8 메일 머리글 회사명 | 3/3 · 고장주입 (SOA 메일 실발송 확인 불가) | ✅ |
+| F1·F3·F4·F5 | 실브라우저 통과 (F5 푸드코트 동일 결함 포함) | ✅ |
+| F2 첫 방문 새로고침 | 불충족 → Fable: sw.js activate navigate 제거로 범위 확장 | 🟡 |
+| K-DINE IPC 조사 | 재료 중복·메뉴 상태 운영 읽기 → Fable 판정 2회 · 구조 재검토 판정 진행 | 🟡 |
+
+### 수정된 파일
+- 백엔드: `routes/seller-orders.js` · `utils/sellerProductIdentity.js` · `utils/emailBranding.js` · `services/soaScheduler.js` · `scripts/check-type-baseline.js` · `scripts/type-baseline.json` · `scripts/verify-all.js` · `scripts/migrate-add-seller-delivery-policy.js` · `scripts/migrations.registry.json`
+- 프론트: `IncomingOrdersView.tsx` · `utils/poShare.ts(+test)` · `BrandInvoicesPage.tsx` · `FoodcourtInvoicesPage.tsx` · `BrandPaymentSettingsPage.tsx` · `FoodcourtPaymentSettingsPage.tsx` · `SupplierCompanyInfoPage.tsx` · `NewPurchaseOrderPage.tsx` · `StaffManagementPage.tsx` · `PwaInstallBanner.tsx` · `index.tsx` · `public/sw.js`(버전만) · 로케일 4언어
+- 배포: `deploy-to-production.sh` · `rollback-production.sh` · `scripts/deploy-layout.sh` · 문서 `docs/SUPPLIER_CONTRACT_SYSTEM.md`
+
+---
+
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 
 ### 현재 상황
