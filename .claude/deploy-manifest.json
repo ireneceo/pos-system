@@ -1,7 +1,7 @@
 {
  "note": "운영 배포 시점 소스 지문 — deploy-to-production.sh 성공 후 자동 기록. 수동 편집 금지.",
- "created_at": "2026-09-29T16:29:12.346Z",
- "file_count": 2213,
+ "created_at": "2026-09-29T17:29:12.528Z",
+ "file_count": 2214,
  "files": {
   "CLAUDE.md": "5caf38b4b798104fec726c5b92958eaa4f172e3b6defac26083bacd807f669a8",
   "deploy-to-production.sh": "ab2c836f81264bdf7a7a6acd791543198f4db456eca8ad08e04d70270ccf0645",
@@ -363,6 +363,7 @@
   "dev-backend/releases/archive/2026-09-25-owner-hat.json": "aae02e716e88cf9ee8fb7e0773fd38d63e3e8dd89243000cf1bd5b13c612a269",
   "dev-backend/releases/archive/2026-09-25-reconcile-total-first.json": "2e7286b166ea58132da8dc59c3d6ed351487eb8ddb9702013dd86d0463a535f8",
   "dev-backend/releases/archive/2026-09-29-sales-order-share.json": "85f5ab12bfbae345914e6bebfad15fdf3fed611e678d91dce389ffa60bbab2a5",
+  "dev-backend/releases/archive/2026-09-30-soa-confirmed-orders.json": "fa9b0450e61b25227a87ff0a094e1b80d7ab41fa15cb202da3551930a7f596c2",
   "dev-backend/releases/rollback/backfill-rollback-1789928975640.json": "e3f453e895d4b1ffbb189d24be579fefd394ba0bc0e55cc5400916ec2550ed54",
   "dev-backend/reset-password.js": "da7132aadeb5c33c91e4403f41f21f4f22d8d9c0cdc4a7b0682324ed805d4639",
   "dev-backend/restart-dev.sh": "f60432ba87f47ed0b63d51416d54d17049efbf1991908c78742b5163e3de854f",
@@ -840,7 +841,7 @@
   "dev-backend/services/reservationScheduler.js": "1096a7f949c720761529f2cf08f356fddf4400743d49d5465dc55914831cd24d",
   "dev-backend/services/retroApplyPrice.js": "6fe8ca54c330a024215042718fabd248b1283738f0c20bb3eaf5b8a1ce9fc994",
   "dev-backend/services/sellerLinkConversion.js": "cbb71054dff96f7f36acb556258e44f980f96d45a1a95da772ef4c894488c711",
-  "dev-backend/services/soaScheduler.js": "e7781a205b218467fd011b32ab9e373cfb4a0f8088e8d16b58fac8c355205baa",
+  "dev-backend/services/soaScheduler.js": "3ba0bd5b226673a3dceb8f49b9b5fc95a0e182b42b5414f9c13d585409cca816",
   "dev-backend/services/socketService.js": "42643ab91420d3e5ea97ffc63583830dc0ce2488cc41a5f5472340bafaf0de2d",
   "dev-backend/services/stockItemMirror.js": "8da5f073e04e69d17f7d3db35457e4ea93def97cec6a96df424fc233b9300149",
   "dev-backend/services/storeCost.js": "ecae21435ab7c58b3f779ad7b713e0b0e1961ce1db335312b951740a58a23248",

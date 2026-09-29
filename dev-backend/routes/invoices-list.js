@@ -140,11 +140,15 @@ router.get('/', authenticateToken, async (req, res) => {
     } else if (role === 'Brand General' || role === 'Brand Manager') {
       // Brand General/Manager: only see invoices they ISSUED (for Issued Invoices tab)
       // Invoices TO them are shown via /api/invoices/to-pay endpoint
-      const userBrandId = brandId || req.user.brand_id;
-      if (userBrandId) {
+      // 브랜드를 여러 개 가진 계정은 **내 브랜드 전부**(소유 ∪ 배정)가 발행한 것을 본다 (2026-09-30 Irene 신고:
+      //   K-DINE with MIN 이 낸 정산서가 Issued 탭에 안 보였다 — users.brand_id(첫 브랜드) 하나만 봤기 때문).
+      //   규칙의 단일 소스는 utils/managerBrandScope — 카탈로그·판매자 주문과 같은 범위.
+      const { brandIdsForUser } = require('../utils/managerBrandScope');
+      const userBrandIds = brandId ? [brandId] : await brandIdsForUser(req.user);
+      if (userBrandIds.length) {
         whereClause = {
           issuer_type: 'brand',
-          issuer_id: userBrandId
+          issuer_id: userBrandIds
         };
       } else {
         return res.json([]);

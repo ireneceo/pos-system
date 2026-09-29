@@ -1,0 +1,39 @@
+{
+  "tag": "soa-confirmed-orders",
+  "sw_version": "5.66-sales-order-share-20260929",
+  "date": "2026-09-30",
+  "in_progress": [
+    "A안(배포한 상품은 연결 없이 바로 주문 + 서비스 상품) — Irene 결정, Fable 한도 소진으로 설계 판정 대기",
+    "브랜드 Issued Invoices 탭이 계정의 첫 브랜드만 보이는 결함 — 미수정"
+  ],
+  "completed": [
+    "정산서(SOA)에 확정된 주문 전부 포함 — 수동·자동 발행 직전에, 판매자가 확정한 뒤 단계(확정·출고·배송중·배송완료·일부입고·입고·마감)인데 청구서가 없는 주문의 청구서를 같은 발행 함수(createTradeInvoice, 멱등)로 먼저 낸다. 확정 전(제출·승인대기)·배송실패·취소는 제외. services/soaScheduler.js issueMissingTradeInvoices"
+  ],
+  "remaining": ["none"],
+  "verification": {
+    "api": "dev 매장 38·브랜드 17 in-process 6/6 — 배송완료·출고·확정 주문 청구서 생성 후 묶임(123.00 = 100+20+3) · 제출·배송실패 제외 · 재발행 시 중복 청구서 없음(no_invoices) · 자동 발행(참조일 10-07)도 배송완료 주문 포함(173.00). 원복 잔여 0",
+    "fault_injection": "수동 발행의 선발행 호출 제거 → 1/4(배송 주문 빠짐·no_invoices) · cp 원복 cmp 동일 → 6/6",
+    "regression": "기존 SOA 실호출 25/25 · 스케줄러 14/14 · verify-all(표준) 게이트 — deploy-ready 외 통과",
+    "migration": "없음 — 롤백은 코드 되돌리기만",
+    "sw_version": "5.66-sales-order-share-20260929",
+    "fable_note": "Fable 한도 소진 — Irene 지시 «검증 자체 검증으로 처리해» · 「내가 수동으로 만들어도 포함되어야지」 에 따른 팀원 구현·자체 검증. 이전 판정(soa 추가 판정 «소급 없음»)을 Irene 이 뒤집은 것"
+  },
+  "notes": [
+    "프론트 변경 없음 — SW 유지. 백엔드 services/soaScheduler.js 1파일"
+  ],
+  "irene_actions_after_deploy": [
+    "브랜드 계정 Billing → This month (up to today) → Generate now — K-DINE IPC 청구서 10장 RM 7,691.90 예상(PO-R8-20260929-004·007 포함)"
+  ],
+  "issues": [
+    "판매자가 배송완료했는데 매장이 입고를 누르지 않은 주문은 청구서가 없어 정산서에서 빠졌다(K-DINE IPC PO-R8-20260929-004 RM 1,089.80 · -007 RM 677.00)"
+  ],
+  "upcoming": ["A안 설계 판정", "Issued Invoices 다브랜드"],
+  "behavior_changes": [
+    "정산서를 만들면 판매자가 확정한 주문은 매장 입고 여부와 관계없이 전부 청구서가 되어 함께 묶인다"
+  ],
+  "check_areas": [
+    "브랜드 Billing → Generate now 결과(청구서 수·금액)",
+    "매장 Invoices 정산서 PDF",
+    "🔒 인쇄·KDS 무접촉"
+  ]
+}

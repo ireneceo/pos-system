@@ -1,0 +1,24 @@
+{
+  "tag": "issued-multi-brand",
+  "sw_version": "5.66-sales-order-share-20260929",
+  "date": "2026-09-30",
+  "in_progress": ["A안(배포 상품 연결 없이 바로 주문 + 서비스) — Fable 판정 대기"],
+  "completed": [
+    "브랜드 Invoices «Issued Invoices» 탭 — 계정의 첫 브랜드(users.brand_id)만 보던 것을 내 브랜드 전부(소유 ∪ 배정, utils/managerBrandScope.brandIdsForUser)로. 컨텍스트로 브랜드가 정해진 경우는 그 브랜드만(종전)"
+  ],
+  "remaining": ["none"],
+  "verification": {
+    "api": "dev — 소유 BG(22)가 두 번째 브랜드(17) 발행 정산서를 봄 · 남의 BG(6)·매장 관리자(23)는 못 봄",
+    "fault_injection": "수정 전 코드로 되돌리면 소유 BG 도 못 봄(false) · cp 원복 cmp 동일 → true",
+    "regression": "health-check 269/269",
+    "migration": "없음 — 롤백은 코드 되돌리기만",
+    "sw_version": "5.66-sales-order-share-20260929",
+    "fable_note": "Fable 한도 소진 — Irene 지시 «검증 자체 검증으로 처리해». 읽기 범위를 카탈로그·판매자 주문과 같은 규칙(managerBrandScope)으로 맞춤, 권한 판정처 신규 0"
+  },
+  "notes": ["프론트 변경 없음 · 백엔드 routes/invoices-list.js 1곳"],
+  "irene_actions_after_deploy": ["https://purplehere.com/pos/brand/invoices?tab=issued 새로고침 → SOA-BRD2-R8-M20260929173419 (RM 7,691.90) 보이는지"],
+  "issues": ["K-DINE with MIN 이 발행한 정산서·청구서가 gitconsulting 계정의 Issued Invoices 에 안 보였다"],
+  "upcoming": ["A안 설계 판정"],
+  "behavior_changes": ["브랜드를 여러 개 가진 계정은 Issued Invoices 에 모든 브랜드의 발행분이 함께 보인다"],
+  "check_areas": ["브랜드 Invoices Issued 탭", "🔒 인쇄·KDS 무접촉"]
+}

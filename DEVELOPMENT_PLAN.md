@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-29 — [Claude Code] **v3.104 운영 배포 — SW `5.66-sales-order-share-20260929`(16:29 UTC · 백업 `20260929_162231` · 스모크 10/10 · 마이그 brands/foodcourts.delivery_policy 추가 2건).** 1차 묶음(R1~R8·F1~F5·Sales Orders·판매자 다중 브랜드, Fable 게이트 PASS) + K-DINE SOA 2차(월결제 Pay 가드·정산서 전체 PDF·발행일/수동 뒤 skip·수신자 0 생성·메일 링크) + 청구서 발행 시점. SOA 2차는 Fable 한도 소진 → Irene 지시로 자체 검증(실호출 25·스케줄러 14·실브라우저 18·고장주입 3·verify-all 24/24). 대기: Irene K-DINE IPC 정산서 수동 발행 → 운영 읽기 확인.
+> **최종 업데이트:** 2026-09-30 — [Claude Code] **K-DINE IPC 9월 정산서 발행 완료(SOA-BRD2-R8-M20260929173419 · 10장 · RM 7,691.90 · kate 메일 발송).** 운영 배포 #2(17:29 UTC · 백업 `20260929_172243` · 스모크 10/10): 정산서 발행 직전 확정 이후 주문(배송완료·출고 포함) 청구서 선발행. 운영 처리(Irene 지시): 첫 정산서 185 취소(앱 경로) · Printing 상품 3개 매장 8 카탈로그 연결. **미배포 1건: Issued Invoices 다브랜드(dev 검증 완료, /배포 대기).** 대기: A안(배포 상품 연결 없이 주문 + 서비스) Fable 판정.
+
+> **이전:** 2026-09-29 — [Claude Code] **v3.104 운영 배포 — SW `5.66-sales-order-share-20260929`(16:29 UTC · 백업 `20260929_162231` · 스모크 10/10 · 마이그 brands/foodcourts.delivery_policy 추가 2건).** 1차 묶음(R1~R8·F1~F5·Sales Orders·판매자 다중 브랜드, Fable 게이트 PASS) + K-DINE SOA 2차(월결제 Pay 가드·정산서 전체 PDF·발행일/수동 뒤 skip·수신자 0 생성·메일 링크) + 청구서 발행 시점. SOA 2차는 Fable 한도 소진 → Irene 지시로 자체 검증(실호출 25·스케줄러 14·실브라우저 18·고장주입 3·verify-all 24/24). 대기: Irene K-DINE IPC 정산서 수동 발행 → 운영 읽기 확인.
 
 > **최종 업데이트:** 2026-09-29 — [Claude Code] **코드 묶음 거의 완료(개발서버·미배포, SW 5.66 빌드 1회) + Sales Orders 3건(Buyer 세로 · 상세 WhatsApp 그룹 공유 · 품목 판매자 카테고리 묶음).** R1·R2·R3·R4·R5·R6·R7·R8·F1·F3·F4·F5 실호출·고장주입·실브라우저 통과, F2 불충족(sw.js activate 강제 이동 추정) → Fable 판정 대기. K-DINE IPC 재료 중복(짝 38)·메뉴 상태 운영 읽기 조사 → Fable 판정 대기. 운영 쓰기 0. 상세 session-state.
 
@@ -10629,6 +10631,25 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 ### 수정된 파일
 - `dev-backend/routes/restaurants-crud.js` · `routes/cash-management.js` · `routes/brands-core.js` · `routes/foodcourts-core.js` · `routes/supplier.js` · `routes/restaurants-ingredients.js` · `utils/sellerNames.js` · `models/Brand.js` · `models/Foodcourt.js`
 - `docs/TRADE_STRUCTURE.md` ⑦ §5(b) 한 줄
+
+---
+
+## ✅ 완료: K-DINE 정산서 발행 마무리 + 확정 주문 청구서 선발행 + Issued 다브랜드 (2026-09-30) [Claude Code]
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 정산서 수신자 | 운영 users 19 kdineipc1 email=kate.kim.snkn@gmail.com (Irene 지시 · ⚠ 규칙상 Irene 몫이었음) | ✅ 완료 |
+| 첫 정산서 취소 | SOA 185(RM 5,925.10, 8장) Irene 「삭제해줘」 → PATCH /api/invoices/185/status cancelled(앱 경로, 자식 8장 해제) | ✅ 완료 |
+| Printing 상품 주문 가능 | brand_products 258·259·260 → 매장 8 from-catalog(재고품목 1253~1255 · 매핑 1413~1415 seller 2) → 주문 추가 목록 49개 | ✅ 완료 |
+| 확정 주문 청구서 선발행 | `soaScheduler.issueMissingTradeInvoices` — 수동·자동 정산서 직전, 확정 이후(confirmed~closed) 청구서 없는 주문에 createTradeInvoice. dev 6/6 · 고장주입 · 회귀 25/14 · 운영 배포 #2 | ✅ 완료 |
+| 9월 정산서 | SOA-BRD2-R8-M20260929173419 · 10장 · RM 7,691.90 · 마감 10/15 · kate 메일 · 누락 주문 0 | ✅ 완료 |
+| Issued Invoices 다브랜드 | `GET /api/invoices` BG 분기 → managerBrandScope.brandIdsForUser. dev 소유 BG 보임·남 BG/RA 안 보임 · 고장주입 · health 269/269 | 🟡 dev 완료 · 미배포 |
+
+### 수정된 파일
+- `dev-backend/services/soaScheduler.js` (배포) · `dev-backend/routes/invoices-list.js` (미배포)
+- 기록 `dev-backend/releases/2026-09-30-issued-multi-brand.json` · 메모리 `reference_seller_add_order_needs_buyer_link.md`
 
 ---
 
