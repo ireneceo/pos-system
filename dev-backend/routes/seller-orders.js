@@ -349,6 +349,48 @@ async function sellerIdForBuyer(req, restaurantId, transaction) {
 
 // 주문 추가 화면용 — 이 구매자에게 팔 수 있는 내 상품.
 // 기존 주문이 없으므로 판매자 정보만 담은 형태를 만들어 **amend 와 같은 판정 함수**에 넘긴다.
+/**
+ * 이 매장에 배포됐는데(보임) 아직 매장 재고와 연결되지 않은 브랜드 상품 — 판매자 주문 추가 목록용.
+ * 배포 범위 판정은 매장 «카탈로그에서 담기» 와 같은 함수(services/restaurantCatalogLink).
+ */
+async function unlinkedBrandProductsFor(restaurantId, brandId, linkedProducts) {
+  const { BrandProduct } = require('../models');
+  const { brandOwnerUserIds } = require('../utils/managerBrandScope');
+  const { brandProductVisibleToRestaurant } = require('../services/restaurantCatalogLink');
+  const owners = await brandOwnerUserIds(brandId);
+  if (!owners.length) return [];
+  // 이미 목록에 있는(연결된) 브랜드 상품은 뺀다
+  const linkedIds = new Set();
+  const mapIds = linkedProducts.map(p => p.ingredient_seller_product_id).filter(Boolean);
+  if (mapIds.length) {
+    const rows = await IngredientSellerProduct.findAll({ where: { id: mapIds }, attributes: ['seller_product_id'] });
+    rows.forEach(r => linkedIds.add(Number(r.seller_product_id)));
+  }
+  const candidates = await BrandProduct.findAll({
+    where: { owner_user_id: owners, is_active: true },
+    attributes: ['id', 'name', 'unit', 'package_unit', 'base_quantity', 'unit_price', 'min_order_quantity', 'product_kind', 'distribution_mode', 'owner_user_id']
+  });
+  const out = [];
+  for (const bp of candidates) {
+    if (linkedIds.has(Number(bp.id))) continue;
+    if (!(await brandProductVisibleToRestaurant(bp, restaurantId))) continue;
+    out.push({
+      ingredient_seller_product_id: null,
+      link_brand_product_id: bp.id,
+      name: bp.name,
+      unit_price: parseFloat(bp.unit_price) || 0,
+      unit_conversion: 1,
+      min_order_quantity: bp.min_order_quantity == null ? null : parseFloat(bp.min_order_quantity),
+      unit: bp.package_unit || bp.unit || null,
+      base_quantity: bp.base_quantity == null ? null : parseFloat(bp.base_quantity),
+      base_unit: bp.unit || null,
+      product_kind: bp.product_kind,
+      needs_link: true
+    });
+  }
+  return out;
+}
+
 router.get('/sellable-products', async (req, res) => {
   try {
     if (!req.sellerEntity) {
@@ -368,6 +410,13 @@ router.get('/sellable-products', async (req, res) => {
       { type: 'restaurant', id: entityId },
       undefined
     );
+    // 브랜드가 이 매장에 배포했지만 매장이 아직 담지 않은 상품도 함께 보인다 (2026-09-30 Irene A안
+    //   「배포한 상품은 연결 없이 바로 주문 · 서비스 상품도」). 고르면 주문 생성 때 매장의 «카탈로그에서 담기» 를
+    //   대신 실행한다 — ingredient_seller_product_id 는 null, link_brand_product_id 로 구분한다.
+    if (req.sellerEntity.type === 'brand') {
+      products.push(...await unlinkedBrandProductsFor(entityId, sellerEntityId, products));
+      products.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    }
     res.json({ success: true, data: { products } });
   } catch (err) {
     console.error('GET /api/seller-orders/sellable-products error:', err);
@@ -962,6 +1011,41 @@ const { computeTotalsWithDelivery } = require('../utils/purchaseOrderTotals');
 const { currencySymbol } = require('../utils/currency');
 
 router.post('/', async (req, res) => {
+  // 아직 연결 안 된 배포 상품 줄({brand_product_id})은 **트랜잭션 전에** 매장의 «카탈로그에서 담기» 로 연결한다
+  //   (2026-09-30 A안). 담기는 자기 트랜잭션으로 커밋되므로 아래 주문 트랜잭션보다 먼저 끝나야 새 연결이 보인다.
+  //   판매자 확인(그 매장의 내 브랜드)·배포 범위 확인을 거친 뒤에만 담는다. 담기는 멱등이다.
+  try {
+    const raws = Array.isArray(req.body?.items) ? req.body.items : [];
+    const needLink = raws.filter(r => r && !r.ingredient_seller_product_id && r.brand_product_id);
+    if (needLink.length) {
+      if (!req.sellerEntity || req.sellerEntity.type !== 'brand' || req.body?.entity_type !== 'restaurant') {
+        return res.status(400).json({ success: false, code: 'BAD_ITEM', message: 'Only brand sellers can add unlinked brand products' });
+      }
+      const rid = parseInt(req.body.entity_id, 10);
+      const seller = await sellerIdForBuyer(req, rid);
+      if (seller.notMine || !Number.isFinite(rid)) return res.status(404).json({ success: false, message: 'Buyer not found' });
+      const { BrandProduct } = require('../models');
+      const { brandOwnerUserIds } = require('../utils/managerBrandScope');
+      const { linkCatalogProductToRestaurant } = require('../services/restaurantCatalogLink');
+      const owners = await brandOwnerUserIds(seller.id);
+      for (const raw of needLink) {
+        const bp = await BrandProduct.findByPk(parseInt(raw.brand_product_id, 10), { attributes: ['id', 'owner_user_id', 'is_active'] });
+        if (!bp || !bp.is_active || !owners.includes(Number(bp.owner_user_id))) {
+          return res.status(400).json({ success: false, code: 'PRODUCT_NOT_YOURS', message: 'That product belongs to a different seller' });
+        }
+        const linked = await linkCatalogProductToRestaurant(rid, { brand_product_id: bp.id });
+        const mappingId = linked.body?.data?.mapping?.id;
+        if (linked.status >= 300 || !mappingId) {
+          return res.status(linked.status >= 300 ? linked.status : 400).json(linked.body);
+        }
+        raw.ingredient_seller_product_id = mappingId;
+      }
+    }
+  } catch (e) {
+    console.error('POST /api/seller-orders auto-link error:', e);
+    return res.status(500).json({ success: false, message: 'Failed to link product' });
+  }
+
   const t = await sequelize.transaction();
   try {
     if (!req.sellerEntity) {

@@ -205,6 +205,9 @@ interface IncomingOrderRow {
 /** 품목 수정 모달이 고르는 판매자 카탈로그 상품 (서버가 구매자 연결까지 걸러서 준다) */
 interface AmendProduct {
   ingredient_seller_product_id: number;
+  /** 매장이 아직 담지 않은 배포 상품 — 주문 때 서버가 매장 «카탈로그에서 담기» 를 대신한다(2026-09-30).
+   *  화면 안에서는 ingredient_seller_product_id 자리에 −brand_product_id 로 둔다(고르기 키). */
+  link_brand_product_id?: number | null;
   name: string | null;
   unit_price: number;
   unit: string | null;
@@ -1022,7 +1025,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
       const data = await res.json();
-      if (data?.success) setCreateProducts(data.data?.products || []);
+      // 아직 연결 안 된 배포 상품(ingredient_seller_product_id=null)은 −brand_product_id 를 고르기 키로 쓴다
+      if (data?.success) setCreateProducts((data.data?.products || []).map((p: AmendProduct) => (
+        p.ingredient_seller_product_id == null && p.link_brand_product_id
+          ? { ...p, ingredient_seller_product_id: -Number(p.link_brand_product_id) }
+          : p
+      )));
       else setErrorMessage(data?.message || 'Failed to load products');
     } catch (err) {
       console.error(err);
@@ -1062,8 +1070,10 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
           entity_id: createBuyerId,
           items: createLines.map(l => {
             const p = createProductById(l.ingredient_seller_product_id);
+            const key = Number(l.ingredient_seller_product_id);
             return {
-              ingredient_seller_product_id: l.ingredient_seller_product_id,
+              // 음수 키 = 아직 연결 안 된 배포 상품 → 서버가 담은 뒤 줄을 만든다
+              ...(key < 0 ? { brand_product_id: -key } : { ingredient_seller_product_id: key }),
               quantity_ordered: parseFloat(l.quantity_ordered),
               unit_price: p ? p.unit_price : 0
             };
