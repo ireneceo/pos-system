@@ -324,6 +324,29 @@ router.get('/buyers', async (req, res) => {
   }
 });
 
+/**
+ * 이 구매 매장에게 **어느 판매자로** 파는가 — 주문 추가 화면(sellable-products)·주문 생성(POST /) 공용.
+ *
+ * 브랜드 제너럴은 브랜드를 여러 개 가질 수 있다(req.sellerEntity.ids). 예전엔 둘 다
+ * `req.sellerEntity.id`(= users.brand_id, 기본 브랜드)로 고정해서, 두 번째 브랜드 소속 매장에
+ * 주문을 넣으려 하면 «연결된 상품 없음» 이 나오고(2026-09-29 Irene · 운영: gitconsulting 기본 브랜드 1,
+ * K-DINE IPC 는 브랜드 2, 매장 재료의 판매 연결 46건 전부 브랜드 2) 상품이 떠도 판매자가 브랜드 1로 기록될 상태였다.
+ * → 브랜드 판매자는 **그 매장이 속한 브랜드**로 판다. 내 브랜드 목록에 없는 매장이면 null(= 내 구매처 아님).
+ * 푸드코트·공급업체는 판매자가 하나라 종전 그대로.
+ */
+async function sellerIdForBuyer(req, restaurantId, transaction) {
+  const se = req.sellerEntity;
+  if (se.type === 'system_admin') return { id: null };
+  if (se.type === 'brand') {
+    const ids = (Array.isArray(se.ids) && se.ids.length ? se.ids : [se.id]).map(Number);
+    const r = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'brand_id'], transaction });
+    const bid = r && r.brand_id != null ? Number(r.brand_id) : null;
+    if (bid == null || !ids.includes(bid)) return { id: null, notMine: true };
+    return { id: bid };
+  }
+  return { id: se.id != null ? se.id : (se.ids || [])[0] };
+}
+
 // 주문 추가 화면용 — 이 구매자에게 팔 수 있는 내 상품.
 // 기존 주문이 없으므로 판매자 정보만 담은 형태를 만들어 **amend 와 같은 판정 함수**에 넘긴다.
 router.get('/sellable-products', async (req, res) => {
@@ -335,9 +358,9 @@ router.get('/sellable-products', async (req, res) => {
     if (req.query.entity_type !== 'restaurant' || !Number.isFinite(entityId)) {
       return res.status(400).json({ success: false, message: 'A buyer restaurant is required' });
     }
-    const sellerEntityId = req.sellerEntity.type === 'system_admin'
-      ? null
-      : (req.sellerEntity.id != null ? req.sellerEntity.id : (req.sellerEntity.ids || [])[0]);
+    const seller = await sellerIdForBuyer(req, entityId);
+    if (seller.notMine) return res.status(404).json({ success: false, message: 'Buyer not found' });
+    const sellerEntityId = seller.id;
 
     const { listAmendableProducts } = require('../utils/poAmend');
     const products = await listAmendableProducts(
@@ -948,9 +971,13 @@ router.post('/', async (req, res) => {
 
     const buyerEntity = { type: 'restaurant', id: parseInt(entity_id, 10) };
     // 판매자는 **자기 자신으로만** 주문을 만든다 — 남의 이름으로 주문을 넣을 수 없다.
-    const sellerEntityId = req.sellerEntity.type === 'system_admin'
-      ? null
-      : (req.sellerEntity.id != null ? req.sellerEntity.id : (req.sellerEntity.ids || [])[0]);
+    //   브랜드는 «그 매장이 속한 내 브랜드» (sellerIdForBuyer). 내 구매처가 아니면 404.
+    const seller = await sellerIdForBuyer(req, buyerEntity.id, t);
+    if (seller.notMine) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Buyer not found' });
+    }
+    const sellerEntityId = seller.id;
 
     // 줄은 **판매자 상품 id 만** 받고 재고 대상·단가는 서버가 카탈로그에서 해석한다.
     // (클라이언트가 ingredient_id 나 단가를 직접 지정하면 남의 재고행에 꽂거나 값을 속일 수 있다.

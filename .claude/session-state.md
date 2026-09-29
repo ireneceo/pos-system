@@ -8,6 +8,7 @@
 - 🟡 **[Claude Code] 코드 묶음 (09-27 지시 13건 + 09-29 Sales Orders 3건) — 개발서버, 미배포**
   - 판정 원문: `.claude/fable-verdict-20260927.md` Ⅱ · `-20260928.md` Ⅱ · **`-20260929.md` Ⅱ(F2)·Ⅳ(팀원 지시)**
   - ✅ 통과: Sales Orders 3건(Buyer 세로 · 상세 WhatsApp 그룹 공유 · 판매자 카테고리 묶음, 실브라우저 6/6) · R1 8/8 · R2 5/5 · R3 타입 기준선 436 게이트 · R4 배포 자동원복/롤백 v3(`scripts/deploy-layout.sh`, 재현 25/25) · R5 · R6 · R7(+마이그 `migrate-add-seller-delivery-policy.js` — Fable 수용) · R8(SOA 메일 실발송 확인 불가) · F1 · F3 · F4 · F5(푸드코트 포함). 고장주입 기록은 DEVELOPMENT_PLAN 09-29 절.
+  - ✅ 09-29 추가(Irene 신고 「브랜드제너럴이 직접 주문 넣으려는데 None of your products are linked」): 원인 = 판매 브랜드를 `users.brand_id`(gitconsulting=1)로 고정, K-DINE IPC 는 브랜드 2(운영 매장 8 연결 46건 전부 브랜드 2). `seller-orders.js sellerIdForBuyer` — 주문 추가 상품목록·주문 생성 둘 다 «그 매장이 속한 내 브랜드», 내 것 아니면 404. dev 실호출 7/7(생성 0건 — 메일 우려로 실생성 미확인) · 고장주입 3 실패(«상품 0개» 재현). 운영은 배포 전까지 그대로 막힘.
   - 🔴 **다음 할 일(판정 Ⅱ)**: F2 — `dev-frontend/public/sw.js` activate 의 `clients.matchAll → w.navigate(w.url)` 루프 제거(clients.claim 유지, index.tsx 현 구현 유지, SW bump 불필요) → build:dev 1회 → verify-all --full 1회 → F2 실측(새 프로필 문서 1회 · 교체 후 +1회, 제거 전 2회·2회와 나란히) → check-sensitive-diff(★ FABLE 게이트 대상 ②③) → 배포 기록 `releases/2026-09-29-*.json` → Fable 게이트 → Irene /배포
   - 배포 뒤: 운영 브랜드 1·2 delivery_policy «Petaling Jaya, Selangor» · 0원 청구서 93·88·69·61 Irene Confirm
   - ⚠ 배포 전까지 SA 화면에서 with MIN Cafe 매장 정보 저장 금지(R1 미배포)
