@@ -84,6 +84,8 @@ router.post('/:id/create-payment-intent', authenticateToken, async (req, res) =>
     // 그쪽은 우리 솔루션에 수금 계정이 없다. "결제함 체크"만 허용한다.
     const { blockExternalIssuerPayment } = require('../utils/externalIssuer');
     if (await blockExternalIssuerPayment(invoice, res)) return;
+    // 월결제 매장의 거래 청구서는 정산서(SOA)로만 낸다 (2026-09-29 soa2 §5-B)
+    if (await require('../utils/payViaSoa').blockPayViaSoa(invoice, res)) return;
     const stripe = await getStripeForIssuer(invoice.issuer_type, invoice.issuer_id);
 
     // Convert amount to smallest currency unit
@@ -181,6 +183,8 @@ router.post('/:id/create-paypal-order', authenticateToken, async (req, res) => {
     // 그쪽은 우리 솔루션에 수금 계정이 없다. "결제함 체크"만 허용한다.
     const { blockExternalIssuerPayment } = require('../utils/externalIssuer');
     if (await blockExternalIssuerPayment(invoice, res)) return;
+    // 월결제 매장의 거래 청구서는 정산서(SOA)로만 낸다 (2026-09-29 soa2 §5-B)
+    if (await require('../utils/payViaSoa').blockPayViaSoa(invoice, res)) return;
     const { client } = await createPayPalClient(invoice.issuer_type, invoice.issuer_id);
 
     const request = new paypal.orders.OrdersCreateRequest();
@@ -442,6 +446,9 @@ router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
     if (!canPay) {
       return res.status(403).json({ success: false, error: { message: 'You do not have permission to pay this invoice', code: 'FORBIDDEN' } });
     }
+
+    // 월결제 매장의 거래 청구서는 정산서(SOA)로만 낸다 (2026-09-29 soa2 §5-B) — 화면이 버튼을 숨겨도 서버가 다시 막는다
+    if (await require('../utils/payViaSoa').blockPayViaSoa(invoice, res)) return;
 
     // Validate payment_method against issuer's configured methods
     if (payment_method) {

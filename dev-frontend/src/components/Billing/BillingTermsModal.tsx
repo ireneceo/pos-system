@@ -6,7 +6,7 @@
  *
  * Endpoint:
  *   PUT /api/{brand|foodcourt}/restaurants/:restaurantId/billing-terms
- *   body: { payment_terms: { terms, invoice_cycle, payment_due_day, credit_limit, currency, notes } | null }
+ *   body: { payment_terms: { terms, invoice_cycle, payment_due_day, soa_issue_day, invoice_trigger, credit_limit, currency, notes } | null }
  */
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
@@ -22,6 +22,10 @@ export interface PaymentTerms {
   terms?: string;
   invoice_cycle?: 'immediate' | 'monthly_soa';
   payment_due_day?: number | null;
+  /** 정산서 자동 발행일 1~28 (월결제만, 없으면 1) — 2026-09-29 */
+  soa_issue_day?: number | null;
+  /** 청구서 발행 시점 — 입고 완료 시(기본) / 판매자 주문 확정 시 — 2026-09-29 */
+  invoice_trigger?: 'on_received' | 'on_confirmed';
   credit_limit?: number | null;
   currency?: string;
   notes?: string;
@@ -31,6 +35,8 @@ interface PaymentTermsFormState {
   terms: string;
   invoice_cycle: 'immediate' | 'monthly_soa';
   payment_due_day: string;
+  soa_issue_day: string;
+  invoice_trigger: 'on_received' | 'on_confirmed';
   credit_limit: string;
   currency: string;
   notes: string;
@@ -40,6 +46,8 @@ const DEFAULT_TERMS: PaymentTermsFormState = {
   terms: 'NET_30',
   invoice_cycle: 'monthly_soa',
   payment_due_day: '15',
+  soa_issue_day: '1',
+  invoice_trigger: 'on_received',
   credit_limit: '',
   currency: 'MYR',
   notes: ''
@@ -50,6 +58,8 @@ function termsFromBackend(t: PaymentTerms | null | undefined): PaymentTermsFormS
     terms: t?.terms || 'NET_30',
     invoice_cycle: (t?.invoice_cycle as any) || 'monthly_soa',
     payment_due_day: t?.payment_due_day != null ? String(t.payment_due_day) : '15',
+    soa_issue_day: t?.soa_issue_day != null ? String(t.soa_issue_day) : '1',
+    invoice_trigger: t?.invoice_trigger === 'on_confirmed' ? 'on_confirmed' : 'on_received',
     credit_limit: t?.credit_limit != null ? String(t.credit_limit) : '',
     currency: t?.currency || 'MYR',
     notes: t?.notes || ''
@@ -177,7 +187,10 @@ const BillingTermsModal: React.FC<Props> = ({
         body: JSON.stringify(body)
       });
       const data = await res.json();
-      if (res.ok && data.success) {
+      if (res.ok && data.success && data.data?.warning === 'no_recipients') {
+        // 정산서는 만들어졌고 메일만 못 보냈다 — 매장 관리자 이메일이 없다 (2026-09-29)
+        setGenResult({ ok: false, msg: t('billing:generate.noRecipients', 'Statement created. No email recipient at the restaurant — add an admin email.') as string });
+      } else if (res.ok && data.success) {
         setGenResult({ ok: true, msg: t('billing:generate.success', 'Statement generated and sent to the restaurant.') as string });
       } else if (data.code === 'no_invoices') {
         setGenResult({ ok: false, msg: t('billing:generate.noInvoices', 'Nothing to statement — no unbilled orders for this restaurant.') as string });
@@ -207,6 +220,15 @@ const BillingTermsModal: React.FC<Props> = ({
       }
       dueDay = d;
     }
+    let issueDay: number | null = null;
+    if (form.invoice_cycle === 'monthly_soa') {
+      const d = Number(form.soa_issue_day);
+      if (!Number.isInteger(d) || d < 1 || d > 28) {
+        setError(t('billing:errors.invalidIssueDay', 'Statement issue day must be 1-28') as string);
+        return;
+      }
+      issueDay = d;
+    }
     let credit: number | null = null;
     if (form.credit_limit.trim()) {
       const c = Number(form.credit_limit);
@@ -221,6 +243,9 @@ const BillingTermsModal: React.FC<Props> = ({
       terms: form.terms,
       invoice_cycle: form.invoice_cycle,
       payment_due_day: dueDay,
+      soa_issue_day: issueDay,
+      // 청구서 발행 시점은 브랜드 판매만 (푸드코트는 이번 범위 밖 — 기본 «입고 완료 시»)
+      invoice_trigger: entityType === 'brand' ? form.invoice_trigger : 'on_received',
       credit_limit: credit,
       currency: form.currency.trim().toUpperCase() || 'MYR',
       notes: form.notes.trim() || undefined
@@ -353,6 +378,29 @@ const BillingTermsModal: React.FC<Props> = ({
             />
           </UIFormGroup>
         )}
+        {form.invoice_cycle === 'monthly_soa' && (
+          <UIFormGroup>
+            <FormLabel>{t('billing:modal.soaIssueDay', 'Statement Issue Day (1-28)')} *</FormLabel>
+            <FormInput
+              type="number" min="1" max="28" step="1"
+              value={form.soa_issue_day}
+              onChange={(e) => setForm({ ...form, soa_issue_day: e.target.value })}
+              required
+            />
+          </UIFormGroup>
+        )}
+        {entityType === 'brand' && (
+          <UIFormGroup>
+            <FormLabel>{t('billing:modal.invoiceTrigger', 'Issue invoice when')}</FormLabel>
+            <FormSelect
+              value={form.invoice_trigger}
+              onChange={(e) => setForm({ ...form, invoice_trigger: e.target.value as 'on_received' | 'on_confirmed' })}
+            >
+              <option value="on_received">{t('billing:trigger.on_received', 'Order is received (default)')}</option>
+              <option value="on_confirmed">{t('billing:trigger.on_confirmed', 'Order is confirmed (before delivery)')}</option>
+            </FormSelect>
+          </UIFormGroup>
+        )}
         <UIFormGroup>
           <FormLabel>{t('billing:modal.currency', 'Currency')}</FormLabel>
           <FormInput
@@ -386,7 +434,7 @@ const BillingTermsModal: React.FC<Props> = ({
         <GenerateSection>
           <div>
             <strong>{t('billing:generate.title', 'Monthly statement')}</strong>
-            <GenerateHint>{t('billing:generate.hint', 'Statements auto-issue on the 1st of each month. Generate one now for any unbilled orders.')}</GenerateHint>
+            <GenerateHint>{t('billing:generate.hintIssueDay', 'Statements auto-issue on day {{day}} of each month. Generate one now for any unbilled orders — that month\'s automatic statement is then skipped.', { day: currentTerms?.soa_issue_day || 1 })}</GenerateHint>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
             <select
@@ -431,9 +479,11 @@ export function formatTermsSummary(t: PaymentTerms | null | undefined): string {
   const parts: string[] = [t.terms];
   if (t.invoice_cycle === 'monthly_soa') {
     parts.push(t.payment_due_day ? `SOA · day ${t.payment_due_day}` : 'SOA');
+    parts.push(`issue day ${t.soa_issue_day || 1}`);
   } else if (t.invoice_cycle === 'immediate') {
     parts.push('Immediate');
   }
+  if (t.invoice_trigger === 'on_confirmed') parts.push('invoice on confirm');
   if (t.credit_limit != null && Number(t.credit_limit) > 0) {
     parts.push(`${getCurrencySymbol(t.currency || 'MYR')} ${Number(t.credit_limit).toLocaleString()}`);
   }

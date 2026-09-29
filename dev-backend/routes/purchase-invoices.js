@@ -176,38 +176,19 @@ router.get('/purchase-invoices/soa/current', async (req, res) => {
     //   supplier  → SupplierContract.payment_terms (buyer ↔ supplier)
     //   brand     → Restaurant.brand_billing_terms (only when payer_type='restaurant')
     //   foodcourt → Restaurant.foodcourt_billing_terms (only when payer_type='restaurant')
+    // 월결제 판별은 utils/payViaSoa.monthlySoaTermsFor 한 곳 (2026-09-29 soa2 §5-B) —
+    //   인보이스 목록의 pay_via_soa · 결제 라우트 가드와 **같은 함수**다.
+    const { monthlySoaTermsFor } = require('../utils/payViaSoa');
     const grouped = new Map();
     for (const inv of invoices) {
       const sellerId = inv.issuer_id;
       if (!sellerId) continue;
+      const m = await monthlySoaTermsFor(inv);
+      if (!m) continue;
 
-      if (inv.issuer_type === 'supplier') {
-        // Resolve buyer entity_type/entity_id matching this payer
-        let entityType = null, entityId = null;
-        if (inv.payer_type === 'restaurant') {
-          entityType = 'restaurant'; entityId = inv.payer_id;
-        } else if (inv.payer_type === 'brand_manager') {
-          const b = await Brand.findOne({ where: { owner_id: inv.payer_id }, attributes: ['id'] });
-          if (b) { entityType = 'brand'; entityId = b.id; }
-        } else if (inv.payer_type === 'foodcourt_manager') {
-          const f = await Foodcourt.findOne({ where: { owner_id: inv.payer_id }, attributes: ['id'] });
-          if (f) { entityType = 'foodcourt'; entityId = f.id; }
-        }
-        if (!entityType) continue;
-
-        const contract = await SupplierContract.findOne({
-          where: {
-            supplier_company_id: sellerId,
-            entity_type: entityType,
-            entity_id: entityId,
-            status: 'active'
-          }
-        });
-        if (!contract) continue;
-        if (contract.payment_terms?.invoice_cycle !== 'monthly_soa') continue;
-
-        const key = `s:${sellerId}`;
-        if (!grouped.has(key)) {
+      const key = `${m.seller_type[0]}:${sellerId}`;
+      if (!grouped.has(key)) {
+        if (m.seller_type === 'supplier') {
           const supplier = await SupplierCompany.findByPk(sellerId, { attributes: ['id', 'name', 'company_name'] });
           const sellerInfo = supplier ? { id: supplier.id, name: supplier.company_name || supplier.name } : null;
           grouped.set(key, {
@@ -216,80 +197,38 @@ router.get('/purchase-invoices/soa/current', async (req, res) => {
             seller: sellerInfo,
             // Legacy alias retained for backward compatibility with older UI consumers.
             supplier: sellerInfo,
-            payment_terms: contract.payment_terms || null,
-            contract_id: contract.id,
-            invoices: [],
-            subtotal: 0,
-            total: 0,
-            count: 0,
+            payment_terms: m.payment_terms || null,
+            contract_id: m.contract_id,
+            invoices: [], subtotal: 0, total: 0, count: 0,
             currency: inv.currency || 'MYR'
           });
-        }
-        const g = grouped.get(key);
-        g.invoices.push(inv.toJSON());
-        g.subtotal += Number(inv.subtotal || 0);
-        g.total += Number(inv.total_amount || 0);
-        g.count += 1;
-      } else if (inv.issuer_type === 'brand') {
-        // BG → Restaurant: terms live on Restaurant.brand_billing_terms
-        if (inv.payer_type !== 'restaurant') continue;
-        const restaurant = await Restaurant.findByPk(inv.payer_id, {
-          attributes: ['id', 'brand_id', 'brand_billing_terms']
-        });
-        if (!restaurant) continue;
-        if (restaurant.brand_id !== sellerId) continue; // sanity
-        if (restaurant.brand_billing_terms?.invoice_cycle !== 'monthly_soa') continue;
-
-        const key = `b:${sellerId}`;
-        if (!grouped.has(key)) {
+        } else if (m.seller_type === 'brand') {
           const brand = await Brand.findByPk(sellerId, { attributes: ['id', 'name'] });
           grouped.set(key, {
             seller_type: 'brand',
             brand_id: sellerId,
             seller: brand ? { id: brand.id, name: brand.name } : null,
-            payment_terms: restaurant.brand_billing_terms || null,
-            invoices: [],
-            subtotal: 0,
-            total: 0,
-            count: 0,
+            payment_terms: m.payment_terms || null,
+            invoices: [], subtotal: 0, total: 0, count: 0,
             currency: inv.currency || 'MYR'
           });
-        }
-        const g = grouped.get(key);
-        g.invoices.push(inv.toJSON());
-        g.subtotal += Number(inv.subtotal || 0);
-        g.total += Number(inv.total_amount || 0);
-        g.count += 1;
-      } else if (inv.issuer_type === 'foodcourt') {
-        if (inv.payer_type !== 'restaurant') continue;
-        const restaurant = await Restaurant.findByPk(inv.payer_id, {
-          attributes: ['id', 'foodcourt_id', 'foodcourt_billing_terms']
-        });
-        if (!restaurant) continue;
-        if (restaurant.foodcourt_id !== sellerId) continue;
-        if (restaurant.foodcourt_billing_terms?.invoice_cycle !== 'monthly_soa') continue;
-
-        const key = `f:${sellerId}`;
-        if (!grouped.has(key)) {
+        } else {
           const fc = await Foodcourt.findByPk(sellerId, { attributes: ['id', 'name'] });
           grouped.set(key, {
             seller_type: 'foodcourt',
             foodcourt_id: sellerId,
             seller: fc ? { id: fc.id, name: fc.name } : null,
-            payment_terms: restaurant.foodcourt_billing_terms || null,
-            invoices: [],
-            subtotal: 0,
-            total: 0,
-            count: 0,
+            payment_terms: m.payment_terms || null,
+            invoices: [], subtotal: 0, total: 0, count: 0,
             currency: inv.currency || 'MYR'
           });
         }
-        const g = grouped.get(key);
-        g.invoices.push(inv.toJSON());
-        g.subtotal += Number(inv.subtotal || 0);
-        g.total += Number(inv.total_amount || 0);
-        g.count += 1;
       }
+      const g = grouped.get(key);
+      g.invoices.push(inv.toJSON());
+      g.subtotal += Number(inv.subtotal || 0);
+      g.total += Number(inv.total_amount || 0);
+      g.count += 1;
     }
 
     // Round

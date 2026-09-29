@@ -1003,3 +1003,14 @@ ALTER TABLE invoices ADD COLUMN parent_soa_invoice_id INT NULL;
 - 기존 trade invoices 는 그대로 유지 (역사적 레코드)
 - 새로 발행되는 SOA 부터 새 모델 적용
 - 백필 스크립트는 만들지 않음 (회계상 과거 SOA 를 거꾸로 발행하면 audit 문제 발생 가능)
+
+### 11.8 발행일·수동 발행·월결제 결제 가드·전체 PDF (2026-09-29)
+> Irene: "월 결제 설정한 고객은 … 인보이스 페이가 안나오고 SOA에만 토탈 결제" / "인보이스도 모든 페이지가 다 붙어야 해. 한번에 다운 받게" / "원래 지정한 발행일에 자동발행이야. 수동발행하고 날짜 바꾸고 싶으면 바꾸는 거야. 그러고 나면 자동발행 안되어야 해". 판정 `.claude/fable-verdict-20260929-soa2.md`.
+
+- **발행일** — 청구 조건 JSON `soa_issue_day`(1~28, 없으면 1). cron `30 0 * * *` 매일, 구매자 달력의 오늘 == 발행일인 쌍만 발행. 기간 = 마지막 유효 정산서 `billing_period_end` 다음 날 ~ 어제(없으면 지난 발행일 ~ 어제). `services/soaScheduler.js planAutoCycle`.
+- **수동 발행 뒤 자동 건너뜀** — 같은 쌍의 취소 안 된 정산서가 «직전 발행일 다음 날 00:00»(구매자 tz) 이후 발행돼 있으면 `manual_issued_this_cycle` 로 skip(SchedulerRun `skipped_manual`). ⚠ 창의 시작을 «직전 발행일 00:00» 으로 잡으면 지난달 자동 정산서가 걸려 매달 건너뛴다.
+- **받는 사람 0** — 정산서는 만들고 메일만 건너뛴다(`mailed:false`, 라우트 200 `warning:'no_recipients'`).
+- **메일 링크** — 구매 매장 `/restaurant/:id/invoices`, 브랜드 `/pos/brand/invoices`, 푸드코트 `/pos/foodcourt/invoices` (`soaLinkFor`).
+- **월결제 결제 가드** — `utils/payViaSoa.js` 단일 소스: 거래 청구서 · 판매자 브랜드/푸드코트/가입 공급업체 · 그 구매자 조건 `monthly_soa` → 개별 결제 불가. 목록 `pay_via_soa`(매장) / `payViaSoa`(`/to-pay`), 결제 라우트 `submit-payment`·`create-payment-intent`·`create-paypal-order` 400 `pay_via_soa`. `mark-paid-external`·`receive-and-pay`·0원 Confirm 무변경. `GET /purchase-invoices/soa/current` 도 같은 함수.
+- **전체 PDF** — 매장 Invoices 의 정산서 Download PDF = 표지(정산서 번호·판매자·Bill To·기간·발행/마감일·청구서 표·총액·은행) + 묶인 청구서 전부, 문서마다 새 장(`utils/invoicePdf.renderHtmlDocumentsToPdf`). Print 는 page-break 로 같은 구성. 상세 창은 품목표 대신 청구서 표.
+- **청구서 발행 시점** — 브랜드 청구 조건 `invoice_trigger`: `on_received`(기본) / `on_confirmed`. 확정 시면 `seller-orders /:id/confirm` 커밋 뒤 `purchaseOrderService.issueTradeInvoiceAfterCommit(po,{when:'confirmed'})`(수령 경로와 같은 함수, 멱등). 청구서가 붙은 발주는 판매자 amend 400 `ALREADY_INVOICED`. 푸드코트·공급업체는 범위 밖.

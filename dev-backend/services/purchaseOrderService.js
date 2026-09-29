@@ -315,8 +315,48 @@ async function createTradeInvoice(po) {
   return invoice;
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// 발주 단계가 끝난 뒤 거래 청구서를 발행한다 — **모든 발행 경로의 단일 소스**.
+//
+// 왜 헬퍼인가 (2026-09-07): 수령으로 끝나는 길이 셋인데(`/receive` · `/mark-received` ·
+//   `/receive-and-pay`) 발행하는 곳이 `/receive` 하나뿐이었다. 매장이 실제로 쓰는 길은
+//   나머지 둘이라, 운영에 **청구서 없는 수령 발주 14건(RM 4,020.57)** 이 쌓였고
+//   SOA 는 묶을 자식이 없어 0장이었다(= 브랜드 매출 기록이 통째로 비었다).
+// 2026-09-29 (soa §추가 판정): 판매자 «주문 확정» 도 발행 시점이 될 수 있다(브랜드 청구 조건
+//   invoice_trigger='on_confirmed'). 게이트를 인자로 일반화했다 — 복제 금지, 같은 함수를 쓴다.
+//   route 파일에 있던 것을 seller-orders 도 쓰도록 여기로 옮겼다.
+//
+// ⚠ **반드시 커밋 이후에 부른다.** `createTradeInvoice` 는 트랜잭션 인자를 받지 않고
+//   자기 커넥션으로 `po.update({trade_invoice_id})` 까지 한다 — 트랜잭션 안에서 부르면
+//   잠긴 PO 행을 두고 자기 자신과 락 대기에 걸린다.
+// 멱등: `trade_invoice_id` 가 이미 있으면 기존 것을 돌려준다(확정 때 낸 청구서는 수령 때 다시 안 생긴다).
+// 비차단: 발행 실패가 응답을 막지 않는다(상태 변경은 이미 커밋됐다).
+function issueTradeInvoiceAfterCommit(po, { when = 'received' } = {}) {
+  if (!po || po.status !== when) return;
+  setImmediate(async () => {
+    try {
+      await createTradeInvoice(po);
+    } catch (e) {
+      console.error('[trade-invoice] 자동 발행 실패:', po.po_number, e.message);
+    }
+  });
+}
+
+/**
+ * 판매자가 확정한 순간 청구서를 낼 발주인가 — 브랜드가 판매자이고, 구매 매장의 브랜드 청구 조건이
+ * `invoice_trigger === 'on_confirmed'` 일 때만(2026-09-29). 외부/일반 공급업체·푸드코트는 이번 범위 밖(기본 = 입고 시).
+ */
+async function invoiceOnConfirm(po) {
+  if (!po || po.seller_type !== 'brand' || po.entity_type !== 'restaurant' || !po.entity_id) return false;
+  const r = await Restaurant.findByPk(po.entity_id, { attributes: ['id', 'brand_id', 'brand_billing_terms'] });
+  if (!r || Number(r.brand_id) !== Number(po.seller_entity_id)) return false;
+  return r.brand_billing_terms?.invoice_trigger === 'on_confirmed';
+}
+
 module.exports = {
   createTradeInvoice,
+  issueTradeInvoiceAfterCommit,
+  invoiceOnConfirm,
   resolvePayer,
   resolvePaymentTerms,
   isExternalSupplierWithoutTerms,

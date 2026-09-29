@@ -31,15 +31,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     await self.clients.claim();
-    // Force every open tab to reload so it picks up the fresh main.js +
-    // matching chunks via the network (now that caches are cleared). The guard
-    // on the client side (sessionStorage __chunk_reload_done) prevents loops.
-    try {
-      const wins = await self.clients.matchAll({ type: 'window' });
-      for (const w of wins) {
-        try { w.navigate(w.url); } catch (_) { /* some browsers disallow cross-origin nav */ }
-      }
-    } catch (_) { /* non-fatal */ }
+    // 2026-09-29 F2: 새로고침은 index.tsx controllerchange 한 곳만 — 여기서 창을 navigate 하면 두 번 로드된다.
   })());
 });
 

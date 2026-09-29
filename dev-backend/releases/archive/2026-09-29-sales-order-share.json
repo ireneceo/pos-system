@@ -1,0 +1,90 @@
+{
+  "tag": "sales-order-share",
+  "sw_version": "5.66-sales-order-share-20260929",
+  "date": "2026-09-29",
+  "in_progress": [
+    "K-DINE 재료·메뉴 구조 — Fable 2차 판정 Irene 컨펌 대기"
+  ],
+  "completed": [
+    "Sales Orders — Buyer 칸 세로 배치 · 주문 상세 WhatsApp 공유(그룹 선택) · 상세 품목 판매자 카테고리 묶음",
+    "판매자 주문 추가 — 여러 브랜드를 가진 판매자가 두 번째 브랜드 매장에 주문 추가 불가 수정(판매자 = 그 매장의 브랜드, seller-orders.js sellerIdForBuyer)",
+    "R1 매장 정보 수정 저장 시 오너 연결 보존",
+    "R2 마감한 교대의 현금 입출금 수정·삭제 불가",
+    "R3 타입 오류 기준선 게이트(verify-all 등록)",
+    "R4 배포 자동원복·롤백 v3(scripts/deploy-layout.sh 단일 소스) · R5 rsync 임시파일 제외 · R6 문서",
+    "R7 판매자 «배송 가능 지역» 칸(브랜드·푸드코트·공급업체) + 발주 담기 화면 표시 — 마이그 migrate-add-seller-delivery-policy.js",
+    "R8 판매자 메일 머리글·월 정산서 발신명 회사명 우선",
+    "F1·F3·F4·F5 — 0원 청구서 Confirm 후 목록 갱신(브랜드·푸드코트) · 직원 관리 다른 매장 권한 부여 · 설치 배너 가림 수정",
+    "F2 — sw.js activate 의 창 강제 navigate 제거(clients.claim 유지). 새로고침은 index.tsx controllerchange 한 곳",
+    "SOA-A 정산서는 받는 사람(매장 관리자·오너 이메일)이 없어도 만든다 — 메일만 건너뛰고 화면에 «관리자 이메일을 넣으세요» 안내(전엔 «No recipients to notify» 로 발행 자체가 막힘)",
+    "SOA-A 정산서 메일 버튼 → /restaurant/:id/invoices (옛 /pos/purchase-invoices/soa 는 없는 주소) · 미납 알림(Reminder) 링크도 없는 /trade-invoices → /invoices",
+    "SOA-B 월결제 매장의 거래 청구서는 묶이기 전(월중)에도 개별 Pay 없이 «Pay via SOA» — 판별 단일 소스 utils/payViaSoa.js(목록 pay_via_soa · soa/current · 결제 라우트 3곳 400 pay_via_soa). 상세 창 Pay Now 도 숨김",
+    "SOA-C 정산서 Download PDF = 표지(번호·판매자·Bill To·기간·발행/마감일·청구서 표·총액·은행) + 묶인 청구서 전부, 청구서마다 새 장(utils/invoicePdf renderHtmlDocumentsToPdf) · Print 도 같은 구성 · 상세 창에 묶인 청구서 표",
+    "SOA-D 청구 조건에 «정산서 발행일(1~28, 기본 1)» — cron 매일 00:30, 구매자 달력으로 그 날에만 발행, 기간 = 지난 정산서 다음 날 ~ 어제, 이번 주기(직전 발행일 다음 날부터)에 수동 발행이 있으면 자동 건너뜀",
+    "청구서 발행 시점(브랜드 청구 조건 invoice_trigger) — «입고 완료 시(기본) / 주문 확정 시(배송 전)». 확정 시면 판매자 확정 커밋 뒤 같은 발행 함수로 청구서(수령 때 멱등). 청구서가 붙은 주문은 판매자 수정 400 ALREADY_INVOICED"
+  ],
+  "remaining": [
+    "none"
+  ],
+  "verification": {
+    "gates": "최종 번들 verify-all --full 23/24 + type-baseline 단독 재실행 통과(메모리 게이트로 동시 실행 불가였음 → 436 신규 0) = 24/24. mount sweep 691.1초 크래시 0 · print-guard 8/8 · deploy-ready 통과",
+    "api": "R1 8/8 · R2 5/5 · R8 3/3 · 판매자 다중 브랜드 7/7(주문 실생성은 메일 우려로 미확인) · Sales Orders 실브라우저 6/6 · R4 재현 25/25",
+    "f2": "Playwright 새 프로필 첫 방문 문서 1회 · site-settings 1회 · SW 제어 true / served sw.js 교체 후 문서 +1회(총 2). 제거 전 실측 2회·2회",
+    "fault_injection": "R1·R2·R3·R4(2)·R8·판매자 다중 브랜드(3 실패 재현) 반증 — 상세 DEVELOPMENT_PLAN 09-29 절",
+    "migration": "migrate-add-seller-delivery-policy.js (deploy 레지스트리, 멱등 — 칼럼 존재 확인 후 ADD). 롤백 = 코드만 백업으로 되돌리고 칸은 남긴다(옛 코드는 이 칸을 읽지 않음 — 스크립트 주석). 칸까지 지우려면 ALTER TABLE brands DROP COLUMN delivery_policy · foodcourts 동일 2문. supplier_companies 는 이 마이그 대상 아님(기존 칸)",
+    "sw_version": "5.66-sales-order-share-20260929",
+    "fable_note": "Fable 판정 09-27 Ⅱ · 09-28 Ⅱ · 09-29 Ⅱ(F2)·soa2 §5·soa 추가 판정 절단면대로 구현. 1차 묶음 게이트 PASS(8b7b143e1a92) 뒤 SOA 2차를 합침 — Fable 한도 소진으로 Irene 지시 «검증 자체 검증으로 처리» → 팀원 자체 검증, 게이트는 skip 기록",
+    "soa2_api": "실호출 25/25(dev 매장 38·브랜드 17, 원복 잔여 0) — 조건 검증 400 2 · pay_via_soa 목록/결제 3라우트 400/상태 불변/soa-current 동일 헬퍼 · 수신자 0 → 200 warning·정산서 1·총액=자식 합 · on_received 확정 무청구 · on_confirmed 확정 청구서 60.00·멱등 · amend 400 ALREADY_INVOICED · amendable=false",
+    "soa2_scheduler": "참조일 주입 14/14 — 발행일 당일 발행·기간 09-07~10-06·번호 규칙·메일 링크 /restaurant/38/invoices · 같은 주기 재실행 skip · 수동 뒤 자동 skip · 발행일 아님 0 · 칸 없음=1일(종전)",
+    "soa2_fault_injection": "3건 반증: skip 가드 제거 → 같은 주기 정산서 2장 · 결제 가드 제거 → 개별 submit-payment 200 · 수정 가드 제거 → ALREADY_INVOICED 사라짐. 모두 cp 원복 · cmp 동일 · pm2 재시작 후 25/25",
+    "soa2_browser": "실브라우저 18/18(최종 번들) — 월중 청구서 Pay 없음·«Pay via SOA» · 정산서 Pay All · PDF 4장(표지+3)·파일명=번호 · 상세 제목 Statement of Account·청구서 3 · 브랜드 청구 조건 창 발행일 7·발행 시점 on_confirmed·요약 문구 · 스크립트 오류 0"
+  },
+  "notes": [
+    "SOA 메일 실발송(R8 머리글)은 개발서버에서 확인 불가",
+    "운영 데이터: 09-29 users 19(kdineipc1) 이메일 설정 1행(Irene 지시) — 이 배포와 무관",
+    "판정 이탈 1건(팀원 판단): 수동 발행 skip 창의 시작을 «직전 발행일 00:00» 이 아니라 «직전 발행일 다음 날 00:00» 으로 잡았다 — 판정 문구대로면 지난달 자동 정산서(직전 발행일 00:30 발행)가 걸려 매달 영원히 건너뛴다",
+    "범위 밖 발견(미수정): 판매자 «완료»(/seller-orders/:id/complete, 서비스 전용 주문)는 received 로 바꾸지만 청구서를 발행하지 않는다 — 기존 동작",
+    "브랜드·푸드코트 Trade Invoices 화면에는 원래 다운로드 버튼이 없어 정산서 PDF 는 매장 Invoices 화면에만 있다"
+  ],
+  "irene_actions_after_deploy": [
+    "운영 브랜드 1·2 delivery_policy «Petaling Jaya, Selangor» 입력",
+    "0원 청구서 93·88·69·61 Confirm",
+    "브랜드 계정으로 K-DINE IPC 매장에 주문 추가 — «None of your products are linked» 가 사라졌는지",
+    "Restaurants → K-DINE IPC «Edit Billing» → 발행일·발행 시점 확인 후 Save → «This month (up to today)» Generate now",
+    "매장(kdineipc1) Invoices 에서 정산서 Download PDF — 표지+청구서 7장"
+  ],
+  "issues": [
+    "여러 브랜드를 가진 판매자 계정이 users.brand_id(첫 브랜드) 기준으로만 상품을 찾아 두 번째 브랜드 매장에 주문을 못 넣었다",
+    "첫 방문·SW 교체 때 화면이 두 번 새로고침됐다(sw.js 와 index.tsx 가 같은 일을 함)",
+    "K-DINE IPC 정산서가 «No recipients to notify» 로 발행되지 않았다 — 매장 관리자 이메일이 비어 있으면 정산서 자체를 안 만들던 결합(운영 users 19 이메일은 09-29 Irene 지시로 채움)",
+    "월결제 매장도 월중에는 청구서마다 Pay 가 떠서 실제로 개별 결제가 가능했다",
+    "정산서 메일 버튼·미납 알림 링크가 없는 주소를 가리켰다",
+    "수동으로 정산서를 발행해도 매월 1일 자동발행이 그대로 돌아 같은 달 정산서가 한 장 더 나갈 수 있었다"
+  ],
+  "upcoming": [
+    "K-DINE 재료·메뉴 구조 정리",
+    "배포 뒤 Irene: K-DINE IPC 정산서 수동 발행(안내문 참조)"
+  ],
+  "behavior_changes": [
+    "Sales Orders 상세에서 WhatsApp 으로 공유 · 품목이 판매자 카테고리별로 묶여 보인다",
+    "판매자 «배송 가능 지역»이 발주 담기 화면에 한 줄로 보인다",
+    "마감한 교대의 현금 입출금은 수정·삭제할 수 없다",
+    "판매자 메일·정산서 발신명이 회사명으로 나간다",
+    "앱 업데이트 때 화면이 한 번만 새로고침된다",
+    "월결제 매장의 거래 청구서에는 Pay 버튼이 없고 «Pay via SOA» — 정산서에서 한 번에 낸다",
+    "정산서 PDF 한 파일에 표지와 모든 청구서가 들어 있다",
+    "정산서 자동발행은 청구 조건의 발행일(기본 1일)에만, 그 달에 수동 발행했으면 건너뛴다",
+    "브랜드가 «주문 확정 시» 로 설정한 매장은 확정 순간 청구서가 생기고, 그 주문은 판매자가 더 이상 수정할 수 없다"
+  ],
+  "check_areas": [
+    "Sales Orders 목록·상세(브랜드·푸드코트·공급업체)",
+    "판매자 주문 추가(여러 브랜드 판매자)",
+    "매장 정보 수정 저장 후 오너 연결",
+    "현금관리 마감 교대",
+    "앱 첫 방문·업데이트 새로고침",
+    "매장 Invoices — 월결제 청구서 «Pay via SOA» · 정산서 Pay All · Download PDF(표지+전체) · Print · View",
+    "브랜드 Restaurants → Edit Billing — 발행일·발행 시점 칸 · Generate now 결과 문구",
+    "판매자 주문 확정(«주문 확정 시» 매장) → 청구서 생성 · 수정 버튼 사라짐",
+    "🔒 인쇄·KDS 무접촉"
+  ]
+}

@@ -169,7 +169,7 @@ router.post(
 
       const fc = await Foodcourt.findByPk(restaurant.foodcourt_id, { attributes: ['name'] });
       const sellerName = fc?.name || 'Foodcourt';
-      const link = `${FRONTEND_BASE_URL}/restaurant/${restaurant.id}/trade-invoices`;
+      const link = `${FRONTEND_BASE_URL}/restaurant/${restaurant.id}/invoices`; // 옛 /trade-invoices 는 없는 주소였다 (2026-09-29)
       const html = `
         <p>This is a friendly reminder that you have <strong>${invoices.length} unpaid invoice${invoices.length > 1 ? 's' : ''}</strong> from ${sellerName}.</p>
         <p><strong>Total due:</strong> ${currencySymbol(currency)} ${totalDue.toFixed(2)}</p>
@@ -232,10 +232,11 @@ router.post(
         }
         const msg = result.reason === 'no_invoices'
           ? 'No unbilled invoices to statement (nothing outstanding to bundle).'
-          : (result.reason === 'no_recipients' ? 'No recipients to notify.' : 'Could not generate statement.');
+          : 'Could not generate statement.';
         return res.status(400).json({ success: false, code: result.reason, message: msg });
       }
-      res.json({ success: true, data: { soa_invoice_id: result.soaId } });
+      // 받는 사람이 없으면 정산서는 만들고 메일만 건너뛴다 — 화면이 «관리자 이메일을 넣으세요» 를 띄운다 (2026-09-29 soa2 §5-A)
+      res.json({ success: true, data: { soa_invoice_id: result.soaId, mailed: result.mailed !== false, warning: result.mailed === false ? 'no_recipients' : null } });
     } catch (err) {
       console.error('POST /api/foodcourt/soa/:id/generate error:', err);
       res.status(500).json({ success: false, message: 'Failed to generate statement' });

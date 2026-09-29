@@ -919,7 +919,7 @@ function monthlySoaEmail({ sellerName, month, dueInDays, invoices = [], totalDue
       infoRow('Due Date', dueLine)
     )}
     ${invoicesTable}
-    ${ctaButton('View SOA & Pay', link || `${BASE_URL}/pos/purchase-invoices/soa`)}`;
+    ${ctaButton('View SOA & Pay', link || `${BASE_URL}/login`)}`;
 
   return withRenderMeta({
     subject: `Monthly SOA from ${safeSeller} - ${safeMonth} (${fmtMoney(totalDue, currency)})`,

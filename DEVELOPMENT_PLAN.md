@@ -1,5 +1,7 @@
 # Purple POS - 개발 진행 현황
 
+> **최종 업데이트:** 2026-09-29 — [Claude Code] **v3.104 운영 배포 — SW `5.66-sales-order-share-20260929`(16:29 UTC · 백업 `20260929_162231` · 스모크 10/10 · 마이그 brands/foodcourts.delivery_policy 추가 2건).** 1차 묶음(R1~R8·F1~F5·Sales Orders·판매자 다중 브랜드, Fable 게이트 PASS) + K-DINE SOA 2차(월결제 Pay 가드·정산서 전체 PDF·발행일/수동 뒤 skip·수신자 0 생성·메일 링크) + 청구서 발행 시점. SOA 2차는 Fable 한도 소진 → Irene 지시로 자체 검증(실호출 25·스케줄러 14·실브라우저 18·고장주입 3·verify-all 24/24). 대기: Irene K-DINE IPC 정산서 수동 발행 → 운영 읽기 확인.
+
 > **최종 업데이트:** 2026-09-29 — [Claude Code] **코드 묶음 거의 완료(개발서버·미배포, SW 5.66 빌드 1회) + Sales Orders 3건(Buyer 세로 · 상세 WhatsApp 그룹 공유 · 품목 판매자 카테고리 묶음).** R1·R2·R3·R4·R5·R6·R7·R8·F1·F3·F4·F5 실호출·고장주입·실브라우저 통과, F2 불충족(sw.js activate 강제 이동 추정) → Fable 판정 대기. K-DINE IPC 재료 중복(짝 38)·메뉴 상태 운영 읽기 조사 → Fable 판정 대기. 운영 쓰기 0. 상세 session-state.
 
 > **최종 업데이트:** 2026-09-28 — [Claude Code] **운영 데이터 2건 적용 + 코드 묶음 착수(중단 저장, 미빌드·미검증).** 운영: gitconsulting 오너 연결(감독→소유)·withmin_owner 비활성·브랜드 1·2 배송비 300/10 (03:24 UTC COMMIT, 사후 컨텍스트 3장 확인). Fable 2회차 판정 `.claude/fable-verdict-20260928.md`. 백엔드 R1·R2·R7 편집 완료(테스트 전). 나머지는 session-state 참조.
@@ -10630,7 +10632,7 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 
 ---
 
-## ✅ 완료(개발서버·미배포): 09-27 묶음 구현·검증 + Sales Orders 3건 (2026-09-29) [Claude Code]
+## ✅ 완료(v3.104 운영 배포 2026-09-29): 09-27 묶음 + Sales Orders 3건 + K-DINE SOA 2차 [Claude Code]
 
 | 작업 | 설명 | 상태 |
 |------|------|:----:|
@@ -10643,10 +10645,15 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 | R7 배송 지역 | 백엔드 + 마이그(판정 이탈 → Fable 수용) | ✅ |
 | R8 메일 머리글 회사명 | 3/3 · 고장주입 (SOA 메일 실발송 확인 불가) | ✅ |
 | F1·F3·F4·F5 | 실브라우저 통과 (F5 푸드코트 동일 결함 포함) | ✅ |
-| F2 첫 방문 새로고침 | 불충족 → Fable: sw.js activate navigate 제거로 범위 확장 | 🟡 |
+| F2 첫 방문 새로고침 | sw.js activate navigate 제거 → 새 프로필 문서 1회 · 교체 +1회(제거 전 2·2) | ✅ |
+| 1차 묶음 Fable 게이트 | PASS(마커 8b7b143e1a92) — 판정 `.claude/fable-verdict-20260929-gate.md` | ✅ |
+| SOA 2차 (Irene 「권고대로 수정해」) | 월결제 Pay 가드(utils/payViaSoa) · 정산서 전체 PDF · 발행일(soa_issue_day)·수동 뒤 skip · 수신자 0 생성 · 메일 링크 — 실호출 25/25 · 스케줄러 14/14 · 실브라우저 17/17 · 고장주입 3 | ✅ |
+| 청구서 발행 시점(invoice_trigger) | 확정 시 발행(같은 발행 함수, 멱등) · 청구서 붙은 주문 amend 400 | ✅ |
+| 게이트 | Fable 한도 소진 → Irene 「검증 자체 검증으로 처리해」 → 팀원 자체 검증 + skip 기록 | ✅ |
 | K-DINE IPC 조사 | 재료 중복·메뉴 상태 운영 읽기 → Fable 판정 2회 · 구조 재검토 판정 진행 | 🟡 |
 
 ### 수정된 파일
+- SOA 2차: `utils/payViaSoa.js`(신규) · `services/soaScheduler.js` · `services/purchaseOrderService.js`(발행 헬퍼 이동) · `routes/purchase-orders-workflow.js` · `routes/{brand,foodcourt}-soa.js` · `routes/invoices-{list,payment}.js` · `routes/purchase-invoices.js` · `utils/paymentTerms.js` · `utils/notificationTemplates.js` · 프론트 `BillingTermsModal.tsx` · `Restaurant/InvoicesPage.tsx` · `utils/invoicePdf.ts` · 로케일 billing/settings 4언어 · 문서 `docs/INVOICE_SYSTEM.md` §11.8
 - 백엔드: `routes/seller-orders.js` · `utils/sellerProductIdentity.js` · `utils/emailBranding.js` · `services/soaScheduler.js` · `scripts/check-type-baseline.js` · `scripts/type-baseline.json` · `scripts/verify-all.js` · `scripts/migrate-add-seller-delivery-policy.js` · `scripts/migrations.registry.json`
 - 프론트: `IncomingOrdersView.tsx` · `utils/poShare.ts(+test)` · `BrandInvoicesPage.tsx` · `FoodcourtInvoicesPage.tsx` · `BrandPaymentSettingsPage.tsx` · `FoodcourtPaymentSettingsPage.tsx` · `SupplierCompanyInfoPage.tsx` · `NewPurchaseOrderPage.tsx` · `StaffManagementPage.tsx` · `PwaInstallBanner.tsx` · `index.tsx` · `public/sw.js`(버전만) · 로케일 4언어
 - 배포: `deploy-to-production.sh` · `rollback-production.sh` · `scripts/deploy-layout.sh` · 문서 `docs/SUPPLIER_CONTRACT_SYSTEM.md`

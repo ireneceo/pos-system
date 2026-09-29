@@ -1251,6 +1251,11 @@
     "supplierInvoice": "Invois pembekal",
     "noPurchaseOrder": "Tiada pesanan belian berkaitan",
     "uploadSupplierInvoice": "Muat naik invois pembekal",
-    "uploadingSupplierInvoice": "Memuat naik..."
+    "uploadingSupplierInvoice": "Memuat naik...",
+    "statementOfAccount": "Penyata Akaun",
+    "soaInvoices": "Invois dalam penyata ini",
+    "soaInvoiceNumber": "No. Invois",
+    "soaInvoiceDate": "Tarikh",
+    "payViaSoa": "Bayar melalui SOA"
   }
 }

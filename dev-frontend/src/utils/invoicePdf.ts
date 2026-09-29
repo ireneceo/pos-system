@@ -27,11 +27,12 @@ function findSafeBreakY(
   return targetY;
 }
 
-/**
- * Render an already-populated iframe to a multi-page A4 PDF, slicing at
- * whitespace rows so text is never cut in half.
- */
-export async function renderIframeToPdf(iframe: HTMLIFrameElement, filename: string): Promise<void> {
+// A4 배치 상수 — 모든 장 공통
+const PAGE_W_MM = 210, PAGE_H_MM = 297;      // A4
+const MARGIN_X_MM = 12, MARGIN_Y_MM = 14;    // 종이 여백(모든 장 공통)
+
+/** iframe 안 문서를 폰트·이미지가 다 뜬 뒤 캔버스로 찍는다. */
+async function snapshotIframe(iframe: HTMLIFrameElement): Promise<HTMLCanvasElement> {
   const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
   if (!iframeDoc) throw new Error('Cannot access iframe document');
 
@@ -58,7 +59,7 @@ export async function renderIframeToPdf(iframe: HTMLIFrameElement, filename: str
   const contentHeight = iframeDoc.body.scrollHeight;
   iframe.style.height = `${contentHeight}px`;
 
-  const canvas = await html2canvas(iframeDoc.body, {
+  return html2canvas(iframeDoc.body, {
     scale: 2,
     useCORS: true,
     logging: false,
@@ -66,29 +67,33 @@ export async function renderIframeToPdf(iframe: HTMLIFrameElement, filename: str
     windowWidth: 800,
     windowHeight: contentHeight
   });
+}
 
+/**
+ * 캔버스 한 장을 A4 여러 장으로 잘라 pdf 에 붙인다. 글자 줄 한가운데를 자르지 않도록 흰 줄에서 자른다.
+ * @param startOnNewPage 첫 조각을 새 장에서 시작할지(두 번째 문서부터 true)
+ * @returns 붙인 장 수
+ */
+function appendCanvasPages(pdf: jsPDF, canvas: HTMLCanvasElement, startOnNewPage: boolean): number {
   // 🔴 2026-08-31 Irene: "PDF도 다음 장 2번째 장부터 맨 위로 들러붙어. 여백이 들어가야 하는 거
   //   아니야? 페이지 잘 나눠야지"
   //   원인: 이미지를 (0,0) 에 A4 폭 그대로 얹어서 **모든 장의 여백이 0** 이었다. 화면의 CSS padding 은
   //   캡처 이미지 안에 들어가므로 1장 위쪽에만 보이고, 2장부터는 잘린 지점이 곧 종이 맨 위가 된다.
   //   → 종이 여백을 PDF 배치 단계에서 준다. 폭도 여백만큼 줄여야 좌우가 잘리지 않는다.
-  const PAGE_W_MM = 210, PAGE_H_MM = 297;      // A4
-  const MARGIN_X_MM = 12, MARGIN_Y_MM = 14;    // 종이 여백(모든 장 공통)
   const imgWidthMm = PAGE_W_MM - MARGIN_X_MM * 2;   // 실제 그림 폭 186mm
   const usableHeightMm = PAGE_H_MM - MARGIN_Y_MM * 2; // 한 장에 담기는 높이 269mm
   const mmPerPx = imgWidthMm / canvas.width;
   const pageHeightPx = Math.floor(usableHeightMm / mmPerPx);
   const safetyMarginPx = Math.floor(40 / mmPerPx); // ~40mm scan window
 
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const ctx = canvas.getContext('2d');
 
   // Single-page fast path
   if (!ctx || canvas.height <= pageHeightPx) {
+    if (startOnNewPage) pdf.addPage();
     const imgData = canvas.toDataURL('image/png');
     pdf.addImage(imgData, 'PNG', MARGIN_X_MM, MARGIN_Y_MM, imgWidthMm, canvas.height * mmPerPx);
-    pdf.save(filename);
-    return;
+    return 1;
   }
 
   let cursorY = 0;
@@ -121,7 +126,7 @@ export async function renderIframeToPdf(iframe: HTMLIFrameElement, filename: str
       0, 0, canvas.width, sliceHeight
     );
 
-    if (pageIndex > 0) pdf.addPage();
+    if (pageIndex > 0 || startOnNewPage) pdf.addPage();
     // 모든 장에 동일한 여백을 준다 — 2장부터 종이 맨 위에 붙던 것의 실제 수정 지점.
     pdf.addImage(
       pageCanvas.toDataURL('image/png'),
@@ -135,8 +140,53 @@ export async function renderIframeToPdf(iframe: HTMLIFrameElement, filename: str
     cursorY += sliceHeight;
     pageIndex += 1;
   }
+  return pageIndex;
+}
 
+/**
+ * Render an already-populated iframe to a multi-page A4 PDF, slicing at
+ * whitespace rows so text is never cut in half.
+ */
+export async function renderIframeToPdf(iframe: HTMLIFrameElement, filename: string): Promise<void> {
+  const canvas = await snapshotIframe(iframe);
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  appendCanvasPages(pdf, canvas, false);
   pdf.save(filename);
+}
+
+/**
+ * 여러 HTML 문서를 **한 PDF** 로 — 각 문서는 새 장에서 시작한다 (2026-09-29 soa2 §5-C).
+ * 정산서(SOA) = 표지 + 묶인 청구서 전부를 한 번에 내려받게 하려고 만들었다.
+ * (html2canvas 는 CSS page-break 를 모르므로 문서마다 따로 찍어 이어 붙인다.)
+ * @returns 만든 장 수
+ */
+export async function renderHtmlDocumentsToPdf(htmlDocs: string[], filename: string): Promise<number> {
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  let pages = 0;
+  for (let i = 0; i < htmlDocs.length; i += 1) {
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.left = '-10000px';
+    iframe.style.top = '-10000px';
+    iframe.style.width = '800px';
+    iframe.style.height = '1200px';
+    iframe.style.visibility = 'hidden';
+    iframe.style.pointerEvents = 'none';
+    document.body.appendChild(iframe);
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) throw new Error('Could not access iframe document');
+      doc.open();
+      doc.write(htmlDocs[i]);
+      doc.close();
+      const canvas = await snapshotIframe(iframe);
+      pages += appendCanvasPages(pdf, canvas, i > 0);
+    } finally {
+      document.body.removeChild(iframe);
+    }
+  }
+  pdf.save(filename);
+  return pages;
 }
 
 /**

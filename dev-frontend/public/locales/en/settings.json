@@ -1251,6 +1251,11 @@
     "supplierInvoice": "Supplier invoice",
     "noPurchaseOrder": "No linked purchase order",
     "uploadSupplierInvoice": "Upload supplier invoice",
-    "uploadingSupplierInvoice": "Uploading..."
+    "uploadingSupplierInvoice": "Uploading...",
+    "statementOfAccount": "Statement of Account",
+    "soaInvoices": "Invoices in this statement",
+    "soaInvoiceNumber": "Invoice No.",
+    "soaInvoiceDate": "Date",
+    "payViaSoa": "Pay via SOA"
   }
 }

@@ -483,6 +483,15 @@ router.post('/:id/confirm', async (req, res) => {
     });
     emitPoEvent(req, po, 'seller-order-updated');
 
+    // 청구서 발행 시점이 «주문 확정 시» 인 매장이면 **커밋 뒤** 청구서를 낸다 (2026-09-29 soa §추가 판정).
+    //   수령 경로와 같은 발행 함수 — 확정 때 낸 청구서는 수령 때 다시 생기지 않는다(멱등).
+    try {
+      const { invoiceOnConfirm, issueTradeInvoiceAfterCommit } = require('../services/purchaseOrderService');
+      if (await invoiceOnConfirm(po)) issueTradeInvoiceAfterCommit(po, { when: 'confirmed' });
+    } catch (e) {
+      console.error('[seller-orders] invoice-on-confirm check failed:', po.po_number, e.message);
+    }
+
     // Fire notification (non-blocking)
     setImmediate(async () => {
       try {
@@ -1099,7 +1108,7 @@ router.get('/:id/amendable-products', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
     const products = await listAmendableProducts(po, buyerEntityOf(po), undefined);
-    res.json({ success: true, data: { products, amendable: AMENDABLE_STATUSES.includes(po.status) } });
+    res.json({ success: true, data: { products, amendable: AMENDABLE_STATUSES.includes(po.status) && !po.trade_invoice_id } });
   } catch (err) {
     console.error('GET /api/seller-orders/:id/amendable-products error:', err);
     res.status(500).json({ success: false, message: 'Failed to load products' });
@@ -1125,6 +1134,12 @@ router.post('/:id/amend', async (req, res) => {
       if (!AMENDABLE_STATUSES.includes(po.status)) {
         const e = new Error(`Cannot amend an order in status '${po.status}'`);
         e.code = 'BAD_STATUS'; throw e;
+      }
+      // 청구서가 이미 붙은 주문은 고치지 않는다 — 금액이 바뀌면 청구서·정산서와 어긋난다
+      //   («주문 확정 시» 청구서 발행이 켜진 매장에서 생기는 경우, 2026-09-29).
+      if (po.trade_invoice_id) {
+        const e = new Error('Cannot amend an order that already has an invoice');
+        e.code = 'ALREADY_INVOICED'; throw e;
       }
 
       const beforeRows = await PurchaseOrderItem.findAll({
@@ -1249,7 +1264,7 @@ router.post('/:id/amend', async (req, res) => {
     if (err.code === 'TOTAL_EXCEEDS') {
       return res.status(400).json({ success: false, code: err.code, message: err.message, ...err.meta });
     }
-    if (['BAD_STATUS', 'ALREADY_RECEIVED', 'BAD_ITEM', 'PRODUCT_NOT_FOUND', 'PRODUCT_INACTIVE',
+    if (['BAD_STATUS', 'ALREADY_RECEIVED', 'ALREADY_INVOICED', 'BAD_ITEM', 'PRODUCT_NOT_FOUND', 'PRODUCT_INACTIVE',
          'PRODUCT_NOT_YOURS', 'NOT_LINKED_TO_BUYER', 'UNSUPPORTED_STOCK_TARGET',
          'STOCK_TARGET_INVALID'].includes(err.code)) {
       return res.status(400).json({ success: false, code: err.code, message: err.message });

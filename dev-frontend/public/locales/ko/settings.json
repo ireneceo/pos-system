@@ -1251,6 +1251,11 @@
     "supplierInvoice": "공급업체 인보이스",
     "noPurchaseOrder": "연결된 발주 없음",
     "uploadSupplierInvoice": "공급업체 인보이스 올리기",
-    "uploadingSupplierInvoice": "올리는 중..."
+    "uploadingSupplierInvoice": "올리는 중...",
+    "statementOfAccount": "월 정산서",
+    "soaInvoices": "이 정산서의 청구서",
+    "soaInvoiceNumber": "청구서 번호",
+    "soaInvoiceDate": "날짜",
+    "payViaSoa": "정산서로 결제"
   }
 }

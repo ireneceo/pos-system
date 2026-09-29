@@ -1251,6 +1251,11 @@
     "supplierInvoice": "供应商发票",
     "noPurchaseOrder": "无关联采购单",
     "uploadSupplierInvoice": "上传供应商发票",
-    "uploadingSupplierInvoice": "上传中..."
+    "uploadingSupplierInvoice": "上传中...",
+    "statementOfAccount": "对账单",
+    "soaInvoices": "本对账单包含的发票",
+    "soaInvoiceNumber": "发票编号",
+    "soaInvoiceDate": "日期",
+    "payViaSoa": "通过对账单付款"
   }
 }

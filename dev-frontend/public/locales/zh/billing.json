@@ -7,7 +7,9 @@
     "paymentDueDay": "付款到期日 (1-31)",
     "currency": "货币",
     "creditLimit": "信用额度 (可选)",
-    "notes": "备注 (可选)"
+    "notes": "备注 (可选)",
+    "soaIssueDay": "对账单开具日 (1-28)",
+    "invoiceTrigger": "开具发票时机"
   },
   "terms": {
     "COD": "货到付款",
@@ -30,11 +32,18 @@
   "errors": {
     "invalidDueDay": "付款到期日必须为 1-31",
     "invalidCreditLimit": "信用额度无效",
-    "saveFailed": "保存失败"
+    "saveFailed": "保存失败",
+    "invalidIssueDay": "对账单开具日必须为 1-28"
   },
   "generate": {
     "periodLastMonth": "上个月",
     "periodThisMonth": "本月（至今天）",
-    "periodCustom": "自选日期"
+    "periodCustom": "自选日期",
+    "hintIssueDay": "对账单每月 {{day}} 日自动开具。现在为未开票订单开具后，当月的自动开具将被跳过。",
+    "noRecipients": "对账单已开具。餐厅没有可接收邮件的管理员 — 请添加管理员邮箱。"
+  },
+  "trigger": {
+    "on_received": "订单收货时（默认）",
+    "on_confirmed": "订单确认时（发货前）"
   }
 }

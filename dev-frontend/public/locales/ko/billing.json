@@ -7,7 +7,9 @@
     "paymentDueDay": "결제일 (1-31일)",
     "currency": "통화",
     "creditLimit": "여신 한도 (선택)",
-    "notes": "비고 (선택)"
+    "notes": "비고 (선택)",
+    "soaIssueDay": "정산서 발행일 (1-28일)",
+    "invoiceTrigger": "청구서 발행 시점"
   },
   "terms": {
     "COD": "현장 결제 (COD)",
@@ -30,11 +32,18 @@
   "errors": {
     "invalidDueDay": "결제일은 1~31 사이여야 합니다",
     "invalidCreditLimit": "잘못된 여신 한도",
-    "saveFailed": "저장 실패"
+    "saveFailed": "저장 실패",
+    "invalidIssueDay": "정산서 발행일은 1~28 사이여야 합니다"
   },
   "generate": {
     "periodLastMonth": "지난달",
     "periodThisMonth": "이번달 (오늘까지)",
-    "periodCustom": "날짜 직접 고르기"
+    "periodCustom": "날짜 직접 고르기",
+    "hintIssueDay": "정산서는 매월 {{day}}일에 자동 발행됩니다. 지금 미청구 주문으로 발행하면 그 달 자동 발행은 건너뜁니다.",
+    "noRecipients": "정산서는 발행됐습니다. 매장에 이메일 받을 관리자가 없어 메일은 보내지 않았습니다 — 관리자 이메일을 등록하세요."
+  },
+  "trigger": {
+    "on_received": "입고 완료 시 (기본)",
+    "on_confirmed": "주문 확정 시 (배송 전)"
   }
 }

@@ -55,6 +55,23 @@ const { resolveSellers, isExternalSeller } = require('../utils/sellerNames');
 // 그 매장은 재시작 전까지 옛 판정을 본다.
 const _externalIssuerCache = new Map();
 const EXTERNAL_ISSUER_TTL_MS = 60 * 1000;
+/**
+ * 목록 한 번 안에서 «월결제라 SOA 로만 낸다» 판정을 판매자↔구매자 쌍마다 한 번만 한다.
+ * 판정 자체는 utils/payViaSoa 단일 소스 (2026-09-29 soa2 §5-B).
+ */
+function payViaSoaMemo() {
+  const { monthlySoaTermsFor } = require('../utils/payViaSoa');
+  const memo = new Map();
+  return async (inv) => {
+    if (!inv) return false;
+    if (inv.parent_soa_invoice_id) return true;
+    if (inv.invoice_category !== 'trade') return false;
+    const key = `${inv.issuer_type}:${inv.issuer_id}:${inv.payer_type}:${inv.payer_id}`;
+    if (!memo.has(key)) memo.set(key, !!(await monthlySoaTermsFor(inv)));
+    return memo.get(key);
+  };
+}
+
 async function isExternalIssuerCached(issuerType, issuerId) {
   if (issuerType !== 'supplier' || !issuerId) return false;
   const key = `${issuerType}:${issuerId}`;
@@ -503,6 +520,7 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
     //   붙이는 규칙의 단일 소스는 services/invoicePurchaseOrderAttach.js (2026-09-11 §8-5 E-1) — `/to-pay`·오너 목록도 같은 함수.
     const { attachPurchaseOrders } = require('../services/invoicePurchaseOrderAttach');
     const poByInvoiceId = await attachPurchaseOrders(invoices.map((i) => i.id));
+    const payViaSoaOf = payViaSoaMemo();
 
     // Transform invoices with issuer/payer company info
     const transformedInvoices = await Promise.all(invoices.map(async (invoice) => {
@@ -578,6 +596,8 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
         // SOA 에 묶인 청구서인가 (2026-09-11) — 프론트는 이 값이 있으면 개별 Pay 대신 «Pay via SOA» 를 보인다.
         //   이 목록이 안 보내서 그 분기가 늘 꺼져 있었다(SOA 로 낼 청구서를 개별로도 낼 수 있게 보였다).
         parent_soa_invoice_id: invoice.parent_soa_invoice_id || null,
+        // 월결제 매장의 거래 청구서 — 묶이기 전(월중)에도 개별 Pay 없이 «Pay via SOA» (2026-09-29 soa2 §5-B)
+        pay_via_soa: await payViaSoaOf(invoice),
         payer_type: invoice.payer_type,
         payer_id: invoice.payer_id,
         restaurant_id: invoice.restaurant_id,
@@ -1075,8 +1095,13 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       const { attachPurchaseOrders, purchaseOrderFieldsCamel } = require('../services/invoicePurchaseOrderAttach');
       const poMap = await attachPurchaseOrders(invoices.map((i) => i.id));
       const soaById = new Map(invoices.map((i) => [String(i.id), i.parent_soa_invoice_id || null]));
+      const invById = new Map(invoices.map((i) => [String(i.id), i]));
+      const payViaSoaOf = payViaSoaMemo();
       for (const o of transformedInvoices) {
-        Object.assign(o, purchaseOrderFieldsCamel(poMap.get(Number(o.id))), { parentSoaInvoiceId: soaById.get(String(o.id)) || null });
+        Object.assign(o, purchaseOrderFieldsCamel(poMap.get(Number(o.id))), {
+          parentSoaInvoiceId: soaById.get(String(o.id)) || null,
+          payViaSoa: await payViaSoaOf(invById.get(String(o.id)))
+        });
       }
     }
     res.json(transformedInvoices);

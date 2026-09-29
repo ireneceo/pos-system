@@ -37,7 +37,7 @@ import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Comm
 import HostedCheckoutLauncher from '../../components/Payment/HostedCheckoutLauncher';
 import SubscriptionPanel from '../../components/Payment/SubscriptionPanel';
 import ApplyCreditModal from '../../components/Referral/ApplyCreditModal';
-import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
+import { renderIframeToPdf, renderHtmlDocumentsToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -78,6 +78,8 @@ interface Invoice {
   payerId?: string;
   invoiceCategory?: 'subscription' | 'service' | 'consulting' | 'trade' | 'soa' | 'others';
   parentSoaInvoiceId?: number | null;
+  /** 월결제 매장의 거래 청구서 — 묶이기 전에도 개별 결제 없이 정산서로만 낸다 (2026-09-29 soa2 §5-B) */
+  payViaSoa?: boolean;
   customDescription?: string;
   serviceDescription?: string;
   categoryDisplayName?: string;
@@ -487,6 +489,7 @@ const RestaurantInvoicesPage: React.FC = () => {
           payerId: inv.payer_id?.toString() || '',
           invoiceCategory: inv.invoice_category || '',
           parentSoaInvoiceId: inv.parent_soa_invoice_id || null,
+          payViaSoa: !!(inv.pay_via_soa ?? inv.payViaSoa),
           categoryDisplayName: inv.category_display_name || '',
           issuerType: inv.issuer_type || inv.issuerType || 'system_admin',
           issuerId: inv.issuer_id || inv.issuerId || null,
@@ -850,7 +853,15 @@ const RestaurantInvoicesPage: React.FC = () => {
   };
 
   // Generate Invoice HTML for PDF/Print (Restaurant Admin is always the receiver)
+  /** 정산서(SOA)에 묶인 청구서 — 목록에 이미 있다(발행일 순). */
+  const soaChildrenOf = (soa: Invoice): Invoice[] =>
+    allInvoices
+      .filter((c) => c.parentSoaInvoiceId != null && String(c.parentSoaInvoiceId) === String(soa.id))
+      .sort((a, b) => String(a.issueDate).localeCompare(String(b.issueDate)));
+
   const generateInvoiceHTML = (invoice: Invoice) => {
+    const isSoa = invoice.invoiceCategory === 'soa';
+    const soaChildren = isSoa ? soaChildrenOf(invoice) : [];
     // Restaurant Admin receives invoices, so:
     // - issuerInfo = who sent the invoice (From)
     // - payerInfo/companySettings = Restaurant (Bill To)
@@ -976,7 +987,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                 </div>
             </div>
             <div class="invoice-title">
-                <div class="invoice-label">${t('settings:invoicesPage.invoice')}</div>
+                <div class="invoice-label">${isSoa ? t('settings:invoicesPage.statementOfAccount', 'Statement of Account') : t('settings:invoicesPage.invoice')}</div>
                 <div class="invoice-number">${invoice.invoiceNumber}</div>
                 <span class="invoice-status ${getStatusClass(invoice.status)}">${getStatusText(invoice.status)}</span>
             </div>
@@ -1037,6 +1048,27 @@ const RestaurantInvoicesPage: React.FC = () => {
             </div>
         </div>
 
+        ${isSoa ? `
+        <div class="items-section">
+            <div class="section-label">${t('settings:invoicesPage.soaInvoices', 'Invoices in this statement')} (${soaChildren.length})</div>
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>${t('settings:invoicesPage.soaInvoiceNumber', 'Invoice No.')}</th>
+                        <th class="text-center">${t('settings:invoicesPage.soaInvoiceDate', 'Date')}</th>
+                        <th class="text-right">${t('settings:invoicesPage.amount')}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${soaChildren.map(c => `
+                    <tr>
+                        <td>${c.invoiceNumber}${c.purchaseOrderNumber ? ` <span style="color:#6B7280;font-size:12px;">· ${c.purchaseOrderNumber}</span>` : ''}</td>
+                        <td class="text-center">${formatDate(c.issueDate)}</td>
+                        <td class="text-right">${formatCurrency(c.total, c.currency || invoice.currency || 'MYR')}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>` : `
         <div class="items-section">
             <div class="section-label">${t('settings:invoicesPage.items')}</div>
             <table class="items-table">
@@ -1066,7 +1098,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     `}
                 </tbody>
             </table>
-        </div>
+        </div>`}
 
         <div class="summary-section">
             <div class="summary-box">
@@ -1126,6 +1158,13 @@ const RestaurantInvoicesPage: React.FC = () => {
   // Generate PDF - downloads directly without opening modal
   const generateInvoicePDF = async (invoice: Invoice) => {
     try {
+      // 정산서(SOA)는 표지 + 묶인 청구서 전부를 한 PDF 로 — 청구서마다 새 장에서 시작 (2026-09-29 soa2 §5-C)
+      //   > Irene: "인보이스도 모든 페이지가 다 붙어야 해. 한번에 다운 받게."
+      if (invoice.invoiceCategory === 'soa') {
+        const docs = [generateInvoiceHTML(invoice), ...soaChildrenOf(invoice).map((c) => generateInvoiceHTML(c))];
+        await renderHtmlDocumentsToPdf(docs, `${invoice.invoiceNumber}.pdf`);  // 번호가 이미 SOA- 로 시작한다
+        return;
+      }
       const invoiceHTML = generateInvoiceHTML(invoice);
 
       // Create iframe for PDF generation (prevents layout shifts)
@@ -1161,6 +1200,16 @@ const RestaurantInvoicesPage: React.FC = () => {
 
   // Print invoice via hidden iframe — popup-blocker proof, no extra clicks.
   const handlePrintInvoice = (invoice: Invoice) => {
+    if (invoice.invoiceCategory === 'soa') {
+      // 인쇄는 브라우저가 page-break 를 지킨다 — 표지 뒤에 청구서 본문을 장마다 이어 붙인 한 문서
+      const bodyOf = (html: string) => (html.match(/<body[^>]*>([\s\S]*)<\/body>/i)?.[1] || '');
+      const cover = generateInvoiceHTML(invoice);
+      const children = soaChildrenOf(invoice)
+        .map((c) => `<div style="page-break-before: always; break-before: page;">${bodyOf(generateInvoiceHTML(c))}</div>`)
+        .join('');
+      printHTMLContent(cover.replace(/<\/body>/i, `${children}</body>`), `SOA ${invoice.invoiceNumber}`);
+      return;
+    }
     printHTMLContent(generateInvoiceHTML(invoice), `Invoice ${invoice.invoiceNumber}`);
   };
 
@@ -1276,7 +1325,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     {/* Pay button — hidden if invoice is bundled into a SOA (parent_soa_invoice_id) → pay via SOA only */}
                     {/* 외부 공급업체 발행 청구서는 우리 솔루션에서 결제할 수 없다 (설계 §5) —
                         그쪽은 로그인도 수금 계정도 없다. 실제로 낸 뒤 "결제함"으로 기록만 남긴다. */}
-                    {showPayButton && !invoice.parentSoaInvoiceId && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
+                    {showPayButton && !invoice.parentSoaInvoiceId && !invoice.payViaSoa && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
                       invoice.issuerIsExternal ? (
                         <ExternalInvoicePayAction
                           invoice={invoice}
@@ -1294,10 +1343,11 @@ const RestaurantInvoicesPage: React.FC = () => {
                       )
                     )}
 
-                    {/* SOA child indicator — replaces Pay button for bundled invoices */}
-                    {showPayButton && invoice.parentSoaInvoiceId && (
+                    {/* SOA child indicator — replaces Pay button for bundled invoices and, for monthly-billed
+                        restaurants, for not-yet-bundled trade invoices too (2026-09-29 soa2 §5-B) */}
+                    {showPayButton && (invoice.parentSoaInvoiceId || invoice.payViaSoa) && invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                       <span style={{ fontSize: 11, color: '#6B7280', alignSelf: 'center' }}>
-                        Pay via SOA
+                        {t('settings:invoicesPage.payViaSoa', 'Pay via SOA')}
                       </span>
                     )}
 
@@ -1440,7 +1490,7 @@ const RestaurantInvoicesPage: React.FC = () => {
             size="large"
             footer={
               <>
-                {canPayInvoices && (selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && (
+                {canPayInvoices && !selectedInvoice.parentSoaInvoiceId && !selectedInvoice.payViaSoa && (selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && (
                   <>
                     {!selectedInvoice.issuerIsExternal && (
                       <Button variant="secondary" onClick={() => setShowApplyCreditModal(true)}>
@@ -1547,7 +1597,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '24px', fontWeight: '700', color: '#635BFF', marginBottom: '8px' }}>{t('settings:invoicesPage.invoice')}</div>
+                    <div style={{ fontSize: '24px', fontWeight: '700', color: '#635BFF', marginBottom: '8px' }}>{selectedInvoice.invoiceCategory === 'soa' ? t('settings:invoicesPage.statementOfAccount', 'Statement of Account') : t('settings:invoicesPage.invoice')}</div>
                     <div style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.invoiceNumber}</div>
                     <StatusBadge status={selectedInvoice.status} style={{ marginTop: '8px' }}>
                       {getStatusDisplay(selectedInvoice.status)}
@@ -1608,7 +1658,35 @@ const RestaurantInvoicesPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Items Table */}
+                {/* 정산서(SOA) — 빈 품목표 대신 묶인 청구서 (2026-09-29 soa2 §5-C) */}
+                {selectedInvoice.invoiceCategory === 'soa' ? (
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '12px', textTransform: 'uppercase' }}>
+                    {t('settings:invoicesPage.soaInvoices', 'Invoices in this statement')} ({soaChildrenOf(selectedInvoice).length})
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #C7CED6' }}>
+                        <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('settings:invoicesPage.soaInvoiceNumber', 'Invoice No.')}</th>
+                        <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('settings:invoicesPage.soaInvoiceDate', 'Date')}</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('settings:invoicesPage.amount')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {soaChildrenOf(selectedInvoice).map((c) => (
+                        <tr key={c.id} style={{ borderBottom: '1px solid #F1F4F8' }}>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937' }}>
+                            {c.invoiceNumber}
+                            {c.purchaseOrderNumber && <span style={{ color: '#6B7280', fontSize: 12 }}> · {c.purchaseOrderNumber}</span>}
+                          </td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'center' }}>{formatDate(c.issueDate)}</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(c.total, c.currency || selectedInvoice.currency || 'MYR')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                ) : (
                 <div style={{ marginBottom: '24px' }}>
                   <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '12px', textTransform: 'uppercase' }}>{t('settings:invoicesPage.items')}</div>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1641,6 +1719,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     </tbody>
                   </table>
                 </div>
+                )}
 
                 {/* Summary */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>

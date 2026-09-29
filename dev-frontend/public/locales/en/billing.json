@@ -7,7 +7,9 @@
     "paymentDueDay": "Payment Due Day (1-31)",
     "currency": "Currency",
     "creditLimit": "Credit Limit (optional)",
-    "notes": "Notes (optional)"
+    "notes": "Notes (optional)",
+    "soaIssueDay": "Statement Issue Day (1-28)",
+    "invoiceTrigger": "Issue invoice when"
   },
   "terms": {
     "COD": "Cash on Delivery",
@@ -30,11 +32,18 @@
   "errors": {
     "invalidDueDay": "Payment due day must be 1-31",
     "invalidCreditLimit": "Invalid credit limit",
-    "saveFailed": "Failed to save"
+    "saveFailed": "Failed to save",
+    "invalidIssueDay": "Statement issue day must be 1-28"
   },
   "generate": {
     "periodLastMonth": "Last month",
     "periodThisMonth": "This month (up to today)",
-    "periodCustom": "Choose dates"
+    "periodCustom": "Choose dates",
+    "hintIssueDay": "Statements auto-issue on day {{day}} of each month. Generate one now for any unbilled orders — that month's automatic statement is then skipped.",
+    "noRecipients": "Statement created. No email recipient at the restaurant — add an admin email."
+  },
+  "trigger": {
+    "on_received": "Order is received (default)",
+    "on_confirmed": "Order is confirmed (before delivery)"
   }
 }

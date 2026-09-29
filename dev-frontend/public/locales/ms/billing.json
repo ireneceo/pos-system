@@ -7,7 +7,9 @@
     "paymentDueDay": "Hari Tamat Bayar (1-31)",
     "currency": "Mata Wang",
     "creditLimit": "Had Kredit (pilihan)",
-    "notes": "Nota (pilihan)"
+    "notes": "Nota (pilihan)",
+    "soaIssueDay": "Hari Keluaran Penyata (1-28)",
+    "invoiceTrigger": "Keluarkan invois apabila"
   },
   "terms": {
     "COD": "Bayar Semasa Hantar",
@@ -30,11 +32,18 @@
   "errors": {
     "invalidDueDay": "Hari tamat bayar mesti 1-31",
     "invalidCreditLimit": "Had kredit tidak sah",
-    "saveFailed": "Gagal menyimpan"
+    "saveFailed": "Gagal menyimpan",
+    "invalidIssueDay": "Hari keluaran penyata mesti 1-28"
   },
   "generate": {
     "periodLastMonth": "Bulan lepas",
     "periodThisMonth": "Bulan ini (hingga hari ini)",
-    "periodCustom": "Pilih tarikh"
+    "periodCustom": "Pilih tarikh",
+    "hintIssueDay": "Penyata dikeluarkan secara automatik pada hari {{day}} setiap bulan. Jana sekarang untuk pesanan belum dibil — penyata automatik bulan itu akan dilangkau.",
+    "noRecipients": "Penyata telah dijana. Tiada penerima e-mel di restoran — tambah e-mel pentadbir."
+  },
+  "trigger": {
+    "on_received": "Pesanan diterima (lalai)",
+    "on_confirmed": "Pesanan disahkan (sebelum penghantaran)"
   }
 }
