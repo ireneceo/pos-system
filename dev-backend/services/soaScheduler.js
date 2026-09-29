@@ -5,7 +5,7 @@
  * active SupplierContract whose payment_terms.invoice_cycle === 'monthly_soa',
  * and emails a Statement of Account to the buyer side.
  *
- * Runs at 00:30 on the 1st of every month.
+ * Runs daily at 00:30; each pair issues only on its statement issue day (soa_issue_day, default 1). 2026-09-29
  *
  * Idempotency: Buyer recipients are de-duped via sendNotificationBatch; no
  * separate "soa_sent" flag — re-running on the same month would resend.
@@ -21,7 +21,8 @@ const {
   InvoiceItem,
   Brand,
   Foodcourt,
-  SchedulerRun
+  SchedulerRun,
+  PurchaseOrder
 } = require('../models');
 const { sequelize } = require('../config/database');
 const {
@@ -214,8 +215,9 @@ async function issueSoaForPair({
 
   const currency = invoices[0]?.currency || sellerCurrency || 'MYR';
 
+  // 받는 사람이 없어도 정산서는 만든다 — 정산서는 청구 기록이고 메일은 알림일 뿐이다(2026-09-29 soa2 §5-A).
+  //   전에는 여기서 멈춰 K-DINE IPC(관리자 이메일 없음) 정산서가 «No recipients to notify» 로 아예 안 만들어졌다.
   const recipients = await getBuyerRecipientUserIds(buyerEntityType, buyerEntityId);
-  if (recipients.length === 0) return { issued: false, reason: 'no_recipients' };
 
   // Resolve issued_by (Invoice.issued_by is NOT NULL) — 발행자 entity 의 owner_id.
   // createTradeInvoice(purchaseOrderService) 와 동일 규칙. 누락 시 monthly SOA 생성이
@@ -275,17 +277,137 @@ async function issueSoaForPair({
     totalDue,
     currency,
     dueDate,
-    link: `${FRONTEND_URL}/pos/purchase-invoices/soa`,
+    link: soaLinkFor(buyerEntityType, buyerEntityId),
     timezone: buyerTz
   });
 
+  if (recipients.length === 0) {
+    console.warn(`[soaScheduler] SOA #${soaInvoice.id} created without email — no recipient at ${buyerEntityType} #${buyerEntityId}`);
+    return { issued: true, mailed: false, reason: 'no_recipients', soaId: soaInvoice.id, totalDue, currency, invoiceCount: invoices.length };
+  }
   await sendNotificationBatch(recipients, 'monthly_soa', mail);
-  return { issued: true, soaId: soaInvoice.id, totalDue, currency, invoiceCount: invoices.length };
+  return { issued: true, mailed: true, soaId: soaInvoice.id, totalDue, currency, invoiceCount: invoices.length };
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// 정산서에는 **확정된 주문 전부**가 들어간다 (2026-09-30 Irene)
+//   > Irene: "왜 배송됨인데도 빠진 거야? 모든 인보이스 합칠건데" / "내가 수동으로 만들어도 포함되어야지"
+//   청구서는 매장 입고(또는 «주문 확정 시» 설정의 확정) 때만 생겨서, 판매자가 확정·출고·배송완료했는데
+//   매장이 입고를 안 누른 주문은 정산서에서 조용히 빠졌다(운영 K-DINE IPC PO-R8-20260929-004·007).
+//   정산서를 만들기 직전에 그런 주문의 청구서를 **같은 발행 함수**(createTradeInvoice, 멱등)로 먼저 낸다.
+//   확정 전(submitted·pending_approval)은 취소·거절될 수 있어 넣지 않는다. 배송 실패·취소도 제외.
+// ────────────────────────────────────────────────────────────────────────────
+const BILLABLE_PO_STATUSES = ['confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received', 'received', 'closed'];
+
+/**
+ * 판매자→구매 매장 쌍에서 확정 이후인데 청구서가 없는 발주에 청구서를 낸다. 기간 끝(upTo) 이전에 만든 발주만.
+ * @returns {Promise<number>} 새로 낸 청구서 수
+ */
+async function issueMissingTradeInvoices({ sellerType, sellerId, restaurantId, upTo }) {
+  if (!['brand', 'foodcourt'].includes(sellerType)) return 0;
+  const pos = await PurchaseOrder.findAll({
+    where: {
+      seller_type: sellerType,
+      seller_entity_id: sellerId,
+      entity_type: 'restaurant',
+      entity_id: restaurantId,
+      trade_invoice_id: null,
+      status: { [Op.in]: BILLABLE_PO_STATUSES },
+      ...(upTo ? { created_at: { [Op.lte]: upTo } } : {})
+    },
+    order: [['id', 'ASC']]
+  });
+  const { createTradeInvoice } = require('./purchaseOrderService');
+  let n = 0;
+  for (const po of pos) {
+    try {
+      const inv = await createTradeInvoice(po);
+      if (inv) n += 1;
+    } catch (e) {
+      console.error(`[soaScheduler] 청구서 발행 실패 ${po.po_number}:`, e.message);
+    }
+  }
+  if (n) console.log(`[soaScheduler] ${sellerType} #${sellerId} → restaurant #${restaurantId}: 청구서 없던 확정 주문 ${n}건 청구서 발행`);
+  return n;
 }
 
 /**
- * Process monthly SOA for all eligible (supplier + brand + foodcourt) sellers.
- * Returns { processed, success, errors, skipped }.
+ * 정산서 메일 버튼이 여는 화면 — 구매자가 자기 청구서를 보는 곳.
+ * 옛 `/pos/purchase-invoices/soa` 는 라우트가 없어진 주소였다(2026-09-29 soa2 §5-A).
+ */
+function soaLinkFor(buyerEntityType, buyerEntityId) {
+  if (buyerEntityType === 'restaurant') return `${FRONTEND_URL}/restaurant/${buyerEntityId}/invoices`;
+  if (buyerEntityType === 'brand') return `${FRONTEND_URL}/pos/brand/invoices`;
+  if (buyerEntityType === 'foodcourt') return `${FRONTEND_URL}/pos/foodcourt/invoices`;
+  return `${FRONTEND_URL}/login`;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// 자동 발행 주기 (2026-09-29 soa2 §5-D)
+//   > Irene: "원래 지정한 발행일에 자동발행이야. 수동발행하고 날짜 바꾸고 싶으면 바꾸는 거야.
+//   >         그러고 나면 자동발행 안되어야 해"
+//   청구 조건의 `soa_issue_day`(1~28, 없으면 1) 날에만 발행한다. cron 은 매일 돌고, 날짜 판정은
+//   **구매자 달력**으로 한다. 기간 = 지난 정산서 다음 날 ~ 어제. 그 주기(직전 발행일 다음 날부터)에
+//   취소 안 된 정산서가 이미 있으면(= 수동 발행) 건너뛴다.
+// ────────────────────────────────────────────────────────────────────────────
+const p2d = (n) => String(n).padStart(2, '0');
+/** 시각 → 그 타임존 달력의 YYYY-MM-DD */
+function localDayOf(date, tz) {
+  return new Date(date).toLocaleDateString('en-CA', { timeZone: tz });
+}
+/** YYYY-MM-DD 에 n 일 더하기 (달력 계산, 타임존 무관) */
+function addDays(day, n) {
+  const [y, m, d] = String(day).split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+/** 청구 조건의 발행일. 1~28 이 아니면 1(= 종전 «매월 1일» 과 같은 동작). */
+function soaIssueDayOf(terms) {
+  const d = parseInt(terms?.soa_issue_day, 10);
+  return Number.isFinite(d) && d >= 1 && d <= 28 ? d : 1;
+}
+
+/**
+ * 이 쌍을 오늘 자동 발행해야 하나. 발행일이 28 이하라 «지난달 같은 날» 은 항상 존재한다.
+ * @returns {Promise<{due:false, reason:string} | {due:true, periodStartDay:string, periodEndDay:string}>}
+ */
+async function planAutoCycle({ issuerType, issuerId, payer, buyerEntityType, buyerEntityId, terms, referenceDate }) {
+  const tz = await resolveBuyerTimezone(buyerEntityType, buyerEntityId);
+  const today = localDayOf(referenceDate, tz);
+  const issueDay = soaIssueDayOf(terms);
+  if (Number(today.slice(8, 10)) !== issueDay) return { due: false, reason: 'not_issue_day' };
+
+  const [ty, tm] = today.split('-').map(Number);
+  const prevIssueDay = `${tm === 1 ? ty - 1 : ty}-${p2d(tm === 1 ? 12 : tm - 1)}-${p2d(issueDay)}`;
+  const pair = {
+    invoice_category: 'soa',
+    issuer_type: issuerType,
+    issuer_id: issuerId,
+    payer_type: payer.payer_type,
+    payer_id: payer.payer_id,
+    status: { [Op.ne]: 'cancelled' }
+  };
+
+  // 이 주기 = 직전 발행일 **다음 날** 00:00 부터. 직전 발행일 당일의 자동 정산서는 지난 주기 것이다.
+  //   (직전 발행일 00:00 부터로 잡으면 지난달 자동 정산서가 걸려 영원히 건너뛴다.)
+  const { startOfDay: cycleStart } = getDateBounds(addDays(prevIssueDay, 1), tz);
+  const already = await Invoice.findOne({ where: { ...pair, issued_at: { [Op.gte]: cycleStart } }, attributes: ['id'] });
+  if (already) return { due: false, reason: 'manual_issued_this_cycle' };
+
+  const last = await Invoice.findOne({
+    where: { ...pair, billing_period_end: { [Op.ne]: null } },
+    attributes: ['id', 'billing_period_end'],
+    order: [['billing_period_end', 'DESC']]
+  });
+  const periodEndDay = addDays(today, -1);
+  let periodStartDay = last ? addDays(localDayOf(last.billing_period_end, tz), 1) : prevIssueDay;
+  if (periodStartDay > periodEndDay) periodStartDay = periodEndDay;
+  return { due: true, periodStartDay, periodEndDay };
+}
+
+/**
+ * Process SOA auto-issue for all eligible (supplier + brand + foodcourt) seller↔buyer pairs.
+ * cron 이 매일 부르고, 각 쌍은 자기 발행일에만 발행된다.
+ * Returns { processed, success, errors, skipped, skipped_manual, not_due, no_email }.
  */
 async function processMonthlySoa(referenceDate = new Date()) {
   const startTime = Date.now();
@@ -300,19 +422,50 @@ async function processMonthlySoa(referenceDate = new Date()) {
   }
 
   try {
-    // Compute last month's date range
-    const lastMonthStart = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1, 0, 0, 0, 0);
-    const lastMonthEnd = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 0, 23, 59, 59, 999);
-
-    // 발행일 = 만든 날. 기간과 섞지 않는다(전에는 referenceDate 하나가 둘 다였다).
+    // 발행일 = 만든 날. 기간과 섞지 않는다.
     const issuedAt = new Date();
-    // 기간은 **날짜 문자열**로 넘긴다 — instant 화는 issueSoaForPair 가 구매 매장 tz 로 한 번만 한다.
-    const p2d = (n) => String(n).padStart(2, '0');
-    const lastMonthStartDay = `${lastMonthStart.getFullYear()}-${p2d(lastMonthStart.getMonth() + 1)}-01`;
-    const lastMonthEndDay = `${lastMonthEnd.getFullYear()}-${p2d(lastMonthEnd.getMonth() + 1)}-${p2d(lastMonthEnd.getDate())}`;
-    console.log(`[soaScheduler] Processing monthly SOA (${lastMonthStart.toISOString()} → ${lastMonthEnd.toISOString()})`);
+    let processed = 0, success = 0, errors = 0, skipped = 0, skippedManual = 0, notDue = 0, noEmail = 0;
 
-    let processed = 0, success = 0, errors = 0, skipped = 0;
+    /** 한 쌍 처리 — 세 판매자 종류가 같은 길을 탄다. */
+    const runPair = async ({ label, issuerType, issuerId, payer, buyerEntityType, buyerEntityId, terms, sellerName, sellerCurrency, numberBase }) => {
+      processed++;
+      try {
+        const plan = await planAutoCycle({ issuerType, issuerId, payer, buyerEntityType, buyerEntityId, terms, referenceDate });
+        if (!plan.due) {
+          if (plan.reason === 'manual_issued_this_cycle') {
+            skippedManual++;
+            console.log(`[soaScheduler] ${label} — skip: manual SOA already issued this cycle`);
+          } else notDue++;
+          return;
+        }
+        // 확정된 주문은 청구서가 없어도 정산서에 들어간다 — 수동 발행과 같은 규칙 (2026-09-30)
+        if (buyerEntityType === 'restaurant') {
+          const tz = await resolveBuyerTimezone(buyerEntityType, buyerEntityId);
+          await issueMissingTradeInvoices({
+            sellerType: issuerType, sellerId: issuerId, restaurantId: buyerEntityId,
+            upTo: getDateBounds(plan.periodEndDay, tz).endOfDay
+          });
+        }
+        const dueDay = parseInt(terms?.payment_due_day, 10) || 15;
+        const soaInvoiceNumber = await uniqueSoaNumber(`${numberBase(plan.periodEndDay.slice(0, 7))}`);
+        const result = await issueSoaForPair({
+          issuerType, issuerId, payer, buyerEntityType, buyerEntityId,
+          sellerName, sellerCurrency,
+          periodStartDay: plan.periodStartDay,
+          periodEndDay: plan.periodEndDay,
+          issuedAt,
+          dueDate: nextDueDate(issuedAt, dueDay),
+          soaInvoiceNumber
+        });
+        if (result.issued) {
+          success++;
+          if (result.mailed === false) noEmail++;
+        } else skipped++;
+      } catch (e) {
+        errors++;
+        console.error(`[soaScheduler] Error processing ${label}:`, e.message);
+      }
+    };
 
     // ────────────────────────────────────────────────────────────────────
     // 1. SUPPLIER SOA — SupplierContract.payment_terms.invoice_cycle='monthly_soa'
@@ -321,37 +474,21 @@ async function processMonthlySoa(referenceDate = new Date()) {
       where: { status: 'active' },
       include: [{ model: SupplierCompany, as: 'supplierCompany', attributes: ['id', 'name', 'company_name', 'currency'] }]
     });
-    const monthlyContracts = contracts.filter(c => c.payment_terms?.invoice_cycle === 'monthly_soa');
-    processed += monthlyContracts.length;
-
-    for (const contract of monthlyContracts) {
-      try {
-        const payer = await computePayerForBuyer(contract.entity_type, contract.entity_id);
-        if (!payer) { skipped++; continue; }
-
-        const dueDay = parseInt(contract.payment_terms?.payment_due_day, 10) || 15;
-        const supplierName = contract.supplierCompany?.company_name || contract.supplierCompany?.name || 'Supplier';
-        const soaInvoiceNumber = await uniqueSoaNumber(`SOA-${contract.supplier_company_id}-${lastMonthStart.toISOString().slice(0, 7)}-${contract.id}`);
-
-        const result = await issueSoaForPair({
-          issuerType: 'supplier',
-          issuerId: contract.supplier_company_id,
-          payer,
-          buyerEntityType: contract.entity_type,
-          buyerEntityId: contract.entity_id,
-          sellerName: supplierName,
-          sellerCurrency: contract.supplierCompany?.currency,
-          periodStartDay: lastMonthStartDay,
-          periodEndDay: lastMonthEndDay,
-          issuedAt,
-          dueDate: nextDueDate(issuedAt, dueDay),
-          soaInvoiceNumber
-        });
-        if (result.issued) success++; else skipped++;
-      } catch (e) {
-        errors++;
-        console.error(`[soaScheduler] Error processing supplier contract #${contract.id}:`, e.message);
-      }
+    for (const contract of contracts.filter(c => c.payment_terms?.invoice_cycle === 'monthly_soa')) {
+      const payer = await computePayerForBuyer(contract.entity_type, contract.entity_id);
+      if (!payer) { processed++; skipped++; continue; }
+      await runPair({
+        label: `supplier contract #${contract.id}`,
+        issuerType: 'supplier',
+        issuerId: contract.supplier_company_id,
+        payer,
+        buyerEntityType: contract.entity_type,
+        buyerEntityId: contract.entity_id,
+        terms: contract.payment_terms,
+        sellerName: contract.supplierCompany?.company_name || contract.supplierCompany?.name || 'Supplier',
+        sellerCurrency: contract.supplierCompany?.currency,
+        numberBase: (ym) => `SOA-${contract.supplier_company_id}-${ym}-${contract.id}`
+      });
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -361,40 +498,22 @@ async function processMonthlySoa(referenceDate = new Date()) {
       where: { brand_id: { [Op.ne]: null } },
       attributes: ['id', 'name', 'brand_id', 'brand_billing_terms']
     });
-    const brandMonthly = brandRestaurants.filter(r =>
-      r.brand_billing_terms?.invoice_cycle === 'monthly_soa'
-    );
-    processed += brandMonthly.length;
-
-    for (const restaurant of brandMonthly) {
-      try {
-        const brand = await Brand.findByPk(restaurant.brand_id, { attributes: ['id', 'name', 'company_name'] });
-        if (!brand) { skipped++; continue; }
-
-        const dueDay = parseInt(restaurant.brand_billing_terms?.payment_due_day, 10) || 15;
+    for (const restaurant of brandRestaurants.filter(r => r.brand_billing_terms?.invoice_cycle === 'monthly_soa')) {
+      const brand = await Brand.findByPk(restaurant.brand_id, { attributes: ['id', 'name', 'company_name'] });
+      if (!brand) { processed++; skipped++; continue; }
+      await runPair({
+        label: `brand SOA for restaurant #${restaurant.id}`,
+        issuerType: 'brand',
+        issuerId: brand.id,
+        payer: { payer_type: 'restaurant', payer_id: restaurant.id },
+        buyerEntityType: 'restaurant',
+        buyerEntityId: restaurant.id,
+        terms: restaurant.brand_billing_terms,
         // 2026-09-28 R8 — 메일 머리글과 같은 규칙: 회사명 먼저, 없으면 브랜드명(utils/emailBranding.js brand 분기)
-        const sellerName = brand.company_name || brand.name || 'Brand';
-        const soaInvoiceNumber = await uniqueSoaNumber(`SOA-BRD${brand.id}-${lastMonthStart.toISOString().slice(0, 7)}-R${restaurant.id}`);
-
-        const result = await issueSoaForPair({
-          issuerType: 'brand',
-          issuerId: brand.id,
-          payer: { payer_type: 'restaurant', payer_id: restaurant.id },
-          buyerEntityType: 'restaurant',
-          buyerEntityId: restaurant.id,
-          sellerName,
-          sellerCurrency: restaurant.brand_billing_terms?.currency,
-          periodStartDay: lastMonthStartDay,
-          periodEndDay: lastMonthEndDay,
-          issuedAt,
-          dueDate: nextDueDate(issuedAt, dueDay),
-          soaInvoiceNumber
-        });
-        if (result.issued) success++; else skipped++;
-      } catch (e) {
-        errors++;
-        console.error(`[soaScheduler] Error processing brand SOA for restaurant #${restaurant.id}:`, e.message);
-      }
+        sellerName: brand.company_name || brand.name || 'Brand',
+        sellerCurrency: restaurant.brand_billing_terms?.currency,
+        numberBase: (ym) => `SOA-BRD${brand.id}-${ym}-R${restaurant.id}`
+      });
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -404,39 +523,21 @@ async function processMonthlySoa(referenceDate = new Date()) {
       where: { foodcourt_id: { [Op.ne]: null } },
       attributes: ['id', 'name', 'foodcourt_id', 'foodcourt_billing_terms']
     });
-    const fcMonthly = fcRestaurants.filter(r =>
-      r.foodcourt_billing_terms?.invoice_cycle === 'monthly_soa'
-    );
-    processed += fcMonthly.length;
-
-    for (const restaurant of fcMonthly) {
-      try {
-        const fc = await Foodcourt.findByPk(restaurant.foodcourt_id, { attributes: ['id', 'name'] });
-        if (!fc) { skipped++; continue; }
-
-        const dueDay = parseInt(restaurant.foodcourt_billing_terms?.payment_due_day, 10) || 15;
-        const sellerName = fc.name || 'Foodcourt';
-        const soaInvoiceNumber = await uniqueSoaNumber(`SOA-FC${fc.id}-${lastMonthStart.toISOString().slice(0, 7)}-R${restaurant.id}`);
-
-        const result = await issueSoaForPair({
-          issuerType: 'foodcourt',
-          issuerId: fc.id,
-          payer: { payer_type: 'restaurant', payer_id: restaurant.id },
-          buyerEntityType: 'restaurant',
-          buyerEntityId: restaurant.id,
-          sellerName,
-          sellerCurrency: restaurant.foodcourt_billing_terms?.currency,
-          periodStartDay: lastMonthStartDay,
-          periodEndDay: lastMonthEndDay,
-          issuedAt,
-          dueDate: nextDueDate(issuedAt, dueDay),
-          soaInvoiceNumber
-        });
-        if (result.issued) success++; else skipped++;
-      } catch (e) {
-        errors++;
-        console.error(`[soaScheduler] Error processing foodcourt SOA for restaurant #${restaurant.id}:`, e.message);
-      }
+    for (const restaurant of fcRestaurants.filter(r => r.foodcourt_billing_terms?.invoice_cycle === 'monthly_soa')) {
+      const fc = await Foodcourt.findByPk(restaurant.foodcourt_id, { attributes: ['id', 'name'] });
+      if (!fc) { processed++; skipped++; continue; }
+      await runPair({
+        label: `foodcourt SOA for restaurant #${restaurant.id}`,
+        issuerType: 'foodcourt',
+        issuerId: fc.id,
+        payer: { payer_type: 'restaurant', payer_id: restaurant.id },
+        buyerEntityType: 'restaurant',
+        buyerEntityId: restaurant.id,
+        terms: restaurant.foodcourt_billing_terms,
+        sellerName: fc.name || 'Foodcourt',
+        sellerCurrency: restaurant.foodcourt_billing_terms?.currency,
+        numberBase: (ym) => `SOA-FC${fc.id}-${ym}-R${restaurant.id}`
+      });
     }
 
     const elapsedMs = Date.now() - startTime;
@@ -445,7 +546,10 @@ async function processMonthlySoa(referenceDate = new Date()) {
       success,
       errors,
       skipped,
-      month: lastMonthStart.toISOString().slice(0, 7)
+      skipped_manual: skippedManual,
+      not_due: notDue,
+      no_email: noEmail,
+      date: new Date(referenceDate).toISOString().slice(0, 10)
     };
     console.log(`[soaScheduler] Done in ${(elapsedMs / 1000).toFixed(2)}s`, results);
 
@@ -545,6 +649,12 @@ async function generateSoaNow({
   const prefix = issuerType === 'brand' ? 'BRD' : 'FC';
   const soaInvoiceNumber = await uniqueSoaNumber(`SOA-${prefix}${issuerId}-R${restaurantId}-M${stamp}`);
 
+  // 확정된 주문은 청구서가 없어도 이 정산서에 들어가야 한다 — 먼저 청구서를 낸다 (2026-09-30)
+  await issueMissingTradeInvoices({
+    sellerType: issuerType, sellerId: issuerId, restaurantId,
+    upTo: getDateBounds(periodEndDay, buyerTz).endOfDay
+  });
+
   const result = await issueSoaForPair({
     issuerType, issuerId,
     payer: { payer_type: 'restaurant', payer_id: restaurantId },
@@ -556,18 +666,18 @@ async function generateSoaNow({
     includeOlderUnbundled,
     soaInvoiceNumber
   });
-  return { issued: !!result.issued, soaId: result.soaId, reason: result.reason };
+  return { issued: !!result.issued, mailed: result.mailed, soaId: result.soaId, reason: result.reason };
 }
 
 /**
- * Register the cron schedule. Runs at 00:30 on the 1st of each month.
+ * Register the cron schedule. 매일 00:30 — 각 쌍은 자기 발행일(soa_issue_day)에만 발행된다 (2026-09-29 soa2 §5-D).
  */
 function startSoaCron() {
-  cron.schedule('30 0 1 * *', async () => {
-    console.log('[soaScheduler] Cron tick — running monthly SOA');
+  cron.schedule('30 0 * * *', async () => {
+    console.log('[soaScheduler] Cron tick — checking SOA issue days');
     await processMonthlySoa();
   });
-  console.log('✓ Monthly SOA scheduler started — runs at 00:30 on the 1st of each month');
+  console.log('✓ SOA scheduler started — runs daily at 00:30, issues on each pair\'s statement issue day');
 }
 
 module.exports = {
@@ -577,5 +687,9 @@ module.exports = {
   computePayerForBuyer,
   // 라벨·마감일 규칙은 테스트와 다른 호출부가 **같은 함수**를 보게 내보낸다.
   periodLabelOf,
-  nextDueDate
+  nextDueDate,
+  soaIssueDayOf,
+  planAutoCycle,
+  issueMissingTradeInvoices,
+  BILLABLE_PO_STATUSES
 };
