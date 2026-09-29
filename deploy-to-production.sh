@@ -22,8 +22,12 @@ NC='\033[0m'
 PROD_SERVER="irene@87.106.78.146"
 LOCAL_DEV_BACKEND="/var/www/dev-backend"
 LOCAL_DEV_FRONTEND="/var/www/dev-frontend"
-REMOTE_PROD_BACKEND="/var/www/production-backend"
-REMOTE_PROD_FRONTEND="/var/www/production-frontend"
+# 운영 경로·백업 경로·복원 함수는 롤백 스크립트와 **같은 파일**에서 읽는다 (2026-09-27 R4 — 두 벌이 갈라졌던 사고).
+DEPLOY_LAYOUT="/var/www/scripts/deploy-layout.sh"
+# shellcheck source=/var/www/scripts/deploy-layout.sh
+source "$DEPLOY_LAYOUT" || { echo "deploy-layout.sh 를 읽지 못함: $DEPLOY_LAYOUT"; exit 1; }
+REMOTE_PROD_BACKEND="$PROD_BACKEND_DIR"
+REMOTE_PROD_FRONTEND="$PROD_FRONTEND_DIR"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Flags
@@ -309,8 +313,8 @@ fi
 #
 # 복구: gunzip -c <덤프경로> | mysql -u <DB_USER> -p<DB_PASSWORD> <DB_NAME>
 log "Creating pre-deploy DB dump (rollback point)..."
-PREDEPLOY_DIR="/var/backups/orderhere/pre-deploy"
-DUMP_FILE="${PREDEPLOY_DIR}/db_predeploy_${TIMESTAMP}.sql.gz"
+PREDEPLOY_DIR="$PROD_PREDEPLOY_DIR"
+DUMP_FILE="$(predeploy_dump_of "$TIMESTAMP")"
 
 # 자격증명·mysqldump 옵션은 기존 backup-database.sh 와 **같은 것**을 쓴다(두 벌 만들지 않는다).
 DUMP_ERR=$(ssh $PROD_SERVER "
@@ -345,25 +349,36 @@ success "DB 덤프 완료: ${DUMP_FILE} ($(( ${DUMP_SIZE:-0} / 1024 / 1024 )) MB
 #   그래도 "Backup created" 를 찍었다. 백업 없이 배포되면 **롤백이 불가능**하다.
 #   이제 실패 사유를 보여주고, 백업이 실제로 만들어졌는지 **검증한 뒤에만** 진행한다.
 log "Creating backup on production server..."
-ssh $PROD_SERVER "mkdir -p /var/www/backups/${TIMESTAMP}" \
-    || error "백업 디렉토리 생성 실패 (/var/www/backups/${TIMESTAMP}) — 운영 디스크·권한 확인"
+BK_DIR="$(backup_dir_of "$TIMESTAMP")"
+BK_BACKEND="$(backup_backend_of "$TIMESTAMP")"
+BK_FRONTEND="$(backup_frontend_of "$TIMESTAMP")"
+ssh $PROD_SERVER "mkdir -p ${BK_DIR}" \
+    || error "백업 디렉토리 생성 실패 (${BK_DIR}) — 운영 디스크·권한 확인"
 
 # node_modules(143MB·1.4만 파일) 제외 — 재설치로 복원되므로 백업 불필요. cp -r 로 통째
 # 복사하면 이 파일무더기 때문에 백업 하나가 10분+ 걸려 배포가 30분이 됐다(2026-07-16 회귀
 # 수리). rsync --exclude 로 코드만 백업 → 수 초. 롤백 핵심(서버코드·package.json)은 그대로.
-BK_ERR=$(ssh $PROD_SERVER "mkdir -p /var/www/backups/${TIMESTAMP}/production-backend && rsync -a --exclude=node_modules --exclude=.git $REMOTE_PROD_BACKEND/ /var/www/backups/${TIMESTAMP}/production-backend/" 2>&1) \
+BK_ERR=$(ssh $PROD_SERVER "mkdir -p ${BK_BACKEND} && rsync -a --exclude=node_modules --exclude=.git $REMOTE_PROD_BACKEND/ ${BK_BACKEND}/" 2>&1) \
     || error "백엔드 백업 실패: ${BK_ERR} — 백업 없이 배포하면 롤백할 수 없다"
 
 # 프론트 빌드 백업은 운영에 build 가 아직 없을 수 있어 경고만 (백엔드 백업이 롤백의 핵심)
-FBK_ERR=$(ssh $PROD_SERVER "cp -r $REMOTE_PROD_FRONTEND/build /var/www/backups/${TIMESTAMP}/production-frontend-build" 2>&1) \
+FBK_ERR=$(ssh $PROD_SERVER "cp -r $REMOTE_PROD_FRONTEND/build ${BK_FRONTEND}" 2>&1) \
     || warn "프론트 빌드 백업 실패: $(echo "$FBK_ERR" | tail -1)"
 
 # 실제로 만들어졌는지 확인 — "성공 메시지"만 찍고 넘어가지 않는다
-BK_FILES=$(ssh $PROD_SERVER "find /var/www/backups/${TIMESTAMP}/production-backend -maxdepth 1 -type f 2>/dev/null | wc -l" 2>/dev/null || echo 0)
+BK_FILES=$(ssh $PROD_SERVER "find ${BK_BACKEND} -maxdepth 1 -type f 2>/dev/null | wc -l" 2>/dev/null || echo 0)
 if [ "${BK_FILES:-0}" -lt 1 ]; then
-    error "백업이 비어 있다 (/var/www/backups/${TIMESTAMP}/production-backend) — 롤백 불가 상태로는 배포하지 않는다"
+    error "백업이 비어 있다 (${BK_BACKEND}) — 롤백 불가 상태로는 배포하지 않는다"
 fi
-success "Backup created: /var/www/backups/${TIMESTAMP} (백엔드 루트 파일 ${BK_FILES}개 확인)"
+success "Backup created: ${BK_DIR} (백엔드 루트 파일 ${BK_FILES}개 확인)"
+
+# 롤백 도구를 운영에 맞춰 둔다 (2026-09-27 R4) — 코드를 건드리기 **전**에.
+#   운영 rollback-production.sh 는 개발 사본과 달랐고(1월판) 이 백업 구조를 몰라 전 단계를 skip 했다.
+#   배포마다 같은 두 파일(롤백 스크립트 + 경로 단일 소스)을 보내 두면 «이번 백업을 되돌리는 도구» 가 늘 짝이 맞는다.
+TOOLS_ERR=$(rsync -a /var/www/rollback-production.sh $PROD_SERVER:/var/www/rollback-production.sh 2>&1 \
+    && rsync -a "$DEPLOY_LAYOUT" $PROD_SERVER:/var/www/scripts/deploy-layout.sh 2>&1) \
+    || error "롤백 도구 복사 실패 — 되돌릴 도구가 이 백업과 맞지 않는 상태로 배포하지 않는다: ${TOOLS_ERR}"
+success "롤백 도구 동기화: /var/www/rollback-production.sh + /var/www/scripts/deploy-layout.sh"
 
 # ──────────────────────────────────────────
 # 4-1. 옛 백업 정리 (보관 기간) — **디스크가 차면 백업도 배포도 못 한다**
@@ -467,12 +482,41 @@ log "Syncing backend to production server..."
 #   남기는 **감사 로그가 .json** 이라(예: converge-unit-model-*.json) `--delete` 가 그걸
 #   지웠다. 로그는 각 서버의 런타임 산출물이지 배포물이 아니다. 개발기의
 #   `logs/deploy-<ts>/` 도 운영에 갈 이유가 없다.
+# `_tmp_*`·`tmp/` 제외 (2026-09-27 R5) — 개발 중 임시 스크립트(`_tmp_uname.js` 가 운영에 복사된 적 있음)와
+#   개발기 `tmp/`(2025-11 빈 파일, 코드 참조 0)는 배포물이 아니다.
+# ── 자동 원복 (2026-09-27 R4) ─────────────────────────────
+#   여기부터 pm2 재시작 성공까지는 **운영 디스크가 새 코드**다. 이 구간에서 어디서든 멈추면(set -e·error·Ctrl+C)
+#   디스크는 새 코드 · 프로세스는 옛 코드인 반쪽 상태가 남고, 다음 재시작 때 검증 안 된 조합이 뜬다.
+#   → 이 구간에서 실패로 끝나면 **이번 백업으로 코드(백엔드·프론트)를 되돌리고** 실패로 끝낸다.
+#   DB 는 되돌리지 않는다(마이그는 expand-only·자기 트랜잭션 · 데이터 복원은 사람 판단) — 덤프 경로를 알린다.
+DEPLOY_CODE_TOUCHED=false
+auto_restore_on_exit() {
+    local rc=$?
+    if [ $rc -ne 0 ] && [ "$DEPLOY_CODE_TOUCHED" = true ]; then
+        DEPLOY_CODE_TOUCHED=false
+        trap - EXIT
+        echo -e "${RED}[AUTO-RESTORE]${NC} 코드 복사 뒤 배포가 실패했다(exit $rc) — 백업 ${TIMESTAMP} 으로 코드 원복"
+        # 복원 함수는 이 개발기의 deploy-layout.sh 를 표준입력으로 보내 실행한다 — 운영에 파일이 없어도 같은 규칙.
+        if { cat "$DEPLOY_LAYOUT"; echo "restore_code_from_backup '${TIMESTAMP}' && pm2 restart production-backend"; } \
+            | ssh $PROD_SERVER "bash -s"; then
+            echo -e "${YELLOW}[AUTO-RESTORE]${NC} 코드 원복 완료 · 백엔드 재시작. DB 는 그대로 — 필요하면 덤프: $(predeploy_dump_of "$TIMESTAMP")"
+        else
+            echo -e "${RED}[AUTO-RESTORE]${NC} 자동 원복 실패 — 수동: ssh $PROD_SERVER 'sudo /var/www/rollback-production.sh ${TIMESTAMP}'"
+        fi
+        exit $rc
+    fi
+}
+trap auto_restore_on_exit EXIT
+DEPLOY_CODE_TOUCHED=true
+
 BACKEND_RSYNC_LOG=$(rsync -avz --delete \
     --exclude 'node_modules' \
     --exclude '.env' \
     --exclude 'uploads' \
     --exclude 'logs/' \
     --exclude '*.log' \
+    --exclude '_tmp_*' \
+    --exclude 'tmp/' \
     $LOCAL_DEV_BACKEND/ $PROD_SERVER:$REMOTE_PROD_BACKEND/ 2>&1)
 BACKEND_RSYNC_EXIT=$?
 if [ $BACKEND_RSYNC_EXIT -ne 0 ]; then
@@ -805,6 +849,7 @@ fi
 # ──────────────────────────────────────────
 log "Restarting production backend..."
 ssh $PROD_SERVER "pm2 restart production-backend"
+DEPLOY_CODE_TOUCHED=false   # 새 코드가 떴다 — 이후 실패(헬스·스모크)는 자동 원복 대상이 아니다(사람이 판단)
 success "Backend restarted"
 
 # ──────────────────────────────────────────
@@ -1094,7 +1139,7 @@ rm -f /tmp/deploy_dev_schema.json /tmp/deploy_prod_schema.json /tmp/deploy_prod_
 echo ""
 echo "============================================"
 echo "  Deployment Complete!"
-echo "  Backup: /var/www/backups/${TIMESTAMP}"
+echo "  Backup: ${BK_DIR}"
 echo "  Smoke:  ${SMOKE_PASS}/${SMOKE_TOTAL} passed"
 echo "  Time: $(date)"
 echo "============================================"

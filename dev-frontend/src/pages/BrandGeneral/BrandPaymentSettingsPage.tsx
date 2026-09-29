@@ -388,7 +388,8 @@ const BrandPaymentSettingsPage: React.FC = () => {
         // 배송 조건 두 칸 (2026-09-17 Fable 판정 ⑦) — 매장이 이 브랜드에 발주할 때 붙는 규칙
         setDeliveryTerms({
           min_order_amount: data.min_order_amount != null ? String(data.min_order_amount) : '',
-          delivery_fee: data.delivery_fee != null ? String(data.delivery_fee) : ''
+          delivery_fee: data.delivery_fee != null ? String(data.delivery_fee) : '',
+          delivery_policy: data.delivery_policy || ''
         });
 
         // Set supported currencies from brand settings (filtered by system-allowed currencies)
@@ -562,8 +563,9 @@ const BrandPaymentSettingsPage: React.FC = () => {
   };
 
   // 배송 조건 (2026-09-17) — 브랜드도 판매자다. 공급업체 화면과 **같은 이름·같은 의미**의 두 칸.
-  const [deliveryTerms, setDeliveryTerms] = useState<{ min_order_amount: string; delivery_fee: string }>({
-    min_order_amount: '', delivery_fee: ''
+  // delivery_policy = 배송 가능 지역 안내 글(2026-09-28 Fable) — 보여주기만, 배송비 계산에 쓰지 않는다.
+  const [deliveryTerms, setDeliveryTerms] = useState<{ min_order_amount: string; delivery_fee: string; delivery_policy: string }>({
+    min_order_amount: '', delivery_fee: '', delivery_policy: ''
   });
   const [deliverySaving, setDeliverySaving] = useState(false);
   const [deliverySaved, setDeliverySaved] = useState(false);
@@ -580,7 +582,8 @@ const BrandPaymentSettingsPage: React.FC = () => {
         body: JSON.stringify({
           // 빈 칸 = 미설정(null). 0 은 «무료배송» 이라 뜻이 다르다.
           min_order_amount: deliveryTerms.min_order_amount === '' ? null : Number(deliveryTerms.min_order_amount),
-          delivery_fee: deliveryTerms.delivery_fee === '' ? null : Number(deliveryTerms.delivery_fee)
+          delivery_fee: deliveryTerms.delivery_fee === '' ? null : Number(deliveryTerms.delivery_fee),
+          delivery_policy: deliveryTerms.delivery_policy.trim() || null
         })
       });
       if (res.ok) setDeliverySaved(true);
@@ -668,6 +671,22 @@ const BrandPaymentSettingsPage: React.FC = () => {
                   onBlur={saveDeliveryTerms}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14 }}
                 />
+              </div>
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, color: '#0A2540', marginBottom: 6 }}>
+                {t('brand:brandPaymentSettingsPage.deliveryAreas', 'Delivery areas')}
+              </label>
+              <textarea
+                rows={2} maxLength={500}
+                placeholder={t('brand:brandPaymentSettingsPage.deliveryAreasPlaceholder', 'e.g. Petaling Jaya, Selangor') as string}
+                value={deliveryTerms.delivery_policy}
+                onChange={(e) => { setDeliveryTerms(p => ({ ...p, delivery_policy: e.target.value })); setDeliverySaved(false); }}
+                onBlur={saveDeliveryTerms}
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }}
+              />
+              <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                {t('brand:brandPaymentSettingsPage.deliveryAreasHint', 'Where and when you deliver. Shown to stores when they order — not used to calculate the delivery fee.')}
               </div>
             </div>
             <div style={{ marginTop: 10, padding: '10px 12px', background: '#F8FAFC',

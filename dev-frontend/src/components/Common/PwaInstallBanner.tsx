@@ -60,7 +60,8 @@ const PwaInstallBanner: React.FC = () => {
       bottom: 16,
       right: 16,
       maxWidth: 360,
-      zIndex: 9000,
+      // 2026-09-27 F3 — 9000 이면 모달(dim·창) 위로 떠 버튼을 가렸다. 모달보다 아래, 화면 내용보다 위.
+      zIndex: 900,
       background: '#fff',
       borderRadius: 12,
       boxShadow: '0 10px 30px rgba(10,37,64,0.15)',

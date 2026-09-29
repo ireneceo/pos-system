@@ -368,11 +368,12 @@ async function processMonthlySoa(referenceDate = new Date()) {
 
     for (const restaurant of brandMonthly) {
       try {
-        const brand = await Brand.findByPk(restaurant.brand_id, { attributes: ['id', 'name'] });
+        const brand = await Brand.findByPk(restaurant.brand_id, { attributes: ['id', 'name', 'company_name'] });
         if (!brand) { skipped++; continue; }
 
         const dueDay = parseInt(restaurant.brand_billing_terms?.payment_due_day, 10) || 15;
-        const sellerName = brand.name || 'Brand';
+        // 2026-09-28 R8 — 메일 머리글과 같은 규칙: 회사명 먼저, 없으면 브랜드명(utils/emailBranding.js brand 분기)
+        const sellerName = brand.company_name || brand.name || 'Brand';
         const soaInvoiceNumber = await uniqueSoaNumber(`SOA-BRD${brand.id}-${lastMonthStart.toISOString().slice(0, 7)}-R${restaurant.id}`);
 
         const result = await issueSoaForPair({
@@ -504,7 +505,7 @@ async function generateSoaNow({
   if (parseInt(ownerField, 10) !== parseInt(issuerId, 10)) return { issued: false, reason: 'not_owned' };
 
   const Model = issuerType === 'brand' ? Brand : Foodcourt;
-  const seller = await Model.findByPk(issuerId, { attributes: ['id', 'name'] });
+  const seller = await Model.findByPk(issuerId, { attributes: issuerType === 'brand' ? ['id', 'name', 'company_name'] : ['id', 'name'] });
   if (!seller) return { issued: false, reason: 'seller_not_found' };
 
   const now = new Date();
@@ -548,7 +549,8 @@ async function generateSoaNow({
     issuerType, issuerId,
     payer: { payer_type: 'restaurant', payer_id: restaurantId },
     buyerEntityType: 'restaurant', buyerEntityId: restaurantId,
-    sellerName: seller.name || (issuerType === 'brand' ? 'Brand' : 'Foodcourt'),
+    // 2026-09-28 R8 — 월 자동 발행(위)과 같은 규칙: 브랜드는 회사명 먼저
+    sellerName: (issuerType === 'brand' && seller.company_name) || seller.name || (issuerType === 'brand' ? 'Brand' : 'Foodcourt'),
     sellerCurrency: terms?.currency,
     periodStartDay, periodEndDay, issuedAt, dueDate,
     includeOlderUnbundled,

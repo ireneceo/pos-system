@@ -101,4 +101,54 @@ function supplierFacingName(name) {
   return s;
 }
 
-module.exports = { attachSellerProductIdentity, supplierFacingName };
+/**
+ * 발주 라인에 **판매자 자기 상품 카테고리**를 붙인다 — 판매자 주문 상세(Sales Orders) 전용.
+ *
+ * Irene 2026-09-29 「주문순서대로 안들어오고 카테고리별로 묶어서 주문관리하게」 — 판매자는 물건을
+ * 자기 창고 분류대로 챙긴다. 그래서 묶는 기준은 **판매자 카테고리**(supplier/brand/foodcourt product category)다.
+ * 구매자 재료 분류(ingredient_categories)는 판매자가 모르는 분류라 쓰지 않는다.
+ * 판매 상품 연결이 없는 줄(옛 발주·외부 판매자)은 null → 화면이 «기타» 로 맨 뒤에 모은다.
+ * 메일·대조·반품 경로는 이 칸을 읽지 않는다 → attachSellerProductIdentity 와 분리해 그쪽 쿼리를 늘리지 않는다.
+ *
+ * items 는 제자리에서 `seller_product_category = { id, name, sort_order } | null` 을 부여받는다.
+ */
+async function attachSellerProductCategory(pos) {
+  const list = Array.isArray(pos) ? pos : [pos];
+  const allItems = list.flatMap(p => (p && p.items) || []);
+  for (const it of allItems) it.seller_product_category = null;
+  const ispIds = [...new Set(allItems.map(it => it.ingredient_seller_product_id).filter(Boolean))];
+  if (!ispIds.length) return;
+
+  const {
+    IngredientSellerProduct, SupplierProduct, BrandProduct, FoodcourtProduct,
+    SupplierProductCategory, BrandProductCategory, FoodcourtProductCategory
+  } = require('../models');
+  const isps = await IngredientSellerProduct.findAll({
+    where: { id: ispIds },
+    attributes: ['id', 'seller_type', 'seller_product_id']
+  });
+  const idsOf = (type) => [...new Set(isps.filter(m => m.seller_type === type && m.seller_product_id).map(m => m.seller_product_id))];
+  const CATALOG = {
+    supplier: [SupplierProduct, SupplierProductCategory, { paranoid: false }],
+    brand: [BrandProduct, BrandProductCategory, {}],
+    foodcourt: [FoodcourtProduct, FoodcourtProductCategory, { paranoid: false }],
+  };
+  const catOfProduct = {};
+  for (const [type, [ProductModel, CategoryModel, opts]] of Object.entries(CATALOG)) {
+    const ids = idsOf(type);
+    if (!ids.length) continue;
+    const rows = await ProductModel.findAll({ where: { id: ids }, attributes: ['id', 'category_id'], ...opts });
+    const catIds = [...new Set(rows.map(r => r.category_id).filter(Boolean))];
+    const cats = catIds.length
+      ? await CategoryModel.findAll({ where: { id: catIds }, attributes: ['id', 'name', 'sort_order'] })
+      : [];
+    const catMap = Object.fromEntries(cats.map(c => [c.id, { id: c.id, name: c.name, sort_order: Number(c.sort_order) || 0 }]));
+    for (const r of rows) catOfProduct[`${type}#${r.id}`] = r.category_id ? (catMap[r.category_id] || null) : null;
+  }
+  const ispCat = Object.fromEntries(isps.map(m => [m.id, catOfProduct[`${m.seller_type}#${m.seller_product_id}`] || null]));
+  for (const it of allItems) {
+    if (it.ingredient_seller_product_id) it.seller_product_category = ispCat[it.ingredient_seller_product_id] || null;
+  }
+}
+
+module.exports = { attachSellerProductIdentity, attachSellerProductCategory, supplierFacingName };

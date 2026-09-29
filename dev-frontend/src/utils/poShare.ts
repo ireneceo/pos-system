@@ -11,6 +11,8 @@ import { lineBaseText } from './unitConversion';
 import { getCurrencySymbol } from './currency';
 
 interface SharePOItem {
+  /** 판매자 자기 상품 카테고리 — 판매자 주문 상세에서만 온다(백엔드 attachSellerProductCategory). */
+  seller_product_category?: { id: number; name: string; sort_order?: number } | null;
   product_name?: string | null;
   ingredient_name?: string | null;
   ingredient_id?: number;
@@ -189,4 +191,62 @@ export function sharePoViaEmail(po: SharePO, formatQuantity: (q: any) => string)
   );
   window.location.href = `mailto:${po.seller.email}?subject=${subject}&body=${body}`;
   return true;
+}
+
+/**
+ * 판매자 주문 품목을 **판매자 카테고리별로** 묶는다 — 상세 팝업과 WhatsApp 공유가 같은 함수를 쓴다.
+ *
+ * Irene 2026-09-29 「주문순서대로 안들어오고 카테고리별로 묶어서 주문관리하게」.
+ * 순서: 카테고리 sort_order → 이름. 카테고리 없는 줄(판매 상품 연결 없음)은 맨 뒤 한 묶음(name = null).
+ * 묶음 안의 줄은 원래 주문 순서를 유지한다(같은 카테고리 안에서 다시 섞지 않는다).
+ */
+export function groupItemsBySellerCategory<T extends { seller_product_category?: { id: number; name: string; sort_order?: number } | null }>(
+  items: T[] | null | undefined,
+): { key: string; name: string | null; items: T[] }[] {
+  const groups = new Map<string, { key: string; name: string | null; sort: number; items: T[] }>();
+  for (const it of items || []) {
+    const c = it.seller_product_category;
+    const key = c ? `c${c.id}` : 'none';
+    if (!groups.has(key)) groups.set(key, { key, name: c ? c.name : null, sort: c ? Number(c.sort_order) || 0 : 0, items: [] });
+    groups.get(key)!.items.push(it);
+  }
+  return Array.from(groups.values())
+    .sort((a, b) => {
+      if (a.name === null) return 1;
+      if (b.name === null) return -1;
+      return a.sort - b.sort || a.name.localeCompare(b.name);
+    })
+    .map(({ key, name, items: rows }) => ({ key, name, items: rows }));
+}
+
+/**
+ * 받은 주문(판매자 쪽)을 WhatsApp 으로 넘긴다 — **판매자 자기 팀 그룹챗**용.
+ *
+ * Irene 2026-09-29 「그룹챗에 항상 넘기는데 주문이 많으면 캡쳐가 안돼」.
+ * 받는 사람은 판매자 내부 팀이라 번호를 정하지 않는다 → WhatsApp 이 대화(그룹) 선택 화면을 연다.
+ * 줄 모양은 발주 공유(poItemLines)와 같다 — 이름 굵게, 한 줄(2026-08-31 Irene 「그냥 한줄이 낫겠어」).
+ * 품목은 판매자 카테고리별로 묶는다(groupItemsBySellerCategory). 카테고리 없는 줄 제목은 호출부가 번역해 넘긴다.
+ */
+export function shareSellerOrderViaWhatsApp(
+  po: SharePO & { buyer?: { name?: string | null } | null; notes?: string | null },
+  formatQuantity: (q: any) => string,
+  otherLabel: string,
+): void {
+  const cur = getCurrencySymbol(po.currency || 'MYR');
+  const b = (s: string) => `*${s}*`;
+  const groups = groupItemsBySellerCategory(po.items || []);
+  const body = groups.map(g => {
+    const title = b(`${g.name || otherLabel} (${g.items.length})`);
+    return `${title}\n${poItemLines({ ...po, items: g.items }, formatQuantity, b)}`;
+  }).join('\n\n');
+  const text = encodeURIComponent(
+    `${b('ORDER')} ${po.po_number || '#' + po.id}\n` +
+    `${po.buyer?.name ? b(po.buyer.name) + '\n' : ''}` +
+    `${po.expected_delivery_date ? 'Delivery: ' + po.expected_delivery_date + '\n' : ''}` +
+    `${po.delivery_address ? 'Deliver to: ' + po.delivery_address + '\n' : ''}` +
+    `${po.notes ? 'Note: ' + po.notes + '\n' : ''}` +
+    `\n${body || '(none)'}\n\n` +
+    `${b(`Items: ${(po.items || []).length} · TOTAL: ${cur} ${parseFloat(String(po.total_amount || '0')).toFixed(2)}`)}`
+  );
+  window.open(`https://wa.me/?text=${text}`, '_blank');
 }

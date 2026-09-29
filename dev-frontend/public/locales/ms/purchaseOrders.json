@@ -452,7 +452,8 @@
     "deliveryFee": "Yuran penghantaran",
     "deliveryUnset": "tidak ditetapkan penjual",
     "deliveryToFree": "Tambah {{amount}} lagi untuk penghantaran percuma",
-    "deliveryUnsetHint": "Penjual ini belum menetapkan terma penghantaran. Ia tidak bermakna percuma — yuran sebenar ditunjukkan pada invois."
+    "deliveryUnsetHint": "Penjual ini belum menetapkan terma penghantaran. Ia tidak bermakna percuma — yuran sebenar ditunjukkan pada invois.",
+    "deliveryAreas": "Kawasan penghantaran"
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",

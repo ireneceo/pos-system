@@ -27,6 +27,8 @@ interface SupplierCompany {
   // 배송 조건 두 칸 (2026-09-17 Fable 판정 ⑦) — 구매자가 나에게 발주할 때 자동으로 붙는 배송비 규칙
   min_order_amount: string;
   delivery_fee: string;
+  // 배송 가능 지역 안내 글(2026-09-28 Fable) — 브랜드·푸드코트와 같은 칸. 보여주기만, 계산 0.
+  delivery_policy: string;
   bank_account_name: string;
   // 판매 방식·주문용 상품 링크는 **상품 화면**에서 다룬다(components/Settings/SellerShopLinkCard).
   //   회사 정보는 상호·주소·계좌를 적는 곳이라 손님에게 뿌리는 링크가 여기 있으면 아무도 못 찾는다
@@ -205,6 +207,7 @@ const EMPTY: SupplierCompany = {
   bank_name: '',
   min_order_amount: '',
   delivery_fee: '',
+  delivery_policy: '',
   bank_account: '',
   bank_account_name: '',
 };
@@ -249,6 +252,7 @@ const SupplierCompanyInfoPage: React.FC = () => {
         bank_name: d.bank_name || '',
         min_order_amount: d.min_order_amount != null ? String(d.min_order_amount) : '',
         delivery_fee: d.delivery_fee != null ? String(d.delivery_fee) : '',
+        delivery_policy: d.delivery_policy || '',
         bank_account: d.bank_account || '',
         bank_account_name: d.bank_account_name || ''
       });
@@ -465,6 +469,21 @@ const SupplierCompanyInfoPage: React.FC = () => {
                   placeholder="15"
                 />
               </AutoSaveField>
+            </FormGroup>
+
+            <FormGroup fullWidth>
+              <Label>{t('company.delivery.areas', 'Delivery areas')}</Label>
+              <AutoSaveField onSave={() => saveField('delivery_policy', company.delivery_policy.trim() || null)}>
+                <Textarea
+                  maxLength={500}
+                  value={company.delivery_policy}
+                  onChange={e => handleChange('delivery_policy', e.target.value)}
+                  placeholder={t('company.delivery.areasPlaceholder', 'e.g. Petaling Jaya, Selangor') as string}
+                />
+              </AutoSaveField>
+              <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                {t('company.delivery.areasHint', 'Where and when you deliver. Shown to buyers when they order — not used to calculate the delivery fee.')}
+              </div>
             </FormGroup>
 
             <FormGroup fullWidth>

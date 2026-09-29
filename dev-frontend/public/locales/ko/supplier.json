@@ -152,7 +152,10 @@
     "delivery": {
       "title": "배송 조건",
       "freeAbove": "이 금액 이상 주문하면 무료배송",
-      "fee": "그 미만이면 배송비 (고정)"
+      "fee": "그 미만이면 배송비 (고정)",
+      "areas": "배송 가능 지역",
+      "areasPlaceholder": "예: Petaling Jaya, Selangor",
+      "areasHint": "어디에·언제 배송하는지 적어 주세요. 구매자가 발주할 때 보입니다 — 배송비 계산에는 쓰지 않습니다."
     }
   },
   "invoices": {
@@ -270,6 +273,10 @@
       "notesPlaceholder": "구매처가 알아야 할 내용이 있으면 적으세요.",
       "submit": "주문 만들기",
       "cancel": "취소"
+    },
+    "detail": {
+      "shareWhatsApp": "WhatsApp 공유",
+      "uncategorized": "기타"
     }
   },
   "tradeInvoicesPage": {

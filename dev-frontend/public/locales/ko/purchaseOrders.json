@@ -452,7 +452,8 @@
     "deliveryFee": "배송비",
     "deliveryUnset": "판매자 미설정",
     "deliveryToFree": "{{amount}} 더 담으면 배송비 무료",
-    "deliveryUnsetHint": "이 판매자가 배송 조건을 아직 적지 않았습니다. 무료라는 뜻이 아니라, 실제 배송비는 청구서에서 확인됩니다"
+    "deliveryUnsetHint": "이 판매자가 배송 조건을 아직 적지 않았습니다. 무료라는 뜻이 아니라, 실제 배송비는 청구서에서 확인됩니다",
+    "deliveryAreas": "배송 가능 지역"
   },
   "staging": {
     "noPhoneTitle": "전화번호 없음",

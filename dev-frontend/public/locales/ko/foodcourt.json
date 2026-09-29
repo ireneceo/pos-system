@@ -393,5 +393,8 @@
   "foodcourtPaymentSettingsPage.deliveryTerms": "매장 발주 배송 조건",
   "foodcourtPaymentSettingsPage.deliveryTermsDesc": "매장이 이 푸드코트에 발주할 때 배송비가 자동으로 붙습니다. 비워 두면 배송비가 나오지 않습니다.",
   "foodcourtPaymentSettingsPage.freeAbove": "이 금액 이상 주문하면 무료배송",
-  "foodcourtPaymentSettingsPage.deliveryFee": "그 미만이면 배송비 (고정)"
+  "foodcourtPaymentSettingsPage.deliveryFee": "그 미만이면 배송비 (고정)",
+  "foodcourtPaymentSettingsPage.deliveryAreas": "배송 가능 지역",
+  "foodcourtPaymentSettingsPage.deliveryAreasPlaceholder": "예: Petaling Jaya, Selangor",
+  "foodcourtPaymentSettingsPage.deliveryAreasHint": "어디에·언제 배송하는지 적어 주세요. 매장이 발주할 때 보입니다 — 배송비 계산에는 쓰지 않습니다."
 }

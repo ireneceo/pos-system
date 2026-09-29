@@ -333,7 +333,11 @@ const FoodcourtInvoicesPage: React.FC = () => {
         headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
         body: JSON.stringify({ status: 'paid', paid_amount: 0, payment_notes: 'Free invoice - confirmed by recipient' })
       });
-      if (response.ok) { fetchInvoices(); }
+      // 2026-09-29 — 브랜드 청구서 화면(F5)과 같은 결함: 버튼이 있는 «낼 청구서» 목록을 다시 읽지 않아 그대로 남았다.
+      if (response.ok) {
+        await Promise.all([fetchInvoicesToPay(), fetchPaidInvoices()]);
+        window.dispatchEvent(new Event('refreshBadgeCounts'));
+      }
     } catch (error) { console.error('Failed to confirm free invoice:', error); }
   };
 

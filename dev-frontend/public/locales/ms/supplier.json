@@ -152,7 +152,10 @@
     "delivery": {
       "title": "Terma penghantaran",
       "freeAbove": "Penghantaran percuma pada atau melebihi jumlah ini",
-      "fee": "Yuran penghantaran di bawahnya (tetap)"
+      "fee": "Yuran penghantaran di bawahnya (tetap)",
+      "areas": "Kawasan penghantaran",
+      "areasPlaceholder": "cth. Petaling Jaya, Selangor",
+      "areasHint": "Di mana dan bila anda menghantar. Dipaparkan kepada pembeli semasa membuat pesanan — tidak digunakan untuk mengira caj penghantaran."
     }
   },
   "invoices": {
@@ -270,6 +273,10 @@
       "notesPlaceholder": "Apa-apa yang pembeli perlu tahu tentang pesanan ini.",
       "submit": "Buat pesanan",
       "cancel": "Batal"
+    },
+    "detail": {
+      "shareWhatsApp": "Kongsi melalui WhatsApp",
+      "uncategorized": "Lain-lain"
     }
   },
   "tradeInvoicesPage": {

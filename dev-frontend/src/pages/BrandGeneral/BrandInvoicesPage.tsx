@@ -380,7 +380,14 @@ const BrandInvoicesPage: React.FC = () => {
         headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
         body: JSON.stringify({ status: 'paid', paid_amount: 0, payment_notes: 'Free invoice - confirmed by recipient' })
       });
-      if (response.ok) { fetchInvoices(); return; }
+      // 2026-09-28 F5 — 저장은 됐는데 «발행한 청구서» 목록만 다시 읽어서, 이 청구서가 있는
+      //   «낼 청구서» 목록에 그대로 남아 «안 눌린다» 로 보였다(운영 153·154 는 paid 로 저장돼 있었다).
+      //   이 버튼이 있는 두 목록과 사이드바 숫자를 다시 읽는다 — 결제 성공(onPaid) 과 같은 묶음.
+      if (response.ok) {
+        await Promise.all([fetchInvoicesToPay(), fetchPaidInvoices()]);
+        window.dispatchEvent(new Event('refreshBadgeCounts'));
+        return;
+      }
       // 2026-09-14 (Irene: 「컨펌 버튼이 안 눌려」) — 예전에는 실패를 조용히 삼켜
       //   «눌러도 아무 일도 안 나는» 화면이 됐다. 서버 사정을 그대로 보여 준다.
       const body = await response.json().catch(() => null);

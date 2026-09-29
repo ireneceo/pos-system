@@ -1,52 +1,53 @@
 ---
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-09-28 (Irene 외출로 중단 저장 — /개발완료)
-**버전:** 운영 **v3.103** · SW **5.65-reconcile-total-first-20260925**(마지막 배포 2026-09-25 19:16, 백업 20260925_185824)
-**작업 상태:** 🟡 진행 중 — 코드 묶음 착수(백엔드 3건 편집만 · 빌드·검증·게이트 전)
+**마지막 업데이트:** 2026-09-29 (Irene 「나머지는 저장하고 다음 섹션에 할게」 — 중단 저장)
+**버전:** 운영 **v3.103** · SW 운영 **5.65-reconcile-total-first-20260925** / 개발 **5.66-sales-order-share-20260929**(빌드 1회 완료·미배포)
+**작업 상태:** 🟡 진행 중 — 코드 묶음 거의 완료(verify-all --full·Fable 게이트 전) + Fable 판정 1건 대기
 
 ### 진행 중인 작업
-- 🟡 **[Claude Code] 2026-09-27 Irene 지시 묶음 — 코드 13건 한 묶음(빌드 1회·verify-all --full 1회 → Fable 게이트 1회 → Irene /배포)**
-  - 판정 원문(재호출 불필요): **1회차 `.claude/fable-verdict-20260927.md` Ⅱ** + **2회차 `.claude/fable-verdict-20260928.md` Ⅱ(R7·F4)**. 남은 Fable = 구현 후 게이트 1회뿐. Irene 「fable 사용최소화하고 계속 해」.
-  - ✅ 운영 데이터 2건 COMMIT (2026-09-28 03:24 UTC) — restaurant_managers id29 oversight→ownership · id45 삭제 · users 64 is_active=0 · brands 1·2 min_order_amount 300 / delivery_fee 10 (영향행 1·1·1·2). 사전 SELECT = 판정 예상과 동일. 사후: gitconsulting 컨텍스트 3장(GIT Consulting BG · with MIN Cafe RA · with MIN Cafe 오너) — **Irene 로그인 눈 확인 대기**.
-  - 🟡 편집 완료·**테스트 전**(node --check 만 통과, pm2 restart 안 함):
-    - R1 `routes/restaurants-crud.js` PUT /:id 두 곳 — destroy 를 oversight 로 한정 + 소유 행 가진 manager_id 는 bulkCreate 제외 · managers through 에 relationship_type, 목록(:299)·상세(:852) 필터에서 ownership 제외
-    - R2 `routes/cash-management.js` — `assertShiftOpen` 헬퍼, 입출금 PUT/DELETE 에 SHIFT_NOT_OPEN
-    - R7 백엔드 — `models/Brand.js`·`Foodcourt.js` delivery_policy(**dev DB 컬럼 ALTER 로 추가 완료**) · brands-core/foodcourts-core GET·PUT · supplier.js 허용필드 · `utils/sellerNames.js` attributes+map+`normalizeDeliveryPolicy`(500자, 태그문자 제거) · restaurants-ingredients `seller_delivery_policy`
-  - ⬜ 남은 것:
-    - R3 verify-all 에 빌드 밖 tsc 기준선(439) 게이트
-    - R4 배포 안전망 — 조사 결과: 운영 `/var/www/rollback-production.sh` 는 dev 사본과 **md5 다름**(c768… vs c9ab…), 1월 버전. 백업 실제 구조 = `/var/www/backups/<TS>/production-backend/`(node_modules·.git 제외, .env·uploads 포함) + `production-frontend-build/`, DB 덤프 `/var/backups/orderhere/pre-deploy/db_predeploy_<TS>.sql.gz`. 롤백은 `.backup` 접미사·`db_backup_<TS>` 를 찾아 전부 skip. 계획: 공용 경로 파일(예 `deploy-layout.sh`)을 두 스크립트가 source + 배포가 롤백 스크립트를 운영에 복사 · 배포에 rsync 후 플래그/EXIT trap 자동 원복(.env·uploads·logs·node_modules 보존) · 롤백은 제외 rsync + 전부 skip 이면 실패.
-    - R5 rsync `--exclude '_tmp_*' --exclude 'tmp/'` (dev `tmp/restart.txt` = 2025-11 빈 파일, 미사용 — 제외만)
-    - R6 문서 shared_with_stores 「드롭하지 않음」
-    - R8 판매자 메일 머리글 = `company_name || name`(`utils/emailBranding.js` brand 분기 name) + 월 SOA `services/soaScheduler.js:375` sellerName 같은 규칙 · buyerReceivedEmail 무브랜딩(`notificationTemplates.js:613`) 은 참고
-    - F1 StaffManagementPage Edit 모달 UserContextsSection(RA) · F2 index.tsx hadController · F3 PwaInstallBanner zIndex 900 · F4 배송 가능 지역 textarea 3화면 + 담기 화면 한 줄 · **F5 BG 인보이스 0원 Confirm 성공 후 `fetchInvoicesToPay(); fetchPaidInvoices(); refreshBadgeCounts`**(`BrandInvoicesPage.tsx:383`, 현재 `fetchInvoices()` 만 → 목록 그대로 남아 «안 눌림») + **실브라우저 클릭 확인**
-    - 순서: 백엔드 실호출·고장주입(pm2 restart 후) → 프론트 → i18n:verify → SW bump → build:dev 1회 → verify-all --full 1회 → check-sensitive-diff → Fable 게이트 → 기록
-  - 배포 뒤 할 일: 운영 브랜드 1·2 delivery_policy 「Petaling Jaya, Selangor」 입력(판정 2회차).
-  - ⚠ 다음 배포 전까지 SA 화면에서 with MIN Cafe 매장 정보 저장 금지(R1 미배포).
-  - 운영 미확정 0원 청구서 93·88·69·61(payer BG 23, pending_payment) — F5 배포 후 Irene 이 Confirm.
+- 🟡 **[Claude Code] 코드 묶음 (09-27 지시 13건 + 09-29 Sales Orders 3건) — 개발서버, 미배포**
+  - 판정 원문: `.claude/fable-verdict-20260927.md` Ⅱ · `.claude/fable-verdict-20260928.md` Ⅱ. **새 판정 대기: `.claude/fable-verdict-20260929.md`**(사안1 K-DINE 재료·메뉴 / 사안2 F2) — Fable 이 백그라운드로 작성 중이었음. 파일 없으면 재호출 필요.
+  - ✅ 09-29 신규(Irene 「Buyer 2열 → 위아래」「상세팝업에서 왓츠앱 공유」「카테고리별로 묶어서」): `IncomingOrdersView.tsx`(Buyer 세로 · 상세 품목 판매자 카테고리 묶음 · WhatsApp 공유 버튼) · `utils/poShare.ts`(`groupItemsBySellerCategory`·`shareSellerOrderViaWhatsApp`, wa.me/?text= 그룹 선택) · 백엔드 `utils/sellerProductIdentity.js attachSellerProductCategory` → `seller-orders.js GET /:id` · supplier.json 4언어 2키. 실호출 BG 200·공급업체 200·익명 401 · jest poShare 11/11 · 고장주입 1(1차 약함 → 재주입 성립) · 실브라우저 6/6. 해석: 주문 1건 안의 품목 묶음(여러 주문 합산 준비목록 아님 — Irene 확인 필요 시).
+  - ✅ R1 오너행 보존 실호출 8/8(관리자 교체 분기 포함, 데모 매장 38 임시 오너행 → 원복 identical) · 고장주입 5 실패 확인
+  - ✅ R2 마감 교대 잠금 5/5 · 고장주입 3 실패 확인 · 잔여 0
+  - ✅ R7 배송 지역 브랜드 8/8 · 공급업체·푸드코트 2/2 · 원복. ⚠ 판정은 «마이그 불필요»였으나 배포는 sync-database 를 --alter 없이 돌리고 게이트가 막음 → **`scripts/migrate-add-seller-delivery-policy.js` 신설·레지스트리 deploy 등록**(dev 칸 드롭→마이그로 재추가 증명·멱등). 게이트에 사실로 보고할 것.
+  - ✅ R8 메일 머리글 회사명(`emailBranding.js` brand name = company_name||name) 3/3 · 고장주입 2 · 월 SOA sellerName 두 경로(`soaScheduler.js` 자동·수동) — 메일 실발송 확인 불가(코드 대조만)
+  - ✅ R3 `scripts/check-type-baseline.js` + `scripts/type-baseline.json`(436건/80파일, 저장소 밖 증분캐시) · verify-all `type-baseline`(runtime) 등록 · 반증(오류 1줄 → 실패, 원복 → 통과). tsc 종료코드 1 도 정상 처리.
+  - ✅ R4 `/var/www/scripts/deploy-layout.sh` 신설(경로+`restore_code_from_backup`, --checksum 제외 rsync) · `deploy-to-production.sh`(layout source · 백업 직후 롤백 도구 운영 복사 · 백엔드 rsync~pm2 재시작 구간 EXIT trap 자동 원복, 레이아웃을 ssh stdin 으로 실행) · `rollback-production.sh` v3 재작성(되돌린 것 0 이면 실패). 가짜 디렉터리 재현 `scratchpad r4test.sh` 25/25 · 고장주입 2. 백업 원본: 세션 scratchpad deploy.bak/rollback.bak.
+  - ✅ R5 rsync `_tmp_*`·`tmp/` 제외 · R6 `docs/SUPPLIER_CONTRACT_SYSTEM.md` «드롭하지 않음»
+  - ✅ F1 RA 수정 창 자격 영역(실브라우저: RA 보임·Staff 안 보임) · F3 배너 z 900(모달이 위) · F4 배송 지역 칸 BG·FG·공급업체 + 발주 담기 한 줄(4언어, BG 저장→새로고침 유지) · F5 0원 Confirm 후 목록 즉시 갱신(BG 실클릭 5/5, **푸드코트 화면 같은 결함 함께 수정**). F5 프론트 고장주입은 빌드 1회 원칙으로 생략.
+  - 🔴 **F2 불충족** — 실측: 새 프로필 첫 방문 문서 로드 2회, SW 교체 시 2회. 원인 추정 `public/sw.js` activate 의 `w.navigate(w.url)`(범위 밖이라 무접촉). Fable 판정 대기(사안2).
+  - ⚠ 테스트 사고 1건: F5 실브라우저 원복 스크립트가 JSON 칸 때문에 실패 → dev 청구서 462 가 paid/0 으로 남았던 것을 461 대조로 원복(금액·상태·paid_at·메모·updatedAt) + 테스트 활동기록 1건 삭제. 재실행 원복 정상.
+  - ⬜ 남은 순서: Fable 판정(F2) 반영 → (프론트 바뀌면) build:dev 1회 → **verify-all --full 1회** → check-sensitive-diff → 배포 기록 `releases/2026-09-29-*.json` → Fable 게이트 → Irene /배포
+  - 배포 뒤: 운영 브랜드 1·2 delivery_policy «Petaling Jaya, Selangor» 입력 · 0원 청구서 93·88·69·61 Irene Confirm
+  - ⚠ 배포 전까지 SA 화면에서 with MIN Cafe 매장 정보 저장 금지(R1 미배포)
+- 🟡 **[Claude Code] K-DINE IPC(매장 8) 재료 중복·메뉴 상태 — 조사 완료, Fable 판정 대기(사안1)**
+  - 운영 읽기 실측(2026-09-29): 재료 301 = 브랜드 171 + 매장 130, 이름 중복 42그룹(브랜드+매장 짝 38: 브랜드행=레시피 사용, 매장행=09-21 생성·발주 연결 → 사도 레시피 재고 안 움직임). 순두부 4줄. 메뉴: 브랜드 104(수동·잠금 0) / 매장 110(연결 101: 이름 31·가격 21 다름, 매장 신메뉴 8, 브랜드만 3). 재전송 시 세트 15개 구성 덮임 + 브랜드 옵션그룹 38링크 새로 붙음(매장 미러 0).
+  - ⛔ Irene 「절대 지금 K-DINE IPC가 바꾼 메뉴가 돌아가면 안돼」 → 판정 전 brand 2→매장 8 push 금지 · 운영 `/tmp/kd.js --apply` 금지.
+  - Irene 후속 원문 「그럼 1, 2, 3, 4번 문제를 다 어떻게 해결해?」 Fable 에 전달함 — 판정 원문 그대로 전달할 것.
 
-### 완료된 작업 (이번 세션 2026-09-28) [Claude Code]
-- Fable 2회차 판정 수신·저장(AI 키 = SA 화면 Stripe 방식 · 과금 확정 · 배송지역 = 안내 글)
-- 운영 데이터 2건 적용·사후 확인
-- Irene 신고 2건 원인 확정: ①판매자 메일 머리글이 brands.name(로고 없어 «with MIN» 텍스트, 회사명은 바닥글만) ②0원 Confirm 은 저장됨(운영 153·154 paid) — 성공 뒤 엉뚱한 목록 재조회
-- 백엔드 R1·R2·R7 편집 · dev DB 컬럼 추가
+### 완료된 작업 (이번 세션 2026-09-29) [Claude Code]
+- 위 코드 묶음 구현·검증(빌드 1회 · verify-all --quick 정적 통과(deploy-ready·bundle-fresh 만 예정된 실패))
+- SOA 확인(아래 Irene 할 일 2)
 
 ### 다음 확정 작업
-- 위 «진행 중인 작업» 이어서 (Irene 「다음섹션에 하자」)
+- 위 «진행 중인 작업» 이어서 (Irene 「나머지는 저장하고 다음 섹션에 할게」)
 
 ### 👉 Irene 님이 하실 일
-1. gitconsulting 로그인 → 시작 화면에 «with MIN Cafe» 오너 카드 확인
-2. Plans & Payments → Payment Settings 에서 300 / 10 확인
-3. AI: 이번 배포 뒤 /기능설계 (결정 ①② 확정됨)
+1. gitconsulting 로그인 → 시작 화면에 «with MIN Cafe» 오너 카드 확인 · Payment Settings 300/10 확인
+2. **K-DINE IPC SOA** — 운영 사실: 매장 8 월말정산(monthly_soa, 15일) · 정산서 0장 · 안 묶인 청구서 7장 RM 5,705.90(09-13~09-29, 입고 완료 7건) · 입고 전(confirmed) 2건 PO-R8-20260927-002 RM 219.20 · PO-R8-20260929-004 RM 1,089.80 은 청구서 미생성. 발행 = 브랜드 계정 Restaurants(/pos/manager/restaurants) → K-DINE IPC «청구» → 월 명세서 «이번달(오늘까지)» 생성(이전 안 묶인 것 자동 포함). ⚠ 지금 발행하면 R8 미배포라 머리글·발신명이 브랜드명 «K-DINE with MIN».
+3. AI: 이번 배포 뒤 /기능설계
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > /개발시작 자동 추천 대상 아님. 다음 사이클 결정은 Irene 지시 기준.
-- 판정상 안 함: 브랜드·푸드코트 모자/기존 아이디 연결(d) · shared_with_stores 드롭(i) · 대조 줄 단가 전부 빈 발주(b, 운영 0건 — 끝남)
-- 받은 발주 알림 일부(buyerReceivedEmail)가 PurpleHere 기본 모양 — 브랜딩 없음
-- 인보이스 결제 알림 머리글이 거래 브랜드가 아니라 수신자 users.brand_id 기준
+- 판정상 안 함: 브랜드·푸드코트 모자/기존 아이디 연결(d) · shared_with_stores 드롭(i)
+- 받은 발주 알림 일부(buyerReceivedEmail) 무브랜딩 · 인보이스 결제 알림 머리글이 수신자 users.brand_id 기준
+- Sales Orders 검색이 불러온 첫 페이지 안에서만 찾음(브랜드 1 은 141건 중 PO-R5-20260622-003 이 목록 밖) — 기존 동작
+- Owner·Manager 청구서 화면 0원 Confirm 재조회는 확인 안 함
 
 ### 주요 변경사항
-- 운영 DB 쓰기 2건(위) · dev DB brands/foodcourts.delivery_policy 컬럼
-- Git: 이번 /개발완료 커밋
+- 운영 쓰기 0 (읽기만) · dev DB: brands/foodcourts.delivery_policy 드롭→마이그 재추가, 청구서 462 테스트 후 원복
+- Git: 이번 중단 저장 커밋
 
 ---
 

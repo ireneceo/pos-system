@@ -152,7 +152,10 @@
     "delivery": {
       "title": "Delivery terms",
       "freeAbove": "Free delivery at or above this amount",
-      "fee": "Delivery fee below that (fixed)"
+      "fee": "Delivery fee below that (fixed)",
+      "areas": "Delivery areas",
+      "areasPlaceholder": "e.g. Petaling Jaya, Selangor",
+      "areasHint": "Where and when you deliver. Shown to buyers when they order — not used to calculate the delivery fee."
     }
   },
   "invoices": {
@@ -270,6 +273,10 @@
       "notesPlaceholder": "Anything the buyer should know about this order.",
       "submit": "Create order",
       "cancel": "Cancel"
+    },
+    "detail": {
+      "shareWhatsApp": "Share via WhatsApp",
+      "uncategorized": "Other"
     }
   },
   "tradeInvoicesPage": {

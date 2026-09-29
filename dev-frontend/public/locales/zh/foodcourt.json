@@ -393,5 +393,8 @@
   "foodcourtPaymentSettingsPage.deliveryTerms": "门店订货配送条件",
   "foodcourtPaymentSettingsPage.deliveryTermsDesc": "门店向该美食广场下单时会自动加上配送费。留空则不显示配送费。",
   "foodcourtPaymentSettingsPage.freeAbove": "达到或超过此金额免运费",
-  "foodcourtPaymentSettingsPage.deliveryFee": "未达金额时的配送费（固定）"
+  "foodcourtPaymentSettingsPage.deliveryFee": "未达金额时的配送费（固定）",
+  "foodcourtPaymentSettingsPage.deliveryAreas": "配送地区",
+  "foodcourtPaymentSettingsPage.deliveryAreasPlaceholder": "例如：Petaling Jaya, Selangor",
+  "foodcourtPaymentSettingsPage.deliveryAreasHint": "填写配送地区和时间。门店下单时可见——不用于计算配送费。"
 }

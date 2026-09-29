@@ -47,6 +47,8 @@ interface SellerOpt {
   seller_min_order_amount?: number | null;
   seller_delivery_fee?: number | null;
   seller_currency?: string | null;
+  // 배송 가능 지역 안내 글(2026-09-28 Fable) — 배송비 줄 아래 한 줄로만 보인다. 계산에 넣지 않는다.
+  seller_delivery_policy?: string | null;
   unit_price: number;
   unit_conversion: number;
   min_order_quantity: number;
@@ -1862,6 +1864,8 @@ const NewPurchaseOrderPage: React.FC = () => {
       seller_name: string;
       items: Array<{ row: CartRow; seller: SellerOpt }>;
       subtotal: number;
+      terms: { min_order_amount: number | null; delivery_fee: number | null; currency: string | null };
+      delivery_policy: string | null;
     }>();
     for (const row of cart) {
       const seller = row.available_sellers.find(s => s.id === row.selected_seller_id);
@@ -1879,7 +1883,9 @@ const NewPurchaseOrderPage: React.FC = () => {
           min_order_amount: seller.seller_min_order_amount ?? null,
           delivery_fee: seller.seller_delivery_fee ?? null,
           currency: seller.seller_currency ?? null
-        }
+        },
+        // terms 밖에 둔다 — computeDeliveryFee 가 받는 값은 그대로(안내 글은 계산에 들어가지 않는다)
+        delivery_policy: seller.seller_delivery_policy || null
       });
     }
     // 배송비는 **품목 합계가 정해진 뒤** 얹는다(Irene 지정). 저장될 때 진실은 서버 계산값이다.
@@ -2517,6 +2523,11 @@ const NewPurchaseOrderPage: React.FC = () => {
                       </span>
                       <span>{g.delivery_fee.toFixed(2)}</span>
                     </div>
+                    {g.delivery_policy && (
+                      <div style={{ color: '#6B7280', overflowWrap: 'anywhere' }}>
+                        {t('newPo.deliveryAreas', 'Delivery areas')}: {g.delivery_policy}
+                      </div>
+                    )}
                     {g.to_free != null && (
                       <div style={{ color: '#B45309' }}>
                         {t('newPo.deliveryToFree', '{{amount}} 더 담으면 배송비 무료', { amount: g.to_free.toFixed(2) })}

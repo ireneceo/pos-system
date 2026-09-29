@@ -847,7 +847,10 @@
     "deliveryTerms": "Terma penghantaran bagi pesanan restoran",
     "deliveryTermsDesc": "Yuran penghantaran ditambah secara automatik apabila restoran memesan daripada jenama ini. Biarkan kosong dan tiada yuran penghantaran dipaparkan.",
     "freeAbove": "Penghantaran percuma pada atau melebihi jumlah ini",
-    "deliveryFee": "Yuran penghantaran di bawahnya (tetap)"
+    "deliveryFee": "Yuran penghantaran di bawahnya (tetap)",
+    "deliveryAreas": "Kawasan penghantaran",
+    "deliveryAreasPlaceholder": "cth. Petaling Jaya, Selangor",
+    "deliveryAreasHint": "Di mana dan bila anda menghantar. Dipaparkan kepada kedai semasa membuat pesanan — tidak digunakan untuk mengira caj penghantaran."
   },
   "productIngredientsTab": {
     "packSizeNeedsConfirm": "perlu disahkan",

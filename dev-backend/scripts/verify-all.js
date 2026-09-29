@@ -74,6 +74,9 @@ const GATES = [
   { id: 'inspection', tier: 'runtime', label: '🔎 인스펙션 하니스 (구조 불변식, 신규 위반 0)', cwd: BACKEND, cmd: ['node', 'scripts/inspection/run.js'] },
   { id: 'health', tier: 'runtime', label: '❤️ health-check 전체 회귀 (인쇄 계약+보안+API)', cwd: BACKEND, cmd: ['node', 'scripts/health-check.js', '--quiet'], timeout: 300000 },
   { id: 'print-routes', tier: 'runtime', label: '🖨️ 인쇄 라우트 가드 (자동인쇄 전 루트 실제 실행)', cwd: FRONTEND, cmd: ['node', 'scripts/print-route-guard/run.js', '--quiet'], timeout: 600000 },  // 300s→600s (2026-08-20): e2e·빌드와 겹치면 34/34 정상인데도 타임아웃으로 거짓 실패했다. 게이트를 느슨하게 한 게 아니라 부하 여유만 준 것.
+  // 빌드 밖 타입 검사 (2026-09-27 R3) — 빌드는 타입 검사기가 죽어도 exit 0 이다. 파일별 기준선보다 늘면 실패.
+  //   무거운 작업(tsc 약 3.5GB)이라 heavy-task-gate 를 먼저 통과해야 하고, 막히면 «확인 불가» 로 실패한다.
+  { id: 'type-baseline', tier: 'runtime', label: '🔤 타입 오류 기준선 (빌드 밖 tsc · 파일별 신규 0)', cwd: BACKEND, cmd: ['node', 'scripts/check-type-baseline.js'], timeout: 600000 },
   { id: 'i18n', tier: 'runtime', label: '🌐 i18n 4언어 키 일치', cwd: FRONTEND, cmd: ['node', 'scripts/verify-translations.js'] },
   { id: 'mount', tier: 'mount', label: '🖥️ 실브라우저 mount sweep (8역할 + /pos/manager/*, 크래시0)', cwd: FRONTEND, cmd: null /* 특수 처리: 토큰 자동조달 + 2개 sweep 병합 */, timeout: 1200000 },
 ];

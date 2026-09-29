@@ -157,7 +157,9 @@ async function getEntityBranding(entityType, entityId) {
       const b = await Brand.findByPk(entityId);
       if (!b) return null;
       return await buildBranding('brand', entityId, {
-        name: b.name,
+        // 2026-09-28 R8 — 머리글(로고 없을 때 글자)은 회사명이 먼저. 브랜드명(«with MIN»)은 메뉴 이름이지
+        //   판매 주체가 아니다 — Irene 신고: 판매자 메일 머리글에 회사명이 아니라 브랜드명이 찍혔다(회사명은 바닥글에만).
+        name: b.company_name || b.name,
         logo_url: b.logo_url,
         website: b.website,
         company_name: b.company_name || b.name,

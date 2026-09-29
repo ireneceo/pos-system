@@ -45,7 +45,7 @@ router.use(requireSellerRole);
 // (Design: docs/STOCK_ITEM_VS_SUPPLIER_PRODUCT_DESIGN.md.)
 // 2026-08-27: 같은 조인이 구매자 상세·목록에도 필요해져 utils/sellerProductIdentity 로
 // 단일화했다. 여기는 얇은 위임만 남긴다(호출부 4곳이 같은 이름을 보게).
-const { attachSellerProductIdentity } = require('../utils/sellerProductIdentity');
+const { attachSellerProductIdentity, attachSellerProductCategory } = require('../utils/sellerProductIdentity');
 async function attachSellerProductInfo(pos) {
   return attachSellerProductIdentity(pos);
 }
@@ -380,6 +380,7 @@ router.get('/:id', async (req, res) => {
     const obj = po.toJSON();
     obj.buyer = await resolveBuyerInfo(po);
     await attachSellerProductInfo(obj);
+    await attachSellerProductCategory(obj); // 상세 품목을 판매자 카테고리별로 묶어 보이게(2026-09-29 Irene)
     res.json({ success: true, data: obj });
   } catch (err) {
     console.error('GET /api/seller-orders/:id error:', err);

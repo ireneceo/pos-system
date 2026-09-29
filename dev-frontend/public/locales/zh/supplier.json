@@ -152,7 +152,10 @@
     "delivery": {
       "title": "配送条件",
       "freeAbove": "达到或超过此金额免运费",
-      "fee": "未达金额时的配送费（固定）"
+      "fee": "未达金额时的配送费（固定）",
+      "areas": "配送地区",
+      "areasPlaceholder": "例如：Petaling Jaya, Selangor",
+      "areasHint": "填写配送地区和时间。买家下单时可见——不用于计算配送费。"
     }
   },
   "invoices": {
@@ -270,6 +273,10 @@
       "notesPlaceholder": "买方需要知道的事项。",
       "submit": "建立订单",
       "cancel": "取消"
+    },
+    "detail": {
+      "shareWhatsApp": "通过 WhatsApp 分享",
+      "uncategorized": "其他"
     }
   },
   "tradeInvoicesPage": {

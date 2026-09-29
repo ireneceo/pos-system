@@ -19,8 +19,8 @@ import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
 import { useTabParam } from '../../hooks/useTabParam';
-import { lineQtyText } from '../../utils/unitConversion';
-import { supplierFacingName } from '../../utils/poShare';
+import { lineQtyText, formatQuantity } from '../../utils/unitConversion';
+import { supplierFacingName, groupItemsBySellerCategory, shareSellerOrderViaWhatsApp } from '../../utils/poShare';
 
 // Layout / Form / ModalButton primitives are inlined here on purpose.
 // Importing them across chunks from `components/UI` triggered a TDZ runtime
@@ -1296,7 +1296,8 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                         </div>
                       </DataTableCell>
                       <DataTableCell data-label={tNs('orders.table.buyer', 'Buyer') as string}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {/* 2026-09-29 Irene 「Buyer가 2열로 나오는게 너무 보기 안좋아. 위아래로」 — 종류 배지 위, 이름 아래 */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
                           <BuyerType>{row.buyer_entity_type || 'buyer'}</BuyerType>
                           <strong style={{ color: '#0A2540' }}>{row.buyer_name || '—'}</strong>
                         </div>
@@ -1880,6 +1881,14 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
             <ModalButton variant="secondary" onClick={closeDetail}>
               {tNs('orders.detail.close', 'Close')}
             </ModalButton>
+            {/* 2026-09-29 Irene 「그룹챗에 항상 넘기는데 주문이 많으면 캡쳐가 안돼」 — 상세에서 바로 WhatsApp 공유 */}
+            {detailFull && (
+              <ModalButton
+                onClick={() => shareSellerOrderViaWhatsApp(detailFull, formatQuantity, tNs('orders.detail.uncategorized', 'Other'))}
+              >
+                {tNs('orders.detail.shareWhatsApp', 'Share via WhatsApp')}
+              </ModalButton>
+            )}
             {detailRow?.status === 'submitted' && (
               <>
                 <ModalButton
@@ -1970,7 +1979,17 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                   <div style={{ textAlign: 'right' }}>{tNs('orders.detail.unitPrice', 'Unit Price')}</div>
                   <div style={{ textAlign: 'right' }}>{tNs('orders.detail.lineTotal', 'Total')}</div>
                 </div>
-                {(detailFull.items || []).map((it: any) => (
+                {/* 2026-09-29 Irene 「카테고리별로 묶어서 주문관리하게」 — 판매자 카테고리 묶음, 묶음 안은 주문 순서 */}
+                {groupItemsBySellerCategory<any>(detailFull.items).map((g, _gi, all) => (
+                  <React.Fragment key={g.key}>
+                  {/* 카테고리가 하나도 없는 주문(연결 없는 옛 발주)은 제목 줄 없이 예전 모양 그대로 */}
+                  {(g.name || all.length > 1) && <div style={{
+                    padding: '6px 12px', borderTop: '1px solid #C7CED6', background: '#F1F4F8',
+                    fontSize: 12, fontWeight: 700, color: '#0A2540'
+                  }}>
+                    {g.name || tNs('orders.detail.uncategorized', 'Other')} <span style={{ color: '#4B5563', fontWeight: 600 }}>({g.items.length})</span>
+                  </div>}
+                {g.items.map((it: any) => (
                   <div key={it.id} style={{
                     display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
                     padding: '10px 12px', borderTop: '1px solid #F1F4F8',
@@ -1998,6 +2017,8 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                       {formatMoney(it.line_total, detailFull.currency)}
                     </div>
                   </div>
+                ))}
+                  </React.Fragment>
                 ))}
               </div>
             </div>

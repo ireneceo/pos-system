@@ -393,5 +393,8 @@
   "foodcourtPaymentSettingsPage.deliveryTerms": "Terma penghantaran bagi pesanan restoran",
   "foodcourtPaymentSettingsPage.deliveryTermsDesc": "Yuran penghantaran ditambah secara automatik apabila restoran memesan daripada medan selera ini. Biarkan kosong dan tiada yuran penghantaran dipaparkan.",
   "foodcourtPaymentSettingsPage.freeAbove": "Penghantaran percuma pada atau melebihi jumlah ini",
-  "foodcourtPaymentSettingsPage.deliveryFee": "Yuran penghantaran di bawahnya (tetap)"
+  "foodcourtPaymentSettingsPage.deliveryFee": "Yuran penghantaran di bawahnya (tetap)",
+  "foodcourtPaymentSettingsPage.deliveryAreas": "Kawasan penghantaran",
+  "foodcourtPaymentSettingsPage.deliveryAreasPlaceholder": "cth. Petaling Jaya, Selangor",
+  "foodcourtPaymentSettingsPage.deliveryAreasHint": "Di mana dan bila anda menghantar. Dipaparkan kepada kedai semasa membuat pesanan — tidak digunakan untuk mengira caj penghantaran."
 }

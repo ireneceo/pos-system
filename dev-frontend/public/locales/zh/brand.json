@@ -847,7 +847,10 @@
     "deliveryTerms": "门店订货配送条件",
     "deliveryTermsDesc": "门店向该品牌下单时会自动加上配送费。留空则不显示配送费。",
     "freeAbove": "达到或超过此金额免运费",
-    "deliveryFee": "未达金额时的配送费（固定）"
+    "deliveryFee": "未达金额时的配送费（固定）",
+    "deliveryAreas": "配送地区",
+    "deliveryAreasPlaceholder": "例如：Petaling Jaya, Selangor",
+    "deliveryAreasHint": "填写配送地区和时间。门店下单时可见——不用于计算配送费。"
   },
   "productIngredientsTab": {
     "packSizeNeedsConfirm": "待确认",

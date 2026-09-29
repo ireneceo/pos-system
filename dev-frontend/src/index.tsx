@@ -116,6 +116,11 @@ if ('serviceWorker' in navigator) {
         return m ? m[1] : '1';
       } catch { return '1'; }
     })();
+    // 2026-09-27 F2 — 처음 오는 사람(아직 SW 가 없던 페이지)은 SW 가 처음 제어권을 잡을 때도
+    //   controllerchange 가 울려, 첫 방문마다 **한 번 더 새로고침**(설정 조회 2회·화면 깜빡임)이 났다.
+    //   새로고침이 필요한 건 «옛 SW → 새 SW» 교체뿐이므로, 등록 전에 이미 제어 중이던 SW 가 있었을 때만 새로고침한다.
+    //   ⚠ 첫 설치만 건너뛴다 — 그 탭을 며칠 켜 두는 키오스크도 **다음 배포의 교체**에서는 새로고침해야 한다.
+    let hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.register(`/sw.js?b=${buildId}`, { scope: '/' }).then((reg) => {
       // 2026-06-04 (Irene): kiosk POS devices that never navigate were getting
       // stuck on an OLD service worker serving an OLD bundle — a plain app reopen
@@ -131,6 +136,7 @@ if ('serviceWorker' in navigator) {
     });
     let _swReloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) { hadController = true; return; } // 첫 설치 — 이미 새 번들로 떠 있다
       if (_swReloaded) return;
       _swReloaded = true;
       // A fresh SW just took control → reload once to run the new bundle.

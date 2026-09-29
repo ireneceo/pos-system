@@ -12,7 +12,7 @@
  *   ④«x» 곱셈 표기·«(ref: 내부명)» 꼬리는 없어졌다(공급업체 문서에서 내부명을 빼기로 한 Irene 지시).
  *   화면 jest 는 verify-all 게이트에 들어 있지 않다 — 프론트 유틸을 고치면 이 파일을 직접 돌릴 것.
  */
-import { poItemLines, poItemName, SharePO } from './poShare';
+import { poItemLines, poItemName, SharePO, groupItemsBySellerCategory, shareSellerOrderViaWhatsApp } from './poShare';
 
 const fmt = (q: any) => String(q);
 
@@ -103,5 +103,35 @@ describe('poItemName — 발주 품목·입고·반품 줄 이름', () => {
   test('빈 값·null 도 견딘다', () => {
     expect(poItemName(null)).toEqual({ main: '', sub: '' });
     expect(poItemName({})).toEqual({ main: '', sub: '' });
+  });
+});
+
+describe('판매자 주문 — 카테고리 묶음 · 그룹챗 공유 (2026-09-29 Irene)', () => {
+  const line = (id: number, name: string, cat: { id: number; name: string; sort_order?: number } | null) => ({
+    id, seller_product_name: name, quantity_ordered: 1, unit_price: 10, seller_product_category: cat,
+  });
+  const MEAT = { id: 2, name: 'Meat', sort_order: 1 };
+  const SAUCE = { id: 5, name: 'Sauce', sort_order: 0 };
+
+  test('카테고리 sort_order 순, 없는 줄은 맨 뒤 한 묶음, 묶음 안은 주문 순서 유지', () => {
+    const g = groupItemsBySellerCategory([line(1, 'Beef', MEAT), line(2, 'Mystery', null), line(3, 'Soy', SAUCE), line(4, 'Pork', MEAT)]);
+    expect(g.map(x => x.name)).toEqual(['Sauce', 'Meat', null]);
+    expect(g[1].items.map(i => i.id)).toEqual([1, 4]);
+  });
+
+  test('공유 문구: 번호 없이 대화 선택 화면으로, 카테고리 제목·구매처·합계 포함', () => {
+    const open = jest.spyOn(window, 'open').mockImplementation(() => null);
+    shareSellerOrderViaWhatsApp({
+      id: 9, po_number: 'PO-1', currency: 'MYR', total_amount: 30, buyer: { name: 'K-DINE IPC Branch' },
+      items: [line(1, 'Beef', MEAT), line(2, 'Mystery', null), line(3, 'Soy', SAUCE)] as any,
+    }, fmt, 'Other');
+    const url = String(open.mock.calls[0][0]);
+    expect(url.startsWith('https://wa.me/?text=')).toBe(true);
+    const text = decodeURIComponent(url.split('?text=')[1]);
+    expect(text).toContain('*K-DINE IPC Branch*');
+    expect(text.indexOf('*Sauce (1)*')).toBeLessThan(text.indexOf('*Meat (1)*'));
+    expect(text.indexOf('*Meat (1)*')).toBeLessThan(text.indexOf('*Other (1)*'));
+    expect(text).toContain('*Items: 3 · TOTAL: RM 30.00*');
+    open.mockRestore();
   });
 });

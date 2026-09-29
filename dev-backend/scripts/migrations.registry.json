@@ -13,6 +13,7 @@
     "migrate-add-order-idempotency.js",
     "migrate-add-order-notes.js",
     "migrate-add-partial-payment.js",
+    "migrate-add-seller-delivery-policy.js",
     "migrate-add-supplier-company-shared.js",
     "migrate-add-supplier-copy-columns.js",
     "migrate-addon-route-shared-ingredients.js",

@@ -29,6 +29,7 @@ import {
 } from '../../components/UI';
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
+import UserContextsSection from '../../components/Admin/UserContextsSection';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency, getActivePlanCurrencies } from '../../utils/currency';
@@ -2181,6 +2182,12 @@ const AdminStaffManagementPage: React.FC = () => {
                   )}
                 </FormGrid>
 
+                {/* 2026-09-27 F1 — 매장 관리자(RA) 계정에도 «다른 자리(모자)» 부여 입구.
+                    Managers 목록엔 RA 가 없어(`/api/users?role=Manager`) RA 는 부여 화면에 닿을 길이 없었다.
+                    ManagersPage 와 같은 공용 컴포넌트 — 부여 0건이면 «없음»만 보인다. */}
+                {editingStaff.role === 'Restaurant Admin' && (
+                  <UserContextsSection userId={editingStaff.id} />
+                )}
               </>
             )}
         </CommonModal>

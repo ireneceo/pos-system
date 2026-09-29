@@ -393,5 +393,8 @@
   "foodcourtPaymentSettingsPage.deliveryTerms": "Delivery terms for restaurant orders",
   "foodcourtPaymentSettingsPage.deliveryTermsDesc": "A delivery fee is added automatically when a restaurant orders from this food court. Leave blank and no delivery fee appears.",
   "foodcourtPaymentSettingsPage.freeAbove": "Free delivery at or above this amount",
-  "foodcourtPaymentSettingsPage.deliveryFee": "Delivery fee below that (fixed)"
+  "foodcourtPaymentSettingsPage.deliveryFee": "Delivery fee below that (fixed)",
+  "foodcourtPaymentSettingsPage.deliveryAreas": "Delivery areas",
+  "foodcourtPaymentSettingsPage.deliveryAreasPlaceholder": "e.g. Petaling Jaya, Selangor",
+  "foodcourtPaymentSettingsPage.deliveryAreasHint": "Where and when you deliver. Shown to stores when they order — not used to calculate the delivery fee."
 }
