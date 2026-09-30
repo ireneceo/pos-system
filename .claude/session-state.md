@@ -10,7 +10,7 @@
   - Irene 선택(질문 1회, Fable 한도 소진): «발주에 총액만 적으면 차액 자동» + 규칙 「아이템별 가격 수정 > 이후 반영 체크, 토탈 금액 수정 > 이번 인보이스만」(기존 동작과 일치)
   - 구현: `services/purchaseOrderPayment.js` adjustPaidAmount·netDrawerOut(결제취소도 순출금) · `routes/cost-reconciliation.js` 결제된 발주면 청구서 allowPaid 동기 + 드로어 차액 · `services/reconcileInvoiceSync.js` allowPaid(paid_amount=total) · 대조 화면 안내 1줄 + purchaseOrders 4언어 · sw.js 5.68
   - 대상: 결제된 **외부 공급업체** 현금 발주(운영 해당 3건 PO 12·26·52 매장10 전부 외부). 가입 판매자(GIT 등)는 제외 — 판매자 청구서 원본(Fable 판단 필요)
-  - 검증: health-check cash 19/19(신설: 42→40→45→취소 0) · 고장주입 2종 반증 · 빌드 1회(기존 경고 3, 내 파일 아님) · verify-all --full 은 /개발완료 시점 백그라운드 실행 중 → 배포 전 게이트가 다시 돌림
+  - 검증: health-check cash 19/19(신설: 42→40→45→취소 0) · 고장주입 2종 반증 · 빌드 1회(기존 경고 3, 내 파일 아님) · verify-all --full 23/24 → type-baseline 1건(내 중복 타입 선언) 수정 후 단독 재실행 통과 · mount sweep 크래시 0
   - 기록 `dev-backend/releases/2026-09-30-paid-po-total-fix.json` · docs/PURCHASE_ORDER_SYSTEM.md «결제 뒤 금액 정정»
   - check-sensitive-diff ★② — Fable 한도 풀리면 게이트 검증 대상
   - 👉 Irene `/배포` 대기. 배포 후: 매장10 PO 12·26·52 중 하나로 대조 «이 총액으로 확정» 시 현금관리 차액 줄 확인(Irene 실사용)

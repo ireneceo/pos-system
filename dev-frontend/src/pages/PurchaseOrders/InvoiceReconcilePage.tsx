@@ -59,7 +59,6 @@ interface ReconcilePo {
   /** 지난번이 «총액만 맞춤» 이었나 — 서버가 줄 값으로 도출해 내려준다 */
   total_only?: boolean;
   payment_status?: string;
-  seller_is_external?: boolean;
 }
 
 /** 라인마다 사람이 확정할 값 — 기본은 발주 라인 값이다(§1 "다른 줄만 고침"). */
