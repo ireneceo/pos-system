@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../contexts/StoreContext';
 import CashPinModal from './CashPinModal';
 import { formatCurrency } from '../../utils/currency';
@@ -18,6 +19,7 @@ interface Props { restaurantId?: string; dateRange: { start: string; end: string
 
 const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKey, hideSummary }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const store = useStore();
   const currency = store?.operationSettings?.currency || 'MYR';
   const opSettings = store?.operationSettings;
@@ -28,6 +30,8 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
   const [loading, setLoading] = useState(false);
   const [edit, setEdit] = useState<any | null>(null);
   const [delTarget, setDelTarget] = useState<any | null>(null);
+  // 2026-09-30 Irene — 삭제는 이유 필수(서버가 활동기록에 남긴다).
+  const [delReason, setDelReason] = useState('');
   const [busy, setBusy] = useState(false);
   // 수정/삭제 실패 사유 — 서버가 준 사유를 모달 안에 한 줄로 보여준다(예전엔 PIN 외 사유를 조용히 버려
   // 눌러도 아무 일 없어 보였다).
@@ -91,11 +95,11 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
     });
   };
   const doDelete = () => {
-    if (!delTarget) return;
+    if (!delTarget || !delReason.trim()) return;
     withCashPin(async (pin) => {
       setBusy(true);
       setActionError(null);
-      const { status, j } = await api(`/movement/${delTarget.id}`, { method: 'DELETE', body: JSON.stringify(pin ? { cash_pin: pin } : {}) });
+      const { status, j } = await api(`/movement/${delTarget.id}`, { method: 'DELETE', body: JSON.stringify({ delete_reason: delReason.trim(), ...(pin ? { cash_pin: pin } : {}) }) });
       setBusy(false);
       if (status === 200) { setDelTarget(null); fetchList(); }
       else onCashError(j);
@@ -155,6 +159,9 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
             const isSettlement = m.source === 'settlement';
             // 서버는 직원이 직접 넣은 기록(manual)만 수정·삭제를 허용한다(cash-management.js). 화면도 같은 기준.
             const isLocked = m.source !== 'manual';
+            // 발주 결제 줄은 여기서 지우지 않는다 — 금액은 발주에서 고친다(결제 취소 → 대조 총액 → 다시 결제).
+            //   Irene 2026-09-30 「금액 수정을 발주관리에서 가능하면 현금관리에서 삭제 안하는게 맞지」. 그 발주로 바로 보낸다.
+            const poId = m.source === 'purchase_order' && m.purchase_order_id ? m.purchase_order_id : null;
             const sourceBadge = isSettlement ? t('cash:settlementAdj', { defaultValue: 'Settlement' })
               : m.source === 'purchase_order' ? t('cash:sourcePurchaseOrder', { defaultValue: 'Purchase order' })
               : m.source === 'reimbursement' ? t('cash:sourceReimbursement', { defaultValue: 'Reimbursement' })
@@ -176,14 +183,18 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
                   <DataTableAmount highlight style={{ color: isIn ? '#10B981' : '#FF6B6B' }}>{isIn ? '+ ' : '− '}{fc(m.amount)}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label={t('cash:colActions', { defaultValue: 'Actions' })} align="center">
-                  {isLocked ? (
+                  {poId ? (
+                    <IconButton type="button" title={t('cash:openPurchaseOrder', { defaultValue: 'Fix the amount in the purchase order' })} onClick={() => navigate(`/pos/purchase-orders/${poId}`)}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                    </IconButton>
+                  ) : isLocked ? (
                     <span style={{ color: '#9CA3AF', fontSize: 13 }} title={t('cash:systemRecordLocked', { defaultValue: 'This record was created automatically and cannot be edited or deleted.' })}>—</span>
                   ) : (
                     <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'center' }}>
                       <IconButton type="button" title={t('common:button.edit', { defaultValue: 'Edit' })} onClick={() => { setActionError(null); setEdit({ ...m, amount: String(m.amount) }); }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
                       </IconButton>
-                      <IconButton type="button" title={t('common:button.delete', { defaultValue: 'Delete' })} onClick={() => { setActionError(null); setDelTarget(m); }}>
+                      <IconButton type="button" title={t('common:button.delete', { defaultValue: 'Delete' })} onClick={() => { setActionError(null); setDelReason(''); setDelTarget(m); }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                       </IconButton>
                     </div>
@@ -218,11 +229,13 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
         <CommonModal isOpen onClose={() => setDelTarget(null)} title={t('cash:deleteMovement', { defaultValue: 'Delete cash movement' })} size="small"
           footer={<>
             <ModalButton onClick={() => setDelTarget(null)}>{t('cash:cancel', { defaultValue: 'Cancel' })}</ModalButton>
-            <ModalButton variant="danger" disabled={busy} onClick={doDelete}>{busy ? '…' : t('common:button.delete', { defaultValue: 'Delete' })}</ModalButton>
+            <ModalButton variant="danger" disabled={busy || !delReason.trim()} onClick={doDelete}>{busy ? '…' : t('common:button.delete', { defaultValue: 'Delete' })}</ModalButton>
           </>}>
           <p style={{ fontSize: 14, color: '#0A2540', margin: 0 }}>
             {t('cash:deleteConfirm', { defaultValue: 'Delete this {{type}} of {{amount}}?', type: delTarget.type === 'in' ? t('cash:paidIn', { defaultValue: 'Cash in' }) : t('cash:paidOut', { defaultValue: 'Cash out' }), amount: fc(delTarget.amount) })}
           </p>
+          <FormInput value={delReason} onChange={e => setDelReason(e.target.value)} maxLength={255} autoFocus
+            placeholder={t('cash:deleteReasonPlaceholder', { defaultValue: 'Reason for deleting (required)' })} style={{ marginTop: 10 }} />
           {actionError && <p style={{ fontSize: 13, color: '#DC2626', margin: '10px 0 0' }}>{actionError}</p>}
         </CommonModal>
       )}

@@ -81,7 +81,9 @@ async function syncTradeInvoiceFromReconcile(poId, opts = {}) {
   if (!invoice) return { synced: false, reason: '청구서 행이 없습니다' };
 
   // ② 결제된 청구서는 건드리지 않는다
-  if (invoice.status === 'paid' || num(invoice.paid_amount) > 0) {
+  //   2026-09-30 Irene 선택 — 예외: 결제된 발주에 총액을 정정할 때(allowPaid). 청구서 총액과 낸 금액을 같이 맞춘다.
+  const wasPaid = invoice.status === 'paid' || num(invoice.paid_amount) > 0;
+  if (wasPaid && !opts.allowPaid) {
     return { synced: false, reason: '이미 결제 처리된 청구서라 금액을 고치지 않았습니다 — 필요하면 별도로 정정하세요' };
   }
 
@@ -152,6 +154,9 @@ async function syncTradeInvoiceFromReconcile(poId, opts = {}) {
   // ⑤ 총액은 finalize 가 계산한다
   await finalizeInvoice(invoice.id);
   await invoice.reload();
+  if (wasPaid) {
+    await invoice.update({ paid_amount: num(invoice.total_amount) });
+  }
 
   return {
     synced: true,

@@ -718,6 +718,7 @@
       "confirm": "Sahkan jumlah ini (baris kemudian)",
       "needTotal": "Masukkan jumlah invois untuk mengesahkannya.",
       "hint": "Tidak perlu padankan setiap baris. Pembayaran dan invois menggunakan jumlah ini; harga baris tidak disimpan dan tidak mengubah kos.",
+      "paidAdjust": "Sudah dibayar — mengesahkan jumlah ini turut membetulkan amaun dibayar; bezanya ditambah dalam Pengurusan Tunai secara automatik.",
       "clearTitle": "Sahkan jumlah sahaja?",
       "clearBody": "{{n}} harga baris yang disimpan akan dikosongkan dan tidak menjejaskan kos."
     },

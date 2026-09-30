@@ -10,6 +10,8 @@ const { authenticateToken, checkRestaurantAccess, userCanTakePayment, requirePay
 const { getRestaurantTimezone, getDateBounds } = require('../utils/dateTimeHelper');
 const { stripStaffNs } = require('../utils/staffName');
 const { enforceCashPin } = require('../utils/cashPinGuard');
+const { logActivity } = require('../utils/activityLogger');
+const { sanitizeString } = require('../middleware/validation');
 const Restaurant = require('../models/Restaurant');
 
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
@@ -19,7 +21,7 @@ const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 // 조회(GET)는 무게이트. requirePosCounter 를 대체. checkRestaurantAccess 뒤에 둬 rid 검증 후 동작.
 const cashWriteGate = async (req, res, next) => {
   if (!userCanTakePayment(req.user)) {
-    return res.status(403).json({ success: false, error: 'Cash management requires payment permission.', code: 'PAYMENT_ACCESS_REQUIRED' });
+    return res.status(403).json({ success: false, message: 'Cash management requires payment permission.', code: 'PAYMENT_ACCESS_REQUIRED' });
   }
   try {
     const gate = await enforceCashPin(req.params.restaurantId, req.body && req.body.cash_pin);
@@ -477,7 +479,17 @@ router.delete('/restaurant/:restaurantId/movement/:movementId', authenticateToke
     if (!mv) return res.status(404).json({ success: false, message: 'Movement not found' });
     if (mv.source !== 'manual') return res.status(400).json({ success: false, code: 'SETTLEMENT_LOCKED', message: 'System-generated movements cannot be deleted.' });
     if (!(await assertShiftOpen(mv, res))) return;
+    // 2026-09-30 Irene — 삭제는 이유를 적어야 한다. 행은 지우고(마감 공식은 그대로) 누가·왜·무엇을 지웠는지 활동기록에 남긴다.
+    const reason = sanitizeString(String((req.body && req.body.delete_reason) || '')).trim().slice(0, 255);
+    if (!reason) return res.status(400).json({ success: false, code: 'DELETE_REASON_REQUIRED', message: 'A reason is required to delete a cash movement.' });
+    const snapshot = { shift_id: mv.shift_id, type: mv.type, amount: mv.amount, reason: mv.reason, created_by_name: mv.created_by_name, created_at: mv.created_at };
     await mv.destroy();
+    await logActivity(req, {
+      action_type: 'delete', entity_type: 'cash_movement', entity_id: mv.id, restaurant_id: restaurantId,
+      entity_name: `${mv.type === 'in' ? 'Cash in' : 'Cash out'} ${mv.amount}`,
+      changes: { before: snapshot, delete_reason: reason },
+      description: `Deleted cash movement #${mv.id} (${mv.type} ${mv.amount}) — reason: ${reason}`
+    });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

@@ -718,6 +718,7 @@
       "confirm": "Confirm this total (lines later)",
       "needTotal": "Enter the invoice total to confirm it.",
       "hint": "No need to match every line. Payment and the invoice use this total; line prices are not saved and do not change cost.",
+      "paidAdjust": "Already paid — confirming this total also corrects the paid amount: the difference is added in Cash Management automatically.",
       "clearTitle": "Confirm the total only?",
       "clearBody": "{{n}} saved line prices will be cleared and will not affect cost."
     },

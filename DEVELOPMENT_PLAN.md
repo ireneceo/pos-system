@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-09-30 — [Claude Code] **K-DINE IPC 9월 정산서 발행 완료(SOA-BRD2-R8-M20260929173419 · 10장 · RM 7,691.90 · kate 메일 발송).** 운영 배포 #2(17:29 UTC · 백업 `20260929_172243` · 스모크 10/10): 정산서 발행 직전 확정 이후 주문(배송완료·출고 포함) 청구서 선발행. 운영 처리(Irene 지시): 첫 정산서 185 취소(앱 경로) · Printing 상품 3개 매장 8 카탈로그 연결. **미배포 1건: Issued Invoices 다브랜드(dev 검증 완료, /배포 대기).** 대기: A안(배포 상품 연결 없이 주문 + 서비스) Fable 판정.
+> **최종 업데이트:** 2026-09-30 — [Claude Code] **v3.105 운영 배포 — SW `5.67-cash-delete-reason-20260930`(05:25 UTC · 백업 `20260930_051815` · 스모크 10/10).** ① 현금 내역 삭제 이유 필수 + 활동기록 ② 발주 결제 현금 줄 → «발주에서 금액 수정» 버튼 ③ 🔴 메뉴 이미지 소실 결함(03-03부터 — 이미지 안 바꾸고 저장해도 파일 삭제, 브랜드 메뉴가 쓰는 파일 삭제) 수정 ④ 운영 복구: 브랜드2 브랜드 메뉴 이미지 55/68건(이름 정확히 같은 것만). 운영 데모 매장 13 실호출 확인. Fable 한도 소진 — 자체 검증(고장주입 3종 · verify-all --full 24/24). **이후 dev: 결제 뒤 발주 금액 정정(총액만 확정 → 드로어 차액 자동) — 미배포 SW 5.68.** **이후 dev: 결제 뒤 발주 금액 정정(총액만 확정 → 드로어 차액 자동) — 미배포 SW 5.68.**
+
+> **이전:** 2026-09-30 — [Claude Code] **K-DINE IPC 9월 정산서 발행 완료(SOA-BRD2-R8-M20260929173419 · 10장 · RM 7,691.90 · kate 메일 발송).** 운영 배포 #2(17:29 UTC · 백업 `20260929_172243` · 스모크 10/10): 정산서 발행 직전 확정 이후 주문(배송완료·출고 포함) 청구서 선발행. 운영 처리(Irene 지시): 첫 정산서 185 취소(앱 경로) · Printing 상품 3개 매장 8 카탈로그 연결. **미배포 1건: Issued Invoices 다브랜드(dev 검증 완료, /배포 대기).** 대기: A안(배포 상품 연결 없이 주문 + 서비스) Fable 판정.
 
 > **이전:** 2026-09-29 — [Claude Code] **v3.104 운영 배포 — SW `5.66-sales-order-share-20260929`(16:29 UTC · 백업 `20260929_162231` · 스모크 10/10 · 마이그 brands/foodcourts.delivery_policy 추가 2건).** 1차 묶음(R1~R8·F1~F5·Sales Orders·판매자 다중 브랜드, Fable 게이트 PASS) + K-DINE SOA 2차(월결제 Pay 가드·정산서 전체 PDF·발행일/수동 뒤 skip·수신자 0 생성·메일 링크) + 청구서 발행 시점. SOA 2차는 Fable 한도 소진 → Irene 지시로 자체 검증(실호출 25·스케줄러 14·실브라우저 18·고장주입 3·verify-all 24/24). 대기: Irene K-DINE IPC 정산서 수동 발행 → 운영 읽기 확인.
 
@@ -10678,6 +10680,38 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 - 백엔드: `routes/seller-orders.js` · `utils/sellerProductIdentity.js` · `utils/emailBranding.js` · `services/soaScheduler.js` · `scripts/check-type-baseline.js` · `scripts/type-baseline.json` · `scripts/verify-all.js` · `scripts/migrate-add-seller-delivery-policy.js` · `scripts/migrations.registry.json`
 - 프론트: `IncomingOrdersView.tsx` · `utils/poShare.ts(+test)` · `BrandInvoicesPage.tsx` · `FoodcourtInvoicesPage.tsx` · `BrandPaymentSettingsPage.tsx` · `FoodcourtPaymentSettingsPage.tsx` · `SupplierCompanyInfoPage.tsx` · `NewPurchaseOrderPage.tsx` · `StaffManagementPage.tsx` · `PwaInstallBanner.tsx` · `index.tsx` · `public/sw.js`(버전만) · 로케일 4언어
 - 배포: `deploy-to-production.sh` · `rollback-production.sh` · `scripts/deploy-layout.sh` · 문서 `docs/SUPPLIER_CONTRACT_SYSTEM.md`
+
+---
+
+## ✅ 완료: 현금 삭제 이유 · 메뉴 이미지 소실 · 결제 뒤 발주 금액 정정 (2026-09-30) [Claude Code]
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 현금 내역 삭제 이유 필수 | 이유 없으면 400, 활동기록 남김 · 발주 결제 줄은 «발주에서 금액 수정» 버튼 | ✅ v3.105 운영 |
+| 메뉴 이미지 소실 | 이미지 안 바꾸고 저장해도 파일 삭제(03-03부터) · 브랜드 메뉴 참조 파일 삭제 → 수정 | ✅ v3.105 운영 |
+| 브랜드2 메뉴 이미지 복구 | 68건 중 이름 정확히 같은 55건 매장 사진 사본(파일 동일 55/55, 서빙 200) · 13건 미조치 | ✅ 운영 데이터 |
+| 결제 뒤 발주 금액 정정 | 결제된 외부 공급업체 현금 발주에 총액만 확정 → 드로어 차액 자동 + 청구서 금액 동기 · 결제취소는 순출금 | ✅ dev (미배포 · SW 5.68) |
+
+### 수정된 파일
+- `dev-backend/routes/cash-management.js` · `routes/menu.js` · `routes/cost-reconciliation.js`
+- `dev-backend/services/purchaseOrderPayment.js` · `services/reconcileInvoiceSync.js` · `scripts/health-check.js`
+- `dev-frontend/src/components/CashManagement/CashLedger.tsx` · `src/pages/PurchaseOrders/InvoiceReconcilePage.tsx` · locales cash/purchaseOrders 4언어 · `public/sw.js`
+
+---
+
+## ✅ 완료: 현금 삭제 이유 · 메뉴 이미지 소실 · 결제 뒤 발주 금액 정정 (2026-09-30) [Claude Code]
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 현금 내역 삭제 이유 필수 | 이유 없으면 400, 활동기록 남김 · 발주 결제 줄은 «발주에서 금액 수정» 버튼 | ✅ v3.105 운영 |
+| 메뉴 이미지 소실 | 이미지 안 바꾸고 저장해도 파일 삭제(03-03부터) · 브랜드 메뉴 참조 파일 삭제 → 수정 | ✅ v3.105 운영 |
+| 브랜드2 메뉴 이미지 복구 | 68건 중 이름 정확히 같은 55건 매장 사진 사본(파일 동일 55/55, 서빙 200) · 13건 미조치 | ✅ 운영 데이터 |
+| 결제 뒤 발주 금액 정정 | 결제된 외부 공급업체 현금 발주에 총액만 확정 → 드로어 차액 자동 + 청구서 금액 동기 · 결제취소는 순출금 | ✅ dev (미배포 · SW 5.68) |
+
+### 수정된 파일
+- `dev-backend/routes/cash-management.js` · `routes/menu.js` · `routes/cost-reconciliation.js`
+- `dev-backend/services/purchaseOrderPayment.js` · `services/reconcileInvoiceSync.js` · `scripts/health-check.js`
+- `dev-frontend/src/components/CashManagement/CashLedger.tsx` · `src/pages/PurchaseOrders/InvoiceReconcilePage.tsx` · locales cash/purchaseOrders 4언어 · `public/sw.js`
 
 ---
 

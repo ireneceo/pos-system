@@ -162,6 +162,24 @@ async function resolveMenuDirectLink(body, current, restaurantId) {
 }
 
 const { processImage, deleteOldImages } = require('../utils/imageProcessor');
+
+// 2026-09-30 K-DINE IPC 「메뉴 이미지가 자꾸 날아간다」 — 파일을 지우기 전에 아직 쓰는 곳이 있는지 본다.
+//   ① 같은 상품이 같은 파일을 계속 쓰면(이미지 안 바꾸고 저장) 지우지 않는다
+//   ② 다른 상품·브랜드 메뉴가 같은 파일을 가리키면 지우지 않는다(브랜드 메뉴가 매장 파일을 가리키는 옛 데이터)
+async function imageStillReferenced(url, excludeProductId) {
+  const { Op } = require('sequelize');
+  const BrandMenu = require('../models/BrandMenu');
+  const others = await Product.count({ where: { image: url, ...(excludeProductId ? { id: { [Op.ne]: excludeProductId } } : {}) } });
+  if (others > 0) return true;
+  return (await BrandMenu.count({ where: { image_url: url } })) > 0;
+}
+async function deleteImagesIfUnused(urls, excludeProductId) {
+  for (const u of urls) {
+    if (typeof u !== 'string' || !u.startsWith('/uploads/')) continue;
+    if (await imageStillReferenced(u, excludeProductId)) continue;
+    await deleteOldImages(u);
+  }
+}
 const { logActivity } = require('../utils/activityLogger');
 
 // Apply authentication to all routes
@@ -673,17 +691,19 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
     }
 
     // 이전 이미지 파일 삭제 (새 이미지로 교체 시)
-    if (updateData.image && product.image) {
+    //   2026-09-30: 화면은 이미지를 안 바꿔도 기존 주소를 그대로 보낸다 → 같은 주소면 교체가 아니다(삭제 금지).
+    if (updateData.image && product.image && updateData.image !== product.image) {
       try {
         const oldImage = product.image;
+        let urls = [];
         // JSON 형식이면 파싱하여 URL 추출
         if (oldImage.startsWith('{') || oldImage.startsWith('[')) {
           const parsed = JSON.parse(oldImage);
-          const urls = typeof parsed === 'object' ? Object.values(parsed) : [parsed];
-          await deleteOldImages(urls.filter(u => typeof u === 'string' && u.startsWith('/uploads/')));
+          urls = typeof parsed === 'object' ? Object.values(parsed) : [parsed];
         } else if (oldImage.startsWith('/uploads/')) {
-          await deleteOldImages(oldImage);
+          urls = [oldImage];
         }
+        await deleteImagesIfUnused(urls.filter(u => u !== updateData.image), product.id);
       } catch (e) { /* ignore parse errors */ }
     }
 
@@ -998,10 +1018,8 @@ router.delete('/product/:id', checkProductTenant, async (req, res) => {
     // deleteOldImages 는 /brand-menus/(BG 공유)도 자체 보호 + 썸네일까지 정리.
     if (deletedImage && typeof deletedImage === 'string' && deletedImage.startsWith('/uploads/')) {
       try {
-        const stillUsed = await Product.count({ where: { image: deletedImage } });
-        if (stillUsed === 0) {
-          await deleteOldImages(deletedImage);
-        }
+        // 2026-09-30: 브랜드 메뉴가 가리키는 파일도 지키도록 공용 판정으로 통일
+        await deleteImagesIfUnused([deletedImage]);
       } catch (e) {
         console.error('Orphan image cleanup on delete failed:', e.message);
       }

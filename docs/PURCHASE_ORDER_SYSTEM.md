@@ -1899,6 +1899,15 @@ GIT 재고아이템 중 수량이 있는 것은 23종(64 pack 종이밥그릇 ~ 
 - BG·푸드코트 구매자는 드로어가 없다 → 기록만.
 - 되돌리기는 **삭제가 아니라 반대 방향 `in`**. 드로어에서 나간 적 없는 결제는 되돌려도 입금이 없다.
 
+### 결제 뒤 금액 정정 (2026-09-30 · Irene 선택 «발주에 총액만 적으면 차액 자동» · [Claude Code])
+- 결제된 **외부 공급업체** 현금 발주에 대조 «이 총액으로 확정»(총액만) → `adjustPaidAmount`(services/purchaseOrderPayment.js)가
+  낼 금액(payableFrom) − 이 발주의 드로어 순출금(`netDrawerOut`, source=purchase_order) = 차액을 **그 시점 열린 시프트에 한 줄**(out/in) 넣는다. 지우지 않는다(§5-3).
+- 청구서는 `syncTradeInvoiceFromReconcile(..., { allowPaid })` 로 결제됐어도 다시 맞추고 `paid_amount = total_amount`.
+- 결제취소(`reversePayment`)는 원래 한 줄 금액이 아니라 **순출금**을 되돌린다 — 정정 줄이 붙은 뒤에도 드로어 0.
+- 가입 판매자(basis≠supplier_invoice)는 대상 아님 — 판매자 청구서가 원본. 열린 시프트 0개면 `no_open_shift` 로 알리고 드로어는 안 건드린다.
+- 규칙: 항목별 가격 정정 = 줄 대조 + «이후 반영» 체크(판매상품가) / 총액 정정 = 이번 인보이스만(원가 무반영).
+- 박제: health-check cash «결제된 현금 발주에 총액만 확정 …» (고장주입 2종 반증).
+
 ### 남은 백로그 (P4 뒤)
 - **재고아이템을 지우면 과거 발주 라인의 포인터가 사라진다** — FK `poi_product_ingredient_fk`
   가 `ON DELETE SET NULL`. 라인의 수량·단가·판매품목명은 남으므로 "무엇을 샀는지"가 완전히

@@ -85,6 +85,8 @@
   "editMovement": "Edit cash movement",
   "deleteMovement": "Delete cash movement",
   "deleteConfirm": "Delete this {{type}} of {{amount}}?",
+  "deleteReasonPlaceholder": "Reason for deleting (required)",
+  "openPurchaseOrder": "Fix the amount in the purchase order",
   "cashMgmtSubtitle": "Cash in/out accounting history. Manage today's cash drawer from Today's Cash Drawer (Live Orders / Floor Plan).",
   "startFinalSettlement": "Start final settlement",
   "finalSettlementHint2": "The Daily Settlement above prints the expected report (before count). Final settlement = enter the actual amount per method, compare, then print the final report.",

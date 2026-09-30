@@ -184,13 +184,14 @@ async function reversePayment(po, { userId, reason }, t) {
   if (po.payment_method === 'cash' && po.entity_type === 'restaurant' && po.cash_movement_id) {
     const shift = await resolveOpenShift(po.entity_id, t);
     if (shift) {
-      const original = await CashMovement.findByPk(po.cash_movement_id, { transaction: t });
+      // 2026-09-30: 금액 정정(adjustPaidAmount) 줄이 붙었을 수 있으니 원래 한 줄이 아니라 **순출금**을 되돌린다.
+      const net = await netDrawerOut(po.id, t);
       movement = await CashMovement.create({
         // **그 시점의 열린 시프트**에 넣는다 — 이미 마감된 시프트를 건드리면 확정된 마감이 흔들린다.
         shift_id: shift.id,
         restaurant_id: po.entity_id,
         type: 'in',
-        amount: round2(original ? original.amount : po.total_amount),
+        amount: round2(net > 0 ? net : po.total_amount),
         reason: reason || `Refund — purchase order ${po.po_number}`,
         source: 'purchase_order',
         purchase_order_id: po.id,
@@ -237,6 +238,49 @@ async function reversePayment(po, { userId, reason }, t) {
   }
 
   return { po, movement, drawerSkipped, noop: false };
+}
+
+/** 이 발주 때문에 드로어에서 나간 순금액(출금 − 입금). 개인금액 상환(reimbursement)은 제외. */
+async function netDrawerOut(poId, t) {
+  const rows = await CashMovement.findAll({
+    where: { purchase_order_id: poId, source: 'purchase_order' },
+    attributes: ['type', 'amount'], transaction: t,
+  });
+  return round2(rows.reduce((a, m) => a + (m.type === 'out' ? 1 : -1) * Number(m.amount), 0));
+}
+
+/**
+ * 결제된 발주의 금액 정정 (2026-09-30 Irene 선택 — «발주에 총액만 적으면 차액 자동»).
+ *
+ * 규칙은 기존 둘을 잇는다: ①09-10 «대조한 청구 총액을 낸다»(payableFrom) ②§5-3 «고칠 때는 지우지 않고 반대 기록».
+ *   낼 금액(payableFrom) − 이미 드로어에서 나간 순금액 = 차액 → 그 시점의 열린 시프트에 한 줄(out 또는 in).
+ *   가입 판매자(basis≠supplier_invoice)는 대상이 아니다 — 판매자 청구서가 원본이라 구매자가 금액을 못 바꾼다.
+ *   현금 결제가 아니면(이체·카드·개인금액) 드로어는 건드리지 않는다.
+ * @returns {{adjusted:boolean, reason?:string, diff?:number, movement?:object, drawerSkipped?:boolean}}
+ */
+async function adjustPaidAmount(po, { userId }, t) {
+  if (po.payment_status !== 'paid') return { adjusted: false, reason: 'not_paid' };
+  const payable = await resolvePayableAmount(po);
+  if (payable.basis !== 'supplier_invoice') return { adjusted: false, reason: 'registered_seller_or_not_reconciled' };
+  if (!(po.payment_method === 'cash' && po.entity_type === 'restaurant' && po.cash_movement_id)) {
+    return { adjusted: false, reason: 'not_drawer_cash' };
+  }
+  const net = await netDrawerOut(po.id, t);
+  const diff = round2(payable.amount - net);
+  if (Math.abs(diff) < 0.005) return { adjusted: false, reason: 'already_matches', diff: 0 };
+  const shift = await resolveOpenShift(po.entity_id, t);
+  if (!shift) return { adjusted: false, reason: 'no_open_shift', diff, drawerSkipped: true };
+  const movement = await CashMovement.create({
+    shift_id: shift.id,
+    restaurant_id: po.entity_id,
+    type: diff > 0 ? 'out' : 'in',
+    amount: Math.abs(diff),
+    reason: `Amount corrected — purchase order ${po.po_number}: ${net.toFixed(2)} → ${payable.amount.toFixed(2)}`,
+    source: 'purchase_order',
+    purchase_order_id: po.id,
+    created_by_id: userId || null,
+  }, { transaction: t });
+  return { adjusted: true, diff, movement };
 }
 
 /**
@@ -327,7 +371,7 @@ async function paidInvoiceIdsFor(invoice, t) {
 }
 
 module.exports = {
-  recordPayment, reversePayment, reimbursePersonalPayment,
+  recordPayment, reversePayment, reimbursePersonalPayment, adjustPaidAmount, netDrawerOut,
   resolveOpenShift, resolvePayableAmount, payableFrom,
   mirrorPaidToPurchaseOrders, paidInvoiceIdsFor,
   PAYMENT_METHODS, REIMBURSEMENT_METHODS

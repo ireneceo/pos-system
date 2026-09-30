@@ -446,12 +446,27 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
   //    ⛔ 이미 결제된 청구서는 건드리지 않는다(서비스가 사유를 돌려준다).
   //    커밋 뒤에 돈다 — 실패해도 대조 기록은 살아야 한다.
   let invoiceSync = { synced: false, reason: null };
+  // 2026-09-30 Irene 선택 «발주에 총액만 적으면 차액 자동» — 이미 결제된 발주면 청구서 금액과 낸 금액도 같이 맞춘다.
+  const wasPaid = po.payment_status === 'paid';
   try {
     const { syncTradeInvoiceFromReconcile } = require('../services/reconcileInvoiceSync');
-    invoiceSync = await syncTradeInvoiceFromReconcile(po.id, { actorId: actor.changed_by_user_id });
+    invoiceSync = await syncTradeInvoiceFromReconcile(po.id, { actorId: actor.changed_by_user_id, allowPaid: wasPaid });
   } catch (e) {
     console.error(`[reconcile] 청구서 동기화 실패 (발주 ${po.id}):`, e.message);
     invoiceSync = { synced: false, reason: `청구서 동기화 실패: ${e.message}` };
+  }
+
+  // 현금 차액 — 결제된 현금 발주면 드로어에 차액 한 줄(지우지 않는다). 실패해도 대조 기록은 살아 있다(원인은 응답에).
+  let paidAdjustment = null;
+  if (wasPaid) {
+    try {
+      const { adjustPaidAmount } = require('../services/purchaseOrderPayment');
+      const reloaded = await PurchaseOrder.findByPk(id);
+      paidAdjustment = await sequelize.transaction((t2) => adjustPaidAmount(reloaded, { userId: actor.changed_by_user_id }, t2));
+    } catch (e) {
+      console.error(`[reconcile] 결제 금액 정정 실패 (발주 ${po.id}):`, e.message);
+      paidAdjustment = { adjusted: false, reason: e.code || 'error', message: e.message };
+    }
   }
 
   const fresh = await PurchaseOrder.findByPk(id);
@@ -462,6 +477,8 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
       lines_saved: lines.length,
       // 청구서를 고쳤는지 / 왜 안 고쳤는지 그대로 돌려준다 — 조용히 넘어가면 금액이 어긋난 채 남는다
       invoice_sync: invoiceSync,
+      // 결제된 발주의 현금 차액 처리 결과(null = 미결제 발주)
+      paid_adjustment: paidAdjustment,
       // 과거 발주 소급 결과 (켠 라인만). batch_id 로 되돌릴 수 있다.
       retro: retroResults,
       propagated,

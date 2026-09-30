@@ -5328,6 +5328,95 @@ function definePaymentTests() {
     finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); }
   });
 
+  // 2026-09-30 Irene 「현금 가격이 안맞을 때 수정을 못해서 삭제하고 다시 넣는 거」 — 금액 정정은 발주에서:
+  //   현금 결제 → 결제취소 → 대조에 실제 총액 → 다시 결제 = 드로어 순출금이 실제 금액과 같다.
+  test('cash', '발주 현금 금액 정정 — 결제취소 → 대조 총액 → 재결제 시 드로어 순출금 = 실제 금액', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    try {
+      await closeOpenShifts(fx.demoId);
+      const shift = await openCashShift(fx); made.shifts.push(shift.id);
+      ext = await makeExternalPoReceived(fx, { lineTotal: 42 }); made.pos.push(ext.po.id);
+      if (!ext.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${ext.receiveStatus})`)); return false; }
+      const p1 = await request('POST', `/purchase-orders/${ext.po.id}/pay`, { payment_method: 'cash' }, fx.auth);
+      const rf = await request('POST', `/purchase-orders/${ext.po.id}/refund-payment`, { reason: 'wrong amount' }, fx.auth);
+      const [item] = await hcQ('SELECT id FROM purchase_order_items WHERE purchase_order_id = :p', { p: ext.po.id });
+      const rc = await request('POST', `/purchase-orders/${ext.po.id}/reconcile`,
+        { invoice: { total: 40 }, lines: [{ item_id: item.id, invoiced_unit_price: 40 }] }, fx.auth);
+      const p2 = await request('POST', `/purchase-orders/${ext.po.id}/pay`, { payment_method: 'cash' }, fx.auth);
+      const movs = await hcQ('SELECT type, amount FROM cash_movements WHERE purchase_order_id = :p ORDER BY id', { p: ext.po.id });
+      const net = movs.reduce((a, m) => a + (m.type === 'out' ? -1 : 1) * Number(m.amount), 0);
+      const [po] = await hcQ('SELECT payment_status FROM purchase_orders WHERE id = :p', { p: ext.po.id });
+      const ok = p1.status === 200 && rf.status === 200 && rc.status === 200 && p2.status === 200
+        && movs.length === 3 && Math.abs(net + 40) < 0.001 && po.payment_status === 'paid';
+      if (!ok) console.log(c.gray(`      (${p1.status}/${rf.status}/${rc.status}/${p2.status} 이동 ${JSON.stringify(movs)} 순 ${net} ${po.payment_status})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); if (ext) await dropSupplierCompany(ext.sc); }
+  });
+
+  // 2026-09-30 Irene 선택 «발주에 총액만 적으면 차액 자동» — 결제 끝난 현금 발주에 총액만 확정하면
+  //   드로어 차액 한 줄 + 청구서 총액·낸 금액이 같이 맞는다. 다시 고쳐도 순금액이 새 총액, 결제취소는 순금액을 되돌린다.
+  test('cash', '결제된 현금 발주에 총액만 확정 → 드로어 차액 자동 · 청구서 금액 동기 · 재정정·결제취소 순금액', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    const net = async (id) => (await hcQ("SELECT type, amount FROM cash_movements WHERE purchase_order_id = :p AND source = 'purchase_order'", { p: id }))
+      .reduce((a, m) => a + (m.type === 'out' ? 1 : -1) * Number(m.amount), 0);
+    try {
+      await closeOpenShifts(fx.demoId);
+      const shift = await openCashShift(fx); made.shifts.push(shift.id);
+      ext = await makeExternalPoReceived(fx, { lineTotal: 42 }); made.pos.push(ext.po.id);
+      if (!ext.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${ext.receiveStatus})`)); return false; }
+      const p1 = await request('POST', `/purchase-orders/${ext.po.id}/pay`, { payment_method: 'cash' }, fx.auth);
+      const r1 = await request('POST', `/purchase-orders/${ext.po.id}/reconcile`, { total_only: true, invoice: { total: 40 } }, fx.auth);
+      const n1 = await net(ext.po.id);
+      const [inv1] = await hcQ('SELECT total_amount, paid_amount, status FROM invoices WHERE id = :i', { i: ext.inv.id });
+      const r2 = await request('POST', `/purchase-orders/${ext.po.id}/reconcile`, { total_only: true, invoice: { total: 45 } }, fx.auth);
+      const n2 = await net(ext.po.id);
+      const [inv2] = await hcQ('SELECT total_amount, paid_amount, status FROM invoices WHERE id = :i', { i: ext.inv.id });
+      const rf = await request('POST', `/purchase-orders/${ext.po.id}/refund-payment`, { reason: 'hc' }, fx.auth);
+      const n3 = await net(ext.po.id);
+      const ok = p1.status === 200 && r1.status === 200 && r1.body?.data?.paid_adjustment?.adjusted === true
+        && Math.abs(n1 - 40) < 0.001 && Math.abs(Number(inv1.total_amount) - 40) < 0.001 && Math.abs(Number(inv1.paid_amount) - 40) < 0.001 && inv1.status === 'paid'
+        && r2.status === 200 && Math.abs(n2 - 45) < 0.001 && Math.abs(Number(inv2.total_amount) - 45) < 0.001 && Math.abs(Number(inv2.paid_amount) - 45) < 0.001
+        && rf.status === 200 && Math.abs(n3) < 0.001;
+      if (!ok) console.log(c.gray(`      (결제 ${p1.status} 대조 ${r1.status} ${JSON.stringify(r1.body?.data?.paid_adjustment)} 순 ${n1} 청구서 ${JSON.stringify(inv1)} / 재정정 ${r2.status} 순 ${n2} ${JSON.stringify(inv2)} / 취소 ${rf.status} 순 ${n3})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); if (ext) await dropSupplierCompany(ext.sc); }
+  });
+
+  // 2026-09-30 Irene 「삭제할 때 이유를 넣게」 — 직접 입력 내역 삭제는 이유 필수 · 활동기록에 남는다.
+  test('cash', '현금 내역 삭제는 이유 필수(400) · 이유 있으면 삭제 + 활동기록', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    try {
+      await closeOpenShifts(fx.demoId);
+      const shift = await openCashShift(fx); made.shifts.push(shift.id);
+      const cr = await request('POST', `/cash/restaurant/${fx.demoId}/shift/${shift.id}/movement`, { type: 'out', amount: 1.23, reason: 'hc' }, fx.auth);
+      const id = cr.body && cr.body.data && cr.body.data.id;
+      // DELETE 본문은 Content-Length 가 있어야 서버가 읽는다(이 request() 는 안 붙이고, 브라우저 fetch 는 붙인다).
+      const withLen = (o) => ({ ...fx.auth, 'Content-Length': Buffer.byteLength(JSON.stringify(o)) });
+      const none = await request('DELETE', `/cash/restaurant/${fx.demoId}/movement/${id}`, { delete_reason: '  ' }, withLen({ delete_reason: '  ' }));
+      const [still] = await hcQ('SELECT COUNT(*) n FROM cash_movements WHERE id = :i', { i: id });
+      const del = await request('DELETE', `/cash/restaurant/${fx.demoId}/movement/${id}`, { delete_reason: 'hc typo' }, withLen({ delete_reason: 'hc typo' }));
+      const [gone] = await hcQ('SELECT COUNT(*) n FROM cash_movements WHERE id = :i', { i: id });
+      const logs = await hcQ("SELECT id, changes FROM activity_logs WHERE entity_type = 'cash_movement' AND entity_id = :i", { i: String(id) });
+      const { sequelize } = require('../config/database');
+      for (const l of logs) await sequelize.query('DELETE FROM activity_logs WHERE id = :i', { replacements: { i: l.id } });
+      const ok = cr.status === 200 && none.status === 400 && none.body?.code === 'DELETE_REASON_REQUIRED' && Number(still.n) === 1
+        && del.status === 200 && Number(gone.n) === 0 && logs.length === 1 && JSON.stringify(logs[0].changes).includes('hc typo');
+      if (!ok) console.log(c.gray(`      (${cr.status} 이유없음 ${none.status}/${none.body?.code} 남음 ${still.n} 삭제 ${del.status} 남음 ${gone.n} 기록 ${logs.length})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); }
+  });
+
   test('cash', '발주 취소 시 낸 돈이 드로어로 되돌아온다 (refunded)', async () => {
     const { sequelize } = require('../config/database');
     const fx = await cashFixtureBase();
@@ -6099,6 +6188,42 @@ function definePrintTests({ adminToken }) {
   //   진실원장은 **브랜드가 발행한 인보이스** 하나다. 아래 3건이 그 계약을 박제한다.
   test('security', '익명 brand/revenue-report → 401', async () => {
     return (await request('GET', '/brand/revenue-report')).status === 401;
+  });
+
+  // 2026-09-30 K-DINE IPC 「메뉴 이미지가 자꾸 날아간다」 — 이미지 안 바꾸고 저장해도 파일이 지워지던 결함(03-03부터)
+  //   + 브랜드 메뉴가 가리키는 매장 파일을 매장 교체가 지우던 것. 아무도 안 쓰는 옛 파일만 지운다.
+  test('pos', '메뉴 저장이 쓰는 이미지 파일을 지우지 않는다 (같은 주소·브랜드 메뉴 참조) · 안 쓰는 옛 파일만 삭제', async () => {
+    const fs = require('fs');
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const BrandMenu = require('../models/BrandMenu');
+    const [[ra]] = await sequelize.query("SELECT u.id, u.restaurant_id FROM users u JOIN restaurants r ON r.id = u.restaurant_id WHERE r.is_demo = 1 AND u.role = 'Restaurant Admin' AND u.is_active = 1 ORDER BY r.id LIMIT 1");
+    if (!ra) { console.log(c.gray('      (건너뜀: 데모 매장 없음)')); return true; }
+    const [[p]] = await sequelize.query('SELECT id, image, name FROM products WHERE restaurant_id = ? AND is_active = 1 AND brand_menu_id IS NULL LIMIT 1', { replacements: [ra.restaurant_id] });
+    const [[br]] = await sequelize.query('SELECT id FROM brands ORDER BY id LIMIT 1');
+    const dir = '/var/www/uploads/products';
+    const srcName = fs.existsSync(dir) && fs.readdirSync(dir).find(f => f.endsWith('.jpg'));
+    if (!p || !br || !srcName) { console.log(c.gray('      (건너뜀: 상품/브랜드/원본 이미지 없음)')); return true; }
+    const made = []; let bm = null;
+    const mk = () => { const u = `/uploads/products/zz_hc_imgkeep_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.jpg`; fs.copyFileSync(`${dir}/${srcName}`, '/var/www' + u); made.push(u); return u; };
+    const ex = u => fs.existsSync('/var/www' + u);
+    const set = u => sequelize.query('UPDATE products SET image = ? WHERE id = ?', { replacements: [u, p.id] });
+    const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    const put = b => request('PUT', `/menu/product/${p.id}`, { name: p.name, ...b }, auth);
+    try {
+      const a = mk(); await set(a); const ra1 = await put({ image: a });
+      const b = mk(), b2 = mk(); await set(b); bm = await BrandMenu.create({ brand_id: br.id, name: 'ZZ-HC imgkeep', image_url: b, recommended_price: 1 });
+      const rb = await put({ image: b2 });
+      const cc = mk(), c2 = mk(); await set(cc); const rc = await put({ image: c2 });
+      const ok = ra1.status === 200 && ex(a) && rb.status === 200 && ex(b) && rc.status === 200 && !ex(cc);
+      if (!ok) console.log(c.gray(`      (같은주소 ${ra1.status}/${ex(a)} 브랜드참조 ${rb.status}/${ex(b)} 미사용 ${rc.status}/삭제=${!ex(cc)})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      await set(p.image);
+      if (bm) await bm.destroy().catch(() => {});
+      for (const u of made) { try { fs.unlinkSync('/var/www' + u); } catch {} }
+    }
   });
 
   test('pos', '브랜드 매출: 남의 brand_id 를 요구해도 자기 범위만 (돈 경계)', async () => {

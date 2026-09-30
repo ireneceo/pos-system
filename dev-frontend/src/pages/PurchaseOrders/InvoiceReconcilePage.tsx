@@ -58,6 +58,8 @@ interface ReconcilePo {
   invoice_reconciled_at: string | null;
   /** 지난번이 «총액만 맞춤» 이었나 — 서버가 줄 값으로 도출해 내려준다 */
   total_only?: boolean;
+  payment_status?: string;
+  seller_is_external?: boolean;
 }
 
 /** 라인마다 사람이 확정할 값 — 기본은 발주 라인 값이다(§1 "다른 줄만 고침"). */
@@ -752,6 +754,12 @@ const InvoiceReconcilePage: React.FC = () => {
                   ? t('reconcile.step1.needTotal', 'Enter the invoice total to confirm it.')
                   : t('reconcile.step1.hint', 'No need to match every line. Payment and the invoice use this total; line prices are not saved and do not change cost.')}
               </Muted>
+              {/* 2026-09-30 — 이미 결제된 외부 공급업체 발주: 확정하면 현금관리 차액·청구서 금액이 같이 맞춰진다(서버 adjustPaidAmount). */}
+              {po.payment_status === 'paid' && po.seller_is_external && (
+                <Muted style={{ alignSelf: 'center', width: '100%', color: '#635BFF' }}>
+                  {t('reconcile.step1.paidAdjust', 'Already paid — confirming this total also corrects the paid amount: the difference is added in Cash Management automatically.')}
+                </Muted>
+              )}
             </Actions>
           </Panel>
 

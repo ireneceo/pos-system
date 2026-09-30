@@ -1,45 +1,47 @@
 ---
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-09-30 (/개발완료 — K-DINE 9월 정산서 발행 완료, Issued 다브랜드 dev 완료·미배포)
-**버전:** 운영 **v3.104** · SW 운영·개발 **5.66-sales-order-share-20260929** (v3.104 배포 16:29 UTC · 백업 20260929_162231 / 추가 배포 17:29 UTC · 백업 20260929_172243 · 버전 미상승)
-**작업 상태:** 🟡 미배포 1건 + Irene 결정 대기 2건
+**마지막 업데이트:** 2026-09-30 (/개발완료 — v3.105 배포 · 결제 뒤 발주 금액 정정 dev 완료·미배포)
+**버전:** 운영 **v3.105** · SW 운영 **5.67-cash-delete-reason-20260930** · 개발 **5.68-paid-po-total-fix-20260930** (v3.105 배포 2026-09-30 05:25 UTC · 백업 20260930_051815 · 스모크 10/10)
+**작업 상태:** 🟡 미배포 1건
 
 ### 진행 중인 작업
-- 🟡 **[Claude Code] 브랜드 «Issued Invoices» 다브랜드 — dev 완료 · 운영 미배포**
-  - `dev-backend/routes/invoices-list.js` GET / BG/BM 분기 → `managerBrandScope.brandIdsForUser`(소유 ∪ 배정), 컨텍스트 brandId 있으면 그 하나
-  - 검증: 소유 BG(22) 두 번째 브랜드 정산서 보임 · 남 BG(6)·RA(23) 안 보임 · 고장주입(수정 전 코드 → 안 보임) · health 269/269 · deploy-ready 통과 · 기록 `dev-backend/releases/2026-09-30-issued-multi-brand.json`
-  - check-sensitive-diff ★ ② 대상 — Fable 한도 소진, Irene 「검증 자체 검증으로 처리해」 → skip 기록
-  - 👉 Irene `/배포` 대기. 배포 후 https://purplehere.com/pos/brand/invoices?tab=issued 에 SOA-BRD2-R8-M20260929173419 보이는지
+- 🟡 **[Claude Code] 결제 뒤 발주 금액 정정 — dev 완료 · 운영 미배포 (SW 5.68-paid-po-total-fix-20260930)**
+  - Irene 신고: 발주 현금 금액 안 맞음 · 항목 하나씩 맞춰야 총액 수정 · 결제 뒤 대조해도 현금 그대로 · 등록 단가부터 틀림
+  - Irene 선택(질문 1회, Fable 한도 소진): «발주에 총액만 적으면 차액 자동» + 규칙 「아이템별 가격 수정 > 이후 반영 체크, 토탈 금액 수정 > 이번 인보이스만」(기존 동작과 일치)
+  - 구현: `services/purchaseOrderPayment.js` adjustPaidAmount·netDrawerOut(결제취소도 순출금) · `routes/cost-reconciliation.js` 결제된 발주면 청구서 allowPaid 동기 + 드로어 차액 · `services/reconcileInvoiceSync.js` allowPaid(paid_amount=total) · 대조 화면 안내 1줄 + purchaseOrders 4언어 · sw.js 5.68
+  - 대상: 결제된 **외부 공급업체** 현금 발주(운영 해당 3건 PO 12·26·52 매장10 전부 외부). 가입 판매자(GIT 등)는 제외 — 판매자 청구서 원본(Fable 판단 필요)
+  - 검증: health-check cash 19/19(신설: 42→40→45→취소 0) · 고장주입 2종 반증 · 빌드 1회(기존 경고 3, 내 파일 아님) · verify-all --full 은 /개발완료 시점 백그라운드 실행 중 → 배포 전 게이트가 다시 돌림
+  - 기록 `dev-backend/releases/2026-09-30-paid-po-total-fix.json` · docs/PURCHASE_ORDER_SYSTEM.md «결제 뒤 금액 정정»
+  - check-sensitive-diff ★② — Fable 한도 풀리면 게이트 검증 대상
+  - 👉 Irene `/배포` 대기. 배포 후: 매장10 PO 12·26·52 중 하나로 대조 «이 총액으로 확정» 시 현금관리 차액 줄 확인(Irene 실사용)
 
-### 완료된 작업 (이번 세션 2026-09-29~30) [Claude Code]
-- v3.104 운영 배포(1차 묶음 R1~R8·F1~F5·Sales Orders·판매자 다중 브랜드 — Fable 게이트 PASS 8b7b143e1a92 + K-DINE SOA 2차: 월결제 Pay 가드·정산서 전체 PDF·발행일/수동 뒤 skip·수신자 0 생성·메일 링크·청구서 발행 시점). 릴리즈 블로그·공지 v3.104 운영 동기화
-- 추가 배포(버전 미상승): 정산서 발행 직전 확정 이후 주문 청구서 선발행(`soaScheduler.issueMissingTradeInvoices`) — Irene 「내가 수동으로 만들어도 포함되어야지」
-- 운영 처리(Irene 지시): users 19 kdineipc1 email=kate.kim.snkn@gmail.com(⚠ 규칙상 Irene 몫이었음, 보고함) · 첫 정산서 185 취소(PATCH 앱 경로, 자식 8장 해제) · Printing 상품 258·259·260 → 매장 8 from-catalog 연결(재고품목 1253~1255 · 매핑 1413~1415)
-- **K-DINE IPC 9월 정산서 발행 확인: SOA-BRD2-R8-M20260929173419 · 10장 · RM 7,691.90 · 마감 10/15 · kate 메일 발송 · 청구서 없는 주문 0**
-- 판정 원문: `.claude/fable-verdict-20260929-soa2.md`(SOA 2차) · `-gate.md`(1차 게이트) · `-structure.md`(재료·메뉴 구조, 보고문 세션 시작 때 전달)
-- 문서: DEVELOPMENT_PLAN 09-30 절 · CHANGELOG(v3.104 + Unreleased 09-30) · docs/INVOICE_SYSTEM.md §11.8 · 메모리 2건(판매자 주문 추가=매장 연결 · 정산서=확정 주문 전부)
+### 완료된 작업 (이번 세션 2026-09-30) [Claude Code]
+- **v3.105 운영 배포**(05:25 UTC · 백업 20260930_051815 · 스모크 10/10): 현금 내역 삭제 이유 필수+활동기록 · 발주 결제 현금 줄 «발주에서 금액 수정» 버튼 · 🔴 메뉴 이미지 소실 결함 수정(03-03 e91b385a4 부터 — 이미지 안 바꾸고 저장해도 파일 삭제, 브랜드 메뉴 참조 파일 삭제) · 403 사유 message
+  - 운영 확인(데모 매장 13, 원복): 같은 이미지 저장 → 파일 유지 · 삭제 이유 없음 400/있음 200+기록
+  - 릴리즈 블로그 release-v3.105 · 공지(수신자 9) 운영 동기화
+- 운영 데이터(Irene 「지금 없는 것만 조치하는 거면 해」): 브랜드2 브랜드 메뉴 이미지 68건 중 이름 정확히 같은 55건 복구 — 매장8 상품 사진 사본 `/uploads/brand-menus/brandmenu_*` · 파일 동일 55/55 · 서빙 200 55/55 · 이전 값 백업 운영 `/var/www/backups/brand2-brand-menus-image-pre-1790746920917.json`
+- 앞 건 «Issued Invoices 다브랜드»는 운영 반영 확인(백업 20260929_174721)
+- Garbage Bag(PRD-163) 위드민 검색 안 됨 → Irene 자가 확인 「재고아이템이랑 연결 안해서」(메모리 추가)
 
 ### 다음 확정 작업
-1. **Irene `/배포`** — Issued Invoices 다브랜드(위 진행 중)
-2. **A안 (Irene 결정 2026-09-30 「A로 해. 서비스 상품도 주문 넣을 수 있게」)** — 브랜드가 배포(distribution all 등)한 상품은 매장 연결 없이 판매자 «주문 추가»에 바로 뜨고 넣을 수 있게, 서비스 상품 포함. 구조 변경(주문 줄 재고 타깃 «정확히 하나» 불변식·9/4 재료 자동생성 금지와 닿음) → **Fable 설계 판정부터**(한도 소진으로 미수신, 요청문 사실 목록은 이 세션 대화). 그 전까지 새 상품은 매장 from-catalog 연결로 처리([[reference_seller_add_order_needs_buyer_link]])
+1. **Irene `/배포`** — 결제 뒤 발주 금액 정정(위 진행 중). 배포 후 팀원이 운영 확인
+2. **A안 (Irene 결정 2026-09-30 「A로 해. 서비스 상품도 주문 넣을 수 있게」)** — 브랜드가 배포한 상품은 매장 연결 없이 주문·검색에 바로 뜨게, 서비스 상품 포함. 구조 변경 → **Fable 설계 판정부터**(한도 소진으로 미수신). 그 전까지 새 상품은 매장 재고아이템 연결로 처리([[reference_seller_add_order_needs_buyer_link]])
 
-### 👉 Irene 님 결정 대기
-- K-DINE 재료·메뉴 구조 컨펌 4건(D1′ 브랜드 원본 잠금 A · D1″ 브랜드 화면 다중 관리자 · D3′ GIT 판매자 연결 자동 · D2′ 표 2건) + E 보고 — `.claude/fable-verdict-20260929-structure.md` §4·§5 (세션 시작 때 전달, 답 없음)
-- v3.104 이후 추가 배포 버전 상승 여부(물었으나 답 없음 — 미상승으로 기록)
-- 배포 후 확인: 브랜드 1·2 Payment Settings «배송 가능 지역» Petaling Jaya, Selangor 입력 · 0원 청구서 93·88·69·61 Confirm
+### 👉 Irene 님 결정 대기 / 할 일
+- K-DINE 재료·메뉴 구조 컨펌 4건(D1′ 브랜드 원본 잠금 A vs Irene 원래 요청 역동기화 · D1″ · D3′ · D2′) + E — `.claude/fable-verdict-20260929-structure.md` §4·§5
+- 매장 재업로드 필요(파일 복구 불가): 매장8 «Fried Chicken (6 pcs)» · 매장10 9건(Original/Strawberry Makgeolli Glass · Yakgwa · Set C · Gochujang/Crispy Drumsticks · Cheese Dakgalbi · Bulgogi · ochujang Drumsticks 2pcs)
+- 브랜드2 브랜드 메뉴 이미지 미조치 13건(이름 다름·연결 없음): 254·272·273·274·279·280·281·283·290·321·329·333·346 — 브랜드에서 직접 올려야 함
+- 배포 후 확인: 브랜드 1·2 Payment Settings «배송 가능 지역» · 0원 청구서 93·88·69·61 Confirm
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
-- 판매자 «완료»(`/seller-orders/:id/complete`, 서비스 전용) 는 received 로 바꾸지만 청구서를 즉시 안 냄 — 이제 정산서 선발행이 덮지만 immediate 매장은 여전히 없음
-- BG Stock Items catalogLink 경로 판매자 비결정(다브랜드 소유자) — `utils/catalogLink.js` 주석
-- 판정상 안 함: 브랜드·푸드코트 모자/기존 아이디 연결(d) · shared_with_stores 드롭(i)
-- 받은 발주 알림 일부(buyerReceivedEmail) 무브랜딩 · 인보이스 결제 알림 머리글이 수신자 users.brand_id 기준
-- Sales Orders 검색이 불러온 첫 페이지 안에서만 찾음 — 기존 동작
-- 인스펙션 ING-UNI-001/002 가 브랜드↔매장 짝을 원리상 못 잡음(Fable 지적)
+- 가입 판매자(GIT 등) 발주의 결제 뒤 금액 정정 경로 — 판매자 청구서가 원본이라 구매자 단독 정정 불가(Fable 판단)
+- deleteOldImages 를 쓰는 다른 라우트(recipes·ingredients·admin-settings)도 «같은 주소 저장=삭제» 패턴 여부 점검
+- 판매자 «완료»(서비스 전용) 청구서 즉시 미발행 · BG Stock Items catalogLink 판매자 비결정 · 받은 발주 알림 무브랜딩 · Sales Orders 검색 첫 페이지만 · 인스펙션 ING-UNI 한계
 
 ### 주요 변경사항
-- 운영 쓰기(전부 Irene 지시): users 19 email 1행 · invoices 185 cancelled(앱 경로) · 매장 8 재고품목 3 + 판매 연결 3(앱 경로) · 정산서 188 은 Irene 이 직접 발행
-- dev DB: 테스트 데이터 전부 원복(잔여 0)
+- 운영 쓰기(Irene 지시): brand_menus 55행 image_url(백업 JSON 있음) · 운영 데모 매장 13 검증 쓰기 원복 완료
+- dev DB: 테스트 데이터 원복(잔여 0)
 
 ---
 
