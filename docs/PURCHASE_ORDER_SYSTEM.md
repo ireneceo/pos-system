@@ -2593,3 +2593,9 @@ Irene 「Submit 한 순서대로 나와야해. 생성일이 발주일이여야�
 - 발주일 = `COALESCE(submitted_at, approved_at, created_at)` (보내는 경로는 전부 `applySubmitGate`·승인 라우트가 `submitted_at` 을 찍는다). `created_at` 은 장바구니에 담긴 시각이다.
 - 쓰는 곳: 구매자 발주 기록(`GET /purchase-orders` 정렬·기간 필터·`ordered_at`·「Order date」 열) · 판매자 받은 주문(`GET /seller-orders`, BG·FC·공급업체 공용) · 공급업체 대시보드 최근 주문(+ draft·승인 대기 제외 = SELLER_HIDDEN) · 발주서 인쇄본 「Order date」 · 공급업체 발주 메일 날짜. 거래 인보이스 `billing_period_start` 는 원래 같은 식.
 - 남음: 오너 승인 대기 목록 날짜는 `created_at` — 승인 흐름은 승인 순간에 `submitted_at` 이 찍혀 «승인 요청 시각» 칸이 없다.
+
+## 판매자 주문 — 미연결 배포 상품 · 서비스 줄 수령 (2026-10-01 A안 · [Claude Code])
+- Irene 「A로 해. 서비스 상품도 주문 넣을 수 있게」(09-30) · Fable 설계 `.claude/fable-design-20261001-a-plan.md`
+- 주문 추가(`POST /api/seller-orders`)와 품목 수정(`GET /:id/amendable-products` · `POST /:id/amend`)이 같은 답: 매장이 아직 안 담은 배포 상품은 `link_brand_product_id` 로 내려가고, 고르면 `linkUnlinkedBrandItems` 가 트랜잭션 전에 매장의 카탈로그 담기를 대신 실행(멱등). 화면은 `−brand_product_id` 고르기 키.
+- 구매자 수령: 서비스 줄은 재고·배치·원장·원가 무접촉, `quantity_received` 만 적힘(`applyReceiptToStock`). 전체 수령·분할 수령 둘 다 같은 함수.
+- 계약: health-check inventory «A안 미연결 배포 상품 주문·수정 + 서비스 줄 수령 재고 무접촉 (P1~P7)» · 고장주입 2건 반증.

@@ -195,6 +195,18 @@ async function applyReceiptToStock({
     return receiveIntoProductIngredient({ item, po, quantity, userId, t, note, pIng });
   }
   if (!item.ingredient_id) return { ok: true, skipped: true };
+  // 서비스 줄(2026-10-01 A안, Irene 「서비스 = 재고관리 안함」) — 판매자 출고 skip 과 대칭으로 구매자 재고도 안 올린다.
+  // skipped 가 아니라서 applyReceipt 가 quantity_received 는 적는다. 배치·원장·원가 무접촉. made_to_order 는 물건이 오니 올린다.
+  if (item.ingredient_seller_product_id) {
+    const { sequelize } = require('../config/database');
+    const { serviceLineIdsOf } = require('../utils/orderFulfillment');
+    const serviceIds = await serviceLineIdsOf(sequelize, item.purchase_order_id, t);
+    if (serviceIds.has(Number(item.id))) {
+      const qty = parseFloat(quantity) || 0;
+      if (qty <= 0) return { ok: true, skipped: true, stockAfter: currentStock };
+      return { ok: true, normalQty: qty, serviceLine: true, stockAfter: currentStock };
+    }
+  }
   // 호출부가 이미 잠가서 들고 있으면 그 인스턴스를 쓴다(/receive 는 split 루프 앞에서 잠근다) —
   // 다시 읽으면 같은 트랜잭션이라 값은 같지만 쿼리만 늘고 인스턴스가 갈라진다.
   const ingredient = ingredientRow || await Ingredient.findByPk(item.ingredient_id, {

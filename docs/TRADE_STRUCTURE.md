@@ -219,6 +219,7 @@ graph TD
 - **단위**: `service` 일 때만 취급단위 선택지에 `hour` 가 붙는다. 매장 재고 단위 ENUM 8개에는 없는 값이라 재고로 넘어갈 수 없다(§2-2 여섯 칸 무접촉).
 - **시간을 파는 상품 넣는 법**: 「4시간 기본, 1개 신청 = 4시간」 → 주문방식 «개수로» · 취급단위 `hour` · 기준양 `4` · 포장단위 `ea` → 규격 «4 hour/ea». 포장단위를 비우면 `sellerOrderUnitOf` 가 `pack` 으로 떨어져 «4 hour/pack» 이 된다.
 - ⛔ `track_stock` 을 게이트로 되살리지 않는다 — 2026-09-01(Q5)에 일부러 뺀 폐기 스위치다.
+- **구매자 수령(2026-10-01 A안 · Fable 판정 `.claude/fable-design-20261001-a-plan.md`)**: `service` 줄은 매장 재고·배치·원장·원가를 **건드리지 않고 수령량만 적힌다**(판매자 출고 skip 과 대칭). 판정은 `utils/orderFulfillment.serviceLineIdsOf`(isServiceOnlyOrder 와 같은 JOIN), 적용은 `services/purchaseOrderReceive.applyReceiptToStock` 한 곳. `made_to_order` 는 물건이 오므로 **구매자 재고는 올린다**(판매자만 skip — 비대칭이 맞다).
 
 ### 2-5. 마진은 «판매 단위» 기준으로 — 단위 환산이 먼저다 (2026-09-20 Irene 신고 2건)
 
@@ -271,6 +272,8 @@ graph TD
 발주서에 찍히는 값은 **GIT 판매가**여야 한다.
 
 지금 구현은 그 사이에 "매장이 그 물건을 자기 재료 목록에 올리는" 단계가 하나 더 끼어 있다 → §5-1.
+
+**판매자가 매장 대신 주문을 넣을 때(2026-10-01 A안):** 아직 매장이 담지 않은 배포 상품(서비스 포함)도 주문 추가·품목 수정 목록에 뜬다. 고르면 서버가 **매장의 «카탈로그에서 담기»와 같은 함수**(`services/restaurantCatalogLink.linkCatalogProductToRestaurant`)로 먼저 담고 그 연결로 발주 줄을 만든다 — **새 경로·새 목록 아님**, 발주 줄 타깃 «넷 중 하나» 불변식 그대로. 공용 함수 `routes/seller-orders.js linkUnlinkedBrandItems`(판매자=그 매장의 내 브랜드 · 상품 소유 · 배포 범위 확인 후, 멱등). 기각한 길: 타깃 없는 발주 줄 · `brand_product_id` 를 구매자 줄 타깃으로 쓰기. 설계 `.claude/fable-design-20261001-a-plan.md`.
 
 ---
 

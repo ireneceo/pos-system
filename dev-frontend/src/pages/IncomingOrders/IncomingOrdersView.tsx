@@ -1113,7 +1113,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
       ]);
       const detail = await detailRes.json();
       const prods = await prodRes.json();
-      if (prods?.success) setAmendProducts(prods.data?.products || []);
+      // 주문 추가와 같은 규약 — 아직 연결 안 된 배포 상품은 −brand_product_id 를 고르기 키로 쓴다
+      if (prods?.success) setAmendProducts((prods.data?.products || []).map((p: AmendProduct) => (
+        p.ingredient_seller_product_id == null && p.link_brand_product_id
+          ? { ...p, ingredient_seller_product_id: -Number(p.link_brand_product_id) }
+          : p
+      )));
       const items = detail?.data?.items || [];
       setAmendLines(items.map((it: any, i: number) => ({
         key: `l${i}-${it.id || i}`,
@@ -1157,10 +1162,13 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: amendLines.map(l => ({
-            ingredient_seller_product_id: l.ingredient_seller_product_id,
-            quantity_ordered: parseFloat(l.quantity_ordered)
-          })),
+          items: amendLines.map(l => {
+            const key = Number(l.ingredient_seller_product_id);
+            return {
+              ...(key < 0 ? { brand_product_id: -key } : { ingredient_seller_product_id: key }),
+              quantity_ordered: parseFloat(l.quantity_ordered)
+            };
+          }),
           ...(amendReason.trim() ? { reason: amendReason.trim() } : {})
         })
       });

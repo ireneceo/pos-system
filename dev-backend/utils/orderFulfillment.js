@@ -33,4 +33,20 @@ async function isServiceOnlyOrder(sequelize, purchaseOrderId, transaction) {
   return total > 0 && service === total;
 }
 
-module.exports = { isServiceOnlyOrder };
+/**
+ * 이 발주에서 «서비스» 줄의 id 집합 (2026-10-01 A안). isServiceOnlyOrder 와 **같은 JOIN** — 판정이 갈리지 않게.
+ * 구매자 수령이 서비스 줄은 재고를 안 올린다(판매자 출고 skip 과 대칭). 매핑 없는 줄은 물건.
+ * @returns {Promise<Set<number>>}
+ */
+async function serviceLineIdsOf(sequelize, purchaseOrderId, transaction) {
+  const rows = await sequelize.query(
+    `SELECT poi.id
+       FROM purchase_order_items poi
+       JOIN ingredient_seller_products m ON m.id = poi.ingredient_seller_product_id
+       JOIN brand_products bp ON bp.id = m.seller_product_id AND m.seller_type = 'brand'
+      WHERE poi.purchase_order_id = :id AND bp.product_kind = 'service'`,
+    { type: QueryTypes.SELECT, replacements: { id: purchaseOrderId }, transaction });
+  return new Set(rows.map(r => Number(r.id)));
+}
+
+module.exports = { isServiceOnlyOrder, serviceLineIdsOf };

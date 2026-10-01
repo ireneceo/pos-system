@@ -1,0 +1,26 @@
+{
+  "tag": "seller-unlinked-service",
+  "sw_version": "5.69-seller-unlinked-service-20261001",
+  "date": "2026-10-01",
+  "in_progress": ["none"],
+  "completed": [
+    "판매자 «품목 수정»에서도 매장이 아직 안 담은 배포 상품(서비스 포함)을 고를 수 있다 — 주문 추가와 같은 답. 고르면 서버가 매장의 «카탈로그에서 담기»와 같은 함수로 먼저 담는다(멱등)",
+    "주문 추가·품목 수정의 자동 담기를 한 함수(linkUnlinkedBrandItems)로 합침 — 판매자=그 매장의 내 브랜드 · 상품 소유 · 배포 범위 확인",
+    "매장이 서비스 줄을 수령하면 재고·배치·원장·원가는 그대로, 수령량만 적힌다(판매자 출고 skip 과 대칭). 주문제작은 구매자 재고를 올린다"
+  ],
+  "remaining": ["Fable 비차단: 비활성 매핑 edge(PRODUCT_INACTIVE) 기록만 · 매장 «내 재고» 탭 검색에 카탈로그 섞기는 별건(Irene Q4 안 함)"],
+  "verification": {
+    "api": "health-check inventory 신설 «A안 … (P1~P7)»: 목록 link_brand_product_id · 생성 연결 +3 / 재주문 +0 · 남의 상품 400 PRODUCT_NOT_YOURS · 범위 밖 403 · 전체수령+분할수령 서비스 재고 0·배치 0·원장 0·수령량 5 · 물건 6 · 주문제작 4 · 서비스 전용 완료 · 수정 후보·초과 400·수정 200·남의 상품 수정 400. 전체 274/274",
+    "fault_injection": "① 서비스 skip 무력화 → «P4 서비스 재고 10 (기대 0)» ✗ ② 소유 검사 제거 → «P3 남의 상품 403» ✗ · cp 원복 cmp 동일 · pm2 restart 3회 → 48/48",
+    "regression": "verify-all --full 1회(빌드 1회 뒤)",
+    "migration": "없음 — 롤백은 코드 되돌리기만",
+    "sw_version": "5.69-seller-unlinked-service-20261001",
+    "fable_note": "Fable 설계 판정 .claude/fable-design-20261001-a-plan.md (S1~S7 · P1~P10). Irene 컨펌 Q1 재고 안 올림 · Q2 PO 87 은 배포 뒤 수령 · Q3 수정 허용 · Q4 안 함 — 「응. 진행해줘」"
+  },
+  "notes": ["🔒 인쇄 보호파일·KDS 무접촉 · DB 스키마 변경 0", "판매자 주문 추가의 자동 담기는 v3.105 부터 운영에 있었다(실사용 0) — 이번에 Fable 사후 판정 + 공용 함수화"],
+  "irene_actions_after_deploy": ["매장 8 PO-R8-20260929-007(메뉴 라미네이팅 5 + LED 2) 수령 → 팀원이 재료 1253 재고 0 확인(P10)"],
+  "issues": ["판매자 품목 수정에는 미연결 배포 상품이 안 떠서 주문 추가와 답이 달랐다", "매장이 서비스 상품을 수령하면 재고 목록에 서비스가 수량·원가로 쌓였다"],
+  "upcoming": ["카드머신 자동연동"],
+  "behavior_changes": ["매장이 서비스 상품을 수령해도 재고가 늘지 않는다", "판매자 품목 수정 목록에 매장이 아직 안 담은 배포 상품도 보인다"],
+  "check_areas": ["판매자 Incoming Orders → 주문 추가 / 품목 수정", "매장 발주 수령(전체·분할)", "서비스 전용 주문 완료 처리", "🔒 인쇄·KDS 무접촉"]
+}
