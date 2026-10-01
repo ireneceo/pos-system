@@ -1,17 +1,15 @@
 ---
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-10-01 (v3.106 배포 · 결제 뒤 발주 금액 정정)
-**버전:** 운영 **v3.106** · SW 운영·개발 **5.68-paid-po-total-fix-20260930** (v3.106 배포 2026-10-01 18:29 UTC · 백업 20261001_182217 · 스모크 10/10)
-**작업 상태:** 🟡 A안 미배포 · 🔵 GHL 설계
+**버전:** 운영 **v3.107** · SW 운영·개발 **5.69-seller-unlinked-service-20261001** (v3.106 배포 2026-10-01 18:29 UTC · 백업 20261001_182217 · 스모크 10/10)
+**작업 상태:** 🔵 GHL 1단계 구현
 
 ### 진행 중인 작업
-- 🟡 **[Claude Code] A안 — dev 완료 · 운영 미배포 (SW 5.69-seller-unlinked-service-20261001)** — Fable 설계 `.claude/fable-design-20261001-a-plan.md`, Irene 컨펌 Q1~Q4 권고대로(「응. 진행해줘」)
-  - S1 `utils/orderFulfillment.serviceLineIdsOf` · S2 `services/purchaseOrderReceive` 서비스 줄 수령 재고 무접촉 · S3 `routes/seller-orders.js linkUnlinkedBrandItems`(주문 추가·품목 수정 공용) + amendable-products 미연결 포함 · S4 IncomingOrdersView 수정 모달 −id · S5 health-check inventory «A안 … (P1~P7)» · S6 TRADE_STRUCTURE §2-4·§4 + PURCHASE_ORDER_SYSTEM + 메모리 · S7 SW 5.69
-  - 검증: health 274/274 · 고장주입 2건(서비스 skip 제거→재고 10 ✗ / 소유검사 제거→P3 ✗) 원복 48/48 · verify-all --full 23/24 → deploy-ready(기록 in_progress 빈 배열) 수정 후 단독 1/1 · mount sweep 크래시 0 · print-guard 8/8 · check-sensitive-diff 비대상
-  - 👉 Irene `/배포` 대기. P10 은 매장8 이 PO 87 을 수령했을 때만 팀원이 운영 읽기로 확인(수령은 고객 몫 · Irene 할 일 아님)
-- 🔵 **[Claude Code] 카드머신 GHL 자동연동** — Irene 제공 규격서(NTT DATA POS/ECR v2.9.26, 기밀 — 저장소 반입 금지, 사본 scratchpad 만)·LAN 연결 그림·인증 테스트 시트. Fable 설계 요청 중 → `.claude/fable-design-20261001-ghl-ecr.md`
+- 🔵 **[Claude Code] GHL 카드단말기 ECR 자동연동 1단계** — Fable 설계 `.claude/fable-design-20261001-ghl-ecr.md`. Irene 「응」(Q1 Win10/11+데스크탑앱 파일럿 · Q2 매장당 1대 고정 IP · Q3 1단계 판매 승인 자동기록 먼저 · Q4 별도 GHL 단말기). 목 단말기 기준 Phase 0-3 + Phase 1 구현 착수. 규격서는 기밀 — 저장소 반입 금지(사본 scratchpad/ghl)
+  - 👉 Irene: GHL 담당자에게 질문서 6개(설계 §5-4) 발송 → 회신(샌드박스 TID/MID·테스트 단말기·통신 형식) 전달 대기
 
 ### 완료된 작업 (2026-10-01) [Claude Code]
+- **v3.107 운영 배포**(백업 20261001_192853 · 스모크 10/10 · 운영 grep 반영 확인 · 공지 v3.107 수신자 9) — A안. P10 은 매장8 이 PO 87 수령 시 팀원이 운영 읽기로 확인(수령은 고객 몫)
 - **v3.106 운영 배포** — 결제 뒤 발주 금액 정정. Fable 게이트 PASS(`.claude/fable-verdict-20261001-paid-po.md`, 운영 사본 diff 설계 밖 0 · 고장주입 3갈래 · 운영 읽기 매장10 PO 12·26·52 시프트 1개). 배포 전 build:dev + verify-all 23/23. 운영 코드 반영 grep 확인 · health ok · 공지 v3.106(수신자 9)
   - 👉 Irene 실사용 확인 대기: 매장10 PO 12·26·52 중 1건 대조 «이 총액으로 확정» → 현금관리 차액 줄
   - Fable 비차단 후속 3: ① 대조 결과에 paid_adjustment 표시(시프트 0/2+면 드로어 조용히 미반영) ② reversePayment 순출금 가장자리(재결제 후 취소) ③ reimbursePersonalPayment 가 total_amount 로 갚음(기존 결함)
