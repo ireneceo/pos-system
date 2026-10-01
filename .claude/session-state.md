@@ -1,19 +1,16 @@
 ---
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-09-30 (/개발완료 — v3.105 배포 · 결제 뒤 발주 금액 정정 dev 완료·미배포)
-**버전:** 운영 **v3.105** · SW 운영 **5.67-cash-delete-reason-20260930** · 개발 **5.68-paid-po-total-fix-20260930** (v3.105 배포 2026-09-30 05:25 UTC · 백업 20260930_051815 · 스모크 10/10)
-**작업 상태:** 🟡 미배포 1건
+**마지막 업데이트:** 2026-10-01 (v3.106 배포 · 결제 뒤 발주 금액 정정)
+**버전:** 운영 **v3.106** · SW 운영·개발 **5.68-paid-po-total-fix-20260930** (v3.106 배포 2026-10-01 18:29 UTC · 백업 20261001_182217 · 스모크 10/10)
+**작업 상태:** 🔵 A안 Fable 설계 진행
 
 ### 진행 중인 작업
-- 🟡 **[Claude Code] 결제 뒤 발주 금액 정정 — dev 완료 · 운영 미배포 (SW 5.68-paid-po-total-fix-20260930)**
-  - Irene 신고: 발주 현금 금액 안 맞음 · 항목 하나씩 맞춰야 총액 수정 · 결제 뒤 대조해도 현금 그대로 · 등록 단가부터 틀림
-  - Irene 선택(질문 1회, Fable 한도 소진): «발주에 총액만 적으면 차액 자동» + 규칙 「아이템별 가격 수정 > 이후 반영 체크, 토탈 금액 수정 > 이번 인보이스만」(기존 동작과 일치)
-  - 구현: `services/purchaseOrderPayment.js` adjustPaidAmount·netDrawerOut(결제취소도 순출금) · `routes/cost-reconciliation.js` 결제된 발주면 청구서 allowPaid 동기 + 드로어 차액 · `services/reconcileInvoiceSync.js` allowPaid(paid_amount=total) · 대조 화면 안내 1줄 + purchaseOrders 4언어 · sw.js 5.68
-  - 대상: 결제된 **외부 공급업체** 현금 발주(운영 해당 3건 PO 12·26·52 매장10 전부 외부). 가입 판매자(GIT 등)는 제외 — 판매자 청구서 원본(Fable 판단 필요)
-  - 검증: health-check cash 19/19(신설: 42→40→45→취소 0) · 고장주입 2종 반증 · 빌드 1회(기존 경고 3, 내 파일 아님) · verify-all --full 23/24 → type-baseline 1건(내 중복 타입 선언) 수정 후 단독 재실행 통과 · mount sweep 크래시 0
-  - 기록 `dev-backend/releases/2026-09-30-paid-po-total-fix.json` · docs/PURCHASE_ORDER_SYSTEM.md «결제 뒤 금액 정정»
-  - check-sensitive-diff ★② — Fable 한도 풀리면 게이트 검증 대상
-  - 👉 Irene `/배포` 대기. 배포 후: 매장10 PO 12·26·52 중 하나로 대조 «이 총액으로 확정» 시 현금관리 차액 줄 확인(Irene 실사용)
+- 🔵 **[Claude Code] A안 — 브랜드 배포 상품을 매장 연결 없이 주문·검색 + 서비스 상품 주문** (Irene 2026-09-30 「A로 해. 서비스 상품도 주문 넣을 수 있게」) — Fable 설계 판정 요청 중
+
+### 완료된 작업 (2026-10-01) [Claude Code]
+- **v3.106 운영 배포** — 결제 뒤 발주 금액 정정. Fable 게이트 PASS(`.claude/fable-verdict-20261001-paid-po.md`, 운영 사본 diff 설계 밖 0 · 고장주입 3갈래 · 운영 읽기 매장10 PO 12·26·52 시프트 1개). 배포 전 build:dev + verify-all 23/23. 운영 코드 반영 grep 확인 · health ok · 공지 v3.106(수신자 9)
+  - 👉 Irene 실사용 확인 대기: 매장10 PO 12·26·52 중 1건 대조 «이 총액으로 확정» → 현금관리 차액 줄
+  - Fable 비차단 후속 3: ① 대조 결과에 paid_adjustment 표시(시프트 0/2+면 드로어 조용히 미반영) ② reversePayment 순출금 가장자리(재결제 후 취소) ③ reimbursePersonalPayment 가 total_amount 로 갚음(기존 결함)
 
 ### 완료된 작업 (이번 세션 2026-09-30) [Claude Code]
 - **v3.105 운영 배포**(05:25 UTC · 백업 20260930_051815 · 스모크 10/10): 현금 내역 삭제 이유 필수+활동기록 · 발주 결제 현금 줄 «발주에서 금액 수정» 버튼 · 🔴 메뉴 이미지 소실 결함 수정(03-03 e91b385a4 부터 — 이미지 안 바꾸고 저장해도 파일 삭제, 브랜드 메뉴 참조 파일 삭제) · 403 사유 message
@@ -24,8 +21,7 @@
 - Garbage Bag(PRD-163) 위드민 검색 안 됨 → Irene 자가 확인 「재고아이템이랑 연결 안해서」(메모리 추가)
 
 ### 다음 확정 작업
-1. **Irene `/배포`** — 결제 뒤 발주 금액 정정(위 진행 중). 배포 후 팀원이 운영 확인
-2. **A안 (Irene 결정 2026-09-30 「A로 해. 서비스 상품도 주문 넣을 수 있게」)** — 브랜드가 배포한 상품은 매장 연결 없이 주문·검색에 바로 뜨게, 서비스 상품 포함. 구조 변경 → **Fable 설계 판정부터**(한도 소진으로 미수신). 그 전까지 새 상품은 매장 재고아이템 연결로 처리([[reference_seller_add_order_needs_buyer_link]])
+1. **A안 (Irene 결정 2026-09-30 「A로 해. 서비스 상품도 주문 넣을 수 있게」)** — 브랜드가 배포한 상품은 매장 연결 없이 주문·검색에 바로 뜨게, 서비스 상품 포함. 구조 변경 → **Fable 설계 판정부터**(한도 소진으로 미수신). 그 전까지 새 상품은 매장 재고아이템 연결로 처리([[reference_seller_add_order_needs_buyer_link]])
 
 ### 👉 Irene 님 결정 대기 / 할 일
 - K-DINE 재료·메뉴 구조 컨펌 4건(D1′ 브랜드 원본 잠금 A vs Irene 원래 요청 역동기화 · D1″ · D3′ · D2′) + E — `.claude/fable-verdict-20260929-structure.md` §4·§5
