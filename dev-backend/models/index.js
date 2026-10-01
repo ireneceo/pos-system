@@ -9,6 +9,7 @@ const InvoiceCategory = require('./InvoiceCategory');
 const Order = require('./Order');
 const OrderAction = require('./OrderAction');
 const OrderPayment = require('./OrderPayment');
+const TerminalTransaction = require('./TerminalTransaction');
 const UserContext = require('./UserContext');
 const CashierShift = require('./CashierShift');
 const CashReconciliation = require('./CashReconciliation');
@@ -1035,6 +1036,7 @@ module.exports = {
   Order,
   OrderAction,
   OrderPayment,
+  TerminalTransaction,
   UserContext,
   CashierShift,
   CashReconciliation,

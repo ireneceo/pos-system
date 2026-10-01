@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { takePendingTerminalLink } from '../utils/terminalPaymentLink';
+import { linkTerminalTxn } from '../utils/terminalSale';
 
 import { getAuthToken, getTokenClaims } from '../utils/auth';
 import { ensureIdempotencyKey, enqueueOrder } from '../utils/offlineOrderQueue';
@@ -258,6 +260,12 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
       }
 
       const savedOrder = result.data;
+      // 카드단말기 승인 «대기 연결» — 결제 창이 승인 순간 맡겨 둔 거래를 이제 생긴 서버 주문에 붙인다
+      //   (2026-10-01 GHL ECR · 🔒 POSTerminalPage 무접촉 경로). 실패해도 주문은 막지 않는다 — 서버에 «미연결 승인» 으로 남는다.
+      if (order.paymentMethod === 'card' && savedOrder?.id) {
+        const link = takePendingTerminalLink();
+        if (link) linkTerminalTxn(link.txnId, Number(savedOrder.id)).catch(() => {});
+      }
 
       // Add to local state after successful API save
       setOrders(prev => {

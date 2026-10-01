@@ -1021,6 +1021,21 @@
     "entryCards": {
       "menuBoardLabel": "Online menu (view only)",
       "menuBoardDesc": "Share anywhere for promotion. Shows the menu and options only — no ordering, no customer details."
+    },
+    "cardTerminal": {
+      "title": "Card terminal integration",
+      "hint": "Send the amount to the GHL card terminal automatically and record the result. Works on the PurpleHere POS desktop or Android app.",
+      "host": "Terminal IP address",
+      "port": "Port",
+      "transport": "Connection type",
+      "transportHttp": "Network (HTTP)",
+      "transportTcpHex": "Network (TCP, hex)",
+      "transportTcpBin": "Network (TCP, binary)",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "testOk": "Terminal connected",
+      "testFailed": "Could not reach the terminal",
+      "needsApp": "Open this page in the PurpleHere POS app on the counter device to test the connection."
     }
   },
   "printer.emergency.workstationReceiptPrinter": "this workstation’s receipt printer",

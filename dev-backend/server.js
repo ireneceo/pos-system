@@ -460,6 +460,8 @@ app.use((req, res, next) => {
   next();
 });
 app.use('/api/orders', ordersRouter);
+// 카드단말기 ECR 연동(GHL) — 거래 기록·응답 해석은 서버, 단말기 운반은 계산대 앱 브릿지 (.claude/fable-design-20261001-ghl-ecr.md)
+app.use('/api/terminal', require('./routes/terminal-payments'));
 app.use('/api/order-audit', orderAuditRouter);
 app.use('/api/cash', cashManagementRouter);
 app.use('/api/users', usersRouter);

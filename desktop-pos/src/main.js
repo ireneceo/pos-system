@@ -5,6 +5,7 @@ const { app, BrowserWindow, Menu, shell, ipcMain, globalShortcut, screen, powerS
 const { resolveAppUrl, allowedOrigins } = require('./config');
 const windowState = require('./windowState');
 const nativePrint = require('./print');
+const nativeEcr = require('./ecr');
 const updater = require('./updater');
 
 // The web app opens the customer display via window.open(url, this name, ...).
@@ -205,6 +206,7 @@ app.whenReady().then(() => {
   // Register the native print bridge (§4). Printer enumeration borrows the main
   // window's webContents.
   nativePrint.register(() => (mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null));
+  nativeEcr.register();
 
   createMainWindow();
 

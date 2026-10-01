@@ -52,3 +52,11 @@ contextBridge.exposeInMainWorld('__NATIVE_PRINT', {
     error: (err && err.message) || 'IPC_ERROR'
   }))
 });
+
+// 카드단말기 ECR 운반(GHL, 2026-10-01). 서버가 만든 프레임 hex 를 단말기에 보내고 응답 hex 를 돌려줄 뿐 —
+// 해석·판정은 서버. 항상 { ok, responseHex | error } 로 끝난다(throw 없음). 인쇄 계약(__NATIVE_PRINT)과 별개.
+contextBridge.exposeInMainWorld('__NATIVE_ECR', {
+  available: true,
+  version: appVersion,
+  exchange: (job) => safeInvoke('native:ecrExchange', job)
+});

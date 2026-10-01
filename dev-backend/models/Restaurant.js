@@ -350,7 +350,9 @@ Restaurant.init({
             // 결제화면에 기본 목록 표시), requireType=선택 필수 여부. requireCardType 은 구 키(폴백 유지).
             acceptedTypes: [],
             requireType: false,
-            requireCardType: false // 구 키 — 기존 매장 설정 호환용
+            requireCardType: false, // 구 키 — 기존 매장 설정 호환용
+            // 2026-10-01 카드단말기 ECR 연동(GHL). 키가 없으면 꺼짐으로 읽는다 — 기존 매장 동작 변화 0.
+            terminal: { enabled: false, provider: 'ghl_ecr', host: '', port: 33898, transport: 'http-hex' }
           },
           ewallet: {
             enabled: true,

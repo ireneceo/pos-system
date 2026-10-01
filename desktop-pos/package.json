@@ -10,7 +10,7 @@
   "scripts": {
     "start": "electron .",
     "start:dev": "cross-env PURPLE_POS_ENV=dev electron .",
-    "test": "node test/print-units.js",
+    "test": "node test/print-units.js && node test/ecr-units.js",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win"
   },

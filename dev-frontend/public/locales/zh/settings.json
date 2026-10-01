@@ -1021,6 +1021,21 @@
     "entryCards": {
       "menuBoardLabel": "在线菜单（仅浏览）",
       "menuBoardDesc": "可用于任何宣传渠道。仅显示菜单与选项，不能下单，也不收集顾客信息。"
+    },
+    "cardTerminal": {
+      "title": "刷卡机对接",
+      "hint": "自动将金额发送到 GHL 刷卡机并记录结果。适用于 PurpleHere POS 桌面版或安卓应用。",
+      "host": "刷卡机 IP 地址",
+      "port": "端口",
+      "transport": "连接方式",
+      "transportHttp": "网络 (HTTP)",
+      "transportTcpHex": "网络 (TCP, hex)",
+      "transportTcpBin": "网络 (TCP, 二进制)",
+      "test": "测试连接",
+      "testing": "测试中…",
+      "testOk": "刷卡机已连接",
+      "testFailed": "无法连接刷卡机",
+      "needsApp": "请在收银台设备的 PurpleHere POS 应用中打开此页面以测试连接。"
     }
   },
   "printer.emergency.workstationReceiptPrinter": "本工位的收据打印机",

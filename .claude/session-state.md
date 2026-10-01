@@ -2,11 +2,17 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-10-01 (v3.106 배포 · 결제 뒤 발주 금액 정정)
 **버전:** 운영 **v3.107** · SW 운영·개발 **5.69-seller-unlinked-service-20261001** (v3.106 배포 2026-10-01 18:29 UTC · 백업 20261001_182217 · 스모크 10/10)
-**작업 상태:** 🔵 GHL 1단계 구현
+**작업 상태:** 🟡 GHL 1단계 dev 완료 · 실단말기 Echo 대기
 
 ### 진행 중인 작업
-- 🔵 **[Claude Code] GHL 카드단말기 ECR 자동연동 1단계** — Fable 설계 `.claude/fable-design-20261001-ghl-ecr.md`. Irene 「응」(Q1 Win10/11+데스크탑앱 파일럿 · Q2 매장당 1대 고정 IP · Q3 1단계 판매 승인 자동기록 먼저 · Q4 별도 GHL 단말기). 목 단말기 기준 Phase 0-3 + Phase 1 구현 착수. 규격서는 기밀 — 저장소 반입 금지(사본 scratchpad/ghl)
-  - 👉 Irene: GHL 담당자에게 질문서 6개(설계 §5-4) 발송 → 회신(샌드박스 TID/MID·테스트 단말기·통신 형식) 전달 대기
+- 🔵 **[Claude Code] GHL 카드단말기 ECR 1단계 — dev 구현·검증 완료 · 실단말기 Echo 대기 · 미배포 (SW 5.70-card-terminal-ecr-20261001)**
+  - Fable 설계 `.claude/fable-design-20261001-ghl-ecr.md` · 기준 문서 `docs/CARD_TERMINAL_ECR_DESIGN.md` · 메모리 reference_card_terminal_ghl_ecr
+  - 백엔드: utils/ghlEcr.js(코덱) · services/terminalPayments.js(상태기계) · routes/terminal-payments.js(/api/terminal) · models/TerminalTransaction + migrate-create-terminal-transactions(deploy) · scripts/mock-ghl-terminal.js · Restaurant.payment_settings.card.terminal 기본(꺼짐)
+  - 프론트: PaymentModal+TerminalPanel · utils/terminalSale·nativeEcr·terminalPaymentLink · OrderContext.addOrder link · Settings CardTerminalSettings · pos/settings 4언어
+  - 데스크탑: desktop-pos/src/ecr/(exchange·index) · preload __NATIVE_ECR · main register · test/ecr-units.js (버전 미상승·설치본 미빌드)
+  - 검증: jest 23/23 · health terminal 3/3 · 고장주입 3(CRC·금액·멱등 두 겹) · desktop 9/9 · e2e card-terminal 4/4 ×3 · verify-all --full 24/24 · print-guard 8/8
+  - 👉 Irene: 실단말기 Echo(curl `02000C010B01C30000006A1003` → http://IP:33898) 결과 회신 대기 → transport 확정 → Fable 게이트 2회차 → /배포. GHL 질문서 발송도 Irene
+  - 규격서 기밀 — 사본 scratchpad/ghl 만, 저장소 반입 0
 
 ### 완료된 작업 (2026-10-01) [Claude Code]
 - **v3.107 운영 배포**(백업 20261001_192853 · 스모크 10/10 · 운영 grep 반영 확인 · 공지 v3.107 수신자 9) — A안. P10 은 매장8 이 PO 87 수령 시 팀원이 운영 읽기로 확인(수령은 고객 몫)

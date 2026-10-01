@@ -152,7 +152,7 @@
 
 ### 3.3 오프라인 결제 (POS용 - Restaurant만)
 - Cash
-- Card (단말기)
+- Card (단말기) — GHL 단말기 자동연동(ECR)은 `docs/CARD_TERMINAL_ECR_DESIGN.md` (2026-10-01)
 - Pay at Counter
 
 ## 4. Payment Settings 설계

@@ -1,0 +1,113 @@
+/**
+ * 카드단말기 판매 한 건의 흐름 — 결제 창이 부른다 (Fable 설계 .claude/fable-design-20261001-ghl-ecr.md §3-3).
+ *
+ *   서버에 거래 생성(요청 hex 받음) → 브릿지로 단말기에 운반 → 응답 hex 를 그대로 서버에 올림 → 서버 판정.
+ *   응답 없음/통신오류/깨진 응답 → Reprint 로 1회 되찾기. 보류(EA) → Check Status 3초 간격 최대 90초.
+ *
+ * 이 파일은 프로토콜을 모른다(hex 를 열어 보지 않는다). 승인 여부는 서버 응답의 status 만 믿는다.
+ */
+import { getAuthToken } from './auth';
+import { ecrExchange, EcrTransport } from './nativeEcr';
+
+export interface TerminalTxn {
+  id: number; status: string; status_code?: string | null; status_text?: string | null; amount?: string;
+  card_type?: string | null; card_brand?: string | null; approval_code?: string | null; masked_pan?: string | null;
+  terminal_invoice_no?: string | null; ecr_invoice_no?: string | null; message_prompt?: string | null;
+}
+export type TerminalPhase = 'starting' | 'waiting' | 'recovering' | 'checking';
+export type TerminalOutcome =
+  | { kind: 'approved'; txn: TerminalTxn }
+  | { kind: 'declined'; txn: TerminalTxn; message: string }
+  | { kind: 'unknown'; txn: TerminalTxn; message: string }
+  | { kind: 'error'; message: string };
+
+interface Job { id: number; request_hex: string; timeout_ms: number; connection: { host: string; port: number; transport: EcrTransport } }
+
+async function api(path: string, body: any): Promise<{ ok: boolean; status: number; json: any }> {
+  try {
+    const res = await fetch(`/api/terminal${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+      body: JSON.stringify(body || {}),
+    });
+    let json: any = null;
+    try { json = await res.json(); } catch { /* 본문 없음 */ }
+    return { ok: res.ok && json?.success !== false, status: res.status, json };
+  } catch {
+    return { ok: false, status: 0, json: { message: 'Network error' } };
+  }
+}
+
+/** 단말기 왕복 1회 → 서버 판정 결과(행). 깨진 응답(422)은 «받지 못한 것» 으로 다시 올려 복구 경로로 보낸다. */
+async function roundTrip(job: Job): Promise<{ row: TerminalTxn | null; parent: TerminalTxn | null; error?: string }> {
+  const r = await ecrExchange({ ...job.connection, payloadHex: job.request_hex, timeoutMs: job.timeout_ms });
+  let up = await api(`/transactions/${job.id}/response`, r.ok === true ? { response_hex: r.responseHex } : { error: (r as { error: string }).error });
+  if (!up.ok && up.status === 422) up = await api(`/transactions/${job.id}/response`, { error: 'BAD_RESPONSE' });
+  if (!up.ok) return { row: null, parent: null, error: up.json?.message || 'Server error' };
+  return { row: up.json.data, parent: up.json.data?.parent || null };
+}
+
+const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+// 단말기가 준 문구(영문, 단말기 표기 그대로) 또는 'reason:<키>' — 화면이 키를 번역한다
+const failText = (t: TerminalTxn) => t.message_prompt || t.status_text || (t.status_code ? `reason:code:${t.status_code}` : 'reason:notApproved');
+
+export async function runTerminalSale(opts: {
+  restaurantId: number; orderId?: number | null; amount: number; cashierName?: string;
+  onPhase?: (p: TerminalPhase) => void;
+}): Promise<TerminalOutcome> {
+  opts.onPhase?.('starting');
+  const created = await api('/transactions', {
+    restaurant_id: opts.restaurantId, order_id: opts.orderId || undefined,
+    amount: (Math.round(opts.amount * 100) / 100).toFixed(2), cashier_name: opts.cashierName,
+  });
+  if (!created.ok) return { kind: 'error', message: created.json?.message || 'reason:cannotStart' };
+  const sale: Job = created.json.data;
+
+  opts.onPhase?.('waiting');
+  const first = await roundTrip(sale);
+  let txn: TerminalTxn | null = first.row;
+  if (!txn) return { kind: 'unknown', txn: { id: sale.id, status: 'sent' }, message: 'reason:noAnswer' };
+
+  // 보류(EA) — 규격상 Check Status 를 성공/실패가 날 때까지 반복
+  if (txn.status === 'pending') {
+    opts.onPhase?.('checking');
+    const until = Date.now() + 90000;
+    while (Date.now() < until && txn.status === 'pending') {
+      await sleep(3000);
+      const cs = await api(`/transactions/${sale.id}/check-status`, {});
+      if (!cs.ok) break;
+      const r = await roundTrip(cs.json.data);
+      if (r.parent) txn = r.parent;
+    }
+    if (txn.status === 'pending') return { kind: 'unknown', txn, message: 'reason:stillPending' };
+  }
+
+  // 응답 없음·통신오류 — 단말기가 실제로 끝냈을 수 있다. 마지막 결과를 다시 받아 본다(1회).
+  if (txn.status === 'timeout' || txn.status === 'comm_error') {
+    opts.onPhase?.('recovering');
+    const rc = await api(`/transactions/${sale.id}/recover`, {});
+    if (rc.ok) {
+      const r = await roundTrip(rc.json.data);
+      if (r.parent) txn = r.parent;
+    }
+  }
+
+  if (txn.status === 'approved') return { kind: 'approved', txn };
+  if (txn.status === 'declined' || txn.status === 'cancelled') return { kind: 'declined', txn, message: failText(txn) };
+  if (txn.status === 'not_found') return { kind: 'unknown', txn, message: 'reason:notFound' };
+  return { kind: 'unknown', txn, message: 'reason:noAnswer' };
+}
+
+/** 결과를 끝내 알 수 없을 때 — 캐셔가 단말기 영수증을 보고 기록(사유 필수, 서버 감사기록). */
+export async function recordTerminalManually(txnId: number, note: string): Promise<{ ok: boolean; message?: string; txn?: TerminalTxn }> {
+  const r = await api(`/transactions/${txnId}/manual`, { note });
+  return r.ok ? { ok: true, txn: r.json.data } : { ok: false, message: r.json?.message || 'Could not save' };
+}
+
+export async function linkTerminalTxn(txnId: number, orderId: number): Promise<boolean> {
+  const r = await api(`/transactions/${txnId}/link`, { order_id: orderId });
+  return r.ok;
+}
+
+/** 서버가 주문에 남기는 참조와 같은 꼴 — 분할 결제 원장 행에 싣는다. */
+export const terminalRef = (t: TerminalTxn) => `GHL:${t.terminal_invoice_no || t.ecr_invoice_no}:${t.approval_code || '-'}`;

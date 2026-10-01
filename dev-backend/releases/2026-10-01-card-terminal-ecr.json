@@ -1,0 +1,27 @@
+{
+  "tag": "card-terminal-ecr",
+  "sw_version": "5.70-card-terminal-ecr-20261001",
+  "date": "2026-10-01",
+  "in_progress": ["GHL 카드단말기 실단말기 확인 — GHL 회신(샌드박스 TID/MID·테스트 단말기·전송 형식) 대기"],
+  "completed": [
+    "카드단말기(GHL) 자동연동 1단계: 계산대 앱에서 카드 결제 시 금액을 단말기로 보내고 승인 결과(카드종류·승인번호)를 자동 기록. 승인 아니면 기록 0",
+    "응답이 끊기면 단말기의 마지막 결과를 다시 받아 복구(Reprint), 그래도 모르면 영수증을 보고 사유를 적어 수동 기록(감사기록)",
+    "매장 설정 › 결제 › 카드에 «카드 단말기 연동»(IP·포트·연결 방식·연결 테스트) — 기본 꺼짐, 기존 매장 동작 변화 0",
+    "새 표 terminal_transactions(시도 1건 = 1행) · 데스크탑앱 단말기 브릿지(사설망 주소만)"
+  ],
+  "remaining": ["데스크탑앱 새 설치본(버전 올림) 미배포 — 실단말기 Echo 확인 뒤", "2단계: 취소(Void)·정산·마감 자동입력·이월렛 단말 경유 · 안드로이드 브릿지"],
+  "verification": {
+    "api": "jest ghl-ecr 23/23(규격 샘플 CRC 바이트 일치) · health-check terminal 3건(승인·연결·멱등·401/403·이중승인 / 위변조 422 상태불변 / Reprint 복구·C3·EA·수동 사유) · desktop ecr-units 9/9",
+    "fault_injection": "CRC 검사 제거 → 위변조 계약 ✗ · 금액 대조 제거 → 금액 변조 200 ✗ · 멱등 두 겹 제거 → 응답 2회 declined ✗ · cp 원복 cmp 동일 · pm2 restart 5회 → 3/3",
+    "regression": "verify-all --full 1회(빌드 1회 뒤) + e2e card-terminal",
+    "migration": "migrate-create-terminal-transactions.js (CREATE TABLE IF NOT EXISTS, 멱등, 레지스트리 deploy) — 롤백은 코드 되돌리기(표는 남아도 무해)",
+    "sw_version": "5.70-card-terminal-ecr-20261001",
+    "fable_note": "Fable 설계 .claude/fable-design-20261001-ghl-ecr.md (1회차). Irene 「응」 Q1 Win10/11+데스크탑앱 · Q2 매장당 1대 · Q3 1단계 먼저 · Q4 별도 GHL 단말기. 게이트 2회차 대상(돈·신규 표·신규 아키텍처)"
+  },
+  "notes": ["🔒 인쇄 보호파일·KDS 무접촉 (POSTerminalPage·orders-crud 0줄)", "GHL 규격서는 기밀 — 저장소 반입 0"],
+  "irene_actions_after_deploy": ["none — 실단말기 확인은 GHL 회신·테스트 단말기 도착 후"],
+  "issues": ["카드 결제는 손님이 단말기에 금액을 따로 입력하고 POS 에는 «Card» 기록만 — 금액 이중 입력·대조 수작업"],
+  "upcoming": ["GHL 회신 반영 · 실단말기 Echo · 데스크탑앱 설치본 · 파일럿 매장", "2단계 Void·Settlement"],
+  "behavior_changes": ["설정에서 «카드 단말기 연동»을 켠 매장 + 계산대 앱에서만 카드 결제가 단말기를 거친다. 그 외는 오늘과 동일"],
+  "check_areas": ["결제 창 카드(POS·Floor Plan·Live Orders·분할)", "설정 › 결제 › 카드", "🔒 인쇄·KDS 무접촉"]
+}

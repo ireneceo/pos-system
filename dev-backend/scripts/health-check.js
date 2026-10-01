@@ -6368,6 +6368,148 @@ function definePrintTests({ adminToken }) {
     }
   });
 
+  // ══════════════════════════════════════════════════════════════════
+  // 카드단말기 ECR(GHL) — Fable 설계 .claude/fable-design-20261001-ghl-ecr.md §4 P2.
+  //   승인 아니면 기록 없음 · 응답은 서버가 직접 해석(CRC·금액·송장) · 응답 2회 멱등 · Reprint 복구 · 수동은 사유 필수.
+  //   단말기 응답은 목 단말기(scripts/mock-ghl-terminal.respond)가 만든다 — 브릿지가 올리는 것과 같은 hex.
+  // ══════════════════════════════════════════════════════════════════
+  async function terminalFixture() {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const { Restaurant, User } = require('../models');
+    const rest = await Restaurant.findOne({ where: { is_demo: true, id: 38 } }) || await Restaurant.findOne({ where: { is_demo: true } });
+    const ra = rest && await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: rest.id, is_active: true } });
+    const otherRa = rest && await User.findOne({ where: { role: 'Restaurant Admin', is_active: true, restaurant_id: { [require('sequelize').Op.notIn]: [rest.id] } } });
+    if (!rest || !ra || !otherRa) return null;
+    const original = rest.getDataValue('payment_settings');
+    const ps = rest.payment_settings || {};
+    ps.card = { ...(ps.card || {}), terminal: { enabled: true, provider: 'ghl_ecr', host: '127.0.0.1', port: 33898, transport: 'http-hex' } };
+    await sequelize.query('UPDATE restaurants SET payment_settings = :v WHERE id = :id', { replacements: { v: JSON.stringify(ps), id: rest.id } });
+    const sign = (u) => ({ Authorization: `Bearer ${jwtLib.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` });
+    return {
+      rest, auth: sign(ra), otherAuth: sign(otherRa),
+      restore: () => sequelize.query('UPDATE restaurants SET payment_settings = :v WHERE id = :id', { replacements: { v: original, id: rest.id } }),
+    };
+  }
+
+  test('terminal', '단말기 판매 승인 → 서버 해석 · 카드종류 · 주문 연결 · 응답 2회 멱등 · 401/403', async () => {
+    const { TerminalTransaction, Order } = require('../models');
+    const { respond } = require('./mock-ghl-terminal');
+    const fx = await terminalFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/RA 픽스처 불가)')); return true; }
+    const ids = []; let order = null;
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      const anon = await request('POST', '/terminal/transactions', { restaurant_id: fx.rest.id, amount: '1.00' });
+      if (anon.status !== 401) return fail(`익명 ${anon.status}`);
+      const other = await request('POST', '/terminal/transactions', { restaurant_id: fx.rest.id, amount: '1.00' }, fx.otherAuth);
+      if (other.status !== 403) return fail(`타매장 ${other.status}`);
+
+      order = await Order.create({ restaurant_id: fx.rest.id, customer_name: '__HC_TERMINAL__', table_number: 'HC-T', order_type: 'dine_in',
+        status: 'pending', total_amount: 12.34, order_items: [{ id: 'hc-t-1', name: 'HC Terminal', quantity: 1, price: 12.34 }] });
+      const over = await request('POST', '/terminal/transactions', { restaurant_id: fx.rest.id, order_id: order.id, amount: '12.35' }, fx.auth);
+      if (over.status !== 400) return fail(`잔액 초과 ${over.status}`);
+      const c1 = await request('POST', '/terminal/transactions', { restaurant_id: fx.rest.id, order_id: order.id, amount: '12.34' }, fx.auth);
+      if (c1.status !== 201 || !c1.body?.data?.request_hex) return fail(`생성 ${c1.status} ${JSON.stringify(c1.body).slice(0, 120)}`);
+      ids.push(c1.body.data.id);
+      if (c1.body.data.timeout_ms !== 120000 || c1.body.data.connection?.port !== 33898) return fail('연결 정보/타임아웃');
+      const resHex = respond(c1.body.data.request_hex, 'approve');
+      const r1 = await request('POST', `/terminal/transactions/${c1.body.data.id}/response`, { response_hex: resHex }, fx.auth);
+      if (r1.status !== 200 || r1.body?.data?.status !== 'approved' || r1.body.data.card_type !== 'visa') return fail(`승인 ${r1.status} ${r1.body?.data?.status}`);
+      if (r1.body.data.request_hex || r1.body.data.response_hex) return fail('원본 프레임이 응답에 노출');
+      const o2 = await Order.findByPk(order.id);
+      if (!String(o2.transaction_id || '').startsWith('GHL:')) return fail(`주문 transaction_id=${o2.transaction_id}`);
+      const r2 = await request('POST', `/terminal/transactions/${c1.body.data.id}/response`, { response_hex: respond(c1.body.data.request_hex, 'decline') }, fx.auth);
+      if (r2.status !== 200 || !r2.body?.deduped || r2.body.data.status !== 'approved') return fail(`응답 2회 ${r2.status} deduped=${r2.body?.deduped} ${r2.body?.data?.status}`);
+      // 같은 주문에 두 번째 승인 → 이중 승인 의심으로 연결 거부
+      const c2 = await request('POST', '/terminal/transactions', { restaurant_id: fx.rest.id, amount: '12.34' }, fx.auth);
+      ids.push(c2.body?.data?.id);
+      await request('POST', `/terminal/transactions/${c2.body.data.id}/response`, { response_hex: respond(c2.body.data.request_hex, 'approve') }, fx.auth);
+      const l2 = await request('POST', `/terminal/transactions/${c2.body.data.id}/link`, { order_id: order.id }, fx.auth);
+      if (l2.status !== 409 || l2.body?.code !== 'DOUBLE_APPROVAL') return fail(`이중 승인 ${l2.status} ${l2.body?.code}`);
+      const lo = await request('POST', `/terminal/transactions/${c2.body.data.id}/link`, { order_id: order.id }, fx.otherAuth);
+      if (lo.status !== 404) return fail(`타매장 link ${lo.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {});
+      if (order) await Order.destroy({ where: { id: order.id }, force: true }).catch(() => {});
+      await fx.restore();
+    }
+  });
+
+  test('terminal', '단말기 응답 위변조 거부 — CRC 변조 · 금액 1센트 · 다른 송장 (상태 불변)', async () => {
+    const { TerminalTransaction } = require('../models');
+    const ecr = require('../utils/ghlEcr');
+    const { respond } = require('./mock-ghl-terminal');
+    const fx = await terminalFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const ids = [];
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      const c1 = await request('POST', '/terminal/transactions', { restaurant_id: fx.rest.id, amount: '5.00' }, fx.auth);
+      ids.push(c1.body?.data?.id);
+      const good = respond(c1.body.data.request_hex, 'approve');
+      const flip = good.slice(0, 30) + (good[30] === 'A' ? 'B' : 'A') + good.slice(31);
+      const b1 = await request('POST', `/terminal/transactions/${c1.body.data.id}/response`, { response_hex: flip }, fx.auth);
+      if (b1.status !== 422) return fail(`CRC 변조 ${b1.status}`);
+      // 금액 1센트 다른 승인(CRC 는 맞게 다시 계산) — 단말기가 다른 금액을 승인했다면 받지 않는다
+      const other = ecr.bufToHex(ecr.saleRequest({ amount: '5.01', ecrInvoiceNo: c1.body.data.ecr_invoice_no }));
+      const b2 = await request('POST', `/terminal/transactions/${c1.body.data.id}/response`, { response_hex: respond(other, 'approve') }, fx.auth);
+      if (b2.status !== 422 || b2.body?.code !== 'AMOUNT_MISMATCH') return fail(`금액 변조 ${b2.status} ${b2.body?.code}`);
+      const inv = ecr.bufToHex(ecr.saleRequest({ amount: '5.00', ecrInvoiceNo: 'PHX99' }));
+      const b3 = await request('POST', `/terminal/transactions/${c1.body.data.id}/response`, { response_hex: respond(inv, 'approve') }, fx.auth);
+      if (b3.status !== 422 || b3.body?.code !== 'INVOICE_MISMATCH') return fail(`송장 변조 ${b3.status} ${b3.body?.code}`);
+      const row = await TerminalTransaction.findByPk(c1.body.data.id);
+      if (row.status !== 'sent') return fail(`위변조 뒤 상태 ${row.status} (기대 sent)`);
+      // 거절은 기록 없음
+      const ok = await request('POST', `/terminal/transactions/${c1.body.data.id}/response`, { response_hex: respond(c1.body.data.request_hex, 'decline') }, fx.auth);
+      if (ok.body?.data?.status !== 'declined' || ok.body.data.status_code !== '51') return fail(`거절 ${ok.body?.data?.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {}); await fx.restore(); }
+  });
+
+  test('terminal', '단말기 무응답 → Reprint 복구(승인/없음) · EA → Check Status · 수동은 사유 필수', async () => {
+    const { TerminalTransaction } = require('../models');
+    const { respond } = require('./mock-ghl-terminal');
+    const fx = await terminalFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const ids = [];
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const post = (p, b) => request('POST', p, b, fx.auth);
+    try {
+      // ① 단말기는 승인했는데 응답이 끊김 → timeout → Reprint 로 승인 회수
+      const a = await post('/terminal/transactions', { restaurant_id: fx.rest.id, amount: '3.00' }); ids.push(a.body.data.id);
+      if (respond(a.body.data.request_hex, 'timeout') !== null) return fail('목 timeout 이 응답함');
+      const t = await post(`/terminal/transactions/${a.body.data.id}/response`, { error: 'TIMEOUT' });
+      if (t.body?.data?.status !== 'timeout') return fail(`timeout ${t.body?.data?.status}`);
+      const rc = await post(`/terminal/transactions/${a.body.data.id}/recover`, {}); ids.push(rc.body?.data?.id);
+      if (rc.status !== 201) return fail(`recover ${rc.status}`);
+      const rr = await post(`/terminal/transactions/${rc.body.data.id}/response`, { response_hex: respond(rc.body.data.request_hex, 'approve') });
+      if (rr.body?.data?.parent?.status !== 'approved' || !rr.body.data.parent.approval_code) return fail(`복구 부모 ${rr.body?.data?.parent?.status}`);
+      // ② 단말기도 거래가 없음 → Reprint C3 → 부모 not_found → 수동은 사유 없으면 400, 있으면 manual
+      const b = await post('/terminal/transactions', { restaurant_id: fx.rest.id, amount: '4.00' }); ids.push(b.body.data.id);
+      await post(`/terminal/transactions/${b.body.data.id}/response`, { error: 'TIMEOUT' });
+      const rc2 = await post(`/terminal/transactions/${b.body.data.id}/recover`, {}); ids.push(rc2.body?.data?.id);
+      const nf = await post(`/terminal/transactions/${rc2.body.data.id}/response`, { response_hex: respond(rc2.body.data.request_hex, 'notfound') });
+      if (nf.body?.data?.parent?.status !== 'not_found') return fail(`C3 부모 ${nf.body?.data?.parent?.status}`);
+      const m0 = await post(`/terminal/transactions/${b.body.data.id}/manual`, { note: '' });
+      if (m0.status !== 400) return fail(`수동 사유 없음 ${m0.status}`);
+      const m1 = await post(`/terminal/transactions/${b.body.data.id}/manual`, { note: 'HC receipt approved' });
+      if (m1.body?.data?.status !== 'manual' || !m1.body.data.manual_override) return fail(`수동 ${m1.body?.data?.status}`);
+      // ③ EA 보류 → Check Status → 승인
+      const e = await post('/terminal/transactions', { restaurant_id: fx.rest.id, amount: '6.00' }); ids.push(e.body.data.id);
+      const pe = await post(`/terminal/transactions/${e.body.data.id}/response`, { response_hex: respond(e.body.data.request_hex, 'pending') });
+      if (pe.body?.data?.status !== 'pending') return fail(`EA ${pe.body?.data?.status}`);
+      const cs = await post(`/terminal/transactions/${e.body.data.id}/check-status`, {}); ids.push(cs.body?.data?.id);
+      const cr = await post(`/terminal/transactions/${cs.body.data.id}/response`, { response_hex: respond(cs.body.data.request_hex, 'approve') });
+      if (cr.body?.data?.parent?.status !== 'approved') return fail(`Check Status 부모 ${cr.body?.data?.parent?.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {}); await fx.restore(); }
+  });
+
   test('pos', '브랜드 매출: 남의 brand_id 를 요구해도 자기 범위만 (돈 경계)', async () => {
     const jwtLib = require('jsonwebtoken');
     const { User } = require('../models');

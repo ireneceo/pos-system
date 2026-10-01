@@ -17,6 +17,10 @@ import { isOfflineMainPos } from '../../utils/offlineMainPos';
 import DiscountPinModal from './DiscountPinModal';
 
 import { getAuthToken } from '../../utils/auth';
+import { getEcrBridge } from '../../utils/nativeEcr';
+import { runTerminalSale, recordTerminalManually, terminalRef, TerminalPhase, TerminalTxn } from '../../utils/terminalSale';
+import { setPendingTerminalLink } from '../../utils/terminalPaymentLink';
+import TerminalPanel from './TerminalPanel';
 const OrderSummary = styled.div`
   background: linear-gradient(to bottom, #F1F4F8, #F1F5F9);
   border-radius: 12px;
@@ -295,7 +299,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   pointDiscount: pointDiscountProp = 0,
   onPartialPaymentComplete
 }) => {
-  const { operationSettings } = useStore();
+  const { operationSettings, getStoreInfo } = useStore();
   const { isOffline } = useOffline();
 
   // Internal state for fetched data (when customerId/restaurantId are provided)
@@ -523,6 +527,22 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const CARD_LABELS: Record<string, string> = Object.fromEntries(CARD_TYPE_OPTIONS.map(o => [o.k, o.label]));
   // Discount-at-payment (incl. deferred payment from Live Orders / Floor Plan).
 
+  // ─── 카드단말기 ECR 자동연동 (2026-10-01 GHL · .claude/fable-design-20261001-ghl-ecr.md §3-3) ───
+  //   켜는 조건: 카드 + 매장 설정 card.terminal 켜짐 + 이 기기가 계산대 앱(브릿지 있음) + 온라인.
+  //   하나라도 아니면 오늘과 똑같이 «카드 기록만» 한다(회귀 0).
+  const terminalCfg = (paymentMethods as any)?.card?.terminal;
+  const terminalOn = !!(terminalCfg?.enabled && String(terminalCfg?.host || '').trim());
+  const ecrBridgeReady = !!getEcrBridge();
+  const useTerminal = paymentMethod === 'card' && terminalOn && ecrBridgeReady && !isOffline;
+  const [terminalBusy, setTerminalBusy] = useState<TerminalPhase | null>(null);
+  const [terminalIssue, setTerminalIssue] = useState<{ kind: 'declined' | 'unknown' | 'error'; message: string; txnId?: number } | null>(null);
+  const [terminalNote, setTerminalNote] = useState('');
+  const terminalRestaurantId = (): number | null => {
+    const fromPath = window.location.pathname.match(/\/restaurant\/(\d+)/);
+    const id = restaurantId || (fromPath ? Number(fromPath[1]) : null) || Number(getStoreInfo()?.restaurantId) || null;
+    return id && Number.isFinite(id) ? id : null;
+  };
+
   // ─── Split bill state ───
   const splitEligible = !!(orderId && orderItems.length > 0);
   // 이미 결제 진행 중인 주문이면 Split mode 기본 ON — cashier 가 토글 안 켜도 즉시 paid items 가시.
@@ -639,6 +659,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) {
+      setTerminalBusy(null);
+      setTerminalIssue(null);
+      setTerminalNote('');
       setSplitMode(false);
       setSplitSelected(new Set());
       setSplitError(null);
@@ -736,6 +759,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       }
       if (paymentMethod === 'card' && cardType) body.card_type = cardType;
       if (paymentMethod === 'ewallet' && ewalletType) body.ewallet_type = ewalletType;
+      // 단말기 연동이면 이 몫을 단말기에서 먼저 승인받는다 — 승인 아니면 기록하지 않는다
+      if (useTerminal && !terminalIssue) {
+        const txn = await runTerminal(amount, orderId);
+        if (!txn) return;
+        if (txn.card_type) body.card_type = txn.card_type;
+        body.transaction_id = terminalRef(txn);
+      }
 
       // 오프라인(메인 POS) — 서버 왕복 없이 split 부분 결제를 op 로그에 기록(재생 시 동일 POST /orders/:id/payments).
       // split = PARTIAL 결제 → settle_full 절대 설정 안 함(전액 결제 아님). 온라인 경로는 이 블록 아래로 무변경.
@@ -812,9 +842,46 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     onConfirmPayment(paymentMethod, undefined, undefined, 0, 0, undefined, hasAny ? names : undefined);
   };
 
-  const handleConfirm = () => {
+  /** 단말기 판매 1건 — 승인되면 그 거래를, 아니면 null(안내는 terminalIssue 로). */
+  const runTerminal = async (amount: number, forOrderId?: number | null): Promise<TerminalTxn | null> => {
+    const rid = terminalRestaurantId();
+    if (!rid) { setTerminalIssue({ kind: 'error', message: 'reason:cannotStart' }); return null; }
+    setTerminalIssue(null);
+    setTerminalBusy('starting');
+    try {
+      const out = await runTerminalSale({ restaurantId: rid, orderId: forOrderId || null, amount, cashierName, onPhase: setTerminalBusy });
+      if (out.kind === 'approved') return out.txn;
+      setTerminalIssue({ kind: out.kind, message: out.message, txnId: out.kind === 'error' ? undefined : out.txn.id });
+      return null;
+    } finally {
+      setTerminalBusy(null);
+    }
+  };
+
+  /** 단말기 결과를 알 수 없을 때 캐셔가 단말기 영수증을 보고 기록 — 서버 감사기록 뒤 오늘 경로로 결제 기록. */
+  const handleTerminalManual = async () => {
+    if (!terminalIssue?.txnId || terminalNote.trim().length < 3) return;
+    setTerminalBusy('starting');
+    const r = await recordTerminalManually(terminalIssue.txnId, terminalNote.trim());
+    setTerminalBusy(null);
+    if (!r.ok) { setTerminalIssue({ ...terminalIssue, message: r.message || 'reason:cannotStart' }); return; }
+    if (splitMode) { handleSplitConfirm(); return; }
+    if (!orderId) setPendingTerminalLink(terminalIssue.txnId, total);
+    onConfirmPayment('card', undefined, undefined, pointsToUse, pointDiscount, cardType);
+  };
+
+  const handleConfirm = async () => {
+    if (terminalBusy) return;
     if (splitMode) {
       handleSplitConfirm();
+      return;
+    }
+    if (useTerminal) {
+      const txn = await runTerminal(total, orderId);
+      if (!txn) return;
+      // POS 신규 주문은 아직 주문이 없다 — 주문이 만들어지는 순간(OrderContext.addOrder) 연결한다
+      if (!orderId) setPendingTerminalLink(txn.id, total);
+      onConfirmPayment('card', undefined, undefined, pointsToUse, pointDiscount, txn.card_type || cardType);
       return;
     }
     if (paymentMethod === 'cash') {
@@ -841,6 +908,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const canConfirm = () => {
     if (!paymentMethods || availableMethods.length === 0) return false;
+    if (terminalBusy) return false;
     if (splitMode) {
       if (splitSelected.size === 0 || splitTotal <= 0) return false;
       if (paymentMethod === 'cash') {
@@ -848,7 +916,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         return amount >= splitTotal;
       }
       if (paymentMethod === 'card') {
-        return !requireCardType || !!cardType;
+        return (useTerminal && !terminalIssue) || !requireCardType || !!cardType;
       }
       if (paymentMethod === 'ewallet') {
         return !(ewalletNeedsChoice && requireEwalletType) || !!ewalletType;
@@ -860,6 +928,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       return amount >= total;
     }
     if (paymentMethod === 'card') {
+      // 단말기 연동이면 카드종류는 단말기가 알려준다 — 캐셔 선택 불필요
+      if (useTerminal && !terminalIssue) return true;
       // 매장 설정(payment_settings.card.requireCardType)이 켜져 있으면 카드종류 선택 필수.
       return !requireCardType || !!cardType;
     }
@@ -873,7 +943,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const footer = (
     <>
-      <Button variant="secondary" onClick={onClose}>
+      <Button variant="secondary" onClick={onClose} disabled={!!terminalBusy}>
         Cancel
       </Button>
       <Button variant="primary" onClick={handleConfirm} disabled={!canConfirm()}>
@@ -1355,7 +1425,22 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         )}
       </Section>
 
-      {paymentMethod === 'card' && acceptedCards.length >= 1 && (
+      {paymentMethod === 'card' && terminalOn && (
+        <InputSection>
+          <TerminalPanel
+            busy={terminalBusy}
+            ready={useTerminal}
+            reason={!ecrBridgeReady ? 'no-bridge' : isOffline ? 'offline' : null}
+            issue={terminalIssue}
+            note={terminalNote}
+            onNote={setTerminalNote}
+            onManual={handleTerminalManual}
+            onRetry={() => { setTerminalIssue(null); setTerminalNote(''); }}
+          />
+        </InputSection>
+      )}
+
+      {paymentMethod === 'card' && acceptedCards.length >= 1 && !(useTerminal && !terminalIssue) && (
         <InputSection>
           {/* 2026-07-24: 카드 종류도 이월렛과 동일 규칙 — 매장이 취급 카드(acceptedTypes)를 지정하고,
               1종이면 자동 태깅(캐셔 무입력), 2종↑이면 선택. 미지정 매장은 기본 5종 그대로(회귀 0).

@@ -29,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import PrintSelfDiagnosePanel from '../../components/Settings/PrintSelfDiagnosePanel';
 import MallSalesIntegrationSettings from './MallSalesIntegrationSettings';
+import CardTerminalSettings from './CardTerminalSettings';
 import { isOfflineMainPos, setOfflineMainPos } from '../../utils/offlineMainPos';
 import { openCustomerDisplay, isAutoOpenEnabled, setAutoOpenEnabled, resetCustomerDisplayPosition } from '../../utils/customerDisplay';
 // 스타일 컴포넌트
@@ -1024,6 +1025,7 @@ const SettingsPage: React.FC = () => {
   const ewalletQrRef = useRef<AutoSaveHandle>(null);
   const requireCardTypeRef = useRef<AutoSaveHandle>(null);
   const acceptedCardsRef = useRef<AutoSaveHandle>(null);
+  const cardTerminalRef = useRef<AutoSaveHandle>(null);
   const requireEwalletTypeRef = useRef<AutoSaveHandle>(null);   // 취급 이월렛 칩 목록 저장용
   const requireEwalletToggleRef = useRef<AutoSaveHandle>(null); // 이월렛 필수 여부 토글
   const companyLogoRef = useRef<AutoSaveHandle>(null);
@@ -2988,6 +2990,24 @@ const SettingsPage: React.FC = () => {
                           </ToggleSwitch>
                         </AutoSaveField>
                       </div>
+
+                      {/* 카드 단말기 연동(GHL ECR, 2026-10-01) — payment_settings.card.terminal */}
+                      <AutoSaveField ref={cardTerminalRef} onSave={handleSave} type="toggle">
+                        <CardTerminalSettings
+                          value={method.terminal}
+                          restaurantId={user?.restaurantId}
+                          onChange={(next, saveNow) => {
+                            handlePaymentSettingChange(key, 'terminal', next);
+                            if (saveNow) cardTerminalRef.current?.triggerSave();
+                          }}
+                          toggle={(checked, onToggle) => (
+                            <ToggleSwitch>
+                              <ToggleInput type="checkbox" checked={checked} onChange={(e) => onToggle(e.target.checked)} />
+                              <ToggleSlider />
+                            </ToggleSwitch>
+                          )}
+                        />
+                      </AutoSaveField>
                     </div>
                   )}
 
