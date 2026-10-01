@@ -8,7 +8,7 @@
 - 🟡 **[Claude Code] A안 — dev 완료 · 운영 미배포 (SW 5.69-seller-unlinked-service-20261001)** — Fable 설계 `.claude/fable-design-20261001-a-plan.md`, Irene 컨펌 Q1~Q4 권고대로(「응. 진행해줘」)
   - S1 `utils/orderFulfillment.serviceLineIdsOf` · S2 `services/purchaseOrderReceive` 서비스 줄 수령 재고 무접촉 · S3 `routes/seller-orders.js linkUnlinkedBrandItems`(주문 추가·품목 수정 공용) + amendable-products 미연결 포함 · S4 IncomingOrdersView 수정 모달 −id · S5 health-check inventory «A안 … (P1~P7)» · S6 TRADE_STRUCTURE §2-4·§4 + PURCHASE_ORDER_SYSTEM + 메모리 · S7 SW 5.69
   - 검증: health 274/274 · 고장주입 2건(서비스 skip 제거→재고 10 ✗ / 소유검사 제거→P3 ✗) 원복 48/48 · verify-all --full 23/24 → deploy-ready(기록 in_progress 빈 배열) 수정 후 단독 1/1 · mount sweep 크래시 0 · print-guard 8/8 · check-sensitive-diff 비대상
-  - 👉 Irene `/배포` 대기. 배포 뒤 매장8 PO 87 수령 → 재료 1253 재고 0 확인(P10)
+  - 👉 Irene `/배포` 대기. P10 은 매장8 이 PO 87 을 수령했을 때만 팀원이 운영 읽기로 확인(수령은 고객 몫 · Irene 할 일 아님)
 - 🔵 **[Claude Code] 카드머신 GHL 자동연동** — Irene 제공 규격서(NTT DATA POS/ECR v2.9.26, 기밀 — 저장소 반입 금지, 사본 scratchpad 만)·LAN 연결 그림·인증 테스트 시트. Fable 설계 요청 중 → `.claude/fable-design-20261001-ghl-ecr.md`
 
 ### 완료된 작업 (2026-10-01) [Claude Code]
