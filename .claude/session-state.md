@@ -2,7 +2,7 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-10-01 (/개발완료 — GHL 카드단말기 1단계 dev 완료 · 보고서 크래시 수정, 미배포)
 **버전:** 운영 **v3.107** · SW 운영 **5.69-seller-unlinked-service-20261001** · 개발 **5.71-card-terminal-tender-20261001**
-**작업 상태:** 🟡 미배포 — 내일 Irene 확인 후 배포
+**작업 상태:** 🟡 미배포 — Fable PASS(조건부), 배포·skip 삭제는 Irene 다음 섹션 결정
 
 ### 진행 중인 작업
 - 🟡 **[Claude Code] GHL 카드단말기 ECR 자동연동 1단계 + Owner·Foodcourt 보고서 크래시 — dev 완료 · 미배포 (SW 5.71)**
@@ -12,7 +12,7 @@
   - 구현: utils/ghlEcr(코덱·분류) · services/terminalPayments(상태기계) · /api/terminal · 표 terminal_transactions(+tender_method·ewallet_type, 마이그 deploy 등록) · PaymentModal «Card / QR (Terminal)» + TerminalPanel · 자동 찾기(Windows desktop-pos/src/ecr · Android NativeEcrPlugin.kt) · 설정 CardTerminalSettings · OrderContext 주문 생성 직후 link
   - 🔴 운영 결함 수정(미배포): Owner·Foodcourt 보고서 isRevenueOrder/isDeletedOrder import 누락(f44885685, 09-17~) → 기간에 주문 있으면 화면 멈춤. **운영에 아직 결함 있음**
   - 검증: jest 28/28 · health terminal 5/5 · 고장주입 7 · desktop 14/14 · e2e card-terminal 8/8×3 · Kotlin 컴파일·debug APK · verify-all --full 24/24 · print-guard 8/8
-  - Fable 게이트(2회차) 요청함 — 판정 파일 `.claude/fable-verdict-20261001-ghl-ecr-gate.md`(작성됐으면). 기록 커밋으로 마커 지문이 바뀌므로 배포 전 `fable-gate.js status` 재확인, 실단말기 수정 생기면 재판정
+  - Fable 게이트 2회차 PASS(조건부) — 아래 «다음 확정 작업» 1·4
   - 확인 불가: 실단말기(전송·응답 형식, 금액만 Sale 로 QR 수용 여부) · Android 실기기 · Windows 설치본 미빌드(0.1.10)
 
 ### 완료된 작업 (2026-10-01) [Claude Code]
@@ -23,11 +23,18 @@
 - health-check 단말기 테스트 정리 구멍(order_actions FK) 보강 · dev 잔재 주문 4건 삭제
 
 ### 다음 확정 작업
-1. **Irene 2026-10-02 확인** (Irene 「관리페이지 UI/UX 도 내일 확인할게」「테스트 내일 할게」)
-   - 안드로이드 태블릿 실단말기 테스트: 단말기와 같은 와이파이 → 개발용 APK 설치 → 개발서버 로그인 → 설정 «Find terminal» → POS RM1 카드 → RM1 TnG QR → 리포트에 카드1·이월렛1 반영 → 단말기·POS 둘 다 취소
-   - 관리페이지(설정) UI/UX 확인 — 안내 아티팩트 참고
-2. 테스트 결과 반영 — 응답 형식 다르면 브릿지 transport 수정 / 금액만 Sale 로 QR 안 받으면 «QR (단말기)» 버튼 + D003=CD(코덱 인자 준비됨, Fable 재호출 없이 팀원)
-3. Fable 게이트 확인/재판정 → `/배포`(보고서 크래시 수정 포함). 배포 후 데스크탑앱·안드로이드 정식 설치본(버전 올림) 검토
+1. **Fable 게이트 2회차 PASS(조건부) 받음** — `.claude/fable-verdict-20261001-ghl-ecr-gate.md`(미추적 · 지문 06d552978898 · 마커 유효). ⚠ **배포 전 저장소 커밋·소스/문서 수정 금지**(마커 사망) — session-state.md 만 지문 제외. 배포 후 기록·커밋
+   - 조건 ① 운영 매장 어디서도 card.terminal 켜지 않기(R1~R3 수정+다음 게이트 전까지) ② 실단말기 테스트는 dev + .dev APK ③ 배포 후 운영 결제 창 버튼 «Card» 그대로 1회 확인
+2. **Irene 결정 대기(다음 섹션에서 하기로 함 「둘 다 다음 섹션에서 할게」)**
+   - `/배포` 여부 — Fable: 배포 가능(운영 Owner·Foodcourt 보고서 크래시 수정이 배포 사유, 단말기 기능은 꺼진 채). 배포 후: 운영 `SHOW TABLES LIKE 'terminal_transactions'` · `GET /api/terminal/config` enabled:false · Owner/FG 보고서 화면 열기 스모크
+   - `.claude/.fable-gate-skip` 삭제 승인 — 09-29 17:47 부터 상존(Stop 훅 우회 기록 모드, 로그 220건). Fable 권고: 배포 뒤 삭제
+3. **Irene 2026-10-02 확인** — 태블릿 실단말기 테스트(안내 아티팩트 https://claude.ai/artifact/ALL7b8nE7jZr4vgAuS3LeK) + 관리페이지 UI/UX
+4. **Fable 지적 R1~R5 수정 → D-5 분기(실단말기 결과)와 한 묶음 → 다음 게이트 1회** (운영 단말기 활성화는 그 뒤)
+   - R1 🔴 분할 결제: 거절/미확인 뒤 footer Confirm 이 승인 없이 카드 기록 → 분할도 전액과 같은 규칙(이슈 없을 때만 재시도, 수동은 handleTerminalManual 경유만), canConfirm 에서 useTerminal && terminalIssue 면 false · e2e «분할+거절 → Confirm 눌러도 원장 0»
+   - R2 🟠 link_error(DOUBLE_APPROVAL) 화면 미표시 + createSale(orderId) 에서 approved/manual 합이 잔액 덮으면 409 ALREADY_APPROVED 선제 차단 · TerminalPanel 경고(4언어) · health 1
+   - R3 🟡 OrderContext.addOrder 대기 연결 금액(link.amount vs total_amount) 대조
+   - R4 🟡 수동 기록 + orderId 경로 /manual 뒤 safeLink · R5 ⚪ handleTerminalManual busy 순서
+   - 릴리즈 JSON remaining 의 «desktop/…apk 삭제» 문구 → dev-apps 위치로 정정(배포 후 기록 정리 때)
 
 ### 👉 Irene 님 결정 대기 / 할 일
 - GHL 에 질문서 6개 발송(설계 문서 §5-4 영문 문안) — 샌드박스 TID/MID · 전송 형식 · DuitNow Product ID 등
