@@ -32,15 +32,18 @@ async function setTerminal(enabled) {
 /** 목 브릿지 주입 — scenario 가 바뀌면 다음 호출부터 적용. calls 에 단말기로 간 명령을 쌓는다. */
 async function installBridge(page, state) {
   await page.exposeFunction('__mockEcrExchange', async (job) => {
+    // 단말기가 다른 주소로 옮겨간 상황: 옛 주소는 연결 거부, 실제 주소만 응답
+    if (state.realHost && job.host !== state.realHost) return { ok: false, error: 'CONNECT_REFUSED' };
     const cmd = job.payloadHex.slice(12, 14);
     state.calls.push(cmd);
     const out = respond(job.payloadHex, state.scenario);
     if (cmd === 'A1' && state.scenario === 'timeout') state.scenario = 'approve'; // 이어지는 Reprint 는 정상 응답
     return out === null ? { ok: false, error: 'TIMEOUT' } : { ok: true, responseHex: out };
   });
+  await page.exposeFunction('__mockEcrDiscover', async () => { state.discovered = (state.discovered || 0) + 1; return { ok: true, hosts: state.realHost ? [state.realHost] : [] }; });
   await page.addInitScript(() => {
     // @ts-ignore
-    window.__NATIVE_ECR = { available: true, exchange: (job) => window.__mockEcrExchange(job) };
+    window.__NATIVE_ECR = { available: true, exchange: (job) => window.__mockEcrExchange(job), discover: (job) => window.__mockEcrDiscover(job) };
   });
 }
 
@@ -128,6 +131,23 @@ test.describe('카드단말기 ECR — 결제 창 흐름(목 브릿지)', () => 
     const o = await getOrder(request, baseURL, token, orderId);
     expect(o.payment_status).toBe('completed');
     expect(String(o.transaction_id || '')).toMatch(/^GHL:/);
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  test('E 단말기 주소가 바뀜 → 자동 찾기 → 새 주소 저장 → 같은 결제 이어서 완료', async ({ page, request, baseURL }) => {
+    const pageErrors = []; page.on('pageerror', (e) => pageErrors.push(String(e)));
+    const state = { scenario: 'approve', calls: [], realHost: '192.168.68.112' };
+    await installBridge(page, state);
+    await openPayment(page, orderNumber, pageErrors);
+    await page.getByRole('button', { name: 'Confirm Payment' }).last().click();
+    await expect(page.getByRole('button', { name: 'Confirm Payment' }), '모달 닫힘').toHaveCount(0, { timeout: 20000 });
+    expect(state.discovered, '자동 찾기 1회').toBe(1);
+    expect(state.calls, '판매 요청은 새 주소로 1번만').toEqual(['A1']);
+    const o = await getOrder(request, baseURL, token, orderId);
+    expect(o.payment_status).toBe('completed');
+    const [[row]] = await sequelize.query('SELECT payment_settings FROM restaurants WHERE id = 38');
+    expect(JSON.parse(row.payment_settings).card.terminal.host, '새 주소 저장').toBe('192.168.68.112');
+    await setTerminal(true); // 다음 테스트를 위해 옛 주소로
     expect(pageErrors).toHaveLength(0);
   });
 

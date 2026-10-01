@@ -1035,7 +1035,13 @@
       "testing": "Menguji…",
       "testOk": "Terminal disambungkan",
       "testFailed": "Tidak dapat mencapai terminal",
-      "needsApp": "Buka halaman ini dalam aplikasi PurpleHere POS pada peranti kaunter untuk menguji sambungan."
+      "needsApp": "Buka halaman ini dalam aplikasi PurpleHere POS pada peranti kaunter untuk menguji sambungan.",
+      "find": "Cari terminal",
+      "finding": "Mencari dalam Wi-Fi ini…",
+      "findOne": "Terminal ditemui di {{host}} dan disimpan",
+      "findNone": "Tiada terminal kad ditemui pada Wi-Fi ini",
+      "findMany": "Lebih daripada satu terminal ditemui — pilih terminal di kaunter ini:",
+      "hostAuto": "Ditemui secara automatik. Jika alamat berubah, aplikasi akan mencari terminal semula semasa bayaran."
     }
   },
   "printer.emergency.workstationReceiptPrinter": "pencetak resit stesen kerja ini",

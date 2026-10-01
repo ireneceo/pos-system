@@ -118,5 +118,9 @@
   "cardTerminal.reason.notFound": "Terminal tiada rekod bayaran ini.",
   "cardTerminal.reason.notApproved": "Terminal tidak meluluskan bayaran ini.",
   "cardTerminal.reason.cannotStart": "Tidak dapat memulakan terminal kad.",
-  "cardTerminal.reason.code": "Kod terminal {{code}}"
+  "cardTerminal.reason.code": "Kod terminal {{code}}",
+  "cardTerminal.chooseTitle": "Lebih daripada satu terminal kad ditemui",
+  "cardTerminal.chooseHint": "Pilih terminal di kaunter ini. Alamatnya disimpan untuk kali seterusnya.",
+  "cardTerminal.reason.terminalNotFound": "Tiada terminal kad ditemui pada Wi-Fi ini. Pastikan terminal dihidupkan dan disambung ke Wi-Fi yang sama.",
+  "cardTerminal.reason.chooseTerminal": "Lebih daripada satu terminal kad menjawab."
 }

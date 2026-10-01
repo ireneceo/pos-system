@@ -7,7 +7,7 @@
  * 이 파일은 프로토콜을 모른다(hex 를 열어 보지 않는다). 승인 여부는 서버 응답의 status 만 믿는다.
  */
 import { getAuthToken } from './auth';
-import { ecrExchange, EcrTransport } from './nativeEcr';
+import { ecrExchange, ecrDiscover, isConnectFailure, EcrTransport, EcrResult } from './nativeEcr';
 
 export interface TerminalTxn {
   id: number; status: string; status_code?: string | null; status_text?: string | null; amount?: string;
@@ -19,6 +19,7 @@ export type TerminalOutcome =
   | { kind: 'approved'; txn: TerminalTxn }
   | { kind: 'declined'; txn: TerminalTxn; message: string }
   | { kind: 'unknown'; txn: TerminalTxn; message: string }
+  | { kind: 'choose'; hosts: string[]; message: string }
   | { kind: 'error'; message: string };
 
 interface Job { id: number; request_hex: string; timeout_ms: number; connection: { host: string; port: number; transport: EcrTransport } }
@@ -38,13 +39,42 @@ async function api(path: string, body: any): Promise<{ ok: boolean; status: numb
   }
 }
 
-/** 단말기 왕복 1회 → 서버 판정 결과(행). 깨진 응답(422)은 «받지 못한 것» 으로 다시 올려 복구 경로로 보낸다. */
-async function roundTrip(job: Job): Promise<{ row: TerminalTxn | null; parent: TerminalTxn | null; error?: string }> {
-  const r = await ecrExchange({ ...job.connection, payloadHex: job.request_hex, timeoutMs: job.timeout_ms });
+/** 같은 와이파이에서 단말기를 찾는다. 1대면 그 주소를 매장 설정에 저장하고 돌려준다. */
+async function findTerminal(restaurantId: number, conn: Job['connection']): Promise<{ host?: string; hosts: string[] }> {
+  const echo = await api('/echo', { restaurant_id: restaurantId });
+  if (!echo.ok) return { hosts: [] };
+  const hosts = await ecrDiscover({ port: conn.port, transport: conn.transport, probeHex: echo.json.data.request_hex });
+  if (hosts.length !== 1) return { hosts };
+  const saved = await api('/config/host', { restaurant_id: restaurantId, host: hosts[0] });
+  return saved.ok ? { host: hosts[0], hosts } : { hosts };
+}
+
+/** 저장된 단말기 주소 — 화면이 고른 주소를 저장할 때 쓴다(여러 대가 응답했을 때). */
+export async function saveTerminalHost(restaurantId: number, host: string): Promise<boolean> {
+  return (await api('/config/host', { restaurant_id: restaurantId, host })).ok;
+}
+
+/**
+ * 단말기 왕복 1회 → 서버 판정 결과(행). 깨진 응답(422)은 «받지 못한 것» 으로 다시 올려 복구 경로로 보낸다.
+ * 연결 자체가 안 되면(요청이 단말기에 닿지 않음) 와이파이 안에서 단말기를 찾아 **같은 요청**을 다시 보낸다.
+ * 연결 뒤 무응답(TIMEOUT)은 다시 보내지 않는다 — 단말기가 이미 처리했을 수 있다(이중 결제 방지).
+ */
+async function roundTrip(job: Job, restaurantId: number): Promise<{ row: TerminalTxn | null; parent: TerminalTxn | null; error?: string; choose?: string[] }> {
+  let r: EcrResult = await ecrExchange({ ...job.connection, payloadHex: job.request_hex, timeoutMs: job.timeout_ms });
+  if (r.ok !== true && isConnectFailure((r as { error: string }).error)) {
+    const found = await findTerminal(restaurantId, job.connection);
+    if (found.host) {
+      r = await ecrExchange({ ...job.connection, host: found.host, payloadHex: job.request_hex, timeoutMs: job.timeout_ms });
+    } else if (found.hosts.length > 1) {
+      await api(`/transactions/${job.id}/response`, { error: 'CONNECT_FAILED' });
+      return { row: null, parent: null, choose: found.hosts };
+    }
+  }
   let up = await api(`/transactions/${job.id}/response`, r.ok === true ? { response_hex: r.responseHex } : { error: (r as { error: string }).error });
   if (!up.ok && up.status === 422) up = await api(`/transactions/${job.id}/response`, { error: 'BAD_RESPONSE' });
   if (!up.ok) return { row: null, parent: null, error: up.json?.message || 'Server error' };
-  return { row: up.json.data, parent: up.json.data?.parent || null };
+  const notConnected = r.ok !== true && isConnectFailure((r as { error: string }).error);
+  return { row: up.json.data, parent: up.json.data?.parent || null, error: notConnected ? 'NOT_CONNECTED' : undefined };
 }
 
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
@@ -64,9 +94,12 @@ export async function runTerminalSale(opts: {
   const sale: Job = created.json.data;
 
   opts.onPhase?.('waiting');
-  const first = await roundTrip(sale);
+  const first = await roundTrip(sale, opts.restaurantId);
+  if (first.choose) return { kind: 'choose', hosts: first.choose, message: 'reason:chooseTerminal' };
   let txn: TerminalTxn | null = first.row;
   if (!txn) return { kind: 'unknown', txn: { id: sale.id, status: 'sent' }, message: 'reason:noAnswer' };
+  // 단말기를 끝내 못 찾았다 — 요청이 단말기에 닿지 않았으니 결제는 일어나지 않았다(복구·수동 기록 대상 아님)
+  if (first.error === 'NOT_CONNECTED') return { kind: 'error', message: 'reason:terminalNotFound' };
 
   // 보류(EA) — 규격상 Check Status 를 성공/실패가 날 때까지 반복
   if (txn.status === 'pending') {
@@ -76,7 +109,7 @@ export async function runTerminalSale(opts: {
       await sleep(3000);
       const cs = await api(`/transactions/${sale.id}/check-status`, {});
       if (!cs.ok) break;
-      const r = await roundTrip(cs.json.data);
+      const r = await roundTrip(cs.json.data, opts.restaurantId);
       if (r.parent) txn = r.parent;
     }
     if (txn.status === 'pending') return { kind: 'unknown', txn, message: 'reason:stillPending' };
@@ -87,7 +120,7 @@ export async function runTerminalSale(opts: {
     opts.onPhase?.('recovering');
     const rc = await api(`/transactions/${sale.id}/recover`, {});
     if (rc.ok) {
-      const r = await roundTrip(rc.json.data);
+      const r = await roundTrip(rc.json.data, opts.restaurantId);
       if (r.parent) txn = r.parent;
     }
   }

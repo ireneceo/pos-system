@@ -1035,7 +1035,13 @@
       "testing": "테스트 중…",
       "testOk": "단말기 연결됨",
       "testFailed": "단말기에 연결할 수 없습니다",
-      "needsApp": "연결 테스트는 계산대 기기의 PurpleHere POS 앱에서 이 화면을 열어 하세요."
+      "needsApp": "연결 테스트는 계산대 기기의 PurpleHere POS 앱에서 이 화면을 열어 하세요.",
+      "find": "단말기 찾기",
+      "finding": "이 와이파이에서 찾는 중…",
+      "findOne": "{{host}} 에서 단말기를 찾아 저장했습니다",
+      "findNone": "이 와이파이에서 카드 단말기를 찾지 못했습니다",
+      "findMany": "단말기가 여러 대 있습니다 — 이 계산대의 단말기를 고르세요:",
+      "hostAuto": "자동으로 찾습니다. 주소가 바뀌어도 결제할 때 앱이 단말기를 다시 찾습니다."
     }
   },
   "printer.emergency.workstationReceiptPrinter": "이 워크스테이션 영수증 프린터",

@@ -217,11 +217,33 @@ async function markManual(row, note) {
 }
 
 async function createEcho({ restaurantId, user }) {
+  // 주소가 비어 있어도 Echo 프레임은 준다 — 계산대 앱의 «단말기 자동 찾기» 가 이 프레임으로 와이파이 안을 확인한다
   const cfg = await terminalConfig(restaurantId);
-  if (!cfg.host) throw err(409, 'TERMINAL_DISABLED', 'Enter the terminal address first');
   const req = ecr.bufToHex(ecr.echoRequest());
   const row = await TerminalTransaction.create({ restaurant_id: restaurantId, command: 'echo', status: 'sent', request_hex: req, sent_at: new Date(), cashier_id: user?.id || null });
   return job(row, cfg, req);
 }
 
-module.exports = { TIMEOUT_MS, terminalConfig, createSale, recover, checkStatus, applyResponse, link, markManual, createEcho, publicRow };
+const PRIVATE_IPV4 = /^(10\.\d{1,3}|192\.168|172\.(1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}$/;
+
+/**
+ * 자동 찾기로 알아낸 단말기 주소 저장 (Irene 2026-10-01 「바뀌면 자동으로 찾아야」).
+ * 결제 권한 직원(캐셔)도 부를 수 있다 — 바꾸는 것은 card.terminal.host 한 칸뿐이고 사설망 IPv4 만 받는다.
+ * 설정 전체를 덮어쓰지 않는다(결제 설정 wipe 잠금과 같은 취지).
+ */
+async function saveDiscoveredHost(restaurantId, host) {
+  const h = String(host || '').trim();
+  if (!PRIVATE_IPV4.test(h) || h.split('.').some((o) => Number(o) > 255)) throw err(400, 'BAD_HOST', 'Terminal address must be a local network address');
+  const r = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'payment_settings'] });
+  if (!r) throw err(404, 'NOT_FOUND', 'Restaurant not found');
+  const ps = normalizePaymentSettings(r.payment_settings);
+  const t = ps.card && ps.card.terminal;
+  if (!t || t.enabled !== true) throw err(409, 'TERMINAL_DISABLED', 'Card terminal is not set up for this restaurant');
+  if (t.host === h) return { host: h, changed: false };
+  const raw = typeof r.payment_settings === 'string' ? JSON.parse(r.payment_settings || '{}') : (r.payment_settings || {});
+  raw.card = { ...(raw.card || {}), terminal: { ...(raw.card && raw.card.terminal), host: h } };
+  await r.update({ payment_settings: raw }); // 인스턴스 update — 모델 setter(JSON 문자열화)를 탄다
+  return { host: h, changed: true, previous: t.host || null };
+}
+
+module.exports = { saveDiscoveredHost, TIMEOUT_MS, terminalConfig, createSale, recover, checkStatus, applyResponse, link, markManual, createEcho, publicRow };

@@ -7,7 +7,11 @@
 export type EcrTransport = 'http-hex' | 'tcp-hex' | 'tcp-bin';
 export interface EcrJob { host: string; port: number; transport: EcrTransport; payloadHex: string; timeoutMs: number }
 export type EcrResult = { ok: true; responseHex: string } | { ok: false; error: string };
-interface EcrBridge { available: boolean; exchange: (job: EcrJob) => Promise<EcrResult> }
+interface EcrBridge {
+  available: boolean;
+  exchange: (job: EcrJob) => Promise<EcrResult>;
+  discover?: (job: { port: number; transport: EcrTransport; probeHex: string }) => Promise<{ ok: boolean; hosts?: string[]; error?: string }>;
+}
 
 export function getEcrBridge(): EcrBridge | null {
   const b = (window as any).__NATIVE_ECR;
@@ -24,5 +28,20 @@ export async function ecrExchange(job: EcrJob): Promise<EcrResult> {
     return { ok: false, error: String((r as any)?.error || 'NET_ERROR') };
   } catch (e: any) {
     return { ok: false, error: String(e?.message || 'NET_ERROR').slice(0, 60) };
+  }
+}
+
+/** 연결 자체가 안 된 실패 — 요청이 단말기에 닿지 않았다. 단말기를 다시 찾아 같은 요청을 보내도 이중 결제가 없다. */
+export const isConnectFailure = (error: string) => /^CONNECT_/.test(error);
+
+/** 같은 와이파이에서 GHL 단말기 찾기(Irene 2026-10-01 「바뀌면 자동으로 찾아야」). 옛 앱(찾기 없음)이면 빈 목록. */
+export async function ecrDiscover(job: { port: number; transport: EcrTransport; probeHex: string }): Promise<string[]> {
+  const b = getEcrBridge();
+  if (!b || typeof b.discover !== 'function') return [];
+  try {
+    const r = await b.discover(job);
+    return r && r.ok && Array.isArray(r.hosts) ? r.hosts : [];
+  } catch {
+    return [];
   }
 }

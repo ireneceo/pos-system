@@ -6510,6 +6510,37 @@ function definePrintTests({ adminToken }) {
     finally { await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {}); await fx.restore(); }
   });
 
+  test('terminal', '단말기 자동 찾기 주소 저장 — 주소 한 칸만 · 사설망만 · 타매장 403 · 꺼진 매장 409', async () => {
+    const { sequelize } = require('../config/database');
+    const fx = await terminalFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const read = async () => JSON.parse((await sequelize.query('SELECT payment_settings p FROM restaurants WHERE id = :id', { replacements: { id: fx.rest.id }, type: sequelize.QueryTypes.SELECT }))[0].p || '{}');
+    try {
+      const before = await read();
+      const ok = await request('POST', '/terminal/config/host', { restaurant_id: fx.rest.id, host: '192.168.68.112' }, fx.auth);
+      if (ok.status !== 200 || !ok.body?.data?.changed) return fail(`저장 ${ok.status} ${JSON.stringify(ok.body).slice(0, 100)}`);
+      const after = await read();
+      if (after.card?.terminal?.host !== '192.168.68.112') return fail(`host=${after.card?.terminal?.host}`);
+      // 다른 칸은 그대로 — 단말기 주소 한 칸만 바뀌어야 한다
+      const strip = (o) => { const c2 = JSON.parse(JSON.stringify(o)); if (c2.card?.terminal) delete c2.card.terminal.host; return c2; };
+      if (JSON.stringify(strip(before)) !== JSON.stringify(strip(after))) return fail('주소 외 다른 결제 설정이 바뀜');
+      for (const bad of ['8.8.8.8', 'evil.example.com', '192.168.1.999', '']) {
+        const r = await request('POST', '/terminal/config/host', { restaurant_id: fx.rest.id, host: bad }, fx.auth);
+        if (r.status !== 400) return fail(`잘못된 주소 ${bad} → ${r.status}`);
+      }
+      const other = await request('POST', '/terminal/config/host', { restaurant_id: fx.rest.id, host: '192.168.68.113' }, fx.otherAuth);
+      if (other.status !== 403) return fail(`타매장 ${other.status}`);
+      const anon = await request('POST', '/terminal/config/host', { restaurant_id: fx.rest.id, host: '192.168.68.113' });
+      if (anon.status !== 401) return fail(`익명 ${anon.status}`);
+      await fx.restore();
+      const off = await request('POST', '/terminal/config/host', { restaurant_id: fx.rest.id, host: '192.168.68.113' }, fx.auth);
+      if (off.status !== 409) return fail(`꺼진 매장 ${off.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await fx.restore(); }
+  });
+
   test('pos', '브랜드 매출: 남의 brand_id 를 요구해도 자기 범위만 (돈 경계)', async () => {
     const jwtLib = require('jsonwebtoken');
     const { User } = require('../models');

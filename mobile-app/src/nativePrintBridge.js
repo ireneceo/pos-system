@@ -47,6 +47,17 @@
     openAppSettings: safe(() => P.openAppSettings())
   };
 
+  // 카드단말기 ECR 운반(GHL, 2026-10-01) — Windows preload 와 같은 계약. 해석·판정은 서버.
+  // 항상 { ok, responseHex | error } / { ok, hosts } 로 끝난다(throw 없음). 인쇄 계약과 별개.
+  const E = Cap.Plugins.NativeEcr;
+  if (E) {
+    window.__NATIVE_ECR = {
+      available: true,
+      exchange: safe((job) => E.exchange(job)),
+      discover: safe((job) => E.discover(job))
+    };
+  }
+
   // Resolve the real APK version onto the bridge (App.tsx renders it as a badge).
   P.diagnostics()
     .then((d) => { if (d && d.appVersion) window.__NATIVE_PRINT.version = d.appVersion; })

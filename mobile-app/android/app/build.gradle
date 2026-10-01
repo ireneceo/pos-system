@@ -50,6 +50,12 @@ android {
     }
 
     buildTypes {
+        // 개발서버 확인용(디버그) — 정식 앱(com.purplehere.pos.mobile)과 따로 설치되게 패키지 이름을 달리한다.
+        // 매장 태블릿의 정식 앱을 지우지 않고 옆에 깔아 실기기 검증한다(2026-10-01 GHL 단말기 실측).
+        debug {
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

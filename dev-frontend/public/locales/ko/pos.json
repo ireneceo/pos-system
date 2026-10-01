@@ -118,5 +118,9 @@
   "cardTerminal.reason.notFound": "단말기에 이 결제 기록이 없습니다.",
   "cardTerminal.reason.notApproved": "단말기가 이 결제를 승인하지 않았습니다.",
   "cardTerminal.reason.cannotStart": "카드 단말기를 시작할 수 없습니다.",
-  "cardTerminal.reason.code": "단말기 코드 {{code}}"
+  "cardTerminal.reason.code": "단말기 코드 {{code}}",
+  "cardTerminal.chooseTitle": "카드 단말기가 여러 대 있습니다",
+  "cardTerminal.chooseHint": "이 계산대의 단말기를 고르세요. 다음부터는 자동으로 씁니다.",
+  "cardTerminal.reason.terminalNotFound": "이 와이파이에서 카드 단말기를 찾지 못했습니다. 단말기가 켜져 있고 같은 와이파이에 연결돼 있는지 확인하세요.",
+  "cardTerminal.reason.chooseTerminal": "카드 단말기가 여러 대 응답했습니다."
 }

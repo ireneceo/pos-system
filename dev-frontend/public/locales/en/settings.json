@@ -1035,7 +1035,13 @@
       "testing": "Testing…",
       "testOk": "Terminal connected",
       "testFailed": "Could not reach the terminal",
-      "needsApp": "Open this page in the PurpleHere POS app on the counter device to test the connection."
+      "needsApp": "Open this page in the PurpleHere POS app on the counter device to test the connection.",
+      "find": "Find terminal",
+      "finding": "Searching this Wi-Fi…",
+      "findOne": "Terminal found at {{host}} and saved",
+      "findNone": "No card terminal found on this Wi-Fi",
+      "findMany": "More than one terminal found — pick the one at this counter:",
+      "hostAuto": "Found automatically. If the address changes, the app finds the terminal again at payment."
     }
   },
   "printer.emergency.workstationReceiptPrinter": "this workstation’s receipt printer",

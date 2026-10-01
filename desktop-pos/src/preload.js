@@ -58,5 +58,7 @@ contextBridge.exposeInMainWorld('__NATIVE_PRINT', {
 contextBridge.exposeInMainWorld('__NATIVE_ECR', {
   available: true,
   version: appVersion,
-  exchange: (job) => safeInvoke('native:ecrExchange', job)
+  exchange: (job) => safeInvoke('native:ecrExchange', job),
+  // 같은 와이파이에서 단말기 자동 찾기 → { ok, hosts:[...] }
+  discover: (job) => safeInvoke('native:ecrDiscover', job)
 });

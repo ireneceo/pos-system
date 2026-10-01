@@ -12,16 +12,17 @@ interface Props {
   busy: TerminalPhase | null;
   ready: boolean;
   reason: 'no-bridge' | 'offline' | null;
-  issue: { kind: 'declined' | 'unknown' | 'error'; message: string; txnId?: number } | null;
+  issue: { kind: 'declined' | 'unknown' | 'error' | 'choose'; message: string; txnId?: number; hosts?: string[] } | null;
   note: string;
   onNote: (v: string) => void;
   onManual: () => void;
   onRetry: () => void;
+  onPickTerminal: (host: string) => void;
 }
 
 const box: React.CSSProperties = { fontSize: '13px', lineHeight: 1.5, color: '#425466' };
 
-const TerminalPanel: React.FC<Props> = ({ busy, ready, reason, issue, note, onNote, onManual, onRetry }) => {
+const TerminalPanel: React.FC<Props> = ({ busy, ready, reason, issue, note, onNote, onManual, onRetry, onPickTerminal }) => {
   const { t } = useTranslation('pos');
   // 'reason:<키>' 는 번역, 'reason:code:<코드>' 는 단말기 코드 안내, 그 외(서버·단말기 문구)는 그대로
   const reasonText = (m: string) => {
@@ -39,6 +40,21 @@ const TerminalPanel: React.FC<Props> = ({ busy, ready, reason, issue, note, onNo
       <div style={box} role="status" aria-live="polite">
         <strong style={{ color: '#0A2540' }}>{text}</strong>
         <div style={{ marginTop: 4 }}>{t('cardTerminal.cancelOnTerminal')}</div>
+      </div>
+    );
+  }
+
+  if (issue && issue.kind === 'choose') {
+    // 같은 와이파이에서 GHL 단말기가 여러 대 응답 — 아무 기기에나 보내지 않고 캐셔가 고른다
+    return (
+      <div style={box} role="alert">
+        <strong style={{ color: '#0A2540' }}>{t('cardTerminal.chooseTitle')}</strong>
+        <div style={{ marginTop: 4 }}>{t('cardTerminal.chooseHint')}</div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          {(issue.hosts || []).map((h) => (
+            <Button key={h} variant="secondary" onClick={() => onPickTerminal(h)}>{h}</Button>
+          ))}
+        </div>
       </div>
     );
   }

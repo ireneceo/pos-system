@@ -4,7 +4,7 @@
 const http = require('http');
 const net = require('net');
 const path = require('path');
-const { exchange, validate } = require(path.join(__dirname, '..', 'src', 'ecr', 'exchange'));
+const { exchange, validate, discover, looksLikeEchoReply } = require(path.join(__dirname, '..', 'src', 'ecr', 'exchange'));
 const ecr = require('/var/www/dev-backend/utils/ghlEcr');
 const { respond } = require('/var/www/dev-backend/scripts/mock-ghl-terminal');
 
@@ -52,6 +52,24 @@ const listen = (srv) => new Promise((r) => srv.listen(0, '127.0.0.1', () => r(sr
   ok(validate({ host: '192.168.2.99', port: 33898, transport: 'http-hex', payloadHex: 'XYZ' }) === 'BAD_PAYLOAD', '비 hex 차단');
   ok(validate({ host: '192.168.2.99', port: 33898, transport: 'http-hex', payloadHex: sale }) === null, '사설망 허용');
   ok((await exchange(null)).error === 'BAD_JOB', 'null 작업 → BAD_JOB');
+
+  // 6) 연결 전 실패는 CONNECT_* (= 단말기에 안 닿음 → 다시 찾아 같은 요청을 보내도 안전), 연결 뒤 무응답은 TIMEOUT
+  ok(r4.error === 'CONNECT_REFUSED', '거부 = CONNECT_REFUSED');
+  ok(r3.error === 'TIMEOUT', '연결 뒤 무응답 = TIMEOUT(재전송 금지 신호)');
+
+  // 7) 자동 찾기 — 포트가 열려 있어도 GHL Echo 형식으로 답하는 기기만 단말기
+  const echoHex = ecr.bufToHex(ecr.echoRequest());
+  const term = http.createServer((req, res) => { let b = ''; req.on('data', (c) => b += c); req.on('end', () => res.end(respond(b, 'approve'))); });
+  const other = http.createServer((req, res) => res.end('<html>router</html>'));
+  // 같은 포트 번호로 서로 다른 루프백 주소에 띄운다(127.0.0.2 = 다른 기기 흉내)
+  const tport = await new Promise((r) => term.listen(0, '127.0.0.1', () => r(term.address().port)));
+  await new Promise((r) => other.listen(tport, '127.0.0.2', r));
+  const d = await discover({ port: tport, transport: 'http-hex', probeHex: echoHex, hosts: ['127.0.0.1', '127.0.0.2', '127.0.0.3'] });
+  ok(d.ok && d.hosts.length === 1 && d.hosts[0] === '127.0.0.1', `자동 찾기 = 단말기 1대만 (${JSON.stringify(d.hosts)})`);
+  ok(!looksLikeEchoReply('3C68746D6C3E') && looksLikeEchoReply(respond(echoHex, 'approve')), 'Echo 응답 형식 판정');
+  const d2 = await discover({ port: tport, transport: 'http-hex', probeHex: echoHex, hosts: ['8.8.8.8'] });
+  ok(d2.ok && d2.hosts.length === 0, '공인 IP 는 찾기 대상에서 제외');
+  term.close(); other.close();
 
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);

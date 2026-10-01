@@ -18,6 +18,8 @@ public class MainActivity extends BridgeActivity {
         // so window.Capacitor.Plugins.NativePrint is available to the remote page
         // (design §7-5). nativePrintBridge.js then maps it onto __NATIVE_PRINT.
         registerPlugin(NativePrintPlugin.class);
+        // 카드단말기 ECR 운반(GHL, 2026-10-01) — nativePrintBridge.js 가 window.__NATIVE_ECR 로 노출
+        registerPlugin(NativeEcrPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Inject the __NATIVE_PRINT bridge on EVERY page load, registered here in

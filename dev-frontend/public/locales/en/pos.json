@@ -118,5 +118,9 @@
   "cardTerminal.reason.notFound": "The terminal has no record of this payment.",
   "cardTerminal.reason.notApproved": "The terminal did not approve this payment.",
   "cardTerminal.reason.cannotStart": "Could not start the card terminal.",
-  "cardTerminal.reason.code": "Terminal code {{code}}"
+  "cardTerminal.reason.code": "Terminal code {{code}}",
+  "cardTerminal.chooseTitle": "More than one card terminal found",
+  "cardTerminal.chooseHint": "Pick the terminal at this counter. Its address is saved for next time.",
+  "cardTerminal.reason.terminalNotFound": "No card terminal found on this Wi-Fi. Check the terminal is on and connected to the same Wi-Fi.",
+  "cardTerminal.reason.chooseTerminal": "More than one card terminal answered."
 }

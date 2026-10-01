@@ -118,5 +118,9 @@
   "cardTerminal.reason.notFound": "刷卡机没有此笔付款的记录。",
   "cardTerminal.reason.notApproved": "刷卡机未批准此笔付款。",
   "cardTerminal.reason.cannotStart": "无法启动刷卡机。",
-  "cardTerminal.reason.code": "刷卡机代码 {{code}}"
+  "cardTerminal.reason.code": "刷卡机代码 {{code}}",
+  "cardTerminal.chooseTitle": "找到多台刷卡机",
+  "cardTerminal.chooseHint": "请选择本收银台的刷卡机，下次将自动使用。",
+  "cardTerminal.reason.terminalNotFound": "在此 Wi-Fi 中找不到刷卡机。请确认刷卡机已开机并连接同一 Wi-Fi。",
+  "cardTerminal.reason.chooseTerminal": "有多台刷卡机回应。"
 }

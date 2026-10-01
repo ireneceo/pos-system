@@ -117,6 +117,22 @@ router.post('/echo', async (req, res) => {
   } catch (e) { send(res, e, 'POST /echo'); }
 });
 
+router.post('/config/host', async (req, res) => {
+  try {
+    const r = await restaurantFrom(req, req.body?.restaurant_id);
+    if (!r.rid) return res.status(r.status).json({ success: false, message: r.message });
+    const out = await svc.saveDiscoveredHost(r.rid, req.body?.host);
+    if (out.changed) {
+      await logActivity(req, {
+        action_type: 'update', entity_type: 'settings', entity_id: r.rid, restaurant_id: r.rid,
+        entity_name: 'Card terminal address', changes: { host: { before: out.previous, after: out.host } },
+        description: `Card terminal found at ${out.host} (was ${out.previous || 'empty'})`,
+      });
+    }
+    res.json({ success: true, data: out });
+  } catch (e) { send(res, e, 'POST /config/host'); }
+});
+
 router.get('/transactions', async (req, res) => {
   try {
     const r = await restaurantFrom(req, req.query.restaurant_id);

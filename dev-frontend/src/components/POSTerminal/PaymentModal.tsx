@@ -18,7 +18,7 @@ import DiscountPinModal from './DiscountPinModal';
 
 import { getAuthToken } from '../../utils/auth';
 import { getEcrBridge } from '../../utils/nativeEcr';
-import { runTerminalSale, recordTerminalManually, terminalRef, TerminalPhase, TerminalTxn } from '../../utils/terminalSale';
+import { runTerminalSale, recordTerminalManually, saveTerminalHost, terminalRef, TerminalPhase, TerminalTxn } from '../../utils/terminalSale';
 import { setPendingTerminalLink } from '../../utils/terminalPaymentLink';
 import TerminalPanel from './TerminalPanel';
 const OrderSummary = styled.div`
@@ -535,7 +535,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const ecrBridgeReady = !!getEcrBridge();
   const useTerminal = paymentMethod === 'card' && terminalOn && ecrBridgeReady && !isOffline;
   const [terminalBusy, setTerminalBusy] = useState<TerminalPhase | null>(null);
-  const [terminalIssue, setTerminalIssue] = useState<{ kind: 'declined' | 'unknown' | 'error'; message: string; txnId?: number } | null>(null);
+  const [terminalIssue, setTerminalIssue] = useState<{ kind: 'declined' | 'unknown' | 'error' | 'choose'; message: string; txnId?: number; hosts?: string[] } | null>(null);
   const [terminalNote, setTerminalNote] = useState('');
   const terminalRestaurantId = (): number | null => {
     const fromPath = window.location.pathname.match(/\/restaurant\/(\d+)/);
@@ -851,6 +851,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     try {
       const out = await runTerminalSale({ restaurantId: rid, orderId: forOrderId || null, amount, cashierName, onPhase: setTerminalBusy });
       if (out.kind === 'approved') return out.txn;
+      if (out.kind === 'choose') { setTerminalIssue({ kind: 'choose', message: out.message, hosts: out.hosts }); return null; }
       setTerminalIssue({ kind: out.kind, message: out.message, txnId: out.kind === 'error' ? undefined : out.txn.id });
       return null;
     } finally {
@@ -868,6 +869,19 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     if (splitMode) { handleSplitConfirm(); return; }
     if (!orderId) setPendingTerminalLink(terminalIssue.txnId, total);
     onConfirmPayment('card', undefined, undefined, pointsToUse, pointDiscount, cardType);
+  };
+
+  /** 와이파이에서 단말기가 여러 대 응답했을 때 캐셔가 고른 주소를 저장하고 같은 결제를 다시 시작한다. */
+  const handlePickTerminal = async (host: string) => {
+    const rid = terminalRestaurantId();
+    if (!rid) return;
+    setTerminalBusy('starting');
+    const ok = await saveTerminalHost(rid, host);
+    setTerminalBusy(null);
+    if (!ok) { setTerminalIssue({ kind: 'error', message: 'reason:cannotStart' }); return; }
+    setTerminalIssue(null);
+    // 저장된 주소는 다음 거래 생성부터 서버가 내려준다
+    setTimeout(() => { handleConfirm(); }, 0);
   };
 
   const handleConfirm = async () => {
@@ -1436,6 +1450,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             onNote={setTerminalNote}
             onManual={handleTerminalManual}
             onRetry={() => { setTerminalIssue(null); setTerminalNote(''); }}
+            onPickTerminal={handlePickTerminal}
           />
         </InputSection>
       )}

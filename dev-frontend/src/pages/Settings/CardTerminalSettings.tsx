@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormInput, FormSelect, ModalButton as Button } from '../../components/UI/Modal';
-import { getEcrBridge, ecrExchange } from '../../utils/nativeEcr';
+import { getEcrBridge, ecrExchange, ecrDiscover } from '../../utils/nativeEcr';
 import { getAuthToken } from '../../utils/auth';
 
 export interface CardTerminalValue { enabled?: boolean; provider?: string; host?: string; port?: number; transport?: string }
@@ -29,6 +29,25 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
   const bridge = !!getEcrBridge();
+  const [finding, setFinding] = useState(false);
+  const [found, setFound] = useState<string[] | null>(null);
+
+  // 같은 와이파이에서 단말기 자동 찾기 — 1대면 바로 저장, 여러 대면 고르게 한다
+  const runFind = async () => {
+    setFinding(true); setFound(null); setTestResult(null);
+    try {
+      const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` };
+      const r = await fetch('/api/terminal/echo', { method: 'POST', headers, body: JSON.stringify({ restaurant_id: restaurantId }) });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j?.success) { setTestResult({ ok: false, text: j?.message || t('settingsPage.cardTerminal.findNone') }); return; }
+      const hosts = await ecrDiscover({ port: Number(v.port) || 33898, transport: (v.transport as any) || 'http-hex', probeHex: j.data.request_hex });
+      if (hosts.length === 1) { set({ host: hosts[0] }, true); setTestResult({ ok: true, text: t('settingsPage.cardTerminal.findOne', { host: hosts[0] }) }); }
+      else if (hosts.length > 1) setFound(hosts);
+      else setTestResult({ ok: false, text: t('settingsPage.cardTerminal.findNone') });
+    } finally {
+      setFinding(false);
+    }
+  };
 
   const runTest = async () => {
     setTesting(true); setTestResult(null);
@@ -66,6 +85,7 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
         <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
           <div>
             <div style={title}>{t('settingsPage.cardTerminal.host')}</div>
+            <div style={hint}>{t('settingsPage.cardTerminal.hostAuto')}</div>
             <FormInput
               type="text" inputMode="decimal" placeholder="192.168.2.99"
               value={v.host || ''}
@@ -96,11 +116,26 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
       {v.enabled && (
         <div style={{ marginTop: '12px' }}>
           {bridge ? (
+            <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <Button variant="primary" onClick={runFind} disabled={finding || testing}>
+                {finding ? t('settingsPage.cardTerminal.finding') : t('settingsPage.cardTerminal.find')}
+              </Button>
               <Button variant="secondary" onClick={runTest} disabled={testing || !String(v.host || '').trim()}>
                 {testing ? t('settingsPage.cardTerminal.testing') : t('settingsPage.cardTerminal.test')}
               </Button>
               {testResult && <span style={{ fontSize: '13px', fontWeight: 600, color: testResult.ok ? '#059669' : '#DC2626' }}>{testResult.text}</span>}
+            </div>
+            {found && (
+              <div style={{ marginTop: '10px' }}>
+                <div style={hint}>{t('settingsPage.cardTerminal.findMany')}</div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                  {found.map((h) => (
+                    <Button key={h} variant="secondary" onClick={() => { set({ host: h }, true); setFound(null); setTestResult({ ok: true, text: t('settingsPage.cardTerminal.findOne', { host: h }) }); }}>{h}</Button>
+                  ))}
+                </div>
+              </div>
+            )}
             </div>
           ) : (
             <div style={hint}>{t('settingsPage.cardTerminal.needsApp')}</div>

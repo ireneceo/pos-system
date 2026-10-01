@@ -1035,7 +1035,13 @@
       "testing": "测试中…",
       "testOk": "刷卡机已连接",
       "testFailed": "无法连接刷卡机",
-      "needsApp": "请在收银台设备的 PurpleHere POS 应用中打开此页面以测试连接。"
+      "needsApp": "请在收银台设备的 PurpleHere POS 应用中打开此页面以测试连接。",
+      "find": "查找刷卡机",
+      "finding": "正在此 Wi-Fi 中查找…",
+      "findOne": "已在 {{host}} 找到刷卡机并保存",
+      "findNone": "在此 Wi-Fi 中找不到刷卡机",
+      "findMany": "找到多台刷卡机 — 请选择本收银台的刷卡机：",
+      "hostAuto": "自动查找。地址变化时，付款时应用会重新找到刷卡机。"
     }
   },
   "printer.emergency.workstationReceiptPrinter": "本工位的收据打印机",
