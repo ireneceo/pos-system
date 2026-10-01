@@ -19,9 +19,8 @@ const { sequelize } = require('../config/database');
     console.log('[migrate-create-terminal-transactions] Starting...');
     const [tbls] = await sequelize.query("SHOW TABLES LIKE 'terminal_transactions'");
     if (tbls.length > 0) {
-      console.log('  ✓ terminal_transactions table already exists — skip');
-      process.exit(0);
-    }
+      console.log('  ✓ terminal_transactions table already exists');
+    } else {
     await sequelize.query(`
       CREATE TABLE terminal_transactions (
         id INT NOT NULL AUTO_INCREMENT,
@@ -47,6 +46,8 @@ const { sequelize } = require('../config/database');
         card_type_code VARCHAR(4) NULL,
         card_brand VARCHAR(40) NULL,
         card_type VARCHAR(20) NULL,
+        tender_method ENUM('card','ewallet') NULL,
+        ewallet_type VARCHAR(20) NULL,
         entry_mode VARCHAR(20) NULL,
         terminal_id VARCHAR(16) NULL,
         merchant_id VARCHAR(20) NULL,
@@ -70,6 +71,20 @@ const { sequelize } = require('../config/database');
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
     console.log('  ✓ terminal_transactions table created');
+    }
+    // 2026-10-01 결제 수단 분류(Fable 추가 판정 C-2) — 표를 먼저 만든 환경(dev)에도 두 칸을 보장한다(멱등).
+    // ENUM 값을 늘릴 때는 목록을 바꾸지 말고 scripts/lib/enumExpand 의 expandEnum 으로 부족한 값만 더한다.
+    const [cols] = await sequelize.query(
+      "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'terminal_transactions'");
+    const have = new Set(cols.map((c) => c.COLUMN_NAME));
+    if (!have.has('tender_method')) {
+      await sequelize.query("ALTER TABLE terminal_transactions ADD COLUMN tender_method ENUM('card','ewallet') NULL AFTER card_type");
+      console.log('  ✓ tender_method added');
+    }
+    if (!have.has('ewallet_type')) {
+      await sequelize.query('ALTER TABLE terminal_transactions ADD COLUMN ewallet_type VARCHAR(20) NULL AFTER tender_method');
+      console.log('  ✓ ewallet_type added');
+    }
     process.exit(0);
   } catch (e) {
     console.error('  ✗ Migration failed:', e.message);

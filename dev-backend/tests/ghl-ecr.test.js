@@ -44,6 +44,58 @@ describe('CRC-16/ARC — 규격 샘플', () => {
   });
 });
 
+// 규격 §9.4 eWallet(Seamless) 응답 · §9.9 eWallet(Async, DuitNow) 응답 — 줄바꿈만 이어 붙임
+const EWALLET_RES = [
+  '02000B010C01A1000085C0', '010006000000001000C0020', '0083130303030383331C003', '00083236363230303337C00',
+  '600050226092338D0180009', '544E4757414C4C4554D017', '000C4550413030303231323', '63934C01800183238313031',
+  '31303233373339303734353', '238393235363532C0040003', '001356D008000108D01A000', '45363616EC0050003313432',
+  'D0020002313918BE03',
+].join('');
+const DUITNOW_RES = [
+  '02000B010C01A1EA006CC0010006000000001000C002', '00083130303030383331C00300083236363230303337C0',
+  '0600050226094656D018000A447569744E6F77205152D', '017000E5250505152303030303132333931C0040003001',
+  '361D008000108D01A00045363616EC0050003313432D0', '0200023139A46F03',
+].join('');
+
+describe('결제 수단 분류 — 카드 vs 손님 QR(지갑) (Fable 추가 판정 C-2)', () => {
+  test('§9.4 TNGWALLET · D002 "19" · Scan → ewallet/tng', () => {
+    const f = ecr.parseFrame(EWALLET_RES);
+    const r = ecr.readResult(f);
+    expect(f.status).toBe('00');
+    expect(r.tender_method).toBe('ewallet');
+    expect(r.ewallet_type).toBe('tng');
+    expect(r.card_type).toBeNull();
+    expect(r.amount).toBe('10.00');
+  });
+  test('§9.9 DuitNow QR(Async, EA) → ewallet/duitnow (분류만)', () => {
+    const f = ecr.parseFrame(DUITNOW_RES);
+    const r = ecr.readResult(f);
+    expect(f.status).toBe('EA');
+    expect(r.tender_method).toBe('ewallet');
+    expect(r.ewallet_type).toBe('duitnow');
+  });
+  test('§9.2 MyDebit 카드 → card/debit · VISA 문자열 → card/visa', () => {
+    const r = ecr.readResult(ecr.parseFrame(SALE_RES));
+    expect(r.tender_method).toBe('card');
+    expect(r.card_type).toBe('debit');
+    expect(r.ewallet_type).toBeNull();
+    expect(ecr.tenderFromResult({ brand: 'VISA', code: '04', entryText: 'Wave' })).toEqual({ method: 'card', card_type: 'visa', ewallet_type: null });
+  });
+  test('브랜드 문자열 없을 때 코드·입력방식으로 지갑 판정', () => {
+    expect(ecr.tenderFromResult({ code: '11' }).ewallet_type).toBe('tng');
+    expect(ecr.tenderFromResult({ code: '19' }).method).toBe('ewallet');
+    expect(ecr.tenderFromResult({ code: '04', entryText: 'Scan' }).method).toBe('ewallet');
+    expect(ecr.tenderFromResult({ brand: 'GRABPAY' }).ewallet_type).toBe('grabpay');
+    expect(ecr.tenderFromResult({}).method).toBe('card');
+  });
+  test('D003 결제종류는 선택 — 넣으면 왕복, 기본은 없음', () => {
+    expect(ecr.parseFrame(ecr.saleRequest({ amount: '1', ecrInvoiceNo: 'A1' })).tags.D003).toBeUndefined();
+    const f = ecr.parseFrame(ecr.saleRequest({ amount: '1', ecrInvoiceNo: 'A1', paymentType: 'CD' }));
+    expect(f.tags.D003.toString('hex').toUpperCase()).toBe('CD');
+    expect(() => ecr.saleRequest({ amount: '1', ecrInvoiceNo: 'A1', paymentType: 'ZZ' })).toThrow();
+  });
+});
+
 describe('Sale 응답 해석 — 규격 §9.2', () => {
   const f = ecr.parseFrame(SALE_RES);
   const r = ecr.readResult(f);

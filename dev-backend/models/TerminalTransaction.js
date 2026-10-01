@@ -31,6 +31,9 @@ const TerminalTransaction = sequelize.define('TerminalTransaction', {
   card_type_code: { type: DataTypes.STRING(4), allowNull: true },
   card_brand: { type: DataTypes.STRING(40), allowNull: true },
   card_type: { type: DataTypes.STRING(20), allowNull: true },
+  // 결제 수단 분류(단말기 응답이 진실) — 카드 vs 손님 QR(지갑). ewallet_type 은 화면 EWALLET_TYPE_OPTIONS 키.
+  tender_method: { type: DataTypes.ENUM('card', 'ewallet'), allowNull: true },
+  ewallet_type: { type: DataTypes.STRING(20), allowNull: true },
   entry_mode: { type: DataTypes.STRING(20), allowNull: true },
   terminal_id: { type: DataTypes.STRING(16), allowNull: true },
   merchant_id: { type: DataTypes.STRING(20), allowNull: true },

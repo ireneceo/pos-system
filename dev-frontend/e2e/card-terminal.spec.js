@@ -44,6 +44,9 @@ async function installBridge(page, state) {
   await page.addInitScript(() => {
     // @ts-ignore
     window.__NATIVE_ECR = { available: true, exchange: (job) => window.__mockEcrExchange(job), discover: (job) => window.__mockEcrDiscover(job) };
+    // 계산대 앱 안이라는 표시 — 실제 앱(preload/nativePrintBridge)도 세운다. 앱 설치 안내 배너가 결제 버튼을 가리지 않는다
+    // @ts-ignore
+    window.__PURPLE_DESKTOP = { isDesktop: true, platform: 'android' };
   });
 }
 
@@ -53,7 +56,8 @@ async function openPayment(page, orderNumber, pageErrors) {
   const card = page.locator('div', { hasText: orderNumber }).filter({ has: page.getByRole('button', { name: 'Payment', exact: true }) }).last();
   await card.getByRole('button', { name: 'Payment', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Confirm Payment' }).last(), '결제 모달').toBeVisible();
-  await page.getByText('Card', { exact: true }).last().click();
+  // 단말기 매장 + 앱(브릿지)이면 «Card / QR (Terminal)», 아니면 «Card»
+  await page.getByText(/^Card( \/ QR \(Terminal\))?$/).last().click();
   const body = (await page.evaluate(() => document.body?.innerText || '')).slice(0, 8000);
   expect(bodyLooksCrashed(body), '모달 크래시').toBeFalsy();
   expect(pageErrors, `pageerror: ${pageErrors.slice(0, 1)}`).toHaveLength(0);
@@ -75,7 +79,6 @@ test.describe('카드단말기 ECR — 결제 창 흐름(목 브릿지)', () => 
   });
   test.afterAll(async () => {
     if (originalPs !== undefined) await sequelize.query('UPDATE restaurants SET payment_settings = :v WHERE id = 38', { replacements: { v: originalPs } });
-    await sequelize.close();
   });
   test.beforeEach(async ({ request, baseURL, page }) => {
     const r = await createDemoOrder(request, baseURL, token, user, { needs_print: false, total_amount: 30, payment_status: 'pending', status: 'pending' });
@@ -93,7 +96,7 @@ test.describe('카드단말기 ECR — 결제 창 흐름(목 브릿지)', () => 
     const state = { scenario: 'approve', calls: [] };
     await installBridge(page, state);
     await openPayment(page, orderNumber, pageErrors);
-    await expect(page.getByText('The amount will be sent to the card terminal automatically.')).toBeVisible();
+    await expect(page.getByText(/The amount goes to the terminal/)).toBeVisible();
     await page.getByRole('button', { name: 'Confirm Payment' }).last().click();
     await expect(page.getByRole('button', { name: 'Confirm Payment' }), '모달 닫힘').toHaveCount(0, { timeout: 20000 });
     const o = await getOrder(request, baseURL, token, orderId);
@@ -151,6 +154,46 @@ test.describe('카드단말기 ECR — 결제 창 흐름(목 브릿지)', () => 
     expect(pageErrors).toHaveLength(0);
   });
 
+  test('F 손님 TnG QR → 이월렛(tng)으로 기록 · 버튼 이름 Card / QR', async ({ page, request, baseURL }) => {
+    const pageErrors = []; page.on('pageerror', (e) => pageErrors.push(String(e)));
+    const state = { scenario: 'approve-tng', calls: [] };
+    await installBridge(page, state);
+    await openPayment(page, orderNumber, pageErrors);
+    await expect(page.getByText('Card / QR (Terminal)')).toBeVisible();
+    await page.getByRole('button', { name: 'Confirm Payment' }).last().click();
+    await expect(page.getByRole('button', { name: 'Confirm Payment' }), '모달 닫힘').toHaveCount(0, { timeout: 20000 });
+    const o = await getOrder(request, baseURL, token, orderId);
+    expect(o.payment_status).toBe('completed');
+    expect(o.payment_method, '지갑 QR 은 이월렛').toBe('ewallet');
+    expect(o.ewallet_type).toBe('tng');
+    expect(String(o.transaction_id || '')).toMatch(/^GHL:/);
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  test('G 결과 미확인 → 수단·사유 고르기 전엔 기록 불가 → 이월렛 수동 기록', async ({ page, request, baseURL }) => {
+    const pageErrors = []; page.on('pageerror', (e) => pageErrors.push(String(e)));
+    const state = { scenario: 'notfound', calls: [] };
+    await installBridge(page, state);
+    await openPayment(page, orderNumber, pageErrors);
+    await page.getByRole('button', { name: 'Confirm Payment' }).last().click();
+    await expect(page.getByText('Payment result unknown')).toBeVisible({ timeout: 20000 });
+    const record = page.getByRole('button', { name: 'Record from receipt' });
+    await expect(record, '아무것도 안 고르면 비활성').toBeDisabled();
+    await page.getByPlaceholder('e.g. Approved, approval code 123456').fill('HC receipt approved');
+    await expect(record, '사유만으로는 비활성(수단 필수)').toBeDisabled();
+    await page.getByRole('button', { name: 'E-Wallet', exact: true }).last().click();
+    await page.getByRole('button', { name: "Touch 'n Go" }).last().click();
+    await expect(record).toBeEnabled();
+    await record.click();
+    await expect(page.getByRole('button', { name: 'Confirm Payment' }), '모달 닫힘').toHaveCount(0, { timeout: 20000 });
+    const o = await getOrder(request, baseURL, token, orderId);
+    expect(o.payment_status).toBe('completed');
+    expect(o.payment_method).toBe('ewallet');
+    const rows = await terminalRowsFor(request, baseURL, orderId);
+    expect(rows.some((r) => r.status === 'manual' && r.tender_method === 'ewallet' && r.manual_override)).toBeTruthy();
+    expect(pageErrors).toHaveLength(0);
+  });
+
   test('D 브릿지 없음(브라우저) → 안내만 · 단말기 호출 0', async ({ page }) => {
     const pageErrors = []; page.on('pageerror', (e) => pageErrors.push(String(e)));
     await openPayment(page, orderNumber, pageErrors);
@@ -159,3 +202,55 @@ test.describe('카드단말기 ECR — 결제 창 흐름(목 브릿지)', () => 
     expect(pageErrors).toHaveLength(0);
   });
 });
+
+test.describe('카드단말기 ECR — POS 신규 주문(주문 생성 직후 연결)', () => {
+  test.beforeAll(async ({ request, baseURL }) => {
+    ({ token, user } = await demoLogin(request, baseURL, 'demo_restaurant_admin'));
+    assertDemoContext(baseURL, user);
+    await setTerminal(true);
+  });
+  test.afterAll(async () => {
+    if (originalPs !== undefined) await sequelize.query('UPDATE restaurants SET payment_settings = :v WHERE id = 38', { replacements: { v: originalPs } });
+  });
+
+  test('H POS 메뉴 담기 → Pay Now → TnG QR 승인 → 새 주문이 이월렛(tng) · 단말기 거래가 그 주문에 연결', async ({ page, request, baseURL }) => {
+    const pageErrors = []; page.on('pageerror', (e) => pageErrors.push(String(e)));
+    await page.context().addInitScript(([t, ro]) => { localStorage.setItem('auth_token', t); localStorage.setItem('currentUserRole', ro); }, [token, 'Restaurant Admin']);
+    const state = { scenario: 'approve-tng', calls: [] };
+    await installBridge(page, state);
+    await page.goto(`/restaurant/${user.restaurant_id}/pos-terminal`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1500);
+    // 첫 메뉴 카드(가격 RM 표시)를 담는다. 옵션 창이 뜨면 담기 버튼으로 닫는다.
+    await page.getByText(/^RM\s?\d/).first().click();
+    await page.waitForTimeout(600);
+    // 옵션 창(세트·옵션 메뉴)이면 첫 선택지를 고르고 «Add · RM …» 로 담는다
+    const addBtn = page.getByRole('button', { name: /^Add\b/ });
+    if (await addBtn.count()) {
+      const firstChoice = page.getByRole('button', { name: 'Small', exact: true });
+      if (await firstChoice.count()) await firstChoice.first().click().catch(() => {});
+      await addBtn.last().click();
+    }
+    await page.getByRole('button', { name: /Pay Now/ }).first().click();
+    await expect(page.getByRole('button', { name: 'Confirm Payment' }).last(), '결제 모달').toBeVisible({ timeout: 15000 });
+    await page.getByText(/^Card( \/ QR \(Terminal\))?$/).last().click();
+    const before = await (await request.get(apiBase(baseURL) + '/terminal/transactions?restaurant_id=38&limit=1', { headers: authHeaders(token) })).json();
+    const lastId = before.data && before.data[0] ? before.data[0].id : 0;
+    await page.getByRole('button', { name: 'Confirm Payment' }).last().click();
+    await expect.poll(async () => {
+      const j = await (await request.get(apiBase(baseURL) + '/terminal/transactions?restaurant_id=38&limit=5', { headers: authHeaders(token) })).json();
+      const row = (j.data || []).find((r) => r.id > lastId && r.command === 'sale');
+      return row && row.order_id ? row : null;
+    }, { timeout: 20000, message: '단말기 거래가 새 주문에 연결' }).not.toBeNull();
+    const j = await (await request.get(apiBase(baseURL) + '/terminal/transactions?restaurant_id=38&limit=5', { headers: authHeaders(token) })).json();
+    const row = (j.data || []).find((r) => r.id > lastId && r.command === 'sale');
+    expect(row.tender_method).toBe('ewallet');
+    const o = await getOrder(request, baseURL, token, row.order_id);
+    expect(o.payment_method, 'POS 주문도 이월렛').toBe('ewallet');
+    expect(o.ewallet_type).toBe('tng');
+    expect(String(o.transaction_id || '')).toMatch(/^GHL:/);
+    await softDeleteOrder(request, baseURL, token, row.order_id);
+    expect(pageErrors).toHaveLength(0);
+  });
+});
+
+test.afterAll(async () => { await sequelize.close().catch(() => {}); });

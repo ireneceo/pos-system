@@ -110,7 +110,7 @@
   "cardTerminal.manualPlaceholder": "e.g. Approved, approval code 123456",
   "cardTerminal.retry": "Try again",
   "cardTerminal.recordManually": "Record from receipt",
-  "cardTerminal.ready": "The amount will be sent to the card terminal automatically.",
+  "cardTerminal.ready": "The amount goes to the terminal. Ask the customer to tap their card or show their e-wallet QR.",
   "cardTerminal.noBridge": "This device can't reach the card terminal. Enter the amount on the terminal, then record the card payment here.",
   "cardTerminal.offline": "Offline — enter the amount on the terminal, then record the card payment here.",
   "cardTerminal.reason.noAnswer": "No answer from the card terminal.",
@@ -122,5 +122,9 @@
   "cardTerminal.chooseTitle": "More than one card terminal found",
   "cardTerminal.chooseHint": "Pick the terminal at this counter. Its address is saved for next time.",
   "cardTerminal.reason.terminalNotFound": "No card terminal found on this Wi-Fi. Check the terminal is on and connected to the same Wi-Fi.",
-  "cardTerminal.reason.chooseTerminal": "More than one card terminal answered."
+  "cardTerminal.reason.chooseTerminal": "More than one card terminal answered.",
+  "cardTerminal.methodLabel": "Card / QR (Terminal)",
+  "cardTerminal.manualTender": "Paid with",
+  "cardTerminal.manualCard": "Card",
+  "cardTerminal.manualEwallet": "E-Wallet"
 }

@@ -11,7 +11,7 @@ import { ecrExchange, ecrDiscover, isConnectFailure, EcrTransport, EcrResult } f
 
 export interface TerminalTxn {
   id: number; status: string; status_code?: string | null; status_text?: string | null; amount?: string;
-  card_type?: string | null; card_brand?: string | null; approval_code?: string | null; masked_pan?: string | null;
+  card_type?: string | null; card_brand?: string | null; tender_method?: 'card' | 'ewallet' | null; ewallet_type?: string | null; approval_code?: string | null; masked_pan?: string | null;
   terminal_invoice_no?: string | null; ecr_invoice_no?: string | null; message_prompt?: string | null;
 }
 export type TerminalPhase = 'starting' | 'waiting' | 'recovering' | 'checking';
@@ -132,8 +132,11 @@ export async function runTerminalSale(opts: {
 }
 
 /** 결과를 끝내 알 수 없을 때 — 캐셔가 단말기 영수증을 보고 기록(사유 필수, 서버 감사기록). */
-export async function recordTerminalManually(txnId: number, note: string): Promise<{ ok: boolean; message?: string; txn?: TerminalTxn }> {
-  const r = await api(`/transactions/${txnId}/manual`, { note });
+export async function recordTerminalManually(
+  txnId: number, note: string,
+  tender: { tender_method: 'card' | 'ewallet'; card_type?: string; ewallet_type?: string },
+): Promise<{ ok: boolean; message?: string; txn?: TerminalTxn }> {
+  const r = await api(`/transactions/${txnId}/manual`, { note, ...tender });
   return r.ok ? { ok: true, txn: r.json.data } : { ok: false, message: r.json?.message || 'Could not save' };
 }
 

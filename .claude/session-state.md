@@ -2,17 +2,17 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-10-01 (v3.106 배포 · 결제 뒤 발주 금액 정정)
 **버전:** 운영 **v3.107** · SW 운영·개발 **5.69-seller-unlinked-service-20261001** (v3.106 배포 2026-10-01 18:29 UTC · 백업 20261001_182217 · 스모크 10/10)
-**작업 상태:** 🟡 GHL 1단계 dev 완료 · 실단말기 Echo 대기
+**작업 상태:** 🟡 GHL 1단계 + 보고서 결함 — Fable 게이트·배포 진행
 
 ### 진행 중인 작업
-- 🔵 **[Claude Code] GHL 카드단말기 ECR 1단계 — dev 구현·검증 완료 · 실단말기 Echo 대기 · 미배포 (SW 5.70-card-terminal-ecr-20261001)**
-  - Fable 설계 `.claude/fable-design-20261001-ghl-ecr.md` · 기준 문서 `docs/CARD_TERMINAL_ECR_DESIGN.md` · 메모리 reference_card_terminal_ghl_ecr
-  - 백엔드: utils/ghlEcr.js(코덱) · services/terminalPayments.js(상태기계) · routes/terminal-payments.js(/api/terminal) · models/TerminalTransaction + migrate-create-terminal-transactions(deploy) · scripts/mock-ghl-terminal.js · Restaurant.payment_settings.card.terminal 기본(꺼짐)
-  - 프론트: PaymentModal+TerminalPanel · utils/terminalSale·nativeEcr·terminalPaymentLink · OrderContext.addOrder link · Settings CardTerminalSettings · pos/settings 4언어
-  - 데스크탑: desktop-pos/src/ecr/(exchange·index) · preload __NATIVE_ECR · main register · test/ecr-units.js (버전 미상승·설치본 미빌드)
-  - 검증: jest 23/23 · health terminal 3/3 · 고장주입 3(CRC·금액·멱등 두 겹) · desktop 9/9 · e2e card-terminal 4/4 ×3 · verify-all --full 24/24 · print-guard 8/8
-  - 👉 Irene: 실단말기 Echo(curl `02000C010B01C30000006A1003` → http://IP:33898) 결과 회신 대기 → transport 확정 → Fable 게이트 2회차 → /배포. GHL 질문서 발송도 Irene
-  - 규격서 기밀 — 사본 scratchpad/ghl 만, 저장소 반입 0
+- 🟡 **[Claude Code] GHL 카드단말기 ECR 1단계 + 보고서 화면 결함 — dev 완료 · Fable 게이트 → /배포 (Irene 「배포해야 하면 검증하고 배포 해」) · SW 5.71-card-terminal-tender-20261001**
+  - Fable 설계 `.claude/fable-design-20261001-ghl-ecr.md`(+ 추가 판정 결제수단 선택) · 기준 문서 `docs/CARD_TERMINAL_ECR_DESIGN.md` · UI 안내 아티팩트 https://claude.ai/artifact/ALL7b8nE7jZr4vgAuS3LeK
+  - 1단계: 코덱(utils/ghlEcr)·상태기계(services/terminalPayments)·/api/terminal·표 terminal_transactions(+tender_method·ewallet_type)·결제 창 «Card / QR (Terminal)»·결과 자동 분류(card/ewallet)·Reprint 복구·수동 기록(수단 필수)·자동 찾기(Windows·Android)·설정 «Find terminal»
+  - 데스크탑 desktop-pos/src/ecr · 안드로이드 NativeEcrPlugin.kt(원시 소켓) · 개발용 APK https://dev.purplehere.com/dev-apps/PurplePOS-dev-ecr.apk (운영 비동기화 경로)
+  - 🔴 운영 결함 수정: Owner·Foodcourt 보고서 화면 isRevenueOrder/isDeletedOrder import 누락(f44885685, 09-17~) → 기간에 주문 있으면 ErrorBoundary. mount sweep 이 잡음
+  - 검증: jest 28/28 · health terminal 5/5 · 고장주입 7 · desktop 14/14 · e2e 8/8×3 · Kotlin 컴파일 · verify-all --full 24/24 · print-guard 8/8
+  - 👉 Irene 2026-10-02 태블릿 실단말기 테스트(Find terminal · 카드 RM1 · TnG QR RM1 · 리포트 반영) — QR 을 금액만으로 안 받으면 «QR (단말기)» + D003=CD 분기
+  - 미완: 데스크탑앱·안드로이드 정식 설치본(버전 올림) · 2단계(DuitNow 단말기 QR·Void·Settlement·마감 자동입력·단말기 취소 역반영)
 
 ### 완료된 작업 (2026-10-01) [Claude Code]
 - **v3.107 운영 배포**(백업 20261001_192853 · 스모크 10/10 · 운영 grep 반영 확인 · 공지 v3.107 수신자 9) — A안. P10 은 매장8 이 PO 87 수령 시 팀원이 운영 읽기로 확인(수령은 고객 몫)

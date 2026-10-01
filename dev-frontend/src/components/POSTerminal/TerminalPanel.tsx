@@ -18,11 +18,27 @@ interface Props {
   onManual: () => void;
   onRetry: () => void;
   onPickTerminal: (host: string) => void;
+  /** 수동 기록 때 캐셔가 영수증을 보고 고르는 수단 — 카드/이월렛 + 종류(매장 규칙대로 필수 여부) */
+  manualTender: { method: '' | 'card' | 'ewallet'; sub: string };
+  onManualTender: (v: { method: '' | 'card' | 'ewallet'; sub: string }) => void;
+  cardOptions: string[];
+  ewalletOptions: string[];
+  cardLabels: Record<string, string>;
+  ewalletLabels: Record<string, string>;
+  subRequired: boolean;
 }
 
 const box: React.CSSProperties = { fontSize: '13px', lineHeight: 1.5, color: '#425466' };
 
-const TerminalPanel: React.FC<Props> = ({ busy, ready, reason, issue, note, onNote, onManual, onRetry, onPickTerminal }) => {
+const chip = (on: boolean): React.CSSProperties => ({
+  padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+  border: on ? '1px solid #635BFF' : '1px solid #C7CED6', background: on ? '#635BFF' : '#FFFFFF', color: on ? '#FFFFFF' : '#425466',
+});
+
+const TerminalPanel: React.FC<Props> = ({
+  busy, ready, reason, issue, note, onNote, onManual, onRetry, onPickTerminal,
+  manualTender, onManualTender, cardOptions, ewalletOptions, cardLabels, ewalletLabels, subRequired,
+}) => {
   const { t } = useTranslation('pos');
   // 'reason:<키>' 는 번역, 'reason:code:<코드>' 는 단말기 코드 안내, 그 외(서버·단말기 문구)는 그대로
   const reasonText = (m: string) => {
@@ -69,6 +85,24 @@ const TerminalPanel: React.FC<Props> = ({ busy, ready, reason, issue, note, onNo
         {issue.kind === 'unknown' && issue.txnId ? (
           <div style={{ marginTop: 10 }}>
             <div style={{ marginBottom: 6 }}>{t('cardTerminal.manualHint')}</div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }} role="group" aria-label={t('cardTerminal.manualTender')}>
+              {(['card', 'ewallet'] as const).map((m) => (
+                <button key={m} type="button" aria-pressed={manualTender.method === m} style={chip(manualTender.method === m)}
+                  onClick={() => onManualTender({ method: m, sub: '' })}>
+                  {m === 'card' ? t('cardTerminal.manualCard') : t('cardTerminal.manualEwallet')}
+                </button>
+              ))}
+            </div>
+            {manualTender.method && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                {(manualTender.method === 'card' ? cardOptions : ewalletOptions).map((k) => (
+                  <button key={k} type="button" aria-pressed={manualTender.sub === k} style={chip(manualTender.sub === k)}
+                    onClick={() => onManualTender({ ...manualTender, sub: manualTender.sub === k ? '' : k })}>
+                    {(manualTender.method === 'card' ? cardLabels : ewalletLabels)[k] || k}
+                  </button>
+                ))}
+              </div>
+            )}
             <FormTextArea
               value={note}
               onChange={(e) => onNote(e.target.value)}
@@ -78,7 +112,8 @@ const TerminalPanel: React.FC<Props> = ({ busy, ready, reason, issue, note, onNo
             />
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
               <Button variant="secondary" onClick={onRetry}>{t('cardTerminal.retry')}</Button>
-              <Button variant="primary" onClick={onManual} disabled={note.trim().length < 3}>{t('cardTerminal.recordManually')}</Button>
+              <Button variant="primary" onClick={onManual}
+                disabled={note.trim().length < 3 || !manualTender.method || (subRequired && !manualTender.sub)}>{t('cardTerminal.recordManually')}</Button>
             </div>
           </div>
         ) : (

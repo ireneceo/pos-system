@@ -18,6 +18,16 @@
 
 브라우저(HTTPS)는 매장 LAN 의 단말기(HTTP)에 직접 닿을 수 없다(혼합 콘텐츠 차단). 그래서 **단말기 연동 매장은 계산대에 Purple POS 앱**(Windows 데스크탑 / 안드로이드)이 있어야 한다. 앱이 아니면 결제 창은 오늘과 똑같이 «카드 기록만» 한다.
 
+### 1-1. 결제 수단 — 카드와 손님 QR 은 한 버튼 (Fable 추가 판정 2026-10-01)
+- 단말기 연동 매장(앱 + 온라인)에서는 Card 버튼이 **«Card / QR (Terminal)»** 하나가 되고 카드종류를 묻지 않는다.
+- 규격상 카드 판매와 손님이 보여 주는 지갑 QR 판매(seamless)는 **요청이 같다**(금액만). 단말기 응답으로 서버가 분류한다 —
+  `utils/ghlEcr.tenderFromResult`: D018 문자열 → D002 코드(11 TnG · 19 eWallet) → 입력방식 Scan.
+  결과 `tender_method`(card|ewallet) · `ewallet_type`(tng|grabpay|boost|shopeepay|duitnow|other) 로 주문·원장에 기록 → 몰 보고·마감이 단말기 사실과 일치.
+- **단말기 화면에 DuitNow QR 을 띄우는 방식(Async, Product ID C01A)** 은 2단계 — Product ID 값은 GHL 회신 필요.
+- E-Wallet 버튼은 남는다(단말기를 안 거치는 매장 자체 QR 스탠디 수기 기록용). 단말기로만 받는 매장은 설정에서 E-Wallet 을 끈다.
+- 수동 기록(결과 미확인)은 캐셔가 영수증을 보고 카드/이월렛 + 종류를 고른다(서버 400 강제).
+- 실측 분기: 금액만 보낸 Sale 로 단말기가 QR 을 안 받으면 «QR (단말기)» 버튼 + D003=CD(코덱 인자 준비됨).
+
 ## 2. 파일
 
 | 층 | 파일 | 역할 |

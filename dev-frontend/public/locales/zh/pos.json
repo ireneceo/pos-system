@@ -110,7 +110,7 @@
   "cardTerminal.manualPlaceholder": "例：已批准，批准码 123456",
   "cardTerminal.retry": "重试",
   "cardTerminal.recordManually": "按收据记录",
-  "cardTerminal.ready": "金额将自动发送到刷卡机。",
+  "cardTerminal.ready": "金额将发送到刷卡机。请顾客感应卡片或出示电子钱包 QR。",
   "cardTerminal.noBridge": "此设备无法连接刷卡机。请在刷卡机上输入金额，然后在此记录刷卡付款。",
   "cardTerminal.offline": "离线 — 请在刷卡机上输入金额，然后在此记录刷卡付款。",
   "cardTerminal.reason.noAnswer": "刷卡机没有回应。",
@@ -122,5 +122,9 @@
   "cardTerminal.chooseTitle": "找到多台刷卡机",
   "cardTerminal.chooseHint": "请选择本收银台的刷卡机，下次将自动使用。",
   "cardTerminal.reason.terminalNotFound": "在此 Wi-Fi 中找不到刷卡机。请确认刷卡机已开机并连接同一 Wi-Fi。",
-  "cardTerminal.reason.chooseTerminal": "有多台刷卡机回应。"
+  "cardTerminal.reason.chooseTerminal": "有多台刷卡机回应。",
+  "cardTerminal.methodLabel": "刷卡 / QR（刷卡机）",
+  "cardTerminal.manualTender": "付款方式",
+  "cardTerminal.manualCard": "刷卡",
+  "cardTerminal.manualEwallet": "电子钱包"
 }

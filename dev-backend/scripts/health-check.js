@@ -6496,7 +6496,9 @@ function definePrintTests({ adminToken }) {
       if (nf.body?.data?.parent?.status !== 'not_found') return fail(`C3 부모 ${nf.body?.data?.parent?.status}`);
       const m0 = await post(`/terminal/transactions/${b.body.data.id}/manual`, { note: '' });
       if (m0.status !== 400) return fail(`수동 사유 없음 ${m0.status}`);
-      const m1 = await post(`/terminal/transactions/${b.body.data.id}/manual`, { note: 'HC receipt approved' });
+      const mt = await post(`/terminal/transactions/${b.body.data.id}/manual`, { note: 'HC receipt approved' });
+      if (mt.status !== 400 || mt.body?.code !== 'TENDER_REQUIRED') return fail(`수동 수단 없음 ${mt.status} ${mt.body?.code}`);
+      const m1 = await post(`/terminal/transactions/${b.body.data.id}/manual`, { note: 'HC receipt approved', tender_method: 'card', card_type: 'visa' });
       if (m1.body?.data?.status !== 'manual' || !m1.body.data.manual_override) return fail(`수동 ${m1.body?.data?.status}`);
       // ③ EA 보류 → Check Status → 승인
       const e = await post('/terminal/transactions', { restaurant_id: fx.rest.id, amount: '6.00' }); ids.push(e.body.data.id);
@@ -6508,6 +6510,48 @@ function definePrintTests({ adminToken }) {
       return true;
     } catch (e) { return fail(`예외: ${e.message}`); }
     finally { await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {}); await fx.restore(); }
+  });
+
+  test('terminal', '단말기 손님 QR(TnG) → ewallet/tng 분류 · 이월렛 원장 행에 연결 · 카드는 card 유지', async () => {
+    const { TerminalTransaction, Order, OrderPayment } = require('../models');
+    const { respond } = require('./mock-ghl-terminal');
+    const fx = await terminalFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const ids = []; let order = null;
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const post = (p, b) => request('POST', p, b, fx.auth);
+    try {
+      order = await Order.create({ restaurant_id: fx.rest.id, customer_name: '__HC_TERMINAL__', table_number: 'HC-T', order_type: 'dine_in',
+        status: 'pending', total_amount: 20, order_items: [{ id: 'hc-t-1', name: 'HC Terminal', quantity: 1, price: 20 }] });
+      // 분할 결제 경로와 같은 순서: 단말기 승인 → 원장 행(이월렛) 기록 → 연결
+      const a = await post('/terminal/transactions', { restaurant_id: fx.rest.id, amount: '8.00' }); ids.push(a.body?.data?.id);
+      const ra = await post(`/terminal/transactions/${a.body.data.id}/response`, { response_hex: respond(a.body.data.request_hex, 'approve-tng') });
+      if (ra.body?.data?.tender_method !== 'ewallet' || ra.body.data.ewallet_type !== 'tng' || ra.body.data.card_type) {
+        return fail(`TnG 분류 ${ra.body?.data?.tender_method}/${ra.body?.data?.ewallet_type}/${ra.body?.data?.card_type}`);
+      }
+      const pay = await post(`/orders/${order.id}/payments`, { amount: 8, payment_method: 'ewallet', ewallet_type: 'tng' });
+      if (pay.status !== 200 && pay.status !== 201) return fail(`원장 기록 ${pay.status}`);
+      const ln = await post(`/terminal/transactions/${a.body.data.id}/link`, { order_id: order.id });
+      if (ln.status !== 200) return fail(`연결 ${ln.status} ${ln.body?.code}`);
+      const row = await OrderPayment.findOne({ where: { order_id: order.id, payment_method: 'ewallet' } });
+      if (!row || !String(row.transaction_id || '').startsWith('GHL:')) return fail(`이월렛 원장 transaction_id=${row && row.transaction_id}`);
+      // 카드 승인은 그대로 카드
+      const b = await post('/terminal/transactions', { restaurant_id: fx.rest.id, amount: '2.00' }); ids.push(b.body?.data?.id);
+      const rb = await post(`/terminal/transactions/${b.body.data.id}/response`, { response_hex: respond(b.body.data.request_hex, 'approve') });
+      if (rb.body?.data?.tender_method !== 'card' || rb.body.data.card_type !== 'visa' || rb.body.data.ewallet_type) return fail(`카드 분류 ${rb.body?.data?.tender_method}/${rb.body?.data?.card_type}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {});
+      if (order) {
+        // 결제 기록 경로가 order_actions(감사기록)를 남긴다 — 그걸 먼저 지워야 주문이 지워진다(FK). 예전엔 조용히 남았다.
+        const { sequelize: sq } = require('../config/database');
+        await OrderPayment.destroy({ where: { order_id: order.id } }).catch(() => {});
+        await sq.query('DELETE FROM order_actions WHERE order_id = :id', { replacements: { id: order.id } }).catch(() => {});
+        await Order.destroy({ where: { id: order.id }, force: true }).catch((e) => console.log(c.gray(`      (주문 정리 실패: ${e.message})`)));
+      }
+      await fx.restore();
+    }
   });
 
   test('terminal', '단말기 자동 찾기 주소 저장 — 주소 한 칸만 · 사설망만 · 타매장 403 · 꺼진 매장 409', async () => {

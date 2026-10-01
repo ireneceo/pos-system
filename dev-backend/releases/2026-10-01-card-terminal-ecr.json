@@ -1,27 +1,53 @@
 {
   "tag": "card-terminal-ecr",
-  "sw_version": "5.70-card-terminal-ecr-20261001",
+  "sw_version": "5.71-card-terminal-tender-20261001",
   "date": "2026-10-01",
-  "in_progress": ["GHL 카드단말기 실단말기 확인 — GHL 회신(샌드박스 TID/MID·테스트 단말기·전송 형식) 대기"],
+  "in_progress": [
+    "GHL 실단말기 확인 대기(Irene 2026-10-02 태블릿 테스트)"
+  ],
   "completed": [
     "카드단말기(GHL) 자동연동 1단계: 계산대 앱에서 카드 결제 시 금액을 단말기로 보내고 승인 결과(카드종류·승인번호)를 자동 기록. 승인 아니면 기록 0",
     "응답이 끊기면 단말기의 마지막 결과를 다시 받아 복구(Reprint), 그래도 모르면 영수증을 보고 사유를 적어 수동 기록(감사기록)",
     "매장 설정 › 결제 › 카드에 «카드 단말기 연동»(IP·포트·연결 방식·연결 테스트) — 기본 꺼짐, 기존 매장 동작 변화 0",
-    "새 표 terminal_transactions(시도 1건 = 1행) · 데스크탑앱 단말기 브릿지(사설망 주소만)"
+    "새 표 terminal_transactions(시도 1건 = 1행) · 데스크탑앱 단말기 브릿지(사설망 주소만)",
+    "단말기 자동 찾기(Windows·안드로이드 앱): 저장된 주소로 연결이 안 되면 같은 와이파이에서 GHL 단말기를 찾아 주소를 저장하고 같은 결제를 이어서 보냄(연결 전 실패만 — 이중 결제 방지), 여러 대면 캐셔가 고름 · 설정 «단말기 찾기» 버튼",
+    "안드로이드 앱 단말기 브릿지(NativeEcrPlugin, 원시 소켓 — 평문 HTTP 설정 불필요) · 개발용 APK 는 패키지 .dev 로 분리",
+    "결제 수단 자동 분류(Fable 추가 판정): 단말기 매장은 «Card / QR (Terminal)» 버튼 하나, 손님 지갑 QR 은 이월렛(tng 등)·카드는 카드로 자동 기록 · 수동 기록은 수단 필수"
   ],
-  "remaining": ["데스크탑앱 새 설치본(버전 올림) 미배포 — 실단말기 Echo 확인 뒤", "2단계: 취소(Void)·정산·마감 자동입력·이월렛 단말 경유 · 안드로이드 브릿지"],
+  "remaining": [
+    "실단말기 확인(Irene 내일 안드로이드 태블릿): 단말기 찾기·카드 소액·TnG QR 소액 — QR 을 금액만으로 안 받으면 «QR (단말기)» 버튼 + D003=CD 분기",
+    "배포 전: dev-frontend-build/desktop/PurplePOS-dev-ecr.apk 삭제(운영 desktop 동기화 방지)",
+    "데스크탑앱·안드로이드 정식 설치본(버전 올림) 미빌드 — 실단말기 확인 뒤",
+    "2단계: DuitNow 단말기 화면 QR(Product ID)·Void·Settlement·마감 자동입력"
+  ],
   "verification": {
-    "api": "jest ghl-ecr 23/23(규격 샘플 CRC 바이트 일치) · health-check terminal 3건(승인·연결·멱등·401/403·이중승인 / 위변조 422 상태불변 / Reprint 복구·C3·EA·수동 사유) · desktop ecr-units 9/9",
-    "fault_injection": "CRC 검사 제거 → 위변조 계약 ✗ · 금액 대조 제거 → 금액 변조 200 ✗ · 멱등 두 겹 제거 → 응답 2회 declined ✗ · cp 원복 cmp 동일 · pm2 restart 5회 → 3/3",
-    "regression": "verify-all --full 1회(빌드 1회 뒤) + e2e card-terminal",
-    "migration": "migrate-create-terminal-transactions.js (CREATE TABLE IF NOT EXISTS, 멱등, 레지스트리 deploy) — 롤백은 코드 되돌리기(표는 남아도 무해)",
-    "sw_version": "5.70-card-terminal-ecr-20261001",
-    "fable_note": "Fable 설계 .claude/fable-design-20261001-ghl-ecr.md (1회차). Irene 「응」 Q1 Win10/11+데스크탑앱 · Q2 매장당 1대 · Q3 1단계 먼저 · Q4 별도 GHL 단말기. 게이트 2회차 대상(돈·신규 표·신규 아키텍처)"
+    "api": "jest ghl-ecr 23/23(규격 샘플 CRC 바이트 일치) · health-check terminal 3건(승인·연결·멱등·401/403·이중승인 / 위변조 422 상태불변 / Reprint 복구·C3·EA·수동 사유) · desktop ecr-units 9/9 · jest 28/28(TnG·DuitNow·VISA 분류 벡터) · health terminal 5/5(TnG 분류·이월렛 원장 연결·주소 저장)",
+    "fault_injection": "CRC 검사 제거 → 위변조 계약 ✗ · 금액 대조 제거 → 금액 변조 200 ✗ · 멱등 두 겹 제거 → 응답 2회 declined ✗ · cp 원복 cmp 동일 · pm2 restart 5회 → 3/3 · 사설망 검사 제거 → 공인 IP 저장 ✗ · D018 판정 제거 → GRABPAY 분류 ✗ · 분류 무력화 → 3 ✗ · 원장 매칭 card 고정 → 이월렛 연결 ✗",
+    "regression": "e2e card-terminal 8/8 ×3(승인·거절·무응답 복구·주소 바뀜 자동 찾기·TnG QR·수동 기록·POS 신규 주문·앱 없음) · desktop ecr-units 14/14 · Kotlin 컴파일 · verify-all --full",
+    "migration": "migrate-create-terminal-transactions.js (CREATE TABLE IF NOT EXISTS + tender_method·ewallet_type 멱등 ADD COLUMN, 레지스트리 deploy) — 롤백은 코드 되돌리기",
+    "sw_version": "5.71-card-terminal-tender-20261001",
+    "fable_note": "Fable 설계 .claude/fable-design-20261001-ghl-ecr.md (1회차). Irene 「응」 Q1 Win10/11+데스크탑앱 · Q2 매장당 1대 · Q3 1단계 먼저 · Q4 별도 GHL 단말기. 게이트 2회차 대상(돈·신규 표·신규 아키텍처) · 추가 판정(결제수단 선택) 같은 문서 끝 절 — Irene 「GHL 가이드 보고 너가 제대로 하면 안돼?」 → Q3 Fable 권고대로(E-Wallet 버튼 유지)"
   },
-  "notes": ["🔒 인쇄 보호파일·KDS 무접촉 (POSTerminalPage·orders-crud 0줄)", "GHL 규격서는 기밀 — 저장소 반입 0"],
-  "irene_actions_after_deploy": ["none — 실단말기 확인은 GHL 회신·테스트 단말기 도착 후"],
-  "issues": ["카드 결제는 손님이 단말기에 금액을 따로 입력하고 POS 에는 «Card» 기록만 — 금액 이중 입력·대조 수작업"],
-  "upcoming": ["GHL 회신 반영 · 실단말기 Echo · 데스크탑앱 설치본 · 파일럿 매장", "2단계 Void·Settlement"],
-  "behavior_changes": ["설정에서 «카드 단말기 연동»을 켠 매장 + 계산대 앱에서만 카드 결제가 단말기를 거친다. 그 외는 오늘과 동일"],
-  "check_areas": ["결제 창 카드(POS·Floor Plan·Live Orders·분할)", "설정 › 결제 › 카드", "🔒 인쇄·KDS 무접촉"]
+  "notes": [
+    "🔒 인쇄 보호파일·KDS 무접촉 (POSTerminalPage·orders-crud 0줄)",
+    "GHL 규격서는 기밀 — 저장소 반입 0"
+  ],
+  "irene_actions_after_deploy": [
+    "none — 실단말기 확인은 GHL 회신·테스트 단말기 도착 후"
+  ],
+  "issues": [
+    "카드 결제는 손님이 단말기에 금액을 따로 입력하고 POS 에는 «Card» 기록만 — 금액 이중 입력·대조 수작업"
+  ],
+  "upcoming": [
+    "GHL 회신 반영 · 실단말기 Echo · 데스크탑앱 설치본 · 파일럿 매장",
+    "2단계 Void·Settlement"
+  ],
+  "behavior_changes": [
+    "설정에서 «카드 단말기 연동»을 켠 매장 + 계산대 앱에서만 카드 결제가 단말기를 거친다. 그 외는 오늘과 동일"
+  ],
+  "check_areas": [
+    "결제 창 카드(POS·Floor Plan·Live Orders·분할)",
+    "설정 › 결제 › 카드",
+    "🔒 인쇄·KDS 무접촉"
+  ]
 }

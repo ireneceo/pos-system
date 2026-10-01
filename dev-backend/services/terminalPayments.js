@@ -96,7 +96,7 @@ const recover = (parent) => createChild(parent, 'reprint', ['timeout', 'comm_err
 const checkStatus = (parent) => createChild(parent, 'check_status', ['pending'], ecr.checkStatusRequest);
 
 const RESULT_FIELDS = ['terminal_invoice_no', 'terminal_batch_no', 'approval_code', 'rrn', 'masked_pan', 'card_type_code',
-  'card_brand', 'card_type', 'entry_mode', 'terminal_id', 'merchant_id', 'txn_ref', 'txn_datetime', 'message_prompt'];
+  'card_brand', 'card_type', 'tender_method', 'ewallet_type', 'entry_mode', 'terminal_id', 'merchant_id', 'txn_ref', 'txn_datetime', 'message_prompt'];
 const pick = (r) => Object.fromEntries(RESULT_FIELDS.map(k => [k, r[k] == null ? null : String(r[k]).slice(0, 80)]));
 
 /**
@@ -196,8 +196,9 @@ async function link(row, orderId) {
   if (Number(row.order_id) !== Number(order.id)) await row.update({ order_id: order.id });
   if (!order.transaction_id) await Order.update({ transaction_id: ref }, { where: { id: order.id } });
   // 원장 행(같은 금액의 카드 결제, 아직 참조 없음)에 색인 복사 — 없으면 건너뛴다(POS 신규 주문은 원장 행이 없다)
+  // 카드 vs 손님 QR(지갑) — 단말기 응답이 정한 수단의 원장 행에 붙인다(Fable 추가 판정 C-2)
   const pay = await OrderPayment.findOne({
-    where: { order_id: order.id, payment_method: 'card', transaction_id: null, amount: money(row.amount) },
+    where: { order_id: order.id, payment_method: row.tender_method || 'card', transaction_id: null, amount: money(row.amount) },
     order: [['id', 'DESC']],
   });
   if (pay) {
@@ -207,12 +208,24 @@ async function link(row, orderId) {
   return row;
 }
 
-/** 단말기 결과를 끝내 알 수 없을 때 — 캐셔가 단말기 영수증을 보고 직접 닫는다(감사 표시). */
-async function markManual(row, note) {
+const CARD_KEYS = ['visa', 'master', 'amex', 'debit', 'other'];
+const EWALLET_KEYS = ['tng', 'grabpay', 'boost', 'shopeepay', 'duitnow', 'other'];
+
+/**
+ * 단말기 결과를 끝내 알 수 없을 때 — 캐셔가 단말기 영수증을 보고 직접 닫는다(감사 표시).
+ * 응답이 없으니 카드인지 지갑인지도 캐셔가 영수증을 보고 고른다(필수). 종류는 화면 목록 키만.
+ */
+async function markManual(row, note, tender = {}) {
   const n = String(note || '').trim();
   if (n.length < 3) throw err(400, 'NOTE_REQUIRED', 'Please write what the terminal receipt shows');
+  const method = tender && tender.method;
+  if (method !== 'card' && method !== 'ewallet') throw err(400, 'TENDER_REQUIRED', 'Choose card or e-wallet from the terminal receipt');
+  const cardType = method === 'card' && tender.card_type ? String(tender.card_type) : null;
+  const ewType = method === 'ewallet' && tender.ewallet_type ? String(tender.ewallet_type) : null;
+  if (cardType && !CARD_KEYS.includes(cardType)) throw err(400, 'BAD_TENDER', 'Unknown card type');
+  if (ewType && !EWALLET_KEYS.includes(ewType)) throw err(400, 'BAD_TENDER', 'Unknown e-wallet type');
   if (!['timeout', 'comm_error', 'not_found', 'recovering'].includes(row.status)) throw err(409, 'BAD_STATE', `Cannot record a ${row.status} transaction manually`);
-  await row.update({ status: 'manual', manual_override: true, manual_note: n.slice(0, 300) });
+  await row.update({ status: 'manual', manual_override: true, manual_note: n.slice(0, 300), tender_method: method, card_type: cardType, ewallet_type: ewType });
   return row;
 }
 

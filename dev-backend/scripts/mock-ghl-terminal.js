@@ -7,7 +7,7 @@
  *
  * 실행:  node scripts/mock-ghl-terminal.js [--port 33898] [--scenario approve]
  * 시나리오 바꾸기:  curl -X POST http://localhost:33898/__scenario -d decline
- *   approve | decline(51) | cancel(C7) | unsupported(C1) | timeout(응답 없음) | pending(EA → 다음 E3 승인) | notfound(Reprint C3)
+ *   approve | approve-tng(손님 TnG QR) | decline(51) | cancel(C7) | unsupported(C1) | timeout(응답 없음) | pending(EA → 다음 E3 승인) | notfound(Reprint C3)
  * 코드에서 쓰기:  const { respond } = require('./mock-ghl-terminal'); respond(requestHex, 'approve') → 응답 hex | null(=타임아웃)
  */
 const ecr = require('../utils/ghlEcr');
@@ -50,6 +50,13 @@ function respond(requestHex, scenario = 'approve') {
       if (scenario === 'unsupported') return hex(responseFrame(ecr.CMD.sale, 'C1', [[ecr.TAG.ecrInvoice, inv]]));
       if (scenario === 'pending') { ledger.set(inv, { status: '00', tags: approvedTags(amount, inv) }); return hex(responseFrame(ecr.CMD.sale, 'EA', [[ecr.TAG.amount, amount], [ecr.TAG.ecrInvoice, inv]])); }
       if (scenario === 'notfound') return null; // 단말기는 아무것도 안 했다 — 이어지는 Reprint 가 C3
+      if (scenario === 'approve-tng') {
+        // 손님이 TnG 앱 QR 을 보여 줌(규격 §9.4 seamless 응답 모양: D002 "19" · D018 TNGWALLET · D01A Scan)
+        const tags = approvedTags(amount, inv, { code: '19', brand: 'TNGWALLET', pan: '' }).filter(([t]) => t !== ecr.TAG.maskedPan && t !== ecr.TAG.entryModeText);
+        tags.push([ecr.TAG.entryModeText, 'Scan']);
+        ledger.set(inv, { status: '00', tags });
+        return hex(responseFrame(ecr.CMD.sale, '00', tags));
+      }
       const tags = approvedTags(amount, inv);
       ledger.set(inv, { status: '00', tags });
       return hex(responseFrame(ecr.CMD.sale, '00', tags));

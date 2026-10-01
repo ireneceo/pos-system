@@ -12,6 +12,8 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
+// 매출 정의 단일 소스(f44885685) — 이 import 가 빠져 기간에 주문이 있으면 화면이 ErrorBoundary 로 죽었다(2026-10-01 mount sweep 발견)
+import { isRevenueOrder, isDeletedOrder } from '../../utils/orderRevenue';
 import { formatDateTime } from '../../utils/timezone';
 import { monthLabelFromYM } from '../../components/Common/CalendarPicker';
 import {

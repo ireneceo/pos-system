@@ -98,11 +98,11 @@ router.post('/transactions/:id/link', async (req, res) => {
 router.post('/transactions/:id/manual', async (req, res) => {
   try {
     const row = await loadTxn(req, res); if (!row) return;
-    const out = await svc.markManual(row, req.body?.note);
+    const out = await svc.markManual(row, req.body?.note, { method: req.body?.tender_method, card_type: req.body?.card_type, ewallet_type: req.body?.ewallet_type });
     await logActivity(req, {
       action_type: 'update', entity_type: 'terminal_manual_override', entity_id: out.id, restaurant_id: out.restaurant_id,
       entity_name: `Card ${out.amount} (${out.ecr_invoice_no})`,
-      changes: { status: 'manual', note: out.manual_note },
+      changes: { status: 'manual', note: out.manual_note, tender_method: out.tender_method, card_type: out.card_type, ewallet_type: out.ewallet_type },
       description: `Card terminal result recorded manually — ${out.manual_note}`,
     });
     res.json({ success: true, data: svc.publicRow(out) });

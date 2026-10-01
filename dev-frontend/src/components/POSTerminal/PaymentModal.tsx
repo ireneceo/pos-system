@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, ModalButton as Button, FormLabel as Label } from '../UI/Modal';
 import {
   Section,
@@ -300,6 +301,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   onPartialPaymentComplete
 }) => {
   const { operationSettings, getStoreInfo } = useStore();
+  const { t: tPos } = useTranslation('pos');
   const { isOffline } = useOffline();
 
   // Internal state for fetched data (when customerId/restaurantId are provided)
@@ -537,6 +539,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const [terminalBusy, setTerminalBusy] = useState<TerminalPhase | null>(null);
   const [terminalIssue, setTerminalIssue] = useState<{ kind: 'declined' | 'unknown' | 'error' | 'choose'; message: string; txnId?: number; hosts?: string[] } | null>(null);
   const [terminalNote, setTerminalNote] = useState('');
+  // 수동 기록(단말기 결과 미확인) — 응답이 없으니 카드인지 지갑인지 캐셔가 영수증을 보고 고른다
+  const [manualTender, setManualTender] = useState<{ method: '' | 'card' | 'ewallet'; sub: string }>({ method: '', sub: '' });
   const terminalRestaurantId = (): number | null => {
     const fromPath = window.location.pathname.match(/\/restaurant\/(\d+)/);
     const id = restaurantId || (fromPath ? Number(fromPath[1]) : null) || Number(getStoreInfo()?.restaurantId) || null;
@@ -662,6 +666,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       setTerminalBusy(null);
       setTerminalIssue(null);
       setTerminalNote('');
+      setManualTender({ method: '', sub: '' });
       setSplitMode(false);
       setSplitSelected(new Set());
       setSplitError(null);
@@ -763,8 +768,11 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       if (useTerminal && !terminalIssue) {
         const txn = await runTerminal(amount, orderId);
         if (!txn) return;
-        if (txn.card_type) body.card_type = txn.card_type;
+        // 단말기 응답이 정한 수단 — 카드 탭이면 card, 손님 QR(지갑)이면 ewallet
+        applyTenderToBody(body, txn.tender_method, txn.card_type, txn.ewallet_type);
         body.transaction_id = terminalRef(txn);
+      } else if (useTerminal && terminalIssue && manualTender.method) {
+        applyTenderToBody(body, manualTender.method, manualTender.method === 'card' ? manualTender.sub : null, manualTender.method === 'ewallet' ? manualTender.sub : null);
       }
 
       // 오프라인(메인 POS) — 서버 왕복 없이 split 부분 결제를 op 로그에 기록(재생 시 동일 POST /orders/:id/payments).
@@ -842,6 +850,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     onConfirmPayment(paymentMethod, undefined, undefined, 0, 0, undefined, hasAny ? names : undefined);
   };
 
+  /** 분할 결제 본문에 단말기(또는 수동 기록)가 정한 수단을 싣는다. */
+  function applyTenderToBody(body: any, method?: string | null, card?: string | null, ewallet?: string | null) {
+    body.payment_method = method === 'ewallet' ? 'ewallet' : 'card';
+    delete body.card_type; delete body.ewallet_type;
+    if (body.payment_method === 'card' && card) body.card_type = card;
+    if (body.payment_method === 'ewallet' && ewallet) body.ewallet_type = ewallet;
+  }
+
   /** 단말기 판매 1건 — 승인되면 그 거래를, 아니면 null(안내는 terminalIssue 로). */
   const runTerminal = async (amount: number, forOrderId?: number | null): Promise<TerminalTxn | null> => {
     const rid = terminalRestaurantId();
@@ -863,12 +879,18 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const handleTerminalManual = async () => {
     if (!terminalIssue?.txnId || terminalNote.trim().length < 3) return;
     setTerminalBusy('starting');
-    const r = await recordTerminalManually(terminalIssue.txnId, terminalNote.trim());
+    if (!manualTender.method) return;
+    const sub = manualTender.sub || undefined;
+    const r = await recordTerminalManually(terminalIssue.txnId, terminalNote.trim(), {
+      tender_method: manualTender.method,
+      ...(manualTender.method === 'card' ? { card_type: sub } : { ewallet_type: sub }),
+    });
     setTerminalBusy(null);
     if (!r.ok) { setTerminalIssue({ ...terminalIssue, message: r.message || 'reason:cannotStart' }); return; }
     if (splitMode) { handleSplitConfirm(); return; }
     if (!orderId) setPendingTerminalLink(terminalIssue.txnId, total);
-    onConfirmPayment('card', undefined, undefined, pointsToUse, pointDiscount, cardType);
+    if (manualTender.method === 'ewallet') onConfirmPayment('ewallet', undefined, undefined, pointsToUse, pointDiscount, undefined, undefined, sub);
+    else onConfirmPayment('card', undefined, undefined, pointsToUse, pointDiscount, sub);
   };
 
   /** 와이파이에서 단말기가 여러 대 응답했을 때 캐셔가 고른 주소를 저장하고 같은 결제를 다시 시작한다. */
@@ -895,7 +917,12 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       if (!txn) return;
       // POS 신규 주문은 아직 주문이 없다 — 주문이 만들어지는 순간(OrderContext.addOrder) 연결한다
       if (!orderId) setPendingTerminalLink(txn.id, total);
-      onConfirmPayment('card', undefined, undefined, pointsToUse, pointDiscount, txn.card_type || cardType);
+      // 단말기 응답이 정한 수단으로 기록 — 손님이 지갑 QR 을 보여 줬으면 이월렛(Fable 추가 판정 C-2)
+      if (txn.tender_method === 'ewallet') {
+        onConfirmPayment('ewallet', undefined, undefined, pointsToUse, pointDiscount, undefined, undefined, txn.ewallet_type || undefined);
+      } else {
+        onConfirmPayment('card', undefined, undefined, pointsToUse, pointDiscount, txn.card_type || undefined);
+      }
       return;
     }
     if (paymentMethod === 'cash') {
@@ -1432,7 +1459,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               selected={paymentMethod === method.key}
               onClick={() => { setPaymentMethod(method.key); setCardType(''); setEwalletType(method.key === 'ewallet' && acceptedEwallets.length === 1 ? acceptedEwallets[0] : ''); }}
             >
-              <div>{method.label}</div>
+              <div>{method.key === 'card' && terminalOn && ecrBridgeReady && !isOffline ? tPos('cardTerminal.methodLabel') : method.label}</div>
             </RadioButton>
           ))}
         </RadioGroup>
@@ -1451,6 +1478,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             onManual={handleTerminalManual}
             onRetry={() => { setTerminalIssue(null); setTerminalNote(''); }}
             onPickTerminal={handlePickTerminal}
+            manualTender={manualTender}
+            onManualTender={setManualTender}
+            cardOptions={acceptedCards.length ? acceptedCards : CARD_TYPE_OPTIONS.map(o => o.k)}
+            ewalletOptions={acceptedEwallets.length ? acceptedEwallets : Object.keys(EWALLET_LABELS)}
+            cardLabels={CARD_LABELS}
+            ewalletLabels={EWALLET_LABELS}
+            subRequired={manualTender.method === 'ewallet' ? requireEwalletType : requireCardType}
           />
         </InputSection>
       )}

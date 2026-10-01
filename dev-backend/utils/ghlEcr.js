@@ -188,12 +188,37 @@ function mapCardType(code, brandText) {
   return b || code ? 'other' : null;
 }
 
+/**
+ * 결제 수단 분류(Fable 추가 판정 C-2) — 카드 판매와 손님 QR(지갑) 판매는 요청이 같고(금액만) 응답이 무엇이었는지 알려 준다.
+ * 우선순위: D018 문자열 → D002 코드(11 TnG · 19 eWallet) → 입력방식 Scan(D008 0x08 / D01A "Scan").
+ * ewallet_type 은 화면 EWALLET_TYPE_OPTIONS 키만(DB 저장값) — tng|grabpay|boost|shopeepay|duitnow|other.
+ */
+const WALLET_WORDS = /WALLET|TNG|TOUCH|DUITNOW|GRAB|BOOST|SHOPEE|QR/;
+function tenderFromResult({ brand, code, entryText, entryCode }) {
+  const b = String(brand || '').toUpperCase();
+  const isWallet = WALLET_WORDS.test(b) || code === '11' || code === '19'
+    || String(entryText || '').toUpperCase() === 'SCAN' || entryCode === '08';
+  if (!isWallet) return { method: 'card', card_type: mapCardType(code, brand), ewallet_type: null };
+  const ew = /TNG|TOUCH/.test(b) || code === '11' ? 'tng'
+    : b.includes('DUITNOW') ? 'duitnow'
+    : b.includes('GRAB') ? 'grabpay'
+    : b.includes('BOOST') ? 'boost'
+    : b.includes('SHOPEE') ? 'shopeepay'
+    : 'other';
+  return { method: 'ewallet', card_type: null, ewallet_type: ew };
+}
+
 /** 판매/취소/재출력/상태조회 응답 → 저장할 값. */
 function readResult(frame) {
   const t = frame.tags;
   const code = cardTypeCode(t[TAG.cardType]);
   const brand = ascii(t[TAG.productBrand]);
+  const entryText = ascii(t[TAG.entryModeText]);
+  const entryCode = t[TAG.entryMode] ? bcd(t[TAG.entryMode]) : null;
+  const tender = tenderFromResult({ brand, code, entryText, entryCode });
   return {
+    tender_method: tender.method,
+    ewallet_type: tender.ewallet_type,
     amount: t[TAG.amount] ? decodeAmount(t[TAG.amount]) : null,
     terminal_id: ascii(t[TAG.terminalId]),
     merchant_id: ascii(t[TAG.merchantId]),
@@ -205,7 +230,7 @@ function readResult(frame) {
     rrn: ascii(t[TAG.rrn]),
     card_type_code: code,
     card_brand: brand || (code && CARD_CODE[code] ? CARD_CODE[code].brand : null),
-    card_type: mapCardType(code, brand),
+    card_type: tender.card_type,
     entry_mode: ascii(t[TAG.entryModeText]) || (t[TAG.entryMode] ? bcd(t[TAG.entryMode]) : null),
     txn_ref: ascii(t[TAG.txnRef]),
     ecr_invoice_no: ascii(t[TAG.ecrInvoice]),
@@ -236,9 +261,17 @@ function classifyStatus(command, status, originalResponseCode) {
 /* ─────────────────────────── 명령별 빌더 ─────────────────────────── */
 const ecrInvoiceOk = (s) => /^[A-Za-z0-9]{1,40}$/.test(String(s || ''));
 
-function saleRequest({ amount, ecrInvoiceNo, cashierId }) {
+/**
+ * paymentType(D003, 선택) — 기본은 보내지 않는다(규격 2.9.7 부터 Optional, 카드·손님 QR 을 단말기가 함께 받음).
+ * 실단말기가 D003 없이는 QR 을 안 받는 것으로 드러나면 «QR (단말기)» 버튼만 'CD'(Scan-QR) 를 넘긴다(Fable D-5 분기).
+ */
+function saleRequest({ amount, ecrInvoiceNo, cashierId, paymentType }) {
   if (!ecrInvoiceOk(ecrInvoiceNo)) throw new Error('ECR invoice number must be 1-40 alphanumerics');
   const tags = [[TAG.amount, encodeAmount(amount)], [TAG.ecrInvoice, ecrInvoiceNo]];
+  if (paymentType) {
+    if (!/^[0-9A-Fa-f]{2}$/.test(paymentType)) throw new Error('Invalid payment type');
+    tags.push([TAG.paymentType, Buffer.from(paymentType, 'hex')]);
+  }
   if (cashierId) tags.push([TAG.cashierId, String(cashierId).replace(/[^\x20-\x7e]/g, '').slice(0, 40)]);
   return buildFrame({ command: CMD.sale, tags });
 }
@@ -259,6 +292,6 @@ const echoRequest = () => buildFrame({ command: CMD.echo });
 module.exports = {
   STX, ETX, CMD, CMD_NAME, TAG, STATUS_TEXT, CARD_CODE,
   crc16Arc, toCents, encodeAmount, decodeAmount, tlv, buildFrame, parseFrame, hexToBuf, bufToHex,
-  cardTypeCode, mapCardType, readResult, classifyStatus,
+  cardTypeCode, mapCardType, tenderFromResult, readResult, classifyStatus,
   saleRequest, reprintRequest, checkStatusRequest, voidRequest, echoRequest,
 };

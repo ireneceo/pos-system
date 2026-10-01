@@ -110,7 +110,7 @@
   "cardTerminal.manualPlaceholder": "cth. Diluluskan, kod kelulusan 123456",
   "cardTerminal.retry": "Cuba lagi",
   "cardTerminal.recordManually": "Rekod daripada resit",
-  "cardTerminal.ready": "Jumlah akan dihantar ke terminal kad secara automatik.",
+  "cardTerminal.ready": "Jumlah dihantar ke terminal. Minta pelanggan sentuh kad atau tunjukkan QR e-dompet.",
   "cardTerminal.noBridge": "Peranti ini tidak dapat mencapai terminal kad. Masukkan jumlah pada terminal, kemudian rekod bayaran kad di sini.",
   "cardTerminal.offline": "Luar talian — masukkan jumlah pada terminal, kemudian rekod bayaran kad di sini.",
   "cardTerminal.reason.noAnswer": "Tiada jawapan daripada terminal kad.",
@@ -122,5 +122,9 @@
   "cardTerminal.chooseTitle": "Lebih daripada satu terminal kad ditemui",
   "cardTerminal.chooseHint": "Pilih terminal di kaunter ini. Alamatnya disimpan untuk kali seterusnya.",
   "cardTerminal.reason.terminalNotFound": "Tiada terminal kad ditemui pada Wi-Fi ini. Pastikan terminal dihidupkan dan disambung ke Wi-Fi yang sama.",
-  "cardTerminal.reason.chooseTerminal": "Lebih daripada satu terminal kad menjawab."
+  "cardTerminal.reason.chooseTerminal": "Lebih daripada satu terminal kad menjawab.",
+  "cardTerminal.methodLabel": "Kad / QR (Terminal)",
+  "cardTerminal.manualTender": "Dibayar dengan",
+  "cardTerminal.manualCard": "Kad",
+  "cardTerminal.manualEwallet": "E-Dompet"
 }

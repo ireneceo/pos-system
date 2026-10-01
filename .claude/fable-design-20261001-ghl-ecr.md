@@ -82,7 +82,7 @@
 - **진실의 원천은 `terminal_transactions` 표**(시도 1건 = 1행, 실패·취소·복구까지). 원장 `transaction_id` 는 색인용 복사.
 - 기각: 금액·캐셔·시간으로 **추정 매칭**(두 POS 가 같은 금액을 동시에 받으면 틀린다) / `fetch` 가로채기(마법) / 🔒 파일 수정(절단면 승인+bless 왕복, «빨리» 와 반대).
 
-### 2-4. 갈림 ④ 범위 → **1단계 = 판매 승인 자동 기록 + 미확정 복구 + 수동 폴백. 2단계 = 취소(Void)·정산(Settlement)·마감 자동입력·단말기 이월렛(QR). Preauth/Completion 은 GHL 이 인증에 요구할 때만.**
+### 2-4. 갈림 ④ 범위 → **1단계 = 판매 승인 자동 기록 + 미확정 복구 + 수동 폴백. 2단계 = 취소(Void)·정산(Settlement)·마감 자동입력·단말기 화면 QR(DuitNow·Product ID). 손님 QR(seamless, 지갑 앱 바코드)은 1단계(추가 판정 C-3).* Preauth/Completion 은 GHL 이 인증에 요구할 때만.**
 - 1단계만으로 Irene 목적(«금액 보내고 결과 자동 기록»)이 닫히고, 테스트 스크립트의 Sale·Cancel(C7)·미지원(C1)·타임아웃·Reprint 가 증명된다.
 - 2단계 Void/Settlement/Check Status(DuitNow) 는 **인증 체크리스트에 있으므로 GHL 사인오프 전에는 필요**하다. 코덱이 있으면 명령 하나당 반나절 안팎.
 - Preauth(E4)/Completion(E5)·Read Card·Manual Inquiry·Print Day Total·NETS 는 식당 POS 에 불필요 — GHL 이 «필수» 라고 하면 그때 추가.
@@ -227,3 +227,90 @@ Phase 0-3 와 Phase 1 전체(목 단말기 기준). 실단말기·앱 설치·GH
 ## 6. 메모리·문서 후속(구현 완료 뒤, 게이트 2회차에서)
 - 새 메모리 `reference_card_terminal_ghl_ecr.md`(구조 한 줄: 브릿지=운반, 코덱=백엔드, 승인 아니면 기록 없음, Reprint 복구) · `docs/CARD_TERMINAL_ECR_DESIGN.md` 신설(1문서=1주제) · `docs/PAYMENT_SYSTEM_PLAN.md:153` «Card (단말기)» 줄에 링크 1줄 · `docs/CASH_MANAGEMENT_SHIFT_CLOSE.md` 2단계 때 «카드 정산 자동입력» 추가.
 - 규격서 PDF·엑셀·캡처는 **저장소 밖**에 둔다(`.gitignore` 대상 아님 — 애초에 넣지 않는다).
+
+---
+
+## 추가 판정 — 결제수단 선택(2026-10-01)
+
+> Irene 원문: **「GHL 터미널을 쓰는 고객이랑 설정 안한 고객이 결제할 때 선택이 다른 거 맞아? GHL 터미널에서 QR 자동으로 표시하고 카드 자동으로 표시하는 거ㅓ 우리 포스에서부터 할 필요 없어?」** · 앞서 **「자동으로 찾게 해줘... 바뀌면 자동으로 찾아야 하는 거 아니야?」** · 09-08 **「완전 심플 사용 포스 판매로 집중할거야.」**
+> 작성: Fable 5.1 · 코드 수정 0. 같은 사안(GHL ECR)의 설계 보강이라 호출 횟수는 늘리지 않는다 — 게이트 2회차는 구현 완료 뒤 1회 그대로.
+
+### A. 실측 — 지금 코드와 규격이 말하는 것
+
+**현 구현(dev, 미배포)** — 결제 창 버튼은 단말기 설정과 무관하게 같다(매장 `payment_settings` 의 enabled·availableIn 'pos' 목록, `PaymentModal.tsx:473`). 단말기 경유는 **Card 를 골랐을 때만**(`:536 useTerminal`). 승인 뒤 항상 `onConfirmPayment('card', …, txn.card_type)`(`:898`) · 분할도 `payment_method` 는 선택값 그대로, `card_type` 만 덮어씀(`:766`). 서버 `mapCardType`(`utils/ghlEcr.js:181`) 은 D018 문자열에서 VISA/MASTER/AMEX/DEBIT 만 알아보고, 코드 11(TnG)·19(eWallet) 은 **'other' 카드**로 떨어진다. `link()` 는 원장 행을 `payment_method:'card'` 로만 찾는다(`services/terminalPayments.js:200`).
+→ 팀원 관찰이 맞다: **캐셔가 Card 를 누르고 손님이 단말기에 TnG 지갑 QR 을 보여 주면 «카드(other)» 로 기록된다.** IOI 몰 보고(`mallSalesService.js:101`, `ewallet_type==='tng'` 로 분류)·마감 카드/이월렛 예상액·영수증 표기가 전부 틀어진다. 이건 **분류 결함**이며 지금 고쳐야 한다(배포 전).
+
+**규격(v2.9.26)** — 구현에 필요한 사실만:
+1. §9.2 카드 판매(seamless) 와 §9.4 이월렛 판매(seamless) 의 **요청 프레임은 태그까지 같다**(C001 금액 + C013 ECR 송장, 결제종류 D003 없음). 응답이 무엇이었는지 알려 준다 — §9.4 응답: D018 `"TNGWALLET"` · D002 `"19"`(eWallet) · D008 `0x08`(Scan) · D01A `"Scan"` · D017 거래참조. 팀원 해석 **확인**: «금액만 보내고 결과로 구분» 은 규격이 보여 주는 그대로다.
+2. D003 결제종류는 **선택(O)** — 개정이력 2.9.7 에서 «Mandatory → Optional» 로 바뀌었다. 값 CC 신용 · CF 직불 · **CD Scan-QR** 등.
+3. §9.9 이월렛 판매(**Async**) 는 요청에 **C01A Product ID**(B4) 가 더 붙고, 응답 Status `EA`(보류) → Check Status 반복. §5.3 C01A 주석: «Required for **non-seamless** payment like DUITNOW, Applicable only for Payhere ECR». §9.9 응답 D018 `"DuitNow QR"`.
+4. §3.1 흐름: «사용자가 카드/현금/기타 결제 버튼을 누른다 → POS 가 명령을 보낸다 → 단말기가 처리한다».
+
+**규격이 말하지 않는 것(정직한 한계)** — «금액만 보낸 Sale 하나로 단말기가 카드 탭과 손님 QR 스캔을 **동시에** 기다리는가». 프레임이 같고 D003 이 선택이라는 사실은 «그렇다» 쪽 증거지만, 문장으로 적혀 있지는 않다. 이건 **실단말기 1회 실측(또는 GHL 질문 5번 회신)** 으로만 닫힌다.
+
+### B. 원리 — «seamless» 와 «non-seamless» 는 QR 의 방향이다
+- **seamless(손님이 보여 주는 QR)**: 손님이 TnG 앱의 결제 바코드를 띄우고 **단말기가 스캔**한다. 단말기가 즉시 승인 응답을 준다. POS 는 미리 알 필요가 없다 — 카드와 같은 명령.
+- **non-seamless/Async(단말기가 보여 주는 QR, DuitNow)**: 단말기 화면에 QR 을 **띄우고 손님이 스캔**한다. 어떤 QR 상품을 띄울지(Product ID)를 POS 가 **미리** 알려 줘야 하고, 결과는 보류(EA)→조회로 온다.
+→ 설계 원칙 한 줄: **POS 버튼 = 캐셔가 미리 알아야 하는 것. 단말기 응답 = 사후 분류.** 미리 알 필요가 없는 것(카드·손님 QR)은 버튼 하나, 미리 알아야 하는 것(단말기 화면 QR)은 버튼이 따로 필요하다.
+
+### C. 판정
+
+**C-1. 단말기 연동 매장의 선택지 = «Card / QR (단말기)» 버튼 하나. E-Wallet 버튼은 오늘과 같은 수기 기록으로 남긴다.**
+| 선택지 | 판정 | 이유 |
+|---|---|---|
+| ① 현행(Card 만 단말기, 결과는 항상 카드) | **기각** | A 의 분류 결함. 지갑 QR 결제가 카드로 기록된다 |
+| ② Card / QR 버튼 분리(둘 다 단말기) | **기각(이번엔)** | 캐셔가 미리 고르게 하는데 규격은 그럴 필요가 없다고 보여 준다. Irene 「심플」 과 반대. 단, **실측에서 단말기가 D003 없이는 QR 을 안 받는 것으로 드러나면 이 안으로 간다**(D-5 분기) |
+| ③ «Card / QR (단말기)» 하나 + 응답으로 분류 | **채택** | 캐셔 동작 = 버튼 1번 + «단말기에서 결제해 주세요». 카드종류·지갑종류 질문 0. 결과(카드/지갑, 브랜드)는 단말기가 말해 준다 |
+| ④ E-Wallet 버튼 제거 | **기각** | 매장은 GHL 단말기와 **별개로** 자기 DuitNow/TnG 스탠디 QR 을 둘 수 있다(말레이시아 식당 흔한 구성). 그 결제는 단말기를 안 거치니 수기 기록이 맞다. 단말기로만 받는 매장은 **설정에서 E-Wallet 을 끄면** 된다 — 코드 0, 매장 설정 1개 |
+
+- 단말기 **미연동 매장**: 변화 0(바이트 동일).
+- 단말기 연동 매장이라도 브릿지 없는 기기(브라우저)·오프라인: 오늘 그대로 수기 Card(기존 안내 1줄).
+- Irene 질문 ①「선택이 다른 거 맞아?」 → **지금 코드는 «같다»(버튼 동일, Card 만 뒤에서 단말기로). 이 판정 뒤에는 «조금 다르다»: 연동 매장은 Card 버튼이 «Card / QR (단말기)» 가 되고 카드종류를 묻지 않는다. 그 외 버튼은 같다.**
+- Irene 질문 ②「QR·카드 자동 표시를 POS 에서부터 할 필요 없어?」 → **없다 — 카드 탭과 손님이 보여 주는 지갑 QR 은.** POS 는 금액만 보내고 단말기가 처리한 뒤 무엇이었는지 알려 준다(우리가 자동 분류). **있다 — 단말기 화면에 DuitNow QR 을 띄워 손님이 찍게 하는 방식은.** 규격이 POS 더러 Product ID 를 미리 보내라 한다. 이건 2단계(C-3).
+
+**C-2. 결과 분류·기록 규칙 (돈 무결성 — 서버가 정하고 화면은 따른다)**
+- 서버 코덱에 `tenderFromResult(result)` → `{ method:'card'|'ewallet', card_type|null, ewallet_type|null }`. 우선순위: **D018 문자열 → D002 코드 → 입력방식(D008 0x08 / D01A "Scan")**.
+  - ewallet 판정: D018 에 `WALLET|TNG|TOUCH|DUITNOW|GRAB|BOOST|SHOPEE|QR` 중 하나 **또는** D002 ∈ {11, 19} **또는** 입력방식 Scan.
+  - `ewallet_type` = `EWALLET_TYPE_OPTIONS` 키만(`tng|grabpay|boost|shopeepay|duitnow|other`, DB 저장값이라 그 밖 금지): TNG/TOUCH→tng · DUITNOW→duitnow · GRAB→grabpay · BOOST→boost · SHOPEE→shopeepay · 그 외→other.
+  - card 판정: 기존 `mapCardType`(VISA/MASTER/AMEX/MYDEBIT→debit, UnionPay·JCB·Diners→other).
+- **단말기 응답이 진실이다.** 매장 `acceptedTypes` 목록으로 거부하지 않는다(그 목록은 수기 입력용). 응답에 D018·D002·입력방식이 전부 없으면 `card/null`(오늘과 같음).
+- `terminal_transactions` 에 `tender_method ENUM('card','ewallet')` + `ewallet_type VARCHAR(20)` 2칸(미배포 표라 마이그 스크립트에 멱등 ADD COLUMN — 운영엔 없고 dev 에만 있을 수 있다). `publicRow` 가 두 칸을 돌려준다.
+- `link()`: 원장 행 매칭 `payment_method: row.tender_method`(지금은 'card' 고정).
+- `PaymentModal`: 승인 뒤 **`onConfirmPayment(txn.tender_method, …, cardType=txn.card_type, …, ewalletType=txn.ewallet_type)`**. 🔒 `POSTerminalPage.handleConfirmPayment(:2663)` 는 이미 8번째 인자 `ewalletType` 과 `method==='ewallet'`(`:2697, :2770`) 을 처리한다 → **보호파일 변경 0**. 분할 경로는 `body.payment_method = txn.tender_method` + `ewallet_type`. 오프라인 분기는 단말기를 안 타므로 무변경.
+- **수동 폴백(`/manual`)** 은 응답이 없으니 분류를 캐셔가 적는다: 사유 입력 옆에 **Card / E-Wallet 선택 + 매장 서브타입 규칙(`resolvePaymentSubtype`) 그대로**를 필수로. `markManual(row, note, tender)` 가 `tender_method`·`card_type|ewallet_type` 를 저장(키 검증). 선택 없으면 400.
+- 결과: 마감 카드/이월렛 예상액 · IOI 몰 tng 분류 · 영수증 «E-Wallet (Touch 'n Go)» 가 단말기 사실과 일치한다. `orderPaymentLedger.js` · 🔒 8개 파일 · 몰 보고 코드 **무변경**.
+
+**C-3. DuitNow(단말기 화면 QR · Product ID) — 이번엔 넣지 않는다. 2단계.**
+- 넣으려면 ①Product ID 값(규격 샘플 `0x000007F3` 이 우리 가맹점에도 같은지 GHL 이 줘야 함) ②우리 단말기가 Payhere **ECR** 프로파일인지(C01A 는 ECR 전용) ③«DuitNow» 전용 버튼(미리 알아야 하므로 버튼 하나로 못 묶는다) — 셋 중 ①②가 GHL 회신 의존. 추측으로 넣으면 실단말기에서 D5(태그 누락)/형식오류를 보게 된다.
+- 지금 코드에 **EA→Check Status 폴링은 이미 있다**(§3-3). 2단계는 «버튼 + C01A 한 태그 + 분류(duitnow)» 뿐이라 반나절 안팎.
+- 기존 §2-4 문구 수정: «단말기 이월렛(QR) = 2단계» → **«손님 QR(seamless) = 1단계(이 판정), 단말기 화면 QR(DuitNow·Product ID) = 2단계»**.
+
+### D. 절단면 (이 밖은 손대지 않는다)
+| # | 파일 | 변경 |
+|---|---|---|
+| D-1 | `dev-backend/utils/ghlEcr.js` | `tenderFromResult()` 추가 + `readResult` 결과에 `tender_method`·`ewallet_type` 포함. `saleRequest` 에 **선택 인자 `paymentType`(D003)** 를 받게만 한다(기본은 안 보냄, 어디서도 안 넘김 — D-5 분기 대비) |
+| D-2 | `tests/ghl-ecr.test.js` | 벡터 3: §9.4 응답(TNGWALLET/"19"/Scan)→`ewallet/tng` · §9.9 응답 D018 "DuitNow QR"→`ewallet/duitnow`(분류만) · §9.2 VISA→`card/visa`. +D003 넣은 Sale 왕복 1 |
+| D-3 | `models/TerminalTransaction.js` · `scripts/migrate-create-terminal-transactions.js` | 2칸 멱등 추가(`information_schema` 확인 뒤 ADD COLUMN). `tender_method` 는 ENUM 이므로 `expandEnum` 유틸로 |
+| D-4 | `services/terminalPayments.js` · `routes/terminal-payments.js` | RESULT_FIELDS 2칸 · `link()` 매칭 method · `markManual` tender 인자+검증(400) · `/manual` 바디 · `publicRow` |
+| D-5 | `scripts/mock-ghl-terminal.js` | 시나리오 `approve-tng`(D002 "19", D018 "TNGWALLET", D01A "Scan", D017) |
+| D-6 | `scripts/health-check.js` terminal | +1 케이스: approve-tng → `tender_method=ewallet, ewallet_type=tng` · 이월렛 원장 행에 link · `/manual` tender 없으면 400 · 기존 VISA 케이스는 `card/visa` 유지 |
+| D-7 | `PaymentModal.tsx` · `TerminalPanel.tsx` · `utils/terminalSale.ts`(TerminalTxn 타입 2칸) | 연동 매장(`terminalOn`) 이면 Card 버튼 라벨 `t('pos:cardTerminal.methodLabel')`(«Card / QR · Terminal») · ready 문구 «단말기에서 카드를 대거나 QR 을 보여 달라고 하세요» · 승인 뒤 method 를 txn 에서 · 분할 body · 수동 폴백에 Card/E-Wallet+서브타입 선택 |
+| D-8 | `public/locales/{en,ko,zh,ms}/pos.json` | 새 키 4언어 · `npm run i18n:verify` |
+| D-9 | 이 문서 §2-4 · `docs/CARD_TERMINAL_ECR_DESIGN.md`(있으면) | C-3 문구 |
+
+**손대지 않는 것**: 🔒 8개 보호파일 · `orderPaymentLedger.js` · `mallSalesService.js` · 매장 결제설정 화면(새 토글 없음 — E-Wallet 끄기는 기존 enabled) · D003 송신(코덱 인자만, 미배선) · Product ID/Async UI · Void/Settlement.
+
+**D-5 분기(실측 뒤 결정, 지금 코드로 안 정한다)**: Irene 태블릿 실단말기 테스트에 **«TnG 앱 QR 스캔 판매 1건»** 을 넣는다. 금액만 보낸 Sale 로 QR 이 스캔되면 끝. **안 되면**(단말기가 카드만 기다림) → «QR (단말기)» 버튼 1개 추가 + 그 버튼만 D003=CD 송신(코덱 인자는 D-1 로 준비됨, 반나절). 이건 데이터가 정하는 일이라 Fable 재호출 없이 팀원이 실측 결과에 붙여 보고.
+
+### E. 증명 기준(기존 P1~P5 에 더함)
+- P1+: D-2 벡터 4건 통과. **고장주입**: `tenderFromResult` 의 D018 판정을 지우면 §9.4 벡터가 `card/other` 로 떨어져 **실패하는 것을 먼저 확인**.
+- P2+: D-6 케이스. 고장주입: `link()` 매칭을 'card' 고정으로 되돌리면 이월렛 원장 행 link 가 빈손이 되는 것 확인.
+- P3+: Playwright 브릿지 목에 approve-tng 응답 → POS 신규주문 `payment_method=ewallet, ewallet_type=tng` · 분할 경로 동일 · 수동 폴백에서 선택 없이 기록 버튼 비활성.
+- P5: `verify-all --full` · `check-print-guard` 변경 0 · 미연동 매장 결제 창 바이트 동일(스크린샷 대조).
+- 프론트 빌드 1회·sweep 1회 규칙 — D-7·D-8 을 다 확정한 뒤 빌드.
+
+### F. Irene 에게 (팀원은 이 블록을 그대로 전달)
+1. **「선택이 다른 거 맞아?」** — 지금 만들어 둔 코드는 **같습니다**(버튼은 똑같고 Card 만 뒤에서 단말기로 감). 그런데 그 상태로는 손님이 단말기에 TnG 지갑 QR 을 보여 줘도 **카드로 기록되는 결함**이 있어 배포 전에 고칩니다. 고친 뒤에는 단말기 매장만 Card 버튼이 **«Card / QR (단말기)»** 하나가 되고 카드종류를 묻지 않습니다. 단말기 없는 매장은 지금과 똑같습니다.
+2. **「QR·카드 자동을 POS 에서부터 할 필요 없어?」** — **카드 탭과 손님이 보여 주는 지갑 QR 은 없습니다.** GHL 규격에서 카드 판매와 지갑 판매는 POS 가 보내는 명령이 같고(금액만), 단말기가 처리한 뒤 «VISA 였다 / TNG 였다» 를 알려 줍니다. 우리는 그걸 받아 카드/이월렛·종류를 자동으로 기록합니다. **단말기 화면에 DuitNow QR 을 띄워 손님이 찍게 하는 방식은 다릅니다** — 규격이 POS 더러 «어떤 QR 인지(Product ID)» 를 미리 보내라고 해서 버튼이 따로 필요하고, 그 값은 GHL 이 줘야 합니다(질문 5번). 이건 2단계로 뒤에 붙입니다(반나절).
+3. **확인 하나만** — 단말기 매장에도 **E-Wallet 버튼은 남깁니다**(단말기 안 거치는 매장 자체 QR 스탠디용 수기 기록). 단말기로만 QR 을 받는 매장은 설정에서 E-Wallet 을 끄면 됩니다. **이렇게 가도 될까요?** (Fable 권고: 이대로. 버튼을 없애면 스탠디 QR 매장이 기록할 곳이 없어집니다.)
+4. **태블릿 테스트 때 한 건 추가** — Echo 외에 **TnG 앱 QR 스캔 판매 1건(RM 1.00)**. 금액만 보낸 명령으로 단말기가 QR 도 받는지 눈으로 확인하는 것. 안 받으면 «QR (단말기)» 버튼 하나를 더 두는 작은 분기로 갑니다.
