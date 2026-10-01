@@ -1,51 +1,53 @@
 ---
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-10-01 (v3.106 배포 · 결제 뒤 발주 금액 정정)
-**버전:** 운영 **v3.107** · SW 운영·개발 **5.69-seller-unlinked-service-20261001** (v3.106 배포 2026-10-01 18:29 UTC · 백업 20261001_182217 · 스모크 10/10)
-**작업 상태:** 🟡 GHL 1단계 + 보고서 결함 — Fable 게이트·배포 진행
+**마지막 업데이트:** 2026-10-01 (/개발완료 — GHL 카드단말기 1단계 dev 완료 · 보고서 크래시 수정, 미배포)
+**버전:** 운영 **v3.107** · SW 운영 **5.69-seller-unlinked-service-20261001** · 개발 **5.71-card-terminal-tender-20261001**
+**작업 상태:** 🟡 미배포 — 내일 Irene 확인 후 배포
 
 ### 진행 중인 작업
-- 🟡 **[Claude Code] GHL 카드단말기 ECR 1단계 + 보고서 화면 결함 — dev 완료 · Fable 게이트 → /배포 (Irene 「배포해야 하면 검증하고 배포 해」) · SW 5.71-card-terminal-tender-20261001**
-  - Fable 설계 `.claude/fable-design-20261001-ghl-ecr.md`(+ 추가 판정 결제수단 선택) · 기준 문서 `docs/CARD_TERMINAL_ECR_DESIGN.md` · UI 안내 아티팩트 https://claude.ai/artifact/ALL7b8nE7jZr4vgAuS3LeK
-  - 1단계: 코덱(utils/ghlEcr)·상태기계(services/terminalPayments)·/api/terminal·표 terminal_transactions(+tender_method·ewallet_type)·결제 창 «Card / QR (Terminal)»·결과 자동 분류(card/ewallet)·Reprint 복구·수동 기록(수단 필수)·자동 찾기(Windows·Android)·설정 «Find terminal»
-  - 데스크탑 desktop-pos/src/ecr · 안드로이드 NativeEcrPlugin.kt(원시 소켓) · 개발용 APK https://dev.purplehere.com/dev-apps/PurplePOS-dev-ecr.apk (운영 비동기화 경로)
-  - 🔴 운영 결함 수정: Owner·Foodcourt 보고서 화면 isRevenueOrder/isDeletedOrder import 누락(f44885685, 09-17~) → 기간에 주문 있으면 ErrorBoundary. mount sweep 이 잡음
-  - 검증: jest 28/28 · health terminal 5/5 · 고장주입 7 · desktop 14/14 · e2e 8/8×3 · Kotlin 컴파일 · verify-all --full 24/24 · print-guard 8/8
-  - 👉 Irene 2026-10-02 태블릿 실단말기 테스트(Find terminal · 카드 RM1 · TnG QR RM1 · 리포트 반영) — QR 을 금액만으로 안 받으면 «QR (단말기)» + D003=CD 분기
-  - 미완: 데스크탑앱·안드로이드 정식 설치본(버전 올림) · 2단계(DuitNow 단말기 QR·Void·Settlement·마감 자동입력·단말기 취소 역반영)
+- 🟡 **[Claude Code] GHL 카드단말기 ECR 자동연동 1단계 + Owner·Foodcourt 보고서 크래시 — dev 완료 · 미배포 (SW 5.71)**
+  - Fable 설계 `.claude/fable-design-20261001-ghl-ecr.md`(1회차 + 끝 절 «추가 판정 — 결제수단 선택») · 기준 문서 `docs/CARD_TERMINAL_ECR_DESIGN.md` · 메모리 reference_card_terminal_ghl_ecr
+  - UI 안내(실화면 9장): https://claude.ai/artifact/ALL7b8nE7jZr4vgAuS3LeK
+  - 설정 위치: 설정 › 결제 › Card › «Card terminal integration»(기본 꺼짐) → «Find terminal»
+  - 구현: utils/ghlEcr(코덱·분류) · services/terminalPayments(상태기계) · /api/terminal · 표 terminal_transactions(+tender_method·ewallet_type, 마이그 deploy 등록) · PaymentModal «Card / QR (Terminal)» + TerminalPanel · 자동 찾기(Windows desktop-pos/src/ecr · Android NativeEcrPlugin.kt) · 설정 CardTerminalSettings · OrderContext 주문 생성 직후 link
+  - 🔴 운영 결함 수정(미배포): Owner·Foodcourt 보고서 isRevenueOrder/isDeletedOrder import 누락(f44885685, 09-17~) → 기간에 주문 있으면 화면 멈춤. **운영에 아직 결함 있음**
+  - 검증: jest 28/28 · health terminal 5/5 · 고장주입 7 · desktop 14/14 · e2e card-terminal 8/8×3 · Kotlin 컴파일·debug APK · verify-all --full 24/24 · print-guard 8/8
+  - Fable 게이트(2회차) 요청함 — 판정 파일 `.claude/fable-verdict-20261001-ghl-ecr-gate.md`(작성됐으면). 기록 커밋으로 마커 지문이 바뀌므로 배포 전 `fable-gate.js status` 재확인, 실단말기 수정 생기면 재판정
+  - 확인 불가: 실단말기(전송·응답 형식, 금액만 Sale 로 QR 수용 여부) · Android 실기기 · Windows 설치본 미빌드(0.1.10)
 
 ### 완료된 작업 (2026-10-01) [Claude Code]
-- **v3.107 운영 배포**(백업 20261001_192853 · 스모크 10/10 · 운영 grep 반영 확인 · 공지 v3.107 수신자 9) — A안. P10 은 매장8 이 PO 87 수령 시 팀원이 운영 읽기로 확인(수령은 고객 몫)
-- **v3.106 운영 배포** — 결제 뒤 발주 금액 정정. Fable 게이트 PASS(`.claude/fable-verdict-20261001-paid-po.md`, 운영 사본 diff 설계 밖 0 · 고장주입 3갈래 · 운영 읽기 매장10 PO 12·26·52 시프트 1개). 배포 전 build:dev + verify-all 23/23. 운영 코드 반영 grep 확인 · health ok · 공지 v3.106(수신자 9)
-  - 👉 Irene 실사용 확인 대기: 매장10 PO 12·26·52 중 1건 대조 «이 총액으로 확정» → 현금관리 차액 줄
-  - Fable 비차단 후속 3: ① 대조 결과에 paid_adjustment 표시(시프트 0/2+면 드로어 조용히 미반영) ② reversePayment 순출금 가장자리(재결제 후 취소) ③ reimbursePersonalPayment 가 total_amount 로 갚음(기존 결함)
-
-### 완료된 작업 (이번 세션 2026-09-30) [Claude Code]
-- **v3.105 운영 배포**(05:25 UTC · 백업 20260930_051815 · 스모크 10/10): 현금 내역 삭제 이유 필수+활동기록 · 발주 결제 현금 줄 «발주에서 금액 수정» 버튼 · 🔴 메뉴 이미지 소실 결함 수정(03-03 e91b385a4 부터 — 이미지 안 바꾸고 저장해도 파일 삭제, 브랜드 메뉴 참조 파일 삭제) · 403 사유 message
-  - 운영 확인(데모 매장 13, 원복): 같은 이미지 저장 → 파일 유지 · 삭제 이유 없음 400/있음 200+기록
-  - 릴리즈 블로그 release-v3.105 · 공지(수신자 9) 운영 동기화
-- 운영 데이터(Irene 「지금 없는 것만 조치하는 거면 해」): 브랜드2 브랜드 메뉴 이미지 68건 중 이름 정확히 같은 55건 복구 — 매장8 상품 사진 사본 `/uploads/brand-menus/brandmenu_*` · 파일 동일 55/55 · 서빙 200 55/55 · 이전 값 백업 운영 `/var/www/backups/brand2-brand-menus-image-pre-1790746920917.json`
-- 앞 건 «Issued Invoices 다브랜드»는 운영 반영 확인(백업 20260929_174721)
-- Garbage Bag(PRD-163) 위드민 검색 안 됨 → Irene 자가 확인 「재고아이템이랑 연결 안해서」(메모리 추가)
+- **v3.106 운영 배포** — 결제 뒤 발주 금액 정정(Fable 게이트 PASS `.claude/fable-verdict-20261001-paid-po.md`). Fable 비차단 후속 3건 아래 후속 후보
+- **v3.107 운영 배포**(백업 20261001_192853) — A안: 판매자 품목 수정에 미연결 배포 상품 · 서비스 줄 수령 재고 무접촉(Fable 설계 `.claude/fable-design-20261001-a-plan.md`)
+- GHL 1단계 dev 완료(위) · 보고서 크래시 수정(위)
+- 개발용 안드로이드 APK(패키지 .dev, 정식 앱과 별도): https://dev.purplehere.com/dev-apps/PurplePOS-dev-ecr.apk (운영 동기화 경로 밖)
+- health-check 단말기 테스트 정리 구멍(order_actions FK) 보강 · dev 잔재 주문 4건 삭제
 
 ### 다음 확정 작업
-1. **A안 (Irene 결정 2026-09-30 「A로 해. 서비스 상품도 주문 넣을 수 있게」)** — 브랜드가 배포한 상품은 매장 연결 없이 주문·검색에 바로 뜨게, 서비스 상품 포함. 구조 변경 → **Fable 설계 판정부터**(한도 소진으로 미수신). 그 전까지 새 상품은 매장 재고아이템 연결로 처리([[reference_seller_add_order_needs_buyer_link]])
+1. **Irene 2026-10-02 확인** (Irene 「관리페이지 UI/UX 도 내일 확인할게」「테스트 내일 할게」)
+   - 안드로이드 태블릿 실단말기 테스트: 단말기와 같은 와이파이 → 개발용 APK 설치 → 개발서버 로그인 → 설정 «Find terminal» → POS RM1 카드 → RM1 TnG QR → 리포트에 카드1·이월렛1 반영 → 단말기·POS 둘 다 취소
+   - 관리페이지(설정) UI/UX 확인 — 안내 아티팩트 참고
+2. 테스트 결과 반영 — 응답 형식 다르면 브릿지 transport 수정 / 금액만 Sale 로 QR 안 받으면 «QR (단말기)» 버튼 + D003=CD(코덱 인자 준비됨, Fable 재호출 없이 팀원)
+3. Fable 게이트 확인/재판정 → `/배포`(보고서 크래시 수정 포함). 배포 후 데스크탑앱·안드로이드 정식 설치본(버전 올림) 검토
 
 ### 👉 Irene 님 결정 대기 / 할 일
-- K-DINE 재료·메뉴 구조 컨펌 4건(D1′ 브랜드 원본 잠금 A vs Irene 원래 요청 역동기화 · D1″ · D3′ · D2′) + E — `.claude/fable-verdict-20260929-structure.md` §4·§5
-- 매장 재업로드 필요(파일 복구 불가): 매장8 «Fried Chicken (6 pcs)» · 매장10 9건(Original/Strawberry Makgeolli Glass · Yakgwa · Set C · Gochujang/Crispy Drumsticks · Cheese Dakgalbi · Bulgogi · ochujang Drumsticks 2pcs)
-- 브랜드2 브랜드 메뉴 이미지 미조치 13건(이름 다름·연결 없음): 254·272·273·274·279·280·281·283·290·321·329·333·346 — 브랜드에서 직접 올려야 함
-- 배포 후 확인: 브랜드 1·2 Payment Settings «배송 가능 지역» · 0원 청구서 93·88·69·61 Confirm
+- GHL 에 질문서 6개 발송(설계 문서 §5-4 영문 문안) — 샌드박스 TID/MID · 전송 형식 · DuitNow Product ID 등
+- 매장10 PO 12·26·52 중 1건 대조 «이 총액으로 확정» → 현금관리 차액 줄 실사용 확인(v3.106)
+- K-DINE 재료·메뉴 구조 컨펌 4건 + E — `.claude/fable-verdict-20260929-structure.md` §4·§5
+- 매장 재업로드 필요(파일 복구 불가): 매장8 «Fried Chicken (6 pcs)» · 매장10 9건
+- 브랜드2 브랜드 메뉴 이미지 미조치 13건(254·272·273·274·279·280·281·283·290·321·329·333·346)
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
-- 가입 판매자(GIT 등) 발주의 결제 뒤 금액 정정 경로 — 판매자 청구서가 원본이라 구매자 단독 정정 불가(Fable 판단)
-- deleteOldImages 를 쓰는 다른 라우트(recipes·ingredients·admin-settings)도 «같은 주소 저장=삭제» 패턴 여부 점검
-- 판매자 «완료»(서비스 전용) 청구서 즉시 미발행 · BG Stock Items catalogLink 판매자 비결정 · 받은 발주 알림 무브랜딩 · Sales Orders 검색 첫 페이지만 · 인스펙션 ING-UNI 한계
+- GHL 2단계: DuitNow 단말기 화면 QR(Product ID) · Void · Settlement · 마감 카드금액 자동입력 · 단말기에서 한 취소의 POS 역반영
+- 결제 창: 단말기 결과 미확인 상태에서 하단 «Confirm Payment» 도 재시도로 동작 — 패널 버튼만 남길지 검토
+- e2e card-terminal 이 dev terminal_transactions 행을 정리하지 않음(데모 38, 무해)
+- 타입 기준선: 보고서 import 수정으로 실제 오류 수 감소 — 기준선 낮추기 검토
+- Fable 비차단(v3.106): 대조 결과 paid_adjustment 표시 · reversePayment 재결제 가장자리 · reimbursePersonalPayment total_amount
+- 가입 판매자 발주 결제 뒤 금액 정정 · deleteOldImages 다른 라우트 점검 · 판매자 «완료» 청구서 즉시 미발행 등(이전 메모)
 
 ### 주요 변경사항
-- 운영 쓰기(Irene 지시): brand_menus 55행 image_url(백업 JSON 있음) · 운영 데모 매장 13 검증 쓰기 원복 완료
-- dev DB: 테스트 데이터 원복(잔여 0)
+- 운영 쓰기: 없음(이번 GHL 작업) · v3.106/v3.107 배포·공지
+- dev DB: terminal_transactions 표 생성(+2칸) · 데모 38 설정 원복 확인 · 테스트 잔재 0
 
 ---
 

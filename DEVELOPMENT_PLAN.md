@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-01 — [Claude Code] **v3.107 운영 배포 — SW `5.69-seller-unlinked-service-20261001`(백업 `20261001_192853` · 스모크 10/10).** A안: 판매자 품목 수정에 미연결 배포 상품(서비스 포함) · 서비스 줄 수령 재고 무접촉. 다음: GHL 카드단말기 ECR 1단계(Fable 설계 `.claude/fable-design-20261001-ghl-ecr.md`, 목 단말기 기준).
+> **최종 업데이트:** 2026-10-01 — [Claude Code] **GHL 카드단말기 ECR 자동연동 1단계 dev 완료(미배포, SW 5.71-card-terminal-tender-20261001)** + 🔴 Owner·Foodcourt 보고서 화면 크래시(import 누락, 09-17~ 운영) 수정. verify-all --full 24/24. Fable 게이트 판정 진행 중 · Irene 10-02 태블릿 실단말기·관리페이지 UI 확인 후 배포.
+
+> **이전:** 2026-10-01 — [Claude Code] **v3.107 운영 배포 — SW `5.69-seller-unlinked-service-20261001`(백업 `20261001_192853` · 스모크 10/10).** A안: 판매자 품목 수정에 미연결 배포 상품(서비스 포함) · 서비스 줄 수령 재고 무접촉. 다음: GHL 카드단말기 ECR 1단계(Fable 설계 `.claude/fable-design-20261001-ghl-ecr.md`, 목 단말기 기준).
 
 > **이전:** 2026-10-01 — [Claude Code] **v3.106 운영 배포 — SW `5.68-paid-po-total-fix-20260930`(18:29 UTC · 백업 `20261001_182217` · 스모크 10/10 · Fable 게이트 PASS `.claude/fable-verdict-20261001-paid-po.md`).** 결제된 외부 공급업체 현금 발주를 대조에서 총액만 확정 → 현금관리 차액 줄 자동 + 청구서 금액 동기 · 결제 취소는 순출금 기준. 릴리즈 공지 v3.106(수신자 9). 다음: A안(배포 상품 연결 없이 주문 + 서비스 상품) Fable 설계.
 
@@ -10716,6 +10718,28 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 - `dev-backend/routes/cash-management.js` · `routes/menu.js` · `routes/cost-reconciliation.js`
 - `dev-backend/services/purchaseOrderPayment.js` · `services/reconcileInvoiceSync.js` · `scripts/health-check.js`
 - `dev-frontend/src/components/CashManagement/CashLedger.tsx` · `src/pages/PurchaseOrders/InvoiceReconcilePage.tsx` · locales cash/purchaseOrders 4언어 · `public/sw.js`
+
+---
+
+## ✅ 완료: GHL 카드단말기 자동연동 1단계 · 보고서 화면 크래시 (2026-10-01) [Claude Code]
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 결제 뒤 발주 금액 정정 | 운영 v3.106 (Fable 게이트 PASS) | ✅ 운영 |
+| A안 미연결 배포 상품 | 판매자 품목 수정·서비스 줄 수령 재고 무접촉 — 운영 v3.107 | ✅ 운영 |
+| GHL ECR 코덱·상태기계 | 서버가 프레임 생성·해석(CRC·금액·송장 대조), 승인 아니면 기록 0, Reprint 복구, 수동 기록(수단 필수) | ✅ dev |
+| 결제 창 | 단말기 매장 «Card / QR (Terminal)» · 카드/손님 QR 자동 분류(card/ewallet·tng 등) | ✅ dev |
+| 단말기 자동 찾기 | Windows·Android 앱, 연결 전 실패만 재탐색(이중결제 방지), 여러 대면 선택, 설정 «Find terminal» | ✅ dev |
+| 브릿지 | desktop-pos ecr(Node 내장) · Android NativeEcrPlugin(원시 소켓) · 사설망만 | ✅ dev |
+| 보고서 크래시 | Owner·Foodcourt 보고서 import 누락(f44885685) 수정 — 운영 결함 | ✅ dev (미배포) |
+
+### 수정된 파일
+- `dev-backend/utils/ghlEcr.js` · `services/terminalPayments.js` · `routes/terminal-payments.js` · `models/TerminalTransaction.js` · `scripts/migrate-create-terminal-transactions.js` · `scripts/mock-ghl-terminal.js` · `tests/ghl-ecr.test.js` · `scripts/health-check.js` · `server.js` · `models/Restaurant.js`
+- `dev-frontend/src/components/POSTerminal/PaymentModal.tsx` · `TerminalPanel.tsx` · `utils/terminalSale.ts` · `nativeEcr.ts` · `terminalPaymentLink.ts` · `contexts/OrderContext.tsx` · `pages/Settings/CardTerminalSettings.tsx` · `SettingsPage.tsx` · `pages/Owner/OwnerReportsPage.tsx` · `pages/FoodcourtGeneral/FoodcourtReportsPage.tsx` · locales pos/settings · `e2e/card-terminal.spec.js`
+- `desktop-pos/src/ecr/*` · `preload.js` · `main.js` · `test/ecr-units.js` / `mobile-app/android/.../NativeEcrPlugin.kt` · `MainActivity.java` · `src/nativePrintBridge.js` · `build.gradle`
+- 문서: `docs/CARD_TERMINAL_ECR_DESIGN.md`(신규) · `docs/PAYMENT_SYSTEM_PLAN.md` · `docs/TRADE_STRUCTURE.md` · `docs/PURCHASE_ORDER_SYSTEM.md`
 
 ---
 
