@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-01 — [Claude Code] **GHL 카드단말기 ECR 자동연동 1단계 dev 완료(미배포, SW 5.71-card-terminal-tender-20261001)** + 🔴 Owner·Foodcourt 보고서 화면 크래시(import 누락, 09-17~ 운영) 수정. verify-all --full 24/24. Fable 게이트 판정 진행 중 · Irene 10-02 태블릿 실단말기·관리페이지 UI 확인 후 배포.
+> **최종 업데이트:** 2026-10-02 — [Claude Code] **운영 배포(SW 5.71 · 백업 20261002_042847 · 스모크 10/10 — Owner·Foodcourt 보고서 크래시 수정 반영, 단말기는 꺼진 채) + GHL 2차 묶음 dev 완료(미배포, SW 5.72):** Fable 게이트 R1~R5 수정 · 안드로이드 정식 앱 0.3.0(운영 주소·단말기 브릿지) 빌드. Irene 「모든 테스트는 실 운영에서」→ Fable 수용(개발용 앱 접음). 다음: Fable 게이트 → /배포 → 운영 데모 매장 실단말기 테스트.
+
+> **이전:** 2026-10-01 — [Claude Code] **GHL 카드단말기 ECR 자동연동 1단계 dev 완료(미배포, SW 5.71-card-terminal-tender-20261001)** + 🔴 Owner·Foodcourt 보고서 화면 크래시(import 누락, 09-17~ 운영) 수정. verify-all --full 24/24. Fable 게이트 판정 진행 중 · Irene 10-02 태블릿 실단말기·관리페이지 UI 확인 후 배포.
 
 > **이전:** 2026-10-01 — [Claude Code] **v3.107 운영 배포 — SW `5.69-seller-unlinked-service-20261001`(백업 `20261001_192853` · 스모크 10/10).** A안: 판매자 품목 수정에 미연결 배포 상품(서비스 포함) · 서비스 줄 수령 재고 무접촉. 다음: GHL 카드단말기 ECR 1단계(Fable 설계 `.claude/fable-design-20261001-ghl-ecr.md`, 목 단말기 기준).
 
@@ -10740,6 +10742,27 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 - `dev-frontend/src/components/POSTerminal/PaymentModal.tsx` · `TerminalPanel.tsx` · `utils/terminalSale.ts` · `nativeEcr.ts` · `terminalPaymentLink.ts` · `contexts/OrderContext.tsx` · `pages/Settings/CardTerminalSettings.tsx` · `SettingsPage.tsx` · `pages/Owner/OwnerReportsPage.tsx` · `pages/FoodcourtGeneral/FoodcourtReportsPage.tsx` · locales pos/settings · `e2e/card-terminal.spec.js`
 - `desktop-pos/src/ecr/*` · `preload.js` · `main.js` · `test/ecr-units.js` / `mobile-app/android/.../NativeEcrPlugin.kt` · `MainActivity.java` · `src/nativePrintBridge.js` · `build.gradle`
 - 문서: `docs/CARD_TERMINAL_ECR_DESIGN.md`(신규) · `docs/PAYMENT_SYSTEM_PLAN.md` · `docs/TRADE_STRUCTURE.md` · `docs/PURCHASE_ORDER_SYSTEM.md`
+
+---
+
+## ✅ 완료: GHL 단말기 2차 묶음 — R1~R5 + 정식 앱 0.3.0 (2026-10-02, dev · 미배포)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| [Claude Code] 운영 배포 | SW 5.71 · 백업 20261002_042847 · 스모크 10/10 · 운영 terminal_transactions 생성 0행 · 단말기 켠 매장 0 | ✅ 완료 |
+| [Claude Code] R1 분할 결제 | 단말기 거절·미확인 뒤 하단 Confirm 잠김 · 다시 시도/수동 기록으로만 진행 | ✅ 완료 |
+| [Claude Code] R2 재승인 차단 | 서버 409 ALREADY_APPROVED(같은 금액 승인 재사용) · DOUBLE_APPROVAL 경고 4언어 | ✅ 완료 |
+| [Claude Code] R3·R4·R5 | 대기 연결 금액 대조 · 수동 기록 뒤 주문 참조 · busy 순서 | ✅ 완료 |
+| [Claude Code] 안드로이드 정식 앱 0.3.0 | 운영 URL · NativeEcr 포함 · 서명 동일(덮어 설치) — 다운로드 폴더 복사는 권한 막힘, Irene 대기 | 🟡 빌드 완료 |
+| [Claude Code] 검증 | health terminal 6/6 · 고장주입 서버 2 + 화면 1(수정 전 번들로 R1 재현) · e2e card-terminal 9/9 ×3 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/services/terminalPayments.js` · `dev-backend/routes/terminal-payments.js` · `dev-backend/scripts/health-check.js`
+- `dev-frontend/src/components/POSTerminal/PaymentModal.tsx` · `dev-frontend/src/utils/terminalSale.ts` · `dev-frontend/src/contexts/OrderContext.tsx`
+- `dev-frontend/public/locales/{en,ko,zh,ms}/pos.json` · `dev-frontend/public/sw.js` · `dev-frontend/e2e/card-terminal.spec.js`
+- `mobile-app/android/app/build.gradle` · `dev-backend/releases/2026-10-02-terminal-guards-app030.json`
 
 ---
 

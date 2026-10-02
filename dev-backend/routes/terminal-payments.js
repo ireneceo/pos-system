@@ -17,7 +17,7 @@ const { logActivity } = require('../utils/activityLogger');
 router.use(authenticateToken, requirePaymentAccess);
 
 const send = (res, e, where) => {
-  if (e && e.status) return res.status(e.status).json({ success: false, code: e.code, message: e.message });
+  if (e && e.status) return res.status(e.status).json({ success: false, code: e.code, message: e.message, ...(e.extra ? { data: e.extra } : {}) });
   console.error(`terminal-payments ${where} error:`, e);
   return res.status(500).json({ success: false, message: 'Internal server error' });
 };
@@ -105,7 +105,7 @@ router.post('/transactions/:id/manual', async (req, res) => {
       changes: { status: 'manual', note: out.manual_note, tender_method: out.tender_method, card_type: out.card_type, ewallet_type: out.ewallet_type },
       description: `Card terminal result recorded manually — ${out.manual_note}`,
     });
-    res.json({ success: true, data: svc.publicRow(out) });
+    res.json({ success: true, data: { ...svc.publicRow(out), link_error: out.linkError || null } });
   } catch (e) { send(res, e, 'POST /manual'); }
 });
 

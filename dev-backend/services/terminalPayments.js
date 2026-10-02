@@ -63,6 +63,19 @@ async function createSale({ restaurantId, orderId, amount, user, cashierName, de
     if (!order || Number(order.restaurant_id) !== Number(restaurantId)) throw err(404, 'NOT_FOUND', 'Order not found');
     if (order.payment_status === 'completed') throw err(400, 'ALREADY_PAID', 'Order is already paid');
     if (money(amt) - await orderRemaining(order) > 0.005) throw err(400, 'AMOUNT_EXCEEDS', 'Amount is more than the unpaid balance');
+    // 이 주문의 승인 합에 이번 금액을 더하면 주문 금액을 넘는다 = 손님을 두 번 긁게 된다(Fable 게이트 R2).
+    //   예: 승인 뒤 결제 기록이 네트워크로 실패 → 캐셔 재시도. 같은 금액의 승인이 있으면 그 승인을 돌려줘
+    //   새 판매 없이 그 승인으로 기록하게 하고, 아니면 막는다(link 의 DOUBLE_APPROVAL 을 단말기 전에 건다).
+    const approved = await TerminalTransaction.findAll({
+      where: { order_id: order.id, command: 'sale', status: ['approved', 'manual'] },
+      order: [['id', 'DESC']],
+    });
+    const approvedSum = approved.reduce((s, o) => s + money(o.amount), 0);
+    if (approvedSum + money(amt) - money(order.total_amount) > 0.005) {
+      const same = approved.find(o => money(o.amount) === money(amt));
+      throw err(409, 'ALREADY_APPROVED', 'This order already has a card terminal approval — no new charge was sent',
+        same ? { txn: publicRow(same) } : undefined);
+    }
   }
   const row = await TerminalTransaction.create({
     restaurant_id: restaurantId, order_id: orderId || null, command: 'sale', amount: amt, status: 'created',
@@ -226,7 +239,10 @@ async function markManual(row, note, tender = {}) {
   if (ewType && !EWALLET_KEYS.includes(ewType)) throw err(400, 'BAD_TENDER', 'Unknown e-wallet type');
   if (!['timeout', 'comm_error', 'not_found', 'recovering'].includes(row.status)) throw err(409, 'BAD_STATE', `Cannot record a ${row.status} transaction manually`);
   await row.update({ status: 'manual', manual_override: true, manual_note: n.slice(0, 300), tender_method: method, card_type: cardType, ewallet_type: ewType });
-  return row;
+  // 주문이 이미 있는 경로(FloorPlan·LiveOrders)는 여기서 주문 참조까지 채운다(Fable 게이트 R4).
+  //   POS 신규 주문은 주문 생성 뒤 대기 연결이 같은 일을 한다.
+  const linkError = row.order_id ? await safeLink(row, row.order_id) : null;
+  return Object.assign(row, { linkError });
 }
 
 async function createEcho({ restaurantId, user }) {

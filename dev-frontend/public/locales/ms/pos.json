@@ -117,6 +117,8 @@
   "cardTerminal.reason.stillPending": "Terminal masih memproses bayaran ini.",
   "cardTerminal.reason.notFound": "Terminal tiada rekod bayaran ini.",
   "cardTerminal.reason.notApproved": "Terminal tidak meluluskan bayaran ini.",
+  "cardTerminal.reason.alreadyApproved": "Pesanan ini sudah ada kelulusan terminal kad, jadi tiada caj baharu dihantar. Semak pesanan sebelum menerima bayaran lagi.",
+  "cardTerminal.reason.doubleApproval": "Pesanan ini sudah ada kelulusan terminal, jadi caj ini tidak direkodkan. Batalkan (Void) salah satu caj di terminal.",
   "cardTerminal.reason.cannotStart": "Tidak dapat memulakan terminal kad.",
   "cardTerminal.reason.code": "Kod terminal {{code}}",
   "cardTerminal.chooseTitle": "Lebih daripada satu terminal kad ditemui",

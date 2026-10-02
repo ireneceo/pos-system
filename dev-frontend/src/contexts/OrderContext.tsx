@@ -264,7 +264,11 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
       //   (2026-10-01 GHL ECR · 🔒 POSTerminalPage 무접촉 경로). 실패해도 주문은 막지 않는다 — 서버에 «미연결 승인» 으로 남는다.
       if ((order.paymentMethod === 'card' || order.paymentMethod === 'ewallet') && savedOrder?.id) {
         const link = takePendingTerminalLink();
-        if (link) linkTerminalTxn(link.txnId, Number(savedOrder.id)).catch(() => {});
+        // 금액이 같은 주문에만 붙인다 — 앞 주문 생성이 실패한 뒤 다른 주문에 그 승인이 붙지 않게(Fable 게이트 R3)
+        const savedTotal = parseFloat(savedOrder.total_amount ?? savedOrder.total);
+        if (link && Number.isFinite(savedTotal) && Math.abs(link.amount - savedTotal) < 0.005) {
+          linkTerminalTxn(link.txnId, Number(savedOrder.id)).catch(() => {});
+        }
       }
 
       // Add to local state after successful API save

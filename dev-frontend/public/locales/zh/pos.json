@@ -117,6 +117,8 @@
   "cardTerminal.reason.stillPending": "刷卡机仍在处理此笔付款。",
   "cardTerminal.reason.notFound": "刷卡机没有此笔付款的记录。",
   "cardTerminal.reason.notApproved": "刷卡机未批准此笔付款。",
+  "cardTerminal.reason.alreadyApproved": "此订单已有刷卡机批准，因此未发送新的扣款。再次收款前请先核对订单。",
+  "cardTerminal.reason.doubleApproval": "此订单已有刷卡机批准，本次扣款未记录。请在刷卡机上撤销（Void）其中一笔。",
   "cardTerminal.reason.cannotStart": "无法启动刷卡机。",
   "cardTerminal.reason.code": "刷卡机代码 {{code}}",
   "cardTerminal.chooseTitle": "找到多台刷卡机",

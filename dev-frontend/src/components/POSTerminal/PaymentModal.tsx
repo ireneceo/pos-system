@@ -735,7 +735,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   // Split bill — 선택 아이템만 부분 결제 (POST /api/orders/:id/payments)
   // splitTotal 을 그대로 보냄 (정확한 비례 결제). backend 가 amount_paid 를 order.total
   // 로 cap. order_payments row 의 amount 는 실제 받은 그대로 (통계/회계 정확).
-  const handleSplitConfirm = async () => {
+  //   manual = 단말기 결과 미확인 → 캐셔가 «수동 기록»(서버 감사기록)을 마친 뒤에만 넘어온다(handleTerminalManual).
+  const handleSplitConfirm = async (manual?: { method: 'card' | 'ewallet'; sub: string }) => {
     if (!orderId || splitSelected.size === 0) return;
     const amount = splitTotal;
     if (paymentMethod === 'cash') {
@@ -764,15 +765,20 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       }
       if (paymentMethod === 'card' && cardType) body.card_type = cardType;
       if (paymentMethod === 'ewallet' && ewalletType) body.ewallet_type = ewalletType;
-      // 단말기 연동이면 이 몫을 단말기에서 먼저 승인받는다 — 승인 아니면 기록하지 않는다
-      if (useTerminal && !terminalIssue) {
-        const txn = await runTerminal(amount, orderId);
-        if (!txn) return;
-        // 단말기 응답이 정한 수단 — 카드 탭이면 card, 손님 QR(지갑)이면 ewallet
-        applyTenderToBody(body, txn.tender_method, txn.card_type, txn.ewallet_type);
-        body.transaction_id = terminalRef(txn);
-      } else if (useTerminal && terminalIssue && manualTender.method) {
-        applyTenderToBody(body, manualTender.method, manualTender.method === 'card' ? manualTender.sub : null, manualTender.method === 'ewallet' ? manualTender.sub : null);
+      // 단말기 연동이면 이 몫을 단말기에서 먼저 승인받는다 — 승인 아니면 기록하지 않는다(전액 경로와 같은 규칙, Fable 게이트 R1)
+      //   거절·미확인 상태에서는 «다시 시도»(패널) 또는 «수동 기록»(감사기록) 외에는 기록하지 않는다.
+      if (useTerminal) {
+        if (manual) {
+          applyTenderToBody(body, manual.method, manual.method === 'card' ? manual.sub : null, manual.method === 'ewallet' ? manual.sub : null);
+        } else if (!terminalIssue) {
+          const txn = await runTerminal(amount, orderId);
+          if (!txn) return;
+          // 단말기 응답이 정한 수단 — 카드 탭이면 card, 손님 QR(지갑)이면 ewallet
+          applyTenderToBody(body, txn.tender_method, txn.card_type, txn.ewallet_type);
+          body.transaction_id = terminalRef(txn);
+        } else {
+          return;
+        }
       }
 
       // 오프라인(메인 POS) — 서버 왕복 없이 split 부분 결제를 op 로그에 기록(재생 시 동일 POST /orders/:id/payments).
@@ -866,7 +872,11 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     setTerminalBusy('starting');
     try {
       const out = await runTerminalSale({ restaurantId: rid, orderId: forOrderId || null, amount, cashierName, onPhase: setTerminalBusy });
-      if (out.kind === 'approved') return out.txn;
+      if (out.kind === 'approved') {
+        // 승인은 됐지만 이 주문엔 이미 다른 승인이 있다 — 기록하지 않고 단말기에서 하나를 취소하라고 알린다(R2)
+        if (out.linkError === 'DOUBLE_APPROVAL') { setTerminalIssue({ kind: 'error', message: 'reason:doubleApproval' }); return null; }
+        return out.txn;
+      }
       if (out.kind === 'choose') { setTerminalIssue({ kind: 'choose', message: out.message, hosts: out.hosts }); return null; }
       setTerminalIssue({ kind: out.kind, message: out.message, txnId: out.kind === 'error' ? undefined : out.txn.id });
       return null;
@@ -878,8 +888,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   /** 단말기 결과를 알 수 없을 때 캐셔가 단말기 영수증을 보고 기록 — 서버 감사기록 뒤 오늘 경로로 결제 기록. */
   const handleTerminalManual = async () => {
     if (!terminalIssue?.txnId || terminalNote.trim().length < 3) return;
-    setTerminalBusy('starting');
     if (!manualTender.method) return;
+    setTerminalBusy('starting');
     const sub = manualTender.sub || undefined;
     const r = await recordTerminalManually(terminalIssue.txnId, terminalNote.trim(), {
       tender_method: manualTender.method,
@@ -887,7 +897,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     });
     setTerminalBusy(null);
     if (!r.ok) { setTerminalIssue({ ...terminalIssue, message: r.message || 'reason:cannotStart' }); return; }
-    if (splitMode) { handleSplitConfirm(); return; }
+    if (splitMode) { handleSplitConfirm({ method: manualTender.method, sub: manualTender.sub }); return; }
     if (!orderId) setPendingTerminalLink(terminalIssue.txnId, total);
     if (manualTender.method === 'ewallet') onConfirmPayment('ewallet', undefined, undefined, pointsToUse, pointDiscount, undefined, undefined, sub);
     else onConfirmPayment('card', undefined, undefined, pointsToUse, pointDiscount, sub);
@@ -957,7 +967,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         return amount >= splitTotal;
       }
       if (paymentMethod === 'card') {
-        return (useTerminal && !terminalIssue) || !requireCardType || !!cardType;
+        // 단말기 연동이면 거절·미확인 뒤엔 패널의 «다시 시도»/«수동 기록» 으로만 진행한다(R1)
+        if (useTerminal) return !terminalIssue;
+        return !requireCardType || !!cardType;
       }
       if (paymentMethod === 'ewallet') {
         return !(ewalletNeedsChoice && requireEwalletType) || !!ewalletType;

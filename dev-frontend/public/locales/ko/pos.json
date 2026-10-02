@@ -117,6 +117,8 @@
   "cardTerminal.reason.stillPending": "단말기가 아직 이 결제를 처리 중입니다.",
   "cardTerminal.reason.notFound": "단말기에 이 결제 기록이 없습니다.",
   "cardTerminal.reason.notApproved": "단말기가 이 결제를 승인하지 않았습니다.",
+  "cardTerminal.reason.alreadyApproved": "이 주문은 이미 단말기 승인이 있어 새로 결제를 보내지 않았습니다. 다시 받기 전에 주문을 확인하세요.",
+  "cardTerminal.reason.doubleApproval": "이 주문에는 이미 단말기 승인이 있어 이번 결제는 기록하지 않았습니다. 두 건 중 하나를 단말기에서 취소(Void)하세요.",
   "cardTerminal.reason.cannotStart": "카드 단말기를 시작할 수 없습니다.",
   "cardTerminal.reason.code": "단말기 코드 {{code}}",
   "cardTerminal.chooseTitle": "카드 단말기가 여러 대 있습니다",

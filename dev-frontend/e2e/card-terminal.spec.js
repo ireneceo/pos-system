@@ -194,6 +194,35 @@ test.describe('카드단말기 ECR — 결제 창 흐름(목 브릿지)', () => 
     expect(pageErrors).toHaveLength(0);
   });
 
+  test('I 분할 결제 + 거절 → Confirm 눌러도 원장 0 · 다시 시도 뒤에만 단말기 재전송', async ({ page, request, baseURL }) => {
+    // Fable 게이트 2회차 R1 — 거절 뒤 하단 Confirm 이 승인 없이 카드 분할 결제를 기록하던 구멍
+    const pageErrors = []; page.on('pageerror', (e) => pageErrors.push(String(e)));
+    const state = { scenario: 'decline', calls: [] };
+    await installBridge(page, state);
+    await openPayment(page, orderNumber, pageErrors);
+    await page.getByRole('switch').last().check();
+    await page.locator('label', { hasText: 'E2E Bulgogi' }).locator('input[type="checkbox"]').check();
+    const confirm = page.getByRole('button', { name: 'Confirm Payment' }).last();
+    await expect(confirm).toBeEnabled();
+    await confirm.click();
+    await expect(page.getByText('Card not approved')).toBeVisible({ timeout: 20000 });
+    await expect(confirm, '거절 뒤 Confirm 비활성').toBeDisabled();
+    await confirm.click({ force: true }).catch(() => {});
+    await page.waitForTimeout(1500);
+    expect(state.calls, '단말기로 간 판매는 1번').toEqual(['A1']);
+    let o = await getOrder(request, baseURL, token, orderId);
+    expect(Number(o.amount_paid || 0), '원장 0').toBe(0);
+    expect(o.payment_status).toBe('pending');
+    // 다시 시도 → 패널 이슈가 지워지고 Confirm 이 단말기로 다시 보낸다(이번엔 승인)
+    state.scenario = 'approve';
+    await page.getByRole('button', { name: 'Try again' }).last().click();
+    await expect(confirm).toBeEnabled();
+    await confirm.click();
+    await expect.poll(async () => Number((await getOrder(request, baseURL, token, orderId)).amount_paid || 0), { timeout: 20000 }).toBe(15);
+    expect(state.calls).toEqual(['A1', 'A1']);
+    expect(pageErrors).toHaveLength(0);
+  });
+
   test('D 브릿지 없음(브라우저) → 안내만 · 단말기 호출 0', async ({ page }) => {
     const pageErrors = []; page.on('pageerror', (e) => pageErrors.push(String(e)));
     await openPayment(page, orderNumber, pageErrors);

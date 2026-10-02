@@ -16,7 +16,8 @@ export interface TerminalTxn {
 }
 export type TerminalPhase = 'starting' | 'waiting' | 'recovering' | 'checking';
 export type TerminalOutcome =
-  | { kind: 'approved'; txn: TerminalTxn }
+  /** linkError 'DOUBLE_APPROVAL' = 승인은 됐지만 이 주문에 승인이 주문 금액보다 많다(단말기에서 하나 Void) */
+  | { kind: 'approved'; txn: TerminalTxn; linkError?: string | null; reused?: boolean }
   | { kind: 'declined'; txn: TerminalTxn; message: string }
   | { kind: 'unknown'; txn: TerminalTxn; message: string }
   | { kind: 'choose'; hosts: string[]; message: string }
@@ -59,7 +60,7 @@ export async function saveTerminalHost(restaurantId: number, host: string): Prom
  * 연결 자체가 안 되면(요청이 단말기에 닿지 않음) 와이파이 안에서 단말기를 찾아 **같은 요청**을 다시 보낸다.
  * 연결 뒤 무응답(TIMEOUT)은 다시 보내지 않는다 — 단말기가 이미 처리했을 수 있다(이중 결제 방지).
  */
-async function roundTrip(job: Job, restaurantId: number): Promise<{ row: TerminalTxn | null; parent: TerminalTxn | null; error?: string; choose?: string[] }> {
+async function roundTrip(job: Job, restaurantId: number): Promise<{ row: TerminalTxn | null; parent: TerminalTxn | null; error?: string; choose?: string[]; linkError?: string | null }> {
   let r: EcrResult = await ecrExchange({ ...job.connection, payloadHex: job.request_hex, timeoutMs: job.timeout_ms });
   if (r.ok !== true && isConnectFailure((r as { error: string }).error)) {
     const found = await findTerminal(restaurantId, job.connection);
@@ -74,7 +75,7 @@ async function roundTrip(job: Job, restaurantId: number): Promise<{ row: Termina
   if (!up.ok && up.status === 422) up = await api(`/transactions/${job.id}/response`, { error: 'BAD_RESPONSE' });
   if (!up.ok) return { row: null, parent: null, error: up.json?.message || 'Server error' };
   const notConnected = r.ok !== true && isConnectFailure((r as { error: string }).error);
-  return { row: up.json.data, parent: up.json.data?.parent || null, error: notConnected ? 'NOT_CONNECTED' : undefined };
+  return { row: up.json.data, parent: up.json.data?.parent || null, error: notConnected ? 'NOT_CONNECTED' : undefined, linkError: up.json.data?.link_error || null };
 }
 
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
@@ -90,13 +91,19 @@ export async function runTerminalSale(opts: {
     restaurant_id: opts.restaurantId, order_id: opts.orderId || undefined,
     amount: (Math.round(opts.amount * 100) / 100).toFixed(2), cashier_name: opts.cashierName,
   });
-  if (!created.ok) return { kind: 'error', message: created.json?.message || 'reason:cannotStart' };
+  if (!created.ok) {
+    // 이 주문엔 같은 금액의 승인이 이미 있다(앞 결제 기록만 실패) — 새로 긁지 않고 그 승인으로 기록한다
+    if (created.json?.code === 'ALREADY_APPROVED' && created.json?.data?.txn) return { kind: 'approved', txn: created.json.data.txn, reused: true };
+    if (created.json?.code === 'ALREADY_APPROVED') return { kind: 'error', message: 'reason:alreadyApproved' };
+    return { kind: 'error', message: created.json?.message || 'reason:cannotStart' };
+  }
   const sale: Job = created.json.data;
 
   opts.onPhase?.('waiting');
   const first = await roundTrip(sale, opts.restaurantId);
   if (first.choose) return { kind: 'choose', hosts: first.choose, message: 'reason:chooseTerminal' };
   let txn: TerminalTxn | null = first.row;
+  let linkError = first.linkError || null;
   if (!txn) return { kind: 'unknown', txn: { id: sale.id, status: 'sent' }, message: 'reason:noAnswer' };
   // 단말기를 끝내 못 찾았다 — 요청이 단말기에 닿지 않았으니 결제는 일어나지 않았다(복구·수동 기록 대상 아님)
   if (first.error === 'NOT_CONNECTED') return { kind: 'error', message: 'reason:terminalNotFound' };
@@ -111,6 +118,7 @@ export async function runTerminalSale(opts: {
       if (!cs.ok) break;
       const r = await roundTrip(cs.json.data, opts.restaurantId);
       if (r.parent) txn = r.parent;
+      if (r.linkError) linkError = r.linkError;
     }
     if (txn.status === 'pending') return { kind: 'unknown', txn, message: 'reason:stillPending' };
   }
@@ -122,10 +130,11 @@ export async function runTerminalSale(opts: {
     if (rc.ok) {
       const r = await roundTrip(rc.json.data, opts.restaurantId);
       if (r.parent) txn = r.parent;
+      if (r.linkError) linkError = r.linkError;
     }
   }
 
-  if (txn.status === 'approved') return { kind: 'approved', txn };
+  if (txn.status === 'approved') return { kind: 'approved', txn, linkError };
   if (txn.status === 'declined' || txn.status === 'cancelled') return { kind: 'declined', txn, message: failText(txn) };
   if (txn.status === 'not_found') return { kind: 'unknown', txn, message: 'reason:notFound' };
   return { kind: 'unknown', txn, message: 'reason:noAnswer' };

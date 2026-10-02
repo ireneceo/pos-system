@@ -117,6 +117,8 @@
   "cardTerminal.reason.stillPending": "The terminal is still processing this payment.",
   "cardTerminal.reason.notFound": "The terminal has no record of this payment.",
   "cardTerminal.reason.notApproved": "The terminal did not approve this payment.",
+  "cardTerminal.reason.alreadyApproved": "A card terminal approval already covers this order, so no new charge was sent. Check the order before taking payment again.",
+  "cardTerminal.reason.doubleApproval": "This order already had a terminal approval, so this charge was not recorded. Void one of the two charges on the terminal.",
   "cardTerminal.reason.cannotStart": "Could not start the card terminal.",
   "cardTerminal.reason.code": "Terminal code {{code}}",
   "cardTerminal.chooseTitle": "More than one card terminal found",

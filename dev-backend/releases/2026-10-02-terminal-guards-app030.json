@@ -1,0 +1,48 @@
+{
+  "tag": "terminal-guards-app030",
+  "sw_version": "5.72-terminal-guards-app030-20261002",
+  "date": "2026-10-02",
+  "in_progress": [
+    "운영 데모 매장 실단말기 테스트(Irene 태블릿 · 정식 앱 0.3.0) — 카드 RM 1.00 + TnG QR, 단말기에서 Void"
+  ],
+  "completed": [
+    "분할 결제에서 단말기가 거절·결과 미확인이면 하단 «Confirm Payment» 가 잠기고, «다시 시도»(단말기 재전송) 또는 «수동 기록»(사유·감사기록)으로만 진행 — 승인 없는 카드 기록 차단(Fable 게이트 R1)",
+    "같은 주문에 단말기 승인이 이미 있으면 새로 긁지 않음: 같은 금액 승인은 그 승인으로 기록, 아니면 안내(서버 409 ALREADY_APPROVED) · 이중 승인 경고 표시(R2)",
+    "POS 신규 주문의 단말기 승인은 금액이 같은 주문에만 연결(R3) · 주문 있는 경로의 수동 기록도 주문 참조를 채움(R4) · 수동 기록 버튼 대기 표시 순서(R5)",
+    "안드로이드 정식 앱 0.3.0(운영 주소) — 카드 단말기 브릿지 포함, 기존 0.2.0 위에 덮어 설치(설정 안 켠 매장 동작 변화 0)"
+  ],
+  "remaining": [
+    "실단말기 결과에 따라 QR 을 금액만으로 안 받으면 «QR (단말기)» 버튼 + D003=CD(웹만 수정)",
+    "Windows 데스크탑 설치본(단말기 브릿지) 미빌드",
+    "2단계: DuitNow 단말기 화면 QR·Void·Settlement·마감 자동입력"
+  ],
+  "verification": {
+    "api": "health-check terminal 6/6 (신규: ALREADY_APPROVED 409·같은 금액 승인 재사용·분할 몫 허용·수동 기록 뒤 주문 참조)",
+    "fault_injection": "사전 차단 제거 → 재시도 201 ✗ · 수동 뒤 연결 제거 → transaction_id=null ✗ · cp 원복 cmp 동일 → 6/6 · e2e I(분할+거절)를 수정 전 번들에 실행 → «거절 뒤 Confirm 비활성» 실패(R1 재현)",
+    "regression": "e2e card-terminal (I 포함) · verify-all --full",
+    "migration": "없음",
+    "sw_version": "5.72-terminal-guards-app030-20261002",
+    "fable_note": "Fable 게이트 2회차 R1~R5(.claude/fable-verdict-20261001-ghl-ecr-gate.md §2) + 2026-10-02 판정(Irene 「모든 테스트는 실 운영에서」 수용: 개발용 앱 접고 정식 앱 0.3.0, R1 은 활성화 전 수정) · 다음 게이트 1회 대상"
+  },
+  "notes": [
+    "🔒 인쇄 보호파일·KDS 무접촉",
+    "ALREADY_APPROVED 판정은 «승인 합 + 이번 금액 > 주문 금액» — 분할 몫(합 ≤ 주문 금액)은 막지 않는다(Fable 문구 «합이 잔액을 덮으면»을 그대로 쓰면 정상 분할 2번째 몫이 막혀서)"
+  ],
+  "irene_actions_after_deploy": [
+    "태블릿에 정식 앱 0.3.0 다시 받기(덮어 설치) → 운영 데모 매장 설정 › 결제 › 카드 › 카드 단말기 연동 켜기 → 단말기 찾기 → 테스트 2건 → 단말기에서 Void"
+  ],
+  "issues": [
+    "분할 결제에서 단말기 거절 뒤 하단 Confirm 으로 승인 없는 카드 기록이 가능했음(단말기 켠 매장 0이라 운영 영향 없음)"
+  ],
+  "upcoming": [
+    "실단말기 결과 반영 · 파일럿 매장"
+  ],
+  "behavior_changes": [
+    "단말기 연동을 켠 매장에서만: 거절·미확인 뒤 분할 결제 Confirm 잠김, 같은 주문 재승인 차단. 켜지 않은 매장은 동일"
+  ],
+  "check_areas": [
+    "결제 창 카드(분할·전액, Floor Plan·Live Orders·POS)",
+    "안드로이드 앱 다운로드(purplehere.com/desktop/PurplePOS.apk)",
+    "🔒 인쇄·KDS 무접촉"
+  ]
+}
