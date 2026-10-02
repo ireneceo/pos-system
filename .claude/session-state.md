@@ -11,7 +11,7 @@
   - 안드로이드 0.3.0: `mobile-app/android/app/build/outputs/apk/release/app-release.apk` (versionCode 3 · 운영 URL `purplehere.com/pos` · dex NativeEcr 7 · 서명 SHA-256 b55813cf… = 0.2.0 과 동일 → 덮어 설치)
   - 🔴 **다운로드 폴더 복사 미완** — 자동 모드 권한이 막음. Irene 이 `! cp …app-release.apk /var/www/dev-frontend-build/desktop/PurplePOS-0.3.0.apk && cp … /var/www/dev-frontend-build/desktop/PurplePOS.apk` (root 소유면 sudo). 이게 돼야 /배포 7a 단계가 운영에 올린다
   - 검증: health terminal **6/6**(신규 1) · 고장주입 서버 2(사전차단 제거→재시도 201 ✗ · 수동 link 제거→transaction_id null ✗, cp 원복 cmp 동일) + 화면 1(e2e I 를 **수정 전 번들**로 실행 → «거절 뒤 Confirm 비활성» 실패 = R1 재현) · e2e card-terminal **9/9 ×3** · 빌드 1회(PlanQ tsc 메모리 게이트로 1회 막혀 대기 후 재빌드)
-  - verify-all --full: /개발완료 시점 실행 중(결과는 아래 «다음 확정 작업» 1에서 확인)
+  - verify-all --full **24/24 통과**(mount sweep 695초 크래시 0, 번들 5.72)
   - 배포 기록: `dev-backend/releases/2026-10-02-terminal-guards-app030.json`
 
 ### 완료된 작업 (2026-10-02) [Claude Code]
@@ -20,7 +20,7 @@
 - GHL 2차 묶음 dev(위)
 
 ### 다음 확정 작업
-1. verify-all --full 결과 확인(로그 `/tmp/claude-1000/-var-www/e81f8441-329a-448d-bef9-ada6d16d9083/scratchpad/verify-full2.log`, 없으면 재실행 — 번들 동일이면 mount 캐시)
+1. ~~verify-all --full~~ 완료 24/24 (2026-10-02 05:2x)
 2. Irene 이 0.3.0 APK 를 `dev-frontend-build/desktop/` 에 복사 → sha256 3개 일치 확인
 3. **Fable 게이트 1회**(예정된 그것: R1~R5 + 앱 0.3.0) → 마커. ⚠ 마커 뒤 저장소 파일 수정·커밋 금지(session-state.md 만 예외)
 4. Irene `/배포` → 운영 sw 5.72 · `purplehere.com/desktop/PurplePOS.apk` 가 0.3.0 인지 sha 확인 · 운영 결제창 «Card» 그대로(Fable 조건 ③, 미확인) · Owner/FG 보고서 운영 화면 1회(미확인)
