@@ -1,7 +1,13 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-10-04 13:1x UTC (/개발완료 — 오늘 운영 배포 8회, 마지막 #8)
-**버전:** 운영 SW **5.79-terminal-raw-capture-20261004** · 안드로이드 앱 **0.3.4**(versionCode 7, sha 32e0a064…) · 버전 번호 v3.10x 미확정
-**작업 상태:** ⏸ Irene 태블릿 충전 중 — 「내가 하면 말할게」. 단말기 연결 테스트 결과 대기
+**마지막 업데이트:** 2026-10-04 18:5x UTC (/개발완료 — 오늘 운영 배포 11회, 마지막 #11)
+**버전:** 운영 SW **5.82-po-owner-approvals-20261004** · 안드로이드 앱 **0.3.4** · 버전 번호 v3.10x 미확정
+**작업 상태:** ✅ 배포 완료 · 다음 섹션 대기(아래 5건)
+
+### 오늘 마지막 배포들 (요약)
+- #9 SW 5.80: 단일 화면 고객화면 자동열림 안 함 · 고객화면 대시보드 버튼 · 세션복원 기기언어 유지 · POS 문구 90곳 번역
+- #10 SW 5.81: 주문 취소 = 단말기 Void(A2) · B0/CA/HTTP BUSY 분류 · 직원 발주 inventory 권한 · 오너 모자 사이드바(Owner Enterprise)
+- #11 SW 5.82: 오너 승인 화면(상세·PDF·WA·Email, 공급업체별 문구) · 오너 발주 취소 · 월결제 발주 단위 결제 400 PAY_VIA_SOA · 내역 Invoice 버튼(없는 라우트 → Invoices 상세) · 청구 총액 확정 금액 표시 · 발주 화면 번역 89키 · 설정 Operations 카드 정렬
+- 카드 단말기: POS↔단말기 왕복 정상(Echo·C7·B0 실측). 단말기 자체 결제도 B0 → GHL 활성화 회신 대기(Irene 이 짧은 질문 발송)
 
 ### 📌 다음 섹션 (Irene 2026-10-04 지정 — 「이건 다음 섹션에 체크하고 구현할게. 위에 다른 기능도 다음 섹션에 넣어」)
 1. **오너 대리 발주** — Irene «응». Fable 판정 `.claude/fable-verdict-20261004-owner-po-on-behalf.md` ①(9-24 §2-A 한 조항 변경: 오너가 소유 매장 골라 그 매장 자격으로 발주·제출, 그 매장 내역, 오너 제출=승인 생략 · buyerScope 작성 흐름 라우트 개방 · applySubmitGate 오너 분기 · OwnerToPoHistory 삭제 · 매장 선택 선행 · MainLayout 무접촉 · 증명 §3) — 다음 섹션 착수(Irene 이 이번 묶음에 넣으라면 바로).
@@ -9,8 +15,9 @@
 3. **외부 공급업체 월별 SOA** — Irene 원문: 「외부공급업체 중에 1달 기준으로 SOA 보내는 곳이 있어. 이것도 정리한 후 SOA 결제 인보이스 뜨게 하고 최종 받은 SOA랑 대조해서 결제정리할 수 있게 해줄 수 있어?」 → 설계부터(Fable). 참고 메모리: 인보이스·SOA 통합(feedback_invoice_soa_unified) · 정산서엔 확정 주문 전부(feedback_soa_includes_all_confirmed_orders) · 발주↔인보이스 원가 대조(project_po_invoice_cost_variance) · 발주 «개인금액»(reference_po_personal_money).
 
 4. **발주 품목 «스탭밀» 구분 + 재고 분리** — Irene 원문: 「발주할 때 스탭밀인 것도 항목에 표시할 수 있어? 스탭주문인지 실 비용인지 모르는데. 스탭밀은 재고관리도 따로 해야 하잖아. 안그래? 이거 재고아이템도 스탭밀을 따로 연결해야 할까? 이것도 제대로 fable 설계를 다음 섹션에 받아.」 → Fable 설계부터(원가·재고 구조 = TRADE_STRUCTURE 대조 필수, «같은 개념에 새 목록 금지» 규칙).
+5. **승인 메일 문구** — 오너 승인 시 fireBuyerConfirmNotification «Your purchase order has been sent to {{seller}}» 가 외부 공급업체엔 사실과 다름(Fable 이월). 오너 PO Approvals 실화면 클릭(운영 help@ 오너 모자) Irene 확인 대기.
 
-### 👉 재개 지점 (Irene 「눌렀어」 오면 바로)
+### (지난 기록) 단말기 연결 재개 지점 — 해결됨: 0.3.4 로 13:58 Echo 승인, 이후 B0 = 단말기↔은행(GHL 활성화 대기)
 - Irene 할 일: 태블릿 앱 «새 버전 0.3.4» 업데이트 → 설정 › 결제 › Card › **연결 테스트 1번**
 - 팀원 할 일: 운영 읽기 — `terminal_transactions` id>22 의 status·status_message·**response_hex(실패 행 = 단말기가 보낸 원본)** · activity_logs «Card terminal discovery» 의 probed[].raw → 단말기 응답 형식 확정 → 맞춤 수정(형식이 갈리면 Fable 1회)
 - 실측 경과(매장 13, .112:33898 http-hex): ~11:12 CONNECT_REFUSED(찾기 253대 응답 0) → **11:40부터 연결 수락·응답 있음, BAD_RESPONSE**(앱이 원본을 버려 형식 미상) → #8 에서 원본 기록 + HTTP chunked/Content-Length 해석 추가
