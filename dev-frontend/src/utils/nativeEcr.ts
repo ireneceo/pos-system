@@ -35,6 +35,27 @@ export async function ecrExchange(job: EcrJob): Promise<EcrResult> {
 export const isConnectFailure = (error: string) => /^CONNECT_/.test(error);
 
 /** 같은 와이파이에서 GHL 단말기 찾기(Irene 2026-10-01 「바뀌면 자동으로 찾아야」). 옛 앱(찾기 없음)이면 빈 목록. */
+/**
+ * 자동 찾기 + 실측 기록(2026-10-04). 앱 0.3.2+ 는 연결된 기기마다 돌아온 것(probed)을 준다 — 서버에 기록해 원인을 잰다.
+ * 기록 실패는 찾기 결과에 영향이 없다(fire-and-forget).
+ */
+export async function ecrDiscoverAndReport(restaurantId: number | string | undefined, job: { port: number; transport: EcrTransport; probeHex: string }): Promise<string[]> {
+  const b = getEcrBridge();
+  if (!b || typeof b.discover !== 'function') return [];
+  let r: any = null;
+  try { r = await b.discover(job); } catch { r = null; }
+  const hosts: string[] = r && r.ok && Array.isArray(r.hosts) ? r.hosts : [];
+  try {
+    const { getAuthToken } = await import('./auth');
+    fetch('/api/terminal/discovery-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+      body: JSON.stringify({ restaurant_id: restaurantId, hosts, scanned: r?.scanned ?? null, probed: Array.isArray(r?.probed) ? r.probed : [], error: r?.error || null }),
+    }).catch(() => { /* 기록 실패 무시 */ });
+  } catch { /* 기록 실패 무시 */ }
+  return hosts;
+}
+
 export async function ecrDiscover(job: { port: number; transport: EcrTransport; probeHex: string }): Promise<string[]> {
   const b = getEcrBridge();
   if (!b || typeof b.discover !== 'function') return [];

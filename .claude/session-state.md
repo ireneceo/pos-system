@@ -17,6 +17,7 @@
   - ✅ 2026-10-04 #3 운영 배포 SW 5.74(백업 `20261004_073021` · 스모크 10/10 · Fable (0-a) 게이트 PASS `.claude/fable-verdict-20261004-0a-gate.md`) — 브랜드 관리자 사이드바 표시 키 · 단말기 설정 브릿지 재확인 · help@ 브랜드 메뉴 200 회귀 확인
   - ✅ 2026-10-04 #4 운영 배포 SW 5.75 + 안드로이드 앱 0.3.1(백업 `20261004_082627` · 스모크 10/10 · Fable 게이트 PASS `.claude/fable-verdict-20261004-android-update-gate.md`) — 앱 업데이트 안내 카드·설정 줄 · NativeUpdatePlugin · 피드 /desktop/android-latest.json(sha 290d12ff…) · 운영 확인: 피드 200 json · APK·별칭 sha 일치 · http→https 301
   - ⏳ Irene 태블릿 1회: 0.2.0 → 카드 → Chrome → 설치 → «앱 버전 0.3.1 · 최신 0.3.1 ✓» → 단말기 자동 찾기 · A 경로 첫 실측은 0.3.2 게이트 필수 조건
+  - ✅ 2026-10-04 #6 운영 배포 SW 5.77 + APK 0.3.2(Fable PASS `.claude/fable-verdict-20261004-terminal-discovery-gate.md`) — 자동 찾기 되돌림 거부(앱·서버 422 FRAME_REFLECTED)·대기 1.5초·검색 기록(/api/terminal/discovery-report → activity_logs)·주소칸 키보드·앱 아이콘. 대기: Irene 태블릿 0.3.2 앱 안 설치(A 경로 첫 실측) → 자동 찾기 → 활동 기록으로 .112 미발견 원인 확정. 다음 묶음(보관 scratchpad/MainLayout.profile-fix.tsx): 프로필 여백 + 앱 새로고침 메뉴
   - ✅ 2026-10-04 #5 운영 배포 SW 5.76(Fable PASS `.claude/fable-verdict-20261004-late-bridge-gate.md`) — 앱 배지·업데이트 카드 늦은 브릿지 재확인 · 도움말 › 앱 다운로드(기기별) · 앱 안 Guides. 대기: Irene 태블릿 app v 숫자·카드 → 0.3.1 설치 → 토글 ON → 자동 찾기 (5.76 뒤에도 배지 안 뜨면 상한 제거가 다음 수정)
   - 🔴 2026-10-04 09:1x Irene 「여전히 아이피 안잡아. 업데이트도 안돼. 뭘 하는 거야? 그리고 앱에서 버전 안보여. 안드로이드앱이야. 좌측 도움말 하위메뉴에 다운로드도 다시 넣어줘. 기종에 맞게 다운되게」
     · 실측: 운영·dev 단말기 기록 0(태블릿 신호 없음) · 0.2.0/0.3.0/0.3.1 서명 동일(b55813cf) · 앱 배지·업데이트 카드도 브릿지 늦은 주입 결함(App 재렌더 없음) 추정

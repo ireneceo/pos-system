@@ -7,7 +7,7 @@
  * 이 파일은 프로토콜을 모른다(hex 를 열어 보지 않는다). 승인 여부는 서버 응답의 status 만 믿는다.
  */
 import { getAuthToken } from './auth';
-import { ecrExchange, ecrDiscover, isConnectFailure, EcrTransport, EcrResult } from './nativeEcr';
+import { ecrExchange, ecrDiscoverAndReport, isConnectFailure, EcrTransport, EcrResult } from './nativeEcr';
 
 export interface TerminalTxn {
   id: number; status: string; status_code?: string | null; status_text?: string | null; amount?: string;
@@ -44,7 +44,7 @@ async function api(path: string, body: any): Promise<{ ok: boolean; status: numb
 async function findTerminal(restaurantId: number, conn: Job['connection']): Promise<{ host?: string; hosts: string[] }> {
   const echo = await api('/echo', { restaurant_id: restaurantId });
   if (!echo.ok) return { hosts: [] };
-  const hosts = await ecrDiscover({ port: conn.port, transport: conn.transport, probeHex: echo.json.data.request_hex });
+  const hosts = await ecrDiscoverAndReport(restaurantId, { port: conn.port, transport: conn.transport, probeHex: echo.json.data.request_hex });
   if (hosts.length !== 1) return { hosts };
   const saved = await api('/config/host', { restaurant_id: restaurantId, host: hosts[0] });
   return saved.ok ? { host: hosts[0], hosts } : { hosts };

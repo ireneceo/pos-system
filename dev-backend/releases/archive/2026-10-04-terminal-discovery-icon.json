@@ -1,0 +1,49 @@
+{
+  "tag": "terminal-discovery-icon",
+  "sw_version": "5.77-terminal-discovery-icon-20261004",
+  "date": "2026-10-04",
+  "in_progress": [
+    "Irene 태블릿: 업데이트 카드로 0.3.2 설치(앱 안 설치 첫 실측) → 설정 › 결제 › Card 자동 찾기 → 검색 기록으로 .112 확인"
+  ],
+  "completed": [
+    "카드 단말기 자동 찾기: 보낸 신호를 그대로 돌려주는 기기를 단말기로 잘못 잡던 결함 수정(앱·서버 둘 다 거부)",
+    "자동 찾기 대기 시간 0.4초 → 1.5초 — 와이파이에서 느리게 응답하는 단말기를 놓치지 않게",
+    "자동 찾기 결과(연결된 기기와 응답)를 서버 활동 기록에 남김 — 못 찾으면 원인을 바로 확인",
+    "단말기 주소 직접 입력 칸이 일반 키보드로 열림(숫자 키보드에서 마지막 글자가 안 들어가던 문제)",
+    "안드로이드 앱 아이콘을 PurpleHere 로고로(그동안 개발 도구 기본 아이콘이었다) — 앱 0.3.2"
+  ],
+  "remaining": [
+    "Windows 데스크탑 앱 자동 찾기도 같은 되돌림 검사 필요(미빌드·미사용 — 다음 데스크탑 빌드 때)"
+  ],
+  "verification": {
+    "api": "health-check terminal 7/7(신규: Echo 되돌림 → 422 FRAME_REFLECTED · 진짜 Echo approved)",
+    "fault_injection": "서버 되돌림 검사 제거 → 신규 케이스 실패(되돌림이 200 으로 승인됨 = .120 오인 재현) · cp 원복 cmp 동일 · pm2 재시작 후 7/7",
+    "regression": "e2e native-app-update · verify-all --full · APK 0.3.2 서명·피드·dex 문자열(reflected/probed) 확인",
+    "migration": "없음",
+    "sw_version": "5.77-terminal-discovery-icon-20261004",
+    "fable_note": "Irene 「자동잡히는 문제를 해결하라」 — 팀원 원인 실측(되돌림 수용 재현) 뒤 수정. 앱 0.3.2 = 앱 안 업데이트(A 경로) 첫 실측(선행 판정 조건). 게이트 1회 대상"
+  },
+  "notes": [
+    "🔒 인쇄 보호파일 무접촉",
+    "0.3.2 서명 지문 = 이전과 동일(b55813cf…) — 덮어 설치",
+    "검색 기록은 activity_logs(설정·Card terminal discovery) — 판정에는 쓰지 않음"
+  ],
+  "irene_actions_after_deploy": [
+    "태블릿 앱 다시 열기 → «새 버전 0.3.2» 카드 → 업데이트(앱 안에서 바로 설치 화면) → 설정 › 결제 › Card → 자동 찾기"
+  ],
+  "issues": [
+    "자동 찾기가 실제 단말기(.112) 대신 되돌림 기기(.120)를 저장했다",
+    "앱 아이콘이 PurpleHere 로고가 아니었다"
+  ],
+  "upcoming": [
+    "RM 1.00 카드·QR 결제 테스트"
+  ],
+  "behavior_changes": [
+    "자동 찾기가 최대 몇 초 더 걸릴 수 있다(기기당 대기 1.5초)",
+    "안드로이드 앱 아이콘이 PurpleHere 로고로 바뀐다"
+  ],
+  "check_areas": [
+    "카드 단말기 설정 화면 자동 찾기",
+    "안드로이드 앱 업데이트(0.3.2)·아이콘"
+  ]
+}

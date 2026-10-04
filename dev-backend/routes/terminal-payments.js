@@ -117,6 +117,22 @@ router.post('/echo', async (req, res) => {
   } catch (e) { send(res, e, 'POST /echo'); }
 });
 
+// 자동 찾기 실측 기록 — 판정에 안 쓰는 기록 전용(2026-10-04 Irene 「자동잡히는 문제를 해결하라」)
+router.post('/discovery-report', async (req, res) => {
+  try {
+    const r = await restaurantFrom(req, req.body?.restaurant_id);
+    if (!r.rid) return res.status(r.status).json({ success: false, message: r.message });
+    const summary = svc.summarizeDiscovery(req.body);
+    await logActivity(req, {
+      // activity_logs.action_type ENUM 은 create/update/delete 뿐 — 검색 기록 1건 «생성» 으로 남긴다
+      action_type: 'create', entity_type: 'settings', entity_id: r.rid, restaurant_id: r.rid,
+      entity_name: 'Card terminal discovery', changes: summary,
+      description: `Card terminal search: scanned ${summary.scanned ?? '?'} · found ${summary.hosts.join(', ') || 'none'} · answered ${summary.probed.length}`,
+    });
+    res.json({ success: true, data: summary });
+  } catch (e) { send(res, e, 'POST /discovery-report'); }
+});
+
 router.post('/config/host', async (req, res) => {
   try {
     const r = await restaurantFrom(req, req.body?.restaurant_id);

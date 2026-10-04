@@ -134,6 +134,11 @@ async function applyResponse(row, { response_hex, error }) {
     return { row };
   }
 
+  // 보낸 프레임을 그대로 돌려준 것은 단말기 응답이 아니다(2026-10-04 — 자동 찾기가 되돌림 기기를 단말기로 잡았다).
+  //   우리 요청 프레임도 Echo 모양이라 형식 검사만으로는 통과하고 echo 가 «approved» 가 됐다.
+  if (row.request_hex && String(response_hex).toUpperCase() === String(row.request_hex).toUpperCase()) {
+    throw err(422, 'FRAME_REFLECTED', 'Response is our own request echoed back — not a terminal');
+  }
   let frame;
   try { frame = ecr.parseFrame(response_hex); } catch (e) {
     throw err(422, e.code || 'FRAME_INVALID', `Terminal response rejected: ${e.message}`);
@@ -275,4 +280,23 @@ async function saveDiscoveredHost(restaurantId, host) {
   return { host: h, changed: true, previous: t.host || null };
 }
 
-module.exports = { saveDiscoveredHost, TIMEOUT_MS, terminalConfig, createSale, recover, checkStatus, applyResponse, link, markManual, createEcho, publicRow };
+/**
+ * 자동 찾기 실측 기록(2026-10-04) — 앱이 와이파이에서 연결된 기기마다 무엇이 돌아왔는지.
+ * 판정에는 쓰지 않는다(기록 전용). 값은 잘라 담는다.
+ */
+function summarizeDiscovery(body) {
+  const probed = Array.isArray(body?.probed) ? body.probed.slice(0, 32) : [];
+  return {
+    scanned: Number.isFinite(Number(body?.scanned)) ? Number(body.scanned) : null,
+    hosts: Array.isArray(body?.hosts) ? body.hosts.filter((h) => PRIVATE_IPV4.test(String(h))).slice(0, 16) : [],
+    probed: probed.filter((p) => p && PRIVATE_IPV4.test(String(p.host))).map((p) => ({
+      host: String(p.host), ok: !!p.ok, reflected: !!p.reflected,
+      response: p.responseHex ? String(p.responseHex).replace(/[^0-9A-Fa-f]/g, '').slice(0, 120) : null,
+      error: p.error ? String(p.error).slice(0, 40) : null,
+    })),
+    device_ip_hint: body?.device ? String(body.device).slice(0, 40) : null,
+  };
+}
+
+module.exports = {
+  summarizeDiscovery, saveDiscoveredHost, TIMEOUT_MS, terminalConfig, createSale, recover, checkStatus, applyResponse, link, markManual, createEcho, publicRow };

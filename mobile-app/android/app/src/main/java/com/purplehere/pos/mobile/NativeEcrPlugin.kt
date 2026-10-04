@@ -163,20 +163,33 @@ class NativeEcrPlugin : Plugin() {
                     }
                 }
             } catch (_: Exception) {}
+            // 2026-10-04 Irene 「자동잡히는 문제를 해결하라」: 실제 단말기(.112)를 놓치고 엉뚱한 기기(.120)를 잡았다.
+            //   ① 연결 대기 0.4초 → 1.5초 — 와이파이 단말기는 0.4초 안에 응답하지 못할 수 있다.
+            //   ② 보낸 프레임을 그대로 돌려준 기기는 단말기가 아니다(우리 요청도 Echo 모양이라 모양 검사만으로는 통과했다).
+            //   ③ 연결된 기기마다 무엇이 돌아왔는지 probed 로 돌려준다 — 웹이 서버에 기록해 원인을 실측한다.
             val pool = Executors.newFixedThreadPool(64)
             val open = pool.invokeAll(hosts.take(1100).map { h ->
                 Callable {
-                    try { Socket().use { it.connect(InetSocketAddress(h, port), 400) }; h } catch (_: Exception) { null }
+                    try { Socket().use { it.connect(InetSocketAddress(h, port), 1500) }; h } catch (_: Exception) { null }
                 }
             }).mapNotNull { it.get() }
             pool.shutdown(); pool.awaitTermination(5, TimeUnit.SECONDS)
             val echoRe = Regex("^02[0-9A-F]{10}C3[0-9A-F]*03$")
+            val probeUp = probe.uppercase()
             val found = JSArray()
+            val probed = JSArray()
             for (h in open.sorted()) {
                 val r = exchangeJob(h, port, transport, probe, 3000)
-                if (r.getBool("ok") == true && echoRe.matches(r.getString("responseHex") ?: "")) found.put(h)
+                val resp = (r.getString("responseHex") ?: "").uppercase()
+                val reflected = resp == probeUp
+                val ok = r.getBool("ok") == true && echoRe.matches(resp) && !reflected
+                if (ok) found.put(h)
+                probed.put(JSObject().apply {
+                    put("host", h); put("ok", ok); put("reflected", reflected)
+                    if (resp.isNotEmpty()) put("responseHex", resp.take(200)) else put("error", r.getString("error") ?: "NO_RESPONSE")
+                })
             }
-            call.resolve(JSObject().apply { put("ok", true); put("hosts", found); put("scanned", hosts.size) })
+            call.resolve(JSObject().apply { put("ok", true); put("hosts", found); put("scanned", hosts.size); put("probed", probed) })
         }.start()
     }
 }

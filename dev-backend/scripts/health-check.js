@@ -6555,6 +6555,28 @@ function definePrintTests({ adminToken }) {
     finally { await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {}); await fx.restore(); }
   });
 
+  // 2026-10-04: 자동 찾기가 «보낸 프레임을 그대로 돌려준 기기» 를 단말기로 잡았다 — 서버가 되돌림을 거부해야 한다
+  test('terminal', '단말기 Echo 되돌림 거부 — 요청 그대로 돌아오면 422 FRAME_REFLECTED · 진짜 Echo 응답은 approved', async () => {
+    const { TerminalTransaction } = require('../models');
+    const { respond } = require('./mock-ghl-terminal');
+    const fx = await terminalFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const ids = [];
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      const e1 = await request('POST', '/terminal/echo', { restaurant_id: fx.rest.id }, fx.auth);
+      ids.push(e1.body?.data?.id);
+      const back = await request('POST', `/terminal/transactions/${e1.body.data.id}/response`, { response_hex: e1.body.data.request_hex }, fx.auth);
+      if (back.status !== 422 || back.body?.code !== 'FRAME_REFLECTED') return fail(`되돌림 ${back.status} ${back.body?.code}`);
+      const row = await TerminalTransaction.findByPk(e1.body.data.id);
+      if (row.status !== 'sent') return fail(`되돌림 뒤 상태 ${row.status} (기대 sent)`);
+      const real = await request('POST', `/terminal/transactions/${e1.body.data.id}/response`, { response_hex: respond(e1.body.data.request_hex, 'approve') }, fx.auth);
+      if (real.body?.data?.status !== 'approved') return fail(`진짜 Echo ${real.status} ${real.body?.data?.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {}); await fx.restore(); }
+  });
+
   test('terminal', '단말기 무응답 → Reprint 복구(승인/없음) · EA → Check Status · 수동은 사유 필수', async () => {
     const { TerminalTransaction } = require('../models');
     const { respond } = require('./mock-ghl-terminal');

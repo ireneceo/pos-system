@@ -11,7 +11,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormInput, FormSelect, ModalButton as Button } from '../../components/UI/Modal';
-import { getEcrBridge, ecrExchange, ecrDiscover } from '../../utils/nativeEcr';
+import { getEcrBridge, ecrExchange, ecrDiscoverAndReport } from '../../utils/nativeEcr';
 import { getAuthToken } from '../../utils/auth';
 
 export interface CardTerminalValue { enabled?: boolean; provider?: string; host?: string; port?: number; transport?: string }
@@ -62,7 +62,7 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
       const r = await fetch('/api/terminal/echo', { method: 'POST', headers, body: JSON.stringify({ restaurant_id: restaurantId }) });
       const j = await r.json().catch(() => null);
       if (!r.ok || !j?.success) { setTestResult({ ok: false, text: j?.message || t('settingsPage.cardTerminal.findNone') }); setLinkState('none'); return null; }
-      const hosts = await ecrDiscover({ port: Number(v.port) || 33898, transport: (v.transport as any) || 'http-hex', probeHex: j.data.request_hex });
+      const hosts = await ecrDiscoverAndReport(restaurantId, { port: Number(v.port) || 33898, transport: (v.transport as any) || 'http-hex', probeHex: j.data.request_hex });
       if (hosts.length === 1) { set({ host: hosts[0] }, true); setLinkState('same'); setTestResult({ ok: true, text: t('settingsPage.cardTerminal.findOne', { host: hosts[0] }) }); return hosts[0]; }
       if (hosts.length > 1) { setFound(hosts); setLinkState('same'); return null; }
       setLinkState('none');
@@ -180,7 +180,7 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
             <div>
               <div style={title}>{t('settingsPage.cardTerminal.manualHost')}</div>
               <FormInput
-                type="text" inputMode="decimal" placeholder="192.168.2.99"
+                type="text" inputMode="text" autoComplete="off" autoCapitalize="off" spellCheck={false} placeholder="192.168.2.99"
                 value={v.host || ''}
                 onChange={(e) => set({ host: e.target.value.replace(/[^0-9a-zA-Z.\-]/g, '').slice(0, 64) }, false)}
                 onBlur={() => set({}, true)}
