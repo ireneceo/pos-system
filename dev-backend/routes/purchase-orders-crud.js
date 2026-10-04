@@ -351,8 +351,31 @@ router.get('/purchase-orders', async (req, res) => {
       for (const r of rs) storeNames[r.id] = r.name;
     }
 
+    // 월결제(monthly SOA) — 발주 단위 Pay 를 화면이 그리지 않게(청구서 목록 pay_via_soa 와 같은 판정, utils/payViaSoa 단일 소스).
+    //   판매자↔구매자 쌍마다 한 번만 판정(2026-10-04 Irene «월 결제인데 주문 내역엔 페이 버튼이 나와»).
+    const payViaSoaByPo = {};
+    const tradeIds = [...new Set(rows.map(r => r.trade_invoice_id).filter(Boolean))];
+    if (tradeIds.length) {
+      const InvoiceModel = require('../models/Invoice');
+      const { payViaSoa } = require('../utils/payViaSoa');
+      const invs = await InvoiceModel.findAll({
+        where: { id: { [Op.in]: tradeIds } },
+        attributes: ['id', 'invoice_category', 'issuer_type', 'issuer_id', 'payer_type', 'payer_id', 'parent_soa_invoice_id'],
+      });
+      const byId = new Map(invs.map(i => [i.id, i]));
+      const memo = new Map();
+      for (const r of rows) {
+        const inv = r.trade_invoice_id ? byId.get(r.trade_invoice_id) : null;
+        if (!inv) continue;
+        const key = inv.parent_soa_invoice_id ? `soa:${inv.id}` : `${inv.invoice_category}:${inv.issuer_type}:${inv.issuer_id}:${inv.payer_type}:${inv.payer_id}`;
+        if (!memo.has(key)) memo.set(key, await payViaSoa(inv));
+        payViaSoaByPo[r.id] = memo.get(key);
+      }
+    }
+
     const enriched = rows.map(p => {
       const plain = p.toJSON();
+      plain.pay_via_soa = !!payViaSoaByPo[p.id];
       if (req.buyerEntity && req.buyerEntity.type === 'owner') plain.restaurant_name = storeNames[plain.entity_id] || null;
       plain.ordered_at = orderedAtOf(plain);
       const agg = aggMap[p.id] || {};

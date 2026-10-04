@@ -154,7 +154,11 @@
     "thisYear": "今年",
     "custom": "自定义范围",
     "from": "开始",
-    "to": "结束"
+    "to": "结束",
+    "week": "周",
+    "month": "月",
+    "year": "年",
+    "all": "全部"
   },
   "pagination": {
     "showing": "显示 {{from}}-{{to}}，共 {{total}} 条",
@@ -334,7 +338,8 @@
     "help": "帮助",
     "guides": "使用指南",
     "download": "下载应用",
-    "reload": "刷新"
+    "reload": "刷新",
+    "purchaseOrder": "采购订单"
   },
   "language": {
     "en": "English",
@@ -825,5 +830,6 @@
     "error": "文件校验失败（{{error}}）。请稍后重试，或从 {{host}}/download 下载。",
     "row": "应用版本 {{current}} · 最新 {{latest}}",
     "upToDate": "已是最新版本"
-  }
+  },
+  "loading": "加载中…"
 }

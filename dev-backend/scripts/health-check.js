@@ -452,6 +452,61 @@ function defineSecurityTests({ customerToken, member, restId }) {
       await sequelize.query(`DELETE FROM users WHERE id = ?`, { replacements: [uid] });
     }
   });
+  // 2026-10-04 Fable 판정 owner-po-on-behalf §5·§6: 오너 승인 화면은 외부/가입 공급업체를 가르고(is_external),
+  //   오너는 소유 매장 발주를 **취소**(삭제 아님)할 수 있다 — 서버가 ownership 확인. 남의 매장 403, 남의 발주 404,
+  //   수령된 발주 400. 데모 매장 38 + 다른 데모 매장만 쓰고 finally 로 전부 지운다.
+  test('security', '오너 발주 취소 — 소유 매장 submitted 200·cancelled·Owner 기록 · 남의 매장 403 · 남의 발주 404 · 수령됨 400 · 승인큐 is_external · 남의 PDF 404', async () => {
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const jwt = require('jsonwebtoken');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const tag = 'zzhcocx' + Date.now().toString(36);
+    const [other] = await Q(`SELECT id FROM restaurants WHERE is_demo = 1 AND id <> 38 ORDER BY id LIMIT 1`);
+    if (!other) return false;
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@outlook.com`] });
+    const scs = []; const pos = [];
+    try {
+      await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (38, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [uid] });
+      const auth = { Authorization: `Bearer ${jwt.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const ext = await M.SupplierCompany.create({ name: tag + '-ext', status: 'active', is_system_registered: false, registered_by_entity_type: 'restaurant', registered_by_entity_id: 38 }); scs.push(ext.id);
+      const reg = await M.SupplierCompany.create({ name: tag + '-reg', status: 'active', is_system_registered: true }); scs.push(reg.id);
+      const mk = async (rid, seller, status) => {
+        const po = await M.PurchaseOrder.create({ po_number: `${tag}-${pos.length}`, entity_type: 'restaurant', entity_id: rid, seller_type: 'supplier', seller_entity_id: seller,
+          status, subtotal: 5, tax_amount: 0, total_amount: 5, currency: 'MYR', payment_status: 'unpaid', submitted_at: new Date(), created_by_user_id: uid });
+        pos.push(po.id); return po;
+      };
+      const mineSub = await mk(38, ext.id, 'submitted');
+      const mineRcv = await mk(38, ext.id, 'received');
+      const pendExt = await mk(38, ext.id, 'pending_approval');
+      const pendReg = await mk(38, reg.id, 'pending_approval');
+      const othersSub = await mk(other.id, ext.id, 'submitted');
+      const sw = (rid) => `entity_type=restaurant&entity_id=${rid}`;
+      const c1 = await request('POST', `/purchase-orders/${mineSub.id}/cancel?${sw(38)}`, { reason: 'hc owner' }, auth);
+      const [row1] = await Q('SELECT status, tracking_info FROM purchase_orders WHERE id = :i', { i: mineSub.id });
+      const tracked = JSON.stringify(row1.tracking_info || '').includes('Cancelled by Owner');
+      const c2 = await request('POST', `/purchase-orders/${othersSub.id}/cancel?${sw(other.id)}`, { reason: 'x' }, auth);
+      const c3 = await request('POST', `/purchase-orders/${othersSub.id}/cancel?${sw(38)}`, { reason: 'x' }, auth);
+      const c4 = await request('POST', `/purchase-orders/${mineRcv.id}/cancel?${sw(38)}`, { reason: 'x' }, auth);
+      const [row2] = await Q('SELECT status FROM purchase_orders WHERE id = :i', { i: othersSub.id });
+      const q = await request('GET', '/purchase-orders/pending-approval', null, auth);
+      const list = Array.isArray(q.body && q.body.data) ? q.body.data : [];
+      const qe = list.find(r => r.id === pendExt.id); const qr = list.find(r => r.id === pendReg.id);
+      const pdfOther = await request('GET', `/purchase-orders/${othersSub.id}/pdf?${sw(38)}`, null, auth);
+      const pdfMine = await request('GET', `/purchase-orders/${pendExt.id}/pdf?${sw(38)}`, null, auth);
+      const ok = c1.status === 200 && row1.status === 'cancelled' && tracked
+        && c2.status === 403 && c3.status === 404 && c4.status === 400 && row2.status === 'submitted'
+        && q.status === 200 && !!qe && qe.is_external === true && !!qr && qr.is_external === false && Number(qe.entity_id) === 38
+        && pdfOther.status === 404 && pdfMine.status === 200;
+      if (!ok) console.log(c.gray(`      (취소 소유 ${c1.status}/${row1.status}/기록 ${tracked} · 남의매장 ${c2.status} · 남의발주 ${c3.status} · 수령됨 ${c4.status} · 남의발주상태 ${row2.status} · 승인큐 ${q.status} ext=${qe && qe.is_external} reg=${qr && qr.is_external} · PDF 남의 ${pdfOther.status}/내 ${pdfMine.status})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      try { await hcCleanupPurchaseOrders(pos, { waitMs: 0 }); } catch {}
+      if (scs.length) { try { await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id IN (:s)', { replacements: { s: scs } }); } catch {} try { await sequelize.query('DELETE FROM supplier_companies WHERE id IN (:s)', { replacements: { s: scs } }); } catch {} }
+      await sequelize.query(`DELETE FROM restaurant_managers WHERE manager_id = ?`, { replacements: [uid] });
+      await sequelize.query(`DELETE FROM users WHERE id = ?`, { replacements: [uid] });
+    }
+  });
   // 2026-09-24 Fable «오너=슈퍼바이저» §1-A·§2-B: 오너가 등록한 외부 업체는 **그 오너의 소유 매장만** 같이 쓴다.
   //   임시 오너(데모 매장 38 소유)가 업체를 등록 → 매장 38 목록에 scope=owner · 소유 아닌 데모 매장은 목록에 없고 상품 403
   //   · 오너 발주 생성 403 · 오너 발주 전체 표는 소유 매장 것만. finally 로 업체·오너 모두 지운다(실매장 무접촉).
@@ -775,6 +830,43 @@ function defineSecurityTests({ customerToken, member, restId }) {
       return true;
     } finally {
       staff.permissions = original; await staff.save().catch(() => {});
+    }
+  });
+
+  // 2026-10-04 Irene «월 결제라 인보이스에도 페이 버튼이 안 나오는데 왜 주문 내역엔 나와?» — 월결제(monthly SOA) 거래는
+  //   발주 단위 결제가 막히고(400 PAY_VIA_SOA) 목록이 pay_via_soa 로 알려야 한다. 데모 매장 계약을 잠깐 월결제로 바꿔 확인 후 원복.
+  test('payment', '월결제 공급업체 발주 — 목록 pay_via_soa · 발주 Pay 400 PAY_VIA_SOA (SOA 로만)', async () => {
+    const { sequelize } = require('../config/database');
+    const [[row]] = await sequelize.query(`SELECT p.id po_id, sc.id contract_id, sc.payment_terms terms
+        FROM purchase_orders p JOIN invoices i ON i.id = p.trade_invoice_id
+        JOIN supplier_contracts sc ON sc.supplier_company_id = i.issuer_id AND sc.entity_type = 'restaurant' AND sc.entity_id = p.entity_id AND sc.status = 'active'
+        JOIN supplier_companies c ON c.id = sc.supplier_company_id AND c.is_system_registered = 1
+       WHERE p.entity_type = 'restaurant' AND p.entity_id = 38 AND p.status = 'received' AND p.payment_status <> 'paid'
+         AND i.issuer_type = 'supplier' AND i.invoice_category = 'trade' AND i.status <> 'paid' AND i.parent_soa_invoice_id IS NULL
+       ORDER BY p.id DESC LIMIT 1`);
+    const [[ra]] = await sequelize.query("SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 AND is_active = 1 LIMIT 1");
+    if (!row || !ra) { console.log(c.gray('      (건너뜀: 데모 매장 월결제 픽스처 없음)')); return true; }
+    const auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    // payment_terms 는 JSON 칸 — 옛 시드는 문자열 "monthly_soa" 를 넣었다. 원본은 그대로 직렬화해 되돌린다.
+    const original = JSON.stringify(row.terms === undefined ? null : row.terms);
+    const terms = row.terms && typeof row.terms === 'object' ? row.terms : {};
+    try {
+      await sequelize.query('UPDATE supplier_contracts SET payment_terms = :v WHERE id = :id', { replacements: { v: JSON.stringify({ ...terms, invoice_cycle: 'monthly_soa' }), id: row.contract_id } });
+      const list = await request('GET', '/purchase-orders?entity_type=restaurant&entity_id=38&limit=200', null, auth);
+      const hit = (list.body?.data || []).find(r => Number(r.id) === Number(row.po_id));
+      if (!hit || hit.pay_via_soa !== true) return fail(`목록 pay_via_soa=${hit && hit.pay_via_soa}`);
+      const pay = await request('POST', `/purchase-orders/${row.po_id}/pay`, { payment_method: 'cash' }, auth);
+      if (pay.status !== 400 || pay.body?.code !== 'PAY_VIA_SOA') return fail(`Pay ${pay.status} ${pay.body?.code}`);
+      const [[after]] = await sequelize.query('SELECT payment_status FROM purchase_orders WHERE id = :id', { replacements: { id: row.po_id } });
+      if (after.payment_status === 'paid') return fail('결제가 기록됨');
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      await sequelize.query('UPDATE supplier_contracts SET payment_terms = :v WHERE id = :id', { replacements: { v: original, id: row.contract_id } })
+        .catch((e) => console.log(c.gray(`      (계약 원복 실패: ${e.message})`)));
+      const [[after]] = await sequelize.query('SELECT payment_status FROM purchase_orders WHERE id = :id', { replacements: { id: row.po_id } });
+      if (after && after.payment_status === 'paid') await request('POST', `/purchase-orders/${row.po_id}/refund-payment`, { reason: 'health-check cleanup' }, auth).catch(() => {});
     }
   });
 
@@ -6299,9 +6391,9 @@ function definePrintTests({ adminToken }) {
       //   ⚠ 제출은 발행처(공급업체 20)의 결제수단 설정에 종속 — bank_transfer 가 거부되면 400 이고 이 검사는 실패한다.
       const sub = await request('POST', `/invoices/${inv.id}/submit-payment`,
         { payment_method: 'bank_transfer', notes: 'health-check ledger mirror' }, { Authorization: `Bearer ${fx.token}` });
-      if (sub.status !== 200) return false;
+      if (sub.status !== 200) { console.log(c.gray(`      (결제 제출 ${sub.status} ${sub.body?.code || ''} ${String(sub.body?.message || '').slice(0, 80)})`)); return false; }
       const conf = await request('POST', `/invoices/${inv.id}/confirm-payment`, {}, { Authorization: `Bearer ${adminToken}` });
-      if (conf.status !== 200) return false;
+      if (conf.status !== 200) { console.log(c.gray(`      (결제 확인 ${conf.status} ${conf.body?.code || ''} ${String(conf.body?.message || '').slice(0, 80)})`)); return false; }
       for (let i = 0; i < 25; i++) {
         const after = await PurchaseOrder.findByPk(fx.po.id);
         if (after && after.payment_status === 'paid') return true;

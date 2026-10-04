@@ -105,9 +105,18 @@ async function recordPayment(po, { method, userId, reason, paidAt: paidAtIn }, t
   //   청구서 쪽(외부 공급업체 «결제함»·판매자 이체 확인 등)에서 먼저 결제가 기록됐는데 발주 Pay 를
   //   또 누르면 드로어에서 한 번 더 나간다. **어느 원장을 먼저 썼든 같은 돈은 한 번만.**
   if (po.trade_invoice_id) {
-    const linked = await Invoice.findByPk(po.trade_invoice_id, { attributes: ['id', 'status'], transaction: t });
+    const linked = await Invoice.findByPk(po.trade_invoice_id, {
+      attributes: ['id', 'status', 'invoice_category', 'issuer_type', 'issuer_id', 'payer_type', 'payer_id', 'parent_soa_invoice_id'],
+      transaction: t,
+    });
     if (linked && linked.status === 'paid') {
       throw err('The linked invoice is already paid', 'ALREADY_PAID', 409);
+    }
+    // 월결제(monthly SOA) 거래는 발주 단위로 내지 않는다 — SOA 총액으로만(2026-09-29 soa2 §5-B Irene «모든 주문리스트는 페이가
+    //   안 나오고 SOA에만 토탈 결제»). 청구서 결제 라우트는 이미 막았는데 발주 Pay·받으면서 지불이 뒷문이었다
+    //   (2026-10-04 Irene «월 결제인데 주문 내역엔 페이 버튼이 나와»). 판정은 utils/payViaSoa 단일 소스.
+    if (linked && await require('../utils/payViaSoa').payViaSoa(linked)) {
+      throw err('This order is billed monthly. Pay it through the Statement of Account (SOA).', 'PAY_VIA_SOA', 400);
     }
   }
 

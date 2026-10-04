@@ -18,7 +18,10 @@
       "owedHint": "Dibayar dengan wang peribadi dan belum dibayar balik",
       "ownerRestaurant": "Restoran",
       "noOwnedRestaurant": "Tiada restoran",
-      "allOwnedRestaurants": "Semua restoran saya ({{n}})"
+      "allOwnedRestaurants": "Semua restoran saya ({{n}})",
+      "supplier": "Semua pembekal",
+      "noSupplier": "Tiada pembekal sepadan",
+      "clearSearch": "Kosongkan carian"
     },
     "table": {
       "poNumber": "PO #",
@@ -29,7 +32,9 @@
       "expected": "Penghantaran Dijangka",
       "createdAt": "Dicipta",
       "actions": "Tindakan",
-      "orderedAt": "Tarikh pesanan"
+      "orderedAt": "Tarikh pesanan",
+      "totalQty": "Kuantiti",
+      "orderedAmount": "Dipesan {{amount}}"
     },
     "view": "Lihat",
     "empty": {
@@ -70,7 +75,22 @@
       "attachReceipt": "Lampirkan resit",
       "attachReceiptHint": "Untuk belian tunai atau wang peribadi, lampirkan resit untuk semakan kemudian",
       "viewReceipt": "Lihat resit",
-      "totalOnly": "Jumlah sahaja"
+      "totalOnly": "Jumlah invois disahkan",
+      "markReceivedTitle": "Tanda Diterima",
+      "markReceivedConfirm": "Tanda \"{{po}}\" sebagai diterima?",
+      "markReceivedFailed": "Gagal menanda sebagai diterima",
+      "loadOrderFailed": "Gagal memuatkan pesanan",
+      "downloadFailed": "Gagal memuat turun",
+      "uploadFailed": "Muat naik gagal",
+      "attachInvoiceFailed": "Gagal melampirkan invois",
+      "printOrder": "Cetak pesanan",
+      "downloadOrder": "Muat turun PDF pesanan",
+      "uploadInvoice": "Muat Naik Invois",
+      "viewInvoice": "Lihat invois",
+      "invoiceShort": "Invois",
+      "downloadInvoice": "Muat turun invois",
+      "payViaSoa": "Bulanan · SOA",
+      "payViaSoaHint": "Dibilkan bulanan — bayar melalui Penyata Akaun (SOA)"
     },
     "badge": {
       "sellerShipped": "Penjual mula penghantaran"
@@ -86,7 +106,9 @@
     "receipt": {
       "failed": "Tidak dapat melampirkan resit"
     },
-    "ownerSuppliers": "Pembekal saya"
+    "ownerSuppliers": "Pembekal saya",
+    "externalBadge": "LUAR",
+    "panelClose": "Tutup (Esc)"
   },
   "new": {
     "title": "Pesanan Belian Baharu",
@@ -176,7 +198,8 @@
       "items": "Item",
       "delivery": "Penghantaran",
       "notes": "Nota",
-      "tracking": "Penjejakan Penghantaran"
+      "tracking": "Penjejakan Penghantaran",
+      "invoice": "Invois"
     },
     "items": {
       "ingredient": "Bahan",
@@ -207,7 +230,8 @@
       "email": "E-mel",
       "receiveAndPay": "Terima + bayar",
       "pay": "Rekod pembayaran",
-      "refund": "Batalkan pembayaran"
+      "refund": "Batalkan pembayaran",
+      "download": "Muat turun PDF"
     },
     "noNotes": "Tiada nota.",
     "returns": {
@@ -226,19 +250,35 @@
       "sent": "dihantar",
       "notSent": "belum dihantar",
       "noSellerEmail": "Pembekal tiada e-mel",
-      "closeFailed": "Gagal menutup pemulangan"
+      "closeFailed": "Gagal menutup pemulangan",
+      "hint": "Nyatakan kuantiti pulangan bagi setiap baris. Pulangan memerlukan kelulusan penjual.",
+      "existing": "Pulangan sedia ada",
+      "noReceived": "Tiada item diterima untuk dipulangkan",
+      "received": "Diterima",
+      "reasonPlaceholder": "Sebab (pilihan)"
     },
     "noEmailTitle": "Tiada E-mel",
     "noEmail": "Tiada alamat e-mel didaftarkan untuk penjual ini.",
     "invoice": {
       "reconcile": "Banding kos",
-      "reconcileAgain": "Semak semula banding"
+      "reconcileAgain": "Semak semula banding",
+      "uploadedFile": "Invois dimuat naik",
+      "tradeNo": "Invois Dagangan",
+      "externalLabel": "Dimuat naik oleh pembeli (pembekal luaran)",
+      "systemLabel": "Dikeluarkan automatik oleh sistem",
+      "view": "Lihat",
+      "download": "Muat turun"
     },
     "amendedBySeller": "Penjual telah mengubah pesanan ini",
     "amendedAdded": "Ditambah",
     "amendedRemoved": "Dibuang",
     "amendedTotal": "Jumlah pesanan",
-    "addedBySeller": "Penjual anda menambah pesanan ini bagi pihak anda"
+    "addedBySeller": "Penjual anda menambah pesanan ini bagi pihak anda",
+    "pdfLoadFailed": "Gagal memuatkan pesanan",
+    "pdfDownloadFailed": "Gagal memuat turun",
+    "orderMore": "+ Pesan Lagi",
+    "awaitingApproval": "Pesanan belian ini menunggu kelulusan Pemilik sebelum dihantar kepada pembekal.",
+    "rejectedByOwner": "Ditolak oleh Pemilik"
   },
   "receive": {
     "modalTitle": "Terima Pesanan",
@@ -254,7 +294,21 @@
     "submitting": "Menyimpan...",
     "submitFailed": "Gagal merekod penerimaan.",
     "noChanges": "Masukkan sekurang-kurangnya satu kuantiti untuk diterima.",
-    "exceedsRemaining": "Kuantiti melebihi baki dipesan."
+    "exceedsRemaining": "Kuantiti melebihi baki dipesan.",
+    "remaining": "baki",
+    "normal": "OK",
+    "short": "Kurang",
+    "damaged": "Rosak",
+    "wrongItem": "Salah",
+    "pending": "Tangguh",
+    "qtyPlaceholder": "kuantiti",
+    "discrepancyNote": "Nota (pilihan)",
+    "autoReturnHint": "Pulangan automatik akan dicipta untuk {{qty}} {{unit}}",
+    "removeSplit": "Buang",
+    "reportIssue": "Laporkan isu pada baris ini",
+    "summaryOk": "{{n}} OK",
+    "summaryDamaged": "{{n}} rosak/salah",
+    "summaryIssue": "{{n}} kurang/tangguh"
   },
   "cancel": {
     "modalTitle": "Batalkan Pesanan Belian",
@@ -333,7 +387,10 @@
         "title": "Troli kosong",
         "desc": "Cari dan tambah bahan dari medan di atas."
       },
-      "minOrder": "min: {{count}}"
+      "minOrder": "min: {{count}}",
+      "inStock": "Stok",
+      "resize": "Seret untuk ubah saiz",
+      "remove": "Buang"
     },
     "preview": {
       "title": "{{count}} PO akan dicipta"
@@ -354,7 +411,13 @@
     },
     "error": {
       "empty": "Troli kosong.",
-      "failed": "Gagal mencipta"
+      "failed": "Gagal mencipta",
+      "currencyTitle": "Tetapan Mata Wang Diperlukan",
+      "goToSettings": "Buka tetapan pembayaran?",
+      "openSettings": "Buka Tetapan",
+      "registerProduct": "Gagal mendaftar produk",
+      "addFailed": "Gagal menambah",
+      "unexpected": "Respons pelayan tidak dijangka"
     },
     "tabMine": "Item Stok Saya",
     "tabCatalog": "Katalog Pembekal",
@@ -396,7 +459,8 @@
       "connectHint": "Klik item katalog untuk memautkan \"{{name}}\"",
       "addedAsSeparate": "Ditambah sebagai bahan berasingan (unit/spesifikasi berbeza).",
       "stockRegistered": "\"{{name}}\" ditambah ke Item Stok Saya",
-      "productRegistered": "\"{{name}}\" didaftarkan sebagai produk"
+      "productRegistered": "\"{{name}}\" didaftarkan sebagai produk",
+      "needLink": "\"{{name}}\" perlu dipautkan kepada pembekal dahulu"
     },
     "showUntracked": "Tunjuk yang tidak dijejak",
     "conversion": {
@@ -454,7 +518,11 @@
     "deliveryToFree": "Tambah {{amount}} lagi untuk penghantaran percuma",
     "deliveryUnsetHint": "Penjual ini belum menetapkan terma penghantaran. Ia tidak bermakna percuma — yuran sebenar ditunjukkan pada invois.",
     "deliveryAreas": "Kawasan penghantaran",
-    "brandNeedsLink": "Pautkan pembekal kedai anda untuk item ini"
+    "brandNeedsLink": "Pautkan pembekal kedai anda untuk item ini",
+    "pendingLink": "PO Menunggu",
+    "inStock": "Stok",
+    "needLink": "Pautkan pembekal untuk memesan",
+    "optionsButton": "Pilihan"
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",
@@ -469,7 +537,7 @@
     "submitOne": "Hantar Pesanan",
     "markSent": "Tanda Telah Dihantar",
     "submitFailed": "Gagal menghantar pesanan belian ini",
-    "externalHintApproval": "Pesanan belian ini perlu kelulusan Pemilik sebelum dihantar kepada pembekal. Perkongsian dibuka selepas diluluskan.",
+    "externalHintApproval": "Pesanan belian ini perlu kelulusan Pemilik sebelum boleh dihantar. Selepas diluluskan, hantar melalui WhatsApp, PDF atau e-mel dari butiran pesanan (atau skrin kelulusan Pemilik).",
     "sendAfterApproval": "Tersedia selepas kelulusan Pemilik",
     "submitForApproval": "Hantar untuk kelulusan",
     "addedAt": "Ditambah",
@@ -494,7 +562,35 @@
     "refreshPricesHint": "Guna harga semasa penjual pada baris (draf sahaja, sebelum dihantar)",
     "refreshPricesNone": "Sudah harga semasa — tiada baris berubah.",
     "refreshPricesDone": "{{count}} baris berubah: {{lines}}",
-    "refreshPricesFailed": "Tidak dapat mengemas kini harga"
+    "refreshPricesFailed": "Tidak dapat mengemas kini harga",
+    "discardFailed": "Gagal membuang draf PO",
+    "removeItemFailed": "Gagal membuang item",
+    "externalBadge": "Luaran — hantar sendiri",
+    "systemBadge": "Dihantar automatik semasa serahan",
+    "expected": "Dijangka",
+    "removeItem": "Buang item",
+    "externalHint": "Hantar PO ini kepada pembekal melalui PDF / WhatsApp / e-mel. Sistem tidak akan menghantar secara automatik.",
+    "downloadPdf": "PDF",
+    "whatsapp": "WhatsApp",
+    "email": "E-mel",
+    "submitting": "Menghantar…",
+    "discard": "Buang",
+    "systemHint": "PO ini akan dihantar secara automatik kepada pembekal selepas serahan akhir.",
+    "title": "Pesanan Belian Menunggu",
+    "back": "← Kembali ke Troli",
+    "empty": {
+      "title": "Tiada PO menunggu",
+      "desc": "Serahkan troli dari halaman pesanan belian untuk mencipta draf PO."
+    },
+    "externalSection": "Pembekal Luaran — Hantar Sendiri",
+    "systemSection": "Pembekal Sistem — Hantar Automatik",
+    "summary": "{{count}} PO",
+    "submitAll": "Hantar Semua",
+    "discardConfirm": {
+      "title": "Buang PO ini?",
+      "desc": "Draf PO ini akan dibuang secara kekal. Ia belum dihantar kepada pembekal."
+    },
+    "discarding": "Membuang…"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit tidak sepadan — kemasukan manual diperlukan",
@@ -516,7 +612,7 @@
     "approve": "Luluskan",
     "reject": "Tolak",
     "approveTitle": "Luluskan Pesanan Belian",
-    "approveConfirm": "Luluskan \"{{po}}\"? Ia akan dihantar kepada pembekal.",
+    "approveConfirm": "Luluskan \"{{po}}\"? Selepas diluluskan, pesanan akan disampaikan ke aplikasi pembekal.",
     "rejectTitle": "Tolak Pesanan Belian",
     "rejectReasonLabel": "Sebab penolakan",
     "rejectReasonPlaceholder": "Beritahu restoran sebab pesanan ini ditolak",
@@ -529,7 +625,16 @@
     "loadFailed": "Gagal memuat kelulusan.",
     "approved": "Pesanan diluluskan dan dihantar kepada pembekal.",
     "rejected": "Pesanan ditolak.",
-    "actionFailed": "Tindakan gagal. Sila cuba lagi."
+    "actionFailed": "Tindakan gagal. Sila cuba lagi.",
+    "details": "Butiran",
+    "pdf": "PDF",
+    "whatsapp": "WhatsApp",
+    "email": "E-mel",
+    "approveConfirmExternal": "Luluskan \"{{po}}\"? Pembekal ini tidak menggunakan aplikasi, jadi ia tidak dihantar secara automatik — selepas diluluskan, hantar melalui WhatsApp, PDF atau e-mel.",
+    "sendAfterApprove": "Tersedia selepas diluluskan",
+    "approvedBadge": "Diluluskan",
+    "justApprovedExternal": "Baru diluluskan — pembekal ini tidak menggunakan aplikasi. Hantar pesanan melalui WhatsApp, PDF atau e-mel. Anda juga boleh menghantarnya kemudian dari butiran pesanan.",
+    "justApprovedSystem": "Baru diluluskan — pesanan telah disampaikan ke aplikasi pembekal."
   },
   "newPo.viewMode": "Mod paparan",
   "newPo.viewCard": "Kad",

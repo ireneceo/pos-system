@@ -1,0 +1,60 @@
+{
+  "tag": "po-owner-approvals",
+  "sw_version": "5.82-po-owner-approvals-20261004",
+  "date": "2026-10-04",
+  "in_progress": [
+    "카드 단말기 GHL 활성화 회신 대기"
+  ],
+  "completed": [
+    "오너 발주 승인 화면: 상세·PDF·WhatsApp·이메일 버튼, 승인 문구를 앱 사용 공급업체 «앱으로 전달» / 외부 공급업체 «자동으로 안 보냄 — 승인 뒤 WhatsApp·PDF·이메일로» 로 구분, 승인 직후 같은 자리에서 보내기",
+    "오너가 발주 상세 화면에서 소유 매장 발주를 취소(초안·발주됨·승인 대기) — 기록은 «Cancelled by Owner»",
+    "발주 상세(오너): 외부 공급업체 WhatsApp·이메일 보내기 버튼",
+    "발주 화면 영어 문구 약 90곳 4개 언어로 · «발송»→«발주» · 기간 필터(오늘~전체) 번역",
+    "발주 내역 «Invoice» 버튼이 없는 주소로 가던 것 → Invoices 페이지와 같은 상세 창(매장) / 같은 청구서 PDF(그 밖)",
+    "발주 내역 금액: 청구 총액을 확정한 외부 발주는 낼 금액(청구 총액)을 주 숫자로, 발주 금액은 작은 글씨 · 배지 «청구 총액 확정»",
+    "월결제(SOA) 공급업체 발주: 내역에 Pay 대신 «월결제 · SOA», 서버도 발주 단위 결제 400 PAY_VIA_SOA",
+    "설정 › Operations 카드를 높이 비슷한 것끼리 같은 행으로(빈 공간 제거)"
+  ],
+  "remaining": [
+    "다음 섹션: 오너 대리 발주 · 역할 추가 요청 · 외부 공급업체 월별 SOA 대조 · 발주 스탭밀 구분",
+    "승인 메일 문구(«공급업체에 보냈습니다»)가 외부 공급업체엔 사실과 다름 — 다음 섹션"
+  ],
+  "verification": {
+    "api": "health-check 전체 290/290(신규: 오너 발주 취소 소유 200·남의 매장 403·남의 발주 404·수령 400 / 월결제 발주 pay_via_soa·Pay 400) · pending-approval is_external · 남의 매장 PDF 404",
+    "fault_injection": "buyerScope ownership 확인 제거 → 남의 매장 취소 200 = 실패 검출 → 원복 / recordPayment 월결제 차단 제거 → 결제 200 = 실패 검출 → 원복(데모 발주 74 결제 되돌림 처리)",
+    "regression": "verify-all --full · i18n:verify 0 errors · design-guard 신규 0 · print-guard 8/8",
+    "migration": "없음",
+    "sw_version": "5.82-po-owner-approvals-20261004",
+    "fable_note": "Fable 판정 .claude/fable-verdict-20261004-owner-po-on-behalf.md ②·③ 범위(①은 다음 섹션) + 팀원 수정: 내역 Invoice 버튼·금액 표시·월결제 Pay 차단(서버 recordPayment 단일 소스, Irene 9-29 «모든 주문리스트는 페이 안 나오고 SOA 로만»)·발주 번역·설정 카드 정리. 게이트 1회 대상"
+  },
+  "notes": [
+    "🔒 인쇄 보호파일 무접촉",
+    "health-check 월결제 케이스의 원복 결함(JSON 문자열 «monthly_soa» 를 못 되돌림)을 발견·수정, dev 계약 14 원래 값 복구"
+  ],
+  "irene_actions_after_deploy": [
+    "help@ 오너 모자 → PO Approvals: 버튼·문구 확인",
+    "발주 내역: GIT Consulting «Invoice» 버튼 · 월결제 행 «월결제 · SOA» · PO-R10-20260906-002 금액 RM 121.30",
+    "설정 › Operations 카드 정렬"
+  ],
+  "issues": [
+    "오너 승인 화면에 보내기 버튼이 없고 «공급처로 전송됩니다» 문구가 외부 공급업체엔 거짓",
+    "발주 내역 Invoice 버튼이 빈 화면",
+    "월결제인데 발주 내역에 Pay 버튼",
+    "청구 총액 확정 뒤에도 내역 금액이 발주 금액",
+    "발주 화면 영어·«발송» 오역"
+  ],
+  "upcoming": [
+    "다음 섹션 4건"
+  ],
+  "behavior_changes": [
+    "월결제 공급업체 발주는 발주 내역에서 결제할 수 없다(SOA 로만)",
+    "오너가 발주를 취소할 수 있다",
+    "날짜 기간 필터 글자가 선택 언어로 보인다(20여 화면 공통)"
+  ],
+  "check_areas": [
+    "오너 PO Approvals",
+    "발주 내역(Invoice·Pay·금액)",
+    "발주 상세(오너)",
+    "설정 › Operations"
+  ]
+}

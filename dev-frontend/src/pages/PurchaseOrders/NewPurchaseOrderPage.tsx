@@ -1637,7 +1637,7 @@ const NewPurchaseOrderPage: React.FC = () => {
       });
       const j = await res.json().catch(() => null);
       if (!res.ok || !j?.success) {
-        setNewProductError(j?.message || 'Failed to register product');
+        setNewProductError(j?.message || (t('newPo.error.registerProduct', 'Failed to register product') as string));
         setNewProductSaving(false);
         return;
       }
@@ -1647,7 +1647,7 @@ const NewPurchaseOrderPage: React.FC = () => {
       fetchCatalog();
       setTab('mine');
     } catch (e: any) {
-      setNewProductError(e?.message || 'Network error');
+      setNewProductError(e?.message || (t('common:error.network', 'Network error') as string));
     } finally {
       setNewProductSaving(false);
     }
@@ -1760,13 +1760,13 @@ const NewPurchaseOrderPage: React.FC = () => {
       });
       const j = await res.json();
       if (!res.ok || !j.success) {
-        setError(j?.message || 'Failed to add');
+        setError(j?.message || (t('newPo.error.addFailed', 'Failed to add') as string));
         return;
       }
       // 프로덕트 타깃이면 서버가 ingredient 대신 product 를 돌려준다(둘 다 id/name/unit 모양).
       const ing = j.data.ingredient || j.data.product;
       const map = j.data.mapping;
-      if (!ing || !map) { setError('Unexpected response from server'); return; }
+      if (!ing || !map) { setError(t('newPo.error.unexpected', 'Unexpected response from server') as string); return; }
       // 양방향 등록 — 카탈로그에서 "주문 없이 내 스톡으로만 등록". 카트 담기를 건너뛰고
       // 스톡 목록(mine)·카탈로그(already_mapped 갱신)만 새로고침한다.
       if (opts.stockOnly) {
@@ -1835,7 +1835,7 @@ const NewPurchaseOrderPage: React.FC = () => {
         setToast(t('newPo.toast.added', { name: ing.name, defaultValue: '"{{name}}" added to cart' }) as string);
       }
     } catch (e: any) {
-      setError(e?.message || 'Network error');
+      setError(e?.message || (t('common:error.network', 'Network error') as string));
     }
   };
 
@@ -1980,7 +1980,7 @@ const NewPurchaseOrderPage: React.FC = () => {
       setCart([]);
       navigate('/pos/purchase-orders/staging');
     } catch (e: any) {
-      setError(e?.message || 'Network error');
+      setError(e?.message || (t('common:error.network', 'Network error') as string));
     } finally {
       setSubmitting(false);
     }
@@ -2465,7 +2465,7 @@ const NewPurchaseOrderPage: React.FC = () => {
         </MainPane>
 
         <CartPane $sheetOpen={cartSheetOpen}>
-          <CartResizer onMouseDown={onResizeStart} title="Drag to resize" />
+          <CartResizer onMouseDown={onResizeStart} title={t('newPo.cart.resize', 'Drag to resize') as string} />
           {/* 좁은 화면 전용 하단 바 — 담긴 수·합계가 여기서 갱신되는 것이 "담겼다"의 피드백이다 */}
           <CartSheetBar
             type="button"
@@ -2592,7 +2592,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#635BFF', textAlign: 'right' }}>
                         {(effectivePrice * row.quantity).toFixed(2)}
                       </div>
-                      <RemoveX type="button" onClick={() => removeRow(row.cart_key)} aria-label="remove">×</RemoveX>
+                      <RemoveX type="button" onClick={() => removeRow(row.cart_key)} aria-label={t('newPo.cart.remove', 'Remove') as string}>×</RemoveX>
                     </CartLineHead>
                     {(() => {
                       // 공급업체 판매품목명 + SKU 를 작은 회색 부라인으로 병기(공급업체 것).

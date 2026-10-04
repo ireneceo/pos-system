@@ -346,7 +346,9 @@ const RestaurantInvoicesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   // to_pay(결제대기) 탭은 기간 기본값 'all' — 한 달 넘은 미결제 인보이스가 가려져 결제 누락되는 것 방지.
   // 'all'(전체 인보이스 브라우즈) 탭은 'month' 기본. (incoming-orders 와 동일 사상: 액션 필요한 목록은 안 가린다.)
-  const tabDefaultPeriod = (t: string | null): PeriodType => (t === 'to_pay' ? 'all' : 'month');
+  // ?invoice=<id> 로 들어오면(발주 내역의 «Invoice» 버튼) 그 청구서를 바로 연다 — 기간은 전체로(이번 달 밖일 수 있다)
+  const deepInvoiceId = searchParams.get('invoice');
+  const tabDefaultPeriod = (t: string | null): PeriodType => (deepInvoiceId || t === 'to_pay' ? 'all' : 'month');
   const [activePeriod, setActivePeriod] = useState<PeriodType>(() => tabDefaultPeriod(searchParams.get('tab')));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange(tabDefaultPeriod(searchParams.get('tab'))));
@@ -793,6 +795,17 @@ const RestaurantInvoicesPage: React.FC = () => {
     setSelectedInvoice(invoice);
     setShowViewModal(true);
   };
+
+  // 발주 내역 «Invoice» → 여기서 같은 상세 창으로 연다(2026-10-04 Irene «인보이스 페이지에 나오는 거랑 똑같이»). 한 번만.
+  const deepOpenedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!deepInvoiceId || deepOpenedRef.current || !allInvoices.length) return;
+    const hit = allInvoices.find(i => String(i.id) === String(deepInvoiceId));
+    if (!hit) return;
+    deepOpenedRef.current = true;
+    handleViewInvoice(hit);
+    const next = new URLSearchParams(searchParams); next.delete('invoice'); setSearchParams(next, { replace: true });
+  }, [deepInvoiceId, allInvoices]);
 
   const handleConfirmFreeInvoice = async (invoice: Invoice) => {
     if (confirmingInvoiceId) return;

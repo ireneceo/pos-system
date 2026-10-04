@@ -154,7 +154,11 @@
     "thisYear": "Tahun Ini",
     "custom": "Julat Tersuai",
     "from": "Dari",
-    "to": "Hingga"
+    "to": "Hingga",
+    "week": "Minggu",
+    "month": "Bulan",
+    "year": "Tahun",
+    "all": "Semua"
   },
   "pagination": {
     "showing": "Menunjukkan {{from}}-{{to}} daripada {{total}}",
@@ -334,7 +338,8 @@
     "help": "Bantuan",
     "guides": "Panduan",
     "download": "Muat turun aplikasi",
-    "reload": "Muat semula"
+    "reload": "Muat semula",
+    "purchaseOrder": "Pesanan Belian"
   },
   "language": {
     "en": "English",
@@ -825,5 +830,6 @@
     "error": "Fail tidak dapat disahkan ({{error}}). Cuba lagi nanti atau muat turun dari {{host}}/download.",
     "row": "Versi aplikasi {{current}} · terkini {{latest}}",
     "upToDate": "Versi terkini"
-  }
+  },
+  "loading": "Memuatkan…"
 }

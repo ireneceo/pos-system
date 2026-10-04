@@ -18,7 +18,10 @@
       "owedHint": "用个人的钱支付且尚未归还的采购单",
       "ownerRestaurant": "餐厅",
       "noOwnedRestaurant": "没有餐厅",
-      "allOwnedRestaurants": "我的全部门店（{{n}}）"
+      "allOwnedRestaurants": "我的全部门店（{{n}}）",
+      "supplier": "全部供应商",
+      "noSupplier": "没有匹配的供应商",
+      "clearSearch": "清除搜索"
     },
     "table": {
       "poNumber": "采购单号",
@@ -29,7 +32,9 @@
       "expected": "预计送达",
       "createdAt": "创建时间",
       "actions": "操作",
-      "orderedAt": "下单日期"
+      "orderedAt": "下单日期",
+      "totalQty": "数量",
+      "orderedAmount": "下单 {{amount}}"
     },
     "view": "查看",
     "empty": {
@@ -70,7 +75,22 @@
       "attachReceipt": "附上收据",
       "attachReceiptHint": "现金或个人垫付的采购，附上收据便于日后核对",
       "viewReceipt": "查看收据",
-      "totalOnly": "仅总额"
+      "totalOnly": "已确认账单总额",
+      "markReceivedTitle": "标记为已收货",
+      "markReceivedConfirm": "将 \"{{po}}\" 标记为已收货？",
+      "markReceivedFailed": "标记收货失败",
+      "loadOrderFailed": "加载采购单失败",
+      "downloadFailed": "下载失败",
+      "uploadFailed": "上传失败",
+      "attachInvoiceFailed": "附加发票失败",
+      "printOrder": "打印采购单",
+      "downloadOrder": "下载采购单 PDF",
+      "uploadInvoice": "上传发票",
+      "viewInvoice": "查看发票",
+      "invoiceShort": "发票",
+      "downloadInvoice": "下载发票",
+      "payViaSoa": "月结 · SOA",
+      "payViaSoaHint": "月结交易 — 请通过对账单（SOA）总额付款"
     },
     "badge": {
       "sellerShipped": "供应商已开始配送"
@@ -86,7 +106,9 @@
     "receipt": {
       "failed": "无法附上收据"
     },
-    "ownerSuppliers": "我的供应商"
+    "ownerSuppliers": "我的供应商",
+    "externalBadge": "外部",
+    "panelClose": "关闭 (Esc)"
   },
   "new": {
     "title": "新建采购订单",
@@ -176,7 +198,8 @@
       "items": "项目",
       "delivery": "配送",
       "notes": "备注",
-      "tracking": "配送追踪"
+      "tracking": "配送追踪",
+      "invoice": "发票"
     },
     "items": {
       "ingredient": "原料",
@@ -207,7 +230,8 @@
       "email": "电子邮件",
       "receiveAndPay": "收货 + 付款",
       "pay": "记录付款",
-      "refund": "撤销付款"
+      "refund": "撤销付款",
+      "download": "下载 PDF"
     },
     "noNotes": "无备注。",
     "returns": {
@@ -226,19 +250,35 @@
       "sent": "已发送",
       "notSent": "尚未发送",
       "noSellerEmail": "供应商没有登记邮箱",
-      "closeFailed": "无法关闭退货"
+      "closeFailed": "无法关闭退货",
+      "hint": "请按行填写退货数量。退货需经供应商批准。",
+      "existing": "已有退货",
+      "noReceived": "没有可退货的已收品项",
+      "received": "已收",
+      "reasonPlaceholder": "原因（可选）"
     },
     "noEmailTitle": "无电子邮件",
     "noEmail": "该卖家未登记电子邮件地址。",
     "invoice": {
       "reconcile": "成本核对",
-      "reconcileAgain": "重新查看核对"
+      "reconcileAgain": "重新查看核对",
+      "uploadedFile": "已上传的发票",
+      "tradeNo": "交易发票",
+      "externalLabel": "由买方上传（外部供应商）",
+      "systemLabel": "系统自动开具",
+      "view": "查看",
+      "download": "下载"
     },
     "amendedBySeller": "卖方已修改此订单",
     "amendedAdded": "新增",
     "amendedRemoved": "移除",
     "amendedTotal": "订单金额",
-    "addedBySeller": "此订单由卖方代您添加"
+    "addedBySeller": "此订单由卖方代您添加",
+    "pdfLoadFailed": "加载采购单失败",
+    "pdfDownloadFailed": "下载失败",
+    "orderMore": "+ 追加订购",
+    "awaitingApproval": "此采购单正在等待业主批准，批准后才会发送给供应商。",
+    "rejectedByOwner": "业主已拒绝"
   },
   "receive": {
     "modalTitle": "收货登记",
@@ -254,7 +294,21 @@
     "submitting": "保存中...",
     "submitFailed": "记录收货失败。",
     "noChanges": "请至少输入一项收货数量。",
-    "exceedsRemaining": "数量超过剩余订购量。"
+    "exceedsRemaining": "数量超过剩余订购量。",
+    "remaining": "剩余",
+    "normal": "正常",
+    "short": "短缺",
+    "damaged": "破损",
+    "wrongItem": "错发",
+    "pending": "待定",
+    "qtyPlaceholder": "数量",
+    "discrepancyNote": "备注（可选）",
+    "autoReturnHint": "将自动为 {{qty}} {{unit}} 创建退货",
+    "removeSplit": "移除",
+    "reportIssue": "报告此行问题",
+    "summaryOk": "正常 {{n}}",
+    "summaryDamaged": "破损/错发 {{n}}",
+    "summaryIssue": "短缺/待定 {{n}}"
   },
   "cancel": {
     "modalTitle": "取消采购订单",
@@ -333,7 +387,10 @@
         "title": "购物车为空",
         "desc": "从上方搜索并添加食材。"
       },
-      "minOrder": "最低: {{count}}"
+      "minOrder": "最低: {{count}}",
+      "inStock": "库存",
+      "resize": "拖动调整大小",
+      "remove": "移除"
     },
     "preview": {
       "title": "将创建{{count}}个PO"
@@ -354,7 +411,13 @@
     },
     "error": {
       "empty": "购物车为空。",
-      "failed": "创建失败"
+      "failed": "创建失败",
+      "currencyTitle": "需要设置货币",
+      "goToSettings": "打开付款设置？",
+      "openSettings": "打开设置",
+      "registerProduct": "商品登记失败",
+      "addFailed": "添加失败",
+      "unexpected": "服务器响应异常"
     },
     "tabMine": "我的库存项目",
     "tabCatalog": "供应商目录",
@@ -396,7 +459,8 @@
       "connectHint": "点击目录项目以连接 \"{{name}}\"",
       "addedAsSeparate": "已作为独立食材添加 (单位/规格不同)。",
       "stockRegistered": "\"{{name}}\" 已加入我的库存项目",
-      "productRegistered": "已将“{{name}}”注册为商品"
+      "productRegistered": "已将“{{name}}”注册为商品",
+      "needLink": "\"{{name}}\" 需要先关联供应商"
     },
     "showUntracked": "显示未追踪",
     "conversion": {
@@ -454,7 +518,11 @@
     "deliveryToFree": "再加 {{amount}} 即可免运费",
     "deliveryUnsetHint": "该卖方尚未设定配送条件。这不代表免运费 — 实际费用以账单为准。",
     "deliveryAreas": "配送地区",
-    "brandNeedsLink": "请为此物料关联本店的供应商"
+    "brandNeedsLink": "请为此物料关联本店的供应商",
+    "pendingLink": "待提交采购单",
+    "inStock": "库存",
+    "needLink": "关联供应商后即可订购",
+    "optionsButton": "选项"
   },
   "staging": {
     "noPhoneTitle": "无电话号码",
@@ -469,7 +537,7 @@
     "submitOne": "提交采购单",
     "markSent": "标记为已发送",
     "submitFailed": "无法提交此采购单",
-    "externalHintApproval": "该采购单需经东主批准后才能发送给供应商。批准后即可分享。",
+    "externalHintApproval": "该采购单需经东主批准后才能发送。批准后，请在采购单详情（或东主审批页面）通过 WhatsApp、PDF 或电子邮件发送。",
     "sendAfterApproval": "东主批准后可发送",
     "submitForApproval": "提交审批",
     "addedAt": "加入时间",
@@ -494,7 +562,35 @@
     "refreshPricesHint": "以卖家当前价格重新计算行单价（仅限未发出的草稿）",
     "refreshPricesNone": "已是现价 — 没有行被更改。",
     "refreshPricesDone": "已更改 {{count}} 行：{{lines}}",
-    "refreshPricesFailed": "无法更新价格"
+    "refreshPricesFailed": "无法更新价格",
+    "discardFailed": "删除采购单草稿失败",
+    "removeItemFailed": "移除品项失败",
+    "externalBadge": "外部供应商 — 手动发送",
+    "systemBadge": "提交后自动发送",
+    "expected": "预计送达",
+    "removeItem": "移除品项",
+    "externalHint": "请通过 PDF / WhatsApp / 邮件将此采购单发给供应商。系统不会自动发送。",
+    "downloadPdf": "PDF",
+    "whatsapp": "WhatsApp",
+    "email": "邮件",
+    "submitting": "提交中…",
+    "discard": "删除",
+    "systemHint": "最终提交后，此采购单将自动发送给供应商。",
+    "title": "待提交采购单",
+    "back": "← 返回购物车",
+    "empty": {
+      "title": "没有待提交的采购单",
+      "desc": "在采购页面提交购物车即可生成采购单草稿。"
+    },
+    "externalSection": "外部供应商 — 手动发送",
+    "systemSection": "系统供应商 — 自动发送",
+    "summary": "{{count}} 张采购单",
+    "submitAll": "全部提交",
+    "discardConfirm": {
+      "title": "删除此采购单草稿？",
+      "desc": "此采购单草稿将被永久删除。它尚未发送给供应商。"
+    },
+    "discarding": "删除中…"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}：数量单位不一致 — 需手动输入",
@@ -516,7 +612,7 @@
     "approve": "批准",
     "reject": "拒绝",
     "approveTitle": "批准采购订单",
-    "approveConfirm": "批准“{{po}}”？它将被发送给供应商。",
+    "approveConfirm": "批准采购单“{{po}}”？批准后，订单将传送到供应商的应用。",
     "rejectTitle": "拒绝采购订单",
     "rejectReasonLabel": "拒绝原因",
     "rejectReasonPlaceholder": "让餐厅知道此订单被拒绝的原因",
@@ -529,7 +625,16 @@
     "loadFailed": "加载审批失败。",
     "approved": "订单已批准并发送给供应商。",
     "rejected": "订单已拒绝。",
-    "actionFailed": "操作失败，请重试。"
+    "actionFailed": "操作失败，请重试。",
+    "details": "详情",
+    "pdf": "PDF",
+    "whatsapp": "WhatsApp",
+    "email": "电子邮件",
+    "approveConfirmExternal": "批准采购单“{{po}}”？该供应商不使用本应用，系统不会自动发送 — 批准后请通过 WhatsApp、PDF 或电子邮件发送。",
+    "sendAfterApprove": "批准后可发送",
+    "approvedBadge": "已批准",
+    "justApprovedExternal": "刚刚批准 — 该供应商不使用本应用。请通过 WhatsApp、PDF 或电子邮件发送订单。之后也可在采购单详情中发送。",
+    "justApprovedSystem": "刚刚批准 — 订单已传送到供应商的应用。"
   },
   "newPo.viewMode": "显示方式",
   "newPo.viewCard": "卡片",

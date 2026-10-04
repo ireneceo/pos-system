@@ -154,7 +154,11 @@
     "thisYear": "This Year",
     "custom": "Custom Range",
     "from": "From",
-    "to": "To"
+    "to": "To",
+    "week": "Week",
+    "month": "Month",
+    "year": "Year",
+    "all": "All"
   },
   "pagination": {
     "showing": "Showing {{from}}-{{to}} of {{total}}",
@@ -334,7 +338,8 @@
     "help": "Help",
     "guides": "Guides",
     "download": "Download app",
-    "reload": "Reload"
+    "reload": "Reload",
+    "purchaseOrder": "Purchase Order"
   },
   "language": {
     "en": "English",
@@ -825,5 +830,6 @@
     "error": "Could not verify the file ({{error}}). Try again later or download it from {{host}}/download.",
     "row": "App version {{current}} · latest {{latest}}",
     "upToDate": "Up to date"
-  }
+  },
+  "loading": "Loading…"
 }

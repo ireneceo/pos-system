@@ -21,7 +21,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
 const { resolveOwnerRestaurantIds } = require('../utils/poOwnerApproval');
-const { resolveSellers, getSellerName } = require('../utils/sellerNames');
+const { resolveSellers, getSellerName, isExternalSeller } = require('../utils/sellerNames');
 const {
   fireSellerSubmittedNotification,
   fireBuyerConfirmNotification,
@@ -93,6 +93,8 @@ router.get('/purchase-orders/pending-approval', authenticateToken, requireOwnerS
       const o = p.toJSON();
       o.restaurant_name = nameMap[p.entity_id] || null;
       o.seller_name = getSellerName(sellerMap, p.seller_type, p.seller_entity_id);
+      // 외부(앱 미사용) 공급업체 여부 — 승인 문구·보내기 버튼을 가른다. 목록·상세와 같은 해석기(2026-10-04 §5).
+      o.is_external = isExternalSeller(sellerMap, p.seller_type, p.seller_entity_id);
       return o;
     });
     res.json({ success: true, data });

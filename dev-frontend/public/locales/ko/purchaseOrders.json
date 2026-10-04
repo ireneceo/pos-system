@@ -18,10 +18,13 @@
       "owedHint": "개인 돈으로 결제했고 아직 그 사람에게 갚지 않은 발주",
       "ownerRestaurant": "매장",
       "noOwnedRestaurant": "매장 없음",
-      "allOwnedRestaurants": "내 매장 전체 ({{n}})"
+      "allOwnedRestaurants": "내 매장 전체 ({{n}})",
+      "supplier": "전체 공급업체",
+      "noSupplier": "일치하는 공급업체가 없습니다",
+      "clearSearch": "검색 지우기"
     },
     "table": {
-      "poNumber": "PO 번호",
+      "poNumber": "발주 번호",
       "seller": "공급처",
       "items": "품목",
       "total": "금액",
@@ -29,7 +32,9 @@
       "expected": "예상 배송일",
       "createdAt": "생성일",
       "actions": "작업",
-      "orderedAt": "발주일"
+      "orderedAt": "발주일",
+      "totalQty": "수량",
+      "orderedAmount": "발주 {{amount}}"
     },
     "view": "보기",
     "empty": {
@@ -43,7 +48,7 @@
       "badge": "PAR 추천 {{n}}건",
       "title": "PAR 기반 재주문 추천",
       "subtitle": "PAR 기준 미만의 재고 항목을 우선 공급처별로 묶어 보여줍니다",
-      "createPO": "PO 생성",
+      "createPO": "발주 생성",
       "noPreferred": "기본 공급처 미지정",
       "ingredient": "재료",
       "currentStock": "현재 재고",
@@ -70,7 +75,22 @@
       "attachReceipt": "영수증 첨부",
       "attachReceiptHint": "현금·개인금액으로 산 것은 영수증을 붙여 두면 나중에 확인할 수 있습니다",
       "viewReceipt": "영수증 보기",
-      "totalOnly": "총액만"
+      "totalOnly": "청구 총액 확정",
+      "markReceivedTitle": "수령 처리",
+      "markReceivedConfirm": "\"{{po}}\"을(를) 수령 처리할까요?",
+      "markReceivedFailed": "수령 처리하지 못했습니다",
+      "loadOrderFailed": "발주서를 불러오지 못했습니다",
+      "downloadFailed": "다운로드하지 못했습니다",
+      "uploadFailed": "업로드하지 못했습니다",
+      "attachInvoiceFailed": "인보이스를 첨부하지 못했습니다",
+      "printOrder": "발주서 인쇄",
+      "downloadOrder": "발주서 PDF 다운로드",
+      "uploadInvoice": "인보이스 업로드",
+      "viewInvoice": "인보이스 보기",
+      "invoiceShort": "인보이스",
+      "downloadInvoice": "인보이스 다운로드",
+      "payViaSoa": "월결제 · SOA",
+      "payViaSoaHint": "월결제 거래입니다 — SOA(정산서) 총액으로 결제하세요"
     },
     "badge": {
       "sellerShipped": "업체가 배송 시작"
@@ -86,7 +106,9 @@
     "receipt": {
       "failed": "영수증을 붙이지 못했습니다"
     },
-    "ownerSuppliers": "내 공급업체"
+    "ownerSuppliers": "내 공급업체",
+    "externalBadge": "외부",
+    "panelClose": "닫기 (Esc)"
   },
   "new": {
     "title": "새 구매 주문",
@@ -115,7 +137,7 @@
       "contractActive": "계약 활성",
       "contractRequired": "계약 필요",
       "noSellers": "사용 가능한 공급처가 없습니다.",
-      "noSellersHint": "활성 supplier 계약이 있거나, brand/foodcourt 에 소속돼 있거나, POS 카탈로그를 사용해 주세요."
+      "noSellersHint": "활성 공급업체 계약이 있거나, 브랜드/푸드코트에 소속돼 있거나, POS 카탈로그를 사용해 주세요."
     },
     "items": {
       "title": "품목 추가",
@@ -176,7 +198,8 @@
       "items": "품목",
       "delivery": "배송",
       "notes": "메모",
-      "tracking": "배송 추적"
+      "tracking": "배송 추적",
+      "invoice": "인보이스"
     },
     "items": {
       "ingredient": "재료",
@@ -207,7 +230,8 @@
       "email": "이메일",
       "receiveAndPay": "수령 + 결제",
       "pay": "결제 기록",
-      "refund": "결제 취소"
+      "refund": "결제 취소",
+      "download": "PDF 다운로드"
     },
     "noNotes": "메모 없음.",
     "returns": {
@@ -226,19 +250,35 @@
       "sent": "보냄",
       "notSent": "아직 안 보냄",
       "noSellerEmail": "공급업체 이메일이 등록돼 있지 않습니다",
-      "closeFailed": "반품을 닫지 못했습니다"
+      "closeFailed": "반품을 닫지 못했습니다",
+      "hint": "품목별 반품 수량을 입력하세요. 반품은 공급업체 승인이 필요합니다.",
+      "existing": "기존 반품",
+      "noReceived": "반품할 수령 품목이 없습니다",
+      "received": "수령",
+      "reasonPlaceholder": "사유 (선택)"
     },
     "noEmailTitle": "이메일 없음",
     "noEmail": "이 판매자에게 등록된 이메일이 없습니다.",
     "invoice": {
       "reconcile": "원가 대조",
-      "reconcileAgain": "대조 다시 보기"
+      "reconcileAgain": "대조 다시 보기",
+      "uploadedFile": "업로드한 인보이스",
+      "tradeNo": "거래 인보이스",
+      "externalLabel": "구매자가 업로드 (외부 공급업체)",
+      "systemLabel": "시스템 자동 발행",
+      "view": "보기",
+      "download": "다운로드"
     },
     "amendedBySeller": "판매처에서 이 주문을 수정했습니다",
     "amendedAdded": "추가",
     "amendedRemoved": "제외",
     "amendedTotal": "주문 금액",
-    "addedBySeller": "판매처에서 이 주문을 대신 넣었습니다"
+    "addedBySeller": "판매처에서 이 주문을 대신 넣었습니다",
+    "pdfLoadFailed": "발주서를 불러오지 못했습니다",
+    "pdfDownloadFailed": "다운로드하지 못했습니다",
+    "orderMore": "+ 추가 발주",
+    "awaitingApproval": "이 발주는 오너 승인을 기다리고 있습니다. 승인되면 공급업체에 발주됩니다.",
+    "rejectedByOwner": "오너가 반려함"
   },
   "receive": {
     "modalTitle": "주문 수령",
@@ -254,11 +294,25 @@
     "submitting": "저장 중...",
     "submitFailed": "수령 기록에 실패했습니다.",
     "noChanges": "수령 수량을 1개 이상 입력해주세요.",
-    "exceedsRemaining": "수량이 남은 주문 수량을 초과합니다."
+    "exceedsRemaining": "수량이 남은 주문 수량을 초과합니다.",
+    "remaining": "남음",
+    "normal": "정상",
+    "short": "부족",
+    "damaged": "파손",
+    "wrongItem": "오배송",
+    "pending": "보류",
+    "qtyPlaceholder": "수량",
+    "discrepancyNote": "메모 (선택)",
+    "autoReturnHint": "{{qty}} {{unit}} 반품이 자동으로 만들어집니다",
+    "removeSplit": "삭제",
+    "reportIssue": "이 품목 문제 신고",
+    "summaryOk": "정상 {{n}}",
+    "summaryDamaged": "파손·오배송 {{n}}",
+    "summaryIssue": "부족·보류 {{n}}"
   },
   "cancel": {
     "modalTitle": "구매 주문 취소",
-    "warning": "취소하면 공급처에 알림이 가고 PO가 더 이상 수정되지 않습니다.",
+    "warning": "취소하면 공급처에 알림이 가고 발주를 더 이상 수정할 수 없습니다.",
     "reasonLabel": "사유",
     "reasonPlaceholder": "취소 사유를 입력하세요",
     "reasonRequired": "사유를 입력해주세요.",
@@ -267,7 +321,7 @@
   },
   "markShipped": {
     "modalTitle": "배송 시작",
-    "hint": "공급처가 직접 PO를 업데이트하지 않은 경우에 사용합니다.",
+    "hint": "공급처가 직접 발주 상태를 업데이트하지 않은 경우에 사용합니다.",
     "trackingLabel": "운송장 번호 (선택)",
     "trackingPlaceholder": "택배사 또는 추적 번호",
     "submit": "배송 시작",
@@ -311,14 +365,14 @@
   },
   "newPo": {
     "title": "발주",
-    "subtitle": "재료를 검색해 cart에 담으면 공급업체별로 자동 분할되어 발주됩니다.",
+    "subtitle": "재료를 검색해 장바구니에 담으면 공급업체별로 자동 분할되어 발주됩니다.",
     "search": {
       "placeholder": "재료 이름으로 검색...",
       "empty": "검색 결과가 없습니다.",
       "unmappedHint": "발주 가능한 재료는 공급업체와 매핑된 재료뿐입니다. 공급업체 카탈로그에서 매핑 후 다시 시도하세요.",
       "vendors": "공급업체",
       "add": "+ 추가",
-      "inCart": "이미 cart에 있음"
+      "inCart": "이미 장바구니에 있음"
     },
     "cart": {
       "title": "장바구니",
@@ -330,13 +384,16 @@
         "total": "소계"
       },
       "empty": {
-        "title": "Cart가 비어 있습니다",
+        "title": "장바구니가 비어 있습니다",
         "desc": "위 검색창에서 재료를 찾아 추가하세요."
       },
-      "minOrder": "최소 주문량: {{count}}"
+      "minOrder": "최소 주문량: {{count}}",
+      "inStock": "재고",
+      "resize": "드래그해 크기 조절",
+      "remove": "삭제"
     },
     "preview": {
-      "title": "{{count}}개 PO가 자동 생성됩니다"
+      "title": "발주 {{count}}건이 자동 생성됩니다"
     },
     "delivery": {
       "title": "배송 정보",
@@ -349,12 +406,18 @@
     "submit": {
       "button": "발주 생성",
       "submitting": "발주 생성 중...",
-      "poCount": "{{count}}개 PO",
+      "poCount": "발주 {{count}}건",
       "itemCount": "{{count}}개 항목"
     },
     "error": {
-      "empty": "Cart가 비어 있습니다.",
-      "failed": "PO 생성 실패"
+      "empty": "장바구니가 비어 있습니다.",
+      "failed": "발주 생성 실패",
+      "currencyTitle": "통화 설정 필요",
+      "goToSettings": "결제 설정을 열까요?",
+      "openSettings": "설정 열기",
+      "registerProduct": "상품을 등록하지 못했습니다",
+      "addFailed": "추가하지 못했습니다",
+      "unexpected": "서버 응답이 올바르지 않습니다"
     },
     "tabMine": "내 재고 품목",
     "tabCatalog": "공급업체 상품",
@@ -368,7 +431,7 @@
     "connectCta": "클릭해 발주처 연결 →",
     "connecting": "연결 중",
     "connectHelp": "카탈로그에서 항목을 클릭해 이 재료를 발주처와 연결하세요",
-    "cartEmpty": "카드를 클릭해 cart에 추가하세요.",
+    "cartEmpty": "카드를 클릭해 장바구니에 추가하세요.",
     "empty": {
       "mine": {
         "title": "연결된 재고 품목 없음",
@@ -390,13 +453,14 @@
       }
     },
     "toast": {
-      "added": "\"{{name}}\" cart에 추가됨",
+      "added": "\"{{name}}\" 장바구니에 추가됨",
       "linked": "\"{{name}}\"이(가) 내 재고에 추가됨",
       "connected": "\"{{name}}\" 발주처 연결 완료 ✓",
       "connectHint": "카탈로그에서 항목을 클릭해 \"{{name}}\"를 연결하세요",
       "addedAsSeparate": "별도 재료로 추가됨 (단위/규격 다름).",
       "stockRegistered": "\"{{name}}\" 내 스톡아이템에 추가됨",
-      "productRegistered": "\"{{name}}\" 을(를) 프로덕트로 등록했습니다"
+      "productRegistered": "\"{{name}}\" 을(를) 프로덕트로 등록했습니다",
+      "needLink": "\"{{name}}\"을(를) 먼저 공급업체와 연결해야 합니다"
     },
     "showUntracked": "추적 안함 표시",
     "conversion": {
@@ -454,7 +518,11 @@
     "deliveryToFree": "{{amount}} 더 담으면 배송비 무료",
     "deliveryUnsetHint": "이 판매자가 배송 조건을 아직 적지 않았습니다. 무료라는 뜻이 아니라, 실제 배송비는 청구서에서 확인됩니다",
     "deliveryAreas": "배송 가능 지역",
-    "brandNeedsLink": "이 재료에 우리 매장 공급업체를 연결하세요"
+    "brandNeedsLink": "이 재료에 우리 매장 공급업체를 연결하세요",
+    "pendingLink": "발주 대기",
+    "inStock": "재고",
+    "needLink": "발주하려면 공급업체를 연결하세요",
+    "optionsButton": "옵션"
   },
   "staging": {
     "noPhoneTitle": "전화번호 없음",
@@ -467,10 +535,10 @@
     "pdfFailed": "발주서를 불러오지 못했습니다",
     "pdfDownloadFailed": "PDF 다운로드에 실패했습니다",
     "submitOne": "발주 제출",
-    "markSent": "발송 완료 표시",
+    "markSent": "발주 완료 표시",
     "submitFailed": "이 발주서를 제출하지 못했습니다",
-    "externalHintApproval": "이 발주는 오너 승인을 받아야 공급업체로 보낼 수 있습니다. 승인 후 발송 버튼이 열립니다.",
-    "sendAfterApproval": "오너 승인 후 발송 가능",
+    "externalHintApproval": "오너 승인을 받아야 보낼 수 있습니다. 승인되면 발주 상세 화면(또는 오너 승인 화면)에서 WhatsApp·PDF·이메일로 보냅니다.",
+    "sendAfterApproval": "오너 승인 후 발주 가능",
     "submitForApproval": "승인 요청",
     "addedAt": "담은 날짜",
     "nameMode": {
@@ -494,7 +562,35 @@
     "refreshPricesHint": "판매자의 현재 가격으로 줄 단가를 다시 맞춥니다 (보내기 전 초안만)",
     "refreshPricesNone": "이미 현재가입니다 — 바뀐 줄이 없습니다.",
     "refreshPricesDone": "{{count}}줄이 바뀌었습니다: {{lines}}",
-    "refreshPricesFailed": "가격을 갱신하지 못했습니다"
+    "refreshPricesFailed": "가격을 갱신하지 못했습니다",
+    "discardFailed": "발주 초안을 삭제하지 못했습니다",
+    "removeItemFailed": "품목을 삭제하지 못했습니다",
+    "externalBadge": "외부 공급업체 — 직접 발주",
+    "systemBadge": "제출 시 자동 발주",
+    "expected": "예상 배송일",
+    "removeItem": "품목 삭제",
+    "externalHint": "PDF / WhatsApp / 이메일로 공급업체에 직접 발주하세요. 시스템이 자동으로 보내지 않습니다.",
+    "downloadPdf": "PDF",
+    "whatsapp": "WhatsApp",
+    "email": "이메일",
+    "submitting": "발주 중…",
+    "discard": "삭제",
+    "systemHint": "최종 제출하면 이 발주가 공급업체에 자동으로 전달됩니다.",
+    "title": "발주 대기",
+    "back": "← 장바구니로",
+    "empty": {
+      "title": "대기 중인 발주가 없습니다",
+      "desc": "발주 화면에서 장바구니를 제출하면 발주 초안이 만들어집니다."
+    },
+    "externalSection": "외부 공급업체 — 직접 발주",
+    "systemSection": "시스템 공급업체 — 자동 발주",
+    "summary": "발주 {{count}}건",
+    "submitAll": "전체 발주",
+    "discardConfirm": {
+      "title": "이 발주 초안을 삭제할까요?",
+      "desc": "이 발주 초안은 영구히 삭제됩니다. 아직 공급업체에 발주되지 않은 상태입니다."
+    },
+    "discarding": "삭제 중…"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: 수량 단위 차이 — 수동 입력 필요",
@@ -502,12 +598,12 @@
   },
   "ownerApprovals": {
     "title": "발주 승인",
-    "subtitle": "공급처로 보내기 전, 매장의 발주를 검토하고 승인합니다.",
+    "subtitle": "공급업체로 보내기 전, 매장의 발주를 검토하고 승인합니다.",
     "pending": "승인 대기",
     "table": {
       "poNumber": "발주 번호",
       "restaurant": "매장",
-      "seller": "공급처",
+      "seller": "공급업체",
       "items": "품목",
       "total": "합계",
       "createdAt": "생성일",
@@ -516,7 +612,7 @@
     "approve": "승인",
     "reject": "반려",
     "approveTitle": "발주 승인",
-    "approveConfirm": "\"{{po}}\" 발주를 승인할까요? 공급처로 전송됩니다.",
+    "approveConfirm": "\"{{po}}\" 발주를 승인할까요? 승인하면 공급업체 앱으로 주문이 전달됩니다.",
     "rejectTitle": "발주 반려",
     "rejectReasonLabel": "반려 사유",
     "rejectReasonPlaceholder": "매장에 반려 사유를 알려주세요",
@@ -527,9 +623,18 @@
     },
     "loading": "승인 목록을 불러오는 중...",
     "loadFailed": "승인 목록을 불러오지 못했습니다.",
-    "approved": "발주가 승인되어 공급처로 전송되었습니다.",
+    "approved": "발주가 승인되었습니다.",
     "rejected": "발주가 반려되었습니다.",
-    "actionFailed": "작업에 실패했습니다. 다시 시도해주세요."
+    "actionFailed": "작업에 실패했습니다. 다시 시도해주세요.",
+    "details": "상세",
+    "pdf": "PDF",
+    "whatsapp": "WhatsApp",
+    "email": "이메일",
+    "approveConfirmExternal": "\"{{po}}\" 발주를 승인할까요? 이 공급업체는 앱을 쓰지 않아 자동으로 보내지 않습니다 — 승인 뒤 WhatsApp·PDF·이메일로 보내 주세요.",
+    "sendAfterApprove": "승인 후 보낼 수 있습니다",
+    "approvedBadge": "승인됨",
+    "justApprovedExternal": "방금 승인 — 이 공급업체는 앱을 쓰지 않습니다. WhatsApp·PDF·이메일로 보내 주세요. 나중에는 발주 상세 화면에서도 보낼 수 있습니다.",
+    "justApprovedSystem": "방금 승인 — 공급업체 앱으로 주문이 전달되었습니다."
   },
   "newPo.viewMode": "보기 방식",
   "newPo.viewCard": "카드",

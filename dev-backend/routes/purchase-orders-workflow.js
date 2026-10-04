@@ -1411,7 +1411,9 @@ router.post('/purchase-orders/:id/cancel', async (req, res) => {
         e.code = 'BAD_STATUS';
         throw e;
       }
-      const tracking = appendTrackingEvent(locked, 'cancelled', reason ? `Cancelled by buyer: ${reason.slice(0, 200)}` : 'Cancelled by buyer');
+      // 오너가 소유 매장 전환으로 취소하면 기록에 «Owner» 로 남긴다(2026-10-04 §6) — 누가 취소했는지 추적.
+      const who = req.buyerIsOwnerView ? 'Owner' : 'buyer';
+      const tracking = appendTrackingEvent(locked, 'cancelled', reason ? `Cancelled by ${who}: ${reason.slice(0, 200)}` : `Cancelled by ${who}`);
       await locked.update({
         status: 'cancelled',
         cancelled_at: new Date(),

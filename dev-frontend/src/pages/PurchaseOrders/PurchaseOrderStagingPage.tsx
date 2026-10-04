@@ -449,7 +449,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
       if (errors.length) setError(errors.join(' / '));
       navigate('/pos/purchase-orders/history');
     } catch (e: any) {
-      setError(e?.message || 'Network error');
+      setError(e?.message || (t('common:error.network', 'Network error') as string));
     } finally {
       setSubmitting(false);
     }
@@ -490,7 +490,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
       if (remaining.length === 0) { navigate('/pos/purchase-orders/history'); return; }
       fetchDrafts({ silent: true });
     } catch (e: any) {
-      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: e?.message || 'Network error' });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: e?.message || (t('common:error.network', 'Network error') as string) });
     } finally {
       setSubmittingId(null);
     }

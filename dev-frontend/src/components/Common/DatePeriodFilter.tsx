@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import CalendarPicker from './CalendarPicker';
 
@@ -89,6 +90,7 @@ const DatePeriodFilter: React.FC<DatePeriodFilterProps> = ({
   includeToday = false,
   children
 }) => {
+  const { t } = useTranslation('common');
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleCalendarSelect = (start: string, end: string) => {
@@ -101,12 +103,12 @@ const DatePeriodFilter: React.FC<DatePeriodFilterProps> = ({
     : ['week', 'month', 'year', 'all'];
 
   const periodLabels: Record<PeriodType, string> = {
-    today: 'Today',
-    yesterday: 'Yesterday',
-    week: 'Week',
-    month: 'Month',
-    year: 'Year',
-    all: 'All'
+    today: t('time.today', 'Today'),
+    yesterday: t('time.yesterday', 'Yesterday'),
+    week: t('time.week', 'Week'),
+    month: t('time.month', 'Month'),
+    year: t('time.year', 'Year'),
+    all: t('time.all', 'All')
   };
 
   return (
@@ -135,7 +137,7 @@ const DatePeriodFilter: React.FC<DatePeriodFilterProps> = ({
             </svg>
             {dateRange.start && dateRange.end
               ? `${dateRange.start} ~ ${dateRange.end}`
-              : 'Custom Range'
+              : t('time.custom', 'Custom Range')
             }
           </DateRangeTrigger>
           <CalendarPicker

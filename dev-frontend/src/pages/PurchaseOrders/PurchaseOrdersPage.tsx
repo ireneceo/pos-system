@@ -281,6 +281,7 @@ interface POListRow {
   receipt_filename?: string | null;
   payable_amount?: number | string | null;
   payable_basis?: 'purchase_order' | 'supplier_invoice' | null;
+  pay_via_soa?: boolean;
   entity_type?: string | null;
   /** 대조 결과 — 청구가가 발주가와 다른 줄 수와 금액 차이 */
   reconcile_diff_lines?: number;
@@ -654,7 +655,7 @@ const PurchaseOrdersPage: React.FC = () => {
           });
           const data = await res.json();
           if (!res.ok || !data.success) {
-            setAlertDlg({ title: t('common:error.title', 'Error') as string, message: data.message || 'Failed to mark received' });
+            setAlertDlg({ title: t('common:error.title', 'Error') as string, message: data.message || (t('list.action.markReceivedFailed', 'Failed to mark received') as string) });
             return;
           }
           fetchList();
@@ -682,7 +683,7 @@ const PurchaseOrdersPage: React.FC = () => {
       const res = await fetch(withOwnerPoScope(`/api/purchase-orders/${row.id}/pdf`, role), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) { setAlertDlg({ title: t('common:error.title', 'Error') as string, message: 'Failed to load order' }); return; }
+      if (!res.ok) { setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('list.action.loadOrderFailed', 'Failed to load order') as string }); return; }
       // window.print 자동호출 스크립트 제거 (다운로드 시에는 인쇄 X)
       const html = (await res.text()).replace(/<script[\s\S]*?window\.print[\s\S]*?<\/script>/gi, '');
 
@@ -700,7 +701,7 @@ const PurchaseOrdersPage: React.FC = () => {
       }
     } catch (e) {
       console.error('download order pdf failed:', e);
-      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: 'Failed to download' });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('list.action.downloadFailed', 'Failed to download') as string });
     }
   };
 
@@ -708,7 +709,14 @@ const PurchaseOrdersPage: React.FC = () => {
     if (row.external_invoice_url) {
       window.open(row.external_invoice_url, '_blank');
     } else if (row.trade_invoice_id) {
-      window.open(`/invoices/${row.trade_invoice_id}`, '_blank');
+      // 예전 `/invoices/:id` 는 없는 주소였다(2026-10-04 Irene «인보이스 표시가 안 돼»).
+      //   매장 화면이면 Invoices 페이지의 같은 상세 창으로, 그 밖(브랜드·푸드코트·오너)은 같은 청구서 PDF 로.
+      const rid = (user as any)?.restaurantId;
+      if (rid && (user?.role === 'Restaurant Admin' || user?.role === 'Staff')) {
+        navigate(`/restaurant/${rid}/invoices?invoice=${row.trade_invoice_id}`);
+      } else {
+        window.open(`/api/invoices/${row.trade_invoice_id}/pdf?inline=1`, '_blank');
+      }
     }
   };
 
@@ -732,7 +740,7 @@ const PurchaseOrdersPage: React.FC = () => {
       const up = await fetch('/api/upload/files', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
       const upData = await up.json();
       if (!up.ok || !upData.success || !upData.data?.[0]) {
-        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: upData.message || 'Upload failed' });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: upData.message || (t('list.action.uploadFailed', 'Upload failed') as string) });
         return;
       }
       const f = upData.data[0];
@@ -760,7 +768,7 @@ const PurchaseOrdersPage: React.FC = () => {
       const up = await fetch('/api/upload/files', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd });
       const upData = await up.json();
       if (!up.ok || !upData.success || !upData.data?.[0]) {
-        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: upData.message || 'Upload failed' });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: upData.message || (t('list.action.uploadFailed', 'Upload failed') as string) });
         return;
       }
       const f = upData.data[0];
@@ -771,7 +779,7 @@ const PurchaseOrdersPage: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: data.message || 'Failed to attach invoice' });
+        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: data.message || (t('list.action.attachInvoiceFailed', 'Failed to attach invoice') as string) });
         return;
       }
       fetchList();
@@ -910,7 +918,7 @@ const PurchaseOrdersPage: React.FC = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
             {search && (
-              <ClearSearchButton type="button" onClick={() => setSearch('')} title="Clear search">×</ClearSearchButton>
+              <ClearSearchButton type="button" onClick={() => setSearch('')} title={t('list.filter.clearSearch', 'Clear search') as string}>×</ClearSearchButton>
             )}
           </SearchInputContainer>
           <SupplierFilterWrap>
@@ -1027,7 +1035,18 @@ const PurchaseOrdersPage: React.FC = () => {
                       {row.total_quantity != null ? Number(row.total_quantity).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}
                     </DataTableCell>
                     <DataTableCell data-label={t('list.table.total') as string} align="right">
-                      {formatMoney(row.total_amount, row.currency)}
+                      {/* 2026-10-04 Irene «인보이스가 121.30 인데 왜 토탈이 안 바뀌어? 혼돈의 도가니» —
+                          청구 총액을 확정한 발주(payable_basis=supplier_invoice)는 **낼 금액 = 청구 총액**이 주 숫자.
+                          발주 때 금액은 아래 작은 글씨로만(스냅샷은 그대로 — 서버 payableFrom 단일 소스). */}
+                      {row.payable_basis === 'supplier_invoice' && row.payable_amount != null
+                        && Math.abs(Number(row.payable_amount) - Number(row.total_amount || 0)) >= 0.005 ? (
+                        <>
+                          <div>{formatMoney(row.payable_amount, row.currency)}</div>
+                          <div style={{ fontSize: 12, color: '#6B7280' }}>
+                            {t('list.table.orderedAmount', { defaultValue: 'Ordered {{amount}}', amount: formatMoney(row.total_amount, row.currency) })}
+                          </div>
+                        </>
+                      ) : formatMoney(row.total_amount, row.currency)}
                     </DataTableCell>
                     <DataTableCell data-label={t('list.table.status') as string} align="center">
                       <DataTableStatus variant={StatusVariantMap[row.status] || 'info'}>
@@ -1149,7 +1168,7 @@ const PurchaseOrdersPage: React.FC = () => {
                               ? (() => {
                                   const gap = reconcileGap(row);
                                   const label = isTotalOnly(row)
-                                    ? t('list.action.totalOnly', 'Total only')
+                                    ? t('list.action.totalOnly', 'Invoice total confirmed')
                                     : t('list.action.reconciled', '대조 완료');
                                   const lines = (row.reconcile_diff_lines || 0) > 0
                                     ? ` · ${t('list.action.diffLines', '차이')} ${row.reconcile_diff_lines}` : '';
@@ -1212,6 +1231,13 @@ const PurchaseOrdersPage: React.FC = () => {
                               {t('list.action.refundShort', 'Reverse payment')}
                             </ThemedButton>
                             </>
+                          ) : row.pay_via_soa ? (
+                            /* 월결제 — 발주마다 내지 않고 SOA 총액으로 낸다(서버 recordPayment 도 400 PAY_VIA_SOA).
+                               2026-10-04 Irene «월 결제라 인보이스에도 페이 버튼이 안 나오는데 왜 주문 내역엔 나와?» */
+                            <span style={{ fontSize: 12, color: '#6B7280', alignSelf: 'center' }}
+                              title={t('list.action.payViaSoaHint', 'Billed monthly — pay through the Statement of Account (SOA)') as string}>
+                              {t('list.action.payViaSoa', 'Monthly · SOA')}
+                            </span>
                           ) : (
                             <ThemedButton
                               size="small" variant="primary"
@@ -1232,7 +1258,7 @@ const PurchaseOrdersPage: React.FC = () => {
                               onClick={() => handleViewInvoice(row)}
                               title={t('list.action.viewInvoice', 'View invoice') as string}
                             >
-                              {t('list.action.viewInvoice', 'Invoice')}
+                              {t('list.action.invoiceShort', 'Invoice')}
                             </ThemedButton>
                             <IconBtn
                               type="button"
@@ -1266,7 +1292,7 @@ const PurchaseOrdersPage: React.FC = () => {
                 type="button"
                 onClick={() => handlePrintOrder({ id: selectedPoId, po_number: `order-${selectedPoId}` } as POListRow)}
                 title={t('list.action.printOrder', 'Print order') as string}
-                aria-label="Print"
+                aria-label={t('list.action.printOrder', 'Print order') as string}
               >
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1276,7 +1302,7 @@ const PurchaseOrdersPage: React.FC = () => {
                 type="button"
                 onClick={() => handleDownloadOrderPdf({ id: selectedPoId, po_number: `order-${selectedPoId}` } as POListRow)}
                 title={t('list.action.downloadOrder', 'Download order PDF') as string}
-                aria-label="Download"
+                aria-label={t('list.action.downloadOrder', 'Download order PDF') as string}
               >
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1284,7 +1310,7 @@ const PurchaseOrdersPage: React.FC = () => {
               </IconBtn>
             </>
           )}
-          <NakedClose type="button" onClick={closeDetailPanel} aria-label="Close" title="Close (Esc)">×</NakedClose>
+          <NakedClose type="button" onClick={closeDetailPanel} aria-label={t('common:close', 'Close') as string} title={t('list.panelClose', 'Close (Esc)') as string}>×</NakedClose>
         </PanelTopBar>
         <PanelBody>
           {selectedPoId && (

@@ -502,7 +502,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   const { id: routeId } = useParams<{ id: string }>();
   const id = embeddedId ?? Number(routeId);
   const { user } = useAuth();
-  // 오너 = 보기만 (2026-09-24 Fable «오너=슈퍼바이저» §2-A) — 조회는 고른 소유 매장 범위로, 쓰기 버튼은 없다.
+  // 오너 = 보기 + 취소·보내기 (2026-09-24 Fable «오너=슈퍼바이저» §2-A, 2026-10-04 §5·§6) — 조회는 고른 소유 매장 범위로.
   const poRole = user?.role;
   const ownerView = isOwnerRole(poRole);
   const invoiceListPath = (() => {
@@ -932,7 +932,8 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
     setCancelSubmitting(true);
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/purchase-orders/${detail.id}/cancel`, {
+      // 오너는 소유 매장 전환으로 취소한다(서버 buyerScope 가 ownership 확인 — 2026-10-04 §6). 오너가 아니면 URL 그대로.
+      const res = await fetch(withOwnerPoScope(`/api/purchase-orders/${detail.id}/cancel`, poRole), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1023,7 +1024,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       const res = await fetch(withOwnerPoScope(`/api/purchase-orders/${detail.id}/pdf`, poRole), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) { setAlertDlg({ title: t('common:error.title', 'Error') as string, message: 'Failed to load order' }); return; }
+      if (!res.ok) { setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('detail.pdfLoadFailed', 'Failed to load order') as string }); return; }
       const html = (await res.text()).replace(/<script[\s\S]*?window\.print[\s\S]*?<\/script>/gi, '');
       const iframe = document.createElement('iframe');
       iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:0;';
@@ -1038,7 +1039,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       }
     } catch (e) {
       console.error('download order pdf failed:', e);
-      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: 'Failed to download' });
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('detail.pdfDownloadFailed', 'Failed to download') as string });
     }
   };
 
@@ -1046,6 +1047,30 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
     if (!detail) return null;
     const s = detail.status;
     const paid = (detail as any).payment_status === 'paid';
+    /* 외부공급업체는 시스템이 자동 발송하지 않는다 → 승인/제출 이후 여기서 사람이 보낸다.
+       승인 필요 매장에서는 Staging 의 발송 버튼이 잠겨 있으므로 이 경로가 유일한 발송 수단이다.
+       오너(승인자)에게도 같은 버튼을 보인다 — 승인한 사람이 바로 보낼 수 있게(2026-10-04 Fable §5-1 ③). */
+    const externalShare = detail.is_external && ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'].includes(s) && (
+      <>
+        <ThemedButton variant="outline" onClick={() => sharePoViaWhatsApp(detail as any, formatQuantity)}>
+          {t('detail.actions.whatsapp', 'WhatsApp')}
+        </ThemedButton>
+        <ThemedButton
+          variant="outline"
+          onClick={() => {
+            const sent = sharePoViaEmail(detail as any, formatQuantity);
+            if (!sent) {
+              setAlertDlg({
+                title: t('detail.noEmailTitle', 'No Email') as string,
+                message: t('detail.noEmail', 'No email address is registered for this seller.') as string
+              });
+            }
+          }}
+        >
+          {t('detail.actions.email', 'Email')}
+        </ThemedButton>
+      </>
+    );
     return (
       <HeaderActions>
         {!ownerView && (<>
@@ -1106,29 +1131,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
             {t('detail.actions.cancel')}
           </ThemedButton>
         )}
-        {/* 외부공급업체는 시스템이 자동 발송하지 않는다 → 승인/제출 이후 여기서 사람이 보낸다.
-            승인 필요 매장에서는 Staging 의 발송 버튼이 잠겨 있으므로 이 경로가 유일한 발송 수단이다. */}
-        {detail.is_external && ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'].includes(s) && (
-          <>
-            <ThemedButton variant="outline" onClick={() => sharePoViaWhatsApp(detail as any, formatQuantity)}>
-              {t('detail.actions.whatsapp', 'WhatsApp')}
-            </ThemedButton>
-            <ThemedButton
-              variant="outline"
-              onClick={() => {
-                const sent = sharePoViaEmail(detail as any, formatQuantity);
-                if (!sent) {
-                  setAlertDlg({
-                    title: t('detail.noEmailTitle', 'No Email') as string,
-                    message: t('detail.noEmail', 'No email address is registered for this seller.') as string
-                  });
-                }
-              }}
-            >
-              {t('detail.actions.email', 'Email')}
-            </ThemedButton>
-          </>
-        )}
+        {externalShare}
         {(s === 'received' || s === 'partial_received' || s === 'delivered') && (
           <ThemedButton
             variant="outline"
@@ -1138,6 +1141,16 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
             {t('detail.actions.returns', 'Request Return')}
           </ThemedButton>
         )}
+        </>)}
+        {/* 오너 — 보내기(외부 공급업체) + 취소만. 수령·결제·대조는 매장 몫이라 계속 숨긴다(2026-10-04 Fable §5·§6).
+            «삭제» 가 아니라 취소다: 행은 cancelled 로 남는다. 조건은 서버 cancel 과 같다(초안·발주됨·승인 대기). */}
+        {ownerView && (<>
+          {externalShare}
+          {['draft', 'submitted', 'pending_approval'].includes(s) && (
+            <ThemedButton variant="danger-outline" onClick={openCancel}>
+              {t('detail.actions.cancel')}
+            </ThemedButton>
+          )}
         </>)}
         {!embedded && (
           <>
@@ -1651,7 +1664,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                       <div>
                         <SmallInput
                           type="number" step={qtyStepForUnit(line.unit)} min="0" inputMode="decimal"
-                          placeholder="qty"
+                          placeholder={t('receive.qtyPlaceholder', 'qty') as string}
                           value={sp.quantity || ''}
                           onChange={(e) => updateSplit(line.item_id, sp.uid, { quantity: Number(e.target.value) })}
                         />
@@ -1675,9 +1688,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                         )}
                         {(sp.reason === 'damaged' || sp.reason === 'wrong_item') && Number(sp.quantity) > 0 && (
                           <AutoReturnHint>
-                            ✦ {t('receive.autoReturnHint', `Auto-return will be created for ${Number(sp.quantity)} ${line.unit || ''}`)
-                              .replace('{qty}', String(Number(sp.quantity)))
-                              .replace('{unit}', line.unit || '')}
+                            ✦ {t('receive.autoReturnHint', { qty: Number(sp.quantity), unit: line.unit || '', defaultValue: 'Auto-return will be created for {{qty}} {{unit}}' })}
                           </AutoReturnHint>
                         )}
                       </div>
@@ -1697,9 +1708,9 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
 
                 <div className="summary">
                   <span className={overshoot ? 'warn' : 'ok'}>
-                    {okQty > 0 && `${okQty} OK`}
-                    {damagedQty > 0 && ` · ${damagedQty} damaged/wrong`}
-                    {issueQty > 0 && ` · ${issueQty} short/pending`}
+                    {okQty > 0 && t('receive.summaryOk', { n: okQty, defaultValue: '{{n}} OK' })}
+                    {damagedQty > 0 && ` · ${t('receive.summaryDamaged', { n: damagedQty, defaultValue: '{{n}} damaged/wrong' })}`}
+                    {issueQty > 0 && ` · ${t('receive.summaryIssue', { n: issueQty, defaultValue: '{{n}} short/pending' })}`}
                     {totalSplit === 0 && t('receive.noChanges', 'No quantity entered')}
                     {overshoot && ` · ${t('receive.exceedsRemaining', 'exceeds remaining')}`}
                   </span>

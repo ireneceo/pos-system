@@ -154,7 +154,11 @@
     "thisYear": "올해",
     "custom": "기간 선택",
     "from": "시작",
-    "to": "종료"
+    "to": "종료",
+    "week": "주간",
+    "month": "월간",
+    "year": "연간",
+    "all": "전체"
   },
   "pagination": {
     "showing": "{{total}}개 중 {{from}}-{{to}}",
@@ -334,7 +338,8 @@
     "help": "도움말",
     "guides": "사용 안내",
     "download": "앱 다운로드",
-    "reload": "새로고침"
+    "reload": "새로고침",
+    "purchaseOrder": "발주"
   },
   "language": {
     "en": "English",
@@ -825,5 +830,6 @@
     "error": "파일 확인 실패({{error}}). 잠시 후 다시 시도하거나 {{host}}/download 에서 받아 주세요.",
     "row": "앱 버전 {{current}} · 최신 {{latest}}",
     "upToDate": "최신 버전입니다"
-  }
+  },
+  "loading": "불러오는 중…"
 }

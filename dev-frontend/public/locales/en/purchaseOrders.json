@@ -18,7 +18,10 @@
       "owedHint": "Paid with personal money and not yet paid back",
       "ownerRestaurant": "Restaurant",
       "noOwnedRestaurant": "No restaurant",
-      "allOwnedRestaurants": "All my restaurants ({{n}})"
+      "allOwnedRestaurants": "All my restaurants ({{n}})",
+      "supplier": "All suppliers",
+      "noSupplier": "No matching supplier",
+      "clearSearch": "Clear search"
     },
     "table": {
       "poNumber": "PO #",
@@ -29,7 +32,9 @@
       "expected": "Expected Delivery",
       "createdAt": "Created",
       "actions": "Actions",
-      "orderedAt": "Order date"
+      "orderedAt": "Order date",
+      "totalQty": "Qty",
+      "orderedAmount": "Ordered {{amount}}"
     },
     "view": "View",
     "empty": {
@@ -70,7 +75,22 @@
       "attachReceipt": "Attach receipt",
       "attachReceiptHint": "For cash or personal purchases, attach the receipt so it can be checked later",
       "viewReceipt": "View receipt",
-      "totalOnly": "Total only"
+      "totalOnly": "Invoice total confirmed",
+      "markReceivedTitle": "Mark as Received",
+      "markReceivedConfirm": "Mark \"{{po}}\" as received?",
+      "markReceivedFailed": "Failed to mark received",
+      "loadOrderFailed": "Failed to load order",
+      "downloadFailed": "Failed to download",
+      "uploadFailed": "Upload failed",
+      "attachInvoiceFailed": "Failed to attach invoice",
+      "printOrder": "Print order",
+      "downloadOrder": "Download order PDF",
+      "uploadInvoice": "Upload Inv.",
+      "viewInvoice": "View invoice",
+      "invoiceShort": "Invoice",
+      "downloadInvoice": "Download invoice",
+      "payViaSoa": "Monthly · SOA",
+      "payViaSoaHint": "Billed monthly — pay through the Statement of Account (SOA)"
     },
     "badge": {
       "sellerShipped": "Seller started delivery"
@@ -86,7 +106,9 @@
     "receipt": {
       "failed": "Could not attach the receipt"
     },
-    "ownerSuppliers": "My suppliers"
+    "ownerSuppliers": "My suppliers",
+    "externalBadge": "EXT",
+    "panelClose": "Close (Esc)"
   },
   "new": {
     "title": "New Purchase Order",
@@ -176,7 +198,8 @@
       "items": "Items",
       "delivery": "Delivery",
       "notes": "Notes",
-      "tracking": "Delivery Tracking"
+      "tracking": "Delivery Tracking",
+      "invoice": "Invoice"
     },
     "items": {
       "ingredient": "Ingredient",
@@ -207,7 +230,8 @@
       "email": "Email",
       "receiveAndPay": "Receive + pay",
       "pay": "Record payment",
-      "refund": "Reverse payment"
+      "refund": "Reverse payment",
+      "download": "Download PDF"
     },
     "noNotes": "No notes.",
     "returns": {
@@ -226,19 +250,35 @@
       "sent": "sent",
       "notSent": "not sent yet",
       "noSellerEmail": "Supplier has no email on file",
-      "closeFailed": "Could not close the return"
+      "closeFailed": "Could not close the return",
+      "hint": "Specify return quantity per line. Returns require seller approval.",
+      "existing": "Existing returns",
+      "noReceived": "No received items to return",
+      "received": "Received",
+      "reasonPlaceholder": "Reason (optional)"
     },
     "noEmailTitle": "No Email",
     "noEmail": "No email address is registered for this seller.",
     "invoice": {
       "reconcile": "Compare cost",
-      "reconcileAgain": "Review comparison"
+      "reconcileAgain": "Review comparison",
+      "uploadedFile": "Uploaded invoice",
+      "tradeNo": "Trade Invoice",
+      "externalLabel": "Uploaded by buyer (external supplier)",
+      "systemLabel": "Auto-issued by system",
+      "view": "View",
+      "download": "Download"
     },
     "amendedBySeller": "The seller amended this order",
     "amendedAdded": "Added",
     "amendedRemoved": "Removed",
     "amendedTotal": "Order total",
-    "addedBySeller": "Your seller added this order on your behalf"
+    "addedBySeller": "Your seller added this order on your behalf",
+    "pdfLoadFailed": "Failed to load order",
+    "pdfDownloadFailed": "Failed to download",
+    "orderMore": "+ Order More",
+    "awaitingApproval": "This purchase order is awaiting Owner approval before it is sent to the supplier.",
+    "rejectedByOwner": "Rejected by Owner"
   },
   "receive": {
     "modalTitle": "Receive Order",
@@ -254,7 +294,21 @@
     "submitting": "Saving...",
     "submitFailed": "Failed to record receipt.",
     "noChanges": "Enter at least one quantity to receive.",
-    "exceedsRemaining": "Quantity exceeds remaining ordered amount."
+    "exceedsRemaining": "Quantity exceeds remaining ordered amount.",
+    "remaining": "remaining",
+    "normal": "OK",
+    "short": "Short",
+    "damaged": "Damaged",
+    "wrongItem": "Wrong",
+    "pending": "Pend",
+    "qtyPlaceholder": "qty",
+    "discrepancyNote": "Note (optional)",
+    "autoReturnHint": "Auto-return will be created for {{qty}} {{unit}}",
+    "removeSplit": "Remove",
+    "reportIssue": "Report issue with this line",
+    "summaryOk": "{{n}} OK",
+    "summaryDamaged": "{{n}} damaged/wrong",
+    "summaryIssue": "{{n}} short/pending"
   },
   "cancel": {
     "modalTitle": "Cancel Purchase Order",
@@ -333,7 +387,10 @@
         "title": "Cart is empty",
         "desc": "Search and add ingredients from the field above."
       },
-      "minOrder": "min order: {{count}}"
+      "minOrder": "min order: {{count}}",
+      "inStock": "In stock",
+      "resize": "Drag to resize",
+      "remove": "Remove"
     },
     "preview": {
       "title": "{{count}} POs will be created"
@@ -354,7 +411,13 @@
     },
     "error": {
       "empty": "Cart is empty.",
-      "failed": "Failed to create POs"
+      "failed": "Failed to create POs",
+      "currencyTitle": "Currency Setup Required",
+      "goToSettings": "Open payment settings?",
+      "openSettings": "Open Settings",
+      "registerProduct": "Failed to register product",
+      "addFailed": "Failed to add",
+      "unexpected": "Unexpected response from server"
     },
     "tabMine": "My Stock Items",
     "tabCatalog": "Supplier Catalog",
@@ -396,7 +459,8 @@
       "connectHint": "Pick a catalog item to connect \"{{name}}\"",
       "addedAsSeparate": "Added as a separate ingredient (different unit/spec).",
       "stockRegistered": "\"{{name}}\" added to My Stock Items",
-      "productRegistered": "\"{{name}}\" registered as a product"
+      "productRegistered": "\"{{name}}\" registered as a product",
+      "needLink": "\"{{name}}\" needs to be linked to a supplier first"
     },
     "showUntracked": "Show untracked",
     "conversion": {
@@ -454,7 +518,11 @@
     "deliveryToFree": "Add {{amount}} more for free delivery",
     "deliveryUnsetHint": "This seller has not set delivery terms yet. That does not mean free — the actual fee shows on the invoice.",
     "deliveryAreas": "Delivery areas",
-    "brandNeedsLink": "Add your store's supplier for this item"
+    "brandNeedsLink": "Add your store's supplier for this item",
+    "pendingLink": "Pending POs",
+    "inStock": "In stock",
+    "needLink": "Link a supplier to order",
+    "optionsButton": "Options"
   },
   "staging": {
     "noPhoneTitle": "No Phone Number",
@@ -469,7 +537,7 @@
     "submitOne": "Submit",
     "markSent": "Mark as Sent",
     "submitFailed": "Failed to submit this purchase order",
-    "externalHintApproval": "This purchase order needs Owner approval before it can be sent to the supplier. Sharing is enabled once approved.",
+    "externalHintApproval": "This purchase order needs Owner approval before it can be sent. Once approved, send it via WhatsApp, PDF or email from the order details (or the Owner approvals screen).",
     "sendAfterApproval": "Available after Owner approval",
     "submitForApproval": "Submit for approval",
     "addedAt": "Added",
@@ -494,7 +562,35 @@
     "refreshPricesHint": "Re-apply the seller's current prices to the lines (drafts only, before sending)",
     "refreshPricesNone": "Already current — no lines changed.",
     "refreshPricesDone": "{{count}} line(s) changed: {{lines}}",
-    "refreshPricesFailed": "Could not refresh prices"
+    "refreshPricesFailed": "Could not refresh prices",
+    "discardFailed": "Failed to discard PO",
+    "removeItemFailed": "Failed to remove item",
+    "externalBadge": "External — manual send",
+    "systemBadge": "Auto-send on submit",
+    "expected": "Expected",
+    "removeItem": "Remove item",
+    "externalHint": "Send this PO to the supplier via PDF / WhatsApp / email. The system will not auto-send.",
+    "downloadPdf": "PDF",
+    "whatsapp": "WhatsApp",
+    "email": "Email",
+    "submitting": "Submitting…",
+    "discard": "Discard",
+    "systemHint": "This PO will be auto-sent to the supplier upon final submit.",
+    "title": "Pending Purchase Orders",
+    "back": "← Back to Cart",
+    "empty": {
+      "title": "No pending POs",
+      "desc": "Submit a cart from /pos/purchase-orders to create draft POs."
+    },
+    "externalSection": "External Suppliers — Manual Send",
+    "systemSection": "System Suppliers — Auto Send",
+    "summary": "{{count}} POs",
+    "submitAll": "Submit All",
+    "discardConfirm": {
+      "title": "Discard this PO?",
+      "desc": "This draft PO will be permanently removed. It has not been sent to the supplier."
+    },
+    "discarding": "Discarding…"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit mismatch — manual entry required",
@@ -516,7 +612,7 @@
     "approve": "Approve",
     "reject": "Reject",
     "approveTitle": "Approve Purchase Order",
-    "approveConfirm": "Approve \"{{po}}\"? It will be sent to the supplier.",
+    "approveConfirm": "Approve \"{{po}}\"? Once approved, the order is delivered to the supplier's app.",
     "rejectTitle": "Reject Purchase Order",
     "rejectReasonLabel": "Reason for rejection",
     "rejectReasonPlaceholder": "Let the restaurant know why this order is rejected",
@@ -529,7 +625,16 @@
     "loadFailed": "Failed to load approvals.",
     "approved": "Order approved and sent to the supplier.",
     "rejected": "Order rejected.",
-    "actionFailed": "Action failed. Please try again."
+    "actionFailed": "Action failed. Please try again.",
+    "details": "Details",
+    "pdf": "PDF",
+    "whatsapp": "WhatsApp",
+    "email": "Email",
+    "approveConfirmExternal": "Approve \"{{po}}\"? This supplier doesn't use the app, so it won't be sent automatically — after approving, send it via WhatsApp, PDF or email.",
+    "sendAfterApprove": "Available after approval",
+    "approvedBadge": "Approved",
+    "justApprovedExternal": "Just approved — this supplier doesn't use the app. Send the order via WhatsApp, PDF or email. Later you can also send it from the order details.",
+    "justApprovedSystem": "Just approved — the order was delivered to the supplier's app."
   },
   "newPo.viewMode": "View mode",
   "newPo.viewCard": "Card",

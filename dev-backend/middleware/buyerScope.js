@@ -4,7 +4,7 @@
  * Resolves the buyer's (entity_type, entity_id) pair from the authenticated user's role:
  *   - Restaurant Admin / Staff → ('restaurant', user.restaurant_id)
  *   - Restaurant Owner       → ('restaurant', user.restaurant_id) if assigned
- *        + 소유 매장 «보기» 전환(?entity_type=restaurant&entity_id=N) — ownership 확인, GET /api/purchase-orders* 만
+ *        + 소유 매장 «보기» 전환(?entity_type=restaurant&entity_id=N) — ownership 확인, GET /api/purchase-orders* + POST /:id/cancel 만
  *        + 소속 매장 없는 오너: 외부 공급업체 라우트 → ('owner', user.id) · 발주 목록 → 소유 매장 전체(§H-3)
  *   - Brand General / Manager → ('brand', user.brand_id)
  *        + Brand General 은 **자기가 소유한 다른 브랜드**로 전환 가능(?entity_type=brand&entity_id=N).
@@ -85,7 +85,10 @@ async function requireBuyerRole(req, res, next) {
     const wanted = parseInt(req.query.entity_id, 10);
     if (Number.isFinite(wanted)) {
       const isPoRead = req.method === 'GET' && /^\/api\/purchase-orders(\/|\?|$)/.test(req.originalUrl || '');
-      if (!isPoRead) {
+      // 오너 «취소» (2026-10-04 Fable 판정 owner-po-on-behalf §6): 소유 매장 발주 취소만 쓰기 허용.
+      //   삭제가 아니라 취소(행은 cancelled 로 남는다). 상태 조건은 cancel 라우트가 그대로 판정한다.
+      const isPoCancel = req.method === 'POST' && /^\/api\/purchase-orders\/\d+\/cancel(\?|$)/.test(req.originalUrl || '');
+      if (!isPoRead && !isPoCancel) {
         return res.status(403).json({ success: false, message: 'Owners can only view purchase orders of their restaurants' });
       }
       try {
