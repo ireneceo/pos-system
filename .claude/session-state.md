@@ -1,7 +1,16 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-10-02 (/개발완료 — 운영 배포 1회 · GHL 2차 묶음 dev 완료, 미배포)
-**버전:** 운영 **v3.107**(10-02 배포분 버전 번호 미확정 — 아래) · SW 운영 **5.71-card-terminal-tender-20261001** · 개발 **5.72-terminal-guards-app030-20261002**
-**작업 상태:** 🟡 2026-10-04 운영 배포 완료(SW 5.72 · 백업 `20261004_031939` · 스모크 10/10) → 운영 데모 매장 13 실단말기 테스트 대기(Irene)
+**마지막 업데이트:** 2026-10-04 13:1x UTC (/개발완료 — 오늘 운영 배포 8회, 마지막 #8)
+**버전:** 운영 SW **5.79-terminal-raw-capture-20261004** · 안드로이드 앱 **0.3.4**(versionCode 7, sha 32e0a064…) · 버전 번호 v3.10x 미확정
+**작업 상태:** ⏸ Irene 태블릿 충전 중 — 「내가 하면 말할게」. 단말기 연결 테스트 결과 대기
+
+### 👉 재개 지점 (Irene 「눌렀어」 오면 바로)
+- Irene 할 일: 태블릿 앱 «새 버전 0.3.4» 업데이트 → 설정 › 결제 › Card › **연결 테스트 1번**
+- 팀원 할 일: 운영 읽기 — `terminal_transactions` id>22 의 status·status_message·**response_hex(실패 행 = 단말기가 보낸 원본)** · activity_logs «Card terminal discovery» 의 probed[].raw → 단말기 응답 형식 확정 → 맞춤 수정(형식이 갈리면 Fable 1회)
+- 실측 경과(매장 13, .112:33898 http-hex): ~11:12 CONNECT_REFUSED(찾기 253대 응답 0) → **11:40부터 연결 수락·응답 있음, BAD_RESPONSE**(앱이 원본을 버려 형식 미상) → #8 에서 원본 기록 + HTTP chunked/Content-Length 해석 추가
+- 단말기 = **PayHere Direct** 앱(+ADAPTIS·Launcher). Direct: Notify C2 선행(#7 대비 완료) · E3/E6/C01A 는 ECR 전용 · 직불 D007 Account Type 필요 가능 → 첫 테스트는 신용카드·QR
+- GHL 자료 전수 확인 완료(scratchpad 6473b77f…/ghl): Postman 프레임 CRC 551A 우리 코덱과 일치 · 단말기 ECR 켜는 법은 자료에 없음
+- 오늘 배포: #7 SW 5.78+APK 0.3.3(Notify 건너뜀·probe Echo 행 0·프로필 칸·앱 새로고침, Fable PASS `.claude/fable-verdict-20261004-terminal-direct-gate.md`, 백업 20261004_120751) · #8 SW 5.79+APK 0.3.4(원본 기록·HTTP 해석, 민감 비대상, 백업 20261004_125600)
+- 남은 것: Windows 데스크탑 앱 설치본 재빌드(되돌림 검사·Notify 건너뜀 소스 반영됨) · Kate 브랜드 관리자 부여 → K-DINE 데이터 정리 밤 1회 · /docs SEO nginx 보류
 
 ### 진행 중인 작업
 - ⏳ **[Claude Code] Docs(안내 페이지) + 사이드바 정리 + 랜딩 Download — 접수 2026-10-04, 구조 묶음 뒤 같은 빌드로**
