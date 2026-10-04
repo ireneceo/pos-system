@@ -809,5 +809,19 @@
   "shopLink.displayNameLabel": "Nama kedai yang dilihat pembeli",
   "shopLink.displayNamePlaceholder": "Nama kedai anda",
   "shopLink.displayNameHint": "Biarkan kosong untuk guna \"{{name}}\". Ini nama yang pembeli lihat di halaman pautan — mewakili semua yang anda jual, bukan satu jenama.",
-  "saving": "Menyimpan…"
+  "saving": "Menyimpan…",
+  "nativeUpdate": {
+    "title": "Versi baharu Purple POS {{version}}",
+    "body": "Kini {{current}} → {{version}}. Log masuk dan tetapan anda kekal.",
+    "update": "Kemas kini",
+    "later": "Nanti",
+    "retry": "Cuba lagi",
+    "installing": "Memuat turun…",
+    "handoff": "Pelayar akan dibuka dan muat turun bermula. Apabila selesai, ketik 'Buka' → 'Pasang'. Kali pertama, hidupkan 'Benarkan daripada sumber ini' untuk Chrome.",
+    "handoffFallback": "Jika pelayar tidak dibuka, pergi ke {{host}}/download dalam Chrome pada tablet ini.",
+    "permission": "Hidupkan 'Benarkan daripada sumber ini' untuk PurplePOS, kemudian ketik Kemas kini sekali lagi.",
+    "error": "Fail tidak dapat disahkan ({{error}}). Cuba lagi nanti atau muat turun dari {{host}}/download.",
+    "row": "Versi aplikasi {{current}} · terkini {{latest}}",
+    "upToDate": "Versi terkini"
+  }
 }

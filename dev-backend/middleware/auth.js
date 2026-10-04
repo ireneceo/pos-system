@@ -4,7 +4,7 @@ const Restaurant = require('../models/Restaurant');
 const RestaurantManager = require('../models/RestaurantManager');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
-const { validateGrantedContext } = require('../services/userContexts');
+const { validateGrantedContext, BRAND_MANAGER_HAT_PERMISSIONS } = require('../services/userContexts');
 
 // ────────────────────────────────────────────────────────────────────────────
 // 컨텍스트 투영 — 멀티 컨텍스트 로그인의 유일한 초크포인트.
@@ -52,7 +52,8 @@ async function projectContext(baseUser, ctx) {
       foodcourt_id: null,
       branch_id: null,
       manager_id: null,
-      permissions: []
+      // 브랜드 관리자 모자는 사이드바 표시 키만(BRAND_MANAGER_HAT_PERMISSIONS) — 나머지 모자는 종전대로 []
+      permissions: ctx.t === 'brand' ? [...BRAND_MANAGER_HAT_PERMISSIONS] : []
     },
     fallback: false,
     projected: true

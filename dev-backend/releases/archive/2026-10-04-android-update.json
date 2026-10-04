@@ -1,0 +1,47 @@
+{
+  "tag": "android-update",
+  "sw_version": "5.75-android-update-20261004",
+  "date": "2026-10-04",
+  "in_progress": [
+    "실기기 확인(Irene 태블릿): 0.2.0 → 브라우저 경로 1회 → 0.3.1, 이후 앱 안 업데이트",
+    "Kate 브랜드 관리자 부여 · K-DINE 데이터 정리 밤 1회"
+  ],
+  "completed": [
+    "안드로이드 계산대 앱에 «새 버전» 안내 카드 — 앱이 켜지면 최신 버전을 확인해 우하단에 «업데이트 / 나중에»(24시간), 설정 › 프린터 › Android 카드에 상시 «앱 버전 · 최신» 줄",
+    "안드로이드 앱 0.3.1 — 앱 안에서 새 버전을 내려받아 파일을 확인한 뒤 설치 화면까지 띄움(삭제·재로그인 없음). 지금 깔린 0.2.0/0.3.0 은 한 번만 브라우저로 받아 설치",
+    "앱 업데이트 피드(android-latest.json)를 빌드 스크립트가 만들고, 배포 전 검사가 피드·파일·별칭을 대조"
+  ],
+  "remaining": [
+    "강제 업데이트(minVersionCode) — 필요해지면 후속",
+    "nginx .apk MIME — 실기기에서 Chrome 이 못 열 때만 승인 요청"
+  ],
+  "verification": {
+    "api": "jest nativeAppUpdate 6/6 · check-desktop-feed 통과(피드 0.3.1 · sha256 · 별칭 동일)",
+    "fault_injection": "피드 게이트 3/3(sha 변조·별칭 구버전·더 높은 버전본) → 실패, 원본 통과 · e2e: 앱 설치 기능 SHA_MISMATCH → 오류 문구",
+    "regression": "e2e native-app-update 4/4 ×3 (0.2.0+피드 0.3.1 배너·나중에 기록·피드 404 무배너·브라우저 무배너 피드요청 0) · verify-all --full",
+    "migration": "없음",
+    "sw_version": "5.75-android-update-20261004",
+    "fable_note": "Fable 설계 2026-10-04(.claude/fable-design-20261004-android-update.md) — 이 사안 게이트 1회 대상(실기기 §7-2 결과 포함)"
+  },
+  "notes": [
+    "🔒 인쇄 보호파일·MainLayout·PwaInstallContext/Banner·DownloadPage 무접촉",
+    "0.3.1 서명 지문 = 0.2.0/0.3.0 (b55813cf…) — 덮어 설치",
+    "앱 버전 규칙: 네이티브 파일이 바뀔 때만 versionCode+1 · patch+1 → mobile-app/scripts/build-release.sh"
+  ],
+  "irene_actions_after_deploy": [
+    "운영 태블릿: 앱 열기 → «새 버전 0.3.1» 카드 → 업데이트 → Chrome 다운로드 → 열기 → 출처 허용(처음 1회) → 설치 → 설정 화면 «앱 버전 0.3.1»"
+  ],
+  "issues": [
+    "사이드로드 앱이 스스로 업데이트를 알 길이 없어 매장 태블릿이 구버전(0.2.0)에 머물렀다 — 단말기 자동 찾기가 안 된 원인"
+  ],
+  "upcoming": [
+    "실기기에서 단말기 자동 찾기·결제 테스트"
+  ],
+  "behavior_changes": [
+    "안드로이드 앱에서 로그인하면 새 버전이 있을 때 우하단 카드가 뜬다(브라우저·손님 화면에는 안 뜸)"
+  ],
+  "check_areas": [
+    "안드로이드 앱 업데이트 카드·설정 줄",
+    "/download 페이지·브라우저 다운로드(별칭 0.3.1)"
+  ]
+}

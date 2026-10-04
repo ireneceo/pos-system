@@ -145,6 +145,7 @@ class NativePrintPlugin : Plugin() {
         // here drifts from the APK the store actually runs (the 2026-07-13 desktop
         // CTA drift, same class).
         r.put("appVersion", BuildConfig.VERSION_NAME)
+        r.put("appVersionCode", BuildConfig.VERSION_CODE) // 업데이트 비교용(2026-10-04) — 읽는 쪽은 선택적
         r.put("printers", arr)
         r.put("defaultPrinter", registry.defaultPrinterName())
         r.put("btPermission", btPermissionState()) // additive, Android-only

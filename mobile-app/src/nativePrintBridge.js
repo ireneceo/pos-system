@@ -58,8 +58,21 @@
     };
   }
 
+  // 앱 자가 업데이트(2026-10-04) — 0.3.1+. 0.2.0/0.3.0 에는 없다 = 웹이 브라우저 경로로 분기하는 조건.
+  const U = Cap.Plugins.NativeUpdate;
+  if (U) {
+    window.__NATIVE_UPDATE = {
+      available: true,
+      canInstall: () => U.canInstall().catch(() => ({ granted: false })),
+      install: safe((job) => U.install(job))
+    };
+  }
+
   // Resolve the real APK version onto the bridge (App.tsx renders it as a badge).
   P.diagnostics()
-    .then((d) => { if (d && d.appVersion) window.__NATIVE_PRINT.version = d.appVersion; })
+    .then((d) => {
+      if (d && d.appVersion) window.__NATIVE_PRINT.version = d.appVersion;
+      if (d && d.appVersionCode != null) window.__NATIVE_PRINT.versionCode = d.appVersionCode; // 업데이트 비교용
+    })
     .catch(() => { /* stays null — the Settings diagnostics card surfaces the failure */ });
 })();

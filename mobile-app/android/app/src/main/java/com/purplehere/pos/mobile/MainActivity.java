@@ -20,6 +20,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NativePrintPlugin.class);
         // 카드단말기 ECR 운반(GHL, 2026-10-01) — nativePrintBridge.js 가 window.__NATIVE_ECR 로 노출
         registerPlugin(NativeEcrPlugin.class);
+        // 앱 자가 업데이트(2026-10-04) — nativePrintBridge.js 가 window.__NATIVE_UPDATE 로 노출
+        registerPlugin(NativeUpdatePlugin.class);
         super.onCreate(savedInstanceState);
 
         // Inject the __NATIVE_PRINT bridge on EVERY page load, registered here in

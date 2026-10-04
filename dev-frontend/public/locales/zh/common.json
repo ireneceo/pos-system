@@ -809,5 +809,19 @@
   "shopLink.displayNameLabel": "买家看到的店铺名称",
   "shopLink.displayNamePlaceholder": "店铺名称",
   "shopLink.displayNameHint": "留空则使用「{{name}}」。这是买家在链接页面看到的名称，代表您所销售的全部商品，而非单一品牌。",
-  "saving": "保存中…"
+  "saving": "保存中…",
+  "nativeUpdate": {
+    "title": "Purple POS 新版本 {{version}}",
+    "body": "当前 {{current}} → {{version}}。登录和设置保持不变。",
+    "update": "更新",
+    "later": "稍后",
+    "retry": "重试",
+    "installing": "正在下载…",
+    "handoff": "浏览器将打开并开始下载。完成后点击“打开”→“安装”。首次请为 Chrome 开启“允许来自此来源”。",
+    "handoffFallback": "如果浏览器没有打开，请在这台平板的 Chrome 中访问 {{host}}/download。",
+    "permission": "请为 PurplePOS 开启“允许来自此来源”，然后再次点击更新。",
+    "error": "文件校验失败（{{error}}）。请稍后重试，或从 {{host}}/download 下载。",
+    "row": "应用版本 {{current}} · 最新 {{latest}}",
+    "upToDate": "已是最新版本"
+  }
 }

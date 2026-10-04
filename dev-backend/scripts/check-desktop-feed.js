@@ -111,22 +111,38 @@ function checkAndroidApk() {
     notes.push(`안드로이드 APK ${apkName} (${(size / 1048576).toFixed(1)}MB)`);
   }
 
-  // 별칭이 최신 버전본과 바이트 동일한지 — exe 별칭과 같은 사고(구버전 배포) 방지.
-  const versioned = fs.readdirSync(DESKTOP_DIR)
-    .filter((f) => /^PurplePOS-\d+\.\d+\.\d+\.apk$/.test(f))
-    .sort((a, b) => {
-      const v = (s) => s.match(/(\d+)\.(\d+)\.(\d+)/).slice(1, 4).map(Number);
-      const [a1, a2, a3] = v(a); const [b1, b2, b3] = v(b);
-      return a1 - b1 || a2 - b2 || a3 - b3;
-    });
-  if (versioned.length) {
-    const latest = versioned[versioned.length - 1];
-    if (sha512Base64(path.join(DESKTOP_DIR, latest)) !== sha512Base64(apkPath)) {
-      failures.push(`${apkName}(CTA 별칭) 이 최신 APK(${latest}) 와 다르다 — 매장이 구버전을 받는다`);
-    } else {
-      notes.push(`APK 별칭 = ${latest} (바이트 동일)`);
-    }
+  // 2026-10-04 — 앱 업데이트 피드(android-latest.json)가 권위다(Fable 설계 .claude/fable-design-20261004-android-update.md §6).
+  //   «가장 큰 버전본 = 최신» 추측을 버리고 피드가 가리키는 파일·sha256·크기로 판정한다.
+  const vOf = (s) => s.match(/(\d+)\.(\d+)\.(\d+)/).slice(1, 4).map(Number);
+  const cmpV = (a, b) => { const [a1, a2, a3] = vOf(a); const [b1, b2, b3] = vOf(b); return a1 - b1 || a2 - b2 || a3 - b3; };
+  const versioned = fs.readdirSync(DESKTOP_DIR).filter((f) => /^PurplePOS-\d+\.\d+\.\d+\.apk$/.test(f)).sort(cmpV);
+  const feedPath = path.join(DESKTOP_DIR, 'android-latest.json');
+  if (!fs.existsSync(feedPath)) {
+    // ① 피드 없음 — 버전본 APK 가 하나도 없을 때만 통과. 있으면 앱이 새 버전을 알 길이 없다.
+    if (versioned.length) failures.push(`android-latest.json 이 없다 — 버전본 APK(${versioned.join(', ')})만 있으면 앱이 업데이트를 못 안다`);
+    return;
   }
+  let feed;
+  try { feed = JSON.parse(fs.readFileSync(feedPath, 'utf8')); } catch (e) { failures.push(`android-latest.json 을 읽을 수 없다: ${e.message}`); return; }
+  // ② 모양 — file 정규식 · versionName = file 의 버전 · versionCode 정수
+  if (typeof feed.file !== 'string' || !/^PurplePOS-\d+\.\d+\.\d+\.apk$/.test(feed.file)) { failures.push(`android-latest.json file 이 형식에 안 맞는다: ${feed.file}`); return; }
+  if (feed.file !== `PurplePOS-${feed.versionName}.apk`) failures.push(`android-latest.json versionName(${feed.versionName}) 과 file(${feed.file}) 이 다르다`);
+  if (!Number.isInteger(feed.versionCode)) failures.push('android-latest.json versionCode 가 정수가 아니다');
+  // ③ 피드 파일 존재 · sha256 · 크기
+  const feedFile = path.join(DESKTOP_DIR, feed.file);
+  if (!fs.existsSync(feedFile)) { failures.push(`피드가 가리키는 ${feed.file} 이 없다 — 앱 업데이트가 404`); return; }
+  const sha256 = crypto.createHash('sha256').update(fs.readFileSync(feedFile)).digest('hex');
+  if (String(feed.sha256).toLowerCase() !== sha256) failures.push(`${feed.file} sha256 이 피드와 다르다 — 앱이 SHA_MISMATCH 로 설치를 거부한다`);
+  if (Number(feed.size) !== fs.statSync(feedFile).size) failures.push(`${feed.file} 크기가 피드와 다르다`);
+  // ④ 별칭(브라우저 CTA·/download) = 피드 파일과 바이트 동일
+  if (sha512Base64(feedFile) !== sha512Base64(apkPath)) {
+    failures.push(`${apkName}(CTA 별칭) 이 피드 버전(${feed.file}) 과 다르다 — 매장이 구버전을 받는다`);
+  } else {
+    notes.push(`APK 피드 = ${feed.file} (versionCode ${feed.versionCode}) · 별칭 바이트 동일`);
+  }
+  // ⑤ 피드보다 높은 버전본 파일 금지 — dev 시험 파일이 추가형 rsync(배포 7a)로 운영에 새는 것 차단
+  const higher = versioned.filter((f) => cmpV(f, feed.file) > 0);
+  if (higher.length) failures.push(`피드(${feed.file})보다 높은 버전본이 남아 있다: ${higher.join(', ')} — 시험 파일이면 지우고 배포`);
 }
 
 function checkNoHardcodedVersion() {
@@ -139,13 +155,14 @@ function checkNoHardcodedVersion() {
   const walk = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, entry.name);
-      if (entry.isDirectory()) { walk(p); continue; }
+      if (entry.isDirectory()) { if (entry.name !== '__tests__') walk(p); continue; }   // 테스트 픽스처는 배포되지 않는다
       if (!/\.(ts|tsx|js|jsx)$/.test(entry.name)) continue;
       const src = fs.readFileSync(p, 'utf8');
       src.split('\n').forEach((line, i) => {
         // 주석(설명·이력)은 허용 — 코드에서 파일명을 조립하는 것만 잡는다
         const isComment = /^\s*(\/\/|\*|\/\*)/.test(line);
-        if (!isComment && /PurplePOS-Setup-/.test(line)) {
+        // 2026-10-04: APK 버전본 리터럴(PurplePOS-0.3.1.apk)도 금지 — 별칭 PurplePOS.apk 와 피드에서 읽은 이름만 허용
+        if (!isComment && (/PurplePOS-Setup-/.test(line) || /PurplePOS-\d+\.\d+\.\d+\.apk/.test(line))) {
           hits.push(`${path.relative(FRONTEND_SRC, p)}:${i + 1}`);
         }
       });

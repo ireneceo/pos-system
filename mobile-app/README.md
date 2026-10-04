@@ -34,3 +34,13 @@ npx cap add android
 npx cap sync android
 # open in Android Studio / gradle assembleRelease -> signed APK -> sideload
 ```
+
+## Release (2026-10-04 — this is the only way to ship an APK)
+```bash
+# 1) bump android/app/build.gradle: versionCode +1, versionName patch +1 (only when native files changed)
+# 2) build, verify signer, copy, write the update feed, run the feed gate:
+scripts/build-release.sh
+# → dev-frontend-build/desktop/PurplePOS-x.y.z.apk + PurplePOS.apk + android-latest.json
+# 3) /배포 (deploy step 7a ships /desktop/). Installed apps see the update card.
+```
+Debug builds (`./gradlew assembleDebug`, `.dev` package) are never put in the feed.

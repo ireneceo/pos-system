@@ -809,5 +809,19 @@
   "shopLink.displayNameLabel": "Shop name shown to buyers",
   "shopLink.displayNamePlaceholder": "Your shop name",
   "shopLink.displayNameHint": "Leave empty to use \"{{name}}\". This is the name buyers see on the link page — it covers everything you sell, not one brand.",
-  "saving": "Saving…"
+  "saving": "Saving…",
+  "nativeUpdate": {
+    "title": "New Purple POS version {{version}}",
+    "body": "Now {{current}} → {{version}}. Your login and settings stay as they are.",
+    "update": "Update",
+    "later": "Later",
+    "retry": "Try again",
+    "installing": "Downloading…",
+    "handoff": "The browser opens and the download starts. When it finishes, tap 'Open' → 'Install'. The first time, turn on 'Allow from this source' for Chrome.",
+    "handoffFallback": "If the browser doesn't open, go to {{host}}/download in Chrome on this tablet.",
+    "permission": "Turn on 'Allow from this source' for PurplePOS, then tap Update again.",
+    "error": "Could not verify the file ({{error}}). Try again later or download it from {{host}}/download.",
+    "row": "App version {{current}} · latest {{latest}}",
+    "upToDate": "Up to date"
+  }
 }

@@ -809,5 +809,19 @@
   "shopLink.displayNameLabel": "손님에게 보이는 가게 이름",
   "shopLink.displayNamePlaceholder": "가게 이름",
   "shopLink.displayNameHint": "비워 두면 «{{name}}» 이 쓰입니다. 링크 화면에 뜨는 이름이고, 브랜드 한 곳이 아니라 파는 것 전체를 대표합니다.",
-  "saving": "저장 중…"
+  "saving": "저장 중…",
+  "nativeUpdate": {
+    "title": "Purple POS 새 버전 {{version}}",
+    "body": "현재 {{current}} → {{version}}. 설치해도 로그인·설정은 그대로입니다.",
+    "update": "업데이트",
+    "later": "나중에",
+    "retry": "다시 시도",
+    "installing": "내려받는 중…",
+    "handoff": "브라우저가 열리고 다운로드가 시작됩니다. 끝나면 '열기' → '설치'를 누르세요. 처음 한 번은 Chrome 의 '이 출처 허용'을 켜 주세요.",
+    "handoffFallback": "브라우저가 열리지 않으면 이 태블릿의 Chrome 에서 {{host}}/download 로 가세요.",
+    "permission": "PurplePOS 의 '이 출처 허용'을 켠 뒤 업데이트를 다시 누르세요.",
+    "error": "파일 확인 실패({{error}}). 잠시 후 다시 시도하거나 {{host}}/download 에서 받아 주세요.",
+    "row": "앱 버전 {{current}} · 최신 {{latest}}",
+    "upToDate": "최신 버전입니다"
+  }
 }

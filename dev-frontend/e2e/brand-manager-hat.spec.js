@@ -80,6 +80,16 @@ for (const vp of [{ w: 1440, h: 900 }, { w: 390, h: 844 }]) {
     expect(me.data.role).toBe('Brand Manager');
     expect(Number(me.data.brand_id)).toBe(BRAND);
 
+    // 사이드바에 Dashboard · Brand Menus 가 보여야 한다 (Fable 2026-10-04 표적 판정 — 모자 permissions 결함)
+    if (vp.w >= 1024) {
+      await page.goto('/pos/brand/dashboard').catch(() => {});
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('text=Dashboard >> visible=true').first(), '사이드바 Dashboard').toBeVisible({ timeout: 10000 });
+      // 2단 사이드바 — «Brands» 를 누르면 그 아래 Brand Menus 가 열린다
+      await page.locator('text=Brands >> visible=true').first().click();
+      await expect(page.locator('text=Brand Menus >> visible=true').first(), '사이드바 Brand Menus').toBeVisible({ timeout: 10000 });
+    }
+
     // 브랜드 메뉴 화면 진입(사이드바 경로와 같은 주소)
     await page.goto('/pos/brand-menus');
     await page.waitForLoadState('networkidle');

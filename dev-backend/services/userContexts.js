@@ -55,6 +55,10 @@ const BRAND_MANAGER_HAT = { entity_type: 'brand', role: 'Brand Manager' };
 function isBrandManagerHat(entityType, role) {
   return entityType === BRAND_MANAGER_HAT.entity_type && role === BRAND_MANAGER_HAT.role;
 }
+// 브랜드 관리자 모자의 **화면 표시 권한 키** (2026-10-04 Fable 표적 판정). 프론트 사이드바(hasManagerPermission)가
+//   Brand Manager 에겐 user.permissions 를 요구한다 — 비어 있으면 Dashboard·Brand Menus 가 안 보였다(dev 실브라우저 재현).
+//   서버 판정에는 쓰이지 않는 표시 전용 키다. 모자의 약속 범위(메뉴·레시피)만 — plans_payments(돈 경계)·운영·관리 키는 넣지 않는다.
+const BRAND_MANAGER_HAT_PERMISSIONS = ['dashboard', 'products'];
 // 부여 행이 가리키는 엔티티 표 — 목록·검증·전환이 같은 표를 JOIN 해야 list ⊆ detail 이 유지된다.
 const GRANT_JOIN_TABLE = { restaurant: 'restaurants', brand: 'brands' };
 
@@ -350,5 +354,6 @@ module.exports = {
   listOwnedRestaurants,
   // 브랜드 관리자 모자(v1.2)
   BRAND_MANAGER_HAT,
-  isBrandManagerHat
+  isBrandManagerHat,
+  BRAND_MANAGER_HAT_PERMISSIONS
 };

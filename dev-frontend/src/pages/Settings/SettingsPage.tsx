@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { NativeAppVersionRow } from '../../components/Common/NativeAppUpdateBanner';
 import styled from 'styled-components';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { TabContainer, Tab, OrderControls } from '../../components/UI';
@@ -826,6 +827,8 @@ const AndroidPrinterSetupCard: React.FC<AndroidPrinterSetupCardProps> = ({ bridg
       <div style={{ fontSize: '12px', color: '#6B7280', lineHeight: 1.6, marginBottom: '12px' }}>
         {t('settings:printer.android.desc', { defaultValue: 'Register each printer on this tablet, then pick it by name for the bill and kitchen printers above. The name you enter here is the name you select above.' })}
       </div>
+      {/* 앱 버전·업데이트 상시 줄 (2026-10-04 Irene 「업데이트 뜨게 해」 — Fable 설계 §4-4) */}
+      <NativeAppVersionRow />
 
       {/* Network printers registered on this device */}
       <div style={{ fontSize: '13px', fontWeight: 600, color: '#1F2937', marginBottom: '6px' }}>

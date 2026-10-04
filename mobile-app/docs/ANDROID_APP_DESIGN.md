@@ -282,9 +282,9 @@ V3 = 13/13 PASS. V4 는 두 개의 별개 블로커가 순차로 겹쳐 있었�
 ### 8-7. 릴리즈·배포
 - **서명키:** 사이드로드 전용 keystore 1개 생성(RSA4096, 유효 30년+), 리포 밖 `/opt/secrets/`(root 전용, 일일 백업 세트 포함), `keystore.properties`는 git-ignore. **키 변경 = 전 매장 재설치**이므로 영구 고정. Play 스토어는 안 간다(Windows 미서명 파일럿과 동일 결정).
 - **버전 단일 소스 = `build.gradle` versionName/versionCode.** diagnostics.appVersion·브릿지 version·App.tsx 배지 전부 여기서 파생. 웹 소스에 APK 버전 상수 금지.
-- **피드:** `build-release.sh`가 빌드 산출물에서 `latest.json`{versionName,versionCode,file,sha256,size}을 **생성**(손 편집 금지) + 항상-최신 별칭 `PurplePOS.apk` → `dev-frontend-build/mobile/`(배포 rsync가 운영 `/mobile/`로). `check-mobile-feed.js` = check-desktop-feed.js의 3불변식 미러(피드↔파일 sha 일치 / 별칭 바이트 동일 / 프론트 소스 버전 상수 0) → verify-all·배포 게이트 편입.
-- **CTA(A4, P0 아님):** PwaInstallContext에 Android 분기 — `/mobile/latest.json`을 읽는다. 데스크탑과 동일 패턴, 상수 재도입 불가.
-- 인앱 자동업데이트는 사이드로드 특성상 불가 — 앱이 자기 versionName과 latest.json을 비교해 넛지 배너(후속, 이것도 피드 기반).
+- **피드 (2026-10-04 확정 — `/mobile/` 계획 폐기):** `mobile-app/scripts/build-release.sh` 가 `dev-frontend-build/desktop/android-latest.json`{versionName,versionCode,file,sha256,size,minSdk,releaseDate,signerSha256}을 **생성**(손 편집 금지) + 버전본 `PurplePOS-x.y.z.apk` + 항상-최신 별칭 `PurplePOS.apk`. 배포 7a 가 `/desktop/` 을 운영으로 옮긴다. 게이트 = 기존 `check-desktop-feed.js` 의 `checkAndroidApk()`(피드 권위: sha256·크기·별칭 바이트 동일·피드보다 높은 버전본 금지·프론트 APK 버전 리터럴 금지). 별도 `check-mobile-feed.js` 는 만들지 않는다.
+- **인앱 업데이트 (2026-10-04, Irene 「바꿔. 업데이트 뜨게 해.」 · 설계 `/var/www/.claude/fable-design-20261004-android-update.md`):** 웹이 피드와 `__NATIVE_PRINT.version/versionCode` 를 비교해 우하단 카드 + 설정 › 프린터 › Android 카드 상시 줄. 0.3.1+ = `NativeUpdatePlugin`(같은 host https · sha256 확인 · FileProvider 설치 시트, 권한 `REQUEST_INSTALL_PACKAGES`). 0.2.0/0.3.0 = 플러그인이 없어 `http://<host>/desktop/<file>` 로 시스템 브라우저에 넘긴다(한 번만).
+- **규칙:** 네이티브 파일이 하나라도 바뀌면 `versionCode +1` · `versionName` patch +1 → `build-release.sh`. 웹만 바뀌면 APK 를 만들지 않는다. 서명 지문이 0.2.0/0.3.0 과 다르면 스크립트가 중단한다.
 
 ### 8-8. 작업 순서
 | 단계 | 내용 | 블로커 |

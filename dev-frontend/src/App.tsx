@@ -21,6 +21,7 @@ import OfflineBanner from './components/Offline/OfflineBanner';
 import OfflineLockOverlay from './components/Offline/OfflineLockOverlay';
 import NotificationToaster from './components/Common/NotificationToaster';
 import PwaInstallBanner from './components/Common/PwaInstallBanner';
+import NativeAppUpdateBanner from './components/Common/NativeAppUpdateBanner';
 import InstallGuideModal from './components/Common/InstallGuideModal';
 import AutoPrintFailureBanner from './components/AutoPrintFailureBanner';
 import PrintDeviceReporter from './components/PrintDeviceReporter';
@@ -524,6 +525,7 @@ function App() {
                         <CookieConsentBanner />
                         <NotificationToaster />
                         <PwaInstallBanner />
+                        <NativeAppUpdateBanner />
                         <InstallGuideModal />
                         <OfflineBanner />
                         <OfflineLockOverlay />

@@ -429,6 +429,8 @@ describe('⑧ 브랜드 관리자 모자 (v1.2)', () => {
     expect(sw.body.data.user.brand_id).toBe(BM_BRAND);
     expect(sw.body.data.user.restaurant_id).toBeNull();
     expect(sw.body.data.user.role).toBe('Brand Manager');
+    // 사이드바 표시 키 — 비면 Dashboard·Brand Menus 가 안 보인다(2026-10-04 Fable 표적 판정)
+    expect(sw.body.data.user.permissions).toEqual(['dashboard', 'products']);
   });
 
   test('3. /me 투영 동일 + 폴백 헤더 없음', async () => {
@@ -438,6 +440,7 @@ describe('⑧ 브랜드 관리자 모자 (v1.2)', () => {
     expect(r.body.data.role).toBe('Brand Manager');
     expect(Number(r.body.data.brand_id)).toBe(BM_BRAND);
     expect(r.body.data.restaurant_id).toBeNull();
+    expect(r.body.data.permissions).toEqual(['dashboard', 'products']);
   });
 
   test('4. 모자로 브랜드 17 메뉴·카테고리·옵션·레시피·브랜드 목록 → 200', async () => {

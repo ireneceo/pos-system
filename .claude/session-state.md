@@ -15,6 +15,8 @@
   - 순서: §6-3 사실 확인(운영 읽기) → 4~12 코드 → build 1회 → verify-all --full 1회 → Fable 게이트 1회 → /배포 → 데이터 1회(표 승인·밤)
   - ✅ 2026-10-04 06:1x UTC **운영 배포 완료**(백업 `20261004_060510` · 마이그 2건 적용 · 105/105 · 스모크 10/10) · Fable 게이트 PASS 조건부(`.claude/fable-verdict-20261004-structure-gate.md`, 마커 93581328bab3) · 배포 후 확인: /docs·/download·docs API 200 · sw 5.73 · buyer_restaurant_id 칸 · ENUM docs · 브랜드2 소유자(help@, user 23) 브랜드 메뉴 200(104건)
   - ✅ 2026-10-04 #3 운영 배포 SW 5.74(백업 `20261004_073021` · 스모크 10/10 · Fable (0-a) 게이트 PASS `.claude/fable-verdict-20261004-0a-gate.md`) — 브랜드 관리자 사이드바 표시 키 · 단말기 설정 브릿지 재확인 · help@ 브랜드 메뉴 200 회귀 확인
+  - ✅ 2026-10-04 #4 운영 배포 SW 5.75 + 안드로이드 앱 0.3.1(백업 `20261004_082627` · 스모크 10/10 · Fable 게이트 PASS `.claude/fable-verdict-20261004-android-update-gate.md`) — 앱 업데이트 안내 카드·설정 줄 · NativeUpdatePlugin · 피드 /desktop/android-latest.json(sha 290d12ff…) · 운영 확인: 피드 200 json · APK·별칭 sha 일치 · http→https 301
+  - ⏳ Irene 태블릿 1회: 0.2.0 → 카드 → Chrome → 설치 → «앱 버전 0.3.1 · 최신 0.3.1 ✓» → 단말기 자동 찾기 · A 경로 첫 실측은 0.3.2 게이트 필수 조건
   - ⏳ 다음: Kate(kate.kim.snkn@gmail.com) 부여(SA 화면, Fable 표적 판정 `.claude/fable-verdict-20261004-brand-manager-targets.md`) → 데이터 정리 밤 1회 · 안드로이드 앱 업데이트 안내(Irene 「바꿔. 업데이트 뜨게 해.」) Fable 설계 중
   - (이전) ⏳ Irene 결정 대기: 브랜드 관리자 부여 — Irene 「kate, k-din은 내 관련 아니야」 → A(help@ 만, 부여 0) / B(지정 이메일) 질문 중 · 데이터 정리 1회(밤·표 승인) 대기 · ⚠ 매장 My Cost 0.0279 는 데이터 ⑦ 전까지 틀리게 보임(예정)
   - (이전 기록) 코드·빌드(SW 5.73-brand-structure-docs-20261004)·검증 완료 → **Fable 게이트 제출**. 같은 묶음: Docs(/docs·/download·관리 Docs 탭)·사이드바 Help(Install App 제거, 🔒MainLayout 푸터만, print-guard bless)·단말기 설정 표시전용·브랜드 관리자 모자(Fable 지시서 .claude/fable-instruction-20261004-brand-manager.md)

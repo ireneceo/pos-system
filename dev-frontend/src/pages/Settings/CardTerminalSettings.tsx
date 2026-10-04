@@ -33,7 +33,21 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
   const set = (patch: Partial<CardTerminalValue>, saveNow: boolean) => onChange({ ...v, ...patch }, saveNow);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
-  const bridge = !!getEcrBridge();
+  // 계산대 앱은 단말기 브릿지(window.__NATIVE_ECR)를 «페이지가 다 열린 뒤» 끼워 넣는다(MainActivity onPageLoaded).
+  //   이 화면이 그보다 먼저 그려지면(설정에서 새로고침·앱을 이 화면에서 시작) 한 번 본 «없음» 이 굳어
+  //   자동 확인·찾기 버튼이 영영 안 뜬다(2026-10-04 Irene 「자동 찾기 안되는데」 · 운영 단말기 기록 0건).
+  //   그래서 처음 몇 초는 다시 확인한다 — 브라우저(브릿지 없음)는 그대로 «앱에서 여세요» 안내.
+  const [bridge, setBridge] = useState<boolean>(() => !!getEcrBridge());
+  useEffect(() => {
+    if (bridge) return;
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      tries += 1;
+      if (getEcrBridge()) { setBridge(true); window.clearInterval(timer); }
+      else if (tries >= 20) window.clearInterval(timer);   // 0.5초 × 20 = 10초
+    }, 500);
+    return () => window.clearInterval(timer);
+  }, [bridge]);
   const [finding, setFinding] = useState(false);
   const [found, setFound] = useState<string[] | null>(null);
   // 화면을 열 때의 자동 확인 상태 — 'same' = 이 기기와 같은 와이파이에서 단말기가 응답함

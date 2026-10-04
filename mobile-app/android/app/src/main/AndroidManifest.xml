@@ -44,6 +44,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- 앱 자가 업데이트(2026-10-04): 내려받은 새 APK 의 설치 시트를 띄운다. 매장이 «이 출처 허용» 을 한 번 켠다. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!-- Bluetooth printing (design §7-4). Bonded devices only — NO scan, so no
          location permission is needed. Runtime BLUETOOTH_CONNECT on API 31+. -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
