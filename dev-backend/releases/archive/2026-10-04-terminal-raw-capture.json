@@ -1,0 +1,45 @@
+{
+  "tag": "terminal-raw-capture",
+  "sw_version": "5.79-terminal-raw-capture-20261004",
+  "date": "2026-10-04",
+  "in_progress": [
+    "매장 단말기(.112) — 11:40 부터 33898 연결은 받지만 응답 형식을 못 읽음(BAD_RESPONSE). 0.3.4 로 원본 바이트를 받아 형식 확정"
+  ],
+  "completed": [
+    "카드 단말기가 읽을 수 없는 응답을 보내면 받은 원본 그대로를 기록(연결 테스트·자동 찾기 둘 다) — 단말기 실제 형식 확인용, 결제 판정엔 안 씀",
+    "단말기 HTTP 응답을 표준대로 읽음 — 나눠 보내기(chunked)·길이(Content-Length) 지원 — 안드로이드 앱 0.3.4"
+  ],
+  "remaining": [
+    "원본 바이트 확인 뒤 단말기 응답 형식에 맞춘 해석(다음 묶음)",
+    "Windows 데스크탑 앱 설치본 재빌드 — 다음 데스크탑 빌드 때"
+  ],
+  "verification": {
+    "api": "health-check terminal 8/8(신규: error+raw_hex → comm_error 유지·원본만 기록)",
+    "fault_injection": "안드로이드 단위테스트 EcrHttpTest 4/4 — chunked 해석 끄면 1건 실패 → cp 원복 cmp 동일",
+    "regression": "verify-all --full · APK 0.3.4 dex 에 rawHex 포함 확인 · 피드 가드 통과",
+    "migration": "없음",
+    "sw_version": "5.79-terminal-raw-capture-20261004",
+    "fable_note": "운영 실측: 12:13·12:21 연결 테스트·찾기 모두 .112 BAD_RESPONSE(연결은 성공, 거절 해소). 원본 바이트를 버리던 게 원인 확정을 막음 → 팀원이 진단 기록 + 표준 HTTP 해석 추가. 판정 경로(서버 5겹 대조) 무변경. 게이트 1회 대상"
+  },
+  "notes": [
+    "🔒 인쇄 보호파일 무접촉",
+    "0.3.4 서명 = 이전과 동일 — 덮어 설치",
+    "원본은 terminal_transactions.response_hex(실패 행) · activity_logs 찾기 기록 probed.raw 에만 — 화면에 내리지 않음"
+  ],
+  "irene_actions_after_deploy": [
+    "태블릿 앱 «새 버전 0.3.4» 업데이트 → 설정 › 결제 › Card › 연결 테스트 1번"
+  ],
+  "issues": [
+    "단말기가 연결은 받지만 응답을 앱이 읽지 못함(BAD_RESPONSE)"
+  ],
+  "upcoming": [
+    "단말기 응답 형식 맞춤 → RM 1.00 카드·QR 테스트"
+  ],
+  "behavior_changes": [
+    "화면 변화 없음 — 실패 시 진단 기록만 더 남는다"
+  ],
+  "check_areas": [
+    "카드 단말기 연결 테스트",
+    "안드로이드 앱 업데이트(0.3.4)"
+  ]
+}

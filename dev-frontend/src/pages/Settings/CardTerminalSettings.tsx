@@ -11,7 +11,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormInput, FormSelect, ModalButton as Button } from '../../components/UI/Modal';
-import { getEcrBridge, ecrExchange, ecrDiscoverAndReport } from '../../utils/nativeEcr';
+import { getEcrBridge, ecrExchange, ecrDiscoverAndReport, ecrErrorBody } from '../../utils/nativeEcr';
 import { getAuthToken } from '../../utils/auth';
 
 export interface CardTerminalValue { enabled?: boolean; provider?: string; host?: string; port?: number; transport?: string }
@@ -83,7 +83,7 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
       const job = j.data;
       const ex = await ecrExchange({ ...job.connection, payloadHex: job.request_hex, timeoutMs: 15000 });
       const up = await fetch(`/api/terminal/transactions/${job.id}/response`, {
-        method: 'POST', headers, body: JSON.stringify(ex.ok === true ? { response_hex: ex.responseHex } : { error: (ex as { error: string }).error }),
+        method: 'POST', headers, body: JSON.stringify(ex.ok === true ? { response_hex: ex.responseHex } : ecrErrorBody(ex as { error: string; rawHex?: string })),
       });
       const uj = await up.json().catch(() => null);
       const ok = up.ok && uj?.data?.status === 'approved';

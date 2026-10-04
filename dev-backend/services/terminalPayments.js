@@ -116,7 +116,7 @@ const pick = (r) => Object.fromEntries(RESULT_FIELDS.map(k => [k, r[k] == null ?
  * 브릿지가 올린 응답(또는 전송 실패)을 반영한다.
  * @returns {{ row, deduped?, parent? }}
  */
-async function applyResponse(row, { response_hex, error }) {
+async function applyResponse(row, { response_hex, error, raw_hex }) {
   if (FINAL.has(row.status)) return { row, deduped: true };
   if (row.status !== 'sent' && row.status !== 'pending') {
     // timeout/comm_error 뒤에 늦게 온 응답 — 받아 준다(단말기가 실제로 끝낸 결과다). 그 외 상태는 이미 처리 중.
@@ -126,7 +126,9 @@ async function applyResponse(row, { response_hex, error }) {
   if (!response_hex) {
     const kind = String(error || '').toUpperCase();
     const status = kind === 'TIMEOUT' ? 'timeout' : 'comm_error';
-    await row.update({ status, status_message: kind.slice(0, 200) || null, responded_at: new Date() });
+    // 읽지 못한 응답의 원본 바이트(앱 0.3.4+) — 단말기가 실제로 무엇을 보냈는지 남긴다(판정엔 안 씀, 2026-10-04 BAD_RESPONSE 실측)
+    const raw = raw_hex ? String(raw_hex).replace(/[^0-9A-Fa-f]/g, '').slice(0, 2000).toUpperCase() || null : null;
+    await row.update({ status, status_message: kind.slice(0, 200) || null, responded_at: new Date(), ...(raw ? { response_hex: raw } : {}) });
     if (row.parent_id && row.command === 'reprint') {
       const parent = await TerminalTransaction.findByPk(row.parent_id);
       if (parent && parent.status === 'recovering') await parent.update({ status: 'timeout' });
@@ -296,6 +298,7 @@ function summarizeDiscovery(body) {
       host: String(p.host), ok: !!p.ok, reflected: !!p.reflected,
       response: p.responseHex ? String(p.responseHex).replace(/[^0-9A-Fa-f]/g, '').slice(0, 120) : null,
       error: p.error ? String(p.error).slice(0, 40) : null,
+      raw: p.rawHex ? String(p.rawHex).replace(/[^0-9A-Fa-f]/g, '').slice(0, 1200) : null,
     })),
     device_ip_hint: body?.device ? String(body.device).slice(0, 40) : null,
   };

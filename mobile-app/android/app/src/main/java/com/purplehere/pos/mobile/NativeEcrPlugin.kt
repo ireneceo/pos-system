@@ -41,6 +41,9 @@ class NativeEcrPlugin : Plugin() {
     }
 
     private fun fail(error: String) = JSObject().apply { put("ok", false); put("error", error) }
+    /** 읽을 수 없는 응답도 받은 바이트를 그대로 돌려준다(앞 600바이트) — 서버에 남겨 단말기 실제 형식을 확인한다(2026-10-04 BAD_RESPONSE 원인 실측). */
+    private fun failRaw(error: String, raw: ByteArray) = fail(error).apply { if (raw.isNotEmpty()) put("rawHex", bytesToHex(raw.copyOfRange(0, minOf(raw.size, 600)))) }
+
 
     private fun hexToBytes(hex: String): ByteArray = ByteArray(hex.length / 2) { i -> hex.substring(i * 2, i * 2 + 2).toInt(16).toByte() }
     private fun bytesToHex(b: ByteArray): String = b.joinToString("") { "%02X".format(it) }
@@ -70,22 +73,21 @@ class NativeEcrPlugin : Plugin() {
                 val buf = ByteArrayOutputStream()
                 val chunk = ByteArray(4096)
                 while (true) {
-                    val n = try { inp.read(chunk) } catch (e: SocketTimeoutException) { return fail("TIMEOUT") }
+                    // 무응답 TIMEOUT 이어도 받은 바이트가 있으면 함께 남긴다(단말기가 연결을 안 닫는 경우 진단)
+                    val n = try { inp.read(chunk) } catch (e: SocketTimeoutException) { return failRaw("TIMEOUT", buf.toByteArray()) }
                     if (n < 0) break
                     buf.write(chunk, 0, n)
                     if (buf.size() > 200000) return fail("TOO_LARGE")
                 }
                 val raw = buf.toByteArray()
-                val text = String(raw, Charsets.ISO_8859_1)
-                val sep = text.indexOf("\r\n\r\n")
-                if (sep < 0) return fail("BAD_RESPONSE")
-                val bodyText = text.substring(sep + 4).filterNot { it.isWhitespace() }
+                val resBody = EcrHttp.body(raw) ?: return failRaw("BAD_RESPONSE", raw)
+                val bodyText = String(resBody, Charsets.ISO_8859_1).filterNot { it.isWhitespace() }
                 when {
                     bodyText.isNotEmpty() && bodyText.length % 2 == 0 && hexRe.matches(bodyText) ->
                         JSObject().apply { put("ok", true); put("responseHex", bodyText.uppercase()) }
-                    bodyText.isNotEmpty() && bodyText[0].code == 0x02 ->
-                        JSObject().apply { put("ok", true); put("responseHex", bytesToHex(text.substring(sep + 4).toByteArray(Charsets.ISO_8859_1))) }
-                    else -> fail("BAD_RESPONSE")
+                    resBody.isNotEmpty() && resBody[0].toInt() == 0x02 ->
+                        JSObject().apply { put("ok", true); put("responseHex", bytesToHex(resBody)) }
+                    else -> failRaw("BAD_RESPONSE", raw)
                 }
             } else {
                 out.write(if (transport == "tcp-bin") hexToBytes(upper) else upper.toByteArray(Charsets.US_ASCII)); out.flush()
@@ -189,9 +191,43 @@ class NativeEcrPlugin : Plugin() {
                 probed.put(JSObject().apply {
                     put("host", h); put("ok", ok); put("reflected", reflected)
                     if (resp.isNotEmpty()) put("responseHex", resp.take(200)) else put("error", r.getString("error") ?: "NO_RESPONSE")
+                    r.getString("rawHex")?.let { put("rawHex", it) }
                 })
             }
             call.resolve(JSObject().apply { put("ok", true); put("hosts", found); put("scanned", hosts.size); put("probed", probed) })
         }.start()
+    }
+}
+
+/** HTTP 응답 본문 해석 — 플러그인 밖 순수 함수(단위 테스트 EcrHttpTest). */
+internal object EcrHttp {
+    /** HTTP 응답 본문 — Content-Length 와 Transfer-Encoding: chunked 를 따른다(표준). 헤더 끝이 없으면 null. */
+    fun body(raw: ByteArray): ByteArray? {
+        val text = String(raw, Charsets.ISO_8859_1)
+        val sep = text.indexOf("\r\n\r\n")
+        if (sep < 0) return null
+        val headers = text.substring(0, sep).lowercase()
+        var body = raw.copyOfRange(sep + 4, raw.size)
+        if (Regex("(^|\r\n)transfer-encoding:[^\r\n]*chunked").containsMatchIn(headers)) {
+            val out = ByteArrayOutputStream()
+            var p = 0
+            while (p < body.size) {
+                var e = p
+                while (e + 1 < body.size && !(body[e] == '\r'.code.toByte() && body[e + 1] == '\n'.code.toByte())) e++
+                if (e + 1 >= body.size) break
+                val size = String(body, p, e - p, Charsets.ISO_8859_1).substringBefore(';').trim().toIntOrNull(16) ?: break
+                if (size == 0) break
+                val start = e + 2
+                if (start + size > body.size) { out.write(body, start, body.size - start); break }
+                out.write(body, start, size)
+                p = start + size + 2
+            }
+            body = out.toByteArray()
+        } else {
+            Regex("""(^|\r\n)content-length:\s*(\d+)""").find(headers)?.groupValues?.get(2)?.toIntOrNull()?.let { n ->
+                if (n in 0..body.size) body = body.copyOfRange(0, n)
+            }
+        }
+        return body
     }
 }

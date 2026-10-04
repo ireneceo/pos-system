@@ -64,9 +64,9 @@ router.post('/transactions', async (req, res) => {
 router.post('/transactions/:id/response', async (req, res) => {
   try {
     const row = await loadTxn(req, res); if (!row) return;
-    const { response_hex, error } = req.body || {};
+    const { response_hex, error, raw_hex } = req.body || {};
     if (!response_hex && !error) return res.status(400).json({ success: false, message: 'response_hex or error is required' });
-    const out = await svc.applyResponse(row, { response_hex, error });
+    const out = await svc.applyResponse(row, { response_hex, error, raw_hex });
     res.json({ success: true, data: { ...svc.publicRow(out.row), parent: out.parent ? svc.publicRow(out.parent) : null, link_error: out.linkError || null }, ...(out.deduped ? { deduped: true } : {}) });
   } catch (e) { send(res, e, 'POST /response'); }
 });

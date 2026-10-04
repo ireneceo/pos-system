@@ -6,7 +6,7 @@
  */
 export type EcrTransport = 'http-hex' | 'tcp-hex' | 'tcp-bin';
 export interface EcrJob { host: string; port: number; transport: EcrTransport; payloadHex: string; timeoutMs: number }
-export type EcrResult = { ok: true; responseHex: string } | { ok: false; error: string };
+export type EcrResult = { ok: true; responseHex: string } | { ok: false; error: string; rawHex?: string };
 interface EcrBridge {
   available: boolean;
   exchange: (job: EcrJob) => Promise<EcrResult>;
@@ -25,11 +25,14 @@ export async function ecrExchange(job: EcrJob): Promise<EcrResult> {
   try {
     const r = await b.exchange(job);
     if (r && r.ok === true && typeof (r as any).responseHex === 'string') return r;
-    return { ok: false, error: String((r as any)?.error || 'NET_ERROR') };
+    return { ok: false, error: String((r as any)?.error || 'NET_ERROR'), ...(typeof (r as any)?.rawHex === 'string' ? { rawHex: (r as any).rawHex } : {}) };
   } catch (e: any) {
     return { ok: false, error: String(e?.message || 'NET_ERROR').slice(0, 60) };
   }
 }
+
+/** 실패 결과를 서버로 보낼 본문 — 앱이 받은 원본 바이트가 있으면 함께(진단 기록용). */
+export const ecrErrorBody = (r: { error: string; rawHex?: string }) => ({ error: r.error, ...(r.rawHex ? { raw_hex: r.rawHex } : {}) });
 
 /** 연결 자체가 안 된 실패 — 요청이 단말기에 닿지 않았다. 단말기를 다시 찾아 같은 요청을 보내도 이중 결제가 없다. */
 export const isConnectFailure = (error: string) => /^CONNECT_/.test(error);

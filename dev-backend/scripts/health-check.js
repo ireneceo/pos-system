@@ -6578,7 +6578,7 @@ function definePrintTests({ adminToken }) {
   });
 
   // 2026-10-04: 매장 단말기 = PayHere Direct — 결과 앞에 Notify(C2) 가 붙어 와도 승인을 버리지 않는다 · 찾기용 프레임은 기록 행을 안 만든다
-  test('terminal', '단말기 Notify+결과 이어붙은 응답 → 승인 반영 · Notify 만이면 422 · 찾기용(probe) Echo 는 행 0', async () => {
+  test('terminal', '단말기 Notify+결과 이어붙은 응답 → 승인 반영 · Notify 만이면 422 · 찾기용(probe) Echo 는 행 0 · 못 읽은 응답 원본은 진단 기록만', async () => {
     const { TerminalTransaction } = require('../models');
     const { respond } = require('./mock-ghl-terminal');
     const ecr = require('../utils/ghlEcr');
@@ -6599,6 +6599,12 @@ function definePrintTests({ adminToken }) {
       if (only.status !== 422 || only.body?.code !== 'FRAME_NOTIFY_ONLY') return fail(`Notify만 ${only.status} ${only.body?.code}`);
       const mixed = await post(`/terminal/transactions/${a.body.data.id}/response`, { response_hex: notify('0001') + notify('0003') + notify('0012') + respond(a.body.data.request_hex, 'approve') });
       if (mixed.body?.data?.status !== 'approved' || !mixed.body.data.approval_code) return fail(`이어붙음 ${mixed.status} ${mixed.body?.data?.status}`);
+      // 읽지 못한 응답의 원본 바이트는 진단 기록으로만 남는다(승인 아님)
+      const e = await post('/terminal/echo', { restaurant_id: fx.rest.id }); ids.push(e.body?.data?.id);
+      const bad = await post(`/terminal/transactions/${e.body.data.id}/response`, { error: 'BAD_RESPONSE', raw_hex: '485454502F312E31203230300D0A zz' });
+      if (bad.body?.data?.status !== 'comm_error') return fail(`raw 상태 ${bad.body?.data?.status}`);
+      const er = await TerminalTransaction.findByPk(e.body.data.id);
+      if (er.response_hex !== '485454502F312E31203230300D0A') return fail(`raw 저장 ${er.response_hex}`);
       return true;
     } catch (e) { return fail(`예외: ${e.message}`); }
     finally { await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {}); await fx.restore(); }

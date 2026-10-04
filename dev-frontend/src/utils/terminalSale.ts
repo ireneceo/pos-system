@@ -7,7 +7,7 @@
  * 이 파일은 프로토콜을 모른다(hex 를 열어 보지 않는다). 승인 여부는 서버 응답의 status 만 믿는다.
  */
 import { getAuthToken } from './auth';
-import { ecrExchange, ecrDiscoverAndReport, isConnectFailure, EcrTransport, EcrResult } from './nativeEcr';
+import { ecrExchange, ecrDiscoverAndReport, isConnectFailure, ecrErrorBody, EcrTransport, EcrResult } from './nativeEcr';
 
 export interface TerminalTxn {
   id: number; status: string; status_code?: string | null; status_text?: string | null; amount?: string;
@@ -71,7 +71,7 @@ async function roundTrip(job: Job, restaurantId: number): Promise<{ row: Termina
       return { row: null, parent: null, choose: found.hosts };
     }
   }
-  let up = await api(`/transactions/${job.id}/response`, r.ok === true ? { response_hex: r.responseHex } : { error: (r as { error: string }).error });
+  let up = await api(`/transactions/${job.id}/response`, r.ok === true ? { response_hex: r.responseHex } : ecrErrorBody(r as { error: string; rawHex?: string }));
   if (!up.ok && up.status === 422) up = await api(`/transactions/${job.id}/response`, { error: 'BAD_RESPONSE' });
   if (!up.ok) return { row: null, parent: null, error: up.json?.message || 'Server error' };
   const notConnected = r.ok !== true && isConnectFailure((r as { error: string }).error);
