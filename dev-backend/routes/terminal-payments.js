@@ -113,7 +113,7 @@ router.post('/echo', async (req, res) => {
   try {
     const r = await restaurantFrom(req, req.body?.restaurant_id);
     if (!r.rid) return res.status(r.status).json({ success: false, message: r.message });
-    res.status(201).json({ success: true, data: await svc.createEcho({ restaurantId: r.rid, user: req.user }) });
+    res.status(201).json({ success: true, data: await svc.createEcho({ restaurantId: r.rid, user: req.user, probe: req.body?.probe === true }) });
   } catch (e) { send(res, e, 'POST /echo'); }
 });
 

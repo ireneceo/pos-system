@@ -163,3 +163,34 @@ describe('요청 빌더 왕복', () => {
     expect(ecr.classifyStatus(ecr.CMD.checkStatus, 'C3', null)).toBe('pending');
   });
 });
+
+// 2026-10-04 매장 단말기 = PayHere Direct — 결과 전에 Notify(C2)·ACK 가 같은 본문에 이어 올 수 있다(규격 §5.2)
+describe('결과 프레임 고르기 — Notify·ACK 건너뜀', () => {
+  const notify = (code) => ecr.bufToHex(ecr.buildFrame({ command: ecr.CMD.notify, source: Buffer.from([0x0b, 0x01]), dest: Buffer.from([0x0c, 0x01]), tags: [['D004', Buffer.from(code, 'hex')]] }));
+  test('단일 프레임은 그대로', () => {
+    const { frame, frameCount } = ecr.pickResultFrame(SALE_RES);
+    expect(frameCount).toBe(1);
+    expect(frame.commandName).toBe('sale');
+    expect(frame.status).toBe('00');
+  });
+  test('Notify 둘 + ACK + 결과 → 결과만', () => {
+    const { frame, frameCount } = ecr.pickResultFrame(notify('0001') + SALE_ACK + notify('0011') + SALE_RES);
+    expect(frameCount).toBe(4);
+    expect(frame.commandName).toBe('sale');
+    expect(ecr.decodeAmount(frame.tags.C001)).toBe('10.00');
+    expect(frame.hex).toBe(SALE_RES);
+  });
+  test('Notify 만 → 결과 없음으로 거부', () => {
+    expect(() => ecr.pickResultFrame(notify('0011'))).toThrow(expect.objectContaining({ code: 'FRAME_NOTIFY_ONLY' }));
+  });
+  test('ACK 만 → FRAME_ACK_ONLY', () => {
+    expect(() => ecr.pickResultFrame(SALE_ACK)).toThrow(expect.objectContaining({ code: 'FRAME_ACK_ONLY' }));
+  });
+  test('이어 붙인 조각 중 하나라도 CRC 손상 → 거부(고르기로 덮지 않음)', () => {
+    const bad = notify('0011').slice(0, -6) + '0000' + '03';
+    expect(() => ecr.pickResultFrame(bad + SALE_RES)).toThrow(expect.objectContaining({ code: 'FRAME_CRC' }));
+  });
+  test('프레임 사이 잡바이트 → 거부', () => {
+    expect(() => ecr.pickResultFrame('FF' + SALE_RES)).toThrow(expect.objectContaining({ code: 'FRAME_DELIMITER' }));
+  });
+});

@@ -59,7 +59,7 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
     setFinding(true); setFound(null); setTestResult(null);
     try {
       const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` };
-      const r = await fetch('/api/terminal/echo', { method: 'POST', headers, body: JSON.stringify({ restaurant_id: restaurantId }) });
+      const r = await fetch('/api/terminal/echo', { method: 'POST', headers, body: JSON.stringify({ restaurant_id: restaurantId, probe: true }) });
       const j = await r.json().catch(() => null);
       if (!r.ok || !j?.success) { setTestResult({ ok: false, text: j?.message || t('settingsPage.cardTerminal.findNone') }); setLinkState('none'); return null; }
       const hosts = await ecrDiscoverAndReport(restaurantId, { port: Number(v.port) || 33898, transport: (v.transport as any) || 'http-hex', probeHex: j.data.request_hex });

@@ -20,7 +20,7 @@ import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
 import { isNativeDesktop } from '../../utils/nativeDesktop';
-import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, HelpCircle, BookOpen, Download, Building2, MapPin, Gift, Bell, Target } from 'lucide-react';
+import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, HelpCircle, BookOpen, Download, RotateCw, Building2, MapPin, Gift, Bell, Target } from 'lucide-react';
 import { appDownloadTarget } from '../../utils/nativeAppUpdate';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
 
@@ -778,8 +778,9 @@ const LanguageSelectorWrapper = styled.div`
   border-top: 1px solid #C7CED6;
 `;
 
+// 2026-10-04 Irene 「불필요한 여백이 위아래좌우에 많아 … 내용이 너무 잘려」 — 바깥·안쪽 여백이 두 겹(16+12)이었다
 const UserInfo = styled.div`
-  padding: 16px;
+  padding: 6px 8px;
   border-top: 1px solid #C7CED6;
   background: #F1F4F8;
 `;
@@ -883,8 +884,8 @@ const FooterRailLang = styled.div`
 const UserCard = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 8px 6px;
   cursor: pointer;
   border-radius: 8px;
   transition: background 0.2s;
@@ -895,8 +896,8 @@ const UserCard = styled.div`
 `;
 
 const UserAvatar = styled.div<{ role: string }>`
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -930,9 +931,11 @@ const UserName = styled.div`
   font-weight: 600;
   color: #0A2540;
   margin-bottom: 2px;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 `;
 
 const UserRole = styled.div`
@@ -945,9 +948,11 @@ const UserEmail = styled.div`
   font-size: 10px;
   color: #8898AA;
   margin-top: 1px;
-  white-space: nowrap;
+  word-break: break-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 `;
 
 interface MainLayoutProps {
@@ -995,6 +1000,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     if ((window as any).__PURPLE_DESKTOP) navigate('/docs'); else window.open('/docs', '_blank', 'noopener');
     setHelpOpen(false); closeSidebar?.();
   };
+  // 도움말 › 새로고침 — 앱(안드로이드·Windows)에는 브라우저 새로고침 버튼이 없다(2026-10-04 Irene 「안드로이드앱에 리플래시 있어야해」).
+  //   당겨서 새로고침은 넣지 않는다 — POS·주방에서 스크롤하다 실수로 새로고침되면 작업 중 주문이 끊긴다.
+  const isInApp = typeof window !== 'undefined' && !!(window as any).__PURPLE_DESKTOP;
+  const reloadApp = () => { setHelpOpen(false); window.location.reload(); };
   // 도움말 › 다운로드 — 기기에 맞는 계산대 앱 (utils/nativeAppUpdate.appDownloadTarget 단일 판정)
   const openDownload = () => {
     const target = appDownloadTarget();
@@ -3857,6 +3866,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <BookOpen size={18} strokeWidth={2} />
                 </FooterRailButton>
               )}
+              {helpOpen && isInApp && (
+                <FooterRailButton
+                  type="button"
+                  onClick={reloadApp}
+                  title={t('nav.reload', 'Reload') || ''}
+                >
+                  <RotateCw size={18} strokeWidth={2} />
+                </FooterRailButton>
+              )}
               {helpOpen && (
                 <FooterRailButton
                   type="button"
@@ -3982,6 +4000,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     <span style={{ flex: 1 }}>{t('nav.guides', 'Guides')}</span>
                     <span aria-hidden="true" style={{ fontSize: 11, color: '#6B7280' }}>↗</span>
                   </button>
+                  {isInApp && (
+                    <button
+                      type="button"
+                      onClick={reloadApp}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 16px', border: 'none', borderTop: '1px solid #E3E8EE', background: 'transparent', color: '#0A2540', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      <RotateCw size={15} strokeWidth={1.75} />
+                      <span style={{ flex: 1 }}>{t('nav.reload', 'Reload')}</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={openDownload}

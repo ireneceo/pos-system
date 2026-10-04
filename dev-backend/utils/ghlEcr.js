@@ -22,7 +22,7 @@ const ADDR_TERMINAL = Buffer.from([0x0b, 0x01]);
 
 const CMD = Object.freeze({
   sale: 0xa1, void: 0xa2, settlement: 0xa3, refund: 0xb1, cancel: 0xc1,
-  echo: 0xc3, getLastSettlement: 0xc5, checkStatus: 0xe3, reprint: 0xe6,
+  notify: 0xc2, echo: 0xc3, getLastSettlement: 0xc5, checkStatus: 0xe3, reprint: 0xe6,
 });
 const CMD_NAME = Object.freeze(Object.fromEntries(Object.entries(CMD).map(([k, v]) => [v, k])));
 
@@ -165,6 +165,34 @@ function parseFrame(input) {
   };
 }
 
+/**
+ * 응답 본문에서 결과 프레임 하나를 고른다(2026-10-04 — 매장 단말기가 «PayHere Direct» 로 확인됨).
+ * 규격 §5.2: Direct 는 거래 중 Notify(C2, «카드 넣음·PIN 입력·처리 중»)를 먼저 보낸다. 같은 연결의 ACK 도 앞에 올 수 있다.
+ * HTTP 본문이 «Notify… + 결과» 로 이어 붙어 오면 통째로는 길이 검사에 걸려 승인이 버려진다.
+ * → STX..ETX 를 길이로 잘라 각각 검증(CRC 포함)하고, ACK·Notify 를 건너뛴 **마지막 결과 프레임**을 고른다.
+ * 프레임이 하나뿐이면 지금과 똑같다. 손상된 조각이 하나라도 있으면 거부(throw) — 고르기로 위조를 덮지 않는다.
+ */
+function pickResultFrame(input) {
+  const buf = Buffer.isBuffer(input) ? input : hexToBuf(input);
+  const frames = [];
+  let p = 0;
+  while (p < buf.length) {
+    if (buf[p] !== STX || p + 10 > buf.length) { const e = new Error('Unexpected bytes between frames'); e.code = 'FRAME_DELIMITER'; throw e; }
+    const end = p + 10 + buf.readUInt16BE(p + 8) + 3;
+    if (end > buf.length) { const e = new Error('Truncated frame'); e.code = 'FRAME_LENGTH'; throw e; }
+    const piece = buf.subarray(p, end);
+    frames.push(Object.assign(parseFrame(piece), { hex: bufToHex(piece) }));
+    p = end;
+  }
+  const results = frames.filter((f) => !f.isAck && f.command !== CMD.notify);
+  if (!results.length) {
+    const e = new Error(frames.some((f) => f.isAck) ? 'Received an acknowledgement, not a result' : 'Only progress messages, no result');
+    e.code = frames.some((f) => f.isAck) ? 'FRAME_ACK_ONLY' : 'FRAME_NOTIFY_ONLY'; throw e;
+  }
+  const frame = results[results.length - 1];
+  return { frame, frameCount: frames.length };
+}
+
 /* ─────────────────────────── 태그 값 해석 ─────────────────────────── */
 const ascii = (b) => (b ? Buffer.from(b).toString('latin1').replace(/\0+$/g, '').trim() : null);
 const bcd = (b) => (b ? Buffer.from(b).toString('hex') : null);
@@ -291,7 +319,7 @@ const echoRequest = () => buildFrame({ command: CMD.echo });
 
 module.exports = {
   STX, ETX, CMD, CMD_NAME, TAG, STATUS_TEXT, CARD_CODE,
-  crc16Arc, toCents, encodeAmount, decodeAmount, tlv, buildFrame, parseFrame, hexToBuf, bufToHex,
+  crc16Arc, toCents, encodeAmount, decodeAmount, tlv, buildFrame, parseFrame, pickResultFrame, hexToBuf, bufToHex,
   cardTypeCode, mapCardType, tenderFromResult, readResult, classifyStatus,
   saleRequest, reprintRequest, checkStatusRequest, voidRequest, echoRequest,
 };

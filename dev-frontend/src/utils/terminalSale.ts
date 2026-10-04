@@ -42,7 +42,7 @@ async function api(path: string, body: any): Promise<{ ok: boolean; status: numb
 
 /** 같은 와이파이에서 단말기를 찾는다. 1대면 그 주소를 매장 설정에 저장하고 돌려준다. */
 async function findTerminal(restaurantId: number, conn: Job['connection']): Promise<{ host?: string; hosts: string[] }> {
-  const echo = await api('/echo', { restaurant_id: restaurantId });
+  const echo = await api('/echo', { restaurant_id: restaurantId, probe: true });
   if (!echo.ok) return { hosts: [] };
   const hosts = await ecrDiscoverAndReport(restaurantId, { port: conn.port, transport: conn.transport, probeHex: echo.json.data.request_hex });
   if (hosts.length !== 1) return { hosts };

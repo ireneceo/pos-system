@@ -333,7 +333,8 @@
     "lockedHint": "Upgrade to calculate stock and recipe cost automatically",
     "help": "Help",
     "guides": "Guides",
-    "download": "Download app"
+    "download": "Download app",
+    "reload": "Reload"
   },
   "language": {
     "en": "English",

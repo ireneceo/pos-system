@@ -91,6 +91,7 @@ function tcp(job) {
         if (frames[end] !== 0x03) { p = s + 1; continue; }
         const frame = frames.subarray(s, end + 1);
         if (len === 0 && frame[7] === 0x00 && frame[6] !== 0xc3) { p = end + 1; continue; } // ACK — 결과 아님
+        if (frame[6] === 0xc2) { p = end + 1; continue; } // Notify(PayHere Direct 진행 알림) — 결과 아님
         return finish({ ok: true, responseHex: frame.toString('hex').toUpperCase() });
       }
     });

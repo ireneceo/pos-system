@@ -109,7 +109,9 @@ class NativeEcrPlugin : Plugin() {
                         if (frames.size <= end) break
                         if (frames[end].toInt() != 0x03) { p = s + 1; continue }
                         val isAck = len == 0 && frames[s + 7].toInt() == 0 && (frames[s + 6].toInt() and 0xff) != 0xC3
-                        if (isAck) { p = end + 1; continue }
+                        // PayHere Direct 는 결과 전에 Notify(C2 — 카드 넣음·PIN·처리 중)를 보낸다. 결과가 아니다 → 다음 프레임을 기다린다.
+                        val isNotify = (frames[s + 6].toInt() and 0xff) == 0xC2
+                        if (isAck || isNotify) { p = end + 1; continue }
                         return JSObject().apply { put("ok", true); put("responseHex", bytesToHex(frames.copyOfRange(s, end + 1))) }
                     }
                 }

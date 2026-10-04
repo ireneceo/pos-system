@@ -6577,6 +6577,33 @@ function definePrintTests({ adminToken }) {
     finally { await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {}); await fx.restore(); }
   });
 
+  // 2026-10-04: 매장 단말기 = PayHere Direct — 결과 앞에 Notify(C2) 가 붙어 와도 승인을 버리지 않는다 · 찾기용 프레임은 기록 행을 안 만든다
+  test('terminal', '단말기 Notify+결과 이어붙은 응답 → 승인 반영 · Notify 만이면 422 · 찾기용(probe) Echo 는 행 0', async () => {
+    const { TerminalTransaction } = require('../models');
+    const { respond } = require('./mock-ghl-terminal');
+    const ecr = require('../utils/ghlEcr');
+    const fx = await terminalFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const ids = [];
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const post = (p, b) => request('POST', p, b, fx.auth);
+    const notify = (code) => ecr.bufToHex(ecr.buildFrame({ command: ecr.CMD.notify, source: Buffer.from([0x0b, 0x01]), dest: Buffer.from([0x0c, 0x01]), tags: [['D004', Buffer.from(code, 'hex')]] }));
+    try {
+      const before = await TerminalTransaction.count({ where: { restaurant_id: fx.rest.id } });
+      const pr = await post('/terminal/echo', { restaurant_id: fx.rest.id, probe: true });
+      if (pr.status !== 201 || !pr.body?.data?.request_hex || pr.body.data.id !== null) return fail(`probe ${pr.status} id=${pr.body?.data?.id}`);
+      const after = await TerminalTransaction.count({ where: { restaurant_id: fx.rest.id } });
+      if (after !== before) return fail(`probe 가 행을 만듦 ${before}→${after}`);
+      const a = await post('/terminal/transactions', { restaurant_id: fx.rest.id, amount: '5.00' }); ids.push(a.body?.data?.id);
+      const only = await post(`/terminal/transactions/${a.body.data.id}/response`, { response_hex: notify('0001') + notify('0011') });
+      if (only.status !== 422 || only.body?.code !== 'FRAME_NOTIFY_ONLY') return fail(`Notify만 ${only.status} ${only.body?.code}`);
+      const mixed = await post(`/terminal/transactions/${a.body.data.id}/response`, { response_hex: notify('0001') + notify('0003') + notify('0012') + respond(a.body.data.request_hex, 'approve') });
+      if (mixed.body?.data?.status !== 'approved' || !mixed.body.data.approval_code) return fail(`이어붙음 ${mixed.status} ${mixed.body?.data?.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {}); await fx.restore(); }
+  });
+
   test('terminal', '단말기 무응답 → Reprint 복구(승인/없음) · EA → Check Status · 수동은 사유 필수', async () => {
     const { TerminalTransaction } = require('../models');
     const { respond } = require('./mock-ghl-terminal');

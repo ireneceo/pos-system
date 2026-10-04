@@ -140,10 +140,10 @@ async function applyResponse(row, { response_hex, error }) {
     throw err(422, 'FRAME_REFLECTED', 'Response is our own request echoed back — not a terminal');
   }
   let frame;
-  try { frame = ecr.parseFrame(response_hex); } catch (e) {
+  // 한 본문에 ACK·Notify(진행 알림, PayHere Direct) + 결과가 이어 올 수 있다 → 결과 프레임만 고른다(utils/ghlEcr.pickResultFrame)
+  try { ({ frame } = ecr.pickResultFrame(response_hex)); } catch (e) {
     throw err(422, e.code || 'FRAME_INVALID', `Terminal response rejected: ${e.message}`);
   }
-  if (frame.isAck) throw err(422, 'FRAME_ACK_ONLY', 'Received an acknowledgement, not a result');
   if (frame.command !== CMD_OF[row.command]) throw err(422, 'FRAME_COMMAND', 'Response is for a different command');
   const result = ecr.readResult(frame);
   if (result.amount != null && money(result.amount) !== money(row.amount) && row.command !== 'echo') {
@@ -250,10 +250,13 @@ async function markManual(row, note, tender = {}) {
   return Object.assign(row, { linkError });
 }
 
-async function createEcho({ restaurantId, user }) {
+async function createEcho({ restaurantId, user, probe = false }) {
   // 주소가 비어 있어도 Echo 프레임은 준다 — 계산대 앱의 «단말기 자동 찾기» 가 이 프레임으로 와이파이 안을 확인한다
   const cfg = await terminalConfig(restaurantId);
   const req = ecr.bufToHex(ecr.echoRequest());
+  // 자동 찾기용 프레임만 필요할 때는 기록 행을 만들지 않는다 — 결과를 돌려줄 곳이 없어 «sent» 로 영영 남았다(2026-10-04 운영 9행).
+  //   찾기 결과는 /discovery-report 가 활동 기록으로 남긴다.
+  if (probe) return { id: null, ecr_invoice_no: null, request_hex: req, timeout_ms: TIMEOUT_MS, connection: { host: cfg.host, port: cfg.port, transport: cfg.transport } };
   const row = await TerminalTransaction.create({ restaurant_id: restaurantId, command: 'echo', status: 'sent', request_hex: req, sent_at: new Date(), cashier_id: user?.id || null });
   return job(row, cfg, req);
 }

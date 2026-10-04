@@ -12,3 +12,9 @@
   - `verify-all --only print-routes`(자동인쇄 전 루트 실제 실행) → **통과**
   - `verify-all --only print-field-contract` → **통과**
   - `check-print-guard` → 재등록 후 **8/8 변경 없음**
+
+## 2026-10-04T12:00Z — MainLayout.tsx (사이드바 프로필 칸 여백·두 줄 표시 + 앱 안 도움말 «새로고침») — Fable 게이트 PASS 뒤 bless
+- Irene 원문 「이 내용 위아래 좌우에 여백 왜 안줄였어?」 · 「안드로이드앱에 리플래시 있어야해」
+- diff 안 'print' 문자열 0줄 · `_printPollFn` 무접촉 · 새로고침은 `window.location.reload()`(주방인쇄는 POS1 폴러 DB 단일경로라 분실 없음)
+- `health-check --category=print` → **11/11** · `check-print-guard` → 재등록 후 **8/8 변경 없음**
+- 판정문 `.claude/fable-verdict-20261004-terminal-direct-gate.md` §5 — manifest 가 git 추적 파일이라 **bless → 마커** 순서
