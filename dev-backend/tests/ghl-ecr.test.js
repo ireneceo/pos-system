@@ -194,3 +194,35 @@ describe('결과 프레임 고르기 — Notify·ACK 건너뜀', () => {
     expect(() => ecr.pickResultFrame('FF' + SALE_RES)).toThrow(expect.objectContaining({ code: 'FRAME_DELIMITER' }));
   });
 });
+
+// 2026-10-04 Fable 설계(terminal-void-direct) §7-1 — Void 프레임 · B0/CA 분류 · HTTP 거절 해석
+describe('Void(A2) · Direct 실패 분류', () => {
+  test('Void 요청 = 규격 §9.7 샘플과 바이트 동일(CRC 9622)', () => {
+    const f = ecr.buildFrame({ command: ecr.CMD.void, ackIndicator: 0x10, tags: [[ecr.TAG.amount, ecr.encodeAmount('10.00')], [ecr.TAG.ecrInvoice, 'ECR-202502060934']] });
+    expect(ecr.bufToHex(f)).toBe('02000C010B01A210001EC0010006000000001000C01300104543522D323032353032303630393334962203');
+  });
+  test('voidRequest 는 C001 금액 + C013 ECR 송장', () => {
+    const f = ecr.parseFrame(ecr.voidRequest({ amount: '1.06', ecrInvoiceNo: 'PH13A29' }));
+    expect(f.commandName).toBe('void');
+    expect(ecr.decodeAmount(f.tags.C001)).toBe('1.06');
+    expect(f.tags.C013.toString()).toBe('PH13A29');
+  });
+  test('B0·CA 는 단말기가 답한 최종 결과 = declined (comm_error 아님)', () => {
+    expect(ecr.classifyStatus(ecr.CMD.sale, 'B0')).toBe('declined');
+    expect(ecr.classifyStatus(ecr.CMD.sale, 'CA')).toBe('declined');
+    expect(ecr.classifyStatus(ecr.CMD.sale, 'C7')).toBe('cancelled');
+    expect(ecr.classifyStatus(ecr.CMD.sale, 'EA')).toBe('pending');
+    expect(ecr.classifyStatus(ecr.CMD.void, 'C5')).toBe('declined');
+    expect(ecr.classifyStatus(ecr.CMD.void, 'C3')).toBe('not_found');
+  });
+  test('parseHttpRaw — 운영 tx30 꼴 «HTTP 400 BUSY»', () => {
+    const raw = '485454502F312E3120343030204261642052657175657374200D0A436F6E74656E742D547970653A206170706C69636174696F6E2F6A736F6E0D0A446174653A2053756E2C2034204F637420323032362031353A33323A303920474D540D0A436F6E6E656374696F6E3A20636C6F73650D0A436F6E74656E742D4C656E6774683A20340D0A0D0A42555359';
+    expect(ecr.parseHttpRaw(raw)).toEqual({ status: 400, body: 'BUSY' });
+  });
+  test('parseHttpRaw — 상태줄 없음·본문이 프레임이면 null', () => {
+    expect(ecr.parseHttpRaw('02000B010C01C30000003B5003')).toBeNull();
+    const framed = Buffer.from('HTTP/1.1 200 OK\r\nContent-Length: 26\r\n\r\n02000B010C01C30000003B5003', 'latin1').toString('hex');
+    expect(ecr.parseHttpRaw(framed)).toBeNull();
+    expect(ecr.parseHttpRaw('')).toBeNull();
+  });
+});

@@ -14,7 +14,7 @@ export interface TerminalTxn {
   card_type?: string | null; card_brand?: string | null; tender_method?: 'card' | 'ewallet' | null; ewallet_type?: string | null; approval_code?: string | null; masked_pan?: string | null;
   terminal_invoice_no?: string | null; ecr_invoice_no?: string | null; message_prompt?: string | null;
 }
-export type TerminalPhase = 'starting' | 'waiting' | 'recovering' | 'checking';
+export type TerminalPhase = 'starting' | 'waiting' | 'recovering' | 'checking' | 'voiding';
 export type TerminalOutcome =
   /** linkError 'DOUBLE_APPROVAL' = 승인은 됐지만 이 주문에 승인이 주문 금액보다 많다(단말기에서 하나 Void) */
   | { kind: 'approved'; txn: TerminalTxn; linkError?: string | null; reused?: boolean }
@@ -60,7 +60,7 @@ export async function saveTerminalHost(restaurantId: number, host: string): Prom
  * 연결 자체가 안 되면(요청이 단말기에 닿지 않음) 와이파이 안에서 단말기를 찾아 **같은 요청**을 다시 보낸다.
  * 연결 뒤 무응답(TIMEOUT)은 다시 보내지 않는다 — 단말기가 이미 처리했을 수 있다(이중 결제 방지).
  */
-async function roundTrip(job: Job, restaurantId: number): Promise<{ row: TerminalTxn | null; parent: TerminalTxn | null; error?: string; choose?: string[]; linkError?: string | null }> {
+export async function roundTrip(job: Job, restaurantId: number): Promise<{ row: TerminalTxn | null; parent: TerminalTxn | null; error?: string; choose?: string[]; linkError?: string | null }> {
   let r: EcrResult = await ecrExchange({ ...job.connection, payloadHex: job.request_hex, timeoutMs: job.timeout_ms });
   if (r.ok !== true && isConnectFailure((r as { error: string }).error)) {
     const found = await findTerminal(restaurantId, job.connection);
@@ -79,8 +79,16 @@ async function roundTrip(job: Job, restaurantId: number): Promise<{ row: Termina
 }
 
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
-// 단말기가 준 문구(영문, 단말기 표기 그대로) 또는 'reason:<키>' — 화면이 키를 번역한다
-const failText = (t: TerminalTxn) => t.message_prompt || t.status_text || (t.status_code ? `reason:code:${t.status_code}` : 'reason:notApproved');
+// 상태 코드 → 우리 문구 키(2026-10-04 Fable 설계 §2-1). 코드 대신 캐셔가 할 일을 말한다.
+//   B0 은행 무응답 · CA 호스트 통신 실패 · H4xx 단말기가 바빠 요청을 안 받음 · C0 카드 안 댐 · C7 단말기에서 취소 · C1 받을 수 없는 카드
+const CODE_REASON: Record<string, string> = { B0: 'bankTimeout', CA: 'hostComm', C0: 'cardTimeout', C7: 'cancelledOnTerminal', C1: 'notSupported' };
+// 그 외: 단말기가 준 문구(영문, 단말기 표기 그대로) 또는 'reason:code:<코드>' — 화면이 키를 번역한다
+const failText = (t: TerminalTxn) => {
+  const code = t.status_code || '';
+  if (CODE_REASON[code]) return `reason:${CODE_REASON[code]}`;
+  if (/^H4\d\d$/.test(code)) return 'reason:terminalBusy';
+  return t.message_prompt || t.status_text || (code ? `reason:code:${code}` : 'reason:notApproved');
+};
 
 export async function runTerminalSale(opts: {
   restaurantId: number; orderId?: number | null; amount: number; cashierName?: string;
@@ -128,7 +136,13 @@ export async function runTerminalSale(opts: {
     opts.onPhase?.('recovering');
     const rc = await api(`/transactions/${sale.id}/recover`, {});
     if (rc.ok) {
-      const r = await roundTrip(rc.json.data, opts.restaurantId);
+      let r = await roundTrip(rc.json.data, opts.restaurantId);
+      // 단말기가 복구 요청을 HTTP 4xx 로 «받기 전에» 거절했다(운영 «HTTP 400 BUSY») — 3초 뒤 1회만 다시(Fable 설계 §2-3)
+      if (r.row && /^H4\d\d$/.test(r.row.status_code || '')) {
+        await sleep(3000);
+        const rc2 = await api(`/transactions/${sale.id}/recover`, {});
+        if (rc2.ok) r = await roundTrip(rc2.json.data, opts.restaurantId);
+      }
       if (r.parent) txn = r.parent;
       if (r.linkError) linkError = r.linkError;
     }
@@ -147,6 +161,33 @@ export async function recordTerminalManually(
 ): Promise<{ ok: boolean; message?: string; txn?: TerminalTxn }> {
   const r = await api(`/transactions/${txnId}/manual`, { note, ...tender });
   return r.ok ? { ok: true, txn: r.json.data } : { ok: false, message: r.json?.message || 'Could not save' };
+}
+
+export type VoidOutcome =
+  | { kind: 'voided'; parent: TerminalTxn | null; already: boolean }
+  | { kind: 'notFound'; parent: TerminalTxn | null; message: string }
+  | { kind: 'failed'; parent: TerminalTxn | null; message: string }
+  | { kind: 'unknown'; message: string }
+  | { kind: 'error'; code?: string; message: string };
+
+/**
+ * 단말기 결제 취소(Void A2) 1건 — 서버가 프레임을 만들고 판정한다(Fable 설계 2026-10-04 §3).
+ * voided = 00(지금 취소됨) 또는 C5(이미 취소돼 있음). 응답이 없으면 unknown — 다시 눌러도 안전하다(갔으면 C5).
+ */
+export async function voidTerminalTxn(txnId: number, restaurantId: number, voidPin?: string): Promise<VoidOutcome> {
+  const v = await api(`/transactions/${txnId}/void`, voidPin ? { void_pin: voidPin } : {});
+  if (!v.ok) {
+    if (v.json?.code === 'ALREADY_VOIDED') return { kind: 'voided', parent: null, already: true };
+    return { kind: 'error', code: v.json?.code, message: v.json?.message || 'reason:voidFailed' };
+  }
+  const r = await roundTrip(v.json.data, restaurantId);
+  if (r.choose) return { kind: 'unknown', message: 'reason:chooseTerminal' };
+  if (!r.row || r.error === 'NOT_CONNECTED') return { kind: 'unknown', message: r.error === 'NOT_CONNECTED' ? 'reason:terminalNotFound' : 'reason:voidNoAnswer' };
+  const parent = r.parent;
+  if (parent?.status === 'voided') return { kind: 'voided', parent, already: r.row.status_code === 'C5' };
+  if (r.row.status === 'not_found') return { kind: 'notFound', parent, message: parent?.status === 'declined' ? 'reason:voidNoRecord' : 'reason:voidNotFound' };
+  if (r.row.status === 'timeout' || r.row.status === 'comm_error') return { kind: 'unknown', message: /^H4\d\d$/.test(r.row.status_code || '') ? 'reason:terminalBusy' : 'reason:voidNoAnswer' };
+  return { kind: 'failed', parent, message: failText(r.row) };
 }
 
 export async function linkTerminalTxn(txnId: number, orderId: number): Promise<boolean> {

@@ -357,6 +357,30 @@ function defineAuthTests({ adminToken, customerToken, member, restId }) {
     return r.status === 403;
   });
 
+  // 2026-10-04 Irene «오너 좌측 메뉴가 하나도 안 나와» — 브랜드 요금제 사람이 오너 모자를 쓰면 /owner/allowed-routes 가
+  //   «요금제 있음 + 메뉴 0» 을 돌려 사이드바가 비었다(Fable 판정 owner-hat-sidebar). 모자는 Owner Enterprise 로 본다.
+  test('auth', '오너 모자 — 브랜드 요금제 사람도 오너 메뉴(Owner Enterprise · /pos/owner/dashboard) · 네이티브 오너 응답 불변', async () => {
+    const { sequelize } = require('../config/database');
+    const tag = 'zzhcohat' + Date.now().toString(36);
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, plan_type, subscription_status, is_demo, is_test, createdAt, updatedAt) VALUES (?, ?, 'x', 'Brand General', 1, 1, 'Brand Enterprise', 'active', 0, 0, NOW(), NOW())`, { replacements: [tag, `${tag}@outlook.com`] });
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (38, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [uid] });
+      const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const sw = await request('POST', '/auth/switch-context', { entity_type: 'owner', entity_id: uid, role: 'Restaurant Owner' }, auth);
+      const hatToken = sw.body?.data?.token;
+      if (sw.status !== 200 || !hatToken) return fail(`전환 ${sw.status}`);
+      const ar = await request('GET', '/owner/allowed-routes', null, { Authorization: `Bearer ${hatToken}` });
+      const routes = ar.body?.allowed_routes || [];
+      if (ar.body?.plan_type !== 'Owner Enterprise' || !routes.includes('/pos/owner/dashboard')) return fail(`모자 plan=${ar.body?.plan_type} routes=${routes.length}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      await sequelize.query('DELETE FROM restaurant_managers WHERE manager_id = ?', { replacements: [uid] }).catch(() => {});
+      await sequelize.query('DELETE FROM users WHERE id = ?', { replacements: [uid] }).catch(() => {});
+    }
+  });
+
   test('auth', '무회귀 — ctx 없는 토큰의 /auth/me 에는 폴백 헤더가 없다', async () => {
     const r = await request('GET', '/auth/me', null, { Authorization: `Bearer ${adminToken}` });
     return r.status === 200 && !r.headers?.['x-context-fallback'];
@@ -730,6 +754,28 @@ function defineSecurityTests({ customerToken, member, restId }) {
     // payment_settings 는 손님 결제화면이 쓰므로 유지되어야 하고, config(비밀키)만 없어야 한다.
     if (!d.payment_settings) return false;
     return !Object.values(d.payment_settings).some(m => m && typeof m === 'object' && m.config !== undefined);
+  });
+
+  // 2026-10-04 Irene «직원 로그인에서 Purchase Order 안 뜬다» — 직원 발주 = Stock Management(inventory) 권한 직원만(화면 메뉴와 같은 기준)
+  test('security', 'Staff 발주 API — inventory 권한 없으면 403 · 있으면 200', async () => {
+    const User = require('../models/User');
+    const { Op } = require('sequelize');
+    const staff = await User.findOne({ where: { role: 'Staff', restaurant_id: { [Op.ne]: null }, is_active: true } });
+    if (!staff) { console.log(c.gray('      (건너뜀: Staff 없음)')); return true; }
+    const original = Array.isArray(staff.permissions) ? [...staff.permissions] : [];
+    const tk = { Authorization: `Bearer ${jwt.sign({ userId: staff.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      staff.permissions = original.filter((x) => x !== 'inventory'); await staff.save();
+      const no = await request('GET', '/purchase-orders', null, tk);
+      if (no.status !== 403) return fail(`권한 없음 ${no.status}`);
+      staff.permissions = [...original.filter((x) => x !== 'inventory'), 'inventory']; await staff.save();
+      const yes = await request('GET', '/purchase-orders', null, tk);
+      if (yes.status !== 200) return fail(`권한 있음 ${yes.status}`);
+      return true;
+    } finally {
+      staff.permissions = original; await staff.save().catch(() => {});
+    }
   });
 
   test('security', '다른 매장 Staff가 /restaurants/:id/table-status → 403 (손님 개인정보 유출 차단)', async () => {
@@ -6605,6 +6651,134 @@ function definePrintTests({ adminToken }) {
       if (bad.body?.data?.status !== 'comm_error') return fail(`raw 상태 ${bad.body?.data?.status}`);
       const er = await TerminalTransaction.findByPk(e.body.data.id);
       if (er.response_hex !== '485454502F312E31203230300D0A') return fail(`raw 저장 ${er.response_hex}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {}); await fx.restore(); }
+  });
+
+  // 2026-10-04 Fable 설계 terminal-void-direct §7-2 — Void(A2) · B0/HTTP BUSY 분류
+  test('terminal', '단말기 Void 정식 — 권한 403 · PIN 400 · 201 → 부모 voided · 같은 주문 새 결제 허용 · 다시 Void C5 멱등 · voided 에 409', async () => {
+    const { TerminalTransaction, Order, User } = require('../models');
+    const { sequelize } = require('../config/database');
+    const { respond } = require('./mock-ghl-terminal');
+    const fx = await terminalFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const ids = []; let order = null; let staff = null; let staffPerms = null;
+    const [[opsRow]] = await sequelize.query('SELECT operation_settings FROM restaurants WHERE id = :id', { replacements: { id: fx.rest.id } });
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const post = (p, b, a = fx.auth) => request('POST', p, b, a);
+    try {
+      order = await Order.create({ restaurant_id: fx.rest.id, customer_name: '__HC_VOID__', table_number: 'HC-V', order_type: 'dine_in',
+        status: 'pending', total_amount: 7.5, order_items: [{ id: 'hc-v-1', name: 'HC Void', quantity: 1, price: 7.5 }] });
+      const sale = await post('/terminal/transactions', { restaurant_id: fx.rest.id, order_id: order.id, amount: '7.50' }); ids.push(sale.body?.data?.id);
+      const ok = await post(`/terminal/transactions/${sale.body.data.id}/response`, { response_hex: respond(sale.body.data.request_hex, 'approve') });
+      if (ok.body?.data?.status !== 'approved') return fail(`승인 ${ok.body?.data?.status}`);
+      // 매출에 잡힌 결제(counted) — access_void 없는 직원은 403
+      staff = await User.findOne({ where: { role: 'Staff', restaurant_id: fx.rest.id, is_active: true } });
+      if (staff) {
+        staffPerms = Array.isArray(staff.permissions) ? [...staff.permissions] : [];
+        staff.permissions = ['access_pos', 'access_payment']; await staff.save();
+        const st = { Authorization: `Bearer ${jwt.sign({ userId: staff.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+        const no = await post(`/terminal/transactions/${sale.body.data.id}/void`, {}, st);
+        if (no.status !== 403) return fail(`권한 없음 ${no.status}`);
+      } else console.log(c.gray('      (직원 없음 — 403 단계 건너뜀)'));
+      // 매장 PIN 설정 켜면 PIN 없이 400
+      const ops = (() => { try { return JSON.parse(opsRow.operation_settings || '{}'); } catch { return {}; } })();
+      await sequelize.query('UPDATE restaurants SET operation_settings = :v WHERE id = :id', { replacements: { v: JSON.stringify({ ...ops, requireVoidPin: true }), id: fx.rest.id } });
+      const nopin = await post(`/terminal/transactions/${sale.body.data.id}/void`, {});
+      if (nopin.status !== 400 || nopin.body?.code !== 'VOID_PIN_REQUIRED') return fail(`PIN 없음 ${nopin.status} ${nopin.body?.code}`);
+      await sequelize.query('UPDATE restaurants SET operation_settings = :v WHERE id = :id', { replacements: { v: opsRow.operation_settings, id: fx.rest.id } });
+      const v1 = await post(`/terminal/transactions/${sale.body.data.id}/void`, {}); ids.push(v1.body?.data?.id);
+      if (v1.status !== 201 || !v1.body?.data?.request_hex) return fail(`Void 생성 ${v1.status}`);
+      const vr = await post(`/terminal/transactions/${v1.body.data.id}/response`, { response_hex: respond(v1.body.data.request_hex, 'approve') });
+      if (vr.body?.data?.status !== 'approved' || vr.body?.data?.parent?.status !== 'voided') return fail(`Void 응답 ${vr.body?.data?.status} 부모 ${vr.body?.data?.parent?.status}`);
+      // voided 는 승인 합에서 빠진다 — 같은 주문 새 결제가 ALREADY_APPROVED 에 안 걸린다
+      const again = await post('/terminal/transactions', { restaurant_id: fx.rest.id, order_id: order.id, amount: '7.50' }); ids.push(again.body?.data?.id);
+      if (again.status !== 201) return fail(`Void 뒤 새 결제 ${again.status} ${again.body?.code}`);
+      // 단말기에서 먼저 취소된 상태에서 다시 Void → C5 → 부모 voided 유지(멱등). (부모를 승인 상태로 되돌려 재현)
+      await TerminalTransaction.update({ status: 'approved' }, { where: { id: sale.body.data.id } });
+      const v2 = await post(`/terminal/transactions/${sale.body.data.id}/void`, {}); ids.push(v2.body?.data?.id);
+      const v2r = await post(`/terminal/transactions/${v2.body.data.id}/response`, { response_hex: respond(v2.body.data.request_hex, 'approve') });
+      if (v2r.body?.data?.status_code !== 'C5' || v2r.body?.data?.parent?.status !== 'voided') return fail(`C5 ${v2r.body?.data?.status_code} 부모 ${v2r.body?.data?.parent?.status}`);
+      const v3 = await post(`/terminal/transactions/${sale.body.data.id}/void`, {});
+      if (v3.status !== 409 || v3.body?.code !== 'ALREADY_VOIDED') return fail(`voided 재Void ${v3.status} ${v3.body?.code}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      await sequelize.query('UPDATE restaurants SET operation_settings = :v WHERE id = :id', { replacements: { v: opsRow.operation_settings, id: fx.rest.id } }).catch(() => {});
+      if (staff && staffPerms) { staff.permissions = staffPerms; await staff.save().catch(() => {}); }
+      await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {});
+      if (order) await TerminalTransaction.destroy({ where: { order_id: order.id } }).catch(() => {});
+      if (order) await order.destroy({ force: true }).catch(() => {});
+      await fx.restore();
+    }
+  });
+
+  test('terminal', '단말기 Void 고아·미확인 — 주문 없는 승인 PIN 면제 · 미확인 시도 C3 → declined · 승인 C3 → 불변', async () => {
+    const { TerminalTransaction } = require('../models');
+    const { sequelize } = require('../config/database');
+    const { respond } = require('./mock-ghl-terminal');
+    const fx = await terminalFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const ids = [];
+    const [[opsRow]] = await sequelize.query('SELECT operation_settings FROM restaurants WHERE id = :id', { replacements: { id: fx.rest.id } });
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const post = (p, b) => request('POST', p, b, fx.auth);
+    try {
+      const ops = (() => { try { return JSON.parse(opsRow.operation_settings || '{}'); } catch { return {}; } })();
+      await sequelize.query('UPDATE restaurants SET operation_settings = :v WHERE id = :id', { replacements: { v: JSON.stringify({ ...ops, requireVoidPin: true }), id: fx.rest.id } });
+      // 주문 없는 승인(고아) — PIN 설정이 켜져 있어도 PIN 없이 Void 가능
+      const a = await post('/terminal/transactions', { restaurant_id: fx.rest.id, amount: '2.20' }); ids.push(a.body?.data?.id);
+      await post(`/terminal/transactions/${a.body.data.id}/response`, { response_hex: respond(a.body.data.request_hex, 'approve') });
+      const av = await post(`/terminal/transactions/${a.body.data.id}/void`, {}); ids.push(av.body?.data?.id);
+      if (av.status !== 201) return fail(`고아 Void ${av.status} ${av.body?.code}`);
+      // 승인된 부모에 C3 → 부모 불변
+      const avr = await post(`/terminal/transactions/${av.body.data.id}/response`, { response_hex: respond(av.body.data.request_hex, 'void-notfound') });
+      if (avr.body?.data?.status !== 'not_found' || avr.body?.data?.parent?.status !== 'approved') return fail(`승인 C3 ${avr.body?.data?.status} 부모 ${avr.body?.data?.parent?.status}`);
+      // 결과 미확인 시도(timeout) — «안전 취소» → C3 = 단말기에 기록 없음 = 청구 안 됨 → declined
+      const b = await post('/terminal/transactions', { restaurant_id: fx.rest.id, amount: '3.30' }); ids.push(b.body?.data?.id);
+      await post(`/terminal/transactions/${b.body.data.id}/response`, { error: 'TIMEOUT' });
+      const bv = await post(`/terminal/transactions/${b.body.data.id}/void`, {}); ids.push(bv.body?.data?.id);
+      if (bv.status !== 201) return fail(`미확인 Void ${bv.status}`);
+      const bvr = await post(`/terminal/transactions/${bv.body.data.id}/response`, { response_hex: respond(bv.body.data.request_hex, 'void-notfound') });
+      if (bvr.body?.data?.parent?.status !== 'declined') return fail(`미확인 C3 부모 ${bvr.body?.data?.parent?.status}`);
+      // declined 부모는 Void 대상 아님
+      const bad = await post(`/terminal/transactions/${b.body.data.id}/void`, {});
+      if (bad.status !== 409) return fail(`declined Void ${bad.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      await sequelize.query('UPDATE restaurants SET operation_settings = :v WHERE id = :id', { replacements: { v: opsRow.operation_settings, id: fx.rest.id } }).catch(() => {});
+      await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {});
+      await fx.restore();
+    }
+  });
+
+  test('terminal', '단말기 B0(은행 무응답) → declined · 복구 409(Reprint 0회) · HTTP 400 BUSY → 판매 declined·원인 기록 · Reprint 자식은 comm_error', async () => {
+    const { TerminalTransaction } = require('../models');
+    const { respond, BUSY_RAW_HEX } = require('./mock-ghl-terminal');
+    const fx = await terminalFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const ids = [];
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const post = (p, b) => request('POST', p, b, fx.auth);
+    try {
+      const a = await post('/terminal/transactions', { restaurant_id: fx.rest.id, amount: '1.06' }); ids.push(a.body?.data?.id);
+      const ar = await post(`/terminal/transactions/${a.body.data.id}/response`, { response_hex: respond(a.body.data.request_hex, 'bank-timeout') });
+      if (ar.body?.data?.status !== 'declined' || ar.body?.data?.status_code !== 'B0') return fail(`B0 ${ar.body?.data?.status} ${ar.body?.data?.status_code}`);
+      const rc = await post(`/terminal/transactions/${a.body.data.id}/recover`, {});
+      if (rc.status !== 409) return fail(`B0 뒤 복구 ${rc.status} (Reprint 가 나가면 안 됨)`);
+      const b = await post('/terminal/transactions', { restaurant_id: fx.rest.id, amount: '1.07' }); ids.push(b.body?.data?.id);
+      const br = await post(`/terminal/transactions/${b.body.data.id}/response`, { error: 'BAD_RESPONSE', raw_hex: BUSY_RAW_HEX });
+      if (br.body?.data?.status !== 'declined' || br.body?.data?.status_message !== 'HTTP 400 BUSY' || br.body?.data?.status_code !== 'H400') return fail(`BUSY 판매 ${br.body?.data?.status} ${br.body?.data?.status_message}`);
+      // Reprint 자식이 BUSY 로 거절되면 자식 comm_error · 부모는 recovering → timeout(기존 규칙)
+      const c3 = await post('/terminal/transactions', { restaurant_id: fx.rest.id, amount: '1.08' }); ids.push(c3.body?.data?.id);
+      await post(`/terminal/transactions/${c3.body.data.id}/response`, { error: 'TIMEOUT' });
+      const rp = await post(`/terminal/transactions/${c3.body.data.id}/recover`, {}); ids.push(rp.body?.data?.id);
+      const rpr = await post(`/terminal/transactions/${rp.body.data.id}/response`, { error: 'BAD_RESPONSE', raw_hex: BUSY_RAW_HEX });
+      if (rpr.body?.data?.status !== 'comm_error') return fail(`Reprint BUSY ${rpr.body?.data?.status}`);
+      const parent = await TerminalTransaction.findByPk(c3.body.data.id);
+      if (parent.status !== 'timeout') return fail(`Reprint BUSY 뒤 부모 ${parent.status}`);
       return true;
     } catch (e) { return fail(`예외: ${e.message}`); }
     finally { await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {}); await fx.restore(); }

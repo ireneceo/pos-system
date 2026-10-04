@@ -8,6 +8,7 @@
  * 실행:  node scripts/mock-ghl-terminal.js [--port 33898] [--scenario approve]
  * 시나리오 바꾸기:  curl -X POST http://localhost:33898/__scenario -d decline
  *   approve | approve-tng(손님 TnG QR) | decline(51) | cancel(C7) | unsupported(C1) | timeout(응답 없음) | pending(EA → 다음 E3 승인) | notfound(Reprint C3)
+ *   bank-timeout(B0 — 카드는 읽었고 은행 무응답, 운영 tx29 꼴) | busy(HTTP 400 «BUSY», 운영 tx30 꼴) | void-notfound(Void C3)
  * 코드에서 쓰기:  const { respond } = require('./mock-ghl-terminal'); respond(requestHex, 'approve') → 응답 hex | null(=타임아웃)
  */
 const ecr = require('../utils/ghlEcr');
@@ -50,6 +51,11 @@ function respond(requestHex, scenario = 'approve') {
       if (scenario === 'unsupported') return hex(responseFrame(ecr.CMD.sale, 'C1', [[ecr.TAG.ecrInvoice, inv]]));
       if (scenario === 'pending') { ledger.set(inv, { status: '00', tags: approvedTags(amount, inv) }); return hex(responseFrame(ecr.CMD.sale, 'EA', [[ecr.TAG.amount, amount], [ecr.TAG.ecrInvoice, inv]])); }
       if (scenario === 'notfound') return null; // 단말기는 아무것도 안 했다 — 이어지는 Reprint 가 C3
+      if (scenario === 'bank-timeout') {
+        // 카드를 읽고 은행에 보냈는데 답이 없음 — 카드 태그는 오지만 승인번호(C00A)는 없다(운영 tx29)
+        const tags = approvedTags(amount, inv).filter(([t]) => t !== ecr.TAG.approvalCode && t !== ecr.TAG.rrn);
+        return hex(responseFrame(ecr.CMD.sale, 'B0', tags));
+      }
       if (scenario === 'approve-tng') {
         // 손님이 TnG 앱 QR 을 보여 줌(규격 §9.4 seamless 응답 모양: D002 "19" · D018 TNGWALLET · D01A Scan)
         const tags = approvedTags(amount, inv, { code: '19', brand: 'TNGWALLET', pan: '' }).filter(([t]) => t !== ecr.TAG.maskedPan && t !== ecr.TAG.entryModeText);
@@ -73,7 +79,7 @@ function respond(requestHex, scenario = 'approve') {
     }
     case ecr.CMD.void: {
       const last = ledger.get(inv);
-      if (!last) return hex(responseFrame(ecr.CMD.void, 'C3', []));
+      if (!last || scenario === 'void-notfound') return hex(responseFrame(ecr.CMD.void, 'C3', []));
       if (last.voided) return hex(responseFrame(ecr.CMD.void, 'C5', []));
       last.voided = true;
       return hex(responseFrame(ecr.CMD.void, '00', last.tags));
@@ -83,7 +89,11 @@ function respond(requestHex, scenario = 'approve') {
   }
 }
 
-module.exports = { respond, _ledger: ledger };
+/** 단말기가 명령을 받기 전에 HTTP 로 거절한 원본(운영 tx30 꼴) — 앱 0.3.4 가 raw_hex 로 올리는 모양. */
+const BUSY_HTTP_TEXT = 'HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: 4\r\n\r\nBUSY';
+const BUSY_RAW_HEX = Buffer.from(BUSY_HTTP_TEXT, 'latin1').toString('hex').toUpperCase();
+
+module.exports = { respond, _ledger: ledger, BUSY_RAW_HEX };
 
 if (require.main === module) {
   const http = require('http');
@@ -95,6 +105,7 @@ if (require.main === module) {
     req.on('data', (c) => { body += c; if (body.length > 100000) req.destroy(); });
     req.on('end', () => {
       if (req.url === '/__scenario') { scenario = body.trim() || 'approve'; res.end(scenario); return; }
+      if (scenario === 'busy') { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end('BUSY'); return; }
       try {
         const out = respond(body.trim(), scenario);
         console.log(`[mock-ghl] ${scenario} ← ${body.trim().slice(0, 40)}… → ${out ? out.slice(0, 40) + '…' : '(no response)'}`);

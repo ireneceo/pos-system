@@ -986,8 +986,12 @@ router.get('/allowed-routes', requireRole('Restaurant Owner'), async (req, res) 
     // owner account is is_test=1/is_demo=0, so an is_demo-only check left it with
     // plan_type=null → "No Active Subscription" login block. (2026-07-05)
     const isDemo = owner?.is_demo || owner?.is_test;
-    const effectivePlanType = isDemo ? 'Owner Enterprise' : owner?.plan_type;
-    const effectiveSubStatus = isDemo ? 'active' : owner?.subscription_status;
+    // 오너 모자(멀티 로그인) — 사람의 plan_type 은 브랜드/푸드코트 플랜이라 오너 어휘로 찾다 실패해
+    //   «요금제 있음 + 메뉴 0» 이 되던 틈(2026-10-04 Irene «오너 좌측 메뉴가 하나도 안 나와», Fable 판정 owner-hat-sidebar).
+    //   모자는 SA 만 주고 오너 API 는 요금제가 아니라 소유행으로 판정한다 → 표시만 Owner Enterprise 로. 네이티브 오너는 그대로.
+    const isOwnerHat = req.contextProjected === true && req.user.role === 'Restaurant Owner';
+    const effectivePlanType = (isDemo || isOwnerHat) ? 'Owner Enterprise' : owner?.plan_type;
+    const effectiveSubStatus = (isDemo || isOwnerHat) ? 'active' : owner?.subscription_status;
     if (!owner || !effectivePlanType) {
       return res.json({
         entity_id: req.user.id,

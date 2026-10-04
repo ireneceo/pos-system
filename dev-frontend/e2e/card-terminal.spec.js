@@ -36,6 +36,10 @@ async function installBridge(page, state) {
     if (state.realHost && job.host !== state.realHost) return { ok: false, error: 'CONNECT_REFUSED' };
     const cmd = job.payloadHex.slice(12, 14);
     state.calls.push(cmd);
+    // 다른 계산대가 같은 주문을 먼저 승인해 둔 상황(이중 승인 M) — 이 판매 응답 직전에 승인 1건을 끼워 넣는다
+    if (cmd === 'A1' && state.injectOtherApproval) { await state.injectOtherApproval(); state.injectOtherApproval = null; }
+    // Void 는 단말기에서 처리됐는데 답이 끊긴 상황(K) — 단말기 장부엔 취소로 남기고 응답만 버린다
+    if (cmd === 'A2' && state.voidTimeoutOnce) { respond(job.payloadHex, 'approve'); state.voidTimeoutOnce = false; return { ok: false, error: 'TIMEOUT' }; }
     const out = respond(job.payloadHex, state.scenario);
     if (cmd === 'A1' && state.scenario === 'timeout') state.scenario = 'approve'; // 이어지는 Reprint 는 정상 응답
     return out === null ? { ok: false, error: 'TIMEOUT' } : { ok: true, responseHex: out };
@@ -106,6 +110,84 @@ test.describe('카드단말기 ECR — 결제 창 흐름(목 브릿지)', () => 
     const rows = await terminalRowsFor(request, baseURL, orderId);
     expect(rows.some((r) => r.status === 'approved' && r.card_type === 'visa' && Number(r.amount) === 30)).toBeTruthy();
     expect(state.calls).toEqual(['A1']);
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  /** 결제 창에서 단말기 승인까지 끝낸다(A 와 같은 흐름) */
+  async function payByTerminal(page, request, baseURL, state, pageErrors) {
+    await installBridge(page, state);
+    await openPayment(page, orderNumber, pageErrors);
+    await page.getByRole('button', { name: 'Confirm Payment' }).last().click();
+    await expect(page.getByRole('button', { name: 'Confirm Payment' }), '모달 닫힘').toHaveCount(0, { timeout: 20000 });
+    expect((await getOrder(request, baseURL, token, orderId)).payment_status).toBe('completed');
+  }
+  async function cancelFromLiveOrders(page) {
+    const card = page.locator('div', { hasText: orderNumber }).filter({ has: page.getByTitle('Cancel Order') }).last();
+    await card.getByTitle('Cancel Order').click();
+    await expect(page.getByText(/will also be cancelled on the card terminal/), '취소 모달 카드 안내 1줄').toBeVisible({ timeout: 10000 });
+    await page.getByRole('button', { name: 'Order mistake' }).click();
+  }
+
+  test('J 결제된 주문 취소 → 단말기 Void(A2) 1회 → 주문 cancelled · 거래 voided', async ({ page, request, baseURL }) => {
+    const pageErrors = []; page.on('pageerror', (e) => pageErrors.push(String(e)));
+    const state = { scenario: 'approve', calls: [] };
+    await payByTerminal(page, request, baseURL, state, pageErrors);
+    await cancelFromLiveOrders(page);
+    await expect.poll(async () => (await getOrder(request, baseURL, token, orderId)).status, { timeout: 30000 }).toBe('cancelled');
+    expect(state.calls).toEqual(['A1', 'A2']);
+    const rows = await terminalRowsFor(request, baseURL, orderId);
+    expect(rows.find((r) => r.command === 'sale').status).toBe('voided');
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  test('K Void 무응답 → 주문 취소 안 됨 · 다시 취소 → 이미 취소(C5) → 취소 완료 · 단말기 Void 는 한 번만 처리', async ({ page, request, baseURL }) => {
+    const pageErrors = []; page.on('pageerror', (e) => pageErrors.push(String(e)));
+    const state = { scenario: 'approve', calls: [], voidTimeoutOnce: true };
+    await payByTerminal(page, request, baseURL, state, pageErrors);
+    await cancelFromLiveOrders(page);
+    await expect(page.getByText(/No answer from the card terminal/), '무응답 안내').toBeVisible({ timeout: 30000 });
+    expect((await getOrder(request, baseURL, token, orderId)).status, '주문은 그대로').not.toBe('cancelled');
+    await cancelFromLiveOrders(page);
+    await expect.poll(async () => (await getOrder(request, baseURL, token, orderId)).status, { timeout: 30000 }).toBe('cancelled');
+    const rows = await terminalRowsFor(request, baseURL, orderId);
+    expect(rows.find((r) => r.command === 'sale').status).toBe('voided');
+    const voids = rows.filter((r) => r.command === 'void');
+    expect(voids.some((r) => r.status_code === 'C5'), '두 번째 Void = 이미 취소(C5)').toBeTruthy();
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  test('L 은행 무응답(B0) → 모달 유지 · «은행이 응답하지 않아» · Reprint(E6) 0회 · 기록 0', async ({ page, request, baseURL }) => {
+    const pageErrors = []; page.on('pageerror', (e) => pageErrors.push(String(e)));
+    const state = { scenario: 'bank-timeout', calls: [] };
+    await installBridge(page, state);
+    await openPayment(page, orderNumber, pageErrors);
+    await page.getByRole('button', { name: 'Confirm Payment' }).last().click();
+    await expect(page.getByText(/The bank did not respond/)).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole('button', { name: 'Confirm Payment' }).last(), '모달 유지').toBeVisible();
+    expect(state.calls).toEqual(['A1']);
+    const o = await getOrder(request, baseURL, token, orderId);
+    expect(o.payment_status).not.toBe('completed');
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  test('M 이중 승인 → «이 결제를 단말기에서 취소» → A2 → 한 번만 청구 안내 · 원장은 첫 승인뿐', async ({ page, request, baseURL }) => {
+    const pageErrors = []; page.on('pageerror', (e) => pageErrors.push(String(e)));
+    const state = { scenario: 'approve', calls: [] };
+    state.injectOtherApproval = async () => {
+      await sequelize.query("INSERT INTO terminal_transactions (restaurant_id, order_id, command, amount, status, status_code, ecr_invoice_no, created_at, updated_at) VALUES (38, :oid, 'sale', 30.00, 'approved', '00', :inv, NOW(), NOW())",
+        { replacements: { oid: orderId, inv: `E2EOTHER${orderId}` } });
+    };
+    await installBridge(page, state);
+    await openPayment(page, orderNumber, pageErrors);
+    await page.getByRole('button', { name: 'Confirm Payment' }).last().click();
+    await expect(page.getByRole('button', { name: 'Cancel this payment on the terminal' }), '이중 승인 취소 버튼').toBeVisible({ timeout: 20000 });
+    await page.getByRole('button', { name: 'Cancel this payment on the terminal' }).click();
+    await expect(page.getByText(/charged only once/)).toBeVisible({ timeout: 20000 });
+    expect(state.calls).toEqual(['A1', 'A2']);
+    await expect(page.getByRole('button', { name: 'Confirm Payment' }).last(), 'Confirm 잠김 유지').toBeDisabled();
+    const rows = await terminalRowsFor(request, baseURL, orderId);
+    expect(rows.filter((r) => r.command === 'sale' && r.status === 'voided')).toHaveLength(1);
+    await sequelize.query('DELETE FROM terminal_transactions WHERE ecr_invoice_no = :inv', { replacements: { inv: `E2EOTHER${orderId}` } });
     expect(pageErrors).toHaveLength(0);
   });
 

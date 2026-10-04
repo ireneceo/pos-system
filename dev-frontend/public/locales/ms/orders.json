@@ -172,5 +172,9 @@
   "voidItem": {
     "otherReasonPlaceholder": "Taip sebab"
   },
-  "voidItem.cancelHowMany": "Kuantiti batal"
+  "voidItem.cancelHowMany": "Kuantiti batal",
+  "orderCancel.cardVoidNotice": "Bayaran kad RM {{amount}} untuk pesanan ini juga akan dibatalkan di terminal kad.",
+  "orderCancel.cardVoidNoAnswer": "Tiada jawapan daripada terminal kad, jadi pesanan tidak dibatalkan. Semak skrin terminal dan tekan batal sekali lagi — jika sudah dibatalkan, ia akan diteruskan.",
+  "orderCancel.cardVoidFailed": "Bayaran kad tidak dapat dibatalkan di terminal, jadi pesanan tidak dibatalkan.",
+  "orderCancel.cardVoidNoBridge": "Kad RM {{amount}} tidak dibatalkan di sini. Batalkan (Void) di terminal kad."
 }

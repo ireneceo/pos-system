@@ -1520,11 +1520,12 @@ function App() {
                       } />
 
                       {/* Sprint 3 — Purchase Orders */}
+                      {/* 2026-10-04 Irene «직원 로그인에서 Purchase Order 안 뜬다»: 만들기·대기·원가대조에 Staff 추가. 메뉴는 «Stock Management»(inventory) 권한 직원만 보이고, 서버도 같은 권한을 확인한다(middleware/buyerScope). */}
                       {/* 오너는 발주를 만들지 않는다 — 보고 승인만(2026-09-24 Fable «오너=슈퍼바이저»).
                           오너 메뉴의 «Purchase Order» 는 사이드바(인쇄 보호파일 MainLayout)를 건드리지 않고 여기서 목록으로 보낸다. */}
                       <Route path="/pos/purchase-orders" element={
                         <OwnerToPoHistory>
-                          <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <ProtectedRoute requiredRole={['Restaurant Admin','Staff','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                             <NewPurchaseOrderPage />
                           </ProtectedRoute>
                         </OwnerToPoHistory>
@@ -1535,12 +1536,12 @@ function App() {
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/purchase-orders/staging" element={
-                        <ProtectedRoute requiredRole={['Restaurant Admin','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                           <PurchaseOrderStagingPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/purchase-orders/new" element={
-                        <ProtectedRoute requiredRole={['Restaurant Admin','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                           <NewPurchaseOrderPage />
                         </ProtectedRoute>
                       } />
@@ -1555,7 +1556,7 @@ function App() {
                       {/* 발주↔인보이스 원가 대조 (2026-09-08). 구매자 전용 —
                           공급업체는 자기 인보이스를 우리 원가에 반영시킬 수 없다. */}
                       <Route path="/pos/purchase-orders/:id/reconcile" element={
-                        <ProtectedRoute requiredRole={['Restaurant Admin','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                           <InvoiceReconcilePage />
                         </ProtectedRoute>
                       } />

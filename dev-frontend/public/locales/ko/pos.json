@@ -218,5 +218,22 @@
   "cashierPin.subtitle": "전환하려면 4자리 PIN 입력",
   "cashierPin.close": "닫기",
   "cashierPin.logout": "로그아웃",
-  "cashierPin.current": "현재"
+  "cashierPin.current": "현재",
+  "cardTerminal.void.progress": "단말기에서 카드 결제를 취소하는 중…",
+  "cardTerminal.void.doneTitle": "단말기에서 취소됐습니다",
+  "cardTerminal.void.safeCancel": "이 시도를 단말기에서 취소(안전)",
+  "cardTerminal.void.cancelThis": "이 결제를 단말기에서 취소",
+  "cardTerminal.reason.bankTimeout": "은행이 응답하지 않아 결제가 되지 않았습니다. 손님 카드에는 청구되지 않았습니다(보류 표시가 보이면 자동 취소됩니다). 다시 시도하거나 다른 수단으로 받으세요.",
+  "cardTerminal.reason.hostComm": "단말기가 은행과 통신하지 못했습니다. 단말기의 와이파이/SIM 을 확인하고 다시 시도하세요.",
+  "cardTerminal.reason.terminalBusy": "단말기가 바빠서 요청을 받지 않았습니다. 단말기 화면의 작업을 끝내거나 취소한 뒤 다시 시도하세요.",
+  "cardTerminal.reason.cardTimeout": "시간 안에 카드를 대지 않아 취소됐습니다.",
+  "cardTerminal.reason.cancelledOnTerminal": "단말기에서 취소됐습니다.",
+  "cardTerminal.reason.notSupported": "이 카드는 받을 수 없습니다.",
+  "cardTerminal.reason.voidNotFound": "단말기에 이 결제 기록이 없습니다(정산이 끝났으면 단말기에서 환불하세요).",
+  "cardTerminal.reason.voidNoRecord": "단말기에 이 시도 기록이 없습니다 — 손님 카드에 청구되지 않았습니다. 다시 시도할 수 있습니다.",
+  "cardTerminal.reason.voidAlready": "이 결제는 이미 단말기에서 취소돼 있습니다.",
+  "cardTerminal.reason.voidDoneRetry": "결제가 됐었고 지금 취소됐습니다. 다시 시도해 결제를 받으세요.",
+  "cardTerminal.reason.voidDoneDouble": "취소됐습니다. 손님 카드에는 한 번만 청구됩니다.",
+  "cardTerminal.reason.voidFailed": "단말기에서 카드 결제를 취소하지 못했습니다.",
+  "cardTerminal.reason.voidNoAnswer": "단말기 응답이 없습니다. 단말기 화면을 확인하고 다시 누르세요 — 이미 취소됐으면 그대로 이어집니다."
 }

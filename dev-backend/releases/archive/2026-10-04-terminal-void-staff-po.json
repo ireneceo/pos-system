@@ -1,0 +1,63 @@
+{
+  "tag": "terminal-void-staff-po",
+  "sw_version": "5.81-terminal-void-staff-po-20261004",
+  "date": "2026-10-04",
+  "in_progress": [
+    "카드 단말기↔은행 연결 확인(단말기 자체 메뉴 RM1) — GHL 질문 6개 Irene 발송"
+  ],
+  "completed": [
+    "결제된 주문을 취소하면 카드 단말기 결제도 함께 취소(Void) — LiveOrders·테이블 화면 취소, 실패·무응답이면 주문을 취소하지 않음, 두 번 눌러도 영수증 1장",
+    "결제 창: 이중 승인 «이 결제를 단말기에서 취소» · 결과 미확인 «이 시도를 단말기에서 취소(안전)»",
+    "은행 무응답(B0)·호스트 통신 실패(CA)를 «결제 안 됨, 청구 없음» 으로 바로 안내 — 예전엔 «결과 미확인/에러» 로 보이고 불필요한 재조회를 보냈다",
+    "단말기가 «바쁨(HTTP 400 BUSY)» 으로 거절하면 원인을 기록하고 «단말기 화면을 끝낸 뒤 다시» 안내",
+    "직원(Staff) 발주: «Stock Management» 권한 직원은 Purchase Order 만들기·대기·원가 대조 화면을 쓸 수 있음(예전엔 대시보드로 튕김) — 서버도 같은 권한을 확인",
+    "직원 권한 이름을 «Stock Management (Suppliers / Inventory / Purchase Orders)» 로",
+    "멀티 로그인 오너 모자 좌측 메뉴가 비던 문제 — 브랜드 요금제 계정이 오너 모자를 쓰면 오너 메뉴 0개였다(Owner Enterprise 로 표시, 네이티브 오너 응답 불변)"
+  ],
+  "remaining": [
+    "결제 대기 중 POS 에서 취소(C1) — 규격에 형식 없음, GHL 회신 뒤",
+    "분할 결제 중 1건만 취소 — 원장 모델 변경이라 별도 설계",
+    "서버가 «Void 안 된 단말기 승인이 있는 주문 취소» 를 막는 것 — 🔒 orders-crud 정식 변경 때",
+    "남은 영어 문구 정리(매장 화면부터)"
+  ],
+  "verification": {
+    "api": "jest ghl-ecr 39/39(Void 프레임 = 규격 §9.7 바이트·CRC 9622 동일 · B0/CA declined · parseHttpRaw 운영 tx30 꼴) · health terminal 11/11(신규 3: Void 정식 403/400/201→voided·새 결제 허용·C5 멱등·409 / 고아 PIN 면제·미확인 C3 declined·승인 C3 불변 / B0 declined·복구 409·BUSY declined·Reprint BUSY comm_error) · security 68/68(신규: Staff 발주 inventory 없으면 403·있으면 200) · auth 14/14(신규: 브랜드 요금제 사람 오너 모자 → Owner Enterprise·/pos/owner/dashboard, 수정 전 실패 재현) · 네이티브 오너 allowed-routes 수정 전후 diff 0 · health 전체 288/288",
+    "fault_injection": "서버 4건 — C5 매핑 제거·PIN 게이트 제거·B0 되돌림·Staff 발주 권한 검사 제거 → 각 해당 케이스 실패 → cp 원복 cmp·pm2 재시작 후 통과 / 화면 1건 — 주문 취소가 Void 결과 무시 → 재빌드 → e2e K 실패 → 원복 재빌드",
+    "regression": "e2e card-terminal 13/13 ×3(신규 J 취소→A2→voided · K Void 무응답→취소 안 됨→재시도 C5 · L B0→E6 0회 · M 이중승인 버튼→A2·Confirm 잠김) · staff-purchase-orders 2/2 ×3 · verify-all --full",
+    "migration": "없음",
+    "sw_version": "5.81-terminal-void-staff-po-20261004",
+    "fable_note": "Fable 설계 .claude/fable-design-20261004-terminal-void-direct.md 범위 그대로(Irene «Void도 같이 만들어» · «뭘 내 승인을 기다린대» = 진행). 설계와 다른 판단 1건: 결제 창 비분할 카드 Confirm 은 원래 오류 뒤에도 켜져 있어(재시도 버튼 역할) «취소 뒤 잠김»을 위해 voided 일 때만 잠그는 1조건 추가. 발주는 서버 권한 검사를 /api/purchase-orders* 로만(가드가 재료·공급업체 라우터에도 걸려 있어 넓히면 레시피 편집 직원이 막힘). 게이트 1회 대상 · 같은 묶음: 오너 모자 /owner/allowed-routes 1곳(Fable 판정 .claude/fable-verdict-20261004-owner-hat-sidebar.md, Irene «다 하고 한 번에 배포»)"
+  },
+  "notes": [
+    "🔒 인쇄 보호파일 무접촉 — LiveOrders·TableDetailPanel 은 취소 PATCH 앞 삽입만, 취소표 인쇄 코드 무변경",
+    "앱 재설치 없음(0.3.4 그대로) · 스키마 변경 없음(status voided·command void 이미 있음)",
+    "취소 화면의 «Void 안 됨» 판정은 단말기 승인 조회(GET /api/terminal/transactions?order_id) — 결제 권한 없는 계정은 조회가 막혀 오늘처럼 취소만 된다"
+  ],
+  "irene_actions_after_deploy": [
+    "① 단말기 자체 메뉴에서 RM1 판매 1회(POS 없이) — 승인되면 은행 연결 OK, time-out 이면 GHL 문의",
+    "② ①이 OK 면 POS RM1 신용카드/QR 승인 → LiveOrders 에서 그 주문 취소 → 단말기 Void 영수증",
+    "③ 단말기 메뉴 화면을 열어 둔 채 POS 결제 → «단말기가 바빠서» 안내 · 단말기에 거래 0",
+    "④ 같은 주문 취소 두 번 → 영수증 1장",
+    "직원 발주: 직원 권한 «Stock Management» 켜기 → Operations › Purchase Order"
+  ],
+  "issues": [
+    "단말기 결제를 POS 에서 취소할 수 없었다",
+    "은행 무응답이 «에러» 로 보였다",
+    "직원 로그인에서 Purchase Order 가 안 열렸다",
+    "help@ 오너 모자(with MIN Cafe) 좌측 메뉴가 하나도 안 나왔다"
+  ],
+  "upcoming": [
+    "카드 단말기 실결제 RM1 테스트(은행 연결 확인 뒤)"
+  ],
+  "behavior_changes": [
+    "결제된 주문을 취소하면 단말기 카드도 함께 취소된다(취소 모달에 안내 1줄)",
+    "카드 단말기 응답이 없으면 주문 취소가 진행되지 않는다(다시 누르면 이어짐)",
+    "«Stock Management» 권한 없는 직원은 발주 기능을 쓸 수 없다(서버도 막음)"
+  ],
+  "check_areas": [
+    "LiveOrders·테이블 화면 주문 취소",
+    "결제 창 카드 단말기 패널",
+    "직원 계정 Operations › Purchase Order",
+    "help@ → 오너 모자(with MIN Cafe) 좌측 메뉴"
+  ]
+}

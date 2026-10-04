@@ -218,5 +218,22 @@
   "cashierPin.subtitle": "Enter 4-digit PIN to switch",
   "cashierPin.close": "Close",
   "cashierPin.logout": "Logout",
-  "cashierPin.current": "Current"
+  "cashierPin.current": "Current",
+  "cardTerminal.void.progress": "Cancelling the card payment on the terminal…",
+  "cardTerminal.void.doneTitle": "Cancelled on the terminal",
+  "cardTerminal.void.safeCancel": "Cancel this attempt on the terminal (safe)",
+  "cardTerminal.void.cancelThis": "Cancel this payment on the terminal",
+  "cardTerminal.reason.bankTimeout": "The bank did not respond, so the payment did not go through. The customer’s card was not charged (any hold shown will be released automatically). Try again or take another payment method.",
+  "cardTerminal.reason.hostComm": "The terminal could not reach the bank. Check the terminal’s Wi-Fi/SIM and try again.",
+  "cardTerminal.reason.terminalBusy": "The terminal was busy and did not accept the request. Finish or cancel what is on the terminal screen, then try again.",
+  "cardTerminal.reason.cardTimeout": "No card was presented in time, so it was cancelled.",
+  "cardTerminal.reason.cancelledOnTerminal": "It was cancelled on the terminal.",
+  "cardTerminal.reason.notSupported": "This card cannot be accepted.",
+  "cardTerminal.reason.voidNotFound": "The terminal has no record of this payment (if it has already been settled, refund it on the terminal).",
+  "cardTerminal.reason.voidNoRecord": "The terminal has no record of this attempt — the customer was not charged. You can try again.",
+  "cardTerminal.reason.voidAlready": "This payment was already cancelled on the terminal.",
+  "cardTerminal.reason.voidDoneRetry": "The payment had gone through and has now been cancelled. Try again to take the payment.",
+  "cardTerminal.reason.voidDoneDouble": "Cancelled. The customer’s card is charged only once.",
+  "cardTerminal.reason.voidFailed": "The card payment could not be cancelled on the terminal.",
+  "cardTerminal.reason.voidNoAnswer": "No answer from the terminal. Check the terminal screen and try again — if it was already cancelled, it will continue."
 }

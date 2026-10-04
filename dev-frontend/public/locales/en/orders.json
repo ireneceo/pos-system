@@ -172,5 +172,9 @@
   "voidItem": {
     "otherReasonPlaceholder": "Type the reason"
   },
-  "voidItem.cancelHowMany": "Cancel quantity"
+  "voidItem.cancelHowMany": "Cancel quantity",
+  "orderCancel.cardVoidNotice": "The card payment RM {{amount}} on this order will also be cancelled on the card terminal.",
+  "orderCancel.cardVoidNoAnswer": "No answer from the card terminal, so the order was not cancelled. Check the terminal screen and press cancel again — if it was already cancelled, it will continue.",
+  "orderCancel.cardVoidFailed": "The card payment could not be cancelled on the terminal, so the order was not cancelled.",
+  "orderCancel.cardVoidNoBridge": "Card RM {{amount}} was not cancelled here. Void it on the card terminal."
 }

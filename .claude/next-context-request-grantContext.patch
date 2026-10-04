@@ -1,0 +1,316 @@
+diff --git a/dev-backend/routes/users.js b/dev-backend/routes/users.js
+index 1c2d551a3..00fe58fe4 100755
+--- a/dev-backend/routes/users.js
++++ b/dev-backend/routes/users.js
+@@ -1340,102 +1340,24 @@ router.post('/:id/contexts', authenticateToken, requireRole('System Admin'), asy
+       return res.status(400).json({ success: false, message: 'Cannot grant to a deactivated account' });
+     }
+ 
++    // 본문은 services/userContexts.grantContext 로 옮겼다(v1.3) — 자격 요청 승인과 **같은 함수**를 쓴다.
++    // 응답 shape·메시지·상태코드는 옮기기 전과 바이트 동일(tests/user-contexts-switch.test.js · context-requests.test.js ⑨).
+     const { entity_type, entity_id, role } = req.body || {};
+-    const entityId = userContexts.normalizeEntityId(entity_id);
+-    if (!entityId) {
+-      return res.status(400).json({ success: false, message: 'entity_id must be a positive integer' });
++    const result = await userContexts.grantContext({ target, entity_type, entity_id, role, grantedBy: req.user.id });
++    if (!result.ok) {
++      return res.status(result.status).json({ success: false, message: result.message });
+     }
+-    const grantOwner = entity_type === 'restaurant' && role === 'Restaurant Owner';
+-    const grantBrandManager = userContexts.isBrandManagerHat(entity_type, role);
+-    if (!grantOwner && !grantBrandManager && !userContexts.isV1GrantableCombination(entity_type, role)) {
+-      return res.status(400).json({
+-        success: false,
+-        message: 'Only (restaurant × Restaurant Admin), (restaurant × Restaurant Owner) or (brand × Brand Manager) can be granted'
+-      });
+-    }
+-
+-    // 브랜드 관리자 모자(v1.2, 2026-10-04) — user_contexts 행. 소유자·이미 그 브랜드 소속이면 의미가 없다.
+-    if (grantBrandManager) {
+-      const Brand = require('../models/Brand');
+-      const brand = await Brand.findByPk(entityId, { attributes: ['id', 'name', 'owner_id'] });
+-      if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
+-      if (Number(brand.owner_id) === Number(target.id)) {
+-        return res.status(400).json({ success: false, message: 'User already owns this brand' });
+-      }
+-      if (['Brand General', 'Brand Manager'].includes(target.role) && Number(target.brand_id) === entityId) {
+-        return res.status(400).json({ success: false, message: 'User already belongs to this brand' });
+-      }
+-      await _seq.query(
+-        `INSERT INTO user_contexts (user_id, entity_type, entity_id, role, granted_by, created_at, updated_at)
+-         VALUES (:u, 'brand', :e, :r, :by, NOW(), NOW()) ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+-        { replacements: { u: target.id, e: entityId, r: role, by: req.user.id } }
+-      );
+-      logActivity(req, { action_type: 'create', entity_type: 'user_context', entity_id: target.id,
+-        entity_name: target.full_name || target.username || target.email,
+-        description: `Granted Brand Manager context for brand "${brand.name}" (#${entityId}) to ${target.email || target.id}` });
+-      return res.json({ success: true, data: { user_id: target.id, entity_id: entityId, role }, message: 'Context granted' });
+-    }
+-
+-    const Restaurant = require('../models/Restaurant');
+-    const restaurant = await Restaurant.findByPk(entityId, { attributes: ['id', 'name'] });
+-    if (!restaurant) {
+-      return res.status(404).json({ success: false, message: 'Restaurant not found' });
+-    }
+-
+-    // 오너 모자 = 소유행 부여(설계 §5.4). 네이티브 오너는 자기 claim 경로(routes/owner.js)를 쓰므로 여기서 받지 않는다.
+-    if (grantOwner) {
+-      if (target.role === 'Restaurant Owner') {
+-        return res.status(400).json({ success: false, message: 'Native owners claim restaurants from the owner dashboard' });
+-      }
+-      const [existing] = await _seq.query(
+-        'SELECT id, relationship_type FROM restaurant_managers WHERE restaurant_id = :e AND manager_id = :u LIMIT 1',
+-        { replacements: { e: entityId, u: target.id } }
+-      );
+-      if (existing.length && existing[0].relationship_type !== 'ownership') {
+-        // UNIQUE(restaurant_id, manager_id) — oversight 행을 조용히 ownership 으로 바꾸지 않는다.
+-        return res.status(409).json({ success: false, message: 'User is already assigned to this restaurant as a manager (oversight)' });
+-      }
+-      if (!existing.length) {
+-        await _seq.query(
+-          `INSERT INTO restaurant_managers (restaurant_id, manager_id, relationship_type, is_primary, assigned_at, createdAt, updatedAt)
+-           VALUES (:e, :u, 'ownership', 0, NOW(), NOW(), NOW())`,
+-          { replacements: { e: entityId, u: target.id } }
+-        );
+-      }
+-      logActivity(req, {
+-        action_type: 'create',
+-        entity_type: 'user_context',
+-        entity_id: target.id,
+-        entity_name: target.full_name || target.username || target.email,
+-        description: `Granted Restaurant Owner (ownership) of "${restaurant.name}" (#${entityId}) to ${target.email || target.id}`,
+-        restaurant_id: entityId
+-      });
+-      return res.json({ success: true, data: { user_id: target.id, entity_id: entityId, role }, message: 'Ownership granted' });
+-    }
+-
+-    // 자기 매장(네이티브 정체)과 같은 모자는 의미가 없다 — 중복 표시만 만든다.
+-    if (String(target.restaurant_id || '') === String(entityId)) {
+-      return res.status(400).json({ success: false, message: 'User already belongs to this restaurant' });
+-    }
+-
+-    // 멱등 — UNIQUE(user_id, entity_type, entity_id, role)
+-    await _seq.query(
+-      `INSERT INTO user_contexts (user_id, entity_type, entity_id, role, granted_by, created_at, updated_at)
+-       VALUES (:u, :t, :e, :r, :by, NOW(), NOW())
+-       ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+-      { replacements: { u: target.id, t: entity_type, e: entityId, r: role, by: req.user.id } }
+-    );
+ 
+     logActivity(req, {
+       action_type: 'create',
+       entity_type: 'user_context',
+       entity_id: target.id,
+       entity_name: target.full_name || target.username || target.email,
+-      description: `Granted ${role} context for restaurant "${restaurant.name}" (#${entityId}) to ${target.email || target.id}`,
+-      restaurant_id: entityId
++      description: result.logDescription,
++      ...(result.restaurantId ? { restaurant_id: result.restaurantId } : {})
+     });
+ 
+-    res.json({ success: true, data: { user_id: target.id, entity_id: entityId, role }, message: 'Context granted' });
++    res.json({ success: true, data: result.data, message: result.message });
+   } catch (error) {
+     console.error('[users] POST /:id/contexts error:', error.message);
+     res.status(500).json({ success: false, message: 'Internal server error' });
+diff --git a/dev-backend/services/userContexts.js b/dev-backend/services/userContexts.js
+index da587a5d5..a73cb7e7f 100644
+--- a/dev-backend/services/userContexts.js
++++ b/dev-backend/services/userContexts.js
+@@ -323,6 +323,182 @@ async function getGrantedContextForSwitch(userId, ctx) {
+   return { ok: true, id: row.id, entity_type: ctx.entity_type, entity_id: row.entity_id, role: row.role, name: row.name, status: row.status };
+ }
+ 
++// ────────────────────────────────────────────────────────────────────────────
++// 부여 (v1.3 추출, 2026-10-04 — .claude/fable-design-20261004-context-request.md §5.1)
++//
++// 부여 가능한 조합은 **이 한 집합**이다. SA 직접 부여(routes/users.js POST /:id/contexts)·
++// 자격 요청(routes/context-requests.js)·요청 화면의 유형 선택지가 전부 여기만 본다.
++// ⛔ 쓰기(user_contexts INSERT · 소유행 INSERT)는 grantContext 한 곳뿐이다(설계 §8-3 봉인).
++// ────────────────────────────────────────────────────────────────────────────
++const GRANTABLE_COMBINATIONS = Object.freeze([
++  Object.freeze({ kind: 'store_admin', entity_type: 'restaurant', role: 'Restaurant Admin' }),
++  Object.freeze({ kind: 'store_owner', entity_type: 'restaurant', role: 'Restaurant Owner' }),
++  Object.freeze({ kind: 'brand_manager', entity_type: 'brand', role: 'Brand Manager' })
++]);
++
++// 오너 **부여** 조합 — 부여는 매장 단위(restaurant × Restaurant Owner)이고, 결과로 생기는 카드는
++// 사람 단위 오너 모자(OWNER_HAT: owner × Restaurant Owner)다. 둘을 섞지 않는다.
++function isOwnerGrantCombination(entityType, role) {
++  return entityType === 'restaurant' && role === OWNER_HAT.role;
++}
++
++function isGrantableCombination(entityType, role) {
++  return isV1GrantableCombination(entityType, role)
++    || isOwnerGrantCombination(entityType, role)
++    || isBrandManagerHat(entityType, role);
++}
++
++const GRANTABLE_MESSAGE = 'Only (restaurant × Restaurant Admin), (restaurant × Restaurant Owner) or (brand × Brand Manager) can be granted';
++
++// 부여 대상 엔티티 로드 — 부여와 요청이 같은 실존 판정을 쓴다.
++async function loadGrantEntity(entityType, entityId) {
++  if (entityType === 'brand') {
++    const Brand = require('../models/Brand');
++    const b = await Brand.findByPk(entityId, { attributes: ['id', 'name', 'owner_id'] });
++    return b ? { id: b.id, name: b.name, owner_id: b.owner_id } : null;
++  }
++  const Restaurant = require('../models/Restaurant');
++  const r = await Restaurant.findByPk(entityId, { attributes: ['id', 'name'] });
++  return r ? { id: r.id, name: r.name } : null;
++}
++
++const NOT_FOUND_MESSAGE = { brand: 'Brand not found', restaurant: 'Restaurant not found' };
++
++/**
++ * 「이미 그 자격이 본래 정체에 있다」 판정 — 부여 함수와 요청 라우트가 **같은 조건**을 공유한다
++ * ([[feedback_check_and_fix_same_sql]]). 메시지·상태코드는 기존 부여 라우트 문자열 그대로.
++ * @returns {{status:number, message:string}|null}
++ */
++function nativeHoldConflict(target, entityType, entityId, role, entity) {
++  if (isBrandManagerHat(entityType, role)) {
++    if (entity && Number(entity.owner_id) === Number(target.id)) {
++      return { status: 400, message: 'User already owns this brand' };
++    }
++    if (['Brand General', 'Brand Manager'].includes(target.role) && Number(target.brand_id) === entityId) {
++      return { status: 400, message: 'User already belongs to this brand' };
++    }
++    return null;
++  }
++  if (isOwnerGrantCombination(entityType, role)) {
++    if (target.role === 'Restaurant Owner') {
++      return { status: 400, message: 'Native owners claim restaurants from the owner dashboard' };
++    }
++    return null;
++  }
++  // 자기 매장(네이티브 정체)과 같은 모자는 의미가 없다 — 중복 표시만 만든다.
++  if (String(target.restaurant_id || '') === String(entityId)) {
++    return { status: 400, message: 'User already belongs to this restaurant' };
++  }
++  return null;
++}
++
++/**
++ * 요청 시점의 「이미 가진 자격인가」 — 네이티브 판정(nativeHoldConflict) + 부여 기록 실존.
++ * 부여 함수는 부여 기록 실존을 멱등으로 넘기지만(ON DUPLICATE), 요청은 의미가 없으므로 400 이다.
++ * @returns {Promise<{status:number, message:string}|null>}
++ */
++async function alreadyHoldsContext(user, { entity_type, entity_id, role }, entity) {
++  const entityId = normalizeEntityId(entity_id);
++  if (!user || !entityId) return null;
++  const native = nativeHoldConflict(user, entity_type, entityId, role, entity);
++  if (native) return native;
++  if (isOwnerGrantCombination(entity_type, role)) {
++    const [own] = await sequelize.query(
++      `SELECT id FROM restaurant_managers
++        WHERE restaurant_id = :e AND manager_id = :u AND relationship_type = 'ownership' LIMIT 1`,
++      { replacements: { e: entityId, u: user.id } }
++    );
++    if (own.length) return { status: 400, message: 'User already owns this restaurant' };
++    return null;
++  }
++  const [rows] = await sequelize.query(
++    `SELECT id FROM user_contexts
++      WHERE user_id = :u AND entity_type = :t AND entity_id = :e AND role = :r LIMIT 1`,
++    { replacements: { u: user.id, t: entity_type, e: entityId, r: role } }
++  );
++  if (rows.length) return { status: 400, message: 'User already has this context' };
++  return null;
++}
++
++/**
++ * 모자 부여 — **유일한 쓰기 경로**. SA 직접 부여와 요청 승인이 같은 함수를 부른다.
++ * (본문은 routes/users.js POST /:id/contexts 에서 그대로 옮겼다. 메시지·상태코드 바이트 동일.)
++ * target 조회·비활성 검사는 호출자가 한다.
++ * @returns {Promise<{ok:true, data:object, message:string, entityName:string, logDescription:string, restaurantId?:number}
++ *                  |{ok:false, status:number, message:string}>}
++ */
++async function grantContext({ target, entity_type, entity_id, role, grantedBy }) {
++  const fail = (status, message) => ({ ok: false, status, message });
++  const entityId = normalizeEntityId(entity_id);
++  if (!entityId) return fail(400, 'entity_id must be a positive integer');
++  if (!isGrantableCombination(entity_type, role)) return fail(400, GRANTABLE_MESSAGE);
++
++  const who = target.email || target.id;
++
++  // 브랜드 관리자 모자(v1.2, 2026-10-04) — user_contexts 행. 소유자·이미 그 브랜드 소속이면 의미가 없다.
++  if (isBrandManagerHat(entity_type, role)) {
++    const brand = await loadGrantEntity('brand', entityId);
++    if (!brand) return fail(404, NOT_FOUND_MESSAGE.brand);
++    const conflict = nativeHoldConflict(target, entity_type, entityId, role, brand);
++    if (conflict) return fail(conflict.status, conflict.message);
++    await sequelize.query(
++      `INSERT INTO user_contexts (user_id, entity_type, entity_id, role, granted_by, created_at, updated_at)
++       VALUES (:u, 'brand', :e, :r, :by, NOW(), NOW()) ON DUPLICATE KEY UPDATE updated_at = NOW()`,
++      { replacements: { u: target.id, e: entityId, r: role, by: grantedBy } }
++    );
++    return {
++      ok: true, data: { user_id: target.id, entity_id: entityId, role }, message: 'Context granted',
++      entityName: brand.name,
++      logDescription: `Granted Brand Manager context for brand "${brand.name}" (#${entityId}) to ${who}`
++    };
++  }
++
++  const restaurant = await loadGrantEntity('restaurant', entityId);
++  if (!restaurant) return fail(404, NOT_FOUND_MESSAGE.restaurant);
++
++  // 오너 모자 = 소유행 부여(설계 §5.4). 네이티브 오너는 자기 claim 경로(routes/owner.js)를 쓰므로 여기서 받지 않는다.
++  if (isOwnerGrantCombination(entity_type, role)) {
++    const conflict = nativeHoldConflict(target, entity_type, entityId, role, restaurant);
++    if (conflict) return fail(conflict.status, conflict.message);
++    const [existing] = await sequelize.query(
++      'SELECT id, relationship_type FROM restaurant_managers WHERE restaurant_id = :e AND manager_id = :u LIMIT 1',
++      { replacements: { e: entityId, u: target.id } }
++    );
++    if (existing.length && existing[0].relationship_type !== 'ownership') {
++      // UNIQUE(restaurant_id, manager_id) — oversight 행을 조용히 ownership 으로 바꾸지 않는다.
++      return fail(409, 'User is already assigned to this restaurant as a manager (oversight)');
++    }
++    if (!existing.length) {
++      await sequelize.query(
++        `INSERT INTO restaurant_managers (restaurant_id, manager_id, relationship_type, is_primary, assigned_at, createdAt, updatedAt)
++         VALUES (:e, :u, 'ownership', 0, NOW(), NOW(), NOW())`,
++        { replacements: { e: entityId, u: target.id } }
++      );
++    }
++    return {
++      ok: true, data: { user_id: target.id, entity_id: entityId, role }, message: 'Ownership granted',
++      entityName: restaurant.name, restaurantId: entityId,
++      logDescription: `Granted Restaurant Owner (ownership) of "${restaurant.name}" (#${entityId}) to ${who}`
++    };
++  }
++
++  const conflict = nativeHoldConflict(target, entity_type, entityId, role, restaurant);
++  if (conflict) return fail(conflict.status, conflict.message);
++
++  // 멱등 — UNIQUE(user_id, entity_type, entity_id, role)
++  await sequelize.query(
++    `INSERT INTO user_contexts (user_id, entity_type, entity_id, role, granted_by, created_at, updated_at)
++     VALUES (:u, :t, :e, :r, :by, NOW(), NOW())
++     ON DUPLICATE KEY UPDATE updated_at = NOW()`,
++    { replacements: { u: target.id, t: entity_type, e: entityId, r: role, by: grantedBy } }
++  );
++  return {
++    ok: true, data: { user_id: target.id, entity_id: entityId, role }, message: 'Context granted',
++    entityName: restaurant.name, restaurantId: entityId,
++    logDescription: `Granted ${role} context for restaurant "${restaurant.name}" (#${entityId}) to ${who}`
++  };
++}
++
+ /**
+  * 이 모자를 방금 썼다고 기록 — 픽커 정렬용. 실패해도 전환을 막지 않는다(부가 정보).
+  */
+@@ -355,5 +531,12 @@ module.exports = {
+   // 브랜드 관리자 모자(v1.2)
+   BRAND_MANAGER_HAT,
+   isBrandManagerHat,
+-  BRAND_MANAGER_HAT_PERMISSIONS
++  BRAND_MANAGER_HAT_PERMISSIONS,
++  // 부여 (v1.3) — 부여 가능 집합 · 유일한 쓰기 경로 · 「이미 가진 자격」 판정
++  GRANTABLE_COMBINATIONS,
++  isGrantableCombination,
++  isOwnerGrantCombination,
++  loadGrantEntity,
++  alreadyHoldsContext,
++  grantContext
+ };

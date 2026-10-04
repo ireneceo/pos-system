@@ -1,7 +1,8 @@
 /**
  * 결제 창 안의 카드단말기 상태 칸 (2026-10-01 GHL ECR · .claude/fable-design-20261001-ghl-ecr.md §3-3).
  * 진행 중 안내 · 거절 사유 · 결과 미확인 시 «단말기 영수증 보고 수동 기록»(사유 필수).
- * POS 측에서 단말기 거래를 취소하는 명령은 1단계에 없다 — 취소는 단말기에서 하라고 안내만 한다.
+ * 결제 대기 중 취소는 단말기의 Cancel 키(규격에 POS 쪽 C1 형식이 없다). 승인 뒤 취소(Void)는 아래 두 버튼 —
+ * 이중 승인 «이 결제 취소» · 결과 미확인 «이 시도를 단말기에서 취소(안전)» (Fable 설계 2026-10-04 §3-3 A-2·A-3).
  */
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -12,12 +13,14 @@ interface Props {
   busy: TerminalPhase | null;
   ready: boolean;
   reason: 'no-bridge' | 'offline' | null;
-  issue: { kind: 'declined' | 'unknown' | 'error' | 'choose'; message: string; txnId?: number; hosts?: string[] } | null;
+  issue: { kind: 'declined' | 'unknown' | 'error' | 'choose' | 'voided'; message: string; txnId?: number; hosts?: string[]; retry?: boolean } | null;
   note: string;
   onNote: (v: string) => void;
   onManual: () => void;
   onRetry: () => void;
   onPickTerminal: (host: string) => void;
+  /** 이 거래를 단말기에서 취소(Void) — 이중 승인(error+txnId)·결과 미확인(unknown+txnId)에서만 보인다 */
+  onVoid: () => void;
   /** 수동 기록 때 캐셔가 영수증을 보고 고르는 수단 — 카드/이월렛 + 종류(매장 규칙대로 필수 여부) */
   manualTender: { method: '' | 'card' | 'ewallet'; sub: string };
   onManualTender: (v: { method: '' | 'card' | 'ewallet'; sub: string }) => void;
@@ -36,7 +39,7 @@ const chip = (on: boolean): React.CSSProperties => ({
 });
 
 const TerminalPanel: React.FC<Props> = ({
-  busy, ready, reason, issue, note, onNote, onManual, onRetry, onPickTerminal,
+  busy, ready, reason, issue, note, onNote, onManual, onRetry, onPickTerminal, onVoid,
   manualTender, onManualTender, cardOptions, ewalletOptions, cardLabels, ewalletLabels, subRequired,
 }) => {
   const { t } = useTranslation('pos');
@@ -48,14 +51,29 @@ const TerminalPanel: React.FC<Props> = ({
   };
 
   if (busy) {
-    const text = busy === 'recovering' ? t('cardTerminal.recovering')
+    const text = busy === 'voiding' ? t('cardTerminal.void.progress')
+      : busy === 'recovering' ? t('cardTerminal.recovering')
       : busy === 'checking' ? t('cardTerminal.checking')
       : busy === 'starting' ? t('cardTerminal.starting')
       : t('cardTerminal.waiting');
     return (
       <div style={box} role="status" aria-live="polite">
         <strong style={{ color: '#0A2540' }}>{text}</strong>
-        <div style={{ marginTop: 4 }}>{t('cardTerminal.cancelOnTerminal')}</div>
+        {busy !== 'voiding' && <div style={{ marginTop: 4 }}>{t('cardTerminal.cancelOnTerminal')}</div>}
+      </div>
+    );
+  }
+
+  if (issue && issue.kind === 'voided') {
+    return (
+      <div style={box} role="status">
+        <strong style={{ color: '#059669' }}>{t('cardTerminal.void.doneTitle')}</strong>
+        <div style={{ marginTop: 4 }}>{reasonText(issue.message)}</div>
+        {issue.retry && (
+          <div style={{ marginTop: 8 }}>
+            <Button variant="secondary" onClick={onRetry}>{t('cardTerminal.retry')}</Button>
+          </div>
+        )}
       </div>
     );
   }
@@ -112,13 +130,17 @@ const TerminalPanel: React.FC<Props> = ({
             />
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
               <Button variant="secondary" onClick={onRetry}>{t('cardTerminal.retry')}</Button>
+              <Button variant="secondary" onClick={onVoid}>{t('cardTerminal.void.safeCancel')}</Button>
               <Button variant="primary" onClick={onManual}
                 disabled={note.trim().length < 3 || !manualTender.method || (subRequired && !manualTender.sub)}>{t('cardTerminal.recordManually')}</Button>
             </div>
           </div>
         ) : (
-          <div style={{ marginTop: 8 }}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
             <Button variant="secondary" onClick={onRetry}>{t('cardTerminal.retry')}</Button>
+            {issue.kind === 'error' && issue.txnId ? (
+              <Button variant="secondary" onClick={onVoid}>{t('cardTerminal.void.cancelThis')}</Button>
+            ) : null}
           </div>
         )}
       </div>

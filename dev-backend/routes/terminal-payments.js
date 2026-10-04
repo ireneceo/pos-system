@@ -78,6 +78,21 @@ router.post('/transactions/:id/recover', async (req, res) => {
   } catch (e) { send(res, e, 'POST /recover'); }
 });
 
+// 단말기 카드 결제 취소(Void A2) — 주문 취소 흐름·결제창 «이 결제 취소» 가 부른다(Fable 설계 2026-10-04 §3)
+router.post('/transactions/:id/void', async (req, res) => {
+  try {
+    const row = await loadTxn(req, res); if (!row) return;
+    const out = await svc.createVoid(row, { user: req.user, voidPin: req.body?.void_pin });
+    await logActivity(req, {
+      action_type: 'update', entity_type: 'terminal_void', entity_id: row.id, restaurant_id: row.restaurant_id,
+      entity_name: `Card ${row.amount} (${row.ecr_invoice_no})`,
+      changes: { parent_id: row.id, counted: out.counted, approver: out.approver, order_id: row.order_id },
+      description: `Card terminal void sent for ${row.ecr_invoice_no}${out.approver ? ` — approved by ${out.approver.name}` : ''}`,
+    });
+    res.status(201).json({ success: true, data: out.data });
+  } catch (e) { send(res, e, 'POST /void'); }
+});
+
 router.post('/transactions/:id/check-status', async (req, res) => {
   try {
     const row = await loadTxn(req, res); if (!row) return;
@@ -155,6 +170,12 @@ router.get('/transactions', async (req, res) => {
     if (!r.rid) return res.status(r.status).json({ success: false, message: r.message });
     const where = { restaurant_id: r.rid, command: { [Op.ne]: 'echo' } };
     if (req.query.status) where.status = String(req.query.status).split(',');
+    if (req.query.order_id) {
+      const oid = parseInt(req.query.order_id, 10);
+      if (!Number.isFinite(oid)) return res.status(400).json({ success: false, message: 'Invalid order_id' });
+      where.order_id = oid;
+    }
+    if (req.query.command) where.command = String(req.query.command);
     if (req.query.from || req.query.to) {
       where.created_at = {};
       if (req.query.from) where.created_at[Op.gte] = new Date(req.query.from);

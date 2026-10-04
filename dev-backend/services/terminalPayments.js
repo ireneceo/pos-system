@@ -11,6 +11,8 @@ const { Op } = require('sequelize');
 const ecr = require('../utils/ghlEcr');
 const { TerminalTransaction, Order, OrderPayment, Restaurant } = require('../models');
 const { normalizePaymentSettings } = require('../utils/settingsGuard');
+const { userCanVoid } = require('../middleware/auth');
+const { enforceVoidPin } = require('../utils/voidPinGuard');
 
 const TIMEOUT_MS = 120000; // GHL 테스트 스크립트 «POS Timeout: MUST set 120 seconds»
 const FINAL = new Set(['approved', 'declined', 'cancelled', 'not_found', 'voided', 'manual']);
@@ -108,6 +110,38 @@ const recover = (parent) => createChild(parent, 'reprint', ['timeout', 'comm_err
 /** EA(보류) → Check Status(E3). */
 const checkStatus = (parent) => createChild(parent, 'check_status', ['pending'], ecr.checkStatusRequest);
 
+/** 매출에 잡힌 단말기 결제인가 — 원장 행에 붙었거나 주문 참조가 이 결제다(서버가 계산, 화면 주장 안 믿음). */
+async function isCounted(parent) {
+  if (!['approved', 'manual'].includes(parent.status)) return false;
+  if (parent.order_payment_id) return true;
+  if (!parent.order_id) return false;
+  const order = await Order.findByPk(parent.order_id, { attributes: ['id', 'transaction_id'] });
+  return !!order && order.transaction_id === transactionRef(parent);
+}
+
+const VOIDABLE = ['approved', 'manual', 'timeout', 'comm_error', 'recovering', 'not_found'];
+
+/**
+ * 단말기 결제 취소 Void(A2) — 자식 행 1개(ECR 송장 C013). 결과는 applyResponse 가 부모로 올린다.
+ * 권한(Fable 설계 §3-2): 매출에 잡힌 결제(counted) = 주문 취소와 같은 게이트(access_void + 매장 PIN 설정).
+ *   매출에 안 잡힌 것(이중 승인·주문 없는 승인·결과 미확인 시도) = 손님 보호만 → 결제 권한(라우터)으로 충분.
+ */
+async function createVoid(parent, { user, voidPin }) {
+  if (parent.command !== 'sale') throw err(409, 'BAD_STATE', 'Only a card sale can be voided');
+  if (parent.status === 'voided') throw err(409, 'ALREADY_VOIDED', 'This card payment is already voided');
+  if (!VOIDABLE.includes(parent.status)) throw err(409, 'BAD_STATE', `Cannot void a ${parent.status} transaction`);
+  const counted = await isCounted(parent);
+  let approver = null;
+  if (counted) {
+    if (!userCanVoid(user)) throw err(403, 'VOID_FORBIDDEN', 'You do not have permission to cancel payments');
+    const gate = await enforceVoidPin(parent.restaurant_id, voidPin);
+    if (!gate.ok) throw err(gate.status, gate.code, gate.message);
+    approver = gate.approver;
+  }
+  const data = await createChild(parent, 'void', VOIDABLE, ecr.voidRequest);
+  return { data, counted, approver };
+}
+
 const RESULT_FIELDS = ['terminal_invoice_no', 'terminal_batch_no', 'approval_code', 'rrn', 'masked_pan', 'card_type_code',
   'card_brand', 'card_type', 'tender_method', 'ewallet_type', 'entry_mode', 'terminal_id', 'merchant_id', 'txn_ref', 'txn_datetime', 'message_prompt'];
 const pick = (r) => Object.fromEntries(RESULT_FIELDS.map(k => [k, r[k] == null ? null : String(r[k]).slice(0, 80)]));
@@ -125,10 +159,21 @@ async function applyResponse(row, { response_hex, error, raw_hex }) {
 
   if (!response_hex) {
     const kind = String(error || '').toUpperCase();
-    const status = kind === 'TIMEOUT' ? 'timeout' : 'comm_error';
-    // 읽지 못한 응답의 원본 바이트(앱 0.3.4+) — 단말기가 실제로 무엇을 보냈는지 남긴다(판정엔 안 씀, 2026-10-04 BAD_RESPONSE 실측)
+    let status = kind === 'TIMEOUT' ? 'timeout' : 'comm_error';
+    // 읽지 못한 응답의 원본 바이트(앱 0.3.4+) — 단말기가 실제로 무엇을 보냈는지 남긴다(2026-10-04 BAD_RESPONSE 실측)
     const raw = raw_hex ? String(raw_hex).replace(/[^0-9A-Fa-f]/g, '').slice(0, 2000).toUpperCase() || null : null;
-    await row.update({ status, status_message: kind.slice(0, 200) || null, responded_at: new Date(), ...(raw ? { response_hex: raw } : {}) });
+    // 단말기가 HTTP 오류로 거절했으면(운영 tx30: «HTTP 400 BUSY») 원인을 남긴다(Fable 설계 §2-2).
+    //   4xx + 프레임 없는 본문 = 명령을 받기 전에 거절 = 처리되지 않았다 → 판매 행은 declined(«단말기가 바쁨»).
+    //   복구·상태조회·Void 자식은 comm_error 그대로(부모 처리는 아래 기존 규칙). 5xx·상태줄 없음 = 처리 여부 불명 → comm_error.
+    const http = raw ? ecr.parseHttpRaw(raw) : null;
+    let statusCode = null;
+    let message = kind.slice(0, 200) || null;
+    if (http) {
+      statusCode = `H${http.status}`;
+      message = `HTTP ${http.status}${http.body ? ` ${http.body}` : ''}`.slice(0, 200);
+      if (http.status >= 400 && http.status < 500 && row.command === 'sale') status = 'declined';
+    }
+    await row.update({ status, status_code: statusCode, status_message: message, responded_at: new Date(), ...(raw ? { response_hex: raw } : {}) });
     if (row.parent_id && row.command === 'reprint') {
       const parent = await TerminalTransaction.findByPk(row.parent_id);
       if (parent && parent.status === 'recovering') await parent.update({ status: 'timeout' });
@@ -185,6 +230,21 @@ async function applyResponse(row, { response_hex, error, raw_hex }) {
     }
     await parent.reload();
     if (parent.status === 'approved' && parent.order_id) linkError = await safeLink(parent, parent.order_id);
+  } else if (parentForInv && row.command === 'void') {
+    // Void(A2) 결과 → 부모 판매(Fable 설계 §3-2 표). 00·C5(이미 취소) = voided(멱등).
+    //   C3(단말기에 기록 없음): 승인 기록된 부모는 그대로(정산 뒤일 수 있음 → 단말기 Refund), 미확인 시도 부모는 «청구 안 됨» = declined.
+    //   그 외·무응답은 부모 불변 — 복구는 Void 재시도(갔으면 C5 가 돌아온다).
+    parent = parentForInv;
+    const unconfirmed = ['timeout', 'comm_error', 'recovering', 'not_found'].includes(parent.status);
+    if (frame.status === '00' || frame.status === 'C5') {
+      await parent.update({
+        status: 'voided', status_message: frame.status === '00' ? 'Voided via POS' : 'Already voided on terminal',
+        ...(unconfirmed && frame.status === '00' ? pick(result) : {}),
+      });
+    } else if (frame.status === 'C3' && unconfirmed) {
+      await parent.update({ status: 'declined', status_code: 'C3', status_message: 'No transaction on terminal (void check)' });
+    }
+    await parent.reload();
   } else if (status === 'approved' && row.order_id && row.command === 'sale') {
     linkError = await safeLink(row, row.order_id);
   }
@@ -305,4 +365,4 @@ function summarizeDiscovery(body) {
 }
 
 module.exports = {
-  summarizeDiscovery, saveDiscoveredHost, TIMEOUT_MS, terminalConfig, createSale, recover, checkStatus, applyResponse, link, markManual, createEcho, publicRow };
+  summarizeDiscovery, saveDiscoveredHost, TIMEOUT_MS, terminalConfig, createSale, recover, checkStatus, createVoid, applyResponse, link, markManual, createEcho, publicRow };

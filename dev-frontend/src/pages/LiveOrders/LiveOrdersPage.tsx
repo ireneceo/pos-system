@@ -32,6 +32,7 @@ import SettlementMenu from '../../components/Settlement/SettlementMenu';
 import CashDrawerModal from '../../components/CashManagement/CashDrawerModal';
 import FinalReconcilePanel from '../Reports/FinalReconcilePanel';
 import { useTranslation } from 'react-i18next';
+import { voidTerminalForOrder, getTerminalApprovals, approvalsTotal } from '../../utils/terminalVoid';
 import { getAuthToken } from '../../utils/auth';
 
 import { DbOrder, CompanyInfo } from './types';
@@ -61,7 +62,7 @@ import { fetchWithTimeout } from '../../utils/offlineOrderQueue';
 // PeriodType imported from DatePeriodFilter component
 
 const LiveOrdersPage: React.FC = () => {
-  const { t } = useTranslation('orders');
+  const { t } = useTranslation(['orders', 'pos']); // pos — 카드 단말기 취소 문구
   const { user, canTakePayment, canVoid } = useAuth();
   const { getStoreInfo, operationSettings, paymentSettings } = useStore();
   // 오프라인 모드 — 서버 도달 불가 시 편집(단계/취소/추가/서빙/결제)을 로컬 op 로그에 기록(§15-5).
@@ -95,6 +96,8 @@ const LiveOrdersPage: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<number | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelCardAmount, setCancelCardAmount] = useState(0);
+  const [cancelVoiding, setCancelVoiding] = useState(false);
   const [cancelOther, setCancelOther] = useState<string | null>(null); // 'Other' 선택 시 직접 입력 (null=미선택)
   const [orderToCancel, setOrderToCancel] = useState<number | null>(null);
   const [showDeleteItemConfirm, setShowDeleteItemConfirm] = useState(false);
@@ -1512,12 +1515,36 @@ const LiveOrdersPage: React.FC = () => {
     setOrderToCancel(orderId);
     // 사유 먼저 받는다(아이템 보이드와 동일 흐름). requireVoidPin 매장은 사유 선택 후 PIN 게이트로 이어짐.
     setShowCancelConfirm(true);
+    // 이 주문의 카드 단말기 결제 — 취소하면 단말기에서도 함께 취소된다(모달 안내 1줄)
+    setCancelCardAmount(0);
+    if (user?.restaurantId) getTerminalApprovals(user.restaurantId, orderId).then(rows => setCancelCardAmount(approvalsTotal(rows))).catch(() => {});
   };
 
   const confirmCancelOrder = async (voidPin?: string | null, reason?: string | null) => {
     if (!orderToCancel) return;
     // Snapshot order BEFORE marking cancelled — used for cancellation ticket print.
     const orderSnapshot = orders.find(o => o.id === orderToCancel);
+    // 단말기 카드 결제가 있으면 먼저 단말기에서 취소(Void A2) — 실패·무응답이면 주문을 취소하지 않는다
+    //   (Fable 설계 2026-10-04 §3-3). 낙관적 취소 표시는 이 뒤로 — 실패 때 되돌릴 일을 만들지 않는다.
+    //   오프라인은 서버가 프레임을 만들 수 없어 건너뛴다(취소는 오늘처럼 진행).
+    if (!(isOffline && isOfflineMainPos()) && user?.restaurantId) {
+      setShowCancelConfirm(false);
+      setCancelVoiding(true);
+      const tv = await voidTerminalForOrder({ restaurantId: user.restaurantId, orderId: orderToCancel, voidPin: voidPin || undefined })
+        .catch(() => ({ kind: 'none' as const }));
+      setCancelVoiding(false);
+      if (tv.kind === 'failed' || tv.kind === 'unknown') {
+        const why = tv.message.startsWith('reason:') ? t(`pos:cardTerminal.reason.${tv.message.slice(7)}`, { defaultValue: tv.message }) : tv.message;
+        showToast(tv.kind === 'unknown'
+          ? t('orders:orderCancel.cardVoidNoAnswer', { defaultValue: 'No answer from the card terminal. Check the terminal screen and press cancel again — if it was already cancelled, it will continue.' })
+          : `${t('orders:orderCancel.cardVoidFailed', { defaultValue: 'The card payment could not be cancelled on the terminal, so the order was not cancelled.' })} ${why}`, 'error');
+        setOrderToCancel(null);
+        return;
+      }
+      if (tv.kind === 'no-bridge') {
+        showToast(t('orders:orderCancel.cardVoidNoBridge', { defaultValue: 'Card RM {{amount}} was not cancelled here. Void it on the card terminal.', amount: tv.amount.toFixed(2) }), 'info');
+      }
+    }
     patchOrderLocal(orderToCancel, { status: 'cancelled' as any });
     setShowCancelConfirm(false);
     if (selectedOrder?.id === orderToCancel) handleCloseModal();
@@ -2236,6 +2263,14 @@ const LiveOrdersPage: React.FC = () => {
         {/* S1 autoPrint OFF(수동) — 취소 티켓 주방 인쇄 확인 프롬프트 */}
         <KitchenTicketSendModal prompt={cancelPrintPrompt} onClose={() => setCancelPrintPrompt(null)} t={t} />
 
+        {/* 단말기에서 카드 결제를 취소하는 중 — 닫지 못한다(단말기 응답 대기, 최대 120초) */}
+        {cancelVoiding && (
+          <CommonModal isOpen={true} onClose={() => {}} title={t('orders:orderCancel.title', { defaultValue: 'Cancel Order' })} size="small">
+            <p role="status" aria-live="polite" style={{ margin: 0, fontSize: 14, color: '#0A2540', lineHeight: 1.5 }}>
+              {t('pos:cardTerminal.void.progress', { defaultValue: 'Cancelling the card payment on the terminal…' })}
+            </p>
+          </CommonModal>
+        )}
         {/* Cancel Order Confirmation Modal */}
         {/* Cancel Order — reason quick-pick (mirrors item void). Reason saves to the
             void & cancel log; requireVoidPin stores then go through the PIN gate. */}
@@ -2249,6 +2284,11 @@ const LiveOrdersPage: React.FC = () => {
                   ? t('orders:orderCancel.confirmNoReason', { defaultValue: 'Cancel this order? The order history is kept.' })
                   : t('orders:orderCancel.confirm', { defaultValue: 'Cancel this order? Choose a reason — it is saved to the void & cancel log. The order history is kept.' })}
               </p>
+              {cancelCardAmount > 0 && (
+                <p style={{ margin: '0 0 14px', fontSize: 13, color: '#425466', lineHeight: 1.5 }}>
+                  {t('orders:orderCancel.cardVoidNotice', { defaultValue: 'The card payment RM {{amount}} on this order will also be cancelled on the card terminal.', amount: cancelCardAmount.toFixed(2) })}
+                </p>
+              )}
               {mode !== 'off' && cancelOther === null && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
                   {[

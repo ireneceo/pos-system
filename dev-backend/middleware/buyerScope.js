@@ -69,6 +69,14 @@ async function requireBuyerRole(req, res, next) {
     });
   }
 
+  // 직원(Staff)의 발주 = «Stock Management»(inventory) 권한 직원만 (2026-10-04 Irene «직원 로그인에서 Purchase Order 안 뜬다»).
+  //   화면 메뉴가 같은 권한으로 보이고 숨는다(MainLayout hasMenuPermission('inventory')). 서버가 더 넓으면 안 된다.
+  //   발주 주소(/api/purchase-orders*)만 — 이 가드는 재료·공급업체 라우터에도 걸려 있어 넓히면 레시피 편집 직원이 막힌다.
+  if (user.role === 'Staff' && /^\/api\/purchase-orders(\/|\?|$)/.test(req.originalUrl || '')
+      && !(Array.isArray(user.permissions) && user.permissions.includes('inventory'))) {
+    return res.status(403).json({ success: false, message: 'Stock Management permission required for purchase orders' });
+  }
+
   // Restaurant Owner — 소유 매장의 발주를 «보기만» (2026-09-24 Fable 판정 «오너=슈퍼바이저» §2-A).
   //   ?entity_type=restaurant&entity_id=N 를 주면 ownership 연결을 **서버가** 확인한 뒤 그 매장으로 본다.
   //   허용은 GET /api/purchase-orders* 뿐 — 오너는 발주를 만들거나 고치지 않는다(발주 주인은 항상 매장,

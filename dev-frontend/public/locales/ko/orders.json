@@ -172,5 +172,9 @@
   "voidItem": {
     "otherReasonPlaceholder": "사유를 입력하세요"
   },
-  "voidItem.cancelHowMany": "취소 수량"
+  "voidItem.cancelHowMany": "취소 수량",
+  "orderCancel.cardVoidNotice": "이 주문의 카드 결제 RM {{amount}} 도 단말기에서 함께 취소됩니다.",
+  "orderCancel.cardVoidNoAnswer": "카드 단말기 응답이 없어 주문을 취소하지 않았습니다. 단말기 화면을 확인하고 취소를 다시 누르세요 — 이미 취소됐으면 그대로 이어집니다.",
+  "orderCancel.cardVoidFailed": "단말기에서 카드 결제를 취소하지 못해 주문을 취소하지 않았습니다.",
+  "orderCancel.cardVoidNoBridge": "카드 RM {{amount}} 는 여기서 취소되지 않았습니다. 단말기에서 Void 하세요."
 }

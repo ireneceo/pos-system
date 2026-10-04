@@ -25,6 +25,7 @@ import { getAuthToken } from '../../utils/auth';
 // 오프라인 편집 배선 (§15-5 ⑨⑩⑪⑫⑯) — 온라인 경로는 그대로, 메인POS 오프라인일 때만 로컬 op 기록.
 import { useOffline } from '../../contexts/OfflineContext';
 import { isOfflineMainPos } from '../../utils/offlineMainPos';
+import { voidTerminalForOrder, getTerminalApprovals, approvalsTotal } from '../../utils/terminalVoid';
 // 타임아웃 있는 fetch(기존 유틸 재사용) — 무한대기로 버튼이 영구 잠기는 것 방지. 신규 유틸 만들지 않음.
 import { fetchWithTimeout } from '../../utils/offlineOrderQueue';
 // Helper: payment_proof 호환 — { current, history } 구조 또는 기존 단일 객체 모두 지원
@@ -666,7 +667,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   // 주문 탭이 많을 때 접기/펼치기 — 기본은 최근 몇 개만, "+N" 누르면 전체.
   const [showAllOrderTabs, setShowAllOrderTabs] = useState(false);
   const { getStoreInfo, paymentSettings, operationSettings } = useStore();
-  const { t } = useTranslation(['orders', 'floorplan']);
+  const { t } = useTranslation(['orders', 'floorplan', 'pos']); // pos — 카드 단말기 취소 문구
   const [showHistory, setShowHistory] = useState(false);
 
   // ─── QR Session state ───
@@ -732,6 +733,9 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   // 손실방지 PIN 게이트 — requireVoidPin 매장에서 삭제/취소 전 권한 PIN 확인.
   const [voidGate, setVoidGate] = useState<{ run: (pin: string) => void } | null>(null);
   const [cancelReasonOpen, setCancelReasonOpen] = useState(false);
+  // 이 주문의 카드 단말기 결제 — 취소하면 단말기에서도 함께 취소(Void A2, Fable 설계 2026-10-04 §3-3)
+  const [cancelCardAmount, setCancelCardAmount] = useState(0);
+  const [cancelVoiding, setCancelVoiding] = useState(false);
   const [deleteItemTarget, setDeleteItemTarget] = useState<{ index: number; name: string; maxQty: number } | null>(null);
   // #2 부분수량 취소 — 취소 수량(기본 = 전량)
   const [cancelQty, setCancelQty] = useState(1);
@@ -1091,6 +1095,23 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         setLoading(false);
         return;
       }
+      // 단말기 카드 결제가 있으면 먼저 단말기에서 취소 — 실패·무응답이면 주문을 취소하지 않는다
+      setCancelVoiding(true);
+      const tv = await voidTerminalForOrder({ restaurantId, orderId: statusInfo.orderId, voidPin: voidPin || undefined })
+        .catch(() => ({ kind: 'none' as const }));
+      setCancelVoiding(false);
+      if (tv.kind === 'failed' || tv.kind === 'unknown') {
+        const why = tv.message.startsWith('reason:') ? t(`pos:cardTerminal.reason.${tv.message.slice(7)}`, { defaultValue: tv.message }) : tv.message;
+        offlineNotice(t('orders:orderCancel.title', { defaultValue: 'Cancel Order' }), tv.kind === 'unknown'
+          ? t('orders:orderCancel.cardVoidNoAnswer', { defaultValue: 'No answer from the card terminal. Check the terminal screen and press cancel again — if it was already cancelled, it will continue.' })
+          : `${t('orders:orderCancel.cardVoidFailed', { defaultValue: 'The card payment could not be cancelled on the terminal, so the order was not cancelled.' })} ${why}`);
+        setLoading(false);
+        return;
+      }
+      if (tv.kind === 'no-bridge') {
+        offlineNotice(t('orders:orderCancel.title', { defaultValue: 'Cancel Order' }),
+          t('orders:orderCancel.cardVoidNoBridge', { defaultValue: 'Card RM {{amount}} was not cancelled here. Void it on the card terminal.', amount: tv.amount.toFixed(2) }));
+      }
       const token = getAuthToken();
       // 확정 스펙 v2 (2026-06-02): 취소표 station 라우팅을 위해 취소 전 주문 상세(발행된
       // 아이템의 kitchen_station_id/printed_at)를 가져온다. table-status 요약엔 없음.
@@ -1172,6 +1193,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
   const handleCancelOrder = () => {
     if (!statusInfo?.orderId) return;
+    setCancelCardAmount(0);
+    if (restaurantId) getTerminalApprovals(restaurantId, statusInfo.orderId).then(rows => setCancelCardAmount(approvalsTotal(rows))).catch(() => {});
     const mode = (operationSettings as any)?.requireCancelReason || 'required';
     if (mode === 'off') {
       // 사유 없이 취소 — requireVoidPin 매장은 PIN 게이트, 아니면 단순 확인.
@@ -2475,6 +2498,13 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       )}
 
       {/* Cancel Order — reason quick-pick (mirrors LiveOrders). Reason → void & cancel log. */}
+      {cancelVoiding && (
+        <Modal isOpen onClose={() => {}} title={t('orders:orderCancel.title', { defaultValue: 'Cancel Order' })} size="small">
+          <p role="status" aria-live="polite" style={{ margin: 0, fontSize: 14, color: 'var(--pos-text, #0A2540)', lineHeight: 1.5 }}>
+            {t('pos:cardTerminal.void.progress', { defaultValue: 'Cancelling the card payment on the terminal…' })}
+          </p>
+        </Modal>
+      )}
       {cancelReasonOpen && (() => {
         const mode = (operationSettings as any)?.requireCancelReason || 'required';
         return (
@@ -2483,6 +2513,11 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             <p style={{ margin: '0 0 14px', fontSize: 14, color: 'var(--pos-text, #0A2540)', lineHeight: 1.5 }}>
               {t('orders:orderCancel.confirm', { defaultValue: 'Cancel this order? Choose a reason — it is saved to the void & cancel log. The order history is kept.' })}
             </p>
+            {cancelCardAmount > 0 && (
+              <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--pos-text-muted, #425466)', lineHeight: 1.5 }}>
+                {t('orders:orderCancel.cardVoidNotice', { defaultValue: 'The card payment RM {{amount}} on this order will also be cancelled on the card terminal.', amount: cancelCardAmount.toFixed(2) })}
+              </p>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
               {[
                 { key: 'soldOut', label: t('orders:voidItem.reasonSoldOut', { defaultValue: 'Sold out' }) },

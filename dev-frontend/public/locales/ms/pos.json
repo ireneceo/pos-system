@@ -218,5 +218,22 @@
   "cashierPin.subtitle": "Masukkan PIN 4 digit untuk tukar",
   "cashierPin.close": "Tutup",
   "cashierPin.logout": "Log Keluar",
-  "cashierPin.current": "Semasa"
+  "cashierPin.current": "Semasa",
+  "cardTerminal.void.progress": "Membatalkan bayaran kad di terminal…",
+  "cardTerminal.void.doneTitle": "Dibatalkan di terminal",
+  "cardTerminal.void.safeCancel": "Batalkan cubaan ini di terminal (selamat)",
+  "cardTerminal.void.cancelThis": "Batalkan bayaran ini di terminal",
+  "cardTerminal.reason.bankTimeout": "Bank tidak memberi respons, jadi bayaran tidak berjaya. Kad pelanggan tidak dicaj (sebarang tahanan akan dilepaskan secara automatik). Cuba lagi atau guna kaedah bayaran lain.",
+  "cardTerminal.reason.hostComm": "Terminal tidak dapat menghubungi bank. Semak Wi-Fi/SIM terminal dan cuba lagi.",
+  "cardTerminal.reason.terminalBusy": "Terminal sibuk dan tidak menerima permintaan. Selesaikan atau batalkan apa yang ada di skrin terminal, kemudian cuba lagi.",
+  "cardTerminal.reason.cardTimeout": "Tiada kad diberikan dalam masa, jadi ia dibatalkan.",
+  "cardTerminal.reason.cancelledOnTerminal": "Ia dibatalkan di terminal.",
+  "cardTerminal.reason.notSupported": "Kad ini tidak boleh diterima.",
+  "cardTerminal.reason.voidNotFound": "Terminal tiada rekod bayaran ini (jika sudah diselesaikan, buat bayaran balik di terminal).",
+  "cardTerminal.reason.voidNoRecord": "Terminal tiada rekod cubaan ini — pelanggan tidak dicaj. Anda boleh cuba lagi.",
+  "cardTerminal.reason.voidAlready": "Bayaran ini sudah dibatalkan di terminal.",
+  "cardTerminal.reason.voidDoneRetry": "Bayaran telah berjaya dan kini dibatalkan. Cuba lagi untuk menerima bayaran.",
+  "cardTerminal.reason.voidDoneDouble": "Dibatalkan. Kad pelanggan hanya dicaj sekali.",
+  "cardTerminal.reason.voidFailed": "Bayaran kad tidak dapat dibatalkan di terminal.",
+  "cardTerminal.reason.voidNoAnswer": "Tiada jawapan daripada terminal. Semak skrin terminal dan cuba lagi — jika sudah dibatalkan, ia akan diteruskan."
 }

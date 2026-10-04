@@ -19,7 +19,7 @@ import DiscountPinModal from './DiscountPinModal';
 
 import { getAuthToken } from '../../utils/auth';
 import { getEcrBridge } from '../../utils/nativeEcr';
-import { runTerminalSale, recordTerminalManually, saveTerminalHost, terminalRef, TerminalPhase, TerminalTxn } from '../../utils/terminalSale';
+import { runTerminalSale, recordTerminalManually, saveTerminalHost, voidTerminalTxn, terminalRef, TerminalPhase, TerminalTxn } from '../../utils/terminalSale';
 import { setPendingTerminalLink } from '../../utils/terminalPaymentLink';
 import TerminalPanel from './TerminalPanel';
 const OrderSummary = styled.div`
@@ -537,7 +537,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const ecrBridgeReady = !!getEcrBridge();
   const useTerminal = paymentMethod === 'card' && terminalOn && ecrBridgeReady && !isOffline;
   const [terminalBusy, setTerminalBusy] = useState<TerminalPhase | null>(null);
-  const [terminalIssue, setTerminalIssue] = useState<{ kind: 'declined' | 'unknown' | 'error' | 'choose'; message: string; txnId?: number; hosts?: string[] } | null>(null);
+  const [terminalIssue, setTerminalIssue] = useState<{ kind: 'declined' | 'unknown' | 'error' | 'choose' | 'voided'; message: string; txnId?: number; hosts?: string[]; retry?: boolean } | null>(null);
   const [terminalNote, setTerminalNote] = useState('');
   // 수동 기록(단말기 결과 미확인) — 응답이 없으니 카드인지 지갑인지 캐셔가 영수증을 보고 고른다
   const [manualTender, setManualTender] = useState<{ method: '' | 'card' | 'ewallet'; sub: string }>({ method: '', sub: '' });
@@ -874,7 +874,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       const out = await runTerminalSale({ restaurantId: rid, orderId: forOrderId || null, amount, cashierName, onPhase: setTerminalBusy });
       if (out.kind === 'approved') {
         // 승인은 됐지만 이 주문엔 이미 다른 승인이 있다 — 기록하지 않고 단말기에서 하나를 취소하라고 알린다(R2)
-        if (out.linkError === 'DOUBLE_APPROVAL') { setTerminalIssue({ kind: 'error', message: 'reason:doubleApproval' }); return null; }
+        if (out.linkError === 'DOUBLE_APPROVAL') { setTerminalIssue({ kind: 'error', message: 'reason:doubleApproval', txnId: out.txn.id }); return null; }
         return out.txn;
       }
       if (out.kind === 'choose') { setTerminalIssue({ kind: 'choose', message: out.message, hosts: out.hosts }); return null; }
@@ -901,6 +901,30 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     if (!orderId) setPendingTerminalLink(terminalIssue.txnId, total);
     if (manualTender.method === 'ewallet') onConfirmPayment('ewallet', undefined, undefined, pointsToUse, pointDiscount, undefined, undefined, sub);
     else onConfirmPayment('card', undefined, undefined, pointsToUse, pointDiscount, sub);
+  };
+
+  /**
+   * 이 거래를 단말기에서 취소(Void A2) — 이중 승인 «이 결제 취소» · 결과 미확인 «안전 취소»(Fable 설계 2026-10-04 §3-3).
+   * 이중 승인 뒤엔 Confirm 잠김 유지(결제는 첫 승인으로 기록돼 있다). 미확인 뒤엔 «다시 시도» 가 새 결제를 만든다.
+   */
+  const handleTerminalVoid = async () => {
+    const issue = terminalIssue;
+    const rid = terminalRestaurantId();
+    if (!issue?.txnId || !rid || terminalBusy) return;
+    const fromUnknown = issue.kind === 'unknown';
+    setTerminalBusy('voiding');
+    try {
+      const r = await voidTerminalTxn(issue.txnId, rid);
+      if (r.kind === 'voided') {
+        setTerminalIssue({ kind: 'voided', retry: fromUnknown, message: r.already ? 'reason:voidAlready' : fromUnknown ? 'reason:voidDoneRetry' : 'reason:voidDoneDouble' });
+      } else if (r.kind === 'notFound' && r.parent?.status === 'declined') {
+        setTerminalIssue({ kind: 'voided', retry: true, message: 'reason:voidNoRecord' });
+      } else {
+        setTerminalIssue({ ...issue, message: r.message || 'reason:voidFailed' });
+      }
+    } finally {
+      setTerminalBusy(null);
+    }
   };
 
   /** 와이파이에서 단말기가 여러 대 응답했을 때 캐셔가 고른 주소를 저장하고 같은 결제를 다시 시작한다. */
@@ -983,6 +1007,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     if (paymentMethod === 'card') {
       // 단말기 연동이면 카드종류는 단말기가 알려준다 — 캐셔 선택 불필요
       if (useTerminal && !terminalIssue) return true;
+      // 단말기에서 이 결제를 취소(Void)한 뒤엔 Confirm 잠김 — «다시 시도» 버튼으로만 새 결제(Fable 설계 2026-10-04 §3-3 A-2)
+      if (useTerminal && terminalIssue?.kind === 'voided') return false;
       // 매장 설정(payment_settings.card.requireCardType)이 켜져 있으면 카드종류 선택 필수.
       return !requireCardType || !!cardType;
     }
@@ -1490,6 +1516,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             onManual={handleTerminalManual}
             onRetry={() => { setTerminalIssue(null); setTerminalNote(''); }}
             onPickTerminal={handlePickTerminal}
+            onVoid={handleTerminalVoid}
             manualTender={manualTender}
             onManualTender={setManualTender}
             cardOptions={acceptedCards.length ? acceptedCards : CARD_TYPE_OPTIONS.map(o => o.k)}

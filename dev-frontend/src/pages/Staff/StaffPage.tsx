@@ -37,7 +37,7 @@ interface Staff {
 // MainLayout에서 항상 표시되므로 여기에 포함하지 않음
 const MENU_GROUPS = [
   { key: 'menu_management', label: 'Products (Menu / Categories / Options / Recipe)', alwaysOn: false },
-  { key: 'inventory', label: 'Stock Management (Suppliers / Inventory)', alwaysOn: false },
+  { key: 'inventory', label: 'Stock Management (Suppliers / Inventory / Purchase Orders)', alwaysOn: false },
   { key: 'marketing', label: 'Marketing (Customers / Coupons)', alwaysOn: false },
   { key: 'reports', label: 'Analytics (Reports / Activity History)', alwaysOn: false },
   { key: 'support', label: 'Communication (Notices / Manuals / Inquiries)', alwaysOn: false },

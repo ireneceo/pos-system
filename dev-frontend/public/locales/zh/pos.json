@@ -218,5 +218,22 @@
   "cashierPin.subtitle": "输入4位PIN以切换",
   "cashierPin.close": "关闭",
   "cashierPin.logout": "退出登录",
-  "cashierPin.current": "当前"
+  "cashierPin.current": "当前",
+  "cardTerminal.void.progress": "正在终端上取消刷卡付款…",
+  "cardTerminal.void.doneTitle": "已在终端上取消",
+  "cardTerminal.void.safeCancel": "在终端上取消此次尝试（安全）",
+  "cardTerminal.void.cancelThis": "在终端上取消此笔付款",
+  "cardTerminal.reason.bankTimeout": "银行未响应，付款未成功。顾客的卡未被扣款（如显示预授权会自动释放）。请重试或改用其他付款方式。",
+  "cardTerminal.reason.hostComm": "终端无法连接银行。请检查终端的 Wi-Fi/SIM 后重试。",
+  "cardTerminal.reason.terminalBusy": "终端忙碌，未接受请求。请先完成或取消终端屏幕上的操作后重试。",
+  "cardTerminal.reason.cardTimeout": "未在时限内出示卡片，已取消。",
+  "cardTerminal.reason.cancelledOnTerminal": "已在终端上取消。",
+  "cardTerminal.reason.notSupported": "无法接受此卡。",
+  "cardTerminal.reason.voidNotFound": "终端没有此笔付款记录（如已结算，请在终端上退款）。",
+  "cardTerminal.reason.voidNoRecord": "终端没有此次尝试的记录 — 顾客未被扣款。可以重试。",
+  "cardTerminal.reason.voidAlready": "此笔付款已在终端上取消。",
+  "cardTerminal.reason.voidDoneRetry": "付款已成功，现已取消。请重试以收款。",
+  "cardTerminal.reason.voidDoneDouble": "已取消。顾客的卡只扣款一次。",
+  "cardTerminal.reason.voidFailed": "无法在终端上取消刷卡付款。",
+  "cardTerminal.reason.voidNoAnswer": "终端无响应。请检查终端屏幕后重试 — 如已取消会继续。"
 }

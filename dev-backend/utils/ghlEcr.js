@@ -282,8 +282,30 @@ function classifyStatus(command, status, originalResponseCode) {
   if (status === 'EA') return 'pending';
   if (status === 'C3') return 'not_found';
   if (status === 'C7') return 'cancelled';
-  if (status === 'CA' || status === 'B0') return 'comm_error';
+  // B0(은행 무응답)·CA(호스트 통신 실패)는 **단말기가 답한** 최종 결과다 → declined (2026-10-04 Fable 설계 §2-1).
+  //   comm_error 는 «우리가 단말기 답을 못 받은» 경우(TIMEOUT·BAD_RESPONSE·연결 끊김) 전용 — 그때만 Reprint 복구를 돌린다.
+  //   운영 tx29: B0 를 comm_error 로 봐 Reprint 를 쐈고, Direct 단말기가 HTTP 400 BUSY 로 거절했다.
   return 'declined';
+}
+
+/**
+ * 앱(0.3.4+)이 올린 «읽지 못한 응답» 원본에서 HTTP 상태줄·본문을 뽑는다(2026-10-04 Fable 설계 §2-2).
+ * 운영 tx30: `HTTP/1.1 400 Bad Request … Content-Length: 4 … BUSY`.
+ * 본문이 프레임(STX 바이트 또는 «02…» hex 문자열)이면 응답으로 취급하지 않는다(null) — 그건 pickResultFrame 의 몫.
+ * @returns {{ status:number, body:string } | null}
+ */
+function parseHttpRaw(rawHex) {
+  const hex = String(rawHex || '').replace(/[^0-9A-Fa-f]/g, '');
+  if (!hex || hex.length % 2 !== 0) return null;
+  const text = Buffer.from(hex, 'hex').toString('latin1');
+  const m = text.match(/^HTTP\/\d(?:\.\d)?\s+(\d{3})/);
+  if (!m) return null;
+  const sep = text.indexOf('\r\n\r\n');
+  const body = sep >= 0 ? text.slice(sep + 4) : '';
+  if (body.charCodeAt(0) === STX) return null;
+  const compact = body.replace(/\s+/g, '');
+  if (/^02[0-9A-Fa-f]+$/.test(compact) && compact.length % 2 === 0) return null;
+  return { status: Number(m[1]), body: body.replace(/[^\x20-\x7e]/g, ' ').trim().slice(0, 80) };
 }
 
 /* ─────────────────────────── 명령별 빌더 ─────────────────────────── */
@@ -320,6 +342,6 @@ const echoRequest = () => buildFrame({ command: CMD.echo });
 module.exports = {
   STX, ETX, CMD, CMD_NAME, TAG, STATUS_TEXT, CARD_CODE,
   crc16Arc, toCents, encodeAmount, decodeAmount, tlv, buildFrame, parseFrame, pickResultFrame, hexToBuf, bufToHex,
-  cardTypeCode, mapCardType, tenderFromResult, readResult, classifyStatus,
+  cardTypeCode, mapCardType, tenderFromResult, readResult, classifyStatus, parseHttpRaw,
   saleRequest, reprintRequest, checkStatusRequest, voidRequest, echoRequest,
 };

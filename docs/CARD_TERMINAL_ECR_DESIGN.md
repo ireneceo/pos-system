@@ -45,13 +45,25 @@
 
 ## 3. 상태기계
 
+> 2026-10-04 갱신 — Void(A2) · PayHere Direct 실패 분류(B0·CA·HTTP 거절). 판정: `.claude/fable-design-20261004-terminal-void-direct.md`.
+
 ```
-created ─send─▶ sent ─00─▶ approved ─link─▶ order_id · orders.transaction_id = GHL:{단말기송장}:{승인번호}
-                 │─01~99/C1/C4/C0/…─▶ declined     │─C7─▶ cancelled      (기록 없음)
-                 │─EA─▶ pending ─E3 반복─▶ approved | declined
-                 │─응답 없음/통신오류/깨진 응답─▶ timeout|comm_error ─E6 Reprint─▶ approved(복구) | not_found
-                                                            └─캐셔 사유 입력─▶ manual (감사기록 terminal_manual_override)
+created ─send─▶ sent ─00─▶ approved ─link─▶ order … ─(주문 취소 흐름 / 이중승인 버튼) A2─▶ voided
+                 │─01~99/C0/C1/C4/C7…─▶ declined|cancelled        ▲ 00 또는 C5(이미 취소)
+                 │─B0/CA(단말기가 답함)─▶ declined                  │
+                 │─HTTP 4xx 거절(처리 전)─▶ declined «terminalBusy» │
+                 │─EA─▶ pending ─E3 반복─▶ approved | declined       │
+                 │─응답 없음/깨짐/HTTP 5xx─▶ timeout|comm_error ─E6(4xx 거절이면 3초 뒤 1회 더)─▶ approved(복구) | not_found
+                                             │                    └─A2 «안전 취소»─▶ voided(00/C5) | declined(C3 = 기록 없음)
+                                             └─캐셔 사유·수단 입력─▶ manual ─(취소 흐름) A2─▶ voided
+void 자식: sent ─00─▶ approved(부모 voided) · C5 → declined(부모 voided) · C3 → not_found · 그 외 declined · 무응답 → timeout(부모 불변, 재시도=Void 다시)
 ```
+- **comm_error = 우리가 단말기 답을 못 받은 경우만**(TIMEOUT·BAD_RESPONSE·연결 끊김). B0(은행 무응답)·CA(호스트 통신 실패)는 단말기가 답한 최종 결과라 declined — Reprint 를 쏘지 않는다(운영 tx29→tx30 «HTTP 400 BUSY» 사고).
+- 앱 0.3.4+ 는 읽지 못한 응답 원본을 `raw_hex` 로 올린다. 서버 `utils/ghlEcr.parseHttpRaw` 가 상태줄·본문을 뽑아 `status_code 'H400'` · `status_message 'HTTP 400 BUSY'` 로 남긴다. 4xx+프레임 없는 본문 = 처리 전 거절 → 판매 행 declined. **운영 첫 실측에서 반증할 것**(단말기 메뉴 열어 둔 채 Sale → 단말기 배치에 거래 0). 거래가 있으면 이 규칙을 comm_error 로 되돌린다.
+- **Void(A2)** `POST /api/terminal/transactions/:id/void {void_pin?}` — C013 ECR 송장. 매출에 잡힌 결제(원장 행/주문 참조 = counted)는 주문 취소와 같은 게이트(access_void + 매장 PIN 설정, `utils/voidPinGuard`). 고아 승인·미확인 시도는 결제 권한만(손님 보호). 감사 `terminal_void`.
+- 주 진입점 = **주문 취소**(LiveOrders `confirmCancelOrder` · 테이블 `performCancelOrder`, `utils/terminalVoid.voidTerminalForOrder`) — PATCH 앞에서 Void. 실패·무응답이면 주문을 취소하지 않는다. 브릿지 없음/오프라인이면 취소는 진행하고 «단말기에서 Void» 안내. 🔒 `orders-crud.js` 무접촉이라 서버는 «Void 안 된 승인이 있는 주문 취소» 를 아직 막지 않는다(알려진 틈 — 다음 orders-crud 정식 변경 때 409 TERMINAL_VOID_REQUIRED).
+- 보조: 결제 창 이중 승인 «이 결제를 단말기에서 취소» · 결과 미확인 «이 시도를 단말기에서 취소(안전)»(규격 3.2.2 Direct 호환 복구). 취소 뒤 Confirm 잠김.
+- 결제 대기 중 POS 취소(C1 Cancellation)는 **없음** — 규격에 명령 ID 만 있고 요청/응답 정의가 없다(GHL 질문). 취소는 단말기 Cancel 키.
 - 같은 행에 응답이 두 번 오면 첫 결과 고정(멱등).
 - 같은 주문에 승인 합계가 주문 금액을 넘으면 연결 거부 `DOUBLE_APPROVAL`(캐셔가 단말기에서 하나를 Void). 승인 자체는 저장된 채 남는다.
 - 금액이 요청과 1센트라도 다르거나 ECR 송장이 다르면 `422` 로 거부, 상태 불변.
@@ -73,4 +85,5 @@ created ─send─▶ sent ─00─▶ approved ─link─▶ order_id · orders
 
 - **GHL 회신 대기**(Irene 발송): 실단말기 전송 형식(HTTP hex 확정 여부·응답 형식), 프로파일(Payhere ECR/Direct), 샌드박스 TID/MID·테스트 단말기, 인증 필수 시나리오, DuitNow QR 처리, Tap-to-Phone 옵션.
 - 실단말기 Echo 1회로 `transport` 기본값 확정 → 데스크탑앱 버전 올려 설치본 배포 → 파일럿 매장 1곳 설치.
-- 2단계: Void(A2)·Settlement(A3)·마감 카드금액 자동입력·이월렛 단말 경유. Android 브릿지(평문 HTTP 허용 설정 필요).
+- 2단계: Settlement(A3)·마감 카드금액 자동입력·DuitNow(C01A)·D007 Account Type(직불)·Refund(B1, 정산 뒤)·분할 결제 1건 단위 Void(원장 모델 = 별도 설계). Void(A2)는 2026-10-04 완료(§3).
+- 2026-10-04 운영 실측(매장 13, PayHere Direct): Echo 정상 · tx28 C7 · tx29 B0 «Bank timed out»(카드 VISA Wave 읽음, 승인번호 없음 = 단말기↔은행 문제) · tx30 E6 → HTTP 400 BUSY. GHL 질문 6개 = 판정문 §8.
