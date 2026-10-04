@@ -14,7 +14,9 @@
   - 근거: Fable 판정 `.claude/fable-verdict-20260929-structure.md` §6. Irene 2026-10-04 원문 「권고대로 해」 → D1′=A(브랜드 원본 잠금) · D1″=다중 관리자 같이 · D3′=GIT 연결 자동·공용 · D2′=#6(Stock Item 315) 정본 #57 로 합침 / beef 둘(#51↔#75)은 표 보고 Irene 확인
   - 순서: §6-3 사실 확인(운영 읽기) → 4~12 코드 → build 1회 → verify-all --full 1회 → Fable 게이트 1회 → /배포 → 데이터 1회(표 승인·밤)
   - ✅ 2026-10-04 06:1x UTC **운영 배포 완료**(백업 `20261004_060510` · 마이그 2건 적용 · 105/105 · 스모크 10/10) · Fable 게이트 PASS 조건부(`.claude/fable-verdict-20261004-structure-gate.md`, 마커 93581328bab3) · 배포 후 확인: /docs·/download·docs API 200 · sw 5.73 · buyer_restaurant_id 칸 · ENUM docs · 브랜드2 소유자(help@, user 23) 브랜드 메뉴 200(104건)
-  - ⏳ Irene 결정 대기: 브랜드 관리자 부여 — Irene 「kate, k-din은 내 관련 아니야」 → A(help@ 만, 부여 0) / B(지정 이메일) 질문 중 · 데이터 정리 1회(밤·표 승인) 대기 · ⚠ 매장 My Cost 0.0279 는 데이터 ⑦ 전까지 틀리게 보임(예정)
+  - ✅ 2026-10-04 #3 운영 배포 SW 5.74(백업 `20261004_073021` · 스모크 10/10 · Fable (0-a) 게이트 PASS `.claude/fable-verdict-20261004-0a-gate.md`) — 브랜드 관리자 사이드바 표시 키 · 단말기 설정 브릿지 재확인 · help@ 브랜드 메뉴 200 회귀 확인
+  - ⏳ 다음: Kate(kate.kim.snkn@gmail.com) 부여(SA 화면, Fable 표적 판정 `.claude/fable-verdict-20261004-brand-manager-targets.md`) → 데이터 정리 밤 1회 · 안드로이드 앱 업데이트 안내(Irene 「바꿔. 업데이트 뜨게 해.」) Fable 설계 중
+  - (이전) ⏳ Irene 결정 대기: 브랜드 관리자 부여 — Irene 「kate, k-din은 내 관련 아니야」 → A(help@ 만, 부여 0) / B(지정 이메일) 질문 중 · 데이터 정리 1회(밤·표 승인) 대기 · ⚠ 매장 My Cost 0.0279 는 데이터 ⑦ 전까지 틀리게 보임(예정)
   - (이전 기록) 코드·빌드(SW 5.73-brand-structure-docs-20261004)·검증 완료 → **Fable 게이트 제출**. 같은 묶음: Docs(/docs·/download·관리 Docs 탭)·사이드바 Help(Install App 제거, 🔒MainLayout 푸터만, print-guard bless)·단말기 설정 표시전용·브랜드 관리자 모자(Fable 지시서 .claude/fable-instruction-20261004-brand-manager.md)
   - 검증: verify-all --full 24/24 · jest user-contexts 38/38 · jest 원가E 3/3 · health auth 13/13·pos 53/53 · 공급처 실호출 16/16 · e2e brand-manager-hat 3회×2폭 통과 · 고장주입 5종(형제필터·원가E·FI-13·033·FI-10~12) · 운영 읽기 031=28·032=77
   - 지시서와 다른 것(게이트 보고): ⑧-6 매장 38 은 브랜드 17 소속이라 BM 에게 200(테스트를 사실대로 수정) · 033 운영 0(315/319 는 이름이 달라 기계 미검출) · 원가 오버레이 매장 10 매장소유 행에 bq≠1 혼재(읽히지 않는 옛 행)

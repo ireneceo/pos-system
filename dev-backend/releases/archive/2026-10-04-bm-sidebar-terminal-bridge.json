@@ -1,0 +1,46 @@
+{
+  "tag": "bm-sidebar-terminal-bridge",
+  "sw_version": "5.74-bm-sidebar-terminal-bridge-20261004",
+  "date": "2026-10-04",
+  "in_progress": [
+    "Kate(kate.kim.snkn@gmail.com) 브랜드 관리자 부여 → K-DINE 데이터 정리 1회(밤·표 승인) → 잠금"
+  ],
+  "completed": [
+    "브랜드 관리자로 전환하면 왼쪽 메뉴에 Dashboard·Brands(Brand Menus) 가 보임 — 전에는 빠져 있었다(Fable 표적 판정)",
+    "카드 단말기 설정: 계산대 앱이 단말기 연결 기능을 늦게 끼워 넣어도 화면이 다시 확인해 자동 찾기가 동작(설정 화면에서 새로고침·앱 시작 시 멈추던 결함)"
+  ],
+  "remaining": [
+    "브랜드 소유자가 직접 관리자를 부여하는 화면(후속 별건)",
+    "/docs·/download 검색 노출(nginx) — 글이 쌓이면 /SEO점검 별건"
+  ],
+  "verification": {
+    "api": "jest user-contexts 38/38(⑧-2·⑧-3 표시 키 단언 추가)",
+    "fault_injection": "투영 permissions 를 [] 로 되돌림 → ⑧-3 실패, cp 원복 cmp 동일 · pm2 재시작 후 38/38",
+    "regression": "e2e brand-manager-hat 3회×2폭(사이드바 Dashboard·Brands→Brand Menus 단언 포함) · verify-all --full(mount sweep 671초 크래시 0)",
+    "migration": "없음",
+    "sw_version": "5.74-bm-sidebar-terminal-bridge-20261004",
+    "fable_note": "Fable 표적 판정 2026-10-04(.claude/fable-verdict-20261004-brand-manager-targets.md) — 사이드바 표시 키 3줄 · 게이트 1회 대상. 단말기 브릿지 재확인은 Irene 「자동 찾기 안되는데」 실측(운영 단말기 기록 0건) 뒤 팀원 수정"
+  },
+  "notes": [
+    "🔒 인쇄 보호파일 무접촉(MainLayout 변경 0)",
+    "표시 키는 dashboard·products 만 — 결제·운영·관리 키 제외(서버 판정엔 안 쓰임)"
+  ],
+  "irene_actions_after_deploy": [
+    "태블릿: 앱 0.3.0 확인 → 설정 › 결제 › Card 에서 «연결 확인 중… → 같은 와이파이» 확인"
+  ],
+  "issues": [
+    "브랜드 관리자 모자에 사이드바 메뉴가 빠져 있었음(운영 부여 0건이라 무증상)",
+    "단말기 설정 화면이 앱의 단말기 연결 기능을 늦게 감지하면 자동 찾기가 안 뜸"
+  ],
+  "upcoming": [
+    "Kate 부여 · K-DINE 데이터 정리"
+  ],
+  "behavior_changes": [
+    "브랜드 관리자 사이드바에 Dashboard·Brands 표시",
+    "단말기 설정 화면이 열린 뒤 최대 10초 동안 앱 연결 기능을 다시 확인"
+  ],
+  "check_areas": [
+    "브랜드 관리자 전환 후 사이드바",
+    "계산대 앱 카드 단말기 설정 화면"
+  ]
+}
