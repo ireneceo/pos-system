@@ -332,7 +332,8 @@
     "deployRecords": "开发问题",
     "lockedHint": "升级后自动计算库存与配方成本",
     "help": "帮助",
-    "guides": "使用指南"
+    "guides": "使用指南",
+    "download": "下载应用"
   },
   "language": {
     "en": "English",

@@ -39,7 +39,20 @@ export function useNativeAppUpdate() {
   const [status, setStatus] = useState<NativeUpdateStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [dismissedTick, setDismissedTick] = useState(0);
-  const inApp = isAndroidNativeApp();
+  // 계산대 앱은 브릿지(__PURPLE_DESKTOP 등)를 «페이지가 다 열린 뒤» 끼워 넣는다(MainActivity onPageLoaded).
+  //   화면이 그보다 먼저 그려지면 «앱 아님» 이 굳어 카드가 영영 안 뜬다 — 단말기 설정 화면과 같은 결함
+  //   (2026-10-04 Irene 「업데이트 배너 안뜨는데」). 처음 10초는 다시 확인한다.
+  const [inApp, setInApp] = useState<boolean>(() => isAndroidNativeApp());
+  useEffect(() => {
+    if (inApp) return;
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      tries += 1;
+      if (isAndroidNativeApp()) { setInApp(true); window.clearInterval(timer); }
+      else if (tries >= 20) window.clearInterval(timer);   // 0.5초 × 20 = 10초
+    }, 500);
+    return () => window.clearInterval(timer);
+  }, [inApp]);
 
   const check = useCallback(async (force = false) => {
     if (!isAndroidNativeApp()) return;

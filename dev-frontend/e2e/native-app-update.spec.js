@@ -57,6 +57,25 @@ test.describe('안드로이드 앱 업데이트 안내', () => {
     await expect(banner).toContainText('SHA_MISMATCH');
   });
 
+  test('브릿지가 화면보다 늦게 들어와도(실기기 순서) 배지·카드가 뜬다', async ({ page, request, baseURL }) => {
+    assertDevBaseURL(baseURL);
+    const { token, user } = await demoLogin(request, baseURL, 'demo_restaurant_admin');
+    await page.route('**/desktop/android-latest.json', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FEED) }));
+    await page.addInitScript(([t, role]) => {
+      if (!localStorage.getItem('auth_token')) { localStorage.setItem('auth_token', t); localStorage.setItem('currentUserRole', role); localStorage.setItem('i18nextLng', 'en'); }
+      // MainActivity onPageLoaded 처럼 «다 그려진 뒤» 끼워 넣는다
+      setTimeout(() => {
+        window.__PURPLE_DESKTOP = { isDesktop: true, platform: 'android' };
+        window.__NATIVE_PRINT = { available: true, version: null };
+        setTimeout(() => { window.__NATIVE_PRINT.version = '0.2.0'; }, 1000);
+      }, 2000);
+    }, [token, user.role]);
+    await page.goto(`/restaurant/${user.restaurant_id}/dashboard`);
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('text=app v0.2.0')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('native-update-banner')).toBeVisible({ timeout: 15000 });
+  });
+
   test('브라우저(앱 아님) → 배너 없음 · 피드 요청 0', async ({ page, request, baseURL }) => {
     assertDevBaseURL(baseURL);
     const { token, user } = await demoLogin(request, baseURL, 'demo_restaurant_admin');

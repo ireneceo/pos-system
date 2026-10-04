@@ -332,7 +332,8 @@
     "deployRecords": "솔루션 개발이슈",
     "lockedHint": "업그레이드하면 재고와 레시피 원가가 자동으로 계산됩니다",
     "help": "도움말",
-    "guides": "사용 안내"
+    "guides": "사용 안내",
+    "download": "앱 다운로드"
   },
   "language": {
     "en": "English",

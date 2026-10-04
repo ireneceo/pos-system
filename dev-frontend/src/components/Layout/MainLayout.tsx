@@ -20,7 +20,8 @@ import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
 import { isNativeDesktop } from '../../utils/nativeDesktop';
-import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, HelpCircle, BookOpen, Building2, MapPin, Gift, Bell, Target } from 'lucide-react';
+import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, HelpCircle, BookOpen, Download, Building2, MapPin, Gift, Bell, Target } from 'lucide-react';
+import { appDownloadTarget } from '../../utils/nativeAppUpdate';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
 
 // System Admin 2-tier sidebar widths
@@ -989,6 +990,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { isStandalone } = usePwaInstall();
   // «Help» 한 버튼 = 안내 문서(/docs) + 문의하기 (2026-10-04 Irene 「Contact Support랑 버튼 합쳐서」)
   const [helpOpen, setHelpOpen] = useState(false);
+  // 앱(안드로이드·Windows) 안에서는 새 창(_blank)이 열리지 않는다 — 같은 화면에서 연다(2026-10-04)
+  const openGuides = () => {
+    if ((window as any).__PURPLE_DESKTOP) navigate('/docs'); else window.open('/docs', '_blank', 'noopener');
+    setHelpOpen(false); closeSidebar?.();
+  };
+  // 도움말 › 다운로드 — 기기에 맞는 계산대 앱 (utils/nativeAppUpdate.appDownloadTarget 단일 판정)
+  const openDownload = () => {
+    const target = appDownloadTarget();
+    if (target.kind === 'page') navigate(target.href); else window.location.assign(target.href);
+    setHelpOpen(false); closeSidebar?.();
+  };
 
   // Fullscreen pages (POS Terminal / Floor Plan / Kitchen / Customer Display / Mobile Order)
   // are sidebar entries marked openInNewTab. Inside our app shell — a PWA standalone
@@ -3839,10 +3851,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               {helpOpen && (
                 <FooterRailButton
                   type="button"
-                  onClick={() => { window.open('/docs', '_blank', 'noopener'); setHelpOpen(false); closeSidebar?.(); }}
+                  onClick={openGuides}
                   title={t('nav.guides', 'Guides') || ''}
                 >
                   <BookOpen size={18} strokeWidth={2} />
+                </FooterRailButton>
+              )}
+              {helpOpen && (
+                <FooterRailButton
+                  type="button"
+                  onClick={openDownload}
+                  title={t('nav.download', 'Download app') || ''}
+                >
+                  <Download size={18} strokeWidth={2} />
                 </FooterRailButton>
               )}
               {helpOpen && supportPath && (
@@ -3954,12 +3975,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <div style={{ margin: '-6px 8px 12px', border: '1px solid #C7CED6', borderRadius: 8, background: '#FFFFFF', overflow: 'hidden' }}>
                   <button
                     type="button"
-                    onClick={() => { window.open('/docs', '_blank', 'noopener'); setHelpOpen(false); closeSidebar?.(); }}
+                    onClick={openGuides}
                     style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 16px', border: 'none', background: 'transparent', color: '#0A2540', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}
                   >
                     <BookOpen size={15} strokeWidth={1.75} />
                     <span style={{ flex: 1 }}>{t('nav.guides', 'Guides')}</span>
                     <span aria-hidden="true" style={{ fontSize: 11, color: '#6B7280' }}>↗</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openDownload}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 16px', border: 'none', borderTop: '1px solid #E3E8EE', background: 'transparent', color: '#0A2540', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <Download size={15} strokeWidth={1.75} />
+                    <span style={{ flex: 1 }}>{t('nav.download', 'Download app')}</span>
                   </button>
                   {supportPath && (
                     <button

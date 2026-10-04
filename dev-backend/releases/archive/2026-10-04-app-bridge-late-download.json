@@ -1,0 +1,45 @@
+{
+  "tag": "app-bridge-late-download",
+  "sw_version": "5.76-app-bridge-late-download-20261004",
+  "date": "2026-10-04",
+  "in_progress": [
+    "Irene 태블릿: 설치된 앱 버전 확인(안드로이드 설정 › 앱) → 0.3.1 설치 → 단말기 자동 찾기"
+  ],
+  "completed": [
+    "안드로이드 앱 왼쪽 위 «app v…» 표시와 «새 버전» 카드가 앱 기능이 늦게 들어와도 뜬다(최대 10~15초 다시 확인) — 실기기에서 안 뜨던 결함",
+    "왼쪽 도움말 하위 메뉴에 «앱 다운로드» — 안드로이드 앱 안은 Chrome 으로 넘겨 APK, 안드로이드 브라우저는 APK, Windows 는 설치본, 그 밖은 다운로드 페이지",
+    "도움말 «사용 안내» 가 앱 안에서는 같은 화면에서 열림(앱은 새 창을 못 연다)"
+  ],
+  "remaining": [
+    "단말기 자동 찾기 실기기 확인(0.3.1 설치 뒤)"
+  ],
+  "verification": {
+    "api": "변경 없음(화면만)",
+    "fault_injection": "e2e 늦은 브릿지 주입(2초 뒤 · 버전 1초 뒤) 시나리오 신설 — 운영 5.75 에서 Irene 실기기 «버전 안 보임·카드 안 뜸» 이 이 결함의 실측 재현. 수정 전 번들로 같은 e2e 를 돌리는 반증은 재빌드 비용(22분) 때문에 생략 — 확인 불가로 보고",
+    "regression": "e2e native-app-update 5/5 ×3 · brand-manager-hat 2/2 · verify-all --full",
+    "migration": "없음",
+    "sw_version": "5.76-app-bridge-late-download-20261004",
+    "fable_note": "Fable 앱 업데이트 게이트(.claude/fable-verdict-20261004-android-update-gate.md) 후속 — Irene 실기기 피드백 반영. 게이트 1회 대상"
+  },
+  "notes": [
+    "🔒 MainLayout 사이드바 도움말 그룹만(다운로드 항목·Guides 앱 내 열기) — 인쇄 관련 줄 변경 0, print-guard bless",
+    "다운로드 파일은 항상-최신 별칭만(PurplePOS.apk · PurplePOS-Setup.exe)"
+  ],
+  "irene_actions_after_deploy": [
+    "태블릿 앱을 완전히 닫았다 다시 열기 → 왼쪽 위 «app v…» 확인 → 0.2.0 이면 카드 «업데이트» 또는 도움말 › 앱 다운로드"
+  ],
+  "issues": [
+    "앱 기능이 화면보다 늦게 들어오면 버전 표시·업데이트 카드가 안 뜨던 결함(운영 5.75)",
+    "앱 안에서 «사용 안내» 가 아무 반응이 없던 결함(새 창)"
+  ],
+  "upcoming": [
+    "단말기 결제 테스트"
+  ],
+  "behavior_changes": [
+    "도움말 메뉴: 사용 안내 · 앱 다운로드 · 문의하기"
+  ],
+  "check_areas": [
+    "안드로이드 앱 왼쪽 위 버전 표시 · 업데이트 카드",
+    "사이드바 도움말 › 앱 다운로드(기기별)"
+  ]
+}

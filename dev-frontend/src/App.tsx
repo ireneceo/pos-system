@@ -22,6 +22,7 @@ import OfflineLockOverlay from './components/Offline/OfflineLockOverlay';
 import NotificationToaster from './components/Common/NotificationToaster';
 import PwaInstallBanner from './components/Common/PwaInstallBanner';
 import NativeAppUpdateBanner from './components/Common/NativeAppUpdateBanner';
+import NativeVersionBadge from './components/Common/NativeVersionBadge';
 import InstallGuideModal from './components/Common/InstallGuideModal';
 import AutoPrintFailureBanner from './components/AutoPrintFailureBanner';
 import PrintDeviceReporter from './components/PrintDeviceReporter';
@@ -517,11 +518,7 @@ function App() {
                             in-app "지금 업데이트" download banner was removed — it pushed a manual
                             .exe download (wrong UX). The app updates ITSELF via electron-updater
                             (0.1.5+ shows its own "restart to update" prompt). Native app only. */}
-                        {typeof window !== 'undefined' && (window as any).__NATIVE_PRINT && (
-                          <div style={{ position: 'fixed', top: 0, left: 0, zIndex: 2147483647, fontSize: '10px', lineHeight: '14px', padding: '1px 6px', background: 'rgba(99,91,255,0.92)', color: '#fff', borderBottomRightRadius: '6px', fontWeight: 700, letterSpacing: '0.3px', pointerEvents: 'none', fontFamily: 'monospace' }}>
-                            app v{String((window as any).__NATIVE_PRINT.version || '?')}
-                          </div>
-                        )}
+                        <NativeVersionBadge />
                         <CookieConsentBanner />
                         <NotificationToaster />
                         <PwaInstallBanner />

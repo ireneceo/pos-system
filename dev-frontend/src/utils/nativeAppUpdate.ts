@@ -93,3 +93,19 @@ export async function fetchAndroidFeed(): Promise<AndroidFeed | null> {
 export function externalHandoffUrl(file: string): string {
   return `http://${window.location.host}/desktop/${file}`;
 }
+
+/**
+ * 도움말 › «다운로드» — 기기에 맞는 계산대 앱으로 (2026-10-04 Irene 「좌측 도움말 하위메뉴에 다운로드도 다시 넣어줘. 기종에 맞게 다운되게」).
+ *   안드로이드 앱 안 → 시스템 브라우저로 넘겨 APK(앱 WebView 는 다운로드를 못 한다 — externalHandoffUrl 과 같은 이유)
+ *   안드로이드 브라우저 → APK 별칭 · Windows 브라우저 → 설치본 별칭 · 그 밖(아이폰·맥·Windows 앱) → /download 페이지
+ *   파일은 항상-최신 별칭만 쓴다(버전 리터럴 금지 — check-desktop-feed).
+ */
+export function appDownloadTarget(): { kind: 'handoff' | 'file' | 'page'; href: string } {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const desk = (window as any).__PURPLE_DESKTOP;
+  if (desk?.platform === 'android') return { kind: 'handoff', href: `http://${window.location.host}/desktop/PurplePOS.apk` };
+  if (desk) return { kind: 'page', href: '/download' };
+  if (/Android/i.test(ua)) return { kind: 'file', href: '/desktop/PurplePOS.apk' };
+  if (/Windows/i.test(ua)) return { kind: 'file', href: '/desktop/PurplePOS-Setup.exe' };
+  return { kind: 'page', href: '/download' };
+}
