@@ -66,7 +66,7 @@ for (const vp of [{ w: 1440, h: 900 }, { w: 390, h: 844 }]) {
     const raCtx = await browser.newContext({ viewport: { width: vp.w, height: vp.h } });
     const page = await raCtx.newPage();
     page.on('console', m => { if (m.type() === 'error') errors.push('RA ' + m.text()); });
-    await page.addInitScript(([t, r]) => { localStorage.setItem('auth_token', t); localStorage.setItem('currentUserRole', r); localStorage.setItem('i18nextLng', 'en'); }, [raToken, ra.role]);
+    await page.addInitScript(([t, r]) => { if (!localStorage.getItem('auth_token')) { localStorage.setItem('auth_token', t); localStorage.setItem('currentUserRole', r); localStorage.setItem('i18nextLng', 'en'); } }, [raToken, ra.role]);  // 새로고침 때 전환된 토큰을 덮지 않게
     await page.goto('/pos/select-context');
     await page.waitForLoadState('networkidle');
     const card = page.getByText('K-Dine').first();
@@ -87,10 +87,11 @@ for (const vp of [{ w: 1440, h: 900 }, { w: 390, h: 844 }]) {
     expect(bodyLooksCrashed(await page.locator('body').innerText()), '브랜드 메뉴 화면 크래시').toBeFalsy();
     // dev 브랜드 17 에는 브랜드 메뉴가 없다 — 관리자 모자로 임시 메뉴를 만들고(생성도 관리 권한) 수정·원복·삭제한다
     const NAME = `E2E-BM-${vp.w}-${Date.now()}`;
-    const mk = await request.post(`${api}/brand-menus`, { headers: authHeaders(bmToken), data: { brand_id: BRAND, name: NAME, recommended_price: 1 } });
+    const mk = await request.post(`${api}/brand-menus`, { headers: authHeaders(bmToken), data: { brand_id: BRAND, name: NAME, recommended_price: 1, distribution_mode: 'manual' } });  // manual — 매장에 상품이 생기지 않게
     expect(mk.ok(), 'BM 메뉴 생성').toBeTruthy();
     const mkBody = await mk.json();
-    const m0 = mkBody.data || mkBody;
+    const m0 = mkBody.data?.menu || mkBody.data || mkBody;
+    expect(Number(m0.id), '생성된 메뉴 id').toBeGreaterThan(0);
     try {
       await page.reload();
       await page.waitForLoadState('networkidle');
@@ -100,12 +101,18 @@ for (const vp of [{ w: 1440, h: 900 }, { w: 390, h: 844 }]) {
       const back = await request.put(`${api}/brand-menus/${m0.id}`, { headers: authHeaders(bmToken), data: { name: NAME } });
       expect(back.ok(), 'BM 메뉴 원복').toBeTruthy();
     } finally {
+      // 브랜드 메뉴를 만들면 범위(scope) 매장에 상품이 생긴다 — 메뉴 삭제는 연결만 푼다. demo 매장 38 의 그 상품도 치운다.
+      execFileSync('node', ['-e', `
+        require('dotenv').config({ path: '/var/www/dev-backend/.env', quiet: true });
+        const { sequelize } = require('/var/www/dev-backend/config/database');
+        sequelize.query("DELETE FROM products WHERE restaurant_id = 38 AND name LIKE 'E2E-BM-%'").then(() => process.exit(0));`],
+        { cwd: '/var/www/dev-backend' });
       const del = await request.delete(`${api}/brand-menus/${m0.id}`, { headers: authHeaders(bmToken) });
-      expect(del.ok(), 'BM 임시 메뉴 삭제').toBeTruthy();
+      expect(del.ok(), `BM 임시 메뉴 삭제 status=${del.status()} ${await del.text()}`).toBeTruthy();
     }
 
     // 헤더 스위처 제목 = K-Dine (데스크탑 폭에서만 사이드바가 펼쳐져 있다)
-    if (vp.w >= 1024) await expect(page.getByText('K-Dine').first()).toBeVisible();
+    if (vp.w >= 1024) await expect(page.locator('text=K-Dine >> visible=true').first(), '헤더 스위처 제목 K-Dine').toBeVisible();
 
     // ── SA 회수 ──
     const post = await (await request.get(`${api}/users/${ra.id}/contexts`, { headers: authHeaders(sa) })).json();
