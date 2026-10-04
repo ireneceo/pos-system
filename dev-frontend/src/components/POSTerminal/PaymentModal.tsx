@@ -997,10 +997,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const footer = (
     <>
       <Button variant="secondary" onClick={onClose} disabled={!!terminalBusy}>
-        Cancel
+        {tPos('pos:paymentModal.cancel', 'Cancel')}
       </Button>
       <Button variant="primary" onClick={handleConfirm} disabled={!canConfirm()}>
-        Confirm Payment
+        {tPos('pos:paymentModal.confirmPayment', 'Confirm Payment')}
       </Button>
     </>
   );
@@ -1009,7 +1009,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Payment"
+      title={tPos('pos:paymentModal.payment', 'Payment')}
       footer={footer}
     >
       {/* Split bill toggle + UI (Phase 2) */}
@@ -1024,7 +1024,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540' }}>
-                Split bill (pay by items)
+                {tPos('pos:paymentModal.splitByItems', 'Split bill (pay by items)')}
               </div>
               <div style={{ fontSize: 11, color: '#4B5563', marginTop: 2 }}>
                 Select items to pay this round. Remaining items can be paid separately.
@@ -1114,7 +1114,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                           background: '#D1FAE5', padding: '2px 6px', borderRadius: 4,
                           letterSpacing: 0.3
                         }}>
-                          PAID
+                          {tPos('pos:paymentModal.paid', 'PAID')}
                         </span>
                       )}
                     </div>
@@ -1135,36 +1135,36 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                   fontSize: 12
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
-                    <span>Items subtotal</span>
+                    <span>{tPos('pos:paymentModal.itemsSubtotal', 'Items subtotal')}</span>
                     <span>{formatCurrency(splitSubtotal, operationSettings.currency)}</span>
                   </div>
                   {splitDiscount > 0.005 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
-                      <span>Discount (proportional)</span>
+                      <span>{tPos('pos:paymentModal.discountProportional', 'Discount (proportional)')}</span>
                       <span>−{formatCurrency(splitDiscount, operationSettings.currency)}</span>
                     </div>
                   )}
                   {splitCoupon > 0.005 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
-                      <span>Coupon (proportional)</span>
+                      <span>{tPos('pos:paymentModal.couponProportional', 'Coupon (proportional)')}</span>
                       <span>−{formatCurrency(splitCoupon, operationSettings.currency)}</span>
                     </div>
                   )}
                   {splitDiscountPolicy > 0.005 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
-                      <span>Discount policy (proportional)</span>
+                      <span>{tPos('pos:paymentModal.policyProportional', 'Discount policy (proportional)')}</span>
                       <span>−{formatCurrency(splitDiscountPolicy, operationSettings.currency)}</span>
                     </div>
                   )}
                   {splitPointDiscount > 0.005 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
-                      <span>Points (proportional)</span>
+                      <span>{tPos('pos:paymentModal.pointsProportional', 'Points (proportional)')}</span>
                       <span>−{formatCurrency(splitPointDiscount, operationSettings.currency)}</span>
                     </div>
                   )}
                   {splitTakeaway > 0.005 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
-                      <span>Takeaway charge</span>
+                      <span>{tPos('pos:paymentModal.takeawayCharge', 'Takeaway charge')}</span>
                       <span>+{formatCurrency(splitTakeaway, operationSettings.currency)}</span>
                     </div>
                   )}
@@ -1184,7 +1184,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     marginTop: 6, paddingTop: 8, borderTop: '1px solid #C7CED6'
                   }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#0A2540' }}>This payment</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#0A2540' }}>{tPos('pos:paymentModal.thisPayment', 'This payment')}</span>
                     <span style={{ fontSize: 16, fontWeight: 700, color: splitTotal - remainingAmount > 0.01 ? '#DC2626' : '#3B30D9' }}>
                       {formatCurrency(splitTotal, operationSettings.currency)}
                     </span>
@@ -1209,29 +1209,29 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       <OrderSummary>
         {cashierName && (
           <SummaryRow>
-            <SummaryLabel>Cashier</SummaryLabel>
+            <SummaryLabel>{tPos('pos:paymentModal.cashier', 'Cashier')}</SummaryLabel>
             <SummaryValue>{cashierName}</SummaryValue>
           </SummaryRow>
         )}
         <SummaryRow>
-          <SummaryLabel>Subtotal</SummaryLabel>
+          <SummaryLabel>{tPos('pos:paymentModal.subtotal', 'Subtotal')}</SummaryLabel>
           <SummaryValue>{formatCurrency(subtotal, operationSettings.currency)}</SummaryValue>
         </SummaryRow>
         {takeawayCharge > 0 && (
           <SummaryRow>
-            <SummaryLabel>Takeaway Charge</SummaryLabel>
+            <SummaryLabel>{tPos('pos:paymentModal.takeawayCharge2', 'Takeaway Charge')}</SummaryLabel>
             <SummaryValue>{formatCurrency(takeawayCharge, operationSettings.currency)}</SummaryValue>
           </SummaryRow>
         )}
         {discountAmount > 0 && (
           <DiscountRow>
-            <SummaryLabel>Discount</SummaryLabel>
+            <SummaryLabel>{tPos('pos:paymentModal.discount', 'Discount')}</SummaryLabel>
             <SummaryValue>{formatCurrency(-discountAmount, operationSettings.currency)}</SummaryValue>
           </DiscountRow>
         )}
         {couponDiscount > 0 && (
           <DiscountRow>
-            <SummaryLabel>Coupon Discount</SummaryLabel>
+            <SummaryLabel>{tPos('pos:paymentModal.couponDiscount', 'Coupon Discount')}</SummaryLabel>
             <SummaryValue>{formatCurrency(-couponDiscount, operationSettings.currency)}</SummaryValue>
           </DiscountRow>
         )}
@@ -1259,7 +1259,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           payment from Live Orders / Floor Plan). Server recomputes via computeOrderTotals. */}
       {orderId && !splitMode && (
         <InputSection>
-          <Label>Discount</Label>
+          <Label>{tPos('pos:paymentModal.discount', 'Discount')}</Label>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'stretch' }}>
             <div style={{ display: 'flex', border: '1px solid #C7CED6', borderRadius: 8, overflow: 'hidden' }}>
               {(['amount', 'percent'] as const).map(m => (
@@ -1281,15 +1281,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           {liveTotalOverride != null && (
             <div style={{ marginTop: 8, fontSize: 13, borderTop: '1px dashed #C7CED6', paddingTop: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
-                <span>Before discount</span>
+                <span>{tPos('pos:paymentModal.beforeDiscount', 'Before discount')}</span>
                 <span style={{ textDecoration: 'line-through' }}>{formatCurrency(originalTotal, operationSettings.currency)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontWeight: 600, marginBottom: 4 }}>
-                <span>Discount applied</span>
+                <span>{tPos('pos:paymentModal.discountApplied', 'Discount applied')}</span>
                 <span>-{formatCurrency(Math.max(0, originalTotal - liveTotalOverride), operationSettings.currency)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0A2540', fontWeight: 700 }}>
-                <span>New total</span>
+                <span>{tPos('pos:paymentModal.newTotal', 'New total')}</span>
                 <span>{formatCurrency(liveTotalOverride, operationSettings.currency)}</span>
               </div>
             </div>
@@ -1310,17 +1310,17 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 4
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#92400E' }}>
-            <span>Already paid (proportional)</span>
+            <span>{tPos('pos:paymentModal.alreadyPaid', 'Already paid (proportional)')}</span>
             <span style={{ fontWeight: 600 }}>{formatCurrency(totalPaidAlready, operationSettings.currency)}</span>
           </div>
           {overpaidAmount > 0.01 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#92400E', fontStyle: 'italic' }}>
-              <span>Received over proportional</span>
+              <span>{tPos('pos:paymentModal.receivedOver', 'Received over proportional')}</span>
               <span>+{formatCurrency(overpaidAmount, operationSettings.currency)}</span>
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700, color: '#92400E' }}>
-            <span>Remaining to pay</span>
+            <span>{tPos('pos:paymentModal.remaining', 'Remaining to pay')}</span>
             <span>{formatCurrency(remainingAmount, operationSettings.currency)}</span>
           </div>
         </div>
@@ -1331,8 +1331,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         <PointsSection>
           <PointsHeader>
             <div>
-              <PointsTitle>Loading Points...</PointsTitle>
-              <PointsTier>Please wait</PointsTier>
+              <PointsTitle>{tPos('pos:paymentModal.loadingPoints', 'Loading Points...')}</PointsTitle>
+              <PointsTier>{tPos('pos:paymentModal.pleaseWait', 'Please wait')}</PointsTier>
             </div>
           </PointsHeader>
         </PointsSection>
@@ -1342,7 +1342,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           {/* Points Info Header */}
           <PointsHeader>
             <div>
-              <PointsTitle>Available Points</PointsTitle>
+              <PointsTitle>{tPos('pos:paymentModal.availablePoints', 'Available Points')}</PointsTitle>
               <PointsTier>{customerTier} Member</PointsTier>
             </div>
             <PointsBalance>{customerPoints.toLocaleString()} pts</PointsBalance>
@@ -1363,7 +1363,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                     }
                   }}
                 />
-                <span>Use points for this order</span>
+                <span>{tPos('pos:paymentModal.usePoints', 'Use points for this order')}</span>
               </PointsToggle>
 
               {usePoints && (
@@ -1454,10 +1454,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       )}
 
       <Section>
-        <Label>Payment Method</Label>
+        <Label>{tPos('pos:paymentModal.paymentMethod', 'Payment Method')}</Label>
         {!paymentMethods ? (
           <div style={{ color: '#4B5563', fontSize: '14px', padding: '12px 0' }}>
-            Loading payment methods...
+            {tPos('pos:paymentModal.loadingMethods', 'Loading payment methods...')}
           </div>
         ) : availableMethods.length === 0 ? (
           <div style={{ color: '#E25950', fontSize: '14px', padding: '12px 0' }}>
@@ -1523,7 +1523,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               </div>
               {requireCardType && !cardType && (
                 <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 500, color: '#FF6B6B' }}>
-                  Please select a card type to continue.
+                  {tPos('pos:paymentModal.selectCardType', 'Please select a card type to continue.')}
                 </div>
               )}
             </>
@@ -1556,7 +1556,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               </div>
               {requireEwalletType && !ewalletType && (
                 <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 500, color: '#FF6B6B' }}>
-                  Please select an e-wallet type to continue.
+                  {tPos('pos:paymentModal.selectEwallet', 'Please select an e-wallet type to continue.')}
                 </div>
               )}
             </>
@@ -1584,7 +1584,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           </div>
           {orderItems.length > 0 && (
             <div>
-              <Label>Staff name per serving</Label>
+              <Label>{tPos('pos:paymentModal.staffPerServing', 'Staff name per serving')}</Label>
               <datalist id="staff-meal-name-options">
                 {staffNameOptions.map((n, i) => <option key={i} value={n} />)}
               </datalist>
@@ -1632,10 +1632,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
       {paymentMethod === 'cash' && (
         <InputSection>
-          <Label>Cash Amount</Label>
+          <Label>{tPos('pos:paymentModal.cashAmount', 'Cash Amount')}</Label>
           <AmountInput
             type="text"
-            placeholder="Enter amount received"
+            placeholder={tPos('pos:paymentModal.enterReceived', 'Enter amount received')}
             value={cashAmount}
             onChange={(e) => handleCashAmountChange(e.target.value)}
             autoFocus
@@ -1654,7 +1654,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
           {parseFloat(cashAmount) >= total && (
             <ChangeDisplay>
-              <ChangeLabel>Change</ChangeLabel>
+              <ChangeLabel>{tPos('pos:paymentModal.change', 'Change')}</ChangeLabel>
               <ChangeAmount>{formatCurrency(calculateChange(), operationSettings.currency)}</ChangeAmount>
             </ChangeDisplay>
           )}
@@ -1663,7 +1663,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       <DiscountPinModal
         show={showDiscountPin}
         restaurantId={restaurantId as any}
-        title="Discount Approval"
+        title={tPos('pos:paymentModal.discountApproval', 'Discount Approval')}
         onClose={() => setShowDiscountPin(false)}
         onApproved={() => { setShowDiscountPin(false); doApplyPaymentDiscount(); }}
       />

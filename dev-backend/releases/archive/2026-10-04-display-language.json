@@ -1,0 +1,51 @@
+{
+  "tag": "display-language",
+  "sw_version": "5.80-display-language-20261004",
+  "date": "2026-10-04",
+  "in_progress": [
+    "카드 단말기 RM 1.00 카드·QR 실결제 테스트(13:58 Echo 승인 — 연결 성공)"
+  ],
+  "completed": [
+    "POS 를 열 때 모니터가 1대면 고객 화면이 자동으로 열리지 않음(2대일 때만) — 태블릿·안드로이드 앱에서 고객 화면이 POS 를 덮던 문제",
+    "고객 화면이 단일 화면 기기(태블릿·앱)를 차지하면 «대시보드» 버튼으로 나갈 수 있음 — 두 번째 모니터(팝업·키오스크)에는 안 보임",
+    "기기에서 고른 언어를 직원 세션이 덮지 않음 — 한국어로 설정했는데 POS 만 영어로 나오던 문제",
+    "POS 화면·결제 창·주문 완료 창·캐셔 전환 창의 영어 고정 문구 약 90곳을 4개 언어로(영수증 인쇄 내용은 그대로)"
+  ],
+  "remaining": [
+    "남은 영어 문구 — 고객 화면 «Connected/Connecting», 확인·알림 창(ConfirmDialog/AlertDialog) 메시지·버튼",
+    "Windows 데스크탑 앱 설치본 재빌드",
+    "«손님 전용 단일 태블릿» 을 고객 화면으로 쓰면 대시보드 버튼이 보임 — 후속: 길게 눌러 나가기 또는 직원 PIN(Irene 판단)"
+  ],
+  "verification": {
+    "api": "화면 변경 — 실브라우저 e2e pos-display-language 5/5 · pos-terminal·card-terminal 11/11",
+    "fault_injection": "자동열림 화면수 검사 제거 + 세션복원 기기언어 검사 제거 → 재빌드 → 해당 2건 실패(옛 동작 재현) · cp 원복 cmp 동일 → 재빌드 4/4",
+    "regression": "verify-all --full · i18n:verify 0 errors · POSTerminalPage diff 의 인쇄 관련 줄 0",
+    "migration": "없음",
+    "sw_version": "5.80-display-language-20261004",
+    "fable_note": "Irene 「듀얼 아니면 고객화면 안열려야 · 고객 디스플레이도 대시보드로 가기 · 한글로 설정했는데 포스터미널만 영어」 — 🔒 POSTerminalPage 는 화면 문구만 t() 로(인쇄 줄 0) · AuthContext 세션 복원 언어 1조건. 게이트 1회 대상"
+  },
+  "notes": [
+    "🔒 POSTerminalPage.tsx — 표시 문구 32곳만 번역 함수로, 인쇄·주문 로직 무접촉 → print-guard bless 대상",
+    "언어: 기기에서 사람이 고른 언어(i18nextLng)가 있으면 세션 복원이 계정 언어로 덮지 않는다. 직접 로그인(이메일)은 그대로 계정 언어"
+  ],
+  "irene_actions_after_deploy": [
+    "태블릿 POS 에서 언어 선택기로 한국어 1번 선택(이 기기에 저장) → POS 한국어 확인",
+    "POS 열었을 때 고객 화면이 안 뜨는지 확인"
+  ],
+  "issues": [
+    "단일 화면 기기에서 고객 화면이 POS 를 덮고 닫을 수 없었다",
+    "한국어 설정인데 POS 만 영어"
+  ],
+  "upcoming": [
+    "카드 단말기 RM 1.00 카드·QR 테스트"
+  ],
+  "behavior_changes": [
+    "모니터 1대 기기에서는 고객 화면이 자동으로 안 열린다(필요하면 Customer Display 버튼으로 직접)",
+    "POS 화면 문구가 선택한 언어로 보인다"
+  ],
+  "check_areas": [
+    "POS 터미널 화면·결제 창·주문 완료 창",
+    "고객 화면(두 번째 모니터)",
+    "언어 전환"
+  ]
+}

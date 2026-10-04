@@ -332,6 +332,11 @@ export async function openCustomerDisplay(
  */
 export function tryAutoReopen(restaurantId: number | string): () => void {
   if (!isAutoOpenEnabled()) return () => {};
+  // 화면이 하나뿐이면 자동으로 열지 않는다(2026-10-04 Irene 「듀얼 아니면 고객화면 안열려야」).
+  //   안드로이드 앱·태블릿은 새 창이 POS 를 통째로 덮고 닫을 방법도 없었다.
+  //   screen.isExtended(크롬·엣지) 가 true 일 때만 = 모니터가 2대 이상일 때만. 모르는 브라우저도 열지 않는다.
+  //   수동 «Customer Display» 버튼은 그대로 — 직원이 직접 고른 것.
+  if ((window.screen as any)?.isExtended !== true) return () => {};
   if (openedWindow && !openedWindow.closed) {
     try { openedWindow.focus(); } catch { /* ignore */ }
     return () => {};

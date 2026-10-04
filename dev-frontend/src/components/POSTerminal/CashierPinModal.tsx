@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 interface PinVerifyResult {
@@ -147,6 +148,7 @@ const CurrentCashier = styled.div`
 `;
 
 const CashierPinModal: React.FC<CashierPinModalProps> = ({ show, onClose, onVerified, onLogout, currentCashierName }) => {
+  const { t } = useTranslation('pos');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -242,12 +244,12 @@ const CashierPinModal: React.FC<CashierPinModalProps> = ({ show, onClose, onVeri
   return (
     <Overlay show={show} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <ModalBox onClick={(e) => e.stopPropagation()}>
-        <Title>Switch Cashier</Title>
-        <Subtitle>Enter 4-digit PIN to switch</Subtitle>
+        <Title>{t('pos:cashierPin.title', 'Switch Cashier')}</Title>
+        <Subtitle>{t('pos:cashierPin.subtitle', 'Enter 4-digit PIN to switch')}</Subtitle>
 
         {currentCashierName && (
           <CurrentCashier>
-            Current: {currentCashierName}
+            {t('pos:cashierPin.current', 'Current')}: {currentCashierName}
           </CurrentCashier>
         )}
 
@@ -265,12 +267,12 @@ const CashierPinModal: React.FC<CashierPinModalProps> = ({ show, onClose, onVeri
           ))}
           <KeyBtn variant="action" onClick={() => handleKeyPress('backspace')}>⌫</KeyBtn>
           <KeyBtn onClick={() => handleKeyPress('0')}>0</KeyBtn>
-          <KeyBtn variant="action" onClick={onClose}>Close</KeyBtn>
+          <KeyBtn variant="action" onClick={onClose}>{t('pos:cashierPin.close', 'Close')}</KeyBtn>
         </Keypad>
 
         {onLogout && (
           <LogoutBtn onClick={onLogout}>
-            Logout
+            {t('pos:cashierPin.logout', 'Logout')}
           </LogoutBtn>
         )}
       </ModalBox>

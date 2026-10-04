@@ -18,3 +18,10 @@
 - diff 안 'print' 문자열 0줄 · `_printPollFn` 무접촉 · 새로고침은 `window.location.reload()`(주방인쇄는 POS1 폴러 DB 단일경로라 분실 없음)
 - `health-check --category=print` → **11/11** · `check-print-guard` → 재등록 후 **8/8 변경 없음**
 - 판정문 `.claude/fable-verdict-20261004-terminal-direct-gate.md` §5 — manifest 가 git 추적 파일이라 **bless → 마커** 순서
+
+## 2026-10-04T14:53Z — POSTerminalPage.tsx (화면 문구 32곳 → t() 번역, 인쇄 동작 변경 아님) — Fable 게이트 2회차 PASS 뒤 bless
+- Irene 원문 「한글로 설정했는데 포스터미널만 영어로 표시되네」 (+ 「듀얼 아니면 고객화면 안열려야」 · 「고객 디스플레이도 대시보드로 가기」 같은 묶음, SW 5.80)
+- diff `+/-` 줄 안 'print' 문자열 **0** · `t` 는 1302줄 `useTranslation('pos')` 하나 · 직접 인쇄 블록·주문 로직·데이터 비교 문자열 무접촉 · 'Drawer error' 는 안내창 제목만
+- OrderCompleteModal(보호파일 아님)은 Print Bill/Ticket **라벨만**, 핸들러·510줄 이후 영수증 템플릿 무접촉
+- e2e `pos-display-language` **5/5**(Fable 직접 실행, retries=0) · `health-check --category=print` → **11/11** · `check-print-guard` → 재등록 후 **8/8 변경 없음**
+- 판정문 `.claude/fable-verdict-20261004-display-language-gate.md` — manifest 가 git 추적 파일이라 **bless → 마커** 순서

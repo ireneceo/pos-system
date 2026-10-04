@@ -3262,7 +3262,7 @@ const POSTerminalPage: React.FC = () => {
           </HeaderActionBtn>
         </div>
         <HeaderInfo>
-          <StaffInfo clickable={true} onClick={() => setShowCashierPinModal(true)} title="Logged in — click to switch user">
+          <StaffInfo clickable={true} onClick={() => setShowCashierPinModal(true)} title={t('pos:posScreen.switchUserHint', 'Logged in — click to switch user')}>
             {/* 로그인 표시 = 사용자 아이콘 + 이름 (역할 단정 "Cashier:" 라벨 제거 — 로그인 주체가 관리자/오너일 수 있음) */}
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -3307,7 +3307,7 @@ const POSTerminalPage: React.FC = () => {
                     });
                   }
                 } catch (e: any) {
-                  setInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
+                  setInfoModal({ open: true, title: t('pos:posScreen.drawerError', 'Drawer error'), message: e?.message || 'Unknown error' });
                 }
               }}
               title={t('pos:terminal.openDrawerTitle', 'Send open-drawer pulse to the bill printer')}
@@ -3336,7 +3336,7 @@ const POSTerminalPage: React.FC = () => {
                         });
                       }
                     } catch (e: any) {
-                      setInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
+                      setInfoModal({ open: true, title: t('pos:posScreen.drawerError', 'Drawer error'), message: e?.message || 'Unknown error' });
                     }
                   }
                 }
@@ -3378,14 +3378,14 @@ const POSTerminalPage: React.FC = () => {
               <SearchIcon>🔍</SearchIcon>
               <SearchInput
                 type="text"
-                placeholder="Search menu items..."
+                placeholder={t('pos:posScreen.searchMenu', 'Search menu items...')}
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
               {searchQuery && (
                 <ClearSearchBtn
                   onClick={handleClearSearch}
-                  title="Clear search"
+                  title={t('pos:posScreen.clearSearch', 'Clear search')}
                 >
                   ×
                 </ClearSearchBtn>
@@ -3544,7 +3544,7 @@ const POSTerminalPage: React.FC = () => {
                         onPointerDown={() => startLongPress(item)}
                         onPointerUp={cancelLongPress}
                         onPointerLeave={cancelLongPress}
-                        title="Long-press to toggle sold-out"
+                        title={t('pos:posScreen.soldOutHint', 'Long-press to toggle sold-out')}
                         style={{ padding: '12px 16px', textAlign: 'left' }}
                       >
                         {item.is_set_menu && <SetBadge>{'SET'}</SetBadge>}
@@ -3572,7 +3572,7 @@ const POSTerminalPage: React.FC = () => {
                       onPointerDown={() => startLongPress(item)}
                       onPointerUp={cancelLongPress}
                       onPointerLeave={cancelLongPress}
-                      title="Long-press to toggle sold-out"
+                      title={t('pos:posScreen.soldOutHint', 'Long-press to toggle sold-out')}
                     >
                       {item.is_set_menu && <SetBadge>{'SET'}</SetBadge>}
                       <MenuImage hasImage={!!item.image}>
@@ -3597,7 +3597,7 @@ const POSTerminalPage: React.FC = () => {
                             onClick={(e) => handleShowOptions(item, e)}
                             disabled={item.soldOut}
                           >
-                            Options
+                            {t('pos:posScreen.options', 'Options')}
                           </OptionButton>
                         </MenuItemActions>
                       )}
@@ -3634,13 +3634,13 @@ const POSTerminalPage: React.FC = () => {
               active={orderType === 'dine-in'}
               onClick={() => setOrderType('dine-in')}
             >
-              Dine In
+              {t('pos:posScreen.dineIn', 'Dine In')}
             </OrderTypeBtn>
             <OrderTypeBtn
               active={orderType === 'takeaway'}
               onClick={() => setOrderType('takeaway')}
             >
-              Takeaway
+              {t('pos:posScreen.takeaway', 'Takeaway')}
             </OrderTypeBtn>
           </OrderTypeToggle>
 
@@ -3657,7 +3657,7 @@ const POSTerminalPage: React.FC = () => {
                   </SelectedCustomerMeta>
                 </SelectedCustomerInfo>
                 <ClearCustomerBtn onClick={handleClearCustomer}>
-                  Clear
+                  {t('pos:posScreen.clear', 'Clear')}
                 </ClearCustomerBtn>
               </SelectedCustomerDisplay>
             ) : (
@@ -3665,7 +3665,7 @@ const POSTerminalPage: React.FC = () => {
                 <CustomerSearchIcon>🔍</CustomerSearchIcon>
                 <CustomerSearchInput
                   type="text"
-                  placeholder="Walk-in Customer"
+                  placeholder={t('pos:posScreen.walkInCustomer', 'Walk-in Customer')}
                   value={customerSearchQuery}
                   onChange={handleCustomerSearchChange}
                   onFocus={() => {
@@ -3691,12 +3691,12 @@ const POSTerminalPage: React.FC = () => {
                 </CustomerSearchDropdown>
                 <CustomerSearchDropdown show={showCustomerDropdown && customerSearchQuery.trim().length > 0 && filteredCustomers.length === 0 && !isSearchingCustomers}>
                   <CustomerSearchItem style={{ cursor: 'default', color: 'var(--pos-text-muted, #4B5563)' }}>
-                    No customers found
+                    {t('pos:posScreen.noCustomers', 'No customers found')}
                   </CustomerSearchItem>
                 </CustomerSearchDropdown>
                 <CustomerSearchDropdown show={showCustomerDropdown && isSearchingCustomers}>
                   <CustomerSearchItem style={{ cursor: 'default', color: 'var(--pos-text-muted, #4B5563)' }}>
-                    Searching...
+                    {t('pos:posScreen.searching', 'Searching...')}
                   </CustomerSearchItem>
                 </CustomerSearchDropdown>
               </CustomerSearchContainer>
@@ -3715,7 +3715,7 @@ const POSTerminalPage: React.FC = () => {
               onChange={(e) => setTableNumber(e.target.value)}
               style={{ width: 150, flexShrink: 0 }}
             >
-              <option value="">{orderType === 'takeaway' ? 'No table' : 'Free Seating'}</option>
+              <option value="">{orderType === 'takeaway' ? t('pos:posScreen.noTable', 'No table') : t('pos:posScreen.freeSeating', 'Free Seating')}</option>
               {availableTables.map(table => (
                 <option key={table} value={table}>{`Table ${table}`}</option>
               ))}
@@ -3725,9 +3725,9 @@ const POSTerminalPage: React.FC = () => {
 
           {orderItems.length === 0 ? (
             <EmptyOrder>
-              <EmptyText>{'No items in order'}</EmptyText>
+              <EmptyText>{t('pos:posScreen.noItems', 'No items in order')}</EmptyText>
               <EmptyText style={{ marginTop: '8px', fontSize: '12px' }}>
-                Select menu items to start
+                {t('pos:posScreen.selectToStart', 'Select menu items to start')}
               </EmptyText>
             </EmptyOrder>
           ) : (
@@ -3823,18 +3823,18 @@ const POSTerminalPage: React.FC = () => {
 
               <OrderSummary>
                 <SummaryRow>
-                  <SummaryLabel>{'Subtotal'}</SummaryLabel>
+                  <SummaryLabel>{t('pos:posScreen.subtotal', 'Subtotal')}</SummaryLabel>
                   <SummaryValue>{currency} {subtotal.toFixed(2)}</SummaryValue>
                 </SummaryRow>
                 {takeawayCharge > 0 && (
                   <SummaryRow>
-                    <SummaryLabel>{'Takeaway Charge'}</SummaryLabel>
+                    <SummaryLabel>{t('pos:posScreen.takeawayCharge', 'Takeaway Charge')}</SummaryLabel>
                     <SummaryValue>{currency} {takeawayCharge.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {discountAmount > 0 && (
                   <SummaryRow>
-                    <SummaryLabel>{'Discount'}</SummaryLabel>
+                    <SummaryLabel>{t('pos:posScreen.discount', 'Discount')}</SummaryLabel>
                     <SummaryValue style={{ color: 'var(--pos-positive, #10B981)' }}>-{currency} {discountAmount.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
@@ -3863,7 +3863,7 @@ const POSTerminalPage: React.FC = () => {
                   </SummaryRow>
                 )}
                 <TotalRow>
-                  <SummaryLabel>{'Total'}</SummaryLabel>
+                  <SummaryLabel>{t('pos:posScreen.total', 'Total')}</SummaryLabel>
                   <SummaryValue>{currency} {total.toFixed(2)}</SummaryValue>
                 </TotalRow>
               </OrderSummary>
@@ -4119,7 +4119,7 @@ const POSTerminalPage: React.FC = () => {
                     ))
                   ) : (
                     <PagerSearchItem style={{ cursor: 'default', color: 'var(--pos-text-muted, #4B5563)' }}>
-                      No matching pagers
+                      {t('pos:posScreen.noPagers', 'No matching pagers')}
                     </PagerSearchItem>
                   )}
                 </PagerSearchDropdown>
@@ -4133,16 +4133,16 @@ const POSTerminalPage: React.FC = () => {
               onClick={handleClearOrder}
               style={{ flex: '0 0 auto', minWidth: 72, padding: '14px 12px' }}
             >
-              Clear
+              {t('pos:posScreen.clear', 'Clear')}
             </ActionBtn>
             {/* 서버(홀) 역할은 결제 권한이 없어 "Pay Now" 숨김 → "Pay Later"(주문만 전송)로 주문.
                 이 때 Pay Later 를 primary 로 강조해 주 액션이 비지 않게. (2026-06-24 access_payment 분리) */}
             <ActionBtn variant={canTakePayment ? 'secondary' : 'primary'} onClick={handleAddOrder}>
-              Pay Later
+              {t('pos:posScreen.payLater', 'Pay Later')}
             </ActionBtn>
             {canTakePayment && (
               <ActionBtn variant="primary" onClick={handlePayment}>
-                Pay Now
+                {t('pos:posScreen.payNow', 'Pay Now')}
               </ActionBtn>
             )}
           </OrderActions>
@@ -4298,7 +4298,7 @@ const POSTerminalPage: React.FC = () => {
         isOpen={showClearConfirm}
         onClose={() => setShowClearConfirm(false)}
         onConfirm={confirmClearOrder}
-        title="Clear Order"
+        title={t('pos:posScreen.clearOrder', 'Clear Order')}
         message="Are you sure you want to clear all items from the order?"
         confirmText="Clear Order"
         cancelText="Cancel"
@@ -4399,7 +4399,7 @@ const POSTerminalPage: React.FC = () => {
       <AlertDialog
         isOpen={showFeatureAlert}
         onClose={() => setShowFeatureAlert(false)}
-        title="Coming Soon"
+        title={t('pos:posScreen.comingSoon', 'Coming Soon')}
         message="This feature is coming soon"
         variant="info"
       />
@@ -4407,7 +4407,7 @@ const POSTerminalPage: React.FC = () => {
       <AlertDialog
         isOpen={showCouponError}
         onClose={() => setShowCouponError(false)}
-        title="Invalid Coupon"
+        title={t('pos:posScreen.invalidCoupon', 'Invalid Coupon')}
         message="The coupon code you entered is not valid. Please check and try again."
         variant="error"
       />
@@ -4416,7 +4416,7 @@ const POSTerminalPage: React.FC = () => {
         isOpen={showCustomAmountModal}
         onClose={() => setShowCustomAmountModal(false)}
         onConfirm={handleCustomAmountConfirm}
-        title="Custom Discount Amount"
+        title={t('pos:posScreen.customDiscountAmount', 'Custom Discount Amount')}
         label="Enter discount amount:"
         placeholder="25"
         min={0}
@@ -4429,7 +4429,7 @@ const POSTerminalPage: React.FC = () => {
         isOpen={showCustomPercentModal}
         onClose={() => setShowCustomPercentModal(false)}
         onConfirm={handleCustomPercentConfirm}
-        title="Custom Discount Percentage"
+        title={t('pos:posScreen.customDiscountPercent', 'Custom Discount Percentage')}
         label="Enter discount percentage:"
         placeholder="10"
         min={0}
@@ -4456,7 +4456,7 @@ const POSTerminalPage: React.FC = () => {
       <DiscountPinModal
         show={showDiscountPin}
         restaurantId={restaurantId as any}
-        title={pendingDiscount ? `${pendingDiscount.name} Discount` : 'Discount Approval'}
+        title={pendingDiscount ? `${pendingDiscount.name} Discount` : t('pos:posScreen.discountApproval', 'Discount Approval')}
         onClose={() => { setShowDiscountPin(false); setPendingDiscount(null); }}
         onApproved={() => {
           if (pendingDiscount) {

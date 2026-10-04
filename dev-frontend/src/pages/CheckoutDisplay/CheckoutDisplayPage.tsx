@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import { formatCurrency } from '../../utils/currency';
 import { getAuthToken } from '../../utils/auth';
@@ -165,6 +165,13 @@ const CheckoutDisplayPage: React.FC = () => {
   const { operationSettings } = useStore();
   const timezone = getRestaurantTimezone(operationSettings);
   const { restaurantId } = useParams<{ restaurantId: string }>();
+  const navigate = useNavigate();
+  // 두 번째 모니터에 띄운 팝업이면 opener 가 있다 → 손님 화면이라 나가기 버튼을 숨긴다(손님이 누르지 않게).
+  //   opener 가 없으면 이 화면이 POS 기기 화면을 차지한 것(안드로이드 앱 등) → 대시보드로 나가는 길이 필요하다
+  //   (2026-10-04 Irene 「고객 디스플레이도 대시보드로 가기 있어야겠는데」).
+  //   모니터가 2대면(키오스크로 둘째 모니터에 직접 띄운 손님 화면 포함) 숨긴다 — 자동열림과 같은 기준(Fable 판정 2026-10-04).
+  const takesMainScreen = typeof window !== 'undefined' && !window.opener
+    && (window.screen as any)?.isExtended !== true;
   const [phoneNumber, setPhoneNumber] = useState('');
   const [countryCode, setCountryCode] = useState('MY');
   const [showRegister, setShowRegister] = useState(false);
@@ -352,6 +359,15 @@ const CheckoutDisplayPage: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: connected ? '#10B981' : '#EF4444', display: 'inline-block' }} />
           <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>{connected ? 'Connected' : 'Connecting...'}</span>
+          {takesMainScreen && (
+            <button
+              type="button"
+              onClick={() => navigate(`/restaurant/${restaurantId}/dashboard`)}
+              style={{ marginLeft: '12px', padding: '6px 12px', fontSize: '13px', fontWeight: 500, color: '#0A2540', background: 'white', border: '1px solid #C7CED6', borderRadius: '6px', cursor: 'pointer' }}
+            >
+              {t('pos:checkoutDisplayPage.toDashboard', 'Dashboard')}
+            </button>
+          )}
         </div>
       </Header>
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, ModalButton as Button } from '../UI/Modal';
 import {
   Section,
@@ -265,6 +266,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
   orderData,
   onPrintBill
 }) => {
+  const { t } = useTranslation('pos');
   const { getStoreInfo, operationSettings, paymentSettings } = useStore();
   const storeInfo = getStoreInfo();
   // Auto-print is handled in POSTerminalPage after payment completion
@@ -295,32 +297,32 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
   const footer = (
     <>
       <Button variant="secondary" onClick={handlePrintBill}>
-        Print Bill
+        {t('pos:orderComplete.printBill', 'Print Bill')}
       </Button>
       <Button variant="secondary" onClick={handlePrintKitchenTicket}>
-        Print Order Ticket
+        {t('pos:orderComplete.printTicket', 'Print Order Ticket')}
       </Button>
       <Button variant="primary" onClick={onClose}>
-        Close
+        {t('pos:orderComplete.close', 'Close')}
       </Button>
     </>
   );
 
   const headerActions = (
     <>
-      <HeaderActionButton onClick={handlePrintBill} title="Print Bill">
+      <HeaderActionButton onClick={handlePrintBill} title={t('pos:orderComplete.printBill', 'Print Bill')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="6,9 6,2 18,2 18,9"/>
           <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
           <rect x="6" y="14" width="12" height="8"/>
         </svg>
-        <span>Bill</span>
+        <span>{t('pos:orderComplete.bill', 'Bill')}</span>
       </HeaderActionButton>
-      <HeaderActionButton onClick={handlePrintKitchenTicket} title="Print Order Ticket">
+      <HeaderActionButton onClick={handlePrintKitchenTicket} title={t('pos:orderComplete.printTicket', 'Print Order Ticket')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
         </svg>
-        <span>Ticket</span>
+        <span>{t('pos:orderComplete.ticket', 'Ticket')}</span>
       </HeaderActionButton>
     </>
   );
@@ -331,7 +333,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title="Order Complete!"
+        title={t('pos:orderComplete.orderComplete', 'Order Complete!')}
         footer={footer}
         headerActions={headerActions}
       >
@@ -351,7 +353,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
               margin: '0 auto 24px',
               display: 'inline-block'
             }}>
-              <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Pager Number</div>
+              <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>{t('pos:orderComplete.pagerNumber', 'Pager Number')}</div>
               <div style={{ fontSize: '36px', fontWeight: '700', lineHeight: 1 }}>
                 {orderData.pagerNumber}
               </div>
@@ -365,7 +367,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
               margin: '0 auto 24px',
               display: 'inline-block'
             }}>
-              <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Table</div>
+              <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>{t('pos:orderComplete.table', 'Table')}</div>
               <div style={{ fontSize: '36px', fontWeight: '700', lineHeight: 1 }}>
                 {orderData.tableNumber}
               </div>
@@ -379,7 +381,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
               margin: '0 auto 24px',
               display: 'inline-block'
             }}>
-              <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Pickup Number</div>
+              <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>{t('pos:orderComplete.pickupNumber', 'Pickup Number')}</div>
               <div style={{ fontSize: '36px', fontWeight: '700', lineHeight: 1 }}>
                 {orderData.pickupNumber || (orderData.orderNumber?.includes('-') ? orderData.orderNumber.split('-')[1] : orderData.orderNumber) || '-'}
               </div>
@@ -389,27 +391,27 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
 
         <OrderDetails>
           <DetailRow>
-            <DetailLabel>Date & Time</DetailLabel>
+            <DetailLabel>{t('pos:orderComplete.dateTime', 'Date & Time')}</DetailLabel>
             <DetailValue>{formatDateTime(orderData.date)}</DetailValue>
           </DetailRow>
           {orderData.cashierName && (
             <DetailRow>
-              <DetailLabel>Cashier</DetailLabel>
+              <DetailLabel>{t('pos:orderComplete.cashier', 'Cashier')}</DetailLabel>
               <DetailValue>{orderData.cashierName}</DetailValue>
             </DetailRow>
           )}
           <DetailRow>
-            <DetailLabel>Payment Method</DetailLabel>
+            <DetailLabel>{t('pos:orderComplete.paymentMethod', 'Payment Method')}</DetailLabel>
             <DetailValue>{formatPaymentDisplay(orderData.paymentMethod, orderData.cardType, paymentSettings || undefined)}</DetailValue>
           </DetailRow>
           {orderData.paymentMethod === 'cash' && (
             <>
               <DetailRow>
-                <DetailLabel>Amount Received</DetailLabel>
+                <DetailLabel>{t('pos:orderComplete.amountReceived', 'Amount Received')}</DetailLabel>
                 <DetailValue>{formatCurrency(orderData.amountReceived, operationSettings.currency)}</DetailValue>
               </DetailRow>
               <DetailRow>
-                <DetailLabel>Change</DetailLabel>
+                <DetailLabel>{t('pos:orderComplete.change', 'Change')}</DetailLabel>
                 <DetailValue>{formatCurrency(orderData.change, operationSettings.currency)}</DetailValue>
               </DetailRow>
             </>
@@ -417,7 +419,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
         </OrderDetails>
 
         <Section>
-          <SectionTitle>Order Items</SectionTitle>
+          <SectionTitle>{t('pos:orderComplete.orderItems', 'Order Items')}</SectionTitle>
           <ItemsList>
             {orderData.items.map((item, index) => (
               <ItemRow key={index}>
@@ -436,18 +438,18 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
 
         <Section>
           <DetailRow>
-            <DetailLabel>Subtotal</DetailLabel>
+            <DetailLabel>{t('pos:orderComplete.subtotal', 'Subtotal')}</DetailLabel>
             <DetailValue>{formatCurrency(orderData.subtotal, operationSettings.currency)}</DetailValue>
           </DetailRow>
           {Number(orderData.takeawayCharge) > 0 && (
             <DetailRow>
-              <DetailLabel>Takeaway Charge</DetailLabel>
+              <DetailLabel>{t('pos:orderComplete.takeawayCharge', 'Takeaway Charge')}</DetailLabel>
               <DetailValue>{formatCurrency(Number(orderData.takeawayCharge), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
           {Number(orderData.discount) > 0 && (
             <DetailRow>
-              <DetailLabel>Discount</DetailLabel>
+              <DetailLabel>{t('pos:orderComplete.discount', 'Discount')}</DetailLabel>
               <DetailValue style={{ color: '#10B981' }}>{formatCurrency(-Number(orderData.discount), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
@@ -484,7 +486,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
         </Section>
 
         <TotalSection style={{ marginTop: 0 }}>
-          <TotalLabel>Total</TotalLabel>
+          <TotalLabel>{t('pos:orderComplete.total', 'Total')}</TotalLabel>
           <TotalPrice>{formatCurrency(orderData.total, operationSettings.currency)}</TotalPrice>
         </TotalSection>
       </Modal>

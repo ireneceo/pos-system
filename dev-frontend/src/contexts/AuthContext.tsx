@@ -578,7 +578,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // ⚠ 안 하면 **새로고침(F5) 후 헤더 스위처와 대시보드 진입점이 사라진다** — 목록이 로그인
             //    시점에만 채워지기 때문(실측: e2e ⑨ 가 검출). 실사용자는 새로고침을 하므로 치명적이다.
             refreshContextsRef.current?.();
-            if (apiUser.preferred_language && apiUser.preferred_language !== i18n.language) {
+            // 세션 복원은 «로그인» 이 아니다 — 이 기기에서 사람이 고른 언어(i18nextLng)가 있으면 덮지 않는다
+            //   (2026-10-04 Irene 「한글로 설정했는데 포스터미널만 영어」: POS 는 직원 PIN 세션이고, 직원 계정
+            //   preferred_language 는 고른 적 없는 기본값 'en' 이라 새로고침마다 기기 언어를 영어로 덮었다).
+            let deviceLang: string | null = null;
+            try { deviceLang = localStorage.getItem('i18nextLng'); } catch { /* ignore */ }
+            if (!deviceLang && apiUser.preferred_language && apiUser.preferred_language !== i18n.language) {
               i18n.changeLanguage(apiUser.preferred_language);
             }
             // StoreContext에 인증 완료 알림
