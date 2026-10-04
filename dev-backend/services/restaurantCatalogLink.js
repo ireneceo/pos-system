@@ -152,13 +152,17 @@ async function linkCatalogProductToRestaurant(rid, body = {}) {
 
     const existingIngredientId = parseInt(body.existing_ingredient_id, 10);
     if (Number.isFinite(existingIngredientId)) {
-      const targetIng = await Ingredient.findByPk(existingIngredientId, { transaction: t });
-      if (!targetIng || targetIng.restaurant_id !== rid) {
+      // 매장 재료 또는 (2026-10-04) 부모 브랜드 재료 — 브랜드 재료면 이 매장만 보는 연결로 붙는다.
+      const { sellerLinkWritable } = require('../utils/brandStockAccess');
+      const w = await sellerLinkWritable(existingIngredientId, { type: 'restaurant', id: rid }, null, t);
+      if (!w) {
         await t.rollback();
         return __r(404, { success: false, message: 'Target ingredient not found in this restaurant' });
       }
+      const targetIng = w.ing;
       const r = await catalogLink.connectExisting({
-        target: targetIng, seller, unitConversion: bodyConversion, targetKey: 'ingredient_id', transaction: t
+        target: targetIng, seller, unitConversion: bodyConversion, targetKey: 'ingredient_id', transaction: t,
+        buyerRestaurantId: w.buyerRestaurantId
       });
       await t.commit();
       return __r(r.status, r.body);

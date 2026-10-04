@@ -297,11 +297,12 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
         const price = money(l.invoiced_unit_price);
         if (!it || !it.ingredient_id || price === null) continue;
         const conv = parseFloat(it.unit_conversion) || 1;
-        const newCost = Math.round((price / conv) * 10000) / 10000;
         const ing = await Ingredient.findByPk(it.ingredient_id, {
-          attributes: ['id', 'owner_type', 'restaurant_id', 'unit_cost'], transaction: t
+          attributes: ['id', 'owner_type', 'restaurant_id', 'unit_cost', 'base_quantity'], transaction: t
         });
         if (!ing) continue;
+        // 기준양 가격으로 저장 — 수령과 같은 규칙(2026-10-04 Fable 판정 E · services/purchaseOrderReceive.js)
+        const newCost = Math.round((price / conv) * (parseFloat(ing.base_quantity) || 1) * 10000) / 10000;
         const overlayNote = `Invoice reconcile — ${po.po_number}`;
         // 자리는 재료 소유자가 정한다 (§8-4 D-5 · services/storeCost.js) — 매장 소유 재료는 재료 행, 브랜드 공유 재료는 매장 오버레이
         const w = await writeStoreCost(po.entity_id, ing, newCost,
@@ -569,7 +570,7 @@ router.get('/cost-changes', async (req, res) => {
           `SELECT 1 AS ok FROM ingredient_seller_products isp
              LEFT JOIN ingredients i ON i.id = isp.ingredient_id
             WHERE isp.seller_product_id = :sp AND isp.is_active = 1
-              AND ((:et = 'restaurant' AND i.restaurant_id = :ei)
+              AND ((:et = 'restaurant' AND (i.restaurant_id = :ei OR isp.buyer_restaurant_id = :ei))
                 OR (:et = 'brand' AND i.brand_id = :ei)
                 OR (:et = 'foodcourt' AND i.foodcourt_id = :ei))
             LIMIT 1`,

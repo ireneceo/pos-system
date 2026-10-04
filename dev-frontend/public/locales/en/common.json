@@ -330,7 +330,9 @@
     "bulkLink": "Bulk Link",
     "sharedIngredients": "Shared Ingredients",
     "deployRecords": "Dev Issues",
-    "lockedHint": "Upgrade to calculate stock and recipe cost automatically"
+    "lockedHint": "Upgrade to calculate stock and recipe cost automatically",
+    "help": "Help",
+    "guides": "Guides"
   },
   "language": {
     "en": "English",

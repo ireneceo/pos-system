@@ -310,14 +310,15 @@ router.get('/public/blog', optionalAuthenticateToken, (req, res) => listPublishe
 router.get('/public/news', optionalAuthenticateToken, (req, res) => listPublishedPosts(req, res, { isNews: true }));
 
 // GET /api/contents/public/blog/:slug - Get single blog post by slug (multilingual)
-router.get('/public/blog/:slug', optionalAuthenticateToken, async (req, res) => {
+// GET /api/contents/public/docs/:slug - 안내 문서(Docs) 한 편 — 블로그와 같은 다국어·폴백 규칙 (2026-10-04)
+const publishedBySlug = (type) => async (req, res) => {
   try {
     const { slug } = req.params;
     const lang = normalizeLang(req.query.lang);
 
     // 1) Try exact (slug, language) match
     let post = await Content.findOne({
-      where: { type: 'blog', slug, status: 'published', language: lang },
+      where: { type, slug, status: 'published', language: lang },
       include: [{ model: ContentCategory, as: 'category', attributes: ['id', 'name', 'slug', 'icon'] }]
     });
 
@@ -328,13 +329,13 @@ router.get('/public/blog/:slug', optionalAuthenticateToken, async (req, res) => 
     //    via translation_group. Frontend will then navigate to the matching slug.
     if (!post) {
       const anyLangPost = await Content.findOne({
-        where: { type: 'blog', slug, status: 'published' }
+        where: { type, slug, status: 'published' }
       });
       if (anyLangPost && anyLangPost.translation_group_id) {
         // Try requested language within the same translation group
         const targetInGroup = await Content.findOne({
           where: {
-            type: 'blog',
+            type,
             status: 'published',
             language: lang,
             translation_group_id: anyLangPost.translation_group_id
@@ -348,7 +349,7 @@ router.get('/public/blog/:slug', optionalAuthenticateToken, async (req, res) => 
           // Requested lang not available → fallback to EN within group
           post = await Content.findOne({
             where: {
-              type: 'blog',
+              type,
               status: 'published',
               language: DEFAULT_LANG,
               translation_group_id: anyLangPost.translation_group_id
@@ -361,7 +362,7 @@ router.get('/public/blog/:slug', optionalAuthenticateToken, async (req, res) => 
       // Last resort: exact slug + EN match (handles legacy orphan posts without translation_group)
       if (!post && lang !== DEFAULT_LANG) {
         post = await Content.findOne({
-          where: { type: 'blog', slug, status: 'published', language: DEFAULT_LANG },
+          where: { type, slug, status: 'published', language: DEFAULT_LANG },
           include: [{ model: ContentCategory, as: 'category', attributes: ['id', 'name', 'slug', 'icon'] }]
         });
         if (post) isFallback = true;
@@ -383,7 +384,7 @@ router.get('/public/blog/:slug', optionalAuthenticateToken, async (req, res) => 
         where: {
           translation_group_id: post.translation_group_id,
           status: 'published',
-          type: 'blog'
+          type
         },
         attributes: ['id', 'language', 'slug', 'title']
       });
@@ -394,7 +395,7 @@ router.get('/public/blog/:slug', optionalAuthenticateToken, async (req, res) => 
     // Related posts (same category + same language)
     const relatedPosts = await Content.findAll({
       where: {
-        type: 'blog',
+        type,
         status: 'published',
         language: post.language,
         category_id: post.category_id,
@@ -416,6 +417,39 @@ router.get('/public/blog/:slug', optionalAuthenticateToken, async (req, res) => 
   } catch (error) {
     console.error('Error fetching blog post:', error);
     res.status(500).json({ success: false, error: { message: 'Failed to fetch blog post', code: 'INTERNAL_ERROR' } });
+  }
+};
+router.get('/public/blog/:slug', optionalAuthenticateToken, publishedBySlug('blog'));
+router.get('/public/docs/:slug', optionalAuthenticateToken, publishedBySlug('docs'));
+
+
+
+// GET /api/contents/public/docs?lang=ko — 안내 문서 목차 (카테고리 → 문서 제목). 본문은 싣지 않는다.
+//   언어 폴백은 블로그와 같다: 요청 언어가 없는 번역 묶음은 영어 판을 보여 준다.
+router.get('/public/docs', optionalAuthenticateToken, async (req, res) => {
+  try {
+    const lang = normalizeLang(req.query.lang);
+    const attrs = ['id', 'title', 'slug', 'excerpt', 'category_id', 'sort_order', 'language', 'translation_group_id', 'published_at'];
+    const target = await Content.findAll({ where: { type: 'docs', status: 'published', language: lang }, attributes: attrs, raw: true });
+    let rows = target;
+    if (lang !== DEFAULT_LANG) {
+      const covered = new Set(target.filter(p => p.translation_group_id).map(p => p.translation_group_id));
+      const en = await Content.findAll({ where: { type: 'docs', status: 'published', language: DEFAULT_LANG }, attributes: attrs, raw: true });
+      rows = [...target, ...en.filter(p => (p.translation_group_id ? !covered.has(p.translation_group_id) : !target.some(t => t.slug === p.slug)))
+        .map(p => ({ ...p, _is_fallback: true }))];
+    }
+    const cats = await ContentCategory.findAll({ where: { type: 'docs', is_active: true }, order: [['sort_order', 'ASC']], raw: true });
+    const byCat = new Map();
+    rows.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)).forEach(r => {
+      if (!byCat.has(r.category_id)) byCat.set(r.category_id, []);
+      byCat.get(r.category_id).push(r);
+    });
+    const sections = cats.filter(c => byCat.has(c.id))
+      .map(c => ({ id: c.id, name: c.name, slug: c.slug, icon: c.icon || null, items: byCat.get(c.id) }));
+    res.json({ success: true, data: { sections, language: lang } });
+  } catch (error) {
+    console.error('Error fetching docs:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch docs' });
   }
 });
 
@@ -660,7 +694,7 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
 
     // Slug handling (unique per language)
     let slug = providedSlug || null;
-    if (type === 'blog') {
+    if (type === 'blog' || type === 'docs') {
       try {
         slug = await resolveBlogSlug({
           title, providedSlug, lang,
@@ -760,7 +794,7 @@ router.post('/bulk', authenticateToken, requireRole('System Admin'), async (req,
 
       // Slug unique per language
       let slug = tr.slug || null;
-      if (type === 'blog') {
+      if (type === 'blog' || type === 'docs') {
         try {
           slug = await resolveBlogSlug({ title: tr.title, providedSlug: tr.slug, lang, enSiblingSlug: enSlug, transaction: t });
         } catch (e) {
@@ -838,7 +872,7 @@ router.put('/:id', authenticateToken, requireRole('System Admin'), async (req, r
       updates.title = title;
       // 제목이 실제로 바뀔 때만 주소를 다시 정한다 — 편집 화면은 저장마다 제목을 다시 보내므로,
       // 그대로 두면 본문만 고쳐도 공개된 주소가 바뀌어 검색엔진이 알던 주소가 404 가 된다.
-      if (existingContent.type === 'blog' && title !== existingContent.title) {
+      if ((existingContent.type === 'blog' || existingContent.type === 'docs') && title !== existingContent.title) {
         try {
           updates.slug = await resolveBlogSlug({
             title, lang: existingContent.language || DEFAULT_LANG,

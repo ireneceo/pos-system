@@ -9,17 +9,13 @@ const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
-const { requireBGScope } = require('../middleware/brandScope');
+const { requireBGScope, userCanManageBrand } = require('../middleware/brandScope');
 const {
-  Brand, BrandMenuOptionGroup, BrandMenuOption, BrandMenuOptionGroupLink, BrandMenu
+  BrandMenuOptionGroup, BrandMenuOption, BrandMenuOptionGroupLink, BrandMenu
 } = require('../models');
 const { bumpMenusUsingOptionGroup } = require('../services/brandMenuSyncService');
 
-async function assertBrandOwnership(req, brandId) {
-  if (req.bgOwnerIsAdmin) return true;
-  const brand = await Brand.findByPk(brandId, { attributes: ['id', 'owner_id'] });
-  return brand?.owner_id === req.bgOwnerId;
-}
+const assertBrandOwnership = (req, brandId) => userCanManageBrand(req, brandId); // 판정은 brandScope 한 곳(2026-10-04)
 
 // GET /?brand_id=X
 router.get('/', authenticateToken, requireBGScope, async (req, res) => {

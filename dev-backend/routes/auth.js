@@ -702,11 +702,12 @@ router.post('/switch-context', authenticateToken, async (req, res, next) => {
     // 표준 claim 에 **투영값**을 싣고(기존 판정처가 그대로 읽는다) ctx 마커를 덧붙인다.
     // ctx 는 "어느 모자인가"의 표시일 뿐, 권한은 매 요청 서버가 user_contexts 로 재검증한다.
     const isOwnerHat = resolved.entity_type === 'owner';
+    const isBrandHat = resolved.entity_type === 'brand';   // 브랜드 관리자 모자(2026-10-04)
     const token = jwt.sign({
       ...baseClaims,
       role: resolved.role,
-      restaurant_id: isOwnerHat ? null : resolved.entity_id,
-      brand_id: null,
+      restaurant_id: (isOwnerHat || isBrandHat) ? null : resolved.entity_id,
+      brand_id: isBrandHat ? resolved.entity_id : null,
       foodcourt_id: null,
       ctx: { v: 1, t: resolved.entity_type, id: resolved.entity_id, r: resolved.role }
     }, process.env.JWT_SECRET, { expiresIn });
@@ -720,8 +721,8 @@ router.post('/switch-context', authenticateToken, async (req, res, next) => {
         email: user.email,
         username: user.username,
         role: resolved.role,
-        restaurant_id: isOwnerHat ? null : resolved.entity_id,
-        brand_id: null,
+        restaurant_id: (isOwnerHat || isBrandHat) ? null : resolved.entity_id,
+        brand_id: isBrandHat ? resolved.entity_id : null,
         foodcourt_id: null,
         manager_id: null,
         permissions: []

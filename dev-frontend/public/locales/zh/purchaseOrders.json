@@ -453,7 +453,8 @@
     "deliveryUnset": "卖方未设定",
     "deliveryToFree": "再加 {{amount}} 即可免运费",
     "deliveryUnsetHint": "该卖方尚未设定配送条件。这不代表免运费 — 实际费用以账单为准。",
-    "deliveryAreas": "配送地区"
+    "deliveryAreas": "配送地区",
+    "brandNeedsLink": "请为此物料关联本店的供应商"
   },
   "staging": {
     "noPhoneTitle": "无电话号码",
@@ -597,7 +598,14 @@
     "linkPriceNotSet": "未填价格",
     "costNotSet": "未设成本",
     "packSizeNeedsConfirm": "待确认",
-    "packSizeEdit": "修改收到一件后库存增加多少"
+    "packSizeEdit": "修改收到一件后库存增加多少",
+    "perUnit": "每{{unit}}",
+    "ownerFilter": {
+      "label": "显示",
+      "all": "全部",
+      "brand": "品牌",
+      "store": "本店"
+    }
   },
   "connect": {
     "priceNotSet": "未填价格——成本将记为 0"

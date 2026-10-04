@@ -56,7 +56,7 @@ const { normalizeCurrencyCode, sameCurrency, currencySymbol } = require('../util
 const { resolveSellers, getSeller, getSellerName, isExternalSeller } = require('../utils/sellerNames');
 // 지불 금액 규칙은 결제 서비스가 단일 소스다 — 화면이 따로 계산하지 않게 여기서 실어 보낸다.
 const { payableFrom } = require('../services/purchaseOrderPayment');
-const { readableIngredient, parentBrandIdOf, overlayMapFor, effectiveSettings } = require('../utils/brandStockAccess');
+const { readableIngredient, parentBrandIdOf, overlayMapFor, effectiveSettings, sellerLinkVisible, sellerLinkVisibleWhere } = require('../utils/brandStockAccess');
 const { applySubmitGate } = require('../utils/poOwnerApproval');
 const { stockTargetAttrs } = require('../utils/stockTarget');
 const { attachSellerProductIdentity } = require('../utils/sellerProductIdentity');
@@ -461,8 +461,16 @@ router.get('/purchase-orders/suggestions', async (req, res) => {
       order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
     });
 
+    // 이 구매자 눈에 보이는 연결만(2026-10-04 — 형제 매장 연결 제외). 같은 순서면
+    // 매장이 직접 붙인 연결을 공용 연결보다 먼저 고른다 — 매장이 정한 거래처가 그 매장의 답이다.
+    const ingByIdSug = new Map(lowIngredients.map(i => [i.id, i]));
+    const visibleSources = sellerSources
+      .filter(s => sellerLinkVisible(s, ingByIdSug.get(s.ingredient_id), req.buyerEntity))
+      .map((s, i) => ({ s, i }))
+      .sort((a, b) => ((a.s.buyer_restaurant_id == null) - (b.s.buyer_restaurant_id == null)) || (a.i - b.i))
+      .map(x => x.s);   // 안정 정렬 — 매장 연결 먼저, 그 안에서는 원래 순서(우선 → 싼 것)
     const preferredByIng = {};
-    for (const s of sellerSources) {
+    for (const s of visibleSources) {
       if (!preferredByIng[s.ingredient_id]) preferredByIng[s.ingredient_id] = s;
     }
 
@@ -907,7 +915,10 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
         is_active: true
       };
       if (raw.ingredient_seller_product_id) mappingWhere.id = raw.ingredient_seller_product_id;
-      const mapping = await IngredientSellerProduct.findOne({ where: mappingWhere, transaction });
+      // 돈 경로 — 형제 매장이 붙인 연결의 단가·환산으로 발주가 만들어지면 안 된다(2026-10-04)
+      const mapping = await IngredientSellerProduct.findOne({
+        where: { [Op.and]: [mappingWhere, sellerLinkVisibleWhere(ing, buyerEntity)] }, transaction
+      });
       if (!mapping) {
         return { ok: false, status: 400, body: { success: false, code: 'MAPPING_REQUIRED', message: `Ingredient ${ingredientId} is not mapped to this seller` } };
       }
@@ -917,7 +928,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
       priceFallback = parseFloat(mapping.unit_price) || 0;
     } else if (raw.ingredient_seller_product_id) {
       const sellerSrc = await IngredientSellerProduct.findByPk(raw.ingredient_seller_product_id, { transaction });
-      if (sellerSrc && sellerSrc.ingredient_id === ingredientId) {
+      if (sellerSrc && sellerSrc.ingredient_id === ingredientId && sellerLinkVisible(sellerSrc, ing, buyerEntity)) {
         mappingRow = sellerSrc;
         convFallback = parseFloat(sellerSrc.unit_conversion) || 1;
         priceFallback = parseFloat(sellerSrc.unit_price) || 0;

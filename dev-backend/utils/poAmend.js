@@ -13,7 +13,7 @@
 
 const { Ingredient, Product, IngredientSellerProduct } = require('../models');
 const { resolveStockTarget, stockTargetAttrs } = require('./stockTarget');
-const { readableIngredient } = require('./brandStockAccess');
+const { readableIngredient, sellerLinkVisible } = require('./brandStockAccess');
 const { resolveOrderLine } = require('./poLineSpec');
 
 /** 판매자가 고칠 수 있는 상태 = 출고 전. shipped 이후는 물건이 이미 나갔다. */
@@ -57,7 +57,8 @@ async function mappingUsableBy(mapping, po, buyerEntity, transaction) {
   //    product_ingredient / brand_product(=BG 가 구매자인 경우)는 이번 범위 밖 — 조용히 통과시키지 않고 거부한다.
   if (target.kind === 'ingredient') {
     const ing = await readableIngredient(target.id, buyerEntity, transaction);
-    if (!ing) {
+    // 형제 매장이 브랜드 재료에 붙인 연결은 이 구매자의 연결이 아니다(2026-10-04)
+    if (!ing || !sellerLinkVisible(mapping, ing, buyerEntity)) {
       return { ok: false, code: 'NOT_LINKED_TO_BUYER', message: 'Buyer has no stock item linked to this product' };
     }
     return { ok: true, target, stockRow: ing };

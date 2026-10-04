@@ -192,4 +192,44 @@ async function syncProductMirrors(brandProduct, opts = {}) {
   return syncMirrors(brandProduct, { ...opts, sourceKey: 'source_brand_product_id' });
 }
 
-module.exports = { syncMirrors, syncProductMirrors, shareToBrand, unshareFromBrand, sharedBrandIds, MIRRORED_FIELDS };
+/**
+ * 프로덕트 출처 거울에 **출처 연결**(브랜드 자신이 판매자)을 보장한다 — 멱등.
+ *
+ * 왜 (Fable 2026-09-29 §2-3 D3′ · Irene 2026-10-04 「권고대로 해」):
+ *   프로덕트 출처 거울은 그 자체가 「GIT 가 파는 물건」 이다. 연결이 없으면 매장 발주가
+ *   MAPPING_REQUIRED 로 막히고, 매장은 같은 물건을 자기 줄로 또 만들었다(운영 매장 8 — 36줄).
+ *   그래서 거울이 생기거나 다시 켜질 때 연결도 같이 둔다. 공용(buyer_restaurant_id NULL) — 매장마다 붙이지 않는다.
+ *
+ * 값: 판매자 = 거울의 브랜드(Restaurant.brand_id 와 같은 뜻 — verifySellerRelation) · 상품 = 출처 프로덕트 ·
+ *   환산 = 거울 기준양(프로덕트 1개 = 거울 단위 base_quantity 만큼, §2-2 다섯 칸) · 단가 = 프로덕트 가격.
+ * 이미 공용 연결(같은 판매자·상품)이 있으면 아무것도 안 한다 — 꺼져 있어도 사람이 끈 것이라 되살리지 않는다.
+ * @returns {Promise<{created: boolean, id: number|null}>}
+ */
+async function ensureSourceSellerLink(mirror, brandProduct, { transaction } = {}) {
+  if (!mirror || !brandProduct || mirror.owner_type !== 'brand' || !mirror.brand_id) return { created: false, id: null };
+  if (parseInt(mirror.source_brand_product_id, 10) !== parseInt(brandProduct.id, 10)) return { created: false, id: null };
+  const { IngredientSellerProduct } = require('../models');
+  const where = {
+    ingredient_id: mirror.id, buyer_restaurant_id: null,
+    seller_type: 'brand', seller_entity_id: parseInt(mirror.brand_id, 10), seller_product_id: brandProduct.id
+  };
+  const existing = await IngredientSellerProduct.findOne({ where, transaction });
+  if (existing) return { created: false, id: existing.id };
+  const others = await IngredientSellerProduct.count({
+    where: { ingredient_id: mirror.id, buyer_restaurant_id: null, is_active: true }, transaction
+  });
+  const bq = parseFloat(mirror.base_quantity);
+  const row = await IngredientSellerProduct.create({
+    ...where,
+    unit_price: parseFloat(brandProduct.unit_price) || 0,
+    unit_conversion: bq > 0 ? bq : 1,
+    min_order_quantity: 1,
+    lead_time_days: 0,
+    is_preferred: others === 0,
+    is_active: true,
+    notes: 'source link (brand product)'
+  }, { transaction });
+  return { created: true, id: row.id };
+}
+
+module.exports = { syncMirrors, syncProductMirrors, shareToBrand, unshareFromBrand, sharedBrandIds, ensureSourceSellerLink, MIRRORED_FIELDS };

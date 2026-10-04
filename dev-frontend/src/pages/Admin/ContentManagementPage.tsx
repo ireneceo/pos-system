@@ -27,7 +27,7 @@ import { getAuthToken } from '../../utils/auth';
 import { formatDate as formatDateTz } from '../../utils/timezone';
 interface ContentCategory {
   id: number;
-  type: 'blog' | 'faq';
+  type: 'blog' | 'faq' | 'docs';
   name: string;
   slug: string;
   description: string | null;
@@ -39,7 +39,7 @@ interface ContentCategory {
 
 interface ContentItem {
   id: number;
-  type: 'blog' | 'faq';
+  type: 'blog' | 'faq' | 'docs';
   category_id: number;
   title: string;
   slug: string | null;
@@ -248,7 +248,7 @@ const FilterBarWithButton = styled(FilterBar)`
 
 const ContentManagementPage: React.FC = () => {
   const { t } = useTranslation('admin');
-  const [activeTab, setTabParam] = useTabParam<'blog' | 'blog-categories' | 'faq' | 'faq-categories'>('blog');
+  const [activeTab, setTabParam] = useTabParam<'blog' | 'blog-categories' | 'faq' | 'faq-categories' | 'docs' | 'docs-categories'>('blog');
   const [categories, setCategories] = useState<ContentCategory[]>([]);
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [contents, setContents] = useState<ContentItem[]>([]);
@@ -276,7 +276,8 @@ const ContentManagementPage: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
 
   // Get content type from tab
-  const getContentType = () => activeTab.includes('blog') ? 'blog' : 'faq';
+  // 'docs' = 안내 문서(2026-10-04) — 글 모양은 블로그와 같다(제목·주소·요약·본문), 공개 주소는 /docs
+  const getContentType = () => activeTab.includes('docs') ? 'docs' : activeTab.includes('blog') ? 'blog' : 'faq';
   const isCategory = activeTab.includes('categories');
 
   useEffect(() => {
@@ -311,7 +312,7 @@ const ContentManagementPage: React.FC = () => {
     setLoading(false);
   };
 
-  const handleTabChange = (tab: 'blog' | 'blog-categories' | 'faq' | 'faq-categories') => {
+  const handleTabChange = (tab: 'blog' | 'blog-categories' | 'faq' | 'faq-categories' | 'docs' | 'docs-categories') => {
     setTabParam(tab);
     setIsEditing(false);
     setEditingContent(null);
@@ -497,7 +498,7 @@ const ContentManagementPage: React.FC = () => {
     <EditorWrapper>
       <EditorHeader>
         <EditorTitle>
-          {editingContent?.id ? 'Edit' : 'New'} {contentType === 'blog' ? 'Blog Post' : 'FAQ Item'}
+          {editingContent?.id ? 'Edit' : 'New'} {contentType === 'docs' ? 'Doc' : contentType !== 'faq' ? 'Blog Post' : 'FAQ Item'}
         </EditorTitle>
         <EditorActions>
           <ThemedButton variant="secondary" onClick={() => { setIsEditing(false); setEditingContent(null); }}>
@@ -519,7 +520,7 @@ const ContentManagementPage: React.FC = () => {
             <FormInput
               value={editingContent?.title || ''}
               onChange={(e) => setEditingContent({ ...editingContent, title: e.target.value })}
-              placeholder={contentType === 'blog' ? 'Enter post title' : 'Enter question'}
+              placeholder={contentType !== 'faq' ? 'Enter post title' : 'Enter question'}
             />
           </FormGroup>
           <FormGroup>
@@ -536,7 +537,7 @@ const ContentManagementPage: React.FC = () => {
           </FormGroup>
         </FormRow>
 
-        {contentType === 'blog' && (
+        {contentType !== 'faq' && (
           <FormRow>
             <FormGroup>
               <FormLabel>{t('admin:contentManagementPage.excerpt')}</FormLabel>
@@ -568,11 +569,11 @@ const ContentManagementPage: React.FC = () => {
         )}
 
         <FormGroup>
-          <FormLabel>{contentType === 'blog' ? 'Content *' : 'Answer *'}</FormLabel>
+          <FormLabel>{contentType !== 'faq' ? 'Content *' : 'Answer *'}</FormLabel>
           <RichTextEditor
             value={editingContent?.content || ''}
             onChange={(e) => setEditingContent({ ...editingContent, content: e.target.value })}
-            placeholder={contentType === 'blog' ? 'Write your blog post content...' : 'Write the answer to this question...'}
+            placeholder={contentType !== 'faq' ? 'Write your blog post content...' : 'Write the answer to this question...'}
           />
         </FormGroup>
 
@@ -594,7 +595,7 @@ const ContentManagementPage: React.FC = () => {
             <small style={{ color: '#475569', fontSize: '12px' }}>{(editingContent?.ai_summary || '').length}/500 characters</small>
           </FormGroup>
 
-          {contentType === 'blog' && (
+          {contentType !== 'faq' && (
             <>
               <FormRow>
                 <FormGroup>
@@ -658,7 +659,7 @@ const ContentManagementPage: React.FC = () => {
           style={{ maxWidth: '300px' }}
         />
         <div style={{ marginLeft: 'auto' }}>
-          <ThemedButton onClick={() => { setEditingCategory({ type: contentType as 'blog' | 'faq' }); setShowCategoryModal(true); }}>
+          <ThemedButton onClick={() => { setEditingCategory({ type: contentType as 'blog' | 'faq' | 'docs' }); setShowCategoryModal(true); }}>
             Add Category
           </ThemedButton>
         </div>
@@ -668,8 +669,8 @@ const ContentManagementPage: React.FC = () => {
         {categories.length === 0 ? (
           <EmptyState>
             <h3>{t('admin:contentManagementPage.noCategoriesYet')}</h3>
-            <p>Create your first category to organize your {contentType === 'blog' ? 'blog posts' : 'FAQ items'}</p>
-            <ThemedButton onClick={() => { setEditingCategory({ type: contentType as 'blog' | 'faq' }); setShowCategoryModal(true); }}>
+            <p>Create your first category to organize your {contentType !== 'faq' ? 'blog posts' : 'FAQ items'}</p>
+            <ThemedButton onClick={() => { setEditingCategory({ type: contentType as 'blog' | 'faq' | 'docs' }); setShowCategoryModal(true); }}>
               Add Category
             </ThemedButton>
           </EmptyState>
@@ -682,7 +683,7 @@ const ContentManagementPage: React.FC = () => {
               <CategoryInfo>
                 <CategoryName>{cat.name}</CategoryName>
                 <CategoryMeta>
-                  {cat.content_count} {contentType === 'blog' ? 'posts' : 'items'} • {cat.description || 'No description'}
+                  {cat.content_count} {contentType !== 'faq' ? 'posts' : 'items'} • {cat.description || 'No description'}
                 </CategoryMeta>
               </CategoryInfo>
               <CategoryActions>
@@ -710,7 +711,7 @@ const ContentManagementPage: React.FC = () => {
       <StatsGrid>
         <StatCard>
           <StatValue>{stats.total}</StatValue>
-          <StatLabel>Total {contentType === 'blog' ? 'Posts' : 'FAQs'}</StatLabel>
+          <StatLabel>Total {contentType !== 'faq' ? 'Posts' : 'FAQs'}</StatLabel>
         </StatCard>
         <StatCard>
           <StatValue>{stats.published}</StatValue>
@@ -745,8 +746,8 @@ const ContentManagementPage: React.FC = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
         />
         <div style={{ marginLeft: 'auto' }}>
-          <ThemedButton onClick={() => { setEditingContent({ type: contentType as 'blog' | 'faq' }); setIsEditing(true); }}>
-            New {contentType === 'blog' ? 'Post' : 'FAQ'}
+          <ThemedButton onClick={() => { setEditingContent({ type: contentType as 'blog' | 'faq' | 'docs' }); setIsEditing(true); }}>
+            New {contentType !== 'faq' ? 'Post' : 'FAQ'}
           </ThemedButton>
         </div>
       </FilterBarWithButton>
@@ -756,9 +757,9 @@ const ContentManagementPage: React.FC = () => {
       ) : filteredContents.length === 0 ? (
         <EmptyState>
           <h3>{t('admin:contentManagementPage.noContentYet')}</h3>
-          <p>Create your first {contentType === 'blog' ? 'blog post' : 'FAQ item'}</p>
-          <ThemedButton onClick={() => { setEditingContent({ type: contentType as 'blog' | 'faq' }); setIsEditing(true); }}>
-            New {contentType === 'blog' ? 'Post' : 'FAQ'}
+          <p>Create your first {contentType !== 'faq' ? 'blog post' : 'FAQ item'}</p>
+          <ThemedButton onClick={() => { setEditingContent({ type: contentType as 'blog' | 'faq' | 'docs' }); setIsEditing(true); }}>
+            New {contentType !== 'faq' ? 'Post' : 'FAQ'}
           </ThemedButton>
         </EmptyState>
       ) : (
@@ -836,6 +837,12 @@ const ContentManagementPage: React.FC = () => {
             </Tab>
             <Tab active={activeTab === 'faq-categories'} onClick={() => handleTabChange('faq-categories')}>
               FAQ Categories
+            </Tab>
+            <Tab active={activeTab === 'docs'} onClick={() => handleTabChange('docs')}>
+              Docs
+            </Tab>
+            <Tab active={activeTab === 'docs-categories'} onClick={() => handleTabChange('docs-categories')}>
+              Docs Categories
             </Tab>
           </Tabs>
 

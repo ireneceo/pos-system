@@ -121,20 +121,20 @@ async function isBrandManager(req, res, next) {
 
   const brand_id = req.params.brandId || req.params.brand_id;
 
+  // 소유자 ∪ 관리자(2026-10-04 ④) — 판정은 utils/managerBrandScope.brandIdsForUser 하나. 형제 브랜드 미포함.
+  const { brandIdsForUser } = require('../utils/managerBrandScope');
+  const ids = await brandIdsForUser(user);
+
   if (brand_id) {
-    const brand = await Brand.findByPk(brand_id);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found' });
-    }
-    if (brand.owner_id !== user.id) {
+    const brand = await Brand.findByPk(brand_id, { attributes: ['id'] });
+    if (!brand || !ids.includes(brand.id)) {
       return res.status(404).json({ success: false, message: 'Brand not found' });
     }
     return next();
   }
 
-  // No URL brand_id — verify user owns at least one brand (prevents dangling BG from bypass)
-  const ownsAny = await Brand.count({ where: { owner_id: user.id } });
-  if (ownsAny === 0) {
+  // No URL brand_id — 관리 가능한 브랜드가 하나도 없으면 거부 (dangling BG/BM 우회 방지)
+  if (ids.length === 0) {
     return res.status(403).json({ success: false, message: 'No brand owned by user' });
   }
   return next();

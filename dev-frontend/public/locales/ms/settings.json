@@ -1041,7 +1041,15 @@
       "findOne": "Terminal ditemui di {{host}} dan disimpan",
       "findNone": "Tiada terminal kad ditemui pada Wi-Fi ini",
       "findMany": "Lebih daripada satu terminal ditemui — pilih terminal di kaunter ini:",
-      "hostAuto": "Ditemui secara automatik. Jika alamat berubah, aplikasi akan mencari terminal semula semasa bayaran."
+      "hostAuto": "Ditemui secara automatik pada Wi-Fi peranti ini. Jika alamat berubah, aplikasi mencarinya semula sendiri.",
+      "notFoundYet": "Belum ditemui",
+      "checking": "Menyemak sambungan…",
+      "sameWifi": "Bersambung — Wi-Fi yang sama dengan peranti ini",
+      "notOnWifi": "Tiada terminal pada Wi-Fi peranti ini — sambungkan peranti ini ke Wi-Fi terminal",
+      "refind": "Cari semula",
+      "advanced": "Tetapan lanjutan",
+      "manualHost": "Alamat terminal (hanya jika carian automatik tidak berfungsi)",
+      "autoUpdated": "Alamat terminal berubah — ditemui semula di {{host}} dan disimpan"
     }
   },
   "printer.emergency.workstationReceiptPrinter": "pencetak resit stesen kerja ini",

@@ -199,7 +199,23 @@ function assertBrandOwnsRow(row, req, res) {
   return true;
 }
 
+/**
+ * userCanManageBrand — 이 요청자가 브랜드 brandId 를 관리할 수 있는가 (소유자 ∪ 관리자).
+ * 2026-10-04 ④ 브랜드 다중 관리자: 판정은 utils/managerBrandScope.brandIdsForUser 하나(소유 brands.owner_id ∪ 배정
+ * users.brand_id — 브랜드 모자는 투영으로 brand_id 가 채워져 같은 길을 탄다). 형제 브랜드는 열리지 않는다.
+ * brand-menus · brand-menu-categories · brand-menu-option-groups 의 지역 assertBrandOwnership 이 전부 여기로 위임한다.
+ */
+async function userCanManageBrand(req, brandId) {
+  if (req.bgOwnerIsAdmin || isSysAdmin(req.user)) return true;
+  const id = parseInt(brandId, 10);
+  if (!Number.isFinite(id)) return false;
+  const { brandIdsForUser } = require('../utils/managerBrandScope');
+  const ids = await brandIdsForUser(req.user);
+  return ids.includes(id);
+}
+
 module.exports = {
+  userCanManageBrand,
   requireBGScope,
   applyBGFilter,
   assertBGOwnsRow,

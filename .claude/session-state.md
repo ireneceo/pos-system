@@ -4,6 +4,15 @@
 **작업 상태:** 🟡 2026-10-04 운영 배포 완료(SW 5.72 · 백업 `20261004_031939` · 스모크 10/10) → 운영 데모 매장 13 실단말기 테스트 대기(Irene)
 
 ### 진행 중인 작업
+- ⏳ **[Claude Code] Docs(안내 페이지) + 사이드바 정리 + 랜딩 Download — 접수 2026-10-04, 구조 묶음 뒤 같은 빌드로**
+  - Irene 원문: 「Docs에 필요한 안내 내용들 이렇게 안내페이지들 넣는 거 구성해야 하는데. 좌측 메뉴에 Contact Support랑 버튼 합쳐서 표시 안될까? 그리고 Install App은 없애자. 우측 하단에 배너들 나오니까 없어도 될 것 같고. 랜딩페이지에 다운로드 메뉴를 추가해. 내가 말한 Docs 페이지들은 샘플 이거 말하는 거야. https://claude.ai/artifact/ALL7b8nE7jZr4vgAuS3LeK」
+  - ⚠ 사이드바 = 🔒 MainLayout.tsx(인쇄 보호파일) — 푸터 버튼 줄만, Irene 명시 요청 → print-guard --bless 대상
+- ⏳ **[Claude Code] 단말기 설정 화면 — 주소 입력칸 → 표시 전용 + «다시 찾기» + 같은 와이파이 확인 표시 + 포트·연결방식 «고급» 접기** (같은 빌드)
+  - Irene 원문: 「이거 내가 직접 넣어야 해? 터미널 IP가 와이파이가 바뀌면 바뀌는데 이걸 지금 잡은 와이파이로 잡을 수 없어? ... 같은 와이파이인지 확인하고 자동체크나 자동입력 필요해. 이게 어떻게 운영하면서 계속 바꿔?」
+  - 실측: 동작은 이미 자동(terminalSale.ts roundTrip 연결 실패 → findTerminal → 저장·재전송). 화면이 입력칸이라 수동처럼 보임
+- 🟡 **[Claude Code] K-DINE 재료·메뉴·공급업체 구조 코드 묶음 — 착수 2026-10-04**
+  - 근거: Fable 판정 `.claude/fable-verdict-20260929-structure.md` §6. Irene 2026-10-04 원문 「권고대로 해」 → D1′=A(브랜드 원본 잠금) · D1″=다중 관리자 같이 · D3′=GIT 연결 자동·공용 · D2′=#6(Stock Item 315) 정본 #57 로 합침 / beef 둘(#51↔#75)은 표 보고 Irene 확인
+  - 순서: §6-3 사실 확인(운영 읽기) → 4~12 코드 → build 1회 → verify-all --full 1회 → Fable 게이트 1회 → /배포 → 데이터 1회(표 승인·밤)
 - 🟡 **[Claude Code] GHL 2차 묶음 — dev 완료 · 미배포 (SW 5.72)**
   - 근거: Fable 판정 2026-10-02 (이 세션, 2회 응답) — Irene 「모든 테스트는 실 운영에서」「테스트 데모 계정에서 하면 되지」 수용. 개발용 .dev 앱 경로 폐기 → **안드로이드 정식 앱 0.3.0** + R1 은 활성화 전 수정. 판정문 R1~R5: `.claude/fable-verdict-20261001-ghl-ecr-gate.md` §2
   - 구현: R1 분할 결제 거절·미확인 뒤 Confirm 잠김(`PaymentModal.handleSplitConfirm(manual?)`, canConfirm) · R2 서버 `createSale` 409 ALREADY_APPROVED(«승인 합+이번 금액 > 주문 금액», 같은 금액 승인은 `data.txn` 재사용→화면이 새로 안 긁고 기록) + DOUBLE_APPROVAL 경고(`reason:alreadyApproved/doubleApproval` 4언어) · R3 OrderContext 대기 연결 금액 대조 · R4 `/manual` 뒤 safeLink · R5 busy 순서

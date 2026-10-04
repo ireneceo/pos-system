@@ -18,7 +18,7 @@ const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
-const { requireBGScope } = require('../middleware/brandScope');
+const { requireBGScope, userCanManageBrand } = require('../middleware/brandScope');
 const { normalizeImageField, copyImageToOwnedFile } = require('../utils/imageProcessor');
 const {
   Brand, Restaurant, ProductRecipe, Recipe, BrandMenu, BrandMenuCategory,
@@ -33,12 +33,7 @@ const {
 } = require('../services/brandMenuSyncService');
 
 // Ownership guard — BG가 이 brand 를 소유하는지 (System Admin 은 통과)
-async function assertBrandOwnership(req, brandId) {
-  if (req.bgOwnerIsAdmin) return true;
-  const brand = await Brand.findByPk(brandId, { attributes: ['id', 'owner_id'] });
-  if (!brand) return false;
-  return brand.owner_id === req.bgOwnerId;
-}
+const assertBrandOwnership = (req, brandId) => userCanManageBrand(req, brandId); // 판정은 brandScope 한 곳(2026-10-04)
 
 // ──────────────────────────────────────────────────────────────────────────
 // Brand-level menu defaults (Settings tab) — must come BEFORE /:id routes

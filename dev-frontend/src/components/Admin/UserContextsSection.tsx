@@ -103,7 +103,7 @@ interface Ctx {
   label: string;
 }
 
-interface Orphan { id: number; entity_id: number; role: string; }
+interface Orphan { id: number; entity_type: string; entity_id: number; role: string; }
 
 interface Ownership { id: number; name: string; }
 
@@ -114,8 +114,11 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
   const [contexts, setContexts] = useState<Ctx[]>([]);
   const [orphans, setOrphans] = useState<Orphan[]>([]);
   const [ownerships, setOwnerships] = useState<Ownership[]>([]);
-  const [pickRole, setPickRole] = useState<'Restaurant Admin' | 'Restaurant Owner'>('Restaurant Admin');
+  // 부여 유형 — 매장(관리자·오너) / 브랜드(브랜드 관리자, v1.2 2026-10-04)
+  const [pickType, setPickType] = useState<'restaurant' | 'brand'>('restaurant');
+  const [pickRole, setPickRole] = useState<'Restaurant Admin' | 'Restaurant Owner' | 'Brand Manager'>('Restaurant Admin');
   const [restaurants, setRestaurants] = useState<Array<{ id: number; name: string }>>([]);
+  const [brands, setBrands] = useState<Array<{ id: number; name: string }>>([]);
   const [pick, setPick] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -154,6 +157,26 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
     })();
   }, [headers]);
 
+  // 브랜드 목록 — 응답은 배열 그대로(routes/brands-core.js GET /)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/brands', { headers: headers() });
+        if (!res.ok) return;
+        const json = await res.json();
+        const arr = Array.isArray(json) ? json : (json?.data || []);
+        setBrands(arr.map((b: any) => ({ id: b.id, name: b.name })));
+      } catch { /* 목록 실패 시 브랜드 부여만 비활성 */ }
+    })();
+  }, [headers]);
+
+  const changeType = (next: 'restaurant' | 'brand') => {
+    setPickType(next);
+    setPick('');
+    setPickRole(next === 'brand' ? 'Brand Manager' : 'Restaurant Admin');
+  };
+  const targets = pickType === 'brand' ? brands : restaurants;
+
   const grant = async () => {
     if (!pick) return;
     setBusy(true); setError(null);
@@ -161,7 +184,7 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
       const res = await fetch(`/api/users/${userId}/contexts`, {
         method: 'POST',
         headers: headers(),
-        body: JSON.stringify({ entity_type: 'restaurant', entity_id: Number(pick), role: pickRole })
+        body: JSON.stringify({ entity_type: pickType, entity_id: Number(pick), role: pickRole })
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) { setError(json?.message || t('context.admin.grantFailed')); return; }
@@ -223,13 +246,13 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
 
       {orphans.map((o) => (
         <Row key={'orphan-' + o.id}>
-          <RowLabel>{t('context.admin.deletedRestaurant', { id: o.entity_id })}</RowLabel>
+          <RowLabel>{o.entity_type === 'brand' ? t('context.admin.deletedBrand', { id: o.entity_id }) : t('context.admin.deletedRestaurant', { id: o.entity_id })}</RowLabel>
           <Tag tone="warn">{t('context.admin.orphan')}</Tag>
           <Button
             variant="danger"
             size="small"
             disabled={busy}
-            onClick={() => setRevoking({ label: String(o.entity_id), run: () => revokeContext({ kind: 'granted', id: o.id, entity_type: 'restaurant', entity_id: o.entity_id, role: o.role, label: String(o.entity_id) }) })}
+            onClick={() => setRevoking({ label: String(o.entity_id), run: () => revokeContext({ kind: 'granted', id: o.id, entity_type: o.entity_type, entity_id: o.entity_id, role: o.role, label: String(o.entity_id) }) })}
           >
             {t('context.admin.revoke')}
           </Button>
@@ -247,13 +270,23 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
       ))}
 
       <Row>
-        <Picker value={pickRole} onChange={(e) => setPickRole(e.target.value as 'Restaurant Admin' | 'Restaurant Owner')} disabled={busy}>
-          <option value="Restaurant Admin">{t('context.admin.roleAdmin')}</option>
-          <option value="Restaurant Owner">{t('context.admin.roleOwner')}</option>
+        <Picker value={pickType} onChange={(e) => changeType(e.target.value as 'restaurant' | 'brand')} disabled={busy}>
+          <option value="restaurant">{t('context.admin.typeRestaurant')}</option>
+          <option value="brand">{t('context.admin.typeBrand')}</option>
         </Picker>
-        <Picker value={pick} onChange={(e) => setPick(e.target.value)} disabled={busy || restaurants.length === 0}>
-          <option value="">{t('context.admin.selectRestaurant')}</option>
-          {restaurants.map((r) => (
+        <Picker value={pickRole} onChange={(e) => setPickRole(e.target.value as 'Restaurant Admin' | 'Restaurant Owner' | 'Brand Manager')} disabled={busy}>
+          {pickType === 'brand' ? (
+            <option value="Brand Manager">{t('context.admin.roleBrandManager')}</option>
+          ) : (
+            <>
+              <option value="Restaurant Admin">{t('context.admin.roleAdmin')}</option>
+              <option value="Restaurant Owner">{t('context.admin.roleOwner')}</option>
+            </>
+          )}
+        </Picker>
+        <Picker value={pick} onChange={(e) => setPick(e.target.value)} disabled={busy || targets.length === 0}>
+          <option value="">{pickType === 'brand' ? t('context.admin.selectBrand') : t('context.admin.selectRestaurant')}</option>
+          {targets.map((r) => (
             <option key={r.id} value={r.id}>{r.name}</option>
           ))}
         </Picker>

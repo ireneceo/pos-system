@@ -28,7 +28,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { parseMinOrderQty } = require('../utils/quantity');
 const { sanitizeString } = require('../middleware/validation');
-const { readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
+const { readableIngredient, sellerLinkWritable, sellerLinkVisibleWhere } = require('../utils/brandStockAccess');
 const { parseConversion, propagateToOpenPoLines, buildConfirmationFields, conversionStatusFor, ConversionError } = require('../services/sellerLinkConversion');
 const { sequelize } = require('../config/database');
 
@@ -41,20 +41,25 @@ const VALID_SELLER_TYPES = ['system_admin', 'brand', 'foodcourt', 'supplier'];
  *
  *   읽기(GET seller-sources): 매장은 자기 재료 ∪ **부모 브랜드 재료** — 브랜드가 붙여둔
  *     공급처를 매장이 그대로 보고 발주해야 하기 때문(계약은 supplierAccess 가 상속 처리).
- *   쓰기(POST/PUT/DELETE): 소유자 본인만. 매장이 브랜드 재료의 공급처를 연결·수정·해제하면
- *     형제 매장 전체의 공급망이 바뀐다 → 403. 브랜드 재료의 공급처는 BG 가 정의한다.
+ *   쓰기(POST/PUT/DELETE): 소유자 본인 + (2026-10-04) 브랜드 재료에는 소속 매장이 **자기 연결**을
+ *     붙인다(buyer_restaurant_id = 그 매장, 형제 매장엔 안 보임). 공용 연결·형제 연결은 403.
+ *     판정은 brandStockAccess.sellerLinkWritable 한 곳.
  */
 const readableIngredientForBuyer = (ingredientId, buyerEntity) => readableIngredient(ingredientId, buyerEntity);
 
-/** 쓰기 대상. 읽기는 되는데 쓰기가 안 되는 경우(브랜드 공유 재료) 를 403 으로 구분해 돌려준다. */
-async function writableIngredientOr403(ingredientId, buyerEntity, res) {
-  const writable = await writableIngredient(ingredientId, buyerEntity);
+/**
+ * 연결 쓰기 대상. 허용이면 { ing, buyerRestaurantId }. 읽기는 되는데 쓰기가 안 되는 경우
+ * (공용 연결·형제 매장 연결)를 403 으로 구분해 돌려준다.
+ */
+async function sellerLinkWritableOr403(ingredientId, buyerEntity, linkRow, res) {
+  const writable = await sellerLinkWritable(ingredientId, buyerEntity, linkRow);
   if (writable) return writable;
   const readable = await readableIngredient(ingredientId, buyerEntity);
   if (readable) {
     res.status(403).json({
       success: false,
-      message: 'Brand-owned stock item is read-only. Ask the brand to change its supplier sources.'
+      code: 'SELLER_LINK_NOT_YOURS',
+      message: 'This supplier link belongs to your brand or another store. You can only change links your store added.'
     });
     return null;
   }
@@ -84,7 +89,7 @@ router.get('/ingredients/:ingredientId/seller-sources', async (req, res) => {
     }
 
     const sources = await IngredientSellerProduct.findAll({
-      where: { ingredient_id: ingredientId },
+      where: { [Op.and]: [{ ingredient_id: ingredientId }, sellerLinkVisibleWhere(ing, req.buyerEntity)] },
       order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
     });
 
@@ -142,8 +147,9 @@ router.post('/ingredients/:ingredientId/seller-sources', async (req, res) => {
     if (!Number.isFinite(ingredientId)) {
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
-    const ing = await writableIngredientOr403(ingredientId, req.buyerEntity, res);
-    if (!ing) return; // 403(브랜드 공유 재료) / 404 는 헬퍼가 응답
+    const w = await sellerLinkWritableOr403(ingredientId, req.buyerEntity, null, res);
+    if (!w) return; // 403 / 404 는 헬퍼가 응답
+    const buyerRestaurantId = w.buyerRestaurantId;
 
     const {
       seller_type,
@@ -184,16 +190,18 @@ router.post('/ingredients/:ingredientId/seller-sources', async (req, res) => {
       }
     }
 
-    // If preferred=true, demote others
+    // If preferred=true, demote others — 같은 범위(공용 / 이 매장 연결) 안에서만.
+    //   매장이 자기 연결을 우선으로 해도 형제 매장이 보는 공용 연결은 그대로여야 한다.
     if (is_preferred) {
       await IngredientSellerProduct.update(
         { is_preferred: false },
-        { where: { ingredient_id: ingredientId } }
+        { where: { ingredient_id: ingredientId, buyer_restaurant_id: buyerRestaurantId } }
       );
     }
 
     const created = await IngredientSellerProduct.create({
       ingredient_id: ingredientId,
+      buyer_restaurant_id: buyerRestaurantId,
       seller_type,
       seller_entity_id: seller_entity_id ? parseInt(seller_entity_id, 10) : null,
       seller_product_id: sellerProductId,
@@ -227,9 +235,10 @@ router.put('/ingredient-seller-products/:id', async (req, res) => {
     if (!isp) {
       return res.status(404).json({ success: false, message: 'Seller source not found' });
     }
-    // IDOR via ingredient ownership (브랜드 공유 재료는 매장이 못 고침 → 403)
-    const ing = await writableIngredientOr403(isp.ingredient_id, req.buyerEntity, res);
-    if (!ing) return;
+    // IDOR via ingredient ownership + 연결 범위 (공용·형제 매장 연결은 403)
+    const w = await sellerLinkWritableOr403(isp.ingredient_id, req.buyerEntity, isp, res);
+    if (!w) return;
+    const ing = w.ing;
 
     const { unit_price, is_preferred, is_active, notes, unit_conversion, min_order_quantity, lead_time_days } = req.body;
     const updates = {};
@@ -260,7 +269,7 @@ router.put('/ingredient-seller-products/:id', async (req, res) => {
       if (is_preferred) {
         await IngredientSellerProduct.update(
           { is_preferred: false },
-          { where: { ingredient_id: isp.ingredient_id, id: { [Op.ne]: id } } }
+          { where: { ingredient_id: isp.ingredient_id, buyer_restaurant_id: isp.buyer_restaurant_id, id: { [Op.ne]: id } } }
         );
       }
     }
@@ -302,7 +311,8 @@ router.put('/ingredient-seller-products/:id', async (req, res) => {
     //      (같은 원칙: 브랜드 동기화가 사람 결정을 덮지 않게 한 2026-09-02 수정)
     //   선호 공급처일 때만 — 비선호 링크 가격이 대표 원가를 바꾸면 안 된다.
     let costFilled = null;
-    if (updates.unit_price > 0 && isp.is_preferred) {
+    //   매장이 브랜드 재료에 붙인 연결이면 건너뛴다 — 재료 원가는 브랜드 것이고 매장 원가는 오버레이다.
+    if (updates.unit_price > 0 && isp.is_preferred && w.buyerRestaurantId == null) {
       const currentCost = parseFloat(ing.unit_cost);
       if (!(currentCost > 0)) {
         await ing.update({ unit_cost: updates.unit_price });
@@ -332,8 +342,8 @@ router.delete('/ingredient-seller-products/:id', async (req, res) => {
     if (!isp) {
       return res.status(404).json({ success: false, message: 'Seller source not found' });
     }
-    const ing = await writableIngredientOr403(isp.ingredient_id, req.buyerEntity, res);
-    if (!ing) return;
+    const w = await sellerLinkWritableOr403(isp.ingredient_id, req.buyerEntity, isp, res);
+    if (!w) return;
 
     await isp.destroy();
     res.json({ success: true, message: 'Seller source deleted' });

@@ -20,7 +20,7 @@ async function getRestaurantCostMap(restaurantId) {
 }
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 // 브랜드 공유 재료 접근·재고 규칙의 단일 소스 (docs/BRAND_STOCK_SHARING_DESIGN.md)
-const { readableIngredient, stockFor, stockMapFor, overlayMapFor, effectiveSettings, applyStock, parentBrandIdOf } = require('../utils/brandStockAccess');
+const { readableIngredient, stockFor, stockMapFor, overlayMapFor, effectiveSettings, applyStock, parentBrandIdOf, sellerLinkVisible } = require('../utils/brandStockAccess');
 const { checkAndCreateAlert } = require('../utils/stockAlerts');
 
 /**
@@ -146,9 +146,14 @@ router.get('/:restaurantId/inventory', async (req, res) => {
       const { IngredientSellerProduct } = require('../models');
       const links = await IngredientSellerProduct.findAll({
         where: { ingredient_id: { [Op.in]: ingIds }, is_active: true },
-        attributes: ['ingredient_id']
+        attributes: ['ingredient_id', 'buyer_restaurant_id', 'seller_type', 'seller_entity_id']
       });
-      for (const l of links) sellerLinkedIds.add(l.ingredient_id);
+      // 형제 매장이 브랜드 재료에 붙인 연결은 이 매장의 «발주 가능» 이 아니다(2026-10-04)
+      const ingById = new Map(ingredients.map(i => [i.id, i]));
+      const buyerForLinks = { type: 'restaurant', id: parseInt(restaurantId, 10) };
+      for (const l of links) {
+        if (sellerLinkVisible(l, ingById.get(l.ingredient_id), buyerForLinks)) sellerLinkedIds.add(l.ingredient_id);
+      }
     }
 
     // 브랜드 공유 재료의 실재고·PAR 은 매장 오버레이가 단일 소스 (브랜드 행 값이 아님).

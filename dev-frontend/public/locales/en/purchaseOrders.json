@@ -453,7 +453,8 @@
     "deliveryUnset": "not set by seller",
     "deliveryToFree": "Add {{amount}} more for free delivery",
     "deliveryUnsetHint": "This seller has not set delivery terms yet. That does not mean free — the actual fee shows on the invoice.",
-    "deliveryAreas": "Delivery areas"
+    "deliveryAreas": "Delivery areas",
+    "brandNeedsLink": "Add your store's supplier for this item"
   },
   "staging": {
     "noPhoneTitle": "No Phone Number",
@@ -597,7 +598,14 @@
     "linkPriceNotSet": "No price set",
     "costNotSet": "Cost not set",
     "packSizeNeedsConfirm": "needs confirming",
-    "packSizeEdit": "Edit how much stock one arrives as"
+    "packSizeEdit": "Edit how much stock one arrives as",
+    "perUnit": "per {{unit}}",
+    "ownerFilter": {
+      "label": "Show",
+      "all": "All",
+      "brand": "Brand",
+      "store": "My store"
+    }
   },
   "connect": {
     "priceNotSet": "No price set — cost will be 0"

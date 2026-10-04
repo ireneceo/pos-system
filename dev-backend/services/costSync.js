@@ -134,6 +134,8 @@ async function recomputeUnitCost(kind, id, { transaction, onlyIfZero = false, se
   if (onlyIfZero && from > 0) return { skip: '이미 값 있음(사람 값 보존)' };
 
   // ① 선호 판매자 매핑 — 선호가 없으면 가장 최근 것 하나
+  //   공용 연결만(buyer_restaurant_id IS NULL) — 매장이 브랜드 재료에 붙인 자기 거래처 가격이
+  //   형제 매장 모두가 보는 브랜드 원가를 바꾸면 안 된다(2026-10-04).
   //   ⚠ **가격은 판매자 상품의 현재가에서 읽는다.** 매핑의 `unit_price` 는 연결할 때 복사된
   //     사본일 뿐이고, 판매자가 가격을 고쳐도 아무도 갱신하지 않아 그대로 굳는다
   //     (docs/TRADE_STRUCTURE.md §5-1 "매장마다 가격 복사본이 따로 산다 ⚠ 가장 큰 것").
@@ -149,6 +151,7 @@ async function recomputeUnitCost(kind, id, { transaction, onlyIfZero = false, se
       LEFT JOIN brand_products bp ON bp.id = isp.seller_product_id AND isp.seller_type = 'brand'
       LEFT JOIN foodcourt_products fp ON fp.id = isp.seller_product_id AND isp.seller_type = 'foodcourt'
      WHERE isp.${fk} = :id AND isp.is_active = 1
+       AND isp.buyer_restaurant_id IS NULL
        AND (isp.unit_price > 0 OR sp.unit_price > 0 OR bp.unit_price > 0 OR fp.unit_price > 0)
      ORDER BY isp.is_preferred DESC, isp.id DESC LIMIT 1`, { id });
 

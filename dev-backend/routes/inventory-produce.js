@@ -222,8 +222,10 @@ router.post('/:restaurantId/inventory/produce', async (req, res) => {
     }, { transaction });
 
     // ③ 매장 원가층 — 실제 쓴 돈 ÷ 실제로 나온 양 (브랜드 준비 재료도 매장 원가는 매장 것)
+    //   원가층 값의 뜻은 기준양 가격이다(2026-10-04 Fable 판정 E) — 배치 단가(취급단위 1)에 기준양을 곱한다.
     if (unitCost > 0) {
-      await writeStoreCost(restaurantId, prep.ingredient, unitCost, {
+      const prepBase = Number(prep.ingredient.base_quantity) || 1;
+      await writeStoreCost(restaurantId, prep.ingredient, unitCost * prepBase, {
         transaction, userId, notes: `만들기 — ${prep.recipe.name}`
       });
     }

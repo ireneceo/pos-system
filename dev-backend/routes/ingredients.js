@@ -6,7 +6,7 @@ const router = express.Router();
 // 열면 같은 물건이 두 줄로 갈라지던 2026-06/07 분열이 재발한다.
 const ALLOW_BRAND_INGREDIENT_WRITE = false;
 const { Ingredient, IngredientCategory, Restaurant, Supplier, RestaurantIngredientCost, IngredientSellerProduct, SupplierProduct } = require('../models');
-const { stockMapFor, readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
+const { stockMapFor, readableIngredient, writableIngredient, sellerLinkVisible } = require('../utils/brandStockAccess');
 const { resolveSellers, getSellerName } = require('../utils/sellerNames');
 const { conversionStatusFor } = require('../services/sellerLinkConversion');
 const { Op } = require('sequelize');
@@ -87,8 +87,9 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
       const Foodcourt = require('../models/Foodcourt');
 
       const ingIds = ingredients.map(i => i.id);
+      // 공용 연결만 — 매장이 브랜드 재료에 붙인 연결(buyer_restaurant_id)은 그 매장 것이다(2026-10-04)
       const mappings = ingIds.length === 0 ? [] : await IngredientSellerProduct.findAll({
-        where: { ingredient_id: { [Op.in]: ingIds }, is_active: true },
+        where: { ingredient_id: { [Op.in]: ingIds }, buyer_restaurant_id: null, is_active: true },
         order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
       });
 
@@ -629,15 +630,18 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
     const brandIds = brandIngredients.map(i => i.id);
     const stockMap = await stockMapFor(restaurantId, brandIds);
 
-    // 공급처(seller-sources) 첨부 — ?include=sellers. 브랜드가 붙여둔 공급처를 매장이 그대로
-    // 보고 발주한다(연결·해제는 브랜드 전용 = 읽기전용). 무옵션 호출의 응답은 불변(하위호환).
+    // 공급처(seller-sources) 첨부 — ?include=sellers. 무옵션 호출의 응답은 불변(하위호환).
+    // 2026-10-04: 보이는 것 = 브랜드 자신이 판매자인 공용 연결 + **이 매장이 붙인 연결**.
+    //   형제 매장 연결·브랜드가 붙인 외부 공급처는 안 보인다(brandStockAccess.sellerLinkVisible 단일 판정).
     const wantSellers = String(req.query.include || '').split(',').includes('sellers');
     let sellerMap = {};
     if (wantSellers && brandIds.length) {
-      const rows = await IngredientSellerProduct.findAll({
+      const ingById = new Map(brandIngredients.map(i => [i.id, i]));
+      const buyerForLinks = { type: 'restaurant', id: parseInt(restaurantId, 10) };
+      const rows = (await IngredientSellerProduct.findAll({
         where: { ingredient_id: brandIds, is_active: true },
         order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
-      });
+      })).filter(r => sellerLinkVisible(r, ingById.get(r.ingredient_id), buyerForLinks));
       const spIds = [...new Set(rows.filter(r => r.seller_type === 'supplier' && r.seller_product_id).map(r => r.seller_product_id))];
       const spMap = spIds.length
         ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku', 'unit', 'base_quantity', 'package_unit', 'order_mode'], paranoid: false })).map(sp => [sp.id, sp]))
@@ -870,8 +874,9 @@ router.get('/foodcourts/:foodcourtId/ingredients', authenticateToken, isFoodcour
       const SupplierProductOption = require('../models/SupplierProductOption');
 
       const ingIds = ingredients.map(i => i.id);
+      // 공용 연결만 — 매장이 브랜드 재료에 붙인 연결(buyer_restaurant_id)은 그 매장 것이다(2026-10-04)
       const mappings = ingIds.length === 0 ? [] : await IngredientSellerProduct.findAll({
-        where: { ingredient_id: { [Op.in]: ingIds }, is_active: true },
+        where: { ingredient_id: { [Op.in]: ingIds }, buyer_restaurant_id: null, is_active: true },
         order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
       });
 

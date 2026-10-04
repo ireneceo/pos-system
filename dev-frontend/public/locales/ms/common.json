@@ -330,7 +330,9 @@
     "bulkLink": "Pautan Pukal",
     "sharedIngredients": "Bahan Standard Dikongsi",
     "deployRecords": "Isu Pembangunan",
-    "lockedHint": "Naik taraf untuk mengira stok dan kos resipi secara automatik"
+    "lockedHint": "Naik taraf untuk mengira stok dan kos resipi secara automatik",
+    "help": "Bantuan",
+    "guides": "Panduan"
   },
   "language": {
     "en": "English",

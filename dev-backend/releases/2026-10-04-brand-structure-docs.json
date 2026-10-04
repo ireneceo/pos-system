@@ -1,0 +1,57 @@
+{
+  "tag": "brand-structure-docs",
+  "sw_version": "5.73-brand-structure-docs-20261004",
+  "date": "2026-10-04",
+  "in_progress": [
+    "운영 데이터 1회(배포 뒤 · 표 승인 · 밤): 브랜드 메뉴 갱신(--refresh) → 옵션 짝 → 브랜드 관리자 부여(user 11·19) → 잠금(--lock) → 순두부 6→1 → 이름 짝 28쌍 병합 → GIT 출처 연결 77 채움 → 원가 오버레이 기준양 정정"
+  ],
+  "completed": [
+    "매장이 브랜드 재료에 자기 공급업체를 연결 — 그 매장에만 보이고 형제 매장·브랜드 화면엔 안 보임(Irene 「공급업체는 매장이 알아서」). 공용 연결은 매장이 못 바꿈",
+    "GIT 가 파는 물건(프로덕트 출처 재료)은 생길 때 GIT 연결이 자동으로 붙음 — 매장이 같은 물건을 자기 줄로 또 만들 이유가 없어짐",
+    "원가 기준 하나: 매장 원가도 «기준양의 가격»(예: RM 27.90 / 1000 g · g 당 RM 0.0279). 수령·대조·만들기가 같은 규칙으로 저장, 화면 표기도 같이",
+    "브랜드 관리자: SA 가 «매장·브랜드 접근 권한»에서 브랜드 관리자 자격을 주면 그 계정이 브랜드 메뉴 화면을 편집(결제 설정·브랜드 소유권은 제외)",
+    "재료 화면에 «전체 / 브랜드 / 우리 매장» 보기 · 브랜드 재료 공급업체 안내 문구 교체",
+    "카드 단말기 설정: 주소는 표시 전용 · 화면을 열면 같은 와이파이 연결 확인 · 주소가 바뀌었으면 자동으로 다시 찾아 저장 · 포트·연결방식·수동 주소는 «고급» 안에",
+    "Docs(사용 안내): 콘텐츠 관리에 Docs 탭 · 공개 /docs 목차+문서 · 랜딩 메뉴 «Docs»·«Download» · /download 페이지(안드로이드·Windows)",
+    "사이드바: «Install App» 제거(우측 하단 배너가 대신) · «Contact Support» 를 «Help» 한 버튼으로(안내 · 문의하기)"
+  ],
+  "remaining": [
+    "/docs·/download 를 SEO 마케팅 주소 목록에 넣기 — 운영 nginx 변경이 필요해 SEO 규칙상 승인 후",
+    "브랜드 소유자가 직접 관리자를 부여하는 화면(후속 별건)",
+    "BM 아래 BG 소유 카탈로그(브랜드 상품·BG 재료) 안 보임 — 구조 문제, TRADE_STRUCTURE 대조 뒤 별건"
+  ],
+  "verification": {
+    "api": "공급처 연결 실호출 16/16(생성·조회·수정·공용 403·카탈로그 연결·형제 매장 격리) · jest user-contexts 38/38 · jest 원가 E 3/3 · health-check auth 13/13 · pos 53/53",
+    "fault_injection": "형제 매장 필터 제거 → 노출(반증) · 원가 × 기준양 제거 → jest 2 실패 · 브랜드 판정 옛 소유자 비교로 되돌림 → ⑧-4·FI-12 실패 · cp 원복 cmp 동일 · FI-10/11/12 자동",
+    "regression": "verify-all --full(mount sweep 675초 크래시 0) · 메뉴 갱신 도구 dev 데모 왕복(adopt→매장 편집→refresh→lock→undo, 매장 값 변화 0 · 옵션 중복 0)",
+    "migration": "migrate-add-seller-link-buyer(칸 추가) · migrate-content-type-docs(ENUM expand) — 둘 다 멱등, 레지스트리 deploy",
+    "sw_version": "5.73-brand-structure-docs-20261004",
+    "fable_note": "Fable 구조 판정 2026-09-29(.claude/fable-verdict-20260929-structure.md §6) + 브랜드 관리자 지시서 2026-10-04(.claude/fable-instruction-20261004-brand-manager.md) — 이 묶음 게이트 1회 대상"
+  },
+  "notes": [
+    "🔒 MainLayout.tsx 사이드바 푸터만 변경(Irene 요청 — Install App 제거·Help 합치기), 인쇄 관련 줄 변경 0 확인 후 print-guard --bless",
+    "adopt 스크립트가 모델 파일을 직접 require 해 option_groups.brand_menu_option_group_id 를 조용히 버리던 결함 수정 — 운영 매장 8 옵션그룹 미러 연결이 전부 NULL 이던 원인"
+  ],
+  "irene_actions_after_deploy": [
+    "운영 데이터 1회 표 승인(밤 시간) — 단계별 미리보기 표를 먼저 드림",
+    "브랜드 관리자 부여 대상 확인: irene@(11)·매장 8 관리자(19) → K-DINE with MIN"
+  ],
+  "issues": [
+    "매장이 브랜드 재료에 공급업체를 못 붙여 같은 물건을 두 줄로 사던 구조(사도 레시피 재고가 안 움직임)",
+    "매장 원가가 1000배 작게(또는 크게) 계산되던 단위 불일치"
+  ],
+  "upcoming": [
+    "K-DINE 데이터 정리 1회 · 순두부/육개장 소스 · 이름 짝 병합"
+  ],
+  "behavior_changes": [
+    "매장 재료 화면: 브랜드 재료에도 «공급업체 연결» 버튼이 보임 · 원가 표기가 «/ 1000 g · g 당» 형식",
+    "사이드바: Install App 없음 · Help 버튼 하나(안내/문의)",
+    "카드 단말기 설정 화면: 주소 입력칸 대신 표시 + 자동 확인"
+  ],
+  "check_areas": [
+    "매장 재료 화면(브랜드 재료 공급업체 연결·원가 표기·필터)",
+    "발주 생성·발주 제안(매장 연결 우선)",
+    "브랜드 메뉴 화면(브랜드 관리자 모자)",
+    "사이드바 Help · 랜딩 Docs/Download · 카드 단말기 설정"
+  ]
+}

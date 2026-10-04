@@ -229,7 +229,7 @@ const ContextSelectPage: React.FC = () => {
             // "기본" 배지는 두지 않는다 — 고르는 사람에겐 3장이 전부 동등한 선택지라 아무 질문에도
             // 답하지 않는 라벨이었다. "내 원래 자리"라는 정보는 **맨 위 고정**으로 전달한다.
             <Card key={contextKey(ctx)} onClick={() => onPick(ctx)} disabled={busyKey !== null}>
-              <CardGlyph aria-hidden="true">{ctx.kind === 'default' ? '◉' : ctx.entity_type === 'owner' ? '◯' : '▦'}</CardGlyph>
+              <CardGlyph aria-hidden="true">{ctx.kind === 'default' ? '◉' : ctx.entity_type === 'owner' ? '◯' : ctx.entity_type === 'brand' ? '◐' : '▦'}</CardGlyph>
               <CardText>
                 <CardLabel>{ctx.label}</CardLabel>
                 <CardRole>{ctx.role}</CardRole>

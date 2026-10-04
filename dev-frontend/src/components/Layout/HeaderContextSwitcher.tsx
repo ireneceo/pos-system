@@ -155,6 +155,7 @@ const HeaderContextSwitcher: React.FC<{ variant?: SwitcherVariant }> = ({ varian
   // 지금 있는 곳: 오너 모자면 오너 카드, 매장 자격이면 그 매장, 아니면 본래 정체 카드.
   const rid = String(user?.restaurant_id ?? user?.restaurantId ?? '');
   const current =
+    (user?.role === 'Brand Manager' && contexts.find((c) => c.kind === 'granted' && c.entity_type === 'brand' && String(c.entity_id) === String(user?.brand_id ?? ''))) ||
     (user?.role === 'Restaurant Owner' && contexts.find((c) => c.kind === 'granted' && c.entity_type === 'owner')) ||
     contexts.find((c) => c.kind === 'granted' && c.entity_type === 'restaurant' && String(c.entity_id) === rid) ||
     contexts.find((c) => c.kind === 'default');

@@ -376,6 +376,12 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <NavLink href="/news" active={isActive('/news')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/news'); }}>
             {t('nav.news')}
           </NavLink>
+          <NavLink href="/docs" active={isActive('/docs')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/docs'); }}>
+            {t('nav.docs', 'Docs')}
+          </NavLink>
+          <NavLink href="/download" active={isActive('/download')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/download'); }}>
+            {t('nav.download', 'Download')}
+          </NavLink>
           <NavLink href="/contact" active={isActive('/contact')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/contact'); }}>
             {t('nav.contact')}
           </NavLink>
@@ -422,6 +428,12 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           </MobileNavLink>
           <MobileNavLink href="/news" active={isActive('/news')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/news'); }}>
             {t('nav.news')}
+          </MobileNavLink>
+          <MobileNavLink href="/docs" active={isActive('/docs')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/docs'); }}>
+            {t('nav.docs', 'Docs')}
+          </MobileNavLink>
+          <MobileNavLink href="/download" active={isActive('/download')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/download'); }}>
+            {t('nav.download', 'Download')}
           </MobileNavLink>
           <MobileNavLink href="/contact" active={isActive('/contact')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/contact'); }}>
             {t('nav.contact')}

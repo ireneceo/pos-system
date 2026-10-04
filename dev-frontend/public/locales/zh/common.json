@@ -330,7 +330,9 @@
     "bulkLink": "批量关联",
     "sharedIngredients": "共享标准食材",
     "deployRecords": "开发问题",
-    "lockedHint": "升级后自动计算库存与配方成本"
+    "lockedHint": "升级后自动计算库存与配方成本",
+    "help": "帮助",
+    "guides": "使用指南"
   },
   "language": {
     "en": "English",

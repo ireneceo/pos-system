@@ -1304,13 +1304,22 @@ router.get('/:id/contexts', authenticateToken, requireRole('System Admin'), asyn
 
     // 소멸 매장 행 표시(§3.5) — 목록 쿼리는 JOIN 으로 걸러내므로, 관리 화면에서는
     // "대상 매장이 사라진 모자"를 따로 보여줘야 회수 누락을 사람이 알 수 있다.
-    const [orphans] = await _seq.query(
+    const [restOrphans] = await _seq.query(
       `SELECT uc.id, uc.entity_type, uc.entity_id, uc.role
          FROM user_contexts uc
          LEFT JOIN restaurants r ON r.id = uc.entity_id
         WHERE uc.user_id = :uid AND uc.entity_type = 'restaurant' AND r.id IS NULL`,
       { replacements: { uid: target.id } }
     );
+    // 브랜드 모자(v1.2)의 고아 — 대상 브랜드가 사라진 행
+    const [brandOrphans] = await _seq.query(
+      `SELECT uc.id, uc.entity_type, uc.entity_id, uc.role
+         FROM user_contexts uc
+         LEFT JOIN brands b ON b.id = uc.entity_id
+        WHERE uc.user_id = :uid AND uc.entity_type = 'brand' AND b.id IS NULL`,
+      { replacements: { uid: target.id } }
+    );
+    const orphans = [...restOrphans, ...brandOrphans];
 
     const ownerships = await userContexts.listOwnedRestaurants(target.id);
     res.json({ success: true, data: { contexts, orphans, ownerships } });
@@ -1337,11 +1346,34 @@ router.post('/:id/contexts', authenticateToken, requireRole('System Admin'), asy
       return res.status(400).json({ success: false, message: 'entity_id must be a positive integer' });
     }
     const grantOwner = entity_type === 'restaurant' && role === 'Restaurant Owner';
-    if (!grantOwner && !userContexts.isV1GrantableCombination(entity_type, role)) {
+    const grantBrandManager = userContexts.isBrandManagerHat(entity_type, role);
+    if (!grantOwner && !grantBrandManager && !userContexts.isV1GrantableCombination(entity_type, role)) {
       return res.status(400).json({
         success: false,
-        message: 'Only (restaurant × Restaurant Admin) or (restaurant × Restaurant Owner) can be granted'
+        message: 'Only (restaurant × Restaurant Admin), (restaurant × Restaurant Owner) or (brand × Brand Manager) can be granted'
       });
+    }
+
+    // 브랜드 관리자 모자(v1.2, 2026-10-04) — user_contexts 행. 소유자·이미 그 브랜드 소속이면 의미가 없다.
+    if (grantBrandManager) {
+      const Brand = require('../models/Brand');
+      const brand = await Brand.findByPk(entityId, { attributes: ['id', 'name', 'owner_id'] });
+      if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
+      if (Number(brand.owner_id) === Number(target.id)) {
+        return res.status(400).json({ success: false, message: 'User already owns this brand' });
+      }
+      if (['Brand General', 'Brand Manager'].includes(target.role) && Number(target.brand_id) === entityId) {
+        return res.status(400).json({ success: false, message: 'User already belongs to this brand' });
+      }
+      await _seq.query(
+        `INSERT INTO user_contexts (user_id, entity_type, entity_id, role, granted_by, created_at, updated_at)
+         VALUES (:u, 'brand', :e, :r, :by, NOW(), NOW()) ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+        { replacements: { u: target.id, e: entityId, r: role, by: req.user.id } }
+      );
+      logActivity(req, { action_type: 'create', entity_type: 'user_context', entity_id: target.id,
+        entity_name: target.full_name || target.username || target.email,
+        description: `Granted Brand Manager context for brand "${brand.name}" (#${entityId}) to ${target.email || target.id}` });
+      return res.json({ success: true, data: { user_id: target.id, entity_id: entityId, role }, message: 'Context granted' });
     }
 
     const Restaurant = require('../models/Restaurant');

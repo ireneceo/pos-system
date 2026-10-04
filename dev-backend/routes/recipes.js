@@ -28,7 +28,7 @@ const { Op } = require('sequelize');
 async function resolveStockItemsToMirrors(items, brandId) {
   if (!Array.isArray(items) || !brandId) return items;
   const { ProductIngredient, BrandProduct, Ingredient } = require('../models');
-  const { shareToBrand } = require('../services/stockItemMirror');
+  const { shareToBrand, ensureSourceSellerLink } = require('../services/stockItemMirror');
   const out = [];
   for (const raw of items) {
     const item = { ...raw };
@@ -58,6 +58,8 @@ async function resolveStockItemsToMirrors(items, brandId) {
             category: 'other', min_stock: 0, current_stock: 0, is_active: true
           });
         }
+        // 출처 연결(GIT 판매) 보장 — 없으면 매장 발주가 MAPPING_REQUIRED 로 막힌다(2026-10-04 D3′)
+        await ensureSourceSellerLink(mirror, product);
         item.ingredient_id = mirror.id;
       }
     }

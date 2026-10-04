@@ -689,8 +689,12 @@ router.get('/supplier-catalog', async (req, res) => {
       : null;
     const myIngs = myIngsWhere ? await Ingredient.findAll({ where: myIngsWhere, attributes: ['id'] }) : [];
     const myIngIds = myIngs.map(i => i.id);
-    const allMapRows = myIngIds.length === 0 ? [] : await IngredientSellerProduct.findAll({
-      where: { ingredient_id: { [Op.in]: myIngIds }, is_active: true },
+    // 매장은 부모 브랜드 재료에 자기 연결을 붙일 수 있다(2026-10-04) — 그 연결도 «이미 담음».
+    const mapWhere = req.buyerEntity.type === 'restaurant'
+      ? { [Op.or]: [{ ingredient_id: { [Op.in]: myIngIds.length ? myIngIds : [0] } }, { buyer_restaurant_id: req.buyerEntity.id }], is_active: true }
+      : { ingredient_id: { [Op.in]: myIngIds }, is_active: true };
+    const allMapRows = (myIngIds.length === 0 && req.buyerEntity.type !== 'restaurant') ? [] : await IngredientSellerProduct.findAll({
+      where: mapWhere,
       attributes: ['ingredient_id', 'seller_type', 'seller_product_id']
     });
     const mappedMap = {};

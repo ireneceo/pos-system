@@ -10,8 +10,14 @@
  *     brand      → 자기 브랜드 재료
  *     foodcourt  → 자기 푸드코트 재료
  *
- *   writable(재료 수정·삭제 / 공급처 연결·해제)
+ *   writable(재료 수정·삭제)
  *     소유자 본인만. 매장이 브랜드 재료에 쓰기 → 거부.
+ *
+ *   공급처 연결(2026-10-04 — Fable 판정 2026-09-29 §2-3 · Irene 「공급업체는 매장이 알아서」)
+ *     매장 소유 재료 → 종전대로 소유자. 브랜드 재료 → 소속 매장이 **자기 연결**을 붙인다
+ *     (ingredient_seller_products.buyer_restaurant_id = 그 매장). 그 연결은 그 매장만 본다·쓴다.
+ *     공용 연결(buyer NULL)은 브랜드 자신이 판매자인 출처 연결만 매장에 보인다 —
+ *     sellerLinkWritable / sellerLinkVisible / sellerLinkVisibleWhere.
  *
  * ⚠ brand_id 는 **반드시 서버가 Restaurant 에서 조회**한다. 클라이언트가 준 값을 믿으면
  *   형제 브랜드(한 오너가 브랜드 여러 개) 재료가 새어 교차테넌트 누출이 된다.
@@ -20,6 +26,7 @@
  * (브랜드 공유 행의 current_stock 을 매장이 갱신하면 형제 매장 재고가 오염된다).
  * 설계: docs/BRAND_STOCK_SHARING_DESIGN.md
  */
+const { Op } = require('sequelize');
 const { Ingredient, Restaurant, RestaurantIngredientStock } = require('../models');
 
 /** 매장의 부모 브랜드 id (서버 조회 — 클라이언트 파라미터 불신). 없으면 null. */
@@ -71,6 +78,59 @@ async function writableIngredient(ingredientId, buyerEntity, transaction) {
     if (parseInt(ing.foodcourt_id, 10) === buyerEntity.id) return ing;
   }
   return null;
+}
+
+/**
+ * 공급처 연결 쓰기 권한 (생성·수정·해제). 허용이면 { ing, buyerRestaurantId }, 아니면 null.
+ *   buyerRestaurantId = 새 연결에 채울 값 (null = 공용 — 소유자 본인의 연결).
+ *   linkRow 를 주면 그 연결을 이 buyer 가 고칠 수 있는지까지 본다.
+ *
+ *   매장 소유 재료 / 브랜드가 자기 재료 → 소유자. 단 매장이 붙인 연결(buyer 있음)은 소유자도 못 고친다.
+ *   브랜드 재료 + 소속 매장 → 자기 연결만(buyer = 자기). 공용 연결·형제 매장 연결은 못 고친다.
+ * ⚠ writableIngredient(재료 본체)는 그대로다 — 이름·단위·삭제는 여전히 브랜드 것.
+ */
+async function sellerLinkWritable(ingredientId, buyerEntity, linkRow, transaction) {
+  const owned = await writableIngredient(ingredientId, buyerEntity, transaction);
+  if (owned) {
+    if (buyerEntity && linkRow && linkRow.buyer_restaurant_id != null) return null;
+    return { ing: owned, buyerRestaurantId: null };
+  }
+  if (!buyerEntity || buyerEntity.type !== 'restaurant') return null;
+  const ing = await Ingredient.findByPk(ingredientId, { transaction });
+  if (!ing || !(await isBrandSharedFor(ing, buyerEntity, transaction))) return null;
+  if (linkRow && parseInt(linkRow.buyer_restaurant_id, 10) !== buyerEntity.id) return null;
+  return { ing, buyerRestaurantId: buyerEntity.id };
+}
+
+/**
+ * 이 연결이 이 buyer 에게 보이는가 (목록·발주 매핑 조회의 사후 필터).
+ *   ing 는 연결이 걸린 재료(owner_type·brand_id 필요). buyerEntity 없음 = SA → 전부.
+ *   - 매장이 붙인 연결 → 그 매장만.
+ *   - 공용 연결 + 브랜드 재료 + 매장 → 브랜드 자신이 판매자인 연결만(출처 연결).
+ *     브랜드가 거울에 붙인 외부 공급처는 매장에 안 내려간다(9/24 이후 브랜드 계약은 매장에 안 통함).
+ */
+function sellerLinkVisible(link, ing, buyerEntity) {
+  if (!buyerEntity || !link) return true;
+  if (link.buyer_restaurant_id != null) {
+    return buyerEntity.type === 'restaurant' && parseInt(link.buyer_restaurant_id, 10) === buyerEntity.id;
+  }
+  if (ing && ing.owner_type === 'brand' && buyerEntity.type === 'restaurant') {
+    return link.seller_type === 'brand' && parseInt(link.seller_entity_id, 10) === parseInt(ing.brand_id, 10);
+  }
+  return true;
+}
+
+/** sellerLinkVisible 의 SQL 판 — 재료 하나에 걸린 연결을 조회할 때 where 에 Op.and 로 붙인다. */
+function sellerLinkVisibleWhere(ing, buyerEntity) {
+  if (!buyerEntity) return {};
+  if (buyerEntity.type !== 'restaurant') return { buyer_restaurant_id: null };
+  if (ing && ing.owner_type === 'brand') {
+    return { [Op.or]: [
+      { buyer_restaurant_id: buyerEntity.id },
+      { buyer_restaurant_id: null, seller_type: 'brand', seller_entity_id: parseInt(ing.brand_id, 10) },
+    ] };
+  }
+  return { [Op.or]: [{ buyer_restaurant_id: null }, { buyer_restaurant_id: buyerEntity.id }] };
 }
 
 /** 이 매장에서 이 재료의 실재고 (브랜드 재료면 매장 오버레이, 매장 재료면 재료 행). */
@@ -197,6 +257,9 @@ module.exports = {
   isBrandSharedFor,
   readableIngredient,
   writableIngredient,
+  sellerLinkWritable,
+  sellerLinkVisible,
+  sellerLinkVisibleWhere,
   stockFor,
   stockMapFor,
   overlayMapFor,

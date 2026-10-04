@@ -1041,7 +1041,15 @@
       "findOne": "Terminal found at {{host}} and saved",
       "findNone": "No card terminal found on this Wi-Fi",
       "findMany": "More than one terminal found — pick the one at this counter:",
-      "hostAuto": "Found automatically. If the address changes, the app finds the terminal again at payment."
+      "hostAuto": "Found automatically on this device's Wi-Fi. If the address changes, the app finds the terminal again by itself.",
+      "notFoundYet": "Not found yet",
+      "checking": "Checking the connection…",
+      "sameWifi": "Connected — same Wi-Fi as this device",
+      "notOnWifi": "No terminal on this device's Wi-Fi — connect this device to the terminal's Wi-Fi",
+      "refind": "Find again",
+      "advanced": "Advanced settings",
+      "manualHost": "Terminal address (only if automatic search does not work)",
+      "autoUpdated": "Terminal address changed — found again at {{host}} and saved"
     }
   },
   "printer.emergency.workstationReceiptPrinter": "this workstation’s receipt printer",

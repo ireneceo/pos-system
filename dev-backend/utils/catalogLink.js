@@ -130,12 +130,14 @@ async function resolveSellerProduct({ body, transaction, supplierContract, brand
 }
 
 /** 매핑 1건 생성에 쓰는 필드 (4벌 공통). */
-function mappingAttrs({ seller, unitConversion, isPreferred, targetKey, targetId }) {
+function mappingAttrs({ seller, unitConversion, isPreferred, targetKey, targetId, buyerRestaurantId = null }) {
   // 2026-09-01: 타깃 컬럼이 4개(재료 2 + 프로덕트 2)로 늘었다. 여기서 손으로 분기하면
   // 새 타깃이 추가될 때 한 곳이 빠진다 → 넷 중 정확히 하나를 보장하는 공용 함수를 통과시킨다.
   const { stockTargetAttrs } = require('./stockTarget');
   return {
     ...stockTargetAttrs(targetKey, targetId),
+    // 브랜드 재료에 매장이 붙인 연결이면 그 매장 id (2026-10-04 — utils/brandStockAccess.sellerLinkWritable)
+    buyer_restaurant_id: buyerRestaurantId,
     seller_type: seller.sellerType,
     seller_entity_id: seller.sellerEntityId,
     seller_product_id: seller.sellerProductRow.id,
@@ -159,10 +161,12 @@ function mappingAttrs({ seller, unitConversion, isPreferred, targetKey, targetId
  * connect 모드 — 기존 재고 항목에 매핑만 추가한다.
  * @returns {{ok:true, status, body}} | {ok:false, status, body}
  */
-async function connectExisting({ target, seller, unitConversion, targetKey, transaction }) {
+async function connectExisting({ target, seller, unitConversion, targetKey, transaction, buyerRestaurantId = null }) {
   const IngredientSellerProduct = require('../models/IngredientSellerProduct');
+  // 중복·우선 판정은 같은 범위(공용 / 이 매장 연결) 안에서만 — 형제 매장 연결과 섞이지 않는다.
   const dupWhere = {
     [targetKey]: target.id,
+    buyer_restaurant_id: buyerRestaurantId,
     seller_type: seller.sellerType,
     seller_entity_id: seller.sellerEntityId,
     seller_product_id: seller.sellerProductRow.id
@@ -172,10 +176,10 @@ async function connectExisting({ target, seller, unitConversion, targetKey, tran
     return { ok: true, status: 200, body: { success: true, data: { ingredient: target, mapping: dup, created: false, connected: true } } };
   }
   const otherCount = await IngredientSellerProduct.count({
-    where: { [targetKey]: target.id, is_active: true }, transaction
+    where: { [targetKey]: target.id, buyer_restaurant_id: buyerRestaurantId, is_active: true }, transaction
   });
   const mapping = await IngredientSellerProduct.create(
-    mappingAttrs({ seller, unitConversion, isPreferred: otherCount === 0, targetKey, targetId: target.id }),
+    mappingAttrs({ seller, unitConversion, isPreferred: otherCount === 0, targetKey, targetId: target.id, buyerRestaurantId }),
     { transaction }
   );
   return { ok: true, status: 201, body: { success: true, data: { ingredient: target, mapping, created: false, connected: true } } };

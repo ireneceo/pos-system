@@ -94,6 +94,9 @@ System Admin (최고 관리자)
 
 ## 3. Brand Manager (브랜드 매니저)
 
+> **2026-10-04:** 브랜드 메뉴·카테고리·옵션 화면은 **소유자 ∪ Brand Manager**(네이티브 `users.brand_id` · 모자 `user_contexts brand×Brand Manager`)가 편집한다 — 판정 `brandScope.userCanManageBrand`.
+> 결제 설정·은행 · 브랜드 수정/삭제 · 스태프 관리는 **소유자만**(BM 불가). 아래 «메뉴/가격 수정 불가» 는 이 날짜부터 브랜드 메뉴 화면에 한해 해제. 상세 `docs/MULTI_CONTEXT_LOGIN_DESIGN.md` §5.5.
+
 ### 권한
 - ✅ **배정된 가맹점 관리**: Brand General이 배정한 레스토랑만 관리
 - ✅ **운영 설정**: 영업시간, 프로모션 등 운영 관련 설정만

@@ -48,8 +48,10 @@ const CATEGORY_SKIP = new Set(['id', 'supplier_company_id', 'created_at', 'updat
 const pick = (row, skip) => Object.fromEntries(Object.entries(row.get({ plain: true })).filter(([k]) => !skip.has(k)));
 
 // 그 매장이 소유한 재료·상품 (재료는 owner_type 이 비어 있는 옛 행도 매장 id 로 본다)
+// 2026-10-04: 매장이 부모 브랜드 재료에 붙인 연결(buyer_restaurant_id)도 그 매장의 연결이다.
 const STORE_LINK_WHERE = `(isp.ingredient_id IN (SELECT id FROM ingredients WHERE restaurant_id = :rid AND (owner_type IS NULL OR owner_type = 'restaurant'))
-   OR isp.product_id IN (SELECT id FROM products WHERE restaurant_id = :rid))`;
+   OR isp.product_id IN (SELECT id FROM products WHERE restaurant_id = :rid)
+   OR isp.buyer_restaurant_id = :rid)`;
 
 /** 매장이 원본 업체를 «쓴» 흔적 — 매장 발주 수 · 매장 재료/상품 연결 수 · 매장 자기 켜기 행의 마지막 상태 */
 async function storeUsage(sourceId, restaurantId, transaction) {

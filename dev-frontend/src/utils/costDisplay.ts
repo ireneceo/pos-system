@@ -24,3 +24,31 @@ export function costOrNotSet(
 export function isCostNotSet(value: number | string | null | undefined): boolean {
   return !(Number(value) > 0);
 }
+
+/**
+ * 재료 원가 표기 (2026-10-04 Fable 판정 E · TRADE_STRUCTURE §2-2).
+ * 원가 값의 뜻 = **기준양(base_quantity)의 가격** — 브랜드 원가·매장 원가(My Cost) 모두.
+ * 예전엔 «RM 34.90/g» 로 그려 1 kg 값이 g 값처럼 보였다(Irene 이 본 그 화면). 이제
+ * «RM 34.90 / 1000 g · g 당 RM 0.0349» — 기준양이 1 이면 «RM 5.00 / 1 kg» 만.
+ * @param perUnitLabel 호출부 i18n — 예: t('ingredients.perUnit', '{{unit}} 당', { unit })
+ */
+export function costPerBaseText(
+  value: number | string | null | undefined,
+  currency: string,
+  notSetLabel: string,
+  item?: { unit?: string | null; base_quantity?: number | string | null } | null,
+  perUnitLabel?: string,
+): string {
+  const n = Number(value);
+  if (!(n > 0)) return notSetLabel;
+  const unit = item?.unit || '';
+  const bqRaw = Number(item?.base_quantity);
+  const bq = Number.isFinite(bqRaw) && bqRaw > 0 ? bqRaw : 1;
+  const head = unit ? `${formatCurrency(n, currency)} / ${bq} ${unit}` : formatCurrency(n, currency);
+  if (bq === 1 || !unit) return head;
+  // 단위당 값은 작다(0.0279) — 통화 기호는 공용 표기에서 가져오고 숫자만 4자리로 쓴다.
+  const symbol = formatCurrency(0, currency).replace(/[\d.,\s]+$/, '');
+  const per = Math.round((n / bq) * 10000) / 10000;
+  return `${head} · ${perUnitLabel || unit} ${symbol} ${per}`;
+}
+

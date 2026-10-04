@@ -9,6 +9,8 @@ const IngredientSellerProduct = sequelize.define('IngredientSellerProduct', {
   // 넷(ingredient/product_ingredient/product/brand_product) 중 **정확히 하나만** — utils/stockTarget.js
   product_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'RA 레시피 없는 프로덕트 ↔ 공급업체상품. 넷 중 하나만' },
   brand_product_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'BG 레시피 없는 브랜드 프로덕트 ↔ 공급업체상품. 넷 중 하나만' },
+  // 2026-10-04: 브랜드 재료(거울)에 매장이 붙인 연결은 그 매장만 본다·쓴다. NULL = 공용 — utils/brandStockAccess.js
+  buyer_restaurant_id: { type: DataTypes.INTEGER, allowNull: true, comment: '브랜드 재료에 매장이 붙인 연결의 매장 id. NULL=공용' },
 
   seller_type: {
     type: DataTypes.ENUM('system_admin', 'brand', 'foodcourt', 'supplier'),

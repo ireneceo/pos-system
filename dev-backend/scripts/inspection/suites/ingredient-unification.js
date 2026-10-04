@@ -465,6 +465,43 @@ module.exports = {
     add(`ING-UNI-002L 옛 브랜드 재료 중 출처 없는 행 (<${CUTOFF} · 목록)`,
       noSrcOld === 0, noSrcOld ? `${noSrcOld}건 — 재고아이템·프로덕트 어디서도 안 온 행` : '', true);
 
+    // ── 매장↔브랜드 갈라짐 목록 (비차단 · 2026-10-04 Fable 판정 2026-09-29 §2-2 게이트 3) ─────────
+    //   운영 실측(2026-10-04 읽기): -031 28 · -032 77 · -033 2. 데이터 정리(병합·연결 채움) 뒤 0 이 되는 것이 진행 지표다.
+    //   «옛 이름·새 이름» 처럼 이름이 다른 같은 물건은 기계가 못 가른다 — 사람 몫(표로 올림).
+
+    // ING-UNI-031: 매장 소유 활성 재료 중 **부모 브랜드 활성 재료와 이름이 같은 것** — 같은 물건 두 줄.
+    //   브랜드 줄은 레시피가 차감하고 매장 줄엔 발주가 쌓여 «사도 레시피 숫자가 안 움직인다».
+    const storeBrandPair = await cnt(`SELECT COUNT(*) c FROM ingredients s
+        JOIN restaurants r ON r.id = s.restaurant_id AND r.brand_id IS NOT NULL
+        JOIN ingredients b ON b.owner_type = 'brand' AND b.brand_id = r.brand_id AND b.is_active = 1
+         AND UPPER(REPLACE(REPLACE(REPLACE(TRIM(b.name),' ',''),'-',''),'_','')) = UPPER(REPLACE(REPLACE(REPLACE(TRIM(s.name),' ',''),'-',''),'_',''))
+       WHERE s.owner_type = 'restaurant' AND s.is_active = 1 AND TRIM(s.name) <> ''`);
+    add('ING-UNI-031 매장 재료가 부모 브랜드 재료와 같은 이름 (목록)',
+      storeBrandPair === 0, storeBrandPair ? `${storeBrandPair}쌍 — 브랜드 줄로 합칠 대상(매장 줄은 끈다)` : '', true);
+
+    // ING-UNI-032: 프로덕트 출처 거울인데 **출처 연결**(브랜드 자신이 판매자, 공용)이 없는 것 — 매장 발주가 MAPPING_REQUIRED.
+    //   새로 생기는 거울은 services/stockItemMirror.ensureSourceSellerLink 가 연결을 같이 만든다.
+    const mirrorNoSource = await cnt(`SELECT COUNT(*) c FROM ingredients i
+       WHERE i.owner_type = 'brand' AND i.is_active = 1 AND i.source_brand_product_id IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM ingredient_seller_products s
+                          WHERE s.ingredient_id = i.id AND s.is_active = 1 AND s.buyer_restaurant_id IS NULL
+                            AND s.seller_type = 'brand' AND s.seller_entity_id = i.brand_id
+                            AND s.seller_product_id = i.source_brand_product_id)`);
+    add('ING-UNI-032 프로덕트 출처 거울에 출처 연결 있음 (목록)',
+      mirrorNoSource === 0, mirrorNoSource ? `${mirrorNoSource}건 — 매장이 발주하지 못하고 자기 줄을 또 만든다` : '', true);
+
+    // ING-UNI-033: 소유자가 **파는** 활성 프로덕트와 이름이 같은 활성 Stock Item — 파는 물건에 산 줄(9/4 규칙 전 잔재).
+    //   ⚠ 프로덕트가 그 Stock Item 을 직접 가리키면(`brand_products.product_ingredient_id`) **정상**이다 —
+    //     사서 되파는 물건(포장재·세제)은 재고아이템 다이렉트 구조(TRADE_STRUCTURE §2-1). 2026-10-04 운영 실측:
+    //     이 조건 없이 세면 57건이 전부 GIT 되팔이 물건이라 거짓 양성이었다.
+    const sellAsStock = await cnt(`SELECT COUNT(*) c FROM product_ingredients pi
+        JOIN brand_products bp ON bp.owner_user_id = pi.owner_user_id AND bp.is_active = 1
+         AND UPPER(REPLACE(REPLACE(REPLACE(TRIM(bp.name),' ',''),'-',''),'_','')) = UPPER(REPLACE(REPLACE(REPLACE(TRIM(pi.name),' ',''),'-',''),'_',''))
+       WHERE pi.is_active = 1 AND TRIM(pi.name) <> ''
+         AND (bp.product_ingredient_id IS NULL OR bp.product_ingredient_id <> pi.id)`);
+    add('ING-UNI-033 파는 프로덕트와 같은 이름의 Stock Item (목록)',
+      sellAsStock === 0, sellAsStock ? `${sellAsStock}건 — 파는 물건은 Stock Item 을 만들지 않는다(9/4)` : '', true);
+
     return checks;
   },
 };

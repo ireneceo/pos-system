@@ -47,6 +47,17 @@ const V1_GRANTABLE = { entity_type: 'restaurant', role: 'Restaurant Admin' };
 // entity_id 는 **자기 user id** 다 — 오너는 사람 단위 정체라 매장 id 가 없고, 카드는 계정당 1장이다.
 const OWNER_HAT = { entity_type: 'owner', role: 'Restaurant Owner' };
 
+// 브랜드 관리자 모자 (v1.2, 2026-10-04 — 판정서 09-29 §6-10 ④, Irene 「권고대로 해」).
+// 투영 = role 'Brand Manager' + brand_id = 브랜드 id. BM 판정은 스칼라(users.brand_id) 경로로 통일돼 있어
+// (2026-09-06·09-08) 투영이 그대로 먹는다 — 설계 §5.2 가 막은 것은 **소유자(BG) 모자**이고 이것은 아니다.
+// 부여는 SA 전용(§8-3). 결제 설정·브랜드 수정/삭제·스태프 관리는 소유자 판정이 BM 을 거부하므로 열리지 않는다.
+const BRAND_MANAGER_HAT = { entity_type: 'brand', role: 'Brand Manager' };
+function isBrandManagerHat(entityType, role) {
+  return entityType === BRAND_MANAGER_HAT.entity_type && role === BRAND_MANAGER_HAT.role;
+}
+// 부여 행이 가리키는 엔티티 표 — 목록·검증·전환이 같은 표를 JOIN 해야 list ⊆ detail 이 유지된다.
+const GRANT_JOIN_TABLE = { restaurant: 'restaurants', brand: 'brands' };
+
 /**
  * id 정규화 — 권한 판정에 쓰는 값은 **순수 십진 정수 문자열만** 허용한다.
  * parseInt 는 '1.16e2' 를 1 로 읽고 MySQL 은 116 으로 캐스팅해 게이트가 통째로 우회됐던
@@ -187,6 +198,29 @@ async function listContexts(user) {
     });
   }
 
+  // 브랜드 관리자 모자 (v1.2) — 브랜드 행은 brands 를 JOIN 한다(고아 모자는 목록에서 빠진다).
+  const [brandRows] = await sequelize.query(
+    `SELECT uc.id, uc.entity_type, uc.entity_id, uc.role, uc.last_used_at, b.name AS entity_name
+       FROM user_contexts uc
+       JOIN brands b ON b.id = uc.entity_id
+      WHERE uc.user_id = :userId
+        AND uc.entity_type = :entityType
+        AND uc.role = :role
+      ORDER BY uc.last_used_at IS NULL, uc.last_used_at DESC, b.name ASC`,
+    { replacements: { userId, entityType: BRAND_MANAGER_HAT.entity_type, role: BRAND_MANAGER_HAT.role } }
+  );
+  for (const row of brandRows) {
+    contexts.push({
+      kind: 'granted',
+      id: row.id,
+      entity_type: row.entity_type,
+      entity_id: row.entity_id,
+      role: row.role,
+      label: row.entity_name,
+      last_used_at: row.last_used_at
+    });
+  }
+
   // 오너 모자 — 네이티브 오너에게는 붙이지 않는다(기본 카드와 중복). 소유행 0 이면 카드도 없다.
   if (user.role !== OWNER_HAT.role) {
     const owned = await listOwnedRestaurants(userId);
@@ -227,12 +261,12 @@ async function validateGrantedContext(userId, ctx) {
     const owned = await listOwnedRestaurants(uid);
     return owned.length > 0;
   }
-  if (!isV1GrantableCombination(ctx.entity_type, ctx.role)) return false;
+  if (!isV1GrantableCombination(ctx.entity_type, ctx.role) && !isBrandManagerHat(ctx.entity_type, ctx.role)) return false;
 
   const [rows] = await sequelize.query(
     `SELECT 1 AS ok
        FROM user_contexts uc
-       JOIN restaurants r ON r.id = uc.entity_id
+       JOIN ${GRANT_JOIN_TABLE[ctx.entity_type]} r ON r.id = uc.entity_id
       WHERE uc.user_id = :uid
         AND uc.entity_type = :entityType
         AND uc.entity_id = :entityId
@@ -264,14 +298,14 @@ async function getGrantedContextForSwitch(userId, ctx) {
     if (!owned.length) return { ok: false, reason: 'CONTEXT_NOT_GRANTED' };
     return { ok: true, id: null, entity_type: OWNER_HAT.entity_type, entity_id: uid, role: OWNER_HAT.role, name: ownerHatLabel(owned), status: null };
   }
-  if (!isV1GrantableCombination(ctx.entity_type, ctx.role)) {
+  if (!isV1GrantableCombination(ctx.entity_type, ctx.role) && !isBrandManagerHat(ctx.entity_type, ctx.role)) {
     return { ok: false, reason: 'UNSUPPORTED_COMBINATION' };
   }
 
   const [rows] = await sequelize.query(
     `SELECT uc.id, uc.entity_id, uc.role, r.name, r.status
        FROM user_contexts uc
-       JOIN restaurants r ON r.id = uc.entity_id
+       JOIN ${GRANT_JOIN_TABLE[ctx.entity_type]} r ON r.id = uc.entity_id
       WHERE uc.user_id = :uid
         AND uc.entity_type = :entityType
         AND uc.entity_id = :entityId
@@ -282,7 +316,7 @@ async function getGrantedContextForSwitch(userId, ctx) {
   if (!rows.length) return { ok: false, reason: 'CONTEXT_NOT_GRANTED' };
 
   const row = rows[0];
-  return { ok: true, id: row.id, entity_type: 'restaurant', entity_id: row.entity_id, role: row.role, name: row.name, status: row.status };
+  return { ok: true, id: row.id, entity_type: ctx.entity_type, entity_id: row.entity_id, role: row.role, name: row.name, status: row.status };
 }
 
 /**
@@ -313,5 +347,8 @@ module.exports = {
   // 오너 모자(v1.1) — 목록·검증·부여 라우트·소켓이 공유한다.
   OWNER_HAT,
   isOwnerHat,
-  listOwnedRestaurants
+  listOwnedRestaurants,
+  // 브랜드 관리자 모자(v1.2)
+  BRAND_MANAGER_HAT,
+  isBrandManagerHat
 };

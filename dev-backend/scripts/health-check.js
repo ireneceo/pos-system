@@ -314,11 +314,19 @@ function defineAuthTests({ adminToken, customerToken, member, restId }) {
     return r.status === 400;
   });
 
-  test('auth', '전환 — v1 비허용 조합(브랜드 모자) → 400', async () => {
+  test('auth', '전환 — 비허용 조합(브랜드 × Brand General) → 400', async () => {
     const r = await request('POST', '/auth/switch-context',
       { entity_type: 'brand', entity_id: 1, role: 'Brand General' },
       { Authorization: `Bearer ${adminToken}` });
     return r.status === 400;
+  });
+
+  // v1.2(2026-10-04): brand × Brand Manager 는 허용 조합이지만, 부여 행 없이 전환하면 403 이어야 한다.
+  test('auth', '전환 — 부여받지 않은 브랜드 관리자 모자 → 403', async () => {
+    const r = await request('POST', '/auth/switch-context',
+      { entity_type: 'brand', entity_id: 1, role: 'Brand Manager' },
+      { Authorization: `Bearer ${adminToken}` });
+    return r.status === 403;
   });
 
   test('auth', '전환 — 부여받지 않은 매장 → 403', async () => {
@@ -1278,7 +1286,10 @@ function definePosTests({ adminToken }) {
     return savedToOverlay && brandUntouched;
   });
 
-  test('pos', '브랜드 재고: 공급처 연결은 브랜드만 (매장 쓰기 403, 읽기 200)', async () => {
+  // 2026-10-04 계약 변경(Fable 2026-09-29 §2-3 · Irene 「공급업체는 매장이 알아서」):
+  //   매장은 브랜드 재료에 **자기 연결**을 붙인다(buyer_restaurant_id = 그 매장) · 공용 연결은 못 고친다(403).
+  //   예전 계약(«매장 쓰기 403»)은 이 날짜로 폐기 — 그 계약 때문에 매장이 같은 물건을 자기 줄로 또 만들었다.
+  test('pos', '브랜드 재고: 매장은 자기 공급처 연결만 (생성 201·buyer=매장 · 공용 연결 수정 403 · 읽기 200)', async () => {
     const { Restaurant, Ingredient, User, IngredientSellerProduct } = require('../models');
     const jwtLib = require('jsonwebtoken');
     const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true } });
@@ -1289,13 +1300,25 @@ function definePosTests({ adminToken }) {
     if (!ra) return true;
     const token = jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
     const auth = { Authorization: `Bearer ${token}` };
-
-    const read = await request('GET', `/ingredients/${ing.id}/seller-sources`, null, auth);
-    if (read.status !== 200) return false; // 매장은 브랜드가 붙여둔 공급처를 읽어야 발주할 수 있다
-    const write = await request('POST', `/ingredients/${ing.id}/seller-sources`, {
-      seller_type: 'supplier', seller_entity_id: 1, seller_product_id: 1, unit_price: 1
-    }, auth);
-    return write.status === 403; // 매장이 브랜드 공급망을 바꾸면 형제 매장까지 바뀐다 → 금지
+    const cleanup = [];
+    try {
+      const read = await request('GET', `/ingredients/${ing.id}/seller-sources`, null, auth);
+      if (read.status !== 200) return false;
+      const own = await request('POST', `/ingredients/${ing.id}/seller-sources`, {
+        seller_type: 'brand', seller_entity_id: ing.brand_id, seller_product_id: 999999, unit_price: 1
+      }, auth);
+      if (own.body?.data?.id) cleanup.push(own.body.data.id);
+      if (own.status !== 201 || own.body?.data?.buyer_restaurant_id !== rest.id) return false;
+      const shared = await IngredientSellerProduct.create({
+        ingredient_id: ing.id, buyer_restaurant_id: null, seller_type: 'brand', seller_entity_id: ing.brand_id,
+        seller_product_id: 999998, unit_price: 1, unit_conversion: 1, is_active: false
+      });
+      cleanup.push(shared.id);
+      const put = await request('PUT', `/ingredient-seller-products/${shared.id}`, { unit_price: 2 }, auth);
+      return put.status === 403;
+    } finally {
+      if (cleanup.length) await IngredientSellerProduct.destroy({ where: { id: cleanup } });
+    }
   });
 
   test('pos', '브랜드 재고: 매장 재고는 오버레이가 단일 소스 (브랜드 행 불변 + 형제 격리)', async () => {

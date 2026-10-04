@@ -762,3 +762,7 @@ K-DINE IPC(운영 매장8)의 메뉴 105개가 **브랜드와 연결되지 않�
 5. **문서**: `docs/BRAND_MENU_SYSTEM.md` 의 2026-09-17 판정 절 **머리에** 「2026-09-17 Irene 방향 전환으로 §3-1·3-2·3-3·Phase 2 폐기, §3-4·§1 정정 2건은 유지」 배너를 붙이고(본문 삭제 말고 표시), 이 판정을 그 뒤에 **원문 그대로** 추가. 새 파일 만들지 않는다. `docs/RECIPE_MANAGEMENT_SYSTEM.md` 는 변경 없음.
 6. **게이트**: `verify-all --full` 1회 → `check-sensitive-diff` 결과와 diff 요약을 붙여 **게이트 판정 요청(이 사안 2회째)**. 마커는 그때 찍는다.
 7. 운영 쓰기 0 · `--apply` 0 · 배포 0 그대로. §5 컨펌은 Irene 에게 위 문장 그대로 올리고, 1~3 이 「예」 면 지시 1~6 을 진행한다. 4 는 답이 없어도 나머지 진행에 영향 없다.
+
+## 접근 관문 — 소유자 ∪ 브랜드 관리자 (2026-10-04)
+메뉴·카테고리·옵션 화면 = **브랜드 소유자 ∪ Brand Manager**(네이티브·모자). 판정은 `middleware/brandScope.userCanManageBrand` 한 곳(→ `utils/managerBrandScope.brandIdsForUser`). 형제 브랜드는 열리지 않는다.
+배경: 09-29 판정 D1′=A(브랜드 원본 잠금)·D1″(다중 관리자) — Irene 2026-10-04 「권고대로 해」. 부여는 SA 화면(Staff Management › 매장·브랜드 접근 권한). 설계 `docs/MULTI_CONTEXT_LOGIN_DESIGN.md` §5.5.

@@ -40,14 +40,16 @@ module.exports = {
     add('UC-001 granted_by 없는 모자 0건', orphanGrantor === 0,
       orphanGrantor === 0 ? '0건' : `${orphanGrantor}건 — 부여 출처 추적 불가`);
 
-    // UC-002: v1 비허용 조합 금지. restaurant×Restaurant Admin 외의 모자는 접근판정 4곳의
+    // UC-002: 허용 외 조합 금지. restaurant×Restaurant Admin 외의 모자는 접근판정 4곳의
     // 규칙이 갈려 "절반만 열리는" 상태가 된다(검증 F4). 앱 레벨 정합 검사를 우회한 행 감지.
+    // v1.2(2026-10-04): brand×Brand Manager 추가 — BM 판정은 스칼라(brand_id) 경로라 투영이 그대로 먹는다.
     const badCombo = await cnt(
       `SELECT COUNT(*) c FROM user_contexts
-        WHERE entity_type <> '${V1_ENTITY_TYPE}' OR role <> '${V1_ROLE}'`
+        WHERE NOT ((entity_type = '${V1_ENTITY_TYPE}' AND role = '${V1_ROLE}')
+                OR (entity_type = 'brand' AND role = 'Brand Manager'))`
     );
-    add('UC-002 v1 비허용 조합 0건', badCombo === 0,
-      badCombo === 0 ? '0건' : `${badCombo}건 — restaurant×Restaurant Admin 외 조합 존재`);
+    add('UC-002 허용 외 조합 0건', badCombo === 0,
+      badCombo === 0 ? '0건' : `${badCombo}건 — restaurant×Restaurant Admin · brand×Brand Manager 외 조합 존재`);
 
     // UC-003: 고아 모자(대상 매장이 사라진 행) 경고. 목록 쿼리는 JOIN 으로 이미 걸러내지만,
     // 남아 있으면 회수 누락이라 부여 관리(P5)에서 정리 대상이다.
@@ -58,6 +60,15 @@ module.exports = {
     );
     add('UC-003 고아 매장 모자 0건', orphanEntity === 0,
       orphanEntity === 0 ? '0건' : `${orphanEntity}건 — 삭제된 매장의 모자 잔존(회수 누락)`);
+
+    // UC-004: 고아 브랜드 모자(대상 브랜드가 사라진 행) — v1.2
+    const orphanBrand = await cnt(
+      `SELECT COUNT(*) c FROM user_contexts uc
+         LEFT JOIN brands b ON b.id = uc.entity_id
+        WHERE uc.entity_type = 'brand' AND b.id IS NULL`
+    );
+    add('UC-004 고아 브랜드 모자 0건', orphanBrand === 0,
+      orphanBrand === 0 ? '0건' : `${orphanBrand}건 — 삭제된 브랜드의 모자 잔존(회수 누락)`);
 
     return checks;
   }

@@ -2,8 +2,13 @@
  * 매장 설정 › 결제 › 카드 — «카드 단말기 연동»(GHL ECR, 2026-10-01 · .claude/fable-design-20261001-ghl-ecr.md §3-3).
  * 값은 payment_settings.card.terminal 에 산다(기존 결제 설정 저장 경로·잠금 그대로).
  * 연결 테스트는 이 기기가 계산대 앱(브릿지 있음)일 때만 — 브라우저는 단말기에 닿을 수 없다.
+ *
+ * 2026-10-04 Irene 「이거 내가 직접 넣어야 해? … 같은 와이파이인지 확인하고 자동체크나 자동입력 필요해」:
+ *   주소는 **사람이 넣는 값이 아니다** — 화면이 입력칸이라 수동처럼 보였다. 표시 전용으로 바꾸고,
+ *   화면을 열면 저장된 주소로 연결을 1번 확인한다. 안 닿으면 이 기기의 와이파이에서 다시 찾아 저장한다.
+ *   (결제 때도 같은 일을 한다 — utils/terminalSale.ts roundTrip.) 직접 입력은 «고급» 안에만 남긴다.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormInput, FormSelect, ModalButton as Button } from '../../components/UI/Modal';
 import { getEcrBridge, ecrExchange, ecrDiscover } from '../../utils/nativeEcr';
@@ -31,31 +36,36 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
   const bridge = !!getEcrBridge();
   const [finding, setFinding] = useState(false);
   const [found, setFound] = useState<string[] | null>(null);
+  // 화면을 열 때의 자동 확인 상태 — 'same' = 이 기기와 같은 와이파이에서 단말기가 응답함
+  const [linkState, setLinkState] = useState<'idle' | 'checking' | 'same' | 'none'>('idle');
+  const autoChecked = useRef(false);
 
   // 같은 와이파이에서 단말기 자동 찾기 — 1대면 바로 저장, 여러 대면 고르게 한다
-  const runFind = async () => {
+  const runFind = async (): Promise<string | null> => {
     setFinding(true); setFound(null); setTestResult(null);
     try {
       const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` };
       const r = await fetch('/api/terminal/echo', { method: 'POST', headers, body: JSON.stringify({ restaurant_id: restaurantId }) });
       const j = await r.json().catch(() => null);
-      if (!r.ok || !j?.success) { setTestResult({ ok: false, text: j?.message || t('settingsPage.cardTerminal.findNone') }); return; }
+      if (!r.ok || !j?.success) { setTestResult({ ok: false, text: j?.message || t('settingsPage.cardTerminal.findNone') }); setLinkState('none'); return null; }
       const hosts = await ecrDiscover({ port: Number(v.port) || 33898, transport: (v.transport as any) || 'http-hex', probeHex: j.data.request_hex });
-      if (hosts.length === 1) { set({ host: hosts[0] }, true); setTestResult({ ok: true, text: t('settingsPage.cardTerminal.findOne', { host: hosts[0] }) }); }
-      else if (hosts.length > 1) setFound(hosts);
-      else setTestResult({ ok: false, text: t('settingsPage.cardTerminal.findNone') });
+      if (hosts.length === 1) { set({ host: hosts[0] }, true); setLinkState('same'); setTestResult({ ok: true, text: t('settingsPage.cardTerminal.findOne', { host: hosts[0] }) }); return hosts[0]; }
+      if (hosts.length > 1) { setFound(hosts); setLinkState('same'); return null; }
+      setLinkState('none');
+      setTestResult({ ok: false, text: t('settingsPage.cardTerminal.findNone') });
+      return null;
     } finally {
       setFinding(false);
     }
   };
 
-  const runTest = async () => {
-    setTesting(true); setTestResult(null);
+  const runTest = async (silent = false): Promise<boolean> => {
+    setTesting(true); if (!silent) setTestResult(null);
     try {
       const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` };
       const r = await fetch('/api/terminal/echo', { method: 'POST', headers, body: JSON.stringify({ restaurant_id: restaurantId }) });
       const j = await r.json().catch(() => null);
-      if (!r.ok || !j?.success) { setTestResult({ ok: false, text: j?.message || t('settingsPage.cardTerminal.testFailed') }); return; }
+      if (!r.ok || !j?.success) { if (!silent) setTestResult({ ok: false, text: j?.message || t('settingsPage.cardTerminal.testFailed') }); return false; }
       const job = j.data;
       const ex = await ecrExchange({ ...job.connection, payloadHex: job.request_hex, timeoutMs: 15000 });
       const up = await fetch(`/api/terminal/transactions/${job.id}/response`, {
@@ -63,13 +73,31 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
       });
       const uj = await up.json().catch(() => null);
       const ok = up.ok && uj?.data?.status === 'approved';
-      setTestResult({ ok, text: ok ? t('settingsPage.cardTerminal.testOk') : `${t('settingsPage.cardTerminal.testFailed')}${ex.ok ? '' : ` (${(ex as { error: string }).error})`}` });
+      setLinkState(ok ? 'same' : 'none');
+      if (!silent) setTestResult({ ok, text: ok ? t('settingsPage.cardTerminal.testOk') : `${t('settingsPage.cardTerminal.testFailed')}${ex.ok ? '' : ` (${(ex as { error: string }).error})`}` });
+      return ok;
     } catch {
-      setTestResult({ ok: false, text: t('settingsPage.cardTerminal.testFailed') });
+      if (!silent) setTestResult({ ok: false, text: t('settingsPage.cardTerminal.testFailed') });
+      setLinkState('none');
+      return false;
     } finally {
       setTesting(false);
     }
   };
+
+  // 화면을 열면 1번: 저장된 주소로 확인 → 안 닿으면 이 와이파이에서 다시 찾아 저장(주소가 바뀐 경우).
+  //   주소가 아직 없으면 바로 찾는다. 계산대 앱(브릿지)에서만 — 브라우저는 단말기에 닿지 못한다.
+  useEffect(() => {
+    if (autoChecked.current || !v.enabled || !bridge || !restaurantId) return;
+    autoChecked.current = true;
+    (async () => {
+      setLinkState('checking');
+      if (String(v.host || '').trim() && await runTest(true)) return;
+      const host = await runFind();
+      if (host && host !== v.host) setTestResult({ ok: true, text: t('settingsPage.cardTerminal.autoUpdated', { host }) });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [v.enabled, bridge, restaurantId]);
 
   return (
     <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E3E8EE' }}>
@@ -82,33 +110,20 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
       </div>
 
       {v.enabled && (
-        <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-          <div>
-            <div style={title}>{t('settingsPage.cardTerminal.host')}</div>
-            <div style={hint}>{t('settingsPage.cardTerminal.hostAuto')}</div>
-            <FormInput
-              type="text" inputMode="decimal" placeholder="192.168.2.99"
-              value={v.host || ''}
-              onChange={(e) => set({ host: e.target.value.replace(/[^0-9a-zA-Z.\-]/g, '').slice(0, 64) }, false)}
-              onBlur={() => set({}, true)}
-            />
-          </div>
-          <div>
-            <div style={title}>{t('settingsPage.cardTerminal.port')}</div>
-            <FormInput
-              type="number" min={1} max={65535}
-              value={v.port ?? 33898}
-              onChange={(e) => set({ port: Math.max(1, Math.min(65535, parseInt(e.target.value, 10) || 33898)) }, false)}
-              onBlur={() => set({}, true)}
-            />
-          </div>
-          <div>
-            <div style={title}>{t('settingsPage.cardTerminal.transport')}</div>
-            <FormSelect value={v.transport || 'http-hex'} onChange={(e) => set({ transport: e.target.value }, true)}>
-              <option value="http-hex">{t('settingsPage.cardTerminal.transportHttp')}</option>
-              <option value="tcp-hex">{t('settingsPage.cardTerminal.transportTcpHex')}</option>
-              <option value="tcp-bin">{t('settingsPage.cardTerminal.transportTcpBin')}</option>
-            </FormSelect>
+        <div style={{ marginTop: '12px' }}>
+          <div style={title}>{t('settingsPage.cardTerminal.host')}</div>
+          <div style={hint}>{t('settingsPage.cardTerminal.hostAuto')}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '6px' }}>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', fontVariantNumeric: 'tabular-nums' }}>
+              {String(v.host || '').trim() || t('settingsPage.cardTerminal.notFoundYet')}
+            </span>
+            {bridge && linkState === 'checking' && <span style={hint}>{t('settingsPage.cardTerminal.checking')}</span>}
+            {bridge && linkState === 'same' && (
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#059669' }}>✓ {t('settingsPage.cardTerminal.sameWifi')}</span>
+            )}
+            {bridge && linkState === 'none' && (
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#B45309' }}>{t('settingsPage.cardTerminal.notOnWifi')}</span>
+            )}
           </div>
         </div>
       )}
@@ -118,10 +133,10 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
           {bridge ? (
             <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <Button variant="primary" onClick={runFind} disabled={finding || testing}>
-                {finding ? t('settingsPage.cardTerminal.finding') : t('settingsPage.cardTerminal.find')}
+              <Button variant="primary" onClick={() => { runFind(); }} disabled={finding || testing}>
+                {finding ? t('settingsPage.cardTerminal.finding') : (String(v.host || '').trim() ? t('settingsPage.cardTerminal.refind') : t('settingsPage.cardTerminal.find'))}
               </Button>
-              <Button variant="secondary" onClick={runTest} disabled={testing || !String(v.host || '').trim()}>
+              <Button variant="secondary" onClick={() => { runTest(); }} disabled={testing || !String(v.host || '').trim()}>
                 {testing ? t('settingsPage.cardTerminal.testing') : t('settingsPage.cardTerminal.test')}
               </Button>
               {testResult && <span style={{ fontSize: '13px', fontWeight: 600, color: testResult.ok ? '#059669' : '#DC2626' }}>{testResult.text}</span>}
@@ -141,6 +156,41 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
             <div style={hint}>{t('settingsPage.cardTerminal.needsApp')}</div>
           )}
         </div>
+      )}
+
+      {/* 고급 — 자동 찾기가 막힌 망(손님 와이파이 격리 등)에서만 쓴다. 평소엔 접어 둔다. */}
+      {v.enabled && (
+        <details style={{ marginTop: '14px' }}>
+          <summary style={{ cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: '#4B5563' }}>{t('settingsPage.cardTerminal.advanced')}</summary>
+          <div style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+            <div>
+              <div style={title}>{t('settingsPage.cardTerminal.manualHost')}</div>
+              <FormInput
+                type="text" inputMode="decimal" placeholder="192.168.2.99"
+                value={v.host || ''}
+                onChange={(e) => set({ host: e.target.value.replace(/[^0-9a-zA-Z.\-]/g, '').slice(0, 64) }, false)}
+                onBlur={() => set({}, true)}
+              />
+            </div>
+            <div>
+              <div style={title}>{t('settingsPage.cardTerminal.port')}</div>
+              <FormInput
+                type="number" min={1} max={65535}
+                value={v.port ?? 33898}
+                onChange={(e) => set({ port: Math.max(1, Math.min(65535, parseInt(e.target.value, 10) || 33898)) }, false)}
+                onBlur={() => set({}, true)}
+              />
+            </div>
+            <div>
+              <div style={title}>{t('settingsPage.cardTerminal.transport')}</div>
+              <FormSelect value={v.transport || 'http-hex'} onChange={(e) => set({ transport: e.target.value }, true)}>
+                <option value="http-hex">{t('settingsPage.cardTerminal.transportHttp')}</option>
+                <option value="tcp-hex">{t('settingsPage.cardTerminal.transportTcpHex')}</option>
+                <option value="tcp-bin">{t('settingsPage.cardTerminal.transportTcpBin')}</option>
+              </FormSelect>
+            </div>
+          </div>
+        </details>
       )}
     </div>
   );

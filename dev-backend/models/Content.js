@@ -18,7 +18,7 @@ Content.init({
     }
   },
   type: {
-    type: DataTypes.ENUM('blog', 'faq'),
+    type: DataTypes.ENUM('blog', 'faq', 'docs'),
     allowNull: false,
     comment: 'Content type: blog or faq'
   },

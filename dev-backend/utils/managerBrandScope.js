@@ -27,8 +27,13 @@ async function brandIdsForUser(user) {
   const Brand = require('../models/Brand');
   const ids = new Set();
 
-  const owned = await Brand.findAll({ where: { owner_id: user.id }, attributes: ['id'] });
-  owned.forEach((b) => ids.add(b.id));
+  // Brand Manager 는 **소속 브랜드 하나**다(2026-09-06 판정). 소유 조회를 섞으면 브랜드 모자(user_contexts,
+  // 2026-10-04)를 쓴 BG 가 모자 아래에서 자기 소유 브랜드까지 보게 된다 — 모자는 추가가 아니라 교체(설계 §5.4).
+  // dev 실측: 소유자 역할이 BM 인 브랜드 0건이라 네이티브 BM 에게는 결과가 같다.
+  if (user.role !== 'Brand Manager') {
+    const owned = await Brand.findAll({ where: { owner_id: user.id }, attributes: ['id'] });
+    owned.forEach((b) => ids.add(b.id));
+  }
 
   // 배정된 브랜드 — 실제로 존재하는 브랜드일 때만 (지워진 브랜드 id 가 남아 있을 수 있다)
   const assigned = parseInt(user.brand_id, 10);

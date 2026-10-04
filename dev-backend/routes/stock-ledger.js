@@ -27,6 +27,7 @@ const {
   BrandProduct, BrandProductBrand, BrandProductRestaurant, FoodcourtProduct
 } = require('../models');
 const catalogLink = require('../utils/catalogLink');
+const { parentBrandIdOf, sellerLinkWritable, sellerLinkVisible } = require('../utils/brandStockAccess');
 
 /**
  * ⚠ 이 라우터는 `app.use('/api', ...)` 로 마운트된다.
@@ -59,11 +60,24 @@ async function brandOwnerId(brandId) {
 }
 
 /** 구매자 소유 ingredients 를 정규화 이름으로 색인. */
-async function ingredientIndexFor(buyer) {
+async function ingredientIndexFor(buyer, { withBrandShared = false } = {}) {
   const where = buyer.type === 'brand' ? { owner_type: 'brand', brand_id: buyer.id }
     : buyer.type === 'restaurant' ? { owner_type: 'restaurant', restaurant_id: buyer.id }
       : { owner_type: 'foodcourt', foodcourt_id: buyer.id };
-  const rows = await Ingredient.findAll({ where, attributes: ['id', 'name', 'unit', 'unit_cost'] });
+  let rows = await Ingredient.findAll({ where, attributes: ['id', 'name', 'unit', 'unit_cost', 'owner_type', 'brand_id'] });
+  // 카탈로그 연결(2026-10-04): 매장은 부모 브랜드 재료에도 자기 공급처를 붙일 수 있다.
+  //   브랜드 행을 **앞에** 둬서 같은 이름이면 브랜드 행이 제안된다 — 레시피가 그 행을 보고 차감하기 때문
+  //   (매장 줄을 또 만들면 «사도 레시피 숫자가 안 움직이는» 두 줄이 된다 — Fable 2026-09-29 §2-4).
+  if (withBrandShared && buyer.type === 'restaurant') {
+    const brandId = await parentBrandIdOf(buyer.id);
+    if (brandId) {
+      const shared = await Ingredient.findAll({
+        where: { owner_type: 'brand', brand_id: brandId, is_active: true },
+        attributes: ['id', 'name', 'unit', 'unit_cost', 'owner_type', 'brand_id']
+      });
+      rows = [...shared, ...rows];
+    }
+  }
   const byName = new Map();
   for (const r of rows) {
     const k = catalogLink.normalizeName(r.name);
@@ -445,13 +459,16 @@ async function loadSellerCatalog({ buyer, sellerType, sellerEntityId, search }) 
 
 /** 이 구매자가 이미 담은 (seller_type, seller_entity_id, seller_product_id) 집합. */
 async function alreadyLinkedSet(buyer, sellerType, sellerEntityId) {
-  const { rows } = await ingredientIndexFor(buyer);
+  const { rows } = await ingredientIndexFor(buyer, { withBrandShared: true });
   const ids = rows.map(r => r.id);
   if (!ids.length) return new Map();
+  const ingById = new Map(rows.map(r => [r.id, r]));
   const maps = await IngredientSellerProduct.findAll({
     where: { ingredient_id: ids, seller_type: sellerType, seller_entity_id: sellerEntityId, is_active: true }
   });
-  return new Map(maps.map(m => [m.seller_product_id, m.ingredient_id]));
+  // 형제 매장이 브랜드 재료에 붙인 연결은 «이미 담음» 이 아니다 — 이 매장 눈에 보이는 연결만.
+  return new Map(maps.filter(m => sellerLinkVisible(m, ingById.get(m.ingredient_id), buyer))
+    .map(m => [m.seller_product_id, m.ingredient_id]));
 }
 
 async function catalogPreviewHandler(req, res) {
@@ -471,7 +488,7 @@ async function catalogPreviewHandler(req, res) {
     const cat = await loadSellerCatalog({ buyer, sellerType, sellerEntityId, search: req.query.search });
     if (cat.error) return res.status(cat.error.status).json({ success: false, code: cat.error.code, message: cat.error.message });
 
-    const { byName } = await ingredientIndexFor(buyer);
+    const { byName } = await ingredientIndexFor(buyer, { withBrandShared: true });
     const linked = await alreadyLinkedSet(buyer, sellerType, sellerEntityId);
     const matchedIds = [];
     const built = cat.rows.map(({ row, blocked }) => {
@@ -556,11 +573,16 @@ async function catalogBulkHandler(req, res) {
         };
         const conv = catalogLink.resolveUnitConversion(it.unit_conversion);
 
-        let target, wasCreated = false;
+        let target, wasCreated = false, buyerRestaurantId = null;
         if (mode === 'connect') {
           const tid = parseInt(it.existing_ingredient_id, 10);
           target = Number.isFinite(tid) ? await Ingredient.findByPk(tid, { transaction: t }) : null;
-          if (!target || String(target[ownerKey]) !== String(buyer.id)) {
+          if (target && String(target[ownerKey]) !== String(buyer.id)) {
+            // 매장 → 부모 브랜드 재료: 이 매장만 보는 연결로 붙인다(2026-10-04, brandStockAccess 단일 판정)
+            const w = buyer.type === 'restaurant' ? await sellerLinkWritable(target.id, buyer, null, t) : null;
+            if (w) buyerRestaurantId = w.buyerRestaurantId; else target = null;
+          }
+          if (!target) {
             await t.rollback();
             result.failed.push({ seller_product_id: spId, reason: 'TARGET_NOT_IN_SCOPE' });
             continue;
@@ -594,13 +616,13 @@ async function catalogBulkHandler(req, res) {
         }
 
         const dup = await IngredientSellerProduct.findOne({
-          where: { ingredient_id: target.id, seller_type: sellerType, seller_entity_id: sellerEntityId, seller_product_id: spId },
+          where: { ingredient_id: target.id, buyer_restaurant_id: buyerRestaurantId, seller_type: sellerType, seller_entity_id: sellerEntityId, seller_product_id: spId },
           transaction: t
         });
         if (!dup) {
-          const others = await IngredientSellerProduct.count({ where: { ingredient_id: target.id, is_active: true }, transaction: t });
+          const others = await IngredientSellerProduct.count({ where: { ingredient_id: target.id, buyer_restaurant_id: buyerRestaurantId, is_active: true }, transaction: t });
           const mapping = await IngredientSellerProduct.create(
-            catalogLink.mappingAttrs({ seller, unitConversion: conv, isPreferred: others === 0, targetKey: 'ingredient_id', targetId: target.id }),
+            catalogLink.mappingAttrs({ seller, unitConversion: conv, isPreferred: others === 0, targetKey: 'ingredient_id', targetId: target.id, buyerRestaurantId }),
             { transaction: t }
           );
           await logItem(t, {
@@ -611,7 +633,8 @@ async function catalogBulkHandler(req, res) {
           });
         }
 
-        if (it.apply_cost === true && !wasCreated) {
+        // 브랜드 재료의 원가는 브랜드 것 — 매장 연결로는 바꾸지 않는다(매장 원가는 오버레이).
+        if (it.apply_cost === true && !wasCreated && buyerRestaurantId == null) {
           const before = target.unit_cost;
           await target.update({ unit_cost: parseFloat(row.unit_price) || 0 }, { transaction: t });
           await logItem(t, {

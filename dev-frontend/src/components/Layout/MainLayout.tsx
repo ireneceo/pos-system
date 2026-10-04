@@ -20,7 +20,7 @@ import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
 import { isNativeDesktop } from '../../utils/nativeDesktop';
-import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, Download, Building2, MapPin, Gift, Bell, Target } from 'lucide-react';
+import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, HelpCircle, BookOpen, Building2, MapPin, Gift, Bell, Target } from 'lucide-react';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
 
 // System Admin 2-tier sidebar widths
@@ -984,8 +984,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   useEffect(() => { operationSettingsRef.current = operationSettings; }, [operationSettings]);
   // 설치 판정은 컨텍스트의 `platform` 하나만 본다(2026-09-03). 예전엔 여기서 isIOS 를
   // 따로 보고 `alert` 로 안내해, 아이패드에서 눌러도 아무 반응이 없었다.
-  const { isStandalone, platform, openInstallGuide } = usePwaInstall();
-  const showInstallButton = !isStandalone && platform !== 'other';
+  // 사이드바 «Install App» 버튼은 뺐다(2026-10-04 Irene 「Install App은 없애자. 우측 하단에 배너들 나오니까」) —
+  //   설치 안내는 우측 하단 배너(PwaInstallBanner)가 맡는다. 여기서는 standalone 판정만 쓴다.
+  const { isStandalone } = usePwaInstall();
+  // «Help» 한 버튼 = 안내 문서(/docs) + 문의하기 (2026-10-04 Irene 「Contact Support랑 버튼 합쳐서」)
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Fullscreen pages (POS Terminal / Floor Plan / Kitchen / Customer Display / Mobile Order)
   // are sidebar entries marked openInNewTab. Inside our app shell — a PWA standalone
@@ -3824,22 +3827,28 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 {referralBalance && referralBalance !== 'empty' && <FooterRailDot />}
               </FooterRailButton>
 
-              {/* Install App — icon rail */}
-              {showInstallButton && (
+              {/* Help — icon rail: 누르면 안내·문의 두 아이콘이 아래에 열린다 */}
+              <FooterRailButton
+                type="button"
+                onClick={() => setHelpOpen((o) => !o)}
+                aria-expanded={helpOpen}
+                title={t('nav.help', 'Help') || ''}
+              >
+                <HelpCircle size={18} strokeWidth={2} />
+              </FooterRailButton>
+              {helpOpen && (
                 <FooterRailButton
                   type="button"
-                  onClick={() => { openInstallGuide(); closeSidebar?.(); }}
-                  title={t('nav.installApp', 'Install App') || ''}
+                  onClick={() => { window.open('/docs', '_blank', 'noopener'); setHelpOpen(false); closeSidebar?.(); }}
+                  title={t('nav.guides', 'Guides') || ''}
                 >
-                  <Download size={18} strokeWidth={2} />
+                  <BookOpen size={18} strokeWidth={2} />
                 </FooterRailButton>
               )}
-
-              {/* 문의하기 — icon rail */}
-              {supportPath && (
+              {helpOpen && supportPath && (
                 <FooterRailButton
                   type="button"
-                  onClick={() => { navigate(supportPath); closeSidebar?.(); }}
+                  onClick={() => { navigate(supportPath); setHelpOpen(false); closeSidebar?.(); }}
                   title={t('nav.contactSupport', '문의하기') || ''}
                 >
                   <MessageSquare size={18} strokeWidth={2} />
@@ -3914,15 +3923,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   </span>
                 )}
               </a>
-              {/* Install App — visible on desktop (Chrome/Edge canInstall) + mobile (iOS shows guide).
-                  Hidden when already running standalone (already installed). Triggers PWA prompt
-                  directly — no separate /install landing page. */}
-              {showInstallButton && (
-                <button
-                  type="button"
-                  onClick={() => { openInstallGuide(); closeSidebar?.(); }}
-                  title={t('nav.installApp', 'Install App') || ''}
-                  style={{
+              {/* Help — 안내 문서 + 문의하기를 한 버튼으로. 누르면 두 줄이 아래에 열린다(2026-10-04) */}
+              <button
+                type="button"
+                onClick={() => setHelpOpen((o) => !o)}
+                aria-expanded={helpOpen}
+                title={t('nav.help', 'Help') || ''}
+                style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
@@ -3938,37 +3945,33 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     width: 'calc(100% - 16px)',
                     textAlign: 'left'
                   }}
-                >
-                  <Download size={16} strokeWidth={1.75} />
-                  <span style={{ flex: 1 }}>{t('nav.installApp', 'Install App')}</span>
-                </button>
-              )}
-              {/* 문의하기 — 어느 페이지에서든 한 번에 문의 화면으로 */}
-              {supportPath && (
-                <button
-                  type="button"
-                  onClick={() => { navigate(supportPath); closeSidebar?.(); }}
-                  title={t('nav.contactSupport', '문의하기') || ''}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '12px 16px',
-                    margin: '0 8px 12px',
-                    borderRadius: 8,
-                    background: '#F4F6F9',
-                    color: '#0A2540',
-                    cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    border: '1px solid #C7CED6',
-                    width: 'calc(100% - 16px)',
-                    textAlign: 'left'
-                  }}
-                >
-                  <MessageSquare size={16} strokeWidth={1.75} />
-                  <span style={{ flex: 1 }}>{t('nav.contactSupport', '문의하기')}</span>
-                </button>
+              >
+                <HelpCircle size={16} strokeWidth={1.75} />
+                <span style={{ flex: 1 }}>{t('nav.help', 'Help')}</span>
+                <span aria-hidden="true" style={{ fontSize: 10, color: '#6B7280' }}>{helpOpen ? '▲' : '▼'}</span>
+              </button>
+              {helpOpen && (
+                <div style={{ margin: '-6px 8px 12px', border: '1px solid #C7CED6', borderRadius: 8, background: '#FFFFFF', overflow: 'hidden' }}>
+                  <button
+                    type="button"
+                    onClick={() => { window.open('/docs', '_blank', 'noopener'); setHelpOpen(false); closeSidebar?.(); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 16px', border: 'none', background: 'transparent', color: '#0A2540', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <BookOpen size={15} strokeWidth={1.75} />
+                    <span style={{ flex: 1 }}>{t('nav.guides', 'Guides')}</span>
+                    <span aria-hidden="true" style={{ fontSize: 11, color: '#6B7280' }}>↗</span>
+                  </button>
+                  {supportPath && (
+                    <button
+                      type="button"
+                      onClick={() => { navigate(supportPath); setHelpOpen(false); closeSidebar?.(); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 16px', border: 'none', borderTop: '1px solid #E3E8EE', background: 'transparent', color: '#0A2540', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      <MessageSquare size={15} strokeWidth={1.75} />
+                      <span style={{ flex: 1 }}>{t('nav.contactSupport', '문의하기')}</span>
+                    </button>
+                  )}
+                </div>
               )}
               {isLoggedIn && <HeaderContextSwitcher variant="sidebar" />}
               <LanguageSelectorWrapper>

@@ -327,6 +327,7 @@ v1 은 "표준 claim 에 투영값이 있으니 소켓 무변경"이라 했다. 
 ④`userCanAccessRestaurant` 11파일(소켓 최후) → ⑤`checkRestaurantAccess` 103라우트 최후. 무변경.
 
 ### 5.2 이 기능이 얹히는 지점 — "일치 경로 위 투영"은 **restaurant 모자 한정** (v2 정정, 검증 F4)
+> **2026-10-04 v1.2:** 브랜드 **관리자**(Brand Manager) 모자는 §5.5 로 허용 — 이 절의 금지는 **소유자(BG) 모자**에 한정된다.
 - v1 문서는 "brand/foodcourt 컨텍스트 전환도 네이티브 BG/FG 와 동일한 스칼라를 만들 뿐"이라 썼다 —
   **틀렸다(철회).** BG/FG 권한은 스칼라가 아니라 **소유행(user.id 기반) 판정이 주류**다:
   `middleware/brandScope.js`(12개 라우트 파일 — `brands.owner_id === req.user.id`),
@@ -362,6 +363,15 @@ v1 은 "표준 claim 에 투영값이 있으니 소켓 무변경"이라 했다. 
 - 「5번째 판정처 금지」 준수: 새 판정은 없고 기존 오너 판정을 그대로 쓴다. brand/foodcourt 모자·계정 병합·셀프 부여는 여전히 제외.
 
 ---
+
+### 5.5 브랜드 관리자 모자 (v1.2, 2026-10-04 — 판정서 09-29 §6-10 ④ · Irene 「권고대로 해」 · Fable 지시서 `.claude/fable-instruction-20261004-brand-manager.md`)
+- **관리자 표 = `user_contexts (entity_type='brand', role='Brand Manager')`.** 새 표(`brand_managers`) 만들지 않는다 — 기존 개념(Brand Manager 역할)에 세 번째 목록을 만들지 않는다.
+- **「관리자」 = Brand Manager 역할.** 네이티브(`users.brand_id`)든 모자든 같은 판정 `utils/managerBrandScope.brandIdsForUser`(소유 ∪ 배정). 모자는 투영으로 `brand_id` 를 채운다 — BM 판정은 2026-09-06·09-08 에 스칼라 경로로 통일돼 있어 투영이 그대로 먹는다. **§5.2 가 막은 것은 소유자 모자다.**
+- **부여 = SA 전용**(§8-3·Q3 봉인 유지) — Staff Management 의 `UserContextsSection` 에 유형(매장/브랜드) 1칸. 브랜드 소유자가 직접 부여하는 입구는 후속 별건.
+- **고친 판정처는 둘뿐**: 브랜드 메뉴·카테고리·옵션 3파일의 지역 판정 → `brandScope.userCanManageBrand` 위임 · `recipeAuth.isBrandManager`. `owner_id === user.id` 98곳은 무접촉.
+- **소유자 전용 그대로**: 결제 설정·은행 · 브랜드 수정/삭제 · 스태프 관리 · 구독(SA). 역할·소유자 판정이 이미 BM 을 거부(테스트 ⑧-7).
+- 모자는 교체다 — 소유자 BG 가 다른 브랜드의 관리자 모자를 쓰면 그 아래에서 자기 소유 브랜드는 닫힌다(FI-12).
+- **알려진 한계**: BM 아래 BG 사용자 소유 카탈로그(브랜드 상품 `owner_user_id`·BG 재료 목록·공급업체 수정)는 소유자 데이터가 안 보인다 — 「브랜드 데이터가 사용자에 걸린」 구조 문제, TRADE_STRUCTURE 대조 뒤 별건. `brands-plans.js` 는 BM 에게 브랜드 요금제 편집을 이미 허용(기존 경계).
 
 ## 6. UI/UX
 
@@ -588,6 +598,7 @@ P2/P3a 에 순증. 반대로 F1 재설계는 백필 폐기로 P1 을 **1일 단�
   열리고 소유행 라우트 403)이라는 예측 불가 상태.
 - 되돌리기: **쉬움** — BG 위임·브랜드 소유행 부여는 후속 별건으로 순수 추가.
 - 승인: 불요 (기술 결정, 확정).
+- **v1.2(2026-10-04): + brand × Brand Manager** (§5.5).
 
 ### Q4. POS 공용 단말에서 스위처 숨김
 - **권고: 숨김 확정 + POS 진입 가드 추가(v2).** 현장의 "사람 바꾸기"는 기존 PIN 전환만.

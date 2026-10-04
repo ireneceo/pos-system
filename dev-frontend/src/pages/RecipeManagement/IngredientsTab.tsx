@@ -21,7 +21,7 @@ import AutoSaveField from '../../components/Common/AutoSaveField';
 import Toggle from '../../components/Common/Toggle';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
-import { costOrNotSet } from '../../utils/costDisplay';
+import { costPerBaseText } from '../../utils/costDisplay';
 import { getAuthToken } from '../../utils/auth';
 interface IngredientsTabProps {
   brandId: number | null;
@@ -58,6 +58,10 @@ interface Ingredient {
   brand_id: number | null;
   restaurant_id: number | null;
   owner_type: 'brand' | 'restaurant';
+  // 브랜드 거울의 출처 (Stock Item · 브랜드 프로덕트 · 준비 레시피) — 거울 행 판정용
+  source_product_ingredient_id?: number | null;
+  source_brand_product_id?: number | null;
+  source_recipe_id?: number | null;
   ingredient_category_id: number | null;
   ingredientCategory?: IngredientCategory;
   brand_product_id: number | null;
@@ -506,6 +510,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  // 매장 화면: 브랜드 재료 / 매장 재료 가려 보기 (2026-10-04 Fable 판정 2026-09-29 1-F)
+  const [ownerFilter, setOwnerFilter] = useState<'all' | 'brand' | 'store'>('all');
   const [viewMode, setViewMode] = useState<'compact' | 'image'>(() => {
     const saved = localStorage.getItem('ingredientsViewMode');
     return saved === 'image' ? 'image' : 'compact';
@@ -549,6 +555,17 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const isBrandRole = user?.role === 'Brand General' || user?.role === 'Brand Manager';
   // Restaurant Admin은 자신의 재료만 수정/삭제 가능 (브랜드 재료는 읽기전용)
   const isItemReadOnly = (item: Ingredient) => isRestaurantAdmin && item.owner_type === 'brand';
+  // 공급처 연결 (2026-10-04 Fable 판정 2026-09-29 §2-3 · Irene 「공급업체는 매장이 알아서」):
+  //   매장은 브랜드 재료에도 **자기 거래처**를 붙인다(그 매장만 보임 — 서버 brandStockAccess.sellerLinkWritable).
+  //   브랜드 화면의 거울 행은 외부 연결 버튼을 숨긴다 — 브랜드 계약은 매장에 안 통하고(9/24 §H-2),
+  //   거울의 공급처는 출처(Stock Items · GIT 프로덕트)가 정한다.
+  const isBrandMirror = (item: Ingredient) => item.owner_type === 'brand'
+    && !!(item.source_product_ingredient_id || item.source_brand_product_id || item.source_recipe_id);
+  const canLinkSeller = (item: Ingredient) => !(isBrandRole && isBrandMirror(item));
+  // 원가 표기 — 값의 뜻은 기준양의 가격(Fable 판정 E). «RM 34.90 / 1000 g · g 당 RM 0.0349»
+  const costText = (value: number | string | null | undefined, item: Ingredient) =>
+    costPerBaseText(value, selectedCurrency, t('ingredients.costNotSet', '원가 미설정') as string, item,
+      t('ingredients.perUnit', 'per {{unit}}', { unit: item.unit }) as string);
 
   // Helper to get auth token
   const getToken = useCallback(() => getAuthToken(), []);
@@ -1040,7 +1057,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     const matchesSearch = ingredient.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' ||
       ingredient.ingredient_category_id?.toString() === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesOwner = !isRestaurantAdmin || ownerFilter === 'all'
+      || (ownerFilter === 'brand' ? ingredient.owner_type === 'brand' : ingredient.owner_type !== 'brand');
+    return matchesSearch && matchesCategory && matchesOwner;
   }), sortKey);
 
   // Get categories for filter dropdown
@@ -1073,6 +1092,17 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             </option>
           ))}
         </FilterSelect>
+        {isRestaurantAdmin && (
+          <FilterSelect
+            value={ownerFilter}
+            aria-label={t('ingredients.ownerFilter.label', 'Show') as string}
+            onChange={(e) => setOwnerFilter(e.target.value as 'all' | 'brand' | 'store')}
+          >
+            <option value="all">{t('ingredients.ownerFilter.all', 'All')}</option>
+            <option value="brand">{t('ingredients.ownerFilter.brand', 'Brand')}</option>
+            <option value="store">{t('ingredients.ownerFilter.store', 'My store')}</option>
+          </FilterSelect>
+        )}
         <SortDropdown value={sortKey} onChange={setSortKey} />
         <div data-controls-trailing>
           <div style={{ display: 'flex', background: '#F1F4F8', borderRadius: '6px', padding: '2px' }}>
@@ -1097,7 +1127,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         <EmptyState>
           <EmptyTitle>{'No ingredients found'}</EmptyTitle>
           <EmptyDescription>
-            {searchTerm || selectedCategory !== 'all'
+            {searchTerm || selectedCategory !== 'all' || ownerFilter !== 'all'
               ? 'Try adjusting your filters'
               : 'Create your first ingredient to get started'}
           </EmptyDescription>
@@ -1155,7 +1185,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                         {/* 원가 0 = "정말 0원"이 아니라 **안 넣은 것**이다. 숫자로 찍으면 구분이 안 돼
                             그대로 발주·레시피 원가에 들어간다(운영 실측 2026-09-02: 원가 0 인 재료가 99건). */}
                         <CostValue type="brand">
-                          {costOrNotSet(ingredient.unit_cost, selectedCurrency, t('ingredients.costNotSet', '원가 미설정') as string, ingredient.unit)}
+                          {costText(ingredient.unit_cost, ingredient)}
                         </CostValue>
                       </CostRow>
 
@@ -1177,6 +1207,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                                   if (e.key === 'Escape') setEditingCostId(null);
                                 }}
                               />
+                              <span style={{ fontSize: 11, color: '#6B7280', whiteSpace: 'nowrap' }}>/ {Number(ingredient.base_quantity) > 0 ? Number(ingredient.base_quantity) : 1} {ingredient.unit}</span>
                               <CostSaveButton onClick={() => handleSaveMyCost(ingredient.id)} disabled={savingCost}>
                                 {savingCost ? '...' : 'Save'}
                               </CostSaveButton>
@@ -1206,7 +1237,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                               Reset
                             </ResetButton>
                           </CostLabel>
-                          <CostValue type="my">{formatCurrency(Number(ingredient.restaurant_cost), selectedCurrency)}/{ingredient.unit}</CostValue>
+                          <CostValue type="my">{costText(ingredient.restaurant_cost, ingredient)}</CostValue>
                         </CostRow>
                       ) : (
                         /* My Cost 미설정 */
@@ -1226,9 +1257,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                       <CostRow style={{ marginTop: 6, borderTop: '1px solid #DBEAFE', paddingTop: 6 }}>
                         <CostLabel type="applied">{'Applied'}</CostLabel>
                         <CostValue type="applied">
-                          {Number(ingredient.effective_cost ?? ingredient.unit_cost) > 0
-                            ? `${formatCurrency(Number(ingredient.effective_cost ?? ingredient.unit_cost), selectedCurrency)}/${ingredient.unit} ${ingredient.restaurant_cost !== null && ingredient.restaurant_cost !== undefined ? '✓' : ''}`
-                            : t('ingredients.costNotSet', '원가 미설정')}
+                          {costText(ingredient.effective_cost ?? ingredient.unit_cost, ingredient)}
+                          {Number(ingredient.effective_cost ?? ingredient.unit_cost) > 0 && ingredient.restaurant_cost !== null && ingredient.restaurant_cost !== undefined ? ' ✓' : ''}
                         </CostValue>
                       </CostRow>
                     </CostOverrideSection>
@@ -1247,7 +1277,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                           Irene 2026-08-28: "원가 0이고 판매가 0이면 알게 해줄 수 없어? 알기 쉽게 ui에서"
                           → 오류가 아니라 **미입력 상태**라 danger 빨강이 아닌 공용 warning 배지를 쓴다. */}
                       {Number(ingredient.unit_cost) > 0
-                        ? formatCurrency(Number(ingredient.unit_cost), selectedCurrency)
+                        ? costText(ingredient.unit_cost, ingredient)
                         : <DataTableStatus variant="warning">{t('ingredients.costNotSet', '원가 미설정')}</DataTableStatus>}
                     </InfoValue>
                   </InfoRow>
@@ -1298,15 +1328,15 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                             ))}
                           </div>
                         )}
-                        {/* 브랜드 표준 재료는 공급처를 브랜드가 정한다 — 매장에는 연결/등록 버튼을 주지 않는다(읽기전용).
-                            docs/BRAND_STOCK_SHARING_DESIGN.md */}
-                        {isItemReadOnly(ingredient) ? (
-                          sellers.length === 0 && (
-                            <span style={{ fontSize: 12, color: '#92400E' }}>
-                              {t('purchaseOrders:newPo.brandNeedsLink', 'Your brand has not linked a supplier to this item yet')}
-                            </span>
-                          )
-                        ) : (
+                        {/* 공급처 연결 — 매장은 브랜드 재료에도 자기 거래처를 붙인다(그 매장만 보임, 2026-10-04).
+                            브랜드 화면의 거울 행은 연결 버튼을 숨긴다(공급처는 출처가 정함). */}
+                        {!canLinkSeller(ingredient) ? null : (
+                        <>
+                        {isItemReadOnly(ingredient) && sellers.length === 0 && (
+                          <span style={{ fontSize: 12, color: '#92400E' }}>
+                            {t('purchaseOrders:newPo.brandNeedsLink', "Add your store's supplier for this item")}
+                          </span>
+                        )}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                           <button
                             type="button"
@@ -1335,8 +1365,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                           >
                             Register on external supplier
                           </button>
-                          {/* 그대로 파는 물건이면 프로덕트로도 등록 — 재고는 이 아이템 한 곳에만 남는다 */}
-                          {!isBrandRole && (
+                          {/* 그대로 파는 물건이면 프로덕트로도 등록 — 재고는 이 아이템 한 곳에만 남는다
+                              (브랜드 재료는 매장이 못 판다 — 재료 본체는 브랜드 것) */}
+                          {!isBrandRole && !isItemReadOnly(ingredient) && (
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setSellAsProductTarget(ingredient); }}
@@ -1353,6 +1384,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                             </button>
                           )}
                         </div>
+                        </>
                         )}
                       </InfoValue>
                     </InfoRow>
@@ -1646,6 +1678,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                     ))}
                   </div>
                 )}
+                {canLinkSeller(selectedIngredient) && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
                   <button
                     type="button"
@@ -1688,6 +1721,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                     </button>
                   )}
                 </div>
+                )}
               </>
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
@@ -1766,22 +1800,20 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               detailIngredient.restaurant_cost != null ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div style={{ fontSize: '13px', color: '#6B7280' }}>Brand Cost: <span style={{ textDecoration: 'line-through' }}>
-                    {Number(detailIngredient.unit_cost) > 0
-                      ? `${formatCurrency(Number(detailIngredient.unit_cost), selectedCurrency)}/${detailIngredient.unit}`
-                      : t('ingredients.costNotSet', '원가 미설정')}
+                    {costText(detailIngredient.unit_cost, detailIngredient)}
                   </span></div>
                   <div style={{ fontSize: '16px', fontWeight: 600, color: '#2563EB' }}>
-                    My Cost: {formatCurrency(Number(detailIngredient.restaurant_cost), selectedCurrency)}/{detailIngredient.unit}
+                    My Cost: {costText(detailIngredient.restaurant_cost, detailIngredient)}
                   </div>
                 </div>
               ) : (
                 <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540' }}>
-                  Unit Cost: {costOrNotSet(detailIngredient.unit_cost, selectedCurrency, t('ingredients.costNotSet', '원가 미설정') as string, detailIngredient.unit)}
+                  Unit Cost: {costText(detailIngredient.unit_cost, detailIngredient)}
                 </div>
               )
             ) : (
               <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540' }}>
-                Unit Cost: {formatCurrency(Number(detailIngredient.unit_cost), selectedCurrency)} / {detailIngredient.unit}
+                Unit Cost: {costText(detailIngredient.unit_cost, detailIngredient)}
               </div>
             )}
           </div>

@@ -49,6 +49,8 @@ const FAQPage = React.lazy(() => import('./pages/Landing/FAQPage'));
 const BlogPage = React.lazy(() => import('./pages/Landing/BlogPage'));
 const NewsPage = React.lazy(() => import('./pages/Landing/NewsPage'));
 const BlogPostPage = React.lazy(() => import('./pages/Landing/BlogPostPage'));
+const DocsPage = React.lazy(() => import('./pages/Landing/DocsPage'));
+const DownloadPage = React.lazy(() => import('./pages/Landing/DownloadPage'));
 // Mobile App — lazy (separate entry, heavy customer-facing bundle)
 const MobileApp = React.lazy(() => import('./mobile/MobileApp'));
 const NotFoundPage = React.lazy(() => import('./pages/NotFound/NotFoundPage'));
@@ -554,6 +556,9 @@ function App() {
                       <Route path="/referral-program" element={<ReferralLandingPage />} />
                       <Route path="/blog" element={<BlogPage />} />
                       <Route path="/blog/:slug" element={<BlogPostPage />} />
+                      <Route path="/docs" element={<DocsPage />} />
+                      <Route path="/docs/:slug" element={<DocsPage />} />
+                      <Route path="/download" element={<DownloadPage />} />
                       <Route path="/news" element={<NewsPage />} />
                       <Route path="/news/:slug" element={<BlogPostPage />} />
 

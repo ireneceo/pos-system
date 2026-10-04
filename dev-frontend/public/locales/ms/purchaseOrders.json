@@ -453,7 +453,8 @@
     "deliveryUnset": "tidak ditetapkan penjual",
     "deliveryToFree": "Tambah {{amount}} lagi untuk penghantaran percuma",
     "deliveryUnsetHint": "Penjual ini belum menetapkan terma penghantaran. Ia tidak bermakna percuma — yuran sebenar ditunjukkan pada invois.",
-    "deliveryAreas": "Kawasan penghantaran"
+    "deliveryAreas": "Kawasan penghantaran",
+    "brandNeedsLink": "Pautkan pembekal kedai anda untuk item ini"
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",
@@ -597,7 +598,14 @@
     "linkPriceNotSet": "Harga belum diisi",
     "costNotSet": "Kos belum ditetapkan",
     "packSizeNeedsConfirm": "perlu disahkan",
-    "packSizeEdit": "Ubah penambahan stok bagi satu terimaan"
+    "packSizeEdit": "Ubah penambahan stok bagi satu terimaan",
+    "perUnit": "setiap {{unit}}",
+    "ownerFilter": {
+      "label": "Tunjuk",
+      "all": "Semua",
+      "brand": "Jenama",
+      "store": "Kedai saya"
+    }
   },
   "connect": {
     "priceNotSet": "Harga belum diisi — kos akan menjadi 0"

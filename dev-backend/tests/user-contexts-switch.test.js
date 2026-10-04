@@ -383,3 +383,189 @@ describe('⑦ 오너 모자 — 소유행 파생 (v1.1)', () => {
     expect(list.body.data.contexts[0].entity_type).toBe('owner');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⑧ 브랜드 관리자 모자 (v1.2, 2026-10-04 — Fable 지시서 .claude/fable-instruction-20261004-brand-manager.md §3)
+//   대상: demo RA(23, 매장 38) ← (brand 17 × Brand Manager). 형제 브랜드 = 10(같은 demo BG 22 소유).
+//   쓰기는 user_contexts 행만 — 끝나면 전량 삭제.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('⑧ 브랜드 관리자 모자 (v1.2)', () => {
+  const BM_BRAND = 17;
+  const SIBLING_BRAND = 10;
+  const BM_CTX = { entity_type: 'brand', entity_id: BM_BRAND, role: 'Brand Manager' };
+  let raToken, raId, saToken, bmToken, ctxRowId;
+  const auth = (tok) => ({ Authorization: `Bearer ${tok}` });
+  const get = (path, tok) => http('get', path).set(auth(tok));
+  const revokeBm = (uid) => q("DELETE FROM user_contexts WHERE user_id = :u AND entity_type = 'brand'", { u: uid });
+
+  beforeAll(async () => {
+    const r = await http('post', '/api/auth/demo-login').send({ key: 'demo_restaurant_admin' });
+    expect(r.status).toBe(200);
+    raToken = r.body.data.token;
+    raId = r.body.data.user.id;
+    saToken = jwt.sign({ userId: grantorId, role: 'System Admin' }, process.env.JWT_SECRET, { expiresIn: '10m' });
+    await revokeBm(raId);
+  });
+  afterAll(async () => { await revokeBm(raId); await revokeBm(hatUserId); });
+
+  test('1. 네이티브 RA 는 브랜드 메뉴 17 을 못 연다', async () => {
+    const r = await get(`/api/brand-menus?brand_id=${BM_BRAND}`, raToken);
+    expect(r.status).toBe(403);
+  });
+
+  test('2. SA 부여 → 카드(brand, K-Dine) → 전환 200 (brand_id=17, restaurant_id=null, role=BM)', async () => {
+    const g = await http('post', `/api/users/${raId}/contexts`).set(auth(saToken)).send(BM_CTX);
+    expect(g.status).toBe(200);
+    const list = await get('/api/auth/contexts', raToken);
+    const card = list.body.data.contexts.find(c => c.entity_type === 'brand');
+    expect(card).toBeDefined();
+    expect(card.entity_id).toBe(BM_BRAND);
+    expect(card.label).toBe('K-Dine');
+    ctxRowId = card.id;
+    const sw = await http('post', '/api/auth/switch-context').set(auth(raToken)).send(BM_CTX);
+    expect(sw.status).toBe(200);
+    bmToken = sw.body.data.token;
+    expect(jwt.decode(bmToken).ctx.t).toBe('brand');
+    expect(sw.body.data.user.brand_id).toBe(BM_BRAND);
+    expect(sw.body.data.user.restaurant_id).toBeNull();
+    expect(sw.body.data.user.role).toBe('Brand Manager');
+  });
+
+  test('3. /me 투영 동일 + 폴백 헤더 없음', async () => {
+    const r = await get('/api/auth/me', bmToken);
+    expect(r.status).toBe(200);
+    expect(r.headers['x-context-fallback']).toBeUndefined();
+    expect(r.body.data.role).toBe('Brand Manager');
+    expect(Number(r.body.data.brand_id)).toBe(BM_BRAND);
+    expect(r.body.data.restaurant_id).toBeNull();
+  });
+
+  test('4. 모자로 브랜드 17 메뉴·카테고리·옵션·레시피·브랜드 목록 → 200', async () => {
+    for (const p of [`/api/brand-menus?brand_id=${BM_BRAND}`, `/api/brand-menu-categories?brand_id=${BM_BRAND}`,
+      `/api/brand-menu-option-groups?brand_id=${BM_BRAND}`, `/api/brands/${BM_BRAND}/recipes`]) {
+      const r = await get(p, bmToken);
+      expect([p, r.status]).toEqual([p, 200]);
+    }
+    const b = await get('/api/brands', bmToken);
+    expect(b.status).toBe(200);
+    const ids = (Array.isArray(b.body) ? b.body : (b.body.data || [])).map(x => x.id);
+    expect(ids).toEqual([BM_BRAND]);
+  });
+
+  test('5. 형제 브랜드 10 → 403/404 (200 금지)', async () => {
+    const m = await get(`/api/brand-menus?brand_id=${SIBLING_BRAND}`, bmToken);
+    expect([403, 404]).toContain(m.status);
+    const rc = await get(`/api/brands/${SIBLING_BRAND}/recipes`, bmToken);
+    expect([403, 404]).toContain(rc.status);
+  });
+
+  // 지시서 §3 ⑧-6 은 «매장 38 → 403» 이었으나, 매장 38 은 브랜드 17 소속이라 브랜드 17 관리자에게 열리는 것이 맞다
+  //   (requireRestaurantScope: BM → 배정 브랜드의 매장). «교체» 는 ③(매장 스칼라 null)과 FI-12(소유자가 모자 아래에서
+  //   자기 브랜드를 잃음)가 증명한다. 여기서는 사실대로 — 38 은 **브랜드 경로로** 열리고, 브랜드 밖 매장은 닫힌다.
+  test('6. 교체 — 모자 토큰: 브랜드 17 매장 38 은 브랜드 경로로 200 · 브랜드 밖 매장(18) 403', async () => {
+    const [r38] = await q('SELECT brand_id FROM restaurants WHERE id = :r', { r: NATIVE_RID });
+    expect(Number(r38.brand_id)).toBe(BM_BRAND);
+    const inBrand = await get(`/api/restaurants/${NATIVE_RID}`, bmToken);
+    expect(inBrand.status).toBe(200);
+    const outside = await get(`/api/restaurants/${HAT_RID}`, bmToken);
+    expect(outside.status).toBe(403);
+  });
+
+  test('7. 소유자 전용 보존 — 결제 설정·브랜드 수정·스태프 추가 → 403', async () => {
+    const ps = await get(`/api/brands/${BM_BRAND}/payment-settings`, bmToken);
+    expect(ps.status).toBe(403);
+    const pu = await http('put', `/api/brands/${BM_BRAND}`).set(auth(bmToken)).send({ name: 'x' });
+    expect(pu.status).toBe(403);
+    const st = await http('post', `/api/brands/${BM_BRAND}/staff`).set(auth(bmToken)).send({ email: 'x@example.com' });
+    expect(st.status).toBe(403);
+  });
+
+  test('8. 회수 → 같은 토큰 /me 폴백 헤더 + RA · 브랜드 메뉴 17 → 403', async () => {
+    const d = await http('delete', `/api/users/${raId}/contexts/${ctxRowId}`).set(auth(saToken));
+    expect(d.status).toBe(200);
+    const me = await get('/api/auth/me', bmToken);
+    expect(me.headers['x-context-fallback']).toBe('revoked');
+    expect(me.body.data.role).toBe('Restaurant Admin');
+    const m = await get(`/api/brand-menus?brand_id=${BM_BRAND}`, bmToken);
+    expect(m.status).toBe(403);
+  });
+
+  test('9. 소켓: 유효한 브랜드 ctx 연결 OK · 회수 후 거부', async () => {
+    const svc = require('../services/socketService');
+    const server = http_.createServer();
+    const io_ = svc.initSocketServer(server);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const connect = (token) => new Promise((resolve) => {
+      const sock = ioClient(`http://127.0.0.1:${port}/orders`, { transports: ['websocket'], forceNew: true, reconnection: false, auth: { token } });
+      sock.on('connect', () => resolve({ ok: true, sock }));
+      sock.on('connect_error', (e) => resolve({ ok: false, message: e.message, sock }));
+    });
+    const tok = jwt.sign({ userId: raId, role: 'Brand Manager', brand_id: BM_BRAND, restaurant_id: null,
+      ctx: { v: 1, t: 'brand', id: BM_BRAND, r: 'Brand Manager' } }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    try {
+      await q(`INSERT INTO user_contexts (user_id,entity_type,entity_id,role,granted_by,created_at,updated_at)
+               VALUES (:u,'brand',:e,'Brand Manager',:g,NOW(),NOW())`, { u: raId, e: BM_BRAND, g: grantorId });
+      const ok = await connect(tok); ok.sock.close();
+      expect(ok.ok).toBe(true);
+      await revokeBm(raId);
+      const no = await connect(tok); no.sock.close();
+      expect(no.ok).toBe(false);
+      expect(no.message).toMatch(/context revoked/);
+    } finally {
+      try { io_.close(); } catch { /* 이미 닫힘 */ }
+      await new Promise(r => server.close(r));
+    }
+  });
+
+  test('FI-10 서명 유효·미부여 브랜드 ctx → /me 200+헤더(401 아님), 브랜드 메뉴 10 → 403', async () => {
+    const forged = jwt.sign({ userId: raId, role: 'Brand Manager', brand_id: SIBLING_BRAND, restaurant_id: null,
+      ctx: { v: 1, t: 'brand', id: SIBLING_BRAND, r: 'Brand Manager' } }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const me = await get('/api/auth/me', forged);
+    expect(me.status).toBe(200);
+    expect(me.headers['x-context-fallback']).toBe('revoked');
+    const m = await get(`/api/brand-menus?brand_id=${SIBLING_BRAND}`, forged);
+    expect(m.status).toBe(403);
+  });
+
+  test('FI-11 (brand × Brand General) 행 직접 INSERT → 목록에 없음 · 전환 400 · UC-002 실패', async () => {
+    await q(`INSERT INTO user_contexts (user_id,entity_type,entity_id,role,granted_by,created_at,updated_at)
+             VALUES (:u,'brand',:e,'Brand General',:g,NOW(),NOW())`, { u: raId, e: BM_BRAND, g: grantorId });
+    try {
+      const list = await get('/api/auth/contexts', raToken);
+      expect(list.body.data.contexts.find(c => c.entity_type === 'brand')).toBeUndefined();
+      const sw = await http('post', '/api/auth/switch-context').set(auth(raToken))
+        .send({ entity_type: 'brand', entity_id: BM_BRAND, role: 'Brand General' });
+      expect(sw.status).toBe(400);
+      expect(JSON.stringify(sw.body)).toContain('UNSUPPORTED_COMBINATION');
+      const suite = require('../scripts/inspection/suites/user-contexts');
+      const checks = await suite.run({ q: async (s) => (await sequelize.query(s))[0] });
+      expect(checks.find(c => c.name.startsWith('UC-002')).pass).toBe(false);
+    } finally {
+      await revokeBm(raId);
+    }
+    const suite = require('../scripts/inspection/suites/user-contexts');
+    const after = await suite.run({ q: async (s) => (await sequelize.query(s))[0] });
+    expect(after.find(c => c.name.startsWith('UC-002')).pass).toBe(true);
+  });
+
+  test('FI-12 소유자 BG 22 에 (brand 1 × BM) → 모자 아래 자기 소유 17 닫힘 · 1 열림', async () => {
+    const [b1] = await q('SELECT id, owner_id FROM brands WHERE id = 1');
+    expect(b1).toBeDefined();
+    expect(Number(b1.owner_id)).not.toBe(hatUserId);
+    await q(`INSERT INTO user_contexts (user_id,entity_type,entity_id,role,granted_by,created_at,updated_at)
+             VALUES (:u,'brand',1,'Brand Manager',:g,NOW(),NOW())`, { u: hatUserId, g: grantorId });
+    try {
+      const sw = await http('post', '/api/auth/switch-context').set(auth(nativeToken))
+        .send({ entity_type: 'brand', entity_id: 1, role: 'Brand Manager' });
+      expect(sw.status).toBe(200);
+      const tok = sw.body.data.token;
+      const own = await get(`/api/brand-menus?brand_id=${BM_BRAND}`, tok);
+      expect([403, 404]).toContain(own.status);
+      const one = await get('/api/brand-menus?brand_id=1', tok);
+      expect(one.status).toBe(200);
+    } finally {
+      await revokeBm(hatUserId);
+    }
+  });
+});

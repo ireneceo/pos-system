@@ -1041,7 +1041,15 @@
       "findOne": "已在 {{host}} 找到刷卡机并保存",
       "findNone": "在此 Wi-Fi 中找不到刷卡机",
       "findMany": "找到多台刷卡机 — 请选择本收银台的刷卡机：",
-      "hostAuto": "自动查找。地址变化时，付款时应用会重新找到刷卡机。"
+      "hostAuto": "在本设备的 Wi-Fi 中自动查找。地址变化时，应用会自动重新查找。",
+      "notFoundYet": "尚未找到",
+      "checking": "正在检查连接…",
+      "sameWifi": "已连接 — 与本设备在同一 Wi-Fi",
+      "notOnWifi": "本设备的 Wi-Fi 中没有终端 — 请将本设备连接到终端所在的 Wi-Fi",
+      "refind": "重新查找",
+      "advanced": "高级设置",
+      "manualHost": "终端地址（仅在自动查找无效时）",
+      "autoUpdated": "终端地址已变更 — 已在 {{host}} 重新找到并保存"
     }
   },
   "printer.emergency.workstationReceiptPrinter": "本工位的收据打印机",
