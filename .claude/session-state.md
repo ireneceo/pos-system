@@ -1,7 +1,7 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-10-02 (/개발완료 — 운영 배포 1회 · GHL 2차 묶음 dev 완료, 미배포)
 **버전:** 운영 **v3.107**(10-02 배포분 버전 번호 미확정 — 아래) · SW 운영 **5.71-card-terminal-tender-20261001** · 개발 **5.72-terminal-guards-app030-20261002**
-**작업 상태:** 🟡 다음 섹션에서 이어서 — Fable 게이트 → /배포 → 운영 데모 매장 실단말기 테스트
+**작업 상태:** 🟡 2026-10-04 운영 배포 완료(SW 5.72 · 백업 `20261004_031939` · 스모크 10/10) → 운영 데모 매장 13 실단말기 테스트 대기(Irene)
 
 ### 진행 중인 작업
 - 🟡 **[Claude Code] GHL 2차 묶음 — dev 완료 · 미배포 (SW 5.72)**
@@ -21,13 +21,14 @@
 
 ### 다음 확정 작업
 1. ~~verify-all --full~~ 완료 24/24 (2026-10-02 05:2x)
-2. Irene 이 0.3.0 APK 를 `dev-frontend-build/desktop/` 에 복사 → sha256 3개 일치 확인
-3. **Fable 게이트 1회**(예정된 그것: R1~R5 + 앱 0.3.0) → 마커. ⚠ 마커 뒤 저장소 파일 수정·커밋 금지(session-state.md 만 예외)
-4. Irene `/배포` → 운영 sw 5.72 · `purplehere.com/desktop/PurplePOS.apk` 가 0.3.0 인지 sha 확인 · 운영 결제창 «Card» 그대로(Fable 조건 ③, 미확인) · Owner/FG 보고서 운영 화면 1회(미확인)
-5. **운영 데모 매장 실단말기 테스트**(Irene 「테스트 데모 계정에서」) — 운영 데모 매장 id 확인(기록상 13) → 태블릿 정식 앱 덮어 설치 → 설정 › 결제 › Card › 카드 단말기 연동 켜기 → 단말기 찾기 → RM 1.00 카드 1건 + TnG QR 1건 → 원장·terminal_transactions·보고서 확인 → **단말기 메뉴에서 Void**(진짜 돈, POS 취소 없음). 기록 4항목: Echo 응답 hex · 프로파일 · QR 수용 여부(D-5) · 찾기 동작. 안내 아티팩트 https://claude.ai/artifact/ALL7b8nE7jZr4vgAuS3LeK 는 개발용 앱 기준이라 정식 앱·운영 데모로 갱신 필요
+2. ~~APK 복사~~ 완료 2026-10-04 [Claude Code] — sha256 3개 f912f96a… 일치
+3. ~~Fable 게이트~~ **PASS 2026-10-04** 마커 지문 0766dbfe04df · 판정문 `.claude/fable-verdict-20261004-ghl-gate3.md`(배포·실단말기 조건 포함). ⚠ 마커 뒤 저장소 파일 수정·커밋 금지(session-state.md 만 예외) — 판정문 커밋은 배포 후
+4. ~~/배포~~ 완료 2026-10-04 03:26 UTC [Claude Code] — 운영 sw 5.72 · APK sha f912f96a… 일치 · 데모13 `/api/terminal/config` enabled:false · 마이그 103/103. **남은 눈 확인: 운영 결제창 «Card» 그대로(Irene)** · (원문) Irene `/배포` → 운영 sw 5.72 · `purplehere.com/desktop/PurplePOS.apk` 가 0.3.0 인지 sha 확인 · 운영 결제창 «Card» 그대로(Fable 조건 ③, 미확인) · Owner/FG 보고서 운영 화면 1회(미확인)
+5. **운영 데모 매장 실단말기 테스트**(Irene 「테스트 데모 계정에서」) — 운영 데모 매장 id 확인(기록상 13) → 태블릿 정식 앱 덮어 설치 → 설정 › 결제 › Card › 카드 단말기 연동 켜기 → 단말기 찾기 → RM 1.00 카드 1건 + TnG QR 1건 → 원장·terminal_transactions·보고서 확인 → **단말기 메뉴에서 Void**(진짜 돈, POS 취소 없음). 기록 4항목: Echo 응답 hex · 프로파일 · QR 수용 여부(D-5) · 찾기 동작. 안내 아티팩트 https://claude.ai/artifact/ALL7b8nE7jZr4vgAuS3LeK 정식 앱·운영 데모 기준으로 갱신 완료(10-04, Fable 조건: Void 뒤 재결제 금지·테스트 후 연동 끄기)
 6. 10-02 배포분 버전 번호(v3.108?) · 릴리즈 공지 — 다음 배포와 합칠지 Irene 확인(CHANGELOG 에 «버전 번호 확정 대기» 섹션으로 둠)
 
 ### 👉 Irene 님 결정 대기 / 할 일
+- 🔴 K-DINE 구조 D1′·D1″·D3′·D2′ 답 — 10-04 Irene 「브랜드제너럴·브랜드메뉴·재료 연동 기준, 공급업체 각자 관리 다 했어?」 → 코드 0(미착수) 확인·권고표 재보고. 답 오면 판정문 §6 코드 묶음 착수
 - 0.3.0 APK 복사(위 2)
 - GHL 에 질문서 6개 발송(설계 문서 §5-4 영문 문안) — 샌드박스 TID/MID · 전송 형식 · DuitNow Product ID 등
 - 매장10 PO 12·26·52 중 1건 대조 «이 총액으로 확정» → 현금관리 차액 줄 실사용 확인(v3.106)
