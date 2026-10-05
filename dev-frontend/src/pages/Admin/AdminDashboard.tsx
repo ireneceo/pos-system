@@ -568,6 +568,21 @@ const adminTourSteps = (t: (k: string, fallback?: string) => string): TourStep[]
 
 const AdminDashboard: React.FC = () => {
   const { t } = useTranslation('admin');
+  // 역할 추가 요청 대기수 (멀티 로그인 v1.3) — 문구는 auth 네임스페이스에 모아 둔다.
+  const { t: tAuth } = useTranslation('auth');
+  const [contextRequestsPending, setContextRequestsPending] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const token = getAuthToken();
+        const res = await fetch('/api/context-requests/pending-count', { headers: { Authorization: `Bearer ${token}` } });
+        const body = await res.json().catch(() => null);
+        if (alive && res.ok && body && body.data) setContextRequestsPending(Number(body.data.count) || 0);
+      } catch { /* 알림은 부가 정보 */ }
+    })();
+    return () => { alive = false; };
+  }, []);
   const displayRole = useRoleDisplayName();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -1304,6 +1319,16 @@ const AdminDashboard: React.FC = () => {
                     <AlertDescription>{managers.filter((m: any) => {
                       try { return new Date(m.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
                     }).length} new manager(s) registered today - Click to view</AlertDescription>
+                  </AlertContent>
+                </Alert>
+              )}
+
+              {/* Role Requests Alert (멀티 로그인 v1.3) */}
+              {contextRequestsPending > 0 && (
+                <Alert type="info" onClick={() => navigate('/pos/admin/staff')}>
+                  <AlertContent>
+                    <AlertTitle type="info">{tAuth('context.requests.title')}</AlertTitle>
+                    <AlertDescription>{tAuth('context.requests.pendingAlert', { count: contextRequestsPending })}</AlertDescription>
                   </AlertContent>
                 </Alert>
               )}

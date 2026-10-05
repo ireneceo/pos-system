@@ -430,6 +430,19 @@ async function getRestaurantAdminAndOwnerIds(restaurantId) {
 }
 
 /**
+ * Find **active** Restaurant Admin user IDs of a restaurant — 오너 제외.
+ * 역할 추가 요청(v1.3)의 Staff 요청 승인자 = 그 매장 RA 라서, 오너를 포함하는
+ * getRestaurantAdminAndOwnerIds 는 수신자로 맞지 않는다(오너는 승인 권한이 없다).
+ */
+async function getRestaurantAdminIds(restaurantId) {
+  const admins = await sequelize.query(
+    `SELECT id FROM users WHERE restaurant_id = :restaurantId AND role = 'Restaurant Admin' AND is_active = 1 AND email IS NOT NULL`,
+    { replacements: { restaurantId }, type: QueryTypes.SELECT }
+  );
+  return admins.map(a => a.id);
+}
+
+/**
  * Find Supplier Admin + Staff user IDs for a supplier company.
  * Includes:
  *   - SupplierCompany.owner_id (Supplier Admin)
@@ -458,5 +471,6 @@ module.exports = {
   getFoodcourtManagerIds,
   getRestaurantOwnerIds,
   getRestaurantAdminAndOwnerIds,
+  getRestaurantAdminIds,
   getSupplierAdminIds
 };

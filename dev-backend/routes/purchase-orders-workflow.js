@@ -38,6 +38,7 @@ const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
 const { isApprovalRequiredForRestaurant, applySubmitGate } = require('../utils/poOwnerApproval');
+const { assertLinesMeetMinOrder, MinOrderError, minOrderErrorBody } = require('../utils/poMinOrder');
 const { fireSellerSubmittedNotification, fireOwnerApprovalPendingNotification, fireBuyerConfirmNotification, fireBuyerReceivedNotification } = require('../services/poNotifications');
 // 수령 시 재고 반영 단일 소스 — /receive 와 mark-received 가 같은 함수를 쓴다(P4-2, 복제 금지)
 const { applyReceipt, markAllReceived } = require('../services/purchaseOrderReceive');
@@ -946,6 +947,8 @@ router.post('/purchase-orders/:id/submit', async (req, res) => {
         e.code = 'EMPTY_ITEMS';
         throw e;
       }
+      // 최소주문 — 옛 초안·담은 뒤 판매자가 MOQ 를 올린 경우의 안전망 (utils/poMinOrder.js · MinOrderError 로 던진다)
+      await assertLinesMeetMinOrder(locked.items, { transaction: t });
       // Owner approval gate — restaurant POs only, when an Owner is connected
       // and operation_settings.requirePoOwnerApproval !== false (default ON).
       // 승인 게이트는 utils/poOwnerApproval 단일 소스 (submit / bulk / 외부전송 3경로 공유)
@@ -969,6 +972,7 @@ router.post('/purchase-orders/:id/submit', async (req, res) => {
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Purchase order not found' });
     if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
     if (err.code === 'EMPTY_ITEMS') return res.status(400).json({ success: false, message: err.message });
+    if (err instanceof MinOrderError) return res.status(400).json(minOrderErrorBody(err));
     console.error('POST /api/purchase-orders/:id/submit error:', err);
     res.status(500).json({ success: false, message: 'Failed to submit purchase order' });
   }

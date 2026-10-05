@@ -3,8 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { useAuth, UserContextOption } from '../../contexts/AuthContext';
-import { Button } from '../../components/UI';
+import { Button, IconButton } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useStore } from '../../contexts/StoreContext';
+import { formatDate } from '../../utils/dateFormat';
+import { getAuthToken } from '../../utils/auth';
+import ContextRequestModal from './ContextRequestModal';
 
 /**
  * 컨텍스트 선택 화면 ("어느 자격으로 들어갈까").
@@ -15,6 +19,9 @@ import ConfirmModal from '../../components/ConfirmModal';
  *
  * ⚠ 목록의 단일 소스는 `GET /api/auth/contexts` — 로그인 응답의 contexts 는 최초 표시 최적화일 뿐,
  *   부여/회수 직후에도 정확하려면 진입 시 다시 읽어야 한다.
+ *
+ * v1.3(2026-10-05): 리스트 맨 아래 = 내 역할 요청 행(승인 대기·거절) + 「+ 역할 추가 요청」 카드.
+ *   요청은 부여가 아니다 — 승인자(매장 RA 또는 SA)가 승인할 때만 카드가 생긴다(설계 §8-3 봉인 유지).
  */
 
 const Page = styled.div`
@@ -136,7 +143,52 @@ const ErrorText = styled.p`
   text-align: center;
 `;
 
-// 자격 추가 입구는 이 화면에 두지 않는다(셀프 부여 금지 — 설계 §8-3). 어디서 받는지만 알려 준다.
+// 내 요청 행 — 카드와 같은 높이, 눌리지 않는다(상태 표시 + 오른쪽 ✕ 만).
+const RequestRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 68px;
+  padding: 12px 12px 12px 18px;
+  border: 1px solid var(--pos-border, #E3E8EE);
+  border-radius: 12px;
+  background: var(--pos-bg, #F6F9FC);
+  box-sizing: border-box;
+`;
+
+const RequestText = styled(CardText)`
+  flex: 1;
+`;
+
+const RequestStatus = styled.span<{ $rejected?: boolean }>`
+  font-size: 13px;
+  color: ${p => (p.$rejected ? '#EF4444' : 'var(--pos-text-muted, #425466)')};
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+// 「+ 역할 추가 요청」 — 카드(공용 Button 확장)를 다시 확장: 점선 테두리 · 가운데 정렬.
+const AddCard = styled(Card)`
+  justify-content: center;
+  border-style: dashed;
+  color: #635BFF;
+  font-weight: 600;
+
+  &:hover:not(:disabled) {
+    color: #635BFF;
+  }
+`;
+
+const SentText = styled.p`
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--pos-text, #0A2540);
+  text-align: center;
+`;
+
+// 요청은 받을 수 있지만 부여는 승인자만 한다(셀프 부여 금지 — 설계 §8-3). 누가 검토하는지 알려 준다.
 const FooterHint = styled.p`
   margin: 16px 0 0;
   font-size: 12px;
@@ -153,15 +205,71 @@ const Footer = styled.div`
 
 const contextKey = (c: UserContextOption) => `${c.kind}:${c.entity_type}:${c.entity_id ?? 'none'}:${c.role}`;
 
+interface MyRequest {
+  id: number;
+  entity_type: 'restaurant' | 'brand';
+  entity_id: number;
+  role: string;
+  label: string | null;
+  status: 'pending' | 'rejected';
+  decision_note: string | null;
+  created_at: string;
+}
+
+const REQUEST_ROLE_KEY: Record<string, string> = {
+  'Staff': 'context.request.typeStoreStaff',
+  'Restaurant Admin': 'context.request.typeStoreAdmin',
+  'Restaurant Owner': 'context.request.typeStoreOwner',
+  'Brand Manager': 'context.request.typeBrandManager'
+};
+
+const requestHeaders = () => {
+  const token = getAuthToken();
+  return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+};
+
 const ContextSelectPage: React.FC = () => {
   const { t } = useTranslation('auth');
   const navigate = useNavigate();
-  const { contexts, refreshContexts, switchContext, logout } = useAuth();
+  const { contexts, refreshContexts, switchContext, logout, user } = useAuth();
+  const { getStoreInfo } = useStore();
 
   const [list, setList] = useState<UserContextOption[]>(contexts);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<UserContextOption | null>(null);
+
+  // ── 역할 추가 요청 (v1.3) — SA 와 demo 계정은 입구 없음(서버도 403).
+  const canRequest = !!user && user.role !== 'System Admin' && !user.isDemo;
+  const [myRequests, setMyRequests] = useState<MyRequest[]>([]);
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<MyRequest | null>(null);
+
+  const loadMyRequests = useCallback(async () => {
+    if (!canRequest) return;
+    try {
+      const res = await fetch('/api/context-requests/mine', { headers: requestHeaders() });
+      const body = await res.json().catch(() => null);
+      if (res.ok && body && Array.isArray(body.data)) setMyRequests(body.data);
+    } catch { /* 요청 목록은 부가 정보 — 실패해도 카드 선택은 된다 */ }
+  }, [canRequest]);
+
+  useEffect(() => { loadMyRequests(); }, [loadMyRequests]);
+
+  const removeRequest = useCallback(async (r: MyRequest) => {
+    try {
+      await fetch(`/api/context-requests/${r.id}`, { method: 'DELETE', headers: requestHeaders() });
+    } catch { /* 다시 읽어 실제 상태를 보여 준다 */ }
+    setRequestSent(false);
+    loadMyRequests();
+  }, [loadMyRequests]);
+
+  // 타임존 없는 날짜 표시 금지 — 매장 타임존이 없으면 날짜를 생략한다.
+  const requestDate = (iso: string): string | null => {
+    const tz = getStoreInfo()?.timeZone;
+    return tz ? formatDate(iso, tz) : null;
+  };
 
   // 조회에 성공하면 **결과가 줄어들었어도 그대로 반영**한다 — 회수된 모자가 화면에 남으면 안 된다.
   // (실패는 null 로 구분되며, 그때만 직전 목록을 유지한다.)
@@ -236,7 +344,42 @@ const ContextSelectPage: React.FC = () => {
               </CardText>
             </Card>
           ))}
+
+          {/* 맨 아래 — 내 요청(대기·거절) → 「+ 역할 추가 요청」 (Irene 지정 위치) */}
+          {canRequest && myRequests.map((r) => {
+            const date = r.status === 'pending' ? requestDate(r.created_at) : null;
+            const roleLabel = REQUEST_ROLE_KEY[r.role] ? t(REQUEST_ROLE_KEY[r.role]) : r.role;
+            const status = r.status === 'pending'
+              ? (date ? t('context.request.pending', { date }) : t('context.request.pendingNoDate'))
+              : `${t('context.request.rejected')}${r.decision_note ? ` · ${r.decision_note}` : ''}`;
+            return (
+              <RequestRow key={`req-${r.id}`}>
+                <CardGlyph aria-hidden="true">{r.role === 'Restaurant Owner' ? '◯' : r.entity_type === 'brand' ? '◐' : '▦'}</CardGlyph>
+                <RequestText>
+                  <CardLabel>{r.label || t('context.request.deletedTarget')}</CardLabel>
+                  <RequestStatus $rejected={r.status === 'rejected'}>{roleLabel} · {status}</RequestStatus>
+                </RequestText>
+                <IconButton
+                  type="button"
+                  variant="delete"
+                  title={r.status === 'pending' ? t('context.request.cancel') : t('context.request.dismiss')}
+                  aria-label={r.status === 'pending' ? t('context.request.cancel') : t('context.request.dismiss')}
+                  onClick={() => (r.status === 'pending' ? setCancelTarget(r) : removeRequest(r))}
+                >
+                  ✕
+                </IconButton>
+              </RequestRow>
+            );
+          })}
+
+          {canRequest && (
+            <AddCard onClick={() => { setRequestSent(false); setRequestOpen(true); }} disabled={busyKey !== null}>
+              + {t('context.request.add')}
+            </AddCard>
+          )}
         </List>
+
+        {requestSent && <SentText>{t('context.request.sent')}</SentText>}
 
         {error && <ErrorText>{error}</ErrorText>}
 
@@ -264,6 +407,26 @@ const ContextSelectPage: React.FC = () => {
         cancelText={t('context.confirm.cancel')}
         onConfirm={() => { const c = confirmTarget; setConfirmTarget(null); if (c) applySwitch(c); }}
         onCancel={() => setConfirmTarget(null)}
+      />
+
+      {canRequest && (
+        <ContextRequestModal
+          isOpen={requestOpen}
+          onClose={() => setRequestOpen(false)}
+          onSent={() => { setRequestOpen(false); setRequestSent(true); loadMyRequests(); }}
+          isNativeOwner={(list.find(c => c.kind === 'default')?.role ?? user?.role) === 'Restaurant Owner'}
+        />
+      )}
+
+      <ConfirmModal
+        isOpen={cancelTarget !== null}
+        type="warning"
+        title={t('context.request.cancel')}
+        message={t('context.request.cancelConfirm')}
+        confirmText={t('context.request.cancel')}
+        cancelText={t('context.request.keep')}
+        onConfirm={() => { const r = cancelTarget; setCancelTarget(null); if (r) removeRequest(r); }}
+        onCancel={() => setCancelTarget(null)}
       />
     </Page>
   );

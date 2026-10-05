@@ -11,8 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
  *
  * ⚠ 컴포넌트가 아니라 **항목 descriptor 를 돌려주는 훅**이다 — 각 대시보드가 이미 가진
  * QuickActionCard 로 그려야 디자인이 통일되고, 새 로컬 버튼 스타일을 만들지 않는다
- * (디자인 단일 기준). 고를 것이 2개 미만이면 null 을 돌려 **아무것도 그리지 않는다**
- * = 부여 0건인 사용자(현재 전원)에게는 화면 변화 0.
+ * (디자인 단일 기준). System Admin 이면 null(요청 대상 아님) — 그 외에는 모자 수와 무관하게 표시(v1.3 D4).
  */
 export interface QuickActionItem {
   icon: string;
@@ -24,9 +23,10 @@ export interface QuickActionItem {
 export function useContextSwitchQuickAction(): QuickActionItem | null {
   const { t } = useTranslation('auth');
   const navigate = useNavigate();
-  const { contexts } = useAuth();
+  const { user } = useAuth();
 
-  if (!contexts || contexts.length < 2) return null;
+  // v1.3(2026-10-05, Irene 확정 D4): SA 외 전 사용자에게 상시 표시 — 선택 화면이 역할 추가 요청의 입구다.
+  if (!user || user.role === 'System Admin') return null;
 
   return {
     icon: '◐',

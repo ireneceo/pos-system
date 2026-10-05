@@ -199,6 +199,8 @@ test.describe('카드단말기 ECR — 결제 창 흐름(목 브릿지)', () => 
     await page.getByRole('button', { name: 'Confirm Payment' }).last().click();
     await expect(page.getByText('Card not approved')).toBeVisible({ timeout: 20000 });
     await expect(page.getByRole('button', { name: 'Confirm Payment' }).last(), '모달 유지').toBeVisible();
+    // 2026-10-05 운영: 단건 결제도 거절 뒤 Confirm 잠김 — 패널의 «Try again» 으로만 다시 보낸다
+    await expect(page.getByRole('button', { name: 'Confirm Payment' }).last(), '거절 뒤 Confirm 비활성(단건)').toBeDisabled();
     const o = await getOrder(request, baseURL, token, orderId);
     expect(o.payment_status).toBe('pending');
     expect(o.transaction_id || null).toBeNull();

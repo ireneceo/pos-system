@@ -759,7 +759,7 @@ router.post('/:id/ship', async (req, res) => {
                 brand_product_id: bp.id,
                 transaction_type: 'order_deduct',
                 quantity_change: -takeBp,
-                unit: bp.stock_unit || bp.unit || 'ea',
+                unit: require('../utils/poLineSpec').selfStockUnit(bp, 'ea'),   // 자체 재고 = 주문 단위로 센다(§5-12 A)
                 stock_after: nextBp,
                 purchase_order_id: locked.id,
                 notes: `Sold on PO ${locked.po_number} (${bp.name})`
@@ -1134,7 +1134,9 @@ router.post('/', async (req, res) => {
         expected_delivery_date,
         notes
       },
-      transaction: t
+      transaction: t,
+      // 판매자 대리주문은 최소주문을 강제하지 않는다 — 판매자가 규칙의 주인(2026-10-05 Fable 설계 §4-A ③)
+      enforceMinOrder: false
     });
     if (!result.ok) {
       await t.rollback();

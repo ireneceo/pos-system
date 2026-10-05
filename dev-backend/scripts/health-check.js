@@ -387,6 +387,46 @@ function defineAuthTests({ adminToken, customerToken, member, restId }) {
   });
 }
 
+// ── 역할 추가 요청 (멀티 로그인 v1.3, .claude/fable-design-20261005-context-request.md §5.6) ──
+// DB 를 쓰지 않는 경로만(익명 401 · demo 403 · 범위 밖 403 · 조회 200). 고정물 = dev demo RA/BG(이메일로 찾는다).
+function defineContextRequestTests({ adminToken }) {
+  const jwtLib = require('jsonwebtoken');
+  const tokenFor = async (email) => {
+    const { sequelize } = require('../config/database');
+    const [[u]] = await sequelize.query('SELECT id FROM users WHERE email = ? LIMIT 1', { replacements: [email] });
+    return u ? { Authorization: `Bearer ${jwtLib.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` } : null;
+  };
+
+  test('security', '역할 요청 — 익명 POST · GET · approve → 401', async () => {
+    const a = await request('POST', '/context-requests', { entity_type: 'brand', entity_id: 1, role: 'Brand Manager' });
+    const b = await request('GET', '/context-requests');
+    const c2 = await request('POST', '/context-requests/1/approve', {});
+    return a.status === 401 && b.status === 401 && c2.status === 401;
+  });
+
+  test('auth', '역할 요청 — 데모 RA: 보내기 403(demo) · 대상 검색 200 배열 · 대기수 200(RA 범위)', async () => {
+    const auth = await tokenFor('demo-restaurant@purplehere.com');
+    if (!auth) return false;
+    const post = await request('POST', '/context-requests', { entity_type: 'brand', entity_id: 17, role: 'Brand Manager' }, auth);
+    const tg = await request('GET', '/context-requests/targets?type=restaurant&q=K', null, auth);
+    const tg2 = await request('GET', '/context-requests/targets?type=restaurant&q=Ga', null, auth);
+    const pc = await request('GET', '/context-requests/pending-count', null, auth);
+    return post.status === 403 && tg.status === 200 && Array.isArray(tg.body?.data) && tg.body.data.length === 0
+      && tg2.status === 200 && Array.isArray(tg2.body?.data)
+      && pc.status === 200 && typeof pc.body?.data?.count === 'number';
+  });
+
+  test('auth', '역할 요청 — 데모 BG: 승인 목록 403(SA·RA 외) · SA 대기수 200 숫자 · SA 요청 403', async () => {
+    const auth = await tokenFor('demo-brand@purplehere.com');
+    if (!auth) return false;
+    const list = await request('GET', '/context-requests', null, auth);
+    const sa = { Authorization: `Bearer ${adminToken}` };
+    const pc = await request('GET', '/context-requests/pending-count', null, sa);
+    const saPost = await request('POST', '/context-requests', { entity_type: 'brand', entity_id: 17, role: 'Brand Manager' }, sa);
+    return list.status === 403 && pc.status === 200 && typeof pc.body?.data?.count === 'number' && saPost.status === 403;
+  });
+}
+
 // ============================================
 // 카테고리 2: 보안 가드 (회귀 방지)
 // ============================================
@@ -518,8 +558,10 @@ function defineSecurityTests({ customerToken, member, restId }) {
     const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
     const tag = 'zzhcobh' + Date.now().toString(36);
     const [other] = await Q(`SELECT id FROM restaurants WHERE is_demo = 1 AND id <> 38 ORDER BY id LIMIT 1`);
-    const [ing] = await Q(`SELECT i.id ingredient_id, i.unit, isp.seller_entity_id FROM ingredient_seller_products isp
-      JOIN ingredients i ON i.id = isp.ingredient_id WHERE i.restaurant_id = 38 AND isp.seller_type = 'supplier' AND isp.is_active = 1 ORDER BY i.id LIMIT 1`);
+    // 최소주문(2026-10-05 · utils/poMinOrder.js) — 판매자 상품 현재 최소주문 이상으로 담는다(미달이면 400 BELOW_MIN_ORDER)
+    const [ing] = await Q(`SELECT i.id ingredient_id, i.unit, isp.seller_entity_id, COALESCE(sp.min_order_quantity, 1) moq FROM ingredient_seller_products isp
+      JOIN ingredients i ON i.id = isp.ingredient_id LEFT JOIN supplier_products sp ON sp.id = isp.seller_product_id
+     WHERE i.restaurant_id = 38 AND isp.seller_type = 'supplier' AND isp.is_active = 1 ORDER BY i.id LIMIT 1`);
     const [ra] = await Q(`SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 ORDER BY id LIMIT 1`);
     if (!other || !ing || !ra) { console.log(c.gray('      (준비물 없음 — 데모 매장 38 공급처 연결 재료/RA)')); return false; }
     const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@outlook.com`] });
@@ -530,7 +572,7 @@ function defineSecurityTests({ customerToken, member, restId }) {
       const raAuth = { Authorization: `Bearer ${jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
       const sw = (rid) => `entity_type=restaurant&entity_id=${rid}`;
       const body = { seller_type: 'supplier', seller_entity_id: ing.seller_entity_id, notes: tag,
-        items: [{ ingredient_id: ing.ingredient_id, quantity_ordered: 1, unit: ing.unit, unit_price: 3 }] };
+        items: [{ ingredient_id: ing.ingredient_id, quantity_ordered: Math.max(1, Number(ing.moq) || 1), unit: ing.unit, unit_price: 3 }] };
       const mk = await request('POST', `/purchase-orders?${sw(38)}`, body, own);
       const oid = mk.body && mk.body.data && mk.body.data.id; if (oid) pos.push(oid);
       const sub = oid ? await request('POST', `/purchase-orders/${oid}/submit?${sw(38)}`, {}, own) : { status: 0 };
@@ -2669,10 +2711,12 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     const { sequelize } = require('../config/database');
     const rows = (await sequelize.query(`
       SELECT i.restaurant_id, i.id ingredient_id, i.unit, isp.seller_entity_id,
+             COALESCE(sp.min_order_quantity, 1) moq,
              (SELECT COUNT(*) FROM restaurant_managers rm
                WHERE rm.restaurant_id = i.restaurant_id AND rm.relationship_type = 'ownership') has_owner
         FROM ingredient_seller_products isp
         JOIN ingredients i ON i.id = isp.ingredient_id
+        LEFT JOIN supplier_products sp ON sp.id = isp.seller_product_id
         JOIN restaurants r ON r.id = i.restaurant_id AND r.is_demo = 1
        WHERE isp.seller_type = 'supplier' AND isp.is_active = 1
        ORDER BY i.id`))[0];
@@ -2682,13 +2726,15 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     const { User } = require('../models');
     const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: row.restaurant_id } });
     if (!ra) return null;
-    return { ...row, token: jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' }) };
+    // 담는 수량은 판매자 상품 최소주문 이상이어야 한다(2026-10-05 · utils/poMinOrder.js) — qty(n) = max(n, 최소주문)
+    const qty = (n) => Math.max(n, Number(row.moq) || 1);
+    return { ...row, qty, token: jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' }) };
   }
 
   async function dpMakeDraft(ctx2) {
     const r = await request('POST', '/purchase-orders', {
       seller_type: 'supplier', seller_entity_id: ctx2.seller_entity_id, notes: DP_NOTE,
-      items: [{ ingredient_id: ctx2.ingredient_id, quantity_ordered: 2, unit: ctx2.unit, unit_price: 5 }]
+      items: [{ ingredient_id: ctx2.ingredient_id, quantity_ordered: ctx2.qty(2), unit: ctx2.unit, unit_price: 5 }]
     }, { Authorization: `Bearer ${ctx2.token}` });
     return r.body?.data?.id || null;
   }
@@ -2715,7 +2761,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       const po = (await sequelize.query(`SELECT status, payment_status, submitted_at, received_at FROM purchase_orders WHERE id=${poId}`))[0][0];
       const after = Number((await sequelize.query(`SELECT current_stock c FROM ingredients WHERE id=${ctx2.ingredient_id}`))[0][0].c);
       return r.status === 200 && po.status === 'received' && po.payment_status === 'paid'
-        && !!po.submitted_at && !!po.received_at && Math.abs((after - before) - 2) < 0.001;
+        && !!po.submitted_at && !!po.received_at && Math.abs((after - before) - ctx2.qty(2)) < 0.001;
     } finally {
       await dpCleanup();
       // 재고는 **되돌린다** — 계약이 재기만 하고 두면 실행할 때마다 데모 매장 재고가 늘어난다.
@@ -2768,7 +2814,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     const auth = { Authorization: `Bearer ${ctx2.token}` };
     const made = await request('POST', '/purchase-orders', {
       seller_type: 'supplier', seller_entity_id: ctx2.seller_entity_id, notes: PM_NOTE,
-      items: [{ ingredient_id: ctx2.ingredient_id, quantity_ordered: 1, unit: ctx2.unit, unit_price: 6 }]
+      items: [{ ingredient_id: ctx2.ingredient_id, quantity_ordered: ctx2.qty(1), unit: ctx2.unit, unit_price: 6 }]
     }, auth);
     const poId = made.body?.data?.id;
     if (!poId) return null;
@@ -2826,7 +2872,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     const auth = { Authorization: `Bearer ${ctx2.token}` };
     const draft = await request('POST', '/purchase-orders', {
       seller_type: 'supplier', seller_entity_id: ctx2.seller_entity_id, notes: PM_NOTE,
-      items: [{ ingredient_id: ctx2.ingredient_id, quantity_ordered: 1, unit: ctx2.unit, unit_price: 4 }]
+      items: [{ ingredient_id: ctx2.ingredient_id, quantity_ordered: ctx2.qty(1), unit: ctx2.unit, unit_price: 4 }]
     }, auth);
     const draftId = draft.body?.data?.id;
     if (!draftId) { await pmCleanup(); return false; }
@@ -4635,6 +4681,118 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
             try { await sequelize.query('DELETE FROM restaurant_ingredient_costs WHERE ingredient_id IN (:ings)', { replacements: { ings } }); } catch {}
             try { await sequelize.query('DELETE FROM stock_alerts WHERE ingredient_id IN (:ings)', { replacements: { ings } }); } catch {}
             await Ingredient.destroy({ where: { id: ings }, force: true });
+          }
+          await BrandProduct.destroy({ where: { id: ids }, force: true });
+        }
+      } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
+    }
+  });
+
+  // ══════════════════════════════════════════════════════════════════
+  // 최소주문 강제 + 연결 환산 기준양 (2026-10-05 Fable 설계 .claude/fable-design-20261005-moq-product-form.md §4-A·§4-B)
+  //   «45 g/pack · RM4.50 · 최소 22 pack» 판매 상품으로 증명한다.
+  //   M1 연결: 새 재료(g) 45 · 기존 kg 재료 0.045 · tray↔kg 1 + 확인 필요
+  //   M2 구매자: POST·bulk 미달 400 BELOW_MIN_ORDER · =22 201 · PUT 미달 400 · submit 미달 400
+  //   M3 판매자 대리주문은 MOQ 무관 201
+  // ══════════════════════════════════════════════════════════════════
+  test('po', '최소주문 하한(구매자 경로만) + 카탈로그 연결 환산 = 판매자 기준양 (M1~M3)', async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const { BrandProduct, Ingredient, IngredientSellerProduct, PurchaseOrderItem, User } = require('../models');
+    const { conversionStatusFor } = require('../services/sellerLinkConversion');
+    const q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const fx = (await q(`SELECT r.id rid, b.id bid, u.id uid FROM restaurants r
+        JOIN brands b ON b.id = r.brand_id JOIN users u ON u.id = b.owner_id
+       WHERE r.is_demo = 1 AND u.email = 'demo-brand@purplehere.com' ORDER BY r.id LIMIT 1`))[0];
+    const ra = fx && await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: fx.rid } });
+    if (!fx || !ra) { console.log(c.gray('      (건너뜀: 데모 매장/BG/RA 픽스처 불가)')); return true; }
+    const bgAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: fx.uid }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const raAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const tag = 'ZZ-HC-MOQ-' + Date.now();
+    const bps = [], ingIds = [], poIds = [];
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const mk = (o) => BrandProduct.create({ owner_user_id: fx.uid, is_active: true, distribution_mode: 'all', product_kind: 'stock',
+      current_stock: 100, order_mode: 'pack', sku: 'ZZM-' + Math.random().toString(36).slice(2, 9), ...o });
+    try {
+      const beef = await mk({ name: tag + '-BEEF', unit: 'g', base_quantity: 45, package_unit: 'pack', unit_price: 4.5, min_order_quantity: 22 });
+      bps.push(beef);
+      const tray = await mk({ name: tag + '-TRAY', unit: 'tray', base_quantity: 1, unit_price: 3, min_order_quantity: 1 });
+      bps.push(tray);
+
+      // M1-a 카탈로그에서 새 재료(g) — 1팩 = 45 g
+      const c1 = await request('POST', `/restaurants/${fx.rid}/ingredients/from-catalog`, { brand_product_id: beef.id }, raAuth);
+      const ingG = c1.body?.data?.ingredient, mapG = c1.body?.data?.mapping;
+      if (ingG?.id) ingIds.push(ingG.id);
+      if (c1.status !== 201 || !mapG) return fail(`M1 새 재료 ${c1.status} ${JSON.stringify(c1.body).slice(0, 160)}`);
+      if (Number(mapG.unit_conversion) !== 45) return fail(`M1 g 재료 환산 ${mapG.unit_conversion} (기대 45)`);
+      // M1-b 기존 kg 재료에 연결 — 0.045
+      const ingKg = await Ingredient.create({ owner_type: 'restaurant', restaurant_id: fx.rid, name: tag + '-KG', unit: 'kg',
+        base_quantity: 1, unit_cost: 0, current_stock: 0, min_stock: 0, is_active: true, code: '' });
+      ingIds.push(ingKg.id);
+      const c2 = await request('POST', `/restaurants/${fx.rid}/ingredients/from-catalog`,
+        { brand_product_id: beef.id, existing_ingredient_id: ingKg.id }, raAuth);
+      if (![200, 201].includes(c2.status) || Number(c2.body?.data?.mapping?.unit_conversion) !== 0.045)
+        return fail(`M1 kg 재료 환산 ${c2.status} ${c2.body?.data?.mapping?.unit_conversion} (기대 0.045)`);
+      // M1-c tray↔kg — 데이터로 정할 수 없다 → 1 로 두고 «확인 필요»(기계가 추측하지 않는다)
+      const ingKg2 = await Ingredient.create({ owner_type: 'restaurant', restaurant_id: fx.rid, name: tag + '-KG2', unit: 'kg',
+        base_quantity: 1, unit_cost: 0, current_stock: 0, min_stock: 0, is_active: true, code: '' });
+      ingIds.push(ingKg2.id);
+      const c3 = await request('POST', `/restaurants/${fx.rid}/ingredients/from-catalog`,
+        { brand_product_id: tray.id, existing_ingredient_id: ingKg2.id }, raAuth);
+      const mapT = c3.body?.data?.mapping;
+      if (![200, 201].includes(c3.status) || Number(mapT?.unit_conversion) !== 1) return fail(`M1 tray↔kg ${c3.status} ${mapT?.unit_conversion} (기대 1)`);
+      const st = conversionStatusFor({ unit_conversion: mapT.unit_conversion, seller_unit: 'tray', base_quantity: 1, order_mode: 'pack' }, { unit: 'kg' });
+      if (st.conversion_status !== 'needs_confirm') return fail(`M1 tray↔kg 상태 ${st.conversion_status} (기대 needs_confirm)`);
+
+      // M2 구매자 경로 — 미달은 400, 하한 = 통과
+      const line = (qty) => ({ ingredient_id: ingG.id, ingredient_seller_product_id: mapG.id, quantity_ordered: qty });
+      const grp = (qty) => ({ seller_type: 'brand', seller_entity_id: fx.bid, items: [line(qty)] });
+      const b1 = await request('POST', '/purchase-orders/bulk', { groups: [grp(5)] }, raAuth);
+      // 막지 못했을 때도 잔재를 지운다 — 기존 초안에 합쳐졌으면(남의 줄이 있으면) 발주는 두고 내 줄만 지운다
+      for (const o of (b1.body?.data?.orders || [])) {
+        if (!o?.id) continue;
+        if ((o.items || []).every(it => String(it.description || '').startsWith(tag))) poIds.push(o.id);
+        else await PurchaseOrderItem.destroy({ where: { purchase_order_id: o.id, ingredient_seller_product_id: mapG.id } });
+      }
+      if (b1.status !== 400 || b1.body?.code !== 'BELOW_MIN_ORDER') return fail(`M2 bulk 미달 ${b1.status} ${b1.body?.code}`);
+      const v = b1.body?.data?.violations?.[0];
+      if (!v || Number(v.min) !== 22 || v.unit !== 'pack' || Number(v.quantity) !== 5) return fail(`M2 위반 내용 ${JSON.stringify(v)}`);
+      const p1 = await request('POST', '/purchase-orders', grp(21), raAuth);
+      if (p1.body?.data?.id) poIds.push(p1.body.data.id);
+      if (p1.status !== 400 || p1.body?.code !== 'BELOW_MIN_ORDER') return fail(`M2 POST 21 ${p1.status} ${p1.body?.code}`);
+      const p2 = await request('POST', '/purchase-orders', grp(22), raAuth);
+      const poId = p2.body?.data?.id;
+      if (poId) poIds.push(poId);
+      if (p2.status !== 201 || !poId) return fail(`M2 POST 22 ${p2.status} ${JSON.stringify(p2.body).slice(0, 160)}`);
+      const u1 = await request('PUT', `/purchase-orders/${poId}`, { items: [{ ...line(10), unit_price: 4.5 }] }, raAuth);
+      if (u1.status !== 400 || u1.body?.code !== 'BELOW_MIN_ORDER') return fail(`M2 PUT 미달 ${u1.status} ${u1.body?.code}`);
+      const keep = await PurchaseOrderItem.findAll({ where: { purchase_order_id: poId } });
+      if (keep.length !== 1 || Number(keep[0].quantity_ordered) !== 22) return fail('M2 PUT 거부 뒤 줄이 바뀜');
+      // 옛 초안·담은 뒤 MOQ 상향 — 줄을 직접 낮춰 제출 안전망을 친다
+      await PurchaseOrderItem.update({ quantity_ordered: 3 }, { where: { purchase_order_id: poId } });
+      const s1 = await request('POST', `/purchase-orders/${poId}/submit`, {}, raAuth);
+      if (s1.status !== 400 || s1.body?.code !== 'BELOW_MIN_ORDER') return fail(`M2 submit 미달 ${s1.status} ${s1.body?.code}`);
+
+      // M3 판매자 대리주문 — MOQ 무관
+      const so = await request('POST', '/seller-orders', { entity_type: 'restaurant', entity_id: fx.rid,
+        items: [{ ingredient_seller_product_id: mapG.id, brand_product_id: beef.id, quantity_ordered: 5 }] }, bgAuth);
+      const soId = so.body?.data?.id || so.body?.data?.po?.id;
+      if (soId) poIds.push(soId);
+      if (so.status !== 201) return fail(`M3 판매자 대리주문 ${so.status} ${JSON.stringify(so.body).slice(0, 160)}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try { await hcCleanupPurchaseOrders(poIds); } catch {}
+      try {
+        const ids = bps.map(b => b.id);
+        if (ids.length) {
+          const more = (await q(`SELECT DISTINCT ingredient_id id FROM ingredient_seller_products WHERE seller_type='brand' AND seller_product_id IN (:ids) AND ingredient_id IS NOT NULL`, { ids })).map(r => r.id);
+          await IngredientSellerProduct.destroy({ where: { seller_type: 'brand', seller_product_id: ids }, force: true });
+          const all = [...new Set([...ingIds, ...more])];
+          if (all.length) {
+            for (const tb of ['restaurant_ingredient_costs', 'stock_alerts', 'inventory_transactions', 'inventory_batches'])
+              try { await sequelize.query(`DELETE FROM ${tb} WHERE ingredient_id IN (:a)`, { replacements: { a: all } }); } catch {}
+            await Ingredient.destroy({ where: { id: all }, force: true });
           }
           await BrandProduct.destroy({ where: { id: ids }, force: true });
         }
@@ -7246,6 +7404,7 @@ async function runTests(allTests, category) {
   const ctx = await setup();
 
   defineAuthTests(ctx);
+  defineContextRequestTests(ctx);
   defineSecurityTests(ctx);
   definePosTests(ctx);
   defineMobileTests(ctx);

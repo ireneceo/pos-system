@@ -97,7 +97,9 @@ const TerminalPanel: React.FC<Props> = ({
     return (
       <div style={box} role="alert">
         <strong style={{ color: '#DC2626' }}>
-          {issue.kind === 'declined' ? t('cardTerminal.declined') : issue.kind === 'unknown' ? t('cardTerminal.unknown') : t('cardTerminal.error')}
+          {/* 단말기가 바빠 요청을 안 받은 것(H4xx)은 카드 거절이 아니다 — 제목부터 다르게(2026-10-05 운영 실측 «BUSY» 2건) */}
+          {issue.message === 'reason:terminalBusy' ? t('cardTerminal.busyTitle')
+            : issue.kind === 'declined' ? t('cardTerminal.declined') : issue.kind === 'unknown' ? t('cardTerminal.unknown') : t('cardTerminal.error')}
         </strong>
         <div style={{ marginTop: 4 }}>{reasonText(issue.message)}</div>
         {issue.kind === 'unknown' && issue.txnId ? (

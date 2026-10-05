@@ -18,6 +18,7 @@ import {
 import { FormGrid2, FormGrid4 } from '../../components/UI/FormGrid';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
+import { SellerSpecSummary, useSellerSpecCopy } from '../../components/Common/SellerProductSpecGuide';
 import { getAuthToken } from '../../utils/auth';
 import { parseMinOrderQty, qtyStepForUnit, PACKAGE_UNIT_SUGGESTIONS, CONTENT_UNIT_OPTIONS, withCurrentUnit, sellerSpecLabel, type OrderMode } from '../../utils/unitConversion';
 
@@ -470,6 +471,8 @@ const SupplierProductsTab: React.FC<Props> = ({
     lead_time_days: '0',
     option_group_ids: [] as number[]
   });
+  // 등록 폼의 «구매자가 보는 문장»·칸 설명 — 브랜드 폼과 같은 한 벌(2026-10-05 Fable 설계 §4-C)
+  const specCopy = useSellerSpecCopy(formData);
   const [formError, setFormError] = useState<string | null>(null);
   const [planLimit, setPlanLimit] = useState<PlanLimitError | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1044,113 +1047,17 @@ const SupplierProductsTab: React.FC<Props> = ({
               />
             </UIFormGroup>
 
-            <FormGrid4>
-              <UIFormGroup>
-                <FormLabel>{t('products.fields.unitPrice', 'Unit Price')} (RM) *</FormLabel>
-                <FormInput
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.unit_price}
-                  onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
-                  placeholder="0.00"
-                  required
-                />
-                {/*
-                  "가격을 어떻게 설정해?" — 화면에 설명이 없어서 나온 질문이다(2026-08-30 Irene).
-                  같은 숫자 칸이지만 주문 방식에 따라 **무엇 1개당 가격인지**가 달라진다.
-                */}
-                <PriceMeaning>
-                  {!formData.unit
-                    // 단위를 아직 안 고르면 규격 문구를 만들 수 없다 — 억지로 "1 unit of 1" 같은 말을 만들지 않는다.
-                    ? t('products.priceMeaning.needUnit', 'Choose a unit below to see what this price covers')
-                    : formData.order_mode === 'measure'
-                      ? t('products.priceMeaning.measure', 'Price per 1 {{unit}}', { unit: formData.unit })
-                      : t('products.priceMeaning.pack', 'Price per 1 unit of {{spec}}', {
-                          spec: sellerSpecLabel({ seller_unit: formData.unit, base_quantity: formData.base_quantity || 1, seller_package_unit: formData.package_unit, order_mode: formData.order_mode })
-                        })}
-                </PriceMeaning>
-              </UIFormGroup>
-
-              <UIFormGroup>
-                <FormLabel>{t('products.fields.baseQuantity', 'Base Qty')}</FormLabel>
-                <FormInput
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={formData.base_quantity}
-                  onChange={(e) => setFormData({ ...formData, base_quantity: e.target.value })}
-                  placeholder="1"
-                />
-                {/*
-                  Unit 은 **내용물 단위**가 정본이다(2026-08-30 규약). 용기 이름(포대·박스)을 담는
-                  별도 컬럼이 없어서, Unit 에 'bag' 을 넣으면 단위당 가격 비교가 원천 불가해진다.
-                */}
-                <PriceMeaning>
-                  {t('products.fields.baseQuantityHint',
-                    'If sold in packs, put the content unit here (kg, g) and the amount in Base Qty (e.g. 5)')}
-                </PriceMeaning>
-              </UIFormGroup>
-
-              <UIFormGroup>
-                <FormLabel>{t('products.fields.unit', 'Unit')}</FormLabel>
-                <FormSelect
-                  value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                >
-                  <option value="">Select unit</option>
-                  {/* 내용물 단위만(kg·g·L·ml·piece). 포장 이름은 옆 Package Unit 칸 — 옛 상품의 값은 그대로 남긴다. */}
-                  {withCurrentUnit(CONTENT_UNIT_OPTIONS, formData.unit).map((u) => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </FormSelect>
-              </UIFormGroup>
-
-              {/*
-                기준단위(포장) — «10 kg/BOX × 3 BOX» 의 BOX. 구매자의 발주 수량에 붙는다(2026-09-11 Irene).
-                자유 입력: 인보이스 UOM(Btl·PKT·Tin)을 그대로 적을 수 있게. 무게로 주문하면 kg 자체가 주문 단위라 쓰지 않는다.
-              */}
-              <UIFormGroup>
-                <FormLabel>{t('products.fields.packageUnit', 'Package Unit')}</FormLabel>
-                <FormInput
-                  type="text"
-                  list="supplier-package-unit-options"
-                  maxLength={50}
-                  value={formData.package_unit}
-                  onChange={(e) => setFormData({ ...formData, package_unit: e.target.value })}
-                  placeholder={t('products.fields.packageUnitPlaceholder', 'e.g. box, pack, bottle') as string}
-                  disabled={formData.order_mode === 'measure'}
-                />
-                <datalist id="supplier-package-unit-options">
-                  {PACKAGE_UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
-                </datalist>
-                <PriceMeaning>
-                  {t('products.fields.packageUnitHint', 'What buyers count when ordering — e.g. 10 kg per BOX, ordered as 3 BOX')}
-                </PriceMeaning>
-              </UIFormGroup>
-
-              <UIFormGroup>
-                <FormLabel>{t('products.fields.minOrderQuantity', 'Min Order')}</FormLabel>
-                {/* 무게·부피로 주문하면 0.5 같은 최소치가 의미를 갖는다. 단위가 step 을 정한다. */}
-                <FormInput
-                  type="number"
-                  min={formData.order_mode === 'measure' ? '0.01' : '1'}
-                  step={formData.order_mode === 'measure' ? qtyStepForUnit(formData.unit) : 1}
-                  value={formData.min_order_quantity}
-                  onChange={(e) =>
-                    setFormData({ ...formData, min_order_quantity: e.target.value })
-                  }
-                />
-              </UIFormGroup>
-            </FormGrid4>
-
             {/*
-              주문 방식 — 구매자가 이 상품을 "몇 개" 로 담을지 "몇 kg" 로 담을지 정한다.
-              전문용어(mode/catch-weight) 금지: 판매자가 읽고 바로 아는 말만 쓴다.
-              기본은 '개수로 주문' = 기존 동작이라, 손대지 않으면 지금까지와 똑같이 등록된다.
+              판매 규격 — 브랜드 폼과 같은 순서·같은 문구(2026-10-05 Fable 설계 §4-C · components/Common/SellerProductSpecGuide):
+                주문 방식 → 한 묶음 규격 → 가격 → 최소 주문. 맨 위 문장은 칸을 바꾸면 즉시 갱신된다.
+              «가격을 어떻게 설정해?»(2026-08-30 Irene) — 가격 라벨에 «무엇 1개의 가격인지» 를 박는다.
             */}
+            <SellerSpecSummary title={specCopy.summaryTitle} text={specCopy.summary} />
+
+            {/* 1. 주문 방식 — 전문용어(mode/catch-weight) 금지. 기본 '개수로 주문' = 기존 동작 */}
             <UIFormGroup>
               <FormLabel>{t('products.fields.orderMode', 'Order Method')}</FormLabel>
+              <OrderModeHint style={{ marginTop: 0, marginBottom: 6 }}>{specCopy.orderModeQuestion}</OrderModeHint>
               <OrderModeRow role="radiogroup" aria-label={t('products.fields.orderMode', '주문 방식')}>
                 {(['pack', 'measure'] as OrderMode[]).map((mode) => (
                   <OrderModeOption key={mode} $active={formData.order_mode === mode}>
@@ -1169,14 +1076,96 @@ const SupplierProductsTab: React.FC<Props> = ({
                   </OrderModeOption>
                 ))}
               </OrderModeRow>
-              <OrderModeHint>
-                {formData.order_mode === 'measure'
-                  ? t('products.orderMode.measureHint', "Buyers order like '2.5 {{unit}}'", { unit: formData.unit || 'kg' })
-                  : t('products.orderMode.packHint', "Buyers order like '3 units'{{spec}}", {
-                      spec: formData.unit ? ` (${sellerSpecLabel({ seller_unit: formData.unit, base_quantity: formData.base_quantity || 1, seller_package_unit: formData.package_unit, order_mode: formData.order_mode })})` : ''
-                    })}
-              </OrderModeHint>
             </UIFormGroup>
+
+            {/* 2. 한 묶음 규격 — Unit 은 **내용물 단위**가 정본(2026-08-30 규약). 무게로 주문하면 기준숫자·포장 칸을 접는다. */}
+            <UIFormGroup>
+              <FormLabel>{specCopy.specTitle}</FormLabel>
+              <FormGrid4>
+                {formData.order_mode !== 'measure' && (
+                  <UIFormGroup>
+                    <FormLabel>{specCopy.baseQuantityLabel}</FormLabel>
+                    <FormInput
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={formData.base_quantity}
+                      onChange={(e) => setFormData({ ...formData, base_quantity: e.target.value })}
+                      placeholder="1"
+                    />
+                  </UIFormGroup>
+                )}
+                <UIFormGroup>
+                  <FormLabel>{specCopy.unitLabel}</FormLabel>
+                  <FormSelect
+                    value={formData.unit}
+                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                  >
+                    <option value="">{t('common:sellerProduct.fields.selectUnit', 'Select unit')}</option>
+                    {/* 내용물 단위만(kg·g·L·ml·piece). 포장 이름은 기준단위(포장) 칸 — 옛 상품의 값은 그대로 남긴다. */}
+                    {withCurrentUnit(CONTENT_UNIT_OPTIONS, formData.unit).map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </FormSelect>
+                </UIFormGroup>
+                {formData.order_mode !== 'measure' && (
+                  <UIFormGroup>
+                    {/* 기준단위(포장) — «10 kg/BOX × 3 BOX» 의 BOX. 자유 입력(인보이스 UOM Btl·PKT·Tin 그대로) */}
+                    <FormLabel>{t('products.fields.packageUnit', 'Package Unit')}</FormLabel>
+                    <FormInput
+                      type="text"
+                      list="supplier-package-unit-options"
+                      maxLength={50}
+                      value={formData.package_unit}
+                      onChange={(e) => setFormData({ ...formData, package_unit: e.target.value })}
+                      placeholder={t('products.fields.packageUnitPlaceholder', 'e.g. box, pack, bottle') as string}
+                    />
+                    <datalist id="supplier-package-unit-options">
+                      {PACKAGE_UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
+                    </datalist>
+                  </UIFormGroup>
+                )}
+              </FormGrid4>
+              {formData.order_mode !== 'measure' && <PriceMeaning>{specCopy.specHint}</PriceMeaning>}
+              {specCopy.specPreview && (
+                <PriceMeaning style={{ color: '#0A2540', fontWeight: 600 }}>{specCopy.specPreview}</PriceMeaning>
+              )}
+            </UIFormGroup>
+
+            <FormGrid2>
+              {/* 3. 가격 */}
+              <UIFormGroup>
+                <FormLabel>{specCopy.priceLabel} *</FormLabel>
+                <FormInput
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.unit_price}
+                  onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
+                  placeholder="0.00"
+                  required
+                />
+                <PriceMeaning>{specCopy.priceMeaning}</PriceMeaning>
+              </UIFormGroup>
+
+              {/* 4. 최소 주문 — 하한. 무게·부피로 주문하면 0.5 같은 최소치가 의미를 갖는다(단위가 step 을 정한다) */}
+              <UIFormGroup>
+                <FormLabel>{specCopy.minLabel}</FormLabel>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FormInput
+                    type="number"
+                    min={formData.order_mode === 'measure' ? '0.01' : '1'}
+                    step={formData.order_mode === 'measure' ? qtyStepForUnit(formData.unit) : 1}
+                    value={formData.min_order_quantity}
+                    onChange={(e) =>
+                      setFormData({ ...formData, min_order_quantity: e.target.value })
+                    }
+                  />
+                  {specCopy.orderUnit && <span style={{ fontSize: '13px', color: '#4B5563', whiteSpace: 'nowrap' }}>{specCopy.orderUnit}</span>}
+                </div>
+                <PriceMeaning>{specCopy.minHint}</PriceMeaning>
+              </UIFormGroup>
+            </FormGrid2>
 
             <FormGrid2>
               <UIFormGroup>

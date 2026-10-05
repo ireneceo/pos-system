@@ -14,6 +14,7 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
+import { SellerSpecSummary, useSellerSpecCopy } from '../../components/Common/SellerProductSpecGuide';
 import RegisterExternalSupplierModal from '../../components/Common/RegisterExternalSupplierModal';
 import { useTranslation } from 'react-i18next';
 
@@ -450,7 +451,6 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     product_kind: 'stock' as ProductKind,
     unit_price: '',
     current_stock: 0,
-    stock_unit: '',
     min_order_quantity: '1',
     category_id: '',
     image_url: '',
@@ -468,6 +468,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     restaurant_ids: [] as number[],
     option_group_ids: [] as number[]
   });
+  // 등록 폼의 «구매자가 보는 문장»·칸 설명 — 공급업체 폼과 같은 한 벌(2026-10-05 Fable 설계 §4-C)
+  const specCopy = useSellerSpecCopy(formData);
   const [restaurants, setRestaurants] = useState<Array<{ id: number; name: string; brand_name?: string }>>([]);
   const [setMenuSearchQuery, setSetMenuSearchQuery] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -599,7 +601,6 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         product_kind: ((product as any).product_kind || 'stock') as ProductKind,
         unit_price: product.unit_price.toString(),
         current_stock: Number((product as any).current_stock) || 0,
-        stock_unit: (product as any).stock_unit || '',
         min_order_quantity: product.min_order_quantity.toString(),
         category_id: product.category_id?.toString() || '',
         image_url: product.image_url || '',
@@ -630,7 +631,6 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         product_kind: 'stock' as ProductKind,
         unit_price: '',
     current_stock: 0,
-    stock_unit: '',
         min_order_quantity: '1',
         category_id: categories.length > 0 ? categories[0].id.toString() : '',
         image_url: '',
@@ -774,7 +774,6 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           product_kind: formData.product_kind,
           unit_price: parseFloat(formData.unit_price) || 0,
           current_stock: !formData.product_recipe_id ? (Number(formData.current_stock) || 0) : 0,
-          stock_unit: formData.stock_unit || null,
           min_order_quantity: parseMinOrderQty(formData.min_order_quantity),
           category_id: formData.category_id ? parseInt(formData.category_id) : null,
           image_url: formData.image_url || null,
@@ -1303,37 +1302,104 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               />
             </UIFormGroup>
 
-            {/* 레시피(BOM) 없는 프로덕트의 자체 재고 — 매장 메뉴와 같은 규칙.
-                레시피를 연결하면 매입자재가 빠지므로 이 칸은 나타나지 않는다(둘 중 하나다).
-                2026-09-01(Q5): 켜고 끄는 체크박스 제거 — 레시피가 없으면 항상 이 수량이 재고다. */}
-            {!formData.product_recipe_id && (
-              <UIFormGroup>
-                <FormLabel>Stock for this product</FormLabel>
-                <div style={{ fontSize: '13px', color: '#4B5563', marginBottom: '8px' }}>
-                  Sold as-is (no recipe) — this product itself is the stock
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <FormInput
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={formData.current_stock ?? 0}
-                    onChange={(e) => setFormData({ ...formData, current_stock: parseFloat(e.target.value) || 0 })}
-                    placeholder="Current stock"
-                  />
-                  <FormInput
-                    type="text"
-                    value={formData.stock_unit || ''}
-                    onChange={(e) => setFormData({ ...formData, stock_unit: e.target.value })}
-                    placeholder="Unit (e.g. carton, box)"
-                  />
-                </div>
-              </UIFormGroup>
-            )}
+            {/*
+              판매 규격 — 판매자가 생각하는 순서로 채운다(2026-10-05 Fable 설계 §4-C · Irene 「완전 쉽게 알 수 없어?」):
+                주문 방식 → 한 묶음 규격 → 가격 → 최소 주문 → 상품 종류 → 현재 재고.
+              맨 위 문장(구매자가 보는 것)은 칸을 바꾸면 즉시 갱신된다. 정식 명칭(§2-2)은 그대로, 설명만 붙인다.
+              문구·규칙 = components/Common/SellerProductSpecGuide (공급업체 폼과 같은 한 벌).
+            */}
+            <SellerSpecSummary title={specCopy.summaryTitle} text={specCopy.summary} />
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+            {/* 1. 주문 방식 — 구매자가 «몇 개» 로 담을지 «몇 kg» 로 담을지 */}
+            <UIFormGroup>
+              <FormLabel>{t('products.fields.orderMode', 'Order Method')}</FormLabel>
+              <OrderModeHint style={{ marginTop: 0, marginBottom: 6 }}>{specCopy.orderModeQuestion}</OrderModeHint>
+              <OrderModeRow role="radiogroup" aria-label={t('products.fields.orderMode', 'Order Method') as string}>
+                {(['pack', 'measure'] as OrderMode[]).map((mode) => (
+                  <OrderModeOption key={mode} $active={formData.order_mode === mode}>
+                    <input
+                      type="radio"
+                      name="brand_order_mode"
+                      value={mode}
+                      checked={formData.order_mode === mode}
+                      onChange={() => setFormData({ ...formData, order_mode: mode })}
+                    />
+                    <span>
+                      {mode === 'pack'
+                        ? t('products.orderMode.pack', 'By count (pack / box)')
+                        : t('products.orderMode.measure', 'By weight or volume (kg, g, L, ml)')}
+                    </span>
+                  </OrderModeOption>
+                ))}
+              </OrderModeRow>
+            </UIFormGroup>
+
+            {/* 2. 한 묶음 규격 — [취급 기준숫자 45] [취급단위 g] 가 [기준단위(포장) pack] 하나 → «1 pack = 45 g».
+                무게로 주문하면 kg 자체가 주문 단위라 기준숫자·포장 칸을 접는다. */}
+            <UIFormGroup>
+              <FormLabel>{specCopy.specTitle}</FormLabel>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
+                {formData.order_mode !== 'measure' && (
+                  <UIFormGroup>
+                    <FormLabel>{specCopy.baseQuantityLabel} *</FormLabel>
+                    <FormInput
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={formData.base_quantity}
+                      onChange={(e) => setFormData({ ...formData, base_quantity: e.target.value })}
+                      placeholder="1"
+                      required
+                    />
+                  </UIFormGroup>
+                )}
+                <UIFormGroup>
+                  <FormLabel>{specCopy.unitLabel} *</FormLabel>
+                  <FormSelect
+                    value={formData.unit}
+                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                    required
+                  >
+                    <option value="">{t('common:sellerProduct.fields.selectUnit', 'Select unit')}</option>
+                    {/* 내용물 단위만(kg·g·L·ml·piece). 포장 이름은 기준단위(포장) 칸 — 옛 상품의 값은 그대로 남긴다.
+                        서비스는 파는 단위가 시간이라 'hour' 를 더한다(2026-09-13 · Irene 「단위가 시간이거든」).
+                        재고 상품에는 넣지 않는다 — 매장 재고 단위 목록(8개 고정)에 없는 값이라 재고로 넘어갈 수 없다. */}
+                    {withCurrentUnit(
+                      formData.product_kind === 'service' ? [...CONTENT_UNIT_OPTIONS, 'hour'] : CONTENT_UNIT_OPTIONS,
+                      formData.unit
+                    ).map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </FormSelect>
+                </UIFormGroup>
+                {formData.order_mode !== 'measure' && (
+                  <UIFormGroup>
+                    {/* 기준단위(포장) — 매장이 발주할 때 수량에 붙는 단위 «10 kg/BOX × 3 BOX» (2026-09-11 Irene). 자유 입력. */}
+                    <FormLabel>{t('products.fields.packageUnit', 'Package Unit')}</FormLabel>
+                    <FormInput
+                      type="text"
+                      list="brand-package-unit-options"
+                      maxLength={50}
+                      value={formData.package_unit}
+                      onChange={(e) => setFormData({ ...formData, package_unit: e.target.value })}
+                      placeholder={t('products.fields.packageUnitPlaceholder', 'e.g. box, pack, bottle') as string}
+                    />
+                    <datalist id="brand-package-unit-options">
+                      {PACKAGE_UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
+                    </datalist>
+                  </UIFormGroup>
+                )}
+              </div>
+              {formData.order_mode !== 'measure' && <OrderModeHint>{specCopy.specHint}</OrderModeHint>}
+              {specCopy.specPreview && (
+                <OrderModeHint style={{ color: '#0A2540', fontWeight: 600 }}>{specCopy.specPreview}</OrderModeHint>
+              )}
+            </UIFormGroup>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              {/* 3. 가격 — 무엇 1개의 가격인지 라벨에 박는다(«1 pack 가격») + 내용물 기준 단가 */}
               <UIFormGroup>
-                <FormLabel>Unit Price (RM) *</FormLabel>
+                <FormLabel>{specCopy.priceLabel} *</FormLabel>
                 <FormInput
                   type="number"
                   step="0.01"
@@ -1343,144 +1409,82 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                   placeholder="0.00"
                   required
                 />
+                <OrderModeHint>{specCopy.priceMeaning}</OrderModeHint>
               </UIFormGroup>
 
+              {/* 4. 최소 주문 — 하한(그 위로는 1개씩). 서버가 구매자 경로에서 막는다(utils/poMinOrder.js) */}
               <UIFormGroup>
-                <FormLabel>Base Qty *</FormLabel>
-                <FormInput
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={formData.base_quantity}
-                  onChange={(e) => setFormData({ ...formData, base_quantity: e.target.value })}
-                  placeholder="1"
-                  required
-                />
-              </UIFormGroup>
-
-              <UIFormGroup>
-                <FormLabel>Unit *</FormLabel>
-                <FormSelect
-                  value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                  required
-                >
-                  <option value="">{'Select unit'}</option>
-                  {/* 내용물 단위만(kg·g·L·ml·piece). 포장 이름은 Package Unit 칸 — 옛 상품의 값은 그대로 남긴다.
-                      서비스는 파는 단위가 시간이라 'hour' 를 더한다(2026-09-13 · Irene 「단위가 시간이거든」).
-                      재고 상품에는 넣지 않는다 — 매장 재고 단위 목록(8개 고정)에 없는 값이라 재고로 넘어갈 수 없다. */}
-                  {withCurrentUnit(
-                    formData.product_kind === 'service' ? [...CONTENT_UNIT_OPTIONS, 'hour'] : CONTENT_UNIT_OPTIONS,
-                    formData.unit
-                  ).map(u => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </FormSelect>
-              </UIFormGroup>
-
-              {/* 기준단위(포장) — 매장이 발주할 때 수량에 붙는 단위 «10 kg/BOX × 3 BOX» (2026-09-11 Irene). 자유 입력. */}
-              <UIFormGroup>
-                <FormLabel>{t('products.fields.packageUnit', 'Package Unit')}</FormLabel>
-                <FormInput
-                  type="text"
-                  list="brand-package-unit-options"
-                  maxLength={50}
-                  value={formData.package_unit}
-                  onChange={(e) => setFormData({ ...formData, package_unit: e.target.value })}
-                  placeholder={t('products.fields.packageUnitPlaceholder', 'e.g. box, pack, bottle') as string}
-                  disabled={formData.order_mode === 'measure'}
-                />
-                <datalist id="brand-package-unit-options">
-                  {PACKAGE_UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
-                </datalist>
-                <OrderModeHint>
-                  {t('products.fields.packageUnitHint', 'What buyers count when ordering — e.g. 10 kg per BOX, ordered as 3 BOX')}
-                </OrderModeHint>
-              </UIFormGroup>
-
-              <UIFormGroup>
-                <FormLabel>{t('products.fields.orderMode', 'Order Method')}</FormLabel>
-                {/*
-                  주문 방식 — 구매자가 이 상품을 "몇 개" 로 담을지 "몇 kg" 로 담을지 정한다.
-                  전문용어(mode/catch-weight) 금지: 판매자가 읽고 바로 아는 말만 쓴다.
-                  기본은 '개수로 주문' = 기존 동작이라, 손대지 않으면 지금까지와 똑같이 등록된다.
-                */}
-                <OrderModeRow role="radiogroup" aria-label={t('products.fields.orderMode', 'Order Method')}>
-                  {(['pack', 'measure'] as OrderMode[]).map((mode) => (
-                    <OrderModeOption key={mode} $active={formData.order_mode === mode}>
-                      <input
-                        type="radio"
-                        name="brand_order_mode"
-                        value={mode}
-                        checked={formData.order_mode === mode}
-                        onChange={() => setFormData({ ...formData, order_mode: mode })}
-                      />
-                      <span>
-                        {mode === 'pack'
-                          ? t('products.orderMode.pack', 'By count (pack / box)')
-                          : t('products.orderMode.measure', 'By weight or volume (kg, g, L, ml)')}
-                      </span>
-                    </OrderModeOption>
-                  ))}
-                </OrderModeRow>
-                <OrderModeHint>
-                  {formData.order_mode === 'measure'
-                    ? t('products.orderMode.measureHint', "Buyers order like '2.5 {{unit}}'", { unit: formData.unit || 'kg' })
-                    : t('products.orderMode.packHint', "Buyers order like '3 units'{{spec}}", {
-                        spec: formData.unit
-                          ? ` (${sellerSpecLabel({ seller_unit: formData.unit, base_quantity: formData.base_quantity || 1, seller_package_unit: formData.package_unit, order_mode: formData.order_mode })})` : ''
-                      })}
-                </OrderModeHint>
-              </UIFormGroup>
-
-              {/*
-                상품 종류 (2026-09-13 · Irene 「주문제작 / 서비스·기타 이렇게 나눠져야」).
-                «재고를 세는가»와 «배송이 있는가»는 다른 축이라 셋으로 나눈다.
-                  재고 상품   재고 셈 · 배송 함 (기본 = 종전 동작)
-                  주문제작    재고 안 셈 · 배송 함
-                  서비스/기타 재고 안 셈 · 배송 없음 → 판매자가 «완료 처리» 하면 끝
-              */}
-              <UIFormGroup>
-                <FormLabel>{t('products.fields.kind', 'Product type')}</FormLabel>
-                <OrderModeRow role="radiogroup" aria-label={t('products.fields.kind', 'Product type') as string}>
-                  {(['stock', 'made_to_order', 'service'] as ProductKind[]).map((kind) => (
-                    <OrderModeOption key={kind} $active={formData.product_kind === kind}>
-                      <input
-                        type="radio"
-                        name="brand_product_kind"
-                        value={kind}
-                        checked={formData.product_kind === kind}
-                        onChange={() => setFormData({ ...formData, product_kind: kind })}
-                      />
-                      <span>
-                        {kind === 'stock'
-                          ? t('products.fields.kindStock', 'Stocked goods')
-                          : kind === 'made_to_order'
-                            ? t('products.fields.kindMadeToOrder', 'Made to order')
-                            : t('products.fields.kindService', 'Service / other')}
-                      </span>
-                    </OrderModeOption>
-                  ))}
-                </OrderModeRow>
-                <OrderModeHint>
-                  {formData.product_kind === 'stock'
-                    ? t('products.fields.kindStockHint', 'Counted in stock and shipped — the usual case.')
-                    : formData.product_kind === 'made_to_order'
-                      ? t('products.fields.kindMadeToOrderHint', 'No stock is kept; made when an order comes in, then shipped.')
-                      : t('products.fields.kindServiceHint', 'No stock and no delivery — mark it complete when the work is done.')}
-                </OrderModeHint>
-              </UIFormGroup>
-
-              <UIFormGroup>
-                <FormLabel>{'Min Order Qty'}</FormLabel>
-                <FormInput
-                  type="number"
-                  min="1"
-                  value={formData.min_order_quantity}
-                  onChange={(e) => setFormData({ ...formData, min_order_quantity: e.target.value })}
-                />
+                <FormLabel>{specCopy.minLabel}</FormLabel>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FormInput
+                    type="number"
+                    min={formData.order_mode === 'measure' ? '0.01' : '1'}
+                    step={formData.order_mode === 'measure' ? '0.01' : '1'}
+                    value={formData.min_order_quantity}
+                    onChange={(e) => setFormData({ ...formData, min_order_quantity: e.target.value })}
+                  />
+                  {specCopy.orderUnit && <span style={{ fontSize: '13px', color: '#4B5563', whiteSpace: 'nowrap' }}>{specCopy.orderUnit}</span>}
+                </div>
+                <OrderModeHint>{specCopy.minHint}</OrderModeHint>
               </UIFormGroup>
             </div>
+
+            {/*
+              5. 상품 종류 (2026-09-13 · Irene 「주문제작 / 서비스·기타 이렇게 나눠져야」).
+              «재고를 세는가»와 «배송이 있는가»는 다른 축이라 셋으로 나눈다.
+                재고 상품   재고 셈 · 배송 함 (기본 = 종전 동작)
+                주문제작    재고 안 셈 · 배송 함
+                서비스/기타 재고 안 셈 · 배송 없음 → 판매자가 «완료 처리» 하면 끝
+            */}
+            <UIFormGroup>
+              <FormLabel>{t('products.fields.kind', 'Product type')}</FormLabel>
+              <OrderModeRow role="radiogroup" aria-label={t('products.fields.kind', 'Product type') as string}>
+                {(['stock', 'made_to_order', 'service'] as ProductKind[]).map((kind) => (
+                  <OrderModeOption key={kind} $active={formData.product_kind === kind}>
+                    <input
+                      type="radio"
+                      name="brand_product_kind"
+                      value={kind}
+                      checked={formData.product_kind === kind}
+                      onChange={() => setFormData({ ...formData, product_kind: kind })}
+                    />
+                    <span>
+                      {kind === 'stock'
+                        ? t('products.fields.kindStock', 'Stocked goods')
+                        : kind === 'made_to_order'
+                          ? t('products.fields.kindMadeToOrder', 'Made to order')
+                          : t('products.fields.kindService', 'Service / other')}
+                    </span>
+                  </OrderModeOption>
+                ))}
+              </OrderModeRow>
+              <OrderModeHint>
+                {formData.product_kind === 'stock'
+                  ? t('products.fields.kindStockHint', 'Counted in stock and shipped — the usual case.')
+                  : formData.product_kind === 'made_to_order'
+                    ? t('products.fields.kindMadeToOrderHint', 'No stock is kept; made when an order comes in, then shipped.')
+                    : t('products.fields.kindServiceHint', 'No stock and no delivery — mark it complete when the work is done.')}
+              </OrderModeHint>
+            </UIFormGroup>
+
+            {/* 6. 현재 재고 — 레시피(BOM)·재고아이템 없이 그대로 파는 재고 상품만. 레시피를 연결하면 매입자재가 빠지므로
+                이 칸은 나타나지 않는다(둘 중 하나다 · 2026-09-01 Q5).
+                «재고 단위» 글자 칸은 없앴다(2026-10-05 Fable 설계 §4-D = TRADE_STRUCTURE §5-12 A) —
+                출고가 `current_stock -= 주문 수량` 이라 재고는 **주문 단위(포장단위) 수**로 센다. 다른 단위를 적을 자리가 원래 없었다. */}
+            {!formData.product_recipe_id && !formData.product_ingredient_id && formData.product_kind === 'stock' && (
+              <UIFormGroup>
+                <FormLabel>{specCopy.stockLabel}</FormLabel>
+                <FormInput
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={formData.current_stock ?? 0}
+                  onChange={(e) => setFormData({ ...formData, current_stock: parseFloat(e.target.value) || 0 })}
+                  placeholder="0"
+                />
+                <OrderModeHint>{specCopy.stockHint}</OrderModeHint>
+              </UIFormGroup>
+            )}
 
             <UIFormGroup>
               <FormLabel>{'Product Image'}</FormLabel>

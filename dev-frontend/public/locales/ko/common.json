@@ -831,5 +831,44 @@
     "row": "앱 버전 {{current}} · 최신 {{latest}}",
     "upToDate": "최신 버전입니다"
   },
-  "loading": "불러오는 중…"
+  "loading": "불러오는 중…",
+  "sellerProduct": {
+    "unitFallback": "개",
+    "orderModeQuestion": "구매자가 이 상품을 어떻게 담나요?",
+    "summary": {
+      "title": "구매자에게 보이는 것",
+      "needFields": "단위와 가격을 넣으면 구매자에게 보이는 문장이 여기에 나옵니다.",
+      "pack": "구매자는 1 {{orderUnit}} = {{content}} 을 {{price}} 에, {{min}} {{orderUnit}} 부터 담습니다.",
+      "packPlain": "구매자는 {{orderUnit}} 단위로 하나에 {{price}} 에, {{min}} {{orderUnit}} 부터 담습니다.",
+      "measure": "구매자는 {{unit}} 단위로 {{unit}}당 {{price}} 에, {{min}} {{unit}} 부터 담습니다."
+    },
+    "spec": {
+      "title": "한 묶음 규격",
+      "hint": "취급단위 = 묶음 안에 든 것의 단위(g·kg·ml·L·piece). 기준단위(포장) = 구매자가 세는 포장 이름(pack·box).",
+      "measurePreview": "{{unit}} 단위로 바로 담습니다."
+    },
+    "price": {
+      "label": "1 {{orderUnit}} 가격 (RM)",
+      "labelMeasure": "1 {{unit}} 가격 (RM)",
+      "needUnit": "단위를 고르면 이 가격이 무엇의 가격인지 표시됩니다",
+      "meaningContent": "{{price}} / {{orderUnit}} ({{content}} · RM {{per}}/{{unit}})",
+      "meaningPlain": "{{price}} / {{orderUnit}}"
+    },
+    "min": {
+      "label": "최소 주문 수량",
+      "hint": "구매자는 {{min}} {{orderUnit}} 아래로 담을 수 없습니다. 그 위로는 1 {{orderUnit}} 씩 더할 수 있습니다.",
+      "hintMeasure": "구매자는 {{min}} {{unit}} 아래로 담을 수 없습니다. 그 위로는 자유롭게 담습니다.",
+      "hintNone": "최소 주문이 없으면 1 로 두세요."
+    },
+    "fields": {
+      "baseQuantity": "취급 기준숫자",
+      "unit": "취급단위",
+      "packageUnit": "기준단위(포장)",
+      "selectUnit": "단위 선택"
+    },
+    "stock": {
+      "label": "현재 재고 ({{orderUnit}} 수)",
+      "hint": "레시피 없이 그대로 파는 상품입니다. 구매자가 주문하는 단위({{orderUnit}})로 셉니다."
+    }
+  }
 }

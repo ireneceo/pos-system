@@ -1007,8 +1007,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     if (paymentMethod === 'card') {
       // 단말기 연동이면 카드종류는 단말기가 알려준다 — 캐셔 선택 불필요
       if (useTerminal && !terminalIssue) return true;
-      // 단말기에서 이 결제를 취소(Void)한 뒤엔 Confirm 잠김 — «다시 시도» 버튼으로만 새 결제(Fable 설계 2026-10-04 §3-3 A-2)
-      if (useTerminal && terminalIssue?.kind === 'voided') return false;
+      // 단말기 연동에서 거절·미확인·취소 뒤엔 Confirm 잠김 — 패널의 «다시 시도»/«수동 기록» 으로만 진행(분할 R1 과 같은 규칙).
+      //   2026-10-05 운영 실측: 거절 뒤 Confirm 이 열려 있어 «승인 안 됨인데 Confirm 이 눌린다»(실은 새 결제를 다시 보냄)로 보였다.
+      if (useTerminal) return false;
       // 매장 설정(payment_settings.card.requireCardType)이 켜져 있으면 카드종류 선택 필수.
       return !requireCardType || !!cardType;
     }

@@ -49,6 +49,12 @@ const UserContext = sequelize.define('UserContext', {
     allowNull: false,
     references: { model: 'users', key: 'id' }
   },
+  // 모자 단위 권한 (v1.3, 2026-10-05) — **Staff 모자에만** 값(1개 이상의 키), 다른 모자는 NULL(인스펙션 UC-007).
+  // users.permissions 는 계정 단위라 (사람 × 매장) 단위 권한은 모자 행에만 놓일 수 있다.
+  permissions: {
+    type: DataTypes.JSON,
+    allowNull: true
+  },
   // 픽커 정렬용 (최근 쓴 모자 우선). P1 에서는 아무도 쓰지 않는다.
   last_used_at: {
     type: DataTypes.DATE,

@@ -149,18 +149,21 @@ const HeaderContextSwitcher: React.FC<{ variant?: SwitcherVariant }> = ({ varian
   const navigate = useNavigate();
   const { user, contexts } = useAuth();
 
-  // 고를 것이 하나뿐이면 렌더하지 않는다(= 기존 화면과 동일).
-  if (!contexts || contexts.length < 2) return null;
+  // v1.3(2026-10-05, Irene 확정 D4): SA 외 전 사용자에게 상시 표시 — 모자 0개인 사람도 선택 화면
+  // (= 역할 추가 요청 입구)에 갈 길이 필요하다. SA 는 요청 대상이 아니라 그리지 않는다.
+  if (!user || user.role === 'System Admin') return null;
+  const list = contexts || [];
 
   // 지금 있는 곳: 오너 모자면 오너 카드, 매장 자격이면 그 매장, 아니면 본래 정체 카드.
   const rid = String(user?.restaurant_id ?? user?.restaurantId ?? '');
   const current =
-    (user?.role === 'Brand Manager' && contexts.find((c) => c.kind === 'granted' && c.entity_type === 'brand' && String(c.entity_id) === String(user?.brand_id ?? ''))) ||
-    (user?.role === 'Restaurant Owner' && contexts.find((c) => c.kind === 'granted' && c.entity_type === 'owner')) ||
-    contexts.find((c) => c.kind === 'granted' && c.entity_type === 'restaurant' && String(c.entity_id) === rid) ||
-    contexts.find((c) => c.kind === 'default');
+    (user?.role === 'Brand Manager' && list.find((c) => c.kind === 'granted' && c.entity_type === 'brand' && String(c.entity_id) === String(user?.brand_id ?? ''))) ||
+    (user?.role === 'Restaurant Owner' && list.find((c) => c.kind === 'granted' && c.entity_type === 'owner')) ||
+    list.find((c) => c.kind === 'granted' && c.entity_type === 'restaurant' && String(c.entity_id) === rid) ||
+    list.find((c) => c.kind === 'default');
 
-  const label = current?.label || t('context.select.title');
+  // 목록이 아직 없으면(모자 0개 · 미조회) 프로필 이름으로 폴백한다.
+  const label = current?.label || user?.name || t('context.select.title');
   const go = () => navigate('/pos/select-context');
 
   // 접힘 사이드바 — 아이콘만(이름은 tooltip). 44px 터치 타깃 확보.

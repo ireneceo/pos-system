@@ -34,7 +34,7 @@ import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { Modal as UIModal } from '../../components/UI/Modal';
-import { qtyStepForUnit, parseMinOrderQty, formatQuantity, sellerOrderUnitOf, sellerSpecText, type OrderMode } from '../../utils/unitConversion';
+import { qtyStepForUnit, parseMinOrderQty, formatQuantity, sellerOrderUnitOf, sellerSpecText, defaultLinkConversion, minQtyOf, minOrderViolationText, type OrderMode } from '../../utils/unitConversion';
 
 type SellerType = 'system_admin' | 'brand' | 'foodcourt' | 'supplier';
 
@@ -111,6 +111,7 @@ interface CatalogRow {
   /** 주문 방식 (2026-08-30 단위주문). 카탈로그 응답의 supplier_products 값. 없으면 'pack'. */
   order_mode?: OrderMode;
   base_quantity?: number;
+  package_unit?: string | null;
 }
 
 interface CartRow {
@@ -1726,31 +1727,22 @@ const NewPurchaseOrderPage: React.FC = () => {
     setOptionModal({ row: catalogShape, product: catalogShape });
   };
 
-  // 단위 호환성 그룹 + 자동 변환 계수 계산.
-  // 호환되면 정확한 conversion (예: kg↔g = 0.001/1000) 반환, 비호환이면 null (사용자 입력 강제).
-  const UNIT_WEIGHT = ['kg', 'g'];
-  const UNIT_VOLUME = ['L', 'ml'];
-  const UNIT_COUNT = ['piece', 'pack', 'can', 'bottle'];
-  const detectConversion = (ingredientUnit: string, sellerUnit: string): { auto: number | null; compatible: boolean; note?: string } => {
+  // 연결 환산 기본값 — «판매자 1 주문단위 = 내 재고 몇 단위» (2026-10-05 Fable 설계 §4-B).
+  //   옛 detectConversion 은 기준양을 무시해 «45 g/pack» 을 g 재료에 1 로 연결했다(1팩 입고 = 재고 +1 g).
+  //   규칙은 utils/unitConversion `defaultLinkConversion` 하나(서버 deriveLinkConversion 과 같은 답).
+  //   무게로 주문(measure)은 기준양 1 — 단위비만 남는다. 변환할 수 없는 조합은 null → 사람이 적는다.
+  const detectConversion = (ingredientUnit: string, row: CatalogRow): { auto: number | null; compatible: boolean; note?: string } => {
+    const sellerUnit = row.unit || '';
     if (!ingredientUnit || !sellerUnit) return { auto: 1, compatible: true };
-    const a = ingredientUnit, b = sellerUnit;
-    if (a === b) return { auto: 1, compatible: true };
-    // weight
-    if (UNIT_WEIGHT.includes(a) && UNIT_WEIGHT.includes(b)) {
-      if (a === 'kg' && b === 'g') return { auto: 0.001, compatible: true, note: '1g = 0.001 kg' };
-      if (a === 'g' && b === 'kg') return { auto: 1000, compatible: true, note: '1 kg = 1000 g' };
+    const r = row;
+    const base = r.order_mode === 'measure' ? 1 : (Number(r.base_quantity) > 0 ? Number(r.base_quantity) : 1);
+    const auto = defaultLinkConversion(base, sellerUnit, ingredientUnit);
+    const orderUnit = sellerOrderUnitOf({ seller_unit: sellerUnit, base_quantity: r.base_quantity ?? 1,
+      seller_package_unit: r.package_unit, order_mode: r.order_mode }, sellerUnit) || sellerUnit;
+    if (auto != null) {
+      return { auto, compatible: true, note: auto !== 1 ? `1 ${orderUnit} = ${formatQuantity(auto)} ${ingredientUnit}` : undefined };
     }
-    // volume
-    if (UNIT_VOLUME.includes(a) && UNIT_VOLUME.includes(b)) {
-      if (a === 'L' && b === 'ml') return { auto: 0.001, compatible: true, note: '1 ml = 0.001 L' };
-      if (a === 'ml' && b === 'L') return { auto: 1000, compatible: true, note: '1 L = 1000 ml' };
-    }
-    // count→count: 같은 ENUM 안에서도 변환 모름 (piece vs pack 등) — 사용자 입력
-    if (UNIT_COUNT.includes(a) && UNIT_COUNT.includes(b)) {
-      return { auto: null, compatible: false, note: t('unitCompat.diff', '{{a}} ↔ {{b}}: unit mismatch — manual entry required', { a, b }) as string };
-    }
-    // cross-group (weight ↔ volume ↔ count): 호환 안 됨
-    return { auto: null, compatible: false, note: t('unitCompat.incompatible', '{{a}} and {{b}} are incompatible. Enter manually or add as a separate ingredient', { a, b }) as string };
+    return { auto: null, compatible: false, note: t('unitCompat.diff', '{{a}} ↔ {{b}}: unit mismatch — manual entry required', { a: ingredientUnit, b: orderUnit }) as string };
   };
 
   const ensureIngredientAndAddToCart = async (row: CatalogRow, selectedOptions: SelectedOption[], adjustedUnitPrice: number, qty?: number, overrideConversion?: number, opts: { stockOnly?: boolean } = {}) => {
@@ -1788,7 +1780,7 @@ const NewPurchaseOrderPage: React.FC = () => {
         if (overrideConversion != null) {
           body.unit_conversion = overrideConversion;
         } else {
-          const conv = detectConversion(ingUnit, sellerUnit);
+          const conv = detectConversion(ingUnit, row);
           if (conv.auto != null && conv.compatible) {
             body.unit_conversion = conv.auto;
             if (conv.note) autoConvNote = conv.note; // 자동 변환 알림용
@@ -1959,6 +1951,15 @@ const NewPurchaseOrderPage: React.FC = () => {
       setError(t('newPo.error.empty', 'Cart is empty.') as string);
       return;
     }
+    // 최소주문 미달 줄 — 서버가 400 으로 막기 전에 화면에서 먼저 알린다(규칙은 같다 · utils/unitConversion minQtyOf)
+    const below = groups.flatMap(g => g.items)
+      .filter(({ row, seller }) => { const m = minQtyOf(seller); return m != null && row.quantity < m; })
+      .map(({ row, seller }) => ({ description: row.ingredient_name, quantity: row.quantity,
+        min: minQtyOf(seller) as number, unit: sellerOrderUnitOf(seller, row.ingredient_unit) }));
+    if (below.length) {
+      setError(minOrderViolationText(below, t));
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -2020,6 +2021,10 @@ const NewPurchaseOrderPage: React.FC = () => {
         }
         if (j?.code === 'NO_BUYER_CURRENCY' || j?.code === 'CURRENCY_MISMATCH') {
           setCurrencyConfirm({ message: j.message, settingsUrl: j.settingsUrl || '/pos/settings' });
+          return;
+        }
+        if (j?.code === 'BELOW_MIN_ORDER') {
+          setError(minOrderViolationText(j?.data?.violations, t));
           return;
         }
         setError(j?.message || t('newPo.error.failed', 'Failed to create POs') as string);
@@ -2648,16 +2653,20 @@ const NewPurchaseOrderPage: React.FC = () => {
                         //     measure → `1.5 kg` (무게 자체가 주문 단위)
                         //   규칙 단일 소스 = utils/unitConversion sellerOrderUnitOf (서버 utils/poLineSpec.js 와 같다)
                         const suffix = sellerOrderUnitOf(seller, row.ingredient_unit);
+                        // 최소주문 하한 — 판매자가 정한 값 아래로는 담을 수 없다(서버도 같은 규칙으로 막는다 · Fable 설계 §4-A).
+                        //   타이핑 중(22 를 치려고 2 를 친 순간)에는 두고, 칸을 벗어날 때 하한으로 되돌린다. 줄을 없애는 길은 × 하나.
+                        const minQ = minQtyOf(seller);
                         return (
-                          <QtyWrap>
+                          <QtyWrap title={minQ != null ? (t('newPo.cart.minHint', { defaultValue: 'Minimum {{min}} {{unit}}', min: formatQuantity(minQ), unit: suffix }) as string) : undefined}>
                             <QtyInput
                               type="number"
-                              min={0}
+                              min={minQ ?? 0}
                               step={isMeasure ? qtyStepForUnit(qtyUnit) : 1}
                               value={row.quantity}
                               onChange={(e) => updateRow(row.cart_key, {
                                 quantity: Math.max(0, parseFloat(e.target.value) || 0)
                               })}
+                              onBlur={() => { if (minQ != null && row.quantity < minQ) updateRow(row.cart_key, { quantity: minQ }); }}
                               style={suffix ? { paddingRight: Math.min(64, 12 + suffix.length * 6), textAlign: 'left' } : undefined}
                             />
                             {suffix && <QtyUnit title={suffix}>{suffix}</QtyUnit>}
@@ -2690,6 +2699,11 @@ const NewPurchaseOrderPage: React.FC = () => {
                         </div>
                       );
                     })()}
+                    {minQtyOf(seller) != null && (
+                      <div style={{ fontSize: 11, color: row.quantity < (minQtyOf(seller) as number) ? '#B91C1C' : '#6B7280' }}>
+                        {t('newPo.cart.minHint', { defaultValue: 'Minimum {{min}} {{unit}}', min: formatQuantity(minQtyOf(seller) as number), unit: sellerOrderUnitOf(seller, row.ingredient_unit) })}
+                      </div>
+                    )}
                     {row.selected_options && row.selected_options.length > 0 && (
                       <div style={{ fontSize: 11, color: '#635BFF', display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         {row.selected_options.map(o => (
@@ -2705,9 +2719,15 @@ const NewPurchaseOrderPage: React.FC = () => {
                         <VendorMini
                           style={{ flex: 1, fontSize: 11, padding: '3px 6px' }}
                           value={row.selected_seller_id}
-                          onChange={(e) => updateRow(row.cart_key, {
-                            selected_seller_id: parseInt(e.target.value, 10)
-                          })}
+                          onChange={(e) => {
+                            // 판매자를 바꾸면 하한도 그 판매자 것으로 (최소주문 — Fable 설계 §4-A)
+                            const sid = parseInt(e.target.value, 10);
+                            const nextMin = minQtyOf(row.available_sellers.find(s => s.id === sid));
+                            updateRow(row.cart_key, {
+                              selected_seller_id: sid,
+                              ...(nextMin != null && row.quantity < nextMin ? { quantity: nextMin } : {})
+                            });
+                          }}
                         >
                           {row.available_sellers
                             .slice()

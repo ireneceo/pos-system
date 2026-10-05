@@ -105,4 +105,16 @@ function normalizePackageUnit(v) {
   return s || null;
 }
 
-module.exports = { sellerOrderLine, resolveOrderLine, lineSpecText, lineQtyText, normalizePackageUnit, SELLER_PRODUCT_MODEL };
+/**
+ * 판매 상품 **자체 재고**의 단위 라벨 (2026-10-05 Fable 설계 §4-D = TRADE_STRUCTURE §5-12 A).
+ * 자체 재고는 주문 단위(포장단위)로 센다 — 출고 차감이 `current_stock -= quantity_ordered` 다.
+ * «재고 단위»(stock_unit) 칸은 화면에서 없앴고 새로 쓰지 않는다. 옛 값이 있으면 그 값, 없으면 주문 단위.
+ * ⚠ 라벨이다(원장 unit 칸). 계산에 쓰지 말 것.
+ */
+function selfStockUnit(prod, fallback = null) {
+  if (!prod) return fallback;
+  if (prod.stock_unit) return prod.stock_unit;
+  return sellerOrderLine(prod, null).unit || fallback;
+}
+
+module.exports = { sellerOrderLine, resolveOrderLine, lineSpecText, lineQtyText, normalizePackageUnit, selfStockUnit, SELLER_PRODUCT_MODEL };

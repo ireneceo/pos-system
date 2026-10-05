@@ -10,6 +10,8 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import StaffPermissionPicker, { MENU_GROUPS } from '../../components/Staff/StaffPermissionPicker';
+import ContextRequestsPanel from '../../components/ContextRequests/ContextRequestsPanel';
 
 // Staff ID 매장 네임스페이스(r{restaurant_id}:counter) → 화면 표시용으로 prefix 제거.
 // 백엔드가 저장 시 prefix 를 붙이므로 폼/리스트에는 항상 벗긴 친근한 ID 만 노출한다.
@@ -31,28 +33,6 @@ interface Staff {
   joinDate: string;
   permissions: string[];
 }
-
-// Staff 권한 토글용 메뉴 그룹 (hasMenuPermission으로 체크하는 항목만)
-// Dashboard, POS Terminal, Live Orders, Kitchen/Customer Display, Mobile Order, Profile은
-// MainLayout에서 항상 표시되므로 여기에 포함하지 않음
-const MENU_GROUPS = [
-  { key: 'menu_management', label: 'Products (Menu / Categories / Options / Recipe)', alwaysOn: false },
-  { key: 'inventory', label: 'Stock Management (Suppliers / Inventory / Purchase Orders)', alwaysOn: false },
-  { key: 'marketing', label: 'Marketing (Customers / Coupons)', alwaysOn: false },
-  { key: 'reports', label: 'Analytics (Reports / Activity History)', alwaysOn: false },
-  { key: 'support', label: 'Communication (Notices / Manuals / Inquiries)', alwaysOn: false },
-  { key: 'settings', label: 'Settings (Store / Company / Notifications)', alwaysOn: false },
-];
-
-// 작업 접근(운영 화면) — 직원이 보는 작업 화면 결정. docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md
-// 체크 = 그 권한을 줌(허용). 서버(홀) 역할 = POS/Counter 만 켜고 Payment·Cancel/Void 는 끈다.
-const WORK_ACCESS = [
-  { key: 'access_pos', label: 'POS / Counter — take orders, add items, move tables' },
-  { key: 'access_payment', label: 'Payment — collect payment from customers' },
-  { key: 'access_void', label: 'Cancel / Void — cancel orders and void items' },
-  { key: 'access_serving', label: 'Serving — serve only (item list), no ordering' },
-  { key: 'access_kitchen', label: 'Kitchen — Kitchen Display only' },
-];
 
 const StaffContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -247,37 +227,6 @@ const ActionButton = styled.button`
   }
 `;
 
-
-// Menu Access 체크박스 스타일
-const PermissionGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 8px;
-`;
-
-const PermissionLabel = styled.label<{ alwaysOn?: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  background: ${props => props.alwaysOn ? '#F0FDF4' : 'white'};
-  border: 1px solid ${props => props.alwaysOn ? '#BBF7D0' : '#C7CED6'};
-  cursor: ${props => props.alwaysOn ? 'default' : 'pointer'};
-  font-size: 13px;
-  color: ${props => props.alwaysOn ? '#166534' : '#1F2937'};
-  opacity: ${props => props.alwaysOn ? 0.8 : 1};
-  transition: all 0.15s;
-
-  &:hover {
-    border-color: ${props => props.alwaysOn ? '#BBF7D0' : '#635BFF'};
-  }
-`;
-
-const AlwaysOnBadge = styled.span`
-  font-size: 11px;
-  color: #16A34A;
-`;
 
 const StaffPage: React.FC = () => {
   const { t } = useTranslation('staff');
@@ -632,63 +581,6 @@ const StaffPage: React.FC = () => {
     return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2) || '?';
   };
 
-  // Permission toggle helper
-  const renderPermissionCheckboxes = (
-    permissions: string[],
-    onChange: (updated: string[]) => void
-  ) => (
-    <div style={{ marginTop: '20px', padding: '16px', background: '#F1F4F8', borderRadius: '8px', border: '1px solid #C7CED6' }}>
-      {/* 작업 접근 — 어떤 운영 화면(포스/서빙/주방)을 보는지. 최소 1개 선택 권장. */}
-      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>Work access</div>
-      <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '12px' }}>
-        Which work screens this staff can open. Serving-only staff (no POS) won't see payment/cancel.
-      </div>
-      <PermissionGrid>
-        {WORK_ACCESS.map(group => (
-          <PermissionLabel key={group.key} alwaysOn={false}>
-            <input
-              type="checkbox"
-              checked={permissions.includes(group.key)}
-              onChange={(e) => {
-                const updated = e.target.checked
-                  ? [...permissions, group.key]
-                  : permissions.filter(p => p !== group.key);
-                onChange(updated);
-              }}
-              style={{ accentColor: '#635BFF' }}
-            />
-            {group.label}
-          </PermissionLabel>
-        ))}
-      </PermissionGrid>
-      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', margin: '16px 0 4px' }}>{t('staff:staffPage.menuAccess')}</div>
-      <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '4px' }}>
-        Always visible: Profile. Back-office sections below are optional:
-      </div>
-      <PermissionGrid>
-        {MENU_GROUPS.map(group => (
-          <PermissionLabel key={group.key} alwaysOn={group.alwaysOn}>
-            <input
-              type="checkbox"
-              checked={group.alwaysOn || permissions.includes(group.key)}
-              disabled={group.alwaysOn}
-              onChange={(e) => {
-                if (group.alwaysOn) return;
-                const updated = e.target.checked
-                  ? [...permissions, group.key]
-                  : permissions.filter(p => p !== group.key);
-                onChange(updated);
-              }}
-              style={{ accentColor: '#635BFF' }}
-            />
-            {group.label}
-            {group.alwaysOn && <AlwaysOnBadge>(Always ON)</AlwaysOnBadge>}
-          </PermissionLabel>
-        ))}
-      </PermissionGrid>
-    </div>
-  );
-
   return (
     <>
       <StaffContainer>
@@ -700,6 +592,9 @@ const StaffPage: React.FC = () => {
             </Button>
           </HeaderActions>
         </Header>
+
+        {/* 역할 추가 요청 (멀티 로그인 v1.3) — 이 매장 Staff 요청만(서버 범위). 이 페이지는 BG/FG/매니저도 열므로 RA·SA 일 때만. */}
+        {(user?.role === 'Restaurant Admin' || user?.role === 'System Admin') && <ContextRequestsPanel scope="restaurant" />}
 
         <Content>
           {listError && (
@@ -971,9 +866,11 @@ const StaffPage: React.FC = () => {
           </FormRow>
 
           {/* Menu Access - Staff 역할일 때만 표시 */}
-          {newStaff.role === 'Staff' && renderPermissionCheckboxes(
-            newStaff.permissions,
-            (updated) => setNewStaff(prev => ({ ...prev, permissions: updated }))
+          {newStaff.role === 'Staff' && (
+            <StaffPermissionPicker
+              value={newStaff.permissions}
+              onChange={(updated) => setNewStaff(prev => ({ ...prev, permissions: updated }))}
+            />
           )}
 
           {formError && showAddModal && (
@@ -1093,9 +990,11 @@ const StaffPage: React.FC = () => {
               </FormRow>
 
               {/* Menu Access - Staff 역할일 때만 표시 */}
-              {editingStaff.role === 'Staff' && renderPermissionCheckboxes(
-                editForm.permissions,
-                (updated) => setEditForm(prev => ({ ...prev, permissions: updated }))
+              {editingStaff.role === 'Staff' && (
+                <StaffPermissionPicker
+                  value={editForm.permissions}
+                  onChange={(updated) => setEditForm(prev => ({ ...prev, permissions: updated }))}
+                />
               )}
 
               {formError && showEditModal && (

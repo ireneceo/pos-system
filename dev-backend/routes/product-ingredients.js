@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { requireBGScope, applyBGFilter, assertBGOwnsRow, requireBrandScope } = require('../middleware/brandScope');
-const { parseConversion, propagateToOpenPoLines, buildConfirmationFields, conversionStatusFor, ConversionError } = require('../services/sellerLinkConversion');
+const { parseConversion, propagateToOpenPoLines, buildConfirmationFields, conversionStatusFor, ConversionError, deriveLinkConversion } = require('../services/sellerLinkConversion');
 const { sanitizeString } = require('../middleware/validation');
 const {
   ProductIngredient,
@@ -359,7 +359,9 @@ router.post('/from-catalog', async (req, res) => {
     if (!seller.ok) { await t.rollback(); return res.status(seller.status).json(seller.body); }
 
     const finalUnit = catalogLink.resolveUnit(body.unit, seller.productUnit);
-    const unitConversion = catalogLink.resolveUnitConversion(body.unit_conversion);
+    // 환산 기본값 — 사람 입력 우선, 없으면 판매자 기준양·단위로 계산(«45 g/pack» → g 재료 45).
+    //   그전엔 body 가 없으면 1 이었다(2026-10-05 Fable 설계 §4-B · services/sellerLinkConversion.deriveLinkConversion).
+    const convFor = (target) => deriveLinkConversion({ raw: body.unit_conversion, stock: target, sellerProduct: seller.sellerProductRow });
 
     // 2026-09-02(P3-②): 레시피 없는 브랜드 프로덕트도 "우리 쪽 항목"이 될 수 있다(RA 와 대칭).
     //   ⛔ 판매가를 공급가로 채우지 않는다 — 마진 0 사고 재발 방지.
@@ -379,7 +381,7 @@ router.post('/from-catalog', async (req, res) => {
         });
       }
       const r = await catalogLink.connectExisting({
-        target: bp, seller, unitConversion, targetKey: 'brand_product_id', transaction: t
+        target: bp, seller, unitConversion: convFor(bp), targetKey: 'brand_product_id', transaction: t
       });
       await t.commit();
       return res.status(r.status).json(r.body);
@@ -413,7 +415,7 @@ router.post('/from-catalog', async (req, res) => {
         min_stock: parseFloat(np.min_stock) || 0,
       }, { transaction: t });
       const mapping = await catalogLink.createMappingFor({
-        target: bp, seller, unitConversion, targetKey: 'brand_product_id', transaction: t
+        target: bp, seller, unitConversion: convFor(bp), targetKey: 'brand_product_id', transaction: t
       });
       await t.commit();
       return res.status(201).json({ success: true, data: { product: bp, mapping, created: true } });
@@ -428,7 +430,7 @@ router.post('/from-catalog', async (req, res) => {
         return res.status(404).json({ success: false, message: 'Target stock item not found' });
       }
       const r = await catalogLink.connectExisting({
-        target: targetPi, seller, unitConversion, targetKey: 'product_ingredient_id', transaction: t
+        target: targetPi, seller, unitConversion: convFor(targetPi), targetKey: 'product_ingredient_id', transaction: t
       });
       await t.commit();
       return res.status(r.status).json(r.body);
@@ -466,7 +468,7 @@ router.post('/from-catalog', async (req, res) => {
     }, { transaction: t });
 
     const mapping = await catalogLink.createMappingFor({
-      target: ingredient, seller, unitConversion, targetKey: 'product_ingredient_id', transaction: t
+      target: ingredient, seller, unitConversion: convFor(ingredient), targetKey: 'product_ingredient_id', transaction: t
     });
 
     await t.commit();

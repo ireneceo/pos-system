@@ -725,7 +725,9 @@ router.post('/switch-context', authenticateToken, async (req, res, next) => {
         brand_id: isBrandHat ? resolved.entity_id : null,
         foodcourt_id: null,
         manager_id: null,
-        permissions: isBrandHat ? [...userContexts.BRAND_MANAGER_HAT_PERMISSIONS] : []
+        // 투영(middleware/auth.js projectContext)과 같은 식 — Staff 모자는 그 행의 permissions(v1.3)
+        permissions: isBrandHat ? [...userContexts.BRAND_MANAGER_HAT_PERMISSIONS]
+          : (resolved.role === 'Staff' ? (Array.isArray(resolved.permissions) ? [...resolved.permissions] : []) : [])
       },
       // suspended 매장이어도 전환은 막지 않는다(설계 §4.2) — 프론트가 인보이스 pin 으로 처리.
       restaurantStatus: resolved.status,

@@ -1,0 +1,58 @@
+{
+  "tag": "context-request-moq-terminal",
+  "sw_version": "5.84-context-request-moq-terminal-20261005",
+  "date": "2026-10-05",
+  "in_progress": [
+    "카드 단말기 GHL UAT — 근무시간 테스트(10-05 승인 1건 성공)"
+  ],
+  "completed": [
+    "역할 추가 요청: 선택 화면 맨 아래 «+ 역할 추가 요청»(매장 직원·매장 관리자·매장 오너·브랜드 관리자) → 승인 → 선택 화면 카드. 직원 요청은 그 매장 관리자(+시스템 관리자)가 승인하며 권한을 고름, 그 외는 시스템 관리자 승인. 요청 패널(Staff 화면 상단)·메일·대시보드 알림",
+    "최소주문 강제: 장바구니에서 최소 수량 아래로 못 내림 · 서버도 발주 생성·수정·제출에서 막음(판매자 대리주문 제외, 최소 1 은 «정하지 않음»)",
+    "매장이 판매 상품을 연결할 때 환산에 팩 용량 반영(45 g/pack → g 재료 45, kg 재료 0.045)",
+    "판매 상품 등록 화면(브랜드·공급업체): 칸 설명·순서 정리 · «구매자는 1 pack = 45 g 을 RM 4.50 에, 22 pack 부터 담습니다» 미리보기 · 자체재고 «재고 단위» 칸 제거",
+    "카드 단말기 결제창: 거절 뒤 Confirm Payment 잠김(«Try again» 으로만 재시도) · 단말기 BUSY 는 «단말기 사용 중 — 결제가 시작되지 않았습니다» 제목"
+  ],
+  "remaining": [
+    "다음 섹션: 외부 공급업체 월별 SOA 대조 · 발주 스탭밀 구분 · 승인 메일 문구",
+    "같은 단위 + 기준양≠1 + 환산 1 인 기존 연결은 검사(R-SC-007)가 못 잡음 — 후속"
+  ],
+  "verification": {
+    "api": "health-check 295/295(신규: 역할 요청 익명 401·데모 RA·데모 BG/SA · 최소주문 M1~M3 g 45/kg 0.045/bulk·POST·PUT·submit 미달 400·판매자 대리 201) · jest 백엔드 329/329 · context-requests 15/15 · user-contexts-switch 38/38 · 프론트 jest 91/91",
+    "fault_injection": "역할 요청 FI-14~17(승인 grantContext 제거·승인 범위 검사 제거·투영 권한 []·모자 권한 NULL) 전부 검출 · 최소주문 submit 검사 제거/생성 검사 제거·환산 함수 1 고정 전부 검출 · 프론트 jest minQtyOf null 검출 — 모두 cp 원복 cmp 동일",
+    "regression": "verify-all --full(mount sweep 크래시 0) · print-guard 8/8 · design-guard 신규 0 · i18n 0 · 인스펙션 신규 실패 0",
+    "migration": "migrate-user-context-requests.js(표 신설) · migrate-user-contexts-permissions.js(user_contexts.permissions JSON NULL) — 둘 다 INSERT 0, registry deploy",
+    "sw_version": "5.84-context-request-moq-terminal-20261005",
+    "fable_note": "Fable 설계 .claude/fable-design-20261005-context-request.md(Irene «다 fable 판단으로» D1~D4 권고대로) + .claude/fable-design-20261005-moq-product-form.md(①~⑦ 권고대로, 단 ① 상품 16 은 매장 연결 1·수령 2 실측으로 «신규 등록» 으로 팀원 변경) + 단말기 결제창 팀원 수정(운영 실측 H400 BUSY 2건). 게이트 1회 대상"
+  },
+  "notes": [
+    "🔒 인쇄 보호파일·KDS·MainLayout 무접촉",
+    "최소주문 1 = 미설정(운영 무게 주문 0.3~0.7 보호)"
+  ],
+  "irene_actions_after_deploy": [
+    "GIT: 육개장 고기 45g 새 상품 등록(45 · g · pack · 4.50 · 최소 22) → 미리보기 문장 확인",
+    "선택 화면 맨 아래 «+ 역할 추가 요청» 1건 → 승인 화면",
+    "단말기: 거절 뒤 Confirm 잠김 · Try again"
+  ],
+  "issues": [
+    "최소주문이 안내 글자뿐 — 장바구니·서버에서 안 막음",
+    "판매 상품 연결 때 팩 용량 무시(1팩 = 1g)",
+    "상품 등록 화면 칸 이름이 어려움",
+    "멀티 로그인 중 역할 추가 신청 입구 없음",
+    "단말기 거절 뒤 Confirm Payment 가 눌리고 BUSY 가 «승인 안 됨» 으로 보임"
+  ],
+  "upcoming": [
+    "다음 섹션 3건"
+  ],
+  "behavior_changes": [
+    "최소주문보다 적게 담을 수 없다(최소 1 인 상품은 그대로)",
+    "사이드바 하단 스위처·대시보드 퀵액션이 시스템 관리자 외 모두에게 보인다(역할 추가 요청 입구)",
+    "판매 상품 등록 화면 칸 순서·설명이 바뀌었다",
+    "단말기 결제 거절 뒤엔 Try again 으로만 다시 보낸다"
+  ],
+  "check_areas": [
+    "선택 화면·Staff 화면 요청 패널",
+    "발주 장바구니 최소주문",
+    "브랜드·공급업체 상품 등록",
+    "POS 카드 단말기 결제창"
+  ]
+}

@@ -104,6 +104,7 @@
   "cardTerminal.checking": "付款处理中 — 正在向刷卡机确认…",
   "cardTerminal.cancelOnTerminal": "如需取消，请在刷卡机上按 Cancel。",
   "cardTerminal.declined": "卡片未获批准",
+  "cardTerminal.busyTitle": "终端忙碌 — 未开始付款",
   "cardTerminal.unknown": "付款结果未知",
   "cardTerminal.error": "刷卡机不可用",
   "cardTerminal.manualHint": "请查看刷卡机收据。如显示 APPROVED，请填写收据内容并记录付款。",

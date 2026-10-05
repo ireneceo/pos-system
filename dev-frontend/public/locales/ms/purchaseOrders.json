@@ -390,7 +390,8 @@
       "minOrder": "min: {{count}}",
       "inStock": "Stok",
       "resize": "Seret untuk ubah saiz",
-      "remove": "Buang"
+      "remove": "Buang",
+      "minHint": "Minimum {{min}} {{unit}}"
     },
     "preview": {
       "title": "{{count}} PO akan dicipta"
@@ -593,7 +594,8 @@
       "title": "Buang PO ini?",
       "desc": "Draf PO ini akan dibuang secara kekal. Ia belum dihantar kepada pembekal."
     },
-    "discarding": "Membuang…"
+    "discarding": "Membuang…",
+    "belowMinRetry": "Buang baris ini dan tambah semula dari skrin pesanan."
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit tidak sepadan — kemasukan manual diperlukan",
@@ -716,7 +718,8 @@
     }
   },
   "connect": {
-    "priceNotSet": "Harga belum diisi — kos akan menjadi 0"
+    "priceNotSet": "Harga belum diisi — kos akan menjadi 0",
+    "conversionIncompatible": "{{a}} ↔ {{b}}: tidak boleh ditukar secara automatik — masukkan sendiri (1 {{a}} = ? {{b}})"
   },
   "reconcile": {
     "title": "Semakan Invois",
@@ -852,5 +855,8 @@
   "newPo.profileField.legal_name": "Nama perniagaan",
   "newPo.profileField.business_registration": "Nombor pendaftaran perniagaan",
   "newPo.profileField.address": "Alamat perniagaan",
-  "newPo.profileField.phone": "Nombor telefon"
+  "newPo.profileField.phone": "Nombor telefon",
+  "minOrder": {
+    "violation": "{{name}} — minimum {{min}} {{unit}} (kini {{qty}})"
+  }
 }

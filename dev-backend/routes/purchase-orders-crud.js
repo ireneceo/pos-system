@@ -58,6 +58,7 @@ const { resolveSellers, getSeller, getSellerName, isExternalSeller } = require('
 const { payableFrom } = require('../services/purchaseOrderPayment');
 const { readableIngredient, parentBrandIdOf, overlayMapFor, effectiveSettings, sellerLinkVisible, sellerLinkVisibleWhere } = require('../utils/brandStockAccess');
 const { applySubmitGate } = require('../utils/poOwnerApproval');
+const { assertLinesMeetMinOrder, MinOrderError, minOrderErrorBody } = require('../utils/poMinOrder');
 const { stockTargetAttrs } = require('../utils/stockTarget');
 const { attachSellerProductIdentity } = require('../utils/sellerProductIdentity');
 // 발주 알림은 services/poNotifications.js 단일 소스. 2026-08-30: 이 파일에 같은 이름의
@@ -743,7 +744,9 @@ async function checkCreditLimit({ buyerEntity, seller_type, seller_entity_id, co
   };
 }
 
-async function createPurchaseOrderCore({ buyerEntity, userId, payload, transaction, poNumberOffset = 0, mergeDraft = false }) {
+// enforceMinOrder: 구매자 경로(POST·bulk)는 최소주문을 강제한다. 판매자 대리주문(seller-orders POST /)은
+//   같은 core 를 쓰지만 판매자가 규칙의 주인이라 끈다(2026-10-05 Fable 설계 §4-A · utils/poMinOrder.js).
+async function createPurchaseOrderCore({ buyerEntity, userId, payload, transaction, poNumberOffset = 0, mergeDraft = false, enforceMinOrder = true }) {
   const { seller_type, seller_entity_id, items, expected_delivery_date, delivery_address, notes } = payload || {};
 
   // Buyer 엔티티 default 배송지 결정 — payload 미지정 시
@@ -1098,6 +1101,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
       const prevByKey = new Map(prevItems.map(it => [keyOf(it), it]));
 
       const itemsToCreate = [];
+      const touched = [];   // 이번에 담은 줄(합친 뒤 수량) — 최소주문은 이 줄들만 본다
       for (const it of validatedItems) {
         const hit = prevByKey.get(keyOf(it));
         if (hit) {
@@ -1108,9 +1112,16 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
             unit_price: unit,
             line_total: Math.round(qty * unit * 100) / 100
           }, { transaction });
+          touched.push({ ...it, quantity_ordered: qty });
         } else {
           itemsToCreate.push({ ...it, purchase_order_id: existing.id });
+          touched.push(it);
         }
+      }
+      // 최소주문 — 합친 수량으로 판정(어제 10 + 오늘 12 = 22 면 통과). 실패 시 호출부가 트랜잭션을 되돌린다.
+      if (enforceMinOrder) {
+        try { await assertLinesMeetMinOrder(touched, { transaction }); }
+        catch (e) { if (e instanceof MinOrderError) return { ok: false, status: 400, body: minOrderErrorBody(e) }; throw e; }
       }
       if (itemsToCreate.length) await PurchaseOrderItem.bulkCreate(itemsToCreate, { transaction });
 
@@ -1133,6 +1144,12 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
       }, { transaction });
       return { ok: true, po: existing, merged: true };
     }
+  }
+
+  // 최소주문 — 판매자 상품 현재 MOQ 미달이면 400 (구매자 경로만 · utils/poMinOrder.js)
+  if (enforceMinOrder) {
+    try { await assertLinesMeetMinOrder(validatedItems, { transaction }); }
+    catch (e) { if (e instanceof MinOrderError) return { ok: false, status: 400, body: minOrderErrorBody(e) }; throw e; }
   }
 
   const poNumber = await generatePoNumber(buyerEntity, poNumberOffset);
@@ -1334,6 +1351,12 @@ router.put('/purchase-orders/:id', async (req, res) => {
           notes: raw.notes ? sanitizeString(String(raw.notes)).slice(0, 255) : null,
           description: ing.name ? String(ing.name).slice(0, 255) : null
         });
+      }
+      // 최소주문 — 수정으로 하한 아래로 내리는 길도 막는다 (utils/poMinOrder.js)
+      try { await assertLinesMeetMinOrder(validated, { transaction: t }); }
+      catch (e) {
+        if (e instanceof MinOrderError) { await t.rollback(); return res.status(400).json(minOrderErrorBody(e)); }
+        throw e;
       }
       // Replace items
       await PurchaseOrderItem.destroy({ where: { purchase_order_id: po.id }, transaction: t });

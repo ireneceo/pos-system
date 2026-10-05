@@ -97,6 +97,8 @@
     "migrate-track-stock-default-off.js",
     "migrate-trade-invoice-period.js",
     "migrate-user-contexts.js",
+    "migrate-user-contexts-permissions.js",
+    "migrate-user-context-requests.js",
     "migrate-user-is-active.js",
     "migrate-vina-spec-20260830.js",
     "promote-reservations-to-base.js",

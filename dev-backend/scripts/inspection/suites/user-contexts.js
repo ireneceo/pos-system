@@ -40,16 +40,18 @@ module.exports = {
     add('UC-001 granted_by 없는 모자 0건', orphanGrantor === 0,
       orphanGrantor === 0 ? '0건' : `${orphanGrantor}건 — 부여 출처 추적 불가`);
 
+    // v1.3(2026-10-05): restaurant×Staff 추가 — Staff 판정은 restaurant_id 스칼라 + permissions 두 값만 읽는다.
     // UC-002: 허용 외 조합 금지. restaurant×Restaurant Admin 외의 모자는 접근판정 4곳의
     // 규칙이 갈려 "절반만 열리는" 상태가 된다(검증 F4). 앱 레벨 정합 검사를 우회한 행 감지.
     // v1.2(2026-10-04): brand×Brand Manager 추가 — BM 판정은 스칼라(brand_id) 경로라 투영이 그대로 먹는다.
     const badCombo = await cnt(
       `SELECT COUNT(*) c FROM user_contexts
         WHERE NOT ((entity_type = '${V1_ENTITY_TYPE}' AND role = '${V1_ROLE}')
+                OR (entity_type = 'restaurant' AND role = 'Staff')
                 OR (entity_type = 'brand' AND role = 'Brand Manager'))`
     );
     add('UC-002 허용 외 조합 0건', badCombo === 0,
-      badCombo === 0 ? '0건' : `${badCombo}건 — restaurant×Restaurant Admin · brand×Brand Manager 외 조합 존재`);
+      badCombo === 0 ? '0건' : `${badCombo}건 — restaurant×Restaurant Admin · restaurant×Staff · brand×Brand Manager 외 조합 존재`);
 
     // UC-003: 고아 모자(대상 매장이 사라진 행) 경고. 목록 쿼리는 JOIN 으로 이미 걸러내지만,
     // 남아 있으면 회수 누락이라 부여 관리(P5)에서 정리 대상이다.
@@ -69,6 +71,65 @@ module.exports = {
     );
     add('UC-004 고아 브랜드 모자 0건', orphanBrand === 0,
       orphanBrand === 0 ? '0건' : `${orphanBrand}건 — 삭제된 브랜드의 모자 잔존(회수 누락)`);
+
+    // ── v1.3 (2026-10-05) — Staff 모자 권한 · 역할 추가 요청 ──────────────────
+    const hasCol = async (table, col) => Number((await q(
+      `SELECT COUNT(*) c FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '${table}' AND COLUMN_NAME = '${col}'`
+    ))[0].c) > 0;
+
+    if (await hasCol('user_contexts', 'permissions')) {
+      // UC-007: Staff 모자는 권한 1개 이상(0개 = 들어가서 아무것도 못 보는 죽은 카드),
+      //         다른 모자는 permissions NULL(값이 있으면 투영이 읽지 않는 유령 권한).
+      const staffNoPerm = await cnt(
+        `SELECT COUNT(*) c FROM user_contexts
+          WHERE role = 'Staff' AND (permissions IS NULL OR JSON_LENGTH(permissions) = 0)`
+      );
+      const otherWithPerm = await cnt(
+        `SELECT COUNT(*) c FROM user_contexts WHERE role <> 'Staff' AND permissions IS NOT NULL`
+      );
+      const ok7 = staffNoPerm === 0 && otherWithPerm === 0;
+      add('UC-007 Staff 모자 권한 1개 이상 · 다른 모자 NULL', ok7,
+        ok7 ? '0건' : `Staff 권한 없음 ${staffNoPerm}건 · 다른 모자 권한 값 ${otherWithPerm}건`);
+    } else {
+      add('UC-007 Staff 모자 권한', true, 'user_contexts.permissions 미생성 — 마이그 이전 환경이라 스킵');
+    }
+
+    // UC-008: 같은 사람이 같은 매장에 매장 모자(RA·Staff) 두 장 겹침 0 — 승급은 회수 후 부여.
+    const overlap = await cnt(
+      `SELECT COUNT(*) c FROM (
+         SELECT user_id, entity_id FROM user_contexts
+          WHERE entity_type = 'restaurant'
+          GROUP BY user_id, entity_id HAVING COUNT(*) > 1
+       ) t`
+    );
+    add('UC-008 같은 매장 RA↔Staff 겹침 0건', overlap === 0,
+      overlap === 0 ? '0건' : `${overlap}쌍 — 같은 매장에 매장 모자 두 장`);
+
+    const [reqExists] = await q(
+      `SELECT COUNT(*) c FROM information_schema.tables
+        WHERE table_schema = DATABASE() AND table_name = 'user_context_requests'`
+    );
+    if (Number(reqExists.c)) {
+      // UC-005: 결정된 요청(approved·rejected)엔 결정자·결정 시각이 있다 — 감사 추적.
+      const noDecider = await cnt(
+        `SELECT COUNT(*) c FROM user_context_requests
+          WHERE status IN ('approved', 'rejected') AND (decided_by IS NULL OR decided_at IS NULL)`
+      );
+      add('UC-005 결정된 요청에 결정자 있음', noDecider === 0,
+        noDecider === 0 ? '0건' : `${noDecider}건 — 결정자/결정시각 없는 결정`);
+
+      // UC-006: 요청 조합은 부여 가능 집합(4조합) 안 — services/userContexts.GRANTABLE_COMBINATIONS 와 동형.
+      const badReq = await cnt(
+        `SELECT COUNT(*) c FROM user_context_requests
+          WHERE NOT ((entity_type = 'restaurant' AND role IN ('Staff', 'Restaurant Admin', 'Restaurant Owner'))
+                  OR (entity_type = 'brand' AND role = 'Brand Manager'))`
+      );
+      add('UC-006 요청 조합은 부여 가능 집합 안', badReq === 0,
+        badReq === 0 ? '0건' : `${badReq}건 — 부여 불가 조합의 요청`);
+    } else {
+      add('UC-005/006 요청 표', true, 'user_context_requests 미생성 — 마이그 이전 환경이라 스킵');
+    }
 
     return checks;
   }

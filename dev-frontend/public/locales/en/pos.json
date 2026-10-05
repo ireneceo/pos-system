@@ -104,6 +104,7 @@
   "cardTerminal.checking": "Payment pending — checking with the terminal…",
   "cardTerminal.cancelOnTerminal": "To cancel, press Cancel on the terminal.",
   "cardTerminal.declined": "Card not approved",
+  "cardTerminal.busyTitle": "Terminal busy — payment not started",
   "cardTerminal.unknown": "Payment result unknown",
   "cardTerminal.error": "Card terminal unavailable",
   "cardTerminal.manualHint": "Check the terminal receipt. If it shows APPROVED, write what it shows and record the payment.",

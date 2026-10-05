@@ -831,5 +831,44 @@
     "row": "应用版本 {{current}} · 最新 {{latest}}",
     "upToDate": "已是最新版本"
   },
-  "loading": "加载中…"
+  "loading": "加载中…",
+  "sellerProduct": {
+    "unitFallback": "个",
+    "orderModeQuestion": "买家如何订购这个商品？",
+    "summary": {
+      "title": "买家看到的内容",
+      "needFields": "填写单位和价格后，这里会显示买家看到的说明。",
+      "pack": "买家以 {{price}} 订购 1 {{orderUnit}} = {{content}}，最少 {{min}} {{orderUnit}} 起订。",
+      "packPlain": "买家按 {{orderUnit}} 订购，每个 {{price}}，最少 {{min}} {{orderUnit}} 起订。",
+      "measure": "买家按 {{unit}} 订购，每 {{unit}} {{price}}，最少 {{min}} {{unit}} 起订。"
+    },
+    "spec": {
+      "title": "单个包装规格",
+      "hint": "计量单位 = 包装内物品的单位（g、kg、ml、L、piece）。包装单位 = 买家计数的包装名称（pack、box）。",
+      "measurePreview": "买家直接按 {{unit}} 订购。"
+    },
+    "price": {
+      "label": "1 {{orderUnit}} 的价格 (RM)",
+      "labelMeasure": "1 {{unit}} 的价格 (RM)",
+      "needUnit": "选择单位后会显示此价格对应的内容",
+      "meaningContent": "{{price}} / {{orderUnit}}（{{content}} · RM {{per}}/{{unit}}）",
+      "meaningPlain": "{{price}} / {{orderUnit}}"
+    },
+    "min": {
+      "label": "最低订购数量",
+      "hint": "买家订购不能少于 {{min}} {{orderUnit}}。超过后可每次增加 1 {{orderUnit}}。",
+      "hintMeasure": "买家订购不能少于 {{min}} {{unit}}。超过后数量不限。",
+      "hintNone": "没有最低订购量时请保留为 1。"
+    },
+    "fields": {
+      "baseQuantity": "基准数量",
+      "unit": "计量单位",
+      "packageUnit": "包装单位",
+      "selectUnit": "选择单位"
+    },
+    "stock": {
+      "label": "当前库存（{{orderUnit}} 数量）",
+      "hint": "无配方、直接销售的商品。按买家订购的单位（{{orderUnit}}）计数。"
+    }
+  }
 }

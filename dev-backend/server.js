@@ -465,6 +465,8 @@ app.use('/api/terminal', require('./routes/terminal-payments'));
 app.use('/api/order-audit', orderAuditRouter);
 app.use('/api/cash', cashManagementRouter);
 app.use('/api/users', usersRouter);
+// 역할 추가 요청 (멀티 로그인 v1.3) — 라우트마다 authenticateToken 명시(router.use 가드 없음)
+app.use('/api/context-requests', require('./routes/context-requests'));
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/categories', categoriesRouter);
 // External QR ↔ Coupon mapping — must mount BEFORE restaurantsRouter (inventory-core uses

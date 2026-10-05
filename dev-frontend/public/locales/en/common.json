@@ -831,5 +831,44 @@
     "row": "App version {{current}} · latest {{latest}}",
     "upToDate": "Up to date"
   },
-  "loading": "Loading…"
+  "loading": "Loading…",
+  "sellerProduct": {
+    "unitFallback": "unit",
+    "orderModeQuestion": "How do buyers order this?",
+    "summary": {
+      "title": "What buyers see",
+      "needFields": "Fill in the unit and price to see what buyers will see.",
+      "pack": "Buyers order 1 {{orderUnit}} = {{content}} at {{price}}, from {{min}} {{orderUnit}}.",
+      "packPlain": "Buyers order by {{orderUnit}} at {{price}} each, from {{min}} {{orderUnit}}.",
+      "measure": "Buyers order by {{unit}} at {{price}} per {{unit}}, from {{min}} {{unit}}."
+    },
+    "spec": {
+      "title": "One package",
+      "hint": "Unit = what is inside the package (g, kg, ml, L, piece). Package unit = the name buyers count (pack, box).",
+      "measurePreview": "Buyers order in {{unit}} directly."
+    },
+    "price": {
+      "label": "Price of 1 {{orderUnit}} (RM)",
+      "labelMeasure": "Price of 1 {{unit}} (RM)",
+      "needUnit": "Choose a unit to see what this price covers",
+      "meaningContent": "{{price}} / {{orderUnit}} ({{content}} · RM {{per}}/{{unit}})",
+      "meaningPlain": "{{price}} / {{orderUnit}}"
+    },
+    "min": {
+      "label": "Minimum order quantity",
+      "hint": "Buyers cannot order less than {{min}} {{orderUnit}}. Above that they can add 1 {{orderUnit}} at a time.",
+      "hintMeasure": "Buyers cannot order less than {{min}} {{unit}}. Above that, any amount.",
+      "hintNone": "Leave at 1 for no minimum."
+    },
+    "fields": {
+      "baseQuantity": "Base quantity",
+      "unit": "Unit (content)",
+      "packageUnit": "Package unit",
+      "selectUnit": "Select unit"
+    },
+    "stock": {
+      "label": "Current stock (number of {{orderUnit}})",
+      "hint": "Sold as-is (no recipe). Count it in {{orderUnit}} — the same unit buyers order."
+    }
+  }
 }

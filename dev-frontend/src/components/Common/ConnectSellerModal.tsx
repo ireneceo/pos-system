@@ -18,6 +18,7 @@ import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
+import { defaultLinkConversion, sellerOrderUnitOf, formatQuantity } from '../../utils/unitConversion';
 
 const Backdrop = styled.div`
   position: fixed; inset: 0; background: rgba(15,23,42,0.55);
@@ -84,6 +85,9 @@ interface CatalogItem {
   name: string;
   sku?: string | null;
   unit?: string | null;
+  base_quantity?: number | string | null;   // 규격 — 1 주문단위에 든 양(45 g/pack 의 45)
+  package_unit?: string | null;
+  order_mode?: string | null;
   unit_price: number;
   supplier?: { id?: number; name?: string; seller_type?: 'supplier' | 'brand' | 'foodcourt' } | null;
   category_name?: string | null;
@@ -110,20 +114,19 @@ interface Props {
   onConnected: () => void;
 }
 
-const UNIT_WEIGHT = ['kg', 'g'];
-const UNIT_VOLUME = ['L', 'ml'];
-function detectConversion(ingUnit: string, sellerUnit: string): { auto: number | null; note?: string } {
-  if (!ingUnit || !sellerUnit) return { auto: 1 };
-  if (ingUnit === sellerUnit) return { auto: 1 };
-  if (UNIT_WEIGHT.includes(ingUnit) && UNIT_WEIGHT.includes(sellerUnit)) {
-    if (ingUnit === 'kg' && sellerUnit === 'g') return { auto: 0.001, note: '1 g = 0.001 kg' };
-    if (ingUnit === 'g' && sellerUnit === 'kg') return { auto: 1000, note: '1 kg = 1000 g' };
-  }
-  if (UNIT_VOLUME.includes(ingUnit) && UNIT_VOLUME.includes(sellerUnit)) {
-    if (ingUnit === 'L' && sellerUnit === 'ml') return { auto: 0.001, note: '1 ml = 0.001 L' };
-    if (ingUnit === 'ml' && sellerUnit === 'L') return { auto: 1000, note: '1 L = 1000 ml' };
-  }
-  return { auto: null, note: `${ingUnit} ↔ ${sellerUnit}: incompatible — please enter conversion (1 ${sellerUnit} = ? ${ingUnit})` };
+/**
+ * 환산 기본값 — «판매자 1 주문단위 = 내 재고 몇 단위» (2026-10-05 Fable 설계 §4-B).
+ * 옛 detectConversion 은 기준양을 무시해 «45 g/pack» 을 g 재료에 1 로 연결했다(1팩 입고 = +1 g).
+ * 규칙은 utils/unitConversion.ts `defaultLinkConversion` 하나 — 서버 deriveLinkConversion 과 같은 답.
+ * 무게로 주문(measure)은 기준양이 1 이라 단위비만 남는다.
+ */
+function linkConversionOf(sel: CatalogItem, ingUnit: string): { auto: number | null; orderUnit: string } {
+  const sellerUnit = sel.unit || '';
+  const orderUnit = sellerOrderUnitOf({ seller_unit: sel.unit, base_quantity: sel.base_quantity ?? 1,
+    seller_package_unit: sel.package_unit, order_mode: sel.order_mode }, sellerUnit) || sellerUnit;
+  if (!ingUnit || !sellerUnit) return { auto: 1, orderUnit };
+  const base = sel.order_mode === 'measure' ? 1 : (Number(sel.base_quantity) > 0 ? Number(sel.base_quantity) : 1);
+  return { auto: defaultLinkConversion(base, sellerUnit, ingUnit), orderUnit };
 }
 
 export default function ConnectSellerModal({ open, ingredient, targetKind = 'ingredient', buyerApiBase, buyerScopeQS = '', onClose, onConnected }: Props) {
@@ -186,14 +189,20 @@ export default function ConnectSellerModal({ open, ingredient, targetKind = 'ing
   // Auto-detect conversion when selected changes
   useEffect(() => {
     if (!selected || !ingredient) return;
-    const conv = detectConversion(ingredient.unit || '', selected.unit || '');
+    const conv = linkConversionOf(selected, ingredient.unit || '');
     setConversion(conv.auto != null ? String(conv.auto) : '');
   }, [selected, ingredient]);
 
   const conversionInfo = useMemo(() => {
     if (!selected || !ingredient) return null;
-    return detectConversion(ingredient.unit || '', selected.unit || '');
-  }, [selected, ingredient]);
+    const conv = linkConversionOf(selected, ingredient.unit || '');
+    const ingUnit = ingredient.unit || '?';
+    const note = conv.auto != null
+      ? `1 ${conv.orderUnit} = ${formatQuantity(conv.auto)} ${ingUnit}`
+      : (t('connect.conversionIncompatible', '{{a}} ↔ {{b}}: cannot convert automatically — enter it (1 {{a}} = ? {{b}})',
+          { a: conv.orderUnit || '?', b: ingUnit }) as string);
+    return { ...conv, note };
+  }, [selected, ingredient, t]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -320,7 +329,7 @@ export default function ConnectSellerModal({ open, ingredient, targetKind = 'ing
         {selected && (
           <ConvRow>
             <label>
-              {t('connect.conversion', 'Unit conversion')}: 1 {selected.unit || '?'} ={' '}
+              {t('connect.conversion', 'Unit conversion')}: 1 {conversionInfo?.orderUnit || selected.unit || '?'} ={' '}
               <input
                 type="number"
                 step="0.001"

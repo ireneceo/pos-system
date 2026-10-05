@@ -158,5 +158,38 @@
       "hint": "반품과 차감 금액을 확인해 이 메일로 회신해 주세요.",
       "textFallback": "{{poNumber}} 반품 요청 ({{buyer}}). 금액: {{total}}."
     }
+  },
+  "contextRequest": {
+    "roles": {
+      "staff": "매장 직원",
+      "storeAdmin": "매장 관리자",
+      "storeOwner": "매장 오너",
+      "brandManager": "브랜드 관리자"
+    },
+    "received": {
+      "subject": "역할 요청: {{role}} · {{target}}",
+      "heading": "새 역할 요청",
+      "body": "{{requester}} 님이 역할을 요청했습니다. 검토해 주세요.",
+      "requester": "요청자",
+      "role": "역할",
+      "target": "매장 / 브랜드",
+      "message": "메시지",
+      "cta": "요청 검토하기",
+      "textFallback": "{{requester}} 님이 {{target}} 의 {{role}} 역할을 요청했습니다."
+    },
+    "result": {
+      "subjectApproved": "승인됨: {{role}} · {{target}}",
+      "subjectRejected": "거절됨: {{role}} · {{target}}",
+      "headingApproved": "역할 요청이 승인되었습니다",
+      "headingRejected": "역할 요청이 거절되었습니다",
+      "bodyApproved": "요청한 역할이 승인되었습니다. 이제 역할 선택 화면에 카드로 나타납니다.",
+      "bodyRejected": "요청한 역할이 거절되었습니다.",
+      "role": "역할",
+      "target": "매장 / 브랜드",
+      "status": "상태",
+      "reason": "사유",
+      "cta": "역할 선택 화면 열기",
+      "textFallback": "{{target}} 의 {{role}} 요청: {{result}}"
+    }
   }
 }

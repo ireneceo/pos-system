@@ -1058,6 +1058,75 @@ function payoutRejectedEmail({ partnerName, amount, currency, reason }) {
   );
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// 역할 추가 요청 (멀티 로그인 v1.3, 2026-10-05) — 수신자 preferred_language 팩토리로 부른다.
+// 사람이 입력한 값(이름·메시지·사유)은 전부 escape 한다.
+// ────────────────────────────────────────────────────────────────────────────
+function escHtml(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+const CONTEXT_ROLE_KEY = {
+  'Staff': 'staff', 'Restaurant Admin': 'storeAdmin', 'Restaurant Owner': 'storeOwner', 'Brand Manager': 'brandManager'
+};
+function contextRoleLabel(role, lang) {
+  const { getEmailText } = require('./i18n');
+  const k = CONTEXT_ROLE_KEY[role];
+  return k ? getEmailText(lang, 'contextRequest.roles.' + k) : String(role || '');
+}
+
+function contextRequestReceivedEmail({ requesterName, requesterEmail, role, targetName, message, link }, lang = 'en') {
+  const { getEmailText } = require('./i18n');
+  const t = (k, p) => getEmailText(lang, 'contextRequest.received.' + k, p);
+  const who = escHtml((requesterName || requesterEmail || '—').toString().slice(0, 120));
+  const target = escHtml((targetName || '—').toString().slice(0, 160));
+  const roleLabel = escHtml(contextRoleLabel(role, lang));
+  const title = t('heading');
+  const msgRow = message ? infoRow(t('message'), escHtml(String(message).slice(0, 500))) : '';
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">${t('body', { requester: `<strong>${who}</strong>` })}</p>
+    ${infoTable(
+      infoRow(t('requester'), `${who}${requesterEmail ? ` (${escHtml(requesterEmail)})` : ''}`) +
+      infoRow(t('role'), roleLabel) +
+      infoRow(t('target'), target) +
+      msgRow
+    )}
+    ${ctaButton(t('cta'), link)}`;
+  return withRenderMeta({
+    subject: t('subject', { role: contextRoleLabel(role, lang), target: (targetName || '—').toString().slice(0, 160) }),
+    html: wrapTemplate(title, body, lang),
+    text: t('textFallback', { requester: requesterName || requesterEmail || '—', role: contextRoleLabel(role, lang), target: targetName || '—' })
+  }, title, body, lang);
+}
+
+function contextRequestResultEmail({ approved, role, targetName, note, link }, lang = 'en') {
+  const { getEmailText } = require('./i18n');
+  const t = (k, p) => getEmailText(lang, 'contextRequest.result.' + k, p);
+  const target = escHtml((targetName || '—').toString().slice(0, 160));
+  const roleLabel = escHtml(contextRoleLabel(role, lang));
+  const title = approved ? t('headingApproved') : t('headingRejected');
+  const statusHtml = approved
+    ? `<span style="color:#10B981;font-weight:600;">${t('headingApproved')}</span>`
+    : `<span style="color:#EF4444;font-weight:600;">${t('headingRejected')}</span>`;
+  const noteRow = (!approved && note) ? infoRow(t('reason'), escHtml(String(note).slice(0, 300))) : '';
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">${approved ? t('bodyApproved') : t('bodyRejected')}</p>
+    ${infoTable(
+      infoRow(t('role'), roleLabel) +
+      infoRow(t('target'), target) +
+      infoRow(t('status'), statusHtml) +
+      noteRow
+    )}
+    ${ctaButton(t('cta'), link)}`;
+  const subjParams = { role: contextRoleLabel(role, lang), target: (targetName || '—').toString().slice(0, 160) };
+  return withRenderMeta({
+    subject: approved ? t('subjectApproved', subjParams) : t('subjectRejected', subjParams),
+    html: wrapTemplate(title, body, lang),
+    text: t('textFallback', { ...subjParams, result: title })
+  }, title, body, lang);
+}
+
 module.exports = {
   wrapTemplate,
   noticeReceivedEmail,
@@ -1093,5 +1162,8 @@ module.exports = {
   payoutRequestedAdminEmail,
   payoutApprovedEmail,
   payoutPaidEmail,
-  payoutRejectedEmail
+  payoutRejectedEmail,
+  // 역할 추가 요청 (v1.3)
+  contextRequestReceivedEmail,
+  contextRequestResultEmail
 };

@@ -1,7 +1,7 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-10-04 18:5x UTC (/개발완료 — 오늘 운영 배포 11회, 마지막 #11)
-**버전:** 운영 SW **5.83-owner-po-on-behalf-20261005** · 안드로이드 앱 **0.3.4** · 버전 번호 v3.10x 미확정
-**작업 상태:** ✅ 2026-10-05 #1 배포(SW 5.83 오너 대리 발주) · 다음 섹션 남은 4건
+**버전:** 운영 SW **5.84-context-request-moq-terminal-20261005** · 안드로이드 앱 **0.3.4** · 버전 번호 v3.10x 미확정
+**작업 상태:** ✅ 2026-10-05 #2 배포(SW 5.84) · 다음 섹션 남은 3건(외부 SOA·스탭밀·승인 메일)
 
 ### 오늘 마지막 배포들 (요약)
 - #9 SW 5.80: 단일 화면 고객화면 자동열림 안 함 · 고객화면 대시보드 버튼 · 세션복원 기기언어 유지 · POS 문구 90곳 번역
@@ -27,6 +27,11 @@
 - 남은 것: Windows 데스크탑 앱 설치본 재빌드(되돌림 검사·Notify 건너뜀 소스 반영됨) · Kate 브랜드 관리자 부여 → K-DINE 데이터 정리 밤 1회 · /docs SEO nginx 보류
 
 ### 진행 중인 작업
+- ✅ **[Claude Code] 2026-10-05 #2 운영 배포 SW 5.84** (백업 `20261005_072313` · 마이그 107/107 · 스모크 10/10 · Fable 게이트 PASS 조건 4 `.claude/fable-verdict-20261005-bundle2-gate.md`) — ① 역할 추가 요청(Staff 포함, D1~D4 Fable 권고) ② 최소주문 강제(MOQ 1=미설정)·판매 상품 연결 환산에 팩 용량·등록 화면 설명·미리보기·재고단위 칸 제거 ③ 단말기 거절 뒤 Confirm 잠김·BUSY 제목
+  - 운영 확인: sw 5.84 · /api/context-requests 익명 401 · enforceMinOrder 반영 · online
+  - Fable 조건: ① docs/MULTI_CONTEXT_LOGIN_DESIGN.md v1.3 절 ✅(배포 뒤 커밋) ② jest context-requests ⑨ 와 user-contexts-switch 가 rid 18 공유 — 분리 전까지 `--runInBand` ③ Irene 확인 3건 ④ R-SC-007 같은 단위·기준양≠1·conv 1 기존 행 탐지 보강(후속)
+  - ⏳ Irene 확인: GIT 45g **신규** 등록(16 은 매장 8 연결·수령 2 있어 그대로) 미리보기 문장 · 선택 화면 «+ 역할 추가 요청» · 단말기 거절 뒤 Confirm 잠김
+  - 단말기: 10-05 14:34 MYT 운영 첫 승인(VISA 346631, 주문 20356) · 10-04 B0 는 일요일 = UAT 근무시간 외로 추정 · 같은 날 BUSY 2건(직전 승인 20초 뒤 — 단말기 화면 상태 Irene 확인 대기)
 - ✅ **[Claude Code] 오너 대리 발주(다음 섹션 1번) — 운영 배포 2026-10-05 05:31 UTC** (SW 5.83 · 백업 `20261005_052507` · 마이그 105/105 · 스모크 10/10 · Fable 게이트 PASS 조건 없음 `.claude/fable-verdict-20261005-owner-po-on-behalf-gate.md`)
   - 운영 확인: sw 5.83 · 익명 POST 401 · buyerScope OWNER_ACTING_ROUTES·Submitted by Owner 반영 · production-backend online
   - 1차 배포 시도는 PlanQ tsc 메모리 게이트로 빌드 전 중단(운영 무변경, 백업 20261005_052017만 생성) → 재시도 성공

@@ -5,7 +5,7 @@
  * 서버 dev-backend/utils/poLineSpec.js 와 **같은 답**을 내야 한다 — 담는 화면이 보여준 것과
  * 발주 줄·PDF·WhatsApp 에 찍히는 것이 갈리면 공급업체가 다른 물건을 보낸다.
  */
-import { sellerOrderUnitOf, sellerSpecText, sellerSpecLabel, stockSpecLabel, lineSpecText, lineQtyText, defaultLinkConversion, withCurrentUnit, CONTENT_UNIT_OPTIONS } from './unitConversion';
+import { sellerOrderUnitOf, sellerSpecText, sellerSpecLabel, stockSpecLabel, lineSpecText, lineQtyText, defaultLinkConversion, withCurrentUnit, CONTENT_UNIT_OPTIONS, minQtyOf } from './unitConversion';
 import { poItemLines, supplierFacingName } from './poShare';
 
 // 2026-09-11 Irene 「붙여두고 알기 쉽게 좀 안돼? 1kg/pack 이런식으로」 · 「fable 권고대로」(공급업체 문서 영문만)
@@ -146,5 +146,23 @@ describe('외부 공급업체 연결 — 재고 환산 기본값', () => {
     expect(defaultLinkConversion(1, 'tray', 'kg')).toBeNull();
     expect(defaultLinkConversion(1, 'bottle', 'ml')).toBeNull();
     expect(defaultLinkConversion(0, 'kg', 'kg')).toBeNull();
+  });
+});
+
+// 2026-10-05 Fable 설계 §4-A — 최소주문 하한(서버 utils/poMinOrder.js effectiveMinOrder 와 같은 답)
+//   고장주입: minQtyOf 가 늘 null(하한 없음)을 돌려주면 첫 줄이 실패해야 한다.
+describe('최소주문 하한 minQtyOf', () => {
+  it('판매자가 정한 값이 하한 — 1 은 «정하지 않음»', () => {
+    expect(minQtyOf({ min_order_quantity: 22 })).toBe(22);
+    expect(minQtyOf({ min_order_quantity: '22.00' })).toBe(22);
+    expect(minQtyOf({ min_order_quantity: '0.5' })).toBe(0.5);
+    expect(minQtyOf({ min_order_quantity: 1 })).toBeNull();
+    expect(minQtyOf({ min_order_quantity: '1.00' })).toBeNull();
+    expect(minQtyOf({ min_order_quantity: null })).toBeNull();
+    expect(minQtyOf(null)).toBeNull();
+  });
+  it('«45 g/pack» 연결 환산 = 45 · kg 재료 0.045', () => {
+    expect(defaultLinkConversion(45, 'g', 'g')).toBe(45);
+    expect(defaultLinkConversion(45, 'g', 'kg')).toBe(0.045);
   });
 });

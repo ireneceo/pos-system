@@ -8,7 +8,7 @@ const ALLOW_BRAND_INGREDIENT_WRITE = false;
 const { Ingredient, IngredientCategory, Restaurant, Supplier, RestaurantIngredientCost, IngredientSellerProduct, SupplierProduct } = require('../models');
 const { stockMapFor, readableIngredient, writableIngredient, sellerLinkVisible } = require('../utils/brandStockAccess');
 const { resolveSellers, getSellerName } = require('../utils/sellerNames');
-const { conversionStatusFor } = require('../services/sellerLinkConversion');
+const { conversionStatusFor, deriveLinkConversion } = require('../services/sellerLinkConversion');
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
@@ -278,7 +278,9 @@ router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBr
     });
     if (!seller.ok) { await t.rollback(); return res.status(seller.status).json(seller.body); }
 
-    const unitConversion = catalogLink.resolveUnitConversion(body.unit_conversion);
+    // 환산 기본값 — 사람 입력 우선, 없으면 판매자 기준양·단위로 계산(«45 g/pack» → g 재료 45).
+    //   그전엔 body 가 없으면 1 이었다(2026-10-05 Fable 설계 §4-B · services/sellerLinkConversion.deriveLinkConversion).
+    const convFor = (target) => deriveLinkConversion({ raw: body.unit_conversion, stock: target, sellerProduct: seller.sellerProductRow });
 
     // Connect mode — 기존 ingredient 에 매핑만 추가
     const existingIngredientId = parseInt(body.existing_ingredient_id, 10);
@@ -289,7 +291,7 @@ router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBr
         return res.status(404).json({ success: false, message: 'Target ingredient not found in this brand' });
       }
       const r = await catalogLink.connectExisting({
-        target: targetIng, seller, unitConversion, targetKey: 'ingredient_id', transaction: t
+        target: targetIng, seller, unitConversion: convFor(targetIng), targetKey: 'ingredient_id', transaction: t
       });
       await t.commit();
       return res.status(r.status).json(r.body);
@@ -324,7 +326,7 @@ router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBr
     }, { transaction: t });
 
     const mapping = await catalogLink.createMappingFor({
-      target: ingredient, seller, unitConversion, targetKey: 'ingredient_id', transaction: t
+      target: ingredient, seller, unitConversion: convFor(ingredient), targetKey: 'ingredient_id', transaction: t
     });
 
     await t.commit();
@@ -967,7 +969,9 @@ router.post('/foodcourts/:foodcourtId/ingredients/from-catalog', authenticateTok
     });
     if (!seller.ok) { await t.rollback(); return res.status(seller.status).json(seller.body); }
 
-    const unitConversion = catalogLink.resolveUnitConversion(body.unit_conversion);
+    // 환산 기본값 — 사람 입력 우선, 없으면 판매자 기준양·단위로 계산(«45 g/pack» → g 재료 45).
+    //   그전엔 body 가 없으면 1 이었다(2026-10-05 Fable 설계 §4-B · services/sellerLinkConversion.deriveLinkConversion).
+    const convFor = (target) => deriveLinkConversion({ raw: body.unit_conversion, stock: target, sellerProduct: seller.sellerProductRow });
 
     const existingIngredientId = parseInt(body.existing_ingredient_id, 10);
     if (Number.isFinite(existingIngredientId)) {
@@ -977,7 +981,7 @@ router.post('/foodcourts/:foodcourtId/ingredients/from-catalog', authenticateTok
         return res.status(404).json({ success: false, message: 'Target ingredient not found in this foodcourt' });
       }
       const r = await catalogLink.connectExisting({
-        target: targetIng, seller, unitConversion, targetKey: 'ingredient_id', transaction: t
+        target: targetIng, seller, unitConversion: convFor(targetIng), targetKey: 'ingredient_id', transaction: t
       });
       await t.commit();
       return res.status(r.status).json(r.body);
@@ -1003,7 +1007,7 @@ router.post('/foodcourts/:foodcourtId/ingredients/from-catalog', authenticateTok
     }, { transaction: t });
 
     const mapping = await catalogLink.createMappingFor({
-      target: ingredient, seller, unitConversion, targetKey: 'ingredient_id', transaction: t
+      target: ingredient, seller, unitConversion: convFor(ingredient), targetKey: 'ingredient_id', transaction: t
     });
 
     await t.commit();

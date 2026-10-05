@@ -19,7 +19,7 @@ import { Button } from '../../components/UI/Button';
 import { Modal } from '../../components/UI/Modal';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
-import { formatQuantity, lineQtyText } from '../../utils/unitConversion';
+import { formatQuantity, lineQtyText, minOrderViolationText } from '../../utils/unitConversion';
 import { formatDateTime } from '../../utils/dateFormat';
 import { useStore } from '../../contexts/StoreContext';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
@@ -479,9 +479,14 @@ const PurchaseOrderStagingPage: React.FC = () => {
       const res = await fetch(withOwnerPoScope(url, user?.role), { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) {
         const j = await res.json().catch(() => null);
+        // 최소주문 미달(옛 초안·담은 뒤 판매자가 최소주문을 올린 경우) — 이 화면에선 수량을 못 고치므로
+        //   줄을 지우고 다시 담으라고 안내한다(Fable 설계 §4-A ⑥ · 대기 화면 수량 편집은 만들지 않는다).
+        const msg = j?.code === 'BELOW_MIN_ORDER'
+          ? `${minOrderViolationText(j?.data?.violations, t)}. ${t('staging.belowMinRetry', 'Remove this line and add it again from the order screen.')}`
+          : (j?.message || (t('staging.submitFailed', 'Failed to submit this purchase order') as string));
         setAlertDlg({
           title: t('common:error.title', 'Error') as string,
-          message: j?.message || (t('staging.submitFailed', 'Failed to submit this purchase order') as string)
+          message: msg
         });
         return;
       }

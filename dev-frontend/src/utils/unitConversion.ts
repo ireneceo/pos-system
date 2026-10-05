@@ -192,6 +192,28 @@ export const parseMinOrderQty = (v: unknown, fallback = 1): number => {
 };
 
 /**
+ * 최소주문 **하한** (2026-10-05 Fable 설계 §4-A) — 서버 dev-backend/utils/poMinOrder.js `effectiveMinOrder` 와 같은 규칙.
+ * 값 1(칸 기본값)은 «정하지 않음» 이라 하한이 없다(null) — 무게 주문 0.5 kg 같은 소수 주문이 막히지 않게.
+ * 1 이 아닌 값(22 · 5 · 0.5)이면 그 값이 하한이다. 그 위로는 자유(배수 아님).
+ */
+export const minQtyOf = (seller?: { min_order_quantity?: unknown } | null): number | null => {
+  const n = parseMinOrderQty(seller?.min_order_quantity, NaN);
+  return Number.isFinite(n) && n !== 1 ? n : null;
+};
+
+/**
+ * 서버 400 BELOW_MIN_ORDER 의 `data.violations` → 사람이 읽는 한 줄들 (2026-10-05).
+ * 예: «K-Yukgaejang Beef 45g — 최소 22 pack (지금 5)». t 는 purchaseOrders 네임스페이스 번역 함수.
+ */
+export const minOrderViolationText = (
+  violations: Array<{ description?: string | null; quantity?: number | string; min?: number | string; unit?: string | null }> | null | undefined,
+  t: (key: string, opts?: any) => any,
+): string => (violations || []).map(v => t('minOrder.violation', {
+  defaultValue: '{{name}} — minimum {{min}} {{unit}} (now {{qty}})',
+  name: v.description || '', min: formatQuantity(Number(v.min) || 0), unit: v.unit || '', qty: formatQuantity(Number(v.quantity) || 0),
+}) as string).join(' / ');
+
+/**
  * 판매상품 주문 방식 — 백엔드 ENUM 과 같은 목록(models/SupplierProduct.js).
  * 'pack'    = 개수로 주문 (팩/박스/포대) — 기본이자 기존 동작
  * 'measure' = 무게·부피로 주문 (kg·g·L·ml, 소수)

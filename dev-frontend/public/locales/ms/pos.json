@@ -104,6 +104,7 @@
   "cardTerminal.checking": "Bayaran belum selesai — menyemak dengan terminal…",
   "cardTerminal.cancelOnTerminal": "Untuk membatalkan, tekan Cancel pada terminal.",
   "cardTerminal.declined": "Kad tidak diluluskan",
+  "cardTerminal.busyTitle": "Terminal sibuk — pembayaran belum bermula",
   "cardTerminal.unknown": "Keputusan bayaran tidak diketahui",
   "cardTerminal.error": "Terminal kad tidak tersedia",
   "cardTerminal.manualHint": "Semak resit terminal. Jika tertera APPROVED, tulis butirannya dan rekod bayaran.",

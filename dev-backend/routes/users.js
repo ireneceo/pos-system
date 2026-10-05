@@ -473,12 +473,8 @@ router.post('/', authenticateToken, async (req, res) => {
         attributes: ['id', 'name', 'staff_limit']
       });
       if (restaurant && restaurant.staff_limit && restaurant.staff_limit > 0) {
-        const currentStaffCount = await User.count({
-          where: {
-            restaurant_id: finalRestaurantId,
-            role: { [require('sequelize').Op.in]: ['Staff', 'Restaurant Admin'] }
-          }
-        });
+        // 좌석 = 소속 사용자(Staff·RA) + 그 매장 모자(Staff·RA) — 모자 승인과 **같은 함수**(v1.3 §3 D3)
+        const currentStaffCount = await require('../services/userContexts').countRestaurantSeats(finalRestaurantId);
         if (currentStaffCount >= restaurant.staff_limit) {
           return res.status(403).json({
             success: false,
@@ -1340,102 +1336,25 @@ router.post('/:id/contexts', authenticateToken, requireRole('System Admin'), asy
       return res.status(400).json({ success: false, message: 'Cannot grant to a deactivated account' });
     }
 
-    const { entity_type, entity_id, role } = req.body || {};
-    const entityId = userContexts.normalizeEntityId(entity_id);
-    if (!entityId) {
-      return res.status(400).json({ success: false, message: 'entity_id must be a positive integer' });
+    // 본문은 services/userContexts.grantContext 로 옮겼다(v1.3) — 자격 요청 승인과 **같은 함수**를 쓴다.
+    // 응답 shape·메시지·상태코드는 옮기기 전과 바이트 동일(tests/user-contexts-switch.test.js · context-requests.test.js ⑨).
+    // permissions = Staff 모자일 때만 쓰인다(1개 이상·허용 키만, v1.3). 다른 조합은 무시된다.
+    const { entity_type, entity_id, role, permissions } = req.body || {};
+    const result = await userContexts.grantContext({ target, entity_type, entity_id, role, permissions, grantedBy: req.user.id });
+    if (!result.ok) {
+      return res.status(result.status).json({ success: false, message: result.message });
     }
-    const grantOwner = entity_type === 'restaurant' && role === 'Restaurant Owner';
-    const grantBrandManager = userContexts.isBrandManagerHat(entity_type, role);
-    if (!grantOwner && !grantBrandManager && !userContexts.isV1GrantableCombination(entity_type, role)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Only (restaurant × Restaurant Admin), (restaurant × Restaurant Owner) or (brand × Brand Manager) can be granted'
-      });
-    }
-
-    // 브랜드 관리자 모자(v1.2, 2026-10-04) — user_contexts 행. 소유자·이미 그 브랜드 소속이면 의미가 없다.
-    if (grantBrandManager) {
-      const Brand = require('../models/Brand');
-      const brand = await Brand.findByPk(entityId, { attributes: ['id', 'name', 'owner_id'] });
-      if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
-      if (Number(brand.owner_id) === Number(target.id)) {
-        return res.status(400).json({ success: false, message: 'User already owns this brand' });
-      }
-      if (['Brand General', 'Brand Manager'].includes(target.role) && Number(target.brand_id) === entityId) {
-        return res.status(400).json({ success: false, message: 'User already belongs to this brand' });
-      }
-      await _seq.query(
-        `INSERT INTO user_contexts (user_id, entity_type, entity_id, role, granted_by, created_at, updated_at)
-         VALUES (:u, 'brand', :e, :r, :by, NOW(), NOW()) ON DUPLICATE KEY UPDATE updated_at = NOW()`,
-        { replacements: { u: target.id, e: entityId, r: role, by: req.user.id } }
-      );
-      logActivity(req, { action_type: 'create', entity_type: 'user_context', entity_id: target.id,
-        entity_name: target.full_name || target.username || target.email,
-        description: `Granted Brand Manager context for brand "${brand.name}" (#${entityId}) to ${target.email || target.id}` });
-      return res.json({ success: true, data: { user_id: target.id, entity_id: entityId, role }, message: 'Context granted' });
-    }
-
-    const Restaurant = require('../models/Restaurant');
-    const restaurant = await Restaurant.findByPk(entityId, { attributes: ['id', 'name'] });
-    if (!restaurant) {
-      return res.status(404).json({ success: false, message: 'Restaurant not found' });
-    }
-
-    // 오너 모자 = 소유행 부여(설계 §5.4). 네이티브 오너는 자기 claim 경로(routes/owner.js)를 쓰므로 여기서 받지 않는다.
-    if (grantOwner) {
-      if (target.role === 'Restaurant Owner') {
-        return res.status(400).json({ success: false, message: 'Native owners claim restaurants from the owner dashboard' });
-      }
-      const [existing] = await _seq.query(
-        'SELECT id, relationship_type FROM restaurant_managers WHERE restaurant_id = :e AND manager_id = :u LIMIT 1',
-        { replacements: { e: entityId, u: target.id } }
-      );
-      if (existing.length && existing[0].relationship_type !== 'ownership') {
-        // UNIQUE(restaurant_id, manager_id) — oversight 행을 조용히 ownership 으로 바꾸지 않는다.
-        return res.status(409).json({ success: false, message: 'User is already assigned to this restaurant as a manager (oversight)' });
-      }
-      if (!existing.length) {
-        await _seq.query(
-          `INSERT INTO restaurant_managers (restaurant_id, manager_id, relationship_type, is_primary, assigned_at, createdAt, updatedAt)
-           VALUES (:e, :u, 'ownership', 0, NOW(), NOW(), NOW())`,
-          { replacements: { e: entityId, u: target.id } }
-        );
-      }
-      logActivity(req, {
-        action_type: 'create',
-        entity_type: 'user_context',
-        entity_id: target.id,
-        entity_name: target.full_name || target.username || target.email,
-        description: `Granted Restaurant Owner (ownership) of "${restaurant.name}" (#${entityId}) to ${target.email || target.id}`,
-        restaurant_id: entityId
-      });
-      return res.json({ success: true, data: { user_id: target.id, entity_id: entityId, role }, message: 'Ownership granted' });
-    }
-
-    // 자기 매장(네이티브 정체)과 같은 모자는 의미가 없다 — 중복 표시만 만든다.
-    if (String(target.restaurant_id || '') === String(entityId)) {
-      return res.status(400).json({ success: false, message: 'User already belongs to this restaurant' });
-    }
-
-    // 멱등 — UNIQUE(user_id, entity_type, entity_id, role)
-    await _seq.query(
-      `INSERT INTO user_contexts (user_id, entity_type, entity_id, role, granted_by, created_at, updated_at)
-       VALUES (:u, :t, :e, :r, :by, NOW(), NOW())
-       ON DUPLICATE KEY UPDATE updated_at = NOW()`,
-      { replacements: { u: target.id, t: entity_type, e: entityId, r: role, by: req.user.id } }
-    );
 
     logActivity(req, {
       action_type: 'create',
       entity_type: 'user_context',
       entity_id: target.id,
       entity_name: target.full_name || target.username || target.email,
-      description: `Granted ${role} context for restaurant "${restaurant.name}" (#${entityId}) to ${target.email || target.id}`,
-      restaurant_id: entityId
+      description: result.logDescription,
+      ...(result.restaurantId ? { restaurant_id: result.restaurantId } : {})
     });
 
-    res.json({ success: true, data: { user_id: target.id, entity_id: entityId, role }, message: 'Context granted' });
+    res.json({ success: true, data: result.data, message: result.message });
   } catch (error) {
     console.error('[users] POST /:id/contexts error:', error.message);
     res.status(500).json({ success: false, message: 'Internal server error' });

@@ -831,5 +831,44 @@
     "row": "Versi aplikasi {{current}} · terkini {{latest}}",
     "upToDate": "Versi terkini"
   },
-  "loading": "Memuatkan…"
+  "loading": "Memuatkan…",
+  "sellerProduct": {
+    "unitFallback": "unit",
+    "orderModeQuestion": "Bagaimana pembeli memesan produk ini?",
+    "summary": {
+      "title": "Apa yang dilihat pembeli",
+      "needFields": "Isi unit dan harga untuk melihat apa yang dilihat pembeli.",
+      "pack": "Pembeli memesan 1 {{orderUnit}} = {{content}} pada harga {{price}}, bermula {{min}} {{orderUnit}}.",
+      "packPlain": "Pembeli memesan mengikut {{orderUnit}} pada harga {{price}} setiap satu, bermula {{min}} {{orderUnit}}.",
+      "measure": "Pembeli memesan mengikut {{unit}} pada harga {{price}} setiap {{unit}}, bermula {{min}} {{unit}}."
+    },
+    "spec": {
+      "title": "Satu bungkusan",
+      "hint": "Unit = isi di dalam bungkusan (g, kg, ml, L, piece). Unit bungkusan = nama yang dikira pembeli (pack, box).",
+      "measurePreview": "Pembeli memesan terus dalam {{unit}}."
+    },
+    "price": {
+      "label": "Harga 1 {{orderUnit}} (RM)",
+      "labelMeasure": "Harga 1 {{unit}} (RM)",
+      "needUnit": "Pilih unit untuk melihat harga ini untuk apa",
+      "meaningContent": "{{price}} / {{orderUnit}} ({{content}} · RM {{per}}/{{unit}})",
+      "meaningPlain": "{{price}} / {{orderUnit}}"
+    },
+    "min": {
+      "label": "Kuantiti pesanan minimum",
+      "hint": "Pembeli tidak boleh memesan kurang daripada {{min}} {{orderUnit}}. Selepas itu boleh tambah 1 {{orderUnit}} setiap kali.",
+      "hintMeasure": "Pembeli tidak boleh memesan kurang daripada {{min}} {{unit}}. Selepas itu, apa-apa jumlah.",
+      "hintNone": "Biarkan 1 jika tiada minimum."
+    },
+    "fields": {
+      "baseQuantity": "Kuantiti asas",
+      "unit": "Unit (isi)",
+      "packageUnit": "Unit bungkusan",
+      "selectUnit": "Pilih unit"
+    },
+    "stock": {
+      "label": "Stok semasa (bilangan {{orderUnit}})",
+      "hint": "Dijual terus (tiada resipi). Kira dalam {{orderUnit}} — unit yang sama dipesan pembeli."
+    }
+  }
 }

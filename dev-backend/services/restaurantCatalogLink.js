@@ -14,6 +14,7 @@
  * @returns {Promise<{status:number, body:object}>}
  */
 const { sanitizeString } = require('../middleware/validation');
+const { deriveLinkConversion } = require('./sellerLinkConversion');
 const { Ingredient } = require('../models');
 const Restaurant = require('../models/Restaurant');
 
@@ -91,8 +92,10 @@ async function linkCatalogProductToRestaurant(rid, body = {}) {
       }
     }
 
-    // Connect mode — body.unit_conversion 우선, 기본 1
-    const bodyConversion = catalogLink.resolveUnitConversion(body.unit_conversion);
+    // Connect mode — body.unit_conversion 우선
+    // 환산 기본값 — 사람 입력 우선, 없으면 판매자 기준양·단위로 계산(«45 g/pack» → g 재료 45).
+    //   그전엔 body 가 없으면 1 이었다(2026-10-05 Fable 설계 §4-B · services/sellerLinkConversion.deriveLinkConversion).
+    const convFor = (target) => deriveLinkConversion({ raw: body.unit_conversion, stock: target, sellerProduct: seller.sellerProductRow });
     // 2026-09-02(P3-②): 레시피 없는 프로덕트도 "우리 쪽 항목"이 될 수 있다.
     //   P1 에서 서버·컬럼은 열렸는데 입구(화면·라우트)가 재료만 받아 프로덕트를 고를 수 없었다.
     //   ⛔ 판매가를 공급가로 채우지 않는다 — 예전에 스크립트로 원가를 판매가에 복사해
@@ -113,7 +116,7 @@ async function linkCatalogProductToRestaurant(rid, body = {}) {
         });
       }
       const r = await catalogLink.connectExisting({
-        target: prod, seller, unitConversion: bodyConversion, targetKey: 'product_id', transaction: t
+        target: prod, seller, unitConversion: convFor(prod), targetKey: 'product_id', transaction: t
       });
       await t.commit();
       return __r(r.status, r.body);
@@ -144,7 +147,7 @@ async function linkCatalogProductToRestaurant(rid, body = {}) {
         stock_unit: catalogLink.resolveUnit(np.unit, seller.productUnit),
       }, { transaction: t });
       const mapping = await catalogLink.createMappingFor({
-        target: prod, seller, unitConversion: bodyConversion, targetKey: 'product_id', transaction: t
+        target: prod, seller, unitConversion: convFor(prod), targetKey: 'product_id', transaction: t
       });
       await t.commit();
       return __r(201, { success: true, data: { product: prod, mapping, created: true } });
@@ -161,7 +164,7 @@ async function linkCatalogProductToRestaurant(rid, body = {}) {
       }
       const targetIng = w.ing;
       const r = await catalogLink.connectExisting({
-        target: targetIng, seller, unitConversion: bodyConversion, targetKey: 'ingredient_id', transaction: t,
+        target: targetIng, seller, unitConversion: convFor(targetIng), targetKey: 'ingredient_id', transaction: t,
         buyerRestaurantId: w.buyerRestaurantId
       });
       await t.commit();
@@ -199,11 +202,11 @@ async function linkCatalogProductToRestaurant(rid, body = {}) {
     //   결과: 판매자 kg ↔ 재고 g 처럼 단위가 다른 링크가 환산비 1 로 만들어져
     //   **1kg 입고가 1g 으로 기록**됐다. 2026-08-30 실측으로 그런 링크 6건 확인
     //   (측정 사이에 4→6 으로 증가 = 이 버그가 계속 새 불량 링크를 만들고 있었다).
-    //   bodyConversion 은 connect 모드가 쓰던 것과 **같은 값**이다(위에서 이미 해석됨) —
-    //   `resolveUnitConversion` 이 양수만 통과시키고 그 외에는 1 로 떨어뜨린다.
+    //   환산은 connect 모드와 **같은 규칙**(convFor — 사람 입력 우선, 없으면 판매자 기준양·단위로 계산)이다.
+    //   2026-10-05 전까지는 `resolveUnitConversion` 이 body 없으면 1 로 떨어뜨렸다(설계 §4-B).
     //   ⛔ 기존 6건 자동 백필은 하지 않는다 — tray→kg 는 기계가 추측할 수 없다(사람이 입력).
     const mapping = await catalogLink.createMappingFor({
-      target: ingredient, seller, unitConversion: bodyConversion, targetKey: 'ingredient_id', transaction: t
+      target: ingredient, seller, unitConversion: convFor(ingredient), targetKey: 'ingredient_id', transaction: t
     });
 
     await t.commit();

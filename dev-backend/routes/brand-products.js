@@ -1019,7 +1019,10 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
       // 다이렉트로 재고아이템에 붙었으면 재고는 **그 재고아이템에** 쌓인다 — 프로덕트 자체 재고는 쓰지 않는다.
       current_stock: (!product_recipe_id && !linkCreate.patch.product_ingredient_id) ? (parseFloat(current_stock) || 0) : 0,
       min_stock: parseFloat(min_stock) || 0,
-      stock_unit: stock_unit || null
+      // «재고 단위» 칸은 없앴다(2026-10-05 Fable 설계 §4-D = §5-12 A) — 자체 재고는 **주문 단위(포장단위)로 센다**.
+      //   차감이 `current_stock -= quantity_ordered`(주문 단위)라 다른 단위를 적을 자리가 원래 없었다.
+      //   새로 쓰지 않는다(컬럼은 남김 · 원장 라벨은 poLineSpec.selfStockUnit 이 포장단위로 폴백).
+      stock_unit: null
     });
 
     // brand_ids → BrandProductBrand 매핑 (specific_brands 모드)
@@ -1180,7 +1183,8 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
         ? 0
         : (current_stock !== undefined ? (parseFloat(current_stock) || 0) : product.current_stock),
       min_stock: min_stock !== undefined ? (parseFloat(min_stock) || 0) : product.min_stock,
-      stock_unit: stock_unit !== undefined ? (stock_unit || null) : product.stock_unit
+      // «재고 단위» 칸 쓰기 중단(§4-D) — 기존 값은 그대로 둔다(운영 9행 전부 포장단위와 같은 말).
+      stock_unit: product.stock_unit
     });
 
     // 브랜드/지점 매핑 업데이트 — mode 별로 적절한 테이블만 갱신

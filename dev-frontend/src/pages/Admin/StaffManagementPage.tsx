@@ -30,6 +30,7 @@ import {
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import UserContextsSection from '../../components/Admin/UserContextsSection';
+import ContextRequestsPanel from '../../components/ContextRequests/ContextRequestsPanel';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency, getActivePlanCurrencies } from '../../utils/currency';
@@ -1558,6 +1559,9 @@ const AdminStaffManagementPage: React.FC = () => {
             </Button>
           </ActionSection>
         </Header>
+
+        {/* 역할 추가 요청 (멀티 로그인 v1.3) — SA 는 전부 본다. pending 0건이면 아무것도 안 그린다. */}
+        <ContextRequestsPanel scope="admin" />
         
         <Content>
           <StatsGrid>

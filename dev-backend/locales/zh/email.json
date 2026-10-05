@@ -158,5 +158,38 @@
       "hint": "请回复此邮件确认退货与抵扣金额。",
       "textFallback": "{{poNumber}} 退货申请（{{buyer}}）。金额：{{total}}。"
     }
+  },
+  "contextRequest": {
+    "roles": {
+      "staff": "门店员工",
+      "storeAdmin": "门店管理员",
+      "storeOwner": "门店店主",
+      "brandManager": "品牌经理"
+    },
+    "received": {
+      "subject": "角色申请：{{role}} · {{target}}",
+      "heading": "新的角色申请",
+      "body": "{{requester}} 申请了一个角色，请审核。",
+      "requester": "申请人",
+      "role": "角色",
+      "target": "门店 / 品牌",
+      "message": "留言",
+      "cta": "审核申请",
+      "textFallback": "{{requester}} 申请了 {{target}} 的 {{role}} 角色。"
+    },
+    "result": {
+      "subjectApproved": "已批准：{{role}} · {{target}}",
+      "subjectRejected": "已拒绝：{{role}} · {{target}}",
+      "headingApproved": "角色申请已批准",
+      "headingRejected": "角色申请已被拒绝",
+      "bodyApproved": "您的角色申请已批准，现在会以卡片形式显示在角色选择页面。",
+      "bodyRejected": "您的角色申请已被拒绝。",
+      "role": "角色",
+      "target": "门店 / 品牌",
+      "status": "状态",
+      "reason": "原因",
+      "cta": "打开角色选择",
+      "textFallback": "您对 {{target}} 的 {{role}} 申请：{{result}}。"
+    }
   }
 }

@@ -626,6 +626,24 @@ P2/P3a 에 순증. 반대로 F1 재설계는 백필 폐기로 P1 을 **1일 단�
 
 ---
 
+## v1.3 역할 추가 요청 (2026-10-05 · SW 5.84 운영 · Fable 설계 `.claude/fable-design-20261005-context-request.md` · 게이트 PASS `.claude/fable-verdict-20261005-bundle2-gate.md`)
+
+### §3.7 요청 표 + `user_contexts.permissions`
+- `user_context_requests` (모델 `UserContextRequest`) — 요청자·역할·대상·상태(pending/approved/rejected/cancelled)·처리자·메모. `user_contexts` 에 status 를 넣지 않는다(«행 있음 = 부여됨» 유지).
+- `user_contexts.permissions` JSON NULL — **Staff 모자 전용** 작업·메뉴 권한. RA·오너·BM 모자 행은 NULL(종전과 동일). 마이그 `migrate-user-context-requests.js` · `migrate-user-contexts-permissions.js`(INSERT 0, registry deploy).
+
+### §5.6 Staff 모자
+- 부여 가능 조합에 (restaurant × Staff) 추가. 투영(`middleware/auth.js projectContext`)이 행의 permissions 를 `req.user.permissions` 로 낸다 — Staff 판정은 `restaurant_id` + `permissions` 만 읽으므로 새 판정처 없음.
+- 같은 매장에 RA 모자와 Staff 모자를 함께 가질 수 없다(grantContext 400, 인스펙션 UC-008).
+- Staff 모자 보유자는 그 매장 PIN 캐셔 목록에 나오지 않는다(자기 세션으로 쓰는 사람).
+
+### §6.4 역할 추가 요청 — 승인 주체 2종
+- 입구: 선택 화면(`/pos/select-context`) 리스트 맨 아래 «+ 역할 추가 요청». 사이드바 스위처·대시보드 퀵액션은 **SA 외 전 사용자 상시 표시**(§6.2 갱신 — 모자 0개인 사람의 입구).
+- 승인: Staff 요청 = **그 매장 RA**(+SA), 승인 순간 권한을 고른다(기본 0, 1개 이상 필수). RA·오너·BM 요청 = **SA 만**. 처리 자리 = Staff Management / 매장 Staff 화면 상단 패널(한 컴포넌트) + 메일 + SA 대시보드 알림.
+- Staff·RA 모자 승인은 요금제 직원 한도(staff_limit)에 좌석으로 센다 — 직원 생성과 같은 함수 `countRestaurantSeats`. SA 직접 부여는 예외.
+- demo 계정 요청 403, is_test 허용.
+- **Q3 갱신(v1.3):** 셀프 **요청** 허용 · 셀프 부여 금지 유지 · Staff 승인은 그 매장 RA · 쓰기 경로는 `services/userContexts.grantContext` 하나(SA 직접 부여·요청 승인이 같은 함수).
+
 ## 부록 A. 실측 근거 색인
 
 | 사실 | 근거 |

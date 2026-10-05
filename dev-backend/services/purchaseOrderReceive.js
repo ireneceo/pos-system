@@ -48,7 +48,9 @@ async function receiveIntoProduct({ item, po, delta, userId, t, note }) {
 
   const cur = parseFloat(prod.current_stock) || 0;
   const next = Math.round((cur + delta) * 100) / 100;
-  const unit = prod.stock_unit || prod.unit || null;
+  // 브랜드 프로덕트 자체 재고는 주문 단위(포장단위)로 센다 — «재고 단위» 칸이 비면 포장단위 라벨(§5-12 A).
+  //   매장 프로덕트(products)는 stock_unit 이 늘 차 있어 종전 그대로다.
+  const unit = isBrandSide ? require('../utils/poLineSpec').selfStockUnit(prod, prod.unit || null) : (prod.stock_unit || prod.unit || null);
   await InventoryTransaction.create({
     entity_type: po.entity_type, entity_id: po.entity_id,
     ...(isBrandSide ? { brand_product_id: id } : { product_id: id, restaurant_id: po.entity_id }),

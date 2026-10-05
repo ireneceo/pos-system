@@ -390,7 +390,8 @@
       "minOrder": "min order: {{count}}",
       "inStock": "In stock",
       "resize": "Drag to resize",
-      "remove": "Remove"
+      "remove": "Remove",
+      "minHint": "Minimum {{min}} {{unit}}"
     },
     "preview": {
       "title": "{{count}} POs will be created"
@@ -593,7 +594,8 @@
       "title": "Discard this PO?",
       "desc": "This draft PO will be permanently removed. It has not been sent to the supplier."
     },
-    "discarding": "Discarding…"
+    "discarding": "Discarding…",
+    "belowMinRetry": "Remove this line and add it again from the order screen."
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit mismatch — manual entry required",
@@ -716,7 +718,8 @@
     }
   },
   "connect": {
-    "priceNotSet": "No price set — cost will be 0"
+    "priceNotSet": "No price set — cost will be 0",
+    "conversionIncompatible": "{{a}} ↔ {{b}}: cannot convert automatically — enter it (1 {{a}} = ? {{b}})"
   },
   "reconcile": {
     "title": "Invoice Reconciliation",
@@ -852,5 +855,8 @@
   "newPo.profileField.legal_name": "Business name",
   "newPo.profileField.business_registration": "Business registration number",
   "newPo.profileField.address": "Business address",
-  "newPo.profileField.phone": "Phone number"
+  "newPo.profileField.phone": "Phone number",
+  "minOrder": {
+    "violation": "{{name}} — minimum {{min}} {{unit}} (now {{qty}})"
+  }
 }

@@ -11,6 +11,7 @@ const OrderAction = require('./OrderAction');
 const OrderPayment = require('./OrderPayment');
 const TerminalTransaction = require('./TerminalTransaction');
 const UserContext = require('./UserContext');
+const UserContextRequest = require('./UserContextRequest');
 const CashierShift = require('./CashierShift');
 const CashReconciliation = require('./CashReconciliation');
 const CashMovement = require('./CashMovement');
@@ -172,6 +173,9 @@ Brand.belongsTo(User, { foreignKey: 'owner_id', as: 'owner' });
 UserContext.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 UserContext.belongsTo(User, { foreignKey: 'granted_by', as: 'grantedBy' });
 User.hasMany(UserContext, { foreignKey: 'user_id', as: 'contexts' });
+// 역할 추가 요청(v1.3) — 요청자(user_id) · 결정자(decided_by)
+UserContextRequest.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+UserContextRequest.belongsTo(User, { foreignKey: 'decided_by', as: 'decidedBy' });
 
 User.hasMany(Brand, { foreignKey: 'owner_id', as: 'brands' });
 
@@ -1038,6 +1042,7 @@ module.exports = {
   OrderPayment,
   TerminalTransaction,
   UserContext,
+  UserContextRequest,
   CashierShift,
   CashReconciliation,
   CashMovement,

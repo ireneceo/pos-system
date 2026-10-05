@@ -158,5 +158,38 @@
       "hint": "Please reply to this email to confirm the return and the credit amount.",
       "textFallback": "Return request for {{poNumber}} from {{buyer}}. Value: {{total}}."
     }
+  },
+  "contextRequest": {
+    "roles": {
+      "staff": "Store staff",
+      "storeAdmin": "Store admin",
+      "storeOwner": "Store owner",
+      "brandManager": "Brand manager"
+    },
+    "received": {
+      "subject": "Role request: {{role}} · {{target}}",
+      "heading": "New Role Request",
+      "body": "{{requester}} has requested a role. Please review it.",
+      "requester": "Requested by",
+      "role": "Role",
+      "target": "Store / brand",
+      "message": "Message",
+      "cta": "Review Request",
+      "textFallback": "{{requester}} requested {{role}} at {{target}}."
+    },
+    "result": {
+      "subjectApproved": "Approved: {{role}} · {{target}}",
+      "subjectRejected": "Declined: {{role}} · {{target}}",
+      "headingApproved": "Role Request Approved",
+      "headingRejected": "Role Request Declined",
+      "bodyApproved": "Your role request was approved. It now appears as a card on your role selection screen.",
+      "bodyRejected": "Your role request was declined.",
+      "role": "Role",
+      "target": "Store / brand",
+      "status": "Status",
+      "reason": "Reason",
+      "cta": "Open Role Selection",
+      "textFallback": "Your request for {{role}} at {{target}}: {{result}}."
+    }
   }
 }

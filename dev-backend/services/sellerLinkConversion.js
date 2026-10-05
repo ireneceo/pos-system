@@ -177,8 +177,58 @@ function conversionStatusFor(link, stock) {
   };
 }
 
+/**
+ * 카탈로그에서 **새 연결을 만들 때**의 환산 기본값 (2026-10-05 Fable 설계 §4-B).
+ *
+ * 그전까지 연결 생성부 5곳이 `catalogLink.resolveUnitConversion(body)` — body 가 없으면 **1** 이었다.
+ *   «45 g/pack» 을 g 재료에 연결하면 1팩 입고 = 재고 +1 g(맞는 값 45), 원가는 단가÷1 = RM4.50/g.
+ *
+ * 순서
+ *   ① 사람이 넣은 값(raw > 0)이 있으면 그 값 — 사람 입력이 우선이다.
+ *   ② pack 주문 + 판매자 단위와 재고 단위가 같은 뜻 → **판매자 기준양**(1팩 = 45 g → 45).
+ *      ⚠ `classifyConversion` 은 같은 단위를 «볼 것 없음(N)» 으로 접는다(기존 링크 검사용 판정이라 1 을
+ *        틀렸다고 보지 않는다). 새 연결의 기본값은 화면 `defaultLinkConversion`(같은 단위면 기준양)과
+ *        같아야 하므로 이 한 갈래만 여기서 정한다. 계수는 1 이라 아래 pack-measure 식(기준양 × 단위비)과 같은 값이다.
+ *   ③ 그 밖은 `classifyConversion` — D(데이터로 값이 정해짐)면 그 값, N·H 면 1
+ *      (H 는 지금처럼 목록에 «확인 필요» 가 뜬다 — 기계가 추측하지 않는다).
+ *
+ * @param {object} o
+ * @param {*}      o.raw            요청 본문의 unit_conversion (없으면 undefined)
+ * @param {object} o.stock          재고 대상 행 {unit|stock_unit, base_quantity, package_unit, package_quantity}
+ * @param {object} o.sellerProduct  판매 상품 행 {unit, base_quantity, order_mode}
+ * @returns {number}
+ */
+function deriveLinkConversion({ raw, stock, sellerProduct }) {
+  const n = Number(raw);
+  if (raw !== undefined && raw !== null && raw !== '' && Number.isFinite(n) && n > 0) {
+    return Math.min(Math.round(n * 10000) / 10000, MAX_CONVERSION - 1);
+  }
+  if (!stock || !sellerProduct) return 1;
+  const { classifyConversion, sameUnit } = require('../utils/unitConversionRule');
+  const stockUnit = stock.unit || stock.stock_unit || null;
+  const sellerUnit = sellerProduct.unit || null;
+  if (!stockUnit || !sellerUnit) return 1;
+  const mode = sellerProduct.order_mode === 'measure' ? 'measure' : 'pack';
+  const sellerBase = Number(sellerProduct.base_quantity);
+  if (mode === 'pack' && sameUnit(sellerUnit, stockUnit)) {
+    return Number.isFinite(sellerBase) && sellerBase > 0 && sellerBase < MAX_CONVERSION
+      ? Math.round(sellerBase * 10000) / 10000 : 1;
+  }
+  const verdict = classifyConversion({
+    conv: 1,
+    seller_unit: sellerUnit,
+    seller_base: Number.isFinite(sellerBase) ? sellerBase : 1,
+    order_mode: mode,
+    stock_unit: stockUnit,
+    stock_base: stock.base_quantity,
+    stock_package_unit: stock.package_unit,
+    stock_package_quantity: stock.package_quantity
+  });
+  return verdict.kind === 'D' && verdict.want > 0 ? verdict.want : 1;
+}
+
 module.exports = {
   parseConversion, propagateToOpenPoLines, buildConfirmationFields, resolveUnitsForConfirmation,
-  conversionStatusFor,
+  conversionStatusFor, deriveLinkConversion,
   ConversionError, MAX_CONVERSION, SELLER_MODEL_BY_TYPE
 };

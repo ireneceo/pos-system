@@ -571,7 +571,8 @@ async function catalogBulkHandler(req, res) {
           productName: row.name, productUnit: row.unit,
           productPrice: row.unit_price, productMinQty: row.min_order_quantity
         };
-        const conv = catalogLink.resolveUnitConversion(it.unit_conversion);
+        // 환산은 대상이 정해진 뒤 계산한다 — 사람 입력 우선, 없으면 판매자 기준양·단위(2026-10-05 Fable 설계 §4-B)
+        const { deriveLinkConversion } = require('../services/sellerLinkConversion');
 
         let target, wasCreated = false, buyerRestaurantId = null;
         if (mode === 'connect') {
@@ -615,6 +616,7 @@ async function catalogBulkHandler(req, res) {
           });
         }
 
+        const conv = deriveLinkConversion({ raw: it.unit_conversion, stock: target, sellerProduct: row });
         const dup = await IngredientSellerProduct.findOne({
           where: { ingredient_id: target.id, buyer_restaurant_id: buyerRestaurantId, seller_type: sellerType, seller_entity_id: sellerEntityId, seller_product_id: spId },
           transaction: t

@@ -390,7 +390,8 @@
       "minOrder": "最低: {{count}}",
       "inStock": "库存",
       "resize": "拖动调整大小",
-      "remove": "移除"
+      "remove": "移除",
+      "minHint": "最少 {{min}} {{unit}}"
     },
     "preview": {
       "title": "将创建{{count}}个PO"
@@ -593,7 +594,8 @@
       "title": "删除此采购单草稿？",
       "desc": "此采购单草稿将被永久删除。它尚未发送给供应商。"
     },
-    "discarding": "删除中…"
+    "discarding": "删除中…",
+    "belowMinRetry": "请删除此行，并在下单页面重新加入。"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}：数量单位不一致 — 需手动输入",
@@ -716,7 +718,8 @@
     }
   },
   "connect": {
-    "priceNotSet": "未填价格——成本将记为 0"
+    "priceNotSet": "未填价格——成本将记为 0",
+    "conversionIncompatible": "{{a}} ↔ {{b}}：无法自动换算 — 请手动输入（1 {{a}} = ? {{b}}）"
   },
   "reconcile": {
     "title": "发票核对",
@@ -852,5 +855,8 @@
   "newPo.profileField.legal_name": "公司名称",
   "newPo.profileField.business_registration": "商业注册号",
   "newPo.profileField.address": "公司地址",
-  "newPo.profileField.phone": "电话号码"
+  "newPo.profileField.phone": "电话号码",
+  "minOrder": {
+    "violation": "{{name}} — 最少 {{min}} {{unit}}（当前 {{qty}}）"
+  }
 }

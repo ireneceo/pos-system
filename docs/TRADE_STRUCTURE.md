@@ -377,7 +377,14 @@ GIT 프로덕트(`PRD-*`)로 **이관 완료**(연결 50건·92칸, 중복행 50
 - **사람이 정해야 하는 것**으로 표시된 행은 재료·레시피 줄·매핑·재고 **전부 무접촉**이다(2026-09-06 이전에는 줄·매핑만 환산되어 재료는 팩인데 줄만 g 로 갈라지는 길이 있었다).
 - 운영 현황: 사람 몫 **54건**(대부분 "이름 규격이 애매" · 비식품 제외). 목록은 배포 로그와 인스펙션 013 에 계속 뜬다.
 
-### 5-12. 판매자 자체 재고의 «재고 단위» 칸 — **Fable 판정 대기 (2026-09-13 접수 · 착수 금지)**
+### 5-12. 판매자 자체 재고의 «재고 단위» 칸 — **판정 A (2026-10-05 Fable · Irene 컨펌 ④) · 구현 완료(미배포)**
+
+> **결론 A**: 자체 재고는 **주문 단위(포장단위) 수로 센다.** 브랜드 폼의 «재고 단위» 글자 칸은 없앴다 — 라벨은 «현재 재고 (pack 수)».
+> 서버는 `stock_unit` 을 새로 쓰지 않는다(컬럼은 남김 · 마이그 0). 원장 라벨은 `utils/poLineSpec.selfStockUnit`
+> (`stock_unit` → 주문 단위) — `routes/seller-orders.js` 출고 · `services/purchaseOrderReceive.js` 브랜드 프로덕트 입고.
+> `inventoryDeductionService` 는 매장 메뉴(products) 재고라 대상 아님. 설계 `.claude/fable-design-20261005-moq-product-form.md` §4-D.
+> 아래는 판정 전 기록(사실)이다.
+
 
 **Irene 원문(2026-09-13):** 「프로덕트 상세에 재고관리에 단위를 왜 또 따로 넣어? 여기서 선택하면 그 기준으로 베이스 유닛 단위가 맞춰져야 하는 거 아니야? 아니면 패키지 단위? 이거 어떻게 되는거야? 이것도 중요하니까 fable 에게 남겨두자.」
 (가리키는 화면 = 브랜드 상품 상세의 «Stock for this product / Sold as-is (no recipe) — this product itself is the stock / 0 / Unit (e.g. carton, box)» — `BrandProductsTab.tsx:1173-1190`)
