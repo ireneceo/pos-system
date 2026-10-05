@@ -26,7 +26,9 @@ export interface Invoice {
   type?: 'automatic' | 'manual';
   payerType?: 'restaurant' | 'foodcourt_manager' | 'brand_manager' | 'external';
   payerId?: string;
-  invoiceCategory?: 'subscription' | 'service' | 'consulting' | 'others';
+  invoiceCategory?: 'subscription' | 'service' | 'consulting' | 'others' | 'trade' | 'soa';
+  /** 이 청구서가 묶인 정산서(SOA) id — 서버 GET /api/invoices 가 내려준다 */
+  parentSoaInvoiceId?: string | null;
   customDescription?: string;
   serviceDescription?: string;
   categoryDisplayName?: string;

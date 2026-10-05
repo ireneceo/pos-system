@@ -4,7 +4,16 @@
 **작업 상태:** ✅ 배포 완료 · 다음 섹션 대기
 
 ### 진행 중인 작업
-- 없음 (Irene 2026-10-05 「배포하고 저장하고 개발완료해. 나머지는 다음 섹션에 해줘.」)
+- [Claude Code] **2026-10-05 저녁 · 청구서/정산서 묶음 (dev 반영·검증 중, 미배포, SW 5.86)**
+  - 레스토랑 청구서: Mark paid 뒤 To pay 목록 즉시 갱신(onPaid 가 fetchInvoicesToPay 누락) · 탭 순서 To pay 먼저+기본 탭 · «올린 인보이스 보기»(줄·상세)
+  - 정산서 손님 이름 오표시(운영 #162 → The Fire, #188 → KFC): SOA 생성 시 restaurant_id 채움(soaScheduler) + 이름 계산이 '매장' payer_id 를 사람 번호로 읽던 것 수정(invoices-list · getPayerCompanyInfo) — Fable 판정 A+B. **운영 SOA 3건 restaurant_id 보정은 Irene 승인 대기**
+  - 정산서↔자식 상태 연동 단일화: services/soaChildSync (submit·confirm·reject·PATCH status 전부) + 복구 scripts/migrate-soa-child-status-sync.js(deploy 등록) + 인스펙션 invoice-soa I-SOA-001 — Fable 판정(설계 확정, 구현 후 게이트 1회). 다음 작업 #3 흡수
+  - 브랜드 정산서 상세·PDF 에 묶인 청구서 번호·날짜·상태·금액 표
+  - dev 실호출 14/14 · 고장주입 2종(이름 계산 끔 → 실패 / 재시작 전 옛 코드 → 상태 연동 실패)
+  - 브랜드 매출 보고서 재구성(브랜드·매장 체크 칩·탭 5·주문 시점 판매 통계 GET /api/brand/sales-report) — dev 실브라우저·운영 SQL 대조(R8 9월 Sauce 4,492.80/Meat 1,789.70)·verify --full 24/24
+  - 하드웨어 청구서 이름 회귀(Fable 게이트 FAIL 사유) → payerIdIsStore 술어 공유로 수정·재통과 기준 실측 완료. **Fable 최종 도장 대기(Fable 한도 초과로 2회 중단)** — 배포 금지
+  - 운영 #162: Irene Confirm 이 서버에 안 닿음(SOA 자체 payment_submitted 그대로, 권한은 허용 실측)
+  - 운영 #162 누락 4건(#166 228.10·#182 30.00·#183 39.50·#190 48.00 = RM 345.60): Fable 권고 = 브랜드 «지금 정산서 발행» 9/1~9/30. 재발 방지(수동 발행 뒤 «이어서 내기») Irene 결정 대기
 
 ### 완료된 작업 (2026-10-05) [Claude Code]
 - **#1 SW 5.83 오너 대리 발주** (백업 20261005_052507 · Fable PASS · 커밋 760c8c886) — 오너가 소유 매장을 골라 그 매장 자격으로 발주·제출·취소, 오너 제출=승인 생략. buyerScope OWNER_ACTING_ROUTES · applySubmitGate actor · 화면 매장 선택 먼저

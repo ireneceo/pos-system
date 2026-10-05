@@ -279,22 +279,35 @@ const ReportsPage: React.FC = () => {
         };
       });
     } else {
-      // 연간/전체는 월별로 그룹화
+      // 연간/전체는 **연-월**로 묶어 시간 순서대로 (2026-10-05 Irene 「지금 10월인데 11월, 12월이 나와」).
+      //   Year = 오늘부터 365일이라 작년 달이 섞인다 — 월 이름만으로 묶으면 작년 11·12월이 올해 10월 뒤에 붙고
+      //   작년 10월과 올해 10월이 한 칸에 합쳐졌다. 해가 둘 이상이면 라벨에 연도를 붙인다.
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const monthlyData: Record<string, number> = {};
-
       reportsSummary.dailySales.forEach((d: any) => {
-        const month = parseInt(d.date.split('-')[1]) - 1;
-        const monthName = monthNames[month];
-        monthlyData[monthName] = (monthlyData[monthName] || 0) + d.revenue;
+        const key = String(d.date).slice(0, 7); // YYYY-MM
+        monthlyData[key] = (monthlyData[key] || 0) + d.revenue;
       });
-
-      return monthNames.map(month => ({
-        date: month,
-        sales: Math.round(monthlyData[month] || 0)
+      const dataKeys = Object.keys(monthlyData).sort();
+      if (dataKeys.length === 0) return [];
+      // 빈 달도 0 으로 그린다 — Year 는 기간 시작 달부터, 그 외는 첫 매출 달부터 기간 끝 달까지
+      const firstKey = activePeriod === 'year' && dateRange?.start ? String(dateRange.start).slice(0, 7) : dataKeys[0];
+      const lastKey = dateRange?.end && String(dateRange.end).slice(0, 7) > dataKeys[dataKeys.length - 1]
+        ? String(dateRange.end).slice(0, 7) : dataKeys[dataKeys.length - 1];
+      const keys: string[] = [];
+      let [y, m] = firstKey.split('-').map(Number);
+      const [ly, lm] = lastKey.split('-').map(Number);
+      while (y < ly || (y === ly && m <= lm)) {
+        keys.push(`${y}-${String(m).padStart(2, '0')}`);
+        m += 1; if (m > 12) { m = 1; y += 1; }
+      }
+      const multiYear = keys.length > 0 && keys[0].slice(0, 4) !== keys[keys.length - 1].slice(0, 4);
+      return keys.map((key) => ({
+        date: `${monthNames[Number(key.slice(5, 7)) - 1]}${multiYear ? ` '${key.slice(2, 4)}` : ''}`,
+        sales: Math.round(monthlyData[key] || 0)
       }));
     }
-  }, [reportsSummary, activePeriod]);
+  }, [reportsSummary, activePeriod, dateRange]);
 
   // What and Why: 서버 집계 데이터에서 총 매출 직접 사용
   const totalRevenue = useMemo(() => {

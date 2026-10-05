@@ -855,5 +855,37 @@
   "productIngredientsTab": {
     "packSizeNeedsConfirm": "perlu disahkan",
     "packSizeEdit": "Ubah penambahan stok bagi satu terimaan"
+  },
+  "brandSales": {
+    "brands": "Jenama",
+    "stores": "Kedai",
+    "selectAll": "Semua",
+    "selectNone": "Tiada",
+    "noStores": "Belum ada kedai membuat pesanan",
+    "scopeSummary": "Memaparkan {{brands}} daripada {{brandTotal}} jenama · {{stores}} daripada {{storeTotal}} kedai",
+    "pickBrand": "Pilih sekurang-kurangnya satu jenama.",
+    "tabOverview": "Ringkasan",
+    "tabCategories": "Mengikut kategori",
+    "tabProducts": "Mengikut produk",
+    "tabStores": "Mengikut kedai",
+    "tabInvoices": "Invois & kutipan",
+    "basisInvoices": "Berdasarkan invois yang dikeluarkan dalam tempoh ini.",
+    "basisOrders": "Berdasarkan tarikh pesanan — pesanan diterima atau diinvois, tidak termasuk dibatalkan. Caj penghantaran dikira berasingan.",
+    "sales": "Jualan produk",
+    "orders": "Pesanan",
+    "avgOrder": "Purata {{amount}} setiap pesanan",
+    "buyingStores": "Kedai pembeli",
+    "delivery": "Caj penghantaran",
+    "trend": "Trend jualan",
+    "noSales": "Tiada jualan dalam tempoh ini.",
+    "brand": "Jenama",
+    "topCategories": "Kategori teratas",
+    "product": "Produk",
+    "category": "Kategori",
+    "qty": "Kuantiti",
+    "store": "Kedai",
+    "share": "Bahagian",
+    "uncategorized": "Tiada kategori",
+    "total": "Jumlah"
   }
 }

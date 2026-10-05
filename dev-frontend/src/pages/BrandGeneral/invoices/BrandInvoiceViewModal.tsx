@@ -34,6 +34,8 @@ interface BrandInvoiceViewModalProps {
   setShowLinkSearchDropdown: (show: boolean) => void;
   handleLinkSearch: (query: string) => void;
   handleLinkAccount: (targetType: 'restaurant' | 'manager', targetData: Restaurant | Manager) => void;
+  /** 정산서(SOA)일 때 묶인 청구서 — 품목표 대신 이 목록을 보여준다 (레스토랑 화면과 같은 표, 2026-10-05) */
+  soaChildren?: Invoice[];
 }
 
 const BrandInvoiceViewModal: React.FC<BrandInvoiceViewModalProps> = ({
@@ -53,6 +55,7 @@ const BrandInvoiceViewModal: React.FC<BrandInvoiceViewModalProps> = ({
   setShowLinkSearchDropdown,
   handleLinkSearch,
   handleLinkAccount,
+  soaChildren,
 }) => {
   const { t, i18n } = useTranslation('brand');
 
@@ -208,7 +211,37 @@ const BrandInvoiceViewModal: React.FC<BrandInvoiceViewModalProps> = ({
           </div>
         </div>
 
+        {/* 정산서(SOA) — 묶인 청구서 번호·날짜·상태·금액 (레스토랑 화면 soa2 §5-C 와 같은 표) */}
+        {invoice.invoiceCategory === 'soa' && (
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '12px', textTransform: 'uppercase' }}>
+            {t('settings:invoicesPage.soaInvoices', 'Invoices in this statement')} ({(soaChildren || []).length})
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid #C7CED6' }}>
+                <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('settings:invoicesPage.soaInvoiceNumber', 'Invoice No.')}</th>
+                <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('settings:invoicesPage.soaInvoiceDate', 'Date')}</th>
+                <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('brand:brandInvoicesPage.status', 'Status')}</th>
+                <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('brand:brandInvoicesPage.amount')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(soaChildren || []).map((c) => (
+                <tr key={c.id} style={{ borderBottom: '1px solid #F1F4F8' }}>
+                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937' }}>{c.invoiceNumber}</td>
+                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'center' }}>{formatDate(c.issueDate)}</td>
+                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'center' }}>{getStatusDisplay(c.status)}</td>
+                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(c.total, c.currency || invoice.currency || 'MYR')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        )}
+
         {/* Items Table */}
+        {invoice.invoiceCategory !== 'soa' && (
         <div style={{ marginBottom: '24px' }}>
           <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '12px', textTransform: 'uppercase' }}>{t('brand:brandInvoicesPage.items')}</div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -232,6 +265,7 @@ const BrandInvoiceViewModal: React.FC<BrandInvoiceViewModalProps> = ({
             </tbody>
           </table>
         </div>
+        )}
 
         {/* Summary */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>

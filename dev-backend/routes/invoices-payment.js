@@ -1,6 +1,7 @@
 // 인보이스 결제 (Stripe/PayPal/Manual submit/confirm/reject)
 // 마운트: /api/invoices
 
+const { syncSoaChildren } = require('../services/soaChildSync');
 const express = require('express');
 const router = express.Router();
 
@@ -493,18 +494,8 @@ router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
         rejection_reason: null
       }, { transaction: t });
 
-      if (invoice.invoice_category === 'soa') {
-        const [updatedCount] = await Invoice.update(
-          { status: 'payment_submitted', payment_submitted_at: new Date() },
-          {
-            where: {
-              parent_soa_invoice_id: invoice.id,
-              status: { [require('sequelize').Op.in]: ['pending_payment', 'overdue', 'pending'] }
-            },
-            transaction: t
-          }
-        );
-      }
+      // 묶인 청구서도 같이 «제출됨» — 규칙은 services/soaChildSync 한 곳 (2026-10-05 Fable)
+      await syncSoaChildren(invoice, 'payment_submitted', { transaction: t });
     });
 
 
@@ -556,21 +547,8 @@ router.post('/:id/confirm-payment', authenticateToken, async (req, res) => {
         payment_notes: notes ? `${invoice.payment_notes || ''}\n[Confirmation note]: ${notes}` : invoice.payment_notes
       }, { transaction: t });
 
-      // SOA cascading: paying SOA marks all child trade invoices paid
-      if (invoice.invoice_category === 'soa') {
-        const [updatedCount] = await Invoice.update(
-          {
-            status: 'paid',
-            paid_at: new Date(),
-            confirmed_by: req.user.id,
-            confirmed_at: new Date()
-          },
-          {
-            where: { parent_soa_invoice_id: invoice.id, status: { [require('sequelize').Op.ne]: 'paid' } },
-            transaction: t
-          }
-        );
-      }
+      // SOA cascading: paying SOA marks all child trade invoices paid — 규칙은 services/soaChildSync 한 곳
+      await syncSoaChildren(invoice, 'paid', { transaction: t, actorId: req.user.id });
     });
 
 
@@ -651,11 +629,15 @@ router.post('/:id/reject-payment', authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, error: { message: 'You do not have permission to reject this invoice', code: 'FORBIDDEN' } });
     }
 
-    // Update invoice back to pending with rejection reason
-    await invoice.update({
-      status: 'pending_payment',
-      rejection_reason: reason,
-      payment_submitted_at: null
+    // Update invoice back to pending with rejection reason — 정산서면 묶인 청구서도 함께 «대기» 로 (2026-10-05 Fable)
+    const { sequelize: _seqR } = require('../config/database');
+    await _seqR.transaction(async (t) => {
+      await invoice.update({
+        status: 'pending_payment',
+        rejection_reason: reason,
+        payment_submitted_at: null
+      }, { transaction: t });
+      await syncSoaChildren(invoice, 'pending_payment', { transaction: t });
     });
 
 

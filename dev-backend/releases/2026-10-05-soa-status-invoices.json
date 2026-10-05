@@ -1,0 +1,64 @@
+{
+  "tag": "soa-status-invoices",
+  "sw_version": "5.86-soa-status-invoices-20261005",
+  "date": "2026-10-05",
+  "in_progress": [
+    "운영 정산서 3건 매장 칸(restaurant_id) 보정 — Irene 승인 대기",
+    "with MIN Cafe ↔ GIT Consulting 정산서 누락 4건(RM 345.60) 처리 — 브랜드 «지금 정산서 발행» 권고",
+    "수동 정산서 발행 뒤 자동 발행 «이어서 내기» — Irene 결정 대기"
+  ],
+  "completed": [
+    "정산서(SOA)와 묶인 청구서 상태가 모든 길에서 같이 움직인다 — 매장 결제 제출 · 발행자 확인(Confirm Payment Received 포함) · 결제 거절 · 상태 변경 전부 한 규칙(services/soaChildSync)",
+    "이미 갈라진 정산서↔청구서 상태를 맞추는 복구가 배포마다 자동 실행(migrate-soa-child-status-sync) + 배포 검사 I-SOA-001(불일치 0건)",
+    "판매자 청구서 화면의 정산서 손님 이름이 다른 매장으로 나오던 것 수정(정산서 만들 때 매장 칸 채움 + 이름 계산이 매장 번호를 사람 번호로 읽던 것)",
+    "브랜드 정산서 상세·PDF 에 묶인 청구서 번호·날짜·상태·금액 표",
+    "레스토랑 청구서: Mark paid 뒤 «To pay» 목록 즉시 갱신 · «Invoices to Pay» 탭을 앞으로·기본 탭 · 직원이 올린 공급업체 인보이스 «올린 인보이스 보기»(줄·상세)",
+    "매출 보고서 Year 그래프: 월 이름만으로 묶어 작년 11·12월이 올해 10월 뒤에 붙던 것 → 연-월 시간 순서·해가 바뀌면 연도 표시",
+    "브랜드 매출 보고서 정돈: 브랜드·매장 체크(직영점 빼고 보기, 선택은 브라우저에 기억) · 탭 요약/카테고리별/상품별/매장별/청구·수금 · 판매 통계는 주문 시점 기준(수령 또는 청구된 발주, 취소 제외, 배송비 별도) — GET /api/brand/sales-report(같은 브랜드 범위 검사) · 청구 집계도 브랜드·매장 다중 선택"
+  ],
+  "remaining": [
+    "다음 섹션: 영수증 드래그·PDF · 발행자 «To Confirm» 탭·버튼 색 · 결제 설정=계정 하나 · 판매자 배송 지역"
+  ],
+  "verification": {
+    "api": "dev 실호출 14/14 — 매장 칸 빈 정산서 손님 이름=매장명·restaurantId · 자식 parentSoaInvoiceId · reject-payment → 자식 대기 · PATCH status paid → 자식 paid · 복구 스크립트 불일치 1→0·자식 paid_at=정산서 paid_at·재실행 0건 · generateSoaNow 새 정산서 restaurant_id 채움. Mark paid 실브라우저(목 응답): to-pay 재조회 1→2·줄 사라짐 · 판매 통계: 범위 밖 브랜드 403 · 매장 none 빈 결과 · 운영 같은 SQL 읽기 대조 9월 R8 Sauce 4,492.80/Meat 1,789.70·전체 17건 8,136.95(발행일 기준과 차이 = 8/27 주문 195.70)",
+    "fault_injection": "이름 계산 보정 끔 → T1 «—» 실패 → 원복 통과 · 서버 재시작 전 옛 코드로 reject/PATCH → 자식 상태 안 따라가 T2·T3 실패 · 인스펙션 I-SOA-001 이 불일치 1건에서 exit 1",
+    "regression": "verify-all --full (mount sweep 포함)",
+    "migration": "migrate-soa-child-status-sync.js (deploy, 멱등) — 운영 현재 불일치 0건 예상(오전 SOA-BRD2-R8 수동 보정분 포함)",
+    "sw_version": "5.86-soa-status-invoices-20261005",
+    "fable_note": "Fable 판정 3건: ①SOA 누락=수동 발행 skip 규칙 그대로(코드 결함 아님) ②손님 이름=A(생성 시 restaurant_id)+B(이름 계산) 둘 다 ③상태 연동=서버 한 함수+복구 스크립트+인스펙션, 구현 후 게이트 1회"
+  },
+  "notes": [
+    "🔒 인쇄 보호파일·KDS 무접촉",
+    "운영 정산서 3건 restaurant_id 는 비어 있어도 이름은 이제 맞게 나온다(이름 계산 보정). 데이터 보정은 별도 승인"
+  ],
+  "irene_actions_after_deploy": [
+    "GIT Consulting 청구서 화면 → SOA-BRD1-R10 손님이 with MIN Cafe, SOA-BRD2-R8 이 K-DINE IPC 로 보이는지 · View 에 묶인 청구서 표",
+    "with MIN Cafe 청구서 → 처음 탭이 Invoices to Pay · Mark paid 후 줄이 바로 사라짐 · «올린 인보이스 보기»",
+    "매장 보고서 Sales → Year → 그래프 마지막이 Oct '26",
+    "브랜드 보고서 → 매장에서 with MIN Cafe 끄기 → 기간 9월 → 카테고리별: Sauce & Condiment 4,492.80 · Meat 1,789.70 (K-DINE IPC 만 켜도 같음)"
+  ],
+  "issues": [
+    "with MIN Cafe 가 SOA 를 결제했는데 이후 청구서는 Pending 으로 남음(9/30분이 10/1 SOA 에 안 들어감)",
+    "브랜드 화면에 With MIN 정산서가 The Fire, K-DINE IPC 정산서가 KFC Sunway 로 표시",
+    "브랜드 정산서 상세에 어떤 청구서가 묶였는지 안 보임",
+    "브랜드 Confirm 으로 정산서만 paid, 묶인 청구서는 확인 대기로 남음",
+    "Mark paid 해도 To pay 목록이 그대로",
+    "Year 매출 그래프에 아직 안 온 11·12월이 나옴",
+    "브랜드 보고서에 카테고리별 매출이 없고 브랜드별·매장별로 골라 볼 수 없음"
+  ],
+  "upcoming": [
+    "다음 섹션 4건"
+  ],
+  "behavior_changes": [
+    "정산서를 확인·거절하면 묶인 청구서도 같은 상태가 된다",
+    "레스토랑 청구서 화면이 «Invoices to Pay» 탭부터 열린다",
+    "매출 Year 그래프가 지난 12개월을 시간 순서로 보여 준다",
+    "브랜드 보고서가 탭 5개로 바뀌고 위쪽에서 브랜드·매장을 켜고 끈다"
+  ],
+  "check_areas": [
+    "브랜드·푸드코트·시스템관리자 청구서 확인/거절",
+    "레스토랑 청구서 화면",
+    "매장 보고서 Sales 그래프",
+    "브랜드 보고서(/pos/brand/general/reports)"
+  ]
+}

@@ -238,6 +238,9 @@ async function issueSoaForPair({
       issuer_id: issuerId,
       payer_type: payer.payer_type,
       payer_id: payer.payer_id,
+      // 거래 청구서·크레딧노트와 같은 규칙 — 매장이 내는 정산서는 매장 칸을 채운다 (2026-10-05 Fable).
+      //   비워 두면 판매자 화면이 결제자 번호를 사람 번호로 읽어 다른 매장 이름을 붙였다.
+      restaurant_id: payer.payer_type === 'restaurant' ? payer.payer_id : null,
       currency,
       subtotal: totalDue,
       total_amount: totalDue,

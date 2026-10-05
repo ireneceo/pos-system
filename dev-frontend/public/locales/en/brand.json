@@ -855,5 +855,37 @@
   "productIngredientsTab": {
     "packSizeNeedsConfirm": "needs confirming",
     "packSizeEdit": "Edit how much stock one arrives as"
+  },
+  "brandSales": {
+    "brands": "Brands",
+    "stores": "Stores",
+    "selectAll": "All",
+    "selectNone": "None",
+    "noStores": "No store has ordered yet",
+    "scopeSummary": "Showing {{brands}} of {{brandTotal}} brands · {{stores}} of {{storeTotal}} stores",
+    "pickBrand": "Select at least one brand.",
+    "tabOverview": "Overview",
+    "tabCategories": "By category",
+    "tabProducts": "By product",
+    "tabStores": "By store",
+    "tabInvoices": "Invoices & collection",
+    "basisInvoices": "Based on invoices issued in this period.",
+    "basisOrders": "Based on order date — received or invoiced orders, cancelled excluded. Delivery fees counted separately.",
+    "sales": "Product sales",
+    "orders": "Orders",
+    "avgOrder": "Avg {{amount}} per order",
+    "buyingStores": "Buying stores",
+    "delivery": "Delivery fees",
+    "trend": "Sales trend",
+    "noSales": "No sales in this period.",
+    "brand": "Brand",
+    "topCategories": "Top categories",
+    "product": "Product",
+    "category": "Category",
+    "qty": "Qty",
+    "store": "Store",
+    "share": "Share",
+    "uncategorized": "Uncategorized",
+    "total": "Total"
   }
 }

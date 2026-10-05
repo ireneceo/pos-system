@@ -787,7 +787,7 @@ router.get('/invoices', requireRole('Restaurant Owner'), async (req, res) => {
     // Transform invoices with issuer/payer info (same as Restaurant Admin)
     const transformedData = await Promise.all(rows.map(async (invoice) => {
       const issuerInfo = await getIssuerCompanyInfo(invoice.issuer_type, invoice.issuer_id, invoice.currency || 'MYR');
-      const payerInfo = await getPayerCompanyInfo(invoice.payer_type, invoice.payer_id, invoice.restaurant);
+      const payerInfo = await getPayerCompanyInfo(invoice.payer_type, invoice.payer_id, invoice.restaurant, invoice);
 
       const itemsTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.calculated_amount || item.fixed_amount || 0), 0) || 0;
       const taxTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0;
@@ -909,7 +909,7 @@ router.get('/invoices/to-pay', requireRole('Restaurant Owner'), async (req, res)
     // Transform with issuer/payer info
     const transformedData = await Promise.all(invoices.map(async (invoice) => {
       const issuerInfo = await getIssuerCompanyInfo(invoice.issuer_type, invoice.issuer_id, invoice.currency || 'MYR');
-      const payerInfo = await getPayerCompanyInfo(invoice.payer_type, invoice.payer_id, invoice.restaurant);
+      const payerInfo = await getPayerCompanyInfo(invoice.payer_type, invoice.payer_id, invoice.restaurant, invoice);
 
       const itemsTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.calculated_amount || item.fixed_amount || 0), 0) || 0;
       const taxTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0;

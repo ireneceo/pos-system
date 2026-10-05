@@ -575,7 +575,14 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       updateData.payment_notes = payment_notes;
     }
 
-    await invoice.update(updateData);
+    // 정산서면 묶인 청구서도 같은 상태로 — 이 길(브랜드·푸드코트·관리자 «Confirm Payment Received»)이
+    //   빠져 있어 자식만 «확인 대기» 로 남았다(2026-10-05 운영 SOA-BRD2-R8). 규칙은 services/soaChildSync 한 곳.
+    const { sequelize: _seqS } = require('../config/database');
+    const { syncSoaChildren } = require('../services/soaChildSync');
+    await _seqS.transaction(async (t) => {
+      await invoice.update(updateData, { transaction: t });
+      await syncSoaChildren(invoice, status, { transaction: t, actorId: req.user.id });
+    });
 
     // 🔴 정산서(SOA)를 취소하면 안에 묶인 거래 인보이스를 **풀어 준다**.
     //   안 풀면 `parent_soa_invoice_id` 가 남아 ①다음 정산서 수집(=null 만)에서 빠지고

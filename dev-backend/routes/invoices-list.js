@@ -36,6 +36,7 @@ const {
   getBankInfoByCurrency,
   getIssuerCompanyInfo,
   getPayerCompanyInfo,
+  payerIdIsStore,
   formatBillingPeriod,
   getInvoiceTimezone,
   getCategoryDisplayName,
@@ -260,6 +261,16 @@ router.get('/', authenticateToken, async (req, res) => {
     const payerRestaurantById = {};
     payerRestaurants.forEach(r => { payerRestaurantById[r.id] = r; });
 
+    // 매장 칸이 빈 '매장' 결제 청구서(정산서)는 payer_id 가 매장 번호다 — 매장 표에서 직접 찾는다.
+    const payerStoreIds = [...new Set(filteredInvoices
+      .filter(inv => payerIdIsStore(inv))
+      .map(inv => inv.payer_id))];
+    const payerStores = payerStoreIds.length > 0 ? await Restaurant.findAll({
+      where: { id: { [Op.in]: payerStoreIds } }
+    }) : [];
+    const payerStoreById = {};
+    payerStores.forEach(r => { payerStoreById[r.id] = r; });
+
     // Fetch linked hardware quotes for hardware invoices (for company_name fallback)
     const invoiceIds = filteredInvoices.map(inv => inv.id);
     const HardwareQuote = require('../models/HardwareQuote');
@@ -291,7 +302,11 @@ router.get('/', authenticateToken, async (req, res) => {
       //   6. '—'
       let customerName, customerAddress, customerCompany, customerRole;
 
-      const payer = invoice.payer_id ? payers.find(p => p.id === invoice.payer_id) : null;
+      // 결제자 종류가 '매장'인데 매장 칸이 비어 있으면(정산서) payer_id 는 **매장 번호**다 — 사람 번호로 읽으면
+      //   번호가 같은 다른 사용자의 매장 이름이 붙는다(2026-10-05 운영: 매장 10 정산서가 «The Fire» 로 표시).
+      const payerIsStore = payerIdIsStore(invoice);
+      const rest = invoice.restaurant || (payerIsStore ? payerStoreById[invoice.payer_id] : null) || null;
+      const payer = invoice.payer_id && !payerIsStore ? payers.find(p => p.id === invoice.payer_id) : null;
       const payerRestaurant = payer?.restaurant_id ? payerRestaurantById[payer.restaurant_id] : null;
       const linkedQuote = quoteByInvoiceId[invoice.id];
 
@@ -308,7 +323,7 @@ router.get('/', authenticateToken, async (req, res) => {
         customerRole = null;
       } else {
         // Unified fallback for all non-external payer types
-        customerName = invoice.restaurant?.name
+        customerName = rest?.name
           || payerRestaurant?.name
           || payer?.company_name
           || payer?.full_name
@@ -317,11 +332,11 @@ router.get('/', authenticateToken, async (req, res) => {
           || invoice.external_payer_company
           || invoice.external_payer_name
           || '—';
-        customerAddress = invoice.restaurant?.address
+        customerAddress = rest?.address
           || payerRestaurant?.address
           || invoice.external_payer_address
           || 'No address';
-        customerCompany = invoice.restaurant?.name
+        customerCompany = rest?.name
           || payerRestaurant?.name
           || payer?.company_name
           || linkedQuote?.company_name
@@ -344,19 +359,19 @@ router.get('/', authenticateToken, async (req, res) => {
       } else {
         // Prefer user's full_name (actual person), fall back through company names
         payerName = payer?.full_name
-          || invoice.restaurant?.admin_name
+          || rest?.admin_name
           || payer?.company_name
-          || invoice.restaurant?.name
+          || rest?.name
           || payerRestaurant?.name
           || linkedQuote?.contact_name
           || invoice.external_payer_name
           || '—';
-        payerPlanType = payer?.plan_type || invoice.restaurant?.plan_type;
-        payerBillingCycle = payer?.billing_cycle || invoice.restaurant?.billing_cycle;
+        payerPlanType = payer?.plan_type || rest?.plan_type;
+        payerBillingCycle = payer?.billing_cycle || rest?.billing_cycle;
       }
 
       // Resolve plan type: restaurant → users table for Brand/FC/Owner
-      const resolvedPlanType = invoice.restaurant?.plan_type || payerPlanType;
+      const resolvedPlanType = rest?.plan_type || payerPlanType;
 
       // Attach issuerInfo so frontend can render bank info on issued invoices
       const issuerInfo = await getCachedIssuerInfo(
@@ -368,13 +383,13 @@ router.get('/', authenticateToken, async (req, res) => {
       return {
         id: invoice.id.toString(),
         invoiceNumber: invoice.invoice_number,
-        managerId: invoice.payer_id ? invoice.payer_id.toString() : (invoice.restaurant?.admin_id?.toString() || ''),
+        managerId: invoice.payer_id ? invoice.payer_id.toString() : (rest?.admin_id?.toString() || ''),
         managerName: payerName,
         companyName: customerCompany,
         customerName: customerName,
         customerAddress: customerAddress,
-        restaurantId: invoice.restaurant_id?.toString(),
-        restaurantName: invoice.restaurant?.name
+        restaurantId: (invoice.restaurant_id || rest?.id)?.toString(),
+        restaurantName: rest?.name
           || payerRestaurant?.name
           || linkedQuote?.company_name
           || invoice.external_payer_company
@@ -432,6 +447,8 @@ router.get('/', authenticateToken, async (req, res) => {
         payerType: invoice.payer_type,
         payerId: invoice.payer_id?.toString(),
         invoiceCategory: invoice.items?.[0]?.item_type || invoice.invoice_category || 'subscription',
+        // 정산서 상세에 «묶인 청구서» 표를 그리려면 판매자 화면도 자식→정산서 연결을 알아야 한다 (2026-10-05)
+        parentSoaInvoiceId: invoice.parent_soa_invoice_id ? String(invoice.parent_soa_invoice_id) : null,
         customDescription: invoice.custom_description,
         serviceDescription: invoice.service_description,
         categoryDisplayName: invoice.category_display_name || getCategoryDisplayName(
@@ -529,7 +546,7 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
     // Transform invoices with issuer/payer company info
     const transformedInvoices = await Promise.all(invoices.map(async (invoice) => {
       const issuerInfo = await getIssuerCompanyInfo(invoice.issuer_type, invoice.issuer_id, invoice.currency || 'MYR');
-      const payerInfo = await getPayerCompanyInfo(invoice.payer_type, invoice.payer_id, invoice.restaurant);
+      const payerInfo = await getPayerCompanyInfo(invoice.payer_type, invoice.payer_id, invoice.restaurant, invoice);
       const srcPo = poByInvoiceId.get(Number(invoice.id)) || null;
 
       // Calculate amounts from items if available
@@ -998,7 +1015,7 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       const issuerName = issuerInfo?.name || (invoice.issuer_type === 'system_admin' ? 'System Admin' : invoice.issuer_type === 'brand' ? 'Brand' : 'Foodcourt');
 
       // Get payer company info (Bill To)
-      const payerInfo = await getPayerCompanyInfo(invoice.payer_type, invoice.payer_id, invoice.restaurant);
+      const payerInfo = await getPayerCompanyInfo(invoice.payer_type, invoice.payer_id, invoice.restaurant, invoice);
 
       // Convert invoice_category to display name
       // For subscription invoices, show plan type (e.g., "Subscription - Professional")
@@ -1154,7 +1171,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
     const payerCompany = await getPayerCompanyInfo(
       invoice.payer_type,
       invoice.payer_id,
-      invoice.restaurant
+      invoice.restaurant,
+      invoice
     );
 
     // Transform invoice with company info

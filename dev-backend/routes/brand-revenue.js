@@ -49,7 +49,10 @@ router.get(
   requireBrandScope(),
   async (req, res) => {
     try {
-      const brandIds = brandIdsFromScope(req);
+      // 화면 체크박스(브랜드 여러 개) — 범위 밖이 섞이면 403. 규칙은 판매 통계와 같은 resolveSalesBrandIds 하나.
+      const scoped = resolveSalesBrandIds(req);
+      if (scoped.forbidden) return res.status(403).json({ success: false, message: 'Brand not in your scope' });
+      const brandIds = scoped.ids;
       const where = { issuer_type: 'brand', status: { [Op.notIn]: DEAD_STATUSES } };
       if (brandIds) where.issuer_id = { [Op.in]: brandIds };
 
@@ -74,6 +77,12 @@ router.get(
       if (restaurant_id && /^\d+$/.test(String(restaurant_id))) {
         where.payer_type = 'restaurant';
         where.payer_id = Number(restaurant_id);
+      }
+      // 화면 체크박스(매장 여러 개). 'none' = 아무 매장도 → 매장 청구서 0건
+      if (req.query.restaurant_ids !== undefined && req.query.restaurant_ids !== '') {
+        const rids = req.query.restaurant_ids === 'none' ? [0] : idList(req.query.restaurant_ids);
+        where.payer_type = 'restaurant';
+        where.payer_id = { [Op.in]: rids.length ? rids : [0] };
       }
 
       const invoices = await Invoice.findAll({
@@ -179,6 +188,160 @@ router.get(
     } catch (err) {
       console.error('GET /api/brand/revenue-report error:', err);
       res.status(500).json({ success: false, message: 'Failed to load revenue report' });
+    }
+  }
+);
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * GET /api/brand/sales-report — 브랜드 **판매 내역 통계** (2026-10-05 Irene)
+ *
+ *   「카테고리별로 매출보는 탭도 추가해줘 … 브랜드별로도 볼 수 있어야 … 레스토랑 매출통계처럼」
+ *   「매출통계 잡을 때 레스토랑들, 브랜드들 체크해서 볼 수 있게」(with MIN 같은 직영점은 따로 봐야 한다)
+ *   「주문시점으로 기준이 맞아」
+ *
+ * 기준 = **주문 시점**(발주 제출 시각, 없으면 생성 시각)의 브랜드 판매 발주 중
+ *        수령 완료(received)이거나 청구서가 붙은 것. 취소·초안 제외.
+ * 금액 = 발주 품목 금액(line_total) — 거래 청구서 품목이 같은 값을 옮겨 적는다(purchaseOrderService).
+ *        배송비는 품목이 아니라 따로 센다.
+ * 카테고리 = 품목 → 판매 연결(ingredient_seller_products, seller_type='brand') → 브랜드 상품 → 브랜드 상품 카테고리.
+ *
+ * ⚠ 보안: 브랜드는 요청값을 그대로 쓰지 않는다 — `requireBrandScope` 범위(소유∪배정) 안의 것만.
+ *   범위 밖 브랜드가 하나라도 섞이면 403. 매장 목록은 그 브랜드들에서 산 매장만 내려 준다.
+ * ──────────────────────────────────────────────────────────────────────────── */
+const { sequelize } = require('../config/database');
+const { getDateBounds } = require('../utils/dateTimeHelper');
+/** 시각 → 그 시간대 달력의 YYYY-MM-DD */
+const localDay = (d, tz) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+
+const idList = (v) => String(v || '').split(',').map(x => x.trim()).filter(x => /^\d+$/.test(x)).map(Number);
+const validTz = (tz) => { try { Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch { return false; } };
+
+/** 요청한 브랜드 목록을 범위와 맞춘다. null = 시스템관리자 전체. 범위 밖이면 { forbidden: true }. */
+function resolveSalesBrandIds(req) {
+  const allowed = brandIdsFromScope(req);          // null(관리자 전체) | number[]
+  const asked = idList(req.query.brand_ids);
+  if (!asked.length) return { ids: allowed };
+  if (allowed && asked.some(id => !allowed.includes(id))) return { forbidden: true };
+  return { ids: asked };
+}
+
+router.get(
+  '/brand/sales-report',
+  authenticateToken,
+  requireBrandScope(),
+  async (req, res) => {
+    try {
+      const scoped = resolveSalesBrandIds(req);
+      if (scoped.forbidden) return res.status(403).json({ success: false, message: 'Brand not in your scope' });
+      const brandIds = scoped.ids;
+      if (brandIds && brandIds.length === 0) return res.status(403).json({ success: false, message: 'No brand in scope' });
+
+      const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+      const { start, end } = req.query;
+      if (!DATE_RE.test(String(start || '')) || !DATE_RE.test(String(end || ''))) {
+        return res.status(400).json({ success: false, message: 'start and end (YYYY-MM-DD) are required' });
+      }
+      const tz = validTz(req.query.tz) ? req.query.tz : 'Asia/Kuala_Lumpur';
+      const from = getDateBounds(start, tz).startOfDay;
+      const to = getDateBounds(end, tz).endOfDay;
+      // 매장 선택 — 값이 없으면 전체, 'none' 이면 아무 매장도(빈 결과)
+      const storeParam = req.query.restaurant_ids;
+      const storeIds = storeParam === 'none' ? [] : idList(storeParam);
+      const storeFilterOn = storeParam !== undefined && storeParam !== '';
+
+      // 선택지 — 범위 안 브랜드와, 그 브랜드에서 한 번이라도 산 매장(기간 무관: 체크박스가 기간마다 바뀌지 않게)
+      const optBrandWhere = brandIdsFromScope(req);
+      const brandOptions = await Brand.findAll({
+        where: optBrandWhere ? { id: optBrandWhere } : {}, attributes: ['id', 'name'], order: [['name', 'ASC']]
+      });
+      const storeOptions = await sequelize.query(
+        `SELECT DISTINCT r.id, r.name FROM purchase_orders po JOIN restaurants r ON r.id = po.entity_id
+          WHERE po.seller_type = 'brand' AND po.entity_type = 'restaurant'
+            ${optBrandWhere ? 'AND po.seller_entity_id IN (:optBrands)' : ''}
+          ORDER BY r.name`,
+        { replacements: { optBrands: optBrandWhere || [0] }, type: 'SELECT' });
+
+      const emptyResult = { totals: { orders: 0, amount: 0, delivery: 0, stores: 0, lines: 0 },
+        by_category: [], by_product: [], by_store: [], by_brand: [], trend: [], trend_unit: 'day' };
+      if (storeFilterOn && storeIds.length === 0) {
+        return res.json({ success: true, data: { ...emptyResult, options: { brands: brandOptions, stores: storeOptions } } });
+      }
+
+      const lines = await sequelize.query(
+        `SELECT po.id AS po_id, po.seller_entity_id AS brand_id, po.entity_id AS restaurant_id, r.name AS restaurant_name,
+                COALESCE(po.submitted_at, po.created_at) AS ordered_at, COALESCE(po.delivery_fee, 0) AS delivery_fee,
+                poi.quantity_ordered AS qty, poi.unit, COALESCE(poi.line_total, 0) AS amount, poi.description,
+                bp.id AS product_id, bp.name AS product_name, c.id AS category_id, c.name AS category_name
+           FROM purchase_orders po
+           JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
+           LEFT JOIN restaurants r ON r.id = po.entity_id
+           LEFT JOIN ingredient_seller_products isp ON isp.id = poi.ingredient_seller_product_id AND isp.seller_type = 'brand'
+           LEFT JOIN brand_products bp ON bp.id = isp.seller_product_id
+           LEFT JOIN brand_product_categories c ON c.id = bp.category_id
+          WHERE po.seller_type = 'brand' AND po.entity_type = 'restaurant'
+            ${brandIds ? 'AND po.seller_entity_id IN (:brandIds)' : ''}
+            ${storeFilterOn ? 'AND po.entity_id IN (:storeIds)' : ''}
+            AND po.status NOT IN ('cancelled', 'draft')
+            AND (po.status = 'received' OR po.trade_invoice_id IS NOT NULL)
+            AND COALESCE(po.submitted_at, po.created_at) BETWEEN :from AND :to`,
+        { replacements: { brandIds: brandIds || [0], storeIds: storeIds.length ? storeIds : [0], from, to }, type: 'SELECT' });
+
+      const r2 = (n) => Math.round(n * 100) / 100;
+      const bName = new Map(brandOptions.map(b => [b.id, b.name]));
+      const orders = new Map();      // po_id → { brand_id, restaurant_id, delivery }
+      const cats = new Map(); const prods = new Map(); const stores = new Map(); const brandsAgg = new Map();
+      const spanDays = Math.round((to - from) / 86400000);
+      const trendUnit = spanDays > 62 ? 'month' : 'day';
+      const trend = new Map();
+      let amount = 0;
+
+      for (const l of lines) {
+        const amt = Number(l.amount) || 0;
+        amount += amt;
+        if (!orders.has(l.po_id)) {
+          orders.set(l.po_id, { brand_id: l.brand_id, restaurant_id: l.restaurant_id, delivery: Number(l.delivery_fee) || 0 });
+        }
+        const catKey = l.category_id ?? 'none';
+        if (!cats.has(catKey)) cats.set(catKey, { category_id: l.category_id ?? null, name: l.category_name || null, amount: 0, orders: new Set(), products: new Map() });
+        const c = cats.get(catKey); c.amount += amt; c.orders.add(l.po_id);
+        const prodKey = l.product_id ?? `d:${l.description || '?'}`;
+        if (!prods.has(prodKey)) prods.set(prodKey, { product_id: l.product_id ?? null, name: l.product_name || l.description || '—',
+          category_id: l.category_id ?? null, category_name: l.category_name || null, unit: l.unit || '', qty: 0, amount: 0, orders: new Set(), stores: new Set() });
+        const p = prods.get(prodKey); p.qty += Number(l.qty) || 0; p.amount += amt; p.orders.add(l.po_id); p.stores.add(l.restaurant_id);
+        if (!c.products.has(prodKey)) c.products.set(prodKey, p);
+        if (!stores.has(l.restaurant_id)) stores.set(l.restaurant_id, { restaurant_id: l.restaurant_id, name: l.restaurant_name || `#${l.restaurant_id}`, amount: 0, orders: new Set() });
+        const st = stores.get(l.restaurant_id); st.amount += amt; st.orders.add(l.po_id);
+        if (!brandsAgg.has(l.brand_id)) brandsAgg.set(l.brand_id, { brand_id: l.brand_id, name: bName.get(l.brand_id) || `#${l.brand_id}`, amount: 0, orders: new Set() });
+        const ba = brandsAgg.get(l.brand_id); ba.amount += amt; ba.orders.add(l.po_id);
+        const day = localDay(new Date(l.ordered_at), tz);           // YYYY-MM-DD (매장 달력)
+        const tKey = trendUnit === 'month' ? day.slice(0, 7) : day;
+        trend.set(tKey, (trend.get(tKey) || 0) + amt);
+      }
+      let delivery = 0;
+      for (const o of orders.values()) delivery += o.delivery;
+
+      const pOut = (p) => ({ product_id: p.product_id, name: p.name, category_id: p.category_id, category_name: p.category_name,
+        unit: p.unit, qty: r2(p.qty), amount: r2(p.amount), orders: p.orders.size, stores: p.stores.size });
+      const byDesc = (a, b) => b.amount - a.amount;
+
+      res.json({
+        success: true,
+        data: {
+          totals: { orders: orders.size, amount: r2(amount), delivery: r2(delivery), stores: stores.size, lines: lines.length },
+          by_category: [...cats.values()].map(c => ({ category_id: c.category_id, name: c.name, amount: r2(c.amount),
+            orders: c.orders.size, share: amount ? r2((c.amount / amount) * 100) : 0,
+            products: [...c.products.values()].map(pOut).sort(byDesc) })).sort(byDesc),
+          by_product: [...prods.values()].map(pOut).sort(byDesc),
+          by_store: [...stores.values()].map(s => ({ restaurant_id: s.restaurant_id, name: s.name, amount: r2(s.amount), orders: s.orders.size })).sort(byDesc),
+          by_brand: [...brandsAgg.values()].map(b => ({ brand_id: b.brand_id, name: b.name, amount: r2(b.amount), orders: b.orders.size })).sort(byDesc),
+          trend: [...trend.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => ({ key: k, amount: r2(v) })),
+          trend_unit: trendUnit,
+          options: { brands: brandOptions, stores: storeOptions }
+        }
+      });
+    } catch (err) {
+      console.error('GET /api/brand/sales-report error:', err);
+      res.status(500).json({ success: false, message: 'Failed to load sales report' });
     }
   }
 );

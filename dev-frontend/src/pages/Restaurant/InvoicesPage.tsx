@@ -348,7 +348,9 @@ const RestaurantInvoicesPage: React.FC = () => {
   // 'all'(전체 인보이스 브라우즈) 탭은 'month' 기본. (incoming-orders 와 동일 사상: 액션 필요한 목록은 안 가린다.)
   // ?invoice=<id> 로 들어오면(발주 내역의 «Invoice» 버튼) 그 청구서를 바로 연다 — 기간은 전체로(이번 달 밖일 수 있다)
   const deepInvoiceId = searchParams.get('invoice');
-  const tabDefaultPeriod = (t: string | null): PeriodType => (deepInvoiceId || t === 'to_pay' ? 'all' : 'month');
+  // 탭을 안 고르고 들어오면 «낼 것» 부터 — 할 일 기준 (2026-10-05 Irene). 청구서 링크(?invoice=)는 전체 목록에 있으니 All.
+  const defaultTab: TabType = deepInvoiceId ? 'all' : 'to_pay';
+  const tabDefaultPeriod = (t: string | null): PeriodType => (deepInvoiceId || (t || defaultTab) === 'to_pay' ? 'all' : 'month');
   const [activePeriod, setActivePeriod] = useState<PeriodType>(() => tabDefaultPeriod(searchParams.get('tab')));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange(tabDefaultPeriod(searchParams.get('tab'))));
@@ -377,7 +379,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   const [, setCurrencyConfig] = useState<CurrencyConfig>({});
 
   // URL-based tab management
-  const activeTab = (searchParams.get('tab') as TabType) || 'all';
+  const activeTab = (searchParams.get('tab') as TabType) || defaultTab;
   const handleTabChange = (tab: TabType) => {
     setSearchParams({ tab });
     // 탭별 기본 기간 적용 — to_pay 로 가면 'all'(안 가림), all 로 가면 'month'.
@@ -1302,6 +1304,15 @@ const RestaurantInvoicesPage: React.FC = () => {
                           : invoice.uploadedInvoiceUrl
                             ? <span style={{ color: '#B45309' }}>{t('settings:invoicesPage.notReconciled', '인보이스 올림 · 미대조')}</span>
                             : <span style={{ color: '#6B7280' }}>{t('settings:invoicesPage.noUpload', '올린 인보이스 없음')}</span>}
+                        {/* 직원이 올린 공급업체 인보이스를 청구서 화면에서 바로 연다 — 발주 내역까지 가지 않게 (2026-10-05 Irene) */}
+                        {invoice.uploadedInvoiceUrl && (
+                          <>
+                            {' · '}
+                            <a href={invoice.uploadedInvoiceUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#635BFF', fontWeight: 600 }}>
+                              {t('settings:invoicesPage.viewUploadedInvoice', '올린 인보이스 보기')}
+                            </a>
+                          </>
+                        )}
                       </CompanyName>
                     )}
                   </InvoiceInfo>
@@ -1342,7 +1353,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                       invoice.issuerIsExternal ? (
                         <ExternalInvoicePayAction
                           invoice={invoice}
-                          onPaid={fetchAllInvoices}
+                          onPaid={() => { fetchInvoicesToPay(); fetchAllInvoices(); window.dispatchEvent(new Event('refreshBadgeCounts')); }}
                           renderTrigger={(open) => (
                             <LocalActionButton variant="success" onClick={open}>
                               {t('settings:invoicesPage.markPaid', '결제함')}
@@ -1440,11 +1451,11 @@ const RestaurantInvoicesPage: React.FC = () => {
 
           {/* Tabs */}
           <Tabs>
-            <CommonTab active={activeTab === 'all'} onClick={() => handleTabChange('all')}>
-              All Invoices<TabBadge count={allInvoices.length} />
-            </CommonTab>
             <CommonTab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>
               Invoices to Pay<TabBadge count={invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue' || i.status === 'payment_submitted').length} variant="warning" />
+            </CommonTab>
+            <CommonTab active={activeTab === 'all'} onClick={() => handleTabChange('all')}>
+              All Invoices<TabBadge count={allInvoices.length} />
             </CommonTab>
           </Tabs>
 
@@ -1514,7 +1525,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                       selectedInvoice.purchaseOrderId ? (
                         <ExternalInvoicePayAction
                           invoice={selectedInvoice}
-                          onPaid={() => { setShowViewModal(false); fetchAllInvoices(); }}
+                          onPaid={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); window.dispatchEvent(new Event('refreshBadgeCounts')); }}
                           renderTrigger={(open) => (
                             <Button variant="success" onClick={open}>
                               {t('settings:invoicesPage.markPaidLong', '결제함 표시')}
@@ -1566,6 +1577,11 @@ const RestaurantInvoicesPage: React.FC = () => {
                         : t('settings:invoicesPage.uploadSupplierInvoice', 'Upload supplier invoice')}
                     </Button>
                   </>
+                )}
+                {selectedInvoice.uploadedInvoiceUrl && (
+                  <Button variant="secondary" onClick={() => window.open(selectedInvoice.uploadedInvoiceUrl as string, '_blank', 'noopener')}>
+                    {t('settings:invoicesPage.viewUploadedInvoice', '올린 인보이스 보기')}
+                  </Button>
                 )}
                 {selectedInvoice.purchaseOrderId && (
                   <Button variant="secondary" onClick={() => navigate(`/pos/purchase-orders/${selectedInvoice.purchaseOrderId}/reconcile`)}>

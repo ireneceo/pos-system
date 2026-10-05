@@ -282,8 +282,22 @@ async function getIssuerCompanyInfo(issuerType, issuerId, currency = 'MYR') {
 }
 
 // Helper function to build payer company info
-async function getPayerCompanyInfo(payerType, payerId, restaurant) {
+/**
+ * 이 청구서의 payer_id 를 **매장 번호**로 읽어도 되나 — 이름·회사정보 보조 조회의 단일 술어 (2026-10-05 Fable 게이트).
+ * 결제자 종류 '매장' + 매장 칸 빔(정산서 등). 단 하드웨어 청구서는 '매장' 종류에 **사람(회원) 번호**를 넣으므로
+ * 제외한다(routes/hardware-quotes.js — 생성 쪽 불일치는 범위 밖, 별도 판정).
+ */
+function payerIdIsStore(invoice) {
+  return !!(invoice && invoice.payer_type === 'restaurant' && !invoice.restaurant_id && invoice.payer_id
+    && invoice.invoice_category !== 'hardware');
+}
+
+async function getPayerCompanyInfo(payerType, payerId, restaurant, invoice = null) {
   if (payerType === 'restaurant' || !payerId) {
+    // 매장 칸이 빈 '매장' 결제 청구서(정산서)는 payer_id 가 매장 번호다 — 술어는 payerIdIsStore 하나
+    if (!restaurant && payerIdIsStore(invoice)) {
+      restaurant = await Restaurant.findByPk(invoice.payer_id);
+    }
     // Restaurant pays - use legal_* info, fall back to store info per field if legal_* is missing.
     // Store info = what shows on bills (customer-facing brand); legal_* = what shows on invoices (billed party).
     if (restaurant) {
@@ -523,6 +537,7 @@ module.exports = {
   getBankInfoByCurrency,
   getIssuerCompanyInfo,
   getPayerCompanyInfo,
+  payerIdIsStore,
   formatBillingPeriod,
   getInvoiceTimezone,
   getCategoryDisplayName,

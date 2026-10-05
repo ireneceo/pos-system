@@ -824,6 +824,12 @@ const BrandInvoicesPage: React.FC = () => {
   };
 
   // Generate invoice HTML content (shared for PDF, Print, Email)
+  /** 정산서(SOA)에 묶인 청구서 — 발행 목록에 이미 있다(발행일 순). 레스토랑 화면 soaChildrenOf 와 같은 규칙. */
+  const soaChildrenOf = (soa: Invoice): Invoice[] =>
+    soa.invoiceCategory !== 'soa' ? [] : invoices
+      .filter((c) => c.parentSoaInvoiceId != null && String(c.parentSoaInvoiceId) === String(soa.id))
+      .sort((a, b) => String(a.issueDate).localeCompare(String(b.issueDate)));
+
   const generateInvoiceHTML = (invoice: Invoice) => {
     const isReceivedInvoice = activeTab === 'to_pay' || activeTab === 'paid';
     const hasIssuerInfo = !!invoice.issuerInfo;
@@ -981,13 +987,19 @@ const BrandInvoicesPage: React.FC = () => {
                 ${invoice.paidDate ? `<div class="date-row"><span class="date-label">Paid Date:</span><span class="date-value">${formatDate(invoice.paidDate)}</span></div>` : ''}
             </div>
         </div>
-        <div class="items-section">
+        ${invoice.invoiceCategory === 'soa' ? `<div class="items-section">
+            <div class="section-label">${t('settings:invoicesPage.soaInvoices', 'Invoices in this statement')} (${soaChildrenOf(invoice).length})</div>
+            <table class="items-table">
+                <thead><tr><th>${t('settings:invoicesPage.soaInvoiceNumber', 'Invoice No.')}</th><th class="text-center">${t('settings:invoicesPage.soaInvoiceDate', 'Date')}</th><th class="text-right">${t('brand:brandInvoicesPage.amount')}</th></tr></thead>
+                <tbody>${soaChildrenOf(invoice).map(c => `<tr><td>${c.invoiceNumber}</td><td class="text-center">${formatDate(c.issueDate)}</td><td class="text-right">${formatCurrency(c.total, c.currency || invoice.currency || 'MYR')}</td></tr>`).join('')}</tbody>
+            </table>
+        </div>` : `<div class="items-section">
             <div class="section-label">${t('brand:brandInvoicesPage.items')}</div>
             <table class="items-table">
                 <thead><tr><th>${t('brand:brandInvoicesPage.description')}</th><th class="text-center">${t('brand:brandInvoicesPage.qty')}</th><th class="text-right">${t('brand:brandInvoicesPage.unitPrice')}</th><th class="text-right">${t('brand:brandInvoicesPage.amount')}</th></tr></thead>
                 <tbody>${invoice.items.map(item => `<tr><td>${item.description}</td><td class="text-center">${item.quantity}</td><td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td><td class="text-right">${formatCurrency(item.total, invoice.currency || 'MYR')}</td></tr>`).join('')}</tbody>
             </table>
-        </div>
+        </div>`}
         <div class="summary-section">
             <div class="summary-box">
                 <div class="summary-row subtotal"><span>Subtotal:</span><span>${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</span></div>
@@ -1686,6 +1698,7 @@ const BrandInvoicesPage: React.FC = () => {
             linkSearchResults={linkSearchResults} setLinkSearchResults={setLinkSearchResults}
             showLinkSearchDropdown={showLinkSearchDropdown} setShowLinkSearchDropdown={setShowLinkSearchDropdown}
             handleLinkSearch={handleLinkSearch} handleLinkAccount={handleLinkAccount}
+            soaChildren={soaChildrenOf(selectedInvoice)}
           />
         )}
 

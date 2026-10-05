@@ -855,5 +855,37 @@
   "productIngredientsTab": {
     "packSizeNeedsConfirm": "待确认",
     "packSizeEdit": "修改收到一件后库存增加多少"
+  },
+  "brandSales": {
+    "brands": "品牌",
+    "stores": "门店",
+    "selectAll": "全部",
+    "selectNone": "取消全选",
+    "noStores": "尚无门店下单",
+    "scopeSummary": "显示 {{brandTotal}} 个品牌中的 {{brands}} 个 · {{storeTotal}} 家门店中的 {{stores}} 家",
+    "pickBrand": "请至少选择一个品牌。",
+    "tabOverview": "概览",
+    "tabCategories": "按类别",
+    "tabProducts": "按商品",
+    "tabStores": "按门店",
+    "tabInvoices": "发票与收款",
+    "basisInvoices": "按本期开具的发票统计。",
+    "basisOrders": "按下单日期统计 — 已收货或已开票的订单，不含已取消。运费单独统计。",
+    "sales": "商品销售额",
+    "orders": "订单",
+    "avgOrder": "每单平均 {{amount}}",
+    "buyingStores": "采购门店",
+    "delivery": "运费",
+    "trend": "销售趋势",
+    "noSales": "本期无销售。",
+    "brand": "品牌",
+    "topCategories": "热门类别",
+    "product": "商品",
+    "category": "类别",
+    "qty": "数量",
+    "store": "门店",
+    "share": "占比",
+    "uncategorized": "未分类",
+    "total": "合计"
   }
 }

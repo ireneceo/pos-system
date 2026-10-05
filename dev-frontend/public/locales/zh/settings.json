@@ -1270,6 +1270,7 @@
     "reconciled": "已核对",
     "notReconciled": "已上传发票 · 未核对",
     "noUpload": "未上传发票",
+    "viewUploadedInvoice": "查看已上传发票",
     "viewReconcile": "查看核对记录",
     "reconcileNow": "与发票核对",
     "ordered": "下单",

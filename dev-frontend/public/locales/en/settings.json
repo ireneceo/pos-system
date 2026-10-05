@@ -1270,6 +1270,7 @@
     "reconciled": "Reconciled",
     "notReconciled": "Invoice uploaded · not reconciled",
     "noUpload": "No invoice uploaded",
+    "viewUploadedInvoice": "View uploaded invoice",
     "viewReconcile": "View reconciliation",
     "reconcileNow": "Compare with invoice",
     "ordered": "Ordered",
