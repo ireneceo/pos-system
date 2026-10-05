@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-05 — [Claude Code] **운영 배포 #2 SW 5.84(백업 20261005_072313 · 스모크 10/10 · Fable 게이트 PASS) — 역할 추가 요청(직원 포함) · 최소주문 강제·판매 상품 연결 환산·등록 화면 · 단말기 거절 뒤 Confirm 잠김.**
+> **최종 업데이트:** 2026-10-05 — [Claude Code] **운영 배포 #3 SW 5.85(백업 20261005_093553 · 스모크 10/10 · Fable 게이트 PASS) — 단말기 BUSY 자동 대기(«DONE» 안내) · 판매자 받은 주문 «배송 준비 목록 (가격 없음)» WhatsApp.**
+
+> **이전:** 2026-10-05 — [Claude Code] **운영 배포 #2 SW 5.84(백업 20261005_072313 · 스모크 10/10 · Fable 게이트 PASS) — 역할 추가 요청(직원 포함) · 최소주문 강제·판매 상품 연결 환산·등록 화면 · 단말기 거절 뒤 Confirm 잠김.**
 
 > **이전:** 2026-10-05 — [Claude Code] **운영 배포 SW 5.83(백업 20261005_052507 · 스모크 10/10 · Fable 게이트 PASS) — 오너 대리 발주:** 오너가 소유 매장을 골라 그 매장 자격으로 발주·제출·취소, 오너 제출=승인 생략, 매장 직원 제출은 그대로 승인 대기.
 
@@ -10778,6 +10780,27 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 - `dev-frontend/src/components/POSTerminal/PaymentModal.tsx` · `dev-frontend/src/utils/terminalSale.ts` · `dev-frontend/src/contexts/OrderContext.tsx`
 - `dev-frontend/public/locales/{en,ko,zh,ms}/pos.json` · `dev-frontend/public/sw.js` · `dev-frontend/e2e/card-terminal.spec.js`
 - `mobile-app/android/app/build.gradle` · `dev-backend/releases/2026-10-02-terminal-guards-app030.json`
+
+---
+
+## ✅ 완료: 오너 대리 발주 · 역할 추가 요청 · 최소주문 강제 · 단말기 BUSY 대기 · 배송 준비 목록 (2026-10-05) [Claude Code]
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 오너 대리 발주 (SW 5.83) | 오너가 소유 매장을 골라 그 매장 자격으로 발주·제출·취소, 오너 제출=승인 생략 | ✅ 운영 |
+| 역할 추가 요청 (SW 5.84) | 선택 화면 «+ 역할 추가 요청»(직원 포함) → 승인 → 카드, Staff 모자 권한 | ✅ 운영 |
+| 최소주문 강제 (SW 5.84) | 장바구니·서버(생성·수정·제출) 하한, MOQ 1=미설정 | ✅ 운영 |
+| 판매 상품 연결 환산·등록 화면 (SW 5.84) | 팩 용량 반영(45 g/pack → 45), 등록 화면 설명·미리보기 | ✅ 운영 |
+| 단말기 거절 뒤 Confirm 잠김 (SW 5.84) | Try again 으로만 재시도, BUSY 제목 분리 | ✅ 운영 |
+| 단말기 BUSY 자동 대기 (SW 5.85) | 승인 직후 다음 결제 → «단말기에서 DONE» 안내 + 3초 간격 최대 60초 자동 재시도 | ✅ 운영 |
+| 배송 준비 목록 (SW 5.85) | 판매자 받은 주문 상세에 가격 없는 WhatsApp 공유 | ✅ 운영 |
+
+### 수정된 파일 (5.85)
+- `dev-frontend/src/utils/terminalSale.ts` · `components/POSTerminal/PaymentModal.tsx` · `TerminalPanel.tsx` · `utils/terminalSale.busy.test.ts`
+- `dev-frontend/src/utils/poShare.ts` · `poShare.test.ts` · `pages/IncomingOrders/IncomingOrdersView.tsx`
+- `public/locales/*/pos.json` · `supplier.json` · `e2e/card-terminal.spec.js` · `public/sw.js`
 
 ---
 

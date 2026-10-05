@@ -276,6 +276,7 @@
     },
     "detail": {
       "shareWhatsApp": "WhatsApp 공유",
+      "sharePackingList": "배송 준비 목록 (가격 없음)",
       "uncategorized": "기타"
     }
   },

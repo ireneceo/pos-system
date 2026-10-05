@@ -19,6 +19,7 @@ require('/var/www/dev-backend/node_modules/dotenv').config({ path: '/var/www/dev
 const { sequelize } = require('/var/www/dev-backend/config/database');
 
 let token, user, originalPs;
+const BUSY_HEX = Buffer.from('HTTP/1.1 400 Bad Request \r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: 4\r\n\r\nBUSY', 'latin1').toString('hex').toUpperCase();
 
 async function setTerminal(enabled) {
   const [[row]] = await sequelize.query('SELECT payment_settings FROM restaurants WHERE id = 38');
@@ -40,6 +41,8 @@ async function installBridge(page, state) {
     if (cmd === 'A1' && state.injectOtherApproval) { await state.injectOtherApproval(); state.injectOtherApproval = null; }
     // Void 는 단말기에서 처리됐는데 답이 끊긴 상황(K) — 단말기 장부엔 취소로 남기고 응답만 버린다
     if (cmd === 'A2' && state.voidTimeoutOnce) { respond(job.payloadHex, 'approve'); state.voidTimeoutOnce = false; return { ok: false, error: 'TIMEOUT' }; }
+    // 단말기 사용 중 — 운영 2026-10-05 #33 원본 그대로(HTTP 400 «BUSY», 프레임 없음). busyLeft 번만 이렇게 답한다
+    if (cmd === 'A1' && state.busyLeft > 0) { state.busyLeft -= 1; return { ok: false, error: 'BAD_RESPONSE', rawHex: BUSY_HEX }; }
     const out = respond(job.payloadHex, state.scenario);
     if (cmd === 'A1' && state.scenario === 'timeout') state.scenario = 'approve'; // 이어지는 Reprint 는 정상 응답
     return out === null ? { ok: false, error: 'TIMEOUT' } : { ok: true, responseHex: out };
@@ -204,6 +207,22 @@ test.describe('카드단말기 ECR — 결제 창 흐름(목 브릿지)', () => 
     const o = await getOrder(request, baseURL, token, orderId);
     expect(o.payment_status).toBe('pending');
     expect(o.transaction_id || null).toBeNull();
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  // 2026-10-05 운영: 승인 직후 다음 결제가 BUSY 로 안 시작됨 — 화면이 «앞 결제 마무리 중» 을 말하고 준비되면 자동으로 시작
+  test('B2 단말기 사용 중(BUSY) 2번 → 안내 표시 → 자동 재시도로 승인 · 결제 완료', async ({ page, request, baseURL }) => {
+    const pageErrors = []; page.on('pageerror', (e) => pageErrors.push(String(e)));
+    const state = { scenario: 'approve', calls: [], busyLeft: 2 };
+    await installBridge(page, state);
+    await openPayment(page, orderNumber, pageErrors);
+    await page.getByRole('button', { name: 'Confirm Payment' }).last().click();
+    await expect(page.getByText('The terminal is still on the previous payment screen')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: 'Stop waiting' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirm Payment' }), '모달 닫힘(승인)').toHaveCount(0, { timeout: 30000 });
+    expect(state.calls, '판매 3번(BUSY 2 + 승인 1)').toEqual(['A1', 'A1', 'A1']);
+    const o = await getOrder(request, baseURL, token, orderId);
+    expect(o.payment_status).toBe('completed');
     expect(pageErrors).toHaveLength(0);
   });
 

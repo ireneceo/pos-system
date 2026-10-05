@@ -12,7 +12,7 @@
  *   ④«x» 곱셈 표기·«(ref: 내부명)» 꼬리는 없어졌다(공급업체 문서에서 내부명을 빼기로 한 Irene 지시).
  *   화면 jest 는 verify-all 게이트에 들어 있지 않다 — 프론트 유틸을 고치면 이 파일을 직접 돌릴 것.
  */
-import { poItemLines, poItemName, SharePO, groupItemsBySellerCategory, shareSellerOrderViaWhatsApp } from './poShare';
+import { poItemLines, poItemName, SharePO, groupItemsBySellerCategory, shareSellerOrderViaWhatsApp, shareSellerPackingListViaWhatsApp } from './poShare';
 
 const fmt = (q: any) => String(q);
 
@@ -132,6 +132,24 @@ describe('판매자 주문 — 카테고리 묶음 · 그룹챗 공유 (2026-09-
     expect(text.indexOf('*Sauce (1)*')).toBeLessThan(text.indexOf('*Meat (1)*'));
     expect(text.indexOf('*Meat (1)*')).toBeLessThan(text.indexOf('*Other (1)*'));
     expect(text).toContain('*Items: 3 · TOTAL: RM 30.00*');
+    open.mockRestore();
+  });
+  // 2026-10-05 Irene 「가격말고 딱 일하게 배송준비해야하는 정보만」 「지금 보기가 너무 정신없어. 스탭에게는」
+  test('배송 준비 목록: 가격·합계·SKU 없음 · 굵게는 머리글·카테고리만 · 품목은 «이름 — 수량»', () => {
+    const open = jest.spyOn(window, 'open').mockImplementation(() => null);
+    shareSellerPackingListViaWhatsApp({
+      id: 9, po_number: 'PO-1', currency: 'MYR', total_amount: 30, buyer: { name: 'K-DINE IPC Branch' },
+      delivery_address: '2, Jalan PJU 7/2',
+      items: [{ ...line(1, 'Beef', MEAT), unit: 'kg', quantity_ordered: 2, seller_product_sku: 'PRD-020' }, line(3, 'Soy', SAUCE)] as any,
+    }, fmt, 'Other');
+    const text = decodeURIComponent(String(open.mock.calls[0][0]).split('?text=')[1]);
+    expect(text).toContain('*PACKING* PO-1');
+    expect(text).toContain('Deliver to: 2, Jalan PJU 7/2');
+    expect(text).toContain('*Meat*');
+    expect(text).toContain('- Beef — 2 kg');
+    expect(text).not.toMatch(/RM|@|TOTAL|PRD-020|= /);
+    expect(text).not.toContain('*Beef*');
+    expect(text).toContain('Items: 2');
     open.mockRestore();
   });
 });

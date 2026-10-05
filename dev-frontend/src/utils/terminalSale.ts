@@ -14,7 +14,7 @@ export interface TerminalTxn {
   card_type?: string | null; card_brand?: string | null; tender_method?: 'card' | 'ewallet' | null; ewallet_type?: string | null; approval_code?: string | null; masked_pan?: string | null;
   terminal_invoice_no?: string | null; ecr_invoice_no?: string | null; message_prompt?: string | null;
 }
-export type TerminalPhase = 'starting' | 'waiting' | 'recovering' | 'checking' | 'voiding';
+export type TerminalPhase = 'starting' | 'waiting' | 'recovering' | 'checking' | 'voiding' | 'terminalBusy';
 export type TerminalOutcome =
   /** linkError 'DOUBLE_APPROVAL' = 승인은 됐지만 이 주문에 승인이 주문 금액보다 많다(단말기에서 하나 Void) */
   | { kind: 'approved'; txn: TerminalTxn; linkError?: string | null; reused?: boolean }
@@ -93,19 +93,22 @@ const failText = (t: TerminalTxn) => {
 export async function runTerminalSale(opts: {
   restaurantId: number; orderId?: number | null; amount: number; cashierName?: string;
   onPhase?: (p: TerminalPhase) => void;
+  /** 캐셔가 «기다리기 중지» 를 눌렀는가 — 단말기 사용 중(BUSY) 자동 재시도만 멈춘다 */
+  shouldStop?: () => boolean;
 }): Promise<TerminalOutcome> {
   opts.onPhase?.('starting');
-  const created = await api('/transactions', {
+  const saleBody = {
     restaurant_id: opts.restaurantId, order_id: opts.orderId || undefined,
     amount: (Math.round(opts.amount * 100) / 100).toFixed(2), cashier_name: opts.cashierName,
-  });
+  };
+  const created = await api('/transactions', saleBody);
   if (!created.ok) {
     // 이 주문엔 같은 금액의 승인이 이미 있다(앞 결제 기록만 실패) — 새로 긁지 않고 그 승인으로 기록한다
     if (created.json?.code === 'ALREADY_APPROVED' && created.json?.data?.txn) return { kind: 'approved', txn: created.json.data.txn, reused: true };
     if (created.json?.code === 'ALREADY_APPROVED') return { kind: 'error', message: 'reason:alreadyApproved' };
     return { kind: 'error', message: created.json?.message || 'reason:cannotStart' };
   }
-  const sale: Job = created.json.data;
+  let sale: Job = created.json.data;
 
   opts.onPhase?.('waiting');
   const first = await roundTrip(sale, opts.restaurantId);
@@ -115,6 +118,28 @@ export async function runTerminalSale(opts: {
   if (!txn) return { kind: 'unknown', txn: { id: sale.id, status: 'sent' }, message: 'reason:noAnswer' };
   // 단말기를 끝내 못 찾았다 — 요청이 단말기에 닿지 않았으니 결제는 일어나지 않았다(복구·수동 기록 대상 아님)
   if (first.error === 'NOT_CONNECTED') return { kind: 'error', message: 'reason:terminalNotFound' };
+
+  // 단말기 사용 중(HTTP 4xx «BUSY») — 요청을 «받기 전에» 거절한 것이라 결제는 일어나지 않았다.
+  //   2026-10-05 운영 실측: 승인 직후 20·33초 뒤 새 결제가 BUSY(단말기가 앞 결제 영수증 화면에 머묾), 취소 뒤엔 7초 만에 받음.
+  //   캐셔가 다시 누르게 하지 않고 3초마다 새 판매를 보내 최대 60초 기다린다 — 단말기가 받는 순간 평소 결제로 이어진다.
+  const isBusy = (x: TerminalTxn | null) => !!x && x.status === 'declined' && /^H4\d\d$/.test(x.status_code || '');
+  if (isBusy(txn)) {
+    opts.onPhase?.('terminalBusy');
+    const until = Date.now() + 60000;
+    while (isBusy(txn) && Date.now() < until) {
+      await sleep(3000);
+      if (opts.shouldStop?.()) break;
+      const again = await api('/transactions', saleBody);
+      if (!again.ok) break;
+      sale = again.json.data;
+      const r = await roundTrip(sale, opts.restaurantId);
+      if (r.choose) return { kind: 'choose', hosts: r.choose, message: 'reason:chooseTerminal' };
+      if (!r.row) return { kind: 'unknown', txn: { id: sale.id, status: 'sent' }, message: 'reason:noAnswer' };
+      if (r.error === 'NOT_CONNECTED') return { kind: 'error', message: 'reason:terminalNotFound' };
+      txn = r.row;
+      linkError = r.linkError || null;
+    }
+  }
 
   // 보류(EA) — 규격상 Check Status 를 성공/실패가 날 때까지 반복
   if (txn.status === 'pending') {

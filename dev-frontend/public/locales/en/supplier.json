@@ -276,6 +276,7 @@
     },
     "detail": {
       "shareWhatsApp": "Share via WhatsApp",
+      "sharePackingList": "Packing list (no prices)",
       "uncategorized": "Other"
     }
   },

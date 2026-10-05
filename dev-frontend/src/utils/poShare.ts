@@ -130,6 +130,12 @@ export function poItemName(item?: {
   return { main: seller, sub: seller === ours ? '' : ours };
 }
 
+/** 줄 수량 표기 «10 kg × 3 BOX» — 발주 공유·배송 준비 목록이 같은 규칙을 쓴다(unitConversion lineQtyText 와 같음). */
+export function poItemQtyText(it: SharePOItem, formatQuantity: (q: any) => string): string {
+  const base = lineBaseText(it);
+  return `${base ? base + ' × ' : ''}${formatQuantity(it.quantity_ordered)}${it.unit ? ' ' + it.unit : ''}`;
+}
+
 export function poItemLines(
   po: SharePO,
   formatQuantity: (q: any) => string,
@@ -139,8 +145,7 @@ export function poItemLines(
     const internalName = it.product_name || it.ingredient_name || ('Item #' + it.ingredient_id);
     const mainName = it.seller_product_name || supplierFacingName(internalName);
     // 2026-09-11 Irene 「1 kg X 2pack 발주할 때 내역은 이렇게」 — «10 kg × 3 BOX» (규칙 = unitConversion lineQtyText 와 같음)
-    const base = lineBaseText(it);
-    const qty = `${base ? base + ' × ' : ''}${formatQuantity(it.quantity_ordered)}${it.unit ? ' ' + it.unit : ''}`;
+    const qty = poItemQtyText(it, formatQuantity);
     const price = parseFloat(String(it.unit_price)).toFixed(2);
     const lineTotal = (Number(it.quantity_ordered) * Number(it.unit_price)).toFixed(2);
     const sku = isRealSupplierSku(it.seller_product_sku) ? `  [${it.seller_product_sku}]` : '';
@@ -247,6 +252,39 @@ export function shareSellerOrderViaWhatsApp(
     `${po.notes ? 'Note: ' + po.notes + '\n' : ''}` +
     `\n${body || '(none)'}\n\n` +
     `${b(`Items: ${(po.items || []).length} · TOTAL: ${cur} ${parseFloat(String(po.total_amount || '0')).toFixed(2)}`)}`
+  );
+  window.open(`https://wa.me/?text=${text}`, '_blank');
+}
+
+/**
+ * 받은 주문을 **배송 준비용**으로 넘긴다 — 가격·SKU 없이 «무엇을 몇 개» 만 (판매자 자기 직원용).
+ *
+ * Irene 2026-10-05 「가격말고 딱 일하게 배송준비해야하는 정보만 보내는 버튼도 추가해주면 안돼?」 · 「지금 보기가 너무 정신없어. 스탭에게는」.
+ * 굵게는 머리글·카테고리 제목만(품목 줄마다 `*` 가 붙으면 정신없다). 카테고리 묶음·수량 표기는 주문 공유와 같은 규칙.
+ */
+export function shareSellerPackingListViaWhatsApp(
+  po: SharePO & { buyer?: { name?: string | null } | null; notes?: string | null },
+  formatQuantity: (q: any) => string,
+  otherLabel: string,
+): void {
+  const b = (s: string) => `*${s}*`;
+  const groups = groupItemsBySellerCategory(po.items || []);
+  const body = groups.map(g => {
+    const lines = g.items.map((it: SharePOItem) => {
+      const internalName = it.product_name || it.ingredient_name || ('Item #' + it.ingredient_id);
+      const name = it.seller_product_name || supplierFacingName(internalName);
+      return `- ${name} — ${poItemQtyText(it, formatQuantity)}`;
+    }).join('\n');
+    return `${b(g.name || otherLabel)}\n${lines}`;
+  }).join('\n\n');
+  const text = encodeURIComponent(
+    `${b('PACKING')} ${po.po_number || '#' + po.id}\n` +
+    `${po.buyer?.name ? po.buyer.name + '\n' : ''}` +
+    `${po.expected_delivery_date ? 'Delivery: ' + po.expected_delivery_date + '\n' : ''}` +
+    `${po.delivery_address ? 'Deliver to: ' + po.delivery_address + '\n' : ''}` +
+    `${po.notes ? 'Note: ' + po.notes + '\n' : ''}` +
+    `\n${body || '(none)'}\n\n` +
+    `Items: ${(po.items || []).length}`
   );
   window.open(`https://wa.me/?text=${text}`, '_blank');
 }

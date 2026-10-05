@@ -864,6 +864,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     if (body.payment_method === 'ewallet' && ewallet) body.ewallet_type = ewallet;
   }
 
+  // 단말기 사용 중(BUSY) 자동 재시도를 캐셔가 멈출 때 — 다음 3초 대기 뒤 루프가 읽는다
+  const terminalStopRef = React.useRef(false);
+
   /** 단말기 판매 1건 — 승인되면 그 거래를, 아니면 null(안내는 terminalIssue 로). */
   const runTerminal = async (amount: number, forOrderId?: number | null): Promise<TerminalTxn | null> => {
     const rid = terminalRestaurantId();
@@ -871,7 +874,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     setTerminalIssue(null);
     setTerminalBusy('starting');
     try {
-      const out = await runTerminalSale({ restaurantId: rid, orderId: forOrderId || null, amount, cashierName, onPhase: setTerminalBusy });
+      terminalStopRef.current = false;
+      const out = await runTerminalSale({ restaurantId: rid, orderId: forOrderId || null, amount, cashierName, onPhase: setTerminalBusy, shouldStop: () => terminalStopRef.current });
       if (out.kind === 'approved') {
         // 승인은 됐지만 이 주문엔 이미 다른 승인이 있다 — 기록하지 않고 단말기에서 하나를 취소하라고 알린다(R2)
         if (out.linkError === 'DOUBLE_APPROVAL') { setTerminalIssue({ kind: 'error', message: 'reason:doubleApproval', txnId: out.txn.id }); return null; }
@@ -1509,6 +1513,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         <InputSection>
           <TerminalPanel
             busy={terminalBusy}
+            onStopWaiting={() => { terminalStopRef.current = true; }}
             ready={useTerminal}
             reason={!ecrBridgeReady ? 'no-bridge' : isOffline ? 'offline' : null}
             issue={terminalIssue}

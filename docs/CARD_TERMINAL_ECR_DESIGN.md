@@ -79,6 +79,13 @@ void 자식: sent ─00─▶ approved(부모 voided) · C5 → declined(부모 
 - `desktop-pos/test/ecr-units.js` 9/9 — http-hex 왕복, tcp ACK 건너뛰기, 타임아웃, 연결 거부, 공인 IP·도메인 차단.
 - e2e `dev-frontend/e2e/card-terminal.spec.js` — 목 브릿지로 승인·거절·무응답 복구·브릿지 없음.
 
+## 4-1. 운영 실측·변경 (2026-10-05, SW 5.84~5.85)
+- UAT 단말기는 **근무시간에만** 은행 테스트 서버에 연결된다(GHL). 10-04(일) B0 Bank timed out 은 이 때문으로 추정. 10-05 월 근무시간: VISA 승인 2건 · GrabPay QR 1건(→ 이월렛 grabpay 기록).
+- 승인 직후 다음 판매는 단말기가 영수증 화면(**DONE**)에 머무는 동안 HTTP 400 «BUSY»(프레임 없음 = 처리 전 거절)로 답한다. 취소(C7) 뒤엔 바로 받는다.
+- `utils/terminalSale.ts runTerminalSale`: 첫 판매가 declined + H4xx 면 단계 `terminalBusy` → 3초 간격으로 **새 판매 행**을 만들어 다시 보냄(최대 60초, «Stop waiting»). 화면 «단말기에서 DONE 을 눌러 대기 화면으로 — 그러면 자동 시작». 카드 거절(51 등)은 재시도 안 함. 재시도마다 declined H400 행이 남는다(결제 아님).
+- 결제창(단건·분할 공통): 단말기 거절·미확인·취소 뒤 Confirm Payment 잠김 — 패널의 Try again / 수동 기록으로만 진행.
+- 증명: `src/utils/terminalSale.busy.test.ts` 3건 · e2e `card-terminal` B2(운영 #33 BUSY 원본을 앱과 같은 형식으로 2번 → 자동 승인).
+
 ## 5. 남은 것
 
 - **2026-10-02 Fable 판정(Irene 「모든 테스트는 실 운영에서」 수용)**: 개발용 앱(.dev) 경로는 접는다. 안드로이드 **정식 앱 0.3.0**(운영 URL·브릿지·같은 서명키=덮어 설치)을 `/desktop/PurplePOS.apk` 로 배포 → **운영 데모 매장 1곳만** 단말기 켜고 실측(RM 1.00 카드 + TnG QR, 단말기에서 Void). 설정 안 켠 매장은 결제 창·서버 모두 변화 0.

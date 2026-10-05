@@ -20,7 +20,7 @@ import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
 import { useTabParam } from '../../hooks/useTabParam';
 import { lineQtyText, formatQuantity } from '../../utils/unitConversion';
-import { supplierFacingName, groupItemsBySellerCategory, shareSellerOrderViaWhatsApp } from '../../utils/poShare';
+import { supplierFacingName, groupItemsBySellerCategory, shareSellerOrderViaWhatsApp, shareSellerPackingListViaWhatsApp } from '../../utils/poShare';
 
 // Layout / Form / ModalButton primitives are inlined here on purpose.
 // Importing them across chunks from `components/UI` triggered a TDZ runtime
@@ -1905,6 +1905,15 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 onClick={() => shareSellerOrderViaWhatsApp(detailFull, formatQuantity, tNs('orders.detail.uncategorized', 'Other'))}
               >
                 {tNs('orders.detail.shareWhatsApp', 'Share via WhatsApp')}
+              </ModalButton>
+            )}
+            {/* 2026-10-05 Irene 「가격말고 딱 일하게 배송준비해야하는 정보만」 — 직원용: 품목·수량·배송지만 */}
+            {detailFull && (
+              <ModalButton
+                variant="secondary"
+                onClick={() => shareSellerPackingListViaWhatsApp(detailFull, formatQuantity, tNs('orders.detail.uncategorized', 'Other'))}
+              >
+                {tNs('orders.detail.sharePackingList', 'Packing list (no prices)')}
               </ModalButton>
             )}
             {detailRow?.status === 'submitted' && (

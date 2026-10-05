@@ -29,6 +29,8 @@ interface Props {
   cardLabels: Record<string, string>;
   ewalletLabels: Record<string, string>;
   subRequired: boolean;
+  /** 단말기 사용 중(BUSY) 자동 재시도 멈춤 */
+  onStopWaiting?: () => void;
 }
 
 const box: React.CSSProperties = { fontSize: '13px', lineHeight: 1.5, color: '#425466' };
@@ -40,7 +42,7 @@ const chip = (on: boolean): React.CSSProperties => ({
 
 const TerminalPanel: React.FC<Props> = ({
   busy, ready, reason, issue, note, onNote, onManual, onRetry, onPickTerminal, onVoid,
-  manualTender, onManualTender, cardOptions, ewalletOptions, cardLabels, ewalletLabels, subRequired,
+  manualTender, onManualTender, cardOptions, ewalletOptions, cardLabels, ewalletLabels, subRequired, onStopWaiting,
 }) => {
   const { t } = useTranslation('pos');
   // 'reason:<키>' 는 번역, 'reason:code:<코드>' 는 단말기 코드 안내, 그 외(서버·단말기 문구)는 그대로
@@ -49,6 +51,22 @@ const TerminalPanel: React.FC<Props> = ({
     if (m.startsWith('reason:')) return t(`cardTerminal.reason.${m.slice(7)}`);
     return m;
   };
+
+  if (busy === 'terminalBusy') {
+    // 단말기가 앞 결제를 아직 끝내지 않았다 — 무엇을 하면 되는지와 «자동으로 시작» 을 같이 말한다(2026-10-05 Irene «제대로 완전히 알게»)
+    return (
+      <div style={box} role="status" aria-live="polite">
+        <strong style={{ color: '#B45309' }}>{t('cardTerminal.busyWait.title')}</strong>
+        <div style={{ marginTop: 4 }}>{t('cardTerminal.busyWait.doThis')}</div>
+        <div style={{ marginTop: 4 }}>{t('cardTerminal.busyWait.auto')}</div>
+        {onStopWaiting && (
+          <div style={{ marginTop: 8 }}>
+            <Button variant="secondary" onClick={onStopWaiting}>{t('cardTerminal.busyWait.stop')}</Button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (busy) {
     const text = busy === 'voiding' ? t('cardTerminal.void.progress')
