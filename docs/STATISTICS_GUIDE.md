@@ -10,7 +10,7 @@
 | 역할 | 적용 여부 | 비고 |
 |------|:--------:|------|
 | **Restaurant Admin** | ✅ 적용 | 현재 가이드 기준 |
-| Brand General | 🔜 예정 | 다중 레스토랑 집계 필요 |
+| Brand General | ✅ 적용 (2026-10-05) | 브랜드 **판매** 통계 — `/pos/brand/general/reports` · `GET /api/brand/sales-report`: 주문 시점(수령 또는 청구된 브랜드 판매 발주, 취소·초안 제외) · 발주 품목 line_total · 카테고리 = 브랜드 상품 카테고리 · 배송비 별도 · 브랜드·매장 체크(직영 제외) · 청구·수금 탭은 `/api/brand/revenue-report`(발행일) |
 | Foodcourt General | 🔜 예정 | 다중 레스토랑 집계 필요 |
 | System Admin | 🔜 예정 | 전체 시스템 통계 |
 

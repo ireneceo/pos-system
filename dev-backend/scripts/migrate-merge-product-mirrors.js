@@ -58,7 +58,8 @@ const num = (v) => (v == null ? null : parseFloat(v));
 
 async function main() {
   const t = await sequelize.transaction();
-  const rep = { merged: [], noMirror: [], piDeactivated: [], piKept: [], priceSet: [], priceSkipped: [] };
+  const rep = { merged: [], noMirror: [], stocked: [], piDeactivated: [], piKept: [], priceSet: [], priceSkipped: [] };
+  const skippedPim = [];   // 재고가 남아 건너뛴 PI 거울 — 증명 ① 에서도 뺀다
   try {
     // ⚠ 증명 ②는 **이 마이그가 만든 죽은 참조**만 봐야 한다. 전역 개수로 보면 원래 있던 부채가
     //   근거가 되어 스스로 롤백한다 — 운영에서 실제로 그랬다(2026-09-06 배포 중단):
@@ -91,7 +92,13 @@ async function main() {
       const [ov] = await q(`SELECT COUNT(*) n FROM restaurant_ingredient_stocks WHERE ingredient_id IN (:a,:b) AND current_stock <> 0`,
         { a: p.pim_id, b: p.bpm_id }, t);
       if (num(p.pim_stock) !== 0 || Number(ov.n) > 0) {
-        throw new Error(`${p.bp_name}: 재고가 0이 아니다(PI 거울 ${p.pim_stock} · 오버레이 ${ov.n}) — 중단`);
+        // 재고 환산은 이 스크립트 범위 밖 — **그 쌍만 건너뛰고 목록**으로 남긴다(배포마다 도는 마이그가 한 쌍 때문에
+        //   배포 전체를 막지 않게). 2026-10-05 운영: 브랜드 프로덕트 K-Bulgogi 1kg 수정으로 거울이 다시 살아나
+        //   쌍이 됐는데 K-DINE IPC 오버레이 재고 8,590 g 이 있어 배포가 중단됐다. Irene 「나중에 해결해야 해」
+        //   (K-Bulgogi 는 재고 없이 주문 후 만드는 제품으로 정리 예정). 데이터는 무접촉.
+        rep.stocked.push(`${p.bp_name} — 재고가 남아 있어 합치지 않음(PI 거울 ing#${p.pim_id} ${p.pim_stock} · 매장 재고 ${ov.n}곳) — 사람이 정리`);
+        skippedPim.push(p.pim_id);
+        continue;
       }
 
       // ① BP 거울이 PI 거울의 취급 단위를 물려받고, 기준은 프로덕트 단위.
@@ -147,7 +154,8 @@ async function main() {
     const [v1] = await q(`SELECT COUNT(*) n FROM ingredients pim
        JOIN ingredient_seller_products isp ON isp.ingredient_id = pim.id AND isp.seller_type='brand'
        JOIN ingredients bpm ON bpm.source_brand_product_id = isp.seller_product_id AND bpm.brand_id = pim.brand_id AND bpm.is_active = 1
-      WHERE pim.source_product_ingredient_id IS NOT NULL AND pim.is_active = 1`, {}, t);
+      WHERE pim.source_product_ingredient_id IS NOT NULL AND pim.is_active = 1
+        AND pim.id NOT IN (:skip)`, { skip: skippedPim.length ? skippedPim : [0] }, t);
     const [v2] = await q(`SELECT COUNT(*) n FROM recipe_ingredients ri JOIN ingredients i ON i.id = ri.ingredient_id WHERE i.is_active = 0`, {}, t);
     const addedDead = Number(v2.n) - preDead;
     const [v3] = await q(`SELECT COUNT(*) n FROM ingredients i JOIN brand_products bp ON bp.id = i.source_brand_product_id
@@ -156,6 +164,7 @@ async function main() {
     console.log(`\n병합 ${rep.merged.length}쌍 · 거울 없음 ${rep.noMirror.length} · PI 비활성 ${rep.piDeactivated.length} · PI 유지 ${rep.piKept.length}`);
     rep.merged.forEach((x) => console.log('  ✔ ' + x));
     rep.noMirror.forEach((x) => console.log('  ○ ' + x));
+    rep.stocked.forEach((x) => console.log('  ⏸ ' + x));
     rep.piDeactivated.forEach((x) => console.log('  − ' + x));
     rep.piKept.forEach((x) => console.log('  · ' + x));
     rep.priceSkipped.forEach((x) => console.log('  ⏭ ' + x));
@@ -164,7 +173,7 @@ async function main() {
       console.log('\n⚠ 레시피 원가가 달라지는 것:');
       moved.forEach((x) => console.log(`    ${x.bp}: ${x.from} → ${x.to} (${x.delta > 0 ? '+' : ''}${x.delta})`));
     }
-    console.log(`\n증명 ① 같은 물건 두 줄(PI 거울·BP 거울 동시 활성) ${v1.n} (기대 0)`);
+    console.log(`\n증명 ① 같은 물건 두 줄(PI 거울·BP 거울 동시 활성) ${v1.n} (기대 0 · 재고로 건너뛴 ${skippedPim.length}쌍 제외)`);
     console.log(`증명 ② 이 마이그가 만든 죽은 참조 ${addedDead} (기대 0) — 원래 있던 것 ${preDead}건은 무접촉`);
     if (preDead) {
       console.log('   (원래 있던 죽은 참조 — 이 마이그 범위 밖, 목록만):');

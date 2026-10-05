@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-05 — [Claude Code] **운영 배포 #3 SW 5.85(백업 20261005_093553 · 스모크 10/10 · Fable 게이트 PASS) — 단말기 BUSY 자동 대기(«DONE» 안내) · 판매자 받은 주문 «배송 준비 목록 (가격 없음)» WhatsApp.**
+> **최종 업데이트:** 2026-10-05 — [Claude Code] **v3.108 · 운영 배포 #4·#5 SW 5.86(백업 20261005_153730 · 20261005_184839 · 스모크 10/10) — 정산서↔청구서 상태 단일 규칙 · 정산서 손님 이름 · 브랜드 매출 보고서 재구성 · 정산서 자동 발행 «이어서 내기» · 테스트 메일 반송 차단. Fable 한도 초과로 Irene 이 게이트 직접 넘김 → 소급 판정 예정.**
+
+> **이전:** 2026-10-05 — [Claude Code] **운영 배포 #3 SW 5.85(백업 20261005_093553 · 스모크 10/10 · Fable 게이트 PASS) — 단말기 BUSY 자동 대기(«DONE» 안내) · 판매자 받은 주문 «배송 준비 목록 (가격 없음)» WhatsApp.**
 
 > **이전:** 2026-10-05 — [Claude Code] **운영 배포 #2 SW 5.84(백업 20261005_072313 · 스모크 10/10 · Fable 게이트 PASS) — 역할 추가 요청(직원 포함) · 최소주문 강제·판매 상품 연결 환산·등록 화면 · 단말기 거절 뒤 Confirm 잠김.**
 
@@ -454,6 +456,28 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 정산서 상태 연동 · 정산서 손님 이름 · 브랜드 매출 보고서 · 자동 발행 이어서 내기 (2026-10-05, 운영 배포 #4·#5 · v3.108 · SW 5.86)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| [Claude Code] 정산서↔묶인 청구서 상태 단일 규칙 | submit·confirm·reject·PATCH status 전부 `services/soaChildSync` · 복구 마이그(deploy) · 인스펙션 I-SOA-001 | ✅ 완료 |
+| [Claude Code] 정산서 손님 이름 | SOA 생성 시 restaurant_id · `payerIdIsStore` 술어(하드웨어 제외)로 이름·회사정보 | ✅ 완료 |
+| [Claude Code] 브랜드 정산서 상세·PDF 묶인 청구서 표 | 번호·날짜·상태·금액 | ✅ 완료 |
+| [Claude Code] 레스토랑 청구서 | Mark paid 즉시 갱신 · To pay 탭 먼저 · 올린 인보이스 보기 | ✅ 완료 |
+| [Claude Code] 매출 Year 그래프 | 연-월 시간 순서 | ✅ 완료 |
+| [Claude Code] 브랜드 매출 보고서 | 브랜드·매장 체크 · 탭 5 · `GET /api/brand/sales-report`(주문 시점) | ✅ 완료 |
+| [Claude Code] 정산서 자동 발행 이어서 내기 | 수동 정산서 있는 주기도 남은 미묶음만 발행 | ✅ 완료 |
+| [Claude Code] 테스트 메일 반송 차단 | health-check 임시 계정 @example.com | ✅ 완료 |
+| [Claude Code] 합치기 마이그 재고 쌍 건너뜀 | K-Bulgogi 재고로 배포 중단 → 그 쌍만 목록 | ✅ 완료 |
+| [Claude Code] 운영 데이터 | with MIN Cafe 9월 미묶음 4건 → SOA#199 발행·paid (Irene 지시) | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/services/soaChildSync.js`(신규) · `services/soaScheduler.js` · `routes/invoices-{crud,payment,list,helpers}.js` · `routes/owner.js` · `routes/brand-revenue.js`
+- `dev-backend/scripts/migrate-soa-child-status-sync.js`(신규) · `scripts/inspection/suites/invoice-soa.js`(신규) · `scripts/migrate-merge-product-mirrors.js` · `scripts/health-check.js` · `scripts/migrations.registry.json`
+- `dev-frontend/src/pages/Restaurant/InvoicesPage.tsx` · `pages/BrandGeneral/{BrandRevenueReportPage,BrandInvoicesPage}.tsx` · `pages/BrandGeneral/invoices/{BrandInvoiceViewModal.tsx,types.ts}` · `pages/Reports/ReportsPage.tsx` · locales(brand·settings 4언어) · `public/sw.js`
+
+---
 
 ## ✅ 완료: 카드 단말기 실연동·Void · 직원/오너 발주 · 월결제 차단 (2026-10-04, 운영 배포 #6~#11 · SW 5.77→5.82 · 앱 0.3.2→0.3.4)
 

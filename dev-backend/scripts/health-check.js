@@ -362,7 +362,7 @@ function defineAuthTests({ adminToken, customerToken, member, restId }) {
   test('auth', '오너 모자 — 브랜드 요금제 사람도 오너 메뉴(Owner Enterprise · /pos/owner/dashboard) · 네이티브 오너 응답 불변', async () => {
     const { sequelize } = require('../config/database');
     const tag = 'zzhcohat' + Date.now().toString(36);
-    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, plan_type, subscription_status, is_demo, is_test, createdAt, updatedAt) VALUES (?, ?, 'x', 'Brand General', 1, 1, 'Brand Enterprise', 'active', 0, 0, NOW(), NOW())`, { replacements: [tag, `${tag}@outlook.com`] });
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, plan_type, subscription_status, is_demo, is_test, createdAt, updatedAt) VALUES (?, ?, 'x', 'Brand General', 1, 1, 'Brand Enterprise', 'active', 0, 0, NOW(), NOW())`, { replacements: [tag, `${tag}@example.com`] });
     const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
     try {
       await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (38, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [uid] });
@@ -477,7 +477,7 @@ function defineSecurityTests({ customerToken, member, restId }) {
     const tag = 'zzhcopo' + Date.now().toString(36);
     const [[other]] = await sequelize.query(`SELECT id FROM restaurants WHERE is_demo = 1 AND id <> 38 ORDER BY id LIMIT 1`);
     if (!other) return false;
-    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@outlook.com`] });
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@example.com`] });
     try {
       await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (38, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [uid] });
       const auth = { Authorization: `Bearer ${jwt.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
@@ -504,7 +504,7 @@ function defineSecurityTests({ customerToken, member, restId }) {
     const tag = 'zzhcocx' + Date.now().toString(36);
     const [other] = await Q(`SELECT id FROM restaurants WHERE is_demo = 1 AND id <> 38 ORDER BY id LIMIT 1`);
     if (!other) return false;
-    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@outlook.com`] });
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@example.com`] });
     const scs = []; const pos = [];
     try {
       await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (38, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [uid] });
@@ -564,7 +564,7 @@ function defineSecurityTests({ customerToken, member, restId }) {
      WHERE i.restaurant_id = 38 AND isp.seller_type = 'supplier' AND isp.is_active = 1 ORDER BY i.id LIMIT 1`);
     const [ra] = await Q(`SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 ORDER BY id LIMIT 1`);
     if (!other || !ing || !ra) { console.log(c.gray('      (준비물 없음 — 데모 매장 38 공급처 연결 재료/RA)')); return false; }
-    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@outlook.com`] });
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@example.com`] });
     const pos = [];
     try {
       await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (38, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [uid] });
@@ -610,7 +610,7 @@ function defineSecurityTests({ customerToken, member, restId }) {
     const [[ra38]] = await sequelize.query(`SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 AND is_active = 1 LIMIT 1`);
     const [[raOther]] = await sequelize.query(`SELECT u.id, u.restaurant_id FROM users u JOIN restaurants r ON r.id = u.restaurant_id WHERE r.is_demo = 1 AND r.id <> 38 AND u.role = 'Restaurant Admin' AND u.is_active = 1 ORDER BY r.id LIMIT 1`);
     if (!ra38 || !raOther) return false;
-    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@outlook.com`] });
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@example.com`] });
     let sid = null;
     try {
       await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (38, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [uid] });
@@ -672,7 +672,7 @@ function defineSecurityTests({ customerToken, member, restId }) {
     const tag = 'zzhcclaim' + Date.now().toString(36);
     const [targets] = await sequelize.query(`SELECT r.id FROM restaurants r WHERE r.is_demo = 1 AND NOT EXISTS (SELECT 1 FROM restaurant_managers m WHERE m.restaurant_id = r.id AND m.relationship_type = 'ownership') ORDER BY r.id LIMIT 2`);
     if (targets.length < 2) return false;
-    const [ownerId] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@outlook.com`] });
+    const [ownerId] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@example.com`] });
     try {
       const auth = { Authorization: `Bearer ${jwt.sign({ userId: ownerId }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
       const other = await request('POST', `/owner/restaurants/${targets[0].id}/claim`, null, auth);

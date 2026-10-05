@@ -1,0 +1,46 @@
+{
+  "tag": "soa-continue-after-manual",
+  "sw_version": "5.86-soa-status-invoices-20261005",
+  "date": "2026-10-05",
+  "in_progress": [
+    "none"
+  ],
+  "completed": [
+    "월 정산서 자동 발행: 그 달에 사람이 이미 정산서를 냈어도 통째로 건너뛰지 않고, 아직 어느 정산서에도 안 묶인 청구서만 이어서 발행한다(그 정산서가 덮은 기간 다음 날부터). 남은 게 없으면 건너뛴다 — services/soaScheduler planAutoCycle",
+    "자동 점검(health-check) 임시 계정 주소를 무작위@outlook.com(인증됨 표시) → @example.com(발송 차단 도메인)으로 — 데모 매장 발주 승인·확인 메일이 실제로 나가 반송이 쌓이던 것 차단",
+    "배포마다 도는 «브랜드 재료 중복 줄 합치기» 마이그가 재고 남은 쌍 하나 때문에 배포 전체를 멈추던 것 → 그 쌍만 건너뛰고 목록(데이터 무접촉). K-Bulgogi 1kg 은 Irene 「나중에 해결」"
+  ],
+  "remaining": [
+    "Fable 소급 판정: v3.108 배포분(게이트 직접 넘김) + 이번 변경",
+    "K-Bulgogi: 재고 없이 주문 후 만드는 제품으로 정리 + 두 줄 합치기(K-DINE IPC 기록 재고 8,590 g)"
+  ],
+  "verification": {
+    "api": "dev 시나리오(demo rid38·brand17, 발행일 27로 잠깐 설정·메일 스텁·원복): 수동 정산서(이번 주기)+자식 1 · 그 뒤 미묶음 1(RM 33) → processMonthlySoa(10-27) 자동 정산서 1장에 미묶음 1건만(RM 33), 수동 자식 그대로 · 같은 날 재실행 → 새 정산서 0(skipped_manual 1) · health-check 295/295 실행 중 실제 발송 0통(임시 계정 메일 placeholder 로 skip) · 합치기 마이그 운영 드라이런: 병합 0·K-Bulgogi 건너뜀·증명 ①②③ 통과",
+    "fault_injection": "옛 «수동 있으면 통째로 건너뜀» 줄 재삽입 → A·B 3건 실패 → cp 원복 → 통과",
+    "regression": "health-check 295/295 · 인스펙션 신규 0 · print-guard 8/8 · verify-all",
+    "migration": "없음",
+    "sw_version": "5.86-soa-status-invoices-20261005 (백엔드만 — 프론트 변경 없음)",
+    "fable_note": "Fable 권고(2026-10-05 «SOA 누락» 판정 ②: 건너뛰기 → 이어서 내기) · Irene 승인 「그래. 이건 이렇게 해」. 이중 청구 없음 근거 = 수집이 parent_soa_invoice_id 빈 것만. 돈 경로라 게이트 대상 — Fable 한도 초과 중"
+  },
+  "notes": [
+    "🔒 인쇄 보호파일·KDS 무접촉",
+    "같은 달에 정산서가 두 장 생길 수 있다(수동 + 자동 남은 것) — 번호는 uniqueSoaNumber 로 겹치지 않음"
+  ],
+  "irene_actions_after_deploy": [
+    "11월 1일 자동 발행 뒤 브랜드 청구서 화면에서 10월분이 빠짐없이 정산서에 묶였는지 확인"
+  ],
+  "issues": [
+    "수동 정산서를 낸 달은 그 뒤 생긴 청구서가 자동 발행에서 통째로 빠져 다음 달까지 미청구(with MIN Cafe 9월 4건)",
+    "개발서버 자동 점검이 데모 매장 오너(임시 계정)에게 실제 메일을 보내 반송 메일이 계속 옴",
+    "배포가 K-Bulgogi 재고 때문에 마이그 단계에서 중단·자동 원복"
+  ],
+  "upcoming": [
+    "다음 섹션 작업"
+  ],
+  "behavior_changes": [
+    "수동 정산서를 낸 달에도 자동 발행일에 남은 청구서가 있으면 정산서가 한 장 더 나간다"
+  ],
+  "check_areas": [
+    "월 정산서 자동 발행(브랜드·푸드코트·공급업체)"
+  ]
+}

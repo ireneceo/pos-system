@@ -1016,3 +1016,10 @@ ALTER TABLE invoices ADD COLUMN parent_soa_invoice_id INT NULL;
 - **청구서 발행 시점** — 브랜드 청구 조건 `invoice_trigger`: `on_received`(기본) / `on_confirmed`. 확정 시면 `seller-orders /:id/confirm` 커밋 뒤 `purchaseOrderService.issueTradeInvoiceAfterCommit(po,{when:'confirmed'})`(수령 경로와 같은 함수, 멱등). 청구서가 붙은 발주는 판매자 amend 400 `ALREADY_INVOICED`. 푸드코트·공급업체는 범위 밖.
 - **정산서 = 확정된 주문 전부** (2026-09-30 Irene 「내가 수동으로 만들어도 포함되어야지」 — 이전 판정 «소급 없음» 을 뒤집음) — 수동·자동 정산서 직전에 `soaScheduler.issueMissingTradeInvoices`: 판매자(브랜드/푸드코트)→매장 쌍에서 `BILLABLE_PO_STATUSES`(confirmed·shipped·in_transit·delivered·partial_received·received·closed) 이면서 `trade_invoice_id` 없는 발주(기간 끝 이전 생성)에 `createTradeInvoice`(멱등). 확정 전·배송실패·취소는 제외. 그래서 `invoice_trigger` 가 on_received 여도 판매자가 배송완료한 주문이 빠지지 않는다.
 - **브랜드 Issued Invoices** — `GET /api/invoices` BG/BM 분기는 `managerBrandScope.brandIdsForUser`(소유 ∪ 배정) 전부의 발행분(컨텍스트 brandId 가 있으면 그 하나). 전엔 `users.brand_id` 하나라 다브랜드 계정에서 두 번째 브랜드 정산서가 안 보였다.
+
+## 11-1. SOA 상태 연동 · 이어서 내기 · 매장 칸 (2026-10-05, v3.108) [Claude Code]
+
+- **상태 단일 규칙** — 정산서(SOA) 상태를 바꾸는 모든 길(`submit-payment` · `confirm-payment` · `reject-payment` · `PATCH /:id/status`)이 `services/soaChildSync.syncSoaChildren` 을 같은 트랜잭션에서 부른다. paid → 자식 paid(정산서 시각·확인자), payment_submitted → 자식 제출됨, 거절/대기 복귀 → 제출된 자식 대기로. 취소는 기존대로 묶음 해제. 예전엔 PATCH(브랜드·푸드코트·관리자 «Confirm Payment Received»)와 reject 가 자식을 안 끌고 가 발주는 paid · 청구서는 확인 대기로 갈라졌다.
+- **복구·감시** — `scripts/migrate-soa-child-status-sync.js`(deploy, 멱등)가 갈라진 자식을 정산서 값으로 맞추고, 인스펙션 `invoice-soa` I-SOA-001 이 불일치 0 을 배포 게이트에서 본다. 둘 다 `MISMATCH_FROM_SQL` 같은 조건.
+- **매장 칸** — 매장이 내는 정산서는 생성 시 `restaurant_id = payer_id`. 이름 계산은 `payerIdIsStore(invoice)`(payer_type 'restaurant' · 매장 칸 빔 · 하드웨어 제외) 일 때 payer_id 를 **매장 번호**로 읽는다(사람 번호로 읽어 다른 매장 이름이 붙던 결함).
+- **수동 발행 뒤 자동 발행 = 이어서 내기** — 그 주기에 사람이 낸 정산서가 있어도 건너뛰지 않고, 아직 안 묶인 청구서만 그 정산서 기간 다음 날부터 발행. 남은 게 없으면 skip(`skipped_manual`). 이중 청구 없음 = 수집이 `parent_soa_invoice_id IS NULL` 만. (9/29 「수동발행하면 자동발행 안 되어야 해」 → 10/5 Fable 권고·Irene 승인으로 좁힘)
