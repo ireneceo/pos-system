@@ -726,7 +726,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
     setSubmitting(true);
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/purchase-orders/${detail.id}/submit`, {
+      const res = await fetch(withOwnerPoScope(`/api/purchase-orders/${detail.id}/submit`, poRole), {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -1142,9 +1142,14 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
           </ThemedButton>
         )}
         </>)}
-        {/* 오너 — 보내기(외부 공급업체) + 취소만. 수령·결제·대조는 매장 몫이라 계속 숨긴다(2026-10-04 Fable §5·§6).
-            «삭제» 가 아니라 취소다: 행은 cancelled 로 남는다. 조건은 서버 cancel 과 같다(초안·발주됨·승인 대기). */}
+        {/* 오너 — 초안 제출 + 보내기(외부 공급업체) + 취소. 수령·결제·대조는 매장 몫이라 계속 숨긴다(2026-10-04 Fable ①·§5·§6).
+            오너가 제출하면 승인 생략(서버 applySubmitGate). «삭제» 가 아니라 취소다: 행은 cancelled 로 남는다. 조건은 서버 cancel 과 같다(초안·발주됨·승인 대기). */}
         {ownerView && (<>
+          {s === 'draft' && (
+            <ThemedButton variant="primary" onClick={handleSubmit} disabled={submitting}>
+              {submitting ? t('common.submitting') : t('detail.actions.submit')}
+            </ThemedButton>
+          )}
           {externalShare}
           {['draft', 'submitted', 'pending_approval'].includes(s) && (
             <ThemedButton variant="danger-outline" onClick={openCancel}>

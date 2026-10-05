@@ -1235,7 +1235,7 @@ router.post('/purchase-orders/bulk', async (req, res) => {
           if (fresh && fresh.status === 'draft') {
             // 일괄발주(재고관리 Bulk Order)도 **발주가 나가는 경로**다 → 오너 승인 게이트 필수.
             // 예전엔 여기서 submitted 직행이라 승인 ON 이어도 그냥 나갔다 (Fable 2026-07-13).
-            const needsApproval = await applySubmitGate(fresh, null, appendTrackingEvent);
+            const needsApproval = await applySubmitGate(fresh, null, appendTrackingEvent, req.user);
             if (needsApproval) {
               emitPoEvent(req, fresh, 'seller-order-updated');
               setImmediate(() => fireOwnerApprovalPendingNotification(fresh));

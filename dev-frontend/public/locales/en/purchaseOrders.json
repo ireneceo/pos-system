@@ -522,7 +522,10 @@
     "pendingLink": "Pending POs",
     "inStock": "In stock",
     "needLink": "Link a supplier to order",
-    "optionsButton": "Options"
+    "optionsButton": "Options",
+    "ownerRestaurant": "Order for",
+    "ownerPickPlaceholder": "Select a restaurant",
+    "ownerPickFirst": "Choose which of your restaurants this order is for. It will appear in that restaurant's order history."
   },
   "staging": {
     "noPhoneTitle": "No Phone Number",

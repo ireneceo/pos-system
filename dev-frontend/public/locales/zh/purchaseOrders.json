@@ -522,7 +522,10 @@
     "pendingLink": "待提交采购单",
     "inStock": "库存",
     "needLink": "关联供应商后即可订购",
-    "optionsButton": "选项"
+    "optionsButton": "选项",
+    "ownerRestaurant": "订货门店",
+    "ownerPickPlaceholder": "选择门店",
+    "ownerPickFirst": "请先选择这张采购单属于哪家门店。采购单会记入该门店的订货记录。"
   },
   "staging": {
     "noPhoneTitle": "无电话号码",

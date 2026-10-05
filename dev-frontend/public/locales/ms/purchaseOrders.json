@@ -522,7 +522,10 @@
     "pendingLink": "PO Menunggu",
     "inStock": "Stok",
     "needLink": "Pautkan pembekal untuk memesan",
-    "optionsButton": "Pilihan"
+    "optionsButton": "Pilihan",
+    "ownerRestaurant": "Pesanan untuk",
+    "ownerPickPlaceholder": "Pilih restoran",
+    "ownerPickFirst": "Pilih restoran anda yang membuat pesanan ini. Pesanan akan masuk ke sejarah pesanan restoran itu."
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",

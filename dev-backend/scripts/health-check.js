@@ -430,7 +430,8 @@ function defineSecurityTests({ customerToken, member, restId }) {
   });
   // 2026-09-24 Fable «오너=슈퍼바이저» §2-A: 오너는 소유 매장 발주를 «보기만». ownership 확인 · GET 만 · 남의 매장 403.
   //   데모 매장 38 에 임시 오너를 붙여 재고 finally 로 지운다(실매장 무접촉).
-  test('security', '오너 발주 보기 — 소유 매장 GET 200 · 남의 매장 403 · 쓰기 403', async () => {
+  //   (2026-10-04 Fable owner-po-on-behalf ①: 소유 매장 «으로» 작성은 열렸다 — 여기선 남의 매장 쓰기·열지 않은 라우트만 403 확인)
+  test('security', '오너 발주 보기 — 소유 매장 GET 200 · 남의 매장 403 · 남의 매장 쓰기 403 · 공급업체 전환 403', async () => {
     const { sequelize } = require('../config/database');
     const jwt = require('jsonwebtoken');
     const tag = 'zzhcopo' + Date.now().toString(36);
@@ -443,7 +444,7 @@ function defineSecurityTests({ customerToken, member, restId }) {
       const mine = await request('GET', '/purchase-orders?entity_type=restaurant&entity_id=38', null, auth);
       const rows = Array.isArray(mine.body && mine.body.data) ? mine.body.data : [];
       const others = await request('GET', `/purchase-orders?entity_type=restaurant&entity_id=${other.id}`, null, auth);
-      const write = await request('POST', '/purchase-orders?entity_type=restaurant&entity_id=38', { items: [] }, auth);
+      const write = await request('POST', `/purchase-orders?entity_type=restaurant&entity_id=${other.id}`, { items: [] }, auth);
       const supplier = await request('GET', '/external-suppliers?entity_type=restaurant&entity_id=38', null, auth);
       return mine.status === 200 && rows.every(r => Number(r.entity_id) === 38)
         && others.status === 403 && write.status === 403 && supplier.status === 403;
@@ -503,6 +504,56 @@ function defineSecurityTests({ customerToken, member, restId }) {
     finally {
       try { await hcCleanupPurchaseOrders(pos, { waitMs: 0 }); } catch {}
       if (scs.length) { try { await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id IN (:s)', { replacements: { s: scs } }); } catch {} try { await sequelize.query('DELETE FROM supplier_companies WHERE id IN (:s)', { replacements: { s: scs } }); } catch {} }
+      await sequelize.query(`DELETE FROM restaurant_managers WHERE manager_id = ?`, { replacements: [uid] });
+      await sequelize.query(`DELETE FROM users WHERE id = ?`, { replacements: [uid] });
+    }
+  });
+  // 2026-10-04 Fable 판정 owner-po-on-behalf ①: 오너는 소유 매장을 골라 **그 매장 자격으로** 발주를 만들고 제출한다.
+  //   발주 주인 = 매장(그 매장 RA 이력에 보임) · 오너 제출 = 승인 생략(submitted + «Submitted by Owner» 기록)
+  //   · 같은 매장 RA 제출 = 그대로 pending_approval · 남의 매장/전환 없음 403 · 수령·공급업체 전환은 열지 않음(403).
+  //   데모 매장 38 에 임시 오너를 붙여(=승인 ON) 쓰고 finally 로 전부 지운다.
+  test('security', '오너 대리 발주 — 소유 매장 작성 201·제출=승인 생략 · RA 제출=승인 대기 · RA 이력에 보임 · 남의 매장·전환 없음·수령 403', async () => {
+    const { sequelize } = require('../config/database');
+    const jwt = require('jsonwebtoken');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const tag = 'zzhcobh' + Date.now().toString(36);
+    const [other] = await Q(`SELECT id FROM restaurants WHERE is_demo = 1 AND id <> 38 ORDER BY id LIMIT 1`);
+    const [ing] = await Q(`SELECT i.id ingredient_id, i.unit, isp.seller_entity_id FROM ingredient_seller_products isp
+      JOIN ingredients i ON i.id = isp.ingredient_id WHERE i.restaurant_id = 38 AND isp.seller_type = 'supplier' AND isp.is_active = 1 ORDER BY i.id LIMIT 1`);
+    const [ra] = await Q(`SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 ORDER BY id LIMIT 1`);
+    if (!other || !ing || !ra) { console.log(c.gray('      (준비물 없음 — 데모 매장 38 공급처 연결 재료/RA)')); return false; }
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@outlook.com`] });
+    const pos = [];
+    try {
+      await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (38, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [uid] });
+      const own = { Authorization: `Bearer ${jwt.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const raAuth = { Authorization: `Bearer ${jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const sw = (rid) => `entity_type=restaurant&entity_id=${rid}`;
+      const body = { seller_type: 'supplier', seller_entity_id: ing.seller_entity_id, notes: tag,
+        items: [{ ingredient_id: ing.ingredient_id, quantity_ordered: 1, unit: ing.unit, unit_price: 3 }] };
+      const mk = await request('POST', `/purchase-orders?${sw(38)}`, body, own);
+      const oid = mk.body && mk.body.data && mk.body.data.id; if (oid) pos.push(oid);
+      const sub = oid ? await request('POST', `/purchase-orders/${oid}/submit?${sw(38)}`, {}, own) : { status: 0 };
+      const [orow] = oid ? await Q('SELECT entity_type, entity_id, status, tracking_info FROM purchase_orders WHERE id = :i', { i: oid }) : [{}];
+      const ownerNote = JSON.stringify(orow.tracking_info || '').includes('Submitted by Owner');
+      const raSees = oid ? await request('GET', `/purchase-orders/${oid}`, null, raAuth) : { status: 0 };
+      const rmk = await request('POST', '/purchase-orders', body, raAuth);
+      const rid = rmk.body && rmk.body.data && rmk.body.data.id; if (rid) pos.push(rid);
+      if (rid) await request('POST', `/purchase-orders/${rid}/submit`, {}, raAuth);
+      const [rrow] = rid ? await Q('SELECT status FROM purchase_orders WHERE id = :i', { i: rid }) : [{}];
+      const notMine = await request('POST', `/purchase-orders?${sw(other.id)}`, body, own);
+      const noSwitch = await request('POST', '/purchase-orders', body, own);
+      const recv = oid ? await request('POST', `/purchase-orders/${oid}/mark-received?${sw(38)}`, {}, own) : { status: 0 };
+      const sup = await request('POST', `/external-suppliers?${sw(38)}`, { name: tag }, own);
+      const ok = mk.status === 201 && orow.entity_type === 'restaurant' && Number(orow.entity_id) === 38
+        && sub.status === 200 && orow.status === 'submitted' && ownerNote
+        && raSees.status === 200 && rmk.status === 201 && rrow.status === 'pending_approval'
+        && notMine.status === 403 && noSwitch.status === 403 && recv.status === 403 && sup.status === 403;
+      if (!ok) console.log(c.gray(`      (작성 ${mk.status} 주인 ${orow.entity_type}:${orow.entity_id} · 제출 ${sub.status}/${orow.status} 기록 ${ownerNote} · RA 보기 ${raSees.status} · RA 제출 ${rmk.status}/${rrow.status} · 남의매장 ${notMine.status} · 전환없음 ${noSwitch.status} · 수령 ${recv.status} · 공급업체 ${sup.status})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      try { await hcCleanupPurchaseOrders(pos, { waitMs: 0 }); } catch {}
       await sequelize.query(`DELETE FROM restaurant_managers WHERE manager_id = ?`, { replacements: [uid] });
       await sequelize.query(`DELETE FROM users WHERE id = ?`, { replacements: [uid] });
     }

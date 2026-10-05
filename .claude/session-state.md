@@ -1,7 +1,7 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-10-04 18:5x UTC (/개발완료 — 오늘 운영 배포 11회, 마지막 #11)
-**버전:** 운영 SW **5.82-po-owner-approvals-20261004** · 안드로이드 앱 **0.3.4** · 버전 번호 v3.10x 미확정
-**작업 상태:** ✅ 배포 완료 · 다음 섹션 대기(아래 5건)
+**버전:** 운영 SW **5.83-owner-po-on-behalf-20261005** · 안드로이드 앱 **0.3.4** · 버전 번호 v3.10x 미확정
+**작업 상태:** ✅ 2026-10-05 #1 배포(SW 5.83 오너 대리 발주) · 다음 섹션 남은 4건
 
 ### 오늘 마지막 배포들 (요약)
 - #9 SW 5.80: 단일 화면 고객화면 자동열림 안 함 · 고객화면 대시보드 버튼 · 세션복원 기기언어 유지 · POS 문구 90곳 번역
@@ -10,7 +10,7 @@
 - 카드 단말기: POS↔단말기 왕복 정상(Echo·C7·B0 실측). 단말기 자체 결제도 B0 → GHL 활성화 회신 대기(Irene 이 짧은 질문 발송)
 
 ### 📌 다음 섹션 (Irene 2026-10-04 지정 — 「이건 다음 섹션에 체크하고 구현할게. 위에 다른 기능도 다음 섹션에 넣어」)
-1. **오너 대리 발주** — Irene «응». Fable 판정 `.claude/fable-verdict-20261004-owner-po-on-behalf.md` ①(9-24 §2-A 한 조항 변경: 오너가 소유 매장 골라 그 매장 자격으로 발주·제출, 그 매장 내역, 오너 제출=승인 생략 · buyerScope 작성 흐름 라우트 개방 · applySubmitGate 오너 분기 · OwnerToPoHistory 삭제 · 매장 선택 선행 · MainLayout 무접촉 · 증명 §3) — 다음 섹션 착수(Irene 이 이번 묶음에 넣으라면 바로).
+1. ✅ (2026-10-05 운영 배포) **오너 대리 발주** — Irene «응». Fable 판정 `.claude/fable-verdict-20261004-owner-po-on-behalf.md` ①(9-24 §2-A 한 조항 변경: 오너가 소유 매장 골라 그 매장 자격으로 발주·제출, 그 매장 내역, 오너 제출=승인 생략 · buyerScope 작성 흐름 라우트 개방 · applySubmitGate 오너 분기 · OwnerToPoHistory 삭제 · 매장 선택 선행 · MainLayout 무접촉 · 증명 §3) — 다음 섹션 착수(Irene 이 이번 묶음에 넣으라면 바로).
 2. **선택 화면 «역할 추가 요청»**(직원 역할 포함, 승인 → 카드) — `.claude/next-context-request.md` · 보존 패치 `.claude/next-context-request-grantContext.patch` · Fable 재설계 필요(Staff 승인 주체).
 3. **외부 공급업체 월별 SOA** — Irene 원문: 「외부공급업체 중에 1달 기준으로 SOA 보내는 곳이 있어. 이것도 정리한 후 SOA 결제 인보이스 뜨게 하고 최종 받은 SOA랑 대조해서 결제정리할 수 있게 해줄 수 있어?」 → 설계부터(Fable). 참고 메모리: 인보이스·SOA 통합(feedback_invoice_soa_unified) · 정산서엔 확정 주문 전부(feedback_soa_includes_all_confirmed_orders) · 발주↔인보이스 원가 대조(project_po_invoice_cost_variance) · 발주 «개인금액»(reference_po_personal_money).
 
@@ -27,6 +27,15 @@
 - 남은 것: Windows 데스크탑 앱 설치본 재빌드(되돌림 검사·Notify 건너뜀 소스 반영됨) · Kate 브랜드 관리자 부여 → K-DINE 데이터 정리 밤 1회 · /docs SEO nginx 보류
 
 ### 진행 중인 작업
+- ✅ **[Claude Code] 오너 대리 발주(다음 섹션 1번) — 운영 배포 2026-10-05 05:31 UTC** (SW 5.83 · 백업 `20261005_052507` · 마이그 105/105 · 스모크 10/10 · Fable 게이트 PASS 조건 없음 `.claude/fable-verdict-20261005-owner-po-on-behalf-gate.md`)
+  - 운영 확인: sw 5.83 · 익명 POST 401 · buyerScope OWNER_ACTING_ROUTES·Submitted by Owner 반영 · production-backend online
+  - 1차 배포 시도는 PlanQ tsc 메모리 게이트로 빌드 전 중단(운영 무변경, 백업 20261005_052017만 생성) → 재시도 성공
+  - 문서 3곳(§2-4) 갱신 완료
+  - ⏳ Irene 눈 확인 1회: help@ 오너 모자 → Purchase Order → 매장 고르기 → 담기 → Create POs → 대기 화면 제출 → 그 매장 Order History
+- ⏳ **카드 단말기 GHL WAG(2026-10-05 Irene 전달)**: «Payhere Direct spec shared · UAT terminal deployed · TCP connection program · 검수 = Visa/Master credit/debit + DuitNow QR»
+  - 실측: 보유 규격 V2.9.26 이 Direct 포함 · 우리 transport http-hex/tcp-hex/tcp-bin 서버·안드로이드 0.3.4 모두 지원(설정만 바꾸면 됨)
+  - 갭: ① Direct 직불 D007 Account Type 필수인데 미전송 ② C01A Product ID 는 ECR 전용 → Direct DuitNow 방법 미상(D003 'CD' 대비만 있음)
+  - GHL 질문 5개(UAT 여부·B0, TCP 형식·포트, D007 주체, DuitNow D003=CD 여부, 최신 규격·검수 목록) → 답 후 Fable 설계 1회
 - ⏳ **[Claude Code] Docs(안내 페이지) + 사이드바 정리 + 랜딩 Download — 접수 2026-10-04, 구조 묶음 뒤 같은 빌드로**
   - Irene 원문: 「Docs에 필요한 안내 내용들 이렇게 안내페이지들 넣는 거 구성해야 하는데. 좌측 메뉴에 Contact Support랑 버튼 합쳐서 표시 안될까? 그리고 Install App은 없애자. 우측 하단에 배너들 나오니까 없어도 될 것 같고. 랜딩페이지에 다운로드 메뉴를 추가해. 내가 말한 Docs 페이지들은 샘플 이거 말하는 거야. https://claude.ai/artifact/ALL7b8nE7jZr4vgAuS3LeK」
   - ⚠ 사이드바 = 🔒 MainLayout.tsx(인쇄 보호파일) — 푸터 버튼 줄만, Irene 명시 요청 → print-guard --bless 대상

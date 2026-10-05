@@ -25,6 +25,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import { useAuth } from '../../contexts/AuthContext';
+import { isOwnerRole, getOwnerPoRestaurantId, setOwnerPoRestaurantId, withOwnerPoScope } from '../../utils/ownerPoScope';
 import { getAuthToken } from '../../utils/auth';
 import { computeDeliveryFee, amountToFreeDelivery } from '../../utils/deliveryFee';
 import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
@@ -171,6 +172,22 @@ const PageHeader = styled.div`
     padding: 16px;
     height: auto;
     max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
+  }
+`;
+
+/** 오너 «어느 매장의 발주인가» 줄 — 헤더와 같은 좌우 여백(32px · 폰 16px) (2026-10-05). */
+const OwnerPickBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 32px;
+  background: white;
+  border-bottom: 1px solid #C7CED6;
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    padding: 10px 16px;
   }
 `;
 
@@ -1025,11 +1042,42 @@ const NewPurchaseOrderPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
 
+  // 오너 = 소유 매장 하나를 골라 **그 매장 자격으로** 발주 (2026-10-04 Fable 판정 owner-po-on-behalf ①).
+  //   매장 선택이 먼저 — 다매장은 하나 필수(«전체» 없음), 한 곳뿐이면 자동. 발주 주인은 그 매장(그 매장 이력).
+  //   서버(middleware/buyerScope)가 매 요청 ownership 을 확인한다. 고른 매장은 목록·대기·상세와 같은 값(utils/ownerPoScope).
+  //   오너는 매장이 이미 연결해 둔 재고 품목으로만 발주한다 — 재료 연결·카탈로그 등록은 매장 몫(카탈로그 탭·연결 버튼 숨김).
+  const isOwner = isOwnerRole(user?.role);
+  const [ownerRestaurants, setOwnerRestaurants] = useState<Array<{ id: number; name: string }>>([]);
+  const [ownerRid, setOwnerRidState] = useState<number | null>(() => (isOwner ? getOwnerPoRestaurantId() : null));
+  const setOwnerRid = useCallback((id: number | null) => {
+    if (id) setOwnerPoRestaurantId(id);
+    setOwnerRidState(id);
+  }, []);
+  useEffect(() => {
+    if (!isOwner) return;
+    let alive = true;
+    fetch('/api/owner/restaurants', { headers: { Authorization: `Bearer ${getAuthToken()}` } })
+      .then(r => r.json())
+      .then(j => {
+        if (!alive) return;
+        const list: Array<{ id: number; name: string }> = (Array.isArray(j?.data) ? j.data : []).map((r: any) => ({ id: Number(r.id), name: r.name }));
+        setOwnerRestaurants(list);
+        const keep = getOwnerPoRestaurantId();
+        if (list.length === 1) setOwnerRid(list[0].id);
+        else if (!keep || !list.some(r => r.id === keep)) setOwnerRidState(null);
+      })
+      .catch(() => { if (alive) setOwnerRestaurants([]); });
+    return () => { alive = false; };
+  }, [isOwner, setOwnerRid]);
+
   // Buyer entity 결정 — Restaurant Admin / Brand General / Foodcourt General 모두 발주 가능
   const buyerEntity = useMemo(() => {
     const role = user?.role;
     if (!user) return null;
-    if (['Restaurant Admin', 'Restaurant Owner', 'Staff'].includes(role || '') && user.restaurantId) {
+    if (role === 'Restaurant Owner') {
+      return ownerRid ? { type: 'restaurants' as const, id: ownerRid } : null;
+    }
+    if (['Restaurant Admin', 'Staff'].includes(role || '') && user.restaurantId) {
       return { type: 'restaurants' as const, id: user.restaurantId };
     }
     // AuthContext user 객체는 brand_id / foodcourt_id (snake_case) 로 들고 있다(restaurantId 만 camelCase).
@@ -1042,7 +1090,7 @@ const NewPurchaseOrderPage: React.FC = () => {
       return { type: 'foodcourts' as const, id: (user as any).foodcourt_id };
     }
     return null;
-  }, [user]);
+  }, [user, ownerRid]);
   // 기존 코드 호환: restaurantId 변수 (string | number | null)
   const restaurantId = buyerEntity?.id;
   const buyerApiBase = buyerEntity ? `/api/${buyerEntity.type}/${buyerEntity.id}` : null;
@@ -1127,16 +1175,17 @@ const NewPurchaseOrderPage: React.FC = () => {
   useEffect(() => {
     const token = getAuthToken();
     if (!token) return;
+    if (isOwner && !ownerRid) { setPendingCount(0); return; }
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch('/api/purchase-orders?status=draft', { headers: { Authorization: `Bearer ${token}` } });
+        const r = await fetch(withOwnerPoScope('/api/purchase-orders?status=draft', user?.role), { headers: { Authorization: `Bearer ${token}` } });
         const j = await r.json().catch(() => null);
         if (!cancelled && r.ok && j?.success) setPendingCount(Array.isArray(j.data) ? j.data.length : 0);
       } catch { /* noop */ }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [isOwner, ownerRid, user?.role]);
   const [currencyConfirm, setCurrencyConfirm] = useState<{ message: string; settingsUrl: string } | null>(null);
   // 발주를 보내려면 법인정보가 필요하다(무료 발주 등급). 서버가 **빠진 칸 목록**을 준다 —
   // 「저장 실패」로 끝내지 않고 무엇이 빠졌는지 그대로 보여 주고 그 화면으로 보낸다.
@@ -1418,19 +1467,20 @@ const NewPurchaseOrderPage: React.FC = () => {
   }, [search, categoryFilter, supplierFilter]);
 
   useEffect(() => {
+    if (isOwner && tab !== 'mine') { setTab('mine'); return; } // 오너는 카탈로그 탭 없음(주소로 와도)
     if (tab === 'mine') fetchMine();
     else fetchCatalog();
-  }, [tab, fetchMine, fetchCatalog]);
+  }, [tab, fetchMine, fetchCatalog, isOwner, setTab]);
 
 
   // Deep-link from /restaurant/:id/ingredients — auto-enter connect mode for a specific ingredient.
   useEffect(() => {
     const cid = parseInt(searchParams.get('connect_ingredient_id') || '', 10);
-    if (!Number.isFinite(cid) || connectTarget?.id === cid) return;
+    if (isOwner || !Number.isFinite(cid) || connectTarget?.id === cid) return;
     // Deep-link 진입 — modal 자동 오픈 (catalog 탭 이동 / 자동 검색 prefill 없음)
     const row = myList.find(m => m.id === cid);
     setConnectTarget({ id: cid, name: row?.name || `#${cid}`, unit: row?.unit || '' });
-  }, [searchParams, myList, connectTarget]);
+  }, [searchParams, myList, connectTarget, isOwner]);
 
   const myCategories = useMemo(() => {
     const map = new Map<number, { id: number; name: string; emoji?: string | null }>();
@@ -1478,7 +1528,7 @@ const NewPurchaseOrderPage: React.FC = () => {
   // 내 목록에서 0건일 때만 카탈로그 건수를 센다 — 평소엔 부르지 않는다(검색마다 두 번 부르지 않게).
   useEffect(() => {
     const term = search.trim();
-    if (tab !== 'mine' || !term || loadingMine || filteredMy.length > 0) {
+    if (isOwner || tab !== 'mine' || !term || loadingMine || filteredMy.length > 0) {
       if (catalogPeek.count !== null) setCatalogPeek({ term: '', count: null });
       return;
     }
@@ -1957,7 +2007,7 @@ const NewPurchaseOrderPage: React.FC = () => {
         };
       });
       // Cart submit (1차) → status='draft' staging. 사용자가 staging 페이지에서 외부 PO 처리 후 일괄 Submit
-      const res = await fetch('/api/purchase-orders/bulk', {
+      const res = await fetch(withOwnerPoScope('/api/purchase-orders/bulk', user?.role), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ groups: groupsBody, auto_submit: false })
@@ -1995,15 +2045,38 @@ const NewPurchaseOrderPage: React.FC = () => {
         </ThemedButton>
       </PageHeader>
 
+      {isOwner && (
+        <OwnerPickBar>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--pos-text-muted, #4B5563)' }}>
+            {t('newPo.ownerRestaurant', 'Order for')}
+          </span>
+          <div style={{ width: 280, maxWidth: '100%' }}>
+            <SearchableSelect
+              options={ownerRestaurants.map(r => ({ value: r.id, label: r.name }))}
+              value={ownerRid}
+              onChange={(v) => { const n = Number(v); setOwnerRid(Number.isFinite(n) && n > 0 ? n : null); }}
+              placeholder={t('newPo.ownerPickPlaceholder', 'Select a restaurant') as string}
+              disabled={ownerRestaurants.length <= 1}
+            />
+          </div>
+        </OwnerPickBar>
+      )}
+      {isOwner && !ownerRid ? (
+        <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--pos-text-muted, #6B7280)', fontSize: 14 }}>
+          {t('newPo.ownerPickFirst', 'Choose which of your restaurants this order is for. It will appear in that restaurant\'s order history.')}
+        </div>
+      ) : (
       <Layout $cartWidth={cartWidth}>
         <MainPane>
           <TabBar>
             <TabBtn $active={tab === 'mine'} onClick={() => { setTab('mine'); setCategoryFilter('all'); setMineSellerFilter('all'); setSearch(''); }}>
               {t('newPo.tabMine', 'My Stock Items')}
             </TabBtn>
-            <TabBtn $active={tab === 'catalog'} onClick={() => { setTab('catalog'); setCategoryFilter('all'); setSupplierFilter('all'); setSearch(''); }}>
-              {t('newPo.tabCatalog', 'Supplier Catalog')}
-            </TabBtn>
+            {!isOwner && (
+              <TabBtn $active={tab === 'catalog'} onClick={() => { setTab('catalog'); setCategoryFilter('all'); setSupplierFilter('all'); setSearch(''); }}>
+                {t('newPo.tabCatalog', 'Supplier Catalog')}
+              </TabBtn>
+            )}
           </TabBar>
 
           {connectTarget && tab === 'catalog' && (
@@ -2276,6 +2349,8 @@ const NewPurchaseOrderPage: React.FC = () => {
                       if (!hasSeller) {
                         // 브랜드 표준 재료는 공급처를 브랜드가 붙인다 — 매장은 연결할 수 없다(읽기전용)
                         if (row.is_brand_shared) return;
+                        // 오너는 공급처 연결을 하지 않는다 — 매장이 연결해 둔 품목만 발주
+                        if (isOwner) return;
                         // 발주처 미연결 — inline modal 띄움 (페이지 이동 X, catalog 탭 자동 검색 X)
                         setConnectTarget(
                           row.product_id
@@ -2682,6 +2757,7 @@ const NewPurchaseOrderPage: React.FC = () => {
           </CartBody>
         </CartPane>
       </Layout>
+      )}
 
       {toast && <Toast>{toast}</Toast>}
 

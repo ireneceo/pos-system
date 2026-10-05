@@ -11,6 +11,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { isOwnerRole, getOwnerPoRestaurantId, withOwnerPoScope } from '../../utils/ownerPoScope';
 import { sharePoViaWhatsApp, sharePoViaEmail, isRealSupplierSku } from '../../utils/poShare';
 import { useNavigate } from 'react-router-dom';
 import { Container, Content } from '../../components/UI';
@@ -221,6 +222,13 @@ const PdfFrame = styled.iframe`
 const PurchaseOrderStagingPage: React.FC = () => {
   const { t } = useTranslation('purchaseOrders');
   const navigate = useNavigate();
+  // 오너 = 고른 소유 매장 자격으로 초안을 다룬다 (2026-10-04 Fable owner-po-on-behalf ①). 매장을 안 골랐으면 작성 화면에서 먼저 고른다.
+  const { user } = useAuth();
+  const isOwner = isOwnerRole(user?.role);
+  const ownerRid = isOwner ? getOwnerPoRestaurantId() : null;
+  useEffect(() => {
+    if (isOwner && !ownerRid) navigate('/pos/purchase-orders', { replace: true });
+  }, [isOwner, ownerRid, navigate]);
   // 날짜 표시는 브라우저 로컬이 아니라 **매장 타임존** 기준(프로젝트 절대 규칙).
   const { operationSettings } = useStore();
   const storeTimeZone = operationSettings?.timeZone || 'Asia/Kuala_Lumpur';
@@ -268,8 +276,9 @@ const PurchaseOrderStagingPage: React.FC = () => {
     return it.seller_product_name || internal;
   };
 
-  const { user } = useAuth();
   useEffect(() => {
+    // 오너가 고른 매장 자격으로 보낸 발주는 승인 생략(2026-10-04 Fable owner-po-on-behalf ① — 서버 applySubmitGate 와 같은 규칙)
+    if (isOwner) { setNeedsOwnerApproval(false); return; }
     const rid = (user as any)?.restaurant_id || (user as any)?.restaurantId;
     if (!rid) return;
     (async () => {
@@ -282,7 +291,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
         setNeedsOwnerApproval(!!hasOwner && setting !== false);
       } catch { /* 조회 실패 시 기존 동작 유지 */ }
     })();
-  }, [user]);
+  }, [user, isOwner]);
 
   /**
    * 목록 새로고침.
@@ -301,8 +310,8 @@ const PurchaseOrderStagingPage: React.FC = () => {
     try {
       const token = getAuthToken();
       // 2026-06-22 (Irene "같은 공급업체는 합쳐라"): 열 때마다 같은 공급업체 draft 를 한 PO 로 통합한 뒤 조회.
-      try { await fetch('/api/purchase-orders/consolidate-drafts', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); } catch { /* non-fatal */ }
-      const res = await fetch('/api/purchase-orders?status=draft', {
+      try { await fetch(withOwnerPoScope('/api/purchase-orders/consolidate-drafts', user?.role), { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); } catch { /* non-fatal */ }
+      const res = await fetch(withOwnerPoScope('/api/purchase-orders?status=draft', user?.role), {
         headers: { Authorization: `Bearer ${token}` }
       });
       const j = await res.json();
@@ -316,7 +325,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
       setError(t('staging.refreshFailed', 'Could not refresh the list. Showing the last loaded state.') as string);
     }
     finally { if (!opts?.silent) setLoading(false); }
-  }, [t]);
+  }, [t, user?.role]);
 
   useEffect(() => { fetchDrafts(); }, [fetchDrafts]);
 
@@ -324,7 +333,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
   const refreshPrices = async (po: POStaging) => {
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/purchase-orders/${po.id}/refresh-prices`, {
+      const res = await fetch(withOwnerPoScope(`/api/purchase-orders/${po.id}/refresh-prices`, user?.role), {
         method: 'POST', headers: { Authorization: `Bearer ${token}` },
       });
       const j = await res.json().catch(() => ({}));
@@ -355,7 +364,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
     setDiscarding(true);
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/purchase-orders/${discardTarget.id}`, {
+      const res = await fetch(withOwnerPoScope(`/api/purchase-orders/${discardTarget.id}`, user?.role), {
         method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
       });
       const j = await res.json().catch(() => null);
@@ -380,7 +389,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
     setPdfBusy(true);
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/purchase-orders/${po.id}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(withOwnerPoScope(`/api/purchase-orders/${po.id}/pdf`, user?.role), { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) {
         setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('staging.pdfFailed', 'Failed to load the purchase order document') as string });
         return;
@@ -441,7 +450,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
         const url = po.seller && !po.seller.is_system_registered
           ? `/api/purchase-orders/${po.id}/mark-sent-external`
           : `/api/purchase-orders/${po.id}/submit`;
-        return fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+        return fetch(withOwnerPoScope(url, user?.role), { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
           .then(r => r.ok ? null : `PO #${po.id} failed (${r.status})`);
       });
       const results = await Promise.all(tasks);
@@ -467,7 +476,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
       const url = isExternal
         ? `/api/purchase-orders/${po.id}/mark-sent-external`
         : `/api/purchase-orders/${po.id}/submit`;
-      const res = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(withOwnerPoScope(url, user?.role), { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) {
         const j = await res.json().catch(() => null);
         setAlertDlg({
@@ -500,7 +509,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
   const removeItem = async (poId: number, itemId: number) => {
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/purchase-orders/${poId}/items/${itemId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(withOwnerPoScope(`/api/purchase-orders/${poId}/items/${itemId}`, user?.role), { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
       const j = await res.json().catch(() => null);
       if (res.ok && j?.success) { fetchDrafts(); }
       else setAlertDlg({ title: t('common:error.title', 'Error') as string, message: j?.message || (t('staging.removeItemFailed', 'Failed to remove item') as string) });
@@ -593,10 +602,12 @@ const PurchaseOrderStagingPage: React.FC = () => {
                   ? t('staging.submitForApproval', 'Submit for approval')
                   : t('staging.markSent', 'Mark as Sent')}
             </Button>
-            {/* 직접 사왔을 때 — 보냄·받음·결제를 한 번에 닫는다 (2026-09-18 Irene) */}
-            <Button variant="secondary" size="small" onClick={() => setPayModal({ po, mode: 'direct_purchase' })}>
-              {t('staging.directPurchase', 'Receive + pay')}
-            </Button>
+            {/* 직접 사왔을 때 — 보냄·받음·결제를 한 번에 닫는다 (2026-09-18 Irene). 수령은 매장 몫 — 오너에겐 없음 */}
+            {!isOwner && (
+              <Button variant="secondary" size="small" onClick={() => setPayModal({ po, mode: 'direct_purchase' })}>
+                {t('staging.directPurchase', 'Receive + pay')}
+              </Button>
+            )}
             <Button variant="danger-outline" size="small" onClick={() => setDiscardTarget(po)}>
               {t('staging.discard', 'Discard')}
             </Button>
@@ -617,10 +628,12 @@ const PurchaseOrderStagingPage: React.FC = () => {
                 ? t('staging.submitting', 'Submitting…')
                 : t('staging.submitOne', 'Submit')}
             </Button>
-            {/* 직접 사왔을 때 — 보냄·받음·결제를 한 번에 닫는다 (2026-09-18 Irene) */}
-            <Button variant="secondary" size="small" onClick={() => setPayModal({ po, mode: 'direct_purchase' })}>
-              {t('staging.directPurchase', 'Receive + pay')}
-            </Button>
+            {/* 직접 사왔을 때 — 보냄·받음·결제를 한 번에 닫는다 (2026-09-18 Irene). 수령은 매장 몫 — 오너에겐 없음 */}
+            {!isOwner && (
+              <Button variant="secondary" size="small" onClick={() => setPayModal({ po, mode: 'direct_purchase' })}>
+                {t('staging.directPurchase', 'Receive + pay')}
+              </Button>
+            )}
             <Button variant="danger-outline" size="small" onClick={() => setDiscardTarget(po)}>
               {t('staging.discard', 'Discard')}
             </Button>

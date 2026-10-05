@@ -401,14 +401,6 @@ const LegacyRestaurantRedirect: React.FC = () => {
   return <Navigate to={`/restaurant/${user.restaurantId}/${pathAfterRestaurant}`} replace />;
 };
 
-// 오너가 발주 작성 화면(/pos/purchase-orders)으로 오면 발주 목록으로 — 오너는 보고 승인만 한다
-// (2026-09-24 Fable «오너=슈퍼바이저» §2-A). 사이드바는 인쇄 보호파일이라 메뉴 대신 여기서 돌린다.
-const OwnerToPoHistory: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
-  if (user?.role === 'Restaurant Owner') return <Navigate to="/pos/purchase-orders/history" replace />;
-  return <>{children}</>;
-};
-
 function App() {
   // Load site settings and update SEO on mount
   React.useEffect(() => {
@@ -1521,14 +1513,12 @@ function App() {
 
                       {/* Sprint 3 — Purchase Orders */}
                       {/* 2026-10-04 Irene «직원 로그인에서 Purchase Order 안 뜬다»: 만들기·대기·원가대조에 Staff 추가. 메뉴는 «Stock Management»(inventory) 권한 직원만 보이고, 서버도 같은 권한을 확인한다(middleware/buyerScope). */}
-                      {/* 오너는 발주를 만들지 않는다 — 보고 승인만(2026-09-24 Fable «오너=슈퍼바이저»).
-                          오너 메뉴의 «Purchase Order» 는 사이드바(인쇄 보호파일 MainLayout)를 건드리지 않고 여기서 목록으로 보낸다. */}
+                      {/* 오너는 소유 매장을 골라 그 매장 자격으로 발주한다(2026-10-04 Fable 판정 owner-po-on-behalf ① — 9-24 «오너는 만들지 않는다» 대체).
+                          발주 주인은 그 매장(그 매장 이력), 오너 제출은 승인 생략. 오너 메뉴 «Purchase Order»(MainLayout, 인쇄 보호파일)는 그대로 여기로 온다. */}
                       <Route path="/pos/purchase-orders" element={
-                        <OwnerToPoHistory>
-                          <ProtectedRoute requiredRole={['Restaurant Admin','Staff','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
-                            <NewPurchaseOrderPage />
-                          </ProtectedRoute>
-                        </OwnerToPoHistory>
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Staff','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <NewPurchaseOrderPage />
+                        </ProtectedRoute>
                       } />
                       <Route path="/pos/purchase-orders/history" element={
                         <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
@@ -1536,7 +1526,7 @@ function App() {
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/purchase-orders/staging" element={
-                        <ProtectedRoute requiredRole={['Restaurant Admin','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Staff','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                           <PurchaseOrderStagingPage />
                         </ProtectedRoute>
                       } />

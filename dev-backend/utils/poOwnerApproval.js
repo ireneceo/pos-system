@@ -57,18 +57,26 @@ async function isApprovalRequiredForRestaurant(restaurant) {
  * @param {object} po - PurchaseOrder 인스턴스(트랜잭션 안에서 잠근 것)
  * @param {object} t  - transaction
  * @param {function} appendTrackingEvent - 라우트가 쓰는 tracking 헬퍼(순환 require 회피용 주입)
+ * @param {object} [actor] - 제출한 사람(req.user). **그 매장의 ownership 오너**면 승인 생략 — 승인자가 작성자다
+ *          (2026-10-04 Fable 판정 owner-po-on-behalf ① §2-2). 구매자 쪽 경로만 넘긴다(판매자 대리 추가는 안 넘김).
  * @returns {Promise<boolean>} needsApproval — true 면 호출부는 **판매자 통지·seller-order-created 를
  *          내보내면 안 되고**, 대신 오너 승인 대기 통지를 보내야 한다.
  */
-async function applySubmitGate(po, t, appendTrackingEvent) {
+async function applySubmitGate(po, t, appendTrackingEvent, actor) {
   const Restaurant = require('../models/Restaurant');
 
   let needsApproval = false;
+  let byOwner = false;
   if (po.entity_type === 'restaurant') {
     const restaurant = await Restaurant.findByPk(po.entity_id, {
       attributes: ['id', 'operation_settings'], transaction: t
     });
     needsApproval = await isApprovalRequiredForRestaurant(restaurant);
+    if (needsApproval && actor) {
+      const owned = await resolveOwnerRestaurantIds(actor);
+      byOwner = owned.includes(parseInt(po.entity_id, 10));
+      if (byOwner) needsApproval = false;
+    }
   }
 
   if (needsApproval) {
@@ -79,7 +87,9 @@ async function applySubmitGate(po, t, appendTrackingEvent) {
       tracking_info: tracking
     }, { transaction: t });
   } else {
-    const tracking = appendTrackingEvent(po, 'submitted');
+    const tracking = byOwner
+      ? appendTrackingEvent(po, 'submitted', 'Submitted by Owner (approval skipped)')
+      : appendTrackingEvent(po, 'submitted');
     await po.update({
       status: 'submitted',
       submitted_at: new Date(),

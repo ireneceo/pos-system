@@ -1,0 +1,48 @@
+{
+  "tag": "owner-po-on-behalf",
+  "sw_version": "5.83-owner-po-on-behalf-20261005",
+  "date": "2026-10-05",
+  "in_progress": [
+    "카드 단말기 GHL 활성화 회신 대기"
+  ],
+  "completed": [
+    "오너가 소유 매장을 골라 그 매장 자격으로 발주: 사이드바 Purchase Order 가 발주 화면으로 열림(예전엔 Order History 로 튕김) · 매장 선택이 먼저(여러 매장이면 필수, 한 곳이면 자동)",
+    "오너가 만든 발주는 그 매장 발주(그 매장 Order History 에 들어감) · 오너가 제출하면 오너 승인 단계 생략, 이력에 «Submitted by Owner (approval skipped)»",
+    "매장 직원(RA·Staff)이 제출한 발주는 지금처럼 오너 승인 대기",
+    "오너 발주 대기 화면: 초안 합치기·가격 갱신·제출·외부 공급업체 보내기·초안 버리기 · «Receive + pay» 는 숨김(수령은 매장 몫)",
+    "오너 발주 상세: 초안 제출 버튼"
+  ],
+  "remaining": [
+    "다음 섹션: 역할 추가 요청 · 외부 공급업체 월별 SOA 대조 · 발주 스탭밀 구분 · 승인 메일 문구"
+  ],
+  "verification": {
+    "api": "health-check security 70/70 — 신규 «오너 대리 발주»: 소유 매장 작성 201·entity=매장 · 제출 submitted+Submitted by Owner · 같은 매장 RA 제출 pending_approval · RA 상세 200 · 남의 매장 403 · 전환 없음 403 · 수령 403 · 공급업체 전환 403 / 기존 «오너 발주 보기» 쓰기 검사를 남의 매장 쓰기 403 으로 수정",
+    "fault_injection": "buyerScope ownership 확인 제거 → 보안 3건 실패 검출 → cp 원복 cmp 동일 / applySubmitGate 오너 분기 제거 → 오너 발주 pending_approval 로 떨어져 실패 검출 → cp 원복 cmp 동일 → 70/70 (각각 pm2 restart 뒤)",
+    "regression": "verify-all --full · print-guard 8/8 · design-guard 신규 0 · i18n 4언어 일치 · 타입 기준선 신규 0",
+    "migration": "없음",
+    "sw_version": "5.83-owner-po-on-behalf-20261005",
+    "fable_note": "Fable 판정 .claude/fable-verdict-20261004-owner-po-on-behalf.md ① 구현(§2-1 buyerScope OWNER_ACTING_ROUTES · §2-2 applySubmitGate actor · §2-3 화면). 팀원 판단: 오너는 카탈로그 탭·공급처 연결 없음(매장이 연결한 품목만 발주) → supplier-catalog 는 열지 않음. 게이트 1회 대상(보안 경계)"
+  },
+  "notes": [
+    "🔒 인쇄 보호파일 무접촉(MainLayout 메뉴 그대로)",
+    "판매자 대리 추가(seller-orders) 경로는 제출자 전달 안 함 — 지금과 동일하게 승인 게이트"
+  ],
+  "irene_actions_after_deploy": [
+    "help@ 오너 모자 → Purchase Order → 매장 고르기 → 품목 담기 → Create POs → 대기 화면 제출 → 그 매장 Order History 에 보이는지"
+  ],
+  "issues": [
+    "오너 메뉴 Purchase Order 를 눌러도 발주 화면이 안 열림(Order History 로 돌려보냄)",
+    "오너가 매장 대신 발주할 수 없음"
+  ],
+  "upcoming": [
+    "다음 섹션 4건"
+  ],
+  "behavior_changes": [
+    "오너가 소유 매장 이름으로 발주를 만들고 보낼 수 있다(오너 제출은 승인 생략)",
+    "오너 발주 화면에는 Supplier Catalog 탭과 공급처 연결이 없다(매장이 연결해 둔 품목만)"
+  ],
+  "check_areas": [
+    "오너 Purchase Order · 대기 화면 · 상세",
+    "매장 RA 발주 제출(여전히 오너 승인 대기)"
+  ]
+}

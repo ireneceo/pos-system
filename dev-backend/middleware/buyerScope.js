@@ -4,7 +4,7 @@
  * Resolves the buyer's (entity_type, entity_id) pair from the authenticated user's role:
  *   - Restaurant Admin / Staff → ('restaurant', user.restaurant_id)
  *   - Restaurant Owner       → ('restaurant', user.restaurant_id) if assigned
- *        + 소유 매장 «보기» 전환(?entity_type=restaurant&entity_id=N) — ownership 확인, GET /api/purchase-orders* + POST /:id/cancel 만
+ *        + 소유 매장 «으로 행동» 전환(?entity_type=restaurant&entity_id=N) — ownership 확인, OWNER_ACTING_ROUTES 만(보기·작성·제출·취소)
  *        + 소속 매장 없는 오너: 외부 공급업체 라우트 → ('owner', user.id) · 발주 목록 → 소유 매장 전체(§H-3)
  *   - Brand General / Manager → ('brand', user.brand_id)
  *        + Brand General 은 **자기가 소유한 다른 브랜드**로 전환 가능(?entity_type=brand&entity_id=N).
@@ -43,6 +43,26 @@ function resolveBuyerFromUser(user) {
   return null;
 }
 
+// 오너가 소유 매장으로 전환해 부를 수 있는 라우트 (2026-10-04 Fable 판정 owner-po-on-behalf ①·§6, 2026-10-05 화면 실측).
+//   목록 밖은 전부 403 — 화면이 다른 라우트를 부르게 되면 여기에 **명시적으로** 더한다(fail-closed).
+const OWNER_ACTING_ROUTES = [
+  ['GET',    /^\/api\/purchase-orders(\/|$)/],                        // 보기(목록·상세·PDF·반품 이력)
+  ['POST',   /^\/api\/purchase-orders$/],                              // 초안 만들기
+  ['POST',   /^\/api\/purchase-orders\/bulk$/],                        // 장바구니 → 공급처별 초안
+  ['POST',   /^\/api\/purchase-orders\/consolidate-drafts$/],          // Staging 같은 공급처 초안 합치기
+  ['POST',   /^\/api\/purchase-orders\/\d+\/refresh-prices$/],         // Staging 초안 가격 갱신
+  ['POST',   /^\/api\/purchase-orders\/\d+\/submit$/],                 // 제출(승인 게이트 단일 소스)
+  ['POST',   /^\/api\/purchase-orders\/\d+\/mark-sent-external$/],     // 외부 공급업체 보냄 표시(같은 게이트)
+  ['POST',   /^\/api\/purchase-orders\/\d+\/cancel$/],                 // 취소(§6)
+  ['DELETE', /^\/api\/purchase-orders\/\d+$/],                         // 초안 버리기(라우트가 draft 만 허용)
+  ['DELETE', /^\/api\/purchase-orders\/\d+\/items\/\d+$/],             // 초안 품목 빼기(라우트가 draft 만 허용)
+];
+
+function isOwnerActingRoute(method, originalUrl) {
+  const path = String(originalUrl || '').split('?')[0];
+  return OWNER_ACTING_ROUTES.some(([m, re]) => m === method && re.test(path));
+}
+
 async function requireBuyerRole(req, res, next) {
   const user = req.user;
   if (!user) {
@@ -77,19 +97,16 @@ async function requireBuyerRole(req, res, next) {
     return res.status(403).json({ success: false, message: 'Stock Management permission required for purchase orders' });
   }
 
-  // Restaurant Owner — 소유 매장의 발주를 «보기만» (2026-09-24 Fable 판정 «오너=슈퍼바이저» §2-A).
-  //   ?entity_type=restaurant&entity_id=N 를 주면 ownership 연결을 **서버가** 확인한 뒤 그 매장으로 본다.
-  //   허용은 GET /api/purchase-orders* 뿐 — 오너는 발주를 만들거나 고치지 않는다(발주 주인은 항상 매장,
-  //   오너의 주문 행위 = 승인. 승인·반려 라우트는 이 미들웨어 앞에 따로 있다). 공급업체 등 다른 구매자 라우트는 이 전환을 받지 않는다.
+  // Restaurant Owner — 소유 매장 «으로 행동» (2026-10-04 Fable 판정 owner-po-on-behalf ① — 9-24 §2-A «오너는 만들지 않는다» 대체).
+  //   ?entity_type=restaurant&entity_id=N 를 주면 ownership 연결을 **서버가** 확인한 뒤 그 매장 RA 와 같은 구매자 실체가 된다.
+  //   발주 주인은 그대로 매장(그 매장 Order History 에 들어간다). 오너가 제출하면 승인 생략(utils/poOwnerApproval).
+  //   허용 = OWNER_ACTING_ROUTES(발주 보기 + 작성 흐름이 실제로 부르는 라우트 + 취소). 그 밖(외부 공급업체 등록·수정,
+  //   재고, 재료 연결, 수령·결제·반품·원가대조)은 403 그대로 — 수령은 물건이 있는 매장 몫, 공급업체 추가는 오너 자기 실체(상속 경로).
   if (user.role === 'Restaurant Owner' && req.query.entity_type === 'restaurant') {
     const wanted = parseInt(req.query.entity_id, 10);
     if (Number.isFinite(wanted)) {
-      const isPoRead = req.method === 'GET' && /^\/api\/purchase-orders(\/|\?|$)/.test(req.originalUrl || '');
-      // 오너 «취소» (2026-10-04 Fable 판정 owner-po-on-behalf §6): 소유 매장 발주 취소만 쓰기 허용.
-      //   삭제가 아니라 취소(행은 cancelled 로 남는다). 상태 조건은 cancel 라우트가 그대로 판정한다.
-      const isPoCancel = req.method === 'POST' && /^\/api\/purchase-orders\/\d+\/cancel(\?|$)/.test(req.originalUrl || '');
-      if (!isPoRead && !isPoCancel) {
-        return res.status(403).json({ success: false, message: 'Owners can only view purchase orders of their restaurants' });
+      if (!isOwnerActingRoute(req.method, req.originalUrl || '')) {
+        return res.status(403).json({ success: false, message: 'Owners can view, create, submit and cancel purchase orders of their restaurants only' });
       }
       try {
         const { RestaurantManager } = require('../models');

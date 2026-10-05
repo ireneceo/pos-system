@@ -946,6 +946,7 @@ Irene 원문: 「오너가 공급업체를 같이 관리하면 레스토랑마�
   - `/api/external-suppliers*` · `GET /api/supplier-directory/:id` → `{ type:'owner', id:user.id }` (등록·수정·상품·끄기·삭제)
   - `GET /api/purchase-orders`(목록만) → 소유 매장 전체(`req.buyerOwnerRestaurantIds`, `?restaurant_id=` 는 그 안에서만 좁힘) · 행마다 `restaurant_name`
   - 그 밖의 구매자 라우트(발주 작성·수령·재료 연결·계약·재고)는 오너 실체를 받지 않는다 → 403(fail-closed). 상세·인쇄는 기존 매장 전환(`?entity_type=restaurant&entity_id=N`, GET 만)으로.
+  - **2026-10-05 변경(Fable 판정 owner-po-on-behalf ① · SW 5.83 운영)**: 매장 전환(`?entity_type=restaurant&entity_id=N`, ownership 확인)에서 발주 **작성·제출·초안 정리·취소**도 허용(`buyerScope.OWNER_ACTING_ROUTES`) — 발주 주인은 그대로 매장, 오너 제출 = 승인 생략. 오너 실체(전환 없음)로의 발주 작성은 여전히 403. 공급업체 등록은 계속 오너 자기 실체(상속 경로)로만.
 - **상속 판정** (`utils/supplierAccess.js`): `findEffectiveContract` 2단계 `findParentContract` — 매장 구매자 · 업체가 오너 등록 외부 업체(가입 공급업체는 상속 안 함) · 그 업체 등록 오너가 이 매장 `restaurant_managers(ownership)` · 오너 계약 active. 매장이 자기 행(끄기 = terminated)을 가지면 1단계에서 이미 결정.
   - 목록·카탈로그는 `inheritedOwnerSupplierIds(restaurantId)` 한 곳에서 같은 조건으로 뽑는다.
 - **매장 쪽**: 목록에 `scope:'owner'`(«오너 등록» 카드) · 상품 **보기**만(`GET /external-suppliers/:id/products`) · 발주·재료 연결 가능 · **이 매장만 끄기**(자기 terminated 행) · **다시 켜기 = 자기 행 삭제**(오너 설정을 다시 따름 — 자기 active 행이 남으면 오너가 끄거나 지워도 그 매장만 계속 발주하게 된다). 수정·상품 등록·삭제는 403.
