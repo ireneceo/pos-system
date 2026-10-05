@@ -393,8 +393,12 @@ async function planAutoCycle({ issuerType, issuerId, payer, buyerEntityType, buy
   // 이 주기 = 직전 발행일 **다음 날** 00:00 부터. 직전 발행일 당일의 자동 정산서는 지난 주기 것이다.
   //   (직전 발행일 00:00 부터로 잡으면 지난달 자동 정산서가 걸려 영원히 건너뛴다.)
   const { startOfDay: cycleStart } = getDateBounds(addDays(prevIssueDay, 1), tz);
+  // 이 주기에 사람이 이미 낸 정산서가 있어도 **통째로 건너뛰지 않는다** — 그 정산서가 덮은 기간 다음 날부터
+  //   남은 것(아직 어느 정산서에도 안 묶인 청구서)만 이어서 낸다. 남은 게 없으면 issueSoaForPair 가 no_invoices 로
+  //   아무것도 만들지 않는다. (2026-10-05 Fable 권고 · Irene 승인 — 9/20 수동 정산서 뒤 9/23·29·30 청구서 4건이
+  //   10/1 자동 발행에서 통째로 빠져 다음 달까지 어디에도 안 실린 사고. 9/29 「수동발행하면 자동발행 안 되어야 해」 는
+  //   «같은 것을 두 번 청구하지 않는다» 로 지킨다 — 수집은 parent_soa_invoice_id 가 빈 것만이라 이중 청구가 없다.)
   const already = await Invoice.findOne({ where: { ...pair, issued_at: { [Op.gte]: cycleStart } }, attributes: ['id'] });
-  if (already) return { due: false, reason: 'manual_issued_this_cycle' };
 
   const last = await Invoice.findOne({
     where: { ...pair, billing_period_end: { [Op.ne]: null } },
@@ -404,7 +408,7 @@ async function planAutoCycle({ issuerType, issuerId, payer, buyerEntityType, buy
   const periodEndDay = addDays(today, -1);
   let periodStartDay = last ? addDays(localDayOf(last.billing_period_end, tz), 1) : prevIssueDay;
   if (periodStartDay > periodEndDay) periodStartDay = periodEndDay;
-  return { due: true, periodStartDay, periodEndDay };
+  return { due: true, periodStartDay, periodEndDay, afterManual: !!already };
 }
 
 /**
@@ -434,13 +438,7 @@ async function processMonthlySoa(referenceDate = new Date()) {
       processed++;
       try {
         const plan = await planAutoCycle({ issuerType, issuerId, payer, buyerEntityType, buyerEntityId, terms, referenceDate });
-        if (!plan.due) {
-          if (plan.reason === 'manual_issued_this_cycle') {
-            skippedManual++;
-            console.log(`[soaScheduler] ${label} — skip: manual SOA already issued this cycle`);
-          } else notDue++;
-          return;
-        }
+        if (!plan.due) { notDue++; return; }   // 발행일이 아님 (수동 정산서가 있는 주기도 due — 남은 것만 낸다)
         // 확정된 주문은 청구서가 없어도 정산서에 들어간다 — 수동 발행과 같은 규칙 (2026-09-30)
         if (buyerEntityType === 'restaurant') {
           const tz = await resolveBuyerTimezone(buyerEntityType, buyerEntityId);
@@ -463,6 +461,10 @@ async function processMonthlySoa(referenceDate = new Date()) {
         if (result.issued) {
           success++;
           if (result.mailed === false) noEmail++;
+          if (plan.afterManual) console.log(`[soaScheduler] ${label} — manual SOA this cycle; issued remaining ${result.invoiceCount} invoice(s)`);
+        } else if (plan.afterManual && result.reason === 'no_invoices') {
+          skippedManual++;   // 수동 정산서가 이번 주기를 다 덮었다 — 남은 게 없어 건너뜀
+          console.log(`[soaScheduler] ${label} — skip: manual SOA already covers this cycle (nothing left)`);
         } else skipped++;
       } catch (e) {
         errors++;

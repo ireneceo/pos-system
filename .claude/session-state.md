@@ -1,10 +1,13 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-10-05 09:4x UTC (/저장 — 오늘 운영 배포 3회, 마지막 #3)
-**버전:** 운영 SW **5.85-terminal-busy-wait-20261005** · 안드로이드 앱 0.3.4 · 버전 번호 v3.10x 미확정
+**버전:** **v3.108** · 운영 SW **5.86-soa-status-invoices-20261005** (2026-10-05 #4 · 백업 20261005_153730 · 스모크 10/10) · 안드로이드 앱 0.3.4
 **작업 상태:** ✅ 배포 완료 · 다음 섹션 대기
 
 ### 진행 중인 작업
-- [Claude Code] **2026-10-05 저녁 · 청구서/정산서 묶음 (dev 반영·검증 중, 미배포, SW 5.86)**
+- [Claude Code] **2026-10-05 저녁 · 청구서/정산서 묶음 — ✅ 운영 배포 #4 완료(v3.108, SW 5.86). Fable 한도 초과로 Irene 이 게이트 직접 넘김(`touch .fable-gate-skip`) → Fable 소급 판정 필요**
+  - 운영 검증: 정산서 이름 with MIN Cafe/K-DINE IPC Branch · #162 자식 4건 paid(복구 스크립트 4건 맞춤, 불일치 0) · 보고서 R8 9월 Sauce 4,492.80/Meat 1,789.70 · 범위 밖 브랜드 403
+  - Irene 지시로 운영 처리: with MIN Cafe 9월 미묶음 4건 → SOA-BRD1-R10-M20261005155254(#199, RM 345.60) 발행 → paid(브랜드 PATCH 경로, 자식·발주 paid, 불일치 0)
+  - 릴리즈: CHANGELOG v3.108(10-02~10-05 배포 15회 묶음) · 블로그 release-v3.108 · 공지 v3.108
   - 레스토랑 청구서: Mark paid 뒤 To pay 목록 즉시 갱신(onPaid 가 fetchInvoicesToPay 누락) · 탭 순서 To pay 먼저+기본 탭 · «올린 인보이스 보기»(줄·상세)
   - 정산서 손님 이름 오표시(운영 #162 → The Fire, #188 → KFC): SOA 생성 시 restaurant_id 채움(soaScheduler) + 이름 계산이 '매장' payer_id 를 사람 번호로 읽던 것 수정(invoices-list · getPayerCompanyInfo) — Fable 판정 A+B. **운영 SOA 3건 restaurant_id 보정은 Irene 승인 대기**
   - 정산서↔자식 상태 연동 단일화: services/soaChildSync (submit·confirm·reject·PATCH status 전부) + 복구 scripts/migrate-soa-child-status-sync.js(deploy 등록) + 인스펙션 invoice-soa I-SOA-001 — Fable 판정(설계 확정, 구현 후 게이트 1회). 다음 작업 #3 흡수
