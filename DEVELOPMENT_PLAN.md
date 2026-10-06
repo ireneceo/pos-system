@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-05 — [Claude Code] **v3.108 · 운영 배포 #4·#5 SW 5.86(백업 20261005_153730 · 20261005_184839 · 스모크 10/10) — 정산서↔청구서 상태 단일 규칙 · 정산서 손님 이름 · 브랜드 매출 보고서 재구성 · 정산서 자동 발행 «이어서 내기» · 테스트 메일 반송 차단. Fable 한도 초과로 Irene 이 게이트 직접 넘김 → 소급 판정 예정.**
+> **최종 업데이트:** 2026-10-06 — [Claude Code] **키오스크 결제 질문 조사(코드 변경 0) → «키오스크 결제 분리» Fable 설계 판단 대기로 등록(Fable 한도 소진).** 상세 session-state 다음 확정 2번.
+
+> **이전:** 2026-10-05 — [Claude Code] **v3.108 · 운영 배포 #4·#5 SW 5.86(백업 20261005_153730 · 20261005_184839 · 스모크 10/10) — 정산서↔청구서 상태 단일 규칙 · 정산서 손님 이름 · 브랜드 매출 보고서 재구성 · 정산서 자동 발행 «이어서 내기» · 테스트 메일 반송 차단. Fable 한도 초과로 Irene 이 게이트 직접 넘김 → 소급 판정 예정.**
 
 > **이전:** 2026-10-05 — [Claude Code] **운영 배포 #3 SW 5.85(백업 20261005_093553 · 스모크 10/10 · Fable 게이트 PASS) — 단말기 BUSY 자동 대기(«DONE» 안내) · 판매자 받은 주문 «배송 준비 목록 (가격 없음)» WhatsApp.**
 
@@ -10825,6 +10827,21 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 - `dev-frontend/src/utils/terminalSale.ts` · `components/POSTerminal/PaymentModal.tsx` · `TerminalPanel.tsx` · `utils/terminalSale.busy.test.ts`
 - `dev-frontend/src/utils/poShare.ts` · `poShare.test.ts` · `pages/IncomingOrders/IncomingOrdersView.tsx`
 - `public/locales/*/pos.json` · `supplier.json` · `e2e/card-terminal.spec.js` · `public/sw.js`
+
+---
+
+## ✅ 완료: 키오스크 결제 질문 조사 (2026-10-06) [Claude Code]
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 키오스크 결제 실측 | 키오스크 = 모바일오더 표시 모드(`?kiosk=1`) → 결제수단 목록 모바일과 동일(`availableIn` 채널 pos·mobile 2개뿐) | ✅ 완료 |
+| 단말기 범위 실측 | 카드단말기는 POS 결제창(`PaymentModal`)에만 — FloorPlan·LiveOrders·POSTerminal 공용, 모바일 호출 0건, 기기 등록 모델 없음 | ✅ 완료 |
+| Fable 작업 등록 | «키오스크 결제 분리»(키오스크 채널·등록 기기 판정·키오스크 단말기 결제) — Fable 한도로 설계 판단 대기 | ⏸ 대기 |
+
+### 수정된 파일
+- `.claude/session-state.md` (코드 변경 없음)
 
 ---
 

@@ -1,10 +1,13 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-10-05 19:0x UTC (/저장 — 오늘 운영 배포 #1~#5, v3.108)
+**마지막 업데이트:** 2026-10-06 UTC (/저장 — 키오스크 결제 질문 조사·Fable 작업 등록, 코드 변경 0)
 **버전:** **v3.108** · 운영 SW **5.86-soa-status-invoices-20261005** (마지막 #5 · 백업 20261005_184839 · 스모크 10/10) · 안드로이드 앱 0.3.4
-**작업 상태:** ✅ 배포 완료 · 다음 섹션 대기
+**작업 상태:** ✅ 지시 대기 (Fable 한도 소진 — 다음 확정 1·2번은 Fable 필요)
 
 ### 진행 중인 작업
-- 없음 (Irene 2026-10-05 「배포 다하면 저장하고 개발완료 해」)
+- 없음
+
+### 완료된 작업 (2026-10-06) [Claude Code]
+- 키오스크 결제 질문 조사(코드 변경 0): 키오스크=모바일 표시 모드라 결제수단 동일, 단말기는 POS 결제창에만, FloorPlan·LiveOrders·POSTerminal 같은 PaymentModal. Fable 판단 요청 → 한도 429 실패 → Irene 요청으로 Opus 의견 제시(Fable 판단 아님 명시) → 다음 확정 2번으로 등록
 
 ### 완료된 작업 (2026-10-05 저녁 · #4·#5) [Claude Code]
 - **#4 v3.108 · SW 5.86** (백업 20261005_153730 · 스모크 10/10 · Fable 게이트: 1차 FAIL(하드웨어 청구서 이름) → 수정·재통과 기준 실측 → 도장은 Fable 한도 초과로 미수령, **Irene 이 skip 파일 직접 생성**)
@@ -18,12 +21,17 @@
 
 ### 다음 확정 작업 (Irene 지시)
 1. **Fable 소급 판정** — v3.108(#4)·#5 둘 다 Fable 도장 없이 배포(Irene skip). 한도 풀리면 판정·기록. 이후 `.claude/.fable-gate-skip` 정리
-2. **K-Bulgogi 1kg 정리** — Irene 「재고 없이 주문 후 만드는 제품으로 두는게 맞아」「나중에 해결해야 해」. 현 상태: ing#23(PI 거울·레시피 4줄·K-DINE IPC 기록재고 8,590 g, 17 kg 입고 − 8,410 g 판매차감) / ing#89(BP 거울, 10-05 02:05 MYT 브랜드 상품 30 수정으로 살아남). 합치기 마이그는 이 쌍을 건너뜀
-3. **영수증 드래그·PDF** — 구현 완료·미빌드, 저장소 밖 `/home/irene/wip-receipt-upload-20261005/`(receipt.patch + new/ 4파일). 되살리기: `cd /var/www && git apply /home/irene/wip-receipt-upload-20261005/receipt.patch && cp -r /home/irene/wip-receipt-upload-20261005/new/* .` → 빌드·verify --full·Fable 게이트
-4. **발행자 청구서 «To Confirm» 탭 + 업무 버튼 색 규칙**(돈 업무=초록·위험=빨강·보기=테두리) — 브랜드·푸드코트·시스템관리자 청구서 화면
-5. **결제 설정 = 계정(회사) 하나** — 설정 화면이 첫 브랜드 칸에만 저장 → 같은 주인 모든 브랜드가 그 값(돈 경로 — Fable 1회)
-6. **판매자 배송 지역별 설정** — 설계부터
-7. (10-04 잔여) 외부 공급업체 월별 SOA 대조 · 발주 스탭밀 구분 · 승인 메일 문구(외부 공급업체에 «보냈습니다» 거짓)
+2. **키오스크 결제 분리 — Fable 설계 판단 대기** (Irene 2026-10-06 「지금 모바일오더랑 키오스크를 분리해야 맞지」「fable 에게 다음 작업으로 남겨두자」. 10-06 Fable 한도로 미수령) [Claude Code]
+   - 실측: 키오스크 = 모바일오더 표시 모드(`mobile/utils/kioskMode.ts`, `?kiosk=1` sessionStorage) → 결제수단 목록 동일(`mobile/pages/PaymentPage.tsx:861` `availableIn.includes('mobile')`). 설정 채널은 pos·mobile 2개뿐. 카드단말기는 POS `PaymentModal`+`utils/nativeEcr.ts`(앱 브릿지 `__NATIVE_ECR`)에만, mobile/ 호출 0건. 기기 등록(페어링) 모델 없음
+   - Irene 추가 원문(10-06): 「포스터미널처럼 고객이 키오스크로 주문해야 해. 그리고 플로우플랜에서도 결제 문제없는 거지? 어차피 포스로 가는 거니까.」 → 실측: FloorPlan·LiveOrders·POSTerminal 모두 같은 `components/POSTerminal/PaymentModal.tsx`(단말기 조건 = card + 설정 card.terminal + 앱 브릿지 + 온라인) → 키오스크 «카운터 결제» 주문은 FloorPlan 에서 단말기 결제 가능(현재도)
+   - Irene 질문 3개: ①키오스크에서 카드단말기 결제 ②키오스크·모바일 결제수단 따로 설정 ③손님 폰에는 키오스크를 안 열어주고 모바일 결제만 — 어떻게 구분하나
+   - Opus 의견(Fable 판단 아님, 참고): 주문 흐름은 하나로 두고 결제만 분리 · 설정에 «키오스크» 채널 추가(기존 매장은 모바일 값 복사로 무변화) · 판정은 URL 아닌 **등록된 기기 토큰**(키오스크 태블릿=앱+매장 등록, 서버가 토큰 없으면 모바일 수단만·단말기 결제 거절) · 단말기 처리는 기존 `services/terminalPayments.js` 공유
+3. **K-Bulgogi 1kg 정리** — Irene 「재고 없이 주문 후 만드는 제품으로 두는게 맞아」「나중에 해결해야 해」. 현 상태: ing#23(PI 거울·레시피 4줄·K-DINE IPC 기록재고 8,590 g, 17 kg 입고 − 8,410 g 판매차감) / ing#89(BP 거울, 10-05 02:05 MYT 브랜드 상품 30 수정으로 살아남). 합치기 마이그는 이 쌍을 건너뜀
+4. **영수증 드래그·PDF** — 구현 완료·미빌드, 저장소 밖 `/home/irene/wip-receipt-upload-20261005/`(receipt.patch + new/ 4파일). 되살리기: `cd /var/www && git apply /home/irene/wip-receipt-upload-20261005/receipt.patch && cp -r /home/irene/wip-receipt-upload-20261005/new/* .` → 빌드·verify --full·Fable 게이트
+5. **발행자 청구서 «To Confirm» 탭 + 업무 버튼 색 규칙**(돈 업무=초록·위험=빨강·보기=테두리) — 브랜드·푸드코트·시스템관리자 청구서 화면
+6. **결제 설정 = 계정(회사) 하나** — 설정 화면이 첫 브랜드 칸에만 저장 → 같은 주인 모든 브랜드가 그 값(돈 경로 — Fable 1회)
+7. **판매자 배송 지역별 설정** — 설계부터
+8. (10-04 잔여) 외부 공급업체 월별 SOA 대조 · 발주 스탭밀 구분 · 승인 메일 문구(외부 공급업체에 «보냈습니다» 거짓)
 
 ### 👉 Irene 님 확인·결정 대기
 - 운영 SOA 3건(#162·#188·#2xx) restaurant_id NULL 보정 — Fable 권고 채움, 이름 표시는 이미 정상이라 급하지 않음(승인 시 실행)
@@ -41,7 +49,7 @@
 - Fable 조건(5.84): jest context-requests ⑨ 와 user-contexts-switch rid 18 공유 · BUSY 외 4xx 대기 · declined H400 행 · base64 영수증 소급 · po-qty-step TOKEN_FILE · Windows 설치본 재빌드 · /docs SEO nginx
 
 ### 주요 변경사항
-- Git: HEAD c5c9ba822(auto-save). #4·#5 변경분 /개발완료 커밋 예정. 영수증 작업은 저장소 밖 보관
+- Git: HEAD = 2026-10-06 /개발완료 커밋(코드 변경 0 — 문서·기록만). 영수증 작업은 저장소 밖 보관
 - 운영 데이터 처리(10-05): brands#2 payment_settings · SOA#188 자식 10건 paid(오전) · SOA#199 발행·paid(저녁)
 
 ### 완료된 작업 (2026-10-05 오전 · #1~#3) [Claude Code]
