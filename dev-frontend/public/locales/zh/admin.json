@@ -1515,5 +1515,6 @@
       "grantNote": "以门店管理员身份加入。目前仅支持此组合。"
     },
     "close": "关闭"
-  }
+  },
+  "invoicesPage.toConfirmTab": "待确认"
 }

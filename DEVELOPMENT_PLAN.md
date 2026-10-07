@@ -463,6 +463,20 @@
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
 
+## ✅ 완료: 발행자 청구서 «To Confirm» 탭 · 업무 버튼 색 규칙 (2026-10-07, 개발서버만)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| To Confirm 탭 | [Claude Code] 브랜드·푸드코트 청구서에 결제 올라온(payment_submitted) 발행 청구서 탭 · 시스템관리자 탭 이름 변경 | ✅ 완료 |
+| 버튼 색 규칙 | [Claude Code] 돈 업무(Pay·Confirm·Mark paid)=초록 · 위험(삭제·취소)=빨강 · 보기 등=테두리 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx` · `FoodcourtGeneral/FoodcourtInvoicesPage.tsx` · `Admin/InvoicesPage.tsx`
+- `dev-frontend/src/pages/{BrandGeneral,FoodcourtGeneral,Admin}/invoices/styles.ts` · `types.ts`
+- `dev-frontend/public/locales/{en,ko,zh,ms}/{brand,foodcourt,admin}.json`
+
+---
+
 ## ✅ 완료: 정산서 상태 연동 · 정산서 손님 이름 · 브랜드 매출 보고서 · 자동 발행 이어서 내기 (2026-10-05, 운영 배포 #4·#5 · v3.108 · SW 5.86)
 
 | 작업 | 설명 | 상태 |

@@ -887,5 +887,10 @@
     "share": "Share",
     "uncategorized": "Uncategorized",
     "total": "Total"
-  }
+  },
+  "brandInvoicesPage.toConfirmTab": "To Confirm",
+  "brandInvoicesPage.toConfirmTitle": "Payment confirmation required",
+  "brandInvoicesPage.toConfirmDesc": "Customers submitted payment for these invoices. Check the payment and confirm.",
+  "brandInvoicesPage.toConfirmEmpty": "Nothing to confirm",
+  "brandInvoicesPage.toConfirmEmptyDesc": "No invoices are waiting for payment confirmation."
 }

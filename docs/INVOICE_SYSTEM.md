@@ -1016,6 +1016,7 @@ ALTER TABLE invoices ADD COLUMN parent_soa_invoice_id INT NULL;
 - **청구서 발행 시점** — 브랜드 청구 조건 `invoice_trigger`: `on_received`(기본) / `on_confirmed`. 확정 시면 `seller-orders /:id/confirm` 커밋 뒤 `purchaseOrderService.issueTradeInvoiceAfterCommit(po,{when:'confirmed'})`(수령 경로와 같은 함수, 멱등). 청구서가 붙은 발주는 판매자 amend 400 `ALREADY_INVOICED`. 푸드코트·공급업체는 범위 밖.
 - **정산서 = 확정된 주문 전부** (2026-09-30 Irene 「내가 수동으로 만들어도 포함되어야지」 — 이전 판정 «소급 없음» 을 뒤집음) — 수동·자동 정산서 직전에 `soaScheduler.issueMissingTradeInvoices`: 판매자(브랜드/푸드코트)→매장 쌍에서 `BILLABLE_PO_STATUSES`(confirmed·shipped·in_transit·delivered·partial_received·received·closed) 이면서 `trade_invoice_id` 없는 발주(기간 끝 이전 생성)에 `createTradeInvoice`(멱등). 확정 전·배송실패·취소는 제외. 그래서 `invoice_trigger` 가 on_received 여도 판매자가 배송완료한 주문이 빠지지 않는다.
 - **브랜드 Issued Invoices** — `GET /api/invoices` BG/BM 분기는 `managerBrandScope.brandIdsForUser`(소유 ∪ 배정) 전부의 발행분(컨텍스트 brandId 가 있으면 그 하나). 전엔 `users.brand_id` 하나라 다브랜드 계정에서 두 번째 브랜드 정산서가 안 보였다.
+- **발행자 «To Confirm» 탭 (2026-10-07)** — 브랜드·푸드코트 청구서 화면은 같은 `GET /api/invoices` 발행분 중 `payment_submitted` 만 기간·검색 필터 없이 따로 보여 준다(Issued 와 같은 표·같은 확인 함수, 서버 무변경). 시스템관리자는 기존 `?tab=payment_submitted` 탭 이름만 «To Confirm». 버튼 색: 돈 업무(Pay·Confirm·Mark paid)=초록 · 삭제·취소=빨강 · 보기·수정·PDF·보내기=테두리.
 
 ## 11-1. SOA 상태 연동 · 이어서 내기 · 매장 칸 (2026-10-05, v3.108) [Claude Code]
 

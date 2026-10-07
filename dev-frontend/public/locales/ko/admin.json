@@ -1515,5 +1515,6 @@
       "grantNote": "매장 관리자로 들어갑니다. 지금은 이 조합만 됩니다."
     },
     "close": "닫기"
-  }
+  },
+  "invoicesPage.toConfirmTab": "확인 대기"
 }

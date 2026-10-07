@@ -396,5 +396,10 @@
   "foodcourtPaymentSettingsPage.deliveryFee": "未达金额时的配送费（固定）",
   "foodcourtPaymentSettingsPage.deliveryAreas": "配送地区",
   "foodcourtPaymentSettingsPage.deliveryAreasPlaceholder": "例如：Petaling Jaya, Selangor",
-  "foodcourtPaymentSettingsPage.deliveryAreasHint": "填写配送地区和时间。门店下单时可见——不用于计算配送费。"
+  "foodcourtPaymentSettingsPage.deliveryAreasHint": "填写配送地区和时间。门店下单时可见——不用于计算配送费。",
+  "foodcourtInvoicesPage.toConfirmTab": "待确认",
+  "foodcourtInvoicesPage.toConfirmTitle": "需要确认付款",
+  "foodcourtInvoicesPage.toConfirmDesc": "客户已为这些发票提交付款。请核对款项后确认。",
+  "foodcourtInvoicesPage.toConfirmEmpty": "没有待确认的发票",
+  "foodcourtInvoicesPage.toConfirmEmptyDesc": "没有等待付款确认的发票。"
 }

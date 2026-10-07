@@ -887,5 +887,10 @@
     "share": "비중",
     "uncategorized": "카테고리 없음",
     "total": "합계"
-  }
+  },
+  "brandInvoicesPage.toConfirmTab": "확인 대기",
+  "brandInvoicesPage.toConfirmTitle": "결제 확인 필요",
+  "brandInvoicesPage.toConfirmDesc": "상대가 이 청구서들의 결제를 올렸습니다. 입금을 확인한 뒤 확인을 눌러 주세요.",
+  "brandInvoicesPage.toConfirmEmpty": "확인할 청구서 없음",
+  "brandInvoicesPage.toConfirmEmptyDesc": "결제 확인을 기다리는 청구서가 없습니다."
 }

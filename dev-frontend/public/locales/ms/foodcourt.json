@@ -396,5 +396,10 @@
   "foodcourtPaymentSettingsPage.deliveryFee": "Yuran penghantaran di bawahnya (tetap)",
   "foodcourtPaymentSettingsPage.deliveryAreas": "Kawasan penghantaran",
   "foodcourtPaymentSettingsPage.deliveryAreasPlaceholder": "cth. Petaling Jaya, Selangor",
-  "foodcourtPaymentSettingsPage.deliveryAreasHint": "Di mana dan bila anda menghantar. Dipaparkan kepada kedai semasa membuat pesanan — tidak digunakan untuk mengira caj penghantaran."
+  "foodcourtPaymentSettingsPage.deliveryAreasHint": "Di mana dan bila anda menghantar. Dipaparkan kepada kedai semasa membuat pesanan — tidak digunakan untuk mengira caj penghantaran.",
+  "foodcourtInvoicesPage.toConfirmTab": "Untuk Disahkan",
+  "foodcourtInvoicesPage.toConfirmTitle": "Pengesahan pembayaran diperlukan",
+  "foodcourtInvoicesPage.toConfirmDesc": "Pelanggan telah menghantar bayaran untuk invois ini. Semak bayaran dan sahkan.",
+  "foodcourtInvoicesPage.toConfirmEmpty": "Tiada untuk disahkan",
+  "foodcourtInvoicesPage.toConfirmEmptyDesc": "Tiada invois menunggu pengesahan pembayaran."
 }

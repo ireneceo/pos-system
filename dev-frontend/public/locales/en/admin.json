@@ -1515,5 +1515,6 @@
       "grantNote": "Added as Restaurant Admin. This is the only combination available for now."
     },
     "close": "Close"
-  }
+  },
+  "invoicesPage.toConfirmTab": "To Confirm"
 }

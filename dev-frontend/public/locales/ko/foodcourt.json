@@ -396,5 +396,10 @@
   "foodcourtPaymentSettingsPage.deliveryFee": "그 미만이면 배송비 (고정)",
   "foodcourtPaymentSettingsPage.deliveryAreas": "배송 가능 지역",
   "foodcourtPaymentSettingsPage.deliveryAreasPlaceholder": "예: Petaling Jaya, Selangor",
-  "foodcourtPaymentSettingsPage.deliveryAreasHint": "어디에·언제 배송하는지 적어 주세요. 매장이 발주할 때 보입니다 — 배송비 계산에는 쓰지 않습니다."
+  "foodcourtPaymentSettingsPage.deliveryAreasHint": "어디에·언제 배송하는지 적어 주세요. 매장이 발주할 때 보입니다 — 배송비 계산에는 쓰지 않습니다.",
+  "foodcourtInvoicesPage.toConfirmTab": "확인 대기",
+  "foodcourtInvoicesPage.toConfirmTitle": "결제 확인 필요",
+  "foodcourtInvoicesPage.toConfirmDesc": "상대가 이 청구서들의 결제를 올렸습니다. 입금을 확인한 뒤 확인을 눌러 주세요.",
+  "foodcourtInvoicesPage.toConfirmEmpty": "확인할 청구서 없음",
+  "foodcourtInvoicesPage.toConfirmEmptyDesc": "결제 확인을 기다리는 청구서가 없습니다."
 }

@@ -887,5 +887,10 @@
     "share": "占比",
     "uncategorized": "未分类",
     "total": "合计"
-  }
+  },
+  "brandInvoicesPage.toConfirmTab": "待确认",
+  "brandInvoicesPage.toConfirmTitle": "需要确认付款",
+  "brandInvoicesPage.toConfirmDesc": "客户已为这些发票提交付款。请核对款项后确认。",
+  "brandInvoicesPage.toConfirmEmpty": "没有待确认的发票",
+  "brandInvoicesPage.toConfirmEmptyDesc": "没有等待付款确认的发票。"
 }

@@ -944,7 +944,12 @@ const FoodcourtInvoicesPage: React.FC = () => {
     return matchesSearch && matchesDateRange;
   }).sort((a, b) => new Date(b.paidDate || b.issueDate).getTime() - new Date(a.paidDate || a.issueDate).getTime());
 
+  // To Confirm — 내가 발행했고 상대가 결제를 올려 내 확인을 기다리는 것(기간·검색 필터 없이 전부)
+  const toConfirmInvoices = invoices.filter(i => i.status === 'payment_submitted')
+    .sort((a, b) => new Date(b.paymentSubmittedAt || b.issueDate).getTime() - new Date(a.paymentSubmittedAt || a.issueDate).getTime());
   const issuedPg = usePagination(filteredInvoices, 20);
+  const toConfirmPg = usePagination(toConfirmInvoices, 20);
+  const issuedTablePg = activeTab === 'to_confirm' ? toConfirmPg : issuedPg;
   const toPayPg = usePagination(filteredInvoicesToPay, 20);
   const paidPg = usePagination(filteredPaidInvoices, 20);
 
@@ -1232,6 +1237,9 @@ const FoodcourtInvoicesPage: React.FC = () => {
           <Tab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>
             Invoices to Pay <Badge count={invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length} showZero />
           </Tab>
+          <Tab active={activeTab === 'to_confirm'} onClick={() => handleTabChange('to_confirm')}>
+            {t('foodcourt:foodcourtInvoicesPage.toConfirmTab', 'To Confirm')} <Badge count={toConfirmInvoices.length} variant="danger" />
+          </Tab>
           <Tab active={activeTab === 'paid'} onClick={() => handleTabChange('paid')}>
             Paid Invoices <Badge count={paidInvoicesList.length} showZero />
           </Tab>
@@ -1240,8 +1248,15 @@ const FoodcourtInvoicesPage: React.FC = () => {
           </Tab>
         </Tabs>
 
-        {activeTab === 'issued' && (
+        {/* Issued · To Confirm (같은 표, To Confirm 은 결제 올라온 것만) */}
+        {(activeTab === 'issued' || activeTab === 'to_confirm') && (
           <>
+        {activeTab === 'to_confirm' ? (
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#1F2937', margin: '0 0 4px 0' }}>{t('foodcourt:foodcourtInvoicesPage.toConfirmTitle', 'Payment confirmation required')}</h3>
+            <p style={{ fontSize: '14px', color: '#4B5563', margin: 0 }}>{t('foodcourt:foodcourtInvoicesPage.toConfirmDesc', 'Customers submitted payment for these invoices. Check the payment and confirm.')}</p>
+          </div>
+        ) : (<>
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalInvoices}</StatValue>
@@ -1287,6 +1302,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
             <Button variant="primary" onClick={handleCreateInvoice}>{t('foodcourt:foodcourtInvoicesPage.createInvoice')}</Button>
           </FiltersRight>
         </FilterBarWrapper>
+        </>)}
 
         <Table>
           <InvoiceTableHeader columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)">
@@ -1301,7 +1317,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
             <span className="col-actions">{t('foodcourt:foodcourtInvoicesPage.actions')}</span>
           </InvoiceTableHeader>
 
-          {issuedPg.pageItems.map(invoice => (
+          {issuedTablePg.pageItems.map(invoice => (
             <InvoiceTableRow columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)" key={invoice.id}>
               <MobileGrid>
                 <MobileValue className="col-invoice">
@@ -1320,10 +1336,10 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 <MobileValue className="col-total"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.total')}</MobileLabel><Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('foodcourt:foodcourtInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount></MobileValue>
               </MobileGrid>
               <ActionButtons className="col-actions">
-                <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.view')}</LocalActionButton>
+                <LocalActionButton onClick={() => handleViewInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.view')}</LocalActionButton>
                 {invoice.status === 'draft' && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.edit')}</LocalActionButton><LocalActionButton onClick={() => handleSendInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.send')}</LocalActionButton></>)}
                 {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.edit')}</LocalActionButton><LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton><LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton><LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Send Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></LocalActionButton><LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice"><IconSymbol>x</IconSymbol></LocalIconButton></>)}
-                {invoice.status === 'payment_submitted' && (<>{invoice.hasPaymentInfo && (<LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('foodcourt:foodcourtInvoicesPage.confirm')}</LocalActionButton>)}<LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.edit')}</LocalActionButton><LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton><LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton><LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Resend Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></LocalActionButton></>)}
+                {invoice.status === 'payment_submitted' && (<>{invoice.hasPaymentInfo && (<LocalActionButton variant="success" onClick={() => handleConfirmPayment(invoice)}>{t('foodcourt:foodcourtInvoicesPage.confirm')}</LocalActionButton>)}<LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.edit')}</LocalActionButton><LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton><LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton><LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Resend Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></LocalActionButton></>)}
                 {invoice.status === 'overdue' && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.edit')}</LocalActionButton><LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton><LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton><LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Resend Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></LocalActionButton><LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice"><IconSymbol>x</IconSymbol></LocalIconButton></>)}
                 {invoice.status === 'paid' && (<><LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton><LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton></>)}
                 {invoice.status === 'cancelled' && (<LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>)}
@@ -1331,14 +1347,20 @@ const FoodcourtInvoicesPage: React.FC = () => {
             </InvoiceTableRow>
           ))}
 
-          {filteredInvoices.length === 0 && (
+          {activeTab === 'to_confirm' && toConfirmInvoices.length === 0 && (
+            <EmptyState>
+              <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>{t('foodcourt:foodcourtInvoicesPage.toConfirmEmpty', 'Nothing to confirm')}</div>
+              <div style={{ fontSize: '14px' }}>{t('foodcourt:foodcourtInvoicesPage.toConfirmEmptyDesc', 'No invoices are waiting for payment confirmation.')}</div>
+            </EmptyState>
+          )}
+          {activeTab === 'issued' && filteredInvoices.length === 0 && (
             <EmptyState>
               <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>{t('foodcourt:foodcourtInvoicesPage.noInvoicesFound')}</div>
               <div style={{ fontSize: '14px' }}>{invoices.length === 0 ? 'Create your first invoice to get started' : 'Try adjusting your filters'}</div>
             </EmptyState>
           )}
         </Table>
-          <Pagination page={issuedPg.page} totalPages={issuedPg.totalPages} total={issuedPg.total} pageSize={issuedPg.pageSize} onChange={issuedPg.setPage} label="invoices" />
+          <Pagination page={issuedTablePg.page} totalPages={issuedTablePg.totalPages} total={issuedTablePg.total} pageSize={issuedTablePg.pageSize} onChange={issuedTablePg.setPage} label="invoices" />
           </>
         )}
 
@@ -1373,7 +1395,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       <MobileValue className="col-total"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.total')}</MobileLabel><Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('foodcourt:foodcourtInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount></MobileValue>
                     </MobileGrid>
                     <ActionButtons className="col-actions">
-                      <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.view')}</LocalActionButton>
+                      <LocalActionButton onClick={() => handleViewInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.view')}</LocalActionButton>
                       {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
                         // 외부 공급업체 청구서는 발주 결제 모달로 (2026-09-11 §8-5 E-2). 가입 판매자는 기존 Pay 그대로.
                         (invoice as any).issuerIsExternal ? (
@@ -1421,7 +1443,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       <MobileValue className="col-total"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.total')}</MobileLabel><Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('foodcourt:foodcourtInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount></MobileValue>
                     </MobileGrid>
                     <ActionButtons className="col-actions">
-                      <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.view')}</LocalActionButton>
+                      <LocalActionButton onClick={() => handleViewInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.view')}</LocalActionButton>
                       <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>
                       <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton>
                     </ActionButtons>
@@ -1529,7 +1551,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         {/* Payment Confirmation Modal */}
         {showPaymentConfirmModal && selectedInvoice && (
-          <CommonModal isOpen={true} onClose={() => setShowPaymentConfirmModal(false)} title={`Confirm Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={handleMarkAsPaid}> Confirm Payment Received </Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowPaymentConfirmModal(false)} title={`Confirm Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentConfirmModal(false)}> Cancel </Button><Button variant="success" onClick={handleMarkAsPaid}> Confirm Payment Received </Button></>}>
             <FormGroup><FormLabel>{t('foodcourt:foodcourtInvoicesPage.paymentConfirmation')}</FormLabel><InvoiceSummary><SummaryRow><span>Manager:</span><span>{selectedInvoice.managerName}</span></SummaryRow><SummaryRow><span>Company:</span><span>{selectedInvoice.companyName}</span></SummaryRow><SummaryRow><span>Invoice Number:</span><span>{selectedInvoice.invoiceNumber}</span></SummaryRow><SummaryRow><span>Due Date:</span><span>{formatDate(selectedInvoice.dueDate)}</span></SummaryRow><SummaryRow highlight><span><strong>Payment Amount:</strong></span><span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</strong></span></SummaryRow></InvoiceSummary></FormGroup>
             {(selectedInvoice.paymentMethod || selectedInvoice.receiptUrl || selectedInvoice.transactionId) && (<FormGroup><FormLabel>{t('foodcourt:foodcourtInvoicesPage.customersPaymentInformation')}</FormLabel><div style={{ background: '#EFF6FF', border: '1px solid #3B82F6', borderRadius: '8px', padding: '16px' }}><div style={{ fontSize: '14px', lineHeight: '1.8' }}>{selectedInvoice.paymentMethod && (<p style={{ margin: '0 0 8px 0' }}><strong>Payment Method:</strong> {selectedInvoice.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : selectedInvoice.paymentMethod === 'qr_payment' ? 'QR Payment' : selectedInvoice.paymentMethod === 'stripe' ? 'Stripe' : selectedInvoice.paymentMethod === 'paypal' ? 'PayPal' : selectedInvoice.paymentMethod}</p>)}{selectedInvoice.transactionId && (<p style={{ margin: '0 0 8px 0' }}><strong>Transaction ID:</strong> {selectedInvoice.transactionId}</p>)}</div>{selectedInvoice.receiptUrl && (<div style={{ marginTop: '12px' }}><p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p><ReceiptPreview url={selectedInvoice.receiptUrl} /></div>)}</div></FormGroup>)}
             <div style={{ background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', padding: '16px', margin: '16px 0' }}><p style={{ margin: 0, color: '#92400E', fontSize: '14px' }}><strong>{t('foodcourt:foodcourtInvoicesPage.confirmPaymentReceipt')}</strong><br />Only mark this invoice as paid if you have received and verified the payment. This action will update the invoice status to "Paid".</p></div>

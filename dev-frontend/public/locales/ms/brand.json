@@ -887,5 +887,10 @@
     "share": "Bahagian",
     "uncategorized": "Tiada kategori",
     "total": "Jumlah"
-  }
+  },
+  "brandInvoicesPage.toConfirmTab": "Untuk Disahkan",
+  "brandInvoicesPage.toConfirmTitle": "Pengesahan pembayaran diperlukan",
+  "brandInvoicesPage.toConfirmDesc": "Pelanggan telah menghantar bayaran untuk invois ini. Semak bayaran dan sahkan.",
+  "brandInvoicesPage.toConfirmEmpty": "Tiada untuk disahkan",
+  "brandInvoicesPage.toConfirmEmptyDesc": "Tiada invois menunggu pengesahan pembayaran."
 }
