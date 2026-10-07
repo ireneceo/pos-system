@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoicePayAction';
+import { InvoiceActionButtons, INVOICE_ACTIONS_COL } from '../../components/Invoices/InvoiceActionButtons';
 import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
 import { useSearchParams } from 'react-router-dom';
 import { printHTMLContent } from '../../utils/billPrint';
@@ -32,7 +33,6 @@ import {
   DataTableCell,
   DataTableEmpty,
   DataTableAmount,
-  ActionButtons,
   Modal as CommonModal,
   Pagination,
   usePagination,
@@ -1366,7 +1366,7 @@ const BrandInvoicesPage: React.FC = () => {
   const renderInvoiceActions = (invoice: Invoice, isToPayTab = false) => {
     if (isToPayTab) {
       return (
-        <ActionButtons>
+        <InvoiceActionButtons>
           <LocalActionButton onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
           {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
             // 외부 공급업체 청구서는 발주 결제 모달로 (2026-09-11 §8-5 E-2 · Irene 「브랜드제너럴에서도 외부공급업체 결제가
@@ -1395,7 +1395,7 @@ const BrandInvoicesPage: React.FC = () => {
           <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Email Invoice">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           </LocalActionButton>
-        </ActionButtons>
+        </InvoiceActionButtons>
       );
     }
 
@@ -1406,7 +1406,7 @@ const BrandInvoicesPage: React.FC = () => {
     const deleteBtn = <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice"><IconSymbol>×</IconSymbol></LocalIconButton>;
 
     return (
-      <ActionButtons>
+      <InvoiceActionButtons>
         <LocalActionButton onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
         {invoice.status === 'draft' && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton><LocalActionButton onClick={() => handleSendInvoice(invoice)} title="Send Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9 22,2"/></svg></LocalActionButton>{deleteBtn}</>)}
         {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton>{pdfBtn}{printBtn}{emailBtn}{deleteBtn}</>)}
@@ -1414,7 +1414,7 @@ const BrandInvoicesPage: React.FC = () => {
         {invoice.status === 'overdue' && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton>{pdfBtn}{printBtn}{emailBtn}{deleteBtn}</>)}
         {invoice.status === 'paid' && (<>{pdfBtn}{printBtn}</>)}
         {invoice.status === 'cancelled' && pdfBtn}
-      </ActionButtons>
+      </InvoiceActionButtons>
     );
   };
 
@@ -1471,7 +1471,7 @@ const BrandInvoicesPage: React.FC = () => {
               <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.status')}</DataTableHeaderCell>
               <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.amount')}</DataTableHeaderCell>
               <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
-              <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
+              <DataTableHeaderCell style={INVOICE_ACTIONS_COL} align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
             </tr></DataTableHead><tbody>
               {issuedTablePg.pageItems.map(invoice => (
                 <DataTableRow key={invoice.id}>
@@ -1508,7 +1508,7 @@ const BrandInvoicesPage: React.FC = () => {
               <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.status')}</DataTableHeaderCell>
               <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.amount')}</DataTableHeaderCell>
               <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
-              <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
+              <DataTableHeaderCell style={INVOICE_ACTIONS_COL} align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
             </tr></DataTableHead><tbody>
               {filteredInvoicesToPay.length > 0 ? toPayPg.pageItems.map(invoice => (
                 <DataTableRow key={invoice.id}>
@@ -1542,7 +1542,7 @@ const BrandInvoicesPage: React.FC = () => {
               <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.status')}</DataTableHeaderCell>
               <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.amount')}</DataTableHeaderCell>
               <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
-              <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
+              <DataTableHeaderCell style={INVOICE_ACTIONS_COL} align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
             </tr></DataTableHead><tbody>
               {filteredPaidInvoices.length > 0 ? paidPg.pageItems.map(invoice => (
                 <DataTableRow key={invoice.id}>
@@ -1554,11 +1554,11 @@ const BrandInvoicesPage: React.FC = () => {
                   <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('brand:brandInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="" mobileFullWidth>
-                    <ActionButtons>
+                    <InvoiceActionButtons>
                       <LocalActionButton onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
                       <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>
                       <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton>
-                    </ActionButtons>
+                    </InvoiceActionButtons>
                   </DataTableCell>
                 </DataTableRow>
               )) : (<DataTableRow><DataTableCell colSpan={8}><DataTableEmpty>{t('brand:brandInvoicesPage.noPaidInvoicesYet')}</DataTableEmpty></DataTableCell></DataTableRow>)}

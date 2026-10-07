@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoicePayAction';
 import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
+import { InvoiceActionButtons } from '../../components/Invoices/InvoiceActionButtons';
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { printHTMLContent } from '../../utils/billPrint';
 import { useTabParam } from '../../hooks/useTabParam';
@@ -29,7 +30,6 @@ import {
   MobileLabel,
   MobileValue,
   MobileGrid,
-  ActionButtons,
   EmptyState,
   Modal as CommonModal,
   Pagination,
@@ -1335,7 +1335,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 <MobileValue className="col-amount"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.amount')}</MobileLabel><Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount></MobileValue>
                 <MobileValue className="col-total"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.total')}</MobileLabel><Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('foodcourt:foodcourtInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount></MobileValue>
               </MobileGrid>
-              <ActionButtons className="col-actions">
+              <InvoiceActionButtons className="col-actions">
                 <LocalActionButton onClick={() => handleViewInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.view')}</LocalActionButton>
                 {invoice.status === 'draft' && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.edit')}</LocalActionButton><LocalActionButton onClick={() => handleSendInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.send')}</LocalActionButton></>)}
                 {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.edit')}</LocalActionButton><LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton><LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton><LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Send Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></LocalActionButton><LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice"><IconSymbol>x</IconSymbol></LocalIconButton></>)}
@@ -1343,7 +1343,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 {invoice.status === 'overdue' && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.edit')}</LocalActionButton><LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton><LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton><LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Resend Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></LocalActionButton><LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice"><IconSymbol>x</IconSymbol></LocalIconButton></>)}
                 {invoice.status === 'paid' && (<><LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton><LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton></>)}
                 {invoice.status === 'cancelled' && (<LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>)}
-              </ActionButtons>
+              </InvoiceActionButtons>
             </InvoiceTableRow>
           ))}
 
@@ -1394,7 +1394,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       <MobileValue className="col-amount"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.amount')}</MobileLabel><Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount></MobileValue>
                       <MobileValue className="col-total"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.total')}</MobileLabel><Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('foodcourt:foodcourtInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount></MobileValue>
                     </MobileGrid>
-                    <ActionButtons className="col-actions">
+                    <InvoiceActionButtons className="col-actions">
                       <LocalActionButton onClick={() => handleViewInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.view')}</LocalActionButton>
                       {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
                         // 외부 공급업체 청구서는 발주 결제 모달로 (2026-09-11 §8-5 E-2). 가입 판매자는 기존 Pay 그대로.
@@ -1409,7 +1409,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) === 0 && (<LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.confirm')}</LocalActionButton>)}
                       <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>
                       <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton>
-                    </ActionButtons>
+                    </InvoiceActionButtons>
                   </InvoiceTableRow>
                 ))
               ) : (
@@ -1442,11 +1442,11 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       <MobileValue className="col-amount"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.amount')}</MobileLabel><Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount></MobileValue>
                       <MobileValue className="col-total"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.total')}</MobileLabel><Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('foodcourt:foodcourtInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount></MobileValue>
                     </MobileGrid>
-                    <ActionButtons className="col-actions">
+                    <InvoiceActionButtons className="col-actions">
                       <LocalActionButton onClick={() => handleViewInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.view')}</LocalActionButton>
                       <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>
                       <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton>
-                    </ActionButtons>
+                    </InvoiceActionButtons>
                   </InvoiceTableRow>
                 ))
               ) : (

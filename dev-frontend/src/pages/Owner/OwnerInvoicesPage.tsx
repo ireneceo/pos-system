@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoicePayAction';
+import { InvoiceActionButtons, INVOICE_ACTIONS_COL } from '../../components/Invoices/InvoiceActionButtons';
 import SupplierInvoiceTotalFix, { canFixSupplierInvoiceTotal } from '../../components/Invoices/SupplierInvoiceTotalFix';
 import InvoiceModificationHistory from '../../components/Invoices/InvoiceModificationHistory';
 import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
@@ -29,8 +30,7 @@ import {
   DataTableRow,
   DataTableCell,
   DataTableEmpty,
-  DataTableAmount,
-  ActionButtons
+  DataTableAmount
 , Modal as CommonModal, Pagination, usePagination } from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
@@ -223,6 +223,9 @@ const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'emai
   justify-content: center;
   min-width: 32px;
   height: 32px;
+  /* 글자 버튼은 한 줄 고정 — 32px 높이 안에서 두 줄로 눌리지 않게 (2026-10-07 청구서 버튼 칸 통일) */
+  white-space: nowrap;
+  flex-shrink: 0;
 
   ${props => props.variant === 'primary' ? `
     background: #635BFF;
@@ -972,7 +975,7 @@ const OwnerInvoicesPage: React.FC = () => {
             <DataTableHeaderCell align="center">{t('owner:ownerInvoicesPage.status')}</DataTableHeaderCell>
             <DataTableHeaderCell align="right">{t('owner:ownerInvoicesPage.amount')}</DataTableHeaderCell>
             <DataTableHeaderCell align="right">{t('owner:ownerInvoicesPage.total')}</DataTableHeaderCell>
-            <DataTableHeaderCell align="left">{t('owner:ownerInvoicesPage.actions')}</DataTableHeaderCell>
+            <DataTableHeaderCell style={INVOICE_ACTIONS_COL} align="left">{t('owner:ownerInvoicesPage.actions')}</DataTableHeaderCell>
           </tr>
         </DataTableHead>
         <tbody>
@@ -1032,7 +1035,7 @@ const OwnerInvoicesPage: React.FC = () => {
                   <DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('owner:ownerInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label="" mobileFullWidth>
-                  <ActionButtons>
+                  <InvoiceActionButtons>
                     <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>
                       View
                     </LocalActionButton>
@@ -1077,7 +1080,7 @@ const OwnerInvoicesPage: React.FC = () => {
                         <rect x="6" y="14" width="12" height="8"/>
                       </svg>
                     </LocalActionButton>
-                  </ActionButtons>
+                  </InvoiceActionButtons>
                 </DataTableCell>
               </DataTableRow>
             ))

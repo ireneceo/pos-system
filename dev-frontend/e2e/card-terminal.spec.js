@@ -18,7 +18,7 @@ const { respond } = require('/var/www/dev-backend/scripts/mock-ghl-terminal');
 require('/var/www/dev-backend/node_modules/dotenv').config({ path: '/var/www/dev-backend/.env' });
 const { sequelize } = require('/var/www/dev-backend/config/database');
 
-let token, user, originalPs;
+let token, user, originalPs, originalOps;
 const BUSY_HEX = Buffer.from('HTTP/1.1 400 Bad Request \r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: 4\r\n\r\nBUSY', 'latin1').toString('hex').toUpperCase();
 
 async function setTerminal(enabled, extra = {}) {
@@ -28,6 +28,20 @@ async function setTerminal(enabled, extra = {}) {
   ps.card = { ...(ps.card || {}), enabled: true, availableIn: ['pos'], acceptedTypes: [], requireType: false, requireCardType: false,
     terminal: { enabled, provider: 'ghl_ecr', host: '192.168.2.99', port: 33898, transport: 'http-hex', ...extra } };
   await sequelize.query('UPDATE restaurants SET payment_settings = :v WHERE id = 38', { replacements: { v: JSON.stringify(ps) } });
+}
+
+/**
+ * 취소(Void) 흐름 J·K 는 «매니저 PIN» 이 없는 매장을 전제한다. 데모 38 은 다른 시험이 requireVoidPin 을 켜 둘 수 있다
+ * (2026-10-07 실측: 켜져 있어 PIN 창에서 멈춤). 원본 operation_settings 를 먼저 파일로 남기고 테스트 동안만 끈 뒤 되돌린다.
+ */
+async function disableVoidPin() {
+  const [[row]] = await sequelize.query('SELECT operation_settings FROM restaurants WHERE id = 38');
+  originalOps = row.operation_settings;
+  require('fs').writeFileSync(`/tmp/e2e-card-terminal-ops38-${Date.now()}.json`, JSON.stringify({ operation_settings: originalOps }));
+  const ops = originalOps ? (typeof originalOps === 'string' ? JSON.parse(originalOps) : originalOps) : {};
+  if (!ops.requireVoidPin) return;
+  ops.requireVoidPin = false;
+  await sequelize.query('UPDATE restaurants SET operation_settings = :v WHERE id = 38', { replacements: { v: JSON.stringify(ops) } });
 }
 
 /** 목 브릿지 주입 — scenario 가 바뀌면 다음 호출부터 적용. calls 에 단말기로 간 명령을 쌓는다. */
@@ -83,9 +97,11 @@ test.describe('카드단말기 ECR — 결제 창 흐름(목 브릿지)', () => 
     ({ token, user } = await demoLogin(request, baseURL, 'demo_restaurant_admin'));
     assertDemoContext(baseURL, user);
     await setTerminal(true);
+    await disableVoidPin();
   });
   test.afterAll(async () => {
     if (originalPs !== undefined) await sequelize.query('UPDATE restaurants SET payment_settings = :v WHERE id = 38', { replacements: { v: originalPs } });
+    if (originalOps !== undefined) await sequelize.query('UPDATE restaurants SET operation_settings = :v WHERE id = 38', { replacements: { v: originalOps } });
   });
   test.beforeEach(async ({ request, baseURL, page }) => {
     const r = await createDemoOrder(request, baseURL, token, user, { needs_print: false, total_amount: 30, payment_status: 'pending', status: 'pending' });

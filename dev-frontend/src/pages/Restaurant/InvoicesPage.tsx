@@ -27,7 +27,6 @@ import {
   DataTableCell,
   DataTableEmpty,
   DataTableAmount,
-  ActionButtons,
   Modal as CommonModal,
   Pagination,
   usePagination
@@ -46,6 +45,7 @@ import { getAuthToken } from '../../utils/auth';
 import { getErrorMessage } from '../../utils/apiError';
 import AlertDialog from '../../components/Common/AlertDialog';
 import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoicePayAction';
+import { InvoiceActionButtons, INVOICE_ACTIONS_COL } from '../../components/Invoices/InvoiceActionButtons';
 import SupplierInvoiceTotalFix, { canFixSupplierInvoiceTotal } from '../../components/Invoices/SupplierInvoiceTotalFix';
 import InvoiceModificationHistory from '../../components/Invoices/InvoiceModificationHistory';
 import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
@@ -251,6 +251,9 @@ const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'emai
   justify-content: center;
   min-width: 32px;
   height: 32px;
+  /* 글자 버튼은 한 줄 고정 — 32px 높이 안에서 두 줄로 눌리지 않게 (2026-10-07 청구서 버튼 칸 통일) */
+  white-space: nowrap;
+  flex-shrink: 0;
 
   ${props => props.variant === 'primary' ? `
     background: #635BFF;
@@ -1235,7 +1238,7 @@ const RestaurantInvoicesPage: React.FC = () => {
             <DataTableHeaderCell align="center">{t('settings:invoicesPage.status')}</DataTableHeaderCell>
             <DataTableHeaderCell align="right">{t('settings:invoicesPage.amount')}</DataTableHeaderCell>
             <DataTableHeaderCell align="right">{t('settings:invoicesPage.total')}</DataTableHeaderCell>
-            <DataTableHeaderCell align="left">{t('settings:invoicesPage.actions')}</DataTableHeaderCell>
+            <DataTableHeaderCell style={INVOICE_ACTIONS_COL} align="left">{t('settings:invoicesPage.actions')}</DataTableHeaderCell>
           </tr>
         </DataTableHead>
         <tbody>
@@ -1332,7 +1335,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                   <DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('settings:invoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label="" mobileFullWidth>
-                  <ActionButtons>
+                  <InvoiceActionButtons>
                     <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>
                       View
                     </LocalActionButton>
@@ -1390,7 +1393,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                         <rect x="6" y="14" width="12" height="8"/>
                       </svg>
                     </LocalActionButton>
-                  </ActionButtons>
+                  </InvoiceActionButtons>
                 </DataTableCell>
               </DataTableRow>
             ))

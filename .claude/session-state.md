@@ -3,6 +3,16 @@
 **버전:** **v3.109** (2026-10-07 · 5.87·5.88·5.89 묶음) · 운영 SW **5.89-kiosk-receipt-20261007** (백업 20261007_163801 · 스모크 10/10) · 안드로이드 앱 0.3.4
 **작업 상태:** ✅ 판매자 결제 설정 = 계정 하나 완료(개발서버 · Fable 2회차 PASS · 운영 배포 대기) — 개발서버만 미배포: 이것 + 청구서 To Confirm 탭
 
+### 답 기다림 (2026-10-07 밤) — GHL 질문 3개(DuitNow 켜져 있나 · Direct 에서 샘플대로 되나 · MyDebit D007) [Claude Code · 백그라운드 작업방 084aaec3]
+- 지시: «Irene 님 확인·결정 대기» 항목 «GHL: UAT 근무시간 · 직불(D007)·DuitNow QR»
+- **한 것(개발서버, 운영 미배포):** 단말기 화면 DuitNow QR 결제. 근거 = GHL 2026-09-28 메일(«Duitnow QR Product ID is DUITNOW QR» + Direct 용 샘플) — 우리 코드가 샘플 5개(판매·DuitNow 판매·조회 E3·취소·정산)를 바이트까지 똑같이 만든다. 서버 `utils/ghlEcr`(C01A·requestProduct) · `services/terminalPayments`(설정 꺼지면 409·모르는 상품 400·승인 = ewallet/duitnow 서버 고정) · 라우트 product(직원만) · 화면 설정 토글 «단말기 화면 DuitNow QR»(기본 꺼짐) · 결제창 선택 칩 · 4언어. 문서 `docs/CARD_TERMINAL_ECR_DESIGN.md` §4-2
+- 검증: jest 41/41 · health-check terminal 12/12 · 고장주입 2건 · 화면 단위 5/5 · build 1회 · verify-all --full 23/24(✗ = 배포 기록 파일, 배포 때 작성) · e2e card-terminal 16건(DuitNow N·N2 ×3 · 취소 J·K ×3 — 테스트가 데모38 매니저 PIN 을 원본 저장 뒤 잠깐 끄고 복원) · print-guard 8/8 · Fable 게이트 PASS `.claude/fable-verdict-20261007-ghl-duitnow.md`
+- 직불 D007: 구현 안 함(Fable 권고) — 계산대는 카드 대기 전 직불인지 모름, 10-05 VISA 2건은 D007 없이 승인
+- **무엇을(Irene 할 일):** GHL(Anson) WhatsApp 에 ①매장 13 단말기 DuitNow QR 활성? ②PayHere Direct 에서 C01A «DUITNOW QR»(ASCII)·E3 가 메일 샘플대로 되나(규격 표는 B4·ECR 전용) ③MyDebit 를 D007 없이 대면 단말기가 계좌종류를 묻나/거절하나
+- **왜:** 실단말기 동작은 코드로 못 봄 · D007 은 GHL 답 또는 실측으로만 정해짐
+- **답이 오면:** 운영 배포(Irene /배포, 다음 묶음 · SW 그때) → 평일 낮(UAT 근무시간) 매장 13 토글 켜고 RM0.10 DuitNow 1회 + Void 1회 → 문서 §4-2 «실단말기 확인» 한 줄 · D007 은 답에 따라 Fable 판단
+- 배포 뒤 운영 재검사: «토글 꺼진 매장 결제창 변화 0» 1건
+
 ### 답 기다림 (2026-10-07 밤) — 확인 4건(단말기 BUSY 자동 대기 · 배송 준비 목록 · 역할 추가 요청 · 상품 16 45g/pack): 운영 읽기 조회 허락 + 상품 16 처리 방향 [Claude Code · 백그라운드 작업방 2be9f209]
 - 지시: «Irene 님 확인·결정 대기» 3번째 항목
 - 네 건의 성격(기록 근거 fea0a4e92·771a20bc6 작업기록): ①단말기 5.85 BUSY 자동 대기 = 매장 실기 확인 ②판매자 «배송 준비 목록 (가격 없음)» WhatsApp 버튼 = Irene 화면 1회 ③역할 추가 요청 = 실제 요청 1건 승인 흐름 ④브랜드 상품 16(K-Yukgaejang Beef 1kg)이 45g/pack·주문제작으로 바뀌어 있어 매장 8 연결(kg·환산 1, 수령 2건)과 어긋남 — 10-05 권고: 16 은 1kg 값으로 되돌리고 45g 은 새 상품으로 등록
@@ -226,7 +236,7 @@
 - 운영 SOA 3건(#162·#188·#2xx) restaurant_id NULL 보정 — Fable 권고 채움, 이름 표시는 이미 정상이라 급하지 않음(승인 시 실행) → 위 «답 기다림» 절(방 0ffccb95) 참조
 - 상품 카테고리 정리(«Alcohol» 3건) — 재발 막기 완료(개발서버), 운영 3건 분류 바꾸기는 Irene 답 대기 → 맨 위 «답 기다림» 절(방 8054cffb) 참조
 - 단말기(5.85) BUSY 자동 대기 실기 확인 · 판매자 «배송 준비 목록» 1회 · 역할 추가 요청 실제 1건 · 상품 16(K-Yukgaejang Beef) 45g/pack 수정 건 → 맨 위 «답 기다림» 절(방 2be9f209) 참조
-- GHL: UAT 근무시간 · 직불(D007)·DuitNow QR
+- ~~GHL: UAT 근무시간 · 직불(D007)·DuitNow QR~~ — ✅ 개발서버 완료(10-07, 방 084aaec3 · Fable 게이트 PASS) · 남은 것 = GHL 질문 3개 답 대기(아래 «답 기다림» 절)
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > /개발시작 자동 추천 대상 아님. 다음 사이클 결정은 Irene 지시 기준.

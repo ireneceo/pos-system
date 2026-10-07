@@ -78,6 +78,9 @@ export const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' 
   justify-content: center;
   min-width: 32px;
   height: 32px;
+  /* 글자 버튼은 한 줄 고정 — 32px 높이 안에서 두 줄로 눌리지 않게 (2026-10-07 청구서 버튼 칸 통일) */
+  white-space: nowrap;
+  flex-shrink: 0;
 
   ${props => props.variant === 'primary' ? `
     background: #635BFF;
@@ -140,6 +143,12 @@ export const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' 
       background: #F4F3FF;
     }
   `}
+
+  /* 아이콘만 든 버튼(PDF·Print·Send)은 32×32 정사각 — Owner·RA 청구서와 같은 기준 (2026-10-07) */
+  &:has(> svg:only-child) {
+    padding: 6px;
+    min-width: 32px;
+  }
 `;
 
 // 삭제(×) 전용 — 위험 업무 = 빨강 (2026-10-07 업무 버튼 색 규칙)
