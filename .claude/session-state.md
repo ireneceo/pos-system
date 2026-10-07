@@ -102,6 +102,7 @@
 - **무엇을:** 오늘 운영 배포 3번(5.87 오너 청구서·브랜드 매니저 메뉴 / 5.88 청구서 총액 수정·이력 / 5.89 키오스크·영수증)을 v3.109 로 묶어 올릴지
 - **왜:** 버전은 /배포 때만, Irene 결정. 5.87·5.88 때부터 «묶어 올릴 예정» 으로 대기 중이었음
 - **답이 오면(예):** CHANGELOG [Unreleased] → v3.109 절 · session-state·DEVELOPMENT_PLAN 버전 · 왓츠앱 릴리즈 노트(한·영) · 랜딩 블로그 + 시스템 공지(`create-release-post.js --stdin --sync-prod`) / (아니오): 그대로
+- 10-07 Irene 재답(상황판): «제안은 뭐야? 권고는 항상 붙여. 권고대로 해» → 권고(=예, v3.109 로 묶음)는 이미 반영 완료 확인(커밋 8b69d172c · CHANGELOG v3.109 절 · 개발 블로그 release-v3.109 published). 추가 작업 없음
 
 ### 완료 (2026-10-07 밤) — 키오스크·영수증 운영 배포 SW 5.89 [Claude Code · 백그라운드 작업방 503af8e9]
 - Irene 원문(상황판): 「해」(배포 지시) → `deploy-to-production.sh --auto` · 백업 **20261007_163801** · 안전 게이트 통과 · mount sweep 크래시 0(번들 동일 재사용) · 마이그 `migrate-create-kiosk-devices.js` → 운영 `kiosk_devices` 생성 · 스모크 **10/10** · 운영 sw.js `5.89-kiosk-receipt-20261007` 실측 일치

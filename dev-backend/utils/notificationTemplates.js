@@ -879,7 +879,7 @@ function tradeInvoicePaidEmail({ buyerName, invoiceNumber, total, currency, link
 /**
  * Monthly SOA — sent to Buyer for monthly_soa contracts. Aggregates last month's invoices.
  */
-function monthlySoaEmail({ sellerName, month, dueInDays, invoices = [], totalDue, currency, dueDate, link, timezone }) {
+function monthlySoaEmail({ sellerName, month, dueInDays, invoices = [], totalDue, currency, dueDate, link, timezone, isExternal = false }) {
   const tz = timezone || DEFAULT_TZ;
   const title = 'Monthly Statement of Account';
   const safeSeller = (sellerName || 'Your supplier').toString().slice(0, 120);
@@ -913,6 +913,9 @@ function monthlySoaEmail({ sellerName, month, dueInDays, invoices = [], totalDue
     <p style="color:#374151;font-size:16px;margin:0 0 16px;">
       Your monthly statement of account from <strong>${safeSeller}</strong> for <strong>${safeMonth}</strong> is ready.
     </p>
+    ${isExternal ? `<p style="color:#6B7280;font-size:14px;margin:0 0 16px;line-height:1.6;">
+      This statement was prepared automatically from your order records. Compare it with the SOA the supplier sent you.
+    </p>` : ''}
     ${infoTable(
       infoRow('Supplier', safeSeller) +
       infoRow('Period', safeMonth) +
@@ -924,7 +927,7 @@ function monthlySoaEmail({ sellerName, month, dueInDays, invoices = [], totalDue
     ${ctaButton('View SOA & Pay', link || `${BASE_URL}/login`)}`;
 
   return withRenderMeta({
-    subject: `Monthly SOA from ${safeSeller} - ${safeMonth} (${fmtMoney(totalDue, currency)})`,
+    subject: `${isExternal ? 'Monthly statement (to compare) for ' : 'Monthly SOA from '}${safeSeller} - ${safeMonth} (${fmtMoney(totalDue, currency)})`,
     html: wrapTemplate(title, body, 'en'),
     text: `Monthly statement from ${safeSeller} for ${safeMonth}. Invoices: ${(invoices || []).length}. Total due: ${fmtMoney(totalDue, currency)}. Please pay by ${fmtDate(dueDate, 'en', tz)}${days === null ? '' : ` (within ${days} day${days === 1 ? '' : 's'})`}.`
   }, title, body, 'en');

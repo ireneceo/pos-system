@@ -7,8 +7,9 @@
  * `parent_soa_invoice_id`(이미 묶였나)만 봤다. 그래서 월중(묶이기 전)에는 개별 Pay 가 떴고 실제로 낼 수 있었다.
  * 이제 목록(pay_via_soa)·결제 라우트(400)·soa/current 가 **이 함수 하나**를 쓴다.
  *
- * 조건: 거래 청구서 · 판매자가 브랜드/푸드코트/가입 공급업체 · 그 구매자에 대한 조건이 monthly_soa.
- * 외부(미가입) 공급업체는 false — 그쪽은 정산서도 게이트웨이 결제도 없다(«결제함» 체크만).
+ * 조건: 거래 청구서 · 판매자가 브랜드/푸드코트/공급업체 · 그 구매자에 대한 조건이 monthly_soa.
+ * 외부(미가입) 공급업체도 구매자가 계약 조건에 monthly_soa 를 켜면 정산서로만 낸다(2026-10-07 Fable 판정 ⑩).
+ *   돈은 여전히 «결제함» 체크만(게이트웨이 없음) — 그 체크를 정산서에서 한 번 한다.
  */
 const { SupplierContract, SupplierCompany, Brand, Foodcourt } = require('../models');
 const Restaurant = require('../models/Restaurant');
@@ -22,7 +23,7 @@ async function monthlySoaTermsFor(inv) {
 
   if (inv.issuer_type === 'supplier') {
     const sc = await SupplierCompany.findByPk(inv.issuer_id, { attributes: ['id', 'is_system_registered'] });
-    if (!sc || !sc.is_system_registered) return null;
+    if (!sc) return null;
     let entityType = null;
     let entityId = null;
     if (inv.payer_type === 'restaurant') {

@@ -193,11 +193,21 @@ async function syncTradeInvoiceFromReconcile(poId, opts = {}) {
   }
   if (Object.keys(tail).length) await invoice.update(tail);
 
+  // ⑦ 정산서에 묶인 청구서면 정산서 합계가 따라간다 (2026-10-07 Fable 판정 ⑩ A-5).
+  //   결제된·취소된 정산서는 건드리지 않고 soa_locked 로 알린다(화면 안내).
+  let soa = null;
+  if (invoice.parent_soa_invoice_id && newTotal !== prevTotal) {
+    const { followChildToSoa } = require('./externalSoa');
+    soa = await followChildToSoa(invoice, { prevChildTotal: prevTotal, actorId: opts.actorId || null, actorName: opts.actorName || null });
+  }
+
   return {
     synced: true,
     invoice_id: invoice.id,
     lines,
-    total: num(invoice.total_amount)
+    total: num(invoice.total_amount),
+    ...(soa && soa.soa_locked ? { soa_locked: true } : {}),
+    ...(soa && soa.followed ? { soa_id: soa.soa_id, soa_total: soa.total } : {})
   };
 }
 

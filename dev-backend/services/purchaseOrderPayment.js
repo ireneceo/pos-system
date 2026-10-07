@@ -93,7 +93,8 @@ async function resolvePayableAmount(po) {
  */
 // paidAt(선택) — 2026-09-14 Irene: 외부 청구서를 «결제함» 으로 표시할 때 **실제로 낸 날**을 넣는다.
 //   안 넘기면 지금까지처럼 현재시각. 기존 호출부는 그대로 동작한다.
-async function recordPayment(po, { method, userId, reason, paidAt: paidAtIn }, t) {
+// viaSoa: 정산서(SOA) «결제함» 이 자식 발주를 같이 적을 때만 true — 월결제 차단(PAY_VIA_SOA)을 건너뛴다 (2026-10-07 ⑩ A-4).
+async function recordPayment(po, { method, userId, reason, paidAt: paidAtIn, viaSoa = false }, t) {
   if (!PAYMENT_METHODS.includes(method)) {
     throw err(`payment_method must be one of: ${PAYMENT_METHODS.join(', ')}`, 'INVALID_PAYMENT_METHOD');
   }
@@ -115,7 +116,7 @@ async function recordPayment(po, { method, userId, reason, paidAt: paidAtIn }, t
     // 월결제(monthly SOA) 거래는 발주 단위로 내지 않는다 — SOA 총액으로만(2026-09-29 soa2 §5-B Irene «모든 주문리스트는 페이가
     //   안 나오고 SOA에만 토탈 결제»). 청구서 결제 라우트는 이미 막았는데 발주 Pay·받으면서 지불이 뒷문이었다
     //   (2026-10-04 Irene «월 결제인데 주문 내역엔 페이 버튼이 나와»). 판정은 utils/payViaSoa 단일 소스.
-    if (linked && await require('../utils/payViaSoa').payViaSoa(linked)) {
+    if (linked && !viaSoa && await require('../utils/payViaSoa').payViaSoa(linked)) {
       throw err('This order is billed monthly. Pay it through the Statement of Account (SOA).', 'PAY_VIA_SOA', 400);
     }
   }

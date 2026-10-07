@@ -272,7 +272,13 @@ async function issueSoaForPair({
   // 「며칠 안에 내야 하나」 — 새 설정 칸을 만들지 않고 발행일과 마감일의 차로 낸다.
   const dueInDays = Math.max(0, Math.ceil((dueDate - issuedAt) / 86400000));
 
+  // 외부(앱 안 쓰는) 공급업체 정산서는 우리 주문 기록으로 만든 «대조용» — 메일에 한 줄 (2026-10-07 ⑩ A-3)
+  let isExternal = false;
+  if (issuerType === 'supplier') {
+    try { isExternal = await require('../utils/externalIssuer').isExternalIssuer('supplier', issuerId); } catch (_) { /* keep false */ }
+  }
   const mail = monthlySoaEmail({
+    isExternal,
     sellerName,
     month: monthLabel,
     dueInDays,
@@ -603,6 +609,9 @@ async function generateSoaNow({
   periodEndDay: periodEndIn = null,
   includeOlderUnbundled = true
 }) {
+  if (issuerType === 'supplier') {
+    return generateExternalSupplierSoaNow({ supplierId: issuerId, buyerEntityType: 'restaurant', buyerEntityId: restaurantId, periodStartDay: periodStartIn, periodEndDay: periodEndIn, includeOlderUnbundled });
+  }
   if (!['brand', 'foodcourt'].includes(issuerType)) return { issued: false, reason: 'bad_issuer_type' };
   const restaurant = await Restaurant.findByPk(restaurantId, {
     attributes: ['id', 'name', 'brand_id', 'foodcourt_id', 'brand_billing_terms', 'foodcourt_billing_terms']
@@ -674,6 +683,66 @@ async function generateSoaNow({
   return { issued: !!result.issued, mailed: result.mailed, soaId: result.soaId, reason: result.reason };
 }
 
+/** 구매 매장 달력 기준 «지난달 1일~말일» (YYYY-MM-DD) */
+function lastMonthRange(todayDay) {
+  const [ty, tm] = todayDay.split('-').map(Number);
+  const prevY = tm === 1 ? ty - 1 : ty;
+  const prevM = tm === 1 ? 12 : tm - 1;
+  const lastDay = new Date(Date.UTC(prevY, prevM, 0)).getUTCDate();
+  return { start: `${prevY}-${p2d(prevM)}-01`, end: `${prevY}-${p2d(prevM)}-${p2d(lastDay)}` };
+}
+
+/**
+ * 외부(미가입) 공급업체 정산서 «지금 만들기» — 구매자가 누른다 (2026-10-07 Fable 판정 ⑩ A-3).
+ *   가입 공급업체는 판매자가 조건·정산서를 정하므로 여기서 만들지 않는다(not_external).
+ *   조건은 그 구매자의 active 계약 payment_terms.invoice_cycle==='monthly_soa' 여야 한다(bad_terms).
+ *   기간·발행일·번호 규칙은 브랜드 가지와 같다.
+ */
+async function generateExternalSupplierSoaNow({
+  supplierId, buyerEntityType, buyerEntityId,
+  periodStartDay: periodStartIn = null, periodEndDay: periodEndIn = null,
+  includeOlderUnbundled = true
+}) {
+  const sc = await SupplierCompany.findByPk(supplierId, { attributes: ['id', 'name', 'company_name', 'currency', 'is_system_registered'] });
+  if (!sc) return { issued: false, reason: 'seller_not_found' };
+  if (sc.is_system_registered) return { issued: false, reason: 'not_external' };
+  const contract = await SupplierContract.findOne({
+    where: { supplier_company_id: supplierId, entity_type: buyerEntityType, entity_id: buyerEntityId, status: 'active' },
+    order: [['id', 'DESC']]
+  });
+  if (!contract || contract.payment_terms?.invoice_cycle !== 'monthly_soa') return { issued: false, reason: 'bad_terms' };
+  const payer = await computePayerForBuyer(buyerEntityType, buyerEntityId);
+  if (!payer) return { issued: false, reason: 'payer_not_found' };
+
+  const buyerTz = await resolveBuyerTimezone(buyerEntityType, buyerEntityId);
+  const todayDay = getCurrentLocalDate(buyerTz);
+  let periodStartDay = periodStartIn || null;
+  let periodEndDay = periodEndIn || null;
+  if (!periodStartDay || !periodEndDay) {
+    const r = lastMonthRange(todayDay);
+    periodStartDay = r.start; periodEndDay = r.end;
+  }
+  if (periodEndDay > todayDay) return { issued: false, reason: 'period_end_in_future' };
+  if (periodStartDay > periodEndDay) return { issued: false, reason: 'period_out_of_order' };
+
+  const now = new Date();
+  const dueDate = nextDueDate(now, parseInt(contract.payment_terms?.payment_due_day, 10) || 15);
+  const stamp = `${now.getFullYear()}${p2d(now.getMonth() + 1)}${p2d(now.getDate())}${p2d(now.getHours())}${p2d(now.getMinutes())}${p2d(now.getSeconds())}`;
+  const buyerTag = buyerEntityType === 'restaurant' ? `R${buyerEntityId}` : `${buyerEntityType[0].toUpperCase()}${buyerEntityId}`;
+  const soaInvoiceNumber = await uniqueSoaNumber(`SOA-${supplierId}-${buyerTag}-M${stamp}`);
+
+  const result = await issueSoaForPair({
+    issuerType: 'supplier', issuerId: supplierId, payer,
+    buyerEntityType, buyerEntityId,
+    sellerName: sc.company_name || sc.name || 'Supplier',
+    sellerCurrency: sc.currency,
+    periodStartDay, periodEndDay, issuedAt: now, dueDate,
+    includeOlderUnbundled,
+    soaInvoiceNumber
+  });
+  return { issued: !!result.issued, mailed: result.mailed, soaId: result.soaId, reason: result.reason };
+}
+
 /**
  * Register the cron schedule. 매일 00:30 — 각 쌍은 자기 발행일(soa_issue_day)에만 발행된다 (2026-09-29 soa2 §5-D).
  */
@@ -688,6 +757,7 @@ function startSoaCron() {
 module.exports = {
   processMonthlySoa,
   generateSoaNow,
+  generateExternalSupplierSoaNow,
   startSoaCron,
   computePayerForBuyer,
   // 라벨·마감일 규칙은 테스트와 다른 호출부가 **같은 함수**를 보게 내보낸다.

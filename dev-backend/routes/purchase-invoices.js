@@ -142,6 +142,47 @@ router.get('/purchase-invoices', async (req, res) => {
 });
 
 // ============================================
+// POST /api/purchase-invoices/soa/external/:supplierCompanyId/issue
+//   외부(미가입) 공급업체 정산서 «지금 만들기» — 구매자가 누른다 (2026-10-07 Fable 판정 ⑩ A-3)
+//   body { period_start?: 'YYYY-MM-DD', period_end?: 'YYYY-MM-DD' } — 없으면 지난달 1일~말일(매장 달력)
+//   가입 공급업체 403 NOT_EXTERNAL · 월별 조건 아님 400 BAD_TERMS · 묶을 것 없음 200 issued:false
+//   (defined BEFORE /:id to avoid collision)
+// ============================================
+router.post('/purchase-invoices/soa/external/:supplierCompanyId/issue', async (req, res) => {
+  try {
+    if (!req.buyerEntity) return res.status(400).json({ success: false, message: 'Buyer scope required' });
+    if (!['restaurant', 'brand', 'foodcourt'].includes(req.buyerEntity.type)) {
+      return res.status(400).json({ success: false, message: 'Pick a store first' });
+    }
+    const supplierId = parseInt(req.params.supplierCompanyId, 10);
+    if (!Number.isFinite(supplierId)) return res.status(404).json({ success: false, message: 'Supplier not found' });
+    const isDay = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    const { period_start, period_end } = req.body || {};
+    if ((period_start && !isDay(period_start)) || (period_end && !isDay(period_end))) {
+      return res.status(400).json({ success: false, message: 'period_start / period_end must be YYYY-MM-DD' });
+    }
+    const { generateExternalSupplierSoaNow } = require('../services/soaScheduler');
+    const r = await generateExternalSupplierSoaNow({
+      supplierId,
+      buyerEntityType: req.buyerEntity.type,
+      buyerEntityId: req.buyerEntity.id,
+      periodStartDay: period_start || null,
+      periodEndDay: period_end || null,
+    });
+    if (r.reason === 'seller_not_found') return res.status(404).json({ success: false, message: 'Supplier not found' });
+    if (r.reason === 'not_external') return res.status(403).json({ success: false, code: 'NOT_EXTERNAL', message: 'This supplier uses the app — they issue their own statements.' });
+    if (r.reason === 'bad_terms') return res.status(400).json({ success: false, code: 'BAD_TERMS', message: 'Turn on monthly statements for this supplier first (supplier settings).' });
+    if (r.reason === 'period_end_in_future' || r.reason === 'period_out_of_order') {
+      return res.status(400).json({ success: false, code: r.reason.toUpperCase(), message: 'Check the statement period.' });
+    }
+    res.json({ success: true, data: { issued: !!r.issued, soa_id: r.soaId || null, reason: r.reason || null } });
+  } catch (err) {
+    console.error('POST /api/purchase-invoices/soa/external/:id/issue error:', err);
+    res.status(500).json({ success: false, message: 'Failed to create statement' });
+  }
+});
+
+// ============================================
 // 9. GET /api/purchase-invoices/soa/current
 //    (defined BEFORE /:id to avoid collision)
 // ============================================

@@ -137,14 +137,18 @@ async function resolvePaymentTerms(po) {
  */
 async function isExternalSupplierWithoutTerms(po) {
   if (po.seller_type !== 'supplier' || !po.seller_entity_id) return false;
-  if (po.contract_id) {
-    const contract = await SupplierContract.findByPk(po.contract_id);
-    if (contract?.payment_terms) return false;   // 계약으로 합의된 조건이 있다
-  }
   const sc = await SupplierCompany.findByPk(po.seller_entity_id, {
     attributes: ['id', 'is_system_registered']
   });
-  return !!sc && !sc.is_system_registered;
+  if (!sc || sc.is_system_registered) return false;
+  // 외부 업체 계약의 payment_terms 는 구매자가 적은 «청구 방식»(월별 정산서 등, 2026-10-07)일 수 있다.
+  //   그건 NET 합의가 아니다 — 월별이어도 건별 청구서 마감일은 비우고 정산서에만 마감일을 붙인다(Fable 판정 A-7).
+  //   NET 키(terms)가 실제로 있을 때만 합의된 조건으로 본다.
+  if (po.contract_id) {
+    const contract = await SupplierContract.findByPk(po.contract_id);
+    if (contract?.payment_terms?.terms) return false;
+  }
+  return true;
 }
 
 /**

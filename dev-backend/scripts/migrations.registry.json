@@ -110,7 +110,8 @@
     "sprint7-migration.js",
     "migrate-create-kiosk-devices.js",
     "migrate-create-terminal-transactions.js",
-    "migrate-soa-child-status-sync.js"
+    "migrate-soa-child-status-sync.js",
+    "migrate-add-invoice-external-document.js"
   ],
   "manual": {
     "fix-ingredient-data-debt-20260917.js": "일회성 — 고아 셀러매핑 정리 · 코드 중복 재채번(2026-09-17 Fable 판정 ②④). 드라이런 기본 · --apply · --undo.",

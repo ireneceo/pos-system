@@ -331,6 +331,11 @@ router.post('/:id/mark-paid-external', authenticateToken, async (req, res) => {
         message: '외부 공급업체 청구서에만 쓸 수 있습니다. 다른 청구서는 결제 경로를 쓰세요.'
       });
     }
+    // 월별 정산서로 내는 업체면 건별 «결제함» 은 막는다 — 정산서 자신만 통과 (2026-10-07 Fable 판정 ⑩ A-5)
+    if (invoice.invoice_category !== 'soa') {
+      const { blockPayViaSoa } = require('../utils/payViaSoa');
+      if (await blockPayViaSoa(invoice, res)) return;
+    }
     if (invoice.status === 'paid') {
       // 두 번째 결제는 409 — 발주 쪽 recordPayment 의 ALREADY_PAID 와 같은 신호 (§8-3 A-3)
       return res.status(409).json({ success: false, code: 'ALREADY_PAID', message: '이미 결제 완료로 표시된 청구서입니다.' });
@@ -358,6 +363,82 @@ router.post('/:id/mark-paid-external', authenticateToken, async (req, res) => {
     const note = req.body.notes || req.body.payment_notes
       ? sanitizeString(String(req.body.notes || req.body.payment_notes)).slice(0, 255)
       : null;
+
+    // ── 외부 공급업체 월별 정산서 «결제함» 한 번 (2026-10-07 Fable 판정 ⑩ A-4) ──────────────────────────
+    //   묶인 청구서 전부 + 그 발주 전부를 한 트랜잭션에서 결제됨으로 적는다. 발주는 발주 결제와 같은 함수
+    //   (recordPayment — 이중 결제 409·금고 출금·결제일)를 쓰고, 월결제 차단만 viaSoa 로 건너뛴다.
+    //   공급업체 명세 차액(정산서 총액 − 묶인 청구서 합)은 현금이면 금고에 한 줄 더 적는다.
+    if (invoice.invoice_category === 'soa') {
+      const { sequelize: seq } = require('../config/database');
+      const { PurchaseOrder, CashMovement } = require('../models');
+      const { recordPayment, resolveOpenShift } = require('../services/purchaseOrderPayment');
+      const { syncSoaChildren } = require('../services/soaChildSync');
+      const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+      try {
+        const out = await seq.transaction(async (t) => {
+          const soa = await Invoice.findByPk(invoice.id, { lock: t.LOCK.UPDATE, transaction: t });
+          if (soa.status === 'paid') { const e = new Error('이미 결제 완료로 표시된 정산서입니다.'); e.statusCode = 409; e.code = 'ALREADY_PAID'; throw e; }
+          const children = await Invoice.findAll({ where: { parent_soa_invoice_id: soa.id }, order: [['id', 'ASC']], transaction: t });
+          const paidChildren = []; const paidPos = []; const movementIds = []; const skipped = [];
+          let drawerSkipped = false;
+          const reasonBase = `SOA ${soa.invoice_number}`;
+          for (const child of children) {
+            if (child.status === 'paid' || child.status === 'cancelled') { skipped.push({ invoice_id: child.id, invoice_number: child.invoice_number, status: child.status }); continue; }
+            const po = await PurchaseOrder.findOne({ where: { trade_invoice_id: child.id }, lock: t.LOCK.UPDATE, transaction: t });
+            if (po && po.status !== 'cancelled' && po.payment_status !== 'paid') {
+              const r = await recordPayment(po, { method, userId: req.user && req.user.id, reason: note ? `${reasonBase} · ${note}` : reasonBase, paidAt, viaSoa: true }, t);
+              paidPos.push(po.id);
+              if (r.movement) movementIds.push(r.movement.id);
+              if (r.drawerSkipped) drawerSkipped = true;
+            } else {
+              // 발주 없음(지워짐) 또는 발주는 이미 결제됨 — 청구서만 닫는다
+              await child.update({ status: 'paid', paid_amount: round2(child.total_amount), paid_at: paidAt || new Date(), payment_method: method }, { transaction: t });
+            }
+            await Invoice.update(
+              { payment_provider: 'external', payment_notes: note, confirmed_by: req.user && req.user.id, confirmed_at: new Date() },
+              { where: { id: child.id }, transaction: t }
+            );
+            paidChildren.push(child.id);
+          }
+          // 공급업체 명세 차액 — 현금일 때만 금고에 한 줄(부호대로 out/in). 이체·카드는 금고 무접촉.
+          const childSum = round2(children.filter(c => c.status !== 'cancelled').reduce((a, c) => a + Number(c.total_amount || 0), 0));
+          const diff = round2(Number(soa.total_amount || 0) - childSum);
+          if (diff !== 0 && method === 'cash' && soa.payer_type === 'restaurant' && soa.payer_id) {
+            const shift = await resolveOpenShift(soa.payer_id, t);
+            if (shift) {
+              const mv = await CashMovement.create({
+                shift_id: shift.id, restaurant_id: soa.payer_id,
+                type: diff > 0 ? 'out' : 'in', amount: Math.abs(diff),
+                reason: `${reasonBase} — supplier statement difference`,
+                source: 'purchase_order', purchase_order_id: null,
+                created_by_id: (req.user && req.user.id) || null,
+              }, { transaction: t });
+              movementIds.push(mv.id);
+            } else {
+              drawerSkipped = true;
+            }
+          }
+          await syncSoaChildren(soa, 'paid', { transaction: t, actorId: req.user && req.user.id, at: paidAt || new Date() });
+          await soa.update({
+            status: 'paid', paid_amount: soa.total_amount, paid_at: paidAt || new Date(),
+            payment_method: method, payment_provider: 'external', payment_notes: note,
+            confirmed_by: req.user && req.user.id, confirmed_at: new Date()
+          }, { transaction: t });
+          return { soa, paidChildren, paidPos, movementIds, drawerSkipped, skipped };
+        });
+        handleInvoicePaid(out.soa.id).catch(e => console.error('[mark-paid-external soa] handleInvoicePaid:', e.message));
+        return res.json({
+          success: true, data: out.soa,
+          paid_children: out.paidChildren, paid_purchase_orders: out.paidPos,
+          cash_movement_ids: out.movementIds,
+          ...(out.drawerSkipped ? { drawerSkipped: true } : {}),
+          skipped: out.skipped,
+        });
+      } catch (e) {
+        if (e.statusCode) return res.status(e.statusCode).json({ success: false, code: e.code, message: e.message });
+        throw e;
+      }
+    }
 
     // 🔴 결제는 한 손 (§8-3 A-2). 이 청구서가 나온 발주가 있으면 발주 결제와 **같은 함수**(recordPayment)로 쓴다 —
     //   드로어 출금 · 발주 payment_status · 청구서 paid 가 한 트랜잭션에서 함께 기록되고,
@@ -410,6 +491,56 @@ router.post('/:id/mark-paid-external', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('mark-paid-external error:', err);
     res.status(500).json({ success: false, message: 'Failed to mark invoice as paid' });
+  }
+});
+
+/**
+ * POST /api/invoices/:id/soa-reconcile — 외부 공급업체 정산서에 «공급업체가 보낸 SOA» 붙이기·총액 확정
+ * (2026-10-07 Fable 판정 ⑩ A-5 · services/externalSoa.reconcileSoa)
+ * body { document: { url('/uploads/…'), filename, number, date, total }, note }
+ *   total 이 있으면 차액 = total − (묶인 청구서 합 + 다른 줄) → «Supplier statement difference» 한 줄 교체, 총액 = total.
+ *   total 이 없으면 파일·번호·날짜만 기록.
+ */
+router.post('/:id/soa-reconcile', authenticateToken, async (req, res) => {
+  try {
+    const invoice = await Invoice.findByPk(req.params.id);
+    if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
+    const canPay = await checkPaymentPermission(req.user, invoice);
+    if (!canPay) return res.status(403).json({ success: false, message: 'Permission denied' });
+
+    const { sanitizeString } = require('../middleware/validation');
+    const body = req.body || {};
+    const d = (body.document && typeof body.document === 'object') ? body.document : {};
+    if (d.url !== undefined && d.url !== null && d.url !== '') {
+      if (typeof d.url !== 'string' || !d.url.startsWith('/uploads/')) {
+        return res.status(400).json({ success: false, code: 'INVALID_URL', message: 'Invalid file URL' });
+      }
+    }
+    let total;
+    if (d.total !== undefined && d.total !== null && d.total !== '') {
+      total = Number(d.total);
+      if (!Number.isFinite(total) || total < 0) return res.status(400).json({ success: false, code: 'INVALID_TOTAL', message: 'total must be a non-negative number' });
+    }
+    if (d.date && !/^\d{4}-\d{2}-\d{2}$/.test(String(d.date))) {
+      return res.status(400).json({ success: false, code: 'INVALID_DATE', message: 'date must be YYYY-MM-DD' });
+    }
+    const document = {
+      ...(d.url ? { url: d.url, filename: d.filename ? sanitizeString(String(d.filename)).slice(0, 255) : null } : {}),
+      ...(d.number !== undefined ? { number: d.number ? sanitizeString(String(d.number)).slice(0, 80) : null } : {}),
+      ...(d.date !== undefined ? { date: d.date || null } : {}),
+      ...(total !== undefined ? { total } : {}),
+    };
+    const note = body.note ? sanitizeString(String(body.note)).slice(0, 255) : null;
+    const { reconcileSoa } = require('../services/externalSoa');
+    const r = await reconcileSoa(invoice.id, {
+      document, note, actorId: req.user && req.user.id,
+      actorName: (req.user && (req.user.full_name || req.user.name || req.user.email)) || null
+    });
+    if (!r.ok) return res.status(r.status).json({ success: false, code: r.code, message: r.message });
+    res.json({ success: true, data: r.soa, changed: r.changed, prev_total: r.prev_total, total: r.total, our_total: r.our_total, difference: r.difference });
+  } catch (err) {
+    console.error('soa-reconcile error:', err);
+    res.status(500).json({ success: false, message: 'Failed to reconcile statement' });
   }
 });
 

@@ -246,6 +246,12 @@ Invoice.init({
     defaultValue: false,
     comment: 'Whether this invoice has been modified after issuance'
   },
+  // 공급업체가 보낸 SOA 기록 — 외부 공급업체 월별 정산서 전용 (2026-10-07 ⑩ A-5, scripts/migrate-add-invoice-external-document.js)
+  external_document: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: '{url, filename, number, date, total, uploaded_at, uploaded_by} — external supplier SOA only'
+  },
   modification_history: {
     type: DataTypes.JSON,
     allowNull: true,

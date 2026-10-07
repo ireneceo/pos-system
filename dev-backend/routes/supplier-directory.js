@@ -121,6 +121,59 @@ async function findLatestContract(supplierCompanyId, buyerEntity) {
 const VALID_PAYMENT_TERMS = ['COD', 'NET_15', 'NET_30', 'NET_60'];
 const VALID_INVOICE_CYCLES = ['immediate', 'monthly_soa'];
 
+// ── 외부 공급업체 «청구 방식» (2026-10-07 Fable 판정 · docs/TRADE_STRUCTURE.md ⑩) ─────────────────────
+//   저장처 = 그 구매자의 active 계약 payment_terms(기존 칸). 새 표·칸 없음.
+//   `terms`(NET_x) 키는 외부에 쓰지 않는다 — 합의 없는 NET 은 지어낸 값(2026-09-10 판정).
+//   오너 등록 업체는 계약 행이 오너 것 하나라 월 정산서 발행기가 매장을 못 찾는다 → 지원하지 않는다(운영 0곳).
+function dayOrDefault(v, dflt) {
+  if (v === undefined || v === null || v === '') return dflt;
+  const n = parseInt(v, 10);
+  return Number.isInteger(n) && n >= 1 && n <= 28 ? n : NaN;
+}
+/** body.billing 검사 → { value } | { error } | null(안 보냄) */
+function parseExternalBilling(raw) {
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw !== 'object') return { error: 'billing must be an object' };
+  const cycle = raw.invoice_cycle;
+  if (!VALID_INVOICE_CYCLES.includes(cycle)) return { error: `invoice_cycle must be one of ${VALID_INVOICE_CYCLES.join(', ')}` };
+  if (cycle === 'immediate') return { value: { invoice_cycle: 'immediate' } };
+  const soa_issue_day = dayOrDefault(raw.soa_issue_day, 1);
+  const payment_due_day = dayOrDefault(raw.payment_due_day, 15);
+  if (Number.isNaN(soa_issue_day) || Number.isNaN(payment_due_day)) return { error: 'soa_issue_day and payment_due_day must be whole numbers 1–28' };
+  return { value: { invoice_cycle: 'monthly_soa', soa_issue_day, payment_due_day } };
+}
+/** 화면용 요약. 계약이 없으면 null. */
+function externalBillingOf(contract) {
+  if (!contract) return null;
+  const pt = contract.payment_terms || {};
+  const monthly = pt.invoice_cycle === 'monthly_soa';
+  return {
+    invoice_cycle: monthly ? 'monthly_soa' : 'immediate',
+    soa_issue_day: monthly ? (parseInt(pt.soa_issue_day, 10) || 1) : null,
+    payment_due_day: monthly ? (parseInt(pt.payment_due_day, 10) || 15) : null,
+  };
+}
+/** 구매자 계약 payment_terms 에 merge 저장 (immediate 도 키를 남긴다 — 이력 추적) */
+async function saveExternalBilling(sc, buyerEntity, billing, userId, transaction) {
+  let contract = await SupplierContract.findOne({
+    where: { supplier_company_id: sc.id, entity_type: buyerEntity.type, entity_id: buyerEntity.id, status: 'active' },
+    order: [['id', 'DESC']], transaction
+  });
+  if (!contract) {
+    contract = await SupplierContract.create({
+      entity_type: buyerEntity.type, entity_id: buyerEntity.id, supplier_company_id: sc.id,
+      status: 'active', requested_by_user_id: userId
+    }, { transaction });
+  }
+  const prev = (contract.payment_terms && typeof contract.payment_terms === 'object') ? contract.payment_terms : {};
+  const next = { ...prev, ...billing, set_by: 'buyer' };
+  if (billing.invoice_cycle === 'immediate') { delete next.soa_issue_day; delete next.payment_due_day; }
+  contract.payment_terms = next;
+  contract.changed('payment_terms', true);
+  await contract.save({ transaction });
+  return contract;
+}
+
 // ============================================
 // GET /api/supplier-directory
 // ============================================
@@ -1027,6 +1080,12 @@ router.post('/external-suppliers', async (req, res) => {
       await t.rollback();
       return res.status(400).json({ success: false, message: 'Supplier name is required' });
     }
+    const billingIn = parseExternalBilling((req.body || {}).billing);
+    if (billingIn && billingIn.error) { await t.rollback(); return res.status(400).json({ success: false, message: billingIn.error }); }
+    if (billingIn && billingIn.value.invoice_cycle === 'monthly_soa' && req.buyerEntity.type === 'owner') {
+      await t.rollback();
+      return res.status(400).json({ success: false, code: 'OWNER_SUPPLIER_MONTHLY_UNSUPPORTED', message: 'Monthly statements are set per store. Register this supplier from the store to use monthly billing.' });
+    }
 
     const company = await SupplierCompany.create({
       name: sanitizeString(String(name).trim()).slice(0, 255),
@@ -1054,16 +1113,17 @@ router.post('/external-suppliers', async (req, res) => {
     }, { transaction: t });
 
     // 자동 active contract — buyer 가 자기가 만든 supplier 면 즉시 발주 가능
-    await SupplierContract.create({
+    const contract = await SupplierContract.create({
       entity_type: req.buyerEntity.type,
       entity_id: req.buyerEntity.id,
       supplier_company_id: company.id,
       status: 'active',
-      requested_by_user_id: req.user.id
+      requested_by_user_id: req.user.id,
+      ...(billingIn ? { payment_terms: { ...billingIn.value, set_by: 'buyer' } } : {})
     }, { transaction: t });
 
     await t.commit();
-    res.status(201).json({ success: true, data: { supplier: company } });
+    res.status(201).json({ success: true, data: { supplier: company, billing: externalBillingOf(contract) } });
   } catch (err) {
     if (!t.finished) await t.rollback();
     console.error('POST /api/external-suppliers error:', err);
@@ -1112,6 +1172,11 @@ router.put('/external-suppliers/:id', async (req, res) => {
     if (sc.registered_by_entity_type !== req.buyerEntity.type || sc.registered_by_entity_id !== req.buyerEntity.id) {
       return res.status(403).json({ success: false, message: 'Not your supplier' });
     }
+    const billingIn = parseExternalBilling(req.body.billing);
+    if (billingIn && billingIn.error) return res.status(400).json({ success: false, message: billingIn.error });
+    if (billingIn && billingIn.value.invoice_cycle === 'monthly_soa' && sc.registered_by_entity_type === 'owner') {
+      return res.status(400).json({ success: false, code: 'OWNER_SUPPLIER_MONTHLY_UNSUPPORTED', message: 'Monthly statements are set per store. Register this supplier from the store to use monthly billing.' });
+    }
     const updates = {};
     const fields = ['name','phone','email','address','address_line_2','city','state','postal_code','website','contact_person','delivery_policy','description'];
     for (const f of fields) {
@@ -1124,8 +1189,18 @@ router.put('/external-suppliers/:id', async (req, res) => {
       const raw = req.body.delivery_fee;
       updates.delivery_fee = (raw === null || raw === '') ? null : Math.max(0, parseFloat(raw) || 0);
     }
-    await sc.update(updates);
-    res.json({ success: true, data: sc });
+    let billing;
+    await SupplierCompany.sequelize.transaction(async (t) => {
+      await sc.update(updates, { transaction: t });
+      if (billingIn) billing = externalBillingOf(await saveExternalBilling(sc, req.buyerEntity, billingIn.value, req.user.id, t));
+    });
+    if (billing === undefined) {
+      billing = externalBillingOf(await SupplierContract.findOne({
+        where: { supplier_company_id: sc.id, entity_type: req.buyerEntity.type, entity_id: req.buyerEntity.id, status: 'active' },
+        order: [['id', 'DESC']]
+      }));
+    }
+    res.json({ success: true, data: { ...sc.toJSON(), billing } });
   } catch (err) {
     console.error('PUT /api/external-suppliers/:id error:', err);
     res.status(500).json({ success: false, message: 'Failed to update external supplier' });
@@ -1272,11 +1347,15 @@ router.get('/external-suppliers', async (req, res) => {
     const myRows = ids.length
       ? await SupplierContract.findAll({
           where: { supplier_company_id: { [Op.in]: ids }, entity_type: req.buyerEntity.type, entity_id: req.buyerEntity.id },
-          attributes: ['id', 'supplier_company_id', 'status'], order: [['id', 'DESC']]
+          attributes: ['id', 'supplier_company_id', 'status', 'payment_terms'], order: [['id', 'DESC']]
         })
       : [];
     const myStatus = {};
-    for (const row of myRows) if (!(row.supplier_company_id in myStatus)) myStatus[row.supplier_company_id] = row.status;
+    const myBilling = {};
+    for (const row of myRows) {
+      if (!(row.supplier_company_id in myStatus)) myStatus[row.supplier_company_id] = row.status;
+      if (row.status === 'active' && !(row.supplier_company_id in myBilling)) myBilling[row.supplier_company_id] = externalBillingOf(row);
+    }
     // 브랜드 화면: 업체마다 «산하 매장 몇 곳이 사본을 가졌나» (카드 한 줄 — 공유 창을 열지 않아도 보이게)
     let shareCount = null; let storeTotal = 0;
     if (req.buyerEntity.type === 'brand' && ids.length) {
@@ -1309,6 +1388,7 @@ router.get('/external-suppliers', async (req, res) => {
       ...(req.buyerEntity.type === 'owner' ? { owner_store_count: ownerStoreTotal, owner_store_using: Math.max(0, ownerStoreTotal - (ownerOffCount[c.id] || 0)) } : {}),
       copied_from_brand_at: c.copied_from_supplier_company_id ? c.copied_at : null,
       is_active_for_me: c.id in myStatus ? myStatus[c.id] === 'active' : true,
+      billing: myBilling[c.id] || null,
       ...(shareCount ? { shared_store_count: shareCount[c.id] || 0, brand_store_count: storeTotal } : {}),
     })) });
   } catch (err) {
