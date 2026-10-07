@@ -1,0 +1,58 @@
+{
+  "tag": "kiosk-receipt",
+  "sw_version": "5.89-kiosk-receipt-20261007",
+  "date": "2026-10-07",
+  "in_progress": [
+    "none"
+  ],
+  "completed": [
+    "키오스크 결제 분리 — 매장이 등록한 태블릿만 키오스크(서버 발급 기기 토큰). 손님 폰은 ?kiosk=1 을 열어도 화면만 넓고 결제수단은 모바일 그대로",
+    "설정 › Kiosk 신설 — «키오스크 사용» 스위치(기본 꺼짐, 기존 매장 변화 0) · 등록된 키오스크 태블릿(등록·해제·기기별 단말기 주소) · 등록 없이 여는 주소·QR",
+    "결제수단 설정에 POS · Mobile · Kiosk 칸 — Kiosk 칸은 키오스크 사용이 켜졌을 때만, 따로 정하기 전엔 모바일과 같음(온라인 결제만 꺼짐), 현금·직원식·계좌이체는 키오스크에서 숨김",
+    "키오스크에서 카드단말기 결제 — 승인된 단말기 거래로만 기록, 승인 전 주문은 주방에 안 감, 거절 시 다시 시도/카운터 결제, 무응답은 직원 안내(카드단말기는 강제 아님)",
+    "주문 꼬리표 «Kiosk» — 실시간 주문·보고서·주방 티켓 계산원 칸에 Kiosk",
+    "좌측 메뉴 «Kiosk» — Mobile Order 아래 열기 항목(꺼져 있으면 설정 › Kiosk 로) + 설정 메뉴 Kiosk",
+    "청구서 영수증 드래그·PDF 올리기(영수증 방 작업 — Fable 최종 게이트 PASS)"
+  ],
+  "remaining": [
+    "키오스크 카드단말기 실기 검증(앱 기기 + 실단말기) — GHL 파일럿 날"
+  ],
+  "verification": {
+    "api": "health-check kiosk 4/4(등록·해제·401 / 사용 스위치 409 KIOSK_DISABLED / 출처·채널·다른 매장 / 카드 기록 4조건·멱등·직원 전용 403) · terminal 11/11 · payment 6/6 · print 11/11 · 전체 health-check 303/304(실패 1 = bless 전 보호파일 지문, bless 뒤 해소)",
+    "fault_injection": "6건 모두 잡힘 — 토큰 없는 kiosk 허용 / 결제 기록 매장·기기 확인 제거 / 승인 상태 확인 제거 / 채널 검사 제거 / 사용 스위치 주문 관문 제거 / 등록 관문 제거 · settings-guard wipe 자물쇠 반증 1",
+    "browser": "실브라우저 클릭 흐름 17/17(dev 데모 매장, 목 단말기 브릿지) · mount sweep 크래시 0 · 타입 신규 0",
+    "printer": "Irene 실프린터 확인(2026-10-07 «다 확인했어») → 🔒 bless(Fable)",
+    "sw_version": "5.89-kiosk-receipt-20261007",
+    "fable_note": ".claude/fable-verdict-20261007-kiosk-final-gate.md (설계 kiosk-payment-split · 게이트 kiosk-payment-split-gate · 설정 진입 kiosk-settings-entry)"
+  },
+  "notes": [
+    "🔒 보호파일 3개(orders-crud · MainLayout · useAutoPrintPoller) 승인 범위 글자 변경 — 인쇄 경로 무접촉, Irene 실프린터 확인 뒤 bless",
+    "마이그 1개: migrate-create-kiosk-devices.js(deploy, 신규 표, 멱등)"
+  ],
+  "irene_actions_after_deploy": [
+    "매장 관리자: 설정 › Kiosk → «키오스크 사용» 켜기 → 결제수단에서 Kiosk 칸 고르기 → 키오스크 태블릿에서 관리자 로그인 후 «이 기기를 키오스크로 등록»",
+    "카드 결제를 받으려면 태블릿에 Purple POS 앱 + 결제수단 › Card 단말기 연동 + Card 의 Kiosk 칸 켜기"
+  ],
+  "issues": [
+    "키오스크가 모바일오더의 화면 모양일 뿐이라 결제수단을 따로 정할 수 없었다",
+    "키오스크에서 카드단말기로 결제할 수 없었다",
+    "손님 폰과 매장 태블릿을 구분할 방법이 없었다(주소만 알면 누구나 키오스크)",
+    "키오스크를 켜고 끄는 곳·들어가는 메뉴가 없었다"
+  ],
+  "upcoming": [
+    "키오스크 카드단말기 실기 검증(GHL 파일럿)"
+  ],
+  "behavior_changes": [
+    "설정 메뉴에 Kiosk 가 생겼고, 모바일 주문 탭의 키오스크 카드는 그리로 옮겼다",
+    "결제수단 설정에 Kiosk 칸이 생긴다(키오스크 사용을 켰을 때만)",
+    "등록된 태블릿에서 낸 주문은 «Kiosk» 로 표시된다",
+    "주방 티켓 계산원 칸에 Kiosk 가 찍힌다(키오스크 주문만)"
+  ],
+  "check_areas": [
+    "설정 › Kiosk",
+    "결제수단 설정",
+    "모바일 주문(키오스크 화면)",
+    "실시간 주문·Floor Plan 결제",
+    "청구서 영수증 올리기"
+  ]
+}

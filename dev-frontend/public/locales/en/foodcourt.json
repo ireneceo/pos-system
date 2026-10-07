@@ -114,7 +114,7 @@
   "foodcourtInvoicesPage.scanQrCodeToPay": "Scan QR Code to Pay",
   "foodcourtInvoicesPage.pleaseProvideEitherA": "Please provide either a",
   "foodcourtInvoicesPage.transactionIdReferenceNumber": "Transaction ID / Reference Number",
-  "foodcourtInvoicesPage.paymentReceiptImage": "Payment Receipt Image",
+  "foodcourtInvoicesPage.paymentReceiptImage": "Payment Receipt (image or PDF)",
   "foodcourtInvoicesPage.removeImage": "Remove Image",
   "foodcourtInvoicesPage.clickToUploadPaymentReceipt": "Click to upload payment receipt",
   "foodcourtInvoicesPage.supportsJpgPngMax5mb": "Supports JPG, PNG (max 5MB)",

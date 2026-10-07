@@ -114,7 +114,7 @@
   "foodcourtInvoicesPage.scanQrCodeToPay": "결제를 위해 QR 코드 스캔",
   "foodcourtInvoicesPage.pleaseProvideEitherA": "다음 중 하나를 제공하세요",
   "foodcourtInvoicesPage.transactionIdReferenceNumber": "거래 ID / 참조 번호",
-  "foodcourtInvoicesPage.paymentReceiptImage": "결제 영수증 이미지",
+  "foodcourtInvoicesPage.paymentReceiptImage": "결제 영수증 (이미지 또는 PDF)",
   "foodcourtInvoicesPage.removeImage": "제거 이미지",
   "foodcourtInvoicesPage.clickToUploadPaymentReceipt": "결제 영수증 업로드 클릭",
   "foodcourtInvoicesPage.supportsJpgPngMax5mb": "JPG, PNG 지원 (최대 5MB)",

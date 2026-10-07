@@ -13,6 +13,7 @@ import OrderingBanner from '../components/OrderingBanner';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import { getActiveTable, setActiveTable } from '../utils/tableSession';
 import { isKioskMode } from '../utils/kioskMode';
+import { hasKioskToken } from '../../utils/kioskDevice';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -359,6 +360,7 @@ interface StoreData {
     packagingNote?: string;
   };
   pauseOrdering?: boolean;
+  kioskEnabled?: boolean;
   pauseMessage?: string;
   tableNumberRequired?: boolean;
   floorTables?: string[];
@@ -415,6 +417,7 @@ const OrderTypePage: React.FC = () => {
       pickupSettings: data.pickupSettings || undefined,
       takeawaySettings: data.takeawaySettings || undefined,
       pauseOrdering: !!data.pauseOrdering,
+      kioskEnabled: data.kioskEnabled === true,
       pauseMessage: data.pauseMessage || '',
       tableNumberRequired: !!data.tableNumberRequired,
       floorTables: Array.isArray(data.floorTables) ? data.floorTables : [],
@@ -714,6 +717,23 @@ const OrderTypePage: React.FC = () => {
       <OptionsContainer $kiosk={kiosk}>
         {!orderTypes ? (
           <div style={{ textAlign: 'center', padding: '40px 0', color: '#6B7280', fontSize: '14px' }}>Loading...</div>
+        ) : hasKioskToken() && storeData && storeData.kioskEnabled === false ? (
+          // 등록된 키오스크인데 매장이 «키오스크 사용» 을 껐다 — 손님에게는 카운터 안내만(직원 로그인 링크 없음 · Fable D5)
+          <div style={{
+            textAlign: 'center',
+            padding: '40px 24px',
+            background: '#FEF2F2',
+            border: '1px solid #FCA5A5',
+            borderRadius: '12px',
+            color: '#7F1D1D'
+          }}>
+            <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '8px' }}>
+              {t('menu:kiosk.off.title')}
+            </div>
+            <div style={{ fontSize: '14px', lineHeight: 1.5 }}>
+              {t('menu:kiosk.off.body')}
+            </div>
+          </div>
         ) : storeData?.pauseOrdering ? (
           <div style={{
             textAlign: 'center',

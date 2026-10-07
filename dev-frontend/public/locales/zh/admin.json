@@ -1069,7 +1069,7 @@
   "invoicesPage.loadingPaymentMethods": "加载支付方式中...",
   "invoicesPage.transactionIdReferenceNumber": "交易ID / 参考编号",
   "invoicesPage.notesOptional": "备注（可选）",
-  "invoicesPage.paymentReceiptImage": "付款收据图片",
+  "invoicesPage.paymentReceiptImage": "付款收据（图片或 PDF）",
   "invoicesPage.removeImage": "移除 图片",
   "invoicesPage.clickToUploadPaymentReceipt": "点击上传付款收据",
   "invoicesPage.supportsJpgPngMax5mb": "支持JPG、PNG（最大5MB）",

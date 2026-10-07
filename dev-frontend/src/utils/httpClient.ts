@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from '../config/api';
 import { getAuthToken, clearAuthToken } from './auth';
+import { getKioskToken, needsKioskHeader, clearKioskDevice } from './kioskDevice';
 import { shouldDedupe, buildDedupeKey, dedupedFetch, invalidateDedupe } from './fetchDedupe';
 
 // POS 관리자 인증을 건너뛸 경로
@@ -59,6 +60,15 @@ function notifyContextFallback(response: Response): void {
   }
 }
 
+// 매장이 이 키오스크 등록을 해제했다 — 기기 토큰을 지우고 직원 로그인 화면으로 간다(한 번만).
+let kioskRevokedHandled = false;
+function onKioskRevoked(): void {
+  if (kioskRevokedHandled) return;
+  kioskRevokedHandled = true;
+  clearKioskDevice();
+  try { window.location.assign('/pos?kiosk_revoked=1'); } catch { /* ignore */ }
+}
+
 // AuthContext에서 로그아웃 콜백 등록
 export function setOn401Handler(handler: (() => void) | null): void {
   on401Handler = handler;
@@ -99,12 +109,22 @@ export function installFetchInterceptor(): void {
       }
     }
 
+    // 2-b) 등록된 키오스크 기기 토큰 — 주문·단말기·기기 확인 요청에만 싣는다(utils/kioskDevice).
+    //      서버가 이 토큰으로 «키오스크» 를 판정한다(URL ?kiosk=1 은 화면 모양일 뿐). 직원 토큰과 별개.
+    const kioskToken = includesApi ? getKioskToken() : null;
+    const sentKiosk = !!kioskToken && needsKioskHeader(urlString);
+    if (sentKiosk) {
+      const headers = new Headers(resolvedInit?.headers || {});
+      headers.set('X-Kiosk-Token', kioskToken as string);
+      resolvedInit = { ...(resolvedInit || {}), headers };
+    }
+
     // 3) GET dedupe — 같은 endpoint 가 짧은 시간 내 여러 useEffect 에서 호출되면
     //    단 1회만 네트워크로 보내고 응답을 공유한다. (페이지별 코드 변경 0)
     const method = (resolvedInit?.method || (typeof input !== 'string' && !(input instanceof URL) && (input as Request).method) || 'GET').toUpperCase();
     const resolvedUrl = typeof resolvedInput === 'string' ? resolvedInput : resolvedInput.toString();
     if (method === 'GET' && shouldDedupe(resolvedUrl)) {
-      const key = buildDedupeKey(resolvedUrl, injectedAuth);
+      const key = buildDedupeKey(resolvedUrl, injectedAuth + (sentKiosk ? '|kiosk' : ''));
       // 공유 fetch 는 **호출자 signal 이 아니라 dedupe 가 만든 signal** 로 나간다.
       // 호출자 signal 은 구독 취소용으로만 쓰이고, 구독자가 전원 빠졌을 때만 실요청이 abort 된다.
       // (예전엔 리더 signal 이 그대로 실려, 리더가 언마운트하면 팔로워 전원이 AbortError 였다.)
@@ -126,6 +146,7 @@ export function installFetchInterceptor(): void {
         }
       }
       notifyContextFallback(response);
+      if (sentKiosk && response.status === 401) onKioskRevoked();
       // dedupedFetch 가 이미 구독자별 clone 을 준다 — 여기서 다시 clone 하지 않는다.
       return response;
     }
@@ -150,6 +171,9 @@ export function installFetchInterceptor(): void {
 
     // 5) 컨텍스트 회수 감지 (200 + X-Context-Fallback: revoked)
     notifyContextFallback(response);
+
+    // 6) 키오스크 등록 해제(401 KIOSK_REVOKED) — 토큰을 지우고 직원 로그인 화면으로
+    if (sentKiosk && response.status === 401) onKioskRevoked();
 
     return response;
   };

@@ -10,6 +10,7 @@ const Order = require('./Order');
 const OrderAction = require('./OrderAction');
 const OrderPayment = require('./OrderPayment');
 const TerminalTransaction = require('./TerminalTransaction');
+const KioskDevice = require('./KioskDevice');
 const UserContext = require('./UserContext');
 const UserContextRequest = require('./UserContextRequest');
 const CashierShift = require('./CashierShift');
@@ -1041,6 +1042,7 @@ module.exports = {
   OrderAction,
   OrderPayment,
   TerminalTransaction,
+  KioskDevice,
   UserContext,
   UserContextRequest,
   CashierShift,

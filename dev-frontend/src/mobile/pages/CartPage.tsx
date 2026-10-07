@@ -1,11 +1,12 @@
 import React from 'react';
 import styled from 'styled-components';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { isKioskMode } from '../utils/kioskMode';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 // 장바구니 줄·합계·빈 상태는 키오스크 옆 패널과 **같은 것**을 쓴다 — 두 벌로 그리면 금액이 갈라진다.
 import { CartLines, CartSummary, CartEmpty } from '../components/CartContents';
+import { useKioskSplit } from '../components/KioskCartAside';
 
 const CheckoutButton = styled.button<{ $kiosk?: boolean }>`
   position: fixed;
@@ -57,9 +58,13 @@ const CartPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { cartItems } = useMobileOrder();
+  // 키오스크 넓은 화면은 장바구니가 늘 오른쪽에 있다 — 따로 된 장바구니 화면 대신 메뉴로(2026-10-07 Irene)
+  const splitView = useKioskSplit();
 
   const handleCheckout = () => navigate(`/mobile/${slug}/payment`);
   const handleBrowseMenu = () => navigate(`/mobile/${slug}/menu`);
+
+  if (splitView) return <Navigate to={`/mobile/${slug}/menu`} replace />;
 
   if (cartItems.length === 0) {
     return (

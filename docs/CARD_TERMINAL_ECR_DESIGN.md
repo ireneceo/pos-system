@@ -88,6 +88,8 @@ void 자식: sent ─00─▶ approved(부모 voided) · C5 → declined(부모 
 
 ## 5. 남은 것
 
+- **2026-10-07 키오스크 단말기 결제(운영 SW 5.89)**: 등록된 키오스크 태블릿(기기 토큰)이 같은 `/api/terminal` 을 5개 호출(설정·판매·응답·복구·상태조회)만 쓴다 — 수동 기록·Void·찾기는 403, 자기 기기 거래만(`device_label` 머리 `kiosk#<id> `), 판매는 키오스크 주문만, 기기별 단말기 주소 override. 결제 기록은 `POST /orders/:id/payments {terminal_transaction_id}` 가 승인 거래에서 금액·수단을 읽는다. 상세 `docs/KIOSK_MODE.md` §5. **실기(앱 기기 + 실단말기)는 GHL 파일럿 날.**
+
 - **2026-10-02 Fable 판정(Irene 「모든 테스트는 실 운영에서」 수용)**: 개발용 앱(.dev) 경로는 접는다. 안드로이드 **정식 앱 0.3.0**(운영 URL·브릿지·같은 서명키=덮어 설치)을 `/desktop/PurplePOS.apk` 로 배포 → **운영 데모 매장 1곳만** 단말기 켜고 실측(RM 1.00 카드 + TnG QR, 단말기에서 Void). 설정 안 켠 매장은 결제 창·서버 모두 변화 0.
 
 - **GHL 회신 대기**(Irene 발송): 실단말기 전송 형식(HTTP hex 확정 여부·응답 형식), 프로파일(Payhere ECR/Direct), 샌드박스 TID/MID·테스트 단말기, 인증 필수 시나리오, DuitNow QR 처리, Tap-to-Phone 옵션.

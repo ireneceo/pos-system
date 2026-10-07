@@ -84,7 +84,7 @@
   "ownerInvoicesPage.qrPayment": "QR Payment",
   "ownerInvoicesPage.pleaseProvideEitherA": "Please provide either a",
   "ownerInvoicesPage.transactionIdReferenceNumber": "Transaction ID / Reference Number",
-  "ownerInvoicesPage.paymentReceiptImage": "Payment Receipt Image",
+  "ownerInvoicesPage.paymentReceiptImage": "Payment Receipt (image or PDF)",
   "ownerInvoicesPage.notesOptional": "Notes (Optional)",
   "ownerInvoicesPage.clickToChangeImage": "Click to change image",
   "ownerInvoicesPage.clickToUploadReceiptImage": "Click to upload receipt image",

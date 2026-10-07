@@ -20,7 +20,7 @@ import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
 import { isNativeDesktop } from '../../utils/nativeDesktop';
-import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, HelpCircle, BookOpen, Download, RotateCw, Building2, MapPin, Gift, Bell, Target } from 'lucide-react';
+import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, Tablet, TrendingUp, HelpCircle, BookOpen, Download, RotateCw, Building2, MapPin, Gift, Bell, Target } from 'lucide-react';
 import { appDownloadTarget } from '../../utils/nativeAppUpdate';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
 
@@ -1238,7 +1238,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     socket.on('order-created', (payload: any) => {
       fetchBadgeCounts();
       _pokePoll();
-      const isMobile = payload?.source === 'mobile';
+      const isMobile = payload?.source === 'mobile' || payload?.source === 'kiosk'; // 키오스크도 직원이 안 넣은 손님 주문(2026-10-07)
       if (isMobile) {
         const cfg = operationSettingsRef.current?.mobileOrderAlerts;
         setMobileAlertOrders(prev => {
@@ -1387,7 +1387,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               paymentMethod: ord.payment_method || 'counter',
               // 2026-06-25 (Irene "빌에 카드타입 안 나옴"): card_type(snake) → cardType(camel) 전달.
               cardType: ord.card_type || null,
-              cashierName: ord.source === 'mobile' ? 'Mobile Order' : 'POS'
+              cashierName: ord.source === 'mobile' ? 'Mobile Order' : ord.source === 'kiosk' ? 'Kiosk' : 'POS'
             };
             // Bill — payment_status='completed' (모바일 QR 즉시 결제 / 결제 완료) + needs_bill 시
             const _isPaid = ord.payment_status === 'completed' || (ord.payment_status as string) === 'partial';
@@ -1570,7 +1570,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // `locked` = 요금제에 없는 기능 (2026-09-12 · 발주 전용 무료 등급). **숨기지 않고 잠금으로 보여 준다** —
   //   있는 줄 알아야 «업그레이드하면 자동 계산»을 보고 전환한다(docs/BUYER_FREE_TIER_DESIGN.md §5-2).
   type AdminSubItem = { path: string; label: string; hasPending?: boolean; visible?: boolean; openInNewTab?: boolean; matchTabs?: string[]; locked?: boolean };
-  type AdminCategory = { id: string; label: string; icon: React.ReactNode; path?: string; items?: AdminSubItem[]; hasPending?: boolean; visible?: boolean; openInNewTab?: boolean; mobileOrder?: boolean; locked?: boolean };
+  type AdminCategory = { id: string; label: string; icon: React.ReactNode; path?: string; items?: AdminSubItem[]; hasPending?: boolean; visible?: boolean; openInNewTab?: boolean; mobileOrder?: boolean; kiosk?: boolean; locked?: boolean };
 
   const adminCategories: AdminCategory[] = useMemo(() => !isSystemAdmin ? [] : [
     {
@@ -2011,6 +2011,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       { id: 'kitchen', label: t('nav.kitchenDisplay', 'Kitchen Display'), icon: <ChefHat />, path: `/restaurant/${rid}/kitchen`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/kitchen`) && canOpenStaffRoute(`/restaurant/${rid}/kitchen`), locked: !routesLoading && !hasModule('kitchen_display') },
       { id: 'pickup-display', label: t('nav.pickupDisplay', 'Pickup Display'), icon: <Tv />, path: `/restaurant/${rid}/display`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/display`) && canOpenStaffRoute(`/restaurant/${rid}/display`) },
       { id: 'mobile-order', label: t('nav.mobileOrder', 'Mobile Order'), icon: <Smartphone />, path: '/mobile', openInNewTab: true, mobileOrder: true, visible: isRouteAllowed('/mobile/:slug/menu') },
+      // 키오스크 열기(2026-10-07 Irene «모바일오더처럼 좌측메뉴에 키오스크 링크») — 키오스크 사용이 켜져 있으면 키오스크 화면을 새 창으로,
+      // 꺼져 있으면 설정 › Kiosk(사용 스위치)로 보낸다. 실제 키오스크 결제는 그 태블릿을 «등록» 해야 열린다(docs/KIOSK_MODE.md).
+      { id: 'kiosk', label: t('nav.kiosk', 'Kiosk'), icon: <Tablet />, path: '/mobile', openInNewTab: true, mobileOrder: true, kiosk: true, visible: isRouteAllowed('/mobile/:slug/menu') && hasMenuPermission('settings') },
       {
         id: 'products', label: t('nav.section.products'), icon: <Package />,
         items: [
@@ -2094,6 +2097,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: `/restaurant/${rid}/settings?tab=printer`, label: t('nav.printer', 'Printer'), visible: hasMenuPermission('settings') || hasMenuPermission('access_pos') },
           { path: `/restaurant/${rid}/settings?tab=kitchenStations`, label: t('nav.kitchenStations', 'Kitchen Stations'), visible: hasMenuPermission('settings') || hasMenuPermission('access_pos') },
           { path: `/restaurant/${rid}/settings?tab=mobileOrder`, label: t('nav.mobileOrder', 'Mobile Order'), visible: hasMenuPermission('settings') },
+          // 키오스크(매장 태블릿 셀프 주문) — 사용 스위치·기기 등록이 여기 있다. 꺼져 있어도 보인다(켤 곳)(2026-10-07)
+          { path: `/restaurant/${rid}/settings?tab=kiosk`, label: t('nav.kiosk', 'Kiosk'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/settings?tab=reservation`, label: t('nav.reservation', 'Reservation'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/settings?tab=membership`, label: t('nav.membership', 'Membership'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/settings?tab=salesReporting`, label: t('nav.salesReporting', 'Mall Sales Reporting'), visible: hasMenuPermission('settings') },
@@ -2679,6 +2684,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                             const result = await r.json();
                             const data = result.success ? result.data : result;
                             if (data.slug) url = `/mobile/${data.slug}`;
+                            if (cat.kiosk) {
+                              const ms = typeof data.mobile_settings === 'string' ? (() => { try { return JSON.parse(data.mobile_settings); } catch { return {}; } })() : (data.mobile_settings || {});
+                              // 키오스크 사용이 꺼져 있으면 켤 곳(설정 › Kiosk)으로
+                              url = ms.kiosk_enabled === true ? `${url}?kiosk=1` : `/restaurant/${user.restaurantId}/settings?tab=kiosk`;
+                              if (ms.kiosk_enabled !== true) { if (newWin) newWin.close(); navigate(url); return; }
+                            }
                           }
                           if (inAppShell) navigate(url);
                           else if (newWin) newWin.location.href = url;

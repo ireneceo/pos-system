@@ -106,7 +106,7 @@
   "brandInvoicesPage.qrPayment": "QR Payment",
   "brandInvoicesPage.pleaseProvideEitherA": "Please provide either a",
   "brandInvoicesPage.transactionIdReferenceNumber": "Transaction ID / Reference Number",
-  "brandInvoicesPage.paymentReceiptImage": "Payment Receipt Image",
+  "brandInvoicesPage.paymentReceiptImage": "Payment Receipt (image or PDF)",
   "brandInvoicesPage.removeImage": "Remove Image",
   "brandInvoicesPage.clickToUploadPaymentReceipt": "Click to upload payment receipt",
   "brandInvoicesPage.supportsJpgPngMax5mb": "Supports JPG, PNG (max 5MB)",

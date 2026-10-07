@@ -173,7 +173,7 @@ export function useAutoPrintPoller(opts: {
               // 2026-06-25 (Irene "빌에 카드타입 안 나옴"): 주문 card_type(snake) → 빌의 cardType(camel)
               // 으로 전달. billPrint.paymentMethodLabel 이 카드+타입을 라벨에 붙임(인쇄 로직 무변경).
               cardType: ord.card_type || null,
-              cashierName: ord.source === 'mobile' ? 'Mobile Order' : 'POS',
+              cashierName: ord.source === 'mobile' ? 'Mobile Order' : ord.source === 'kiosk' ? 'Kiosk' : 'POS',
               // 2026-06-27 (Irene): 통합티켓 "한 번만" 가드 신호 — 자동인쇄(폴러)가 주문 id+토큰을 넘겨
               // sendUnifiedTickets 가 라운드당 통합 1회만 발행(re-arm 재실행 시 중복 0). 수동/취소안내엔 없음(항상 발행).
               __consolidatedClaim: { orderId: ord.id, token: tok }

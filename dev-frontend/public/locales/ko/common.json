@@ -339,7 +339,8 @@
     "guides": "사용 안내",
     "download": "앱 다운로드",
     "reload": "새로고침",
-    "purchaseOrder": "발주"
+    "purchaseOrder": "발주",
+    "kiosk": "키오스크"
   },
   "language": {
     "en": "English",
@@ -870,5 +871,20 @@
       "label": "현재 재고 ({{orderUnit}} 수)",
       "hint": "레시피 없이 그대로 파는 상품입니다. 구매자가 주문하는 단위({{orderUnit}})로 셉니다."
     }
+  },
+  "receiptUpload": {
+    "prompt": "클릭하거나 파일을 여기로 끌어다 놓아 영수증을 올리세요",
+    "dropHere": "여기에 놓으세요",
+    "hint": "JPG, PNG, WEBP, PDF · 최대 5MB",
+    "tooLarge": "파일은 5MB 이하여야 합니다",
+    "badType": "JPG, PNG, WEBP, PDF 파일만 올릴 수 있습니다",
+    "readFailed": "파일을 읽지 못했습니다. 다른 파일로 시도해 주세요.",
+    "pdfFile": "PDF 파일",
+    "open": "열기",
+    "openPdf": "PDF 열기",
+    "change": "바꾸기",
+    "remove": "지우기",
+    "receiptAlt": "결제 영수증",
+    "clickToEnlarge": "클릭하면 크게 봅니다"
   }
 }

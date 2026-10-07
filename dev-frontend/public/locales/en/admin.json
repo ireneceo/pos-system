@@ -1069,7 +1069,7 @@
   "invoicesPage.loadingPaymentMethods": "Loading payment methods...",
   "invoicesPage.transactionIdReferenceNumber": "Transaction ID / Reference Number",
   "invoicesPage.notesOptional": "Notes (Optional)",
-  "invoicesPage.paymentReceiptImage": "Payment Receipt Image",
+  "invoicesPage.paymentReceiptImage": "Payment Receipt (image or PDF)",
   "invoicesPage.removeImage": "Remove Image",
   "invoicesPage.clickToUploadPaymentReceipt": "Click to upload payment receipt",
   "invoicesPage.supportsJpgPngMax5mb": "Supports JPG, PNG (max 5MB)",

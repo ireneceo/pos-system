@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router-dom';
 import { formatCurrency, getCurrencyDecimals, normalizeCurrencyCode } from '../../utils/currency';
 import { formatAddressHtml, AppLocale } from '../../utils/formatAddress';
 import InvoiceHistoryModal from '../../components/Invoice/InvoiceHistoryModal';
+import ReceiptPreview from '../../components/Invoice/ReceiptPreview';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -1960,10 +1961,7 @@ const InvoicesPage: React.FC = () => {
                   {selectedInvoice.receiptUrl && (
                     <div style={{ marginTop: '12px' }}>
                       <p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p>
-                      <div style={{ textAlign: 'center', background: 'white', padding: '12px', borderRadius: '8px' }}>
-                        <img src={selectedInvoice.receiptUrl} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', cursor: 'pointer' }} onClick={() => window.open(selectedInvoice.receiptUrl, '_blank')} />
-                        <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#4B5563' }}>Click image to view full size</p>
-                      </div>
+                      <ReceiptPreview url={selectedInvoice.receiptUrl} />
                     </div>
                   )}
                 </div>

@@ -84,7 +84,7 @@
   "ownerInvoicesPage.qrPayment": "QR 결제",
   "ownerInvoicesPage.pleaseProvideEitherA": "다음 중 하나를 제공하세요",
   "ownerInvoicesPage.transactionIdReferenceNumber": "거래 ID / 참조 번호",
-  "ownerInvoicesPage.paymentReceiptImage": "결제 영수증 이미지",
+  "ownerInvoicesPage.paymentReceiptImage": "결제 영수증 (이미지 또는 PDF)",
   "ownerInvoicesPage.notesOptional": "메모 (선택사항)",
   "ownerInvoicesPage.clickToChangeImage": "클릭하여 이미지 변경",
   "ownerInvoicesPage.clickToUploadReceiptImage": "영수증 이미지 업로드 클릭",

@@ -339,7 +339,8 @@
     "guides": "Panduan",
     "download": "Muat turun aplikasi",
     "reload": "Muat semula",
-    "purchaseOrder": "Pesanan Belian"
+    "purchaseOrder": "Pesanan Belian",
+    "kiosk": "Kiosk"
   },
   "language": {
     "en": "English",
@@ -870,5 +871,20 @@
       "label": "Stok semasa (bilangan {{orderUnit}})",
       "hint": "Dijual terus (tiada resipi). Kira dalam {{orderUnit}} — unit yang sama dipesan pembeli."
     }
+  },
+  "receiptUpload": {
+    "prompt": "Klik atau seret fail ke sini untuk memuat naik resit",
+    "dropHere": "Lepaskan fail di sini",
+    "hint": "JPG, PNG, WEBP atau PDF · maks 5MB",
+    "tooLarge": "Fail mestilah 5MB atau kurang",
+    "badType": "Hanya fail JPG, PNG, WEBP atau PDF diterima",
+    "readFailed": "Fail tidak dapat dibaca. Sila cuba fail lain.",
+    "pdfFile": "Fail PDF",
+    "open": "Buka",
+    "openPdf": "Buka PDF",
+    "change": "Tukar",
+    "remove": "Buang",
+    "receiptAlt": "Resit pembayaran",
+    "clickToEnlarge": "Klik untuk lihat saiz penuh"
   }
 }

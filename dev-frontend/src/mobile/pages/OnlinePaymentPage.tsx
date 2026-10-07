@@ -5,6 +5,7 @@ import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import MobileLayout from '../components/common/MobileLayout';
+import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit } from '../components/KioskCartAside';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
 
@@ -158,6 +159,7 @@ const OnlinePaymentPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { setCurrentOrder, clearCart, currency } = useMobileOrder();
+  const splitView = useKioskSplit();
 
   // Get order data from sessionStorage
   const sessionData = sessionStorage.getItem('pendingOnlinePayment');
@@ -279,6 +281,9 @@ const OnlinePaymentPage: React.FC = () => {
       showBack
       onBack={() => navigate(`/mobile/${slug}/payment`)}
     >
+      {/* 키오스크 넓은 화면: 결제 중에도 오른쪽 장바구니(보기 전용) */}
+      <KioskSplit $split={splitView}>
+      <KioskMain>
       <Container>
         <PaymentSection>
           <SectionTitle>Complete Payment</SectionTitle>
@@ -364,6 +369,9 @@ const OnlinePaymentPage: React.FC = () => {
           )}
         </PaymentSection>
       </Container>
+      </KioskMain>
+      {splitView && <KioskCartAside showCheckout={false} readOnly />}
+      </KioskSplit>
     </MobileLayout>
   );
 };

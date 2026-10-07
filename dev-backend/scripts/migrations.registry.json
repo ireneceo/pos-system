@@ -107,6 +107,7 @@
     "sprint5-migration.js",
     "sprint6-migration.js",
     "sprint7-migration.js",
+    "migrate-create-kiosk-devices.js",
     "migrate-create-terminal-transactions.js",
     "migrate-soa-child-status-sync.js"
   ],
@@ -136,6 +137,7 @@
     "migrate-images.js": "일회성 — 초기 이미지 마이그레이션(과거 적용). 배포 루프 미포함.",
     "migrate-ingredient-category-merge-20260917.js": "일회성 — 재료 카테고리 두 벌 합치기(2026-09-17 Fable 판정 ⑧). 기본 드라이런이고 --apply 는 Irene 명시 지시 뒤에만. 매장·브랜드를 인자로 받으므로 매 배포 자동 실행 대상이 아니다. 되돌리기는 --undo <스냅샷json>.",
     "migrate-ingredient-unification.js": "일회성 · 재료 목록 통합(브랜드 재료 → Stock Items 거울). 드라이런 기본, --apply 로만 적용. 설계 docs/INGREDIENT_UNIFICATION_DESIGN.md §3-2. 매 배포 재실행 대상 아님.",
+    "migrate-kbulgogi-mirror-swap-20261007.js": "일회성 — K-Bulgogi 1kg 브랜드 재료 두 줄(PI 거울 ing#23 · BP 거울 ing#89) → #23 한 줄(출처만 bp#30 으로 교체, 이력 이동 0). Fable 판정 .claude/fable-verdict-20261007-kbulgogi.md. 드라이런 기본 · --apply(영수증 /var/www/backups/data-migrations) · --undo=<영수증>. 운영 실행은 Irene 지시(Q1·Q3) 뒤.",
     "migrate-logo-images.js": "일회성 — 로고 이미지 마이그(과거 적용).",
     "migrate-logos-to-files.js": "일회성 — 로고 base64 → 고정 파일(과거 적용).",
     "migrate-orders-floor-plan-table-id.js": "레거시 — orders.floor_plan_table_id 추가+백필(과거 적용).",

@@ -26,11 +26,49 @@ function canonicalOrderType(t) {
   return t;
 }
 
-function checkPaymentMethodAllowed({ paymentSettings, paymentMethod, orderType }) {
+// ── 결제 채널 (2026-10-07 Fable 판정 .claude/fable-verdict-20261007-kiosk-payment-split.md D3) ──
+// 채널 3개: pos · mobile(손님 폰) · kiosk(등록된 매장 태블릿). 화면 쪽 같은 규칙 = dev-frontend/src/utils/paymentChannel.ts.
+// 키오스크 열은 매장이 한 번이라도 만지기 전까지 모바일과 같다(`_kioskSplit` 표시 없음 → mobile 값을 따른다).
+// 그래서 기존 매장은 데이터 변경 없이 오늘과 똑같다. 현금·직원식·송금 증빙은 공용 기기에서 받지 않는다.
+const KIOSK_HIDDEN_METHODS = ['cash', 'staffMeal', 'bankTransfer'];
+
+function parseSettings(raw) {
+  if (!raw) return {};
+  if (typeof raw === 'string') { try { return JSON.parse(raw) || {}; } catch { return {}; } }
+  return raw;
+}
+
+/** 이 수단이 이 채널에서 열려 있나. 수단 정의가 없으면 null(«모름» — 호출부가 판단). */
+function methodOpenIn(paymentSettings, key, channel) {
+  const ps = parseSettings(paymentSettings);
+  const m = ps[key];
+  if (!m || typeof m !== 'object' || !Array.isArray(m.availableIn)) return null;
+  if (channel === 'kiosk') {
+    if (KIOSK_HIDDEN_METHODS.includes(key)) return false;
+    if (ps._kioskSplit === true) return m.availableIn.includes('kiosk');
+    // 미분리: 모바일 값을 따르되 온라인 결제(카드번호 입력)는 공용 기기라 기본 OFF — 매장이 Kiosk 토글로 켠다(Fable D3·F2)
+    if (key === 'online') return false;
+    return m.availableIn.includes('mobile');
+  }
+  return m.availableIn.includes(channel);
+}
+
+/**
+ * @param channel 'mobile' | 'kiosk' | undefined — 주면 그 채널에 열린 수단인지도 본다(손님 주문 경로).
+ *                POS 직원 주문은 채널 없이 부른다(오늘처럼 무검사).
+ */
+function checkPaymentMethodAllowed({ paymentSettings, paymentMethod, orderType, channel }) {
   if (!paymentMethod) return { ok: true };  // upstream may treat as default; not our job to reject here
-  const ps = paymentSettings || {};
+  const ps = paymentSettings || {};  // 문자열로 온 옛 값은 오늘처럼 «모름» 으로 통과(아래 method 없음)
   const method = ps[paymentMethod];
   if (!method) return { ok: true };  // unknown — handled elsewhere
+  if (channel && methodOpenIn(ps, paymentMethod, channel) === false) {
+    return {
+      ok: false,
+      code: 'PAYMENT_METHOD_NOT_OPEN_IN_CHANNEL',
+      message: `Payment method "${paymentMethod}" is not available on ${channel === 'kiosk' ? 'this kiosk' : 'mobile ordering'}.`
+    };
+  }
   const allowed = method.allowed_order_types;
   if (!Array.isArray(allowed) || allowed.length === 0) return { ok: true };
 
@@ -82,4 +120,4 @@ function checkOrderTypeEnabled({ operationSettings, orderType }) {
   return { ok: true };
 }
 
-module.exports = { checkPaymentMethodAllowed, checkOrderTypeEnabled, canonicalOrderType, VALID_ORDER_TYPES };
+module.exports = { checkPaymentMethodAllowed, checkOrderTypeEnabled, canonicalOrderType, methodOpenIn, VALID_ORDER_TYPES, KIOSK_HIDDEN_METHODS };

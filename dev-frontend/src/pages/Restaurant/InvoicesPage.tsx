@@ -50,6 +50,7 @@ import SupplierInvoiceTotalFix, { canFixSupplierInvoiceTotal } from '../../compo
 import InvoiceModificationHistory from '../../components/Invoices/InvoiceModificationHistory';
 import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
 import { sortInvoicesRecentFirst, invoiceListDateMs } from '../../utils/invoiceListOrder';
+import ReceiptUploadField from '../../components/Invoice/ReceiptUploadField';
 // ConfirmDialog removed (only used by old SoaBundleRow Pay All)
 interface AdditionalCharge {
   name: string;
@@ -855,25 +856,6 @@ const RestaurantInvoicesPage: React.FC = () => {
     setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '', notes: '' });
     await fetchPaymentMethods(invoice.currency || 'MYR', invoice.issuerType, invoice.issuerId);
     setShowPaymentSubmitModal(true);
-  };
-
-  // Handle receipt image upload
-  const handleReceiptImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setPaymentSubmitError('Image size must be less than 5MB');
-      return;
-    }
-
-    // Convert to base64
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPaymentData(prev => ({ ...prev, receiptImage: reader.result as string }));
-    };
-    reader.readAsDataURL(file);
   };
 
   // Generate Invoice HTML for PDF/Print (Restaurant Admin is always the receiver)
@@ -1976,20 +1958,11 @@ const RestaurantInvoicesPage: React.FC = () => {
                         </FormGroup>
                         <FormGroup>
                           <FormLabel>{t('settings:invoicesPage.paymentReceiptImage')}</FormLabel>
-                          <div style={{ border: '2px dashed #C7CED6', borderRadius: '8px', padding: '20px', textAlign: 'center', cursor: 'pointer', position: 'relative' }}>
-                            {paymentData.receiptImage ? (
-                              <div>
-                                <img src={paymentData.receiptImage} alt="Receipt" style={{ maxWidth: '200px', maxHeight: '200px', marginBottom: '8px', borderRadius: '8px' }} />
-                                <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4B5563' }}>{t('settings:invoicesPage.clickToChangeImage')}</p>
-                              </div>
-                            ) : (
-                              <div>
-                                <p style={{ margin: '0', fontSize: '14px', color: '#4B5563' }}>{t('settings:invoicesPage.clickToUploadReceiptImage')}</p>
-                                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6B7280' }}>{t('settings:invoicesPage.max5mbJpgpng')}</p>
-                              </div>
-                            )}
-                            <input type="file" accept="image/*" onChange={handleReceiptImageUpload} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
-                          </div>
+                          <ReceiptUploadField
+                            value={paymentData.receiptImage}
+                            onChange={(v) => setPaymentData(prev => ({ ...prev, receiptImage: v }))}
+                            onError={setPaymentSubmitError}
+                          />
                         </FormGroup>
                       </>
                     )}

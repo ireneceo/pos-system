@@ -29,7 +29,8 @@ async function api(path: string, body: any): Promise<{ ok: boolean; status: numb
   try {
     const res = await fetch(`/api/terminal${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+      // 직원 로그인이 없으면(등록된 키오스크) 빈 Authorization 을 싣지 않는다 — 기기 토큰은 httpClient 가 싣는다
+      headers: { 'Content-Type': 'application/json', ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}) },
       body: JSON.stringify(body || {}),
     });
     let json: any = null;

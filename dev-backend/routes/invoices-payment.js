@@ -30,6 +30,7 @@ const { normalizeAdditionalCharges, getAvailablePaymentMethods } = require('../u
 const { sendNotification, sendNotificationBatch, getSystemAdminIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
 const { invoicePaidEmail } = require('../utils/notificationTemplates');
 const { logActivity } = require('../utils/activityLogger');
+const { normalizeReceiptUrl, ReceiptError } = require('../utils/receiptFile');
 
 // 원장 거울 헬퍼(청구서 paid → 발주 paid)는 services/purchaseOrderPayment.js 로 옮겼다
 // (2026-09-11 §8-3 A-4) — 모든 paid 경로가 부르는 handleInvoicePaid 도 같은 함수를 쓴다.
@@ -479,6 +480,17 @@ router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
       }
     }
 
+    // 영수증: data URL(이미지·PDF) → 파일 저장 후 URL 만 기록 (2026-10-05, base64 를 DB 에 넣지 않는다)
+    let storedReceiptUrl = null;
+    try {
+      storedReceiptUrl = await normalizeReceiptUrl(receipt_url, { prefix: `inv${invoice.id}` });
+    } catch (e) {
+      if (e instanceof ReceiptError) {
+        return res.status(400).json({ success: false, code: e.code, message: e.message });
+      }
+      throw e;
+    }
+
     // Update invoice with payment submission + SOA cascade (B1 재설계)
     const { sequelize: _seqB } = require('../config/database');
     await _seqB.transaction(async (t) => {
@@ -488,7 +500,7 @@ router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
         transaction_id: transaction_id || null,
         payment_provider: payment_provider || null,
         payment_intent_id: payment_intent_id || null,
-        receipt_url: receipt_url || null,
+        receipt_url: storedReceiptUrl,
         payment_notes: notes || null,
         payment_submitted_at: new Date(),
         rejection_reason: null

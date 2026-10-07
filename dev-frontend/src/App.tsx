@@ -28,6 +28,7 @@ import AutoPrintFailureBanner from './components/AutoPrintFailureBanner';
 import PrintDeviceReporter from './components/PrintDeviceReporter';
 // Login Page (keep static - frequently used, first contact)
 import LoginPage from './pages/Login/LoginPage';
+import KioskEntryGate from './components/Kiosk/KioskEntryGate';
 
 // Landing Pages — lazy (logged-in users never hit these; visitors see "Loading…" once)
 // 멀티 컨텍스트 로그인 — 선택 화면(lazy) + 크로스탭 팔로우 게이트(항상 마운트, 렌더는 이벤트 시에만)
@@ -554,7 +555,7 @@ function App() {
                       <Route path="/news/:slug" element={<BlogPostPage />} />
 
                       {/* Login & Email Verification */}
-                      <Route path="/pos" element={<LoginPage />} />
+                      <Route path="/pos" element={<KioskEntryGate><LoginPage /></KioskEntryGate>} />
                       {/* 컨텍스트 선택 — 부여받은 모자가 2개 이상인 사용자만 도달한다 */}
                       <Route path="/pos/select-context" element={<ProtectedRoute><ContextSelectPage /></ProtectedRoute>} />
                       <Route path="/verify-email" element={<VerifyEmailPage />} />

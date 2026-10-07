@@ -114,7 +114,7 @@
   "foodcourtInvoicesPage.scanQrCodeToPay": "Imbas Kod QR untuk Membayar",
   "foodcourtInvoicesPage.pleaseProvideEitherA": "Sila berikan salah satu",
   "foodcourtInvoicesPage.transactionIdReferenceNumber": "ID Transaksi / Nombor Rujukan",
-  "foodcourtInvoicesPage.paymentReceiptImage": "Pembayaran Receipt Gambar",
+  "foodcourtInvoicesPage.paymentReceiptImage": "Resit Pembayaran (imej atau PDF)",
   "foodcourtInvoicesPage.removeImage": "Buang Gambar",
   "foodcourtInvoicesPage.clickToUploadPaymentReceipt": "Click Hingga Muat Naik Pembayaran receipt",
   "foodcourtInvoicesPage.supportsJpgPngMax5mb": "Menyokong JPG, PNG (maks 5MB)",

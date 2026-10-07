@@ -106,7 +106,7 @@
   "brandInvoicesPage.qrPayment": "二维码支付",
   "brandInvoicesPage.pleaseProvideEitherA": "请提供以下之一",
   "brandInvoicesPage.transactionIdReferenceNumber": "交易ID / 参考编号",
-  "brandInvoicesPage.paymentReceiptImage": "付款收据图片",
+  "brandInvoicesPage.paymentReceiptImage": "付款收据（图片或 PDF）",
   "brandInvoicesPage.removeImage": "移除 图片",
   "brandInvoicesPage.clickToUploadPaymentReceipt": "点击上传付款收据",
   "brandInvoicesPage.supportsJpgPngMax5mb": "支持JPG、PNG（最大5MB）",

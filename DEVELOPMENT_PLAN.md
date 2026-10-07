@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-07 — [Claude Code] **청구서 «총액 수정» + «수정 이력» 운영 배포 SW 5.88-invoice-total-fix-20261007(백업 20261007_112732 · 스모크 10/10 · Fable 게이트 PASS)** — 외부 공급업체 청구서 총액을 매장 관리자·오너가 청구서 화면에서 고침(오너는 총액만) · 누가·언제·얼마→얼마 이력 표시. health-check T1~T4 · 고장주입 3종 · verify-all --full · 실브라우저 8/8. v3.109 버전 올림은 5.87·5.88 묶어 Irene 결정 대기. `/개발시작` 0-B단계(운영 문의 읽기 `scripts/prod-inbox.js`) 추가. (오전: SW 5.87 운영 배포 — 오너 To Pay 매장 필터·올린 인보이스 보기·브랜드 매니저 메뉴 이동)
+> **최종 업데이트:** 2026-10-07 — [Claude Code] **키오스크·영수증 운영 배포 SW 5.89-kiosk-receipt-20261007(백업 20261007_163801 · 스모크 10/10 · Fable 최종 게이트 PASS)** — 등록된 매장 태블릿만 키오스크(서버 기기 토큰) · 설정 › Kiosk «키오스크 사용» 스위치 · 결제수단 Kiosk 칸 · 키오스크 카드단말기 결제(승인 거래로만 기록) · 주문 꼬리표 Kiosk · 좌측 메뉴 Kiosk · 메뉴·상세·결제 전 과정 오른쪽 장바구니 · 청구서 영수증 드래그·PDF. 문서 `docs/KIOSK_MODE.md`.
+
+> **이전:** 2026-10-07 — [Claude Code] **청구서 «총액 수정» + «수정 이력» 운영 배포 SW 5.88-invoice-total-fix-20261007(백업 20261007_112732 · 스모크 10/10 · Fable 게이트 PASS)** — 외부 공급업체 청구서 총액을 매장 관리자·오너가 청구서 화면에서 고침(오너는 총액만) · 누가·언제·얼마→얼마 이력 표시. health-check T1~T4 · 고장주입 3종 · verify-all --full · 실브라우저 8/8. v3.109 버전 올림은 5.87·5.88 묶어 Irene 결정 대기. `/개발시작` 0-B단계(운영 문의 읽기 `scripts/prod-inbox.js`) 추가. (오전: SW 5.87 운영 배포 — 오너 To Pay 매장 필터·올린 인보이스 보기·브랜드 매니저 메뉴 이동)
 
 > **이전:** 2026-10-06 — [Claude Code] **키오스크 결제 질문 조사(코드 변경 0) → «키오스크 결제 분리» Fable 설계 판단 대기로 등록(Fable 한도 소진).** 상세 session-state 다음 확정 2번.
 
@@ -10860,6 +10862,27 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 
 ### 수정된 파일
 - `.claude/session-state.md` (코드 변경 없음)
+
+---
+
+## ✅ 완료: 키오스크 결제 분리 + 청구서 영수증 드래그·PDF — 운영 배포 SW 5.89 (2026-10-07) [Claude Code]
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 키오스크 = 등록 기기 | 매장 관리자가 태블릿에서 «이 기기를 키오스크로 등록» → 서버 기기 토큰. 손님 폰은 `?kiosk=1` 이어도 결제수단 모바일 그대로(서버 거절) | ✅ 완료 |
+| 설정 › Kiosk | «키오스크 사용» 스위치(기본 꺼짐) · 등록 태블릿 목록·해제·기기별 단말기 주소 · 좌측 메뉴 Kiosk(열기 + 설정) | ✅ 완료 |
+| 결제 채널 Kiosk | 결제수단마다 POS·Mobile·Kiosk 칸(켜졌을 때만, 따로 정하기 전엔 모바일과 같음·온라인만 꺼짐) | ✅ 완료 |
+| 키오스크 카드단말기 | 승인된 단말기 거래로만 결제 기록 · 승인 전 주방 X · 거절=다시 시도/카운터 · 무응답=직원 안내 | ✅ 완료(실기는 GHL 파일럿) |
+| 주문 꼬리표 Kiosk | 실시간 주문·보고서·티켓 계산원 칸(🔒 3파일 승인 범위, 실프린터 확인 뒤 bless) | ✅ 완료 |
+| 오른쪽 장바구니 상시 | 메뉴·상품 상세·결제·QR·온라인 결제 화면 같은 자리 | ✅ 완료 |
+| 청구서 영수증 드래그·PDF | 영수증 방 작업 — Fable 최종 게이트에서 함께 PASS | ✅ 완료 |
+
+### 수정된 파일
+- 서버: `models/KioskDevice.js` · `scripts/migrate-create-kiosk-devices.js` · `middleware/kioskDevice.js` · `routes/kiosk-devices.js` · `server.js` · `routes/orders-crud.js`🔒 · `routes/orders-payment.js` · `routes/terminal-payments.js` · `services/terminalPayments.js` · `utils/paymentMethodGuard.js` · `utils/settingsGuard.js` · `routes/mobile-public.js` · `scripts/health-check.js`(kiosk 4)
+- 화면: `utils/kioskDevice.ts` · `utils/paymentChannel.ts` · `utils/httpClient.ts` · `utils/terminalSale.ts` · `components/Kiosk/KioskEntryGate.tsx` · `pages/Settings/SettingsPage.tsx` · `pages/Settings/KioskDevicesCard.tsx` · `mobile/components/KioskCardPanel.tsx` · `mobile/components/KioskCartAside.tsx` · `mobile/pages/{Menu,ItemDetail,Cart,Payment,QRPayment,OnlinePayment,OrderType}Page.tsx` · `components/Layout/MainLayout.tsx`🔒 · `hooks/useAutoPrintPoller.ts`🔒 · locales 4언어
+- 문서: `docs/KIOSK_MODE.md`(신규) · `docs/ORDER_FLOW_MATRIX.md`
 
 ---
 

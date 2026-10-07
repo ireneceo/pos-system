@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
+import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit, kioskSplitBarCss } from '../components/KioskCartAside';
 import { isKioskMode, isMenuBoardMode, withMenuBoardQuery } from '../utils/kioskMode';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useMenu } from '../../contexts/MenuContext';
@@ -283,7 +284,7 @@ const InstructionsInput = styled.textarea`
   }
 `;
 
-const AddToCartButton = styled.button<{ $kiosk?: boolean }>`
+const AddToCartButton = styled.button<{ $kiosk?: boolean; $split?: boolean }>`
   position: fixed;
   bottom: 68px; /* Space for bottom navigation */
   left: 0;
@@ -325,6 +326,7 @@ const AddToCartButton = styled.button<{ $kiosk?: boolean }>`
     background: #6B7280;
     cursor: not-allowed;
   }
+  ${p => (p.$split ? kioskSplitBarCss : '')}
 `;
 
 const PriceDisplay = styled.span`
@@ -333,6 +335,7 @@ const PriceDisplay = styled.span`
 
 const ItemDetailPage: React.FC = () => {
   const kiosk = isKioskMode();
+  const splitView = useKioskSplit();
   // 보여주기 전용 메뉴판 — **옵션은 보여 주되 고를 수 없고, 담기도 없다**(2026-09-10 Irene).
   const menuBoard = isMenuBoardMode();
   const { t } = useTranslation(['menu', 'common']);
@@ -687,6 +690,9 @@ const ItemDetailPage: React.FC = () => {
   
   return (
     <MobileLayout title={item.code ? `${item.code} ${item.name}` : item.name} showBack onBack={() => navigate(-1)}>
+      {/* 키오스크 넓은 화면: 오른쪽 장바구니를 메뉴 화면과 같은 자리에 그대로 둔다(2026-10-07 Irene) */}
+      <KioskSplit $split={splitView}>
+      <KioskMain>
       <ItemHeader>
         <ItemImage hasImage={!!item.image}>
           {item.image ? (
@@ -829,8 +835,11 @@ const ItemDetailPage: React.FC = () => {
           onChange={(e) => setInstructions(e.target.value)}
         />
       </SpecialInstructions>
-      
-      {!menuBoard && <AddToCartButton $kiosk={kiosk}
+      </KioskMain>
+      {!menuBoard && splitView && <KioskCartAside />}
+      </KioskSplit>
+
+      {!menuBoard && <AddToCartButton $kiosk={kiosk} $split={splitView}
         onClick={handleAddToCart}
         disabled={!isValid()}
         style={justAdded ? { background: '#10B981' } : undefined}

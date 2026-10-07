@@ -20,6 +20,7 @@ export interface Invoice {
   billingPeriod: string;
   planType: string;
   paymentMethod?: string;
+  paymentSubmittedAt?: string;
   transactionId?: string;
   receiptUrl?: string;
   hasPaymentInfo?: boolean;
@@ -148,4 +149,4 @@ export interface CompanySettings {
   swiftCode?: string;
 }
 
-export type TabType = 'to_pay' | 'paid' | 'issued';
+export type TabType = 'to_pay' | 'to_confirm' | 'paid' | 'issued';

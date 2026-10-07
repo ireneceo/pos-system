@@ -339,7 +339,8 @@
     "guides": "Guides",
     "download": "Download app",
     "reload": "Reload",
-    "purchaseOrder": "Purchase Order"
+    "purchaseOrder": "Purchase Order",
+    "kiosk": "Kiosk"
   },
   "language": {
     "en": "English",
@@ -870,5 +871,20 @@
       "label": "Current stock (number of {{orderUnit}})",
       "hint": "Sold as-is (no recipe). Count it in {{orderUnit}} — the same unit buyers order."
     }
+  },
+  "receiptUpload": {
+    "prompt": "Click or drag a file here to upload the receipt",
+    "dropHere": "Drop the file here",
+    "hint": "JPG, PNG, WEBP or PDF · max 5MB",
+    "tooLarge": "File must be 5MB or smaller",
+    "badType": "Only JPG, PNG, WEBP or PDF files are accepted",
+    "readFailed": "Could not read the file. Please try another file.",
+    "pdfFile": "PDF file",
+    "open": "Open",
+    "openPdf": "Open PDF",
+    "change": "Change",
+    "remove": "Remove",
+    "receiptAlt": "Payment receipt",
+    "clickToEnlarge": "Click to view full size"
   }
 }

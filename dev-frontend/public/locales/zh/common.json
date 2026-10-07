@@ -339,7 +339,8 @@
     "guides": "使用指南",
     "download": "下载应用",
     "reload": "刷新",
-    "purchaseOrder": "采购订单"
+    "purchaseOrder": "采购订单",
+    "kiosk": "自助点餐机"
   },
   "language": {
     "en": "English",
@@ -870,5 +871,20 @@
       "label": "当前库存（{{orderUnit}} 数量）",
       "hint": "无配方、直接销售的商品。按买家订购的单位（{{orderUnit}}）计数。"
     }
+  },
+  "receiptUpload": {
+    "prompt": "点击或将文件拖到此处上传收据",
+    "dropHere": "在此放下文件",
+    "hint": "JPG、PNG、WEBP 或 PDF · 最大 5MB",
+    "tooLarge": "文件不能超过 5MB",
+    "badType": "仅支持 JPG、PNG、WEBP 或 PDF 文件",
+    "readFailed": "无法读取文件，请换一个文件重试。",
+    "pdfFile": "PDF 文件",
+    "open": "打开",
+    "openPdf": "打开 PDF",
+    "change": "更换",
+    "remove": "移除",
+    "receiptAlt": "付款收据",
+    "clickToEnlarge": "点击查看大图"
   }
 }

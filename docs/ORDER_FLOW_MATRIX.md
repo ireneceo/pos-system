@@ -14,6 +14,7 @@
 | **모바일 PaymentPage** | `POST /api/orders` | `mobile`(DB 저장) | optionalAuth | `dine-in`→`dine_in` 정규화 |
 | **모바일 레거시** | `POST /api/mobile/order` | ⚠️ DB 미저장(기본 `pos`), 소켓만 `mobile` | 익명(storeId 필수) | `dine-in`→`dine_in` |
 | **Floor Plan 오버레이** | `POST /api/orders` (`?from=floor-plan-overlay`) | `pos` | optionalAuth | POS 와 동일 + `tableId` 명시 |
+| **키오스크(등록 태블릿)** | `POST /api/orders` (모바일 PaymentPage 그대로) | `kiosk` — 서버가 기기 토큰(`X-Kiosk-Token`)을 보고 붙인다. 토큰 없이 `kiosk` 를 보내면 400 · 매장 «키오스크 사용» 꺼짐이면 409 `KIOSK_DISABLED` | 기기 토큰 | 모바일과 동일. 카드(단말기) 주문은 승인 전 `outstanding`. 상세 `docs/KIOSK_MODE.md` |
 
 - **order_type ENUM**: `dine_in`(기본) / `takeaway` / `delivery` / `pickup` / `reservation_deposit`.
 - **dine-in 테이블 필수**: `table_settings.tableNumberRequired` ON 이면 모바일 dine-in 은 table_number 필수(없으면 400 `TABLE_REQUIRED`). takeaway/pickup/delivery 면제. POS 면제.

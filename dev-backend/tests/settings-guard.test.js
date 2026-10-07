@@ -74,3 +74,31 @@ describe('settingsGuard: printer wipe 방어 (thefire 2026-06-24 회귀)', () =>
     expect(r.action).toBe('reject');
   });
 });
+
+// 2026-10-07 Fable F1 — 메타 키(_kioskSplit)가 결제 설정 wipe 자물쇠를 약화시키면 안 된다.
+describe('settingsGuard: payment wipe 방어 — 메타 키는 결제수단이 아니다 (키오스크 분리)', () => {
+  const { guardPaymentSettings } = require('../utils/settingsGuard');
+  const EXISTING = {
+    cash: { enabled: true, availableIn: ['pos'] },
+    card: { enabled: true, availableIn: ['pos', 'kiosk'] },
+    counter: { enabled: true, availableIn: ['mobile', 'kiosk'] },
+    _order: ['cash', 'card', 'counter'],
+    _kioskSplit: true,
+  };
+  const ALL_OFF = {
+    cash: { enabled: false, availableIn: [] },
+    card: { enabled: false, availableIn: [] },
+    counter: { enabled: false, availableIn: [] },
+  };
+  test('전부 꺼진 payload 는 _kioskSplit 표시가 있어도 reject', () => {
+    expect(guardPaymentSettings({ ...ALL_OFF, _kioskSplit: true }, EXISTING, 'T').action).toBe('reject');
+  });
+  test('전부 꺼진 payload 는 표시가 없어도 reject (기존 동작)', () => {
+    expect(guardPaymentSettings(ALL_OFF, EXISTING, 'T').action).toBe('reject');
+  });
+  test('표시 없이 저장해도 기존 _kioskSplit 은 보존(키오스크 값이 모바일 미러로 조용히 되돌아가지 않게)', () => {
+    const r = guardPaymentSettings({ cash: EXISTING.cash, card: EXISTING.card, counter: EXISTING.counter }, EXISTING, 'T');
+    expect(r.action).not.toBe('reject');
+    expect(r.value._kioskSplit).toBe(true);
+  });
+});

@@ -6753,6 +6753,63 @@ function definePrintTests({ adminToken }) {
     } finally { await _poCleanup(fx.po.id); }
   });
 
+  // 2026-10-05 Irene 「Payment Receipt Image 여기 왜 드래그는 안들어가? 왜 pdf는 안들어가?」
+  //   결제 제출 영수증은 이미지·PDF 둘 다 받고, data URL 을 DB 에 넣지 않고 파일로 저장해 URL 만 남긴다.
+  //   ① data:text/html → 400 (청구서 상태 그대로) ② PNG → /uploads/receipts/*.png ③ PDF → /uploads/receipts/*.pdf, GET 200.
+  test('payment', '청구서 결제 영수증: PDF·이미지는 파일 URL 로 저장 · html 은 400', async () => {
+    const jwtLib = require('jsonwebtoken');
+    const { sequelize } = require('../config/database');
+    const fs = require('fs');
+    const pathLib = require('path');
+    const fx = await _poFixture('RCPT', jwtLib);
+    if (!fx) { console.log(c.gray('      (데모 매장 38 발주 픽스처 없음)')); return false; }
+    const made = [];
+    const getStatus = (p) => new Promise((resolve) => {
+      const u = new URL(opts.host + p);
+      (u.protocol === 'https:' ? https : http).get(u, (res) => { res.resume(); resolve(res.statusCode); }).on('error', () => resolve(0));
+    });
+    const reset = (id) => sequelize.query(`UPDATE invoices SET status = 'pending_payment', receipt_url = NULL, payment_submitted_at = NULL WHERE id = ?`, { replacements: [id] });
+    try {
+      const r0 = await request('POST', `/purchase-orders/${fx.po.id}/mark-received`, {}, { Authorization: `Bearer ${fx.token}` });
+      if (r0.status !== 200) return false;
+      const inv = await _pollInvoice(fx.po.id);
+      if (!inv || inv.status !== 'pending_payment') return false;
+      const auth = { Authorization: `Bearer ${fx.token}` };
+      const submit = (receipt) => request('POST', `/invoices/${inv.id}/submit-payment`,
+        { payment_method: 'bank_transfer', receipt_url: receipt, notes: 'health-check receipt' }, auth);
+      const readUrl = async () => (await sequelize.query(`SELECT status, receipt_url FROM invoices WHERE id = ?`, { replacements: [inv.id], type: sequelize.QueryTypes.SELECT }))[0];
+
+      // ① 엉뚱한 종류 → 400, 상태 불변
+      const bad = await submit('data:text/html;base64,' + Buffer.from('<script>alert(1)</script>').toString('base64'));
+      const afterBad = await readUrl();
+      if (bad.status !== 400 || afterBad.status !== 'pending_payment') { console.log(c.gray(`      (html ${bad.status} ${afterBad.status})`)); return false; }
+
+      // ② PNG
+      const png = await require('sharp')({ create: { width: 8, height: 8, channels: 3, background: { r: 99, g: 91, b: 255 } } }).png().toBuffer();
+      const rImg = await submit('data:image/png;base64,' + png.toString('base64'));
+      const afterImg = await readUrl();
+      if (afterImg.receipt_url) made.push(afterImg.receipt_url);
+      if (rImg.status !== 200 || !/^\/uploads\/receipts\/[^/]+\.png$/.test(afterImg.receipt_url || '')) { console.log(c.gray(`      (png ${rImg.status} ${String(afterImg.receipt_url).slice(0, 60)})`)); return false; }
+      if (await getStatus(afterImg.receipt_url) !== 200) return false;
+
+      // ③ PDF — 같은 청구서를 다시 결제 대기로 돌려 제출
+      await reset(inv.id);
+      const pdf = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n', 'latin1');
+      const rPdf = await submit('data:application/pdf;base64,' + pdf.toString('base64'));
+      const afterPdf = await readUrl();
+      if (afterPdf.receipt_url) made.push(afterPdf.receipt_url);
+      if (rPdf.status !== 200 || !/^\/uploads\/receipts\/[^/]+\.pdf$/.test(afterPdf.receipt_url || '')) { console.log(c.gray(`      (pdf ${rPdf.status} ${String(afterPdf.receipt_url).slice(0, 60)})`)); return false; }
+      return (await getStatus(afterPdf.receipt_url)) === 200;
+    } finally {
+      for (const u of made) {
+        if (typeof u === 'string' && u.startsWith('/uploads/receipts/')) {
+          try { fs.unlinkSync(pathLib.join('/var/www', u)); } catch { /* 이미 없음 */ }
+        }
+      }
+      await _poCleanup(fx.po.id);
+    }
+  });
+
   test('pos', '거래청구서: 월간 정산서는 이미 결제된 청구서를 묶지 않는다', async () => {
     // soaScheduler 의 자식 조회 조건을 그대로 재현한다 — 필터가 빠지면 여기서 갈린다.
     const src = require('fs').readFileSync(require('path').join(__dirname, '../services/soaScheduler.js'), 'utf8');
@@ -7129,7 +7186,8 @@ function definePrintTests({ adminToken }) {
       await sequelize.query('UPDATE restaurants SET operation_settings = :v WHERE id = :id', { replacements: { v: JSON.stringify({ ...ops, requireVoidPin: true }), id: fx.rest.id } });
       const nopin = await post(`/terminal/transactions/${sale.body.data.id}/void`, {});
       if (nopin.status !== 400 || nopin.body?.code !== 'VOID_PIN_REQUIRED') return fail(`PIN 없음 ${nopin.status} ${nopin.body?.code}`);
-      await sequelize.query('UPDATE restaurants SET operation_settings = :v WHERE id = :id', { replacements: { v: opsRow.operation_settings, id: fx.rest.id } });
+      // PIN 설정 끔 — 매장의 지금 설정(데모 매장을 사람이 켜 둘 수 있다)과 무관하게 «PIN 없는 Void» 를 본다. 원복은 finally
+      await sequelize.query('UPDATE restaurants SET operation_settings = :v WHERE id = :id', { replacements: { v: JSON.stringify({ ...ops, requireVoidPin: false }), id: fx.rest.id } });
       const v1 = await post(`/terminal/transactions/${sale.body.data.id}/void`, {}); ids.push(v1.body?.data?.id);
       if (v1.status !== 201 || !v1.body?.data?.request_hex) return fail(`Void 생성 ${v1.status}`);
       const vr = await post(`/terminal/transactions/${v1.body.data.id}/response`, { response_hex: respond(v1.body.data.request_hex, 'approve') });
@@ -7446,6 +7504,272 @@ function definePrintTests({ adminToken }) {
     const red = await sharp({ create: { width: 120, height: 120, channels: 3, background: { r: 200, g: 40, b: 40 } } }).jpeg().toBuffer();
     const rec = await multipartRecognize(rid, red, adminAuth);
     return rec.body?.data?.mode === 'no_candidates';
+  });
+
+  // ══════════════════════════════════════════════════════════════════
+  // 키오스크 결제 분리 — Fable 판정 .claude/fable-verdict-20261007-kiosk-payment-split.md §5 (2026-10-07).
+  //   «키오스크» = 등록된 기기 토큰(X-Kiosk-Token). 토큰 없이 source kiosk 400 · 채널 가드(폰은 Mobile 열, 키오스크는 Kiosk 열) ·
+  //   키오스크 카드 = 단말기 승인 거래에서만 기록(다른 매장 404 · 승인 없는 거래 400) · 완납 시 outstanding→pending.
+  // ══════════════════════════════════════════════════════════════════
+  // 키오스크 사용 스위치(mobile_settings.kiosk_enabled) — 원본을 파일로 먼저 저장하고 켠다, restore 로 원복
+  //   (2026-10-07 검사 중단으로 데모 매장 설정 원본을 잃은 사고 뒤 규칙 — 바꾸기 전에 저장)
+  async function kioskSwitch(restId, on = true) {
+    const { sequelize } = require('../config/database');
+    const fs = require('fs'); const path = require('path'); const os = require('os');
+    const [[row]] = await sequelize.query('SELECT mobile_settings FROM restaurants WHERE id = :id', { replacements: { id: restId } });
+    const original = row ? row.mobile_settings : null;
+    const file = path.join(os.tmpdir(), `hc-kiosk-mobile-settings-${restId}-${process.pid}.json`);
+    fs.writeFileSync(file, JSON.stringify({ restId, original }));
+    let ms = {}; try { ms = original ? JSON.parse(original) : {}; } catch { ms = {}; }
+    const set = async (v) => sequelize.query('UPDATE restaurants SET mobile_settings = :v WHERE id = :id', { replacements: { v: JSON.stringify({ ...ms, kiosk_enabled: v }), id: restId } });
+    await set(on);
+    return {
+      set,
+      restore: async () => { await sequelize.query('UPDATE restaurants SET mobile_settings = :v WHERE id = :id', { replacements: { v: original, id: restId } }); try { fs.unlinkSync(file); } catch {} },
+    };
+  }
+
+  async function kioskFixture() {
+    const crypto = require('crypto');
+    const { KioskDevice, Restaurant } = require('../models');
+    const fx = await terminalFixture();
+    if (!fx) return null;
+    const mk = async (restaurantId, name) => {
+      const token = crypto.randomBytes(32).toString('base64url');
+      const row = await KioskDevice.create({ restaurant_id: restaurantId, name, status: 'active',
+        token_hash: crypto.createHash('sha256').update(token).digest('hex') });
+      return { row, h: { 'X-Kiosk-Token': token } };
+    };
+    const other = await Restaurant.findOne({ where: { id: { [require('sequelize').Op.ne]: fx.rest.id } }, order: [['id', 'ASC']] });
+    const k = await mk(fx.rest.id, '__HC_KIOSK__');
+    const ko = other ? await mk(other.id, '__HC_KIOSK_OTHER__') : null;
+    const sw = await kioskSwitch(fx.rest.id, true);
+    return { ...fx, k, ko, sw, otherRestId: other?.id || null,
+      cleanup: async () => { await sw.restore(); await KioskDevice.destroy({ where: { name: ['__HC_KIOSK__', '__HC_KIOSK_OTHER__', '__HC_KIOSK_REG__'] } }).catch(() => {}); await fx.restore(); } };
+  }
+  const kioskOrderBody = (restId, extra = {}) => ({
+    restaurant_id: restId, customer_name: '__HC_KIOSK__', order_type: 'takeaway', source: 'mobile', payment_method: 'counter',
+    payment_status: 'pending', status: 'outstanding', total_amount: 7.5, subtotal: 7.5,
+    order_items: [{ name: 'HC Kiosk', quantity: 1, price: 7.5 }], ...extra,
+  });
+  const setPs = async (restId, mutate) => {
+    const { sequelize } = require('../config/database');
+    const { Restaurant } = require('../models');
+    const r = await Restaurant.findByPk(restId);
+    const ps = JSON.parse(JSON.stringify(r.payment_settings || {}));
+    mutate(ps);
+    await sequelize.query('UPDATE restaurants SET payment_settings = :v WHERE id = :id', { replacements: { v: JSON.stringify(ps), id: restId } });
+  };
+
+  test('kiosk', '기기 등록·확인·해제 — RA 만 등록 · 토큰 원문 1회 · 남의 매장 기기 404 · 해제 뒤 401', async () => {
+    const { KioskDevice } = require('../models');
+    const fx = await terminalFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/RA 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    let id = null;
+    const sw = await kioskSwitch(fx.rest.id, true);
+    try {
+      const anon = await request('POST', '/kiosk-devices', { restaurant_id: fx.rest.id, name: '__HC_KIOSK_REG__' });
+      if (anon.status !== 401) return fail(`익명 등록 ${anon.status}`);
+      const other = await request('POST', '/kiosk-devices', { restaurant_id: fx.rest.id, name: '__HC_KIOSK_REG__' }, fx.otherAuth);
+      if (other.status !== 403) return fail(`타매장 RA 등록 ${other.status}`);
+      const reg = await request('POST', '/kiosk-devices', { restaurant_id: fx.rest.id, name: '__HC_KIOSK_REG__' }, fx.auth);
+      if (reg.status !== 201 || !reg.body?.data?.token || reg.body.data.device?.token_hash) return fail(`등록 ${reg.status} ${JSON.stringify(reg.body).slice(0, 120)}`);
+      id = reg.body.data.device.id;
+      const row = await KioskDevice.findByPk(id);
+      if (!row || row.token_hash === reg.body.data.token || row.token_hash.length !== 64) return fail('DB 에 원문 저장');
+      const h = { 'X-Kiosk-Token': reg.body.data.token };
+      const me = await request('GET', '/kiosk-devices/me', null, h);
+      if (me.status !== 200 || me.body?.data?.restaurant_id !== fx.rest.id || !me.body.data.slug) return fail(`me ${me.status}`);
+      const list = await request('GET', `/kiosk-devices?restaurant_id=${fx.rest.id}`, null, fx.auth);
+      if (list.status !== 200 || !list.body.data.some(d => d.id === id) || list.body.data.some(d => d.token_hash)) return fail(`목록 ${list.status}`);
+      const otherRevoke = await request('POST', `/kiosk-devices/${id}/revoke`, {}, fx.otherAuth);
+      if (otherRevoke.status !== 404) return fail(`타매장 해제 ${otherRevoke.status}`);
+      const badHost = await request('PATCH', `/kiosk-devices/${id}`, { terminal_host: 'http://evil/x' }, fx.auth);
+      if (badHost.status !== 400) return fail(`단말기 주소 검증 ${badHost.status}`);
+      const rev = await request('POST', `/kiosk-devices/${id}/revoke`, {}, fx.auth);
+      if (rev.status !== 200 || rev.body?.data?.status !== 'revoked') return fail(`해제 ${rev.status}`);
+      const me2 = await request('GET', '/kiosk-devices/me', null, h);
+      if (me2.status !== 401 || me2.body?.code !== 'KIOSK_REVOKED') return fail(`해제 뒤 me ${me2.status}`);
+      const ord = await request('POST', '/orders', kioskOrderBody(fx.rest.id), h);
+      if (ord.status !== 401) return fail(`해제 뒤 주문 ${ord.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      await sw.restore();
+      if (id) await KioskDevice.destroy({ where: { id } }).catch(() => {});
+      await fx.restore();
+    }
+  });
+
+  test('kiosk', '키오스크 사용 스위치 — 꺼짐이면 등록 기기 주문 409 · 새 등록 409 · /me·해제는 됨 · 공개 응답 kioskEnabled · 토큰 없는 폰 주문은 무영향', async () => {
+    const { Order, Restaurant } = require('../models');
+    const fx = await kioskFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/RA 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const made = [];
+    try {
+      await setPs(fx.rest.id, (ps) => { ps.counter = { ...(ps.counter || {}), enabled: true, availableIn: ['mobile'], allowed_order_types: [] }; });
+      const slug = (await Restaurant.findByPk(fx.rest.id, { attributes: ['slug'] })).slug;
+      const pubOn = await request('GET', `/mobile/store/${slug}`);
+      if (pubOn.body?.data?.kioskEnabled !== true) return fail(`공개 응답 켜짐 ${pubOn.body?.data?.kioskEnabled}`);
+      await fx.sw.set(false);
+      const pubOff = await request('GET', `/mobile/store/${slug}`);
+      if (pubOff.body?.data?.kioskEnabled !== false) return fail(`공개 응답 꺼짐 ${pubOff.body?.data?.kioskEnabled}`);
+      const ord = await request('POST', '/orders', kioskOrderBody(fx.rest.id), fx.k.h);
+      if (ord.body?.data?.id) made.push(ord.body.data.id);
+      if (ord.status !== 409 || ord.body?.code !== 'KIOSK_DISABLED') return fail(`꺼짐 주문 ${ord.status} ${ord.body?.code}`);
+      const reg = await request('POST', '/kiosk-devices', { restaurant_id: fx.rest.id, name: '__HC_KIOSK_REG__' }, fx.auth);
+      if (reg.status !== 409 || reg.body?.code !== 'KIOSK_DISABLED') return fail(`꺼짐 등록 ${reg.status} ${reg.body?.code}`);
+      const me = await request('GET', '/kiosk-devices/me', null, fx.k.h);
+      if (me.status !== 200 || me.body?.data?.kiosk_enabled !== false) return fail(`꺼짐 me ${me.status} ${me.body?.data?.kiosk_enabled}`);
+      const list = await request('GET', `/kiosk-devices?restaurant_id=${fx.rest.id}`, null, fx.auth);
+      if (list.status !== 200) return fail(`꺼짐 목록 ${list.status}`);
+      const phone = await request('POST', '/orders', kioskOrderBody(fx.rest.id));
+      if (phone.body?.data?.id) made.push(phone.body.data.id);
+      if (phone.status !== 201 || phone.body?.data?.source !== 'mobile') return fail(`폰 주문 ${phone.status} ${phone.body?.data?.source}`);
+      await fx.sw.set(true);
+      const ord2 = await request('POST', '/orders', kioskOrderBody(fx.rest.id), fx.k.h);
+      if (ord2.body?.data?.id) made.push(ord2.body.data.id);
+      if (ord2.status !== 201) return fail(`다시 켠 뒤 주문 ${ord2.status} ${JSON.stringify(ord2.body).slice(0, 160)}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      if (made.length) await require('../config/database').sequelize.query('DELETE FROM order_actions WHERE order_id IN (:ids)', { replacements: { ids: made } }).catch(() => {});
+      if (made.length) await Order.destroy({ where: { id: made }, force: true }).catch(() => {});
+      await fx.cleanup();
+    }
+  });
+
+  test('kiosk', '주문 출처·채널 — 토큰 없이 kiosk 400 · 키오스크 주문 source=kiosk · 다른 매장 403 · Kiosk 열만 연 수단은 폰 400 / 키오스크 201 · 미분리 매장 kiosk==mobile', async () => {
+    const { Order } = require('../models');
+    const { methodOpenIn } = require('../utils/paymentMethodGuard');
+    const fx = await kioskFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/RA 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const made = [];
+    const keep = (r) => { if (r.body?.data?.id) made.push(r.body.data.id); return r; };
+    try {
+      // 미분리(표시 없음) — 키오스크 열 = 모바일 열(숨김 3종 제외)
+      await setPs(fx.rest.id, (ps) => { delete ps._kioskSplit; ps.counter = { ...(ps.counter || {}), enabled: true, availableIn: ['mobile'], allowed_order_types: [] }; ps.ewallet = { ...(ps.ewallet || {}), enabled: true, availableIn: ['pos', 'mobile'], allowed_order_types: [] }; });
+      const { Restaurant } = require('../models');
+      const r0 = await Restaurant.findByPk(fx.rest.id);
+      for (const key of Object.keys(r0.payment_settings)) {
+        if (key.startsWith('_') || ['cash', 'staffMeal', 'bankTransfer'].includes(key)) continue;
+        // 온라인 결제(카드번호 입력)는 미분리 키오스크에서 기본 OFF (Fable D3·F2)
+        if (key === 'online') { if (methodOpenIn(r0.payment_settings, key, 'kiosk') !== false) return fail('미분리 online 이 키오스크에 열림'); continue; }
+        if (methodOpenIn(r0.payment_settings, key, 'kiosk') !== methodOpenIn(r0.payment_settings, key, 'mobile')) return fail(`미분리 ${key} kiosk≠mobile`);
+      }
+      const spoof = await request('POST', '/orders', kioskOrderBody(fx.rest.id, { source: 'kiosk' }));
+      if (spoof.status !== 400 || spoof.body?.code !== 'KIOSK_NOT_REGISTERED') { keep(spoof); return fail(`토큰 없는 kiosk ${spoof.status} ${spoof.body?.code}`); }
+      const ok = keep(await request('POST', '/orders', kioskOrderBody(fx.rest.id), fx.k.h));
+      if (ok.status !== 201) return fail(`키오스크 주문 ${ok.status} ${JSON.stringify(ok.body).slice(0, 160)}`);
+      const saved = await Order.findByPk(ok.body.data.id);
+      if (saved.source !== 'kiosk') return fail(`source=${saved.source}`);
+      if (fx.ko) {
+        const wrong = keep(await request('POST', '/orders', kioskOrderBody(fx.rest.id), fx.ko.h));
+        if (wrong.status !== 403) return fail(`다른 매장 기기 ${wrong.status}`);
+      }
+      // 분리 — ewallet 을 Kiosk 에만 연다
+      await setPs(fx.rest.id, (ps) => { ps._kioskSplit = true; ps.ewallet.availableIn = ['pos', 'kiosk']; ps.counter.availableIn = ['mobile', 'kiosk']; });
+      const phone = keep(await request('POST', '/orders', kioskOrderBody(fx.rest.id, { payment_method: 'ewallet' })));
+      if (phone.status !== 400 || phone.body?.code !== 'PAYMENT_METHOD_NOT_OPEN_IN_CHANNEL') return fail(`폰 ewallet ${phone.status} ${phone.body?.code}`);
+      const kio = keep(await request('POST', '/orders', kioskOrderBody(fx.rest.id, { payment_method: 'ewallet' }), fx.k.h));
+      if (kio.status !== 201) return fail(`키오스크 ewallet ${kio.status} ${JSON.stringify(kio.body).slice(0, 160)}`);
+      // 키오스크에 숨김 수단(현금)은 분리 여부와 무관하게 거절
+      await setPs(fx.rest.id, (ps) => { ps.cash = { ...(ps.cash || {}), enabled: true, availableIn: ['pos', 'mobile', 'kiosk'] }; });
+      const cash = keep(await request('POST', '/orders', kioskOrderBody(fx.rest.id, { payment_method: 'cash' }), fx.k.h));
+      if (cash.status !== 400) return fail(`키오스크 현금 ${cash.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      if (made.length) await require('../config/database').sequelize.query('DELETE FROM order_actions WHERE order_id IN (:ids)', { replacements: { ids: made } }).catch(() => {});
+      if (made.length) await Order.destroy({ where: { id: made }, force: true }).catch(() => {});
+      await fx.cleanup();
+    }
+  });
+
+  test('kiosk', '키오스크 카드 — 단말기 승인 거래로만 기록 · 승인 전 outstanding · 완납 pending · 다른 매장 404 · 가짜 거래 400 · 재기록 멱등 · 직원 전용 403', async () => {
+    const { Order, OrderPayment, TerminalTransaction } = require('../models');
+    const { respond } = require('./mock-ghl-terminal');
+    const fx = await kioskFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/RA 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const orders = []; const txns = [];
+    try {
+      await setPs(fx.rest.id, (ps) => { ps._kioskSplit = true; ps.card = { ...(ps.card || {}), enabled: true, availableIn: ['pos', 'kiosk'] }; });
+      // 단말기 꺼짐 → 키오스크 카드 주문 409
+      await setPs(fx.rest.id, (ps) => { ps.card.terminal = { ...(ps.card.terminal || {}), enabled: false }; });
+      const off = await request('POST', '/orders', kioskOrderBody(fx.rest.id, { payment_method: 'card', skipAutoMerge: true }), fx.k.h);
+      if (off.body?.data?.id) orders.push(off.body.data.id);
+      if (off.status !== 409 || off.body?.code !== 'TERMINAL_DISABLED') return fail(`단말기 꺼짐 ${off.status} ${off.body?.code}`);
+      await setPs(fx.rest.id, (ps) => { ps.card.terminal.enabled = true; });
+
+      const cr = await request('POST', '/orders', kioskOrderBody(fx.rest.id, { payment_method: 'card', skipAutoMerge: true }), fx.k.h);
+      if (cr.status !== 201) return fail(`카드 주문 ${cr.status} ${JSON.stringify(cr.body).slice(0, 160)}`);
+      const oid = cr.body.data.id; orders.push(oid);
+      if ((await Order.findByPk(oid)).status !== 'outstanding') return fail('승인 전 outstanding 아님');
+      const amount = String(parseFloat((await Order.findByPk(oid)).total_amount).toFixed(2));
+
+      const noOrder = await request('POST', '/terminal/transactions', { restaurant_id: fx.rest.id, amount }, fx.k.h);
+      if (noOrder.status !== 400) return fail(`주문 없는 판매 ${noOrder.status}`);
+      const posOrder = await Order.create({ restaurant_id: fx.rest.id, customer_name: '__HC_KIOSK__', order_type: 'takeaway', source: 'pos', status: 'pending', total_amount: 3, order_items: [] });
+      orders.push(posOrder.id);
+      const onPos = await request('POST', '/terminal/transactions', { restaurant_id: fx.rest.id, order_id: posOrder.id, amount: '3.00' }, fx.k.h);
+      if (onPos.status !== 404) return fail(`POS 주문 긁기 ${onPos.status}`);
+      for (const [m, p] of [['POST', '/terminal/echo'], ['POST', '/terminal/discovery-report'], ['GET', `/terminal/transactions?restaurant_id=${fx.rest.id}`]]) {
+        const r = await request(m, p, m === 'GET' ? null : { restaurant_id: fx.rest.id }, fx.k.h);
+        if (r.status !== 403) return fail(`직원 전용 ${p} ${r.status}`);
+      }
+
+      const sale = await request('POST', '/terminal/transactions', { restaurant_id: fx.rest.id, order_id: oid, amount }, fx.k.h);
+      if (sale.status !== 201) return fail(`판매 시작 ${sale.status} ${JSON.stringify(sale.body).slice(0, 160)}`);
+      txns.push(sale.body.data.id);
+      for (const p of [`/terminal/transactions/${sale.body.data.id}/void`, `/terminal/transactions/${sale.body.data.id}/manual`, `/terminal/transactions/${sale.body.data.id}/link`]) {
+        const r = await request('POST', p, { order_id: oid, note: 'xxxx' }, fx.k.h);
+        if (r.status !== 403) return fail(`직원 전용 ${p} ${r.status}`);
+      }
+      // 승인 전 기록 시도 = 가짜(승인 없음) → 400
+      const early = await request('POST', `/orders/${oid}/payments`, { terminal_transaction_id: sale.body.data.id, amount: 999, payment_method: 'cash' }, fx.k.h);
+      if (early.status !== 400 || early.body?.code !== 'TERMINAL_TXN_INVALID') return fail(`승인 전 기록 ${early.status} ${early.body?.code}`);
+      const resp = await request('POST', `/terminal/transactions/${sale.body.data.id}/response`, { response_hex: respond(sale.body.data.request_hex, 'approve') }, fx.k.h);
+      if (resp.status !== 200 || resp.body?.data?.status !== 'approved') return fail(`승인 ${resp.status} ${resp.body?.data?.status}`);
+      // 다른 매장 기기로 같은 주문 기록 → 404
+      if (fx.ko) {
+        const o = await request('POST', `/orders/${oid}/payments`, { terminal_transaction_id: sale.body.data.id }, fx.ko.h);
+        if (o.status !== 404) return fail(`다른 매장 기기 기록 ${o.status}`);
+      }
+      // 직원이 만든 승인 거래를 키오스크가 쓰기 → 400 (자기 기기 거래만)
+      const staffSale = await request('POST', '/terminal/transactions', { restaurant_id: fx.rest.id, amount: '1.00' }, fx.auth);
+      txns.push(staffSale.body?.data?.id);
+      const staffLoad = await request('POST', `/terminal/transactions/${staffSale.body.data.id}/response`, { response_hex: respond(staffSale.body.data.request_hex, 'approve') }, fx.k.h);
+      if (staffLoad.status !== 404) return fail(`직원 거래 키오스크 접근 ${staffLoad.status}`);
+
+      const rec = await request('POST', `/orders/${oid}/payments`, { terminal_transaction_id: sale.body.data.id, amount: 0.01, payment_method: 'cash' }, fx.k.h);
+      if (rec.status !== 201) return fail(`기록 ${rec.status} ${JSON.stringify(rec.body).slice(0, 160)}`);
+      const after = await Order.findByPk(oid);
+      if (after.payment_status !== 'completed' || after.status !== 'pending') return fail(`완납 뒤 ${after.payment_status}/${after.status}`);
+      const pays = await OrderPayment.findAll({ where: { order_id: oid } });
+      if (pays.length !== 1 || pays[0].payment_method !== 'card' || Math.abs(parseFloat(pays[0].amount) - parseFloat(amount)) > 0.001 || !String(pays[0].transaction_id).startsWith('GHL:')) {
+        return fail(`원장 ${pays.length} ${pays[0]?.payment_method} ${pays[0]?.amount} ${pays[0]?.transaction_id}`);
+      }
+      const t = await TerminalTransaction.findByPk(sale.body.data.id);
+      if (Number(t.order_payment_id) !== Number(pays[0].id)) return fail('거래↔원장 연결 없음');
+      const again = await request('POST', `/orders/${oid}/payments`, { terminal_transaction_id: sale.body.data.id }, fx.k.h);
+      if (again.status !== 200 || !again.body?.deduped || (await OrderPayment.count({ where: { order_id: oid } })) !== 1) return fail(`재기록 ${again.status} deduped=${again.body?.deduped}`);
+      // 키오스크 토큰 없이(익명) 결제 기록 → 401
+      const anon = await request('POST', `/orders/${oid}/payments`, { terminal_transaction_id: sale.body.data.id });
+      if (anon.status !== 401) return fail(`익명 기록 ${anon.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      // 결제 기록이 order_actions 를 남긴다(FK) — 먼저 지워야 주문이 지워진다
+      if (orders.length) await require('../config/database').sequelize.query('DELETE FROM order_actions WHERE order_id IN (:ids)', { replacements: { ids: orders } }).catch(() => {});
+      await OrderPayment.destroy({ where: { order_id: orders } }).catch(() => {});
+      await TerminalTransaction.destroy({ where: { id: txns.filter(Boolean) } }).catch(() => {});
+      if (orders.length) await Order.destroy({ where: { id: orders }, force: true }).catch(() => {});
+      await fx.cleanup();
+    }
   });
 }
 

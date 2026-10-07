@@ -42,6 +42,8 @@ import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Comm
 import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
 import PayPalPaymentForm from '../../components/Invoice/PayPalPaymentForm';
+import ReceiptUploadField from '../../components/Invoice/ReceiptUploadField';
+import ReceiptPreview from '../../components/Invoice/ReceiptPreview';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 
@@ -411,49 +413,6 @@ const BrandInvoicesPage: React.FC = () => {
     setPaymentData({ paymentMethod: '', transactionId: '', notes: '', receiptImage: '' });
     setShowPaymentSubmitModal(true);
     await fetchPaymentMethods(invoice.currency || 'MYR', invoice.issuerType, invoice.issuerId);
-  };
-
-  const resizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 800, quality: number = 0.7): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const reader = new FileReader();
-      reader.onload = (e) => { img.src = e.target?.result as string; };
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        if (width > maxWidth || height > maxHeight) {
-          const ratio = Math.min(maxWidth / width, maxHeight / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) { reject(new Error('Failed to get canvas context')); return; }
-        ctx.drawImage(img, 0, 0, width, height);
-        const resizedBase64 = canvas.toDataURL('image/jpeg', quality);
-        resolve(resizedBase64);
-      };
-      img.onerror = () => reject(new Error('Failed to load image'));
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleReceiptImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) { setPaymentSubmitError('Please upload an image file (JPG, PNG, etc.)'); return; }
-    if (file.size > 10 * 1024 * 1024) { setPaymentSubmitError('File size must be less than 10MB'); return; }
-    try {
-      setPaymentSubmitError(null);
-      const resizedImage = await resizeImage(file, 1024, 1024, 0.8);
-      setPaymentData(prev => ({ ...prev, receiptImage: resizedImage }));
-    } catch (error) {
-      console.error('Error processing image:', error);
-      setPaymentSubmitError('Failed to process image. Please try another file.');
-    }
   };
 
   const fetchInvoiceCategories = useCallback(async () => {
@@ -1182,7 +1141,12 @@ const BrandInvoicesPage: React.FC = () => {
     return matchesSearch && matchesDateRange;
   }).sort((a, b) => new Date(b.paidDate || b.issueDate).getTime() - new Date(a.paidDate || a.issueDate).getTime());
 
+  // To Confirm — 내가 발행했고 상대가 결제를 올려 내 확인을 기다리는 것(기간·검색 필터 없이 전부)
+  const toConfirmInvoices = invoices.filter(i => i.status === 'payment_submitted')
+    .sort((a, b) => new Date(b.paymentSubmittedAt || b.issueDate).getTime() - new Date(a.paymentSubmittedAt || a.issueDate).getTime());
   const issuedPg = usePagination(filteredInvoices, 20);
+  const toConfirmPg = usePagination(toConfirmInvoices, 20);
+  const issuedTablePg = activeTab === 'to_confirm' ? toConfirmPg : issuedPg;
   const toPayPg = usePagination(filteredInvoicesToPay, 20);
   const paidPg = usePagination(filteredPaidInvoices, 20);
 
@@ -1403,7 +1367,7 @@ const BrandInvoicesPage: React.FC = () => {
     if (isToPayTab) {
       return (
         <ActionButtons>
-          <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
+          <LocalActionButton onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
           {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
             // 외부 공급업체 청구서는 발주 결제 모달로 (2026-09-11 §8-5 E-2 · Irene 「브랜드제너럴에서도 외부공급업체 결제가
             //   내부 솔루션공급업체처럼 페이가 나오네」). 가입 판매자는 기존 Pay(submit-payment) 그대로.
@@ -1443,10 +1407,10 @@ const BrandInvoicesPage: React.FC = () => {
 
     return (
       <ActionButtons>
-        <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
-        {invoice.status === 'draft' && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton><LocalActionButton variant="success" onClick={() => handleSendInvoice(invoice)} title="Send Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9 22,2"/></svg></LocalActionButton>{deleteBtn}</>)}
+        <LocalActionButton onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
+        {invoice.status === 'draft' && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton><LocalActionButton onClick={() => handleSendInvoice(invoice)} title="Send Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9 22,2"/></svg></LocalActionButton>{deleteBtn}</>)}
         {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton>{pdfBtn}{printBtn}{emailBtn}{deleteBtn}</>)}
-        {invoice.status === 'payment_submitted' && (<>{invoice.hasPaymentInfo && (<LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('brand:brandInvoicesPage.confirm')}</LocalActionButton>)}{pdfBtn}{printBtn}{emailBtn}</>)}
+        {invoice.status === 'payment_submitted' && (<>{invoice.hasPaymentInfo && (<LocalActionButton variant="success" onClick={() => handleConfirmPayment(invoice)}>{t('brand:brandInvoicesPage.confirm')}</LocalActionButton>)}{pdfBtn}{printBtn}{emailBtn}</>)}
         {invoice.status === 'overdue' && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton>{pdfBtn}{printBtn}{emailBtn}{deleteBtn}</>)}
         {invoice.status === 'paid' && (<>{pdfBtn}{printBtn}</>)}
         {invoice.status === 'cancelled' && pdfBtn}
@@ -1476,20 +1440,28 @@ const BrandInvoicesPage: React.FC = () => {
 
         <Tabs>
           <CommonTab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>Invoices to Pay<TabBadge count={invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length} variant="warning" /></CommonTab>
+          <CommonTab active={activeTab === 'to_confirm'} onClick={() => handleTabChange('to_confirm')}>{t('brand:brandInvoicesPage.toConfirmTab', 'To Confirm')}<TabBadge count={toConfirmInvoices.length} variant="danger" /></CommonTab>
           <CommonTab active={activeTab === 'paid'} onClick={() => handleTabChange('paid')}>Paid Invoices<TabBadge count={paidInvoicesList.length} /></CommonTab>
           <CommonTab active={activeTab === 'issued'} onClick={() => handleTabChange('issued')}>Issued Invoices<TabBadge count={invoices.length} /></CommonTab>
           <CommonTab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>Categories<TabBadge count={invoiceCategories.length} /></CommonTab>
         </Tabs>
 
-        {/* Issued Tab */}
-        {activeTab === 'issued' && (
+        {/* Issued Tab · To Confirm Tab (같은 표, To Confirm 은 결제 올라온 것만) */}
+        {(activeTab === 'issued' || activeTab === 'to_confirm') && (
           <>
+            {activeTab === 'to_confirm' ? (
+              <div style={{ marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#1F2937', margin: '0 0 4px 0' }}>{t('brand:brandInvoicesPage.toConfirmTitle', 'Payment confirmation required')}</h3>
+                <p style={{ fontSize: '14px', color: '#4B5563', margin: 0 }}>{t('brand:brandInvoicesPage.toConfirmDesc', 'Customers submitted payment for these invoices. Check the payment and confirm.')}</p>
+              </div>
+            ) : (
             <FilterBarWrapper>
               <DatePeriodFilter activePeriod={activePeriod} dateRange={dateRange} isCustomDateRange={isCustomDateRange} onPeriodChange={handlePeriodChange} onCalendarRangeSelect={handleCalendarRangeSelect}>
                 <SearchInput placeholder="Search invoice, status, company, type..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </DatePeriodFilter>
               <FiltersRight><Button variant="primary" onClick={handleCreateInvoice}>{t('brand:brandInvoicesPage.createInvoice')}</Button></FiltersRight>
             </FilterBarWrapper>
+            )}
             <DataTableContainer><DataTable><DataTableHead><tr>
               <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.invoice')}</DataTableHeaderCell>
               <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.customer')}</DataTableHeaderCell>
@@ -1501,7 +1473,7 @@ const BrandInvoicesPage: React.FC = () => {
               <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
               <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
             </tr></DataTableHead><tbody>
-              {issuedPg.pageItems.map(invoice => (
+              {issuedTablePg.pageItems.map(invoice => (
                 <DataTableRow key={invoice.id}>
                   <DataTableCell data-label="Invoice" align="left"><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo></DataTableCell>
                   <DataTableCell data-label="Customer" align="left"><InvoiceInfo><InvoiceNumber>{invoice.externalPayerName || invoice.customerName || invoice.restaurantName || 'Unknown'}{invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('brand:brandInvoicesPage.nonmember')}</span>}</InvoiceNumber><CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName></InvoiceInfo></DataTableCell>
@@ -1514,9 +1486,10 @@ const BrandInvoicesPage: React.FC = () => {
                   <DataTableCell data-label="" mobileFullWidth>{renderInvoiceActions(invoice)}</DataTableCell>
                 </DataTableRow>
               ))}
-              {filteredInvoices.length === 0 && (<DataTableRow><DataTableCell colSpan={9}><DataTableEmpty><div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>{t('brand:brandInvoicesPage.noInvoicesFound')}</div><div style={{ fontSize: '14px' }}>{invoices.length === 0 ? 'Create your first invoice to get started' : 'Try adjusting your filters'}</div></DataTableEmpty></DataTableCell></DataTableRow>)}
+              {activeTab === 'to_confirm' && toConfirmInvoices.length === 0 && (<DataTableRow><DataTableCell colSpan={9}><DataTableEmpty><div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>{t('brand:brandInvoicesPage.toConfirmEmpty', 'Nothing to confirm')}</div><div style={{ fontSize: '14px' }}>{t('brand:brandInvoicesPage.toConfirmEmptyDesc', 'No invoices are waiting for payment confirmation.')}</div></DataTableEmpty></DataTableCell></DataTableRow>)}
+              {activeTab === 'issued' && filteredInvoices.length === 0 && (<DataTableRow><DataTableCell colSpan={9}><DataTableEmpty><div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>{t('brand:brandInvoicesPage.noInvoicesFound')}</div><div style={{ fontSize: '14px' }}>{invoices.length === 0 ? 'Create your first invoice to get started' : 'Try adjusting your filters'}</div></DataTableEmpty></DataTableCell></DataTableRow>)}
             </tbody></DataTable></DataTableContainer>
-            <Pagination page={issuedPg.page} totalPages={issuedPg.totalPages} total={issuedPg.total} pageSize={issuedPg.pageSize} onChange={issuedPg.setPage} label="invoices" />
+            <Pagination page={issuedTablePg.page} totalPages={issuedTablePg.totalPages} total={issuedTablePg.total} pageSize={issuedTablePg.pageSize} onChange={issuedTablePg.setPage} label="invoices" />
           </>
         )}
 
@@ -1582,7 +1555,7 @@ const BrandInvoicesPage: React.FC = () => {
                   <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('brand:brandInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="" mobileFullWidth>
                     <ActionButtons>
-                      <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
+                      <LocalActionButton onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
                       <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>
                       <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton>
                     </ActionButtons>
@@ -1656,7 +1629,7 @@ const BrandInvoicesPage: React.FC = () => {
                   <>
                     <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', color: '#92400E', display: 'flex', alignItems: 'flex-start', gap: '8px' }}><span style={{ fontWeight: '600', flexShrink: 0 }}>*</span><span>{t('brand:brandInvoicesPage.pleaseProvideEitherA')}<strong>{t('brand:brandInvoicesPage.transactionIdReferenceNumber')}</strong> or upload a <strong>{t('brand:brandInvoicesPage.paymentReceiptImage')}</strong> to submit your payment.</span></div>
                     <FormGroup><FormLabel>{t('brand:brandInvoicesPage.transactionIdReferenceNumber')}</FormLabel><FormInput type="text" placeholder="Enter transaction ID or reference number" value={paymentData.transactionId} onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))} /></FormGroup>
-                    <FormGroup><FormLabel>{t('brand:brandInvoicesPage.paymentReceiptImage')}</FormLabel><div style={{ border: '2px dashed #C7CED6', borderRadius: '8px', padding: '20px', textAlign: 'center', background: paymentData.receiptImage ? '#F0FDF4' : '#F9FAFB', cursor: 'pointer', position: 'relative' }}>{paymentData.receiptImage ? (<div><img src={paymentData.receiptImage} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }} /><div><button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>{t('brand:brandInvoicesPage.removeImage')}</button></div></div>) : (<label style={{ cursor: 'pointer', display: 'block' }}><input type="file" accept="image/*" onChange={handleReceiptImageUpload} style={{ display: 'none' }} /><div style={{ color: '#4B5563', fontSize: '14px' }}><div style={{ fontSize: '24px', marginBottom: '8px' }}>+</div><div>{t('brand:brandInvoicesPage.clickToUploadPaymentReceipt')}</div><div style={{ fontSize: '12px', marginTop: '4px' }}>{t('brand:brandInvoicesPage.supportsJpgPngMax5mb')}</div></div></label>)}</div></FormGroup>
+                    <FormGroup><FormLabel>{t('brand:brandInvoicesPage.paymentReceiptImage')}</FormLabel><ReceiptUploadField value={paymentData.receiptImage} onChange={(v) => setPaymentData(prev => ({ ...prev, receiptImage: v }))} onError={setPaymentSubmitError} /></FormGroup>
                     <FormGroup><FormLabel>{t('brand:brandInvoicesPage.notesOptional')}</FormLabel><FormTextarea placeholder="Any additional information about the payment..." value={paymentData.notes} onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))} /></FormGroup>
                   </>
                 )}
@@ -1772,7 +1745,7 @@ const BrandInvoicesPage: React.FC = () => {
 
         {/* Payment Confirmation Modal */}
         {showPaymentConfirmModal && selectedInvoice && (
-          <CommonModal isOpen={true} onClose={() => setShowPaymentConfirmModal(false)} title={`Confirm Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={handleMarkAsPaid}> Confirm Payment Received </Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowPaymentConfirmModal(false)} title={`Confirm Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentConfirmModal(false)}> Cancel </Button><Button variant="success" onClick={handleMarkAsPaid}> Confirm Payment Received </Button></>}>
             <FormGroup>
               <FormLabel>{t('brand:brandInvoicesPage.paymentConfirmation')}</FormLabel>
               <InvoiceSummary>
@@ -1791,7 +1764,7 @@ const BrandInvoicesPage: React.FC = () => {
                     {selectedInvoice.paymentMethod && (<p style={{ margin: '0 0 8px 0' }}><strong>Payment Method:</strong> {selectedInvoice.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : selectedInvoice.paymentMethod === 'qr_payment' ? 'QR Payment' : selectedInvoice.paymentMethod === 'stripe' ? 'Stripe' : selectedInvoice.paymentMethod === 'paypal' ? 'PayPal' : selectedInvoice.paymentMethod}</p>)}
                     {selectedInvoice.transactionId && (<p style={{ margin: '0 0 8px 0' }}><strong>Transaction ID:</strong> {selectedInvoice.transactionId}</p>)}
                   </div>
-                  {selectedInvoice.receiptUrl && (<div style={{ marginTop: '12px' }}><p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p><div style={{ textAlign: 'center', background: 'white', padding: '12px', borderRadius: '8px' }}><img src={selectedInvoice.receiptUrl} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', cursor: 'pointer' }} onClick={() => window.open(selectedInvoice.receiptUrl, '_blank')} /><p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#4B5563' }}>{t('brand:brandInvoicesPage.clickImageToViewFullSize')}</p></div></div>)}
+                  {selectedInvoice.receiptUrl && (<div style={{ marginTop: '12px' }}><p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p><ReceiptPreview url={selectedInvoice.receiptUrl} /></div>)}
                 </div>
               </FormGroup>
             )}

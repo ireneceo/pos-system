@@ -106,7 +106,7 @@
   "brandInvoicesPage.qrPayment": "QR 결제",
   "brandInvoicesPage.pleaseProvideEitherA": "다음 중 하나를 제공하세요",
   "brandInvoicesPage.transactionIdReferenceNumber": "거래 ID / 참조 번호",
-  "brandInvoicesPage.paymentReceiptImage": "결제 영수증 이미지",
+  "brandInvoicesPage.paymentReceiptImage": "결제 영수증 (이미지 또는 PDF)",
   "brandInvoicesPage.removeImage": "제거 이미지",
   "brandInvoicesPage.clickToUploadPaymentReceipt": "결제 영수증 업로드 클릭",
   "brandInvoicesPage.supportsJpgPngMax5mb": "JPG, PNG 지원 (최대 5MB)",

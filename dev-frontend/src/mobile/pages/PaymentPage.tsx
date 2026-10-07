@@ -15,6 +15,12 @@ import PhoneInput from '../components/common/PhoneInput';
 import { mobileFetch } from '../utils/mobileApi';
 import { enqueueOrder, getStableIdempotencyKey, cartSignature, clearStableIdempotencyKey, fetchWithTimeout } from '../../utils/offlineOrderQueue';
 import { getActiveTable } from '../utils/tableSession';
+import { hasKioskToken } from '../../utils/kioskDevice';
+import { methodOpenIn } from '../../utils/paymentChannel';
+import { getEcrBridge } from '../../utils/nativeEcr';
+import { runTerminalSale, TerminalPhase } from '../../utils/terminalSale';
+import KioskCardPanel, { KioskCardIssue } from '../components/KioskCardPanel';
+import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit, kioskSplitBarCss } from '../components/KioskCartAside';
 
 const Container = styled.div`
   padding-bottom: 100px;
@@ -263,7 +269,7 @@ const ErrorMessage = styled.div`
 
 // 2026-06-25 (Irene): 결제버튼이 비활성화일 때 "왜 안 되는지" 손님에게 안내(테이블/정보/결제수단
 // 미충족). 회색 버튼만 덩그러니 떠서 손님이 알 수 없던 불친절 해결. PayButton 바로 위 고정 안내바.
-const PayHint = styled.div<{ $kiosk?: boolean }>`
+const PayHint = styled.div<{ $kiosk?: boolean; $split?: boolean }>`
   position: fixed;
   bottom: 122px; /* PayButton(68px) 바로 위 */
   left: 8px;
@@ -289,9 +295,10 @@ const PayHint = styled.div<{ $kiosk?: boolean }>`
     transform: translateX(-50%);
     bottom: 138px;
   }
+  ${p => (p.$split ? kioskSplitBarCss : '')}
 `;
 
-const PayButton = styled.button<{ $kiosk?: boolean }>`
+const PayButton = styled.button<{ $kiosk?: boolean; $split?: boolean }>`
   position: fixed;
   bottom: 68px; /* Space for bottom navigation */
   left: 0;
@@ -338,6 +345,7 @@ const PayButton = styled.button<{ $kiosk?: boolean }>`
     width: 20px;
     height: 20px;
   }
+  ${p => (p.$split ? kioskSplitBarCss : '')}
 `;
 
 const LoadingSpinner = styled.div`
@@ -567,6 +575,36 @@ const PaymentPage: React.FC = () => {
     registerCustomer
   } = useCustomer();
   const { getTakeawayCharge, operationSettings, updateSettings } = useStore();
+
+  // ── 등록된 키오스크(Fable 판정 2026-10-07 D3·D5) ──
+  // 이 기기가 매장에 등록된 키오스크인가(토큰). `?kiosk=1` 만으로 연 화면은 아니다 — 결제수단은 모바일과 같다.
+  const kioskDevice = hasKioskToken();
+  const splitView = useKioskSplit();
+  // 키오스크 카드 = 카드단말기. 앱 브릿지가 있고 서버가 이 기기의 단말기를 «켜짐» 으로 줄 때만 카드를 보인다.
+  //   앱은 브릿지를 페이지가 열린 뒤 끼워 넣으므로(계산대와 같은 이유) 처음 몇 초는 다시 본다.
+  const [kioskTerminalReady, setKioskTerminalReady] = useState(false);
+  React.useEffect(() => {
+    if (!kioskDevice || !currentStore?.id) return;
+    let stop = false;
+    let tries = 0;
+    const check = async () => {
+      if (stop) return;
+      if (!getEcrBridge()) {
+        if (++tries < 10) setTimeout(check, 700);
+        return;
+      }
+      try {
+        const r = await fetch(`/api/terminal/config?restaurant_id=${currentStore.id}`);
+        const j = await r.json().catch(() => null);
+        if (!stop) setKioskTerminalReady(!!(r.ok && j?.data?.enabled));
+      } catch { /* 단말기 결제만 숨긴다 */ }
+    };
+    check();
+    return () => { stop = true; };
+  }, [kioskDevice, currentStore?.id]);
+  const [kioskPay, setKioskPay] = useState<null | { orderId: number; orderNumber: string | null; amount: number; phase: TerminalPhase | 'recording' | null; issue: KioskCardIssue | null }>(null);
+  const kioskFinishRef = React.useRef<(() => Promise<void>) | null>(null);
+  const kioskStopRef = React.useRef(false);
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   // 2026-07-24: 이월렛 서브타입(몰 매출보고 tng 구분) — POS 와 완전히 같은 규칙을 공용 헬퍼로 공유한다.
   //   취급 이월렛 1개 = 손님 입력 없이 자동 태깅 / 2개↑ = 손님이 선택 / 0개 = 캡처 안 함(기존 동작).
@@ -885,8 +923,11 @@ const PaymentPage: React.FC = () => {
         passesCheck: method.enabled && method.availableIn && method.availableIn.includes('mobile')
       });
 
-      // Only show enabled methods that are available in mobile
-      if (method.enabled && method.availableIn && method.availableIn.includes('mobile')) {
+      // Only show enabled methods that are available in this channel — 등록된 키오스크는 Kiosk 열, 그 외(폰·미등록 태블릿)는 Mobile 열
+      //   (utils/paymentChannel — 서버 paymentMethodGuard 와 같은 규칙. 키오스크 카드는 단말기가 이 기기에 닿을 때만)
+      const channel = kioskDevice ? 'kiosk' : 'mobile';
+      if (key === 'card' && channel === 'kiosk' && !kioskTerminalReady) return;
+      if (method.enabled && methodOpenIn(paymentMethods, key, channel)) {
         // Per-order-type filter (data-driven, replaces the old hardcoded `delivery ≠ payAtCounter` rule).
         // Missing/empty `allowed_order_types` → allowed for all order types (backward compatible).
         if (Array.isArray(method.allowed_order_types) && method.allowed_order_types.length > 0) {
@@ -912,7 +953,7 @@ const PaymentPage: React.FC = () => {
 
     console.log('🔍 Final available methods for mobile:', methods.map(m => m.key));
     return methods;
-  }, [paymentMethods, orderType]);
+  }, [paymentMethods, orderType, kioskDevice, kioskTerminalReady]);
 
   const [paymentMethod, setPaymentMethod] = useState<string>(''); // No default - user must select (unless only 1 option remains)
 
@@ -1343,6 +1384,53 @@ const PaymentPage: React.FC = () => {
     return item.selectedOptions || [];
   };
 
+  // 키오스크 카드 결제 — 계산대와 같은 단말기 흐름(utils/terminalSale), 기록은 서버가 승인 거래에서 금액·수단을 읽는다.
+  const runKioskCardPayment = async (orderId: number, orderNumber: string | null, amount: number) => {
+    kioskStopRef.current = false;
+    setKioskPay({ orderId, orderNumber, amount, phase: 'starting', issue: null });
+    setPaymentInFlight(true);
+    const out = await runTerminalSale({
+      restaurantId: Number(currentStore?.id), orderId, amount, cashierName: 'Kiosk',
+      onPhase: (p) => setKioskPay(k => (k ? { ...k, phase: p } : k)),
+      shouldStop: () => kioskStopRef.current,
+    });
+    if (out.kind === 'approved') {
+      setKioskPay(k => (k ? { ...k, phase: 'recording' } : k));
+      let recorded = false;
+      for (let i = 0; i < 3 && !recorded; i++) {
+        try {
+          const r = await fetch(`/api/orders/${orderId}/payments`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ terminal_transaction_id: out.txn.id }),
+          });
+          recorded = r.ok;
+        } catch { /* 네트워크 — 다시 */ }
+        if (!recorded) await new Promise(res => setTimeout(res, 1500));
+      }
+      setPaymentInFlight(false);
+      if (recorded) {
+        setKioskPay(null);
+        await kioskFinishRef.current?.();
+        return;
+      }
+      // 승인은 됐는데 기록 실패 — 다시 긁으면 안 된다. 직원이 같은 주문에 카드를 고르면 재청구 없이 기록된다.
+      setKioskPay(k => (k ? { ...k, phase: null, issue: { kind: 'paidNotRecorded' } } : k));
+      return;
+    }
+    setPaymentInFlight(false);
+    const issue: KioskCardIssue = out.kind === 'declined' || out.kind === 'error'
+      ? (out.message === 'reason:alreadyApproved' ? { kind: 'paidNotRecorded' } : { kind: 'retryable', message: out.message })
+      : { kind: 'askStaff', message: out.message };
+    setKioskPay(k => (k ? { ...k, phase: null, issue } : k));
+  };
+
+  // 카운터에서 결제 — 주문은 결제 전(outstanding)으로 남는다. 직원이 FloorPlan·LiveOrders 에서 받는다.
+  const kioskPayAtCounter = async () => {
+    setKioskPay(null);
+    setPaymentInFlight(false);
+    await kioskFinishRef.current?.();
+  };
+
   const handlePayment = async () => {
     console.log('🔵🔵🔵 PAY BUTTON CLICKED! 🔵🔵🔵');
     console.log('Payment method selected:', paymentMethod);
@@ -1427,7 +1515,10 @@ const PaymentPage: React.FC = () => {
       // Process payment
       console.log('🔵 Step 4: Processing payment for method:', paymentMethod);
 
-        if (paymentMethod === 'payAtCounter' || paymentMethod === 'counter') {
+        // 등록된 키오스크의 카드 = 카드단말기. 주문은 카운터 결제와 같은 길로 만들고(승인 전 주방 X — 서버가 outstanding),
+        //   만든 뒤 이 자리에서 단말기 결제를 돌린다(Fable 판정 2026-10-07 D5).
+        const kioskCard = paymentMethod === 'card' && kioskDevice;
+        if (paymentMethod === 'payAtCounter' || paymentMethod === 'counter' || kioskCard) {
           console.log('🔵 Processing counter payment...');
 
           // Validate delivery info for delivery orders
@@ -1496,8 +1587,10 @@ const PaymentPage: React.FC = () => {
               customer_id: orderCustomer ? orderCustomer.id : null,
               status: 'outstanding',
               order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
-              source: 'mobile',  // Mobile order source
-              payment_method: 'counter',
+              source: 'mobile',  // Mobile order source (등록된 키오스크면 서버가 'kiosk' 로 바꾼다)
+              payment_method: kioskCard ? 'card' : 'counter',
+              // 키오스크 카드는 그 자리에서 낸 이 주문만의 계산서 — 같은 테이블의 미결제 계산서에 합치면 남의 금액까지 긁게 된다
+              ...(kioskCard ? { skipAutoMerge: true } : {}),
               payment_status: 'pending',
               kitchen_ready: false,
               order_date: new Date(),
@@ -1537,6 +1630,12 @@ const PaymentPage: React.FC = () => {
                 body: JSON.stringify(dbOrderData)
               }, 20000);
             } catch (netErr) {
+              // 키오스크 카드는 연결이 있어야 낼 수 있다 — 큐에 넣지 않는다(결제 없는 카드 주문이 나중에 생기지 않게)
+              if (kioskCard) {
+                setError(t('menu:kiosk.pay.noConnection') as string);
+                setIsProcessing(false);
+                return;
+              }
               // 연결 끊김 — 주문을 잃지 않게 로컬 큐에 저장. 재연결 시 자동 전송(서버 멱등으로 중복 0).
               enqueueOrder('/api/orders', dbOrderData);
               setError(t('common:offlineQueued', { defaultValue: 'No connection — your order is saved and will be placed automatically once you are back online.' }) as string);
@@ -1556,6 +1655,7 @@ const PaymentPage: React.FC = () => {
             const backendOrderNumber = savedOrder.order_number;
             const backendPickupNumber = backendOrderNumber ? backendOrderNumber.split('-')[1] : '001';
 
+            const finishOrder = async () => {
             // Update customer stats if member
             if (orderCustomer) {
               updateCustomerOrderStats(orderCustomer.id, total);
@@ -1587,6 +1687,15 @@ const PaymentPage: React.FC = () => {
 
             // Navigate to order tracking
             navigate(`/mobile/${slug}/order/${savedOrder.id}`);
+            };
+
+            if (kioskCard) {
+              // 키오스크 카드 — 주문은 만들어졌다. 단말기 결제 뒤(또는 «카운터에서 결제» 선택 뒤) 위 마무리를 한다.
+              kioskFinishRef.current = finishOrder;
+              await runKioskCardPayment(savedOrder.id, backendOrderNumber || null, parseFloat(savedOrder.total_amount) || total);
+              return;
+            }
+            await finishOrder();
           } catch (error) {
             console.error('❌ Failed to save order to DB:', error);
             setError('Failed to create order. Please try again.');
@@ -1946,7 +2055,10 @@ const PaymentPage: React.FC = () => {
   };
   
   return (
-    <MobileLayout title="Payment" showBack onBack={() => navigate(`/mobile/${slug}/cart`)}>
+    <MobileLayout title="Payment" showBack onBack={() => navigate(splitView ? `/mobile/${slug}/menu` : `/mobile/${slug}/cart`)}>
+      {/* 키오스크 넓은 화면: 결제 중에도 오른쪽 장바구니를 그대로 둔다(2026-10-07 Irene) — 여기서도 수량을 고칠 수 있고 합계가 같이 바뀐다 */}
+      <KioskSplit $split={splitView}>
+      <KioskMain>
       <Container>
         <OrderSummary>
           <ItemsList>
@@ -2990,7 +3102,10 @@ const PaymentPage: React.FC = () => {
             </div>
           )}
 
-          {paymentMethod === 'card' && (
+          {paymentMethod === 'card' && kioskDevice && (
+            <PayHint $kiosk={kiosk} $split={splitView}>{t('menu:kiosk.pay.cardHint')}</PayHint>
+          )}
+          {paymentMethod === 'card' && !kioskDevice && (
             <CardForm>
               <Input
                 type="text"
@@ -3026,6 +3141,9 @@ const PaymentPage: React.FC = () => {
 
         </Section>
       </Container>
+      </KioskMain>
+      {splitView && <KioskCartAside showCheckout={false} readOnly={isProcessing || !!kioskPay} />}
+      </KioskSplit>
 
       {/* 2026-06-25 (Irene): 결제버튼 비활성화 사유를 손님에게 안내(첫 미충족 항목). */}
       {!isProcessing && (() => {
@@ -3034,10 +3152,10 @@ const PaymentPage: React.FC = () => {
         else if (tableRequired && isDineIn && !selectedTable) hint = t('common:selectTableToContinue', 'Please select your table to continue.');
         else if (!currentCustomer && !guestInfo) hint = t('common:enterContactToContinue', 'Please enter your name and phone to continue.');
         else if (!paymentMethod) hint = t('common:selectPaymentToContinue', 'Please select a payment method to continue.');
-        return hint ? <PayHint $kiosk={kiosk}>{hint}</PayHint> : null;
+        return hint ? <PayHint $kiosk={kiosk} $split={splitView}>{hint}</PayHint> : null;
       })()}
 
-      <PayButton $kiosk={kiosk}
+      <PayButton $kiosk={kiosk} $split={splitView}
         onClick={handlePayment}
         disabled={isProcessing || cartItems.length === 0 || !paymentMethod || (!currentCustomer && !guestInfo) || (tableRequired && isDineIn && !selectedTable)}
       >
@@ -3056,6 +3174,7 @@ const PaymentPage: React.FC = () => {
               if (m === 'qr' || m === 'qrpayment' || m === 'qr_payment' || m === 'ewallet') return 'Scan to Pay';
               if (m === 'banktransfer' || m === 'bank_transfer' || m === 'bank') return 'Continue to Bank Transfer';
               if (m === 'paypal') return `Pay with PayPal ${formatCurrency(total, currency)}`;
+              if (m === 'card' && kioskDevice) return `${t('menu:kiosk.pay.payByCard')} ${formatCurrency(total, currency)}`;
               // card / stripe / online / 기본
               return `Pay ${formatCurrency(total, currency)}`;
             })()}
@@ -3064,6 +3183,17 @@ const PaymentPage: React.FC = () => {
       </PayButton>
       
       <CustomerModal />
+      {kioskPay && (
+        <KioskCardPanel
+          phase={kioskPay.phase}
+          issue={kioskPay.issue}
+          orderNumber={kioskPay.orderNumber}
+          amountText={formatCurrency(kioskPay.amount, currency)}
+          onRetry={() => runKioskCardPayment(kioskPay.orderId, kioskPay.orderNumber, kioskPay.amount)}
+          onPayAtCounter={kioskPayAtCounter}
+          onStopWaiting={() => { kioskStopRef.current = true; }}
+        />
+      )}
     </MobileLayout>
   );
 };

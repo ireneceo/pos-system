@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
+import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit, kioskSplitBarCss } from '../components/KioskCartAside';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
 // import QRCode from 'qrcode'; // Temporarily disabled for testing
@@ -180,7 +181,7 @@ const Input = styled.input`
   }
 `;
 
-const SubmitButton = styled.button`
+const SubmitButton = styled.button<{ $split?: boolean }>`
   position: fixed;
   bottom: calc(68px + env(safe-area-inset-bottom, 0px));
   left: 0;
@@ -213,6 +214,7 @@ const SubmitButton = styled.button`
     background: #6B7280;
     cursor: not-allowed;
   }
+  ${p => (p.$split ? kioskSplitBarCss : '')}
 `;
 
 const HiddenFileInput = styled.input`
@@ -245,6 +247,7 @@ const QRPaymentPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { setCurrentOrder, clearCart, currentStore, currency } = useMobileOrder();
+  const splitView = useKioskSplit();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get order data: retry flow uses retryPaymentData, new order uses pendingOrderData
@@ -479,6 +482,9 @@ const QRPaymentPage: React.FC = () => {
         }
       }}
     >
+      {/* 키오스크 넓은 화면: 결제 중에도 오른쪽 장바구니(보기 전용 — 주문 내용은 이미 넘어왔다) */}
+      <KioskSplit $split={splitView}>
+      <KioskMain>
       <Container>
         <QRSection>
           <AmountDisplay>{formatCurrency(total, currency)}</AmountDisplay>
@@ -584,8 +590,11 @@ const QRPaymentPage: React.FC = () => {
           />
         </ProofSection>
       </Container>
+      </KioskMain>
+      {splitView && <KioskCartAside showCheckout={false} readOnly />}
+      </KioskSplit>
 
-      <SubmitButton
+      <SubmitButton $split={splitView}
         onClick={handleSubmit}
         disabled={isSubmitting || (!paymentProofImage && !transferReference)}
       >

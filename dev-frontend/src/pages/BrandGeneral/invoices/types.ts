@@ -20,6 +20,7 @@ export interface Invoice {
   billingPeriod: string;
   planType: string;
   paymentMethod?: string;
+  paymentSubmittedAt?: string;
   transactionId?: string;
   receiptUrl?: string;
   hasPaymentInfo?: boolean;
@@ -161,4 +162,4 @@ export interface PaymentMethod {
   clientId?: string;
 }
 
-export type TabType = 'to_pay' | 'paid' | 'issued' | 'categories';
+export type TabType = 'to_pay' | 'to_confirm' | 'paid' | 'issued' | 'categories';

@@ -1069,7 +1069,7 @@
   "invoicesPage.loadingPaymentMethods": "Memuatkan kaedah pembayaran...",
   "invoicesPage.transactionIdReferenceNumber": "ID Transaksi / Nombor Rujukan",
   "invoicesPage.notesOptional": "Nota (Optional)",
-  "invoicesPage.paymentReceiptImage": "Pembayaran Receipt Gambar",
+  "invoicesPage.paymentReceiptImage": "Resit Pembayaran (imej atau PDF)",
   "invoicesPage.removeImage": "Buang Gambar",
   "invoicesPage.clickToUploadPaymentReceipt": "Click Hingga Muat Naik Pembayaran receipt",
   "invoicesPage.supportsJpgPngMax5mb": "Menyokong JPG, PNG (maks 5MB)",

@@ -151,10 +151,12 @@ export const LocalActionButton = styled.button<{ variant?: 'primary' | 'success'
   `}
 `;
 
+// 삭제(×) 전용 — 위험 업무 = 빨강 (2026-10-07 업무 버튼 색 규칙)
 export const LocalIconButton = styled.button`
   padding: 6px;
-  background: #F4F6F9;
-  border: 1px solid #C7CED6;
+  background: transparent;
+  color: #DC2626;
+  border: 1px solid #FCA5A5;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
@@ -164,7 +166,7 @@ export const LocalIconButton = styled.button`
   justify-content: center;
 
   &:hover {
-    background: #C7CED6;
+    background: #FEE2E2;
     transform: translateY(-1px);
   }
 
@@ -176,7 +178,7 @@ export const LocalIconButton = styled.button`
 export const IconSymbol = styled.span`
   font-size: 16px;
   font-family: 'Lucida Console', 'Courier New', monospace;
-  color: #4B5563;
+  color: inherit;
   display: inline-block;
   line-height: 1;
 `;

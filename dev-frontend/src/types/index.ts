@@ -77,7 +77,7 @@ export interface Restaurant {
 export interface PaymentMethod {
   enabled: boolean;
   label: string;
-  availableIn: ('pos' | 'mobile')[];
+  availableIn: ('pos' | 'mobile' | 'kiosk')[];
   provider?: string;
   config?: Record<string, any>;
   bankName?: string;

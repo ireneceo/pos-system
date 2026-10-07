@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { initOfflineOrderFlush } from '../utils/offlineOrderQueue';
+import { hasKioskToken, verifyKioskRegistration } from '../utils/kioskDevice';
 import { MobileOrderProvider } from './contexts/MobileOrderContext';
 import { CustomerProvider } from '../contexts/CustomerContext';
 import { StaffProvider } from '../contexts/StaffContext';
@@ -27,6 +28,8 @@ import ReservationDetailPage from './pages/ReservationDetailPage';
 const MobileApp: React.FC = () => {
   // #9 오프라인 주문 큐 — 앱 진입 시 1회, online 복귀/주기 flush 등록(끊긴 중 큐잉된 주문 자동 전송).
   useEffect(() => { initOfflineOrderFlush(); }, []);
+  // 등록된 키오스크 — 시작할 때 등록이 살아 있는지 1회 확인(해제됐으면 직원 로그인 화면으로 간다)
+  useEffect(() => { if (hasKioskToken()) verifyKioskRegistration(); }, []);
   return (
     <CustomerProvider>
       <StaffProvider>

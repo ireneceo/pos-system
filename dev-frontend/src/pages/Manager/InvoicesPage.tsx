@@ -9,6 +9,7 @@ import DateField from '../../components/Common/DateField';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate as formatDateTz } from '../../utils/timezone';
+import ReceiptUploadField from '../../components/Invoice/ReceiptUploadField';
 import {
   DataTableContainer,
   DataTable,
@@ -1291,32 +1292,11 @@ const ManagerInvoicesPage: React.FC = () => {
                     </FormGroup>
                     <FormGroup>
                       <FormLabel>{t('admin:invoicesPage.paymentReceiptImage')}</FormLabel>
-                      <div style={{ border: '2px dashed #C7CED6', borderRadius: '8px', padding: '20px', textAlign: 'center', background: paymentData.receiptImage ? '#F0FDF4' : '#F9FAFB', cursor: 'pointer', position: 'relative' }}>
-                        {paymentData.receiptImage ? (
-                          <div>
-                            <img src={paymentData.receiptImage} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }} />
-                            <div>
-                              <button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>{t('admin:invoicesPage.removeImage')}</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <label style={{ cursor: 'pointer', display: 'block' }}>
-                            <input type="file" accept="image/*" onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file || !file.type.startsWith('image/')) return;
-                              if (file.size > 10 * 1024 * 1024) return;
-                              const reader = new FileReader();
-                              reader.onload = (ev) => { setPaymentData(prev => ({ ...prev, receiptImage: ev.target?.result as string })); };
-                              reader.readAsDataURL(file);
-                            }} style={{ display: 'none' }} />
-                            <div style={{ color: '#4B5563', fontSize: '14px' }}>
-                              <div style={{ fontSize: '24px', marginBottom: '8px' }}>+</div>
-                              <div>{t('admin:invoicesPage.clickToUploadPaymentReceipt')}</div>
-                              <div style={{ fontSize: '12px', marginTop: '4px' }}>{t('admin:invoicesPage.supportsJpgPngMax5mb')}</div>
-                            </div>
-                          </label>
-                        )}
-                      </div>
+                      <ReceiptUploadField
+                        value={paymentData.receiptImage}
+                        onChange={(v) => setPaymentData(prev => ({ ...prev, receiptImage: v }))}
+                        onError={(msg) => setInlineWarning(msg || '')}
+                      />
                     </FormGroup>
                   </>
                 )}

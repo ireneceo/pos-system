@@ -39,6 +39,8 @@ import { SearchInput, FilterSelect } from '../../components/Common/FilterCompone
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
+import ReceiptUploadField from '../../components/Invoice/ReceiptUploadField';
+import ReceiptPreview from '../../components/Invoice/ReceiptPreview';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 
@@ -347,48 +349,6 @@ const FoodcourtInvoicesPage: React.FC = () => {
     setPaymentSubmitError(null);
     await fetchPaymentMethods(invoice.currency || 'MYR', invoice.issuerType, invoice.issuerId);
     setShowPaymentSubmitModal(true);
-  };
-
-  const resizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 800, quality: number = 0.7): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const reader = new FileReader();
-      reader.onload = (e) => { img.src = e.target?.result as string; };
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        if (width > maxWidth || height > maxHeight) {
-          const ratio = Math.min(maxWidth / width, maxHeight / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) { reject(new Error('Failed to get canvas context')); return; }
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = () => reject(new Error('Failed to load image'));
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleReceiptImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) { setPaymentSubmitError('Please upload an image file (JPG, PNG, etc.)'); return; }
-    if (file.size > 10 * 1024 * 1024) { setPaymentSubmitError('File size must be less than 10MB'); return; }
-    try {
-      setPaymentSubmitError(null);
-      const resizedImage = await resizeImage(file, 1024, 1024, 0.8);
-      setPaymentData(prev => ({ ...prev, receiptImage: resizedImage }));
-    } catch (error) {
-      console.error('Error processing image:', error);
-      setPaymentSubmitError('Failed to process image. Please try another file.');
-    }
   };
 
   const fetchInvoiceCategories = useCallback(async () => {
@@ -1510,7 +1470,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   <>
                     <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', color: '#92400E', display: 'flex', alignItems: 'flex-start', gap: '8px' }}><span style={{ fontWeight: '600', flexShrink: 0 }}>*</span><span>{t('foodcourt:foodcourtInvoicesPage.pleaseProvideEitherA')}<strong>{t('foodcourt:foodcourtInvoicesPage.transactionIdReferenceNumber')}</strong> or upload a <strong>{t('foodcourt:foodcourtInvoicesPage.paymentReceiptImage')}</strong> to submit your payment.</span></div>
                     <FormGroup><FormLabel>{t('foodcourt:foodcourtInvoicesPage.transactionIdReferenceNumber')}</FormLabel><FormInput type="text" placeholder="Enter transaction ID or reference number" value={paymentData.transactionId} onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))} /></FormGroup>
-                    <FormGroup><FormLabel>{t('foodcourt:foodcourtInvoicesPage.paymentReceiptImage')}</FormLabel><div style={{ border: '2px dashed #C7CED6', borderRadius: '8px', padding: '20px', textAlign: 'center', background: paymentData.receiptImage ? '#F0FDF4' : '#F9FAFB', cursor: 'pointer', position: 'relative' }}>{paymentData.receiptImage ? (<div><img src={paymentData.receiptImage} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }} /><div><button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>{t('foodcourt:foodcourtInvoicesPage.removeImage')}</button></div></div>) : (<label style={{ cursor: 'pointer', display: 'block' }}><input type="file" accept="image/*" onChange={handleReceiptImageUpload} style={{ display: 'none' }} /><div style={{ color: '#4B5563', fontSize: '14px' }}><div style={{ fontSize: '24px', marginBottom: '8px' }}>+</div><div>{t('foodcourt:foodcourtInvoicesPage.clickToUploadPaymentReceipt')}</div><div style={{ fontSize: '12px', marginTop: '4px' }}>{t('foodcourt:foodcourtInvoicesPage.supportsJpgPngMax5mb')}</div></div></label>)}</div></FormGroup>
+                    <FormGroup><FormLabel>{t('foodcourt:foodcourtInvoicesPage.paymentReceiptImage')}</FormLabel><ReceiptUploadField value={paymentData.receiptImage} onChange={(v) => setPaymentData(prev => ({ ...prev, receiptImage: v }))} onError={setPaymentSubmitError} /></FormGroup>
                     <FormGroup><FormLabel>{t('foodcourt:foodcourtInvoicesPage.notesOptional')}</FormLabel><FormTextarea placeholder="Any additional information about the payment..." value={paymentData.notes} onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))} /></FormGroup>
                   </>
                 )}
@@ -1571,7 +1531,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
         {showPaymentConfirmModal && selectedInvoice && (
           <CommonModal isOpen={true} onClose={() => setShowPaymentConfirmModal(false)} title={`Confirm Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={handleMarkAsPaid}> Confirm Payment Received </Button></>}>
             <FormGroup><FormLabel>{t('foodcourt:foodcourtInvoicesPage.paymentConfirmation')}</FormLabel><InvoiceSummary><SummaryRow><span>Manager:</span><span>{selectedInvoice.managerName}</span></SummaryRow><SummaryRow><span>Company:</span><span>{selectedInvoice.companyName}</span></SummaryRow><SummaryRow><span>Invoice Number:</span><span>{selectedInvoice.invoiceNumber}</span></SummaryRow><SummaryRow><span>Due Date:</span><span>{formatDate(selectedInvoice.dueDate)}</span></SummaryRow><SummaryRow highlight><span><strong>Payment Amount:</strong></span><span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</strong></span></SummaryRow></InvoiceSummary></FormGroup>
-            {(selectedInvoice.paymentMethod || selectedInvoice.receiptUrl || selectedInvoice.transactionId) && (<FormGroup><FormLabel>{t('foodcourt:foodcourtInvoicesPage.customersPaymentInformation')}</FormLabel><div style={{ background: '#EFF6FF', border: '1px solid #3B82F6', borderRadius: '8px', padding: '16px' }}><div style={{ fontSize: '14px', lineHeight: '1.8' }}>{selectedInvoice.paymentMethod && (<p style={{ margin: '0 0 8px 0' }}><strong>Payment Method:</strong> {selectedInvoice.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : selectedInvoice.paymentMethod === 'qr_payment' ? 'QR Payment' : selectedInvoice.paymentMethod === 'stripe' ? 'Stripe' : selectedInvoice.paymentMethod === 'paypal' ? 'PayPal' : selectedInvoice.paymentMethod}</p>)}{selectedInvoice.transactionId && (<p style={{ margin: '0 0 8px 0' }}><strong>Transaction ID:</strong> {selectedInvoice.transactionId}</p>)}</div>{selectedInvoice.receiptUrl && (<div style={{ marginTop: '12px' }}><p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p><div style={{ textAlign: 'center', background: 'white', padding: '12px', borderRadius: '8px' }}><img src={selectedInvoice.receiptUrl} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', cursor: 'pointer' }} onClick={() => window.open(selectedInvoice.receiptUrl, '_blank')} /><p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#4B5563' }}>{t('foodcourt:foodcourtInvoicesPage.clickImageToViewFullSize')}</p></div></div>)}</div></FormGroup>)}
+            {(selectedInvoice.paymentMethod || selectedInvoice.receiptUrl || selectedInvoice.transactionId) && (<FormGroup><FormLabel>{t('foodcourt:foodcourtInvoicesPage.customersPaymentInformation')}</FormLabel><div style={{ background: '#EFF6FF', border: '1px solid #3B82F6', borderRadius: '8px', padding: '16px' }}><div style={{ fontSize: '14px', lineHeight: '1.8' }}>{selectedInvoice.paymentMethod && (<p style={{ margin: '0 0 8px 0' }}><strong>Payment Method:</strong> {selectedInvoice.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : selectedInvoice.paymentMethod === 'qr_payment' ? 'QR Payment' : selectedInvoice.paymentMethod === 'stripe' ? 'Stripe' : selectedInvoice.paymentMethod === 'paypal' ? 'PayPal' : selectedInvoice.paymentMethod}</p>)}{selectedInvoice.transactionId && (<p style={{ margin: '0 0 8px 0' }}><strong>Transaction ID:</strong> {selectedInvoice.transactionId}</p>)}</div>{selectedInvoice.receiptUrl && (<div style={{ marginTop: '12px' }}><p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p><ReceiptPreview url={selectedInvoice.receiptUrl} /></div>)}</div></FormGroup>)}
             <div style={{ background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', padding: '16px', margin: '16px 0' }}><p style={{ margin: 0, color: '#92400E', fontSize: '14px' }}><strong>{t('foodcourt:foodcourtInvoicesPage.confirmPaymentReceipt')}</strong><br />Only mark this invoice as paid if you have received and verified the payment. This action will update the invoice status to "Paid".</p></div>
             <FormGroup><FormLabel>{t('foodcourt:foodcourtInvoicesPage.statusChange')}</FormLabel><div style={{ fontSize: '14px', lineHeight: '1.6', color: '#1F2937', background: '#F1F4F8', padding: '12px', borderRadius: '6px' }}>Payment Submitted → Paid<br />Paid Date: {formatDateTime(new Date(), operationSettings, { year: 'numeric', month: '2-digit', day: '2-digit' })}</div></FormGroup>
           </CommonModal>

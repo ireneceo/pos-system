@@ -396,11 +396,46 @@ router.post('/:id/staff-meal-names', authenticateToken, requirePaymentAccess, as
 // 카운터 결제 기록(현금/카드 수납) — 결제권한(access_payment) 직원만. 서버(홀)·서빙 전용
 // 직원은 차단(2026-06-24 access_payment 분리). 모바일 게스트는 이 경로가 아닌
 // create-payment-intent/capture(공개) 사용이므로 영향 없음. docs/SERVING_VIEW_DESIGN.md §7.
-router.post('/:id/payments', authenticateToken, requirePaymentAccess, async (req, res) => {
+//
+// 키오스크(등록된 매장 태블릿, req.kioskDevice — server.js 가 X-Kiosk-Token 으로 싣는다 · Fable 판정 2026-10-07 D5):
+//   직원 없이 손님이 단말기로 낸 카드 결제를 기록한다. 화면이 보낸 금액·수단은 믿지 않는다 — 서버가 확인한
+//   **그 기기의 승인된 단말기 거래**(terminal_transaction_id)에서 금액·수단·참조를 가져온다. 조건 4개:
+//   ① 기기 매장 = 주문 매장 ② 주문 출처 kiosk ③ 거래가 이 주문에 연결된 승인(approved) 판매 ④ 이 기기가 만든 거래.
+//   완납되면 키오스크 주문만 outstanding → pending(주방 진입)으로 서버가 올린다(직원 화면이 없으니).
+const staffOrKioskPayment = (req, res, next) => {
+  if (req.kioskDevice) return next();
+  return authenticateToken(req, res, () => requirePaymentAccess(req, res, next));
+};
+
+router.post('/:id/payments', staffOrKioskPayment, async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
+    const kiosk = req.kioskDevice || null;
+    if (kiosk) {
+      if (Number(order.restaurant_id) !== Number(kiosk.restaurant_id) || order.source !== 'kiosk') {
+        return res.status(404).json({ success: false, message: 'Order not found' });
+      }
+      const { TerminalTransaction } = require('../models');
+      const termSvc = require('../services/terminalPayments');
+      const tid = parseInt(req.body?.terminal_transaction_id, 10);
+      const txn = Number.isFinite(tid) ? await TerminalTransaction.findByPk(tid) : null;
+      if (!txn || txn.command !== 'sale' || txn.status !== 'approved' || Number(txn.order_id) !== Number(order.id)
+          || Number(txn.restaurant_id) !== Number(order.restaurant_id) || !termSvc.isKioskTxnOf(txn, kiosk)) {
+        return res.status(400).json({ success: false, code: 'TERMINAL_TXN_INVALID', message: 'No approved card payment for this order' });
+      }
+      const ref = termSvc.transactionRef(txn);
+      // 같은 승인으로 두 번 기록하지 않는다(재시도·새로고침) — 이미 원장에 있으면 그대로 성공
+      if (txn.order_payment_id || await OrderPayment.findOne({ where: { order_id: order.id, transaction_id: ref } })) {
+        return res.json({ success: true, deduped: true, data: { order: { id: order.id, payment_status: order.payment_status } } });
+      }
+      req.body = {
+        amount: txn.amount, payment_method: txn.tender_method || 'card',
+        card_type: txn.tender_method === 'ewallet' ? null : (txn.card_type || null),
+        ewallet_type: txn.tender_method === 'ewallet' ? (txn.ewallet_type || null) : null,
+        transaction_id: ref, cashier_name: `Kiosk ${kiosk.name}`.slice(0, 100), _kioskTxnId: txn.id,
+      };
+    } else if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
         && !['System Admin'].includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
@@ -469,7 +504,15 @@ router.post('/:id/payments', authenticateToken, requirePaymentAccess, async (req
     if (fullyPaid && order.status === 'awaiting_payment') {
       updateData.status = 'pending';
     }
+    // 키오스크 카드 주문(승인 전 outstanding) → 완납이면 주방으로. 직원 결제 흐름은 오늘처럼 화면이 올린다(무변경).
+    if (fullyPaid && kiosk && order.status === 'outstanding') {
+      updateData.status = 'pending';
+    }
     await order.update(updateData);
+    if (kiosk && req.body._kioskTxnId) {
+      const { TerminalTransaction } = require('../models');
+      await TerminalTransaction.update({ order_payment_id: payment.id }, { where: { id: req.body._kioskTxnId, order_payment_id: null } });
+    }
 
     // 예약-주문 루프 닫기 (P2-6) — 연결된 예약이 있고 완납되면 예약 completed (결제완료 시 자동완료).
     // 백스톱: orders-crud completed 전이 + reservationScheduler.autoCompleteStale. 실패 비치명.
@@ -492,8 +535,8 @@ router.post('/:id/payments', authenticateToken, requirePaymentAccess, async (req
       actionType: 'payment_received',
       performedByUserId: req.user?.id || null,
       performedByName: cashier_name || req.user?.full_name || req.user?.username || 'Cashier',
-      performedByRole: ['System Admin', 'Restaurant Admin'].includes(req.user?.role) ? 'admin' : 'staff',
-      source: 'pos',
+      performedByRole: kiosk ? 'customer' : (['System Admin', 'Restaurant Admin'].includes(req.user?.role) ? 'admin' : 'staff'),
+      source: kiosk ? 'mobile' : 'pos',
       metadata: {
         amount: parsedAmount,
         method: payment_method,

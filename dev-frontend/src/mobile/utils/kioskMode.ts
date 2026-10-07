@@ -9,11 +9,18 @@
 // 그 탭에서는 계속 유지된다(sessionStorage). 손님 폰(QR 스캔)은 영향 없음.
 // 끄는 법: `?kiosk=0` 으로 열거나 탭을 닫는다.
 
+//
+// 2026-10-07 (Fable 판정 .claude/fable-verdict-20261007-kiosk-payment-split.md D2): 매장이 **등록한 기기**
+// (utils/kioskDevice 토큰)는 언제나 키오스크다. `?kiosk=1` 만으로 연 미등록 기기는 화면 모양만 키오스크이고
+// 결제수단·단말기는 모바일과 같다(그 판정은 서버가 토큰으로 한다).
+import { hasKioskToken } from '../../utils/kioskDevice';
+
 const SS_KEY = 'mobile_kiosk_mode';
 
-/** 이 탭이 키오스크인가. URL 플래그가 우선, 없으면 이 탭에 저장된 값. */
+/** 이 탭이 키오스크(화면 모양)인가. 등록 기기 → 항상. 아니면 URL 플래그가 우선, 없으면 이 탭에 저장된 값. */
 export function isKioskMode(): boolean {
   if (typeof window === 'undefined') return false;
+  if (hasKioskToken()) return true;
   try {
     const p = new URLSearchParams(window.location.search).get('kiosk');
     if (p === '1' || p === 'true') { sessionStorage.setItem(SS_KEY, '1'); return true; }

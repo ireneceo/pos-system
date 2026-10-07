@@ -253,8 +253,9 @@ function guardPaymentSettings(incomingRaw, existingRaw, restaurantId = '?') {
     return makeResult('reject', undefined, 'empty payload');
   }
 
-  const incomingKeys = Object.keys(incoming).filter(k => k !== '_order');
-  const existingKeys = Object.keys(existing).filter(k => k !== '_order');
+  // 메타 키(_order · _kioskSplit 등 '_' 로 시작)는 결제수단이 아니다 — 판정에서 빼야 wipe 자물쇠가 약해지지 않는다(2026-10-07 Fable F1)
+  const incomingKeys = Object.keys(incoming).filter(k => !k.startsWith('_'));
+  const existingKeys = Object.keys(existing).filter(k => !k.startsWith('_'));
 
   // 모든 incoming method `enabled:false` 이고 existing 에 enabled true 있으면 reject
   const allDisabled = incomingKeys.length > 0 && incomingKeys.every(k => {
@@ -289,12 +290,14 @@ function guardPaymentSettings(incomingRaw, existingRaw, restaurantId = '?') {
   if (existing._order && !incoming._order) {
     merged._order = existing._order;
   }
+  if (existing._kioskSplit === true && !('_kioskSplit' in incoming)) merged._kioskSplit = true;
 
   if (preserved.length > 0) {
     logAntiWipe('payment_settings', restaurantId, 'merged', `preserved methods: ${preserved.join(', ')}`);
     return makeResult('merged', merged, `preserved methods: ${preserved.join(', ')}`);
   }
-  return makeResult('save', incoming, 'normal');
+  // merged = incoming + (incoming 에 없던) 메타 키 보존분(_order · _kioskSplit) — 결제수단 값은 incoming 그대로
+  return makeResult('save', merged, 'normal');
 }
 
 /** operation_settings (whitelist + merge) */
@@ -429,6 +432,8 @@ function normalizePaymentSettings(raw) {
     if (!Array.isArray(out[k].availableIn)) out[k].availableIn = PAYMENT_CATALOG[k].availableIn;
   }
   out._order = PAYMENT_ORDER.slice();
+  // 키오스크 열을 매장이 따로 정했다는 표시(Fable 판정 2026-10-07 D3) — 없으면 키오스크 = 모바일 값
+  if (ps._kioskSplit === true) out._kioskSplit = true;
   return out;
 }
 

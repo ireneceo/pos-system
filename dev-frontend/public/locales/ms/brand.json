@@ -106,7 +106,7 @@
   "brandInvoicesPage.qrPayment": "QR Pembayaran",
   "brandInvoicesPage.pleaseProvideEitherA": "Sila berikan salah satu",
   "brandInvoicesPage.transactionIdReferenceNumber": "ID Transaksi / Nombor Rujukan",
-  "brandInvoicesPage.paymentReceiptImage": "Pembayaran Receipt Gambar",
+  "brandInvoicesPage.paymentReceiptImage": "Resit Pembayaran (imej atau PDF)",
   "brandInvoicesPage.removeImage": "Buang Gambar",
   "brandInvoicesPage.clickToUploadPaymentReceipt": "Click Hingga Muat Naik Pembayaran receipt",
   "brandInvoicesPage.supportsJpgPngMax5mb": "Menyokong JPG, PNG (maks 5MB)",

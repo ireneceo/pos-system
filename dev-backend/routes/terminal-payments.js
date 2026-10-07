@@ -5,16 +5,32 @@
  *       단말기에 운반 → 받은 응답 hex 를 그대로 /response 로 올린다 → 서버가 해석·검증·기록.
  * 상태 전이는 services/terminalPayments.js 한 곳. 여기서는 권한·입력 확인만 한다.
  * 권한: 로그인 + 결제 권한(access_payment) + 그 매장 접근. restaurant_id 는 접근 판정을 거친 뒤에만 쓴다.
+ *
+ * 키오스크(등록된 매장 태블릿, req.kioskDevice — server.js 가 X-Kiosk-Token 으로 싣는다 · Fable 판정 2026-10-07 D5·D6):
+ *   손님이 키오스크 자리에서 카드를 대는 데 필요한 5개만 — 설정 확인 · 판매 시작(키오스크 주문 필수) · 응답 올리기 ·
+ *   복구(Reprint) · 상태조회. 수동 기록·Void·연결·찾기·주소 저장·목록은 직원 판단이라 403.
+ *   자기 매장·자기 기기가 만든 거래만 다룬다(남의 것은 404).
  */
 const express = require('express');
 const router = express.Router();
 const { authenticateToken, requirePaymentAccess, userCanAccessRestaurant } = require('../middleware/auth');
 const { TerminalTransaction } = require('../models');
 const { Op } = require('sequelize');
+const { Order } = require('../models');
 const svc = require('../services/terminalPayments');
 const { logActivity } = require('../utils/activityLogger');
 
-router.use(authenticateToken, requirePaymentAccess);
+const KIOSK_ALLOWED = [
+  ['GET', /^\/config$/], ['POST', /^\/transactions$/], ['POST', /^\/transactions\/\d+\/(response|recover|check-status)$/],
+];
+router.use((req, res, next) => {
+  if (req.kioskDevice) {
+    const ok = KIOSK_ALLOWED.some(([m, re]) => m === req.method && re.test(req.path));
+    if (!ok) return res.status(403).json({ success: false, code: 'KIOSK_FORBIDDEN', message: 'Not available on a kiosk' });
+    return next();
+  }
+  return authenticateToken(req, res, () => requirePaymentAccess(req, res, next));
+});
 
 const send = (res, e, where) => {
   if (e && e.status) return res.status(e.status).json({ success: false, code: e.code, message: e.message, ...(e.extra ? { data: e.extra } : {}) });
@@ -25,6 +41,10 @@ const send = (res, e, where) => {
 async function restaurantFrom(req, raw) {
   const rid = parseInt(raw, 10);
   if (!Number.isFinite(rid)) return { status: 400, message: 'restaurant_id is required' };
+  if (req.kioskDevice) {
+    if (Number(req.kioskDevice.restaurant_id) !== rid) return { status: 403, message: 'Forbidden' };
+    return { rid };
+  }
   if (!(await userCanAccessRestaurant(req.user, rid))) return { status: 403, message: 'Forbidden' };
   return { rid };
 }
@@ -33,7 +53,10 @@ async function restaurantFrom(req, raw) {
 async function loadTxn(req, res) {
   const id = parseInt(req.params.id, 10);
   const row = Number.isFinite(id) ? await TerminalTransaction.findByPk(id) : null;
-  if (!row || !(await userCanAccessRestaurant(req.user, row.restaurant_id))) {
+  const allowed = row && (req.kioskDevice
+    ? Number(row.restaurant_id) === Number(req.kioskDevice.restaurant_id) && svc.isKioskTxnOf(row, req.kioskDevice)
+    : await userCanAccessRestaurant(req.user, row.restaurant_id));
+  if (!allowed) {
     res.status(404).json({ success: false, message: 'Transaction not found' });
     return null;
   }
@@ -44,7 +67,7 @@ router.get('/config', async (req, res) => {
   try {
     const r = await restaurantFrom(req, req.query.restaurant_id);
     if (!r.rid) return res.status(r.status).json({ success: false, message: r.message });
-    const cfg = await svc.terminalConfig(r.rid);
+    const cfg = await svc.terminalConfig(r.rid, req.kioskDevice || null);
     res.json({ success: true, data: { enabled: cfg.enabled, provider: cfg.provider, transport: cfg.transport } });
   } catch (e) { send(res, e, 'GET /config'); }
 });
@@ -56,6 +79,16 @@ router.post('/transactions', async (req, res) => {
     if (!r.rid) return res.status(r.status).json({ success: false, message: r.message });
     const oid = order_id != null && order_id !== '' ? parseInt(order_id, 10) : null;
     if (order_id != null && order_id !== '' && !Number.isFinite(oid)) return res.status(400).json({ success: false, message: 'Invalid order_id' });
+    if (req.kioskDevice) {
+      // 키오스크는 «자기 키오스크 주문» 의 남은 금액만 긁는다 — 주문 없는 판매·POS 주문 결제는 못 한다
+      if (!oid) return res.status(400).json({ success: false, code: 'ORDER_REQUIRED', message: 'order_id is required on a kiosk' });
+      const order = await Order.findByPk(oid, { attributes: ['id', 'restaurant_id', 'source'] });
+      if (!order || Number(order.restaurant_id) !== r.rid || order.source !== 'kiosk') {
+        return res.status(404).json({ success: false, message: 'Order not found' });
+      }
+      const data = await svc.createSale({ restaurantId: r.rid, orderId: oid, amount, user: null, cashierName: 'Kiosk', deviceLabel: svc.kioskLabel(req.kioskDevice), device: req.kioskDevice });
+      return res.status(201).json({ success: true, data });
+    }
     const data = await svc.createSale({ restaurantId: r.rid, orderId: oid, amount, user: req.user, cashierName: cashier_name, deviceLabel: device_label });
     res.status(201).json({ success: true, data });
   } catch (e) { send(res, e, 'POST /transactions'); }
@@ -74,7 +107,7 @@ router.post('/transactions/:id/response', async (req, res) => {
 router.post('/transactions/:id/recover', async (req, res) => {
   try {
     const row = await loadTxn(req, res); if (!row) return;
-    res.status(201).json({ success: true, data: await svc.recover(row) });
+    res.status(201).json({ success: true, data: await svc.recover(row, req.kioskDevice || null) });
   } catch (e) { send(res, e, 'POST /recover'); }
 });
 
@@ -96,7 +129,7 @@ router.post('/transactions/:id/void', async (req, res) => {
 router.post('/transactions/:id/check-status', async (req, res) => {
   try {
     const row = await loadTxn(req, res); if (!row) return;
-    res.status(201).json({ success: true, data: await svc.checkStatus(row) });
+    res.status(201).json({ success: true, data: await svc.checkStatus(row, req.kioskDevice || null) });
   } catch (e) { send(res, e, 'POST /check-status'); }
 });
 

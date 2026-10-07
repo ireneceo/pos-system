@@ -1069,7 +1069,7 @@
   "invoicesPage.loadingPaymentMethods": "결제 수단 불러오는 중...",
   "invoicesPage.transactionIdReferenceNumber": "거래 ID / 참조 번호",
   "invoicesPage.notesOptional": "메모 (선택사항)",
-  "invoicesPage.paymentReceiptImage": "결제 영수증 이미지",
+  "invoicesPage.paymentReceiptImage": "결제 영수증 (이미지 또는 PDF)",
   "invoicesPage.removeImage": "제거 이미지",
   "invoicesPage.clickToUploadPaymentReceipt": "결제 영수증 업로드 클릭",
   "invoicesPage.supportsJpgPngMax5mb": "JPG, PNG 지원 (최대 5MB)",

@@ -114,7 +114,7 @@
   "foodcourtInvoicesPage.scanQrCodeToPay": "扫描二维码支付",
   "foodcourtInvoicesPage.pleaseProvideEitherA": "请提供以下之一",
   "foodcourtInvoicesPage.transactionIdReferenceNumber": "交易ID / 参考编号",
-  "foodcourtInvoicesPage.paymentReceiptImage": "付款收据图片",
+  "foodcourtInvoicesPage.paymentReceiptImage": "付款收据（图片或 PDF）",
   "foodcourtInvoicesPage.removeImage": "移除 图片",
   "foodcourtInvoicesPage.clickToUploadPaymentReceipt": "点击上传付款收据",
   "foodcourtInvoicesPage.supportsJpgPngMax5mb": "支持JPG、PNG（最大5MB）",

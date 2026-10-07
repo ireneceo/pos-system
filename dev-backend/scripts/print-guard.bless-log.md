@@ -25,3 +25,11 @@
 - OrderCompleteModal(보호파일 아님)은 Print Bill/Ticket **라벨만**, 핸들러·510줄 이후 영수증 템플릿 무접촉
 - e2e `pos-display-language` **5/5**(Fable 직접 실행, retries=0) · `health-check --category=print` → **11/11** · `check-print-guard` → 재등록 후 **8/8 변경 없음**
 - 판정문 `.claude/fable-verdict-20261004-display-language-gate.md` — manifest 가 git 추적 파일이라 **bless → 마커** 순서
+
+## 2026-10-07T15:46Z — orders-crud.js · MainLayout.tsx · useAutoPrintPoller.ts (키오스크 결제 분리 + 설정 › Kiosk) — Fable 최종 게이트 PASS 뒤 bless
+- Irene 원문 「Fable 권고대로 해. 우리 완벽한 키오스크 필요해. 카드단말기랑 자동 연동 된」 · 「좌측메뉴에 키오스크 링크 모바일오더처럼 안나오는데 어떻게 접속해?」 · 실프린터 확인 「다 확인했어」(키오스크 주문 → 주방 티켓 1장 · 계산원 칸 «Kiosk» · 중복 0)
+- `orders-crud.js` 243·287·331-334·559-565·582·629·645-647 — 손님 주문 계열 = mobile+kiosk(머지 상대·채널 가드·테이블 필수·상태), 키오스크 카드는 승인 전 outstanding. pending-print / printed / print-claim / kitchen_items **무접촉**
+- `useAutoPrintPoller.ts` 176 — 티켓 계산원 칸 `'Kiosk'` 글자뿐. 폴러 판정·발행 로직 무접촉
+- `MainLayout.tsx` 24(Tablet 아이콘 import) · 1241(알림 판정 kiosk) · 1390(계산원 칸 'Kiosk') · 1573(타입 kiosk?) · 2013-2015(상단 Kiosk 열기) · 2099-2100(설정 › Kiosk) · 2686-2691(열기 클릭 분기) — 전부 메뉴·클릭 분기, `_printPollFn` 무접촉
+- `health-check --category=print` 10/10(지문 제외) · 인쇄 라우트 가드 ✓ · 동시 print-claim N→1 ✓ · `check-print-guard` → 재등록 후 **8/8 변경 없음**
+- 판정문 `.claude/fable-verdict-20261007-kiosk-final-gate.md`(앞선 §7 PASS: `…-kiosk-payment-split-gate.md`) — manifest 가 git 추적 파일이라 **bless → 마커** 순서

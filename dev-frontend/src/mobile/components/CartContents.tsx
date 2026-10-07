@@ -208,8 +208,9 @@ export function useCartTotals() {
   return { subtotal, serviceCharge, tax, total, operationSettings };
 }
 
-/** 장바구니 줄 목록 + 수량 조작. 페이지와 패널이 같은 마크업을 쓴다. */
-export const CartLines: React.FC<{ inPanel?: boolean }> = ({ inPanel }) => {
+/** 장바구니 줄 목록 + 수량 조작. 페이지와 패널이 같은 마크업을 쓴다.
+ *  readOnly: 수량·삭제 조작 없이 보여만 준다(키오스크 QR·온라인 결제 화면 — 주문 내용이 이미 결제로 넘어갔다). */
+export const CartLines: React.FC<{ inPanel?: boolean; readOnly?: boolean }> = ({ inPanel, readOnly }) => {
   const { cartItems, updateCartItem, removeFromCart, currency } = useMobileOrder();
 
   const handleQuantityChange = (cartItemId: string, newQuantity: number) => {
@@ -223,11 +224,11 @@ export const CartLines: React.FC<{ inPanel?: boolean }> = ({ inPanel }) => {
         <CartItem key={item.id}>
           <ItemHeader>
             <ItemName>{item.menuItem.code ? `${item.menuItem.code} ` : ''}{item.menuItem.name}</ItemName>
-            <RemoveButton onClick={() => removeFromCart(item.id)} aria-label="Remove">
+            {!readOnly && <RemoveButton onClick={() => removeFromCart(item.id)} aria-label="Remove">
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-            </RemoveButton>
+            </RemoveButton>}
           </ItemHeader>
 
           {item.selectedOptions.length > 0 && (
@@ -247,6 +248,7 @@ export const CartLines: React.FC<{ inPanel?: boolean }> = ({ inPanel }) => {
           )}
 
           <ItemFooter>
+            {readOnly ? <QuantityValue>× {item.quantity}</QuantityValue> : (
             <QuantityControl>
               <QuantityButton
                 onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
@@ -263,6 +265,7 @@ export const CartLines: React.FC<{ inPanel?: boolean }> = ({ inPanel }) => {
                 </svg>
               </QuantityButton>
             </QuantityControl>
+            )}
             <ItemPrice>{formatCurrency(item.totalPrice, currency)}</ItemPrice>
           </ItemFooter>
         </CartItem>

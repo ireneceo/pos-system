@@ -5,7 +5,7 @@ import { Utensils, ShoppingBag, Clock, Truck, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next';
 import MobileLayout from '../components/common/MobileLayout';
 import { isKioskMode, isMenuBoardMode, withMenuBoardQuery } from '../utils/kioskMode';
-import { CartLines, CartSummary, useCartTotals } from '../components/CartContents';
+import { KioskCartAside, KioskSplit, KioskMain } from '../components/KioskCartAside';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
 import { getStoreOpenState } from '../utils/storeHours';
@@ -271,69 +271,6 @@ const CategoryTab = styled.button<{ active: boolean }>`
 // 키오스크 2단 — 메뉴(왼쪽) + 장바구니(오른쪽). POS Terminal 과 같은 «한 화면» 구성.
 // 손님이 담은 것을 계속 보면서 고르게 한다(다른 화면으로 넘어가면 무엇을 담았는지 잊는다).
 // 폭이 좁으면(태블릿 세로·폰) 한 단으로 돌아가고 종전대로 하단 카트 바를 쓴다.
-const KioskSplit = styled.div<{ $split?: boolean }>`
-  ${p => p.$split && `
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    gap: 24px;
-    align-items: start;
-  `}
-`;
-
-const KioskMain = styled.div`
-  min-width: 0;
-`;
-
-const KioskAside = styled.aside`
-  position: sticky;
-  top: 16px;
-  background: #FFFFFF;
-  border: 1px solid #E5E8EC;
-  border-radius: 14px;
-  padding: 18px 16px;
-  box-shadow: 0 2px 10px rgba(16, 24, 40, 0.06);
-  max-height: calc(100vh - 220px);
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const KioskAsideTitle = styled.h2`
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-  color: #0A2540;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-const KioskAsideEmpty = styled.p`
-  margin: 0;
-  padding: 24px 0;
-  text-align: center;
-  color: #6B7280;
-  font-size: 14px;
-`;
-
-const KioskCheckout = styled.button`
-  width: 100%;
-  min-height: 60px;
-  background: #635BFF;
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  font-size: 17px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 18px;
-  &:disabled { background: #9CA3AF; cursor: not-allowed; }
-  &:active:not(:disabled) { filter: brightness(0.96); }
-`;
 
 const MenuGrid = styled.div<{ $kiosk?: boolean }>`
   display: grid;
@@ -602,9 +539,6 @@ const MenuPage: React.FC = () => {
     return () => window.removeEventListener('resize', onResize);
   }, []);
   const splitView = kiosk && isWide;
-  // 옆 패널 결제 버튼에 띄우는 금액. /cart 화면과 **같은 식**(useCartTotals)이라
-  // 화면마다 다른 총액이 나오지 않는다.
-  const { total: kioskTotal } = useCartTotals();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const {
@@ -1397,28 +1331,7 @@ const MenuPage: React.FC = () => {
 
       {/* 키오스크 넓은 화면: 장바구니를 오른쪽에 붙여 «한 화면»으로. 내용은 /cart 와 같은 컴포넌트다. */}
       {!menuBoard && splitView && (
-        <KioskAside aria-label={t('menu:cartBar.viewCart', 'View cart')}>
-          <KioskAsideTitle>
-            <span>{t('menu:cartBar.viewCart', 'View cart')}</span>
-            {cartQty > 0 && <CartQtyPill $bump={cartBump}>{cartQty}</CartQtyPill>}
-          </KioskAsideTitle>
-          {cartItems.length === 0 ? (
-            <KioskAsideEmpty>{t('menu:kiosk.cartEmpty', 'Tap a menu item to add it here.')}</KioskAsideEmpty>
-          ) : (
-            <>
-              <CartLines inPanel />
-              <CartSummary />
-            </>
-          )}
-          <KioskCheckout
-            type="button"
-            disabled={cartItems.length === 0}
-            onClick={handleCartClick}
-          >
-            <span>{t('menu:kiosk.checkout', 'Checkout')}</span>
-            <span>{formatCurrency(kioskTotal, currency)}</span>
-          </KioskCheckout>
-        </KioskAside>
+        <KioskCartAside qtyBadge={<CartQtyPill $bump={cartBump}>{cartQty}</CartQtyPill>} />
       )}
       </KioskSplit>
 

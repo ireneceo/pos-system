@@ -84,7 +84,7 @@
   "ownerInvoicesPage.qrPayment": "二维码支付",
   "ownerInvoicesPage.pleaseProvideEitherA": "请提供以下之一",
   "ownerInvoicesPage.transactionIdReferenceNumber": "交易ID / 参考编号",
-  "ownerInvoicesPage.paymentReceiptImage": "付款收据图片",
+  "ownerInvoicesPage.paymentReceiptImage": "付款收据（图片或 PDF）",
   "ownerInvoicesPage.notesOptional": "备注（可选）",
   "ownerInvoicesPage.clickToChangeImage": "点击更换图片",
   "ownerInvoicesPage.clickToUploadReceiptImage": "点击上传收据图片",

@@ -240,8 +240,8 @@ router.get('/mergeable', authenticateToken, async (req, res) => {
           paymentMethod
             ? { [Op.or]: [{ payment_method: paymentMethod }, { payment_method: null }] }
             : {},
-          // POS source only (mobile 은 자체 자동 머지 흐름)
-          { [Op.or]: [{ source: { [Op.ne]: 'mobile' } }, { source: null }] }
+          // POS source only (mobile·kiosk 손님 주문은 자체 자동 머지 흐름)
+          { [Op.or]: [{ source: { [Op.notIn]: ['mobile', 'kiosk'] } }, { source: null }] }
         ]
       },
       order: [['createdAt', 'DESC']],
@@ -284,7 +284,8 @@ async function findMergeableOrder(restaurantId, tableNumber, orderType, newOrder
 
   const newSource = newOrderData.source || 'pos';
   const newPaymentMethod = newOrderData.payment_method || 'counter';
-  const isMobile = (s) => s === 'mobile';
+  // 손님 주문 계열 = mobile(폰) + kiosk(등록 태블릿) — 같은 테이블이면 한 계산서, POS 와는 안 섞는다(2026-10-07 Fable D4)
+  const isMobile = (s) => s === 'mobile' || s === 'kiosk';
 
   // Get today's date range in restaurant's timezone
   const { startOfDay: todayStart, endOfDay: todayEnd } = getTodayBounds(timezone);
@@ -327,10 +328,10 @@ async function findMergeableOrder(restaurantId, tableNumber, orderType, newOrder
 
   // Cross-source: POS↔Mobile never merge
   if (isMobile(newSource)) {
-    queryOptions.where.source = 'mobile';
+    queryOptions.where.source = ['mobile', 'kiosk'];
   } else {
     queryOptions.where[Op.and] = [
-      { [Op.or]: [{ source: { [Op.ne]: 'mobile' } }, { source: null }] }
+      { [Op.or]: [{ source: { [Op.notIn]: ['mobile', 'kiosk'] } }, { source: null }] }
     ];
   }
 
@@ -555,11 +556,14 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
 
     // Defence: payment_method × order_type. Only enforced for mobile-sourced orders —
     // POS staff sees all enabled methods regardless of order_type (operator judgment).
-    if (orderData.source === 'mobile') {
+    // 2026-10-07 (Fable D3): 손님 주문은 채널도 본다 — 폰은 Mobile 열, 등록 키오스크는 Kiosk 열에 열린 수단만.
+    //   source 'kiosk' 는 server.js 의 stampKioskOrderSource 가 기기 토큰이 있을 때만 붙인다(없으면 400).
+    if (orderData.source === 'mobile' || orderData.source === 'kiosk') {
       const guard = checkPaymentMethodAllowed({
         paymentSettings: restaurant.payment_settings,
         paymentMethod: orderData.payment_method,
-        orderType: orderData.order_type
+        orderType: orderData.order_type,
+        channel: orderData.source
       });
       if (!guard.ok) {
         return res.status(400).json({ success: false, message: guard.message, code: guard.code });
@@ -575,7 +579,7 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
     // but a crafted request must not bypass. POS-sourced orders are not gated
     // (staff/operator judgment). This guard only validates input — it does not
     // touch print/kitchen routing.
-    if (orderData.source === 'mobile') {
+    if (orderData.source === 'mobile' || orderData.source === 'kiosk') {
       const ts = restaurant.table_settings || {};
       const requireTable = ts.enableTableNumbers !== false && !!ts.tableNumberRequired;
       // 2026-06-01: treat a MISSING order_type as dine-in for this guard. The
@@ -622,7 +626,7 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
     //            사용자가 "기존 추가" 선택했을 때만 명시적으로 `forceMergeIntoOrderId` 또는
     //            `skipAutoMerge=false` 보낸다.
     const orderSource = (orderData.source || 'pos').toLowerCase();
-    const isMobileSource = orderSource === 'mobile';
+    const isMobileSource = orderSource === 'mobile' || orderSource === 'kiosk';
     // POS 면 기본 skipAutoMerge. 명시적으로 skipAutoMerge=false 보내야만 자동 머지.
     let skipAutoMerge = orderData.skipAutoMerge === true;
     if (!isMobileSource && orderData.skipAutoMerge === undefined) {
@@ -638,6 +642,9 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
         restaurant.operation_settings.mobileOrderProcessing &&
         restaurant.operation_settings.mobileOrderProcessing.requirePaymentBeforeKitchen);
       orderData.status = reqPayBeforeKitchen ? 'outstanding' : 'pending';
+      // 키오스크 카드(단말기) 주문은 승인 전 주방에 넣지 않는다 — 거절된 카드 주문을 조리하지 않게(Fable D4).
+      //   승인되면 결제 기록(orders-payment)이 pending 으로 올린다. 거절·«카운터에서 결제» 면 직원이 FloorPlan 에서 처리.
+      if (orderSource === 'kiosk' && orderData.payment_method === 'card') orderData.status = 'outstanding';
     }
 
     // Force merge into a specific existing order (POS UI 의 "기존 주문에 추가" 선택)

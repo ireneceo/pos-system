@@ -459,6 +459,12 @@ app.use((req, res, next) => {
   }
   next();
 });
+// 키오스크 기기(등록된 매장 태블릿) — 헤더 X-Kiosk-Token 이 있으면 req.kioskDevice 를 싣고, 주문 생성은 출처를 서버가 'kiosk' 로 정한다.
+// 🔒 orders-crud 밖에서 정확한 경로로 주입(Fable 판정 .claude/fable-verdict-20261007-kiosk-payment-split.md D6).
+const { authenticateKioskDevice, stampKioskOrderSource } = require('./middleware/kioskDevice');
+app.use('/api/orders', authenticateKioskDevice, stampKioskOrderSource);
+app.use('/api/terminal', authenticateKioskDevice);
+app.use('/api/kiosk-devices', require('./routes/kiosk-devices'));
 app.use('/api/orders', ordersRouter);
 // 카드단말기 ECR 연동(GHL) — 거래 기록·응답 해석은 서버, 단말기 운반은 계산대 앱 브릿지 (.claude/fable-design-20261001-ghl-ecr.md)
 app.use('/api/terminal', require('./routes/terminal-payments'));

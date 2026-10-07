@@ -20,16 +20,22 @@ const CMD_OF = { sale: ecr.CMD.sale, reprint: ecr.CMD.reprint, check_status: ecr
 
 const err = (status, code, message, extra) => Object.assign(new Error(message), { status, code, extra });
 
-async function terminalConfig(restaurantId) {
+/**
+ * @param device 등록된 키오스크(req.kioskDevice) — 그 기기 옆 단말기 주소가 있으면 매장 값 대신 쓴다
+ *               (키오스크 옆 단말기가 카운터 것과 다를 때 · Fable 판정 2026-10-07 D5). 켜고 끄기는 매장 설정 그대로.
+ */
+async function terminalConfig(restaurantId, device = null) {
   const r = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'payment_settings'] });
   if (!r) throw err(404, 'NOT_FOUND', 'Restaurant not found');
   const card = normalizePaymentSettings(r.payment_settings).card || {};
   const t = card.terminal && typeof card.terminal === 'object' ? card.terminal : {};
+  const host = String((device && device.terminal_host) || t.host || '').trim();
+  const port = device && Number(device.terminal_port) > 0 ? Number(device.terminal_port) : (Number(t.port) > 0 ? Number(t.port) : 33898);
   return {
-    enabled: t.enabled === true && !!String(t.host || '').trim(),
+    enabled: t.enabled === true && !!host,
     provider: 'ghl_ecr',
-    host: String(t.host || '').trim(),
-    port: Number(t.port) > 0 ? Number(t.port) : 33898,
+    host,
+    port,
     transport: ['http-hex', 'tcp-hex', 'tcp-bin'].includes(t.transport) ? t.transport : 'http-hex',
   };
 }
@@ -53,8 +59,8 @@ function job(row, cfg, requestHex) {
     connection: { host: cfg.host, port: cfg.port, transport: cfg.transport } };
 }
 
-async function createSale({ restaurantId, orderId, amount, user, cashierName, deviceLabel }) {
-  const cfg = await terminalConfig(restaurantId);
+async function createSale({ restaurantId, orderId, amount, user, cashierName, deviceLabel, device = null }) {
+  const cfg = await terminalConfig(restaurantId, device);
   if (!cfg.enabled) throw err(409, 'TERMINAL_DISABLED', 'Card terminal is not set up for this restaurant');
   let cents;
   try { cents = ecr.toCents(amount); } catch { throw err(400, 'BAD_AMOUNT', 'Invalid amount'); }
@@ -91,9 +97,9 @@ async function createSale({ restaurantId, orderId, amount, user, cashierName, de
   return job(row, cfg, req);
 }
 
-async function createChild(parent, command, allowed, buildReq) {
+async function createChild(parent, command, allowed, buildReq, device = null) {
   if (!allowed.includes(parent.status)) throw err(409, 'BAD_STATE', `Cannot ${command} a ${parent.status} transaction`);
-  const cfg = await terminalConfig(parent.restaurant_id);
+  const cfg = await terminalConfig(parent.restaurant_id, device);
   if (!cfg.enabled) throw err(409, 'TERMINAL_DISABLED', 'Card terminal is not set up for this restaurant');
   const req = ecr.bufToHex(buildReq({ amount: parent.amount, ecrInvoiceNo: parent.ecr_invoice_no }));
   const child = await TerminalTransaction.create({
@@ -106,9 +112,16 @@ async function createChild(parent, command, allowed, buildReq) {
 }
 
 /** 응답 없음/통신오류 → Reprint(E6) 로 단말기의 마지막 결과를 다시 받는다. */
-const recover = (parent) => createChild(parent, 'reprint', ['timeout', 'comm_error', 'recovering'], ecr.reprintRequest);
+const recover = (parent, device = null) => createChild(parent, 'reprint', ['timeout', 'comm_error', 'recovering'], ecr.reprintRequest, device);
 /** EA(보류) → Check Status(E3). */
-const checkStatus = (parent) => createChild(parent, 'check_status', ['pending'], ecr.checkStatusRequest);
+const checkStatus = (parent, device = null) => createChild(parent, 'check_status', ['pending'], ecr.checkStatusRequest, device);
+
+/**
+ * 키오스크가 만든 거래 표시 — device_label 머리에 기기 번호를 박는다(표 변경 없이 «어느 키오스크의 시도인가» 를 남김).
+ * 키오스크 토큰은 자기 기기 거래만 이어서 다룰 수 있다(routes/terminal-payments.js loadTxn · orders-payment 기록).
+ */
+const kioskLabel = (device) => `kiosk#${device.id} ${String(device.name || '')}`.slice(0, 80);
+const isKioskTxnOf = (row, device) => !!row && !!device && String(row.device_label || '').startsWith(`kiosk#${device.id} `);
 
 /** 매출에 잡힌 단말기 결제인가 — 원장 행에 붙었거나 주문 참조가 이 결제다(서버가 계산, 화면 주장 안 믿음). */
 async function isCounted(parent) {
@@ -365,4 +378,5 @@ function summarizeDiscovery(body) {
 }
 
 module.exports = {
-  summarizeDiscovery, saveDiscoveredHost, TIMEOUT_MS, terminalConfig, createSale, recover, checkStatus, createVoid, applyResponse, link, markManual, createEcho, publicRow };
+  summarizeDiscovery, saveDiscoveredHost, TIMEOUT_MS, terminalConfig, createSale, recover, checkStatus, createVoid, applyResponse, link, markManual, createEcho, publicRow,
+  kioskLabel, isKioskTxnOf, transactionRef };

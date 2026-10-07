@@ -31,6 +31,9 @@ import { getAuthToken } from '../../utils/auth';
 import PrintSelfDiagnosePanel from '../../components/Settings/PrintSelfDiagnosePanel';
 import MallSalesIntegrationSettings from './MallSalesIntegrationSettings';
 import CardTerminalSettings from './CardTerminalSettings';
+import KioskDevicesCard from './KioskDevicesCard';
+import { Button as UIButton } from '../../components/UI/Button';
+import { methodOpenIn, splitKioskFromMobile, KIOSK_HIDDEN_METHODS } from '../../utils/paymentChannel';
 import { isOfflineMainPos, setOfflineMainPos } from '../../utils/offlineMainPos';
 import { openCustomerDisplay, isAutoOpenEnabled, setAutoOpenEnabled, resetCustomerDisplayPosition } from '../../utils/customerDisplay';
 // 스타일 컴포넌트
@@ -378,7 +381,7 @@ const ActionButton = styled.button`
 `;
 
 // 타입 정의
-type TabType = 'store' | 'operations' | 'tablesQr' | 'payment' | 'printer' | 'kitchenStations' | 'mobileOrder' | 'reservation' | 'company' | 'brands' | 'billing' | 'managers' | 'membership' | 'salesReporting';
+type TabType = 'store' | 'operations' | 'tablesQr' | 'payment' | 'printer' | 'kitchenStations' | 'mobileOrder' | 'reservation' | 'company' | 'brands' | 'billing' | 'managers' | 'membership' | 'salesReporting' | 'kiosk';
 
 interface Table {
   id: string;
@@ -997,6 +1000,7 @@ const SettingsPage: React.FC = () => {
   const mobileOrderTakeawayPrepRef = useRef<AutoSaveHandle>(null);
   const mobileOrderTakeawayPackagingRef = useRef<AutoSaveHandle>(null);
   const mobileOrderPauseRef = useRef<AutoSaveHandle>(null);
+  const kioskEnabledRef = useRef<AutoSaveHandle>(null);
   const mobileOrderPauseMessageRef = useRef<AutoSaveHandle>(null);
   // Reservation 활성 토글은 reservation_settings.enabled 와 동일한 필드 (Reservation 탭과 sync).
   // mobileOrder Order Types 섹션에서 빠르게 on/off 할 수 있도록 노출.
@@ -1387,7 +1391,8 @@ const SettingsPage: React.FC = () => {
     category_schedules: Array<{ category_id: number; start_time: string; end_time: string; days?: number[]; start_date?: string | null; end_date?: string | null; display?: 'hide' | 'disable' }>;
     pause_ordering: boolean;
     pause_message: string;
-  }>({ show_featured: true, show_popular: true, popular_excluded_category_ids: [], category_schedules: [], pause_ordering: false, pause_message: '' });
+    kiosk_enabled: boolean;
+  }>({ show_featured: true, show_popular: true, popular_excluded_category_ids: [], category_schedules: [], pause_ordering: false, pause_message: '', kiosk_enabled: false });
   const [brandInfo, setBrandInfo] = useState<{
     brand_id: number | null;
     brand_name: string | null;
@@ -1498,7 +1503,7 @@ const SettingsPage: React.FC = () => {
 
               // Load payment order - use saved order or default to current keys
               const savedOrder = restaurant.payment_settings._order;
-              const methodKeys = Object.keys(restaurant.payment_settings).filter(k => k !== '_order');
+              const methodKeys = Object.keys(restaurant.payment_settings).filter(k => k !== '_order' && k !== '_kioskSplit');
               if (savedOrder && Array.isArray(savedOrder)) {
                 // Make sure all keys are in the order array (add any missing at the end)
                 const completeOrder = [...savedOrder.filter((k: string) => methodKeys.includes(k))];
@@ -1647,7 +1652,9 @@ const SettingsPage: React.FC = () => {
                 popular_excluded_category_ids: Array.isArray(restaurant.mobile_settings.popular_excluded_category_ids) ? restaurant.mobile_settings.popular_excluded_category_ids : [],
                 category_schedules: Array.isArray(restaurant.mobile_settings.category_schedules) ? restaurant.mobile_settings.category_schedules : [],
                 pause_ordering: !!restaurant.mobile_settings.pause_ordering,
-                pause_message: restaurant.mobile_settings.pause_message || ''
+                pause_message: restaurant.mobile_settings.pause_message || '',
+                // 키오스크 사용 여부(Fable 판정 2026-10-07 settings-entry D2) — 없으면 꺼짐
+                kiosk_enabled: !!restaurant.mobile_settings.kiosk_enabled
               });
             }
           }
@@ -2387,8 +2394,10 @@ const SettingsPage: React.FC = () => {
     printHTMLContent(html, `QR ${name}`);
   };
 
-  const handlePaymentToggle = (methodKey: string, platform: 'pos' | 'mobile', enabled: boolean, refKey?: string) => {
-    setPaymentMethods((prev: any) => {
+  const handlePaymentToggle = (methodKey: string, platform: 'pos' | 'mobile' | 'kiosk', enabled: boolean, refKey?: string) => {
+    setPaymentMethods((prevRaw: any) => {
+      // 키오스크 열을 처음 만지면 지금 보이던 값(= 모바일 값)을 키오스크 값으로 굳히고 그 뒤로 따로 저장한다(utils/paymentChannel)
+      const prev = platform === 'kiosk' ? splitKioskFromMobile(prevRaw) : prevRaw;
       const currentMethod = prev[methodKey];
       let newAvailableIn = [...(currentMethod.availableIn || [])];
 
@@ -2727,6 +2736,7 @@ const SettingsPage: React.FC = () => {
     printer: 'Printer',
     kitchenStations: 'Kitchen Stations',
     mobileOrder: 'Mobile Order',
+    kiosk: 'Kiosk',
     reservation: 'Reservation',
     membership: 'Membership'
   };
@@ -2781,7 +2791,7 @@ const SettingsPage: React.FC = () => {
                 </div>
               ) : paymentOrder.map((key, index) => {
                 const method = paymentMethods[key];
-                if (!method || key === '_order') return null;
+                if (!method || typeof method !== 'object' || key === '_order') return null;
                 return (
                 <PaymentMethodCard key={key}>
                   <div style={{ marginBottom: method.enabled ? '16px' : '0' }}>
@@ -2848,6 +2858,30 @@ const SettingsPage: React.FC = () => {
                               type="checkbox"
                               checked={method.availableIn?.includes('mobile') || false}
                               onChange={(e) => handlePaymentToggle(key, 'mobile', e.target.checked, `${key}-mobile`)}
+                            />
+                            <ToggleSlider />
+                          </ToggleSwitch>
+                          </AutoSaveField>
+                        </div>
+                        )}
+
+                        {/* Kiosk Toggle — 등록된 매장 태블릿. 따로 정하기 전까지 모바일과 같다(utils/paymentChannel) */}
+                        {mobileSettings.kiosk_enabled && !KIOSK_HIDDEN_METHODS.includes(key) && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} title={t('settings:settingsPage.kioskDevices.columnHint')}>
+                          <span style={{
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            color: methodOpenIn(paymentMethods, key, 'kiosk') ? '#0A2540' : '#4B5563',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            Kiosk
+                          </span>
+                          <AutoSaveField ref={(h: AutoSaveHandle | null) => { if (h) paymentRefsMap.current.set(`${key}-kiosk`, h); }} onSave={handleSave} type="toggle">
+                          <ToggleSwitch>
+                            <ToggleInput
+                              type="checkbox"
+                              checked={methodOpenIn(paymentMethods, key, 'kiosk')}
+                              onChange={(e) => handlePaymentToggle(key, 'kiosk', e.target.checked, `${key}-kiosk`)}
                             />
                             <ToggleSlider />
                           </ToggleSwitch>
@@ -5157,44 +5191,6 @@ const SettingsPage: React.FC = () => {
                   </SettingsCard>
                 )}
 
-                {/* 매장 태블릿(키오스크) — 손님이 직접 주문하는 형태.
-                    같은 모바일 주문 화면을 «넓은 폭 + 큰 터치 + 자동 초기화» 로 여는 주소다.
-                    손님 폰(QR)은 이 주소와 무관하게 종전대로 동작한다. */}
-                {restaurantSlug && (
-                  <SettingsCard style={{ gridColumn: '1 / -1' }}>
-                    <CardTitle>{t('settings:settingsPage.kioskAccess')}</CardTitle>
-                    <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
-                      {t('settings:settingsPage.kioskAccessHint')}
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: 280 }}>
-                        <Input
-                          readOnly
-                          value={`${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?kiosk=1`}
-                          style={{ fontSize: '13px', fontFamily: 'monospace', background: '#F8F9FC' }}
-                        />
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const url = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?kiosk=1`;
-                              navigator.clipboard?.writeText(url).then(() => {
-                                setInfoModal({ open: true, title: t('common:done', 'Done'), message: t('settings:settingsPage.urlCopied') });
-                              }).catch(() => {});
-                            }}
-                            style={{ padding: '8px 14px', background: '#635BFF', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
-                          >
-                            {t('settings:settingsPage.copyUrl')}
-                          </button>
-                        </div>
-                      </div>
-                      <div style={{ padding: '8px', background: 'white', border: '1px solid #C7CED6', borderRadius: '8px' }}>
-                        <QRCodeSVG value={`${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?kiosk=1`} size={104} level="H" includeMargin={true} />
-                      </div>
-                    </div>
-                  </SettingsCard>
-                )}
-
                 {/* Pause ordering — emergency stop, placed 2nd right under Mobile Order entry */}
                 <SettingsCard style={{ gridColumn: '1 / -1', borderLeft: mobileSettings.pause_ordering ? '4px solid #DC2626' : undefined }}>
                   <CardTitle>{t('settings:settingsPage.pauseOrdering')}</CardTitle>
@@ -5986,6 +5982,79 @@ const SettingsPage: React.FC = () => {
                 </SettingsCard>
                 </SettingsGrid>
                 </div>
+
+              </SettingsGrid>
+            </>
+          )}
+
+          {/* 설정 › Kiosk (Fable 판정 .claude/fable-verdict-20261007-kiosk-settings-entry.md D2) —
+              ① 키오스크 사용 스위치 ② 등록된 태블릿 ③ (선택) 등록 없이 여는 주소. 켜야 결제수단에 Kiosk 열이 생긴다. */}
+          {activeTab === 'kiosk' && (
+            <>
+              <SettingsGrid>
+                <SettingsCard style={{ gridColumn: '1 / -1', borderLeft: mobileSettings.kiosk_enabled ? '4px solid #635BFF' : undefined }}>
+                  <CardTitle>{t('settings:settingsPage.kioskTab.enableTitle')}</CardTitle>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                    {t('settings:settingsPage.kioskTab.enableHint')}
+                  </p>
+                  <Toggle>
+                    <ToggleLabel>{t('settings:settingsPage.kioskTab.enableLabel')}</ToggleLabel>
+                    <AutoSaveField ref={kioskEnabledRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={mobileSettings.kiosk_enabled}
+                          onChange={(e) => { setMobileSettings(prev => ({ ...prev, kiosk_enabled: e.target.checked })); kioskEnabledRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
+                  {mobileSettings.kiosk_enabled && (
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '16px' }}>
+                      <UIButton variant="outline" size="small" onClick={() => handleTabChange('payment')}>{t('settings:settingsPage.kioskTab.goPayment')}</UIButton>
+                      <UIButton variant="outline" size="small" onClick={() => handleTabChange('payment')}>{t('settings:settingsPage.kioskTab.goTerminal')}</UIButton>
+                    </div>
+                  )}
+                </SettingsCard>
+
+                {/* ② 등록된 키오스크 태블릿 — 꺼져 있어도 목록·해제는 보인다(잃어버린 기기를 끊을 수 있게) */}
+                <SettingsCard style={{ gridColumn: '1 / -1' }}>
+                  <KioskDevicesCard restaurantId={user?.restaurantId} timeZone={operationSettings.timeZone} enabled={mobileSettings.kiosk_enabled} />
+                </SettingsCard>
+
+                {/* ③ 등록 없이 화면만 키오스크 모양으로 여는 주소(선택) — 결제수단은 모바일과 같다(서버가 토큰으로 판정) */}
+                {restaurantSlug && mobileSettings.kiosk_enabled && (
+                  <SettingsCard style={{ gridColumn: '1 / -1' }}>
+                    <CardTitle>{t('settings:settingsPage.kioskTab.urlCardTitle')}</CardTitle>
+                    <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                      {t('settings:settingsPage.kioskAccessHint')}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 280 }}>
+                        <Input
+                          readOnly
+                          value={`${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?kiosk=1`}
+                          style={{ fontSize: '13px', fontFamily: 'monospace', background: '#F8F9FC' }}
+                        />
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const url = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?kiosk=1`;
+                              navigator.clipboard?.writeText(url).then(() => {
+                                setInfoModal({ open: true, title: t('common:done', 'Done'), message: t('settings:settingsPage.urlCopied') });
+                              }).catch(() => {});
+                            }}
+                            style={{ padding: '8px 14px', background: '#635BFF', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+                          >
+                            {t('settings:settingsPage.copyUrl')}
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{ padding: '8px', background: 'white', border: '1px solid #C7CED6', borderRadius: '8px' }}>
+                        <QRCodeSVG value={`${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?kiosk=1`} size={104} level="H" includeMargin={true} />
+                      </div>
+                    </div>
+                  </SettingsCard>
+                )}
 
               </SettingsGrid>
             </>

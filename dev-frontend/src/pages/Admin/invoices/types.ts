@@ -26,6 +26,7 @@ export interface Invoice {
   billingPeriod: string;
   planType: string;
   paymentMethod?: string;
+  paymentSubmittedAt?: string;
   transactionId?: string;
   receiptUrl?: string;
   hasPaymentInfo?: boolean;

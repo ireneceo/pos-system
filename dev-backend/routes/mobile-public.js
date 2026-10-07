@@ -144,6 +144,8 @@ router.get('/store/:slug', async (req, res) => {
       takeawaySettings: operationSettings.takeawaySettings || { prepMinutes: 15, packagingNote: '' },
       // Temporary ordering pause — when enabled, mobile page shows the message instead of menu
       pauseOrdering: !!(restaurant.mobile_settings && restaurant.mobile_settings.pause_ordering),
+      // 매장 «키오스크 사용» 스위치(설정 › Kiosk) — 등록 기기가 꺼짐 안내를 보이는 데 쓴다
+      kioskEnabled: !!(restaurant.mobile_settings && restaurant.mobile_settings.kiosk_enabled),
       pauseMessage: (restaurant.mobile_settings && restaurant.mobile_settings.pause_message) || '',
       // Business-hours + last-order gate (single source = utils/businessHours).
       // enabled:false / absent → { enabled:false, canOrder:true } = legacy behaviour (no time gate).

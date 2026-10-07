@@ -36,6 +36,7 @@ import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
+import ReceiptUploadField from '../../components/Invoice/ReceiptUploadField';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
 
@@ -673,22 +674,6 @@ const OwnerInvoicesPage: React.FC = () => {
     setShowPaymentSubmitModal(true);
   };
 
-  // Handle receipt image upload
-  const handleReceiptImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      setPaymentSubmitError('Image size must be less than 5MB');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPaymentData(prev => ({ ...prev, receiptImage: reader.result as string }));
-    };
-    reader.readAsDataURL(file);
-  };
 
   // Generate Invoice HTML for PDF/Print
   const generateInvoiceHTML = (invoice: Invoice) => {
@@ -1495,20 +1480,11 @@ const OwnerInvoicesPage: React.FC = () => {
                         </FormGroup>
                         <FormGroup>
                           <FormLabel>{t('owner:ownerInvoicesPage.paymentReceiptImage')}</FormLabel>
-                          <div style={{ border: '2px dashed #C7CED6', borderRadius: '8px', padding: '20px', textAlign: 'center', cursor: 'pointer', position: 'relative' }}>
-                            {paymentData.receiptImage ? (
-                              <div>
-                                <img src={paymentData.receiptImage} alt="Receipt" style={{ maxWidth: '200px', maxHeight: '200px', marginBottom: '8px', borderRadius: '8px' }} />
-                                <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4B5563' }}>{t('owner:ownerInvoicesPage.clickToChangeImage')}</p>
-                              </div>
-                            ) : (
-                              <div>
-                                <p style={{ margin: '0', fontSize: '14px', color: '#4B5563' }}>{t('owner:ownerInvoicesPage.clickToUploadReceiptImage')}</p>
-                                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6B7280' }}>{t('owner:ownerInvoicesPage.max5mbJpgpng')}</p>
-                              </div>
-                            )}
-                            <input type="file" accept="image/*" onChange={handleReceiptImageUpload} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
-                          </div>
+                          <ReceiptUploadField
+                            value={paymentData.receiptImage}
+                            onChange={(v) => setPaymentData(prev => ({ ...prev, receiptImage: v }))}
+                            onError={setPaymentSubmitError}
+                          />
                         </FormGroup>
                       </>
                     )}
