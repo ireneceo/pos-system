@@ -4,7 +4,7 @@
 
 > **이전:** 2026-10-07 — [Claude Code] **v3.109** · **키오스크·영수증 운영 배포 SW 5.89-kiosk-receipt-20261007(백업 20261007_163801 · 스모크 10/10 · Fable 최종 게이트 PASS)** — 등록된 매장 태블릿만 키오스크(서버 기기 토큰) · 설정 › Kiosk «키오스크 사용» 스위치 · 결제수단 Kiosk 칸 · 키오스크 카드단말기 결제(승인 거래로만 기록) · 주문 꼬리표 Kiosk · 좌측 메뉴 Kiosk · 메뉴·상세·결제 전 과정 오른쪽 장바구니 · 청구서 영수증 드래그·PDF. 문서 `docs/KIOSK_MODE.md`.
 
-> **이전:** 2026-10-07 — [Claude Code] **청구서 «총액 수정» + «수정 이력» 운영 배포 SW 5.88-invoice-total-fix-20261007(백업 20261007_112732 · 스모크 10/10 · Fable 게이트 PASS)** — 외부 공급업체 청구서 총액을 매장 관리자·오너가 청구서 화면에서 고침(오너는 총액만) · 누가·언제·얼마→얼마 이력 표시. health-check T1~T4 · 고장주입 3종 · verify-all --full · 실브라우저 8/8. v3.109 버전 올림은 5.87·5.88 묶어 Irene 결정 대기. `/개발시작` 0-B단계(운영 문의 읽기 `scripts/prod-inbox.js`) 추가. (오전: SW 5.87 운영 배포 — 오너 To Pay 매장 필터·올린 인보이스 보기·브랜드 매니저 메뉴 이동)
+> **이전:** 2026-10-07 — [Claude Code] **청구서 «총액 수정» + «수정 이력» 운영 배포 SW 5.88-invoice-total-fix-20261007(백업 20261007_112732 · 스모크 10/10 · Fable 게이트 PASS)** — 외부 공급업체 청구서 총액을 매장 관리자·오너가 청구서 화면에서 고침(오너는 총액만) · 누가·언제·얼마→얼마 이력 표시. health-check T1~T4 · 고장주입 3종 · verify-all --full · 실브라우저 8/8. v3.109 버전 올림은 5.87·5.88 묶어 Irene 결정 대기. `/개발시작` 0-B단계(운영 문의 읽기 `scripts/prod-inbox.js` → `scripts/prod-query.js` 로 바뀜(2026-10-07)) 추가. (오전: SW 5.87 운영 배포 — 오너 To Pay 매장 필터·올린 인보이스 보기·브랜드 매니저 메뉴 이동)
 
 > **이전:** 2026-10-06 — [Claude Code] **키오스크 결제 질문 조사(코드 변경 0) → «키오스크 결제 분리» Fable 설계 판단 대기로 등록(Fable 한도 소진).** 상세 session-state 다음 확정 2번.
 
@@ -10880,11 +10880,11 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 - ✅ 원가 변경 기록 이름(full_name) · i18n 4언어 · 문서 PURCHASE_ORDER_SYSTEM §8-7
 - ✅ 검증: health-check invoice-total-fix 4/4 · 고장주입 3/3 · verify-all --full · 실브라우저 8/8
 - ✅ Fable 게이트 PASS(`.claude/fable-verdict-20261007-invoice-total-fix-gate.md`) → 운영 배포 SW 5.88(백업 20261007_112732 · 스모크 10/10 · mount 크래시 0)
-- ✅ `/개발시작` 0-B단계 — 운영에 들어온 시스템 문의·후속 글·랜딩 문의를 읽기 전용으로 확인(`dev-backend/scripts/prod-inbox.js`), 건마다 «이미 해결/조치 필요/결정 필요»
+- ✅ `/개발시작` 0-B단계 — 운영에 들어온 시스템 문의·후속 글·랜딩 문의를 읽기 전용으로 확인(`dev-backend/scripts/prod-inbox.js` → `dev-backend/scripts/prod-query.js`(읽기 전용 계정 claude_ro · SELECT 4개) 로 바뀜(2026-10-07)), 건마다 «이미 해결/조치 필요/결정 필요»
 - ✅ (서버 공용) 개발서버 상황판·아침 점검 cron — `~/dev-server/README.md`
 
 ### 수정된 파일
-- `dev-backend/middleware/buyerScope.js` · `routes/cost-reconciliation.js` · `routes/invoices-list.js` · `routes/owner.js` · `services/reconcileInvoiceSync.js` · `services/invoicePurchaseOrderAttach.js` · `scripts/health-check.js` · `scripts/prod-inbox.js`(신규)
+- `dev-backend/middleware/buyerScope.js` · `routes/cost-reconciliation.js` · `routes/invoices-list.js` · `routes/owner.js` · `services/reconcileInvoiceSync.js` · `services/invoicePurchaseOrderAttach.js` · `scripts/health-check.js` · `scripts/prod-inbox.js`(신규 → prod-query.js 로 바뀌어 삭제, 2026-10-07)
 - `dev-frontend/src/components/Invoices/SupplierInvoiceTotalFix.tsx`·`InvoiceModificationHistory.tsx`(신규) · `pages/Restaurant/InvoicesPage.tsx` · `pages/Owner/OwnerInvoicesPage.tsx` · `components/Layout/MainLayout.tsx`(메뉴 목록만) · locales settings 4언어 · `public/sw.js`
 - docs `PURCHASE_ORDER_SYSTEM.md` §8-7 · `RESTAURANT_OWNER_PLAN.md` · `SUPPLIER_CONTRACT_SYSTEM.md` · `INVOICE_SYSTEM.md` · `.claude/commands/개발시작.md`
 

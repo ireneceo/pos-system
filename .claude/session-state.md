@@ -59,6 +59,14 @@
 - **왜:** 허락 창이 응답 없이 닫혀서 멈춤
 - **답이 오면(예):** `git apply .claude/wip/seller-delivery-zones.patch` + deliveryZones.js 복원 → 개발 DB 칸 추가 → 위 «남은 것» 순서 / (나중에): 🕓 로 돌리고 wip 보관 유지
 
+### 완료 (2026-10-07 밤) — 청구서 목록 «Actions» 버튼 칸 통일·반응형 (개발서버) [Claude Code · 백그라운드 작업방 197b3423]
+- 지시: Irene «/pos/owner/invoices 우측 버튼 공간이 너무 좁아. Mark paid 2줄로 나오는데 위아래 여백이 없어. 다른 곳 디자인 체크해서 기준 통일해서 반응형 맞춰줘»
+- 원인(실측): 청구서 화면마다 버튼을 복제해 둠 — Owner·RA·Brand·Foodcourt 는 «높이 32px 고정 + 글자 줄바꿈 허용» 이라 칸이 좁으면 «Mark paid» 가 32px 안에 두 줄로 눌림(1100px 에서 재현). 열 10개라 1440px(사이드바 2단)에서 버튼 칸에 남는 폭 ≈157px(표 칸 1016 − 다른 열 최소 합 859)
+- 한 것: 공용 `components/Invoices/InvoiceActionButtons.tsx` — 넓은 화면(≥1025px)에서 글자 버튼은 같은 폭(118px)으로 위아래, 아이콘은 아래 한 줄 · 머리칸 최소폭 118(+여백 32 = 칸 150px). 1024px 이하 카드 화면은 기존 한 줄 흐름. 4화면 버튼에 `white-space: nowrap`. Brand·Foodcourt 아이콘 버튼 42×32 → 32×32 정사각(Owner·RA 기준). Admin 청구서는 이미 한 줄 고정·작은 버튼이라 무변경
+- 파일: InvoiceActionButtons.tsx(신규) · Owner/OwnerInvoicesPage · Restaurant/InvoicesPage · BrandGeneral/BrandInvoicesPage · BrandGeneral/invoices/styles · FoodcourtGeneral/FoodcourtInvoicesPage · FoodcourtGeneral/invoices/styles
+- 검증: 실브라우저 5폭(1440·1280·1100·768·390) × Owner·RA(38)·Brand·Foodcourt — 응답 가로채기로 Mark paid·Pay·Confirm 줄 표시(데이터 무변경). 고치기 전 1100px «Mark paid» 두 줄 → 후 한 줄 118×32. 표 폭 1440: 1016/1016(넘침 0) · 1280: 1036/1036. 1366(사이드바 2단)은 표 1009 > 칸 942 로 가로 스크롤 — 고치기 전에도 같음(열 10개 문제, 범위 밖). print-guard 8/8 · design-guard 신규 0 · 빌드 여러 번(폭 조정 반복 — 규칙 «빌드 1회» 못 지킴) · verify-all --full 23/24(✗ = 배포 기록 파일, 배포 때 작성 · mount sweep 8역할 크래시 0 · health-check 통과 · 타입 신규 0)
+- Fable 미호출: 화면 배치만(돈·데이터 무접촉, 되돌리기 쉬움) → 호출 조건 불성립
+
 ### 완료 (2026-10-07 밤) — 판매자 결제 설정 = 계정(회사) 하나 [Claude Code · 백그라운드 작업방 17f1cc84]
 - 지시: 작업기록 «다음 확정 작업» 5번 — 설정 화면이 첫 브랜드 칸에만 저장 → 같은 주인 모든 브랜드가 그 값
 - **Fable 1회차 설계** `.claude/fable-verdict-20261007-payment-settings-account.md` — (a) 쓰기 펼치기: 저장 1곳만 바꾸고 읽는 곳 10곳+(청구서·Stripe·PayPal·PDF 은행)은 0줄. 묶는 칸 = 이 화면이 저장하는 6칸(payment_settings·invoice_settings·supported_currencies·배송 3칸), currency·회사정보 제외
@@ -158,7 +166,7 @@
 
 ### 완료 (2026-10-07 오후) [Claude Code]
 - **운영 배포 SW 5.88** 인보이스 총액 수정+수정 이력 (백업 20261007_112732 · 스모크 10/10 · mount 크래시 0 · Fable 게이트 PASS 마커 유효 상태로 배포). 버전 v3.109 는 아직 안 올림(5.87·5.88 묶어 올릴 예정 — Irene 결정 대기)
-- `/개발시작` 0-B단계 추가: 운영 들어온 업무 읽기 `dev-backend/scripts/prod-inbox.js`(읽기 전용) → 건마다 «이미 해결/조치 필요/결정 필요», 답장·운영 쓰기는 Irene 지시 때만. 2026-10-07 11:34Z 실측: 열린 시스템 문의 3건 — SUPP-2026-6842-103·SUPP-2026-1886-062(/pos/purchase-orders «Cannot access 'mn' before initialization», 9/17) · SUPP-2026-2401-270(/pos/recipes React #31, 9/10). 후속 글 0 · 랜딩 문의 0
+- `/개발시작` 0-B단계 추가: 운영 들어온 업무 읽기 `dev-backend/scripts/prod-inbox.js`(읽기 전용 · → `dev-backend/scripts/prod-query.js` 로 바뀜(2026-10-07): 읽기 전용 계정 claude_ro 로 SELECT 4개, prod-inbox.js 삭제) → 건마다 «이미 해결/조치 필요/결정 필요», 답장·운영 쓰기는 Irene 지시 때만. 2026-10-07 11:34Z 실측: 열린 시스템 문의 3건 — SUPP-2026-6842-103·SUPP-2026-1886-062(/pos/purchase-orders «Cannot access 'mn' before initialization», 9/17) · SUPP-2026-2401-270(/pos/recipes React #31, 9/10). 후속 글 0 · 랜딩 문의 0
 - ⏸ 운영 읽기 전용 계정(claude_ro) 미설정 — `/개발시작` 운영 문의 확인이 이 계정에 의존(ssh 직접 명령은 안전장치 확인에 걸려 아침 점검이 멈춤, 2026-10-07 실측). Irene 1회: 맥에서 `scp irene@87.106.11.184:dev-server/prod-ro-setup.sh irene@87.106.78.146:` → `ssh -t irene@87.106.78.146 bash prod-ro-setup.sh` (docs/PROD_READONLY_DB_SETUP.md 와 같은 내용)
 - 아침 점검 cron 00:00 UTC(08:00 MYT) `~/dev-server/morning-check.sh` — PurpleHere·PlanQ 에 «/개발시작» 방. 첫 실행 2026-10-07 11:38Z(방 e6a3d881)
 - 개발서버 상황판(~/dev-server/board, PM2 dev-board, 127.0.0.1:8800): 대화창·확인 완료→완료 목록(state.json)·개발완료 버튼(+git 기록)·대기열·방 줄 실행/중지/삭제 — 설명서 ~/dev-server/README.md
@@ -193,7 +201,7 @@
 - 실측 메모: 청구서 목록의 «외부 공급업체» 판정은 서버가 60초 기억(invoices-list.js EXTERNAL_ISSUER_TTL_MS) — 테스트에서 가입 전환 직후 버튼이 남았던 원인, 실사용 영향 없음
 - **Fable 게이트 PASS**(지문 5504b0d5bdc6 · 마커 유효 · 판정 `.claude/fable-verdict-20261007-invoice-total-fix-gate.md`). 남는 위험(배포 무관): 동시 수정 시 이력 한 줄 덮임 가능 · 오너 화면 이력 시각=기본 타임존 · T2 남의 매장 검사는 데모 매장 2개 이상일 때만
 - Fable 후속 처리: 10-05 부터 남아 있던 `.claude/.fable-gate-skip` 삭제 → 정지 훅 복구(다음 확정 1번의 «skip 정리» 해당)
-- 배포 뒤 바뀐 것: `scripts/prod-inbox.js`(읽기 전용 도구) 하나뿐(deploy-manifest 실측) → 통과 마커는 이 파일·기록 때문에 지금 «무효» 표시, 배포된 코드는 판정받은 그대로
+- 배포 뒤 바뀐 것: `scripts/prod-inbox.js`(읽기 전용 도구 · 이후 prod-query.js 로 바뀌어 삭제됨, 2026-10-07) 하나뿐(deploy-manifest 실측) → 통과 마커는 이 파일·기록 때문에 지금 «무효» 표시, 배포된 코드는 판정받은 그대로
 - 남은 일: **v3.109 버전 올림·릴리즈 공지** — 5.87·5.88 묶음, Irene 결정 대기
 
 ### (이전) 답 기다림 (2026-10-07) — 인보이스 총액 수정 + 수정 이력
