@@ -315,9 +315,31 @@ const ecrInvoiceOk = (s) => /^[A-Za-z0-9]{1,40}$/.test(String(s || ''));
  * paymentType(D003, 선택) — 기본은 보내지 않는다(규격 2.9.7 부터 Optional, 카드·손님 QR 을 단말기가 함께 받음).
  * 실단말기가 D003 없이는 QR 을 안 받는 것으로 드러나면 «QR (단말기)» 버튼만 'CD'(Scan-QR) 를 넘긴다(Fable D-5 분기).
  */
-function saleRequest({ amount, ecrInvoiceNo, cashierId, paymentType }) {
+/**
+ * 단말기 화면에 QR 을 띄우는 판매(non-seamless, 규격 §9.9) — C01A Product ID.
+ * 값은 GHL 이 우리 PayHere Direct 단말기용으로 준 것(2026-09-28 메일 «Duitnow QR Product ID is DUITNOW QR» +
+ * 샘플 프레임 `…C01A000A445549544E4F57205152…` = ASCII 10바이트). 규격 표의 «B4» 와 다르다 — GHL 샘플을 따른다.
+ * 응답은 EA(보류) → Check Status(E3) 반복. 이 판매로 승인되면 수단은 언제나 DuitNow(손님이 그 QR 을 스캔했다).
+ */
+const PRODUCT = { duitnow: 'DUITNOW QR' };
+const PRODUCT_KEY_OF = Object.fromEntries(Object.entries(PRODUCT).map(([k, v]) => [v, k]));
+
+/** 우리가 보낸 판매 요청 hex 에 실린 Product ID → 'duitnow' | null. 표 칸 없이 요청 원본이 단일 기록이다. */
+function requestProduct(requestHex) {
+  if (!requestHex) return null;
+  try {
+    const v = parseFrame(requestHex).tags[TAG.productId];
+    return v ? (PRODUCT_KEY_OF[v.toString('latin1')] || null) : null;
+  } catch { return null; }
+}
+
+function saleRequest({ amount, ecrInvoiceNo, cashierId, paymentType, product }) {
   if (!ecrInvoiceOk(ecrInvoiceNo)) throw new Error('ECR invoice number must be 1-40 alphanumerics');
   const tags = [[TAG.amount, encodeAmount(amount)], [TAG.ecrInvoice, ecrInvoiceNo]];
+  if (product) {
+    if (!PRODUCT[product]) throw new Error('Invalid product');
+    tags.push([TAG.productId, PRODUCT[product]]);
+  }
   if (paymentType) {
     if (!/^[0-9A-Fa-f]{2}$/.test(paymentType)) throw new Error('Invalid payment type');
     tags.push([TAG.paymentType, Buffer.from(paymentType, 'hex')]);
@@ -343,5 +365,5 @@ module.exports = {
   STX, ETX, CMD, CMD_NAME, TAG, STATUS_TEXT, CARD_CODE,
   crc16Arc, toCents, encodeAmount, decodeAmount, tlv, buildFrame, parseFrame, pickResultFrame, hexToBuf, bufToHex,
   cardTypeCode, mapCardType, tenderFromResult, readResult, classifyStatus, parseHttpRaw,
-  saleRequest, reprintRequest, checkStatusRequest, voidRequest, echoRequest,
+  saleRequest, reprintRequest, checkStatusRequest, voidRequest, echoRequest, PRODUCT, requestProduct,
 };

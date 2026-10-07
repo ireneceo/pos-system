@@ -681,7 +681,7 @@ function poApprovalPendingEmail({ buyerName, poNumber, total, currency, link, it
 /**
  * PO Approval Result — sent to the PO creator when the Owner approves or rejects (2026-06-21).
  */
-function poApprovalResultEmail({ poNumber, approved, reason, total, currency, link, items }, lang = 'en') {
+function poApprovalResultEmail({ poNumber, approved, reason, total, currency, link, items, isExternal }, lang = 'en') {
   const { getEmailText } = require('./i18n');
   const t = (k, p) => getEmailText(lang, 'po.approvalResult.' + k, p);
   const ts = (k, p) => getEmailText(lang, 'po.sellerReceived.' + k, p);
@@ -696,7 +696,7 @@ function poApprovalResultEmail({ poNumber, approved, reason, total, currency, li
     : '';
   const body = `
     <p style="color:#374151;font-size:16px;margin:0 0 16px;">
-      ${approved ? t('bodyApproved') : t('bodyRejected')}
+      ${approved ? t(isExternal ? 'bodyApprovedExternal' : 'bodyApproved') : t('bodyRejected')}
     </p>
     ${infoTable(
       infoRow(ts('poNumber'), safePo) +
@@ -789,34 +789,36 @@ function returnExternalSendEmail({ buyerName, poNumber, total, currency, items }
  * 그전까지 구매자에게는 아무 메일도 가지 않았다 — 판매자·오너만 받았다.
  * 처음부터 4언어 + 품목표 포함.
  */
-function poBuyerConfirmEmail({ sellerName, poNumber, total, currency, link, items }, lang = 'en') {
+function poBuyerConfirmEmail({ sellerName, poNumber, total, currency, link, items, isExternal }, lang = 'en') {
   const { getEmailText } = require('./i18n');
+  // 외부(앱 안 쓰는) 공급업체는 시스템이 발주를 보내지 않는다 — «보냈습니다» 대신 «보내 주세요» (2026-10-07)
+  const x = isExternal ? 'External' : '';
   const t = (k, p) => getEmailText(lang, 'po.buyerConfirm.' + k, p);
   const ts = (k, p) => getEmailText(lang, 'po.sellerReceived.' + k, p);
-  const title = t('heading');
+  const title = t('heading' + x);
   const safeSeller = (sellerName || '—').toString().slice(0, 120);
   const safePo = (poNumber || '—').toString().slice(0, 80);
   const money = fmtMoney(total, currency);
   const body = `
     <p style="color:#374151;font-size:16px;margin:0 0 16px;">
-      ${t('body', { seller: safeSeller })}
+      ${t('body' + x, { seller: safeSeller })}
     </p>
     ${infoTable(
       infoRow(ts('poNumber'), safePo) +
       infoRow(t('seller'), safeSeller) +
       infoRow(ts('total'), `<span style="color:${BRAND_COLOR};font-weight:700;">${money}</span>`) +
-      infoRow(ts('status'), `<span style="color:#F59E0B;font-weight:600;">${ts('awaitingConfirmation')}</span>`)
+      infoRow(ts('status'), `<span style="color:#F59E0B;font-weight:600;">${isExternal ? t('statusExternal') : ts('awaitingConfirmation')}</span>`)
     )}
     ${poItemsTable(items, currency, total, lang)}
     <p style="color:#6B7280;font-size:14px;margin:0 0 16px;line-height:1.6;">
-      ${t('hint')}
+      ${t('hint' + x)}
     </p>
     ${ctaButton(t('cta'), link || `${BASE_URL}/pos/purchase-orders/history`)}`;
 
   return withRenderMeta({
-    subject: t('subject', { poNumber: safePo }),
+    subject: t('subject' + x, { poNumber: safePo }),
     html: wrapTemplate(title, body, lang),
-    text: t('textFallback', { poNumber: safePo, seller: safeSeller, total: money })
+    text: t('textFallback' + x, { poNumber: safePo, seller: safeSeller, total: money })
   }, title, body, lang);
 }
 

@@ -111,7 +111,8 @@
       "bodyRejected": "Pesanan belian anda telah ditolak.",
       "reason": "Sebab",
       "cta": "Lihat Pesanan",
-      "textFallback": "Pesanan belian {{poNumber}}: {{result}}."
+      "textFallback": "Pesanan belian {{poNumber}}: {{result}}.",
+      "bodyApprovedExternal": "Pesanan belian anda telah diluluskan. Pembekal ini tidak menggunakan aplikasi, jadi ia <strong>belum dihantar</strong> — hantar melalui WhatsApp, PDF atau e-mel dari butiran pesanan."
     },
     "buyerConfirm": {
       "subject": "Pesanan dibuat: PO {{poNumber}}",
@@ -120,7 +121,13 @@
       "seller": "Penjual",
       "cta": "Lihat Pesanan",
       "hint": "Anda akan dimaklumkan apabila penjual mengesahkan pesanan.",
-      "textFallback": "Pesanan belian {{poNumber}} dibuat dengan {{seller}}. Jumlah: {{total}}."
+      "textFallback": "Pesanan belian {{poNumber}} dibuat dengan {{seller}}. Jumlah: {{total}}.",
+      "subjectExternal": "Sedia untuk dihantar: PO {{poNumber}}",
+      "headingExternal": "Pesanan Belian Anda Sedia untuk Dihantar",
+      "bodyExternal": "Pesanan belian anda kepada <strong>{{seller}}</strong> telah dibuat, tetapi <strong>belum dihantar</strong> — pembekal ini tidak menggunakan aplikasi.",
+      "statusExternal": "Belum dihantar",
+      "hintExternal": "Buka pesanan dan hantar melalui WhatsApp, PDF atau e-mel.",
+      "textFallbackExternal": "Pesanan belian {{poNumber}} kepada {{seller}} belum dihantar (pembekal tidak menggunakan aplikasi). Hantar melalui WhatsApp, PDF atau e-mel. Jumlah: {{total}}."
     },
     "externalSend": {
       "subject": "Pesanan Belian {{poNumber}} daripada {{buyer}}",

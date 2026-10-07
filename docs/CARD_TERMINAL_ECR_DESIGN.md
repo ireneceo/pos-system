@@ -23,7 +23,7 @@
 - 규격상 카드 판매와 손님이 보여 주는 지갑 QR 판매(seamless)는 **요청이 같다**(금액만). 단말기 응답으로 서버가 분류한다 —
   `utils/ghlEcr.tenderFromResult`: D018 문자열 → D002 코드(11 TnG · 19 eWallet) → 입력방식 Scan.
   결과 `tender_method`(card|ewallet) · `ewallet_type`(tng|grabpay|boost|shopeepay|duitnow|other) 로 주문·원장에 기록 → 몰 보고·마감이 단말기 사실과 일치.
-- **단말기 화면에 DuitNow QR 을 띄우는 방식(Async, Product ID C01A)** 은 2단계 — Product ID 값은 GHL 회신 필요.
+- **단말기 화면에 DuitNow QR 을 띄우는 방식(Async, Product ID C01A)** — 2026-10-07 구현(개발서버), §4-2.
 - E-Wallet 버튼은 남는다(단말기를 안 거치는 매장 자체 QR 스탠디 수기 기록용). 단말기로만 받는 매장은 설정에서 E-Wallet 을 끈다.
 - 수동 기록(결과 미확인)은 캐셔가 영수증을 보고 카드/이월렛 + 종류를 고른다(서버 400 강제).
 - 실측 분기: 금액만 보낸 Sale 로 단말기가 QR 을 안 받으면 «QR (단말기)» 버튼 + D003=CD(코덱 인자 준비됨).
@@ -86,6 +86,15 @@ void 자식: sent ─00─▶ approved(부모 voided) · C5 → declined(부모 
 - 결제창(단건·분할 공통): 단말기 거절·미확인·취소 뒤 Confirm Payment 잠김 — 패널의 Try again / 수동 기록으로만 진행.
 - 증명: `src/utils/terminalSale.busy.test.ts` 3건 · e2e `card-terminal` B2(운영 #33 BUSY 원본을 앱과 같은 형식으로 2번 → 자동 승인).
 
+## 4-2. 단말기 화면 DuitNow QR · 직불 D007 (2026-10-07, 개발서버)
+- **근거**: GHL(NTT DATA) 2026-09-28 메일 — «Duitnow QR Product ID is DUITNOW QR» + PayHere Direct 용 샘플(카드 판매·DuitNow 판매·Query Status E3·Void·Reprint·Settlement). 우리 빌더가 샘플 5개(판매·DuitNow 판매·조회·취소·정산)를 **바이트까지 똑같이** 만든다(`tests/ghl-ecr.test.js`). C01A 값은 규격 표의 B4 가 아니라 **ASCII 10바이트 `DUITNOW QR`** — GHL 샘플을 따른다. 규격은 C01A·E3 를 «Payhere ECR 전용» 이라 하지만 GHL 이 Direct 용으로 준 샘플에 둘 다 있다 → 실단말기 1회로 닫는다.
+- **흐름**: 결제창(카드 선택, 단말기 연동) 대기 화면에 «카드 · 손님 QR / 단말기 화면 DuitNow QR» 선택 → DuitNow 면 `POST /api/terminal/transactions {product:'duitnow'}` → 서버가 C01A 를 실은 판매 → 단말기 EA(보류) → 기존 Check Status(E3) 3초 간격 최대 90초 → 승인.
+- **돈 규칙**: 이 판매의 승인은 응답에 브랜드(D018)가 없어도 **ewallet/duitnow** 로 기록한다 — 서버가 요청 원본(`request_hex`)의 Product ID 로 판정(`ghlEcr.requestProduct`). 응답 문자열만 보면 E3 응답에 D018 이 빠질 때 «카드» 로 잘못 기록된다(고장주입으로 확인).
+- **설정**: `payment_settings.card.terminal.duitnow`(기본 꺼짐) — 설정 › 결제 › 카드 단말기 «단말기 화면 DuitNow QR». 꺼진 매장은 결제창 변화 0, 서버도 `409 PRODUCT_DISABLED`(단말기에 보내기 전, 행 0). 모르는 상품 `400 BAD_PRODUCT`. 키오스크는 이번에 넣지 않았다(손님 화면 = 카드·손님 QR 그대로).
+- **증명**: jest 41/41 · health-check terminal 12/12(신규 «DuitNow C01A» 1건) · 고장주입 2건(수단 판정 제거 → «approved/card» 로 실패 · 설정 검사 제거 → 실패) · 화면 단위 `utils/terminalSale.duitnow.test.ts` 2건.
+- **직불 D007(Account Type)**: 규격 §5.3 «Mandatory for Debit transaction if use Payhere Direct» (값 Saving 0x10 / Current 0x20). 계산대는 카드를 대기 **전에** 직불인지 알 수 없다 → 구현 보류. 2026-10-05 VISA 승인 2건은 D007 없이 났다. MyDebit 카드 1건 실측(근무시간) 또는 GHL 답(«D007 없이 MyDebit 을 대면 단말기가 계좌 종류를 묻는가/거절하는가») 뒤에 정한다.
+- **UAT 근무시간**: UAT 단말기는 근무시간(평일)에만 은행 테스트 서버에 연결된다 — 실측은 평일 낮에.
+
 ## 5. 남은 것
 
 - **2026-10-07 키오스크 단말기 결제(운영 SW 5.89)**: 등록된 키오스크 태블릿(기기 토큰)이 같은 `/api/terminal` 을 5개 호출(설정·판매·응답·복구·상태조회)만 쓴다 — 수동 기록·Void·찾기는 403, 자기 기기 거래만(`device_label` 머리 `kiosk#<id> `), 판매는 키오스크 주문만, 기기별 단말기 주소 override. 결제 기록은 `POST /orders/:id/payments {terminal_transaction_id}` 가 승인 거래에서 금액·수단을 읽는다. 상세 `docs/KIOSK_MODE.md` §5. **실기(앱 기기 + 실단말기)는 GHL 파일럿 날.**
@@ -94,5 +103,5 @@ void 자식: sent ─00─▶ approved(부모 voided) · C5 → declined(부모 
 
 - **GHL 회신 대기**(Irene 발송): 실단말기 전송 형식(HTTP hex 확정 여부·응답 형식), 프로파일(Payhere ECR/Direct), 샌드박스 TID/MID·테스트 단말기, 인증 필수 시나리오, DuitNow QR 처리, Tap-to-Phone 옵션.
 - 실단말기 Echo 1회로 `transport` 기본값 확정 → 데스크탑앱 버전 올려 설치본 배포 → 파일럿 매장 1곳 설치.
-- 2단계: Settlement(A3)·마감 카드금액 자동입력·DuitNow(C01A)·D007 Account Type(직불)·Refund(B1, 정산 뒤)·분할 결제 1건 단위 Void(원장 모델 = 별도 설계). Void(A2)는 2026-10-04 완료(§3).
+- 2단계: Settlement(A3)·마감 카드금액 자동입력·D007 Account Type(직불, §4-2 실측 뒤)·Refund(B1, 정산 뒤)·분할 결제 1건 단위 Void(원장 모델 = 별도 설계). Void(A2)는 2026-10-04 완료(§3).
 - 2026-10-04 운영 실측(매장 13, PayHere Direct): Echo 정상 · tx28 C7 · tx29 B0 «Bank timed out»(카드 VISA Wave 읽음, 승인번호 없음 = 단말기↔은행 문제) · tx30 E6 → HTTP 400 BUSY. GHL 질문 6개 = 판정문 §8.

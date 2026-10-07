@@ -31,6 +31,10 @@ interface Props {
   subRequired: boolean;
   /** 단말기 사용 중(BUSY) 자동 재시도 멈춤 */
   onStopWaiting?: () => void;
+  /** 매장이 단말기 화면 DuitNow QR 을 켰는가 — 켰으면 대기 화면에 «카드 · 손님 QR / DuitNow QR» 선택 */
+  duitnowOn?: boolean;
+  product?: '' | 'duitnow';
+  onProduct?: (p: '' | 'duitnow') => void;
 }
 
 const box: React.CSSProperties = { fontSize: '13px', lineHeight: 1.5, color: '#425466' };
@@ -43,6 +47,7 @@ const chip = (on: boolean): React.CSSProperties => ({
 const TerminalPanel: React.FC<Props> = ({
   busy, ready, reason, issue, note, onNote, onManual, onRetry, onPickTerminal, onVoid,
   manualTender, onManualTender, cardOptions, ewalletOptions, cardLabels, ewalletLabels, subRequired, onStopWaiting,
+  duitnowOn = false, product = '', onProduct,
 }) => {
   const { t } = useTranslation('pos');
   // 'reason:<키>' 는 번역, 'reason:code:<코드>' 는 단말기 코드 안내, 그 외(서버·단말기 문구)는 그대로
@@ -70,6 +75,8 @@ const TerminalPanel: React.FC<Props> = ({
 
   if (busy) {
     const text = busy === 'voiding' ? t('cardTerminal.void.progress')
+      // 단말기 화면 QR — 손님이 스캔할 때까지 보류(EA)·조회가 이어진다. «카드를 대세요» 가 아니라 «스캔 기다림»
+      : product === 'duitnow' && (busy === 'waiting' || busy === 'checking') ? t('cardTerminal.duitnowWaiting')
       : busy === 'recovering' ? t('cardTerminal.recovering')
       : busy === 'checking' ? t('cardTerminal.checking')
       : busy === 'starting' ? t('cardTerminal.starting')
@@ -167,7 +174,22 @@ const TerminalPanel: React.FC<Props> = ({
     );
   }
 
-  if (ready) return <div style={box}>{t('cardTerminal.ready')}</div>;
+  if (ready) {
+    if (!duitnowOn || !onProduct) return <div style={box}>{t('cardTerminal.ready')}</div>;
+    // 카드·손님 QR 은 단말기가 알아서 받는다(버튼 하나). 단말기 화면에 QR 을 띄우는 것만 미리 정해야 한다(Fable 판정 2026-10-01 B).
+    return (
+      <div style={box}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }} role="group" aria-label={t('cardTerminal.product.label')}>
+          {(['', 'duitnow'] as const).map((p) => (
+            <button key={p || 'card'} type="button" aria-pressed={product === p} style={chip(product === p)} onClick={() => onProduct(p)}>
+              {p === 'duitnow' ? t('cardTerminal.product.duitnow') : t('cardTerminal.product.card')}
+            </button>
+          ))}
+        </div>
+        {product === 'duitnow' ? t('cardTerminal.product.duitnowReady') : t('cardTerminal.ready')}
+      </div>
+    );
+  }
   return <div style={box}>{reason === 'offline' ? t('cardTerminal.offline') : t('cardTerminal.noBridge')}</div>;
 };
 

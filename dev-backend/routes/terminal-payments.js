@@ -68,13 +68,16 @@ router.get('/config', async (req, res) => {
     const r = await restaurantFrom(req, req.query.restaurant_id);
     if (!r.rid) return res.status(r.status).json({ success: false, message: r.message });
     const cfg = await svc.terminalConfig(r.rid, req.kioskDevice || null);
-    res.json({ success: true, data: { enabled: cfg.enabled, provider: cfg.provider, transport: cfg.transport } });
+    res.json({ success: true, data: { enabled: cfg.enabled, provider: cfg.provider, transport: cfg.transport, duitnow: cfg.duitnow } });
   } catch (e) { send(res, e, 'GET /config'); }
 });
 
 router.post('/transactions', async (req, res) => {
   try {
     const { restaurant_id, order_id, amount, cashier_name, device_label } = req.body || {};
+    // 단말기 화면 QR(DuitNow) 판매 — 없으면 오늘과 같은 판매(카드·손님 QR)
+    const product = req.body?.product ? String(req.body.product) : null;
+    if (product && !['duitnow'].includes(product)) return res.status(400).json({ success: false, code: 'BAD_PRODUCT', message: 'Unknown terminal product' });
     const r = await restaurantFrom(req, restaurant_id);
     if (!r.rid) return res.status(r.status).json({ success: false, message: r.message });
     const oid = order_id != null && order_id !== '' ? parseInt(order_id, 10) : null;
@@ -89,7 +92,7 @@ router.post('/transactions', async (req, res) => {
       const data = await svc.createSale({ restaurantId: r.rid, orderId: oid, amount, user: null, cashierName: 'Kiosk', deviceLabel: svc.kioskLabel(req.kioskDevice), device: req.kioskDevice });
       return res.status(201).json({ success: true, data });
     }
-    const data = await svc.createSale({ restaurantId: r.rid, orderId: oid, amount, user: req.user, cashierName: cashier_name, deviceLabel: device_label });
+    const data = await svc.createSale({ restaurantId: r.rid, orderId: oid, amount, user: req.user, cashierName: cashier_name, deviceLabel: device_label, product });
     res.status(201).json({ success: true, data });
   } catch (e) { send(res, e, 'POST /transactions'); }
 });

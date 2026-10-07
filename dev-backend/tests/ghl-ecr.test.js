@@ -226,3 +226,25 @@ describe('Void(A2) · Direct 실패 분류', () => {
     expect(ecr.parseHttpRaw('')).toBeNull();
   });
 });
+
+// GHL 이 우리 PayHere Direct 단말기용으로 메일(2026-09-28)에 준 요청 샘플 — 우리 빌더가 바이트까지 같아야 한다.
+describe('GHL 메일 샘플 프레임 (PayHere Direct · DuitNow QR Product ID)', () => {
+  const hex = (b) => ecr.bufToHex(b).toUpperCase();
+  test('카드 판매 · DuitNow 판매(C01A) · 상태조회 · 취소 · 정산 5개 일치', () => {
+    expect(hex(ecr.saleRequest({ amount: 0.10, ecrInvoiceNo: 'INV260408001' })))
+      .toBe('02000C010B01A100001AC0010006000000000010C013000C494E56323630343038303031033E03');
+    expect(hex(ecr.saleRequest({ amount: 0.10, ecrInvoiceNo: 'INV260408002', product: 'duitnow' })))
+      .toBe('02000C010B01A1000028C0010006000000000010C013000C494E56323630343038303032C01A000A445549544E4F572051524AAB03');
+    expect(hex(ecr.checkStatusRequest({ amount: 0.10, ecrInvoiceNo: 'INV260408002' })))
+      .toBe('02000C010B01E300001AC0010006000000000010C013000C494E56323630343038303032A20C03');
+    expect(hex(ecr.voidRequest({ amount: 0.10, ecrInvoiceNo: 'INV260408002' })))
+      .toBe('02000C010B01A200001AC0010006000000000010C013000C494E56323630343038303032F27D03');
+    expect(hex(ecr.buildFrame({ command: ecr.CMD.settlement }))).toBe('02000C010B01A30000006A0E03');
+  });
+  test('요청 원본에서 Product ID 를 읽는다 · 모르는 상품은 거부', () => {
+    expect(ecr.requestProduct(ecr.bufToHex(ecr.saleRequest({ amount: 1, ecrInvoiceNo: 'PH1A1', product: 'duitnow' })))).toBe('duitnow');
+    expect(ecr.requestProduct(ecr.bufToHex(ecr.saleRequest({ amount: 1, ecrInvoiceNo: 'PH1A1' })))).toBeNull();
+    expect(ecr.requestProduct('zz')).toBeNull();
+    expect(() => ecr.saleRequest({ amount: 1, ecrInvoiceNo: 'PH1A1', product: 'boost' })).toThrow('Invalid product');
+  });
+});

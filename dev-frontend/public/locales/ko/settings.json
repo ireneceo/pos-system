@@ -1049,7 +1049,9 @@
       "refind": "다시 찾기",
       "advanced": "고급 설정",
       "manualHost": "단말기 주소 (자동 찾기가 안 될 때만)",
-      "autoUpdated": "단말기 주소가 바뀌어 {{host}} 로 다시 찾아 저장했습니다"
+      "autoUpdated": "단말기 주소가 바뀌어 {{host}} 로 다시 찾아 저장했습니다",
+      "duitnow": "단말기 화면 DuitNow QR",
+      "duitnowHint": "결제창에 «단말기 화면 DuitNow QR» 선택이 생깁니다 — 단말기가 DuitNow QR 을 띄우고 손님이 스캔합니다. 단말기에 DuitNow 가 열려 있을 때만 켜세요(GHL 확인)."
     }
   },
   "printer.emergency.workstationReceiptPrinter": "이 워크스테이션 영수증 프린터",

@@ -111,7 +111,8 @@
       "bodyRejected": "발주가 반려되었습니다.",
       "reason": "사유",
       "cta": "발주 보기",
-      "textFallback": "발주 {{poNumber}}: {{result}}."
+      "textFallback": "발주 {{poNumber}}: {{result}}.",
+      "bodyApprovedExternal": "발주가 승인되었습니다. 이 공급업체는 앱을 쓰지 않아 <strong>자동으로 보내지 않았습니다</strong> — 발주 상세에서 WhatsApp·PDF·이메일로 보내 주세요."
     },
     "buyerConfirm": {
       "subject": "발주 완료: {{poNumber}}",
@@ -120,7 +121,13 @@
       "seller": "판매자",
       "cta": "발주 보기",
       "hint": "판매자가 발주를 확인하면 알려드립니다.",
-      "textFallback": "{{seller}} 에게 발주 {{poNumber}} 완료. 합계: {{total}}."
+      "textFallback": "{{seller}} 에게 발주 {{poNumber}} 완료. 합계: {{total}}.",
+      "subjectExternal": "보낼 준비 완료: 발주 {{poNumber}}",
+      "headingExternal": "발주를 보내 주세요",
+      "bodyExternal": "<strong>{{seller}}</strong> 발주가 만들어졌지만 <strong>아직 보내지 않았습니다</strong> — 이 공급업체는 앱을 쓰지 않습니다.",
+      "statusExternal": "아직 안 보냄",
+      "hintExternal": "발주를 열어 WhatsApp·PDF·이메일로 보내 주세요.",
+      "textFallbackExternal": "{{seller}} 발주 {{poNumber}} 는 아직 보내지 않았습니다(앱을 쓰지 않는 공급업체). WhatsApp·PDF·이메일로 보내 주세요. 합계: {{total}}."
     },
     "externalSend": {
       "subject": "{{buyer}} 님의 발주서 {{poNumber}}",

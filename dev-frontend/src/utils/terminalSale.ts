@@ -96,11 +96,14 @@ export async function runTerminalSale(opts: {
   onPhase?: (p: TerminalPhase) => void;
   /** 캐셔가 «기다리기 중지» 를 눌렀는가 — 단말기 사용 중(BUSY) 자동 재시도만 멈춘다 */
   shouldStop?: () => boolean;
+  /** 'duitnow' = 단말기 화면에 DuitNow QR 을 띄우는 판매(서버가 C01A 를 싣는다). 결과는 보류 → 아래 Check Status 반복 */
+  product?: 'duitnow' | null;
 }): Promise<TerminalOutcome> {
   opts.onPhase?.('starting');
   const saleBody = {
     restaurant_id: opts.restaurantId, order_id: opts.orderId || undefined,
     amount: (Math.round(opts.amount * 100) / 100).toFixed(2), cashier_name: opts.cashierName,
+    ...(opts.product ? { product: opts.product } : {}),
   };
   const created = await api('/transactions', saleBody);
   if (!created.ok) {

@@ -111,7 +111,8 @@
       "bodyRejected": "您的采购单已被拒绝。",
       "reason": "原因",
       "cta": "查看订单",
-      "textFallback": "采购单 {{poNumber}}：{{result}}。"
+      "textFallback": "采购单 {{poNumber}}：{{result}}。",
+      "bodyApprovedExternal": "您的采购单已获批准。该供应商不使用本应用，因此<strong>未自动发送</strong>——请在订单详情中通过 WhatsApp、PDF 或电子邮件发送。"
     },
     "buyerConfirm": {
       "subject": "下单成功：采购单 {{poNumber}}",
@@ -120,7 +121,13 @@
       "seller": "卖方",
       "cta": "查看订单",
       "hint": "卖方确认订单后我们会通知您。",
-      "textFallback": "已向 {{seller}} 提交采购单 {{poNumber}}。合计：{{total}}。"
+      "textFallback": "已向 {{seller}} 提交采购单 {{poNumber}}。合计：{{total}}。",
+      "subjectExternal": "待发送：采购单 {{poNumber}}",
+      "headingExternal": "请发送您的采购单",
+      "bodyExternal": "发给 <strong>{{seller}}</strong> 的采购单已创建，但<strong>尚未发送</strong>——该供应商不使用本应用。",
+      "statusExternal": "尚未发送",
+      "hintExternal": "请打开订单，通过 WhatsApp、PDF 或电子邮件发送。",
+      "textFallbackExternal": "发给 {{seller}} 的采购单 {{poNumber}} 尚未发送（该供应商不使用本应用）。请通过 WhatsApp、PDF 或电子邮件发送。合计：{{total}}。"
     },
     "externalSend": {
       "subject": "来自 {{buyer}} 的采购单 {{poNumber}}",

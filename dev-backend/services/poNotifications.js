@@ -156,9 +156,19 @@ async function fireOwnerApprovalResultNotification(po, { approved, reason }) {
     if (!po.created_by_user_id) return;
     const { poApprovalResultEmail } = require('../utils/notificationTemplates');
     const { loadPoEmailItems } = require('../utils/poEmailItems');
+    // 승인됐어도 외부 공급업체에는 시스템이 보내지 않는다 — «판매자에게 전달됨» 거짓 문구 방지
+    let isExternal = false;
+    if (approved) {
+      try {
+        const { resolveSellers, isExternalSeller } = require('../utils/sellerNames');
+        const map = await resolveSellers([{ seller_type: po.seller_type, seller_entity_id: po.seller_entity_id }]);
+        isExternal = isExternalSeller(map, po.seller_type, po.seller_entity_id);
+      } catch (_) { /* keep default */ }
+    }
     const args = {
       poNumber: po.po_number,
       approved: !!approved,
+      isExternal,
       reason: reason || '',
       currency: po.currency || 'MYR',
       total: po.total_amount,
@@ -183,13 +193,16 @@ async function fireBuyerConfirmNotification(po) {
     const { loadPoEmailItems } = require('../utils/poEmailItems');
     // 판매자 표시명은 단일 소스 경유 — 라우트가 Brand.name 을 직접 읽으면 회사명 대신 브랜드명이 뜬다.
     let sellerName = '—';
+    let isExternal = false;
     try {
-      const { resolveSellers, getSellerName } = require('../utils/sellerNames');
+      const { resolveSellers, getSellerName, isExternalSeller } = require('../utils/sellerNames');
       const map = await resolveSellers([{ seller_type: po.seller_type, seller_entity_id: po.seller_entity_id }]);
       sellerName = getSellerName(map, po.seller_type, po.seller_entity_id) || '—';
+      isExternal = isExternalSeller(map, po.seller_type, po.seller_entity_id);
     } catch (_) { /* keep default */ }
     const args = {
       sellerName,
+      isExternal,
       poNumber: po.po_number,
       total: po.total_amount,
       currency: po.currency || 'MYR',

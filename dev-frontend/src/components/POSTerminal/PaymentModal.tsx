@@ -536,6 +536,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const terminalOn = !!(terminalCfg?.enabled && String(terminalCfg?.host || '').trim());
   const ecrBridgeReady = !!getEcrBridge();
   const useTerminal = paymentMethod === 'card' && terminalOn && ecrBridgeReady && !isOffline;
+  // 단말기 화면 DuitNow QR(C01A) — 매장 설정 card.terminal.duitnow 를 켠 경우만 선택지가 보인다(기본 = 오늘과 같은 카드·손님 QR)
+  const terminalDuitnowOn = terminalCfg?.duitnow === true;
+  const [terminalProduct, setTerminalProduct] = useState<'' | 'duitnow'>('');
   const [terminalBusy, setTerminalBusy] = useState<TerminalPhase | null>(null);
   const [terminalIssue, setTerminalIssue] = useState<{ kind: 'declined' | 'unknown' | 'error' | 'choose' | 'voided'; message: string; txnId?: number; hosts?: string[]; retry?: boolean } | null>(null);
   const [terminalNote, setTerminalNote] = useState('');
@@ -875,7 +878,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     setTerminalBusy('starting');
     try {
       terminalStopRef.current = false;
-      const out = await runTerminalSale({ restaurantId: rid, orderId: forOrderId || null, amount, cashierName, onPhase: setTerminalBusy, shouldStop: () => terminalStopRef.current });
+      const out = await runTerminalSale({ restaurantId: rid, orderId: forOrderId || null, amount, cashierName, onPhase: setTerminalBusy, shouldStop: () => terminalStopRef.current,
+        product: terminalDuitnowOn && terminalProduct === 'duitnow' ? 'duitnow' : null });
       if (out.kind === 'approved') {
         // 승인은 됐지만 이 주문엔 이미 다른 승인이 있다 — 기록하지 않고 단말기에서 하나를 취소하라고 알린다(R2)
         if (out.linkError === 'DOUBLE_APPROVAL') { setTerminalIssue({ kind: 'error', message: 'reason:doubleApproval', txnId: out.txn.id }); return null; }
@@ -1514,6 +1518,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           <TerminalPanel
             busy={terminalBusy}
             onStopWaiting={() => { terminalStopRef.current = true; }}
+            duitnowOn={terminalDuitnowOn}
+            product={terminalDuitnowOn ? terminalProduct : ''}
+            onProduct={setTerminalProduct}
             ready={useTerminal}
             reason={!ecrBridgeReady ? 'no-bridge' : isOffline ? 'offline' : null}
             issue={terminalIssue}

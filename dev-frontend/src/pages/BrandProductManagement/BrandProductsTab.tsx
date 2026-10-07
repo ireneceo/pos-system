@@ -632,7 +632,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         unit_price: '',
     current_stock: 0,
         min_order_quantity: '1',
-        category_id: categories.length > 0 ? categories[0].id.toString() : '',
+        // 첫 카테고리를 미리 고르지 않는다 — 안 바꾸고 저장하면 엉뚱한 분류로 보고서에 잡혔다(2026-10-07 «Alcohol» 3건).
+        category_id: '',
         image_url: '',
         emoji: '',
         is_active: true,

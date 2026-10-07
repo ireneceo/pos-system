@@ -21,12 +21,12 @@ const { sequelize } = require('/var/www/dev-backend/config/database');
 let token, user, originalPs;
 const BUSY_HEX = Buffer.from('HTTP/1.1 400 Bad Request \r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: 4\r\n\r\nBUSY', 'latin1').toString('hex').toUpperCase();
 
-async function setTerminal(enabled) {
+async function setTerminal(enabled, extra = {}) {
   const [[row]] = await sequelize.query('SELECT payment_settings FROM restaurants WHERE id = 38');
   if (originalPs === undefined) originalPs = row.payment_settings;
   const ps = row.payment_settings ? JSON.parse(row.payment_settings) : {};
   ps.card = { ...(ps.card || {}), enabled: true, availableIn: ['pos'], acceptedTypes: [], requireType: false, requireCardType: false,
-    terminal: { enabled, provider: 'ghl_ecr', host: '192.168.2.99', port: 33898, transport: 'http-hex' } };
+    terminal: { enabled, provider: 'ghl_ecr', host: '192.168.2.99', port: 33898, transport: 'http-hex', ...extra } };
   await sequelize.query('UPDATE restaurants SET payment_settings = :v WHERE id = 38', { replacements: { v: JSON.stringify(ps) } });
 }
 
@@ -271,6 +271,35 @@ test.describe('카드단말기 ECR — 결제 창 흐름(목 브릿지)', () => 
     expect(o.ewallet_type).toBe('tng');
     expect(String(o.transaction_id || '')).toMatch(/^GHL:/);
     expect(pageErrors).toHaveLength(0);
+  });
+
+  test('N 단말기 화면 DuitNow QR(설정 켬) → 선택 → 판매(C01A)·보류 → 조회(E3) → 이월렛(duitnow) · 설정 끄면 선택지 없음', async ({ page, request, baseURL }) => {
+    const pageErrors = []; page.on('pageerror', (e) => pageErrors.push(String(e)));
+    await setTerminal(true, { duitnow: true });
+    try {
+      const state = { scenario: 'approve', calls: [] };
+      await installBridge(page, state);
+      await openPayment(page, orderNumber, pageErrors);
+      await page.getByRole('button', { name: 'DuitNow QR on terminal' }).click();
+      await expect(page.getByText(/The terminal will show a DuitNow QR/)).toBeVisible();
+      await page.getByRole('button', { name: 'Confirm Payment' }).last().click();
+      await expect(page.getByRole('button', { name: 'Confirm Payment' }), '모달 닫힘').toHaveCount(0, { timeout: 30000 });
+      const o = await getOrder(request, baseURL, token, orderId);
+      expect(o.payment_status).toBe('completed');
+      expect(o.payment_method, '단말기 화면 DuitNow 는 이월렛').toBe('ewallet');
+      expect(o.ewallet_type).toBe('duitnow');
+      expect(String(o.transaction_id || '')).toMatch(/^GHL:/);
+      expect(state.calls).toEqual(['A1', 'E3']);
+      expect(pageErrors).toHaveLength(0);
+    } finally { await setTerminal(true); }
+  });
+
+  test('N2 DuitNow 설정 꺼짐(기본) → 결제창에 선택지 없음', async ({ page }) => {
+    const pageErrors = []; page.on('pageerror', (e) => pageErrors.push(String(e)));
+    await installBridge(page, { scenario: 'approve', calls: [] });
+    await openPayment(page, orderNumber, pageErrors);
+    await expect(page.getByText(/The amount goes to the terminal/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'DuitNow QR on terminal' })).toHaveCount(0);
   });
 
   test('G 결과 미확인 → 수단·사유 고르기 전엔 기록 불가 → 이월렛 수동 기록', async ({ page, request, baseURL }) => {

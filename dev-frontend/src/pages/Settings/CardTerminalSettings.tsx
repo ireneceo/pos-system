@@ -14,7 +14,7 @@ import { FormInput, FormSelect, ModalButton as Button } from '../../components/U
 import { getEcrBridge, ecrExchange, ecrDiscoverAndReport, ecrErrorBody } from '../../utils/nativeEcr';
 import { getAuthToken } from '../../utils/auth';
 
-export interface CardTerminalValue { enabled?: boolean; provider?: string; host?: string; port?: number; transport?: string }
+export interface CardTerminalValue { enabled?: boolean; provider?: string; host?: string; port?: number; transport?: string; duitnow?: boolean }
 
 interface Props {
   value: CardTerminalValue | undefined;
@@ -169,6 +169,17 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
           ) : (
             <div style={hint}>{t('settingsPage.cardTerminal.needsApp')}</div>
           )}
+        </div>
+      )}
+
+      {/* 단말기 화면 DuitNow QR(C01A) — 단말기 TID 에 DuitNow 가 열린 매장만 켠다. 끄면 결제창은 오늘과 같다. */}
+      {v.enabled && (
+        <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={title}>{t('settingsPage.cardTerminal.duitnow')}</div>
+            <div style={hint}>{t('settingsPage.cardTerminal.duitnowHint')}</div>
+          </div>
+          {toggle(v.duitnow === true, (on) => set({ duitnow: on }, true))}
         </div>
       )}
 

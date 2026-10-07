@@ -1049,7 +1049,9 @@
       "refind": "重新查找",
       "advanced": "高级设置",
       "manualHost": "终端地址（仅在自动查找无效时）",
-      "autoUpdated": "终端地址已变更 — 已在 {{host}} 重新找到并保存"
+      "autoUpdated": "终端地址已变更 — 已在 {{host}} 重新找到并保存",
+      "duitnow": "刷卡机屏幕 DuitNow QR",
+      "duitnowHint": "在付款界面增加「刷卡机屏幕 DuitNow QR」选项：刷卡机显示 DuitNow QR 供顾客扫描。仅在刷卡机已开通 DuitNow 时开启（请向 GHL 确认）。"
     }
   },
   "printer.emergency.workstationReceiptPrinter": "本工位的收据打印机",

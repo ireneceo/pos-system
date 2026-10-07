@@ -37,6 +37,8 @@ async function terminalConfig(restaurantId, device = null) {
     host,
     port,
     transport: ['http-hex', 'tcp-hex', 'tcp-bin'].includes(t.transport) ? t.transport : 'http-hex',
+    // 단말기 화면 DuitNow QR(C01A) — 매장이 켠 경우만(단말기 TID 에 DuitNow 가 열려 있어야 한다). 기본 꺼짐 = 기존 매장 변화 0
+    duitnow: t.duitnow === true,
   };
 }
 
@@ -59,9 +61,11 @@ function job(row, cfg, requestHex) {
     connection: { host: cfg.host, port: cfg.port, transport: cfg.transport } };
 }
 
-async function createSale({ restaurantId, orderId, amount, user, cashierName, deviceLabel, device = null }) {
+async function createSale({ restaurantId, orderId, amount, user, cashierName, deviceLabel, device = null, product = null }) {
   const cfg = await terminalConfig(restaurantId, device);
   if (!cfg.enabled) throw err(409, 'TERMINAL_DISABLED', 'Card terminal is not set up for this restaurant');
+  if (product && !ecr.PRODUCT[product]) throw err(400, 'BAD_PRODUCT', 'Unknown terminal product');
+  if (product === 'duitnow' && !cfg.duitnow) throw err(409, 'PRODUCT_DISABLED', 'DuitNow QR on the terminal is not turned on for this restaurant');
   let cents;
   try { cents = ecr.toCents(amount); } catch { throw err(400, 'BAD_AMOUNT', 'Invalid amount'); }
   if (Number(cents) <= 0) throw err(400, 'BAD_AMOUNT', 'Amount must be greater than 0');
@@ -92,7 +96,7 @@ async function createSale({ restaurantId, orderId, amount, user, cashierName, de
   });
   // ECR 송장 = 행 PK 로 전역 유일, 영숫자만(규격 C013 AN..40). 단말기 무응답 때 Reprint/Void 로 되찾는 열쇠.
   const inv = `PH${restaurantId}A${row.id}`;
-  const req = ecr.bufToHex(ecr.saleRequest({ amount: amt, ecrInvoiceNo: inv, cashierId: row.cashier_id ? String(row.cashier_id) : null }));
+  const req = ecr.bufToHex(ecr.saleRequest({ amount: amt, ecrInvoiceNo: inv, cashierId: row.cashier_id ? String(row.cashier_id) : null, product }));
   await row.update({ ecr_invoice_no: inv, request_hex: req, status: 'sent', sent_at: new Date() });
   return job(row, cfg, req);
 }
@@ -213,6 +217,13 @@ async function applyResponse(row, { response_hex, error, raw_hex }) {
   const expectInv = row.ecr_invoice_no || parentForInv?.ecr_invoice_no;
   if (result.ecr_invoice_no && expectInv && result.ecr_invoice_no !== expectInv) {
     throw err(422, 'INVOICE_MISMATCH', 'Terminal response is for a different invoice');
+  }
+
+  // 단말기 화면 QR 판매(C01A)의 승인 = 손님이 그 DuitNow QR 을 스캔한 것 — 응답에 D018 이 없어도(Check Status 응답 등)
+  //   «카드» 로 기록되면 안 된다. 판매 요청 원본에 실린 Product ID 로 수단을 정한다(서버 판정, 화면 주장 안 믿음).
+  const saleRow = row.command === 'sale' ? row : (['reprint', 'check_status'].includes(row.command) ? parentForInv : null);
+  if (saleRow && ecr.requestProduct(saleRow.request_hex) === 'duitnow') {
+    Object.assign(result, { tender_method: 'ewallet', ewallet_type: 'duitnow', card_type: null });
   }
 
   let status = row.command === 'echo'

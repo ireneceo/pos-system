@@ -1049,7 +1049,9 @@
       "refind": "Find again",
       "advanced": "Advanced settings",
       "manualHost": "Terminal address (only if automatic search does not work)",
-      "autoUpdated": "Terminal address changed — found again at {{host}} and saved"
+      "autoUpdated": "Terminal address changed — found again at {{host}} and saved",
+      "duitnow": "DuitNow QR on the terminal",
+      "duitnowHint": "Adds a «DuitNow QR on terminal» choice to the payment screen: the terminal shows a DuitNow QR for the customer to scan. Turn on only if DuitNow is activated on your terminal (ask GHL)."
     }
   },
   "printer.emergency.workstationReceiptPrinter": "this workstation’s receipt printer",

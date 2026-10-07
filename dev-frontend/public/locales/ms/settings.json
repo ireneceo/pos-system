@@ -1049,7 +1049,9 @@
       "refind": "Cari semula",
       "advanced": "Tetapan lanjutan",
       "manualHost": "Alamat terminal (hanya jika carian automatik tidak berfungsi)",
-      "autoUpdated": "Alamat terminal berubah — ditemui semula di {{host}} dan disimpan"
+      "autoUpdated": "Alamat terminal berubah — ditemui semula di {{host}} dan disimpan",
+      "duitnow": "DuitNow QR pada terminal",
+      "duitnowHint": "Menambah pilihan «DuitNow QR pada terminal» pada skrin bayaran: terminal memaparkan QR DuitNow untuk diimbas pelanggan. Hidupkan hanya jika DuitNow diaktifkan pada terminal anda (tanya GHL)."
     }
   },
   "printer.emergency.workstationReceiptPrinter": "pencetak resit stesen kerja ini",

@@ -3,6 +3,52 @@
 **버전:** **v3.109** (2026-10-07 · 5.87·5.88·5.89 묶음) · 운영 SW **5.89-kiosk-receipt-20261007** (백업 20261007_163801 · 스모크 10/10) · 안드로이드 앱 0.3.4
 **작업 상태:** ✅ 판매자 결제 설정 = 계정 하나 완료(개발서버 · Fable 2회차 PASS · 운영 배포 대기) — 개발서버만 미배포: 이것 + 청구서 To Confirm 탭
 
+### 답 기다림 (2026-10-07 밤) — 확인 4건(단말기 BUSY 자동 대기 · 배송 준비 목록 · 역할 추가 요청 · 상품 16 45g/pack): 운영 읽기 조회 허락 + 상품 16 처리 방향 [Claude Code · 백그라운드 작업방 2be9f209]
+- 지시: «Irene 님 확인·결정 대기» 3번째 항목
+- 네 건의 성격(기록 근거 fea0a4e92·771a20bc6 작업기록): ①단말기 5.85 BUSY 자동 대기 = 매장 실기 확인 ②판매자 «배송 준비 목록 (가격 없음)» WhatsApp 버튼 = Irene 화면 1회 ③역할 추가 요청 = 실제 요청 1건 승인 흐름 ④브랜드 상품 16(K-Yukgaejang Beef 1kg)이 45g/pack·주문제작으로 바뀌어 있어 매장 8 연결(kg·환산 1, 수령 2건)과 어긋남 — 10-05 권고: 16 은 1kg 값으로 되돌리고 45g 은 새 상품으로 등록
+- 한 것: 기록·코드 확인만. 운영 **읽기 전용** 조회 스크립트(SELECT 만: 10-05 이후 terminal_transactions · user_context_requests 전체 · brand_products 16·Yukgaejang)를 작성해 실행하려 했으나 허락 창에서 멈춤 → **실행 안 됨(결과 없음)**. 스크립트 `~/.claude/jobs/2be9f209/tmp/ro-check.js`. 파일 변경 0 · 운영 쓰기 0
+- **무엇을:** ①운영 읽기 조회 허락(①③④ 가 실제로 쓰였는지·지금 값 확인용) ②상품 16 처리: (가) 이 방이 16 을 1kg 값으로 되돌리고 45g 은 새 상품 등록(운영 쓰기·되돌리기 영수증) / (나) Irene 이 화면에서 직접 / (다) 그대로 둠
+- **왜:** 운영 DB 접근·운영 데이터 쓰기는 Irene 허락 필요 · ②④ 는 Irene 눈 확인
+- **답이 오면:** 조회 → 단말기 BUSY 뒤 자동 시작 기록 있는지·역할 요청 건수·상품 16 현재값 보고 → (가)면 Fable 1회(돈·재고 연결이고 길이 갈림) 후 트랜잭션 수정 · 이 항목 완료 이동
+
+### 답 기다림 (2026-10-07 밤) — 브랜드 상품 3건 «Alcohol» 분류 바로잡기: 운영 읽기·쓰기 허락 [Claude Code · 백그라운드 작업방 8054cffb]
+- 지시: «Irene 님 확인·결정 대기» 항목 «상품 카테고리 정리: Alcohol 에 IKEA LED String Light · Sawah Mas (Staff Meal) · Kimchi 1kg — 보고서에 그대로 나옴»
+- 보고서 = 브랜드 판매 통계 `GET /api/brand/sales-report`(`routes/brand-revenue.js:229`) «카테고리» 탭. 분류는 **브랜드 상품의 카테고리**(brand_products.category_id → brand_product_categories)를 그대로 읽는다 → 보고서 코드 문제 아님, 상품 3건의 분류 값 문제
+- 원인(코드로 확인): 브랜드 상품 «새로 만들기» 창이 카테고리 칸을 **목록 첫 카테고리로 미리 채움**(`BrandProductsTab.tsx` openModal, 목록 정렬 = sort_order·이름 → «Alcohol» 이 알파벳 맨 앞). 칸을 안 바꾸고 저장하면 «Alcohol» 로 들어감. 다른 등록 경로(재고아이템 → 판매 상품 등록 · 발주 화면 «새 상품 등록»)는 카테고리를 안 보내 «미분류» → 3건은 이 창에서 만들어진 것으로 보임. **운영 데이터로 확인은 못 함**(운영 읽기 조회가 권한에서 거부됨 — 우회 안 함)
+- 한 것(개발서버): 새 상품 창 카테고리 기본값 = «No category»(미리 고르지 않음) 1줄(`BrandProductsTab.tsx` openModal). 검증: 빌드 1회(새 경고 0) · 실브라우저 클릭(브랜드 계정 /pos/brand-products → Add Product → 카테고리 칸 «No category», 고치기 전이면 첫 항목 «📦 Packaging» · 화면 오류 0) · verify-all --full 23/24(mount sweep 크래시 0 · health-check 통과 · ✗1 = 배포 기록 파일, 배포 때 작성) · print-guard 8/8 · design-guard 신규 0. 저장 경로(category_id 빈 값 → null)는 기존 «No category» 선택과 같은 길이라 서버 무변경. Fable 미호출(분류 표시 1줄 · 되돌리기 쉬움 → 호출 조건 불성립). fable-gate 정지는 다른 방 미커밋 변경(결제 설정 등) 지문 — 이 방 변경과 무관, 건너뛰기 파일 안 만듦
+- 같은 «첫 카테고리 미리 채움» 이 푸드코트 상품(`FoodcourtProductsTab.tsx:380`)·공급업체 상품(`SupplierProductsTab.tsx:609`)·시스템 상품(`SystemProductManagementPage.tsx:1056`) 창에도 있음 — 지목 범위 밖이라 안 고침(제안)
+- **무엇을:** 운영 브랜드 상품 3건의 카테고리를 맞는 것으로 바꾸기 — (가) Irene 이 브랜드 상품 화면에서 직접 3건 수정 / (나) 이 방이 운영 읽기 조회(3건·카테고리 목록) 후 Irene 이 정한 분류로 3건 바꿈(트랜잭션·건별 1행·전후 출력·되돌리기 = 원래 category_id)
+- **왜:** 운영 조회·운영 데이터 쓰기는 Irene 허락 필요 · 어느 분류가 맞는지(예: LED 조명 → 비품/Other, 직원식 → Staff Meal, 김치 → 반찬/소스)는 Irene 이 아는 값
+- **답이 오면(가):** 화면에서 바꾼 뒤 보고서 «카테고리» 탭 재확인만 / (나): 조회 → 분류 제안 표 → 바꿈 → 보고서 API 재조회 · 이 항목 완료 이동
+
+### 답 기다림 (2026-10-07 밤) — 운영 정산서 3건 매장 칸(restaurant_id) 비어 있음 보정: 운영 조회·쓰기 허락 [Claude Code · 백그라운드 작업방 0ffccb95]
+- 지시: «Irene 님 확인·결정 대기» 첫 항목(운영 SOA 3건 #162·#188·#2xx restaurant_id NULL 보정)
+- 근거: 10-05 Fable 판정 «손님 이름 = A(생성 시 restaurant_id 채움)+B(이름 계산) 둘 다» → 새 정산서는 이미 채워짐(`services/soaScheduler.js:243`), 옛 운영 3건만 비어 있음. 이름은 술어 `payerIdIsStore`(`routes/invoices-helpers.js:290`)로 이미 정상 표시 → **급하지 않음**. 기록: `dev-backend/releases/archive/2026-10-05-soa-status-invoices.json`
+- Fable 소급 판정(`.claude/fable-verdict-20261007-retro-v3108-n5-gate.md`) 주의점 A: 매장 칸이 채워진 정산서는 **낼 매장이 API 직접 호출로 paid 로 바꿀 수 있음**(화면은 0원만). #162·#188 은 이미 paid 라 영향 없음, 세 번째 건은 상태 미확인
+- 한 것: 문서·코드 확인만. 운영 **읽기 전용 조회**(payer_type=restaurant · restaurant_id NULL 전수 + 상태·자식 매장)를 시도했으나 허락 창에서 멈춤 → **실행 안 됨(결과 없음)**. 파일 변경 0 · 운영 쓰기 0
+- **무엇을:** ①운영 읽기 조회 허락 ②조회 결과 대상이 3건 그대로면 `invoices.restaurant_id = payer_id` 채움(트랜잭션 · 건별 영향행 1 확인 · 전후 출력 · 되돌리기 = 그 id 들 NULL) 허락
+- **왜:** 운영 DB 접근·운영 데이터 쓰기는 Irene 지시 없이 안 함
+- **답이 오면(채움):** 조회 → 3건 확인(세 번째 건이 미결제면 위험 A 보고 후 그것만 보류) → 채움 → 재조회 · 이 항목 완료 이동 / (보류): 항목을 «후속 후보»로 내림 — 이름 표시는 이미 정상
+
+### 답 기다림 (2026-10-07 밤) — 외부 공급업체 월별 정산서(SOA) · 발주 «직원식» 구분: 설계 컨펌 7건 [Claude Code · 백그라운드 작업방 359d0949]
+- 지시: «다음 확정 작업» 7번 (10-04 잔여 3건). Irene 원문(10-04) 은 판정문에 그대로
+- 실측 `.claude/fable-input-20261007-ext-soa-staffmeal.md`(운영 읽기 전용 포함) → **Fable 1회차 설계** `.claude/fable-verdict-20261007-ext-soa-staffmeal.md` (Ⅰ 보고문 · Ⅱ 구현 지시 A0~A7·B0~B7 · Ⅲ 컨펌)
+- **C 승인 메일 문구 = ✅ 완료(개발서버)** — 외부 공급업체면 «보냈습니다» 대신 «아직 보내지 않았습니다 — WhatsApp·PDF·이메일로 보내 주세요»(발주 확인 메일 + 오너 승인 결과 메일, 4언어). 판정 = `utils/sellerNames.isExternalSeller`(화면과 같은 단일 소스). 파일: `services/poNotifications.js` · `utils/notificationTemplates.js` · `locales/{en,ko,zh,ms}/email.json`(키 추가만). 검증: 실제 dev 발주 3건(외부·가입 공급업체·브랜드) 4언어 렌더 24/24 · 고장주입(외부 판정 끔 → 8건 FAIL) → 원복 통과 · health-check 306/306 · print-guard 8/8 · pm2 재시작함 · **Fable 검토 적합**, 게이트 마커 재발급(지문 9704dab23400 — session-state 외 파일 바꾸면 죽음)
+- **무엇을(컨펌 7):** ①A 모양(외부 업체 계약 조건에 «월별 정산서» 켜기 → 자동 정산서+지금 만들기 → 공급업체 SOA 붙여 차이 확정 → «결제함» 한 번) ②월별 업체 건별 «결제함» 막기 ③어느 업체가 월별인지는 배포 뒤 Irene 이 업체 수정 창에서 켬 ④B 표시 축 = 재료 분류 «직원식» 표시 ⑤매장 10 직원식 재료 8개 → «Staff Meal» 분류 이동(배포 뒤·목록 승인·undo) ⑥2단계 «직원식 사용» 입력은 나중 ⑦순서 A → B. **Fable 권고: 전부 «이대로/예»**
+- **왜:** 돈·결제 기록(A)과 운영 데이터(B) 에 닿고 길이 갈림 — 구현 착수는 Irene 컨펌 뒤
+- **답이 오면(그대로):** 판정문 Ⅱ — A0 문서 → A1~A7(백엔드 → 화면 → health-check 6 + 고장주입 3) → B0~B7 → 빌드 1회 · verify-all --full 1회 → Fable 게이트 1회 / 바꾸는 항목이 있으면 그 항목만 반영해 진행(Fable 재호출은 길이 바뀔 때만)
+
+### 답 기다림 (2026-10-07 밤) — 판매자 배송 지역별 설정: 구현 이어가기 허락 [Claude Code · 백그라운드 작업방 0ec1e1c3]
+- (이전) Irene 답(상황판): «권고대로» = ①지역 자동 판정 ②지금 개발서버 구현 ③결정 사항 그대로 → 판정문 `.claude/fable-verdict-20261007-seller-delivery-zones.md` Ⅱ 순서로 구현 시작
+- 구현 도중, 개발 DB 에 새 칸 넣는 방법(배포 스크립트·메모리 파일 읽기) 확인 명령이 허락 창에서 3분 넘게 멈춤 → 상황판이 창을 닫음. **그 명령은 실행 안 됨**
+- **안전 조치:** 모델에 새 칸이 있는데 DB 엔 없으면 서버 재시작 때 브랜드 조회가 깨지므로 **이 방의 코드 변경 전부 되돌림**(git apply -R, 다른 방 파일 무접촉). 개발서버 코드 = 시작 전과 같음. 모듈 불러오기 확인
+- **보관:** `.claude/wip/seller-delivery-zones.patch`(모델 3·sellerNames·brandAccountSettings JSON 비교·purchaseOrderTotals 지역 전처리·발주 생성 구매자 전달·제출 때 재계산) + `.claude/wip/deliveryZones.js`(주 16개·별칭·우편번호 표 — 위키백과 Postal codes in Malaysia 10-07 대조·저장 검증·지역 판정)
+- 남은 것: 개발 DB 칸 추가(멱등 마이그 `scripts/migrate-*.js` + registry 등록 방식 확인 필요) → R4 담기 목록 · R5 저장 라우트 3·주소 추천 · R6 테스트·실호출·고장주입 3 → F1~F4 화면 → 빌드 1회·verify-all --full 1회 → Fable 게이트 1회
+- 문서: `docs/TRADE_STRUCTURE.md` ⑦ §5(b) 판정 한 줄은 그대로(«컨펌 대기» → 이어갈 때 «확정»으로)
+- **무엇을:** 이 방이 구현을 이어가도 될지(파일 읽기·개발 DB 칸 추가 포함, 운영 무접촉)
+- **왜:** 허락 창이 응답 없이 닫혀서 멈춤
+- **답이 오면(예):** `git apply .claude/wip/seller-delivery-zones.patch` + deliveryZones.js 복원 → 개발 DB 칸 추가 → 위 «남은 것» 순서 / (나중에): 🕓 로 돌리고 wip 보관 유지
+
 ### 완료 (2026-10-07 밤) — 판매자 결제 설정 = 계정(회사) 하나 [Claude Code · 백그라운드 작업방 17f1cc84]
 - 지시: 작업기록 «다음 확정 작업» 5번 — 설정 화면이 첫 브랜드 칸에만 저장 → 같은 주인 모든 브랜드가 그 값
 - **Fable 1회차 설계** `.claude/fable-verdict-20261007-payment-settings-account.md` — (a) 쓰기 펼치기: 저장 1곳만 바꾸고 읽는 곳 10곳+(청구서·Stripe·PayPal·PDF 은행)은 0줄. 묶는 칸 = 이 화면이 저장하는 6칸(payment_settings·invoice_settings·supported_currencies·배송 3칸), currency·회사정보 제외
@@ -173,13 +219,13 @@
 3. ~~영수증 드래그·PDF~~ — ✅ 완료·운영 배포 SW 5.89(10-07)
 4. ~~발행자 청구서 «To Confirm» 탭 + 업무 버튼 색 규칙~~ — ✅ 완료(10-07, 위 «완료» 절) · 개발서버만, 운영 배포 대기
 5. ~~**결제 설정 = 계정(회사) 하나**~~ — ✅ 완료(10-07, 위 «완료» 절) · 개발서버만, 운영 배포 대기(배포 시 데모 브랜드 2건만 정렬)
-6. **판매자 배송 지역별 설정** — 설계부터
-7. (10-04 잔여) 외부 공급업체 월별 SOA 대조 · 발주 스탭밀 구분 · 승인 메일 문구(외부 공급업체에 «보냈습니다» 거짓)
+6. ~~**판매자 배송 지역별 설정** — 설계부터~~ — ✅ 설계 완료(10-07, Fable 1회차) · Irene «권고대로» · 구현은 이어가기 허락 대기(위 «답 기다림» 절, wip 보관)
+7. ~~(10-04 잔여) 외부 공급업체 월별 SOA 대조 · 발주 스탭밀 구분 · 승인 메일 문구~~ — ✅ 승인 메일 문구 완료(개발서버) · ✅ SOA·직원식 설계 완료(10-07, Fable 1회차 · 위 «답 기다림» 절) · 구현은 Irene 컨펌 7건 뒤
 
 ### 👉 Irene 님 확인·결정 대기
-- 운영 SOA 3건(#162·#188·#2xx) restaurant_id NULL 보정 — Fable 권고 채움, 이름 표시는 이미 정상이라 급하지 않음(승인 시 실행)
-- 상품 카테고리 정리: «Alcohol» 에 IKEA LED String Light · Sawah Mas (Staff Meal) · Kimchi 1kg — 보고서에 그대로 나옴
-- 단말기(5.85) BUSY 자동 대기 실기 확인 · 판매자 «배송 준비 목록» 1회 · 역할 추가 요청 실제 1건 · 상품 16(K-Yukgaejang Beef) 45g/pack 수정 건
+- 운영 SOA 3건(#162·#188·#2xx) restaurant_id NULL 보정 — Fable 권고 채움, 이름 표시는 이미 정상이라 급하지 않음(승인 시 실행) → 위 «답 기다림» 절(방 0ffccb95) 참조
+- 상품 카테고리 정리(«Alcohol» 3건) — 재발 막기 완료(개발서버), 운영 3건 분류 바꾸기는 Irene 답 대기 → 맨 위 «답 기다림» 절(방 8054cffb) 참조
+- 단말기(5.85) BUSY 자동 대기 실기 확인 · 판매자 «배송 준비 목록» 1회 · 역할 추가 요청 실제 1건 · 상품 16(K-Yukgaejang Beef) 45g/pack 수정 건 → 맨 위 «답 기다림» 절(방 2be9f209) 참조
 - GHL: UAT 근무시간 · 직불(D007)·DuitNow QR
 
 ### 후속 후보 (아이디어 메모, 확정 X)

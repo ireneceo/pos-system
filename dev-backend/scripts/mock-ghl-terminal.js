@@ -45,6 +45,14 @@ function respond(requestHex, scenario = 'approve') {
     case ecr.CMD.echo:
       return hex(responseFrame(ecr.CMD.echo, '00', []));
     case ecr.CMD.sale: {
+      // 단말기 화면 QR 판매(C01A Product ID, 규격 §9.9) — 화면에 DuitNow QR 을 띄우고 EA(보류)로 답한다.
+      //   손님이 스캔하면 다음 Check Status 가 승인. 승인 태그에는 일부러 카드종류·브랜드를 싣지 않는다
+      //   (서버가 응답 문자열이 아니라 «보낸 판매가 DuitNow 였다» 로 수단을 정하는지 확인하려고).
+      if (req.tags[ecr.TAG.productId]) {
+        const tags = approvedTags(amount, inv).filter(([t]) => ![ecr.TAG.cardType, ecr.TAG.productBrand, ecr.TAG.maskedPan, ecr.TAG.entryModeText].includes(t));
+        ledger.set(inv, { status: '00', tags });
+        return hex(responseFrame(ecr.CMD.sale, 'EA', [[ecr.TAG.amount, amount], [ecr.TAG.ecrInvoice, inv]]));
+      }
       if (scenario === 'timeout') { ledger.set(inv, { status: '00', tags: approvedTags(amount, inv) }); return null; }
       if (scenario === 'decline') return hex(responseFrame(ecr.CMD.sale, '51', [[ecr.TAG.amount, amount], [ecr.TAG.ecrInvoice, inv]]));
       if (scenario === 'cancel') return hex(responseFrame(ecr.CMD.sale, 'C7', [[ecr.TAG.ecrInvoice, inv]]));

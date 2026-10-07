@@ -7009,7 +7009,7 @@ function definePrintTests({ adminToken }) {
   //   승인 아니면 기록 없음 · 응답은 서버가 직접 해석(CRC·금액·송장) · 응답 2회 멱등 · Reprint 복구 · 수동은 사유 필수.
   //   단말기 응답은 목 단말기(scripts/mock-ghl-terminal.respond)가 만든다 — 브릿지가 올리는 것과 같은 hex.
   // ══════════════════════════════════════════════════════════════════
-  async function terminalFixture() {
+  async function terminalFixture(extra = {}) {
     const { sequelize } = require('../config/database');
     const jwtLib = require('jsonwebtoken');
     const { Restaurant, User } = require('../models');
@@ -7019,7 +7019,7 @@ function definePrintTests({ adminToken }) {
     if (!rest || !ra || !otherRa) return null;
     const original = rest.getDataValue('payment_settings');
     const ps = rest.payment_settings || {};
-    ps.card = { ...(ps.card || {}), terminal: { enabled: true, provider: 'ghl_ecr', host: '127.0.0.1', port: 33898, transport: 'http-hex' } };
+    ps.card = { ...(ps.card || {}), terminal: { enabled: true, provider: 'ghl_ecr', host: '127.0.0.1', port: 33898, transport: 'http-hex', ...extra } };
     await sequelize.query('UPDATE restaurants SET payment_settings = :v WHERE id = :id', { replacements: { v: JSON.stringify(ps), id: rest.id } });
     const sign = (u) => ({ Authorization: `Bearer ${jwtLib.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` });
     return {
@@ -7389,6 +7389,50 @@ function definePrintTests({ adminToken }) {
       const cs = await post(`/terminal/transactions/${e.body.data.id}/check-status`, {}); ids.push(cs.body?.data?.id);
       const cr = await post(`/terminal/transactions/${cs.body.data.id}/response`, { response_hex: respond(cs.body.data.request_hex, 'approve') });
       if (cr.body?.data?.parent?.status !== 'approved') return fail(`Check Status 부모 ${cr.body?.data?.parent?.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {}); await fx.restore(); }
+  });
+
+  test('terminal', '단말기 화면 DuitNow QR(C01A) — 설정 꺼지면 409 · 모르는 상품 400 · EA→Check Status 승인 = ewallet/duitnow(응답에 브랜드 없어도)', async () => {
+    const { TerminalTransaction } = require('../models');
+    const { respond } = require('./mock-ghl-terminal');
+    const ecr = require('../utils/ghlEcr');
+    const ids = [];
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    // ① 설정 꺼진 매장(기본) — 단말기에 보내기 전에 거절, 행 0
+    let fx = await terminalFixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    try {
+      const before = await TerminalTransaction.count({ where: { restaurant_id: fx.rest.id } });
+      const off = await request('POST', '/terminal/transactions', { restaurant_id: fx.rest.id, amount: '2.00', product: 'duitnow' }, fx.auth);
+      if (off.status !== 409 || off.body?.code !== 'PRODUCT_DISABLED') return fail(`꺼짐 ${off.status} ${off.body?.code}`);
+      const bad = await request('POST', '/terminal/transactions', { restaurant_id: fx.rest.id, amount: '2.00', product: 'boost' }, fx.auth);
+      if (bad.status !== 400 || bad.body?.code !== 'BAD_PRODUCT') return fail(`모르는 상품 ${bad.status} ${bad.body?.code}`);
+      if (await TerminalTransaction.count({ where: { restaurant_id: fx.rest.id } }) !== before) return fail('거절인데 행이 생김');
+    } finally { await fx.restore(); }
+    // ② 켠 매장 — 요청에 C01A «DUITNOW QR» · 판매 EA → Check Status 승인 → 부모 ewallet/duitnow
+    fx = await terminalFixture({ duitnow: true });
+    const post = (p, b) => request('POST', p, b, fx.auth);
+    try {
+      const cfg = await request('GET', `/terminal/config?restaurant_id=${fx.rest.id}`, null, fx.auth);
+      if (cfg.body?.data?.duitnow !== true) return fail(`config duitnow ${cfg.body?.data?.duitnow}`);
+      const s = await post('/terminal/transactions', { restaurant_id: fx.rest.id, amount: '2.50', product: 'duitnow' }); ids.push(s.body?.data?.id);
+      if (s.status !== 201) return fail(`판매 생성 ${s.status} ${s.body?.code}`);
+      if (ecr.requestProduct(s.body.data.request_hex) !== 'duitnow') return fail('요청에 C01A 없음');
+      const pe = await post(`/terminal/transactions/${s.body.data.id}/response`, { response_hex: respond(s.body.data.request_hex, 'approve') });
+      if (pe.body?.data?.status !== 'pending') return fail(`EA ${pe.body?.data?.status}`);
+      const cs = await post(`/terminal/transactions/${s.body.data.id}/check-status`, {}); ids.push(cs.body?.data?.id);
+      const cr = await post(`/terminal/transactions/${cs.body.data.id}/response`, { response_hex: respond(cs.body.data.request_hex, 'approve') });
+      const par = cr.body?.data?.parent;
+      if (par?.status !== 'approved' || par.tender_method !== 'ewallet' || par.ewallet_type !== 'duitnow' || par.card_type) {
+        return fail(`DuitNow 승인 ${par?.status}/${par?.tender_method}/${par?.ewallet_type}/${par?.card_type}`);
+      }
+      // 같은 매장의 평범한 판매는 여전히 카드(C01A 없음)
+      const n = await post('/terminal/transactions', { restaurant_id: fx.rest.id, amount: '2.60' }); ids.push(n.body?.data?.id);
+      if (ecr.requestProduct(n.body.data.request_hex) !== null) return fail('평범한 판매에 C01A');
+      const nr = await post(`/terminal/transactions/${n.body.data.id}/response`, { response_hex: respond(n.body.data.request_hex, 'approve') });
+      if (nr.body?.data?.tender_method !== 'card') return fail(`평범한 판매 ${nr.body?.data?.tender_method}`);
       return true;
     } catch (e) { return fail(`예외: ${e.message}`); }
     finally { await TerminalTransaction.destroy({ where: { id: ids.filter(Boolean) } }).catch(() => {}); await fx.restore(); }

@@ -111,7 +111,8 @@
       "bodyRejected": "Your purchase order was rejected.",
       "reason": "Reason",
       "cta": "View Order",
-      "textFallback": "Purchase order {{poNumber}}: {{result}}."
+      "textFallback": "Purchase order {{poNumber}}: {{result}}.",
+      "bodyApprovedExternal": "Your purchase order has been approved. This supplier doesn't use the app, so it has <strong>not been sent</strong> — send it via WhatsApp, PDF or email from the order details."
     },
     "buyerConfirm": {
       "subject": "Order placed: PO {{poNumber}}",
@@ -120,7 +121,13 @@
       "seller": "Seller",
       "cta": "View Order",
       "hint": "You will be notified when the seller confirms the order.",
-      "textFallback": "Purchase order {{poNumber}} placed with {{seller}}. Total: {{total}}."
+      "textFallback": "Purchase order {{poNumber}} placed with {{seller}}. Total: {{total}}.",
+      "subjectExternal": "Ready to send: PO {{poNumber}}",
+      "headingExternal": "Your Purchase Order Is Ready to Send",
+      "bodyExternal": "Your purchase order to <strong>{{seller}}</strong> was created, but it has <strong>not been sent</strong> — this supplier doesn't use the app.",
+      "statusExternal": "Not sent yet",
+      "hintExternal": "Open the order and send it via WhatsApp, PDF or email.",
+      "textFallbackExternal": "Purchase order {{poNumber}} to {{seller}} is ready but not sent — this supplier doesn't use the app. Send it via WhatsApp, PDF or email. Total: {{total}}."
     },
     "externalSend": {
       "subject": "Purchase Order {{poNumber}} from {{buyer}}",
