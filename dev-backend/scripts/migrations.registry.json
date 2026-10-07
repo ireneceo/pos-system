@@ -22,6 +22,7 @@
     "migrate-ai-serving-enterprise.js",
     "migrate-backfill-unit-cost.js",
     "migrate-bg-product-supply-chain.js",
+    "migrate-brand-account-payment-settings.js",
     "migrate-brand-menu-origin-restaurant.js",
     "migrate-brand-menu-recipe-link.js",
     "migrate-brand-menu-settings.js",

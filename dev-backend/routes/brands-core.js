@@ -7,6 +7,7 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const bcrypt = require('bcrypt');
 const { deleteOldImages } = require('../utils/imageProcessor');
+const brandAccountSettings = require('../utils/brandAccountSettings');
 
 // brand 자체 CRUD + company-info + payment-settings + restaurants + franchise-map + staff + allowed-routes + franchise-dashboard
 // split from brands.js (2026-05-03)
@@ -317,6 +318,9 @@ router.post('/', authenticateToken, requireRole('Brand General', 'System Admin')
     });
 
     console.log(`✓ Brand created: ${brand.name} (ID: ${brand.id})`);
+
+    // 결제 설정 = 계정 하나 (2026-10-07 Fable) — 같은 주인의 새 브랜드는 형제 값으로 시작한다
+    await brandAccountSettings.copyAccountFieldsFromSibling(Brand, brand);
 
     // Fetch with associations
     const createdBrand = await Brand.findByPk(brand.id, {
@@ -704,7 +708,12 @@ router.get('/:id/payment-settings', authenticateToken, async (req, res) => {
         min_order_amount: brand.min_order_amount,
         delivery_fee: brand.delivery_fee,
         delivery_policy: brand.delivery_policy,
-        currency: brand.currency
+        currency: brand.currency,
+        // 결제 설정 = 계정 하나 (2026-10-07 Fable) — 이 값이 함께 적용되는 브랜드(같은 주인 전부)
+        applies_to_brands: brand.owner_id == null
+          ? [{ id: brand.id, name: brand.name }]
+          : (await Brand.findAll({ where: { owner_id: brand.owner_id }, attributes: ['id', 'name'], order: [['id', 'ASC']] }))
+              .map(b => ({ id: b.id, name: b.name }))
       }
     });
   } catch (error) {
@@ -787,8 +796,13 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
       brand.supported_currencies = supported_currencies;
     }
 
-    await brand.save();
-    console.log(`✓ Brand payment settings updated: ${brand.name}`);
+    // 결제 설정 = 계정 하나 (2026-10-07 Fable) — 같은 주인의 모든 브랜드에 같은 값을 한 트랜잭션으로 쓴다.
+    //   청구서 결제창·Stripe/PayPal·PDF 은행정보는 발행 브랜드 행을 읽으므로 형제가 비면 «Payment Not Available».
+    const fannedOut = await sequelize.transaction(async (transaction) => {
+      await brand.save({ transaction });
+      return brandAccountSettings.fanOutAccountFields(Brand, brand, { transaction });
+    });
+    console.log(`✓ Brand payment settings updated: ${brand.name}${fannedOut.length ? ` (+ same owner brands ${fannedOut.join(',')})` : ''}`);
 
     res.json({
       success: true,

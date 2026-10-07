@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-07 — [Claude Code] **v3.109** · **키오스크·영수증 운영 배포 SW 5.89-kiosk-receipt-20261007(백업 20261007_163801 · 스모크 10/10 · Fable 최종 게이트 PASS)** — 등록된 매장 태블릿만 키오스크(서버 기기 토큰) · 설정 › Kiosk «키오스크 사용» 스위치 · 결제수단 Kiosk 칸 · 키오스크 카드단말기 결제(승인 거래로만 기록) · 주문 꼬리표 Kiosk · 좌측 메뉴 Kiosk · 메뉴·상세·결제 전 과정 오른쪽 장바구니 · 청구서 영수증 드래그·PDF. 문서 `docs/KIOSK_MODE.md`.
+> **최종 업데이트:** 2026-10-07 — [Claude Code] **판매자 결제 설정 = 계정(회사) 하나 (개발서버만, Fable 2회차 PASS)** — 브랜드 결제 설정 저장이 같은 주인의 모든 브랜드에 적용(둘째 브랜드 청구서 «Payment Not Available» 해소) · 화면 한 줄 안내 · 정렬 마이그(deploy) · 인스펙션 B-ACC.
+
+> **이전:** 2026-10-07 — [Claude Code] **v3.109** · **키오스크·영수증 운영 배포 SW 5.89-kiosk-receipt-20261007(백업 20261007_163801 · 스모크 10/10 · Fable 최종 게이트 PASS)** — 등록된 매장 태블릿만 키오스크(서버 기기 토큰) · 설정 › Kiosk «키오스크 사용» 스위치 · 결제수단 Kiosk 칸 · 키오스크 카드단말기 결제(승인 거래로만 기록) · 주문 꼬리표 Kiosk · 좌측 메뉴 Kiosk · 메뉴·상세·결제 전 과정 오른쪽 장바구니 · 청구서 영수증 드래그·PDF. 문서 `docs/KIOSK_MODE.md`.
 
 > **이전:** 2026-10-07 — [Claude Code] **청구서 «총액 수정» + «수정 이력» 운영 배포 SW 5.88-invoice-total-fix-20261007(백업 20261007_112732 · 스모크 10/10 · Fable 게이트 PASS)** — 외부 공급업체 청구서 총액을 매장 관리자·오너가 청구서 화면에서 고침(오너는 총액만) · 누가·언제·얼마→얼마 이력 표시. health-check T1~T4 · 고장주입 3종 · verify-all --full · 실브라우저 8/8. v3.109 버전 올림은 5.87·5.88 묶어 Irene 결정 대기. `/개발시작` 0-B단계(운영 문의 읽기 `scripts/prod-inbox.js`) 추가. (오전: SW 5.87 운영 배포 — 오너 To Pay 매장 필터·올린 인보이스 보기·브랜드 매니저 메뉴 이동)
 
@@ -462,6 +464,28 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 판매자 결제 설정 = 계정(회사) 하나 (2026-10-07, 개발서버만)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 저장 펼치기 | 브랜드 Payment Settings 저장이 같은 주인 모든 브랜드 행에 같은 값(6칸) — 한 트랜잭션 | ✅ 완료 |
+| 새 브랜드 | 같은 주인의 새 브랜드는 형제 값으로 시작 | ✅ 완료 |
+| 화면 안내 | «이 설정은 이 계정의 모든 브랜드에 적용됩니다: …» (브랜드 2개 이상, 4언어) | ✅ 완료 |
+| 정렬 마이그 | `migrate-brand-account-payment-settings.js` (deploy · 멱등 · 기준=주인 기본 브랜드) — 운영 dry-run: 실고객 0건 · 데모 2건 | ✅ 완료 |
+| 안전망 | 인스펙션 B-ACC · health-check payment 2건 · 고장주입 2/2 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/utils/brandAccountSettings.js` (신규)
+- `dev-backend/routes/brands-core.js`
+- `dev-backend/scripts/migrate-brand-account-payment-settings.js` (신규) · `scripts/migrations.registry.json`
+- `dev-backend/scripts/inspection/suites/brand-account-settings.js` (신규) · `scripts/health-check.js`
+- `dev-frontend/src/pages/BrandGeneral/BrandPaymentSettingsPage.tsx` · `public/locales/*/brand.json`
+- `docs/INVOICE_SYSTEM.md` §4.1
+
+---
 
 ## ✅ 완료: 발행자 청구서 «To Confirm» 탭 · 업무 버튼 색 규칙 (2026-10-07, 개발서버만)
 

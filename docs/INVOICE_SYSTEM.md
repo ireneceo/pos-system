@@ -390,6 +390,14 @@ const fetchPaymentMethods = async (currency, issuerType, issuerId) => {
 | Brand | `brands` | `payment_settings` (JSON 컬럼) |
 | Foodcourt | `foodcourts` | `payment_settings` (JSON 컬럼) |
 
+> **브랜드 = 계정(회사) 하나 (2026-10-07 Fable 판정 `.claude/fable-verdict-20261007-payment-settings-account.md`).**
+> 저장은 브랜드 행마다(`brands.payment_settings` 등)지만, 설정 화면(`/pos/brand/payment-settings`)의 저장(PUT `/api/brands/:id/payment-settings`)은
+> **같은 주인(owner_id)의 모든 브랜드 행에 같은 값을 한 트랜잭션으로 쓴다**(`utils/brandAccountSettings.js` `ACCOUNT_LEVEL_FIELDS` 6칸:
+> payment_settings · invoice_settings · supported_currencies · min_order_amount · delivery_fee · delivery_policy). 새 브랜드는 형제 값으로 시작.
+> 그래서 읽는 곳(청구서 결제창·Stripe/PayPal·PDF 은행정보)은 발행 브랜드 행을 그대로 읽어도 된다.
+> 어긋남은 배포 마이그 `migrate-brand-account-payment-settings.js`(기준 = 주인 기본 브랜드 users.brand_id) 가 맞추고 인스펙션 `brand-account-settings`(B-ACC) 가 잡는다.
+> currency · 회사정보(company_name·bank_*)는 브랜드마다 따로.
+
 ### 4.2 JSON 구조
 
 ```json

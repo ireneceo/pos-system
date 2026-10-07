@@ -331,6 +331,8 @@ const BrandPaymentSettingsPage: React.FC = () => {
 
   // UI state
   const [loading, setLoading] = useState(true);
+  // 결제 설정 = 계정 하나 (2026-10-07 Fable) — 이 값이 함께 적용되는 브랜드(같은 주인 전부)
+  const [appliesToBrands, setAppliesToBrands] = useState<{ id: number; name: string }[]>([]);
 
   useEffect(() => {
     loadAllSettings();
@@ -384,6 +386,7 @@ const BrandPaymentSettingsPage: React.FC = () => {
 
         // API returns { success: true, data: { payment_settings, supported_currencies } }
         const data = responseData.data || responseData;
+        setAppliesToBrands(Array.isArray(data.applies_to_brands) ? data.applies_to_brands : []);
 
         // 배송 조건 두 칸 (2026-09-17 Fable 판정 ⑦) — 매장이 이 브랜드에 발주할 때 붙는 규칙
         setDeliveryTerms({
@@ -639,6 +642,14 @@ const BrandPaymentSettingsPage: React.FC = () => {
       <Container>
         <PageHeader title="Payment Settings" />
         <Content>
+          {appliesToBrands.length > 1 && (
+            <SectionDescription>
+              {t('brand:brandPaymentSettingsPage.appliesToAllBrands', {
+                names: appliesToBrands.map(b => b.name).join(', '),
+                defaultValue: 'These settings apply to all brands on this account: {{names}}'
+              })}
+            </SectionDescription>
+          )}
           {/* Section 1: Currency Settings */}
           {/* 매장 발주 배송 조건 (2026-09-17 Fable 판정 ⑦) */}
           <Section>

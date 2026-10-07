@@ -963,6 +963,74 @@ function defineSecurityTests({ customerToken, member, restId }) {
     }
   });
 
+  // 2026-10-07 판매자 결제 설정 = 계정(회사) 하나 (Fable 판정 fable-verdict-20261007-payment-settings-account.md §6-A).
+  //   설정 화면은 기본 브랜드 행에만 저장하는데 청구서 결제창은 발행 브랜드 행을 읽어, 같은 주인의 둘째 브랜드 청구서가
+  //   «Payment Not Available» 이었다(운영 K-DINE 10-05). 데모 BG(브랜드 10·17)로 저장 → 형제에 같은 값 → 결제창 반영.
+  //   원본은 6칸 원문 그대로 보관했다가 되돌린다. 실매장·다른 주인 브랜드 무접촉 확인.
+  const BRAND_ACCOUNT_COLS = ['payment_settings', 'invoice_settings', 'supported_currencies', 'min_order_amount', 'delivery_fee', 'delivery_policy'];
+  const snapBrands = async (sequelize, ids) => {
+    const [rows] = await sequelize.query(`SELECT id, ${BRAND_ACCOUNT_COLS.join(', ')} FROM brands WHERE id IN (:ids) ORDER BY id`, { replacements: { ids } });
+    return rows;
+  };
+  const restoreBrands = async (sequelize, rows) => {
+    for (const r of rows) {
+      await sequelize.query(`UPDATE brands SET ${BRAND_ACCOUNT_COLS.map(c => `${c} = :${c}`).join(', ')} WHERE id = :id`, { replacements: r });
+    }
+  };
+  test('payment', '결제 설정 = 계정 하나 — 브랜드 10 저장이 같은 주인 브랜드 17 결제창에 반영 · 다른 주인 무변화', async () => {
+    const { sequelize } = require('../config/database');
+    const [[bg]] = await sequelize.query("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' AND role = 'Brand General' AND is_active = 1");
+    const [sibs] = await sequelize.query('SELECT id FROM brands WHERE owner_id = :o ORDER BY id', { replacements: { o: bg ? bg.id : -1 } });
+    const ids = sibs.map(r => r.id);
+    if (!bg || !ids.includes(10) || !ids.includes(17)) { console.log(c.gray('      (건너뜀: 데모 BG 브랜드 10·17 없음)')); return true; }
+    const [[other]] = await sequelize.query('SELECT id FROM brands WHERE owner_id IS NOT NULL AND owner_id <> :o ORDER BY id LIMIT 1', { replacements: { o: bg.id } });
+    const watch = other ? [...ids, other.id] : ids;
+    const original = await snapBrands(sequelize, watch);
+    const originalJson = JSON.stringify(original);
+    const auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const marker = `HC-ACCT-${Date.now()}`;
+    try {
+      const cur = await request('GET', '/brands/10/payment-settings', null, auth);
+      if (cur.status !== 200) return fail(`GET 10 ${cur.status}`);
+      const ps = cur.body.data.payment_settings || {};
+      const next = { ...ps, bankTransfer: { ...(ps.bankTransfer || {}), MYR: { enabled: true, bankName: marker, accountNumber: '000111', accountName: 'Health Check' } } };
+      const put = await request('PUT', '/brands/10/payment-settings', { payment_settings: next }, auth);
+      if (put.status !== 200) return fail(`PUT 10 ${put.status}`);
+      const g17 = await request('GET', '/brands/17/payment-settings', null, auth);
+      if (g17.body?.data?.payment_settings?.bankTransfer?.MYR?.bankName !== marker) return fail('브랜드 17 에 값이 안 펼쳐짐');
+      const names = (g17.body.data.applies_to_brands || []).map(b => b.id).sort((a, b) => a - b);
+      if (JSON.stringify(names) !== JSON.stringify(ids)) return fail(`applies_to_brands ${JSON.stringify(names)}`);
+      const avail = await request('GET', '/brands/17/payment-settings/available/MYR', null, auth);
+      const bank = (avail.body?.methods || []).find(m => m.id === 'bank_transfer');
+      if (!bank || bank.bankName !== marker) return fail('브랜드 17 결제창에 은행이체 마커 없음');
+      if (other) {
+        const [after] = await snapBrands(sequelize, [other.id]);
+        if (JSON.stringify(after) !== JSON.stringify(original.find(r => r.id === other.id))) return fail(`다른 주인 브랜드 ${other.id} 가 바뀜`);
+      }
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      await restoreBrands(sequelize, original).catch((e) => console.log(c.gray(`      (원복 실패: ${e.message})`)));
+      const back = await snapBrands(sequelize, watch);
+      if (JSON.stringify(back) !== originalJson) console.log(c.gray('      (⚠ 원복 후 값이 원본과 다름)'));
+    }
+  });
+
+  test('payment', '결제 설정 = 계정 하나 — 다른 BG 가 남의 브랜드 PUT → 403 · 값 무변화', async () => {
+    const { sequelize } = require('../config/database');
+    const [[bg]] = await sequelize.query("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' AND role = 'Brand General' AND is_active = 1");
+    const [[stranger]] = await sequelize.query("SELECT u.id FROM users u WHERE u.role = 'Brand General' AND u.is_active = 1 AND u.id <> :o AND NOT EXISTS (SELECT 1 FROM brands b WHERE b.id IN (10, 17) AND b.owner_id = u.id) LIMIT 1", { replacements: { o: bg ? bg.id : -1 } });
+    if (!bg || !stranger) { console.log(c.gray('      (건너뜀: 데모 BG·다른 BG 없음)')); return true; }
+    const before = JSON.stringify(await snapBrands(sequelize, [10, 17]));
+    const auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: stranger.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    const r = await request('PUT', '/brands/10/payment-settings', { payment_settings: { bankTransfer: { MYR: { enabled: true, bankName: 'X', accountNumber: '1', accountName: 'X' } } } }, auth);
+    const after = JSON.stringify(await snapBrands(sequelize, [10, 17]));
+    if (r.status !== 403) { console.log(c.gray(`      (PUT ${r.status})`)); return false; }
+    if (before !== after) { console.log(c.gray('      (값이 바뀜)')); return false; }
+    return true;
+  });
+
   test('security', '다른 매장 Staff가 /restaurants/:id/table-status → 403 (손님 개인정보 유출 차단)', async () => {
     const User = require('../models/User');
     const { Op } = require('sequelize');

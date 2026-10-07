@@ -850,7 +850,8 @@
     "deliveryFee": "Yuran penghantaran di bawahnya (tetap)",
     "deliveryAreas": "Kawasan penghantaran",
     "deliveryAreasPlaceholder": "cth. Petaling Jaya, Selangor",
-    "deliveryAreasHint": "Di mana dan bila anda menghantar. Dipaparkan kepada kedai semasa membuat pesanan — tidak digunakan untuk mengira caj penghantaran."
+    "deliveryAreasHint": "Di mana dan bila anda menghantar. Dipaparkan kepada kedai semasa membuat pesanan — tidak digunakan untuk mengira caj penghantaran.",
+    "appliesToAllBrands": "Tetapan ini terpakai pada semua jenama dalam akaun ini: {{names}}"
   },
   "productIngredientsTab": {
     "packSizeNeedsConfirm": "perlu disahkan",
