@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-06 — [Claude Code] **키오스크 결제 질문 조사(코드 변경 0) → «키오스크 결제 분리» Fable 설계 판단 대기로 등록(Fable 한도 소진).** 상세 session-state 다음 확정 2번.
+> **최종 업데이트:** 2026-10-07 — [Claude Code] **청구서 «총액 수정» + «수정 이력» 운영 배포 SW 5.88-invoice-total-fix-20261007(백업 20261007_112732 · 스모크 10/10 · Fable 게이트 PASS)** — 외부 공급업체 청구서 총액을 매장 관리자·오너가 청구서 화면에서 고침(오너는 총액만) · 누가·언제·얼마→얼마 이력 표시. health-check T1~T4 · 고장주입 3종 · verify-all --full · 실브라우저 8/8. v3.109 버전 올림은 5.87·5.88 묶어 Irene 결정 대기. `/개발시작` 0-B단계(운영 문의 읽기 `scripts/prod-inbox.js`) 추가. (오전: SW 5.87 운영 배포 — 오너 To Pay 매장 필터·올린 인보이스 보기·브랜드 매니저 메뉴 이동)
+
+> **이전:** 2026-10-06 — [Claude Code] **키오스크 결제 질문 조사(코드 변경 0) → «키오스크 결제 분리» Fable 설계 판단 대기로 등록(Fable 한도 소진).** 상세 session-state 다음 확정 2번.
 
 > **이전:** 2026-10-05 — [Claude Code] **v3.108 · 운영 배포 #4·#5 SW 5.86(백업 20261005_153730 · 20261005_184839 · 스모크 10/10) — 정산서↔청구서 상태 단일 규칙 · 정산서 손님 이름 · 브랜드 매출 보고서 재구성 · 정산서 자동 발행 «이어서 내기» · 테스트 메일 반송 차단. Fable 한도 초과로 Irene 이 게이트 직접 넘김 → 소급 판정 예정.**
 
@@ -10829,6 +10831,22 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 - `public/locales/*/pos.json` · `supplier.json` · `e2e/card-terminal.spec.js` · `public/sw.js`
 
 ---
+
+## ✅ 완료: 청구서 총액 수정 + 수정 이력 — 운영 배포 SW 5.88 (2026-10-07) [Claude Code]
+- Irene 「토탈금액 안맞으면 수정하는 것도 인보이스에서 가능해야지. 레스토랑관리자도, 오너도.」「수정한 사람 이름이랑 시간 남겨서 히스토리」 → Fable 판정(`.claude/fable-design-20261007-invoice-total-fix.md`) · Irene 승인
+- ✅ 청구서 상세 «총액 수정»(공용 `SupplierInvoiceTotalFix`) — 기존 «총액만 대조» 재사용, 새 경로·DB 칸 0 · 외부 공급업체 청구서만
+- ✅ 오너 총액만(buyerScope OWNER_ACTING_ROUTES + 403 OWNER_TOTAL_ONLY)
+- ✅ 수정 이력(modification_history, 총액 바뀔 때만) + 표시(공용 `InvoiceModificationHistory`) — 매장·오너
+- ✅ 원가 변경 기록 이름(full_name) · i18n 4언어 · 문서 PURCHASE_ORDER_SYSTEM §8-7
+- ✅ 검증: health-check invoice-total-fix 4/4 · 고장주입 3/3 · verify-all --full · 실브라우저 8/8
+- ✅ Fable 게이트 PASS(`.claude/fable-verdict-20261007-invoice-total-fix-gate.md`) → 운영 배포 SW 5.88(백업 20261007_112732 · 스모크 10/10 · mount 크래시 0)
+- ✅ `/개발시작` 0-B단계 — 운영에 들어온 시스템 문의·후속 글·랜딩 문의를 읽기 전용으로 확인(`dev-backend/scripts/prod-inbox.js`), 건마다 «이미 해결/조치 필요/결정 필요»
+- ✅ (서버 공용) 개발서버 상황판·아침 점검 cron — `~/dev-server/README.md`
+
+### 수정된 파일
+- `dev-backend/middleware/buyerScope.js` · `routes/cost-reconciliation.js` · `routes/invoices-list.js` · `routes/owner.js` · `services/reconcileInvoiceSync.js` · `services/invoicePurchaseOrderAttach.js` · `scripts/health-check.js` · `scripts/prod-inbox.js`(신규)
+- `dev-frontend/src/components/Invoices/SupplierInvoiceTotalFix.tsx`·`InvoiceModificationHistory.tsx`(신규) · `pages/Restaurant/InvoicesPage.tsx` · `pages/Owner/OwnerInvoicesPage.tsx` · `components/Layout/MainLayout.tsx`(메뉴 목록만) · locales settings 4언어 · `public/sw.js`
+- docs `PURCHASE_ORDER_SYSTEM.md` §8-7 · `RESTAURANT_OWNER_PLAN.md` · `SUPPLIER_CONTRACT_SYSTEM.md` · `INVOICE_SYSTEM.md` · `.claude/commands/개발시작.md`
 
 ## ✅ 완료: 키오스크 결제 질문 조사 (2026-10-06) [Claude Code]
 

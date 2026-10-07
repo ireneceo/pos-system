@@ -1286,6 +1286,44 @@
     "soaInvoices": "Invoices in this statement",
     "soaInvoiceNumber": "Invoice No.",
     "soaInvoiceDate": "Date",
-    "payViaSoa": "Pay via SOA"
+    "payViaSoa": "Pay via SOA",
+    "totalFix": {
+      "button": "Correct total",
+      "title": "Correct invoice total",
+      "poAmount": "Purchase order",
+      "currentTotal": "Current invoice total",
+      "supplierTotal": "Supplier invoice total",
+      "gapLine": "Ordered",
+      "invoiceNumber": "Supplier invoice no.",
+      "invoiceDate": "Supplier invoice date",
+      "note": "Note (optional)",
+      "notePlaceholder": "Why the total changed — saved in the history",
+      "effectTotal": "The invoice total and the amount to pay become this total.",
+      "effectHistory": "Your name and the time are saved in the change history.",
+      "effectLines": "{{count}} line price records will be cleared and will not be applied to cost.",
+      "effectPaid": "Already paid — the paid amount is adjusted too. If it was paid in cash, one difference line is added to the open shift drawer.",
+      "linesWillClear": "{{count}} line price records from the earlier comparison will be cleared and will not be applied to cost. Press the button again to continue.",
+      "saveClearLines": "Clear line records and save",
+      "save": "Save total",
+      "cancel": "Cancel",
+      "done": "Done",
+      "totalRequired": "Enter the supplier invoice total.",
+      "ownerTotalOnly": "Owners can only correct the total.",
+      "failed": "Could not save the total.",
+      "network": "Network error. Please try again.",
+      "savedSynced": "Invoice total is now {{total}}. The change was added to the history.",
+      "savedNotSynced": "The purchase order total was saved, but the invoice was not changed: {{reason}}",
+      "paidAdjusted": "Paid amount adjusted — one cash movement of {{diff}} was added to the open shift drawer.",
+      "paidReason": {
+        "no_open_shift": "No shift is open, so the cash difference was not recorded in the drawer.",
+        "not_drawer_cash": "Paid by a non-cash method — only the paid amount was updated, the drawer was not touched.",
+        "other": "Paid amount was not moved in the drawer: {{reason}}"
+      }
+    },
+    "history": {
+      "title": "Change history",
+      "system": "System",
+      "total": "Total"
+    }
   }
 }

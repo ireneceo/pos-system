@@ -27,7 +27,10 @@ async function attachPurchaseOrders(invoiceIds) {
     `SELECT id, po_number, trade_invoice_id, total_amount, external_invoice_url,
             external_invoice_filename, invoice_number, invoice_total, invoice_reconciled_at,
             status, seller_type, seller_entity_id, payment_status, entity_type, entity_id,
-            submitted_at, approved_at, created_at, received_at, invoice_date
+            submitted_at, approved_at, created_at, received_at, invoice_date,
+            -- 줄 단가 대조 기록 수 — 총액 수정 창이 «줄 기록 N개가 지워진다» 를 말하는 근거 (2026-10-07 Fable D6)
+            (SELECT COALESCE(SUM(i.invoiced_unit_price IS NOT NULL), 0) FROM purchase_order_items i
+              WHERE i.purchase_order_id = purchase_orders.id) AS reconcile_invoiced_lines
        FROM purchase_orders
       WHERE trade_invoice_id IN (:ids) AND deleted_at IS NULL`,
     { type: QueryTypes.SELECT, replacements: { ids } });
@@ -64,6 +67,7 @@ function purchaseOrderFieldsCamel(po) {
     supplierInvoiceTotal: po ? po.invoice_total : null,
     invoiceReconciledAt: po ? po.invoice_reconciled_at : null,
     uploadedInvoiceUrl: po ? po.external_invoice_url : null,
+    reconcileInvoicedLines: po ? Number(po.reconcile_invoiced_lines) || 0 : 0,
   };
 }
 

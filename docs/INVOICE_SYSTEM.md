@@ -506,7 +506,7 @@ hasPaymentMethodForCurrency(paymentSettings, currency)
 | discount_amount | DECIMAL(10,2) NULL | 실제 할인 금액 |
 | discount_reason | VARCHAR(255) NULL | 할인 사유 |
 | is_modified | TINYINT(1) DEFAULT 0 | 수정 여부 |
-| modification_history | JSON NULL | 수정 이력 |
+| modification_history | JSON NULL | 수정 이력 — 2026-10-07 부터 청구서 «총액 수정»(외부 공급업체 청구서, `services/reconcileInvoiceSync.js`)이 총액이 바뀔 때만 `{modified_at, modified_by, modified_by_name, changes:{total_amount:{from,to}}, reason, source:'reconcile'}` 한 줄 추가 · 표시 `components/Invoices/InvoiceModificationHistory.tsx` · 상세 `docs/PURCHASE_ORDER_SYSTEM.md` §8-7 |
 | paid_at | DATETIME NULL | 결제 완료 시각 |
 
 ### 5.2 invoice_items 테이블

@@ -56,6 +56,9 @@ const OWNER_ACTING_ROUTES = [
   ['POST',   /^\/api\/purchase-orders\/\d+\/cancel$/],                 // 취소(§6)
   ['DELETE', /^\/api\/purchase-orders\/\d+$/],                         // 초안 버리기(라우트가 draft 만 허용)
   ['DELETE', /^\/api\/purchase-orders\/\d+\/items\/\d+$/],             // 초안 품목 빼기(라우트가 draft 만 허용)
+  // 청구서 총액 수정(2026-10-07 Fable 판정 «오너 총액만») — 10-04 «원가대조 403» 의 유일한 예외.
+  //   라우트(cost-reconciliation POST)가 오너면 total_only 아닌 요청을 403 OWNER_TOTAL_ONLY 로 거절한다.
+  ['POST',   /^\/api\/purchase-orders\/\d+\/reconcile$/],
 ];
 
 function isOwnerActingRoute(method, originalUrl) {

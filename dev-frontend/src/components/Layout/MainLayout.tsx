@@ -1714,14 +1714,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         items: [
           { path: '/pos/brand/franchise', label: t('nav.franchise'), visible: isRouteAllowed('/pos/brand/franchise') },
           { path: '/pos/manager/restaurants', label: t('nav.restaurants'), visible: isRouteAllowed('/pos/manager/restaurants') },
-          { path: '/pos/manager/admins', label: t('nav.restaurantAdmins'), visible: isRouteAllowed('/pos/manager/staff') },
-          { path: '/pos/brand/manager', label: t('nav.managers'), visible: user?.role === 'Brand General' && isRouteAllowed('/pos/brand/manager') }
+          { path: '/pos/manager/admins', label: t('nav.restaurantAdmins'), visible: isRouteAllowed('/pos/manager/staff') }
         ].filter(i => i.visible !== false),
         visible: isRouteAllowed('/pos/brand/franchise') ||
                  (hasManagerPermission('management') && (
                    isRouteAllowed('/pos/manager/restaurants') ||
-                   isRouteAllowed('/pos/manager/staff') ||
-                   isRouteAllowed('/pos/brand/manager')
+                   isRouteAllowed('/pos/manager/staff')
                  ))
       },
       {
@@ -1793,6 +1791,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         items: [
           { path: '/pos/profile', label: t('nav.myProfile', 'My Profile'), visible: true },
           { path: '/pos/brand/company-info', label: t('nav.companyInfo', 'Company Info'), visible: true },
+          // 매니저 = 본사(브랜드 회사) 직원 — 가맹점 묶음이 아니라 회사 설정 아래 (2026-10-07 Irene «매니저는 우리 직원인데»)
+          { path: '/pos/brand/manager', label: t('nav.managers'), visible: user?.role === 'Brand General' && isRouteAllowed('/pos/brand/manager') },
           { path: '/pos/manager/notification-settings', label: t('nav.notifications', 'Notifications'), visible: true },
           { path: '/pos/brand/history', label: t('nav.changeHistory', 'Change History'), visible: isRouteAllowed('/pos/brand/history') }
         ].filter(i => i.visible !== false),

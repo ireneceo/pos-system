@@ -1286,6 +1286,44 @@
     "soaInvoices": "이 정산서의 청구서",
     "soaInvoiceNumber": "청구서 번호",
     "soaInvoiceDate": "날짜",
-    "payViaSoa": "정산서로 결제"
+    "payViaSoa": "정산서로 결제",
+    "totalFix": {
+      "button": "총액 수정",
+      "title": "청구서 총액 수정",
+      "poAmount": "발주",
+      "currentTotal": "현재 청구서 총액",
+      "supplierTotal": "공급업체 인보이스 총액",
+      "gapLine": "발주",
+      "invoiceNumber": "공급업체 인보이스 번호",
+      "invoiceDate": "공급업체 인보이스 날짜",
+      "note": "메모 (선택)",
+      "notePlaceholder": "총액을 바꾼 이유 — 이력에 남습니다",
+      "effectTotal": "청구서 총액과 낼 금액이 이 총액으로 바뀝니다.",
+      "effectHistory": "수정한 사람 이름과 시간이 수정 이력에 남습니다.",
+      "effectLines": "줄 단가 기록 {{count}}개가 지워지고 원가에는 반영되지 않습니다.",
+      "effectPaid": "이미 결제된 청구서 — 낸 금액도 같이 맞춰집니다. 현금결제면 열린 시프트 드로어에 차액 한 줄이 남습니다.",
+      "linesWillClear": "앞서 대조한 줄 단가 기록 {{count}}개가 지워지고 원가에는 반영되지 않습니다. 계속하려면 버튼을 한 번 더 누르세요.",
+      "saveClearLines": "줄 기록 지우고 저장",
+      "save": "총액 저장",
+      "cancel": "취소",
+      "done": "확인",
+      "totalRequired": "공급업체 인보이스 총액을 입력하세요.",
+      "ownerTotalOnly": "오너는 총액만 수정할 수 있습니다.",
+      "failed": "총액을 저장하지 못했습니다.",
+      "network": "네트워크 오류입니다. 다시 시도하세요.",
+      "savedSynced": "청구서 총액이 {{total}} 로 바뀌었습니다. 수정 이력에 남았습니다.",
+      "savedNotSynced": "발주 총액은 저장했지만 청구서는 바꾸지 않았습니다: {{reason}}",
+      "paidAdjusted": "낸 금액을 맞췄습니다 — 열린 시프트 드로어에 {{diff}} 한 줄이 남았습니다.",
+      "paidReason": {
+        "no_open_shift": "열린 시프트가 없어 현금 차액을 드로어에 기록하지 못했습니다.",
+        "not_drawer_cash": "현금이 아닌 결제라 낸 금액만 맞추고 드로어는 건드리지 않았습니다.",
+        "other": "낸 금액을 드로어에 반영하지 못했습니다: {{reason}}"
+      }
+    },
+    "history": {
+      "title": "수정 이력",
+      "system": "시스템",
+      "total": "총액"
+    }
   }
 }

@@ -5902,6 +5902,147 @@ function definePaymentTests() {
     finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); if (ext) await dropSupplierCompany(ext.sc); }
   });
 
+  // ── 청구서에서 총액 수정 + 수정 이력 (2026-10-07 Fable 판정 · PURCHASE_ORDER_SYSTEM.md §8-7) ─────────────
+  //   T1 매장 관리자: 총액이 바뀔 때만 이력 한 줄(이름·from→to·PO 번호) — 같은 값 재저장은 안 적는다.
+  //   T2 오너: 소유 매장 자격으로 total_only 200 + 이력 이름 = 오너 · 줄 대조 403 OWNER_TOTAL_ONLY · 남의 매장 403 · 오너 목록 칸.
+  //   T3 가입 판매자 청구서: 200 이지만 synced=false · 청구서 총액·이력 무변화.
+  //   T4 결제된 현금 발주: 총액만 확정 → 이력 1줄 + 낸 금액도 같이.
+  //   고장주입: ① reconcileInvoiceSync 의 이력 push 제거 → T1·T4 실패 ② cost-reconciliation 의 OWNER_TOTAL_ONLY 제거 → T2 실패
+  //            ③ buyerScope OWNER_ACTING_ROUTES 의 reconcile 줄 제거 → T2 실패(200 기대가 403)
+  const hcInvHist = async (invoiceId) => {
+    const [row] = await hcQ('SELECT total_amount, paid_amount, status, is_modified, modification_history FROM invoices WHERE id = :i', { i: invoiceId });
+    let h = row && row.modification_history;
+    if (typeof h === 'string') { try { h = JSON.parse(h); } catch { h = []; } }
+    return { row, hist: Array.isArray(h) ? h : [] };
+  };
+
+  test('invoice-total-fix', 'T1 매장 관리자 총액 수정 → 청구서 총액 · 이력 1줄(이름·from→to·PO) · 같은 값 재저장 무기록 · 다시 바꾸면 2줄', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    try {
+      ext = await makeExternalPoReceived(fx, { lineTotal: 42 }); made.pos.push(ext.po.id);
+      if (!ext.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${ext.receiveStatus})`)); return false; }
+      const [ra] = await hcQ('SELECT full_name, username, email FROM users WHERE id = :u', { u: fx.raId });
+      const raName = ra.full_name || ra.username || ra.email;
+      const r1 = await request('POST', `/purchase-orders/${ext.po.id}/reconcile`, { total_only: true, invoice: { total: 45, number: 'HC-INV-1' }, note: 'hc note' }, fx.auth);
+      const a = await hcInvHist(ext.inv.id);
+      const r2 = await request('POST', `/purchase-orders/${ext.po.id}/reconcile`, { total_only: true, invoice: { total: 45 } }, fx.auth);
+      const b = await hcInvHist(ext.inv.id);
+      const r3 = await request('POST', `/purchase-orders/${ext.po.id}/reconcile`, { total_only: true, invoice: { total: 40 } }, fx.auth);
+      const d = await hcInvHist(ext.inv.id);
+      const h0 = a.hist[0] || {};
+      const ch = (h0.changes && h0.changes.total_amount) || {};
+      const last = (d.hist[1] && d.hist[1].changes && d.hist[1].changes.total_amount) || {};
+      // 목록 API 도 이력·줄 기록 수를 내려준다(매장 화면이 그린다)
+      const lst = await request('GET', `/invoices/restaurant/${fx.demoId}`, null, fx.auth);
+      const arr = Array.isArray(lst.body) ? lst.body : (lst.body && (lst.body.data || lst.body.invoices)) || [];
+      const li = arr.find((x) => Number(x.id) === Number(ext.inv.id));
+      const ok = r1.status === 200 && r1.body?.data?.invoice_sync?.synced === true
+        && Math.abs(Number(a.row.total_amount) - 45) < 0.001 && a.hist.length === 1 && Number(a.row.is_modified) === 1
+        && Math.abs(Number(ch.from) - 42) < 0.001 && Math.abs(Number(ch.to) - 45) < 0.001
+        && h0.modified_by_name === raName && Number(h0.modified_by) === Number(fx.raId) && h0.source === 'reconcile'
+        && String(h0.reason || '').includes(ext.po.po_number) && String(h0.reason || '').includes('hc note')
+        && r2.status === 200 && b.hist.length === 1
+        && r3.status === 200 && d.hist.length === 2 && Math.abs(Number(last.from) - 45) < 0.001 && Math.abs(Number(last.to) - 40) < 0.001
+        && !!li && Array.isArray(li.modification_history) && li.modification_history.length === 2 && li.reconcile_invoiced_lines === 0;
+      if (!ok) console.log(c.gray(`      (r1 ${r1.status} ${JSON.stringify(r1.body?.data?.invoice_sync)} 총액 ${a.row.total_amount} 이력 ${JSON.stringify(a.hist)} 기대이름 ${raName} / r2 ${r2.status} 이력 ${b.hist.length} / r3 ${r3.status} 이력 ${d.hist.length} / 목록 ${lst.status} ${li ? JSON.stringify({ h: (li.modification_history || []).length, n: li.reconcile_invoiced_lines }) : '없음'})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); if (ext) await dropSupplierCompany(ext.sc); }
+  });
+
+  test('invoice-total-fix', 'T2 오너 = 총액만 — 소유 매장 total_only 200·이력 이름=오너 · 줄 대조 403 OWNER_TOTAL_ONLY · 남의 매장 403 · 오너 목록 칸', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const { sequelize } = require('../config/database');
+    const jwt = require('jsonwebtoken');
+    const tag = 'zzhcitf' + Date.now().toString(36);
+    const ownerName = 'HC Owner ' + tag;
+    const [other] = await hcQ('SELECT id FROM restaurants WHERE is_demo = 1 AND id <> :r ORDER BY id LIMIT 1', { r: fx.demoId });
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, full_name, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@example.com`, ownerName] });
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    try {
+      await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (?, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [fx.demoId, uid] });
+      const auth = { Authorization: `Bearer ${jwt.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      ext = await makeExternalPoReceived(fx, { lineTotal: 42 }); made.pos.push(ext.po.id);
+      if (!ext.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${ext.receiveStatus})`)); return false; }
+      const sw = (rid) => `entity_type=restaurant&entity_id=${rid}`;
+      const [item] = await hcQ('SELECT id FROM purchase_order_items WHERE purchase_order_id = :p', { p: ext.po.id });
+      // 줄 대조는 오너에게 막힌다 — 아무것도 안 바뀐다
+      const rl = await request('POST', `/purchase-orders/${ext.po.id}/reconcile?${sw(fx.demoId)}`,
+        { invoice: { total: 44 }, lines: [{ item_id: item.id, invoiced_unit_price: 44 }] }, auth);
+      const before = await hcInvHist(ext.inv.id);
+      // 남의 매장 자격 → 403(buyerScope ownership 확인)
+      const ro = other ? await request('POST', `/purchase-orders/${ext.po.id}/reconcile?${sw(other.id)}`, { total_only: true, invoice: { total: 46 } }, auth) : { status: 403 };
+      // 소유 매장 자격 total_only → 200
+      const rt = await request('POST', `/purchase-orders/${ext.po.id}/reconcile?${sw(fx.demoId)}`, { total_only: true, invoice: { total: 46 } }, auth);
+      const after = await hcInvHist(ext.inv.id);
+      const h0 = after.hist[0] || {};
+      const lp = await request('GET', `/owner/invoices/to-pay?restaurant_id=${fx.demoId}`, null, auth);
+      const la = await request('GET', `/owner/invoices?restaurant_id=${fx.demoId}`, null, auth);
+      const rows = [...((lp.body && lp.body.data) || []), ...((la.body && la.body.data) || [])];
+      const li = rows.find((x) => Number(x.id) === Number(ext.inv.id));
+      const ok = rl.status === 403 && rl.body?.code === 'OWNER_TOTAL_ONLY' && before.hist.length === 0 && Math.abs(Number(before.row.total_amount) - 42) < 0.001
+        && ro.status === 403
+        && rt.status === 200 && rt.body?.data?.invoice_sync?.synced === true
+        && Math.abs(Number(after.row.total_amount) - 46) < 0.001 && after.hist.length === 1 && h0.modified_by_name === ownerName && Number(h0.modified_by) === Number(uid)
+        && !!li && Array.isArray(li.modification_history) && li.modification_history.length === 1 && li.reconcile_invoiced_lines === 0 && li.is_modified === true;
+      if (!ok) console.log(c.gray(`      (줄대조 ${rl.status}/${rl.body?.code} 이력 ${before.hist.length} 총액 ${before.row.total_amount} · 남의매장 ${ro.status} · 총액만 ${rt.status} ${JSON.stringify(rt.body?.data?.invoice_sync || rt.body?.message)} 총액 ${after.row.total_amount} 이력 ${JSON.stringify(after.hist)} · 오너목록 ${lp.status}/${la.status} ${li ? JSON.stringify({ h: (li.modification_history || []).length, n: li.reconcile_invoiced_lines, m: li.is_modified }) : '없음'})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      await cleanCash(fx, made); if (ext) await dropSupplierCompany(ext.sc);
+      await sequelize.query('DELETE FROM restaurant_managers WHERE manager_id = ?', { replacements: [uid] });
+      await sequelize.query('DELETE FROM users WHERE id = ?', { replacements: [uid] });
+    }
+  });
+
+  test('invoice-total-fix', 'T3 가입 판매자 청구서 — total_only 200 이지만 synced=false · 청구서 총액·이력 무변화', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    try {
+      ext = await makeExternalPoReceived(fx, { lineTotal: 42 }); made.pos.push(ext.po.id);
+      if (!ext.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${ext.receiveStatus})`)); return false; }
+      // 같은 청구서를 «가입 공급업체 발행» 으로 바꿔 본다 — 서버 판정 기준이 supplier_companies.is_system_registered 다
+      await ext.sc.update({ is_system_registered: true });
+      const r = await request('POST', `/purchase-orders/${ext.po.id}/reconcile`, { total_only: true, invoice: { total: 50 } }, fx.auth);
+      const a = await hcInvHist(ext.inv.id);
+      const ok = r.status === 200 && r.body?.data?.invoice_sync?.synced === false
+        && Math.abs(Number(a.row.total_amount) - 42) < 0.001 && a.hist.length === 0 && !Number(a.row.is_modified);
+      if (!ok) console.log(c.gray(`      (${r.status} ${JSON.stringify(r.body?.data?.invoice_sync)} 총액 ${a.row.total_amount} 이력 ${a.hist.length})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); if (ext) await dropSupplierCompany(ext.sc); }
+  });
+
+  test('invoice-total-fix', 'T4 결제된 현금 발주 총액만 확정 → 청구서 총액·낸 금액 동기 + 이력 1줄', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    try {
+      await closeOpenShifts(fx.demoId);
+      const shift = await openCashShift(fx); made.shifts.push(shift.id);
+      ext = await makeExternalPoReceived(fx, { lineTotal: 42 }); made.pos.push(ext.po.id);
+      if (!ext.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${ext.receiveStatus})`)); return false; }
+      const p1 = await request('POST', `/purchase-orders/${ext.po.id}/pay`, { payment_method: 'cash' }, fx.auth);
+      const r1 = await request('POST', `/purchase-orders/${ext.po.id}/reconcile`, { total_only: true, invoice: { total: 40 } }, fx.auth);
+      const a = await hcInvHist(ext.inv.id);
+      const ch = (a.hist[0] && a.hist[0].changes && a.hist[0].changes.total_amount) || {};
+      const ok = p1.status === 200 && r1.status === 200 && a.row.status === 'paid'
+        && Math.abs(Number(a.row.total_amount) - 40) < 0.001 && Math.abs(Number(a.row.paid_amount) - 40) < 0.001
+        && a.hist.length === 1 && Math.abs(Number(ch.from) - 42) < 0.001 && Math.abs(Number(ch.to) - 40) < 0.001;
+      if (!ok) console.log(c.gray(`      (결제 ${p1.status} 대조 ${r1.status} 청구서 ${JSON.stringify(a.row && { t: a.row.total_amount, p: a.row.paid_amount, s: a.row.status })} 이력 ${JSON.stringify(a.hist)})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); if (ext) await dropSupplierCompany(ext.sc); }
+  });
+
   // 2026-09-30 Irene 「삭제할 때 이유를 넣게」 — 직접 입력 내역 삭제는 이유 필수 · 활동기록에 남는다.
   test('cash', '현금 내역 삭제는 이유 필수(400) · 이유 있으면 삭제 + 활동기록', async () => {
     const fx = await cashFixtureBase();

@@ -58,9 +58,18 @@ function computeReconciledTotal(items, header = {}) {
   return round2(lines + num(header.tax) + num(header.delivery) - num(header.discount));
 }
 
+/** 저장된 수정 이력 — JSON 칸이 드라이버에 따라 문자열로 올 수 있다. */
+function readHistory(v) {
+  if (Array.isArray(v)) return [...v];
+  if (typeof v === 'string' && v.trim()) {
+    try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch (_) { return []; }
+  }
+  return [];
+}
+
 /**
  * @param {number} poId
- * @param {{actorId?: number|null}} [opts]
+ * @param {{actorId?: number|null, actorName?: string|null, allowPaid?: boolean, totalOnly?: boolean, note?: string}} [opts]
  * @returns {Promise<{synced:boolean, reason?:string, invoice_id?:number, lines?:number, total?:number}>}
  */
 async function syncTradeInvoiceFromReconcile(poId, opts = {}) {
@@ -86,6 +95,9 @@ async function syncTradeInvoiceFromReconcile(poId, opts = {}) {
   if (wasPaid && !opts.allowPaid) {
     return { synced: false, reason: '이미 결제 처리된 청구서라 금액을 고치지 않았습니다 — 필요하면 별도로 정정하세요' };
   }
+
+  // 수정 이력 기준값 — 바꾸기 전 총액 (2026-10-07 Fable 판정 D4)
+  const prevTotal = round2(num(invoice.total_amount));
 
   // ③ 라인 재작성 — 실효값 기준
   const poItems = (po.items || []).map((i) => (typeof i.toJSON === 'function' ? i.toJSON() : i));
@@ -154,9 +166,32 @@ async function syncTradeInvoiceFromReconcile(poId, opts = {}) {
   // ⑤ 총액은 finalize 가 계산한다
   await finalizeInvoice(invoice.id);
   await invoice.reload();
-  if (wasPaid) {
-    await invoice.update({ paid_amount: num(invoice.total_amount) });
+
+  // ⑥ 수정 이력 — 총액이 실제로 바뀌었을 때만 한 줄 (같은 값 재저장은 잡음이라 안 적는다).
+  //   청구서 직접 수정(PUT /api/invoices/:id)과 같은 칸·같은 모양이라 어느 화면이든 같은 이력을 그린다.
+  const newTotal = round2(num(invoice.total_amount));
+  const tail = {};
+  if (wasPaid) tail.paid_amount = newTotal;
+  if (newTotal !== prevTotal) {
+    const history = readHistory(invoice.modification_history);
+    const reason = [
+      `Supplier invoice total — PO ${po.po_number}`,
+      po.invoice_number ? `inv ${po.invoice_number}` : null,
+      opts.totalOnly ? 'total only' : 'line reconcile',
+      opts.note || null
+    ].filter(Boolean).join(' · ');
+    history.push({
+      modified_at: new Date().toISOString(),
+      modified_by: opts.actorId || null,
+      modified_by_name: opts.actorName || null,
+      changes: { total_amount: { from: prevTotal, to: newTotal } },
+      reason,
+      source: 'reconcile'
+    });
+    tail.modification_history = history;
+    tail.is_modified = true;
   }
+  if (Object.keys(tail).length) await invoice.update(tail);
 
   return {
     synced: true,

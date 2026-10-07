@@ -1286,6 +1286,44 @@
     "soaInvoices": "Invois dalam penyata ini",
     "soaInvoiceNumber": "No. Invois",
     "soaInvoiceDate": "Tarikh",
-    "payViaSoa": "Bayar melalui SOA"
+    "payViaSoa": "Bayar melalui SOA",
+    "totalFix": {
+      "button": "Betulkan jumlah",
+      "title": "Betulkan jumlah invois",
+      "poAmount": "Pesanan belian",
+      "currentTotal": "Jumlah invois semasa",
+      "supplierTotal": "Jumlah invois pembekal",
+      "gapLine": "Dipesan",
+      "invoiceNumber": "No. invois pembekal",
+      "invoiceDate": "Tarikh invois pembekal",
+      "note": "Nota (pilihan)",
+      "notePlaceholder": "Sebab jumlah berubah — disimpan dalam sejarah",
+      "effectTotal": "Jumlah invois dan amaun perlu dibayar menjadi jumlah ini.",
+      "effectHistory": "Nama anda dan masa disimpan dalam sejarah perubahan.",
+      "effectLines": "{{count}} rekod harga baris akan dipadam dan tidak digunakan untuk kos.",
+      "effectPaid": "Sudah dibayar — amaun dibayar turut diselaraskan. Jika dibayar tunai, satu baris perbezaan ditambah ke laci syif terbuka.",
+      "linesWillClear": "{{count}} rekod harga baris daripada semakan terdahulu akan dipadam dan tidak digunakan untuk kos. Tekan butang sekali lagi untuk teruskan.",
+      "saveClearLines": "Padam rekod baris dan simpan",
+      "save": "Simpan jumlah",
+      "cancel": "Batal",
+      "done": "Selesai",
+      "totalRequired": "Masukkan jumlah invois pembekal.",
+      "ownerTotalOnly": "Pemilik hanya boleh membetulkan jumlah.",
+      "failed": "Tidak dapat menyimpan jumlah.",
+      "network": "Ralat rangkaian. Sila cuba lagi.",
+      "savedSynced": "Jumlah invois kini {{total}}. Perubahan ditambah ke sejarah.",
+      "savedNotSynced": "Jumlah pesanan belian disimpan, tetapi invois tidak diubah: {{reason}}",
+      "paidAdjusted": "Amaun dibayar diselaraskan — satu pergerakan tunai {{diff}} ditambah ke laci syif terbuka.",
+      "paidReason": {
+        "no_open_shift": "Tiada syif dibuka, jadi perbezaan tunai tidak direkodkan dalam laci.",
+        "not_drawer_cash": "Dibayar bukan tunai — hanya amaun dibayar dikemas kini, laci tidak disentuh.",
+        "other": "Amaun dibayar tidak direkodkan dalam laci: {{reason}}"
+      }
+    },
+    "history": {
+      "title": "Sejarah perubahan",
+      "system": "Sistem",
+      "total": "Jumlah"
+    }
   }
 }

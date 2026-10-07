@@ -1,0 +1,50 @@
+{
+  "tag": "owner-invoices-brand-staff",
+  "sw_version": "5.87-owner-invoices-brand-staff-20261007",
+  "date": "2026-10-07",
+  "in_progress": [
+    "인보이스 총액 수정(매장 관리자·오너) + 수정 이력 — Fable 판정 대기"
+  ],
+  "completed": [
+    "오너 청구서 «Invoices to Pay» 탭: 위 매장 선택이 서버에서 무시되던 결함 — 이제 고른 매장(내 소유일 때만) 청구서만",
+    "오너 청구서 화면: 매장이 올린 공급업체 인보이스 «올린 인보이스 보기»(목록 줄 + 상세 창 버튼) — 매장 관리자 화면과 같은 방식",
+    "브랜드 사이드바: «매니저»(본사 직원 관리) 메뉴를 프랜차이즈 묶음에서 설정 묶음(회사 정보 아래)으로 이동"
+  ],
+  "remaining": [
+    "인보이스 총액 수정·수정 이력(Fable 판정 후)"
+  ],
+  "verification": {
+    "api": "오너 289(매장 2·3) to-pay: 전체 1건 · 매장2 1건 · 매장3 0건 · 남의 매장 번호 무시 · 익명 401",
+    "fault_injection": "owner.js 를 HEAD 로 되돌려 재시작 → 매장3 선택에도 매장2 청구서 1건(결함 재현) → cp 원복·재시작 → 0건",
+    "regression": "build:dev · verify-all --full 23/24(실패 1 = 배포 기록 파일 없음 → 이 파일로 해소) · mount sweep 8역할 크래시 0 · 사이드바 이동 후 build 성공, 배포 스크립트 post-build mount sweep 재실행",
+    "migration": "없음",
+    "sw_version": "5.87-owner-invoices-brand-staff-20261007",
+    "fable_note": "팀원 수정 — check-sensitive-diff 비대상(일반 변경 3건), 판단 갈림 없는 화면·필터 수정. 금액 수정·오너 권한 경계는 Fable 한도(429)로 판정 미수령 → 이번 배포에서 제외"
+  },
+  "notes": [
+    "MainLayout.tsx(인쇄 보호 shared) 사이드바 메뉴 목록만 변경 — _printPollFn 무접촉(diff 1717~1795줄, 인쇄 블록 970~1240줄), Irene 배포 지시로 --bless",
+    "KDS 무접촉"
+  ],
+  "irene_actions_after_deploy": [
+    "오너 컨텍스트 → 청구서 → Invoices to Pay → 매장 선택 시 걸러지는지 · «올린 인보이스 보기» 열리는지",
+    "브랜드 사이드바 설정 → 매니저"
+  ],
+  "issues": [
+    "오너 결제 대기 탭이 매장 선택을 무시",
+    "오너 화면에서 매장이 올린 실제 인보이스가 안 보임",
+    "브랜드 직원(매니저) 메뉴가 프랜차이즈 아래에 있어 찾기 어려움"
+  ],
+  "upcoming": [
+    "인보이스 총액 수정 + 수정 이력",
+    "키오스크 결제 분리"
+  ],
+  "behavior_changes": [
+    "오너 Invoices to Pay 탭이 고른 매장 청구서만 보여 준다",
+    "오너 청구서에 «올린 인보이스 보기»가 생겼다",
+    "브랜드 «매니저» 메뉴 위치가 설정으로 바뀌었다"
+  ],
+  "check_areas": [
+    "오너 청구서 화면",
+    "브랜드 사이드바"
+  ]
+}

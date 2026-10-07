@@ -168,6 +168,15 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
   const body = req.body || {};
   const lines = Array.isArray(body.lines) ? body.lines : [];
 
+  // 오너(소유 매장으로 행동)는 **총액만** 고칠 수 있다 (2026-10-07 Fable 판정 D3).
+  //   줄 단가 대조·원가 전파·소급은 물건과 장부가 있는 매장 관리자 몫 — 10-04 «원가대조 403» 을 이 한 가지로만 좁힌다.
+  if (req.buyerIsOwnerView && body.total_only !== true) {
+    return res.status(403).json({
+      success: false, code: 'OWNER_TOTAL_ONLY',
+      message: 'Owners can only correct the invoice total (total_only)'
+    });
+  }
+
   // ── «총액만 대조» 모드 (2026-09-24 Fable 판정 D6) ────────────────────────────
   //   사진 판독이 엉망이라 줄 단가를 믿을 수 없을 때, **총액만 사람이 적어 결제까지** 가는 길.
   //   ⛔ 줄 값은 저장하지 않는다 — OCR 이 잘못 읽은 단가가 매장 원가(①-b)·전파(③)로 흘러들면
@@ -211,8 +220,11 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
   const inv = body.invoice || {};
   const actor = {
     changed_by_user_id: req.user && req.user.id,
-    changed_by_name: req.user && (req.user.name || req.user.email)
+    // req.user 에 name 칸은 없다(auth.js 는 full_name) — 예전엔 늘 이메일이 적혔다 (2026-10-07)
+    changed_by_name: req.user && (req.user.full_name || req.user.username || req.user.email)
   };
+  // 수정 이력에 붙는 메모(선택) — 청구서 modification_history.reason 뒤에 붙는다 (Fable 판정 D4)
+  const note = typeof body.note === 'string' ? sanitizeString(body.note).trim().slice(0, 255) : '';
 
   // 🔴 금액 기준 = 적은 인보이스 총액 (2026-09-11 §8-3 B-2 · Irene 승인 ③).
   //   계산식은 청구서 라인 재작성과 **같은 함수**(computeReconciledTotal)다. 차액이 허용치(주 단위 1)를 넘으면
@@ -451,7 +463,9 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
   const wasPaid = po.payment_status === 'paid';
   try {
     const { syncTradeInvoiceFromReconcile } = require('../services/reconcileInvoiceSync');
-    invoiceSync = await syncTradeInvoiceFromReconcile(po.id, { actorId: actor.changed_by_user_id, allowPaid: wasPaid });
+    invoiceSync = await syncTradeInvoiceFromReconcile(po.id, {
+      actorId: actor.changed_by_user_id, actorName: actor.changed_by_name, allowPaid: wasPaid, totalOnly, note
+    });
   } catch (e) {
     console.error(`[reconcile] 청구서 동기화 실패 (발주 ${po.id}):`, e.message);
     invoiceSync = { synced: false, reason: `청구서 동기화 실패: ${e.message}` };

@@ -1286,6 +1286,44 @@
     "soaInvoices": "本对账单包含的发票",
     "soaInvoiceNumber": "发票编号",
     "soaInvoiceDate": "日期",
-    "payViaSoa": "通过对账单付款"
+    "payViaSoa": "通过对账单付款",
+    "totalFix": {
+      "button": "修改总额",
+      "title": "修改发票总额",
+      "poAmount": "采购单",
+      "currentTotal": "当前发票总额",
+      "supplierTotal": "供应商发票总额",
+      "gapLine": "订购",
+      "invoiceNumber": "供应商发票号",
+      "invoiceDate": "供应商发票日期",
+      "note": "备注（可选）",
+      "notePlaceholder": "修改总额的原因 — 会保存在记录中",
+      "effectTotal": "发票总额和应付金额将改为此总额。",
+      "effectHistory": "修改人姓名和时间会保存在修改记录中。",
+      "effectLines": "{{count}} 条行单价记录将被清除，且不计入成本。",
+      "effectPaid": "已付款 — 已付金额也会一并调整。如为现金付款，将在当前班次钱箱中记录一笔差额。",
+      "linesWillClear": "之前核对的 {{count}} 条行单价记录将被清除，且不计入成本。再次点击按钮以继续。",
+      "saveClearLines": "清除行记录并保存",
+      "save": "保存总额",
+      "cancel": "取消",
+      "done": "完成",
+      "totalRequired": "请输入供应商发票总额。",
+      "ownerTotalOnly": "业主只能修改总额。",
+      "failed": "无法保存总额。",
+      "network": "网络错误，请重试。",
+      "savedSynced": "发票总额已改为 {{total}}，已记录在修改记录中。",
+      "savedNotSynced": "采购单总额已保存，但发票未修改：{{reason}}",
+      "paidAdjusted": "已调整已付金额 — 当前班次钱箱中记录了一笔 {{diff}}。",
+      "paidReason": {
+        "no_open_shift": "没有开启的班次，现金差额未记录到钱箱。",
+        "not_drawer_cash": "非现金付款 — 只调整了已付金额，未动钱箱。",
+        "other": "已付金额未计入钱箱：{{reason}}"
+      }
+    },
+    "history": {
+      "title": "修改记录",
+      "system": "系统",
+      "total": "总额"
+    }
   }
 }

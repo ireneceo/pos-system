@@ -1,0 +1,50 @@
+{
+  "tag": "invoice-total-fix",
+  "sw_version": "5.88-invoice-total-fix-20261007",
+  "date": "2026-10-07",
+  "in_progress": [
+    "none"
+  ],
+  "completed": [
+    "청구서 상세 «총액 수정» — 외부 공급업체 청구서의 총액을 매장 관리자·오너가 청구서 화면에서 바로 고친다(기존 «총액만 대조» 한 길 재사용, 새 저장 경로·DB 칸 0)",
+    "청구서 «수정 이력» — 총액이 바뀔 때마다 누가·언제·얼마에서 얼마로·사유를 남기고 매장·오너 청구서 상세에 보여 준다",
+    "오너는 총액만 고칠 수 있다 — 줄 단가 대조(원가 반영)는 매장 관리자만(403 OWNER_TOTAL_ONLY)",
+    "원가 변경 기록에 이름 대신 이메일이 적히던 결함 — 이제 이름(full_name)"
+  ],
+  "remaining": [
+    "none"
+  ],
+  "verification": {
+    "api": "health-check invoice-total-fix T1~T4 4/4 — T1 매장 관리자 42→45 이력 1줄(이름·from/to·PO번호·메모) · 같은 45 재저장 이력 그대로 1줄 · 40 으로 2줄 · 매장 목록에 이력·줄기록수 / T2 오너 줄대조 403 OWNER_TOTAL_ONLY · 남의 매장 403 · 소유 매장 총액만 200·이력 이름=오너 · 오너 목록에 modification_history·reconcile_invoiced_lines·is_modified / T3 가입 판매자 synced=false·총액·이력 무변화 / T4 결제된 현금 발주 총액·낸 금액 40 + 이력 1줄",
+    "fault_injection": "① reconcileInvoiceSync 이력 push 제거 → T1·T2·T4 실패 ② cost-reconciliation 오너 총액만 게이트 제거 → T2 실패(줄대조 200) ③ buyerScope OWNER_ACTING_ROUTES reconcile 제거 → T2 실패(총액만 403) — 주입마다 pm2 restart, cp 원복 후 재시작·4/4",
+    "regression": "build:dev 1회(exit 0, 새 파일 경고 0 — 기존 경고만) · verify-all --full 23/24(실패 1 = 이 기록 파일 in_progress 빈 배열 → 수정) · mount sweep 8역할 크래시 0 · print-guard 8/8 변경 없음 · design-guard 신규 위반 0 · i18n:verify 오류 0 · 타입 검사(반증 프로브 잡힘) 새 파일 오류 0 · 실브라우저 클릭 흐름 8/8: 매장 관리자 상세→총액 수정 45→DB·이력(이름·42→45) / 오너 To Pay→View→총액 수정 48→이력 2줄(오너·매장 관리자) / 가입 판매자 청구서 버튼 0 · 화면 오류 0",
+    "migration": "없음",
+    "sw_version": "5.88-invoice-total-fix-20261007",
+    "fable_note": "Fable 게이트 판정 대기(보안 경계 buyerScope 접촉 — 이 사안 2회차)"
+  },
+  "notes": [
+    "🔒 인쇄·KDS 보호파일 무접촉(print-guard 8/8 변경 없음)",
+    "buyerScope.js = 보안 경계 변경 → Fable 게이트 대상"
+  ],
+  "irene_actions_after_deploy": [
+    "매장 관리자: 청구서 → 외부 공급업체 청구서 상세 → «총액 수정» → 목록 총액·상세 «수정 이력» 확인",
+    "오너: 청구서 → 같은 흐름 · 수정 이력에 오너 이름"
+  ],
+  "issues": [
+    "청구서 총액이 실제 공급업체 인보이스와 다를 때 청구서 화면에서 고칠 수 없었다(오너는 아예 불가)",
+    "누가 언제 총액을 고쳤는지 남지 않았다"
+  ],
+  "upcoming": [
+    "키오스크 결제 분리"
+  ],
+  "behavior_changes": [
+    "외부 공급업체 청구서 상세에 «총액 수정» 버튼이 생겼다(매장 관리자·오너)",
+    "청구서 상세에 «수정 이력»이 보인다",
+    "오너가 청구서 총액을 고칠 수 있다(줄 단가 대조는 여전히 매장 관리자만)"
+  ],
+  "check_areas": [
+    "매장 청구서 화면",
+    "오너 청구서 화면",
+    "발주 인보이스 대조"
+  ]
+}

@@ -46,6 +46,8 @@ import { getAuthToken } from '../../utils/auth';
 import { getErrorMessage } from '../../utils/apiError';
 import AlertDialog from '../../components/Common/AlertDialog';
 import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoicePayAction';
+import SupplierInvoiceTotalFix, { canFixSupplierInvoiceTotal } from '../../components/Invoices/SupplierInvoiceTotalFix';
+import InvoiceModificationHistory from '../../components/Invoices/InvoiceModificationHistory';
 import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
 import { sortInvoicesRecentFirst, invoiceListDateMs } from '../../utils/invoiceListOrder';
 // ConfirmDialog removed (only used by old SoaBundleRow Pay All)
@@ -109,6 +111,10 @@ interface Invoice {
   purchaseOrderEntityType?: string | null;
   /** 대조 때 적은 공급업체 인보이스 일자 (§8-3 C-4) */
   supplierInvoiceDate?: string | null;
+  /** 총액 수정 창·수정 이력 (2026-10-07 Fable 판정 D5·D6) */
+  reconcileInvoicedLines?: number;
+  isModified?: boolean;
+  modificationHistory?: any[];
   issuerName?: string;
   issuerInfo?: {
     name: string;
@@ -514,6 +520,9 @@ const RestaurantInvoicesPage: React.FC = () => {
           purchaseOrderPaymentStatus: inv.purchase_order_payment_status ?? null,
           purchaseOrderEntityType: inv.purchase_order_entity_type ?? null,
           supplierInvoiceDate: inv.supplier_invoice_date ?? null,
+          reconcileInvoicedLines: Number(inv.reconcile_invoiced_lines ?? inv.reconcileInvoicedLines ?? 0) || 0,
+          isModified: !!(inv.is_modified ?? inv.isModified),
+          modificationHistory: inv.modification_history || inv.modificationHistory || [],
           issuerName: inv.issuer_name || inv.issuerName || '',
           issuerInfo: inv.issuerInfo || inv.issuer_info || null,
           payerInfo: inv.payerInfo || inv.payer_info || null,
@@ -1583,6 +1592,18 @@ const RestaurantInvoicesPage: React.FC = () => {
                     {t('settings:invoicesPage.viewUploadedInvoice', '올린 인보이스 보기')}
                   </Button>
                 )}
+                {/* 총액 수정 (2026-10-07 Fable 판정 D1·D2) — «총액만 대조» 를 이 창에서. 이력이 청구서에 남는다 */}
+                {canFixSupplierInvoiceTotal(selectedInvoice) && (
+                  <SupplierInvoiceTotalFix
+                    invoice={selectedInvoice}
+                    onSaved={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); window.dispatchEvent(new Event('refreshBadgeCounts')); }}
+                    renderTrigger={(open) => (
+                      <Button variant="secondary" onClick={open}>
+                        {t('settings:invoicesPage.totalFix.button', '총액 수정')}
+                      </Button>
+                    )}
+                  />
+                )}
                 {selectedInvoice.purchaseOrderId && (
                   <Button variant="secondary" onClick={() => navigate(`/pos/purchase-orders/${selectedInvoice.purchaseOrderId}/reconcile`)}>
                     {selectedInvoice.invoiceReconciledAt
@@ -1788,6 +1809,13 @@ const RestaurantInvoicesPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* 수정 이력 (2026-10-07 Fable 판정 D5) */}
+                <InvoiceModificationHistory
+                  history={selectedInvoice.modificationHistory}
+                  currency={selectedInvoice.currency || 'MYR'}
+                  timeZone={operationSettings?.timeZone}
+                />
 
                 {/* Bank Details (from issuer) */}
                 {issuerInfo?.bankName && (

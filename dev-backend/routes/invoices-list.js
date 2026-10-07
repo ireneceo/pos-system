@@ -636,7 +636,11 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
         discount_value: parseFloat(invoice.discount_value) || 0,
         discount_amount: parseFloat(invoice.discount_amount) || 0,
         discount_reason: invoice.discount_reason || null,
-        subtotal_before_discount: parseFloat(invoice.subtotal) || null
+        subtotal_before_discount: parseFloat(invoice.subtotal) || null,
+        // 총액 수정 창·수정 이력 (2026-10-07 Fable 판정 D5·D6)
+        reconcile_invoiced_lines: srcPo ? Number(srcPo.reconcile_invoiced_lines) || 0 : 0,
+        is_modified: !!invoice.is_modified,
+        modification_history: invoice.modification_history || []
       };
     }));
 

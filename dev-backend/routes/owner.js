@@ -714,6 +714,10 @@ async function attachOwnerInvoicePurchaseOrders(invoices, transformed) {
       supplier_invoice_total: po ? po.invoice_total : null,
       invoice_reconciled_at: po ? po.invoice_reconciled_at : null,
       uploaded_invoice_url: po ? po.external_invoice_url : null,
+      // 총액 수정 창·수정 이력 (2026-10-07 Fable 판정 D5·D6) — 매장 목록과 같은 칸
+      reconcile_invoiced_lines: po ? Number(po.reconcile_invoiced_lines) || 0 : 0,
+      is_modified: inv ? !!inv.is_modified : false,
+      modification_history: inv ? (inv.modification_history || []) : [],
     });
   }
 }
@@ -881,10 +885,16 @@ router.get('/invoices/to-pay', requireRole('Restaurant Owner'), async (req, res)
       attributes: ['restaurant_id']
     });
 
-    const restaurantIds = ownerships.map(o => o.restaurant_id);
+    let restaurantIds = ownerships.map(o => o.restaurant_id);
 
     if (restaurantIds.length === 0) {
       return res.json({ success: true, data: [] });
+    }
+
+    // 매장 선택 필터 — GET /invoices 와 같은 규칙: 내 소유 매장일 때만 좁힌다 (2026-10-07, 이전엔 무시되어 To Pay 탭만 안 걸러짐)
+    if (req.query.restaurant_id) {
+      const rid = parseInt(req.query.restaurant_id, 10);
+      if (restaurantIds.includes(rid)) restaurantIds = [rid];
     }
 
     const invoices = await Invoice.findAll({

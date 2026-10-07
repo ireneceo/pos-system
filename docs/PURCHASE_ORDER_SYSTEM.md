@@ -2243,8 +2243,26 @@ RA 목록이 붙이는 **발주 정보(purchase_order_id · payable_amount/basis
 
 **백로그(이 절단면 밖 — 기록만)**: 다매장 오너는 발주 라우터 전체가 403 이다(`buyerScope` 가 primary 매장 없으면 null). 오너 사이드바가 발주·발주내역을 노출하므로 그 화면들과 모달의 「먼저 대조하기」(`/purchase-orders/:id/reconcile` 저장)는 오너에게 막힌다. BG 두 번째 브랜드도 발주내역·대조 화면은 스코프 쿼리를 안 붙여 404. 해법은 「오너·다중 브랜드의 발주 스코프」 사안으로 따로 설계(buyerScope 오너 분기 + 화면 스코프 전달) — 운영검증에서 `restaurant_id` NULL 오너 수만 센다.
 
-> ✅ **2026-10-05 갱신(Fable 판정 owner-po-on-behalf ① · SW 5.83 운영)**: 오너는 소유 매장을 골라 **그 매장 자격으로** 발주를 만들고·제출·취소한다(`buyerScope.OWNER_ACTING_ROUTES` 10개, ownership 확인 · 수령·결제·반품·재료 연결·공급업체 등록은 403). 발주 주인 = 매장(그 매장 이력). 오너 제출 = 승인 생략(`applySubmitGate` actor, «Submitted by Owner»). 오너 화면엔 카탈로그 탭·공급처 연결 없음(매장이 연결한 품목만).
+> ✅ **2026-10-05 갱신(Fable 판정 owner-po-on-behalf ① · SW 5.83 운영)**: 오너는 소유 매장을 골라 **그 매장 자격으로** 발주를 만들고·제출·취소한다(`buyerScope.OWNER_ACTING_ROUTES` 10개, ownership 확인 · 수령·결제·반품·재료 연결·공급업체 등록은 403). 발주 주인 = 매장(그 매장 이력). **2026-10-07 예외 1개(§8-7)**: 청구서 «총액 수정»(`POST …/reconcile` total_only)만 오너 허용 — 줄 단가 대조는 계속 403(`OWNER_TOTAL_ONLY`). 오너 제출 = 승인 생략(`applySubmitGate` actor, «Submitted by Owner»). 오너 화면엔 카탈로그 탭·공급처 연결 없음(매장이 연결한 품목만).
 
+
+### 8-7. 청구서에서 총액 수정 + 수정 이력 (2026-10-07 · Fable 판정 · Irene 승인 «승인. fable 권고대로 진행해»)
+
+> Irene 원문: «토탈금액 안맞으면 수정하는 것도 인보이스에서 가능해야지. 레스토랑관리자도, 오너도.» «그리고 수정한 사람 이름이랑 시간 남겨서 히스토리 볼 수 있어야 하고»
+> 판정 원문: `.claude/fable-design-20261007-invoice-total-fix.md`
+
+**요지 — 새 저장 경로 0 · 새 DB 칸 0 · 마이그 0.**
+- **D1 총액 수정 = 기존 «총액만 대조»(§8-6) 를 청구서 상세의 작은 창으로.** `POST /api/purchase-orders/:id/reconcile {total_only:true, invoice:{total,number,date}, note}`. 공용 조각 `components/Invoices/SupplierInvoiceTotalFix.tsx` 를 매장 관리자(`pages/Restaurant/InvoicesPage.tsx`)·오너(`pages/Owner/OwnerInvoicesPage.tsx`) 상세 창이 같이 쓴다.
+- **D2 대상** = 거래 청구서 + 연결 발주 + 외부 공급업체 발행 + 취소 아님(`canFixSupplierInvoiceTotal`). 결제 완료 건도 허용(09-30 규칙 — 낸 금액도 맞추고, 현금이면 열린 시프트 드로어에 차액 한 줄). 가입 판매자 청구서엔 버튼 없음(그쪽이 발행 주체 — 서버도 `invoice_sync.synced=false` 로 안 고친다).
+- **D3 오너 = 총액만.** `buyerScope.OWNER_ACTING_ROUTES` 에 `POST /api/purchase-orders/:id/reconcile` 추가 · 라우트가 `req.buyerIsOwnerView && total_only !== true` 면 **403 `OWNER_TOTAL_ONLY`**. 줄 단가 대조·원가 전파·소급은 매장 관리자 몫 — 10-04 «원가대조 403» 의 유일한 예외. 화면 대조 페이지 라우트는 오너에게 안 연다. 오너 창은 **그 청구서의 매장 id** 로 `?entity_type=restaurant&entity_id=` 를 붙인다(세션 저장값 아님).
+- **D4 이력** = `invoices.modification_history` 에 `services/reconcileInvoiceSync.js` 가 **총액이 실제로 바뀔 때만** 한 줄: `{modified_at, modified_by, modified_by_name, changes:{total_amount:{from,to}}, reason:'Supplier invoice total — PO … · inv … · total only|line reconcile · 메모', source:'reconcile'}` + `is_modified=true`. 같은 값 재저장은 안 적는다. 이름은 `req.user.full_name`(예전 `req.user.name` 은 없는 칸이라 원가 변경 로그에 이메일이 적히던 결함 함께 수정).
+- **D5 이력 표시** = 공용 조각 `components/Invoices/InvoiceModificationHistory.tsx`(시각·이름·총액 from→to·사유, 최근 것이 위) — 매장·오너 상세 창. 매장 목록은 `modification_history`/`modificationHistory`, 오너 목록(`attachOwnerInvoicePurchaseOrders`)은 이번에 `modification_history`·`is_modified` 를 새로 내려준다.
+- **D6** 줄 대조 기록이 있는 발주는 창이 «줄 단가 N개 기록이 지워지고 원가엔 반영되지 않습니다» 를 띄우고 두 번째 누름으로만 저장. N = `reconcile_invoiced_lines`(`attachPurchaseOrders` SELECT 집계 — 새 칸 아님).
+- **D7** 결제 완료 건 안내 + 저장 뒤 서버 `invoice_sync`·`paid_adjustment.reason`(no_open_shift·not_drawer_cash 등)을 사람 말로.
+- **단일 소스 주의**: 매장 관리자 직접 수정 `PUT /api/invoices/:id` 로 총액을 고치면 발주 청구 총액·낼 금액과 갈라진다 — 이 기능은 그 길을 쓰지 않는다.
+- **게이트**: health-check `invoice-total-fix` T1(매장 이력 1→같은 값 1→2) · T2(오너 총액만 200 · 줄 대조 403 · 남의 매장 403 · 오너 목록 칸) · T3(가입 판매자 무접촉) · T4(결제된 현금 발주 이력 1줄) + 고장주입 3종(이력 push 제거 / 오너 게이트 제거 / OWNER_ACTING_ROUTES 제거).
+
+---
 
 ## 9. 판매 차감 계약 불일치 (2026-09-02 · 발견·수정·4차 배포)
 

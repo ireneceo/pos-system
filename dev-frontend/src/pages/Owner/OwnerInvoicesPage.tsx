@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoicePayAction';
+import SupplierInvoiceTotalFix, { canFixSupplierInvoiceTotal } from '../../components/Invoices/SupplierInvoiceTotalFix';
+import InvoiceModificationHistory from '../../components/Invoices/InvoiceModificationHistory';
 import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
 import styled from 'styled-components';
 import { printHTMLContent } from '../../utils/billPrint';
@@ -93,6 +95,10 @@ interface Invoice {
   supplierInvoiceTotal?: number | null;
   invoiceReconciledAt?: string | null;
   uploadedInvoiceUrl?: string | null;
+  /** 총액 수정 창·수정 이력 (2026-10-07 Fable 판정 D5·D6) */
+  reconcileInvoicedLines?: number;
+  isModified?: boolean;
+  modificationHistory?: any[];
   issuerId?: number | string;
   issuerName?: string;
   restaurantId?: number;
@@ -401,6 +407,9 @@ const OwnerInvoicesPage: React.FC = () => {
     supplierInvoiceTotal: inv.supplier_invoice_total != null ? parseFloat(inv.supplier_invoice_total) : null,
     invoiceReconciledAt: inv.invoice_reconciled_at ?? null,
     uploadedInvoiceUrl: inv.uploaded_invoice_url ?? null,
+    reconcileInvoicedLines: Number(inv.reconcile_invoiced_lines || 0) || 0,
+    isModified: !!inv.is_modified,
+    modificationHistory: inv.modification_history || [],
     payerInfo: inv.payerInfo || inv.payer_info || null,
     discountType: inv.discount_type || inv.discountType || 'none',
     discountValue: parseFloat(inv.discount_value || inv.discountValue || 0),
@@ -992,6 +1001,14 @@ const OwnerInvoicesPage: React.FC = () => {
                       {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('owner:ownerInvoicesPage.auto')}</AutoBadge>}
                     </InvoiceNumber>
                     <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
+                    {/* 매장이 올린 공급업체 인보이스 — 매장 청구서 화면과 같은 링크 (2026-10-07 Irene «실제 인보이스» 오너에서도) */}
+                    {invoice.uploadedInvoiceUrl && (
+                      <CompanyName>
+                        <a href={invoice.uploadedInvoiceUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#635BFF', fontWeight: 600 }}>
+                          {t('settings:invoicesPage.viewUploadedInvoice', '올린 인보이스 보기')}
+                        </a>
+                      </CompanyName>
+                    )}
                   </InvoiceInfo>
                 </DataTableCell>
                 <DataTableCell data-label="Restaurant" align="left">
@@ -1176,7 +1193,7 @@ const OwnerInvoicesPage: React.FC = () => {
           const payerCompany = selectedInvoice.payerInfo;
 
           return (
-          <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<>{(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && ( selectedInvoice.issuerIsExternal ? ( <ExternalInvoicePayAction invoice={selectedInvoice} onPaid={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); }} renderTrigger={(open) => ( <Button variant="success" onClick={open}> {t('settings:invoicesPage.markPaidLong', 'Mark as paid')} </Button> )} /> ) : ( <Button variant="success" onClick={() => { setShowViewModal(false); handlePayInvoice(selectedInvoice); }}> Pay Now </Button> ) )}{(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) === 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handleConfirmFreeInvoice(selectedInvoice); }}> Confirm </Button> )} <Button onClick={() => generateInvoicePDF(selectedInvoice)}> Download PDF </Button><Button onClick={() => handlePrintInvoice(selectedInvoice)}> Print </Button><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<>{(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && ( selectedInvoice.issuerIsExternal ? ( <ExternalInvoicePayAction invoice={selectedInvoice} onPaid={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); }} renderTrigger={(open) => ( <Button variant="success" onClick={open}> {t('settings:invoicesPage.markPaidLong', 'Mark as paid')} </Button> )} /> ) : ( <Button variant="success" onClick={() => { setShowViewModal(false); handlePayInvoice(selectedInvoice); }}> Pay Now </Button> ) )}{(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) === 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handleConfirmFreeInvoice(selectedInvoice); }}> Confirm </Button> )}{selectedInvoice.uploadedInvoiceUrl && ( <Button variant="secondary" onClick={() => window.open(selectedInvoice.uploadedInvoiceUrl as string, '_blank', 'noopener')}> {t('settings:invoicesPage.viewUploadedInvoice', '올린 인보이스 보기')} </Button> )}{canFixSupplierInvoiceTotal(selectedInvoice) && ( <SupplierInvoiceTotalFix invoice={selectedInvoice} ownerMode onSaved={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); }} renderTrigger={(open) => ( <Button variant="secondary" onClick={open}> {t('settings:invoicesPage.totalFix.button', '총액 수정')} </Button> )} /> )} <Button onClick={() => generateInvoicePDF(selectedInvoice)}> Download PDF </Button><Button onClick={() => handlePrintInvoice(selectedInvoice)}> Print </Button><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button></>}>
                 {/* Invoice Header with Issuer Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #C7CED6' }}>
                   <div style={{ flex: '0 0 55%' }}>
@@ -1338,6 +1355,9 @@ const OwnerInvoicesPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* 수정 이력 (2026-10-07 Fable 판정 D5) — 오너 화면은 날짜를 기본 타임존으로 그린다(이 화면의 다른 날짜와 같게) */}
+                <InvoiceModificationHistory history={selectedInvoice.modificationHistory} currency={selectedInvoice.currency || 'MYR'} />
 
                 {/* Bank Details (from issuer) */}
                 {issuerInfo?.bankName && (
