@@ -213,7 +213,8 @@
       "delivery": "配送费",
       "deliveryUnset": "（卖方未设定）",
       "staffMeal": "员工餐",
-      "staffMealSplit": "员工餐 {{staff}} · 一般 {{regular}}"
+      "staffMealSplit": "员工餐 {{staff}} · 一般 {{regular}}",
+      "shipped": "已发货"
     },
     "delivery": {
       "expected": "预计日期",

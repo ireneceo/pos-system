@@ -3,6 +3,12 @@
 **버전:** **v3.109** (2026-10-07 · 5.87·5.88·5.89 묶음) · 운영 SW **5.89-kiosk-receipt-20261007** (백업 20261007_163801 · 스모크 10/10) · 안드로이드 앱 0.3.4
 **작업 상태:** ✅ 판매자 결제 설정 = 계정 하나 완료(개발서버 · Fable 2회차 PASS · 운영 배포 대기) — 개발서버만 미배포: 이것 + 청구서 To Confirm 탭
 
+
+### 진행 중: 분할 발송 설계 (2026-10-08) — Irene 답 ① «배송을 했냐 안했냐의 업무처리 때문이야. 그럼 그냥 배송했다 안했다 개별표시만 하게 하던지 간략한 방법 찾아봐» ② «그대로» → Fable 간략안 개정 중, 받으면 구현 [Claude Code · 백그라운드 작업방 7ba2c8b8]
+- 무엇을: Irene «발송을 나눠서 할 때 어떻게 해?» → Fable 설계 판정 `.claude/fable-verdict-20261008-partial-shipment.md` (코드 변경 0). 결론 = 주문을 쪼개지 않고 품목마다 «보낸 양» 칸 + «보내기» 여러 번(받는 쪽 «나눠 받기» 와 같은 모양)
+- 왜: Irene 확인 2개 — ① «배송 완료» 단추는 다 보낸 뒤에만(Fable 권고: 그렇게) ② «나머지 못 보냄(품절)» 은 다음 묶음(Fable 권고: 다음 묶음)
+- 답이 오면: «그대로»면 판정 Ⅱ 절(S1~S10) 대로 개발서버 구현 → verify-all → Fable 게이트 1회 → 배포 여부 다시 여쭘
+
 ### 완료 (2026-10-08) — Fable 기준 통일 (문서만) · (이전) 답 기다림: «물을 때 Fable 의견 꼭» 범위 — Irene 답 «아니. 필요없는 곳은 괜찮아. 오퍼스 의견이라고 붙이고 페이블은 페이블 권고로 붙여» → (가) 반영: CLAUDE.md §0 📌 «범위» 줄 + 메모리 feedback_fable_leads_opus_executes [Claude Code · 백그라운드 작업방 2ee45130]
 - 한 일(문서만 · 코드·DB 0 · Fable 안 씀 — 공용 기준 3절 문서 정리): CLAUDE.md «Fable 검증 게이트(07-01)»·«3축 판정(09-06)» 두 절 → «🎯 Fable 언제 부르나 — 공용 기준을 따른다» 한 절(기준은 `~/dev-server/FABLE.md` 한 줄 + PurpleHere 되돌리기 어려운 것 예시 5개·calc/ux/design 예시 + 못 부를 때=자체 검증·상황판 Fable 대기·배포 보류 + Irene 원문 출처 전부 보존). §0 예외 «애매하면 Fable» → 공용 기준(애매하면 안 부르고 «Fable 안 씀 — 이유»). 훅·검증 규율 4조항·check-sensitive-diff 그대로. 명령 `/개발시작`·`/개발완료` · `docs/AGENT_ONBOARDING.md` 의 «Fable 세션 점검 후»·«3축» 문구 교체. 메모리 feedback_fable_call_criteria·feedback_fable_budget_minimal·feedback_fable_leads_opus_executes·MEMORY.md 갱신
 - 확인: fable-gate 통과 마커는 내 수정 전부터 이미 무효였음(수정 전 상태로 지문 계산해 대조) — 이 일로 죽은 마커 없음

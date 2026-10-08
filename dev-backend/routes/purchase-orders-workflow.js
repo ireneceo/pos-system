@@ -1024,7 +1024,10 @@ router.post('/purchase-orders/:id/mark-shipped', async (req, res) => {
     }
 
     const newTracking = appendTrackingEvent(po, 'shipped', 'Marked shipped by buyer');
-    await po.update({ status: 'shipped', shipped_at: new Date(), tracking_info: newTracking });
+    const shippedNow = new Date();
+    await po.update({ status: 'shipped', shipped_at: shippedNow, tracking_info: newTracking });
+    // 품목별 발송 표시(2026-10-08) — 외부 공급업체는 한 번에 전부 보낸 것으로 줄에도 표시(재고 차감 없음, 전과 같음)
+    await PurchaseOrderItem.update({ shipped_at: shippedNow }, { where: { purchase_order_id: po.id, shipped_at: null } });
     emitPoEvent(req, po, 'seller-order-updated');
     res.json({ success: true, data: po });
   } catch (err) {

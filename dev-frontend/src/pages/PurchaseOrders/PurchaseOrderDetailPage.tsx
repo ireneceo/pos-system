@@ -107,6 +107,8 @@ interface POItem {
   base_unit?: string | null;
   quantity_ordered: number | string;
   quantity_received: number | string;
+  // 판매자가 이 줄을 보낸 시각 (2026-10-08 품목별 발송 표시) — null = 아직 안 보냄
+  shipped_at?: string | null;
   unit_price: number | string;
   line_total?: number | string;
 }
@@ -520,6 +522,8 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   })();
 
   const [detail, setDetail] = useState<PODetail | null>(null);
+  // 판매자가 한 줄이라도 보낸 주문에만 품목 «보냄» 칸을 띄운다 (2026-10-08 품목별 발송 표시)
+  const showShippedCol = !!detail?.items?.some(it => !!it.shipped_at);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -1365,6 +1369,8 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                     <tr>
                       <DataTableHeaderCell align="left">{t('detail.items.ingredient')}</DataTableHeaderCell>
                       <DataTableHeaderCell align="right">{t('detail.items.qtyOrdered')}</DataTableHeaderCell>
+                      {/* 품목별 발송 (2026-10-08) — 판매자가 한 번이라도 보낸 주문에만 «보냄» 칸 */}
+                      {showShippedCol && <DataTableHeaderCell align="center">{t('detail.items.shipped', 'Shipped')}</DataTableHeaderCell>}
                       <DataTableHeaderCell align="right">{t('detail.items.qtyReceived')}</DataTableHeaderCell>
                       <DataTableHeaderCell align="right">{t('detail.items.unitPrice')}</DataTableHeaderCell>
                       <DataTableHeaderCell align="right">{t('detail.items.lineTotal')}</DataTableHeaderCell>
@@ -1372,7 +1378,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                   </DataTableHead>
                   <tbody>
                     {detail.items.length === 0 ? (
-                      <tr><td colSpan={5}><DataTableEmpty>—</DataTableEmpty></td></tr>
+                      <tr><td colSpan={showShippedCol ? 6 : 5}><DataTableEmpty>—</DataTableEmpty></td></tr>
                     ) : (
                       detail.items.map(it => {
                         const lineTotal = it.line_total != null
@@ -1404,6 +1410,13 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                                   2026-09-11 Irene 「1 kg X 2pack 발주할 때 내역은 이렇게」 — «10 kg × 2 carton» */}
                               {lineQtyText(it, it.quantity_ordered, it.ingredient_unit)}
                             </DataTableCell>
+                            {showShippedCol && (
+                              <DataTableCell data-label={t('detail.items.shipped', 'Shipped') as string} align="center">
+                                {it.shipped_at
+                                  ? <span style={{ color: '#047857', whiteSpace: 'nowrap' }}>✓ {formatDate(it.shipped_at)}</span>
+                                  : <span style={{ color: '#B45309' }}>—</span>}
+                              </DataTableCell>
+                            )}
                             <DataTableCell data-label={t('detail.items.qtyReceived') as string} align="right">
                               {lineQtyText(it, it.quantity_received, it.ingredient_unit)}
                             </DataTableCell>

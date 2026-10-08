@@ -213,7 +213,8 @@
       "delivery": "Delivery fee",
       "deliveryUnset": "(not set by seller)",
       "staffMeal": "Staff meal",
-      "staffMealSplit": "Staff meal {{staff}} · Regular {{regular}}"
+      "staffMealSplit": "Staff meal {{staff}} · Regular {{regular}}",
+      "shipped": "Shipped"
     },
     "delivery": {
       "expected": "Expected Date",

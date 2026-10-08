@@ -175,6 +175,9 @@ interface IncomingOrderItem {
   // their product/code (buyer's internal name is only a reference). P0-3.
   seller_product_name?: string | null;
   seller_product_sku?: string | null;
+  // 품목별 발송 표시 (2026-10-08) — null = 아직 안 보냄. is_service = 배송 없는 줄(서버 판정)
+  shipped_at?: string | null;
+  is_service?: boolean;
 }
 
 interface IncomingOrderRow {
@@ -190,6 +193,8 @@ interface IncomingOrderRow {
   shipped_at?: string | null;
   // 배송이 없는 주문(서비스/기타만 담김) — 서버 utils/orderFulfillment 단일 판정. 2026-09-13
   is_service_only?: boolean;
+  // 배송 대상인데 아직 안 보낸 줄 수 (2026-10-08 품목별 발송 — 서버가 센다)
+  unshipped_count?: number;
   item_count?: number;
   items?: IncomingOrderItem[];
   total_amount?: number | string | null;
@@ -529,6 +534,9 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
   // Modal state
   const [confirmModalRow, setConfirmModalRow] = useState<IncomingOrderRow | null>(null);
   const [shipModalRow, setShipModalRow] = useState<IncomingOrderRow | null>(null);
+  // 'ship' = 새 발송(POST /ship · 품목 체크) / 'tracking' = 최근 발송의 운송 정보만 고침(PUT /tracking)
+  const [shipMode, setShipMode] = useState<'ship' | 'tracking'>('ship');
+  const [shipChecked, setShipChecked] = useState<Set<number>>(new Set());
   const [rejectModalRow, setRejectModalRow] = useState<IncomingOrderRow | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -900,14 +908,23 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     }
   };
 
-  const openShipModal = (row: IncomingOrderRow) => {
+  // 품목별 발송 (2026-10-08 · Irene «배송했다 안했다 개별표시») — 보낼 수 있는 줄 = 배송 대상이고 아직 안 보낸 줄
+  const shippableItems = (row: IncomingOrderRow | null) =>
+    (row?.items || []).filter(it => !it.is_service && !it.shipped_at);
+
+  const openShipModal = (row: IncomingOrderRow, mode: 'ship' | 'tracking' = 'ship') => {
     setShipModalRow(row);
+    setShipMode(mode);
+    // 기본은 남은 줄 전부 체크 — 한 번에 다 보내는 사람은 그냥 확인만 누르면 된다
+    setShipChecked(new Set(shippableItems(row).map(it => it.id)));
     const ti: any = row.tracking_info || {};
+    // 두 번째 발송부터는 새 송장 — 운송사만 이어받고 송장번호·도착일은 비운다
+    const nextShipment = mode === 'ship' && !!row.shipped_at;
     setCarrier(ti.carrier_name || ti.carrier || '');
     setCarrierCode(ti.carrier_code || '');
-    setTrackingNumber(ti.tracking_number || '');
-    setEstArrival(ti.estimated_arrival || ti.est_arrival || '');
-    setShipNotes(ti.notes || '');
+    setTrackingNumber(nextShipment ? '' : (ti.tracking_number || ''));
+    setEstArrival(nextShipment ? '' : (ti.estimated_arrival || ti.est_arrival || ''));
+    setShipNotes(nextShipment ? '' : (ti.notes || ''));
     setErrorMessage(null);
   };
 
@@ -921,8 +938,18 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     setErrorMessage(null);
     try {
       const token = getAuthToken();
-      // Sprint 6: if PO already shipped/delivered, use PUT /tracking to amend without state change.
-      const isAmend = shipModalRow.status === 'shipped' || shipModalRow.status === 'delivered';
+      // Sprint 6: 운송 정보 고치기(✎)는 PUT /tracking — 상태 변화 없음.
+      //   2026-10-08: 상태가 아니라 «무엇을 눌렀나» 로 가른다. 일부만 보낸 주문의 «나머지 보내기» 는 shipped 상태여도 새 발송(POST)이다.
+      const isAmend = shipMode === 'tracking';
+      const allItems = shippableItems(shipModalRow);
+      if (!isAmend && allItems.length > 0 && shipChecked.size === 0) {
+        setErrorMessage(tNs('orders.ship.selectAtLeastOne', 'Select at least one item to ship'));
+        setSubmitting(false);
+        return;
+      }
+      // 전부 체크면 item_ids 를 안 보낸다 = 남은 줄 전부(서버 하위호환 경로)
+      const partialIds = !isAmend && allItems.length > 0 && shipChecked.size < allItems.length
+        ? Array.from(shipChecked) : undefined;
       const url = isAmend
         ? `/api/seller-orders/${shipModalRow.id}/tracking`
         : `/api/seller-orders/${shipModalRow.id}/ship`;
@@ -937,7 +964,8 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
             tracking_number: trackingNumber.trim() || null,
             estimated_arrival: estArrival || null,
             notes: shipNotes.trim() || null
-          }
+          },
+          ...(partialIds ? { item_ids: partialIds } : {})
         })
       });
       const data = await res.json();
@@ -1365,6 +1393,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                               {tNs('orders.badge.needsDispatch', 'Buyer confirmed receipt — record dispatch')}
                             </div>
                           )}
+                          {/* 품목별 발송 (2026-10-08) — 일부만 보낸 주문 */}
+                          {!!row.shipped_at && (row.unshipped_count || 0) > 0 && (
+                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#B45309', marginTop: 2 }}>
+                              {tNs('orders.badge.notYetDispatched', '{{count}} item(s) not yet dispatched').replace('{{count}}', String(row.unshipped_count))}
+                            </div>
+                          )}
                         </DataTableStatus>
                       </DataTableCell>
                       <DataTableCell data-label={tNs('orders.table.payment', 'Payment') as string} align="center">
@@ -1435,7 +1469,13 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                               {tNs('orders.actions.recordDispatch', 'Record dispatch')}
                             </ThemedButton>
                           )}
-                          {row.status === 'shipped' && (
+                          {!!row.shipped_at && (row.unshipped_count || 0) > 0 && (
+                            <ThemedButton size="small" variant="primary" onClick={() => openShipModal(row)}>
+                              {tNs('orders.actions.shipRemaining', 'Ship remaining')}
+                            </ThemedButton>
+                          )}
+                          {/* «배송 완료» 는 전부 보낸 뒤에만 — 일부만 갔는데 «다 왔다» 메일이 나가지 않게 (2026-10-08) */}
+                          {row.status === 'shipped' && !(row.unshipped_count || 0) && (
                             <ThemedButton
                               size="small"
                               variant="primary"
@@ -1456,7 +1496,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                             <ThemedButton
                               size="small"
                               variant="outline"
-                              onClick={() => openShipModal(row)}
+                              onClick={() => openShipModal(row, 'tracking')}
                               title={tNs('orders.actions.editTracking', 'Edit tracking') as string}
                             >
                               ✎
@@ -1516,12 +1556,58 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
             <ModalButton onClick={() => setShipModalRow(null)} disabled={submitting}>
               {tNs('orders.ship.cancel', 'Cancel')}
             </ModalButton>
-            <ModalButton variant="primary" onClick={handleShip} disabled={submitting}>
+            <ModalButton variant="primary" onClick={handleShip}
+              disabled={submitting || (shipMode === 'ship' && shippableItems(shipModalRow).length > 0 && shipChecked.size === 0)}>
               {tNs('orders.ship.submit', 'Mark Shipped')}
             </ModalButton>
           </>
         }
       >
+        {/* 품목별 발송 (2026-10-08 · Irene «배송했다 안했다 개별표시») — 보내는 품목에 체크. 기본은 전부 체크.
+            체크를 푼 품목은 «미발송» 으로 남고, 나중에 «나머지 보내기» 로 보낸다. 재고는 체크한 품목만 빠진다. */}
+        {shipMode === 'ship' && (shipModalRow?.items || []).filter(it => !it.is_service).length > 1 && (
+          <FormGroup>
+            <FormLabel>{tNs('orders.ship.itemsLabel', 'Items in this shipment')}</FormLabel>
+            <div style={{ border: '1px solid #C7CED6', borderRadius: 8, overflow: 'hidden' }}>
+              {(shipModalRow?.items || []).filter(it => !it.is_service).map(it => {
+                const done = !!it.shipped_at;
+                const checked = done || shipChecked.has(it.id);
+                return (
+                  <label key={it.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                    borderTop: '1px solid #F1F4F8', fontSize: 13,
+                    color: done ? '#9CA3AF' : '#0A2540', cursor: done ? 'default' : 'pointer'
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={done}
+                      onChange={(e) => {
+                        const next = new Set(shipChecked);
+                        if (e.target.checked) next.add(it.id); else next.delete(it.id);
+                        setShipChecked(next);
+                      }}
+                      style={{ width: 16, height: 16, accentColor: '#635BFF' }}
+                    />
+                    <span style={{ flex: 1 }}>
+                      {it.seller_product_name || supplierFacingName(it.ingredient?.name || it.description || `#${it.ingredient_id}`)}
+                    </span>
+                    <span style={{ whiteSpace: 'nowrap' }}>
+                      {done
+                        ? `${tNs('orders.detail.shipped', 'Shipped')} ✓ ${formatDate(it.shipped_at)}`
+                        : lineQtyText(it, it.quantity_ordered)}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            {shippableItems(shipModalRow).length > 0 && shipChecked.size < shippableItems(shipModalRow).length && (
+              <div style={{ fontSize: 12, color: '#B45309', marginTop: 6 }}>
+                {tNs('orders.ship.leftForLater', 'Unchecked items stay as not yet dispatched — ship them later with «Ship remaining».')}
+              </div>
+            )}
+          </FormGroup>
+        )}
         <FormGroup>
           <FormLabel>{tNs('orders.ship.carrier', 'Carrier')} *</FormLabel>
           {carriers.length > 0 && (
@@ -1930,7 +2016,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 {tNs('orders.actions.ship', 'Mark Shipped')}
               </ModalButton>
             )}
-            {detailRow?.status === 'shipped' && (
+            {!!detailRow?.shipped_at && (detailRow?.unshipped_count || 0) > 0 && (
+              <ModalButton onClick={() => { openShipModal(detailFull || detailRow); closeDetail(); }}>
+                {tNs('orders.actions.shipRemaining', 'Ship remaining')}
+              </ModalButton>
+            )}
+            {detailRow?.status === 'shipped' && !(detailRow?.unshipped_count || 0) && (
               <ModalButton
                 onClick={async () => {
                   const token = getAuthToken();
@@ -2032,6 +2123,14 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                       <div style={{ fontSize: 11, color: '#4B5563' }}>
                         {tNs('orders.detail.received', 'Received')}: {Number(it.quantity_received) || 0}
                       </div>
+                      {/* 품목별 발송 표시 (2026-10-08) */}
+                      {!it.is_service && (
+                        <div style={{ fontSize: 11, color: it.shipped_at ? '#047857' : '#B45309' }}>
+                          {it.shipped_at
+                            ? `${tNs('orders.detail.shipped', 'Shipped')} ✓ ${formatDate(it.shipped_at)}`
+                            : tNs('orders.detail.notShipped', 'Not dispatched yet')}
+                        </div>
+                      )}
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       {/* 2026-09-11 Irene 「1 kg X 2pack 발주할 때 내역은 이렇게」 — «10 kg × 2 carton» */}

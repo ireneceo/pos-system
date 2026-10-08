@@ -208,7 +208,8 @@
       "deliver": "标记已送达",
       "editTracking": "编辑追踪",
       "recordDispatch": "记录配送",
-      "amend": "修改项目"
+      "amend": "修改项目",
+      "shipRemaining": "发送剩余商品"
     },
     "confirm": {
       "title": "确认订单",
@@ -225,7 +226,10 @@
       "estArrival": "预计送达日期",
       "notes": "备注",
       "submit": "开始配送",
-      "cancel": "取消"
+      "cancel": "取消",
+      "itemsLabel": "本次发货的商品",
+      "leftForLater": "未勾选的商品将保持“未发货”——之后用“发送剩余商品”发出。",
+      "selectAtLeastOne": "请至少选择一个要发货的商品"
     },
     "reject": {
       "title": "拒绝订单",
@@ -242,7 +246,8 @@
     "emptyHint": "新订单到达时将在此处实时显示。",
     "loading": "加载中…",
     "badge": {
-      "needsDispatch": "买家已确认收货 — 请记录配送"
+      "needsDispatch": "买家已确认收货 — 请记录配送",
+      "notYetDispatched": "{{count}} 个商品未发货"
     },
     "amend": {
       "title": "修改订单项目",
@@ -277,7 +282,9 @@
     "detail": {
       "shareWhatsApp": "通过 WhatsApp 分享",
       "sharePackingList": "备货清单（无价格）",
-      "uncategorized": "其他"
+      "uncategorized": "其他",
+      "shipped": "已发货",
+      "notShipped": "尚未发货"
     }
   },
   "tradeInvoicesPage": {

@@ -36,6 +36,8 @@ async function loadPoEmailItems(poId) {
     return plain.map((p, idx) => {
       const r = rows[idx];
       return {
+        id: p.id,
+        shipped_at: p.shipped_at || null,   // 품목별 발송 메일(2026-10-08)이 «아직 안 보낸 것» 을 고를 때 쓴다
         // 2026-09-11 Irene — 공급업체 상품 이름은 저장된 그대로(New Seoul Mart 만 «영어(한글)») · 연결 없는 줄의 우리 재고 이름만 한글 괄호를 뗀다
         name: p.seller_product_name || require('./sellerProductIdentity').supplierFacingName(
           r.ingredient?.name || r.productIngredient?.name || p.description || 'Item'),

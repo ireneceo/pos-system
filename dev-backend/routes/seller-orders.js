@@ -138,6 +138,26 @@ async function fireBuyerNotification(po, category, mailOptions) {
   }
 }
 
+/**
+ * 품목별 발송 표시 (2026-10-08) — 줄마다 `is_service`(배송 없음) 를 달고, 헤더에 `unshipped_count`
+ * (= 배송 대상인데 아직 안 보낸 줄 수)를 붙인다. 서비스 판정은 수령·출고와 같은 함수(serviceLineIdsOf).
+ * 화면은 이 숫자 하나로 «N품목 미발송 · 나머지 보내기» 와 «배송 완료» 단추를 정한다.
+ */
+async function attachShipmentState(obj) {
+  const { serviceLineIdsOf } = require('../utils/orderFulfillment');
+  const svc = await serviceLineIdsOf(sequelize, obj.id);
+  const items = Array.isArray(obj.items) ? obj.items : [];
+  let unshipped = 0;
+  for (const it of items) {
+    it.is_service = svc.has(Number(it.id));
+    if (!it.is_service && !it.shipped_at) unshipped++;
+  }
+  // 백필 전 옛 전량 출고(헤더만 기록)는 «다 보냄» 으로 본다 — ship 라우트의 레거시 가드와 같은 판정
+  if (obj.shipped_at && !items.some(it => it.shipped_at)) unshipped = 0;
+  obj.unshipped_count = unshipped;
+  return obj;
+}
+
 // ============================================
 // 1. GET /api/seller-orders
 // ============================================
@@ -190,6 +210,7 @@ router.get('/', async (req, res) => {
       obj.buyer = await resolveBuyerInfo(po);
       // 배송이 없는 주문인가 — 화면이 «배송 처리» 대신 «완료 처리» 를 띄우는 근거 (2026-09-13)
       obj.is_service_only = await isServiceOnlyOrder(sequelize, po.id);
+      await attachShipmentState(obj);
       return obj;
     }));
     await attachSellerProductInfo(data);
@@ -487,6 +508,7 @@ router.get('/:id', async (req, res) => {
 
     const obj = po.toJSON();
     obj.buyer = await resolveBuyerInfo(po);
+    await attachShipmentState(obj);
     await attachSellerProductInfo(obj);
     await attachSellerProductCategory(obj); // 상세 품목을 판매자 카테고리별로 묶어 보이게(2026-09-29 Irene)
     res.json({ success: true, data: obj });
@@ -630,6 +652,19 @@ router.post('/:id/ship', async (req, res) => {
       }
     }
 
+    // 품목별 발송 (2026-10-08 Fable 판정 · Irene «배송했다 안했다 개별표시») — 선택 `item_ids`.
+    //   없으면 미발송 줄 전부 = 예전 «한 번에 전부» 와 같다(기존 호출·health-check 하위 호환).
+    let requestedIds = null;
+    if (req.body && req.body.item_ids != null) {
+      if (!Array.isArray(req.body.item_ids)) {
+        return res.status(400).json({ success: false, message: 'item_ids must be an array' });
+      }
+      requestedIds = [...new Set(req.body.item_ids.map(v => parseInt(v, 10)))];
+      if (requestedIds.some(v => !Number.isFinite(v))) {
+        return res.status(400).json({ success: false, message: 'item_ids must be numbers' });
+      }
+    }
+
     const result = await sequelize.transaction(async (t) => {
       const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
@@ -639,8 +674,21 @@ router.post('/:id/ship', async (req, res) => {
       //   예외가 아니라 유일한 경로였다). 차감이 'confirmed' 에서만 열려 있어서
       //   **판매자 재고가 한 번도 안 빠졌다.** 이제 어느 상태에서든 한 번은 출고할 수 있고,
       //   두 번째부터는 409 로 막는다(이중 차감 방지 = 이 가드가 유일한 방어선).
+      //   2026-10-08: «한 번» 의 단위가 주문 → **줄**로 바뀌었다. 한 줄은 한 번만 보낸다(줄 shipped_at).
+      //   이 PO 행 잠금이 그대로 동시 발송의 방어선이다 — 둘째 요청은 잠금 뒤 «미발송 줄» 을 다시 센다.
       const NOT_SHIPPABLE = ['draft', 'pending_approval', 'submitted', 'cancelled', 'rejected'];
-      if (locked.shipped_at) {
+      const allLines = await PurchaseOrderItem.findAll({ where: { purchase_order_id: locked.id }, order: [['id', 'ASC']], transaction: t });
+      const { serviceLineIdsOf } = require('../utils/orderFulfillment');
+      const serviceIds = await serviceLineIdsOf(sequelize, locked.id, t);
+      const goodsLines = allLines.filter(it => !serviceIds.has(Number(it.id)));
+      // 레거시 가드: 헤더엔 출고 기록이 있는데 줄 표시가 하나도 없다 = 백필 전 옛 전량 출고 → 다시 못 보낸다
+      if (locked.shipped_at && !allLines.some(it => it.shipped_at)) {
+        const e = new Error('Already shipped');
+        e.code = 'ALREADY_SHIPPED';
+        throw e;
+      }
+      const unshippedLines = goodsLines.filter(it => !it.shipped_at);
+      if (unshippedLines.length === 0) {
         const e = new Error('Already shipped');
         e.code = 'ALREADY_SHIPPED';
         throw e;
@@ -650,26 +698,64 @@ router.post('/:id/ship', async (req, res) => {
         e.code = 'BAD_STATUS';
         throw e;
       }
+      let shipLines = unshippedLines;
+      if (requestedIds) {
+        const ownIds = new Set(allLines.map(it => Number(it.id)));
+        if (requestedIds.some(v => !ownIds.has(v))) {
+          const e = new Error('Unknown item for this order');
+          e.code = 'BAD_ITEM';
+          throw e;
+        }
+        // 이미 보낸 줄·서비스 줄은 조용히 뺀다
+        const want = new Set(requestedIds);
+        shipLines = unshippedLines.filter(it => want.has(Number(it.id)));
+        if (shipLines.length === 0) {
+          const e = new Error('Nothing to ship — the selected items were already dispatched');
+          e.code = 'NOTHING_TO_SHIP';
+          throw e;
+        }
+      }
+      const shipSet = new Set(shipLines.map(it => Number(it.id)));
+      const fullyShipped = shipLines.length === unshippedLines.length;
+      const unshippedAfter = unshippedLines.length - shipLines.length;
+      const shipmentNo = (Array.isArray(locked.tracking_info?.events)
+        ? locked.tracking_info.events.filter(ev => ev && ev.status === 'shipped').length : 0) + 1;
+      const now = new Date();
 
       // Resolve carrier name + tracking_url from catalog (Sprint 5)
       const merged = await decorateCarrier({ ...(locked.tracking_info || {}), ...trackingPatch });
-      const carrierNote = merged.carrier_name
+      const partOf = fullyShipped && shipmentNo === 1 ? '' : ` (${shipLines.length} of ${goodsLines.length} items)`;
+      const carrierNote = (merged.carrier_name
         ? `Out for delivery via ${merged.carrier_name}${merged.tracking_number ? ' (' + merged.tracking_number + ')' : ''}`
-        : 'Order out for delivery';
-      const tracking = appendTrackingEvent({ tracking_info: merged }, 'shipped', carrierNote);
+        : 'Order out for delivery') + partOf;
+      // 이번 발송 건의 품목·운송 정보는 **이벤트 안**에 남긴다(발송마다 따로). 최상위 carrier 는 최근 발송 값.
+      const tracking = appendTrackingEvent({ tracking_info: merged }, 'shipped', carrierNote, undefined, {
+        shipment_no: shipmentNo,
+        items: shipLines.map(it => ({ item_id: it.id, description: it.description || null, quantity: parseFloat(it.quantity_ordered) || 0, unit: it.unit || null })),
+        carrier_code: merged.carrier_code || null,
+        carrier_name: merged.carrier_name || null,
+        tracking_number: merged.tracking_number || null,
+        tracking_url: merged.tracking_url || null,
+        estimated_arrival: merged.estimated_arrival || merged.est_arrival || null,
+        partial: !fullyShipped
+      });
 
       await locked.update({
         // 이미 받은 발주를 뒤로 돌리지 않는다 — 수령 이후 상태면 그대로 두고 출고 시각만 남긴다
         ...(locked.status === 'confirmed' ? { status: 'shipped' } : {}),
-        shipped_at: new Date(),
+        // 헤더 shipped_at = **첫 발송** 시각(출고 유무·시작으로 읽는 곳들: foodCostReport · poNotifications · 화면 배지)
+        ...(locked.shipped_at ? {} : { shipped_at: now }),
         tracking_info: tracking
       }, { transaction: t });
+      await PurchaseOrderItem.update({ shipped_at: now },
+        { where: { id: [...shipSet], purchase_order_id: locked.id }, transaction: t });
 
       // Sprint 6: Decrement supplier stock + record inventory transaction — IN SAME TRANSACTION.
       // Only for seller_type='supplier'. Failure here rolls back the ship.
       if (locked.seller_type === 'supplier' && locked.seller_entity_id) {
         const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: locked.id }, transaction: t });
         for (const it of items) {
+          if (!shipSet.has(Number(it.id))) continue;   // 이번 발송에 고른 줄만 (2026-10-08)
           let mapping = null;
           if (it.ingredient_seller_product_id) {
             mapping = await IngredientSellerProduct.findByPk(it.ingredient_seller_product_id, { transaction: t });
@@ -702,6 +788,7 @@ router.post('/:id/ship', async (req, res) => {
         const { BrandProduct, ProductRecipeIngredient, ProductIngredient, InventoryTransaction } = require('../models');
         const bItems = await PurchaseOrderItem.findAll({ where: { purchase_order_id: locked.id }, transaction: t });
         for (const it of bItems) {
+          if (!shipSet.has(Number(it.id))) continue;   // 이번 발송에 고른 줄만 (2026-10-08)
           if (!it.ingredient_seller_product_id) continue;
           const mapping = await IngredientSellerProduct.findByPk(it.ingredient_seller_product_id, { transaction: t });
           if (!mapping || !mapping.seller_product_id) continue;
@@ -783,6 +870,7 @@ router.post('/:id/ship', async (req, res) => {
         const { FoodcourtProduct, InventoryTransaction } = require('../models');
         const fItems = await PurchaseOrderItem.findAll({ where: { purchase_order_id: locked.id }, transaction: t });
         for (const it of fItems) {
+          if (!shipSet.has(Number(it.id))) continue;   // 이번 발송에 고른 줄만 (2026-10-08)
           if (!it.ingredient_seller_product_id) continue;
           const mapping = await IngredientSellerProduct.findByPk(it.ingredient_seller_product_id, { transaction: t });
           if (!mapping || !mapping.seller_product_id) continue;
@@ -802,10 +890,11 @@ router.post('/:id/ship', async (req, res) => {
         }
       }
 
-      return { po: locked, newTracking: tracking };
+      return { po: locked, newTracking: tracking, shipIds: [...shipSet], fullyShipped, unshippedAfter };
     });
     po = result.po;
     newTracking = result.newTracking;
+    const { shipIds, fullyShipped, unshippedAfter } = result;
     emitPoEvent(req, po, 'seller-order-updated');
 
     setImmediate(async () => {
@@ -816,10 +905,25 @@ router.post('/:id/ship', async (req, res) => {
         const carrier = carrierLine ? `<p style="color:#374151;font-size:14px;margin:0 0 8px;"><strong>Carrier:</strong> ${carrierLine}</p>` : '';
         const trackingNo = ti.tracking_number ? `<p style="color:#374151;font-size:14px;margin:0 0 8px;"><strong>Tracking #:</strong> ${ti.tracking_number}</p>` : '';
         const eta = (ti.estimated_arrival || ti.est_arrival) ? `<p style="color:#374151;font-size:14px;margin:0 0 8px;"><strong>Estimated Arrival:</strong> ${ti.estimated_arrival || ti.est_arrival}</p>` : '';
+        // 품목별 발송 (2026-10-08) — 나눠 보낸 경우에만 «이번 발송 / 아직 안 보낸 것» 을 적는다. 한 번에 전부면 예전 본문 그대로.
+        let splitHtml = '';
+        const isSplit = !fullyShipped || (Array.isArray(ti.events) && ti.events.filter(ev => ev && ev.status === 'shipped').length > 1);
+        if (isSplit) {
+          const { loadPoEmailItems } = require('../utils/poEmailItems');
+          const lines = await loadPoEmailItems(po.id);
+          const esc = (v) => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+          const nowIds = new Set(shipIds.map(Number));
+          const li = (arr) => arr.map(l => `<li>${esc(l.name)} — ${esc(l.qty_text || l.quantity_ordered)}</li>`).join('');
+          const sentNow = lines.filter(l => nowIds.has(Number(l.id)));
+          const svc = await require('../utils/orderFulfillment').serviceLineIdsOf(sequelize, po.id);
+          const notYet = lines.filter(l => !l.shipped_at && !nowIds.has(Number(l.id)) && !svc.has(Number(l.id)));
+          splitHtml = `<p style="color:#374151;font-size:14px;margin:12px 0 4px;"><strong>In this shipment:</strong></p><ul style="color:#374151;font-size:14px;margin:0 0 8px;">${li(sentNow)}</ul>`
+            + (notYet.length ? `<p style="color:#B45309;font-size:14px;margin:12px 0 4px;"><strong>Not yet dispatched (${notYet.length}):</strong></p><ul style="color:#374151;font-size:14px;margin:0 0 8px;">${li(notYet)}</ul>` : '');
+        }
         const html = wrapTemplate(
           'Order Out for Delivery',
           `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your purchase order <strong>${po.po_number}</strong> is out for delivery.</p>
-           ${carrier}${trackingNo}${eta}
+           ${carrier}${trackingNo}${eta}${splitHtml}
            <div style="text-align:center;margin:24px 0;"><a href="${FRONTEND_URL}/pos/purchase-orders/${po.id}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Track Order</a></div>`,
           'en'
         );
@@ -834,11 +938,17 @@ router.post('/:id/ship', async (req, res) => {
       }
     });
 
-    res.json({ success: true, data: po, message: 'Order out for delivery' });
+    res.json({
+      success: true,
+      data: { ...po.toJSON(), fully_shipped: fullyShipped, unshipped_count: unshippedAfter },
+      message: fullyShipped ? 'Order out for delivery' : 'Selected items out for delivery'
+    });
   } catch (err) {
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
     if (err.code === 'ALREADY_SHIPPED') return res.status(409).json({ success: false, message: err.message });
-    if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
+    if (err.code === 'BAD_STATUS' || err.code === 'BAD_ITEM' || err.code === 'NOTHING_TO_SHIP') {
+      return res.status(400).json({ success: false, message: err.message, code: err.code });
+    }
     console.error('POST /api/seller-orders/:id/ship error:', err);
     res.status(500).json({ success: false, message: 'Failed to ship order' });
   }
@@ -930,6 +1040,16 @@ router.post('/:id/deliver', async (req, res) => {
         e.code = 'BAD_STATUS';
         throw e;
       }
+      // 품목별 발송 (2026-10-08) — 일부만 보낸 주문은 «배송 완료» 로 못 둔다(메일이 «다 왔다» 로 읽힌다)
+      const state = await attachShipmentState({
+        id: locked.id, shipped_at: locked.shipped_at,
+        items: (await PurchaseOrderItem.findAll({ where: { purchase_order_id: locked.id }, transaction: t })).map(r => r.toJSON())
+      });
+      if (state.unshipped_count > 0) {
+        const e = new Error('Some items have not been dispatched yet');
+        e.code = 'NOT_FULLY_SHIPPED';
+        throw e;
+      }
       const tracking = appendTrackingEvent(locked, 'delivered', note);
       await locked.update({ status: 'delivered', tracking_info: tracking }, { transaction: t });
       return locked;
@@ -957,6 +1077,7 @@ router.post('/:id/deliver', async (req, res) => {
     res.json({ success: true, data: po, message: 'Order marked delivered' });
   } catch (err) {
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
+    if (err.code === 'NOT_FULLY_SHIPPED') return res.status(400).json({ success: false, code: err.code, message: err.message });
     if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
     console.error('POST /api/seller-orders/:id/deliver error:', err);
     res.status(500).json({ success: false, message: 'Failed to mark delivered' });
@@ -1243,6 +1364,11 @@ router.post('/:id/amend', async (req, res) => {
         const e = new Error('Cannot amend an order that already has received quantities');
         e.code = 'ALREADY_RECEIVED'; throw e;
       }
+      // 보낸 줄이 있으면 손대지 않는다 — 판매자 재고가 이미 빠졌다(2026-10-08 품목별 발송 · 상태 가드의 이중 방어)
+      if (beforeRows.some(r => r.shipped_at)) {
+        const e = new Error('Cannot amend an order that already has dispatched items');
+        e.code = 'ALREADY_SHIPPED'; throw e;
+      }
 
       const buyerEntity = buyerEntityOf(po);
       const validated = [];
@@ -1357,6 +1483,7 @@ router.post('/:id/amend', async (req, res) => {
     if (err.code === 'TOTAL_EXCEEDS') {
       return res.status(400).json({ success: false, code: err.code, message: err.message, ...err.meta });
     }
+    if (err.code === 'ALREADY_SHIPPED') return res.status(409).json({ success: false, code: err.code, message: err.message });
     if (['BAD_STATUS', 'ALREADY_RECEIVED', 'ALREADY_INVOICED', 'BAD_ITEM', 'PRODUCT_NOT_FOUND', 'PRODUCT_INACTIVE',
          'PRODUCT_NOT_YOURS', 'NOT_LINKED_TO_BUYER', 'UNSUPPORTED_STOCK_TARGET',
          'STOCK_TARGET_INVALID'].includes(err.code)) {

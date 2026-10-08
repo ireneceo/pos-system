@@ -208,7 +208,8 @@
       "deliver": "Mark Delivered",
       "editTracking": "Edit tracking",
       "recordDispatch": "Record delivery",
-      "amend": "Edit items"
+      "amend": "Edit items",
+      "shipRemaining": "Ship remaining"
     },
     "confirm": {
       "title": "Confirm Order",
@@ -225,7 +226,10 @@
       "estArrival": "Estimated Arrival",
       "notes": "Notes",
       "submit": "Start Delivery",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "itemsLabel": "Items in this shipment",
+      "leftForLater": "Unchecked items stay as not yet dispatched — ship them later with «Ship remaining».",
+      "selectAtLeastOne": "Select at least one item to ship"
     },
     "reject": {
       "title": "Reject Order",
@@ -242,7 +246,8 @@
     "emptyHint": "New orders will appear here in real time.",
     "loading": "Loading…",
     "badge": {
-      "needsDispatch": "Buyer confirmed receipt — record delivery"
+      "needsDispatch": "Buyer confirmed receipt — record delivery",
+      "notYetDispatched": "{{count}} item(s) not yet dispatched"
     },
     "amend": {
       "title": "Edit order items",
@@ -277,7 +282,9 @@
     "detail": {
       "shareWhatsApp": "Share via WhatsApp",
       "sharePackingList": "Packing list (no prices)",
-      "uncategorized": "Other"
+      "uncategorized": "Other",
+      "shipped": "Shipped",
+      "notShipped": "Not dispatched yet"
     }
   },
   "tradeInvoicesPage": {

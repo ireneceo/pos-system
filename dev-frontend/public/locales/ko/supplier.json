@@ -208,7 +208,8 @@
       "deliver": "배송 완료 표시",
       "editTracking": "배송정보 수정",
       "recordDispatch": "배송 기록",
-      "amend": "품목 수정"
+      "amend": "품목 수정",
+      "shipRemaining": "나머지 보내기"
     },
     "confirm": {
       "title": "주문 확정",
@@ -225,7 +226,10 @@
       "estArrival": "예상 도착일",
       "notes": "비고",
       "submit": "배송 시작",
-      "cancel": "취소"
+      "cancel": "취소",
+      "itemsLabel": "이번에 보낼 품목",
+      "leftForLater": "체크를 푼 품목은 «미발송» 으로 남습니다 — 나중에 «나머지 보내기» 로 보내세요.",
+      "selectAtLeastOne": "보낼 품목을 하나 이상 고르세요"
     },
     "reject": {
       "title": "주문 거부",
@@ -242,7 +246,8 @@
     "emptyHint": "새 발주가 도착하면 실시간으로 여기에 표시됩니다.",
     "loading": "불러오는 중…",
     "badge": {
-      "needsDispatch": "구매자가 수령 확인 — 배송 기록 필요"
+      "needsDispatch": "구매자가 수령 확인 — 배송 기록 필요",
+      "notYetDispatched": "{{count}}개 품목 미발송"
     },
     "amend": {
       "title": "주문 품목 수정",
@@ -277,7 +282,9 @@
     "detail": {
       "shareWhatsApp": "WhatsApp 공유",
       "sharePackingList": "배송 준비 목록 (가격 없음)",
-      "uncategorized": "기타"
+      "uncategorized": "기타",
+      "shipped": "보냄",
+      "notShipped": "아직 안 보냄"
     }
   },
   "tradeInvoicesPage": {

@@ -2634,3 +2634,15 @@ Irene 「Submit 한 순서대로 나와야해. 생성일이 발주일이여야�
 - 주문 추가(`POST /api/seller-orders`)와 품목 수정(`GET /:id/amendable-products` · `POST /:id/amend`)이 같은 답: 매장이 아직 안 담은 배포 상품은 `link_brand_product_id` 로 내려가고, 고르면 `linkUnlinkedBrandItems` 가 트랜잭션 전에 매장의 카탈로그 담기를 대신 실행(멱등). 화면은 `−brand_product_id` 고르기 키.
 - 구매자 수령: 서비스 줄은 재고·배치·원장·원가 무접촉, `quantity_received` 만 적힘(`applyReceiptToStock`). 전체 수령·분할 수령 둘 다 같은 함수.
 - 계약: health-check inventory «A안 미연결 배포 상품 주문·수정 + 서비스 줄 수령 재고 무접촉 (P1~P7)» · 고장주입 2건 반증.
+
+## 판매자 품목별 발송 표시 (2026-10-08 · Fable 판정 · [Claude Code])
+> Irene 원문: «브랜드제너럴이나 공급업체들이 주문관리할 때 발송을 나눠서 할 때 어떻게 해? 일부는 보냈지만 일부는 다음 날 보낼 때.» → «배송을 했냐 안했냐의 업무처리 때문이야. 그럼 그냥 배송했다 안했다 개별표시만 하게 하던지 간략한 방법 찾아봐» → «그대로». 판정 `.claude/fable-verdict-20261008-partial-shipment.md` 개정 절.
+
+- **원칙**: 주문을 쪼개지 않는다. 줄마다 «보냄» 표시 하나(`purchase_order_items.shipped_at`, null = 미발송) — «받은 양» 의 거울이지만 수량이 아니라 보냈다/안 보냈다. 새 상태·새 표·새 차감 경로 없음.
+- **`POST /api/seller-orders/:id/ship`**: 선택 `item_ids[]`. 없으면 미발송 줄 전부(예전 «한 번에 전부» 와 같음 · 하위 호환). 재고 차감 3분기(공급업체·브랜드·푸드코트)는 고른 줄만, 그 줄 수량 전부 1회. 헤더 `shipped_at` = 첫 발송 시각(출고액 보고서·알림·배지가 «출고 시작» 으로 읽음). 발송마다 `tracking_info.events` 에 `shipment_no · items · 운송사 · 송장 · partial` 한 건. 응답에 `fully_shipped · unshipped_count`.
+- **가드**: 미발송 줄 0 → 409 ALREADY_SHIPPED(PO 행 잠금이 동시 발송 방어선) · 고른 줄이 전부 이미 보냄 → 400 NOTHING_TO_SHIP · 남의 줄 id → 400 · 헤더만 출고 기록 있고 줄 표시 0(백필 전 옛 주문) → 409 · 일부만 보낸 주문의 `/deliver` → 400 NOT_FULLY_SHIPPED · 보낸 줄 있는 `/amend` → 409.
+- **목록·상세 GET**: 줄 `is_service`(배송 없는 줄) · 헤더 `unshipped_count`. 화면(판매자 «들어온 주문»): 보내기 창 = 품목 체크 목록(기본 전부 체크) · «N item(s) not yet dispatched» + «Ship remaining» · «배송 완료» 는 전부 보낸 뒤에만 · ✎ 는 최근 발송의 운송 정보만 고침(PUT /tracking). 구매자 발주 상세: 판매자가 한 번이라도 보낸 주문에 품목 «Shipped ✓ 날짜» 칸.
+- **마이그** `scripts/migrate-po-item-shipped-at.js`(deploy · 멱등): 칸 추가 + 헤더 shipped_at 있는 옛 발주의 줄 백필.
+- **변경 0**: 구매자 수령(보냄과 무관하게 받을 수 있음 — 공급업체 판매 발주는 «보내기» 없이 수령이 실사용 경로) · 반품 · 청구서 · 정산서 · `TRADE_STRUCTURE.md`.
+- **범위 밖**: 한 품목 안에서 수량 나눠 보내기 · «나머지 못 보냄(품절)» 처리(돈 문제 — 별도) · 지난 발송 송장 개별 수정 · 발송별 포장 목록.
+- 검사: health-check `inventory` «품목별 발송» 2건(S1~S5 · 동시 S7).

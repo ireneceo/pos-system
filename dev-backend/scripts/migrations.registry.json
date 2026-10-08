@@ -117,7 +117,8 @@
     "migrate-staff-meal-category-flag.js",
     "migrate-add-seller-delivery-zones.js",
     "migrate-ledger-cost-columns.js",
-    "migrate-stock-take-bg-warehouse.js"
+    "migrate-stock-take-bg-warehouse.js",
+    "migrate-po-item-shipped-at.js"
   ],
   "manual": {
     "fix-ingredient-data-debt-20260917.js": "일회성 — 고아 셀러매핑 정리 · 코드 중복 재채번(2026-09-17 Fable 판정 ②④). 드라이런 기본 · --apply · --undo.",

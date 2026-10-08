@@ -5060,6 +5060,119 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
   });
 
   // ══════════════════════════════════════════════════════════════════
+  // 품목별 발송 표시 (2026-10-08 Fable 판정 · .claude/fable-verdict-20261008-partial-shipment.md 개정 §6)
+  //   Irene «배송했다 안했다 개별표시» — 줄마다 shipped_at 하나. 재고는 고른 줄만, 그 줄 수량 전부 1회.
+  //   S1 A 만 발송 · S2 나머지 · S3 다시 → 409 · S4 이미 보낸 줄만 고름 → 400 · S5 일부 상태 deliver → 400 / 전량 뒤 200
+  //   S7 동시 전량 발송 2건 → 200 정확히 1 · 차감 1회
+  // ══════════════════════════════════════════════════════════════════
+  test('inventory', '품목별 발송 — 고른 줄만 차감·줄 표시·남은 줄 보내기·중복 409·일부면 배송완료 거부 (S1~S5)', async () => {
+    const { BrandProduct, PurchaseOrder, PurchaseOrderItem, IngredientSellerProduct, InventoryTransaction } = require('../models');
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    let bp2 = null, isp2 = null;
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      const jwtLib = require('jsonwebtoken');
+      const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: fx.bgUser.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      bp2 = await BrandProduct.create({
+        owner_user_id: fx.bgUser.id, name: 'ZZ-HC-SPLIT-B-' + Date.now(), unit: 'pack', stock_unit: 'pack',
+        base_quantity: 1, unit_price: 2, min_order_quantity: 1, is_active: true, current_stock: 20,
+        sku: 'ZZ-SPB-' + Math.random().toString(36).slice(2, 8),
+      });
+      isp2 = await IngredientSellerProduct.create({
+        product_id: fx.buyerProd.id, seller_type: 'brand', seller_entity_id: fx.brand.id,
+        seller_product_id: bp2.id, unit_price: 2, unit_conversion: 1, is_preferred: false, is_active: true,
+      });
+      const itemB = await PurchaseOrderItem.create({
+        purchase_order_id: fx.po.id, product_id: fx.buyerProd.id, ingredient_seller_product_id: isp2.id,
+        quantity_ordered: 2, unit: 'pack', unit_price: 2, line_total: 4, unit_conversion: 1,
+      });
+      await PurchaseOrder.update({ status: 'confirmed' }, { where: { id: fx.po.id } });
+      const stock = async () => [Number((await BrandProduct.findByPk(fx.bp.id)).current_stock), Number((await BrandProduct.findByPk(bp2.id)).current_stock)];
+      const [a0, b0] = await stock();
+
+      // S1 — A 만
+      const r1 = await request('POST', `/seller-orders/${fx.po.id}/ship`, { item_ids: [fx.item.id], tracking_info: { carrier: 'ZZ1' } }, auth);
+      if (r1.status !== 200) return fail(`S1 ${r1.status} ${JSON.stringify(r1.body).slice(0, 140)}`);
+      const [a1, b1] = await stock();
+      if (Math.abs(a1 - (a0 - 3)) > 0.001 || Math.abs(b1 - b0) > 0.001) return fail(`S1 재고 A ${a0}→${a1} B ${b0}→${b1}`);
+      const po1 = await PurchaseOrder.findByPk(fx.po.id);
+      const iA1 = await PurchaseOrderItem.findByPk(fx.item.id), iB1 = await PurchaseOrderItem.findByPk(itemB.id);
+      if (po1.status !== 'shipped' || !po1.shipped_at || !iA1.shipped_at || iB1.shipped_at) return fail(`S1 표시 status=${po1.status} A=${iA1.shipped_at} B=${iB1.shipped_at}`);
+      if (r1.body?.data?.unshipped_count !== 1 || r1.body?.data?.fully_shipped !== false) return fail(`S1 응답 ${JSON.stringify(r1.body?.data?.unshipped_count)}`);
+      const ev1 = (po1.tracking_info?.events || []).filter(e => e.status === 'shipped');
+      if (ev1.length !== 1 || ev1[0].partial !== true || (ev1[0].items || []).length !== 1) return fail('S1 이벤트 모양');
+      const ledgerA = await InventoryTransaction.count({ where: { brand_product_id: fx.bp.id, purchase_order_id: fx.po.id } });
+      if (ledgerA !== 1) return fail(`S1 장부 ${ledgerA}줄`);
+
+      // S5a — 일부만 보낸 상태에서 배송 완료 → 400
+      const d1 = await request('POST', `/seller-orders/${fx.po.id}/deliver`, {}, auth);
+      if (d1.status !== 400 || d1.body?.code !== 'NOT_FULLY_SHIPPED') return fail(`S5a deliver ${d1.status}`);
+
+      // S4 — 이미 보낸 줄만 고름 → 400 NOTHING_TO_SHIP · 재고 무변동
+      const r4 = await request('POST', `/seller-orders/${fx.po.id}/ship`, { item_ids: [fx.item.id] }, auth);
+      if (r4.status !== 400 || r4.body?.code !== 'NOTHING_TO_SHIP') return fail(`S4 ${r4.status}`);
+      // 남의 줄 id → 400
+      const r4b = await request('POST', `/seller-orders/${fx.po.id}/ship`, { item_ids: [999999999] }, auth);
+      if (r4b.status !== 400) return fail(`S4b ${r4b.status}`);
+      const [a4, b4] = await stock();
+      if (a4 !== a1 || b4 !== b1) return fail('S4 재고 변동');
+
+      // S2 — 본문 없음 = 나머지 전부
+      const firstShippedAt = new Date(po1.shipped_at).getTime();
+      const r2 = await request('POST', `/seller-orders/${fx.po.id}/ship`, { tracking_info: { carrier: 'ZZ2' } }, auth);
+      if (r2.status !== 200) return fail(`S2 ${r2.status}`);
+      const [a2, b2] = await stock();
+      if (Math.abs(a2 - a1) > 0.001 || Math.abs(b2 - (b0 - 2)) > 0.001) return fail(`S2 재고 A ${a1}→${a2} B ${b1}→${b2}`);
+      const po2 = await PurchaseOrder.findByPk(fx.po.id);
+      if (new Date(po2.shipped_at).getTime() !== firstShippedAt) return fail('S2 헤더 shipped_at 이 바뀜');
+      const ev2 = (po2.tracking_info?.events || []).filter(e => e.status === 'shipped');
+      if (ev2.length !== 2 || ev2[1].partial !== false || ev2[1].shipment_no !== 2) return fail('S2 이벤트 모양');
+      if (r2.body?.data?.unshipped_count !== 0) return fail('S2 unshipped_count');
+
+      // S3 — 다시 → 409 · 재고 무변동
+      const r3 = await request('POST', `/seller-orders/${fx.po.id}/ship`, {}, auth);
+      if (r3.status !== 409) return fail(`S3 ${r3.status}`);
+      const [a3, b3] = await stock();
+      if (a3 !== a2 || b3 !== b2) return fail('S3 재고 변동');
+
+      // 상세 GET 이 unshipped_count·줄 shipped_at 을 준다(화면 계약)
+      const g = await request('GET', `/seller-orders/${fx.po.id}`, null, auth);
+      if (g.status !== 200 || g.body?.data?.unshipped_count !== 0 || !(g.body?.data?.items || []).every(i => i.shipped_at)) return fail('상세 GET 계약');
+
+      // S5b — 전량 뒤 배송 완료 → 200
+      const d2 = await request('POST', `/seller-orders/${fx.po.id}/deliver`, {}, auth);
+      if (d2.status !== 200) return fail(`S5b deliver ${d2.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try { if (bp2) await InventoryTransaction.destroy({ where: { brand_product_id: bp2.id } }); } catch {}
+      await cleanQ6(fx);
+      try { if (isp2) await IngredientSellerProduct.destroy({ where: { id: isp2.id }, force: true }); } catch {}
+      try { if (bp2) await BrandProduct.destroy({ where: { id: bp2.id }, force: true }); } catch {}
+    }
+  });
+
+  test('inventory', '품목별 발송 — 동시 전량 발송 2건이면 1건만 통과·차감 1회 (S7)', async () => {
+    const { BrandProduct, PurchaseOrder } = require('../models');
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    try {
+      const jwtLib = require('jsonwebtoken');
+      const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: fx.bgUser.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      await PurchaseOrder.update({ status: 'confirmed' }, { where: { id: fx.po.id } });
+      const before = Number((await BrandProduct.findByPk(fx.bp.id)).current_stock);
+      const rs = await Promise.all([1, 2].map(() => request('POST', `/seller-orders/${fx.po.id}/ship`, {}, auth)));
+      const codes = rs.map(r => r.status).sort();
+      const after = Number((await BrandProduct.findByPk(fx.bp.id)).current_stock);
+      if (codes[0] !== 200 || codes[1] !== 409) { console.log(c.gray(`      (응답 ${codes})`)); return false; }
+      if (Math.abs(after - (before - 3)) > 0.001) { console.log(c.gray(`      (재고 ${before} → ${after}, 기대 ${before - 3})`)); return false; }
+      return true;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanQ6(fx); }
+  });
+
+  // ══════════════════════════════════════════════════════════════════
   // A안(Fable 2026-10-01 · .claude/fable-design-20261001-a-plan.md §4) — 판매자는 매장에 아직 안 담긴
   //   배포 상품(서비스 포함)을 바로 주문·수정에 넣는다. 서버가 매장의 «카탈로그에서 담기» 와 같은 함수로 먼저 담는다.
   //   구매자 수령: 서비스 줄은 재고·배치·원장 무접촉(수령량만 적힘) · 주문제작은 재고 올림.

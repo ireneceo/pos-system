@@ -213,7 +213,8 @@
       "delivery": "배송비",
       "deliveryUnset": "(판매자 미설정)",
       "staffMeal": "직원식",
-      "staffMealSplit": "직원식 {{staff}} · 일반 {{regular}}"
+      "staffMealSplit": "직원식 {{staff}} · 일반 {{regular}}",
+      "shipped": "보냄"
     },
     "delivery": {
       "expected": "예상일",

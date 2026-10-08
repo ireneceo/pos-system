@@ -14,7 +14,7 @@
 | 기능명 | Supply Chain Sprint 7 — Operational Hardening |
 | 핵심 사용자 | Buyer(Restaurant/Brand/Foodcourt) + Seller(Supplier/Brand/Foodcourt) + System Admin |
 | 핵심 유스케이스 | 1) BG/FG 수령이 inventory_transactions에 정상 기록 · 2) BG/FG seller returns 시 자기 stock 환원 · 3) Receive 시 line별 splits + 차이 사유 · 4) Carrier webhook 자동 status 전이 |
-| 비범위 | ETA, Partial shipment, Confirm SLA, Reject 대안 → Sprint 8 |
+| 비범위 | ETA, Partial shipment, Confirm SLA, Reject 대안 → Sprint 8 (Partial shipment → 2026-10-08 품목별 발송 표시로 구현: PURCHASE_ORDER_SYSTEM.md «판매자 품목별 발송 표시») |
 | 기존 시스템 연동 | 타임존 (entity operation_settings.timeZone) · 통화 (PO.currency lock) · 배송 (Carrier 마스터) · i18n (4언어) · 이메일 (entity SMTP) |
 
 ---

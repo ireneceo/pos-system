@@ -213,7 +213,8 @@
       "delivery": "Yuran penghantaran",
       "deliveryUnset": "(tidak ditetapkan penjual)",
       "staffMeal": "Makanan staf",
-      "staffMealSplit": "Makanan staf {{staff}} · Biasa {{regular}}"
+      "staffMealSplit": "Makanan staf {{staff}} · Biasa {{regular}}",
+      "shipped": "Dihantar"
     },
     "delivery": {
       "expected": "Tarikh Dijangka",
