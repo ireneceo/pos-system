@@ -517,6 +517,8 @@ app.use('/api', ingredientCategoriesRouter);
 app.use('/api', suppliersRouter);
 app.use('/api/currencies', currenciesRouter);
 app.use('/api/restaurants', inventoryRouter);
+// 기간 원가 · 폐기 리포트 (2026-10-08 · 재고 장부 금액 기반)
+app.use('/api/restaurants', require('./routes/cost-report'));
 app.use('/api', brandInventoryRouter);
 // Sprint 1 — Supply Chain Design 1
 app.use('/api/supplier', supplierRouter);
@@ -553,6 +555,8 @@ app.use('/api', foodcourtProductsRouter);  // exposes /api/foodcourt-products + 
 app.use('/api', foodcourtInventoryRouter);  // exposes /api/foodcourts/:foodcourtId/inventory/*
 app.use('/api', productRecipeRouter);
 app.use('/api/product-recipes', productRecipesRouter);
+// 본사 창고 실사 (2026-10-08) — /:id 보다 먼저 잡혀야 하므로 재고아이템 라우터 앞에 둔다
+app.use('/api/product-ingredients/stock-takes', require('./routes/brand-stock-takes'));
 app.use('/api/product-ingredients', productIngredientsRouter);
 app.use('/api', stockLedgerRouter);  // /api/{brands|restaurants}/:id/stock-ledger/* · /catalog-link/*
 app.use('/api/product-recipe-categories', productRecipeCategoriesRouter);

@@ -64,9 +64,10 @@ export function useInlineStockEdit({
           body: JSON.stringify({ new_quantity: newValue, reason: 'Stock adjustment' }),
         });
       } else {
-        response = await authFetch(`/api/product-ingredients/${id}`, {
-          method: 'PUT',
-          body: JSON.stringify({ current_stock: newValue }),
+        // 브랜드 재고아이템 — 수량은 장부가 남는 adjust-stock 으로만 바뀐다(PUT 은 current_stock 을 더 이상 받지 않는다)
+        response = await authFetch(`/api/product-ingredients/${id}/adjust-stock`, {
+          method: 'POST',
+          body: JSON.stringify({ new_quantity: newValue, transaction_type: 'adjustment', reason: 'Inline edit', reason_code: 'inline_edit' }),
         });
       }
 

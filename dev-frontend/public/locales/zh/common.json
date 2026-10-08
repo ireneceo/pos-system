@@ -886,5 +886,22 @@
     "remove": "移除",
     "receiptAlt": "付款收据",
     "clickToEnlarge": "点击查看大图"
+  },
+  "deliveryZones": {
+    "title": "配送区域",
+    "hint": "为每个区域设置不同的配送费。系统根据门店地址的州自动选择区域。上方的免运费金额适用于所有区域。",
+    "name": "区域名称",
+    "namePlaceholder": "例如：Klang Valley",
+    "fee": "配送费",
+    "remove": "删除区域",
+    "states": "该区域包含的州",
+    "stateTaken": "已在区域「{{zone}}」中",
+    "description": "备注（可选）",
+    "descriptionPlaceholder": "例如：周二、周五配送",
+    "add": "+ 添加配送区域",
+    "other": "其他地区 → 默认配送费 {{fee}}",
+    "otherUnset": "其他地区 → 未设置配送费",
+    "incomplete": "填写区域名称、配送费并至少选择一个州后即可保存。",
+    "saveFailed": "无法保存配送区域"
   }
 }

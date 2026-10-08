@@ -13,6 +13,7 @@
  */
 
 const express = require('express');
+const stockLedger = require('../services/stockLedger');
 const router = express.Router();
 const { Op } = require('sequelize');
 const {
@@ -236,7 +237,12 @@ router.post('/foodcourts/:foodcourtId/inventory/adjust', checkFoodcourtAccess, r
       });
     }
 
-    await product.update({ current_stock: newStock });
+    // 재고 + 장부 (entity foodcourt · product_id = foodcourt_products.id — services/stockLedger 단일 함수)
+    await FoodcourtProduct.sequelize.transaction(t => stockLedger.record({
+      target: { kind: 'foodcourt_product', row: product }, entity: { type: 'foodcourt', id: req.foodcourtId },
+      type: 'adjustment', delta: Number(quantity_delta), unit: product.unit || 'unit',
+      notes: sanitizeString(reason).trim(), userId: req.user?.id || null, transaction: t,
+    }));
 
     res.json({
       success: true,
@@ -282,7 +288,11 @@ router.post('/foodcourts/:foodcourtId/inventory/receive', checkFoodcourtAccess, 
     const currentStock = parseFloat(product.current_stock) || 0;
     const newStock = currentStock + Number(quantity);
 
-    await product.update({ current_stock: newStock });
+    await FoodcourtProduct.sequelize.transaction(t => stockLedger.record({
+      target: { kind: 'foodcourt_product', row: product }, entity: { type: 'foodcourt', id: req.foodcourtId },
+      type: 'purchase', delta: Number(quantity), unit: product.unit || 'unit',
+      notes: req.body.notes ? sanitizeString(String(req.body.notes)).trim() : 'Stock received', userId: req.user?.id || null, transaction: t,
+    }));
 
     res.json({
       success: true,
@@ -302,21 +312,27 @@ router.post('/foodcourts/:foodcourtId/inventory/receive', checkFoodcourtAccess, 
 
 /**
  * GET /api/foodcourts/:foodcourtId/inventory/transactions
- * Sprint 1: empty paginated. Sprint 3 will return InventoryTransaction history.
+ * 푸드코트 재고 장부 — entity foodcourt 의 장부 줄(product_id = foodcourt_products.id). 2026-10-08 스텁 → 장부 조회.
  */
 router.get('/foodcourts/:foodcourtId/inventory/transactions', checkFoodcourtAccess, requireInventoryModule, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+    const { InventoryTransaction } = require('../models');
+    const where = { entity_type: 'foodcourt', entity_id: req.foodcourtId };
+    if (req.query.product_id) where.product_id = parseInt(req.query.product_id, 10);
+    const { count, rows } = await InventoryTransaction.findAndCountAll({
+      where, order: [['created_at', 'DESC'], ['id', 'DESC']], limit, offset: (page - 1) * limit,
+    });
 
     res.json({
       success: true,
-      data: [],
+      data: rows,
       pagination: {
-        total: 0,
+        total: count,
         page,
         limit,
-        totalPages: 0
+        totalPages: Math.ceil(count / limit)
       }
     });
   } catch (err) {

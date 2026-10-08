@@ -60,7 +60,9 @@ const COMPANY_ALLOWED_FIELDS = [
   //   그전까지 이 두 칸은 구매자가 만든 «외부 공급업체» 등록 폼에만 있었다.
   'min_order_amount', 'delivery_fee',
   // 배송 가능 지역 안내 글 (2026-09-28 Fable) — 브랜드·푸드코트와 같은 칸
-  'delivery_policy'
+  'delivery_policy',
+  // 배송 지역 (2026-10-07 Fable) — 브랜드·푸드코트와 같은 칸·같은 규칙
+  'delivery_zones'
 ];
 
 // Fields stored as plain strings (sanitized on save)
@@ -402,6 +404,10 @@ router.put('/company', async (req, res) => {
         }
       } else if (key === 'delivery_policy') {
         value = require('../utils/sellerNames').normalizeDeliveryPolicy(value);
+      } else if (key === 'delivery_zones') {
+        const { zones, error: zoneErr } = require('../utils/deliveryZones').normalizeZonesForSave(value);
+        if (zoneErr) return res.status(400).json({ success: false, message: zoneErr.message, code: zoneErr.code });
+        value = zones;
       } else if (key === 'shop_slug') {
         const { normalizeShopSlug, shopSlugTaken } = require('../utils/shopSlug');
         if (value === '' || value === null || value === undefined) {

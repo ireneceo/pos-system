@@ -848,9 +848,9 @@
     "deliveryTermsDesc": "A delivery fee is added automatically when a restaurant orders from this brand. Leave blank and no delivery fee appears.",
     "freeAbove": "Free delivery at or above this amount",
     "deliveryFee": "Delivery fee below that (fixed)",
-    "deliveryAreas": "Delivery areas",
-    "deliveryAreasPlaceholder": "e.g. Petaling Jaya, Selangor",
-    "deliveryAreasHint": "Where and when you deliver. Shown to stores when they order — not used to calculate the delivery fee.",
+    "deliveryAreas": "Delivery note (days, times)",
+    "deliveryAreasPlaceholder": "e.g. Delivered Tue · Fri, before 11am",
+    "deliveryAreasHint": "Shown to stores when they order — not used to calculate the delivery fee.",
     "appliesToAllBrands": "These settings apply to all brands on this account: {{names}}"
   },
   "productIngredientsTab": {

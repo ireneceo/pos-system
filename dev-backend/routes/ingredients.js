@@ -763,7 +763,7 @@ router.put('/restaurants/:restaurantId/ingredient-costs/bulk', authenticateToken
       // 이 매장이 다룰 수 있는 재료만(자기 재료 ∪ 부모 브랜드 재료) — 예전엔 소유권을 안 봐서 남의 재료 id 로도 행이 생겼다
       const ingredient = await readableIngredient(item.ingredient_id, { type: 'restaurant', id: parseInt(restaurantId, 10) });
       if (!ingredient) continue;
-      const w = await writeStoreCost(restaurantId, ingredient, parseFloat(item.unit_cost), { userId: req.user.id, notes: item.notes || null });
+      const w = await writeStoreCost(restaurantId, ingredient, parseFloat(item.unit_cost), { userId: req.user.id, notes: item.notes || null, log: { source: 'manual' } });
       results.push({ ingredient_id: ingredient.id, target: w.target, unit_cost: w.newValue });
     }
 
@@ -795,7 +795,7 @@ router.put('/restaurants/:restaurantId/ingredient-costs/:ingredientId', authenti
 
     // 매장 층 쓰기는 한 손 (§8-4 D-5) — 이 라우트는 브랜드 재료만 받으므로 자리는 매장 오버레이다.
     const { writeStoreCost } = require('../services/storeCost');
-    const w = await writeStoreCost(restaurantId, ingredient, parseFloat(unit_cost), { userId: req.user.id, notes: notes || null });
+    const w = await writeStoreCost(restaurantId, ingredient, parseFloat(unit_cost), { userId: req.user.id, notes: notes || null, log: { source: 'manual' } });
     const cost = await RestaurantIngredientCost.findOne({ where: { restaurant_id: restaurantId, ingredient_id: ingredientId } });
 
     res.json({

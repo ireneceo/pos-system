@@ -316,6 +316,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/brand-product-recipes',
     '/pos/brand-ingredients',
     '/pos/brand-inventory',
+    '/pos/brand-stock-take', // 본사 창고 실사(2026-10-08)
     '/pos/brand-menus',
     '/pos/brand-menu-categories',
     '/pos/brand-menu-option-groups',
@@ -373,6 +374,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/brand-product-recipes',
     '/pos/brand-ingredients',
     '/pos/brand-inventory',
+    '/pos/brand-stock-take', // 본사 창고 실사(2026-10-08)
     '/pos/brand-menus',
     '/pos/brand-menu-categories',
     '/pos/brand-menu-option-groups',

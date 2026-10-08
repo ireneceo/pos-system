@@ -202,6 +202,9 @@
     "onceOnly": "bought once",
     "invoicedLines": "{{n}} reconciled",
     "empty": "No received purchase orders in this period",
-    "loadFailed": "Could not load"
+    "loadFailed": "Could not load",
+    "staffMealSpend": "Staff meal cost",
+    "regularSpend": "Regular purchases",
+    "staffMeal": "Staff meal"
   }
 }

@@ -329,6 +329,13 @@ const SupplierProfilePage: React.FC = () => {
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState<string>('all');
 
+  // 외부 업체 «청구 방식» — 건별 / 월별 정산서 (2026-10-07 Fable 판정 ⑩, 그 구매자 계약 기준)
+  const [billing, setBilling] = useState<{ invoice_cycle: 'immediate' | 'monthly_soa'; soa_issue_day: number | null; payment_due_day: number | null } | null>(null);
+  const [billingOpen, setBillingOpen] = useState(false);
+  const [billingForm, setBillingForm] = useState<{ invoice_cycle: 'immediate' | 'monthly_soa'; soa_issue_day: string; payment_due_day: string }>({ invoice_cycle: 'immediate', soa_issue_day: '1', payment_due_day: '15' });
+  const [billingSaving, setBillingSaving] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
+
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
   const [requestSubmitting, setRequestSubmitting] = useState(false);
@@ -366,6 +373,7 @@ const SupplierProfilePage: React.FC = () => {
         my_contract: d.my_contract || { status: 'none' }
       };
       setProfile(flattened);
+      setBilling(d.billing || null);
     } catch (err) {
       console.error('Failed to fetch supplier profile:', err);
       setLoadError(t('profile.loadFailed') as string);
@@ -436,6 +444,41 @@ const SupplierProfilePage: React.FC = () => {
   const [savingProduct, setSavingProduct] = useState(false);
   const [productError, setProductError] = useState<string | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<ProductRow | null>(null);
+
+  const openBilling = () => {
+    setBillingError(null);
+    setBillingForm({
+      invoice_cycle: billing?.invoice_cycle === 'monthly_soa' ? 'monthly_soa' : 'immediate',
+      soa_issue_day: String(billing?.soa_issue_day || 1),
+      payment_due_day: String(billing?.payment_due_day || 15),
+    });
+    setBillingOpen(true);
+  };
+  const saveBilling = async () => {
+    if (!profile) return;
+    const day = (v: string) => { const n = parseInt(v, 10); return Number.isInteger(n) && n >= 1 && n <= 28 ? n : NaN; };
+    const monthly = billingForm.invoice_cycle === 'monthly_soa';
+    if (monthly && (Number.isNaN(day(billingForm.soa_issue_day)) || Number.isNaN(day(billingForm.payment_due_day)))) {
+      setBillingError(t('billing.dayRange', { defaultValue: 'Days must be between 1 and 28.' }) as string);
+      return;
+    }
+    setBillingSaving(true); setBillingError(null);
+    try {
+      const res = await fetch(`/api/external-suppliers/${profile.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ billing: monthly
+          ? { invoice_cycle: 'monthly_soa', soa_issue_day: day(billingForm.soa_issue_day), payment_due_day: day(billingForm.payment_due_day) }
+          : { invoice_cycle: 'immediate' } }),
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.success) { setBillingError(j?.message || (t('billing.saveFailed', { defaultValue: 'Could not save. Please try again.' }) as string)); return; }
+      setBilling(j.data?.billing || null);
+      setBillingOpen(false);
+    } catch {
+      setBillingError(t('billing.saveFailed', { defaultValue: 'Could not save. Please try again.' }) as string);
+    } finally { setBillingSaving(false); }
+  };
 
   const openAddProduct = () => { setEditingProduct(null); setProductForm(EMPTY_PRODUCT); setProductError(null); setShowProductModal(true); };
   const openEditProduct = (p: ProductRow) => {
@@ -676,6 +719,25 @@ const SupplierProfilePage: React.FC = () => {
           </InfoGrid>
         </Section>
 
+        {isOwnedExternal && buyerEntity.type !== 'owner' && (
+          <Section>
+            <SectionTitle>{t('billing.title', { defaultValue: 'Billing' })}</SectionTitle>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 14, color: '#0A2540', flex: 1, minWidth: 220 }}>
+                {billing?.invoice_cycle === 'monthly_soa'
+                  ? t('billing.monthlyLine', { defaultValue: 'Monthly statement — issued on day {{issue}} of each month, due on day {{due}}', issue: billing.soa_issue_day, due: billing.payment_due_day })
+                  : t('billing.immediateLine', { defaultValue: 'Per invoice — each delivery invoice is marked paid on its own' })}
+              </div>
+              <ThemedButton variant="secondary" onClick={openBilling}>{t('common:button.edit', { defaultValue: 'Edit' })}</ThemedButton>
+            </div>
+            {billing?.invoice_cycle === 'monthly_soa' && (
+              <div style={{ fontSize: 12, color: '#4B5563', marginTop: 8 }}>
+                {t('billing.monthlyHint', { defaultValue: "This supplier's invoices are bundled into one statement each month. Mark the statement paid once — single invoices can't be paid one by one." })}
+              </div>
+            )}
+          </Section>
+        )}
+
         <Section>
           <SectionTitle>{t('profile.catalog')}</SectionTitle>
           {isOwnedExternal && (
@@ -798,6 +860,46 @@ const SupplierProfilePage: React.FC = () => {
           {requestError && <ErrorBox>{requestError}</ErrorBox>}
         </form>
       </CommonModal>
+
+      {/* 외부 업체 «청구 방식» (2026-10-07 ⑩) */}
+      {billingOpen && (
+        <CommonModal
+          isOpen
+          onClose={() => setBillingOpen(false)}
+          title={t('billing.editTitle', { defaultValue: 'Billing method' }) as string}
+          size="small"
+          footer={<>
+            <ModalButton variant="secondary" onClick={() => setBillingOpen(false)}>{t('common:button.cancel', { defaultValue: 'Cancel' })}</ModalButton>
+            <ModalButton variant="primary" disabled={billingSaving} onClick={saveBilling}>{billingSaving ? '…' : t('common:button.save', { defaultValue: 'Save' })}</ModalButton>
+          </>}
+        >
+          {billingError && <ErrorBox style={{ marginTop: 0, marginBottom: 12 }}>{billingError}</ErrorBox>}
+          <UIFormGroup>
+            <FormLabel>{t('billing.cycle', { defaultValue: 'How this supplier bills you' })}</FormLabel>
+            <FormSelect value={billingForm.invoice_cycle} onChange={(e) => setBillingForm({ ...billingForm, invoice_cycle: e.target.value as 'immediate' | 'monthly_soa' })}>
+              <option value="immediate">{t('billing.immediate', { defaultValue: 'Per invoice' })}</option>
+              <option value="monthly_soa">{t('billing.monthly', { defaultValue: 'Monthly statement (SOA)' })}</option>
+            </FormSelect>
+          </UIFormGroup>
+          {billingForm.invoice_cycle === 'monthly_soa' && (
+            <div style={{ display: 'flex', gap: 12 }}>
+              <UIFormGroup style={{ flex: 1 }}>
+                <FormLabel>{t('billing.issueDay', { defaultValue: 'Statement day (each month)' })}</FormLabel>
+                <FormInput type="number" min="1" max="28" value={billingForm.soa_issue_day} onChange={(e) => setBillingForm({ ...billingForm, soa_issue_day: e.target.value })} />
+              </UIFormGroup>
+              <UIFormGroup style={{ flex: 1 }}>
+                <FormLabel>{t('billing.dueDay', { defaultValue: 'Payment due day (each month)' })}</FormLabel>
+                <FormInput type="number" min="1" max="28" value={billingForm.payment_due_day} onChange={(e) => setBillingForm({ ...billingForm, payment_due_day: e.target.value })} />
+              </UIFormGroup>
+            </div>
+          )}
+          <InfoBox>
+            {billingForm.invoice_cycle === 'monthly_soa'
+              ? t('billing.monthlyExplain', { defaultValue: 'On the statement day, all unpaid invoices from this supplier are bundled into one statement. Attach the SOA the supplier sends, check the difference, then mark the statement paid once.' })
+              : t('billing.immediateExplain', { defaultValue: 'Each delivery invoice is marked paid on its own.' })}
+          </InfoBox>
+        </CommonModal>
+      )}
 
       {/* 외부공급업체 상품 등록/수정 */}
       {showProductModal && (

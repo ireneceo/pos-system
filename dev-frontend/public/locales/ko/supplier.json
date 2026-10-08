@@ -96,7 +96,7 @@
       "totalProducts": "상품 수",
       "lowStock": "재고 부족",
       "outOfStock": "재고 없음",
-      "value": "총 가치"
+      "value": "재고 판매가치"
     },
     "actions": {
       "adjust": "재고 조정",
@@ -153,9 +153,9 @@
       "title": "배송 조건",
       "freeAbove": "이 금액 이상 주문하면 무료배송",
       "fee": "그 미만이면 배송비 (고정)",
-      "areas": "배송 가능 지역",
-      "areasPlaceholder": "예: Petaling Jaya, Selangor",
-      "areasHint": "어디에·언제 배송하는지 적어 주세요. 구매자가 발주할 때 보입니다 — 배송비 계산에는 쓰지 않습니다."
+      "areas": "배송 안내 메모 (요일·시간 등)",
+      "areasPlaceholder": "예: 화·금 오전 11시 전 배송",
+      "areasHint": "구매자가 발주할 때 보이는 안내입니다 — 배송비 계산에는 쓰지 않습니다."
     }
   },
   "invoices": {

@@ -202,6 +202,9 @@
     "onceOnly": "한 번만 삼",
     "invoicedLines": "대조 {{n}}건",
     "empty": "이 기간에 받은 발주가 없습니다",
-    "loadFailed": "불러오지 못했습니다"
+    "loadFailed": "불러오지 못했습니다",
+    "staffMealSpend": "직원식 비용",
+    "regularSpend": "일반 구매",
+    "staffMeal": "직원식"
   }
 }

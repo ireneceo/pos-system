@@ -15,6 +15,7 @@ const { Op } = require('sequelize');
 // 관계(include as: 'ingredient'/'recipe')를 쓰므로 **models 인덱스**에서 가져온다 —
 // 개별 파일을 직접 require 하면 관계가 등록되기 전 인스턴스를 잡을 수 있다.
 const { Recipe, RecipeIngredient, Ingredient, Product } = require('../models');
+const { convertQuantity } = require('../utils/recipeCost');
 
 // 재료가 쓸 수 있는 단위 — 'portion' 은 무게·부피가 아니라 재고로 셀 수 없다.
 const INGREDIENT_UNITS = ['kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'];
@@ -52,7 +53,7 @@ async function findProductsUsingRecipe(recipeId, { transaction } = {}) {
 async function computeUnitCostFromRecipe(recipe, { transaction } = {}) {
   const lines = await RecipeIngredient.findAll({
     where: { recipe_id: recipe.id },
-    include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'unit_cost', 'base_quantity'] }],
+    include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'unit', 'unit_cost', 'base_quantity'] }],
     transaction
   });
   let total = 0;
@@ -61,7 +62,9 @@ async function computeUnitCostFromRecipe(recipe, { transaction } = {}) {
     if (!ing) continue;
     const base = Number(ing.base_quantity) || 1;
     const perUnit = (Number(ing.unit_cost) || 0) / base;   // 재료 1단위 값
-    total += perUnit * (Number(l.quantity) || 0);
+    // 레시피 단위 → 재료 단위 환산(utils/recipeCost 와 같은 규칙). 안 되는 조합은 0 으로 센다.
+    const qty = convertQuantity(l.quantity, l.unit || ing.unit, ing.unit) || 0;
+    total += perUnit * qty;
   }
   const yieldAmount = Number(recipe.yield_amount) || 0;
   if (!(yieldAmount > 0)) return 0;

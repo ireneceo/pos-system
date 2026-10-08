@@ -1,4 +1,6 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { StandardSelect } from '../../UI/SelectComponents';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput } from '../../UI/Modal';
 import { InfoBox } from '../styles';
 import { IngredientStock } from '../types';
@@ -12,8 +14,13 @@ interface Props {
   onQuantityChange: (v: string) => void;
   notes: string;
   onNotesChange: (v: string) => void;
+  reasonCode: string;
+  onReasonCodeChange: (v: string) => void;
   onConfirm: () => void;
 }
+
+// 폐기 사유 코드 — 서버 utils/wasteReasons.js 와 같은 목록(장부 reason_code, 폐기 리포트가 이 코드로 나눈다)
+export const WASTE_REASONS = ['spoiled', 'expired', 'overcooked', 'breakage', 'prep_loss', 'other'] as const;
 
 const WasteModal: React.FC<Props> = ({
   isOpen,
@@ -23,8 +30,12 @@ const WasteModal: React.FC<Props> = ({
   onQuantityChange,
   notes,
   onNotesChange,
+  reasonCode,
+  onReasonCodeChange,
   onConfirm,
-}) => (
+}) => {
+  const { t } = useTranslation(['inventory']);
+  return (
   <Modal
     isOpen={isOpen}
     onClose={onClose}
@@ -35,7 +46,7 @@ const WasteModal: React.FC<Props> = ({
         <ModalButton variant="secondary" onClick={onClose}>
           Cancel
         </ModalButton>
-        <ModalButton variant="primary" onClick={onConfirm}>
+        <ModalButton variant="primary" onClick={onConfirm} disabled={!reasonCode}>
           Confirm Waste
         </ModalButton>
       </>
@@ -66,17 +77,26 @@ const WasteModal: React.FC<Props> = ({
           />
         </UIFormGroup>
         <UIFormGroup>
-          <FormLabel>Reason (Optional)</FormLabel>
+          <FormLabel>{t('inventory:wasteReason.label')} *</FormLabel>
+          <StandardSelect value={reasonCode} onChange={(e) => onReasonCodeChange(e.target.value)} required>
+            <option value="">{t('inventory:wasteReason.select')}</option>
+            {WASTE_REASONS.map(code => (
+              <option key={code} value={code}>{t(`inventory:wasteReason.${code}`)}</option>
+            ))}
+          </StandardSelect>
+        </UIFormGroup>
+        <UIFormGroup>
+          <FormLabel>{t('inventory:wasteReason.notes')}</FormLabel>
           <FormInput
             type="text"
             value={notes}
             onChange={(e) => onNotesChange(e.target.value)}
-            placeholder="e.g., Expired, Damaged"
           />
         </UIFormGroup>
       </>
     )}
   </Modal>
-);
+  );
+};
 
 export default WasteModal;

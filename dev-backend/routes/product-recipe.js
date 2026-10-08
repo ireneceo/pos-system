@@ -11,6 +11,7 @@ const {
   RestaurantIngredientCost
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
+const { convertQuantity } = require('../utils/recipeCost');
 
 // All routes require authentication
 router.use(authenticateToken);
@@ -39,6 +40,17 @@ function costPerUnit(ingredient, costMap) {
   if (!ingredient) return 0;
   const bq = parseFloat(ingredient.base_quantity) || 1;
   return (getEffectiveCost(ingredient, costMap) || 0) / bq;
+}
+
+// 레시피 한 줄의 원가 = 취급단위 1 당 원가 × (레시피 단위 → 재료 단위 환산 수량).
+//   환산이 안 되는 단위 조합이면 null(«모름») — 원래 수량을 그대로 곱해 틀린 값을 내지 않는다.
+//   단위 환산 규칙은 utils/recipeCost.convertQuantity 한 곳(저장 경로와 같은 식).
+function lineCost(ri, costMap) {
+  const ing = ri && ri.ingredient;
+  if (!ing) return null;
+  const qty = convertQuantity(ri.quantity, ri.unit || ing.unit, ing.unit);
+  if (qty === null) return null;
+  return costPerUnit(ing, costMap) * qty;
 }
 
 // Get product with recipe details
@@ -78,7 +90,7 @@ router.get('/restaurants/:restaurantId/products/:productId/recipe', async (req, 
     if (product.recipe && product.recipe.recipeIngredients) {
       product.recipe.recipeIngredients.forEach(ri => {
         if (ri.ingredient) {
-          const ingredientCost = costPerUnit(ri.ingredient, costMap) * parseFloat(ri.quantity);
+          const ingredientCost = (lineCost(ri, costMap) || 0);
           totalCost += ingredientCost;
         }
       });
@@ -113,7 +125,7 @@ router.get('/restaurants/:restaurantId/products/:productId/recipe', async (req, 
               unit: ri.unit,
               unit_cost: effectiveUnitCost,
               brand_cost: parseFloat(ri.ingredient?.unit_cost || 0),
-              total_cost: costPerUnit(ri.ingredient, costMap) * parseFloat(ri.quantity),
+              total_cost: lineCost(ri, costMap),
               current_stock: parseFloat(ri.ingredient?.current_stock || 0),
               notes: ri.notes
             };
@@ -142,7 +154,7 @@ router.get('/restaurants/:restaurantId/products/recipe-status', async (req, res)
         include: [{
           model: RecipeIngredient,
           as: 'recipeIngredients',
-          include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'unit_cost', 'base_quantity'] }]
+          include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'unit', 'unit_cost', 'base_quantity'] }]
         }]
       }],
       order: [['category', 'ASC'], ['name', 'ASC']]
@@ -159,7 +171,7 @@ router.get('/restaurants/:restaurantId/products/recipe-status', async (req, res)
         let recalculated = 0;
         p.recipe.recipeIngredients.forEach(ri => {
           if (ri.ingredient) {
-            recalculated += costPerUnit(ri.ingredient, costMap) * parseFloat(ri.quantity);
+            recalculated += (lineCost(ri, costMap) || 0);
           }
         });
         ingredientCost = recalculated;
@@ -275,7 +287,7 @@ router.post('/restaurants/:restaurantId/products/:productId/recipe', async (req,
     if (ingredients && ingredients.length > 0) {
       for (const ing of ingredients) {
         const ingredient = await Ingredient.findByPk(ing.ingredient_id);
-        const cost = costPerUnit(ingredient, costMap) * parseFloat(ing.quantity);
+        const cost = lineCost({ quantity: ing.quantity, unit: ing.unit, ingredient }, costMap) || 0;
         totalCost += cost;
 
         await RecipeIngredient.create({
@@ -348,7 +360,7 @@ router.put('/restaurants/:restaurantId/products/:productId/recipe/ingredients', 
     if (ingredients && ingredients.length > 0) {
       for (const ing of ingredients) {
         const ingredient = await Ingredient.findByPk(ing.ingredient_id);
-        const cost = costPerUnit(ingredient, costMap) * parseFloat(ing.quantity);
+        const cost = lineCost({ quantity: ing.quantity, unit: ing.unit, ingredient }, costMap) || 0;
         totalCost += cost;
 
         await RecipeIngredient.create({
@@ -408,7 +420,7 @@ router.get('/restaurants/:restaurantId/recipes/available', async (req, res) => {
       include: [{
         model: RecipeIngredient,
         as: 'recipeIngredients',
-        include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'unit_cost', 'base_quantity'] }]
+        include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'unit', 'unit_cost', 'base_quantity'] }]
       }],
       order: [['name', 'ASC']]
     });
@@ -421,7 +433,7 @@ router.get('/restaurants/:restaurantId/recipes/available', async (req, res) => {
         let effectiveTotal = 0;
         plain.recipeIngredients.forEach(ri => {
           if (ri.ingredient) {
-            effectiveTotal += costPerUnit(ri.ingredient, costMap) * parseFloat(ri.quantity);
+            effectiveTotal += (lineCost(ri, costMap) || 0);
           }
         });
         plain.effective_ingredient_cost = effectiveTotal;
@@ -458,7 +470,7 @@ router.get('/restaurants/:restaurantId/products/:productId/ingredient-cost', asy
           include: [{
             model: Ingredient,
             as: 'ingredient',
-            attributes: ['id', 'name', 'unit_cost', 'base_quantity']
+            attributes: ['id', 'name', 'unit', 'unit_cost', 'base_quantity']
           }]
         }]
       }]
@@ -491,7 +503,7 @@ router.get('/restaurants/:restaurantId/products/:productId/ingredient-cost', asy
     product.recipe.recipeIngredients?.forEach(ri => {
       const effectiveUnitCost = getEffectiveCost(ri.ingredient, costMap);
       const quantity = parseFloat(ri.quantity);
-      const cost = costPerUnit(ri.ingredient, costMap) * quantity;
+      const cost = lineCost(ri, costMap) || 0;
       totalCost += cost;
 
       ingredientBreakdown.push({

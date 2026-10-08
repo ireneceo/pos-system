@@ -9,6 +9,7 @@
  */
 
 const express = require('express');
+const stockLedger = require('../services/stockLedger');
 const router = express.Router();
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
@@ -626,11 +627,18 @@ router.post('/foodcourt-products', async (req, res) => {
       is_active: is_active !== false,
       after_meal: after_meal === true,
       sort_order: sort_order || 0,
-      current_stock: current_stock !== undefined ? current_stock : 0,
+      current_stock: 0, // 시작 재고는 아래 장부(initial)로 — 장부 없이 수량이 생기지 않게 (2026-10-08)
       low_stock_threshold: low_stock_threshold !== undefined ? low_stock_threshold : 0,
       lead_time_days: lead_time_days !== undefined ? lead_time_days : 0,
       sync_to_ingredients: sync_to_ingredients !== undefined ? !!sync_to_ingredients : true
     }, { transaction: t });
+    if ((parseFloat(current_stock) || 0) > 0) {
+      await stockLedger.record({
+        target: { kind: 'foodcourt_product', row: product }, entity: { type: 'foodcourt', id: product.foodcourt_id },
+        type: 'initial', setTo: parseFloat(current_stock), unit: product.unit || 'unit',
+        notes: 'Initial stock', userId: req.user?.id || null, transaction: t,
+      });
+    }
 
     if (Array.isArray(option_group_ids) && option_group_ids.length > 0) {
       // Verify each option group belongs to this foodcourt
@@ -721,11 +729,18 @@ router.put('/foodcourt-products/:productId', async (req, res) => {
       is_active: is_active !== undefined ? is_active : product.is_active,
       after_meal: after_meal !== undefined ? after_meal : product.after_meal,
       sort_order: sort_order !== undefined ? sort_order : product.sort_order,
-      current_stock: current_stock !== undefined ? current_stock : product.current_stock,
+      // current_stock 은 여기서 직접 안 쓴다 — 아래에서 장부(adjustment)로 맞춘다 (2026-10-08)
       low_stock_threshold: low_stock_threshold !== undefined ? low_stock_threshold : product.low_stock_threshold,
       lead_time_days: lead_time_days !== undefined ? lead_time_days : product.lead_time_days,
       sync_to_ingredients: sync_to_ingredients !== undefined ? !!sync_to_ingredients : product.sync_to_ingredients
     }, { transaction: t });
+    if (current_stock !== undefined && Math.round(((parseFloat(current_stock) || 0) - (parseFloat(product.current_stock) || 0)) * 100) !== 0) {
+      await stockLedger.record({
+        target: { kind: 'foodcourt_product', row: product }, entity: { type: 'foodcourt', id: product.foodcourt_id },
+        type: 'adjustment', setTo: parseFloat(current_stock) || 0, unit: product.unit || 'unit',
+        notes: 'Edited in product form', userId: req.user?.id || null, transaction: t,
+      });
+    }
 
     if (option_group_ids !== undefined) {
       await FoodcourtProductOptionGroupProduct.destroy({ where: { product_id: productId }, transaction: t });

@@ -77,9 +77,12 @@ router.get('/purchase-cost-report', async (req, res) => {
               ROUND(MIN(COALESCE(poi.invoiced_unit_price, poi.unit_price)), 4) min_price,
               ROUND(MAX(COALESCE(poi.invoiced_unit_price, poi.unit_price)), 4) max_price,
               SUM(poi.invoiced_unit_price IS NOT NULL) invoiced_lines,
-              MAX(COALESCE(po.received_at, po.updated_at)) last_at
+              MAX(COALESCE(po.received_at, po.updated_at)) last_at,
+              MAX(COALESCE(ic.is_staff_meal, 0)) is_staff_meal
          FROM purchase_order_items poi
          JOIN purchase_orders po ON po.id = poi.purchase_order_id
+         LEFT JOIN ingredients ing ON ing.id = poi.ingredient_id
+         LEFT JOIN ingredient_categories ic ON ic.id = ing.ingredient_category_id
         WHERE ${where.join(' AND ')}
         GROUP BY poi.ingredient_seller_product_id, name, poi.unit
         ORDER BY spend DESC
@@ -121,7 +124,9 @@ router.get('/purchase-cost-report', async (req, res) => {
         spread_pct: spreadPct,
         vs_avg_pct: vsAvgPct,
         invoiced_lines: Number(r.invoiced_lines || 0),
-        last_at: r.last_at
+        last_at: r.last_at,
+        // 직원식(비용) 분류 재료 — 재료 분류 파생(utils/poStaffMeal 과 같은 규칙, 2026-10-07 ⑪)
+        is_staff_meal: Number(r.is_staff_meal || 0) === 1
       };
     });
 
@@ -130,9 +135,13 @@ router.get('/purchase-cost-report', async (req, res) => {
       `SELECT DATE_FORMAT(COALESCE(po.received_at, po.updated_at), '%Y-%m') month,
               ROUND(SUM(COALESCE(poi.invoiced_unit_price, poi.unit_price)
                         * COALESCE(poi.invoiced_quantity, poi.quantity_ordered)), 2) spend,
+              ROUND(SUM(CASE WHEN ic.is_staff_meal = 1 THEN COALESCE(poi.invoiced_unit_price, poi.unit_price)
+                        * COALESCE(poi.invoiced_quantity, poi.quantity_ordered) ELSE 0 END), 2) staff_meal_spend,
               COUNT(DISTINCT po.id) orders
          FROM purchase_order_items poi
          JOIN purchase_orders po ON po.id = poi.purchase_order_id
+         LEFT JOIN ingredients ing ON ing.id = poi.ingredient_id
+         LEFT JOIN ingredient_categories ic ON ic.id = ing.ingredient_category_id
         WHERE ${where.join(' AND ')}
         GROUP BY month ORDER BY month`,
       { type: QueryTypes.SELECT, replacements: repl });
@@ -141,13 +150,21 @@ router.get('/purchase-cost-report', async (req, res) => {
       spend: a.spend + i.spend, items: a.items + 1, times: a.times + i.times
     }), { spend: 0, items: 0, times: 0 });
 
+    // 직원식 / 일반 나눔 — 품목 행에서 합한다(합계 totals.spend 와 같은 바탕이라 둘의 합이 늘 같다)
+    const byPurpose = items.reduce((a, i) => {
+      const k = i.is_staff_meal ? 'staff_meal' : 'regular';
+      a[k].spend = round2(a[k].spend + i.spend); a[k].lines += i.times;
+      return a;
+    }, { staff_meal: { spend: 0, lines: 0 }, regular: { spend: 0, lines: 0 } });
+
     res.json({
       success: true,
       data: {
         period: { start, end },
         totals: { spend: round2(totals.spend), items: totals.items, lines: totals.times },
+        by_purpose: byPurpose,
         items,
-        trend: trend.map((t) => ({ month: t.month, spend: round2(t.spend), orders: Number(t.orders) })),
+        trend: trend.map((t) => ({ month: t.month, spend: round2(t.spend), staff_meal_spend: round2(t.staff_meal_spend), orders: Number(t.orders) })),
         // 이 리포트는 관측이다 — 원가는 여전히 공급업체 현재가 하나다(설계 §8).
         note: 'observation_only'
       }

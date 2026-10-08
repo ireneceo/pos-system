@@ -35,6 +35,7 @@ interface StockTakeItem {
     unit: string;
     category: string;
     owner_type?: 'brand' | 'restaurant' | 'foodcourt';  // brand = 브랜드 표준 재료(정의는 브랜드 소유)
+    base_quantity?: number | string;  // unit_cost 는 이 양의 가격 — 금액 계산 때 나눈다
   };
 }
 
@@ -307,9 +308,12 @@ const CategoryHeader = styled.tr`
   }
 `;
 
-const StockTakePage: React.FC = () => {
+// mode='brand' = 본사 창고(BG 재고아이템) 실사 — 같은 화면, 서버만 /api/product-ingredients/stock-takes (2026-10-08)
+const StockTakePage: React.FC<{ mode?: 'restaurant' | 'brand' }> = ({ mode = 'restaurant' }) => {
   const { t } = useTranslation('inventory');
   const { user } = useAuth();
+  // 실사 확정·취소는 매니저 이상(서버 requireStockManager 와 같은 기준) — Staff 는 입력·중간 저장까지
+  const canFinalize = user?.role !== 'Staff';
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
@@ -325,6 +329,14 @@ const StockTakePage: React.FC = () => {
 
   // URL 파라미터 우선, 없으면 user의 restaurant_id 사용
   const restaurantId = urlRestaurantId ? parseInt(urlRestaurantId, 10) : user?.restaurant_id;
+  const isBrand = mode === 'brand';
+  // 화면 진입 가능 여부 — 매장 실사는 매장이 있어야, 본사 실사는 계정만 있으면
+  const scopeId = isBrand ? (user?.id ?? null) : restaurantId;
+  const apiBase = isBrand ? '/api/product-ingredients/stock-takes' : `/api/restaurants/${restaurantId}/stock-takes`;
+  // 부분 실사(2026-10-08) — 고른 분류만 센다. 비우면 전체
+  const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
+  const [pickedCategories, setPickedCategories] = useState<number[]>([]);
+  const [lastResult, setLastResult] = useState<{ skipped: number; moved: number } | null>(null);
 
   useEffect(() => {
     if (defaultCurrency) {
@@ -333,11 +345,11 @@ const StockTakePage: React.FC = () => {
   }, [defaultCurrency]);
 
   const fetchStockTakes = useCallback(async () => {
-    if (!restaurantId) return;
+    if (!scopeId) return;
 
     try {
       setLoading(true);
-      const response = await fetchAPI(`/api/restaurants/${restaurantId}/stock-takes?limit=20`);
+      const response = await fetchAPI(isBrand ? apiBase : `${apiBase}?limit=20`);
 
       if (response.success) {
         const stockTakes = response.data;
@@ -347,7 +359,7 @@ const StockTakePage: React.FC = () => {
         const inProgress = stockTakes.find((st: StockTake) => st.status === 'in_progress');
         if (inProgress) {
           // Fetch full details
-          const detailResponse = await fetchAPI(`/api/restaurants/${restaurantId}/stock-takes/${inProgress.id}`);
+          const detailResponse = await fetchAPI(`${apiBase}/${inProgress.id}`);
           if (detailResponse.success) {
             setCurrentStockTake(detailResponse.data);
             setLocalItems(detailResponse.data.items || []);
@@ -362,19 +374,32 @@ const StockTakePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [restaurantId]);
+  }, [scopeId, apiBase, isBrand]);
 
   useEffect(() => {
     fetchStockTakes();
   }, [fetchStockTakes]);
 
+  // 부분 실사용 분류 목록
+  useEffect(() => {
+    if (!scopeId) return;
+    const url = isBrand ? '/api/product-ingredient-categories' : `/api/restaurants/${restaurantId}/ingredient-categories`;
+    fetchAPI(url).then((r: any) => {
+      const d = r?.data;
+      const list = Array.isArray(d) ? d : [...(d?.own_categories || []), ...(d?.brand_categories || [])];
+      setCategories(list.filter((c: any) => c && c.id).map((c: any) => ({ id: c.id, name: c.name })));
+    }).catch(() => { /* 분류를 못 불러오면 전체 실사만 */ });
+  }, [scopeId, isBrand, restaurantId]);
+
   const handleStartStockTake = async () => {
-    if (!restaurantId) return;
+    if (!scopeId) return;
 
     try {
       setLoading(true);
-      const response = await fetchAPI(`/api/restaurants/${restaurantId}/stock-takes`, {
-        method: 'POST'
+      setLastResult(null);
+      const response = await fetchAPI(apiBase, {
+        method: 'POST',
+        body: JSON.stringify(pickedCategories.length ? { category_ids: pickedCategories } : {})
       });
 
       if (response.success) {
@@ -398,7 +423,9 @@ const StockTakePage: React.FC = () => {
           const actualStock = parseFloat(value as string);
           updated.actual_stock = actualStock;
           updated.variance = parseFloat(String(item.theoretical_stock)) - actualStock;
-          updated.variance_value = updated.variance * parseFloat(String(item.unit_cost));
+          // unit_cost = 기준양의 가격 → 취급단위 1 의 값으로 나눠 곱한다(서버 계산과 같은 식)
+          const baseQty = parseFloat(String(item.ingredient?.base_quantity ?? 1)) || 1;
+          updated.variance_value = updated.variance * (parseFloat(String(item.unit_cost)) / baseQty);
         }
 
         return updated;
@@ -408,7 +435,7 @@ const StockTakePage: React.FC = () => {
   };
 
   const handleSaveProgress = async () => {
-    if (!currentStockTake || !restaurantId) return;
+    if (!currentStockTake || !scopeId) return;
 
     try {
       setSaving(true);
@@ -422,7 +449,7 @@ const StockTakePage: React.FC = () => {
         }));
 
       await fetchAPI(
-        `/api/restaurants/${restaurantId}/stock-takes/${currentStockTake.id}/items`,
+        `${apiBase}/${currentStockTake.id}/items`,
         {
           method: 'PUT',
           body: JSON.stringify({ items: itemsToSave })
@@ -438,18 +465,16 @@ const StockTakePage: React.FC = () => {
   };
 
   const handleComplete = () => {
-    if (!currentStockTake || !restaurantId) return;
+    if (!currentStockTake || !scopeId) return;
 
-    const uncountedItems = localItems.filter(item => item.actual_stock === null);
-    if (uncountedItems.length > 0) {
-      return;
-    }
+    // 센 항목만 반영된다(안 센 항목은 그대로) — 하나도 안 셌으면 확정할 것이 없다
+    if (!localItems.some(item => item.actual_stock !== null)) return;
 
     setShowCompleteConfirm(true);
   };
 
   const confirmComplete = async () => {
-    if (!currentStockTake || !restaurantId) return;
+    if (!currentStockTake || !scopeId) return;
     setShowCompleteConfirm(false);
 
     try {
@@ -464,7 +489,7 @@ const StockTakePage: React.FC = () => {
       }));
 
       await fetchAPI(
-        `/api/restaurants/${restaurantId}/stock-takes/${currentStockTake.id}/items`,
+        `${apiBase}/${currentStockTake.id}/items`,
         {
           method: 'PUT',
           body: JSON.stringify({ items: itemsToSave })
@@ -473,11 +498,12 @@ const StockTakePage: React.FC = () => {
 
       // Complete the stock take
       const response = await fetchAPI(
-        `/api/restaurants/${restaurantId}/stock-takes/${currentStockTake.id}/complete`,
+        `${apiBase}/${currentStockTake.id}/complete`,
         { method: 'POST' }
       );
 
       if (response.success) {
+        setLastResult({ skipped: Number((response as any).skipped_count) || 0, moved: ((response as any).movement_since_start || []).length });
         fetchStockTakes();
       }
     } catch (error) {
@@ -488,17 +514,17 @@ const StockTakePage: React.FC = () => {
   };
 
   const handleCancel = () => {
-    if (!currentStockTake || !restaurantId) return;
+    if (!currentStockTake || !scopeId) return;
     setShowCancelConfirm(true);
   };
 
   const confirmCancel = async () => {
-    if (!currentStockTake || !restaurantId) return;
+    if (!currentStockTake || !scopeId) return;
     setShowCancelConfirm(false);
 
     try {
       const response = await fetchAPI(
-        `/api/restaurants/${restaurantId}/stock-takes/${currentStockTake.id}/cancel`,
+        `${apiBase}/${currentStockTake.id}/cancel`,
         { method: 'POST' }
       );
 
@@ -527,7 +553,7 @@ const StockTakePage: React.FC = () => {
     return acc;
   }, {} as Record<string, StockTakeItem[]>);
 
-  if (!restaurantId) {
+  if (!scopeId) {
     return (
       <>
         <Container>
@@ -563,7 +589,7 @@ const StockTakePage: React.FC = () => {
           <ActionSection>
             <Button
               variant="secondary"
-              onClick={() => window.location.href = `/restaurant/${restaurantId}/inventory`}
+              onClick={() => window.location.href = isBrand ? '/pos/brand-inventory' : `/restaurant/${restaurantId}/inventory`}
             >
               Back to Inventory
             </Button>
@@ -580,7 +606,7 @@ const StockTakePage: React.FC = () => {
                   <GuideStep>Enter the actual quantity in the "Actual Stock" column</GuideStep>
                   <GuideStep>{t('inventory:stockTakePage.ifTheresAVarianceSelectAReasonFromTheDropdown')}</GuideStep>
                   <GuideStep>Click "Save Progress" to save your work and continue later</GuideStep>
-                  <GuideStep>When all items are counted, click "Complete Stock Take" to finalize</GuideStep>
+                  <GuideStep>{t('inventory:stockTakePage.completeCountedOnly')}</GuideStep>
                 </GuideList>
               </GuideBox>
 
@@ -685,15 +711,19 @@ const StockTakePage: React.FC = () => {
             </SummaryCard>
 
             <ButtonGroup>
-              <ThemedButton variant="secondary" onClick={handleCancel} disabled={saving}>
-                Cancel
-              </ThemedButton>
+              {canFinalize && (
+                <ThemedButton variant="secondary" onClick={handleCancel} disabled={saving}>
+                  Cancel
+                </ThemedButton>
+              )}
               <ThemedButton variant="secondary" onClick={handleSaveProgress} disabled={saving}>
                 {saving ? 'Saving...' : 'Save Progress'}
               </ThemedButton>
-              <ThemedButton variant="primary" onClick={handleComplete} disabled={saving || countedItems < totalItems}>
-                {saving ? 'Processing...' : 'Complete Stock Take'}
-              </ThemedButton>
+              {canFinalize && (
+                <ThemedButton variant="primary" onClick={handleComplete} disabled={saving || countedItems === 0}>
+                  {saving ? 'Processing...' : 'Complete Stock Take'}
+                </ThemedButton>
+              )}
             </ButtonGroup>
           </>
         ) : (
@@ -708,6 +738,11 @@ const StockTakePage: React.FC = () => {
               </GuideList>
             </GuideBox>
 
+            {lastResult && (
+              <InfoBox>
+                {t('inventory:stockTakePage.completedResult', { skipped: lastResult.skipped, moved: lastResult.moved })}
+              </InfoBox>
+            )}
             <EmptyState>
               <EmptyTitle>{t('inventory:stockTakePage.readyToStart')}</EmptyTitle>
               <EmptyDescription>
@@ -715,6 +750,21 @@ const StockTakePage: React.FC = () => {
                 You can save your progress and continue later if needed.
                 Once completed, your stock levels will be updated automatically.
               </EmptyDescription>
+              {categories.length > 0 && (
+                <div style={{ margin: '0 0 16px', textAlign: 'left', width: '100%', maxWidth: 640 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540', marginBottom: 8 }}>{t('inventory:stockTakePage.partialTitle')}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {categories.map(c => (
+                      <label key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', border: '1px solid #E3E8EF', borderRadius: 8, fontSize: 13, cursor: 'pointer', background: pickedCategories.includes(c.id) ? '#EEF0FF' : '#FFFFFF' }}>
+                        <input type="checkbox" checked={pickedCategories.includes(c.id)}
+                          onChange={() => setPickedCategories(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])} />
+                        {c.name}
+                      </label>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6B7280', marginTop: 6 }}>{t('inventory:stockTakePage.partialHint')}</div>
+                </div>
+              )}
               <Button variant="primary" onClick={handleStartStockTake}>
                 Start Stock Take
               </Button>

@@ -949,6 +949,19 @@ router.post('/purchase-orders/:id/submit', async (req, res) => {
       }
       // 최소주문 — 옛 초안·담은 뒤 판매자가 MOQ 를 올린 경우의 안전망 (utils/poMinOrder.js · MinOrderError 로 던진다)
       await assertLinesMeetMinOrder(locked.items, { transaction: t });
+      // 배송비 제출 때 1회 재계산 (2026-10-07 Fable 배송 지역) — 담은 뒤 매장 주소(주)·판매자 지역이 바뀌었으면
+      //   제출 시점 값으로 맞춘다. 품목은 그대로라 subtotal 은 같아야 한다. 판매자 확인 후 동결 규칙은 그대로.
+      const subTotals = await computeTotalsWithDelivery(locked.items, locked,
+        { orderCurrency: locked.currency, tax_amount: locked.tax_amount });
+      if (Math.abs((parseFloat(locked.subtotal) || 0) - subTotals.subtotal) > 0.005) {
+        console.warn(`[po-submit] PO ${locked.id} subtotal ${locked.subtotal} → ${subTotals.subtotal} (라인 기준으로 맞춤)`);
+      }
+      await locked.update({
+        subtotal: subTotals.subtotal,
+        delivery_fee: subTotals.delivery_fee,
+        delivery_fee_basis: subTotals.delivery_fee_basis,
+        total_amount: subTotals.total_amount
+      }, { transaction: t });
       // Owner approval gate — restaurant POs only, when an Owner is connected
       // and operation_settings.requirePoOwnerApproval !== false (default ON).
       // 승인 게이트는 utils/poOwnerApproval 단일 소스 (submit / bulk / 외부전송 3경로 공유)

@@ -16,30 +16,33 @@ interface Props {
   /** 금액 표기(통화기호 포함). 기본은 판매자 통화(terms.currency, 없으면 MYR)의 기호 표기 — «RM 300.00». */
   money?: (n: number) => string;
   className?: string;
+  /** 배송 지역 이름 (2026-10-07 Fable) — 있으면 문장 뒤에 « · 지역» */
+  zoneName?: string | null;
 }
 
-const DeliveryTermsText: React.FC<Props> = ({ terms, money, className }) => {
+const DeliveryTermsText: React.FC<Props> = ({ terms, money, className, zoneName }) => {
   const { t } = useTranslation('common');
   // 사람이 보는 자리는 통화 기호로(저장=코드 MYR · 표시=기호 RM). 예전 기본값은 숫자만이라
   // «Free at 300.00 and above» 처럼 무슨 돈인지 안 보였다.
   const fmt = money || ((n: number) => formatCurrency(n, terms.currency || 'MYR'));
   const d = describeDeliveryTerms(terms);
+  const zone = zoneName ? ` · ${zoneName}` : '';
 
   if (d.kind === 'unset') {
-    return <span className={className}>{t('delivery.unset', '배송비 미설정 — 발주 화면에 배송비가 나오지 않습니다')}</span>;
+    return <span className={className}>{t('delivery.unset', '배송비 미설정 — 발주 화면에 배송비가 나오지 않습니다')}{zone}</span>;
   }
   if (d.kind === 'free') {
-    return <span className={className}>{t('delivery.free', '무료배송')}</span>;
+    return <span className={className}>{t('delivery.free', '무료배송')}{zone}</span>;
   }
   if (d.kind === 'always') {
-    return <span className={className}>{t('delivery.always', '배송비 항상 {{fee}}', { fee: fmt(d.fee as number) })}</span>;
+    return <span className={className}>{t('delivery.always', '배송비 항상 {{fee}}', { fee: fmt(d.fee as number) })}{zone}</span>;
   }
   return (
     <span className={className}>
       {t('delivery.threshold', '{{free}} 이상 무료 · 미만 {{fee}}', {
         free: fmt(d.free_above as number),
         fee: fmt(d.fee as number),
-      })}
+      })}{zone}
     </span>
   );
 };

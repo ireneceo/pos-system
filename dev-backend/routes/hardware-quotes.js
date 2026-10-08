@@ -3,6 +3,25 @@ const router = express.Router();
 const { HardwareQuote, SystemProduct, User, Restaurant, Invoice, InvoiceItem } = require('../models');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { Op } = require('sequelize');
+const { payerForUser } = require('./invoices-helpers');
+
+// 견적 청구서의 낼 사람 — 연결된 회원의 역할로 정한다(payerForUser 한 곳). 회원 없음·매핑 밖이면 외부 결제자.
+async function resolveQuotePayer(quote) {
+  const user = quote.user_id ? (quote.user || await User.findByPk(quote.user_id)) : null;
+  const p = payerForUser(user);
+  if (!p) return { isExternal: true, payer_type: 'external', payer_id: null, restaurant_id: quote.restaurant_id || null };
+  return { isExternal: false, payer_type: p.payer_type, payer_id: p.payer_id, restaurant_id: quote.restaurant_id || p.restaurant_id || null };
+}
+function externalPayerFields(quote) {
+  return {
+    external_payer_name: quote.contact_name,
+    external_payer_email: quote.contact_email,
+    external_payer_phone: quote.contact_phone,
+    external_payer_company: quote.company_name,
+    external_payer_address: quote.company_address,
+    external_payer_tax_id: quote.tax_id
+  };
+}
 
 // ============================================
 // Hardware Quotes Management (System Admin)
@@ -214,8 +233,9 @@ router.post('/:id/invoice', authenticateToken, requireRole('System Admin'), asyn
     const totalAmount = afterDiscount + chargesTotal;
 
     // Create invoice
+    const payer = await resolveQuotePayer(quote);
     const invoice = await Invoice.create({
-      restaurant_id: quote.restaurant_id || null,
+      restaurant_id: payer.restaurant_id,
       invoice_number: invoiceNumber,
       type: 'manual',
       invoice_category: 'hardware',
@@ -231,8 +251,9 @@ router.post('/:id/invoice', authenticateToken, requireRole('System Admin'), asyn
       issuer_type: 'system_admin',
       issued_by: req.user.id,
       issued_at: new Date(),
-      payer_type: 'restaurant',
-      payer_id: quote.user_id || null,
+      payer_type: payer.payer_type,
+      payer_id: payer.payer_id,
+      ...(payer.isExternal ? externalPayerFields(quote) : {}),
       additional_charges: charges.length > 0 ? charges : null,
       notes: [
         `Hardware Quote: ${quote.quote_number}`,
@@ -331,7 +352,8 @@ router.post('/:id/proceed', authenticateToken, requireRole('System Admin'), asyn
       return res.status(404).json({ success: false, message: 'Quote not found' });
     }
 
-    const isExternal = !quote.user_id;
+    const payer = await resolveQuotePayer(quote);
+    const isExternal = payer.isExternal;
 
     if (quote.status === 'invoiced') {
       return res.status(400).json({ success: false, message: 'Already processed' });
@@ -377,7 +399,7 @@ router.post('/:id/proceed', authenticateToken, requireRole('System Admin'), asyn
     seqNum++;
 
     const hwInvoice = await Invoice.create({
-      restaurant_id: quote.restaurant_id || null,
+      restaurant_id: payer.restaurant_id,
       invoice_number: hwInvoiceNumber,
       type: 'manual',
       invoice_category: 'hardware',
@@ -393,8 +415,8 @@ router.post('/:id/proceed', authenticateToken, requireRole('System Admin'), asyn
       issuer_type: 'system_admin',
       issued_by: req.user.id,
       issued_at: now,
-      payer_type: isExternal ? 'external' : 'restaurant',
-      payer_id: isExternal ? null : quote.user_id,
+      payer_type: payer.payer_type,
+      payer_id: payer.payer_id,
       ...(isExternal ? {
         external_payer_name: quote.contact_name,
         external_payer_email: quote.contact_email,
@@ -502,7 +524,7 @@ router.post('/:id/proceed', authenticateToken, requireRole('System Admin'), asyn
         }
 
         subInvoice = await Invoice.create({
-          restaurant_id: quote.restaurant_id || null,
+          restaurant_id: payer.restaurant_id,
           invoice_number: subInvoiceNumber,
           type: 'manual',
           invoice_category: 'subscription',
@@ -517,8 +539,8 @@ router.post('/:id/proceed', authenticateToken, requireRole('System Admin'), asyn
           issuer_type: 'system_admin',
           issued_by: req.user.id,
           issued_at: now,
-          payer_type: isExternal ? 'external' : 'restaurant',
-          payer_id: isExternal ? null : quote.user_id,
+          payer_type: payer.payer_type,
+          payer_id: payer.payer_id,
           ...(isExternal ? {
             external_payer_name: quote.contact_name,
             external_payer_email: quote.contact_email,

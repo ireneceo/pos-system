@@ -96,7 +96,7 @@
       "totalProducts": "Products",
       "lowStock": "Low Stock",
       "outOfStock": "Out of Stock",
-      "value": "Total Value"
+      "value": "Stock value (at selling price)"
     },
     "actions": {
       "adjust": "Adjust Stock",
@@ -153,9 +153,9 @@
       "title": "Delivery terms",
       "freeAbove": "Free delivery at or above this amount",
       "fee": "Delivery fee below that (fixed)",
-      "areas": "Delivery areas",
-      "areasPlaceholder": "e.g. Petaling Jaya, Selangor",
-      "areasHint": "Where and when you deliver. Shown to buyers when they order — not used to calculate the delivery fee."
+      "areas": "Delivery note (days, times)",
+      "areasPlaceholder": "e.g. Delivered Tue · Fri, before 11am",
+      "areasHint": "Shown to buyers when they order — not used to calculate the delivery fee."
     }
   },
   "invoices": {

@@ -12,6 +12,8 @@ import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { getCurrencySymbol } from '../../utils/currency';
 import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
+import DeliveryZonesEditor from '../../components/Common/DeliveryZonesEditor';
+import { DeliveryZone, readZones } from '../../utils/deliveryZones';
 interface CurrencyConfig {
   [code: string]: {
     symbol: string;
@@ -338,6 +340,20 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
     min_order_amount: '', delivery_fee: '', delivery_policy: ''
   });
   const [deliverySaving, setDeliverySaving] = useState(false);
+  // 배송 지역 (2026-10-07 Fable) — 매장 주소의 주(州)로 자동 매칭, 안 맞으면 위 기본 배송비
+  const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([]);
+  const saveDeliveryZones = async (zones: unknown[]) => {
+    if (!foodcourtId) return;
+    const res = await fetch(`/api/foodcourts/${foodcourtId}/payment-settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+      body: JSON.stringify({ delivery_zones: zones })
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.message || 'Failed to save');
+    }
+  };
   const [deliverySaved, setDeliverySaved] = useState(false);
 
   useEffect(() => {
@@ -399,6 +415,8 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
           delivery_fee: data.delivery_fee != null ? String(data.delivery_fee) : '',
           delivery_policy: data.delivery_policy || ''
         });
+        // 배송 지역 (2026-10-07 Fable)
+        setDeliveryZones(readZones(data.delivery_zones));
 
         // Set supported currencies from foodcourt settings (filtered by system-allowed currencies)
         if (data.supported_currencies && Array.isArray(data.supported_currencies)) {
@@ -672,20 +690,27 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
             </div>
             <div style={{ marginTop: 16 }}>
               <label style={{ display: 'block', fontSize: 13, color: '#0A2540', marginBottom: 6 }}>
-                {t('foodcourt:foodcourtPaymentSettingsPage.deliveryAreas', 'Delivery areas')}
+                {t('foodcourt:foodcourtPaymentSettingsPage.deliveryAreas', 'Delivery note (days, times)')}
               </label>
               <textarea
                 rows={2} maxLength={500}
-                placeholder={t('foodcourt:foodcourtPaymentSettingsPage.deliveryAreasPlaceholder', 'e.g. Petaling Jaya, Selangor') as string}
+                placeholder={t('foodcourt:foodcourtPaymentSettingsPage.deliveryAreasPlaceholder', 'e.g. Delivered Tue · Fri, before 11am') as string}
                 value={deliveryTerms.delivery_policy}
                 onChange={(e) => { setDeliveryTerms(p => ({ ...p, delivery_policy: e.target.value })); setDeliverySaved(false); }}
                 onBlur={saveDeliveryTerms}
                 style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }}
               />
               <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
-                {t('foodcourt:foodcourtPaymentSettingsPage.deliveryAreasHint', 'Where and when you deliver. Shown to stores when they order — not used to calculate the delivery fee.')}
+                {t('foodcourt:foodcourtPaymentSettingsPage.deliveryAreasHint', 'Shown to stores when they order — not used to calculate the delivery fee.')}
               </div>
             </div>
+            <DeliveryZonesEditor
+              zones={deliveryZones}
+              onChange={setDeliveryZones}
+              onCommit={saveDeliveryZones}
+              defaultFee={deliveryTerms.delivery_fee === '' ? null : Number(deliveryTerms.delivery_fee)}
+              currency={defaultCurrency}
+            />
             <div style={{ marginTop: 10, padding: '10px 12px', background: '#F8FAFC',
                           border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 13, color: '#4B5563' }}>
               <DeliveryTermsText terms={{

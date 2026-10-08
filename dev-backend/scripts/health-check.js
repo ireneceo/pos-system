@@ -963,6 +963,200 @@ function defineSecurityTests({ customerToken, member, restId }) {
     }
   });
 
+  // ──────────────────────────────────────────────────────────────────────────────
+  // 외부 공급업체 월별 정산서 (2026-10-07 Fable 판정 ⑩ · docs/TRADE_STRUCTURE.md ⑩) — 계약 6건
+  //   데모 매장 38 에 외부 업체 2곳(월별 1 · 건별 1)을 심고 발주 2건(받음 + 거래 청구서)을 만든다.
+  //   이름 표지 ZZ-HC-EXTSOA- — 시작 때 지난 실행 잔재를 쓸어내고 ⑥ 끝에서 전부 지운다(멱등).
+  // ──────────────────────────────────────────────────────────────────────────────
+  const XS = { ready: false };
+  const xsFail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+  async function xsCleanup() {
+    const { sequelize } = require('../config/database');
+    const [scs] = await sequelize.query("SELECT id FROM supplier_companies WHERE name LIKE 'ZZ-HC-EXTSOA-%'");
+    const ids = scs.map(r => r.id);
+    if (!ids.length) return;
+    const [pos] = await sequelize.query("SELECT id FROM purchase_orders WHERE seller_type = 'supplier' AND seller_entity_id IN (:ids)", { replacements: { ids } });
+    const [soas] = await sequelize.query("SELECT id FROM invoices WHERE issuer_type = 'supplier' AND issuer_id IN (:ids) AND invoice_category = 'soa'", { replacements: { ids } });
+    if (soas.length) {
+      const sid = soas.map(r => r.id);
+      await sequelize.query('UPDATE invoices SET parent_soa_invoice_id = NULL WHERE parent_soa_invoice_id IN (:sid)', { replacements: { sid } });
+      await sequelize.query('DELETE FROM invoices WHERE id IN (:sid)', { replacements: { sid } });
+    }
+    await sequelize.query("DELETE FROM cash_movements WHERE reason LIKE 'SOA SOA-%' AND purchase_order_id IS NULL AND restaurant_id = 38 AND reason LIKE '%supplier statement difference'");
+    if (pos.length) await hcCleanupPurchaseOrders(pos.map(r => r.id), { waitMs: 0 });
+    await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id IN (:ids)', { replacements: { ids } });
+    await sequelize.query('DELETE FROM supplier_companies WHERE id IN (:ids)', { replacements: { ids } });
+  }
+  async function xsSetup() {
+    if (XS.ready) return XS;
+    const { sequelize } = require('../config/database');
+    await xsCleanup();
+    const [[ra]] = await sequelize.query("SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 AND is_active = 1 LIMIT 1");
+    if (!ra) return null;
+    XS.auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    XS.raId = ra.id;
+    const stamp = Date.now();
+    const m = await request('POST', '/external-suppliers', { name: `ZZ-HC-EXTSOA-M-${stamp}`, billing: { invoice_cycle: 'monthly_soa', soa_issue_day: 1, payment_due_day: 15 } }, XS.auth);
+    const p = await request('POST', '/external-suppliers', { name: `ZZ-HC-EXTSOA-P-${stamp}` }, XS.auth);
+    if (m.status !== 201 || p.status !== 201) { console.log(c.gray(`      (업체 생성 ${m.status}/${p.status} ${JSON.stringify(m.body).slice(0, 160)})`)); return null; }
+    XS.monthly = m.body.data.supplier.id; XS.plain = p.body.data.supplier.id;
+    XS.createBilling = m.body.data.billing;
+    const { PurchaseOrder, PurchaseOrderItem, SupplierContract } = require('../models');
+    const { createTradeInvoice } = require('../services/purchaseOrderService');
+    const mkPo = async (scId, total) => {
+      const ct = await SupplierContract.findOne({ where: { supplier_company_id: scId, entity_type: 'restaurant', entity_id: 38, status: 'active' } });
+      const po = await PurchaseOrder.create({
+        po_number: `ZZ-HC-EXTSOA-${scId}-${total}-${stamp}`, entity_type: 'restaurant', entity_id: 38,
+        seller_type: 'supplier', seller_entity_id: scId, contract_id: ct ? ct.id : null,
+        status: 'received', subtotal: total, total_amount: total, created_by_user_id: ra.id, received_at: new Date(),
+      });
+      await PurchaseOrderItem.create({ purchase_order_id: po.id, description: 'ZZ-HC-EXTSOA item', quantity_ordered: 1, quantity_received: 1, unit_price: total, line_total: total });
+      const inv = await createTradeInvoice(po);
+      await po.reload();
+      return { po, inv };
+    };
+    XS.a = await mkPo(XS.monthly, 100);
+    XS.b = await mkPo(XS.monthly, 50);
+    XS.c = await mkPo(XS.plain, 30);
+    XS.ready = true;
+    return XS;
+  }
+
+  test('payment', '외부 월별 정산서 ① 청구 방식 저장·조회 + 조건 없는 외부 청구서는 건별 그대로', async () => {
+    try {
+      const x = await xsSetup(); if (!x) { console.log(c.gray('      (건너뜀: 데모 매장 RA 없음)')); return true; }
+      if (x.createBilling?.invoice_cycle !== 'monthly_soa') return xsFail(`생성 billing ${JSON.stringify(x.createBilling)}`);
+      const put = await request('PUT', `/external-suppliers/${x.monthly}`, { billing: { invoice_cycle: 'monthly_soa', soa_issue_day: 3, payment_due_day: 20 } }, x.auth);
+      if (put.status !== 200 || put.body.data?.billing?.payment_due_day !== 20) return xsFail(`PUT ${put.status} ${JSON.stringify(put.body.data?.billing)}`);
+      const bad = await request('PUT', `/external-suppliers/${x.monthly}`, { billing: { invoice_cycle: 'monthly_soa', soa_issue_day: 31 } }, x.auth);
+      if (bad.status !== 400) return xsFail(`발행일 31 → ${bad.status}`);
+      const list = await request('GET', '/external-suppliers', null, x.auth);
+      const row = (list.body.data || []).find(r => r.id === x.monthly);
+      const plain = (list.body.data || []).find(r => r.id === x.plain);
+      if (!row || row.billing?.soa_issue_day !== 3 || row.billing?.invoice_cycle !== 'monthly_soa') return xsFail(`GET billing ${JSON.stringify(row && row.billing)}`);
+      if (!plain || (plain.billing && plain.billing.invoice_cycle !== 'immediate')) return xsFail(`건별 업체 billing ${JSON.stringify(plain && plain.billing)}`);
+      // NET 키는 외부에 쓰지 않는다 · 월별 자식 청구서 마감일은 비운다
+      const { sequelize } = require('../config/database');
+      const [[ct]] = await sequelize.query("SELECT payment_terms FROM supplier_contracts WHERE supplier_company_id = :id AND entity_type='restaurant' AND entity_id=38 AND status='active'", { replacements: { id: x.monthly } });
+      const pt = typeof ct.payment_terms === 'string' ? JSON.parse(ct.payment_terms) : ct.payment_terms;
+      if (pt.terms) return xsFail(`NET 키가 쓰였다: ${pt.terms}`);
+      if (x.a.inv.due_date) return xsFail(`월별 자식 마감일 ${x.a.inv.due_date}`);
+      // 회귀 0: 조건 없는 외부 청구서 → pay_via_soa false
+      const inv = await request('GET', '/invoices/restaurant/38', null, x.auth);   // 매장 청구서 화면이 쓰는 목록
+      const arr = Array.isArray(inv.body) ? inv.body : (inv.body.data?.invoices || inv.body.data || []);
+      const cRow = arr.find(i => Number(i.id) === Number(x.c.inv.id));
+      const aRow = arr.find(i => Number(i.id) === Number(x.a.inv.id));
+      if (!cRow || !aRow) return xsFail(`목록에 청구서 없음 c=${!!cRow} a=${!!aRow}`);
+      const pv = (r) => r.pay_via_soa ?? r.payViaSoa;
+      if (pv(cRow) !== false) return xsFail(`건별 외부 pay_via_soa=${pv(cRow)}`);
+      if (pv(aRow) !== true) return xsFail(`월별 외부 pay_via_soa=${pv(aRow)}`);
+      return true;
+    } catch (e) { return xsFail(`예외: ${e.message}`); }
+  });
+
+  test('payment', '외부 월별 정산서 ② 월별 업체 건별 «결제함» 400 pay_via_soa · 발주 Pay 400 PAY_VIA_SOA', async () => {
+    try {
+      const x = await xsSetup(); if (!x) return true;
+      const mp = await request('POST', `/invoices/${x.a.inv.id}/mark-paid-external`, { payment_method: 'cash' }, x.auth);
+      if (mp.status !== 400 || mp.body?.code !== 'pay_via_soa') return xsFail(`mark-paid ${mp.status} ${mp.body?.code}`);
+      const pay = await request('POST', `/purchase-orders/${x.a.po.id}/pay`, { payment_method: 'cash' }, x.auth);
+      if (pay.status !== 400 || pay.body?.code !== 'PAY_VIA_SOA') return xsFail(`PO Pay ${pay.status} ${pay.body?.code}`);
+      const { sequelize } = require('../config/database');
+      const [[after]] = await sequelize.query('SELECT payment_status FROM purchase_orders WHERE id = :id', { replacements: { id: x.a.po.id } });
+      if (after.payment_status === 'paid') return xsFail('결제가 기록됨');
+      return true;
+    } catch (e) { return xsFail(`예외: ${e.message}`); }
+  });
+
+  test('payment', '외부 월별 정산서 ③ «지금 만들기» → 정산서 1장·자식 묶임 · 가입 공급업체 403', async () => {
+    try {
+      const x = await xsSetup(); if (!x) return true;
+      const { sequelize } = require('../config/database');
+      // 기간은 **매장 달력** 날짜 — UTC 날짜를 쓰면 +8 매장에서 오늘 만든 청구서가 기간 밖으로 빠진다
+      const { getRestaurantTimezone, getCurrentLocalDate } = require('../utils/dateTimeHelper');
+      const today = getCurrentLocalDate(await getRestaurantTimezone(38));
+      const r = await request('POST', `/purchase-invoices/soa/external/${x.monthly}/issue`, { period_start: '2026-01-01', period_end: today }, x.auth);
+      if (r.status !== 200 || !r.body.data?.issued || !r.body.data?.soa_id) return xsFail(`issue ${r.status} ${JSON.stringify(r.body).slice(0, 200)}`);
+      x.soaId = r.body.data.soa_id;
+      const [kids] = await sequelize.query('SELECT id FROM invoices WHERE parent_soa_invoice_id = :s ORDER BY id', { replacements: { s: x.soaId } });
+      const want = [x.a.inv.id, x.b.inv.id].sort((p, q) => p - q);
+      if (JSON.stringify(kids.map(k => k.id)) !== JSON.stringify(want)) return xsFail(`자식 ${JSON.stringify(kids)} ≠ ${JSON.stringify(want)}`);
+      const [[soa]] = await sequelize.query('SELECT total_amount, status, due_date FROM invoices WHERE id = :s', { replacements: { s: x.soaId } });
+      if (Number(soa.total_amount) !== 150 || soa.status !== 'pending_payment' || !soa.due_date) return xsFail(`정산서 ${JSON.stringify(soa)}`);
+      const plain = await request('POST', `/purchase-invoices/soa/external/${x.plain}/issue`, {}, x.auth);
+      if (plain.status !== 400 || plain.body?.code !== 'BAD_TERMS') return xsFail(`건별 업체 ${plain.status} ${plain.body?.code}`);
+      const [[reg]] = await sequelize.query('SELECT id FROM supplier_companies WHERE is_system_registered = 1 LIMIT 1');
+      if (reg) {
+        const g = await request('POST', `/purchase-invoices/soa/external/${reg.id}/issue`, {}, x.auth);
+        if (g.status !== 403 || g.body?.code !== 'NOT_EXTERNAL') return xsFail(`가입 공급업체 ${g.status} ${g.body?.code}`);
+      }
+      return true;
+    } catch (e) { return xsFail(`예외: ${e.message}`); }
+  });
+
+  test('payment', '외부 월별 정산서 ④ 공급업체 SOA 총액 확정 → 차액 줄·총액·이력 1줄 · 같은 값 재저장 이력 0', async () => {
+    try {
+      const x = await xsSetup(); if (!x || !x.soaId) return xsFail('③ 정산서 없음');
+      const { sequelize } = require('../config/database');
+      const body = { document: { url: '/uploads/invoices/zz-hc-extsoa.pdf', filename: 'zz.pdf', number: 'SUP-SOA-9', date: '2026-10-01', total: 157.5 }, note: 'hc' };
+      const r = await request('POST', `/invoices/${x.soaId}/soa-reconcile`, body, x.auth);
+      if (r.status !== 200 || r.body.total !== 157.5 || r.body.difference !== 7.5 || r.body.changed !== true) return xsFail(`reconcile ${r.status} ${JSON.stringify(r.body).slice(0, 220)}`);
+      const r2 = await request('POST', `/invoices/${x.soaId}/soa-reconcile`, body, x.auth);
+      if (r2.status !== 200 || r2.body.changed !== false) return xsFail(`재저장 changed=${r2.body.changed}`);
+      const [[soa]] = await sequelize.query('SELECT total_amount, modification_history h, external_document d FROM invoices WHERE id = :s', { replacements: { s: x.soaId } });
+      const h = typeof soa.h === 'string' ? JSON.parse(soa.h) : (soa.h || []);
+      const d = typeof soa.d === 'string' ? JSON.parse(soa.d) : soa.d;
+      if (Number(soa.total_amount) !== 157.5 || h.filter(e => e.source === 'soa_reconcile').length !== 1 || d?.number !== 'SUP-SOA-9') return xsFail(`저장 ${soa.total_amount} 이력 ${h.length} 문서 ${JSON.stringify(d)}`);
+      const badUrl = await request('POST', `/invoices/${x.soaId}/soa-reconcile`, { document: { url: 'http://evil/x.pdf' } }, x.auth);
+      if (badUrl.status !== 400) return xsFail(`외부 URL ${badUrl.status}`);
+      const notSoa = await request('POST', `/invoices/${x.c.inv.id}/soa-reconcile`, { document: { total: 1 } }, x.auth);
+      if (notSoa.status !== 400 || notSoa.body?.code !== 'NOT_SOA') return xsFail(`정산서 아님 ${notSoa.status} ${notSoa.body?.code}`);
+      return true;
+    } catch (e) { return xsFail(`예외: ${e.message}`); }
+  });
+
+  test('payment', '외부 월별 정산서 ⑤ 묶인 청구서 총액 수정 → 미결제 정산서 합계가 따라간다', async () => {
+    try {
+      const x = await xsSetup(); if (!x || !x.soaId) return xsFail('③ 정산서 없음');
+      const { sequelize } = require('../config/database');
+      const r = await request('POST', `/purchase-orders/${x.b.po.id}/reconcile`, { total_only: true, invoice: { total: 55, number: 'ZZ-INV-B' } }, x.auth);
+      if (r.status !== 200) return xsFail(`reconcile ${r.status} ${JSON.stringify(r.body).slice(0, 200)}`);
+      const [[soa]] = await sequelize.query('SELECT total_amount, subtotal, modification_history h FROM invoices WHERE id = :s', { replacements: { s: x.soaId } });
+      const h = typeof soa.h === 'string' ? JSON.parse(soa.h) : (soa.h || []);
+      // 자식 합 100+55 = 155, 차액 줄 7.5 유지 → 162.5
+      if (Number(soa.subtotal) !== 155 || Number(soa.total_amount) !== 162.5) return xsFail(`정산서 소계 ${soa.subtotal} 총액 ${soa.total_amount}`);
+      if (!h.some(e => e.source === 'soa_child_sync')) return xsFail('따라가기 이력 없음');
+      return true;
+    } catch (e) { return xsFail(`예외: ${e.message}`); }
+  });
+
+  test('payment', '외부 월별 정산서 ⑥ 정산서 «결제함»(현금) → 자식·발주 전부 결제됨 · 두 번째 409 · 결제 뒤 잠김', async () => {
+    try {
+      const x = await xsSetup(); if (!x || !x.soaId) return xsFail('③ 정산서 없음');
+      const { sequelize } = require('../config/database');
+      const r = await request('POST', `/invoices/${x.soaId}/mark-paid-external`, { payment_method: 'cash', paid_at: new Date().toISOString().slice(0, 10) }, x.auth);
+      if (r.status !== 200) return xsFail(`결제함 ${r.status} ${JSON.stringify(r.body).slice(0, 220)}`);
+      if ((r.body.paid_children || []).length !== 2 || (r.body.paid_purchase_orders || []).length !== 2) return xsFail(`응답 ${JSON.stringify(r.body).slice(0, 220)}`);
+      const [rows] = await sequelize.query('SELECT i.status s, p.payment_status ps FROM invoices i JOIN purchase_orders p ON p.trade_invoice_id = i.id WHERE i.parent_soa_invoice_id = :s', { replacements: { s: x.soaId } });
+      if (rows.length !== 2 || rows.some(q => q.s !== 'paid' || q.ps !== 'paid')) return xsFail(`자식 ${JSON.stringify(rows)}`);
+      const [[soa]] = await sequelize.query('SELECT status, paid_amount, total_amount FROM invoices WHERE id = :s', { replacements: { s: x.soaId } });
+      if (soa.status !== 'paid' || Number(soa.paid_amount) !== Number(soa.total_amount)) return xsFail(`정산서 ${JSON.stringify(soa)}`);
+      // 금고: 시프트가 열려 있으면 발주 2줄 + 차액 1줄, 없으면 drawerSkipped
+      const mv = r.body.cash_movement_ids || [];
+      if (!r.body.drawerSkipped && mv.length !== 3) return xsFail(`금고 ${mv.length}줄`);
+      if (mv.length) await sequelize.query('DELETE FROM cash_movements WHERE id IN (:ids)', { replacements: { ids: mv } });
+      const again = await request('POST', `/invoices/${x.soaId}/mark-paid-external`, { payment_method: 'cash' }, x.auth);
+      if (again.status !== 409) return xsFail(`두 번째 ${again.status}`);
+      const { followChildToSoa } = require('../services/externalSoa');
+      const Invoice = require('../models/Invoice');
+      const child = await Invoice.findByPk(x.a.inv.id);
+      const lock = await followChildToSoa(child, { prevChildTotal: 1 });
+      if (!lock.soa_locked) return xsFail(`결제된 정산서 잠김 아님 ${JSON.stringify(lock)}`);
+      return true;
+    } catch (e) { return xsFail(`예외: ${e.message}`); }
+    finally { await xsCleanup().catch((e) => console.log(c.gray(`      (정리 실패: ${e.message})`))); }
+  });
+
   // 2026-10-07 판매자 결제 설정 = 계정(회사) 하나 (Fable 판정 fable-verdict-20261007-payment-settings-account.md §6-A).
   //   설정 화면은 기본 브랜드 행에만 저장하는데 청구서 결제창은 발행 브랜드 행을 읽어, 같은 주인의 둘째 브랜드 청구서가
   //   «Payment Not Available» 이었다(운영 K-DINE 10-05). 데모 BG(브랜드 10·17)로 저장 → 형제에 같은 값 → 결제창 반영.
@@ -1713,8 +1907,11 @@ function definePosTests({ adminToken }) {
 
   test('pos', '브랜드 재고: 주문 차감도 오버레이를 깎는다 (브랜드 행 불변)', async () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, '../services/inventoryDeductionService.js'), 'utf8');
+    // 2026-10-08: 재고 쓰기는 services/stockLedger.record() 를 거친다 — 오버레이 규칙(applyStock/stockFor)은 그 안에 있다
+    const ledgerSrc = require('fs').readFileSync(require('path').join(__dirname, '../services/stockLedger.js'), 'utf8');
     // 차감이 Ingredient.update({current_stock}) 로 돌아가면 입고(오버레이)와 장부가 갈라진다
-    const usesOverlay = /applyStock\(/.test(src) && /stockFor\(/.test(src);
+    const usesOverlay = (/applyStock\(/.test(src) || (/stockLedger\.record\(/.test(src) && /applyStock\(/.test(ledgerSrc)))
+      && /stockFor\(/.test(src) && /stockFor\(/.test(ledgerSrc);
     const directWrite = /Ingredient\.update\(\s*\{\s*current_stock/.test(src);
     // FIFO 배치도 매장 스코프여야 형제 매장 배치를 소진하지 않는다
     const scopedFifo = /restaurant_id: restaurantId/.test(src);
@@ -2715,6 +2912,143 @@ function defineReservationTests({ customerToken }) {
 // 쓰기가 필요한 검사는 **트랜잭션 안에서 하고 롤백**한다 — 잔재를 남기지 않는다.
 // ==========================================================================
 function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgToken, adminToken } = {}) {
+  // ── 재고 장부 = 단일 진실 (2026-10-08 · Fable 판정 Ⅱ-2) ─────────────────────────
+  //   재고 수량은 services/stockLedger.record() 하나로만 바뀌고, 장부 줄에 금액·사유가 남는다.
+  //   이 계약이 깨지면 재고 총액·기간 원가·폐기 금액이 조용히 틀어진다 — 데모 매장에서 매번 확인한다.
+  test('inventory', '장부 ① 폐기 사유 필수 · 장부 = 실제 바뀐 양 · 금액 · 장부 합 = 현재고', async () => {
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 RA 없음 — 계약 미검증)')); return true; }
+    const { sequelize } = require('../config/database');
+    const auth = { Authorization: `Bearer ${demoRaToken}` };
+    const tag = `ZZ-HC-LEDGER-${Date.now()}`;
+    let ingId = null;
+    try {
+      const [id] = await sequelize.query(`INSERT INTO ingredients (name, restaurant_id, owner_type, unit, base_quantity, unit_cost, current_stock, min_stock, is_active, created_at, updated_at)
+        VALUES (?, ?, 'restaurant', 'g', 1000, 20, 0, 0, 1, NOW(), NOW())`, { replacements: [tag, demoRestId] });
+      ingId = id;
+      const init = await request('POST', `/restaurants/${demoRestId}/inventory/initial`, { items: [{ ingredient_id: ingId, quantity: 100 }] }, auth);
+      const w0 = await request('POST', `/restaurants/${demoRestId}/inventory/waste`, { ingredient_id: ingId, quantity: 5 }, auth);
+      const w1 = await request('POST', `/restaurants/${demoRestId}/inventory/waste`, { ingredient_id: ingId, quantity: 500, reason_code: 'spoiled' }, auth);
+      const rows = await sequelize.query(`SELECT transaction_type, quantity_change, cost_value, reason_code FROM inventory_transactions WHERE ingredient_id = ? ORDER BY id`, { replacements: [ingId], type: sequelize.QueryTypes.SELECT });
+      const [cur] = await sequelize.query(`SELECT current_stock FROM ingredients WHERE id = ?`, { replacements: [ingId], type: sequelize.QueryTypes.SELECT });
+      const sum = rows.reduce((a, r) => a + Number(r.quantity_change), 0);
+      const ok = init.status === 200 && w0.status === 400 && w1.status === 200 && w1.body?.clamped === true
+        && rows.length === 2 && Number(rows[0].cost_value) === 2 && rows[1].reason_code === 'spoiled'
+        && Number(rows[1].quantity_change) === -100 && Number(rows[1].cost_value) === -2
+        && Math.abs(sum - Number(cur.current_stock)) < 0.01;
+      if (!ok) console.log(c.red(`      ↳ ${JSON.stringify({ init: init.status, w0: w0.status, w1: w1.status, rows, cur })}`));
+      return ok;
+    } finally {
+      if (ingId) {
+        await sequelize.query('DELETE FROM inventory_transactions WHERE ingredient_id = ?', { replacements: [ingId] });
+        await sequelize.query('DELETE FROM stock_alerts WHERE ingredient_id = ?', { replacements: [ingId] });
+        await sequelize.query('DELETE FROM ingredients WHERE id = ?', { replacements: [ingId] });
+      }
+    }
+  });
+
+  test('security', '장부 ② Staff 는 재고 조정·초기재고·실사 확정 403 (입고·폐기는 허용)', async () => {
+    const { sequelize } = require('../config/database');
+    const [staff] = await sequelize.query(`SELECT u.id, u.restaurant_id FROM users u JOIN restaurants r ON r.id = u.restaurant_id
+       WHERE u.role = 'Staff' AND u.is_active = 1 AND r.is_demo = 1 LIMIT 1`, { type: sequelize.QueryTypes.SELECT });
+    const pick = staff || (await sequelize.query(`SELECT id, restaurant_id FROM users WHERE role = 'Staff' AND is_active = 1 AND restaurant_id IS NOT NULL LIMIT 1`, { type: sequelize.QueryTypes.SELECT }))[0];
+    if (!pick) { console.log(c.gray('      (건너뜀: 매장 소속 Staff 없음 — 계약 미검증)')); return true; }
+    const auth = { Authorization: `Bearer ${jwt.sign({ userId: pick.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    const rid = pick.restaurant_id;
+    const adj = await request('POST', `/restaurants/${rid}/inventory/adjust`, { ingredient_id: 0, quantity: 0 }, auth);
+    const ini = await request('POST', `/restaurants/${rid}/inventory/initial`, { items: [] }, auth);
+    const cmp = await request('POST', `/restaurants/${rid}/stock-takes/0/complete`, {}, auth);
+    const sum = await request('GET', `/restaurants/${rid}/inventory/summary`, null, auth);
+    // 폐기 허용 확인은 수량 0(장부·재고 무변화)으로 — 실매장일 수 있으니 아무것도 바꾸지 않는다
+    const ok = adj.status === 403 && ini.status === 403 && cmp.status === 403 && sum.status === 200;
+    if (!ok) console.log(c.red(`      ↳ adjust ${adj.status} · initial ${ini.status} · complete ${cmp.status} · summary ${sum.status}`));
+    return ok;
+  });
+
+  test('inventory', '원가 ① 기간 원가 리포트 = 장부 (매입 1.00 · 판매 0.40 · 폐기 0.10 · 실사 −0.05 → 실제 0.55)', async () => {
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 RA 없음 — 계약 미검증)')); return true; }
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const stockLedger = require('../services/stockLedger');
+    const auth = { Authorization: `Bearer ${demoRaToken}` };
+    const tag = `ZZ-HC-COST-${Date.now()}`;
+    let ingId = null;
+    try {
+      const [id] = await sequelize.query(`INSERT INTO ingredients (name, restaurant_id, owner_type, unit, base_quantity, unit_cost, current_stock, min_stock, is_active, created_at, updated_at)
+        VALUES (?, ?, 'restaurant', 'g', 1000, 10, 0, 0, 1, NOW(), NOW())`, { replacements: [tag, demoRestId] });
+      ingId = id;
+      const step = (type, opts) => sequelize.transaction(async (t) => {
+        const row = await M.Ingredient.findByPk(ingId, { transaction: t });
+        return stockLedger.record({ target: { kind: 'ingredient', row }, restaurantId: demoRestId, type, transaction: t, ...opts });
+      });
+      await step('purchase', { delta: 100, cost: { unit_cost: 10, base_quantity: 1000 } });
+      await step('order_deduct', { delta: -40 });
+      await step('waste', { delta: -10, reasonCode: 'spoiled' });
+      await step('stock_take', { setTo: 45 });
+      const [rest] = await sequelize.query('SELECT operation_settings FROM restaurants WHERE id = ?', { replacements: [demoRestId], type: sequelize.QueryTypes.SELECT });
+      let tz = 'Asia/Kuala_Lumpur';
+      try { const os = typeof rest.operation_settings === 'string' ? JSON.parse(rest.operation_settings) : rest.operation_settings; tz = (os && os.timeZone) || tz; } catch (e) { /* 기본 시간대 */ }
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: tz });
+      const r = await request('GET', `/restaurants/${demoRestId}/reports/food-cost?start=${today}&end=${today}`, null, auth);
+      const L = (r.body?.data?.lines || []).find(x => x.id === ingId);
+      const ok = r.status === 200 && L && L.opening_value === 0 && L.purchase_value === 1 && L.closing_value === 0.45
+        && L.actual_usage === 0.55 && L.theoretical_usage === 0.4 && L.waste_value === 0.1 && L.unexplained_variance === 0.05;
+      if (!ok) console.log(c.red(`      ↳ ${r.status} ${JSON.stringify(L || r.body).slice(0, 300)}`));
+      return ok;
+    } finally {
+      if (ingId) {
+        for (const tb of ['inventory_transactions', 'stock_alerts', 'inventory_batches']) await sequelize.query(`DELETE FROM ${tb} WHERE ingredient_id = ?`, { replacements: [ingId] });
+        await sequelize.query('DELETE FROM ingredients WHERE id = ?', { replacements: [ingId] });
+      }
+    }
+  });
+
+  test('security', '원가 ② 재고 총액·준비도·원가 리포트는 남의 매장 403', async () => {
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 RA 없음 — 계약 미검증)')); return true; }
+    const { sequelize } = require('../config/database');
+    // 남의 매장은 «재고 모듈이 켜진» 곳으로 고른다 — 모듈 게이트가 먼저 403 을 내면 접근 검사가 빠져도 통과해 버린다(고장주입으로 확인)
+    const { Restaurant } = require('../models');
+    const { resolveRestaurantModules } = require('../middleware/requireModule');
+    let other = null;
+    for (const r of await Restaurant.findAll({ where: { id: { [require('sequelize').Op.ne]: demoRestId } }, order: [['id', 'ASC']], limit: 40 })) {
+      if ((await resolveRestaurantModules(r)).includes('inventory_management')) { other = r; break; }
+    }
+    if (!other) { console.log(c.gray('      (건너뜀: 재고 모듈이 켜진 다른 매장 없음 — 계약 미검증)')); return true; }
+    const auth = { Authorization: `Bearer ${demoRaToken}` };
+    const own = await request('GET', `/restaurants/${demoRestId}/inventory/valuation`, null, auth);
+    const codes = [];
+    for (const path of ['inventory/valuation', 'inventory/readiness', 'reports/food-cost?start=2026-10-01&end=2026-10-02', 'reports/waste?start=2026-10-01&end=2026-10-02']) {
+      codes.push((await request('GET', `/restaurants/${other.id}/${path}`, null, auth)).status);
+    }
+    const ok = own.status === 200 && codes.every(cd => cd === 403);
+    if (!ok) console.log(c.red(`      ↳ own ${own.status} · other ${codes.join(',')}`));
+    return ok;
+  });
+
+  test('inventory', '장부 ③ BG 재고아이템 PUT 은 수량을 안 바꾼다 · adjust-stock 은 장부와 함께', async () => {
+    if (!demoBgToken) { console.log(c.gray('      (건너뜀: 데모 브랜드 관리자 없음 — 계약 미검증)')); return true; }
+    const { sequelize } = require('../config/database');
+    const auth = { Authorization: `Bearer ${demoBgToken}` };
+    let piId = null;
+    try {
+      const cr = await request('POST', '/product-ingredients', { name: `ZZ-HC-LEDGER-PI-${Date.now()}`, unit: 'piece', base_quantity: 1, unit_cost: 2, current_stock: 7 }, auth);
+      piId = cr.body?.data?.id;
+      if (!piId) { console.log(c.red(`      ↳ 생성 ${cr.status}`)); return false; }
+      const put = await request('PUT', `/product-ingredients/${piId}`, { current_stock: 99 }, auth);
+      const adj = await request('POST', `/product-ingredients/${piId}/adjust-stock`, { new_quantity: 3 }, auth);
+      const [row] = await sequelize.query('SELECT current_stock FROM product_ingredients WHERE id = ?', { replacements: [piId], type: sequelize.QueryTypes.SELECT });
+      const led = await sequelize.query('SELECT quantity_change FROM inventory_transactions WHERE product_ingredient_id = ? ORDER BY id', { replacements: [piId], type: sequelize.QueryTypes.SELECT });
+      const ok = put.status === 200 && adj.status === 200 && Number(row.current_stock) === 3
+        && led.length === 2 && Number(led[0].quantity_change) === 7 && Number(led[1].quantity_change) === -4;
+      if (!ok) console.log(c.red(`      ↳ ${JSON.stringify({ put: put.status, adj: adj.status, row, led })}`));
+      return ok;
+    } finally {
+      if (piId) {
+        await sequelize.query('DELETE FROM inventory_transactions WHERE product_ingredient_id = ?', { replacements: [piId] });
+        await sequelize.query('DELETE FROM product_ingredients WHERE id = ?', { replacements: [piId] });
+      }
+    }
+  });
+
   const svc = require('../services/inventoryDeductionService');
 
 
@@ -2806,6 +3140,117 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }, { Authorization: `Bearer ${ctx2.token}` });
     return r.body?.data?.id || null;
   }
+
+  // ──────────────────────────────────────────────────────────────────────────────
+  // 발주 «직원식» 구분 (2026-10-07 Fable 판정 ⑪ · docs/TRADE_STRUCTURE.md ⑪) — 계약 4건
+  //   데모 매장 38 에 분류 2개(직원식 1 · 일반 1) + 재료 2개 + 받은 발주 1건(두 줄). 표지 ZZ-HC-STAFF-, 시작·끝에 정리(멱등).
+  // ──────────────────────────────────────────────────────────────────────────────
+  const SM = { ready: false };
+  const smFail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+  async function smCleanup() {
+    const { sequelize } = require('../config/database');
+    const [pos] = await sequelize.query("SELECT id FROM purchase_orders WHERE po_number LIKE 'ZZ-HC-STAFF-%'");
+    if (pos.length) await hcCleanupPurchaseOrders(pos.map(r => r.id), { waitMs: 0 });
+    await sequelize.query("DELETE FROM ingredients WHERE restaurant_id = 38 AND name LIKE 'ZZ-HC-STAFF-%'");
+    await sequelize.query("DELETE FROM ingredient_categories WHERE restaurant_id = 38 AND (name LIKE 'ZZ-HC-STAFF-%' OR name IN ('ZZ staff meal','ZZ 직원식','ZZ 스탭밀'))");
+  }
+  async function smSetup() {
+    if (SM.ready) return SM;
+    const { sequelize } = require('../config/database');
+    await smCleanup();
+    const [[ra]] = await sequelize.query("SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 AND is_active = 1 LIMIT 1");
+    if (!ra) return null;
+    SM.auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const stamp = Date.now();
+    const a = await request('POST', '/restaurants/38/ingredient-categories', { name: `ZZ-HC-STAFF-S-${stamp}` }, SM.auth);
+    const b = await request('POST', '/restaurants/38/ingredient-categories', { name: `ZZ-HC-STAFF-R-${stamp}` }, SM.auth);
+    if (!a.body?.data?.id || !b.body?.data?.id) { console.log(c.gray(`      (분류 생성 ${a.status}/${b.status})`)); return null; }
+    SM.staffCat = a.body.data.id; SM.regCat = b.body.data.id;
+    const { Ingredient, PurchaseOrder, PurchaseOrderItem } = require('../models');
+    const mkIng = (name, cat) => Ingredient.create({ owner_type: 'restaurant', restaurant_id: 38, name, unit: 'kg', package_quantity: 1, unit_cost: 1, ingredient_category_id: cat });
+    SM.staffIng = await mkIng(`ZZ-HC-STAFF-ING-S-${stamp}`, SM.staffCat);
+    SM.regIng = await mkIng(`ZZ-HC-STAFF-ING-R-${stamp}`, SM.regCat);
+    const po = await PurchaseOrder.create({ po_number: `ZZ-HC-STAFF-${stamp}`, entity_type: 'restaurant', entity_id: 38, seller_type: 'supplier', seller_entity_id: null, status: 'received', subtotal: 32, total_amount: 32, created_by_user_id: ra.id, received_at: new Date() });
+    await PurchaseOrderItem.create({ purchase_order_id: po.id, ingredient_id: SM.staffIng.id, description: `ZZ-HC-STAFF-LINE-S-${stamp}`, quantity_ordered: 2, unit_price: 10, line_total: 20 });
+    await PurchaseOrderItem.create({ purchase_order_id: po.id, ingredient_id: SM.regIng.id, description: `ZZ-HC-STAFF-LINE-R-${stamp}`, quantity_ordered: 3, unit_price: 4, line_total: 12 });
+    SM.po = po; SM.ready = true;
+    return SM;
+  }
+
+  test('inventory', '직원식 ① 분류 «직원식» 표시 저장 → 목록에 그대로', async () => {
+    try {
+      const s = await smSetup(); if (!s) { console.log(c.gray('      (건너뜀: 데모 매장 RA 없음)')); return true; }
+      const put = await request('PUT', `/restaurants/38/ingredient-categories/${s.staffCat}`, { is_staff_meal: true }, s.auth);
+      if (put.status !== 200) return smFail(`PUT ${put.status}`);
+      const g = await request('GET', '/restaurants/38/ingredient-categories', null, s.auth);
+      const own = g.body?.data?.own_categories || [];
+      const st = own.find(x => x.id === s.staffCat); const rg = own.find(x => x.id === s.regCat);
+      if (!st || st.is_staff_meal !== true || !rg || rg.is_staff_meal !== false) return smFail(`GET ${JSON.stringify([st && st.is_staff_meal, rg && rg.is_staff_meal])}`);
+      return true;
+    } catch (e) { return smFail(`예외: ${e.message}`); }
+  });
+
+  test('inventory', '직원식 ② 발주 목록·상세 줄 is_staff_meal · 직원식/일반 합계', async () => {
+    try {
+      const s = await smSetup(); if (!s) return true;
+      const d = await request('GET', `/purchase-orders/${s.po.id}`, null, s.auth);
+      const items = d.body?.data?.items || [];
+      const si = items.find(i => i.ingredient_id === s.staffIng.id); const ri = items.find(i => i.ingredient_id === s.regIng.id);
+      if (!si || si.is_staff_meal !== true || !ri || ri.is_staff_meal !== false) return smFail(`상세 줄 ${JSON.stringify(items.map(i => [i.ingredient_id, i.is_staff_meal]))}`);
+      if (d.body.data.staff_meal_total !== 20 || d.body.data.regular_total !== 12) return smFail(`상세 합계 ${d.body.data.staff_meal_total}/${d.body.data.regular_total}`);
+      const l = await request('GET', '/purchase-orders?include=items&limit=200&status=received', null, s.auth);
+      const row = (l.body?.data || []).find(r => r.id === s.po.id);
+      if (!row) return smFail('목록에 없음');
+      if (row.staff_meal_total !== 20 || row.regular_total !== 12 || !(row.items || []).some(i => i.is_staff_meal === true)) return smFail(`목록 ${row.staff_meal_total}/${row.regular_total}`);
+      return true;
+    } catch (e) { return smFail(`예외: ${e.message}`); }
+  });
+
+  test('inventory', '직원식 ③ 구매 비용 보고서 by_purpose 합 = 전체 · 직원식 줄 포함', async () => {
+    try {
+      const s = await smSetup(); if (!s) return true;
+      const { getRestaurantTimezone, getCurrentLocalDate } = require('../utils/dateTimeHelper');
+      const today = getCurrentLocalDate(await getRestaurantTimezone(38));
+      const r = await request('GET', `/purchase-cost-report?start=2020-01-01&end=${today}`, null, s.auth);
+      const d = r.body?.data;
+      if (r.status !== 200 || !d?.by_purpose) return smFail(`보고서 ${r.status}`);
+      const sum = Math.round((d.by_purpose.staff_meal.spend + d.by_purpose.regular.spend) * 100) / 100;
+      if (sum !== d.totals.spend) return smFail(`합 ${sum} ≠ 전체 ${d.totals.spend}`);
+      const it = (d.items || []).find(i => String(i.name).startsWith('ZZ-HC-STAFF-LINE-S-'));
+      if (!it || it.is_staff_meal !== true || d.by_purpose.staff_meal.spend < 20) return smFail(`직원식 품목 ${JSON.stringify(it && { s: it.is_staff_meal, sp: it.spend })} · 직원식 합 ${d.by_purpose.staff_meal.spend}`);
+      if (!(d.trend || []).some(t => t.staff_meal_spend >= 20)) return smFail('월별 직원식 열 없음');
+      return true;
+    } catch (e) { return smFail(`예외: ${e.message}`); }
+  });
+
+  test('inventory', '직원식 ④ 분류 표시 마이그 멱등 (이름 변형 3종 → 1회차 3건 · 2회차 0건)', async () => {
+    const { sequelize } = require('../config/database');
+    const run = () => require('child_process').execFileSync('node', [require('path').join(__dirname, 'migrate-staff-meal-category-flag.js')], { encoding: 'utf8' });
+    try {
+      const s = await smSetup(); if (!s) return true;
+      // 매장 소유 분류 이름 변형 3종(공백·대소문자) — 마이그는 «Staff Meal / 직원식 / 스탭밀» 을 공백 무시로 본다
+      const names = ['Staff  meal', '직원식', '스탭밀'];
+      const ids = [];
+      for (const n of names) {
+        const [[ex]] = await sequelize.query('SELECT id FROM ingredient_categories WHERE restaurant_id = 38 AND name = :n', { replacements: { n } });
+        if (ex) return smFail(`데모 매장에 이미 «${n}» 분류가 있다 — 픽스처 충돌`);
+        const [id] = await sequelize.query("INSERT INTO ingredient_categories (owner_type, restaurant_id, name, display_order, is_active, is_staff_meal, created_at, updated_at) VALUES ('restaurant', 38, :n, 999, 1, 0, NOW(), NOW())", { replacements: { n } });
+        ids.push(id);
+      }
+      SM.migIds = ids;
+      const out1 = run();
+      const hit1 = ids.filter(id => out1.includes(`#${id} `)).length;
+      const out2 = run();
+      const m2 = out2.match(/켠 분류 (\d+)건/);
+      if (hit1 !== 3) return smFail(`1회차 ${hit1}건 · ${out1.split('\n').slice(-3).join(' | ')}`);
+      if (!m2 || m2[1] !== '0') return smFail(`2회차 ${m2 && m2[1]}`);
+      return true;
+    } catch (e) { return smFail(`예외: ${e.message}`); }
+    finally {
+      if (SM.migIds && SM.migIds.length) await sequelize.query('DELETE FROM ingredient_categories WHERE id IN (:ids)', { replacements: { ids: SM.migIds } }).catch(() => {});
+      await smCleanup().catch((e) => console.log(c.gray(`      (정리 실패: ${e.message})`)));
+    }
+  });
 
   test('inventory', '직접구매 orphan sweep (멱등 — 데모 매장만)', async () => {
     await dpCleanup();
@@ -6342,6 +6787,258 @@ function defineReferralTests({ adminToken, customerToken, restaurantAdminToken }
 // 배경: dev 레스토랑 5 결제설정이 cash+staffMeal 2개로 줄고 첫 항목 라벨 누락.
 // 가드(settingsGuard)는 wipe 를 막지만, 그게 실제로 작동하는지 + 설정 데이터
 // 무결성(모든 결제수단 label 존재)을 매 검증/배포마다 자동 확인한다.
+// ============================================
+// 청구서 «낼 쪽» 권한 경계 · 하드웨어 청구서 낼 사람 (2026-10-07 Fable 판정 [1]·[2] ·
+//   .claude/fable-verdict-20261007-invoice-payer.md). 데모 매장 38 · 데모 브랜드 1(소유 BG) 에 표지 ZZ-HC-INVB- 청구서를
+//   심고 끝에 전부 지운다(시작 때도 지난 잔재를 쓸어낸다 — 멱등). 메일 발송 경로 없음.
+// ============================================
+function defineInvoiceBoundaryTests() {
+  const MARK = 'ZZ-HC-INVB-';
+  const say = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+  let F = null; // 픽스처 — 첫 케이스가 만든다
+
+  async function sweep() {
+    const { sequelize } = require('../config/database');
+    const [qs] = await sequelize.query(`SELECT id, invoice_id, subscription_invoice_id FROM hardware_quotes WHERE quote_number LIKE '${MARK}%'`);
+    const hwInv = qs.flatMap(q => [q.invoice_id, q.subscription_invoice_id]).filter(Boolean);
+    const [own] = await sequelize.query(`SELECT id FROM invoices WHERE invoice_number LIKE '${MARK}%'`);
+    const ids = [...own.map(r => r.id), ...hwInv];
+    if (qs.length) await sequelize.query(`DELETE FROM hardware_quotes WHERE quote_number LIKE '${MARK}%'`);
+    if (ids.length) {
+      await sequelize.query('UPDATE invoices SET parent_soa_invoice_id = NULL WHERE parent_soa_invoice_id IN (:ids)', { replacements: { ids } });
+      await sequelize.query('DELETE FROM invoice_items WHERE invoice_id IN (:ids)', { replacements: { ids } });
+      await sequelize.query('DELETE FROM invoices WHERE id IN (:ids)', { replacements: { ids } });
+    }
+  }
+
+  async function fixtures() {
+    if (F) return F;
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const sign = (id) => ({ Authorization: `Bearer ${jwtLib.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+    const one = async (sql) => (await sequelize.query(sql, { type: sequelize.QueryTypes.SELECT }))[0];
+    const rest = await one('SELECT id FROM restaurants WHERE id = 38 AND is_demo = 1');
+    const ra = await one("SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 AND is_active = 1 ORDER BY id LIMIT 1");
+    const staff = await one("SELECT id FROM users WHERE role = 'Staff' AND restaurant_id = 38 AND is_active = 1 ORDER BY id LIMIT 1");
+    const brand = await one(`SELECT b.id, b.owner_id FROM brands b JOIN users u ON u.id = b.owner_id
+        WHERE b.is_demo = 1 AND u.role = 'Brand General' AND u.brand_id = b.id AND u.is_active = 1 ORDER BY b.id LIMIT 1`);
+    const sup = await one("SELECT id FROM users WHERE role = 'Supplier Admin' AND is_active = 1 ORDER BY id LIMIT 1");
+    const admin = await one("SELECT id FROM users WHERE role = 'System Admin' ORDER BY id LIMIT 1");
+    if (!rest || !ra || !staff || !brand || !sup || !admin) return null;
+    await sweep();
+    const stamp = Date.now();
+    const Invoice = require('../models/Invoice');
+    const mk = (tag, o) => Invoice.create({
+      invoice_number: `${MARK}${tag}-${stamp}`, type: 'manual', invoice_category: 'service', subtotal: o.total ?? 100,
+      total_amount: o.total ?? 100, currency: 'MYR', status: 'pending_payment', issuer_type: 'brand', issuer_id: brand.id,
+      issued_by: brand.owner_id, issued_at: new Date(), due_date: new Date(Date.now() + 7 * 864e5),
+      payer_type: 'restaurant', payer_id: 38, restaurant_id: 38, ...o });
+    const A = await mk('A', {});
+    const Z1 = await mk('Z1', { total: 0, payer_id: null });
+    const Z2 = await mk('Z2', { total: 0, issuer_type: 'system_admin', issuer_id: null, issued_by: admin.id, payer_type: 'brand_manager', payer_id: brand.owner_id, restaurant_id: null });
+    const D = await mk('D', { total: 10 });
+    const P = await mk('P', {});
+    const mkSoa = async (tag) => {
+      const s = await mk(tag, { invoice_category: 'soa', total: 100 });
+      const k1 = await mk(`${tag}-C1`, { invoice_category: 'trade', total: 50, parent_soa_invoice_id: s.id });
+      const k2 = await mk(`${tag}-C2`, { invoice_category: 'trade', total: 50, parent_soa_invoice_id: s.id });
+      return { id: s.id, kids: [k1.id, k2.id] };
+    };
+    F = { ra: sign(ra.id), staff: sign(staff.id), bg: sign(brand.owner_id), sup: sign(sup.id), admin: sign(admin.id),
+          raId: ra.id, bgId: brand.owner_id, A: A.id, Z1: Z1.id, Z2: Z2.id, D: D.id, P: P.id,
+          S1: await mkSoa('S1'), S2: await mkSoa('S2'), stamp };
+    return F;
+  }
+  const st = async (id) => {
+    const { sequelize } = require('../config/database');
+    const r = (await sequelize.query('SELECT status, total_amount FROM invoices WHERE id = ?', { replacements: [id], type: sequelize.QueryTypes.SELECT }))[0];
+    return r || null;
+  };
+  const kidsStatus = async (kids) => (await Promise.all(kids.map(st))).map(r => r && r.status);
+  const soaMismatch = async (soaId) => {
+    const { sequelize } = require('../config/database');
+    const { MISMATCH_FROM_SQL } = require('../services/soaChildSync');
+    const [[{ n }]] = await sequelize.query(`SELECT COUNT(*) n ${MISMATCH_FROM_SQL} AND p.id = ${Number(soaId)}`);
+    return Number(n);
+  };
+  const skip = () => { console.log(c.gray('      (건너뜀: 데모 매장 38·데모 브랜드·Staff·공급업체 계정 중 없음)')); return true; };
+
+  test('invoice-boundary', '① 낼 매장 RA 가 금액 있는 자기 청구서 PATCH paid → 403 · 상태 그대로', async () => {
+    const f = await fixtures(); if (!f) return skip();
+    const r = await request('PATCH', `/invoices/${f.A}/status`, { status: 'paid' }, f.ra);
+    const s = await st(f.A);
+    if (r.status !== 403) return say(`PATCH ${r.status}`);
+    return s.status === 'pending_payment' || say(`상태 ${s.status}`);
+  });
+  test('invoice-boundary', '② 낼 매장 Staff cancelled · RA draft → 둘 다 403', async () => {
+    const f = await fixtures(); if (!f) return skip();
+    const a = await request('PATCH', `/invoices/${f.A}/status`, { status: 'cancelled' }, f.staff);
+    const b = await request('PATCH', `/invoices/${f.A}/status`, { status: 'draft' }, f.ra);
+    const s = await st(f.A);
+    if (a.status !== 403 || b.status !== 403) return say(`Staff ${a.status} · RA ${b.status}`);
+    return s.status === 'pending_payment' || say(`상태 ${s.status}`);
+  });
+  test('invoice-boundary', '③ 0원 확정은 낼 쪽 그대로 — 매장(payer_id 빈 것)·브랜드 결제자 본인 200', async () => {
+    const f = await fixtures(); if (!f) return skip();
+    const a = await request('PATCH', `/invoices/${f.Z1}/status`, { status: 'paid', paid_amount: 0 }, f.ra);
+    const b = await request('PATCH', `/invoices/${f.Z2}/status`, { status: 'paid', paid_amount: 0 }, f.bg);
+    const [sa, sb] = [await st(f.Z1), await st(f.Z2)];
+    if (a.status !== 200 || b.status !== 200) return say(`매장 ${a.status} · 브랜드 ${b.status}`);
+    return (sa.status === 'paid' && sb.status === 'paid') || say(`상태 ${sa.status}/${sb.status}`);
+  });
+  test('invoice-boundary', '④ 발행자 BG 가 정산서 PATCH paid → 200 · 묶인 청구서 2건 paid · 불일치 0', async () => {
+    const f = await fixtures(); if (!f) return skip();
+    const r = await request('PATCH', `/invoices/${f.S1.id}/status`, { status: 'paid' }, f.bg);
+    const ks = await kidsStatus(f.S1.kids);
+    if (r.status !== 200) return say(`PATCH ${r.status}`);
+    if (ks.some(s => s !== 'paid')) return say(`자식 ${ks.join(',')}`);
+    return (await soaMismatch(f.S1.id)) === 0 || say('불일치 남음');
+  });
+  test('invoice-boundary', '⑤ DELETE — 낼 매장 RA·공급업체 403(행 남음) · 발행자 BG 200(행 삭제)', async () => {
+    const f = await fixtures(); if (!f) return skip();
+    const a = await request('DELETE', `/invoices/${f.D}`, null, f.ra);
+    const b = await request('DELETE', `/invoices/${f.D}`, null, f.sup);
+    if (a.status !== 403 || b.status !== 403) return say(`RA ${a.status} · 공급업체 ${b.status}`);
+    if (!(await st(f.D))) return say('403 인데 행이 사라짐');
+    const c2 = await request('DELETE', `/invoices/${f.D}`, null, f.bg);
+    if (c2.status !== 200) return say(`발행자 ${c2.status}`);
+    return !(await st(f.D)) || say('발행자 삭제 뒤 행 남음');
+  });
+  test('invoice-boundary', '⑥ PUT — 낼 매장 RA 금액 수정 403(총액 그대로) · 발행자 BG 200', async () => {
+    const f = await fixtures(); if (!f) return skip();
+    const a = await request('PUT', `/invoices/${f.P}`, { amount: 1, total: 1 }, f.ra);
+    const sa = await st(f.P);
+    if (a.status !== 403) return say(`RA ${a.status}`);
+    if (Number(sa.total_amount) !== 100) return say(`총액 ${sa.total_amount}`);
+    const b = await request('PUT', `/invoices/${f.P}`, { notes: 'hc' }, f.bg);
+    return b.status === 200 || say(`발행자 ${b.status} ${JSON.stringify(b.body).slice(0, 120)}`);
+  });
+  test('invoice-boundary', '⑦ 정산서 결제 제출→거절→제출→확인 — 묶인 청구서 따라감 · 불일치 0', async () => {
+    const f = await fixtures(); if (!f) return skip();
+    const S = f.S2;
+    const steps = [
+      ['submit', () => request('POST', `/invoices/${S.id}/submit-payment`, { notes: 'hc' }, f.ra), 'payment_submitted'],
+      ['reject', () => request('POST', `/invoices/${S.id}/reject-payment`, { reason: 'hc' }, f.bg), null],
+      ['submit2', () => request('POST', `/invoices/${S.id}/submit-payment`, { notes: 'hc' }, f.ra), 'payment_submitted'],
+      ['confirm', () => request('POST', `/invoices/${S.id}/confirm-payment`, { notes: 'hc' }, f.bg), 'paid'],
+    ];
+    for (const [name, fn, want] of steps) {
+      const r = await fn();
+      if (r.status !== 200) return say(`${name} ${r.status} ${JSON.stringify(r.body).slice(0, 120)}`);
+      const parent = (await st(S.id)).status;
+      const ks = await kidsStatus(S.kids);
+      if (want && parent !== want) return say(`${name} 정산서 ${parent}`);
+      if (ks.some(k => k !== (want || parent) && !(name === 'reject' && k === parent))) return say(`${name} 자식 ${ks.join(',')} / 정산서 ${parent}`);
+      if ((await soaMismatch(S.id)) !== 0) return say(`${name} 불일치`);
+    }
+    return true;
+  });
+  test('invoice-boundary', '⑧ 하드웨어 견적 청구서 — 브랜드 회원 연결이면 brand_manager/본인 · 매장 RA 목록엔 없음 · RA 제출 403', async () => {
+    const f = await fixtures(); if (!f) return skip();
+    const { HardwareQuote } = require('../models');
+    const { sequelize } = require('../config/database');
+    const q = await HardwareQuote.create({ quote_number: `${MARK}Q1-${f.stamp}`, contact_name: 'HC Test', contact_email: 'zz-hc-invb@example.com', user_id: f.bgId, total_amount: 10, currency: 'MYR', status: 'new' });
+    const r = await request('POST', `/hardware-quotes/${q.id}/invoice`, {}, f.admin);
+    const invId = r.body?.invoice?.id || r.body?.data?.id || (await HardwareQuote.findByPk(q.id)).invoice_id;
+    if (r.status >= 300 || !invId) return say(`발행 ${r.status} ${JSON.stringify(r.body).slice(0, 120)}`);
+    const [[inv]] = await sequelize.query('SELECT payer_type, payer_id, restaurant_id FROM invoices WHERE id = ?', { replacements: [invId] });
+    if (inv.payer_type !== 'brand_manager' || Number(inv.payer_id) !== Number(f.bgId) || inv.restaurant_id != null) return say(`낼 사람 ${JSON.stringify(inv)}`);
+    await sequelize.query("UPDATE invoices SET status = 'pending_payment' WHERE id = ?", { replacements: [invId] });
+    const raList = await request('GET', '/invoices/to-pay', null, f.ra);
+    const bgList = await request('GET', '/invoices/to-pay', null, f.bg);
+    const has = (res) => (Array.isArray(res.body) ? res.body : (res.body?.data || [])).some(x => Number(x.id) === Number(invId));
+    if (has(raList)) return say('매장 RA 목록에 보임');
+    if (!has(bgList)) return say(`브랜드 회원 목록에 없음 (${bgList.status})`);
+    const sub = await request('POST', `/invoices/${invId}/submit-payment`, { notes: 'hc' }, f.ra);
+    return sub.status === 403 || say(`RA 제출 ${sub.status}`);
+  });
+  test('invoice-boundary', '⑨ 하드웨어 견적 청구서 — 매장 RA 연결이면 restaurant/매장 번호 · 매장 칸 채움', async () => {
+    const f = await fixtures(); if (!f) return skip();
+    const { HardwareQuote } = require('../models');
+    const { sequelize } = require('../config/database');
+    try {
+      const q = await HardwareQuote.create({ quote_number: `${MARK}Q2-${f.stamp}`, contact_name: 'HC Test', contact_email: 'zz-hc-invb@example.com', user_id: f.raId, total_amount: 10, currency: 'MYR', status: 'new' });
+      const r = await request('POST', `/hardware-quotes/${q.id}/invoice`, {}, f.admin);
+      const invId = (await HardwareQuote.findByPk(q.id)).invoice_id;
+      if (r.status >= 300 || !invId) return say(`발행 ${r.status}`);
+      const [[inv]] = await sequelize.query('SELECT payer_type, payer_id, restaurant_id FROM invoices WHERE id = ?', { replacements: [invId] });
+      return (inv.payer_type === 'restaurant' && Number(inv.payer_id) === 38 && Number(inv.restaurant_id) === 38) || say(`낼 사람 ${JSON.stringify(inv)}`);
+    } finally {
+      await sweep().catch((e) => console.log(c.gray(`      (정리 실패: ${e.message})`)));
+      F = null;
+    }
+  });
+}
+
+// ============================================
+// 결제 원장 다섯 번째 경로 — «주문 넣는 순간 결제 완료» (2026-10-07 Fable 판정 C ·
+//   .claude/fable-verdict-20261007-structure-backlog.md). POS 먼저 받기 매장(매장8)에서 원장·amount_paid 가 비던 것.
+//   데모 매장 38 · 표지 __HC_LEDGER5__ 주문(printed_offline=true → 인쇄 대기 안 생김) · 시작·끝에 정리(멱등).
+// ============================================
+function defineOrderLedgerTests() {
+  const MARK = '__HC_LEDGER5__';
+  const say = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+  async function sweep() {
+    const { sequelize } = require('../config/database');
+    const [rows] = await sequelize.query('SELECT id FROM orders WHERE customer_name = ?', { replacements: [MARK] });
+    const ids = rows.map(r => r.id);
+    if (!ids.length) return;
+    for (const tbl of ['order_actions', 'order_payments', 'point_transactions']) {
+      await sequelize.query(`DELETE FROM \`${tbl}\` WHERE order_id IN (:ids)`, { replacements: { ids } }).catch(() => {});
+    }
+    await sequelize.query('DELETE FROM orders WHERE id IN (:ids)', { replacements: { ids } });
+  }
+  async function fx() {
+    const { sequelize } = require('../config/database');
+    const [[ra]] = await sequelize.query("SELECT u.id FROM users u JOIN restaurants r ON r.id = u.restaurant_id WHERE r.id = 38 AND r.is_demo = 1 AND u.role = 'Restaurant Admin' AND u.is_active = 1 ORDER BY u.id LIMIT 1");
+    if (!ra) return null;
+    return { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+  }
+  const body = (extra = {}) => ({
+    restaurant_id: 38, customer_name: MARK, order_type: 'takeaway', source: 'pos', payment_method: 'cash',
+    status: 'outstanding', printed_offline: true, order_items: [{ name: 'HC Ledger', quantity: 1, price: 12.5 }], ...extra,
+  });
+  const ledger = async (orderId) => {
+    const { sequelize } = require('../config/database');
+    const [rows] = await sequelize.query('SELECT amount, receipt_number, paid_at FROM order_payments WHERE order_id = ?', { replacements: [orderId] });
+    const [[o]] = await sequelize.query('SELECT amount_paid, total_amount FROM orders WHERE id = ?', { replacements: [orderId] });
+    return { rows, o };
+  };
+
+  test('payment', '결제 원장 ⑤ — 주문 생성과 동시 완납 → 원장 1행(paid_at·-P1) · amount_paid = 총액 · PATCH 재전송해도 1행', async () => {
+    const auth = await fx();
+    if (!auth) { console.log(c.gray('      (건너뜀: 데모 매장 38 RA 없음)')); return true; }
+    await sweep();
+    try {
+      const r = await request('POST', '/orders', body({ payment_status: 'completed' }), auth);
+      const id = r.body?.data?.id;
+      if (r.status >= 300 || !id) return say(`생성 ${r.status} ${JSON.stringify(r.body).slice(0, 120)}`);
+      const a = await ledger(id);
+      if (a.rows.length !== 1) return say(`원장 ${a.rows.length}행`);
+      const row = a.rows[0];
+      if (!row.paid_at || !/-P1$/.test(row.receipt_number || '') || Number(row.amount) !== Number(a.o.total_amount)) return say(`원장 행 ${JSON.stringify(row)} / 총액 ${a.o.total_amount}`);
+      if (Number(a.o.amount_paid) !== Number(a.o.total_amount) || !(Number(a.o.total_amount) > 0)) return say(`amount_paid ${a.o.amount_paid} / 총액 ${a.o.total_amount}`);
+      const p = await request('PATCH', `/orders/${id}`, { payment_status: 'completed' }, auth);
+      if (p.status >= 300) return say(`PATCH ${p.status}`);
+      const b = await ledger(id);
+      return b.rows.length === 1 || say(`PATCH 뒤 원장 ${b.rows.length}행`);
+    } finally { await sweep().catch(() => {}); }
+  });
+  test('payment', '결제 원장 ⑤ — 미결제 생성 0행 · 총액 0 완납 생성 0행', async () => {
+    const auth = await fx();
+    if (!auth) { console.log(c.gray('      (건너뜀: 데모 매장 38 RA 없음)')); return true; }
+    await sweep();
+    try {
+      const r1 = await request('POST', '/orders', body({ payment_status: 'pending' }), auth);
+      const r2 = await request('POST', '/orders', body({ payment_status: 'completed', order_items: [{ name: 'HC Ledger 0', quantity: 1, price: 0 }] }), auth);
+      const i1 = r1.body?.data?.id, i2 = r2.body?.data?.id;
+      if (!i1 || !i2) return say(`생성 ${r1.status}/${r2.status}`);
+      const [a, b] = [await ledger(i1), await ledger(i2)];
+      return (a.rows.length === 0 && b.rows.length === 0) || say(`미결제 ${a.rows.length}행 · 0원 ${b.rows.length}행`);
+    } finally { await sweep().catch(() => {}); }
+  });
+}
+
 function defineSettingsTests() {
   const { Restaurant } = require('../models');
   const guard = require('../utils/settingsGuard');
@@ -7988,6 +8685,8 @@ async function runTests(allTests, category) {
   defineSeoHtmlTests();
   defineReservationTests(ctx);
   definePaymentTests();
+  defineInvoiceBoundaryTests();
+  defineOrderLedgerTests();
   defineReferralTests(ctx);
   definePrintTests(ctx);
   defineSettingsTests();

@@ -894,6 +894,15 @@ const InvoiceReconcilePage: React.FC = () => {
                     <Muted>
                       {/* 2026-09-11 Irene 「1 kg X 2pack 발주할 때 내역은 이렇게」 — «발주 10 kg × 2 carton» */}
                       {t('reconcile.orderedQty', '발주')} {lineQtyText(it, it.quantity_ordered)}
+                      {/* 3-way(2026-10-08 · Fable 판정 Ⅱ-4): 주문 · 수령 · 청구 세 수량 — 받은 양과 청구 양이 다르면 표시 */}
+                      {' · '}{t('reconcile.receivedQty', '수령')} {lineQtyText(it, it.quantity_received)}
+                      {(() => {
+                        const billed = d?.invoiced_quantity !== undefined && d?.invoiced_quantity !== '' ? num(d.invoiced_quantity)
+                          : (it.invoiced_quantity != null ? num(it.invoiced_quantity) : null);
+                        return billed !== null && num(it.quantity_received) > 0 && Math.abs(billed - num(it.quantity_received)) > 0.0001
+                          ? <> · <StateTag tone="warn">◐ {t('reconcile.receivedMismatch', '청구 수량 ≠ 받은 수량')}</StateTag></>
+                          : null;
+                      })()}
                       {m && (
                         <> · <StateTag tone={m.state === 'matched' ? 'ok' : m.state === 'needs_check' ? 'warn' : 'none'}>
                           {m.state === 'matched' ? `● ${t('reconcile.state.matched', '맞음')}`

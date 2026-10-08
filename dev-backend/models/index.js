@@ -472,6 +472,7 @@ Restaurant.hasMany(StockTake, { foreignKey: 'restaurant_id', as: 'stockTakes' })
 StockTake.hasMany(StockTakeItem, { foreignKey: 'stock_take_id', as: 'items' });
 StockTakeItem.belongsTo(StockTake, { foreignKey: 'stock_take_id', as: 'stockTake' });
 StockTakeItem.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+StockTakeItem.belongsTo(ProductIngredient, { foreignKey: 'product_ingredient_id', as: 'productIngredient' }); // 본사 창고 실사 줄(2026-10-08)
 Ingredient.hasMany(StockTakeItem, { foreignKey: 'ingredient_id', as: 'stockTakeItems' });
 
 // StockAlert associations

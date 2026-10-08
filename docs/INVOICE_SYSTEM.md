@@ -378,6 +378,11 @@ const fetchPaymentMethods = async (currency, issuerType, issuerId) => {
 - Brand General: `issuer_type: 'brand'`이고 자기 brand가 발행한 것만
 - Foodcourt General: `issuer_type: 'foodcourt'`이고 자기 foodcourt가 발행한 것만
 
+**상태 변경(PATCH `/:id/status`) · 수정(PUT `/:id`) · 삭제(DELETE `/:id`)** — 2026-10-07 Fable 판정 [1](`.claude/fable-verdict-20261007-invoice-payer.md`):
+- **발행한 쪽(`userCanAccessEntity(issuer)`)과 System Admin 만.** 낼 쪽(매장 관리자·직원·오너)은 **0원 청구서를 paid 로 확정하는 것만**(09-14 예외 — 매장 결제면 매장 칸, 없으면 payer_id 로 매장 접근 판정 · brand_manager/foodcourt_manager/restaurant_owner 는 사람 번호 본인).
+- 예전엔 PATCH 에 «매장 접근» 분기가 있어 낼 매장이 금액 있는 자기 청구서(정산서면 묶인 청구서 전부)를 paid·cancelled·draft 로 바꿀 수 있었고, PUT 에 낼 매장 분기가 있었고, **DELETE 는 주인 검사가 없었다**(로그인만 되면 영구 삭제). 낼 쪽이 돈 있는 청구서를 끝내는 길은 결제 제출 → 발행자 확인뿐이다.
+- 영구 검사: `health-check --category=invoice-boundary` ①~⑦(고장주입 4종 반증).
+
 ---
 
 ## 4. 결제 설정 (Payment Settings)
@@ -602,8 +607,8 @@ hasPaymentMethodForCurrency(paymentSettings, currency)
 | GET | /api/invoices/:id | 인보이스 상세 | O |
 | POST | /api/invoices | 수동 인보이스 생성 | O |
 | PUT | /api/invoices/:id | 인보이스 수정 | O |
-| DELETE | /api/invoices/:id | 인보이스 삭제 | O |
-| PATCH | /api/invoices/:id/status | 상태 변경 | O |
+| DELETE | /api/invoices/:id | 인보이스 삭제 (발행자·관리자만 · §3.4) | O |
+| PATCH | /api/invoices/:id/status | 상태 변경 (발행자·관리자 · 낼 쪽은 0원 확정만 · §3.4) | O |
 
 ### 6.2 인보이스 조회 (특화)
 
@@ -929,7 +934,7 @@ Brand/Foodcourt 플랜 인보이스는 항상 해당 레스토랑이 결제한�
 - POST/PUT `/api/invoices` body 에 `contract_id` (POST는 pass-through, PUT는 `contractId` whitelist)
 
 ### 편집 권한 (v3.15 보안 수정)
-- PUT `/api/invoices/:id` 는 **System Admin / issuer entity (brand/foodcourt) / 수신 restaurant** 만 편집 가능
+- PUT `/api/invoices/:id` 는 **System Admin / issuer entity (brand/foodcourt)** 만 편집 가능 (2026-10-07: «수신 restaurant» 분기 삭제 — §3.4)
 - null-safe 비교로 cross-entity 편집 차단
 
 ---
@@ -1030,5 +1035,12 @@ ALTER TABLE invoices ADD COLUMN parent_soa_invoice_id INT NULL;
 
 - **상태 단일 규칙** — 정산서(SOA) 상태를 바꾸는 모든 길(`submit-payment` · `confirm-payment` · `reject-payment` · `PATCH /:id/status`)이 `services/soaChildSync.syncSoaChildren` 을 같은 트랜잭션에서 부른다. paid → 자식 paid(정산서 시각·확인자), payment_submitted → 자식 제출됨, 거절/대기 복귀 → 제출된 자식 대기로. 취소는 기존대로 묶음 해제. 예전엔 PATCH(브랜드·푸드코트·관리자 «Confirm Payment Received»)와 reject 가 자식을 안 끌고 가 발주는 paid · 청구서는 확인 대기로 갈라졌다.
 - **복구·감시** — `scripts/migrate-soa-child-status-sync.js`(deploy, 멱등)가 갈라진 자식을 정산서 값으로 맞추고, 인스펙션 `invoice-soa` I-SOA-001 이 불일치 0 을 배포 게이트에서 본다. 둘 다 `MISMATCH_FROM_SQL` 같은 조건.
-- **매장 칸** — 매장이 내는 정산서는 생성 시 `restaurant_id = payer_id`. 이름 계산은 `payerIdIsStore(invoice)`(payer_type 'restaurant' · 매장 칸 빔 · 하드웨어 제외) 일 때 payer_id 를 **매장 번호**로 읽는다(사람 번호로 읽어 다른 매장 이름이 붙던 결함).
+- **매장 칸** — 매장이 내는 정산서는 생성 시 `restaurant_id = payer_id`. 이름 계산은 `payerIdIsStore(invoice)`(payer_type 'restaurant' · 매장 칸 빔 · 하드웨어 제외) 일 때 payer_id 를 **매장 번호**로 읽는다(사람 번호로 읽어 다른 매장 이름이 붙던 결함). 하드웨어 견적 청구서는 2026-10-07 부터 생성 때 회원 역할로 낼 사람을 정한다(`payerForUser` · `docs/SYSTEM_PRODUCT_AND_HARDWARE_PACKAGE.md` 5-2) — 옛 행은 `migrate-hardware-invoice-payer` 가 보정, 인스펙션 I-HW-001.
 - **수동 발행 뒤 자동 발행 = 이어서 내기** — 그 주기에 사람이 낸 정산서가 있어도 건너뛰지 않고, 아직 안 묶인 청구서만 그 정산서 기간 다음 날부터 발행. 남은 게 없으면 skip(`skipped_manual`). 이중 청구 없음 = 수집이 `parent_soa_invoice_id IS NULL` 만. (9/29 「수동발행하면 자동발행 안 되어야 해」 → 10/5 Fable 권고·Irene 승인으로 좁힘)
+
+## 11-2. 외부 공급업체 정산서 (2026-10-07 · Fable 판정 ⑩) [Claude Code]
+
+- 외부(앱 안 쓰는) 공급업체도 구매자가 계약 조건에 «월별 정산서»를 켜면 정산서로 묶인다. 발행은 기존 자동 발행기(공급업체 가지) + 구매자 «지금 만들기». 메일에 «주문 기록으로 자동 작성 — 공급업체 SOA 와 대조하세요» 한 줄.
+- 대조: `POST /api/invoices/:id/soa-reconcile`(공급업체 SOA 파일·번호·날짜·총액 → `external_document`, 차액 줄 «Supplier statement difference», 수정 이력 `source:'soa_reconcile'`). 묶인 청구서 총액 수정은 정산서 합계를 따라가게 한다(`source:'soa_child_sync'`, 결제·취소된 정산서는 무접촉 `soa_locked`).
+- 결제: `POST /api/invoices/:id/mark-paid-external` 정산서 가지 — 자식 청구서·발주 전부 한 트랜잭션 결제됨. 월별 업체의 건별 «결제함» 은 `pay_via_soa` 400.
+- 상세 `docs/TRADE_STRUCTURE.md` ⑩.

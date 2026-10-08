@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import DeliveryZonesEditor from '../../components/Common/DeliveryZonesEditor';
+import { DeliveryZone, readZones } from '../../utils/deliveryZones';
 import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
 import AutoSaveAddressFields from '../../components/Form/AutoSaveAddressFields';
 import PhoneInput from '../../components/Common/PhoneInput';
@@ -215,6 +217,8 @@ const EMPTY: SupplierCompany = {
 const SupplierCompanyInfoPage: React.FC = () => {
   const { t } = useTranslation('supplier');
   const [company, setCompany] = useState<SupplierCompany>(EMPTY);
+  // 배송 지역 (2026-10-07 Fable) — 브랜드·푸드코트와 같은 편집기·같은 규칙
+  const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -256,6 +260,7 @@ const SupplierCompanyInfoPage: React.FC = () => {
         bank_account: d.bank_account || '',
         bank_account_name: d.bank_account_name || ''
       });
+      setDeliveryZones(readZones(d.delivery_zones));
     } catch (e: any) {
       console.error('[SupplierCompanyInfo] fetch error:', e);
       setError(e.message || 'Failed to load company info');
@@ -264,7 +269,7 @@ const SupplierCompanyInfoPage: React.FC = () => {
     }
   };
 
-  const saveField = async (field: keyof SupplierCompany, value: any) => {
+  const saveField = async (field: keyof SupplierCompany | 'delivery_zones', value: any) => {
     const token = getAuthToken();
     const res = await fetch('/api/supplier/company', {
       method: 'PUT',
@@ -472,18 +477,27 @@ const SupplierCompanyInfoPage: React.FC = () => {
             </FormGroup>
 
             <FormGroup fullWidth>
-              <Label>{t('company.delivery.areas', 'Delivery areas')}</Label>
+              <Label>{t('company.delivery.areas', 'Delivery note (days, times)')}</Label>
               <AutoSaveField onSave={() => saveField('delivery_policy', company.delivery_policy.trim() || null)}>
                 <Textarea
                   maxLength={500}
                   value={company.delivery_policy}
                   onChange={e => handleChange('delivery_policy', e.target.value)}
-                  placeholder={t('company.delivery.areasPlaceholder', 'e.g. Petaling Jaya, Selangor') as string}
+                  placeholder={t('company.delivery.areasPlaceholder', 'e.g. Delivered Tue · Fri, before 11am') as string}
                 />
               </AutoSaveField>
               <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
-                {t('company.delivery.areasHint', 'Where and when you deliver. Shown to buyers when they order — not used to calculate the delivery fee.')}
+                {t('company.delivery.areasHint', 'Shown to buyers when they order — not used to calculate the delivery fee.')}
               </div>
+            </FormGroup>
+
+            <FormGroup fullWidth>
+              <DeliveryZonesEditor
+                zones={deliveryZones}
+                onChange={setDeliveryZones}
+                onCommit={(zones) => saveField('delivery_zones', zones)}
+                defaultFee={company.delivery_fee === '' ? null : Number(company.delivery_fee)}
+              />
             </FormGroup>
 
             <FormGroup fullWidth>

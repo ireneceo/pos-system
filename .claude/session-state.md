@@ -3,6 +3,87 @@
 **버전:** **v3.109** (2026-10-07 · 5.87·5.88·5.89 묶음) · 운영 SW **5.89-kiosk-receipt-20261007** (백업 20261007_163801 · 스모크 10/10) · 안드로이드 앱 0.3.4
 **작업 상태:** ✅ 판매자 결제 설정 = 계정 하나 완료(개발서버 · Fable 2회차 PASS · 운영 배포 대기) — 개발서버만 미배포: 이것 + 청구서 To Confirm 탭
 
+### 답 기다림 (2026-10-08) — Fable 기준 통일: «물을 때 Fable 의견 꼭» 을 작은 질문에도 그대로 둘지 [Claude Code · 백그라운드 작업방 2ee45130]
+- 한 일(문서만 · 코드·DB 0 · Fable 안 씀 — 공용 기준 3절 문서 정리): CLAUDE.md «Fable 검증 게이트(07-01)»·«3축 판정(09-06)» 두 절 → «🎯 Fable 언제 부르나 — 공용 기준을 따른다» 한 절(기준은 `~/dev-server/FABLE.md` 한 줄 + PurpleHere 되돌리기 어려운 것 예시 5개·calc/ux/design 예시 + 못 부를 때=자체 검증·상황판 Fable 대기·배포 보류 + Irene 원문 출처 전부 보존). §0 예외 «애매하면 Fable» → 공용 기준(애매하면 안 부르고 «Fable 안 씀 — 이유»). 훅·검증 규율 4조항·check-sensitive-diff 그대로. 명령 `/개발시작`·`/개발완료` · `docs/AGENT_ONBOARDING.md` 의 «Fable 세션 점검 후»·«3축» 문구 교체. 메모리 feedback_fable_call_criteria·feedback_fable_budget_minimal·feedback_fable_leads_opus_executes·MEMORY.md 갱신
+- 확인: fable-gate 통과 마커는 내 수정 전부터 이미 무효였음(수정 전 상태로 지문 계산해 대조) — 이 일로 죽은 마커 없음
+- 무엇을: §0 «나에게 물어볼 때는 fable 의견 꼭 같이 줘»(08-20 원문)를 작은·되돌릴 수 있는 질문에도 그대로 둘지. 공용 기준 2절은 «되돌리기 어려운 선택만 Fable 권고, 작은 선택은 작업 모델 권고(솔루션 규칙이 더 넓으면 그 규칙)» 라 지금은 솔루션 규칙(넓은 쪽)이 이김 → 작은 질문마다 Fable 호출이 생겨 «최소화»(09-18)와 겹침
+- 왜: Irene 원문이라 내가 고치지 않음(지시: 충돌하면 권고와 함께 질문)
+- 답이 오면: (가) 되돌리기 어려운 선택만 Fable 의견, 작은 질문은 «팀원 권고 · Fable 안 씀 — 이유» → CLAUDE.md §0 📌 절에 한 줄 + 메모리 feedback_fable_leads_opus_executes 갱신 / (나) 지금대로 → 할 일 없음, 이 절 «(이전)»
+
+### 완료 (2026-10-08 새벽) — 청구서 권한 경계 · 하드웨어 청구서 낼 사람 · 매장8 결제 원장 · 브랜드 메뉴 1:1 · 문서 종결 (개발서버 · 운영 배포 대기) [Claude Code · 백그라운드 작업방 5cdb5680]
+- 경위: Irene «모든 일들 중 fable이 해야 할 거 다 먼저 해» → Fable 판정 2개(`.claude/fable-verdict-20261007-invoice-payer.md` · `.claude/fable-verdict-20261007-structure-backlog.md`) → 컨펌 4개에 Irene «권고대로»
+- 구현(개발서버, 백엔드만 · 빌드 0 · 운영 쓰기 0):
+  - [1] `routes/invoices-crud.js` PATCH «매장 접근» 분기 삭제(낼 쪽은 0원 확정만 — 매장 칸 또는 낼 사람 번호 · restaurant_owner 포함) · DELETE 발행자·관리자만(전엔 주인 검사 없음) · PUT 낼 매장 분기 삭제
+  - [2] `routes/invoices-helpers.payerForUser` + `routes/hardware-quotes.js` 3곳 · 보정 `scripts/migrate-hardware-invoice-payer.js`(deploy · dev #247 보정됨) · 술어 `utils/hardwarePayerMismatch` · 인스펙션 I-HW-001 · 운영 읽기: 탐지 0건(변형 #53 1건 — 게이트에 넘김)
+  - C `routes/orders-crud.js` 🔒 주문 생성 커밋 뒤 `recordOrderPayment` 1회(인쇄 칸 무접촉, bless 전) · B `scripts/migrate-products-brand-menu-unique.js`(deploy · dev 인덱스 추가됨) + `utils/brandMenuLinkDup` + 인스펙션 BM-LINK-001 · A `routes/brand-menus.js` 옛 레시피 칸 쓰기 봉인 · D 문서만
+  - health-check 새 묶음 `invoice-boundary` 9건 + payment «결제 원장 ⑤» 2건 · 문서 INVOICE_SYSTEM §3.4 · SYSTEM_PRODUCT_AND_HARDWARE_PACKAGE 5-2 · TRADE_STRUCTURE ②③⑤·§5-2 · INVENTORY · CASH_MANAGEMENT · BRAND_MENU
+- 검증: invoice-boundary 9/9 · payment 16/16 · 고장주입 6종 전부 반증(pm2 재시작 뒤) · B 반증(심기→검사 실패·마이그 거부→정리→중복 거부·빈 칸 허용·push 2회 1줄) · A 실호출 · verify-all 19/23(실패 = 🔒 orders-crud 지문 2 · 배포 기록 파일 · 타입 검사 메모리 게이트로 확인 불가)
+- (해결 — Irene «응»·허락 «Yes») 무엇을: Fable 마지막 검사(게이트)를 다시 돌려도 되는지. 검사 도중 명령 허락 창이 3분 넘게 열려 있어 상황판이 닫았고, 이 방은 검사를 멈췄다(판정문 없음 · 🔒 bless 안 함 · 통과 마커 안 찍음 · 코드는 검사에 넘긴 그대로, 5개 파일 정상 로드 확인). 어떤 명령의 허락 창이었는지는 이 방에서 확인 못 함 — 검사가 하게 되어 있던 일은 운영 읽기 조회(prod-query)·`check-print-guard --bless`(orders-crud 지문)·`fable-gate pass` 중 하나로 추정
+- (해결) 왜: 허락 창은 Irene 만 닫을 수 있고, 백그라운드에선 답이 안 와 대기열이 섬
+- (해결) 답이 오면: 같은 자료(`~/.claude/jobs/5cdb5680/tmp/fable-input-20261007-gate.md` · 패치 `team-diff-20261007.patch`)로 Fable 게이트 1회 재실행 → PASS 면 Fable 이 bless·마커 → Irene /배포(마이그 2 포함) → 운영 정산서 3건 «미결제 보류» 해제 가능. 허락 창이 다시 뜨면 Irene 승인 필요
+- 다음 할 일(이 질문과 무관, 남은 것): 타입 검사(메모리 게이트로 확인 못 함) 1회 재실행
+- **Fable 게이트 PASS** `.claude/fable-verdict-20261007-invoice-payer-structure-gate.md` — 설계 밖 변경 0 · 판정문과 다르게 한 것 전부 수용(C 원장 호출 커밋 뒤 · B 모델 인덱스 미선언 · 0원 예외 오너 포함) · Fable 이 하드웨어 탐지 조건을 운영 #53 꼴까지 넓힘(`utils/hardwarePayerMismatch` · 마이그 같이) · 배포 마이그 115개 dev 실행 통과
+- 🔒 `check-print-guard --bless` 완료(Irene 허락 «Yes» · orders-crud 지문 · 8/8) · health-check print 11/11. Fable 통과 마커는 안 찍음 — 작업트리에 다른 방들의 미검증 변경이 섞여 있어 마커가 그것까지 덮음(그 방들이 각자 게이트)
+- 배포 때: 백엔드만 · 마이그 2(migrate-hardware-invoice-payer · migrate-products-brand-menu-unique) · 운영 #53 → restaurant/16/16 예상 · 배포 뒤 운영검증 I-HW-001 0 · 매장8 당일 완납 ↔ 원장 행 수 · 그 뒤 «운영 정산서 3건 매장 칸 채움» 의 미결제 보류 해제 가능
+- 후속 후보(Fable): 오너 회원이 연결된 하드웨어 견적에 매장이 없으면 오너 «낼 청구서» 에 안 뜸(전과 같음, 후퇴 아님) — to-pay·checkPaymentPermission 에 restaurant_owner+본인 분기
+
+### 완료 (2026-10-08) — 재고→발주→원가 구현 묶음 0~3 (개발서버 · 운영 배포 대기) [Claude Code · 백그라운드 작업방 98b2ea7c]
+- Irene 답(상황판): «권고대로» = ①a 재료 원가율까지 ②a 0→1→2→3 ③b 매장 원가=마지막 실제 매입가 ④b 초기재고·조정·실사확정=매니저 이상 ⑤a 운영 메뉴 연결은 준비도 화면 뒤 사람이. 같이 온 말: «뭘 묻는 거야. 전체 필요한 기능을 설계해. 구현준비 다했어?»
+- 설계 = `.claude/fable-verdict-20261008-inventory-po-cost.md` Ⅱ
+- **묶음 0 (결함 4, 0-③ 제외) — 구현·검증 끝(개발서버):** 실사 손실 ÷기준양(`inventory-core` 항목 저장·완료 + `StockTakePage`) · 레시피 원가 조회 단위 환산(`product-recipe.js` lineCost · `recipes.js` 브랜드 레시피 · `prepIngredientSync`) · 폐기 장부 = 실제 깎인 양 + clamped · 판매 차감 장부 order_id(`inventoryDeductionService` resolveOrderRef, 🔒 orders-crud 무접촉). 공용 `utils/recipeCost.perBaseCost`. 실호출 9/9 · 고장주입 4건 실패 확인 후 원복
+- **0-③ 보류:** `routes/purchase-cost-report.js` 는 방 359d0949 미커밋 변경 중 — 그 방 커밋 뒤
+- **묶음 1 (장부 = 단일 진실) — 구현·검증 중(개발서버):**
+  - 마이그 `scripts/migrate-ledger-cost-columns.js`(deploy 등록 · 개발 DB 적용 · 2회차 0): inventory_transactions unit_cost·cost_value·base_quantity·reason_code + cost_change_logs.source 에 receive·production(expandEnum)
+  - `services/stockLedger.js` record() — 재고+장부 한 트랜잭션, 장부 수량 = after−before, 금액 = 근거가(입고·반품·실사) 또는 그 순간 원가. 모든 InventoryTransaction.create 가 여기만 남음(inventory-core/extra/produce · purchaseOrderReceive · inventoryDeductionService · seller-orders · po-returns · product-ingredients · foodcourt-inventory)
+  - 문 봉인: product-ingredients PUT·POST · 일반재고 PUT(`utils/generalStockLedger.js` 로 receive/adjust/create 원자화) · 푸드코트 adjust/receive(+장부 조회 API) · menu.js PUT·POST · brand-products · foodcourt-products (수정 창 수량은 400 대신 장부 adjustment 로 반영 — 화면 무변경)
+  - 폐기 사유 코드 필수(`utils/wasteReasons.js` · WasteModal 선택 · 4언어+glossary) + 폐기도 FIFO 배치 소진 · 매장 원가 = 마지막 매입가(가중평균 삭제, writeStoreCost log 옵션 → cost_change_logs receive/manual/production)
+  - 권한: initial·adjust·실사 complete/cancel = requireStockManager(Staff 제외) · 화면 Staff 인라인 조정·실사 확정 버튼 숨김
+  - 인스펙션 `scripts/inspection/suites/stock-ledger.js`(LEDGER-001 목록 47건 · 002·003·004 차단) + `utils/ledgerDrift.js`(검사·보정 같은 SQL) + `scripts/reconcile-ledger-drift.js`(manual 등록 · 개발에서 apply→0건→undo→47건 확인)
+  - 검증: 실호출 13/14(✗1 = 시험 Staff 계정 매장 없음 → health-check ② 로 대체 확인) · health-check 새 3건 + 전체 331(1건 소스검사 갱신 후 pos 53/53) · 고장주입 4건(장부 insert 제거·PUT 수량 재허용·마지막 매입가 제거·권한 제거) 전부 실패 확인 후 원복 · print-guard 8/8 · design-guard 신규 0 · i18n 오류 0
+- **묶음 0+1 Fable 게이트 PASS** `.claude/fable-verdict-20261008-inventory-ledger-gate.md` (마커 지문 67b1778b36de — 이후 코드 변경으로 죽음, 배포 때 묶음 2 와 함께 다시 게이트). build:dev 1회 · verify-all --full 23/24(✗ 배포 기록) · 클릭 흐름 폐기 6/6
+- 배포 직전 할 일(판정 Ⅲ-A): SW 버전 bump 1회 → build:dev(skip 기록 «SW bump only»). 기록(DEVELOPMENT_PLAN 등)은 배포 뒤
+- 판정 Ⅲ-B 2건 끝: 수동 입고 장부 금액 = 본문 unit_cost×기준양 + 매장 원가·이력(receive) (실호출 PASS) · LEDGER-002 분모 = 매장이 보는 원가(오버레이 우선)
+- **운영 준비도 실측(prod-query 읽기, 2026-10-08):** 활성 메뉴 758 중 레시피/재료 연결 75(전부 K-DINE 매장 8: 75/110) · with MIN Cafe 223·The Fire 126×3 연결 0 · 활성 재료 703 중 원가 0 = 98 · 최근 90일 판매 차감 1,025줄 · 완료 실사 0 · 90일 장부 있는 매장 2곳 · MySQL 8.0.46(LAG 됨)
+- **묶음 2 (측정층) — 구현·서버 검증 끝(개발서버):** `services/inventoryValuation`(재고 총액 RA·BG · 원가 측정 준비도) · `services/foodCostReport` + `utils/foodCostMath`(기간 원가: 실제·이론·폐기·설명 안 됨=실사 차이+원가 변동 · 폐기 리포트 · BG 창고판 출고액) · `utils/productCost`(메뉴 1인분 지금 원가 — reports-summary menuSales/categorySales 에 원가·마진·원가율) · 실사 보강(부분=분류 선택 · 센 항목만 반영 · 시작 뒤 움직임 보정 · BG 창고 실사 `routes/brand-stock-takes.js` + 마이그 `migrate-stock-take-bg-warehouse.js` deploy) · 라우트 `routes/inventory-valuation.js` · `routes/cost-report.js`(Staff 제외·재고 모듈 게이트) · 화면 CostReadinessPanel(재고 대시보드 카드) · 보고서 «원가» 탭 FoodCostTab · 메뉴 표 원가·마진 칸 · 실사 화면 분류 선택·본사 모드(/pos/brand-stock-take) · FC/공급업체 «재고 판매가치» 라벨
+- **묶음 3 (발주 보강) — 구현·서버 검증 끝:** `utils/reorderMath`(하루 사용량=판매·폐기 장부 28일 · 오는 중 발주량 차감 · 발주 제안·PAR·사용량 계산 3곳 같은 답) · 부분 수령 청구서 줄 = 받은 양(수령 끝난 발주만) · 대조 화면 주문·수령·청구 3수량 + 다르면 표시 · 재고 알림 함수 사본 제거(utils/stockAlerts 하나) · 발주 창 원가 변경 이력 한 줄
+- **보류(이유):** 0-③ 구매 비용 보고서 · PO suggestions 발주점 연결 — 두 파일 다 방 359d0949 미커밋 변경 중 / 유통기한 자동 «expired» 표시 — 배치 상태를 바꾸면 판매 차감(FIFO)·임박 목록이 그 배치를 빼 버림, 기존 임박 화면이 지난 날짜를 이미 보여 줌 → 게이트에서 Fable 판단 / 만료 stock_alerts 유형 — 알림이 재료당 1건 구조라 부족 알림과 충돌
+- 검증(묶음 2·3): jest foodCostMath 8 · reorderMath 7 · 실호출(데모 38) 원가 리포트 4/4 · 실사 5/5 · 메뉴 원가 2/2 · 발주점 3/3 · 부분수령 청구 2/2 · health-check 새 2건(원가 ①·②) → inventory 55/55 · security 73/73 · 고장주입 5건 중 4건 실패 확인(F3 접근검사 제거는 앞단 inventory 라우터 접근검사가 겹쳐 막아 반증 불가 — 이중 방어) · 운영 준비도 실측 위 · print-guard 8/8 · design-guard 신규 0 · i18n 오류 0
+- build:dev 1회 ✓ · verify-all --full: mount sweep 직전까지 전부 통과(✗ 배포 기록) — **mount sweep 은 메모리 부족으로 시스템이 중간 정지(확인 못 함)** · 클릭 흐름 스크립트 준비(`~/.claude/jobs/98b2ea7c/tmp/clickflow-b2.js`) 미실행
+- **묶음 2+3 Fable 게이트 PASS(조건부)** `.claude/fable-verdict-20261008-inventory-b23-gate.md` — 설계 이탈 7건 전부 수용(실사 차이=설명 불가는 Fable 설계 문장 오류 정정) · 조건: 메모리 풀리면 mount sweep + 클릭 흐름 1회(새 화면 4 + RA 실사 화면) 크래시 0
+- Irene 답 «권고대로»: ①(a) 보고서 매출 탭 = 완료+서빙(revenueOrderWhere) 반영 · ②(a) 유통기한 자동 만료 안 함 · reorderMath RECEIVABLE → poStatuses 참조
+- 화면 검사에서 찾아 고친 것: 원가 리포트가 금액 없는 옛 장부 줄(금액 칸 이전)을 0 으로 세어 차이가 «설명 안 됨» 으로 몰림(데모 38 닭다리 −300.69) → 그 줄은 지금 원가로 추정(기초·기말과 같은 눈금) · 화면 안내 문구 4언어. **Fable 미검증(자체 검증)** — jest 8/8 · 시나리오 4/4 · health 333/333 · 닭다리 0.01
+- 최종 검증: verify-all --full 23/24(✗ 배포 기록 — 배포 때) · mount sweep 8역할 크래시 0 · 클릭 흐름 새 화면 9/9 + 폐기 6/6 · health-check 333/333 · print-guard 8/8 · 인스펙션 신규 0 · 매출 정의 단일 ✓
+- Fable 게이트: 묶음 0+1 PASS · 묶음 2+3 PASS(조건부 → 조건 충족) · 그 뒤 변경 3건은 skip 기록(.claude/fable-gate-skips.log 에 사유)
+- /개발완료 안 함: 같은 폴더에 일하는 방(934d7d7c 상황판 자동 이어하기) 있음
+- 운영 배포 때(Irene /배포): 마이그 2개(migrate-ledger-cost-columns · migrate-stock-take-bg-warehouse, deploy 등록) · 배포 직전 SW bump 1회+build(skip 기록) · 배포 뒤 reconcile-ledger-drift 운영 드라이런 표 → Irene 승인 → --apply → LEDGER-001 차단 승격 · 문서·메모리 갱신(판정 Ⅱ-6)
+- 남은 팀원 할 일(판정 Ⅲ-B): reorderMath RECEIVABLE → poStatuses 참조 · 359d0949 커밋 뒤 PO suggestions·0-③ · 배포 뒤 문서·메모리(Ⅱ-6) · 배포 직전 SW bump(skip 기록)
+
+### (이전) 답 기다림 (2026-10-08) — 재고→원가 묶음 0~3 개발 끝: 화면 검사 다시 돌려도 되는지 + Fable 정할 것 2건 — Irene 답 «권고대로»(⓪ 돌림 · ①(a) · ②(a)) [Claude Code · 백그라운드 작업방 98b2ea7c]
+- 무엇을: ⓪ 실브라우저 검사(mount sweep 11분 + 클릭 흐름) 재실행 허락 — 메모리 부족으로 시스템이 중간 정지 ① 기존 보고서 «매출» 탭 정의 (a) 완료+서빙 단일 정의로 맞춤(≈2~3% 오를 수 있음) / (b) 그대로 — Fable 권고 (a) ② 유통기한 «만료» 자동 처리 (a) 안 함 / (b) 상태 그대로 표시만 — Fable 권고 (a)
+- 왜: 메모리로 멈춘 작업은 Irene 지시 없이 재시작 안 함 · ①은 기존 매출 숫자가 바뀜
+- 답이 오면(«그대로»/«돌려»): ①(a)면 reports-summary 매출 조건 revenueOrderWhere 로 + reorderMath RECEIVABLE 정리 → build 1회 → verify-all --full + clickflow-b2.js 1회 → 크래시 0 이면 ✅ · /개발완료 조건 확인
+- (옛) 다음: 판정 Ⅲ-B 2건(수동 입고 장부 금액 = 본문 unit_cost×기준양 + 원가 log · LEDGER-002 분모 effectiveStoreCost) → 묶음 2(착수 전 운영 준비도 읽기 측정) → 묶음 3
+
+### (이전) 답 기다림 (2026-10-08) — 재고 장부 묶음 0+1: 프론트 빌드가 메모리 부족으로 중간에 멈춤 · 다시 돌려도 되는지 — Irene 답 «가»(다시 빌드) [Claude Code · 백그라운드 작업방 98b2ea7c]
+- 무엇을: `npm run build:dev` 가 «서버 메모리 부족» 으로 시스템에 의해 중간 정지(개발서버는 어제 22:11 빌드 그대로 · 서빙 영향 없음). 규칙상 이 방이 다시 시작하지 않음. verify-all(빌드 없이) 20/23 — ✗ 배포 기록(배포 때 작성) · 번들 신선도(빌드 못 함) · 타입 기준선(메모리 게이트 차단). health-check 전체·인스펙션·인쇄 가드·계약 테스트 통과
+- 왜: 메모리 압박으로 정지된 작업은 Irene 지시 없이 재시작하지 않는다(그때 chrome 2개 1.1GB + Claude 방 여러 개가 메모리 사용)
+- 답이 오면(«돌려»): build:dev 1회 → verify-all --full 1회 → Fable 게이트(묶음 0+1) → 통과면 묶음 2 착수(운영 준비도 읽기 측정 먼저)
+
+### (이전) 답 기다림 (2026-10-08) — 재고→발주→원가 확장 설계: 컨펌 5건 답 다시 확인 («관리 가» 뜻) [Claude Code · 백그라운드 작업방 98b2ea7c]
+- Irene 답(상황판): «관리 가» — 선택지(①~⑤ a/b)나 «그대로»로 읽을 수 없음(이 방 이름 끝 «…관리 가» 가 잘려 들어간 것일 수 있음). ③ 은 매장 원가 정의를 바꾸는 결정이라 추측해 착수하지 않음. 코드 변경 0
+- Irene 답 2번째(상황판): «재고관리부터 발주관리 코스트 측정까지 완벽하게 관리 가» — 이 방 이름(원래 지시 첫 문장이 잘린 것)과 글자까지 같음. 상황판이 답 칸에 방 이름을 넣어 보내는 것으로 보임 → 결정으로 읽지 않음
+- Irene 답 3번째(상황판, 다시 올린 질문에): 또 같은 방 이름 문구 → 상황판 «답하기» 가 답 대신 방 이름을 보내는 것으로 판단. 상황판(~/dev-server/board)은 이 솔루션 밖이라 손대지 않음. 질문은 더 올리지 않음(되풀이 방지) — 이 «답 기다림» 절이 맨 위에 뜸
+- **무엇을:** «그대로»(=①a ②a ③b ④b ⑤a, Fable 권고) 인지, 바꿀 항목이 있는지 — **이 방에서 직접 입력(터미널) 권장**
+- **답이 오면:** 아래 (이전) 절의 «답이 오면» 그대로 — 묶음 0 부터. 다른 방 미커밋 변경(외부 월별 SOA·직원식)이 같은 파일에 있으면 그 방 커밋 뒤
+
+### (이전) 답 기다림 (2026-10-08) — 재고→발주→원가 확장 설계: 컨펌 5건 [Claude Code · 백그라운드 작업방 98b2ea7c]
+- 지시: «재고관리부터 발주관리 코스트 측정까지 완벽하게 관리 가능한 상태로 필요한 구조가 잘 된건지 확장해야할 기능이 뭔지 파악하고 검토해. Fable이 할 필요한 확장기능 검토랑 설계 다해.»
+- 한 것: 실측 3갈래(재고·발주·원가, dev DB SELECT) `.claude/fable-input-20261008-inventory-po-cost.md` → **Fable 1회 검토·설계** `.claude/fable-verdict-20261008-inventory-po-cost.md`(Ⅰ 보고문 · Ⅱ 구현 절단면 묶음 0~3 · Ⅲ 컨펌). 코드·docs·DB 변경 0 · 운영 접근 0(운영 메뉴 연결률 미측정)
+- Fable 결론: 뼈대(재료 한 목록·단위 다섯 칸·원가 2경로·장부·발주 전 구간)는 ○, 새 테이블 불필요. 없는 것 = 장부 마개(원장 안 거치는 문 5개·금액 칸 없음) + 측정층(재고 총액·기간 원가·이론 원가·차이·폐기·원가율). 결함 4건(실사 손실 기준양 미나눔 · 레시피 원가 조회 3곳 단위 환산 누락 · 구매 보고서 부분수령·200줄 합계 · 폐기 장부 수량 어긋남)
+- **무엇을(컨펌 5):** ①범위 끝 (a)재료 원가율까지/(b)P&L ②순서 (a)0→1→2→3/(b)보고서부터 ③매장 원가 (a)가중평균 유지/(b)마지막 실제 매입가 ④재고 권한 (a)전부/(b)초기재고·조정·실사확정=매니저 이상 ⑤운영 메뉴 연결 (a)준비도 화면 뒤 사람이/(b)이름매칭 스크립트. **Fable 권고: ①a ②a ③b ④b ⑤a** («그대로» 한 마디면 이대로)
+- **왜:** 돈·장부·마이그에 닿고 길이 갈림(특히 ③ 은 원가 정의 변경)
+- **답이 오면(그대로):** 판정문 Ⅱ — 묶음 0(결함 4, 0-③ 은 359d0949 커밋 뒤) → 묶음 1(장부 금액 칸·문 5개 봉인·Fable 게이트) → 묶음 2 착수 전 운영 준비도 읽기 측정(prod-query) → 묶음 2(게이트) → 묶음 3. 🔒 orders-crud.js 무접촉. docs 갱신은 두 방 게이트 뒤 한 번에(Ⅱ-6). 같은 폴더 다른 방이 파일 고치는 중이면 기다림
+
 ### 답 기다림 (2026-10-07 밤) — GHL 질문 3개(DuitNow 켜져 있나 · Direct 에서 샘플대로 되나 · MyDebit D007) [Claude Code · 백그라운드 작업방 084aaec3]
 - 지시: «Irene 님 확인·결정 대기» 항목 «GHL: UAT 근무시간 · 직불(D007)·DuitNow QR»
 - **한 것(개발서버, 운영 미배포):** 단말기 화면 DuitNow QR 결제. 근거 = GHL 2026-09-28 메일(«Duitnow QR Product ID is DUITNOW QR» + Direct 용 샘플) — 우리 코드가 샘플 5개(판매·DuitNow 판매·조회 E3·취소·정산)를 바이트까지 똑같이 만든다. 서버 `utils/ghlEcr`(C01A·requestProduct) · `services/terminalPayments`(설정 꺼지면 409·모르는 상품 400·승인 = ewallet/duitnow 서버 고정) · 라우트 product(직원만) · 화면 설정 토글 «단말기 화면 DuitNow QR»(기본 꺼짐) · 결제창 선택 칩 · 4언어. 문서 `docs/CARD_TERMINAL_ECR_DESIGN.md` §4-2
@@ -19,28 +100,50 @@
 - 한 것: 기록·코드 확인만. 운영 **읽기 전용** 조회 스크립트(SELECT 만: 10-05 이후 terminal_transactions · user_context_requests 전체 · brand_products 16·Yukgaejang)를 작성해 실행하려 했으나 허락 창에서 멈춤 → **실행 안 됨(결과 없음)**. 스크립트 `~/.claude/jobs/2be9f209/tmp/ro-check.js`. 파일 변경 0 · 운영 쓰기 0
 - **무엇을:** ①운영 읽기 조회 허락(①③④ 가 실제로 쓰였는지·지금 값 확인용) ②상품 16 처리: (가) 이 방이 16 을 1kg 값으로 되돌리고 45g 은 새 상품 등록(운영 쓰기·되돌리기 영수증) / (나) Irene 이 화면에서 직접 / (다) 그대로 둠
 - **왜:** 운영 DB 접근·운영 데이터 쓰기는 Irene 허락 필요 · ②④ 는 Irene 눈 확인
-- **답이 오면:** 조회 → 단말기 BUSY 뒤 자동 시작 기록 있는지·역할 요청 건수·상품 16 현재값 보고 → (가)면 Fable 1회(돈·재고 연결이고 길이 갈림) 후 트랜잭션 수정 · 이 항목 완료 이동
+- Irene 답(상황판, 10-07 밤): «허락» → 같은 조회(scp+ssh, SELECT 만)를 다시 실행했으나 **명령 허락 창에서 또 멈춤 → 실행 안 됨(결과 없음)**. 상황판 «허락» 은 이 방의 명령 허락 창을 대신하지 못함(운영 서버 접속 명령 자체가 허락 설정 밖)
+- Irene 답(상황판, 10-08): «권고. 허용» → `ssh … 'node -' < 스크립트` 로 한 번 더 시도했으나 역시 허락 창에서 멈춤(실행 안 됨). **더 재시도하지 않음** — 상황판 답은 터미널 허락 창을 누르지 못함(메모리 feedback_bg_prod_write_permission_window)
+- **필요한 것 하나:** Irene 이 이 방(dev 메뉴 → 방 2be9f209)에 들어와 있을 때 «조회해» 한 줄 → 허락 창이 뜨면 바로 실행됨
+- **답이 오면:** (Irene 이 이 방 허락 창에서 scp·ssh 를 허용하거나, 이 방에서 직접 `! scp ~/.claude/jobs/2be9f209/tmp/ro-check.js irene@87.106.78.146:/tmp/ro-check-2be9.js && ssh irene@87.106.78.146 'cd /var/www/production-backend && timeout 60 node /tmp/ro-check-2be9.js; rm -f /tmp/ro-check-2be9.js'` 실행) 조회 → 단말기 BUSY 뒤 자동 시작 기록 있는지·역할 요청 건수·상품 16 현재값 보고 → (가)면 Fable 1회(돈·재고 연결이고 길이 갈림) 후 트랜잭션 수정 · 이 항목 완료 이동
 
-### 답 기다림 (2026-10-07 밤) — 브랜드 상품 3건 «Alcohol» 분류 바로잡기: 운영 읽기·쓰기 허락 [Claude Code · 백그라운드 작업방 8054cffb]
+### 완료 (2026-10-07 밤) — 브랜드 상품 «Alcohol» 오분류 정리 [Claude Code · 백그라운드 작업방 8054cffb]
 - 지시: «Irene 님 확인·결정 대기» 항목 «상품 카테고리 정리: Alcohol 에 IKEA LED String Light · Sawah Mas (Staff Meal) · Kimchi 1kg — 보고서에 그대로 나옴»
-- 보고서 = 브랜드 판매 통계 `GET /api/brand/sales-report`(`routes/brand-revenue.js:229`) «카테고리» 탭. 분류는 **브랜드 상품의 카테고리**(brand_products.category_id → brand_product_categories)를 그대로 읽는다 → 보고서 코드 문제 아님, 상품 3건의 분류 값 문제
-- 원인(코드로 확인): 브랜드 상품 «새로 만들기» 창이 카테고리 칸을 **목록 첫 카테고리로 미리 채움**(`BrandProductsTab.tsx` openModal, 목록 정렬 = sort_order·이름 → «Alcohol» 이 알파벳 맨 앞). 칸을 안 바꾸고 저장하면 «Alcohol» 로 들어감. 다른 등록 경로(재고아이템 → 판매 상품 등록 · 발주 화면 «새 상품 등록»)는 카테고리를 안 보내 «미분류» → 3건은 이 창에서 만들어진 것으로 보임. **운영 데이터로 확인은 못 함**(운영 읽기 조회가 권한에서 거부됨 — 우회 안 함)
-- 한 것(개발서버): 새 상품 창 카테고리 기본값 = «No category»(미리 고르지 않음) 1줄(`BrandProductsTab.tsx` openModal). 검증: 빌드 1회(새 경고 0) · 실브라우저 클릭(브랜드 계정 /pos/brand-products → Add Product → 카테고리 칸 «No category», 고치기 전이면 첫 항목 «📦 Packaging» · 화면 오류 0) · verify-all --full 23/24(mount sweep 크래시 0 · health-check 통과 · ✗1 = 배포 기록 파일, 배포 때 작성) · print-guard 8/8 · design-guard 신규 0. 저장 경로(category_id 빈 값 → null)는 기존 «No category» 선택과 같은 길이라 서버 무변경. Fable 미호출(분류 표시 1줄 · 되돌리기 쉬움 → 호출 조건 불성립). fable-gate 정지는 다른 방 미커밋 변경(결제 설정 등) 지문 — 이 방 변경과 무관, 건너뛰기 파일 안 만듦
-- 같은 «첫 카테고리 미리 채움» 이 푸드코트 상품(`FoodcourtProductsTab.tsx:380`)·공급업체 상품(`SupplierProductsTab.tsx:609`)·시스템 상품(`SystemProductManagementPage.tsx:1056`) 창에도 있음 — 지목 범위 밖이라 안 고침(제안)
-- **무엇을:** 운영 브랜드 상품 3건의 카테고리를 맞는 것으로 바꾸기 — (가) Irene 이 브랜드 상품 화면에서 직접 3건 수정 / (나) 이 방이 운영 읽기 조회(3건·카테고리 목록) 후 Irene 이 정한 분류로 3건 바꿈(트랜잭션·건별 1행·전후 출력·되돌리기 = 원래 category_id)
-- **왜:** 운영 조회·운영 데이터 쓰기는 Irene 허락 필요 · 어느 분류가 맞는지(예: LED 조명 → 비품/Other, 직원식 → Staff Meal, 김치 → 반찬/소스)는 Irene 이 아는 값
-- **답이 오면(가):** 화면에서 바꾼 뒤 보고서 «카테고리» 탭 재확인만 / (나): 조회 → 분류 제안 표 → 바꿈 → 보고서 API 재조회 · 이 항목 완료 이동
+- 보고서 = 브랜드 판매 통계 `GET /api/brand/sales-report`(`routes/brand-revenue.js:229`) «카테고리» 탭 — 브랜드 상품 카테고리를 그대로 읽음(보고서 코드 무변경)
+- 원인: 브랜드 상품 «새로 만들기» 창이 카테고리 칸을 목록 첫 카테고리로 미리 채움(`BrandProductsTab.tsx` openModal)
+- 개발서버(미배포): 기본값 «No category» 1줄. 빌드 1회 · 실브라우저 클릭(Add Product → «No category», 오류 0) · verify-all --full 23/24(✗1 = 배포 기록 파일) · print-guard 8/8 · design-guard 신규 0
+- 운영 쓰기(Irene «기타로 해» · «그래», 2026-10-07 23:42 UTC): brand_products #251 Preiink K-DINE Stamp Black · #252 IKEA LED String Light · #255 Kimchi 1kg · #256 Sawah Mas (Staff Meal) — category 24(Alcohol) → 33(Other, owner 23). 트랜잭션 · 건별 영향 1행 ×4 · 재조회 확인 · Alcohol 남은 상품 0. 되돌리기 = `UPDATE brand_products SET category_id=24 WHERE id IN (251,252,255,256)`
+- 앞서 허락 창이 네 번 3분 초과로 닫혔음(실행 안 됨 확인) — 이번에 Irene 이 화면에 있을 때 1회 실행
+- 제안(안 고침): 푸드코트·공급업체·시스템 상품 창도 첫 카테고리 미리 채움(`FoodcourtProductsTab.tsx:380` · `SupplierProductsTab.tsx:609` · `SystemProductManagementPage.tsx:1056`)
 
-### 답 기다림 (2026-10-07 밤) — 운영 정산서 3건 매장 칸(restaurant_id) 비어 있음 보정: 운영 조회·쓰기 허락 [Claude Code · 백그라운드 작업방 0ffccb95]
-- 지시: «Irene 님 확인·결정 대기» 첫 항목(운영 SOA 3건 #162·#188·#2xx restaurant_id NULL 보정)
-- 근거: 10-05 Fable 판정 «손님 이름 = A(생성 시 restaurant_id 채움)+B(이름 계산) 둘 다» → 새 정산서는 이미 채워짐(`services/soaScheduler.js:243`), 옛 운영 3건만 비어 있음. 이름은 술어 `payerIdIsStore`(`routes/invoices-helpers.js:290`)로 이미 정상 표시 → **급하지 않음**. 기록: `dev-backend/releases/archive/2026-10-05-soa-status-invoices.json`
-- Fable 소급 판정(`.claude/fable-verdict-20261007-retro-v3108-n5-gate.md`) 주의점 A: 매장 칸이 채워진 정산서는 **낼 매장이 API 직접 호출로 paid 로 바꿀 수 있음**(화면은 0원만). #162·#188 은 이미 paid 라 영향 없음, 세 번째 건은 상태 미확인
-- 한 것: 문서·코드 확인만. 운영 **읽기 전용 조회**(payer_type=restaurant · restaurant_id NULL 전수 + 상태·자식 매장)를 시도했으나 허락 창에서 멈춤 → **실행 안 됨(결과 없음)**. 파일 변경 0 · 운영 쓰기 0
-- **무엇을:** ①운영 읽기 조회 허락 ②조회 결과 대상이 3건 그대로면 `invoices.restaurant_id = payer_id` 채움(트랜잭션 · 건별 영향행 1 확인 · 전후 출력 · 되돌리기 = 그 id 들 NULL) 허락
-- **왜:** 운영 DB 접근·운영 데이터 쓰기는 Irene 지시 없이 안 함
-- **답이 오면(채움):** 조회 → 3건 확인(세 번째 건이 미결제면 위험 A 보고 후 그것만 보류) → 채움 → 재조회 · 이 항목 완료 이동 / (보류): 항목을 «후속 후보»로 내림 — 이름 표시는 이미 정상
+### 완료 (2026-10-07 밤) — 운영 정산서 매장 칸(restaurant_id) 보정 [Claude Code · 백그라운드 작업방 0ffccb95]
+- (이전) 답 기다림 → Irene 답(상황판): «권고대로»(결제된 건만 채움, 미결제 건 보류) · 운영 접속 «허락»
+- 운영 읽기 실측: 매장 칸 빈 '매장 결제' 청구서 = 3건 — #162 SOA-BRD1-R10-M202609202104(paid, 매장 10 with MIN Cafe, 자식 4 전부 매장 10) · #188 SOA-BRD2-R8-M20260929173419(paid, 매장 8 K-DINE IPC, 자식 10 전부 매장 8) · **세 번째 = #185 SOA-BRD2-R8-M20260929163801(cancelled, RM 5,925.10, 자식 0)**
+- 운영 쓰기: 트랜잭션 · 조건(id·매장칸 NULL·payer_id·soa·paid) · 건별 영향행 1 확인 → COMMIT. #162 → 10 · #188 → 8. 재조회 일치
+- **#185 는 그대로**(결제된 건이 아님 — 권고 «결제된 건만»). 취소된 정산서·묶인 청구서 0, 이름은 술어로 정상 표시. 남은 매장칸 빈 행 = #185 하나
+- 되돌리기: `UPDATE invoices SET restaurant_id=NULL WHERE id IN (162,188)`
+- 코드·파일 변경 0(이 기록만) · Fable 재호출 없음(10-05 권고 그대로 실행)
 
-### 답 기다림 (2026-10-07 밤) — 외부 공급업체 월별 정산서(SOA) · 발주 «직원식» 구분: 설계 컨펌 7건 [Claude Code · 백그라운드 작업방 359d0949]
+### 완료 (2026-10-08) — 외부 공급업체 월별 정산서 · 발주 «직원식» 구분 · 승인 메일 문구 (개발서버 · 운영 배포 대기) [Claude Code · 백그라운드 작업방 359d0949]
+- 지시: «다음 확정 작업» 7번(10-04 잔여 3건) · Irene «그대로»(설계 컨펌 7) · «돌려»/«해»(검사 재실행)
+- **Fable 1회차 설계** `.claude/fable-verdict-20261007-ext-soa-staffmeal.md` → 구현 → **Fable 2회차 게이트 PASS** `.claude/fable-verdict-20261008-ext-soa-staffmeal-gate.md` (팀원 재량 8건 전부 수용 · 마커 찍힘 지문 762fc5fb5f64, note «이 방 범위만 보증» — 작업트리 전체 지문이라 아무 방이 파일 하나 바꾸면 죽음, 배포 직전 «코드 변경 0» 확인 뒤 같은 note 로 재찍기)
+- 검증: health-check 317/317(새 계약 10) · 고장주입 6종 · verify-all --full 23/24(✗1 = 배포 기록 파일) · mount sweep 크래시 0 · 실브라우저 클릭 15/15(Fable 도 1회 직접 재현) · 타입 신규 0 · 운영 쓰기 0
+- **배포 조건(Fable):** ①SW 버전 올리기 ②배포 기록 파일 ③배포 뒤 — Irene 이 외부 업체 수정 창에서 월별 업체 켬(후보 TaiYangFresh #63 · Guan Kee #67 · Lee's Fandbee #60 · LSH #73 · Valley Fresh #44, 같은 이름 두 줄은 각각) · 매장10 직원식 재료 8개 이동은 `migrate-staff-meal-ingredients-20261007.js` 드라이런 표 → Irene 승인 → `--apply` · 분류 #23 은 배포 마이그로 자동 켜짐
+- Fable 이 남긴 선택 1건(배포 무관): 직원식 표시를 발주 목록 머리·수령 창·발주서 PDF 에도 붙일지 — **Fable 권고: 지금은 안 붙임**(비용 구분은 상세·보고서로 됨, 발주서는 공급업체 문서). 원하시면 후속 소묶음
+- **/개발완료 안 함**: 같은 폴더에 «일하는 중» 방(934d7d7c 상황판 자동 이어하기)이 있고 다른 방 3곳 미커밋 변경이 섞여 있음 · DEVELOPMENT_PLAN 은 마커 보존 위해 커밋 때 갱신. 방 98b2ea7c 가 이 방 커밋을 기다림(purchase-cost-report·PO suggestions) — 다음 /개발완료 때 함께
+
+### (이전) 답 기다림 (2026-10-08 새벽) — 외부 월별 정산서 · 직원식 구분: 구현 끝 · 실브라우저 검사 다시 돌려도 되는지 — Irene «돌려»·«해» → verify-all --full 23/24(✗1 배포 기록 파일) · 클릭 흐름 15/15 · Fable 게이트 2회차 진행 중 [Claude Code · 백그라운드 작업방 359d0949]
+- Irene 답(10-07): 「그대로」 → 판정문 Ⅱ 대로 A(정산서)·B(직원식) 백엔드·화면 구현 완료(개발서버, 운영 쓰기 0)
+- **무엇을:** `verify-all --full` 의 실브라우저 진입 검사(mount sweep)가 **서버 메모리 부족으로 시스템이 중간에 멈춤** — 규칙상 제가 다시 시작하지 않음. 다시 돌려도 되는지(그 뒤 클릭 흐름 1회 → Fable 게이트 2회차)
+- **왜:** 백그라운드 작업이 메모리 압박으로 정지되면 Irene 지시 없이 재시작하지 않는다
+- **답이 오면(«돌려»):** `node scripts/verify-all.js --full` 1회 → `~/.claude/jobs/359d0949/tmp/clickflow.js`(데모 매장 38, 끝에 정리) 1회 → Fable 게이트(판정문 Ⅱ «게이트 2회차에서 볼 것» 5항) → 통과면 ✅·/개발완료
+- 구현 요약(상세는 판정문·아래 결과):
+  - A: `routes/supplier-directory.js`(외부 업체 billing 저장·조회 — 계약 payment_terms, NET 키 안 씀, 오너 업체 월별 400) · `utils/payViaSoa.js`(외부 조기 제외 제거) · `services/purchaseOrderService.js`(월별 외부 자식 마감일 비움) · `routes/invoices-payment.js`(건별 «결제함» pay_via_soa 400 · 정산서 «결제함» 가지 · `POST /:id/soa-reconcile`) · `services/purchaseOrderPayment.js`(recordPayment viaSoa) · `services/soaScheduler.js`(generateExternalSupplierSoaNow · 메일 한 줄) · `routes/purchase-invoices.js`(`POST /purchase-invoices/soa/external/:id/issue`) · `services/externalSoa.js`(신규: 대조·자식 따라가기) · `services/reconcileInvoiceSync.js`(⑦ 정산서 따라가기) · `routes/invoices-list.js`·`routes/owner.js`(external_document·pay_via_soa) · `models/Invoice.js` + `scripts/migrate-add-invoice-external-document.js`(deploy)
+  - B: `models/IngredientCategory.js` + `scripts/migrate-staff-meal-category-flag.js`(deploy · 운영 예상 1건 #23) · `routes/ingredient-categories.js` · `utils/poStaffMeal.js`(신규) · `routes/purchase-orders-crud.js` · `routes/purchase-cost-report.js`(by_purpose·staff_meal_spend) · `routes/restaurants-ingredients.js` · `scripts/migrate-staff-meal-ingredients-20261007.js`(manual — 배포 뒤 Irene 표 승인 후 --apply)
+  - 화면: 공급업체 프로필 «Billing» 칸·창 · `ExternalInvoicePayAction` 정산서 가지 · `ExternalSoaReconcilePanel`·`ExternalSoaIssueButton`(신규) · RA/Owner/BG/FG 청구서 «Pay via SOA» · 재료 분류 «직원식» 체크·배지 · 발주 상세 배지·나눔 · 발주 담기 표시 · 구매 비용 보고서 칸 2개 · 4언어 키 64개 + glossary
+  - 문서: TRADE_STRUCTURE ⑩⑪ · INVOICE_SYSTEM §11-2 · PURCHASE_ORDER_SYSTEM §5 참조
+- 검증(지금까지): health-check 317/317(새 계약 A 6 · B 4) · 고장주입 A 3(①판정 되돌림 → 6건 실패 ②따라가기 제거 → ⑤ 실패 ③b 자식 발주 결제 루프 제거 → ⑥ 실패; ③a «자식 상태 맞추기 호출» 제거는 실패 안 남 — 같은 루프가 이미 결제됨으로 적어 겹치는 안전망) · B 2(파생 끔 → ② · 보고서 축 끔 → ③) · pm2 재시작 뒤 · B5 스크립트 데모 매장 드라이런→적용→되돌리기 확인 · 빌드 1회(내 파일 경고 0) · 타입 신규 0 · i18n 통과 · design-guard 신규 0 · print-guard 8/8 · verify-all --full: 실브라우저 직전까지 22항 통과, ✗1 = 배포 기록 파일(배포 때 작성) · **실브라우저 진입 검사·클릭 흐름 확인 못 함**
+- 판정문과 다르게 한 것(팀원 재량, 게이트 때 보고): ①정산서 총액은 finalizeInvoice 대신 «묶인 청구서 합 + 차액 줄»(정산서엔 줄 항목이 없어 finalize 가 0 으로 만듦) ②`invoices.external_document`·`is_staff_meal` 은 sync 가 아니라 전용 마이그(운영 배포는 sync 로 칸을 안 넣음) ③오너 등록 업체는 월별 미지원 400(운영 0곳) ④월 정산서 메일 한 줄은 영어(기존 템플릿이 영어 고정) ⑤SW 버전 안 올림(배포 때) ⑥발주 목록 머리·수령 창·발주서 PDF/공유 메시지의 직원식 표시는 안 함(상세·담기·보고서만)
+
+### (이전) 답 기다림 (2026-10-07 밤) — 외부 공급업체 월별 정산서(SOA) · 발주 «직원식» 구분: 설계 컨펌 7건 — Irene «그대로» [Claude Code · 백그라운드 작업방 359d0949]
 - 지시: «다음 확정 작업» 7번 (10-04 잔여 3건). Irene 원문(10-04) 은 판정문에 그대로
 - 실측 `.claude/fable-input-20261007-ext-soa-staffmeal.md`(운영 읽기 전용 포함) → **Fable 1회차 설계** `.claude/fable-verdict-20261007-ext-soa-staffmeal.md` (Ⅰ 보고문 · Ⅱ 구현 지시 A0~A7·B0~B7 · Ⅲ 컨펌)
 - **C 승인 메일 문구 = ✅ 완료(개발서버)** — 외부 공급업체면 «보냈습니다» 대신 «아직 보내지 않았습니다 — WhatsApp·PDF·이메일로 보내 주세요»(발주 확인 메일 + 오너 승인 결과 메일, 4언어). 판정 = `utils/sellerNames.isExternalSeller`(화면과 같은 단일 소스). 파일: `services/poNotifications.js` · `utils/notificationTemplates.js` · `locales/{en,ko,zh,ms}/email.json`(키 추가만). 검증: 실제 dev 발주 3건(외부·가입 공급업체·브랜드) 4언어 렌더 24/24 · 고장주입(외부 판정 끔 → 8건 FAIL) → 원복 통과 · health-check 306/306 · print-guard 8/8 · pm2 재시작함 · **Fable 검토 적합**, 게이트 마커 재발급(지문 9704dab23400 — session-state 외 파일 바꾸면 죽음)
@@ -48,16 +151,21 @@
 - **왜:** 돈·결제 기록(A)과 운영 데이터(B) 에 닿고 길이 갈림 — 구현 착수는 Irene 컨펌 뒤
 - **답이 오면(그대로):** 판정문 Ⅱ — A0 문서 → A1~A7(백엔드 → 화면 → health-check 6 + 고장주입 3) → B0~B7 → 빌드 1회 · verify-all --full 1회 → Fable 게이트 1회 / 바꾸는 항목이 있으면 그 항목만 반영해 진행(Fable 재호출은 길이 바뀔 때만)
 
-### 답 기다림 (2026-10-07 밤) — 판매자 배송 지역별 설정: 구현 이어가기 허락 [Claude Code · 백그라운드 작업방 0ec1e1c3]
-- (이전) Irene 답(상황판): «권고대로» = ①지역 자동 판정 ②지금 개발서버 구현 ③결정 사항 그대로 → 판정문 `.claude/fable-verdict-20261007-seller-delivery-zones.md` Ⅱ 순서로 구현 시작
-- 구현 도중, 개발 DB 에 새 칸 넣는 방법(배포 스크립트·메모리 파일 읽기) 확인 명령이 허락 창에서 3분 넘게 멈춤 → 상황판이 창을 닫음. **그 명령은 실행 안 됨**
-- **안전 조치:** 모델에 새 칸이 있는데 DB 엔 없으면 서버 재시작 때 브랜드 조회가 깨지므로 **이 방의 코드 변경 전부 되돌림**(git apply -R, 다른 방 파일 무접촉). 개발서버 코드 = 시작 전과 같음. 모듈 불러오기 확인
-- **보관:** `.claude/wip/seller-delivery-zones.patch`(모델 3·sellerNames·brandAccountSettings JSON 비교·purchaseOrderTotals 지역 전처리·발주 생성 구매자 전달·제출 때 재계산) + `.claude/wip/deliveryZones.js`(주 16개·별칭·우편번호 표 — 위키백과 Postal codes in Malaysia 10-07 대조·저장 검증·지역 판정)
-- 남은 것: 개발 DB 칸 추가(멱등 마이그 `scripts/migrate-*.js` + registry 등록 방식 확인 필요) → R4 담기 목록 · R5 저장 라우트 3·주소 추천 · R6 테스트·실호출·고장주입 3 → F1~F4 화면 → 빌드 1회·verify-all --full 1회 → Fable 게이트 1회
-- 문서: `docs/TRADE_STRUCTURE.md` ⑦ §5(b) 판정 한 줄은 그대로(«컨펌 대기» → 이어갈 때 «확정»으로)
-- **무엇을:** 이 방이 구현을 이어가도 될지(파일 읽기·개발 DB 칸 추가 포함, 운영 무접촉)
-- **왜:** 허락 창이 응답 없이 닫혀서 멈춤
-- **답이 오면(예):** `git apply .claude/wip/seller-delivery-zones.patch` + deliveryZones.js 복원 → 개발 DB 칸 추가 → 위 «남은 것» 순서 / (나중에): 🕓 로 돌리고 wip 보관 유지
+### 완료 (2026-10-08 새벽) — 판매자 배송 지역별 설정 (개발서버 · Fable 게이트 PASS · 운영 배포 대기) [Claude Code · 백그라운드 작업방 0ec1e1c3]
+- Irene 답 2회: 설계 «권고대로» · 이어가기 «권고대로». 판정문 `.claude/fable-verdict-20261007-seller-delivery-zones.md` Ⅱ
+- **이 방이 고친 파일(방 359d0949 변경과 같은 파일에 섞인 곳은 ※ — 이 방 몫은 지역 관련 줄만):**
+  - 백엔드 신규: `utils/deliveryZones.js` · `scripts/migrate-add-seller-delivery-zones.js`(deploy 등록, 개발 DB 적용·재실행 0) · `tests/delivery-zones.test.js`
+  - 백엔드 수정: models Brand·Foodcourt·SupplierCompany(`delivery_zones` JSON) · `utils/sellerNames.js` · `utils/brandAccountSettings.js`(칸 추가 + JSON 비교) · `utils/purchaseOrderTotals.js`(지역 전처리) · `routes/purchase-orders-workflow.js`(제출 때 재계산) · `routes/brands-core.js` · `routes/foodcourts-core.js` · `routes/supplier.js` · `routes/address-suggestions.js` · ※`routes/purchase-orders-crud.js`(buyer 1줄) · ※`routes/restaurants-ingredients.js`(seller_delivery_zone) · ※`scripts/migrations.registry.json`(1줄)
+  - 화면 신규: `components/Common/DeliveryZonesEditor.tsx` · `utils/deliveryZones.ts` / 수정: BrandPaymentSettingsPage · FoodcourtPaymentSettingsPage · SupplierCompanyInfoPage · `components/Common/DeliveryTermsText.tsx`(zoneName) · ※NewPurchaseOrderPage · ※PurchaseOrderDetailPage
+  - 번역: common(deliveryZones 15키) · brand·foodcourt·supplier(«배송 안내 메모» 이름) · ※purchaseOrders(newPo 3키) ×4언어 · ※glossary «Delivery zone»
+  - 문서: ※`docs/TRADE_STRUCTURE.md` ⑦ §5(b) 한 줄 · ※`docs/PURCHASE_ORDER_SYSTEM.md` §2 한 줄
+- 검증(지금까지): jest 26 묶음 통과(새 28건) · 고장주입 4건(지역 결과 무시 → 2 실패 · 중복 주 검사 제거 → 1 실패 · 제출 재계산 제거 → 실호출 E1 실패(pm2 재시작 뒤) · 형제 브랜드 지역 어긋남 → 인스펙션 B-ACC 실패) 전부 원복 후 통과 · 실호출 17/17(데모 38·공급업체 20·브랜드 10/17, 끝에 원복 확인·발주 삭제) · health-check 317/317 · print-guard 8/8 · design-guard 신규 0 · i18n:verify 오류 0
+- 빌드 1회(EXIT 0) · verify-all --full 22/24(mount sweep 크래시 0 · ✗2 = 배포 기록 파일 없음(배포 때 작성) · 타입 기준선 메모리 게이트 → 단독 실행 신규 0) · 실브라우저 클릭 7/7(BG 설정 지역 2개·중복 주 막힘·새로고침 유지 / RA 담기 «… · Klang Valley» 배송비 10.00 · 콘솔 오류 0 · 원복)
+- **Fable 게이트 2회차 PASS** `.claude/fable-verdict-20261008-seller-delivery-zones-gate.md` — 실호출 17/17 Fable 재실행 확인 · 팀원 재량 8건 전부 수용. **통과 마커는 안 찍음**(작업트리에 방 359d0949 미검증분이 섞여 있어서) → 방 359 게이트가 끝난 뒤 그 Fable 이 두 사안을 note 에 같이 적어 1회 pass
+- **배포 때:** 마이그 `migrate-add-seller-delivery-zones.js`(deploy, 빈 칸 3개·동작 변화 0) · **SW 버전 올리기** · 배포 노트 «지역 안 적은 판매자 변화 0 · 제출 때 배송비 1회 재계산»
+- **배포 뒤 운영 일(Irene 지시 뒤):** with MIN·K-DINE 매장 주소에 주(州) 채우기 → GIT 브랜드 설정에서 Irene 이 지역 추가(예: Klang Valley = Selangor·KL·Putrajaya → RM 10). 안 하면 지금과 똑같이 돎
+- 비차단 후속: ①제출 재계산 영구 자물쇠 — E1(주소 비움→제출→기본 배송비) 한 건을 health-check/계약 테스트로(방 359 가 health-check 를 끝낸 뒤) ②메모리 `reference_delivery_fee_gap` 에 «지역별 배송비 = delivery_zones · utils/deliveryZones.js · 제출 때 1회 재계산» 한 줄 ③«보낸 것으로 표시»·직접구매·판매자 대리 생성 경로는 재계산 없음(담은 뒤 주소를 고치고 그 경로로 보낼 때만 옛 지역 값 — 생기면 같은 한 줄)
+- 보관: `.claude/wip/`(실호출·클릭 스크립트·사진 · 되돌렸던 patch 원본)
 
 ### 완료 (2026-10-07 밤) — 청구서 목록 «Actions» 버튼 칸 통일·반응형 (개발서버) [Claude Code · 백그라운드 작업방 197b3423]
 - 지시: Irene «/pos/owner/invoices 우측 버튼 공간이 너무 좁아. Mark paid 2줄로 나오는데 위아래 여백이 없어. 다른 곳 디자인 체크해서 기준 통일해서 반응형 맞춰줘»
@@ -172,6 +280,10 @@
 - 아침 점검 cron 00:00 UTC(08:00 MYT) `~/dev-server/morning-check.sh` — PurpleHere·PlanQ 에 «/개발시작» 방. 첫 실행 2026-10-07 11:38Z(방 e6a3d881)
 - 개발서버 상황판(~/dev-server/board, PM2 dev-board, 127.0.0.1:8800): 대화창·확인 완료→완료 목록(state.json)·개발완료 버튼(+git 기록)·대기열·방 줄 실행/중지/삭제 — 설명서 ~/dev-server/README.md
 
+### /개발시작 들어온 업무 확인 (2026-10-08 00:00Z · prod-query 읽기 전용 · 방 6b0ff12b) [Claude Code]
+- 새로 들어온 것 0건: 시스템 문의 마지막 글 09-17 · 후속 글(14일) 0 · 랜딩 문의 0 · 운영 문의 열림 1(진행 중, 개발 업무 아님)
+- 열린 3건(SUPP-2026-6842-103 · 1886-062 · 2401-270)은 아래 10-07 판단 그대로 «이미 해결» — 오늘 재확인: check-hook-tdz 637파일 0건 · RecipesTab getErrorMessage(1321·1524줄) 유지 · 배포 기록 releases/archive/2026-09-10-error-message-crash.json. 닫기는 운영 쓰기라 Irene 지시 때만
+
 ### /개발시작 들어온 업무 판단 (2026-10-07, 11:34Z 조회 결과 기준 · 운영 재조회 안 함 — Irene 지시: 운영 서버 직접 명령 금지) [Claude Code]
 - SUPP-2026-6842-103 · SUPP-2026-1886-062 (/pos/purchase-orders TDZ 'mn', 9/17) → 이미 해결: 커밋 1e43a29fd 9/17 긴급 수정·운영 배포 SW 5.35, 재발 게이트 check-hook-tdz(오늘 624파일 0건)
 - SUPP-2026-2401-270 (/pos/recipes React #31, 9/10) → 이미 해결: RecipesTab 저장 실패 getErrorMessage 교체(그 신고를 주석에 명시) · releases/2026-09-10-error-message-crash.json 로 9/10 배포
@@ -238,12 +350,10 @@
 3. ~~영수증 드래그·PDF~~ — ✅ 완료·운영 배포 SW 5.89(10-07)
 4. ~~발행자 청구서 «To Confirm» 탭 + 업무 버튼 색 규칙~~ — ✅ 완료(10-07, 위 «완료» 절) · 개발서버만, 운영 배포 대기
 5. ~~**결제 설정 = 계정(회사) 하나**~~ — ✅ 완료(10-07, 위 «완료» 절) · 개발서버만, 운영 배포 대기(배포 시 데모 브랜드 2건만 정렬)
-6. ~~**판매자 배송 지역별 설정** — 설계부터~~ — ✅ 설계 완료(10-07, Fable 1회차) · Irene «권고대로» · 구현은 이어가기 허락 대기(위 «답 기다림» 절, wip 보관)
-7. ~~(10-04 잔여) 외부 공급업체 월별 SOA 대조 · 발주 스탭밀 구분 · 승인 메일 문구~~ — ✅ 승인 메일 문구 완료(개발서버) · ✅ SOA·직원식 설계 완료(10-07, Fable 1회차 · 위 «답 기다림» 절) · 구현은 Irene 컨펌 7건 뒤
+6. ~~**판매자 배송 지역별 설정** — 설계부터~~ — ✅ 완료(10-08, 개발서버 · Fable 게이트 PASS · 위 «완료» 절) · 운영 배포 대기
+7. ~~(10-04 잔여) 외부 공급업체 월별 SOA 대조 · 발주 스탭밀 구분 · 승인 메일 문구~~ — ✅ 완료(10-08, 개발서버 · Fable 게이트 PASS · 위 «완료» 절) · 운영 배포 대기
 
 ### 👉 Irene 님 확인·결정 대기
-- 운영 SOA 3건(#162·#188·#2xx) restaurant_id NULL 보정 — Fable 권고 채움, 이름 표시는 이미 정상이라 급하지 않음(승인 시 실행) → 위 «답 기다림» 절(방 0ffccb95) 참조
-- 상품 카테고리 정리(«Alcohol» 3건) — 재발 막기 완료(개발서버), 운영 3건 분류 바꾸기는 Irene 답 대기 → 맨 위 «답 기다림» 절(방 8054cffb) 참조
 - 단말기(5.85) BUSY 자동 대기 실기 확인 · 판매자 «배송 준비 목록» 1회 · 역할 추가 요청 실제 1건 · 상품 16(K-Yukgaejang Beef) 45g/pack 수정 건 → 맨 위 «답 기다림» 절(방 2be9f209) 참조
 - ~~GHL: UAT 근무시간 · 직불(D007)·DuitNow QR~~ — ✅ 개발서버 완료(10-07, 방 084aaec3 · Fable 게이트 PASS) · 남은 것 = GHL 질문 3개 답 대기(아래 «답 기다림» 절)
 

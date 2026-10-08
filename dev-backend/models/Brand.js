@@ -132,6 +132,12 @@ Brand.init({
     type: DataTypes.TEXT, allowNull: true,
     comment: '배송 메모 (배송 요일·지역 등 자유 텍스트) — 계산에는 쓰지 않는다'
   },
+  // 배송 지역 (2026-10-07 Fable) — 판매자 3종 같은 이름. [{id, name, fee, states[], description?}]
+  //   매칭은 utils/deliveryZones.js 한 곳 · null/[] = 지역 없음(기본 배송비 delivery_fee 만)
+  delivery_zones: {
+    type: DataTypes.JSON, allowNull: true,
+    comment: '배송 지역 목록 — 구매자 주소 주(州)로 자동 매칭, 미매칭은 delivery_fee'
+  },
   // 주문용 상품 링크의 열쇠 (docs/BUYER_FREE_TIER_DESIGN.md §5-6).
   // 공급업체·브랜드가 **같은 칸 이름·같은 규칙**을 쓴다 — 판매자 종류마다 다른 개념을 만들지 않는다.
   // 링크는 `/shop/:slug` 하나이므로 두 표를 가로질러 유일해야 한다(utils/shopSlug.js 가 보장).

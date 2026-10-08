@@ -14,6 +14,7 @@
  */
 
 const express = require('express');
+const stockLedger = require('../services/stockLedger');
 const router = express.Router();
 const { Op } = require('sequelize');
 const {
@@ -716,19 +717,12 @@ router.post('/:id/ship', async (req, res) => {
             if (soldQtyD > 0) {
               const pIngD = await ProductIngredient.findByPk(bp.product_ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
               if (pIngD) {
-                const curD = parseFloat(pIngD.current_stock) || 0;
-                const nextD = Math.round((curD - soldQtyD) * 100) / 100;
-                await pIngD.update({ current_stock: nextD }, { transaction: t });
-                await InventoryTransaction.create({
-                  entity_type: 'brand', entity_id: locked.seller_entity_id,
-                  product_ingredient_id: pIngD.id,
-                  transaction_type: 'order_deduct',
-                  quantity_change: -soldQtyD,
-                  unit: pIngD.unit, stock_after: nextD,
-                  purchase_order_id: locked.id,
-                  notes: `Sold on PO ${locked.po_number} (${bp.name})`,
-                  created_by: req.user?.id || null
-                }, { transaction: t });
+                // 재고 + 장부(금액 = 그 순간 재고아이템 원가) — services/stockLedger 단일 함수
+                await stockLedger.record({
+                  target: { kind: 'product_ingredient', row: pIngD }, entity: { type: 'brand', id: locked.seller_entity_id }, type: 'order_deduct', delta: -soldQtyD,
+                  refs: { purchase_order_id: locked.id }, notes: `Sold on PO ${locked.po_number} (${bp.name})`,
+                  userId: req.user?.id || null, transaction: t,
+                });
               }
             }
             continue;
@@ -750,22 +744,16 @@ router.post('/:id/ship', async (req, res) => {
             const curBp = parseFloat(bp.current_stock) || 0;
             const takeBp = Math.min(soldQtyDirect, curBp);      // 음수 재고 금지
             const shortBp = Math.round((soldQtyDirect - takeBp) * 100) / 100;
-            const nextBp = Math.round((curBp - takeBp) * 100) / 100;
-            // 0 에서 0 을 빼는 원장 줄은 남기지 않는다(재고 이력이 빈 줄로 덮이지 않게)
+            // 0 에서 0 을 빼는 원장 줄은 남기지 않는다(재고 이력이 빈 줄로 덮이지 않게 — stockLedger 가 변화 0 이면 안 남김)
             if (takeBp > 0) {
-              await bp.update({ current_stock: nextBp }, { transaction: t });
-              await InventoryTransaction.create({
-                entity_type: 'brand', entity_id: locked.seller_entity_id,
-                brand_product_id: bp.id,
-                transaction_type: 'order_deduct',
-                quantity_change: -takeBp,
+              await stockLedger.record({
+                target: { kind: 'brand_product', row: bp }, entity: { type: 'brand', id: locked.seller_entity_id }, type: 'order_deduct', delta: -takeBp,
                 unit: require('../utils/poLineSpec').selfStockUnit(bp, 'ea'),   // 자체 재고 = 주문 단위로 센다(§5-12 A)
-                stock_after: nextBp,
-                purchase_order_id: locked.id,
+                refs: { purchase_order_id: locked.id },
                 notes: `Sold on PO ${locked.po_number} (${bp.name})`
                   + (shortBp > 0 ? ` [stock_shortfall ${shortBp}]` : ''),
-                created_by: req.user?.id || null
-              }, { transaction: t });
+                userId: req.user?.id || null, transaction: t,
+              });
             }
             continue;
           }
@@ -776,19 +764,12 @@ router.post('/:id/ship', async (req, res) => {
             if (!pIng) continue;
             const useQty = Math.round((parseFloat(ri.quantity) || 0) * soldQty * 100) / 100;
             if (useQty <= 0) continue;
-            const cur = parseFloat(pIng.current_stock) || 0;
-            const newStock = Math.round((cur - useQty) * 100) / 100; // 2026-09-01: 스위치 제거, 항상 추적
-            await pIng.update({ current_stock: newStock }, { transaction: t });
-            await InventoryTransaction.create({
-              entity_type: 'brand', entity_id: locked.seller_entity_id,
-              product_ingredient_id: pIng.id,
-              transaction_type: 'order_deduct',
-              quantity_change: -useQty,
-              unit: pIng.unit, stock_after: newStock,
-              purchase_order_id: locked.id,
-              notes: `Sold on PO ${locked.po_number} (${bp.name})`,
-              created_by: req.user?.id || null
-            }, { transaction: t });
+            // 2026-09-01: 스위치 제거, 항상 추적 — 재고 + 장부 (services/stockLedger 단일 함수)
+            await stockLedger.record({
+              target: { kind: 'product_ingredient', row: pIng }, entity: { type: 'brand', id: locked.seller_entity_id }, type: 'order_deduct', delta: -useQty,
+              refs: { purchase_order_id: locked.id }, notes: `Sold on PO ${locked.po_number} (${bp.name})`,
+              userId: req.user?.id || null, transaction: t,
+            });
           }
         }
       }
@@ -809,20 +790,15 @@ router.post('/:id/ship', async (req, res) => {
           if (!fp) continue;
           const qty = parseFloat(it.quantity_ordered) || 0;
           if (qty <= 0) continue;
-          const old = parseFloat(fp.current_stock) || 0;
-          const nu = Math.round((old - qty) * 100) / 100;   // 음수 허용 = supplier 분기와 동일(과판매 가시화)
-          await fp.update({ current_stock: nu }, { transaction: t });
-          await InventoryTransaction.create({
-            entity_type: 'foodcourt', entity_id: locked.seller_entity_id,
-            ingredient_id: it.ingredient_id,        // 반품 FG 분기와 동일 관례
-            transaction_type: 'order_deduct',
-            quantity_change: -qty,
+          // 음수 허용 = supplier 분기와 동일(과판매 가시화). 장부 대상 = 푸드코트 상품 자체
+          //   (예전엔 ingredient_id 에 **구매자 재료 id** 를 적어 구매자 재료 장부에 판매자 출고가 섞였다).
+          await stockLedger.record({
+            target: { kind: 'foodcourt_product', row: fp }, entity: { type: 'foodcourt', id: locked.seller_entity_id },
+            type: 'order_deduct', delta: -qty,
             unit: fp.unit || it.unit || 'unit',     // InventoryTransaction.unit 은 NOT NULL
-            stock_after: nu,
-            purchase_order_id: locked.id,
-            notes: `Sold on PO ${locked.po_number} (${fp.name})`,
-            created_by: req.user?.id || null
-          }, { transaction: t });
+            refs: { purchase_order_id: locked.id }, notes: `Sold on PO ${locked.po_number} (${fp.name})`,
+            userId: req.user?.id || null, transaction: t,
+          });
         }
       }
 

@@ -56,6 +56,12 @@ const SupplierCompany = sequelize.define('SupplierCompany', {
     type: DataTypes.TEXT, allowNull: true,
     comment: '배송 메모 (배송 요일·지역 등 자유 텍스트) — 계산에는 쓰지 않는다'
   },
+  // 배송 지역 (2026-10-07 Fable) — 판매자 3종 같은 이름. [{id, name, fee, states[], description?}]
+  //   매칭은 utils/deliveryZones.js 한 곳 · null/[] = 지역 없음(기본 배송비 delivery_fee 만)
+  delivery_zones: {
+    type: DataTypes.JSON, allowNull: true,
+    comment: '배송 지역 목록 — 구매자 주소 주(州)로 자동 매칭, 미매칭은 delivery_fee'
+  },
 
   // Company info
   company_name: { type: DataTypes.STRING(255), allowNull: true },

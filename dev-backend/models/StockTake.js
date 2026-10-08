@@ -9,9 +9,14 @@ StockTake.init({
     primaryKey: true,
     autoIncrement: true
   },
+  // 매장 실사면 매장 id, 본사 창고 실사면 NULL + owner_user_id (2026-10-08 scripts/migrate-stock-take-bg-warehouse.js)
+  owner_user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
   restaurant_id: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true
   },
   stock_take_date: {
     type: DataTypes.DATEONLY,

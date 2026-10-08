@@ -50,6 +50,9 @@ interface SellerOpt {
   seller_currency?: string | null;
   // 배송 가능 지역 안내 글(2026-09-28 Fable) — 배송비 줄 아래 한 줄로만 보인다. 계산에 넣지 않는다.
   seller_delivery_policy?: string | null;
+  // 배송 지역 (2026-10-07 Fable) — 서버가 이 매장 주소의 주(州)로 고른 지역. 없으면 기본 배송비
+  seller_delivery_zone?: { id: string; name: string; fee: number | null } | null;
+  seller_delivery_zone_reason?: 'no_zones' | 'buyer_location_unknown' | 'no_match' | null;
   unit_price: number;
   unit_conversion: number;
   min_order_quantity: number;
@@ -75,7 +78,7 @@ interface MyIngredientRow {
   name: string;
   unit?: string | null;
   ingredient_category_id?: number | null;
-  ingredientCategory?: { id: number; name: string; emoji?: string | null } | null;
+  ingredientCategory?: { id: number; name: string; emoji?: string | null; is_staff_meal?: boolean } | null;
   sellers: SellerOpt[];
   // 지금 남아 있는 재고 — "얼마나 남았나"를 보고 발주량을 정하게 목록에 같이 보여준다.
   current_stock?: number | null;
@@ -1908,6 +1911,8 @@ const NewPurchaseOrderPage: React.FC = () => {
       subtotal: number;
       terms: { min_order_amount: number | null; delivery_fee: number | null; currency: string | null };
       delivery_policy: string | null;
+      zone_name: string | null;
+      zone_reason: string | null;
     }>();
     for (const row of cart) {
       const seller = row.available_sellers.find(s => s.id === row.selected_seller_id);
@@ -1923,11 +1928,16 @@ const NewPurchaseOrderPage: React.FC = () => {
         // 배송 조건은 판매자 것이라 묶음 단위로 한 번만 들고 있으면 된다 (2026-09-17)
         terms: {
           min_order_amount: seller.seller_min_order_amount ?? null,
-          delivery_fee: seller.seller_delivery_fee ?? null,
+          // 배송 지역 (2026-10-07 Fable) — 지역이 골라졌으면 그 지역 배송비가 «유효 배송비». 계산식은 그대로.
+          delivery_fee: seller.seller_delivery_zone && seller.seller_delivery_zone.fee != null
+            ? seller.seller_delivery_zone.fee
+            : (seller.seller_delivery_fee ?? null),
           currency: seller.seller_currency ?? null
         },
         // terms 밖에 둔다 — computeDeliveryFee 가 받는 값은 그대로(안내 글은 계산에 들어가지 않는다)
-        delivery_policy: seller.seller_delivery_policy || null
+        delivery_policy: seller.seller_delivery_policy || null,
+        zone_name: seller.seller_delivery_zone?.name || null,
+        zone_reason: seller.seller_delivery_zone_reason || null
       });
     }
     // 배송비는 **품목 합계가 정해진 뒤** 얹는다(Irene 지정). 저장될 때 진실은 서버 계산값이다.
@@ -2262,7 +2272,9 @@ const NewPurchaseOrderPage: React.FC = () => {
                     const leadSeller = row.sellers.find(s => s.is_preferred) || row.sellers[0];
                     const packSpec = specTextOf(leadSeller);
                     // 단위 칩은 **주문 단위**다(재고 수량은 stockText 가 취급단위로 따로 보여준다).
-                    const metaText = [catText, orderUnitOf(row.sellers, row.unit), stockText, packSpec].filter(Boolean).join(' · ');
+                    // 직원식(비용) 분류 재료면 맨 앞에 표시 — 재료 분류 파생(2026-10-07 Fable 판정 ⑪)
+                    const staffText = cat?.is_staff_meal ? (t('newPo.staffMeal', 'Staff meal') as string) : '';
+                    const metaText = [staffText, catText, orderUnitOf(row.sellers, row.unit), stockText, packSpec].filter(Boolean).join(' · ');
 
                     let priceText = '';
                     let vendorText = '';
@@ -2598,14 +2610,20 @@ const NewPurchaseOrderPage: React.FC = () => {
                             ? <span title={t('newPo.deliveryUnsetHint', '이 판매자가 배송 조건을 아직 적지 않았습니다. 무료라는 뜻이 아니라, 실제 배송비는 청구서에서 확인됩니다') as string}>
                                 {t('newPo.deliveryUnset', '판매자 미설정')}
                               </span>
-                            : <DeliveryTermsText terms={g.terms} />}
+                            : <DeliveryTermsText terms={g.terms} zoneName={g.zone_name} />}
                         </span>
                       </span>
                       <span>{g.delivery_fee.toFixed(2)}</span>
                     </div>
+                    {g.zone_reason === 'buyer_location_unknown' && (
+                      <div style={{ color: '#6B7280' }}>
+                        {t('newPo.deliveryZoneUnknown', 'Your store address has no state, so the default delivery fee applies.')}{' '}
+                        <a href="/pos/settings" style={{ color: '#635BFF' }}>{t('newPo.deliveryZoneFix', 'Add state')}</a>
+                      </div>
+                    )}
                     {g.delivery_policy && (
                       <div style={{ color: '#6B7280', overflowWrap: 'anywhere' }}>
-                        {t('newPo.deliveryAreas', 'Delivery areas')}: {g.delivery_policy}
+                        {t('newPo.deliveryAreas', 'Delivery note')}: {g.delivery_policy}
                       </div>
                     )}
                     {g.to_free != null && (

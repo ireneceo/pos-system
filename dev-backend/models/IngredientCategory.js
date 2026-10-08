@@ -48,6 +48,14 @@ const IngredientCategory = sequelize.define('IngredientCategory', {
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  // 직원식(비용) 분류 — 이 분류 재료의 발주는 직원식 비용으로 집계 (2026-10-07 Fable 판정 ⑪ · TRADE_STRUCTURE ⑪)
+  //   칸 추가·기존 분류 표시는 scripts/migrate-staff-meal-category-flag.js
+  is_staff_meal: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    comment: '직원식(비용) 분류 — 이 분류 재료의 발주는 직원식 비용으로 집계. 매장 소유 분류만 뜻 있음'
   }
 }, {
   tableName: 'ingredient_categories',

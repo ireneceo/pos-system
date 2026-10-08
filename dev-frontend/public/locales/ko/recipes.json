@@ -179,7 +179,10 @@
   "brandReadOnlyHint": "브랜드 레시피입니다 — 읽기 전용이고, 수정은 브랜드에서만 합니다",
   "ingredientCategoriesTab": {
     "addCategory": "분류 추가",
-    "brandWriteStopped": "브랜드 재료 분류는 더 만들지 않습니다 — 재료 분류는 매장에서, 브랜드 분류는 Stock Items 화면에서 관리합니다."
+    "brandWriteStopped": "브랜드 재료 분류는 더 만들지 않습니다 — 재료 분류는 매장에서, 브랜드 분류는 Stock Items 화면에서 관리합니다.",
+    "staffMealBadge": "직원식",
+    "staffMealLabel": "직원식(비용) 분류",
+    "staffMealHint": "이 분류의 재료는 발주와 구매 비용 보고서에서 직원식 비용으로 집계됩니다."
   },
   "recipesTab": {
     "deleteBlockedTitle": "삭제할 수 없습니다",

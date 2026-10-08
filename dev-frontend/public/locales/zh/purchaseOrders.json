@@ -211,7 +211,9 @@
       "tax": "税费",
       "total": "总计",
       "delivery": "配送费",
-      "deliveryUnset": "（卖方未设定）"
+      "deliveryUnset": "（卖方未设定）",
+      "staffMeal": "员工餐",
+      "staffMealSplit": "员工餐 {{staff}} · 一般 {{regular}}"
     },
     "delivery": {
       "expected": "预计日期",
@@ -518,7 +520,7 @@
     "deliveryUnset": "卖方未设定",
     "deliveryToFree": "再加 {{amount}} 即可免运费",
     "deliveryUnsetHint": "该卖方尚未设定配送条件。这不代表免运费 — 实际费用以账单为准。",
-    "deliveryAreas": "配送地区",
+    "deliveryAreas": "配送说明",
     "brandNeedsLink": "请为此物料关联本店的供应商",
     "pendingLink": "待提交采购单",
     "inStock": "库存",
@@ -526,7 +528,10 @@
     "optionsButton": "选项",
     "ownerRestaurant": "订货门店",
     "ownerPickPlaceholder": "选择门店",
-    "ownerPickFirst": "请先选择这张采购单属于哪家门店。采购单会记入该门店的订货记录。"
+    "ownerPickFirst": "请先选择这张采购单属于哪家门店。采购单会记入该门店的订货记录。",
+    "staffMeal": "员工餐",
+    "deliveryZoneUnknown": "门店地址未填写州，因此适用默认配送费。",
+    "deliveryZoneFix": "填写州"
   },
   "staging": {
     "noPhoneTitle": "无电话号码",
@@ -847,7 +852,9 @@
     },
     "gap": {
       "line": "订购 {{ordered}} → 发票 {{invoiced}} ="
-    }
+    },
+    "receivedQty": "已收",
+    "receivedMismatch": "开票数量 ≠ 收货数量"
   },
   "newPo.error.profileTitle": "需要公司资料",
   "newPo.error.goToCompanyInfo": "要开启公司资料吗？",

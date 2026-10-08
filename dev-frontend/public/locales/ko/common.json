@@ -886,5 +886,22 @@
     "remove": "지우기",
     "receiptAlt": "결제 영수증",
     "clickToEnlarge": "클릭하면 크게 봅니다"
+  },
+  "deliveryZones": {
+    "title": "배송 지역",
+    "hint": "지역마다 배송비를 다르게 정합니다. 매장 주소의 주(State)로 지역이 자동으로 정해집니다. 위의 무료배송 기준 금액은 모든 지역에 같이 적용됩니다.",
+    "name": "지역 이름",
+    "namePlaceholder": "예: Klang Valley",
+    "fee": "배송비",
+    "remove": "지역 삭제",
+    "states": "이 지역에 들어가는 주(State)",
+    "stateTaken": "이미 «{{zone}}» 지역에 있습니다",
+    "description": "메모 (선택)",
+    "descriptionPlaceholder": "예: 화·금 배송",
+    "add": "+ 배송 지역 추가",
+    "other": "그 외 지역 → 기본 배송비 {{fee}}",
+    "otherUnset": "그 외 지역 → 배송비 미설정",
+    "incomplete": "지역 이름·배송비·주 하나 이상을 넣으면 저장됩니다.",
+    "saveFailed": "배송 지역을 저장하지 못했습니다"
   }
 }

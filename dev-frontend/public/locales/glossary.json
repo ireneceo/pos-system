@@ -309,6 +309,11 @@
       "zh": "配送",
       "ms": "Penghantaran"
     },
+    "Delivery zone": {
+      "ko": "배송 지역",
+      "zh": "配送区域",
+      "ms": "Zon penghantaran"
+    },
     "Sales": {
       "ko": "매출",
       "zh": "销售",
@@ -358,6 +363,31 @@
       "ko": "받으면 재고가 느는 양",
       "zh": "每收到一件增加的库存",
       "ms": "Stok ditambah bagi satu terimaan"
+    },
+    "Staff meal (cost)": {
+      "ko": "직원식(비용)",
+      "zh": "员工餐（成本）",
+      "ms": "Makanan staf (kos)"
+    },
+    "Waste Reason": {
+      "ko": "폐기 사유",
+      "zh": "报废原因",
+      "ms": "Sebab Pembaziran"
+    },
+    "Food Cost": {
+      "ko": "원가",
+      "zh": "食材成本",
+      "ms": "Kos Makanan"
+    },
+    "Theoretical Usage": {
+      "ko": "이론 사용",
+      "zh": "理论用量",
+      "ms": "Guna Teori"
+    },
+    "Actual Usage": {
+      "ko": "실제 사용",
+      "zh": "实际用量",
+      "ms": "Guna Sebenar"
     }
   }
 }

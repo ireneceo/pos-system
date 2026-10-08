@@ -12,6 +12,9 @@
  */
 
 const express = require('express');
+const stockLedger = require('../services/stockLedger');
+// 반품 금액 근거 = 그 반품 줄 가격(주문 단위) ÷ 환산 = 취급단위 1 의 값
+const returnPerStockUnit = (ret, item) => (parseFloat(ret.unit_price) || 0) / (parseFloat(item && item.unit_conversion) || 1);
 const router = express.Router();
 const database = require('../config/database');
 const { Op } = require('sequelize');
@@ -249,59 +252,35 @@ async function approveReturnHandler(req, res) {
       if (pIng) {
         const conv = parseFloat(item?.unit_conversion) || 1;
         const reverseQty = Math.round(delta * conv * 100) / 100;
-        const cur = parseFloat(pIng.current_stock) || 0;
-        // 2026-09-01(Q5): track_stock 게이트 제거 — 항상 되돌린다
-        const newStock = Math.max(0, Math.round((cur - reverseQty) * 100) / 100);
-        await pIng.update({ current_stock: newStock }, { transaction: t });
-
-        const applied = Math.round((cur - newStock) * 100) / 100;
-        if (applied < reverseQty) {
-          console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 본사 재고 ${cur} 뿐 — ${applied} 만 차감(클램프)`);
+        // 2026-09-01(Q5): track_stock 게이트 제거 — 항상 되돌린다. 재고 + 장부(실제 이동량, 0 에서 멈춤)
+        const base = parseFloat(pIng.base_quantity) || 1;
+        const r = await stockLedger.record({
+          target: { kind: 'product_ingredient', row: pIng }, entity: { type: po.entity_type, id: po.entity_id },
+          type: 'return_out', delta: -reverseQty, clampAtZero: true, unit: pIng.unit || ret.unit || 'unit',
+          cost: { unit_cost: returnPerStockUnit(ret, item) * base, base_quantity: base },
+          refs: { purchase_order_id: po.id }, notes: `Return #${ret.id} approved — buyer stock reversal`, userId: req.user?.id || null, transaction: t,
+        });
+        if (-r.change < reverseQty) {
+          console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 본사 재고 ${r.before} 뿐 — ${-r.change} 만 차감(클램프)`);
         }
-
-        await InventoryTransaction.create({
-          entity_type: po.entity_type, entity_id: po.entity_id,
-          product_ingredient_id: pIng.id,
-          transaction_type: 'return_out',
-          quantity_change: -applied,
-          unit: pIng.unit || ret.unit || 'unit',
-          stock_after: newStock,
-          purchase_order_id: po.id,
-          notes: `Return #${ret.id} approved — buyer stock reversal`,
-          created_by: req.user?.id || null
-        }, { transaction: t });
       }
     } else if (po.entity_type === 'restaurant' && ret.ingredient_id) {
       const ingredient = await Ingredient.findByPk(ret.ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
       if (ingredient) {
         const conv = parseFloat(item?.unit_conversion) || 1;
         const reverseQty = Math.round(delta * conv * 100) / 100;
-        const cur = await stockFor(ingredient, po.entity_id, t);
-        // 2026-09-01(Q5): track_stock 게이트 제거 — 항상 되돌린다
-        const newStock = Math.max(0, Math.round((cur - reverseQty) * 100) / 100);
-        await applyStock(ingredient, po.entity_id, newStock, t);
-
-        // 원장에는 **실제 이동량**을 적는다 — 재고가 모자라 클램프가 걸리면 의도량보다 작다.
-        // 의도량을 적으면 `이전재고 + quantity_change ≠ stock_after` 가 되어 원장 합산이
-        // 실재고와 영원히 어긋난다(감사·실사가 깨진다). 선례: inventoryDeductionService 도
-        // 실제 차감량을 기록한다.
-        const applied = Math.round((cur - newStock) * 100) / 100;
-        if (applied < reverseQty) {
-          console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 매장 재고 ${cur} 뿐 — ${applied} 만 차감(클램프)`);
+        // 2026-09-01(Q5): track_stock 게이트 제거 — 항상 되돌린다.
+        // 원장에는 **실제 이동량**을 적는다 — 재고가 모자라 클램프가 걸리면 의도량보다 작다(stockLedger 가 after−before 로 적는다).
+        const base = parseFloat(ingredient.base_quantity) || 1;
+        const r = await stockLedger.record({
+          target: { kind: 'ingredient', row: ingredient }, restaurantId: po.entity_id,
+          type: 'return_out', delta: -reverseQty, clampAtZero: true, unit: ingredient.unit || ret.unit || 'unit',
+          cost: { unit_cost: returnPerStockUnit(ret, item) * base, base_quantity: base },
+          refs: { purchase_order_id: po.id }, notes: `Return #${ret.id} approved — buyer stock reversal`, userId: req.user?.id || null, transaction: t,
+        });
+        if (-r.change < reverseQty) {
+          console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 매장 재고 ${r.before} 뿐 — ${-r.change} 만 차감(클램프)`);
         }
-
-        // 원장 기록 — 입고('purchase')는 남기는데 반품은 아무것도 안 남기고 있었다(감사 구멍)
-        await InventoryTransaction.create({
-          entity_type: 'restaurant', entity_id: po.entity_id,
-          ingredient_id: ingredient.id,
-          transaction_type: 'return_out',
-          quantity_change: -applied,
-          unit: ingredient.unit || ret.unit || 'unit',
-          stock_after: newStock,
-          purchase_order_id: po.id,
-          notes: `Return #${ret.id} approved — buyer stock reversal`,
-          created_by: req.user?.id || null
-        }, { transaction: t });
       }
     } else if (ret.ingredient_id) {
       // (c) BG(레거시 Ingredient 소유)·FG 구매자 — 입고의 else 분기(ingredient.current_stock 직접 증가)의 역방향.
@@ -310,27 +289,17 @@ async function approveReturnHandler(req, res) {
       if (ingredient) {
         const conv = parseFloat(item?.unit_conversion) || 1;
         const reverseQty = Math.round(delta * conv * 100) / 100;
-        const cur = parseFloat(ingredient.current_stock) || 0;
-        // 2026-09-01(Q5): track_stock 게이트 제거 — 항상 되돌린다
-        const newStock = Math.max(0, Math.round((cur - reverseQty) * 100) / 100);
-        await ingredient.update({ current_stock: newStock }, { transaction: t });
-
-        const applied = Math.round((cur - newStock) * 100) / 100;
-        if (applied < reverseQty) {
-          console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 재고 ${cur} 뿐 — ${applied} 만 차감(클램프)`);
+        // 2026-09-01(Q5): track_stock 게이트 제거 — 항상 되돌린다. 오버레이는 매장 전용 → 재료 행 직접(restaurantId 없이)
+        const base = parseFloat(ingredient.base_quantity) || 1;
+        const r = await stockLedger.record({
+          target: { kind: 'ingredient', row: ingredient }, entity: { type: po.entity_type, id: po.entity_id },
+          type: 'return_out', delta: -reverseQty, clampAtZero: true, unit: ingredient.unit || ret.unit || 'unit',
+          cost: { unit_cost: returnPerStockUnit(ret, item) * base, base_quantity: base },
+          refs: { purchase_order_id: po.id }, notes: `Return #${ret.id} approved — buyer stock reversal`, userId: req.user?.id || null, transaction: t,
+        });
+        if (-r.change < reverseQty) {
+          console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 재고 ${r.before} 뿐 — ${-r.change} 만 차감(클램프)`);
         }
-
-        await InventoryTransaction.create({
-          entity_type: po.entity_type, entity_id: po.entity_id,
-          ingredient_id: ingredient.id,
-          transaction_type: 'return_out',
-          quantity_change: -applied,
-          unit: ingredient.unit || ret.unit || 'unit',
-          stock_after: newStock,
-          purchase_order_id: po.id,
-          notes: `Return #${ret.id} approved — buyer stock reversal`,
-          created_by: req.user?.id || null
-        }, { transaction: t });
       }
     }
 
@@ -377,19 +346,11 @@ async function approveReturnHandler(req, res) {
         if (bp && !bp.product_recipe_id && bp.product_ingredient_id) {
           const pIngD = await ProductIngredient.findByPk(bp.product_ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
           if (pIngD && delta > 0) {
-            const curD = parseFloat(pIngD.current_stock) || 0;
-            const nuD = Math.round((curD + delta) * 100) / 100;
-            await pIngD.update({ current_stock: nuD }, { transaction: t });
-            await InventoryTransaction.create({
-              entity_type: 'brand', entity_id: po.seller_entity_id,
-              product_ingredient_id: pIngD.id,
-              transaction_type: 'return_in',
-              quantity_change: delta,
-              unit: pIngD.unit, stock_after: nuD,
-              purchase_order_id: po.id,
-              notes: `Return #${ret.id} approved (brand seller, ${bp.name})`,
-              created_by: req.user?.id || null
-            }, { transaction: t });
+            await stockLedger.record({
+              target: { kind: 'product_ingredient', row: pIngD }, entity: { type: 'brand', id: po.seller_entity_id },
+              type: 'return_in', delta, refs: { purchase_order_id: po.id },
+              notes: `Return #${ret.id} approved (brand seller, ${bp.name})`, userId: req.user?.id || null, transaction: t,
+            });
           }
         } else if (bp?.product_recipe_id) {   // 레시피 없으면 환원 없음 — 출고도 차감하지 않았다(대칭)
           const recipeIngs = await ProductRecipeIngredient.findAll({
@@ -400,19 +361,12 @@ async function approveReturnHandler(req, res) {
             if (!pIng) continue;
             const backQty = Math.round((parseFloat(ri.quantity) || 0) * delta * 100) / 100;
             if (backQty <= 0) continue;
-            const cur = parseFloat(pIng.current_stock) || 0;
-            const nu = Math.round((cur + backQty) * 100) / 100; // 2026-09-01(Q5): 게이트 제거
-            await pIng.update({ current_stock: nu }, { transaction: t });
-            await InventoryTransaction.create({
-              entity_type: 'brand', entity_id: po.seller_entity_id,
-              product_ingredient_id: pIng.id,
-              transaction_type: 'return_in',
-              quantity_change: backQty,
-              unit: pIng.unit, stock_after: nu,
-              purchase_order_id: po.id,
-              notes: `Return #${ret.id} approved (brand seller, ${bp.name})`,
-              created_by: req.user?.id || null
-            }, { transaction: t });
+            // 2026-09-01(Q5): 게이트 제거 — 재고 + 장부 (services/stockLedger 단일 함수)
+            await stockLedger.record({
+              target: { kind: 'product_ingredient', row: pIng }, entity: { type: 'brand', id: po.seller_entity_id },
+              type: 'return_in', delta: backQty, refs: { purchase_order_id: po.id },
+              notes: `Return #${ret.id} approved (brand seller, ${bp.name})`, userId: req.user?.id || null, transaction: t,
+            });
           }
         }
       }
@@ -423,21 +377,12 @@ async function approveReturnHandler(req, res) {
       if (mapping?.seller_product_id) {
         const fp = await FoodcourtProduct.findByPk(mapping.seller_product_id, { lock: t.LOCK.UPDATE, transaction: t });
         if (fp) {
-          const old = parseFloat(fp.current_stock) || 0;
-          const nu = Math.round((old + delta) * 100) / 100;
-          await fp.update({ current_stock: nu }, { transaction: t });
-          await InventoryTransaction.create({
-            entity_type: 'foodcourt',
-            entity_id: po.seller_entity_id,
-            ingredient_id: ret.ingredient_id,
-            transaction_type: 'return_in',
-            quantity_change: delta,
-            unit: fp.unit || ret.unit || 'unit',
-            stock_after: nu,
-            purchase_order_id: po.id,
-            notes: `Return #${ret.id} approved (foodcourt seller)`,
-            created_by: req.user?.id || null
-          }, { transaction: t });
+          // 장부 대상 = 푸드코트 상품 자체(출고 seller-orders 와 대칭 — 예전엔 구매자 재료 id 를 적었다)
+          await stockLedger.record({
+            target: { kind: 'foodcourt_product', row: fp }, entity: { type: 'foodcourt', id: po.seller_entity_id },
+            type: 'return_in', delta, unit: fp.unit || ret.unit || 'unit', refs: { purchase_order_id: po.id },
+            notes: `Return #${ret.id} approved (foodcourt seller)`, userId: req.user?.id || null, transaction: t,
+          });
         }
       }
     }

@@ -202,6 +202,9 @@
     "onceOnly": "仅采购一次",
     "invoicedLines": "已核对 {{n}} 笔",
     "empty": "此期间没有已收货的采购单",
-    "loadFailed": "无法加载"
+    "loadFailed": "无法加载",
+    "staffMealSpend": "员工餐成本",
+    "regularSpend": "一般采购",
+    "staffMeal": "员工餐"
   }
 }

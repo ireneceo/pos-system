@@ -1,4 +1,5 @@
 const express = require('express');
+const { revenueOrderWhere } = require('../utils/revenueOrders');
 const router = express.Router();
 require('../models'); // Load associations
 const Order = require('../models/Order');
@@ -727,11 +728,9 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
           [Op.gte]: startUTC,
           [Op.lte]: endUTC
         },
-        status: 'completed',
-        [Op.or]: [
-          { is_deleted: false },
-          { is_deleted: null }
-        ]
+        // 매출 = 단일 정의(완료+서빙, 삭제 제외 — utils/revenueOrders). 예전엔 «완료» 만 세어 원가 탭과
+        //   같은 기간 매출이 달랐다(2026-10-08 Irene 컨펌 ①(a)).
+        ...revenueOrderWhere()
       },
       attributes: [
         'id', 'order_date', 'total_amount', 'order_items', 'order_type',
@@ -819,6 +818,9 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
     const categoryIdToName = {};
     categories.forEach(c => { categoryIdToName[c.id] = c.name; });
     const productCategoryMap = {};
+    // 메뉴 원가용 — 주문 줄이 id 를 안 들고 있으면 이름으로 이 매장 상품을 찾는다
+    const productIdByName = {};
+    products.forEach(p => { if (!productIdByName[p.name]) productIdByName[p.name] = p.id; });
     products.forEach(p => {
       // product.category can be a category ID (number string) or category name
       const catVal = p.category;
@@ -995,12 +997,14 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
           // Menu item sales
           const menuKey = `${category}|${itemName}`;
           if (!menuSales[menuKey]) {
+            const pid = Number(productId);
             menuSales[menuKey] = {
               name: itemName,
               category: category,
               revenue: 0,
               quantity: 0,
-              orders: 0
+              orders: 0,
+              product_id: (Number.isInteger(pid) && pid > 0) ? pid : (productIdByName[itemName] || null)
             };
           }
           menuSales[menuKey].revenue += itemRevenue;
@@ -1036,6 +1040,32 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
       revenue: hourlySales[hour]?.revenue || 0,
       orders: hourlySales[hour]?.orders || 0
     }));
+
+    // 메뉴·카테고리 원가율 (2026-10-08 · Fable 판정 Ⅱ-3-C) — «지금 레시피 기준» 원가(utils/productCost 단일 소스).
+    //   기간 원가 리포트(재고 장부 기준)와 다른 질문이라 다른 숫자다 — 화면 라벨로 구분한다.
+    //   원가 모르는 메뉴는 null(0 으로 두지 않는다) · 카테고리 원가율은 원가 아는 메뉴 매출만 분모로.
+    try {
+      const { menuUnitCosts } = require('../utils/productCost');
+      const costMap = await menuUnitCosts(parseInt(restaurantId, 10), Object.values(menuSales).map(m => m.product_id));
+      Object.values(menuSales).forEach(m => {
+        const c = m.product_id ? costMap.get(Number(m.product_id)) : null;
+        const uc = c ? c.unit_cost : null;
+        m.unit_cost = uc;
+        m.cost = uc === null ? null : Math.round(uc * m.quantity * 100) / 100;
+        m.margin_pct = (uc === null || !(m.revenue > 0)) ? null : Math.round(((m.revenue - m.cost) / m.revenue) * 1000) / 10;
+        const cat = categorySales[m.category];
+        if (cat && m.cost !== null) {
+          cat.cost = Math.round(((cat.cost || 0) + m.cost) * 100) / 100;
+          cat.costed_revenue = Math.round(((cat.costed_revenue || 0) + m.revenue) * 100) / 100;
+        }
+      });
+      Object.values(categorySales).forEach(cat => {
+        cat.cost = cat.cost ?? null;
+        cat.cost_pct = cat.costed_revenue > 0 ? Math.round((cat.cost / cat.costed_revenue) * 1000) / 10 : null;
+      });
+    } catch (costErr) {
+      console.error('[reports-summary] menu cost failed (매출 숫자는 그대로):', costErr.message);
+    }
 
     // Convert categorySales to sorted array (by revenue descending)
     const categorySalesArray = Object.entries(categorySales)

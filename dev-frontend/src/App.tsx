@@ -1074,6 +1074,12 @@ function App() {
                       } />
 
                       {/* Brand Inventory Management */}
+                      {/* 본사 창고(BG 재고아이템) 실사 — 매장 실사 화면 재사용 (2026-10-08) */}
+                      <Route path="/pos/brand-stock-take" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
+                          <StockTakePage mode="brand" />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/pos/brand-inventory" element={
                         <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
                           <BrandInventoryPage />

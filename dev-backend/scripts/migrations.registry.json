@@ -49,6 +49,7 @@
     "migrate-deploy-records.js",
     "migrate-direct-stock-link.js",
     "migrate-external-supplier-invoice-due-null.js",
+    "migrate-hardware-invoice-payer.js",
     "migrate-ingredient-source-column.js",
     "migrate-invoice-item-unit.js",
     "migrate-legacy-suppliers-to-external.js",
@@ -75,6 +76,7 @@
     "migrate-product-level-stock.js",
     "migrate-product-recipe-ingredient-unique.js",
     "migrate-product-recommendations.js",
+    "migrate-products-brand-menu-unique.js",
     "migrate-qz-diagnostic-category.js",
     "migrate-real-customer-flag.js",
     "migrate-recompute-zero-recipe-line-cost.js",
@@ -111,7 +113,11 @@
     "migrate-create-kiosk-devices.js",
     "migrate-create-terminal-transactions.js",
     "migrate-soa-child-status-sync.js",
-    "migrate-add-invoice-external-document.js"
+    "migrate-add-invoice-external-document.js",
+    "migrate-staff-meal-category-flag.js",
+    "migrate-add-seller-delivery-zones.js",
+    "migrate-ledger-cost-columns.js",
+    "migrate-stock-take-bg-warehouse.js"
   ],
   "manual": {
     "fix-ingredient-data-debt-20260917.js": "일회성 — 고아 셀러매핑 정리 · 코드 중복 재채번(2026-09-17 Fable 판정 ②④). 드라이런 기본 · --apply · --undo.",
@@ -153,6 +159,8 @@
     "migrate-staff-payment-void-perms.js": "의도적 제외 — 매 배포 재실행 시 access_pos 직원 전원에게 결제·취소 권한을 재부여해, 매장이 의도적으로 끈 권한(예: 서버 역할)을 도로 켠다. 최초 1회 백필 운영 적용됨. 직원 권한 단일소스=직원관리 UI. (2026-06-24 결정)",
     "migrate-stock-unit-follows-seller-20260917.js": "일회성 — 저울로 주문하는데 재고를 개수로 세던 행의 단위 정정(2026-09-17 운영 31건 적용). 기본은 조사만이고 --apply 필요. --undo 스냅샷 있음. 매 배포 재실행 대상 아님.",
     "migrate-unit-conversion-derivable-20260917.js": "일회성 — 판매자 링크 환산비 중 «기계가 정할 수 있는 것»만 고친다(2026-09-17 Fable 판정 ③). 규칙은 utils/unitConversionRule.js 하나이고 인스펙션 R-SC-007 과 같은 함수. 드라이런 기본 · --apply · --undo. 현재고·과거 원장·원가는 건드리지 않는다.",
-    "sprint1-supply-chain-migration.js": "레거시 — Sprint 1 공급망 ENUM 확장(과거 적용, sprint4+ 로 이어짐)."
+    "sprint1-supply-chain-migration.js": "레거시 — Sprint 1 공급망 ENUM 확장(과거 적용, sprint4+ 로 이어짐).",
+    "migrate-staff-meal-ingredients-20261007.js": "일회성 — 매장 10 직원식 재료 8개를 «Staff Meal» 분류로 이동(2026-10-07 Fable 판정 ⑪ B5). 드라이런 기본 · Irene 표 승인 뒤 --apply · --undo.",
+    "reconcile-ledger-drift.js": "일회성 — 장부 단일화(2026-10-08) 이전 누수로 «장부 합 ≠ 현재고» 인 대상에 adjustment 장부 1줄(reason_code ledger_reconcile)을 추가만. 현재고 불변. 드라이런 기본 · Irene 표 승인 뒤 --apply · --undo. 적용 후 인스펙션 LEDGER-001 을 차단으로 승격."
   }
 }

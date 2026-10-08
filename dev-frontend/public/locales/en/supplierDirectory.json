@@ -232,5 +232,21 @@
     "saving": "Saving...",
     "submitting": "Submitting...",
     "close": "Close"
+  },
+  "billing": {
+    "title": "Billing",
+    "monthlyLine": "Monthly statement — issued on day {{issue}} of each month, due on day {{due}}",
+    "immediateLine": "Per invoice — each delivery invoice is marked paid on its own",
+    "monthlyHint": "This supplier's invoices are bundled into one statement each month. Mark the statement paid once — single invoices can't be paid one by one.",
+    "editTitle": "Billing method",
+    "cycle": "How this supplier bills you",
+    "immediate": "Per invoice",
+    "monthly": "Monthly statement (SOA)",
+    "issueDay": "Statement day (each month)",
+    "dueDay": "Payment due day (each month)",
+    "monthlyExplain": "On the statement day, all unpaid invoices from this supplier are bundled into one statement. Attach the SOA the supplier sends, check the difference, then mark the statement paid once.",
+    "immediateExplain": "Each delivery invoice is marked paid on its own.",
+    "dayRange": "Days must be between 1 and 28.",
+    "saveFailed": "Could not save. Please try again."
   }
 }

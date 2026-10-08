@@ -63,7 +63,7 @@ async function resolveSellers(refs) {
     // 배송 조건 두 칸 + 통화 (2026-09-17 Fable 판정 ⑦) — 판매자 정보와 **함께 한 번에** 나온다.
     //   발주 화면·총액 계산이 각자 판매자를 다시 조회하면 그 순간 규칙이 갈라진다. 여기가 단일 자리.
     const attributes = ['id', 'name', 'company_name', 'phone', 'email', 'address',
-      'min_order_amount', 'delivery_fee', 'currency', 'delivery_policy'];
+      'min_order_amount', 'delivery_fee', 'currency', 'delivery_policy', 'delivery_zones'];
     if (type === 'supplier') attributes.push('is_system_registered');
     const rows = await models[type].findAll({
       where: { id: { [Op.in]: ids } },
@@ -86,6 +86,9 @@ async function resolveSellers(refs) {
         currency: row.currency || null,
         // 배송 가능 지역 안내 글 (2026-09-28 Fable) — 보여주기만. 계산·매칭에 쓰지 않는다.
         delivery_policy: row.delivery_policy || null,
+        // 배송 지역 (2026-10-07 Fable) — 매칭은 utils/deliveryZones.js. 외부 공급업체(미등록)는 지역을 두지 않는다.
+        delivery_zones: (type !== 'supplier' || row.is_system_registered)
+          ? require('./deliveryZones').readZones(row.delivery_zones) : null,
         // brand/foodcourt 는 플랫폼 계정이므로 항상 시스템 등록 = 자동 발송 대상.
         // 외부(수동 발송)는 미등록 SupplierCompany 뿐이다.
         is_system_registered: type === 'supplier' ? !!row.is_system_registered : true,

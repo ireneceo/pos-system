@@ -22,6 +22,13 @@ const {
   RestaurantIngredientCost,
 } = require('../models');
 const { stockFor, applyStock } = require('../utils/brandStockAccess');
+const stockLedger = require('./stockLedger');
+
+/** 이 줄로 들어온 가격(청구가 우선) ÷ 환산 = 취급단위 1 의 값 */
+const incomingPerStockUnit = (item) => {
+  const price = item.invoiced_unit_price != null ? item.invoiced_unit_price : item.unit_price;
+  return (parseFloat(price) || 0) / (parseFloat(item.unit_conversion) || 1);
+};
 
 /**
  * 레시피 없는 프로덕트로 입고 — 수량이 프로덕트 행에 산다(2026-09-01 P1).
@@ -46,19 +53,16 @@ async function receiveIntoProduct({ item, po, delta, userId, t, note }) {
     }
   }
 
-  const cur = parseFloat(prod.current_stock) || 0;
-  const next = Math.round((cur + delta) * 100) / 100;
   // 브랜드 프로덕트 자체 재고는 주문 단위(포장단위)로 센다 — «재고 단위» 칸이 비면 포장단위 라벨(§5-12 A).
   //   매장 프로덕트(products)는 stock_unit 이 늘 차 있어 종전 그대로다.
   const unit = isBrandSide ? require('../utils/poLineSpec').selfStockUnit(prod, prod.unit || null) : (prod.stock_unit || prod.unit || null);
-  await InventoryTransaction.create({
-    entity_type: po.entity_type, entity_id: po.entity_id,
-    ...(isBrandSide ? { brand_product_id: id } : { product_id: id, restaurant_id: po.entity_id }),
-    transaction_type: 'purchase', quantity_change: delta,
-    unit, stock_after: next, purchase_order_id: po.id,
-    notes: note, created_by: userId
-  }, { transaction: t });
-  await prod.update({ current_stock: next }, { transaction: t });
+  // 재고 + 장부(금액 = 들어온 가격) — services/stockLedger 단일 함수
+  const { after: next } = await stockLedger.record({
+    target: { kind: isBrandSide ? 'brand_product' : 'product', row: prod },
+    entity: { type: po.entity_type, id: po.entity_id }, type: 'purchase', delta,
+    unit, cost: { unit_cost: incomingPerStockUnit(item), base_quantity: 1 },
+    refs: { purchase_order_id: po.id }, notes: note, userId, transaction: t,
+  });
   return { ok: true, stockAfter: next };
 }
 
@@ -73,17 +77,14 @@ async function receiveIntoProductIngredient({ item, po, quantity, userId, t, not
   const qty = parseFloat(quantity) || 0;
   if (qty <= 0) return { ok: true, skipped: true };
   const delta = Math.round(qty * conv * 100) / 100;
-  const cur = parseFloat(target.current_stock) || 0;
-  // 2026-09-01: track_stock 스위치 제거 — 항상 추적한다.
-  const next = Math.round((cur + delta) * 100) / 100;
-  await InventoryTransaction.create({
-    entity_type: po.entity_type, entity_id: po.entity_id,
-    product_ingredient_id: item.product_ingredient_id,
-    transaction_type: 'purchase', quantity_change: delta,
-    unit: target.unit, stock_after: next, purchase_order_id: po.id,
-    notes: note, created_by: userId
-  }, { transaction: t });
-  await target.update({ current_stock: next }, { transaction: t });
+  // 2026-09-01: track_stock 스위치 제거 — 항상 추적한다. 재고 + 장부(금액 = 들어온 가격, 기준양 가격으로)
+  const base = parseFloat(target.base_quantity) || 1;
+  const { after: next } = await stockLedger.record({
+    target: { kind: 'product_ingredient', row: target },
+    entity: { type: po.entity_type, id: po.entity_id }, type: 'purchase', delta,
+    cost: { unit_cost: incomingPerStockUnit(item) * base, base_quantity: base },
+    refs: { purchase_order_id: po.id }, notes: note, userId, transaction: t,
+  });
   return { ok: true, stockAfter: next, normalQty: qty };
 }
 
@@ -99,14 +100,7 @@ async function receiveIntoIngredient({
   const qty = parseFloat(quantity) || 0;
   if (qty <= 0) return { ok: true, skipped: true, stockAfter: currentStock };
 
-  const before = currentStock != null
-    ? currentStock
-    : (po.entity_type === 'restaurant'
-      ? await stockFor(ingredient, po.entity_id, t)
-      : parseFloat(ingredient.current_stock) || 0);
-
   const stockDelta = Math.round(qty * conv * 100) / 100;
-  const newStock = Math.round((before + stockDelta) * 100) / 100;
   const cost = unitCost != null ? parseFloat(unitCost) : (parseFloat(item.unit_price) || 0);
 
   await InventoryBatch.create({
@@ -119,42 +113,32 @@ async function receiveIntoIngredient({
     purchase_order_id: po.id, created_by: userId
   }, { transaction: t });
 
-  await InventoryTransaction.create({
-    entity_type: po.entity_type, entity_id: po.entity_id,
-    ingredient_id: item.ingredient_id,
-    transaction_type: 'purchase', quantity_change: stockDelta,
-    unit: ingredient.unit, stock_after: newStock, purchase_order_id: po.id,
-    notes: note, created_by: userId
-  }, { transaction: t });
+  // 들어온 값(기준양 가격) — 청구가 우선. 대조를 먼저 했으면 **청구가**로 들어온다 (2026-09-11 §8-4 D-2)
+  //   저장하는 값의 뜻 = **기준양(base_quantity)의 가격** — 재료 행 unit_cost 와 같은 뜻(2026-10-04 Fable 판정 E · TRADE_STRUCTURE §2-2).
+  const baseQty = parseFloat(ingredient.base_quantity) || 1;
+  const incomingCostPerIng = incomingPerStockUnit(item) * baseQty;
 
-  // 매장 구매자 가중평균 원가 — 매장별 원가 행이 단일 소스(재료 행의 unit_cost 는 초기값 폴백)
-  if (po.entity_type === 'restaurant') {
-    // 대조를 먼저 했으면 **청구가**로 들어온다 (2026-09-11 §8-4 D-2) — 대조 저장이 매장 원가행을 청구가로 덮으므로,
-    // 수령이 뒤에 와도 같은 값에 닿아야 한다(누르는 순서에 따라 원가가 달라지면 안 된다).
-    const incomingPrice = item.invoiced_unit_price != null ? item.invoiced_unit_price : item.unit_price;
-    // 저장하는 값의 뜻 = **기준양(base_quantity)의 가격** — 재료 행 unit_cost 와 같은 뜻
-    //   (2026-10-04 Fable 판정 E · TRADE_STRUCTURE §2-2). 예전엔 취급단위 1 의 가격(÷conv)을 그대로 써서
-    //   기준양 1000 g 재료의 매장 원가가 브랜드 원가의 1/1000 로 앉았다(운영 매장 8 K-소스 5행).
-    const baseQty = parseFloat(ingredient.base_quantity) || 1;
-    const incomingCostPerIng = ((parseFloat(incomingPrice) || 0) / conv) * baseQty;
-    // 매장 층의 자리는 재료 소유자가 정한다 (2026-09-11 §8-4 D-5 · services/storeCost.js 단일 소스).
-    //   매장 소유 재료 → 재료 행 unit_cost · 브랜드 공유 재료 → 매장 오버레이. 예전엔 전부 오버레이에 써서
-    //   매장 소유 재료는 원가 칸이 둘(화면은 재료 행, 수령은 오버레이)이 됐다.
-    const { loadOverlayMap, effectiveStoreCost, writeStoreCost } = require('./storeCost');
-    const overlay = await loadOverlayMap(po.entity_id, [item.ingredient_id], { transaction: t });
-    const oldCost = effectiveStoreCost(ingredient, overlay.get(Number(item.ingredient_id)), po.entity_id);
-    const weighted = before > 0 && newStock > 0
-      ? (before * oldCost + stockDelta * incomingCostPerIng) / newStock
-      : incomingCostPerIng;
-    const newAvg = Math.round(weighted * 10000) / 10000;
-    await writeStoreCost(po.entity_id, ingredient, newAvg, { transaction: t, userId, notes: note });
-  }
+  // 재고 + 장부(금액 = 들어온 값) — services/stockLedger 단일 함수.
+  //   매장 구매자: 브랜드 공유 재료 → 매장 오버레이 / 매장 재료 → 재료 행 (형제 매장 재고 오염 방지)
+  const isStore = po.entity_type === 'restaurant';
+  const { after: newStock } = await stockLedger.record({
+    target: { kind: 'ingredient', row: ingredient },
+    restaurantId: isStore ? po.entity_id : null,
+    entity: { type: po.entity_type, id: po.entity_id }, type: 'purchase', delta: stockDelta,
+    applyOpts: { stockTake: true },
+    cost: { unit_cost: incomingCostPerIng, base_quantity: baseQty },
+    refs: { purchase_order_id: po.id }, notes: note, userId, transaction: t,
+  });
 
-  if (po.entity_type === 'restaurant') {
-    // 브랜드 공유 재료 → 매장 오버레이 / 매장 재료 → 재료 행 (형제 매장 재고 오염 방지)
-    await applyStock(ingredient, po.entity_id, newStock, t, { stockTake: true });
-  } else {
-    await ingredient.update({ current_stock: newStock, last_stock_take_at: new Date() }, { transaction: t });
+  // 매장 원가 = **마지막 실제 매입가** (2026-10-08 Irene 컨펌 ③ · Fable 판정 Ⅱ-2-D).
+  //   예전 가중평균은 아무도 낸 적 없는 숫자였다(GIT 15.00 인데 원가 15.06). 재고 총액은 장부 금액 스냅샷으로 센다.
+  //   매장 층의 자리는 재료 소유자가 정한다 (2026-09-11 §8-4 D-5 · services/storeCost.js 단일 소스).
+  if (isStore && incomingCostPerIng > 0) {
+    const { writeStoreCost } = require('./storeCost');
+    await writeStoreCost(po.entity_id, ingredient, Math.round(incomingCostPerIng * 10000) / 10000, {
+      transaction: t, userId, notes: note,
+      log: { source: 'receive', purchase_order_id: po.id, seller_type: po.seller_type || null, seller_entity_id: po.seller_entity_id || null },
+    });
   }
 
   return { ok: true, stockAfter: newStock, normalQty: qty };

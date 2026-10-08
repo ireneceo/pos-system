@@ -89,4 +89,16 @@ function resolveLineCost(ingredient, item, previousCost) {
   return Number.isFinite(sent) ? sent : 0;
 }
 
-module.exports = { UNITS, convertQuantity, computeLineCost, resolveLineCost };
+/**
+ * 취급단위 1 의 값 = unit_cost(기준양의 가격) ÷ base_quantity. 모르면 0.
+ * 금액 = 수량(취급단위) × perBaseCost — 실사 손실·재고 금액처럼 «0 이면 0» 인 합계용.
+ * (레시피 줄 원가는 «0 = 미정» 이라 computeLineCost 를 쓴다.)
+ */
+function perBaseCost(unitCost, baseQuantity) {
+  const c = parseFloat(unitCost);
+  if (!Number.isFinite(c)) return 0;
+  const b = parseFloat(baseQuantity);
+  return c / (Number.isFinite(b) && b > 0 ? b : 1);
+}
+
+module.exports = { UNITS, convertQuantity, computeLineCost, resolveLineCost, perBaseCost };

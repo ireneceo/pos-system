@@ -492,6 +492,7 @@ created_by (FK → users.id)
 > 두 칸은 `SupplierCompany` · `Brand` · `Foodcourt` 에 **같은 이름**으로 있고, 해석은 `utils/sellerNames.js resolveSellers`
 > 한 곳에서만 한다. 배송비는 **원가에 태우지 않는다**(세금·배송·할인은 품목 단가에 섞지 않는다는 기존 원칙).
 > 판매자 **확인 전**(draft·submitted)에는 품목이 바뀌면 다시 계산하고 확인 뒤에는 동결하며, 소급 단가 반영(`retroApplyPrice`)은 배송비를 그대로 둔다.
+> **배송 지역 (2026-10-07 Fable · Irene 확정):** 판매자(브랜드·푸드코트·가입 공급업체)가 `delivery_zones`(지역 이름·배송비·포함 주)를 적으면, 구매자 주소의 주(州)로 지역을 자동으로 골라 그 지역 배송비를 «유효 배송비»로 쓴다(`utils/deliveryZones.js` → `computeTotalsWithDelivery` 전처리, `computeDeliveryFee` 본문 그대로). 안 맞거나 주를 모르면 기본 `delivery_fee`. 무료 기준(`min_order_amount`)은 판매자당 하나. 외부 공급업체는 지역 없음. **제출(submit) 때 1회 다시 계산**한다(담은 뒤 주소·지역이 바뀐 경우). 근거는 `delivery_fee_basis.zone·zone_reason`.
 
 **PurchaseOrderItem:**
 ```
@@ -2485,6 +2486,8 @@ old/new 를 안다. 호출부마다 로그를 쓰지 않는다.
 되돌리기는 `batch_id` 역순 적용. 이미 대조된 라인(`invoiced_unit_price` 있음)은 소급 제외.
 
 ## 5. 외부 공급업체 vs 가입 공급업체 — 갈라야 한다
+
+> 2026-10-07 추가: 외부 업체도 «월별 정산서»로 낼 수 있다 — `docs/TRADE_STRUCTURE.md` ⑩ · `docs/INVOICE_SYSTEM.md` §11-2.
 
 > Irene: "외부공급업체는 결제했는지 안했는지도 모르잖아 … 결제했냐 안했냐는 그냥 체크만해야지
 > 여기 솔루션에서 결제를 시키면 안되지 … 업로드된 인보이스가 진짜인거지 외부공급업체는."

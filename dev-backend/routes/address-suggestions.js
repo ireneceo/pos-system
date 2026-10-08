@@ -83,10 +83,18 @@ router.get('/suggestions', authenticateToken, async (req, res) => {
       type: sequelize.QueryTypes.SELECT
     });
 
-    const suggestions = rows
+    let suggestions = rows
       .map(r => String(r.v || '').trim())
       .filter(Boolean)
       .filter((v, i, arr) => arr.indexOf(v) === i); // dedupe (case-sensitive — preserves user spelling)
+
+    // 말레이시아 주(州)는 정본 16개를 앞에 둔다 (2026-10-07 Fable 배송 지역) — 판매자 배송 지역이
+    //   매장 주소의 주로 자동 매칭되므로 바른 표기로 적히게 한다. 기존 값은 뒤에(정본과 같은 글자는 빼고).
+    if (field === 'state' && country === 'MY') {
+      const canon = require('../utils/deliveryZones').MY_STATES.map(s => s.name);
+      const lower = new Set(canon.map(c => c.toLowerCase()));
+      suggestions = [...canon, ...suggestions.filter(v => !lower.has(v.toLowerCase()))];
+    }
 
     cacheSet(cacheKey, suggestions);
     res.json({ success: true, field, country, suggestions, cached: false });

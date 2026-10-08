@@ -269,14 +269,21 @@ async function createTradeInvoice(po) {
     console.error('[purchaseOrderService] seller identity attach failed:', e.message);
   }
   for (const item of poItems) {
+    // 받은 양만큼 청구한다 (2026-10-08 · Fable 판정 Ⅱ-4) — 수령이 끝난 발주인데 덜 받은 줄은 받은 양으로.
+    //   수령 전에 발행되는 청구서(브랜드 판매자 확정 시점)·받은 양이 0 인 줄(서비스 등)은 주문량 그대로.
+    const ordered = Number(item.quantity_ordered) || 0;
+    const received = Number(item.quantity_received) || 0;
+    const billReceived = fullPo.status === 'received' && received > 0 && received < ordered;
+    const qty = billReceived ? received : item.quantity_ordered;
+    const lineTotal = billReceived ? Math.round(received * (Number(item.unit_price) || 0) * 100) / 100 : item.line_total;
     await InvoiceItem.create({
       invoice_id: invoice.id,
       description: item.seller_product_name || item.description || `Item #${item.id}`,
-      quantity: item.quantity_ordered,
+      quantity: qty,
       unit: item.unit || null,
       unit_price: item.unit_price,
-      calculated_amount: item.line_total,
-      total_amount: item.line_total,
+      calculated_amount: lineTotal,
+      total_amount: lineTotal,
       tax_amount: 0,
       item_type: 'product',
       calculation_method: 'fixed'

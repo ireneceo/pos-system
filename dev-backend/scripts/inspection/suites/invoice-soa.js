@@ -16,6 +16,15 @@ module.exports = {
       Number(c) === 0,
       Number(c) ? `${c}건 — 예: ${rows.map((r) => `${r.soa}(${r.soa_status})↔${r.child}(${r.child_status})`).join(', ')}` : '');
 
+    // I-HW-001 (2026-10-07 Fable 판정 [2]) — 견적 청구서의 «매장» 종류에 사람 번호. 술어는 utils/hardwarePayerMismatch
+    //   하나(보정 마이그 migrate-hardware-invoice-payer 와 같은 SQL).
+    const { HW_PAYER_MISMATCH_FROM_SQL } = require('../../../utils/hardwarePayerMismatch');
+    const hw = await q(`SELECT DISTINCT i.invoice_number n, i.payer_id p ${HW_PAYER_MISMATCH_FROM_SQL} LIMIT 5`);
+    const [{ hc }] = await q(`SELECT COUNT(DISTINCT i.id) hc ${HW_PAYER_MISMATCH_FROM_SQL}`);
+    add('I-HW-001 하드웨어 청구서 낼 사람 종류와 번호가 맞는다',
+      Number(hc) === 0,
+      Number(hc) ? `${hc}건 — 예: ${hw.map((r) => `${r.n}(payer_id ${r.p})`).join(', ')}` : '');
+
     return checks;
   }
 };

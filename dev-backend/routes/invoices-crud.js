@@ -325,13 +325,13 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const userRole = req.user.role;
     const userBrandId = req.user.brand_id;
     const userFoodcourtId = req.user.foodcourt_id;
-    const userRestaurantId = req.user.restaurant_id;
     const sameId = (a, b) => a != null && b != null && Number(a) === Number(b);
     let allowed = false;
     if (userRole === 'System Admin') allowed = true;
     else if (invoice.issuer_type === 'brand' && sameId(invoice.issuer_id, userBrandId)) allowed = true;
     else if (invoice.issuer_type === 'foodcourt' && sameId(invoice.issuer_id, userFoodcourtId)) allowed = true;
-    else if (sameId(invoice.restaurant_id, userRestaurantId)) allowed = true;
+    // 2026-10-07 (Fable 위험 A): 낼 매장(RA·Staff) 수정 분기 삭제 — 금액·품목·낼 사람을 고쳐 0원 확정까지 갈 수 있었다.
+    //   낼 쪽 화면은 PUT 을 부르지 않는다(Restaurant·Owner·Manager 호출 0). 수정은 발행자·관리자만.
     if (!allowed) {
       await transaction.rollback();
       return res.status(403).json({ success: false, error: { message: 'Access denied: you cannot edit this invoice', code: 'FORBIDDEN' } });
@@ -538,10 +538,9 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     // Authorization: only the payer (invoice's restaurant), the issuer entity, or a
     // System Admin may change an invoice's status (incl. marking it paid). Without
     // this, any authenticated user could tamper with any invoice cross-tenant.
+    // 2026-10-07 (Fable 위험 A): «매장 접근» 분기 삭제 — 낼 매장의 관리자·직원·오너가 금액 있는 자기 청구서(정산서면
+    //   묶인 청구서 전부)를 paid·cancelled·draft 로 바꿀 수 있었다. 낼 쪽은 아래 0원 확정만, 그 밖은 발행자·관리자만.
     let canModify = req.user.role === 'System Admin';
-    if (!canModify && invoice.restaurant_id) {
-      canModify = await userCanAccessRestaurant(req.user, invoice.restaurant_id);
-    }
     if (!canModify && invoice.issuer_type && invoice.issuer_id) {
       const issuerEntity = invoice.issuer_type === 'system_admin' ? 'system' : invoice.issuer_type;
       canModify = await userCanAccessEntity(req.user, issuerEntity, invoice.issuer_id);
@@ -554,11 +553,14 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     //   금액이 있는 청구서는 종전대로 막힌다(돈이 오가는 확정은 결제 경로로만).
     //   ⚠ `payer_id` 는 **종류마다 뜻이 다르다** — 'restaurant' 면 매장 id, 'brand_manager'/'foodcourt_manager' 면
     //   사용자 id. 한 칸으로 비교하면 번호가 우연히 같을 때 남의 청구서를 건드릴 수 있어 종류별로 나눈다.
-    if (!canModify && status === 'paid' && Number(invoice.total_amount) === 0 && invoice.payer_id) {
+    //   2026-10-07: 'restaurant' 는 매장 칸 우선·없으면 낼 사람 번호(payer_id 가 빈 0원 매장 청구서도 확정되게),
+    //   'restaurant_owner' 도 사람 번호 비교에 넣는다.
+    if (!canModify && status === 'paid' && Number(invoice.total_amount) === 0) {
       if (invoice.payer_type === 'restaurant') {
-        canModify = await userCanAccessRestaurant(req.user, invoice.payer_id);
-      } else if (invoice.payer_type === 'brand_manager' || invoice.payer_type === 'foodcourt_manager') {
-        canModify = Number(invoice.payer_id) === Number(req.user.id);
+        const storeId = invoice.restaurant_id || invoice.payer_id;
+        canModify = storeId ? await userCanAccessRestaurant(req.user, storeId) : false;
+      } else if (['brand_manager', 'foodcourt_manager', 'restaurant_owner'].includes(invoice.payer_type)) {
+        canModify = !!invoice.payer_id && Number(invoice.payer_id) === Number(req.user.id);
       }
     }
     if (!canModify) {
@@ -632,6 +634,17 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const invoice = await Invoice.findByPk(req.params.id);
     if (!invoice) {
       return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
+    }
+
+    // 2026-10-07 (Fable 위험 A): 주인 검사가 없어 로그인만 되면 아무 청구서나 영구 삭제할 수 있었다.
+    //   삭제는 발행자·관리자만(PATCH·PUT 과 같은 선).
+    let canDelete = req.user.role === 'System Admin';
+    if (!canDelete && invoice.issuer_type && invoice.issuer_id) {
+      const issuerEntity = invoice.issuer_type === 'system_admin' ? 'system' : invoice.issuer_type;
+      canDelete = await userCanAccessEntity(req.user, issuerEntity, invoice.issuer_id);
+    }
+    if (!canDelete) {
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this invoice' });
     }
 
     // Branch-scoped Foodcourt Manager: limit deletes to their branch's invoices

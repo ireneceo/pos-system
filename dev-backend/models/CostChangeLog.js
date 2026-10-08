@@ -40,7 +40,8 @@ const CostChangeLog = sequelize.define('CostChangeLog', {
   source: {
     // reconcile_overlay (2026-09-11 §8-4 D-1): 대조 저장이 매장 원가행을 청구가로 덮은 변경.
     //   DB 쪽은 scripts/migrate-cost-change-log-reconcile-overlay.js 가 expand-only 로 더한다.
-    type: DataTypes.ENUM('invoice_reconcile', 'seller_edit', 'manual', 'backfill', 'retro_apply', 'reconcile_overlay'),
+    // receive·production (2026-10-08): 수령·만들기가 매장 원가를 «마지막 실제 매입가»로 바꾼 변경 — scripts/migrate-ledger-cost-columns.js
+    type: DataTypes.ENUM('invoice_reconcile', 'seller_edit', 'manual', 'backfill', 'retro_apply', 'reconcile_overlay', 'receive', 'production'),
     allowNull: false,
     comment: '무엇이 이 변경을 일으켰나'
   },

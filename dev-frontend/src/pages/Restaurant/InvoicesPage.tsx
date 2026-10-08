@@ -48,6 +48,8 @@ import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoiceP
 import { InvoiceActionButtons, INVOICE_ACTIONS_COL } from '../../components/Invoices/InvoiceActionButtons';
 import SupplierInvoiceTotalFix, { canFixSupplierInvoiceTotal } from '../../components/Invoices/SupplierInvoiceTotalFix';
 import InvoiceModificationHistory from '../../components/Invoices/InvoiceModificationHistory';
+import ExternalSoaReconcilePanel from '../../components/Invoices/ExternalSoaReconcilePanel';
+import ExternalSoaIssueButton from '../../components/Invoices/ExternalSoaIssueButton';
 import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
 import { sortInvoicesRecentFirst, invoiceListDateMs } from '../../utils/invoiceListOrder';
 import ReceiptUploadField from '../../components/Invoice/ReceiptUploadField';
@@ -116,6 +118,8 @@ interface Invoice {
   reconcileInvoicedLines?: number;
   isModified?: boolean;
   modificationHistory?: any[];
+  /** 외부 공급업체 정산서에 붙인 «공급업체가 보낸 SOA» (2026-10-07 ⑩) */
+  externalDocument?: { url?: string; filename?: string; number?: string; date?: string; total?: number } | null;
   issuerName?: string;
   issuerInfo?: {
     name: string;
@@ -535,7 +539,8 @@ const RestaurantInvoicesPage: React.FC = () => {
           discountAmount: parseFloat(inv.discount_amount || inv.discountAmount || 0),
           discountReason: inv.discount_reason || inv.discountReason || null,
           subtotalBeforeDiscount: parseFloat(inv.subtotal || inv.subtotalBeforeDiscount || 0) || undefined,
-          additionalCharges: inv.additional_charges || inv.additionalCharges || []
+          additionalCharges: inv.additional_charges || inv.additionalCharges || [],
+          externalDocument: inv.external_document || null
         }));
         setAllInvoices(invoices);
       }
@@ -1346,7 +1351,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     {showPayButton && !invoice.parentSoaInvoiceId && !invoice.payViaSoa && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
                       invoice.issuerIsExternal ? (
                         <ExternalInvoicePayAction
-                          invoice={invoice}
+                          invoice={invoice.invoiceCategory === 'soa' ? { ...invoice, soaChildCount: soaChildrenOf(invoice).length } : invoice}
                           onPaid={() => { fetchInvoicesToPay(); fetchAllInvoices(); window.dispatchEvent(new Event('refreshBadgeCounts')); }}
                           renderTrigger={(open) => (
                             <LocalActionButton variant="success" onClick={open}>
@@ -1414,6 +1419,8 @@ const RestaurantInvoicesPage: React.FC = () => {
       <Container>
         <Header>
           <Title>{t('settings:invoicesPage.invoices')}</Title>
+          {/* 외부 공급업체 월별 정산서 «지금 만들기» — 월별로 켠 업체가 있을 때만 보인다 (2026-10-07 ⑩) */}
+          {canPayInvoices && <ExternalSoaIssueButton onIssued={() => { fetchInvoicesToPay(); fetchAllInvoices(); }} />}
         </Header>
 
         <Content>
@@ -1516,9 +1523,9 @@ const RestaurantInvoicesPage: React.FC = () => {
                       </Button>
                     )}
                     {selectedInvoice.issuerIsExternal ? (
-                      selectedInvoice.purchaseOrderId ? (
+                      (selectedInvoice.purchaseOrderId || selectedInvoice.invoiceCategory === 'soa') ? (
                         <ExternalInvoicePayAction
-                          invoice={selectedInvoice}
+                          invoice={selectedInvoice.invoiceCategory === 'soa' ? { ...selectedInvoice, soaChildCount: soaChildrenOf(selectedInvoice).length } : selectedInvoice}
                           onPaid={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); window.dispatchEvent(new Event('refreshBadgeCounts')); }}
                           renderTrigger={(open) => (
                             <Button variant="success" onClick={open}>
@@ -1693,8 +1700,16 @@ const RestaurantInvoicesPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 정산서(SOA) — 빈 품목표 대신 묶인 청구서 (2026-09-29 soa2 §5-C) */}
-                {selectedInvoice.invoiceCategory === 'soa' ? (
+                {/* 외부 공급업체 정산서 — 묶인 청구서 표 + 공급업체 SOA 대조 (2026-10-07 Fable 판정 ⑩) */}
+                {selectedInvoice.invoiceCategory === 'soa' && selectedInvoice.issuerIsExternal ? (
+                  <ExternalSoaReconcilePanel
+                    soa={selectedInvoice}
+                    children={soaChildrenOf(selectedInvoice)}
+                    timeZone={operationSettings?.timeZone}
+                    onChanged={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); }}
+                  />
+                ) : /* 정산서(SOA) — 빈 품목표 대신 묶인 청구서 (2026-09-29 soa2 §5-C) */
+                selectedInvoice.invoiceCategory === 'soa' ? (
                 <div style={{ marginBottom: '24px' }}>
                   <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '12px', textTransform: 'uppercase' }}>
                     {t('settings:invoicesPage.soaInvoices', 'Invoices in this statement')} ({soaChildrenOf(selectedInvoice).length})

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { getAuthToken } from '../../../utils/auth';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect } from '../../UI/Modal';
 import { UnifiedStockItem } from '../types';
@@ -38,6 +39,8 @@ interface Props {
   error?: string | null;
   submitting?: boolean;
   lastResult?: { po_number: string; ingredient_name: string } | null;
+  /** 원가 변경 이력을 볼 대상 종류 — 매장 재료 'ingredient' · 본사 재고아이템 'product_ingredient' (2026-10-08) */
+  costSubject?: 'ingredient' | 'product_ingredient';
 }
 
 const SELLER_TYPE_LABEL: Record<string, string> = {
@@ -61,8 +64,24 @@ const OrderModal: React.FC<Props> = ({
   error,
   submitting,
   lastResult,
+  costSubject,
 }) => {
   const { t } = useTranslation(['inventory', 'common']);
+  // 원가 변경 이력 한 줄(2026-10-08 · Fable 판정 Ⅱ-4) — cost_change_logs 의 첫 화면 소비. 못 불러오면 안 보인다.
+  const [costChange, setCostChange] = useState<{ count: number; old_value: number | null; new_value: number; changed_at: string } | null>(null);
+  useEffect(() => {
+    setCostChange(null);
+    if (!isOpen || !item || !costSubject || item.item_type !== 'ingredient') return;
+    let alive = true;
+    fetch(`/api/cost-changes?subject_type=${costSubject}&subject_id=${item.id}&limit=20`, { headers: { Authorization: `Bearer ${getAuthToken()}` } })
+      .then(r => r.json())
+      .then(j => {
+        const h = j?.data?.history || [];
+        if (alive && h.length) setCostChange({ count: h.length, old_value: h[0].old_value != null ? Number(h[0].old_value) : null, new_value: Number(h[0].new_value), changed_at: h[0].changed_at });
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [isOpen, item, costSubject]);
   const selected = sellers.find(s => s.id === selectedSellerId) || null;
   const unitPrice = selected ? (parseFloat(String(selected.unit_price)) || 0) : (item?.unit_cost || 0);
   const qtyNum = parseFloat(quantity);
@@ -174,6 +193,15 @@ const OrderModal: React.FC<Props> = ({
                   </div>
                 );
               })()}
+              {costChange && (
+                <div style={{ marginTop: 4, fontSize: 12, color: '#6B7280' }}>
+                  {t('inventory:order.costChanges', { count: costChange.count })}
+                  {costChange.old_value !== null && costChange.old_value > 0 && (
+                    <>{' · '}{t('inventory:order.lastCostChange')} {getCurrencySymbol(currency)} {costChange.old_value.toFixed(2)} → {costChange.new_value.toFixed(2)}
+                      {' '}({costChange.new_value >= costChange.old_value ? '+' : ''}{Math.round(((costChange.new_value - costChange.old_value) / costChange.old_value) * 1000) / 10}%)</>
+                  )}
+                </div>
+              )}
             </UIFormGroup>
           )}
 

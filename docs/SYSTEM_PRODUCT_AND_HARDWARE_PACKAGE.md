@@ -193,6 +193,12 @@ Stats: [전체] [신규] [상담중] [확정] [발행완료]
     invoice_category: 'hardware' (기존 카테고리 활용)
     InvoiceItem: 'hardware_package' + 'hardware_addon'
     HardwareQuote.status → 'invoiced', invoice_id 연결
+    낼 사람(2026-10-07 Fable 판정 [2]) = 연결된 회원의 역할 — `routes/invoices-helpers.payerForUser` 한 곳, 발행 3곳(/:id/invoice · /:id/proceed 하드웨어·구독)이 같이 쓴다:
+      Brand General/Manager → brand_manager(회원 번호) · Foodcourt General/Manager → foodcourt_manager(회원 번호)
+      Restaurant Owner → restaurant_owner(회원 번호) · Restaurant Admin/Staff → restaurant(매장 번호 + 매장 칸)
+      회원 없음·그 밖 → external(견적 연락처). 예전엔 «매장» 종류에 회원 번호를 넣어 번호가 같은 다른 매장에 보이고
+      정작 낼 회원은 목록에서 못 봤다. 옛 행 보정 = `scripts/migrate-hardware-invoice-payer.js`(deploy·멱등, 매핑 밖은 건너뛰고 목록)
+      · 감시 = 인스펙션 I-HW-001(같은 SQL `utils/hardwarePayerMismatch`).
 ```
 
 ---

@@ -365,7 +365,7 @@ router.post('/restaurants/:restaurantId/ingredient-categories', authenticateToke
   try {
     const { restaurantId } = req.params;
     const restaurant_id = restaurantId; // DB 쿼리용
-    const { name, description, emoji, display_order } = req.body;
+    const { name, description, emoji, display_order, is_staff_meal } = req.body;
 
     const restaurant = await Restaurant.findByPk(restaurant_id);
     if (!restaurant) {
@@ -398,7 +398,8 @@ router.post('/restaurants/:restaurantId/ingredient-categories', authenticateToke
       name: name.trim(),
       description,
       emoji,
-      display_order: order
+      display_order: order,
+      is_staff_meal: is_staff_meal === true
     });
 
     res.json({ success: true, data: category });
@@ -417,7 +418,7 @@ router.put('/restaurants/:restaurantId/ingredient-categories/:categoryId', authe
     const { restaurantId, categoryId } = req.params;
     const restaurant_id = restaurantId; // DB 쿼리용
     const category_id = categoryId;
-    const { name, description, emoji, display_order, is_active } = req.body;
+    const { name, description, emoji, display_order, is_active, is_staff_meal } = req.body;
 
     const category = await IngredientCategory.findOne({
       where: { id: category_id, restaurant_id }
@@ -442,7 +443,8 @@ router.put('/restaurants/:restaurantId/ingredient-categories/:categoryId', authe
       description: description !== undefined ? description : category.description,
       emoji: emoji !== undefined ? emoji : category.emoji,
       display_order: display_order !== undefined ? display_order : category.display_order,
-      is_active: is_active !== undefined ? is_active : category.is_active
+      is_active: is_active !== undefined ? is_active : category.is_active,
+      is_staff_meal: is_staff_meal !== undefined ? is_staff_meal === true : category.is_staff_meal
     });
 
     res.json({ success: true, data: category });

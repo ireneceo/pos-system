@@ -1,4 +1,5 @@
 const express = require('express');
+const stockLedger = require('../services/stockLedger');
 const router = express.Router();
 const {
   BrandProduct,
@@ -1017,13 +1018,24 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
       // 2026-09-01(Q5): 조건은 **레시피 유무 하나뿐**이다. 스위치는 없앴다 —
       // 스위치를 안 켰다고 산 물건이 재고에 안 들어오는 게 GIT 결함의 원인이었다.
       // 다이렉트로 재고아이템에 붙었으면 재고는 **그 재고아이템에** 쌓인다 — 프로덕트 자체 재고는 쓰지 않는다.
-      current_stock: (!product_recipe_id && !linkCreate.patch.product_ingredient_id) ? (parseFloat(current_stock) || 0) : 0,
+      // 시작 재고는 만든 뒤 장부(initial)로 넣는다 — 장부 없이 수량이 생기지 않게 (2026-10-08)
+      current_stock: 0,
       min_stock: parseFloat(min_stock) || 0,
       // «재고 단위» 칸은 없앴다(2026-10-05 Fable 설계 §4-D = §5-12 A) — 자체 재고는 **주문 단위(포장단위)로 센다**.
       //   차감이 `current_stock -= quantity_ordered`(주문 단위)라 다른 단위를 적을 자리가 원래 없었다.
       //   새로 쓰지 않는다(컬럼은 남김 · 원장 라벨은 poLineSpec.selfStockUnit 이 포장단위로 폴백).
       stock_unit: null
     });
+    {
+      const startQty = (!product_recipe_id && !linkCreate.patch.product_ingredient_id) ? (parseFloat(current_stock) || 0) : 0;
+      if (startQty > 0) {
+        await BrandProduct.sequelize.transaction(t => stockLedger.record({
+          target: { kind: 'brand_product', row: product }, entity: { type: 'brand', id: req.user?.brand_id || null },
+          type: 'initial', setTo: startQty, unit: require('../utils/poLineSpec').selfStockUnit(product, 'ea'),
+          notes: 'Initial stock', userId: req.user?.id || null, transaction: t,
+        }));
+      }
+    }
 
     // brand_ids → BrandProductBrand 매핑 (specific_brands 모드)
     const { BrandProductBrand, BrandProductRestaurant } = require('../models');
@@ -1154,6 +1166,12 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       : product.product_ingredient_id;
 
     // Update product
+    // 자체 재고 — 레시피가 붙거나 재고아이템에 다이렉트로 붙으면 0 이다(둘 중 하나만 성립한다).
+    // 다이렉트면 재고는 **그 재고아이템에** 쌓인다 — 프로덕트 자체 재고와 두 곳에 두지 않는다(POST 와 대칭).
+    const prevSelfStock = parseFloat(product.current_stock) || 0;
+    const nextSelfStock = (nextRecipeId || nextStockItemId)
+      ? 0
+      : (current_stock !== undefined ? (parseFloat(current_stock) || 0) : prevSelfStock);
     await product.update({
       name: name !== undefined ? name.trim() : product.name,
       description: description !== undefined ? description : product.description,
@@ -1179,13 +1197,20 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       sort_order: sort_order !== undefined ? sort_order : product.sort_order,
       // 자체 재고 — 레시피가 붙거나 재고아이템에 다이렉트로 붙으면 0 이다(둘 중 하나만 성립한다).
       // 다이렉트면 재고는 **그 재고아이템에** 쌓인다 — 프로덕트 자체 재고와 두 곳에 두지 않는다(POST 와 대칭).
-      current_stock: (nextRecipeId || nextStockItemId)
-        ? 0
-        : (current_stock !== undefined ? (parseFloat(current_stock) || 0) : product.current_stock),
+      // current_stock 은 여기서 직접 안 쓴다 — 아래에서 장부(adjustment)로 맞춘다
       min_stock: min_stock !== undefined ? (parseFloat(min_stock) || 0) : product.min_stock,
       // «재고 단위» 칸 쓰기 중단(§4-D) — 기존 값은 그대로 둔다(운영 9행 전부 포장단위와 같은 말).
       stock_unit: product.stock_unit
     });
+    // 수량이 바뀌면 장부(adjustment) 한 줄과 함께 — 수정 창에서 고쳐도 이력에 남는다 (2026-10-08 장부 단일 진실)
+    if (Math.round((nextSelfStock - prevSelfStock) * 100) !== 0) {
+      await BrandProduct.sequelize.transaction(t => stockLedger.record({
+        target: { kind: 'brand_product', row: product }, entity: { type: 'brand', id: req.user?.brand_id || null },
+        type: 'adjustment', setTo: nextSelfStock, unit: require('../utils/poLineSpec').selfStockUnit(product, 'ea'),
+        notes: (nextRecipeId || nextStockItemId) ? 'Linked to recipe/stock item — self stock cleared' : 'Edited in product form',
+        userId: req.user?.id || null, transaction: t,
+      }));
+    }
 
     // 브랜드/지점 매핑 업데이트 — mode 별로 적절한 테이블만 갱신
     const { BrandProductBrand: BPB, BrandProductRestaurant: BPR } = require('../models');

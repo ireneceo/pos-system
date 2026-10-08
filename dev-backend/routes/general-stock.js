@@ -5,6 +5,8 @@
  * owner_id (Brand General User ID) 기준으로 데이터 관리
  */
 const express = require('express');
+const { recordGeneralStock } = require('../utils/generalStockLedger');
+const database = require('../config/database');
 const router = express.Router();
 const { Op } = require('sequelize');
 const { GeneralStock, GeneralStockCategory, Supplier, Ingredient, InventoryTransaction } = require('../models');
@@ -105,13 +107,19 @@ router.post('/general-stock', authenticateToken, async (req, res) => {
       image_url: image_url || null,
       category: category || 'Supplies',
       unit: stock_unit || 'piece',
-      current_stock: parseFloat(current_stock) || 0,
+      current_stock: 0, // 시작 재고는 아래 장부(initial)로 넣는다 — 장부 없이 수량이 생기지 않게
       min_stock: parseFloat(min_stock) || 0,
       min_order: parseFloat(min_order) || 0,
       unit_cost: parseFloat(unit_cost) || 0,
       supplier_id: supplier_id || null,
       is_active: true
     });
+    const startQty = parseFloat(current_stock) || 0;
+    if (startQty > 0) {
+      await database.sequelize.transaction(t => recordGeneralStock({
+        item: newItem, type: 'initial', setTo: startQty, ownerId: userId, restaurantId: null, notes: 'Initial stock', userId: req.user?.id || null, transaction: t,
+      }));
+    }
 
     res.json({
       success: true,
@@ -236,30 +244,13 @@ router.post('/general-stock/:itemId/receive', authenticateToken, async (req, res
       return res.status(404).json({ success: false, message: 'General stock item not found' });
     }
 
-    // Round to 2 decimal places for consistency
-    const currentStock = Math.round((parseFloat(item.current_stock) || 0) * 100) / 100;
+    // 수량 + 장부를 한 트랜잭션으로 (장부 실패 = 전체 롤백 — 예전엔 장부 실패를 삼키고 수량만 바뀌었다)
     const addedQty = Math.round((parseFloat(quantity) || 0) * 100) / 100;
-    const newStock = Math.round((currentStock + addedQty) * 100) / 100;
-
-    await item.update({ current_stock: newStock, last_stock_take_at: new Date() });
-
-    // Record transaction
-    const { GeneralStockTransaction } = require('../models');
-    await GeneralStockTransaction.create({
-      owner_id: userId,
-      general_stock_id: item.id,
-      transaction_type: 'receive',
-      quantity_change: addedQty,
-      unit: item.unit,
-      stock_after: newStock,
-      unit_cost: Math.round((parseFloat(item.unit_cost) || 0) * 100) / 100,
-      total_cost: Math.round((addedQty * (parseFloat(item.unit_cost) || 0)) * 100) / 100,
-      notes: notes || null,
-      batch_number: batch_number || null,
-      manufacture_date: manufacture_date || null,
-      expiry_date: expiry_date || null,
-      created_by: userId
-    });
+    const { before: currentStock, after: newStock } = await database.sequelize.transaction(t => recordGeneralStock({
+      item, type: 'receive', delta: addedQty, ownerId: userId, restaurantId: null,
+      notes: notes || null, extra: { batch_number: batch_number || null, manufacture_date: manufacture_date || null, expiry_date: expiry_date || null },
+      userId: req.user?.id || null, transaction: t,
+    }));
 
     res.json({
       success: true,
@@ -292,27 +283,10 @@ router.post('/general-stock/:itemId/adjust', authenticateToken, async (req, res)
       return res.status(404).json({ success: false, message: 'General stock item not found' });
     }
 
-    // Round to 2 decimal places for consistency
-    const currentStock = Math.round((parseFloat(item.current_stock) || 0) * 100) / 100;
-    const newStock = Math.max(0, Math.round((parseFloat(new_quantity) || 0) * 100) / 100);
-    const quantityChange = Math.round((newStock - currentStock) * 100) / 100;
-
-    await item.update({ current_stock: newStock, last_stock_take_at: new Date() });
-
-    // Record transaction
-    const { GeneralStockTransaction } = require('../models');
-    await GeneralStockTransaction.create({
-      owner_id: userId,
-      general_stock_id: item.id,
-      transaction_type: 'adjustment',
-      quantity_change: quantityChange,
-      unit: item.unit,
-      stock_after: newStock,
-      unit_cost: Math.round((parseFloat(item.unit_cost) || 0) * 100) / 100,
-      total_cost: Math.round((Math.abs(quantityChange) * (parseFloat(item.unit_cost) || 0)) * 100) / 100,
-      notes: reason || 'adjustment',
-      created_by: userId
-    });
+    const { before: currentStock, after: newStock } = await database.sequelize.transaction(t => recordGeneralStock({
+      item, type: 'adjustment', setTo: Math.max(0, parseFloat(new_quantity) || 0), ownerId: userId, restaurantId: null,
+      notes: reason || 'Stock adjustment', userId: req.user?.id || null, transaction: t,
+    }));
 
     res.json({
       success: true,
@@ -357,7 +331,7 @@ router.put('/general-stock/:itemId', authenticateToken, async (req, res) => {
     if (stock_unit !== undefined) updateData.unit = stock_unit;
     if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
     if (category !== undefined) updateData.category = category;
-    if (current_stock !== undefined) updateData.current_stock = current_stock;
+    // current_stock 은 여기서 안 바꾼다 — 수량은 receive/adjust(장부) 로만 (2026-10-08 장부 단일 진실)
     if (min_stock !== undefined) updateData.min_stock = min_stock;
     if (min_order !== undefined) updateData.min_order = min_order;
     if (supplier_id !== undefined) updateData.supplier_id = supplier_id;

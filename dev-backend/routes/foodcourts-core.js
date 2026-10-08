@@ -575,6 +575,7 @@ router.get('/:id/payment-settings', authenticateToken, async (req, res) => {
         min_order_amount: foodcourt.min_order_amount,
         delivery_fee: foodcourt.delivery_fee,
         delivery_policy: foodcourt.delivery_policy,
+        delivery_zones: require('../utils/deliveryZones').readZones(foodcourt.delivery_zones),
         currency: foodcourt.currency
       }
     });
@@ -616,6 +617,12 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
     // 배송 가능 지역 안내 글 (2026-09-28 Fable) — 보여주기만, 계산 0.
     if (req.body.delivery_policy !== undefined) {
       foodcourt.delivery_policy = require('../utils/sellerNames').normalizeDeliveryPolicy(req.body.delivery_policy);
+    }
+    // 배송 지역 (2026-10-07 Fable) — 판매자 3종 같은 규칙(utils/deliveryZones.js normalizeZonesForSave)
+    if (req.body.delivery_zones !== undefined) {
+      const { zones, error: zoneErr } = require('../utils/deliveryZones').normalizeZonesForSave(req.body.delivery_zones);
+      if (zoneErr) return res.status(400).json({ success: false, message: zoneErr.message, code: zoneErr.code });
+      foodcourt.delivery_zones = zones;
     }
 
 
@@ -672,6 +679,7 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
         min_order_amount: foodcourt.min_order_amount,
         delivery_fee: foodcourt.delivery_fee,
         delivery_policy: foodcourt.delivery_policy,
+        delivery_zones: require('../utils/deliveryZones').readZones(foodcourt.delivery_zones),
         currency: foodcourt.currency
       }
     });

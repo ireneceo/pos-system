@@ -848,9 +848,9 @@
     "deliveryTermsDesc": "门店向该品牌下单时会自动加上配送费。留空则不显示配送费。",
     "freeAbove": "达到或超过此金额免运费",
     "deliveryFee": "未达金额时的配送费（固定）",
-    "deliveryAreas": "配送地区",
-    "deliveryAreasPlaceholder": "例如：Petaling Jaya, Selangor",
-    "deliveryAreasHint": "填写配送地区和时间。门店下单时可见——不用于计算配送费。",
+    "deliveryAreas": "配送说明（日期、时间等）",
+    "deliveryAreasPlaceholder": "例如：周二、周五上午11点前配送",
+    "deliveryAreasHint": "门店下单时显示 — 不用于计算配送费。",
     "appliesToAllBrands": "这些设置适用于此账户下的所有品牌：{{names}}"
   },
   "productIngredientsTab": {

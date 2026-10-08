@@ -14,6 +14,7 @@ const { stockFor, applyStock, effectiveMinStock } = require('../utils/brandStock
 // 한 번도 재고를 깎지 못했다**(운영 실측: 완료 라인 1,444건 중 product_id 0건).
 // 규칙을 새로 만들지 않고 기존 단일 소스를 그대로 쓴다.
 const { resolveProductId } = require('../utils/stationEnrichment');
+const stockLedger = require('./stockLedger');
 const {
   Product,
   Recipe,
@@ -23,7 +24,8 @@ const {
   InventoryTransaction,
   StockAlert,
   Option,
-  OptionIngredient
+  OptionIngredient,
+  Order
 } = require('../models');
 
 /**
@@ -84,46 +86,10 @@ async function deductStockFIFO(ingredientId, quantityToDeduct, transaction, rest
   };
 }
 
-/**
- * Check and create stock alerts
- */
-async function checkAndCreateAlert(restaurantId, ingredientId, currentStock, minStock, transaction) {
-  const existingAlert = await StockAlert.findOne({
-    where: {
-      restaurant_id: restaurantId,
-      ingredient_id: ingredientId,
-      is_resolved: false   // 모델 필드명은 is_resolved (resolved 는 존재하지 않는 컬럼 → 차감 전체 실패하던 버그)
-    },
-    transaction
-  });
-
-  let alertType = null;
-  if (currentStock <= 0) {
-    alertType = 'out_of_stock';
-  } else if (currentStock <= minStock) {
-    alertType = 'low_stock';
-  }
-
-  if (alertType) {
-    if (existingAlert) {
-      await existingAlert.update({
-        alert_type: alertType,
-        current_stock: currentStock,
-        min_stock: minStock
-      }, { transaction });
-    } else {
-      await StockAlert.create({
-        restaurant_id: restaurantId,
-        ingredient_id: ingredientId,
-        alert_type: alertType,
-        current_stock: currentStock,
-        min_stock: minStock
-      }, { transaction });
-    }
-  } else if (existingAlert) {
-    await existingAlert.update({ is_resolved: true, resolved_at: new Date() }, { transaction });
-  }
-}
+// 재고 알림은 utils/stockAlerts 한 곳(2026-10-08 · Fable 판정 Ⅱ-4 — 여기 있던 사본을 없앴다. 임계치는 그쪽이 매장별로 읽는다)
+const { checkAndCreateAlert: syncStockAlert } = require('../utils/stockAlerts');
+const checkAndCreateAlert = (restaurantId, ingredientId, currentStock, _minStock, transaction) =>
+  syncStockAlert(ingredientId, restaurantId, currentStock, transaction);
 
 /**
  * Get recipe ingredients for a product
@@ -156,6 +122,21 @@ async function getProductRecipeIngredients(productId) {
   }));
 }
 
+/** 주문 참조 → { id: 주문 행 id | null, label: 장부 메모에 쓸 번호 } */
+async function resolveOrderRef(restaurantId, orderId) {
+  const raw = orderId === null || orderId === undefined ? '' : String(orderId).trim();
+  if (!raw || raw === 'null' || raw === 'undefined') return { id: null, label: 'unknown' };
+  try {
+    let row = await Order.findOne({ where: { restaurant_id: restaurantId, order_number: raw }, attributes: ['id', 'order_number'], order: [['id', 'DESC']] });
+    if (!row && /^\d+$/.test(raw)) {
+      row = await Order.findOne({ where: { restaurant_id: restaurantId, id: parseInt(raw, 10) }, attributes: ['id', 'order_number'] });
+    }
+    return { id: row ? row.id : null, label: (row && row.order_number) || raw };
+  } catch (e) {
+    return { id: null, label: raw };
+  }
+}
+
 /**
  * Deduct inventory for a completed order
  * @param {number} restaurantId - Restaurant ID
@@ -164,6 +145,10 @@ async function getProductRecipeIngredients(productId) {
  * @returns {Object} Result of deduction
  */
 async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
+  // 장부 줄에 주문 연결(order_id) — 호출부는 주문번호(또는 id 문자열)만 넘긴다(🔒 orders-crud.js 무접촉).
+  //   주문번호로 먼저 찾고, 없으면 id 로. 못 찾아도 차감은 그대로 진행(order_id 만 비움).
+  const orderRef = await resolveOrderRef(restaurantId, orderId);
+  orderId = orderRef.label;
   const transaction = await database.sequelize.transaction();
 
   try {
@@ -245,19 +230,15 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
             // 스위치를 없애 "재고 0 인 프로덕트"까지 이 경로로 들어온다.
             // 0 에서 0 을 빼는 원장 줄을 남기면 재고 이력이 의미 없는 줄로 덮인다 →
             // 실제로 깎인 경우에만 기록하고, 못 깎은 몫은 부족분(warnings)으로 센다.
-            if (take > 0) await prod.update({ current_stock: next }, { transaction });
             if (take > 0) {
-              await InventoryTransaction.create({
-                restaurant_id: restaurantId,
-                product_id: prod.id,
-                transaction_type: 'order_deduct',
-                quantity_change: -take,
-                unit: prod.stock_unit || 'ea',
-                stock_after: next,
-                notes: `Order #${orderId} - ${tgt.name} x${tgtQty}`
+              // 재고 + 장부(금액 = 그 순간 상품 원가) — services/stockLedger 단일 함수
+              await stockLedger.record({
+                target: { kind: 'product', row: prod }, restaurantId, type: 'order_deduct', delta: -take,
+                unit: prod.stock_unit || 'ea', refs: { order_id: orderRef.id },
+                notes: `Order #${orderId} - ${tgt.name || 'item'} x${tgtQty}`
                   + (short > 0 ? ` [stock_shortfall ${short}]` : ''),
-                created_by: null
-              }, { transaction });
+                userId: null, transaction,
+              });
             }
             if (short > 0) {
               results.warnings.push({
@@ -331,21 +312,14 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
             const shortfall = Math.round((actualDeductQty - batchCovered) * 10000) / 10000;
             const newStock = Math.round((currentStock - actualDeductQty) * 10000) / 10000;
 
-            // 브랜드 공유 재료 → 매장 오버레이 / 매장 재료 → 재료 행
-            await applyStock(ingredient, restaurantId, newStock, transaction);
-
-            // Create transaction record
-            await InventoryTransaction.create({
-              restaurant_id: restaurantId,
-              ingredient_id: ingredient.id,
-              transaction_type: 'order_deduct',
-              quantity_change: -actualDeductQty,
-              unit: ingredient.unit,
-              stock_after: newStock,
-              notes: `Order #${orderId} - ${tgt.name} x${tgtQty}`
+            // 재고 + 장부(금액 = 그 순간 매장 원가) — 브랜드 공유 재료 → 매장 오버레이 / 매장 재료 → 재료 행 (stockLedger 단일 함수)
+            await stockLedger.record({
+              target: { kind: 'ingredient', row: ingredient }, restaurantId, type: 'order_deduct', delta: -actualDeductQty,
+              refs: { order_id: orderRef.id },
+              notes: `Order #${orderId} - ${tgt.name || 'item'} x${tgtQty}`
                 + (shortfall > 0 ? ` [batch_shortfall ${shortfall}]` : ''),
-              created_by: null // System action
-            }, { transaction });
+              userId: null, transaction, // System action
+            });
 
             // Check and create alerts
             await checkAndCreateAlert(
@@ -397,19 +371,13 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
             const oiShortfall = Math.round((oiActualDeduct - oiCovered) * 10000) / 10000;
             const oiNewStock = Math.round((oiCurrentStock - oiActualDeduct) * 10000) / 10000;
 
-            await applyStock(oi.ingredient, restaurantId, oiNewStock, transaction);
-
-            await InventoryTransaction.create({
-              restaurant_id: restaurantId,
-              ingredient_id: oi.ingredient.id,
-              transaction_type: 'order_deduct',
-              quantity_change: -oiActualDeduct,
-              unit: oi.ingredient.unit,
-              stock_after: oiNewStock,
+            await stockLedger.record({
+              target: { kind: 'ingredient', row: oi.ingredient }, restaurantId, type: 'order_deduct', delta: -oiActualDeduct,
+              refs: { order_id: orderRef.id },
               notes: `Order #${orderId} - Option "${selOpt.name}" x${orderQty}`
                 + (oiShortfall > 0 ? ` [batch_shortfall ${oiShortfall}]` : ''),
-              created_by: null
-            }, { transaction });
+              userId: null, transaction,
+            });
 
             await checkAndCreateAlert(restaurantId, oi.ingredient.id, oiNewStock, await effectiveMinStock(oi.ingredient, restaurantId, transaction), transaction);
 

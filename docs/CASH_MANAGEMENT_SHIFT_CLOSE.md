@@ -145,13 +145,14 @@
 | `cash_reconciliations` | **0건** (마감을 닫은 매장 없음) |
 | 결제수단(3개월) | ewallet 5,349 · card 490 · bankTransfer 28 · cash 28 · staffMeal 9 |
 
-#### 결제 완료 경로 4개 — 원장 기록 여부
+#### 결제 완료 경로 4개 — 원장 기록 여부 (→ 2026-10-07 다섯 번째 경로 발견·봉합: 아래 표 끝 ⑤)
 | # | 경로 | 원장 | 호출부 |
 |---|------|:----:|--------|
 | 1 | `POST /orders/:id/payments` | ✅ | PaymentModal(분할·부분), 오프라인 재생(op_id 멱등) |
 | 2 | **`PATCH /orders/:id {payment_status:'completed'}`** | ❌ | FloorPlanPage · TableDetailPanel · LiveOrdersPage ← **지배적** |
 | 3 | PayPal capture (`orders-payment.js:184`) | ❌ | 모바일 온라인결제 |
 | 4 | Stripe confirm (`orders-payment.js:248`) | ❌ | 모바일 온라인결제 |
+| 5 | **POST `/orders` 생성 즉시 `payment_status:'completed'`** (2026-10-07 Fable 판정 C) | ✅ (생성 직후 헬퍼 1회 · 트랜잭션 밖 · 주문 생성 무영향) | POS 먼저 받기(POSTerminal Pay) · 오프라인 재생 — 매장8 원장 0 의 원인. 과거분 채우지 않음 |
 
 #### 남은 결함 3가지
 1. **결제 시각이 어디에도 없다** — 경로2는 감사로그도 `actionType:'updated'` 라 `payment_received` 를 안 남긴다.

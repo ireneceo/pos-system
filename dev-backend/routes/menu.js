@@ -1,4 +1,5 @@
 const express = require('express');
+const stockLedger = require('../services/stockLedger');
 const router = express.Router();
 const Product = require('../models/Product');
 const Restaurant = require('../models/Restaurant');
@@ -582,7 +583,16 @@ router.post('/product', checkRestaurantAccess, async (req, res) => {
     delete productData.recipe_id;
     Object.assign(productData, link.patch);
 
+    // 자체 재고 시작값은 만든 뒤 장부(initial)로 — 장부 없이 수량이 생기지 않게 (2026-10-08)
+    const startSelfStock = parseFloat(productData.current_stock) || 0;
+    productData.current_stock = 0;
     const product = await Product.create(productData);
+    if (startSelfStock > 0) {
+      await Product.sequelize.transaction(t => stockLedger.record({
+        target: { kind: 'product', row: product }, restaurantId: product.restaurant_id, type: 'initial',
+        setTo: startSelfStock, unit: product.stock_unit || 'ea', notes: 'Initial stock', userId: req.user?.id || null, transaction: t,
+      }));
+    }
 
     logActivity(req, {
       action_type: 'create',
@@ -755,7 +765,16 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
     delete updateData.recipe_id;
     Object.assign(updateData, link.patch);
 
+    // 자체 재고는 여기서 직접 안 쓴다 — 바뀌었으면 장부(adjustment)와 함께 (2026-10-08 장부 단일 진실)
+    const wantSelfStock = updateData.current_stock !== undefined ? (parseFloat(updateData.current_stock) || 0) : null;
+    delete updateData.current_stock;
     await product.update(updateData);
+    if (wantSelfStock !== null && Math.round((wantSelfStock - (parseFloat(product.current_stock) || 0)) * 100) !== 0) {
+      await Product.sequelize.transaction(t => stockLedger.record({
+        target: { kind: 'product', row: product }, restaurantId: product.restaurant_id, type: 'adjustment',
+        setTo: wantSelfStock, unit: product.stock_unit || 'ea', notes: 'Edited in menu form', userId: req.user?.id || null, transaction: t,
+      }));
+    }
 
     logActivity(req, {
       action_type: 'update',

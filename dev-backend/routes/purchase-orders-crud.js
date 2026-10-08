@@ -321,6 +321,8 @@ router.get('/purchase-orders', async (req, res) => {
       // 2026-08-27 (Irene): staging 에서 보내는 WhatsApp/이메일에도 공급업체 판매품목명·SKU 가
       // 나가야 한다(받는 쪽이 자기 창고에서 대조 가능하게). 단일 소스 = utils/sellerProductIdentity.
       await attachSellerProductIdentity({ items: plainItems });
+      // 직원식 줄 표시 — 재료 분류 파생(utils/poStaffMeal, 2026-10-07 ⑪)
+      await require('../utils/poStaffMeal').attachStaffMeal(plainItems);
     }
 
     // 대조 차이 요약 (2026-09-08 Irene: "차이가 있으면 리스트에서 안내해줘야 해").
@@ -394,6 +396,7 @@ router.get('/purchase-orders', async (req, res) => {
       if (includeItems) {
         plain.items = itemsByPo[p.id] || [];
         plain.seller = getSeller(sellerMap, p.seller_type, p.seller_entity_id);
+        Object.assign(plain, require('../utils/poStaffMeal').staffMealTotals(plain.items));
       }
       return plain;
     });
@@ -589,6 +592,12 @@ router.get('/purchase-orders/:id', async (req, res) => {
     // ProductIngredient or description) + supplier's own sale-product name/SKU via
     // the sellerSource mapping. So the PO detail screen can show both.
     const items = plain.items || [];
+    // 직원식 줄 표시·합계 — 재료 분류 파생(utils/poStaffMeal, 2026-10-07 ⑪)
+    {
+      const { attachStaffMeal, staffMealTotals } = require('../utils/poStaffMeal');
+      await attachStaffMeal(items);
+      Object.assign(plain, staffMealTotals(items));
+    }
     if (items.length) {
       const { ProductIngredient } = require('../models');
       const pIngIds = [...new Set(items.map(it => it.product_ingredient_id).filter(Boolean))];
@@ -1041,7 +1050,8 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
   const totals = await computeTotalsWithDelivery(
     validatedItems,
     { seller_type, seller_entity_id },
-    { orderCurrency: buyerCurrency }
+    // 배송 지역 (2026-10-07 Fable) — 구매자 주소의 주(州)로 판매자 지역을 고른다
+    { orderCurrency: buyerCurrency, buyer: buyerEntity ? { entity_type: buyerEntity.type, entity_id: buyerEntity.id } : null }
   );
 
   // ─────────────────────────────────────────────────────────────────

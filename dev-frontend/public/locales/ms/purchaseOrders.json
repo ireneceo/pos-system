@@ -211,7 +211,9 @@
       "tax": "Cukai",
       "total": "Jumlah",
       "delivery": "Yuran penghantaran",
-      "deliveryUnset": "(tidak ditetapkan penjual)"
+      "deliveryUnset": "(tidak ditetapkan penjual)",
+      "staffMeal": "Makanan staf",
+      "staffMealSplit": "Makanan staf {{staff}} · Biasa {{regular}}"
     },
     "delivery": {
       "expected": "Tarikh Dijangka",
@@ -518,7 +520,7 @@
     "deliveryUnset": "tidak ditetapkan penjual",
     "deliveryToFree": "Tambah {{amount}} lagi untuk penghantaran percuma",
     "deliveryUnsetHint": "Penjual ini belum menetapkan terma penghantaran. Ia tidak bermakna percuma — yuran sebenar ditunjukkan pada invois.",
-    "deliveryAreas": "Kawasan penghantaran",
+    "deliveryAreas": "Nota penghantaran",
     "brandNeedsLink": "Pautkan pembekal kedai anda untuk item ini",
     "pendingLink": "PO Menunggu",
     "inStock": "Stok",
@@ -526,7 +528,10 @@
     "optionsButton": "Pilihan",
     "ownerRestaurant": "Pesanan untuk",
     "ownerPickPlaceholder": "Pilih restoran",
-    "ownerPickFirst": "Pilih restoran anda yang membuat pesanan ini. Pesanan akan masuk ke sejarah pesanan restoran itu."
+    "ownerPickFirst": "Pilih restoran anda yang membuat pesanan ini. Pesanan akan masuk ke sejarah pesanan restoran itu.",
+    "staffMeal": "Makanan staf",
+    "deliveryZoneUnknown": "Alamat kedai tiada negeri, jadi caj penghantaran lalai dikenakan.",
+    "deliveryZoneFix": "Tambah negeri"
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",
@@ -847,7 +852,9 @@
     },
     "gap": {
       "line": "Dipesan {{ordered}} → Diinvois {{invoiced}} ="
-    }
+    },
+    "receivedQty": "Diterima",
+    "receivedMismatch": "Kuantiti bil ≠ kuantiti diterima"
   },
   "newPo.error.profileTitle": "Maklumat perniagaan diperlukan",
   "newPo.error.goToCompanyInfo": "Buka maklumat syarikat?",

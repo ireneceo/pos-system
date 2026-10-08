@@ -31,9 +31,12 @@ interface CostItem {
   vs_avg_pct: number | null;
   invoiced_lines: number;
   last_at: string | null;
+  /** 직원식(비용) 분류 재료 (2026-10-07 Fable 판정 ⑪) */
+  is_staff_meal?: boolean;
 }
 
-interface TrendPoint { month: string; spend: number; orders: number; }
+interface TrendPoint { month: string; spend: number; staff_meal_spend?: number; orders: number; }
+interface ByPurpose { staff_meal: { spend: number; lines: number }; regular: { spend: number; lines: number } }
 
 const Summary = styled.div`
   display: grid;
@@ -121,6 +124,7 @@ const PurchaseCostTab: React.FC<Props> = ({ currency = 'MYR', startDate, endDate
   const [items, setItems] = useState<CostItem[]>([]);
   const [trend, setTrend] = useState<TrendPoint[]>([]);
   const [totals, setTotals] = useState({ spend: 0, items: 0, lines: 0 });
+  const [byPurpose, setByPurpose] = useState<ByPurpose | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -137,6 +141,7 @@ const PurchaseCostTab: React.FC<Props> = ({ currency = 'MYR', startDate, endDate
       setItems(body.data.items || []);
       setTrend(body.data.trend || []);
       setTotals(body.data.totals || { spend: 0, items: 0, lines: 0 });
+      setByPurpose(body.data.by_purpose || null);
     } catch (e: any) {
       setError(e?.message || 'failed');
     } finally {
@@ -168,12 +173,25 @@ const PurchaseCostTab: React.FC<Props> = ({ currency = 'MYR', startDate, endDate
           <SumLabel>{t('reports:purchaseCost.lineCount', '구매 횟수')}</SumLabel>
           <SumValue>{formatCount(totals.lines)}</SumValue>
         </SumCard>
+        {/* 직원식 / 일반 나눔 — 재료 분류의 «직원식» 표시 기준 (2026-10-07 ⑪) */}
+        {byPurpose && (
+          <>
+            <SumCard>
+              <SumLabel>{t('reports:purchaseCost.staffMealSpend', 'Staff meal cost')}</SumLabel>
+              <SumValue>{formatCurrency(byPurpose.staff_meal.spend, currency)}</SumValue>
+            </SumCard>
+            <SumCard>
+              <SumLabel>{t('reports:purchaseCost.regularSpend', 'Regular purchases')}</SumLabel>
+              <SumValue>{formatCurrency(byPurpose.regular.spend, currency)}</SumValue>
+            </SumCard>
+          </>
+        )}
       </Summary>
 
       {trend.length > 0 && (
         <Bars>
           {trend.map((p) => (
-            <Bar key={p.month} h={maxSpend > 0 ? (p.spend / maxSpend) * 100 : 0} title={`${p.month} · ${formatCurrency(p.spend, currency)}`}>
+            <Bar key={p.month} h={maxSpend > 0 ? (p.spend / maxSpend) * 100 : 0} title={`${p.month} · ${formatCurrency(p.spend, currency)}${Number(p.staff_meal_spend || 0) > 0 ? ` · ${t('reports:purchaseCost.staffMeal', 'Staff meal')} ${formatCurrency(Number(p.staff_meal_spend), currency)}` : ''}`}>
               <div className="fill" />
               <div className="label">{p.month.slice(5)}</div>
             </Bar>
@@ -200,7 +218,14 @@ const PurchaseCostTab: React.FC<Props> = ({ currency = 'MYR', startDate, endDate
           items.map((it) => (
             <DataTableRow key={`${it.map_id ?? 'x'}-${it.name}`}>
               <DataTableCell data-label={t('reports:purchaseCost.item', '품목')}>
-                <div style={{ fontWeight: 600 }}>{it.name}</div>
+                <div style={{ fontWeight: 600 }}>
+                  {it.name}
+                  {it.is_staff_meal && (
+                    <span style={{ marginLeft: 6, padding: '1px 6px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: '#F3F4F6', color: '#374151', border: '1px solid #E5E7EB' }}>
+                      {t('reports:purchaseCost.staffMeal', 'Staff meal')}
+                    </span>
+                  )}
+                </div>
                 <Muted>
                   {it.qty} {it.unit || ''}
                   {it.invoiced_lines > 0 && ` · ${t('reports:purchaseCost.invoicedLines', '대조 {{n}}건', { n: it.invoiced_lines })}`}

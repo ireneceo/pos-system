@@ -886,5 +886,22 @@
     "remove": "Remove",
     "receiptAlt": "Payment receipt",
     "clickToEnlarge": "Click to view full size"
+  },
+  "deliveryZones": {
+    "title": "Delivery zones",
+    "hint": "Set a different delivery fee per zone. The zone is picked automatically from the store address state. The free-delivery amount above applies to every zone.",
+    "name": "Zone name",
+    "namePlaceholder": "e.g. Klang Valley",
+    "fee": "Delivery fee",
+    "remove": "Remove zone",
+    "states": "States in this zone",
+    "stateTaken": "Already in zone «{{zone}}»",
+    "description": "Note (optional)",
+    "descriptionPlaceholder": "e.g. Delivered Tue · Fri",
+    "add": "+ Add delivery zone",
+    "other": "Other areas → default delivery fee {{fee}}",
+    "otherUnset": "Other areas → delivery fee not set",
+    "incomplete": "A zone is saved once it has a name, a fee and at least one state.",
+    "saveFailed": "Could not save delivery zones"
   }
 }

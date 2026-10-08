@@ -693,12 +693,25 @@ async function attachOwnerInvoicePurchaseOrders(invoices, transformed) {
   const { isExternalIssuer } = require('../utils/externalIssuer');
   const poMap = await attachPurchaseOrders(invoices.map((i) => i.id));
   const byId = new Map(invoices.map((i) => [String(i.id), i]));
+  // 월결제(정산서로만 내는) 청구서 — 매장 목록과 같은 판정(utils/payViaSoa). 외부 공급업체 월별도 포함(2026-10-07 ⑩)
+  const { payViaSoa } = require('../utils/payViaSoa');
+  const pvMemo = new Map();
+  const payViaSoaOf = async (inv) => {
+    if (!inv) return false;
+    if (inv.parent_soa_invoice_id) return true;
+    const key = `${inv.invoice_category}:${inv.issuer_type}:${inv.issuer_id}:${inv.payer_type}:${inv.payer_id}`;
+    if (!pvMemo.has(key)) pvMemo.set(key, await payViaSoa(inv));
+    return pvMemo.get(key);
+  };
   for (const o of transformed) {
     const inv = byId.get(String(o.id));
     const po = poMap.get(Number(o.id));
     Object.assign(o, {
       invoice_category: inv ? inv.invoice_category : null,
       parent_soa_invoice_id: (inv && inv.parent_soa_invoice_id) || null,
+      pay_via_soa: await payViaSoaOf(inv),
+      // 외부 공급업체 정산서에 붙인 «공급업체가 보낸 SOA» (2026-10-07 ⑩)
+      external_document: inv ? (inv.external_document || null) : null,
       issuer_is_external: inv ? await isExternalIssuer(inv.issuer_type, inv.issuer_id) : false,
       purchase_order_id: po ? po.id : null,
       purchase_order_number: po ? po.po_number : null,

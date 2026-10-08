@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Container, Header, Title, Content, TabContainer, Tab, EmptyState } from '../UI';
 import GeneralStockCategoriesTab from '../../pages/RecipeManagement/GeneralStockCategoriesTab';
 
-import { InventoryManagerProps, InventoryTab } from './types';
+import { InventoryManagerProps, InventoryTab, StockItemType } from './types';
 import { useAuthFetch } from './hooks/useAuthFetch';
 import { useInventoryData } from './hooks/useInventoryData';
 import { useIngredientAdjustModal } from './hooks/useIngredientAdjustModal';
@@ -21,6 +21,7 @@ import { useDeleteConfirm } from './hooks/useDeleteConfirm';
 import { useAlertResolver } from './hooks/useAlertResolver';
 
 import DashboardSection from './sections/DashboardSection';
+import CostReadinessPanel from './sections/CostReadinessPanel';
 import StockListSection from './sections/StockListSection';
 import TransactionHistorySection from './sections/TransactionHistorySection';
 
@@ -239,6 +240,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         {data.loading ? (
           <EmptyState>Loading...</EmptyState>
         ) : activeTab === 'dashboard' ? (
+          <>
+          <CostReadinessPanel mode={mode} restaurantId={restaurantId} selectedCurrency={data.selectedCurrency} authFetch={authFetch} />
           <DashboardSection
             summary={data.summary}
             inventory={data.inventory}
@@ -258,6 +261,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             onGoToHistory={() => setActiveTab('history')}
             onGoToIngredientsPage={goToIngredientsPage}
           />
+          </>
         ) : activeTab === 'list' ? (
           <StockListSection
             showUntracked={showUntracked}
@@ -284,7 +288,11 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               editingStockValue: inlineEdit.editingStockValue,
               setEditingStockValue: inlineEdit.setEditingStockValue,
               editingStockType: inlineEdit.editingStockType,
-              start: inlineEdit.start,
+              // 재료 수량 직접 고치기(= 조정)는 매니저 이상 — 서버 requireStockManager 와 같은 기준(Staff 는 입고·폐기로)
+              start: (id: number, value: number, type: StockItemType) => {
+                if (type === 'ingredient' && user?.role === 'Staff') return;
+                inlineEdit.start(id, value, type);
+              },
               handleKeyDown: inlineEdit.handleKeyDown,
               save: inlineEdit.save,
             }}
@@ -361,6 +369,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         onQuantityChange={adjust.setQuantity}
         notes={adjust.notes}
         onNotesChange={adjust.setNotes}
+        reasonCode={adjust.wasteReason}
+        onReasonCodeChange={adjust.setWasteReason}
         onConfirm={adjust.handleWaste}
       />
 
@@ -405,6 +415,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         error={order.orderError}
         submitting={order.orderSubmitting}
         lastResult={order.lastOrderResult}
+        costSubject={mode === 'restaurant' ? 'ingredient' : 'product_ingredient'}
       />
 
       <BulkOrderModal

@@ -179,7 +179,10 @@
   "brandReadOnlyHint": "A brand recipe — read only here. It is edited at the brand.",
   "ingredientCategoriesTab": {
     "addCategory": "Add Category",
-    "brandWriteStopped": "Brand ingredient categories are no longer created — ingredient categories are managed by the restaurant, and brand categories on the Stock Items screen."
+    "brandWriteStopped": "Brand ingredient categories are no longer created — ingredient categories are managed by the restaurant, and brand categories on the Stock Items screen.",
+    "staffMealBadge": "Staff meal",
+    "staffMealLabel": "Staff meal (cost) category",
+    "staffMealHint": "Ingredients in this category are counted as staff-meal cost on purchase orders and in the purchase cost report."
   },
   "recipesTab": {
     "deleteBlockedTitle": "Cannot delete",

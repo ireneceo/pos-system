@@ -232,5 +232,21 @@
     "saving": "保存中...",
     "submitting": "提交中...",
     "close": "关闭"
+  },
+  "billing": {
+    "title": "结算方式",
+    "monthlyLine": "月结对账单 — 每月 {{issue}} 日出具，{{due}} 日前付款",
+    "immediateLine": "逐张结算 — 每张送货发票单独标记已付",
+    "monthlyHint": "该供应商的发票每月合并为一张对账单。只需在对账单上标记一次已付 — 不能逐张付款。",
+    "editTitle": "结算方式",
+    "cycle": "该供应商的结算方式",
+    "immediate": "逐张发票",
+    "monthly": "月结对账单 (SOA)",
+    "issueDay": "对账单出具日（每月）",
+    "dueDay": "付款截止日（每月）",
+    "monthlyExplain": "在出具日，该供应商所有未付发票会合并为一张对账单。附上供应商发来的 SOA，核对差额后，在对账单上标记一次已付即可。",
+    "immediateExplain": "每张送货发票单独标记已付。",
+    "dayRange": "日期须在 1 到 28 之间。",
+    "saveFailed": "保存失败，请重试。"
   }
 }

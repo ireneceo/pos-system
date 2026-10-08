@@ -5,6 +5,7 @@ import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableC
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import PurchaseCostTab from './PurchaseCostTab';
+import FoodCostTab from './FoodCostTab';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
@@ -192,14 +193,14 @@ const StaffMealBanner = styled.div`
 `;
 
 // 타입 정의
-type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations' | 'payment' | 'void-log' | 'purchase-cost';
+type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations' | 'payment' | 'void-log' | 'purchase-cost' | 'food-cost';
 // PeriodType imported from DatePeriodFilter component
 
 // 차트 색상
 const COLORS = ['#635BFF', '#6FCF97', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
 
 const ReportsPage: React.FC = () => {
-  const { t } = useTranslation('reports');
+  const { t } = useTranslation(['reports', 'inventory']);
   const { user } = useAuth();
   const { operationSettings, paymentSettings } = useStore();
 
@@ -207,6 +208,8 @@ const ReportsPage: React.FC = () => {
 
   // 삭제/취소 감사 로그(Void & Cancellation Log) — 손실방지 감시. Owner/Admin 전용.
   const canViewVoidLog = ['Restaurant Admin', 'Restaurant Owner', 'System Admin'].includes(user?.role || '');
+  // 원가 탭 — 서버 routes/cost-report.js COST_VIEW_ROLES 와 같은 선(Staff 제외)
+  const canViewFoodCost = !!user?.role && user.role !== 'Staff';
   const [voidLog, setVoidLog] = useState<{ rows: any[]; summary: any; staff: any[]; timeZone?: string }>(
     { rows: [], summary: { count: 0, totalAmount: 0, paidCount: 0, cashPaidCount: 0, cashPaidAmount: 0 }, staff: [] }
   );
@@ -348,7 +351,10 @@ const ReportsPage: React.FC = () => {
       price: item.quantity > 0 ? item.revenue / item.quantity : 0,
       orders: item.quantity,
       revenue: Math.round(item.revenue),
-      performance: Math.round((item.quantity / maxQuantity) * 100)
+      performance: Math.round((item.quantity / maxQuantity) * 100),
+      // 지금 레시피 기준 원가·마진(서버 utils/productCost) — 모르면 null 로 «—»
+      unitCost: item.unit_cost ?? null,
+      marginPct: item.margin_pct ?? null
     }));
   }, [reportsSummary]);
 
@@ -1014,7 +1020,17 @@ const ReportsPage: React.FC = () => {
             <Tab active={activeTab === 'purchase-cost'} onClick={() => handleTabChange('purchase-cost')}>
               {t('reports:purchaseCost.tab', { defaultValue: '구매·원가' })}
             </Tab>
+            {/* 원가(실제 vs 이론 · 폐기) — 재고 장부 금액 기준 (2026-10-08). 관리 정보라 Staff 는 안 보인다(서버도 403) */}
+            {canViewFoodCost && (
+              <Tab active={activeTab === 'food-cost'} onClick={() => handleTabChange('food-cost')}>
+                {t('inventory:costReport.tab')}
+              </Tab>
+            )}
           </Tabs>
+
+          {activeTab === 'food-cost' && canViewFoodCost && (
+            <FoodCostTab restaurantId={user?.restaurantId} currency={operationSettings.currency} startDate={dateRange.start} endDate={dateRange.end} />
+          )}
 
           {/* 구매·원가 탭 */}
           <div style={{ display: activeTab === 'purchase-cost' ? 'block' : 'none' }}>
@@ -1304,6 +1320,8 @@ const ReportsPage: React.FC = () => {
                       <DataTableHeaderCell align="left">{t('reports:reportsPage.price')}</DataTableHeaderCell>
                       <DataTableHeaderCell align="left">{t('reports:reportsPage.qtySold')}</DataTableHeaderCell>
                       <DataTableHeaderCell align="left">{t('reports:reportsPage.revenue')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left" title={t('inventory:costReport.currentRecipeBasis')}>{t('inventory:costReport.unitCost')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left" title={t('inventory:costReport.currentRecipeBasis')}>{t('inventory:costReport.marginPct')}</DataTableHeaderCell>
                       <DataTableHeaderCell align="left">{t('reports:reportsPage.performance')}</DataTableHeaderCell>
                     </tr>
                   </DataTableHead>
@@ -1335,6 +1353,8 @@ const ReportsPage: React.FC = () => {
                           <DataTableCell data-label={t('reports:reportsPage.price')}>{formatCurrency(menu.price, operationSettings.currency)}</DataTableCell>
                           <DataTableCell data-label={t('reports:reportsPage.qtySold')}>{menu.orders.toLocaleString()}</DataTableCell>
                           <DataTableCell data-label={t('reports:reportsPage.revenue')}>{formatCurrency(menu.revenue, operationSettings.currency)}</DataTableCell>
+                          <DataTableCell data-label={t('inventory:costReport.unitCost')}>{menu.unitCost === null ? '—' : formatCurrency(menu.unitCost, operationSettings.currency)}</DataTableCell>
+                          <DataTableCell data-label={t('inventory:costReport.marginPct')}>{menu.marginPct === null ? '—' : `${menu.marginPct}%`}</DataTableCell>
                           <DataTableCell data-label={t('reports:reportsPage.performance')}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <ProgressBar percentage={(menu.orders / maxOrders) * 100} />

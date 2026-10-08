@@ -24,6 +24,7 @@ const {
 } = require('../models');
 const { stockFor, applyStock } = require('../utils/brandStockAccess');
 const { deductStockFIFO } = require('../services/inventoryDeductionService');
+const stockLedger = require('../services/stockLedger');
 const { writeStoreCost } = require('../services/storeCost');
 const { getPrepIngredient } = require('../services/prepIngredientSync');
 
@@ -171,29 +172,25 @@ router.post('/:restaurantId/inventory/produce', async (req, res) => {
           const base = Number(ing.base_quantity) || 1;
           costOfTake = ((Number(ing.unit_cost) || 0) / base) * take;
         }
-        const newStock = round2(have - take);
-        await applyStock(ing, restaurantId, newStock, transaction, { stockTake: true });
-        await InventoryTransaction.create({
-          restaurant_id: restaurantId,
-          ingredient_id: ing.id,
-          transaction_type: 'production',
-          quantity_change: -take,
-          unit: ing.unit,
-          stock_after: newStock,
-          notes: `만들기 — ${prep.recipe.name} ${batches}판`,
-          created_by: userId
-        }, { transaction });
+        // 장부 금액 = 실제로 쓴 배치 값(취급단위 1 당 = costOfTake ÷ take)
+        await stockLedger.record({
+          target: { kind: 'ingredient', row: ing }, restaurantId, type: 'production', delta: -take,
+          applyOpts: { stockTake: true }, cost: { unit_cost: costOfTake / take, base_quantity: 1 },
+          notes: `만들기 — ${prep.recipe.name} ${batches}판`, userId, transaction,
+        });
       }
       consumedCost += costOfTake;
       consumed.push({ ingredient_id: ing.id, name: ing.name, unit: ing.unit, used: take, needed: need });
     }
 
     // ② 준비 재료 증가 + 배치 1건
-    const prepHave = round2(await stockFor(prep.ingredient, restaurantId, transaction));
-    const prepNew = round2(prepHave + actualYield);
-    await applyStock(prep.ingredient, restaurantId, prepNew, transaction, { stockTake: true });
-
     const unitCost = Math.round((consumedCost / actualYield) * 10000) / 10000;
+    // 준비 재료 증가 + 장부(금액 = 쓴 원재료 값 ÷ 실제로 나온 양)
+    const { after: prepNew } = await stockLedger.record({
+      target: { kind: 'ingredient', row: prep.ingredient }, restaurantId, type: 'production', delta: actualYield,
+      applyOpts: { stockTake: true }, cost: unitCost > 0 ? { unit_cost: unitCost, base_quantity: 1 } : null,
+      notes: `만들기 — ${prep.recipe.name} ${batches}판${shortages.length ? ' (원재료 부족분 있음)' : ''}`, userId, transaction,
+    });
     const batch = await InventoryBatch.create({
       restaurant_id: restaurantId,
       ingredient_id: prep.ingredient.id,
@@ -210,23 +207,12 @@ router.post('/:restaurantId/inventory/produce', async (req, res) => {
       created_by: userId
     }, { transaction });
 
-    await InventoryTransaction.create({
-      restaurant_id: restaurantId,
-      ingredient_id: prep.ingredient.id,
-      transaction_type: 'production',
-      quantity_change: actualYield,
-      unit: prep.ingredient.unit,
-      stock_after: prepNew,
-      notes: `만들기 — ${prep.recipe.name} ${batches}판${shortages.length ? ' (원재료 부족분 있음)' : ''}`,
-      created_by: userId
-    }, { transaction });
-
     // ③ 매장 원가층 — 실제 쓴 돈 ÷ 실제로 나온 양 (브랜드 준비 재료도 매장 원가는 매장 것)
     //   원가층 값의 뜻은 기준양 가격이다(2026-10-04 Fable 판정 E) — 배치 단가(취급단위 1)에 기준양을 곱한다.
     if (unitCost > 0) {
       const prepBase = Number(prep.ingredient.base_quantity) || 1;
       await writeStoreCost(restaurantId, prep.ingredient, unitCost * prepBase, {
-        transaction, userId, notes: `만들기 — ${prep.recipe.name}`
+        transaction, userId, notes: `만들기 — ${prep.recipe.name}`, log: { source: 'production' }
       });
     }
 

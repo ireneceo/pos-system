@@ -944,6 +944,18 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       }
     }
 
+    // 결제 원장(2026-10-07 Fable 판정 C) — «주문 넣는 순간 결제 완료»(POS 먼저 받기·오프라인 재생) 경로가
+    //   원장·amount_paid 를 안 남기던 다섯 번째 경로. 생성은 이미 커밋됨 → 트랜잭션 밖에서 부른다(실패해도
+    //   주문 생성을 절대 막지 않게 — 헬퍼는 트랜잭션 없이 부르면 오류를 삼키고, 집계는 주문 폴백이 덮는다).
+    //   멱등은 헬퍼가 보장(이미 원장이 총액을 덮으면 0행). 인쇄 칸 무접촉.
+    if (order && String(order.payment_status) === 'completed') {
+      await recordOrderPayment(order, {
+        prevPaymentStatus: 'pending',
+        cashierId: req.user?.id || null,
+        cashierName: req.user?.full_name || req.user?.username || null
+      });
+    }
+
     // 예약-주문 자동 링크 (P2-6) — 인쇄 무관. dine-in 주문이 'arrived' 예약 걸린 테이블에서
     // 생성되면 reservation_id 연결 + 예약 arrived→seated (체크인 루프). 실패는 비치명.
     await linkArrivedReservationToOrder(order);

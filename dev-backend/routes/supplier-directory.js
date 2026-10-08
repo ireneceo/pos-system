@@ -354,7 +354,9 @@ router.get('/supplier-directory/:supplierCompanyId', async (req, res) => {
         supplier: supplierOut,
         products,
         categories,
-        my_contract: myContract ? myContract.toJSON() : null
+        my_contract: myContract ? myContract.toJSON() : null,
+        // 외부 업체 «청구 방식» — 그 구매자 계약 기준 (2026-10-07 ⑩). 가입 업체는 판매자 조건이라 null.
+        billing: (!supplierJson.is_system_registered && myContract && myContract.status === 'active') ? externalBillingOf(myContract) : null
       }
     });
   } catch (err) {

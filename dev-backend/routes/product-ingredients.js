@@ -1,4 +1,6 @@
 const express = require('express');
+const stockLedger = require('../services/stockLedger');
+const { isWasteReason } = require('../utils/wasteReasons');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { requireBGScope, applyBGFilter, assertBGOwnsRow, requireBrandScope } = require('../middleware/brandScope');
@@ -515,6 +517,31 @@ router.get('/:id/usage', async (req, res) => {
 });
 
 // 단일 조회
+// 본사 창고 재고 총액 (2026-10-08 · Fable 판정 Ⅱ-3-A) — BG 재고 화면과 같은 소유 범위. 계산은 services/inventoryValuation
+router.get('/valuation', async (req, res) => {
+  try {
+    if (req.bgOwnerId == null) return res.status(400).json({ success: false, message: 'owner_user_id required' });
+    const { stockItemValuation } = require('../services/inventoryValuation');
+    res.json({ success: true, data: await stockItemValuation(req.bgOwnerId) });
+  } catch (error) {
+    console.error('stock item valuation error:', error);
+    res.status(500).json({ success: false, message: 'Failed to compute inventory value' });
+  }
+});
+
+// 본사 창고 기간 원가 (2026-10-08 · Fable 판정 Ⅱ-3-B) — 매출 대신 출고액. 계산은 services/foodCostReport
+router.get('/stock-cost', async (req, res) => {
+  try {
+    if (req.bgOwnerId == null) return res.status(400).json({ success: false, message: 'owner_user_id required' });
+    const { stockItemCost } = require('../services/foodCostReport');
+    res.json({ success: true, data: await stockItemCost(req.bgOwnerId, req.query.start, req.query.end) });
+  } catch (error) {
+    if (error.status === 400) return res.status(400).json({ success: false, message: error.message });
+    console.error('stock item cost error:', error);
+    res.status(500).json({ success: false, message: 'Failed to build stock cost report' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const ingredient = await ProductIngredient.findByPk(req.params.id, {
@@ -575,7 +602,7 @@ router.post('/', async (req, res) => {
       supplier_id: null,
       min_stock: min_stock || 0,
       min_order: min_order || 0,
-      current_stock: current_stock || 0,
+      current_stock: 0, // 시작 재고는 아래 장부(initial)로 — 장부 없이 수량이 생기지 않게 (2026-10-08)
       lead_time_days: lead_time_days || 1,
       safety_stock_percent: safety_stock_percent || 20,
       manual_daily_usage,
@@ -583,6 +610,14 @@ router.post('/', async (req, res) => {
       // 만든 것이 전부 관리 대상이 됐다(운영 실측 289/289 켜짐, 수량 있는 건 3개).
       is_active: true
     });
+
+    const startQty = parseFloat(current_stock) || 0;
+    if (startQty > 0) {
+      await ProductIngredient.sequelize.transaction(t => stockLedger.record({
+        target: { kind: 'product_ingredient', row: ingredient }, entity: { type: 'brand', id: req.user?.brand_id || null },
+        type: 'initial', setTo: startQty, notes: 'Initial stock', userId: req.user?.id || null, transaction: t,
+      }));
+    }
 
     const createdIngredient = await ProductIngredient.findByPk(ingredient.id, {
       include: [{ model: ProductIngredientCategory, as: 'category' }]
@@ -616,7 +651,8 @@ router.put('/:id', async (req, res) => {
       //   · 기준단위 package_unit · 기준양 package_quantity · 가격 unit_cost
       'package_unit', 'package_quantity',
       'unit_cost',
-      'min_stock', 'min_order', 'current_stock',
+      // current_stock 은 여기서 안 바꾼다 — 수량은 /:id/adjust-stock(장부) 로만 (2026-10-08 장부 단일 진실)
+      'min_stock', 'min_order',
       'lead_time_days', 'safety_stock_percent',
       'manual_daily_usage', 'is_active'
     ];
@@ -1092,36 +1128,27 @@ router.post('/:id/adjust-stock', async (req, res) => {
     const ingredient = await ProductIngredient.findByPk(req.params.id);
     if (!assertBGOwnsRow(ingredient, req, res)) return;
 
-    const { adjustment, reason, transaction_type } = req.body;
-    const prevStock = parseFloat(ingredient.current_stock) || 0;
-    const adj = parseFloat(adjustment) || 0;
-    const newStock = Math.max(0, prevStock + adj);
+    // adjustment(증감) 또는 new_quantity(최종값 — 인라인 수정·수정 창). 둘 다 0 아래로는 안 간다.
+    const { adjustment, new_quantity, reason, transaction_type, reason_code } = req.body;
+    const absolute = new_quantity !== undefined && new_quantity !== null && new_quantity !== '';
+    const adjIn = parseFloat(adjustment) || 0;
+    const VALID_TYPES = ['initial', 'purchase', 'order_deduct', 'stock_take', 'waste', 'adjustment', 'return_in', 'return_out'];
+    const txType = VALID_TYPES.includes(transaction_type)
+      ? transaction_type
+      : (absolute || adjIn >= 0 ? 'adjustment' : 'waste');
 
-    await ingredient.update({ current_stock: newStock });
-
-    // Record history so the brand Inventory History tab reflects the movement. Audit #36.
-    // Filtered/displayed by product_ingredient_id, so a null entity_id (brand_id absent)
-    // never hides the row.
-    try {
-      const { InventoryTransaction } = require('../models');
-      const VALID_TYPES = ['initial', 'purchase', 'order_deduct', 'stock_take', 'waste', 'adjustment', 'return_in', 'return_out'];
-      const txType = VALID_TYPES.includes(transaction_type)
-        ? transaction_type
-        : (adj >= 0 ? 'adjustment' : 'waste');
-      await InventoryTransaction.create({
-        entity_type: 'brand',
-        entity_id: req.user?.brand_id || null,
-        product_ingredient_id: ingredient.id,
-        transaction_type: txType,
-        quantity_change: adj,
-        unit: ingredient.unit,
-        stock_after: newStock,
-        notes: reason || null,
-        created_by: req.user?.id || null
-      });
-    } catch (txErr) {
-      console.error('adjust-stock transaction record failed:', txErr.message);
-    }
+    // 재고 + 장부를 한 트랜잭션으로 (예전엔 장부 실패를 삼키고 수량만 바뀌었다 — Audit #36 의 남은 구멍)
+    //   entity_id 가 비어도(brand_id 없음) 화면은 product_ingredient_id 로 거르므로 이력에서 숨지 않는다.
+    const r = await ProductIngredient.sequelize.transaction(t => stockLedger.record({
+      target: { kind: 'product_ingredient', row: ingredient }, entity: { type: 'brand', id: req.user?.brand_id || null },
+      type: txType,
+      ...(absolute ? { setTo: Math.max(0, parseFloat(new_quantity) || 0) } : { delta: adjIn, clampAtZero: true }),
+      reasonCode: txType === 'waste' ? (isWasteReason(reason_code) ? reason_code : 'other') : (reason_code || null),
+      notes: reason || null, userId: req.user?.id || null, transaction: t,
+    }));
+    const prevStock = r.before;
+    const newStock = r.after;
+    const adj = r.change;
 
     res.json({
       success: true,

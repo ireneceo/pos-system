@@ -38,6 +38,7 @@ export function useIngredientAdjustModal({
   const [selectedIngredient, setSelectedIngredient] = useState<IngredientStock | null>(null);
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
+  const [wasteReason, setWasteReason] = useState('');
   const [batchNumber, setBatchNumber] = useState('');
   const [manufactureDate, setManufactureDate] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
@@ -75,6 +76,7 @@ export function useIngredientAdjustModal({
     setSelectedIngredient(ingredient);
     setQuantity('');
     setNotes('');
+    setWasteReason('');
     setShowWasteModal(true);
   }, []);
 
@@ -160,7 +162,7 @@ export function useIngredientAdjustModal({
   }, [selectedIngredient, quantity, notes, batchNumber, manufactureDate, expiryDate, mode, restaurantId, authFetch, setInventory, setAlerts, selectedPoItemId, openPoLines]);
 
   const handleWaste = useCallback(async () => {
-    if (!selectedIngredient || !quantity) return;
+    if (!selectedIngredient || !quantity || !wasteReason) return;
 
     try {
       let response;
@@ -171,6 +173,7 @@ export function useIngredientAdjustModal({
             ingredient_id: selectedIngredient.id,
             quantity: parseFloat(quantity),
             notes,
+            reason_code: wasteReason,
           }),
         });
       } else {
@@ -180,6 +183,7 @@ export function useIngredientAdjustModal({
           body: JSON.stringify({
             adjustment: -parseFloat(quantity),
             transaction_type: 'waste',
+            reason_code: wasteReason,
             reason: notes || 'Waste',
           }),
         });
@@ -203,7 +207,7 @@ export function useIngredientAdjustModal({
     } catch (error) {
       console.error('Failed to record waste:', error);
     }
-  }, [selectedIngredient, quantity, notes, mode, restaurantId, authFetch, setInventory]);
+  }, [selectedIngredient, quantity, notes, wasteReason, mode, restaurantId, authFetch, setInventory]);
 
   return {
     showReceiveModal,
@@ -213,6 +217,8 @@ export function useIngredientAdjustModal({
     setQuantity,
     notes,
     setNotes,
+    wasteReason,
+    setWasteReason,
     batchNumber,
     setBatchNumber,
     manufactureDate,

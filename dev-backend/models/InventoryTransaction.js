@@ -85,6 +85,27 @@ InventoryTransaction.init({
     type: DataTypes.TEXT,
     allowNull: true
   },
+  // 2026-10-08 장부 금액 (scripts/migrate-ledger-cost-columns.js · 쓰는 곳은 services/stockLedger.js 한 곳)
+  unit_cost: {
+    type: DataTypes.DECIMAL(12, 4),
+    allowNull: true,
+    comment: '그 순간 원가(기준양의 가격) 스냅샷 — 모르면 NULL'
+  },
+  cost_value: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: true,
+    comment: '이 줄 금액 = quantity_change ÷ base_quantity × unit_cost (부호 = 수량 부호)'
+  },
+  base_quantity: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    comment: '금액을 낸 기준양'
+  },
+  reason_code: {
+    type: DataTypes.STRING(32),
+    allowNull: true,
+    comment: '폐기·조정 사유 코드 (utils/wasteReasons.js)'
+  },
   created_by: {
     type: DataTypes.INTEGER,
     allowNull: true

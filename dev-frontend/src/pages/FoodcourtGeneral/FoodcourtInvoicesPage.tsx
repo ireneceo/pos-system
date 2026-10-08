@@ -1396,7 +1396,11 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     </MobileGrid>
                     <InvoiceActionButtons className="col-actions">
                       <LocalActionButton onClick={() => handleViewInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.view')}</LocalActionButton>
-                      {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
+                      {/* 정산서로만 내는 청구서 — 개별 버튼 대신 한 줄 (매장 화면과 같은 규칙, 2026-10-07 ⑩) */}
+                      {((invoice as any).parentSoaInvoiceId || (invoice as any).payViaSoa) && invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                        <span style={{ fontSize: 11, color: '#6B7280', alignSelf: 'center' }}>{t('settings:invoicesPage.payViaSoa', 'Pay via SOA')}</span>
+                      )}
+                      {!(invoice as any).parentSoaInvoiceId && !(invoice as any).payViaSoa && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
                         // 외부 공급업체 청구서는 발주 결제 모달로 (2026-09-11 §8-5 E-2). 가입 판매자는 기존 Pay 그대로.
                         (invoice as any).issuerIsExternal ? (
                           <ExternalInvoicePayAction

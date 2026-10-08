@@ -680,6 +680,15 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
         })
       });
 
+      // 수정 창에서 재고 수량을 바꿨으면 장부가 남는 adjust-stock 으로 따로 반영(PUT 은 수량을 안 받는다 — 2026-10-08)
+      if (response.success && editingIngredient
+          && Math.round(((parseFloat(formData.current_stock) || 0) - (Number(editingIngredient.current_stock) || 0)) * 100) !== 0) {
+        await fetchAPI(`/api/product-ingredients/${editingIngredient.id}/adjust-stock`, {
+          method: 'POST',
+          body: JSON.stringify({ new_quantity: parseFloat(formData.current_stock) || 0, transaction_type: 'adjustment', reason: 'Edited in stock item form' })
+        });
+      }
+
       if (response.success) {
         handleCloseModal();
         fetchData();

@@ -65,7 +65,8 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
       include: [{
         model: IngredientCategory,
         as: 'ingredientCategory',
-        attributes: ['id', 'name', 'emoji']
+        // is_staff_meal — 발주 담기 화면의 «직원식» 배지 (2026-10-07 Fable 판정 ⑪)
+        attributes: ['id', 'name', 'emoji', 'is_staff_meal']
       }]
     });
 
@@ -136,6 +137,11 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
       const sellerResolved = await resolveSellers(
         mappings.map(m => ({ seller_type: m.seller_type, seller_entity_id: m.seller_entity_id }))
       );
+      // 배송 지역 (2026-10-07 Fable) — 이 매장 주소의 주(州)로 판매자 지역을 고른다(계산은 서버 총액이 진실).
+      const { resolveDeliveryZone } = require('../utils/deliveryZones');
+      const buyerLoc = await require('../models/Restaurant').findByPk(restaurantId, { attributes: ['state', 'postal_code', 'country'] })
+        .then(r => (r ? { state: r.state, postal_code: r.postal_code, country: r.country } : null))
+        .catch(() => null);
 
       // Brand seller sources carry the brand's OWN product name/SKU — different from the
       // restaurant's internal stock item name. Resolve them like supplier products so the
@@ -194,6 +200,13 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
           seller_delivery_policy: (() => {
             const row = getSeller(sellerResolved, m.seller_type, m.seller_entity_id);
             return row && row.delivery_policy ? row.delivery_policy : null;
+          })(),
+          // 배송 지역 (2026-10-07 Fable) — 이 매장에 대해 고른 지역 {id,name,fee} 또는 null + 사유
+          ...(() => {
+            const row = getSeller(sellerResolved, m.seller_type, m.seller_entity_id);
+            if (!row || !row.delivery_zones) return { seller_delivery_zone: null, seller_delivery_zone_reason: null };
+            const z = resolveDeliveryZone(row.delivery_zones, buyerLoc);
+            return { seller_delivery_zone: z.zone, seller_delivery_zone_reason: z.reason };
           })(),
           // 판매자 통화 — 발주 통화와 다르면 서버가 배송비 규칙을 적용하지 않는다(0 저장).
           //   화면이 통화를 따로 조회하면 규칙이 두 벌이 되므로 여기서 같이 내려준다. (2026-09-17 게이트 B-2)

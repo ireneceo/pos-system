@@ -25,6 +25,7 @@ const ACCOUNT_LEVEL_FIELDS = [
   'min_order_amount',
   'delivery_fee',
   'delivery_policy',
+  'delivery_zones',   // 배송 지역 (2026-10-07 Fable) — JSON 칸. 비교는 아래 canon() 으로 한다
 ];
 
 /** 같은 주인의 다른 브랜드 id 목록 (owner NULL 이면 빈 배열) */
@@ -76,8 +77,18 @@ async function copyAccountFieldsFromSibling(Brand, brand, options = {}) {
   return sourceId;
 }
 
+// 비교용 정규형 — JSON 칸(delivery_zones)은 원 SQL 에서 객체/배열로 올 수 있다. String(객체)는 전부
+//   "[object Object]" 라 어긋남을 못 본다 → 키 정렬 직렬화로 비교한다. 문자열·숫자는 지금처럼 String.
+function stableStringify(v) {
+  if (Array.isArray(v)) return `[${v.map(stableStringify).join(',')}]`;
+  if (v && typeof v === 'object') {
+    return `{${Object.keys(v).sort().map(k => `${JSON.stringify(k)}:${stableStringify(v[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(v);
+}
+const canon = (v) => (v === null || v === undefined ? null : (typeof v === 'object' ? stableStringify(v) : String(v)));
 const hasValue = (r) => ACCOUNT_LEVEL_FIELDS.some(f => r[f] !== null && r[f] !== '');
-const sameValue = (a, b) => (a === null || a === undefined ? null : String(a)) === (b === null || b === undefined ? null : String(b));
+const sameValue = (a, b) => canon(a) === canon(b);
 
 /**
  * 같은 주인 브랜드들의 계정 칸 어긋남을 찾는다 (마이그·인스펙션 공용).
@@ -135,4 +146,5 @@ module.exports = {
   copyAccountFieldsFromSibling,
   findAccountDrift,
   makeQuery,
+  sameValue,
 };

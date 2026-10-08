@@ -784,8 +784,8 @@ async function updateAvgDailyUsage(ingredientId) {
    **브랜드 공유 재료에만** 쓴다. 매장 소유 재료의 원가는 재료 행 자체. 수령·대조·수동 입력 모두 `services/storeCost.js` 를 거친다
    (상세 `docs/TRADE_STRUCTURE.md` §2-3 · `docs/RECIPE_MANAGEMENT_SYSTEM.md` 코스트 오버라이드 절).
 
-**미해결(Fable 설계 대기)**: `ingredients`(브랜드 88) vs `product_ingredients`(286) 목록 이원화,
-`linked_ingredient_id` 반쪽 구현, FG 도 같은 어긋남(입고는 `ingredients`, 화면은 `foodcourt_products`).
+**해소(2026-10-07 Fable 판정)** — BG 축은 2026-09-04 재료 통합(`docs/INGREDIENT_UNIFICATION_DESIGN.md`, SW 4.78)으로 닫혔다: 목록은 Stock Items 하나, 브랜드 `ingredients` 행은 거울(`source_product_ingredient_id`, 기계 유지), `linked_ingredient_id` 는 폐기(쓰기·읽기 모두 거울 열쇠로 대체, 운영 0건 유지 — 2026-10-07 실측: 코드에 남은 언급은 `routes/stock-ledger.js:13` 쓰기 금지 주석 하나, `already_linked_ingredient_id` 는 공급처 연결 기준이라 옛 칸을 안 읽음). 표 2개는 결함이 아니라 설계(인쇄 보호 코드가 `ingredients` 를 공용) — 재발은 ING-UNI 게이트가 막는다.
+**FG 축은 보류** — 화면(`foodcourt_products.current_stock`) 과 구매 수령(`ingredients.foodcourt_id`) 이 갈라져 있으나 FG 가 구매자로 쓰인 데이터가 없다. FG 가 발주 구매자로 실제 쓰이기 시작하면 **BG 거울 모델을 그대로 적용**한다(새 표·새 경로 금지). 그때까지 FG 수령 경로는 건드리지 않는다.
 
 ---
 

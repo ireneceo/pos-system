@@ -128,7 +128,7 @@ async function findDisallowedIngredientIds(items, scope) {
 const { canEditRecipe, isBrandManager } = require('../middleware/recipeAuth');
 const { requireRestaurantModule } = require('../middleware/requireModule');
 const { generateRecipeCode } = require('../utils/codeGenerator');
-const { resolveLineCost } = require('../utils/recipeCost');
+const { resolveLineCost, convertQuantity } = require('../utils/recipeCost');
 const { processImage, deleteOldImages } = require('../utils/imageProcessor');
 
 // Tier gate (P0-3, 2026-06-08): a restaurant managing its OWN recipes is an
@@ -630,7 +630,9 @@ router.get('/restaurants/:restaurantId/brand-recipes', authenticateToken, checkR
           const override = costMap[ri.ingredient_id];
           const effectiveUnitCost = override !== undefined ? override : brandUnitCost;
           const effectiveCostPerBase = effectiveUnitCost / baseQty;
-          const qty = parseFloat(ri.quantity) || 0;
+          // 레시피 단위 → 재료 단위 환산(저장 경로 utils/recipeCost 와 같은 규칙). 안 되는 조합이면 0 으로 센다.
+          const unitIng = ri.ingredient ? ri.ingredient.unit : ri.unit;
+          const qty = convertQuantity(ri.quantity, ri.unit || unitIng, unitIng) || 0;
           const effectiveCost = qty * effectiveCostPerBase;
           const brandCost = qty * (brandUnitCost / baseQty);
 

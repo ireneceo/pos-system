@@ -232,5 +232,21 @@
     "saving": "Menyimpan...",
     "submitting": "Menghantar...",
     "close": "Tutup"
+  },
+  "billing": {
+    "title": "Pengebilan",
+    "monthlyLine": "Penyata bulanan — dikeluarkan pada hari {{issue}} setiap bulan, perlu dibayar pada hari {{due}}",
+    "immediateLine": "Setiap invois — setiap invois penghantaran ditanda dibayar secara berasingan",
+    "monthlyHint": "Invois pembekal ini digabungkan menjadi satu penyata setiap bulan. Tanda penyata sebagai dibayar sekali sahaja — invois tidak boleh dibayar satu demi satu.",
+    "editTitle": "Kaedah pengebilan",
+    "cycle": "Cara pembekal ini mengebil anda",
+    "immediate": "Setiap invois",
+    "monthly": "Penyata bulanan (SOA)",
+    "issueDay": "Hari penyata (setiap bulan)",
+    "dueDay": "Hari tarikh akhir bayaran (setiap bulan)",
+    "monthlyExplain": "Pada hari penyata, semua invois belum dibayar daripada pembekal ini digabungkan menjadi satu penyata. Lampirkan SOA yang dihantar pembekal, semak perbezaan, kemudian tanda penyata sebagai dibayar sekali.",
+    "immediateExplain": "Setiap invois penghantaran ditanda dibayar secara berasingan.",
+    "dayRange": "Hari mesti antara 1 dan 28.",
+    "saveFailed": "Tidak dapat disimpan. Sila cuba lagi."
   }
 }

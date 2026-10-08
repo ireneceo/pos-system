@@ -23,5 +23,7 @@ router.use('/:restaurantId/stock-takes', authenticateToken, inventoryGate);
 router.use(require('./inventory-produce'));
 router.use(require('./inventory-core'));
 router.use(require('./inventory-extra'));
+// 재고 총액 · 원가 측정 준비도 (2026-10-08)
+router.use(require('./inventory-valuation'));
 
 module.exports = router;

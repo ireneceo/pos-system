@@ -640,7 +640,9 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
         // 총액 수정 창·수정 이력 (2026-10-07 Fable 판정 D5·D6)
         reconcile_invoiced_lines: srcPo ? Number(srcPo.reconcile_invoiced_lines) || 0 : 0,
         is_modified: !!invoice.is_modified,
-        modification_history: invoice.modification_history || []
+        modification_history: invoice.modification_history || [],
+        // 외부 공급업체 정산서에 붙인 «공급업체가 보낸 SOA» (2026-10-07 ⑩)
+        external_document: invoice.external_document || null
       };
     }));
 

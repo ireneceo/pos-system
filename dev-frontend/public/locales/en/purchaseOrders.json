@@ -211,7 +211,9 @@
       "tax": "Tax",
       "total": "Total",
       "delivery": "Delivery fee",
-      "deliveryUnset": "(not set by seller)"
+      "deliveryUnset": "(not set by seller)",
+      "staffMeal": "Staff meal",
+      "staffMealSplit": "Staff meal {{staff}} · Regular {{regular}}"
     },
     "delivery": {
       "expected": "Expected Date",
@@ -518,7 +520,7 @@
     "deliveryUnset": "not set by seller",
     "deliveryToFree": "Add {{amount}} more for free delivery",
     "deliveryUnsetHint": "This seller has not set delivery terms yet. That does not mean free — the actual fee shows on the invoice.",
-    "deliveryAreas": "Delivery areas",
+    "deliveryAreas": "Delivery note",
     "brandNeedsLink": "Add your store's supplier for this item",
     "pendingLink": "Pending POs",
     "inStock": "In stock",
@@ -526,7 +528,10 @@
     "optionsButton": "Options",
     "ownerRestaurant": "Order for",
     "ownerPickPlaceholder": "Select a restaurant",
-    "ownerPickFirst": "Choose which of your restaurants this order is for. It will appear in that restaurant's order history."
+    "ownerPickFirst": "Choose which of your restaurants this order is for. It will appear in that restaurant's order history.",
+    "staffMeal": "Staff meal",
+    "deliveryZoneUnknown": "Your store address has no state, so the default delivery fee applies.",
+    "deliveryZoneFix": "Add state"
   },
   "staging": {
     "noPhoneTitle": "No Phone Number",
@@ -847,7 +852,9 @@
     },
     "gap": {
       "line": "Ordered {{ordered}} → Invoiced {{invoiced}} ="
-    }
+    },
+    "receivedQty": "Received",
+    "receivedMismatch": "Billed qty ≠ received qty"
   },
   "newPo.error.profileTitle": "Business details needed",
   "newPo.error.goToCompanyInfo": "Open company information?",

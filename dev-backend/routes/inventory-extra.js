@@ -1,4 +1,5 @@
 const express = require('express');
+const { recordGeneralStock } = require('../utils/generalStockLedger');
 const router = express.Router();
 const { Op } = require('sequelize');
 const database = require('../config/database');
@@ -103,13 +104,19 @@ router.post('/:restaurantId/inventory/general-stock', async (req, res) => {
       image_url: image_url || null,
       category: category || 'Supplies',
       unit: stock_unit || 'piece',
-      current_stock: parseFloat(current_stock) || 0,
+      current_stock: 0, // 시작 재고는 아래 장부(initial)로 넣는다 — 장부 없이 수량이 생기지 않게
       min_stock: parseFloat(min_stock) || 0,
       min_order: parseFloat(min_order) || 0,
       unit_cost: parseFloat(unit_cost) || 0,
       supplier_id: supplier_id || null,
       is_active: true
     });
+    const startQty = parseFloat(current_stock) || 0;
+    if (startQty > 0) {
+      await database.sequelize.transaction(t => recordGeneralStock({
+        item: newItem, type: 'initial', setTo: startQty, ownerId: null, restaurantId: parseInt(restaurantId), notes: 'Initial stock', userId: req.user?.id || null, transaction: t,
+      }));
+    }
 
     res.json({
       success: true,
@@ -138,36 +145,13 @@ router.post('/:restaurantId/inventory/general-stock/:itemId/receive', async (req
       return res.status(404).json({ success: false, message: 'General stock item not found' });
     }
 
-    // Round to 2 decimal places for consistency
-    const currentStock = Math.round((parseFloat(item.current_stock) || 0) * 100) / 100;
+    // 수량 + 장부를 한 트랜잭션으로 (장부 실패 = 전체 롤백 — 예전엔 장부 실패를 삼키고 수량만 바뀌었다)
     const addedQty = Math.round((parseFloat(quantity) || 0) * 100) / 100;
-    const newStock = Math.round((currentStock + addedQty) * 100) / 100;
-
-    await item.update({ current_stock: newStock, last_stock_take_at: new Date() });
-
-    // Record transaction
-    try {
-      if (GeneralStockTransaction) {
-        await GeneralStockTransaction.create({
-          owner_id: null,
-          restaurant_id: parseInt(restaurantId),
-          general_stock_id: item.id,
-          transaction_type: 'receive',
-          quantity_change: addedQty,
-          unit: item.unit,
-          stock_after: newStock,
-          unit_cost: Math.round((parseFloat(item.unit_cost) || 0) * 100) / 100,
-          total_cost: Math.round((addedQty * (parseFloat(item.unit_cost) || 0)) * 100) / 100,
-          notes: notes || null,
-          batch_number: batch_number || null,
-          manufacture_date: manufacture_date || null,
-          expiry_date: expiry_date || null,
-          created_by: req.user?.id || null
-        });
-      }
-    } catch (txError) {
-      console.error('Transaction recording failed (non-critical):', txError.message);
-    }
+    const { before: currentStock, after: newStock } = await database.sequelize.transaction(t => recordGeneralStock({
+      item, type: 'receive', delta: addedQty, ownerId: null, restaurantId: parseInt(restaurantId),
+      notes: notes || null, extra: { batch_number: batch_number || null, manufacture_date: manufacture_date || null, expiry_date: expiry_date || null },
+      userId: req.user?.id || null, transaction: t,
+    }));
 
     res.json({
       success: true,
@@ -199,31 +183,10 @@ router.post('/:restaurantId/inventory/general-stock/:itemId/adjust', async (req,
       return res.status(404).json({ success: false, message: 'General stock item not found' });
     }
 
-    // Round to 2 decimal places for consistency
-    const currentStock = Math.round((parseFloat(item.current_stock) || 0) * 100) / 100;
-    const newStock = Math.max(0, Math.round((parseFloat(new_quantity) || 0) * 100) / 100);
-
-    await item.update({ current_stock: newStock, last_stock_take_at: new Date() });
-
-    // Record transaction
-    try {
-      if (GeneralStockTransaction) {
-        const quantityChange = newStock - currentStock;
-        await GeneralStockTransaction.create({
-          owner_id: null,
-          restaurant_id: parseInt(restaurantId),
-          general_stock_id: item.id,
-          transaction_type: 'adjustment',
-          quantity_change: quantityChange,
-          unit: item.unit,
-          stock_after: newStock,
-          notes: reason || 'Stock adjustment',
-          created_by: req.user?.id || null
-        });
-      }
-    } catch (txError) {
-      console.error('Transaction recording failed (non-critical):', txError.message);
-    }
+    const { before: currentStock, after: newStock } = await database.sequelize.transaction(t => recordGeneralStock({
+      item, type: 'adjustment', setTo: Math.max(0, parseFloat(new_quantity) || 0), ownerId: null, restaurantId: parseInt(restaurantId),
+      notes: reason || 'Stock adjustment', userId: req.user?.id || null, transaction: t,
+    }));
 
     res.json({
       success: true,
@@ -302,7 +265,7 @@ router.put('/:restaurantId/inventory/general-stock/:itemId', async (req, res) =>
     if (stock_unit !== undefined) updateData.unit = stock_unit;
     if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
     if (category !== undefined) updateData.category = category;
-    if (current_stock !== undefined) updateData.current_stock = current_stock;
+    // current_stock 은 여기서 안 바꾼다 — 수량은 receive/adjust(장부) 로만 (2026-10-08 장부 단일 진실)
     if (min_stock !== undefined) updateData.min_stock = min_stock;
     if (min_order !== undefined) updateData.min_order = min_order;
     if (supplier_id !== undefined) updateData.supplier_id = supplier_id;
@@ -366,23 +329,25 @@ router.get('/:restaurantId/inventory/:ingredientId/par-level', async (req, res) 
     const parOverlay = (await overlayMapFor(restaurantId, [parseInt(ingredientId, 10)]))[ingredientId];
     const eff = effectiveSettings(ingredient, parOverlay);
 
-    // Get daily usage (from manual setting or calculated)
-    const dailyUsage = parseFloat(eff.manual_daily_usage) || parseFloat(eff.avg_daily_usage) || 0;
-    const leadTimeDays = parseInt(eff.lead_time_days) || 1;
-    const safetyStockPercent = parseFloat(eff.safety_stock_percent) || 20;
-
-    // PAR Level = (Daily Usage × Lead Time) + Safety Stock
-    const leadTimeUsage = dailyUsage * leadTimeDays;
-    const safetyStock = leadTimeUsage * (safetyStockPercent / 100);
-    const parLevel = leadTimeUsage + safetyStock;
-
-    // Reorder Point = PAR Level (simplified)
-    const reorderPoint = parLevel;
-
-    // Suggested Order Quantity = PAR Level - Current Stock (if current < PAR)
+    // 공식은 utils/reorderMath 한 벌(2026-10-08) — 발주 제안과 같은 답이 나와야 한다
+    const reorderMath = require('../utils/reorderMath');
+    const rid = parseInt(restaurantId, 10);
+    const iid = parseInt(ingredientId, 10);
+    const picked = reorderMath.pickDailyUsage((await reorderMath.ledgerUsage(rid, [iid])).get(iid), eff.manual_daily_usage);
     // 브랜드 공유 재료면 이 매장 오버레이 재고 기준
     const currentStock = await stockFor(ingredient, restaurantId);
-    const suggestedOrderQty = Math.max(0, parLevel - currentStock);
+    const safetyStockPercent = parseFloat(eff.safety_stock_percent) || 20;
+    const r = reorderMath.compute({
+      dailyUsage: picked.daily, leadTimeDays: parseInt(eff.lead_time_days) || 2, minStock: parseFloat(eff.min_stock) || 0,
+      safetyStockPercent, onHand: currentStock, onOrder: (await reorderMath.onOrderQty(rid, [iid])).get(iid) || 0,
+    });
+    const dailyUsage = r.daily_usage;
+    const leadTimeDays = r.lead_time_days;
+    const leadTimeUsage = dailyUsage * leadTimeDays;
+    const safetyStock = r.safety_stock;
+    const parLevel = r.reorder_point;
+    const reorderPoint = r.reorder_point;
+    const suggestedOrderQty = r.suggested_qty;
 
     res.json({
       success: true,
@@ -399,8 +364,11 @@ router.get('/:restaurantId/inventory/:ingredientId/par-level', async (req, res) 
         par_level: parseFloat(parLevel.toFixed(2)),
         reorder_point: parseFloat(reorderPoint.toFixed(2)),
         suggested_order_qty: parseFloat(suggestedOrderQty.toFixed(2)),
+        on_order: r.on_order,
         prediction_confidence: eff.prediction_confidence || 'none',
-        data_source: eff.manual_daily_usage != null ? 'manual' : (parseFloat(eff.avg_daily_usage) > 0 ? 'calculated' : 'none')
+        // ledger = 최근 28일 판매·폐기 장부 · manual = 수동 입력 · none = 둘 다 없음
+        data_source: picked.source,
+        data_days: picked.days
       }
     });
   } catch (error) {
@@ -451,7 +419,7 @@ router.put('/:restaurantId/inventory/:ingredientId/settings', async (req, res) =
 router.post('/:restaurantId/inventory/calculate-usage', async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { days = 30 } = req.body;
+    // 기간은 utils/reorderMath.WINDOW_DAYS(28일) 고정 — 발주 제안·PAR 과 같은 창이어야 같은 답이 나온다
 
     // Get restaurant to check brand
     const restaurant = await Restaurant.findByPk(restaurantId);
@@ -474,66 +442,30 @@ router.post('/:restaurantId/inventory/calculate-usage', async (req, res) => {
       where: { [Op.or]: whereConditions }
     });
 
+    // 하루 사용량 = 판매·폐기 장부(나간 양)로 — 예전엔 **입고**(purchase)로 계산해 «많이 산 것 = 많이 쓴 것» 이 됐다 (2026-10-08)
+    const reorderMath = require('../utils/reorderMath');
+    const usage = await reorderMath.ledgerUsage(parseInt(restaurantId, 10), ingredients.map(i => i.id));
     const results = [];
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-
     for (const ingredient of ingredients) {
-      // Get purchase transactions for this ingredient
-      const transactions = await InventoryTransaction.findAll({
-        where: {
-          ingredient_id: ingredient.id,
-          // 브랜드 공유 재료는 형제 매장이 같은 ingredient_id 로 입고를 남긴다 →
-          // 매장 스코프가 없으면 남의 입고까지 합산돼 사용량이 부풀려진다
-          restaurant_id: restaurantId,
-          transaction_type: 'purchase',
-          created_at: { [Op.gte]: startDate }
-        },
-        order: [['created_at', 'ASC']]
-      });
-
-      let avgDailyUsage = 0;
-      let confidence = 'none';
-
-      if (transactions.length >= 3) {
-        const totalPurchased = transactions.reduce((sum, t) =>
-          sum + parseFloat(t.quantity_change || 0), 0);
-
-        const firstDate = new Date(transactions[0].created_at);
-        const lastDate = new Date(transactions[transactions.length - 1].created_at);
-        const daysBetween = Math.max(1, Math.ceil((lastDate - firstDate) / (1000 * 60 * 60 * 24)));
-
-        avgDailyUsage = totalPurchased / daysBetween;
-
-        if (transactions.length >= 10) {
-          confidence = 'high';
-        } else if (transactions.length >= 5) {
-          confidence = 'medium';
-        } else {
-          confidence = 'low';
-        }
-      }
-
-      // 사용량은 매장별 값이다 — 브랜드 공유 행에 쓰면 **형제 매장 전부의 사용량이 덮인다**
-      // (이 경로가 이미 그렇게 오염시키고 있었다). applySettings 가 브랜드/매장 분기를 처리한다.
-      await applySettings(ingredient, restaurantId, {
-        avg_daily_usage: avgDailyUsage,
-        prediction_confidence: confidence
-      });
-
+      const u = usage.get(Number(ingredient.id));
+      const days = u ? u.days_with_data : 0;
+      const avgDailyUsage = u && days >= reorderMath.MIN_DAYS ? u.used / days : 0;
+      const confidence = days >= 21 ? 'high' : days >= 14 ? 'medium' : days >= reorderMath.MIN_DAYS ? 'low' : 'none';
+      // 사용량은 매장별 값이다 — 브랜드 공유 행에 쓰면 **형제 매장 전부의 사용량이 덮인다**. applySettings 가 분기한다.
+      await applySettings(ingredient, restaurantId, { avg_daily_usage: avgDailyUsage, prediction_confidence: confidence });
       results.push({
         ingredient_id: ingredient.id,
         ingredient_name: ingredient.name,
         avg_daily_usage: parseFloat(avgDailyUsage.toFixed(4)),
         prediction_confidence: confidence,
-        transaction_count: transactions.length
+        days_with_data: days
       });
     }
 
     res.json({
       success: true,
       data: results,
-      message: `Usage calculated for ${results.length} ingredients based on last ${days} days`
+      message: `Usage calculated for ${results.length} ingredients from the last ${reorderMath.WINDOW_DAYS} days of sales and waste`
     });
   } catch (error) {
     console.error('Calculate usage error:', error);
@@ -584,6 +516,9 @@ router.get('/:restaurantId/inventory/:ingredientId/batches', async (req, res) =>
 // 예전에는 이 파일에도 같은 함수가 복사돼 있었다 — 한쪽만 고쳐지면 "주문 차감은 맞는데
 // 수동 차감은 틀린" 식으로 갈라진다. 정의를 지우고 가져다 쓴다.
 const { deductStockFIFO } = require('../services/inventoryDeductionService');
+const stockLedger = require('../services/stockLedger');
+const { isWasteReason } = require('../utils/wasteReasons');
+const MANUAL_DEDUCT_TYPES = ['order_deduct', 'adjustment', 'production', 'waste'];
 
 // POST /api/restaurants/:restaurantId/inventory/deduct - FIFO 기반 재고 차감
 router.post('/:restaurantId/inventory/deduct', async (req, res) => {
@@ -623,22 +558,15 @@ router.post('/:restaurantId/inventory/deduct', async (req, res) => {
     // 배치로 못 덮은 몫은 notes 에 `batch_shortfall` 로 남겨 나중에 맞출 수 있게 한다.
     const batchCovered = fifoResult.deducted_quantity || 0;
     const shortfall = Math.round((deductQty - batchCovered) * 10000) / 10000;
-    const newStock = Math.round((currentStock - deductQty) * 10000) / 10000;
-
-    await applyStock(ingredient, restaurantId, newStock, transaction);
-
-    // Create transaction record
-    await InventoryTransaction.create({
-      restaurant_id: restaurantId,
-      ingredient_id: ingredient_id,
-      transaction_type: reason || 'order_deduct',
-      quantity_change: -deductQty,
-      unit: ingredient.unit,
-      stock_after: newStock,
+    // 장부 유형은 정해진 넷 중 하나만(예전엔 클라이언트 값을 그대로 넣었다). 폐기면 사유 코드(없으면 other).
+    const txType = MANUAL_DEDUCT_TYPES.includes(reason) ? reason : 'order_deduct';
+    const { after: newStock } = await stockLedger.record({
+      target: { kind: 'ingredient', row: ingredient }, restaurantId, type: txType, delta: -deductQty,
+      reasonCode: txType === 'waste' ? (isWasteReason(req.body.reason_code) ? req.body.reason_code : 'other') : null,
       notes: (notes || `Deducted via FIFO from ${fifoResult.batches.length} batch(es)`)
         + (shortfall > 0 ? ` [batch_shortfall ${shortfall}]` : ''),
-      created_by: userId
-    }, { transaction });
+      userId, transaction,
+    });
 
     // Check and create alerts if needed
     await checkAndCreateAlert(ingredient_id, restaurantId, newStock, transaction);
@@ -690,22 +618,12 @@ router.put('/:restaurantId/inventory/batches/:batchId/dispose', async (req, res)
 
     // 재고 반영 — 브랜드 공유 재료면 매장 오버레이
     const ingredient = await Ingredient.findByPk(batch.ingredient_id, { transaction });
-    const currentStock = await stockFor(ingredient, restaurantId, transaction);
-    const newStock = Math.max(0, currentStock - disposedQty);
-
-    await applyStock(ingredient, restaurantId, newStock, transaction);
-
-    // Create transaction record
-    await InventoryTransaction.create({
-      restaurant_id: restaurantId,
-      ingredient_id: batch.ingredient_id,
-      transaction_type: 'waste',
-      quantity_change: -disposedQty,
-      unit: batch.unit,
-      stock_after: newStock,
-      notes: reason || `Batch ${batch.batch_number || batchId} disposed`,
-      created_by: userId
-    }, { transaction });
+    // 배치 폐기 = 폐기(사유 기본 expired). 장부 수량 = 실제로 깎인 양
+    const { after: newStock } = await stockLedger.record({
+      target: { kind: 'ingredient', row: ingredient }, restaurantId, type: 'waste', delta: -disposedQty, clampAtZero: true,
+      reasonCode: isWasteReason(req.body.reason_code) ? req.body.reason_code : 'expired',
+      unit: batch.unit, notes: reason || `Batch ${batch.batch_number || batchId} disposed`, userId, transaction,
+    });
 
     await transaction.commit();
 

@@ -292,6 +292,34 @@ function payerIdIsStore(invoice) {
     && invoice.invoice_category !== 'hardware');
 }
 
+/**
+ * 회원 한 명을 청구서 «낼 사람» 3칸으로 — 하드웨어 견적 청구서의 단일 규칙 (2026-10-07 Fable 판정 [2]).
+ * 종류마다 payer_id 의 뜻이 다르다: 'restaurant' = 매장 번호, 그 밖 = 사람 번호. 옛 코드는 '매장' 종류에
+ * 사람 번호를 넣어 번호가 같은 다른 매장에 보이고 정작 낼 회원은 못 봤다.
+ * 구독 쪽 resolvePayer(services/subscriptionInvoiceService) 와 같은 어휘 — 그 함수는 건드리지 않는다.
+ * 매핑 밖(역할 없음·매장 없는 매장 직원 등)이면 null → 부르는 쪽이 외부 결제자로.
+ */
+function payerForUser(user) {
+  if (!user || !user.id) return null;
+  switch (user.role) {
+    case 'Brand General':
+    case 'Brand Manager':
+      return { payer_type: 'brand_manager', payer_id: user.id, restaurant_id: null };
+    case 'Foodcourt General':
+    case 'Foodcourt Manager':
+      return { payer_type: 'foodcourt_manager', payer_id: user.id, restaurant_id: null };
+    case 'Restaurant Owner':
+      return { payer_type: 'restaurant_owner', payer_id: user.id, restaurant_id: null };
+    case 'Restaurant Admin':
+    case 'Staff':
+      return user.restaurant_id
+        ? { payer_type: 'restaurant', payer_id: user.restaurant_id, restaurant_id: user.restaurant_id }
+        : null;
+    default:
+      return null;
+  }
+}
+
 async function getPayerCompanyInfo(payerType, payerId, restaurant, invoice = null) {
   if (payerType === 'restaurant' || !payerId) {
     // 매장 칸이 빈 '매장' 결제 청구서(정산서)는 payer_id 가 매장 번호다 — 술어는 payerIdIsStore 하나
@@ -538,6 +566,7 @@ module.exports = {
   getIssuerCompanyInfo,
   getPayerCompanyInfo,
   payerIdIsStore,
+  payerForUser,
   formatBillingPeriod,
   getInvoiceTimezone,
   getCategoryDisplayName,

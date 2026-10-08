@@ -179,7 +179,10 @@
   "brandReadOnlyHint": "Resipi jenama — baca sahaja di sini. Ia disunting di jenama.",
   "ingredientCategoriesTab": {
     "addCategory": "Tambah Kategori",
-    "brandWriteStopped": "Kategori bahan jenama tidak lagi dibuat — kategori bahan diurus oleh restoran, dan kategori jenama di skrin Stock Items."
+    "brandWriteStopped": "Kategori bahan jenama tidak lagi dibuat — kategori bahan diurus oleh restoran, dan kategori jenama di skrin Stock Items.",
+    "staffMealBadge": "Makanan staf",
+    "staffMealLabel": "Kategori makanan staf (kos)",
+    "staffMealHint": "Bahan dalam kategori ini dikira sebagai kos makanan staf dalam pesanan belian dan laporan kos pembelian."
   },
   "recipesTab": {
     "deleteBlockedTitle": "Tidak boleh dipadam",

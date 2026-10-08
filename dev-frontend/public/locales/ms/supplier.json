@@ -96,7 +96,7 @@
       "totalProducts": "Produk",
       "lowStock": "Stok Rendah",
       "outOfStock": "Habis Stok",
-      "value": "Nilai Keseluruhan"
+      "value": "Nilai stok (harga jual)"
     },
     "actions": {
       "adjust": "Laraskan Stok",
@@ -153,9 +153,9 @@
       "title": "Terma penghantaran",
       "freeAbove": "Penghantaran percuma pada atau melebihi jumlah ini",
       "fee": "Yuran penghantaran di bawahnya (tetap)",
-      "areas": "Kawasan penghantaran",
-      "areasPlaceholder": "cth. Petaling Jaya, Selangor",
-      "areasHint": "Di mana dan bila anda menghantar. Dipaparkan kepada pembeli semasa membuat pesanan — tidak digunakan untuk mengira caj penghantaran."
+      "areas": "Nota penghantaran (hari, masa)",
+      "areasPlaceholder": "cth. Hantar Selasa · Jumaat, sebelum 11 pagi",
+      "areasHint": "Dipaparkan kepada pembeli semasa membuat pesanan — tidak digunakan untuk mengira caj penghantaran."
     }
   },
   "invoices": {

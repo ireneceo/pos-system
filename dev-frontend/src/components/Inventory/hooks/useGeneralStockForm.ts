@@ -115,6 +115,16 @@ export function useGeneralStockForm({
           supplier_id: form.supplier_id ? parseInt(form.supplier_id) : null,
         }),
       });
+      // 수정 창에서 수량을 바꿨으면 장부가 남는 adjust 로 따로 반영(PUT 은 수량을 안 받는다 — 2026-10-08)
+      if (response.success && editing
+          && Math.round(((parseFloat(form.current_stock) || 0) - (Number(editing.current_stock) || 0)) * 100) !== 0) {
+        await authFetch(isBrandGeneralMode
+          ? `/api/general-stock/${editing.id}/adjust`
+          : `/api/restaurants/${restaurantId}/inventory/general-stock/${editing.id}/adjust`, {
+          method: 'POST',
+          body: JSON.stringify({ new_quantity: parseFloat(form.current_stock) || 0, reason: 'Edited in item form' }),
+        });
+      }
       if (response.success && editing) {
         const newCurrentStock = parseFloat(form.current_stock) || 0;
         const newMinStock = parseFloat(form.min_stock) || 0;

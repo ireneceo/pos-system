@@ -886,5 +886,22 @@
     "remove": "Buang",
     "receiptAlt": "Resit pembayaran",
     "clickToEnlarge": "Klik untuk lihat saiz penuh"
+  },
+  "deliveryZones": {
+    "title": "Zon penghantaran",
+    "hint": "Tetapkan caj penghantaran berbeza bagi setiap zon. Zon dipilih secara automatik berdasarkan negeri dalam alamat kedai. Amaun penghantaran percuma di atas terpakai untuk semua zon.",
+    "name": "Nama zon",
+    "namePlaceholder": "cth. Klang Valley",
+    "fee": "Caj penghantaran",
+    "remove": "Buang zon",
+    "states": "Negeri dalam zon ini",
+    "stateTaken": "Sudah dalam zon «{{zone}}»",
+    "description": "Nota (pilihan)",
+    "descriptionPlaceholder": "cth. Hantar Selasa · Jumaat",
+    "add": "+ Tambah zon penghantaran",
+    "other": "Kawasan lain → caj penghantaran lalai {{fee}}",
+    "otherUnset": "Kawasan lain → caj penghantaran belum ditetapkan",
+    "incomplete": "Zon disimpan setelah ada nama, caj dan sekurang-kurangnya satu negeri.",
+    "saveFailed": "Tidak dapat menyimpan zon penghantaran"
   }
 }

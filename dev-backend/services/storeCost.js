@@ -67,7 +67,24 @@ async function loadOverlayMap(restaurantId, ingredientIds, { transaction } = {})
  * @param ingredient Ingredient 행(owner_type·restaurant_id·unit_cost 필요)
  * @returns {Promise<{target:'ingredient'|'overlay', oldValue:number|null, newValue:number, changed:boolean}>}
  */
-async function writeStoreCost(restaurantId, ingredient, value, { transaction, userId, notes } = {}) {
+async function writeStoreCost(restaurantId, ingredient, value, { transaction, userId, notes, log } = {}) {
+  const result = await writeStoreCostRow(restaurantId, ingredient, value, { transaction, userId, notes });
+  // 변경 이력 — 호출부가 log({source, ...}) 를 주면 바뀐 경우에만 cost_change_logs 1줄.
+  //   대조(cost-reconciliation)는 자기가 이미 적으므로 log 를 안 준다(두 번 적지 않게).
+  if (log && result.changed) {
+    const { logCostChange } = require('./costSync');
+    await logCostChange(require('../config/database').sequelize, transaction, {
+      subject_type: 'ingredient', subject_id: ingredient.id,
+      entity_type: 'restaurant', entity_id: restaurantId,
+      old_value: result.oldValue, new_value: result.newValue, unit: ingredient.unit || null,
+      changed_by_user_id: userId || null, note: notes || null,
+      ...log,
+    });
+  }
+  return result;
+}
+
+async function writeStoreCostRow(restaurantId, ingredient, value, { transaction, userId, notes } = {}) {
   const newValue = round4(value);
   if (isStoreOwned(ingredient, restaurantId)) {
     const oldValue = ingredient.unit_cost == null ? null : round4(ingredient.unit_cost);

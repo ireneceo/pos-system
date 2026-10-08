@@ -94,6 +94,8 @@ type DiscrepancyReason = null | 'short' | 'damaged' | 'wrong_item' | 'pending';
 interface POItem {
   id: number;
   ingredient_id: number;
+  /** 직원식(비용) 재료 줄 — 재료 분류 파생 (2026-10-07 Fable 판정 ⑪) */
+  is_staff_meal?: boolean;
   ingredient_name: string;
   ingredient_unit?: string;
   seller_product_id?: number | null;
@@ -111,6 +113,9 @@ interface POItem {
 
 interface PODetail {
   id: number;
+  /** 직원식 / 일반 합계 — 줄 합(서버 계산, 2026-10-07 ⑪) */
+  staff_meal_total?: number;
+  regular_total?: number;
   po_number: string;
   status: POStatus;
   seller_type: string;
@@ -124,7 +129,8 @@ interface PODetail {
   subtotal?: number | string;
   /** 배송비 (2026-09-17) — 총액 = 품목 합계 + 세금 + 배송비 */
   delivery_fee?: number | string;
-  delivery_fee_basis?: { rule?: string; free_above?: number | null; fee?: number | null } | null;
+  // zone · zone_reason — 배송 지역 (2026-10-07 Fable): 구매자 주소 주(州)로 고른 지역과 사유
+  delivery_fee_basis?: { rule?: string; free_above?: number | null; fee?: number | null; zone?: { id: string; name: string; fee: number | null } | null; zone_reason?: string | null } | null;
   tax_amount?: number | string;
   total_amount?: number | string;
   currency?: string;
@@ -1381,6 +1387,11 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                                   우리 재고 이름(«영문(한글)»)은 아래 작은 줄로 남긴다 — 주방이 알아보는 이름이라 빼지 않는다.
                                   판매 상품 연결이 없는 줄(옛 발주·브랜드 판매자)은 우리 이름이 그대로 큰 글씨가 된다. */}
                               <strong>{nm.main}</strong>
+                              {it.is_staff_meal && (
+                                <span style={{ marginLeft: 6, padding: '1px 6px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: '#F3F4F6', color: '#374151', border: '1px solid #E5E7EB', verticalAlign: 'middle' }}>
+                                  {t('detail.items.staffMeal', 'Staff meal')}
+                                </span>
+                              )}
                               {(nm.sub || isRealSupplierSku(it.seller_product_sku)) && (
                                 <div style={{ fontSize: 12, color: '#6B7280' }}>
                                   {nm.sub}
@@ -1428,6 +1439,11 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                         {t('detail.items.deliveryUnset', '(판매자 미설정)')}
                       </span>
                     )}
+                    {detail?.delivery_fee_basis?.zone?.name && (
+                      <span style={{ color: '#6B7280', marginLeft: 6, fontSize: 12 }}>
+                        · {detail.delivery_fee_basis.zone.name}
+                      </span>
+                    )}
                   </span>
                   <span>{formatMoney(deliveryFee)}</span>
                 </div>
@@ -1435,6 +1451,12 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                   <span>{t('detail.items.total')}</span>
                   <span>{formatMoney(total)}</span>
                 </div>
+                {/* 직원식 / 일반 나눔 — 직원식 줄이 있을 때만 (품목 줄 합 기준, 2026-10-07 ⑪) */}
+                {Number(detail.staff_meal_total || 0) > 0 && (
+                  <div style={{ fontSize: 12, color: '#4B5563' }}>
+                    <span>{t('detail.items.staffMealSplit', 'Staff meal {{staff}} · Regular {{regular}}', { staff: formatMoney(Number(detail.staff_meal_total || 0)), regular: formatMoney(Number(detail.regular_total || 0)) })}</span>
+                  </div>
+                )}
               </TotalsBox>
             </Section>
 

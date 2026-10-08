@@ -120,11 +120,44 @@ function computePurchaseOrderTotals(items = [], extra = {}) {
   };
 }
 
+const { resolveDeliveryZone, effectiveDeliveryTerms } = require('./deliveryZones');
+
+const BUYER_MODELS = { restaurant: '../models/Restaurant', brand: '../models/Brand', foodcourt: '../models/Foodcourt' };
+
+/**
+ * 판매자 행 + 구매자 → 지역 판정. 판매자에게 지역이 없으면 null(= 지금과 똑같이 계산, basis 도 그대로).
+ * 구매자 조회 실패는 막지 않는다 — 기본 배송비로 두고 사유를 남긴다.
+ */
+async function resolveZoneForBuyer(row, buyer = {}) {
+  if (!Array.isArray(row.delivery_zones) || row.delivery_zones.length === 0) return null;
+  const type = buyer && buyer.entity_type;
+  const id = parseInt(buyer && buyer.entity_id, 10);
+  if (!BUYER_MODELS[type] || !Number.isFinite(id)) {
+    return { ...resolveDeliveryZone(row.delivery_zones, null), reason: 'buyer_location_unknown' };
+  }
+  try {
+    const Model = require(BUYER_MODELS[type]);
+    const b = await Model.findByPk(id, { attributes: ['id', 'state', 'postal_code', 'country'] });
+    if (!b) return { zone: null, reason: 'buyer_location_unknown', buyer_state: null, matched_by: null };
+    return resolveDeliveryZone(row.delivery_zones, { state: b.state, postal_code: b.postal_code, country: b.country });
+  } catch (e) {
+    console.error('[po-totals] 구매자 주소 조회 실패:', e.message);
+    return { zone: null, reason: 'buyer_lookup_failed', buyer_state: null, matched_by: null, error: e.message };
+  }
+}
+
+function zoneBasis(z) {
+  return { zone: z.zone || null, zone_reason: z.reason || null, buyer_state: z.buyer_state || null, matched_by: z.matched_by || null };
+}
+
 /**
  * 판매자를 조회해 배송비까지 포함한 발주 총액을 낸다. **라우트는 이 함수만 부른다.**
  * @param {Array} items
- * @param {object} seller { seller_type, seller_entity_id }
- * @param {object} opts { orderCurrency, tax_amount }
+ * @param {object} seller { seller_type, seller_entity_id } — po 객체를 넘기면 구매자(entity_type/entity_id)도 거기서 읽는다
+ * @param {object} opts { orderCurrency, tax_amount, buyer: {entity_type, entity_id} }
+ *
+ * 배송 지역 (2026-10-07 Fable): 판매자에게 delivery_zones 가 있으면 구매자 주소의 주(州)로 지역을 골라
+ *   그 지역 배송비를 «유효 delivery_fee» 로 쓴다. computeDeliveryFee 본문은 그대로다. 근거는 basis 에 덧붙인다.
  */
 async function computeTotalsWithDelivery(items, seller = {}, opts = {}) {
   const subtotal = computeSubtotal(items);
@@ -140,9 +173,13 @@ async function computeTotalsWithDelivery(items, seller = {}, opts = {}) {
       const map = await resolveSellers([{ seller_type: type, seller_entity_id: id }]);
       const row = getSeller(map, type, id);
       if (row) {
-        const r = computeDeliveryFee(subtotal, row, { orderCurrency: opts.orderCurrency });
+        const zoneInfo = await resolveZoneForBuyer(row, opts.buyer || {
+          entity_type: seller.entity_type, entity_id: seller.entity_id
+        });
+        const terms = effectiveDeliveryTerms(row, zoneInfo);
+        const r = computeDeliveryFee(subtotal, terms, { orderCurrency: opts.orderCurrency });
         fee = r.fee;
-        basis = r.basis;
+        basis = zoneInfo ? { ...r.basis, ...zoneBasis(zoneInfo) } : r.basis;
       } else {
         basis = { ...basis, rule: 'seller_not_found' };
       }

@@ -324,7 +324,7 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
   const t = await BrandMenu.sequelize.transaction();
   try {
     const {
-      brand_id, category_id, product_recipe_id, recipe_id, name, description, image_url, emoji,
+      brand_id, category_id, recipe_id, name, description, image_url, emoji,
       recommended_price, currency, is_active, after_meal, set_only, sort_order, distribution_mode,
       option_group_ids, locks, is_set_menu, set_items, set_groups
     } = req.body;
@@ -389,7 +389,8 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
 
     const menu = await BrandMenu.create({
       brand_id, category_id: category_id || null,
-      product_recipe_id: product_recipe_id || null,
+      // product_recipe_id 는 받지 않는다(2026-10-07 Fable 판정 A — 레거시 BOM 링크, 화면 쓰기 0·차감 미참조). «Linked Recipe» = recipe_id.
+      product_recipe_id: null,
       recipe_id: recipe_id || null,
       name: name.trim(), description: description || null,
       image_url: ownedImage, emoji: emoji || null,
@@ -463,7 +464,8 @@ router.put('/:id', authenticateToken, requireBGScope, async (req, res) => {
     }
 
     const body = req.body || {};
-    const updatable = ['category_id', 'product_recipe_id', 'recipe_id', 'name', 'description', 'emoji',
+    // product_recipe_id 제외(2026-10-07 Fable 판정 A — 쓰기 봉인)
+    const updatable = ['category_id', 'recipe_id', 'name', 'description', 'emoji',
       'recommended_price', 'currency', 'is_active', 'after_meal', 'set_only', 'sort_order', 'distribution_mode',
       'lock_name', 'lock_price', 'lock_category', 'lock_image', 'lock_options',
       'is_set_menu', 'set_items', 'set_groups', 'lock_set_items'];

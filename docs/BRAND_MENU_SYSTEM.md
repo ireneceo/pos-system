@@ -76,7 +76,7 @@ brand_menu_options
 
 brand_menus
 ├── id, brand_id (FK), category_id (FK brand_menu_categories, nullable),
-│   product_recipe_id (FK product_recipes, nullable — 메뉴 레시피 연결),
+│   product_recipe_id (FK product_recipes, nullable — 레거시 BOM 링크 · 2026-10-07 쓰기 봉인, «Linked Recipe» = recipe_id),
 │   name, description, image_url, emoji, recommended_price, currency,
 │   is_active, sort_order, version (수정시 ++),
 │   distribution_mode ENUM('auto','manual') DEFAULT 'manual',

@@ -16,6 +16,13 @@ module.exports = {
         AND NOT EXISTS (SELECT 1 FROM product_recipes r WHERE r.id = bp.product_recipe_id)`)) === 0,
       '', );
 
+    // BM-LINK-001 (2026-10-07 Fable 판정 B): 한 매장에 같은 브랜드 메뉴 상품 둘 이상 = 0. 내려보내기는 한 행만 갱신한다.
+    //   술어 utils/brandMenuLinkDup — 유일 인덱스 마이그와 같은 SQL.
+    const { BRAND_MENU_DUP_GROUPS_SQL } = require('../../../utils/brandMenuLinkDup');
+    const bmDup = await q(BRAND_MENU_DUP_GROUPS_SQL);
+    add('BM-LINK-001 한 매장 · 한 브랜드 메뉴 = 상품 한 줄', bmDup.length === 0,
+      bmDup.length ? `${bmDup.length}묶음 — 예: ${bmDup.slice(0, 3).map(d => `매장${d.restaurant_id}/메뉴${d.brand_menu_id}×${d.n}`).join(', ')}` : '');
+
     // S-REF-002: ProductRecipeIngredient.ingredient_id → 존재하는 ProductIngredient
     const r2 = await cnt(`SELECT COUNT(*) c FROM product_recipe_ingredients pri
       WHERE NOT EXISTS (SELECT 1 FROM product_ingredients pi WHERE pi.id = pri.ingredient_id)`);

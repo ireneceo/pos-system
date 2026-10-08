@@ -81,9 +81,10 @@ cd /var/www/dev-backend && node scripts/check-sensitive-diff.js
 
 운영 배포 스냅샷(`.claude/deploy-manifest.json`, 배포 성공 시 자동 기록) + git 대비 변경을
 5기준(🔒보호영역/💰돈·주문/🗄️마이그레이션/🔐보안 경계/안전망 자체)으로 자동 분류한다.
-**"FABLE 게이트 대상"이 뜨면**: 완료 보고에 "이 변경은 Fable 검증 대상 — Fable 세션 점검 후
-진행/배포 권장"을 명시한다 (CLAUDE.md 규칙). ④신규 시스템·아키텍처 변경은 기계로 못 잡으니
-스스로 판단해 같은 문구를 붙인다.
+**"FABLE 게이트 대상"이 뜨면**: 공용 Fable 기준(`~/dev-server/FABLE.md` · `gate`)대로
+`Agent(model: "fable")` 로 검증 1회를 붙인다 (CLAUDE.md «🎯 Fable 언제 부르나»). 한도로 못 부르면
+자체 검증 숫자 + 상황판 Fable 대기 등록 + 운영 배포 보류. ④신규 시스템·아키텍처 변경은 기계로
+못 잡으니 스스로 판단해 같은 대상으로 다룬다.
 
 ## 5. 아키텍처 지도 (최소한)
 

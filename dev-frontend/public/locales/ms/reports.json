@@ -202,6 +202,9 @@
     "onceOnly": "dibeli sekali",
     "invoicedLines": "{{n}} disemak",
     "empty": "Tiada pesanan belian diterima dalam tempoh ini",
-    "loadFailed": "Gagal memuatkan"
+    "loadFailed": "Gagal memuatkan",
+    "staffMealSpend": "Kos makanan staf",
+    "regularSpend": "Pembelian biasa",
+    "staffMeal": "Makanan staf"
   }
 }

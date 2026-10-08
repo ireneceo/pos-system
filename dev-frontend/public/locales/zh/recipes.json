@@ -179,7 +179,10 @@
   "brandReadOnlyHint": "品牌配方 — 此处仅可查看，修改在品牌端进行。",
   "ingredientCategoriesTab": {
     "addCategory": "新增分类",
-    "brandWriteStopped": "不再建立品牌材料分类 — 材料分类由门店管理，品牌分类在 Stock Items 画面管理。"
+    "brandWriteStopped": "不再建立品牌材料分类 — 材料分类由门店管理，品牌分类在 Stock Items 画面管理。",
+    "staffMealBadge": "员工餐",
+    "staffMealLabel": "员工餐（成本）分类",
+    "staffMealHint": "此分类的食材在采购单和采购成本报告中计为员工餐成本。"
   },
   "recipesTab": {
     "deleteBlockedTitle": "无法删除",

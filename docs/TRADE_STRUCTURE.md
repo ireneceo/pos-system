@@ -308,6 +308,7 @@ graph TD
 - 재료: GIT 재고(Stock Items)와 매장 재료(Shared Ingredients)가 **다른 테이블**이고, 둘을 잇는 장치는 읽기만 따르고 쓰기는 무시한다.
 - 카테고리: 재료용·GIT 재고용·옛 잔재용으로 **세 벌**이 따로 있다.
 - Stock Items 카테고리 안의 중복 4건(빈 3건 삭제 · `MEAT`→`Meat` 개명) — **2026-09-04 정리 완료**(남은 18건, 중복 없음).
+- **BG 종결 · FG 보류 (2026-10-07 Fable 판정 D)** — 표 2개는 결함이 아니라 설계(인쇄 보호 코드가 `ingredients` 공용), `linked_ingredient_id` 읽기·쓰기 경로 0. 푸드코트가 구매자로 쓰이기 시작하면 같은 거울 모델 적용(`docs/INVENTORY_MANAGEMENT_SYSTEM.md` 재료 절).
 - **해결됨 (2026-09-04, SW 4.78)** — Stock Items 로 통합 완료. 재료를 만드는 길은 하나이고, 매장 재료 행은 그 거울이다.
   출처는 둘 중 하나 — GIT 이 **사는 것**=Stock Item / **파는 것**(프로덕트)=프로덕트 자체가 재고.
   설계·증명 = `docs/INGREDIENT_UNIFICATION_DESIGN.md`.
@@ -429,12 +430,14 @@ GIT 프로덕트(`PRD-*`)로 **이관 완료**(연결 50건·92칸, 중복행 50
 - 미측정: 현재 운영에서 이 경로로 실제 바뀐 행이 있는지 **세지 않았다(확인 불가)**.
 
 ### ② 브랜드 메뉴가 레시피 2계통을 동시에 가질 수 있다
+> ② **종결(2026-10-07 Fable)**. `brand_menus.product_recipe_id` 는 레거시 BOM 링크로 **화면 쓰기 0·운영 0건·차감 미참조**. «Linked Recipe» 는 `recipe_id` 단일 경로(2026-07-15). 칸 제거 마이그는 이득 없이 비가역이라 **하지 않는다**. 서버 POST/PUT 은 이 칸을 더 이상 받지 않는다(쓰기 봉인, `routes/brand-menus.js`). 단일 진실: 메모리 [[reference_two_recipe_systems]]. 판정 `.claude/fable-verdict-20261007-structure-backlog.md` A.
 - `brand_menus` 에 `recipe_id`(Recipe = 브랜드 레시피)와 `product_recipe_id`(ProductRecipe) **둘 다** 있다.
 - 서버는 목록·상세에 둘 다 실어 준다(`routes/brand-menus.js` include: `recipe`=ProductRecipe, `linkedRecipe`=Recipe).
 - 화면 수정 창은 `recipe_id` 만 쓴다(`BrandMenusPage.tsx:1284~1286` 주석: 예전에 `product_recipe_id` 에 잘못 물려 레시피가 안 떴다).
 - 운영 실측(2026-09-14): 브랜드2 메뉴 104건 중 `recipe_id` 65건 · `product_recipe_id` **0건**.
 
 ### ③ 브랜드 메뉴 ↔ 매장 상품 1:1 을 보장하는 장치가 없다
+> ③ **장치 2개 추가(2026-10-07 Fable 판정 B)** — DB 유일 인덱스 `uq_products_restaurant_brand_menu (restaurant_id, brand_menu_id)`(마이그 `migrate-products-brand-menu-unique.js`, deploy · 공유 묶음이 있으면 인덱스를 안 만들고 실패) + 인스펙션 BM-LINK-001(배포 게이트). 술어는 `utils/brandMenuLinkDup` 하나. 공유는 수동 도구 `adopt-restaurant-menus-to-brand.js` 만 만들 수 있었고 이제 DB 가 막는다. brand_menu_id 가 빈 매장 자체 상품은 제한 없음.
 - 매장에 **이름이 같은 상품**이 있으면 한 브랜드 메뉴에 여러 매장 상품이 붙을 수 있다.
 - 실측(2026-09-13 K-DINE 연결 작업): 7묶음 18개 상품이 공유 상태로 생겨 `--fix-shared` 로 갈라냈다(현재 공유 0).
 - 푸시 로직은 `Product.findOne({restaurant_id, brand_menu_id})` 로 **한 행만** 집는다(`services/brandMenuSyncService.js:153`).
@@ -445,6 +448,7 @@ GIT 프로덕트(`PRD-*`)로 **이관 완료**(연결 50건·92칸, 중복행 50
 - 운영 실측(2026-09-14): 브랜드 1·2 소유자 `help@gitconsulting.group`(user 23). 같은 회사 `irene@gitconsulting.group`(user 11)은 403.
 
 ### ⑤ 매장8(K-DINE IPC) 이월렛 결제 금액이 어디에도 기록되지 않는다
+> ⑤ **원인 확정·수정(2026-10-07 Fable 판정 C · 개발서버)** — 7-31 결제 원장이 놓친 다섯 번째 경로 «주문 넣는 순간 결제 완료»(POS 먼저 받기·오프라인 재생 → POST `/orders` 가 `payment_status:'completed'` 를 그대로 저장). 생성 직후 `recordOrderPayment` 1회(트랜잭션 밖 · 실패해도 주문 생성 무영향). 결제수단 무관(현금·카드도 같은 경로면 같이 빠졌다). 매출·대시보드·IOI 보고는 원장 폴백으로 원래 정상. **과거분 채우지 않음**(Irene «권고대로»). 상세 `docs/CASH_MANAGEMENT_SHIFT_CLOSE.md` 결제 완료 경로 표.
 - 운영 실측(2026-09-14, 최근 7일): 매장8 이월렛 **249건**이 `payment_status='completed'` 인데 `orders.amount_paid = 0` 이고
   `order_payments` 행도 **0**. 같은 기간 매장10은 원장과 금액이 정확히 일치(card 1,087.16 · ewallet 281.92).
 - 월별로 2026-03 부터 같은 모양(월 1,000~1,800건). 매장8은 마감(교대) 기록 **0건**.
@@ -683,7 +687,7 @@ Irene 의 「가격관리도 각자」 가 **공급업체 상품 정가까지 �
 - **(a) 위 모델이 정의다. 바꾸지 않는다.** 배송비 = **판매자의 거래 조건**. 판매자 3종(공급업체·브랜드·푸드코트)이 같은 두 칸 `min_order_amount`(이상이면 무료) · `delivery_fee`(미만이면 고정액, null = 미설정이며 «무료» 아님). 계산은 `utils/purchaseOrderTotals.js computeDeliveryFee` 한 곳(화면 사본 `utils/deliveryFee.ts`). 초안·제출 중 재계산, **판매자 확인 시 동결**. 총액 = 품목합 + 세금 + 배송비.
 - **(b) 모바일 오더 배달 설정(`operation_settings.deliveryPricing`, zone 선택)은 재사용 불가 — 방향이 반대다**(그건 매장이 파는 쪽, 발주에서 매장은 사는 쪽). **지역(zone)은 지금 넣지 않는다**: 구매자가 고르면 제일 싼 지역을 고를 수 있고, 판매자 정정은 «구매자 승인 금액 초과 금지» 게이트(`seller-orders.js`)에 막힌다. 판매자 45곳 중 `delivery_fee` 를 적은 곳 0곳. 나중에 필요하면 모양은 `delivery_zones` JSON `[{name, fee, states[]}]` + 구매자 주소 state 자동 매칭 + 실패 시 `delivery_fee` 폴백, 계산은 여전히 한 곳 — **별도 사안**.
   - 2026-09-28 Fable: 지역 = 판매자 3종 공통 `delivery_policy` 자유 텍스트(안내만). 매칭·가격 없음. 지역별 배송비는 여전히 별도 사안.
-  - **2026-10-07 Fable 설계(Irene 컨펌 대기 · 코드 0줄):** 지역별 배송비 = 판매자 3종(브랜드·푸드코트·가입 공급업체) 공통 `delivery_zones` JSON `[{id,name,fee,states[],description?}]` · 지역 판정은 **구매자 주소 state 자동**(별칭 정규화·우편번호 앞 두 자리 폴백, 구매자 선택 없음) · 미매칭/주소 모름 = 기존 `delivery_fee` 폴백(주문 안 막음) · 같은 주가 두 지역에 못 들어감 · 무료 기준은 판매자당 하나(`min_order_amount`) · 외부 공급업체 제외 · `delivery_policy` 는 «배송 안내 메모»로 이름만 · 계산은 여전히 `computeDeliveryFee` 한 곳(지역은 유효 배송비 전처리) · 제출 때 1회 재계산 추가 · 판매자 확인 후 동결 유지. 원문 `.claude/fable-verdict-20261007-seller-delivery-zones.md`.
+  - **2026-10-07 Fable 설계 · Irene «권고대로» 확정 · 개발서버 구현(10-07):** 지역별 배송비 = 판매자 3종(브랜드·푸드코트·가입 공급업체) 공통 `delivery_zones` JSON `[{id,name,fee,states[],description?}]` · 지역 판정은 **구매자 주소 state 자동**(별칭 정규화·우편번호 앞 두 자리 폴백, 구매자 선택 없음) · 미매칭/주소 모름 = 기존 `delivery_fee` 폴백(주문 안 막음) · 같은 주가 두 지역에 못 들어감 · 무료 기준은 판매자당 하나(`min_order_amount`) · 외부 공급업체 제외 · `delivery_policy` 는 «배송 안내 메모»로 이름만 · 계산은 여전히 `computeDeliveryFee` 한 곳(지역은 유효 배송비 전처리) · 제출 때 1회 재계산 추가 · 판매자 확인 후 동결 유지. 원문 `.claude/fable-verdict-20261007-seller-delivery-zones.md`.
 - **(c) «담으면서 더할지 0원일지» 는 이미 된다** — 담을 때마다 기준 비교, 판매자 묶음마다 «얼마 더 담으면 무료» 표시.
 - **(d) 이번 코드 변경 = 푸드코트 설정 화면 두 칸**(§2-B 에 적혀 있었으나 화면이 빠져 있었다). `FoodcourtPaymentSettingsPage.tsx` 에 브랜드와 같은 카드, 저장은 기존 `PUT /api/foodcourts/:id/payment-settings`. 백엔드 무변경.
 - **(e) 실제로 붙으려면 판매자가 두 칸을 적어야 한다** — 지금 0곳. 코드가 아니라 운영 일.
@@ -841,3 +845,23 @@ Irene 의 「가격관리도 각자」 가 **공급업체 상품 정가까지 �
 - **A. 청구서를 «결제됨»으로 닫는 것** — Fable 권고: 닫는다. 공급업체는 돈을 받았고, 회사가 빚진 상대가 공급업체→직원으로 바뀐 것뿐이다. 회사 장부(드로어)는 갚을 때 움직인다.
 - **B. 갚는 방법 두 가지(드로어 현금 / 이체)** — Fable 권고: 둘 다 둔다. 드로어 현금이면 마감 예상현금에서 빠지고(비용 처리 시점), 이체면 드로어 무접촉.
 - **C. 낸 사람 = 기록한 사람** — Fable 권고: 지금은 그렇게. 대리 입력이 실제로 생기면 이름 칸 하나 추가.
+
+## [Fable 판정] ⑩ 외부 공급업체 월별 정산서 (2026-10-07 · Irene «그대로» 승인)
+> 판정 원문 `.claude/fable-verdict-20261007-ext-soa-staffmeal.md` Ⅰ-2 · Ⅱ-A. Irene 원문(10-04) 「외부공급업체 중에 1달 기준으로 SOA 보내는 곳이 있어. … 최종 받은 SOA랑 대조해서 결제정리할 수 있게」
+- **조건 자리 = 그 구매자의 계약 `supplier_contracts.payment_terms`(기존 칸)** — 외부 업체 수정 창 «청구 방식»(건별 / 월별 정산서 · 발행일 · 마감일). 구매자가 적는다(`set_by:'buyer'`). NET 키(`terms`)는 외부에 쓰지 않는다(09-10 «합의 없는 NET 은 지어낸 값»). 새 표·새 칸 0.
+- 오너 등록 업체(계약 행이 오너 것 하나)는 월별 지원 안 함 — 정산서 발행기가 매장을 못 찾는다. 400 `OWNER_SUPPLIER_MONTHLY_UNSUPPORTED`(운영 0곳, 2026-10-07 실측).
+- **정산서 = 시스템 자동(발행일) + 구매자 «지금 만들기»**(`POST /api/purchase-invoices/soa/external/:id/issue`, 외부만). 공급업체 SOA 파일로 정산서를 «생성» 하는 길은 없다 — 우리 정산서는 우리 주문 기록의 합이어야 대조가 성립한다.
+- **대조 두 겹** — ①건별: 묶인 청구서 «총액 수정»(§8-7) → 미결제 정산서 합계가 따라간다(`services/externalSoa.followChildToSoa`) ②정산서: 공급업체 SOA(파일·번호·날짜·총액) 붙여 확정 → «Supplier statement difference» 한 줄·수정 이력(`POST /api/invoices/:id/soa-reconcile`, 기록 칸 `invoices.external_document`).
+- **결제 = 정산서 «결제함» 한 번** → 묶인 청구서·발주 전부 결제됨(발주 결제와 같은 `recordPayment`, `viaSoa`), 현금이면 발주마다 금고 출금 + 차액 한 줄.
+- **월별 업체는 건별 «결제함»·발주 Pay 막음**(`utils/payViaSoa` 단일 소스 — 외부 조기 return 제거). 월별 아닌 외부 업체는 그대로. 건별 청구서 마감일은 비운 채(정산서에만 마감일).
+- 소급 없음 — 단 켜기 전 **안 낸** 청구서는 첫 정산서에 실린다. 가입 공급업체·브랜드·푸드코트 0 변경.
+- ⚠ 정산서 총액은 `finalizeInvoice` 로 다시 계산하지 않는다 — 정산서 행엔 줄 항목이 없어 소계가 0 이 된다. 총액 = Σ묶인 청구서(취소 제외) + 차액 줄.
+
+## [Fable 판정] ⑪ 직원식 재료 — 발주 «직원식» 구분 (2026-10-07 · Irene «그대로» 승인)
+> 판정 원문 `.claude/fable-verdict-20261007-ext-soa-staffmeal.md` Ⅰ-3 · Ⅱ-B. Irene 원문(10-04) 「발주할 때 스탭밀인 것도 항목에 표시할 수 있어? … 재고아이템도 스탭밀을 따로 연결해야 할까?」
+- **표시 축 = `ingredient_categories.is_staff_meal` 1칸(매장 소유 분류만 뜻 있음).** 발주 줄 «용도» 칸 0 · 재료 1건 «직원식» 칸 0 · 새 표 0. 분류 하나를 체크하면 그 분류 재료 전부가 직원식이다.
+- 발주 줄·합계는 **파생**(`utils/poStaffMeal` — 재료 줄 + 분류 표시) · 구매 비용 보고서는 같은 JOIN 으로 `by_purpose`(직원식 / 일반)·월별 `staff_meal_spend`. 재료 이름으로 자동 판정하지 않는다(이름은 표시용).
+- **재고는 «직원식 전용 재료만 따로 줄»**(with MIN 이 이미 하는 방식). 손님 것과 섞어 쓰는 재료는 나누지 않는다 — 직원이 먹은 만큼은 POS 스탭밀 주문이 레시피로 깎는다. `track_stock` 끄기는 쓰지 않는다(09-01 폐기 스위치).
+- «직원식 사용» 입력(재고 줄이기, 거래 종류 `staff_meal`)은 **2단계** — Irene 「세고 싶다」 뒤 별도 묶음. POS 스탭밀 결제·일일 스탭밀 정산 0 변경.
+- 마이그 `scripts/migrate-staff-meal-category-flag.js`(deploy, 멱등): 칸 추가 + 이름이 Staff Meal/직원식/스탭밀(공백·대소문자 무시)인 매장 분류를 켬 — 운영 예상 1건(#23 매장 10). 매장 10 재료 8개 이동은 `scripts/migrate-staff-meal-ingredients-20261007.js`(manual · 드라이런 → Irene 표 승인 → `--apply` · `--undo`).
+- 혼동 주의: §2-4 «상품 종류»(재고 세는 축)와 다른 축이다 — 이건 «비용의 성격»이다.

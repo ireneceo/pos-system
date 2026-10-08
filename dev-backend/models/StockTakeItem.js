@@ -13,9 +13,14 @@ StockTakeItem.init({
     type: DataTypes.INTEGER,
     allowNull: false
   },
+  // 매장 실사 줄 = ingredient_id, 본사 창고 실사 줄 = product_ingredient_id (2026-10-08)
+  product_ingredient_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
   ingredient_id: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true
   },
   theoretical_stock: {
     type: DataTypes.DECIMAL(10, 2),

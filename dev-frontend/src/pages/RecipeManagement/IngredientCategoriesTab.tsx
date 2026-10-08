@@ -27,6 +27,8 @@ interface Category {
   description: string | null;
   display_order: number;
   is_active: boolean;
+  /** 직원식(비용) 분류 — 이 분류 재료의 발주는 직원식 비용 (2026-10-07 Fable 판정 ⑪, 매장 분류만) */
+  is_staff_meal?: boolean;
   ingredient_count?: number;
   editable?: boolean;
 }
@@ -175,6 +177,18 @@ const StatusBadge = styled.span<{ active: boolean }>`
   color: ${props => props.active ? '#059669' : '#DC2626'};
 `;
 
+// 직원식(비용) 분류 표시 — 회색 텍스트 배지(이모지 없음, 2026-10-07 ⑪)
+const StaffMealBadge = styled.span`
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #F3F4F6;
+  color: #374151;
+  border: 1px solid #E5E7EB;
+`;
+
 const CategoryIcon = styled.div`
   width: 48px;
   height: 48px;
@@ -250,10 +264,11 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
   // 삭제할 카테고리에 재료가 남아 있으면 «어디로 옮길지» 를 고르게 한다 (2026-09-16 Irene 지시)
   const [reassignTo, setReassignTo] = useState<string>('');
   const [deleting, setDeleting] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{ name: string; emoji: string; description: string; is_staff_meal: boolean }>({
     name: '',
     emoji: '',
-    description: ''
+    description: '',
+    is_staff_meal: false
   });
 
   const emojiOptions = [
@@ -351,14 +366,16 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
       setFormData({
         name: category.name,
         emoji: category.emoji || '',
-        description: category.description || ''
+        description: category.description || '',
+        is_staff_meal: !!category.is_staff_meal
       });
     } else {
       setEditingCategory(null);
       setFormData({
         name: '',
         emoji: '',
-        description: ''
+        description: '',
+        is_staff_meal: false
       });
     }
     setShowModal(true);
@@ -367,7 +384,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingCategory(null);
-    setFormData({ name: '', emoji: '', description: '' });
+    setFormData({ name: '', emoji: '', description: '', is_staff_meal: false });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -400,7 +417,9 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
         body: JSON.stringify({
           name: formData.name.trim(),
           emoji: formData.emoji || null,
-          description: formData.description.trim() || null
+          description: formData.description.trim() || null,
+          // 직원식 표시는 매장 분류에만 (브랜드 라우트는 이 칸을 쓰지 않는다)
+          ...(isBrandUser ? {} : { is_staff_meal: formData.is_staff_meal })
         })
       });
 
@@ -554,6 +573,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
           <CategoryMeta>
             <span>{category.ingredient_count || 0} ingredients</span>
             {!readOnly && <StatusBadge active={category.is_active}>{category.is_active ? 'Active' : 'Inactive'}</StatusBadge>}
+            {category.is_staff_meal && <StaffMealBadge>{t('recipes:ingredientCategoriesTab.staffMealBadge', 'Staff meal')}</StaffMealBadge>}
           </CategoryMeta>
           {category.description && <CategoryDescription>{category.description}</CategoryDescription>}
         </CategoryInfo>
@@ -676,6 +696,25 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
               ))}
             </EmojiPicker>
           </UIFormGroup>
+
+          {!isBrandUser && (
+            <UIFormGroup>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', fontSize: 14, color: '#0A2540' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.is_staff_meal}
+                  onChange={(e) => setFormData({ ...formData, is_staff_meal: e.target.checked })}
+                  style={{ marginTop: 3 }}
+                />
+                <span>
+                  {t('recipes:ingredientCategoriesTab.staffMealLabel', 'Staff meal (cost) category')}
+                  <span style={{ display: 'block', fontSize: 12, color: '#4B5563', marginTop: 2 }}>
+                    {t('recipes:ingredientCategoriesTab.staffMealHint', 'Ingredients in this category are counted as staff-meal cost on purchase orders and in the purchase cost report.')}
+                  </span>
+                </span>
+              </label>
+            </UIFormGroup>
+          )}
 
           <UIFormGroup>
             <FormLabel>{t('recipes:ingredientCategoriesTab.description')}</FormLabel>
