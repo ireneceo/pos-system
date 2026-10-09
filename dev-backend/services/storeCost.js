@@ -113,4 +113,40 @@ async function writeStoreCostRow(restaurantId, ingredient, value, { transaction,
   return { target: 'overlay', oldValue, newValue, changed: true };
 }
 
-module.exports = { isStoreOwned, effectiveStoreCost, loadOverlayMap, writeStoreCost };
+/**
+ * 본사 재고아이템(product_ingredients) 원가 = **마지막 실제 매입가** — 브랜드 발주의 수령·줄 대조가 쓴다
+ *   (2026-10-09 Fable 판정 §3-2 · Irene «권고대로» — 매장의 writeStoreCost 와 같은 규칙, 브랜드 층).
+ * 값의 뜻 = 기준양(base_quantity)의 가격 — 재고아이템 unit_cost 와 같은 뜻.
+ * 흐름(10-09 실측): 재고아이템 → 거울 재료(브랜드 공유 ingredients, stockItemMirror.syncMirrors) → 자기 원가를 따로
+ *   정하지 않은 매장의 레시피 원가. 매장별 원가(restaurant_ingredient_costs)는 건드리지 않는다.
+ * 새 전파 코드는 만들지 않는다 — 거울 옮기기는 기존 syncMirrors 한 곳(costSync 와 같은 길).
+ * @returns {Promise<{oldValue:number|null, newValue:number, changed:boolean}>}
+ */
+async function writeStockItemCost(stockItem, value, { transaction, userId, notes, log } = {}) {
+  const newValue = round4(value);
+  if (!stockItem || !(newValue > 0)) return { oldValue: null, newValue, changed: false };
+  const oldValue = stockItem.unit_cost == null ? null : round4(stockItem.unit_cost);
+  if (oldValue !== null && Math.abs(oldValue - newValue) < 0.0001) return { oldValue, newValue, changed: false };
+  const { ProductIngredient } = require('../models');
+  await ProductIngredient.update({ unit_cost: newValue }, { where: { id: stockItem.id }, transaction });
+  if (log) {
+    const { logCostChange } = require('./costSync');
+    await logCostChange(require('../config/database').sequelize, transaction, {
+      subject_type: 'product_ingredient', subject_id: stockItem.id,
+      old_value: oldValue, new_value: newValue, unit: stockItem.unit || null,
+      changed_by_user_id: userId || null, note: notes || null,
+      ...log,
+    });
+  }
+  // 거울(브랜드 공유 재료)까지 — raw UPDATE 라 모델 훅을 안 탄다, costSync 와 같은 방식으로 명시
+  try {
+    const { syncMirrors } = require('./stockItemMirror');
+    const fresh = await ProductIngredient.findByPk(stockItem.id, { transaction });
+    if (fresh) await syncMirrors(fresh, { transaction });
+  } catch (e) {
+    console.error(`[cost] 재고아이템 ${stockItem.id} 원가를 거울로 옮기지 못함:`, e.message);
+  }
+  return { oldValue, newValue, changed: true };
+}
+
+module.exports = { isStoreOwned, effectiveStoreCost, loadOverlayMap, writeStoreCost, writeStockItemCost };

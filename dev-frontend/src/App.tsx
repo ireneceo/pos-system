@@ -1553,7 +1553,7 @@ function App() {
                       {/* 발주↔인보이스 원가 대조 (2026-09-08). 구매자 전용 —
                           공급업체는 자기 인보이스를 우리 원가에 반영시킬 수 없다. */}
                       <Route path="/pos/purchase-orders/:id/reconcile" element={
-                        <ProtectedRoute requiredRole={['Restaurant Admin','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                           <InvoiceReconcilePage />
                         </ProtectedRoute>
                       } />

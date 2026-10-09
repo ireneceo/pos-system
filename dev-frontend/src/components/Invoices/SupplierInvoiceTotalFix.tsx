@@ -181,9 +181,7 @@ export default function SupplierInvoiceTotalFix({ invoice, renderTrigger, onSave
       });
       const j = await res.json().catch(() => null);
       if (!res.ok || !j?.success) {
-        setError(j?.code === 'OWNER_TOTAL_ONLY'
-          ? (t('settings:invoicesPage.totalFix.ownerTotalOnly', 'Owners can only correct the total.') as string)
-          : (j?.message || (t('settings:invoicesPage.totalFix.failed', 'Could not save the total.') as string)));
+        setError(j?.message || (t('settings:invoicesPage.totalFix.failed', 'Could not save the total.') as string));
         return;
       }
       setResult(describeResult(j.data));

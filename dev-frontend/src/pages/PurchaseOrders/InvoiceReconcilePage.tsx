@@ -303,6 +303,8 @@ const InvoiceReconcilePage: React.FC = () => {
   const timeZone = getStoreInfo?.()?.timeZone;
 
   const [po, setPo] = useState<ReconcilePo | null>(null);
+  // 청구서 창(스코프 붙은 길)에서 왔으면 그 창으로 돌아간다 — 발주 상세는 오너·둘째 브랜드가 이 스코프로 못 연다 (2026-10-09)
+  const goBack = () => { if (scopeQS && window.history.length > 1) navigate(-1); else if (po) navigate(`/pos/purchase-orders/${po.id}`); };
   const [items, setItems] = useState<ReconcileItem[]>([]);
   const [drafts, setDrafts] = useState<Record<number, LineDraft>>({});
   const [header, setHeader] = useState({ number: '', date: '', total: '', tax: '', delivery: '', discount: '' });
@@ -677,7 +679,7 @@ const InvoiceReconcilePage: React.FC = () => {
                 : ` · ${t('reconcile.neverReconciled', '아직 대조하지 않았습니다')}`}
             </Muted>
           </div>
-          <Button variant="secondary" onClick={() => navigate(`/pos/purchase-orders/${po.id}`)}>{t('reconcile.backToPo', '발주로 돌아가기')}</Button>
+          <Button variant="secondary" onClick={goBack}>{t('reconcile.backToPo', '발주로 돌아가기')}</Button>
         </div>
 
         {/* 지난번이 «총액만 맞춤» 이었으면 그 사실을 드러낸다 — 줄 단가가 비어 있는 이유이자,
@@ -1047,7 +1049,7 @@ const InvoiceReconcilePage: React.FC = () => {
                   </span>
                 )}
               </Muted>
-              <Button variant="secondary" onClick={() => navigate(`/pos/purchase-orders/${po.id}`)}>{t('reconcile.cancel', '취소')}</Button>
+              <Button variant="secondary" onClick={goBack}>{t('reconcile.cancel', '취소')}</Button>
               <Button onClick={() => save()} disabled={saving || totals.blocked}>{saving ? t('reconcile.saving', '저장 중…') : t('reconcile.save', '대조 저장')}</Button>
             </Actions>
             {/* 줄 합계가 총액과 1 넘게 다르면 줄 저장은 잠긴다(서버 TOTAL_MISMATCH 와 같은 기준 — 서버는 안전망).

@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-09 — [Claude Code] ✅ **판매자 «품목별 발송 표시» (개발서버만, Fable 게이트 PASS)** — 판매자(브랜드·푸드코트·공급업체)가 주문을 나눠 보낼 때 «보내기» 창에서 품목 체크 · 체크한 품목만 재고 차감·«보냄» 표시 · 남으면 «N item(s) not yet dispatched» + «Ship remaining» · 다 보낸 뒤에만 «Delivered» · 매장 발주 상세에 품목별 «Shipped ✓ 날짜». 주문 쪼개기·새 상태 없음. 마이그 deploy(줄 shipped_at + 옛 주문 백필).
+> **최종 업데이트:** 2026-10-09 — [Claude Code] ✅ **청구서 화면 «공급업체 인보이스» 네 가지 일을 모든 역할에 + 브랜드 발주 고장 3개 (개발서버만, Fable 게이트 PASS ×2)** — 매장 관리자·오너·브랜드·푸드코트 청구서 상세 창에서 인보이스 올리기·다시 올리기·보기·가격 대조·총액 수정 · 오너도 가격 대조 · 브랜드 수령 파손·부족분 반품/기록 · 브랜드 발주 제안 = 본사 재고 · 재고 화면 카트 담기 · 본사 재고아이템 원가 = 마지막 매입가. 마이그 0.
 
 > **이전:** 2026-10-08 — [Claude Code] ✅ **판매자 배송 지역별 설정 (개발서버만, Fable 게이트 PASS)** — 브랜드·푸드코트·가입 공급업체 설정에 «배송 지역»(지역 이름·배송비·포함 주) · 매장 주소의 주(州)로 자동 판정(별칭·우편번호 폴백) · 안 맞으면 기본 배송비 · 무료 기준은 판매자당 하나 · 발주 담기·상세에 지역 이름 · 제출 때 배송비 1회 재계산 · 마이그 deploy(빈 칸 3개). 지역 안 적은 판매자 변화 0.
 
@@ -468,6 +468,37 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 청구서 화면 네 가지 일(전 역할) + 브랜드 발주 흐름 정비 (2026-10-09, 개발서버만) [Claude Code]
+
+> Irene: «브랜드제너럴도 발주하는 과정 레스토랑처럼 제대로 같이 개발된건지 비교해주고. 인보이스페이지에서는 어떤 역할이든 인보이스업로드(있을경우 재업로드) 가격확인 비교수정 인보이스 보기 기능 토탈금액 변경이 다 있어야 해. 주문내역에만 있으면 불편해. 오너 레스토랑관리자 다.» → Fable 설계 → 컨펌 2건 «권고대로»
+> 판정: `.claude/fable-design-20261009-invoice-page-actions.md` · `.claude/fable-verdict-20261009-invoice-page-actions-gate.md` · `.claude/fable-verdict-20261009-invoice-owner-reconcile-brand-cost-gate.md` (둘 다 PASS)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 청구서 창 네 가지 일 | 공용 조각 `TradeInvoiceActions` — 올리기·다시 올리기(확인창)·올린 인보이스 보기·가격 대조·총액 수정, 매장·오너·브랜드·푸드코트 4화면 | ✅ 완료 |
+| 스코프 = 발주 주인 | 오너·둘째 브랜드도 같은 길(응답에 발주 주인 id 칸, 대조 화면이 이어받음) | ✅ 완료 |
+| 오너 권한 | 인보이스 올리기 + 가격 대조(줄 단가 → 그 매장 원가) 허용 — 10-07 «오너 총액만» 번복 | ✅ 완료 |
+| 브랜드 수령 문제분 | 파손·오배송 → 자동 반품, 부족·보류 → 줄 기록 (매장과 같은 블록) | ✅ 완료 |
+| 브랜드 발주 제안 | 본사 재고아이템(최소 재고 미만) 기준 · 추천 «발주 만들기» 수량 전달 · 재고 화면 일괄 발주 | ✅ 완료 |
+| 재고 화면 카트 담기 | 담아도 발주 화면에 안 보이던 결함 — 카트 규칙 한 곳(`utils/poCart.ts`) | ✅ 완료 |
+| 본사 원가 | 브랜드 재고아이템 원가 = 마지막 매입가(수령·대조), 브랜드 공유 재료까지 · 매장별 원가 무접촉 | ✅ 완료 |
+| 청구서 링크 | 발주 상세 «청구서 보기» → 4화면 모두 그 청구서 상세 창 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/middleware/buyerScope.js` · `routes/cost-reconciliation.js` · `routes/invoices-list.js` · `routes/owner.js` · `routes/purchase-orders-crud.js` · `routes/purchase-orders-workflow.js`
+- `dev-backend/services/invoicePurchaseOrderAttach.js` · `services/purchaseOrderReceive.js` · `services/storeCost.js` · `scripts/health-check.js`(invoice-actions 7 · invoice-total-fix T2 반전·T5)
+- `dev-frontend/src/components/Invoices/TradeInvoiceActions.tsx`(신규) · `SupplierInvoiceTotalFix.tsx` · `hooks/useInvoiceDeepLink.ts`(신규) · `utils/poCart.ts`(신규)
+- `dev-frontend/src/pages/{Restaurant/InvoicesPage, Owner/OwnerInvoicesPage, BrandGeneral/BrandInvoicesPage, BrandGeneral/invoices/BrandInvoiceViewModal, FoodcourtGeneral/FoodcourtInvoicesPage, FoodcourtGeneral/invoices/FoodcourtInvoiceViewModal}.tsx`
+- `dev-frontend/src/pages/PurchaseOrders/{InvoiceReconcilePage, NewPurchaseOrderPage, PurchaseOrderDetailPage, PurchaseOrdersPage}.tsx` · `components/Inventory/{InventoryManager.tsx, hooks/useBulkOrder.ts}` · `App.tsx` · 번역 4언어(settings·purchaseOrders)
+
+### 검증
+- health-check 전체 통과 · 고장주입 5종 반증 · 클릭 흐름 4역할 52/52 · verify-all --full 23/24(✗ 배포 기록 — 배포 때) · mount sweep 크래시 0 · 타입 기준선 신규 0 · print-guard 8/8
+- 배포 때: SW 버전 1회 + 빌드 1회 + 배포 기록. 문서(PURCHASE_ORDER_SYSTEM §8-8 등)는 배포 뒤(Fable 판정 §4)
+
+---
 
 ## ✅ 완료: 판매자 품목별 발송 표시 (2026-10-09, 개발서버만) [Claude Code]
 

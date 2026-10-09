@@ -22,13 +22,11 @@ import { getErrorMessage } from '../../utils/apiError';
 
 interface Props {
   invoice: TotalFixInvoice;
-  /** 줄 단가 대조(가격 비교·수정)를 보일지 — 오너는 Irene 결정(판정 §3-1) 전까지 false */
-  allowLineReconcile?: boolean;
   /** 올리기·총액 수정 뒤(목록 새로고침 · 창 닫기 등) */
   onChanged?: () => void;
 }
 
-export default function TradeInvoiceActions({ invoice, allowLineReconcile = true, onChanged }: Props) {
+export default function TradeInvoiceActions({ invoice, onChanged }: Props) {
   const { t } = useTranslation(['settings', 'common']);
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -103,13 +101,12 @@ export default function TradeInvoiceActions({ invoice, allowLineReconcile = true
               : t('settings:invoicesPage.uploadSupplierInvoice', 'Upload supplier invoice')}
         </Button>
       )}
-      {allowLineReconcile && (
-        <Button variant="secondary" onClick={() => navigate(withTradeInvoiceScope(`/pos/purchase-orders/${invoice.purchaseOrderId}/reconcile`, invoice))}>
-          {invoice.invoiceReconciledAt
-            ? t('settings:invoicesPage.viewReconcile', 'View price check')
-            : t('settings:invoicesPage.reconcileNow', 'Check prices against invoice')}
-        </Button>
-      )}
+      {/* 가격 대조 — 오너도 (2026-10-09 Fable §3-1 · Irene «권고대로») */}
+      <Button variant="secondary" onClick={() => navigate(withTradeInvoiceScope(`/pos/purchase-orders/${invoice.purchaseOrderId}/reconcile`, invoice))}>
+        {invoice.invoiceReconciledAt
+          ? t('settings:invoicesPage.viewReconcile', 'View price check')
+          : t('settings:invoicesPage.reconcileNow', 'Check prices against invoice')}
+      </Button>
       <SupplierInvoiceTotalFix
         invoice={invoice}
         onSaved={onChanged}

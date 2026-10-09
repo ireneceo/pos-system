@@ -6579,7 +6579,7 @@ function definePaymentTests() {
     finally { await cleanCash(fx, made); if (ext) await dropSupplierCompany(ext.sc); }
   });
 
-  test('invoice-total-fix', 'T2 오너 = 총액만 — 소유 매장 total_only 200·이력 이름=오너 · 줄 대조 403 OWNER_TOTAL_ONLY · 남의 매장 403 · 오너 목록 칸', async () => {
+  test('invoice-total-fix', 'T2 오너 — 소유 매장 total_only 200·이력 이름=오너 · 줄 대조도 200(10-09 §3-1) · 남의 매장 403 · 오너 목록 칸', async () => {
     const fx = await cashFixtureBase();
     if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
     const { sequelize } = require('../config/database');
@@ -6597,9 +6597,9 @@ function definePaymentTests() {
       if (!ext.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${ext.receiveStatus})`)); return false; }
       const sw = (rid) => `entity_type=restaurant&entity_id=${rid}`;
       const [item] = await hcQ('SELECT id FROM purchase_order_items WHERE purchase_order_id = :p', { p: ext.po.id });
-      // 줄 대조는 오너에게 막힌다 — 아무것도 안 바뀐다
-      const rl = await request('POST', `/purchase-orders/${ext.po.id}/reconcile?${sw(fx.demoId)}`,
-        { invoice: { total: 44 }, lines: [{ item_id: item.id, invoiced_unit_price: 44 }] }, auth);
+      // 남의 매장 자격 줄 대조 → 403 (아무것도 안 바뀐다)
+      const rlo = other ? await request('POST', `/purchase-orders/${ext.po.id}/reconcile?${sw(other.id)}`,
+        { invoice: { total: 44 }, lines: [{ item_id: item.id, invoiced_unit_price: 44 }] }, auth) : { status: 403 };
       const before = await hcInvHist(ext.inv.id);
       // 남의 매장 자격 → 403(buyerScope ownership 확인)
       const ro = other ? await request('POST', `/purchase-orders/${ext.po.id}/reconcile?${sw(other.id)}`, { total_only: true, invoice: { total: 46 } }, auth) : { status: 403 };
@@ -6611,12 +6611,17 @@ function definePaymentTests() {
       const la = await request('GET', `/owner/invoices?restaurant_id=${fx.demoId}`, null, auth);
       const rows = [...((lp.body && lp.body.data) || []), ...((la.body && la.body.data) || [])];
       const li = rows.find((x) => Number(x.id) === Number(ext.inv.id));
-      const ok = rl.status === 403 && rl.body?.code === 'OWNER_TOTAL_ONLY' && before.hist.length === 0 && Math.abs(Number(before.row.total_amount) - 42) < 0.001
+      // 오너 줄 대조 (2026-10-09 Fable §3-1 · Irene «권고대로») — 소유 매장 자격이면 200, 줄 단가 기록
+      const rl = await request('POST', `/purchase-orders/${ext.po.id}/reconcile?${sw(fx.demoId)}`,
+        { invoice: { total: 46 }, lines: [{ item_id: item.id, invoiced_unit_price: 46 }] }, auth);
+      const [lineRow] = await hcQ('SELECT invoiced_unit_price FROM purchase_order_items WHERE id = :i', { i: item.id });
+      const ok = rlo.status === 403 && before.hist.length === 0 && Math.abs(Number(before.row.total_amount) - 42) < 0.001
         && ro.status === 403
+        && rl.status === 200 && Math.abs(Number(lineRow.invoiced_unit_price) - 46) < 0.001
         && rt.status === 200 && rt.body?.data?.invoice_sync?.synced === true
         && Math.abs(Number(after.row.total_amount) - 46) < 0.001 && after.hist.length === 1 && h0.modified_by_name === ownerName && Number(h0.modified_by) === Number(uid)
         && !!li && Array.isArray(li.modification_history) && li.modification_history.length === 1 && li.reconcile_invoiced_lines === 0 && li.is_modified === true;
-      if (!ok) console.log(c.gray(`      (줄대조 ${rl.status}/${rl.body?.code} 이력 ${before.hist.length} 총액 ${before.row.total_amount} · 남의매장 ${ro.status} · 총액만 ${rt.status} ${JSON.stringify(rt.body?.data?.invoice_sync || rt.body?.message)} 총액 ${after.row.total_amount} 이력 ${JSON.stringify(after.hist)} · 오너목록 ${lp.status}/${la.status} ${li ? JSON.stringify({ h: (li.modification_history || []).length, n: li.reconcile_invoiced_lines, m: li.is_modified }) : '없음'})`));
+      if (!ok) console.log(c.gray(`      (남의매장 줄대조 ${rlo.status} · 소유매장 줄대조 ${rl.status} 단가 ${lineRow && lineRow.invoiced_unit_price} 이력 ${before.hist.length} 총액 ${before.row.total_amount} · 남의매장 ${ro.status} · 총액만 ${rt.status} ${JSON.stringify(rt.body?.data?.invoice_sync || rt.body?.message)} 총액 ${after.row.total_amount} 이력 ${JSON.stringify(after.hist)} · 오너목록 ${lp.status}/${la.status} ${li ? JSON.stringify({ h: (li.modification_history || []).length, n: li.reconcile_invoiced_lines, m: li.is_modified }) : '없음'})`));
       return ok;
     } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
     finally {
@@ -6667,6 +6672,40 @@ function definePaymentTests() {
       return ok;
     } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
     finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); if (ext) await dropSupplierCompany(ext.sc); }
+  });
+
+  test('invoice-total-fix', 'T5 오너 줄 대조 → 그 매장 재료 원가 = 청구 단가(기준양) · 원가 기록 이름 = 오너 (10-09 §3-1)', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const { sequelize } = require('../config/database');
+    const { Ingredient } = require('../models');
+    const jwt = require('jsonwebtoken');
+    const tag = 'zzhct5' + Date.now().toString(36);
+    const ownerName = 'HC Owner ' + tag;
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, full_name, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@example.com`, ownerName] });
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null; let ing = null;
+    try {
+      await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (?, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [fx.demoId, uid] });
+      const auth = { Authorization: `Bearer ${jwt.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      ing = await Ingredient.create({ owner_type: 'restaurant', restaurant_id: fx.demoId, name: 'ZZ-HC-T5-' + tag, unit: 'kg', unit_cost: 1, current_stock: 0, min_stock: 0, is_active: true });
+      ext = await makeExternalPoReceived(fx, { lineTotal: 42 }); made.pos.push(ext.po.id);
+      const [item] = await hcQ('SELECT id FROM purchase_order_items WHERE purchase_order_id = :p', { p: ext.po.id });
+      await sequelize.query('UPDATE purchase_order_items SET ingredient_id = :g, unit_conversion = 1 WHERE id = :i', { replacements: { g: ing.id, i: item.id } });
+      const r = await request('POST', `/purchase-orders/${ext.po.id}/reconcile?entity_type=restaurant&entity_id=${fx.demoId}`,
+        { invoice: { total: 45 }, lines: [{ item_id: item.id, invoiced_unit_price: 45 }] }, auth);
+      const [ingRow] = await hcQ('SELECT unit_cost FROM ingredients WHERE id = :g', { g: ing.id });
+      const logs = await hcQ("SELECT changed_by_name, new_value FROM cost_change_logs WHERE subject_type = 'ingredient' AND subject_id = :g AND purchase_order_id = :p", { g: ing.id, p: ext.po.id });
+      const ok = r.status === 200 && Math.abs(Number(ingRow.unit_cost) - 45) < 0.001 && logs.length >= 1 && logs.every((l) => l.changed_by_name === ownerName);
+      if (!ok) console.log(c.gray(`      (${r.status} ${r.status !== 200 ? JSON.stringify(r.body).slice(0, 140) : ''} 원가 ${ingRow && ingRow.unit_cost} 기록 ${JSON.stringify(logs)})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      await cleanCash(fx, made); if (ext) await dropSupplierCompany(ext.sc);
+      if (ing) { await sequelize.query('DELETE FROM cost_change_logs WHERE subject_type = \'ingredient\' AND subject_id = :g', { replacements: { g: ing.id } }); await sequelize.query('DELETE FROM ingredients WHERE id = :g', { replacements: { g: ing.id } }); }
+      await sequelize.query('DELETE FROM restaurant_managers WHERE manager_id = ?', { replacements: [uid] });
+      await sequelize.query('DELETE FROM users WHERE id = ?', { replacements: [uid] });
+    }
   });
 
   // ── 청구서 화면 네 가지 일 · 역할 무관 · 스코프 = 발주 주인 (2026-10-09 Fable 판정 · PURCHASE_ORDER_SYSTEM.md §8-8) ────────
@@ -6824,6 +6863,46 @@ function definePaymentTests() {
     finally {
       if (po) await hcCleanupPurchaseOrders(po.id, { waitMs: 0 }); if (sc) await dropSupplierCompany(sc);
       if (pi) { try { await sequelize.query('DELETE FROM inventory_transactions WHERE product_ingredient_id = :i', { replacements: { i: pi.id } }); } catch {} await sequelize.query('DELETE FROM product_ingredients WHERE id = :i', { replacements: { i: pi.id } }); }
+    }
+  });
+
+  test('invoice-actions', 'C3 브랜드 매입가 → 본사 재고아이템 원가(마지막 매입가) — 수령 5 → 5 · 대조 6 → 6 · 원가 기록 2줄 · 거울 재료도 따라감 (10-09 §3-2)', async () => {
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const [bg] = await Q("SELECT u.id, u.brand_id FROM users u JOIN brands b ON b.id = u.brand_id AND b.owner_id = u.id WHERE u.email = 'demo-brand@purplehere.com' LIMIT 1");
+    if (!bg) { console.log(c.gray('      (건너뜀: 데모 브랜드 없음)')); return true; }
+    const auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    let sc = null; let po = null; let pi = null; let mirror = null;
+    try {
+      pi = await M.ProductIngredient.create({ owner_user_id: bg.id, name: 'ZZ-HC-C3-' + Date.now(), unit: 'kg', base_quantity: 1, unit_cost: 1, current_stock: 0, min_stock: 0, is_active: true });
+      mirror = await M.Ingredient.create({ owner_type: 'brand', brand_id: bg.brand_id, name: pi.name, unit: 'kg', base_quantity: 1, unit_cost: 1, current_stock: 0, min_stock: 0, is_active: true, source_product_ingredient_id: pi.id });
+      sc = await hcExternalSupplier('brand', bg.brand_id);
+      po = await hcBareBrandPo(bg.brand_id, sc, bg.id);
+      const it = await M.PurchaseOrderItem.create({ purchase_order_id: po.id, product_ingredient_id: pi.id, description: pi.name, unit: 'kg',
+        quantity_ordered: 2, quantity_received: 0, unit_price: 5, line_total: 10, unit_conversion: 1 });
+      const qs = `entity_type=brand&entity_id=${bg.brand_id}`;
+      const r1 = await request('POST', `/purchase-orders/${po.id}/receive?${qs}`, { items: [{ item_id: it.id, quantity_received: 2 }] }, auth);
+      const [a] = await Q('SELECT unit_cost FROM product_ingredients WHERE id = :i', { i: pi.id });
+      const [ma] = await Q('SELECT unit_cost FROM ingredients WHERE id = :i', { i: mirror.id });
+      const r2 = await request('POST', `/purchase-orders/${po.id}/reconcile?${qs}`, { invoice: { total: 12 }, lines: [{ item_id: it.id, invoiced_unit_price: 6 }] }, auth);
+      const [b] = await Q('SELECT unit_cost FROM product_ingredients WHERE id = :i', { i: pi.id });
+      const [mb] = await Q('SELECT unit_cost FROM ingredients WHERE id = :i', { i: mirror.id });
+      const logs = await Q("SELECT source, new_value FROM cost_change_logs WHERE subject_type = 'product_ingredient' AND subject_id = :i ORDER BY id", { i: pi.id });
+      const ok = r1.status === 200 && Math.abs(Number(a.unit_cost) - 5) < 0.001 && Math.abs(Number(ma.unit_cost) - 5) < 0.001
+        && r2.status === 200 && Math.abs(Number(b.unit_cost) - 6) < 0.001 && Math.abs(Number(mb.unit_cost) - 6) < 0.001
+        && logs.length === 2 && logs[0].source === 'receive' && logs[1].source === 'invoice_reconcile';
+      if (!ok) console.log(c.gray(`      (수령 ${r1.status} 원가 ${a.unit_cost}/거울 ${ma.unit_cost} · 대조 ${r2.status} ${r2.status !== 200 ? JSON.stringify(r2.body).slice(0, 120) : ''} 원가 ${b.unit_cost}/거울 ${mb.unit_cost} · 기록 ${JSON.stringify(logs)})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      if (po) await hcCleanupPurchaseOrders(po.id, { waitMs: 0 }); if (sc) await dropSupplierCompany(sc);
+      if (pi) {
+        await sequelize.query("DELETE FROM cost_change_logs WHERE subject_type = 'product_ingredient' AND subject_id = :i", { replacements: { i: pi.id } });
+        try { await sequelize.query('DELETE FROM inventory_transactions WHERE product_ingredient_id = :i', { replacements: { i: pi.id } }); } catch {}
+      }
+      if (mirror) await sequelize.query('DELETE FROM ingredients WHERE id = :i', { replacements: { i: mirror.id } });
+      if (pi) await sequelize.query('DELETE FROM product_ingredients WHERE id = :i', { replacements: { i: pi.id } });
     }
   });
 

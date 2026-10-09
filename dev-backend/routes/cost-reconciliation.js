@@ -23,7 +23,7 @@ const { sequelize } = require('../config/database');
 const {
   PurchaseOrder, PurchaseOrderItem, SupplierCompany, SupplierProduct, IngredientSellerProduct, Ingredient
 } = require('../models');
-const { writeStoreCost } = require('../services/storeCost');
+const { writeStoreCost, writeStockItemCost } = require('../services/storeCost');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
@@ -168,14 +168,9 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
   const body = req.body || {};
   const lines = Array.isArray(body.lines) ? body.lines : [];
 
-  // 오너(소유 매장으로 행동)는 **총액만** 고칠 수 있다 (2026-10-07 Fable 판정 D3).
-  //   줄 단가 대조·원가 전파·소급은 물건과 장부가 있는 매장 관리자 몫 — 10-04 «원가대조 403» 을 이 한 가지로만 좁힌다.
-  if (req.buyerIsOwnerView && body.total_only !== true) {
-    return res.status(403).json({
-      success: false, code: 'OWNER_TOTAL_ONLY',
-      message: 'Owners can only correct the invoice total (total_only)'
-    });
-  }
+  // 오너(소유 매장으로 행동)도 줄 단가 대조까지 한다 (2026-10-09 Fable 판정 §3-1 · Irene «권고대로» — 10-07 D3 «오너 총액만» 번복).
+  //   Irene «오너 레스토랑관리자 다». 원가는 아래 ①-b 가 **발주 주인 매장**(po.entity_id)에만 쓰고 cost_change_logs 에 남는다.
+  //   오너 자격 확인은 buyerScope(ownership) + checkPOOwnership(발주 주인 = 전환된 매장) 두 겹 그대로.
 
   // ── «총액만 대조» 모드 (2026-09-24 Fable 판정 D6) ────────────────────────────
   //   사진 판독이 엉망이라 줄 단가를 믿을 수 없을 때, **총액만 사람이 적어 결제까지** 가는 길.
@@ -329,6 +324,28 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
           source: 'reconcile_overlay', purchase_order_id: po.id,
           changed_by_user_id: actor.changed_by_user_id, changed_by_name: actor.changed_by_name,
           note: overlayNote
+        });
+      }
+    }
+
+    // ①-c 브랜드 발주는 본사 재고아이템 원가 = 확인한 청구 단가 (2026-10-09 Fable 판정 §3-2 · Irene «권고대로»).
+    //   매장 ①-b 와 같은 규칙(덮어쓴다 · 기준양 가격 · 청구 단가 ÷ unit_conversion). 거울까지는 storeCost.writeStockItemCost 가 옮긴다.
+    //   재고아이템 주인 = 그 브랜드의 소유자일 때만(발주 생성 때 이미 확인 — 여기서 한 번 더).
+    if (po.entity_type === 'brand' && !totalOnly) {
+      const { ProductIngredient, Brand } = require('../models');
+      const brand = await Brand.findByPk(po.entity_id, { attributes: ['owner_id'], transaction: t });
+      for (const l of lines) {
+        const it = itemById.get(parseInt(l.item_id, 10));
+        const price = money(l.invoiced_unit_price);
+        if (!it || !it.product_ingredient_id || price === null || !brand) continue;
+        const pi = await ProductIngredient.findByPk(it.product_ingredient_id, { transaction: t });
+        if (!pi || Number(pi.owner_user_id) !== Number(brand.owner_id)) continue;
+        const conv = parseFloat(it.unit_conversion) || 1;
+        const newCost = Math.round((price / conv) * (parseFloat(pi.base_quantity) || 1) * 10000) / 10000;
+        await writeStockItemCost(pi, newCost, {
+          transaction: t, userId: actor.changed_by_user_id || null, notes: `Invoice reconcile — ${po.po_number}`,
+          log: { source: 'invoice_reconcile', entity_type: 'brand', entity_id: po.entity_id, purchase_order_id: po.id,
+            seller_type: po.seller_type, seller_entity_id: po.seller_entity_id, changed_by_name: actor.changed_by_name },
         });
       }
     }

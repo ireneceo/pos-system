@@ -85,6 +85,17 @@ async function receiveIntoProductIngredient({ item, po, quantity, userId, t, not
     cost: { unit_cost: incomingPerStockUnit(item) * base, base_quantity: base },
     refs: { purchase_order_id: po.id }, notes: note, userId, transaction: t,
   });
+  // 본사 재고아이템 원가 = **마지막 실제 매입가** (2026-10-09 Fable §3-2 · Irene «권고대로») — 매장 재료 경로와 같은 규칙.
+  //   들어온 값 = 청구가 우선(대조를 먼저 했으면 청구가) · 기준양 가격. 거울(브랜드 공유 재료)까지 storeCost 가 옮긴다.
+  const incomingPerBase = incomingPerStockUnit(item) * base;
+  if (incomingPerBase > 0) {
+    const { writeStockItemCost } = require('./storeCost');
+    await writeStockItemCost(target, incomingPerBase, {
+      transaction: t, userId, notes: note,
+      log: { source: 'receive', entity_type: po.entity_type, entity_id: po.entity_id, purchase_order_id: po.id,
+        seller_type: po.seller_type || null, seller_entity_id: po.seller_entity_id || null },
+    });
+  }
   return { ok: true, stockAfter: next, normalQty: qty };
 }
 
