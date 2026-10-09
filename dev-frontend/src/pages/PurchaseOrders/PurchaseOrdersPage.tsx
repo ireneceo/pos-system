@@ -291,6 +291,8 @@ interface POListRow {
 
 interface SuggestionItem {
   ingredient_id: number;
+  /** 브랜드 본사 재고아이템 줄 (2026-10-09 Fable C-1 #5) */
+  product_ingredient_id?: number | null;
   ingredient_name: string;
   current_stock: number | string;
   par_level?: number | string | null;
@@ -559,7 +561,21 @@ const PurchaseOrdersPage: React.FC = () => {
       const payload = data.data || {};
       let groups: SuggestionGroup[] = [];
       if (Array.isArray(payload.groups)) {
-        groups = payload.groups;
+        // 서버는 { seller_type, seller_entity_id, seller_name, items:[{ ingredient:{id,name,current_stock}, suggested_qty, product_ingredient_id }] }
+        //   를 준다(재고 화면 useBulkOrder 와 같은 응답). 이 패널은 평평한 칸(ingredient_name·suggested_quantity)을 읽어
+        //   품목명·제안 수량이 비어 보였다 — 여기서 한 번 풀어 준다 (2026-10-09 Fable C-1 #5).
+        groups = payload.groups.map((g: any) => ({
+          seller_id: g.seller_id ?? g.seller_entity_id ?? null,
+          seller_type: g.seller_type ?? null,
+          seller_name: g.seller_name ?? null,
+          items: (g.items || []).map((it: any) => it && it.ingredient ? {
+            ingredient_id: it.product_ingredient_id ? 0 : it.ingredient.id,
+            product_ingredient_id: it.product_ingredient_id ?? null,
+            ingredient_name: it.ingredient.name,
+            current_stock: it.ingredient.current_stock,
+            suggested_quantity: it.suggested_qty,
+          } : it),
+        }));
       } else if (Array.isArray(payload.items)) {
         const map = new Map<string, SuggestionGroup>();
         for (const it of payload.items as SuggestionItem[]) {
@@ -791,7 +807,7 @@ const PurchaseOrdersPage: React.FC = () => {
     if (group.seller_id != null) params.set('sellerId', String(group.seller_id));
     if (group.seller_type) params.set('sellerType', group.seller_type);
     const itemPayload = group.items.map(i => ({
-      ingredient_id: i.ingredient_id,
+      ...(i.product_ingredient_id ? { product_ingredient_id: i.product_ingredient_id } : { ingredient_id: i.ingredient_id }),
       quantity: Number(i.suggested_quantity)
     }));
     params.set('items', encodeURIComponent(JSON.stringify(itemPayload)));
@@ -869,7 +885,7 @@ const PurchaseOrdersPage: React.FC = () => {
                 </SuggestionGroupHead>
                 <SuggestionList>
                   {g.items.map((item) => (
-                    <li key={item.ingredient_id}>
+                    <li key={item.product_ingredient_id ? `pi-${item.product_ingredient_id}` : item.ingredient_id}>
                       <span>{item.ingredient_name}</span>
                       <span>
                         {t('list.suggestions.currentStock')}: {Number(item.current_stock).toFixed(2)} ·{' '}
@@ -1339,8 +1355,15 @@ const PurchaseOrdersPage: React.FC = () => {
           <div><strong>{reimburseRow?.po_number}</strong> · {reimburseRow?.seller_name}</div>
           <div>{formatMoney(reimburseRow?.total_amount, reimburseRow?.currency || undefined)}</div>
           <div style={{ marginTop: 8, background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: '8px 12px' }}>
-            · {t('list.reimburse.effectCash', '현금으로 갚으면 열려 있는 시프트의 금고에서 그 금액이 나갑니다.')}<br />
-            · {t('list.reimburse.effectBank', '이체로 갚으면 금고는 움직이지 않습니다.')}
+            {/* 금고(드로어)는 매장에만 있다 — 브랜드·푸드코트 발주는 기록만 남는다 (2026-10-09 Fable C-2 #9) */}
+            {(reimburseRow?.entity_type || 'restaurant') === 'restaurant' ? (
+              <>
+                · {t('list.reimburse.effectCash', '현금으로 갚으면 열려 있는 시프트의 금고에서 그 금액이 나갑니다.')}<br />
+                · {t('list.reimburse.effectBank', '이체로 갚으면 금고는 움직이지 않습니다.')}
+              </>
+            ) : (
+              <>· {t('list.reimburse.effectNoDrawer', '갚은 사실과 방법만 기록됩니다(매장 금고는 움직이지 않습니다).')}</>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>

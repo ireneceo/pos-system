@@ -1,6 +1,7 @@
 {
   "ingredients": {
-    "costNotSet": "Cost not set"
+    "costNotSet": "Cost not set",
+    "categoryRequiredToSave": "Choose a category to save changes."
   },
   "stock": {
     "pickSellerProduct": "Link supplier product",

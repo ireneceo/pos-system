@@ -1373,6 +1373,15 @@
       "failed": "Tidak dapat disimpan.",
       "saved": "Disimpan.",
       "savedChanged": "Disimpan. Jumlah perlu dibayar kini {{total}}."
+    },
+    "tradeActions": {
+      "reupload": "Muat naik semula invois",
+      "reuploadTitle": "Gantikan fail invois?",
+      "reuploadChoose": "Pilih fail baharu",
+      "reuploadBody": "Fail semasa akan digantikan dengan fail baharu. Harga dan jumlah yang telah disemak kekal — semak semula jika invois baharu berbeza.",
+      "uploadFailed": "Muat naik gagal",
+      "attachFailed": "Tidak dapat melampirkan invois",
+      "network": "Ralat rangkaian. Sila cuba lagi."
     }
   },
   "settingsPage.kioskDevices.title": "Tablet kiosk berdaftar",

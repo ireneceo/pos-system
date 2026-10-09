@@ -1373,6 +1373,15 @@
       "failed": "Could not save.",
       "saved": "Saved.",
       "savedChanged": "Saved. Amount to pay is now {{total}}."
+    },
+    "tradeActions": {
+      "reupload": "Re-upload invoice",
+      "reuploadTitle": "Replace the invoice file?",
+      "reuploadChoose": "Choose new file",
+      "reuploadBody": "The current file will be replaced with the new one. Prices and totals already checked stay as they are — check again if the new invoice is different.",
+      "uploadFailed": "Upload failed",
+      "attachFailed": "Could not attach the invoice",
+      "network": "Network error. Please try again."
     }
   },
   "settingsPage.kioskDevices.title": "Registered kiosk tablets",

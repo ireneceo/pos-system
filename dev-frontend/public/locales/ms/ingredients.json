@@ -1,6 +1,7 @@
 {
   "ingredients": {
-    "costNotSet": "Kos belum ditetapkan"
+    "costNotSet": "Kos belum ditetapkan",
+    "categoryRequiredToSave": "Pilih kategori untuk menyimpan perubahan."
   },
   "stock": {
     "pickSellerProduct": "Pautkan produk pembekal",

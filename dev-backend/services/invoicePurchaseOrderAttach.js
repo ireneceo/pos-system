@@ -56,6 +56,8 @@ function purchaseOrderFieldsCamel(po) {
     purchaseOrderTotal: po ? po.total_amount : null,
     purchaseOrderIsExternal: po ? !!po.is_external : false,
     purchaseOrderEntityType: po ? po.entity_type : null,
+    // 발주 주인 id — 청구서 창의 올리기·대조가 «그 발주의 주인» 자격으로 부른다 (2026-10-09 Fable 판정 A-4)
+    purchaseOrderEntityId: po ? po.entity_id : null,
     purchaseOrderStatus: po ? po.status : null,
     purchaseOrderPaymentStatus: po ? po.payment_status : null,
     payableAmount: po ? po.payable_amount : null,

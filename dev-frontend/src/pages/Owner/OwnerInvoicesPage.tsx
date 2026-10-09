@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoicePayAction';
 import { InvoiceActionButtons, INVOICE_ACTIONS_COL } from '../../components/Invoices/InvoiceActionButtons';
-import SupplierInvoiceTotalFix, { canFixSupplierInvoiceTotal } from '../../components/Invoices/SupplierInvoiceTotalFix';
+import TradeInvoiceActions from '../../components/Invoices/TradeInvoiceActions';
 import InvoiceModificationHistory from '../../components/Invoices/InvoiceModificationHistory';
 import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
 import styled from 'styled-components';
@@ -9,6 +9,7 @@ import { printHTMLContent } from '../../utils/billPrint';
 import SuspendedBanner from '../../components/Common/SuspendedBanner';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSearchParams } from 'react-router-dom';
+import { useInvoiceDeepLink } from '../../hooks/useInvoiceDeepLink';
 import { formatCurrency } from '../../utils/currency';
 import { formatAddressHtml, AppLocale } from '../../utils/formatAddress';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
@@ -89,6 +90,9 @@ interface Invoice {
   purchaseOrderNumber?: string | null;
   purchaseOrderTotal?: number | null;
   purchaseOrderEntityType?: string | null;
+  purchaseOrderEntityId?: number | string | null;
+  purchaseOrderStatus?: string | null;
+  purchaseOrderIsExternal?: boolean;
   payableAmount?: number | null;
   payableBasis?: 'purchase_order' | 'supplier_invoice' | null;
   poOrderedAt?: string | null;
@@ -407,6 +411,9 @@ const OwnerInvoicesPage: React.FC = () => {
     purchaseOrderNumber: inv.purchase_order_number ?? null,
     purchaseOrderTotal: inv.purchase_order_total != null ? parseFloat(inv.purchase_order_total) : null,
     purchaseOrderEntityType: inv.purchase_order_entity_type ?? null,
+    purchaseOrderEntityId: inv.purchase_order_entity_id ?? null,
+    purchaseOrderStatus: inv.purchase_order_status ?? null,
+    purchaseOrderIsExternal: !!inv.purchase_order_is_external,
     payableAmount: inv.payable_amount != null ? parseFloat(inv.payable_amount) : null,
     payableBasis: inv.payable_basis ?? null,
     poOrderedAt: inv.po_ordered_at ?? null,
@@ -650,6 +657,8 @@ const OwnerInvoicesPage: React.FC = () => {
     setSelectedInvoice(invoice);
     setShowViewModal(true);
   };
+  // 발주 상세 «청구서 보기» 링크(?invoice=) — 그 청구서 상세 창을 바로 연다 (2026-10-09 Fable C-2 ②)
+  useInvoiceDeepLink([invoicesToPay, allInvoices], handleViewInvoice);
 
   const handleConfirmFreeInvoice = async (invoice: Invoice) => {
     try {
@@ -1193,7 +1202,7 @@ const OwnerInvoicesPage: React.FC = () => {
           const payerCompany = selectedInvoice.payerInfo;
 
           return (
-          <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<>{!selectedInvoice.parentSoaInvoiceId && !selectedInvoice.payViaSoa && (selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && ( selectedInvoice.issuerIsExternal ? ( <ExternalInvoicePayAction invoice={selectedInvoice} onPaid={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); }} renderTrigger={(open) => ( <Button variant="success" onClick={open}> {t('settings:invoicesPage.markPaidLong', 'Mark as paid')} </Button> )} /> ) : ( <Button variant="success" onClick={() => { setShowViewModal(false); handlePayInvoice(selectedInvoice); }}> Pay Now </Button> ) )}{(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) === 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handleConfirmFreeInvoice(selectedInvoice); }}> Confirm </Button> )}{selectedInvoice.uploadedInvoiceUrl && ( <Button variant="secondary" onClick={() => window.open(selectedInvoice.uploadedInvoiceUrl as string, '_blank', 'noopener')}> {t('settings:invoicesPage.viewUploadedInvoice', '올린 인보이스 보기')} </Button> )}{canFixSupplierInvoiceTotal(selectedInvoice) && ( <SupplierInvoiceTotalFix invoice={selectedInvoice} ownerMode onSaved={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); }} renderTrigger={(open) => ( <Button variant="secondary" onClick={open}> {t('settings:invoicesPage.totalFix.button', '총액 수정')} </Button> )} /> )} <Button onClick={() => generateInvoicePDF(selectedInvoice)}> Download PDF </Button><Button onClick={() => handlePrintInvoice(selectedInvoice)}> Print </Button><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<>{!selectedInvoice.parentSoaInvoiceId && !selectedInvoice.payViaSoa && (selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && ( selectedInvoice.issuerIsExternal ? ( <ExternalInvoicePayAction invoice={selectedInvoice} onPaid={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); }} renderTrigger={(open) => ( <Button variant="success" onClick={open}> {t('settings:invoicesPage.markPaidLong', 'Mark as paid')} </Button> )} /> ) : ( <Button variant="success" onClick={() => { setShowViewModal(false); handlePayInvoice(selectedInvoice); }}> Pay Now </Button> ) )}{(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) === 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handleConfirmFreeInvoice(selectedInvoice); }}> Confirm </Button> )}{/* 공급업체 인보이스 네 가지 일 (2026-10-09 Fable 판정 A-1·A-6) — 매장 창과 같은 조각. 줄 단가 대조는 Irene 결정(§3-1) 전까지 숨김 */}<TradeInvoiceActions invoice={selectedInvoice} allowLineReconcile={false} onChanged={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); }} /> <Button onClick={() => generateInvoicePDF(selectedInvoice)}> Download PDF </Button><Button onClick={() => handlePrintInvoice(selectedInvoice)}> Print </Button><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button></>}>
                 {/* Invoice Header with Issuer Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #C7CED6' }}>
                   <div style={{ flex: '0 0 55%' }}>

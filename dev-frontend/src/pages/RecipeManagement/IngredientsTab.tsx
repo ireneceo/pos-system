@@ -485,7 +485,7 @@ const EmptyDescription = styled.p`
 
 const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, categoryRefreshKey }) => {
   // 다섯 칸(§2-2) 라벨은 BG 화면과 **같은 i18n 키**를 쓴다 — 문구를 복사하면 곧 갈라진다(2026-09-06).
-  const { t } = useTranslation(['purchaseOrders', 'common', 'brand']);
+  const { t } = useTranslation(['purchaseOrders', 'common', 'brand', 'ingredients']);
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
@@ -1485,6 +1485,13 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   </option>
                 ))}
               </FormSelect>
+              {/* 공급업체 카탈로그에서 담아 만든 재료(from-catalog)는 분류 없이 생긴다. 분류가 비면 저장 버튼이
+                  말없이 잠겨 «수정이 안 된다» 로 보였다(2026-10-09 K-DINE IPC) — 왜 잠겼는지 여기서 알려 준다. */}
+              {selectedIngredient && !formData.ingredient_category_id && (
+                <div style={{ fontSize: 13, color: '#EF4444', marginTop: 6 }}>
+                  {t('ingredients:ingredients.categoryRequiredToSave', 'Choose a category to save changes.')}
+                </div>
+              )}
             </UIFormGroup>
             <UIFormGroup>
               <FormLabel>{'Supplier source'}</FormLabel>

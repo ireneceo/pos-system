@@ -1373,6 +1373,15 @@
       "failed": "保存失败。",
       "saved": "已保存。",
       "savedChanged": "已保存。应付金额现为 {{total}}。"
+    },
+    "tradeActions": {
+      "reupload": "重新上传发票",
+      "reuploadTitle": "要替换发票文件吗？",
+      "reuploadChoose": "选择新文件",
+      "reuploadBody": "当前文件将被新文件替换。已核对的价格和总额保持不变——如果新发票内容不同，请重新核对。",
+      "uploadFailed": "上传失败",
+      "attachFailed": "无法附加发票",
+      "network": "网络错误，请重试。"
     }
   },
   "settingsPage.kioskDevices.title": "已登记的自助点餐平板",

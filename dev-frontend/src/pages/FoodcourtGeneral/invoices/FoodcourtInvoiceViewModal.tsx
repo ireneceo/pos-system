@@ -6,6 +6,7 @@ import { formatDateTime } from '../../../utils/timezone';
 import { getRestaurantDisplayName } from '../../../utils/restaurantDisplay';
 import { formatAddress, formatEntityAddress, AppLocale } from '../../../utils/formatAddress';
 import { Invoice, Manager, Restaurant, CompanySettings } from './types';
+import TradeInvoiceActions from '../../../components/Invoices/TradeInvoiceActions';
 import {
   Button,
   StatusBadge,
@@ -32,6 +33,8 @@ interface FoodcourtInvoiceViewModalProps {
   setShowLinkSearchDropdown: (v: boolean) => void;
   handleLinkSearch: (query: string) => void;
   handleLinkAccount: (targetType: 'restaurant' | 'manager', targetData: Restaurant | Manager) => void;
+  /** 공급업체 인보이스 올리기·총액 수정 뒤 (목록 새로고침) — 2026-10-09 Fable 판정 A-1 */
+  onChanged?: () => void;
 }
 
 const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
@@ -49,6 +52,7 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
   setShowLinkSearchDropdown,
   handleLinkSearch,
   handleLinkAccount,
+  onChanged,
 }) => {
   const { t, i18n } = useTranslation('foodcourt');
 
@@ -71,7 +75,7 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
 
   return (
     <>
-      <CommonModal isOpen={true} onClose={onClose} title="Invoice Details" size="large" footer={<><Button variant="secondary" onClick={onClose}>{t('foodcourt:foodcourtInvoicesPage.close')}</Button></>}>
+      <CommonModal isOpen={true} onClose={onClose} title="Invoice Details" size="large" footer={<>{/* 공급업체 인보이스 네 가지 일 — 매장·오너·브랜드 창과 같은 조각 (2026-10-09 Fable 판정 A-1) */}<TradeInvoiceActions invoice={invoice as any} onChanged={onChanged} /><Button variant="secondary" onClick={onClose}>{t('foodcourt:foodcourtInvoicesPage.close')}</Button></>}>
 
         {/* Invoice Header with Company Info */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #C7CED6' }}>

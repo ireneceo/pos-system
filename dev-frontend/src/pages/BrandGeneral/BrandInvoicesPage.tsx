@@ -3,6 +3,7 @@ import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoiceP
 import { InvoiceActionButtons, INVOICE_ACTIONS_COL } from '../../components/Invoices/InvoiceActionButtons';
 import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
 import { useSearchParams } from 'react-router-dom';
+import { useInvoiceDeepLink } from '../../hooks/useInvoiceDeepLink';
 import { printHTMLContent } from '../../utils/billPrint';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { formatCurrency, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
@@ -1187,6 +1188,8 @@ const BrandInvoicesPage: React.FC = () => {
   };
 
   const handleViewInvoice = (invoice: Invoice) => { setSelectedInvoice(invoice); setShowViewModal(true); };
+  // 발주 상세 «청구서 보기» 링크(?invoice=) — 그 청구서 상세 창을 바로 연다 (2026-10-09 Fable C-2 ②)
+  useInvoiceDeepLink([invoicesToPay, paidInvoicesList, invoices], handleViewInvoice);
 
   const handleEditInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -1676,6 +1679,7 @@ const BrandInvoicesPage: React.FC = () => {
             showLinkSearchDropdown={showLinkSearchDropdown} setShowLinkSearchDropdown={setShowLinkSearchDropdown}
             handleLinkSearch={handleLinkSearch} handleLinkAccount={handleLinkAccount}
             soaChildren={soaChildrenOf(selectedInvoice)}
+            onChanged={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchPaidInvoices(); }}
           />
         )}
 

@@ -13,6 +13,8 @@ export interface SuggestionRow {
   seller_name: string | null;
   ingredient_seller_product_id: number | null;
   unit_price: number;
+  /** 브랜드(BG) 본사 재고아이템 줄이면 그 id — 이때 ingredient_id 자리도 같은 id(목록 키)라 보내는 칸만 다르다 (2026-10-09 Fable C-1 #5) */
+  product_ingredient_id?: number | null;
 }
 
 export interface BulkOrderItem extends SuggestionRow {
@@ -67,7 +69,8 @@ export function useBulkOrder() {
             seller_entity_id: g.seller_entity_id,
             seller_name: g.seller_name,
             ingredient_seller_product_id: it.seller_source?.id || null,
-            unit_price: parseFloat(it.seller_source?.unit_price) || 0
+            unit_price: parseFloat(it.seller_source?.unit_price) || 0,
+            product_ingredient_id: it.product_ingredient_id ?? null
           });
         }
       }
@@ -152,7 +155,8 @@ export function useBulkOrder() {
       seller_type: items[0].seller_type,
       seller_entity_id: items[0].seller_entity_id,
       items: items.map(it => ({
-        ingredient_id: it.ingredient_id,
+        // 브랜드 재고아이템 줄은 product_ingredient_id 로 보낸다 — 서버 발주 생성이 그 칸으로 재고아이템 줄을 만든다
+        ...(it.product_ingredient_id ? { product_ingredient_id: it.product_ingredient_id } : { ingredient_id: it.ingredient_id }),
         ingredient_seller_product_id: it.ingredient_seller_product_id,
         quantity_ordered: it.quantity,
         unit_price: it.unit_price

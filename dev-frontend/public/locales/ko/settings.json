@@ -1373,6 +1373,15 @@
       "failed": "저장하지 못했습니다.",
       "saved": "저장했습니다.",
       "savedChanged": "저장했습니다. 낼 금액이 {{total}} 이 되었습니다."
+    },
+    "tradeActions": {
+      "reupload": "인보이스 다시 올리기",
+      "reuploadTitle": "인보이스 파일을 바꿀까요?",
+      "reuploadChoose": "새 파일 고르기",
+      "reuploadBody": "지금 파일이 새 파일로 바뀝니다. 이미 확인한 가격·총액은 그대로 남습니다 — 새 인보이스 내용이 다르면 다시 대조해 주세요.",
+      "uploadFailed": "올리지 못했습니다",
+      "attachFailed": "인보이스를 붙이지 못했습니다",
+      "network": "네트워크 오류입니다. 다시 시도해 주세요."
     }
   },
   "settingsPage.kioskDevices.title": "등록된 키오스크 태블릿",

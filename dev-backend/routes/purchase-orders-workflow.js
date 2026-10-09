@@ -1151,6 +1151,46 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
         }
       }
 
+      // 문제분(파손·오배송 → 자동 반품 / 부족·보류 → 줄에 기록) — 매장 재료 줄과 BG 재고아이템 줄이 **같은 블록**을 쓴다
+      //   (2026-10-09 Fable 판정 C-1 #1). 예전 BG 줄은 정상분만 처리하고 나머지를 조용히 버려, 반품도 기록도 없이
+      //   발주가 partial_received 에 영원히 머물렀다(화면은 5버튼·«자동 반품» 안내를 그대로 보여 줬다). 재고는 안 건드린다.
+      const recordDiscrepancy = async (split, fallbackUnit) => {
+        const qty = split.quantity;
+        const reason = split.reason;
+        if (reason === 'damaged' || reason === 'wrong_item') {
+          const sourceEvent = reason === 'damaged' ? 'receive_damage' : 'receive_wrong_item';
+          const ar = await PurchaseOrderReturn.create({
+            purchase_order_id: po.id,
+            purchase_order_item_id: item.id,
+            // 발주 라인과 같은 모양으로 — BG 본사 라인은 ingredient_id 가 없다(예전엔 500)
+            ingredient_id: item.ingredient_id,
+            product_ingredient_id: item.product_ingredient_id || null,
+            quantity: qty,
+            unit: item.unit || fallbackUnit,
+            unit_price: parseFloat(item.unit_price) || 0,
+            reason: split.discrepancy_note || `Auto-generated: ${reason} on receive`,
+            status: 'requested',
+            requested_by_user_id: req.user.id,
+            auto_generated: true,
+            source_event: sourceEvent
+          }, { transaction: t });
+          autoReturns.push({
+            id: ar.id, item_id: item.id, ingredient_id: item.ingredient_id,
+            product_ingredient_id: item.product_ingredient_id || null,
+            quantity: qty, reason
+          });
+        } else if (reason === 'short' || reason === 'pending') {
+          // 보고만 — discrepancy 컬럼 update
+          await PurchaseOrderItem.update({
+            discrepancy_reason: reason,
+            discrepancy_note: split.discrepancy_note || null,
+            discrepancy_reported_at: new Date(),
+            discrepancy_reported_by_user_id: req.user.id
+          }, { where: { id: item.id }, transaction: t });
+          discrepancyLines.push({ item_id: item.id, quantity: qty, reason });
+        }
+      };
+
       // 레시피 없는 프로덕트 수령 — 정상분만 프로덕트 수량에 더한다(2026-09-01).
       // 재고 반영은 applyReceipt 단일 소스(P4-2). 파손·부족분은 재고에 안 넣는다(재료 경로와 같은 규칙).
       if (item.product_id || item.brand_product_id) {
@@ -1178,7 +1218,8 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
         }
         let normalB = 0;
         for (const split of splits) {
-          if (split.reason !== null) continue; // BG: 정상분만 재고 반영
+          // 재고는 정상분만. 문제분은 매장 줄과 같은 블록으로 반품·기록(2026-10-09 Fable C-1 #1)
+          if (split.reason !== null) { await recordDiscrepancy(split, pIng.unit); continue; }
           normalB = Math.round((normalB + split.quantity) * 100) / 100;
           const r = await applyReceipt({
             item, po, quantity: split.quantity, userId: req.user.id, t,
@@ -1229,38 +1270,10 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
           });
           if (!r.ok) { await t.rollback(); return res.status(400).json({ success: false, message: r.message }); }
           currentStock = r.stockAfter;
-        } else if (reason === 'damaged' || reason === 'wrong_item') {
-          // Auto returns — 재고 변동 없음
-          const sourceEvent = reason === 'damaged' ? 'receive_damage' : 'receive_wrong_item';
-          const ar = await PurchaseOrderReturn.create({
-            purchase_order_id: po.id,
-            purchase_order_item_id: item.id,
-            // 발주 라인과 같은 모양으로 — BG 본사 라인은 ingredient_id 가 없다(예전엔 500)
-            ingredient_id: item.ingredient_id,
-            product_ingredient_id: item.product_ingredient_id || null,
-            quantity: qty,
-            unit: item.unit || ingredient.unit,
-            unit_price: parseFloat(item.unit_price) || 0,
-            reason: split.discrepancy_note || `Auto-generated: ${reason} on receive`,
-            status: 'requested',
-            requested_by_user_id: req.user.id,
-            auto_generated: true,
-            source_event: sourceEvent
-          }, { transaction: t });
-          autoReturns.push({
-            id: ar.id, item_id: item.id, ingredient_id: item.ingredient_id,
-            quantity: qty, reason
-          });
-        } else if (reason === 'short' || reason === 'pending') {
-          // 보고만 — discrepancy 컬럼 update
-          await PurchaseOrderItem.update({
-            discrepancy_reason: reason,
-            discrepancy_note: split.discrepancy_note || null,
-            discrepancy_reported_at: new Date(),
-            discrepancy_reported_by_user_id: req.user.id
-          }, { where: { id: item.id }, transaction: t });
-          lastDiscrepancyReason = reason;
-          discrepancyLines.push({ item_id: item.id, quantity: qty, reason });
+        } else {
+          // 파손·오배송 → 자동 반품 / 부족·보류 → 줄에 기록 (공용 블록 — BG 재고아이템 줄과 같음)
+          await recordDiscrepancy(split, ingredient.unit);
+          if (reason === 'short' || reason === 'pending') lastDiscrepancyReason = reason;
         }
       }
 

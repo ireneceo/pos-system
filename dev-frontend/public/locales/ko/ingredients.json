@@ -1,6 +1,7 @@
 {
   "ingredients": {
-    "costNotSet": "원가 미설정"
+    "costNotSet": "원가 미설정",
+    "categoryRequiredToSave": "분류를 골라야 저장할 수 있어요."
   },
   "stock": {
     "pickSellerProduct": "공급업체 상품 연결",

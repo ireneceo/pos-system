@@ -33,16 +33,44 @@ export interface TotalFixInvoice {
   reconcileInvoicedLines?: number | null;
   /** 오너 화면: 그 청구서의 매장 id (세션 저장값 말고) */
   restaurantId?: number | string | null;
+  /** 연결 발주의 주인 — 올리기·대조·총액 수정이 이 자격으로 부른다 (2026-10-09 Fable 판정 A-4) */
+  purchaseOrderEntityType?: string | null;
+  purchaseOrderEntityId?: number | string | null;
+  purchaseOrderStatus?: string | null;
+  uploadedInvoiceUrl?: string | null;
+}
+
+/**
+ * 청구서 창에서 발주 라우트를 부를 때 붙이는 스코프 — **그 청구서에 붙은 발주의 주인** (2026-10-09 Fable 판정 A-4).
+ *   세션 저장값·로그인 사용자의 기본 실체가 아니라 발주 행의 값이다. 매장 관리자·푸드코트는 서버가 무시하고,
+ *   둘째 브랜드(BG)는 소유 확인 뒤, 오너는 ownership 확인 뒤 그 실체로 전환된다 — 역할별 분기 없음.
+ *   발주 주인을 모르는 옛 응답이면 오너 화면의 매장 id 로 대신한다(10-07 동작 그대로).
+ */
+export function tradeInvoiceScopeQS(inv: TotalFixInvoice | null | undefined): string {
+  if (!inv) return '';
+  const type = inv.purchaseOrderEntityType;
+  const id = inv.purchaseOrderEntityId;
+  if (type && id != null && id !== '') return `entity_type=${encodeURIComponent(type)}&entity_id=${encodeURIComponent(String(id))}`;
+  if (inv.restaurantId != null && inv.restaurantId !== '') return `entity_type=restaurant&entity_id=${encodeURIComponent(String(inv.restaurantId))}`;
+  return '';
+}
+
+/** url 에 스코프를 붙인다(이미 ? 가 있으면 &). */
+export function withTradeInvoiceScope(url: string, inv: TotalFixInvoice | null | undefined): string {
+  const qs = tradeInvoiceScopeQS(inv);
+  return qs ? `${url}${url.includes('?') ? '&' : '?'}${qs}` : url;
 }
 
 /** D2 — 외부 공급업체 거래 청구서 + 연결 발주 + 취소 아님. 가입 판매자 청구서는 그쪽이 발행 주체라 버튼 없음. */
-export function canFixSupplierInvoiceTotal(inv: TotalFixInvoice | null | undefined): boolean {
+export function isExternalTradeInvoice(inv: TotalFixInvoice | null | undefined): boolean {
   return !!inv && inv.invoiceCategory === 'trade' && !!inv.purchaseOrderId && !!inv.issuerIsExternal && inv.status !== 'cancelled';
 }
+/** 옛 이름 — 청구서 창 네 버튼(올리기·보기·대조·총액 수정)이 같은 판정을 쓴다 (2026-10-09 Fable 판정 A-2) */
+export const canFixSupplierInvoiceTotal = isExternalTradeInvoice;
 
 interface Props {
   invoice: TotalFixInvoice;
-  /** 오너 화면이면 true — 그 청구서의 매장 자격으로 저장한다 */
+  /** (옛 prop — 스코프는 이제 tradeInvoiceScopeQS 가 발주 주인으로 정한다. 넘겨도 무시) */
   ownerMode?: boolean;
   renderTrigger: (open: () => void) => React.ReactNode;
   /** 저장 뒤(목록 새로고침 등) */
@@ -56,7 +84,7 @@ const num = (v: unknown): number | null => {
 };
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
-export default function SupplierInvoiceTotalFix({ invoice, ownerMode = false, renderTrigger, onSaved }: Props) {
+export default function SupplierInvoiceTotalFix({ invoice, renderTrigger, onSaved }: Props) {
   const { t } = useTranslation(['settings']);
   const [open, setOpen] = useState(false);
   const [total, setTotal] = useState('');
@@ -141,8 +169,7 @@ export default function SupplierInvoiceTotalFix({ invoice, ownerMode = false, re
     setBusy(true);
     setError(null);
     try {
-      let url = `/api/purchase-orders/${invoice.purchaseOrderId}/reconcile`;
-      if (ownerMode && invoice.restaurantId) url += `?entity_type=restaurant&entity_id=${invoice.restaurantId}`;
+      const url = withTradeInvoiceScope(`/api/purchase-orders/${invoice.purchaseOrderId}/reconcile`, invoice);
       const body: any = { total_only: true, invoice: { total: r2(entered) } };
       if (number.trim()) body.invoice.number = number.trim();
       if (date) body.invoice.date = date;

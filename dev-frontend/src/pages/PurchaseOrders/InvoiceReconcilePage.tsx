@@ -12,7 +12,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getCurrencySymbol } from '../../utils/currency';
 import styled from 'styled-components';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Container, Content, Modal as CommonModal, ModalButton } from '../../components/UI';
 import { formatGap, gapColor } from '../../utils/reconcileGap';
@@ -289,6 +289,15 @@ const num = (v: unknown): number => {
 const InvoiceReconcilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  // 청구서 창에서 들어오면 «그 발주의 주인» 스코프가 붙어 온다 (2026-10-09 Fable 판정 A-5) — 그대로 서버에 넘긴다.
+  //   오너·둘째 브랜드가 이걸로 그 실체 자격이 된다. 쿼리가 없으면 오늘과 같다(발주 목록·상세에서 오는 길).
+  const scopeQS = useMemo(() => {
+    const sp = new URLSearchParams(location.search);
+    const type = sp.get('entity_type');
+    const eid = sp.get('entity_id');
+    return type && eid ? `?entity_type=${encodeURIComponent(type)}&entity_id=${encodeURIComponent(eid)}` : '';
+  }, [location.search]);
   const { t } = useTranslation(['purchaseOrders', 'common']);
   const { getStoreInfo } = useStore() as any;
   const timeZone = getStoreInfo?.()?.timeZone;
@@ -326,7 +335,7 @@ const InvoiceReconcilePage: React.FC = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/purchase-orders/${id}/reconcile`, {
+      const res = await fetch(`/api/purchase-orders/${id}/reconcile${scopeQS}`, {
         headers: { Authorization: `Bearer ${getAuthToken()}` }
       });
       const body = await res.json();
@@ -373,7 +382,7 @@ const InvoiceReconcilePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, scopeQS]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -559,7 +568,7 @@ const InvoiceReconcilePage: React.FC = () => {
     setSaving(true);
     if (!totalOnly) setTotalMismatch(null);
     try {
-      const res = await fetch(`/api/purchase-orders/${id}/reconcile`, {
+      const res = await fetch(`/api/purchase-orders/${id}/reconcile${scopeQS}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
         body: JSON.stringify({

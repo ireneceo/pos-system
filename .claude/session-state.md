@@ -4,6 +4,36 @@
 **작업 상태:** ✅ 판매자 품목별 발송 표시 완료(개발서버 · Fable 게이트 PASS · 운영 배포 대기) — 개발서버만 미배포 묶음은 아래 각 «완료» 절 참조(결제 설정 계정 하나 · 청구서 To Confirm · 청구서 권한 경계 · 재고→발주→원가 0~3 · 배송 지역 · 품목별 발송)
 
 
+### 완료 (2026-10-09) — K-DINE IPC Stock Items «GIT 상품 재료 수정 안 됨» (개발서버 · 운영 배포 대기) [Claude Code · 백그라운드 작업방 666e085a]
+- Irene: «K-DINE IPC 스톡아이템에 GIT브랜드제너럴이랑 연결된 재료 수정이 안되는데 GIT가 판매하는 상품인» (문장 끝 잘림)
+- 원인(개발서버 재현): 공급업체 카탈로그에서 담아 만든 매장 재료(`services/restaurantCatalogLink.js` Ingredient.create)는 **분류(ingredient_category_id) 없이** 생긴다(개발 DB 13/13). 수정 창은 분류를 필수로 보고(`IngredientsTab.tsx` isFormValid) 저장 버튼을 **이유 표시 없이** 잠근다 → 무엇을 고쳐도 «Update» 가 회색. 서버 PUT 은 분류를 요구하지 않음
+- 고침: 수정 창 분류 칸 아래에 «분류를 골라야 저장할 수 있어요» 문구(분류 비었을 때만) · i18n ingredients ns 4언어. 규칙(분류 필수)은 그대로
+- 확인 못 함: 운영 조회가 권한 거부(자동 판정 «Production Reads») → K-DINE IPC 해당 재료가 정말 분류 없는 매장 재료인지 운영 데이터로 확인 못 함. 만약 그 재료가 **브랜드(K-DINE) 소유 재료**(GIT 상품 거울, 예 ing#23 K-Bulgogi)라면 매장에선 Edit 버튼이 아예 없다 — 설계상 읽기전용(docs/BRAND_STOCK_SHARING_DESIGN.md), 이름·단위·원가는 GIT 상품, 분류·최소치는 K-DINE 브랜드 화면에서
+- Fable 안 씀 — 화면 문구 표시 단순 버그(공용 기준 «쓰지 않는 곳»)
+- 검증: build:dev 1회 · 실브라우저 클릭 흐름 7/7(매장5 RA · 재료96 · 원복 확인) · i18n 오류 0 · print-guard 8/8 · design-guard 신규 0. verify-all --full 은 안 돌림(배포 때 묶어서). ⚠ 이 수정으로 방 e9818ea9 의 Fable 통과 마커(6c5f…)가 지문 변경으로 무효 → 현재 24d004a8ca89, 통과·skip 안 찍음
+
+### 답 기다림 (2026-10-09) — K-DINE 브랜드 메뉴 ↔ IPC 매장 메뉴 정리 방식 (검토만 · 운영 쓰기 0 · 코드 0) [Claude Code · 백그라운드 작업방 937534a4]
+- Irene: «레스토랑이 같은 메뉴 바꾸면 역 동기화 있는 거야? … K-DINE IPC 레스토랑 관리자가 바꾼 메뉴가 지금 최종인데 브랜드제너럴입장이랑 어떻게 정리해야 하는지 검토하고 얘기 줘.»
+- Fable 판정: `backups/fable-pending/fable-verdict-20261009-kdine-menu-reconcile.md` (git 무시 폴더 — .claude/ 나 docs/ 에 두면 방 e9818ea9 청구서 작업의 Fable 통과 마커가 죽는다. 실측: 파일 있으면 지문 625d…, 빼면 6c5f… 유효). 사실 자료 `~/.claude/jobs/937534a4/tmp/fable-input-kdine-menu.md`
+- 운영 실측(SELECT): 역방향 코드 0 · 브랜드2 메뉴 104 = 9-13 사본 그대로 · 매장8 111(연결 100) — 이름 30·가격 21·이미지 66·세트 15·레시피 12 다름, 매장에만 11, 브랜드에만 4 · 매장 옵션그룹 12 전부 미러 없음 · 지금 «내려보내기»/«브랜드 업데이트 받기» 누르면 세트 15 덮임·옛 옵션 6 중복·지운 4개 부활 · Kate(user 19) = Restaurant Admin, brand_id NULL, user_contexts 0행 → **브랜드 관리자 모자 미부여**
+- 무엇을: 정리 방식 A(① adopt --refresh 로 브랜드 ← 매장 현재값 → ② Kate 브랜드 모자 부여 → ③ --lock) / A′(① 만 먼저) / C(그대로) — Fable 권고 A. 역방향 자동 동기화는 안 만든다(Fable 권고 예)
+- 왜: 운영 데이터 쓰기 + 편집 자리 이동이라 Irene 결정
+- 답이 오면: 운영에서 `--refresh` 버전 스크립트 있는지 확인 → `node scripts/adopt-restaurant-menus-to-brand.js --brand 2 --restaurant 8 --refresh` 미리보기 표 → Irene 승인 → 밤(현지 22~09시) `--apply` → 검사 SQL(연결 111·다른 칸 0·미러 NULL 0·브랜드에만 4 비활성) → Kate 모자 부여(SA 화면) → `--lock` 미리보기 → 승인 → apply → Fable 게이트 1회. 그동안 브랜드 «내려보내기»·매장 «브랜드 업데이트 받기» 누르지 않기
+- 방 e9818ea9 배포 뒤 할 일: 판정 파일을 .claude/ 로 옮기고 `docs/BRAND_MENU_SYSTEM.md` 끝에 «2026-10-09 판정» 절 원문 추가
+
+### 답 기다림 (2026-10-09) — 청구서 창 네 가지 일(전 역할) + 브랜드 발주 고장 3개 (Fable 게이트 PASS · 운영 배포 대기): 오너 가격 대조 허용 · 브랜드 원가 자동 반영 [Claude Code · 백그라운드 작업방 e9818ea9]
+- Irene: «브랜드제너럴도 발주하는 과정 레스토랑처럼 제대로 같이 개발된건지 비교해주고. 인보이스페이지에서는 어떤 역할이든 인보이스업로드(있을경우 재업로드) 가격확인 비교수정 인보이스 보기 기능 토탈금액 변경이 다 있어야 해. 주문내역에만 있으면 불편해. 오너 레스토랑관리자 다.»
+- 설계 = `.claude/fable-design-20261009-invoice-page-actions.md` (새 저장 경로·DB 칸·마이그 0)
+- 구현(개발서버, 미커밋 · 운영 쓰기 0): 공용 조각 `components/Invoices/TradeInvoiceActions.tsx`(올리기·다시 올리기(확인창)·올린 인보이스 보기·가격 대조·총액 수정) → 매장·오너·브랜드·푸드코트 청구서 상세 창 4곳 · 스코프 = 그 청구서 발주의 주인(`tradeInvoiceScopeQS`, 서버 응답에 purchaseOrderEntityId 칸) · 대조 화면이 스코프 전달 · 오너 upload-invoice 허용(buyerScope 1줄) · 오너 가격 대조 버튼은 숨김(아래 ② 대기)
+- 브랜드 발주 고장 수정: 수령 문제분(파손·부족) 반품·기록 · 발주 제안 = 본사 재고아이템 · 재고 화면 «카트에 담기» 안 보이던 것(`utils/poCart.ts`) · 제안 «발주 만들기» 수량 전달 · 발주 상세 «청구서 보기» 링크(?invoice=) 4화면 · 브랜드 정산 창 금고 문구
+- 검증: health-check invoice-actions 6/6 + 고장주입 3종 반증 · 클릭 흐름 4역할 50/50(BG 는 둘째 브랜드) · #6 수정 전/후 재현 · verify-all --full 23/24(✗ 배포 기록 — 배포 때) · 타입 기준선 신규 0 · mount sweep 크래시 0 · print-guard 8/8
+- **Fable 게이트 PASS** `.claude/fable-verdict-20261009-invoice-page-actions-gate.md` (마커 지문 6c5f7da6a88a · health 341/341 · 설계 밖 변경 0 · 허용 이탈 2건). (해결) ⓪ 검사 도중 허락 창 닫힘 → 검사가 이어서 끝남. 10-08 02:26 부터 남아 있던 `.claude/.fable-gate-skip` 은 Fable 지시로 삭제(훅 복구, 우회 기록은 로그에 있음)
+- 배포 때(Irene /배포): SW 버전 1회 올리고 빌드 1회(그 외 코드 손대지 않음 — 마커) · 문서 §8-8 등은 배포 뒤
+- 무엇을: ① 오너 가격 대조(줄 단가 → 그 매장 원가) 허용 = 10-07 «오너 총액만» 번복 — Fable 권고 허용 ② 브랜드 발주 매입가 → 본사 재고아이템 원가 자동 반영(수령·대조) — Fable 권고 매장과 같게
+- 왜: 허락 창은 Irene 만 닫을 수 있음 · ①② 는 Irene 결정(Fable 판정 §3)
+- 답이 오면: ① 허용이면 cost-reconciliation OWNER_TOTAL_ONLY 제거 · App.tsx 대조 화면에 오너 · 조각 allowLineReconcile 플래그 제거 · health T2 반전 / ② 같게면 수령·대조 브랜드 분기에 unit_cost 쓰기+로그(전파 범위 1회 실측 먼저) → 빌드 1회 → verify-all --full → Fable 게이트
+- 다음 할 일(무관): 문서 §8-8(배포 뒤) · 레시피 없는 프로덕트 줄 수령 문제분도 버려짐(판정 범위 밖 — 기록만) · 다브랜드 BG 발주 화면 전체 스코프(별도 사안)
+
 ### 완료 (2026-10-09) — 판매자 «품목별 발송 표시» (개발서버 · Fable 게이트 PASS · 운영 배포 대기) [Claude Code · 백그라운드 작업방 7ba2c8b8]
 - Irene: «발송을 나눠서 할 때 어떻게 해?» → Fable 설계(수량 분할안) → Irene «배송을 했냐 안했냐의 업무처리 때문이야. 그럼 그냥 배송했다 안했다 개별표시만 하게 하던지 간략한 방법 찾아봐» · «그대로» → 개정안(줄마다 보냄 표시) 구현
 - 판정: `.claude/fable-verdict-20261008-partial-shipment.md`(설계·개정) · `.claude/fable-verdict-20261008-partial-shipment-gate.md`(게이트 PASS · 이탈 8건 전부 수용)

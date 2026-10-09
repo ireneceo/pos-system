@@ -21,6 +21,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { poCartStorageKey, poCartNamespacedKey, hydratePoCart } from '../../utils/poCart';
 import { useTabParam } from '../../hooks/useTabParam';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
@@ -1100,7 +1101,7 @@ const NewPurchaseOrderPage: React.FC = () => {
   const buyerApiBase = buyerEntity ? `/api/${buyerEntity.type}/${buyerEntity.id}` : null;
   // 2026-06-22 (Irene): 발주 장바구니 영속화. 메모리뿐이라 페이지 이탈 시 담은 내역이 사라지던 문제.
   // buyer 별 localStorage 키에 저장 → 돌아와도 카트 유지. 제출 성공 시 클리어.
-  const cartStorageKey = buyerEntity ? `po-cart:${buyerEntity.type}:${buyerEntity.id}` : null;
+  const cartStorageKey = buyerEntity ? poCartStorageKey(buyerEntity.type, buyerEntity.id) : null;
 
   const [tab, setTab] = useTabParam<'mine' | 'catalog'>('mine');
 
@@ -1270,11 +1271,9 @@ const NewPurchaseOrderPage: React.FC = () => {
   // 한 목록에 재료 · BG 재고아이템 · 레시피 없는 프로덕트가 섞인다. 재료가 아닌 행은
   // 다른 테이블의 id 라 **종류별 네임스페이스 키**로만 구분된다(재료 3번과 프로덕트 3번이
   // 같은 카트 줄로 합쳐지면 엉뚱한 물건을 주문한다). 키를 만드는 곳은 여기 하나뿐이다.
+  //   (재고 화면 «카트에 담기» 도 같은 함수 — utils/poCart, 2026-10-09 Fable C-1 #6)
   const namespacedKeyOf = (row: { product_id?: number; brand_product_id?: number; product_ingredient_id?: number }): string | null =>
-    row.product_id ? `prod-${row.product_id}`
-    : row.brand_product_id ? `bprod-${row.brand_product_id}`
-    : row.product_ingredient_id ? `pi-${row.product_ingredient_id}`
-    : null;
+    poCartNamespacedKey(row);
 
   useEffect(() => {
     if (!toast) return;
@@ -1476,6 +1475,56 @@ const NewPurchaseOrderPage: React.FC = () => {
     else fetchCatalog();
   }, [tab, fetchMine, fetchCatalog, isOwner, setTab]);
 
+
+  // 다른 화면이 담아 둔 줄(재고 화면 «카트에 담기» 등)은 판매처가 비어 있다 — 내 품목이 오면 채운다 (2026-10-09 Fable C-1 #6).
+  //   못 채우면 그 줄은 아래 묶음 계산이 건너뛰어 «Cart (1)» 인데 보이지 않고 보내지지도 않았다.
+  useEffect(() => {
+    if (!myList.length) return;
+    setCart(prev => hydratePoCart(prev, myList));
+  }, [myList]);
+
+  // 발주 내역 «추천» 의 «발주 만들기» 가 넘긴 품목·수량(?items=)을 카트에 담는다 (2026-10-09 Fable C-2 공통결함 ①).
+  //   예전엔 링크만 넘기고 이 화면이 읽지 않아 제안 수량이 사라졌다. 화면 진입당 1회.
+  const suggestedItemsAppliedRef = useRef(false);
+  useEffect(() => {
+    if (suggestedItemsAppliedRef.current || !myList.length) return;
+    const raw = searchParams.get('items');
+    if (!raw) return;
+    suggestedItemsAppliedRef.current = true;
+    let wanted: Array<{ ingredient_id?: number; product_ingredient_id?: number; quantity?: number }> = [];
+    try {
+      const parsed = JSON.parse(raw.startsWith('%') ? decodeURIComponent(raw) : raw);
+      if (Array.isArray(parsed)) wanted = parsed;
+    } catch { return; }
+    setCart(prev => {
+      let next = [...prev];
+      for (const w of wanted) {
+        const qty = Number(w.quantity) > 0 ? Number(w.quantity) : 1;
+        const m = w.product_ingredient_id
+          ? myList.find(r => r.product_ingredient_id === w.product_ingredient_id)
+          : myList.find(r => !r.product_ingredient_id && !r.product_id && !r.brand_product_id && r.id === w.ingredient_id);
+        if (!m || !m.sellers.length) continue;
+        const key = namespacedKeyOf(m) || buildCartKey(m.id);
+        if (next.some(r => r.cart_key === key)) {
+          next = next.map(r => r.cart_key === key ? { ...r, quantity: Math.max(r.quantity, qty) } : r);
+          continue;
+        }
+        const preferred = m.sellers.find(sl => sl.is_preferred) || m.sellers[0];
+        next.push({
+          cart_key: key,
+          ingredient_id: m.id,
+          ingredient_name: m.name,
+          ingredient_unit: m.unit || '',
+          current_stock: m.current_stock ?? null,
+          selected_seller_id: preferred.id,
+          quantity: qty,
+          available_sellers: m.sellers,
+          ...(m.product_ingredient_id ? { product_ingredient_id: m.product_ingredient_id } : {}),
+        });
+      }
+      return next;
+    });
+  }, [myList, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Deep-link from /restaurant/:id/ingredients — auto-enter connect mode for a specific ingredient.
   useEffect(() => {

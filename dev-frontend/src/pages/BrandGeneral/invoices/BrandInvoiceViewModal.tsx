@@ -6,6 +6,7 @@ import { formatDateTime } from '../../../utils/timezone';
 import { getRestaurantDisplayName } from '../../../utils/restaurantDisplay';
 import { formatAddress, formatEntityAddress, AppLocale } from '../../../utils/formatAddress';
 import { Invoice, CompanySettings, Manager, Restaurant } from './types';
+import TradeInvoiceActions from '../../../components/Invoices/TradeInvoiceActions';
 import {
   Button,
   StatusBadge,
@@ -36,6 +37,8 @@ interface BrandInvoiceViewModalProps {
   handleLinkAccount: (targetType: 'restaurant' | 'manager', targetData: Restaurant | Manager) => void;
   /** 정산서(SOA)일 때 묶인 청구서 — 품목표 대신 이 목록을 보여준다 (레스토랑 화면과 같은 표, 2026-10-05) */
   soaChildren?: Invoice[];
+  /** 공급업체 인보이스 올리기·총액 수정 뒤 (목록 새로고침) — 2026-10-09 Fable 판정 A-1 */
+  onChanged?: () => void;
 }
 
 const BrandInvoiceViewModal: React.FC<BrandInvoiceViewModalProps> = ({
@@ -56,6 +59,7 @@ const BrandInvoiceViewModal: React.FC<BrandInvoiceViewModalProps> = ({
   handleLinkSearch,
   handleLinkAccount,
   soaChildren,
+  onChanged,
 }) => {
   const { t, i18n } = useTranslation('brand');
 
@@ -84,7 +88,7 @@ const BrandInvoiceViewModal: React.FC<BrandInvoiceViewModalProps> = ({
 
   return (
     <>
-      <CommonModal isOpen={true} onClose={onClose} title="Invoice Details" size="large" footer={<><Button variant="secondary" onClick={onClose}>{t('brand:brandInvoicesPage.close')}</Button></>}>
+      <CommonModal isOpen={true} onClose={onClose} title="Invoice Details" size="large" footer={<>{/* 공급업체 인보이스 네 가지 일 — 매장·오너 창과 같은 조각 (2026-10-09 Fable 판정 A-1) */}<TradeInvoiceActions invoice={invoice as any} onChanged={onChanged} /><Button variant="secondary" onClick={onClose}>{t('brand:brandInvoicesPage.close')}</Button></>}>
 
         {/* Invoice Header with Company Info */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #C7CED6' }}>

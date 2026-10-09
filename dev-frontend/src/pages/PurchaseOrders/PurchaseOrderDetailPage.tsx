@@ -1533,7 +1533,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                         if (url) {
                           window.open(url, '_blank');
                         } else if ((detail as any).trade_invoice_id) {
-                          navigate(`${invoiceListPath}?id=${(detail as any).trade_invoice_id}`);
+                          navigate(`${invoiceListPath}?invoice=${(detail as any).trade_invoice_id}`);
                         }
                       }}
                     >

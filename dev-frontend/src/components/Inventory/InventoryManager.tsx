@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { poCartStorageKey, poCartNamespacedKey } from '../../utils/poCart';
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -68,11 +69,12 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   const addToPurchaseCart = (ingredient: any) => {
     const brandId = (user as any)?.brand_id;
     if (!brandId) return;
-    const key = `po-cart:brands:${brandId}`;
+    // 저장 키·줄 키는 발주 화면과 같은 함수 (utils/poCart — 2026-10-09 Fable C-1 #6). 판매처는 발주 화면이 열릴 때 채운다.
+    const key = poCartStorageKey('brands', brandId);
     try {
       const raw = localStorage.getItem(key);
       const cart: any[] = raw ? JSON.parse(raw) : [];
-      const cartKey = `pi:${ingredient.id}`;
+      const cartKey = poCartNamespacedKey({ product_ingredient_id: ingredient.id }) as string;
       const existing = cart.find((r) => r.cart_key === cartKey);
       // 부족분 = 최소 재고 - 현재 재고. 0 이하면 최소 주문량(없으면 1)으로 시작한다.
       const shortfall = Math.max(0, (ingredient.min_stock || 0) - (ingredient.current_stock || 0));

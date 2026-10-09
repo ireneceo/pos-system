@@ -59,6 +59,8 @@ const OWNER_ACTING_ROUTES = [
   // 청구서 총액 수정(2026-10-07 Fable 판정 «오너 총액만») — 10-04 «원가대조 403» 의 유일한 예외.
   //   라우트(cost-reconciliation POST)가 오너면 total_only 아닌 요청을 403 OWNER_TOTAL_ONLY 로 거절한다.
   ['POST',   /^\/api\/purchase-orders\/\d+\/reconcile$/],
+  // 공급업체 인보이스 올리기·다시 올리기(2026-10-09 Fable 판정 A-6) — 파일 붙이기는 되돌릴 수 있는 일, 청구서 창에서 부른다.
+  ['POST',   /^\/api\/purchase-orders\/\d+\/upload-invoice$/],
 ];
 
 function isOwnerActingRoute(method, originalUrl) {

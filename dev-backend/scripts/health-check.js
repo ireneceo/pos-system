@@ -6669,6 +6669,185 @@ function definePaymentTests() {
     finally { await cleanCash(fx, made); await closeOpenShifts(fx.demoId); if (ext) await dropSupplierCompany(ext.sc); }
   });
 
+  // ── 청구서 화면 네 가지 일 · 역할 무관 · 스코프 = 발주 주인 (2026-10-09 Fable 판정 · PURCHASE_ORDER_SYSTEM.md §8-8) ────────
+  //   Irene «인보이스페이지에서는 어떤 역할이든 인보이스업로드(있을경우 재업로드) 가격확인 비교수정 인보이스 보기 기능 토탈금액 변경이 다 있어야 해»
+  //   A1 브랜드: /to-pay 행에 purchaseOrderEntityId · 올리기 200 · 총액만 확정 · 다시 올리기 200 → 파일만 바뀌고 대조·총액 기록은 그대로
+  //   A2 오너: upload-invoice — 소유 매장 스코프 200 · 쿼리 없음 403 · 남의 매장 403
+  //   A3 둘째 브랜드(BG 소유 · primary 아님): upload-invoice·GET reconcile — 쿼리 없음 404 · 스코프 200 · 남의 브랜드 403
+  //   A4 가입 공급업체 발주 upload-invoice 400 유지
+  //   C1 브랜드 수령 문제분: 파손 2 + 정상 3 + 부족 1 → 반품 1행(product_ingredient_id) · 줄 short 기록 · 재고 +3 만 · partial_received
+  //   C5 브랜드 발주 제안 = 본사 재고아이템(min_stock>현재) · product_ingredient_id 로 뜬다
+  //   고장주입: ① OWNER_ACTING_ROUTES upload 줄 제거 → A2 ② receive 공통 블록을 재고아이템에서 빼면 → C1 ③ attach purchaseOrderEntityId 제거 → A1
+  const hcUp = (n) => `/uploads/files/hc-${n}-${Date.now()}.pdf`;
+  async function hcExternalSupplier(entityType, entityId, registered = false) {
+    const M = require('../models');
+    return M.SupplierCompany.create({ name: 'ZZ-HC-IPA-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), status: 'active',
+      is_system_registered: registered, registered_by_entity_type: entityType, registered_by_entity_id: entityId });
+  }
+  async function hcBareBrandPo(brandId, sc, userId) {
+    const M = require('../models');
+    return M.PurchaseOrder.create({
+      po_number: 'ZZ-HC-IPA-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5), entity_type: 'brand', entity_id: brandId,
+      seller_type: 'supplier', seller_entity_id: sc.id, status: 'shipped', subtotal: 10, tax_amount: 0, total_amount: 10,
+      currency: 'MYR', created_by_user_id: userId, payment_status: 'unpaid', submitted_at: new Date(),
+    });
+  }
+
+  test('invoice-actions', 'A1 브랜드 청구서 — 행에 발주 주인 id · 올리기 200 · 총액만 확정 · 다시 올리기 → 파일만 바뀌고 대조·총액 그대로', async () => {
+    let f = null;
+    try {
+      f = await hcBrandBuyerExternalPo();
+      if (!f) { console.log(c.gray('      (건너뜀: 브랜드 총괄 없음)')); return true; }
+      if (!f.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${f.rcvStatus})`)); return false; }
+      const lst = await request('GET', '/invoices/to-pay', null, f.auth);
+      const row = (Array.isArray(lst.body) ? lst.body : (lst.body?.data || [])).find((x) => String(x.id) === String(f.inv));
+      if (!row || Number(row.purchaseOrderEntityId) !== Number(f.bg.brand_id) || row.purchaseOrderEntityType !== 'brand') {
+        console.log(c.gray(`      (행에 발주 주인 없음: ${row ? JSON.stringify({ t: row.purchaseOrderEntityType, i: row.purchaseOrderEntityId }) : '행 없음'})`)); return false;
+      }
+      const qs = `entity_type=${row.purchaseOrderEntityType}&entity_id=${row.purchaseOrderEntityId}`;
+      const u1 = hcUp('a1'); const u2 = hcUp('a1b');
+      const up1 = await request('POST', `/purchase-orders/${f.po.id}/upload-invoice?${qs}`, { url: u1, filename: 'a.pdf' }, f.auth);
+      const rc = await request('POST', `/purchase-orders/${f.po.id}/reconcile?${qs}`, { total_only: true, invoice: { total: 33 } }, f.auth);
+      const [mid] = await f.Q('SELECT external_invoice_url, invoice_reconciled_at, invoice_total FROM purchase_orders WHERE id = :p', { p: f.po.id });
+      const up2 = await request('POST', `/purchase-orders/${f.po.id}/upload-invoice?${qs}`, { url: u2, filename: 'b.pdf' }, f.auth);
+      const [end] = await f.Q('SELECT external_invoice_url, invoice_reconciled_at, invoice_total FROM purchase_orders WHERE id = :p', { p: f.po.id });
+      const ok = up1.status === 200 && rc.status === 200 && mid.external_invoice_url === u1 && !!mid.invoice_reconciled_at
+        && up2.status === 200 && end.external_invoice_url === u2
+        && String(end.invoice_reconciled_at) === String(mid.invoice_reconciled_at) && Math.abs(Number(end.invoice_total) - 33) < 0.001;
+      if (!ok) console.log(c.gray(`      (올리기 ${up1.status} 대조 ${rc.status} ${JSON.stringify(mid)} 다시 ${up2.status} ${JSON.stringify(end)})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await hcBrandBuyerCleanup(f); }
+  });
+
+  test('invoice-actions', 'A2 오너 인보이스 올리기 — 소유 매장 스코프 200 · 쿼리 없음 403 · 남의 매장 403', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const { sequelize } = require('../config/database');
+    const jwt = require('jsonwebtoken');
+    const tag = 'zzhcipa' + Date.now().toString(36);
+    const [other] = await hcQ('SELECT id FROM restaurants WHERE is_demo = 1 AND id <> :r ORDER BY id LIMIT 1', { r: fx.demoId });
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, full_name, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@example.com`, 'HC Owner ' + tag] });
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    try {
+      await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (?, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [fx.demoId, uid] });
+      const auth = { Authorization: `Bearer ${jwt.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      ext = await makeExternalPoReceived(fx, { lineTotal: 42 }); made.pos.push(ext.po.id);
+      const u = hcUp('a2');
+      const none = await request('POST', `/purchase-orders/${ext.po.id}/upload-invoice`, { url: u }, auth);
+      const ro = other ? await request('POST', `/purchase-orders/${ext.po.id}/upload-invoice?entity_type=restaurant&entity_id=${other.id}`, { url: u }, auth) : { status: 403 };
+      const mine = await request('POST', `/purchase-orders/${ext.po.id}/upload-invoice?entity_type=restaurant&entity_id=${fx.demoId}`, { url: u, filename: 'o.pdf' }, auth);
+      const [po] = await hcQ('SELECT external_invoice_url FROM purchase_orders WHERE id = :p', { p: ext.po.id });
+      const ok = none.status === 403 && ro.status === 403 && mine.status === 200 && po.external_invoice_url === u;
+      if (!ok) console.log(c.gray(`      (쿼리없음 ${none.status} 남의매장 ${ro.status} 소유매장 ${mine.status} ${JSON.stringify(mine.body).slice(0, 120)} 파일 ${po.external_invoice_url})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      await cleanCash(fx, made); if (ext) await dropSupplierCompany(ext.sc);
+      await sequelize.query('DELETE FROM restaurant_managers WHERE manager_id = ?', { replacements: [uid] });
+      await sequelize.query('DELETE FROM users WHERE id = ?', { replacements: [uid] });
+    }
+  });
+
+  test('invoice-actions', 'A3 둘째 브랜드 발주 — 올리기·대조 화면: 쿼리 없음 404 · 스코프 200 · 남의 브랜드 403', async () => {
+    const { sequelize } = require('../config/database');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const [bg] = await Q("SELECT u.id, u.brand_id FROM users u WHERE u.role = 'Brand General' AND u.is_active = 1 AND u.brand_id IS NOT NULL AND EXISTS (SELECT 1 FROM brands b WHERE b.owner_id = u.id AND b.id <> u.brand_id) ORDER BY (u.email = 'demo-brand@purplehere.com') DESC LIMIT 1");
+    if (!bg) { console.log(c.gray('      (건너뜀: 브랜드 둘 가진 총괄 없음)')); return true; }
+    const [second] = await Q('SELECT id FROM brands WHERE owner_id = :u AND id <> :b ORDER BY id LIMIT 1', { u: bg.id, b: bg.brand_id });
+    const [foreign] = await Q('SELECT id FROM brands WHERE owner_id <> :u OR owner_id IS NULL ORDER BY id LIMIT 1', { u: bg.id });
+    const auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    let sc = null; let po = null;
+    try {
+      sc = await hcExternalSupplier('brand', second.id);
+      po = await hcBareBrandPo(second.id, sc, bg.id);
+      const u = hcUp('a3');
+      const n1 = await request('POST', `/purchase-orders/${po.id}/upload-invoice`, { url: u }, auth);
+      const g1 = await request('GET', `/purchase-orders/${po.id}/reconcile`, null, auth);
+      const qs = `entity_type=brand&entity_id=${second.id}`;
+      const y1 = await request('POST', `/purchase-orders/${po.id}/upload-invoice?${qs}`, { url: u }, auth);
+      const g2 = await request('GET', `/purchase-orders/${po.id}/reconcile?${qs}`, null, auth);
+      const f1 = foreign ? await request('POST', `/purchase-orders/${po.id}/upload-invoice?entity_type=brand&entity_id=${foreign.id}`, { url: u }, auth) : { status: 403 };
+      const f2 = foreign ? await request('GET', `/purchase-orders/${po.id}/reconcile?entity_type=brand&entity_id=${foreign.id}`, null, auth) : { status: 403 };
+      const ok = n1.status === 404 && g1.status === 404 && y1.status === 200 && g2.status === 200 && f1.status === 403 && f2.status === 403;
+      if (!ok) console.log(c.gray(`      (쿼리없음 ${n1.status}/${g1.status} 스코프 ${y1.status}/${g2.status} 남의브랜드 ${f1.status}/${f2.status})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { if (po) await hcCleanupPurchaseOrders(po.id, { waitMs: 0 }); if (sc) await dropSupplierCompany(sc); }
+  });
+
+  test('invoice-actions', 'A4 가입 공급업체 발주는 인보이스 올리기 400 유지', async () => {
+    const { sequelize } = require('../config/database');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const [bg] = await Q("SELECT u.id, u.brand_id FROM users u WHERE u.email = 'demo-brand@purplehere.com' AND u.brand_id IS NOT NULL LIMIT 1");
+    if (!bg) { console.log(c.gray('      (건너뜀: 데모 브랜드 없음)')); return true; }
+    const auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    let sc = null; let po = null;
+    try {
+      sc = await hcExternalSupplier('brand', bg.brand_id, true);
+      po = await hcBareBrandPo(bg.brand_id, sc, bg.id);
+      const r = await request('POST', `/purchase-orders/${po.id}/upload-invoice?entity_type=brand&entity_id=${bg.brand_id}`, { url: hcUp('a4') }, auth);
+      if (r.status !== 400) console.log(c.gray(`      (${r.status})`));
+      return r.status === 400;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { if (po) await hcCleanupPurchaseOrders(po.id, { waitMs: 0 }); if (sc) await dropSupplierCompany(sc); }
+  });
+
+  test('invoice-actions', 'C1 브랜드 수령 문제분 — 파손 2·정상 3·부족 1 → 반품 1행(재고아이템) · 줄 short · 재고 +3 만 · partial_received', async () => {
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const [bg] = await Q("SELECT u.id, u.brand_id FROM users u WHERE u.email = 'demo-brand@purplehere.com' AND u.brand_id IS NOT NULL LIMIT 1");
+    if (!bg) { console.log(c.gray('      (건너뜀: 데모 브랜드 없음)')); return true; }
+    const auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    let sc = null; let po = null; let pi = null;
+    try {
+      pi = await M.ProductIngredient.create({ owner_user_id: bg.id, name: 'ZZ-HC-C1-' + Date.now(), unit: 'kg', unit_cost: 2, current_stock: 10, min_stock: 0, is_active: true });
+      sc = await hcExternalSupplier('brand', bg.brand_id);
+      po = await hcBareBrandPo(bg.brand_id, sc, bg.id);
+      const it = await M.PurchaseOrderItem.create({ purchase_order_id: po.id, product_ingredient_id: pi.id, description: pi.name, unit: 'kg',
+        quantity_ordered: 6, quantity_received: 0, unit_price: 2, line_total: 12 });
+      const r = await request('POST', `/purchase-orders/${po.id}/receive?entity_type=brand&entity_id=${bg.brand_id}`, { items: [{ item_id: it.id, splits: [
+        { quantity: 2, reason: 'damaged' }, { quantity: 3, reason: null }, { quantity: 1, reason: 'short' }] }] }, auth);
+      const rets = await Q('SELECT product_ingredient_id, quantity, auto_generated, source_event FROM purchase_order_returns WHERE purchase_order_id = :p', { p: po.id });
+      const [line] = await Q('SELECT discrepancy_reason, quantity_received FROM purchase_order_items WHERE id = :i', { i: it.id });
+      const [stock] = await Q('SELECT current_stock FROM product_ingredients WHERE id = :i', { i: pi.id });
+      const [st] = await Q('SELECT status FROM purchase_orders WHERE id = :p', { p: po.id });
+      const ok = r.status === 200 && rets.length === 1 && Number(rets[0].product_ingredient_id) === Number(pi.id) && Math.abs(Number(rets[0].quantity) - 2) < 0.001
+        && Number(rets[0].auto_generated) === 1 && rets[0].source_event === 'receive_damage'
+        && line.discrepancy_reason === 'short' && Math.abs(Number(line.quantity_received) - 3) < 0.001
+        && Math.abs(Number(stock.current_stock) - 13) < 0.001 && st.status === 'partial_received';
+      if (!ok) console.log(c.gray(`      (수령 ${r.status} ${r.status !== 200 ? JSON.stringify(r.body).slice(0, 140) : ''} 반품 ${JSON.stringify(rets)} 줄 ${JSON.stringify(line)} 재고 ${stock && stock.current_stock} 상태 ${st && st.status})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      if (po) await hcCleanupPurchaseOrders(po.id, { waitMs: 0 }); if (sc) await dropSupplierCompany(sc);
+      if (pi) { try { await sequelize.query('DELETE FROM inventory_transactions WHERE product_ingredient_id = :i', { replacements: { i: pi.id } }); } catch {} await sequelize.query('DELETE FROM product_ingredients WHERE id = :i', { replacements: { i: pi.id } }); }
+    }
+  });
+
+  test('invoice-actions', 'C5 브랜드 발주 제안 = 본사 재고아이템(최소 재고 > 현재) · product_ingredient_id 로 뜬다', async () => {
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const [bg] = await Q("SELECT u.id, u.brand_id FROM users u JOIN brands b ON b.id = u.brand_id AND b.owner_id = u.id WHERE u.email = 'demo-brand@purplehere.com' LIMIT 1");
+    if (!bg) { console.log(c.gray('      (건너뜀: 데모 브랜드 없음)')); return true; }
+    const auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    let pi = null;
+    try {
+      pi = await M.ProductIngredient.create({ owner_user_id: bg.id, name: 'ZZ-HC-C5-' + Date.now(), unit: 'kg', unit_cost: 1, current_stock: 2, min_stock: 10, is_active: true });
+      const r = await request('GET', '/purchase-orders/suggestions', null, auth);
+      const items = ((r.body && r.body.data && r.body.data.groups) || []).flatMap((g) => g.items || []);
+      const hit = items.find((x) => Number(x.product_ingredient_id) === Number(pi.id));
+      const sharedLeak = items.some((x) => !x.product_ingredient_id);
+      const ok = r.status === 200 && !!hit && Math.abs(Number(hit.suggested_qty) - 13) < 0.001 && !sharedLeak;
+      if (!ok) console.log(c.gray(`      (${r.status} 제안 ${items.length}건 · 내 줄 ${hit ? JSON.stringify({ q: hit.suggested_qty }) : '없음'} · 공유재료 섞임 ${sharedLeak})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { if (pi) await sequelize.query('DELETE FROM product_ingredients WHERE id = :i', { replacements: { i: pi.id } }); }
+  });
+
   // 2026-09-30 Irene 「삭제할 때 이유를 넣게」 — 직접 입력 내역 삭제는 이유 필수 · 활동기록에 남는다.
   test('cash', '현금 내역 삭제는 이유 필수(400) · 이유 있으면 삭제 + 활동기록', async () => {
     const fx = await cashFixtureBase();

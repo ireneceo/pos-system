@@ -5,6 +5,7 @@ import { InvoiceActionButtons } from '../../components/Invoices/InvoiceActionBut
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { printHTMLContent } from '../../utils/billPrint';
 import { useTabParam } from '../../hooks/useTabParam';
+import { useInvoiceDeepLink } from '../../hooks/useInvoiceDeepLink';
 import { formatCurrency, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { useStore } from '../../contexts/StoreContext';
@@ -1007,6 +1008,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
   };
 
   const handleViewInvoice = (invoice: Invoice) => { setSelectedInvoice(invoice); setShowViewModal(true); };
+  // 발주 상세 «청구서 보기» 링크(?invoice=) — 그 청구서 상세 창을 바로 연다 (2026-10-09 Fable C-2 ②)
+  useInvoiceDeepLink([invoicesToPay, paidInvoicesList, invoices], handleViewInvoice);
 
   const handleEditInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -1550,6 +1553,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
             linkSearchResults={linkSearchResults} setLinkSearchResults={setLinkSearchResults}
             showLinkSearchDropdown={showLinkSearchDropdown} setShowLinkSearchDropdown={setShowLinkSearchDropdown}
             handleLinkSearch={handleLinkSearch} handleLinkAccount={handleLinkAccount}
+            onChanged={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchPaidInvoices(); }}
           />
         )}
 

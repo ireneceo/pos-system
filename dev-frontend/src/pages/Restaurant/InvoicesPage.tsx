@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { printHTMLContent } from '../../utils/billPrint';
 import { useSearchParams, useParams } from 'react-router-dom';
@@ -39,14 +39,12 @@ import ApplyCreditModal from '../../components/Referral/ApplyCreditModal';
 import { renderIframeToPdf, renderHtmlDocumentsToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 
 import { getAuthToken } from '../../utils/auth';
-import { getErrorMessage } from '../../utils/apiError';
 import AlertDialog from '../../components/Common/AlertDialog';
 import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoicePayAction';
 import { InvoiceActionButtons, INVOICE_ACTIONS_COL } from '../../components/Invoices/InvoiceActionButtons';
-import SupplierInvoiceTotalFix, { canFixSupplierInvoiceTotal } from '../../components/Invoices/SupplierInvoiceTotalFix';
+import TradeInvoiceActions from '../../components/Invoices/TradeInvoiceActions';
 import InvoiceModificationHistory from '../../components/Invoices/InvoiceModificationHistory';
 import ExternalSoaReconcilePanel from '../../components/Invoices/ExternalSoaReconcilePanel';
 import ExternalSoaIssueButton from '../../components/Invoices/ExternalSoaIssueButton';
@@ -112,6 +110,8 @@ interface Invoice {
   purchaseOrderPaymentStatus?: string | null;
   /** 발주의 구매자 종류 — 결제 모달의 드로어 안내를 가른다 */
   purchaseOrderEntityType?: string | null;
+  purchaseOrderEntityId?: number | string | null;
+  purchaseOrderStatus?: string | null;
   /** 대조 때 적은 공급업체 인보이스 일자 (§8-3 C-4) */
   supplierInvoiceDate?: string | null;
   /** 총액 수정 창·수정 이력 (2026-10-07 Fable 판정 D5·D6) */
@@ -342,7 +342,6 @@ type TabType = 'all' | 'to_pay';
 
 const RestaurantInvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('settings');
-  const navigate = useNavigate();
   const { operationSettings } = useStore();
   const { user, refreshUser } = useAuth();
   // 청구서 결제 권한은 서버 checkPaymentPermission 이 정한다 — Staff 분기가 없어 누르면 403 이었다.
@@ -378,9 +377,6 @@ const RestaurantInvoicesPage: React.FC = () => {
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
   const [confirmingInvoiceId, setConfirmingInvoiceId] = useState<string | null>(null);
   const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
-  // 공급업체 인보이스 올리기 (2026-09-10 Fable A) — 발주 화면의 것과 **같은 라우트**를 쓴다.
-  const supplierInvoiceInputRef = useRef<HTMLInputElement | null>(null);
-  const [uploadingInvoiceId, setUploadingInvoiceId] = useState<string | number | null>(null);
   const [paymentData, setPaymentData] = useState({
     paymentMethod: '',
     transactionId: '',
@@ -419,44 +415,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   // SOA derived view (/soa/current) removed in B1 재설계 — SOA is now a real Invoice record
   // and appears in the regular invoices list. Pay button visibility is driven by `parentSoaInvoiceId`.
 
-  /**
-   * 공급업체가 준 종이(인보이스·영수증)를 이 청구서의 원본 발주에 붙인다.
-   * 발주 화면의 업로드와 **같은 두 단계**다 — 파일 업로드 → 발주에 연결.
-   * 새 라우트도, 두 번째 파일 칸도 만들지 않는다(같은 종이라 `external_invoice_url` 하나를 쓴다).
-   */
-  const handleUploadSupplierInvoice = async (invoice: Invoice, file: File) => {
-    if (!invoice.purchaseOrderId) return;
-    setUploadingInvoiceId(invoice.id);
-    try {
-      const token = getAuthToken();
-      const fd = new FormData();
-      fd.append('files', file);
-      const up = await fetch('/api/upload/files', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
-      const upData = await up.json();
-      if (!up.ok || !upData.success || !upData.data?.[0]) {
-        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: getErrorMessage(upData, 'Upload failed') });
-        return;
-      }
-      const f = upData.data[0];
-      const res = await fetch(`/api/purchase-orders/${invoice.purchaseOrderId}/upload-invoice`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: f.url, filename: f.originalName }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setAlertDlg({ title: t('common:error.title', 'Error') as string, message: getErrorMessage(data, 'Failed to attach invoice') });
-        return;
-      }
-      await fetchAllInvoices();
-      setShowViewModal(false);
-    } catch (e) {
-      console.error(e);
-      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: t('common:networkError', 'Network error') as string });
-    } finally {
-      setUploadingInvoiceId(null);
-    }
-  };
+  // 공급업체 인보이스 올리기는 공용 조각 TradeInvoiceActions 로 옮겼다 (2026-10-09 Fable 판정 A-1).
 
   // Fetch all invoices for this restaurant
   const fetchAllInvoices = async () => {
@@ -527,6 +486,8 @@ const RestaurantInvoicesPage: React.FC = () => {
           payableBasis: inv.payable_basis ?? null,
           purchaseOrderPaymentStatus: inv.purchase_order_payment_status ?? null,
           purchaseOrderEntityType: inv.purchase_order_entity_type ?? null,
+          purchaseOrderEntityId: inv.purchase_order_entity_id ?? inv.purchaseOrderEntityId ?? null,
+          purchaseOrderStatus: inv.purchase_order_status ?? inv.po_status ?? null,
           supplierInvoiceDate: inv.supplier_invoice_date ?? null,
           reconcileInvoicedLines: Number(inv.reconcile_invoiced_lines ?? inv.reconcileInvoicedLines ?? 0) || 0,
           isModified: !!(inv.is_modified ?? inv.isModified),
@@ -1549,60 +1510,12 @@ const RestaurantInvoicesPage: React.FC = () => {
                     {confirmingInvoiceId ? 'Confirming...' : 'Confirm'}
                   </Button>
                 )}
-                {/* 업로드한 인보이스와 발주를 맞춰보러 가는 길 (2026-09-08).
-                    지금까지 대조 화면은 발주 상세에서만 들어갈 수 있어서, 청구서를 보다가
-                    "이게 실제 청구서랑 맞나"를 확인하려면 발주를 따로 찾아가야 했다. */}
-                {/* 공급업체 인보이스 올리기 (2026-09-10 Fable A) — 지금까지는 발주 목록에서만 올릴 수 있어서
-                    청구서를 보다가 종이를 올리려면 발주를 따로 찾아가야 했다. 라우트는 발주 것을 그대로 쓴다
-                    (`POST /purchase-orders/:id/upload-invoice`) — 새 경로를 만들지 않는다. */}
-                {selectedInvoice.purchaseOrderId && selectedInvoice.purchaseOrderIsExternal && !selectedInvoice.uploadedInvoiceUrl && (
-                  <>
-                    <input
-                      ref={supplierInvoiceInputRef}
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png,.webp"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) handleUploadSupplierInvoice(selectedInvoice, f);
-                        e.target.value = '';
-                      }}
-                    />
-                    <Button
-                      variant="secondary"
-                      disabled={uploadingInvoiceId === selectedInvoice.id}
-                      onClick={() => supplierInvoiceInputRef.current?.click()}
-                    >
-                      {uploadingInvoiceId === selectedInvoice.id
-                        ? t('settings:invoicesPage.uploadingSupplierInvoice', 'Uploading...')
-                        : t('settings:invoicesPage.uploadSupplierInvoice', 'Upload supplier invoice')}
-                    </Button>
-                  </>
-                )}
-                {selectedInvoice.uploadedInvoiceUrl && (
-                  <Button variant="secondary" onClick={() => window.open(selectedInvoice.uploadedInvoiceUrl as string, '_blank', 'noopener')}>
-                    {t('settings:invoicesPage.viewUploadedInvoice', '올린 인보이스 보기')}
-                  </Button>
-                )}
-                {/* 총액 수정 (2026-10-07 Fable 판정 D1·D2) — «총액만 대조» 를 이 창에서. 이력이 청구서에 남는다 */}
-                {canFixSupplierInvoiceTotal(selectedInvoice) && (
-                  <SupplierInvoiceTotalFix
-                    invoice={selectedInvoice}
-                    onSaved={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); window.dispatchEvent(new Event('refreshBadgeCounts')); }}
-                    renderTrigger={(open) => (
-                      <Button variant="secondary" onClick={open}>
-                        {t('settings:invoicesPage.totalFix.button', '총액 수정')}
-                      </Button>
-                    )}
-                  />
-                )}
-                {selectedInvoice.purchaseOrderId && (
-                  <Button variant="secondary" onClick={() => navigate(`/pos/purchase-orders/${selectedInvoice.purchaseOrderId}/reconcile`)}>
-                    {selectedInvoice.invoiceReconciledAt
-                      ? t('settings:invoicesPage.viewReconcile', '대조 내역 보기')
-                      : t('settings:invoicesPage.reconcileNow', '인보이스와 대조하기')}
-                  </Button>
-                )}
+                {/* 공급업체 인보이스 네 가지 일 — 올리기·다시 올리기 · 보기 · 가격 대조 · 총액 수정 (2026-10-09 Fable 판정 A-1).
+                    네 역할(매장·오너·브랜드·푸드코트) 청구서 창이 같은 조각을 쓴다. 예전 이 자리의 인라인 업로드는 조각으로 옮겼다. */}
+                <TradeInvoiceActions
+                  invoice={selectedInvoice}
+                  onChanged={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); window.dispatchEvent(new Event('refreshBadgeCounts')); }}
+                />
                 <Button onClick={() => generateInvoicePDF(selectedInvoice)}>
                   Download PDF
                 </Button>

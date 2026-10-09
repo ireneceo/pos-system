@@ -1,6 +1,7 @@
 {
   "ingredients": {
-    "costNotSet": "未设置成本"
+    "costNotSet": "未设置成本",
+    "categoryRequiredToSave": "请选择分类后才能保存。"
   },
   "stock": {
     "pickSellerProduct": "连接供应商商品",

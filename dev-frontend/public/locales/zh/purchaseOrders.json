@@ -101,7 +101,8 @@
       "effectBank": "以转账还款时，不影响钱柜。",
       "confirm": "记录为已还款",
       "failed": "无法记录报销",
-      "drawerSkipped": "没有开启的班次，钱柜未更新。报销记录已保存。"
+      "drawerSkipped": "没有开启的班次，钱柜未更新。报销记录已保存。",
+      "effectNoDrawer": "仅记录还款及方式（不涉及门店钱箱）。"
     },
     "receipt": {
       "failed": "无法附上收据"

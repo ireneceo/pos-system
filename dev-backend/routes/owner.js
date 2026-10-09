@@ -718,6 +718,9 @@ async function attachOwnerInvoicePurchaseOrders(invoices, transformed) {
       purchase_order_total: po ? po.total_amount : null,
       purchase_order_is_external: po ? !!po.is_external : false,
       purchase_order_entity_type: po ? po.entity_type : null,
+      // 발주 주인 id — 청구서 창의 올리기·대조 스코프 (2026-10-09 Fable 판정 A-4)
+      purchase_order_entity_id: po ? po.entity_id : null,
+      purchase_order_status: po ? po.status : null,
       payable_amount: po ? po.payable_amount : null,
       payable_basis: po ? po.payable_basis : null,
       po_ordered_at: po ? po.ordered_at : null,

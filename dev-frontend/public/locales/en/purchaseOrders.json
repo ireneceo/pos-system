@@ -101,7 +101,8 @@
       "effectBank": "Paying back by transfer does not touch the drawer.",
       "confirm": "Mark as paid back",
       "failed": "Could not record the reimbursement",
-      "drawerSkipped": "No shift is open, so the drawer was not updated. The reimbursement is recorded."
+      "drawerSkipped": "No shift is open, so the drawer was not updated. The reimbursement is recorded.",
+      "effectNoDrawer": "Only the payback and method are recorded (no store cash drawer moves)."
     },
     "receipt": {
       "failed": "Could not attach the receipt"

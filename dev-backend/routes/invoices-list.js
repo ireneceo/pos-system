@@ -606,6 +606,8 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
         payable_amount: srcPo ? srcPo.payable_amount : null,
         payable_basis: srcPo ? srcPo.payable_basis : null,
         purchase_order_entity_type: srcPo ? srcPo.entity_type : null,
+        // 발주 주인 id — 청구서 창의 올리기·대조가 «그 발주의 주인» 자격으로 부른다 (2026-10-09 Fable 판정 A-4)
+        purchase_order_entity_id: srcPo ? srcPo.entity_id : null,
         // 발주일 → 수령일 (§8-3 C-3). 프론트는 po_ordered_at/po_received_at/po_status 를 이미 읽는데
         //   서버가 안 보내서, 받은 발주도 목록에서 날짜가 비어 있었다(결함 5).
         po_ordered_at: srcPo ? (srcPo.submitted_at || srcPo.approved_at || srcPo.created_at) : null,

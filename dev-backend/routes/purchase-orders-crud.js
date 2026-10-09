@@ -412,6 +412,60 @@ router.get('/purchase-orders', async (req, res) => {
   }
 });
 
+/**
+ * 브랜드 구매자의 발주 제안 — 본사 재고아이템(ProductIngredient) 중 현재 재고 < 최소 재고 (2026-10-09 Fable 판정 C-1 #5).
+ *   재고아이템 주인 = 그 브랜드의 owner(BG). 제안 수량·묶음 규칙은 매장 분기와 같다(min×1.5 − 현재, 우선 판매처별 묶음).
+ *   행 모양도 매장 분기와 같고, `product_ingredient_id` 를 더 싣는다 — 화면이 재고아이템 줄로 담는다.
+ */
+async function brandStockItemSuggestions(req) {
+  const { ProductIngredient } = require('../models');
+  const Brand = require('../models/Brand');
+  const b = await Brand.findByPk(req.buyerEntity.id, { attributes: ['owner_id'] });
+  const ownerUserId = b && b.owner_id ? b.owner_id : null;
+  if (!ownerUserId) return [];
+  const items = await ProductIngredient.findAll({
+    where: { owner_user_id: ownerUserId, is_active: true, min_stock: { [Op.gt]: 0 } }
+  });
+  const low = items.filter(pi => (parseFloat(pi.current_stock) || 0) < (parseFloat(pi.min_stock) || 0));
+  if (!low.length) return [];
+  const links = await IngredientSellerProduct.findAll({
+    where: { product_ingredient_id: { [Op.in]: low.map(pi => pi.id) }, is_active: true },
+    order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
+  });
+  const preferred = {};
+  for (const l of links) if (!preferred[l.product_ingredient_id]) preferred[l.product_ingredient_id] = l;
+  const sellerMap = await resolveSellers(Object.values(preferred));
+  const groups = {};
+  for (const pi of low) {
+    const cur = parseFloat(pi.current_stock) || 0;
+    const min = parseFloat(pi.min_stock) || 0;
+    const seller = preferred[pi.id] || null;
+    const key = seller ? `${seller.seller_type}:${seller.seller_entity_id || 0}` : 'unassigned:0';
+    if (!groups[key]) {
+      groups[key] = {
+        seller_type: seller ? seller.seller_type : null,
+        seller_entity_id: seller ? seller.seller_entity_id : null,
+        seller_name: seller ? getSellerName(sellerMap, seller.seller_type, seller.seller_entity_id) : null,
+        items: []
+      };
+    }
+    groups[key].items.push({
+      ingredient: { id: pi.id, name: pi.name, unit: pi.unit, current_stock: cur, min_stock: min, owner_type: 'bg_stock_item' },
+      product_ingredient_id: pi.id,
+      is_brand_shared: false,
+      suggested_qty: Math.max(0, Math.round(((min * 1.5) - cur) * 100) / 100),
+      seller_source: seller ? {
+        id: seller.id,
+        unit_price: parseFloat(seller.unit_price) || 0,
+        unit_conversion: parseFloat(seller.unit_conversion) || 1,
+        min_order_quantity: seller.min_order_quantity,
+        lead_time_days: seller.lead_time_days
+      } : null
+    });
+  }
+  return Object.values(groups);
+}
+
 // ============================================
 // 9. GET /api/purchase-orders/suggestions
 //    (defined BEFORE /:id to avoid route collision)
@@ -434,7 +488,10 @@ router.get('/purchase-orders/suggestions', async (req, res) => {
         ...(brandId ? [{ owner_type: 'brand', brand_id: brandId }] : [])
       ];
     } else if (req.buyerEntity.type === 'brand') {
-      ownershipOr = [{ brand_id: req.buyerEntity.id, min_stock: { [Op.gt]: 0 } }];
+      // 브랜드가 실제로 사는 것은 본사 재고아이템(ProductIngredient)이다 (2026-10-09 Fable 판정 C-1 #5).
+      //   예전엔 브랜드 공유 표준 재료(ingredients.brand_id)를 읽어 창고 부족품이 하나도 안 떴고,
+      //   떠도 ingredient_id 라 BG 장바구니(재고아이템 줄)와 맞지 않았다.
+      return res.json({ success: true, data: { groups: await brandStockItemSuggestions(req) } });
     } else {
       // foodcourt: no foodcourt_id on Ingredient — return empty
       return res.json({ success: true, data: { groups: [] } });

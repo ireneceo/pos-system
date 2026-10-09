@@ -101,7 +101,8 @@
       "effectBank": "Bayaran balik melalui pindahan tidak menyentuh laci.",
       "confirm": "Tanda sebagai dibayar balik",
       "failed": "Tidak dapat merekod bayaran balik",
-      "drawerSkipped": "Tiada syif dibuka, jadi laci tidak dikemas kini. Rekod bayaran balik disimpan."
+      "drawerSkipped": "Tiada syif dibuka, jadi laci tidak dikemas kini. Rekod bayaran balik disimpan.",
+      "effectNoDrawer": "Hanya bayaran balik dan kaedahnya direkodkan (laci tunai kedai tidak bergerak)."
     },
     "receipt": {
       "failed": "Tidak dapat melampirkan resit"
