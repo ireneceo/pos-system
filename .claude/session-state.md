@@ -294,6 +294,11 @@
 - 아침 점검 cron 00:00 UTC(08:00 MYT) `~/dev-server/morning-check.sh` — PurpleHere·PlanQ 에 «/개발시작» 방. 첫 실행 2026-10-07 11:38Z(방 e6a3d881)
 - 개발서버 상황판(~/dev-server/board, PM2 dev-board, 127.0.0.1:8800): 대화창·확인 완료→완료 목록(state.json)·개발완료 버튼(+git 기록)·대기열·방 줄 실행/중지/삭제 — 설명서 ~/dev-server/README.md
 
+### /개발시작 들어온 업무 확인 (2026-10-09 00:0xZ · prod-query 읽기 전용 · 방 0f1e2387) [Claude Code]
+- 새로 들어온 것 0건: 시스템 문의 마지막 글 09-17 · 후속 글(14일) 0 · 랜딩 문의 0 · 운영 문의 closed 4 / in-progress 1(개발 업무 아님)
+- 열린 3건(SUPP-2026-6842-103 · 1886-062 · 2401-270)은 10-07 판단 그대로 «이미 해결» — 닫기는 운영 쓰기라 Irene 지시 때만
+- 분할 발송(방 7ba2c8b8)은 그 방이 살아 있고 «Fable 최종 게이트 판정 대기»(10-08 16:41Z~) — 이 방은 손대지 않음
+
 ### /개발시작 들어온 업무 확인 (2026-10-08 00:00Z · prod-query 읽기 전용 · 방 6b0ff12b) [Claude Code]
 - 새로 들어온 것 0건: 시스템 문의 마지막 글 09-17 · 후속 글(14일) 0 · 랜딩 문의 0 · 운영 문의 열림 1(진행 중, 개발 업무 아님)
 - 열린 3건(SUPP-2026-6842-103 · 1886-062 · 2401-270)은 아래 10-07 판단 그대로 «이미 해결» — 오늘 재확인: check-hook-tdz 637파일 0건 · RecipesTab getErrorMessage(1321·1524줄) 유지 · 배포 기록 releases/archive/2026-09-10-error-message-crash.json. 닫기는 운영 쓰기라 Irene 지시 때만
