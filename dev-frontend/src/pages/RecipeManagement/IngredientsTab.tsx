@@ -562,6 +562,13 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const isBrandMirror = (item: Ingredient) => item.owner_type === 'brand'
     && !!(item.source_product_ingredient_id || item.source_brand_product_id || item.source_recipe_id);
   const canLinkSeller = (item: Ingredient) => !(isBrandRole && isBrandMirror(item));
+  // 브랜드 재료 목록(`/brand-ingredients?include=sellers`)은 연결을 `sellerSources` 로 준다 — 발주 화면이 그 이름을 쓴다.
+  //   카드는 자기 재료와 같은 `sellers` 를 읽으므로 합칠 때 이름을 맞춘다(2026-10-09 · 전에는 요청조차 안 해
+  //   브랜드 재료 카드가 연결이 있어도 늘 «No seller» 였다 — Irene «발주리스트에는 연결되어 있는데 재고아이템에는 연결이 안되어 있어»).
+  const withBrandSellers = (list: any[]): Ingredient[] => list.map((i) => ({
+    ...i,
+    sellers: Array.isArray(i.sellers) ? i.sellers : (Array.isArray(i.sellerSources) ? i.sellerSources : [])
+  }));
   // 원가 표기 — 값의 뜻은 기준양의 가격(Fable 판정 E). «RM 34.90 / 1000 g · g 당 RM 0.0349»
   const costText = (value: number | string | null | undefined, item: Ingredient) =>
     costPerBaseText(value, selectedCurrency, t('ingredients.costNotSet', '원가 미설정') as string, item,
@@ -605,7 +612,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           // 레스토랑 관리자일 경우 브랜드 재료도 함께 조회
           if (isRestaurantAdmin && effectiveRestaurantId) {
             promises.push(
-              fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
+              fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients?include=sellers`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
             );
           }
         }
@@ -618,7 +625,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
 
           // 레스토랑 관리자일 경우 브랜드 재료 추가
           if (isRestaurantAdmin && results[3]?.success && Array.isArray(results[3].data)) {
-            allIngredients = [...results[3].data, ...allIngredients]; // 브랜드 재료를 먼저 표시
+            allIngredients = [...withBrandSellers(results[3].data), ...allIngredients]; // 브랜드 재료를 먼저 표시
           }
 
           setIngredients(allIngredients);
@@ -778,9 +785,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       .then(j => {
         const newList = Array.isArray(j?.data) ? j.data : [];
         if (isRestaurantAdmin && effectiveRestaurantId) {
-          fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients`, { headers: { Authorization: `Bearer ${token}` } })
+          fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients?include=sellers`, { headers: { Authorization: `Bearer ${token}` } })
             .then(r => r.json())
-            .then(bj => { const brandList = Array.isArray(bj?.data) ? bj.data : []; applyReloadedList([...brandList, ...newList]); })
+            .then(bj => { const brandList = withBrandSellers(Array.isArray(bj?.data) ? bj.data : []); applyReloadedList([...brandList, ...newList]); })
             .catch(() => applyReloadedList(newList));
         } else applyReloadedList(newList);
       })
@@ -863,14 +870,14 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           fetch(`/api/restaurants/${effectiveRestaurantId}/ingredients`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }).then(r => r.json()),
-          fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients`, {
+          fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients?include=sellers`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }).then(r => r.json())
         ]);
 
         let allIngredients: Ingredient[] = [];
         if (brandRes.success && Array.isArray(brandRes.data)) {
-          allIngredients = [...brandRes.data];
+          allIngredients = withBrandSellers(brandRes.data);
         }
         if (ownRes.success && Array.isArray(ownRes.data)) {
           allIngredients = [...allIngredients, ...ownRes.data];
@@ -1903,10 +1910,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               const newList = Array.isArray(j?.data) ? j.data : [];
               if (isRestaurantAdmin && effectiveRestaurantId) {
                 // 브랜드 재료 합치기 (기존 fetch와 동일 로직)
-                fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients`, { headers: { Authorization: `Bearer ${token}` } })
+                fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients?include=sellers`, { headers: { Authorization: `Bearer ${token}` } })
                   .then(r => r.json())
                   .then(bj => {
-                    const brandList = Array.isArray(bj?.data) ? bj.data : [];
+                    const brandList = withBrandSellers(Array.isArray(bj?.data) ? bj.data : []);
                     applyReloadedList([...brandList, ...newList]);
                   })
                   .catch(() => applyReloadedList(newList));

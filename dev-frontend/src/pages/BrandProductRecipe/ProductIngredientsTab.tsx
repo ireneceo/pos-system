@@ -364,14 +364,19 @@ const StockBadge = styled.span<{ status: 'normal' | 'low' | 'out' }>`
 
 /** 재고아이템을 지울 수 없을 때 서버가 알려 주는 «쓰는 곳» 한 줄 (`DELETE /api/product-ingredients/:id` → error.uses) */
 interface IngredientUse {
-  type: 'product_recipe' | 'product_option' | 'brand_recipe' | 'store_stock' | 'seller_link';
+  type: 'product_recipe' | 'product_option' | 'brand_recipe' | 'store_stock' | 'seller_link'
+    | 'purchase_order' | 'brand_product_direct' | 'menu_direct';
   id: number;
   name: string | null;
   brandId?: number;
   mirrorBrandId?: number;
   restaurantId?: number;
+  restaurantName?: string | null;
   productId?: number;
   count?: number;
+  stock?: number;
+  unit?: string;
+  status?: string;
 }
 
 const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, onCountChange, categoryRefreshKey }) => {
@@ -1498,22 +1503,43 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                 : u.type === 'product_option' ? t('brand:productIngredientsTab.useProductOption', 'Product option')
                 : u.type === 'brand_recipe' ? t('brand:productIngredientsTab.useBrandRecipe', 'Brand recipe')
                 : u.type === 'store_stock' ? t('brand:productIngredientsTab.useStoreStock', 'Store inventory')
-                : t('brand:productIngredientsTab.useSellerLink', 'Supplier link ({{count}})', { count: u.count || 0 });
+                : u.type === 'purchase_order' ? t('brand:productIngredientsTab.usePurchaseOrder', 'Purchase order')
+                : u.type === 'brand_product_direct' ? t('brand:productIngredientsTab.useBrandProductDirect', 'Product (stock item linked directly)')
+                : u.type === 'menu_direct' ? t('brand:productIngredientsTab.useMenuDirect', 'Store menu (stock item linked directly)')
+                : t('brand:productIngredientsTab.useStoreSellerLink', 'Supplier link added by the store ({{count}})', { count: u.count || 0 });
               const target = u.type === 'brand_recipe'
                 ? `/pos/recipes?brandId=${u.brandId ?? u.mirrorBrandId ?? ''}&search=${encodeURIComponent(u.name || '')}`
                 : u.type === 'product_recipe' ? `/pos/brand-product-recipes?search=${encodeURIComponent(u.name || '')}`
                 : u.type === 'product_option' ? `/pos/brand-products?search=${encodeURIComponent(u.name || '')}`
+                : u.type === 'brand_product_direct' ? `/pos/brand-products?search=${encodeURIComponent(u.name || '')}`
+                : u.type === 'purchase_order' ? `/pos/purchase-orders/${u.id}`
                 : u.type === 'store_stock' && u.restaurantId ? `/restaurant/${u.restaurantId}/inventory`
+                : u.type === 'seller_link' && u.restaurantId ? `/restaurant/${u.restaurantId}/ingredients`
+                : u.type === 'menu_direct' && u.restaurantId ? `/restaurant/${u.restaurantId}/menu`
                 : null;
+              // 두 번째 줄 — 그 자리에서 무엇을 해야 하는지가 보이게(2026-10-09 Fable 판정 §5-B).
+              //   «Shared copy in another brand» 는 다른 브랜드의 사본 레시피일 때만 맞는 말이다 — 매장 재고 줄에 붙이던 것은 틀린 안내였다.
+              const note = u.type === 'store_stock'
+                ? t('brand:productIngredientsTab.useStoreStockNote', '{{store}} · stock {{stock}} {{unit}} — count it to 0 there first', { store: u.name || `#${u.restaurantId}`, stock: u.stock ?? 0, unit: u.unit || '' })
+                : u.type === 'seller_link'
+                  ? t('brand:productIngredientsTab.useStoreSellerLinkNote', 'The store can remove this link on its stock items screen')
+                : u.type === 'purchase_order'
+                  ? t('brand:productIngredientsTab.usePurchaseOrderNote', 'Order history is kept — use Deactivate instead of Delete')
+                : u.type === 'menu_direct'
+                  ? (u.restaurantName || null)
+                : u.type === 'brand_recipe' && u.mirrorBrandId != null && Number(u.mirrorBrandId) !== Number(brandId)
+                  ? t('brand:productIngredientsTab.useSharedNote', 'Shared copy in another brand')
+                : null;
+              const title = u.type === 'store_stock' || u.type === 'seller_link' ? (u.name || `#${u.restaurantId}`) : (u.name || `#${u.id}`);
               return (
                 <div key={`${u.type}-${u.id}-${i}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', border: '1px solid #C7CED6', borderRadius: '6px', padding: '10px 12px' }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: '11px', color: '#6B7280' }}>{label}</div>
                     <div style={{ fontSize: '13px', color: '#0A2540', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {u.name || `#${u.id}`}
+                      {title}
                     </div>
-                    {(u.type === 'brand_recipe' || u.type === 'store_stock' || u.type === 'seller_link') && (
-                      <div style={{ fontSize: '11px', color: '#B45309' }}>{t('brand:productIngredientsTab.useSharedNote', 'Shared copy in another brand')}</div>
+                    {note && (
+                      <div style={{ fontSize: '11px', color: '#B45309' }}>{note}</div>
                     )}
                   </div>
                   {target ? (

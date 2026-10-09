@@ -843,6 +843,17 @@ router.get('/supplier-catalog', async (req, res) => {
         ]
       } : {};
       const rest = await Restaurant.findByPk(req.buyerEntity.id, { attributes: ['id', 'brand_id', 'foodcourt_id'] });
+      // 판매자 이름 = 파는 **회사명** (단일 소스 utils/sellerNames). 브랜드명을 직접 쓰면
+      //   한 회사가 브랜드를 여럿 가질 때 같은 상품에 브랜드명이 제각각 붙는다(2026-10-09 Irene, K-DINE IPC).
+      const { resolveSellers, getSellerName } = require('../utils/sellerNames');
+      const sellerLabel = async (type, entity) => {
+        const m = await resolveSellers([{ seller_type: type, seller_entity_id: entity.id }]);
+        return getSellerName(m, type, entity.id) || entity.name;
+      };
+      // 같은 브랜드 상품은 **한 번만** 담는다 — 가맹본부 블록이 먼저 담고, 아래 «가맹점 밖» 블록은 건너뛴다.
+      //   한 주인이 브랜드를 여럿 가지면(GIT Consulting: K-DINE · with MIN) 형제 브랜드가 «누구나 주문 가능» 일 때
+      //   같은 주인의 external_buyers 상품을 형제 브랜드 이름으로 **한 번 더** 담아 두 줄씩 보였다.
+      const seenBrandProductIds = new Set();
       // Brand seller — 내 가맹본부 (Restaurant.brand_id) 의 brand_products 중 distribution_mode 별 노출 규칙:
       //   all                  → BG owner 의 모든 brand_products (가맹점 brand가 BG 소유 brand면 자동 노출)
       //   specific_brands      → brand_product_brands 매핑된 brand 가맹점
@@ -902,12 +913,12 @@ router.get('/supplier-catalog', async (req, res) => {
             limit: 200
           });
           // Dedupe by id
-          const seen = new Set();
           const bpRows = [...allModeRows, ...specificBrandRows, ...specificRestaurantRows, ...externalModeRows].filter(p => {
-            if (seen.has(p.id)) return false;
-            seen.add(p.id);
+            if (seenBrandProductIds.has(p.id)) return false;
+            seenBrandProductIds.add(p.id);
             return true;
           });
+          const brandSellerName = await sellerLabel('brand', brand);
           for (const p of bpRows) {
             extraData.push({
               id: p.id,
@@ -923,14 +934,14 @@ router.get('/supplier-catalog', async (req, res) => {
               image_url: p.image_url,
               category_id: p.category_id,
               category_name: p.category?.name || null,
-              supplier: { id: brand.id, name: brand.name, code: brand.code, logo_url: brand.logo_url, seller_type: 'brand' },
+              supplier: { id: brand.id, name: brandSellerName, code: brand.code, logo_url: brand.logo_url, seller_type: 'brand' },
               already_mapped: !!mappedBrandMap[p.id],
               mapped_ingredient_id: mappedBrandMap[p.id] || null,
               option_groups: [],
               has_options: false
             });
           }
-          if (bpRows.length) extraSellers.push({ id: brand.id, name: brand.name, seller_type: 'brand' });
+          if (bpRows.length) extraSellers.push({ id: brand.id, name: brandSellerName, seller_type: 'brand' });
         }
       }
       // Brand seller (가맹점 밖) — «다른 구매자에게도 판매»(external_buyers) 로 내놓은 상품만.
@@ -951,12 +962,17 @@ router.get('/supplier-catalog', async (req, res) => {
           });
           for (const b of extBrands) {
             if (!b.owner_id) continue;   // 주인 없는 브랜드는 팔 상품을 특정할 수 없다
-            const rows2 = await BrandProduct2.findAll({
+            const rows2 = (await BrandProduct2.findAll({
               include: [{ model: BrandProductCategory2, as: 'category', attributes: ['id', 'name', 'emoji'], required: false }],
               where: { is_active: true, ...brandLikeWhere, distribution_mode: 'external_buyers', owner_user_id: b.owner_id },
               order: [['sort_order', 'ASC'], ['name', 'ASC']],
               limit: 200
+            })).filter(p => {
+              if (seenBrandProductIds.has(p.id)) return false;
+              seenBrandProductIds.add(p.id);
+              return true;
             });
+            const extSellerName = rows2.length ? await sellerLabel('brand', b) : b.name;
             for (const p of rows2) {
               extraData.push({
                 id: p.id,
@@ -971,14 +987,14 @@ router.get('/supplier-catalog', async (req, res) => {
                 image_url: p.image_url,
                 category_id: p.category_id,
                 category_name: p.category?.name || null,
-                supplier: { id: b.id, name: b.name, code: b.code, logo_url: b.logo_url, seller_type: 'brand' },
+                supplier: { id: b.id, name: extSellerName, code: b.code, logo_url: b.logo_url, seller_type: 'brand' },
                 already_mapped: !!mappedBrandMap[p.id],
                 mapped_ingredient_id: mappedBrandMap[p.id] || null,
                 option_groups: [],
                 has_options: false
               });
             }
-            if (rows2.length) extraSellers.push({ id: b.id, name: b.name, seller_type: 'brand' });
+            if (rows2.length) extraSellers.push({ id: b.id, name: extSellerName, seller_type: 'brand' });
           }
         }
       }
@@ -1010,6 +1026,7 @@ router.get('/supplier-catalog', async (req, res) => {
             fpSeen.add(p.id);
             return true;
           });
+          const fcSellerName = fpRows.length ? await sellerLabel('foodcourt', fc) : fc.name;
           for (const p of fpRows) {
             extraData.push({
               id: p.id,
@@ -1025,14 +1042,14 @@ router.get('/supplier-catalog', async (req, res) => {
               image_url: p.image_url,
               category_id: p.category_id,
               category_name: p.category?.name || null,
-              supplier: { id: fc.id, name: fc.name, code: fc.code, logo_url: fc.logo_url, seller_type: 'foodcourt' },
+              supplier: { id: fc.id, name: fcSellerName, code: fc.code, logo_url: fc.logo_url, seller_type: 'foodcourt' },
               already_mapped: !!mappedFoodcourtMap[p.id],
               mapped_ingredient_id: mappedFoodcourtMap[p.id] || null,
               option_groups: [],
               has_options: false
             });
           }
-          if (fpRows.length) extraSellers.push({ id: fc.id, name: fc.name, seller_type: 'foodcourt' });
+          if (fpRows.length) extraSellers.push({ id: fc.id, name: fcSellerName, seller_type: 'foodcourt' });
         }
       }
     }

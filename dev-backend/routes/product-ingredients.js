@@ -814,35 +814,41 @@ router.delete('/:id', async (req, res) => {
     );
     optionRows.forEach((r) => uses.push({ type: 'product_option', id: r.id, name: r.name, productName: r.product_name || null }));
 
-    // ③ 다른 브랜드에 공유한 사본(거울)이 쓰이는 곳 — 화면에 연결이 안 보여서 «연결 없는데 왜?» 로 보이던 자리
+    // ③ 재고아이템을 직접 가리키는 곳 — 지우면 FK 500 이나 고아가 된다(합치기 마이그 ④ 와 같은 참조 3종).
+    //   발주 줄은 이력이라 지우지 않는다 — 화면이 «Deactivate» 를 쓰라고 안내한다.
+    const poRows = await rows(
+      `SELECT DISTINCT po.id, po.po_number, po.status FROM purchase_order_items poi
+         JOIN purchase_orders po ON po.id = poi.purchase_order_id
+        WHERE poi.product_ingredient_id = :id`,
+      { id: ingredient.id }
+    );
+    poRows.forEach((r) => uses.push({ type: 'purchase_order', id: r.id, name: r.po_number || `PO #${r.id}`, status: r.status }));
+    const directProductRows = await rows(
+      `SELECT id, name FROM brand_products WHERE product_ingredient_id = :id`,
+      { id: ingredient.id }
+    );
+    directProductRows.forEach((r) => uses.push({ type: 'brand_product_direct', id: r.id, name: r.name }));
+    const directMenuRows = await rows(
+      `SELECT p.id, p.name, p.restaurant_id, rest.name AS restaurant_name FROM products p
+         LEFT JOIN restaurants rest ON rest.id = p.restaurant_id
+        WHERE p.ingredient_id = :id`,
+      { id: ingredient.id }
+    );
+    directMenuRows.forEach((r) => uses.push({ type: 'menu_direct', id: r.id, name: r.name, restaurantId: r.restaurant_id, restaurantName: r.restaurant_name }));
+
+    // ④ 다른 브랜드에 공유한 사본(거울)이 쓰이는 곳 — 화면에 연결이 안 보여서 «연결 없는데 왜?» 로 보이던 자리.
+    //   «사용 중» 기준은 services/stockItemMirror.mirrorUses 하나다(공유 해제와 같은 답 — 2026-10-09 Fable 판정 §4-1).
+    //   재고 0 인 매장 줄·브랜드 자신의 연결은 사용이 아니다 — 세면 실사 한 번 한 재료를 영원히 못 지웠다.
+    const { mirrorUses } = require('../services/stockItemMirror');
     const mirrorRows = await rows(
       `SELECT id, brand_id, name FROM ingredients WHERE source_product_ingredient_id = :id`,
       { id: ingredient.id }
     );
     for (const m of mirrorRows) {
-      const recipeLines = await rows(
-        `SELECT r.id, r.name, r.brand_id FROM recipe_ingredients ri
-           JOIN recipes r ON r.id = ri.recipe_id
-          WHERE ri.ingredient_id = :mid`,
-        { mid: m.id }
-      );
-      recipeLines.forEach((r) => uses.push({ type: 'brand_recipe', id: r.id, name: r.name, brandId: r.brand_id, mirrorBrandId: m.brand_id }));
-
-      const stockRows = await rows(
-        `SELECT ris.restaurant_id, rest.name FROM restaurant_ingredient_stocks ris
-           LEFT JOIN restaurants rest ON rest.id = ris.restaurant_id
-          WHERE ris.ingredient_id = :mid`,
-        { mid: m.id }
-      );
-      stockRows.forEach((r) => uses.push({ type: 'store_stock', id: r.restaurant_id, name: r.name, restaurantId: r.restaurant_id }));
-
-      const sellerRows = await rows(
-        `SELECT COUNT(*) n FROM ingredient_seller_products WHERE ingredient_id = :mid`,
-        { mid: m.id }
-      );
-      if (Number(sellerRows[0].n) > 0) {
-        uses.push({ type: 'seller_link', id: m.id, name: m.name, count: Number(sellerRows[0].n), mirrorBrandId: m.brand_id });
-      }
+      const mu = await mirrorUses(m.id);
+      mu.recipeLines.forEach((r) => uses.push({ type: 'brand_recipe', id: r.id, name: r.name, brandId: r.brandId, mirrorBrandId: m.brand_id }));
+      mu.stockedOverlays.forEach((r) => uses.push({ type: 'store_stock', id: r.restaurantId, name: r.name, restaurantId: r.restaurantId, stock: r.current_stock, unit: r.unit }));
+      mu.storeLinks.forEach((r) => uses.push({ type: 'seller_link', id: m.id, name: r.restaurantName, restaurantId: r.restaurantId, count: r.count, mirrorBrandId: m.brand_id }));
     }
 
     if (uses.length) {
@@ -872,13 +878,18 @@ router.delete('/:id', async (req, res) => {
         const r = await unshareFromBrand(ingredient, m.brand_id);
         if (!r.changed && r.reason === 'in-use') blocked.push({ brand_id: m.brand_id, ...r.detail });
       }
+      // 위 ④ 와 같은 술어라 여기서 막히면 그 사이 누가 붙인 것 — 500 이 아니라 같은 형태의 사유로 낸다.
       if (blocked.length) {
         return res.status(400).json({
           success: false,
           error: {
-            code: 'MIRROR_IN_USE',
-            message: 'This Stock Item is shared and still in use. Remove those uses first.',
-            blocked
+            code: 'IN_USE',
+            message: 'This Stock Item is still in use. Open each place below and remove it there first.',
+            uses: blocked.flatMap((b) => [
+              ...(b.recipeLines || []).map((r) => ({ type: 'brand_recipe', id: r.id, name: r.name, brandId: r.brandId, mirrorBrandId: b.brand_id })),
+              ...(b.stockedOverlays || []).map((r) => ({ type: 'store_stock', id: r.restaurantId, name: r.name, restaurantId: r.restaurantId, stock: r.current_stock, unit: r.unit })),
+              ...(b.storeLinks || []).map((r) => ({ type: 'seller_link', id: b.brand_id, name: r.restaurantName, restaurantId: r.restaurantId, count: r.count, mirrorBrandId: b.brand_id }))
+            ])
           }
         });
       }

@@ -4280,6 +4280,79 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
   });
 
+  // ── 재고아이템 삭제 «사용 중» 기준 (2026-10-09 Fable 판정 fable-verdict-20261009-stock-item-delete-deadend §4-1) ──
+  //   Irene 「그냥 이거 아예 필요없어서 삭제할건데 아무곳에서도 삭제를 못하잖아」
+  //   매장 재고 0 인 빈 줄은 사용이 아니다(실사 한 번이면 생긴다) · 재고가 있거나 매장이 붙인 연결은 막는다.
+  //   ⛔ 판정은 services/stockItemMirror.mirrorUses 하나 — 실제 DELETE 라우트로 부른다(서비스 직접 호출은 반증력 0).
+  for (const kase of ['zero', 'stocked', 'storeLink']) {
+    const title = kase === 'zero' ? '재고 0 매장 줄만 있는 재고아이템 DELETE → 200 · 거울 비활성 · 매장 줄 그대로'
+      : kase === 'stocked' ? '매장 재고가 남은 재고아이템 DELETE → 400 IN_USE · store_stock(재고 값)'
+      : '매장이 붙인 공급처 연결이 있는 재고아이템 DELETE → 400 IN_USE · seller_link(매장 번호)';
+    test('inventory', `삭제 사용중 기준: ${title}`, async () => {
+      const { sequelize } = require('../config/database');
+      const { ProductIngredient } = require('../models');
+      const bgUser = (await sequelize.query("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1",
+        { type: sequelize.QueryTypes.SELECT }))[0];
+      const brand = bgUser && (await sequelize.query('SELECT id FROM brands WHERE owner_id = :o LIMIT 1',
+        { replacements: { o: bgUser.id }, type: sequelize.QueryTypes.SELECT }))[0];
+      const store = brand && (await sequelize.query('SELECT id FROM restaurants WHERE brand_id = :b ORDER BY id LIMIT 1',
+        { replacements: { b: brand.id }, type: sequelize.QueryTypes.SELECT }))[0];
+      if (!bgUser || !brand || !store) { console.log(c.gray('      (건너뜀: 데모 BG/브랜드/매장 없음 — 계약 미검증)')); return true; }
+      const bgTok = require('jsonwebtoken').sign({ userId: bgUser.id }, process.env.JWT_SECRET, { expiresIn: '10m' });
+      let stock = null, mirror = null;
+      try {
+        stock = await ProductIngredient.create({ owner_user_id: bgUser.id, name: `ZZ-HC-DELUSE-${kase}-${Date.now()}`, unit: 'g', unit_cost: 1, is_active: true });
+        const { shareToBrand } = require('../services/stockItemMirror');
+        mirror = (await shareToBrand(stock, brand.id)).ingredient;
+        await sequelize.query(
+          `INSERT INTO restaurant_ingredient_stocks (restaurant_id, ingredient_id, current_stock, min_stock, created_at, updated_at)
+           VALUES (:r, :i, :s, 5, NOW(), NOW())`,
+          { replacements: { r: store.id, i: mirror.id, s: kase === 'stocked' ? 12.5 : 0 } });
+        // 브랜드 자신의 연결(buyer NULL)은 어느 경우든 사용 아님 — 함께 깔아 둔다
+        await sequelize.query(
+          `INSERT INTO ingredient_seller_products (ingredient_id, seller_type, seller_entity_id, seller_product_id, unit_price, is_active, buyer_restaurant_id, notes, created_at, updated_at)
+           VALUES (:i, 'brand', :b, 0, 0, 1, NULL, 'ZZ-HC-DELUSE', NOW(), NOW())`,
+          { replacements: { i: mirror.id, b: brand.id } });
+        if (kase === 'storeLink') {
+          await sequelize.query(
+            `INSERT INTO ingredient_seller_products (ingredient_id, seller_type, seller_entity_id, seller_product_id, unit_price, is_active, buyer_restaurant_id, notes, created_at, updated_at)
+             VALUES (:i, 'brand', :b, 0, 0, 1, :r, 'ZZ-HC-DELUSE', NOW(), NOW())`,
+            { replacements: { i: mirror.id, b: brand.id, r: store.id } });
+        }
+        const r = await request('DELETE', `/product-ingredients/${stock.id}`, null, { Authorization: `Bearer ${bgTok}` });
+        const [m] = await sequelize.query('SELECT is_active, source_product_ingredient_id FROM ingredients WHERE id = :i',
+          { replacements: { i: mirror.id }, type: sequelize.QueryTypes.SELECT });
+        const [ov] = await sequelize.query('SELECT COUNT(*) n FROM restaurant_ingredient_stocks WHERE ingredient_id = :i',
+          { replacements: { i: mirror.id }, type: sequelize.QueryTypes.SELECT });
+        const uses = r.body?.error?.uses || [];
+        let ok;
+        if (kase === 'zero') {
+          ok = r.status === 200 && Number(m.is_active) === 0 && m.source_product_ingredient_id == null && Number(ov.n) === 1;
+          if (ok) stock = null; // 라우트가 지웠다
+        } else if (kase === 'stocked') {
+          ok = r.status === 400 && r.body?.error?.code === 'IN_USE'
+            && uses.length === 1 && uses[0].type === 'store_stock' && Number(uses[0].stock) === 12.5 && Number(uses[0].restaurantId) === store.id
+            && Number(m.is_active) === 1;
+        } else {
+          ok = r.status === 400 && r.body?.error?.code === 'IN_USE'
+            && uses.length === 1 && uses[0].type === 'seller_link' && Number(uses[0].restaurantId) === store.id
+            && Number(m.is_active) === 1;
+        }
+        if (!ok) console.log(c.red(`      ↳ ${JSON.stringify({ status: r.status, body: r.body, mirror: m, overlays: ov.n })}`));
+        return ok;
+      } catch (e) {
+        console.log(c.red(`      ↳ 예외: ${e.message}`)); return false;
+      } finally {
+        try { if (mirror) {
+          await sequelize.query('DELETE FROM ingredient_seller_products WHERE ingredient_id = :i', { replacements: { i: mirror.id } });
+          await sequelize.query('DELETE FROM restaurant_ingredient_stocks WHERE ingredient_id = :i', { replacements: { i: mirror.id } });
+          await sequelize.query('DELETE FROM ingredients WHERE id = :i', { replacements: { i: mirror.id } });
+        } } catch {}
+        try { if (stock) await sequelize.query('DELETE FROM product_ingredients WHERE id = :i', { replacements: { i: stock.id } }); } catch {}
+      }
+    });
+  }
+
   // ④: Stock Item 을 고치면 거울이 따라온다. 동기화를 빼면 이름이 안 따라와 실패한다.
   test('inventory', '통합④: Stock Item 이름 변경 → 거울이 따라온다 (한 방향 동기화)', async () => {
     const { sequelize } = require('../config/database');

@@ -1,10 +1,52 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-10-09 UTC — /개발완료 (청구서 창 네 가지 일 전 역할 + 브랜드 발주 정비 + 오너 가격 대조 + 브랜드 원가 = 마지막 매입가, 개발서버만 · Fable 게이트 PASS ×2) [작업방 e9818ea9] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
+**마지막 업데이트:** 2026-10-09 UTC — /개발완료 (재고아이템 삭제 막힘 «사용 중» 기준 하나로 + 매장 재료 카드 공급처 표시, 개발서버만 · Fable 게이트 PASS) [작업방 67f96715] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
 **버전:** **v3.109** (2026-10-07 · 5.87·5.88·5.89 묶음) · 운영 SW **5.89-kiosk-receipt-20261007** (백업 20261007_163801 · 스모크 10/10) · 안드로이드 앱 0.3.4
-**작업 상태:** ✅ 청구서 창 네 가지 일(전 역할)·브랜드 발주 정비 완료(개발서버 · Fable 게이트 PASS · 운영 배포 대기) — 개발서버만 미배포 묶음은 아래 각 «완료» 절 참조(품목별 발송 · 결제 설정 계정 하나 · 청구서 To Confirm · 청구서 권한 경계 · 재고→발주→원가 0~3 · 배송 지역 · K-DINE Stock Items 등)
+**작업 상태:** ✅ 재고아이템 삭제 막힘(K-Sundubu) 해결 완료(개발서버 · Fable 게이트 PASS · 운영 배포 대기) — 개발서버만 미배포 묶음은 아래 각 «완료» 절 참조(재고아이템 삭제 기준 · 발주탭 Supplier Catalog 중복 · 청구서 창 네 가지 일 · 품목별 발송 · 결제 설정 계정 하나 · 청구서 To Confirm · 청구서 권한 경계 · 배송 지역 · K-DINE Stock Items 등)
 **다음 확정 작업:** 없음 — 지시 대기
-**후속 후보(확정 X, /개발시작 자동 추천 아님):** 레시피 없는 프로덕트 줄 수령 문제분 기록 · 다브랜드 BG 발주 화면 전체 스코프 · StockAlert 브랜드 칸 · 브랜드·푸드코트 청구서 창 결제 버튼 · Staff 청구서 버튼 권한 · 배포 뒤 문서(PURCHASE_ORDER_SYSTEM §8-8 등)
+**후속 후보(확정 X, /개발시작 자동 추천 아님):** 9-29 판정 ④ 순두부 6→1 데이터 정리(별건) · 레시피 없는 프로덕트 줄 수령 문제분 기록 · 다브랜드 BG 발주 화면 전체 스코프 · StockAlert 브랜드 칸 · 브랜드·푸드코트 청구서 창 결제 버튼 · Staff 청구서 버튼 권한 · 배포 뒤 문서(PURCHASE_ORDER_SYSTEM §8-8 등)
 
+### 답 기다림 (2026-10-09) — BG 가 끈 상품이 매장 My Stock 발주에선 그대로 주문됨 [Claude Code · 백그라운드 작업방 e9b89182]
+- Irene: «브랜드제너럴이 활성화/비활성화하는 모든 프로덕트가 제대로 레스토랑관리자 발주할 때 반영돼? 마이스톡에서 검색되지만 브랜드제너럴이 비활성화했으면 어떻게 되는거야?»
+- 개발서버 재현(매장5 RA · BG user6 · 상품44 Grilled Chicken · 매장 재료96 · 연결51 → 원복 is_active=1 확인 · 테스트 발주 32141 은 화면 «버리기»와 같은 삭제로 정리): 끄면 ① Supplier Catalog 에서 사라짐(정상) ② **My Stock 재료96 의 공급처에 그 상품 그대로**(`restaurants-ingredients.js:149` · `ingredients.js:145,658` BrandProduct 조회에 활성 조건 없음) ③ **발주 만들기 201 성공**(`purchase-orders-crud.js:1002` 연결 행 is_active 만 봄, 상품 활성 안 봄) · 제출(`purchase-orders-workflow.js:925`)도 검사 없음. 브랜드 재료(거울)는 상품 따라 꺼져 매장에서 숨음(정상)
+- 질문: 꺼진 상품을 매장 발주에서 어떻게 할지 — Opus 의견 A(목록에 «판매 중지» 표시 + 담기·발주 만들기·제출을 서버에서 막음, 연결 행은 안 지움 → 다시 켜면 그대로 복구)
+- 답이 오면: A → 3개 목록 응답에 상품 활성 칸 + 발주 만들기/제출 서버 거부(공급업체 상품도 같은 규칙인지 같이) + 화면 표시 + health-check 1건·고장주입 → 빌드 1회·verify-all --full → 주문 경로라 Fable 게이트 1회
+
+### 완료 (2026-10-09) — 재고아이템 삭제 막힘(K-Sundubu) «사용 중» 기준 하나로 · 매장 재료 카드 공급처 표시 (개발서버 · Fable 게이트 PASS · 운영 배포 대기) [Claude Code · 백그라운드 작업방 67f96715]
+- Irene 답: «그냥 이거 아예 필요없어서 삭제할건데 아무곳에서도 삭제를 못하잖아. 정석대로 개발할게 있으면 해줘. 지금 문제가 있는게 없으면 권고대로»
+- 판정: 설계 `backups/fable-pending/fable-verdict-20261009-stock-item-delete-deadend.md` · 게이트 `backups/fable-pending/fable-verdict-20261009-stock-item-delete-deadend-gate.md`(PASS, 마커 5cf2414378ae — 방 052ef355 미커밋 변경은 검토 안 함)
+- 구현(마이그 0 · 새 칸 0): `services/stockItemMirror.mirrorUses` 단일 술어(사용 중 = 레시피 줄 · 재고≠0 매장 줄 · 매장이 붙인 연결 / 재고 0 줄·브랜드 자신 연결은 아님) → `unshareFromBrand`·`DELETE /api/product-ingredients/:id` 공용 · DELETE 에 직접 참조 3종(발주 줄·상품 직접·메뉴 직접) · MIRROR_IN_USE → IN_USE · GIT 막힘 창 라벨/두 번째 줄/Open 대상(«Shared copy…» 는 다른 브랜드 레시피에만) · 매장 재료 화면 brand-ingredients 4곳 `?include=sellers` + `withBrandSellers`(응답 키 sellerSources → sellers) · i18n brand 7키 4언어 · INGREDIENT_UNIFICATION_DESIGN F8-1
+- 검증: health-check inventory 60/60(새 3건) · 고장주입 반증(팀원 2조건·Fable 1조건, pm2 재시작 뒤) · 클릭 흐름 8/8 · verify-all --full 22/24(✗ 배포 기록 — 배포 때 · ✗ 타입 = 메모리 게이트 → 재실행 신규 0) · mount sweep 크래시 0 · print-guard 8/8
+- 배포 때(Irene /배포): SW 버전 1회 · 배포 기록 파일 · verify-all 재확인. 마이그 0 · 롤백 = 코드만
+- 지금 K-Sundubu 치우기: GIT 계정 Stock Items → Deactivate(코드 없이 됨). 배포 뒤 Delete 도 가능(운영 데이터 미확인 — 막히면 창이 이유를 보여 줌)
+- 남은 것: 9-29 판정 ④ «순두부 6→1»(#96·#6·#74·#170) 데이터 단계 미실행(Q3 별건) · 배포 뒤 판정문 2개 `.claude/` 이동 + INGREDIENT_UNIFICATION_DESIGN 끝에 «2026-10-09 판정» 절 · 운영검증 때 ING-UNI 인스펙션 + 판정문 §6 SQL
+- 확인 못 함: 운영 K-Sundubu 실데이터(운영 읽기 자동 판정 거부)
+
+### (이전) 답 기다림 (2026-10-09) — K-Sundubu 재고아이템 삭제 막힘: Q1~Q3 [Claude Code · 백그라운드 작업방 67f96715]
+- Irene: «…레스토랑관리자가 스톡아이템 삭제하고 싶어도 안되는데 K-Sundubu는 브랜드제너럴이 파는 제품도 아닌데 왜 삭제가 안되는거야? … K-Yukgaejang & Sundubu Sauce 이 상품 봐봐 … 방법이 필요해.»
+- Fable 판정: `backups/fable-pending/fable-verdict-20261009-stock-item-delete-deadend.md` (git 무시 폴더 — 다른 방 마커 보호). 사실 자료 `~/.claude/jobs/67f96715/tmp/fable-input.md`
+- 원인(코드 실측): ① 브랜드 재료는 매장에서 읽기전용(설계) ② GIT 삭제는 매장 재고 0 인 빈 줄(restaurant_ingredient_stocks)까지 «사용 중» 으로 셈 → 막다른 길 ③ K-Sundubu = 9-04 통합 마이그가 만든 GIT 재고아이템(9-29 판정에서 «끔» 으로 정했으나 미실행) ④ 매장 재료 화면이 브랜드 재료 연결을 요청하지 않아(`IngredientsTab.tsx` 3곳 `?include=sellers` 누락) 연결이 안 보임
+- 운영 데이터 확인 못 함: 운영 읽기(ssh·이 서버의 운영 백업 사본 파싱) 자동 판정 «Production Reads» 로 거부 → 판정문 §6 SQL 은 Irene 이 방에 있을 때
+- 질문: Q1 K-Sundubu 지금 GIT Stock Items 에서 Deactivate(권고) · Q2 «사용 중» 재정의(0 재고 빈 줄·브랜드 자신 연결은 사용 아님) + 매장 숨기기 안 만듦(권고 a) · Q3 9-29 순두부 6→1 별건(권고 a)
+- 답이 오면: Q2 (a) → 판정문 §5 A~E 구현(술어 mirrorUses · DELETE/unshare 공용 · 막힘 창 문구·Open · ?include=sellers 3곳 · health-check 3건+고장주입 · 빌드 1회 · verify-all --full) → Fable 게이트 1회. Q2 답 전 코드 착수 금지(Fable 지시)
+- 남은 것: 9-29 판정 ④ «순두부 6→1»(#96·#6·#74·#170) 데이터 단계 미실행 · 배포 뒤 판정 파일 `.claude/` 이동 + INGREDIENT_UNIFICATION_DESIGN 끝에 원문 절
+
+
+
+### 완료 (2026-10-09) — 발주 Supplier Catalog: 같은 상품이 2줄 · 브랜드명으로 뜨던 것 (개발서버 · 운영 배포 대기) [Claude Code · 백그라운드 작업방 052ef355]
+- Irene: «Supplier Catalog 여기에서 K-Yukgejang & Sundubu Sauce가 브랜드제너럴인 GIT consulting이 한번 올린 건데 브랜드이름들이 각각 붙여서 나와. 그냥 회사이름이 브랜드제너럴 설정걸로 나와야 하고 여기 K-DINE IPC에서 보는 발주탭인데 이렇게 왜 2개씩 나오는지 이해 안가. 수정해줘.»
+- 원인: `GET /api/supplier-catalog`(routes/supplier-directory.js) 가 «내 가맹본부 상품» 블록과 «가맹점 밖(누구나 주문 가능) 브랜드» 블록을 따로 담는데, 한 주인이 브랜드를 여럿 가지면(GIT: K-DINE · with MIN) 형제 브랜드 블록이 같은 주인의 external_buyers 상품을 **한 번 더** 담음. 이름은 단일 소스(utils/sellerNames)를 안 거치고 `brand.name` 을 직접 씀
+- 고침: ① 두 블록이 상품 id 집합 하나를 같이 써서 한 번만 담음(가맹본부 블록 우선 → 발주 판매자도 자기 가맹본부) ② 판매자 이름 = `resolveSellers` 회사명(브랜드·푸드코트) ③ `sellerNames.resolveSellers`: 브랜드 행 회사명이 비면 같은 주인의 기본 브랜드(users.brand_id) 회사명 → 없으면 회사명 있는 가장 오래된 형제(BG 회사정보는 기본 브랜드 행 하나에만 저장되기 때문). 발주 목록·메일의 판매자 이름도 같은 규칙을 따름
+- 검증(개발 매장 10, 형제 브랜드 1 을 잠시 «누구나 주문 가능»+상품 55 external_buyers 로 바꿔 재현 → 원복 확인): 고치기 전 같은 상품 2줄 «with MIN»/«K-DINE with MIN» · 고친 뒤 1줄 «WOR-PRO Lab», 필터 1개 · health-check 343/343 · print-guard 8/8 · pm2 재시작 뒤
+- Fable 안 씀 — 표시·중복 목록 단순 버그(기계 재현·대조로 갈림). 운영 데이터 확인 못 함(백그라운드 운영 조회 불가) — 운영 K-DINE 행 회사명이 비어 있고 기본 브랜드(with MIN) 행에 «GIT Consulting» 이 있다는 전제는 메모리 기록 기준
+- 배포 때: 백엔드만(프론트 0 · 마이그 0)
+- Fable 게이트 마커: 지금 지문 d927ce8a2503 · 통과 표시도 건너뛰기 표시도 찍지 않음. 이 게이트는 배포 안 된 묶음 전체(방 e9818ea9·666e085a 작업 포함)를 보고 걸린 것이고, 이번 수정은 게이트 대상 기준에 해당하지 않음 → 배포 전에 묶음 전체로 Fable 게이트 1회
+
+### 답 기다림 (2026-10-09) — GIT Consulting 포장재 실사 반영: Irene 이 터미널에서 명령 한 줄 실행 [Claude Code · 백그라운드 작업방 595745d6]
+- Irene: «GIT consulting 브랜드제너럴 재고관리 … 지금 패키지 재고야. 여기 없는 건 0» + «마지막 표시가 박스에 +팩 … 괄호 안 표시가 박스에 들은 수량»
+- 운영 읽기(1회 성공)로 BG user 23 재고아이템 20개 짝 맞춤 → 스크립트 `backups/stocktake/bg-package-stocktake-20261009.js` (기본 미리보기 · `--apply` 때만 저장 · 한 트랜잭션 · 이름 조각 대조 실패 시 전부 중단 · 장부 stock_take 줄 같이 기록 · 목록 밖 Packaging & Disposables 의 0 아닌 것(#264·#307·#308 음수)은 0)
+- 왜 멈춤: 운영 접속 명령은 백그라운드 허락 창을 못 넘음(Irene «아니오» 답 · 재시도 금지)
+- 답이 오면/Irene 실행 뒤: 미리보기 표 확인 → `--apply` → 화면 https://purplehere.com 재고에서 숫자 확인
+- 내가 정한 가정 2개: 3.25oz 소스통 수량 빈칸 → 0 · «Napkin(100gm×6ea)=1box» → Cili Serviette(#286) 6팩, «IKEA Napkins» → IKEA Square Tissue(#350) 7
 
 ### 완료 (2026-10-09) — K-DINE IPC Stock Items «GIT 상품 재료 수정 안 됨» (개발서버 · 운영 배포 대기) [Claude Code · 백그라운드 작업방 666e085a]
 - Irene: «K-DINE IPC 스톡아이템에 GIT브랜드제너럴이랑 연결된 재료 수정이 안되는데 GIT가 판매하는 상품인» (문장 끝 잘림)
@@ -14,7 +56,15 @@
 - Fable 안 씀 — 화면 문구 표시 단순 버그(공용 기준 «쓰지 않는 곳»)
 - 검증: build:dev 1회 · 실브라우저 클릭 흐름 7/7(매장5 RA · 재료96 · 원복 확인) · i18n 오류 0 · print-guard 8/8 · design-guard 신규 0. verify-all --full 은 안 돌림(배포 때 묶어서). ⚠ 이 수정으로 방 e9818ea9 의 Fable 통과 마커(6c5f…)가 지문 변경으로 무효 → 현재 24d004a8ca89, 통과·skip 안 찍음
 
-### 답 기다림 (2026-10-09) — K-DINE 브랜드 메뉴 맞추기: 운영 미리보기 실행 허락 (A 확정 · 운영 쓰기 0 · 코드 0) [Claude Code · 백그라운드 작업방 937534a4]
+### 답 기다림 (2026-10-09) — K-DINE: IPC 메뉴 무접촉 조건에서 브랜드 메뉴를 어떻게 할지 [Claude Code · 백그라운드 작업방 937534a4]
+- Irene: **«절대 K-DINE IPC 메뉴를 건드리면 안돼.»** (메모리 feedback_kdine_ipc_menu_untouchable)
+- 실측: 준비된 `--refresh` 는 매장 표에 2곳 씀(매장에만 있는 11개 상품의 연결 칸 · 매장 옵션그룹 12개의 미러 칸), `--lock` 은 매장 상품 잠금 칸·sync → **둘 다 그대로 못 씀.** 운영 미리보기 명령은 허락 창에서 끊겨 결과 없음(미리보기라 쓰기 없음). 운영 쓰기 0 · 코드 0
+- 무엇을: (가) 브랜드 쪽만 맞추기 — 도구에 «매장 표 쓰기 0» 모드 추가(개발서버에서 매장 표 행 지문 전후 동일 증명) → 운영 미리보기 → 승인 → 반영. 브랜드 메뉴 = 매장 최종본 사본이 되지만 연결·잠금은 없음(브랜드 화면은 참고용 원본) / (나) 아무것도 안 함
+- 잠금 질문 답: 잠금은 매장 상품 칸에 써야 작동 → 무접촉 조건에선 불가. 매장 관리자가 새 메뉴 만드는 것은 잠금과 별개(원래 안 막힘)
+- 답이 오면: (가) → 도구 모드 추가·개발 검증 → 운영 미리보기(Irene 이 방에 있을 때 허락 창) → 승인 → 반영 → 검사 SQL(매장 표 변화 0 숫자) → Fable 게이트 1회 / (나) → 이 절 «(이전)»
+- 그때까지: 브랜드 «내려보내기»·매장 «브랜드 업데이트 받기» 누르지 않기
+
+### (이전) 답 기다림 (2026-10-09) — K-DINE 브랜드 메뉴 맞추기: 운영 미리보기 실행 허락 (A 확정 · 운영 쓰기 0 · 코드 0) [Claude Code · 백그라운드 작업방 937534a4]
 - Irene: «레스토랑이 같은 메뉴 바꾸면 역 동기화 있는 거야? … K-DINE IPC 레스토랑 관리자가 바꾼 메뉴가 지금 최종인데 브랜드제너럴입장이랑 어떻게 정리해야 하는지 검토하고 얘기 줘.»
 - Fable 판정: `backups/fable-pending/fable-verdict-20261009-kdine-menu-reconcile.md` (git 무시 폴더 — .claude/ 나 docs/ 에 두면 방 e9818ea9 청구서 작업의 Fable 통과 마커가 죽는다. 실측: 파일 있으면 지문 625d…, 빼면 6c5f… 유효). 사실 자료 `~/.claude/jobs/937534a4/tmp/fable-input-kdine-menu.md`
 - 운영 실측(SELECT): 역방향 코드 0 · 브랜드2 메뉴 104 = 9-13 사본 그대로 · 매장8 111(연결 100) — 이름 30·가격 21·이미지 66·세트 15·레시피 12 다름, 매장에만 11, 브랜드에만 4 · 매장 옵션그룹 12 전부 미러 없음 · 지금 «내려보내기»/«브랜드 업데이트 받기» 누르면 세트 15 덮임·옛 옵션 6 중복·지운 4개 부활 · Kate(user 19) = Restaurant Admin, brand_id NULL, user_contexts 0행 → **브랜드 관리자 모자 미부여**

@@ -139,29 +139,57 @@ async function unshareFromBrand(stockItem, brandId, { transaction } = {}) {
   });
   if (!mirror) return { changed: false, reason: 'no-mirror' };
 
-  const [{ n: recipeLines }] = await mirror.sequelize.query(
-    `SELECT COUNT(*) n FROM recipe_ingredients WHERE ingredient_id = :id`,
-    { replacements: { id: mirror.id }, type: 'SELECT', transaction }
-  );
-  const [{ n: overlays }] = await mirror.sequelize.query(
-    `SELECT COUNT(*) n FROM restaurant_ingredient_stocks WHERE ingredient_id = :id`,
-    { replacements: { id: mirror.id }, type: 'SELECT', transaction }
-  );
-  const [{ n: sellers }] = await mirror.sequelize.query(
-    `SELECT COUNT(*) n FROM ingredient_seller_products WHERE ingredient_id = :id`,
-    { replacements: { id: mirror.id }, type: 'SELECT', transaction }
-  );
-  const refs = Number(recipeLines) + Number(overlays) + Number(sellers);
-  if (refs > 0) {
-    return {
-      changed: false,
-      reason: 'in-use',
-      detail: { recipeLines: Number(recipeLines), overlays: Number(overlays), sellers: Number(sellers) }
-    };
-  }
+  const uses = await mirrorUses(mirror.id, { transaction });
+  if (uses.blocked) return { changed: false, reason: 'in-use', detail: uses };
 
   await mirror.update({ is_active: false }, { transaction });
   return { changed: true };
+}
+
+/**
+ * 거울을 끄거나(공유 해제) 출처 Stock Item 을 지울 때 «사용 중» 인가 — **단일 술어** (2026-10-09 Fable 판정
+ * `fable-verdict-20261009-stock-item-delete-deadend.md` §4-1 · Irene 「아예 필요없어서 삭제할건데 아무곳에서도 삭제를 못하잖아」).
+ *
+ * 막는 것 = 끄면 누가 손해 보는 것만:
+ *   - 레시피 줄 — 살아 있는 레시피가 꺼진 재료를 가리키게 된다.
+ *   - 매장 재고가 0 이 아닌 오버레이 — 매장에 실물이 있다고 기록된 줄.
+ *   - 매장이 붙인 공급처 연결(buyer_restaurant_id 있음 · 활성) — 그 매장 발주 줄이 사라진다.
+ * 막지 않는 것:
+ *   - 재고 0 오버레이 — 실사·설정 저장 한 번이면 생기는 빈 줄. 이걸 세면 «실사 한 번 한 재료는 영원히 못 지운다».
+ *   - 브랜드 자신의 연결(buyer NULL) — 지우는 주체가 그 주인이다.
+ * 어느 쪽이든 행은 지우지 않는다(거울은 비활성일 뿐 — 다시 켜면 그대로).
+ * ⛔ 이 기준을 라우트에 두 벌로 다시 쓰지 말 것 — 공유 해제와 삭제가 다른 답을 내던 자리다.
+ */
+async function mirrorUses(mirrorId, { transaction } = {}) {
+  const { sequelize } = require('../config/database');
+  const rows = (sql) => sequelize.query(sql, { replacements: { id: mirrorId }, type: sequelize.QueryTypes.SELECT, transaction });
+
+  const recipeLines = await rows(
+    `SELECT r.id, r.name, r.brand_id AS brandId FROM recipe_ingredients ri
+       JOIN recipes r ON r.id = ri.recipe_id
+      WHERE ri.ingredient_id = :id`
+  );
+  const stockedOverlays = (await rows(
+    `SELECT ris.restaurant_id AS restaurantId, rest.name, ris.current_stock, i.unit
+       FROM restaurant_ingredient_stocks ris
+       JOIN ingredients i ON i.id = ris.ingredient_id
+       LEFT JOIN restaurants rest ON rest.id = ris.restaurant_id
+      WHERE ris.ingredient_id = :id AND ris.current_stock <> 0`
+  )).map((r) => ({ ...r, current_stock: parseFloat(r.current_stock) }));
+  const storeLinks = (await rows(
+    `SELECT isp.buyer_restaurant_id AS restaurantId, rest.name AS restaurantName, COUNT(*) AS count
+       FROM ingredient_seller_products isp
+       LEFT JOIN restaurants rest ON rest.id = isp.buyer_restaurant_id
+      WHERE isp.ingredient_id = :id AND isp.buyer_restaurant_id IS NOT NULL AND isp.is_active = 1
+      GROUP BY isp.buyer_restaurant_id, rest.name`
+  )).map((r) => ({ ...r, count: Number(r.count) }));
+
+  return {
+    recipeLines,
+    stockedOverlays,
+    storeLinks,
+    blocked: recipeLines.length > 0 || stockedOverlays.length > 0 || storeLinks.length > 0
+  };
 }
 
 /** 한 Stock Item 이 지금 어느 브랜드에 공유돼 있는가(= 활성 거울이 있는 브랜드). */
@@ -232,4 +260,4 @@ async function ensureSourceSellerLink(mirror, brandProduct, { transaction } = {}
   return { created: true, id: row.id };
 }
 
-module.exports = { syncMirrors, syncProductMirrors, shareToBrand, unshareFromBrand, sharedBrandIds, ensureSourceSellerLink, MIRRORED_FIELDS };
+module.exports = { syncMirrors, syncProductMirrors, shareToBrand, unshareFromBrand, mirrorUses, sharedBrandIds, ensureSourceSellerLink, MIRRORED_FIELDS };

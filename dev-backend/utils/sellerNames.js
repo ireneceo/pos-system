@@ -37,6 +37,36 @@ function buildSellerDisplayName(type, row) {
 }
 
 /**
+ * 브랜드 행에 회사명이 비었을 때 쓸 «계정 회사명» — owner_id → 회사명.
+ *   BG 회사정보 화면은 계정의 기본 브랜드(users.brand_id) 행 하나에만 company_name 을 저장한다.
+ *   그래서 같은 주인의 둘째 브랜드(예: GIT Consulting 의 K-DINE)는 회사명이 비어 브랜드명이 떴다(2026-10-09 Irene).
+ *   기준 = 주인의 기본 브랜드 행, 없으면 회사명이 있는 가장 오래된 형제.
+ */
+async function brandAccountCompanyNames(Brand, rows) {
+  const out = new Map();
+  const owners = [...new Set(rows
+    .filter(r => !(r.company_name || '').trim() && r.owner_id != null)
+    .map(r => r.owner_id))];
+  if (!owners.length) return out;
+  const User = require('../models/User');
+  const [siblings, users] = await Promise.all([
+    Brand.findAll({
+      where: { owner_id: { [Op.in]: owners }, company_name: { [Op.ne]: null } },
+      attributes: ['id', 'owner_id', 'company_name'],
+      order: [['id', 'ASC']]
+    }).catch(() => []),
+    User.findAll({ where: { id: { [Op.in]: owners } }, attributes: ['id', 'brand_id'] }).catch(() => [])
+  ]);
+  const defaultBrand = new Map(users.map(u => [u.id, u.brand_id]));
+  for (const ownerId of owners) {
+    const named = siblings.filter(b => b.owner_id === ownerId && (b.company_name || '').trim());
+    const pick = named.find(b => b.id === defaultBrand.get(ownerId)) || named[0];
+    if (pick) out.set(ownerId, pick.company_name.trim());
+  }
+  return out;
+}
+
+/**
  * @param {Array<{seller_type: string, seller_entity_id: number|null}>} refs
  * @returns {Promise<Map<string, {id, name, phone, email, is_system_registered, seller_type}>>}
  */
@@ -65,14 +95,19 @@ async function resolveSellers(refs) {
     const attributes = ['id', 'name', 'company_name', 'phone', 'email', 'address',
       'min_order_amount', 'delivery_fee', 'currency', 'delivery_policy', 'delivery_zones'];
     if (type === 'supplier') attributes.push('is_system_registered');
+    if (type === 'brand') attributes.push('owner_id');
     const rows = await models[type].findAll({
       where: { id: { [Op.in]: ids } },
       attributes
     }).catch(() => []);
+    const accountCompany = type === 'brand' ? await brandAccountCompanyNames(models.brand, rows) : new Map();
     for (const row of rows) {
       map.set(sellerKey(type, row.id), {
         id: row.id,
-        name: buildSellerDisplayName(type, row),
+        name: buildSellerDisplayName(type, {
+          name: row.name,
+          company_name: (row.company_name || '').trim() || accountCompany.get(row.owner_id) || null
+        }),
         entity_name: row.name,                       // 브랜드/푸드코트/업체 자체 이름
         company_name: row.company_name || null,      // 법인명 (실제 수신처)
         phone: row.phone || null,

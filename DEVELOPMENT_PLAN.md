@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-09 — [Claude Code] ✅ **청구서 화면 «공급업체 인보이스» 네 가지 일을 모든 역할에 + 브랜드 발주 고장 3개 (개발서버만, Fable 게이트 PASS ×2)** — 매장 관리자·오너·브랜드·푸드코트 청구서 상세 창에서 인보이스 올리기·다시 올리기·보기·가격 대조·총액 수정 · 오너도 가격 대조 · 브랜드 수령 파손·부족분 반품/기록 · 브랜드 발주 제안 = 본사 재고 · 재고 화면 카트 담기 · 본사 재고아이템 원가 = 마지막 매입가. 마이그 0.
+> **최종 업데이트:** 2026-10-09 — [Claude Code] ✅ **재고아이템 삭제 막힘(K-Sundubu) 해결 + 매장 재료 화면 브랜드 재료 공급처 표시 (개발서버만, Fable 게이트 PASS)** — GIT 재고아이템 삭제·공유 해제의 «사용 중» 기준을 한 함수로: 매장 재고 0 인 빈 줄·브랜드 자신의 연결은 사용 아님 · 막힘 창이 매장 이름·재고와 실제로 손쓸 화면을 보여 줌 · 매장 화면이 브랜드 재료의 공급처를 요청·표시. 마이그 0.
+
+> **이전:** 2026-10-09 — [Claude Code] ✅ **청구서 화면 «공급업체 인보이스» 네 가지 일을 모든 역할에 + 브랜드 발주 고장 3개 (개발서버만, Fable 게이트 PASS ×2)** — 매장 관리자·오너·브랜드·푸드코트 청구서 상세 창에서 인보이스 올리기·다시 올리기·보기·가격 대조·총액 수정 · 오너도 가격 대조 · 브랜드 수령 파손·부족분 반품/기록 · 브랜드 발주 제안 = 본사 재고 · 재고 화면 카트 담기 · 본사 재고아이템 원가 = 마지막 매입가. 마이그 0.
 
 > **이전:** 2026-10-08 — [Claude Code] ✅ **판매자 배송 지역별 설정 (개발서버만, Fable 게이트 PASS)** — 브랜드·푸드코트·가입 공급업체 설정에 «배송 지역»(지역 이름·배송비·포함 주) · 매장 주소의 주(州)로 자동 판정(별칭·우편번호 폴백) · 안 맞으면 기본 배송비 · 무료 기준은 판매자당 하나 · 발주 담기·상세에 지역 이름 · 제출 때 배송비 1회 재계산 · 마이그 deploy(빈 칸 3개). 지역 안 적은 판매자 변화 0.
 
@@ -10978,6 +10980,27 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 - 서버: `models/KioskDevice.js` · `scripts/migrate-create-kiosk-devices.js` · `middleware/kioskDevice.js` · `routes/kiosk-devices.js` · `server.js` · `routes/orders-crud.js`🔒 · `routes/orders-payment.js` · `routes/terminal-payments.js` · `services/terminalPayments.js` · `utils/paymentMethodGuard.js` · `utils/settingsGuard.js` · `routes/mobile-public.js` · `scripts/health-check.js`(kiosk 4)
 - 화면: `utils/kioskDevice.ts` · `utils/paymentChannel.ts` · `utils/httpClient.ts` · `utils/terminalSale.ts` · `components/Kiosk/KioskEntryGate.tsx` · `pages/Settings/SettingsPage.tsx` · `pages/Settings/KioskDevicesCard.tsx` · `mobile/components/KioskCardPanel.tsx` · `mobile/components/KioskCartAside.tsx` · `mobile/pages/{Menu,ItemDetail,Cart,Payment,QRPayment,OnlinePayment,OrderType}Page.tsx` · `components/Layout/MainLayout.tsx`🔒 · `hooks/useAutoPrintPoller.ts`🔒 · locales 4언어
 - 문서: `docs/KIOSK_MODE.md`(신규) · `docs/ORDER_FLOW_MATRIX.md`
+
+---
+
+## ✅ 완료: 재고아이템 삭제 막힘 «사용 중» 기준 하나로 + 매장 재료 카드 공급처 표시 (2026-10-09) [Claude Code · 작업방 67f96715]
+
+> Irene: «…K-Sundubu는 브랜드제너럴이 파는 제품도 아닌데 왜 삭제가 안되는거야? … 방법이 필요해.» → Fable 설계 → Irene «아예 필요없어서 삭제할건데 아무곳에서도 삭제를 못하잖아. 정석대로 개발할게 있으면 해줘. … 권고대로» → Fable 게이트 PASS (`backups/fable-pending/fable-verdict-20261009-stock-item-delete-deadend{,-gate}.md`)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| «사용 중» 단일 술어 | `stockItemMirror.mirrorUses` — 레시피 줄 · 재고≠0 매장 줄 · 매장이 붙인 연결만 막음. 공유 해제·삭제 공용 | ✅ 완료 |
+| 삭제 직접 참조 | DELETE 가 발주 줄·상품 직접·메뉴 직접 연결도 «쓰는 곳»으로 안내(FK 500 방지) | ✅ 완료 |
+| 막힘 창 | 매장 이름·재고·단위, «Open» 이 손쓸 화면으로, 다른 브랜드 사본 문구는 해당 줄에만 | ✅ 완료 |
+| 매장 재료 카드 공급처 | brand-ingredients `?include=sellers` 4곳 + sellerSources→sellers 이름 맞춤 | ✅ 완료 |
+| 검증 | health-check 새 3건 · 고장주입 반증 · 클릭 흐름 8/8 · verify-all --full 22/24(배포 기록·타입 재실행 신규 0) | ✅ 완료 |
+
+### 수정된 파일
+- 서버: `services/stockItemMirror.js` · `routes/product-ingredients.js` · `scripts/health-check.js`
+- 화면: `pages/BrandProductRecipe/ProductIngredientsTab.tsx` · `pages/RecipeManagement/IngredientsTab.tsx` · `public/locales/{en,ko,zh,ms}/brand.json`
+- 문서: `docs/INGREDIENT_UNIFICATION_DESIGN.md` (F8-1)
 
 ---
 
