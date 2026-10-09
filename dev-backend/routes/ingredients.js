@@ -15,6 +15,7 @@ const { isBrandManager } = require('../middleware/recipeAuth');
 const { requireRestaurantModule } = require('../middleware/requireModule');
 const { generateIngredientCode } = require('../utils/codeGenerator');
 const { deleteOldImages, saveImageToFile } = require('../utils/imageProcessor');
+const { attachSellerProductActive } = require('../utils/poSellerProductActive');
 
 // Tier gate (P0-3, 2026-06-08): a restaurant managing its OWN ingredients /
 // ingredient costs is an Advanced-tier feature (inventory_management OR
@@ -231,6 +232,8 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
         return plain;
       });
       if (hasSellersFilter) enriched = enriched.filter(ing => ing.sellers.length > 0);
+      // 판매 중지 상품 표시 — 발주 검사와 같은 판정(utils/poSellerProductActive.js)
+      try { await attachSellerProductActive(enriched.flatMap(i => i.sellers || [])); } catch (e) { console.error('[seller-active] attach failed:', e.message); }
       return res.json({ success: true, data: enriched });
     }
 
@@ -705,6 +708,9 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
       return plain;
     });
 
+    if (wantSellers) {
+      try { await attachSellerProductActive(enrichedIngredients.flatMap(i => i.sellerSources || [])); } catch (e) { console.error('[seller-active] attach failed:', e.message); }
+    }
     res.json({ success: true, data: enrichedIngredients });
   } catch (error) {
     console.error('Get brand ingredients for restaurant error:', error);
@@ -937,6 +943,8 @@ router.get('/foodcourts/:foodcourtId/ingredients', authenticateToken, isFoodcour
         return plain;
       });
       if (hasSellersFilter) enriched = enriched.filter(ing => ing.sellers.length > 0);
+      // 판매 중지 상품 표시 — 발주 검사와 같은 판정(utils/poSellerProductActive.js)
+      try { await attachSellerProductActive(enriched.flatMap(i => i.sellers || [])); } catch (e) { console.error('[seller-active] attach failed:', e.message); }
       return res.json({ success: true, data: enriched });
     }
 

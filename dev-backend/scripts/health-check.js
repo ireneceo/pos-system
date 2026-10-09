@@ -5499,6 +5499,98 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
   });
 
+  // ══════════════════════════════════════════════════════════════════
+  // 판매 중지 상품은 구매자가 발주할 수 없다 (2026-10-09 Irene «권고대로» · utils/poSellerProductActive.js)
+  //   그전: 판매자가 상품을 끄면 카탈로그에서만 빠지고, 매장 재료에 붙은 연결로는 발주가 만들어지고 제출됐다.
+  //   S1 켜진 동안 초안 201 → S2 BG 끔 → 재고 목록 seller_product_active=false
+  //   S3 POST·bulk·PUT·submit·mark-sent-external 전부 400 SELLER_PRODUCT_INACTIVE · 초안은 draft 그대로
+  //   S4 다시 켜면 같은 연결로 201(연결은 지우지 않는다)
+  // ══════════════════════════════════════════════════════════════════
+  test('po', '판매자가 끈 상품 = 구매자 발주 생성·수정·제출·전송 전부 400, 다시 켜면 복구 (S1~S4)', async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const { BrandProduct, Ingredient, IngredientSellerProduct, PurchaseOrder, User } = require('../models');
+    const q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const fx = (await q(`SELECT r.id rid, b.id bid, u.id uid FROM restaurants r
+        JOIN brands b ON b.id = r.brand_id JOIN users u ON u.id = b.owner_id
+       WHERE r.is_demo = 1 AND u.email = 'demo-brand@purplehere.com' ORDER BY r.id LIMIT 1`))[0];
+    const ra = fx && await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: fx.rid } });
+    if (!fx || !ra) { console.log(c.gray('      (건너뜀: 데모 매장/BG/RA 픽스처 불가)')); return true; }
+    const bgAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: fx.uid }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const raAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const tag = 'ZZ-HC-OFF-' + Date.now();
+    const bps = [], ingIds = [], poIds = [];
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const INACTIVE = 'SELLER_PRODUCT_INACTIVE';
+    try {
+      const bp = await BrandProduct.create({ owner_user_id: fx.uid, is_active: true, distribution_mode: 'all', product_kind: 'stock',
+        current_stock: 100, order_mode: 'pack', sku: 'ZZO-' + Math.random().toString(36).slice(2, 9),
+        name: tag, unit: 'pack', base_quantity: 1, unit_price: 2, min_order_quantity: 1 });
+      bps.push(bp);
+      const c1 = await request('POST', `/restaurants/${fx.rid}/ingredients/from-catalog`, { brand_product_id: bp.id }, raAuth);
+      const ing = c1.body?.data?.ingredient, map = c1.body?.data?.mapping;
+      if (ing?.id) ingIds.push(ing.id);
+      if (c1.status !== 201 || !map) return fail(`S1 연결 ${c1.status} ${JSON.stringify(c1.body).slice(0, 160)}`);
+      const line = (qty) => ({ ingredient_id: ing.id, ingredient_seller_product_id: map.id, quantity_ordered: qty, unit_price: 2 });
+      const grp = (qty) => ({ seller_type: 'brand', seller_entity_id: fx.bid, items: [line(qty)] });
+
+      // S1 켜진 동안 = 초안 201
+      const p0 = await request('POST', '/purchase-orders', grp(2), raAuth);
+      const poId = p0.body?.data?.id;
+      if (poId) poIds.push(poId);
+      if (p0.status !== 201 || !poId) return fail(`S1 켜짐 POST ${p0.status} ${JSON.stringify(p0.body).slice(0, 160)}`);
+
+      // S2 BG 가 끈다(실제 토글 라우트)
+      const off = await request('PUT', `/brand-products/${bp.id}/toggle-active`, {}, bgAuth);
+      if (off.status !== 200 || off.body?.data?.is_active !== false) return fail(`S2 끄기 ${off.status} ${JSON.stringify(off.body).slice(0, 120)}`);
+      const lst = await request('GET', `/restaurants/${fx.rid}/ingredients?include=sellers`, null, raAuth);
+      const src = (lst.body?.data || []).find(r => r.id === ing.id)?.sellers?.find(s => s.id === map.id || s.mapping_id === map.id || s.seller_product_id === bp.id);
+      if (!src || src.seller_product_active !== false) return fail(`S2 목록 표시 ${JSON.stringify(src || null).slice(0, 160)}`);
+
+      // S3 구매자 경로 전부 거부
+      const p1 = await request('POST', '/purchase-orders', grp(1), raAuth);
+      if (p1.body?.data?.id) poIds.push(p1.body.data.id);
+      if (p1.status !== 400 || p1.body?.code !== INACTIVE) return fail(`S3 POST ${p1.status} ${p1.body?.code}`);
+      if (!(p1.body?.data?.lines || []).some(l => l.description === tag || l.seller_product_name === tag)) return fail(`S3 POST 줄 이름 ${JSON.stringify(p1.body?.data)}`);
+      const b1 = await request('POST', '/purchase-orders/bulk', { groups: [grp(1)] }, raAuth);
+      for (const o of (b1.body?.data?.orders || [])) if (o?.id && !poIds.includes(o.id)) poIds.push(o.id);
+      if (b1.status !== 400 || b1.body?.code !== INACTIVE) return fail(`S3 bulk ${b1.status} ${b1.body?.code}`);
+      const u1 = await request('PUT', `/purchase-orders/${poId}`, { items: [line(3)] }, raAuth);
+      if (u1.status !== 400 || u1.body?.code !== INACTIVE) return fail(`S3 PUT ${u1.status} ${u1.body?.code}`);
+      const s1 = await request('POST', `/purchase-orders/${poId}/submit`, {}, raAuth);
+      if (s1.status !== 400 || s1.body?.code !== INACTIVE) return fail(`S3 submit ${s1.status} ${s1.body?.code}`);
+      const m1 = await request('POST', `/purchase-orders/${poId}/mark-sent-external`, {}, raAuth);
+      if (m1.status !== 400 || m1.body?.code !== INACTIVE) return fail(`S3 mark-sent-external ${m1.status} ${m1.body?.code}`);
+      const still = await PurchaseOrder.findByPk(poId);
+      if (!still || still.status !== 'draft') return fail(`S3 거부 뒤 초안 상태 ${still && still.status}`);
+
+      // S4 다시 켜면 같은 연결로 다시 주문된다
+      const on = await request('PUT', `/brand-products/${bp.id}/toggle-active`, {}, bgAuth);
+      if (on.status !== 200 || on.body?.data?.is_active !== true) return fail(`S4 켜기 ${on.status}`);
+      const p2 = await request('POST', '/purchase-orders', grp(1), raAuth);
+      if (p2.body?.data?.id && !poIds.includes(p2.body.data.id)) poIds.push(p2.body.data.id);
+      if (![200, 201].includes(p2.status)) return fail(`S4 다시 켠 뒤 POST ${p2.status} ${p2.body?.code}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try { await hcCleanupPurchaseOrders(poIds); } catch {}
+      try {
+        const ids = bps.map(b => b.id);
+        if (ids.length) {
+          const more = (await q(`SELECT DISTINCT ingredient_id id FROM ingredient_seller_products WHERE seller_type='brand' AND seller_product_id IN (:ids) AND ingredient_id IS NOT NULL`, { ids })).map(r => r.id);
+          await IngredientSellerProduct.destroy({ where: { seller_type: 'brand', seller_product_id: ids }, force: true });
+          const all = [...new Set([...ingIds, ...more])];
+          if (all.length) {
+            for (const tb of ['restaurant_ingredient_costs', 'stock_alerts', 'inventory_transactions', 'inventory_batches'])
+              try { await sequelize.query(`DELETE FROM ${tb} WHERE ingredient_id IN (:a)`, { replacements: { a: all } }); } catch {}
+            await Ingredient.destroy({ where: { id: all }, force: true });
+          }
+          await BrandProduct.destroy({ where: { id: ids }, force: true });
+        }
+      } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
+    }
+  });
+
   // P3 입구 ③ 의 **끝까지**: 재고아이템을 "그대로 팔기"로 등록해 만든 브랜드 프로덕트가
   // 실제 출고 때 **재고아이템에서** 빠지는가. 여기가 이 설계의 요점이다 —
   // 수량이 재고아이템 한 곳에만 살아야 하므로, 팔릴 때 프로덕트가 아니라 **재료가 줄어야** 한다.

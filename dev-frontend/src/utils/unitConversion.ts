@@ -214,6 +214,18 @@ export const minOrderViolationText = (
 }) as string).join(' / ');
 
 /**
+ * 서버 400 SELLER_PRODUCT_INACTIVE 의 `data.lines` → 한 줄 (2026-10-09).
+ * 판매자가 끈 상품이 담긴 줄 — 서버 utils/poSellerProductActive.js. t 는 purchaseOrders 네임스페이스.
+ */
+export const inactiveSellerProductText = (
+  lines: Array<{ description?: string | null; seller_product_name?: string | null }> | null | undefined,
+  t: (key: string, opts?: any) => any,
+): string => t('sellerInactive.error', {
+  defaultValue: 'No longer sold by the seller: {{names}}. Remove these items to continue.',
+  names: (lines || []).map(l => l.description || l.seller_product_name || '').filter(Boolean).join(', '),
+}) as string;
+
+/**
  * 판매상품 주문 방식 — 백엔드 ENUM 과 같은 목록(models/SupplierProduct.js).
  * 'pack'    = 개수로 주문 (팩/박스/포대) — 기본이자 기존 동작
  * 'measure' = 무게·부피로 주문 (kg·g·L·ml, 소수)

@@ -533,7 +533,9 @@
     "ownerPickFirst": "Choose which of your restaurants this order is for. It will appear in that restaurant's order history.",
     "staffMeal": "Staff meal",
     "deliveryZoneUnknown": "Your store address has no state, so the default delivery fee applies.",
-    "deliveryZoneFix": "Add state"
+    "deliveryZoneFix": "Add state",
+    "discontinued": "Discontinued",
+    "discontinuedText": "{{seller}} no longer sells this item"
   },
   "staging": {
     "noPhoneTitle": "No Phone Number",
@@ -867,5 +869,8 @@
   "newPo.profileField.phone": "Phone number",
   "minOrder": {
     "violation": "{{name}} — minimum {{min}} {{unit}} (now {{qty}})"
+  },
+  "sellerInactive": {
+    "error": "No longer sold by the seller: {{names}}. Remove these items to continue."
   }
 }

@@ -15,6 +15,7 @@ const {
 } = require('../models');
 const { Op } = require('sequelize');
 const { parseMinOrderQty } = require('../utils/quantity');
+const { attachSellerProductActive } = require('../utils/poSellerProductActive');
 
 router.use(authenticateToken);
 router.use(requireBGScope);
@@ -88,6 +89,8 @@ router.get('/', async (req, res) => {
         });
       }
       data = ingredients.map(i => ({ ...i.toJSON(), sellers: byIng[i.id] || [] }));
+      // 판매 중지 상품 표시 — 발주 검사와 같은 판정(utils/poSellerProductActive.js)
+      try { await attachSellerProductActive(data.flatMap(i => i.sellers || [])); } catch (e) { console.error('[seller-active] attach failed:', e.message); }
     }
 
     // ── 연결된 판매 재료의 실재고 첨부 (읽기 전용) ────────────────────────────

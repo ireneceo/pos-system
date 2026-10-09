@@ -14,7 +14,7 @@ import ReceivePayModal, { ReceivePayMode } from '../../components/PurchaseOrders
 import ConfirmModal from '../../components/ConfirmModal';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
-import { formatQuantity, qtyStepForUnit, lineQtyText } from '../../utils/unitConversion';
+import { formatQuantity, qtyStepForUnit, lineQtyText, inactiveSellerProductText } from '../../utils/unitConversion';
 import { sharePoViaWhatsApp, sharePoViaEmail, isRealSupplierSku, poItemName } from '../../utils/poShare';
 import { formatDate } from '../../utils/timezone';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
@@ -742,7 +742,9 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setError(data?.message || (t('new.errors.submitFailed') as string));
+        setError(data?.code === 'SELLER_PRODUCT_INACTIVE'
+          ? inactiveSellerProductText(data?.data?.lines, t)
+          : (data?.message || (t('new.errors.submitFailed') as string)));
         return;
       }
       await fetchDetail();

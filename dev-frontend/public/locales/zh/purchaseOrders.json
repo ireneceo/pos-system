@@ -533,7 +533,9 @@
     "ownerPickFirst": "请先选择这张采购单属于哪家门店。采购单会记入该门店的订货记录。",
     "staffMeal": "员工餐",
     "deliveryZoneUnknown": "门店地址未填写州，因此适用默认配送费。",
-    "deliveryZoneFix": "填写州"
+    "deliveryZoneFix": "填写州",
+    "discontinued": "已停售",
+    "discontinuedText": "{{seller}} 已不再销售此商品"
   },
   "staging": {
     "noPhoneTitle": "无电话号码",
@@ -867,5 +869,8 @@
   "newPo.profileField.phone": "电话号码",
   "minOrder": {
     "violation": "{{name}} — 最少 {{min}} {{unit}}（当前 {{qty}}）"
+  },
+  "sellerInactive": {
+    "error": "卖家已停止销售：{{names}}。请移除这些商品后继续。"
   }
 }

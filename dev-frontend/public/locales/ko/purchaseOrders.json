@@ -533,7 +533,9 @@
     "ownerPickFirst": "어느 매장의 발주인지 먼저 골라 주세요. 발주는 그 매장의 발주 내역에 들어갑니다.",
     "staffMeal": "직원식",
     "deliveryZoneUnknown": "매장 주소에 주(State)가 없어 기본 배송비가 적용됩니다.",
-    "deliveryZoneFix": "주 입력하기"
+    "deliveryZoneFix": "주 입력하기",
+    "discontinued": "판매 중지",
+    "discontinuedText": "{{seller}}에서 더 이상 판매하지 않는 품목이에요"
   },
   "staging": {
     "noPhoneTitle": "전화번호 없음",
@@ -867,5 +869,8 @@
   "newPo.profileField.phone": "전화번호",
   "minOrder": {
     "violation": "{{name}} — 최소 {{min}} {{unit}} (지금 {{qty}})"
+  },
+  "sellerInactive": {
+    "error": "판매자가 판매를 중지한 품목: {{names}}. 이 품목을 빼야 진행할 수 있어요."
   }
 }

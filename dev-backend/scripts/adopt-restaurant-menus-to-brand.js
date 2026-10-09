@@ -26,6 +26,12 @@
  *   ⛔ 매장 쪽 값은 하나도 바꾸지 않는다(연결 칸·미러 칸만). 버전은 올리지 않는다(내용이 같으니 내려보낼 것이 없다).
  *   미리보기가 기본이고 --apply 로 한 트랜잭션 반영 · 스냅샷 · --undo.
  *
+ * --refresh --brand-only (2026-10-09 · Irene «절대 K-DINE IPC 메뉴를 건드리면 안돼»)
+ *   위 refresh 에서 **매장 표 쓰기를 전부 뺀다** — products(연결 칸)·option_groups(미러 칸)·brand_menu_restaurants(배포 대상) 0행.
+ *   브랜드 메뉴·카테고리·옵션·메뉴↔옵션 연결만 매장 현재값으로 맞춘다. 매장에만 있는 상품의 브랜드 메뉴는 만들되
+ *   **연결하지 않고 배포 대상에도 넣지 않는다**(scope selected · 대상 0 → 내려보내도 아무 매장에 안 감).
+ *   매장 표 쓰기 함수는 실행 중 막아 둔다(호출되면 예외 → 트랜잭션 전체 취소). --lock 과 함께 쓰지 않는다.
+ *
  * --lock (같은 판정 §3-2 ③ — 반드시 --refresh 반영 뒤)
  *   매장에 연결된 브랜드 메뉴의 잠금 5칸(이름·가격·분류·사진·옵션) 켬 + 배포 auto + version+1 → 그 매장으로 sync 1회.
  *   이후 매장은 판매여부·품절·재고·주방만 만지고, 메뉴 편집은 브랜드 화면에서 한다.
@@ -40,6 +46,7 @@ const has = (n) => argv.includes(n);
 const BRAND_ID = parseInt(arg('--brand', '2'), 10);
 const RID = parseInt(arg('--restaurant', '8'), 10);
 const APPLY = has('--apply');
+const BRAND_ONLY = has('--brand-only');
 const UNDO_FILE = arg('--undo', null);
 
 const { sequelize } = require('../config/database');
@@ -89,12 +96,13 @@ async function undo() {
         brand_menu_link_status: p.before.brand_menu_link_status,
       }, { where: { id: p.id }, transaction: t });
     }
+    // 메뉴↔옵션 연결을 먼저 지운다 — 메뉴·옵션그룹을 가리키는 외래키라 나중에 지우면 되돌리기 전체가 실패한다(2026-10-09)
+    if (snap.created_link_ids?.length) await BrandMenuOptionGroupLink.destroy({ where: { id: snap.created_link_ids }, transaction: t });
     if (snap.created_menu_ids?.length) {
       await BrandMenuRestaurant.destroy({ where: { brand_menu_id: snap.created_menu_ids }, transaction: t });
       await BrandMenu.destroy({ where: { id: snap.created_menu_ids }, transaction: t });
     }
     if (snap.created_category_ids?.length) await BrandMenuCategory.destroy({ where: { id: snap.created_category_ids }, transaction: t });
-    if (snap.created_link_ids?.length) await BrandMenuOptionGroupLink.destroy({ where: { id: snap.created_link_ids }, transaction: t });
     if (snap.created_option_ids?.length) await BrandMenuOption.destroy({ where: { id: snap.created_option_ids }, transaction: t });
     if (snap.created_group_ids?.length) await BrandMenuOptionGroup.destroy({ where: { id: snap.created_group_ids }, transaction: t });
     for (const g of (snap.local_groups || [])) {
@@ -349,7 +357,8 @@ async function refresh() {
   }
 
   // ── 미리보기 ──
-  console.log(`\n[refresh] 브랜드 ${BRAND_ID} ← 매장 ${RID} 현재값`);
+  console.log(`\n[refresh${BRAND_ONLY ? ' --brand-only' : ''}] 브랜드 ${BRAND_ID} ← 매장 ${RID} 현재값`);
+  if (BRAND_ONLY) console.log('  (매장 표 쓰기 0 — 매장에만 있는 상품의 브랜드 메뉴는 만들되 연결·배포 대상 없음, 매장 옵션그룹 미러 칸 그대로)');
   console.log(`  ① 갱신할 브랜드 메뉴 ${plan.update.length}건`);
   plan.update.forEach(u => console.log(`     #${u.brand_menu_id} ${u.name}: ${Object.keys(u.diff).join(', ')}`));
   console.log(`  ② 새로 만들 브랜드 메뉴 ${plan.create.length}건 · 이름 같은 미연결 메뉴 재사용 ${plan.reuse.length}건`);
@@ -367,7 +376,14 @@ async function refresh() {
   const snap = { at: new Date().toISOString(), mode: 'refresh', brand_id: BRAND_ID, restaurant_id: RID,
     created_category_ids: [], created_menu_ids: [], products: [], updated_menus: [],
     created_group_ids: [], created_option_ids: [], created_link_ids: [], updated_groups: [], updated_options: [],
-    deleted_links: [], local_groups: [] };
+    deleted_links: [], local_groups: [], brand_only: BRAND_ONLY };
+  if (BRAND_ONLY) {
+    // 매장 표 쓰기를 구조로 막는다 — 실수로 호출되면 예외 → 아래 catch 가 전체 롤백
+    const block = (name) => () => { throw new Error(`--brand-only 인데 매장 표 쓰기 호출: ${name}`); };
+    for (const [M, n] of [[Product, 'Product'], [OptionGroup, 'OptionGroup'], [Option, 'Option'], [Category, 'Category'], [BrandMenuRestaurant, 'BrandMenuRestaurant']]) {
+      for (const fn of ['update', 'create', 'bulkCreate', 'destroy', 'upsert', 'findOrCreate']) M[fn] = block(`${n}.${fn}`);
+    }
+  }
   const t = await sequelize.transaction();
   try {
     const catIdOf = async (name) => {
@@ -388,6 +404,7 @@ async function refresh() {
       return a;
     };
     const linkProduct = async (p, bm) => {
+      if (BRAND_ONLY) { p.brand_menu_id = bm.id; return; }   // 메모리에서만 — 세트 역변환·옵션 연결 계산용, DB 쓰기 0
       snap.products.push({ id: p.id, before: { brand_menu_id: p.brand_menu_id, brand_menu_synced_version: p.brand_menu_synced_version,
         brand_menu_synced_at: p.brand_menu_synced_at, brand_menu_locks_snapshot: p.brand_menu_locks_snapshot, brand_menu_link_status: p.brand_menu_link_status } });
       await Product.update({ brand_menu_id: bm.id, brand_menu_synced_version: bm.version, brand_menu_synced_at: new Date(),
@@ -450,8 +467,8 @@ async function refresh() {
       for (const b of bOpts.filter(b => !used.has(b.id) && b.is_active)) {
         snap.updated_options.push({ id: b.id, before: b.toJSON() }); await b.update({ is_active: false }, { transaction: t });
       }
-      snap.local_groups.push({ id: g.id, before: { brand_menu_option_group_id: g.brand_menu_option_group_id, brand_menu_synced_version: g.brand_menu_synced_version } });
-      await OptionGroup.update({ brand_menu_option_group_id: bg.id, brand_menu_synced_version: bg.version }, { where: { id: g.id }, transaction: t });
+      if (!BRAND_ONLY) snap.local_groups.push({ id: g.id, before: { brand_menu_option_group_id: g.brand_menu_option_group_id, brand_menu_synced_version: g.brand_menu_synced_version } });
+      if (!BRAND_ONLY) await OptionGroup.update({ brand_menu_option_group_id: bg.id, brand_menu_synced_version: bg.version }, { where: { id: g.id }, transaction: t });
       bgOfLocal.set(g.id, bg.id);
     }
     for (const p of products.filter(x => x.brand_menu_id && bmById.has(x.brand_menu_id))) {
@@ -509,7 +526,7 @@ async function lockAndSync() {
 (async () => {
   if (UNDO_FILE) return undo();
   if (has('--refresh')) return refresh();
-  if (has('--lock')) return lockAndSync();
+  if (has('--lock')) { if (BRAND_ONLY) { console.error('--brand-only 와 --lock 은 같이 못 씁니다(잠금은 매장 표에 씀)'); process.exit(2); } return lockAndSync(); }
   if (has('--options')) return adoptOptions();
   if (has('--fix-shared')) return fixShared();
 

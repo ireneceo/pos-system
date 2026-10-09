@@ -25,6 +25,7 @@ const { validateRestaurantCreation, sanitizeString } = require('../middleware/va
 const jwt = require('jsonwebtoken');
 const { getTodayBounds, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { deleteOldImages, saveImageToFile } = require('../utils/imageProcessor');
+const { attachSellerProductActive } = require('../utils/poSellerProductActive');
 
 // Tier gate (P0-3, 2026-06-08): restaurant-owned ingredient management is an
 // Advanced-tier feature (inventory_management OR ingredients module — mirrors the
@@ -253,6 +254,8 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
         enriched = enriched.filter(ing => ing.sellers.length > 0);
       }
 
+      // 판매 중지 상품 표시 — 발주 검사와 같은 판정(utils/poSellerProductActive.js)
+      try { await attachSellerProductActive(enriched.flatMap(i => i.sellers || [])); } catch (e) { console.error('[seller-active] attach failed:', e.message); }
       return res.json({ success: true, data: enriched });
     }
 
@@ -520,6 +523,7 @@ router.get('/:restaurantId/stock-products', authenticateToken, checkRestaurantAc
       })),
     }));
     try { await attachSellerProductIdentity(data.flatMap((d) => d.sellerSources)); } catch { /* 표시용 — 실패해도 목록은 준다 */ }
+    try { await attachSellerProductActive(data.flatMap((d) => d.sellerSources)); } catch (e) { console.error('[seller-active] attach failed:', e.message); }
     res.json({ success: true, data });
   } catch (err) {
     console.error('GET /restaurants/:restaurantId/stock-products error:', err);

@@ -533,7 +533,9 @@
     "ownerPickFirst": "Pilih restoran anda yang membuat pesanan ini. Pesanan akan masuk ke sejarah pesanan restoran itu.",
     "staffMeal": "Makanan staf",
     "deliveryZoneUnknown": "Alamat kedai tiada negeri, jadi caj penghantaran lalai dikenakan.",
-    "deliveryZoneFix": "Tambah negeri"
+    "deliveryZoneFix": "Tambah negeri",
+    "discontinued": "Dihentikan",
+    "discontinuedText": "{{seller}} tidak lagi menjual item ini"
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",
@@ -867,5 +869,8 @@
   "newPo.profileField.phone": "Nombor telefon",
   "minOrder": {
     "violation": "{{name}} — minimum {{min}} {{unit}} (kini {{qty}})"
+  },
+  "sellerInactive": {
+    "error": "Tidak lagi dijual oleh penjual: {{names}}. Buang item ini untuk meneruskan."
   }
 }

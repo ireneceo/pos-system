@@ -35,7 +35,7 @@ import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { Modal as UIModal } from '../../components/UI/Modal';
-import { qtyStepForUnit, parseMinOrderQty, formatQuantity, sellerOrderUnitOf, sellerSpecText, defaultLinkConversion, minQtyOf, minOrderViolationText, type OrderMode } from '../../utils/unitConversion';
+import { qtyStepForUnit, parseMinOrderQty, formatQuantity, sellerOrderUnitOf, sellerSpecText, defaultLinkConversion, minQtyOf, minOrderViolationText, inactiveSellerProductText, type OrderMode } from '../../utils/unitConversion';
 
 type SellerType = 'system_admin' | 'brand' | 'foodcourt' | 'supplier';
 
@@ -65,6 +65,8 @@ interface SellerOpt {
   // 백엔드 ?include=sellers 가 SupplierProduct join 으로 채움(공급업체 타입만 값, 아니면 null).
   seller_product_name?: string | null;
   seller_product_sku?: string | null;
+  // 판매자가 이 상품을 껐는가(2026-10-09) — 서버 utils/poSellerProductActive.js 가 싣는다. false 면 담을 수 없다.
+  seller_product_active?: boolean;
   // 규격·주문방식 (2026-08-30 단위주문). 백엔드 ?include=sellers 가 supplier_products 에서 채운다.
   // order_mode 는 supplier_products 에만 있는 컬럼이라 브랜드·푸드코트 판매자는 'pack' 로 온다.
   seller_unit?: string | null;
@@ -81,6 +83,8 @@ interface MyIngredientRow {
   ingredient_category_id?: number | null;
   ingredientCategory?: { id: number; name: string; emoji?: string | null; is_staff_meal?: boolean } | null;
   sellers: SellerOpt[];
+  // 판매자가 판매를 중지한 연결(2026-10-09) — sellers 에서 빼고 «판매 중지» 표시에만 쓴다.
+  discontinued_sellers?: SellerOpt[];
   // 지금 남아 있는 재고 — "얼마나 남았나"를 보고 발주량을 정하게 목록에 같이 보여준다.
   current_stock?: number | null;
   created_at?: string | null;
@@ -1334,6 +1338,7 @@ const NewPurchaseOrderPage: React.FC = () => {
               is_preferred: !!s.is_preferred,
               seller_product_name: s.seller_product_name ?? null,
               seller_product_sku: s.seller_product_sku ?? null,
+              seller_product_active: s.seller_product_active !== false,
             })),
           }));
         } catch { /* brand-shared fetch is additive; ignore failures */ }
@@ -1384,6 +1389,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                 is_preferred: !!s.is_preferred,
                 seller_product_name: s.seller_product_name ?? null,
                 seller_product_sku: s.seller_product_sku ?? null,
+                seller_product_active: s.seller_product_active !== false,
               })),
             }));
         } catch { /* BG stock-item fetch is additive; ignore failures */ }
@@ -1427,12 +1433,19 @@ const NewPurchaseOrderPage: React.FC = () => {
               is_preferred: !!s.is_preferred,
               seller_product_name: s.seller_product_name ?? null,
               seller_product_sku: s.seller_product_sku ?? null,
+              seller_product_active: s.seller_product_active !== false,
             })),
           }));
         } catch { /* additive — 실패해도 재료 목록은 그대로 준다 */ }
       }
 
-      setMyList([...ingredientRows, ...brandSharedRows, ...productIngredientRows, ...stockProductRows]);
+      // 판매자가 끈 상품은 담을 수 없다(서버도 400) — 담기 후보에서 빼고 «판매 중지» 표시용으로만 남긴다.
+      const splitDiscontinued = (r: MyIngredientRow): MyIngredientRow => {
+        const all = Array.isArray(r.sellers) ? r.sellers : [];
+        const off = all.filter(s => s.seller_product_active === false);
+        return off.length ? { ...r, sellers: all.filter(s => s.seller_product_active !== false), discontinued_sellers: off } : r;
+      };
+      setMyList([...ingredientRows, ...brandSharedRows, ...productIngredientRows, ...stockProductRows].map(splitDiscontinued));
     } catch { setMyList([]); }
     finally { setLoadingMine(false); }
   }, [buyerApiBase, buyerEntity]);
@@ -2086,6 +2099,10 @@ const NewPurchaseOrderPage: React.FC = () => {
           setError(minOrderViolationText(j?.data?.violations, t));
           return;
         }
+        if (j?.code === 'SELLER_PRODUCT_INACTIVE') {
+          setError(inactiveSellerProductText(j?.data?.lines, t));
+          return;
+        }
         setError(j?.message || t('newPo.error.failed', 'Failed to create POs') as string);
         return;
       }
@@ -2381,7 +2398,11 @@ const NewPurchaseOrderPage: React.FC = () => {
                       //   minPer 는 **주문 단위당** 가격이므로 단위도 주문 단위여야 한다.
                       vendorText = `/${orderUnitOf(row.sellers, row.unit) || 'unit'} · ${vendorName}${minOrderText}`;
                     }
-                    const noSellerText = row.is_brand_shared
+                    // 연결은 있는데 판매자가 전부 판매를 중지한 품목 — «공급처 연결» 이 아니라 «판매 중지» 로 보인다
+                    const discontinued = !hasSeller && (row.discontinued_sellers?.length ?? 0) > 0;
+                    const noSellerText = discontinued
+                      ? (t('newPo.discontinuedText', { defaultValue: '{{seller}} no longer sells this item', seller: row.discontinued_sellers![0].seller_name || row.discontinued_sellers![0].seller_product_name || '' }) as string)
+                      : row.is_brand_shared
                       ? (t('newPo.brandNeedsLink', 'Your brand has not linked a supplier to this item yet') as string)
                       : (t('newPo.needLink', 'Link a supplier to order') as string);
                     const hasOptions = !!(row.sellers.find(s => s.is_preferred) || row.sellers[0])?.has_options;
@@ -2392,7 +2413,8 @@ const NewPurchaseOrderPage: React.FC = () => {
                         {/* 재료와 한 목록에 섞이므로 "이건 파는 물건 자체"라는 표시가 필요하다(P3-②) */}
                         {(row.product_id || row.brand_product_id) && <Badge $variant="shared">{t('newPo.productItem', 'Product')}</Badge>}
                         {row.is_brand_shared && <Badge $variant="shared">{t('newPo.brandStock', 'Brand stock')}</Badge>}
-                        {!inCart && !hasSeller && !row.is_brand_shared && !isList && <Badge $variant="warning">{t('newPo.connectCta', 'Click to connect supplier →')}</Badge>}
+                        {discontinued && <Badge $variant="warning">{t('newPo.discontinued', 'Discontinued')}</Badge>}
+                        {!inCart && !hasSeller && !discontinued && !row.is_brand_shared && !isList && <Badge $variant="warning">{t('newPo.connectCta', 'Click to connect supplier →')}</Badge>}
                         {!inCart && hasSeller && !isList && <Badge $variant="success">{t('newPo.linked', 'Linked')}</Badge>}
                         {hasSeller && needsUnitSetup(leadSeller, row.unit) && (
                           <Badge $variant="warning">{t('newPo.needsUnitSetup', 'Check unit')}</Badge>

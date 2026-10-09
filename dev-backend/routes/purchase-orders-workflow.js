@@ -39,6 +39,7 @@ const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
 const { isApprovalRequiredForRestaurant, applySubmitGate } = require('../utils/poOwnerApproval');
 const { assertLinesMeetMinOrder, MinOrderError, minOrderErrorBody } = require('../utils/poMinOrder');
+const { assertLinesSellerProductActive, InactiveSellerProductError, inactiveSellerProductErrorBody } = require('../utils/poSellerProductActive');
 const { fireSellerSubmittedNotification, fireOwnerApprovalPendingNotification, fireBuyerConfirmNotification, fireBuyerReceivedNotification } = require('../services/poNotifications');
 // 수령 시 재고 반영 단일 소스 — /receive 와 mark-received 가 같은 함수를 쓴다(P4-2, 복제 금지)
 const { applyReceipt, markAllReceived } = require('../services/purchaseOrderReceive');
@@ -372,6 +373,14 @@ router.post('/purchase-orders/:id/mark-sent-external', async (req, res) => {
     if (!po) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
     if (!checkPOOwnership(po, req)) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
     if (po.status !== 'draft') { await t.rollback(); return res.status(400).json({ success: false, message: 'Only draft can be marked sent' }); }
+    // 판매 중지 상품 — 수동전송도 발주가 나가는 경로다(utils/poSellerProductActive.js)
+    try {
+      const lines = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, transaction: t });
+      await assertLinesSellerProductActive(lines, { transaction: t });
+    } catch (e) {
+      if (e instanceof InactiveSellerProductError) { await t.rollback(); return res.status(400).json(inactiveSellerProductErrorBody(e)); }
+      throw e;
+    }
 
     // 외부업체 수동 전송도 **발주가 나가는 경로**다 → 오너 승인 게이트를 반드시 탄다.
     // (예전엔 draft → submitted 직행이라 승인 ON 이어도 그냥 나갔다 — Fable 2026-07-13)
@@ -949,6 +958,8 @@ router.post('/purchase-orders/:id/submit', async (req, res) => {
       }
       // 최소주문 — 옛 초안·담은 뒤 판매자가 MOQ 를 올린 경우의 안전망 (utils/poMinOrder.js · MinOrderError 로 던진다)
       await assertLinesMeetMinOrder(locked.items, { transaction: t });
+      // 판매 중지 상품 — 담은 뒤 판매자가 끈 경우(utils/poSellerProductActive.js)
+      await assertLinesSellerProductActive(locked.items, { transaction: t });
       // 배송비 제출 때 1회 재계산 (2026-10-07 Fable 배송 지역) — 담은 뒤 매장 주소(주)·판매자 지역이 바뀌었으면
       //   제출 시점 값으로 맞춘다. 품목은 그대로라 subtotal 은 같아야 한다. 판매자 확인 후 동결 규칙은 그대로.
       const subTotals = await computeTotalsWithDelivery(locked.items, locked,
@@ -986,6 +997,7 @@ router.post('/purchase-orders/:id/submit', async (req, res) => {
     if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
     if (err.code === 'EMPTY_ITEMS') return res.status(400).json({ success: false, message: err.message });
     if (err instanceof MinOrderError) return res.status(400).json(minOrderErrorBody(err));
+    if (err instanceof InactiveSellerProductError) return res.status(400).json(inactiveSellerProductErrorBody(err));
     console.error('POST /api/purchase-orders/:id/submit error:', err);
     res.status(500).json({ success: false, message: 'Failed to submit purchase order' });
   }
