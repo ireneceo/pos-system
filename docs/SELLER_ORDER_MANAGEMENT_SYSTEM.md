@@ -793,7 +793,7 @@ Frontend:
 | 1 | `GET /api/seller-orders` | 자기 앞으로 온 PO list (filter status, date) |
 | 2 | `GET /api/seller-orders/:id` | 단건 상세 |
 | 3 | `POST /api/seller-orders/:id/confirm` | submitted → confirmed |
-| 4 | `POST /api/seller-orders/:id/ship` | confirmed → shipped, body: `{ tracking_info? }` (JSON) |
+| 4 | `POST /api/seller-orders/:id/ship` | confirmed → shipped, body: `{ tracking_info? }` (JSON) <br>2026-10-08: 선택 `item_ids[]` 로 품목별 발송(없으면 남은 줄 전부) · 줄 `shipped_at` · 다시 보냄 409 · 일부만 보낸 주문은 deliver 400 — `docs/PURCHASE_ORDER_SYSTEM.md` «판매자 품목별 발송 표시» |
 | 5 | `POST /api/seller-orders/:id/reject` | submitted → cancelled, body: `{ reason }` 필수 |
 | 6 | `GET /api/seller-orders/stats` | dashboard 카드 (pending/confirmed/shipped/received this month) |
 

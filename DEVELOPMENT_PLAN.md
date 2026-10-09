@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-08 — [Claude Code] ✅ **판매자 배송 지역별 설정 (개발서버만, Fable 게이트 PASS)** — 브랜드·푸드코트·가입 공급업체 설정에 «배송 지역»(지역 이름·배송비·포함 주) · 매장 주소의 주(州)로 자동 판정(별칭·우편번호 폴백) · 안 맞으면 기본 배송비 · 무료 기준은 판매자당 하나 · 발주 담기·상세에 지역 이름 · 제출 때 배송비 1회 재계산 · 마이그 deploy(빈 칸 3개). 지역 안 적은 판매자 변화 0.
+> **최종 업데이트:** 2026-10-09 — [Claude Code] ✅ **판매자 «품목별 발송 표시» (개발서버만, Fable 게이트 PASS)** — 판매자(브랜드·푸드코트·공급업체)가 주문을 나눠 보낼 때 «보내기» 창에서 품목 체크 · 체크한 품목만 재고 차감·«보냄» 표시 · 남으면 «N item(s) not yet dispatched» + «Ship remaining» · 다 보낸 뒤에만 «Delivered» · 매장 발주 상세에 품목별 «Shipped ✓ 날짜». 주문 쪼개기·새 상태 없음. 마이그 deploy(줄 shipped_at + 옛 주문 백필).
+
+> **이전:** 2026-10-08 — [Claude Code] ✅ **판매자 배송 지역별 설정 (개발서버만, Fable 게이트 PASS)** — 브랜드·푸드코트·가입 공급업체 설정에 «배송 지역»(지역 이름·배송비·포함 주) · 매장 주소의 주(州)로 자동 판정(별칭·우편번호 폴백) · 안 맞으면 기본 배송비 · 무료 기준은 판매자당 하나 · 발주 담기·상세에 지역 이름 · 제출 때 배송비 1회 재계산 · 마이그 deploy(빈 칸 3개). 지역 안 적은 판매자 변화 0.
 
 > **이전:** 2026-10-07 — [Claude Code] **판매자 결제 설정 = 계정(회사) 하나 (개발서버만, Fable 2회차 PASS)** — 브랜드 결제 설정 저장이 같은 주인의 모든 브랜드에 적용(둘째 브랜드 청구서 «Payment Not Available» 해소) · 화면 한 줄 안내 · 정렬 마이그(deploy) · 인스펙션 B-ACC.
 
@@ -466,6 +468,28 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 판매자 품목별 발송 표시 (2026-10-09, 개발서버만) [Claude Code]
+
+> Irene: «발송을 나눠서 할 때 어떻게 해? 일부는 보냈지만 일부는 다음 날 보낼 때» → «배송을 했냐 안했냐의 업무처리 때문이야. 그럼 그냥 배송했다 안했다 개별표시만 하게 하던지 간략한 방법 찾아봐» → «그대로». Fable 설계·게이트 `.claude/fable-verdict-20261008-partial-shipment.md` · `-gate.md`
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 줄 «보냄» 표시 | `purchase_order_items.shipped_at` + 마이그 `migrate-po-item-shipped-at.js`(deploy · 옛 출고 주문 백필) | ✅ 완료 |
+| 보내기 API | `/ship` 선택 `item_ids` · 고른 줄만 재고 차감(3갈래) · 헤더 shipped_at 첫 발송 · 발송마다 이력 · 가드(409/400) | ✅ 완료 |
+| 배송 완료·품목 수정 가드 | 일부만 보냈으면 deliver 400 · 보낸 줄 있으면 amend 409 | ✅ 완료 |
+| 화면 | 보내기 창 품목 체크 목록 · «N item(s) not yet dispatched» + «Ship remaining» · 매장 상세 «Shipped» 칸 · 4언어 | ✅ 완료 |
+| 검증 | health-check 335/335(새 2건) · 고장주입 반증 · 클릭 흐름 11/11×2 · verify-all --full 23/24(배포 기록만) · Fable 게이트 PASS | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/models/PurchaseOrderItem.js` · `dev-backend/scripts/migrate-po-item-shipped-at.js` · `dev-backend/scripts/migrations.registry.json`
+- `dev-backend/routes/seller-orders.js` · `dev-backend/routes/purchase-orders-workflow.js` · `dev-backend/utils/poEmailItems.js` · `dev-backend/scripts/health-check.js`
+- `dev-frontend/src/pages/IncomingOrders/IncomingOrdersView.tsx` · `dev-frontend/src/pages/PurchaseOrders/PurchaseOrderDetailPage.tsx` · locales supplier/purchaseOrders 4언어
+- `docs/PURCHASE_ORDER_SYSTEM.md` · `docs/SUPPLY_CHAIN_SPRINT_7.md`
+
+---
 
 ## ✅ 완료: 판매자 결제 설정 = 계정(회사) 하나 (2026-10-07, 개발서버만)
 

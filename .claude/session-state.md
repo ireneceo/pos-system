@@ -1,14 +1,16 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-10-07 UTC — /개발완료 (결제 설정 = 계정 하나, 개발서버만 · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신)
+**마지막 업데이트:** 2026-10-09 UTC — /개발완료 (판매자 품목별 발송 표시, 개발서버만 · Fable 게이트 PASS) · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
 **버전:** **v3.109** (2026-10-07 · 5.87·5.88·5.89 묶음) · 운영 SW **5.89-kiosk-receipt-20261007** (백업 20261007_163801 · 스모크 10/10) · 안드로이드 앱 0.3.4
-**작업 상태:** ✅ 판매자 결제 설정 = 계정 하나 완료(개발서버 · Fable 2회차 PASS · 운영 배포 대기) — 개발서버만 미배포: 이것 + 청구서 To Confirm 탭
+**작업 상태:** ✅ 판매자 품목별 발송 표시 완료(개발서버 · Fable 게이트 PASS · 운영 배포 대기) — 개발서버만 미배포 묶음은 아래 각 «완료» 절 참조(결제 설정 계정 하나 · 청구서 To Confirm · 청구서 권한 경계 · 재고→발주→원가 0~3 · 배송 지역 · 품목별 발송)
 
 
-### 진행 중: 분할 발송 설계 (2026-10-08) — Irene 답 ① «배송을 했냐 안했냐의 업무처리 때문이야. 그럼 그냥 배송했다 안했다 개별표시만 하게 하던지 간략한 방법 찾아봐» ② «그대로» → Fable 간략안 개정 중, 받으면 구현 [Claude Code · 백그라운드 작업방 7ba2c8b8]
-- 무엇을: Irene «발송을 나눠서 할 때 어떻게 해?» → Fable 설계 판정 `.claude/fable-verdict-20261008-partial-shipment.md` (코드 변경 0). 결론 = 주문을 쪼개지 않고 품목마다 «보낸 양» 칸 + «보내기» 여러 번(받는 쪽 «나눠 받기» 와 같은 모양)
-- 왜: Irene 확인 2개 — ① «배송 완료» 단추는 다 보낸 뒤에만(Fable 권고: 그렇게) ② «나머지 못 보냄(품절)» 은 다음 묶음(Fable 권고: 다음 묶음)
-- 답이 오면: «그대로»면 판정 Ⅱ 절(S1~S10) 대로 개발서버 구현 → verify-all → Fable 게이트 1회 → 배포 여부 다시 여쭘
-
+### 완료 (2026-10-09) — 판매자 «품목별 발송 표시» (개발서버 · Fable 게이트 PASS · 운영 배포 대기) [Claude Code · 백그라운드 작업방 7ba2c8b8]
+- Irene: «발송을 나눠서 할 때 어떻게 해?» → Fable 설계(수량 분할안) → Irene «배송을 했냐 안했냐의 업무처리 때문이야. 그럼 그냥 배송했다 안했다 개별표시만 하게 하던지 간략한 방법 찾아봐» · «그대로» → 개정안(줄마다 보냄 표시) 구현
+- 판정: `.claude/fable-verdict-20261008-partial-shipment.md`(설계·개정) · `.claude/fable-verdict-20261008-partial-shipment-gate.md`(게이트 PASS · 이탈 8건 전부 수용)
+- 구현: purchase_order_items.shipped_at + 마이그 `migrate-po-item-shipped-at.js`(deploy · 개발 34줄 백필) · `/ship` 선택 item_ids(없으면 남은 줄 전부) · 차감 3분기 고른 줄만 · 헤더 shipped_at 첫 발송만 · 이벤트 shipment_no/items/partial · deliver 일부면 400 · amend 보낸 줄 409 · 구매자 mark-shipped 줄 표시 · GET unshipped_count/is_service · 화면 체크 목록·«N item(s) not yet dispatched»·«Ship remaining»·구매자 «Shipped» 칸 · i18n 4언어 · 문서 PURCHASE_ORDER_SYSTEM 절
+- 검증: health-check 335/335(inventory 새 2건) · 고장주입 1건 반증 · 클릭 흐름 11/11×2 · verify-all --full 23/24(✗ 배포 기록 — 배포 때)
+- 배포 때: SW bump · 배포 기록 · 마이그 운영 백필 예상 132줄(20건) · 배포 뒤 첫 분할 발송 메일 1통 확인 · 메모리 갱신
+- 다음 소묶음 후보(Fable): shipment_no 를 items 있는 shipped 이벤트로 세기(1줄) · PurchaseOrderDetailPage «Delivered» 타임라인에 shipped_at 표시하는 옛 결함
 ### 완료 (2026-10-08) — Fable 기준 통일 (문서만) · (이전) 답 기다림: «물을 때 Fable 의견 꼭» 범위 — Irene 답 «아니. 필요없는 곳은 괜찮아. 오퍼스 의견이라고 붙이고 페이블은 페이블 권고로 붙여» → (가) 반영: CLAUDE.md §0 📌 «범위» 줄 + 메모리 feedback_fable_leads_opus_executes [Claude Code · 백그라운드 작업방 2ee45130]
 - 한 일(문서만 · 코드·DB 0 · Fable 안 씀 — 공용 기준 3절 문서 정리): CLAUDE.md «Fable 검증 게이트(07-01)»·«3축 판정(09-06)» 두 절 → «🎯 Fable 언제 부르나 — 공용 기준을 따른다» 한 절(기준은 `~/dev-server/FABLE.md` 한 줄 + PurpleHere 되돌리기 어려운 것 예시 5개·calc/ux/design 예시 + 못 부를 때=자체 검증·상황판 Fable 대기·배포 보류 + Irene 원문 출처 전부 보존). §0 예외 «애매하면 Fable» → 공용 기준(애매하면 안 부르고 «Fable 안 씀 — 이유»). 훅·검증 규율 4조항·check-sensitive-diff 그대로. 명령 `/개발시작`·`/개발완료` · `docs/AGENT_ONBOARDING.md` 의 «Fable 세션 점검 후»·«3축» 문구 교체. 메모리 feedback_fable_call_criteria·feedback_fable_budget_minimal·feedback_fable_leads_opus_executes·MEMORY.md 갱신
 - 확인: fable-gate 통과 마커는 내 수정 전부터 이미 무효였음(수정 전 상태로 지문 계산해 대조) — 이 일로 죽은 마커 없음
@@ -378,6 +380,7 @@
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > /개발시작 자동 추천 대상 아님. 다음 사이클 결정은 Irene 지시 기준.
+- (품목별 발송 · Fable 다음 소묶음) 발송 순번을 «items 있는 shipped 이벤트» 로 세기(1줄) · 매장 발주 상세 타임라인 «Delivered» 줄이 shipped_at 을 보여 주는 옛 결함(PurchaseOrderDetailPage.tsx ~976) · «나머지 못 보냄(품절)» 처리(돈 — 별도 설계)
 - **(Fable 소급 판정 위험 A · 보안 경계 — 별도 사안 설계 필요)** PATCH `/invoices/:id/status` 로 낼 매장이 금액 있는 자기 정산서를 API 직접 호출로 paid 처리 가능(정산서에 restaurant_id 가 채워지면서 넓어짐, 묶인 청구서도 따라감). 화면은 0원 확정에만 사용. 2026-09-14 «낼 쪽 PATCH paid 는 0원만» 예외와 같은 선으로 좁힐지 Fable 설계
 - (Fable 위험 B · 기계 작업) health-check 에 정산서 연동 4길(submit·confirm·reject·PATCH)·`/brand/sales-report` 범위 403 케이스 추가
 - 하드웨어 청구서가 payer_type 'restaurant' 에 사람 번호를 넣는 생성 쪽 불일치(routes/hardware-quotes.js:234) — 데이터 보정 동반, 별도 판정
