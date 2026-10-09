@@ -5,7 +5,15 @@
 **다음 확정 작업:** 없음 — 지시 대기
 **후속 후보(확정 X, /개발시작 자동 추천 아님):** 9-29 판정 ④ 순두부 6→1 데이터 정리(별건) · 레시피 없는 프로덕트 줄 수령 문제분 기록 · 다브랜드 BG 발주 화면 전체 스코프 · StockAlert 브랜드 칸 · 브랜드·푸드코트 청구서 창 결제 버튼 · Staff 청구서 버튼 권한 · 배포 뒤 문서(PURCHASE_ORDER_SYSTEM §8-8 등)
 
-### 답 기다림 (2026-10-09) — BG 가 끈 상품이 매장 My Stock 발주에선 그대로 주문됨 [Claude Code · 백그라운드 작업방 e9b89182]
+### 완료 (2026-10-09) — 판매자가 끈 상품은 매장 발주에서 «판매 중지» 표시 + 서버 차단 (개발서버 · 운영 배포 대기 · Fable 게이트 PASS) [Claude Code · 백그라운드 작업방 e9b89182]
+- Irene 답: «권고대로»(A — 표시 + 담기·만들기·제출 서버 차단 · 연결 유지)
+- 규칙 하나: `dev-backend/utils/poSellerProductActive.js` (상품 is_active=false 또는 소프트삭제) → 발주 생성(POST·bulk·합치기)·PUT·bulk 자동제출·submit·mark-sent-external 에서 400 `SELLER_PRODUCT_INACTIVE`. 판매자 대리주문·직접구매·승인은 안 탐. 목록 5곳 응답에 `seller_product_active`, 화면 NewPurchaseOrderPage «Discontinued» 배지·문구, 오류 문구 3화면 4언어
+- 검증: health-check po 9/9 · 전체 347/347 잔재 0 · 고장주입 2건(+Fable 1건) ✗→원복 통과 · build:dev 1회 · verify-all --full 22/24(실패 2 = 다른 방 검사 잔재 1건[삭제 후 전체 통과] · 배포 기록 파일 미작성) · 실브라우저 RA 매장5 배지·문구·담김 없음·오류 0
+- Fable 판정 PASS: `backups/fable-pending/fable-verdict-20261009-seller-product-inactive-gate.md` · 마커는 이 15파일만 판정(커밋 f5e18c055)
+- 배포 때: SW 버전 올리기(다른 방 프론트 다 끝난 뒤) · 배포 기록 작성 후 verify-all 재확인 · 마이그 0
+- 다음에 묶을 것(Fable 기록): 오너 승인 라우트에도 이 검사·최소주문 검사 넣기 · 운영에 꺼진 상품 가리키는 연결/초안 건수 배포 후 세기
+
+### (이전) 답 기다림 (2026-10-09) — BG 가 끈 상품이 매장 My Stock 발주에선 그대로 주문됨 [Claude Code · 백그라운드 작업방 e9b89182]
 - Irene: «브랜드제너럴이 활성화/비활성화하는 모든 프로덕트가 제대로 레스토랑관리자 발주할 때 반영돼? 마이스톡에서 검색되지만 브랜드제너럴이 비활성화했으면 어떻게 되는거야?»
 - 개발서버 재현(매장5 RA · BG user6 · 상품44 Grilled Chicken · 매장 재료96 · 연결51 → 원복 is_active=1 확인 · 테스트 발주 32141 은 화면 «버리기»와 같은 삭제로 정리): 끄면 ① Supplier Catalog 에서 사라짐(정상) ② **My Stock 재료96 의 공급처에 그 상품 그대로**(`restaurants-ingredients.js:149` · `ingredients.js:145,658` BrandProduct 조회에 활성 조건 없음) ③ **발주 만들기 201 성공**(`purchase-orders-crud.js:1002` 연결 행 is_active 만 봄, 상품 활성 안 봄) · 제출(`purchase-orders-workflow.js:925`)도 검사 없음. 브랜드 재료(거울)는 상품 따라 꺼져 매장에서 숨음(정상)
 - 질문: 꺼진 상품을 매장 발주에서 어떻게 할지 — Opus 의견 A(목록에 «판매 중지» 표시 + 담기·발주 만들기·제출을 서버에서 막음, 연결 행은 안 지움 → 다시 켜면 그대로 복구)
