@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -214,6 +214,9 @@ const OrderTrackingPage: React.FC = () => {
   const navigate = useNavigate();
   const { currency, currentStore } = useMobileOrder();
   const [order, setOrder] = useState<any>(null);
+  // 2026-10-09 L1: 3초 폴링이 첫 화면의 order(null)에 묶여 완료 뒤에도 계속 묻던 것 — 최신 상태를 ref 로 본다.
+  const orderStatusRef = useRef<string | undefined>(undefined);
+  useEffect(() => { orderStatusRef.current = order?.status; }, [order?.status]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const kiosk = isKioskMode();
@@ -261,7 +264,7 @@ const OrderTrackingPage: React.FC = () => {
 
     // Poll for updates every 3 seconds for real-time updates (only if not completed)
     const interval = setInterval(() => {
-      if (orderId && order?.status !== 'completed') {
+      if (orderId && !['completed', 'cancelled'].includes(orderStatusRef.current || '')) {
         loadOrder(true);
       }
     }, 3000);

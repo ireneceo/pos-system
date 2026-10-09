@@ -15,7 +15,8 @@ const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 const { alreadyProcessed, recordProcessed, getProcessed } = require('../utils/opIdGuard');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
-const { authenticateToken, optionalAuthenticateToken, requireRole, requirePosCounter, userCanOperatePosCounter, requireVoidAccess, userCanVoid } = require('../middleware/auth');
+const { priceGuestOrder } = require('../utils/guestOrderPricing');
+const { authenticateToken, optionalAuthenticateToken, requireRole, requirePosCounter, userCanOperatePosCounter, requireVoidAccess, userCanVoid, userCanAccessRestaurant } = require('../middleware/auth');
 const ActivityLog = require('../models/ActivityLog');
 const { logActivity } = require('../utils/activityLogger');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
@@ -195,8 +196,7 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
     // in-handler ownership check already used by GET /:id/payments
     // (orders-payment.js) since checkRestaurantAccess can't be used here (it
     // treats :id as a restaurant id, not an order id). System Admin sees all.
-    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
-        && req.user.role !== 'System Admin') {
+    if (req.user && !(await userCanAccessRestaurant(req.user, order.restaurant_id))) { // 2026-10-09 S4: 관할 매장만(매장 없는 계정 통과 구멍)
       return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
     }
     res.json({ success: true, data: order });
@@ -221,6 +221,9 @@ router.get('/mergeable', authenticateToken, async (req, res) => {
     }
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    if (!(await userCanAccessRestaurant(req.user, restaurantId))) { // 2026-10-09 S4: 관할 매장만
+      return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
+    }
     const timezone = getRestaurantTimezone(restaurant);
     const { startOfDay: todayStart, endOfDay: todayEnd } = getTodayBounds(timezone);
 
@@ -542,6 +545,31 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Restaurant not found' });
     }
     const timezone = getRestaurantTimezone(restaurant);
+
+    // 2026-10-09 사전점검 S1: 로그인 안 한 호출(손님 폰·키오스크)은 결제 칸을 정하지 못한다.
+    //   전엔 본문의 payment_status:'completed' 가 그대로 저장돼 결제 원장까지 남았다(아무 매장·아무 금액).
+    //   손님 쪽이 정당하게 보내는 값은 'pending' 과 계좌이체 증빙의 'payment_verification_pending' 뿐.
+    //   결제 확정은 매장 직원(PATCH) · 웹훅 · 키오스크 단말 거래(orders-payment) 경로가 한다. 인쇄 칸 무접촉.
+    if (!req.user) {
+      if (!['pending', 'payment_verification_pending'].includes(orderData.payment_status)) {
+        orderData.payment_status = 'pending';
+      }
+      for (const f of ['amount_paid', 'payment_intent_id', 'payment_provider', 'transaction_id', 'cashier_id', 'cashier_name',
+                       'discount', 'discount_policy_name', 'discount_policy_amount', 'is_deleted', 'deleted_at', 'served_at',
+                       'table_cleared', 'kitchen_ready', 'card_type', 'ewallet_type']) {
+        delete orderData[f];
+      }
+      // 금액은 서버가 메뉴에서 다시 찾아 계산한다(utils/guestOrderPricing · Fable 판정 s1-repricing §4-4).
+      //   화면 값으로 돌아가는 폴백 없음 — 해석 실패는 400(주문 안 생김), 내부 예외는 바깥 catch(500).
+      //   등록 키오스크가 아니면 출처는 'mobile' 고정(위조 source:'pos' 로 결제수단·테이블 가드 우회 차단).
+      if (!req.kioskDevice) orderData.source = 'mobile';
+      const priced = await priceGuestOrder({ restaurant, body: orderData });
+      if (!priced.ok) {
+        return res.status(400).json({ success: false, code: priced.code, message: priced.message });
+      }
+      Object.assign(orderData, priced.fields);
+      delete orderData.items;
+    }
 
     // #9 오프라인 주문 큐 — 멱등. 끊긴 중 큐에 쌓였던 주문이 재연결 시 재전송될 때, 같은
     // idempotency_key(클라 UUID)가 이미 처리됐으면 새로 만들지 않고 기존 주문을 그대로 돌려준다(중복생성 0).
@@ -1058,8 +1086,7 @@ router.patch('/:id', authenticateToken, async (req, res) => {
 
       // IDOR guard: cross-restaurant order mutation. Same ownership pattern as
       // GET /:id (line ~150). System Admin sees all. (No print routing touched.)
-      if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
-          && req.user.role !== 'System Admin') {
+      if (req.user && !(await userCanAccessRestaurant(req.user, order.restaurant_id))) { // 2026-10-09 S4: 관할 매장만(매장 없는 계정 통과 구멍)
         throw new Error('FORBIDDEN_CROSS_RESTAURANT');
       }
 
@@ -1120,8 +1147,17 @@ router.patch('/:id', authenticateToken, async (req, res) => {
       // 결제 원장(2026-07-31): 갱신 **전** 상태를 잡아 둔다 — 전이일 때만 원장을 남기기 위함.
       const _prevPaymentStatus = order.payment_status;
 
+      // 2026-10-09 사전점검 S4: 본문 통째 반영 금지 — 화면 14곳(LiveOrders·FloorPlan·TableDetailPanel)이
+      //   실제로 보내는 칸 + 검사 스크립트가 쓰는 칸만 받는다. restaurant_id·order_number·order_items·인쇄 칸 등은
+      //   각자 전용 경로(/items·/move-table·/print-*)로만 바뀐다. 목록 밖 칸은 조용히 무시.
+      const PATCHABLE = ['payment_status', 'status', 'payment_method', 'card_type', 'ewallet_type',
+        'points_used', 'point_discount', 'total_amount', 'table_cleared', 'table_number',
+        'payment_proof', 'cancel_reason', 'source', 'notes'];
+      const patch = {};
+      for (const k of PATCHABLE) if (Object.prototype.hasOwnProperty.call(req.body, k)) patch[k] = req.body[k];
+
       // Update order with provided fields
-      await order.update(req.body, { transaction: t });
+      await order.update(patch, { transaction: t });
 
       // 결제 완료 전이 → 원장 1행 + amount_paid. 이 경로가 매장 POS 의 지배적 결제 경로인데
       // 지금껏 결제 시각을 아무 데도 안 남겼다(감사로그도 'updated'). 인쇄·주문 로직 무접촉.
@@ -1221,8 +1257,7 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
       if (!order) { const e = new Error('Order not found'); e.code = 'NOT_FOUND'; throw e; }
 
       // Ownership (IDOR): non-System-Admin can only touch their own restaurant.
-      if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
-          && req.user.role !== 'System Admin') {
+      if (req.user && !(await userCanAccessRestaurant(req.user, order.restaurant_id))) { // 2026-10-09 S4: 관할 매장만(매장 없는 계정 통과 구멍)
         const e = new Error('Forbidden'); e.code = 'FORBIDDEN'; throw e;
       }
       // Can't move a finished order.
@@ -1530,8 +1565,7 @@ router.patch('/:id/apply-discount', authenticateToken, async (req, res) => {
     const order = await Order.findByPk(req.params.id);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
     // IDOR guard (same pattern as GET /:id). System Admin sees all.
-    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
-        && req.user.role !== 'System Admin') {
+    if (req.user && !(await userCanAccessRestaurant(req.user, order.restaurant_id))) { // 2026-10-09 S4: 관할 매장만(매장 없는 계정 통과 구멍)
       return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
     }
     const subtotal = parseFloat(order.subtotal || 0);
@@ -1636,8 +1670,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     }
 
     // IDOR guard (same pattern as GET /:id). System Admin sees all.
-    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
-        && req.user.role !== 'System Admin') {
+    if (req.user && !(await userCanAccessRestaurant(req.user, order.restaurant_id))) { // 2026-10-09 S4: 관할 매장만(매장 없는 계정 통과 구멍)
       return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
     }
 
@@ -1916,8 +1949,7 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
     }
 
     // IDOR guard (same pattern as GET /:id). System Admin sees all.
-    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
-        && req.user.role !== 'System Admin') {
+    if (req.user && !(await userCanAccessRestaurant(req.user, order.restaurant_id))) { // 2026-10-09 S4: 관할 매장만(매장 없는 계정 통과 구멍)
       return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
     }
 
@@ -2184,8 +2216,7 @@ router.post('/merge', authenticateToken, async (req, res) => {
 
       // IDOR guard: caller must own the restaurant these orders belong to.
       // (Same ownership pattern as GET /:id; orders all share one restaurant_id here.)
-      if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(orders[0].restaurant_id)
-          && req.user.role !== 'System Admin') {
+      if (req.user && !(await userCanAccessRestaurant(req.user, orders[0].restaurant_id))) { // 2026-10-09 S4: 관할 매장만(매장 없는 계정 통과 구멍)
         throw new Error('FORBIDDEN_CROSS_RESTAURANT');
       }
 
@@ -2589,8 +2620,7 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requireVoidAccess, asy
     }
 
     // IDOR guard (same pattern as GET /:id). System Admin sees all.
-    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
-        && req.user.role !== 'System Admin') {
+    if (req.user && !(await userCanAccessRestaurant(req.user, order.restaurant_id))) { // 2026-10-09 S4: 관할 매장만(매장 없는 계정 통과 구멍)
       return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
     }
 

@@ -122,12 +122,15 @@ function request(method, path, body, headers = {}) {
     const url = new URL(BASE + path);
     const isHttps = url.protocol === 'https:';
     const lib = isHttps ? https : http;
+    // 2026-10-09: 본문이 있으면 Content-Length 를 붙인다 — 없으면 chunked 로 가서 DELETE 본문을 서버가
+    //   읽지 못했고, 사전점검 S3 검사가 고장주입 상태에서도 «400» 으로 헛통과했다.
+    const payload = body ? JSON.stringify(body) : null;
     const reqOpts = {
       hostname: url.hostname,
       port: url.port || (isHttps ? 443 : 80),
       path: url.pathname + url.search,
       method,
-      headers: { 'Content-Type': 'application/json', ...headers },
+      headers: { 'Content-Type': 'application/json', ...(payload ? { 'Content-Length': Buffer.byteLength(payload) } : {}), ...headers },
     };
     const req = lib.request(reqOpts, (res) => {
       let data = '';
@@ -140,9 +143,24 @@ function request(method, path, body, headers = {}) {
       });
     });
     req.on('error', (e) => resolve({ status: 0, body: e.message }));
-    if (body) req.write(JSON.stringify(body));
+    if (payload) req.write(payload);
     req.end();
   });
+}
+
+// 손님(익명) 주문은 서버가 메뉴 가격으로 다시 계산한다(2026-10-09 S1) — 메뉴에 없는 이름은 400.
+//   그래서 익명 주문을 만드는 검사는 그 매장의 실제 상품(옵션·세트 없는 활성 상품) 한 줄을 쓴다.
+const HC_MENU = {};
+async function hcMenuItem(restId) {
+  if (HC_MENU[restId]) return HC_MENU[restId];
+  const { sequelize } = require('../config/database');
+  const [rows] = await sequelize.query(
+    "SELECT id, name, code, price FROM products WHERE restaurant_id = ? AND is_active = 1 AND COALESCE(is_set_menu,0) = 0 " +
+    "AND (optionGroups IS NULL OR JSON_LENGTH(optionGroups) = 0) AND price > 0 AND name NOT LIKE 'ZZ-HC %' ORDER BY id LIMIT 1", { replacements: [restId] });
+  if (!rows[0]) return null;
+  const r = rows[0];
+  HC_MENU[restId] = { id: r.id, name: r.code ? `${r.code} ${r.name}` : r.name, price: Number(r.price) };
+  return HC_MENU[restId];
 }
 
 // ============================================
@@ -704,7 +722,8 @@ function defineSecurityTests({ customerToken, member, restId }) {
   test('security', '익명 restaurants/:id → 401', async () => (await request('GET', '/restaurants/1')).status === 401);
   test('security', '익명 restaurants/:id/company-info → 401 (사업자정보 보호)', async () => (await request('GET', '/restaurants/1/company-info')).status === 401);
   test('security', '익명 addon-modules → 401', async () => (await request('GET', '/addon-modules')).status === 401);
-  test('security', '익명 mobile/orders 필터없이 → 400 (전체 덤프 방지)', async () => (await request('GET', '/mobile/orders')).status === 400);
+  // 2026-10-09 사전점검 S6: 이 길은 이제 손님 토큰 필수(본인 주문만) — 익명은 필터 유무와 상관없이 401.
+  test('security', '익명 mobile/orders 필터없이 → 401 (전체 덤프 방지 · 손님 토큰 필수)', async () => (await request('GET', '/mobile/orders')).status === 401);
   test('security', '익명 membership/customer/:rid/:cid → 401', async () => (await request('GET', '/membership/customer/1/1')).status === 401);
   // PIN 로그인(P1-4)은 익명 1차 로그인 → 인증 게이트 뒤에 숨으면 안 됨(=auth 401 금지). 누락 body → 핸들러 400.
   // (2026-06-20 회귀: staff.js router.use(authenticateToken) 가 verify-pin 로그인을 막아 모든 PIN 로그인 401.)
@@ -7575,6 +7594,271 @@ function defineOrderLedgerTests() {
   });
 }
 
+// ============================================
+// 운영 전 사전점검 0단 (2026-10-09 · Fable 판정 backups/fable-pending/fable-verdict-20261009-preflight-audit.md)
+//   «익명/타 매장으로 쓰기 → 거절, DB 그대로» 를 영구 검사로. 기존 health-check 가 이 길을 하나도 안 쳐서
+//   익명 결제완료 주문·본인 매장번호 바꾸기·첨부 경로 넘어가기가 수개월 운영에 남아 있었다.
+//   쓰기 대상은 데모 매장(is_demo=1)·is_test 계정만 · 표지 __HC_PREFLIGHT__ · 시작·끝 정리(멱등).
+// ============================================
+function definePreflightSecurityTests() {
+  const MARK = '__HC_PREFLIGHT__';
+  const jwtLib = require('jsonwebtoken');
+  const tok = (id) => ({ Authorization: `Bearer ${jwtLib.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+  const say = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+  const Q = async (sql, rep = []) => { const { sequelize } = require('../config/database'); return (await sequelize.query(sql, { replacements: rep }))[0]; };
+  async function sweep() {
+    const rows = await Q('SELECT id FROM orders WHERE customer_name = ?', [MARK]);
+    const ids = rows.map(r => r.id);
+    if (!ids.length) return;
+    for (const tbl of ['order_actions', 'order_payments', 'point_transactions']) {
+      await Q(`DELETE FROM \`${tbl}\` WHERE order_id IN (${ids.map(Number).join(',')})`).catch(() => {});
+    }
+    await Q(`DELETE FROM orders WHERE id IN (${ids.map(Number).join(',')})`);
+  }
+  const orderBody = (extra = {}) => ({
+    restaurant_id: 38, customer_name: MARK, order_type: 'takeaway', source: 'pos', payment_method: 'cash',
+    status: 'outstanding', printed_offline: true, order_items: [{ name: 'HC Preflight', quantity: 1, price: 12.5 }], ...extra,
+  });
+  const demoRa = async () => (await Q("SELECT u.id FROM users u JOIN restaurants r ON r.id=u.restaurant_id WHERE r.id=38 AND r.is_demo=1 AND u.role='Restaurant Admin' AND u.is_active=1 ORDER BY u.id LIMIT 1"))[0];
+
+  test('security', '사전점검 S1 — 로그인 없이 payment_status=completed 로 주문 생성 → pending 으로 저장 · 결제 원장 0행 · amount_paid 무시', async () => {
+    await sweep();
+    try {
+      const m = await hcMenuItem(38);
+      if (!m) return say('데모 38 에 단순 상품을 못 찾음 — 검사 도구 고장(건너뛰면 헛통과)');
+      const r = await request('POST', '/orders', orderBody({ payment_status: 'completed', amount_paid: 999, transaction_id: 'HC-FORGED', payment_method: 'counter', order_items: [{ name: m.name, quantity: 1, price: m.price }] }));
+      const id = r.body?.data?.id;
+      if (r.status >= 300 || !id) return say(`생성 ${r.status} ${JSON.stringify(r.body).slice(0, 120)}`);
+      const [o] = await Q('SELECT payment_status, amount_paid, transaction_id FROM orders WHERE id = ?', [id]);
+      const led = await Q('SELECT id FROM order_payments WHERE order_id = ?', [id]);
+      if (o.payment_status !== 'pending') return say(`payment_status=${o.payment_status}`);
+      if (Number(o.amount_paid || 0) !== 0 || o.transaction_id) return say(`amount_paid=${o.amount_paid} transaction_id=${o.transaction_id}`);
+      return led.length === 0 || say(`원장 ${led.length}행`);
+    } finally { await sweep().catch(() => {}); }
+  });
+
+  test('security', '사전점검 S4 — 매장 없는 계정(공급업체/브랜드)이 남의 매장 주문 열람·수정 → 403 · DB 그대로', async () => {
+    const ra = await demoRa();
+    // 데모 38 을 관할하지 않는 restaurant_id 없는 계정(공급업체 우선)
+    const outsider = (await Q("SELECT id FROM users WHERE restaurant_id IS NULL AND role IN ('Supplier Admin','Supplier Staff') AND is_active=1 ORDER BY id LIMIT 1"))[0];
+    if (!ra || !outsider) { console.log(c.gray('      (건너뜀: 데모 38 RA 또는 매장 없는 공급업체 계정 없음)')); return true; }
+    await sweep();
+    try {
+      const r = await request('POST', '/orders', orderBody({ payment_status: 'pending' }), tok(ra.id));
+      const id = r.body?.data?.id;
+      if (!id) return say(`생성 ${r.status}`);
+      const g = await request('GET', `/orders/${id}`, null, tok(outsider.id));
+      const p = await request('PATCH', `/orders/${id}`, { total_amount: 0.01, payment_status: 'completed' }, tok(outsider.id));
+      const [o] = await Q('SELECT total_amount, payment_status FROM orders WHERE id = ?', [id]);
+      if (g.status !== 403) return say(`GET ${g.status}`);
+      if (p.status !== 403) return say(`PATCH ${p.status}`);
+      return (Number(o.total_amount) === 12.5 && o.payment_status === 'pending') || say(`DB 바뀜 ${JSON.stringify(o)}`);
+    } finally { await sweep().catch(() => {}); }
+  });
+
+  test('security', '사전점검 S4 — 자기 매장 PATCH 도 허용 칸 밖(restaurant_id·order_number·needs_print)은 무시', async () => {
+    const ra = await demoRa();
+    if (!ra) { console.log(c.gray('      (건너뜀: 데모 38 RA 없음)')); return true; }
+    await sweep();
+    try {
+      const r = await request('POST', '/orders', orderBody({ payment_status: 'pending' }), tok(ra.id));
+      const id = r.body?.data?.id;
+      if (!id) return say(`생성 ${r.status}`);
+      const [before] = await Q('SELECT restaurant_id, order_number, needs_print FROM orders WHERE id = ?', [id]);
+      const p = await request('PATCH', `/orders/${id}`, { restaurant_id: 39, order_number: 'HC-FORGED', needs_print: !before.needs_print, table_cleared: true }, tok(ra.id));
+      const [after] = await Q('SELECT restaurant_id, order_number, needs_print, table_cleared FROM orders WHERE id = ?', [id]);
+      if (p.status >= 300) return say(`PATCH ${p.status}`);
+      if (Number(after.restaurant_id) !== 38 || after.order_number !== before.order_number || Number(after.needs_print) !== Number(before.needs_print)) return say(`허용 밖 칸 바뀜 ${JSON.stringify(after)}`);
+      return Number(after.table_cleared) === 1 || say('허용 칸(table_cleared) 이 반영 안 됨');
+    } finally { await sweep().catch(() => {}); }
+  });
+
+  test('security', '사전점검 S2 — 본인 계정 수정으로 restaurant_id 바꾸기 → 무시(DB 그대로)', async () => {
+    // demoProtection 에 막히지 않는(is_demo=0·is_test=0) 데모 매장 RA
+    const u = (await Q("SELECT u.id, u.restaurant_id, u.brand_id FROM users u JOIN restaurants r ON r.id=u.restaurant_id WHERE r.is_demo=1 AND u.role='Restaurant Admin' AND u.is_active=1 AND COALESCE(u.is_demo,0)=0 AND COALESCE(u.is_test,0)=0 ORDER BY u.id LIMIT 1"))[0];
+    const other = u && (await Q('SELECT id FROM restaurants WHERE is_demo=1 AND id <> ? ORDER BY id LIMIT 1', [u.restaurant_id]))[0];
+    if (!u || !other) { console.log(c.gray('      (건너뜀: 조건 맞는 데모 매장 RA 없음)')); return true; }
+    try {
+      const r = await request('PUT', `/users/${u.id}`, { restaurant_id: other.id, brand_id: 999999 }, tok(u.id));
+      const [after] = await Q('SELECT restaurant_id, brand_id FROM users WHERE id = ?', [u.id]);
+      if (Number(after.restaurant_id) !== Number(u.restaurant_id)) return say(`restaurant_id ${u.restaurant_id}→${after.restaurant_id} (응답 ${r.status})`);
+      return Number(after.brand_id) !== 999999 || say('brand_id 바뀜');
+    } finally {
+      // 방어가 깨졌을 때 바뀐 두 칸 모두 원래대로(2026-10-09 고장주입 때 brand_id 가 999999 로 남았던 일)
+      await Q('UPDATE users SET restaurant_id = ?, brand_id = ? WHERE id = ?', [u.restaurant_id, u.brand_id, u.id]).catch(() => {});
+    }
+  });
+
+  test('security', '사전점검 S2 — 상위 관리자가 산하 직원을 System Admin 으로 승격 → 403 · 역할 그대로', async () => {
+    // 데모 매장을 소유한 브랜드의 BG + 그 매장 직원(데모 아님)
+    const row = (await Q("SELECT b.owner_id bg, s.id staff FROM restaurants r JOIN brands b ON b.id=r.brand_id JOIN users s ON s.restaurant_id=r.id AND s.role='Staff' AND COALESCE(s.is_demo,0)=0 JOIN users g ON g.id=b.owner_id AND g.role='Brand General' WHERE r.is_demo=1 ORDER BY r.id, s.id LIMIT 1"))[0];
+    if (!row) { console.log(c.gray('      (건너뜀: 데모 브랜드 BG·직원 짝 없음)')); return true; }
+    const [before] = await Q('SELECT role, password FROM users WHERE id = ?', [row.staff]);
+    try {
+      const r = await request('PUT', `/users/${row.staff}`, { role: 'System Admin', password: 'HcForged123!' }, tok(row.bg));
+      const [after] = await Q('SELECT role, password FROM users WHERE id = ?', [row.staff]);
+      if (after.role !== before.role) return say(`역할 ${before.role}→${after.role}`);
+      if (after.password !== before.password) return say('비밀번호 바뀜');
+      return r.status === 403 || say(`응답 ${r.status}`);
+    } finally {
+      await Q('UPDATE users SET role = ?, password = ? WHERE id = ?', [before.role, before.password, row.staff]).catch(() => {});
+    }
+  });
+
+  test('security', "사전점검 S3 — 첨부 삭제에 '..' 경로 → 400 · 첨부 폴더 밖 파일 그대로", async () => {
+    const fs = require('fs');
+    const ra = await demoRa();
+    if (!ra) { console.log(c.gray('      (건너뜀: 데모 38 RA 없음)')); return true; }
+    const canary = '/var/www/uploads/__hc_preflight_canary.txt';
+    fs.writeFileSync(canary, 'canary');
+    try {
+      const r = await request('DELETE', '/upload/file', { url: '/uploads/attachments/../__hc_preflight_canary.txt' }, tok(ra.id));
+      if (!fs.existsSync(canary)) return say(`밖 파일이 지워짐 (응답 ${r.status})`);
+      return r.status === 400 || say(`응답 ${r.status}`);
+    } finally { try { fs.unlinkSync(canary); } catch { /* 이미 없음 */ } }
+  });
+
+  test('security', '사전점검 S5·S6 — 로그인 없이 손님 주문 목록·취소 → 401 · 영수증 상세에 이체 증빙 사진 없음', async () => {
+    const l = await request('GET', '/mobile/orders?restaurant_id=38&limit=5');
+    const cx = await request('POST', '/mobile/order/1/cancel', {});
+    if (l.status !== 401) return say(`목록 ${l.status}`);
+    if (cx.status !== 401) return say(`취소 ${cx.status}`);
+    const withProof = (await Q("SELECT id FROM orders WHERE payment_proof IS NOT NULL AND payment_proof LIKE '%image%' ORDER BY id DESC LIMIT 1"))[0];
+    if (!withProof) { console.log(c.gray('      (증빙 있는 주문 없음 — 상세 검사 건너뜀)')); return true; }
+    const d = await request('GET', `/mobile/order/${withProof.id}`);
+    const pp = d.body?.data?.payment_proof;
+    return !(pp && JSON.stringify(pp).includes('image')) || say('상세에 증빙 사진이 나옴');
+  });
+
+  test('security', '사전점검 S9 — 다른 매장 직원이 손님 삭제·이메일 변경 → 403 · DB 그대로', async () => {
+    // 실손님을 쓰지 않는다 — 방어가 깨지면 그 손님이 지워진다(2026-10-09 고장주입 때 실제로 지워짐).
+    //   임시 손님을 만들어 데모 매장 38 이 아닌 다른 데모 매장에만 연결하고, 끝에 지운다.
+    const ra = await demoRa();
+    const other = (await Q('SELECT id FROM restaurants WHERE is_demo=1 AND id <> 38 ORDER BY id LIMIT 1'))[0];
+    if (!ra || !other) { console.log(c.gray('      (건너뜀: 데모 38 RA 또는 다른 데모 매장 없음)')); return true; }
+    const phone = '+60999' + String(Date.now()).slice(-7);
+    const { Customer, RestaurantCustomer } = require('../models');
+    await Customer.destroy({ where: { name: MARK } });
+    const cust = await Customer.create({ name: MARK, phone, email: `hc-preflight-${Date.now()}@example.com`, type: 'guest' });
+    await RestaurantCustomer.create({ restaurant_id: other.id, customer_id: cust.id });
+    try {
+      const d = await request('DELETE', `/customers/${cust.id}`, null, tok(ra.id));
+      const u = await request('PUT', `/customers/${cust.id}`, { name: 'HC', email: 'hc-forged@example.com' }, tok(ra.id));
+      const [after] = await Q('SELECT email FROM customers WHERE id = ?', [cust.id]);
+      const links = await Q('SELECT COUNT(*) n FROM restaurant_customers WHERE customer_id = ?', [cust.id]);
+      if (!after) return say('손님이 지워짐');
+      if (Number(links[0].n) !== 1) return say('매장 연결이 지워짐');
+      if (after.email !== cust.email) return say('이메일 바뀜');
+      return (d.status === 403 && u.status === 403) || say(`삭제 ${d.status} · 수정 ${u.status}`);
+    } finally {
+      await Q('DELETE FROM restaurant_customers WHERE customer_id = ?', [cust.id]).catch(() => {});
+      await Q('DELETE FROM customers WHERE id = ?', [cust.id]).catch(() => {});
+    }
+  });
+
+  // ── S1 금액 재계산 (Fable 판정 s1-repricing §6-B) — 데모 38 에 임시 상품·옵션·세트·쿠폰(ZZ-HC)을 만들고 끝에 지운다.
+  async function repriceFixture() {
+    const { Product, OptionGroup, Option } = require('../models');
+    const Coupon = require('../models/Coupon');
+    await repriceCleanup();
+    const og = await OptionGroup.create({ name: 'ZZ-HC OG', restaurant_id: 38, isActive: true, required: false, multiple: true });
+    const opt = await Option.create({ option_group_id: og.id, name: 'ZZ-HC Opt', price: 2.5, isActive: true, displayOrder: 0 });
+    const og2 = await OptionGroup.create({ name: 'ZZ-HC OG2', restaurant_id: 38, isActive: true, required: false, multiple: true });
+    const opt2 = await Option.create({ option_group_id: og2.id, name: 'ZZ-HC Other', price: 9, isActive: true, displayOrder: 0 });
+    const item = await Product.create({ restaurant_id: 38, name: 'ZZ-HC Opt Item', price: 10, category: 'Uncategorized', optionGroups: [og.id], is_active: true, brand_scope_active: true });
+    const comp = await Product.create({ restaurant_id: 38, name: 'ZZ-HC Comp', price: 4, category: 'Uncategorized', optionGroups: [], is_active: true, brand_scope_active: true });
+    const set = await Product.create({ restaurant_id: 38, name: 'ZZ-HC Set', price: 20, category: 'Uncategorized', optionGroups: [], is_active: true, brand_scope_active: true,
+      is_set_menu: true, set_groups: [{ id: 'g1', label: 'Pick', type: 'choice', min: 1, max: 1, items: [{ product_id: comp.id, qty: 1, upcharge: 3 }] }] });
+    const cp = await Coupon.create({ restaurant_id: 38, code: 'ZZHC10', name: 'ZZ-HC', type: 'percentage', value: 10, usage_count: 0, is_active: true, target_type: 'all' });
+    return { og, opt, og2, opt2, item, comp, set, cp };
+  }
+  async function repriceCleanup() {
+    const { sequelize } = require('../config/database');
+    await sequelize.query("DELETE FROM coupons WHERE restaurant_id = 38 AND code = 'ZZHC10'").catch(() => {});
+    await sequelize.query("DELETE FROM products WHERE restaurant_id = 38 AND name LIKE 'ZZ-HC %'").catch(() => {});
+    await sequelize.query("DELETE o FROM options o JOIN option_groups g ON g.id = o.option_group_id WHERE g.restaurant_id = 38 AND g.name LIKE 'ZZ-HC %'").catch(() => {});
+    await sequelize.query("DELETE FROM option_groups WHERE restaurant_id = 38 AND name LIKE 'ZZ-HC %'").catch(() => {});
+  }
+  const guest = (extra = {}) => ({ restaurant_id: 38, customer_name: MARK, order_type: 'dine_in', table_number: '1', source: 'pos', payment_method: 'counter',
+    payment_status: 'pending', status: 'outstanding', printed_offline: true, skipAutoMerge: true, ...extra });
+  const tax38 = async () => {
+    const { Restaurant } = require('../models');
+    const r = await Restaurant.findByPk(38);
+    const os = r.operation_settings || {};
+    return { taxRate: os.taxEnabled ? Number(os.taxRate) || 0 : 0, sc: os.serviceChargeEnabled ? Number(os.serviceChargeRate) || 0 : 0 };
+  };
+
+  test('security', '사전점검 S1 재계산 — 익명 주문 단가 0.01·없는 메뉴·옵션·세트·쿠폰·포인트·출처: 전부 서버 메뉴 기준', async () => {
+    let fx;
+    await sweep();
+    try {
+      fx = await repriceFixture();
+      const { taxRate, sc } = await tax38();
+      const expectTotal = (sub) => Math.round((sub + Math.round(sub * sc) / 100 + Math.round(sub * taxRate) / 100) * 100) / 100;
+      // ① 조작 가격 → 서버 값
+      const a = await request('POST', '/orders', guest({ total_amount: 0.01, order_items: [{ name: 'ZZ-HC Opt Item', quantity: 2, price: 0.01 }] }));
+      if (a.status !== 201) return say(`① ${a.status} ${JSON.stringify(a.body).slice(0, 140)}`);
+      if (Number(a.body.data.subtotal) !== 20 || Math.abs(Number(a.body.data.total_amount) - expectTotal(20)) > 0.011) return say(`① 소계 ${a.body.data.subtotal} 합계 ${a.body.data.total_amount} (기대 ${expectTotal(20)})`);
+      // ⑦ source:'pos' 위조 → mobile
+      if (a.body.data.source !== 'mobile') return say(`⑦ source=${a.body.data.source}`);
+      // ② 없는 메뉴 → 400, 주문 0행
+      const before = (await Q('SELECT COUNT(*) n FROM orders WHERE customer_name = ?', [MARK]))[0].n;
+      const b = await request('POST', '/orders', guest({ order_items: [{ name: 'ZZ-HC Not On Menu', quantity: 1, price: 1 }] }));
+      const after = (await Q('SELECT COUNT(*) n FROM orders WHERE customer_name = ?', [MARK]))[0].n;
+      if (b.status !== 400 || b.body?.code !== 'ITEM_NOT_FOUND' || Number(after) !== Number(before)) return say(`② ${b.status} ${b.body?.code} 행 ${before}→${after}`);
+      // ③ 번호로 옵션 → 단가 = 10 + 2.5 / 다른 그룹 옵션 → 400
+      const c3 = await request('POST', '/orders', guest({ order_items: [{ name: 'whatever', menu_item_id: fx.item.id, option_ids: [fx.opt.id], quantity: 1, price: 0.01 }] }));
+      if (c3.status !== 201 || Number(c3.body.data.order_items[0].price) !== 12.5) return say(`③ ${c3.status} 단가 ${c3.body?.data?.order_items?.[0]?.price}`);
+      const c4 = await request('POST', '/orders', guest({ order_items: [{ name: 'ZZ-HC Opt Item', option_ids: [fx.opt2.id], quantity: 1, price: 10 }] }));
+      if (c4.status !== 400 || c4.body?.code !== 'OPTION_NOT_FOUND') return say(`③ 남의 옵션 ${c4.status} ${c4.body?.code}`);
+      // ④ 세트 — upcharge 0 으로 보내도 DB 의 3 / 세트에 없는 구성품 → 400
+      const d = await request('POST', '/orders', guest({ order_items: [{ name: 'ZZ-HC Set', quantity: 1, price: 1, is_set_menu: true, set_components: [{ group_id: 'g1', product_id: fx.comp.id, name: 'ZZ-HC Comp', qty: 1, upcharge: 0, options: [] }] }] }));
+      if (d.status !== 201 || Number(d.body.data.order_items[0].price) !== 23 || Number(d.body.data.order_items[0].set_components[0].upcharge) !== 3) return say(`④ ${d.status} 단가 ${d.body?.data?.order_items?.[0]?.price}`);
+      const d2 = await request('POST', '/orders', guest({ order_items: [{ name: 'ZZ-HC Set', quantity: 1, price: 1, is_set_menu: true, set_components: [{ group_id: 'g1', product_id: fx.item.id, name: 'x', qty: 1, upcharge: 0, options: [] }] }] }));
+      if (d2.status !== 400 || d2.body?.code !== 'SET_COMPONENT_INVALID') return say(`④ 남의 구성품 ${d2.status} ${d2.body?.code}`);
+      // ⑤ 무효 쿠폰 400 / 유효 10% 쿠폰은 서버가 계산(화면이 99 를 보내도)
+      const e1 = await request('POST', '/orders', guest({ coupon_code: 'ZZHC-NOPE', order_items: [{ name: 'ZZ-HC Opt Item', quantity: 1, price: 10 }] }));
+      if (e1.status !== 400 || e1.body?.code !== 'COUPON_INVALID') return say(`⑤ 무효 ${e1.status} ${e1.body?.code}`);
+      const e2 = await request('POST', '/orders', guest({ coupon_code: 'ZZHC10', coupon_discount: 99, order_items: [{ name: 'ZZ-HC Opt Item', quantity: 1, price: 10 }] }));
+      if (e2.status !== 201 || Number(e2.body.data.coupon_discount) !== 1) return say(`⑤ 유효 ${e2.status} 쿠폰 ${e2.body?.data?.coupon_discount}`);
+      // ⑥ 비회원 포인트 → 400
+      const f = await request('POST', '/orders', guest({ points_used: 500, point_discount: 5, order_items: [{ name: 'ZZ-HC Opt Item', quantity: 1, price: 10 }] }));
+      if (f.status !== 400 || f.body?.code !== 'POINTS_REQUIRE_MEMBER') return say(`⑥ ${f.status} ${f.body?.code}`);
+      // ⑧ /mobile/order 도 서버 값
+      const g = await request('POST', '/mobile/order', { storeId: 38, orderType: 'takeaway', skipAutoMerge: true, paymentMethod: 'counter', customerInfo: { name: MARK }, items: [{ name: 'ZZ-HC Opt Item', quantity: 1, price: 0.01 }] });
+      const gid = g.body?.data?.id;
+      if (g.status >= 300 || !gid) return say(`⑧ ${g.status} ${JSON.stringify(g.body).slice(0, 140)}`);
+      const [gRow] = await Q('SELECT subtotal, total_amount, order_items FROM orders WHERE id = ?', [gid]);
+      const gItems = typeof gRow.order_items === 'string' ? JSON.parse(gRow.order_items) : gRow.order_items;
+      if (Number(gItems[0].price) !== 10 || Number(gRow.total_amount) < 10) return say(`⑧ 단가 ${gItems[0].price} 합계 ${gRow.total_amount}`);
+      return true;
+    } finally {
+      await sweep().catch(() => {});
+      await repriceCleanup().catch(() => {});
+    }
+  });
+
+  test('security', '사전점검 S1 재계산 회귀 — 로그인한 매장 직원 주문은 보낸 금액·할인 그대로(재계산 안 함)', async () => {
+    const ra = await demoRa();
+    if (!ra) { console.log(c.gray('      (건너뜀: 데모 38 RA 없음)')); return true; }
+    await sweep();
+    try {
+      const r = await request('POST', '/orders', orderBody({ payment_status: 'pending', total_amount: 5, discount: 7.5 }), tok(ra.id));
+      if (r.status !== 201) return say(`생성 ${r.status}`);
+      return (Number(r.body.data.total_amount) === 5 && Number(r.body.data.discount) === 7.5) || say(`total ${r.body.data.total_amount} discount ${r.body.data.discount}`);
+    } finally { await sweep().catch(() => {}); }
+  });
+
+  test('security', '사전점검 L1 — 손님 주문 상태 확인(GET /mobile/order/:id) 70번 → 429 없음(주문 한도는 POST 만 셈)', async () => {
+    let n429 = 0;
+    for (let i = 0; i < 70; i++) {
+      const r = await request('GET', '/mobile/order/999999999');
+      if (r.status === 429) n429++;
+    }
+    return n429 === 0 || say(`429 ${n429}건`);
+  });
+}
+
 function defineSettingsTests() {
   const { Restaurant } = require('../models');
   const guard = require('../utils/settingsGuard');
@@ -8879,6 +9163,7 @@ function definePrintTests({ adminToken }) {
     const { KioskDevice, Restaurant } = require('../models');
     const fx = await terminalFixture();
     if (!fx) return null;
+    await hcMenuItem(fx.rest.id);
     const mk = async (restaurantId, name) => {
       const token = crypto.randomBytes(32).toString('base64url');
       const row = await KioskDevice.create({ restaurant_id: restaurantId, name, status: 'active',
@@ -8892,11 +9177,15 @@ function definePrintTests({ adminToken }) {
     return { ...fx, k, ko, sw, otherRestId: other?.id || null,
       cleanup: async () => { await sw.restore(); await KioskDevice.destroy({ where: { name: ['__HC_KIOSK__', '__HC_KIOSK_OTHER__', '__HC_KIOSK_REG__'] } }).catch(() => {}); await fx.restore(); } };
   }
-  const kioskOrderBody = (restId, extra = {}) => ({
-    restaurant_id: restId, customer_name: '__HC_KIOSK__', order_type: 'takeaway', source: 'mobile', payment_method: 'counter',
-    payment_status: 'pending', status: 'outstanding', total_amount: 7.5, subtotal: 7.5,
-    order_items: [{ name: 'HC Kiosk', quantity: 1, price: 7.5 }], ...extra,
-  });
+  // 손님·키오스크 주문은 서버가 메뉴 가격으로 다시 계산 → 실제 상품 한 줄(kioskFixture 가 HC_MENU 를 채운다)
+  const kioskOrderBody = (restId, extra = {}) => {
+    const m = HC_MENU[restId] || { name: 'HC Kiosk', price: 7.5 };
+    return {
+      restaurant_id: restId, customer_name: '__HC_KIOSK__', order_type: 'takeaway', source: 'mobile', payment_method: 'counter',
+      payment_status: 'pending', status: 'outstanding', total_amount: m.price, subtotal: m.price,
+      order_items: [{ name: m.name, quantity: 1, price: m.price }], ...extra,
+    };
+  };
   const setPs = async (restId, mutate) => {
     const { sequelize } = require('../config/database');
     const { Restaurant } = require('../models');
@@ -9223,6 +9512,7 @@ async function runTests(allTests, category) {
   definePaymentTests();
   defineInvoiceBoundaryTests();
   defineOrderLedgerTests();
+  definePreflightSecurityTests();
   defineReferralTests(ctx);
   definePrintTests(ctx);
   defineSettingsTests();

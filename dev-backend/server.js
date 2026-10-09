@@ -208,7 +208,9 @@ const mobileOrderLimiter = rateLimit({
   max: 60,
   message: { success: false, error: 'Too many orders, please try again later.' }
 });
-app.use('/api/mobile/order', mobileOrderLimiter);
+// 2026-10-09 사전점검 L1: 주문 추적 화면이 3초마다 부르는 GET /api/mobile/order/:id 까지 이 60회에 세어져,
+//   손님 한 명이 3분 보면 같은 와이파이의 다른 손님 주문이 15분간 429 였다. 쓰기(POST)만 센다.
+app.use('/api/mobile/order', (req, res, next) => (req.method === 'POST' ? mobileOrderLimiter(req, res, next) : next()));
 
 // Staff PIN verification — a 4-digit PIN is far weaker than a password (10k combos),
 // and /staff/verify-pin is unauthenticated + accepts restaurant_id in the body. The

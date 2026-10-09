@@ -5,6 +5,24 @@
 **다음 확정 작업:** 없음 — 지시 대기
 **후속 후보(확정 X, /개발시작 자동 추천 아님):** 9-29 판정 ④ 순두부 6→1 데이터 정리(별건) · 레시피 없는 프로덕트 줄 수령 문제분 기록 · 다브랜드 BG 발주 화면 전체 스코프 · StockAlert 브랜드 칸 · 브랜드·푸드코트 청구서 창 결제 버튼 · Staff 청구서 버튼 권한 · 배포 뒤 문서(PURCHASE_ORDER_SYSTEM §8-8 등)
 
+### 답 기다림 (2026-10-09) — 운영 전 사전점검: 보안 Critical 4건 · 요금제/메뉴 정책 Q1~Q8 [Claude Code · 백그라운드 작업방 5a777d87]
+- Irene: «운영에 필요한 보안점검 구조확인 해킹 대비 서버부하 대비 등 실제 운영하기 전 점검들 해줘. 제대로 작동하지 않는 기능들도 다 찾아봐. 구독 패키지 체크하고 랜딩페이지 확인. 패키지 모델드에 맞춰서 좌측 메뉴 나오고 안나오고 제대로 되는지도. 그리고 외부에서 접속되는 잘못된 페이지 없는지도»
+- 한 것(읽기 전용 · 코드 수정 0): 4갈래 조사 + verify-all --full(23/24, 실패 1 = 배포 기록) → 결과 `backups/preflight-audit-20261009/findings.md` · Fable 판정 `backups/fable-pending/fable-verdict-20261009-preflight-audit.md` («지금 상태로 실운영 열면 안 됨» — 익명 결제완료 주문 생성 S1 · 자기 restaurant_id 바꾸기/System Admin 승격 S2 · 첨부 삭제 경로 넘어가기 S3 · 매장 없는 계정의 남의 주문 열람·수정 S4 · 손님 주문 추적이 같은 와이파이 주문 한도 소진 L1 등)
+- 운영에도 있음: v3.109 배포 커밋 8b69d172c 에 S1~S4·L1 해당 줄 그대로 있음(git show 확인)
+- 준비해 둔 것: 운영 읽기 스크립트 `backups/preflight-audit-20261009/prod-readonly-check.js`(Basic 매장 모바일 주문 수 · KRW 가격 · 요금제 기능 묶음 · 환경값, dev 에서 실행 확인) · 운영 nginx 실IP 스크립트 `prod-nginx-realip.sh`(되돌리기 명령 포함, 아직 실행 안 함)
+- 질문: Q1 배포 방식 (a)미배포 묶음과 함께 · Q2 🔒 orders-crud.js 접촉 승인 · Q3 운영 nginx 2건(배포 직전) · Q4 요금제 정답=운영 DB · Q5 Basic 의 모바일 QR·Floor Plan 은 Pro 이상(사용 매장 세고 유예) · Q6 Owner Basic 원화 연간가 3,900,000→390,000 · Q7 라이브러리 업그레이드는 1단으로 분리 · Q8 요금제·메뉴는 보안 배포 뒤 설계 1회 — 전부 Fable 권고 붙음
+- 답이 오면: Q1·Q2 승인 → 0단 9건(S1 S2 S3 S4 S5 S6 S9 L1 + E1 명령) 한 묶음 구현, 각 건 health-check 영구 케이스 + 반증, orders-crud 인쇄 줄 0 변경 · print-guard --bless 는 Irene 승인 뒤, 빌드 1회 · verify-all --full 1회 · Fable 게이트 1회 → Irene /배포 → /운영검증 으로 운영 주소에서 S1·S4·S6·L1 재확인. Q4~Q6 답은 2단 설계 때 Fable 설계 1회
+
+### 완료 (2026-10-09) — 상황판 링크를 휴대폰 앱으로 열기 = 개발용 앱 App Link (개발서버 · 운영 무변경) [Claude Code · 백그라운드 작업방 23602330]
+- Irene 요청(서버 방 경유): «상황판 링크가 앱이 설치돼 있으면 앱으로 열리게»
+- 한 것: 개발용 앱(.dev)만 `https://dev.purplehere.com/pos…` 링크를 받음(`mobile-app/android/app/src/debug/AndroidManifest.xml` autoVerify) · `MainActivity.openAppLink`(같은 출처 + /pos 만, 처음 켤 때·켜져 있을 때 둘 다) · 검증 파일 `dev-frontend-build/.well-known/assetlinks.json`(원본 `mobile-app/applinks/assetlinks.dev.json`, 디버그 서명 지문) · 새 개발용 APK `https://dev.purplehere.com/dev-apps/PurplePOS-dev.apk` · 문서 `mobile-app/docs/ANDROID_APP_DESIGN.md §9`
+- 정식 앱·운영 주소는 손대지 않음(합쳐진 release manifest 링크 필터 0건 확인) — dev 링크가 운영 앱에서 열리거나 매장 인쇄 태블릿이 링크로 화면을 벗어나는 길을 만들지 않으려고
+- 검증: 구글 Digital Asset Links API 가 dev 파일을 읽음 · 에뮬레이터(API 34) 구글 확인 «verified» · 앱 꺼짐/켜짐 모두 링크 주소로 열림(WebView 주소 실측) · 링크 없이 열면 화면 유지 · /m·운영 주소·앱 없음 → 크롬 · print-guard 8/8
+- 확인 못 함: 실기기(Irene 휴대폰) — 개발용 APK 설치 후 상황판 링크 한 번 눌러 보기 필요
+- Fable 안 씀 — 개발용 앱·개발서버에만 걸리는 되돌릴 수 있는 변경(운영·매장 무접촉)
+- Fable 게이트 정지(지문 f107135ef10b): 아직 배포 안 된 묶음 전체(다른 방들의 돈·권한 변경)를 보고 걸린 것이고 이번 변경은 대상이 아님 → 통과 표시·건너뛰기 표시 둘 다 찍지 않음. 배포 전에 묶음 전체로 Fable 게이트 1회
+- 운영 배포 때: 할 것 없음(웹 변경 0 · 정식 APK 변경 없음. MainActivity 는 다음 정식 APK 에 같이 들어가지만 정식 앱엔 링크 필터가 없어 쓰이지 않음)
+
 ### 완료 (2026-10-09) — 판매자가 끈 상품은 매장 발주에서 «판매 중지» 표시 + 서버 차단 (개발서버 · 운영 배포 대기 · Fable 게이트 PASS) [Claude Code · 백그라운드 작업방 e9b89182]
 - Irene 답: «권고대로»(A — 표시 + 담기·만들기·제출 서버 차단 · 연결 유지)
 - 규칙 하나: `dev-backend/utils/poSellerProductActive.js` (상품 is_active=false 또는 소프트삭제) → 발주 생성(POST·bulk·합치기)·PUT·bulk 자동제출·submit·mark-sent-external 에서 400 `SELLER_PRODUCT_INACTIVE`. 판매자 대리주문·직접구매·승인은 안 탐. 목록 5곳 응답에 `seller_product_active`, 화면 NewPurchaseOrderPage «Discontinued» 배지·문구, 오류 문구 3화면 4언어

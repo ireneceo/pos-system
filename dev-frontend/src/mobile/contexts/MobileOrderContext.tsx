@@ -100,6 +100,7 @@ interface CartItem {
   specialInstructions?: string;
   totalPrice: number;
   setComponents?: any[];  // 세트 v2 구성품 분해 (주문 생성 시 order_item.set_components 로 전송)
+  setOptionIds?: string[];  // 세트 자체 옵션 번호 — 단가는 _setUnitPrice 에 이미 들어 있고, 서버 재계산(option_ids)용으로만 보낸다 (2026-10-09 S1)
 }
 
 interface Order {
@@ -287,7 +288,7 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
       selectedOptionsData,  // Store full data for order processing
       specialInstructions: finalInstructions,
       totalPrice,
-      ...(setComponents && setComponents.length > 0 ? { setComponents } : {})
+      ...(setComponents && setComponents.length > 0 ? { setComponents, setOptionIds: options } : {})
     } as CartItem;
 
     // Merge identical configurations into one line (industry standard — Toast/Square).

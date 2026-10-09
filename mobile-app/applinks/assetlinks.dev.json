@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.purplehere.pos.mobile.dev",
+      "sha256_cert_fingerprints": ["4A:84:4E:9C:78:5D:9C:E6:A4:51:67:16:2E:A2:E0:EB:A9:58:84:78:51:96:DB:6C:13:85:B1:D8:EB:D3:7D:2E"]
+    }
+  }
+]

@@ -16,6 +16,8 @@ const { logOrderActionSafe } = require('../services/orderAuditLog');
 const { enrichItemsWithStation } = require('../utils/stationEnrichment');
 const { round2, computeOrderTotals, mixedDineInSubtotal } = require('../utils/orderTotals');
 const Coupon = require('../models/Coupon');
+const { authenticateCustomer } = require('../middleware/customerAuth');
+const { priceGuestOrder } = require('../utils/guestOrderPricing');
 
 // coupon_code → 쿠폰 메타 (머지 시 % 쿠폰 정확 재계산)
 async function resolveCouponMeta(restaurantId, couponCode) {
@@ -125,7 +127,8 @@ function normalizeTableLabelMobile(s) {
 
 router.post('/order', async (req, res) => {
   try {
-    const { items, paymentMethod, customerInfo, orderType, tableNumber, floorPlanTableId, storeId, scheduledPickupTime, skipAutoMerge, notes } = req.body;
+    let { items } = req.body;
+    const { paymentMethod, customerInfo, orderType, tableNumber, floorPlanTableId, storeId, scheduledPickupTime, skipAutoMerge, notes } = req.body;
     // 2026-06-26 (#11 리마크): 주문 전체 메모. 모든 주문유형(dine-in/takeaway/pickup/delivery) 허용.
     const orderNotes = (notes != null && String(notes).trim()) ? String(notes).trim().slice(0, 500) : null;
 
@@ -138,8 +141,8 @@ router.post('/order', async (req, res) => {
     console.log('  - customerInfo:', customerInfo);
     console.log('  - tableNumber:', tableNumber);
 
-    // Calculate total
-    const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    // 합계는 아래에서 서버가 메뉴 가격으로 다시 계산한다(2026-10-09 S1·S7 — 화면 가격 합산 금지).
+    let total = 0;
 
     // storeId must be explicit and valid — no silent fallback to id=1 (anonymous endpoint defence).
     if (!storeId) {
@@ -164,9 +167,20 @@ router.post('/order', async (req, res) => {
     // 에 포함시켜 SELECT 시도 → SQL error → 모든 모바일 주문 500 fail (매장에
     // 주문 도착도 / 자동 인쇄도 안 됨). 컬럼 제거. 매장 차단은 다른 layer
     // (subscription suspended 등) 에서 이미 처리.
-    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'operation_settings', 'payment_settings', 'floor_plan', 'table_settings'] });
+    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'operation_settings', 'payment_settings', 'floor_plan', 'table_settings', 'cash_rounding', 'rounding_apply_to'] });
     if (!restaurant) {
       return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
+    }
+
+    // 2026-10-09 사전점검 S1·S7: 단가·합계는 서버가 메뉴에서 다시 찾는다(utils/guestOrderPricing — orders-crud 손님 주문과 같은 해석기).
+    //   이 길은 쿠폰·포인트·배달구역 칸이 없다 → 소계·포장비·세금·서비스차지·반올림만. 못 찾으면 400.
+    {
+      const priced = await priceGuestOrder({ restaurant, body: { order_items: items, order_type: rawOrderType } });
+      if (!priced.ok) {
+        return res.status(400).json({ success: false, code: priced.code, message: priced.message });
+      }
+      items = priced.fields.order_items;
+      total = priced.fields.total_amount;
     }
     const tz = getRestaurantTimezone(restaurant);
 
@@ -582,9 +596,12 @@ router.post('/order', async (req, res) => {
 
 // Get all orders (for live order display)
 
-router.get('/orders', async (req, res) => {
+// 2026-10-09 사전점검 S6: 로그인 없이 아무 매장 주문 전체(품목·금액·테이블)를 limit 상한 없이 내주던 길.
+//   화면에서 쓰는 곳 0 — 손님 토큰이 있을 때 그 손님 자기 주문만, 최대 100건.
+router.get('/orders', authenticateCustomer, async (req, res) => {
   try {
-    const { status, limit = 50, restaurant_id, restaurantId } = req.query;
+    const { status, restaurant_id, restaurantId } = req.query;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 100);
     const targetRestaurantId = restaurant_id || restaurantId;
 
     if (!targetRestaurantId) {
@@ -594,7 +611,7 @@ router.get('/orders', async (req, res) => {
       });
     }
 
-    let whereCondition = { restaurant_id: parseInt(targetRestaurantId) };
+    let whereCondition = { restaurant_id: parseInt(targetRestaurantId), customer_id: req.customer.id };
     if (status) {
       if (status.includes(',')) {
         whereCondition.status = { [Op.in]: status.split(',') };
@@ -708,7 +725,15 @@ router.get('/order/:orderId', async (req, res) => {
       orderSource: 'mobile',
       table_number: order.table_number || null,
       tableNumber: order.table_number ? order.table_number : null,
-      payment_proof: order.payment_proof || null,
+      // 2026-10-09 사전점검 S6: 주문 번호만 알면 누구나 여는 영수증이라 이체 증빙 사진은 빼고
+      //   추적 화면이 쓰는 참조번호·파일 이름만 준다(OrderTrackingPage).
+      payment_proof: (() => {
+        let pp = order.payment_proof;
+        if (typeof pp === 'string') { try { pp = JSON.parse(pp); } catch { pp = null; } }
+        if (pp && Object.prototype.hasOwnProperty.call(pp, 'current')) pp = pp.current;
+        if (!pp || typeof pp !== 'object') return null;
+        return { reference: pp.reference || null, file_name: pp.file_name || pp.fileName || null };
+      })(),
       restaurant: restaurant ? {
         name: restaurant.name,
         branchName: restaurant.branch_name || null,
@@ -790,7 +815,9 @@ router.patch('/order/:orderId/retry-payment', async (req, res) => {
   }
 });
 
-router.post('/order/:orderId/cancel', async (req, res) => {
+// 2026-10-09 사전점검 S5: 주인 확인 없이 주문 번호만으로 대기 주문을 취소하던 길(번호는 순번).
+//   화면에서 쓰는 곳 0 — 손님 토큰이 있고 그 손님 주문일 때만.
+router.post('/order/:orderId/cancel', authenticateCustomer, async (req, res) => {
   try {
     const { orderId } = req.params;
     
@@ -798,7 +825,7 @@ router.post('/order/:orderId/cancel', async (req, res) => {
     
     const order = await Order.findByPk(numericId);
     
-    if (!order) {
+    if (!order || Number(order.customer_id) !== Number(req.customer.id)) {
       return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
     }
     

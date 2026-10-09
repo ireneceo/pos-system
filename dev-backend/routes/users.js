@@ -747,7 +747,7 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
 
     console.log('✓ User found:', user.username, user.email);
 
-    const { password, first_name, last_name, ...updateData } = req.body;
+    let { password, first_name, last_name, ...updateData } = req.body;
 
     // Mass-assignment guard: account-classification and subscription/billing fields are
     // System-Admin-only. A non-admin caller (a user editing their own account, or a
@@ -764,6 +764,29 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
       ];
       for (const f of ADMIN_ONLY_FIELDS) delete updateData[f];
       if (isSelfCaller) { delete updateData.role; delete updateData.permissions; }
+
+      // 2026-10-09 사전점검 S2: 소속 칸(매장·브랜드·푸드코트·공급업체·지점·담당자)과 이메일 인증 표시는
+      //   System Admin 만 바꾼다. 본인이 restaurant_id 를 바꾸면 접근판정(auth.js)이 그 매장을 열어 줬다.
+      const TENANCY_FIELDS = ['brand_id', 'foodcourt_id', 'supplier_company_id', 'branch_id', 'manager_id', 'email_verified'];
+      for (const f of TENANCY_FIELDS) delete updateData[f];
+      if (isSelfCaller) {
+        delete updateData.restaurant_id;
+      } else if (updateData.restaurant_id !== undefined && String(updateData.restaurant_id) !== String(user.restaurant_id)) {
+        // 상위 관리자가 산하 계정을 다른 매장으로 옮길 때는 옮길 매장도 자기 산하여야 한다.
+        let canMove = false;
+        if (updateData.restaurant_id) {
+          try { canMove = await userCanAccessRestaurant(req.user, updateData.restaurant_id); } catch { canMove = false; }
+        }
+        if (!canMove) {
+          return res.status(403).json({ success: false, message: 'You cannot move this account to that restaurant.', code: 'TENANT_CHANGE_NOT_ALLOWED' });
+        }
+      }
+      // 상위 관리자·매장관리자는 역할을 매장 역할(Restaurant Admin / Staff) 안에서만 정한다 — System Admin 승격 차단.
+      if (!isSelfCaller && updateData.role !== undefined && !['Restaurant Admin', 'Staff'].includes(updateData.role)) {
+        return res.status(403).json({ success: false, message: 'You cannot assign that role.', code: 'ROLE_CHANGE_NOT_ALLOWED' });
+      }
+      // 비밀번호는 본인 또는 System Admin 만 직접 정한다(다른 사람은 reset-password 경로).
+      if (!isSelfCaller) password = undefined;
     }
 
     // Prevent leaving restaurant-scoped roles without a restaurant.

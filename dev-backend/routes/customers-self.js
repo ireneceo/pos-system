@@ -137,7 +137,9 @@ router.put('/:customerId', authenticateAdminOrCustomerSelf, async (req, res) => 
       });
     }
 
-    await customer.update({ name, email });
+    // 2026-10-09 사전점검 S9: 이메일은 손님의 로그인·비밀번호 찾기 열쇠라 손님 본인만 바꾼다
+    //   (매장 직원이 남의 이메일로 바꾼 뒤 비밀번호 찾기로 계정을 빼앗던 길).
+    await customer.update(req.customer ? { name, email } : { name });
 
     res.json({
       success: true,

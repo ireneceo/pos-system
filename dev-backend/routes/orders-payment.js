@@ -16,7 +16,7 @@ const { recordOrderPayment } = require('../utils/orderPaymentLedger');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
-const { authenticateToken, optionalAuthenticateToken, requirePaymentAccess } = require('../middleware/auth');
+const { authenticateToken, optionalAuthenticateToken, requirePaymentAccess, userCanAccessRestaurant } = require('../middleware/auth');
 const ActivityLog = require('../models/ActivityLog');
 const { logActivity } = require('../utils/activityLogger');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
@@ -338,8 +338,7 @@ router.get('/:id/payments', authenticateToken, async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id, { attributes: ['id', 'restaurant_id'] });
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
-        && !['System Admin'].includes(req.user.role)) {
+    if (req.user && !(await userCanAccessRestaurant(req.user, order.restaurant_id))) { // 2026-10-09 S4: 관할 매장만(매장 없는 계정 통과 구멍)
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
     const payments = await OrderPayment.findAll({
@@ -361,8 +360,7 @@ router.post('/:id/staff-meal-names', authenticateToken, requirePaymentAccess, as
   try {
     const order = await Order.findByPk(req.params.id);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
-        && !['System Admin'].includes(req.user.role)) {
+    if (req.user && !(await userCanAccessRestaurant(req.user, order.restaurant_id))) { // 2026-10-09 S4: 관할 매장만(매장 없는 계정 통과 구멍)
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
     const { staff_names } = req.body || {};
@@ -435,8 +433,7 @@ router.post('/:id/payments', staffOrKioskPayment, async (req, res) => {
         ewallet_type: txn.tender_method === 'ewallet' ? (txn.ewallet_type || null) : null,
         transaction_id: ref, cashier_name: `Kiosk ${kiosk.name}`.slice(0, 100), _kioskTxnId: txn.id,
       };
-    } else if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
-        && !['System Admin'].includes(req.user.role)) {
+    } else if (req.user && !(await userCanAccessRestaurant(req.user, order.restaurant_id))) { // 2026-10-09 S4: 관할 매장만(매장 없는 계정 통과 구멍)
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
     // 오프라인 5단계(§8) opId 멱등 — SyncEngine 재생 시 응답유실 재전송으로 결제가 중복 기록되는 것 방지.

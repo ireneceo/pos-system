@@ -293,3 +293,14 @@ V3 = 13/13 PASS. V4 는 두 개의 별개 블로커가 순차로 겹쳐 있었�
 | **M2 게이트** | 하니스 완성(exprFile 커밋) → V1·V2 → V3-1~7 → V4-1~5 | 없음(서버, KVM 확인됨) |
 | **M3 실기기 A3** | §8-6 하드웨어 목록 ①~⑦, 매장 방문 1회 | **하드웨어** (진입조건: M2 전부 PASS) |
 | **M4 배포** | 피드+가드+CTA. 준비는 M3와 병행 가능, CTA 공개는 M3 PASS 후 | M3 |
+
+## 9. 개발용 앱 App Link — 상황판 링크를 앱으로 (2026-10-09)
+
+Irene 요청: «상황판 링크가 앱이 설치돼 있으면 앱으로 열리게». 상황판 «확인할 곳» 링크는 `https://dev.purplehere.com/pos/…` 이다.
+
+- **개발용 앱(.dev, 디버그 빌드)만** 링크를 받는다. 받는 곳 = `https://dev.purplehere.com` 의 `/pos…` 화면만. `android/app/src/debug/AndroidManifest.xml` (autoVerify) — 디버그 빌드에만 합쳐진다.
+- **정식 앱(release, purplehere.com)은 받지 않는다** — 합쳐진 release manifest 에 링크 필터 0건(2026-10-09 확인). 이유: ① dev 링크가 운영 앱에서 열리면 운영 데이터를 본다 ② 매장 인쇄 태블릿이 메일 링크 하나로 다른 화면/로그인으로 넘어가는 길을 새로 만들지 않는다. 정식 앱에도 열려면 별건 판단(운영 `purplehere.com/.well-known/assetlinks.json` + 정식 서명 지문 + 새 정식 APK).
+- 검증 파일: `dev-frontend-build/.well-known/assetlinks.json` (원본 `mobile-app/applinks/assetlinks.dev.json`). 패키지 `com.purplehere.pos.mobile.dev` + 디버그 서명 지문(`~/.android/debug.keystore`, 4A:84:4E…). 빌드 스크립트는 `build/*` 만 복사해 점(.) 폴더를 지우지 않고, 운영 배포는 새로 빌드한 폴더를 보내므로 운영에는 올라가지 않는다. **디버그 키를 새로 만들면 지문을 이 파일에 고쳐야 한다**(안 고치면 링크가 조용히 브라우저로 간다 — 깨질 뿐 위험은 없음).
+- 받은 주소로 이동: `MainActivity.onNewIntent → openAppLink`. 처음 켤 때는 `BridgeActivity.load()` 가 `onNewIntent(getIntent())` 를 부르고, 켜져 있을 때(singleTask)는 안드로이드가 부른다. **같은 출처(빌드 때 고정된 앱 주소의 host)이고 `/pos` 또는 `/pos/…` 일 때만** 같은 WebView 에서 연다(§8-4 P0-5 — 다른 출처로 가면 네이티브 브릿지가 빠짐). 한 번 쓰면 intent 의 주소를 비워 화면 재생성 때 다시 끌려가지 않게 한다.
+- 개발용 APK 내려받기: `https://dev.purplehere.com/dev-apps/PurplePOS-dev.apk` (정식 앱 옆에 따로 깔림).
+- 에뮬레이터 확인(API 34, 2026-10-09): 구글 확인 에이전트 `dev.purplehere.com: verified` · 앱 꺼짐/켜짐 둘 다 링크 주소로 열림 · 링크 없이 앱 열면 보던 화면 그대로 · 손님 주문(/m)·운영 주소·앱 없음 → 크롬. 로그인 안 된 상태에서 오너 화면 링크는 웹앱이 /pos(로그인)로 돌려보낸다 — 브라우저와 같은 동작.

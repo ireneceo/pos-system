@@ -307,7 +307,12 @@ router.delete('/file', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid file URL' });
     }
 
-    const filePath = path.join('/var/www', url);
+    // 2026-10-09 사전점검 S3: '/uploads/attachments/../../dev-backend/server.js' 처럼 '..' 로 빠져나가
+    //   서버 파일을 지우던 구멍. 정규화한 실제 경로가 첨부 폴더 안일 때만 지운다.
+    const filePath = path.resolve('/var/www', '.' + url);
+    if (!filePath.startsWith(ATTACHMENTS_BASE + path.sep)) {
+      return res.status(400).json({ success: false, message: 'Invalid file URL' });
+    }
 
     try {
       await fs.unlink(filePath);

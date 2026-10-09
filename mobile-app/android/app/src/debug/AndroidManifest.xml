@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 개발용 앱(.dev, 디버그 빌드)에만 합쳐지는 manifest (2026-10-09).
+     상황판 «확인할 곳» 링크(https://dev.purplehere.com/pos/…)를 휴대폰에서 누르면 이 앱이 깔려 있을 때 앱으로 연다.
+     - 개발 주소만 받는다. 정식 앱(release, purplehere.com)은 링크를 받지 않는다 — 매장 POS 태블릿이
+       메일 링크 하나로 인쇄 화면에서 벗어나는 일을 만들지 않기 위해, 또 dev 링크가 운영 앱에서 열리지 않게.
+     - /pos 화면만(손님 주문 /m·공개 페이지 제외).
+     - 검증 파일: dev-frontend-build/.well-known/assetlinks.json (패키지 com.purplehere.pos.mobile.dev + 디버그 서명 지문).
+       앱이 없거나 검증이 안 되면 안드로이드가 알아서 브라우저로 연다.
+     - 받은 주소로 이동은 MainActivity.openAppLink (같은 출처 · /pos 만). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <activity android:name=".MainActivity" tools:node="merge">
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="dev.purplehere.com" />
+                <data android:pathPrefix="/pos" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

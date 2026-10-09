@@ -852,10 +852,12 @@ const PaymentPage: React.FC = () => {
   const takeawayCharge = calculateTakeawayCharge();
   const deliveryFee = calculateDeliveryFee();
 
-  // Calculate discounted subtotal first (consistent with POS)
+  // 2026-10-09 (Fable 판정 s1-repricing §4-7): POS·서버(utils/orderTotals)와 같은 공식 —
+  //   base = 소계 + 포장비, 쿠폰을 뺀 금액에 세금·서비스차지, 포인트는 세금 뒤에 뺀다.
+  //   서버가 손님 주문 금액을 이 공식으로 다시 계산해 저장하므로, 화면 합계도 같아야 «본 금액 = 청구 금액».
   // Points discount only applies when member is logged in
   const activePointDiscount = currentCustomer ? pointDiscount : 0;
-  const discountedSubtotal = subtotal - couponDiscount - activePointDiscount;
+  const discountedSubtotal = Math.max(0, subtotal + takeawayCharge - couponDiscount);
 
   // Apply tax from operation settings (on discounted amount - consistent with POS)
   const tax = operationSettings.taxEnabled ? discountedSubtotal * (operationSettings.taxRate / 100) : 0;
@@ -866,7 +868,7 @@ const PaymentPage: React.FC = () => {
   const scApplies = operationSettings.serviceChargeEnabled && !(orderType === 'takeaway' && scExcludeTakeaway);
   const serviceCharge = scApplies ? discountedSubtotal * (operationSettings.serviceChargeRate / 100) : 0;
 
-  const totalBeforeRounding = discountedSubtotal + tax + serviceCharge + takeawayCharge + deliveryFee;
+  const totalBeforeRounding = discountedSubtotal + tax + serviceCharge + deliveryFee - activePointDiscount;
 
   // Apply rounding based on settings
   const total = roundingApplyTo === 'all' && cashRounding
@@ -1379,6 +1381,14 @@ const PaymentPage: React.FC = () => {
   };
 
   // Helper function to get option names - now options are already stored as names
+  // 서버 재계산용 옵션 번호 — 일반 상품은 고른 옵션, 세트는 세트 자체 옵션(2026-10-09 S1)
+  const orderOptionIds = (item: typeof cartItems[0]): number[] => {
+    const ids = (item.selectedOptionsData && item.selectedOptionsData.length)
+      ? item.selectedOptionsData.map(o => o.id)
+      : (item.setOptionIds || []);
+    return ids.map(id => Number(id)).filter(Boolean);
+  };
+
   const getOptionNames = (item: typeof cartItems[0]): string[] => {
     // selectedOptions now contains option names directly
     return item.selectedOptions || [];
@@ -1608,6 +1618,9 @@ const PaymentPage: React.FC = () => {
                   quantity: item.quantity,
                   price: unitPriceWithOptions,  // Unit price including options
                   basePrice: item.menuItem.price,  // Base menu price
+                  // 서버 재계산용 번호(2026-10-09 S1) — 서버가 이 번호로 메뉴 가격을 찾는다(없으면 이름으로)
+                  menu_item_id: Number(item.menuItem.id) || undefined,
+                  option_ids: orderOptionIds(item),
                   optionPrice: unitPriceWithOptions - item.menuItem.price,  // Total option price per unit
                   options: getOptionNames(item),
                   optionDetails: optionDetails,  // Full option data with prices
@@ -1806,6 +1819,8 @@ const PaymentPage: React.FC = () => {
                 quantity: item.quantity,
                 price: unitPriceWithOptions,
                 basePrice: item.menuItem.price,
+                menu_item_id: Number(item.menuItem.id) || undefined,
+                option_ids: orderOptionIds(item),
                 optionPrice: unitPriceWithOptions - item.menuItem.price,
                 options: getOptionNames(item),
                 optionDetails: optionDetails,
@@ -1908,6 +1923,8 @@ const PaymentPage: React.FC = () => {
                   quantity: item.quantity,
                   price: unitPriceWithOptions,
                   basePrice: item.menuItem.price,
+                  menu_item_id: Number(item.menuItem.id) || undefined,
+                  option_ids: orderOptionIds(item),
                   optionPrice: unitPriceWithOptions - item.menuItem.price,
                   options: getOptionNames(item),
                   optionDetails: optionDetails,

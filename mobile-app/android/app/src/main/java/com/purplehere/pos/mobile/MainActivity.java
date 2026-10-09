@@ -1,5 +1,7 @@
 package com.purplehere.pos.mobile;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.WindowManager;
@@ -59,5 +61,36 @@ public class MainActivity extends BridgeActivity {
         // printing is dead in release, with no error anywhere. The URL is fixed at
         // BUILD time instead: PURPLE_APP_URL -> capacitor.config.ts -> cap sync.
         // (Default stays dev, so a debug build can never hit production.)
+    }
+
+    // App Link 로 들어온 주소로 이동 (2026-10-09). 처음 켤 때는 BridgeActivity.load() 가
+    // onNewIntent(getIntent()) 를 부르고, 이미 켜져 있으면(singleTask) 안드로이드가 부른다 — 둘 다 여기로 온다.
+    // 링크를 받는 intent-filter 는 개발용 앱(src/debug manifest)에만 있다. 정식 앱에선 이 길이 열리지 않는다.
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        openAppLink(intent);
+    }
+
+    private void openAppLink(Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction()) || getBridge() == null) return;
+        Uri link = intent.getData();
+        if (link == null) return;
+        // 같은 출처(빌드 때 고정된 앱 주소의 scheme+host)만 — 다른 주소로 가면 네이티브 브릿지가 빠진다(§8-4 P0-5).
+        Uri app = Uri.parse(getBridge().getAppUrl());
+        String path = link.getPath() == null ? "" : link.getPath();
+        boolean sameOrigin = "https".equals(link.getScheme())
+                && app.getHost() != null && app.getHost().equalsIgnoreCase(link.getHost())
+                && link.getPort() == app.getPort();
+        boolean posScreen = path.equals("/pos") || path.startsWith("/pos/");
+        // 한 번만 쓴다 — 화면 재생성 때 같은 링크로 다시 끌려가지 않게.
+        intent.setData(null);
+        if (!sameOrigin || !posScreen) {
+            Log.w("AppLink", "ignored " + link);
+            return;
+        }
+        WebView webView = getBridge().getWebView();
+        webView.post(() -> webView.loadUrl(link.toString()));
+        Log.i("AppLink", "open " + link);
     }
 }

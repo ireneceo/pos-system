@@ -8,7 +8,7 @@ const { Op } = require('sequelize');
 const { Customer, RestaurantCustomer, Restaurant, Order } = require('../models');
 const Coupon = require('../models/Coupon');
 const { sequelize } = require('../config/database');
-const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess, userCanAccessRestaurant } = require('../middleware/auth');
 
 /**
  * GET /api/customers/phone/:phone
@@ -58,6 +58,19 @@ router.get('/phone/:phone', authenticateToken, async (req, res) => {
         success: false,
         message: 'Customer not found'
       });
+    }
+
+    // 2026-10-09 사전점검 S9: 다른 매장 손님의 이름·이메일·매장별 사용금액이 보이던 길 —
+    //   System Admin 이 아니면 관할 매장과의 관계만 보여 주고, 관할 매장 손님이 아니면 «없음».
+    if (req.user.role !== 'System Admin') {
+      const plain = customer.get({ plain: true });
+      const mine = [];
+      for (const r of plain.restaurants || []) if (await userCanAccessRestaurant(req.user, r.id)) mine.push(r);
+      if (mine.length === 0) {
+        return res.status(404).json({ success: false, message: 'Customer not found' });
+      }
+      plain.restaurants = mine;
+      return res.json({ success: true, data: plain });
     }
 
     res.json({
@@ -298,9 +311,24 @@ router.delete('/:customerId', authenticateToken, async (req, res) => {
       });
     }
 
-    await RestaurantCustomer.destroy({
-      where: { customer_id: customerId }
-    });
+    // 2026-10-09 사전점검 S9: 아무 직원이나 플랫폼 전체 손님을 지우던 길.
+    //   System Admin 이 아니면 «내가 관할하는 매장과의 연결»만 끊고, 다른 매장 연결이 남으면 손님은 남긴다.
+    if (req.user.role !== 'System Admin') {
+      const links = await RestaurantCustomer.findAll({ where: { customer_id: customerId }, attributes: ['id', 'restaurant_id'] });
+      const mine = [];
+      for (const l of links) if (await userCanAccessRestaurant(req.user, l.restaurant_id)) mine.push(l.id);
+      if (mine.length === 0) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+      await RestaurantCustomer.destroy({ where: { id: mine } });
+      if (mine.length < links.length) {
+        return res.json({ success: true, message: 'Customer removed from your restaurant' });
+      }
+    } else {
+      await RestaurantCustomer.destroy({
+        where: { customer_id: customerId }
+      });
+    }
 
     await customer.destroy();
 

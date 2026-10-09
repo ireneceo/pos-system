@@ -116,11 +116,37 @@ async function authenticateAdminOrCustomerSelf(req, res, next) {
   }
 
   // Admin token 시도
+  // 2026-10-09 사전점검 S9: 관리자 토큰이면 «아무 역할»이 아니라 그 손님이 등록된 매장 중
+  //   하나를 관할해야 한다(전엔 아무 매장 직원이 다른 매장 손님의 정보·주문·이메일을 다뤘다).
   const { authenticateToken } = require('./auth');
-  return authenticateToken(req, res, next);
+  return authenticateToken(req, res, async () => {
+    try {
+      if (await adminCanAccessCustomer(req.user, req.params.customerId)) return next();
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    } catch (e) {
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  });
+}
+
+/**
+ * 관리자(POS 쪽 계정)가 이 손님을 다뤄도 되는가 — System Admin 이거나, 손님이 등록된 매장
+ * (restaurant_customers) 가운데 하나라도 관할(userCanAccessRestaurant)하면 true.
+ */
+async function adminCanAccessCustomer(user, customerId) {
+  if (!user) return false;
+  if (user.role === 'System Admin') return true;
+  const { RestaurantCustomer } = require('../models');
+  const { userCanAccessRestaurant } = require('./auth');
+  const links = await RestaurantCustomer.findAll({ where: { customer_id: parseInt(customerId) }, attributes: ['restaurant_id'] });
+  for (const l of links) {
+    if (await userCanAccessRestaurant(user, l.restaurant_id)) return true;
+  }
+  return false;
 }
 
 module.exports = {
+  adminCanAccessCustomer,
   authenticateCustomer,
   requireCustomerSelf,
   authenticateAdminOrCustomerSelf
