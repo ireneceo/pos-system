@@ -57,9 +57,7 @@ test.describe('b) mobile order full flow — 메뉴→주문→인쇄→단계�
       expect(pend.some((o) => o.id === orderId), 'printed 후 pending 에서 사라짐').toBeFalsy();
 
       // 5) +Round: 새 품목만 주방행, 빌은 전체
-      const cur = await O.getOrder(request, baseURL, token, orderId);
-      const items = [...(cur.order_items || []), { id: 'e2e-r2', name: 'E2E Round2 NEW', quantity: 1, price: 15 }];
-      expect(await O.patchOrder(request, baseURL, token, orderId, { order_items: items, needs_print: true, total_amount: 45 })).toBe(200);
+      expect(await O.addItems(request, baseURL, token, orderId, [{ id: 'e2e-r2', name: 'E2E Round2 NEW', quantity: 1, price: 15 }])).toBe(200);
       pend = await O.getPendingPrint(request, baseURL, token);
       mine = pend.find((o) => o.id === orderId);
       expect(mine?.kitchen_items?.length, '+Round 주방=새것만 1개').toBe(1);

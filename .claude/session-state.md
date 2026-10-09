@@ -5,7 +5,19 @@
 **다음 확정 작업:** 없음 — 지시 대기
 **후속 후보(확정 X, /개발시작 자동 추천 아님):** 9-29 판정 ④ 순두부 6→1 데이터 정리(별건) · 레시피 없는 프로덕트 줄 수령 문제분 기록 · 다브랜드 BG 발주 화면 전체 스코프 · StockAlert 브랜드 칸 · 브랜드·푸드코트 청구서 창 결제 버튼 · Staff 청구서 버튼 권한 · 배포 뒤 문서(PURCHASE_ORDER_SYSTEM §8-8 등)
 
-### 답 기다림 (2026-10-09) — 운영 전 사전점검: 보안 Critical 4건 · 요금제/메뉴 정책 Q1~Q8 [Claude Code · 백그라운드 작업방 5a777d87]
+### 완료 (2026-10-09) — 운영 전 보안 0단 묶음(개발서버 · Fable 게이트 PASS · 운영 배포 대기) [Claude Code · 백그라운드 작업방 5a777d87]
+- Irene 답: «권고대로» (Q1~Q8)
+- 한 것(개발서버): S1 익명 주문 결제칸 잠금 + 서버 금액 재계산(새 utils/guestOrderPricing.js · utils/couponValidate.js, 합계는 orderTotals 그대로) · S2 사용자 수정 소속칸·승격 차단 · S3 첨부 삭제 경로 · S4 주문 주인확인 11곳+mergeable · PATCH 허용 칸 목록 · S5/S6 손님 주문 목록·취소 손님 토큰 필수·증빙 사진 제외 · S9 손님 정보 관할 매장만 · L1 주문 한도 POST 만 + 추적 화면 폴링 정지 · 손님 결제 화면 공식 POS 와 같게(§4-7) + 상품·옵션 번호 전송 · Q6 개발 DB 원화가 수정
+- 판정: 설계 backups/fable-pending/fable-verdict-20261009-preflight-audit.md · s1-repricing.md · 게이트 fable-verdict-20261009-preflight-gate.md (PASS 조건부, 마커 5d310a2af7a2, print-guard bless 완료)
+- 검증: health-check 358/358(새 12건) · 고장주입 10/10 · jest 32/32 · build 1회 · verify-all --full(mount sweep 크래시 0) · e2e 3회 5/5 · 실브라우저 화면 40.28 = DB 40.28
+- §4-7 손님 화면 합계 공식(포장비에 세금·서비스차지, 포인트는 세금 뒤) — Irene «권고대로»(맞춘다, 그대로 둠)
+- 배포 때(Irene /배포 · Q1 미배포 묶음과 함께): SW 버전 1회(개발 sw.js 가 운영과 같은 5.89 — 안 올리면 손님 폰이 옛 화면) · 배포 기록 · 직전 Irene 터미널: E1 prod-nginx-realip.sh · E3 prod-nginx-origin-lock.sh · Q6 fix-owner-basic-krw.js --apply (backups/preflight-audit-20261009/) · 배포 후 /운영검증(익명 조작가 주문·남의 주문 403·익명 목록 401·추적 70회 429 0·첫 주방 티켓 눈 확인)
+- 마커 뒤 허용 변경 = SW bump·배포 기록·session-state 만(그걸로 마커가 죽으면 .fable-gate-skip + «Fable 통과 뒤 SW bump·배포기록만»)
+- 1단(운영 첫 2주): ①익명 주문 points_used + 남의 customer_id(손님 토큰 필수로) ②/api/mobile/order 칸 채우기 또는 닫기 ③고객 화면(CheckoutDisplay) 전화 조회 401 고장 ④익명 printed_offline·품절/판매시간 ⑤ 판정 1단 나머지(S8·S10~S15·L2~L4·E2) ⑥npm 의존성
+- 2단: 요금제·좌측 메뉴(Q4 운영이 정답 · Q5 Pro 이상) — 배포 뒤 Fable 설계 1회
+- 사고: 고장주입 때 개발 DB 손님 1명(id 1 추정)+매장 연결 삭제 → 복구 스크립트 backups/preflight-audit-20261009/restore-dev-customer.sh (Irene 실행, 백업 열람 권한 거부) · user 39 brand_id 999999 → NULL 로 되돌림
+
+### (이전) 답 기다림 (2026-10-09) — 운영 전 사전점검: 보안 Critical 4건 · 요금제/메뉴 정책 Q1~Q8 [Claude Code · 백그라운드 작업방 5a777d87]
 - Irene: «운영에 필요한 보안점검 구조확인 해킹 대비 서버부하 대비 등 실제 운영하기 전 점검들 해줘. 제대로 작동하지 않는 기능들도 다 찾아봐. 구독 패키지 체크하고 랜딩페이지 확인. 패키지 모델드에 맞춰서 좌측 메뉴 나오고 안나오고 제대로 되는지도. 그리고 외부에서 접속되는 잘못된 페이지 없는지도»
 - 한 것(읽기 전용 · 코드 수정 0): 4갈래 조사 + verify-all --full(23/24, 실패 1 = 배포 기록) → 결과 `backups/preflight-audit-20261009/findings.md` · Fable 판정 `backups/fable-pending/fable-verdict-20261009-preflight-audit.md` («지금 상태로 실운영 열면 안 됨» — 익명 결제완료 주문 생성 S1 · 자기 restaurant_id 바꾸기/System Admin 승격 S2 · 첨부 삭제 경로 넘어가기 S3 · 매장 없는 계정의 남의 주문 열람·수정 S4 · 손님 주문 추적이 같은 와이파이 주문 한도 소진 L1 등)
 - 운영에도 있음: v3.109 배포 커밋 8b69d172c 에 S1~S4·L1 해당 줄 그대로 있음(git show 확인)

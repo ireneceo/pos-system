@@ -64,6 +64,13 @@ async function patchOrder(request, baseURL, token, id, patch) {
   return res.status();
 }
 
+/** +Round 추가 — POST /orders/:id/add-items (POS·플로어플랜이 실제로 쓰는 길).
+ *  2026-10-09: 주문 PATCH 는 허용 칸 목록만 받는다(사전점검 S4) — order_items·needs_print 통째 PATCH 는 무시된다. */
+async function addItems(request, baseURL, token, id, items) {
+  const res = await request.post(apiBase(baseURL) + `/orders/${id}/add-items`, { headers: authHeaders(token), data: { items } });
+  return res.status();
+}
+
 /** 단계이동 — PATCH /orders/:id/status */
 async function setStatus(request, baseURL, token, id, status) {
   const res = await request.patch(apiBase(baseURL) + `/orders/${id}/status`, { headers: authHeaders(token), data: { status } });
@@ -86,5 +93,5 @@ async function softDeleteOrder(request, baseURL, token, id) {
 
 module.exports = {
   MARKER, TEST_TABLE,
-  createDemoOrder, getPendingPrint, claimPrint, markPrinted, getOrder, patchOrder, setStatus, addPayment, softDeleteOrder,
+  createDemoOrder, getPendingPrint, claimPrint, markPrinted, getOrder, patchOrder, addItems, setStatus, addPayment, softDeleteOrder,
 };
