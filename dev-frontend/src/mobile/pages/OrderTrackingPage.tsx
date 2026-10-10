@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import MobileLayout from '../components/common/MobileLayout';
 import { isKioskMode } from '../utils/kioskMode';
+import { Button as UIButton } from '../../components/UI/Button';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
 import ReceiptShare from '../components/common/ReceiptShare';
@@ -49,20 +50,20 @@ const PickupNumberCard = styled.div`
 `;
 
 const PickupLabel = styled.div`
-  font-size: 14px;
+  font-size: var(--mo-pickup-label, 14px);
   opacity: 0.9;
   margin-bottom: 8px;
 `;
 
 const PickupNumber = styled.div`
-  font-size: 64px;
+  font-size: var(--mo-pickup-num, 64px);
   font-weight: 700;
   line-height: 1;
 `;
 
 const StatusContainer = styled.div`
   width: 100%;
-  max-width: 400px;
+  max-width: var(--mo-track-max, 400px);
   margin-bottom: 32px;
 `;
 
@@ -135,7 +136,7 @@ const OrderDetails = styled.div`
   border-radius: 12px;
   padding: 16px;
   width: 100%;
-  max-width: 400px;
+  max-width: var(--mo-track-max, 400px);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   margin-bottom: 24px;
 `;
@@ -171,7 +172,7 @@ const ActionButtons = styled.div`
   display: flex;
   gap: 12px;
   width: 100%;
-  max-width: 400px;
+  max-width: var(--mo-track-max, 400px);
 `;
 
 const Button = styled.button`
@@ -533,21 +534,20 @@ const OrderTrackingPage: React.FC = () => {
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
               flexWrap: 'wrap', background: '#F5F3FF', border: '1px solid #DDD6FE',
-              borderRadius: '12px', padding: '14px 16px', marginBottom: '16px'
+              borderRadius: '16px', padding: '16px 20px', marginBottom: '24px',
+              width: '100%', maxWidth: 'var(--mo-track-max, 640px)', boxSizing: 'border-box'
             }}>
-              <span style={{ color: '#4C1D95', fontSize: '15px', fontWeight: 600 }}>
+              <span style={{ color: '#4C1D95', fontSize: '20px', fontWeight: 600 }}>
                 {t('menu:kiosk.returningIn', { count: kioskLeftSec, defaultValue: 'Returning to the start screen in {{count}}s' })}
               </span>
-              <button
-                type="button"
+              <UIButton
+                variant="primary"
+                size="large"
                 onClick={() => navigate(`/mobile/${slug}?kiosk=1&picker=1`)}
-                style={{
-                  padding: '12px 20px', minHeight: '48px', background: '#635BFF', color: '#fff',
-                  border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: 700, cursor: 'pointer'
-                }}
+                style={{ minHeight: 64, padding: '0 28px', borderRadius: 14, fontSize: 20, fontWeight: 700 }}
               >
                 {t('menu:kiosk.startNewOrder', 'Start new order')}
-              </button>
+              </UIButton>
             </div>
           )}
           <PickupNumberCard>

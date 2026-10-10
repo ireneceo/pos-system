@@ -803,6 +803,7 @@
   "settingsPage.mobileOrderAccessHint": "Pelanggan layari URL ini atau imbas QR di bawah untuk mula memesan. Untuk QR cetak setiap mod, buka Store Settings → Quick-entry QR codes.",
   "settingsPage.kioskAccess": "Tablet Dalam Kedai (Kiosk)",
   "settingsPage.kioskAccessHint": "Kiosk = tablet kedai untuk tetamu membuat pesanan sendiri. Daftarkan tablet di atas — hanya tablet berdaftar mendapat kaedah bayaran Kiosk dan terminal kad. Membuka pautan ini pada peranti tidak berdaftar hanya melebarkan skrin (kaedah bayaran sama seperti pesanan mudah alih). Selepas 90 saat tanpa sentuhan, troli dikosongkan. Telefon tetamu (QR meja) tidak terjejas.",
+  "settingsPage.kioskTab.urlMobileColumnNote": "Skrin yang dibuka dengan pautan ini mengikut lajur Mobile untuk kaedah bayaran. Lajur Kiosk hanya terpakai pada tablet yang didaftarkan di atas.",
   "settingsPage.copyUrl": "Salin URL",
   "settingsPage.urlCopied": "URL disalin",
   "settingsPage.openQrManager": "Buka pengurus QR",

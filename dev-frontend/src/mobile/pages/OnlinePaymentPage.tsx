@@ -9,9 +9,10 @@ import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit } from '../compone
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
 
+/* 키오스크: 카드 입력 폼은 읽기 좋은 폭(760)까지 — 토큰(KioskLayout), 폰은 500 그대로 */
 const Container = styled.div`
-  padding: 24px 16px 100px;
-  max-width: 500px;
+  padding: var(--mo-qr-pad, 24px 16px 100px);
+  max-width: var(--mo-online-max, 500px);
   margin: 0 auto;
 `;
 

@@ -3,6 +3,37 @@
 **버전:** **v3.109** (2026-10-07 · 5.87·5.88·5.89 묶음) · 운영 SW **5.89-kiosk-receipt-20261007** (백업 20261007_163801 · 스모크 10/10) · 안드로이드 앱 0.3.4
 **작업 상태:** ✅ 배포 준비 끝 — 다음 배포 SW **5.90-preflight-security-20261010** · 기록 `dev-backend/releases/2026-10-10-preflight-security.json` · Irene «배포해» 대기(배포 직전 Irene 터미널 E1·E3·Q6 — 아래 10-10 절). 미배포 묶음은 아래 각 «완료» 절(보안 0단 · 판매 중지 상품 · 재고아이템 삭제 · Supplier Catalog · 청구서 창 · 품목별 발송 · 결제 설정 · To Confirm · 청구서 권한 · 배송 지역 · 외부 정산서 · 재고→원가 · K-DINE 재료 안내)
 
+### 답 기다림 (2026-10-10) — 키오스크 전체 화면(풀버전): 실태블릿 가로·세로 1회 확인 [Claude Code · 백그라운드 작업방 18bc810d]
+- Irene: «키오스크 레이아웃 불필요한 공백 없이 내용이 크게 크게 나오게 풀버전으로 만들어줘. 좌우 여백 왜 남겨? 그리고 모든 과정 제대로 디자인 잡아. 모바일때매 못 바꾸면 같이 가지마. 완전 목적이 다르잖아.»
+- 설계(Fable): `backups/fable-pending/fable-verdict-20261010-kiosk-fullscreen.md` — 흐름은 한 벌·틀은 두 벌. Q1 아래 Home/Menu/Cart 바 없앰 · Q2 가로 메뉴 왼쪽 카테고리 세로열 · Q3 첫 화면 타일은 가운데 최대 960 — Irene 답 없어 Fable 권고 A 로 진행(되돌리기 쉬움)
+- 한 것(개발서버): 새 틀 `mobile/components/common/KioskLayout.tsx`(폭 전체·좌우 24px·위 바 72 «처음으로/뒤로»·치수 토큰 93개·sticky 버튼 바) · MobileLayout 이 키오스크면 위임 · 메뉴(가로 3칸/세로 알약+아래 장바구니 바) · 상세(큰 옵션·담기 sticky) · 장바구니 · 결제(가로 1280+ 왼쪽 2열, 실패 문구 패널 안, 세로 sticky Pay) · QR(2열) · 온라인 · 주문 추적 · 첫 화면 큰 타일 · i18n 4키 · docs/KIOSK_MODE.md §5-1. kioskSplitBarCss·1120 상자 폐기
+- 검증: 폰 390×844 5화면 변경 전후 픽셀 차이 0(반증: 토큰 강제 주입 시 4화면 수만 px 차이) · 키오스크 5크기 실측(fixed 바 0·하단 바 0·가로 스크롤 0·글자 18/20/30·타일 64·바 72·패널 440/340) · 흐름 가로·세로(주문 POST 가로채기, DB 쓰기 0)·유휴 리셋 89초 · health-check kiosk 4·mobile 11·payment 16 · verify-all --full 24/24 · design-guard 신규 0 · print-guard 8/8
+- Fable 게이트 조건부 PASS → 문서 2줄 고친 뒤 마커 3fc689d6dd32: `backups/fable-pending/fable-verdict-20261010-kiosk-fullscreen-gate.md`. 마커 뒤 허용 = session-state + 배포기록 JSON 1줄만
+- /개발완료 안 함: DEVELOPMENT_PLAN·CHANGELOG 수정이 마커를 무효로 만들고, 4d64bbc0 도 실태블릿 확인 뒤로 미뤄 둠 → 실태블릿 확인 뒤 묶어서
+- 답 필요: Irene 실태블릿 가로·세로 1회(처음→메뉴→상세(옵션)→담기→결제→QR→처음으로) — 4d64bbc0 결제 패널 확인과 한 번에
+- 답이 오면: 문제 없으면 배포기록 한 줄 + /개발완료 → Irene «배포» 때 SW 5.90 묶음(배포 묶음 규칙대로 SW 버전). 바꿀 점 있으면 수정 → 빌드 1회 → 재검증
+- 다음 회차(Fable 메모, 배포 안 막음): QR 가로 FHD 안쪽 격자 3칸으로 펼쳐져 아래 빔 · 800 세로 QR 참조번호 placeholder 잘림 · 1024 세로열 긴 카테고리 두 줄 · KioskCardPanel·CustomerModal 글자 토큰 미적용
+
+### 완료 (2026-10-10) — 키오스크 «대시보드로» 링크가 랜딩으로 가던 결함 (개발서버 · 운영 배포 대기) [Claude Code · 백그라운드 작업방 72cfb0db]
+- Irene: «키오스크에서 대시보드 가는 링크 누르면 랜딩페이지로 가. 제대로 해줘.»
+- 원인: 키오스크 등록 때 직원 로그인이 지워짐 → 첫 화면 아래 링크가 «PurpleHere 홈페이지»(`/` = 랜딩)로 바뀜. 직원 로그인 `/pos` 로 가도 KioskEntryGate 가 키오스크로 되돌려 **직원이 돌아갈 길이 없었음**. 오너(매장 소속 없음)도 로그인 상태에서 같은 홈페이지 링크
+- 한 것: `mobile/pages/OrderTypePage.tsx` 아래 링크 — 로그인 있음 → `getDashboardPath`(역할별, 오너 포함) · 키오스크+로그인 없음 → `/pos?staff=1` · 폰은 그대로 홈페이지 · 키오스크에선 purplehere.com 바깥 링크를 글자로만 · `components/Kiosk/KioskEntryGate.tsx` `?staff=1` 이면 가로채지 않고 로그인 화면 + 맨 위 «← Back to kiosk» · common.json 4언어 `backToKiosk` · docs/KIOSK_MODE.md §2
+- 검증: 실브라우저 13항목 ALL PASS(등록 기기[가짜 /me, DB 무변경]→로그인→키오스크 복귀→로그인 뒤 매장 대시보드 / RA·오너 ?kiosk=1 / 손님 폰 홈페이지 유지) · 빌드 전 옛 번들에서 같은 검사 실패(반증) · build:dev 1회 · verify-all --full 24/24
+- Fable 안 씀 — 링크 이동 단순 결함, 실브라우저로 판정. 단 이 변경으로 작업방 4d64bbc0 의 Fable 마커(9b7386aace1b, 지문이 전체 diff)는 무효 — 배포 전 묶음 게이트 때 함께
+- /개발완료 안 함: 미커밋 파일 대부분이 4d64bbc0(실태블릿 확인 대기, /개발완료 일부러 미룸) 것이라 같이 커밋하지 않음
+
+### 답 기다림 (2026-10-10) — 키오스크 결제 화면: 실태블릿 확인 + Q1·Q2 확인 [Claude Code · 백그라운드 작업방 4d64bbc0]
+- Irene: «페이투카운터는 키오스크가 쓸 일이 없잖아. 카운터인데. 그리고 키오스크 체크아웃이 레이아웃이 모바일 따라하느라 이래? 결제 바로 하게 카트 아래 카드나 다른 결제버튼이 우측에 나와야지. 그리고 세로일 수도 있는데 다 엉망이네? 페이먼트 설정 넣었는데 바뀌지도 않아.»
+- 원인(Fable 판정): 개발 kiosk_devices 0행·kiosk_enabled 전부 false → Irene 가 본 화면은 미등록(?kiosk=1) = Mobile 열 결제수단(설계상). 화면이 그 이유를 말하지 않았음. 배치는 폰 화면을 넓힌 것뿐, 세로 판정은 폭만 봄
+- 한 것(개발서버, Fable 설계 backups/fable-pending/fable-verdict-20261010-kiosk-checkout-layout.md D1~D6): 카운터 결제 키오스크 숨김(화면 paymentChannel.ts + 서버 paymentMethodGuard.js) · 키오스크 모양 화면은 미등록이어도 숨김 적용 + 미등록·키오스크 켬이면 안내 1줄 · 가로 결제 = 오른쪽 패널에 장바구니+합계+결제수단+결제 버튼(고정 바 없음) · 2칸은 가로만(MenuPage 복사본도 교체) · 세로 타일 2열 · 설정 › Kiosk ③ 주소 카드 한 줄 · KIOSK_MODE.md
+- 검증: jest 5/5 · health-check kiosk 4/4(카운터 키오스크 400/폰 201 추가) · mobile 11 · payment 16 · 고장주입 1(서버 목록 counter 제거→✗→원복) · 4해상도 스크린샷(합계 1곳·Pay at Counter 0·결제 버튼 가림 0) · 등록 기기 경로(E-Wallet 만) · 데모 38 원복(기기 0행) · verify-all --full 24/24 · print-guard 8/8
+- Fable 게이트 PASS: backups/fable-pending/fable-verdict-20261010-kiosk-checkout-layout-gate.md (마커 9b7386aace1b, 이 방 17파일만 판정). 마커 뒤 허용 변경 = session-state + 배포 기록 JSON 1줄 → **배포 기록 `dev-backend/releases/2026-10-10-preflight-security.json` 에 이 건 한 줄은 아직 안 넣음(넣으면 지문이 바뀌는지 미확인 — 배포 준비 때 넣고 fable-gate status 확인)**
+- 07:01~07:02 다른 방 72cfb0db(«키오스크 대시보드 링크 수정», busy)가 KioskEntryGate.tsx · OrderTypePage.tsx · common.json 4개를 고쳐 작업트리 지문이 092318a6eeda 로 바뀌어 마커 9b7386aace1b 무효 표시 — 이 방 17파일은 마커 뒤 무변경. 그 방 변경 포함 게이트는 그 방 몫(이 방은 skip·재판정 안 함)
+- /개발완료 미실행: DEVELOPMENT_PLAN·CHANGELOG 수정이 마커를 무효로 만들고 이 사안 Fable 호출 2/2 소진 → 실태블릿 확인 뒤 배포 준비 때 함께
+- 답 필요: ① Irene 실태블릿 가로·세로 1회(옵션 있는 품목 하나 포함) ② Q1 카운터 결제 키오스크 «숨김(토글 없음)» 으로 진행함 — 반대면 «기본 꺼짐 토글»(목록에서 한 단어 빼기) ③ Q2 세로는 폭 넓어도 한 칸으로 진행함
+- 답이 오면: 문제 없으면 배포 기록 한 줄 + /개발완료 → Irene «배포» 때 SW 5.90 묶음에 포함(별도 bump 없음). Q1·Q2 반대면 해당 한 줄 수정 → 빌드 → 재검증(Fable 재호출은 코드 변경 시 필요)
+- 다음 회차(Fable 목록, 배포 안 막음): 미등록 안내가 패널 줄 목록을 밀어냄 · 1024×768에서 이월렛 종류 칩 등 겹치면 Pay 가 패널 스크롤 아래 · 결제 실패 문구가 2칸에선 왼쪽 맨 위
+
 ### 완료 (2026-10-10) — 아침 점검: /개발완료 + 배포 준비 [Claude Code · 백그라운드 작업방 481f7115]
 - 다른 /var/www 작업방 working 0 (시작 직전 claude agents 재확인) · 마지막 /개발완료(a4e1d5681) 뒤 자동 저장 커밋 5개 = 보안 0단(5a777d87) · 앱 링크(23602330) · 판매 중지(e9b89182) 등
 - Fable 보안 게이트 마커 5d310a2a «무효» 표시 원인 = 자동 저장 커밋 089f650c2. ee800d133+diff 재구성 지문이 5d310a2a 와 일치 → 코드 동일(Fable 재호출 안 함). 기록 `.claude/fable-gate-skips.log` note 줄

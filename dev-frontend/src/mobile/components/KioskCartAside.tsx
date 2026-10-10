@@ -4,11 +4,11 @@
  * 2026-10-07 Irene 「우측 장바구니 있는 상태 그대로 상세페이지 들어가야지. 결제하는 모든 과정에서도
  *   우측에 장바구니 없어지면 안되는 거 아니야?」 — 종전에는 메뉴 화면에만 있었다.
  *
- * - 넓은 키오스크 화면(가로 1024px 이상)에서만 나란히 놓는다. 좁으면 종전대로 하단 바/장바구니 화면.
+ * - 넓은 가로 키오스크(1024px 이상 · 폭 > 높이)에서만 나란히 놓는다. 세로·좁으면 아래 장바구니 바/장바구니 화면.
  * - 줄·합계는 /cart 와 같은 부품(CartContents)이다 — 두 벌로 그리면 금액이 갈라진다.
  * - readOnly: 주문 내용이 이미 결제로 넘어간 화면(QR·온라인 결제)에서는 고칠 수 없게 보여만 준다.
  * - 결제 화면들에서는 줄만 보이고 합계는 왼쪽 주문 요약 하나만 둔다(showSummary — 아래 Props 설명).
- * - 화면 아래 고정 버튼(담기·결제)은 kioskSplitBarCss 로 왼쪽 칸 폭에 맞춰 오른쪽 장바구니를 가리지 않게 한다.
+ * - 화면 아래 버튼(담기·결제)은 본문 칸 안 KioskActionBar(sticky)라 오른쪽 장바구니를 가리지 않는다(2026-10-10).
  */
 import React from 'react';
 import styled from 'styled-components';
@@ -20,68 +20,84 @@ import { formatCurrency } from '../../utils/currency';
 import { CartLines, CartSummary, useCartTotals } from './CartContents';
 import { Button } from '../../components/UI/Button';
 
-/** MobileLayout 키오스크 콘텐츠 폭(KIOSK_MAX)·좌우 여백과 같은 값 — 고정 버튼을 왼쪽 칸에 맞출 때 쓴다 */
-const KIOSK_MAX_PX = 1120;
-const KIOSK_PAD_PX = 32;
-const ASIDE_PX = 340;
-const GAP_PX = 24;
-
-/** 넓은 키오스크 화면인가(나란히 놓기). 창 크기가 바뀌면 다시 본다. */
+/** 넓은 **가로** 키오스크 화면인가(나란히 놓기). 창 크기·방향이 바뀌면 다시 본다.
+ *  세로(1080×1920 등)는 폭이 넓어도 한 칸 — 오른쪽 340px 칸이 길게 비어 보이던 것(Irene 10-10 «세로일 수도 있는데», Fable 20261010 D4). */
+const isWideLandscape = () => window.innerWidth >= 1024 && window.innerWidth > window.innerHeight;
 export function useKioskSplit(): boolean {
   const kiosk = isKioskMode();
   const [isWide, setIsWide] = React.useState(
-    typeof window !== 'undefined' ? window.innerWidth >= 1024 : false
+    typeof window !== 'undefined' ? isWideLandscape() : false
   );
   React.useEffect(() => {
-    const onResize = () => setIsWide(window.innerWidth >= 1024);
+    const onResize = () => setIsWide(isWideLandscape());
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
   return kiosk && isWide;
 }
 
-export const KioskSplit = styled.div<{ $split?: boolean }>`
+/** 가로 키오스크: 2칸(본문 | 장바구니) 또는 3칸(카테고리 세로열 | 메뉴 | 장바구니 — 메뉴 화면만, $rail).
+ *  폭은 KioskLayout 토큰(--mo-aside-w · --mo-rail-w) — 1120 상자 계산은 2026-10-10 에 없앴다(Fable D9). */
+export const KioskSplit = styled.div<{ $split?: boolean; $rail?: boolean }>`
+  /* 키오스크 한 칸: 세로 flex 로 화면 높이를 채워 KioskActionBar 가 화면 아래로 간다(폰은 토큰 없음 = block) */
+  display: var(--mo-main-display, block);
+  flex-direction: column;
+  flex: 1 0 auto;
   ${p => p.$split && `
     display: grid;
-    grid-template-columns: minmax(0, 1fr) ${ASIDE_PX}px;
-    gap: ${GAP_PX}px;
+    grid-template-columns: ${p.$rail ? 'var(--mo-rail-w) ' : ''}minmax(0, 1fr) var(--mo-aside-w);
+    gap: 20px;
     align-items: start;
+    flex: 1 0 auto;
   `}
 `;
 
+/** 본문 칸 — 키오스크에선 세로 flex 라 KioskActionBar(sticky)가 내용이 짧으면 칸 맨 아래로 간다.
+ *  폰은 토큰이 없어 block 그대로(폰 화면 0 변경). */
 export const KioskMain = styled.div`
   min-width: 0;
+  display: var(--mo-main-display, block);
+  flex-direction: column;
+  flex: 1 0 auto;
+  align-self: stretch;
 `;
 
-/** 나란히 놓을 때 화면 아래 고정 버튼을 왼쪽 칸 폭에 맞춘다(오른쪽 장바구니를 가리지 않게). */
-export const kioskSplitBarCss = `
-  @media (min-width: 1024px) {
-    left: calc((100vw - min(100vw, ${KIOSK_MAX_PX}px)) / 2 + ${KIOSK_PAD_PX}px);
-    right: auto;
-    transform: none;
-    width: calc(min(100vw, ${KIOSK_MAX_PX}px) - ${KIOSK_PAD_PX * 2}px - ${ASIDE_PX + GAP_PX}px);
-    max-width: none;
-  }
-`;
-
-const Aside = styled.aside`
+const Aside = styled.aside<{ $withFooter?: boolean }>`
+  /* 위 바(72) 바로 아래에 붙는다. 키오스크엔 아래 바가 없어 높이는 화면 − 위 바 − 본문 여백(Fable D4) */
   position: sticky;
-  top: 16px;
+  top: calc(var(--mo-top-h, 0px) + 24px);
   background: #FFFFFF;
   border: 1px solid #E5E8EC;
-  border-radius: 14px;
-  padding: 18px 16px;
+  border-radius: 16px;
+  padding: 20px 18px;
   box-shadow: 0 2px 10px rgba(16, 24, 40, 0.06);
-  max-height: calc(100vh - 220px);
+  max-height: var(--mo-panel-max-h, calc(100vh - 220px));
+  box-sizing: border-box;
   overflow-y: auto;
+  /* 결제 패널: 높이를 다 쓰고, 넘치면 줄 목록(LinesScroll)만 줄어든다 */
+  ${p => p.$withFooter && `padding: 18px 16px; gap: 12px;`}
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+`;
+
+/** footer(결제 패널)가 있을 때 줄 목록만 스크롤 — 품목이 많아도 결제 버튼이 패널 밖으로 밀리지 않는다 */
+const LinesScroll = styled.div`
+  flex: 1 1 auto;
+  min-height: 64px;
+  overflow-y: auto;
+`;
+
+const Footer = styled.div`
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 `;
 
 const Title = styled.h2`
   margin: 0;
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 700;
   color: #0A2540;
   display: flex;
@@ -90,13 +106,13 @@ const Title = styled.h2`
 `;
 
 const QtyPill = styled.span`
-  min-width: 26px;
-  height: 26px;
-  padding: 0 8px;
-  border-radius: 13px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 16px;
   background: #635BFF;
   color: #FFFFFF;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -108,13 +124,13 @@ const Empty = styled.p`
   padding: 24px 0;
   text-align: center;
   color: #6B7280;
-  font-size: 14px;
+  font-size: 17px;
 `;
 
 // 결제하기 — 공용 Button 을 손님 손가락 크기로(디자인 기준: 로컬 버튼 신규 금지)
 const checkoutStyle: React.CSSProperties = {
-  width: '100%', minHeight: 60, borderRadius: 12, fontSize: 17, fontWeight: 700,
-  display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px',
+  width: '100%', minHeight: 64, borderRadius: 14, fontSize: 19, fontWeight: 700,
+  display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0,
 };
 
 interface Props {
@@ -128,9 +144,14 @@ interface Props {
   readOnly?: boolean;
   /** 담은 수 뱃지 튀는 효과 등 — 메뉴 화면이 자기 뱃지를 넘길 때 */
   qtyBadge?: React.ReactNode;
+  /** 결제 화면: 줄 목록 아래 고정 칸(합계·결제수단·결제 버튼). 있으면 합계·«결제하기» 는 그리지 않는다 —
+   *  합계는 쿠폰·포인트까지 아는 결제 화면 쪽 식 하나만(Fable 20261010 D3). */
+  footer?: React.ReactNode;
 }
 
-export const KioskCartAside: React.FC<Props> = ({ showCheckout = true, showSummary = showCheckout, readOnly = false, qtyBadge }) => {
+export const KioskCartAside: React.FC<Props> = ({ showCheckout: showCheckoutProp = true, showSummary: showSummaryProp, readOnly = false, qtyBadge, footer }) => {
+  const showCheckout = footer ? false : showCheckoutProp;
+  const showSummary = footer ? false : (showSummaryProp ?? showCheckout);
   const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -139,12 +160,21 @@ export const KioskCartAside: React.FC<Props> = ({ showCheckout = true, showSumma
   const qty = cartItems.reduce((s, i) => s + (i.quantity || 0), 0);
 
   return (
-    <Aside aria-label={t('menu:cartBar.viewCart', 'View cart')}>
+    <Aside aria-label={t('menu:cartBar.viewCart', 'View cart')} $withFooter={!!footer}>
       <Title>
         <span>{t('menu:cartBar.viewCart', 'View cart')}</span>
         {qty > 0 && (qtyBadge || <QtyPill>{qty}</QtyPill>)}
       </Title>
-      {cartItems.length === 0 ? (
+      {footer ? (
+        <>
+          <LinesScroll>
+            {cartItems.length === 0
+              ? <Empty>{t('menu:kiosk.cartEmpty', 'Tap a menu item to add it here.')}</Empty>
+              : <CartLines inPanel readOnly={readOnly} />}
+          </LinesScroll>
+          <Footer>{footer}</Footer>
+        </>
+      ) : cartItems.length === 0 ? (
         <Empty>{t('menu:kiosk.cartEmpty', 'Tap a menu item to add it here.')}</Empty>
       ) : (
         <>

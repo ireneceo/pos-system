@@ -16,7 +16,7 @@ export const CartContainer = styled.div<{ $inPanel?: boolean }>`
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-bottom: ${p => (p.$inPanel ? '0' : '140px')}; /* 페이지에서만 체크아웃 버튼 + 하단 nav 자리 */
+  padding-bottom: ${p => (p.$inPanel ? '0' : 'var(--mo-cart-page-pad, 140px)')}; /* 페이지에서만 체크아웃 버튼 + 하단 nav 자리(키오스크는 sticky 바라 0) */
 `;
 
 const CartItem = styled.div`
@@ -34,7 +34,7 @@ const ItemHeader = styled.div`
 `;
 
 const ItemName = styled.h3`
-  font-size: 16px;
+  font-size: var(--mo-cart-name, 16px);
   font-weight: 600;
   color: #1F2937;
   margin: 0;
@@ -55,7 +55,7 @@ const RemoveButton = styled.button`
 `;
 
 const ItemOptions = styled.div`
-  font-size: 14px;
+  font-size: var(--mo-cart-meta, 14px);
   color: #4B5563;
   margin-bottom: 8px;
 `;
@@ -73,8 +73,8 @@ const QuantityControl = styled.div`
 `;
 
 const QuantityButton = styled.button`
-  width: 32px;
-  height: 32px;
+  width: var(--mo-cart-qty-btn, 32px);
+  height: var(--mo-cart-qty-btn, 32px);
   border-radius: 50%;
   border: 1px solid #C7CED6;
   background: white;
@@ -101,7 +101,7 @@ const QuantityButton = styled.button`
 `;
 
 const QuantityValue = styled.span`
-  font-size: 18px;
+  font-size: var(--mo-cart-qty-font, 18px);
   font-weight: 700;
   color: #1F2937;
   min-width: 32px;
@@ -110,13 +110,13 @@ const QuantityValue = styled.span`
 `;
 
 const ItemPrice = styled.div`
-  font-size: 16px;
+  font-size: var(--mo-cart-price, 16px);
   font-weight: 600;
   color: #1F2937;
 `;
 
 const SpecialInstructions = styled.div`
-  font-size: 12px;
+  font-size: var(--mo-cart-meta-sm, 12px);
   color: #4B5563;
   margin-top: 8px;
   padding: 8px;
@@ -176,14 +176,14 @@ const OrderSummary = styled.div`
 const SummaryRow = styled.div`
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
+  font-size: var(--mo-summary-row-sm, 14px);
   margin-bottom: 8px;
   
   &:last-child {
     margin-bottom: 0;
     padding-top: 8px;
     border-top: 1px solid #C7CED6;
-    font-size: 16px;
+    font-size: var(--mo-summary-total-sm, 16px);
     font-weight: 600;
   }
 `;

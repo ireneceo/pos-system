@@ -2,15 +2,26 @@ import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
-import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit, kioskSplitBarCss } from '../components/KioskCartAside';
+import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit } from '../components/KioskCartAside';
+import { KioskActionBar, kioskBarButtonStyle } from '../components/common/KioskLayout';
+import { Button } from '../../components/UI/Button';
+import { isKioskMode } from '../utils/kioskMode';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
 // import QRCode from 'qrcode'; // Temporarily disabled for testing
 
+/* 키오스크: 폭 상한 없이 2열(왼쪽 QR · 오른쪽 안내+증빙) — 토큰(KioskLayout), 폰은 500px 한 줄 그대로 */
 const Container = styled.div`
-  padding: 24px 16px 100px;
-  max-width: 500px;
+  padding: var(--mo-qr-pad, 24px 16px 100px);
+  max-width: var(--mo-qr-max, 500px);
   margin: 0 auto;
+  width: 100%;
+  box-sizing: var(--mo-qr-box, content-box);
+  display: var(--mo-qr-display, block);
+  grid-template-columns: var(--mo-qr-cols, none);
+  column-gap: 20px;
+  align-items: start;
+  > :first-child { grid-row: var(--mo-qr-span, auto); }
 `;
 
 const QRSection = styled.div`
@@ -30,7 +41,7 @@ const SectionTitle = styled.h2`
 `;
 
 const AmountDisplay = styled.div`
-  font-size: 48px;
+  font-size: var(--mo-qr-amount, 48px);
   font-weight: 700;
   color: #635BFF;
   margin: 16px 0;
@@ -52,14 +63,14 @@ const InstructionBox = styled.div`
 `;
 
 const InstructionTitle = styled.div`
-  font-size: 14px;
+  font-size: var(--mo-cart-name, 14px);
   font-weight: 600;
   color: #1E40AF;
   margin-bottom: 8px;
 `;
 
 const InstructionText = styled.div`
-  font-size: 13px;
+  font-size: var(--mo-qr-text, 13px);
   color: #1E40AF;
   line-height: 1.6;
 `;
@@ -89,13 +100,13 @@ const UploadArea = styled.div`
 `;
 
 const UploadText = styled.div`
-  font-size: 14px;
+  font-size: var(--mo-opt-font, 14px);
   color: #4B5563;
   margin-bottom: 4px;
 `;
 
 const UploadHint = styled.div`
-  font-size: 12px;
+  font-size: var(--mo-opt-price-sm, 12px);
   color: #6B7280;
 `;
 
@@ -166,7 +177,8 @@ const Input = styled.input`
   padding: 12px 16px;
   border: 1px solid #C7CED6;
   border-radius: 8px;
-  font-size: 16px; /* Prevents iOS/mobile auto-zoom on focus */
+  min-height: var(--mo-input-h, 0px);
+  font-size: var(--mo-input-font, 16px); /* Prevents iOS/mobile auto-zoom on focus */
   box-sizing: border-box;
   transition: all 0.2s;
 
@@ -181,7 +193,8 @@ const Input = styled.input`
   }
 `;
 
-const SubmitButton = styled.button<{ $split?: boolean }>`
+/* 폰 전용 화면 아래 고정 버튼 — 키오스크는 KioskActionBar(sticky) */
+const SubmitButton = styled.button`
   position: fixed;
   bottom: calc(68px + env(safe-area-inset-bottom, 0px));
   left: 0;
@@ -214,7 +227,6 @@ const SubmitButton = styled.button<{ $split?: boolean }>`
     background: #6B7280;
     cursor: not-allowed;
   }
-  ${p => (p.$split ? kioskSplitBarCss : '')}
 `;
 
 const HiddenFileInput = styled.input`
@@ -248,6 +260,7 @@ const QRPaymentPage: React.FC = () => {
   const location = useLocation();
   const { setCurrentOrder, clearCart, currentStore, currency } = useMobileOrder();
   const splitView = useKioskSplit();
+  const kiosk = isKioskMode();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get order data: retry flow uses retryPaymentData, new order uses pendingOrderData
@@ -496,8 +509,9 @@ const QRPaymentPage: React.FC = () => {
                   src={qrCodeImage}
                   alt="QR Code for Payment"
                   style={{
-                    width: '280px',
-                    height: '280px',
+                    width: 'var(--mo-qr-size, 280px)',
+                    height: 'var(--mo-qr-h, 280px)',
+                    aspectRatio: '1 / 1',
                     borderRadius: '12px',
                     objectFit: 'contain'
                   }}
@@ -508,8 +522,9 @@ const QRPaymentPage: React.FC = () => {
               </>
             ) : (
               <div style={{
-                width: '280px',
-                height: '280px',
+                width: 'var(--mo-qr-size, 280px)',
+                height: 'var(--mo-qr-h, 280px)',
+                aspectRatio: '1 / 1',
                 background: 'white',
                 display: 'flex',
                 alignItems: 'center',
@@ -590,16 +605,28 @@ const QRPaymentPage: React.FC = () => {
           />
         </ProofSection>
       </Container>
+      {kiosk && (
+        <KioskActionBar>
+          <Button variant="primary" size="large" style={kioskBarButtonStyle}
+            onClick={handleSubmit}
+            disabled={isSubmitting || (!paymentProofImage && !transferReference)}
+          >
+            {isSubmitting ? 'Submitting...' : 'Confirm Payment'}
+          </Button>
+        </KioskActionBar>
+      )}
       </KioskMain>
       {splitView && <KioskCartAside showCheckout={false} readOnly />}
       </KioskSplit>
 
-      <SubmitButton $split={splitView}
+      {!kiosk && (
+      <SubmitButton
         onClick={handleSubmit}
         disabled={isSubmitting || (!paymentProofImage && !transferReference)}
       >
         {isSubmitting ? 'Submitting...' : 'Confirm Payment'}
       </SubmitButton>
+      )}
     </MobileLayout>
   );
 };

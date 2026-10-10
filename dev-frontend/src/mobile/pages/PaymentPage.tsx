@@ -16,22 +16,34 @@ import { mobileFetch } from '../utils/mobileApi';
 import { enqueueOrder, getStableIdempotencyKey, cartSignature, clearStableIdempotencyKey, fetchWithTimeout } from '../../utils/offlineOrderQueue';
 import { getActiveTable } from '../utils/tableSession';
 import { hasKioskToken } from '../../utils/kioskDevice';
-import { methodOpenIn } from '../../utils/paymentChannel';
+import { methodOpenIn, KIOSK_HIDDEN_METHODS } from '../../utils/paymentChannel';
+import { Button } from '../../components/UI/Button';
 import { getEcrBridge } from '../../utils/nativeEcr';
 import { runTerminalSale, TerminalPhase } from '../../utils/terminalSale';
 import KioskCardPanel, { KioskCardIssue } from '../components/KioskCardPanel';
-import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit, kioskSplitBarCss } from '../components/KioskCartAside';
+import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit } from '../components/KioskCartAside';
+import { KioskActionBar, kioskBarButtonStyle } from '../components/common/KioskLayout';
 
-const Container = styled.div`
-  padding-bottom: 100px;
+/* $twoCol: 가로 키오스크(2칸)에서 폭 1280 이상이면 왼쪽 입력 섹션을 2열로 — 아래 절반 빈칸을 줄인다(Fable 20261010 kiosk-fullscreen D7) */
+const Container = styled.div<{ $twoCol?: boolean }>`
+  padding-bottom: var(--mo-pay-pad-b, 100px);
   max-width: 100%;
   box-sizing: border-box;
+  ${p => p.$twoCol && `
+    @media (min-width: 1280px) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      column-gap: 16px;
+      align-items: start;
+      > * { margin-bottom: 16px; }
+    }
+  `}
 `;
 
 const Section = styled.div`
   background: white;
   border-radius: 12px;
-  padding: 16px;
+  padding: var(--mo-section-pad, 16px);
   margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   max-width: 100%;
@@ -40,7 +52,7 @@ const Section = styled.div`
 `;
 
 const SectionTitle = styled.h3`
-  font-size: 15px;
+  font-size: var(--mo-section-title, 15px);
   font-weight: 600;
   color: #1F2937;
   margin: 0 0 12px 0;
@@ -57,14 +69,14 @@ const QuickOrderCheckbox = styled.label`
   transition: all 0.2s;
 
   input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
+    width: var(--mo-check, 18px);
+    height: var(--mo-check, 18px);
     accent-color: #635BFF;
     cursor: pointer;
   }
 
   span {
-    font-size: 14px;
+    font-size: var(--mo-opt-font, 14px);
     font-weight: 500;
     color: #1F2937;
   }
@@ -82,8 +94,9 @@ const CustomerChoiceButton = styled.button<{ selected?: boolean }>`
   align-items: center;
   justify-content: center;
   padding: 16px 12px;
+  min-height: var(--mo-choice-h, 0px);
   border: 1px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
-  border-radius: 6px;
+  border-radius: var(--mo-opt-radius-sm, 6px);
   cursor: pointer;
   transition: all 0.2s;
   background: ${props => props.selected ? 'rgba(99, 91, 255, 0.05)' : 'white'};
@@ -101,30 +114,41 @@ const CustomerChoiceButton = styled.button<{ selected?: boolean }>`
 `;
 
 const ChoiceTitle = styled.div`
-  font-size: 14px;
+  font-size: var(--mo-choice-title, 14px);
   font-weight: 600;
   color: #1F2937;
   text-align: center;
 `;
 
 const ChoiceSubtitle = styled.div`
-  font-size: 11px;
+  font-size: var(--mo-choice-sub, 11px);
   color: #4B5563;
   text-align: center;
 `;
 
-const PaymentMethods = styled.div`
+const PaymentMethods = styled.div<{ $twoCol?: boolean }>`
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* 키오스크 한 칸(세로) — 폭이 넉넉하면 결제수단 타일 2열(목록이 짧아져 아래 고정 버튼에 덜 가린다) */
+  ${p => p.$twoCol && `
+    @media (min-width: 600px) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+  `}
 `;
 
+// 키오스크는 손가락으로 누르는 큰 타일 — 새 버튼을 만들지 않고 같은 라벨을 토큰(KioskLayout)으로 키운다(64px · 18px)
 const PaymentMethod = styled.label<{ selected: boolean }>`
   display: flex;
   align-items: center;
-  padding: 12px;
-  border: 1px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
-  border-radius: 6px;
+  padding: var(--mo-method-pad, 12px);
+  min-height: var(--mo-method-h, auto);
+  box-sizing: border-box;
+  border: ${props => props.selected ? 'var(--mo-opt-sel-border, 1px)' : '1px'} solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
+  border-radius: var(--mo-opt-radius-sm, 6px);
   cursor: pointer;
   transition: all 0.2s;
   background: ${props => props.selected ? 'rgba(99, 91, 255, 0.05)' : 'white'};
@@ -134,9 +158,40 @@ const PaymentMethod = styled.label<{ selected: boolean }>`
   }
 `;
 
+/** 키오스크 결제 화면 안내 줄(고정이 아닌 제자리) — 결제 버튼 바로 위·결제수단 아래 */
+const InlineNote = styled.div<{ $tone?: 'warn' | 'info' }>`
+  background: ${p => (p.$tone === 'info' ? '#F0EFFF' : '#FEF3C7')};
+  color: ${p => (p.$tone === 'info' ? '#4B45C6' : '#92400E')};
+  border: 1px solid ${p => (p.$tone === 'info' ? '#DDD9FF' : '#FCD34D')};
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: var(--mo-note-font, 13px);
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+`;
+
+/** 가로 키오스크 오른쪽 패널 아래칸 — 합계 · 결제수단 · 결제 버튼 */
+const PanelTotals = styled.div`
+  border-top: 1px solid #E5E8EC;
+  padding-top: 10px;
+  > div { margin-bottom: 4px; }
+  > div.total { margin-top: 6px; padding-top: 6px; margin-bottom: 0; }
+`;
+
+/** 패널 안 결제수단 — 키오스크엔 아래 바가 없어 패널 높이가 넉넉하다(타일은 토큰 64px 그대로, 2026-10-10) */
+const PanelMethods = styled.div``;
+
+const PanelTitle = styled.div`
+  font-size: var(--mo-section-title, 15px);
+  font-weight: 700;
+  color: #0A2540;
+  margin-bottom: 8px;
+`;
+
 const RadioInput = styled.input`
-  width: 18px;
-  height: 18px;
+  width: var(--mo-check, 18px);
+  height: var(--mo-check, 18px);
   margin-right: 12px;
   accent-color: #635BFF;
 `;
@@ -146,15 +201,15 @@ const MethodInfo = styled.div`
 `;
 
 const MethodName = styled.div`
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--mo-method-font, 14px);
+  font-weight: var(--mo-method-weight, 500);
   color: #1F2937;
 `;
 
 const OrderSummary = styled.div`
   background: white;
   border-radius: 12px;
-  padding: 16px;
+  padding: var(--mo-section-pad, 16px);
   margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 `;
@@ -162,7 +217,7 @@ const OrderSummary = styled.div`
 const SummaryRow = styled.div`
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
+  font-size: var(--mo-summary-row, 14px);
   margin-bottom: 8px;
   color: #4B5563;
 
@@ -170,7 +225,7 @@ const SummaryRow = styled.div`
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px solid #C7CED6;
-    font-size: 18px;
+    font-size: var(--mo-summary-total, 18px);
     font-weight: 600;
     color: #1F2937;
     margin-bottom: 0;
@@ -199,28 +254,28 @@ const ItemInfo = styled.div`
 `;
 
 const ItemName = styled.div`
-  font-size: 14px;
+  font-size: var(--mo-cart-name, 14px);
   font-weight: 500;
   color: #1F2937;
   margin-bottom: 2px;
 `;
 
 const ItemQuantity = styled.div`
-  font-size: 14px;
+  font-size: var(--mo-cart-meta, 14px);
   font-weight: 700;
   color: #1F2937;
   font-variant-numeric: tabular-nums;
 `;
 
 const ItemSetItems = styled.div`
-  font-size: 12px;
+  font-size: var(--mo-cart-meta-sm, 12px);
   color: #667eea;
   margin-top: 4px;
   font-weight: 500;
 `;
 
 const ItemPrice = styled.div`
-  font-size: 14px;
+  font-size: var(--mo-cart-price, 14px);
   font-weight: 600;
   color: #1F2937;
   margin-left: 12px;
@@ -235,10 +290,11 @@ const CardForm = styled.div`
 
 const Input = styled.input`
   width: 100%;
+  min-height: var(--mo-input-h, 0px);
   padding: 10px 12px;
   border: 1px solid #C7CED6;
   border-radius: 6px;
-  font-size: 16px; /* Prevents iOS auto-zoom on focus */
+  font-size: var(--mo-input-font, 16px); /* Prevents iOS auto-zoom on focus */
   box-sizing: border-box;
 
   &:focus {
@@ -263,14 +319,15 @@ const ErrorMessage = styled.div`
   color: #DC2626;
   padding: 12px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--mo-opt-font, 14px);
   margin-bottom: 16px;
 `;
 
 // 2026-06-25 (Irene): 결제버튼이 비활성화일 때 "왜 안 되는지" 손님에게 안내(테이블/정보/결제수단
 // 미충족). 회색 버튼만 덩그러니 떠서 손님이 알 수 없던 불친절 해결. PayButton 바로 위 고정 안내바.
-const PayHint = styled.div<{ $kiosk?: boolean; $split?: boolean }>`
+const PayHint = styled.div`
   position: fixed;
+  box-sizing: border-box; /* width:100% 에 좌우 패딩이 더해져 칸보다 넓게 걸치던 것(2026-10-10) */
   bottom: 122px; /* PayButton(68px) 바로 위 */
   left: 8px;
   right: 8px;
@@ -287,18 +344,17 @@ const PayHint = styled.div<{ $kiosk?: boolean; $split?: boolean }>`
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 
   @media (min-width: 768px) {
-    /* 키오스크는 콘텐츠 폭이 넓어 600px 바만 남으면 화면과 따로 논다 — 같이 넓힌다. */
-    max-width: ${p => (p.$kiosk ? '1056px' : '600px')};
+    max-width: 600px;
     left: 50%;
     right: auto;
-    width: 100%; /* max-width 가 실제로 적용되게 — 없으면 내용 크기로 오그라든다 */
+    width: 100%; /* max-width 가 실제로 적용되게 */
     transform: translateX(-50%);
     bottom: 138px;
   }
-  ${p => (p.$split ? kioskSplitBarCss : '')}
 `;
 
-const PayButton = styled.button<{ $kiosk?: boolean; $split?: boolean }>`
+/* 폰 전용 화면 아래 고정 결제 버튼 — 키오스크는 KioskActionBar(sticky)로 같은 조각을 꽂는다 */
+const PayButton = styled.button`
   position: fixed;
   bottom: 68px; /* Space for bottom navigation */
   left: 0;
@@ -321,8 +377,7 @@ const PayButton = styled.button<{ $kiosk?: boolean; $split?: boolean }>`
 
   /* Tablet support */
   @media (min-width: 768px) {
-    /* 키오스크는 콘텐츠 폭이 넓어 600px 바만 남으면 화면과 따로 논다 — 같이 넓힌다. */
-    max-width: ${p => (p.$kiosk ? '1056px' : '600px')};
+    max-width: 600px;
     left: 50%;
     /* right:auto + width:100% 를 같이 줘야 max-width 가 적용된다. */
     right: auto;
@@ -345,7 +400,6 @@ const PayButton = styled.button<{ $kiosk?: boolean; $split?: boolean }>`
     width: 20px;
     height: 20px;
   }
-  ${p => (p.$split ? kioskSplitBarCss : '')}
 `;
 
 const LoadingSpinner = styled.div`
@@ -364,17 +418,18 @@ const LoadingSpinner = styled.div`
 const TableSection = styled.div`
   background: white;
   border-radius: 12px;
-  padding: 16px;
+  padding: var(--mo-section-pad, 16px);
   margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 `;
 
 const TableSelect = styled.select`
   width: 100%;
+  min-height: var(--mo-input-h, 0px);
   padding: 10px 12px;
   border: 1px solid #C7CED6;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--mo-input-font, 14px);
   background: white;
   cursor: pointer;
   box-sizing: border-box;
@@ -400,14 +455,14 @@ const CustomerInfoContent = styled.div`
 `;
 
 const CustomerInfoName = styled.div`
-  font-size: 14px;
+  font-size: var(--mo-opt-font, 14px);
   font-weight: 600;
   color: #1F2937;
   margin-bottom: 4px;
 `;
 
 const CustomerInfoDetails = styled.div`
-  font-size: 12px;
+  font-size: var(--mo-opt-price, 12px);
   color: #4B5563;
 `;
 
@@ -442,7 +497,7 @@ const TextArea = styled.textarea`
   padding: 10px 12px;
   border: 1px solid #C7CED6;
   border-radius: 6px;
-  font-size: 16px; /* Prevent iOS zoom on focus */
+  font-size: var(--mo-input-font, 16px); /* Prevent iOS zoom on focus */
   box-sizing: border-box;
   resize: vertical;
   min-height: 80px;
@@ -468,7 +523,7 @@ const FormGroup = styled.div`
 
 const Label = styled.label`
   display: block;
-  font-size: 13px;
+  font-size: var(--mo-label-font, 13px);
   font-weight: 600;
   color: #1F2937;
   margin-bottom: 6px;
@@ -602,6 +657,19 @@ const PaymentPage: React.FC = () => {
     check();
     return () => { stop = true; };
   }, [kioskDevice, currentStore?.id]);
+  // 키오스크 모양인데 등록 안 된 태블릿 + 매장이 키오스크를 켜 둠 → «이 태블릿은 등록되지 않았습니다» 한 줄
+  //   (Irene 10-10 «페이먼트 설정 넣었는데 바뀌지도 않아» — 미등록 화면은 Mobile 열을 따른다는 걸 화면이 말하지 않았다)
+  const [kioskStoreEnabled, setKioskStoreEnabled] = useState(false);
+  React.useEffect(() => {
+    if (!kiosk || kioskDevice || !currentStore?.slug) return;
+    let stop = false;
+    fetch(`/api/mobile/store/${currentStore.slug}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => { if (!stop) setKioskStoreEnabled((j?.data || j)?.kioskEnabled === true); })
+      .catch(() => {});
+    return () => { stop = true; };
+  }, [kiosk, kioskDevice, currentStore?.slug]);
+  const kioskUnregistered = kiosk && !kioskDevice && kioskStoreEnabled;
   const [kioskPay, setKioskPay] = useState<null | { orderId: number; orderNumber: string | null; amount: number; phase: TerminalPhase | 'recording' | null; issue: KioskCardIssue | null }>(null);
   const kioskFinishRef = React.useRef<(() => Promise<void>) | null>(null);
   const kioskStopRef = React.useRef(false);
@@ -928,6 +996,9 @@ const PaymentPage: React.FC = () => {
       // Only show enabled methods that are available in this channel — 등록된 키오스크는 Kiosk 열, 그 외(폰·미등록 태블릿)는 Mobile 열
       //   (utils/paymentChannel — 서버 paymentMethodGuard 와 같은 규칙. 키오스크 카드는 단말기가 이 기기에 닿을 때만)
       const channel = kioskDevice ? 'kiosk' : 'mobile';
+      // 키오스크 모양 화면은 등록 여부와 무관하게 공용기기 부적합 수단(현금·카운터 결제 등)을 숨긴다 — 더 숨기기만 하므로
+      //   서버(미등록 = Mobile 열 검사)와 어긋날 수 없다(Fable 20261010 D2)
+      if (kiosk && KIOSK_HIDDEN_METHODS.includes(key)) return;
       if (key === 'card' && channel === 'kiosk' && !kioskTerminalReady) return;
       if (method.enabled && methodOpenIn(paymentMethods, key, channel)) {
         // Per-order-type filter (data-driven, replaces the old hardcoded `delivery ≠ payAtCounter` rule).
@@ -955,7 +1026,7 @@ const PaymentPage: React.FC = () => {
 
     console.log('🔍 Final available methods for mobile:', methods.map(m => m.key));
     return methods;
-  }, [paymentMethods, orderType, kioskDevice, kioskTerminalReady]);
+  }, [paymentMethods, orderType, kiosk, kioskDevice, kioskTerminalReady]);
 
   const [paymentMethod, setPaymentMethod] = useState<string>(''); // No default - user must select (unless only 1 option remains)
 
@@ -2071,12 +2142,255 @@ const PaymentPage: React.FC = () => {
     }
   };
   
+  // ── 결제 화면 조각 — 폰·세로 키오스크(한 칸)와 가로 키오스크 오른쪽 패널(2칸)이 **같은 조각**을 꽂는다.
+  //    라벨·비활성 조건·안내 문장을 두 벌로 베끼면 두 화면이 다른 말을 한다(Fable 20261010 §3).
+  const summaryRows = (
+    <>
+            <SummaryRow>
+              <span>Subtotal</span>
+              <span>{formatCurrency(subtotal, currency)}</span>
+            </SummaryRow>
+            {couponDiscount > 0 && (
+              <SummaryRow>
+                <span>Coupon Discount</span>
+                <span style={{ color: '#059669' }}>-{formatCurrency(couponDiscount, currency)}</span>
+              </SummaryRow>
+            )}
+            {pointDiscount > 0 && currentCustomer && (
+              <SummaryRow>
+                <span>Points Discount ({pointsToUse} pts)</span>
+                <span style={{ color: '#059669' }}>-{formatCurrency(pointDiscount, currency)}</span>
+              </SummaryRow>
+            )}
+            {takeawayCharge > 0 && (
+              <SummaryRow>
+                <span>Takeaway Charge</span>
+                <span>{formatCurrency(takeawayCharge, currency)}</span>
+              </SummaryRow>
+            )}
+            {deliveryFee > 0 && (
+              <SummaryRow>
+                <span>Delivery Fee</span>
+                <span>{formatCurrency(deliveryFee, currency)}</span>
+              </SummaryRow>
+            )}
+            {serviceCharge > 0 && (
+              <SummaryRow>
+                <span>Service Charge ({operationSettings.serviceChargeRate}%)</span>
+                <span>{formatCurrency(serviceCharge, currency)}</span>
+              </SummaryRow>
+            )}
+            {tax > 0 && (
+              <SummaryRow>
+                <span>Tax ({operationSettings.taxRate}%)</span>
+                <span>{formatCurrency(tax, currency)}</span>
+              </SummaryRow>
+            )}
+            <SummaryRow className="total">
+              <span>Total</span>
+              <span>{formatCurrency(total, currency)}</span>
+            </SummaryRow>
+    </>
+  );
+
+  const paymentMethodBody = (
+    <>
+            {availableMethods.length === 0 && paymentMethods && (
+              <div style={{
+                fontSize: '13px',
+                color: '#92400E',
+                marginBottom: '12px',
+                padding: '12px 16px',
+                background: '#FEF3C7',
+                borderRadius: '8px',
+                border: '1px solid #FCD34D',
+                lineHeight: 1.5
+              }}>
+                {kioskUnregistered
+                  ? t('menu:kiosk.pay.unregistered')
+                  : `No payment method is configured for ${orderType ? orderType.replace('-', ' ') : 'this'} orders. Please contact the restaurant.`}
+              </div>
+            )}
+            {kioskUnregistered && availableMethods.length > 0 && (
+              <InlineNote $tone="info" style={{ marginBottom: 10, textAlign: 'left', fontSize: 13, padding: '6px 10px' }}>{t('menu:kiosk.pay.unregistered')}</InlineNote>
+            )}
+            {/* 키오스크는 결제 버튼 위 안내가 같은 문장을 이미 보인다 — 두 번 보이지 않게 */}
+            {!kiosk && availableMethods.length > 1 && !paymentMethod && (
+              <div style={{
+                fontSize: '13px',
+                color: '#DC2626',
+                marginBottom: '12px',
+                padding: '8px 12px',
+                background: '#FEE2E2',
+                borderRadius: '8px'
+              }}>
+                Please select a payment method to continue
+              </div>
+            )}
+            {isCashless && (
+              <div role="note" style={{
+                background: '#F0EFFF',
+                border: '1px solid #DDD9FF',
+                borderLeft: '4px solid #635BFF',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                marginBottom: '16px',
+                color: '#4B45C6',
+                fontSize: '14px',
+                fontWeight: 600,
+                lineHeight: 1.45,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px'
+              }}>
+                {t('common:storeBadge.cashlessNoticeTitle', { defaultValue: 'Cashless store — cash not accepted' })}
+                <span style={{ fontSize: '12px', fontWeight: 500, color: '#635BFF' }}>
+                  {t('common:storeBadge.cashlessNoticeSub', { defaultValue: 'Please pay by card or e-wallet only.' })}
+                </span>
+              </div>
+            )}
+            <PaymentMethods $twoCol={kiosk && !splitView}>
+              {availableMethods.map(method => {
+                const hint =
+                  method.key === 'card' || method.key === 'stripe'
+                    ? 'Pay instantly with credit or debit card.'
+                    : method.key === 'paypal'
+                      ? 'Pay via PayPal account or card. You will be redirected to PayPal.'
+                      : method.key === 'bankTransfer' || method.key === 'bank_transfer'
+                        ? 'Transfer to the merchant\'s account. Confirmation may take up to a few hours.'
+                        : method.key === 'qr' || method.key === 'qrPayment' || method.key === 'qr_payment'
+                          ? 'Scan the QR code with your bank or e-wallet app.'
+                          : method.key === 'counter' || method.key === 'cash'
+                            ? 'Pay in cash at the counter when collecting your order.'
+                            : '';
+                return (
+                  <PaymentMethod key={method.key} selected={paymentMethod === method.key}>
+                    <RadioInput
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === method.key}
+                      onChange={() => {
+                        setPaymentMethod(method.key);
+                        setError('');
+                      }}
+                    />
+                    <MethodInfo>
+                      <MethodName>{method.label}</MethodName>
+                      {hint && !kiosk && <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2, lineHeight: 1.5 }}>{hint}</div>}
+                    </MethodInfo>
+                  </PaymentMethod>
+                );
+              })}
+            </PaymentMethods>
+          
+            {/* 2026-07-24: 취급 이월렛이 2개 이상인 매장만 손님에게 종류를 묻는다.
+                1개면 위 auto-tag 가 채우므로 이 블록은 뜨지 않는다(손님 입력 0). */}
+            {(paymentMethod === 'ewallet' || paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment')
+              && mobileEwalletCfg.needsChoice && (
+              <div style={{ marginTop: 12, marginBottom: 4 }}>
+                <div style={{ fontSize: 'var(--mo-opt-font, 14px)', fontWeight: 600, color: '#111827', marginBottom: 8 }}>
+                  {t('common:ewalletTypeQuestion', { defaultValue: 'Which e-wallet are you paying with?' })}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {mobileEwalletCfg.accepted.map((k) => {
+                    const on = ewalletType === k;
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => setEwalletType(on ? '' : k)}
+                        style={{
+                          padding: '12px 16px', borderRadius: 8, cursor: 'pointer',
+                          fontSize: 'var(--mo-opt-font, 14px)', fontWeight: 600, minHeight: 'var(--mo-tap, 44px)',
+                          border: on ? '1px solid #635BFF' : '1px solid #D1D5DB',
+                          background: on ? '#635BFF' : '#FFFFFF',
+                          color: on ? '#FFFFFF' : '#374151'
+                        }}
+                      >
+                        {EWALLET_TYPE_LABELS[k] || k}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {paymentMethod === 'card' && kioskDevice && (
+              <InlineNote $tone="info" style={{ marginTop: 12 }}>{t('menu:kiosk.pay.cardHint')}</InlineNote>
+            )}
+            {paymentMethod === 'card' && !kioskDevice && (
+              <CardForm>
+                <Input
+                  type="text"
+                  placeholder="Card Number"
+                  value={cardNumber}
+                  onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                  maxLength={19}
+                />
+                <Input
+                  type="text"
+                  placeholder="Cardholder Name"
+                  value={cardName}
+                  onChange={(e) => setCardName(e.target.value)}
+                />
+                <CardRow>
+                  <Input
+                    type="text"
+                    placeholder="MM/YY"
+                    value={expiryDate}
+                    onChange={(e) => setExpiryDate(formatExpiryDate(e.target.value))}
+                    maxLength={5}
+                  />
+                  <Input
+                    type="text"
+                    placeholder="CVV"
+                    value={cvv}
+                    onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
+                    maxLength={3}
+                  />
+                </CardRow>
+              </CardForm>
+            )}
+    </>
+  );
+
+  // 결제 버튼이 왜 안 눌리는지(첫 미충족 항목)
+  const payHintText = (() => {
+    if (isProcessing) return '';
+    if (cartItems.length === 0) return t('common:cartEmptyHint', 'Your cart is empty.');
+    if (tableRequired && isDineIn && !selectedTable) return t('common:selectTableToContinue', 'Please select your table to continue.');
+    if (!currentCustomer && !guestInfo) return t('common:enterContactToContinue', 'Please enter your name and phone to continue.');
+    if (!paymentMethod) return t('common:selectPaymentToContinue', 'Please select a payment method to continue.');
+    return '';
+  })();
+  const payDisabled = isProcessing || cartItems.length === 0 || !paymentMethod || (!currentCustomer && !guestInfo) || (tableRequired && isDineIn && !selectedTable);
+  const payButtonContent = isProcessing ? (
+    <>
+      <LoadingSpinner />
+      Processing...
+    </>
+  ) : (() => {
+    // 결제수단별 버튼 라벨 — 카운터결제인데 "Pay"라 결제하는 줄 알던 혼란 해결.
+    // 카운터/현금: 결제 안 하고 주문만 생성 → "Place Order"(금액 표기 X).
+    const m = (paymentMethod || '').toLowerCase();
+    if (m === 'counter' || m === 'cash' || m === 'payatcounter') return 'Place Order';
+    if (m === 'qr' || m === 'qrpayment' || m === 'qr_payment' || m === 'ewallet') return 'Scan to Pay';
+    if (m === 'banktransfer' || m === 'bank_transfer' || m === 'bank') return 'Continue to Bank Transfer';
+    if (m === 'paypal') return `Pay with PayPal ${formatCurrency(total, currency)}`;
+    if (m === 'card' && kioskDevice) return `${t('menu:kiosk.pay.payByCard')} ${formatCurrency(total, currency)}`;
+    // card / stripe / online / 기본
+    return `Pay ${formatCurrency(total, currency)}`;
+  })();
+
   return (
     <MobileLayout title="Payment" showBack onBack={() => navigate(splitView ? `/mobile/${slug}/menu` : `/mobile/${slug}/cart`)}>
       {/* 키오스크 넓은 화면: 결제 중에도 오른쪽 장바구니를 그대로 둔다(2026-10-07 Irene) — 여기서도 수량을 고칠 수 있고 합계가 같이 바뀐다 */}
       <KioskSplit $split={splitView}>
       <KioskMain>
-      <Container>
+      <Container $twoCol={splitView}>
+        {/* 가로 키오스크(2칸)는 품목·합계를 오른쪽 패널 하나에만 둔다 — 한 화면에 합계 두 개 금지(Fable 20261010 D3) */}
+        {!splitView && (
         <OrderSummary>
           <ItemsList>
             {cartItems.map((item, index) => (
@@ -2108,53 +2422,12 @@ const PaymentPage: React.FC = () => {
             ))}
           </ItemsList>
 
-          <SummaryRow>
-            <span>Subtotal</span>
-            <span>{formatCurrency(subtotal, currency)}</span>
-          </SummaryRow>
-          {couponDiscount > 0 && (
-            <SummaryRow>
-              <span>Coupon Discount</span>
-              <span style={{ color: '#059669' }}>-{formatCurrency(couponDiscount, currency)}</span>
-            </SummaryRow>
-          )}
-          {pointDiscount > 0 && currentCustomer && (
-            <SummaryRow>
-              <span>Points Discount ({pointsToUse} pts)</span>
-              <span style={{ color: '#059669' }}>-{formatCurrency(pointDiscount, currency)}</span>
-            </SummaryRow>
-          )}
-          {takeawayCharge > 0 && (
-            <SummaryRow>
-              <span>Takeaway Charge</span>
-              <span>{formatCurrency(takeawayCharge, currency)}</span>
-            </SummaryRow>
-          )}
-          {deliveryFee > 0 && (
-            <SummaryRow>
-              <span>Delivery Fee</span>
-              <span>{formatCurrency(deliveryFee, currency)}</span>
-            </SummaryRow>
-          )}
-          {serviceCharge > 0 && (
-            <SummaryRow>
-              <span>Service Charge ({operationSettings.serviceChargeRate}%)</span>
-              <span>{formatCurrency(serviceCharge, currency)}</span>
-            </SummaryRow>
-          )}
-          {tax > 0 && (
-            <SummaryRow>
-              <span>Tax ({operationSettings.taxRate}%)</span>
-              <span>{formatCurrency(tax, currency)}</span>
-            </SummaryRow>
-          )}
-          <SummaryRow className="total">
-            <span>Total</span>
-            <span>{formatCurrency(total, currency)}</span>
-          </SummaryRow>
+          {summaryRows}
         </OrderSummary>
+        )}
         
-        {error && <ErrorMessage>{error}</ErrorMessage>}
+        {/* 가로 키오스크는 결제 실패 문구를 오른쪽 패널 결제 버튼 위에 둔다(Fable 20261010 gate §3-3) */}
+        {error && !splitView && <ErrorMessage>{error}</ErrorMessage>}
         
         {/* Customer Information - wait for settings to load to prevent flash */}
         {paymentMethods && (
@@ -2722,7 +2995,7 @@ const PaymentPage: React.FC = () => {
             value={orderNote}
             onChange={(e) => setOrderNote(e.target.value)}
             maxLength={500}
-            style={{ minHeight: '60px' }}
+            style={{ minHeight: 'var(--mo-note-h, 60px)' }}
           />
         </Section>
 
@@ -2812,7 +3085,7 @@ const PaymentPage: React.FC = () => {
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
-                    fontSize: '14px',
+                    fontSize: 'var(--mo-opt-font, 14px)',
                     fontWeight: '600',
                     cursor: 'pointer',
                     transition: 'all 0.15s'
@@ -3002,202 +3275,58 @@ const PaymentPage: React.FC = () => {
           </TableSection>
         )}
         
+        {!splitView && (
         <Section>
           <SectionTitle>Payment Method *</SectionTitle>
-          {availableMethods.length === 0 && paymentMethods && (
-            <div style={{
-              fontSize: '13px',
-              color: '#92400E',
-              marginBottom: '12px',
-              padding: '12px 16px',
-              background: '#FEF3C7',
-              borderRadius: '8px',
-              border: '1px solid #FCD34D',
-              lineHeight: 1.5
-            }}>
-              No payment method is configured for {orderType ? orderType.replace('-', ' ') : 'this'} orders. Please contact the restaurant.
-            </div>
-          )}
-          {availableMethods.length > 1 && !paymentMethod && (
-            <div style={{
-              fontSize: '13px',
-              color: '#DC2626',
-              marginBottom: '12px',
-              padding: '8px 12px',
-              background: '#FEE2E2',
-              borderRadius: '8px'
-            }}>
-              Please select a payment method to continue
-            </div>
-          )}
-          {isCashless && (
-            <div role="note" style={{
-              background: '#F0EFFF',
-              border: '1px solid #DDD9FF',
-              borderLeft: '4px solid #635BFF',
-              borderRadius: '8px',
-              padding: '12px 16px',
-              marginBottom: '16px',
-              color: '#4B45C6',
-              fontSize: '14px',
-              fontWeight: 600,
-              lineHeight: 1.45,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '2px'
-            }}>
-              {t('common:storeBadge.cashlessNoticeTitle', { defaultValue: 'Cashless store — cash not accepted' })}
-              <span style={{ fontSize: '12px', fontWeight: 500, color: '#635BFF' }}>
-                {t('common:storeBadge.cashlessNoticeSub', { defaultValue: 'Please pay by card or e-wallet only.' })}
-              </span>
-            </div>
-          )}
-          <PaymentMethods>
-            {availableMethods.map(method => {
-              const hint =
-                method.key === 'card' || method.key === 'stripe'
-                  ? 'Pay instantly with credit or debit card.'
-                  : method.key === 'paypal'
-                    ? 'Pay via PayPal account or card. You will be redirected to PayPal.'
-                    : method.key === 'bankTransfer' || method.key === 'bank_transfer'
-                      ? 'Transfer to the merchant\'s account. Confirmation may take up to a few hours.'
-                      : method.key === 'qr' || method.key === 'qrPayment' || method.key === 'qr_payment'
-                        ? 'Scan the QR code with your bank or e-wallet app.'
-                        : method.key === 'counter' || method.key === 'cash'
-                          ? 'Pay in cash at the counter when collecting your order.'
-                          : '';
-              return (
-                <PaymentMethod key={method.key} selected={paymentMethod === method.key}>
-                  <RadioInput
-                    type="radio"
-                    name="payment"
-                    checked={paymentMethod === method.key}
-                    onChange={() => {
-                      setPaymentMethod(method.key);
-                      setError('');
-                    }}
-                  />
-                  <MethodInfo>
-                    <MethodName>{method.label}</MethodName>
-                    {hint && <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2, lineHeight: 1.5 }}>{hint}</div>}
-                  </MethodInfo>
-                </PaymentMethod>
-              );
-            })}
-          </PaymentMethods>
-          
-          {/* 2026-07-24: 취급 이월렛이 2개 이상인 매장만 손님에게 종류를 묻는다.
-              1개면 위 auto-tag 가 채우므로 이 블록은 뜨지 않는다(손님 입력 0). */}
-          {(paymentMethod === 'ewallet' || paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment')
-            && mobileEwalletCfg.needsChoice && (
-            <div style={{ marginTop: 12, marginBottom: 4 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 8 }}>
-                {t('common:ewalletTypeQuestion', { defaultValue: 'Which e-wallet are you paying with?' })}
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {mobileEwalletCfg.accepted.map((k) => {
-                  const on = ewalletType === k;
-                  return (
-                    <button
-                      key={k}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() => setEwalletType(on ? '' : k)}
-                      style={{
-                        padding: '12px 16px', borderRadius: 8, cursor: 'pointer',
-                        fontSize: 14, fontWeight: 600, minHeight: 44,
-                        border: on ? '1px solid #635BFF' : '1px solid #D1D5DB',
-                        background: on ? '#635BFF' : '#FFFFFF',
-                        color: on ? '#FFFFFF' : '#374151'
-                      }}
-                    >
-                      {EWALLET_TYPE_LABELS[k] || k}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {paymentMethod === 'card' && kioskDevice && (
-            <PayHint $kiosk={kiosk} $split={splitView}>{t('menu:kiosk.pay.cardHint')}</PayHint>
-          )}
-          {paymentMethod === 'card' && !kioskDevice && (
-            <CardForm>
-              <Input
-                type="text"
-                placeholder="Card Number"
-                value={cardNumber}
-                onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                maxLength={19}
-              />
-              <Input
-                type="text"
-                placeholder="Cardholder Name"
-                value={cardName}
-                onChange={(e) => setCardName(e.target.value)}
-              />
-              <CardRow>
-                <Input
-                  type="text"
-                  placeholder="MM/YY"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(formatExpiryDate(e.target.value))}
-                  maxLength={5}
-                />
-                <Input
-                  type="text"
-                  placeholder="CVV"
-                  value={cvv}
-                  onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
-                  maxLength={3}
-                />
-              </CardRow>
-            </CardForm>
-          )}
-
+          {paymentMethodBody}
         </Section>
+        )}
       </Container>
+      {/* 키오스크 한 칸(세로): 결제 안내 + 결제 버튼을 본문 안 sticky 바로 — 고정 바가 결제수단을 가리던 것(Fable D7·P4) */}
+      {kiosk && !splitView && (
+        <KioskActionBar>
+          {payHintText && <InlineNote>{payHintText}</InlineNote>}
+          <Button variant="primary" size="large" onClick={handlePayment} disabled={payDisabled} style={{ ...kioskBarButtonStyle, gap: 8 }}>
+            {payButtonContent}
+          </Button>
+        </KioskActionBar>
+      )}
       </KioskMain>
-      {splitView && <KioskCartAside showCheckout={false} readOnly={isProcessing || !!kioskPay} />}
+      {splitView && (
+        <KioskCartAside
+          readOnly={isProcessing || !!kioskPay}
+          footer={(
+            <>
+              <PanelTotals>{summaryRows}</PanelTotals>
+              <PanelMethods>
+                <PanelTitle>Payment Method</PanelTitle>
+                {paymentMethodBody}
+              </PanelMethods>
+              {error && <ErrorMessage style={{ marginBottom: 0 }}>{error}</ErrorMessage>}
+              {payHintText && <InlineNote>{payHintText}</InlineNote>}
+              <Button
+                variant="primary"
+                size="large"
+                onClick={handlePayment}
+                disabled={payDisabled}
+                style={{ width: '100%', minHeight: 64, borderRadius: 14, fontSize: 19, fontWeight: 700, gap: 8, flexShrink: 0 }}
+              >
+                {payButtonContent}
+              </Button>
+            </>
+          )}
+        />
+      )}
       </KioskSplit>
 
-      {/* 2026-06-25 (Irene): 결제버튼 비활성화 사유를 손님에게 안내(첫 미충족 항목). */}
-      {!isProcessing && (() => {
-        let hint = '';
-        if (cartItems.length === 0) hint = t('common:cartEmptyHint', 'Your cart is empty.');
-        else if (tableRequired && isDineIn && !selectedTable) hint = t('common:selectTableToContinue', 'Please select your table to continue.');
-        else if (!currentCustomer && !guestInfo) hint = t('common:enterContactToContinue', 'Please enter your name and phone to continue.');
-        else if (!paymentMethod) hint = t('common:selectPaymentToContinue', 'Please select a payment method to continue.');
-        return hint ? <PayHint $kiosk={kiosk} $split={splitView}>{hint}</PayHint> : null;
-      })()}
+      {/* 2026-06-25 (Irene): 결제버튼 비활성화 사유를 손님에게 안내(첫 미충족 항목). 가로 키오스크는 오른쪽 패널 안에 둔다. */}
+      {!kiosk && payHintText && <PayHint>{payHintText}</PayHint>}
 
-      <PayButton $kiosk={kiosk} $split={splitView}
-        onClick={handlePayment}
-        disabled={isProcessing || cartItems.length === 0 || !paymentMethod || (!currentCustomer && !guestInfo) || (tableRequired && isDineIn && !selectedTable)}
-      >
-        {isProcessing ? (
-          <>
-            <LoadingSpinner />
-            Processing...
-          </>
-        ) : (
-          <>
-            {(() => {
-              // 결제수단별 버튼 라벨 — 카운터결제인데 "Pay"라 결제하는 줄 알던 혼란 해결.
-              // 카운터/현금: 결제 안 하고 주문만 생성 → "Place Order"(금액 표기 X).
-              const m = (paymentMethod || '').toLowerCase();
-              if (m === 'counter' || m === 'cash' || m === 'payatcounter') return 'Place Order';
-              if (m === 'qr' || m === 'qrpayment' || m === 'qr_payment' || m === 'ewallet') return 'Scan to Pay';
-              if (m === 'banktransfer' || m === 'bank_transfer' || m === 'bank') return 'Continue to Bank Transfer';
-              if (m === 'paypal') return `Pay with PayPal ${formatCurrency(total, currency)}`;
-              if (m === 'card' && kioskDevice) return `${t('menu:kiosk.pay.payByCard')} ${formatCurrency(total, currency)}`;
-              // card / stripe / online / 기본
-              return `Pay ${formatCurrency(total, currency)}`;
-            })()}
-          </>
-        )}
+      {!kiosk && (
+      <PayButton onClick={handlePayment} disabled={payDisabled}>
+        {payButtonContent}
       </PayButton>
+      )}
       
       <CustomerModal />
       {kioskPay && (

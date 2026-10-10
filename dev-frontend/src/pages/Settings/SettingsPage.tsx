@@ -6027,6 +6027,10 @@ const SettingsPage: React.FC = () => {
                     <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                       {t('settings:settingsPage.kioskAccessHint')}
                     </p>
+                    {/* 2026-10-10 Irene «페이먼트 설정 넣었는데 바뀌지도 않아» — 이 주소 화면은 Kiosk 열을 읽지 않는다는 걸 설정 자리에서 한 줄로 */}
+                    <p style={{ color: '#4B45C6', background: '#F0EFFF', border: '1px solid #DDD9FF', borderRadius: '8px', padding: '10px 12px', marginBottom: '16px', fontSize: '13px', fontWeight: 600 }}>
+                      {t('settings:settingsPage.kioskTab.urlMobileColumnNote')}
+                    </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, minWidth: 280 }}>
                         <Input

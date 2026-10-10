@@ -8,8 +8,9 @@
  */
 export type PaymentChannel = 'pos' | 'mobile' | 'kiosk';
 
-/** 키오스크 열에서 아예 보이지 않는 수단 — 공용 기기에 맞지 않는다(현금·직원식·송금 증빙 업로드). */
-export const KIOSK_HIDDEN_METHODS = ['cash', 'staffMeal', 'bankTransfer'];
+/** 키오스크 열에서 아예 보이지 않는 수단 — 공용 기기에 맞지 않는다(현금·직원식·송금 증빙 업로드),
+ *  카운터 결제(Irene 2026-10-10 «키오스크가 쓸 일이 없잖아» — 카드 거절 뒤 카운터로 넘기는 복구 길은 별개). */
+export const KIOSK_HIDDEN_METHODS = ['cash', 'staffMeal', 'bankTransfer', 'counter', 'payAtCounter'];
 
 export function isKioskSplit(settings: any): boolean {
   return !!(settings && settings._kioskSplit === true);

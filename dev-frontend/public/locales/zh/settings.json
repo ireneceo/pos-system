@@ -803,6 +803,7 @@
   "settingsPage.mobileOrderAccessHint": "顾客访问此 URL 或扫描下方二维码开始点餐。印刷用的各模式二维码请到 Store Settings → Quick-entry QR codes 下载。",
   "settingsPage.kioskAccess": "店内平板（自助点餐）",
   "settingsPage.kioskAccessHint": "自助点餐机 = 让顾客自行点餐的店内平板。请在上方登记该平板——只有已登记的平板才会开放「Kiosk」付款方式和刷卡终端。在未登记的设备上打开此链接只会让画面变宽（付款方式与手机点餐相同）。90 秒无操作会清空购物车。扫描桌码的顾客手机不受影响。",
+  "settingsPage.kioskTab.urlMobileColumnNote": "通过此链接打开的画面，付款方式遵循 Mobile 列。Kiosk 列仅适用于上方已注册的平板。",
   "settingsPage.copyUrl": "复制 URL",
   "settingsPage.urlCopied": "已复制",
   "settingsPage.openQrManager": "打开二维码管理",

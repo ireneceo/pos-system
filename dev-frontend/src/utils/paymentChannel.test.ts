@@ -12,9 +12,11 @@ const base = {
 };
 
 describe('paymentChannel', () => {
-  it('미분리 매장: 키오스크 = 모바일 (숨김 3종 제외)', () => {
+  it('미분리 매장: 키오스크 = 모바일 (숨김 수단 제외)', () => {
     expect(methodOpenIn(base, 'ewallet', 'kiosk')).toBe(true);
-    expect(methodOpenIn(base, 'counter', 'kiosk')).toBe(true);
+    // 카운터 결제는 키오스크에서 숨김(2026-10-10) — 모바일은 그대로
+    expect(methodOpenIn(base, 'counter', 'kiosk')).toBe(false);
+    expect(methodOpenIn(base, 'counter', 'mobile')).toBe(true);
     expect(methodOpenIn(base, 'card', 'kiosk')).toBe(false);
     expect(methodOpenIn(base, 'cash', 'kiosk')).toBe(false);
     expect(methodOpenIn(base, 'bankTransfer', 'kiosk')).toBe(false);
@@ -51,5 +53,14 @@ describe('paymentChannel', () => {
     expect(methodOpenIn(split, 'card', 'mobile')).toBe(false);
     expect(methodOpenIn(split, 'ewallet', 'kiosk')).toBe(false);
     expect(methodOpenIn(split, 'ewallet', 'mobile')).toBe(true);
+  });
+
+  it('카운터 결제는 나눈 뒤 Kiosk 값이 켜져 있어도 키오스크에서 숨김', () => {
+    const split = splitKioskFromMobile(base);
+    split.counter = { ...split.counter, availableIn: ['mobile', 'kiosk'] };
+    split.payAtCounter = { enabled: true, availableIn: ['mobile', 'kiosk'] };
+    expect(methodOpenIn(split, 'counter', 'kiosk')).toBe(false);
+    expect(methodOpenIn(split, 'payAtCounter', 'kiosk')).toBe(false);
+    expect(methodOpenIn(split, 'counter', 'mobile')).toBe(true);
   });
 });

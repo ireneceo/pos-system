@@ -803,6 +803,7 @@
   "settingsPage.mobileOrderAccessHint": "Customers visit this URL or scan one of the QR codes below to start ordering. Use the per-mode QRs in Store Settings → Quick-entry QR codes for print/display.",
   "settingsPage.kioskAccess": "In-store Tablet (Kiosk)",
   "settingsPage.kioskAccessHint": "Kiosk = a store tablet where guests order by themselves. Register the tablet above — only registered tablets get the Kiosk payment methods and the card terminal. Opening this link on an unregistered device only makes the screen wider (payment methods stay the same as mobile ordering). After 90 seconds without a touch the cart is cleared. Guests' phones (table QR) are not affected.",
+  "settingsPage.kioskTab.urlMobileColumnNote": "Screens opened with this link follow the Mobile column for payment methods. The Kiosk column applies only to tablets registered above.",
   "settingsPage.copyUrl": "Copy URL",
   "settingsPage.urlCopied": "URL copied",
   "settingsPage.openQrManager": "Open QR manager",

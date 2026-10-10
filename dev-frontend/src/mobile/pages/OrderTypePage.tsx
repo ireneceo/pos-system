@@ -14,8 +14,10 @@ import SearchableSelect from '../../components/Common/SearchableSelect';
 import { getActiveTable, setActiveTable } from '../utils/tableSession';
 import { isKioskMode } from '../utils/kioskMode';
 import { hasKioskToken } from '../../utils/kioskDevice';
+import { getDashboardPath } from '../../utils/dashboardPath';
 
-const Container = styled.div`
+/* 키오스크 첫 화면($kiosk): 회색 상자 대신 메뉴 본문과 같은 평면 톤, 고르는 곳을 화면 가운데에 크게(Fable 20261010 kiosk-fullscreen D3) */
+const Container = styled.div<{ $kiosk?: boolean }>`
   min-height: 100vh;
   background: #F9FAFB;
   display: flex;
@@ -27,28 +29,34 @@ const Container = styled.div`
 
   /* Tablet support */
   @media (min-width: 768px) {
-    background: #C7CED6;
+    background: ${p => (p.$kiosk ? '#F4F6F8' : '#C7CED6')};
     padding: 80px 24px 24px;
   }
+  ${p => p.$kiosk && `
+    &&& { background: #F4F6F8; padding: 48px 24px 20px; min-height: 100dvh; }
+  `}
 `;
 
-const Header = styled.div`
+const Header = styled.div<{ $kiosk?: boolean }>`
   text-align: center;
   margin-bottom: 48px;
+  ${p => p.$kiosk && `margin-top: auto; margin-bottom: 40px;`}
 `;
 
-const StoreLogo = styled.img`
+const StoreLogo = styled.img<{ $kiosk?: boolean }>`
+  ${p => p.$kiosk && `&&& { max-height: 80px; max-width: 360px; margin-bottom: 12px; }`}
   max-height: 48px;
   max-width: 220px;
   object-fit: contain;
   margin: 0 0 8px 0;
 `;
 
-const Title = styled.h1`
+const Title = styled.h1<{ $kiosk?: boolean }>`
   font-size: 28px;
   font-weight: 600;
   color: #0A2540;
   margin: 0 0 8px 0;
+  ${p => p.$kiosk && `font-size: 40px; font-weight: 800; margin-bottom: 12px;`}
 `;
 
 const BranchName = styled.div`
@@ -73,10 +81,11 @@ const BranchName = styled.div`
   }
 `;
 
-const Subtitle = styled.p`
+const Subtitle = styled.p<{ $kiosk?: boolean }>`
   font-size: 15px;
   color: #4B5563;
   margin: 0;
+  ${p => p.$kiosk && `font-size: 22px;`}
 `;
 
 const OptionsContainer = styled.div<{ $kiosk?: boolean }>`
@@ -88,21 +97,31 @@ const OptionsContainer = styled.div<{ $kiosk?: boolean }>`
 
   /* Tablet support */
   @media (min-width: 768px) {
-    max-width: ${p => (p.$kiosk ? '640px' : '500px')};
+    max-width: 500px;
     background: white;
-    padding: ${p => (p.$kiosk ? '40px' : '32px')};
+    padding: 32px;
     border-radius: 16px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    /* 키오스크는 손님이 처음 마주하는 화면 — 고를 곳을 크게 해서 헤매지 않게 한다. */
-    ${p => p.$kiosk && `
-      gap: 16px;
-      button { padding: 24px 24px; font-size: 17px; }
-    `}
   }
+  /* 키오스크: 흰 상자 없이 큰 타일 격자(타일 자체가 카드) · 가운데 최대 960(선택지가 2~5개뿐이라 폭 전체로 늘리지 않는다 — Fable Q3) */
+  ${p => p.$kiosk && `
+    &&& {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 960px;
+      background: none;
+      padding: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    > div { grid-column: 1 / -1; }
+  `}
 `;
 
 // 라인 아이콘 + 좌측 정렬 row 카드 (POS 사이드바와 동일한 lucide line 스타일)
-const OptionCard = styled.button`
+// 키오스크($kiosk): 세로 타일(200px 이상 · 아이콘 80 · 제목 26) — 서서 보는 화면에서 한눈에 고르게
+const OptionCard = styled.button<{ $kiosk?: boolean }>`
   background: white;
   border: 1px solid #C7CED6;
   border-radius: 12px;
@@ -125,6 +144,24 @@ const OptionCard = styled.button`
   &:active {
     transform: translateY(0);
   }
+
+  ${p => p.$kiosk && `
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 20px;
+    min-height: 200px;
+    padding: 28px;
+    border-radius: 18px;
+    border-color: #E5E8EC;
+    box-shadow: 0 2px 10px rgba(16, 24, 40, 0.06);
+    &:active { border-color: #635BFF; background: #FAFBFF; }
+    h3 { font-size: 26px; font-weight: 700; }
+    h3 + div { font-size: 16px; line-height: 1.4; }
+    > div:first-child { width: 80px; height: 80px; border-radius: 18px; }
+    > div:first-child svg { width: 40px; height: 40px; }
+    > div:last-child:not(:first-child):not(:nth-child(2)) { display: none; }
+  `}
 `;
 
 const OptionIcon = styled.div`
@@ -191,13 +228,24 @@ const OptionChevron = styled.div`
   }
 `;
 
-const Footer = styled.div`
+const Footer = styled.div<{ $kiosk?: boolean }>`
   margin-top: auto;
   padding-top: 48px;
   padding-bottom: 24px;
   text-align: center;
   font-size: 12px;
   color: #8898AA;
+  /* 키오스크: 직원용 링크는 왼쪽 아래 작게, «Powered by» 는 오른쪽 아래 */
+  ${p => p.$kiosk && `
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 40px 0 0;
+    font-size: 13px;
+    > div { margin-bottom: 0; }
+    button { font-size: 14px; }
+  `}
 `;
 
 const FooterLinks = styled.div`
@@ -657,11 +705,11 @@ const OrderTypePage: React.FC = () => {
   const orderTypes = storeData?.orderTypes || null;
 
   return (
-    <Container>
-      <Header>
+    <Container $kiosk={kiosk}>
+      <Header $kiosk={kiosk}>
         {storeData?.logo && storeData.logo !== '/images/store-logo.png' ? (
           <>
-            <StoreLogo src={storeData.logo} alt={storeData.name} />
+            <StoreLogo $kiosk={kiosk} src={storeData.logo} alt={storeData.name} />
             {storeData.branchName && (
               <BranchName>
                 <MapPin /> {storeData.branchName}
@@ -670,7 +718,7 @@ const OrderTypePage: React.FC = () => {
           </>
         ) : (
           <>
-            <Title>{storeData?.name || 'Welcome'}</Title>
+            <Title $kiosk={kiosk}>{storeData?.name || 'Welcome'}</Title>
             {storeData?.branchName && (
               <BranchName>
                 <MapPin /> {storeData.branchName}
@@ -678,7 +726,7 @@ const OrderTypePage: React.FC = () => {
             )}
           </>
         )}
-        <Subtitle>How would you like your order?</Subtitle>
+        <Subtitle $kiosk={kiosk}>How would you like your order?</Subtitle>
       </Header>
 
       {tableFromQR && (
@@ -727,10 +775,10 @@ const OrderTypePage: React.FC = () => {
             borderRadius: '12px',
             color: '#7F1D1D'
           }}>
-            <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '8px' }}>
+            <div style={{ fontSize: '22px', fontWeight: 700, color: '#0A2540', marginBottom: '8px' }}>
               {t('menu:kiosk.off.title')}
             </div>
-            <div style={{ fontSize: '14px', lineHeight: 1.5 }}>
+            <div style={{ fontSize: '18px', lineHeight: 1.5 }}>
               {t('menu:kiosk.off.body')}
             </div>
           </div>
@@ -788,7 +836,7 @@ const OrderTypePage: React.FC = () => {
                 />
               )}
               {orderTypes.dineIn && (
-                <OptionCard
+                <OptionCard $kiosk={kiosk}
                   onClick={timeClosed ? undefined : () => handleOrderTypeSelection('dine-in')}
                   style={timeClosed ? disabledCardStyle : undefined}
                 >
@@ -801,7 +849,7 @@ const OrderTypePage: React.FC = () => {
                 </OptionCard>
               )}
               {orderTypes.takeaway && (
-                <OptionCard
+                <OptionCard $kiosk={kiosk}
                   onClick={timeClosed ? undefined : () => handleOrderTypeSelection('takeaway')}
                   style={timeClosed ? disabledCardStyle : undefined}
                 >
@@ -818,7 +866,7 @@ const OrderTypePage: React.FC = () => {
                 </OptionCard>
               )}
               {orderTypes.pickup && (
-                <OptionCard onClick={() => handleOrderTypeSelection('pickup')}>
+                <OptionCard $kiosk={kiosk} onClick={() => handleOrderTypeSelection('pickup')}>
                   <OptionIcon><Clock /></OptionIcon>
                   <OptionBody>
                     <OptionTitle>Pre-order Pickup</OptionTitle>
@@ -832,7 +880,7 @@ const OrderTypePage: React.FC = () => {
                 </OptionCard>
               )}
               {orderTypes.delivery && (
-                <OptionCard
+                <OptionCard $kiosk={kiosk}
                   onClick={timeClosed ? undefined : () => handleOrderTypeSelection('delivery')}
                   style={timeClosed ? disabledCardStyle : undefined}
                 >
@@ -845,7 +893,7 @@ const OrderTypePage: React.FC = () => {
                 </OptionCard>
               )}
               {storeData?.reservationsEnabled && (
-                <OptionCard onClick={() => navigate(`/mobile/${slug}/reservation`)}>
+                <OptionCard $kiosk={kiosk} onClick={() => navigate(`/mobile/${slug}/reservation`)}>
                   <OptionIcon><CalendarDays /></OptionIcon>
                   <OptionBody>
                     <OptionTitle>Reserve a Table</OptionTitle>
@@ -859,10 +907,17 @@ const OrderTypePage: React.FC = () => {
         })()}
       </OptionsContainer>
 
-      <Footer>
+      <Footer $kiosk={kiosk}>
         <FooterLinks>
-          {user?.restaurantId ? (
-            <FooterLink type="button" onClick={() => navigate(`/restaurant/${user.restaurantId}/dashboard`)}>
+          {/* 직원이 로그인돼 있으면 그 역할의 대시보드(오너 등 매장 소속 없는 역할 포함 — getDashboardPath 단일 소스).
+              키오스크(등록 기기는 직원 로그인이 지워져 있다)는 손님 화면을 벗어나는 홈페이지 링크 대신
+              직원 로그인(/pos?staff=1 — KioskEntryGate 가 키오스크로 되돌려 보내지 않는다)으로 보낸다. */}
+          {user?.role ? (
+            <FooterLink type="button" onClick={() => navigate(getDashboardPath(user.role, { restaurantId: user.restaurantId }))}>
+              ← {t('common:backToDashboard', 'Back to Dashboard')}
+            </FooterLink>
+          ) : kiosk ? (
+            <FooterLink type="button" onClick={() => navigate('/pos?staff=1')}>
               ← {t('common:backToDashboard', 'Back to Dashboard')}
             </FooterLink>
           ) : (
@@ -871,10 +926,14 @@ const OrderTypePage: React.FC = () => {
             </FooterLink>
           )}
         </FooterLinks>
-        <a href="https://purplehere.com" target="_blank" rel="noopener noreferrer"
-           style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dotted currentColor' }}>
-          Powered by Purple Here POS
-        </a>
+        {kiosk ? (
+          <span>Powered by Purple Here POS</span>
+        ) : (
+          <a href="https://purplehere.com" target="_blank" rel="noopener noreferrer"
+             style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dotted currentColor' }}>
+            Powered by Purple Here POS
+          </a>
+        )}
       </Footer>
 
       {/* Cart Reset Warning Modal */}

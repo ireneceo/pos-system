@@ -30,7 +30,9 @@ function canonicalOrderType(t) {
 // 채널 3개: pos · mobile(손님 폰) · kiosk(등록된 매장 태블릿). 화면 쪽 같은 규칙 = dev-frontend/src/utils/paymentChannel.ts.
 // 키오스크 열은 매장이 한 번이라도 만지기 전까지 모바일과 같다(`_kioskSplit` 표시 없음 → mobile 값을 따른다).
 // 그래서 기존 매장은 데이터 변경 없이 오늘과 똑같다. 현금·직원식·송금 증빙은 공용 기기에서 받지 않는다.
-const KIOSK_HIDDEN_METHODS = ['cash', 'staffMeal', 'bankTransfer'];
+// 카운터 결제도 숨긴다 — Irene 2026-10-10 «페이투카운터는 키오스크가 쓸 일이 없잖아»(Fable 판정 20261010 D1).
+//   카드 거절 뒤 «카운터에서 결제»(이미 만든 주문을 카운터로 넘기는 복구)는 결제수단이 아니라 이 목록과 무관.
+const KIOSK_HIDDEN_METHODS = ['cash', 'staffMeal', 'bankTransfer', 'counter', 'payAtCounter'];
 
 function parseSettings(raw) {
   if (!raw) return {};

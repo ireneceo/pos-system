@@ -9174,6 +9174,8 @@ function definePrintTests({ adminToken }) {
     const k = await mk(fx.rest.id, '__HC_KIOSK__');
     const ko = other ? await mk(other.id, '__HC_KIOSK_OTHER__') : null;
     const sw = await kioskSwitch(fx.rest.id, true);
+    // 기본 주문 수단 = 이월렛(폰·키오스크 둘 다 열림, 미분리). 카운터 결제는 2026-10-10 부터 키오스크 숨김 — fx.restore 가 원복
+    await setPs(fx.rest.id, (ps) => { delete ps._kioskSplit; ps.ewallet = { ...(ps.ewallet || {}), enabled: true, availableIn: ['pos', 'mobile'], allowed_order_types: [] }; });
     return { ...fx, k, ko, sw, otherRestId: other?.id || null,
       cleanup: async () => { await sw.restore(); await KioskDevice.destroy({ where: { name: ['__HC_KIOSK__', '__HC_KIOSK_OTHER__', '__HC_KIOSK_REG__'] } }).catch(() => {}); await fx.restore(); } };
   }
@@ -9181,7 +9183,7 @@ function definePrintTests({ adminToken }) {
   const kioskOrderBody = (restId, extra = {}) => {
     const m = HC_MENU[restId] || { name: 'HC Kiosk', price: 7.5 };
     return {
-      restaurant_id: restId, customer_name: '__HC_KIOSK__', order_type: 'takeaway', source: 'mobile', payment_method: 'counter',
+      restaurant_id: restId, customer_name: '__HC_KIOSK__', order_type: 'takeaway', source: 'mobile', payment_method: 'ewallet',
       payment_status: 'pending', status: 'outstanding', total_amount: m.price, subtotal: m.price,
       order_items: [{ name: m.name, quantity: 1, price: m.price }], ...extra,
     };
@@ -9275,7 +9277,7 @@ function definePrintTests({ adminToken }) {
     }
   });
 
-  test('kiosk', '주문 출처·채널 — 토큰 없이 kiosk 400 · 키오스크 주문 source=kiosk · 다른 매장 403 · Kiosk 열만 연 수단은 폰 400 / 키오스크 201 · 미분리 매장 kiosk==mobile', async () => {
+  test('kiosk', '주문 출처·채널 — 토큰 없이 kiosk 400 · 키오스크 주문 source=kiosk · 다른 매장 403 · Kiosk 열만 연 수단은 폰 400 / 키오스크 201 · 카운터 결제 키오스크 400 · 미분리 매장 kiosk==mobile', async () => {
     const { Order } = require('../models');
     const { methodOpenIn } = require('../utils/paymentMethodGuard');
     const fx = await kioskFixture();
@@ -9290,6 +9292,8 @@ function definePrintTests({ adminToken }) {
       const r0 = await Restaurant.findByPk(fx.rest.id);
       for (const key of Object.keys(r0.payment_settings)) {
         if (key.startsWith('_') || ['cash', 'staffMeal', 'bankTransfer'].includes(key)) continue;
+        // 카운터 결제는 미분리여도 키오스크에서 숨김(2026-10-10 Fable D1) — 모바일은 열림
+        if (key === 'counter' || key === 'payAtCounter') { if (methodOpenIn(r0.payment_settings, key, 'kiosk') !== false) return fail(`미분리 ${key} 이 키오스크에 열림`); continue; }
         // 온라인 결제(카드번호 입력)는 미분리 키오스크에서 기본 OFF (Fable D3·F2)
         if (key === 'online') { if (methodOpenIn(r0.payment_settings, key, 'kiosk') !== false) return fail('미분리 online 이 키오스크에 열림'); continue; }
         if (methodOpenIn(r0.payment_settings, key, 'kiosk') !== methodOpenIn(r0.payment_settings, key, 'mobile')) return fail(`미분리 ${key} kiosk≠mobile`);
@@ -9310,6 +9314,11 @@ function definePrintTests({ adminToken }) {
       if (phone.status !== 400 || phone.body?.code !== 'PAYMENT_METHOD_NOT_OPEN_IN_CHANNEL') return fail(`폰 ewallet ${phone.status} ${phone.body?.code}`);
       const kio = keep(await request('POST', '/orders', kioskOrderBody(fx.rest.id, { payment_method: 'ewallet' }), fx.k.h));
       if (kio.status !== 201) return fail(`키오스크 ewallet ${kio.status} ${JSON.stringify(kio.body).slice(0, 160)}`);
+      // 카운터 결제 — Kiosk 열에 켜 둬도 키오스크 주문은 거절, 폰 주문은 그대로(2026-10-10 Fable D1)
+      const kioCounter = keep(await request('POST', '/orders', kioskOrderBody(fx.rest.id, { payment_method: 'counter' }), fx.k.h));
+      if (kioCounter.status !== 400 || kioCounter.body?.code !== 'PAYMENT_METHOD_NOT_OPEN_IN_CHANNEL') return fail(`키오스크 카운터 ${kioCounter.status} ${kioCounter.body?.code}`);
+      const phoneCounter = keep(await request('POST', '/orders', kioskOrderBody(fx.rest.id, { payment_method: 'counter' })));
+      if (phoneCounter.status !== 201) return fail(`폰 카운터 ${phoneCounter.status} ${JSON.stringify(phoneCounter.body).slice(0, 160)}`);
       // 키오스크에 숨김 수단(현금)은 분리 여부와 무관하게 거절
       await setPs(fx.rest.id, (ps) => { ps.cash = { ...(ps.cash || {}), enabled: true, availableIn: ['pos', 'mobile', 'kiosk'] }; });
       const cash = keep(await request('POST', '/orders', kioskOrderBody(fx.rest.id, { payment_method: 'cash' }), fx.k.h));

@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
-import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit, kioskSplitBarCss } from '../components/KioskCartAside';
+import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit } from '../components/KioskCartAside';
+import { KioskActionBar } from '../components/common/KioskLayout';
 import { isKioskMode, isMenuBoardMode, withMenuBoardQuery } from '../utils/kioskMode';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useMenu } from '../../contexts/MenuContext';
@@ -22,14 +23,16 @@ const ItemHeader = styled.div`
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 `;
 
+/* 키오스크: 사진은 16:9·최대 42vh, 사진 없으면 160px 상자(Fable D5) — 토큰, 폰은 250px 그대로 */
 const ItemImage = styled.div<{ hasImage?: boolean }>`
   width: 100%;
-  height: 250px;
+  height: ${props => props.hasImage ? 'var(--mo-detail-img-h, 250px)' : 'var(--mo-detail-noimg-h, 250px)'};
+  ${props => props.hasImage ? 'aspect-ratio: var(--mo-detail-img-ratio, auto); max-height: var(--mo-detail-img-max, none);' : ''}
   background: #F1F4F8;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: ${props => props.hasImage ? '0' : '120px'};
+  font-size: ${props => props.hasImage ? '0' : 'var(--mo-detail-emoji, 120px)'};
   margin-bottom: 16px;
   overflow: hidden;
   
@@ -41,18 +44,18 @@ const ItemImage = styled.div<{ hasImage?: boolean }>`
 `;
 
 const ItemInfo = styled.div`
-  padding: 0 16px;
+  padding: 0 var(--mo-detail-pad, 16px);
 `;
 
 const ItemName = styled.h1`
-  font-size: 24px;
-  font-weight: 600;
+  font-size: var(--mo-detail-name, 24px);
+  font-weight: var(--mo-detail-name-weight, 600);
   color: #1F2937;
   margin: 0 0 8px 0;
 `;
 
 const ItemDescription = styled.p`
-  font-size: 14px;
+  font-size: var(--mo-detail-desc, 14px);
   color: #4B5563;
   margin: 0 0 16px 0;
   line-height: 1.5;
@@ -68,7 +71,7 @@ const DetailItem = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--mo-detail-meta, 14px);
   color: #4B5563;
   
   svg {
@@ -80,13 +83,14 @@ const DetailItem = styled.div`
 const SetMenuSection = styled.div`
   background: white;
   border-radius: 12px;
-  padding: 16px;
+  padding: var(--mo-section-pad, 16px);
+  font-size: var(--mo-opt-font, inherit);
   margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 `;
 
 const SetMenuTitle = styled.h3`
-  font-size: 16px;
+  font-size: var(--mo-opt-title, 16px);
   font-weight: 600;
   color: #1F2937;
   margin: 0 0 12px 0;
@@ -108,20 +112,20 @@ const SetMenuItem = styled.div`
   padding: 8px;
   background: #F9FAFB;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--mo-opt-font, 14px);
   color: #374151;
 `;
 
 const OptionSection = styled.div`
   background: white;
   border-radius: 12px;
-  padding: 16px;
+  padding: var(--mo-section-pad, 16px);
   margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 `;
 
 const OptionTitle = styled.h3`
-  font-size: 16px;
+  font-size: var(--mo-opt-title, 16px);
   font-weight: 600;
   color: #1F2937;
   margin: 0 0 16px 0;
@@ -131,7 +135,7 @@ const OptionTitle = styled.h3`
 `;
 
 const RequiredBadge = styled.span`
-  font-size: 12px;
+  font-size: var(--mo-badge-sm, 12px);
   color: #EF4444;
   font-weight: 500;
   background: #FEE2E2;
@@ -141,18 +145,18 @@ const RequiredBadge = styled.span`
 
 const RadioGroup = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 8px;
+  grid-template-columns: var(--mo-opt-cols, repeat(auto-fit, minmax(100px, 1fr)));
+  gap: var(--mo-opt-gap, 8px);
 `;
 
 const RadioButton = styled.button<{ selected?: boolean }>`
   padding: 12px 16px;
-  min-height: 44px;
-  border-radius: 8px;
-  border: 1px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
+  min-height: var(--mo-tap, 44px);
+  border-radius: var(--mo-opt-radius, 8px);
+  border: ${props => props.selected ? 'var(--mo-opt-sel-border, 1px)' : '1px'} solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   background: ${props => props.selected ? 'rgba(99, 91, 255, 0.1)' : 'white'};
   color: ${props => props.selected ? '#635BFF' : '#1F2937'};
-  font-size: 14px;
+  font-size: var(--mo-opt-font, 14px);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
@@ -174,9 +178,10 @@ const CheckboxLabel = styled.label`
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  min-height: 44px;
+  min-height: var(--mo-tap, 44px);
+  box-sizing: border-box;
   border: 1px solid #C7CED6;
-  border-radius: 8px;
+  border-radius: var(--mo-opt-radius, 8px);
   cursor: pointer;
   transition: all 0.15s;
 
@@ -186,29 +191,29 @@ const CheckboxLabel = styled.label`
 `;
 
 const CheckboxInput = styled.input`
-  width: 18px;
-  height: 18px;
+  width: var(--mo-check, 18px);
+  height: var(--mo-check, 18px);
   accent-color: #635BFF;
   cursor: pointer;
   border-radius: 4px;
 `;
 
 const CheckboxText = styled.span`
-  font-size: 14px;
+  font-size: var(--mo-opt-font, 14px);
   color: #1F2937;
   margin-left: 10px;
   flex: 1;
 `;
 
 const CheckboxPrice = styled.span`
-  font-size: 12px;
+  font-size: var(--mo-opt-price, 12px);
   color: #4B5563;
 `;
 
 const QuantitySection = styled.div`
   background: white;
   border-radius: 12px;
-  padding: 16px;
+  padding: var(--mo-section-pad, 16px);
   margin-bottom: 16px;
   display: flex;
   align-items: center;
@@ -223,8 +228,8 @@ const QuantityControl = styled.div`
 `;
 
 const QuantityButton = styled.button`
-  width: 36px;
-  height: 36px;
+  width: var(--mo-qty-btn, 36px);
+  height: var(--mo-qty-btn, 36px);
   border-radius: 50%;
   border: 1px solid #C7CED6;
   background: white;
@@ -244,14 +249,14 @@ const QuantityButton = styled.button`
   }
   
   svg {
-    width: 16px;
-    height: 16px;
+    width: var(--mo-qty-icon, 16px);
+    height: var(--mo-qty-icon, 16px);
     color: #4B5563;
   }
 `;
 
 const QuantityValue = styled.span`
-  font-size: 18px;
+  font-size: var(--mo-qty-font, 18px);
   font-weight: 600;
   color: #1F2937;
   min-width: 30px;
@@ -261,8 +266,8 @@ const QuantityValue = styled.span`
 const SpecialInstructions = styled.div`
   background: white;
   border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 80px;
+  padding: var(--mo-section-pad, 16px);
+  margin-bottom: var(--mo-detail-last-mb, 80px);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 `;
 
@@ -271,11 +276,11 @@ const InstructionsInput = styled.textarea`
   border: 1px solid #C7CED6;
   border-radius: 6px;
   padding: 12px;
-  font-size: 16px; /* iOS zoom 방지 */
+  font-size: var(--mo-input-font, 16px); /* iOS zoom 방지 */
   resize: none;
   font-family: inherit;
   box-sizing: border-box;
-  min-height: 80px;
+  min-height: var(--mo-textarea-h, 80px);
   -webkit-appearance: none;
 
   &:focus {
@@ -284,7 +289,8 @@ const InstructionsInput = styled.textarea`
   }
 `;
 
-const AddToCartButton = styled.button<{ $kiosk?: boolean; $split?: boolean }>`
+/* $inBar: 키오스크 — 고정 바가 아니라 본문 칸 안 KioskActionBar(sticky). 가로에선 본문 칸 폭에 저절로 맞는다(Fable D5). */
+const AddToCartButton = styled.button<{ $inBar?: boolean }>`
   position: fixed;
   bottom: 68px; /* Space for bottom navigation */
   left: 0;
@@ -307,8 +313,7 @@ const AddToCartButton = styled.button<{ $kiosk?: boolean; $split?: boolean }>`
 
   /* Tablet support */
   @media (min-width: 768px) {
-    /* 키오스크는 콘텐츠 폭이 넓어 600px 바만 남으면 화면과 따로 논다 — 같이 넓힌다. */
-    max-width: ${p => (p.$kiosk ? '1056px' : '600px')};
+    max-width: 600px;
     left: 50%;
     /* right:auto + width:100% 를 같이 줘야 max-width 가 적용된다. */
     right: auto;
@@ -326,11 +331,23 @@ const AddToCartButton = styled.button<{ $kiosk?: boolean; $split?: boolean }>`
     background: #6B7280;
     cursor: not-allowed;
   }
-  ${p => (p.$split ? kioskSplitBarCss : '')}
+  ${p => p.$inBar && `
+    &&& {
+      position: static;
+      transform: none;
+      width: 100%;
+      max-width: none;
+      min-height: var(--mo-bar-h, 72px);
+      border-radius: 14px;
+      font-size: var(--mo-bar-font, 20px);
+      font-weight: 700;
+      box-shadow: 0 8px 24px rgba(99, 91, 255, 0.28);
+    }
+  `}
 `;
 
 const PriceDisplay = styled.span`
-  font-size: 18px;
+  font-size: var(--mo-bar-font, 18px);
 `;
 
 const ItemDetailPage: React.FC = () => {
@@ -688,6 +705,23 @@ const ItemDetailPage: React.FC = () => {
     );
   }
   
+  const renderAddButton = (inBar: boolean) => (
+    <AddToCartButton $inBar={inBar}
+        onClick={handleAddToCart}
+        disabled={!isValid()}
+        style={justAdded ? { background: '#10B981' } : undefined}
+      >
+        {justAdded ? (
+          <span>✓ {t('itemDetail.addedToCart', 'Added to Cart')}</span>
+        ) : (
+          <>
+            <span>{t('itemDetail.addToCart', 'Add to Cart')}</span>
+            <PriceDisplay>{formatCurrency(calculateTotal(), currency)}</PriceDisplay>
+          </>
+        )}
+      </AddToCartButton>
+  );
+
   return (
     <MobileLayout title={item.code ? `${item.code} ${item.name}` : item.name} showBack onBack={() => navigate(-1)}>
       {/* 키오스크 넓은 화면: 오른쪽 장바구니를 메뉴 화면과 같은 자리에 그대로 둔다(2026-10-07 Irene) */}
@@ -763,9 +797,9 @@ const ItemDetailPage: React.FC = () => {
                 >
                   <div style={so ? { textDecoration: 'line-through' } : undefined}>{option.name}</div>
                   {so ? (
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#DC2626', marginTop: '2px' }}>{t('itemDetail.soldOut', { defaultValue: 'Sold out' })}</div>
+                    <div style={{ fontSize: 'var(--mo-opt-price-sm, 11px)', fontWeight: 700, color: '#DC2626', marginTop: '2px' }}>{t('itemDetail.soldOut', { defaultValue: 'Sold out' })}</div>
                   ) : option.price > 0 && (
-                    <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>
+                    <div style={{ fontSize: 'var(--mo-opt-price, 12px)', color: '#4B5563', marginTop: '2px' }}>
                       +{formatCurrency(option.price, currency)}
                     </div>
                   )}
@@ -803,7 +837,7 @@ const ItemDetailPage: React.FC = () => {
       ))}
       
       <QuantitySection>
-        <div style={{ fontSize: '16px', fontWeight: 600, color: '#1F2937' }}>
+        <div style={{ fontSize: 'var(--mo-opt-title, 16px)', fontWeight: 600, color: '#1F2937' }}>
           {t('itemDetail.quantity', 'Quantity')}
         </div>
         <QuantityControl>
@@ -825,7 +859,7 @@ const ItemDetailPage: React.FC = () => {
       </QuantitySection>
       
       <SpecialInstructions>
-        <div style={{ fontSize: '16px', fontWeight: 600, color: '#1F2937', marginBottom: '8px' }}>
+        <div style={{ fontSize: 'var(--mo-opt-title, 16px)', fontWeight: 600, color: '#1F2937', marginBottom: '8px' }}>
           {t('itemDetail.specialInstructions', 'Special Instructions')}
         </div>
         <InstructionsInput
@@ -835,24 +869,13 @@ const ItemDetailPage: React.FC = () => {
           onChange={(e) => setInstructions(e.target.value)}
         />
       </SpecialInstructions>
+      {!menuBoard && kiosk && <KioskActionBar>{renderAddButton(true)}</KioskActionBar>}
       </KioskMain>
       {!menuBoard && splitView && <KioskCartAside />}
       </KioskSplit>
 
-      {!menuBoard && <AddToCartButton $kiosk={kiosk} $split={splitView}
-        onClick={handleAddToCart}
-        disabled={!isValid()}
-        style={justAdded ? { background: '#10B981' } : undefined}
-      >
-        {justAdded ? (
-          <span>✓ {t('itemDetail.addedToCart', 'Added to Cart')}</span>
-        ) : (
-          <>
-            <span>{t('itemDetail.addToCart', 'Add to Cart')}</span>
-            <PriceDisplay>{formatCurrency(calculateTotal(), currency)}</PriceDisplay>
-          </>
-        )}
-      </AddToCartButton>}
+      {/* 폰: 화면 아래 고정 바 — 키오스크는 위 KioskMain 안 KioskActionBar */}
+      {!menuBoard && !kiosk && renderAddButton(false)}
 
       {/* #11c 크로스셀 — 담은 직후 추천 바텀시트 */}
       <RecommendationSheet

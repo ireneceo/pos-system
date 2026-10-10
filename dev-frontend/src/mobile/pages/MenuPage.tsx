@@ -4,8 +4,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Utensils, ShoppingBag, Clock, Truck, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import MobileLayout from '../components/common/MobileLayout';
+import { KioskActionBar } from '../components/common/KioskLayout';
 import { isKioskMode, isMenuBoardMode, withMenuBoardQuery } from '../utils/kioskMode';
-import { KioskCartAside, KioskSplit, KioskMain } from '../components/KioskCartAside';
+import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit } from '../components/KioskCartAside';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
 import { getStoreOpenState } from '../utils/storeHours';
@@ -177,10 +178,12 @@ const SearchInputContainer = styled.div`
 
 const SearchInput = styled.input`
   width: 100%;
-  padding: 10px 16px 10px 40px;
+  min-height: var(--mo-search-h, 0px);
+  padding: 10px 16px 10px var(--mo-search-pad-l, 40px);
   border: 1px solid #C7CED6;
-  border-radius: 8px;
-  font-size: 16px;
+  border-radius: var(--mo-search-radius, 8px);
+  font-size: var(--mo-search-font, 16px);
+  background: #FFFFFF;
   transition: all 0.15s;
   box-sizing: border-box;
 
@@ -224,16 +227,16 @@ const ClearSearchBtn = styled.button`
   }
 `;
 
-const CategoryTabs = styled.div`
+const CategoryTabs = styled.div<{ $pills?: boolean }>`
   display: flex;
-  gap: 24px;
+  gap: ${p => (p.$pills ? '10px' : '24px')};
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   margin: 0 0 16px 0;
   padding: 0;
-  border-bottom: 1px solid #C7CED6;
+  border-bottom: ${p => (p.$pills ? 'none' : '1px solid #C7CED6')};
   /* Lock horizontal scroll — kills vertical wobble during pan. */
   touch-action: pan-x;
   overscroll-behavior-x: contain;
@@ -245,7 +248,9 @@ const CategoryTabs = styled.div`
   }
 `;
 
-const CategoryTab = styled.button<{ active: boolean }>`
+/* $variant: 키오스크 전용 모양 — 'rail' = 가로 화면 왼쪽 세로열(56px 줄) · 'pill' = 세로 화면 알약 가로 스크롤.
+   없으면 폰 밑줄 탭 그대로(Fable 20261010 kiosk-fullscreen D4). */
+const CategoryTab = styled.button<{ active: boolean; $variant?: 'rail' | 'pill' }>`
   padding: 12px 0;
   border: none;
   background: none;
@@ -266,32 +271,70 @@ const CategoryTab = styled.button<{ active: boolean }>`
   &:active {
     transform: none;
   }
+
+  ${p => p.$variant === 'rail' && `
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: var(--mo-tap, 56px);
+    padding: 8px 14px 8px 16px;
+    margin: 0;
+    font-size: var(--mo-cat-font, 17px);
+    font-weight: ${p.active ? 700 : 500};
+    text-align: left;
+    white-space: normal;
+    line-height: 1.25;
+    border-bottom: none;
+    border-left: 3px solid ${p.active ? '#635BFF' : 'transparent'};
+    border-radius: 0 10px 10px 0;
+    background: ${p.active ? '#F0F4FF' : 'transparent'};
+    color: ${p.active ? '#635BFF' : '#374151'};
+  `}
+  ${p => p.$variant === 'pill' && `
+    min-height: var(--mo-tap, 56px);
+    padding: 0 20px;
+    margin: 0;
+    font-size: var(--mo-cat-font, 17px);
+    font-weight: ${p.active ? 700 : 500};
+    border-radius: 999px;
+    border: 1px solid ${p.active ? '#C7D2FE' : '#C7CED6'};
+    background: ${p.active ? '#F0F4FF' : '#FFFFFF'};
+    color: ${p.active ? '#635BFF' : '#374151'};
+  `}
+`;
+
+/** 가로 키오스크 메뉴 왼쪽 카테고리 세로열 — 위 바 아래에 붙어 메뉴를 내려도 남는다 */
+const CategoryRail = styled.nav`
+  position: sticky;
+  top: calc(var(--mo-top-h, 0px) + 24px);
+  max-height: var(--mo-panel-max-h, 80vh);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+  background: #FFFFFF;
+  border: 1px solid #E5E8EC;
+  border-radius: 16px;
+  box-sizing: border-box;
 `;
 
 // 키오스크 2단 — 메뉴(왼쪽) + 장바구니(오른쪽). POS Terminal 과 같은 «한 화면» 구성.
 // 손님이 담은 것을 계속 보면서 고르게 한다(다른 화면으로 넘어가면 무엇을 담았는지 잊는다).
 // 폭이 좁으면(태블릿 세로·폰) 한 단으로 돌아가고 종전대로 하단 카트 바를 쓴다.
 
-const MenuGrid = styled.div<{ $kiosk?: boolean }>`
+const MenuGrid = styled.div`
   display: grid;
   /* 2-column is the mobile default. Force exactly 2 columns on phones so
      narrow Android viewports (~320px usable after system UI) don't collapse
      to 1 column the way minmax(160px) did. Wider screens get more columns. */
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: var(--mo-grid-cols, repeat(2, 1fr));
+  gap: var(--mo-grid-gap, 12px);
 
   @media (min-width: 520px) {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: var(--mo-grid-cols, repeat(auto-fill, minmax(160px, 1fr)));
   }
-
-  /* 키오스크: 손님이 떨어져서 보는 화면이라 카드를 키운다. 넓은 폭을 채우되
-     한 칸이 240px 밑으로 내려가지 않게 해서 사진·이름이 읽히는 크기를 지킨다. */
-  ${p => p.$kiosk && `
-    @media (min-width: 768px) {
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 20px;
-    }
-  `}
+  /* 키오스크: 토큰(KioskLayout) — 칸 최소 210px 로 폭 전체를 채운다(1920 가로 5열 · 1280 가로 3열). */
 `;
 
 const MenuItemCard = styled.div`
@@ -313,12 +356,13 @@ const MenuItemCard = styled.div`
 
 const ItemImage = styled.div<{ hasImage?: boolean }>`
   width: 100%;
-  height: 120px;
+  height: var(--mo-card-img-h, 120px);
+  aspect-ratio: var(--mo-card-img-ratio, auto);
   background: #F1F4F8;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 48px;
+  font-size: var(--mo-card-emoji, 48px);
   overflow: hidden;
 
   img {
@@ -370,11 +414,11 @@ const LazyImage: React.FC<{ src: string; alt: string; fallback: string }> = ({ s
 };
 
 const ItemInfo = styled.div`
-  padding: 12px;
+  padding: var(--mo-card-pad, 12px);
 `;
 
 const ItemName = styled.h3`
-  font-size: 14px;
+  font-size: var(--mo-item-name, 14px);
   font-weight: 600;
   color: #1F2937;
   margin: 0 0 4px 0;
@@ -382,7 +426,7 @@ const ItemName = styled.h3`
 `;
 
 const ItemPrice = styled.div`
-  font-size: 16px;
+  font-size: var(--mo-item-price, 16px);
   font-weight: 600;
   color: #635BFF;
 `;
@@ -393,7 +437,7 @@ const SetBadge = styled.div`
   right: 8px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  font-size: 10px;
+  font-size: var(--mo-badge-font, 10px);
   font-weight: 700;
   padding: 3px 8px;
   border-radius: 4px;
@@ -402,7 +446,7 @@ const SetBadge = styled.div`
 `;
 
 const SetItemsPreview = styled.div`
-  font-size: 11px;
+  font-size: var(--mo-item-desc-sm, 11px);
   color: #4B5563;
   margin-top: 4px;
   line-height: 1.3;
@@ -448,7 +492,8 @@ const EmptyState = styled.div`
 const barSlideUp = keyframes`from { transform: translateY(120%); opacity: 0; } to { transform: translateY(0); opacity: 1; }`;
 const qtyBump = keyframes`0% { transform: scale(1); } 40% { transform: scale(1.28); } 100% { transform: scale(1); }`;
 
-const CartBar = styled.button<{ $kiosk?: boolean }>`
+/* $inBar: 키오스크 세로 화면 — 고정(fixed)이 아니라 본문 안 KioskActionBar(sticky)에 들어간다(Fable D4·P4). */
+const CartBar = styled.button<{ $inBar?: boolean }>`
   position: fixed;
   bottom: 68px; /* 하단 nav 위 (AddToCartButton 과 동일 기준) */
   left: 16px;
@@ -472,14 +517,25 @@ const CartBar = styled.button<{ $kiosk?: boolean }>`
        translateX 를 겹치면 등장 0.26초 동안 가로 중앙이 풀렸다가 튄다.
        left/right 를 양쪽에 두고 margin:auto 로 맞추면 애니메이션과 충돌하지 않고,
        max-width 가 화면보다 넓어도(키오스크 1056 vs 태블릿 768) 화면을 벗어나지 않는다. */
-    max-width: ${p => (p.$kiosk ? '1056px' : '568px')};
+    max-width: 568px;
     left: 16px;
     right: 16px;
     margin: 0 auto;
-    bottom: ${p => (p.$kiosk ? '104px' : '88px')};
-    ${p => p.$kiosk && `height: 68px; border-radius: 16px; font-size: 17px;`}
+    bottom: 88px;
   }
   &:active { filter: brightness(0.96); }
+
+  ${p => p.$inBar && `
+    &&& {
+      position: static;
+      width: 100%;
+      max-width: none;
+      height: var(--mo-bar-h, 72px);
+      margin: 0;
+      border-radius: 14px;
+      padding: 0 22px 0 20px;
+    }
+  `}
 `;
 
 const CartBarLeft = styled.span`
@@ -487,19 +543,19 @@ const CartBarLeft = styled.span`
 `;
 const CartQtyPill = styled.span<{ $bump?: boolean }>`
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 26px; height: 26px; padding: 0 7px;
+  min-width: var(--mo-qty-pill, 26px); height: var(--mo-qty-pill, 26px); padding: 0 7px;
   background: rgba(255, 255, 255, 0.22); border-radius: 9px;
-  font-size: 14px; font-weight: 700; line-height: 1;
+  font-size: var(--mo-qty-pill-font, 14px); font-weight: 700; line-height: 1;
   ${p => p.$bump && css`animation: ${qtyBump} 0.42s ease;`}
 `;
 const CartBarLabel = styled.span`
-  font-size: 15px; font-weight: 700;
+  font-size: var(--mo-bar-font, 15px); font-weight: 700;
 `;
 const CartBarRight = styled.span`
   display: flex; align-items: center; gap: 10px;
 `;
 const CartBarTotal = styled.span`
-  font-size: 15px; font-weight: 700;
+  font-size: var(--mo-bar-font, 15px); font-weight: 700;
 `;
 
 const LoadTrigger = styled.div`
@@ -528,17 +584,9 @@ const MenuPage: React.FC = () => {
   const kiosk = isKioskMode();
   // 보여주기 전용 메뉴판 — 담기·장바구니·주문 경로를 전부 닫는다(2026-09-10 Irene).
   const menuBoard = isMenuBoardMode();
-  // 옆 패널은 «키오스크 + 실제로 넓을 때»만. 태블릿 세로(768)는 메뉴 2열 + 패널 340px 이 안 들어가
-  // 카드가 눌리므로 한 단을 유지하고 종전대로 하단 카트 바를 쓴다.
-  const [isWide, setIsWide] = React.useState(
-    typeof window !== 'undefined' ? window.innerWidth >= 1024 : false
-  );
-  React.useEffect(() => {
-    const onResize = () => setIsWide(window.innerWidth >= 1024);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-  const splitView = kiosk && isWide;
+  // 옆 패널은 «키오스크 + 넓은 가로 화면»만 — 결제·상세와 같은 규칙 하나(useKioskSplit).
+  // 세로 태블릿은 폭이 넓어도 한 단 + 하단 카트 바(2026-10-10 Irene «세로일 수도 있는데», Fable 20261010 D4).
+  const splitView = useKioskSplit();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const {
@@ -1157,16 +1205,79 @@ const MenuPage: React.FC = () => {
     );
   }
 
+  // 키오스크 영업 상태 — 위 바 제목(매장 이름) 옆 작은 글자. 본문의 매장 이름 카드는 키오스크에서 그리지 않는다(Fable D4).
+  const storeStatusText = storeOpenState
+    ? [
+        storeOpenState.status === 'open'
+          ? t('common:storeBadge.openNow', { defaultValue: 'Open Now' })
+          : storeOpenState.status === 'break'
+            ? t('common:storeBadge.onBreak', { defaultValue: 'On Break' })
+            : t('common:storeBadge.closed', { defaultValue: 'Closed' }),
+        storeOpenState.hoursText,
+      ].filter(Boolean).join(' · ')
+    : undefined;
+
+  // 카테고리 탭 — 폰은 밑줄 탭, 키오스크 가로는 왼쪽 세로열(rail), 키오스크 세로는 알약(pill).
+  const tabVariant: 'rail' | 'pill' | undefined = kiosk ? (splitView ? 'rail' : 'pill') : undefined;
+  const categoryTabItems = (
+    <>
+      {showFeaturedTab && (
+        <CategoryTab
+          $variant={tabVariant}
+          active={selectedCategory === '__featured__' && !isSearchMode}
+          onClick={() => { setSelectedCategory('__featured__'); if (isSearchMode) { setIsSearchMode(false); setSearchQuery(''); } }}
+          style={!tabVariant && selectedCategory === '__featured__' && !isSearchMode ? { color: '#635BFF', borderBottomColor: '#635BFF' } : {}}
+        >
+          Featured
+        </CategoryTab>
+      )}
+      {categories.map(category => (
+        <CategoryTab
+          key={category.id}
+          $variant={tabVariant}
+          active={selectedCategory === category.id && !isSearchMode}
+          onClick={() => handleCategoryChange(category.id)}
+        >
+          {category.emoji} {category.name}
+        </CategoryTab>
+      ))}
+    </>
+  );
+  const railView = kiosk && splitView && !menuBoard;
+  const renderCartBar = (inBar: boolean) => (
+        <CartBar $inBar={inBar}
+          type="button"
+          onClick={handleCartClick}
+          aria-label={`${t('menu:cartBar.viewCart', 'View cart')} — ${cartQty} · ${formatCurrency(cartTotal, currency)}`}
+        >
+          <CartBarLeft>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z" stroke="currentColor" strokeWidth="2"/>
+              <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z" stroke="currentColor" strokeWidth="2"/>
+              <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <CartQtyPill $bump={cartBump}>{cartQty}</CartQtyPill>
+            <CartBarLabel>{t('menu:cartBar.viewCart', 'View cart')}</CartBarLabel>
+          </CartBarLeft>
+          <CartBarRight>
+            <CartBarTotal>{formatCurrency(cartTotal, currency)}</CartBarTotal>
+            <ChevronRight size={20} />
+          </CartBarRight>
+        </CartBar>
+  );
+
   return (
     <MobileLayout
-      title="Menu"
+      title={kiosk && currentStore ? currentStore.name : 'Menu'}
+      subtitle={kiosk ? storeStatusText : undefined}
       currentPage="menu"
       contentBg="#F4F6F8"
       cartItemCount={cartItems.length}
     >
-      <KioskSplit $split={splitView}>
+      <KioskSplit $split={splitView} $rail={railView}>
+      {railView && <CategoryRail aria-label="Categories">{categoryTabItems}</CategoryRail>}
       <KioskMain>
-      {currentStore && (
+      {currentStore && !kiosk && (
         <StoreHeader>
           <StoreInfo>
             <StoreName>{currentStore.name}</StoreName>
@@ -1219,10 +1330,10 @@ const MenuPage: React.FC = () => {
 
       <SearchSection>
         <SearchInputContainer>
-          <SearchIcon>🔍</SearchIcon>
+          {!kiosk && <SearchIcon>🔍</SearchIcon>}
           <SearchInput
             type="text"
-            placeholder="Search menu items..."
+            placeholder={kiosk ? t('menu:kiosk.searchMenu', 'Search menu') : 'Search menu items...'}
             value={searchQuery}
             onFocus={loadAllMenuItemsForSearch}
             onChange={(e) => {
@@ -1238,42 +1349,23 @@ const MenuPage: React.FC = () => {
         </SearchInputContainer>
       </SearchSection>
 
-      <CategoryTabs>
-        {showFeaturedTab && (
-          <CategoryTab
-            active={selectedCategory === '__featured__' && !isSearchMode}
-            onClick={() => { setSelectedCategory('__featured__'); if (isSearchMode) { setIsSearchMode(false); setSearchQuery(''); } }}
-            style={selectedCategory === '__featured__' && !isSearchMode ? { color: '#635BFF', borderBottomColor: '#635BFF' } : {}}
-          >
-            Featured
-          </CategoryTab>
-        )}
-        {categories.map(category => (
-          <CategoryTab
-            key={category.id}
-            active={selectedCategory === category.id && !isSearchMode}
-            onClick={() => handleCategoryChange(category.id)}
-          >
-            {category.emoji} {category.name}
-          </CategoryTab>
-        ))}
-      </CategoryTabs>
+      {!railView && <CategoryTabs $pills={tabVariant === 'pill'}>{categoryTabItems}</CategoryTabs>}
 
       {/* Featured Tab Content */}
       {selectedCategory === '__featured__' && !isSearchMode ? (
         <div>
           {mobileSettings.show_featured && featuredItems.length > 0 && (
             <div style={{ marginBottom: '24px' }}>
-              <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>Featured</div>
-              <MenuGrid $kiosk={kiosk}>
+              <div style={{ fontSize: 'var(--mo-section-title, 16px)', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>Featured</div>
+              <MenuGrid>
                 {featuredItems.map(renderMenuItemCard)}
               </MenuGrid>
             </div>
           )}
           {mobileSettings.show_popular && popularItems.length > 0 && (
             <div>
-              <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>Popular</div>
-              <MenuGrid $kiosk={kiosk}>
+              <div style={{ fontSize: 'var(--mo-section-title, 16px)', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>Popular</div>
+              <MenuGrid>
                 {popularItems.map(item => (
                   <MenuItemCard key={item.id} onClick={() => handleItemClick(item)}>
                     {item.is_set_menu && <SetBadge>SET</SetBadge>}
@@ -1304,7 +1396,7 @@ const MenuPage: React.FC = () => {
         </div>
       ) : displayItems.length > 0 ? (
         <>
-          <MenuGrid $kiosk={kiosk}>
+          <MenuGrid>
             {displayItems.map(renderMenuItemCard)}
           </MenuGrid>
 
@@ -1326,37 +1418,22 @@ const MenuPage: React.FC = () => {
       )}
 
       {/* 카트 바가 마지막 메뉴 항목을 가리지 않도록 하단 여백 확보 */}
-      {!splitView && cartItems.length > 0 && <div style={{ height: '72px' }} aria-hidden="true" />}
+      {!kiosk && !splitView && cartItems.length > 0 && <div style={{ height: '72px' }} aria-hidden="true" />}
+
+      {/* 키오스크 세로: 장바구니 바는 본문 안 sticky(KioskActionBar) — 고정 바가 메뉴를 가리지 않는다 */}
+      {kiosk && !menuBoard && !splitView && cartItems.length > 0 && (
+        <KioskActionBar>{renderCartBar(true)}</KioskActionBar>
+      )}
       </KioskMain>
 
       {/* 키오스크 넓은 화면: 장바구니를 오른쪽에 붙여 «한 화면»으로. 내용은 /cart 와 같은 컴포넌트다. */}
       {!menuBoard && splitView && (
-        <KioskCartAside qtyBadge={<CartQtyPill $bump={cartBump}>{cartQty}</CartQtyPill>} />
+        <KioskCartAside />
       )}
       </KioskSplit>
 
-      {/* 좁은 화면(폰·태블릿 세로)에서는 종전대로 하단 카트 바 */}
-      {!menuBoard && !splitView && cartItems.length > 0 && (
-        <CartBar $kiosk={kiosk}
-          type="button"
-          onClick={handleCartClick}
-          aria-label={`${t('menu:cartBar.viewCart', 'View cart')} — ${cartQty} · ${formatCurrency(cartTotal, currency)}`}
-        >
-          <CartBarLeft>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z" stroke="currentColor" strokeWidth="2"/>
-              <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z" stroke="currentColor" strokeWidth="2"/>
-              <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <CartQtyPill $bump={cartBump}>{cartQty}</CartQtyPill>
-            <CartBarLabel>{t('menu:cartBar.viewCart', 'View cart')}</CartBarLabel>
-          </CartBarLeft>
-          <CartBarRight>
-            <CartBarTotal>{formatCurrency(cartTotal, currency)}</CartBarTotal>
-            <ChevronRight size={20} />
-          </CartBarRight>
-        </CartBar>
-      )}
+      {/* 좁은 화면(폰·태블릿 세로)에서는 종전대로 하단 카트 바 — 키오스크는 위 KioskActionBar */}
+      {!kiosk && !menuBoard && !splitView && cartItems.length > 0 && renderCartBar(false)}
     </MobileLayout>
   );
 };

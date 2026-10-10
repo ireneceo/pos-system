@@ -803,6 +803,7 @@
   "settingsPage.mobileOrderAccessHint": "손님은 이 URL을 방문하거나 아래 QR을 스캔하여 주문을 시작합니다. 인쇄용 모드별 QR은 Store Settings → Quick-entry QR codes 에서 다운로드하세요.",
   "settingsPage.kioskAccess": "매장 태블릿 (키오스크)",
   "settingsPage.kioskAccessHint": "키오스크 = 손님이 직접 주문하는 매장 태블릿입니다. 위에서 그 태블릿을 등록하세요 — 등록된 태블릿에만 Kiosk 결제수단과 카드단말기가 열립니다. 등록하지 않은 기기로 이 주소를 열면 화면만 넓어지고 결제수단은 모바일 주문과 같습니다. 90초 동안 조작이 없으면 장바구니를 비웁니다. 테이블 QR을 스캔한 손님 폰은 영향받지 않습니다.",
+  "settingsPage.kioskTab.urlMobileColumnNote": "이 주소로 연 화면은 결제수단이 Mobile 열을 따릅니다. Kiosk 열은 위에서 등록한 태블릿에만 적용됩니다.",
   "settingsPage.copyUrl": "URL 복사",
   "settingsPage.urlCopied": "URL 복사됨",
   "settingsPage.openQrManager": "QR 관리 페이지로",
