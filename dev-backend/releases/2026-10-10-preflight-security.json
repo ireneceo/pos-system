@@ -1,0 +1,68 @@
+{
+  "tag": "preflight-security",
+  "sw_version": "5.90-preflight-security-20261010",
+  "date": "2026-10-10",
+  "in_progress": "none",
+  "completed": [
+    "운영 전 보안 0단 — 손님(로그인 없는) 주문은 결제 상태를 직접 못 정하고 서버가 메뉴·옵션·쿠폰·포인트로 금액을 다시 계산 · 다른 매장 주문 열람·수정 차단(11곳) · 사용자 수정에서 소속·역할 승격 차단 · 첨부 삭제 경로 넘어가기 차단 · 손님 주문 목록·취소는 손님 본인만 · 손님 정보는 관할 매장만 · 주문 추적 화면이 같은 와이파이 주문 한도를 쓰지 않음",
+    "손님 결제 화면 합계 공식이 POS 와 같게(포장비에도 세금·서비스차지, 포인트는 세금 뒤)",
+    "판매자가 판매 중지한 상품은 매장 발주에 «Discontinued» 표시 + 담기·만들기·제출 서버 차단",
+    "재고아이템 삭제 «사용 중» 기준 하나로(재고 0 빈 줄 때문에 막히지 않음) · 매장 재료 화면에 브랜드 재료 공급처 표시",
+    "발주 Supplier Catalog 같은 상품 2줄·브랜드명 → 1줄·회사명",
+    "청구서 상세 창에서 공급업체 인보이스 일 전부(올리기·다시 올리기·보기·가격 대조·총액 수정) — 매장 관리자·오너·브랜드·푸드코트 · 오너 가격 대조 · 브랜드 원가 = 마지막 매입가 · 브랜드 발주 정비(수령 파손·부족 반품 기록, 본사 창고 부족 추천)",
+    "판매자 «품목별 발송»(나눠 보내기 · Ship remaining · 매장 발주 상세 품목별 Shipped)",
+    "재고→발주→원가 묶음 0~3(실사 손실 단위 · 레시피 원가 단위 환산 · 폐기 장부 · 판매 차감 장부 주문 번호 · 원가 기록 칸)",
+    "외부 공급업체 월별 정산서 · 발주 «직원식» 구분 · 승인 메일 문구",
+    "판매자 배송 지역별 설정(지역마다 무료배송 기준·배송비)",
+    "청구서 권한 경계(낼 쪽은 0원 확정만 · 삭제는 발행자·관리자만) · 하드웨어 청구서 낼 사람 보정 · 브랜드 메뉴 1:1 연결 잠금",
+    "브랜드·푸드코트 청구서 «To Confirm» 탭 · 업무 버튼 색 규칙 · 청구서 목록 Actions 칸 통일 · 브랜드 결제 설정 = 계정 하나",
+    "K-DINE 재료 수정 창에 «분류를 골라야 저장» 안내"
+  ],
+  "issues": [
+    "로그인 없는 손님 주문이 결제완료·임의 금액으로 들어갈 수 있었다(S1)",
+    "매장 없는 계정이 남의 매장 주문을 열람·수정할 수 있었다(S4) · 자기 소속을 바꾸거나 승격할 수 있었다(S2)",
+    "손님 주문 추적 화면 폴링이 같은 와이파이 손님들의 주문 한도를 소진했다(L1)",
+    "판매자가 끈 상품도 매장 My Stock 발주에서 그대로 주문됐다",
+    "재고아이템이 매장의 재고 0 빈 줄 때문에 삭제되지 않았다(K-Sundubu)"
+  ],
+  "upcoming": [
+    "1단(운영 첫 2주, Fable 판정 §3): 익명 주문 points_used + 남의 customer_id 차단(손님 토큰 필수) · /api/mobile/order 칸 채우기 또는 닫기 · 고객 화면 전화 조회 401 · 익명 printed_offline·품절/판매시간 · 1단 나머지(S8·S10~S15·L2~L4·E2) · npm 의존성",
+    "2단: 요금제·좌측 메뉴(Q4 운영이 정답 · Q5 Pro 이상) — 설계 Fable 1회",
+    "GHL DuitNow 실단말기 확인(GHL 답 대기)"
+  ],
+  "behavior_changes": [
+    "익명 손님 주문은 항상 «결제 대기» 로 저장되고 금액은 서버 계산값(화면이 보낸 금액 무시)",
+    "매장 접근권 없는 계정의 남의 주문 GET/PATCH 는 403 · 손님 주문 목록·취소는 손님 토큰 없으면 401",
+    "주문 PATCH 는 허용 칸 14개만 반영",
+    "손님 결제 화면 합계가 바뀔 수 있음(포장비 있는 매장 — 이제 POS 와 같은 금액)",
+    "판매 중지 상품이 들어간 발주는 제출·생성 시 400 SELLER_PRODUCT_INACTIVE",
+    "주문 추적 화면은 완료·취소 뒤 폴링을 멈춤",
+    "SW 버전이 올라 매장 화면이 새 번들로 한 번 새로고침됨"
+  ],
+  "check_areas": [
+    "모바일 주문(QR → 메뉴 → 장바구니 → 결제 → 추적) — 합계 = 영수증",
+    "POS·Live Orders·Floor Plan 결제·주문 수정(PATCH)",
+    "첫 영업 주방 티켓 1장 눈 확인(print-guard 등록 조건)",
+    "발주 만들기·제출(판매 중지 표시) · 재고아이템 삭제",
+    "청구서 상세 창(인보이스 올리기·대조) · 판매자 품목별 발송 · 외부 공급업체 정산서",
+    "직원·사용자 수정 화면(소속·역할)"
+  ],
+  "verification": {
+    "api": "health-check 전체 통과(verify-all 2026-10-10) · security 84/84 · 새 계약: 보안 12 · invoice-boundary 9 · po 9 · 외부 SOA 10 등 각 방 기록",
+    "fault_injection": "보안 0단 9/9+재계산 1 · 판매중지 2+1 · 청구서 경계 6종 · 외부 SOA 6종 · 재고 묶음 4건 — 전부 빨강→원복 초록(pm2 재시작 뒤)",
+    "browser": "mount sweep 크래시 0 · e2e 모바일 주문 3회 5/5 · 실브라우저 손님 화면 40.28 = DB 40.28 · 각 방 클릭 흐름",
+    "printer": "인쇄 줄 0 변경(Fable 직접 grep) · print-guard bless(Irene Q2 «권고대로») · 실프린터 확인 = 배포 후 첫 영업 티켓 1회",
+    "migrations": "deploy 레지스트리 신규 10개(멱등): invoice-external-document · seller-delivery-zones · brand-account-payment-settings · hardware-invoice-payer · ledger-cost-columns · po-item-shipped-at · products-brand-menu-unique · staff-meal-category-flag · staff-meal-ingredients-20261007 · stock-take-bg-warehouse",
+    "sw_version": "5.90-preflight-security-20261010",
+    "fable_note": "backups/fable-pending/fable-verdict-20261009-preflight-gate.md (PASS 조건부 — 미배포 묶음과 한 번에 배포 Q1-a, 이후 허용 변경 = SW bump·배포 기록·session-state, 2026-10-10 지문 재계산으로 코드 동일 확인) · 묶음 각 게이트: seller-product-inactive-gate · stock-item-delete-deadend-gate · invoice-page-actions-gate · invoice-owner-reconcile-brand-cost-gate (10-09) · ext-soa-staffmeal-gate · inventory-ledger-gate · inventory-b23-gate · partial-shipment-gate · seller-delivery-zones-gate (10-08) · invoice-payer-structure-gate · payment-settings-account (10-07)"
+  },
+  "notes": [
+    "🔒 orders-crud.js 변경(S1·S4 · 주문 생성 결제 원장 1회) — 인쇄 줄 0, Irene Q2 승인 후 Fable bless",
+    "앱 링크(개발용 APK)는 웹 배포와 무관 — 정식 앱 변경 없음"
+  ],
+  "irene_actions_after_deploy": [
+    "배포 직전 Irene 터미널: E1 backups/preflight-audit-20261009/prod-nginx-realip.sh · E3 prod-nginx-origin-lock.sh",
+    "Q6 fix-owner-basic-krw.js --apply (운영 Owner Basic 원화 연간 3,900,000 → 390,000, 영향행 1) — 먼저 원화 가입 오너 유무 확인",
+    "배포 후 /운영검증 — 익명 조작가 주문 → 서버 값·pending / 남의 주문 403 / 익명 목록 401 / 추적 70회 429 0 / 첫 주방 티켓 눈 확인"
+  ]
+}
