@@ -912,5 +912,23 @@
     "otherUnset": "Kawasan lain → caj penghantaran belum ditetapkan",
     "incomplete": "Zon disimpan setelah ada nama, caj dan sekurang-kurangnya satu negeri.",
     "saveFailed": "Tidak dapat menyimpan zon penghantaran"
-  }
+  },
+  "similarName.title": "Item serupa sudah wujud",
+  "similarName.intro": "Adakah ia salah satu daripada ini? Gunakan yang sedia ada supaya resipi, pesanan dan stok kekal dalam satu baris. Jika benar-benar berbeza, cipta juga.",
+  "similarName.kindStockItem": "Item stok",
+  "similarName.kindProduct": "Produk",
+  "similarName.kindBrandIngredient": "Bahan jenama",
+  "similarName.inactive": "tidak aktif",
+  "similarName.typo": "({{pairs}} — beza satu huruf)",
+  "similarName.ruleSameName": "Nama sama",
+  "similarName.ruleParen": "Hanya teks dalam kurungan berbeza",
+  "similarName.ruleSameWords": "Perkataan sama — hanya susunan atau saiz berbeza: {{words}}",
+  "similarName.ruleContains": "Mengandungi semua perkataan nama lain: {{words}}",
+  "similarName.ruleSuggest": "Kelihatan sama selepas saiz dibuang",
+  "similarName.createAnyway": "Cipta juga",
+  "similarName.saveAnyway": "Simpan juga",
+  "similarName.useOpen": "Buka ini",
+  "similarName.useSellAsIs": "Jual item stok ini",
+  "similarName.useProductInstead": "Guna produk ini",
+  "similarName.productInsteadInfo": "\"{{name}}\" sudah menjadi produk yang anda jual. Jangan cipta item stok untuknya — pilih produk itu dalam resipi."
 }

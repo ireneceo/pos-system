@@ -912,5 +912,23 @@
     "otherUnset": "Other areas → delivery fee not set",
     "incomplete": "A zone is saved once it has a name, a fee and at least one state.",
     "saveFailed": "Could not save delivery zones"
-  }
+  },
+  "similarName.title": "Something similar already exists",
+  "similarName.intro": "Is it one of these? Use the existing one to keep recipes, orders and stock on one line. If it is really different, create it anyway.",
+  "similarName.kindStockItem": "Stock item",
+  "similarName.kindProduct": "Product",
+  "similarName.kindBrandIngredient": "Brand ingredient",
+  "similarName.inactive": "inactive",
+  "similarName.typo": "({{pairs}} — one letter apart)",
+  "similarName.ruleSameName": "Same name",
+  "similarName.ruleParen": "Only the text in brackets differs",
+  "similarName.ruleSameWords": "Same words — only order or size differs: {{words}}",
+  "similarName.ruleContains": "Contains every word of the other name: {{words}}",
+  "similarName.ruleSuggest": "Looks alike once sizes are removed",
+  "similarName.createAnyway": "Create anyway",
+  "similarName.saveAnyway": "Save anyway",
+  "similarName.useOpen": "Open this",
+  "similarName.useSellAsIs": "Sell this stock item",
+  "similarName.useProductInstead": "Use this product",
+  "similarName.productInsteadInfo": "\"{{name}}\" is already a product you sell. Don't create a stock item for it — pick the product in recipes instead."
 }

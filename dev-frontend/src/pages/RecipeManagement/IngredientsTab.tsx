@@ -23,6 +23,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { costPerBaseText } from '../../utils/costDisplay';
 import { getAuthToken } from '../../utils/auth';
+import SimilarNameDialog, { SimilarCandidate, candidatesFrom409 } from '../../components/UI/SimilarNameDialog';
 interface IngredientsTabProps {
   brandId: number | null;
   restaurantId?: number | null;
@@ -538,6 +539,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [initialFormData, setInitialFormData] = useState(EMPTY_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // 브랜드 경로만 — 비슷한 이름이 있으면 서버가 409 로 묻는다(2026-10-11 similar-name-guard). 매장(RA) 경로는 이 상태를 쓰지 않는다.
+  const [brandSimilar, setBrandSimilar] = useState<{ open: boolean; candidates: SimilarCandidate[] }>({ open: false, candidates: [] });
+  const brandForceRef = useRef(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; ingredientId: number | null; ingredientName: string }>({
     isOpen: false,
@@ -1000,7 +1004,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       const method = selectedIngredient ? 'PUT' : 'POST';
 
       // Brand context: BG/Brand Manager use brand path
-      if ((user?.role === 'Brand General' || user?.role === 'Brand Manager') && brandId) {
+      const isBrandCtx = (user?.role === 'Brand General' || user?.role === 'Brand Manager') && !!brandId;
+      const brandForce = isBrandCtx && brandForceRef.current;
+      brandForceRef.current = false;
+      if (isBrandCtx) {
         url = selectedIngredient
           ? `/api/brands/${brandId}/ingredients/${selectedIngredient.id}`
           : `/api/brands/${brandId}/ingredients`;
@@ -1022,6 +1029,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          ...(brandForce ? { force: true } : {}),
           code: formData.code,
           name: formData.name,
           image_url: formData.image_url || null,
@@ -1045,6 +1053,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       if (response.ok && data?.success) {
         handleCloseModal();
         fetchIngredients();
+      } else if (isBrandCtx && response.status === 409 && (data?.error?.code === 'SIMILAR_EXISTS' || data?.code === 'SIMILAR_EXISTS')) {
+        setBrandSimilar({ open: true, candidates: candidatesFrom409(data) });
+        setIsSubmitting(false);
       } else {
         const msg = data?.error || data?.message || `Save failed (HTTP ${response.status})`;
         console.error('Ingredient save failed:', response.status, text.slice(0, 300));
@@ -1774,6 +1785,17 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       </Modal>
 
       {/* Delete Confirmation Modal */}
+      <SimilarNameDialog
+        isOpen={brandSimilar.open}
+        candidates={brandSimilar.candidates}
+        onCreateAnyway={() => {
+          setBrandSimilar({ open: false, candidates: [] });
+          brandForceRef.current = true;
+          handleSubmit({ preventDefault: () => {} } as unknown as React.FormEvent);
+        }}
+        onCancel={() => setBrandSimilar({ open: false, candidates: [] })}
+        createLabel={selectedIngredient ? (t('common:similarName.saveAnyway', 'Save anyway') as string) : undefined}
+      />
       <ConfirmModal
         isOpen={deleteConfirm.isOpen}
         title="Delete Ingredient"

@@ -912,5 +912,23 @@
     "otherUnset": "그 외 지역 → 배송비 미설정",
     "incomplete": "지역 이름·배송비·주 하나 이상을 넣으면 저장됩니다.",
     "saveFailed": "배송 지역을 저장하지 못했습니다"
-  }
+  },
+  "similarName.title": "비슷한 것이 이미 있어요",
+  "similarName.intro": "이 중 하나인가요? 이미 있는 것을 쓰면 레시피·발주·재고가 한 줄로 이어집니다. 정말 다른 것이면 그래도 새로 만드세요.",
+  "similarName.kindStockItem": "재고아이템",
+  "similarName.kindProduct": "상품",
+  "similarName.kindBrandIngredient": "브랜드 재료",
+  "similarName.inactive": "꺼짐",
+  "similarName.typo": "({{pairs}} — 한 글자 차이)",
+  "similarName.ruleSameName": "이름이 같습니다",
+  "similarName.ruleParen": "괄호 안 설명만 다릅니다",
+  "similarName.ruleSameWords": "같은 낱말로 된 이름입니다(순서·규격만 다름): {{words}}",
+  "similarName.ruleContains": "이 이름의 낱말이 전부 들어 있습니다: {{words}}",
+  "similarName.ruleSuggest": "규격을 빼면 비슷합니다",
+  "similarName.createAnyway": "그래도 새로 만들기",
+  "similarName.saveAnyway": "그래도 저장",
+  "similarName.useOpen": "이걸 열기",
+  "similarName.useSellAsIs": "이 재고아이템을 그대로 팔기",
+  "similarName.useProductInstead": "이 상품을 쓰기",
+  "similarName.productInsteadInfo": "\"{{name}}\" 은(는) 이미 파는 상품입니다. 재고아이템을 만들지 말고 레시피에서 상품을 고르세요."
 }

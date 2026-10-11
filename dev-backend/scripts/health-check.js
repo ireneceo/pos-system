@@ -4689,6 +4689,75 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     });
   }
 
+  // ── 비슷한 이름 묻기 (2026-10-11 Fable 판정 fable-verdict-20261011-similar-name-guard §5-7 · Irene «권고대로») ──
+  //   Irene «이거 있는데 그래도 만들거면 만들어. 라는 형태 … 틀리게 재등록하고 연결 엉망 만드는 거 제지해야 해»
+  //   N-a 규칙 표(DB 없음): 반드시 잡는 쌍 · 반드시 안 잡는 쌍(Carlos/Calose 는 «못 잡음» 으로 고정 — 바뀌면 판정 다시)
+  test('inventory', '비슷한 이름: 규칙 표 — 잡을 쌍 8 · 안 잡을 쌍 4 · 규격만 다른 형제는 «같은 낱말»로만', async () => {
+    const { compareNames } = require('../utils/nameSimilarity');
+    const must = [['Cooking Oil', 'Cooking Oil(식용유)', 'paren_only'], ['Garlic Peeled', 'Peeled Garlic(깐마늘)', 'same_words'],
+      ['K-Kimchi', 'K-Kimchi Sauce for Fried Rice 1kg', 'contains'], ['Yukgaejang beef', 'K-Yukgaejang Beef 1kg', 'same_words'],
+      ['Japanesse Cucumber', 'Japanese Cucumber(Timun Jepun)', 'same_words'], ['Glass Noodle', 'Glass Noddle 1kg', 'same_words'],
+      ['Glass Noodle', 'Glass Noodle (당면) 1kg', 'same_words'], ['Rice-Jasmin cal fresh 5kg/pkt', 'Rice Jasmin cal fresh', 'same_words']];
+    const mustNot = [['Rice', 'Rice Cake'], ['Chicken Breast', 'Chicken Chop'], ['Rice Carlos', 'Rice_Calose'], ['Sunflower & Canola Oil', 'Cooking Oil']];
+    const bad = [];
+    for (const [a, b, rule] of must) { const m = compareNames(a, b); if (!m || m.rule !== rule) bad.push(`잡아야 함 ${a}↔${b} → ${m && m.rule}`); }
+    for (const [a, b] of mustNot) { const m = compareNames(a, b); if (m) bad.push(`안 잡아야 함 ${a}↔${b} → ${m.rule}`); }
+    const sib = compareNames('Paper Bowl Plain Kraft 850CC', 'Paper Bowl Plain Kraft 780CC');
+    if (!sib || sib.rule !== 'same_words') bad.push(`형제 규격 → ${sib && sib.rule}`);
+    if (bad.length) console.log(c.red(`      ↳ ${bad.join(' · ')}`));
+    return bad.length === 0;
+  });
+
+  //   N-b 재고아이템 등록: 같은 주인 상품이 있으면 409 · 후보 kind=brand_product · force 로 201
+  //   N-c 판매 상품 등록: 같은 주인 재고아이템이 있으면 409 · 후보 kind=stock_item
+  //   N-d 매장(레스토랑) 재료 등록은 묻지 않는다(Irene «레스토랑에 영향 미칠 것 같은 건 하지 말고» · Q1) → 201
+  test('inventory', '비슷한 이름: 재고아이템·상품 등록은 409 로 묻고 force 로 통과 · 매장 재료 등록은 무접촉', async () => {
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const Q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const bg = (await Q("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1"))[0];
+    const store = bg && (await Q('SELECT r.id FROM restaurants r JOIN brands b ON b.id = r.brand_id WHERE b.owner_id = :o AND r.is_demo = 1 ORDER BY r.id LIMIT 1', { o: bg.id }))[0];
+    const ra = store && (await Q("SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = :r AND is_active = 1 LIMIT 1", { r: store.id }))[0];
+    if (!bg || !store || !ra) { console.log(c.gray('      (건너뜀: 데모 BG/매장/RA 없음 — 계약 미검증)')); return true; }
+    const jwtLib = require('jsonwebtoken');
+    const bgAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const raAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const tag = 'Zqx' + Math.random().toString(36).slice(2, 7);
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const made = { bp: [], pi: [], ing: [] };
+    try {
+      const bp = await M.BrandProduct.create({ owner_user_id: bg.id, name: `${tag} Kimchi Sauce 1kg`, unit: 'kg', base_quantity: 1, unit_price: 27.9,
+        is_active: true, distribution_mode: 'all', product_kind: 'stock', sku: 'ZZN-' + Math.random().toString(36).slice(2, 8) }); made.bp.push(bp.id);
+      // N-b
+      const s1 = await request('POST', '/product-ingredients', { name: `${tag} Kimchi`, unit: 'g', base_quantity: 1000, unit_cost: 27.9 }, bgAuth);
+      if (s1.status !== 409 || s1.body?.error?.code !== 'SIMILAR_EXISTS') return fail(`N-b 묻기 ${s1.status} ${JSON.stringify(s1.body).slice(0, 160)}`);
+      const cand = (s1.body.error.candidates || []).find((x) => x.kind === 'brand_product' && x.id === bp.id);
+      if (!cand || cand.rule !== 'contains') return fail(`N-b 후보 ${JSON.stringify(s1.body.error.candidates).slice(0, 200)}`);
+      const s2 = await request('POST', '/product-ingredients', { name: `${tag} Kimchi`, unit: 'g', base_quantity: 1000, unit_cost: 27.9, force: true }, bgAuth);
+      if (s2.status !== 201 || !s2.body?.data?.id) return fail(`N-b force ${s2.status}`);
+      made.pi.push(s2.body.data.id);
+      // N-c — 방금 만든 재고아이템과 비슷한 상품
+      const p1 = await request('POST', '/brand-products', { name: `${tag} Kimchi 500g`, unit: 'g', base_quantity: 500, unit_price: 10 }, bgAuth);
+      if (p1.status !== 409 || !(p1.body?.error?.candidates || []).some((x) => x.kind === 'stock_item' && x.id === s2.body.data.id))
+        return fail(`N-c ${p1.status} ${JSON.stringify(p1.body).slice(0, 200)}`);
+      // N-d — 매장 재료는 같은 이름이어도 묻지 않는다
+      const cat = (await Q('SELECT id FROM ingredient_categories WHERE restaurant_id = :r LIMIT 1', { r: store.id }))[0];
+      const r1 = await request('POST', `/restaurants/${store.id}/ingredients`, { name: `${tag} Kimchi`, unit: 'g', base_quantity: 1000, unit_cost: 5,
+        ingredient_category_id: cat ? cat.id : null }, raAuth);
+      const rid = r1.body?.data?.id || r1.body?.data?.ingredient?.id;
+      if (rid) made.ing.push(rid);
+      if (r1.status === 409) return fail('N-d 매장 재료 등록이 409 로 막힘 — 레스토랑 무접촉 위반');
+      if (![200, 201].includes(r1.status) || !rid) return fail(`N-d 매장 재료 ${r1.status} ${JSON.stringify(r1.body).slice(0, 160)}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      const X = (s, r) => sequelize.query(s, { replacements: r }).catch(() => {});
+      await X('DELETE FROM ingredients WHERE name LIKE :t', { t: tag + '%' });
+      await X('DELETE FROM product_ingredients WHERE name LIKE :t', { t: tag + '%' });
+      await X('DELETE FROM brand_products WHERE name LIKE :t', { t: tag + '%' });
+    }
+  });
+
   // ④: Stock Item 을 고치면 거울이 따라온다. 동기화를 빼면 이름이 안 따라와 실패한다.
   test('inventory', '통합④: Stock Item 이름 변경 → 거울이 따라온다 (한 방향 동기화)', async () => {
     const { sequelize } = require('../config/database');

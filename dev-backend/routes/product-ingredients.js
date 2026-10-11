@@ -579,6 +579,14 @@ router.post('/', async (req, res) => {
       manual_daily_usage
     } = req.body;
 
+    // 비슷한 이름이 이미 있으면 먼저 묻는다(재고아이템·판매 상품·브랜드 재료를 가로질러) — 막지 않는다, force 로 통과
+    //   (2026-10-11 Fable 판정 fable-verdict-20261011-similar-name-guard · Irene «이거 있는데 그래도 만들거면 만들어. 라는 형태»)
+    if (req.bgOwnerId != null && req.body?.force !== true) {
+      const { findSimilarNames, similarBody } = require('../services/similarNameGuard');
+      const candidates = await findSimilarNames({ ownerUserId: req.bgOwnerId, name, kind: 'stock_item' });
+      if (candidates.length) return res.status(409).json(similarBody(candidates));
+    }
+
     // 코드 자동 생성 (BG 소유 내 카운트)
     const { generateCode, codeTakenResponse } = require('../utils/codeGenerator');
     const scopeWhere = req.bgOwnerId != null ? { owner_user_id: req.bgOwnerId } : {};
@@ -664,6 +672,16 @@ router.put('/:id', async (req, res) => {
     for (const field of updateFields) {
       if (req.body[field] !== undefined) {
         updateData[field] = req.body[field];
+      }
+    }
+
+    // 이름을 바꿀 때도 같은 «비슷한 이름 묻기»(자기 자신 제외) — 2026-10-11 similar-name-guard
+    if (updateData.name !== undefined && req.body?.force !== true) {
+      const { normalizeName } = require('../utils/nameSimilarity');
+      if (normalizeName(updateData.name) !== normalizeName(ingredient.name)) {
+        const { findSimilarNames, similarBody } = require('../services/similarNameGuard');
+        const candidates = await findSimilarNames({ ownerUserId: ingredient.owner_user_id, name: updateData.name, kind: 'stock_item', excludeId: ingredient.id });
+        if (candidates.length) return res.status(409).json(similarBody(candidates));
       }
     }
 

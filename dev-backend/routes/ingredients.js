@@ -344,6 +344,16 @@ router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBr
   }
 });
 
+/** 브랜드 재료 «비슷한 이름» 후보 → 409 본문(없으면 null). 비교는 그 브랜드 주인의 세 목록(services/similarNameGuard). */
+async function similarForBrand(brandId, name, excludeId) {
+  const { Brand } = require('../models');
+  const brand = await Brand.findByPk(brandId, { attributes: ['id', 'owner_id'] });
+  if (!brand || !brand.owner_id) return null;
+  const { findSimilarNames, similarBody } = require('../services/similarNameGuard');
+  const candidates = await findSimilarNames({ ownerUserId: brand.owner_id, name, kind: 'brand_ingredient', excludeId, brandIds: [brand.id] });
+  return candidates.length ? similarBody(candidates) : null;
+}
+
 /**
  * POST /api/brands/:brandId/ingredients
  * 브랜드 재료 생성
@@ -362,6 +372,12 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
     const { brandId } = req.params;
     const brand_id = brandId;
     const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
+
+    // 비슷한 이름 묻기 — 브랜드 재료·재고아이템·판매 상품을 가로질러(2026-10-11 similar-name-guard). force 로 통과
+    if (req.body.force !== true) {
+      const resp = await similarForBrand(brandId, name, null);
+      if (resp) return res.status(409).json(resp);
+    }
 
     // Auto-generate code if not provided
     const { codeTakenResponse } = require('../utils/codeGenerator');
@@ -454,6 +470,15 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
             recipe_lines: Number(recipeLines)
           }
         });
+      }
+    }
+
+    // 이름을 바꿀 때 비슷한 이름 묻기(자기 자신 제외 · 거울 줄은 위에서 이미 막힘) — 2026-10-11 similar-name-guard
+    if (name !== undefined && req.body.force !== true && ingredient.owner_type === 'brand') {
+      const { normalizeName } = require('../utils/nameSimilarity');
+      if (normalizeName(name) !== normalizeName(ingredient.name)) {
+        const resp = await similarForBrand(ingredient.brand_id, name, ingredient.id);
+        if (resp) return res.status(409).json(resp);
       }
     }
 

@@ -12,6 +12,7 @@ import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDr
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
+import SimilarNameDialog, { SimilarCandidate, candidatesFrom409 } from '../../components/UI/SimilarNameDialog';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
 import { SellerSpecSummary, useSellerSpecCopy } from '../../components/Common/SellerProductSpecGuide';
@@ -664,9 +665,10 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   // 2026-08-22 백엔드에 소프트 중복 가드가 들어갔는데 화면이 force 를 안 보내,
   // 괄호 안 설명만 다른 **정당한 변형**(종이볼 L/M/S, 850CC vs 780CC)을 아예 등록할 수
   // 없었다. 사용자에게는 원인 모를 실패로 보였다.
+  // 2026-10-11: 이름 목록 확인창 → 공용 SimilarNameDialog(재고아이템까지 가로질러 · 줄마다 이유·«이걸로 쓰기»)
   const [similarConfirm, setSimilarConfirm] = useState<{
-    open: boolean; names: string[]; retry: null | (() => void);
-  }>({ open: false, names: [], retry: null });
+    open: boolean; candidates: SimilarCandidate[]; retry: null | (() => void);
+  }>({ open: false, candidates: [], retry: null });
 
   // 프로덕트 창에서 **재고아이템까지 한 번에** (2026-09-15 Irene 「각각 등록하고 연결하고 뭐하는 짓이냐고」).
   // ⛔ 자동 생성 금지 — 이 체크를 켰을 때만 만든다. 프로덕트 저장이 재고아이템을 자동 복제하던 것이
@@ -736,7 +738,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     await submitProduct(false);
   };
 
-  const submitProduct = async (force: boolean) => {
+  // linkStockItemId: 비슷한 이름 창에서 «이 재고아이템을 그대로 팔기»를 고른 경우 — 그 재고아이템을 연결해 등록한다(TRADE_STRUCTURE §2-1)
+  const submitProduct = async (force: boolean, linkStockItemId?: number) => {
     setFormError(null);
 
     if (!formData.name.trim()) {
@@ -783,13 +786,13 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           is_set_menu: formData.is_set_menu,
           set_items: formData.is_set_menu ? formData.set_items : null,
           set_display_order: parseInt(formData.set_display_order) || 0,
-          product_recipe_id: formData.product_recipe_id,
+          product_recipe_id: linkStockItemId ? null : formData.product_recipe_id,
           distribution_mode: formData.distribution_mode,
           brand_ids: formData.distribution_mode === 'specific_brands' ? formData.brand_ids : [],
           restaurant_ids: formData.distribution_mode === 'specific_restaurants' ? formData.restaurant_ids : [],
           option_group_ids: formData.option_group_ids,
           // 레시피 또는 재고아이템, 둘 중 하나만 보낸다 (서버가 둘 다 오면 400 LINK_EXCLUSIVE).
-          product_ingredient_id: formData.product_recipe_id ? null : (formData.product_ingredient_id || null),
+          product_ingredient_id: linkStockItemId || (formData.product_recipe_id ? null : (formData.product_ingredient_id || null)),
           // 사용자가 "그래도 새로 등록"을 고른 경우에만 실린다. 하드 중복(SKU·이름 완전일치)은
           // force 로도 통과하지 않는다 — 그건 되돌릴 수 없이 명백한 중복이기 때문.
           ...(force ? { force: true } : {})
@@ -799,10 +802,10 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
       const data = await response.json();
 
       if (data.success) {
-        setSimilarConfirm({ open: false, names: [], retry: null });
+        setSimilarConfirm({ open: false, candidates: [], retry: null });
         // 재고아이템까지 한 번에 — 체크를 켠 경우만. 같은 이름이 있으면 창을 닫지 않고 먼저 물어본다.
         const savedId = data.data?.id || editingProduct?.id;
-        if (createStockItem && savedId && !formData.product_ingredient_id && !formData.product_recipe_id) {
+        if (createStockItem && savedId && !linkStockItemId && !formData.product_ingredient_id && !formData.product_recipe_id) {
           const ok = await linkStockItem(savedId, {
             name: formData.name.trim(),
             unit: formData.unit || null,
@@ -814,11 +817,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         fetchProducts();
       } else if (response.status === 409 && data?.error?.code === 'SIMILAR_EXISTS') {
         // 차단이 아니라 확인이다 — 사람이 "같은 물건인지" 판단한다.
-        const names: string[] = [
-          ...(data.error.similar || []).map((r: any) => r.name),
-          ...(data.error.suggestions || []).map((r: any) => r.name),
-        ];
-        setSimilarConfirm({ open: true, names, retry: () => submitProduct(true) });
+        setSimilarConfirm({ open: true, candidates: candidatesFrom409(data), retry: () => submitProduct(true) });
       } else if (response.status === 409 && data?.error?.existing) {
         // 하드 중복 — 이미 있는 상품이 무엇인지 이름·SKU 로 알려 준다(막연한 실패 금지).
         const ex = data.error.existing;
@@ -1883,23 +1882,24 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         confirmText="Delete"
         cancelText="Cancel"
       />
-      <ConfirmModal
+      <SimilarNameDialog
         isOpen={similarConfirm.open}
-        title="Similar product already exists"
-        message={
-          `${similarConfirm.names.slice(0, 5).map((n) => `• ${n}`).join('\n')}`
-          + `${similarConfirm.names.length > 5 ? `\n… and ${similarConfirm.names.length - 5} more` : ''}`
-          + '\n\nRegister this as a new product anyway?'
-        }
-        onConfirm={() => {
+        candidates={similarConfirm.candidates}
+        actionLabel={(c) => (c.kind === 'stock_item' && !editingProduct ? (t('common:similarName.useSellAsIs', 'Sell this stock item') as string)
+          : c.kind === 'brand_product' && products.some((p) => p.id === c.id) ? (t('common:similarName.useOpen', 'Open this') as string) : null)}
+        onUse={(c) => {
+          setSimilarConfirm({ open: false, candidates: [], retry: null });
+          if (c.kind === 'stock_item') { submitProduct(true, c.id); return; }
+          const existing = products.find((p) => p.id === c.id);
+          if (existing) { handleCloseModal(); handleOpenModal(existing); }
+        }}
+        onCreateAnyway={() => {
           const retry = similarConfirm.retry;
-          setSimilarConfirm({ open: false, names: [], retry: null });
+          setSimilarConfirm({ open: false, candidates: [], retry: null });
           if (retry) retry();
         }}
-        onCancel={() => setSimilarConfirm({ open: false, names: [], retry: null })}
-        confirmText="Register anyway"
-        cancelText="Cancel"
-        type="warning"
+        onCancel={() => setSimilarConfirm({ open: false, candidates: [], retry: null })}
+        createLabel={editingProduct ? (t('common:similarName.saveAnyway', 'Save anyway') as string) : undefined}
       />
       <RegisterExternalSupplierModal
         target={createSeller}

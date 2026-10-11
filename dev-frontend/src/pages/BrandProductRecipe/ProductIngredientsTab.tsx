@@ -11,6 +11,7 @@ import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDr
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
+import SimilarNameDialog, { SimilarCandidate, candidatesFrom409 } from '../../components/UI/SimilarNameDialog';
 import RegisterExternalSupplierModal from '../../components/Common/RegisterExternalSupplierModal';
 import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
 import RegisterAsProductModal from '../../components/Common/RegisterAsProductModal';
@@ -398,6 +399,8 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  // 비슷한 이름이 이미 있을 때(서버 409 SIMILAR_EXISTS) — 2026-10-11 similar-name-guard · Irene «이거 있는데 그래도 만들거면 만들어»
+  const [similar, setSimilar] = useState<{ open: boolean; candidates: SimilarCandidate[] }>({ open: false, candidates: [] });
   const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
@@ -700,7 +703,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (force = false) => {
     if (!formData.name.trim() || !formData.unit.trim()) {
       setInfoModal({ open: true, title: 'Required Fields', message: 'Name and Unit are required.' });
       return;
@@ -713,9 +716,12 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
         : '/api/product-ingredients';
       const method = editingIngredient ? 'PUT' : 'POST';
 
-      const response = await fetchAPI(url, {
+      // 직접 fetch — fetchAPI 는 실패 본문(비슷한 이름 후보)을 버린다
+      const raw = await fetch(url, {
         method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
         body: JSON.stringify({
+          ...(force ? { force: true } : {}),
           name: formData.name,
           category_id: formData.category_id ? parseInt(formData.category_id) : null,
           image_url: formData.image_url || null,
@@ -730,6 +736,11 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
           current_stock: parseFloat(formData.current_stock) || 0
         })
       });
+      const response: any = await raw.json().catch(() => ({ success: false }));
+      if (raw.status === 409 && (response?.error?.code === 'SIMILAR_EXISTS' || response?.code === 'SIMILAR_EXISTS')) {
+        setSimilar({ open: true, candidates: candidatesFrom409(response) });
+        return;
+      }
 
       // 수정 창에서 재고 수량을 바꿨으면 장부가 남는 adjust-stock 으로 따로 반영(PUT 은 수량을 안 받는다 — 2026-10-08)
       if (response.success && editingIngredient
@@ -744,7 +755,8 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
         handleCloseModal();
         fetchData();
       } else {
-        setInfoModal({ open: true, title: 'Save Failed', message: response.error || 'Failed to save ingredient. Please try again.' });
+        const err: any = response.error;
+        setInfoModal({ open: true, title: 'Save Failed', message: (typeof err === 'string' ? err : err?.message) || response.message || 'Failed to save ingredient. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to save ingredient:', error);
@@ -1704,6 +1716,24 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
           );
         })()}
       </Modal>
+
+      <SimilarNameDialog
+        isOpen={similar.open}
+        candidates={similar.candidates}
+        actionLabel={(c) => (c.kind === 'brand_product' ? (t('common:similarName.useProductInstead', 'Use this product') as string)
+          : c.kind === 'stock_item' ? (t('common:similarName.useOpen', 'Open this') as string) : null)}
+        onUse={(c) => {
+          setSimilar({ open: false, candidates: [] });
+          handleCloseModal();
+          if (c.kind === 'stock_item') { setSearchTerm(c.name); return; }
+          // 이미 파는 상품 — 재고아이템을 만들지 않는다(9/4 규칙). 레시피에서 상품을 고르면 된다.
+          setInfoModal({ open: true, title: c.name, message: t('common:similarName.productInsteadInfo', '"{{name}}" is already a product you sell. Don\'t create a stock item for it — pick the product in recipes instead.', { name: c.name }) as string });
+        }}
+        onCreateAnyway={() => { setSimilar({ open: false, candidates: [] }); handleSave(true); }}
+        onCancel={() => setSimilar({ open: false, candidates: [] })}
+        createLabel={editingIngredient ? (t('common:similarName.saveAnyway', 'Save anyway') as string) : undefined}
+        busy={saving}
+      />
 
       <SellerPackSizeModal
         target={packSizeTarget}

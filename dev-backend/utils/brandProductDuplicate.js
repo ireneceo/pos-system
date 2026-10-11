@@ -18,36 +18,9 @@
 const { Op } = require('sequelize');
 const { BrandProduct } = require('../models');
 
-/** 이름 정규화 — 대소문자·공백·구두점 차이를 흡수(괄호 안은 **남긴다**). */
-function normalizeName(s) {
-  return String(s || '').toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
-}
-
-/** 변형 키 — 괄호 구간을 제거한 뒤 정규화. "같은 물건인데 설명만 다른" 경우를 묶는다. */
-function variantKey(s) {
-  return normalizeName(String(s || '').replace(/[(（][^)）]*[)）]/g, ' '));
-}
-
-/**
- * 느슨한 키 — 변형 키에서 **숫자까지 제거**. **제안 전용이며 차단에는 절대 쓰지 않는다.**
- *
- * 왜 차단에 쓰면 안 되나: 숫자가 곧 "진짜 변형을 가르는 정보"다. 종이볼 `850CC` 와 `780CC` 는
- * 서로 다른 상품인데 숫자를 지우면 같은 키가 된다(운영 실측).
- * 왜 제안에는 유용한가: 규격이 **괄호 밖**에 있는 중복은 변형 키로 못 잡는다
- *   "MW R1000 ... WITH LID 850ml (50PCS/PKT)"  vs  "MW R1000 ... With Lid (한글 설명)"
- * 제안 목록은 비차단·조언이라 오탐 비용이 0이고, 형제 변형이 같이 뜨는 것도 오히려 유익하다
- * ("이 변형들이 이미 있습니다 — 그중 하나 아닌가요?"). 결정론적 변환이라 퍼지 매칭 금지 원칙과 무관.
- */
-function loosePlusKey(s) {
-  // 괄호 제거 → **숫자+단위 토큰**(850ml, 780CC, 50PCS, 2PLY …)을 통째로 제거 → 정규화.
-  // 숫자만 지우면 단위 글자가 남아 키가 갈린다(실측: '850ml' → 'ml' 잔류로 R1000 쌍 미매칭).
-  const withoutParen = String(s || '').replace(/[(（][^)）]*[)）]/g, ' ');
-  const withoutSpec = withoutParen.replace(
-    /\b\d+(?:\.\d+)?\s*(?:ml|cc|oz|kg|g|mm|cm|l|pcs|pkt|ply|sets?|rolls?)?\b/gi,
-    ' '
-  );
-  return normalizeName(withoutSpec);
-}
+// 이름 정규화·변형 키·느슨한 키는 utils/nameSimilarity.js 한 곳으로 옮겼다(2026-10-11 — 재고아이템·브랜드 재료 등록의
+//   «비슷한 이름 묻기»와 같은 규칙. 위 주석의 근거는 그대로 유효하다). 여기서는 다시 내보내기만 한다(호출부 무접촉).
+const { normalizeName, variantKey, loosePlusKey } = require('./nameSimilarity');
 
 /**
  * @param {{ownerUserId:number, name:string, sku?:string|null, excludeId?:number}} args

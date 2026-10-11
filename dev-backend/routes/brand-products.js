@@ -940,16 +940,25 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
         }
       });
     }
-    if (dup.similar && dup.similar.length && req.body.force !== true) {
-      return res.status(409).json({
-        success: false,
-        error: {
-          code: 'SIMILAR_EXISTS',
-          message: 'A very similar product already exists. Register anyway?',
-          similar: dup.similar.map((r) => ({ id: r.id, name: r.name, sku: r.sku, unit: r.unit })),
-          suggestions: (dup.suggestions || []).map((r) => ({ id: r.id, name: r.name, sku: r.sku, unit: r.unit }))
-        }
-      });
+    // 비슷한 이름 — 내 상품 + **내 재고아이템**까지 가로질러(2026-10-11 similar-name-guard · Irene «권고대로»).
+    //   재고아이템이 있으면 화면이 «그대로 팔기로 연결?»(product_ingredient_id) 을 묻는다. 기존 similar·suggestions 는 그대로 둔다(화면 하위호환).
+    if (req.body.force !== true) {
+      const { findSimilarNames } = require('../services/similarNameGuard');
+      const linkedPi = req.body.product_ingredient_id ? Number(req.body.product_ingredient_id) : null;
+      const candidates = (await findSimilarNames({ ownerUserId: req.bgOwnerId, name, kind: 'brand_product' }))
+        .filter((c) => !(c.kind === 'stock_item' && linkedPi && Number(c.id) === linkedPi));
+      if ((dup.similar && dup.similar.length) || candidates.length) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'SIMILAR_EXISTS',
+            message: 'A very similar item already exists. Register anyway?',
+            similar: (dup.similar || []).map((r) => ({ id: r.id, name: r.name, sku: r.sku, unit: r.unit })),
+            suggestions: (dup.suggestions || []).map((r) => ({ id: r.id, name: r.name, sku: r.sku, unit: r.unit })),
+            candidates
+          }
+        });
+      }
     }
 
     // Validate category belongs to same BG
@@ -1117,6 +1126,20 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
 
     const product = await BrandProduct.findByPk(productId);
     if (!assertBGOwnsRow(product, req, res)) return;
+
+    // 이름을 바꿀 때 비슷한 이름 묻기(자기 자신 제외) — 2026-10-11 similar-name-guard
+    if (name !== undefined && req.body.force !== true) {
+      const { normalizeName } = require('../utils/nameSimilarity');
+      if (normalizeName(name) !== normalizeName(product.name)) {
+        const { findSimilarNames } = require('../services/similarNameGuard');
+        const linkedPi = product.product_ingredient_id ? Number(product.product_ingredient_id) : null;
+        const candidates = (await findSimilarNames({ ownerUserId: product.owner_user_id, name, kind: 'brand_product', excludeId: product.id }))
+          .filter((c) => !(c.kind === 'stock_item' && linkedPi && Number(c.id) === linkedPi));
+        if (candidates.length) {
+          return res.status(409).json({ success: false, error: { code: 'SIMILAR_EXISTS', message: 'A very similar item already exists. Save anyway?', similar: [], suggestions: [], candidates } });
+        }
+      }
+    }
 
     // Set menu validation
     const finalIsSet = is_set_menu !== undefined ? is_set_menu : product.is_set_menu;

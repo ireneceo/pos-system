@@ -912,5 +912,23 @@
     "otherUnset": "其他地区 → 未设置配送费",
     "incomplete": "填写区域名称、配送费并至少选择一个州后即可保存。",
     "saveFailed": "无法保存配送区域"
-  }
+  },
+  "similarName.title": "已存在类似项目",
+  "similarName.intro": "是其中之一吗？使用已有项目可让配方、订单和库存保持在同一行。如果确实不同，请仍然新建。",
+  "similarName.kindStockItem": "库存项目",
+  "similarName.kindProduct": "商品",
+  "similarName.kindBrandIngredient": "品牌原料",
+  "similarName.inactive": "已停用",
+  "similarName.typo": "（{{pairs}} — 相差一个字母）",
+  "similarName.ruleSameName": "名称相同",
+  "similarName.ruleParen": "仅括号内说明不同",
+  "similarName.ruleSameWords": "由相同词组成（仅顺序或规格不同）：{{words}}",
+  "similarName.ruleContains": "包含另一名称的全部词：{{words}}",
+  "similarName.ruleSuggest": "去掉规格后相似",
+  "similarName.createAnyway": "仍然新建",
+  "similarName.saveAnyway": "仍然保存",
+  "similarName.useOpen": "打开此项",
+  "similarName.useSellAsIs": "直接销售此库存项目",
+  "similarName.useProductInstead": "使用此商品",
+  "similarName.productInsteadInfo": "\"{{name}}\" 已是您在售的商品。请不要为其创建库存项目——在配方中选择该商品。"
 }
