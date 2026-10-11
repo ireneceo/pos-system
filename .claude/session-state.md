@@ -1,13 +1,21 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
-**버전:** **v3.109** (2026-10-07 · 5.87·5.88·5.89 묶음) · 운영 SW **5.89-kiosk-receipt-20261007** (백업 20261007_163801 · 스모크 10/10) · 안드로이드 앱 0.3.4
-**작업 상태:** ✅ 배포 준비 — 다음 배포 SW **5.90-preflight-security-20261010**(키오스크 묶음 포함, 별도 bump 없음) · 기록 `dev-backend/releases/2026-10-10-preflight-security.json` · 배포 전 묶음 Fable 게이트(아래 10-11 절) 뒤 Irene «배포» 대기(배포 직전 Irene 터미널 E1·E3·Q6 — 10-10 절)
+**버전:** **v3.109** (번호 올릴지 Irene 확정 대기) · 운영 SW **5.90-preflight-security-20261010** (2026-10-11 06:36 UTC 배포 · 백업 20261011_062932 · DB 덤프 db_predeploy_20261011_062932 · 스모크 10/10 · 마이그 118/118) · 안드로이드 앱 0.3.4
+**작업 상태:** ✅ 운영 배포 완료 SW 5.90 (2026-10-11) — 남은 것: 버전 번호 확정 · /운영검증 · 키오스크 태블릿 운영 확인 · 첫 주방 티켓 눈 확인 · E1·E3(서버 창, 선택) · Q6 · 재발 방지(마이그 «칸 추가 단계» 분리, Fable 설계 1회)
 
 
-### 답 기다림 (2026-10-11) — 운영 배포 재시도: 마이그 순서 고침(미커밋) · Fable 판정 대기 → Irene 터미널 배포 1줄 [Claude Code · 백그라운드 작업방 20234aa0/dc2ff8be]
+### 완료 (2026-10-11) — 운영 배포 SW 5.90 [Claude Code · 백그라운드 작업방 20234aa0/dc2ff8be]
+- Irene 터미널 `! deploy-to-production.sh --auto` (06:29~06:36 UTC) 성공: 마이그 118/118 · 운영 health ok(재시작 확인) · 스모크 10/10 · 운영 sw.js 5.90-preflight-security-20261010 · 배포 기록 archive/2026-10-10-preflight-security.json · 스냅샷 2349파일
+- 운영 DB 읽기 확인(prod-query): 새 칸 12개 전부 생김 + cost_change_logs.source 에 receive·production
+- 같은 명령이 두 번 더 실행됨(이 방 `!` 06:36 · 서버 창 06:38) — 둘 다 마지막 검사 «배포 기록 없음»(첫 배포가 보관함)에서 운영 손대기 전 멈춤(둘 다 확인 — 운영 재시작 없음, 5.90 그대로)
+- CHANGELOG [Unreleased] → «2026-10-11 운영 배포» 칸(버전 번호 미정)
+- 남은 것: 버전 번호(Irene) · /운영검증(익명 조작가 주문·남의 주문 403·익명 목록 401·추적 70회 429 0) · 키오스크 가로·세로 운영 태블릿 · 첫 주방 티켓 눈 확인 · E1·E3 서버 창(선택, Fable: 차단 조건 아님) · Q6 원화 오너 요금 · 재발 방지 설계
+
+### (이전) 답 기다림 (2026-10-11) — 운영 배포 재시도: 마이그 순서 고침(미커밋) · Fable 판정 대기 → Irene 터미널 배포 1줄 [Claude Code · 백그라운드 작업방 20234aa0/dc2ff8be]
 - Irene «권고대로» → `dev-backend/scripts/migrations.registry.json` 새 칸 6줄을 brand-account-payment-settings 바로 앞으로 옮김(완료, 미커밋). check-migration-registry 통과(118개) · 정적 대조 위반 0(base_quantity 1건은 다른 표 기존 칸) · verify-all 23/23 · 새 칸 없는 DB 재현 시험은 확인 불가(임시 DB 만들 권한 없음)
 - 마커 뒤 다른 변경: 자동 저장 3bdb3206d PaymentPage.tsx 10줄(18bc810d 카드 빈칸 수정, Irene 재확인 대기) — 실패한 배포 빌드에도 포함됐던 것
 - Fable 배포 재시도 게이트 요청함(판정문 예정 경로 backups/fable-pending/fable-verdict-20261011-deploy-retry-gate.md) — 아직 판정 없음, 지문 23af07dcfb85 마커 무효
+- 10-11 06:25 Fable PASS(fable-verdict-20261011-deploy-retry-gate.md · 새 순서 dev 전수 118/118 · E1·E3 은 차단 조건 아님) → 커밋 571af606f 푸시 → 지금 Irene 터미널 1줄 대기. 배포 뒤: /운영검증 · 스키마 비교(12칸+ENUM) · 키오스크 가로 Irene 눈 1회. 재발 방지(레지스트리 «칸 추가 단계» 분리)는 배포 뒤 설계 1회
 - 답이 오면: Fable PASS(마커) 확인 → 커밋 → Irene 에게 `! /var/www/deploy-to-production.sh --auto` 1줄 → 결과 확인·/운영검증. Fable 이 막으면 그 판정 그대로 전달
 - (이전 내용 — 배포 실패·원인)
 - Irene 터미널 `! /var/www/deploy-to-production.sh --auto` (06:01 UTC) → 마이그 `migrate-brand-account-payment-settings.js` 실패 «Unknown column 'b.delivery_zones'» → 스크립트가 백업 20261011_055546 으로 코드 원복·재시작. 운영 health ok · sw.js 5.89 그대로. DB 는 실패 전 마이그(전부 멱등·expand)만 적용된 채 — 덤프 운영 /var/backups/orderhere/pre-deploy/db_predeploy_20261011_055546.sql.gz
