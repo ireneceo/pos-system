@@ -117,7 +117,9 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({ invoiceId, onSucc
           setClientSecret(cs);
         }
       } catch (err: any) {
-        const msg = err.response?.data?.error || err.message || 'Failed to initialize payment';
+        // 서버는 오류를 글자 또는 { message, code } 로 준다 — 객체를 그대로 그리면 결제창이 통째로 깨진다
+        const raw = err.response?.data?.error;
+        const msg = typeof raw === 'string' ? raw : (raw?.message || err.response?.data?.message || err.message || 'Failed to initialize payment');
         setError(msg);
         onError(msg);
       } finally {

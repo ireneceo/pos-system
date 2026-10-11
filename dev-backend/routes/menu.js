@@ -9,11 +9,19 @@ const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth
 const { validateSetGroups, resolveSetGroups, computeSetAvailability } = require('../utils/setMenu');
 const { OptionGroup, Option } = require('../models');
 const { Op } = require('sequelize');
+const { menuCategoryError } = require('../utils/menuCategoryTree');
 
 // products.category 는 categories.name 을 FK 로 참조한다. 그런데 프론트 드롭다운은 category **id**
 // 를 보낸다(읽기 API 는 name→categoryId 변환, 쓰기는 변환 없었음 → FK 깨짐). 여기서 양쪽 입력
 // (name 또는 id)을 받아 항상 categories.name 으로 정규화한다. 이름이 숫자("33")인 경우를 위해
 // 이름 일치를 먼저 본다. 2026-06-05.
+// 한 줄 소개(tagline): 앞뒤 공백 제거 · 빈 값 = null · 80자. 안 보냈으면(undefined) 건드리지 않는다.
+function normalizeTagline(body) {
+  if (body.tagline === undefined) return;
+  const v = body.tagline == null ? '' : String(body.tagline).replace(/\s+/g, ' ').trim();
+  body.tagline = v ? v.slice(0, 80) : null;
+}
+
 async function normalizeCategoryToName(body, restaurantId) {
   if (body.category == null || body.category === '') return;
   const raw = String(body.category).trim();
@@ -248,6 +256,7 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
       displayOrder: cat.displayOrder,
       isActive: cat.isActive,
       kitchen_station_id: cat.kitchen_station_id || null,
+      parent_id: cat.parent_id ?? null, // 2단 카테고리 (docs/MENU_CATEGORY_TWO_LEVEL.md)
       // #11c 크로스셀 — 카테고리 추천소스 플래그(true=강제포함 / false=강제제외 / null=이름 자동감지)
       is_recommendation_source: cat.is_recommendation_source ?? null
     }));
@@ -312,6 +321,8 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
         code: prod.code || null,
         name: prod.name,
         description: prod.description,
+        tagline: prod.tagline || null,
+        is_featured: prod.is_featured === true,
         price: prod.price,
         categoryId: categoryId,  // Use matched category ID
         emoji: prod.emoji || '🍽️',
@@ -442,7 +453,8 @@ router.get('/categories', checkRestaurantAccess, async (req, res) => {
       id: cat.id,
       name: cat.name,
       emoji: cat.emoji || '🍽️',
-      displayOrder: cat.displayOrder
+      displayOrder: cat.displayOrder,
+      parent_id: cat.parent_id ?? null
     }));
 
     res.json({
@@ -501,6 +513,10 @@ router.post('/product', checkRestaurantAccess, async (req, res) => {
 
     // category(id 또는 name) → categories.name 으로 정규화 (FK 충족)
     await normalizeCategoryToName(req.body, restaurantId);
+    normalizeTagline(req.body);
+    // 하위가 있는 카테고리(묶음 칸)에는 메뉴를 직접 담지 않는다 — utils/menuCategoryTree
+    const catErr = await menuCategoryError(restaurantId, req.body.category);
+    if (catErr) return res.status(400).json(catErr);
 
     // Check menu item limit
     const restaurant = await Restaurant.findByPk(restaurantId);
@@ -632,6 +648,11 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
     // category(id 또는 name) → categories.name 으로 정규화 (FK 충족). category 가 올 때만.
     if (req.body.category !== undefined) {
       await normalizeCategoryToName(req.body, product.restaurant_id || restaurantId);
+      // 묶음 칸으로 옮기기 금지 — 카테고리가 실제로 바뀔 때만 판정(기존 값 그대로 저장은 통과)
+      if (String(req.body.category) !== String(product.category)) {
+        const catErr = await menuCategoryError(product.restaurant_id || restaurantId, req.body.category);
+        if (catErr) return res.status(400).json(catErr);
+      }
     }
 
     // Brand Menu Lock guard — block edits to fields locked by the linked BrandMenu.
@@ -688,6 +709,7 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
       if (setErr) return res.status(400).json({ success: false, message: setErr, error: { message: setErr, code: 'VALIDATION_ERROR' } });
     }
 
+    normalizeTagline(req.body);
     // Prevent changing restaurant_id
     const updateData = { ...req.body };
     delete updateData.restaurant_id;
@@ -838,6 +860,7 @@ router.post('/product/:id/copy', checkProductTenant, async (req, res) => {
       price: sourceProduct.price,
       category: sourceProduct.category,
       description: sourceProduct.description,
+      tagline: sourceProduct.tagline,
       optionGroups: sourceProduct.optionGroups,
       image: sourceProduct.image,
       image_thumbnail: sourceProduct.image_thumbnail,

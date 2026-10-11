@@ -54,6 +54,32 @@ const ItemName = styled.h1`
   margin: 0 0 8px 0;
 `;
 
+/* 한 줄 소개 + 추천 마크 (docs/MENU_CATEGORY_TWO_LEVEL.md ②) — 값이 없으면 아무것도 안 그린다 */
+const ItemPitchRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: -2px 0 10px 0;
+`;
+
+const ItemTagline = styled.span`
+  font-size: var(--mo-detail-desc, 14px);
+  font-weight: 600;
+  color: #374151;
+  line-height: 1.4;
+`;
+
+const RecommendedMark = styled.span`
+  background: #635BFF;
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+`;
+
 const ItemDescription = styled.p`
   font-size: var(--mo-detail-desc, 14px);
   color: #4B5563;
@@ -412,6 +438,8 @@ const ItemDetailPage: React.FC = () => {
           emoji: itemData.emoji,
           image: itemData.image,
           description: itemData.description || '',
+          tagline: itemData.tagline || null,
+          is_featured: itemData.is_featured === true,
           preparationTime: itemData.preparationTime || 15,
           calories: itemData.calories || 0,
           isAvailable: itemData.isAvailable !== false,
@@ -743,6 +771,12 @@ const ItemDetailPage: React.FC = () => {
         )}
         <ItemInfo>
           <ItemName>{item.code ? `${item.code} ` : ''}{item.name}</ItemName>
+          {(item.is_featured || item.tagline) && (
+            <ItemPitchRow>
+              {item.is_featured && <RecommendedMark>{t('menu:recommended', 'Recommended')}</RecommendedMark>}
+              {item.tagline && <ItemTagline>{item.tagline}</ItemTagline>}
+            </ItemPitchRow>
+          )}
           <ItemDescription>{item.description}</ItemDescription>
           <ItemDetails>
             {item.calories && (

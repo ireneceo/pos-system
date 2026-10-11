@@ -17,6 +17,7 @@
  *     mirror ids in BG-defined order when lock_options=true; merged when false.
  */
 const { Op } = require('sequelize');
+const { findGroupCategoryByName } = require('../utils/menuCategoryTree');
 const {
   BrandMenu, BrandMenuCategory, BrandMenuOption, BrandMenuOptionGroup,
   BrandMenuOptionGroupLink, Restaurant, Product, OptionGroup, Option, Category,
@@ -52,6 +53,21 @@ async function ensureLocalCategory(restaurantId, brandMenuCategoryId, transactio
     transaction
   });
   return cat.name;
+}
+
+/**
+ * 2단 카테고리(docs/MENU_CATEGORY_TWO_LEVEL.md): 매장에서 같은 이름이 «묶음 칸»(하위 있는 상위)이면
+ * 메뉴를 거기 넣지 않는다 — 조용히 넣지도 버리지도 않고 Uncategorized + 결과에 남긴다.
+ */
+async function resolveSyncCategory(restaurantId, brandMenuCategoryId, transaction) {
+  const name = await ensureLocalCategory(restaurantId, brandMenuCategoryId, transaction);
+  if (!name) return { categoryName: null, categorySkipped: null };
+  const group = await findGroupCategoryByName(restaurantId, name, { transaction });
+  if (group) {
+    console.warn(`[brandMenuSync] restaurant ${restaurantId}: category "${group.name}" has subcategories — menu kept in Uncategorized`);
+    return { categoryName: null, categorySkipped: group.name };
+  }
+  return { categoryName: name, categorySkipped: null };
 }
 
 /**
@@ -146,7 +162,7 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
   }
 
   const locks = buildLocksSnapshot(brandMenu);
-  const categoryName = await ensureLocalCategory(restaurantId, brandMenu.category_id, transaction);
+  const { categoryName, categorySkipped } = await resolveSyncCategory(restaurantId, brandMenu.category_id, transaction);
   const localOptionGroupIds = await ensureLocalOptionGroups(restaurantId, brandMenu.optionGroups || [], transaction);
 
   // Find existing linked Product
@@ -233,7 +249,7 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     // 브랜드 링크 해제(recipe_id=null)는 매장 값을 건드리지 않는다(=매장 소유 존중).
     if (brandMenu.recipe_id && product.recipe_id == null) updates.recipe_id = brandMenu.recipe_id;
     await product.update(updates, { transaction });
-    return { product, created: false };
+    return { product, created: false, categorySkipped };
   }
 
   // Create new Product on Restaurant side
@@ -266,7 +282,7 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     brand_menu_link_status: 'in_sync'
   }, { transaction });
 
-  return { product, created: true };
+  return { product, created: true, categorySkipped };
 }
 
 /**
@@ -276,14 +292,16 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
  * Returns { pushed, created, updated, failed: [{ restaurant_id, error }] }.
  */
 async function pushBrandMenuToRestaurants({ brandMenuId, restaurantIds }) {
-  const result = { pushed: 0, created: 0, updated: 0, failed: [] };
+  // category_skipped: 매장에서 같은 이름 카테고리가 묶음 칸(하위 있음)이라 거기 넣지 못한 경우(2단 카테고리)
+  const result = { pushed: 0, created: 0, updated: 0, failed: [], category_skipped: [] };
   for (const rid of restaurantIds) {
     const t = await Product.sequelize.transaction();
     try {
-      const { created } = await syncBrandMenuToRestaurant({ brandMenuId, restaurantId: rid, transaction: t });
+      const { created, categorySkipped } = await syncBrandMenuToRestaurant({ brandMenuId, restaurantId: rid, transaction: t });
       await t.commit();
       result.pushed++;
       created ? result.created++ : result.updated++;
+      if (categorySkipped) result.category_skipped.push({ restaurant_id: rid, category: categorySkipped, message: `Category "${categorySkipped}" has subcategories, so the menu was not placed in it` });
     } catch (e) {
       await t.rollback();
       result.failed.push({ restaurant_id: rid, error: e.message, code: e.code });

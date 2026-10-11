@@ -816,7 +816,7 @@ const BrandPaymentSettingsPage: React.FC = () => {
               </MethodHeader>
               {paymentSettings.stripe.enabled && (
                 <MethodContent>
-                  <PaymentGatewayGuide gateway="stripe" />
+                  <PaymentGatewayGuide gateway="stripe" webhookUrl={brandId ? `${window.location.origin}/api/webhooks/stripe/brand/${brandId}` : undefined} />
                   <FormGroup>
                     <Label>{t('brand:brandPaymentSettingsPage.publishableKey')}</Label>
                     <AutoSaveField onSave={savePaymentSettings}>

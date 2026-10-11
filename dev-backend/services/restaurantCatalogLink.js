@@ -14,6 +14,7 @@
  * @returns {Promise<{status:number, body:object}>}
  */
 const { sanitizeString } = require('../middleware/validation');
+const { menuCategoryError } = require('../utils/menuCategoryTree');
 const { deriveLinkConversion } = require('./sellerLinkConversion');
 const { Ingredient } = require('../models');
 const Restaurant = require('../models/Restaurant');
@@ -132,6 +133,10 @@ async function linkCatalogProductToRestaurant(rid, body = {}) {
           success: false, code: 'PRICE_REQUIRED',
           message: 'Selling price is required for a new product (supplier cost is never copied into it)'
         });
+      }
+      if (np.category) {
+        const catErr = await menuCategoryError(rid, sanitizeString(String(np.category)).slice(0, 50), { transaction: t });
+        if (catErr) { await t.rollback(); return __r(400, catErr); }
       }
       const { Product } = require('../models');
       const prod = await Product.create({

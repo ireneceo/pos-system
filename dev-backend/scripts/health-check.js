@@ -1244,6 +1244,196 @@ function defineSecurityTests({ customerToken, member, restId }) {
     return true;
   });
 
+  // ──────────────────────────────────────────────────────────────────────────────
+  // 청구서 게이트웨이 결제 가드 (2026-10-11 Fable 판정 fable-verdict-20261011-stripe-invoice-payment-design.md §4 T1~T6)
+  //   개발엔 진짜 Stripe 키가 없다 → «가드를 전부 통과했다» 의 증거 = system 발행 청구서에서 네트워크 전에 나는
+  //   «Stripe is not configured for System Admin». 웹훅은 가짜 whsec 를 잠깐 넣고 Stripe 라이브러리로 서명해 실호출.
+  //   임시 청구서 표지 ZZ-HC-PAYG- (데모 매장 38 · 분류 service — 구독 복구·추천 수수료가 안 도는 분류) · 설정은 원본 행 그대로 복원.
+  // ──────────────────────────────────────────────────────────────────────────────
+  const PG = { ts: Date.now() };
+  const pgFail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+  async function pgMake(sequelize, status, extra = {}) {
+    const n = `ZZ-HC-PAYG-${PG.ts}-${Math.random().toString(36).slice(2, 7)}`;
+    const v = { issuer_type: 'system_admin', issuer_id: null, total: 12.34, ...extra };
+    await sequelize.query(`INSERT INTO invoices (invoice_number, issued_by, status, issuer_type, issuer_id, payer_type, payer_id, restaurant_id,
+        invoice_category, subtotal, total_amount, currency, createdAt, updatedAt)
+      VALUES (:n, 1, :st, :it, :iid, 'restaurant', 38, 38, 'service', :t, :t, 'MYR', NOW(), NOW())`,
+      { replacements: { n, st: status, it: v.issuer_type, iid: v.issuer_id, t: v.total } });
+    const [[row]] = await sequelize.query('SELECT id FROM invoices WHERE invoice_number = :n', { replacements: { n } });
+    return row.id;
+  }
+  async function pgCleanup(sequelize) {
+    await sequelize.query("DELETE FROM invoices WHERE invoice_number LIKE 'ZZ-HC-PAYG-%'");
+    await sequelize.query("DELETE FROM webhook_events WHERE event_id LIKE 'evt_hc_payg_%'");
+  }
+  async function pgRaAuth(sequelize) {
+    const [[ra]] = await sequelize.query("SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 AND is_active = 1 LIMIT 1");
+    return ra ? { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` } : null;
+  }
+  const pgStatus = async (sequelize, id) => (await sequelize.query('SELECT status, payment_notes FROM invoices WHERE id = :id', { replacements: { id } }))[0][0];
+  const STRIPE_NOT_CONFIGURED = /Stripe is not configured for System Admin/;
+  const pgReachedStripe = (r) => r.status === 500 && STRIPE_NOT_CONFIGURED.test(JSON.stringify(r.body || {}));
+
+  test('payment', '청구서 결제 ① 연체 청구서 — 카드(PaymentIntent)·호스티드(문자열 id)까지 가드 통과 · 이체 제출 200', async () => {
+    const { sequelize } = require('../config/database');
+    const auth = await pgRaAuth(sequelize);
+    if (!auth) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음)')); return true; }
+    try {
+      const id = await pgMake(sequelize, 'overdue');
+      const pi = await request('POST', `/invoices/${id}/create-payment-intent`, {}, auth);
+      if (!pgReachedStripe(pi)) return pgFail(`카드 ${pi.status} ${JSON.stringify(pi.body).slice(0, 120)}`);
+      const co = await request('POST', '/payments/checkout/start', { gateway: 'stripe', mode: 'payment', invoice_id: String(id), success_url: 'https://x/s', cancel_url: 'https://x/c' }, auth);
+      if (!pgReachedStripe(co)) return pgFail(`호스티드 ${co.status} ${JSON.stringify(co.body).slice(0, 120)}`);
+      const sp = await request('POST', `/invoices/${id}/submit-payment`, { payment_method: 'bank_transfer', transaction_id: 'HC-1' }, auth);
+      if (sp.status !== 200 || (await pgStatus(sequelize, id)).status !== 'payment_submitted') return pgFail(`이체 제출 ${sp.status} ${JSON.stringify(sp.body).slice(0, 120)}`);
+      return true;
+    } catch (e) { return pgFail(`예외: ${e.message}`); }
+    finally { await pgCleanup(sequelize); }
+  });
+
+  test('payment', '청구서 결제 ② 취소·초안 → 세 경로 모두 400 BAD_STATUS · 결제됨 → 409 ALREADY_PAID', async () => {
+    const { sequelize } = require('../config/database');
+    const auth = await pgRaAuth(sequelize);
+    if (!auth) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음)')); return true; }
+    const code = (r) => r.body?.error?.code || r.body?.code;
+    try {
+      for (const st of ['cancelled', 'draft']) {
+        const id = await pgMake(sequelize, st);
+        const a = await request('POST', `/invoices/${id}/create-payment-intent`, {}, auth);
+        const b = await request('POST', `/invoices/${id}/create-paypal-order`, {}, auth);
+        const d = await request('POST', '/payments/checkout/start', { gateway: 'stripe', mode: 'payment', invoice_id: id, success_url: 'https://x/s', cancel_url: 'https://x/c' }, auth);
+        for (const [nm, r] of [['카드', a], ['PayPal', b], ['호스티드', d]]) {
+          if (r.status !== 400 || code(r) !== 'BAD_STATUS') return pgFail(`${st} ${nm} ${r.status} ${code(r)}`);
+        }
+      }
+      const pid = await pgMake(sequelize, 'paid');
+      for (const r of [await request('POST', `/invoices/${pid}/create-payment-intent`, {}, auth),
+                       await request('POST', '/payments/checkout/start', { gateway: 'stripe', mode: 'payment', invoice_id: pid, success_url: 'https://x/s', cancel_url: 'https://x/c' }, auth)]) {
+        if (r.status !== 409 || code(r) !== 'ALREADY_PAID') return pgFail(`paid ${r.status} ${code(r)}`);
+      }
+      return true;
+    } catch (e) { return pgFail(`예외: ${e.message}`); }
+    finally { await pgCleanup(sequelize); }
+  });
+
+  test('payment', '청구서 결제 ③ 호스티드 시작 — 화면이 보낸 발행자(brand 1) 무시·청구서의 발행자 사용 · 남의 매장 403', async () => {
+    const { sequelize } = require('../config/database');
+    const auth = await pgRaAuth(sequelize);
+    const [[other]] = await sequelize.query("SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id IS NOT NULL AND restaurant_id <> 38 AND is_active = 1 LIMIT 1");
+    if (!auth || !other) { console.log(c.gray('      (건너뜀: 데모 매장 관리자·다른 매장 관리자 없음)')); return true; }
+    try {
+      const id = await pgMake(sequelize, 'pending_payment');
+      const r = await request('POST', '/payments/checkout/start', { gateway: 'stripe', mode: 'payment', invoice_id: id, issuer_type: 'brand', issuer_id: 1, payer_type: 'brand', payer_id: 1, success_url: 'https://x/s', cancel_url: 'https://x/c' }, auth);
+      if (!pgReachedStripe(r)) return pgFail(`발행자 위조 ${r.status} ${JSON.stringify(r.body).slice(0, 120)}`);
+      const oa = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: other.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const f = await request('POST', '/payments/checkout/start', { gateway: 'stripe', mode: 'payment', invoice_id: id, success_url: 'https://x/s', cancel_url: 'https://x/c' }, oa);
+      if (f.status !== 403) return pgFail(`남의 매장 ${f.status}`);
+      return true;
+    } catch (e) { return pgFail(`예외: ${e.message}`); }
+    finally { await pgCleanup(sequelize); }
+  });
+
+  // T5·T6 웹훅 — 가짜 비밀로 서명(Stripe 서버 호출 없음)
+  const PG_WHSEC = 'whsec_hc_payg_fake_secret_for_signature_only';
+  async function pgSignedWebhook(path, payload, secret) {
+    const Stripe = require('stripe');
+    const body = JSON.stringify(payload);
+    const header = Stripe.webhooks.generateTestHeaderString({ payload: body, secret });
+    return request('POST', path, payload, { 'stripe-signature': header });
+  }
+  const pgEvt = (type, object) => ({ id: `evt_hc_payg_${PG.ts}_${Math.random().toString(36).slice(2, 8)}`, object: 'event', type, data: { object } });
+  const pgPi = (invId, amount) => ({ id: `pi_hc_${Math.random().toString(36).slice(2, 8)}`, object: 'payment_intent', amount, amount_received: amount, currency: 'myr', metadata: { invoice_id: String(invId) } });
+  async function pgWithSystemSecret(sequelize, fn) {
+    const [[orig]] = await sequelize.query("SELECT CAST(setting_value AS CHAR) v FROM system_settings WHERE setting_key = 'payment_settings'");
+    if (!orig) return 'skip';
+    const v = JSON.parse(orig.v);
+    v.stripe = { ...(v.stripe || {}), webhookSecret: PG_WHSEC };
+    await sequelize.query("UPDATE system_settings SET setting_value = :v WHERE setting_key = 'payment_settings'", { replacements: { v: JSON.stringify(v) } });
+    try { return await fn(); }
+    finally {
+      await sequelize.query("UPDATE system_settings SET setting_value = :v WHERE setting_key = 'payment_settings'", { replacements: { v: orig.v } });
+      const [[back]] = await sequelize.query("SELECT CAST(setting_value AS CHAR) v FROM system_settings WHERE setting_key = 'payment_settings'");
+      if (JSON.stringify(JSON.parse(back.v)) !== JSON.stringify(JSON.parse(orig.v))) console.log(c.gray('      (⚠ 시스템 결제 설정 원복 값이 원본과 다름)'));
+    }
+  }
+
+  test('payment', '청구서 결제 ④ Stripe 웹훅 — 입금→paid · 재전송 무변경 · 다른 비밀 400 · 미입금 세션 무변경→지연입금 paid · 취소 청구서 Held · 금액 부족 Held', async () => {
+    const { sequelize } = require('../config/database');
+    try {
+      const out = await pgWithSystemSecret(sequelize, async () => {
+        // (a) 입금 → paid
+        const a = await pgMake(sequelize, 'overdue');
+        const ea = pgEvt('payment_intent.succeeded', pgPi(a, 1234));
+        const ra = await pgSignedWebhook('/webhooks/stripe', ea, PG_WHSEC);
+        if (ra.status !== 200 || (await pgStatus(sequelize, a)).status !== 'paid') return pgFail(`(a) ${ra.status} ${(await pgStatus(sequelize, a)).status}`);
+        // (b) 같은 이벤트 재전송 → dedupe
+        const rb = await pgSignedWebhook('/webhooks/stripe', ea, PG_WHSEC);
+        if (rb.status !== 200 || rb.body?.dedupe !== true) return pgFail(`(b) ${rb.status} ${JSON.stringify(rb.body)}`);
+        // (c) 다른 비밀 → 400, 무변경
+        const c1 = await pgMake(sequelize, 'pending_payment');
+        const rc = await pgSignedWebhook('/webhooks/stripe', pgEvt('payment_intent.succeeded', pgPi(c1, 1234)), 'whsec_other_secret');
+        if (rc.status !== 400 || (await pgStatus(sequelize, c1)).status !== 'pending_payment') return pgFail(`(c) ${rc.status}`);
+        // (d) 미입금 세션 → 무변경 → async_payment_succeeded → paid
+        const d = await pgMake(sequelize, 'pending_payment');
+        const sess = (ps) => ({ id: 'cs_hc', object: 'checkout.session', mode: 'payment', payment_status: ps, amount_total: 1234, currency: 'myr', payment_intent: 'pi_hc_d', metadata: { invoice_id: String(d) } });
+        const rd1 = await pgSignedWebhook('/webhooks/stripe', pgEvt('checkout.session.completed', sess('unpaid')), PG_WHSEC);
+        if (rd1.status !== 200 || (await pgStatus(sequelize, d)).status !== 'pending_payment') return pgFail(`(d1) ${rd1.status} ${(await pgStatus(sequelize, d)).status}`);
+        const rd2 = await pgSignedWebhook('/webhooks/stripe', pgEvt('checkout.session.async_payment_succeeded', sess('paid')), PG_WHSEC);
+        if (rd2.status !== 200 || (await pgStatus(sequelize, d)).status !== 'paid') return pgFail(`(d2) ${rd2.status} ${(await pgStatus(sequelize, d)).status}`);
+        // (e) 취소 청구서 → Held, 상태 그대로
+        const e = await pgMake(sequelize, 'cancelled');
+        const re = await pgSignedWebhook('/webhooks/stripe', pgEvt('payment_intent.succeeded', pgPi(e, 1234)), PG_WHSEC);
+        const se = await pgStatus(sequelize, e);
+        if (re.status !== 200 || se.status !== 'cancelled' || !/Held: paid webhook on cancelled/.test(se.payment_notes || '')) return pgFail(`(e) ${re.status} ${se.status} ${se.payment_notes}`);
+        // (f) 금액 부족 → Held
+        const f = await pgMake(sequelize, 'pending_payment');
+        const rf = await pgSignedWebhook('/webhooks/stripe', pgEvt('payment_intent.succeeded', pgPi(f, 100)), PG_WHSEC);
+        const sf = await pgStatus(sequelize, f);
+        if (rf.status !== 200 || sf.status !== 'pending_payment' || !/Held: gateway reported/.test(sf.payment_notes || '')) return pgFail(`(f) ${rf.status} ${sf.status}`);
+        return true;
+      });
+      if (out === 'skip') { console.log(c.gray('      (건너뜀: 시스템 결제 설정 행 없음)')); return true; }
+      return out;
+    } catch (e) { return pgFail(`예외: ${e.message}`); }
+    finally { await pgCleanup(sequelize); }
+  });
+
+  test('payment', '청구서 결제 ⑤ 발행자별 웹훅 — 형제 브랜드 주소 통과 · 남의(system) 청구서 Held · system 주소 400 · 없는 발행자 400', async () => {
+    const { sequelize } = require('../config/database');
+    const [[bg]] = await sequelize.query("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' AND role = 'Brand General' AND is_active = 1");
+    const [sibs] = await sequelize.query('SELECT id FROM brands WHERE owner_id = :o ORDER BY id', { replacements: { o: bg ? bg.id : -1 } });
+    const ids = sibs.map(r => r.id);
+    if (!bg || !ids.includes(10) || !ids.includes(17)) { console.log(c.gray('      (건너뜀: 데모 BG 브랜드 10·17 없음)')); return true; }
+    const original = await snapBrands(sequelize, ids);
+    const originalJson = JSON.stringify(original);
+    const BWH = 'whsec_hc_payg_brand_fake_secret';
+    try {
+      // 계정 하나 — 형제 행 전부에 같은 비밀(브랜드 저장 화면이 하는 일과 같은 결과)
+      for (const r of original) {
+        const ps = typeof r.payment_settings === 'string' ? JSON.parse(r.payment_settings || '{}') : (r.payment_settings || {});
+        ps.stripe = { ...(ps.stripe || {}), webhookSecret: BWH };
+        await sequelize.query('UPDATE brands SET payment_settings = :v WHERE id = :id', { replacements: { v: JSON.stringify(ps), id: r.id } });
+      }
+      const a = await pgMake(sequelize, 'overdue', { issuer_type: 'brand', issuer_id: 10 });
+      const ra = await pgSignedWebhook('/webhooks/stripe/brand/17', pgEvt('payment_intent.succeeded', pgPi(a, 1234)), BWH);
+      if (ra.status !== 200 || (await pgStatus(sequelize, a)).status !== 'paid') return pgFail(`(a) ${ra.status} ${(await pgStatus(sequelize, a)).status}`);
+      const b = await pgMake(sequelize, 'pending_payment');
+      const rb = await pgSignedWebhook('/webhooks/stripe/brand/17', pgEvt('payment_intent.succeeded', pgPi(b, 1234)), BWH);
+      const sb = await pgStatus(sequelize, b);
+      if (rb.status !== 200 || sb.status !== 'pending_payment' || !/Held: webhook issuer brand#17/.test(sb.payment_notes || '')) return pgFail(`(b) ${rb.status} ${sb.status} ${sb.payment_notes}`);
+      const rc = await pgSignedWebhook('/webhooks/stripe', pgEvt('payment_intent.succeeded', pgPi(b, 1234)), BWH);
+      if (rc.status !== 400) return pgFail(`(c) ${rc.status}`);
+      const rd = await pgSignedWebhook('/webhooks/stripe/brand/99999999', pgEvt('payment_intent.succeeded', pgPi(b, 1234)), BWH);
+      if (rd.status !== 400) return pgFail(`(d) ${rd.status}`);
+      return true;
+    } catch (e) { return pgFail(`예외: ${e.message}`); }
+    finally {
+      await restoreBrands(sequelize, original).catch((e) => console.log(c.gray(`      (원복 실패: ${e.message})`)));
+      if (JSON.stringify(await snapBrands(sequelize, ids)) !== originalJson) console.log(c.gray('      (⚠ 원복 후 값이 원본과 다름)'));
+      await pgCleanup(sequelize);
+    }
+  });
+
   test('security', '다른 매장 Staff가 /restaurants/:id/table-status → 403 (손님 개인정보 유출 차단)', async () => {
     const User = require('../models/User');
     const { Op } = require('sequelize');

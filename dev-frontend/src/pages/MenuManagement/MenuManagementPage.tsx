@@ -838,7 +838,12 @@ const MenuItemImageWithFallback: React.FC<{ src?: string | null; alt?: string; e
 
 const MenuManagementPage: React.FC = () => {
   const { t } = useTranslation('menu');
-  const { categories, menuItems, optionGroups, updateMenuItem, addMenuItem, removeMenuItem, toggleItemSoldOut, reloadMenu } = useMenu();
+  const { categories, allCategories, menuItems, optionGroups, updateMenuItem, addMenuItem, removeMenuItem, toggleItemSoldOut, reloadMenu } = useMenu();
+  // 2단 카테고리 — 하위는 «상위 › 하위» 로 보인다(저장 값은 그대로 카테고리). 묶음 칸 상위는 categories 에 없음(메뉴 못 담음).
+  const categoryLabel = (cat: { name: string; parent_id?: string | null }) => {
+    const parent = cat.parent_id ? allCategories.find(c => c.id === cat.parent_id) : undefined;
+    return parent ? `${parent.name} › ${cat.name}` : cat.name;
+  };
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1387,6 +1392,7 @@ const MenuManagementPage: React.FC = () => {
       soldOut: false,
       is_set_menu: false,
       is_featured: formData.is_featured || false,
+      tagline: formData.tagline || null,
       after_meal: formData.after_meal || false,
       set_only: formData.set_only || false,
       set_items: [],
@@ -1457,6 +1463,8 @@ const MenuManagementPage: React.FC = () => {
       set_items: null,  // v2 로 전환 — set_groups 가 단일 소스
       set_display_order: formData.set_display_order || 0,
       after_meal: formData.after_meal || false,
+      is_featured: formData.is_featured || false,
+      tagline: formData.tagline || null,
       takeaway_charge: formData.takeaway_charge ?? 0,
       availability: formData.availability ?? null
     };
@@ -1639,7 +1647,7 @@ const MenuManagementPage: React.FC = () => {
                   setSearchQuery('');
                 }}
               >
-                {category.emoji} {category.name}
+                {category.emoji} {categoryLabel(category)}
               </Tab>
             ))}
           </TabContainer>
@@ -2026,7 +2034,7 @@ const MenuManagementPage: React.FC = () => {
               <option value="">-- Select Category --</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.emoji} {cat.name}
+                  {cat.emoji} {categoryLabel(cat)}
                 </option>
               ))}
             </FormSelect>
@@ -2039,6 +2047,9 @@ const MenuManagementPage: React.FC = () => {
               <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.featuredItem')}</span>
               <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.showInMobileFeaturedTab')}</span>
             </label>
+            <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px', paddingLeft: '24px' }}>
+              {t('menu:menuManagementPage.featuredCardHint', 'Shows a "Recommended" mark on the menu card. Pick 1–3 per category — if everything is recommended, nothing stands out.')}
+            </div>
           </UIFormGroup>
 
           <UIFormGroup>
@@ -2081,6 +2092,20 @@ const MenuManagementPage: React.FC = () => {
                 </EmojiOption>
               ))}
             </EmojiPicker>
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <FormLabel>{t('menu:menuManagementPage.tagline', 'One-line pitch')}</FormLabel>
+            <FormInput
+              type="text"
+              maxLength={80}
+              value={formData.tagline || ''}
+              onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
+              placeholder={t('menu:menuManagementPage.taglinePlaceholder', 'e.g. Slow-cooked 12 hours, our best seller')}
+            />
+            <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
+              {t('menu:menuManagementPage.taglineHint', { len: (formData.tagline || '').length, defaultValue: 'Shown under the name on the customer menu list. {{len}}/80' })}
+            </div>
           </UIFormGroup>
 
           <UIFormGroup>
@@ -2396,7 +2421,7 @@ const MenuManagementPage: React.FC = () => {
               <option value="">-- Select Category --</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.emoji} {cat.name}
+                  {cat.emoji} {categoryLabel(cat)}
                 </option>
               ))}
             </FormSelect>
@@ -2409,6 +2434,9 @@ const MenuManagementPage: React.FC = () => {
               <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.featuredItem')}</span>
               <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.showInMobileFeaturedTab')}</span>
             </label>
+            <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px', paddingLeft: '24px' }}>
+              {t('menu:menuManagementPage.featuredCardHint', 'Shows a "Recommended" mark on the menu card. Pick 1–3 per category — if everything is recommended, nothing stands out.')}
+            </div>
           </UIFormGroup>
 
           <UIFormGroup>
@@ -2451,6 +2479,20 @@ const MenuManagementPage: React.FC = () => {
                 </EmojiOption>
               ))}
             </EmojiPicker>
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <FormLabel>{t('menu:menuManagementPage.tagline', 'One-line pitch')}</FormLabel>
+            <FormInput
+              type="text"
+              maxLength={80}
+              value={formData.tagline || ''}
+              onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
+              placeholder={t('menu:menuManagementPage.taglinePlaceholder', 'e.g. Slow-cooked 12 hours, our best seller')}
+            />
+            <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
+              {t('menu:menuManagementPage.taglineHint', { len: (formData.tagline || '').length, defaultValue: 'Shown under the name on the customer menu list. {{len}}/80' })}
+            </div>
           </UIFormGroup>
 
           <UIFormGroup>
@@ -2728,7 +2770,7 @@ const MenuManagementPage: React.FC = () => {
               <option value="">-- Select Category --</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.emoji} {cat.name}
+                  {cat.emoji} {categoryLabel(cat)}
                 </option>
               ))}
             </FormSelect>
@@ -2741,6 +2783,9 @@ const MenuManagementPage: React.FC = () => {
               <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.featuredItem')}</span>
               <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.showInMobileFeaturedTab')}</span>
             </label>
+            <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px', paddingLeft: '24px' }}>
+              {t('menu:menuManagementPage.featuredCardHint', 'Shows a "Recommended" mark on the menu card. Pick 1–3 per category — if everything is recommended, nothing stands out.')}
+            </div>
           </UIFormGroup>
 
           <UIFormGroup>
@@ -2783,6 +2828,20 @@ const MenuManagementPage: React.FC = () => {
                 </EmojiOption>
               ))}
             </EmojiPicker>
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <FormLabel>{t('menu:menuManagementPage.tagline', 'One-line pitch')}</FormLabel>
+            <FormInput
+              type="text"
+              maxLength={80}
+              value={formData.tagline || ''}
+              onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
+              placeholder={t('menu:menuManagementPage.taglinePlaceholder', 'e.g. Slow-cooked 12 hours, our best seller')}
+            />
+            <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
+              {t('menu:menuManagementPage.taglineHint', { len: (formData.tagline || '').length, defaultValue: 'Shown under the name on the customer menu list. {{len}}/80' })}
+            </div>
           </UIFormGroup>
 
           <UIFormGroup>

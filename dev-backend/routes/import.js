@@ -1,4 +1,5 @@
 const express = require('express');
+const { menuCategoryError } = require('../utils/menuCategoryTree');
 const router = express.Router();
 const multer = require('multer');
 const csv = require('csv-parser');
@@ -272,6 +273,13 @@ router.post('/execute-menu', authenticateToken, upload.single('file'), checkRest
             categoryMap[normalizedCat] = categoryId;
             categoriesCreated++;
           }
+        }
+
+        // 하위가 있는 카테고리(묶음 칸)에는 메뉴를 직접 담지 않는다 — utils/menuCategoryTree
+        if (categoryName && await menuCategoryError(restaurantId, categoryName.trim())) {
+          failed++;
+          errors.push(`"${name}": category "${categoryName.trim()}" has subcategories — use one of its subcategories`);
+          continue;
         }
 
         const existing = await Product.findOne({ where: { name, restaurant_id: restaurantId } });

@@ -3,14 +3,10 @@ import styled from 'styled-components';
 import { getAuthToken } from '../../utils/auth';
 
 interface Invoice {
-  id: number;
+  id: number | string;
   invoice_number?: string;
   total_amount: number;
   currency?: string;
-  brand_id?: number | null;
-  foodcourt_id?: number | null;
-  supplier_id?: number | null;
-  restaurant_id?: number | null;
 }
 
 interface Props {
@@ -76,21 +72,11 @@ const Note = styled.div`
   line-height: 1.5;
 `;
 
-/**
- * Determines which issuer this invoice is for, based on FK columns.
- */
-function deriveIssuer(invoice: Invoice): { type: 'system' | 'brand' | 'foodcourt' | 'supplier'; id: number | null } {
-  if (invoice.brand_id) return { type: 'brand', id: invoice.brand_id };
-  if (invoice.foodcourt_id) return { type: 'foodcourt', id: invoice.foodcourt_id };
-  if (invoice.supplier_id) return { type: 'supplier', id: invoice.supplier_id };
-  return { type: 'system', id: null };
-}
-
+// 발행자·지불자는 서버가 청구서에서 꺼낸다 (2026-10-11 Fable 판정 F2·F5) — 화면은 청구서 번호만 보낸다.
+// 전에는 화면이 청구서 목록에 없는 칸(restaurant_id·brand_id)으로 당사자를 추정해 이 버튼이 늘 400 이었다.
 export default function HostedCheckoutLauncher({ invoice, gateway }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const issuer = deriveIssuer(invoice);
 
   const start = async () => {
     setBusy(true);
@@ -105,18 +91,14 @@ export default function HostedCheckoutLauncher({ invoice, gateway }: Props) {
         body: JSON.stringify({
           gateway,
           mode: 'payment',
-          issuer_type: issuer.type,
-          issuer_id: issuer.id,
-          payer_type: 'restaurant',
-          payer_id: invoice.restaurant_id,
-          invoice_id: invoice.id,
+          invoice_id: Number(invoice.id),
           success_url,
           cancel_url
         })
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
-        throw new Error(json?.error?.message || 'Failed to start payment');
+        throw new Error(json?.error?.message || json?.message || 'Failed to start payment');
       }
       const url = json.data?.url;
       if (!url) throw new Error('No checkout URL returned');

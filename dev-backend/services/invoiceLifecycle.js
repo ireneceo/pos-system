@@ -122,4 +122,96 @@ async function handleInvoiceCancelled(invoiceOrId, reason) {
   }
 }
 
-module.exports = { handleInvoicePaid, handleInvoiceCancelled };
+// ──────────────────────────────────────────────────────────────────────────
+// 게이트웨이 입금 → 청구서 paid — 단일 함수 (2026-10-11 Fable 판정 F4)
+// 모든 «paid 웹훅» 분기(Stripe checkout.session.completed · async_payment_succeeded ·
+// payment_intent.succeeded · PayPal capture)가 이것만 부른다. 전에는 분기마다 «paid 가 아니면 paid» 를
+// 따로 적어 취소·초안 청구서도 paid 로 바꿀 수 있었고, 발행자별 서명을 붙일 자리도 없었다.
+// ──────────────────────────────────────────────────────────────────────────
+const systemLogger = require('../utils/systemLogger');
+const { GATEWAY_PAID_FROM } = require('../utils/invoicePayable');
+const { sameIssuerAccount } = require('../utils/issuerAccount');
+
+// P1-2 (2026-06-08): webhook amount cross-check. The mark-paid sites used to
+// trust the event blindly and write paid_amount = invoice.total_amount. If a
+// gateway reports a captured amount that is LESS than the invoice total
+// (underpayment / partial capture / forged-but-cheaper event), we must NOT mark
+// the invoice fully paid. Conservative by design — we only HOLD on a clear
+// underpayment or a currency mismatch; when the gateway amount is unreadable we
+// proceed (best-effort) so legitimate payments are never blocked by a parsing gap.
+const AMOUNT_TOLERANCE = 0.01;
+async function passesAmountCrossCheck(invoice, gatewayAmount, gatewayCurrency, ctx) {
+  const amt = Number(gatewayAmount);
+  if (!Number.isFinite(amt) || amt <= 0) return true; // can't read amount → don't block
+
+  const expected = Number(invoice.total_amount) || 0;
+
+  if (gatewayCurrency && invoice.currency &&
+      String(gatewayCurrency).toUpperCase() !== String(invoice.currency).toUpperCase()) {
+    await systemLogger.warn('payment', `${ctx.gateway}-webhook`, 'Currency mismatch on paid webhook — holding', {
+      invoice: invoice.invoice_number, gateway_currency: gatewayCurrency, invoice_currency: invoice.currency,
+      gateway_amount: amt, invoice_total: expected, event_id: ctx.eventId
+    });
+    await invoice.update({ payment_notes: `Held: gateway currency ${gatewayCurrency} ≠ invoice ${invoice.currency} (gateway amount ${amt})` });
+    return false;
+  }
+
+  if (amt + AMOUNT_TOLERANCE < expected) {
+    await systemLogger.error('security', `${ctx.gateway}-webhook`, 'Underpayment on paid webhook — NOT marking paid', {
+      invoice: invoice.invoice_number, gateway_amount: amt, invoice_total: expected, event_id: ctx.eventId
+    });
+    await invoice.update({ payment_notes: `Held: gateway reported ${amt} < invoice total ${expected}` });
+    return false;
+  }
+  return true;
+}
+
+/**
+ * 게이트웨이가 확인한 입금을 청구서에 적는다.
+ * @param {object} invoice  Invoice 행
+ * @param {{gateway:'stripe'|'paypal', gatewayAmount:number|null, gatewayCurrency:string|null,
+ *          paymentIntentId:string|null, eventId:string, verifiedIssuer:{type:string,id:number|null}}} ctx
+ * @returns {Promise<'paid'|'skipped_already_paid'|'held_status'|'held_issuer'|'held_amount'>}
+ */
+async function markInvoicePaidFromGateway(invoice, ctx) {
+  const { gateway, gatewayAmount, gatewayCurrency, paymentIntentId, eventId, verifiedIssuer } = ctx;
+  if (invoice.status === 'paid') return 'skipped_already_paid';
+
+  if (!GATEWAY_PAID_FROM.includes(invoice.status)) {
+    await systemLogger.error('security', `${gateway}-webhook`, 'Paid webhook on a non-payable invoice — NOT marking paid', {
+      invoice: invoice.invoice_number, status: invoice.status, event_id: eventId
+    });
+    await invoice.update({ payment_notes: `Held: paid webhook on ${invoice.status} invoice (event ${eventId})` });
+    return 'held_status';
+  }
+
+  if (!(await sameIssuerAccount(verifiedIssuer, invoice))) {
+    const v = `${verifiedIssuer?.type}${verifiedIssuer?.id ? '#' + verifiedIssuer.id : ''}`;
+    const i = `${invoice.issuer_type}${invoice.issuer_id ? '#' + invoice.issuer_id : ''}`;
+    await systemLogger.error('security', `${gateway}-webhook`, 'Webhook issuer does not own this invoice — NOT marking paid', {
+      invoice: invoice.invoice_number, webhook_issuer: v, invoice_issuer: i, event_id: eventId
+    });
+    await invoice.update({ payment_notes: `Held: webhook issuer ${v} ≠ invoice issuer ${i} (event ${eventId})` });
+    return 'held_issuer';
+  }
+
+  if (!(await passesAmountCrossCheck(invoice, gatewayAmount, gatewayCurrency, { gateway, eventId }))) return 'held_amount';
+
+  await invoice.update({
+    status: 'paid',
+    paid_at: new Date(),
+    paid_amount: invoice.total_amount,
+    payment_method: gateway,
+    payment_provider: gateway,
+    gateway,
+    payment_intent_id: paymentIntentId || invoice.payment_intent_id,
+    confirmed_at: new Date(),
+    confirmed_by: 0
+  });
+  handleInvoicePaid(invoice.id).catch(err =>
+    systemLogger.warn('payment', `${gateway}-webhook`, 'invoiceLifecycle hook failed', { error: err.message }));
+  await systemLogger.info('payment', `${gateway}-webhook`, `Invoice ${invoice.invoice_number} paid via ${gateway}`, { event_id: eventId });
+  return 'paid';
+}
+
+module.exports = { handleInvoicePaid, handleInvoiceCancelled, markInvoicePaidFromGateway, passesAmountCrossCheck };

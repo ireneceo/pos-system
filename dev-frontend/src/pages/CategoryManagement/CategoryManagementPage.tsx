@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { FolderOpen } from 'lucide-react';
 import { EmptyState } from '../../components/UI/TableComponents';
@@ -111,8 +112,10 @@ const CategoryGrid = styled.div`
   padding: 24px 0;
 `;
 
-const CategoryCard = styled.div`
+const CategoryCard = styled.div<{ $sub?: boolean }>`
   background: white;
+  margin-left: ${p => (p.$sub ? '40px' : '0')};
+  border-left: ${p => (p.$sub ? '3px solid #C7D2FE' : '0')};
   border-radius: 12px;
   padding: 16px 20px;
   display: flex;
@@ -356,6 +359,7 @@ interface Category {
   itemCount?: number;
   isActive?: boolean;
   is_recommendation_source?: boolean | null;
+  parent_id?: string | null;
 }
 
 // #11c 크로스셀 — 카테고리 이름이 자동감지 추천 키워드(디저트/음료 등)에 걸리는지 (백엔드 crossSell.js 와 동일 키워드)
@@ -366,16 +370,20 @@ const autoDetectsAsRecommendation = (name: string) => {
 };
 
 const CategoryManagementPage: React.FC = () => {
-  const { categories, menuItems, addCategory, updateCategory, deleteCategory, reorderCategories } = useMenu();
+  const { t } = useTranslation(['menu']);
+  // 카테고리 관리 = 전체 목록(상위·하위). POS·메뉴 관리가 쓰는 categories 는 묶음 칸(하위 있는 상위)이 빠진 목록.
+  const { allCategories: categories, menuItems, addCategory, updateCategory, deleteCategory, reorderCategories } = useMenu();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [categoryToDelete, setCategoryToDelete] = useState<{ id: string; name: string; itemCount: number } | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [formData, setFormData] = useState<{ name: string; emoji: string; is_recommendation_source: boolean | null }>({
+  const [formData, setFormData] = useState<{ name: string; emoji: string; is_recommendation_source: boolean | null; parent_id: string; move_menus: boolean }>({
     name: '',
     emoji: '🍽️',
-    is_recommendation_source: null
+    is_recommendation_source: null,
+    parent_id: '',
+    move_menus: true
   });
   const [recSaving, setRecSaving] = useState(false);
 
@@ -389,12 +397,27 @@ const CategoryManagementPage: React.FC = () => {
   ];
 
   // Calculate item count for each category and sort by order
-  const categoriesWithCount = categories
-    .map(cat => ({
-      ...cat,
-      itemCount: menuItems.filter(item => item.category === cat.id).length
-    }))
-    .sort((a, b) => a.order - b.order);
+  // 2단 카테고리(docs/MENU_CATEGORY_TWO_LEVEL.md): 상위 다음에 그 하위들을 들여써서 보인다. 순서 바꾸기는 형제끼리.
+  const withCount = categories.map(cat => ({
+    ...cat,
+    itemCount: menuItems.filter(item => item.category === cat.id).length,
+    childCount: categories.filter(c => c.parent_id && c.parent_id === cat.id).length
+  }));
+  const byOrder = (a: { order: number }, b: { order: number }) => a.order - b.order;
+  const topLevel = withCount.filter(c => !c.parent_id || !withCount.some(p => p.id === c.parent_id)).sort(byOrder);
+  const childrenOf = (id: string) => withCount.filter(c => c.parent_id === id).sort(byOrder);
+  const categoryRows = topLevel.flatMap(top => [
+    { cat: top, sub: false, siblings: topLevel },
+    ...childrenOf(top.id).map(ch => ({ cat: ch, sub: true, siblings: childrenOf(top.id) }))
+  ]);
+  const categoriesWithCount = categoryRows.map(r => r.cat);
+  const nameOf = (id?: string | null) => (id ? categories.find(c => c.id === id)?.name || '' : '');
+  // 상위로 고를 수 있는 것: 1단 카테고리(자기 자신 제외). 하위가 있는 카테고리는 다른 밑으로 못 감(2단까지).
+  const parentOptions = topLevel.filter(c => c.id !== editingCategory?.id);
+  const editingHasChildren = !!editingCategory && withCount.some(c => c.parent_id === editingCategory.id);
+  const chosenParent = formData.parent_id ? withCount.find(c => c.id === formData.parent_id) : undefined;
+  const parentChanged = (formData.parent_id || '') !== (editingCategory?.parent_id || '');
+  const parentMenuCount = chosenParent && parentChanged ? chosenParent.itemCount : 0;
 
   const handleOpenModal = (category?: Category) => {
     if (category) {
@@ -402,14 +425,18 @@ const CategoryManagementPage: React.FC = () => {
       setFormData({
         name: category.name,
         emoji: category.emoji,
-        is_recommendation_source: category.is_recommendation_source ?? null
+        is_recommendation_source: category.is_recommendation_source ?? null,
+        parent_id: category.parent_id || '',
+        move_menus: true
       });
     } else {
       setEditingCategory(null);
       setFormData({
         name: '',
         emoji: '🍽️',
-        is_recommendation_source: null
+        is_recommendation_source: null,
+        parent_id: '',
+        move_menus: true
       });
     }
     setIsModalOpen(true);
@@ -421,7 +448,9 @@ const CategoryManagementPage: React.FC = () => {
     setFormData({
       name: '',
       emoji: '🍽️',
-      is_recommendation_source: null
+      is_recommendation_source: null,
+      parent_id: '',
+      move_menus: true
     });
   };
 
@@ -454,7 +483,8 @@ const CategoryManagementPage: React.FC = () => {
           name: formData.name,
           emoji: formData.emoji,
           id: editingCategory.id,
-          order: editingCategory.order
+          order: editingCategory.order,
+          ...(parentChanged ? { parent_id: formData.parent_id || null, move_menus: parentMenuCount > 0 && formData.move_menus } : {})
         });
         // #11c 크로스셀 — 추천소스 플래그 변경 시에만 전용 엔드포인트로 저장(name/emoji 와 별개)
         if ((formData.is_recommendation_source ?? null) !== (editingCategory.is_recommendation_source ?? null)) {
@@ -465,20 +495,31 @@ const CategoryManagementPage: React.FC = () => {
           id: `cat-${Date.now()}`,
           name: formData.name,
           emoji: formData.emoji,
-          order: categories.length
+          order: categories.length,
+          parent_id: formData.parent_id || null,
+          move_menus: parentMenuCount > 0 && formData.move_menus
         };
         await addCategory(newCategory);
       }
       handleCloseModal();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save category:', error);
-      setInfoModal({ open: true, title: 'Save Failed', message: 'Failed to save category. Please try again.' });
+      setInfoModal({ open: true, title: 'Save Failed', message: error?.message || 'Failed to save category. Please try again.' });
     }
   };
 
   const handleDeleteClick = (categoryId: string) => {
     const category = categories.find(cat => cat.id === categoryId);
     if (!category) return;
+    // 하위가 있으면 지울 수 없다 — 서버도 거절한다(CATEGORY_HAS_CHILDREN). 먼저 안내.
+    if (categories.some(c => c.parent_id === categoryId)) {
+      setInfoModal({
+        open: true,
+        title: t('menu:categoryManagementPage.cannotDeleteTitle', 'Cannot delete'),
+        message: t('menu:categoryManagementPage.cannotDeleteHasSubs', { name: category.name, defaultValue: '"{{name}}" has subcategories. Move or delete its subcategories first.' })
+      });
+      return;
+    }
 
     const itemCount = menuItems.filter(item => item.category === categoryId).length;
     setCategoryToDelete({
@@ -496,9 +537,9 @@ const CategoryManagementPage: React.FC = () => {
       await deleteCategory(categoryToDelete.id);
       setIsDeleteModalOpen(false);
       setCategoryToDelete(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete category:', error);
-      setInfoModal({ open: true, title: 'Delete Failed', message: 'Failed to delete category. Please try again.' });
+      setInfoModal({ open: true, title: 'Delete Failed', message: error?.message || 'Failed to delete category. Please try again.' });
     }
   };
 
@@ -507,26 +548,25 @@ const CategoryManagementPage: React.FC = () => {
     setCategoryToDelete(null);
   };
 
-  const handleMoveUp = (index: number) => {
-    if (index === 0) return;
-    const items = [...categoriesWithCount];
-    [items[index - 1], items[index]] = [items[index], items[index - 1]];
-    const updatedCategories = items.map((item, idx) => ({
-      ...item,
-      order: idx
-    }));
+  // 형제(같은 상위 아래, 또는 1단끼리) 안에서만 자리를 바꾼다 → 화면 순서대로 전체 order 를 다시 매긴다.
+  const moveWithinSiblings = (rowIndex: number, dir: -1 | 1) => {
+    const row = categoryRows[rowIndex];
+    const sibs = [...row.siblings];
+    const i = sibs.findIndex(s => s.id === row.cat.id);
+    const j = i + dir;
+    if (j < 0 || j >= sibs.length) return;
+    [sibs[i], sibs[j]] = [sibs[j], sibs[i]];
+    const tops = row.sub ? topLevel : sibs;
+    const flat = tops.flatMap(top => [top, ...(row.sub && top.id === row.cat.parent_id ? sibs : childrenOf(top.id))]);
+    const updatedCategories = flat.map(({ itemCount, childCount, ...item }, idx) => ({ ...item, order: idx }));
     reorderCategories(updatedCategories);
   };
-
-  const handleMoveDown = (index: number) => {
-    if (index === categoriesWithCount.length - 1) return;
-    const items = [...categoriesWithCount];
-    [items[index], items[index + 1]] = [items[index + 1], items[index]];
-    const updatedCategories = items.map((item, idx) => ({
-      ...item,
-      order: idx
-    }));
-    reorderCategories(updatedCategories);
+  const handleMoveUp = (index: number) => moveWithinSiblings(index, -1);
+  const handleMoveDown = (index: number) => moveWithinSiblings(index, 1);
+  const isFirstSibling = (index: number) => categoryRows[index].siblings[0]?.id === categoryRows[index].cat.id;
+  const isLastSibling = (index: number) => {
+    const sibs = categoryRows[index].siblings;
+    return sibs[sibs.length - 1]?.id === categoryRows[index].cat.id;
   };
 
   const handleToggleActive = async (category: Category) => {
@@ -586,12 +626,12 @@ const CategoryManagementPage: React.FC = () => {
       ) : (
         <CategoryGrid>
           {categoriesWithCount.map((category, index) => (
-            <CategoryCard key={category.id}>
+            <CategoryCard key={category.id} $sub={categoryRows[index].sub}>
               <OrderControls
                 onMoveUp={() => handleMoveUp(index)}
                 onMoveDown={() => handleMoveDown(index)}
-                disableUp={index === 0}
-                disableDown={index === categoriesWithCount.length - 1}
+                disableUp={isFirstSibling(index)}
+                disableDown={isLastSibling(index)}
               />
               <CategoryIcon>
                 {category.emoji}
@@ -602,8 +642,12 @@ const CategoryManagementPage: React.FC = () => {
                   {category.isActive === false && <StatusBadge active={false}>{'Inactive'}</StatusBadge>}
                 </CategoryName>
                 <CategoryMeta>
-                  <span>{category.itemCount || 0} items</span>
-                  <span>Position {index + 1}</span>
+                  {category.childCount > 0
+                    ? <span>{t('menu:categoryManagementPage.subcategoryCount', { n: category.childCount, defaultValue: 'Subcategories: {{n}}' })}</span>
+                    : <span>{category.itemCount || 0} items</span>}
+                  {categoryRows[index].sub && (
+                    <span>{t('menu:categoryManagementPage.inParent', { name: nameOf(category.parent_id), defaultValue: 'In {{name}}' })}</span>
+                  )}
                 </CategoryMeta>
               </CategoryInfo>
               <ToggleSwitch title={category.isActive !== false ? 'Click to hide from POS/Mobile' : 'Click to show on POS/Mobile'}>
@@ -658,6 +702,36 @@ const CategoryManagementPage: React.FC = () => {
             placeholder="e.g., Main Dishes"
             autoFocus
           />
+        </FormGroup>
+
+        <FormGroup>
+          <Label>{t('menu:categoryManagementPage.parentCategory', 'Parent category')}</Label>
+          <Select
+            value={formData.parent_id}
+            onChange={(e) => setFormData({ ...formData, parent_id: e.target.value, move_menus: true })}
+            disabled={editingHasChildren}
+          >
+            <option value="">{t('menu:categoryManagementPage.noParent', 'None — top-level category')}</option>
+            {parentOptions.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </Select>
+          <Hint>
+            {editingHasChildren
+              ? t('menu:categoryManagementPage.parentLockedHint', 'This category has its own subcategories, so it stays top-level. Only two levels are allowed.')
+              : t('menu:categoryManagementPage.parentHint', 'Optional. Use subcategories when a category has too many items to scan. A category with subcategories holds no items itself — items go in its subcategories.')}
+          </Hint>
+          {parentMenuCount > 0 && chosenParent && (
+            <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 8, fontSize: 14, color: '#1F2937' }}>
+              <input
+                type="checkbox"
+                checked={formData.move_menus}
+                onChange={(e) => setFormData({ ...formData, move_menus: e.target.checked })}
+                style={{ marginTop: 3 }}
+              />
+              <span>{t('menu:categoryManagementPage.moveMenus', { n: parentMenuCount, parent: chosenParent.name, defaultValue: 'Move the menu items in "{{parent}}" ({{n}}) into this subcategory' })}</span>
+            </label>
+          )}
         </FormGroup>
 
         <FormGroup>

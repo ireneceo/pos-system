@@ -28,6 +28,7 @@
     "migrate-ledger-cost-columns.js",
     "migrate-stock-take-bg-warehouse.js",
     "migrate-po-item-shipped-at.js",
+    "migrate-menu-category-parent-tagline.js",
     "migrate-brand-account-payment-settings.js",
     "migrate-brand-menu-origin-restaurant.js",
     "migrate-brand-menu-recipe-link.js",

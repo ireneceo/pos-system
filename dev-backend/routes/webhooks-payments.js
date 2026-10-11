@@ -32,7 +32,7 @@ const Subscription = require('../models/Subscription');
 const WebhookEvent = require('../models/WebhookEvent');
 const PaymentCustomer = require('../models/PaymentCustomer');
 const systemLogger = require('../utils/systemLogger');
-const { handleInvoicePaid } = require('../services/invoiceLifecycle');
+const { markInvoicePaidFromGateway, passesAmountCrossCheck } = require('../services/invoiceLifecycle');
 
 function payloadHash(buf) {
   return crypto.createHash('sha256').update(buf).digest('hex');
@@ -66,22 +66,46 @@ async function markFailed(row, err) {
 
 /* ──────────────────── STRIPE ──────────────────── */
 
-router.post('/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+// 주소 2개, 처리 1개 (2026-10-11 Fable 판정 F3)
+//   /api/webhooks/stripe                              → 발행자 system (우리 회사 Stripe — 지금 주소 그대로)
+//   /api/webhooks/stripe/:issuer_type/:issuer_id      → 그 발행자(브랜드·푸드코트·공급업체)의 Stripe 계정 비밀로 검증
+// 전에는 system 비밀로만 검증해, 브랜드 Stripe 에서 낸 청구서는 웹훅이 전부 서명 실패 → 돈은 빠지고 청구서는 미결제로 남았다.
+// 서명이 맞아도 «그 계정이 이 청구서의 발행자인가» 는 markInvoicePaidFromGateway 가 다시 본다(발행자 일치 가드).
+const ISSUER_PATH_TYPES = ['brand', 'foodcourt', 'supplier'];
+
+router.post('/stripe', express.raw({ type: 'application/json' }), (req, res) =>
+  handleStripeWebhook(req, res, { type: 'system', id: null }));
+
+router.post('/stripe/:issuer_type/:issuer_id', express.raw({ type: 'application/json' }), (req, res) => {
+  const type = req.params.issuer_type;
+  const id = Number(req.params.issuer_id);
+  if (!ISSUER_PATH_TYPES.includes(type) || !Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'Invalid issuer' });
+  }
+  return handleStripeWebhook(req, res, { type, id });
+});
+
+async function handleStripeWebhook(req, res, issuer) {
   let event;
   try {
     const sig = req.headers['stripe-signature'];
     if (!sig) return res.status(400).json({ error: 'Missing stripe-signature header' });
 
-    const webhookSecret = await getWebhookSecretForIssuer('system', null);
+    let webhookSecret = null;
+    try {
+      webhookSecret = await getWebhookSecretForIssuer(issuer.type, issuer.id);
+    } catch (e) {
+      webhookSecret = null; // 없는 발행자·설정 없음 → 아래 400
+    }
     if (!webhookSecret) {
-      await systemLogger.warn('payment', 'stripe-webhook', 'No webhook secret configured');
+      await systemLogger.warn('payment', 'stripe-webhook', 'No webhook secret configured', { issuer: `${issuer.type}${issuer.id ? '#' + issuer.id : ''}` });
       return res.status(400).json({ error: 'Webhook secret not configured' });
     }
 
     try {
       event = Stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
     } catch (err) {
-      await systemLogger.error('security', 'stripe-webhook', 'Signature verification failed', { error: err.message });
+      await systemLogger.error('security', 'stripe-webhook', 'Signature verification failed', { error: err.message, issuer: `${issuer.type}${issuer.id ? '#' + issuer.id : ''}` });
       return res.status(400).json({ error: `Webhook Error: ${err.message}` });
     }
   } catch (e) {
@@ -101,7 +125,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
   }
 
   try {
-    await processStripeEvent(event);
+    await processStripeEvent(event, issuer);
     await markProcessed(dbRow);
     res.json({ received: true });
   } catch (e) {
@@ -110,43 +134,31 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
     // 200 OK 반환 — Stripe 에 retry 요청하면 dedupe 가 처리. 또는 5xx 로 retry 유도. 5xx 가 표준.
     res.status(500).json({ error: e.message });
   }
-});
-
-// P1-2 (2026-06-08): webhook amount cross-check. The mark-paid sites used to
-// trust the event blindly and write paid_amount = invoice.total_amount. If a
-// gateway reports a captured amount that is LESS than the invoice total
-// (underpayment / partial capture / forged-but-cheaper event), we must NOT mark
-// the invoice fully paid. Conservative by design — we only HOLD on a clear
-// underpayment or a currency mismatch; when the gateway amount is unreadable we
-// proceed (best-effort) so legitimate payments are never blocked by a parsing gap.
-const AMOUNT_TOLERANCE = 0.01;
-async function passesAmountCrossCheck(invoice, gatewayAmount, gatewayCurrency, ctx) {
-  const amt = Number(gatewayAmount);
-  if (!Number.isFinite(amt) || amt <= 0) return true; // can't read amount → don't block
-
-  const expected = Number(invoice.total_amount) || 0;
-
-  if (gatewayCurrency && invoice.currency &&
-      String(gatewayCurrency).toUpperCase() !== String(invoice.currency).toUpperCase()) {
-    await systemLogger.warn('payment', `${ctx.gateway}-webhook`, 'Currency mismatch on paid webhook — holding', {
-      invoice: invoice.invoice_number, gateway_currency: gatewayCurrency, invoice_currency: invoice.currency,
-      gateway_amount: amt, invoice_total: expected, event_id: ctx.eventId
-    });
-    await invoice.update({ payment_notes: `Held: gateway currency ${gatewayCurrency} ≠ invoice ${invoice.currency} (gateway amount ${amt})` });
-    return false;
-  }
-
-  if (amt + AMOUNT_TOLERANCE < expected) {
-    await systemLogger.error('security', `${ctx.gateway}-webhook`, 'Underpayment on paid webhook — NOT marking paid', {
-      invoice: invoice.invoice_number, gateway_amount: amt, invoice_total: expected, event_id: ctx.eventId
-    });
-    await invoice.update({ payment_notes: `Held: gateway reported ${amt} < invoice total ${expected}` });
-    return false;
-  }
-  return true;
 }
 
-async function processStripeEvent(event) {
+// 금액 대조(P1-2)와 paid 전환은 services/invoiceLifecycle.js 한 곳에 있다 (2026-10-11 F4).
+
+/** Checkout 세션(결제 모드) → 청구서. 돈이 실제로 들어온 세션(payment_status 'paid')만 paid 로 간다.
+ *  지연 결제수단은 completed 때 'unpaid' 로 오고, 입금되면 async_payment_succeeded 가 따로 온다. */
+async function markSessionInvoicePaid(session, event, verifiedIssuer) {
+  const invoiceId = session.metadata?.invoice_id;
+  if (!invoiceId) return;
+  if (session.payment_status !== 'paid') {
+    await systemLogger.info('payment', 'stripe-webhook', 'Checkout completed — awaiting async payment', {
+      session_id: session.id, payment_status: session.payment_status, invoice_id: invoiceId
+    });
+    return;
+  }
+  const invoice = await Invoice.findByPk(parseInt(invoiceId, 10));
+  if (!invoice) return;
+  const gwAmount = typeof session.amount_total === 'number' ? session.amount_total / 100 : null;
+  await markInvoicePaidFromGateway(invoice, {
+    gateway: 'stripe', gatewayAmount: gwAmount, gatewayCurrency: session.currency,
+    paymentIntentId: session.payment_intent, eventId: event.id, verifiedIssuer
+  });
+}
+
+async function processStripeEvent(event, verifiedIssuer) {
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object;
@@ -162,28 +174,22 @@ async function processStripeEvent(event) {
         });
         // session 완료 시점에서는 status='active' 일 수도, 'incomplete' 일 수도. customer.subscription.created 가 정확한 status 동기화.
       } else if (session.mode === 'payment') {
-        const invoiceId = session.metadata?.invoice_id;
-        if (invoiceId) {
-          const invoice = await Invoice.findByPk(parseInt(invoiceId, 10));
-          if (invoice && invoice.status !== 'paid') {
-            const gwAmount = typeof session.amount_total === 'number' ? session.amount_total / 100 : null;
-            if (!(await passesAmountCrossCheck(invoice, gwAmount, session.currency, { gateway: 'stripe', eventId: event.id }))) break;
-            await invoice.update({
-              status: 'paid',
-              paid_at: new Date(),
-              paid_amount: invoice.total_amount,
-              payment_method: 'stripe',
-              payment_provider: 'stripe',
-              gateway: 'stripe',
-              payment_intent_id: session.payment_intent || invoice.payment_intent_id,
-              confirmed_at: new Date(),
-              confirmed_by: 0
-            });
-            handleInvoicePaid && handleInvoicePaid(invoice.id).catch(err => systemLogger.warn('payment', 'stripe-webhook', 'invoiceLifecycle hook failed', { error: err.message }));
-            await systemLogger.info('payment', 'stripe-webhook', `Invoice ${invoice.invoice_number} paid via Checkout`, { session_id: session.id });
-          }
-        }
+        await markSessionInvoicePaid(session, event, verifiedIssuer);
       }
+      break;
+    }
+    case 'checkout.session.async_payment_succeeded': {
+      // 지연 결제수단(입금 확인이 나중에 오는 것) — 돈이 실제로 들어온 시점
+      const session = event.data.object;
+      if (session.mode === 'payment') await markSessionInvoicePaid(session, event, verifiedIssuer);
+      break;
+    }
+    case 'checkout.session.async_payment_failed': {
+      const session = event.data.object;
+      const invoiceId = session.metadata?.invoice_id || session.payment_intent_data?.metadata?.invoice_id;
+      if (!invoiceId) break;
+      const invoice = await Invoice.findByPk(parseInt(invoiceId, 10));
+      if (invoice) await invoice.update({ payment_notes: 'Stripe async payment failed' });
       break;
     }
     case 'customer.subscription.created':
@@ -234,16 +240,13 @@ async function processStripeEvent(event) {
       const invoiceId = pi.metadata?.invoice_id;
       if (!invoiceId) break;
       const invoice = await Invoice.findByPk(invoiceId);
-      if (invoice && invoice.status !== 'paid') {
+      if (invoice) {
         const gwAmount = typeof pi.amount_received === 'number' ? pi.amount_received / 100
           : (typeof pi.amount === 'number' ? pi.amount / 100 : null);
-        if (!(await passesAmountCrossCheck(invoice, gwAmount, pi.currency, { gateway: 'stripe', eventId: event.id }))) break;
-        await invoice.update({
-          status: 'paid', paid_at: new Date(), paid_amount: invoice.total_amount,
-          payment_method: 'stripe', payment_provider: 'stripe', gateway: 'stripe',
-          payment_intent_id: pi.id, confirmed_at: new Date(), confirmed_by: 0
+        await markInvoicePaidFromGateway(invoice, {
+          gateway: 'stripe', gatewayAmount: gwAmount, gatewayCurrency: pi.currency,
+          paymentIntentId: pi.id, eventId: event.id, verifiedIssuer
         });
-        handleInvoicePaid && handleInvoicePaid(invoice.id).catch(() => {});
       }
       break;
     }
@@ -424,16 +427,14 @@ async function processPayPalEvent(event) {
       const invoiceId = r.custom_id || r.purchase_units?.[0]?.custom_id;
       if (!invoiceId) break;
       const invoice = await Invoice.findByPk(parseInt(invoiceId, 10));
-      if (invoice && invoice.status !== 'paid') {
+      if (invoice) {
         const amtObj = r.amount || r.purchase_units?.[0]?.amount || {};
         const gwAmount = amtObj.value != null ? parseFloat(amtObj.value) : null;
-        if (!(await passesAmountCrossCheck(invoice, gwAmount, amtObj.currency_code, { gateway: 'paypal', eventId: event.id }))) break;
-        await invoice.update({
-          status: 'paid', paid_at: new Date(), paid_amount: invoice.total_amount,
-          payment_method: 'paypal', payment_provider: 'paypal', gateway: 'paypal',
-          payment_intent_id: r.id, confirmed_at: new Date(), confirmed_by: 0
+        // PayPal 웹훅은 system 의 webhookId 로만 검증한다(발행자별 검증은 운영 미사용이라 보류 — 판정 §3)
+        await markInvoicePaidFromGateway(invoice, {
+          gateway: 'paypal', gatewayAmount: gwAmount, gatewayCurrency: amtObj.currency_code,
+          paymentIntentId: r.id, eventId: event.id, verifiedIssuer: { type: 'system', id: null }
         });
-        handleInvoicePaid && handleInvoicePaid(invoice.id).catch(() => {});
       }
       break;
     }
@@ -455,5 +456,5 @@ async function processPayPalEvent(event) {
 }
 
 module.exports = router;
-// Exposed for unit testing the P1-2 amount cross-check decision in isolation.
+// Exposed for unit testing the P1-2 amount cross-check decision in isolation (함수 본체는 services/invoiceLifecycle.js).
 module.exports.passesAmountCrossCheck = passesAmountCrossCheck;

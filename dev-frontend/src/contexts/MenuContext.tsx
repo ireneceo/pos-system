@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import { getAuthToken } from '../utils/auth';
@@ -31,6 +31,8 @@ export interface MenuItem {
   recipe_id?: number | null;
   kitchen_station_id?: number | null;
   is_featured?: boolean;
+  // 목록 카드용 한 줄 소개 (docs/MENU_CATEGORY_TWO_LEVEL.md ②)
+  tagline?: string | null;
   after_meal?: boolean;
   display_order?: number;
   brand_menu_id?: number | null;
@@ -80,10 +82,15 @@ export interface MenuCategory {
   kitchen_station_id?: number | null;
   // #11c 크로스셀 — true=강제 추천포함 / false=강제 제외 / null|undefined=이름 자동감지
   is_recommendation_source?: boolean | null;
+  // 2단 카테고리 (docs/MENU_CATEGORY_TWO_LEVEL.md) — 상위 카테고리 id. null = 1단
+  parent_id?: string | null;
 }
 
 interface MenuContextType {
+  // 메뉴를 담는 카테고리만(하위가 있는 «묶음 칸» 상위는 빠짐) — POS·메뉴 관리 선택·KDS 가 쓴다.
   categories: MenuCategory[];
+  // 카테고리 관리 화면용 전체 목록(상위·하위 모두)
+  allCategories: MenuCategory[];
   menuItems: MenuItem[];
   optionGroups: OptionGroup[];
   isLoadingMenu: boolean;
@@ -96,8 +103,8 @@ interface MenuContextType {
   removeMenuItem: (itemId: string) => Promise<void>;
   toggleItemSoldOut: (itemId: string) => Promise<void>;
   applyOptionSoldOut: (optionId: string, soldOut: boolean) => void;  // 2026-06-28 (2-1 M1) 옵션 품절 공유상태 반영(토글/소켓)
-  addCategory: (category: Omit<MenuCategory, 'id'> & { id?: string }) => Promise<void>;
-  updateCategory: (categoryId: string, updates: Partial<MenuCategory>) => Promise<void>;
+  addCategory: (category: Omit<MenuCategory, 'id'> & { id?: string; move_menus?: boolean }) => Promise<void>;
+  updateCategory: (categoryId: string, updates: Partial<MenuCategory> & { move_menus?: boolean }) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
   reorderCategories: (categories: MenuCategory[]) => void;
   addOptionGroup: (group: OptionGroup) => Promise<void>;
@@ -157,7 +164,21 @@ const DEFAULT_OPTION_GROUPS: OptionGroup[] = [];
 
 export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
   const location = useLocation();
-  const [categories, setCategories] = useState<MenuCategory[]>(DEFAULT_CATEGORIES);
+  const [allCategories, setAllCategories] = useState<MenuCategory[]>(DEFAULT_CATEGORIES);
+  // 묶음 칸(하위가 있는 상위)은 메뉴를 담지 않으므로 POS·메뉴 관리 선택·KDS 목록에서 뺀다.
+  // 상위가 꺼져 있으면 그 하위도 꺼진 것으로 본다(POS 파일 무접촉 — docs/MENU_CATEGORY_TWO_LEVEL.md).
+  const categories = useMemo(() => {
+    const groupIds = new Set(allCategories.filter(c => c.parent_id).map(c => String(c.parent_id)));
+    const byId = new Map(allCategories.map(c => [String(c.id), c]));
+    return allCategories
+      .filter(c => !groupIds.has(String(c.id)))
+      .map(c => {
+        if (!c.parent_id) return c;
+        const parent = byId.get(String(c.parent_id));
+        return parent && parent.isActive === false ? { ...c, isActive: false } : c;
+      });
+  }, [allCategories]);
+  const setCategories = setAllCategories;
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [optionGroups, setOptionGroups] = useState<OptionGroup[]>(DEFAULT_OPTION_GROUPS);
   const [isLoadingMenu, setIsLoadingMenu] = useState(false);
@@ -236,7 +257,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             order: cat.displayOrder !== undefined ? cat.displayOrder : idx,
             isActive: cat.isActive !== undefined ? cat.isActive : true,
             kitchen_station_id: cat.kitchen_station_id || null,
-            is_recommendation_source: cat.is_recommendation_source ?? null
+            is_recommendation_source: cat.is_recommendation_source ?? null,
+            parent_id: cat.parent_id != null ? String(cat.parent_id) : null
           };
         });
 
@@ -297,6 +319,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             set_display_order: item.set_display_order || 0,
             recipe_id: item.recipe_id || null,
             after_meal: item.after_meal || false,
+            is_featured: item.is_featured === true,
+            tagline: item.tagline || null,
             display_order: item.display_order || 0,
             kitchen_station_id: item.kitchen_station_id || null,
             brand_menu_id: item.brand_menu_id || null,
@@ -484,6 +508,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             set_display_order: item.set_display_order || 0,
             recipe_id: item.recipe_id || null,
             after_meal: item.after_meal || false,
+            is_featured: item.is_featured === true,
+            tagline: item.tagline || null,
             display_order: item.display_order || 0,
             takeaway_charge: item.takeaway_charge != null ? Number(item.takeaway_charge) : 0,
             availability: item.availability || null
@@ -588,6 +614,9 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         set_display_order: updatedItem.set_display_order,
         recipe_id: updatedItem.recipe_id || null,
         after_meal: updatedItem.after_meal ?? false,
+        // 모르는 값(undefined)은 보내지 않는다 → 서버가 기존 값 유지
+        is_featured: updatedItem.is_featured,
+        tagline: updatedItem.tagline,
         takeaway_charge: updatedItem.takeaway_charge ?? 0,
         availability: updatedItem.availability ?? null,
         directIngredients: (updatedItem as any).directIngredients || undefined
@@ -668,6 +697,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         set_display_order: newItem.set_display_order,
         recipe_id: newItem.recipe_id || null,
         after_meal: newItem.after_meal ?? false,
+        is_featured: newItem.is_featured ?? false,
+        tagline: newItem.tagline ?? null,
         takeaway_charge: newItem.takeaway_charge ?? 0,
         availability: newItem.availability ?? null,
         directIngredients: (newItem as any).directIngredients || undefined,
@@ -789,7 +820,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
     }
   };
 
-  const addCategory = async (category: Omit<MenuCategory, 'id'> & { id?: string }) => {
+  const addCategory = async (category: Omit<MenuCategory, 'id'> & { id?: string; move_menus?: boolean }) => {
     try {
       // Get restaurantId from URL path
       const pathParts = window.location.pathname.split('/');
@@ -807,14 +838,18 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         body: JSON.stringify({
           name: category.name,
           emoji: category.emoji || '🍽️',
-          description: `Category: ${category.name}`
+          description: `Category: ${category.name}`,
+          parent_id: category.parent_id || null,
+          move_menus: category.move_menus === true
         })
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-
-        throw new Error(errorData.error || 'Failed to add category');
+        const err: any = new Error(errorData.message || errorData.error?.message || (typeof errorData.error === 'string' ? errorData.error : '') || 'Failed to add category');
+        err.code = errorData.error?.code;
+        err.count = errorData.error?.count;
+        throw err;
       }
 
       // 성공 시 메뉴 전체 다시 로드 (DB와 동기화)
@@ -826,9 +861,9 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
     }
   };
 
-  const updateCategory = async (categoryId: string, updates: Partial<MenuCategory>) => {
+  const updateCategory = async (categoryId: string, updates: Partial<MenuCategory> & { move_menus?: boolean }) => {
     try {
-      const oldCategory = categories.find(cat => cat.id === categoryId);
+      const oldCategory = allCategories.find(cat => cat.id === categoryId);
       if (!oldCategory) {
         throw new Error('Category not found');
       }
@@ -849,14 +884,19 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         body: JSON.stringify({
           name: updates.name,
           emoji: updates.emoji,
-          description: updates.name ? `Category: ${updates.name}` : undefined
+          description: updates.name ? `Category: ${updates.name}` : undefined,
+          // 상위 바꾸기 — 값이 올 때만(undefined 면 서버가 그대로 둠). '' = 1단으로
+          parent_id: updates.parent_id === undefined ? undefined : (updates.parent_id || null),
+          move_menus: updates.move_menus === true ? true : undefined
         })
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-
-        throw new Error(errorData.error || 'Failed to update category');
+        const err: any = new Error(errorData.message || errorData.error?.message || (typeof errorData.error === 'string' ? errorData.error : '') || 'Failed to update category');
+        err.code = errorData.error?.code;
+        err.count = errorData.error?.count;
+        throw err;
       }
 
       // 성공 시 메뉴 전체 다시 로드 (DB와 동기화)
@@ -870,7 +910,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
   const deleteCategory = async (categoryId: string) => {
     try {
-      const category = categories.find(cat => cat.id === categoryId);
+      const category = allCategories.find(cat => cat.id === categoryId);
       if (!category) {
         throw new Error('Category not found');
       }
@@ -882,7 +922,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete category');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || errorData.error?.message || 'Failed to delete category');
       }
 
       // 성공 시 메뉴 전체 다시 로드 (DB와 동기화)
@@ -1041,6 +1082,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
   return (
     <MenuContext.Provider value={{
       categories,
+      allCategories,
       menuItems,
       optionGroups,
       isLoadingMenu,

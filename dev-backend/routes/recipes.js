@@ -1,4 +1,5 @@
 const express = require('express');
+const { menuCategoryError } = require('../utils/menuCategoryTree');
 const router = express.Router();
 const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product, RecipeCategory, Category, RestaurantIngredientCost } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
@@ -941,6 +942,10 @@ router.post('/restaurants/:restaurantId/products/create-from-recipe', authentica
 
       categoryName = menuCategory.name;
     }
+
+    // 하위가 있는 카테고리(묶음 칸)에는 메뉴를 직접 담지 않는다 — utils/menuCategoryTree
+    const catErr = await menuCategoryError(restaurantId, categoryName);
+    if (catErr) return res.status(400).json(catErr);
 
     // 레시피의 모든 정보를 Product로 복사
     const product = await Product.create({

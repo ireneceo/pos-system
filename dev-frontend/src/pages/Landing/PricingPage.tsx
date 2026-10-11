@@ -834,12 +834,12 @@ const PricingPage: React.FC = () => {
                     {isPopular && <PopularBadge>{t('landing:pricingPage.mostPopular')}</PopularBadge>}
                     <PlanName>{plan.display_name}</PlanName>
                     <div style={{ fontSize: '14px', fontWeight: 600, color: '#635BFF', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '24px', textAlign: 'center' }}>
-                      {plan.plan_target === 'restaurant' ? 'Restaurant Plan' : plan.plan_target === 'brand' ? 'Brand Plan' : plan.plan_target === 'foodcourt' ? 'Foodcourt Plan' : 'Owner Plan'}
+                      {plan.plan_target === 'restaurant' ? t('landing:pricingPage.targetRestaurant', 'Restaurant Plan') : plan.plan_target === 'brand' ? t('landing:pricingPage.targetBrand', 'Brand Plan') : plan.plan_target === 'foodcourt' ? t('landing:pricingPage.targetFoodcourt', 'Foodcourt Plan') : plan.plan_target === 'supplier' ? t('landing:pricingPage.targetSupplier', 'Supplier Plan') : t('landing:pricingPage.targetOwner', 'Owner Plan')}
                     </div>
 
                     <PriceSection>
                       {monthlyPrice === 0 ? (
-                        <MonthlyPrice>{t('landing:pricingPage.contactUs')}</MonthlyPrice>
+                        <MonthlyPrice>{Number(plan.base_price_monthly) === 0 ? t('landing:pricingPage.free', 'Free') : t('landing:pricingPage.contactUs')}</MonthlyPrice>
                       ) : (
                         <>
                           <MonthlyPrice>

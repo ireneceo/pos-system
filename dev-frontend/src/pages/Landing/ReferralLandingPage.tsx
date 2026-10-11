@@ -11,6 +11,7 @@ interface PlanOption {
   base_price_monthly: number;
   base_price_annual: number | null;
   currency?: string;
+  currency_prices?: Record<string, { monthly: number; annual: number }>;
 }
 
 const Hero = styled.section`
@@ -341,7 +342,7 @@ const ReferralLandingPage: React.FC = () => {
         const raw = (Array.isArray(data) ? data : data?.data ?? []) as PlanOption[];
         if (Array.isArray(raw) && raw.length) {
           setPlans(raw);
-          const first = raw.find(p => Number(p.base_price_monthly) > 0) ?? raw[0];
+          const first = raw.find(p => Number(p.currency_prices?.MYR?.monthly ?? p.base_price_monthly) > 0) ?? raw[0];
           setSelectedPlanId(first.id);
         }
       })
@@ -351,8 +352,10 @@ const ReferralLandingPage: React.FC = () => {
   const sim = useMemo(() => {
     const fallback: PlanOption = { id: 0, display_name: 'Professional', base_price_monthly: 89, base_price_annual: 1068, currency: 'MYR' };
     const p = plans.find(x => x.id === selectedPlanId) || fallback;
-    const monthly = parseFloat(String(p.base_price_monthly)) || 0;
-    const currency = p.currency || 'MYR';
+    // 청구는 통화별 가격표(currency_prices)를 쓴다 — 옛 기준가(base_price_monthly)는 그게 없을 때만
+    const myr = p.currency_prices?.MYR?.monthly;
+    const monthly = (myr != null ? Number(myr) : parseFloat(String(p.base_price_monthly))) || 0;
+    const currency = myr != null ? 'MYR' : (p.currency || 'MYR');
     const monthlyEarn = monthly * 0.15 * refCount;
     return { plan: p, monthly, currency, monthlyEarn, yearlyEarn: monthlyEarn * 12 };
   }, [plans, selectedPlanId, refCount]);

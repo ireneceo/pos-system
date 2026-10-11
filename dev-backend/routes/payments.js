@@ -13,6 +13,8 @@ const { authenticateToken } = require('../middleware/auth');
 const { Restaurant, Brand, Foodcourt, Invoice, Subscription, PaymentCustomer } = require('../models');
 const stripeCheckout = require('../services/stripeCheckoutService');
 const paypalCheckout = require('../services/paypalCheckoutService');
+const { gatewayPayableError, resolvePayerParty } = require('../utils/invoicePayable');
+const { normalizeIssuerType } = require('../utils/stripeService');
 
 /**
  * Determine if `user` is allowed to act as `payer_type/payer_id`.
@@ -60,16 +62,21 @@ function validateStartBody(body) {
 
   if (!ALLOWED_GW.includes(body.gateway)) errors.gateway = 'Must be stripe or paypal';
   if (!ALLOWED_MODE.includes(body.mode)) errors.mode = 'Must be subscription or payment';
-  if (!ALLOWED_ISSUER.includes(body.issuer_type)) errors.issuer_type = 'Invalid issuer_type';
-  if (!ALLOWED_PAYER.includes(body.payer_type)) errors.payer_type = 'Invalid payer_type';
-  if (!body.payer_id || typeof body.payer_id !== 'number') errors.payer_id = 'Required (number)';
-  if (body.issuer_type !== 'system' && (!body.issuer_id || typeof body.issuer_id !== 'number')) {
-    errors.issuer_id = 'Required for non-system issuer';
+  // 청구서 결제(payment)는 당사자를 서버가 청구서에서 꺼낸다 — 화면이 보낸 issuer/payer 는 받지도 믿지도 않는다
+  // (2026-10-11 Fable 판정 F2). 당사자 칸은 정기구독(subscription) 모드에서만 필수다.
+  if (body.mode === 'subscription') {
+    if (!ALLOWED_ISSUER.includes(body.issuer_type)) errors.issuer_type = 'Invalid issuer_type';
+    if (!ALLOWED_PAYER.includes(body.payer_type)) errors.payer_type = 'Invalid payer_type';
+    if (!body.payer_id || typeof body.payer_id !== 'number') errors.payer_id = 'Required (number)';
+    if (body.issuer_type !== 'system' && (!body.issuer_id || typeof body.issuer_id !== 'number')) {
+      errors.issuer_id = 'Required for non-system issuer';
+    }
+    if (!body.plan_id || typeof body.plan_id !== 'number') {
+      errors.plan_id = 'Required for subscription mode';
+    }
   }
-  if (body.mode === 'subscription' && (!body.plan_id || typeof body.plan_id !== 'number')) {
-    errors.plan_id = 'Required for subscription mode';
-  }
-  if (body.mode === 'payment' && (!body.invoice_id || typeof body.invoice_id !== 'number')) {
+  // 청구서 목록(to-pay)은 id 를 글자로 준다 — 양의 정수로 읽히면 받는다
+  if (body.mode === 'payment' && !(Number.isInteger(Number(body.invoice_id)) && Number(body.invoice_id) > 0)) {
     errors.invoice_id = 'Required for payment mode';
   }
   if (!body.success_url) errors.success_url = 'Required';
@@ -87,9 +94,39 @@ router.post('/checkout/start', authenticateToken, async (req, res) => {
         error: { message: 'Validation failed', code: 'VALIDATION_ERROR', fieldErrors: errors }
       });
     }
+    const { gateway, mode, success_url, cancel_url } = req.body;
+
+    // 청구서 결제 — 발행자·지불자는 청구서에서 꺼낸다. 결제 가능 판정은 utils/invoicePayable.js 한 곳.
+    if (mode === 'payment') {
+      const invoice = await Invoice.findByPk(Number(req.body.invoice_id));
+      const blocked = await gatewayPayableError(invoice, req.user);
+      if (blocked) return res.status(blocked.status).json(blocked.body);
+      const payer = await resolvePayerParty(invoice);
+      if (!payer) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Cannot resolve the payer of this invoice', code: 'PAYER_UNRESOLVED' }
+        });
+      }
+      const issuer_type = normalizeIssuerType(invoice.issuer_type || 'system');
+      const issuer_id = issuer_type === 'system' ? null : invoice.issuer_id;
+      const svc = gateway === 'stripe' ? stripeCheckout : gateway === 'paypal' ? paypalCheckout : null;
+      if (!svc) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Unsupported gateway/mode combination', code: 'UNSUPPORTED' }
+        });
+      }
+      const out = await svc.startInvoiceCheckout({
+        invoice, issuer_type, issuer_id,
+        payer_type: payer.payer_type, payer_id: payer.payer_id,
+        success_url, cancel_url
+      });
+      return res.json({ success: true, data: out });
+    }
+
     const {
-      gateway, mode, issuer_type, issuer_id, payer_type, payer_id,
-      plan_id, invoice_id, success_url, cancel_url, currency
+      issuer_type, issuer_id, payer_type, payer_id, plan_id, currency
     } = req.body;
 
     const allowed = await ensurePayerAccess(req, payer_type, payer_id);
@@ -110,55 +147,11 @@ router.post('/checkout/start', authenticateToken, async (req, res) => {
       return res.json({ success: true, data: out });
     }
 
-    if (gateway === 'stripe' && mode === 'payment') {
-      const invoice = await Invoice.findByPk(invoice_id);
-      if (!invoice) {
-        return res.status(404).json({
-          success: false,
-          error: { message: 'Invoice not found', code: 'INVOICE_NOT_FOUND' }
-        });
-      }
-      if (invoice.status === 'paid') {
-        return res.status(400).json({
-          success: false,
-          error: { message: 'Invoice already paid', code: 'ALREADY_PAID' }
-        });
-      }
-      const out = await stripeCheckout.startInvoiceCheckout({
-        invoice, issuer_type, issuer_id: issuer_id || null,
-        payer_type, payer_id,
-        success_url, cancel_url
-      });
-      return res.json({ success: true, data: out });
-    }
-
     if (gateway === 'paypal' && mode === 'subscription') {
       const out = await paypalCheckout.startSubscriptionCheckout({
         issuer_type, issuer_id: issuer_id || null,
         payer_type, payer_id, plan_id,
         currency: currency || 'MYR',
-        success_url, cancel_url
-      });
-      return res.json({ success: true, data: out });
-    }
-
-    if (gateway === 'paypal' && mode === 'payment') {
-      const invoice = await Invoice.findByPk(invoice_id);
-      if (!invoice) {
-        return res.status(404).json({
-          success: false,
-          error: { message: 'Invoice not found', code: 'INVOICE_NOT_FOUND' }
-        });
-      }
-      if (invoice.status === 'paid') {
-        return res.status(400).json({
-          success: false,
-          error: { message: 'Invoice already paid', code: 'ALREADY_PAID' }
-        });
-      }
-      const out = await paypalCheckout.startInvoiceCheckout({
-        invoice, issuer_type, issuer_id: issuer_id || null,
-        payer_type, payer_id,
         success_url, cancel_url
       });
       return res.json({ success: true, data: out });

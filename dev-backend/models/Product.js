@@ -33,6 +33,12 @@ Product.init({
   description: {
     type: DataTypes.TEXT('medium')
   },
+  // 목록 카드용 한 줄 소개 (2026-10-11 · docs/MENU_CATEGORY_TWO_LEVEL.md ②). description(긴 글·상세용)과 별개.
+  tagline: {
+    type: DataTypes.STRING(80),
+    allowNull: true,
+    defaultValue: null
+  },
   optionGroups: {
     type: DataTypes.JSON,
     allowNull: true,

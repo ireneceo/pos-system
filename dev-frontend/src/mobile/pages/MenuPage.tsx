@@ -16,6 +16,8 @@ interface MenuCategory {
   id: string;
   name: string;
   emoji: string;
+  // 2단 카테고리(docs/MENU_CATEGORY_TWO_LEVEL.md) — 상위 id. null = 1단
+  parent_id?: string | null;
 }
 
 interface MenuItem {
@@ -28,6 +30,8 @@ interface MenuItem {
   image?: string;
   is_set_menu?: boolean;
   is_featured?: boolean;
+  // 목록 카드용 한 줄 소개
+  tagline?: string | null;
   set_items?: Array<{ name: string; quantity: number }>;
   orderCount?: number;
   isAvailable?: boolean;
@@ -445,6 +449,60 @@ const SetBadge = styled.div`
   z-index: 1;
 `;
 
+/* 목록 카드 한 줄 소개 — 이름 아래, 넘치면 말줄임 (docs/MENU_CATEGORY_TWO_LEVEL.md ②) */
+const ItemTagline = styled.div`
+  font-size: var(--mo-item-desc-sm, 12px);
+  color: #4B5563;
+  margin: 2px 0 4px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+/* 추천 마크 — 매장이 Featured 로 고른 메뉴. 텍스트 배지(장식 이모지 금지 · 디자인 기준). SET 배지는 오른쪽 위 */
+const RecommendedBadge = styled.div`
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #635BFF;
+  color: white;
+  font-size: var(--mo-badge-font, 10px);
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+  z-index: 1;
+`;
+
+/* 2단 카테고리 — 상위를 고르면 그 아래 «전체 + 하위» 알약 한 줄. 폰 36px · 키오스크 48px(탭 토큰 기준) */
+const SubCategoryRow = styled.div`
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin: -4px 0 16px 0;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  white-space: nowrap;
+  &::-webkit-scrollbar { display: none; }
+`;
+
+const SubCategoryChip = styled.button<{ active: boolean }>`
+  flex-shrink: 0;
+  min-height: calc(var(--mo-tap, 44px) - 8px);
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid ${p => (p.active ? '#635BFF' : '#C7CED6')};
+  background: ${p => (p.active ? '#635BFF' : '#FFFFFF')};
+  color: ${p => (p.active ? '#FFFFFF' : '#374151')};
+  font-size: calc(var(--mo-cat-font, 15px) - 1px);
+  font-weight: ${p => (p.active ? 600 : 500)};
+  cursor: pointer;
+`;
+
 const SetItemsPreview = styled.div`
   font-size: var(--mo-item-desc-sm, 11px);
   color: #4B5563;
@@ -621,6 +679,11 @@ const MenuPage: React.FC = () => {
   const tableNumber = getActiveTable();
 
   const [categories, setCategories] = useState<MenuCategory[]>([]);
+  // 2단 카테고리(docs/MENU_CATEGORY_TWO_LEVEL.md) — 위 탭은 상위(1단)만, 하위는 고른 상위 아래 알약 한 줄.
+  // 상위(묶음 칸)를 고르면 «전체» = 그 하위들의 메뉴(서버가 함께 돌려준다). ⚠ 아래 콜백들보다 먼저 선언(TDZ).
+  const topCategories = categories.filter(c => !c.parent_id || !categories.some(p => p.id === c.parent_id));
+  const subCategoriesOf = (id: string) => categories.filter(c => c.parent_id && c.parent_id === id);
+  const categoryIdsWithSubs = (id: string) => [id, ...subCategoriesOf(id).map(c => c.id.toString())];
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [allMenuItems, setAllMenuItems] = useState<MenuItem[]>([]); // 검색용 전체 메뉴
   // 2026-06-24: URL ?cat 으로 초기화한다. 그러지 않으면 상세→뒤로가기 시 popstate 가
@@ -716,6 +779,8 @@ const MenuPage: React.FC = () => {
             emoji: item.emoji || '🍽️',
             image: item.image,
             is_set_menu: item.is_set_menu || false,
+            is_featured: item.is_featured === true,
+            tagline: item.tagline || null,
             set_items: item.set_items,
             isAvailable: item.isAvailable,
             schedule_unavailable: item.schedule_unavailable,
@@ -763,6 +828,7 @@ const MenuPage: React.FC = () => {
       price: parseFloat(item.price), categoryId: item.categoryId?.toString() || '',
       emoji: item.emoji || '🍽️', image: item.image,
       is_set_menu: item.is_set_menu || false, set_items: item.set_items,
+      is_featured: item.is_featured === true, tagline: item.tagline || null,
       isAvailable: item.isAvailable, schedule_unavailable: item.schedule_unavailable, schedule: item.schedule
     }));
   }, []);
@@ -826,10 +892,12 @@ const MenuPage: React.FC = () => {
               // 실제 아이템이 0개면 아래 showFeaturedTab 효과가 첫 카테고리로 폴백시킨다.
               const ms = r.data.mobile_settings;
               const featuredDefault = !!(ms && (ms.show_featured || ms.show_popular));
-              const useCat = isUrlCatValid ? urlCat : (featuredDefault ? '__featured__' : cats[0].id.toString());
+              // 첫 카테고리 = 첫 상위(1단) 카테고리 — 하위가 먼저 오면 위 탭에 없는 칸이 골라진다(2단 카테고리)
+              const firstTop = (cats.find((c: any) => !c.parent_id) || cats[0]).id.toString();
+              const useCat = isUrlCatValid ? urlCat : (featuredDefault ? '__featured__' : firstTop);
               setSelectedCategory(useCat);
               // backend fetch: normal cat 이면 그 cat, featured 면 첫 normal cat 만 prefetch (cache용)
-              firstCatId = (useCat === '__featured__') ? cats[0].id.toString() : useCat;
+              firstCatId = (useCat === '__featured__') ? firstTop : useCat;
               const firstCatRes = await fetch(`/api/mobile/menu/${slug}?page=1&limit=${ITEMS_PER_PAGE}&categoryId=${firstCatId}`);
               if (firstCatRes.ok) {
                 const cr = await firstCatRes.json();
@@ -936,7 +1004,7 @@ const MenuPage: React.FC = () => {
     // ⚠ featuredLoaded 가 true 일 때만 — 로딩 중(아이템 미도착)엔 shouldShow 가 잠깐 false 라
     // 폴백이 성급히 발동해 첫(Featured/Popular) 탭에서 2번째 탭으로 튀던 버그를 막는다.
     if (featuredLoaded && !shouldShow && selectedCategory === '__featured__' && !isSearchMode && categories.length > 0) {
-      const firstId = categories[0].id.toString();
+      const firstId = (categories.find(c => !c.parent_id) || categories[0]).id.toString();
       setSelectedCategory(firstId);
       // init 이 featured 기본일 땐 menuItems 를 안 채웠으므로(featured 별도 렌더),
       // 폴백 시 캐시(init 이 첫 카테고리를 prefetch 해둠)에서 리스트를 채워준다 → 빈 리스트 방지.
@@ -968,7 +1036,8 @@ const MenuPage: React.FC = () => {
 
     // 2순위: allMenuItems 로드 완료 시 즉시 필터링 (검색 이후)
     if (allMenuItems.length > 0) {
-      const filtered = allMenuItems.filter(item => item.categoryId === catId);
+      const ids = categoryIdsWithSubs(catId);
+      const filtered = allMenuItems.filter(item => ids.includes(item.categoryId));
       setMenuItems(filtered);
       categoryCacheRef.current.set(catId, filtered);
       return;
@@ -987,7 +1056,7 @@ const MenuPage: React.FC = () => {
         }
       }
     } catch { /* silent — 기존 리스트 유지 */ }
-  }, [isSearchMode, allMenuItems, slug, transformItems]);
+  }, [isSearchMode, allMenuItems, slug, transformItems, categories]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Idle prefetch — 다른 카테고리 데이터 + 썸네일을 백그라운드로 미리 적재.
   // 추가 only · requestIdleCallback 으로 메인 스레드 비점유 · 실패해도 기존 동작 그대로.
@@ -1054,27 +1123,27 @@ const MenuPage: React.FC = () => {
     } else {
       if (isSearchMode) {
         setIsSearchMode(false);
-        const restoreCategory = previousCategory || categories[0]?.id || '';
+        const restoreCategory = previousCategory || topCategories[0]?.id || '';
         setSelectedCategory(restoreCategory);
         setPreviousCategory('');
-        const catId = restoreCategory.toString();
-        setMenuItems(allMenuItems.filter(item => item.categoryId === catId));
+        const ids = categoryIdsWithSubs(restoreCategory.toString());
+        setMenuItems(allMenuItems.filter(item => ids.includes(item.categoryId)));
       }
     }
-  }, [isSearchMode, selectedCategory, previousCategory, categories, allMenuItems]);
+  }, [isSearchMode, selectedCategory, previousCategory, categories, allMenuItems]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 검색 클리어
   const handleClearSearch = useCallback(() => {
     setSearchQuery('');
     if (isSearchMode) {
       setIsSearchMode(false);
-      const restoreCategory = previousCategory || categories[0]?.id || '';
+      const restoreCategory = previousCategory || topCategories[0]?.id || '';
       setSelectedCategory(restoreCategory);
       setPreviousCategory('');
-      const catId = restoreCategory.toString();
-      setMenuItems(allMenuItems.filter(item => item.categoryId === catId));
+      const ids = categoryIdsWithSubs(restoreCategory.toString());
+      setMenuItems(allMenuItems.filter(item => ids.includes(item.categoryId)));
     }
-  }, [isSearchMode, previousCategory, categories, allMenuItems]);
+  }, [isSearchMode, previousCategory, categories, allMenuItems]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 검색 모드일 때 전체 메뉴에서 필터링
   const displayItems = isSearchMode
@@ -1163,7 +1232,8 @@ const MenuPage: React.FC = () => {
   void nowTick;
 
   // Render a single menu item card
-  const renderMenuItemCard = useCallback((item: MenuItem) => {
+  // hideMark: Featured 칸 안에서는 전부 추천이라 마크를 생략(map 의 index 인자는 무시)
+  const renderMenuItemCard = useCallback((item: MenuItem, hideMark?: boolean | number) => {
     const unavailable = item.schedule_unavailable === true;
     return (
       <MenuItemCard
@@ -1172,6 +1242,7 @@ const MenuPage: React.FC = () => {
         style={unavailable ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
       >
         {item.is_set_menu && <SetBadge>SET</SetBadge>}
+        {item.is_featured && hideMark !== true && <RecommendedBadge>{t('menu:recommended', 'Recommended')}</RecommendedBadge>}
         <ItemImage hasImage={!!item.image}>
           {item.image ? (
             <LazyImage src={item.image} alt={item.name} fallback={item.emoji || '🍽️'} />
@@ -1181,6 +1252,7 @@ const MenuPage: React.FC = () => {
         </ItemImage>
         <ItemInfo>
           <ItemName>{item.code ? `${item.code} ` : ''}{item.name}</ItemName>
+          {item.tagline && <ItemTagline title={item.tagline}>{item.tagline}</ItemTagline>}
           <ItemPrice>{formatCurrency(item.price, currency)}</ItemPrice>
           {unavailable && (
             <div style={{ fontSize: '11px', color: '#B45309', fontWeight: 600, marginTop: '4px' }}>
@@ -1195,7 +1267,7 @@ const MenuPage: React.FC = () => {
         </ItemInfo>
       </MenuItemCard>
     );
-  }, [handleItemClick, currency, formatScheduleLabel]);
+  }, [handleItemClick, currency, formatScheduleLabel, t]);
 
   if (isLoading) {
     return (
@@ -1217,6 +1289,10 @@ const MenuPage: React.FC = () => {
       ].filter(Boolean).join(' · ')
     : undefined;
 
+  const selectedCatRow = categories.find(c => c.id === selectedCategory);
+  const activeTopId = selectedCatRow?.parent_id && categories.some(c => c.id === selectedCatRow.parent_id)
+    ? selectedCatRow.parent_id : selectedCategory;
+  const activeSubs = activeTopId ? subCategoriesOf(activeTopId) : [];
   // 카테고리 탭 — 폰은 밑줄 탭, 키오스크 가로는 왼쪽 세로열(rail), 키오스크 세로는 알약(pill).
   const tabVariant: 'rail' | 'pill' | undefined = kiosk ? (splitView ? 'rail' : 'pill') : undefined;
   const categoryTabItems = (
@@ -1231,11 +1307,11 @@ const MenuPage: React.FC = () => {
           Featured
         </CategoryTab>
       )}
-      {categories.map(category => (
+      {topCategories.map(category => (
         <CategoryTab
           key={category.id}
           $variant={tabVariant}
-          active={selectedCategory === category.id && !isSearchMode}
+          active={activeTopId === category.id && !isSearchMode}
           onClick={() => handleCategoryChange(category.id)}
         >
           {category.emoji} {category.name}
@@ -1243,6 +1319,19 @@ const MenuPage: React.FC = () => {
       ))}
     </>
   );
+  // 고른 상위에 하위가 있으면 그 아래 «전체 + 하위» 알약 한 줄 — 하위 없는 상위는 지금과 똑같다.
+  const subCategoryRow = activeSubs.length > 0 && !isSearchMode && selectedCategory !== '__featured__' ? (
+    <SubCategoryRow role="tablist" aria-label={t('menu:subcategories', 'Subcategories')}>
+      <SubCategoryChip type="button" active={selectedCategory === activeTopId} onClick={() => handleCategoryChange(activeTopId)}>
+        {t('menu:allInCategory', 'All')}
+      </SubCategoryChip>
+      {activeSubs.map(sub => (
+        <SubCategoryChip key={sub.id} type="button" active={selectedCategory === sub.id} onClick={() => handleCategoryChange(sub.id)}>
+          {sub.name}
+        </SubCategoryChip>
+      ))}
+    </SubCategoryRow>
+  ) : null;
   const railView = kiosk && splitView && !menuBoard;
   const renderCartBar = (inBar: boolean) => (
         <CartBar $inBar={inBar}
@@ -1350,6 +1439,7 @@ const MenuPage: React.FC = () => {
       </SearchSection>
 
       {!railView && <CategoryTabs $pills={tabVariant === 'pill'}>{categoryTabItems}</CategoryTabs>}
+      {subCategoryRow}
 
       {/* Featured Tab Content */}
       {selectedCategory === '__featured__' && !isSearchMode ? (
@@ -1358,7 +1448,7 @@ const MenuPage: React.FC = () => {
             <div style={{ marginBottom: '24px' }}>
               <div style={{ fontSize: 'var(--mo-section-title, 16px)', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>Featured</div>
               <MenuGrid>
-                {featuredItems.map(renderMenuItemCard)}
+                {featuredItems.map(it => renderMenuItemCard(it, true))}
               </MenuGrid>
             </div>
           )}
@@ -1369,6 +1459,7 @@ const MenuPage: React.FC = () => {
                 {popularItems.map(item => (
                   <MenuItemCard key={item.id} onClick={() => handleItemClick(item)}>
                     {item.is_set_menu && <SetBadge>SET</SetBadge>}
+                    {item.is_featured && <RecommendedBadge>{t('menu:recommended', 'Recommended')}</RecommendedBadge>}
                     <ItemImage hasImage={!!item.image}>
                       {item.image ? (
                         <LazyImage src={item.image} alt={item.name} fallback={item.emoji || '🍽️'} />
@@ -1378,6 +1469,7 @@ const MenuPage: React.FC = () => {
                     </ItemImage>
                     <ItemInfo>
                       <ItemName>{item.code ? `${item.code} ` : ''}{item.name}</ItemName>
+                      {item.tagline && <ItemTagline title={item.tagline}>{item.tagline}</ItemTagline>}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <ItemPrice>{formatCurrency(item.price, currency)}</ItemPrice>
                         {item.orderCount && (

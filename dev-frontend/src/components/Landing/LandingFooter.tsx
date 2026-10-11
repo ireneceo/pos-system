@@ -168,7 +168,7 @@ const LandingFooter: React.FC = () => {
             <LogoSection>
               <img src="/images/logo-white.svg" alt="PurpleHere" style={{ height: '32px', width: 'auto', display: 'block' }} />
               <Description>
-                Smart store management starts here. Efficiently manage your food courts, brands, and restaurants with our powerful POS system.
+                {t('footer.description', 'Smart store management starts here. Efficiently manage your food courts, brands, and restaurants with our powerful POS system.')}
               </Description>
             </LogoSection>
           </FooterSection>

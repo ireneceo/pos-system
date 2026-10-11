@@ -202,10 +202,13 @@ router.get('/menu/:slug', async (req, res) => {
     const restaurantId = restaurant.id;
 
     // Get categories for this restaurant
-    const dbCategories = await Category.findAll({
-      where: { restaurant_id: restaurantId, isActive: true },
+    // 2단 카테고리(docs/MENU_CATEGORY_TWO_LEVEL.md): 상위가 꺼져 있으면 그 하위도 꺼진 것으로 본다.
+    const _allCats = await Category.findAll({
+      where: { restaurant_id: restaurantId },
       order: [['displayOrder', 'ASC'], ['name', 'ASC']]
     });
+    const _activeIds = new Set(_allCats.filter(c => c.isActive).map(c => c.id.toString()));
+    const dbCategories = _allCats.filter(c => c.isActive && (c.parent_id == null || _activeIds.has(c.parent_id.toString())));
 
     // Filter categories by schedule (mobile_settings.category_schedules).
     // Each entry supports day-of-week, event date range, daily time window, and an
@@ -224,6 +227,14 @@ router.get('/menu/:slug', async (req, res) => {
       if (!isWithinSchedule(sched, now, tz)) {
         offSchedule[catId] = { mode: offScheduleMode(sched), sched };
       }
+    }
+    // 상위가 시간대 밖이면 하위도 같은 처리(하위 자기 설정이 «숨김»이면 그쪽 우선).
+    for (const c of dbCategories) {
+      if (c.parent_id == null) continue;
+      const parentOff = offSchedule[c.parent_id.toString()];
+      if (!parentOff) continue;
+      const own = offSchedule[c.id.toString()];
+      if (!own || (own.mode !== 'hide' && parentOff.mode === 'hide')) offSchedule[c.id.toString()] = parentOff;
     }
 
     // Products store `category` as either the id ("106") or the name ("SET MENU")
@@ -258,8 +269,11 @@ router.get('/menu/:slug', async (req, res) => {
     // → 프론트가 보내는 categoryId(숫자)와 그 카테고리 이름을 둘 다 매칭해야 세트/브랜드푸시 상품이 누락되지 않는다.
     if (categoryId) {
       const catRow = dbCategories.find(c => c.id.toString() === categoryId.toString());
+      // 묶음 칸(하위 있는 상위)을 고르면 «전체» = 보이는 하위들의 메뉴 전부
+      const kids = catRow ? dbCategories.filter(c => c.parent_id != null && c.parent_id.toString() === catRow.id.toString()
+        && offSchedule[c.id.toString()]?.mode !== 'hide') : [];
       productWhere.category = catRow
-        ? { [Op.in]: [categoryId.toString(), catRow.name] }
+        ? { [Op.in]: [categoryId.toString(), catRow.name, ...kids.flatMap(k => [k.id.toString(), k.name])] }
         : categoryId;
     }
 
@@ -315,7 +329,8 @@ router.get('/menu/:slug', async (req, res) => {
       const base = {
         id: cat.id.toString(),
         name: cat.name,
-        emoji: cat.emoji || getProductEmoji(cat.name)  // Use DB emoji first, fallback to generated
+        emoji: cat.emoji || getProductEmoji(cat.name),  // Use DB emoji first, fallback to generated
+        parent_id: cat.parent_id != null ? cat.parent_id.toString() : null  // 2단 카테고리
       };
       if (off && off.mode === 'disable') {
         base.schedule_unavailable = true;
@@ -422,6 +437,7 @@ router.get('/menu/:slug', async (req, res) => {
         name: product.name,
         price: parseFloat(product.price),
         description: product.description || '',
+        tagline: product.tagline || null,
         emoji: product.emoji || getProductEmoji(categoryName),
         image: imageData?.thumbnail || undefined,
         isAvailable: !product.soldOut && !scheduleUnavailable,  // unavailable if sold out OR off-schedule(disable)
@@ -457,7 +473,10 @@ router.get('/menu/:slug', async (req, res) => {
       attributes: ['category'], raw: true
     });
     const _sellableCatSet = new Set(_sellableCatRows.map(p => String(p.category)));
-    const sellableCategories = categories.filter(c => _sellableCatSet.has(String(c.id)) || _sellableCatSet.has(String(c.name)));
+    const _sellableLeaf = categories.filter(c => _sellableCatSet.has(String(c.id)) || _sellableCatSet.has(String(c.name)));
+    // 묶음 칸(상위)은 메뉴가 없으니, 팔 수 있는 하위가 하나라도 남아 있으면 같이 보낸다.
+    const _sellableParentIds = new Set(_sellableLeaf.filter(c => c.parent_id).map(c => c.parent_id));
+    const sellableCategories = categories.filter(c => _sellableLeaf.includes(c) || _sellableParentIds.has(c.id));
 
     res.json({
       success: true,
@@ -543,6 +562,8 @@ router.get('/menu/item/:itemId', async (req, res) => {
       name: product.name,
       price: parseFloat(product.price),
       description: product.description || '',
+      tagline: product.tagline || null,
+      is_featured: product.is_featured === true,
       emoji: product.emoji || getProductEmoji(product.category),  // Use DB emoji first, fallback to generated
       image: imageData?.medium || imageData?.original || undefined,  // Use medium for detail view
       imageThumbnail: imageData?.thumbnail || undefined,
@@ -646,7 +667,9 @@ router.get('/featured/:slug', async (req, res) => {
         image: imageData?.thumbnail || undefined,
         is_set_menu: p.is_set_menu || false,
         set_items: p.set_items || undefined,
-        code: p.code || undefined
+        code: p.code || undefined,
+        tagline: p.tagline || null,
+        is_featured: true
       };
     });
 
@@ -751,6 +774,8 @@ router.get('/popular/:slug', async (req, res) => {
           is_set_menu: p.is_set_menu || false,
           set_items: p.set_items || undefined,
           code: p.code || undefined,
+          tagline: p.tagline || null,
+          is_featured: p.is_featured === true,
           orderCount: itemCounts[id.toString()] || 0
         };
       })

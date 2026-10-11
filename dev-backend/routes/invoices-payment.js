@@ -22,6 +22,7 @@ const { Op } = require('sequelize');
 const invoiceScheduler = require('../services/invoiceScheduler');
 const subscriptionScheduler = require('../services/subscriptionScheduler');
 const { handleInvoicePaid } = require('../services/invoiceLifecycle');
+const { gatewayPayableError, PAYABLE_STATUSES } = require('../utils/invoicePayable');
 
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
@@ -71,23 +72,10 @@ router.post('/:id/create-payment-intent', authenticateToken, async (req, res) =>
       include: [{ model: Restaurant, as: 'restaurant' }]
     });
 
-    if (!invoice) return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
-    if (invoice.status !== 'pending_payment' && invoice.status !== 'rejected') {
-      return res.status(400).json({ success: false, error: `Cannot pay invoice with status: ${invoice.status}` });
-    }
+    // 결제 시작 가능 판정 — 상태(연체 포함)·권한·외부 공급업체·월결제(SOA)·0원 한 곳 (utils/invoicePayable.js)
+    const blocked = await gatewayPayableError(invoice, req.user);
+    if (blocked) return res.status(blocked.status).json(blocked.body);
 
-    // Check payment permission
-    const canPay = await checkPaymentPermission(req.user, invoice);
-    if (!canPay) return res.status(403).json({ success: false, error: { message: 'Permission denied', code: 'FORBIDDEN' } });
-
-    // Get Stripe for the correct issuer
-
-    // 외부 공급업체 발행 청구서는 게이트웨이 결제를 태우지 않는다 (설계 §5) —
-    // 그쪽은 우리 솔루션에 수금 계정이 없다. "결제함 체크"만 허용한다.
-    const { blockExternalIssuerPayment } = require('../utils/externalIssuer');
-    if (await blockExternalIssuerPayment(invoice, res)) return;
-    // 월결제 매장의 거래 청구서는 정산서(SOA)로만 낸다 (2026-09-29 soa2 §5-B)
-    if (await require('../utils/payViaSoa').blockPayViaSoa(invoice, res)) return;
     const stripe = await getStripeForIssuer(invoice.issuer_type, invoice.issuer_id);
 
     // Convert amount to smallest currency unit
@@ -172,21 +160,9 @@ router.post('/:id/create-paypal-order', authenticateToken, async (req, res) => {
       include: [{ model: Restaurant, as: 'restaurant' }]
     });
 
-    if (!invoice) return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
-    if (invoice.status !== 'pending_payment' && invoice.status !== 'rejected') {
-      return res.status(400).json({ success: false, error: `Cannot pay invoice with status: ${invoice.status}` });
-    }
+    const blocked = await gatewayPayableError(invoice, req.user);
+    if (blocked) return res.status(blocked.status).json(blocked.body);
 
-    const canPay = await checkPaymentPermission(req.user, invoice);
-    if (!canPay) return res.status(403).json({ success: false, error: { message: 'Permission denied', code: 'FORBIDDEN' } });
-
-
-    // 외부 공급업체 발행 청구서는 게이트웨이 결제를 태우지 않는다 (설계 §5) —
-    // 그쪽은 우리 솔루션에 수금 계정이 없다. "결제함 체크"만 허용한다.
-    const { blockExternalIssuerPayment } = require('../utils/externalIssuer');
-    if (await blockExternalIssuerPayment(invoice, res)) return;
-    // 월결제 매장의 거래 청구서는 정산서(SOA)로만 낸다 (2026-09-29 soa2 §5-B)
-    if (await require('../utils/payViaSoa').blockPayViaSoa(invoice, res)) return;
     const { client } = await createPayPalClient(invoice.issuer_type, invoice.issuer_id);
 
     const request = new paypal.orders.OrdersCreateRequest();
@@ -567,8 +543,8 @@ router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
     }
 
-    // Check if invoice is in payable state
-    if (invoice.status !== 'pending_payment' && invoice.status !== 'rejected') {
+    // Check if invoice is in payable state — 목록은 utils/invoicePayable.js 하나(연체 포함)
+    if (!PAYABLE_STATUSES.includes(invoice.status)) {
       return res.status(400).json({
         error: `Cannot submit payment for invoice with status: ${invoice.status}`
       });

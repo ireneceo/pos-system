@@ -2,6 +2,7 @@
 // 마운트: /api/restaurants
 
 const express = require('express');
+const { menuCategoryError } = require('../utils/menuCategoryTree');
 const router = express.Router();
 require('../models'); // Load associations
 const { readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
@@ -424,6 +425,12 @@ router.post('/:restaurantId/ingredients/:ingredientId/register-as-product', auth
           data: { product_id: dup.id, product_name: dup.name }
         });
       }
+    }
+
+    // 하위가 있는 카테고리(묶음 칸)에는 메뉴를 직접 담지 않는다 — utils/menuCategoryTree
+    if (req.body?.category) {
+      const catErr = await menuCategoryError(rid, sanitizeString(String(req.body.category)).slice(0, 50), { transaction: t });
+      if (catErr) { await t.rollback(); return res.status(400).json(catErr); }
     }
 
     const recipe = await Recipe.create({

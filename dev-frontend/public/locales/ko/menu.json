@@ -203,5 +203,21 @@
   "kiosk.pay.reason.terminalNotFound": "카드단말기가 연결돼 있지 않습니다. 다시 시도하거나 카운터에서 결제해 주세요.",
   "kiosk.pay.reason.notApproved": "카드가 승인되지 않았습니다.",
   "kiosk.off.title": "키오스크가 꺼져 있습니다",
-  "kiosk.off.body": "카운터에서 주문해 주세요."
+  "kiosk.off.body": "카운터에서 주문해 주세요.",
+  "categoryManagementPage.cannotDeleteTitle": "삭제할 수 없습니다",
+  "categoryManagementPage.cannotDeleteHasSubs": "\"{{name}}\"에 하위 카테고리가 있습니다. 하위 카테고리를 먼저 옮기거나 삭제하세요.",
+  "categoryManagementPage.subcategoryCount": "하위 카테고리 {{n}}개",
+  "categoryManagementPage.inParent": "상위: {{name}}",
+  "categoryManagementPage.parentCategory": "상위 카테고리",
+  "categoryManagementPage.noParent": "없음 — 1단 카테고리",
+  "categoryManagementPage.parentLockedHint": "이 카테고리에는 하위 카테고리가 있어 1단으로 유지됩니다. 2단까지만 만들 수 있습니다.",
+  "categoryManagementPage.parentHint": "선택 사항입니다. 한 카테고리에 메뉴가 너무 많아 찾기 어려울 때 하위 카테고리를 쓰세요. 하위 카테고리가 있는 카테고리에는 메뉴를 직접 담지 않고, 메뉴는 하위 카테고리에 둡니다.",
+  "categoryManagementPage.moveMenus": "\"{{parent}}\"의 메뉴 {{n}}개를 이 하위 카테고리로 옮기기",
+  "menuManagementPage.featuredCardHint": "메뉴 카드에 «추천» 표시가 붙습니다. 카테고리마다 1~3개만 고르세요 — 전부 추천이면 아무것도 눈에 띄지 않습니다.",
+  "menuManagementPage.tagline": "한 줄 소개",
+  "menuManagementPage.taglinePlaceholder": "예: 12시간 저온 조리, 가장 많이 팔리는 메뉴",
+  "menuManagementPage.taglineHint": "손님 메뉴 목록에서 이름 아래에 보입니다. {{len}}/80",
+  "recommended": "추천",
+  "subcategories": "하위 카테고리",
+  "allInCategory": "전체"
 }

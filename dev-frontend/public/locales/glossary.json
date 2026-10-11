@@ -388,6 +388,21 @@
       "ko": "실제 사용",
       "zh": "实际用量",
       "ms": "Guna Sebenar"
+    },
+    "Subcategory": {
+      "ko": "하위 카테고리",
+      "zh": "子分类",
+      "ms": "Subkategori"
+    },
+    "Recommended (menu mark)": {
+      "ko": "추천",
+      "zh": "推荐",
+      "ms": "Disyorkan"
+    },
+    "One-line pitch": {
+      "ko": "한 줄 소개",
+      "zh": "一句话介绍",
+      "ms": "Ringkasan satu baris"
     }
   }
 }

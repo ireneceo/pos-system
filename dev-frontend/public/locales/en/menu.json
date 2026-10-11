@@ -203,5 +203,21 @@
   "kiosk.pay.reason.terminalNotFound": "The card terminal is not connected. Please try again or pay at the counter.",
   "kiosk.pay.reason.notApproved": "The card was not approved.",
   "kiosk.off.title": "Kiosk is turned off",
-  "kiosk.off.body": "Please order at the counter."
+  "kiosk.off.body": "Please order at the counter.",
+  "categoryManagementPage.cannotDeleteTitle": "Cannot delete",
+  "categoryManagementPage.cannotDeleteHasSubs": "\"{{name}}\" has subcategories. Move or delete its subcategories first.",
+  "categoryManagementPage.subcategoryCount": "Subcategories: {{n}}",
+  "categoryManagementPage.inParent": "In {{name}}",
+  "categoryManagementPage.parentCategory": "Parent category",
+  "categoryManagementPage.noParent": "None — top-level category",
+  "categoryManagementPage.parentLockedHint": "This category has its own subcategories, so it stays top-level. Only two levels are allowed.",
+  "categoryManagementPage.parentHint": "Optional. Use subcategories when a category has too many items to scan. A category with subcategories holds no items itself — items go in its subcategories.",
+  "categoryManagementPage.moveMenus": "Move the menu items in \"{{parent}}\" ({{n}}) into this subcategory",
+  "menuManagementPage.featuredCardHint": "Shows a \"Recommended\" mark on the menu card. Pick 1–3 per category — if everything is recommended, nothing stands out.",
+  "menuManagementPage.tagline": "One-line pitch",
+  "menuManagementPage.taglinePlaceholder": "e.g. Slow-cooked 12 hours, our best seller",
+  "menuManagementPage.taglineHint": "Shown under the name on the customer menu list. {{len}}/80",
+  "recommended": "Recommended",
+  "subcategories": "Subcategories",
+  "allInCategory": "All"
 }

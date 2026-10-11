@@ -289,6 +289,8 @@ const SupplierPaymentSettingsPage: React.FC = () => {
     }
   }, [settings.currencies, selectedCurrency]);
 
+  const [companyId, setCompanyId] = useState<number | null>(null);
+
   const fetchSettings = async () => {
     try {
       setLoading(true);
@@ -313,6 +315,10 @@ const SupplierPaymentSettingsPage: React.FC = () => {
       };
       settingsRef.current = merged;
       setSettings(merged);
+      // 웹훅 안내 주소는 발행자(공급업체 회사)별이다 — 회사 번호만 따로 읽는다
+      fetch('/api/supplier/company', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json()).then(j => { if (j?.success && j.data?.id) setCompanyId(Number(j.data.id)); })
+        .catch(() => { /* 안내 주소만 기본값으로 남는다 */ });
       if (merged.currencies.length > 0) {
         setSelectedCurrency(merged.currencies[0]);
       }
@@ -491,7 +497,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
             </MethodHeader>
             {settings.stripe.enabled && (
               <MethodContent>
-                <PaymentGatewayGuide gateway="stripe" />
+                <PaymentGatewayGuide gateway="stripe" webhookUrl={companyId ? `${window.location.origin}/api/webhooks/stripe/supplier/${companyId}` : undefined} />
                 <FormGroup>
                   <Label>Publishable Key</Label>
                   <AutoSaveField onSave={() => saveKey('stripe')}>

@@ -203,5 +203,21 @@
   "kiosk.pay.reason.terminalNotFound": "Terminal kad tidak disambungkan. Sila cuba lagi atau bayar di kaunter.",
   "kiosk.pay.reason.notApproved": "Kad tidak diluluskan.",
   "kiosk.off.title": "Kiosk dimatikan",
-  "kiosk.off.body": "Sila buat pesanan di kaunter."
+  "kiosk.off.body": "Sila buat pesanan di kaunter.",
+  "categoryManagementPage.cannotDeleteTitle": "Tidak boleh dipadam",
+  "categoryManagementPage.cannotDeleteHasSubs": "\"{{name}}\" mempunyai subkategori. Alihkan atau padam subkategorinya dahulu.",
+  "categoryManagementPage.subcategoryCount": "Subkategori: {{n}}",
+  "categoryManagementPage.inParent": "Dalam {{name}}",
+  "categoryManagementPage.parentCategory": "Kategori induk",
+  "categoryManagementPage.noParent": "Tiada — kategori peringkat atas",
+  "categoryManagementPage.parentLockedHint": "Kategori ini mempunyai subkategori sendiri, jadi ia kekal di peringkat atas. Hanya dua peringkat dibenarkan.",
+  "categoryManagementPage.parentHint": "Pilihan. Gunakan subkategori apabila satu kategori mempunyai terlalu banyak item untuk dicari. Kategori yang mempunyai subkategori tidak memegang item sendiri — item diletakkan dalam subkategorinya.",
+  "categoryManagementPage.moveMenus": "Alihkan item menu dalam \"{{parent}}\" ({{n}}) ke subkategori ini",
+  "menuManagementPage.featuredCardHint": "Menunjukkan tanda \"Disyorkan\" pada kad menu. Pilih 1–3 bagi setiap kategori — jika semuanya disyorkan, tiada yang menonjol.",
+  "menuManagementPage.tagline": "Ringkasan satu baris",
+  "menuManagementPage.taglinePlaceholder": "cth. Dimasak perlahan 12 jam, paling laris kami",
+  "menuManagementPage.taglineHint": "Dipaparkan di bawah nama dalam senarai menu pelanggan. {{len}}/80",
+  "recommended": "Disyorkan",
+  "subcategories": "Subkategori",
+  "allInCategory": "Semua"
 }

@@ -5,6 +5,7 @@ const Category = require('../models/Category');
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLogger');
+const { checkParent } = require('../utils/menuCategoryTree');
 
 // Apply authentication to all routes
 router.use(authenticateToken);
@@ -45,6 +46,8 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
           description: cat.description,
           displayOrder: cat.displayOrder,
           isActive: cat.isActive,
+          parent_id: cat.parent_id ?? null,
+          kitchen_station_id: cat.kitchen_station_id || null,
           productCount: count
         };
       })
@@ -97,6 +100,28 @@ router.put('/id/:categoryId', async (req, res) => {
     const oldName = category.name;
     const updateData = {};
 
+    // 2단 카테고리 — 상위 바꾸기(parent_id 가 올 때만). 규칙은 utils/menuCategoryTree 한 곳.
+    let parentToEmpty = null;
+    if (req.body.parent_id !== undefined) {
+      const nextParent = req.body.parent_id === '' ? null : req.body.parent_id;
+      if (String(nextParent ?? '') !== String(category.parent_id ?? '')) {
+        const chk = await checkParent(restaurantId, category, nextParent);
+        if (!chk.ok) return res.status(chk.status).json({ success: false, message: chk.message, error: { message: chk.message, code: chk.code } });
+        if (chk.parentMenuCount > 0) {
+          if (req.body.move_menus !== true) {
+            const msg = `"${chk.parent.name}" has ${chk.parentMenuCount} menu item(s). Move them into this subcategory to continue.`;
+            return res.status(400).json({ success: false, message: msg, error: { message: msg, code: 'PARENT_HAS_MENUS', count: chk.parentMenuCount } });
+          }
+          parentToEmpty = chk.parent;
+        }
+        updateData.parent_id = chk.parent ? chk.parent.id : null;
+        // 하위가 된 카테고리에 주방이 비어 있으면 상위 주방을 미리 채운다(주방 배정 코드는 그대로 이름만 본다).
+        if (chk.parent && !category.kitchen_station_id && chk.parent.kitchen_station_id) {
+          updateData.kitchen_station_id = chk.parent.kitchen_station_id;
+        }
+      }
+    }
+
     // Check if name is being changed
     if (name && name !== oldName) {
       // Check if new name already exists
@@ -140,6 +165,17 @@ router.put('/id/:categoryId', async (req, res) => {
       }
     );
 
+    // 상위 메뉴를 이 하위로 옮기기(사용자가 «옮기기» 를 고른 경우만) — 이름 바꾸기와 같은 일괄 변경.
+    // 카테고리 행을 먼저 저장한 뒤에 옮긴다(products.category → categories.name 참조)
+    let movedCount = 0;
+    if (parentToEmpty) {
+      const [n] = await Product.update(
+        { category: updateData.name || oldName },
+        { where: { category: parentToEmpty.name, restaurant_id: restaurantId } }
+      );
+      movedCount = n;
+    }
+
     logActivity(req, {
       action_type: 'update',
       entity_type: 'category',
@@ -153,7 +189,7 @@ router.put('/id/:categoryId', async (req, res) => {
     res.json({
       success: true,
       message: 'Category updated successfully',
-      data: { id: categoryId, ...updateData }
+      data: { id: categoryId, ...updateData, movedCount }
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -263,6 +299,16 @@ router.delete('/:categoryName', async (req, res) => {
     const { categoryName } = req.params;
     const restaurantId = req.user.restaurant_id;
 
+    // 하위가 있는 카테고리는 지울 수 없다 — 하위를 먼저 옮기거나 지운다.
+    const selfRow = await Category.findOne({ where: { name: categoryName, restaurant_id: restaurantId }, attributes: ['id'] });
+    if (selfRow) {
+      const childCount = await Category.count({ where: { restaurant_id: restaurantId, parent_id: selfRow.id } });
+      if (childCount > 0) {
+        const msg = 'This category has subcategories. Move or delete its subcategories first.';
+        return res.status(400).json({ success: false, message: msg, error: { message: msg, code: 'CATEGORY_HAS_CHILDREN', count: childCount } });
+      }
+    }
+
     // Move all products to 'Uncategorized'
     const result = await Product.update(
       { category: 'Uncategorized' },
@@ -310,6 +356,14 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, error: { message: 'Category name is required', code: 'VALIDATION_ERROR' } });
     }
 
+    // 2단 카테고리 — 하위로 만들 때. 상위에 메뉴가 있으면 «옮기기»(move_menus) 없이 거절.
+    const chk = await checkParent(restaurantId, null, req.body.parent_id);
+    if (!chk.ok) return res.status(chk.status).json({ success: false, message: chk.message, error: { message: chk.message, code: chk.code } });
+    if (chk.parentMenuCount > 0 && req.body.move_menus !== true) {
+      const msg = `"${chk.parent.name}" has ${chk.parentMenuCount} menu item(s). Move them into the new subcategory to continue.`;
+      return res.status(400).json({ success: false, message: msg, error: { message: msg, code: 'PARENT_HAS_MENUS', count: chk.parentMenuCount } });
+    }
+
     // Check if category already exists for this restaurant
     const existingCategory = await Category.findOne({
       where: {
@@ -329,8 +383,20 @@ router.post('/', async (req, res) => {
       emoji: emoji || '',
       displayOrder: 0,
       isActive: true,
-      restaurant_id: restaurantId
+      restaurant_id: restaurantId,
+      parent_id: chk.parent ? chk.parent.id : null,
+      // 하위는 상위 주방을 미리 채워 저장 — 주방 배정 코드(🔒)는 변경 없이 이름만 본다.
+      kitchen_station_id: chk.parent ? (chk.parent.kitchen_station_id || null) : null
     });
+
+    let movedCount = 0;
+    if (chk.parent && chk.parentMenuCount > 0) {
+      const [n] = await Product.update(
+        { category: category.name },
+        { where: { category: chk.parent.name, restaurant_id: restaurantId } }
+      );
+      movedCount = n;
+    }
 
     logActivity(req, {
       action_type: 'create',
@@ -343,7 +409,7 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({
       success: true,
-      data: { name: category.name, productCount: 0 },
+      data: { id: category.id, name: category.name, parent_id: category.parent_id ?? null, productCount: movedCount, movedCount },
       message: 'Category created successfully'
     });
   } catch (error) {

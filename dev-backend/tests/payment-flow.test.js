@@ -112,3 +112,60 @@ describe('P1-2 — webhook amount cross-check (passesAmountCrossCheck)', () => {
     expect(await passesAmountCrossCheck(mkInv(100, 'MYR'), 0, 'MYR', { gateway: 'stripe', eventId: 'e7' })).toBe(true);
   });
 });
+
+// 2026-10-11 Fable 판정 F1·F3·F4 — 청구서 게이트웨이 결제 규칙 한 곳
+describe('invoicePayable — 결제 가능 상태 목록', () => {
+  const { PAYABLE_STATUSES, GATEWAY_PAID_FROM } = require('../utils/invoicePayable');
+  test('연체 포함 · 죽은 값(rejected/sent) 없음', () => {
+    expect(PAYABLE_STATUSES).toEqual(['pending_payment', 'overdue']);
+    expect(GATEWAY_PAID_FROM).toEqual(['pending_payment', 'overdue', 'payment_submitted']);
+    for (const dead of ['rejected', 'sent', 'draft', 'cancelled', 'credit', 'paid']) expect(PAYABLE_STATUSES).not.toContain(dead);
+  });
+});
+
+describe('sameIssuerAccount — 웹훅 서명 계정 = 청구서 발행자 계정', () => {
+  const { sameIssuerAccount } = require('../utils/issuerAccount');
+  const { Brand } = require('../models');
+  afterEach(() => jest.restoreAllMocks());
+  test('system ↔ system_admin 일치 · 종류가 다르면 불일치', async () => {
+    expect(await sameIssuerAccount({ type: 'system', id: null }, { issuer_type: 'system_admin', issuer_id: null })).toBe(true);
+    expect(await sameIssuerAccount({ type: 'brand', id: 10 }, { issuer_type: 'system_admin', issuer_id: null })).toBe(false);
+    expect(await sameIssuerAccount({ type: 'system', id: null }, { issuer_type: 'brand', issuer_id: 10 })).toBe(false);
+  });
+  test('같은 주인 형제 브랜드 일치 · 다른 주인/주인 없음 불일치', async () => {
+    const spy = jest.spyOn(Brand, 'findAll');
+    spy.mockResolvedValueOnce([{ id: 10, owner_id: 5 }, { id: 17, owner_id: 5 }]);
+    expect(await sameIssuerAccount({ type: 'brand', id: 17 }, { issuer_type: 'brand', issuer_id: 10 })).toBe(true);
+    spy.mockResolvedValueOnce([{ id: 10, owner_id: 5 }, { id: 11, owner_id: 6 }]);
+    expect(await sameIssuerAccount({ type: 'brand', id: 11 }, { issuer_type: 'brand', issuer_id: 10 })).toBe(false);
+    spy.mockResolvedValueOnce([{ id: 10, owner_id: null }, { id: 11, owner_id: null }]);
+    expect(await sameIssuerAccount({ type: 'brand', id: 11 }, { issuer_type: 'brand', issuer_id: 10 })).toBe(false);
+  });
+});
+
+describe('markInvoicePaidFromGateway — paid 전환 규칙', () => {
+  const { markInvoicePaidFromGateway } = require('../services/invoiceLifecycle');
+  const mk = (status, extra = {}) => {
+    const inv = { id: 1, invoice_number: 'INV-T', status, total_amount: 100, currency: 'MYR', issuer_type: 'system_admin', issuer_id: null, updates: [], ...extra };
+    inv.update = async (v) => { inv.updates.push(v); };
+    return inv;
+  };
+  const ctx = { gateway: 'stripe', gatewayAmount: 100, gatewayCurrency: 'myr', paymentIntentId: 'pi_t', eventId: 'evt_t', verifiedIssuer: { type: 'system', id: null } };
+  test('이미 paid → 건너뜀(쓰기 0)', async () => {
+    const inv = mk('paid');
+    expect(await markInvoicePaidFromGateway(inv, ctx)).toBe('skipped_already_paid');
+    expect(inv.updates).toHaveLength(0);
+  });
+  test('취소·초안·크레딧 → Held, 상태 무변경', async () => {
+    for (const st of ['cancelled', 'draft', 'credit']) {
+      const inv = mk(st);
+      expect(await markInvoicePaidFromGateway(inv, ctx)).toBe('held_status');
+      expect(inv.updates.some(u => u.status)).toBe(false);
+    }
+  });
+  test('다른 발행자 계정의 웹훅 → Held', async () => {
+    const inv = mk('pending_payment');
+    expect(await markInvoicePaidFromGateway(inv, { ...ctx, verifiedIssuer: { type: 'supplier', id: 3 } })).toBe('held_issuer');
+    expect(inv.updates.some(u => u.status)).toBe(false);
+  });
+});

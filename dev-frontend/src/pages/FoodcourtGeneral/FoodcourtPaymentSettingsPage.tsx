@@ -803,7 +803,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
               </MethodHeader>
               {paymentSettings.stripe.enabled && (
                 <MethodContent>
-                  <PaymentGatewayGuide gateway="stripe" />
+                  <PaymentGatewayGuide gateway="stripe" webhookUrl={foodcourtId ? `${window.location.origin}/api/webhooks/stripe/foodcourt/${foodcourtId}` : undefined} />
                   <FormGroup>
                     <Label>{t('foodcourt:foodcourtPaymentSettingsPage.publishableKey')}</Label>
                     <AutoSaveField onSave={savePaymentSettings}>
