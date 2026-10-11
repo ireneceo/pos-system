@@ -371,6 +371,9 @@ const ItemDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   // #1: 담은 직후 상세에 머물며 보여줄 "담음" 피드백 (리스트로 자동 복귀 안 함)
   const [justAdded, setJustAdded] = useState(false);
+  // 사진을 못 불러오면(주소 깨짐) 깨진 그림 대신: 키오스크는 사진 칸을 안 그리고, 폰은 아이콘 칸으로(2026-10-11 Irene)
+  const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => { setImgFailed(false); }, [itemId]);
   // 세트 선택 상태: groupId -> 선택 product_ids / `${groupId}:${pid}` -> 선택 optionIds
   const [setSel, setSetSel] = useState<Record<string, number[]>>({});
   const [setOpts, setSetOpts] = useState<Record<string, string[]>>({});
@@ -727,14 +730,17 @@ const ItemDetailPage: React.FC = () => {
       {/* 키오스크 넓은 화면: 오른쪽 장바구니를 메뉴 화면과 같은 자리에 그대로 둔다(2026-10-07 Irene) */}
       <KioskSplit $split={splitView}>
       <KioskMain>
-      <ItemHeader>
-        <ItemImage hasImage={!!item.image}>
-          {item.image ? (
-            <img src={item.image} alt={item.name} />
+      <ItemHeader style={kiosk && !(item.image && !imgFailed) ? { paddingTop: 20 } : undefined}>
+        {/* 키오스크 상세: 사진이 없으면 사진 칸을 그리지 않는다 — 빈 회색 상자가 «깨진 것» 처럼 보였다(2026-10-11 Irene «사진 없으면 아무것도 안나오면 되는 거지?») */}
+        {(!kiosk || (item.image && !imgFailed)) && (
+        <ItemImage hasImage={!!item.image && !imgFailed}>
+          {item.image && !imgFailed ? (
+            <img src={item.image} alt={item.name} onError={() => setImgFailed(true)} />
           ) : (
             item.emoji
           )}
         </ItemImage>
+        )}
         <ItemInfo>
           <ItemName>{item.code ? `${item.code} ` : ''}{item.name}</ItemName>
           <ItemDescription>{item.description}</ItemDescription>
