@@ -7,6 +7,7 @@ const Restaurant = require('../models/Restaurant');
 const SupplierCompany = require('../models/SupplierCompany');
 const SupplierInvitation = require('../models/SupplierInvitation');
 const PlanTemplate = require('../models/PlanTemplate');
+const { newRestaurantPaymentSettings } = require('../utils/newRestaurantPaymentSettings');
 const PlanPrice = require('../models/PlanPrice');
 // EntityPlanRestaurant is used by Brand/Foodcourt plan assignment, not self-signup
 const { sequelize } = require('../db');
@@ -297,7 +298,8 @@ async function signup(data) {
         order_limit: plan.order_limit || -1,
         menu_item_limit: plan.menu_item_limit || -1,
         staff_limit: plan.staff_limit || -1,
-        payment_model: 'restaurant'
+        payment_model: 'restaurant',
+        payment_settings: newRestaurantPaymentSettings()
       }, { transaction });
 
       // Link user to restaurant

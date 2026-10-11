@@ -9,6 +9,7 @@ const Order = require('../models/Order');
 const Invoice = require('../models/Invoice');
 const InvoiceItem = require('../models/InvoiceItem');
 const { getIssuerCompanyInfo, getPayerCompanyInfo } = require('./invoices');
+const { newRestaurantPaymentSettings } = require('../utils/newRestaurantPaymentSettings');
 const { getTodayBounds, getStartOfMonth, getEndOfMonth, getSiteTimezone } = require('../utils/dateTimeHelper');
 
 // All routes require authentication
@@ -423,7 +424,8 @@ router.post('/restaurants', requireRole('Restaurant Owner'), async (req, res) =>
       cuisine_type: cuisine_type || null,
       description: description || null,
       status: 'inactive', // Owner가 생성 시 inactive (Admin 배정 전)
-      currency: 'MYR'
+      currency: 'MYR',
+      payment_settings: newRestaurantPaymentSettings()
     });
 
     // Owner와 ownership 연결

@@ -73,6 +73,7 @@ const { authenticateToken, checkRestaurantAccess, requireRole, requireRestaurant
 const { validateRestaurantCreation } = require('../middleware/validation');
 const { getTodayBounds, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { deleteOldImages } = require('../utils/imageProcessor');
+const { newRestaurantPaymentSettings } = require('../utils/newRestaurantPaymentSettings');
 const {
   guardPrinterSettings,
   guardPaymentSettings,
@@ -1237,7 +1238,8 @@ router.post('/', authenticateToken, requireRole(
       discount_type: req.body.discount_type || 'none',
       discount_value: req.body.discount_value !== undefined ? (parseFloat(req.body.discount_value) || 0) : 0,
       discount_reason: req.body.discount_reason || null,
-      ...(activateSubscription ? planLimits : { order_limit: null, menu_item_limit: null, staff_limit: null })
+      ...(activateSubscription ? planLimits : { order_limit: null, menu_item_limit: null, staff_limit: null }),
+      payment_settings: newRestaurantPaymentSettings()
     };
 
     // 하위 호환: adminAction 없이 managerId만 전송된 경우 admin_name 조회
