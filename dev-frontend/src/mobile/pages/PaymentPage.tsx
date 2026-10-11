@@ -29,13 +29,13 @@ const Container = styled.div<{ $twoCol?: boolean }>`
   padding-bottom: var(--mo-pay-pad-b, 100px);
   max-width: 100%;
   box-sizing: border-box;
+  /* 2026-10-11 Irene «카드형인데 높이값이 안 맞아서 중간중간 비는 공간» — 격자(줄 맞춤) 대신 열마다 위에서부터 쌓는다 */
   ${p => p.$twoCol && `
     @media (min-width: 1280px) {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      column-count: 2;
       column-gap: 16px;
-      align-items: start;
-      > * { margin-bottom: 16px; }
+      > * { break-inside: avoid; -webkit-column-break-inside: avoid; display: block; box-sizing: border-box; margin-top: 0; margin-bottom: 16px; }
+      > .span-all { column-span: all; }
     }
   `}
 `;
@@ -2445,7 +2445,7 @@ const PaymentPage: React.FC = () => {
         {/* 가로 키오스크는 결제 실패 문구를 오른쪽 패널 결제 버튼 위에 둔다(Fable 20261010 gate §3-3) */}
         {error && !splitView && <ErrorMessage>{error}</ErrorMessage>}
         {kioskUnregistered && splitView && availableMethods.length > 0 && (
-          <InlineNote $tone="info" style={{ marginBottom: 16, textAlign: 'left', gridColumn: '1 / -1' }}>{t('menu:kiosk.pay.unregistered')}</InlineNote>
+          <InlineNote className="span-all" $tone="info" style={{ marginBottom: 16, textAlign: 'left' }}>{t('menu:kiosk.pay.unregistered')}</InlineNote>
         )}
         
         {/* Customer Information - wait for settings to load to prevent flash */}
