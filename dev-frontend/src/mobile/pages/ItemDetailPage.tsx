@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit } from '../components/KioskCartAside';
 import { KioskActionBar } from '../components/common/KioskLayout';
@@ -52,6 +52,54 @@ const ItemName = styled.h1`
   font-weight: var(--mo-detail-name-weight, 600);
   color: #1F2937;
   margin: 0 0 8px 0;
+`;
+
+/* ── 키오스크 «한 화면에 하나씩»(안내형) 상세 — Fable kiosk-two-modes §2 S4~S6. 키오스크 전용 ── */
+const GPath = styled.div`font-size: 16px; color: #4B5563; margin: 4px 0 6px;`;
+const GTitle = styled.h2`font-size: 28px; font-weight: 700; color: #0A2540; margin: 0 0 6px;`;
+const GSub = styled.div`font-size: 16px; color: #4B5563; margin-bottom: 20px;`;
+const GGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+`;
+const GOption = styled.button<{ $on: boolean }>`
+  min-height: 112px;
+  border-radius: 16px;
+  border: 2px solid ${p => (p.$on ? '#635BFF' : '#E5E8EC')};
+  background: ${p => (p.$on ? '#F0EFFF' : '#FFFFFF')};
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px;
+  cursor: pointer;
+  text-align: center;
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+`;
+const GOptionName = styled.span`font-size: 21px; font-weight: 700; color: #0A2540; line-height: 1.25;`;
+const GOptionPrice = styled.span`font-size: 16px; color: #4B5563;`;
+const GSummary = styled.div`
+  background: #FFFFFF;
+  border: 1px solid #E5E8EC;
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+`;
+const GSummaryLine = styled.div`font-size: 17px; color: #374151; padding: 4px 0;`;
+const GTotal = styled.div`font-size: 36px; font-weight: 800; color: #635BFF; margin: 8px 0 0;`;
+const GBigButton = styled.button<{ $primary?: boolean }>`
+  min-height: 72px;
+  border-radius: 16px;
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid ${p => (p.$primary ? '#635BFF' : '#C7CED6')};
+  background: ${p => (p.$primary ? '#635BFF' : '#FFFFFF')};
+  color: ${p => (p.$primary ? '#FFFFFF' : '#0A2540')};
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
 /* 한 줄 소개 + 추천 마크 (docs/MENU_CATEGORY_TWO_LEVEL.md ②) — 값이 없으면 아무것도 안 그린다 */
@@ -382,6 +430,10 @@ const ItemDetailPage: React.FC = () => {
   // 보여주기 전용 메뉴판 — **옵션은 보여 주되 고를 수 없고, 담기도 없다**(2026-09-10 Irene).
   const menuBoard = isMenuBoardMode();
   const { t } = useTranslation(['menu', 'common']);
+  // 키오스크 «한 화면에 하나씩»: 메뉴(안내형)에서 들어오면 ?flow=guided. 단계는 ?gs= (번호 | confirm | done) — 뒤로가기 = 한 단계
+  const location = useLocation();
+  const guided = kiosk && !menuBoard && new URLSearchParams(location.search).get('flow') === 'guided';
+  const gsRaw = new URLSearchParams(location.search).get('gs') || '0';
   const { slug, itemId } = useParams<{ slug: string; itemId: string }>();
   const navigate = useNavigate();
   const { addToCart, currency, cartItems } = useMobileOrder();
@@ -673,6 +725,8 @@ const ItemDetailPage: React.FC = () => {
     };
 
     addToCart(itemWithOptions, quantity, selectedOptions, instructions);
+    // 안내형: 담은 뒤 «더 담기 / 결제하기» 화면(S6) — 추천 시트·자동 복귀 대신
+    if (guided) { goGuidedStep('done'); return; }
     // 담은 직후: "✓ 담음" 짧게 보여준 뒤 메뉴 리스트로 자동 복귀(추천 있으면 시트 먼저).
     // 막다른 상세페이지에 머물지 않게 해 더블오더(같은 상품 반복 담기)를 막는다.
     setJustAdded(true);
@@ -715,6 +769,29 @@ const ItemDetailPage: React.FC = () => {
     const recMenuItem: any = { id: rec.id, name: rec.name, price: typeof rec.price === 'number' ? rec.price : parseFloat(String(rec.price)) || 0, image: rec.image || undefined, emoji: rec.emoji || undefined, is_set_menu: false };
     addToCart(recMenuItem, 1, []);   // 동일구성 자동 머지(qty+1) — 카드의 ✓ 는 cartItems 에서 파생
   };
+
+  // ── 안내형 단계 ── (같은 선택 상태·같은 계산을 쓰고, 화면만 묶음 하나씩)
+  function goGuidedStep(step: string, replace = false) {
+    const u = new URLSearchParams(window.location.search);
+    if (step === '0') u.delete('gs'); else u.set('gs', step);
+    navigate({ pathname: location.pathname, search: `?${u.toString()}` }, { replace });
+  }
+  // 새로고침 등으로 중간 단계에 바로 들어오면(고른 것이 없으니) 첫 단계로
+  useEffect(() => {
+    if (guided && gsRaw !== '0') goGuidedStep('0', true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // 필수 단일인데 고를 수 있는 게 하나뿐이면 미리 고른다(그 단계는 건너뜀 — 확인 화면 요약엔 보임)
+  useEffect(() => {
+    if (!guided || !item) return;
+    const auto: string[] = [];
+    availableOptionGroups.forEach((g: any) => {
+      const open = (g.options || []).filter((o: any) => !o.sold_out);
+      if (g.required && !g.multiple && open.length === 1) auto.push(open[0].id);
+    });
+    if (auto.length) setSelectedOptions(prev => Array.from(new Set([...prev, ...auto])));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guided, item?.id]);
   
   if (isLoading) {
     return (
@@ -736,6 +813,180 @@ const ItemDetailPage: React.FC = () => {
     );
   }
   
+  if (guided) {
+    type GOpt = { id: string; name: string; price: number; soldOut: boolean };
+    type GStep = { key: string; title: string; sub?: string; multiple: boolean; min: number; max: number; options: GOpt[];
+      isSel: (id: string) => boolean; toggle: (id: string) => void; clear: () => void; count: () => number };
+    const steps: GStep[] = [];
+    if (isSet) {
+      setGroupsResolved.forEach((g: any) => {
+        if (g.type === 'choice') {
+          const min = g.min == null ? 1 : Number(g.min);
+          const max = g.max == null ? 1 : Number(g.max);
+          steps.push({
+            key: `sc:${g.id}`, title: g.label || t('menu:guided.chooseOne', 'Choose'), multiple: max > 1, min, max,
+            sub: max > 1 ? t('menu:guided.pickUpTo', { n: max, defaultValue: 'Pick up to {{n}}' }) : undefined,
+            options: (g.items || []).map((it: any) => ({ id: String(it.product_id), name: it.name, price: Number(it.upcharge) || 0, soldOut: !!it.soldOut })),
+            isSel: (id) => (setSel[g.id] || []).includes(Number(id)),
+            toggle: (id) => handleToggleSetComponent(g.id, Number(id), 'choice', max),
+            clear: () => (setSel[g.id] || []).forEach(pid => handleToggleSetComponent(g.id, pid, 'choice', max)),
+            count: () => (setSel[g.id] || []).length,
+          });
+        }
+        const picks = g.type === 'fixed' ? (g.items || []) : (g.items || []).filter((it: any) => (setSel[g.id] || []).includes(Number(it.product_id)));
+        picks.forEach((it: any) => (it.optionGroups || []).forEach((og: any) => {
+          const k = `${g.id}:${it.product_id}`;
+          const ids = (og.options || []).map((o: any) => String(o.id));
+          steps.push({
+            key: `so:${k}:${og.id}`, title: `${it.name} — ${og.name}`, multiple: !!og.multiple, min: og.required ? 1 : 0, max: og.multiple ? 99 : 1,
+            options: (og.options || []).map((o: any) => ({ id: String(o.id), name: o.name, price: Number(o.price) || 0, soldOut: !!o.sold_out })),
+            isSel: (id) => (setOpts[k] || []).includes(id),
+            toggle: (id) => handleToggleSetOption(g.id, Number(it.product_id), id, !!og.multiple, !!og.required),
+            clear: () => (setOpts[k] || []).filter(x => ids.includes(x)).forEach(x => handleToggleSetOption(g.id, Number(it.product_id), x, true, false)),
+            count: () => (setOpts[k] || []).filter(x => ids.includes(x)).length,
+          });
+        }));
+      });
+    }
+    availableOptionGroups.forEach((g: any) => {
+      const open = (g.options || []).filter((o: any) => !o.sold_out);
+      if (g.required && !g.multiple && open.length === 1) return; // 미리 골라 둔 단계(위 효과) — 건너뜀
+      const ids = (g.options || []).map((o: any) => String(o.id));
+      steps.push({
+        key: `o:${g.id}`, title: g.name, multiple: !!g.multiple, min: g.required ? 1 : 0, max: g.multiple ? 99 : 1,
+        options: (g.options || []).map((o: any) => ({ id: String(o.id), name: o.name, price: Number(o.price) || 0, soldOut: !!o.sold_out })),
+        isSel: (id) => selectedOptions.some(x => String(x) === id),
+        toggle: (id) => {
+          const raw = (g.options || []).find((o: any) => String(o.id) === id)?.id ?? id;
+          handleOptionToggle(raw, g.id, !!g.multiple, !!g.required);
+        },
+        clear: () => setSelectedOptions(prev => prev.filter(x => !ids.includes(String(x)))),
+        count: () => selectedOptions.filter(x => ids.includes(String(x))).length,
+      });
+    });
+
+    const stepNo = gsRaw === 'confirm' || gsRaw === 'done' ? -1 : Math.max(0, parseInt(gsRaw, 10) || 0);
+    const atConfirm = gsRaw === 'confirm' || (stepNo >= steps.length && gsRaw !== 'done');
+    const next = (i: number) => goGuidedStep(i + 1 < steps.length ? String(i + 1) : 'confirm');
+    const priceText = (v: number) => (v > 0 ? `+${formatCurrency(v, currency)}` : '');
+
+    let body: React.ReactNode;
+    let bar: React.ReactNode = null;
+    if (gsRaw === 'done') {
+      body = (
+        <div style={{ textAlign: 'center', padding: '48px 0 24px' }}>
+          <GTitle>✓ {t('itemDetail.addedToCart', 'Added to Cart')}</GTitle>
+          <GSub>{item.name} × {quantity}</GSub>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, maxWidth: 720, margin: '24px auto 0' }}>
+            <GBigButton type="button" onClick={() => navigate(`/mobile/${slug}/menu`)}>{t('menu:guided.addMore', 'Add more')}</GBigButton>
+            <GBigButton type="button" $primary onClick={() => navigate(`/mobile/${slug}/payment`)}>{t('menu:guided.checkout', 'Checkout')}</GBigButton>
+          </div>
+        </div>
+      );
+    } else if (atConfirm) {
+      const lines: string[] = [];
+      if (isSet) includedSetComponents().forEach(({ group, it }) => {
+        const sel = setOpts[`${group.id}:${it.product_id}`] || [];
+        const names = (it.optionGroups || []).flatMap((og: any) => og.options).filter((o: any) => sel.includes(String(o.id))).map((o: any) => o.name);
+        lines.push(`${it.name}${names.length ? ` (${names.join(', ')})` : ''}`);
+      });
+      availableOptionGroups.forEach((g: any) => (g.options || []).forEach((o: any) => {
+        if (selectedOptions.includes(o.id)) lines.push(`${g.name}: ${o.name}`);
+      }));
+      body = (
+        <>
+          <GPath>{item.name}</GPath>
+          <GTitle>{t('menu:guided.confirmTitle', 'Check your choice')}</GTitle>
+          <GSub>{t('menu:guided.confirmHint', 'Set the quantity and add to your order.')}</GSub>
+          <GSummary>
+            <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+              {item.image && !imgFailed && (
+                <img src={item.image} alt={item.name} onError={() => setImgFailed(true)} style={{ width: 160, height: 120, objectFit: 'cover', borderRadius: 12 }} />
+              )}
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#0A2540' }}>{item.name}</div>
+                {item.tagline && <div style={{ fontSize: 16, color: '#4B5563', marginTop: 4 }}>{item.tagline}</div>}
+                {lines.map((l, i) => <GSummaryLine key={i}>· {l}</GSummaryLine>)}
+              </div>
+            </div>
+          </GSummary>
+          <QuantitySection>
+            <div style={{ fontSize: 'var(--mo-opt-title, 16px)', fontWeight: 600, color: '#1F2937' }}>{t('itemDetail.quantity', 'Quantity')}</div>
+            <QuantityControl>
+              <QuantityButton onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={quantity <= 1} aria-label="-">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+              </QuantityButton>
+              <QuantityValue>{quantity}</QuantityValue>
+              <QuantityButton onClick={() => setQuantity(quantity + 1)} aria-label="+">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+              </QuantityButton>
+            </QuantityControl>
+          </QuantitySection>
+          <details style={{ margin: '8px 0 16px' }}>
+            <summary style={{ fontSize: 16, color: '#4B5563', cursor: 'pointer' }}>{t('itemDetail.specialInstructions', 'Special Instructions')}</summary>
+            <InstructionsInput rows={2} placeholder={t('itemDetail.specialPlaceholder', 'Any special requests? (optional)')}
+              value={instructions} onChange={(e) => setInstructions(e.target.value)} style={{ marginTop: 8 }} />
+          </details>
+          <div style={{ fontSize: 16, color: '#4B5563' }}>{t('menu:guided.total', 'Total')}</div>
+          <GTotal>{formatCurrency(calculateTotal(), currency)}</GTotal>
+        </>
+      );
+      bar = (
+        <KioskActionBar>
+          <GBigButton type="button" $primary style={{ width: '100%' }} disabled={!isValid()} onClick={handleAddToCart}>
+            {t('itemDetail.addToCart', 'Add to Cart')} · {formatCurrency(calculateTotal(), currency)}
+          </GBigButton>
+        </KioskActionBar>
+      );
+    } else {
+      const st = steps[stepNo];
+      const optional = st.min === 0;
+      const choose = (o: GOpt) => {
+        if (o.soldOut) return;
+        if (st.multiple) { st.toggle(o.id); return; }
+        if (!st.isSel(o.id)) st.toggle(o.id);   // 단일: 고르고 바로 다음(이미 고른 걸 다시 눌러도 다음)
+        setTimeout(() => next(stepNo), 160);
+      };
+      body = (
+        <>
+          <GPath>{item.name} · {t('menu:guided.stepOf', { n: stepNo + 1, total: steps.length, defaultValue: 'Step {{n}} of {{total}}' })}</GPath>
+          <GTitle>{st.title}</GTitle>
+          <GSub>{st.sub || (st.multiple
+            ? t('menu:guided.pickAny', 'Pick any, then tap Next')
+            : optional ? t('menu:guided.pickOptional', 'Optional — pick one or tap None') : t('menu:guided.pickOne', 'Pick one'))}</GSub>
+          <GGrid>
+            {optional && !st.multiple && (
+              <GOption type="button" $on={st.count() === 0} onClick={() => { st.clear(); setTimeout(() => next(stepNo), 160); }}>
+                <GOptionName>{t('menu:guided.none', 'None')}</GOptionName>
+              </GOption>
+            )}
+            {st.options.map(o => (
+              <GOption key={o.id} type="button" $on={st.isSel(o.id)} disabled={o.soldOut} onClick={() => choose(o)}>
+                <GOptionName>{o.name}</GOptionName>
+                <GOptionPrice>{o.soldOut ? t('itemDetail.soldOut', { defaultValue: 'Sold out' }) : priceText(o.price)}</GOptionPrice>
+              </GOption>
+            ))}
+          </GGrid>
+        </>
+      );
+      if (st.multiple) {
+        bar = (
+          <KioskActionBar>
+            <GBigButton type="button" $primary style={{ width: '100%' }} disabled={st.count() < st.min} onClick={() => next(stepNo)}>
+              {st.count() === 0 && optional ? t('menu:guided.skip', 'Skip') : t('menu:guided.next', 'Next')}
+            </GBigButton>
+          </KioskActionBar>
+        );
+      }
+    }
+    return (
+      <MobileLayout title={item.code ? `${item.code} ${item.name}` : item.name} showBack={gsRaw !== 'done'} onBack={() => navigate(-1)}>
+        {body}
+        {bar}
+      </MobileLayout>
+    );
+  }
+
   const renderAddButton = (inBar: boolean) => (
     <AddToCartButton $inBar={inBar}
         onClick={handleAddToCart}

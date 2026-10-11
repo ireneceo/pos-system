@@ -1415,5 +1415,11 @@
   "settingsPage.kioskTab.disabledRegisterHint": "Hidupkan «Guna kiosk» di atas untuk mendaftar tablet.",
   "settingsPage.kioskTab.goPayment": "Pilih kaedah bayaran Kiosk →",
   "settingsPage.kioskTab.goTerminal": "Pautan terminal kad →",
-  "settingsPage.kioskTab.urlCardTitle": "Buka paparan kiosk tanpa mendaftar (pilihan)"
+  "settingsPage.kioskTab.urlCardTitle": "Buka paparan kiosk tanpa mendaftar (pilihan)",
+  "settingsPage.kioskTab.menuModeTitle": "Paparan menu kiosk",
+  "settingsPage.kioskTab.menuModeHint": "Cara pelanggan memilih item di kiosk. Telefon tidak terjejas.",
+  "settingsPage.kioskTab.menuModeBrowse": "Semak imbas (lalai)",
+  "settingsPage.kioskTab.menuModeGuided": "Satu langkah demi satu",
+  "settingsPage.kioskTab.menuModeBrowseHint": "Kategori di tepi, grid menu dan troli dalam satu skrin.",
+  "settingsPage.kioskTab.menuModeGuidedHint": "Jubin kategori besar, kemudian satu pilihan setiap skrin: kategori › subkategori › item › setiap pilihan › harga akhir."
 }

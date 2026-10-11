@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
@@ -178,6 +178,16 @@ const ServiceDescription = styled.p`
 
 const CompanyPage: React.FC = () => {
   const { t } = useTranslation('landing');
+  // 회사 메일은 사이트 설정(/api/site-settings 의 email)이 단일 소스 — Contact 페이지·푸터와 같은 값.
+  const [companyEmail, setCompanyEmail] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/site-settings')
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => { if (alive && data?.email) setCompanyEmail(data.email); })
+      .catch(() => { /* 못 읽으면 메일 줄을 숨긴다 */ });
+    return () => { alive = false; };
+  }, []);
   return (
     <LandingLayout>
       <SEOHead
@@ -199,8 +209,7 @@ const CompanyPage: React.FC = () => {
             <SectionTitle>{t('landing:companyPage.companyInformation')}</SectionTitle>
             <CompanyName>{t('landing:companyPage.gitConsultingSdnBhd')}</CompanyName>
             <Paragraph>
-              An official corporation registered in Malaysia, providing technology commercialization
-              through technical advice, consulting, and operational support services.
+{t('landing:companyPage.companyIntro')}
             </Paragraph>
             <AddressBlock>
               <AddressText>
@@ -208,22 +217,21 @@ const CompanyPage: React.FC = () => {
                 {t('landing:companyPage.tropicanaGolfCountryResort')}<br />
                 47410, Petaling Jaya, Selangor, Malaysia
               </AddressText>
-              <ContactItem>
-                <ContactLabel>{t('landing:companyPage.email')}</ContactLabel>
-                <ContactLink href="mailto:help@gitconsulting.group">
-                  help@gitconsulting.group
-                </ContactLink>
-              </ContactItem>
+              {companyEmail && (
+                <ContactItem>
+                  <ContactLabel>{t('landing:companyPage.email')}</ContactLabel>
+                  <ContactLink href={`mailto:${companyEmail}`}>
+                    {companyEmail}
+                  </ContactLink>
+                </ContactItem>
+              )}
             </AddressBlock>
           </Section>
 
           <Section>
             <SectionTitle>{t('landing:companyPage.ourExpertise')}</SectionTitle>
             <Paragraph>
-              We bridge the gap between traditional business consulting and technical implementation.
-              While general consulting firms often lack technical expertise and focus solely on
-              management consulting, GIT combines deep technical knowledge with practical operational
-              support to deliver comprehensive solutions.
+{t('landing:companyPage.expertiseBody')}
             </Paragraph>
           </Section>
 
@@ -233,22 +241,19 @@ const CompanyPage: React.FC = () => {
               <ServiceCard>
                 <ServiceTitle>{t('landing:companyPage.consulting')}</ServiceTitle>
                 <ServiceDescription>
-                  IT consulting, startup guidance, management consulting, overseas expansion,
-                  and business modeling expertise
+{t('landing:companyPage.consultingBody')}
                 </ServiceDescription>
               </ServiceCard>
               <ServiceCard>
                 <ServiceTitle>{t('landing:companyPage.technicalSupport')}</ServiceTitle>
                 <ServiceDescription>
-                  Expert matching, continuous technical analysis, and high-quality reporting
-                  for technology projects
+{t('landing:companyPage.technicalSupportBody')}
                 </ServiceDescription>
               </ServiceCard>
               <ServiceCard>
                 <ServiceTitle>{t('landing:companyPage.businessServices')}</ServiceTitle>
                 <ServiceDescription>
-                  Branding, marketing, design, website development, and comprehensive startup
-                  support services
+{t('landing:companyPage.businessServicesBody')}
                 </ServiceDescription>
               </ServiceCard>
             </ServiceGrid>
@@ -257,9 +262,7 @@ const CompanyPage: React.FC = () => {
           <Section>
             <SectionTitle>{t('landing:companyPage.ourApproach')}</SectionTitle>
             <Paragraph>
-              We provide end-to-end support combining strategic consulting with hands-on technical
-              implementation. Our team of experts delivers continuous technical analysis, expert
-              matching, and operational support to help businesses succeed in technology-driven markets.
+{t('landing:companyPage.approachBody')}
             </Paragraph>
           </Section>
         </ContentSection>

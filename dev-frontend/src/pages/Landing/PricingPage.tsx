@@ -429,113 +429,9 @@ interface CurrencyInfo {
   decimals: number;
 }
 
-// 모듈 코드 -> 표시 이름 매핑 (DB AddonModule.name과 1:1 동기화)
-const MODULE_NAMES: Record<string, string> = {
-  // Restaurant
-  dashboard: 'Dashboard',
-  live_orders: 'Live Orders',
-  pos_terminal: 'POS Terminal',
-  kitchen_display: 'Kitchen Display',
-  customer_display: 'Customer Display',
-  menu_management: 'Menu Management',
-  invoice_billing: 'Invoice & Billing',
-  reports: 'Reports & Analytics',
-  staff_management: 'Staff & Permission Management',
-  customer_crm: 'Customer Management',
-  coupons: 'Coupon Management',
-  notices: 'Notices',
-  membership: 'Membership',
-  system_inquiry: 'System Inquiry',
-  operation_inquiry: 'Operation Inquiry',
-  activity_logs: 'Change History',
-  floor_plan: 'Floor Plan & Table Management',
-  mobile_ordering: 'Mobile Ordering',
-  reservations: 'Reservations',
-  recipe_management: 'Recipe Management',
-  inventory_management: 'Inventory & Supplier Management',
-  advanced_inventory: 'Advanced Inventory',
-  ingredients: 'Ingredients',
-  suppliers: 'Suppliers',
-  work_manuals: 'Work Manuals',
-  // Brand
-  brand_dashboard: 'Dashboard',
-  brand_management: 'Brand Management',
-  brand_franchise: 'Franchise Management & Map',
-  brand_restaurant_mgmt: 'Restaurant Management',
-  brand_admin_staff: 'Admin & Staff Management',
-  brand_manager_mgmt: 'Manager Management',
-  brand_invoices: 'Invoice & Billing',
-  brand_reports: 'Reports',
-  brand_notices: 'Notice Management',
-  brand_system_inquiry: 'System Inquiry',
-  brand_operation_inquiry: 'Inquiry Management',
-  brand_products: 'Product Management',
-  brand_recipes: 'Recipe Management',
-  brand_product_recipes: 'Product Recipe Management',
-  brand_inventory: 'Inventory & Supplier Management',
-  brand_ingredients: 'Ingredients',
-  brand_suppliers: 'Suppliers',
-  brand_performance: 'Performance Analytics',
-  brand_plans: 'Subscription Plans',
-  brand_subscriptions: 'Subscription Management',
-  brand_payment_settings: 'Payment Settings',
-  brand_work_manuals: 'Work Manuals',
-  brand_activity_logs: 'Change History',
-  // Foodcourt
-  fc_dashboard: 'Dashboard',
-  fc_management: 'Foodcourt Management',
-  fc_branches: 'Branch Management & Unit Numbering',
-  fc_tenancy: 'Tenancy Management & Map',
-  fc_floor_plan: 'Floor Plan & Store Management',
-  fc_restaurant_mgmt: 'Restaurant Management',
-  fc_admin_staff: 'Admin & Staff Management',
-  fc_manager_mgmt: 'Manager Management',
-  fc_invoices: 'Invoice & Billing',
-  fc_notices: 'Notice Management',
-  fc_system_inquiry: 'System Inquiry',
-  fc_operation_inquiry: 'Inquiry Management',
-  fc_stats: 'Statistics & Analytics',
-  fc_customers: 'Customer Management',
-  fc_coupons: 'Coupon Management',
-  fc_plans: 'Subscription Plans',
-  fc_subscriptions: 'Subscription Management',
-  fc_payment_settings: 'Payment Settings',
-  fc_work_manuals: 'Work Manuals',
-  fc_activity_logs: 'Change History',
-  // Owner
-  owner_dashboard: 'Dashboard',
-  owner_restaurants: 'Restaurant Portfolio',
-  owner_invoices: 'Invoice & Billing',
-  owner_notices: 'Notices',
-  owner_system_inquiry: 'System Inquiry',
-  owner_operation_inquiry: 'Operation Inquiry',
-  owner_performance: 'Performance Analytics',
-  owner_reports: 'Financial Reports',
-  owner_work_manuals: 'Work Manuals',
-  owner_activity_logs: 'Change History',
-  // Foodcourt — additional product/inventory modules
-  fc_products: 'Product Management',
-  fc_inventory: 'Inventory Management',
-  // Supplier
-  supplier_products: 'Product Management',
-  supplier_inventory: 'Inventory Management',
-  supplier_directory: 'Directory Listing',
-  supplier_contracts: 'Contract Management',
-  supplier_customers: 'Customer Management',
-  supplier_orders: 'Order Management',
-  supplier_shipping: 'Shipping & Delivery',
-  supplier_trade_invoices: 'Trade Invoice',
-  supplier_soa: 'Statement of Account',
-  supplier_admin_staff: 'Admin & Staff Management',
-  supplier_performance: 'Performance Analytics',
-  supplier_activity_logs: 'Change History',
-  supplier_multi_warehouse: 'Multi-Warehouse',
-  // Buyer-side (shared B2B modules — Restaurant / Brand / Foodcourt all reuse)
-  buyer_supplier_directory: 'Supplier Directory',
-  buyer_supplier_contracts: 'Supplier Contracts',
-  buyer_purchase_orders: 'Purchase Orders',
-  buyer_purchase_invoices: 'Purchase Invoices',
-};
+// 모듈 표시 이름은 landing.json «pricingPage.module.<code>» (4개 언어). 없으면 DB 이름.
+// 아직 화면이 없는 모듈은 요금표에 보이지 않는다(기능 페이지와 같은 기준, 2026-10-11 점검: 화면·경로 0건).
+const MODULES_WITHOUT_SCREEN = new Set(['supplier_performance', 'supplier_activity_logs', 'supplier_multi_warehouse', 'fc_customers']);
 
 // 국가 코드 → 통화 매핑 (컴포넌트 외부에 정의)
 const countryToCurrency: Record<string, string> = {
@@ -726,7 +622,7 @@ const PricingPage: React.FC = () => {
 
   const formatPrice = (price: number, currencyCode: string) => {
     const currency = getCurrencyInfo(currencyCode);
-    if (price === 0) return 'Contact Us';
+    if (price === 0) return t('landing:pricingPage.contactUs');
 
     if (currency.decimals === 0) {
       return Math.round(price).toLocaleString();
@@ -744,18 +640,13 @@ const PricingPage: React.FC = () => {
   };
 
   const formatLimit = (limit: number) => {
-    if (limit === -1) return 'Unlimited';
+    if (limit === -1) return t('landing:pricingPage.unlimited');
     return limit.toLocaleString();
   };
 
   // API에서 가져온 플랜 데이터 기반으로 탭 동적 생성
-  const TAB_LABELS: Record<string, string> = {
-    restaurant: 'Restaurant',
-    brand: 'Brand',
-    foodcourt: 'Foodcourt',
-    owner: 'Owner',
-    supplier: 'Supplier'
-  };
+  const moduleLabel = (code: string, dbName?: string) =>
+    t(`landing:pricingPage.module.${code}`, { defaultValue: dbName || code });
   const TAB_ORDER = ['restaurant', 'brand', 'foodcourt', 'owner', 'supplier'];
   const availableTabs = TAB_ORDER.filter(target =>
     normalizedPlans.some(plan => plan.plan_target === target)
@@ -783,7 +674,7 @@ const PricingPage: React.FC = () => {
           <HeroSubtitle>
             {t('landing:pricingPage.chooseThePlanThatFitsYourBusinessNoHidde')}
           </HeroSubtitle>
-          <FreeTrialBadge>7 Days Free Trial - No Credit Card Required</FreeTrialBadge>
+          <FreeTrialBadge>{t('landing:pricingPage.freeTrialBadge')}</FreeTrialBadge>
         </HeroSection>
 
         <ContentSection>
@@ -795,7 +686,7 @@ const PricingPage: React.FC = () => {
                   active={activeTab === tab}
                   onClick={() => setActiveTab(tab as typeof activeTab)}
                 >
-                  {TAB_LABELS[tab] || tab}
+                  {t(`landing:pricingPage.tab.${tab}`, { defaultValue: tab })}
                 </PlanTab>
               ))}
             </PlanTabs>
@@ -808,7 +699,7 @@ const PricingPage: React.FC = () => {
               >
                 {currencies.map(currency => (
                   <option key={currency.code} value={currency.code}>
-                    {currency.symbol} {currency.code} - {currency.name}
+                    {currency.symbol} {currency.code} - {t(`landing:pricingPage.currencyName.${currency.code}`, { defaultValue: currency.name })}
                   </option>
                 ))}
               </CurrencySelect>
@@ -845,12 +736,12 @@ const PricingPage: React.FC = () => {
                           <MonthlyPrice>
                             <CurrencySymbol>{currencyInfo.symbol}</CurrencySymbol>
                             {formatPrice(monthlyPrice, selectedCurrency)}
-                            <PeriodText>/month</PeriodText>
+                            <PeriodText>{t('landing:pricingPage.perMonth')}</PeriodText>
                           </MonthlyPrice>
                           {annualPrice > 0 && (
                             <AnnualPrice>
-                              {currencyInfo.symbol} {formatPrice(annualPrice, selectedCurrency)}/year
-                              {annualSavings > 0 && ` (Save ${annualSavings}%)`}
+                              {currencyInfo.symbol} {formatPrice(annualPrice, selectedCurrency)}{t('landing:pricingPage.perYear')}
+                              {annualSavings > 0 && ` ${t('landing:pricingPage.saveYearly', { percent: annualSavings })}`}
                             </AnnualPrice>
                           )}
                           <BillingNote>{t('landing:pricingPage.billedMonthlyOrAnnually')}</BillingNote>
@@ -896,27 +787,30 @@ const PricingPage: React.FC = () => {
                     </LimitsSection>
 
                     {(() => {
-                      // Owner 는 매입을 하지 않으므로 buyer_* 4 모듈은 owner plan 에서 제외
+                      const includedSet = new Set(plan.included_modules || []);
+                      // Owner 카드: buyer_* 4 모듈은 그 플랜에 실제로 들어 있을 때만 보인다.
+                      // (예전엔 무조건 숨겨, buyer_* 만 든 Owner 플랜은 «포함 0개» 카드로 보였다 — 2026-10-11 dev 실측 owner_basic/professional)
                       const targetModules = allModules.filter(m => {
                         const matches = m.target_user_type === plan.plan_target || m.target_user_type === 'all';
                         if (!matches) return false;
-                        if (plan.plan_target === 'owner' && m.module_code.startsWith('buyer_')) return false;
+                        if (MODULES_WITHOUT_SCREEN.has(m.module_code)) return false;
+                        if (plan.plan_target === 'owner' && m.module_code.startsWith('buyer_') && !includedSet.has(m.module_code)) return false;
                         return true;
                       });
                       const basicMods = targetModules.filter(m => m.category === 'basic');
                       const advancedMods = targetModules.filter(m => m.category !== 'basic');
-                      const includedSet = new Set(plan.included_modules || []);
 
-                      if (targetModules.length === 0 && plan.included_modules?.length > 0) {
+                      const shownIncluded = (plan.included_modules || []).filter(code => !MODULES_WITHOUT_SCREEN.has(code));
+                      if (targetModules.length === 0 && shownIncluded.length > 0) {
                         // Fallback: allModules not loaded yet, show included only
                         return (
                           <ModulesSection>
-                            <ModulesTitle>Included Modules ({plan.included_modules.length})</ModulesTitle>
+                            <ModulesTitle>{t('landing:pricingPage.includedModulesCount', { count: shownIncluded.length })}</ModulesTitle>
                             <ModulesList>
-                              {plan.included_modules.map((code, i) => (
+                              {shownIncluded.map((code, i) => (
                                 <ModuleItem key={i} included>
                                   <ModuleCheck included><Check size={14} /></ModuleCheck>
-                                  {MODULE_NAMES[code] || code}
+                                  {moduleLabel(code)}
                                 </ModuleItem>
                               ))}
                             </ModulesList>
@@ -936,7 +830,7 @@ const PricingPage: React.FC = () => {
                                 <ModuleCheck included={includedSet.has(m.module_code)}>
                                   {includedSet.has(m.module_code) ? <Check size={14} /> : <Minus size={14} />}
                                 </ModuleCheck>
-                                {MODULE_NAMES[m.module_code] || m.name}
+                                {moduleLabel(m.module_code, m.name)}
                               </ModuleItem>
                             ))}
                             {advancedMods.length > 0 && (
@@ -947,7 +841,7 @@ const PricingPage: React.FC = () => {
                                 <ModuleCheck included={includedSet.has(m.module_code)}>
                                   {includedSet.has(m.module_code) ? <Check size={14} /> : <Minus size={14} />}
                                 </ModuleCheck>
-                                {MODULE_NAMES[m.module_code] || m.name}
+                                {moduleLabel(m.module_code, m.name)}
                               </ModuleItem>
                             ))}
                           </ModulesList>

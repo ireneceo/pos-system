@@ -1001,6 +1001,7 @@ const SettingsPage: React.FC = () => {
   const mobileOrderTakeawayPackagingRef = useRef<AutoSaveHandle>(null);
   const mobileOrderPauseRef = useRef<AutoSaveHandle>(null);
   const kioskEnabledRef = useRef<AutoSaveHandle>(null);
+  const kioskMenuModeRef = useRef<AutoSaveHandle>(null);
   const mobileOrderPauseMessageRef = useRef<AutoSaveHandle>(null);
   // Reservation 활성 토글은 reservation_settings.enabled 와 동일한 필드 (Reservation 탭과 sync).
   // mobileOrder Order Types 섹션에서 빠르게 on/off 할 수 있도록 노출.
@@ -1392,7 +1393,9 @@ const SettingsPage: React.FC = () => {
     pause_ordering: boolean;
     pause_message: string;
     kiosk_enabled: boolean;
-  }>({ show_featured: true, show_popular: true, popular_excluded_category_ids: [], category_schedules: [], pause_ordering: false, pause_message: '', kiosk_enabled: false });
+    // 키오스크 메뉴 보기 방식 — 'browse' 둘러보기(기본) / 'guided' 한 화면에 하나씩 (2026-10-11 Fable kiosk-two-modes)
+    kiosk_menu_mode: 'browse' | 'guided';
+  }>({ show_featured: true, show_popular: true, popular_excluded_category_ids: [], category_schedules: [], pause_ordering: false, pause_message: '', kiosk_enabled: false, kiosk_menu_mode: 'browse' });
   const [brandInfo, setBrandInfo] = useState<{
     brand_id: number | null;
     brand_name: string | null;
@@ -1654,7 +1657,8 @@ const SettingsPage: React.FC = () => {
                 pause_ordering: !!restaurant.mobile_settings.pause_ordering,
                 pause_message: restaurant.mobile_settings.pause_message || '',
                 // 키오스크 사용 여부(Fable 판정 2026-10-07 settings-entry D2) — 없으면 꺼짐
-                kiosk_enabled: !!restaurant.mobile_settings.kiosk_enabled
+                kiosk_enabled: !!restaurant.mobile_settings.kiosk_enabled,
+                kiosk_menu_mode: restaurant.mobile_settings.kiosk_menu_mode === 'guided' ? 'guided' : 'browse'
               });
             }
           }
@@ -6014,6 +6018,41 @@ const SettingsPage: React.FC = () => {
                     </div>
                   )}
                 </SettingsCard>
+
+                {/* 키오스크 메뉴 보기 방식 — 둘러보기(기본) / 한 화면에 하나씩. 폰·메뉴판은 영향 없음 (Fable kiosk-two-modes §2) */}
+                {mobileSettings.kiosk_enabled && (
+                  <SettingsCard style={{ gridColumn: '1 / -1' }}>
+                    <CardTitle>{t('settings:settingsPage.kioskTab.menuModeTitle', 'Kiosk menu view')}</CardTitle>
+                    <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                      {t('settings:settingsPage.kioskTab.menuModeHint', 'How customers pick items on the kiosk. Phones are not affected.')}
+                    </p>
+                    <AutoSaveField ref={kioskMenuModeRef} onSave={handleSave} type="toggle">
+                      <div role="radiogroup" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                        {(['browse', 'guided'] as const).map(mode => {
+                          const on = mobileSettings.kiosk_menu_mode === mode;
+                          return (
+                            <label key={mode} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '14px 16px', borderRadius: '10px', cursor: 'pointer', border: `1px solid ${on ? '#635BFF' : '#C7CED6'}`, background: on ? '#F0EFFF' : '#FFFFFF' }}>
+                              <input type="radio" name="kiosk_menu_mode" checked={on} style={{ marginTop: '3px' }}
+                                onChange={() => { setMobileSettings(prev => ({ ...prev, kiosk_menu_mode: mode })); kioskMenuModeRef.current?.triggerSave(); }} />
+                              <span>
+                                <span style={{ display: 'block', fontWeight: 600, color: '#0A2540', fontSize: '14px' }}>
+                                  {mode === 'browse'
+                                    ? t('settings:settingsPage.kioskTab.menuModeBrowse', 'Browse (default)')
+                                    : t('settings:settingsPage.kioskTab.menuModeGuided', 'One step at a time')}
+                                </span>
+                                <span style={{ display: 'block', color: '#4B5563', fontSize: '13px', marginTop: '4px' }}>
+                                  {mode === 'browse'
+                                    ? t('settings:settingsPage.kioskTab.menuModeBrowseHint', 'Categories on the side, menu grid and cart on one screen.')
+                                    : t('settings:settingsPage.kioskTab.menuModeGuidedHint', 'Big category tiles, then one choice per screen: category › subcategory › item › each option › final price.')}
+                                </span>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </AutoSaveField>
+                  </SettingsCard>
+                )}
 
                 {/* ② 등록된 키오스크 태블릿 — 꺼져 있어도 목록·해제는 보인다(잃어버린 기기를 끊을 수 있게) */}
                 <SettingsCard style={{ gridColumn: '1 / -1' }}>

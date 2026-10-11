@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
@@ -184,6 +184,24 @@ const SubmitButton = styled.button`
   }
 `;
 
+// 무료 체험은 셀프 가입(/signup)이 정식 경로 — 문의 폼으로 체험을 신청받지 않는다.
+const TrialLink = styled(Link)`
+  display: inline-block;
+  margin-top: 16px;
+  background: #635BFF;
+  color: white;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #5A51E6;
+  }
+`;
+
 const InfoSection = styled.div`
   display: flex;
   flex-direction: column;
@@ -299,7 +317,8 @@ const ContactPage: React.FC = () => {
     email: '',
     phone: '',
     company_name: '',
-    inquiry_type: navState?.inquiry_type || '',
+    // 옛 «체험 신청»(free_trial) 은 문의 종류에서 빠졌다 — 들어와도 빈 선택으로.
+    inquiry_type: navState?.inquiry_type && navState.inquiry_type !== 'free_trial' ? navState.inquiry_type : '',
     interested_plan: navState?.interested_plan || '',
     preferred_username: '',
     message: ''
@@ -357,10 +376,10 @@ const ContactPage: React.FC = () => {
         });
       } else {
         const data = await response.json();
-        setError(getErrorMessage(data, 'Failed to send message. Please try again.'));
+        setError(getErrorMessage(data, t('landing:contactPage.sendFailed')));
       }
     } catch (err) {
-      setError('Network error. Please check your connection and try again.');
+      setError(t('landing:contactPage.networkError'));
     } finally {
       setSubmitting(false);
     }
@@ -369,7 +388,7 @@ const ContactPage: React.FC = () => {
     <LandingLayout>
       <SEOHead
         title="Contact Us - Get Started with PurpleHere"
-        description="Contact PurpleHere for a free trial, pricing inquiry, or technical support. We typically respond within 24 hours."
+        description="Contact PurpleHere for pricing, a demo, partnership, or technical support. We typically respond within 24 hours. Start a 7-day free trial yourself at purplehere.com/signup."
         keywords="contact PurpleHere, POS free trial, POS demo request, restaurant POS support"
         canonicalUrl="https://purplehere.com/contact"
       />
@@ -402,7 +421,7 @@ const ContactPage: React.FC = () => {
                       value={formData.name}
                       onChange={handleChange}
                       required
-                      placeholder="Your name"
+                      placeholder={t('landing:contactPage.placeholderName')}
                     />
                   </FormGroup>
 
@@ -414,7 +433,7 @@ const ContactPage: React.FC = () => {
                       value={formData.email}
                       onChange={handleChange}
                       required
-                      placeholder="your@email.com"
+                      placeholder={t('landing:contactPage.placeholderEmail')}
                     />
                   </FormGroup>
 
@@ -433,7 +452,7 @@ const ContactPage: React.FC = () => {
                       name="company_name"
                       value={formData.company_name}
                       onChange={handleChange}
-                      placeholder="Your company or restaurant name"
+                      placeholder={t('landing:contactPage.placeholderCompany')}
                     />
                   </FormGroup>
 
@@ -446,7 +465,6 @@ const ContactPage: React.FC = () => {
                       required
                     >
                       <option value="">{t('landing:contactPage.selectInquiryType')}</option>
-                      <option value="free_trial">{t('landing:contactPage.startFreeTrial7DaysFree')}</option>
                       <option value="pricing">{t('landing:contactPage.pricingInquiry')}</option>
                       <option value="demo">{t('landing:contactPage.requestDemo')}</option>
                       <option value="support">{t('landing:contactPage.technicalSupport')}</option>
@@ -455,48 +473,7 @@ const ContactPage: React.FC = () => {
                     </Select>
                   </FormGroup>
 
-                  {formData.inquiry_type === 'free_trial' && (
-                    <>
-                      <FormGroup>
-                        <Label>{t('landing:contactPage.interestedPlan')}<Required>*</Required></Label>
-                        <Select
-                          name="interested_plan"
-                          value={formData.interested_plan}
-                          onChange={handleChange}
-                          required
-                        >
-                          <option value="">{t('landing:contactPage.selectAPlan')}</option>
-                          <option value="restaurant_basic">{t('landing:contactPage.restaurantBasic')}</option>
-                          <option value="restaurant_professional">{t('landing:contactPage.restaurantProfessional')}</option>
-                          <option value="restaurant_enterprise">{t('landing:contactPage.restaurantEnterprise')}</option>
-                          <option value="brand_basic">{t('landing:contactPage.brandBasic')}</option>
-                          <option value="brand_professional">{t('landing:contactPage.brandProfessional')}</option>
-                          <option value="brand_enterprise">{t('landing:contactPage.brandEnterprise')}</option>
-                          <option value="foodcourt_basic">{t('landing:contactPage.foodcourtBasic')}</option>
-                          <option value="foodcourt_professional">{t('landing:contactPage.foodcourtProfessional')}</option>
-                          <option value="foodcourt_enterprise">{t('landing:contactPage.foodcourtEnterprise')}</option>
-                        </Select>
-                      </FormGroup>
-
-                      <FormGroup>
-                        <Label>{t('landing:contactPage.preferredUsername')}<Required>*</Required></Label>
-                        <Input
-                          type="text"
-                          name="preferred_username"
-                          value={formData.preferred_username}
-                          onChange={handleChange}
-                          required
-                          placeholder="e.g., myrestaurant (letters, numbers, underscore only)"
-                          pattern="^[a-zA-Z0-9_]+$"
-                        />
-                        <small style={{ color: '#4B5563', fontSize: '12px' }}>
-                          {t('landing:contactPage.thisWillBeYourLoginIdOnlyLettersNumbersA')}
-                        </small>
-                      </FormGroup>
-                    </>
-                  )}
-
-                  {formData.inquiry_type && formData.inquiry_type !== 'free_trial' && (
+                  {formData.inquiry_type && (
                     <FormGroup>
                       <Label>{t('landing:contactPage.interestedPlan')}</Label>
                       <Select
@@ -514,6 +491,11 @@ const ContactPage: React.FC = () => {
                         <option value="foodcourt_basic">{t('landing:contactPage.foodcourtBasic')}</option>
                         <option value="foodcourt_professional">{t('landing:contactPage.foodcourtProfessional')}</option>
                         <option value="foodcourt_enterprise">{t('landing:contactPage.foodcourtEnterprise')}</option>
+                        <option value="owner_basic">{t('landing:contactPage.ownerBasic')}</option>
+                        <option value="owner_professional">{t('landing:contactPage.ownerProfessional')}</option>
+                        <option value="owner_enterprise">{t('landing:contactPage.ownerEnterprise')}</option>
+                        <option value="supplier_basic">{t('landing:contactPage.supplierBasic')}</option>
+                        <option value="supplier_advanced">{t('landing:contactPage.supplierAdvanced')}</option>
                         <option value="other">{t('landing:contactPage.otherNotSureYet')}</option>
                       </Select>
                     </FormGroup>
@@ -526,12 +508,12 @@ const ContactPage: React.FC = () => {
                       value={formData.message}
                       onChange={handleChange}
                       required
-                      placeholder="Tell us about your business needs..."
+                      placeholder={t('landing:contactPage.placeholderMessage')}
                     />
                   </FormGroup>
 
                   <SubmitButton type="submit" disabled={submitting}>
-                    {submitting ? 'Sending...' : 'Send Message'}
+                    {submitting ? t('landing:contactPage.sending') : t('landing:contactPage.sendMessage')}
                   </SubmitButton>
                 </Form>
               )}
@@ -593,14 +575,14 @@ const ContactPage: React.FC = () => {
                       <ContactIcon>~</ContactIcon>
                       <ContactDetails>
                         <ContactLabel>{t('landing:contactPage.mondayFriday')}</ContactLabel>
-                        <ContactValue>{companyInfo.business_hours?.weekdays || 'N/A'}</ContactValue>
+                        <ContactValue>{companyInfo.business_hours?.weekdays || t('landing:contactPage.notAvailable')}</ContactValue>
                       </ContactDetails>
                     </ContactItem>
                     <ContactItem>
                       <ContactIcon>~</ContactIcon>
                       <ContactDetails>
                         <ContactLabel>{t('landing:contactPage.saturdaySunday')}</ContactLabel>
-                        <ContactValue>{companyInfo.business_hours?.weekend || 'N/A'}</ContactValue>
+                        <ContactValue>{companyInfo.business_hours?.weekend || t('landing:contactPage.notAvailable')}</ContactValue>
                       </ContactDetails>
                     </ContactItem>
                   </>
@@ -612,21 +594,20 @@ const ContactPage: React.FC = () => {
               <InfoCard>
                 <InfoTitle>{t('landing:contactPage.freeTrial')}</InfoTitle>
                 <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', marginBottom: '12px' }}>
-                  {t('landing:contactPage.tryPurpleherePosFreeFor')}<strong style={{ color: '#635BFF' }}>7 days</strong> with full access to all features.
-                  No credit card required.
+                  {t('landing:contactPage.freeTrialBody')}
                 </p>
                 <ul style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.8', margin: 0, paddingLeft: '20px' }}>
                   <li>{t('landing:contactPage.fullFeatureAccess')}</li>
                   <li>{t('landing:contactPage.dedicatedOnboardingSupport')}</li>
                   <li>{t('landing:contactPage.noCommitmentCancelAnytime')}</li>
                 </ul>
+                <TrialLink to="/signup">{t('landing:contactPage.startFreeTrialCta')}</TrialLink>
               </InfoCard>
 
               <InfoCard>
                 <InfoTitle>{t('landing:contactPage.responseTime')}</InfoTitle>
                 <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6' }}>
-                  We typically respond to all inquiries within 24 hours during business days.
-                  For urgent matters, please call us directly.
+                  {t('landing:contactPage.responseTimeBody')}
                 </p>
               </InfoCard>
             </InfoSection>

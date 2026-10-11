@@ -228,40 +228,40 @@ const DEMO_ACCOUNTS_LIST = [
     role: 'Restaurant Admin',
     icon: 'R',
     color: '#0891B2',
-    description: 'Full restaurant management — POS, kitchen, menu, reports',
-    features: ['POS Terminal', 'Kitchen Display', 'Menu Management', 'Reports & Analytics', 'Customer Management']
+    i18nKey: 'restaurant_admin',
+    featureCount: 5
   },
   {
     key: 'demo_brand_general',
     role: 'Brand General',
     icon: 'B',
     color: '#059669',
-    description: 'Manage multiple brands and restaurants from a single dashboard',
-    features: ['Multi-brand dashboard', 'Restaurant oversight', 'Centralized inventory', 'Performance reports', 'Staff management']
+    i18nKey: 'brand_general',
+    featureCount: 5
   },
   {
     key: 'demo_foodcourt_general',
     role: 'Foodcourt General',
     icon: 'F',
     color: '#EA580C',
-    description: 'Operate a foodcourt — tenants, common products, contracts, invoicing',
-    features: ['Tenant management', 'Common product catalog', 'Contract & invoicing', 'Floor plan', 'Foodcourt reports']
+    i18nKey: 'foodcourt_general',
+    featureCount: 5
   },
   {
     key: 'demo_multi_owner',
     role: 'Restaurant Owner',
     icon: 'O',
     color: '#7C3AED',
-    description: 'Financial dashboard across multiple restaurants you own',
-    features: ['Multi-restaurant P&L', 'Cross-location reports', 'Operation inquiries', 'Subscription overview']
+    i18nKey: 'multi_owner',
+    featureCount: 4
   },
   {
     key: 'demo_supplier_admin',
     role: 'Supplier Admin',
     icon: 'S',
     color: '#9333EA',
-    description: 'B2B supplier portal — products, contracts, purchase orders, trade invoices',
-    features: ['Product catalog', 'Restaurant contracts', 'Purchase orders', 'Trade invoices', 'SOA bundling']
+    i18nKey: 'supplier_admin',
+    featureCount: 5
   }
 ];
 
@@ -315,10 +315,10 @@ const DemoPage: React.FC = () => {
         await loginAsDemo(account.key);
         navigate(defaultRouteForUser(data.data.user));
       } else {
-        setError(data?.error?.message || data.message || 'Demo account login failed. Please contact support.');
+        setError(data?.error?.message || data.message || t('landing:demoPage.loginFailed'));
       }
     } catch (err) {
-      setError('Network error. Please try again.');
+      setError(t('landing:demoPage.networkError'));
     } finally {
       setLoading(null);
     }
@@ -348,10 +348,10 @@ const DemoPage: React.FC = () => {
               <DemoCard key={account.key}>
                 <CardIcon>{account.icon}</CardIcon>
                 <CardTitle>{displayRole(account.role)}</CardTitle>
-                <CardDescription>{account.description}</CardDescription>
+                <CardDescription>{t(`landing:demoPage.account.${account.i18nKey}.description`)}</CardDescription>
                 <FeatureList>
-                  {account.features.map((feature, index) => (
-                    <FeatureItem key={index}>{feature}</FeatureItem>
+                  {Array.from({ length: account.featureCount }, (_, index) => (
+                    <FeatureItem key={index}>{t(`landing:demoPage.account.${account.i18nKey}.f${index + 1}`)}</FeatureItem>
                   ))}
                 </FeatureList>
                 <LoginButton
@@ -359,7 +359,7 @@ const DemoPage: React.FC = () => {
                   disabled={loading === account.key}
                   isLoading={loading === account.key}
                 >
-                  {loading === account.key ? 'Logging in...' : `Login as ${account.role}`}
+                  {loading === account.key ? t('landing:demoPage.loggingIn') : t('landing:demoPage.loginAs', { role: displayRole(account.role) })}
                 </LoginButton>
               </DemoCard>
             ))}
@@ -368,8 +368,7 @@ const DemoPage: React.FC = () => {
           <NoticeBox>
             <NoticeTitle>{t('landing:demoPage.demoAccountNotice')}</NoticeTitle>
             <NoticeText>
-              Demo accounts are reset daily at midnight (site timezone).
-              Any changes you make will be restored to the default state.
+              {t('landing:demoPage.resetNotice')}
             </NoticeText>
           </NoticeBox>
         </ContentSection>

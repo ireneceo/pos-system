@@ -1415,5 +1415,11 @@
   "settingsPage.kioskTab.disabledRegisterHint": "Turn on «Use kiosk» above to register a tablet.",
   "settingsPage.kioskTab.goPayment": "Choose Kiosk payment methods →",
   "settingsPage.kioskTab.goTerminal": "Card terminal link →",
-  "settingsPage.kioskTab.urlCardTitle": "Open the kiosk look without registering (optional)"
+  "settingsPage.kioskTab.urlCardTitle": "Open the kiosk look without registering (optional)",
+  "settingsPage.kioskTab.menuModeTitle": "Kiosk menu view",
+  "settingsPage.kioskTab.menuModeHint": "How customers pick items on the kiosk. Phones are not affected.",
+  "settingsPage.kioskTab.menuModeBrowse": "Browse (default)",
+  "settingsPage.kioskTab.menuModeGuided": "One step at a time",
+  "settingsPage.kioskTab.menuModeBrowseHint": "Categories on the side, menu grid and cart on one screen.",
+  "settingsPage.kioskTab.menuModeGuidedHint": "Big category tiles, then one choice per screen: category › subcategory › item › each option › final price."
 }

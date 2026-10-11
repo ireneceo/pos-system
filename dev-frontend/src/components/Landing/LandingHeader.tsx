@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import LanguageSelector from '../Common/LanguageSelector';
@@ -328,6 +328,19 @@ const MobileLanguageWrapper = styled.div`
   justify-content: center;
 `;
 
+// Docs 메뉴는 공개 문서가 실제로 있을 때만 보인다(빈 페이지로 보내지 않기).
+// 한 번만 묻고(모듈 캐시) 실패·빈 응답이면 숨김(fail-closed).
+let docsAvailablePromise: Promise<boolean> | null = null;
+const checkDocsAvailable = (): Promise<boolean> => {
+  if (!docsAvailablePromise) {
+    docsAvailablePromise = fetch('/api/contents/public/docs')
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => Array.isArray(data?.data?.sections) && data.data.sections.length > 0)
+      .catch(() => false);
+  }
+  return docsAvailablePromise;
+};
+
 interface LandingHeaderProps {
   logo?: string;
 }
@@ -337,7 +350,14 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
   const location = useLocation();
   const { t } = useTranslation('landing');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [docsAvailable, setDocsAvailable] = useState(false);
   const brandLogo = '/uploads/logos/brand-logo.png';
+
+  useEffect(() => {
+    let alive = true;
+    checkDocsAvailable().then(ok => { if (alive) setDocsAvailable(ok); });
+    return () => { alive = false; };
+  }, []);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -376,9 +396,11 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <NavLink href="/news" active={isActive('/news')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/news'); }}>
             {t('nav.news')}
           </NavLink>
-          <NavLink href="/docs" active={isActive('/docs')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/docs'); }}>
-            {t('nav.docs', 'Docs')}
-          </NavLink>
+          {docsAvailable && (
+            <NavLink href="/docs" active={isActive('/docs')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/docs'); }}>
+              {t('nav.docs', 'Docs')}
+            </NavLink>
+          )}
           <NavLink href="/download" active={isActive('/download')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/download'); }}>
             {t('nav.download', 'Download')}
           </NavLink>
@@ -429,9 +451,11 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <MobileNavLink href="/news" active={isActive('/news')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/news'); }}>
             {t('nav.news')}
           </MobileNavLink>
-          <MobileNavLink href="/docs" active={isActive('/docs')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/docs'); }}>
-            {t('nav.docs', 'Docs')}
-          </MobileNavLink>
+          {docsAvailable && (
+            <MobileNavLink href="/docs" active={isActive('/docs')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/docs'); }}>
+              {t('nav.docs', 'Docs')}
+            </MobileNavLink>
+          )}
           <MobileNavLink href="/download" active={isActive('/download')} onClick={(e: React.MouseEvent) => { e.preventDefault(); handleNavigate('/download'); }}>
             {t('nav.download', 'Download')}
           </MobileNavLink>

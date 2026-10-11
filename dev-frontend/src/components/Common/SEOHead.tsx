@@ -129,12 +129,15 @@ const SEOHead: React.FC<SEOHeadProps> = ({
 };
 
 // Helper function to generate Organization schema (now accepts settings)
+// 연락 메일은 사이트 설정(/api/site-settings)의 `email` 칸이 단일 소스. 모르면 지어내지 않고 빼고, 문의 페이지 주소만 둔다.
 export const generateOrganizationSchema = (settings?: {
   site_name?: string;
   brand_logo_url?: string | null;
+  email?: string | null;
   contact_email?: string | null;
 }) => {
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://purplehere.com';
+  const contactEmail = settings?.email || settings?.contact_email || null;
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -145,7 +148,8 @@ export const generateOrganizationSchema = (settings?: {
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'sales',
-      email: settings?.contact_email || 'contact@purplehere.com'
+      url: `${baseUrl}/contact`,
+      ...(contactEmail ? { email: contactEmail } : {})
     }
   };
 };
@@ -205,13 +209,13 @@ export const generateSoftwareSchema = (siteName?: string) => ({
   '@type': 'SoftwareApplication',
   name: `${siteName || 'PurpleHere'} POS`,
   applicationCategory: 'BusinessApplication',
-  operatingSystem: 'Web Browser',
+  operatingSystem: 'Web Browser, Android, Windows',
   description: 'Cloud-based Point of Sale system for restaurants with real-time order management, inventory tracking, and multi-location support.',
   offers: {
     '@type': 'Offer',
-    price: '0',
-    priceCurrency: 'USD',
-    description: '7-day free trial available'
+    priceCurrency: 'MYR',
+    url: 'https://purplehere.com/pricing',
+    description: 'Plans and prices are listed on the Pricing page (billed in Malaysian Ringgit). 7-day free trial with self-service signup at purplehere.com/signup — no credit card required.'
   },
   featureList: [
     'Real-time order management',
@@ -260,7 +264,7 @@ export const generateLocalBusinessSchema = () => ({
   '@id': 'https://purplehere.com/#software',
   name: 'PurpleHere POS',
   applicationCategory: 'BusinessApplication',
-  operatingSystem: 'Web Browser',
+  operatingSystem: 'Web Browser, Android, Windows',
   url: 'https://purplehere.com',
   description: 'Cloud-based Point of Sale system for restaurants, brands, and food courts with real-time order management, inventory tracking, and multi-location support.',
   provider: {
@@ -273,12 +277,10 @@ export const generateLocalBusinessSchema = () => ({
     url: 'https://purplehere.com'
   },
   offers: {
-    '@type': 'AggregateOffer',
-    priceCurrency: 'USD',
-    lowPrice: '0',
-    highPrice: '0',
-    offerCount: '3',
-    description: '7-day free trial available. Contact us for pricing.'
+    '@type': 'Offer',
+    priceCurrency: 'MYR',
+    url: 'https://purplehere.com/pricing',
+    description: 'Plans and prices are listed on the Pricing page (billed in Malaysian Ringgit). 7-day free trial with self-service signup at purplehere.com/signup — no credit card required.'
   }
 });
 
@@ -292,8 +294,9 @@ export const generateHowToSchema = () => ({
     {
       '@type': 'HowToStep',
       position: 1,
-      name: 'Request a Free Trial',
-      text: 'Visit purplehere.com/contact and fill out the form to request your 7-day free trial. No credit card required.'
+      name: 'Start Your Free Trial',
+      text: 'Sign up yourself at purplehere.com/signup to start a 7-day free trial. No credit card required.',
+      url: 'https://purplehere.com/signup'
     },
     {
       '@type': 'HowToStep',

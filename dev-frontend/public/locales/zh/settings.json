@@ -1415,5 +1415,11 @@
   "settingsPage.kioskTab.disabledRegisterHint": "在上方开启「使用自助点餐机」后即可登记平板。",
   "settingsPage.kioskTab.goPayment": "设置 Kiosk 付款方式 →",
   "settingsPage.kioskTab.goTerminal": "刷卡终端连接 →",
-  "settingsPage.kioskTab.urlCardTitle": "不登记、仅以自助点餐机画面打开（可选）"
+  "settingsPage.kioskTab.urlCardTitle": "不登记、仅以自助点餐机画面打开（可选）",
+  "settingsPage.kioskTab.menuModeTitle": "自助机菜单显示方式",
+  "settingsPage.kioskTab.menuModeHint": "顾客在自助机上点餐的方式。手机点餐不受影响。",
+  "settingsPage.kioskTab.menuModeBrowse": "浏览（默认）",
+  "settingsPage.kioskTab.menuModeGuided": "一步一步选",
+  "settingsPage.kioskTab.menuModeBrowseHint": "侧边显示分类，菜单和购物车在同一屏。",
+  "settingsPage.kioskTab.menuModeGuidedHint": "先是大分类卡片，然后每屏只选一项：分类 › 子分类 › 菜品 › 逐个选项 › 最终金额。"
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled, { keyframes, css } from 'styled-components';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Utensils, ShoppingBag, Clock, Truck, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import MobileLayout from '../components/common/MobileLayout';
@@ -503,6 +503,62 @@ const SubCategoryChip = styled.button<{ active: boolean }>`
   cursor: pointer;
 `;
 
+/* ── 키오스크 «한 화면에 하나씩»(안내형) — Fable kiosk-two-modes §2. 키오스크 전용이라 폰 치수와 무관 ── */
+const GuidedHead = styled.div`
+  margin: 4px 0 20px;
+`;
+const GuidedPath = styled.div`
+  font-size: 16px;
+  color: #4B5563;
+  margin-bottom: 6px;
+`;
+const GuidedTitle = styled.h2`
+  font-size: 28px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0;
+`;
+const GuidedTileGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+`;
+const GuidedTile = styled.button`
+  min-height: 160px;
+  border-radius: 18px;
+  border: 1px solid #E5E8EC;
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 16px;
+  cursor: pointer;
+  text-align: center;
+  &:active { transform: scale(0.98); }
+`;
+const GuidedTileIcon = styled.span`
+  font-size: 44px;
+  line-height: 1;
+`;
+const GuidedTileName = styled.span`
+  font-size: 22px;
+  font-weight: 700;
+  color: #0A2540;
+  line-height: 1.25;
+`;
+const GuidedTileMeta = styled.span`
+  font-size: 15px;
+  color: #4B5563;
+`;
+const GuidedItemGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+`;
+
 const SetItemsPreview = styled.div`
   font-size: var(--mo-item-desc-sm, 11px);
   color: #4B5563;
@@ -681,7 +737,11 @@ const MenuPage: React.FC = () => {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   // 2단 카테고리(docs/MENU_CATEGORY_TWO_LEVEL.md) — 위 탭은 상위(1단)만, 하위는 고른 상위 아래 알약 한 줄.
   // 상위(묶음 칸)를 고르면 «전체» = 그 하위들의 메뉴(서버가 함께 돌려준다). ⚠ 아래 콜백들보다 먼저 선언(TDZ).
-  const topCategories = categories.filter(c => !c.parent_id || !categories.some(p => p.id === c.parent_id));
+  // «Uncategorized»(카테고리 안 정한 메뉴 상자)는 손님 화면에서 «Others» 로, 맨 끝에 (Fable kiosk-two-modes D2)
+  const isUncategorized = (c: { name: string }) => (c.name || '').trim().toLowerCase() === 'uncategorized';
+  const topCategories = categories
+    .filter(c => !c.parent_id || !categories.some(p => p.id === c.parent_id))
+    .sort((a, b) => Number(isUncategorized(a)) - Number(isUncategorized(b)));
   const subCategoriesOf = (id: string) => categories.filter(c => c.parent_id && c.parent_id === id);
   const categoryIdsWithSubs = (id: string) => [id, ...subCategoriesOf(id).map(c => c.id.toString())];
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -700,7 +760,14 @@ const MenuPage: React.FC = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Featured & Popular
-  const [mobileSettings, setMobileSettings] = useState<{ show_featured: boolean; show_popular: boolean }>({ show_featured: true, show_popular: true });
+  const [mobileSettings, setMobileSettings] = useState<{ show_featured: boolean; show_popular: boolean; kiosk_menu_mode?: string }>({ show_featured: true, show_popular: true });
+  // 키오스크 «한 화면에 하나씩»(안내형) — 설정 › Kiosk › 메뉴 보기 방식. 폰·메뉴판은 안 읽는다 (Fable kiosk-two-modes §2)
+  // 단계는 주소 꼬리로: g='' 카테고리 타일 · g=sub 하위 타일 · g=items 메뉴 카드 (gc=고른 카테고리). 뒤로가기 = 한 단계.
+  const location = useLocation();
+  const guided = kiosk && !menuBoard && mobileSettings.kiosk_menu_mode === 'guided';
+  const guidedParams = new URLSearchParams(location.search);
+  const guidedStep = guidedParams.get('g') || '';
+  const guidedCat = guidedParams.get('gc') || '';
   const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
   const [popularItems, setPopularItems] = useState<(MenuItem & { orderCount?: number })[]>([]);
   const [showFeaturedTab, setShowFeaturedTab] = useState(false);
@@ -1058,6 +1125,33 @@ const MenuPage: React.FC = () => {
     } catch { /* silent — 기존 리스트 유지 */ }
   }, [isSearchMode, allMenuItems, slug, transformItems, categories]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── 안내형 단계 이동 ── (주소 꼬리 g / gc — 뒤로가기 = 한 단계)
+  const goGuided = useCallback((step: '' | 'sub' | 'items', cat: string, replace = false) => {
+    const u = new URLSearchParams(window.location.search);
+    if (step) u.set('g', step); else u.delete('g');
+    if (cat) u.set('gc', cat); else u.delete('gc');
+    navigate({ pathname: location.pathname, search: `?${u.toString()}` }, { replace });
+  }, [navigate, location.pathname]);
+  const openGuidedCategory = useCallback((catId: string, replace = false) => {
+    if (catId !== '__featured__' && categories.some(c => c.parent_id && c.parent_id === catId)) goGuided('sub', catId, replace);
+    else goGuided('items', catId, replace);
+  }, [categories, goGuided]);
+  const guidedHasFeatured = mobileSettings.show_featured && featuredItems.length > 0;
+  // 카테고리 타일의 메뉴 개수 — 전체 메뉴를 한 번 받아 센다(검색과 같은 목록)
+  useEffect(() => { if (guided) loadAllMenuItemsForSearch(); }, [guided]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 고를 게 하나뿐이면 건너뛴다(카테고리 1개 → 바로 다음 단계)
+  useEffect(() => {
+    if (!guided || isLoading || !featuredLoaded || guidedStep !== '') return;
+    if (topCategories.length + (guidedHasFeatured ? 1 : 0) === 1) {
+      openGuidedCategory(guidedHasFeatured ? '__featured__' : topCategories[0].id, true);
+    }
+  }, [guided, isLoading, featuredLoaded, guidedStep, topCategories.length, guidedHasFeatured]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 메뉴 단계: 고른 카테고리의 메뉴를 불러온다(둘러보기와 같은 불러오기·캐시)
+  useEffect(() => {
+    if (!guided || guidedStep !== 'items' || !guidedCat || guidedCat === '__featured__') return;
+    if (selectedCategory !== guidedCat) handleCategoryChange(guidedCat);
+  }, [guided, guidedStep, guidedCat, categories.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Idle prefetch — 다른 카테고리 데이터 + 썸네일을 백그라운드로 미리 적재.
   // 추가 only · requestIdleCallback 으로 메인 스레드 비점유 · 실패해도 기존 동작 그대로.
   useEffect(() => {
@@ -1195,8 +1289,9 @@ const MenuPage: React.FC = () => {
     // 상세 진입 전 현재 탭을 URL(?cat=)에 박아둔다 → 상세에서 뒤로가기 하면
     // 메뉴가 그 탭 그대로 복원된다 (#5/#6 통합). updateCatInUrl 은 replaceState.
     updateCatInUrl(selectedCategory);
-    navigate(withMenuBoardQuery(`/mobile/${slug}/item/${item.id}`));
-  }, [navigate, slug, selectedCategory, updateCatInUrl]);
+    // 안내형: 상세가 옵션 묶음을 한 화면에 하나씩 보여 준다(같은 상세 화면·같은 계산)
+    navigate(guided ? `/mobile/${slug}/item/${item.id}?flow=guided` : withMenuBoardQuery(`/mobile/${slug}/item/${item.id}`));
+  }, [navigate, slug, selectedCategory, updateCatInUrl, guided]);
 
   // Localized "Available …" label for off-schedule (disabled) items.
   const formatScheduleLabel = useCallback((schedule?: MenuItem['schedule']) => {
@@ -1289,6 +1384,9 @@ const MenuPage: React.FC = () => {
       ].filter(Boolean).join(' · ')
     : undefined;
 
+  const railView = kiosk && splitView && !menuBoard;
+  const categoryDisplayName = (c: { name: string }) => (isUncategorized(c) ? t('menu:others', 'Others') : c.name);
+  const railSubStyle = (on: boolean): React.CSSProperties => ({ paddingLeft: '36px', minHeight: '48px', fontSize: 'calc(var(--mo-cat-font, 17px) - 2px)', fontWeight: on ? 700 : 500 });
   const selectedCatRow = categories.find(c => c.id === selectedCategory);
   const activeTopId = selectedCatRow?.parent_id && categories.some(c => c.id === selectedCatRow.parent_id)
     ? selectedCatRow.parent_id : selectedCategory;
@@ -1308,19 +1406,35 @@ const MenuPage: React.FC = () => {
         </CategoryTab>
       )}
       {topCategories.map(category => (
-        <CategoryTab
-          key={category.id}
-          $variant={tabVariant}
-          active={activeTopId === category.id && !isSearchMode}
-          onClick={() => handleCategoryChange(category.id)}
-        >
-          {category.emoji} {category.name}
-        </CategoryTab>
+        <React.Fragment key={category.id}>
+          <CategoryTab
+            $variant={tabVariant}
+            active={activeTopId === category.id && !isSearchMode}
+            onClick={() => handleCategoryChange(category.id)}
+          >
+            {category.emoji ? `${category.emoji} ` : ''}{categoryDisplayName(category)}
+          </CategoryTab>
+          {/* 가로 키오스크: 하위는 왼쪽 열 안에 들여쓰기로(위 알약 줄 없음 — Fable kiosk-two-modes D1) */}
+          {railView && activeTopId === category.id && !isSearchMode && activeSubs.length > 0 && (
+            <>
+              <CategoryTab $variant="rail" active={selectedCategory === category.id} onClick={() => handleCategoryChange(category.id)}
+                style={railSubStyle(selectedCategory === category.id)}>
+                {t('menu:allInCategory', 'All')}
+              </CategoryTab>
+              {activeSubs.map(sub => (
+                <CategoryTab key={sub.id} $variant="rail" active={selectedCategory === sub.id} onClick={() => handleCategoryChange(sub.id)}
+                  style={railSubStyle(selectedCategory === sub.id)}>
+                  {sub.name}
+                </CategoryTab>
+              ))}
+            </>
+          )}
+        </React.Fragment>
       ))}
     </>
   );
   // 고른 상위에 하위가 있으면 그 아래 «전체 + 하위» 알약 한 줄 — 하위 없는 상위는 지금과 똑같다.
-  const subCategoryRow = activeSubs.length > 0 && !isSearchMode && selectedCategory !== '__featured__' ? (
+  const subCategoryRow = activeSubs.length > 0 && !isSearchMode && selectedCategory !== '__featured__' && !railView ? (
     <SubCategoryRow role="tablist" aria-label={t('menu:subcategories', 'Subcategories')}>
       <SubCategoryChip type="button" active={selectedCategory === activeTopId} onClick={() => handleCategoryChange(activeTopId)}>
         {t('menu:allInCategory', 'All')}
@@ -1332,7 +1446,6 @@ const MenuPage: React.FC = () => {
       ))}
     </SubCategoryRow>
   ) : null;
-  const railView = kiosk && splitView && !menuBoard;
   const renderCartBar = (inBar: boolean) => (
         <CartBar $inBar={inBar}
           type="button"
@@ -1354,6 +1467,99 @@ const MenuPage: React.FC = () => {
           </CartBarRight>
         </CartBar>
   );
+
+  if (guided) {
+    const countFor = (id: string) => {
+      if (allMenuItems.length === 0) return null;
+      const ids = categoryIdsWithSubs(id);
+      return allMenuItems.filter(it => ids.includes(it.categoryId)).length;
+    };
+    const catById = (id: string) => categories.find(c => c.id === id);
+    const pathParts: string[] = [];
+    if (guidedCat === '__featured__') pathParts.push(t('menu:recommended', 'Recommended'));
+    else if (guidedCat) {
+      const c = catById(guidedCat);
+      const parent = c?.parent_id ? catById(c.parent_id) : undefined;
+      if (parent) pathParts.push(categoryDisplayName(parent));
+      if (c) pathParts.push(categoryDisplayName(c));
+    }
+    const renderTile = (key: string, name: string, icon: string | undefined, count: number | null, onClick: () => void) => (
+      <GuidedTile key={key} type="button" onClick={onClick}>
+        {icon ? <GuidedTileIcon aria-hidden="true">{icon}</GuidedTileIcon> : null}
+        <GuidedTileName>{name}</GuidedTileName>
+        {count != null && <GuidedTileMeta>{t('menu:guided.itemCount', { n: count, defaultValue: '{{n}} items' })}</GuidedTileMeta>}
+      </GuidedTile>
+    );
+    let body: React.ReactNode;
+    if (guidedStep === 'sub' && guidedCat) {
+      body = (
+        <>
+          <GuidedHead>
+            <GuidedPath>{pathParts.join(' › ')}</GuidedPath>
+            <GuidedTitle>{t('menu:guided.pickSub', 'Choose a type')}</GuidedTitle>
+          </GuidedHead>
+          <GuidedTileGrid>
+            {subCategoriesOf(guidedCat).map(sub => renderTile(sub.id, sub.name, sub.emoji || undefined, countFor(sub.id), () => goGuided('items', sub.id)))}
+          </GuidedTileGrid>
+        </>
+      );
+    } else if (guidedStep === 'items' && guidedCat) {
+      const list = guidedCat === '__featured__' ? featuredItems : menuItems.filter(it => categoryIdsWithSubs(guidedCat).includes(it.categoryId));
+      body = (
+        <>
+          <GuidedHead>
+            <GuidedPath>{pathParts.join(' › ')}</GuidedPath>
+            <GuidedTitle>{t('menu:guided.pickItem', 'Choose a menu item')}</GuidedTitle>
+          </GuidedHead>
+          {list.length > 0
+            ? <GuidedItemGrid>{list.map(it => renderMenuItemCard(it, guidedCat === '__featured__'))}</GuidedItemGrid>
+            : <EmptyState><p>{t('menu:guided.noItems', 'No items available here')}</p></EmptyState>}
+          <LoadTrigger ref={loadTriggerRef} />
+        </>
+      );
+    } else {
+      body = (
+        <>
+          <GuidedHead>
+            <GuidedTitle>{t('menu:guided.pickCategory', 'What would you like?')}</GuidedTitle>
+          </GuidedHead>
+          <GuidedTileGrid>
+            {guidedHasFeatured && renderTile('__featured__', t('menu:recommended', 'Recommended'), undefined, featuredItems.length, () => openGuidedCategory('__featured__'))}
+            {topCategories.map(c => renderTile(c.id, categoryDisplayName(c), c.emoji || undefined, countFor(c.id), () => openGuidedCategory(c.id)))}
+          </GuidedTileGrid>
+        </>
+      );
+    }
+    return (
+      <MobileLayout
+        title={currentStore ? currentStore.name : 'Menu'}
+        subtitle={storeStatusText}
+        currentPage="menu"
+        contentBg="#F4F6F8"
+        cartItemCount={cartItems.length}
+        showBack={guidedStep !== ''}
+        onBack={() => navigate(-1)}
+      >
+        {body}
+        {cartItems.length > 0 && (
+          <KioskActionBar>
+            {/* 안내형은 오른쪽 장바구니 패널이 없다 — 아래 바가 곧장 주문 확인(결제 화면)으로 */}
+            <CartBar $inBar type="button" onClick={() => navigate(`/mobile/${slug}/payment`)}
+              aria-label={`${t('menu:guided.reviewOrder', 'Review order')} — ${cartQty} · ${formatCurrency(cartTotal, currency)}`}>
+              <CartBarLeft>
+                <CartQtyPill $bump={cartBump}>{cartQty}</CartQtyPill>
+                <CartBarLabel>{t('menu:guided.reviewOrder', 'Review order')}</CartBarLabel>
+              </CartBarLeft>
+              <CartBarRight>
+                <CartBarTotal>{formatCurrency(cartTotal, currency)}</CartBarTotal>
+                <ChevronRight size={20} />
+              </CartBarRight>
+            </CartBar>
+          </KioskActionBar>
+        )}
+      </MobileLayout>
+    );
+  }
 
   return (
     <MobileLayout

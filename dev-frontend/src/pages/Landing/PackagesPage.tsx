@@ -1148,15 +1148,15 @@ const PackagesPage: React.FC = () => {
   const validateForm = (): FormErrors => {
     const errors: FormErrors = {};
     if (!formData.name.trim()) {
-      errors.name = 'Name is required';
+      errors.name = t('landing:packagesPage.errNameRequired');
     }
     if (!formData.email.trim()) {
-      errors.email = 'Email is required';
+      errors.email = t('landing:packagesPage.errEmailRequired');
     } else if (!EMAIL_REGEX.test(formData.email.trim())) {
-      errors.email = 'Please enter a valid email address';
+      errors.email = t('landing:packagesPage.errEmailInvalid');
     }
     if (!formData.phone.trim()) {
-      errors.phone = 'Phone number is required';
+      errors.phone = t('landing:packagesPage.errPhoneRequired');
     }
     return errors;
   };
@@ -1182,7 +1182,7 @@ const PackagesPage: React.FC = () => {
     const productId = addon.addonProduct.id;
     if (seenProductIds.has(productId)) return;
     seenProductIds.add(productId);
-    const categoryName = addon.addonProduct.category?.name || 'Additional Equipment';
+    const categoryName = addon.addonProduct.category?.name || t('landing:packagesPage.additionalEquipment');
     if (!addonsByCategory[categoryName]) addonsByCategory[categoryName] = [];
     addonsByCategory[categoryName].push(addon);
   });
@@ -1322,10 +1322,10 @@ const PackagesPage: React.FC = () => {
         setQuoteSubmitted(true);
       } else {
         const data = await response.json();
-        setSubmitError(data.message || 'Failed to submit quote. Please try again.');
+        setSubmitError(data.message || t('landing:packagesPage.errSubmitFailed'));
       }
     } catch {
-      setSubmitError('Network error. Please check your connection and try again.');
+      setSubmitError(t('landing:packagesPage.errNetwork'));
     } finally {
       setSubmitting(false);
     }
@@ -1389,8 +1389,8 @@ const PackagesPage: React.FC = () => {
               </div>
             </CountriesBannerInner>
             <SoftwareNote style={{ textAlign: 'center', marginTop: '8px' }}>
-              Don't need hardware? You can subscribe to our software and use your own devices and printers.{' '}
-              <Link to="/pricing">View Plans &rarr;</Link>
+              {t('landing:packagesPage.noHardwareNote')}{' '}
+              <Link to="/pricing">{t('landing:packagesPage.viewPlans')} &rarr;</Link>
             </SoftwareNote>
           </CountriesBanner>
         )}
@@ -1402,12 +1402,12 @@ const PackagesPage: React.FC = () => {
           ) : !hasPackages ? (
             <EmptyMessage>
               {t('landing:packagesPage.hardwarePackagesAreNotYetAvailableInYour')}<br />
-              {t('landing:packagesPage.please')}<Link to="/contact">contact us</Link> for a custom quote.
+              {t('landing:packagesPage.please')}<Link to="/contact">{t('landing:packagesPage.contactUsLink')}</Link>{t('landing:packagesPage.forACustomQuote')}
             </EmptyMessage>
           ) : (
             <>
               {/* Step 1: Group Selection */}
-              <SectionTitle>1. Choose Your Setup Type</SectionTitle>
+              <SectionTitle>{t('landing:packagesPage.step1Title')}</SectionTitle>
               <SectionSubtitle>{t('landing:packagesPage.selectTheTypeOfHardwareConfigurationForYourRestaurant')}</SectionSubtitle>
               <GroupGrid>
                 <GroupCard
@@ -1438,7 +1438,7 @@ const PackagesPage: React.FC = () => {
                   </GroupIcon>
                   <GroupTextWrap>
                     <GroupName>{t('landing:packagesPage.proWithTouchscreen')}</GroupName>
-                    <GroupDesc>Includes 15"+ touchscreen for larger kitchens with multiple staff.</GroupDesc>
+                    <GroupDesc>{t('landing:packagesPage.proGroupDesc')}</GroupDesc>
                   </GroupTextWrap>
                 </GroupCard>
               </GroupGrid>
@@ -1446,12 +1446,12 @@ const PackagesPage: React.FC = () => {
               {/* Step 2: Package Selection */}
               {selectedGroup && (
                 <>
-                  <SectionTitle>2. Select a Package</SectionTitle>
+                  <SectionTitle>{t('landing:packagesPage.step2Title')}</SectionTitle>
                   <SectionSubtitle>{t('landing:packagesPage.pickThePackageThatBestFitsYourRestaurantsNeeds')}</SectionSubtitle>
                   {groupPackages.length === 0 ? (
                     <EmptyMessage>
                       {t('landing:packagesPage.noPackagesAvailableForThisSetupTypeYet')}<br />
-                      {t('landing:packagesPage.please')}<Link to="/contact">contact us</Link> for a custom quote.
+                      {t('landing:packagesPage.please')}<Link to="/contact">{t('landing:packagesPage.contactUsLink')}</Link>{t('landing:packagesPage.forACustomQuote')}
                     </EmptyMessage>
                   ) : (
                     <PackagesGrid>
@@ -1483,8 +1483,8 @@ const PackagesPage: React.FC = () => {
                                     {formatPrice(price, selectedCurrency)}
                                   </PackagePrice>
                                   <SubscriptionNotice>
-                                    * Software subscription charged separately.{' '}
-                                    <Link to="/pricing">View Plans &rarr;</Link>
+                                    * {t('landing:packagesPage.softwareChargedSeparatelyShort')}{' '}
+                                    <Link to="/pricing">{t('landing:packagesPage.viewPlans')} &rarr;</Link>
                                   </SubscriptionNotice>
                                 </>
                               ) : (
@@ -1533,7 +1533,7 @@ const PackagesPage: React.FC = () => {
 
                             <div style={{ height: 16 }} />
                             <SelectPackageButton selected={isSelected}>
-                              {isSelected ? 'Selected' : 'Select This Package'}
+                              {isSelected ? t('landing:packagesPage.selected') : t('landing:packagesPage.selectThisPackage')}
                             </SelectPackageButton>
                           </PackageCard>
                         );
@@ -1546,7 +1546,7 @@ const PackagesPage: React.FC = () => {
               {/* Step 3: Additional Equipment */}
               {selectedGroup && (
                 <>
-                  <SectionTitle>3. Additional Equipment</SectionTitle>
+                  <SectionTitle>{t('landing:packagesPage.step3Title')}</SectionTitle>
                   <SectionSubtitle>{t('landing:packagesPage.addExtraHardwareToYourPackageAsNeeded')}</SectionSubtitle>
                   <AddonsContainer disabled={!selectedPackage}>
                     {!selectedPackage && (
@@ -1638,9 +1638,9 @@ const PackagesPage: React.FC = () => {
                 </StickyTotal>
                 {addonTotal > 0 && (
                   <StickyBreakdown>
-                    Package {currencyInfo.symbol}{formatPrice(packagePrice, selectedCurrency)}
+                    {t('landing:packagesPage.packageLabel')} {currencyInfo.symbol}{formatPrice(packagePrice, selectedCurrency)}
                     {' + '}
-                    Addons {currencyInfo.symbol}{formatPrice(addonTotal, selectedCurrency)}
+                    {t('landing:packagesPage.addonsLabel')} {currencyInfo.symbol}{formatPrice(addonTotal, selectedCurrency)}
                   </StickyBreakdown>
                 )}
               </StickyPriceBreakdown>
@@ -1679,7 +1679,7 @@ const PackagesPage: React.FC = () => {
                       onChange={handleFormChange}
                       onBlur={() => handleFieldBlur('name')}
                       hasError={!!formErrors.name}
-                      placeholder="Your name"
+                      placeholder={t('landing:packagesPage.phName')}
                     />
                     {formErrors.name && <FieldError>{formErrors.name}</FieldError>}
                   </FormGroup>
@@ -1706,7 +1706,7 @@ const PackagesPage: React.FC = () => {
                         setFormData(prev => ({ ...prev, phone: value }));
                         if (formTouched.phone) {
                           if (!value.trim()) {
-                            setFormErrors(prev => ({ ...prev, phone: 'Phone number is required' }));
+                            setFormErrors(prev => ({ ...prev, phone: t('landing:packagesPage.errPhoneRequired') }));
                           } else {
                             setFormErrors(prev => {
                               const next = { ...prev };
@@ -1723,13 +1723,13 @@ const PackagesPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <Label>Company Name {formData.wants_invoice && <span style={{ color: '#DC2626' }}>*</span>}</Label>
+                    <Label>{t('landing:packagesPage.companyName')} {formData.wants_invoice && <span style={{ color: '#DC2626' }}>*</span>}</Label>
                     <Input
                       type="text"
                       name="company_name"
                       value={formData.company_name}
                       onChange={handleFormChange}
-                      placeholder="Your company or restaurant name"
+                      placeholder={t('landing:packagesPage.phCompanyName')}
                     />
                     {formData.wants_invoice && !formData.company_name.trim() && formTouched.company_name && (
                       <FieldError>{t('landing:packagesPage.companyNameIsRequiredForInvoice')}</FieldError>
@@ -1756,7 +1756,7 @@ const PackagesPage: React.FC = () => {
                           name="company_address"
                           value={formData.company_address}
                           onChange={handleFormChange}
-                          placeholder="Full company address for invoice"
+                          placeholder={t('landing:packagesPage.phCompanyAddress')}
                           rows={2}
                         />
                       </FormGroup>
@@ -1767,7 +1767,7 @@ const PackagesPage: React.FC = () => {
                           name="tax_id"
                           value={formData.tax_id}
                           onChange={handleFormChange}
-                          placeholder="Business registration or tax ID"
+                          placeholder={t('landing:packagesPage.phTaxId')}
                         />
                       </FormGroup>
                     </>
@@ -1805,7 +1805,7 @@ const PackagesPage: React.FC = () => {
                         >
                           {plans.map((p: any) => (
                             <option key={p.id} value={p.id}>
-                              {p.display_name} - {currencyInfo.symbol} {formatPrice(p.currency_prices?.[selectedCurrency]?.monthly || p.base_price_monthly, selectedCurrency)}/mo
+                              {p.display_name} - {currencyInfo.symbol} {formatPrice(p.currency_prices?.[selectedCurrency]?.monthly || p.base_price_monthly, selectedCurrency)}{t('landing:packagesPage.perMonthShort')}
                             </option>
                           ))}
                         </select>
@@ -1845,11 +1845,11 @@ const PackagesPage: React.FC = () => {
                                 />
                                 <div>
                                   <div style={{ fontWeight: 500, fontSize: '14px', color: '#0A2540' }}>
-                                    {cycle === 'monthly' ? 'Monthly' : 'Annual'}
+                                    {cycle === 'monthly' ? t('landing:packagesPage.monthly') : t('landing:packagesPage.annual')}
                                   </div>
                                   {price ? (
                                     <div style={{ fontSize: '12px', color: '#4B5563' }}>
-                                      {currencyInfo.symbol} {formatPrice(price, selectedCurrency)}{cycle === 'annual' ? '/yr' : '/mo'}
+                                      {currencyInfo.symbol} {formatPrice(price, selectedCurrency)}{cycle === 'annual' ? t('landing:packagesPage.perYearShort') : t('landing:packagesPage.perMonthShort')}
                                     </div>
                                   ) : null}
                                 </div>
@@ -1867,7 +1867,7 @@ const PackagesPage: React.FC = () => {
                       name="message"
                       value={formData.message}
                       onChange={handleFormChange}
-                      placeholder="Any specific requirements or questions..."
+                      placeholder={t('landing:packagesPage.phMessage')}
                     />
                   </FormGroup>
 
@@ -1926,9 +1926,9 @@ const PackagesPage: React.FC = () => {
                             {t('landing:packagesPage.softwareSubscription')}
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <span>{plan.display_name} ({isAnnual ? 'annual' : 'monthly'})</span>
+                            <span>{plan.display_name} ({isAnnual ? t('landing:packagesPage.annualLower') : t('landing:packagesPage.monthlyLower')})</span>
                             <span style={{ fontWeight: 600 }}>
-                              {currencyInfo.symbol} {formatPrice(subPrice, selectedCurrency)}{isAnnual ? '/yr' : '/mo'}
+                              {currencyInfo.symbol} {formatPrice(subPrice, selectedCurrency)}{isAnnual ? t('landing:packagesPage.perYearShort') : t('landing:packagesPage.perMonthShort')}
                             </span>
                           </div>
                           <div style={{ fontSize: 11, color: '#6B7280', fontStyle: 'italic' }}>
@@ -1942,7 +1942,7 @@ const PackagesPage: React.FC = () => {
                   <ModalButtonRow>
                     <CancelButton type="button" onClick={closeModal}>{t('landing:packagesPage.cancel')}</CancelButton>
                     <SubmitButton type="submit" disabled={submitting || !isFormValid}>
-                      {submitting ? 'Submitting...' : 'Submit Quote Request'}
+                      {submitting ? t('landing:packagesPage.submitting') : t('landing:packagesPage.submitQuoteRequest')}
                     </SubmitButton>
                   </ModalButtonRow>
                 </ModalForm>

@@ -1628,6 +1628,16 @@ const MenuManagementPage: React.FC = () => {
             </SearchResultInfo>
           )}
 
+          {/* 카테고리를 안 정한 메뉴(Uncategorized) — 손님 화면엔 «Others» 로 맨 끝에 보인다. 정리하라고 한 줄 안내 (Fable kiosk-two-modes D2) */}
+          {(() => {
+            const uncat = allCategories.find(c => (c.name || '').trim().toLowerCase() === 'uncategorized');
+            const n = uncat ? menuItems.filter(m => m.category === uncat.id).length : 0;
+            return n > 0 ? (
+              <div style={{ margin: '0 0 12px', padding: '10px 14px', borderRadius: '8px', background: '#FFF7ED', border: '1px solid #FED7AA', color: '#9A3412', fontSize: '13px', fontWeight: 600 }}>
+                {t('menu:menuManagementPage.uncategorizedNotice', { n, defaultValue: '{{n}} menu items have no category. Customers see them under "Others" — move them into a category.' })}
+              </div>
+            ) : null;
+          })()}
           <TabContainer>
             <Tab
               active={selectedCategory === 'all'}

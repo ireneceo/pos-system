@@ -134,38 +134,38 @@ const SupplierIcon = () => (
 
 const ROLE_CONFIG: Record<AccountRole, {
   icon: React.FC;
-  title: string;
-  subtitle: string;
+  titleKey: string;
+  subtitleKey: string;
   planTarget: string;
 }> = {
   'Restaurant Admin': {
     icon: RestaurantIcon,
-    title: 'Restaurant',
-    subtitle: 'Manage a single restaurant with full POS features',
+    titleKey: 'landing:signupPage.role.restaurant.title',
+    subtitleKey: 'landing:signupPage.role.restaurant.subtitle',
     planTarget: 'restaurant'
   },
   'Brand General': {
     icon: BrandIcon,
-    title: 'Brand',
-    subtitle: 'Manage your brand and franchise restaurants',
+    titleKey: 'landing:signupPage.role.brand.title',
+    subtitleKey: 'landing:signupPage.role.brand.subtitle',
     planTarget: 'brand'
   },
   'Foodcourt General': {
     icon: FoodcourtIcon,
-    title: 'Food Court',
-    subtitle: 'Manage a food court and tenant restaurants',
+    titleKey: 'landing:signupPage.role.foodcourt.title',
+    subtitleKey: 'landing:signupPage.role.foodcourt.subtitle',
     planTarget: 'foodcourt'
   },
   'Restaurant Owner': {
     icon: OwnerIcon,
-    title: 'Owner',
-    subtitle: 'Own and oversee multiple restaurants',
+    titleKey: 'landing:signupPage.role.owner.title',
+    subtitleKey: 'landing:signupPage.role.owner.subtitle',
     planTarget: 'owner'
   },
   'Supplier Admin': {
     icon: SupplierIcon,
-    title: 'Supplier',
-    subtitle: 'Sell products to restaurants, brands, and food courts',
+    titleKey: 'landing:signupPage.role.supplier.title',
+    subtitleKey: 'landing:signupPage.role.supplier.subtitle',
     planTarget: 'supplier'
   }
 };
@@ -282,7 +282,7 @@ const SignupPage: React.FC = () => {
         const result = await res.json();
         if (!res.ok || result?.success === false) {
           setInvitationStatus('invalid');
-          setInvitationError(result?.message || 'This invitation is invalid or has expired.');
+          setInvitationError(result?.message || t('landing:signupPage.invitationInvalidOrExpired'));
           return;
         }
         const data: InvitationPrefill = result.data || result;
@@ -300,7 +300,7 @@ const SignupPage: React.FC = () => {
         setStep(prev => (prev === 1 ? 2 : prev));
       } catch (e: any) {
         setInvitationStatus('invalid');
-        setInvitationError(e?.message || 'Could not verify invitation.');
+        setInvitationError(e?.message || t('landing:signupPage.invitationVerifyFailed'));
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -461,18 +461,18 @@ const SignupPage: React.FC = () => {
   const validateStep2 = (): boolean => {
     const errors: Record<string, string> = {};
 
-    if (!form.full_name.trim()) errors.full_name = 'Full name is required';
-    if (!form.email.trim()) errors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = 'Invalid email format';
+    if (!form.full_name.trim()) errors.full_name = t('landing:signupPage.errFullNameRequired');
+    if (!form.email.trim()) errors.email = t('landing:signupPage.errEmailRequired');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = t('landing:signupPage.errEmailInvalid');
 
-    if (!form.username.trim()) errors.username = 'Username is required';
-    else if (!/^[a-zA-Z0-9_]{3,30}$/.test(form.username)) errors.username = '3-30 characters, letters, numbers, underscore only';
+    if (!form.username.trim()) errors.username = t('landing:signupPage.errUsernameRequired');
+    else if (!/^[a-zA-Z0-9_]{3,30}$/.test(form.username)) errors.username = t('landing:signupPage.errUsernameFormat');
 
-    if (!form.password) errors.password = 'Password is required';
+    if (!form.password) errors.password = t('landing:signupPage.errPasswordRequired');
     else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(form.password))
-      errors.password = 'Min 8 characters with uppercase, lowercase, and number';
+      errors.password = t('landing:signupPage.errPasswordFormat');
 
-    if (form.password !== form.confirm_password) errors.confirm_password = 'Passwords do not match';
+    if (form.password !== form.confirm_password) errors.confirm_password = t('landing:signupPage.passwordsDontMatch');
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -483,19 +483,19 @@ const SignupPage: React.FC = () => {
     const role = form.role as AccountRole;
 
     if (role === 'Restaurant Admin' && !form.restaurant_name.trim()) {
-      errors.restaurant_name = 'Restaurant name is required';
+      errors.restaurant_name = t('landing:signupPage.errRestaurantNameRequired');
     }
     if (role === 'Brand General' && !form.brand_name.trim()) {
-      errors.brand_name = 'Brand name is required';
+      errors.brand_name = t('landing:signupPage.errBrandNameRequired');
     }
     if (role === 'Foodcourt General' && !form.foodcourt_name.trim()) {
-      errors.foodcourt_name = 'Food court name is required';
+      errors.foodcourt_name = t('landing:signupPage.errFoodcourtNameRequired');
     }
     if (role === 'Supplier Admin' && !form.supplier_name.trim()) {
-      errors.supplier_name = 'Supplier company name is required';
+      errors.supplier_name = t('landing:signupPage.errSupplierNameRequired');
     }
     if (!form.plan_id) {
-      errors.plan_id = 'Please select a plan';
+      errors.plan_id = t('landing:signupPage.errPlanRequired');
     }
 
     setFieldErrors(errors);
@@ -517,10 +517,10 @@ const SignupPage: React.FC = () => {
         missing.push({ name: 'username', label: t('landing:signupPage.username') });
       }
       if (!form.password || !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(form.password)) {
-        missing.push({ name: 'password', label: 'Password' });
+        missing.push({ name: 'password', label: t('landing:signupPage.password') });
       }
       if (!form.confirm_password || form.password !== form.confirm_password) {
-        missing.push({ name: 'confirm_password', label: 'Confirm Password' });
+        missing.push({ name: 'confirm_password', label: t('landing:signupPage.confirmPassword') });
       }
       return missing;
     }
@@ -664,7 +664,7 @@ const SignupPage: React.FC = () => {
       const result = await res.json();
 
       if (!res.ok) {
-        throw new Error(result.error?.message || result.message || 'Signup failed');
+        throw new Error(result.error?.message || result.message || t('landing:signupPage.signupFailed'));
       }
 
       clearDraft();
@@ -696,7 +696,7 @@ const SignupPage: React.FC = () => {
         window.location.reload();
       }
     } catch (err: any) {
-      setError(err.message || 'Something went wrong. Please try again.');
+      setError(err.message || t('landing:signupPage.somethingWentWrong'));
     } finally {
       setIsSubmitting(false);
     }
@@ -717,7 +717,7 @@ const SignupPage: React.FC = () => {
 
   const formatPrice = (price: number) => {
     const num = Number(price) || 0;
-    if (num === 0) return 'Free';
+    if (num === 0) return t('landing:signupPage.free');
     if (currencyInfo.decimals === 0) {
       return `${currencyInfo.symbol} ${Math.round(num).toLocaleString()}`;
     }
@@ -726,7 +726,7 @@ const SignupPage: React.FC = () => {
 
   const formatLimit = (limit: number) => {
     const num = Number(limit) || 0;
-    return num === -1 ? 'Unlimited' : num.toLocaleString();
+    return num === -1 ? t('landing:signupPage.unlimited') : num.toLocaleString();
   };
 
   // ─── Render Steps ────────────────────────────────────────────
@@ -742,8 +742,8 @@ const SignupPage: React.FC = () => {
             onClick={() => updateField('role', role)}
           >
             <RoleIcon><config.icon /></RoleIcon>
-            <RoleTitle>{config.title}</RoleTitle>
-            <RoleSubtitle>{config.subtitle}</RoleSubtitle>
+            <RoleTitle>{t(config.titleKey)}</RoleTitle>
+            <RoleSubtitle>{t(config.subtitleKey)}</RoleSubtitle>
             {form.role === role && <SelectedCheck>✓</SelectedCheck>}
           </RoleCard>
         ))}
@@ -757,29 +757,29 @@ const SignupPage: React.FC = () => {
       <StepDescription>{t('landing:signupPage.createYourLoginCredentials')}</StepDescription>
       <FormGrid>
         <FormGroup>
-          <FormLabel required>Full Name</FormLabel>
+          <FormLabel required>{t('landing:signupPage.fullName')}</FormLabel>
           <FormInput
             id="signup-field-full_name"
             type="text"
             value={form.full_name}
             onChange={e => updateField('full_name', e.target.value)}
-            onBlur={() => { if (!form.full_name.trim()) setFieldErrors(p => ({ ...p, full_name: 'Full name is required' })); }}
-            placeholder="Enter your full name"
+            onBlur={() => { if (!form.full_name.trim()) setFieldErrors(p => ({ ...p, full_name: t('landing:signupPage.errFullNameRequired') })); }}
+            placeholder={t('landing:signupPage.phFullName')}
             hasError={!!fieldErrors.full_name}
           />
           {fieldErrors.full_name && <FieldError>{fieldErrors.full_name}</FieldError>}
         </FormGroup>
 
         <FormGroup>
-          <FormLabel required>Email</FormLabel>
+          <FormLabel required>{t('landing:signupPage.email')}</FormLabel>
           <FormInput
             id="signup-field-email"
             type="email"
             value={form.email}
             onChange={e => updateField('email', e.target.value)}
             onBlur={() => {
-              if (!form.email.trim()) setFieldErrors(p => ({ ...p, email: 'Email is required' }));
-              else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) setFieldErrors(p => ({ ...p, email: 'Invalid email format' }));
+              if (!form.email.trim()) setFieldErrors(p => ({ ...p, email: t('landing:signupPage.errEmailRequired') }));
+              else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) setFieldErrors(p => ({ ...p, email: t('landing:signupPage.errEmailInvalid') }));
             }}
             placeholder="you@example.com"
             hasError={!!fieldErrors.email}
@@ -788,17 +788,17 @@ const SignupPage: React.FC = () => {
         </FormGroup>
 
         <FormGroup>
-          <FormLabel required>Username</FormLabel>
+          <FormLabel required>{t('landing:signupPage.username')}</FormLabel>
           <FormInput
             id="signup-field-username"
             type="text"
             value={form.username}
             onChange={e => updateField('username', e.target.value)}
             onBlur={() => {
-              if (!form.username.trim()) setFieldErrors(p => ({ ...p, username: 'Username is required' }));
-              else if (!/^[a-zA-Z0-9_]{3,30}$/.test(form.username)) setFieldErrors(p => ({ ...p, username: '3-30 characters, letters, numbers, underscore only' }));
+              if (!form.username.trim()) setFieldErrors(p => ({ ...p, username: t('landing:signupPage.errUsernameRequired') }));
+              else if (!/^[a-zA-Z0-9_]{3,30}$/.test(form.username)) setFieldErrors(p => ({ ...p, username: t('landing:signupPage.errUsernameFormat') }));
             }}
-            placeholder="Choose a username"
+            placeholder={t('landing:signupPage.phUsername')}
             hasError={!!fieldErrors.username}
           />
           {fieldErrors.username && <FieldError>{fieldErrors.username}</FieldError>}
@@ -813,18 +813,18 @@ const SignupPage: React.FC = () => {
         </FormGroup>
 
         <FormGroup>
-          <FormLabel required>Password</FormLabel>
+          <FormLabel required>{t('landing:signupPage.password')}</FormLabel>
           <PasswordWrapper>
             <FormInput
               id="signup-field-password"
               type={showPassword ? 'text' : 'password'}
               value={form.password}
               onChange={e => updateField('password', e.target.value)}
-              placeholder="Min 8 chars, upper, lower, number"
+              placeholder={t('landing:signupPage.phPassword')}
               hasError={!!fieldErrors.password}
             />
             <PasswordToggle onClick={() => setShowPassword(!showPassword)}>
-              {showPassword ? 'Hide' : 'Show'}
+              {showPassword ? t('landing:signupPage.hide') : t('landing:signupPage.show')}
             </PasswordToggle>
           </PasswordWrapper>
           {form.password && (
@@ -846,13 +846,13 @@ const SignupPage: React.FC = () => {
         </FormGroup>
 
         <FormGroup>
-          <FormLabel required>Confirm Password</FormLabel>
+          <FormLabel required>{t('landing:signupPage.confirmPassword')}</FormLabel>
           <FormInput
             id="signup-field-confirm_password"
             type={showPassword ? 'text' : 'password'}
             value={form.confirm_password}
             onChange={e => updateField('confirm_password', e.target.value)}
-            placeholder="Re-enter your password"
+            placeholder={t('landing:signupPage.phConfirmPassword')}
             hasError={!!fieldErrors.confirm_password || pwMismatch}
           />
           {form.confirm_password && (
@@ -866,11 +866,11 @@ const SignupPage: React.FC = () => {
         {!refFromUrl && (
           <FormGroup fullWidth>
             <FormLabel>
-              Referral Code (optional)
+              {t('landing:signupPage.referralCodeOptional')}
               <RefStatusHint $state={refCodeStatus}>
                 {refCodeStatus === 'checking' && '…'}
-                {refCodeStatus === 'valid' && `✓ Valid${referrerInitial ? ` — ${referrerInitial}` : ''}`}
-                {refCodeStatus === 'invalid' && '✗ Invalid'}
+                {refCodeStatus === 'valid' && `✓ ${t('landing:signupPage.refValid')}${referrerInitial ? ` — ${referrerInitial}` : ''}`}
+                {refCodeStatus === 'invalid' && `✗ ${t('landing:signupPage.refInvalid')}`}
               </RefStatusHint>
             </FormLabel>
             <FormInput
@@ -897,19 +897,19 @@ const SignupPage: React.FC = () => {
     return (
       <StepContent>
         <StepTitle>{t('landing:signupPage.businessDetails')}</StepTitle>
-        <StepDescription>Set up your {ROLE_CONFIG[role]?.title.toLowerCase() || 'business'}</StepDescription>
+        <StepDescription>{t(`landing:signupPage.setUpRole.${ROLE_CONFIG[role]?.planTarget || 'business'}`)}</StepDescription>
 
         {/* Role-specific fields */}
         {role === 'Restaurant Admin' && (
           <FormGrid>
             <FormGroup fullWidth>
-              <FormLabel required>Restaurant Name</FormLabel>
+              <FormLabel required>{t('landing:signupPage.restaurantName')}</FormLabel>
               <FormInput
                 id="signup-field-restaurant_name"
                 type="text"
                 value={form.restaurant_name}
                 onChange={e => updateField('restaurant_name', e.target.value)}
-                placeholder="Enter restaurant name"
+                placeholder={t('landing:signupPage.phRestaurantName')}
                 hasError={!!fieldErrors.restaurant_name}
               />
               {fieldErrors.restaurant_name && <FieldError>{fieldErrors.restaurant_name}</FieldError>}
@@ -920,7 +920,7 @@ const SignupPage: React.FC = () => {
                 type="text"
                 value={form.restaurant_address}
                 onChange={e => updateField('restaurant_address', e.target.value)}
-                placeholder="Restaurant address (optional)"
+                placeholder={t('landing:signupPage.phRestaurantAddress')}
               />
             </FormGroup>
             <FormGroup>
@@ -929,7 +929,7 @@ const SignupPage: React.FC = () => {
                 type="tel"
                 value={form.restaurant_phone}
                 onChange={e => updateField('restaurant_phone', e.target.value)}
-                placeholder="Restaurant phone number"
+                placeholder={t('landing:signupPage.phRestaurantPhone')}
               />
             </FormGroup>
             <FormGroup>
@@ -938,7 +938,7 @@ const SignupPage: React.FC = () => {
                 type="email"
                 value={form.restaurant_email}
                 onChange={e => updateField('restaurant_email', e.target.value)}
-                placeholder="Restaurant contact email"
+                placeholder={t('landing:signupPage.phRestaurantEmail')}
               />
             </FormGroup>
           </FormGrid>
@@ -947,13 +947,13 @@ const SignupPage: React.FC = () => {
         {role === 'Brand General' && (
           <FormGrid>
             <FormGroup fullWidth>
-              <FormLabel required>Brand Name</FormLabel>
+              <FormLabel required>{t('landing:signupPage.brandName')}</FormLabel>
               <FormInput
                 id="signup-field-brand_name"
                 type="text"
                 value={form.brand_name}
                 onChange={e => updateField('brand_name', e.target.value)}
-                placeholder="Enter brand name"
+                placeholder={t('landing:signupPage.phBrandName')}
                 hasError={!!fieldErrors.brand_name}
               />
               {fieldErrors.brand_name && <FieldError>{fieldErrors.brand_name}</FieldError>}
@@ -964,13 +964,13 @@ const SignupPage: React.FC = () => {
         {role === 'Foodcourt General' && (
           <FormGrid>
             <FormGroup fullWidth>
-              <FormLabel required>Food Court Name</FormLabel>
+              <FormLabel required>{t('landing:signupPage.foodcourtName')}</FormLabel>
               <FormInput
                 id="signup-field-foodcourt_name"
                 type="text"
                 value={form.foodcourt_name}
                 onChange={e => updateField('foodcourt_name', e.target.value)}
-                placeholder="Enter food court name"
+                placeholder={t('landing:signupPage.phFoodcourtName')}
                 hasError={!!fieldErrors.foodcourt_name}
               />
               {fieldErrors.foodcourt_name && <FieldError>{fieldErrors.foodcourt_name}</FieldError>}
@@ -981,7 +981,7 @@ const SignupPage: React.FC = () => {
                 type="text"
                 value={form.foodcourt_address}
                 onChange={e => updateField('foodcourt_address', e.target.value)}
-                placeholder="Food court address (optional)"
+                placeholder={t('landing:signupPage.phFoodcourtAddress')}
               />
             </FormGroup>
           </FormGrid>
@@ -995,7 +995,7 @@ const SignupPage: React.FC = () => {
                 type="text"
                 value={form.company_name}
                 onChange={e => updateField('company_name', e.target.value)}
-                placeholder="Company name (optional)"
+                placeholder={t('landing:signupPage.phCompanyName')}
               />
             </FormGroup>
           </FormGrid>
@@ -1010,7 +1010,7 @@ const SignupPage: React.FC = () => {
                 type="text"
                 value={form.supplier_name}
                 onChange={e => updateField('supplier_name', e.target.value)}
-                placeholder="Enter your supplier company name"
+                placeholder={t('landing:signupPage.phSupplierName')}
                 hasError={!!fieldErrors.supplier_name}
                 disabled={invitationStatus === 'valid' && !!invitationPrefill?.supplier_name}
               />
@@ -1022,7 +1022,7 @@ const SignupPage: React.FC = () => {
                 type="tel"
                 value={form.supplier_phone}
                 onChange={e => updateField('supplier_phone', e.target.value)}
-                placeholder="Company phone (optional)"
+                placeholder={t('landing:signupPage.phSupplierPhone')}
               />
             </FormGroup>
             <FormGroup>
@@ -1031,7 +1031,7 @@ const SignupPage: React.FC = () => {
                 type="url"
                 value={form.supplier_website}
                 onChange={e => updateField('supplier_website', e.target.value)}
-                placeholder="https://example.com (optional)"
+                placeholder={t('landing:signupPage.phSupplierWebsite')}
               />
             </FormGroup>
           </FormGrid>
@@ -1041,8 +1041,8 @@ const SignupPage: React.FC = () => {
         {role !== 'Restaurant Admin' && role !== 'Supplier Admin' && (
           <InfoNotice>
             {role === 'Restaurant Owner'
-              ? 'Link your restaurants after signing up from the dashboard. Each restaurant will need its own POS subscription. Restaurants can also be linked to a brand or food court.'
-              : 'You can add and manage restaurants after signing up. Each restaurant will need its own POS subscription.'}
+              ? t('landing:signupPage.ownerInfoNotice')
+              : t('landing:signupPage.groupInfoNotice')}
           </InfoNotice>
         )}
 
@@ -1059,7 +1059,7 @@ const SignupPage: React.FC = () => {
         )}
 
         {/* Plan Selection */}
-        <PlanSectionTitle>Select a plan<RequiredStar>*</RequiredStar></PlanSectionTitle>
+        <PlanSectionTitle>{t('landing:signupPage.selectAPlan')}<RequiredStar>*</RequiredStar></PlanSectionTitle>
         {/* 무료(발주 전용)를 고른 사람에게 «7일 체험» 은 맞지 않는다 — 그 카드를 고르면 문구를 바꾼다
             (2026-09-12 · 무료 발주 등급). 값이 0 인 요금제가 하나라도 있으면 그 사실을 먼저 알린다. */}
         {filteredPlans.some(p => p.name === 'buyer_free') && (
@@ -1115,13 +1115,13 @@ const SignupPage: React.FC = () => {
                 <PlanName>{plan.display_name || plan.name}</PlanName>
                 <PlanPriceDisplay>
                   {formatPrice(price)}
-                  <PlanPeriod>/{form.billing_cycle === 'annual' ? 'year' : 'month'}</PlanPeriod>
+                  <PlanPeriod>{form.billing_cycle === 'annual' ? t('landing:signupPage.perYear') : t('landing:signupPage.perMonth')}</PlanPeriod>
                 </PlanPriceDisplay>
                 {form.billing_cycle === 'annual' && annualSavings > 0 && (
-                  <SaveBadge>Save {annualSavings}%</SaveBadge>
+                  <SaveBadge>{t('landing:signupPage.savePercent', { percent: annualSavings })}</SaveBadge>
                 )}
                 {form.billing_cycle === 'monthly' && annualPrice > 0 && annualSavings > 0 && (
-                  <AnnualHint>{formatPrice(annualPrice)}/year (save {annualSavings}%)</AnnualHint>
+                  <AnnualHint>{t('landing:signupPage.annualHint', { price: formatPrice(annualPrice), percent: annualSavings })}</AnnualHint>
                 )}
                 <PlanFeatures>
                   {/* 발주 전용(무료)은 «직원·주문·메뉴 수»가 뜻이 없다 — 이 등급이 실제로 하는 일을 보여 준다
@@ -1135,22 +1135,22 @@ const SignupPage: React.FC = () => {
                   )}
                   {plan.plan_target === 'restaurant' && plan.name !== 'buyer_free' && (
                     <>
-                      <PlanFeature>Staff: {formatLimit(plan.staff_limit)}</PlanFeature>
-                      <PlanFeature>Orders: {formatLimit(plan.order_limit)}</PlanFeature>
-                      <PlanFeature>Menu Items: {formatLimit(plan.menu_item_limit)}</PlanFeature>
+                      <PlanFeature>{t('landing:signupPage.limitStaff', { value: formatLimit(plan.staff_limit) })}</PlanFeature>
+                      <PlanFeature>{t('landing:signupPage.limitOrders', { value: formatLimit(plan.order_limit) })}</PlanFeature>
+                      <PlanFeature>{t('landing:signupPage.limitMenuItems', { value: formatLimit(plan.menu_item_limit) })}</PlanFeature>
                     </>
                   )}
                   {(plan.plan_target === 'brand' || plan.plan_target === 'foodcourt') && (
                     <>
-                      <PlanFeature>Restaurants: {formatLimit(plan.restaurant_limit)}</PlanFeature>
-                      <PlanFeature>Managers: {formatLimit(plan.manager_limit)}</PlanFeature>
+                      <PlanFeature>{t('landing:signupPage.limitRestaurants', { value: formatLimit(plan.restaurant_limit) })}</PlanFeature>
+                      <PlanFeature>{t('landing:signupPage.limitManagers', { value: formatLimit(plan.manager_limit) })}</PlanFeature>
                     </>
                   )}
                   {plan.plan_target === 'owner' && (
-                    <PlanFeature>Restaurants: {formatLimit(plan.restaurant_limit)}</PlanFeature>
+                    <PlanFeature>{t('landing:signupPage.limitRestaurants', { value: formatLimit(plan.restaurant_limit) })}</PlanFeature>
                   )}
                   {plan.plan_target === 'supplier' && (
-                    <PlanFeature>Managers: {formatLimit(plan.manager_limit)}</PlanFeature>
+                    <PlanFeature>{t('landing:signupPage.limitManagers', { value: formatLimit(plan.manager_limit) })}</PlanFeature>
                   )}
                 </PlanFeatures>
                 {form.plan_id === plan.id && <PlanSelected>{t('landing:signupPage.selected')}</PlanSelected>}
@@ -1176,7 +1176,7 @@ const SignupPage: React.FC = () => {
         <ReviewSection>
           <ReviewGroup>
             <ReviewLabel>{t('landing:signupPage.accountType')}</ReviewLabel>
-            <ReviewValue>{ROLE_CONFIG[role]?.title}</ReviewValue>
+            <ReviewValue>{ROLE_CONFIG[role] ? t(ROLE_CONFIG[role].titleKey) : ''}</ReviewValue>
           </ReviewGroup>
 
           <ReviewDivider />
@@ -1235,16 +1235,16 @@ const SignupPage: React.FC = () => {
           </ReviewGroup>
           <ReviewGroup>
             <ReviewLabel>{t('landing:signupPage.billing')}</ReviewLabel>
-            <ReviewValue>{form.billing_cycle === 'annual' ? 'Annual' : 'Monthly'}</ReviewValue>
+            <ReviewValue>{form.billing_cycle === 'annual' ? t('landing:signupPage.annual') : t('landing:signupPage.monthly')}</ReviewValue>
           </ReviewGroup>
           <ReviewGroup>
             <ReviewLabel>{t('landing:signupPage.price')}</ReviewLabel>
-            <ReviewValue highlight>{formatPrice(price)}/{form.billing_cycle === 'annual' ? 'year' : 'month'}</ReviewValue>
+            <ReviewValue highlight>{formatPrice(price)}{form.billing_cycle === 'annual' ? t('landing:signupPage.perYear') : t('landing:signupPage.perMonth')}</ReviewValue>
           </ReviewGroup>
         </ReviewSection>
 
         <TrialBadge>
-          7-day free trial included — no payment required now
+          {t('landing:signupPage.trialIncludedNoPayment')}
         </TrialBadge>
       </StepContent>
     );
@@ -1294,17 +1294,17 @@ const SignupPage: React.FC = () => {
         <ContentSection>
           <SignupCard style={{ textAlign: 'center', maxWidth: 520 }}>
             <h2 style={{ fontSize: 22, color: '#0A2540', margin: '8px 0 12px' }}>
-              You're already signed in
+              {t('landing:signupPage.alreadySignedIn')}
             </h2>
             <p style={{ color: '#525F7F', fontSize: 15, lineHeight: 1.6, marginBottom: 8 }}>
-              Logged in as <strong>{user.name}</strong> ({user.role}).
+              {t('landing:signupPage.loggedInAs')} <strong>{user.name}</strong> ({user.role}).
             </p>
             <p style={{ color: '#4B5563', fontSize: 14, marginBottom: 24 }}>
-              To create a new account, sign out first.
+              {t('landing:signupPage.signOutFirst')}
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <NextButton type="button" onClick={goToMyDashboard}>
-                Go to my dashboard
+                {t('landing:signupPage.goToMyDashboard')}
               </NextButton>
               <button
                 type="button"
@@ -1315,7 +1315,7 @@ const SignupPage: React.FC = () => {
                   cursor: 'pointer'
                 }}
               >
-                Sign out and create new account
+                {t('landing:signupPage.signOutAndCreate')}
               </button>
             </div>
           </SignupCard>
@@ -1339,8 +1339,8 @@ const SignupPage: React.FC = () => {
       {refFromUrl && refCodeStatus !== 'invalid' && (
         <ReferralBanner>
           <span>
-            <strong>You've been referred!</strong> Get 20% off your first month of Purple POS.
-            {referrerInitial && <> Referred by <strong>{referrerInitial}</strong>.</>}
+            <strong>{t('landing:signupPage.referredTitle')}</strong> {t('landing:signupPage.referredBody')}
+            {referrerInitial && <> {t('landing:signupPage.referredBy')} <strong>{referrerInitial}</strong>.</>}
           </span>
           <span style={{ fontFamily: 'SFMono-Regular, Menlo, monospace', fontWeight: 700, letterSpacing: 0.5 }}>
             {refFromUrl}
@@ -1378,7 +1378,7 @@ const SignupPage: React.FC = () => {
               <ProgressStep key={s} active={step >= s} current={step === s}>
                 <ProgressDot active={step >= s} current={step === s}>{step > s ? '✓' : s}</ProgressDot>
                 <ProgressLabel active={step >= s}>
-                  {s === 1 ? 'Type' : s === 2 ? 'Account' : s === 3 ? 'Business' : 'Review'}
+                  {s === 1 ? t('landing:signupPage.stepType') : s === 2 ? t('landing:signupPage.stepAccount') : s === 3 ? t('landing:signupPage.stepBusiness') : t('landing:signupPage.stepReview')}
                 </ProgressLabel>
               </ProgressStep>
             ))}
@@ -1428,7 +1428,7 @@ const SignupPage: React.FC = () => {
               </ButtonAndHint>
             ) : (
               <SubmitButton onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? 'Creating Account...' : 'Create Account & Start Free Trial'}
+                {isSubmitting ? t('landing:signupPage.creatingAccount') : t('landing:signupPage.createAccountAndStartTrial')}
               </SubmitButton>
             )}
           </ButtonRow>

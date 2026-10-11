@@ -3,22 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead, { generateHowToSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
+import { useTranslation } from 'react-i18next';
 
 // ─── Types ───
+// 글자는 전부 landing.json 에 있다 — 키: featuresPage.<탭>.<code>.title|desc|p1..pN, 탭: featuresPage.tab.<탭>.label|heading|description
 interface FeatureItem {
   code: string;
-  title: string;
-  description: string;
-  points: string[];
+  points: number;
   category: 'basic' | 'advanced';
   images: string[];
 }
 
 interface RoleTab {
   key: string;
-  label: string;
-  heading: string;
-  description: string;
   features: FeatureItem[];
 }
 
@@ -437,15 +434,14 @@ const CTAButton = styled.button`
 
 // ─── Image Slider Component ───
 const FeatureImageSlider: React.FC<{ images: string[]; title: string; onOpenLightbox: (images: string[], index: number, title: string) => void }> = ({ images, title, onOpenLightbox }) => {
+  const { t } = useTranslation('landing');
   const [current, setCurrent] = useState(0);
 
   if (images.length === 0) {
-  // useTranslation moved to component level
-
-  return (
+    return (
       <ImageSlider>
         <SliderImageWrapper>
-          <SliderPlaceholder>{'Screenshot coming soon'}</SliderPlaceholder>
+          <SliderPlaceholder>{t('landing:featuresPage.screenshotComingSoon')}</SliderPlaceholder>
         </SliderImageWrapper>
       </ImageSlider>
     );
@@ -479,188 +475,152 @@ const getImages = (code: string, count: number = 1): string[] => {
 const ROLE_TABS: RoleTab[] = [
   {
     key: 'restaurant',
-    label: 'Restaurant',
-    heading: 'Everything a restaurant needs to manage orders, menus, staff, and customers',
-    description: 'From a powerful POS terminal and real-time kitchen display to staff scheduling, inventory tracking, and customer management — PurpleHere brings every aspect of restaurant operations into one seamless platform. Reduce manual work, minimize errors, and serve customers faster with tools built specifically for the food service industry. Whether you run a single cafe or a busy full-service restaurant, our system adapts to your workflow and scales with your growth.',
     features: [
-      // Operations
-      { code: 'dashboard', title: 'Dashboard', description: 'Real-time overview of sales, orders, and key metrics at a glance', points: ['Daily sales summary', 'Order statistics', 'Revenue trends', 'Quick notifications'], category: 'basic', images: getImages('dashboard', 2) },
-      { code: 'live_orders', title: 'Live Orders', description: 'Real-time order tracking and status management', points: ['Real-time order queue', 'Status updates (Pending → Preparing → Ready)', 'Order details and modifications', 'Sound notifications for new orders'], category: 'basic', images: getImages('live_orders', 3) },
-      { code: 'pos_terminal', title: 'POS Terminal', description: 'Fast and intuitive point-of-sale system for taking orders', points: ['Quick order entry with categories', 'Split bill & multiple payments', 'Discount and coupon application', 'Receipt printing & email'], category: 'basic', images: getImages('pos_terminal', 3) },
-      { code: 'kitchen_display', title: 'Kitchen Display', description: 'Kitchen display system for streamlined order preparation', points: ['Color-coded order priorities', 'Preparation time tracking', 'Order bump when complete', 'Multi-station support'], category: 'basic', images: getImages('kitchen_display', 1) },
-      { code: 'customer_display', title: 'Customer Display', description: 'Customer-facing screen showing order status and queue', points: ['Order status display', 'Queue number management', 'Branding customization', 'Multi-language support'], category: 'basic', images: getImages('customer_display', 1) },
-      // Invoices & Reports
-      { code: 'invoice_billing', title: 'Invoice & Billing', description: 'Invoice management, payment tracking, and billing history', points: ['Invoice list with status tracking', 'Multiple payment methods', 'Non-member invoice support', 'Payment history', 'Invoice settings & templates'], category: 'basic', images: getImages('invoice_billing', 3) },
-      { code: 'reports', title: 'Reports & Analytics', description: 'Sales reports, revenue analytics, and business insights', points: ['Daily, weekly, monthly reports', 'Sales by category and item', 'Payment method breakdown', 'Export to CSV/Excel'], category: 'basic', images: getImages('reports', 6) },
-      // Catalog
-      { code: 'menu_management', title: 'Menu Management', description: 'Complete menu, category, and option management', points: ['Menu items with images & pricing', 'Category organization', 'Option groups & modifiers', 'Availability toggle'], category: 'basic', images: getImages('menu_management', 4) },
-      // Organization
-      { code: 'staff_management', title: 'Staff & Permission Management', description: 'Staff management with role-based permissions and PIN access', points: ['Staff accounts with PIN login', '6 permission groups', 'Role-based menu access', 'Staff activity tracking'], category: 'basic', images: getImages('staff_management', 2) },
-      { code: 'customer_crm', title: 'Customer Management', description: 'Customer database and relationship management', points: ['Customer profiles', 'Order history per customer', 'Customer insights', 'Segmentation and filtering'], category: 'basic', images: getImages('customer_crm', 3) },
-      { code: 'coupons', title: 'Coupon Management', description: 'Create and manage discount coupons and promotions', points: ['Percentage or fixed discounts', 'Minimum order requirements', 'Usage limits and expiry dates', 'Coupon performance tracking'], category: 'basic', images: getImages('coupons', 3) },
-      { code: 'membership', title: 'Membership', description: 'Customer membership and loyalty program management', points: ['Membership tier management', 'Point accumulation & redemption', 'Member benefits & rewards', 'Membership analytics'], category: 'basic', images: getImages('membership', 0) },
-      // Communication
-      { code: 'notices', title: 'Notices', description: 'Receive system-wide announcements and notices', points: ['Notice feed with read status', 'Comment and discussion', 'Priority-based sorting', 'File attachments'], category: 'basic', images: getImages('notices', 2) },
-      // Advanced
-      { code: 'floor_plan', title: 'Floor Plan & Table Management', description: 'Visual floor plan editor with drag-and-drop table layout', points: ['Drag-and-drop floor plan editor', 'Table status tracking', 'Per-table QR code printing', 'QR session management with expiration', 'Real-time availability'], category: 'advanced', images: getImages('floor_plan', 4) },
-      { code: 'mobile_ordering', title: 'Mobile Ordering', description: 'Let customers order directly from their phones via QR code', points: ['QR code table ordering', 'Session-based QR with auto-expiration', 'Digital menu with images', 'Real-time order tracking', 'Online payment integration'], category: 'advanced', images: getImages('mobile_ordering', 6) },
-      { code: 'reservations', title: 'Reservations', description: 'Customer-facing table reservation system with mobile booking and staff timeline management', points: ['Mobile self-service booking with stepper UX', 'Staff timeline view + pending approval queue', '7-state lifecycle (pending → confirmed → arrived → seated → completed)', '24h / 2h automated reminders (email + push)', 'Auto no-show transition + repeat-offender block', 'WhatsApp / Telegram / .ics calendar share'], category: 'advanced', images: getImages('reservations', 0) },
-      { code: 'recipe_management', title: 'Recipe Management', description: 'Create and manage recipes with ingredient cost tracking', points: ['Recipe creation with steps', 'Ingredient mapping', 'Cost calculation per serving', 'Recipe versioning'], category: 'advanced', images: getImages('recipe_management', 3) },
-      { code: 'ingredients', title: 'Ingredients', description: 'Ingredient catalog with cost and category tracking', points: ['Ingredient library', 'Category organization', 'Cost per unit tracking', 'Recipe linkage'], category: 'advanced', images: getImages('ingredients', 1) },
-      { code: 'suppliers', title: 'Suppliers', description: 'Supplier directory with contact and purchase history', points: ['Supplier profiles', 'Contact details', 'Purchase tracking per supplier', 'Category filtering'], category: 'advanced', images: getImages('suppliers', 1) },
-      { code: 'inventory_management', title: 'Inventory & Supplier Management', description: 'Stock tracking, supplier management, and inventory control', points: ['Real-time stock levels', 'Supplier database', 'Purchase tracking', 'Low stock alerts'], category: 'advanced', images: getImages('inventory_management', 4) },
-      { code: 'advanced_inventory', title: 'Advanced Inventory', description: 'Advanced stock take, loss analysis, and order suggestions', points: ['Periodic stock take', 'Loss (shrinkage) analysis', 'Auto order suggestions', 'Expiry management'], category: 'advanced', images: getImages('advanced_inventory', 1) },
-      { code: 'buyer_supplier_directory', title: 'Supplier Directory', description: 'Browse and search PurpleHere\'s supplier network with full product catalogs and pricing', points: ['Supplier search by category and region', 'Public profile and product catalog browse', 'Lead inquiry to suppliers', 'Saved suppliers shortlist'], category: 'advanced', images: getImages('buyer_supplier_directory', 1) },
-      { code: 'buyer_supplier_contracts', title: 'Supplier Contracts', description: 'Negotiate and manage per-supplier contracts with exclusivity terms and pricing', points: ['Active / draft / expired contracts', 'Per-line item pricing', 'Exclusivity & renewal terms', 'Active contract gates PO submission'], category: 'advanced', images: getImages('buyer_supplier_contracts', 1) },
-      { code: 'buyer_purchase_orders', title: 'Purchase Orders', description: 'Place purchase orders with suppliers and track full lifecycle (pending → confirmed → shipped → received)', points: ['Multi-supplier PO creation', 'Lifecycle tracking with carrier integration', 'Receive partial / full delivery', 'Returns and credit notes'], category: 'advanced', images: getImages('buyer_purchase_orders', 1) },
-      { code: 'buyer_purchase_invoices', title: 'Purchase Invoices', description: 'Receive trade invoices from suppliers automatically — payment tracking and SOA reconciliation', points: ['Auto-issued by supplier on PO receipt', 'Outstanding payable tracking', 'Per-supplier statements of account', 'Payment recording with reference'], category: 'advanced', images: getImages('buyer_purchase_invoices', 1) },
-      { code: 'work_manuals', title: 'Work Manuals', description: 'Access work manuals shared by brand or foodcourt', points: ['Manual feed with search', 'Category filtering', 'Version tracking', 'Comment threads'], category: 'advanced', images: getImages('work_manuals', 1) },
-      { code: 'system_inquiry', title: 'System Inquiry', description: 'Submit and track system support tickets', points: ['Create support tickets', 'Priority and category tagging', 'Status tracking', 'Communication thread'], category: 'advanced', images: getImages('system_inquiry', 4) },
-      { code: 'operation_inquiry', title: 'Operation Inquiry', description: 'Communicate operational requests with Brand or Foodcourt management', points: ['Submit operational inquiries', 'Track request status', 'Two-way communication', 'Available for affiliated restaurants only'], category: 'advanced', images: getImages('operation_inquiry', 3) },
-      { code: 'activity_logs', title: 'Change History', description: 'Track all changes made by team members for accountability', points: ['Activity audit trail', 'User-level tracking', 'Date range filtering', 'Change detail view'], category: 'advanced', images: getImages('activity_logs', 1) },
+      { code: 'dashboard', points: 4, category: 'basic', images: getImages('dashboard', 2) },
+      { code: 'live_orders', points: 4, category: 'basic', images: getImages('live_orders', 3) },
+      { code: 'pos_terminal', points: 4, category: 'basic', images: getImages('pos_terminal', 3) },
+      { code: 'ewallet_qr', points: 3, category: 'basic', images: getImages('ewallet_qr', 0) },
+      { code: 'kitchen_display', points: 4, category: 'basic', images: getImages('kitchen_display', 1) },
+      { code: 'customer_display', points: 4, category: 'basic', images: getImages('customer_display', 1) },
+      { code: 'offline_mode', points: 4, category: 'basic', images: getImages('offline_mode', 0) },
+      { code: 'invoice_billing', points: 5, category: 'basic', images: getImages('invoice_billing', 3) },
+      { code: 'reports', points: 4, category: 'basic', images: getImages('reports', 6) },
+      { code: 'cash_management', points: 4, category: 'basic', images: getImages('cash_management', 0) },
+      { code: 'menu_management', points: 4, category: 'basic', images: getImages('menu_management', 4) },
+      { code: 'menu_categories', points: 3, category: 'basic', images: getImages('menu_categories', 0) },
+      { code: 'staff_management', points: 4, category: 'basic', images: getImages('staff_management', 2) },
+      { code: 'customer_crm', points: 4, category: 'basic', images: getImages('customer_crm', 3) },
+      { code: 'coupons', points: 4, category: 'basic', images: getImages('coupons', 3) },
+      { code: 'membership', points: 4, category: 'basic', images: getImages('membership', 0) },
+      { code: 'notices', points: 4, category: 'basic', images: getImages('notices', 2) },
+      { code: 'floor_plan', points: 5, category: 'advanced', images: getImages('floor_plan', 4) },
+      { code: 'mobile_ordering', points: 5, category: 'advanced', images: getImages('mobile_ordering', 6) },
+      { code: 'kiosk_mode', points: 4, category: 'advanced', images: getImages('kiosk_mode', 0) },
+      { code: 'card_terminal', points: 3, category: 'advanced', images: getImages('card_terminal', 0) },
+      { code: 'reservations', points: 6, category: 'advanced', images: getImages('reservations', 0) },
+      { code: 'recipe_management', points: 4, category: 'advanced', images: getImages('recipe_management', 3) },
+      { code: 'ingredients', points: 4, category: 'advanced', images: getImages('ingredients', 1) },
+      { code: 'suppliers', points: 4, category: 'advanced', images: getImages('suppliers', 1) },
+      { code: 'inventory_management', points: 4, category: 'advanced', images: getImages('inventory_management', 4) },
+      { code: 'advanced_inventory', points: 4, category: 'advanced', images: getImages('advanced_inventory', 1) },
+      { code: 'stock_ledger', points: 3, category: 'advanced', images: getImages('stock_ledger', 0) },
+      { code: 'buyer_supplier_directory', points: 4, category: 'advanced', images: getImages('buyer_supplier_directory', 1) },
+      { code: 'buyer_supplier_contracts', points: 4, category: 'advanced', images: getImages('buyer_supplier_contracts', 1) },
+      { code: 'buyer_purchase_orders', points: 4, category: 'advanced', images: getImages('buyer_purchase_orders', 1) },
+      { code: 'po_owner_approval', points: 4, category: 'advanced', images: getImages('po_owner_approval', 0) },
+      { code: 'buyer_purchase_invoices', points: 4, category: 'advanced', images: getImages('buyer_purchase_invoices', 1) },
+      { code: 'invoice_check', points: 4, category: 'advanced', images: getImages('invoice_check', 0) },
+      { code: 'work_manuals', points: 4, category: 'advanced', images: getImages('work_manuals', 1) },
+      { code: 'system_inquiry', points: 4, category: 'advanced', images: getImages('system_inquiry', 4) },
+      { code: 'operation_inquiry', points: 4, category: 'advanced', images: getImages('operation_inquiry', 3) },
+      { code: 'activity_logs', points: 4, category: 'advanced', images: getImages('activity_logs', 1) },
     ]
   },
   {
     key: 'brand',
-    label: 'Brand',
-    heading: 'Centralized control for franchise and multi-location brands',
-    description: 'Monitor every outlet in real time, standardize menus and recipes across all locations, and manage subscriptions from a single dashboard. PurpleHere gives brand operators full visibility into sales performance, staff activity, and operational consistency — ensuring every franchise delivers the same quality your brand promises. With built-in invoice management, performance analytics, and multi-tier permission controls, scaling your brand has never been easier.',
     features: [
-      // Operations
-      { code: 'brand_dashboard', title: 'Dashboard', description: 'Centralized overview of all brand locations and performance', points: ['Multi-location sales overview', 'Performance at a glance', 'Trend analysis', 'Quick access to any outlet'], category: 'basic', images: getImages('brand_dashboard', 2) },
-      { code: 'brand_franchise', title: 'Franchise Management & Map', description: 'Franchise contracts, applicants pipeline, and geographic map view', points: ['Contract lifecycle (applicant → active → archive)', 'Pipeline board for in-progress contracts', 'Interactive map with franchise / direct pins', 'Pin size scaled by 30-day sales', 'Territory radius from exclusivity terms'], category: 'basic', images: getImages('brand_franchise', 3) },
-      // Management
-      { code: 'brand_management', title: 'Brand Management', description: 'Manage brand information and global settings', points: ['Brand profile settings', 'Logo and branding', 'Global configurations', 'Brand-level controls'], category: 'basic', images: getImages('brand_management', 2) },
-      { code: 'brand_restaurant_mgmt', title: 'Restaurant Management', description: 'Manage all restaurants under the brand', points: ['Restaurant list overview', 'Add/remove locations', 'Assign plans and modules', 'Monitor restaurant status'], category: 'basic', images: getImages('brand_restaurant_mgmt', 3) },
-      { code: 'brand_admin_staff', title: 'Admin & Staff Management', description: 'Manage restaurant admins and staff across all brand locations', points: ['Admin assignment per restaurant', 'Admin overview across locations', 'Role management', 'Access control'], category: 'basic', images: getImages('brand_admin_staff', 4) },
-      { code: 'brand_manager_mgmt', title: 'Manager Management', description: 'Create and manage brand managers with permission control', points: ['Brand manager accounts', 'Permission groups', 'Activity monitoring', 'Manager hierarchy'], category: 'basic', images: getImages('brand_manager_mgmt', 2) },
-      // Invoices & Reports
-      { code: 'brand_invoices', title: 'Invoice & Billing', description: 'Generate and manage invoices for franchise locations', points: ['Invoice generation', 'Non-member invoice support', 'Payment tracking', 'Billing history', 'Multiple payment methods'], category: 'basic', images: getImages('brand_invoices', 4) },
-      { code: 'brand_reports', title: 'Reports', description: 'Comprehensive reporting across all brand locations', points: ['Consolidated sales reports', 'Location comparison', 'Revenue breakdown', 'Export capabilities'], category: 'basic', images: getImages('brand_reports', 5) },
-      // Communication
-      { code: 'brand_notices', title: 'Notice Management', description: 'Send announcements and notices to all brand restaurants', points: ['Broadcast to all locations', 'Targeted notices', 'Read receipts', 'Comment threads'], category: 'basic', images: getImages('brand_notices', 3) },
-      // Menu standardization
-      { code: 'brand_menus', title: 'Brand Menu Management', description: 'Centralized menu templates pushed to all franchise restaurants with field-level locks and version synchronization', points: ['Menu, categories, and option templates', 'Push to all outlets or selected restaurants', 'Field-level locks (price, name, image, options)', 'Auto version bump with sync notifications', 'Mirror to restaurant POS with pending review'], category: 'basic', images: getImages('brand_menus', 3) },
-      // Advanced
-      { code: 'brand_products', title: 'Product Management', description: 'Centralized product and menu management for the brand', points: ['Global product catalog', 'Menu standardization', 'Price management', 'Product distribution to outlets'], category: 'advanced', images: getImages('brand_products', 4) },
-      { code: 'brand_recipes', title: 'Recipe Management', description: 'Standardized recipe management across all franchises', points: ['Central recipe database', 'Ingredient standardization', 'Cost tracking', 'Recipe distribution'], category: 'advanced', images: getImages('brand_recipes', 3) },
-      { code: 'brand_product_recipes', title: 'Product Recipe Management', description: 'Link products to recipes for automated cost tracking', points: ['Product-recipe linking', 'Cost per product calculation', 'Margin analysis', 'Recipe assignment'], category: 'advanced', images: getImages('brand_product_recipes', 2) },
-      { code: 'brand_ingredients', title: 'Ingredients', description: 'Brand-wide ingredient catalog shared across franchise locations', points: ['Standardized ingredient library', 'Cost per unit tracking', 'Category organization', 'Distribution to restaurants'], category: 'advanced', images: getImages('brand_ingredients', 0) },
-      { code: 'brand_suppliers', title: 'Suppliers', description: 'Brand-level supplier directory and contract management', points: ['Approved supplier list', 'Contact management', 'Contract visibility', 'Category filtering'], category: 'advanced', images: getImages('brand_suppliers', 0) },
-      { code: 'brand_inventory', title: 'Inventory & Supplier Management', description: 'Centralized inventory and supplier oversight across locations', points: ['Multi-location stock overview', 'Supplier database', 'Inventory alerts', 'Supply chain visibility'], category: 'advanced', images: getImages('brand_inventory', 3) },
-      { code: 'buyer_supplier_directory', title: 'Supplier Directory', description: 'Browse and search PurpleHere\'s supplier network with full product catalogs and pricing', points: ['Supplier search by category and region', 'Public profile and product catalog browse', 'Lead inquiry to suppliers', 'Saved suppliers shortlist'], category: 'advanced', images: getImages('buyer_supplier_directory', 1) },
-      { code: 'buyer_supplier_contracts', title: 'Supplier Contracts', description: 'Negotiate and manage per-supplier contracts with exclusivity terms and pricing', points: ['Active / draft / expired contracts', 'Per-line item pricing', 'Exclusivity & renewal terms', 'Active contract gates PO submission'], category: 'advanced', images: getImages('buyer_supplier_contracts', 1) },
-      { code: 'buyer_purchase_orders', title: 'Purchase Orders', description: 'Place purchase orders with suppliers and track full lifecycle (pending → confirmed → shipped → received)', points: ['Multi-supplier PO creation', 'Lifecycle tracking with carrier integration', 'Receive partial / full delivery', 'Returns and credit notes'], category: 'advanced', images: getImages('buyer_purchase_orders', 1) },
-      { code: 'buyer_purchase_invoices', title: 'Purchase Invoices', description: 'Receive trade invoices from suppliers automatically — payment tracking and SOA reconciliation', points: ['Auto-issued by supplier on PO receipt', 'Outstanding payable tracking', 'Per-supplier statements of account', 'Payment recording with reference'], category: 'advanced', images: getImages('buyer_purchase_invoices', 1) },
-      { code: 'brand_performance', title: 'Performance Analytics', description: 'Deep performance comparison across all brand locations', points: ['Location ranking', 'Sales comparison charts', 'Growth trends', 'Benchmark analysis'], category: 'advanced', images: getImages('brand_performance', 2) },
-      { code: 'brand_system_inquiry', title: 'System Inquiry', description: 'System support and issue tracking', points: ['Support ticket creation', 'Priority management', 'Status tracking', 'Resolution history'], category: 'advanced', images: getImages('brand_system_inquiry', 3) },
-      { code: 'brand_operation_inquiry', title: 'Inquiry Management', description: 'Manage operational inquiries from franchise restaurants', points: ['Inquiry queue management', 'Response and resolution', 'Category-based organization', 'Performance metrics'], category: 'advanced', images: getImages('brand_operation_inquiry', 2) },
-      { code: 'brand_activity_logs', title: 'Change History', description: 'Track all changes across brand operations for accountability', points: ['Activity audit trail', 'User-level tracking', 'Date range filtering', 'Change detail view'], category: 'advanced', images: getImages('brand_activity_logs', 0) },
-      { code: 'brand_work_manuals', title: 'Work Manuals', description: 'Centralized work manuals for franchise operations', points: ['Manual creation and editing', 'Category organization', 'Version tracking', 'Distribution to restaurants'], category: 'advanced', images: getImages('brand_work_manuals', 1) },
-      { code: 'brand_plans', title: 'Subscription Plans', description: 'Create and manage subscription plans for franchise locations', points: ['Plan template creation', 'Module selection per plan', 'Pricing configuration', 'Plan assignment'], category: 'advanced', images: getImages('brand_plans', 3) },
-      { code: 'brand_subscriptions', title: 'Subscription Management', description: 'Track and manage subscriptions for all franchisees', points: ['Subscription status overview', 'Billing cycle management', 'Renewal tracking', 'Usage monitoring'], category: 'advanced', images: getImages('brand_subscriptions', 2) },
-      { code: 'brand_payment_settings', title: 'Payment Settings', description: 'Configure payment methods and billing for the brand', points: ['Payment gateway setup', 'Bank account configuration', 'Billing preferences', 'Tax settings'], category: 'advanced', images: getImages('brand_payment_settings', 2) },
+      { code: 'brand_dashboard', points: 4, category: 'basic', images: getImages('brand_dashboard', 2) },
+      { code: 'brand_franchise', points: 5, category: 'basic', images: getImages('brand_franchise', 3) },
+      { code: 'brand_management', points: 4, category: 'basic', images: getImages('brand_management', 2) },
+      { code: 'brand_restaurant_mgmt', points: 4, category: 'basic', images: getImages('brand_restaurant_mgmt', 3) },
+      { code: 'brand_admin_staff', points: 4, category: 'basic', images: getImages('brand_admin_staff', 4) },
+      { code: 'brand_manager_mgmt', points: 4, category: 'basic', images: getImages('brand_manager_mgmt', 2) },
+      { code: 'brand_invoices', points: 5, category: 'basic', images: getImages('brand_invoices', 4) },
+      { code: 'brand_reports', points: 4, category: 'basic', images: getImages('brand_reports', 5) },
+      { code: 'brand_notices', points: 4, category: 'basic', images: getImages('brand_notices', 3) },
+      { code: 'brand_menus', points: 5, category: 'basic', images: getImages('brand_menus', 3) },
+      { code: 'brand_products', points: 4, category: 'advanced', images: getImages('brand_products', 4) },
+      { code: 'brand_recipes', points: 4, category: 'advanced', images: getImages('brand_recipes', 3) },
+      { code: 'brand_product_recipes', points: 4, category: 'advanced', images: getImages('brand_product_recipes', 2) },
+      { code: 'brand_ingredients', points: 4, category: 'advanced', images: getImages('brand_ingredients', 0) },
+      { code: 'brand_stock_sharing', points: 3, category: 'advanced', images: getImages('brand_stock_sharing', 0) },
+      { code: 'brand_suppliers', points: 4, category: 'advanced', images: getImages('brand_suppliers', 0) },
+      { code: 'brand_inventory', points: 4, category: 'advanced', images: getImages('brand_inventory', 3) },
+      { code: 'buyer_supplier_directory', points: 4, category: 'advanced', images: getImages('buyer_supplier_directory', 1) },
+      { code: 'buyer_supplier_contracts', points: 4, category: 'advanced', images: getImages('buyer_supplier_contracts', 1) },
+      { code: 'buyer_purchase_orders', points: 4, category: 'advanced', images: getImages('buyer_purchase_orders', 1) },
+      { code: 'buyer_purchase_invoices', points: 4, category: 'advanced', images: getImages('buyer_purchase_invoices', 1) },
+      { code: 'brand_performance', points: 4, category: 'advanced', images: getImages('brand_performance', 2) },
+      { code: 'brand_system_inquiry', points: 4, category: 'advanced', images: getImages('brand_system_inquiry', 3) },
+      { code: 'brand_operation_inquiry', points: 4, category: 'advanced', images: getImages('brand_operation_inquiry', 2) },
+      { code: 'brand_activity_logs', points: 4, category: 'advanced', images: getImages('brand_activity_logs', 0) },
+      { code: 'brand_work_manuals', points: 4, category: 'advanced', images: getImages('brand_work_manuals', 1) },
+      { code: 'brand_plans', points: 4, category: 'advanced', images: getImages('brand_plans', 3) },
+      { code: 'brand_subscriptions', points: 4, category: 'advanced', images: getImages('brand_subscriptions', 2) },
+      { code: 'brand_payment_settings', points: 4, category: 'advanced', images: getImages('brand_payment_settings', 2) },
     ]
   },
   {
     key: 'foodcourt',
-    label: 'Foodcourt',
-    heading: 'Complete management tools for food court operators',
-    description: 'Oversee all tenant restaurants from one place — handle billing, manage inquiries, track real-time performance analytics, and streamline shared services effortlessly. PurpleHere simplifies the complexity of multi-tenant foodcourt operations with automated invoicing, centralized notice broadcasting, and detailed revenue breakdowns per tenant. Spend less time on admin work and more time growing your foodcourt business.',
     features: [
-      // Operations
-      { code: 'fc_dashboard', title: 'Dashboard', description: 'Foodcourt-wide overview with tenant performance summary', points: ['Tenant sales overview', 'Occupancy status', 'Revenue summary', 'Quick tenant access'], category: 'basic', images: getImages('fc_dashboard', 1) },
-      { code: 'fc_tenancy', title: 'Tenancy Management & Map', description: 'Tenant contracts and geographic branch map', points: ['Contract lifecycle (applicant → active → archive)', 'Pipeline board for in-progress contracts', 'Interactive map with occupancy % per branch', 'Click branch to view tenant list', 'Auto-geocoded branch addresses'], category: 'basic', images: getImages('fc_tenancy', 2) },
-      // Management
-      { code: 'fc_management', title: 'Foodcourt Management', description: 'Manage foodcourt information and operations', points: ['Foodcourt profile', 'Operating hours', 'Facility management', 'Configuration settings'], category: 'basic', images: getImages('fc_management', 1) },
-      { code: 'fc_branches', title: 'Branch Management & Unit Numbering', description: 'Multi-branch foodcourt support with flexible unit numbering', points: ['Multiple branches per foodcourt', 'Per-branch address & coordinates', 'Zone-based unit numbering (prefix + free-form)', 'Range notation: 01-20, A01-A10, P-2-01A-05A auto-expand', 'Contract-linked units protected from deletion'], category: 'basic', images: getImages('fc_branches', 1) },
-      { code: 'fc_restaurant_mgmt', title: 'Restaurant Management', description: 'Manage tenant restaurants in the foodcourt', points: ['Tenant list overview', 'Add/remove tenants', 'Plan assignment', 'Tenant status monitoring'], category: 'basic', images: getImages('fc_restaurant_mgmt', 1) },
-      { code: 'fc_admin_staff', title: 'Admin & Staff Management', description: 'Manage restaurant admins and staff across foodcourt tenants', points: ['Admin assignment', 'Admin overview', 'Access management', 'Role configuration'], category: 'basic', images: getImages('fc_admin_staff', 1) },
-      { code: 'fc_manager_mgmt', title: 'Manager Management', description: 'Create and manage foodcourt managers with permissions', points: ['Manager accounts', 'Permission control', 'Activity tracking', 'Role assignment'], category: 'basic', images: getImages('fc_manager_mgmt', 0) },
-      // Invoices & Reports
-      { code: 'fc_invoices', title: 'Invoice & Billing', description: 'Generate invoices for foodcourt tenants', points: ['Tenant invoice generation', 'Non-member invoice support', 'Rent and service billing', 'Payment tracking', 'Billing history'], category: 'basic', images: getImages('fc_invoices', 1) },
-      // Communication
-      { code: 'fc_notices', title: 'Notice Management', description: 'Send notices and announcements to foodcourt tenants', points: ['Broadcast notices', 'Targeted communication', 'Read tracking', 'Attachment support'], category: 'basic', images: getImages('fc_notices', 1) },
-      // Advanced
-      { code: 'fc_floor_plan', title: 'Floor Plan & Store Management', description: 'Drag-and-drop visual floor plan with store placement and status overlay', points: ['Drag-and-drop store placement', '4 shape options (rectangle, rounded, circle, triangle)', 'Resize handles and undo/redo', 'Unplaced stores panel for new units', 'Click-to-view contract and tenant info'], category: 'advanced', images: getImages('fc_floor_plan', 1) },
-      { code: 'fc_products', title: 'Product Management', description: 'Foodcourt-level product catalog (common service items, rental products)', points: ['Foodcourt-wide product catalog', 'Pricing and unit setup', 'Tenant-shared catalog', 'Active/inactive toggle'], category: 'advanced', images: getImages('fc_products', 0) },
-      { code: 'fc_inventory', title: 'Inventory Management', description: 'Stock tracking for foodcourt-owned inventory', points: ['Common stock tracking', 'Low-stock alerts', 'Receipt and dispatch logs', 'Multi-branch inventory'], category: 'advanced', images: getImages('fc_inventory', 0) },
-      { code: 'buyer_supplier_directory', title: 'Supplier Directory', description: 'Browse and search PurpleHere\'s supplier network with full product catalogs and pricing', points: ['Supplier search by category and region', 'Public profile and product catalog browse', 'Lead inquiry to suppliers', 'Saved suppliers shortlist'], category: 'advanced', images: getImages('buyer_supplier_directory', 1) },
-      { code: 'buyer_supplier_contracts', title: 'Supplier Contracts', description: 'Negotiate and manage per-supplier contracts with exclusivity terms and pricing', points: ['Active / draft / expired contracts', 'Per-line item pricing', 'Exclusivity & renewal terms', 'Active contract gates PO submission'], category: 'advanced', images: getImages('buyer_supplier_contracts', 1) },
-      { code: 'buyer_purchase_orders', title: 'Purchase Orders', description: 'Place purchase orders with suppliers and track full lifecycle (pending → confirmed → shipped → received)', points: ['Multi-supplier PO creation', 'Lifecycle tracking with carrier integration', 'Receive partial / full delivery', 'Returns and credit notes'], category: 'advanced', images: getImages('buyer_purchase_orders', 1) },
-      { code: 'buyer_purchase_invoices', title: 'Purchase Invoices', description: 'Receive trade invoices from suppliers automatically — payment tracking and SOA reconciliation', points: ['Auto-issued by supplier on PO receipt', 'Outstanding payable tracking', 'Per-supplier statements of account', 'Payment recording with reference'], category: 'advanced', images: getImages('buyer_purchase_invoices', 1) },
-      { code: 'fc_stats', title: 'Statistics & Analytics', description: 'Sales and performance statistics across all tenants', points: ['Tenant comparison charts', 'Revenue analysis', 'Peak hours analysis', 'Growth trends'], category: 'advanced', images: getImages('fc_stats', 0) },
-      { code: 'fc_customers', title: 'Customer Management', description: 'Shared customer database for the foodcourt', points: ['Customer profiles', 'Visit history', 'Spending patterns', 'Customer insights'], category: 'advanced', images: getImages('fc_customers', 0) },
-      { code: 'fc_coupons', title: 'Coupon Management', description: 'Foodcourt-wide coupon and promotion management', points: ['Foodcourt promotions', 'Cross-tenant coupons', 'Usage tracking', 'Campaign management'], category: 'advanced', images: getImages('fc_coupons', 0) },
-      { code: 'fc_system_inquiry', title: 'System Inquiry', description: 'System support for foodcourt operations', points: ['Support tickets', 'Issue categorization', 'Status tracking', 'Resolution management'], category: 'advanced', images: getImages('fc_system_inquiry', 1) },
-      { code: 'fc_operation_inquiry', title: 'Inquiry Management', description: 'Handle operational inquiries from foodcourt tenants', points: ['Inquiry queue', 'Response management', 'Category filtering', 'Resolution tracking'], category: 'advanced', images: getImages('fc_operation_inquiry', 1) },
-      { code: 'fc_plans', title: 'Subscription Plans', description: 'Create plans for foodcourt tenant subscriptions', points: ['Plan templates', 'Module selection', 'Pricing tiers', 'Plan assignment'], category: 'advanced', images: getImages('fc_plans', 1) },
-      { code: 'fc_subscriptions', title: 'Subscription Management', description: 'Track and manage tenant subscriptions', points: ['Subscription overview', 'Billing management', 'Renewal tracking', 'Status monitoring'], category: 'advanced', images: getImages('fc_subscriptions', 1) },
-      { code: 'fc_payment_settings', title: 'Payment Settings', description: 'Configure payment and billing for the foodcourt', points: ['Payment methods', 'Bank configuration', 'Billing preferences', 'Tax setup'], category: 'advanced', images: getImages('fc_payment_settings', 1) },
-      { code: 'fc_work_manuals', title: 'Work Manuals', description: 'Shared work manuals for foodcourt tenants', points: ['Manual creation and editing', 'Category organization', 'Distribution to tenants', 'Version tracking'], category: 'advanced', images: getImages('fc_work_manuals', 1) },
-      { code: 'fc_activity_logs', title: 'Change History', description: 'Track all changes across foodcourt operations for accountability', points: ['Activity audit trail', 'User-level tracking', 'Date range filtering', 'Change detail view'], category: 'advanced', images: getImages('fc_activity_logs', 0) },
+      { code: 'fc_dashboard', points: 4, category: 'basic', images: getImages('fc_dashboard', 1) },
+      { code: 'fc_tenancy', points: 5, category: 'basic', images: getImages('fc_tenancy', 2) },
+      { code: 'fc_management', points: 4, category: 'basic', images: getImages('fc_management', 1) },
+      { code: 'fc_branches', points: 5, category: 'basic', images: getImages('fc_branches', 1) },
+      { code: 'fc_restaurant_mgmt', points: 4, category: 'basic', images: getImages('fc_restaurant_mgmt', 1) },
+      { code: 'fc_admin_staff', points: 4, category: 'basic', images: getImages('fc_admin_staff', 1) },
+      { code: 'fc_manager_mgmt', points: 4, category: 'basic', images: getImages('fc_manager_mgmt', 0) },
+      { code: 'fc_invoices', points: 5, category: 'basic', images: getImages('fc_invoices', 1) },
+      { code: 'fc_notices', points: 4, category: 'basic', images: getImages('fc_notices', 1) },
+      { code: 'fc_floor_plan', points: 5, category: 'advanced', images: getImages('fc_floor_plan', 1) },
+      { code: 'fc_products', points: 4, category: 'advanced', images: getImages('fc_products', 0) },
+      { code: 'fc_inventory', points: 4, category: 'advanced', images: getImages('fc_inventory', 0) },
+      { code: 'buyer_supplier_directory', points: 4, category: 'advanced', images: getImages('buyer_supplier_directory', 1) },
+      { code: 'buyer_supplier_contracts', points: 4, category: 'advanced', images: getImages('buyer_supplier_contracts', 1) },
+      { code: 'buyer_purchase_orders', points: 4, category: 'advanced', images: getImages('buyer_purchase_orders', 1) },
+      { code: 'buyer_purchase_invoices', points: 4, category: 'advanced', images: getImages('buyer_purchase_invoices', 1) },
+      { code: 'fc_stats', points: 4, category: 'advanced', images: getImages('fc_stats', 0) },
+      { code: 'fc_coupons', points: 4, category: 'advanced', images: getImages('fc_coupons', 0) },
+      { code: 'fc_system_inquiry', points: 4, category: 'advanced', images: getImages('fc_system_inquiry', 1) },
+      { code: 'fc_operation_inquiry', points: 4, category: 'advanced', images: getImages('fc_operation_inquiry', 1) },
+      { code: 'fc_plans', points: 4, category: 'advanced', images: getImages('fc_plans', 1) },
+      { code: 'fc_subscriptions', points: 4, category: 'advanced', images: getImages('fc_subscriptions', 1) },
+      { code: 'fc_payment_settings', points: 4, category: 'advanced', images: getImages('fc_payment_settings', 1) },
+      { code: 'fc_work_manuals', points: 4, category: 'advanced', images: getImages('fc_work_manuals', 1) },
+      { code: 'fc_activity_logs', points: 4, category: 'advanced', images: getImages('fc_activity_logs', 0) },
     ]
   },
   {
     key: 'owner',
-    label: 'Owner',
-    heading: 'Financial oversight for multi-restaurant owners',
-    description: 'Compare performance side by side, track financials across every location, and stay fully informed — all without interfering with day-to-day operations. PurpleHere gives restaurant owners a bird\'s-eye view of their entire portfolio with consolidated reports, invoice management, and performance benchmarking. Make data-driven decisions about your investments while your on-site teams handle the daily workflow independently.',
     features: [
-      // Operations
-      { code: 'owner_dashboard', title: 'Dashboard', description: 'Portfolio overview with multi-restaurant performance summary', points: ['All restaurants at a glance', 'Revenue summary', 'Performance overview', 'Quick navigation'], category: 'basic', images: getImages('owner_dashboard', 1) },
-      { code: 'owner_restaurants', title: 'Restaurant Portfolio', description: 'View and manage all owned restaurants', points: ['Restaurant list', 'Status overview', 'Performance indicators', 'Quick access to details'], category: 'basic', images: getImages('owner_restaurants', 1) },
-      // Invoices & Reports
-      { code: 'owner_invoices', title: 'Invoice & Billing', description: 'Invoice management and payment for all owned restaurants', points: ['Consolidated invoices', 'Payment tracking', 'Billing history', 'Multi-restaurant billing'], category: 'basic', images: getImages('owner_invoices', 1) },
-      // Communication
-      { code: 'owner_notices', title: 'Notices', description: 'System notices and announcements', points: ['Notice feed', 'Read tracking', 'Comments', 'Attachments'], category: 'basic', images: getImages('owner_notices', 1) },
-      // Advanced
-      { code: 'owner_performance', title: 'Performance Analytics', description: 'Compare performance across all owned restaurants', points: ['Restaurant ranking', 'Sales comparison', 'Growth analysis', 'Benchmark reporting'], category: 'advanced', images: getImages('owner_performance', 1) },
-      { code: 'owner_reports', title: 'Financial Reports', description: 'Financial and operational reports across portfolio', points: ['Revenue analysis', 'Expense tracking', 'Profit margins', 'Export capabilities'], category: 'advanced', images: getImages('owner_reports', 1) },
-      { code: 'owner_system_inquiry', title: 'System Inquiry', description: 'System support for restaurant owner', points: ['Support tickets', 'Issue tracking', 'Priority management', 'Resolution history'], category: 'advanced', images: getImages('owner_system_inquiry', 1) },
-      { code: 'owner_operation_inquiry', title: 'Operation Inquiry', description: 'Operational inquiries across owned restaurants', points: ['Operation requests', 'Multi-restaurant scope', 'Status tracking', 'Communication thread'], category: 'advanced', images: getImages('owner_operation_inquiry', 1) },
-      { code: 'owner_work_manuals', title: 'Work Manuals', description: 'Access shared work manuals across the portfolio', points: ['Manual feed', 'Category filtering', 'Version tracking', 'Per-restaurant visibility'], category: 'advanced', images: getImages('owner_work_manuals', 1) },
-      { code: 'owner_activity_logs', title: 'Change History', description: 'Track all changes across owned restaurants for accountability', points: ['Activity audit trail', 'User-level tracking', 'Date range filtering', 'Multi-restaurant scope'], category: 'advanced', images: getImages('owner_activity_logs', 0) },
+      { code: 'owner_dashboard', points: 4, category: 'basic', images: getImages('owner_dashboard', 1) },
+      { code: 'owner_restaurants', points: 4, category: 'basic', images: getImages('owner_restaurants', 1) },
+      { code: 'owner_invoices', points: 4, category: 'basic', images: getImages('owner_invoices', 1) },
+      { code: 'owner_po_approvals', points: 3, category: 'basic', images: getImages('owner_po_approvals', 0) },
+      { code: 'owner_notices', points: 4, category: 'basic', images: getImages('owner_notices', 1) },
+      { code: 'owner_performance', points: 4, category: 'advanced', images: getImages('owner_performance', 1) },
+      { code: 'owner_reports', points: 4, category: 'advanced', images: getImages('owner_reports', 1) },
+      { code: 'owner_system_inquiry', points: 4, category: 'advanced', images: getImages('owner_system_inquiry', 1) },
+      { code: 'owner_operation_inquiry', points: 4, category: 'advanced', images: getImages('owner_operation_inquiry', 1) },
+      { code: 'owner_work_manuals', points: 4, category: 'advanced', images: getImages('owner_work_manuals', 1) },
+      { code: 'owner_activity_logs', points: 4, category: 'advanced', images: getImages('owner_activity_logs', 0) },
     ]
   },
   {
     key: 'supplier',
-    label: 'Supplier',
-    heading: 'Sell to restaurants, brands and food courts — manage every B2B order in one portal',
-    description: 'PurpleHere\'s Supplier Portal is the seller-side companion to the POS. Receive purchase orders from restaurants in real time, confirm and ship with carrier integration, and let trade invoices and statements of account flow automatically. From contracted exclusive deals to walk-in orders, your buyers see live pricing, you see live demand, and the paperwork settles itself. Built for distributors, wholesalers, and central kitchens supplying multiple F&B businesses on a single trusted platform.',
     features: [
-      // Operations
-      { code: 'supplier_dashboard', title: 'Dashboard', description: 'Eight KPI overview — pending/confirmed/shipped orders, revenue trend, outstanding receivables, active customers, low stock, monthly receipts', points: ['8 KPIs at a glance', '6-month revenue line chart', 'Alerts panel with deep links', 'Recent orders & trade invoices side by side', 'Subscription status'], category: 'basic', images: getImages('supplier_dashboard', 1) },
-      { code: 'supplier_live_orders', title: 'Live Orders', description: 'Real-time incoming purchase orders from buyers with sound alerts and lifecycle actions', points: ['Socket.IO live arrival + chime', 'Confirm / Ship (carrier dropdown) / Reject', 'Carrier catalog with auto tracking URL (Lalamove, Grab, J&T, Ninja Van, Pos Laju)', 'Edit tracking after ship', 'Mark delivered → Buyer receives', 'Returns approve/reject with auto Credit Note'], category: 'basic', images: getImages('supplier_live_orders', 1) },
-      { code: 'supplier_products', title: 'Product Catalog', description: 'Manage the seller catalog of ingredients you sell, with per-buyer pricing and unit conversion', points: ['Ingredient catalog you sell', 'Per-customer pricing', 'Unit conversion (case ↔ unit)', 'Active/inactive toggle'], category: 'basic', images: getImages('supplier_products', 1) },
-      { code: 'supplier_inventory', title: 'Inventory & Transactions', description: 'Stock-level tracking with full transaction history (receive, adjust, ship, return)', points: ['Stock list with low-stock alerts', 'Transaction history tab', 'Auto-decrement on PO ship', 'Return reversal'], category: 'basic', images: getImages('supplier_inventory', 1) },
-      { code: 'supplier_customers', title: 'Customers (Buyers)', description: 'Directory of restaurant, brand, and foodcourt customers with order history and AR balance', points: ['Buyer profiles', 'Per-customer order history', 'Outstanding receivable per customer', 'Activity timeline'], category: 'basic', images: getImages('supplier_customers', 1) },
-      // Invoices & Reports
-      { code: 'supplier_trade_invoices', title: 'Trade Invoices', description: 'B2B invoices auto-generated when buyers receive PO — no manual issuing', points: ['Auto-issue on PO receipt', 'Per-line item with received quantity', 'Tax + currency configurable', 'PDF + email delivery'], category: 'basic', images: getImages('supplier_trade_invoices', 1) },
-      { code: 'supplier_soa', title: 'Statement of Account', description: 'Monthly Statement of Account auto-generated for every active buyer', points: ['Auto-runs on the 1st of each month', 'Open + paid invoices summary', 'Per-customer breakdown', 'Email delivery'], category: 'basic', images: getImages('supplier_soa', 0) },
-      { code: 'supplier_invoices', title: 'Subscription Invoices', description: 'PurpleHere subscription invoices and payment tracking', points: ['Subscription invoice list', 'Payment status', 'Multiple payment methods', 'Billing history'], category: 'basic', images: getImages('supplier_invoices', 1) },
-      // Communication
-      { code: 'supplier_notices', title: 'Notices', description: 'System-wide announcements and notices feed', points: ['Notice feed with read status', 'Comment threads', 'Priority-based sorting', 'Attachments'], category: 'basic', images: getImages('supplier_notices', 1) },
-      { code: 'supplier_system_inquiry', title: 'System Inquiry', description: 'Submit and track system support tickets', points: ['Create support tickets', 'Priority and category tagging', 'Status tracking', 'Communication thread'], category: 'basic', images: getImages('supplier_system_inquiry', 1) },
-      // Advanced
-      { code: 'supplier_contracts', title: 'Supply Contracts', description: 'Per-buyer contracts with exclusivity terms, item lists, and pricing — gates orders to active contracts only', points: ['Contract lifecycle (draft → active → expired)', 'Exclusivity terms (item/category/region)', 'Per-line item pricing', 'Auto-renewal options', 'Active contract gates PO submission'], category: 'advanced', images: getImages('supplier_contracts', 1) },
-      { code: 'supplier_company_info', title: 'Company Info', description: 'Manage supplier company profile, registration, and tax details', points: ['Company profile & logo', 'Business registration number', 'Tax ID / SST', 'Address & contact'], category: 'advanced', images: getImages('supplier_company_info', 1) },
-      { code: 'supplier_payment_settings', title: 'Payment Settings', description: 'Configure bank accounts and payment methods for receivables', points: ['Multiple bank accounts', 'QR pay setup', 'Default payment terms', 'Currency configuration'], category: 'advanced', images: getImages('supplier_payment_settings', 1) },
-      { code: 'supplier_invoice_settings', title: 'Invoice Settings', description: 'Customize invoice templates, numbering, and tax rules', points: ['Custom logo & header', 'Numbering prefix per template', 'Tax rate presets', 'Multi-currency support'], category: 'advanced', images: getImages('supplier_invoice_settings', 1) },
-      // Order management & fulfillment
-      { code: 'supplier_orders', title: 'Order Management', description: 'Full purchase-order lifecycle tracking — pending, confirmed, shipped, delivered, returned', points: ['Order list with multi-status filter', 'Lifecycle action buttons', 'Per-buyer order history', 'Bulk export'], category: 'basic', images: getImages('supplier_orders', 1) },
-      { code: 'supplier_shipping', title: 'Shipping & Delivery', description: 'Carrier integration with tracking URL generation and delivery confirmation', points: ['Carrier catalog (Lalamove, Grab, J&T, Ninja Van, Pos Laju)', 'Auto tracking URL', 'Edit tracking after ship', 'Webhook-based status updates'], category: 'basic', images: getImages('supplier_shipping', 0) },
-      { code: 'supplier_directory', title: 'Directory Listing', description: 'Public supplier directory entry visible to PurpleHere buyers', points: ['Public profile with logo and category', 'Featured products', 'Service area listing', 'Lead inquiry form'], category: 'basic', images: getImages('supplier_directory', 0) },
-      // Advanced supplier modules
-      { code: 'supplier_admin_staff', title: 'Admin & Staff Management', description: 'Manage supplier admin and staff accounts with role-based permissions', points: ['Admin / Staff role separation', 'Permission grid', 'Activity tracking', 'Account activation control'], category: 'advanced', images: getImages('supplier_admin_staff', 1) },
-      { code: 'supplier_performance', title: 'Performance Analytics', description: 'Sales, fulfillment, and customer-retention metrics for the supplier', points: ['Revenue trend by month', 'Fulfillment SLA per buyer', 'Top-buying customers', 'Repeat-order rate'], category: 'advanced', images: getImages('supplier_performance', 0) },
-      { code: 'supplier_activity_logs', title: 'Change History', description: 'Audit trail of supplier-side changes for accountability', points: ['Per-record change diff', 'User-level tracking', 'Date range filter', 'Compliance export'], category: 'advanced', images: getImages('supplier_activity_logs', 0) },
-      { code: 'supplier_multi_warehouse', title: 'Multi-Warehouse', description: 'Allocate inventory across multiple warehouses with per-warehouse stock', points: ['Multiple warehouse profiles', 'Per-warehouse stock levels', 'Inter-warehouse transfers', 'Per-buyer fulfillment routing'], category: 'advanced', images: getImages('supplier_multi_warehouse', 0) },
-      // Procurement (Supplier 가 다른 공급업체에게서 매입)
-      { code: 'buyer_supplier_directory', title: 'Supplier Directory (Procurement)', description: 'Browse and search other suppliers in the PurpleHere network when sourcing materials', points: ['Cross-supplier sourcing', 'Public profile and catalog browse', 'Lead inquiry workflow', 'Saved suppliers shortlist'], category: 'advanced', images: getImages('buyer_supplier_directory', 1) },
-      { code: 'buyer_supplier_contracts', title: 'Procurement Contracts', description: 'Manage incoming-supply contracts with other suppliers — exclusivity terms and pricing', points: ['Active / draft / expired contracts', 'Per-line item pricing', 'Exclusivity & renewal terms', 'Active contract gates PO submission'], category: 'advanced', images: getImages('buyer_supplier_contracts', 1) },
-      { code: 'buyer_purchase_orders', title: 'Procurement Orders', description: 'Place purchase orders with other suppliers and track the full lifecycle', points: ['Multi-supplier PO creation', 'Lifecycle tracking with carrier integration', 'Partial / full delivery receipt', 'Returns and credit notes'], category: 'advanced', images: getImages('buyer_purchase_orders', 1) },
-      { code: 'buyer_purchase_invoices', title: 'Procurement Invoices', description: 'Receive trade invoices from upstream suppliers — payable tracking and SOA reconciliation', points: ['Auto-issued by supplier on PO receipt', 'Outstanding payable tracking', 'Per-supplier statements of account', 'Payment recording with reference'], category: 'advanced', images: getImages('buyer_purchase_invoices', 1) },
+      { code: 'supplier_dashboard', points: 5, category: 'basic', images: getImages('supplier_dashboard', 1) },
+      { code: 'supplier_live_orders', points: 6, category: 'basic', images: getImages('supplier_live_orders', 1) },
+      { code: 'supplier_products', points: 4, category: 'basic', images: getImages('supplier_products', 1) },
+      { code: 'supplier_inventory', points: 4, category: 'basic', images: getImages('supplier_inventory', 1) },
+      { code: 'supplier_customers', points: 4, category: 'basic', images: getImages('supplier_customers', 1) },
+      { code: 'supplier_trade_invoices', points: 4, category: 'basic', images: getImages('supplier_trade_invoices', 1) },
+      { code: 'supplier_soa', points: 4, category: 'basic', images: getImages('supplier_soa', 0) },
+      { code: 'supplier_invoices', points: 4, category: 'basic', images: getImages('supplier_invoices', 1) },
+      { code: 'supplier_notices', points: 4, category: 'basic', images: getImages('supplier_notices', 1) },
+      { code: 'supplier_system_inquiry', points: 4, category: 'basic', images: getImages('supplier_system_inquiry', 1) },
+      { code: 'supplier_contracts', points: 5, category: 'advanced', images: getImages('supplier_contracts', 1) },
+      { code: 'supplier_company_info', points: 4, category: 'advanced', images: getImages('supplier_company_info', 1) },
+      { code: 'supplier_payment_settings', points: 4, category: 'advanced', images: getImages('supplier_payment_settings', 1) },
+      { code: 'supplier_invoice_settings', points: 4, category: 'advanced', images: getImages('supplier_invoice_settings', 1) },
+      { code: 'supplier_orders', points: 4, category: 'basic', images: getImages('supplier_orders', 1) },
+      { code: 'supplier_shipping', points: 4, category: 'basic', images: getImages('supplier_shipping', 0) },
+      { code: 'supplier_directory', points: 4, category: 'basic', images: getImages('supplier_directory', 0) },
+      { code: 'supplier_admin_staff', points: 4, category: 'advanced', images: getImages('supplier_admin_staff', 1) },
+      { code: 'buyer_supplier_directory', points: 4, category: 'advanced', images: getImages('buyer_supplier_directory', 1) },
+      { code: 'buyer_supplier_contracts', points: 4, category: 'advanced', images: getImages('buyer_supplier_contracts', 1) },
+      { code: 'buyer_purchase_orders', points: 4, category: 'advanced', images: getImages('buyer_purchase_orders', 1) },
+      { code: 'buyer_purchase_invoices', points: 4, category: 'advanced', images: getImages('buyer_purchase_invoices', 1) },
     ]
   },
 ];
@@ -676,6 +636,7 @@ const readTabFromHash = (): string => {
 };
 
 const FeaturesPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<string>(readTabFromHash);
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number; title: string } | null>(null);
@@ -728,22 +689,24 @@ const FeaturesPage: React.FC = () => {
 
   const renderFeatureCard = (feature: FeatureItem) => {
     const validImages = getValidImages(feature);
+    const base = `landing:featuresPage.${activeRole.key}.${feature.code}`;
+    const title = t(`${base}.title`);
     return (
       <FeatureCard key={feature.code}>
         {validImages.length > 0 ? (
-          <FeatureImageSlider images={validImages} title={feature.title} onOpenLightbox={openLightbox} />
+          <FeatureImageSlider images={validImages} title={title} onOpenLightbox={openLightbox} />
         ) : (
           <ImageSlider>
-            <SliderPlaceholder>{'Screenshot coming soon'}</SliderPlaceholder>
+            <SliderPlaceholder>{t('landing:featuresPage.screenshotComingSoon')}</SliderPlaceholder>
           </ImageSlider>
         )}
         <CardBody>
-          <FeatureBadge variant={feature.category}>{feature.category}</FeatureBadge>
-          <FeatureTitle>{feature.title}</FeatureTitle>
-          <FeatureDescription>{feature.description}</FeatureDescription>
+          <FeatureBadge variant={feature.category}>{t(`landing:featuresPage.badge.${feature.category}`)}</FeatureBadge>
+          <FeatureTitle>{title}</FeatureTitle>
+          <FeatureDescription>{t(`${base}.desc`)}</FeatureDescription>
           <FeaturePoints>
-            {feature.points.map((point, idx) => (
-              <FeaturePoint key={idx}>{point}</FeaturePoint>
+            {Array.from({ length: feature.points }, (_, idx) => (
+              <FeaturePoint key={idx}>{t(`${base}.p${idx + 1}`)}</FeaturePoint>
             ))}
           </FeaturePoints>
         </CardBody>
@@ -772,9 +735,9 @@ const FeaturesPage: React.FC = () => {
       />
       <PageContainer>
         <HeroSection>
-          <HeroTitle>{'Powerful Features for Every Need'}</HeroTitle>
+          <HeroTitle>{t('landing:featuresPage.powerfulFeaturesForEveryNeed')}</HeroTitle>
           <HeroSubtitle>
-            From multi-brand management to individual restaurant operations — explore all the tools that power your business.
+            {t('landing:featuresPage.heroSubtitle')}
           </HeroSubtitle>
         </HeroSection>
 
@@ -782,17 +745,17 @@ const FeaturesPage: React.FC = () => {
           <TabBar>
             {ROLE_TABS.map(tab => (
               <TabButton key={tab.key} active={activeTab === tab.key} onClick={() => setActiveTab(tab.key)}>
-                {tab.label}
+                {t(`landing:featuresPage.tab.${tab.key}.label`)}
               </TabButton>
             ))}
           </TabBar>
 
-          <RoleHeading>{activeRole.heading}</RoleHeading>
-          <RoleDescription>{activeRole.description}</RoleDescription>
+          <RoleHeading>{t(`landing:featuresPage.tab.${activeRole.key}.heading`)}</RoleHeading>
+          <RoleDescription>{t(`landing:featuresPage.tab.${activeRole.key}.description`)}</RoleDescription>
 
           {basicFeatures.length > 0 && (
             <>
-              <CategoryLabel variant="basic">Basic Features ({basicFeatures.length})</CategoryLabel>
+              <CategoryLabel variant="basic">{t('landing:featuresPage.basicFeaturesCount', { count: basicFeatures.length })}</CategoryLabel>
               <FeaturesGrid>
                 {basicFeatures.map(renderFeatureCard)}
               </FeaturesGrid>
@@ -801,7 +764,7 @@ const FeaturesPage: React.FC = () => {
 
           {advancedFeatures.length > 0 && (
             <>
-              <CategoryLabel variant="advanced">Advanced Features ({advancedFeatures.length})</CategoryLabel>
+              <CategoryLabel variant="advanced">{t('landing:featuresPage.advancedFeaturesCount', { count: advancedFeatures.length })}</CategoryLabel>
               <FeaturesGrid>
                 {advancedFeatures.map(renderFeatureCard)}
               </FeaturesGrid>
@@ -809,12 +772,12 @@ const FeaturesPage: React.FC = () => {
           )}
 
           <CTASection>
-            <CTATitle>{'Ready to Transform Your Business?'}</CTATitle>
+            <CTATitle>{t('landing:featuresPage.readyToTransformYourBusiness')}</CTATitle>
             <CTASubtitle>
-              {'Try our demo accounts or contact us to get started with PurpleHere'}
+              {t('landing:featuresPage.tryOurDemoAccountsOrContactUsToGetStarte')}
             </CTASubtitle>
             <CTAButton onClick={() => navigate('/demo')}>
-              {'Try Demo Now'}
+              {t('landing:featuresPage.tryDemoNow')}
             </CTAButton>
           </CTASection>
         </ContentSection>

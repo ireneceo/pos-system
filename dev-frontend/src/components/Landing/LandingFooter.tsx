@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
@@ -159,6 +159,27 @@ const LandingFooter: React.FC = () => {
   const { t } = useTranslation('landing');
   const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
+  // 회사 연락처는 사이트 설정(관리자 «회사 정보»)이 단일 소스 — Contact 페이지와 같은 /api/site-settings 의 email 을 쓴다.
+  const [company, setCompany] = useState<{ name?: string; registration?: string; website?: string; email?: string } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/site-settings')
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (!alive || !data) return;
+        setCompany({
+          name: data.company_name || undefined,
+          registration: data.registration_number || undefined,
+          website: data.website || undefined,
+          email: data.email || undefined,
+        });
+      })
+      .catch(() => { /* 연락처 줄은 설정을 못 읽으면 숨긴다 */ });
+    return () => { alive = false; };
+  }, []);
+  const companyName = company?.name || 'GIT CONSULTING SDN. BHD.';
+  const companyReg = company?.registration || '202201012250(1457947-A)';
+  const companyWeb = company?.website || 'https://gitconsulting.group';
 
   return (
     <Footer>
@@ -198,24 +219,26 @@ const LandingFooter: React.FC = () => {
             <ContactInfo>
               <ContactItem>
                 <ContactLabel>{t('footer.companyName')}</ContactLabel>
-                <span>GIT CONSULTING SDN. BHD.</span>
+                <span>{companyName}</span>
               </ContactItem>
               <ContactItem>
                 <ContactLabel>SSM</ContactLabel>
-                <span>202201012250(1457947-A)</span>
+                <span>{companyReg}</span>
               </ContactItem>
               <ContactItem>
                 <ContactLabel>{t('footer.web')}</ContactLabel>
-                <ContactLink href="https://gitconsulting.group" target="_blank" rel="noopener noreferrer">
-                  https://gitconsulting.group
+                <ContactLink href={companyWeb} target="_blank" rel="noopener noreferrer">
+                  {companyWeb}
                 </ContactLink>
               </ContactItem>
-              <ContactItem>
-                <ContactLabel>{t('footer.email')}</ContactLabel>
-                <ContactLink href="mailto:help@gitconsulting.group">
-                  help@gitconsulting.group
-                </ContactLink>
-              </ContactItem>
+              {company?.email && (
+                <ContactItem>
+                  <ContactLabel>{t('footer.email')}</ContactLabel>
+                  <ContactLink href={`mailto:${company.email}`}>
+                    {company.email}
+                  </ContactLink>
+                </ContactItem>
+              )}
             </ContactInfo>
           </FooterSection>
         </FooterGrid>

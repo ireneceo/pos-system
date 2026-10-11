@@ -146,6 +146,8 @@ router.get('/store/:slug', async (req, res) => {
       pauseOrdering: !!(restaurant.mobile_settings && restaurant.mobile_settings.pause_ordering),
       // 매장 «키오스크 사용» 스위치(설정 › Kiosk) — 등록 기기가 꺼짐 안내를 보이는 데 쓴다
       kioskEnabled: !!(restaurant.mobile_settings && restaurant.mobile_settings.kiosk_enabled),
+      // 키오스크 메뉴 보기 방식(설정 › Kiosk): 'browse'(둘러보기, 기본) | 'guided'(한 화면에 하나씩) — 폰·메뉴판은 안 읽는다
+      kioskMenuMode: (restaurant.mobile_settings && restaurant.mobile_settings.kiosk_menu_mode === 'guided') ? 'guided' : 'browse',
       pauseMessage: (restaurant.mobile_settings && restaurant.mobile_settings.pause_message) || '',
       // Business-hours + last-order gate (single source = utils/businessHours).
       // enabled:false / absent → { enabled:false, canOrder:true } = legacy behaviour (no time gate).
@@ -329,7 +331,8 @@ router.get('/menu/:slug', async (req, res) => {
       const base = {
         id: cat.id.toString(),
         name: cat.name,
-        emoji: cat.emoji || getProductEmoji(cat.name),  // Use DB emoji first, fallback to generated
+        // 매장이 고른 아이콘만(없으면 빈 값 — 손님 화면은 글자만). 기본 접시 이모지 주입은 뺐다(2026-10-11 Fable kiosk-two-modes D3)
+        emoji: cat.emoji || '',
         parent_id: cat.parent_id != null ? cat.parent_id.toString() : null  // 2단 카테고리
       };
       if (off && off.mode === 'disable') {

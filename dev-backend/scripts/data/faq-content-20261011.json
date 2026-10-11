@@ -1,0 +1,680 @@
+{
+  "generated": "2026-10-11",
+  "entries": [
+    {
+      "legacy_id": 10,
+      "legacy_title_en": "What is PurpleHere POS?",
+      "slug": "what-is-purplehere",
+      "category_slug": "getting-started",
+      "sort_order": 1,
+      "tr": {
+        "en": {
+          "title": "What is PurpleHere POS?",
+          "content": "PurpleHere is a cloud-based Point of Sale (POS) and restaurant management system for restaurants, food courts, and multi-outlet brands.\n\nIt runs in a modern web browser, so you can use it on desktop computers, tablets, and smartphones. For counter devices that need to print or connect a card terminal, you can also install the free PurpleHere app for Android tablets or Windows PCs (purplehere.com/download).\n\nKey benefits:\n• Real-time orders shared across all your devices (POS, kitchen display, floor plan)\n• Use your own tablets and PCs — no special hardware required\n• Automatic updates, with your data stored in the cloud\n• Access your data from anywhere\n• Multi-outlet management for brands and food courts"
+        },
+        "ko": {
+          "title": "PurpleHere POS는 무엇인가요?",
+          "content": "PurpleHere는 레스토랑, 푸드코트, 여러 매장을 운영하는 브랜드를 위한 클라우드 기반 POS(판매 시점 관리) 겸 매장 운영 시스템이에요.\n\n최신 웹 브라우저에서 바로 실행되기 때문에 데스크톱, 태블릿, 스마트폰 어디서나 쓸 수 있어요. 인쇄나 카드 단말기 연결이 필요한 카운터 기기에는 안드로이드 태블릿용·Windows PC용 무료 PurpleHere 앱을 설치할 수도 있어요(purplehere.com/download).\n\n주요 장점:\n• 모든 기기(POS, 주방 디스플레이, 배치도)에서 주문이 실시간으로 공유돼요\n• 갖고 계신 태블릿과 PC를 그대로 사용 — 특수 장비가 필요 없어요\n• 자동 업데이트, 데이터는 클라우드에 저장돼요\n• 어디서든 데이터를 확인할 수 있어요\n• 브랜드와 푸드코트를 위한 다매장 관리"
+        },
+        "zh": {
+          "title": "什么是 PurpleHere POS？",
+          "content": "PurpleHere 是一套基于云端的 POS（销售点）及餐厅管理系统，适用于餐厅、美食广场以及拥有多家门店的品牌。\n\n它在现代网页浏览器中运行，可以在台式电脑、平板和智能手机上使用。需要打印或连接刷卡机的收银设备，也可以安装免费的 PurpleHere Android 平板版或 Windows 电脑版应用（purplehere.com/download）。\n\n主要优势：\n• 订单在所有设备（POS、厨房显示屏、平面图）之间实时同步\n• 使用您现有的平板和电脑——无需专用硬件\n• 自动更新，数据存储在云端\n• 随时随地查看数据\n• 为品牌和美食广场提供多门店管理"
+        },
+        "ms": {
+          "title": "Apakah PurpleHere POS?",
+          "content": "PurpleHere ialah sistem Point of Sale (POS) dan pengurusan restoran berasaskan awan untuk restoran, medan selera dan jenama yang mempunyai banyak cawangan.\n\nIa berjalan dalam pelayar web moden, jadi anda boleh menggunakannya pada komputer meja, tablet dan telefon pintar. Untuk peranti kaunter yang perlu mencetak atau menyambung terminal kad, anda juga boleh memasang aplikasi PurpleHere percuma untuk tablet Android atau PC Windows (purplehere.com/download).\n\nKelebihan utama:\n• Pesanan dikongsi secara masa nyata di semua peranti (POS, paparan dapur, pelan lantai)\n• Gunakan tablet dan PC anda sendiri — tiada perkakasan khas diperlukan\n• Kemas kini automatik, data disimpan di awan\n• Akses data anda dari mana-mana\n• Pengurusan pelbagai cawangan untuk jenama dan medan selera"
+        }
+      }
+    },
+    {
+      "legacy_id": 13,
+      "legacy_title_en": "How much does PurpleHere cost?",
+      "slug": "how-much-does-purplehere-cost",
+      "category_slug": "pricing",
+      "sort_order": 1,
+      "tr": {
+        "en": {
+          "title": "How much does PurpleHere cost?",
+          "content": "PurpleHere offers subscription plans for each type of business:\n\n• Restaurants — Basic, Professional, and Enterprise\n• Brands (multi-outlet / franchise) — Basic, Professional, and Enterprise\n• Food courts — Basic, Professional, and Enterprise\n• Suppliers — Basic and Advanced\n• A free plan for businesses that only order from their suppliers\n\nEach plan has a fixed published price. See the Pricing page (purplehere.com/pricing) for current prices and what each plan includes.\n\nBilling:\n• Pay monthly, or pay annually and get 2 months free\n• Paid plans start with a 7-day free trial — no credit card required\n\nIf you need a quote for a larger group, contact us via the Contact page."
+        },
+        "ko": {
+          "title": "PurpleHere 요금은 얼마인가요?",
+          "content": "PurpleHere는 사업 유형별로 구독 플랜을 제공해요.\n\n• 레스토랑 — Basic, Professional, Enterprise\n• 브랜드(다매장 / 프랜차이즈) — Basic, Professional, Enterprise\n• 푸드코트 — Basic, Professional, Enterprise\n• 공급업체 — Basic, Advanced\n• 공급업체 발주만 하는 사업장을 위한 무료 플랜\n\n모든 플랜은 정해진 가격이 공개돼 있어요. 현재 가격과 플랜별 포함 기능은 요금 페이지(purplehere.com/pricing)에서 확인하세요.\n\n결제 방식:\n• 월 결제, 또는 연 결제 시 2개월 무료\n• 유료 플랜은 7일 무료 체험으로 시작 — 신용카드가 필요 없어요\n\n규모가 큰 그룹이라 견적이 필요하시면 문의하기 페이지로 연락 주세요."
+        },
+        "zh": {
+          "title": "PurpleHere 的价格是多少？",
+          "content": "PurpleHere 为不同类型的业务提供订阅套餐：\n\n• 餐厅 — Basic、Professional、Enterprise\n• 品牌（多门店 / 连锁加盟）— Basic、Professional、Enterprise\n• 美食广场 — Basic、Professional、Enterprise\n• 供应商 — Basic、Advanced\n• 为只向供应商订货的商家提供的免费套餐\n\n每个套餐都有公开的固定价格。当前价格及各套餐包含的功能，请查看价格页面（purplehere.com/pricing）。\n\n计费方式：\n• 按月付费，或按年付费并享 2 个月免费\n• 付费套餐提供 7 天免费试用——无需信用卡\n\n如果您是较大的集团需要报价，请通过联系我们页面与我们联系。"
+        },
+        "ms": {
+          "title": "Berapakah kos PurpleHere?",
+          "content": "PurpleHere menawarkan pelan langganan untuk setiap jenis perniagaan:\n\n• Restoran — Basic, Professional dan Enterprise\n• Jenama (pelbagai cawangan / francais) — Basic, Professional dan Enterprise\n• Medan selera — Basic, Professional dan Enterprise\n• Pembekal — Basic dan Advanced\n• Pelan percuma untuk perniagaan yang hanya membuat pesanan daripada pembekal\n\nSetiap pelan mempunyai harga tetap yang diterbitkan. Lihat halaman Harga (purplehere.com/pricing) untuk harga semasa dan ciri yang termasuk dalam setiap pelan.\n\nPengebilan:\n• Bayar bulanan, atau bayar tahunan dan dapat 2 bulan percuma\n• Pelan berbayar bermula dengan percubaan percuma 7 hari — tiada kad kredit diperlukan\n\nJika anda memerlukan sebut harga untuk kumpulan yang lebih besar, hubungi kami melalui halaman Hubungi Kami."
+        }
+      }
+    },
+    {
+      "legacy_id": 18,
+      "legacy_title_en": "What features does PurpleHere include?",
+      "slug": "what-features-does-purplehere-include",
+      "category_slug": "features",
+      "sort_order": 1,
+      "tr": {
+        "en": {
+          "title": "What features does PurpleHere include?",
+          "content": "PurpleHere covers front-of-house, kitchen, and back-office operations:\n\nOrdering & Sales:\n• POS Terminal — fast order taking, split bills, card, e-wallet, and cash payments\n• QR table ordering — customers scan, order, and pay from their phone\n• Self-order kiosk — a registered in-store tablet where customers order and pay themselves\n• Order types — dine-in, takeaway, pickup, and delivery\n• Floor Plan — visual table layout with live order status\n• Reservations\n\nKitchen & Display:\n• Kitchen Display System (KDS) — live orders for each kitchen station\n• Automatic kitchen ticket printing\n• Customer-facing display\n\nManagement:\n• Menu management — categories, items, options, and set menus\n• Staff accounts with role-based permissions\n• Cash-up and cash management\n• Reports and sales analytics\n• Customers, membership, coupons, and promotions\n\nBack Office (available on selected plans):\n• Inventory, recipes, and food cost\n• Purchase orders and ordering from suppliers\n• Multi-outlet management for brands and food courts\n\nPurpleHere is available in English, Korean, Chinese, and Malay. See the Pricing page for which features are included in each plan."
+        },
+        "ko": {
+          "title": "PurpleHere에는 어떤 기능이 있나요?",
+          "content": "PurpleHere는 홀, 주방, 백오피스 업무를 모두 지원해요.\n\n주문 · 매출:\n• POS 터미널 — 빠른 주문 접수, 나눠 결제, 카드·이월렛·현금 결제\n• QR 테이블 주문 — 고객이 폰으로 스캔해서 주문하고 결제해요\n• 셀프 주문 키오스크 — 매장에 등록한 태블릿에서 고객이 직접 주문·결제해요\n• 주문 유형 — 매장식사, 포장, 픽업, 배달\n• 배치도 — 테이블 배치와 주문 상태를 한눈에\n• 예약\n\n주방 · 디스플레이:\n• 주방 디스플레이(KDS) — 주방 스테이션별 실시간 주문\n• 주방 티켓 자동 인쇄\n• 고객용 디스플레이\n\n관리:\n• 메뉴 관리 — 카테고리, 메뉴, 옵션, 세트 메뉴\n• 역할별 권한이 있는 직원 계정\n• 마감 정산과 현금 관리\n• 리포트와 매출 분석\n• 고객, 멤버십, 쿠폰, 프로모션\n\n백오피스(일부 플랜에서 제공):\n• 재고, 레시피, 원가\n• 발주와 공급업체 주문\n• 브랜드·푸드코트를 위한 다매장 관리\n\nPurpleHere는 영어, 한국어, 중국어, 말레이어로 이용할 수 있어요. 플랜별 포함 기능은 요금 페이지에서 확인하세요."
+        },
+        "zh": {
+          "title": "PurpleHere 包含哪些功能？",
+          "content": "PurpleHere 涵盖前台、厨房和后台运营：\n\n点餐与销售：\n• POS 终端——快速点单、分开结账、刷卡、电子钱包及现金付款\n• 扫码点餐——顾客用手机扫描桌号二维码点餐并付款\n• 自助点餐机——在店内登记的平板上，顾客自行点餐和付款\n• 订单类型——堂食、外卖、自取、配送\n• 平面图——直观的桌位布局及实时订单状态\n• 预订\n\n厨房与显示：\n• 厨房显示系统（KDS）——按厨房工作站显示实时订单\n• 厨房单自动打印\n• 顾客显示屏\n\n管理：\n• 菜单管理——分类、菜品、选项和套餐\n• 按角色设置权限的员工账号\n• 收银结算和现金管理\n• 报告与销售分析\n• 顾客、会员、优惠券和促销\n\n后台（部分套餐提供）：\n• 库存、食谱和食材成本\n• 采购订单及向供应商订货\n• 品牌和美食广场的多门店管理\n\nPurpleHere 支持英文、韩文、中文和马来文。各套餐包含的功能请查看价格页面。"
+        },
+        "ms": {
+          "title": "Apakah ciri-ciri yang ada dalam PurpleHere?",
+          "content": "PurpleHere merangkumi operasi hadapan, dapur dan pejabat belakang:\n\nPesanan & Jualan:\n• Terminal POS — ambil pesanan dengan pantas, bil berasingan, bayaran kad, e-dompet dan tunai\n• Pesanan meja melalui QR — pelanggan imbas, pesan dan bayar dari telefon mereka\n• Kiosk pesanan sendiri — tablet berdaftar di kedai tempat pelanggan memesan dan membayar sendiri\n• Jenis pesanan — makan di sini, bungkus, ambil sendiri dan penghantaran\n• Pelan Lantai — susun atur meja visual dengan status pesanan secara langsung\n• Tempahan\n\nDapur & Paparan:\n• Sistem Paparan Dapur (KDS) — pesanan langsung untuk setiap stesen dapur\n• Cetakan tiket dapur automatik\n• Paparan untuk pelanggan\n\nPengurusan:\n• Pengurusan menu — kategori, item, pilihan dan menu set\n• Akaun kakitangan dengan kebenaran mengikut peranan\n• Tutup kira (cash-up) dan pengurusan tunai\n• Laporan dan analisis jualan\n• Pelanggan, keahlian, kupon dan promosi\n\nPejabat Belakang (tersedia dalam pelan tertentu):\n• Inventori, resipi dan kos makanan\n• Pesanan belian dan pesanan daripada pembekal\n• Pengurusan pelbagai cawangan untuk jenama dan medan selera\n\nPurpleHere tersedia dalam Bahasa Inggeris, Korea, Cina dan Melayu. Lihat halaman Harga untuk ciri yang termasuk dalam setiap pelan."
+        }
+      }
+    },
+    {
+      "legacy_id": 21,
+      "legacy_title_en": "Is my data secure with PurpleHere?",
+      "slug": "is-my-data-secure",
+      "category_slug": "technical",
+      "sort_order": 1,
+      "tr": {
+        "en": {
+          "title": "Is my data secure with PurpleHere?",
+          "content": "Yes, we take data security seriously. Here's how we protect your data:\n\nEncryption:\n• All data is transmitted over HTTPS (SSL/TLS encryption)\n• Passwords are stored hashed, never in plain text\n• Sensitive credentials (such as email server passwords) are stored encrypted\n\nAccess control:\n• Secure token-based login\n• Role-based permissions — each staff member only sees what their role allows\n• Each business can only access its own data\n• Limits on repeated failed login attempts\n\nOperations:\n• Hosted on cloud infrastructure\n• Database backups are taken before every system update\n• Automated security checks run before every release\n\nYour data belongs to you. We never sell your business data to third parties. You can export reports and sales data from the system."
+        },
+        "ko": {
+          "title": "PurpleHere에서 제 데이터는 안전한가요?",
+          "content": "네, 데이터 보안을 중요하게 생각해요. 이렇게 보호하고 있어요.\n\n암호화:\n• 모든 데이터는 HTTPS(SSL/TLS 암호화)로 전송돼요\n• 비밀번호는 원문이 아닌 해시 형태로만 저장해요\n• 민감한 접속 정보(예: 메일 서버 비밀번호)는 암호화해서 저장해요\n\n접근 관리:\n• 안전한 토큰 기반 로그인\n• 역할별 권한 — 직원은 자기 역할에 허용된 화면만 볼 수 있어요\n• 각 사업장은 자기 데이터에만 접근할 수 있어요\n• 로그인 실패가 반복되면 시도를 제한해요\n\n운영:\n• 클라우드 인프라에서 운영해요\n• 시스템 업데이트 전마다 데이터베이스를 백업해요\n• 새 버전을 내기 전마다 자동 보안 점검을 실행해요\n\n데이터의 주인은 고객님이에요. 사업 데이터를 제3자에게 판매하지 않아요. 리포트와 매출 데이터는 시스템에서 내보낼 수 있어요."
+        },
+        "zh": {
+          "title": "我的数据在 PurpleHere 上安全吗？",
+          "content": "是的，我们非常重视数据安全。我们这样保护您的数据：\n\n加密：\n• 所有数据通过 HTTPS（SSL/TLS 加密）传输\n• 密码以哈希形式存储，从不保存明文\n• 敏感凭证（例如邮件服务器密码）加密存储\n\n访问控制：\n• 安全的令牌登录\n• 按角色设置权限——员工只能看到其角色允许的内容\n• 每个商家只能访问自己的数据\n• 限制多次登录失败的尝试\n\n运维：\n• 运行在云端基础设施上\n• 每次系统更新前都会备份数据库\n• 每次发布新版本前都会运行自动安全检查\n\n数据属于您。我们绝不向第三方出售您的业务数据。您可以从系统中导出报告和销售数据。"
+        },
+        "ms": {
+          "title": "Adakah data saya selamat dengan PurpleHere?",
+          "content": "Ya, kami mengambil berat tentang keselamatan data. Beginilah cara kami melindungi data anda:\n\nPenyulitan:\n• Semua data dihantar melalui HTTPS (penyulitan SSL/TLS)\n• Kata laluan disimpan dalam bentuk hash, bukan teks biasa\n• Maklumat log masuk sensitif (seperti kata laluan pelayan e-mel) disimpan secara tersulit\n\nKawalan akses:\n• Log masuk selamat berasaskan token\n• Kebenaran mengikut peranan — setiap kakitangan hanya melihat apa yang dibenarkan untuk peranannya\n• Setiap perniagaan hanya boleh mengakses datanya sendiri\n• Had pada percubaan log masuk gagal berulang kali\n\nOperasi:\n• Dihoskan pada infrastruktur awan\n• Sandaran pangkalan data dibuat sebelum setiap kemas kini sistem\n• Semakan keselamatan automatik dijalankan sebelum setiap keluaran baharu\n\nData anda adalah milik anda. Kami tidak sekali-kali menjual data perniagaan anda kepada pihak ketiga. Anda boleh mengeksport laporan dan data jualan daripada sistem."
+        }
+      }
+    },
+    {
+      "legacy_id": 24,
+      "legacy_title_en": "How do I get help if I have a problem?",
+      "slug": "how-do-i-get-help",
+      "category_slug": "support",
+      "sort_order": 1,
+      "tr": {
+        "en": {
+          "title": "How do I get help if I have a problem?",
+          "content": "PurpleHere offers several support channels:\n\n1. In-app inquiries (recommended)\n• Send an inquiry from your dashboard after logging in\n• Track replies and status in one place\n• Available on every plan\n\n2. Email\n• help@purplehere.com\n\n3. Contact page\n• purplehere.com/contact — choose \"Technical Support\"\n\n4. FAQ\n• purplehere.com/faq for common questions\n\nSupport hours: Monday to Friday, 9 AM – 6 PM (Malaysia time, GMT+8).\n\nWhen you contact us, please include:\n• Your account email and outlet name\n• A description of the issue\n• Steps to reproduce the problem\n• Screenshots if possible"
+        },
+        "ko": {
+          "title": "문제가 생기면 어떻게 도움을 받을 수 있나요?",
+          "content": "PurpleHere는 여러 지원 창구를 운영해요.\n\n1. 앱 안에서 문의(추천)\n• 로그인 후 대시보드에서 문의를 보내세요\n• 답변과 처리 상태를 한곳에서 확인할 수 있어요\n• 모든 플랜에서 이용할 수 있어요\n\n2. 이메일\n• help@purplehere.com\n\n3. 문의하기 페이지\n• purplehere.com/contact — \"Technical Support\"를 선택하세요\n\n4. FAQ\n• 자주 묻는 질문은 purplehere.com/faq 에서 확인하세요\n\n지원 시간: 월요일~금요일, 오전 9시 ~ 오후 6시(말레이시아 시간, GMT+8)\n\n문의하실 때 함께 알려 주세요:\n• 계정 이메일과 매장 이름\n• 문제 설명\n• 문제가 생기는 과정\n• 가능하면 화면 캡처"
+        },
+        "zh": {
+          "title": "遇到问题时如何获得帮助？",
+          "content": "PurpleHere 提供多种支持渠道：\n\n1. 应用内咨询（推荐）\n• 登录后在仪表盘提交咨询\n• 在同一处查看回复和处理状态\n• 所有套餐均可使用\n\n2. 电子邮件\n• help@purplehere.com\n\n3. 联系我们页面\n• purplehere.com/contact——选择\"Technical Support\"\n\n4. 常见问题\n• 常见问题请查看 purplehere.com/faq\n\n支持时间：周一至周五，上午 9 点至下午 6 点（马来西亚时间，GMT+8）。\n\n联系我们时，请提供：\n• 您的账号邮箱和门店名称\n• 问题描述\n• 重现问题的步骤\n• 如有可能，请附上截图"
+        },
+        "ms": {
+          "title": "Bagaimana saya mendapatkan bantuan jika ada masalah?",
+          "content": "PurpleHere menyediakan beberapa saluran sokongan:\n\n1. Pertanyaan dalam aplikasi (disyorkan)\n• Hantar pertanyaan dari papan pemuka anda selepas log masuk\n• Jejak balasan dan status di satu tempat\n• Tersedia untuk semua pelan\n\n2. E-mel\n• help@purplehere.com\n\n3. Halaman Hubungi Kami\n• purplehere.com/contact — pilih \"Technical Support\"\n\n4. Soalan Lazim\n• purplehere.com/faq untuk soalan biasa\n\nWaktu sokongan: Isnin hingga Jumaat, 9 pagi – 6 petang (waktu Malaysia, GMT+8).\n\nApabila menghubungi kami, sila sertakan:\n• E-mel akaun dan nama cawangan anda\n• Penerangan masalah\n• Langkah untuk menghasilkan semula masalah\n• Tangkapan skrin jika boleh"
+        }
+      }
+    },
+    {
+      "legacy_id": 11,
+      "legacy_title_en": "How do I start my free trial?",
+      "slug": "how-do-i-start-my-free-trial",
+      "category_slug": "getting-started",
+      "sort_order": 2,
+      "tr": {
+        "en": {
+          "title": "How do I start my free trial?",
+          "content": "You can sign up yourself in a few minutes:\n\n1. Go to purplehere.com/signup\n2. Choose your business type and a plan (monthly or annual)\n3. Enter your business details and create your login\n4. Confirm your email if asked, then log in and start setting up your menu\n\nYour account is created immediately with a 7-day free trial. No credit card is required.\n\nWhen the trial ends, you'll receive an invoice for your chosen plan. Pay it to keep using PurpleHere — there are no automatic charges."
+        },
+        "ko": {
+          "title": "무료 체험은 어떻게 시작하나요?",
+          "content": "몇 분이면 직접 가입할 수 있어요.\n\n1. purplehere.com/signup 으로 이동하세요\n2. 사업 유형과 플랜(월 결제 또는 연 결제)을 고르세요\n3. 사업장 정보를 입력하고 로그인 계정을 만드세요\n4. 이메일 확인을 요청받으면 확인한 뒤 로그인해서 메뉴 설정을 시작하세요\n\n계정은 바로 만들어지고 7일 무료 체험이 시작돼요. 신용카드는 필요 없어요.\n\n체험이 끝나면 선택한 플랜의 인보이스가 발행돼요. 계속 이용하시려면 인보이스를 결제하시면 돼요 — 자동 결제는 없어요."
+        },
+        "zh": {
+          "title": "如何开始免费试用？",
+          "content": "您只需几分钟即可自行注册：\n\n1. 前往 purplehere.com/signup\n2. 选择您的业务类型和套餐（按月或按年）\n3. 填写商家信息并创建登录账号\n4. 如有提示，请先验证邮箱，然后登录并开始设置菜单\n\n账号会立即创建，并开始 7 天免费试用。无需信用卡。\n\n试用结束后，您会收到所选套餐的发票。付款后即可继续使用 PurpleHere——不会自动扣款。"
+        },
+        "ms": {
+          "title": "Bagaimana saya memulakan percubaan percuma?",
+          "content": "Anda boleh mendaftar sendiri dalam beberapa minit:\n\n1. Pergi ke purplehere.com/signup\n2. Pilih jenis perniagaan dan pelan (bulanan atau tahunan)\n3. Masukkan butiran perniagaan dan cipta log masuk anda\n4. Sahkan e-mel anda jika diminta, kemudian log masuk dan mula menyediakan menu\n\nAkaun anda dicipta serta-merta dengan percubaan percuma 7 hari. Tiada kad kredit diperlukan.\n\nApabila percubaan tamat, anda akan menerima invois untuk pelan pilihan anda. Bayar invois untuk terus menggunakan PurpleHere — tiada caj automatik."
+        }
+      }
+    },
+    {
+      "legacy_id": 14,
+      "legacy_title_en": "Is there a free trial? What does it include?",
+      "slug": "is-there-a-free-trial",
+      "category_slug": "pricing",
+      "sort_order": 2,
+      "tr": {
+        "en": {
+          "title": "Is there a free trial? What does it include?",
+          "content": "Yes. Paid plans come with a 7-day free trial.\n\nDuring the trial you get the features of the plan you selected when signing up, for example:\n• POS Terminal\n• Menu management\n• Kitchen Display System\n• Customer display\n• Reports\n• Staff management\n• Other features included in your plan (see the Pricing page)\n\nNo credit card is required to start. At the end of the trial you'll receive an invoice for your plan. If it isn't paid, the account becomes overdue and is suspended after a grace period. No automatic charges, no commitments.\n\nYou can upgrade during the trial if you want to try a higher plan."
+        },
+        "ko": {
+          "title": "무료 체험이 있나요? 무엇이 포함되나요?",
+          "content": "네. 유료 플랜은 7일 무료 체험을 제공해요.\n\n체험 기간에는 가입할 때 고른 플랜의 기능을 쓸 수 있어요. 예를 들면:\n• POS 터미널\n• 메뉴 관리\n• 주방 디스플레이(KDS)\n• 고객용 디스플레이\n• 리포트\n• 직원 관리\n• 그 밖에 플랜에 포함된 기능(요금 페이지 참고)\n\n시작할 때 신용카드가 필요 없어요. 체험이 끝나면 플랜 인보이스가 발행되고, 결제하지 않으면 연체 상태가 된 뒤 유예 기간이 지나면 이용이 정지돼요. 자동 결제도, 약정도 없어요.\n\n더 높은 플랜을 써 보고 싶으시면 체험 중에도 업그레이드할 수 있어요."
+        },
+        "zh": {
+          "title": "有免费试用吗？包含哪些内容？",
+          "content": "有。付费套餐提供 7 天免费试用。\n\n试用期间，您可以使用注册时所选套餐的功能，例如：\n• POS 终端\n• 菜单管理\n• 厨房显示系统\n• 顾客显示屏\n• 报告\n• 员工管理\n• 套餐包含的其他功能（见价格页面）\n\n开始试用无需信用卡。试用结束后，您会收到套餐发票；如未付款，账户将变为逾期，宽限期过后会被暂停。不会自动扣款，也没有任何承诺。\n\n如果想体验更高级的套餐，试用期间也可以升级。"
+        },
+        "ms": {
+          "title": "Adakah percubaan percuma? Apakah yang termasuk?",
+          "content": "Ya. Pelan berbayar disertakan dengan percubaan percuma 7 hari.\n\nSemasa percubaan, anda mendapat ciri-ciri pelan yang anda pilih semasa mendaftar, contohnya:\n• Terminal POS\n• Pengurusan menu\n• Sistem Paparan Dapur\n• Paparan pelanggan\n• Laporan\n• Pengurusan kakitangan\n• Ciri lain yang termasuk dalam pelan anda (lihat halaman Harga)\n\nTiada kad kredit diperlukan untuk bermula. Pada akhir percubaan, anda akan menerima invois untuk pelan anda. Jika tidak dibayar, akaun menjadi tertunggak dan digantung selepas tempoh tangguh. Tiada caj automatik, tiada komitmen.\n\nAnda boleh menaik taraf semasa percubaan jika ingin mencuba pelan yang lebih tinggi."
+        }
+      }
+    },
+    {
+      "legacy_id": 19,
+      "legacy_title_en": "Can I manage multiple restaurant locations?",
+      "slug": "manage-multiple-locations",
+      "category_slug": "features",
+      "sort_order": 2,
+      "tr": {
+        "en": {
+          "title": "Can I manage multiple restaurant locations?",
+          "content": "Yes. PurpleHere supports multi-outlet management for brands, franchises, and food courts.\n\nFor brand owners:\n• One dashboard for all your outlets\n• Brand menus shared to your outlets\n• Consolidated reports and per-outlet performance\n• Franchise management with a Franchise Map\n• Shared suppliers, recipes, and inventory (available on selected plans)\n\nFor food court operators:\n• Manage multiple branches and tenant restaurants from one account\n• Tenancy contracts and unit numbering\n• Floor plan of tenant stores and a branch map\n\nHow it works:\n1. Sign up for a Brand or Food Court plan\n2. Add your outlets, branches, or tenants\n3. Assign managers to each location\n\nEach outlet keeps its own staff and day-to-day operations, while you see everything from one place."
+        },
+        "ko": {
+          "title": "여러 매장을 관리할 수 있나요?",
+          "content": "네. PurpleHere는 브랜드, 프랜차이즈, 푸드코트의 다매장 관리를 지원해요.\n\n브랜드 오너:\n• 모든 매장을 한 대시보드에서\n• 브랜드 메뉴를 매장에 공유\n• 통합 리포트와 매장별 실적\n• 가맹 관리와 가맹 지도\n• 공급업체, 레시피, 재고 공유(일부 플랜에서 제공)\n\n푸드코트 운영사:\n• 여러 지점과 입점 레스토랑을 한 계정에서 관리\n• 임대 계약과 유닛 번호 관리\n• 입점 매장 배치도와 지점 지도\n\n이용 방법:\n1. 브랜드 또는 푸드코트 플랜으로 가입하세요\n2. 매장, 지점, 입점사를 추가하세요\n3. 각 매장에 매니저를 지정하세요\n\n각 매장은 자체 직원과 일상 운영을 그대로 유지하고, 본사는 모든 것을 한곳에서 볼 수 있어요."
+        },
+        "zh": {
+          "title": "我可以管理多家门店吗？",
+          "content": "可以。PurpleHere 支持品牌、连锁加盟和美食广场的多门店管理。\n\n品牌业主：\n• 一个仪表盘查看所有门店\n• 品牌菜单共享给各门店\n• 汇总报告和各门店业绩\n• 加盟管理及加盟地图\n• 共享供应商、食谱和库存（部分套餐提供）\n\n美食广场运营商：\n• 在一个账号中管理多个分店和入驻餐厅\n• 租赁合同和铺位编号\n• 入驻店铺平面图和分店地图\n\n使用方法：\n1. 注册品牌或美食广场套餐\n2. 添加您的门店、分店或租户\n3. 为每个门店指定经理\n\n每家门店保留自己的员工和日常运营，而您可以在一处掌握全部情况。"
+        },
+        "ms": {
+          "title": "Bolehkah saya mengurus beberapa cawangan restoran?",
+          "content": "Ya. PurpleHere menyokong pengurusan pelbagai cawangan untuk jenama, francais dan medan selera.\n\nUntuk pemilik jenama:\n• Satu papan pemuka untuk semua cawangan\n• Menu jenama dikongsi ke cawangan anda\n• Laporan gabungan dan prestasi setiap cawangan\n• Pengurusan francais dengan Peta Francais\n• Pembekal, resipi dan inventori dikongsi (tersedia dalam pelan tertentu)\n\nUntuk pengendali medan selera:\n• Urus beberapa cawangan dan restoran penyewa dari satu akaun\n• Kontrak penyewaan dan penomboran unit\n• Pelan lantai kedai penyewa dan peta cawangan\n\nCara ia berfungsi:\n1. Daftar untuk pelan Jenama atau Medan Selera\n2. Tambah cawangan atau penyewa anda\n3. Lantik pengurus untuk setiap lokasi\n\nSetiap cawangan mengekalkan kakitangan dan operasi hariannya sendiri, manakala anda melihat semuanya dari satu tempat."
+        }
+      }
+    },
+    {
+      "legacy_id": 22,
+      "legacy_title_en": "What happens if the internet goes down?",
+      "slug": "what-if-the-internet-goes-down",
+      "category_slug": "technical",
+      "sort_order": 2,
+      "tr": {
+        "en": {
+          "title": "What happens if the internet goes down?",
+          "content": "PurpleHere has an offline mode so your counter can keep working when the internet drops.\n\nHow it works:\n• Choose one device as your offline main POS (Settings ▸ Printer ▸ \"Offline main POS\")\n• When the connection drops, that POS keeps taking orders and payments\n• Kitchen tickets and bills print locally from that POS\n• Other devices show a notice to take orders on the main POS, so nothing is entered twice\n• When the connection returns, all offline orders and payments are sent to the server automatically, in order, without duplicates\n\nWhat needs the internet:\n• Customer QR ordering and online payments\n• Live updates on other devices (they catch up once you're back online)\n\nTips:\n• Keep a mobile hotspot as a backup connection\n• Use a UPS for power cuts"
+        },
+        "ko": {
+          "title": "인터넷이 끊기면 어떻게 되나요?",
+          "content": "PurpleHere에는 오프라인 모드가 있어서 인터넷이 끊겨도 카운터 영업을 이어갈 수 있어요.\n\n작동 방식:\n• 기기 한 대를 오프라인 메인 POS로 지정하세요(설정 ▸ 프린터 ▸ \"오프라인 메인 POS\")\n• 연결이 끊기면 그 POS에서 계속 주문과 결제를 받을 수 있어요\n• 주방 티켓과 계산서는 그 POS에서 바로 인쇄돼요\n• 다른 기기에는 \"주문은 메인 POS에서\" 안내가 떠서 같은 주문이 두 번 들어가지 않아요\n• 연결이 돌아오면 끊긴 동안의 주문과 결제가 순서대로, 중복 없이 자동으로 서버에 전송돼요\n\n인터넷이 꼭 필요한 것:\n• 고객 QR 주문과 온라인 결제\n• 다른 기기의 실시간 화면(연결이 돌아오면 따라잡아요)\n\n팁:\n• 예비 연결로 모바일 핫스팟을 준비해 두세요\n• 정전에 대비해 UPS를 쓰세요"
+        },
+        "zh": {
+          "title": "如果网络断了会怎样？",
+          "content": "PurpleHere 具备离线模式，网络中断时收银台仍可继续营业。\n\n工作方式：\n• 指定一台设备作为离线主 POS（设置 ▸ 打印机 ▸ \"离线主 POS\"）\n• 断网后，这台 POS 仍可继续接单和收款\n• 厨房单和账单直接从这台 POS 打印\n• 其他设备会提示\"请在主 POS 点单\"，避免重复录入\n• 网络恢复后，断网期间的所有订单和付款会按顺序自动上传到服务器，不会重复\n\n需要网络的功能：\n• 顾客扫码点餐和在线付款\n• 其他设备的实时更新（恢复连接后会自动同步）\n\n建议：\n• 准备手机热点作为备用网络\n• 使用 UPS 应对停电"
+        },
+        "ms": {
+          "title": "Apa yang berlaku jika internet terputus?",
+          "content": "PurpleHere mempunyai mod luar talian supaya kaunter anda boleh terus beroperasi apabila internet terputus.\n\nCara ia berfungsi:\n• Pilih satu peranti sebagai POS utama luar talian (Tetapan ▸ Pencetak ▸ \"POS utama luar talian\")\n• Apabila sambungan terputus, POS itu terus menerima pesanan dan bayaran\n• Tiket dapur dan bil dicetak terus dari POS itu\n• Peranti lain memaparkan notis supaya pesanan diambil di POS utama, jadi tiada pesanan dimasukkan dua kali\n• Apabila sambungan pulih, semua pesanan dan bayaran luar talian dihantar ke pelayan secara automatik, mengikut urutan, tanpa pendua\n\nYang memerlukan internet:\n• Pesanan QR pelanggan dan bayaran dalam talian\n• Kemas kini langsung pada peranti lain (akan dikemas kini semula apabila dalam talian)\n\nPetua:\n• Sediakan hotspot mudah alih sebagai sambungan sandaran\n• Gunakan UPS untuk gangguan bekalan elektrik"
+        }
+      }
+    },
+    {
+      "legacy_id": 25,
+      "legacy_title_en": "Do you provide training for new users?",
+      "slug": "do-you-provide-training",
+      "category_slug": "support",
+      "sort_order": 2,
+      "tr": {
+        "en": {
+          "title": "Do you provide training for new users?",
+          "content": "Yes, we help you get started.\n\nOnboarding support:\n• Help with account setup\n• Help with your first menu setup\n• Guidance on creating staff accounts and setting up printers\n\nSelf-service resources:\n• FAQ (purplehere.com/faq)\n• Updates and guides on our News page (purplehere.com/news)\n\nMost teams are comfortable with the system within a day or two. The interface is designed to be simple — if you've used any modern app, PurpleHere will feel familiar.\n\nNeed training for your team? Contact us via the Contact page or help@purplehere.com and we'll arrange a session."
+        },
+        "ko": {
+          "title": "처음 쓰는 사용자를 위한 교육을 제공하나요?",
+          "content": "네, 빠르게 시작할 수 있도록 도와드려요.\n\n시작 지원:\n• 계정 설정 도움\n• 첫 메뉴 설정 도움\n• 직원 계정 만들기와 프린터 설정 안내\n\n혼자 볼 수 있는 자료:\n• FAQ(purplehere.com/faq)\n• 뉴스 페이지의 업데이트와 안내(purplehere.com/news)\n\n대부분 하루 이틀이면 익숙해져요. 화면이 간단하게 만들어져 있어서 요즘 앱을 써 보셨다면 금방 적응하실 거예요.\n\n팀 교육이 필요하시면 문의하기 페이지나 help@purplehere.com 으로 연락 주세요. 교육 일정을 잡아 드려요."
+        },
+        "zh": {
+          "title": "你们为新用户提供培训吗？",
+          "content": "是的，我们会帮助您快速上手。\n\n入门支持：\n• 协助设置账号\n• 协助完成首个菜单设置\n• 指导创建员工账号和设置打印机\n\n自助资源：\n• 常见问题（purplehere.com/faq）\n• 新闻页面中的更新与指南（purplehere.com/news）\n\n大多数团队一两天内即可熟练使用。界面设计简洁——如果您用过现代应用，就会觉得 PurpleHere 很容易上手。\n\n需要为团队安排培训？请通过联系我们页面或 help@purplehere.com 联系我们，我们会为您安排。"
+        },
+        "ms": {
+          "title": "Adakah anda menyediakan latihan untuk pengguna baharu?",
+          "content": "Ya, kami membantu anda bermula.\n\nSokongan permulaan:\n• Bantuan menyediakan akaun\n• Bantuan menyediakan menu pertama\n• Panduan mencipta akaun kakitangan dan menyediakan pencetak\n\nSumber kendiri:\n• Soalan Lazim (purplehere.com/faq)\n• Kemas kini dan panduan di halaman Berita kami (purplehere.com/news)\n\nKebanyakan pasukan sudah selesa dengan sistem dalam sehari dua. Antara mukanya direka ringkas — jika anda pernah menggunakan aplikasi moden, PurpleHere akan terasa biasa.\n\nPerlukan latihan untuk pasukan anda? Hubungi kami melalui halaman Hubungi Kami atau help@purplehere.com dan kami akan aturkan sesi."
+        }
+      }
+    },
+    {
+      "legacy_id": 12,
+      "legacy_title_en": "What devices and browsers are supported?",
+      "slug": "supported-devices-and-browsers",
+      "category_slug": "getting-started",
+      "sort_order": 3,
+      "tr": {
+        "en": {
+          "title": "What devices and browsers are supported?",
+          "content": "PurpleHere works on any device with an up-to-date web browser.\n\nBrowsers:\n• Google Chrome (recommended)\n• Microsoft Edge\n• Safari\n• Mozilla Firefox\n\nDevices:\n• Desktop and laptop computers (Windows, Mac)\n• Tablets (Android, iPad)\n• Smartphones (Android, iPhone)\n\nApps (free, at purplehere.com/download):\n• Android app — for counter tablets; prints to network and Bluetooth printers and connects to a card terminal\n• Windows app — for counter PCs; prints to USB and network printers\n\nSelf-order kiosk: a tablet registered by your outlet can run as a kiosk where customers order and pay themselves.\n\nFor the POS terminal we recommend a tablet or PC with a screen of at least 10 inches. A stable internet connection is recommended; if it drops, offline mode keeps your main POS working."
+        },
+        "ko": {
+          "title": "어떤 기기와 브라우저를 지원하나요?",
+          "content": "PurpleHere는 최신 웹 브라우저가 있는 기기라면 어디서나 작동해요.\n\n브라우저:\n• Google Chrome(추천)\n• Microsoft Edge\n• Safari\n• Mozilla Firefox\n\n기기:\n• 데스크톱·노트북(Windows, Mac)\n• 태블릿(안드로이드, iPad)\n• 스마트폰(안드로이드, iPhone)\n\n앱(무료, purplehere.com/download):\n• 안드로이드 앱 — 카운터 태블릿용. 네트워크·블루투스 프린터로 인쇄하고 카드 단말기를 연결해요\n• Windows 앱 — 카운터 PC용. USB·네트워크 프린터로 인쇄해요\n\n셀프 주문 키오스크: 매장에서 등록한 태블릿을 키오스크로 쓰면 고객이 직접 주문하고 결제할 수 있어요.\n\nPOS 터미널에는 10인치 이상 화면의 태블릿이나 PC를 추천해요. 안정적인 인터넷 연결을 권장하며, 연결이 끊겨도 오프라인 모드로 메인 POS는 계속 쓸 수 있어요."
+        },
+        "zh": {
+          "title": "支持哪些设备和浏览器？",
+          "content": "PurpleHere 可在任何装有最新网页浏览器的设备上使用。\n\n浏览器：\n• Google Chrome（推荐）\n• Microsoft Edge\n• Safari\n• Mozilla Firefox\n\n设备：\n• 台式电脑和笔记本（Windows、Mac）\n• 平板（Android、iPad）\n• 智能手机（Android、iPhone）\n\n应用（免费，purplehere.com/download）：\n• Android 应用——适用于收银平板；可打印到网络和蓝牙打印机，并连接刷卡机\n• Windows 应用——适用于收银电脑；可打印到 USB 和网络打印机\n\n自助点餐机：门店登记的平板可作为自助点餐机使用，顾客可自行点餐和付款。\n\nPOS 终端建议使用屏幕至少 10 英寸的平板或电脑。建议保持稳定的网络连接；即使断网，离线模式也能让主 POS 继续运作。"
+        },
+        "ms": {
+          "title": "Apakah peranti dan pelayar yang disokong?",
+          "content": "PurpleHere berfungsi pada mana-mana peranti dengan pelayar web yang terkini.\n\nPelayar:\n• Google Chrome (disyorkan)\n• Microsoft Edge\n• Safari\n• Mozilla Firefox\n\nPeranti:\n• Komputer meja dan komputer riba (Windows, Mac)\n• Tablet (Android, iPad)\n• Telefon pintar (Android, iPhone)\n\nAplikasi (percuma, di purplehere.com/download):\n• Aplikasi Android — untuk tablet kaunter; mencetak ke pencetak rangkaian dan Bluetooth serta menyambung ke terminal kad\n• Aplikasi Windows — untuk PC kaunter; mencetak ke pencetak USB dan rangkaian\n\nKiosk pesanan sendiri: tablet yang didaftarkan oleh cawangan anda boleh dijadikan kiosk tempat pelanggan memesan dan membayar sendiri.\n\nUntuk terminal POS, kami mengesyorkan tablet atau PC dengan skrin sekurang-kurangnya 10 inci. Sambungan internet yang stabil disyorkan; jika terputus, mod luar talian memastikan POS utama anda terus berfungsi."
+        }
+      }
+    },
+    {
+      "legacy_id": 15,
+      "legacy_title_en": "What payment methods do you accept?",
+      "slug": "payment-methods-for-subscription",
+      "category_slug": "pricing",
+      "sort_order": 3,
+      "tr": {
+        "en": {
+          "title": "What payment methods do you accept?",
+          "content": "Subscription invoices can be paid by:\n• Card (via Stripe)\n• Bank transfer — upload your payment proof on the invoice and we confirm it\n\nHow it works:\n1. You receive an invoice for your plan by email and in your account\n2. Pay online by card, or by bank transfer\n3. Once payment is confirmed, your subscription stays active\n\nBilling options:\n• Monthly — pay each month\n• Annual — pay for 12 months upfront and get 2 months free"
+        },
+        "ko": {
+          "title": "어떤 결제 수단을 받나요?",
+          "content": "구독 인보이스는 이렇게 결제할 수 있어요.\n• 카드(Stripe)\n• 계좌이체 — 인보이스에 입금 증빙을 올리면 저희가 확인해요\n\n결제 과정:\n1. 플랜 인보이스를 이메일과 계정에서 받아요\n2. 카드로 온라인 결제하거나 계좌이체해요\n3. 결제가 확인되면 구독이 계속 유지돼요\n\n결제 주기:\n• 월 결제 — 매달 결제\n• 연 결제 — 12개월분을 한 번에 결제하고 2개월 무료"
+        },
+        "zh": {
+          "title": "你们接受哪些付款方式？",
+          "content": "订阅发票可以通过以下方式支付：\n• 银行卡（通过 Stripe）\n• 银行转账——在发票上上传付款凭证，我们确认即可\n\n付款流程：\n1. 您会通过电子邮件和账户收到套餐发票\n2. 在线刷卡付款，或通过银行转账付款\n3. 付款确认后，订阅继续有效\n\n计费方式：\n• 按月——每月付款\n• 按年——一次预付 12 个月，享 2 个月免费"
+        },
+        "ms": {
+          "title": "Apakah kaedah pembayaran yang diterima?",
+          "content": "Invois langganan boleh dibayar melalui:\n• Kad (melalui Stripe)\n• Pindahan bank — muat naik bukti pembayaran pada invois dan kami akan mengesahkannya\n\nCara ia berfungsi:\n1. Anda menerima invois pelan melalui e-mel dan dalam akaun anda\n2. Bayar dalam talian dengan kad, atau melalui pindahan bank\n3. Setelah pembayaran disahkan, langganan anda kekal aktif\n\nPilihan pengebilan:\n• Bulanan — bayar setiap bulan\n• Tahunan — bayar 12 bulan terlebih dahulu dan dapat 2 bulan percuma"
+        }
+      }
+    },
+    {
+      "legacy_id": 20,
+      "legacy_title_en": "Does PurpleHere support different order types?",
+      "slug": "order-types",
+      "category_slug": "features",
+      "sort_order": 3,
+      "tr": {
+        "en": {
+          "title": "Does PurpleHere support different order types?",
+          "content": "Yes. PurpleHere supports four order types:\n\n1. Dine-in\n• Table assignment and Floor Plan view\n• Add rounds to an open table\n• Split bills\n\n2. Takeaway\n• Quick counter orders\n• Optional takeaway packaging charge\n\n3. Pickup\n• Customers order ahead from their phone\n• They can choose a pickup time\n\n4. Delivery\n• Delivery address capture\n• Delivery zones and delivery fees\n\nYou can turn each order type on or off for your outlet in Settings.\n\nCustomers can also order from their phone by scanning a table QR code, or from a self-order kiosk in your outlet."
+        },
+        "ko": {
+          "title": "여러 주문 유형을 지원하나요?",
+          "content": "네. PurpleHere는 네 가지 주문 유형을 지원해요.\n\n1. 매장식사\n• 테이블 배정과 배치도 화면\n• 열려 있는 테이블에 추가 주문\n• 나눠 결제\n\n2. 포장\n• 카운터에서 빠른 주문\n• 포장비 추가 설정 가능\n\n3. 픽업\n• 고객이 폰으로 미리 주문\n• 픽업 시간을 고를 수 있어요\n\n4. 배달\n• 배달 주소 입력\n• 배달 지역과 배달비 설정\n\n주문 유형마다 설정에서 켜고 끌 수 있어요.\n\n고객은 테이블 QR 코드를 스캔하거나 매장의 셀프 주문 키오스크에서도 주문할 수 있어요."
+        },
+        "zh": {
+          "title": "PurpleHere 支持不同的订单类型吗？",
+          "content": "支持。PurpleHere 支持四种订单类型：\n\n1. 堂食\n• 分配桌号及平面图视图\n• 为未结账的桌位追加点单\n• 分开结账\n\n2. 外卖\n• 柜台快速点单\n• 可设置外卖包装费\n\n3. 自取\n• 顾客用手机提前下单\n• 可选择取餐时间\n\n4. 配送\n• 填写配送地址\n• 设置配送区域和配送费\n\n每种订单类型都可以在设置中开启或关闭。\n\n顾客也可以扫描桌号二维码，或在店内的自助点餐机上点餐。"
+        },
+        "ms": {
+          "title": "Adakah PurpleHere menyokong jenis pesanan yang berbeza?",
+          "content": "Ya. PurpleHere menyokong empat jenis pesanan:\n\n1. Makan Di Sini\n• Penetapan meja dan paparan Pelan Lantai\n• Tambah pesanan pada meja yang masih dibuka\n• Bil berasingan\n\n2. Bungkus\n• Pesanan kaunter yang pantas\n• Caj pembungkusan pilihan\n\n3. Ambil Sendiri\n• Pelanggan memesan lebih awal dari telefon mereka\n• Mereka boleh memilih masa ambil\n\n4. Penghantaran\n• Rekod alamat penghantaran\n• Zon penghantaran dan caj penghantaran\n\nAnda boleh menghidupkan atau mematikan setiap jenis pesanan dalam Tetapan.\n\nPelanggan juga boleh memesan dengan mengimbas kod QR meja, atau dari kiosk pesanan sendiri di cawangan anda."
+        }
+      }
+    },
+    {
+      "legacy_id": 23,
+      "legacy_title_en": "Can I print receipts with PurpleHere?",
+      "slug": "receipt-printing",
+      "category_slug": "technical",
+      "sort_order": 3,
+      "tr": {
+        "en": {
+          "title": "Can I print receipts with PurpleHere?",
+          "content": "Yes. PurpleHere prints customer bills, receipts, and kitchen tickets.\n\nHow to connect a printer:\n• Windows PC — install the PurpleHere Windows app (or QZ Tray) to print to USB and network printers\n• Android tablet — install the PurpleHere Android app to print to network and Bluetooth printers\n• Download the apps at purplehere.com/download\n\nHow printing works:\n• Kitchen tickets print automatically from the POS set as your printing station — including orders from QR ordering, the kiosk, and other devices\n• Each item can be routed to its own kitchen station printer (for example kitchen or bar)\n• Bills and receipts print from the POS\n\nTips:\n• Use 80mm thermal receipt printers\n• Test print from Settings before going live"
+        },
+        "ko": {
+          "title": "PurpleHere로 영수증을 인쇄할 수 있나요?",
+          "content": "네. PurpleHere는 고객 계산서, 영수증, 주방 티켓을 인쇄해요.\n\n프린터 연결 방법:\n• Windows PC — PurpleHere Windows 앱(또는 QZ Tray)을 설치하면 USB·네트워크 프린터로 인쇄돼요\n• 안드로이드 태블릿 — PurpleHere 안드로이드 앱을 설치하면 네트워크·블루투스 프린터로 인쇄돼요\n• 앱 다운로드: purplehere.com/download\n\n인쇄 방식:\n• 주방 티켓은 인쇄 담당으로 지정한 POS에서 자동으로 나와요 — QR 주문, 키오스크, 다른 기기의 주문까지 모두요\n• 메뉴마다 담당 주방 프린터(예: 주방, 바)로 나눠 보낼 수 있어요\n• 계산서와 영수증은 POS에서 인쇄해요\n\n팁:\n• 80mm 감열 영수증 프린터를 쓰세요\n• 영업 전에 설정에서 테스트 인쇄를 해 보세요"
+        },
+        "zh": {
+          "title": "可以用 PurpleHere 打印收据吗？",
+          "content": "可以。PurpleHere 可打印顾客账单、收据和厨房单。\n\n如何连接打印机：\n• Windows 电脑——安装 PurpleHere Windows 应用（或 QZ Tray），即可打印到 USB 和网络打印机\n• Android 平板——安装 PurpleHere Android 应用，即可打印到网络和蓝牙打印机\n• 应用下载：purplehere.com/download\n\n打印方式：\n• 厨房单由指定为打印站的 POS 自动打印——包括扫码点餐、自助点餐机和其他设备的订单\n• 每道菜可分配到各自的厨房工作站打印机（例如厨房、吧台）\n• 账单和收据从 POS 打印\n\n建议：\n• 使用 80mm 热敏收据打印机\n• 正式营业前在设置中进行测试打印"
+        },
+        "ms": {
+          "title": "Bolehkah saya mencetak resit dengan PurpleHere?",
+          "content": "Ya. PurpleHere mencetak bil pelanggan, resit dan tiket dapur.\n\nCara menyambung pencetak:\n• PC Windows — pasang aplikasi PurpleHere untuk Windows (atau QZ Tray) untuk mencetak ke pencetak USB dan rangkaian\n• Tablet Android — pasang aplikasi PurpleHere untuk Android untuk mencetak ke pencetak rangkaian dan Bluetooth\n• Muat turun aplikasi di purplehere.com/download\n\nCara pencetakan berfungsi:\n• Tiket dapur dicetak secara automatik dari POS yang ditetapkan sebagai stesen cetakan — termasuk pesanan dari QR, kiosk dan peranti lain\n• Setiap item boleh dihalakan ke pencetak stesen dapurnya sendiri (contohnya dapur atau bar)\n• Bil dan resit dicetak dari POS\n\nPetua:\n• Gunakan pencetak resit terma 80mm\n• Buat cetakan ujian dari Tetapan sebelum mula beroperasi"
+        }
+      }
+    },
+    {
+      "legacy_id": 16,
+      "legacy_title_en": "Can I change my plan later?",
+      "slug": "change-plan",
+      "category_slug": "pricing",
+      "sort_order": 4,
+      "tr": {
+        "en": {
+          "title": "Can I change my plan later?",
+          "content": "Yes, you can change your plan yourself.\n\nHow to change:\n1. Log in and go to My Profile ▸ Subscription\n2. Choose a new plan or billing cycle\n3. Confirm the change\n\nUpgrading:\n• Takes effect immediately\n• You'll receive an invoice for the prorated difference for the rest of the current billing period\n\nDowngrading:\n• Takes effect at your next billing date\n• You keep your current features until then\n• Your current usage (staff, menu items, orders) must fit the new plan's limits\n\nBilling cycle:\n• You can switch from monthly to annual (takes effect at your next billing date)\n• Annual plans can't be switched back to monthly — contact support if needed\n\nNo fees for changing plans."
+        },
+        "ko": {
+          "title": "나중에 플랜을 바꿀 수 있나요?",
+          "content": "네, 직접 플랜을 바꿀 수 있어요.\n\n변경 방법:\n1. 로그인 후 내 프로필 ▸ Subscription 으로 이동하세요\n2. 새 플랜이나 결제 주기를 고르세요\n3. 변경을 확인하세요\n\n업그레이드:\n• 바로 적용돼요\n• 현재 결제 기간의 남은 기간만큼 차액 인보이스가 발행돼요\n\n다운그레이드:\n• 다음 결제일부터 적용돼요\n• 그때까지는 지금 기능을 그대로 쓸 수 있어요\n• 현재 사용량(직원, 메뉴 수, 주문 수)이 새 플랜 한도 안에 있어야 해요\n\n결제 주기:\n• 월 결제에서 연 결제로 바꿀 수 있어요(다음 결제일부터 적용)\n• 연 결제를 월 결제로 되돌릴 수는 없어요 — 필요하면 고객지원에 문의하세요\n\n플랜 변경 수수료는 없어요."
+        },
+        "zh": {
+          "title": "以后可以更换套餐吗？",
+          "content": "可以，您可以自行更换套餐。\n\n更换方法：\n1. 登录后进入 我的资料 ▸ Subscription\n2. 选择新套餐或计费周期\n3. 确认更换\n\n升级：\n• 立即生效\n• 您会收到本计费周期剩余时间的差价发票\n\n降级：\n• 从下一个账单日起生效\n• 在此之前可继续使用当前功能\n• 当前用量（员工、菜品数、订单数）必须在新套餐的限额之内\n\n计费周期：\n• 可从按月改为按年（从下一个账单日起生效）\n• 按年套餐不能改回按月——如有需要请联系客服\n\n更换套餐不收取任何费用。"
+        },
+        "ms": {
+          "title": "Bolehkah saya menukar pelan kemudian?",
+          "content": "Ya, anda boleh menukar pelan sendiri.\n\nCara menukar:\n1. Log masuk dan pergi ke Profil Saya ▸ Subscription\n2. Pilih pelan atau kitaran pengebilan baharu\n3. Sahkan perubahan\n\nNaik taraf:\n• Berkuat kuasa serta-merta\n• Anda akan menerima invois untuk perbezaan prorata bagi baki tempoh pengebilan semasa\n\nTurun taraf:\n• Berkuat kuasa pada tarikh pengebilan seterusnya\n• Anda mengekalkan ciri semasa sehingga itu\n• Penggunaan semasa (kakitangan, item menu, pesanan) mesti dalam had pelan baharu\n\nKitaran pengebilan:\n• Anda boleh bertukar daripada bulanan kepada tahunan (berkuat kuasa pada tarikh pengebilan seterusnya)\n• Pelan tahunan tidak boleh ditukar kembali kepada bulanan — hubungi sokongan jika perlu\n\nTiada caj untuk menukar pelan."
+        }
+      }
+    },
+    {
+      "legacy_id": 17,
+      "legacy_title_en": "Do you offer custom enterprise plans?",
+      "slug": "enterprise-plans",
+      "category_slug": "pricing",
+      "sort_order": 5,
+      "tr": {
+        "en": {
+          "title": "Do you offer enterprise plans?",
+          "content": "Yes. Enterprise plans are available for restaurants, brands, and food courts, with published prices on the Pricing page.\n\nEnterprise plans include our most complete feature set — for example inventory, recipes, and food cost tools, along with multi-outlet management for brands and food courts. See the Pricing page for the exact features of each plan.\n\nIdeal for:\n• Restaurant groups with many outlets\n• Food court operators\n• Franchise brands\n\nNeed something more?\nIf you have many outlets or special requirements, contact us via the Contact page (purplehere.com/contact) and choose \"Pricing Inquiry\". Our team will get back to you."
+        },
+        "ko": {
+          "title": "엔터프라이즈 플랜이 있나요?",
+          "content": "네. 레스토랑, 브랜드, 푸드코트용 Enterprise 플랜이 있고 가격은 요금 페이지에 공개돼 있어요.\n\nEnterprise 플랜은 가장 많은 기능을 담고 있어요. 예를 들어 재고·레시피·원가 도구와 브랜드·푸드코트의 다매장 관리가 포함돼요. 플랜별 정확한 기능은 요금 페이지에서 확인하세요.\n\n이런 곳에 잘 맞아요:\n• 매장이 많은 레스토랑 그룹\n• 푸드코트 운영사\n• 프랜차이즈 브랜드\n\n더 필요한 게 있으신가요?\n매장 수가 많거나 특별한 요구사항이 있으면 문의하기 페이지(purplehere.com/contact)에서 \"Pricing Inquiry\"를 선택해 연락 주세요. 담당자가 답변드려요."
+        },
+        "zh": {
+          "title": "你们提供企业版套餐吗？",
+          "content": "提供。餐厅、品牌和美食广场都有 Enterprise 套餐，价格公布在价格页面上。\n\nEnterprise 套餐包含最完整的功能，例如库存、食谱和食材成本工具，以及品牌和美食广场的多门店管理。各套餐的具体功能请查看价格页面。\n\n适合：\n• 拥有多家门店的餐饮集团\n• 美食广场运营商\n• 连锁加盟品牌\n\n还有其他需求？\n如果您的门店较多或有特殊需求，请在联系我们页面（purplehere.com/contact）选择\"Pricing Inquiry\"与我们联系，我们的团队会尽快回复。"
+        },
+        "ms": {
+          "title": "Adakah anda menawarkan pelan perusahaan?",
+          "content": "Ya. Pelan Enterprise tersedia untuk restoran, jenama dan medan selera, dengan harga yang diterbitkan di halaman Harga.\n\nPelan Enterprise merangkumi set ciri kami yang paling lengkap — contohnya alat inventori, resipi dan kos makanan, serta pengurusan pelbagai cawangan untuk jenama dan medan selera. Lihat halaman Harga untuk ciri tepat setiap pelan.\n\nSesuai untuk:\n• Kumpulan restoran dengan banyak cawangan\n• Pengendali medan selera\n• Jenama francais\n\nPerlukan lebih lagi?\nJika anda mempunyai banyak cawangan atau keperluan khas, hubungi kami melalui halaman Hubungi Kami (purplehere.com/contact) dan pilih \"Pricing Inquiry\". Pasukan kami akan menghubungi anda."
+        }
+      }
+    },
+    {
+      "legacy_id": 37,
+      "legacy_title_en": "Can I include a subscription plan with my hardware quote?",
+      "slug": "subscription-with-hardware-quote",
+      "category_slug": "pricing",
+      "sort_order": 10,
+      "tr": {
+        "en": {
+          "title": "Can I include a subscription plan with my hardware quote?",
+          "content": "<p>Yes. When submitting a hardware setup quote, you can optionally select a software subscription plan and billing cycle (monthly or annual). If selected, both a hardware invoice and a subscription invoice are created when our team processes your quote.</p>"
+        },
+        "ko": {
+          "title": "하드웨어 견적에 구독 플랜도 함께 넣을 수 있나요?",
+          "content": "<p>네. 하드웨어 설치 견적을 보낼 때 소프트웨어 구독 플랜과 결제 주기(월 또는 연)를 함께 고를 수 있어요(선택 사항). 고르시면 저희가 견적을 처리할 때 하드웨어 인보이스와 구독 인보이스가 함께 발행돼요.</p>"
+        },
+        "zh": {
+          "title": "硬件报价中可以加上订阅套餐吗？",
+          "content": "<p>可以。提交硬件安装报价时，您可以选择性地加上软件订阅套餐和计费周期（按月或按年）。如果选择了套餐，我们处理报价时会同时开出硬件发票和订阅发票。</p>"
+        },
+        "ms": {
+          "title": "Bolehkah saya memasukkan pelan langganan dalam sebut harga perkakasan?",
+          "content": "<p>Ya. Semasa menghantar sebut harga pemasangan perkakasan, anda boleh memilih pelan langganan perisian dan kitaran pengebilan (bulanan atau tahunan) secara pilihan. Jika dipilih, invois perkakasan dan invois langganan akan dicipta apabila pasukan kami memproses sebut harga anda.</p>"
+        }
+      }
+    },
+    {
+      "legacy_id": 38,
+      "legacy_title_en": "Do I need to buy hardware from PurpleHere to use the software?",
+      "slug": "hardware-not-required",
+      "category_slug": "getting-started",
+      "sort_order": 10,
+      "tr": {
+        "en": {
+          "title": "Do I need to buy hardware from PurpleHere to use the software?",
+          "content": "<p>No. PurpleHere works on any modern tablet, PC, or smartphone with a web browser. You can subscribe to the software and use your own devices and printers. For printing and card terminals on the counter, install the free PurpleHere app for Android or Windows (purplehere.com/download). Hardware packages are also available if you prefer a ready-made setup.</p>"
+        },
+        "ko": {
+          "title": "소프트웨어를 쓰려면 PurpleHere에서 하드웨어를 사야 하나요?",
+          "content": "<p>아니요. PurpleHere는 웹 브라우저가 있는 최신 태블릿, PC, 스마트폰이면 어디서나 작동해요. 소프트웨어만 구독하고 갖고 계신 기기와 프린터를 그대로 쓰셔도 돼요. 카운터에서 인쇄와 카드 단말기를 쓰려면 안드로이드 또는 Windows용 무료 PurpleHere 앱을 설치하세요(purplehere.com/download). 바로 쓸 수 있는 구성을 원하시면 하드웨어 패키지도 있어요.</p>"
+        },
+        "zh": {
+          "title": "使用软件必须向 PurpleHere 购买硬件吗？",
+          "content": "<p>不需要。PurpleHere 可在任何装有网页浏览器的现代平板、电脑或智能手机上使用。您可以只订阅软件，继续使用自己的设备和打印机。如需在收银台打印或连接刷卡机，请安装免费的 PurpleHere Android 或 Windows 应用（purplehere.com/download）。如果您希望直接使用现成的配置，我们也提供硬件套装。</p>"
+        },
+        "ms": {
+          "title": "Perlukah saya membeli perkakasan daripada PurpleHere untuk menggunakan perisian?",
+          "content": "<p>Tidak. PurpleHere berfungsi pada mana-mana tablet, PC atau telefon pintar moden dengan pelayar web. Anda boleh melanggan perisian sahaja dan menggunakan peranti serta pencetak anda sendiri. Untuk mencetak dan menggunakan terminal kad di kaunter, pasang aplikasi PurpleHere percuma untuk Android atau Windows (purplehere.com/download). Pakej perkakasan juga tersedia jika anda mahukan susunan yang siap digunakan.</p>"
+        }
+      }
+    },
+    {
+      "legacy_id": 47,
+      "legacy_title_en": "How do I set up unit numbers for my foodcourt branches?",
+      "slug": "foodcourt-unit-numbers",
+      "category_slug": "features",
+      "sort_order": 10,
+      "tr": {
+        "en": {
+          "title": "How do I set up unit numbers for my food court branches?",
+          "content": "PurpleHere lets food court operators set up unit numbers for each branch with a flexible, free-form editor.\n\nWhere to find it:\n1. Go to Foodcourt → Branches\n2. Click \"Edit\" on a branch\n3. Open the \"Unit Numbering\" section\n\nHow it works:\n• Turn Unit Numbering on\n• Add one or more zones (e.g. \"Level 1 Food Stalls\", \"Kiosks\")\n• Set an optional prefix per zone (e.g. \"L1-\", \"P-2-\")\n• Type unit numbers separated by commas or new lines, or use ranges\n• Ranges expand automatically (e.g. \"01-20\" becomes 20 units)\n• Preview before saving — units linked to a contract are protected from deletion\n\nOnce saved, the units appear in your contract unit list and in the Floor Plan editor's \"Unplaced Stores\" list."
+        },
+        "ko": {
+          "title": "푸드코트 지점의 유닛 번호는 어떻게 설정하나요?",
+          "content": "PurpleHere에서는 푸드코트 운영사가 지점별 유닛 번호를 자유 형식 편집기로 설정할 수 있어요.\n\n위치:\n1. Foodcourt → Branches 로 이동하세요\n2. 지점에서 \"Edit\"를 누르세요\n3. \"Unit Numbering\" 항목을 여세요\n\n사용 방법:\n• Unit Numbering 을 켜세요\n• 구역을 하나 이상 추가하세요(예: \"1층 푸드 스톨\", \"키오스크\")\n• 구역마다 접두어를 넣을 수 있어요(예: \"L1-\", \"P-2-\")\n• 유닛 번호를 쉼표나 줄바꿈으로 구분해 입력하거나 범위로 입력하세요\n• 범위는 자동으로 펼쳐져요(예: \"01-20\"은 유닛 20개)\n• 저장 전에 미리보기로 확인하세요 — 계약에 연결된 유닛은 삭제되지 않아요\n\n저장하면 유닛이 계약 유닛 목록과 배치도 편집기의 \"Unplaced Stores\" 목록에 나타나요."
+        },
+        "zh": {
+          "title": "如何为美食广场分店设置铺位编号？",
+          "content": "PurpleHere 让美食广场运营商可以通过灵活的自由格式编辑器为每个分店设置铺位编号。\n\n位置：\n1. 前往 Foodcourt → Branches\n2. 在分店上点击\"Edit\"\n3. 打开\"Unit Numbering\"部分\n\n使用方法：\n• 开启 Unit Numbering\n• 添加一个或多个区域（例如\"一楼美食档口\"、\"小亭\"）\n• 可为每个区域设置前缀（例如\"L1-\"、\"P-2-\"）\n• 用逗号或换行分隔输入铺位编号，或使用范围\n• 范围会自动展开（例如\"01-20\"即 20 个铺位）\n• 保存前可预览——已关联合同的铺位不会被删除\n\n保存后，铺位会出现在合同铺位列表以及平面图编辑器的\"Unplaced Stores\"列表中。"
+        },
+        "ms": {
+          "title": "Bagaimana saya menetapkan nombor unit untuk cawangan medan selera?",
+          "content": "PurpleHere membolehkan pengendali medan selera menetapkan nombor unit untuk setiap cawangan dengan editor bentuk bebas yang fleksibel.\n\nLokasi:\n1. Pergi ke Foodcourt → Branches\n2. Klik \"Edit\" pada cawangan\n3. Buka bahagian \"Unit Numbering\"\n\nCara ia berfungsi:\n• Hidupkan Unit Numbering\n• Tambah satu atau lebih zon (cth. \"Gerai Makanan Aras 1\", \"Kiosk\")\n• Tetapkan awalan pilihan bagi setiap zon (cth. \"L1-\", \"P-2-\")\n• Taip nombor unit dipisahkan dengan koma atau baris baharu, atau gunakan julat\n• Julat dikembangkan secara automatik (cth. \"01-20\" menjadi 20 unit)\n• Pratonton sebelum menyimpan — unit yang dipautkan pada kontrak dilindungi daripada dipadam\n\nSelepas disimpan, unit akan muncul dalam senarai unit kontrak dan dalam senarai \"Unplaced Stores\" editor Pelan Lantai."
+        }
+      }
+    },
+    {
+      "legacy_id": 48,
+      "legacy_title_en": "Can I use range notation like P-2-01A-05A for unit numbers?",
+      "slug": "unit-number-range-notation",
+      "category_slug": "features",
+      "sort_order": 11,
+      "tr": {
+        "en": {
+          "title": "Can I use range notation like P-2-01A-05A for unit numbers?",
+          "content": "Yes. The Unit Numbering editor supports several range formats so you don't have to type every unit.\n\nSupported range formats:\n• Numeric: \"01-20\" → 01, 02, 03 … 20 (20 units)\n• Letter prefix: \"A01-A10\" → A01, A02 … A10 (10 units)\n• Letter suffix: \"05A-08A\" → 05A, 06A, 07A, 08A (4 units)\n• Complex prefix: \"P-2-01A-05A\" → P-2-01A, P-2-02A … P-2-05A (5 units)\n\nMixing:\n• Combine ranges and single numbers with commas or new lines\n• Example: \"01-10, 15, 20A-22A\" → 14 units\n\nThe preview shows exactly what will be created before you save. Units already linked to active contracts are kept, not overwritten."
+        },
+        "ko": {
+          "title": "P-2-01A-05A 같은 범위 표기로 유닛 번호를 넣을 수 있나요?",
+          "content": "네. 유닛 번호 편집기는 여러 범위 형식을 지원해서 유닛을 하나하나 입력하지 않아도 돼요.\n\n지원하는 범위 형식:\n• 숫자: \"01-20\" → 01, 02, 03 … 20(20개)\n• 앞 글자: \"A01-A10\" → A01, A02 … A10(10개)\n• 뒤 글자: \"05A-08A\" → 05A, 06A, 07A, 08A(4개)\n• 복합 접두어: \"P-2-01A-05A\" → P-2-01A, P-2-02A … P-2-05A(5개)\n\n섞어 쓰기:\n• 범위와 개별 번호를 쉼표나 줄바꿈으로 함께 쓸 수 있어요\n• 예: \"01-10, 15, 20A-22A\" → 14개\n\n저장 전 미리보기에서 만들어질 유닛을 정확히 보여 줘요. 진행 중인 계약에 연결된 유닛은 덮어쓰지 않고 그대로 유지돼요."
+        },
+        "zh": {
+          "title": "可以用 P-2-01A-05A 这样的范围写法输入铺位编号吗？",
+          "content": "可以。铺位编号编辑器支持多种范围格式，无需逐个输入。\n\n支持的范围格式：\n• 数字：\"01-20\" → 01、02、03 … 20（20 个）\n• 字母前缀：\"A01-A10\" → A01、A02 … A10（10 个）\n• 字母后缀：\"05A-08A\" → 05A、06A、07A、08A（4 个）\n• 复合前缀：\"P-2-01A-05A\" → P-2-01A、P-2-02A … P-2-05A（5 个）\n\n混合使用：\n• 可用逗号或换行将范围与单个编号组合\n• 例如：\"01-10, 15, 20A-22A\" → 14 个\n\n保存前的预览会准确显示将要创建的铺位。已关联有效合同的铺位会保留，不会被覆盖。"
+        },
+        "ms": {
+          "title": "Bolehkah saya menggunakan tatatanda julat seperti P-2-01A-05A untuk nombor unit?",
+          "content": "Ya. Editor Penomboran Unit menyokong beberapa format julat supaya anda tidak perlu menaip setiap unit.\n\nFormat julat yang disokong:\n• Nombor: \"01-20\" → 01, 02, 03 … 20 (20 unit)\n• Awalan huruf: \"A01-A10\" → A01, A02 … A10 (10 unit)\n• Akhiran huruf: \"05A-08A\" → 05A, 06A, 07A, 08A (4 unit)\n• Awalan kompleks: \"P-2-01A-05A\" → P-2-01A, P-2-02A … P-2-05A (5 unit)\n\nMenggabungkan:\n• Gabungkan julat dan nombor tunggal dengan koma atau baris baharu\n• Contoh: \"01-10, 15, 20A-22A\" → 14 unit\n\nPratonton menunjukkan dengan tepat apa yang akan dicipta sebelum anda menyimpan. Unit yang sudah dipautkan pada kontrak aktif dikekalkan, tidak ditimpa."
+        }
+      }
+    },
+    {
+      "legacy_id": 49,
+      "legacy_title_en": "How do I create a visual floor plan for my foodcourt?",
+      "slug": "foodcourt-floor-plan",
+      "category_slug": "features",
+      "sort_order": 12,
+      "tr": {
+        "en": {
+          "title": "How do I create a visual floor plan for my food court?",
+          "content": "PurpleHere includes a drag-and-drop Floor Plan editor for arranging tenant stores on a 2D layout.\n\nGetting started:\n1. Go to Foodcourt → Floor Plan (opens in a new window)\n2. Select a branch at the top\n3. Click \"Edit Floor Plan\"\n4. A blank layout is created on your first visit — one floor plan per branch\n\nAdding stores:\n• Click \"Add Store\" in the left panel\n• Choose a shape: rectangle, rounded rectangle, circle, or triangle\n• Drag units from the \"Unplaced\" list to place units that exist but aren't positioned yet\n\nEditing stores:\n• Drag to move; use the corner handles to resize\n• Click a store to edit its name, shape, colour, and see contract info\n• Undo and redo are supported\n\nSaving and viewing:\n• Click \"Save Layout\" to save\n• The read-only view shows the final layout, with contract and tenant info when you click a store"
+        },
+        "ko": {
+          "title": "푸드코트 배치도는 어떻게 만드나요?",
+          "content": "PurpleHere에는 입점 매장을 2D 화면에 배치하는 끌어놓기 방식의 배치도 편집기가 있어요.\n\n시작하기:\n1. Foodcourt → Floor Plan 으로 이동하세요(새 창으로 열려요)\n2. 위에서 지점을 고르세요\n3. \"Edit Floor Plan\"을 누르세요\n4. 처음 들어가면 빈 배치도가 만들어져요 — 지점마다 배치도 1개\n\n매장 추가:\n• 왼쪽 패널에서 \"Add Store\"를 누르세요\n• 모양을 고르세요: 사각형, 둥근 사각형, 원, 삼각형\n• 아직 배치되지 않은 유닛은 \"Unplaced\" 목록에서 끌어다 놓으세요\n\n매장 수정:\n• 끌어서 옮기고, 모서리 핸들로 크기를 바꾸세요\n• 매장을 누르면 이름, 모양, 색을 바꾸고 계약 정보를 볼 수 있어요\n• 실행 취소와 다시 실행을 지원해요\n\n저장과 보기:\n• \"Save Layout\"을 눌러 저장하세요\n• 보기 화면에서 완성된 배치도를 볼 수 있고, 매장을 누르면 계약과 입점사 정보가 나와요"
+        },
+        "zh": {
+          "title": "如何为美食广场创建可视化平面图？",
+          "content": "PurpleHere 提供拖放式平面图编辑器，可在 2D 布局上排列入驻店铺。\n\n开始：\n1. 前往 Foodcourt → Floor Plan（在新窗口中打开）\n2. 在顶部选择分店\n3. 点击\"Edit Floor Plan\"\n4. 首次进入时会自动创建空白布局——每个分店一张平面图\n\n添加店铺：\n• 点击左侧面板中的\"Add Store\"\n• 选择形状：矩形、圆角矩形、圆形或三角形\n• 从\"Unplaced\"列表中拖放尚未摆放的铺位\n\n编辑店铺：\n• 拖动可移动，拖动角点可调整大小\n• 点击店铺可修改名称、形状、颜色并查看合同信息\n• 支持撤销和重做\n\n保存与查看：\n• 点击\"Save Layout\"保存\n• 只读视图显示最终布局，点击店铺即可查看合同和租户信息"
+        },
+        "ms": {
+          "title": "Bagaimana saya mencipta pelan lantai visual untuk medan selera saya?",
+          "content": "PurpleHere menyediakan editor Pelan Lantai seret dan lepas untuk menyusun kedai penyewa pada susun atur 2D.\n\nBermula:\n1. Pergi ke Foodcourt → Floor Plan (dibuka dalam tetingkap baharu)\n2. Pilih cawangan di bahagian atas\n3. Klik \"Edit Floor Plan\"\n4. Susun atur kosong dicipta pada lawatan pertama — satu pelan lantai bagi setiap cawangan\n\nMenambah kedai:\n• Klik \"Add Store\" di panel kiri\n• Pilih bentuk: segi empat tepat, segi empat bucu bulat, bulatan atau segi tiga\n• Seret unit dari senarai \"Unplaced\" untuk meletakkan unit yang wujud tetapi belum diletakkan\n\nMenyunting kedai:\n• Seret untuk mengalihkan; gunakan pemegang sudut untuk mengubah saiz\n• Klik kedai untuk menyunting nama, bentuk, warna dan melihat maklumat kontrak\n• Buat asal dan buat semula disokong\n\nMenyimpan dan melihat:\n• Klik \"Save Layout\" untuk menyimpan\n• Paparan baca sahaja menunjukkan susun atur akhir, dengan maklumat kontrak dan penyewa apabila anda klik kedai"
+        }
+      }
+    },
+    {
+      "legacy_id": 50,
+      "legacy_title_en": "What is the Franchise Map for brand owners?",
+      "slug": "franchise-map",
+      "category_slug": "features",
+      "sort_order": 13,
+      "tr": {
+        "en": {
+          "title": "What is the Franchise Map for brand owners?",
+          "content": "The Franchise Map gives brand owners a map view of every restaurant operating under their brands.\n\nWhere to find it:\n• Sidebar \"Franchise Map\" (opens as a full window)\n\nWhat it shows:\n• Every restaurant pinned on an OpenStreetMap map\n• Pin shape shows the relationship: ★ franchise, ● directly operated\n• Pin colour shows restaurant status (active, pending, suspended, etc.)\n• Pin size reflects 30-day sales — bigger pins mean higher sales\n• Dotted circles around franchise pins show the territory radius from exclusivity terms\n\nInteraction:\n• Click a pin to see restaurant info, contract summary, and recent sales\n• The side list shows all mapped restaurants, sortable by name, status, or sales\n• Restaurants without coordinates are listed separately so you can add them\n\nIf you manage several brands, switch brands from the dropdown at the top."
+        },
+        "ko": {
+          "title": "브랜드 오너용 가맹 지도(Franchise Map)는 무엇인가요?",
+          "content": "가맹 지도는 브랜드 오너가 자기 브랜드로 운영 중인 모든 레스토랑을 지도로 보는 기능이에요.\n\n위치:\n• 사이드바 \"가맹 지도\"(전체 창으로 열려요)\n\n보여 주는 내용:\n• 모든 레스토랑이 OpenStreetMap 지도에 표시돼요\n• 핀 모양은 관계를 나타내요: ★ 가맹점, ● 직영점\n• 핀 색은 레스토랑 상태(활성, 대기, 정지 등)를 나타내요\n• 핀 크기는 최근 30일 매출을 반영해요 — 클수록 매출이 높아요\n• 가맹점 핀 주변 점선 원은 독점 조건의 영업 반경이에요\n\n사용법:\n• 핀을 누르면 레스토랑 정보, 계약 요약, 최근 매출을 볼 수 있어요\n• 옆 목록에서 지도에 있는 모든 레스토랑을 이름, 상태, 매출 순으로 정렬해요\n• 좌표가 없는 레스토랑은 따로 표시돼서 채워 넣을 수 있어요\n\n여러 브랜드를 관리하신다면 위쪽 선택 메뉴에서 브랜드를 바꾸세요."
+        },
+        "zh": {
+          "title": "品牌业主的加盟地图是什么？",
+          "content": "加盟地图让品牌业主在地图上查看旗下品牌运营的所有餐厅。\n\n位置：\n• 侧边栏\"加盟地图\"（以完整窗口打开）\n\n显示内容：\n• 所有餐厅标注在 OpenStreetMap 地图上\n• 标记形状表示关系：★ 加盟店，● 直营店\n• 标记颜色表示餐厅状态（启用、待处理、已暂停等）\n• 标记大小反映近 30 天销售额——越大销售越高\n• 加盟店标记周围的虚线圆表示独家条款中的商圈半径\n\n操作：\n• 点击标记可查看餐厅信息、合同摘要和近期销售\n• 侧边列表显示地图上的所有餐厅，可按名称、状态或销售排序\n• 缺少坐标的餐厅会单独列出，方便补充\n\n如果您管理多个品牌，可在顶部下拉菜单中切换品牌。"
+        },
+        "ms": {
+          "title": "Apakah Peta Francais untuk pemilik jenama?",
+          "content": "Peta Francais memberi pemilik jenama paparan peta bagi setiap restoran yang beroperasi di bawah jenama mereka.\n\nLokasi:\n• Bar sisi \"Peta Francais\" (dibuka sebagai tetingkap penuh)\n\nApa yang dipaparkan:\n• Setiap restoran ditanda pada peta OpenStreetMap\n• Bentuk pin menunjukkan hubungan: ★ francais, ● dikendalikan sendiri\n• Warna pin menunjukkan status restoran (aktif, menunggu, digantung, dll.)\n• Saiz pin mencerminkan jualan 30 hari — pin lebih besar bermaksud jualan lebih tinggi\n• Bulatan bertitik di sekitar pin francais menunjukkan radius wilayah daripada terma eksklusif\n\nInteraksi:\n• Klik pin untuk melihat maklumat restoran, ringkasan kontrak dan jualan terkini\n• Senarai sisi menunjukkan semua restoran pada peta, boleh diisih mengikut nama, status atau jualan\n• Restoran tanpa koordinat disenaraikan berasingan supaya anda boleh melengkapkannya\n\nJika anda mengurus beberapa jenama, tukar jenama dari menu lungsur di bahagian atas."
+        }
+      }
+    },
+    {
+      "legacy_id": 51,
+      "legacy_title_en": "How does the Foodcourt Tenancy Map show branch locations?",
+      "slug": "foodcourt-tenancy-map",
+      "category_slug": "features",
+      "sort_order": 14,
+      "tr": {
+        "en": {
+          "title": "How does the Food Court Tenancy Map show branch locations?",
+          "content": "The Tenancy Map is a map view for food court operators with branches in different locations.\n\nWhere to find it:\n• Foodcourt → Tenancy Management → Map tab, or the sidebar \"Branch Map\" (full window)\n\nWhat you see:\n• Each branch pinned on the map\n• The pin label shows the branch's occupancy (e.g. \"78%\" = 78% of units under an active contract)\n• Click a branch to see its tenant restaurants\n• The tenant list shows restaurant name, unit number, contract status, and 30-day sales\n\nUse cases:\n• Compare branches across a city or region\n• Spot under-occupied branches\n• Review the tenant mix before new contract negotiations\n\nWhen you save a branch address, PurpleHere looks up its map coordinates automatically. You can also enter latitude and longitude manually."
+        },
+        "ko": {
+          "title": "푸드코트 임대 지도는 지점 위치를 어떻게 보여 주나요?",
+          "content": "임대 지도는 여러 지역에 지점을 둔 푸드코트 운영사를 위한 지도 화면이에요.\n\n위치:\n• Foodcourt → Tenancy Management → Map 탭, 또는 사이드바 \"Branch Map\"(전체 창)\n\n보이는 내용:\n• 각 지점이 지도에 표시돼요\n• 핀 라벨은 지점 입점률이에요(예: \"78%\" = 유닛의 78%가 계약 중)\n• 지점을 누르면 그 지점의 입점 레스토랑이 보여요\n• 입점사 목록에는 레스토랑 이름, 유닛 번호, 계약 상태, 최근 30일 매출이 나와요\n\n활용 예:\n• 도시·지역별 지점 비교\n• 입점률이 낮은 지점 찾기\n• 새 계약 협상 전 입점 구성 확인\n\n지점 주소를 저장하면 PurpleHere가 지도 좌표를 자동으로 찾아요. 위도와 경도를 직접 입력할 수도 있어요."
+        },
+        "zh": {
+          "title": "美食广场租赁地图如何显示分店位置？",
+          "content": "租赁地图是为在不同地点拥有分店的美食广场运营商设计的地图视图。\n\n位置：\n• Foodcourt → Tenancy Management → Map 标签，或侧边栏\"Branch Map\"（完整窗口）\n\n显示内容：\n• 每个分店标注在地图上\n• 标记标签显示分店出租率（例如\"78%\"表示 78% 的铺位有有效合同）\n• 点击分店可查看其中的入驻餐厅\n• 租户列表显示餐厅名称、铺位编号、合同状态和近 30 天销售额\n\n用途：\n• 比较同一城市或地区的各分店\n• 找出出租率偏低的分店\n• 在洽谈新合同前了解租户组合\n\n保存分店地址时，PurpleHere 会自动查找地图坐标。您也可以手动输入经纬度。"
+        },
+        "ms": {
+          "title": "Bagaimanakah Peta Penyewaan Medan Selera menunjukkan lokasi cawangan?",
+          "content": "Peta Penyewaan ialah paparan peta untuk pengendali medan selera yang mempunyai cawangan di lokasi berbeza.\n\nLokasi:\n• Foodcourt → Tenancy Management → tab Map, atau bar sisi \"Branch Map\" (tetingkap penuh)\n\nApa yang anda lihat:\n• Setiap cawangan ditanda pada peta\n• Label pin menunjukkan kadar penghunian cawangan (cth. \"78%\" = 78% unit di bawah kontrak aktif)\n• Klik cawangan untuk melihat restoran penyewanya\n• Senarai penyewa menunjukkan nama restoran, nombor unit, status kontrak dan jualan 30 hari\n\nKegunaan:\n• Bandingkan cawangan di seluruh bandar atau wilayah\n• Kenal pasti cawangan yang kurang dihuni\n• Semak campuran penyewa sebelum rundingan kontrak baharu\n\nApabila anda menyimpan alamat cawangan, PurpleHere mencari koordinat peta secara automatik. Anda juga boleh memasukkan latitud dan longitud secara manual."
+        }
+      }
+    },
+    {
+      "legacy_id": 52,
+      "legacy_title_en": "Do Floor Plan, Unit Numbering, and Maps cost extra?",
+      "slug": "floor-plan-maps-included",
+      "category_slug": "features",
+      "sort_order": 15,
+      "tr": {
+        "en": {
+          "title": "Do Floor Plan, Unit Numbering, and Maps cost extra?",
+          "content": "No. These features are included in Brand and Food Court plans at no extra cost:\n\n• Brand plans: Franchise Management and the Franchise Map\n• Food Court plans: Branch Management, Unit Numbering, Floor Plan, and the Tenancy Map\n\nUnit Numbering is part of Branch Management and turns on automatically.\n\nIf you're on an older plan that doesn't show these features, contact support and we'll update your plan at no charge."
+        },
+        "ko": {
+          "title": "배치도, 유닛 번호, 지도 기능은 추가 비용이 있나요?",
+          "content": "아니요. 이 기능들은 브랜드·푸드코트 플랜에 추가 비용 없이 포함돼 있어요.\n\n• 브랜드 플랜: 가맹 관리와 가맹 지도\n• 푸드코트 플랜: 지점 관리, 유닛 번호, 배치도, 임대 지도\n\n유닛 번호는 지점 관리의 일부라 자동으로 켜져요.\n\n예전 플랜이라 이 기능이 보이지 않으면 고객지원에 문의해 주세요. 무료로 플랜을 업데이트해 드려요."
+        },
+        "zh": {
+          "title": "平面图、铺位编号和地图需要额外付费吗？",
+          "content": "不需要。这些功能已包含在品牌和美食广场套餐中，无需额外付费：\n\n• 品牌套餐：加盟管理和加盟地图\n• 美食广场套餐：分店管理、铺位编号、平面图和租赁地图\n\n铺位编号属于分店管理的一部分，会自动开启。\n\n如果您使用的是旧套餐且看不到这些功能，请联系客服，我们会免费为您更新套餐。"
+        },
+        "ms": {
+          "title": "Adakah Pelan Lantai, Penomboran Unit dan Peta dikenakan caj tambahan?",
+          "content": "Tidak. Ciri-ciri ini termasuk dalam pelan Jenama dan Medan Selera tanpa kos tambahan:\n\n• Pelan Jenama: Pengurusan Francais dan Peta Francais\n• Pelan Medan Selera: Pengurusan Cawangan, Penomboran Unit, Pelan Lantai dan Peta Penyewaan\n\nPenomboran Unit ialah sebahagian daripada Pengurusan Cawangan dan dihidupkan secara automatik.\n\nJika anda menggunakan pelan lama yang tidak menunjukkan ciri-ciri ini, hubungi sokongan dan kami akan mengemas kini pelan anda tanpa caj."
+        }
+      }
+    },
+    {
+      "legacy_id": 34,
+      "legacy_title_en": "How does QR code mobile ordering work?",
+      "slug": "qr-code-mobile-ordering",
+      "category_slug": "features",
+      "sort_order": 30,
+      "tr": {
+        "en": {
+          "title": "How does QR code mobile ordering work?",
+          "content": "<p>Each table gets its own QR code, which you can print from Settings or the Floor Plan. Customers scan it with their phone to see your menu, order, and pay — no app needed. The order goes straight to your POS, kitchen display, and kitchen printer.</p><p>You can choose Static mode (a permanent QR code with no expiry) or Session mode (a QR code generated for each visit that expires after the number of hours you set), which helps prevent orders from people who aren't at the table.</p>"
+        },
+        "ko": {
+          "title": "QR 코드 모바일 주문은 어떻게 작동하나요?",
+          "content": "<p>테이블마다 고유 QR 코드가 있고, 설정이나 배치도에서 인쇄할 수 있어요. 고객이 폰으로 스캔하면 앱 설치 없이 메뉴를 보고 주문하고 결제할 수 있어요. 주문은 POS, 주방 디스플레이, 주방 프린터로 바로 전달돼요.</p><p>QR 방식은 Static(만료 없는 고정 QR)과 Session(방문마다 새로 만들어지고 정한 시간이 지나면 만료되는 QR) 중에서 고를 수 있어요. Session 방식은 테이블에 없는 사람이 주문하는 것을 막는 데 도움이 돼요.</p>"
+        },
+        "zh": {
+          "title": "二维码扫码点餐如何运作？",
+          "content": "<p>每张桌子都有专属二维码，可在设置或平面图中打印。顾客用手机扫码即可查看菜单、点餐和付款，无需安装应用。订单会直接送到 POS、厨房显示屏和厨房打印机。</p><p>您可以选择 Static 模式（永久二维码，不会过期）或 Session 模式（每次到店生成新二维码，并在您设定的小时数后过期），后者有助于防止不在桌边的人下单。</p>"
+        },
+        "ms": {
+          "title": "Bagaimanakah pesanan mudah alih melalui kod QR berfungsi?",
+          "content": "<p>Setiap meja mendapat kod QR tersendiri, yang boleh anda cetak dari Tetapan atau Pelan Lantai. Pelanggan mengimbasnya dengan telefon untuk melihat menu, membuat pesanan dan membayar — tanpa perlu aplikasi. Pesanan terus dihantar ke POS, paparan dapur dan pencetak dapur anda.</p><p>Anda boleh memilih mod Static (kod QR kekal tanpa tamat tempoh) atau mod Session (kod QR dijana untuk setiap lawatan dan tamat tempoh selepas bilangan jam yang anda tetapkan), yang membantu mengelakkan pesanan daripada orang yang tiada di meja.</p>"
+        }
+      }
+    },
+    {
+      "legacy_id": 35,
+      "legacy_title_en": "Can I create invoices for non-member customers?",
+      "slug": "non-member-invoicing",
+      "category_slug": "features",
+      "sort_order": 31,
+      "tr": {
+        "en": {
+          "title": "Can I create invoices for non-member customers?",
+          "content": "<p>Yes. When creating a manual invoice, choose \"Non-Member\" and enter the customer's name, email, company, and address. The invoice is created and can be sent by email. If the customer later creates an account, the existing invoice can be linked to it.</p>"
+        },
+        "ko": {
+          "title": "회원이 아닌 고객에게도 인보이스를 발행할 수 있나요?",
+          "content": "<p>네. 인보이스를 직접 만들 때 \"Non-Member\"를 고르고 고객 이름, 이메일, 회사, 주소를 입력하세요. 인보이스가 만들어지고 이메일로 보낼 수 있어요. 나중에 고객이 계정을 만들면 기존 인보이스를 그 계정에 연결할 수 있어요.</p>"
+        },
+        "zh": {
+          "title": "可以为非会员顾客开发票吗？",
+          "content": "<p>可以。手动创建发票时，选择\"Non-Member\"并填写顾客姓名、邮箱、公司和地址。发票创建后可通过电子邮件发送。如果顾客之后注册了账号，可以将现有发票关联到该账号。</p>"
+        },
+        "ms": {
+          "title": "Bolehkah saya mencipta invois untuk pelanggan bukan ahli?",
+          "content": "<p>Ya. Semasa mencipta invois manual, pilih \"Non-Member\" dan masukkan nama, e-mel, syarikat dan alamat pelanggan. Invois akan dicipta dan boleh dihantar melalui e-mel. Jika pelanggan kemudian mencipta akaun, invois sedia ada boleh dipautkan kepada akaun tersebut.</p>"
+        }
+      }
+    },
+    {
+      "legacy_id": 36,
+      "legacy_title_en": "What is the Setup Quote page?",
+      "slug": "setup-quote-page",
+      "category_slug": "features",
+      "sort_order": 32,
+      "tr": {
+        "en": {
+          "title": "What is the Setup Quote page?",
+          "content": "<p>The Setup Quote page (purplehere.com/packages) lets you configure a POS hardware package — tablets, printers, touchscreens, and accessories. Choose a package and any add-ons, optionally add a software plan, and submit a quote request. Our team reviews it and contacts you to proceed.</p>"
+        },
+        "ko": {
+          "title": "설치 견적(Setup Quote) 페이지는 무엇인가요?",
+          "content": "<p>설치 견적 페이지(purplehere.com/packages)에서는 태블릿, 프린터, 터치스크린, 액세서리로 POS 하드웨어 패키지를 구성할 수 있어요. 패키지와 추가 품목을 고르고, 원하면 소프트웨어 플랜도 넣어서 견적을 요청하세요. 저희 팀이 검토한 뒤 연락드려요.</p>"
+        },
+        "zh": {
+          "title": "什么是安装报价（Setup Quote）页面？",
+          "content": "<p>安装报价页面（purplehere.com/packages）让您配置 POS 硬件套装——平板、打印机、触摸屏和配件。选择套装和附加项目，也可以加上软件套餐，然后提交报价请求。我们的团队审核后会与您联系。</p>"
+        },
+        "ms": {
+          "title": "Apakah halaman Setup Quote?",
+          "content": "<p>Halaman Setup Quote (purplehere.com/packages) membolehkan anda mengkonfigurasi pakej perkakasan POS — tablet, pencetak, skrin sentuh dan aksesori. Pilih pakej dan sebarang tambahan, tambah pelan perisian jika mahu, dan hantar permintaan sebut harga. Pasukan kami akan menyemaknya dan menghubungi anda.</p>"
+        }
+      }
+    }
+  ]
+}
