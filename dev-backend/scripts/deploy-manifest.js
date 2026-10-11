@@ -19,6 +19,10 @@ const crypto = require('crypto');
 
 const ROOT = path.resolve(__dirname, '../..'); // /var/www
 const MANIFEST = path.join(ROOT, '.claude', 'deploy-manifest.json');
+// 지문을 뜨는 소스 폴더. 배포는 «마지막 커밋의 깨끗한 사본» 에서 나가므로(scripts/make-clean-source.sh)
+// --snapshot 은 `--root=<사본>` 으로 **실제로 보낸 사본**의 지문을 남긴다(2026-10-11). 기록 파일 자리는 ROOT 그대로.
+const rootArg = process.argv.find((a) => a.startsWith('--root='));
+const SRC_ROOT = rootArg ? path.resolve(rootArg.slice('--root='.length)) : ROOT;
 
 // 배포 rsync 가 실제로 운영에 보내는 소스 범위와 일치시킨다 (deploy-to-production.sh 참조).
 // dev-backend: --exclude node_modules/.env/uploads/*.log
@@ -38,7 +42,7 @@ function walk(dir, exclude, out) {
   try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
   for (const e of entries) {
     const abs = path.join(dir, e.name);
-    const rel = path.relative(ROOT, abs);
+    const rel = path.relative(SRC_ROOT, abs);
     if (exclude && (exclude.test(rel) || exclude.test(e.name))) continue;
     if (e.isSymbolicLink()) continue;
     if (e.isDirectory()) walk(abs, exclude, out);
@@ -49,11 +53,11 @@ function walk(dir, exclude, out) {
 function collectFiles() {
   const files = [];
   for (const s of SCOPES) {
-    const abs = path.join(ROOT, s.base);
+    const abs = path.join(SRC_ROOT, s.base);
     if (fs.existsSync(abs)) walk(abs, s.exclude, files);
   }
   for (const rf of ROOT_FILES) {
-    if (fs.existsSync(path.join(ROOT, rf)) && !files.includes(rf)) files.push(rf);
+    if (fs.existsSync(path.join(SRC_ROOT, rf)) && !files.includes(rf)) files.push(rf);
   }
   return files.sort();
 }
@@ -61,7 +65,7 @@ function collectFiles() {
 function hashTree() {
   const map = {};
   for (const rel of collectFiles()) {
-    try { map[rel] = crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
+    try { map[rel] = crypto.createHash('sha256').update(fs.readFileSync(path.join(SRC_ROOT, rel))).digest('hex'); }
     catch { /* 읽기 불가 파일은 스킵 */ }
   }
   return map;
@@ -95,6 +99,7 @@ if (require.main === module) {
     fs.writeFileSync(MANIFEST, JSON.stringify({
       note: '운영 배포 시점 소스 지문 — deploy-to-production.sh 성공 후 자동 기록. 수동 편집 금지.',
       created_at: new Date().toISOString(),
+      source_root: SRC_ROOT,
       file_count: Object.keys(files).length,
       files,
     }, null, 1) + '\n');

@@ -184,6 +184,25 @@ async function linkCatalogProductToRestaurant(rid, body = {}) {
     });
     if (already) { await t.commit(); return __r(already.status, already.body); }
 
+    // 자기 브랜드(GIT) 상품이면 매장 줄을 새로 만들지 않고 **브랜드 재료 줄(거울)에 붙인다**
+    //   (2026-10-11 Fable 판정 `fable-verdict-20261011-kdine-ingredient-tidy` R5 · Irene «우리 납품 브랜드로 공급업체 연결 제대로»).
+    //   전에는 위 «이미 연결됨» 이 매장 소유 줄만 봐서, 브랜드 줄이 이미 그 상품과 이어져 있어도 매장 줄을 또 만들었다
+    //   → 같은 물건 두 줄(레시피는 브랜드 줄 · 발주와 재고는 매장 줄). 판매자 brand 는 늘 이 매장의 부모 브랜드다(brandSellerEntityId).
+    //   거울이 없으면 상품 → 거울 1:1 로 만든다(추측 0 · 사람이 이 상품을 고른 순간 한 줄) — 레시피 화면과 같은 함수.
+    //   ⚠ 서비스 상품(product_kind='service' — 시간 단위 용역 등)은 재고·레시피 재료가 아니라 종전대로 매장 줄(수령해도 재고 무접촉 규칙이 그 줄에 걸려 있다).
+    if (seller.sellerType === 'brand' && seller.sellerProductRow.product_kind !== 'service') {
+      const { shareProductToBrand } = require('./stockItemMirror');
+      const { created, ingredient: mirror } = await shareProductToBrand(seller.sellerProductRow, seller.sellerEntityId, { transaction: t });
+      const IngredientSellerProduct = require('../models/IngredientSellerProduct');
+      const mapping = await IngredientSellerProduct.findOne({
+        where: { ingredient_id: mirror.id, buyer_restaurant_id: null, seller_type: 'brand',
+          seller_entity_id: seller.sellerEntityId, seller_product_id: seller.sellerProductRow.id },
+        transaction: t
+      });
+      await t.commit();
+      return __r(created ? 201 : 200, { success: true, data: { ingredient: mirror, mapping, created, brand_ingredient: true } });
+    }
+
     const ingredient = await Ingredient.create({
       owner_type: 'restaurant',
       restaurant_id: rid,

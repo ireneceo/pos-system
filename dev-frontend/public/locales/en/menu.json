@@ -222,7 +222,6 @@
   "allInCategory": "All",
   "menuManagementPage.uncategorizedNotice": "{{n}} menu items have no category. Customers see them under \"Others\" — move them into a category.",
   "others": "Others",
-  "guided.itemCount": "{{n}} items",
   "guided.pickCategory": "What would you like?",
   "guided.pickSub": "Choose a type",
   "guided.pickItem": "Choose a menu item",
@@ -241,5 +240,7 @@
   "guided.confirmHint": "Set the quantity and add to your order.",
   "guided.total": "Total",
   "guided.addMore": "Add more",
-  "guided.checkout": "Checkout"
+  "guided.checkout": "Checkout",
+  "guided.itemCount_one": "{{count}} item",
+  "guided.itemCount_other": "{{count}} items"
 }

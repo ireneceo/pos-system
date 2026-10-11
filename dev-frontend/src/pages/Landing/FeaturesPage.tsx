@@ -569,7 +569,6 @@ const ROLE_TABS: RoleTab[] = [
       { code: 'buyer_supplier_contracts', points: 4, category: 'advanced', images: getImages('buyer_supplier_contracts', 1) },
       { code: 'buyer_purchase_orders', points: 4, category: 'advanced', images: getImages('buyer_purchase_orders', 1) },
       { code: 'buyer_purchase_invoices', points: 4, category: 'advanced', images: getImages('buyer_purchase_invoices', 1) },
-      { code: 'fc_stats', points: 4, category: 'advanced', images: getImages('fc_stats', 0) },
       { code: 'fc_coupons', points: 4, category: 'advanced', images: getImages('fc_coupons', 0) },
       { code: 'fc_system_inquiry', points: 4, category: 'advanced', images: getImages('fc_system_inquiry', 1) },
       { code: 'fc_operation_inquiry', points: 4, category: 'advanced', images: getImages('fc_operation_inquiry', 1) },

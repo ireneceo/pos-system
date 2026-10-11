@@ -28,8 +28,8 @@ const { Op } = require('sequelize');
  */
 async function resolveStockItemsToMirrors(items, brandId) {
   if (!Array.isArray(items) || !brandId) return items;
-  const { ProductIngredient, BrandProduct, Ingredient } = require('../models');
-  const { shareToBrand, ensureSourceSellerLink } = require('../services/stockItemMirror');
+  const { ProductIngredient, BrandProduct } = require('../models');
+  const { shareToBrand, shareProductToBrand } = require('../services/stockItemMirror');
   const out = [];
   for (const raw of items) {
     const item = { ...raw };
@@ -47,20 +47,8 @@ async function resolveStockItemsToMirrors(items, brandId) {
       // 레시피 없는 프로덕트는 그 자체가 재고아이템이고, 여기서 또 만들면 그때 합쳐 놓은 것이 갈라진다.
       const product = await BrandProduct.findByPk(bpid);
       if (product) {
-        let mirror = await Ingredient.findOne({ where: { source_brand_product_id: product.id, brand_id: brandId } });
-        if (mirror) { if (!mirror.is_active) await mirror.update({ is_active: true }); }
-        else {
-          mirror = await Ingredient.create({
-            owner_type: 'brand', brand_id: brandId, restaurant_id: null,
-            source_brand_product_id: product.id,
-            name: product.name, unit: product.unit || 'pack',
-            base_quantity: product.base_quantity || 1,
-            unit_cost: product.unit_price || 0, // 초기값 폴백 — 이후 동기화 대상 아님
-            category: 'other', min_stock: 0, current_stock: 0, is_active: true
-          });
-        }
-        // 출처 연결(GIT 판매) 보장 — 없으면 매장 발주가 MAPPING_REQUIRED 로 막힌다(2026-10-04 D3′)
-        await ensureSourceSellerLink(mirror, product);
+        // 거울 찾기·만들기 + 출처 연결(GIT 판매) 보장 — 매장 카탈로그 담기와 같은 함수(2026-10-11 Fable 판정 R5)
+        const { ingredient: mirror } = await shareProductToBrand(product, brandId);
         item.ingredient_id = mirror.id;
       }
     }

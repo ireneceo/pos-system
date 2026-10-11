@@ -5488,10 +5488,12 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       const stk2 = await mk({ name: tag + '-STK2', unit: 'pack', unit_price: 1, product_kind: 'stock' }); bps.push(stk2);
       const foreign = await mk({ name: tag + '-FOREIGN', unit: 'pack', unit_price: 1, owner_user_id: other.id }); bps.push(foreign);
       const narrow = await mk({ name: tag + '-NARROW', unit: 'pack', unit_price: 1, distribution_mode: 'specific_restaurants' }); bps.push(narrow);
+      // 연결 줄 = 매장 줄(서비스) 또는 브랜드 재료 줄(물건 — 2026-10-11 R5: 자기 브랜드 상품은 브랜드 줄에 붙는다)
       const linkRows = async () => Number((await q(`SELECT COUNT(*) n FROM ingredient_seller_products m
           JOIN ingredients i ON i.id = m.ingredient_id
-         WHERE m.seller_type = 'brand' AND m.seller_product_id IN (:ids) AND i.restaurant_id = :r`,
-        { ids: bps.map(b => b.id), r: fx.rid }))[0].n);
+         WHERE m.seller_type = 'brand' AND m.seller_product_id IN (:ids)
+           AND (i.restaurant_id = :r OR (i.owner_type = 'brand' AND i.brand_id = :b AND m.buyer_restaurant_id IS NULL))`,
+        { ids: bps.map(b => b.id), r: fx.rid, b: fx.bid }))[0].n);
 
       // P1 — 미연결 + 서비스가 link_brand_product_id 로, 중복 없이
       const l1 = await request('GET', `/seller-orders/sellable-products?entity_type=restaurant&entity_id=${fx.rid}`, null, bgAuth);
@@ -5525,8 +5527,9 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
 
       // P4·P6 — po1 전체 수령, po2 분할 수령. 서비스 줄 재고 0 · 배치 0 · 원장 0 · 수령량 적힘
       const ingOf = async (bpId) => Ingredient.findByPk((await q(`SELECT m.ingredient_id id FROM ingredient_seller_products m
-          JOIN ingredients i ON i.id = m.ingredient_id WHERE m.seller_type='brand' AND m.seller_product_id=:b AND i.restaurant_id=:r`,
-        { b: bpId, r: fx.rid }))[0].id);
+          JOIN ingredients i ON i.id = m.ingredient_id WHERE m.seller_type='brand' AND m.seller_product_id=:b
+           AND (i.restaurant_id = :r OR (i.owner_type = 'brand' AND i.brand_id = :bid AND m.buyer_restaurant_id IS NULL))`,
+        { b: bpId, r: fx.rid, bid: fx.bid }))[0].id);
       const [iSvc, iStk, iMto] = [await ingOf(svc.id), await ingOf(stk.id), await ingOf(mto.id)];
       const totalBefore = Number((await PurchaseOrder.findByPk(po1)).total_amount);
       await PurchaseOrder.update({ status: 'shipped' }, { where: { id: [po1, po2] } });
@@ -5588,6 +5591,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
             await InventoryTransaction.destroy({ where: { ingredient_id: ings } });
             try { await sequelize.query('DELETE FROM restaurant_ingredient_costs WHERE ingredient_id IN (:ings)', { replacements: { ings } }); } catch {}
             try { await sequelize.query('DELETE FROM stock_alerts WHERE ingredient_id IN (:ings)', { replacements: { ings } }); } catch {}
+            try { await sequelize.query('DELETE FROM restaurant_ingredient_stocks WHERE ingredient_id IN (:ings)', { replacements: { ings } }); } catch {}
             await Ingredient.destroy({ where: { id: ings }, force: true });
           }
           await BrandProduct.destroy({ where: { id: ids }, force: true });
@@ -5752,9 +5756,16 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       // S2 BG 가 끈다(실제 토글 라우트)
       const off = await request('PUT', `/brand-products/${bp.id}/toggle-active`, {}, bgAuth);
       if (off.status !== 200 || off.body?.data?.is_active !== false) return fail(`S2 끄기 ${off.status} ${JSON.stringify(off.body).slice(0, 120)}`);
+      // 자기 브랜드 상품을 담으면 매장 줄이 아니라 브랜드 재료 줄에 붙는다(2026-10-11 R5) — 그 목록은 연결을 sellerSources 로 준다
       const lst = await request('GET', `/restaurants/${fx.rid}/ingredients?include=sellers`, null, raAuth);
-      const src = (lst.body?.data || []).find(r => r.id === ing.id)?.sellers?.find(s => s.id === map.id || s.mapping_id === map.id || s.seller_product_id === bp.id);
-      if (!src || src.seller_product_active !== false) return fail(`S2 목록 표시 ${JSON.stringify(src || null).slice(0, 160)}`);
+      const blst = await request('GET', `/restaurants/${fx.rid}/brand-ingredients?include=sellers`, null, raAuth);
+      const row = (lst.body?.data || []).find(r => r.id === ing.id) || (blst.body?.data || []).find(r => r.id === ing.id);
+      const src = (row?.sellers || row?.sellerSources || []).find(s => s.id === map.id || s.mapping_id === map.id || s.seller_product_id === bp.id);
+      if (ing.owner_type === 'brand') {
+        // 브랜드 줄(상품 출처)은 상품을 따라 꺼진다(stockItemMirror.MIRRORED_FIELDS is_active) — 매장 목록에서 줄째 빠지는 것이 표시다
+        const [m] = await q('SELECT is_active FROM ingredients WHERE id = :i', { i: ing.id });
+        if (row || Number(m?.is_active) !== 0) return fail(`S2 브랜드 줄이 상품을 따라 꺼지지 않음 ${JSON.stringify({ listed: !!row, m })}`);
+      } else if (!src || src.seller_product_active !== false) return fail(`S2 목록 표시 ${JSON.stringify(src || null).slice(0, 160)}`);
 
       // S3 구매자 경로 전부 거부
       const p1 = await request('POST', '/purchase-orders', grp(1), raAuth);
@@ -5796,6 +5807,79 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
           }
           await BrandProduct.destroy({ where: { id: ids }, force: true });
         }
+      } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
+    }
+  });
+
+  // ══════════════════════════════════════════════════════════════════
+  // 매장이 카탈로그에서 자기 브랜드 상품을 담으면 브랜드 재료 줄에 붙는다 (2026-10-11 Fable 판정
+  //   `fable-verdict-20261011-kdine-ingredient-tidy` R5 · Irene «우리 납품 브랜드로 공급업체 연결 제대로 해줄 수는 없는 거야??»)
+  //   C1 거울 없음 → 상품→거울 1:1 생성 · 매장 줄 0 · 출처 연결 1 · 환산 = 상품 규격
+  //   C2 옛 거울 있음(1000 g ↔ 상품 1 kg · 연결 없음) → 그 거울 응답 · 매장 줄 0 · 연결 환산 1000(거울 숫자 아님)
+  //   C3 외부 공급업체 상품 → 종전대로 매장 줄 생성
+  // ══════════════════════════════════════════════════════════════════
+  test('po', '카탈로그 담기: 자기 브랜드 상품 = 브랜드 재료 줄에 붙음(매장 줄 0) · 외부 상품 = 매장 줄 (C1~C3)', async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const M = require('../models');
+    const q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const fx = (await q(`SELECT r.id rid, b.id bid, u.id uid FROM restaurants r
+        JOIN brands b ON b.id = r.brand_id JOIN users u ON u.id = b.owner_id
+       WHERE r.is_demo = 1 AND u.email = 'demo-brand@purplehere.com' ORDER BY r.id LIMIT 1`))[0];
+    const ra = fx && await M.User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: fx.rid } });
+    if (!fx || !ra) { console.log(c.gray('      (건너뜀: 데모 매장/BG/RA 픽스처 불가)')); return true; }
+    const raAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const tag = 'ZZ-HC-R5-' + Date.now();
+    const made = { bp: [], ing: [], sc: null, sp: null };
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const storeLines = async (sellerType, productId) => Number((await q(`SELECT COUNT(*) n FROM ingredient_seller_products s
+        JOIN ingredients i ON i.id = s.ingredient_id WHERE s.seller_type = :t AND s.seller_product_id = :p AND i.restaurant_id = :r`,
+      { t: sellerType, p: productId, r: fx.rid }))[0].n);
+    const mkBp = (o) => M.BrandProduct.create({ owner_user_id: fx.uid, is_active: true, distribution_mode: 'all', product_kind: 'stock',
+      order_mode: 'pack', min_order_quantity: 1, sku: 'ZZR-' + Math.random().toString(36).slice(2, 9), ...o });
+    try {
+      // C1
+      const bp1 = await mkBp({ name: tag + '-NEW', unit: 'kg', base_quantity: 2, unit_price: 30 }); made.bp.push(bp1.id);
+      const c1 = await request('POST', `/restaurants/${fx.rid}/ingredients/from-catalog`, { brand_product_id: bp1.id }, raAuth);
+      const i1 = c1.body?.data?.ingredient;
+      if (i1?.id) made.ing.push(i1.id);
+      if (c1.status !== 201 || !i1 || i1.owner_type !== 'brand' || Number(i1.brand_id) !== fx.bid || Number(i1.source_brand_product_id) !== bp1.id)
+        return fail(`C1 ${c1.status} ${JSON.stringify(c1.body).slice(0, 200)}`);
+      if (await storeLines('brand', bp1.id)) return fail('C1 매장 줄이 생김');
+      if (Number(c1.body?.data?.mapping?.unit_conversion) !== 2 || c1.body?.data?.mapping?.buyer_restaurant_id != null)
+        return fail(`C1 연결 ${JSON.stringify(c1.body?.data?.mapping).slice(0, 160)}`);
+      const again = await request('POST', `/restaurants/${fx.rid}/ingredients/from-catalog`, { brand_product_id: bp1.id }, raAuth);
+      if (again.status !== 200 || again.body?.data?.ingredient?.id !== i1.id) return fail(`C1 다시 담기(멱등) ${again.status}`);
+      // C2
+      const bp2 = await mkBp({ name: tag + '-OLD', unit: 'kg', base_quantity: 1, unit_price: 29 }); made.bp.push(bp2.id);
+      const old = await M.Ingredient.create({ owner_type: 'brand', brand_id: fx.bid, source_brand_product_id: bp2.id, name: tag + '-OLD',
+        unit: 'g', base_quantity: 1000, unit_cost: 29, category: 'other', min_stock: 0, current_stock: 0, is_active: true });
+      made.ing.push(old.id);
+      const c2 = await request('POST', `/restaurants/${fx.rid}/ingredients/from-catalog`, { brand_product_id: bp2.id }, raAuth);
+      if (c2.status !== 200 || c2.body?.data?.ingredient?.id !== old.id) return fail(`C2 ${c2.status} ${JSON.stringify(c2.body).slice(0, 200)}`);
+      if (await storeLines('brand', bp2.id)) return fail('C2 매장 줄이 생김');
+      if (Number(c2.body?.data?.mapping?.unit_conversion) !== 1000) return fail(`C2 환산 ${c2.body?.data?.mapping?.unit_conversion} (기대 1000)`);
+      // C3
+      made.sc = await M.SupplierCompany.create({ name: tag, status: 'active', is_system_registered: false, registered_by_entity_type: 'restaurant', registered_by_entity_id: fx.rid });
+      await M.SupplierContract.create({ entity_type: 'restaurant', entity_id: fx.rid, supplier_company_id: made.sc.id, status: 'active', requested_by_user_id: ra.id });
+      made.sp = await M.SupplierProduct.create({ supplier_company_id: made.sc.id, name: tag + ' SP', unit_price: 20, unit: 'kg', base_quantity: 1, is_active: true });
+      const c3 = await request('POST', `/restaurants/${fx.rid}/ingredients/from-catalog`, { supplier_product_id: made.sp.id }, raAuth);
+      const i3 = c3.body?.data?.ingredient;
+      if (i3?.id) made.ing.push(i3.id);
+      if (c3.status !== 201 || !i3 || Number(i3.restaurant_id) !== fx.rid || i3.owner_type !== 'restaurant')
+        return fail(`C3 ${c3.status} ${JSON.stringify(c3.body).slice(0, 200)}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try {
+        const X = (s, r) => sequelize.query(s, { replacements: r });
+        if (made.ing.length) {
+          await X('DELETE FROM ingredient_seller_products WHERE ingredient_id IN (:i)', { i: made.ing });
+          await X('DELETE FROM ingredients WHERE id IN (:i)', { i: made.ing });
+        }
+        if (made.bp.length) await X('DELETE FROM brand_products WHERE id IN (:i)', { i: made.bp });
+        if (made.sp) await X('DELETE FROM supplier_products WHERE id = :i', { i: made.sp.id });
+        if (made.sc) { await X('DELETE FROM supplier_contracts WHERE supplier_company_id = :i', { i: made.sc.id }); await X('DELETE FROM supplier_companies WHERE id = :i', { i: made.sc.id }); }
       } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
     }
   });

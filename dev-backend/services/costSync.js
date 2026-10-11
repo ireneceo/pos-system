@@ -252,4 +252,4 @@ async function recomputeForBrandProduct(brandProductId, { transaction, sequelize
   return out;
 }
 
-module.exports = { recomputeUnitCost, recomputeForSellerProduct, recomputeForBrandProduct, convertPrice, logCostChange };
+module.exports = { recomputeUnitCost, recomputeForSellerProduct, recomputeForBrandProduct, convertPrice, logCostChange, FACTOR };

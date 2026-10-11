@@ -221,6 +221,57 @@ async function syncProductMirrors(brandProduct, opts = {}) {
 }
 
 /**
+ * GIT 이 **파는 것**(브랜드 상품)을 한 브랜드의 재료 줄(거울)로 — 있으면 그 줄(꺼졌으면 켬), 없으면 1:1 로 만든다.
+ * 그리고 출처 연결(그 브랜드가 판매자·공용)을 보장한다. 2026-09-01 결정대로 Stock Item 은 만들지 않는다.
+ * 호출처: 브랜드 레시피 저장(routes/recipes.js) · 매장이 카탈로그에서 자기 브랜드 상품 담기(services/restaurantCatalogLink.js).
+ *   두 곳이 각자 만들면 같은 상품에 줄이 둘 생긴다 — 그래서 한 함수(2026-10-11 Fable 판정 R5).
+ * ⛔ 상품 목록을 통째로 복사하지 않는다(2026-06/07 분열). 사람이 그 상품을 고른 순간에만 한 줄.
+ */
+async function shareProductToBrand(brandProduct, brandId, { transaction } = {}) {
+  const { Ingredient } = require('../models');
+  let mirror = await Ingredient.findOne({ where: { source_brand_product_id: brandProduct.id, brand_id: brandId }, transaction });
+  let created = false;
+  if (mirror) {
+    if (!mirror.is_active) await mirror.update({ is_active: true }, { transaction });
+  } else {
+    mirror = await Ingredient.create({
+      owner_type: 'brand', brand_id: brandId, restaurant_id: null,
+      source_brand_product_id: brandProduct.id,
+      // 재료 단위는 정해진 목록(ENUM)만 받는다 — 상품의 «hour»·«tray» 같은 값은 매장 담기와 같은 규칙으로 맞춘다(catalogLink.normalizeUnit)
+      name: brandProduct.name, unit: require('../utils/catalogLink').normalizeUnit(brandProduct.unit || 'pack'),
+      base_quantity: brandProduct.base_quantity || 1,
+      unit_cost: brandProduct.unit_price || 0, // 초기값 폴백 — 이후 동기화 대상 아님
+      category: 'other', min_stock: 0, current_stock: 0, is_active: true
+    }, { transaction });
+    created = true;
+  }
+  // 출처 연결(GIT 판매) 보장 — 없으면 매장 발주가 MAPPING_REQUIRED 로 막힌다(2026-10-04 D3′)
+  await ensureSourceSellerLink(mirror, brandProduct, { transaction });
+  return { created, ingredient: mirror };
+}
+
+/**
+ * 출처 연결의 환산 = **상품 1개에 든 양을 거울 단위로 센 값** (2026-10-11 Fable 판정
+ * `fable-verdict-20261011-kdine-ingredient-tidy` §2-6·§5-A′).
+ *   전에는 거울 기준숫자를 그대로 썼다. 새 거울은 상품의 다섯 칸을 그대로 받아 둘이 같지만,
+ *   옛 거울은 다를 수 있다 — 운영 #119 쌀: 상품 1 kg ↔ 거울 5000 g → 거울 숫자를 쓰면 «1개 주문 = 5 kg 입고».
+ *   같은 단위면 ×1, kg↔g·l↔ml 만 환산(costSync.FACTOR 한 곳). 환산할 수 없으면 종전 값(거울 기준숫자).
+ * @returns {{ value:number, converted:boolean, mismatch:boolean }} mismatch = 환산값이 거울 기준숫자와 다름(사람이 규격을 맞출 목록)
+ */
+function sourceLinkConversion(mirror, brandProduct) {
+  const { FACTOR } = require('./costSync');
+  const norm = (u) => String(u || '').trim().toLowerCase();
+  const mirrorBase = parseFloat(mirror.base_quantity);
+  const fallback = mirrorBase > 0 ? mirrorBase : 1;
+  const pu = norm(brandProduct.unit), mu = norm(mirror.unit);
+  const f = pu === mu ? 1 : FACTOR[`${pu}->${mu}`];
+  const pBase = parseFloat(brandProduct.base_quantity);
+  if (f == null || !(pBase > 0)) return { value: fallback, converted: false, mismatch: false };
+  const value = Math.round(pBase * f * 10000) / 10000;
+  return { value, converted: true, mismatch: Math.abs(value - fallback) > 1e-9 };
+}
+
+/**
  * 프로덕트 출처 거울에 **출처 연결**(브랜드 자신이 판매자)을 보장한다 — 멱등.
  *
  * 왜 (Fable 2026-09-29 §2-3 D3′ · Irene 2026-10-04 「권고대로 해」):
@@ -246,11 +297,10 @@ async function ensureSourceSellerLink(mirror, brandProduct, { transaction } = {}
   const others = await IngredientSellerProduct.count({
     where: { ingredient_id: mirror.id, buyer_restaurant_id: null, is_active: true }, transaction
   });
-  const bq = parseFloat(mirror.base_quantity);
   const row = await IngredientSellerProduct.create({
     ...where,
     unit_price: parseFloat(brandProduct.unit_price) || 0,
-    unit_conversion: bq > 0 ? bq : 1,
+    unit_conversion: sourceLinkConversion(mirror, brandProduct).value,
     min_order_quantity: 1,
     lead_time_days: 0,
     is_preferred: others === 0,
@@ -260,4 +310,4 @@ async function ensureSourceSellerLink(mirror, brandProduct, { transaction } = {}
   return { created: true, id: row.id };
 }
 
-module.exports = { syncMirrors, syncProductMirrors, shareToBrand, unshareFromBrand, mirrorUses, sharedBrandIds, ensureSourceSellerLink, MIRRORED_FIELDS };
+module.exports = { syncMirrors, syncProductMirrors, shareToBrand, unshareFromBrand, mirrorUses, sharedBrandIds, ensureSourceSellerLink, sourceLinkConversion, shareProductToBrand, MIRRORED_FIELDS };

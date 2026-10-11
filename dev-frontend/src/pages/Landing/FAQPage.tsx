@@ -358,7 +358,7 @@ const FAQPage: React.FC = () => {
                 active={activeCategory === cat.slug}
                 onClick={() => setActiveCategory(cat.slug)}
               >
-                {cat.name}
+                {t(`landing:faqPage.category.${cat.slug}`, cat.name)}
               </CategoryTab>
             ))}
           </CategoryTabs>
@@ -385,7 +385,7 @@ const FAQPage: React.FC = () => {
                   <FAQAnswer isOpen={openFAQ === faq.id}>
                     <FAQAnswerContent>
                       {faq.category && (
-                        <CategoryBadge>{faq.category.name}</CategoryBadge>
+                        <CategoryBadge>{t(`landing:faqPage.category.${faq.category.slug}`, faq.category.name)}</CategoryBadge>
                       )}
                       <div dangerouslySetInnerHTML={{ __html: faq.content.replace(/\n/g, '<br/>') }} />
                     </FAQAnswerContent>

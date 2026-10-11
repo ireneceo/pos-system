@@ -222,7 +222,6 @@
   "allInCategory": "全部",
   "menuManagementPage.uncategorizedNotice": "有 {{n}} 个菜品没有分类。顾客会在\"其他\"中看到它们——请把它们移到某个分类。",
   "others": "其他",
-  "guided.itemCount": "{{n}} 个菜品",
   "guided.pickCategory": "您想吃点什么？",
   "guided.pickSub": "请选择类型",
   "guided.pickItem": "请选择菜品",
@@ -241,5 +240,7 @@
   "guided.confirmHint": "设置数量后加入订单。",
   "guided.total": "合计",
   "guided.addMore": "继续点餐",
-  "guided.checkout": "去结账"
+  "guided.checkout": "去结账",
+  "guided.itemCount_one": "{{count}} 个菜品",
+  "guided.itemCount_other": "{{count}} 个菜品"
 }

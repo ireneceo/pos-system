@@ -4,15 +4,20 @@
 **작업 상태:** ✅ 운영 배포 완료 SW 5.90 (2026-10-11) — 남은 것: /운영검증 · 키오스크 태블릿 운영 확인 · 첫 주방 티켓 눈 확인 · E1·E3(서버 창, 선택) · Q6 · 재발 방지(마이그 «칸 추가 단계» 분리, Fable 설계 1회)
 
 
-### 답 기다림 (2026-10-11) — Stripe 시험 키를 개발서버에 넣을지 (랜딩 재점검 + 청구서 결제 결함 수정 개발서버 완료 · 미커밋) [Claude Code · 백그라운드 작업방 67c989de]
-- Irene: «랜딩페이지 모든 안내를 재점검해줘. 지금 개발기능이랑 역할, 추가한 기능들 연동해서 제대로 작동하는지, 그리고 스트라이프 구독결제도 이상없는 거지?»
-- 조사 backups/fable-pending/stripe-subscription-audit-20261011.md · Fable 설계 fable-verdict-20261011-stripe-invoice-payment-design.md (F1~F5 · §8 지금 시작 허용)
-- 결제 수정(개발서버 반영): 새 utils/invoicePayable.js(연체 청구서 결제 허용·규칙 한 곳) · utils/issuerAccount.js · invoiceLifecycle.markInvoicePaidFromGateway · invoices-payment 3경로 · payments.js checkout/start(서버가 청구서에서 당사자) · webhooks-payments 발행자별 주소 /api/webhooks/stripe/:type/:id · 화면 HostedCheckoutLauncher·StripePaymentForm·결제설정 3화면 안내 주소 · docs/PAYMENT_ARCHITECTURE.md §9 · SW 5.92-invoice-payment-20261011(빌드·개발서버 반영 EXIT 0)
-- 검증: health-check payment 21/21(새 «청구서 결제 ①~⑤») · jest payment-flow+ledger 29/29 · 고장주입 5/5(각 해당 검사 실패 → 원복 바이트 동일, pm2 재시작 뒤) · 잔재 0 · 시스템·브랜드 결제 설정 원복 확인 · 추천 수수료 생성 0
-- 확인 못 함: Stripe 로 넘어가 카드 결제→웹훅→paid 끝까지(개발에 진짜 시험 키 없음) · 실브라우저 RA 클릭 흐름(T7)·verify-all --full 아직 안 돌림 · 검사 중 «stripe-webhook» 오류 기록이 관리자 본인 메일 알림(시간당 1회)을 보냈을 수 있음
-- 랜딩 고친 것: 요금 화면 무료 «Free»·공급업체 «Supplier Plan» · 추천 계산기 가격=통화별 가격표 · 꼬리말 번역 · 빠진 번역 25키 4개 언어 · ko 약관 «No» 누락
-- 랜딩 남은 발견(안 고침): 기능·요금·FAQ·데모 화면 대부분 영어 하드코딩(ko/zh/ms 미번역) · FAQ 내용 낡음(카드결제 «준비 중»·오프라인 «준비 중»·체험은 문의 등) · **운영 FAQ 27문항이 15번씩 중복(251줄)** — 원인: FAQ 줄 slug 비어 있어 배포 콘텐츠 동기화(90일)가 매번 새로 넣음 · 기능 화면에 없는 공급업체 모듈 3개(성과·다중창고·활동기록)를 «Supplier Advanced» 로 판매 표시 · 키오스크·오프라인·현금마감 등 최근 기능 랜딩 미언급 · 지원 메일 4종 · 통화 «RM·USD·KRW·SGD» 주장(운영 MYR 만) · Docs 메뉴 빈 화면
-- 답이 오면: (가)면 Irene 가 개발 관리자 결제 설정에 시험 키 저장 → 이 방이 끝까지 결제 1회 실측 → Fable 검증 1회(메뉴 2단+랜딩+결제 묶음 한 번, 판정문 §8) → .fable-gate-skip 삭제. (나)면 바로 Fable 검증 1회. 그 전에 남은 일: 실브라우저 RA «Stripe 결제» 클릭(T7) · verify-all --full · CHANGELOG·배포 기록 JSON(2026-10-11-menu-category.json 와 묶을지 확인)·메모리 1건
+### 진행 중 (2026-10-11) — 배포가 다른 방의 미커밋을 같이 내보내지 않게: «마지막 커밋의 깨끗한 사본» 배포 [Claude Code · 백그라운드 작업방 31f67057]
+- Irene «배포를 하면 모든 작업 일시정지하고 점검 후 배포 · 진행중인 거 있으면 그건 빼고 배포» · Fable 설계 판정 FABLE.md §7(수정 후 PASS)
+- 바꾼 것(미커밋): deploy-to-production.sh(사본에서 검사·빌드·rsync·마이그·배포기록·지문) · 새 scripts/make-clean-source.sh · 새 dev-backend/scripts/check-relative-requires.js(게이트 4d) · deploy-manifest.js --root · .claude/commands/배포.md(미커밋 규칙·정기 점검 배포=상시 지시) · 메모 2개
+- 진행: 사본 빌드 시험 중 → Fable 게이트 1회 → 상황판 server 대기열 «DEPLOY_GUARD stash 단계 빼기»
+
+### 완료 (2026-10-11) — 랜딩 안내 재점검 + Stripe 청구서 결제 결함 수정 + FAQ 정리 (개발서버 · Fable 게이트 PASS · 운영 반영: 다음 배포 때) [Claude Code · 백그라운드 작업방 67c989de]
+- Irene: «랜딩페이지 모든 안내를 재점검해줘 … 스트라이프 구독결제도 이상없는 거지?» → 보고 → «이거 문제 해결해.»
+- 결제(Fable 설계 F1~F5): 연체 청구서 카드·이체 결제 허용 · 매장 관리자 «Stripe 결제» 버튼 동작 · 발행자별 웹훅 주소 + 발행자 일치 확인 · 취소·초안 «결제됨» 막음 · 입금 확인 전 세션 무시. 검사: health-check payment 21/21 · jest 29/29 · 고장주입 5/5(+Fable 직접 1) · 실브라우저 매장 관리자 Pay→Stripe→서버 가드 통과
+- 랜딩: 기능·요금·문의·데모·가입·패키지·회사 4개 언어 번역(한국어 기능 화면 영어 줄 183→2) · 무료 요금제 «Free» · 공급업체 요금제 이름 · 계산기 실제 가격 · 최근 기능 카드 · 없는 기능 카드 제거(fc_stats·supplier 3종) · 빈 Docs 메뉴 숨김 · 지원 메일 통일 · 검색 정보 MYR·셀프 가입 · 실브라우저 76회 0문제
+- FAQ: 마이그 migrate-faq-refresh-20261011(deploy) — 운영 중복 224줄 삭제·27문항 갱신·ko/zh/ms 81줄 · 개발 예행 2회(삭제3→0, 표지로 1회만 덮음)
+- Fable 게이트 PASS: backups/fable-pending/fable-verdict-20261011-landing-payment-gate.md · 마커 지문 48e07ae05ed1 (메뉴 2단·키오스크 묶음 포함) · .fable-gate-skip 삭제됨. ⚠ 마커 뒤 session-state 외 파일 수정 금지 → /개발완료(커밋)는 배포 방 절차로
+- 확인 못 함: Stripe 실결제 끝까지(시험 키 없음) · 전체 화면 sweep(메모리 부족으로 시스템이 중지 — 대상 화면만 따로 확인) · 검사 중 stripe-webhook 오류 기록이 관리자 본인 메일 알림을 보냈을 수 있음
+- 남은 것(막지 않음): Irene 시험 키 넣으면 끝까지 결제 1회 → 그때 PaymentIntent 재사용·PayPal 발행자별·submit-payment 응답 꼴 · 실제 화면 없는 모듈 4개(fc_customers·supplier_performance·supplier_multi_warehouse·supplier_activity_logs)가 개발 요금제 데이터에 판매 항목으로 남음(운영엔 공급업체 요금제 없음) · 문의 화면 전화번호 안내 한 줄 영어(공용 입력칸)
+- 배포 뒤 확인: 운영 /faq 한국어 27문항·중복 0 · 매장 관리자 연체 청구서 Pay → Stripe 가 400 아님
 
 ### 완료 (2026-10-11) — 운영 배포 SW 5.90 [Claude Code · 백그라운드 작업방 20234aa0/dc2ff8be]
 - Irene 터미널 `! deploy-to-production.sh --auto` (06:29~06:36 UTC) 성공: 마이그 118/118 · 운영 health ok(재시작 확인) · 스모크 10/10 · 운영 sw.js 5.90-preflight-security-20261010 · 배포 기록 archive/2026-10-10-preflight-security.json · 스냅샷 2349파일
@@ -35,11 +40,14 @@
 - 고칠 것(최소 1곳): `dev-backend/scripts/migrations.registry.json` 에서 그 6줄을 brand-account-payment-settings 바로 앞으로 옮김(6개 모두 기존 표에 칸 추가만·자체 완결 확인). 이 방에서 파일 수정이 권한 거부 → 실행 안 함, 파일 무변경(확인)
 - 답이 오면: 수정 → check-migration-registry · verify-all → 순서 바뀐 목록으로 «새 칸 없는 DB» 재현 시험(임시 DB 만들기 권한 없음 — 확인 불가면 그렇게 기록) → 레지스트리=안전망 파일이라 Fable 게이트 1회 → Irene 터미널 배포 재실행
 
-### 답 기다림 (2026-10-11) — 키오스크 두 보기 방식: 결정 1~3 [Claude Code · 백그라운드 작업방 069db6c8]
-- Irene: «🍽️ Uncategorized 이런 카테고리가 왜 좌측에 나와? 좌측에 나오는게 키오스크에 적합한 UI야? 그리고 내가 말한대로 2가지 버전으로 설정 가능해? 기본 레이아웃도 좌측에 왜 카테고리가 나오는 거야? 이상하게. 그리고 다른 버전은 화면에 크게 카테고리 선택하게 나오는 거 맞아? 처음에 선택>페이지전환>선택>페이지전환 이런식 맞아?»
-- Fable 판정(UX 설계, ③ 사안 1/2): `backups/fable-pending/fable-verdict-20261011-kiosk-two-modes.md` — 왼쪽 세로열은 10-10 Irene 승인 없이 권고대로 진행된 것 · 2단 넣으며 가로에 세로열+위 알약이 섞인 건 설계 결함 · «한 화면 한 선택»은 아직 없음(③ 설계)
-- 답 필요: 결정1 가로 둘러보기 카테고리 자리(A 세로열에 상·하위 들여쓰기 / B 위 알약 두 줄) · 결정2 손님 화면 Uncategorized(A «Others» 로 맨 끝+관리 화면 안내 / B 숨김) · 결정3 «한 화면 한 선택» 설계대로 진행(A / B 보류) — Fable 권고 A·A·A
-- 답이 오면: 결정대로 구현(프론트 빌드 1회 · verify-all --full · 실브라우저 흐름) → Fable 완성 화면 점검 1회 → 보고. ①② 는 이미 개발서버에 있음(미커밋, 게이트 PASS 마커는 다른 방 변경으로 무효 — 다음 배포 묶음 게이트 때)
+### 완료 (2026-10-11) — 키오스크 두 보기 방식(둘러보기 / 한 화면에 하나씩) · Fable 완성 점검 PASS [Claude Code · 백그라운드 작업방 069db6c8]
+- Irene: «권고대로, 그리고 다른 버전은 왜 자꾸 답변 안해? 제대로 설계하고 구현하는 거 맞아?» (결정 1·2·3 모두 A)
+- 구현(개발서버 반영, 일부 미커밋 6파일 + 자동저장 커밋 8453714c2·e5d528256 에 섞임): 설정 › Kiosk «Kiosk menu view»(둘러보기 기본 / 한 화면에 하나씩) · 안내형 S1 큰 타일(추천 맨 앞·Others 맨 끝·메뉴 개수) › S2 하위 › S3 카드 › 상세에서 옵션 묶음 한 화면씩 › 확인(수량·최종 금액) › «더 담기 / 결제하기» · 둘러보기 가로 하위를 왼쪽 열 안 들여쓰기(알약 줄 없음) · 손님 화면 Uncategorized→Others 맨 끝 · 카테고리 기본 접시 이모지 제거 · 메뉴 관리 «카테고리 없는 메뉴 N개» 안내
+- 검증: 실브라우저 62/62(가로·세로·폰·설정 저장 · 금액 11.50/23.00/세트 13.00 · 결제 화면에 담은 것) · verify-all --full 23/24 + 배포 기록 SW 값 맞춘 뒤 deploy-ready 통과 · 매장 설정 원본 복원 · 테스트 행 0 · 고장주입 이번 단계 안 함 · 실태블릿 확인 못 함
+- 실수 기록: 서버 수정 뒤 pm2 재시작을 빠뜨려 첫 검사 8건 실패 → 재시작 후 통과
+- Fable 완성 점검 PASS(이 사안 2/2): `backups/fable-pending/fable-verdict-20261011-kiosk-two-modes-gate.md` — 설계 밖 0 · verify-all 23/23 · 키오스크·모바일 회귀 15/15 · 사진 11장 확인. 게이트 마커는 안 찍음(워킹트리에 다른 방 청구서 결제 변경이 섞여 있어서) → 배포 방 묶음 게이트 때
+- 후속(막지 않음): ①카테고리 1개 매장에서 «뒤로» 가 메뉴 밖으로 ②담은 뒤 기기 뒤로 키로 또 담기 가능 ③docs/KIOSK_MODE.md 에 «메뉴 보기 방식» 한 줄 · 실태블릿 눈 확인 1회 · `.claude/.fable-gate-skip` 배포 전 정리
+- 운영 반영: 다음 배포 때
 
 ### 완료 (2026-10-11) — 매장 메뉴 2단 카테고리 + 한 줄 소개·추천 표시 (개발서버 · 미커밋 · 운영 배포 대기) [Claude Code · 백그라운드 작업방 069db6c8]
 - Irene: «권고대로»(D1~D4) → «fable 의견 받아. 오퍼스 말고» → Fable 2차 판정 → «지금 있는 메뉴들은 아무것도 안옮겨. 하위카테고리가 없으면 그대로 아니야?» = 맞음(칸 추가만, 기존 메뉴·카테고리 무변경)
@@ -208,6 +216,12 @@
 - 개발서버 재현(매장5 RA · BG user6 · 상품44 Grilled Chicken · 매장 재료96 · 연결51 → 원복 is_active=1 확인 · 테스트 발주 32141 은 화면 «버리기»와 같은 삭제로 정리): 끄면 ① Supplier Catalog 에서 사라짐(정상) ② **My Stock 재료96 의 공급처에 그 상품 그대로**(`restaurants-ingredients.js:149` · `ingredients.js:145,658` BrandProduct 조회에 활성 조건 없음) ③ **발주 만들기 201 성공**(`purchase-orders-crud.js:1002` 연결 행 is_active 만 봄, 상품 활성 안 봄) · 제출(`purchase-orders-workflow.js:925`)도 검사 없음. 브랜드 재료(거울)는 상품 따라 꺼져 매장에서 숨음(정상)
 - 질문: 꺼진 상품을 매장 발주에서 어떻게 할지 — Opus 의견 A(목록에 «판매 중지» 표시 + 담기·발주 만들기·제출을 서버에서 막음, 연결 행은 안 지움 → 다시 켜면 그대로 복구)
 - 답이 오면: A → 3개 목록 응답에 상품 활성 칸 + 발주 만들기/제출 서버 거부(공급업체 상품도 같은 규칙인지 같이) + 화면 표시 + health-check 1건·고장주입 → 빌드 1회·verify-all --full → 주문 경로라 Fable 게이트 1회
+
+### 답 기다림 (2026-10-11) — K-DINE 브랜드 재료 정돈(육개장 두 줄·GIT 공급처 연결 없음): 운영 점검표 1회 실행 [Claude Code · 백그라운드 작업방 67f96715]
+- Irene: «Yukgaejang beef … K-DINE IPC 기준으로 왜 브랜드 공급업체 연결이 되지 않았어? 그리고 이것들은 왜 있어? … 제대로 레시피사용, 브랜드메뉴 재료, 우리 납품 브랜드로 공급업체 연결 제대로 해줄 수는 없는 거야?? K-Yukgaejang Beef 1kg»
+- 코드상 원인(운영 미확인): ① 매장은 브랜드 재료의 공급처 중 «브랜드 자신이 판매자인 출처 연결»만 본다(`brandStockAccess.sellerLinkVisible`). 이 연결은 GIT 상품 출처 줄(BP 거울)에만 붙고, 그것도 브랜드 레시피 저장 길(`recipes.js` ensureSourceSellerLink)에서만 생긴다 — 기존 줄 채우기 없음(인스펙션 ING-UNI-032 는 «목록»으로만 셈). 재고아이템 출처 줄(PI 거울, 9-04 통합 때 옛 K-DINE 재료에서 생김)은 GIT 상품과 연결이 아예 없다 ② 같은 물건이 PI 줄·BP 줄 두 줄 — 매 배포 합치기 마이그(`migrate-merge-product-mirrors.js`)는 발주 연결로 짝이 확정된 쌍만 합친다. 이름이 다르고 연결이 없는 쌍(K-Bulgogi 때처럼)은 남는다
+- 왜 멈춤: 운영 읽기는 이 방에서 자동 판정으로 거부 → 읽기 전용 점검표 `backups/data-migrations/brand-ingredient-report-20261011.js`(SELECT 만 · 개발 브랜드 1 시험 통과)를 Irene 이 터미널에서 1회 실행해야 함. 코드·데이터 변경 0
+- 답이 오면(점검표 출력이 이 방에 들어오면): 출력 + 위 사실을 Fable 에게(설계·짝 판정 1회) → Fable 권고와 함께 «어느 줄로 합칠지·GIT 출처 연결 채우기» Irene 확인 → K-Bulgogi 식 일회성 스크립트(드라이런·영수증·되돌리기) 개발 증명 → 운영 실행은 Irene 터미널
 
 ### 완료 (2026-10-09) — 재고아이템 삭제 막힘(K-Sundubu) «사용 중» 기준 하나로 · 매장 재료 카드 공급처 표시 (개발서버 · Fable 게이트 PASS · 운영 배포 대기) [Claude Code · 백그라운드 작업방 67f96715]
 - Irene 답: «그냥 이거 아예 필요없어서 삭제할건데 아무곳에서도 삭제를 못하잖아. 정석대로 개발할게 있으면 해줘. 지금 문제가 있는게 없으면 권고대로»

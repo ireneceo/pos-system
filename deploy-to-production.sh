@@ -22,6 +22,14 @@ NC='\033[0m'
 PROD_SERVER="irene@87.106.78.146"
 LOCAL_DEV_BACKEND="/var/www/dev-backend"
 LOCAL_DEV_FRONTEND="/var/www/dev-frontend"
+# ── 깨끗한 사본에서 배포 (2026-10-11 Irene «진행중인 거 있으면 그건 빼고 배포» · Fable FABLE.md §7) ──
+#   운영에 가는 것(백엔드 rsync · 프론트 빌드 · 마이그 파일 · 배포 기록)은 **마지막 커밋의 사본**에서만 나온다.
+#   작업 폴더의 미커밋 = 다른 작업방의 진행 중 일 → 배포에 안 섞인다. 작업 폴더는 읽기만 하고 건드리지 않는다
+#   (커밋·stash·checkout 없음). 사본 = scripts/make-clean-source.sh (git archive HEAD).
+#   LOCAL_DEV_* 는 «살아 있는 개발 환경» 이 필요한 일(dev DB·dev 서버·dev 화면 검사)에만 쓴다.
+CLEAN_ROOT="${DEPLOY_CLEAN_ROOT:-$HOME/.cache/purplehere-deploy/deploy-clean}"
+SRC_BACKEND="$CLEAN_ROOT/dev-backend"
+SRC_FRONTEND="$CLEAN_ROOT/dev-frontend"
 # 운영 경로·백업 경로·복원 함수는 롤백 스크립트와 **같은 파일**에서 읽는다 (2026-09-27 R4 — 두 벌이 갈라졌던 사고).
 DEPLOY_LAYOUT="/var/www/scripts/deploy-layout.sh"
 # shellcheck source=/var/www/scripts/deploy-layout.sh
@@ -77,6 +85,24 @@ fi
 success "Local dev server is healthy"
 
 # ──────────────────────────────────────────
+# 1a. 깨끗한 사본 — 마지막 커밋 그대로 (작업 폴더의 미커밋은 이번 배포에서 빠진다)
+# ──────────────────────────────────────────
+if [ "$SKIP_BUILD" = true ]; then
+    error "--skip-build 는 더 쓰지 않습니다 — 배포는 마지막 커밋의 사본을 새로 빌드해서 보냅니다(작업 폴더 build/ 에는 미커밋 변경이 섞일 수 있음)."
+fi
+log "Making clean source from last commit (미커밋 = 진행 중인 일 → 이번 배포에서 뺌)..."
+CLEAN_OUT=$(bash /var/www/scripts/make-clean-source.sh "$CLEAN_ROOT" 2>&1) \
+    || error "깨끗한 사본 만들기 실패 — 작업 폴더 그대로 배포하지 않는다: $(echo "$CLEAN_OUT" | tail -3)"
+DEPLOY_COMMIT=$(echo "$CLEAN_OUT" | awk '/^COMMIT /{print $2}')
+LEFT_OUT=$(echo "$CLEAN_OUT" | awk '/^LEFT_OUT /{print $2}')
+[ -n "$DEPLOY_COMMIT" ] || error "깨끗한 사본의 커밋 번호를 읽지 못했다: $CLEAN_OUT"
+success "배포 대상 = 커밋 ${DEPLOY_COMMIT:0:9} ($CLEAN_ROOT)"
+if [ "${LEFT_OUT:-0}" -gt 0 ]; then
+    warn "작업 폴더 미커밋·미추적 ${LEFT_OUT}개는 이번 배포에서 빠집니다 (진행 중인 일 — 커밋되면 다음 배포에 나감):"
+    git -C /var/www status --porcelain -- dev-backend dev-frontend desktop-pos | head -20 | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────
 # 1b. SAFETY GATE — 인쇄/주문 생명선 회귀 + 보호 파일 무결성 (운영 도달 전 마지막 자동 검사)
 # ──────────────────────────────────────────
 # 매장 인쇄는 영업 생명선 (CLAUDE.md 최우선). 다른 기능을 개발하다 인쇄/주문 코드를
@@ -85,7 +111,9 @@ success "Local dev server is healthy"
 if [ "$SKIP_SAFETY" = true ]; then
     warn "⚠️  안전 게이트 건너뜀 (--skip-safety) — 긴급 핫픽스 모드. 인쇄/주문 회귀 미검증 상태로 배포함."
 else
-    cd $LOCAL_DEV_BACKEND
+    # 파일·마이그 검사(1·2·3·3b·4·4b·4c·4d·5·6·9·10)는 **운영에 갈 사본**을 본다 — 보내는 것을 검사한다.
+    # 살아 있는 dev 서버·dev 데이터 상태를 보는 검사(7 health-check · 8 인스펙션)는 작업 폴더에서 돈다.
+    cd $SRC_BACKEND
 
     log "Safety gate (1/10): 🔒 인쇄/주문 보호 파일 무결성..."
     if ! node scripts/check-print-guard.js --quiet; then
@@ -125,10 +153,17 @@ else
     fi
     success "마이그레이션 레지스트리 OK (전 마이그 분류됨 — 드리프트 안전)"
 
+    log "Safety gate (4d/10): 📎 사본에 없는 파일을 부르는 코드 (커밋된 코드가 미커밋 파일에 기대는 것 차단)..."
+    if ! node scripts/check-relative-requires.js; then
+        error "📎 커밋된 백엔드 코드가 사본에 없는 파일을 require 합니다 — 그 파일이 아직 커밋 안 된 진행 중 일이면 운영 백엔드가 기동 중 죽습니다. 그 파일까지 커밋되면 재배포. (긴급 우회: --skip-safety)"
+    fi
+    success "require 대상 전부 사본에 있음"
+
     # 4c. 배포 마이그를 **dev DB 에서 실제로 돌려 본다** — 정적 검사(4b)는 실행이 아니다.
     #   2026-09-05: `migrate-backfill-unit-cost.js` 가 collation 충돌로 매번 즉사하고 있었는데
     #   deploy 목록에 등록돼 있었고 레지스트리 검사를 통과했다. 한 번도 실행된 적이 없어서다.
     #   ⚠ 배포는 `--all-migrations` 전수(76개 ≈ 25초). 캐시는 개발 루프(verify-all) 전용이다.
+    #   사본에서 돈다 = **커밋된 레지스트리·마이그**를 dev DB 로 실행(사본의 .env 는 개발 DB 접속 — make-clean-source.sh).
     log "Safety gate (4c/10): 🧪 배포 마이그 실전 실행 (dev DB · 전수)..."
     if ! node scripts/check-deploy-ready.js --migrations-only --all-migrations; then
         error "🧪 배포 마이그가 dev 에서 죽습니다 — 운영에서도 같은 자리에서 죽습니다. 위 출력의 스크립트를 직접 돌려 고친 뒤 재배포. (긴급 우회: --skip-safety)"
@@ -142,7 +177,7 @@ else
     success "타임존 가드 OK (신규 위반 0)"
 
     log "Safety gate (6/10): 💧 state hydration 안전 (legacy 캐시 crash 방지)..."
-    if ! (cd $LOCAL_DEV_FRONTEND && node scripts/state-hydration-check.js); then
+    if ! (cd $SRC_FRONTEND && node scripts/state-hydration-check.js); then
         error "💧 hydration warning — 새 state field 의 defensive merge/accessor 누락 = legacy 사용자 runtime crash. /검증 0단계 가이드 참조. (긴급 우회: --skip-safety)"
     fi
     cd $LOCAL_DEV_BACKEND
@@ -161,12 +196,12 @@ else
     success "인스펙션 하니스 통과 — 구조 불변식 신규 위반 0"
 
     log "Safety gate (9/10): 🖨️ 인쇄 라우트 가드 (자동인쇄 디스패치 전 루트: 방식×프린터×native/web 실제 실행)..."
-    cd $LOCAL_DEV_FRONTEND
+    cd $SRC_FRONTEND
     if ! node scripts/print-route-guard/run.js --quiet; then
         error "🖨️ 인쇄 라우트 회귀 — 자동인쇄 디스패치(utils/billPrint.js)가 어떤 방식/프린터 조합에서 잘못된 트랜스포트로 가거나 유령출력/누락 발생. 위 실패 루트 수정 후 재배포. 정식 라우팅 변경이면 scripts/print-route-guard/cases.js 기대값도 함께 갱신. (긴급 우회: --skip-safety)"
     fi
     success "인쇄 라우트 가드 통과 — 전 자동인쇄 루트 정상 (종이만 실기기 확인 남음)"
-    cd $LOCAL_DEV_BACKEND
+    cd $SRC_BACKEND
 
     log "Safety gate (10/10): 📋 배포 기록 (releases/*.json 7칸 — 없거나 비면 배포 차단)..."
     if ! node scripts/check-deploy-record.js; then
@@ -178,8 +213,9 @@ else
 
     # 1c. 배포 델타 분류 (정보성, fail 아님) — 이번 배포가 민감영역(인쇄/돈/보안/마이그레이션)에
     # 닿는지 자동 분류해 표시. Fable 게이트 대상이면 여기서 눈으로 확인된다.
+    # (작업 폴더 기준이라 미커밋도 섞여 보인다 — 정보용. 실제로 나가는 것은 위 커밋 사본.)
     log "Classifying deploy delta (sensitive areas — Fable gate check)..."
-    node scripts/check-sensitive-diff.js || true
+    (cd $LOCAL_DEV_BACKEND && node scripts/check-sensitive-diff.js) || true
 fi
 
 # ──────────────────────────────────────────
@@ -257,7 +293,7 @@ if [ -f /tmp/deploy_prod_schema.json ] && [ -s /tmp/deploy_prod_schema.json ]; t
             UNCOVERED=""
             for NAME in $MISSING_NAMES; do
                 BARE=${NAME##*.}   # table.column 형태면 컬럼명만
-                if ! grep -rqs -- "$BARE" $LOCAL_DEV_BACKEND/scripts/migrate-*.js $LOCAL_DEV_BACKEND/scripts/sprint*-migration.js 2>/dev/null; then
+                if ! grep -rqs -- "$BARE" $SRC_BACKEND/scripts/migrate-*.js $SRC_BACKEND/scripts/sprint*-migration.js 2>/dev/null; then
                     UNCOVERED="$UNCOVERED $NAME"
                 fi
             done
@@ -439,20 +475,15 @@ fi
 # ──────────────────────────────────────────
 # 5. Build frontend locally
 # ──────────────────────────────────────────
-if [ "$SKIP_BUILD" = true ]; then
-    log "Skipping frontend build (--skip-build)"
-    if [ ! -f "$LOCAL_DEV_FRONTEND/build/index.html" ]; then
-        error "No existing build found. Remove --skip-build to build."
-    fi
-    success "Using existing build"
-else
-    log "Building frontend..."
-    cd $LOCAL_DEV_FRONTEND
-    npm run build:dev > /tmp/build.log 2>&1 || {
-        error "Frontend build failed. Check /tmp/build.log"
-    }
-    success "Frontend built successfully"
-fi
+# 사본의 deploy-dev.sh 는 자기 폴더(SCRIPT_DIR) 기준이라 **사본에서 빌드**하고, 그 결과를 dev nginx 폴더에도
+# 올린다 → 아래 mount sweep 이 «운영에 갈 바로 그 번들» 을 검사한다. 그 대신 배포 뒤 개발서버 화면은
+# 커밋된 상태로 보인다 — 진행 중인 방은 이어서 일할 때 자기 build:dev 로 다시 올리면 된다.
+log "Building frontend from clean source (commit ${DEPLOY_COMMIT:0:9})..."
+cd $SRC_FRONTEND
+npm run build:dev > /tmp/build.log 2>&1 || {
+    error "Frontend build failed. Check /tmp/build.log"
+}
+success "Frontend built successfully (clean source)"
 
 # ──────────────────────────────────────────
 # 5b. POST-BUILD SAFETY GATE — 실브라우저 mount sweep (fail-closed)
@@ -489,6 +520,18 @@ log "Syncing backend to production server..."
 #   디스크는 새 코드 · 프로세스는 옛 코드인 반쪽 상태가 남고, 다음 재시작 때 검증 안 된 조합이 뜬다.
 #   → 이 구간에서 실패로 끝나면 **이번 백업으로 코드(백엔드·프론트)를 되돌리고** 실패로 끝낸다.
 #   DB 는 되돌리지 않는다(마이그는 expand-only·자기 트랜잭션 · 데이터 복원은 사람 판단) — 덤프 경로를 알린다.
+# 운영에만 있어야 하는 «git 이 추적하지 않는» 파일 보호 (2026-10-11 깨끗한 사본 전환):
+#   예전엔 작업 폴더를 통째로 보내 무시 파일(config/qz-cert/private-key.pem = QZ 인쇄 서명 키 · backups/ ·
+#   옛 *.sql 등)도 같이 갔다. 사본엔 그것들이 없으므로 그대로 --delete 하면 **운영에서 지워진다**(키가 지워지면
+#   인쇄 서명이 깨진다). → 작업 폴더의 무시 파일 목록을 rsync 제외로 넘겨 운영 사본을 그대로 둔다(보내지도 지우지도 않음).
+PROTECT_LIST=$(mktemp)
+git -C "$LOCAL_DEV_BACKEND" ls-files --others --ignored --exclude-standard --directory 2>/dev/null \
+    | sed 's#^#/#' > "$PROTECT_LIST" \
+    || error "무시 파일 목록을 만들지 못했다 — 운영의 키·설정 파일을 지울 수 있어 배포하지 않는다"
+grep -qx '/config/qz-cert/private-key.pem' "$PROTECT_LIST" \
+    || error "보호 목록에 QZ 서명 키(config/qz-cert/private-key.pem)가 없다 — 목록 생성이 이상하다. 배포 중단."
+log "운영 보호(무시 파일) $(wc -l < "$PROTECT_LIST")개 — 보내지도 지우지도 않음"
+
 DEPLOY_CODE_TOUCHED=false
 auto_restore_on_exit() {
     local rc=$?
@@ -517,7 +560,8 @@ BACKEND_RSYNC_LOG=$(rsync -avz --delete \
     --exclude '*.log' \
     --exclude '_tmp_*' \
     --exclude 'tmp/' \
-    $LOCAL_DEV_BACKEND/ $PROD_SERVER:$REMOTE_PROD_BACKEND/ 2>&1)
+    --exclude-from="$PROTECT_LIST" \
+    $SRC_BACKEND/ $PROD_SERVER:$REMOTE_PROD_BACKEND/ 2>&1)
 BACKEND_RSYNC_EXIT=$?
 if [ $BACKEND_RSYNC_EXIT -ne 0 ]; then
     error "Backend rsync failed (exit code: $BACKEND_RSYNC_EXIT)"
@@ -533,7 +577,7 @@ VERIFY_FAIL=0
 
 # Compare file sizes of key backend files
 for CHECK_FILE in "server.js" "routes/invoices.js" "models/Invoice.js" "services/invoiceScheduler.js"; do
-    LOCAL_SIZE=$(stat -c%s "$LOCAL_DEV_BACKEND/$CHECK_FILE" 2>/dev/null || echo "0")
+    LOCAL_SIZE=$(stat -c%s "$SRC_BACKEND/$CHECK_FILE" 2>/dev/null || echo "0")
     REMOTE_SIZE=$(ssh $PROD_SERVER "stat -c%s $REMOTE_PROD_BACKEND/$CHECK_FILE" 2>/dev/null || echo "0")
     if [ "$LOCAL_SIZE" != "$REMOTE_SIZE" ]; then
         warn "  Size mismatch: $CHECK_FILE (dev: $LOCAL_SIZE, prod: $REMOTE_SIZE)"
@@ -559,16 +603,16 @@ log "Syncing frontend build to production server..."
 # 비우는데 그 빌드가 타입에러로 실패 → index.html 이 사라진 상태에서 이 rsync(--delete)가
 # 그 빈 폴더를 운영에 밀어넣었다 → 운영 전 페이지 404. 빌드 성공(5단계)과 rsync(7단계) 사이에
 # 산출물이 바뀔 수 있으므로 **보내기 직전에** 다시 확인한다.
-if [ ! -f "$LOCAL_DEV_FRONTEND/build/index.html" ]; then
+if [ ! -f "$SRC_FRONTEND/build/index.html" ]; then
     error "빌드 산출물에 index.html 이 없다 — 배포 중 다른 빌드가 build/ 를 비웠을 수 있음. 운영에 빈 폴더를 rsync 하면 전 페이지 404. 빌드 재실행 후 재배포."
 fi
-if [ ! -d "$LOCAL_DEV_FRONTEND/build/static/js" ] || [ -z "$(ls -A $LOCAL_DEV_FRONTEND/build/static/js 2>/dev/null)" ]; then
+if [ ! -d "$SRC_FRONTEND/build/static/js" ] || [ -z "$(ls -A $SRC_FRONTEND/build/static/js 2>/dev/null)" ]; then
     error "빌드 산출물에 JS 번들이 없다 — 깨진 빌드를 운영에 보낼 뻔했다. 빌드 재실행 후 재배포."
 fi
 success "빌드 산출물 검사 통과 (index.html + JS 번들 존재)"
 
 FRONTEND_RSYNC_LOG=$(rsync -avz --delete --exclude 'desktop' \
-    $LOCAL_DEV_FRONTEND/build/ $PROD_SERVER:$REMOTE_PROD_FRONTEND/build/ 2>&1)
+    $SRC_FRONTEND/build/ $PROD_SERVER:$REMOTE_PROD_FRONTEND/build/ 2>&1)
 FRONTEND_RSYNC_EXIT=$?
 if [ $FRONTEND_RSYNC_EXIT -ne 0 ]; then
     error "Frontend rsync failed (exit code: $FRONTEND_RSYNC_EXIT)"
@@ -599,7 +643,7 @@ fi
 # 7b. Verify frontend build hash matches
 # ──────────────────────────────────────────
 log "Verifying frontend build integrity..."
-LOCAL_MAIN_JS=$(ls -1 $LOCAL_DEV_FRONTEND/build/static/js/main.*.js 2>/dev/null | head -1)
+LOCAL_MAIN_JS=$(ls -1 $SRC_FRONTEND/build/static/js/main.*.js 2>/dev/null | head -1)
 if [ -n "$LOCAL_MAIN_JS" ]; then
     LOCAL_MAIN_NAME=$(basename "$LOCAL_MAIN_JS")
     REMOTE_EXISTS=$(ssh $PROD_SERVER "ls $REMOTE_PROD_FRONTEND/build/static/js/$LOCAL_MAIN_NAME 2>/dev/null && echo 'YES' || echo 'NO'")
@@ -669,7 +713,7 @@ fi
 # 전부 멱등(재실행 안전). manual(일회성/의도적 제외) 은 레지스트리 `manual` 에 이유와 함께 분리.
 #   예) migrate-staff-payment-void-perms.js = 재실행 시 직원 결제·취소 권한 재부여 문제로 제외.
 # ──────────────────────────────────────────
-cd $LOCAL_DEV_BACKEND
+cd $SRC_BACKEND   # 실행 목록 = 커밋된 레지스트리 (운영에 보낸 파일과 같은 것)
 DEPLOY_MIGRATIONS=$(node scripts/check-migration-registry.js --list-deploy)
 if [ $? -ne 0 ] || [ -z "$DEPLOY_MIGRATIONS" ]; then
     error "마이그레이션 레지스트리 검사 실패 — 미분류/유령 마이그가 있어 배포 목록을 확정할 수 없음. 'node scripts/check-migration-registry.js' 로 확인 후 registry.json 정리. (안전 게이트에서 이미 걸렸어야 함)"
@@ -719,7 +763,7 @@ while IFS= read -r MIG_NAME; do
     else
         warn "$MIG_NAME not found on prod — copying from dev..."
         # scp 도 ssh 계열이라 stdin 을 삼킨다 → 루프 목록이 사라진다. </dev/null 로 차단. (2026-07-12)
-        scp -q "$LOCAL_DEV_BACKEND/$SPRINT_MIG" "$PROD_SERVER:$REMOTE_PROD_BACKEND/$SPRINT_MIG" < /dev/null \
+        scp -q "$SRC_BACKEND/$SPRINT_MIG" "$PROD_SERVER:$REMOTE_PROD_BACKEND/$SPRINT_MIG" < /dev/null \
             || error "🗄️ 마이그레이션 전송 실패: $MIG_NAME — 운영에 파일이 없는 채로 넘어가면 스키마가 안 맞는다."
         # 2026-08-28: 여기 `|| true` 가 있었다. **새 마이그의 첫 실행만 fail-open** 이었던 것 —
         #   파일이 이미 운영에 있는 위 if 분기는 exit code 로 fail-closed 인데, 정작 처음 태우는
@@ -886,7 +930,7 @@ fi
 if [ "$SKIP_SAFETY" = true ]; then
     warn "배포 기록 적재 건너뜀 (--skip-safety)"
 else
-    REC_FILE=$(ls "$LOCAL_DEV_BACKEND"/releases/*.json 2>/dev/null | head -1)
+    REC_FILE=$(ls "$SRC_BACKEND"/releases/*.json 2>/dev/null | head -1)   # 커밋된 배포 기록 (게이트 10 이 본 것)
     if [ -z "$REC_FILE" ]; then
         warn "배포 기록 파일이 없습니다 — 적재 건너뜀 (게이트를 통과했다면 이 경로는 나올 수 없습니다)"
     else
@@ -895,8 +939,12 @@ else
         ssh -n $PROD_SERVER "mkdir -p $REMOTE_PROD_BACKEND/releases" < /dev/null
         scp -q "$REC_FILE" "$PROD_SERVER:$REMOTE_PROD_BACKEND/releases/$REC_NAME" < /dev/null
         if ssh -n $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node scripts/load-deploy-record.js releases/$REC_NAME"; then
-            mkdir -p "$LOCAL_DEV_BACKEND/releases/archive"
-            mv "$REC_FILE" "$LOCAL_DEV_BACKEND/releases/archive/$REC_NAME"
+            # 보관함 이동은 작업 폴더에서 한다(사본은 다음 배포 때 새로 만든다). 작업 폴더 파일에 진행 중 수정이
+            # 있어도 그대로 옮긴다 — 내용은 건드리지 않는다.
+            if [ -f "$LOCAL_DEV_BACKEND/releases/$REC_NAME" ]; then
+                mkdir -p "$LOCAL_DEV_BACKEND/releases/archive"
+                mv "$LOCAL_DEV_BACKEND/releases/$REC_NAME" "$LOCAL_DEV_BACKEND/releases/archive/$REC_NAME"
+            fi
             success "배포 기록 적재 완료 — archive/$REC_NAME 로 이동"
         else
             # fail-loud — 코드는 이미 나갔으니 롤백이 아니라 **성공으로 읽히지 않게** 한다.
@@ -1129,16 +1177,17 @@ fi
 # 이후 세션에서 "운영 대비 무엇이 바뀌었나"를 check-sensitive-diff.js 가 기계로 판정하는 앵커.
 # ──────────────────────────────────────────
 log "Recording deploy manifest snapshot..."
-(cd $LOCAL_DEV_BACKEND && node scripts/deploy-manifest.js --snapshot) || warn "deploy manifest snapshot 실패 (비치명 — 다음 배포 때 재기록)"
+(cd $LOCAL_DEV_BACKEND && node scripts/deploy-manifest.js --snapshot --root="$CLEAN_ROOT") || warn "deploy manifest snapshot 실패 (비치명 — 다음 배포 때 재기록)"
 
 # ──────────────────────────────────────────
 # Cleanup temp files
 # ──────────────────────────────────────────
-rm -f /tmp/deploy_dev_schema.json /tmp/deploy_prod_schema.json /tmp/deploy_prod_schema_after.json
+rm -f /tmp/deploy_dev_schema.json /tmp/deploy_prod_schema.json /tmp/deploy_prod_schema_after.json "$PROTECT_LIST"
 
 echo ""
 echo "============================================"
 echo "  Deployment Complete!"
+echo "  Commit: ${DEPLOY_COMMIT:0:9} (미커밋 ${LEFT_OUT:-0}개는 빠짐)"
 echo "  Backup: ${BK_DIR}"
 echo "  Smoke:  ${SMOKE_PASS}/${SMOKE_TOTAL} passed"
 echo "  Time: $(date)"

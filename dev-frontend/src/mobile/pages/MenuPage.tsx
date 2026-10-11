@@ -1487,7 +1487,7 @@ const MenuPage: React.FC = () => {
       <GuidedTile key={key} type="button" onClick={onClick}>
         {icon ? <GuidedTileIcon aria-hidden="true">{icon}</GuidedTileIcon> : null}
         <GuidedTileName>{name}</GuidedTileName>
-        {count != null && <GuidedTileMeta>{t('menu:guided.itemCount', { n: count, defaultValue: '{{n}} items' })}</GuidedTileMeta>}
+        {count != null && <GuidedTileMeta>{t('menu:guided.itemCount', { count, defaultValue: '{{count}} items' })}</GuidedTileMeta>}
       </GuidedTile>
     );
     let body: React.ReactNode;

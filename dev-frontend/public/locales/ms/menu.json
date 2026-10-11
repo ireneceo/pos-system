@@ -222,7 +222,6 @@
   "allInCategory": "Semua",
   "menuManagementPage.uncategorizedNotice": "{{n}} item menu tiada kategori. Pelanggan melihatnya di bawah \"Lain-lain\" — alihkan ke dalam kategori.",
   "others": "Lain-lain",
-  "guided.itemCount": "{{n}} item",
   "guided.pickCategory": "Apa yang anda mahu?",
   "guided.pickSub": "Pilih jenis",
   "guided.pickItem": "Pilih item menu",
@@ -241,5 +240,7 @@
   "guided.confirmHint": "Tetapkan kuantiti dan tambah ke pesanan anda.",
   "guided.total": "Jumlah",
   "guided.addMore": "Tambah lagi",
-  "guided.checkout": "Bayar"
+  "guided.checkout": "Bayar",
+  "guided.itemCount_one": "{{count}} item",
+  "guided.itemCount_other": "{{count}} item"
 }

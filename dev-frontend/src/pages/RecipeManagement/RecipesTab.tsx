@@ -1158,9 +1158,17 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               });
               return out;
             };
+            // GIT 이 **상품으로 파는** 재고아이템(상품이 그 재고아이템을 직접 가리킴)은 선택기에서 뺀다 — 상품이 대신 뜬다
+            //   (2026-10-11 Fable 판정 `fable-verdict-20261011-kdine-ingredient-tidy` R4). 재고아이템을 고르면 서버가
+            //   재고아이템 출처 줄을 만들어, 매장이 GIT 에 발주할 수 없는 줄이 생겼다(같은 물건이 상품 줄과 두 줄).
+            const soldStockItemIds = new Set(
+              (results[4]?.success && Array.isArray(results[4].data) ? results[4].data : [])
+                .filter((bp: any) => bp.is_active !== false && bp.product_ingredient_id)
+                .map((bp: any) => Number(bp.product_ingredient_id))
+            );
             if (results[3]?.success && Array.isArray(results[3].data)) {
               allIngredients = [...allIngredients, ...addUnique(
-                results[3].data.filter((x: any) => x.is_active !== false),
+                results[3].data.filter((x: any) => x.is_active !== false && !soldStockItemIds.has(Number(x.id))),
                 (si) => ({ ...si, id: `pi:${si.id}`, product_ingredient_id: si.id, __fromStockItems: true, __source: 'stockItem' })
               )];
             }

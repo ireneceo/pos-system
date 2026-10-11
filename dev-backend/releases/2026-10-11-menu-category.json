@@ -1,16 +1,27 @@
 {
   "tag": "menu-category",
-  "sw_version": "5.91-menu-category-20261011",
+  "sw_version": "5.93-landing-payment-20261011",
   "date": "2026-10-11",
   "in_progress": "none",
   "completed": [
     "매장 메뉴 2단 카테고리(선택형) — 카테고리 관리에서 «상위 카테고리» 를 고르면 하위가 된다(2단까지). 하위가 있는 카테고리는 메뉴를 직접 담지 않는 «묶음 칸». 메뉴가 있는 카테고리 밑에 첫 하위를 만들 때 «메뉴를 새 하위로 옮기기»(기본 켜짐). 하위는 상위의 주방을 미리 채워 저장",
     "손님 모바일·키오스크 메뉴 — 위 탭은 상위만, 하위가 있는 상위를 고르면 «전체 + 하위» 알약 한 줄. 하위 없는 카테고리는 지금과 똑같다",
     "메뉴 «한 줄 소개»(80자) — 목록 카드 이름 아래·상세 화면에 보임. 추천(Featured) 메뉴에 «Recommended» 표시",
-    "메뉴 관리 «Featured» 체크가 실제로 저장되지 않던 결함 수정(저장 요청·목록 응답에 칸이 빠져 있었음)"
+    "메뉴 관리 «Featured» 체크가 실제로 저장되지 않던 결함 수정(저장 요청·목록 응답에 칸이 빠져 있었음)",
+    "키오스크 메뉴 보기 방식 두 가지 — 설정 › Kiosk «Kiosk menu view»: 둘러보기(기본) / 한 화면에 하나씩(큰 카테고리 타일 › 하위 › 메뉴 카드 › 옵션 묶음 한 화면씩 › 수량·최종 금액 확인 › «더 담기 / 결제하기»). 기본값은 둘러보기라 기존 매장 변화 0, 폰은 영향 없음",
+    "둘러보기 가로 키오스크: 하위 카테고리를 왼쪽 열 안에 들여쓰기로(위 알약 줄 없음) · 손님 화면 «Uncategorized» → «Others» 로 맨 끝 · 카테고리 기본 접시 아이콘 제거 · 메뉴 관리에 «카테고리 없는 메뉴 N개» 안내",
+    "청구서 카드 결제 — 연체 청구서도 카드·이체로 결제 가능(결제 가능 판정 한 곳 utils/invoicePayable.js)",
+    "매장 관리자 청구서 «Stripe 결제» 버튼 동작 — 발행자·지불자는 서버가 청구서에서 꺼냄",
+    "Stripe 웹훅 발행자별 주소(/api/webhooks/stripe/<brand|foodcourt|supplier>/<id>) + 발행자 일치 확인 · 취소·초안 청구서 «결제됨» 전환 막음 · 입금 확인 전 세션 무시",
+    "랜딩 4개 언어 번역(기능·요금·문의·데모·가입·회사) · 무료 요금제 «Free» · 최근 기능 카드 · 없는 기능 카드 제거 · 빈 Docs 메뉴 숨김 · 지원 메일 통일 · 검색 정보(가격 MYR·셀프 가입)",
+    "FAQ 정리 — 운영 중복(27문항×15) 제거 · 답변 갱신 · ko/zh/ms 추가"
   ],
   "issues": [
-    "메뉴 관리에서 Featured 를 켜고 저장해도 저장되지 않았고, 수정 화면엔 늘 꺼진 채로 보였다"
+    "메뉴 관리에서 Featured 를 켜고 저장해도 저장되지 않았고, 수정 화면엔 늘 꺼진 채로 보였다",
+    "연체 청구서는 카드·이체 모두 400 이라 정지 매장이 스스로 못 풀었다",
+    "매장 관리자 «Stripe 결제» 는 만든 날부터 늘 400",
+    "브랜드 자체 Stripe 결제는 웹훅 서명 실패로 청구서가 미결제로 남았다",
+    "운영 FAQ 가 같은 질문 15번씩(251줄)"
   ],
   "upcoming": [
     "③ 키오스크 «한 화면 한 선택» 안내형 흐름(분류 → 하위 → 메뉴 → 옵션 한 장씩 → 금액 확인) + 옵션 묶음 최소·최대 — Fable 설계 1회 뒤",
@@ -18,23 +29,31 @@
   ],
   "behavior_changes": [
     "하위가 있는 카테고리에 메뉴 저장 → 400(CATEGORY_IS_GROUP) · 하위 있는 카테고리 삭제 → 400 · 3단 → 400 — 하위를 안 만든 매장은 변화 0",
-    "POS 는 하위 카테고리를 탭으로 나란히 보임(묶음 칸 상위 탭 없음) · 상위를 끄면 하위도 POS·모바일에서 꺼짐 · 상위 시간대 숨김/흐리게가 하위에도 적용"
+    "POS 는 하위 카테고리를 탭으로 나란히 보임(묶음 칸 상위 탭 없음) · 상위를 끄면 하위도 POS·모바일에서 꺼짐 · 상위 시간대 숨김/흐리게가 하위에도 적용",
+    "손님 화면 카테고리: 아이콘을 안 정한 카테고리는 글자만(기본 접시 이모지 없음) · «Uncategorized» 는 «Others» 로 표시되고 맨 끝(저장 이름·POS·주방·인쇄 그대로)",
+    "POST /api/payments/checkout/start (payment) 는 화면이 보낸 issuer/payer 를 무시",
+    "취소·초안·크레딧 청구서에 결제 웹훅이 오면 상태 무변경 + payment_notes «Held»"
   ],
   "check_areas": [
     "카테고리 관리 → 하위 만들기 → 모바일·키오스크 메뉴 알약 줄 · POS 탭",
-    "메뉴 관리 → 한 줄 소개·Featured 저장 → 모바일 카드 표시"
+    "메뉴 관리 → 한 줄 소개·Featured 저장 → 모바일 카드 표시",
+    "키오스크 설정 › Kiosk menu view «One step at a time» → 키오스크 주문 흐름(카테고리 타일 › 옵션 한 화면씩 › 확인 › 결제)",
+    "매장 관리자 청구서 → 연체 청구서 Pay → Stripe",
+    "랜딩 /features /pricing /faq 를 한국어로"
   ],
   "verification": {
     "api": "서버 규칙 실호출 39/39(데모 38 · 하위 만들기·옮기기·3단·자기 자신·남의 매장·이름 겹침·삭제·모바일 묶기·꺼짐·시간대 숨김/흐리게 전파·🔒 주방 배정 코드 무변경으로 하위→상위 주방) · 정리 후 남은 행 0 · 매장 설정 원본 복원",
     "fault_injection": "서버 3건(하위 주방 미리 채움 제거 · 3단 거절 제거 · 메뉴 묶음 칸 거절 제거) 모두 빨강 → 원복 초록(pm2 재시작 뒤, 원복 바이트 동일). 프론트 고장주입은 안 함(빌드 2회 필요)",
-    "browser": "실브라우저 47/47 — 폰 390×844 · 키오스크 가로 1280×800 · 세로 800×1280: 상위 탭·하위 알약·«전체»=3·Iced=1·새로고침 유지·한 줄 말줄임·추천 표시·상세 · 하위 없는 카테고리는 알약 줄 0 · 카테고리 관리 들여쓰기 · 메뉴 관리 «상위 › 하위» · 편집 창 Featured/한 줄 소개 불러오기·화면 저장→DB · POS 하위 나란히·상위 빈 탭 0 · 화면 오류 0",
+    "browser": "실브라우저 47/47 — 폰 390×844 · 키오스크 가로 1280×800 · 세로 800×1280: 상위 탭·하위 알약·«전체»=3·Iced=1·새로고침 유지·한 줄 말줄임·추천 표시·상세 · 하위 없는 카테고리는 알약 줄 0 · 카테고리 관리 들여쓰기 · 메뉴 관리 «상위 › 하위» · 편집 창 Featured/한 줄 소개 불러오기·화면 저장→DB · POS 하위 나란히·상위 빈 탭 0 · 화면 오류 0 · 두 보기 방식 실브라우저 62/62(가로 1280×800·세로 800×1280: S1 타일·추천 맨 앞·Others 맨 끝·메뉴 개수 · S2 하위 · S3 카드 · S4 옵션 한 화면씩(필수 단일 바로 다음·복수 Next·뒤로 한 단계·고른 것 유지) · S5 11.50→수량 2 23.00 · 세트 12+1=13.00 · S6 더 담기/결제하기 → 결제 화면에 담은 것 · 둘러보기 가로 하위 들여쓰기·알약 0 · 세로 알약 유지 · 폰 Others · 설정 화면 저장) · 매장 설정 원본 복원 · 남은 행 0",
     "printer": "🔒 인쇄 보호 파일 무접촉(print-guard 8/8) — 하위 메뉴 주방 배정은 상위 주방을 미리 채운 값으로 기존 코드가 처리",
-    "migrations": "deploy 레지스트리 신규 1개(멱등): migrate-menu-category-parent-tagline (categories.parent_id · products.tagline 칸 추가만)",
-    "sw_version": "5.91-menu-category-20261011",
-    "fable_note": "backups/fable-pending/fable-verdict-20261011-menu-category-gate.md (설계: fable-verdict-20261011-two-level-category-kiosk-guided.md · 설계 요약 2차 판정)"
+    "migrations": "deploy 레지스트리 신규 1개(멱등): migrate-menu-category-parent-tagline (categories.parent_id · products.tagline 칸 추가만) · migrate-faq-refresh-20261011 (deploy · FAQ 중복 제거 매번, 내용 덮기는 system_settings 표지로 1회)",
+    "sw_version": "5.93-landing-payment-20261011",
+    "fable_note": "backups/fable-pending/fable-verdict-20261011-menu-category-gate.md (설계: fable-verdict-20261011-two-level-category-kiosk-guided.md · 설계 요약 2차 판정) · 키오스크 두 보기 방식 설계: backups/fable-pending/fable-verdict-20261011-kiosk-two-modes.md (완성 점검은 이 묶음 배포 전)",
+    "payment": "health-check payment 21/21(청구서 결제 ①~⑤) · jest 29/29 · 고장주입 5/5 · Stripe 실결제 끝까지는 시험 키 없어 미확인"
   },
-  "notes": "설계 docs/MENU_CATEGORY_TWO_LEVEL.md · 규칙 한 곳 dev-backend/utils/menuCategoryTree.js",
+  "notes": "설계 docs/MENU_CATEGORY_TWO_LEVEL.md · 규칙 한 곳 dev-backend/utils/menuCategoryTree.js · SW 5.92 는 같은 날 청구서 결제 묶음(작업방 67c989de)이 올린 값 — 이 묶음도 그 번들에 함께 실림",
   "irene_actions_after_deploy": [
     "카테고리 관리에서 하위 하나 만들어 모바일·키오스크 메뉴 알약 줄 눈 확인(선택)"
-  ]
+  ],
+  "fable_note": "backups/fable-pending/fable-verdict-20261011-menu-category-gate.md (설계: fable-verdict-20261011-two-level-category-kiosk-guided.md · 설계 요약 2차 판정) · 키오스크 두 보기 방식 설계: backups/fable-pending/fable-verdict-20261011-kiosk-two-modes.md (완성 점검은 이 묶음 배포 전)"
 }
