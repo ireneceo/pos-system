@@ -386,7 +386,13 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
   const navigate = useNavigate();
   // 삭제가 막혔을 때 «어디서 쓰는지» 를 보여주고 그 자리로 보내 준다 (2026-09-12 · Irene 「연결된 레시피 보러가기」)
   //   서버(`DELETE /api/product-ingredients/:id`)가 `error.uses` 로 사용처를 이름까지 실어 준다.
-  const [deleteBlocked, setDeleteBlocked] = useState<{ open: boolean; name: string; uses: IngredientUse[] }>({ open: false, name: '', uses: [] });
+  const [deleteBlocked, setDeleteBlocked] = useState<{ open: boolean; name: string; uses: IngredientUse[]; id?: number | null }>({ open: false, name: '', uses: [] });
+  // 다른 재료로 바꾸고 삭제 (2026-10-11 Fable 판정 fable-verdict-20261011-stock-item-replace-on-delete §3-1 · F8-2)
+  //   Irene «이런거 연결된 재고아이템 삭제할 때 다른 재고아이템이나 프로덕트로 연결 교체하기 기능을 만들면 안돼?»
+  //   막힘 사유가 **전부 브랜드 레시피 줄**일 때만 연다. 레시피 줄은 옮기기만 한다(수량·단위 그대로). 서버가 미리보기·적용·막기를 정한다.
+  const [replaceState, setReplaceState] = useState<{ open: boolean; id: number | null; name: string; target: string | null; showInactive: boolean;
+    sellOptions: any[]; preview: any | null; blockReasons: any[]; busy: boolean; done: boolean }>({
+    open: false, id: null, name: '', target: null, showInactive: false, sellOptions: [], preview: null, blockReasons: [], busy: false, done: false });
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -469,6 +475,46 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
       setSelectedCurrency(defaultCurrency);
     }
   }, [defaultCurrency]);
+
+  const openReplace = async () => {
+    const base = { open: true, id: deleteBlocked.id ?? null, name: deleteBlocked.name, target: null, showInactive: false,
+      sellOptions: [] as any[], preview: null, blockReasons: [] as any[], busy: true, done: false };
+    setDeleteBlocked({ open: false, name: '', uses: [] });
+    setReplaceState(base);
+    try {
+      const res: any = await fetchAPI('/api/brand-products');
+      const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      setReplaceState((p) => ({ ...p, sellOptions: list, busy: false }));
+    } catch {
+      setReplaceState((p) => ({ ...p, busy: false }));
+    }
+  };
+
+  // 서버 미리보기/적용 — fetchAPI 는 실패 본문(사유 목록)을 버리므로 직접 fetch 한다
+  const runReplace = async (dryRun: boolean) => {
+    if (!replaceState.id || !replaceState.target) return;
+    const [kind, rawId] = replaceState.target.split(':');
+    const target = kind === 'bp' ? { brand_product_id: Number(rawId) } : { product_ingredient_id: Number(rawId) };
+    setReplaceState((p) => ({ ...p, busy: true, blockReasons: [] }));
+    try {
+      const res = await fetch(`/api/product-ingredients/${replaceState.id}/replace`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ target, dry_run: dryRun })
+      });
+      const j = await res.json().catch(() => ({ success: false }));
+      if (j.success) {
+        setReplaceState((p) => ({ ...p, busy: false, preview: j.data, done: !dryRun }));
+        if (!dryRun) fetchData();
+      } else {
+        const err: any = j.error || {};
+        setReplaceState((p) => ({ ...p, busy: false, preview: null,
+          blockReasons: Array.isArray(err.uses) && err.uses.length ? err.uses : [{ reason: err.message || j.message || 'Failed' }] }));
+      }
+    } catch (e: any) {
+      setReplaceState((p) => ({ ...p, busy: false, blockReasons: [{ reason: e?.message || 'Network error' }] }));
+    }
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -748,7 +794,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
         fetchData();
       } else if (response.error && Array.isArray(response.error.uses) && response.error.uses.length) {
         // 쓰는 곳이 남아 있다 — 문장 하나로 닫지 않고 목록 + «보러가기» 로 안내한다
-        setDeleteBlocked({ open: true, name: deleteConfirm.ingredientName, uses: response.error.uses });
+        setDeleteBlocked({ open: true, name: deleteConfirm.ingredientName, uses: response.error.uses, id: deleteConfirm.ingredientId });
       } else {
         const err: any = response.error;
         setInfoModal({
@@ -1555,12 +1601,108 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
               );
             })}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
+            {deleteBlocked.id && deleteBlocked.uses.length > 0 && deleteBlocked.uses.every((u) => u.type === 'brand_recipe') && (
+              <ModalButton type="button" variant="secondary" onClick={openReplace}>
+                {t('brand:productIngredientsTab.replaceOpen', 'Switch to another item & delete')}
+              </ModalButton>
+            )}
             <ModalButton type="button" variant="primary" onClick={() => setDeleteBlocked({ open: false, name: '', uses: [] })}>
               {t('common:close', 'Close')}
             </ModalButton>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={replaceState.open}
+        onClose={() => setReplaceState((p) => ({ ...p, open: false }))}
+        title={t('brand:productIngredientsTab.replaceTitle', 'Switch recipes to another item, then delete')}
+        size="small"
+      >
+        {(() => {
+          // 고를 수 있는 것 = 같은 주인의 다른 재고아이템 + 판매 상품(물건). 상품이 직접 가리키는 재고아이템은 숨기고 상품을 보인다(R4).
+          const soldIds = new Set((replaceState.sellOptions || []).filter((bp: any) => bp.is_active !== false && bp.product_ingredient_id).map((bp: any) => Number(bp.product_ingredient_id)));
+          const inc = (active: any) => replaceState.showInactive || active !== false;
+          const options = [
+            ...(replaceState.sellOptions || []).filter((bp: any) => bp.product_kind !== 'service' && inc(bp.is_active)).map((bp: any) => ({
+              value: `bp:${bp.id}`, label: bp.name,
+              subLabel: `${t('brand:productIngredientsTab.replaceKindProduct', 'Product (what you sell)')}${bp.is_active === false ? ' · ' + t('brand:productIngredientsTab.replaceInactive', 'inactive') : ''}`
+            })),
+            ...ingredients.filter((si: any) => si.id !== replaceState.id && !soldIds.has(Number(si.id)) && inc(si.is_active)).map((si: any) => ({
+              value: `pi:${si.id}`, label: si.name,
+              subLabel: `${t('brand:productIngredientsTab.replaceKindStock', 'Stock item')}${si.is_active === false ? ' · ' + t('brand:productIngredientsTab.replaceInactive', 'inactive') : ''}`
+            }))
+          ];
+          const pv = replaceState.preview;
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: 1.6 }}>
+                {t('brand:productIngredientsTab.replaceIntro', 'Recipes that use "{{name}}" will use the item you pick instead — amounts stay the same. Then "{{name}}" is deleted.', { name: replaceState.name })}
+              </div>
+              {!replaceState.done && (
+                <>
+                  <SearchableSelect
+                    options={options}
+                    value={replaceState.target}
+                    onChange={(v) => setReplaceState((p) => ({ ...p, target: (v as string) || null, preview: null, blockReasons: [] }))}
+                    placeholder={t('brand:productIngredientsTab.replacePick', 'Search the item to use instead...') as string}
+                  />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#4B5563' }}>
+                    <input type="checkbox" checked={replaceState.showInactive}
+                      onChange={(e) => setReplaceState((p) => ({ ...p, showInactive: e.target.checked }))} />
+                    {t('brand:productIngredientsTab.replaceShowInactive', 'Show inactive items too')}
+                  </label>
+                </>
+              )}
+              {(replaceState.blockReasons || []).length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ fontSize: '12px', color: '#B91C1C', fontWeight: 600 }}>
+                    {t('brand:productIngredientsTab.replaceBlocked', 'Cannot switch automatically — nothing was changed:')}
+                  </div>
+                  {(replaceState.blockReasons || []).map((e: any, i: number) => (
+                    <div key={i} style={{ fontSize: '12px', color: '#4B5563', border: '1px solid #C7CED6', borderRadius: '6px', padding: '8px 10px' }}>
+                      {e.name ? <strong style={{ color: '#0A2540' }}>{e.name}</strong> : null}{e.name && e.reason ? ' — ' : ''}{e.reason || e.type}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {pv && Array.isArray(pv.moved) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ fontSize: '12px', color: '#0A2540', fontWeight: 600 }}>
+                    {replaceState.done
+                      ? t('brand:productIngredientsTab.replaceDone', 'Done — recipes switched and the stock item was deleted.')
+                      : t('brand:productIngredientsTab.replacePreview', 'Preview — nothing is changed until you confirm:')}
+                  </div>
+                  {pv.moved.length === 0 && (
+                    <div style={{ fontSize: '12px', color: '#4B5563' }}>{t('brand:productIngredientsTab.replaceNoLines', 'No recipe lines to move.')}</div>
+                  )}
+                  {pv.moved.map((m: any, i: number) => (
+                    <div key={i} style={{ fontSize: '12px', color: '#4B5563', border: '1px solid #C7CED6', borderRadius: '6px', padding: '8px 10px', lineHeight: 1.6 }}>
+                      {t('brand:productIngredientsTab.replaceMovedLine', '{{count}} recipe line(s) → "{{to}}"', { count: m.lines, to: m.toName })}
+                      {m.unitInherited ? ` · ${t('brand:productIngredientsTab.replaceUnitInherited', 'unit taken over')}` : ''}
+                      {m.cost ? <div style={{ color: '#6B7280' }}>{t('brand:productIngredientsTab.replaceCost', 'Cost {{from}} → {{to}}', { from: m.cost.loser, to: m.cost.winnerAfter })}</div> : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <ModalButton type="button" variant="secondary" onClick={() => setReplaceState((p) => ({ ...p, open: false }))}>
+                  {t('common:close', 'Close')}
+                </ModalButton>
+                {!replaceState.done && (pv ? (
+                  <ModalButton type="button" variant="danger" disabled={replaceState.busy} onClick={() => runReplace(false)}>
+                    {t('brand:productIngredientsTab.replaceApply', 'Switch & delete')}
+                  </ModalButton>
+                ) : (
+                  <ModalButton type="button" variant="primary" disabled={replaceState.busy || !replaceState.target} onClick={() => runReplace(true)}>
+                    {t('brand:productIngredientsTab.replaceCheck', 'Preview')}
+                  </ModalButton>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </Modal>
 
       <SellerPackSizeModal

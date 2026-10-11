@@ -779,7 +779,117 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// 삭제
+// 삭제 — 판정·실행을 함수로 둔다: DELETE /:id 와 «다른 재료로 바꾸고 삭제»(POST /:id/replace)가 **같은 판정**을 쓴다
+//   (2026-10-11 Fable 판정 `fable-verdict-20261011-stock-item-replace-on-delete.md` §4-3).
+//   transaction 을 받는 이유: 바꾸기는 레시피 줄을 옮긴 **같은 트랜잭션 안에서** 다시 세야 옮긴 결과가 보인다.
+async function collectStockItemUses(ingredient, { transaction } = {}) {
+  const uses = [];
+  const db = ProductIngredient.sequelize;
+  const rows = (sql, replacements) => db.query(sql, { replacements, type: db.QueryTypes.SELECT, transaction });
+
+  // ① 내 브랜드 프로덕트 레시피
+  const productRecipeRows = await rows(
+    `SELECT pr.id, pr.name FROM product_recipe_ingredients pri
+       JOIN product_recipes pr ON pr.id = pri.recipe_id
+      WHERE pri.ingredient_id = :id`,
+    { id: ingredient.id }
+  );
+  productRecipeRows.forEach((r) => uses.push({ type: 'product_recipe', id: r.id, name: r.name }));
+
+  // ② 브랜드 상품 옵션(예: «떡 추가») — FK 가 NO ACTION 이라 검사 없이 지우면 DB 가 막아 500 이 난다
+  //   옵션은 상품에 직접 붙지 않고 **옵션 그룹**을 거친다(brand_product_options.option_group_id).
+  //   그룹이 여러 상품에 붙을 수 있어 상품 이름은 첫 연결 하나만 참고로 싣는다.
+  const optionRows = await rows(
+    `SELECT o.id, o.name, o.option_group_id,
+            (SELECT bp.name FROM brand_product_option_group_products gp
+               JOIN brand_products bp ON bp.id = gp.product_id
+              WHERE gp.option_group_id = o.option_group_id LIMIT 1) AS product_name
+       FROM brand_product_option_ingredients oi
+       JOIN brand_product_options o ON o.id = oi.option_id
+      WHERE oi.ingredient_id = :id`,
+    { id: ingredient.id }
+  );
+  optionRows.forEach((r) => uses.push({ type: 'product_option', id: r.id, name: r.name, productName: r.product_name || null }));
+
+  // ③ 재고아이템을 직접 가리키는 곳 — 지우면 FK 500 이나 고아가 된다(합치기 마이그 ④ 와 같은 참조 3종).
+  //   발주 줄은 이력이라 지우지 않는다 — 화면이 «Deactivate» 를 쓰라고 안내한다.
+  const poRows = await rows(
+    `SELECT DISTINCT po.id, po.po_number, po.status FROM purchase_order_items poi
+       JOIN purchase_orders po ON po.id = poi.purchase_order_id
+      WHERE poi.product_ingredient_id = :id`,
+    { id: ingredient.id }
+  );
+  poRows.forEach((r) => uses.push({ type: 'purchase_order', id: r.id, name: r.po_number || `PO #${r.id}`, status: r.status }));
+  const directProductRows = await rows(
+    `SELECT id, name FROM brand_products WHERE product_ingredient_id = :id`,
+    { id: ingredient.id }
+  );
+  directProductRows.forEach((r) => uses.push({ type: 'brand_product_direct', id: r.id, name: r.name }));
+  const directMenuRows = await rows(
+    `SELECT p.id, p.name, p.restaurant_id, rest.name AS restaurant_name FROM products p
+       LEFT JOIN restaurants rest ON rest.id = p.restaurant_id
+      WHERE p.ingredient_id = :id`,
+    { id: ingredient.id }
+  );
+  directMenuRows.forEach((r) => uses.push({ type: 'menu_direct', id: r.id, name: r.name, restaurantId: r.restaurant_id, restaurantName: r.restaurant_name }));
+
+  // ④ 다른 브랜드에 공유한 사본(거울)이 쓰이는 곳 — 화면에 연결이 안 보여서 «연결 없는데 왜?» 로 보이던 자리.
+  //   «사용 중» 기준은 services/stockItemMirror.mirrorUses 하나다(공유 해제와 같은 답 — 2026-10-09 Fable 판정 §4-1).
+  //   재고 0 인 매장 줄·브랜드 자신의 연결은 사용이 아니다 — 세면 실사 한 번 한 재료를 영원히 못 지웠다.
+  const { mirrorUses } = require('../services/stockItemMirror');
+  const mirrorRows = await rows(
+    `SELECT id, brand_id, name FROM ingredients WHERE source_product_ingredient_id = :id`,
+    { id: ingredient.id }
+  );
+  for (const m of mirrorRows) {
+    const mu = await mirrorUses(m.id, { transaction });
+    mu.recipeLines.forEach((r) => uses.push({ type: 'brand_recipe', id: r.id, name: r.name, brandId: r.brandId, mirrorBrandId: m.brand_id }));
+    mu.stockedOverlays.forEach((r) => uses.push({ type: 'store_stock', id: r.restaurantId, name: r.name, restaurantId: r.restaurantId, stock: r.current_stock, unit: r.unit }));
+    mu.storeLinks.forEach((r) => uses.push({ type: 'seller_link', id: m.id, name: r.restaurantName, restaurantId: r.restaurantId, count: r.count, mirrorBrandId: m.brand_id }));
+  }
+  return uses;
+}
+
+/** 사용처가 없을 때 실제로 지운다(거울 해제 → 출처 끊기 → 행 삭제). 막히면 { blockedUses } */
+async function deleteStockItem(ingredient, { transaction } = {}) {
+  // 거울 정리 (2026-09-04, docs/INGREDIENT_UNIFICATION_DESIGN.md):
+  //   이 Stock Item 을 공유받은 브랜드 거울이 있으면 먼저 해제한다.
+  //   참조(레시피 줄·매장 덧씌우기·공급처 연결)가 하나라도 있으면 **삭제하지 않는다** —
+  //   그냥 지우면 인스펙션 ING-UNI-003 이 사후에 잡을 고아를 우리가 사전에 만드는 꼴이다.
+  {
+    const { Ingredient } = require('../models');
+    const { unshareFromBrand } = require('../services/stockItemMirror');
+    const mirrors = await Ingredient.findAll({
+      where: { source_product_ingredient_id: ingredient.id },
+      attributes: ['id', 'brand_id', 'name'],
+      transaction
+    });
+    const blocked = [];
+    for (const m of mirrors) {
+      const r = await unshareFromBrand(ingredient, m.brand_id, { transaction });
+      if (!r.changed && r.reason === 'in-use') blocked.push({ brand_id: m.brand_id, ...r.detail });
+    }
+    // 위 ④ 와 같은 술어라 여기서 막히면 그 사이 누가 붙인 것 — 500 이 아니라 같은 형태의 사유로 낸다.
+    if (blocked.length) {
+      return { blockedUses: blocked.flatMap((b) => [
+            ...(b.recipeLines || []).map((r) => ({ type: 'brand_recipe', id: r.id, name: r.name, brandId: r.brandId, mirrorBrandId: b.brand_id })),
+            ...(b.stockedOverlays || []).map((r) => ({ type: 'store_stock', id: r.restaurantId, name: r.name, restaurantId: r.restaurantId, stock: r.current_stock, unit: r.unit })),
+            ...(b.storeLinks || []).map((r) => ({ type: 'seller_link', id: b.brand_id, name: r.restaurantName, restaurantId: r.restaurantId, count: r.count, mirrorBrandId: b.brand_id }))
+          ]) };
+    }
+    // 참조가 없어 비활성된 거울은 출처를 끊어 고아 참조를 남기지 않는다(행은 이력으로 보존).
+    if (mirrors.length) {
+      await Ingredient.update(
+        { source_product_ingredient_id: null },
+        { where: { source_product_ingredient_id: ingredient.id }, transaction }
+      );
+    }
+  }
+
+  await ingredient.destroy({ transaction });
+  return { deleted: true };
+}
+
 router.delete('/:id', async (req, res) => {
   try {
     const ingredient = await ProductIngredient.findByPk(req.params.id);
@@ -789,123 +899,21 @@ router.delete('/:id', async (req, res) => {
     //   화면이 «못 지웁니다» 로 끝내지 않고 **그 자리로 보내 줄 수 있게** 사용처를 이름까지 실어 돌려준다.
     //   ⚠ 사유는 한 가지 형태(`error: { code, message, uses[] }`)로만 낸다 — 전에는 레시피는 문자열, 거울은 객체라
     //   화면이 객체를 문장 자리에 넣어 **이유가 통째로 안 보였다**(운영 GIT «Rice Cake» 신고의 실제 증상).
-    const uses = [];
-    const db = ProductIngredient.sequelize;
-    const rows = (sql, replacements) => db.query(sql, { replacements, type: db.QueryTypes.SELECT });
-
-    // ① 내 브랜드 프로덕트 레시피
-    const productRecipeRows = await rows(
-      `SELECT pr.id, pr.name FROM product_recipe_ingredients pri
-         JOIN product_recipes pr ON pr.id = pri.recipe_id
-        WHERE pri.ingredient_id = :id`,
-      { id: ingredient.id }
-    );
-    productRecipeRows.forEach((r) => uses.push({ type: 'product_recipe', id: r.id, name: r.name }));
-
-    // ② 브랜드 상품 옵션(예: «떡 추가») — FK 가 NO ACTION 이라 검사 없이 지우면 DB 가 막아 500 이 난다
-    //   옵션은 상품에 직접 붙지 않고 **옵션 그룹**을 거친다(brand_product_options.option_group_id).
-    //   그룹이 여러 상품에 붙을 수 있어 상품 이름은 첫 연결 하나만 참고로 싣는다.
-    const optionRows = await rows(
-      `SELECT o.id, o.name, o.option_group_id,
-              (SELECT bp.name FROM brand_product_option_group_products gp
-                 JOIN brand_products bp ON bp.id = gp.product_id
-                WHERE gp.option_group_id = o.option_group_id LIMIT 1) AS product_name
-         FROM brand_product_option_ingredients oi
-         JOIN brand_product_options o ON o.id = oi.option_id
-        WHERE oi.ingredient_id = :id`,
-      { id: ingredient.id }
-    );
-    optionRows.forEach((r) => uses.push({ type: 'product_option', id: r.id, name: r.name, productName: r.product_name || null }));
-
-    // ③ 재고아이템을 직접 가리키는 곳 — 지우면 FK 500 이나 고아가 된다(합치기 마이그 ④ 와 같은 참조 3종).
-    //   발주 줄은 이력이라 지우지 않는다 — 화면이 «Deactivate» 를 쓰라고 안내한다.
-    const poRows = await rows(
-      `SELECT DISTINCT po.id, po.po_number, po.status FROM purchase_order_items poi
-         JOIN purchase_orders po ON po.id = poi.purchase_order_id
-        WHERE poi.product_ingredient_id = :id`,
-      { id: ingredient.id }
-    );
-    poRows.forEach((r) => uses.push({ type: 'purchase_order', id: r.id, name: r.po_number || `PO #${r.id}`, status: r.status }));
-    const directProductRows = await rows(
-      `SELECT id, name FROM brand_products WHERE product_ingredient_id = :id`,
-      { id: ingredient.id }
-    );
-    directProductRows.forEach((r) => uses.push({ type: 'brand_product_direct', id: r.id, name: r.name }));
-    const directMenuRows = await rows(
-      `SELECT p.id, p.name, p.restaurant_id, rest.name AS restaurant_name FROM products p
-         LEFT JOIN restaurants rest ON rest.id = p.restaurant_id
-        WHERE p.ingredient_id = :id`,
-      { id: ingredient.id }
-    );
-    directMenuRows.forEach((r) => uses.push({ type: 'menu_direct', id: r.id, name: r.name, restaurantId: r.restaurant_id, restaurantName: r.restaurant_name }));
-
-    // ④ 다른 브랜드에 공유한 사본(거울)이 쓰이는 곳 — 화면에 연결이 안 보여서 «연결 없는데 왜?» 로 보이던 자리.
-    //   «사용 중» 기준은 services/stockItemMirror.mirrorUses 하나다(공유 해제와 같은 답 — 2026-10-09 Fable 판정 §4-1).
-    //   재고 0 인 매장 줄·브랜드 자신의 연결은 사용이 아니다 — 세면 실사 한 번 한 재료를 영원히 못 지웠다.
-    const { mirrorUses } = require('../services/stockItemMirror');
-    const mirrorRows = await rows(
-      `SELECT id, brand_id, name FROM ingredients WHERE source_product_ingredient_id = :id`,
-      { id: ingredient.id }
-    );
-    for (const m of mirrorRows) {
-      const mu = await mirrorUses(m.id);
-      mu.recipeLines.forEach((r) => uses.push({ type: 'brand_recipe', id: r.id, name: r.name, brandId: r.brandId, mirrorBrandId: m.brand_id }));
-      mu.stockedOverlays.forEach((r) => uses.push({ type: 'store_stock', id: r.restaurantId, name: r.name, restaurantId: r.restaurantId, stock: r.current_stock, unit: r.unit }));
-      mu.storeLinks.forEach((r) => uses.push({ type: 'seller_link', id: m.id, name: r.restaurantName, restaurantId: r.restaurantId, count: r.count, mirrorBrandId: m.brand_id }));
-    }
-
+    const uses = await collectStockItemUses(ingredient);
     if (uses.length) {
       return res.status(400).json({
         success: false,
-        error: {
-          code: 'IN_USE',
-          message: 'This Stock Item is still in use. Open each place below and remove it there first.',
-          uses
-        }
+        error: { code: 'IN_USE', message: 'This Stock Item is still in use. Open each place below and remove it there first.', uses }
       });
     }
-
-    // 거울 정리 (2026-09-04, docs/INGREDIENT_UNIFICATION_DESIGN.md):
-    //   이 Stock Item 을 공유받은 브랜드 거울이 있으면 먼저 해제한다.
-    //   참조(레시피 줄·매장 덧씌우기·공급처 연결)가 하나라도 있으면 **삭제하지 않는다** —
-    //   그냥 지우면 인스펙션 ING-UNI-003 이 사후에 잡을 고아를 우리가 사전에 만드는 꼴이다.
-    {
-      const { Ingredient } = require('../models');
-      const { unshareFromBrand } = require('../services/stockItemMirror');
-      const mirrors = await Ingredient.findAll({
-        where: { source_product_ingredient_id: ingredient.id },
-        attributes: ['id', 'brand_id', 'name']
+    // collect 와 같은 술어라 여기서 막히면 그 사이 누가 붙인 것 — 500 이 아니라 같은 형태의 사유로 낸다.
+    const r = await deleteStockItem(ingredient);
+    if (r.blockedUses) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'IN_USE', message: 'This Stock Item is still in use. Open each place below and remove it there first.', uses: r.blockedUses }
       });
-      const blocked = [];
-      for (const m of mirrors) {
-        const r = await unshareFromBrand(ingredient, m.brand_id);
-        if (!r.changed && r.reason === 'in-use') blocked.push({ brand_id: m.brand_id, ...r.detail });
-      }
-      // 위 ④ 와 같은 술어라 여기서 막히면 그 사이 누가 붙인 것 — 500 이 아니라 같은 형태의 사유로 낸다.
-      if (blocked.length) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'IN_USE',
-            message: 'This Stock Item is still in use. Open each place below and remove it there first.',
-            uses: blocked.flatMap((b) => [
-              ...(b.recipeLines || []).map((r) => ({ type: 'brand_recipe', id: r.id, name: r.name, brandId: r.brandId, mirrorBrandId: b.brand_id })),
-              ...(b.stockedOverlays || []).map((r) => ({ type: 'store_stock', id: r.restaurantId, name: r.name, restaurantId: r.restaurantId, stock: r.current_stock, unit: r.unit })),
-              ...(b.storeLinks || []).map((r) => ({ type: 'seller_link', id: b.brand_id, name: r.restaurantName, restaurantId: r.restaurantId, count: r.count, mirrorBrandId: b.brand_id }))
-            ])
-          }
-        });
-      }
-      // 참조가 없어 비활성된 거울은 출처를 끊어 고아 참조를 남기지 않는다(행은 이력으로 보존).
-      if (mirrors.length) {
-        await Ingredient.update(
-          { source_product_ingredient_id: null },
-          { where: { source_product_ingredient_id: ingredient.id } }
-        );
-      }
     }
-
-    await ingredient.destroy();
 
     res.json({
       success: true,
@@ -919,6 +927,89 @@ router.delete('/:id', async (req, res) => {
     });
   }
 });
+
+// 다른 재료로 바꾸고 삭제 (2026-10-11 Fable 판정 `fable-verdict-20261011-stock-item-replace-on-delete.md` §3 · F8-2)
+//   Irene «이런거 연결된 재고아이템 삭제할 때 다른 재고아이템이나 프로덕트로 연결 교체하기 기능을 만들면 안돼?»
+//   POST /api/product-ingredients/:id/replace  body { target: { product_ingredient_id } | { brand_product_id }, dry_run }
+//   브랜드 레시피 줄을 **옮기고**(수량·단위 그대로) 이 재고아이템을 지운다 — 9-12 F8 «줄을 지우고 삭제» 와 다르다.
+//   규칙은 services/mirrorMerge 하나(일회성 스크립트와 같은 함수). 하나라도 막히면 아무것도 바꾸지 않는다.
+//   dry_run = 전부 해 보고 무조건 되돌림(미리보기).
+router.post('/:id/replace', (req, res) => replaceStockItem(req, res).catch((error) => {
+  console.error('Error replacing product ingredient:', error);
+  if (!res.headersSent) res.status(500).json({ success: false, message: 'Failed to switch and delete this stock item' });
+}));
+async function replaceStockItem(req, res) {
+  const ingredient = await ProductIngredient.findByPk(req.params.id);
+  if (!assertBGOwnsRow(ingredient, req, res)) return;
+  const { BrandProduct, Ingredient } = require('../models');
+  const { shareToBrand, shareProductToBrand } = require('../services/stockItemMirror');
+  const { mergePair, ingRow } = require('../services/mirrorMerge');
+  const target = (req.body && req.body.target) || {};
+  const dryRun = req.body && req.body.dry_run !== false;
+  const ownerId = ingredient.owner_user_id;
+  const blocked = (status, code, message, uses = []) => res.status(status).json({ success: false, error: { code, message, uses } });
+
+  // 대상 — 같은 주인의 다른 재고아이템 또는 같은 주인의 상품(물건 — 서비스 제외)
+  let targetPi = null, targetBp = null;
+  if (target.product_ingredient_id != null) {
+    targetPi = await ProductIngredient.findByPk(target.product_ingredient_id);
+    if (!targetPi || Number(targetPi.owner_user_id) !== Number(ownerId)) return blocked(400, 'TARGET_INVALID', 'Pick one of your own stock items.');
+    if (Number(targetPi.id) === Number(ingredient.id)) return blocked(400, 'TARGET_INVALID', 'Pick a different stock item.');
+    if (targetPi.is_active === false) return blocked(400, 'TARGET_INVALID', 'That stock item is inactive — activate it first.');
+  } else if (target.brand_product_id != null) {
+    targetBp = await BrandProduct.findByPk(target.brand_product_id);
+    if (!targetBp || Number(targetBp.owner_user_id) !== Number(ownerId)) return blocked(400, 'TARGET_INVALID', 'Pick one of your own products.');
+    if (targetBp.is_active === false) return blocked(400, 'TARGET_INVALID', 'That product is inactive — activate it first.');
+    if (targetBp.product_kind === 'service') return blocked(400, 'TARGET_INVALID', 'A service product cannot be a recipe ingredient.');
+  } else {
+    return blocked(400, 'TARGET_REQUIRED', 'Pick the stock item or product to use instead.');
+  }
+
+  // 바꿀 수 있는 것은 브랜드 레시피 줄뿐 — 다른 사용처가 있으면 종전대로 «그 자리에서 정리» 로 안내(F8)
+  const before = await collectStockItemUses(ingredient);
+  const others = before.filter((u) => u.type !== 'brand_recipe');
+  if (others.length) {
+    return blocked(400, 'REPLACE_BLOCKED', 'This Stock Item is also used in places that cannot be switched automatically. Open each one first.', others);
+  }
+
+  const t = await ProductIngredient.sequelize.transaction();
+  try {
+    const mirrors = await Ingredient.findAll({
+      where: { source_product_ingredient_id: ingredient.id, is_active: true }, attributes: ['id', 'brand_id', 'name'], transaction: t
+    });
+    const moved = [], skipped = [];
+    for (const m of mirrors) {
+      const { ingredient: winner } = targetPi
+        ? await shareToBrand(targetPi, m.brand_id, { transaction: t })
+        : await shareProductToBrand(targetBp, m.brand_id, { transaction: t });
+      const r = await mergePair({ loser: m.id, winner: winner.id }, t, { ownerUserId: ownerId });
+      if (r.skipped) { skipped.push({ type: 'replace_blocked', id: m.id, name: m.name, brandId: m.brand_id, reason: r.skipped }); continue; }
+      const w = await ingRow(winner.id, t);
+      moved.push({ brandId: m.brand_id, from: m.id, to: winner.id, toName: w.name, lines: r.rec.movedRecipeLineIds.length,
+        unitInherited: r.rec.unitInherited, cost: r.rec.cost });
+    }
+    if (skipped.length) {
+      await t.rollback();
+      return blocked(400, 'REPLACE_BLOCKED', 'Some recipes cannot be switched automatically. Fix these first.', skipped);
+    }
+    // 옮긴 뒤 같은 판정으로 다시 센다 — 남아 있으면 지우지 않는다(같은 트랜잭션 안이라 옮긴 결과가 보인다)
+    const left = await collectStockItemUses(ingredient, { transaction: t });
+    if (left.length) {
+      await t.rollback();
+      return blocked(400, 'REPLACE_BLOCKED', 'Still in use after switching — nothing was changed.', left);
+    }
+    const d = await deleteStockItem(ingredient, { transaction: t });
+    if (d.blockedUses) {
+      await t.rollback();
+      return blocked(400, 'REPLACE_BLOCKED', 'Still in use after switching — nothing was changed.', d.blockedUses);
+    }
+    if (dryRun) await t.rollback(); else await t.commit();
+    res.json({ success: true, data: { dry_run: dryRun, moved, deleted: !dryRun } });
+  } catch (error) {
+    if (!t.finished) await t.rollback();
+    throw error;
+  }
+}
 
 // 재고 조정
 // GET /api/product-ingredients/:id/open-po-lines

@@ -4610,6 +4610,85 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     });
   }
 
+  // ── 재고아이템 «다른 재료로 바꾸고 삭제» (2026-10-11 Fable 판정 fable-verdict-20261011-stock-item-replace-on-delete §4-5) ──
+  //   Irene «이런거 연결된 재고아이템 삭제할 때 다른 재고아이템이나 프로덕트로 연결 교체하기 기능을 만들면 안돼?»
+  //   R-a 상품으로 바꾸기: 미리보기는 무변화 → 적용 = 레시피 줄 이동(수량 그대로) · 지는 줄 비활성+출처 비움 · 재고아이템 삭제 · 출처 연결 1
+  //   R-b 한 레시피가 두 줄을 다 씀 → 400 REPLACE_BLOCKED · 아무것도 안 바뀜
+  //   R-c 다른 주인의 브랜드에 공유된 줄 → 400 REPLACE_BLOCKED (남의 브랜드 레시피는 건드리지 않는다)
+  for (const kase of ['ok', 'bothLines', 'otherOwner']) {
+    const title = kase === 'ok' ? '상품으로 바꾸고 삭제 — 미리보기 무변화 · 적용 시 줄 이동·재고아이템 삭제·출처 연결 1'
+      : kase === 'bothLines' ? '한 레시피가 두 줄을 다 쓰면 400 REPLACE_BLOCKED · 무변화'
+      : '다른 주인 브랜드의 줄이면 400 REPLACE_BLOCKED · 무변화';
+    test('inventory', `바꾸고 삭제: ${title}`, async () => {
+      const { sequelize } = require('../config/database');
+      const M = require('../models');
+      const Q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+      const bgUser = (await Q("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1"))[0];
+      const brand = bgUser && (await Q('SELECT id FROM brands WHERE owner_id = :o ORDER BY id LIMIT 1', { o: bgUser.id }))[0];
+      const foreignBrand = bgUser && (await Q('SELECT id FROM brands WHERE owner_id IS NOT NULL AND owner_id <> :o ORDER BY id LIMIT 1', { o: bgUser.id }))[0];
+      if (!bgUser || !brand || !foreignBrand) { console.log(c.gray('      (건너뜀: 데모 BG/브랜드 없음 — 계약 미검증)')); return true; }
+      const auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: bgUser.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+      const tag = `ZZ-HC-REPL-${kase}-${Date.now()}`;
+      const made = { pi: [], bp: [], ing: [], recipe: [] };
+      const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+      try {
+        const { shareToBrand } = require('../services/stockItemMirror');
+        const pi = await M.ProductIngredient.create({ owner_user_id: bgUser.id, name: tag, unit: 'g', base_quantity: 1000, unit_cost: 30, is_active: true }); made.pi.push(pi.id);
+        const bp = await M.BrandProduct.create({ owner_user_id: bgUser.id, name: tag + ' Sauce 1kg', unit: 'g', base_quantity: 1000, unit_price: 34.9,
+          is_active: true, distribution_mode: 'all', product_kind: 'stock', sku: 'ZZR-' + Math.random().toString(36).slice(2, 9) }); made.bp.push(bp.id);
+        const useBrand = kase === 'otherOwner' ? foreignBrand.id : brand.id;
+        const mirror = (await shareToBrand(pi, useBrand)).ingredient; made.ing.push(mirror.id);
+        const recipe = await M.Recipe.create({ owner_type: 'brand', brand_id: useBrand, name: tag + '-R', is_active: true }); made.recipe.push(recipe.id);
+        await sequelize.query(`INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit, created_at, updated_at) VALUES (:r,:i,30,'g',NOW(),NOW())`, { replacements: { r: recipe.id, i: mirror.id } });
+        if (kase === 'bothLines') {
+          const { shareProductToBrand } = require('../services/stockItemMirror');
+          const w = (await shareProductToBrand(bp, brand.id)).ingredient; made.ing.push(w.id);
+          await sequelize.query(`INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit, created_at, updated_at) VALUES (:r,:i,5,'g',NOW(),NOW())`, { replacements: { r: recipe.id, i: w.id } });
+        }
+        const snap = async () => JSON.stringify(await Q(`SELECT ri.id, ri.ingredient_id, ri.quantity FROM recipe_ingredients ri WHERE ri.recipe_id = :r ORDER BY ri.id`, { r: recipe.id }))
+          + JSON.stringify(await Q('SELECT id, is_active, source_product_ingredient_id s FROM ingredients WHERE id = :i', { i: mirror.id }))
+          + JSON.stringify(await Q('SELECT COUNT(*) n FROM product_ingredients WHERE id = :i', { i: pi.id }));
+        const before = await snap();
+        const prev = await request('POST', `/product-ingredients/${pi.id}/replace`, { target: { brand_product_id: bp.id }, dry_run: true }, auth);
+        if (kase !== 'ok') {
+          const r = await request('POST', `/product-ingredients/${pi.id}/replace`, { target: { brand_product_id: bp.id }, dry_run: false }, auth);
+          if (r.status !== 400 || r.body?.error?.code !== 'REPLACE_BLOCKED' || !(r.body?.error?.uses || []).length) return fail(`${kase} ${r.status} ${JSON.stringify(r.body).slice(0, 200)}`);
+          if ((await snap()) !== before) return fail(`${kase} 막혔는데 무언가 바뀜`);
+          return true;
+        }
+        if (prev.status !== 200 || prev.body?.data?.dry_run !== true || (prev.body?.data?.moved || [])[0]?.lines !== 1) return fail(`미리보기 ${prev.status} ${JSON.stringify(prev.body).slice(0, 200)}`);
+        if ((await snap()) !== before) return fail('미리보기인데 바뀜');
+        const r = await request('POST', `/product-ingredients/${pi.id}/replace`, { target: { brand_product_id: bp.id }, dry_run: false }, auth);
+        if (r.status !== 200 || r.body?.data?.deleted !== true) return fail(`적용 ${r.status} ${JSON.stringify(r.body).slice(0, 200)}`);
+        const winnerId = r.body.data.moved[0].to; made.ing.push(winnerId);
+        const [line] = await Q('SELECT ingredient_id, quantity FROM recipe_ingredients WHERE recipe_id = :r', { r: recipe.id });
+        const [L] = await Q('SELECT is_active, source_product_ingredient_id s FROM ingredients WHERE id = :i', { i: mirror.id });
+        const [gone] = await Q('SELECT COUNT(*) n FROM product_ingredients WHERE id = :i', { i: pi.id });
+        const [lk] = await Q(`SELECT COUNT(*) n FROM ingredient_seller_products WHERE ingredient_id = :w AND buyer_restaurant_id IS NULL AND seller_type='brand' AND seller_product_id = :p AND is_active = 1`, { w: winnerId, p: bp.id });
+        if (Number(line.ingredient_id) !== Number(winnerId) || Number(line.quantity) !== 30) return fail(`줄 ${JSON.stringify(line)}`);
+        if (Number(L.is_active) !== 0 || L.s != null) return fail(`지는 줄 ${JSON.stringify(L)}`);
+        if (Number(gone.n) !== 0) return fail('재고아이템이 안 지워짐');
+        if (Number(lk.n) !== 1) return fail(`출처 연결 ${lk.n}`);
+        made.pi = [];
+        return true;
+      } catch (e) { return fail(`예외: ${e.message}`); }
+      finally {
+        try {
+          const X = (s, r) => sequelize.query(s, { replacements: r });
+          if (made.recipe.length) { await X('DELETE FROM recipe_ingredients WHERE recipe_id IN (:i)', { i: made.recipe }); await X('DELETE FROM recipes WHERE id IN (:i)', { i: made.recipe }); }
+          const ings = (await Q('SELECT id FROM ingredients WHERE name LIKE :t', { t: tag + '%' })).map((r) => r.id);
+          if (ings.length) {
+            await X('DELETE FROM ingredient_seller_products WHERE ingredient_id IN (:i)', { i: ings });
+            await X('DELETE FROM ingredient_cost_logs WHERE ingredient_id IN (:i)', { i: ings }).catch(() => {});
+            await X('DELETE FROM ingredients WHERE id IN (:i)', { i: ings });
+          }
+          if (made.bp.length) await X('DELETE FROM brand_products WHERE id IN (:i)', { i: made.bp });
+          await X('DELETE FROM product_ingredients WHERE name LIKE :t', { t: tag + '%' });
+        } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
+      }
+    });
+  }
+
   // ④: Stock Item 을 고치면 거울이 따라온다. 동기화를 빼면 이름이 안 따라와 실패한다.
   test('inventory', '통합④: Stock Item 이름 변경 → 거울이 따라온다 (한 방향 동기화)', async () => {
     const { sequelize } = require('../config/database');
