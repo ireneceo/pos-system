@@ -242,5 +242,8 @@
   "guided.addMore": "Tambah lagi",
   "guided.checkout": "Bayar",
   "guided.itemCount_one": "{{count}} item",
-  "guided.itemCount_other": "{{count}} item"
+  "guided.itemCount_other": "{{count}} item",
+  "kioskView.label": "Paparan",
+  "kioskView.browse": "Semak imbas",
+  "kioskView.guided": "Langkah demi langkah"
 }

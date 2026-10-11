@@ -1417,7 +1417,7 @@
   "settingsPage.kioskTab.goTerminal": "카드 단말기 연동 →",
   "settingsPage.kioskTab.urlCardTitle": "등록 없이 화면만 키오스크 모양으로 열기 (선택)",
   "settingsPage.kioskTab.menuModeTitle": "키오스크 메뉴 보기 방식",
-  "settingsPage.kioskTab.menuModeHint": "손님이 키오스크에서 메뉴를 고르는 방식입니다. 폰 주문 화면은 바뀌지 않습니다.",
+  "settingsPage.kioskTab.menuModeHint": "키오스크에 처음 보일 방식입니다. 키오스크 화면 위 스위치로도 바꿀 수 있고, 그 태블릿이 기억합니다. 폰 주문 화면은 바뀌지 않습니다.",
   "settingsPage.kioskTab.menuModeBrowse": "둘러보기(기본)",
   "settingsPage.kioskTab.menuModeGuided": "한 화면에 하나씩",
   "settingsPage.kioskTab.menuModeBrowseHint": "옆에 카테고리, 한 화면에 메뉴 목록과 장바구니.",

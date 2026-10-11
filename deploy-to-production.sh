@@ -96,6 +96,30 @@ CLEAN_OUT=$(bash /var/www/scripts/make-clean-source.sh "$CLEAN_ROOT" 2>&1) \
 DEPLOY_COMMIT=$(echo "$CLEAN_OUT" | awk '/^COMMIT /{print $2}')
 LEFT_OUT=$(echo "$CLEAN_OUT" | awk '/^LEFT_OUT /{print $2}')
 [ -n "$DEPLOY_COMMIT" ] || error "깨끗한 사본의 커밋 번호를 읽지 못했다: $CLEAN_OUT"
+# 마지막 커밋이 자동 저장이면 (Fable 게이트 C1, 2026-10-11) — cron auto-save(30분 쉬면 미커밋을 «wip: auto-save» 로 커밋)는
+#   진행 중인 일을 커밋으로 만든다. 그대로 사본에 들어가 «진행 중인 건 빼고» 가 깨진다(10-11 아침 점검: 일부러 미룬 키오스크
+#   변경이 자동 저장 커밋으로 섞였던 사례). --auto(정기 점검·자동 배포)는 멈추고, 수동은 목록을 보여 주고 확인을 받는다.
+#   2026-10-11 뒤로 자동 저장은 HEAD 가 아니라 refs/autosave/<브랜치> 에 쌓인다(서버 방 5f4293d3a) — 그래서 «마지막 커밋»
+#   제목만 보면 HEAD 아래 묻힌 예전 wip 커밋을 놓친다. **이번에 새로 나갈 범위(지난 배포 커밋..이번 커밋)** 전체를 본다.
+#   지난 배포 커밋 = .claude/deploy-manifest.json 의 commit. 없으면(사본 배포 첫 회) 그 기록 시각 이후 커밋으로 본다.
+LAST_DEPLOY_COMMIT=$(node -e "try{const m=require('/var/www/.claude/deploy-manifest.json');process.stdout.write(m.commit||'')}catch(e){}")
+if [ -n "$LAST_DEPLOY_COMMIT" ]; then
+    WIP_RANGE_ARGS="${LAST_DEPLOY_COMMIT}..${DEPLOY_COMMIT}"
+else
+    LAST_DEPLOY_AT=$(node -e "try{const m=require('/var/www/.claude/deploy-manifest.json');process.stdout.write(m.created_at||'')}catch(e){}")
+    WIP_RANGE_ARGS="--since=${LAST_DEPLOY_AT:-7 days ago} ${DEPLOY_COMMIT}"
+fi
+# shellcheck disable=SC2086
+WIP_COMMITS=$(git -C /var/www log --format='    %h %ad %s' --date=format:'%m-%d %H:%M' $WIP_RANGE_ARGS | grep 'wip: auto-save' || true)
+if [ -n "$WIP_COMMITS" ]; then
+    warn "이번에 나갈 범위에 자동 저장(wip) 커밋이 있습니다 — 진행 중인 일이 섞였을 수 있음:"
+    echo "$WIP_COMMITS"
+    if [ "$AUTO_MODE" = true ]; then
+        error "자동 배포(--auto) 중단 — 나갈 범위에 자동 저장(wip) 커밋이 있습니다. 그 일을 한 방이 확인하고 «/개발완료» 로 정식 커밋한 뒤, 수동 /배포 로 확인하고 내보내세요."
+    fi
+    read -p "자동 저장 커밋을 포함해 배포할까요? (y/N): " wip_confirm
+    [[ "$wip_confirm" =~ ^[Yy]$ ]] || { echo "Cancelled."; exit 0; }
+fi
 success "배포 대상 = 커밋 ${DEPLOY_COMMIT:0:9} ($CLEAN_ROOT)"
 if [ "${LEFT_OUT:-0}" -gt 0 ]; then
     warn "작업 폴더 미커밋·미추적 ${LEFT_OUT}개는 이번 배포에서 빠집니다 (진행 중인 일 — 커밋되면 다음 배포에 나감):"
@@ -111,7 +135,8 @@ fi
 if [ "$SKIP_SAFETY" = true ]; then
     warn "⚠️  안전 게이트 건너뜀 (--skip-safety) — 긴급 핫픽스 모드. 인쇄/주문 회귀 미검증 상태로 배포함."
 else
-    # 파일·마이그 검사(1·2·3·3b·4·4b·4c·4d·5·6·9·10)는 **운영에 갈 사본**을 본다 — 보내는 것을 검사한다.
+    # 파일·마이그 검사(1·2·3·3b·4·4b·4c·4d·4e·5·9·10)는 **운영에 갈 사본**을 본다 — 보내는 것을 검사한다.
+    # 6 hydration 은 git 이 필요해 작업 폴더에서 «지난 배포..이번 배포 커밋» 범위로 본다.
     # 살아 있는 dev 서버·dev 데이터 상태를 보는 검사(7 health-check · 8 인스펙션)는 작업 폴더에서 돈다.
     cd $SRC_BACKEND
 
@@ -159,6 +184,18 @@ else
     fi
     success "require 대상 전부 사본에 있음"
 
+    # 사본 백엔드는 운영 pm2 재시작 전까지 한 번도 실행되지 않는다(health-check 는 작업 폴더 dev 서버를 때린다).
+    #   자동 저장이 편집 도중 상태를 커밋했을 수 있으니 최소한 문법은 전수 확인한다(≈800파일 · 25초). Fable 게이트 C3.
+    log "Safety gate (4e/10): 🧾 사본 백엔드 문법 전수 (node --check)..."
+    SYNTAX_FAIL=$(find . \( -name node_modules -o -name tests -o -name logs -o -name backups -o -name uploads -o -name tmp \) -prune \
+        -o -type f -name '*.js' -print0 | xargs -0 -n1 -P4 sh -c 'node --check "$0" >/dev/null 2>&1 || echo "$0"')
+    if [ -n "$SYNTAX_FAIL" ]; then
+        error "🧾 커밋된 백엔드 코드에 문법 오류 — 운영 백엔드가 기동 중 죽습니다:
+$SYNTAX_FAIL
+       (자동 저장 커밋이 편집 도중 상태를 담았을 수 있음. 고쳐서 커밋한 뒤 재배포. 긴급 우회: --skip-safety)"
+    fi
+    success "사본 백엔드 문법 OK"
+
     # 4c. 배포 마이그를 **dev DB 에서 실제로 돌려 본다** — 정적 검사(4b)는 실행이 아니다.
     #   2026-09-05: `migrate-backfill-unit-cost.js` 가 collation 충돌로 매번 즉사하고 있었는데
     #   deploy 목록에 등록돼 있었고 레지스트리 검사를 통과했다. 한 번도 실행된 적이 없어서다.
@@ -177,7 +214,16 @@ else
     success "타임존 가드 OK (신규 위반 0)"
 
     log "Safety gate (6/10): 💧 state hydration 안전 (legacy 캐시 crash 방지)..."
-    if ! (cd $SRC_FRONTEND && node scripts/state-hydration-check.js); then
+    # hydration 검사는 git 으로 «바뀐 줄» 을 찾는다(/var/www 고정) — 사본엔 .git 이 없다. 그래서 작업 폴더에서
+    #   **배포 델타 = 지난 배포 커밋..이번 배포 커밋** 범위로 돌린다(미커밋은 운영에 안 가므로 안 본다). Fable 게이트 C2.
+    #   지난 배포 커밋 = 1a 에서 읽은 LAST_DEPLOY_COMMIT (사본 배포 첫 회엔 없음 → 경고 후 통과).
+    if [ -z "$LAST_DEPLOY_COMMIT" ]; then
+        warn "지난 배포 커밋 기록 없음(사본 배포 첫 회) — hydration 검사 건너뜀. 이번 배포부터 기록됨."
+        HYDRATION_CMD="true"
+    else
+        HYDRATION_CMD="node scripts/state-hydration-check.js --range ${LAST_DEPLOY_COMMIT}..${DEPLOY_COMMIT}"
+    fi
+    if ! (cd $LOCAL_DEV_FRONTEND && $HYDRATION_CMD); then
         error "💧 hydration warning — 새 state field 의 defensive merge/accessor 누락 = legacy 사용자 runtime crash. /검증 0단계 가이드 참조. (긴급 우회: --skip-safety)"
     fi
     cd $LOCAL_DEV_BACKEND
@@ -946,6 +992,9 @@ else
                 mv "$LOCAL_DEV_BACKEND/releases/$REC_NAME" "$LOCAL_DEV_BACKEND/releases/archive/$REC_NAME"
             fi
             success "배포 기록 적재 완료 — archive/$REC_NAME 로 이동"
+            # 이 이동은 **배포 방의 산출물**이라 커밋해야 한다 — 안 하면 HEAD 에 옛 기록이 남아 다음 배포 게이트 10 이
+            #   옛 기록으로 통과한다(Fable 게이트 C4). 경로 지정 커밋만(남의 미커밋 파일은 안 건드림 · git add -A 금지).
+            RECORD_PATHS="dev-backend/releases/$REC_NAME dev-backend/releases/archive/$REC_NAME .claude/deploy-manifest.json"
         else
             # fail-loud — 코드는 이미 나갔으니 롤백이 아니라 **성공으로 읽히지 않게** 한다.
             # 자동화는 exit 코드만 본다(오늘 배포 스크립트의 `Cancelled.` → exit 0 과 같은 함정).
@@ -1177,7 +1226,7 @@ fi
 # 이후 세션에서 "운영 대비 무엇이 바뀌었나"를 check-sensitive-diff.js 가 기계로 판정하는 앵커.
 # ──────────────────────────────────────────
 log "Recording deploy manifest snapshot..."
-(cd $LOCAL_DEV_BACKEND && node scripts/deploy-manifest.js --snapshot --root="$CLEAN_ROOT") || warn "deploy manifest snapshot 실패 (비치명 — 다음 배포 때 재기록)"
+(cd $LOCAL_DEV_BACKEND && node scripts/deploy-manifest.js --snapshot --root="$CLEAN_ROOT" --commit="$DEPLOY_COMMIT") || warn "deploy manifest snapshot 실패 (비치명 — 다음 배포 때 재기록)"
 
 # ──────────────────────────────────────────
 # Cleanup temp files
@@ -1193,6 +1242,10 @@ echo "  Smoke:  ${SMOKE_PASS}/${SMOKE_TOTAL} passed"
 echo "  Time: $(date)"
 echo "============================================"
 echo ""
+if [ -n "${RECORD_PATHS:-}" ]; then
+    warn "배포 방 산출물(배포 기록 보관함 이동 + 배포 지문)을 이 경로만 지정해 커밋하세요 (경로 없는 git add -A·git add . 금지 — 남의 미커밋이 섞임):"
+    echo "  git -C /var/www add -A -- $RECORD_PATHS && git -C /var/www commit -m 'chore: 배포 기록 보관 (${DEPLOY_COMMIT:0:9})' -- $RECORD_PATHS"
+fi
 
 # 배포 기록 적재 실패는 마지막에 다시 알리고 **exit 1** 로 끝낸다 — 위 요약만 보고
 # 성공으로 넘기지 않기 위해서다(코드 배포 자체는 이미 끝났다).

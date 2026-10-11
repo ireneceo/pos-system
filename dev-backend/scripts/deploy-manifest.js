@@ -23,6 +23,8 @@ const MANIFEST = path.join(ROOT, '.claude', 'deploy-manifest.json');
 // --snapshot 은 `--root=<사본>` 으로 **실제로 보낸 사본**의 지문을 남긴다(2026-10-11). 기록 파일 자리는 ROOT 그대로.
 const rootArg = process.argv.find((a) => a.startsWith('--root='));
 const SRC_ROOT = rootArg ? path.resolve(rootArg.slice('--root='.length)) : ROOT;
+// 배포한 커밋 번호 — 다음 배포가 «지난 배포..이번 배포» 델타를 git 으로 볼 때 쓴다(hydration 게이트, Fable C2).
+const commitArg = process.argv.find((a) => a.startsWith('--commit='));
 
 // 배포 rsync 가 실제로 운영에 보내는 소스 범위와 일치시킨다 (deploy-to-production.sh 참조).
 // dev-backend: --exclude node_modules/.env/uploads/*.log
@@ -100,6 +102,7 @@ if (require.main === module) {
       note: '운영 배포 시점 소스 지문 — deploy-to-production.sh 성공 후 자동 기록. 수동 편집 금지.',
       created_at: new Date().toISOString(),
       source_root: SRC_ROOT,
+      commit: commitArg ? commitArg.slice('--commit='.length) : null,
       file_count: Object.keys(files).length,
       files,
     }, null, 1) + '\n');

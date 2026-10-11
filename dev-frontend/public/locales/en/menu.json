@@ -242,5 +242,8 @@
   "guided.addMore": "Add more",
   "guided.checkout": "Checkout",
   "guided.itemCount_one": "{{count}} item",
-  "guided.itemCount_other": "{{count}} items"
+  "guided.itemCount_other": "{{count}} items",
+  "kioskView.label": "View",
+  "kioskView.browse": "Browse",
+  "kioskView.guided": "Step by step"
 }

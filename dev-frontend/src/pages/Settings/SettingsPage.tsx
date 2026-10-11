@@ -6024,7 +6024,7 @@ const SettingsPage: React.FC = () => {
                   <SettingsCard style={{ gridColumn: '1 / -1' }}>
                     <CardTitle>{t('settings:settingsPage.kioskTab.menuModeTitle', 'Kiosk menu view')}</CardTitle>
                     <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
-                      {t('settings:settingsPage.kioskTab.menuModeHint', 'How customers pick items on the kiosk. Phones are not affected.')}
+                      {t('settings:settingsPage.kioskTab.menuModeHint', 'The view a kiosk shows first. It can also be switched on the kiosk screen itself (the tablet remembers it). Phones are not affected.')}
                     </p>
                     <AutoSaveField ref={kioskMenuModeRef} onSave={handleSave} type="toggle">
                       <div role="radiogroup" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>

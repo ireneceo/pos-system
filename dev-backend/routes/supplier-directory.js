@@ -745,13 +745,40 @@ router.get('/supplier-catalog', async (req, res) => {
     const myIngs = myIngsWhere ? await Ingredient.findAll({ where: myIngsWhere, attributes: ['id'] }) : [];
     const myIngIds = myIngs.map(i => i.id);
     // 매장은 부모 브랜드 재료에 자기 연결을 붙일 수 있다(2026-10-04) — 그 연결도 «이미 담음».
+    // 부모 브랜드 재료에 브랜드가 붙인 «출처 연결»(buyer 없음 · 판매자 = 그 브랜드)도 «이미 담음» 이다 (2026-10-11).
+    //   매장은 그 브랜드 줄로 발주한다(운영 K-DINE IPC Branch: 육개장 소스 = 브랜드 재료 57 ↔ 브랜드 상품 11).
+    //   전엔 매장 소유 줄만 봐서 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 떴다.
+    //   보이는 연결 규칙은 utils/brandStockAccess.sellerLinkVisibleWhere 와 같다(공용 연결은 브랜드 자신이 판매자인 것만).
+    let parentBrandIngIds = [];
+    let parentBrandId = null;
+    if (req.buyerEntity.type === 'restaurant') {
+      const { parentBrandIdOf } = require('../utils/brandStockAccess');
+      parentBrandId = await parentBrandIdOf(req.buyerEntity.id);
+      if (parentBrandId) {
+        const brandIngs = await Ingredient.findAll({
+          where: { owner_type: 'brand', brand_id: parentBrandId, is_active: true }, attributes: ['id']
+        });
+        parentBrandIngIds = brandIngs.map(i => i.id);
+      }
+    }
     const mapWhere = req.buyerEntity.type === 'restaurant'
-      ? { [Op.or]: [{ ingredient_id: { [Op.in]: myIngIds.length ? myIngIds : [0] } }, { buyer_restaurant_id: req.buyerEntity.id }], is_active: true }
+      ? { [Op.or]: [
+          { ingredient_id: { [Op.in]: myIngIds.length ? myIngIds : [0] } },
+          { buyer_restaurant_id: req.buyerEntity.id },
+          ...(parentBrandIngIds.length ? [{
+            ingredient_id: { [Op.in]: parentBrandIngIds }, buyer_restaurant_id: null,
+            seller_type: 'brand', seller_entity_id: parentBrandId
+          }] : [])
+        ], is_active: true }
       : { ingredient_id: { [Op.in]: myIngIds }, is_active: true };
     const allMapRows = (myIngIds.length === 0 && req.buyerEntity.type !== 'restaurant') ? [] : await IngredientSellerProduct.findAll({
       where: mapWhere,
-      attributes: ['ingredient_id', 'seller_type', 'seller_product_id']
+      attributes: ['ingredient_id', 'seller_type', 'seller_product_id', 'buyer_restaurant_id']
     });
+    // 같은 상품에 매장 자기 연결과 브랜드 출처 연결이 둘 다 있으면 매장 것이 이긴다 — 브랜드 출처 연결을 먼저 깔고 덮는다.
+    const brandIngSet = new Set(parentBrandIngIds);
+    const isBrandSource = (m) => m.buyer_restaurant_id == null && brandIngSet.has(m.ingredient_id);
+    allMapRows.sort((a, b) => (isBrandSource(b) ? 1 : 0) - (isBrandSource(a) ? 1 : 0));
     const mappedMap = {};
     const mappedBrandMap = {};
     const mappedFoodcourtMap = {};

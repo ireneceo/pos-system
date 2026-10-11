@@ -5,7 +5,7 @@ import { Utensils, ShoppingBag, Clock, Truck, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next';
 import MobileLayout from '../components/common/MobileLayout';
 import { KioskActionBar } from '../components/common/KioskLayout';
-import { isKioskMode, isMenuBoardMode, withMenuBoardQuery } from '../utils/kioskMode';
+import { isKioskMode, isMenuBoardMode, withMenuBoardQuery, getKioskViewPref, setKioskViewPref, KioskMenuView } from '../utils/kioskMode';
 import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit } from '../components/KioskCartAside';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
@@ -503,6 +503,32 @@ const SubCategoryChip = styled.button<{ active: boolean }>`
   cursor: pointer;
 `;
 
+/* 키오스크 보기 방식 스위치 — 메뉴 화면 위 «둘러보기 | 한 화면에 하나씩» (같은 메뉴·같은 장바구니, 보이는 방식만 다름) */
+const ViewSwitchRow = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 12px;
+`;
+const ViewSwitchGroup = styled.div`
+  display: inline-flex;
+  border: 1px solid #C7CED6;
+  border-radius: 999px;
+  background: #FFFFFF;
+  padding: 3px;
+  gap: 3px;
+`;
+const ViewSwitchBtn = styled.button<{ $on: boolean }>`
+  min-height: 44px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: ${p => (p.$on ? 700 : 500)};
+  background: ${p => (p.$on ? '#635BFF' : 'transparent')};
+  color: ${p => (p.$on ? '#FFFFFF' : '#374151')};
+  cursor: pointer;
+`;
+
 /* ── 키오스크 «한 화면에 하나씩»(안내형) — Fable kiosk-two-modes §2. 키오스크 전용이라 폰 치수와 무관 ── */
 const GuidedHead = styled.div`
   margin: 4px 0 20px;
@@ -764,7 +790,9 @@ const MenuPage: React.FC = () => {
   // 키오스크 «한 화면에 하나씩»(안내형) — 설정 › Kiosk › 메뉴 보기 방식. 폰·메뉴판은 안 읽는다 (Fable kiosk-two-modes §2)
   // 단계는 주소 꼬리로: g='' 카테고리 타일 · g=sub 하위 타일 · g=items 메뉴 카드 (gc=고른 카테고리). 뒤로가기 = 한 단계.
   const location = useLocation();
-  const guided = kiosk && !menuBoard && mobileSettings.kiosk_menu_mode === 'guided';
+  // 이 태블릿에서 고른 보기 방식이 있으면 그것, 없으면 매장 설정(처음 보일 방식)
+  const [viewPref, setViewPref] = useState<KioskMenuView | null>(() => getKioskViewPref());
+  const guided = kiosk && !menuBoard && (viewPref || mobileSettings.kiosk_menu_mode) === 'guided';
   const guidedParams = new URLSearchParams(location.search);
   const guidedStep = guidedParams.get('g') || '';
   const guidedCat = guidedParams.get('gc') || '';
@@ -1468,6 +1496,27 @@ const MenuPage: React.FC = () => {
         </CartBar>
   );
 
+  const changeView = (v: KioskMenuView) => {
+    setKioskViewPref(v);
+    setViewPref(v);
+    // 단계 꼬리(g·gc)는 지우고 첫 화면부터
+    const u = new URLSearchParams(window.location.search);
+    u.delete('g'); u.delete('gc');
+    navigate({ pathname: location.pathname, search: `?${u.toString()}` }, { replace: true });
+  };
+  const viewSwitch = kiosk && !menuBoard ? (
+    <ViewSwitchRow>
+      <ViewSwitchGroup role="radiogroup" aria-label={t('menu:kioskView.label', 'View')}>
+        <ViewSwitchBtn type="button" role="radio" aria-checked={!guided} $on={!guided} onClick={() => changeView('browse')}>
+          {t('menu:kioskView.browse', 'Browse')}
+        </ViewSwitchBtn>
+        <ViewSwitchBtn type="button" role="radio" aria-checked={guided} $on={guided} onClick={() => changeView('guided')}>
+          {t('menu:kioskView.guided', 'Step by step')}
+        </ViewSwitchBtn>
+      </ViewSwitchGroup>
+    </ViewSwitchRow>
+  ) : null;
+
   if (guided) {
     const countFor = (id: string) => {
       if (allMenuItems.length === 0) return null;
@@ -1520,6 +1569,7 @@ const MenuPage: React.FC = () => {
     } else {
       body = (
         <>
+          {viewSwitch}
           <GuidedHead>
             <GuidedTitle>{t('menu:guided.pickCategory', 'What would you like?')}</GuidedTitle>
           </GuidedHead>
@@ -1623,6 +1673,7 @@ const MenuPage: React.FC = () => {
 
       {/* 캐시리스 안내 배너는 결제 화면(PaymentPage)으로 이동(#9). 메뉴에는 상단 작은 Cashless 뱃지만 유지. */}
 
+      {viewSwitch}
       <SearchSection>
         <SearchInputContainer>
           {!kiosk && <SearchIcon>🔍</SearchIcon>}

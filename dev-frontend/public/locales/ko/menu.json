@@ -242,5 +242,8 @@
   "guided.addMore": "더 담기",
   "guided.checkout": "결제하기",
   "guided.itemCount_one": "메뉴 {{count}}개",
-  "guided.itemCount_other": "메뉴 {{count}}개"
+  "guided.itemCount_other": "메뉴 {{count}}개",
+  "kioskView.label": "보기",
+  "kioskView.browse": "둘러보기",
+  "kioskView.guided": "한 화면에 하나씩"
 }

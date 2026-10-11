@@ -242,5 +242,8 @@
   "guided.addMore": "继续点餐",
   "guided.checkout": "去结账",
   "guided.itemCount_one": "{{count}} 个菜品",
-  "guided.itemCount_other": "{{count}} 个菜品"
+  "guided.itemCount_other": "{{count}} 个菜品",
+  "kioskView.label": "显示方式",
+  "kioskView.browse": "浏览",
+  "kioskView.guided": "一步一步选"
 }

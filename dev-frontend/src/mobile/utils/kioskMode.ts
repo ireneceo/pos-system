@@ -32,6 +32,25 @@ export function isKioskMode(): boolean {
 }
 
 /**
+ * 키오스크 메뉴 보기 방식 — 이 태블릿에서 고른 값(둘러보기 / 한 화면에 하나씩).
+ * 매장 설정(mobile_settings.kiosk_menu_mode)은 «처음 보일 방식», 키오스크 화면 위 스위치로 고르면 이 기기에 기억된다
+ * (2026-10-11 Irene «키오스크에서 직접 고를 수 없을까? 구조는 똑같고 보이는 방식 차이잖아»). 유휴 리셋으로 지우지 않는다.
+ */
+const VIEW_KEY = 'kiosk_menu_view';
+export type KioskMenuView = 'browse' | 'guided';
+export function getKioskViewPref(): KioskMenuView | null {
+  try {
+    const v = localStorage.getItem(VIEW_KEY);
+    return v === 'browse' || v === 'guided' ? v : null;
+  } catch {
+    return null;
+  }
+}
+export function setKioskViewPref(v: KioskMenuView): void {
+  try { localStorage.setItem(VIEW_KEY, v); } catch { /* 저장 못 해도 이번 화면은 바뀐다 */ }
+}
+
+/**
  * 손님이 자리를 뜬 뒤 다음 손님이 앞사람 장바구니를 물려받지 않도록 하는 유휴 시간(ms).
  * 90초 = 메뉴를 훑는 손님은 안 끊기고, 떠난 자리는 다음 손님 전에 정리되는 실무 기준.
  */

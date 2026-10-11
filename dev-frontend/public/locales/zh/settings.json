@@ -1417,7 +1417,7 @@
   "settingsPage.kioskTab.goTerminal": "刷卡终端连接 →",
   "settingsPage.kioskTab.urlCardTitle": "不登记、仅以自助点餐机画面打开（可选）",
   "settingsPage.kioskTab.menuModeTitle": "自助机菜单显示方式",
-  "settingsPage.kioskTab.menuModeHint": "顾客在自助机上点餐的方式。手机点餐不受影响。",
+  "settingsPage.kioskTab.menuModeHint": "自助机首先显示的方式。也可以在自助机屏幕上直接切换（该平板会记住）。手机点餐不受影响。",
   "settingsPage.kioskTab.menuModeBrowse": "浏览（默认）",
   "settingsPage.kioskTab.menuModeGuided": "一步一步选",
   "settingsPage.kioskTab.menuModeBrowseHint": "侧边显示分类，菜单和购物车在同一屏。",

@@ -1417,7 +1417,7 @@
   "settingsPage.kioskTab.goTerminal": "Pautan terminal kad →",
   "settingsPage.kioskTab.urlCardTitle": "Buka paparan kiosk tanpa mendaftar (pilihan)",
   "settingsPage.kioskTab.menuModeTitle": "Paparan menu kiosk",
-  "settingsPage.kioskTab.menuModeHint": "Cara pelanggan memilih item di kiosk. Telefon tidak terjejas.",
+  "settingsPage.kioskTab.menuModeHint": "Paparan yang kiosk tunjukkan dahulu. Ia juga boleh ditukar pada skrin kiosk itu sendiri (tablet akan mengingatinya). Telefon tidak terjejas.",
   "settingsPage.kioskTab.menuModeBrowse": "Semak imbas (lalai)",
   "settingsPage.kioskTab.menuModeGuided": "Satu langkah demi satu",
   "settingsPage.kioskTab.menuModeBrowseHint": "Kategori di tepi, grid menu dan troli dalam satu skrin.",
