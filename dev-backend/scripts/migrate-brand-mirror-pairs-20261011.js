@@ -206,10 +206,11 @@ async function undoPair(rec, t) {
     }
     console.log(`\n합침 ${applied.length} · 건너뜀 ${skipped.length}${APPLY ? '' : ' — 드라이런(롤백)'}`);
     if (APPLY) {
-      await t.commit();
+      // 영수증을 **커밋 전에** 쓴다 — 못 쓰면 되돌릴 근거가 없으니 적용도 하지 않는다(K-Bulgogi 스크립트와 같은 규칙 · 2026-10-11 Fable 게이트).
       fs.mkdirSync(RECEIPT_DIR, { recursive: true });
       const file = path.join(RECEIPT_DIR, `brand-mirror-pairs-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
       fs.writeFileSync(file, JSON.stringify({ at: new Date().toISOString(), pairs, applied, skipped }, null, 2));
+      try { await t.commit(); } catch (e) { fs.unlinkSync(file); throw e; }
       console.log(`영수증: ${file}  (되돌리기: --undo=${file} --apply)`);
     } else await t.rollback();
     process.exit(0);
