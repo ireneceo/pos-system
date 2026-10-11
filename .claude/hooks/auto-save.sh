@@ -3,16 +3,27 @@
 #
 # Two modes:
 #   stop  — Claude Stop hook fires after every Claude response.
-#           Records activity timestamp. No commit (keeps active-session
-#           git history clean — user can structure real commits manually).
-#   timer — Cron entry, runs every 5 min. Auto-commits ONLY when:
+#           Records activity timestamp only.
+#   timer — Cron entry, runs every 5 min. Takes a snapshot ONLY when:
 #             • Claude has been silent > 30 min (idle / SSH dropped / sleeping)
 #             • Repo has uncommitted work
-#             • Last commit was > 30 min ago (don't pile on a fresh manual commit)
+#             • Last snapshot was > 30 min ago
 #
-# Why this split: auto-commit during active work clutters git log with
-# wip noise; auto-commit only when nobody is around saves work without
-# disrupting normal workflow.
+# ★ 2026-10-11 재설계 — 작업 브랜치에 커밋하지 않는다 (Fable 게이트 C1 근본 해결,
+#   판정문 /var/www/backups/fable-pending/fable-verdict-20261011-clean-source-deploy-gate.md)
+#   옛 버전은 `git add -A && git commit` 으로 **작업 브랜치 HEAD** 에 «wip: auto-save» 를 쌓았다.
+#   배포가 «마지막 커밋의 깨끗한 사본» 에서 나가게 되자, 검증 안 된 진행 중 작업이 자동저장
+#   커밋을 타고 운영으로 갈 수 있게 됐다. 그래서 PlanQ(scripts/claude-autosave.sh)와 같은 방식:
+#   스냅샷을 전용 ref `refs/autosave/<브랜치>` 에 쌓는다. 워킹트리·인덱스·브랜치 어느 것도
+#   건드리지 않는다(임시 인덱스 사용). 유실 방지력은 그대로, 히스토리·배포에는 사람이 커밋한 것만.
+#   (옛 STALE 배너도 뺐다 — HEAD 에 코드가 들어가지 않으니 «HEAD 는 새 코드, 작업기록은 옛것»
+#    상황이 생기지 않고, cron 이 작업 중인 방의 session-state.md 를 고쳐 쓰는 경합도 없어진다.)
+#
+#   복구:
+#     git log --oneline refs/autosave/<브랜치>          # 스냅샷 목록
+#     git show refs/autosave/<브랜치>:<경로>            # 파일 하나 꺼내 보기
+#     git diff HEAD refs/autosave/<브랜치>              # 지금 커밋과 마지막 스냅샷 차이
+#     git checkout refs/autosave/<브랜치> -- <경로>     # 되살리기
 
 set -u
 
@@ -20,7 +31,7 @@ ACTIVITY_FILE="/tmp/.claude-last-activity"
 LOG_FILE="/var/www/.claude/auto-save.log"
 REPO="/var/www"
 IDLE_THRESHOLD_SEC=1800       # 30 min — dead-man trigger
-MIN_COMMIT_INTERVAL_SEC=1800  # 30 min — don't override fresh manual commits
+MIN_SNAPSHOT_INTERVAL_SEC=1800  # 30 min — between snapshots
 MODE="${1:-stop}"
 NOW=$(date +%s)
 
@@ -30,10 +41,11 @@ if [ "$MODE" = "stop" ]; then
   exit 0
 fi
 
-# ─── timer mode: dead-man auto-commit ─────────────────────────────────
+# ─── timer mode: dead-man snapshot ────────────────────────────────────
 [ "$MODE" = "timer" ] || exit 0
 
 cd "$REPO" 2>/dev/null || exit 0
+git rev-parse --verify -q HEAD >/dev/null 2>&1 || exit 0
 
 # Skip if no uncommitted work
 [ -n "$(git status --porcelain 2>/dev/null)" ] || exit 0
@@ -43,97 +55,51 @@ ACTIVITY_TS=$(cat "$ACTIVITY_FILE" 2>/dev/null || echo 0)
 IDLE_SINCE=$((NOW - ACTIVITY_TS))
 [ "$IDLE_SINCE" -ge "$IDLE_THRESHOLD_SEC" ] || exit 0
 
-# Skip if last commit is very recent (user mid-workflow)
-LAST_COMMIT=$(git log -1 --format=%ct 2>/dev/null || echo 0)
-ELAPSED=$((NOW - LAST_COMMIT))
-[ "$ELAPSED" -ge "$MIN_COMMIT_INTERVAL_SEC" ] || exit 0
+BRANCH=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || echo "detached")
+AUTOSAVE_REF="refs/autosave/${BRANCH}"
+LAST=$(git rev-parse --verify -q "$AUTOSAVE_REF" 2>/dev/null || true)
 
-# Stage everything, then defensively unstage sensitive paths
-git add -A 2>/dev/null
-git reset HEAD -- \
+# Skip if last snapshot (or, before the first one, last commit) is very recent
+if [ -n "$LAST" ]; then
+  REF_TIME=$(git log -1 --format=%ct "$LAST" 2>/dev/null || echo 0)
+else
+  REF_TIME=$(git log -1 --format=%ct HEAD 2>/dev/null || echo 0)
+fi
+[ $((NOW - REF_TIME)) -ge "$MIN_SNAPSHOT_INTERVAL_SEC" ] || exit 0
+
+# Build snapshot tree in a temporary index — user's index/staging untouched
+TMP_INDEX=$(mktemp "${TMPDIR:-/tmp}/.purple-autosave-index.XXXXXX") || exit 0
+trap 'rm -f "$TMP_INDEX"' EXIT
+export GIT_INDEX_FILE="$TMP_INDEX"
+git read-tree HEAD >/dev/null 2>&1 || exit 0
+git add -A >/dev/null 2>&1
+# defensively keep sensitive paths at their HEAD state
+git reset -q HEAD -- \
   '.env' '.env.local' '.env.development' '.env.production' \
   '*.pem' '*.key' '*credentials*' '*secret*' \
-  2>/dev/null || true
+  >/dev/null 2>&1 || true
+TREE=$(git write-tree 2>/dev/null) || exit 0
+unset GIT_INDEX_FILE
 
-# Nothing staged after exclusions?
-[ -n "$(git diff --cached --name-only)" ] || exit 0
+# Same as previous snapshot, or nothing tracked actually changed → nothing to save
+if [ -n "$LAST" ] && [ "$(git rev-parse -q --verify "${LAST}^{tree}" 2>/dev/null)" = "$TREE" ]; then
+  exit 0
+fi
+[ "$(git rev-parse -q --verify 'HEAD^{tree}' 2>/dev/null)" != "$TREE" ] || exit 0
 
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M")
-COUNT=$(git diff --cached --name-only | wc -l | tr -d ' ')
+COUNT=$(git diff --name-only HEAD "$TREE" 2>/dev/null | wc -l | tr -d ' ')
+HEAD_SHORT=$(git rev-parse --short HEAD)
 
-# ─── Staleness guard: code saved but session-state narrative untouched ────────
-# Root cause this fixes: the dead-man git-commits work files but NEVER writes the
-# session-state.md narrative — that update relies on Claude running /저장 etc,
-# which a silently-ended session skips. Result: HEAD has the new code, but the
-# "진행 중 / 남음" narrative is stale and the next /개발시작 trusts it.
-#
-# So: when this commit carries real work files while session-state.md itself was
-# NOT updated, stamp a loud, self-replacing banner at the very top of
-# session-state.md. /개발시작 always reads that file first, so the gap surfaces
-# immediately. We never fabricate narrative — only flag it with the changed-file
-# list for git-HEAD reconciliation. When session-state IS updated, strip the banner.
-SS=".claude/session-state.md"
-STAGED=$(git diff --cached --name-only)
-WORK=$(printf '%s\n' "$STAGED" | grep -vxE '\.claude/session-state\.md|\.claude/auto-save\.log|\.claude/settings\.local\.json' || true)
-SS_STAGED=$(printf '%s\n' "$STAGED" | grep -xE '\.claude/session-state\.md' || true)
-if [ -f "$SS" ]; then
-  TMP=$(mktemp)
-  # Both paths buffer the body (everything after the title line, minus any old
-  # banner and the leading blank lines) so the result round-trips exactly to the
-  # original on strip and never accumulates blank lines on repeated re-stamps.
-  if [ -n "$WORK" ] && [ -z "$SS_STAGED" ]; then
-    # narrative stale → (re)stamp banner with the changed work files
-    FILES=$(printf '%s\n' "$WORK" | sed 's#.*/##' | head -12 | paste -sd', ' -)
-    awk -v ts="$TIMESTAMP" -v idle="$IDLE_SINCE" -v files="$FILES" '
-      NR==1 { title=$0; next }
-      /<!-- AUTOSAVE-STALE-BANNER -->/ { skip=1; next }
-      /<!-- \/AUTOSAVE-STALE-BANNER -->/ { skip=0; next }
-      skip { next }
-      !started && $0 ~ /^[[:space:]]*$/ { next }
-      { started=1; body = body $0 "\n" }
-      END {
-        printf "%s\n\n", title;
-        print "<!-- AUTOSAVE-STALE-BANNER -->";
-        print "> **[AUTO-SAVE STALE] (" ts ", idle " idle "s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.";
-        print "> 변경된 작업 파일: " files;
-        print "<!-- /AUTOSAVE-STALE-BANNER -->";
-        printf "\n%s", body;
-      }
-    ' "$SS" > "$TMP"
-    if [ -s "$TMP" ] && head -1 "$TMP" | grep -q 'Purple POS'; then
-      mv "$TMP" "$SS" && git add "$SS"
-    else
-      rm -f "$TMP"
-    fi
-  elif [ -n "$SS_STAGED" ] && grep -q 'AUTOSAVE-STALE-BANNER' "$SS"; then
-    # session-state was updated → narrative fresh → strip any leftover banner
-    awk '
-      NR==1 { title=$0; next }
-      /<!-- AUTOSAVE-STALE-BANNER -->/ { skip=1; next }
-      /<!-- \/AUTOSAVE-STALE-BANNER -->/ { skip=0; next }
-      skip { next }
-      !started && $0 ~ /^[[:space:]]*$/ { next }
-      { started=1; body = body $0 "\n" }
-      END { printf "%s\n\n%s", title, body }
-    ' "$SS" > "$TMP"
-    if [ -s "$TMP" ] && head -1 "$TMP" | grep -q 'Purple POS'; then
-      mv "$TMP" "$SS" && git add "$SS"
-    else
-      rm -f "$TMP"
-    fi
-  else
-    rm -f "$TMP"
-  fi
-  COUNT=$(git diff --cached --name-only | wc -l | tr -d ' ')
-fi
+# Parent: previous snapshot (chain), or HEAD for the first one
+COMMIT=$(git -c user.name='Claude AutoSave' -c user.email='autosave@local' \
+  commit-tree "$TREE" -p "${LAST:-HEAD}" \
+  -m "autosave $TIMESTAMP ($COUNT files vs ${HEAD_SHORT}, idle ${IDLE_SINCE}s)" \
+  -m "작업 브랜치가 아닌 스냅샷 ref. 복구: git checkout ${AUTOSAVE_REF} -- <경로>" 2>/dev/null) || exit 0
 
-# --no-verify: dead-man path must not block on slow/interactive pre-commit
-# hooks. The commit is clearly labelled wip:auto-save so it can be reviewed
-# and squashed/cleaned up afterward.
-if git -c user.name='Claude AutoSave' -c user.email='autosave@local' \
-      commit --no-verify -m "wip: auto-save $TIMESTAMP ($COUNT files, idle ${IDLE_SINCE}s)" >/dev/null 2>&1; then
+if git update-ref "$AUTOSAVE_REF" "$COMMIT" ${LAST:+"$LAST"} 2>/dev/null; then
   mkdir -p "$(dirname "$LOG_FILE")"
-  echo "[$TIMESTAMP] auto-saved $COUNT files (idle=${IDLE_SINCE}s)" >> "$LOG_FILE"
+  echo "[$TIMESTAMP] snapshot $COUNT files (idle=${IDLE_SINCE}s) -> ${AUTOSAVE_REF} $(git rev-parse --short "$COMMIT") | 복구: git checkout ${AUTOSAVE_REF} -- <경로>" >> "$LOG_FILE"
 fi
 
 exit 0
