@@ -1619,7 +1619,13 @@ router.get('/brands/:brandId/products', authenticateToken, async (req, res) => {
     if (!brand) {
       return res.status(404).json({ success: false, message: 'Brand not found' });
     }
-    if (req.user.role !== 'System Admin' && brand.owner_id !== req.user.id) {
+    // 소유자 · 이 브랜드를 맡은 매니저(2026-10-11 — 판정은 brandIdsForUser 하나)
+    let canSee = req.user.role === 'System Admin' || brand.owner_id === req.user.id;
+    if (!canSee && req.user.role === 'Brand Manager') {
+      const { brandIdsForUser } = require('../utils/managerBrandScope');
+      canSee = (await brandIdsForUser(req.user)).includes(parseInt(brandId, 10));
+    }
+    if (!canSee) {
       return res.status(404).json({ success: false, message: 'Brand not found' });
     }
 

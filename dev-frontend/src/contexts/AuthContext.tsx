@@ -260,6 +260,15 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   ]
 };
 
+// 계정에 저장된 메뉴 키를 쓰는 역할 — Staff · Brand Manager · Foodcourt Manager. 나머지는 역할 기본값.
+//   로그인 직후와 새로고침 뒤가 같은 값을 쓰도록 한 곳에 둔다(2026-10-11: 로그인 경로는 Staff 만 봐서
+//   매니저는 로그인 직후 사이드바가 체크와 달랐다 — 새로고침하면 바뀜).
+const DB_MENU_PERMISSION_ROLES = ['Staff', 'Brand Manager', 'Foodcourt Manager'];
+const menuPermissionsFor = (apiUser: { role?: string; permissions?: unknown }): string[] =>
+  DB_MENU_PERMISSION_ROLES.includes(apiUser.role || '') && Array.isArray(apiUser.permissions)
+    ? (apiUser.permissions as string[])
+    : ROLE_PERMISSIONS[apiUser.role as UserRole] || [];
+
 // 역할별 접근 가능 라우트
 const ROLE_ROUTES: Record<UserRole, string[]> = {
   'System Admin': [
@@ -551,9 +560,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (result.success && result.data) {
             const apiUser = result.data;
             // Staff는 DB에서 받은 메뉴 permissions 사용, 나머지는 ROLE_PERMISSIONS 사용
-            const userPermissions = (apiUser.role === 'Staff' || apiUser.role === 'Brand Manager' || apiUser.role === 'Foodcourt Manager') && Array.isArray(apiUser.permissions)
-              ? apiUser.permissions
-              : ROLE_PERMISSIONS[apiUser.role as UserRole] || [];
+            const userPermissions = menuPermissionsFor(apiUser);
 
             const userData: User = {
               id: apiUser.id?.toString() || '1',
@@ -632,9 +639,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setContexts(Array.isArray(result.data.contexts) ? result.data.contexts : []);
 
           // Staff는 DB에서 받은 메뉴 permissions 사용
-          const loginPermissions = apiUser.role === 'Staff' && Array.isArray(apiUser.permissions)
-            ? apiUser.permissions
-            : ROLE_PERMISSIONS[apiUser.role as UserRole] || [];
+          const loginPermissions = menuPermissionsFor(apiUser);
 
           const userData: User = {
             id: apiUser.id?.toString() || '1',
@@ -707,9 +712,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // 로그인 응답의 컨텍스트 목록(additive) — 부여 0건이면 [기본 정체] 1개뿐이라
           // LoginPage 는 기존과 동일하게 대시보드로 직행한다(무회귀).
           setContexts(Array.isArray(result.data.contexts) ? result.data.contexts : []);
-          const loginPermissions = apiUser.role === 'Staff' && Array.isArray(apiUser.permissions)
-            ? apiUser.permissions
-            : ROLE_PERMISSIONS[apiUser.role as UserRole] || [];
+          const loginPermissions = menuPermissionsFor(apiUser);
           const userData: User = {
             id: apiUser.id?.toString() || '1',
             email: apiUser.email,
@@ -762,9 +765,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const result = await response.json().catch(() => ({} as any));
       if (response.ok && result.success && result.token && result.user) {
         const apiUser = result.user;
-        const loginPermissions = apiUser.role === 'Staff' && Array.isArray(apiUser.permissions)
-          ? apiUser.permissions
-          : ROLE_PERMISSIONS[apiUser.role as UserRole] || [];
+        const loginPermissions = menuPermissionsFor(apiUser);
         const userData: User = {
           id: apiUser.id?.toString() || '',
           email: apiUser.email || null,

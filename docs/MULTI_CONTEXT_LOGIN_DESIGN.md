@@ -372,6 +372,7 @@ v1 은 "표준 claim 에 투영값이 있으니 소켓 무변경"이라 했다. 
 - **소유자 전용 그대로**: 결제 설정·은행 · 브랜드 수정/삭제 · 스태프 관리 · 구독(SA). 역할·소유자 판정이 이미 BM 을 거부(테스트 ⑧-7).
 - 모자는 교체다 — 소유자 BG 가 다른 브랜드의 관리자 모자를 쓰면 그 아래에서 자기 소유 브랜드는 닫힌다(FI-12).
 - **사이드바 표시 키(2026-10-04 Fable 표적 판정)**: 모자 투영 `permissions` = `BRAND_MANAGER_HAT_PERMISSIONS`(`dashboard`·`products`) — 프론트 `hasManagerPermission` 이 BM 에게 이 키를 요구해, 비어 있으면 Dashboard·Brand Menus 가 사이드바에 안 떴다. 서버 판정에는 쓰이지 않는 표시 전용. `plans_payments`(돈)·운영·관리 키는 넣지 않는다.
+- **2026-10-11 매니저 범위(회사 전체/고른 브랜드)와의 관계**: 모자 투영은 `brand_scope_fixed: true` 를 붙여 `managerBrandIds` 가 **모자 브랜드 하나**만 돌려준다(회사 전체 칸·`brand_manager_brands` 를 읽지 않음). 단 회사 공용 자료(상품·재고·공급업체)는 홈 브랜드 소유자 기준이라 모자로도 그 회사 것 전부가 보인다 — 모자를 처음 부여하기 전에 «모자도 공용 자료를 여는가» 를 정할 것(Fable 게이트 판정 fable-verdict-20261011-brand-manager-scope-gate.md 기록 1). 아래 «알려진 한계» 는 이 날 매니저 경로로 해소.
 - **알려진 한계**: BM 아래 BG 사용자 소유 카탈로그(브랜드 상품 `owner_user_id`·BG 재료 목록·공급업체 수정)는 소유자 데이터가 안 보인다 — 「브랜드 데이터가 사용자에 걸린」 구조 문제, TRADE_STRUCTURE 대조 뒤 별건. `brands-plans.js` 는 BM 에게 브랜드 요금제 편집을 이미 허용(기존 경계).
 
 ## 6. UI/UX

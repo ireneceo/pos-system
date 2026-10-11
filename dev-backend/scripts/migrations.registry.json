@@ -1,6 +1,7 @@
 {
   "note": "마이그레이션 단일 소스 (schema drift 방지). deploy-to-production.sh 가 이 파일의 `deploy` 목록을 순서대로 실행한다(하드코딩 목록 대체). 새 migrate-*.js / YYYYMMDD_*.js / sprintN-*.js 를 추가하면 check-migration-registry.js 가 미분류를 배포 전 fail-closed 로 잡는다 → 등록을 잊을 수 없음. 새 마이그는 반드시 여기 `deploy`(매 배포 재실행, 멱등 필수) 또는 `manual`(일회성/레거시/의도적 제외, 이유 명시)에 분류할 것.",
   "deploy": [
+    "migrate-brand-manager-scope-20261011.js",
     "20260628_add_option_sold_out.js",
     "20260629_create_processed_ops.js",
     "20260629_create_sales_integrations.js",

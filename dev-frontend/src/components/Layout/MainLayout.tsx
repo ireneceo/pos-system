@@ -1661,6 +1661,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   ], [isSystemAdmin, t, badgeCounts]);
 
   // Brand General/Manager categories
+  // 매니저 메뉴 키 = 기능 묶음 7개(2026-10-11 Fable 판정 fable-verdict-20261011-brand-manager-scope.md §2-4 — 매니저 화면
+  //   BrandStaffPage PERMISSION_GROUPS 와 같은 표). dashboard / management(브랜드·가맹) / products(상품·재고) /
+  //   operations(주문·청구) / reports(리포트·실적) / communication / plans_payments. BG 는 hasManagerPermission 이 항상 true.
+  //   ⚠ 표시 전용 — 서버 강제는 2단계. 브랜드 범위(회사 전체/고른 브랜드)는 서버 판정이 따로 거른다.
   const brandCategories: AdminCategory[] = useMemo(() => {
     if (!isBrand) return [];
     const items: AdminCategory[] = [
@@ -1673,12 +1677,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         id: 'live-orders', label: t('nav.salesOrders', 'Sales Orders'), icon: <Activity />,
         path: '/pos/brand/general/incoming-orders',
         hasPending: badgeCounts.livePoCount > 0,
-        visible: true
+        visible: hasManagerPermission('operations')
       },
       {
         id: 'franchise-map', label: t('nav.franchiseMap', 'Franchise Map'), icon: <MapPin />,
         path: '/pos/brand/franchise-map',
-        visible: isRouteAllowed('/pos/brand/franchise-map')
+        visible: hasManagerPermission('management') && isRouteAllowed('/pos/brand/franchise-map')
       },
       {
         // 2026-09-07: 매장 판매 분석(종전 Reports 6탭)은 여기 밑으로 왔다.
@@ -1694,7 +1698,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: '/pos/brand/general/performance/stores?tab=customers', label: t('brand:brandReportsPage.customerInsights', 'Customer Insights'), visible: true },
           { path: '/pos/brand/general/performance/stores?tab=operations', label: t('brand:brandReportsPage.operations', 'Operations'), visible: true }
         ].filter(i => i.visible !== false),
-        visible: isRouteAllowed('/pos/brand/general/performance')
+        visible: hasManagerPermission('reports') && isRouteAllowed('/pos/brand/general/performance')
       },
       {
         id: 'brands', label: t('nav.section.brands', 'Brands'), icon: <Building2 />,
@@ -1703,7 +1707,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: '/pos/brand-menus', label: t('nav.brandMenus', 'Brand Menus'), visible: isRouteAllowed('/pos/brand-menus') },
           { path: '/pos/recipes', label: t('nav.brandRecipes'), visible: isRouteAllowed('/pos/recipes') }
         ].filter(i => i.visible !== false),
-        visible: hasManagerPermission('products') && (
+        visible: hasManagerPermission('management') && (
           isRouteAllowed('/pos/brand/general/management') ||
           isRouteAllowed('/pos/brand-menus') ||
           isRouteAllowed('/pos/recipes')
@@ -1716,11 +1720,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: '/pos/manager/restaurants', label: t('nav.restaurants'), visible: isRouteAllowed('/pos/manager/restaurants') },
           { path: '/pos/manager/admins', label: t('nav.restaurantAdmins'), visible: isRouteAllowed('/pos/manager/staff') }
         ].filter(i => i.visible !== false),
-        visible: isRouteAllowed('/pos/brand/franchise') ||
-                 (hasManagerPermission('management') && (
-                   isRouteAllowed('/pos/manager/restaurants') ||
-                   isRouteAllowed('/pos/manager/staff')
-                 ))
+        visible: hasManagerPermission('management') && (
+          isRouteAllowed('/pos/brand/franchise') ||
+          isRouteAllowed('/pos/manager/restaurants') ||
+          isRouteAllowed('/pos/manager/staff')
+        )
       },
       {
         id: 'products', label: t('nav.section.products'), icon: <Package />,
@@ -1736,27 +1740,27 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       {
         id: 'operations', label: t('nav.section.operations'), icon: <Briefcase />,
         items: [
-          { path: '/pos/brand/invoices', label: t('nav.invoices'), hasPending: badgeCounts.invoices > 0, visible: isRouteAllowed('/pos/brand/invoices') },
-          { path: '/pos/brand/trade-invoices', label: t('nav.tradeInvoices', 'Trade Invoices'), visible: isRouteAllowed('/pos/brand/trade-invoices') },
-          { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasManagerPermission('products') && isRouteAllowed('/pos/purchase-orders') },
-          { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasManagerPermission('products') && isRouteAllowed('/pos/purchase-orders') },
-          { path: '/pos/brand-ingredients', label: t('nav.stockItems', 'Stock Items'), visible: isRouteAllowed('/pos/brand-ingredients') },
+          { path: '/pos/brand/invoices', label: t('nav.invoices'), hasPending: badgeCounts.invoices > 0, visible: hasManagerPermission('operations') && isRouteAllowed('/pos/brand/invoices') },
+          { path: '/pos/brand/trade-invoices', label: t('nav.tradeInvoices', 'Trade Invoices'), visible: hasManagerPermission('operations') && isRouteAllowed('/pos/brand/trade-invoices') },
+          { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasManagerPermission('operations') && isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasManagerPermission('operations') && isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/brand-ingredients', label: t('nav.stockItems', 'Stock Items'), visible: hasManagerPermission('products') && isRouteAllowed('/pos/brand-ingredients') },
           // 매장에 공유되는 표준 재료(브랜드가 정의 → 매장은 읽기전용). 위 Stock Items(매입자재)와 **다른 계층**이다.
           //   2026-09-02 신설 — 그전에는 BG 가 이 목록을 볼 화면이 아예 없었고,
           //   그래서 운영에서 꺼진 미러 재료 63건이 화면 밖(스크립트)에서 꺼져 있었다.
-          { path: '/pos/stock-ledger', label: t('nav.bulkLink', 'Bulk Link'), visible: isRouteAllowed('/pos/stock-ledger') },
-          { path: '/pos/brand-inventory', label: t('nav.inventory'), visible: isRouteAllowed('/pos/brand-inventory') },
-          { path: '/pos/suppliers', label: t('nav.suppliers'), visible: isRouteAllowed('/pos/suppliers') },
-          { path: '/pos/manager/coupons', label: t('nav.coupons'), visible: isRouteAllowed('/pos/manager/coupons') },
+          { path: '/pos/stock-ledger', label: t('nav.bulkLink', 'Bulk Link'), visible: hasManagerPermission('products') && isRouteAllowed('/pos/stock-ledger') },
+          { path: '/pos/brand-inventory', label: t('nav.inventory'), visible: hasManagerPermission('products') && isRouteAllowed('/pos/brand-inventory') },
+          { path: '/pos/suppliers', label: t('nav.suppliers'), visible: hasManagerPermission('products') && isRouteAllowed('/pos/suppliers') },
+          { path: '/pos/manager/coupons', label: t('nav.coupons'), visible: hasManagerPermission('management') && isRouteAllowed('/pos/manager/coupons') },
         ].filter(i => i.visible !== false),
-        visible: hasManagerPermission('operations') || hasManagerPermission('products')
+        visible: hasManagerPermission('operations') || hasManagerPermission('products') || hasManagerPermission('management')
       },
       {
         // 브랜드 **자신의 매출** — 프로덕트 개별판매(trade) · 구독판매(brand_plan) · 수수료.
         // 종전 이 자리의 6탭(매장 주문 집계)은 Performance 밑으로 옮겼다.
         id: 'reports', label: t('nav.reports', 'Reports'), icon: <TrendingUp />,
         path: '/pos/brand/general/reports',
-        visible: isRouteAllowed('/pos/brand/general/reports')
+        visible: hasManagerPermission('reports') && isRouteAllowed('/pos/brand/general/reports')
       },
       {
         id: 'communication', label: t('nav.section.communication'), icon: <MessageSquare />,

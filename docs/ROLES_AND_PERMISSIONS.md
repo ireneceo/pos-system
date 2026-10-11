@@ -94,6 +94,15 @@ System Admin (최고 관리자)
 
 ## 3. Brand Manager (브랜드 매니저)
 
+> **2026-10-11 (Fable 판정 `backups/fable-pending/fable-verdict-20261011-brand-manager-scope.md` · Irene «권고대로 진행해 줘»): 매니저 = 회사 직원, 브랜드는 필터.**
+> - 범위: `users.brand_id` = 홈 브랜드(그대로) + `users.brand_scope_all`(1 = 홈 브랜드 소유자의 브랜드 전부) + 부분 배정 `brand_manager_brands`. 판정은 `utils/managerBrandScope.brandIdsForUser` 하나(BM 은 `managerBrandIds`) — `authenticateToken` 이 `req.user.managed_brand_ids` 로 채운다. 새 매니저 기본 = 회사 전체.
+> - 회사 공용 자료(브랜드 상품·상품 레시피·재고 아이템·실사·공급업체 — `owner_user_id`)는 매니저에게 **회사(홈 브랜드 소유자) 것**으로: `requireBGScope` · `ingredients.js` 브랜드 재료 · `suppliers.js` 브랜드 목록/수정 · `requireBrandUserModule`(요금제는 소유자 것). 공급업체 **삭제**는 소유자만(종전 그대로).
+> - 판매 주문은 맡은 브랜드 합쳐 보기(`sellerScope` BM 분기 · 배지 같은 범위). 발주(구매)는 다른 맡은 브랜드는 **보기만**(`buyerScope`), 쓰기는 홈 브랜드 명의.
+> - 모자(`user_contexts` brand×Brand Manager)는 `brand_scope_fixed` 로 **그 브랜드 하나** 고정 — 다른 회사 사람에게 주는 자격.
+> - 돈 경계 그대로: 결제 설정·은행 · 브랜드 수정/삭제 · 매니저 추가/수정 · 구독은 소유자만.
+> - 메뉴 접근 키 7개(dashboard/management/products/operations/reports/communication/plans_payments)는 **사이드바 표시 전용**(`MainLayout` brandCategories ↔ `BrandStaffPage` PERMISSION_GROUPS 같은 표). 서버 강제는 2단계(미착수).
+> - 아래 «권한/접근 가능 페이지» 목록은 옛 기록이다 — 위 규칙이 이긴다.
+
 > **2026-10-04:** 브랜드 메뉴·카테고리·옵션 화면은 **소유자 ∪ Brand Manager**(네이티브 `users.brand_id` · 모자 `user_contexts brand×Brand Manager`)가 편집한다 — 판정 `brandScope.userCanManageBrand`.
 > 결제 설정·은행 · 브랜드 수정/삭제 · 스태프 관리는 **소유자만**(BM 불가). 아래 «메뉴/가격 수정 불가» 는 이 날짜부터 브랜드 메뉴 화면에 한해 해제. 상세 `docs/MULTI_CONTEXT_LOGIN_DESIGN.md` §5.5.
 

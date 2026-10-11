@@ -11,6 +11,7 @@
 - `manual` = 일회성/레거시/의도적 제외 — **이유를 반드시 명시**.
 - 등록 안 하면 `check-migration-registry.js` 가 **fail-closed 로 배포·`verify-all` 을 차단**(미분류=스키마 드리프트 위험). 배포 스크립트는 이 레지스트리의 `deploy` 목록을 소비한다(하드코딩 목록 아님).
 - 확인: `cd dev-backend && node scripts/check-migration-registry.js` (분류 검사) / `--list-deploy`(배포 목록 출력).
+- **모델에 칸을 더하는 마이그는 `deploy` 앞쪽(그 모델을 읽는 마이그보다 먼저)** — 뒤에 두면 앞 마이그가 새 모델로 `Unknown column` 에 멈춘다(2026-10-11 1차 배포 실패). 그런 마이그는 모델을 쓰지 말고 raw SQL 로(예: `migrate-brand-manager-scope-20261011.js` = 맨 앞).
 
 ---
 

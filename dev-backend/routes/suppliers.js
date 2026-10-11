@@ -10,6 +10,13 @@ const { generateSupplierCode } = require('../utils/codeGenerator');
 // Brand Suppliers (통합 관리 - 브랜드 연결 방식)
 // ============================================
 
+// 브랜드 공급업체의 주인 번호 — BG 는 자기 id, 매니저는 회사(홈 브랜드 소유자) id(2026-10-11 Fable 판정 §2-2).
+async function brandSupplierOwnerId(user) {
+  if (user.role !== 'Brand Manager') return user.id;
+  const { companyOwnerIdFor } = require('../utils/managerBrandScope');
+  return companyOwnerIdFor(user);
+}
+
 /**
  * GET /api/brands/:brandId/suppliers
  * 브랜드에 연결된 공급업체 목록 조회 (supplier_brands 테이블 사용)
@@ -19,6 +26,12 @@ router.get('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asyn
     // Suppliers are shared across all brands owned by the same BG user.
     // System Admin: if brandId is provided, resolve its owner and scope to that BG.
     let ownerUserId = req.user.id;
+    // 매니저는 회사(홈 브랜드 소유자) 공급업체를 본다(2026-10-11 Fable 판정 §2-2). 브랜드 범위는 isBrandManager 가 확인.
+    if (req.user.role === 'Brand Manager') {
+      const { companyOwnerIdFor } = require('../utils/managerBrandScope');
+      ownerUserId = await companyOwnerIdFor(req.user);
+      if (ownerUserId == null) return res.json({ success: true, data: [] });
+    }
     if (req.user.role === 'System Admin') {
       const brand = await Brand.findByPk(req.params.brandId, { attributes: ['owner_id'] });
       ownerUserId = brand?.owner_id || null;
@@ -270,8 +283,8 @@ router.put('/brands/:brandId/suppliers/:supplierId', authenticateToken, isBrandM
     if (!supplier || supplier.owner_type !== 'brand') {
       return res.status(404).json({ success: false, message: 'Supplier not found' });
     }
-    // Must belong to one of the user's brands (BG level)
-    if (req.user.role !== 'System Admin' && supplier.owner_user_id !== req.user.id) {
+    // Must belong to one of the user's brands (BG level) — 매니저는 회사(홈 브랜드 소유자) 것(2026-10-11)
+    if (req.user.role !== 'System Admin' && supplier.owner_user_id !== await brandSupplierOwnerId(req.user)) {
       return res.status(404).json({ success: false, message: 'Supplier not found' });
     }
 

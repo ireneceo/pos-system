@@ -21,16 +21,20 @@ interface Manager {
   permissions: string[];
   brand_id?: number | null;
   brand_name?: string;
+  brand_scope_all?: boolean;
+  managed_brand_ids?: number[];
 }
 
-// Brand Manager 권한 그룹 (MainLayout 사이드바 섹션 기반)
+// Brand Manager 메뉴 접근 = 기능 묶음(2026-10-11 Fable 판정 §2-4). 괄호 안 = MainLayout brandCategories 가 실제로 켜는 메뉴 —
+//   두 곳을 같이 고친다. 브랜드 범위(회사 전체/고른 브랜드)는 아래 «Brand Access» 가 따로 정한다.
 const PERMISSION_GROUPS = [
   { key: 'dashboard', label: 'Dashboard', alwaysOn: true },
-  { key: 'management', label: 'Management (Brands / Restaurants / Staff)', alwaysOn: false },
-  { key: 'products', label: 'Products & Inventory (Products / Recipes / Suppliers / Inventory)', alwaysOn: false },
-  { key: 'operations', label: 'Operations (Invoices / Reports / Performance)', alwaysOn: false },
-  { key: 'communication', label: 'Communication (Notices / Inquiries)', alwaysOn: false },
-  { key: 'plans_payments', label: 'Plans & Payments (Plans / Subscriptions / Payment Settings)', alwaysOn: false },
+  { key: 'management', label: 'Brands & Franchise (Brands / Brand Menus / Recipes / Franchise / Restaurants / Restaurant Admins / Franchise Map / Coupons)', alwaysOn: false },
+  { key: 'products', label: 'Products & Stock (Products / Product Recipes / Stock Items / Bulk Link / Inventory / Suppliers)', alwaysOn: false },
+  { key: 'operations', label: 'Orders & Billing (Sales Orders / Purchase Order / Order History / Invoices / Trade Invoices)', alwaysOn: false },
+  { key: 'reports', label: 'Reports & Performance (Reports / Performance)', alwaysOn: false },
+  { key: 'communication', label: 'Communication (Notices / Work Manuals / Inquiries)', alwaysOn: false },
+  { key: 'plans_payments', label: 'Plans & Subscriptions (Brand Plans / Subscriptions)', alwaysOn: false },
 ];
 
 const Container = styled.div`
@@ -242,7 +246,8 @@ const BrandStaffPage: React.FC = () => {
     email: '',
     phone: '',
     permissions: ['dashboard'] as string[],
-    brand_id: '' as string | number
+    brand_scope_all: true,
+    brand_ids: [] as number[]
   });
 
   // Edit Modal
@@ -254,7 +259,8 @@ const BrandStaffPage: React.FC = () => {
     phone: '',
     username: '',
     permissions: [] as string[],
-    brand_id: '' as string | number
+    brand_scope_all: true,
+    brand_ids: [] as number[]
   });
 
   // Password display modal
@@ -325,7 +331,9 @@ const BrandStaffPage: React.FC = () => {
           return [];
         })(),
         brand_id: u.brand_id || null,
-        brand_name: u._brand_name || ''
+        brand_name: u._brand_name || '',
+        brand_scope_all: !!u.brand_scope_all,
+        managed_brand_ids: Array.isArray(u.managed_brand_ids) ? u.managed_brand_ids.map(Number) : []
       }));
       setManagers(transformed);
     } catch (_) { /* silently fail */ }
@@ -360,7 +368,8 @@ const BrandStaffPage: React.FC = () => {
 
   // === Add Modal ===
   const handleOpenAddModal = () => {
-    setNewManager({ username: '', name: '', email: '', phone: '', permissions: ['dashboard'], brand_id: brandId || '' });
+    // 기본 = 회사 브랜드 전체(Fable 판정 §2-1 · Irene «권고대로»)
+    setNewManager({ username: '', name: '', email: '', phone: '', permissions: ['dashboard'], brand_scope_all: true, brand_ids: [] });
     setFormError('');
     setShowAddModal(true);
   };
@@ -369,11 +378,18 @@ const BrandStaffPage: React.FC = () => {
     if (!newManager.username.trim()) { setFormError('Username is required.'); return; }
     if (!newManager.name.trim()) { setFormError('Full Name is required.'); return; }
     if (!newManager.email.trim()) { setFormError('Email is required.'); return; }
-    if (!newManager.brand_id) { setFormError('Please select which brand this manager will manage.'); return; }
+    if (!newManager.brand_scope_all && newManager.brand_ids.length === 0) {
+      setFormError(t('common:brandStaffPage.selectAtLeastOneBrand', 'Select at least one brand, or choose All company brands.'));
+      return;
+    }
 
     try {
       const token = getAuthToken();
-      const targetBrandId = Number(newManager.brand_id);
+      // 홈 브랜드(계정이 속하는 브랜드) = 회사 전체면 내 브랜드, 고른 브랜드면 그중 첫 번째(내 브랜드가 있으면 그것)
+      const myBrand = Number(brandId);
+      const targetBrandId = newManager.brand_scope_all
+        ? (ownedBrands.some(b => b.id === myBrand) ? myBrand : (ownedBrands[0]?.id ?? myBrand))
+        : (newManager.brand_ids.includes(myBrand) ? myBrand : newManager.brand_ids[0]);
       const response = await fetch(`/api/brands/${targetBrandId}/staff`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -382,7 +398,9 @@ const BrandStaffPage: React.FC = () => {
           email: newManager.email.trim(),
           full_name: newManager.name.trim(),
           phone: newManager.phone.trim() || null,
-          permissions: newManager.permissions
+          permissions: newManager.permissions,
+          brand_scope_all: newManager.brand_scope_all,
+          brand_ids: newManager.brand_scope_all ? [] : newManager.brand_ids
         })
       });
 
@@ -412,7 +430,10 @@ const BrandStaffPage: React.FC = () => {
       phone: manager.phone,
       username: manager.username,
       permissions: [...manager.permissions],
-      brand_id: manager.brand_id ? String(manager.brand_id) : ''
+      brand_scope_all: !!manager.brand_scope_all,
+      brand_ids: manager.managed_brand_ids && manager.managed_brand_ids.length
+        ? [...manager.managed_brand_ids]
+        : (manager.brand_id ? [Number(manager.brand_id)] : [])
     });
     setFormError('');
     setShowEditModal(true);
@@ -426,14 +447,18 @@ const BrandStaffPage: React.FC = () => {
     try {
       const token = getAuthToken();
 
-      const response = await fetch(`/api/brands/${brandId}/staff/${editingManager.id}`, {
+      // 매니저가 속한(홈) 브랜드 주소로 — 내 첫 브랜드가 아닌 브랜드 소속이면 예전엔 404 였다
+      const homeBrandId = editingManager.brand_id || brandId;
+      const response = await fetch(`/api/brands/${homeBrandId}/staff/${editingManager.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           full_name: editForm.name.trim(),
           email: editForm.email.trim(),
           phone: editForm.phone.trim() || null,
-          username: editForm.username.trim()
+          username: editForm.username.trim(),
+          brand_scope_all: editForm.brand_scope_all,
+          brand_ids: editForm.brand_scope_all ? [] : editForm.brand_ids
         })
       });
 
@@ -443,7 +468,7 @@ const BrandStaffPage: React.FC = () => {
         return;
       }
 
-      const permResponse = await fetch(`/api/brands/${brandId}/staff/${editingManager.id}/permissions`, {
+      const permResponse = await fetch(`/api/brands/${homeBrandId}/staff/${editingManager.id}/permissions`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ permissions: editForm.permissions })
@@ -467,7 +492,7 @@ const BrandStaffPage: React.FC = () => {
     if (!deleteTarget) return;
     try {
       const token = getAuthToken();
-      const response = await fetch(`/api/brands/${brandId}/staff/${deleteTarget.id}`, {
+      const response = await fetch(`/api/brands/${deleteTarget.brand_id || brandId}/staff/${deleteTarget.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -489,7 +514,7 @@ const BrandStaffPage: React.FC = () => {
     if (!resetPasswordTarget) return;
     try {
       const token = getAuthToken();
-      const response = await fetch(`/api/brands/${brandId}/staff/${resetPasswordTarget.id}/reset-password`, {
+      const response = await fetch(`/api/brands/${resetPasswordTarget.brand_id || brandId}/staff/${resetPasswordTarget.id}/reset-password`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -508,6 +533,77 @@ const BrandStaffPage: React.FC = () => {
       setErrorMessage((error as Error).message);
     }
     setResetPasswordTarget(null);
+  };
+
+  // 맡을 브랜드 — «회사 브랜드 전체»(기본) 또는 고른 브랜드(여러 개). 홈 브랜드(계정이 속한 브랜드)는 수정 때 잠금.
+  //   판정은 서버 utils/managerBrandScope 하나 — 여기는 고르기만 한다(2026-10-11 Fable 판정 §2-1).
+  const renderBrandAccess = (
+    scopeAll: boolean,
+    brandIds: number[],
+    homeId: number | null,
+    onChange: (next: { brand_scope_all: boolean; brand_ids: number[] }) => void
+  ) => {
+    if (ownedBrands.length <= 1) return null;
+    return (
+      <div style={{ marginTop: '20px', padding: '16px', background: '#F1F4F8', borderRadius: '8px', border: '1px solid #C7CED6' }}>
+        <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>
+          {t('common:brandStaffPage.brandAccess', 'Brand Access')} *
+        </div>
+        <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '12px' }}>
+          {t('common:brandStaffPage.brandAccessHint', 'Which brands this manager works on. Orders, invoices and reports are combined across these brands. Products, stock items and suppliers are shared by the whole company.')}
+        </div>
+        <PermissionGrid>
+          <PermissionLabel>
+            <input
+              type="radio"
+              checked={scopeAll}
+              onChange={() => onChange({ brand_scope_all: true, brand_ids: brandIds })}
+              style={{ accentColor: '#635BFF' }}
+            />
+            {t('common:brandStaffPage.allCompanyBrands', 'All company brands (including brands added later)')}
+          </PermissionLabel>
+          <PermissionLabel>
+            <input
+              type="radio"
+              checked={!scopeAll}
+              onChange={() => onChange({ brand_scope_all: false, brand_ids: brandIds.length ? brandIds : (homeId ? [homeId] : []) })}
+              style={{ accentColor: '#635BFF' }}
+            />
+            {t('common:brandStaffPage.selectedBrandsOnly', 'Selected brands only')}
+          </PermissionLabel>
+        </PermissionGrid>
+        {!scopeAll && (
+          <PermissionGrid style={{ marginTop: '12px' }}>
+            {ownedBrands.map(b => {
+              const isHome = homeId != null && b.id === homeId;
+              return (
+                <PermissionLabel key={b.id} alwaysOn={isHome}>
+                  <input
+                    type="checkbox"
+                    checked={isHome || brandIds.includes(b.id)}
+                    disabled={isHome}
+                    onChange={(e) => {
+                      const next = e.target.checked ? [...brandIds, b.id] : brandIds.filter(id => id !== b.id);
+                      onChange({ brand_scope_all: false, brand_ids: next });
+                    }}
+                    style={{ accentColor: '#635BFF' }}
+                  />
+                  {b.name}
+                  {isHome && <AlwaysOnBadge>{t('common:brandStaffPage.homeBrand', '(Home brand)')}</AlwaysOnBadge>}
+                </PermissionLabel>
+              );
+            })}
+          </PermissionGrid>
+        )}
+      </div>
+    );
+  };
+
+  const brandScopeLabel = (m: Manager): string => {
+    if (m.brand_scope_all) return t('common:brandStaffPage.allBrands', 'All brands');
+    const ids = m.managed_brand_ids && m.managed_brand_ids.length ? m.managed_brand_ids : (m.brand_id ? [Number(m.brand_id)] : []);
+    const names = ids.map(id => ownedBrands.find(b => b.id === id)?.name).filter(Boolean);
+    return names.length ? names.join(', ') : (m.brand_name || '—');
   };
 
   const renderPermissionCheckboxes = (
@@ -596,6 +692,7 @@ const BrandStaffPage: React.FC = () => {
                 <tr>
                   <DataTableHeaderCell align="left">{t('common:brandStaffPage.manager')}</DataTableHeaderCell>
                   <DataTableHeaderCell align="center">{t('common:brandStaffPage.phone')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="center">{t('common:brandStaffPage.brands', 'Brands')}</DataTableHeaderCell>
                   <DataTableHeaderCell align="center">{t('common:brandStaffPage.permissions')}</DataTableHeaderCell>
                   <DataTableHeaderCell align="center">{t('common:brandStaffPage.joined')}</DataTableHeaderCell>
                   <DataTableHeaderCell align="center">{t('common:brandStaffPage.status')}</DataTableHeaderCell>
@@ -614,6 +711,10 @@ const BrandStaffPage: React.FC = () => {
                       <span style={{ fontSize: '13px', color: '#4B5563' }}>
                         {manager.phone || '—'}
                       </span>
+                    </DataTableCell>
+
+                    <DataTableCell data-label="Brands" align="center">
+                      <span style={{ fontSize: '13px', color: '#4B5563' }}>{brandScopeLabel(manager)}</span>
                     </DataTableCell>
 
                     <DataTableCell data-label="Permissions" align="center">
@@ -726,25 +827,11 @@ const BrandStaffPage: React.FC = () => {
           </FormGroup>
         </FormRow>
 
-        {ownedBrands.length > 0 && (
-          <FormRow>
-            <FormGroup style={{ flex: '1 1 100%' }}>
-              <FormLabel>{t('common:brandStaffPage.brand', 'Brand Assignment')} *</FormLabel>
-              <select
-                value={newManager.brand_id || ''}
-                onChange={(e) => setNewManager(prev => ({ ...prev, brand_id: e.target.value }))}
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14 }}
-              >
-                <option value="">{t('common:brandStaffPage.selectBrand', 'Select a brand...')}</option>
-                {ownedBrands.map(b => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
-              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
-                {t('common:brandStaffPage.brandHint', 'Manager will have access to this specific brand only.')}
-              </div>
-            </FormGroup>
-          </FormRow>
+        {renderBrandAccess(
+          newManager.brand_scope_all,
+          newManager.brand_ids,
+          null,
+          (next) => setNewManager(prev => ({ ...prev, ...next }))
         )}
 
         {renderPermissionCheckboxes(
@@ -814,6 +901,13 @@ const BrandStaffPage: React.FC = () => {
                 />
               </FormGroup>
             </FormRow>
+
+            {renderBrandAccess(
+              editForm.brand_scope_all,
+              editForm.brand_ids,
+              editingManager.brand_id ? Number(editingManager.brand_id) : null,
+              (next) => setEditForm(prev => ({ ...prev, ...next }))
+            )}
 
             {renderPermissionCheckboxes(
               editForm.permissions,

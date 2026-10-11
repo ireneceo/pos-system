@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-11 — [Claude Code] 발주 카탈로그: 부모 브랜드 재료로 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 뜨던 표시 결함 수정(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] ✅ **v3.110 · 운영 배포 SW 5.90-preflight-security-20261010 (백업 20261011_062932 · 마이그 118/118 · 스모크 10/10)** — 10-08~10-11 묶음(운영 전 보안 0단 · 판매 중지 상품 · 청구서 창 · 재고→원가 · 외부 정산서 · 배송 지역 · 키오스크 결제/전체 화면 · 새 매장 결제 기본값) 운영 반영. 1차는 마이그 순서(새 칸이 목록 끝)로 실패→자동 원복, 레지스트리 순서 고쳐(Fable PASS) 2차 성공.
+> **최종 업데이트:** 2026-10-11 — [Claude Code] 브랜드 매니저 = 회사 직원: 여러 브랜드·회사 전체 배정 + 회사 공용 자료 개방 + 메뉴 접근 7묶음 정리(Fable 설계·검증 PASS · 개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 발주 카탈로그: 부모 브랜드 재료로 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 뜨던 표시 결함 수정(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] ✅ **v3.110 · 운영 배포 SW 5.90-preflight-security-20261010 (백업 20261011_062932 · 마이그 118/118 · 스모크 10/10)** — 10-08~10-11 묶음(운영 전 보안 0단 · 판매 중지 상품 · 청구서 창 · 재고→원가 · 외부 정산서 · 배송 지역 · 키오스크 결제/전체 화면 · 새 매장 결제 기본값) 운영 반영. 1차는 마이그 순서(새 칸이 목록 끝)로 실패→자동 원복, 레지스트리 순서 고쳐(Fable PASS) 2차 성공.
 
 > **이전:** 2026-10-11 — [Claude Code] ✅ **키오스크 결제 화면 개편 + 키오스크 묶음 /개발완료 (개발서버만)** — 카운터 결제 키오스크 숨김 · 가로 = 오른쪽 결제 패널, 세로 = 한 칸 · 미등록 태블릿 안내 · 키오스크 전체 화면(18bc810d)·대시보드 링크(72cfb0db)·새 매장 결제 기본값(f5b1a378) 함께 기록 · Irene «좋아» · 키오스크 흐름 6크기 재점검 + 실제 주문 1건 확인.
 
@@ -11062,6 +11062,28 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 
 ### 수정된 파일
 - `dev-backend/routes/supplier-directory.js`
+
+---
+
+## ✅ 완료: 브랜드 매니저 여러 브랜드·회사 전체 배정 + 메뉴 접근 정리 1단계 (2026-10-11) [Claude Code]
+
+> Irene «매니저 추가할 때 왜 브랜드를 하나만 선택할 수 있어? … 주문/배송관리는 브랜드별로 할 일이 아닌데 왜?» → Fable 설계(C안) → Irene «권고대로 진행해 줘» → Fable 검증 PASS (`backups/fable-pending/fable-verdict-20261011-brand-manager-scope-gate.md`)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 담당 브랜드 | 매니저 추가·수정에 «회사 브랜드 전체(기본) / 선택 브랜드 여러 개» · 목록 «Brands» 열 | ✅ 완료 |
+| 범위 판정 한 곳 | `users.brand_scope_all` + `brand_manager_brands` · `managerBrandIds` 하나로 브랜드 목록·판매 주문·배지·발주 보기 | ✅ 완료 |
+| 회사 공용 자료 | 상품·재고 아이템·공급업체·요금제 판정을 회사(홈 브랜드 소유자) 기준으로 — 돈 경계는 소유자만 그대로 | ✅ 완료 |
+| 메뉴 접근 7묶음 | 체크 이름 = 실제 사이드바, «리포트·실적» 신설, Payment Settings 문구 삭제 · 로그인 직후 사이드바 차이 수정 | ✅ 완료 |
+| 검증 | 실호출 29/29 · 닫힘 5/5 · 고장주입 4/4 · health 85/85(새 케이스) · verify-all --full 24/24 · 실브라우저 13/13 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/scripts/migrate-brand-manager-scope-20261011.js`(신규, registry deploy 맨 앞) · `models/User.js` · `utils/managerBrandScope.js`
+- `middleware/{auth,brandScope,buyerScope,sellerScope,requireModule}.js` · `routes/{brands-core,badgeCounts,ingredients,suppliers,brand-products}.js` · `scripts/health-check.js`
+- `dev-frontend/src/pages/Brand/BrandStaffPage.tsx` · `contexts/AuthContext.tsx` · `components/Layout/MainLayout.tsx`(사이드바 묶음만 · print-guard bless) · locales 4개
+- `docs/ROLES_AND_PERMISSIONS.md` §3
 
 ---
 

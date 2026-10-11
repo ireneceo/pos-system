@@ -184,6 +184,24 @@ async function requireBuyerRole(req, res, next) {
     }
   }
 
+  // Brand Manager 가 맡은 다른 브랜드의 발주를 **보기** (2026-10-11 Fable 판정 §2-1: 쓰기는 홈 브랜드 명의 유지, 보기만 집합).
+  //   맡은 범위 = utils/managerBrandScope.brandIdsForUser(authenticateToken 이 managed_brand_ids 로 채움). 밖이면 403.
+  if (user.role === 'Brand Manager' && req.query.entity_type === 'brand') {
+    const wanted = parseInt(req.query.entity_id, 10);
+    if (Number.isFinite(wanted) && wanted !== entity.id) {
+      const mine = Array.isArray(user.managed_brand_ids) ? user.managed_brand_ids.map(Number) : [];
+      if (!mine.includes(wanted)) {
+        return res.status(403).json({ success: false, message: 'Not your brand' });
+      }
+      if (req.method !== 'GET') {
+        return res.status(403).json({ success: false, message: 'Managers place orders under their home brand only' });
+      }
+      req.buyerEntity = { type: 'brand', id: wanted };
+      req.buyerIsAdmin = false;
+      return next();
+    }
+  }
+
   req.buyerEntity = entity;
   req.buyerIsAdmin = false;
   next();

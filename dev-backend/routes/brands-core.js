@@ -13,6 +13,14 @@ const brandAccountSettings = require('../utils/brandAccountSettings');
 // split from brands.js (2026-05-03)
 
 
+// Brand Manager 가 맡은 브랜드 id 들 — authenticateToken 이 utils/managerBrandScope.brandIdsForUser 로 채운다
+// (회사 전체 / 고른 브랜드, 2026-10-11 Fable 판정 C안). 값이 없으면(옛 경로) 홈 브랜드 하나 — 넓히지 않는다.
+function bmBrandIds(user) {
+  if (Array.isArray(user && user.managed_brand_ids)) return user.managed_brand_ids.map(Number);
+  const home = parseInt(user && user.brand_id, 10);
+  return Number.isFinite(home) ? [home] : [];
+}
+
 // ============================================
 // Company Info APIs (MUST be before /:id routes)
 // ============================================
@@ -201,8 +209,9 @@ router.get('/', authenticateToken, async (req, res) => {
       whereClause.owner_id = req.user.id;
       console.log(`🔐 Filtering brands for ${req.user.role}: owner_id = ${req.user.id}`);
     } else if (isBM) {
-      // brand_id 가 비어 있으면 볼 브랜드가 없다 — 넓히지 않고 빈 결과로 둔다.
-      whereClause.id = req.user.brand_id ? Number(req.user.brand_id) : -1;
+      // 맡은 브랜드 전부(회사 전체 / 고른 브랜드 — 2026-10-11). 없으면 볼 브랜드가 없다 — 넓히지 않고 빈 결과로 둔다.
+      const mine = bmBrandIds(req.user);
+      whereClause.id = mine.length ? mine : -1;
       console.log(`🔐 Filtering brands for Brand Manager: brand_id = ${req.user.brand_id}`);
     } else if (req.user.role === 'System Admin') {
       console.log(`👑 System Admin: Returning all brands`);
@@ -280,7 +289,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     //   이 화면(BrandManagement)은 BM 에게 열려 있는데 서버가 막아 빈 화면이었다.
     const canRead = req.user.role === 'System Admin'
       || brand.owner_id === req.user.id
-      || (isBMreq && Number(req.user.brand_id) === Number(id));
+      || (isBMreq && bmBrandIds(req.user).includes(Number(id)));
     if (!canRead) {
       return res.status(403).json({ success: false, error: { message: 'Access denied to this brand', code: 'FORBIDDEN' } });
     }
@@ -441,7 +450,7 @@ router.get('/:id/restaurants', authenticateToken, async (req, res) => {
     //   형제 라우트와 **같은 조건식**을 쓴다(새 조건을 만들지 않는다). 남의 브랜드는 그대로 403.
     const canAccess = req.user.role === 'System Admin'
       || brand.owner_id === req.user.id
-      || (req.user.role === 'Brand Manager' && Number(req.user.brand_id) === Number(id));
+      || (req.user.role === 'Brand Manager' && bmBrandIds(req.user).includes(Number(id)));
     if (!canAccess) {
       return res.status(403).json({ success: false, error: { message: 'Access denied to this brand', code: 'FORBIDDEN' } });
     }
@@ -469,7 +478,7 @@ router.get('/:id/franchise-map', authenticateToken, async (req, res) => {
 
     const canAccess = req.user.role === 'System Admin'
       || brand.owner_id === req.user.id
-      || (req.user.role === 'Brand Manager' && Number(req.user.brand_id) === Number(id));
+      || (req.user.role === 'Brand Manager' && bmBrandIds(req.user).includes(Number(id)));
     if (!canAccess) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const { sequelize } = require('../config/database');
@@ -863,7 +872,7 @@ router.get('/:id/staff', authenticateToken, async (req, res) => {
       // OK
     } else if (req.user.role === 'Brand General' && brand.owner_id === req.user.id) {
       // OK
-    } else if (req.user.role === 'Brand Manager' && req.user.brand_id === parseInt(brandId)) {
+    } else if (req.user.role === 'Brand Manager' && bmBrandIds(req.user).includes(parseInt(brandId, 10))) {
       // OK
     } else {
       return res.status(403).json({ success: false, message: 'Access denied' });
@@ -878,7 +887,15 @@ router.get('/:id/staff', authenticateToken, async (req, res) => {
       order: [['full_name', 'ASC']]
     });
 
-    res.json({ success: true, data: managers });
+    // 맡은 브랜드 범위(회사 전체 / 고른 브랜드) — 목록·수정 화면 표시용(2026-10-11)
+    const { managerScopesFor } = require('../utils/managerBrandScope');
+    const scopes = await managerScopesFor(managers.map(m => m.id));
+    const data = managers.map(m => {
+      const sc = scopes[m.id] || { all: false, brandIds: [] };
+      return { ...m.toJSON(), brand_scope_all: sc.all, managed_brand_ids: sc.brandIds };
+    });
+
+    res.json({ success: true, data });
   } catch (error) {
     console.error('Error fetching brand managers:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch managers' });
@@ -907,6 +924,10 @@ router.post('/:id/staff', authenticateToken, async (req, res) => {
     }
 
     const { username, email, full_name, phone, permissions } = req.body;
+    // 맡을 브랜드 범위(2026-10-11) — brand_scope_all=true 면 회사 브랜드 전체, 아니면 brand_ids(홈 = 이 주소의 브랜드는 항상 포함).
+    //   둘 다 안 보내면(옛 화면) 종전처럼 이 브랜드 하나 — 넓히지 않는다.
+    const scopeAll = req.body.brand_scope_all === true;
+    const scopeIds = Array.isArray(req.body.brand_ids) ? req.body.brand_ids : [];
 
     // Validate required fields
     if (!username || !email || !full_name) {
@@ -946,21 +967,34 @@ router.post('/:id/staff', authenticateToken, async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(generatedPassword, 10);
 
-    const manager = await User.create({
-      username,
-      email,
-      password: hashedPassword,
-      role: 'Brand Manager',
-      full_name,
-      phone: phone || null,
-      brand_id: parseInt(brandId),
-      permissions: permissions || '[]'
-    });
+    const { sequelize } = require('../config/database');
+    const { saveManagerBrandScope } = require('../utils/managerBrandScope');
+    let manager;
+    let scopeSaved;
+    const t = await sequelize.transaction();
+    try {
+      manager = await User.create({
+        username,
+        email,
+        password: hashedPassword,
+        role: 'Brand Manager',
+        full_name,
+        phone: phone || null,
+        brand_id: parseInt(brandId),
+        permissions: permissions || '[]'
+      }, { transaction: t });
+      scopeSaved = await saveManagerBrandScope(manager.id, parseInt(brandId, 10), scopeAll, scopeIds, t);
+      if (!scopeSaved.ok) { await t.rollback(); return res.status(400).json({ success: false, message: scopeSaved.message }); }
+      await t.commit();
+    } catch (e) {
+      await t.rollback();
+      throw e;
+    }
 
     const { password: _, ...managerData } = manager.toJSON();
     res.status(201).json({
       success: true,
-      data: managerData,
+      data: { ...managerData, brand_scope_all: scopeAll, managed_brand_ids: scopeSaved.brandIds },
       generatedPassword
     });
   } catch (error) {
@@ -1017,10 +1051,27 @@ router.put('/:id/staff/:userId', authenticateToken, async (req, res) => {
       updateData.username = username;
     }
 
-    await manager.update(updateData);
+    // 맡을 브랜드 범위 바꾸기(2026-10-11) — 보낸 때만. 홈 브랜드(이 주소)는 항상 남는다.
+    const scopeTouched = req.body.brand_scope_all !== undefined || Array.isArray(req.body.brand_ids);
+    const { sequelize } = require('../config/database');
+    const { saveManagerBrandScope, managerScopesFor } = require('../utils/managerBrandScope');
+    const t = await sequelize.transaction();
+    try {
+      await manager.update(updateData, { transaction: t });
+      if (scopeTouched) {
+        const r = await saveManagerBrandScope(manager.id, parseInt(brandId, 10), req.body.brand_scope_all === true,
+          Array.isArray(req.body.brand_ids) ? req.body.brand_ids : [], t);
+        if (!r.ok) { await t.rollback(); return res.status(400).json({ success: false, message: r.message }); }
+      }
+      await t.commit();
+    } catch (e) {
+      await t.rollback();
+      throw e;
+    }
 
+    const sc = (await managerScopesFor([manager.id]))[manager.id] || { all: false, brandIds: [] };
     const { password: _, ...managerData } = manager.toJSON();
-    res.json({ success: true, data: managerData });
+    res.json({ success: true, data: { ...managerData, brand_scope_all: sc.all, managed_brand_ids: sc.brandIds } });
   } catch (error) {
     console.error('Error updating brand manager:', error);
     res.status(500).json({ success: false, message: error.message });
@@ -1052,6 +1103,8 @@ router.delete('/:id/staff/:userId', authenticateToken, async (req, res) => {
     }
 
     await manager.destroy();
+    // 맡은 브랜드 연결 행도 같이 지운다(2026-10-11) — 남으면 같은 id 재사용 때 범위가 되살아날 수 있다.
+    await require('../config/database').sequelize.query('DELETE FROM brand_manager_brands WHERE user_id = :id', { replacements: { id: manager.id } });
     res.json({ success: true, message: 'Manager deleted successfully' });
   } catch (error) {
     console.error('Error deleting brand manager:', error);
@@ -1255,7 +1308,7 @@ router.get('/:id/franchise-dashboard', authenticateToken, async (req, res) => {
     // Access
     const canAccess = req.user.role === 'System Admin'
       || brand.owner_id === req.user.id
-      || (req.user.role === 'Brand Manager' && Number(req.user.brand_id) === Number(id));
+      || (req.user.role === 'Brand Manager' && bmBrandIds(req.user).includes(Number(id)));
     if (!canAccess) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const isManager = req.user.role === 'Brand Manager';

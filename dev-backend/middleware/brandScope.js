@@ -28,10 +28,11 @@ function isBG(user) {
 /**
  * requireBGScope — resources scoped to the Brand General user.
  * Sets req.bgOwnerId:
- *  - Brand General/Manager: their user.id
+ *  - Brand General: their user.id
+ *  - Brand Manager: 홈 브랜드 소유자의 id(회사 공용 자료 — 2026-10-11 Fable 판정 §2-2). 소유자가 없으면 403.
  *  - System Admin: null (unfiltered) unless ?owner_user_id=N explicitly passed
  */
-function requireBGScope(req, res, next) {
+async function requireBGScope(req, res, next) {
   const user = req.user;
   if (!user) {
     return res.status(401).json({ success: false, message: 'Not authenticated' });
@@ -41,6 +42,21 @@ function requireBGScope(req, res, next) {
     req.bgOwnerId = Number.isFinite(override) ? override : null;
     req.bgOwnerIsAdmin = true;
     return next();
+  }
+  if (user.role === 'Brand Manager') {
+    // 매니저는 회사 직원 — 회사(홈 브랜드 소유자)의 상품·재고·공급업체를 보고, 새로 만들면 회사 명의로 남는다.
+    //   돈 경계(결제 설정·은행·구독·브랜드 수정/삭제·매니저 관리)는 이 미들웨어를 쓰지 않는 라우트가 따로 막는다.
+    try {
+      const { companyOwnerIdFor } = require('../utils/managerBrandScope');
+      const ownerId = await companyOwnerIdFor(user);
+      if (ownerId == null) return res.status(403).json({ success: false, message: 'No brand assigned to this manager' });
+      req.bgOwnerId = ownerId;
+      req.bgOwnerIsAdmin = false;
+      return next();
+    } catch (err) {
+      console.error('requireBGScope error:', err);
+      return res.status(500).json({ success: false, message: 'Scope check failed' });
+    }
   }
   if (isBG(user)) {
     req.bgOwnerId = user.id;

@@ -486,6 +486,54 @@ function defineSecurityTests({ customerToken, member, restId }) {
       await sequelize.query(`DELETE FROM activity_logs WHERE entity_type = 'supplier_company' AND entity_name LIKE ?`, { replacements: [`%${tag}%`] });
     }
   });
+  // 2026-10-11 Fable 판정 fable-verdict-20261011-brand-manager-scope.md — 브랜드 매니저 = 회사 직원, 브랜드는 필터.
+  //   데모 브랜드 소유자(브랜드 2개 이상)의 회사에 임시 매니저 2명(회사 전체 / 둘째 브랜드만)을 만들어 finally 로 지운다.
+  //   ① 전체 매니저 = 소유자와 같은 브랜드·판매 주문 수 ② 부분 매니저는 다른 브랜드 주문 404/403
+  //   ③ 매니저 결제 설정 403 유지 ④ 다른 회사 브랜드 행을 심어도 닫힘 ⑤ 회사 공용 재고 아이템 = 소유자와 같음
+  test('security', '브랜드 매니저 범위 — 회사 전체=소유자와 같음 · 부분은 남의 브랜드 주문 차단 · 결제설정 403 · 타 회사 행 닫힘 · 공용 재고', async () => {
+    const { sequelize } = require('../config/database');
+    const jwt = require('jsonwebtoken');
+    const { saveManagerBrandScope } = require('../utils/managerBrandScope');
+    const tag = 'zzhcbm' + Date.now().toString(36);
+    const [[owner]] = await sequelize.query(`SELECT u.id FROM users u JOIN brands b ON b.owner_id = u.id
+      WHERE u.role = 'Brand General' AND u.username = 'demo-brand' GROUP BY u.id HAVING COUNT(*) >= 2 LIMIT 1`);
+    if (!owner) return false;
+    const [brands] = await sequelize.query(`SELECT id FROM brands WHERE owner_id = ? ORDER BY id`, { replacements: [owner.id] });
+    const [[foreign]] = await sequelize.query(`SELECT id FROM brands WHERE owner_id IS NOT NULL AND owner_id <> ? ORDER BY id LIMIT 1`, { replacements: [owner.id] });
+    if (!foreign) return false;
+    const companyIds = brands.map(b => b.id);
+    const home = companyIds[0];
+    const second = companyIds[1];
+    const mk = async (suffix, brandId) => (await sequelize.query(`INSERT INTO users (username, email, password, role, brand_id, permissions, is_active, email_verified, createdAt, updatedAt)
+      VALUES (?, ?, 'x', 'Brand Manager', ?, '["dashboard","operations","products"]', 1, 1, NOW(), NOW())`, { replacements: [tag + suffix, `${tag}${suffix}@example.com`, brandId] }))[0];
+    const allId = await mk('a', home);
+    const partId = await mk('p', second);
+    try {
+      await saveManagerBrandScope(allId, home, true, []);
+      await saveManagerBrandScope(partId, second, false, [second]);
+      await sequelize.query(`INSERT INTO brand_manager_brands (user_id, brand_id) VALUES (?, ?)`, { replacements: [partId, foreign.id] });
+      const auth = id => ({ Authorization: `Bearer ${jwt.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+      const ids = r => (Array.isArray(r.body) ? r.body : []).map(b => b.id).sort((x, y) => x - y);
+      const total = r => (r.body && r.body.pagination ? r.body.pagination.total : -1);
+      const [ob, ab, pb] = [await request('GET', '/brands', null, auth(owner.id)), await request('GET', '/brands', null, auth(allId)), await request('GET', '/brands', null, auth(partId))];
+      const [os, as, ps] = [await request('GET', '/seller-orders?limit=100', null, auth(owner.id)), await request('GET', '/seller-orders?limit=100', null, auth(allId)), await request('GET', '/seller-orders?limit=100', null, auth(partId))];
+      const homeOrder = ((os.body && os.body.data) || []).find(o => Number(o.seller_entity_id) !== Number(second));
+      const blocked = homeOrder ? (await request('GET', `/seller-orders/${homeOrder.id}`, null, auth(partId))).status : 404;
+      const pay = await request('GET', `/brands/${home}/payment-settings`, null, auth(allId));
+      const [oi, ai] = [await request('GET', '/product-ingredients', null, auth(owner.id)), await request('GET', '/product-ingredients', null, auth(allId))];
+      const n = r => (r.body && Array.isArray(r.body.data) ? r.body.data.length : -1);
+      return JSON.stringify(ids(ab)) === JSON.stringify(ids(ob)) && JSON.stringify(ids(ob)) === JSON.stringify(companyIds)
+        && JSON.stringify(ids(pb)) === JSON.stringify([second])
+        && total(as) === total(os) && total(os) >= 0
+        && ((ps.body && ps.body.data) || []).every(o => Number(o.seller_entity_id) === Number(second))
+        && [403, 404].includes(blocked)
+        && pay.status === 403
+        && n(oi) >= 0 && n(ai) === n(oi);
+    } finally {
+      await sequelize.query(`DELETE FROM brand_manager_brands WHERE user_id IN (?, ?)`, { replacements: [allId, partId] });
+      await sequelize.query(`DELETE FROM users WHERE id IN (?, ?)`, { replacements: [allId, partId] });
+    }
+  });
   // 2026-09-24 Fable «오너=슈퍼바이저» §2-A: 오너는 소유 매장 발주를 «보기만». ownership 확인 · GET 만 · 남의 매장 403.
   //   데모 매장 38 에 임시 오너를 붙여 재고 finally 로 지운다(실매장 무접촉).
   //   (2026-10-04 Fable owner-po-on-behalf ①: 소유 매장 «으로» 작성은 열렸다 — 여기선 남의 매장 쓰기·열지 않은 라우트만 403 확인)

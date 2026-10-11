@@ -99,9 +99,14 @@ async function requireSellerRole(req, res, next) {
     // ⛔ BM 은 **소속 브랜드 하나**다 — 2026-09-06 판정(`brandScope.js` BM 분기)과 같은 규칙.
     //   판매자 화면에서만 형제까지 열면 같은 사람이 재고·레시피에서는 한 브랜드,
     //   발주에서는 형제 전부를 보게 되어 규칙이 갈린다. 넓히지 않는다.
+    //   2026-10-11: «하나» → **맡은 브랜드 전부**(회사 전체 / 고른 브랜드). 판정은 brandIdsForUser 하나 —
+    //   재고·레시피·발주가 같은 범위를 본다(Fable 판정 fable-verdict-20261011-brand-manager-scope.md §2-1).
     if (!user.brand_id) return res.status(403).json({ success: false, message: 'No brand assigned to this manager' });
-    const only = parseInt(user.brand_id, 10);
-    entity = { type: 'brand', id: only, ids: [only] };
+    const home = parseInt(user.brand_id, 10);
+    const { brandIdsForUser } = require('../utils/managerBrandScope');
+    const mine = Array.isArray(user.managed_brand_ids) ? user.managed_brand_ids.map(Number) : await brandIdsForUser(user);
+    if (!mine.length) return res.status(403).json({ success: false, message: 'No brand assigned to this manager' });
+    entity = { type: 'brand', id: mine.includes(home) ? home : mine[0], ids: mine };
   } else {
     if (!user.foodcourt_id) return res.status(403).json({ success: false, message: 'No foodcourt assigned' });
     entity = { type: 'foodcourt', id: parseInt(user.foodcourt_id, 10) };

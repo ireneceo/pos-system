@@ -336,10 +336,11 @@ router.get('/', authenticateToken, async (req, res) => {
           sellerWhere = { seller_type: 'brand', seller_entity_id: { [Op.in]: brandIds } };
         }
       } else if (role === 'Brand Manager') {
-        // ⛔ BM 은 **소속 브랜드 하나**다 — 2026-09-06 판정(sellerScope.js BM 분기)과 같은 규칙.
-        //    판매자 화면이 한 브랜드만 보여주는데 배지가 형제까지 세면 규칙이 갈린다.
-        const brandId = user.brand_id || user.brandId;
-        if (brandId) sellerWhere = { seller_type: 'brand', seller_entity_id: parseInt(brandId, 10) };
+        // BM 은 **맡은 브랜드 전부**(회사 전체 / 고른 브랜드, 2026-10-11) — sellerScope.js BM 분기와 같은 규칙.
+        //    판매자 화면과 배지가 다른 범위를 세면 «목록엔 있는데 빨간 점은 안 뜨는» 어긋남이 난다.
+        const { brandIdsForUser } = require('../utils/managerBrandScope');
+        const brandIds = Array.isArray(user.managed_brand_ids) ? user.managed_brand_ids : await brandIdsForUser({ ...user, role });
+        if (brandIds.length) sellerWhere = { seller_type: 'brand', seller_entity_id: { [Op.in]: brandIds } };
       } else if (role === 'Foodcourt General' || role === 'Foodcourt Manager') {
         const foodcourtId = user.foodcourt_id || user.foodcourtId;
         if (foodcourtId) sellerWhere = { seller_type: 'foodcourt', seller_entity_id: parseInt(foodcourtId, 10) };

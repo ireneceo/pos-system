@@ -269,7 +269,14 @@ function requireBrandUserModule(moduleCode) {
     if (!req.user) return res.status(401).json({ success: false, message: 'Not authenticated' });
     if (req.user.role === 'System Admin') return next();
     if (req.user.is_demo) return next();
-    const owner = await User.findByPk(req.user.id, { attributes: ['id', 'plan_type', 'is_demo'] });
+    // 매니저는 자기 구독이 없다 — 회사(홈 브랜드 소유자)의 요금제로 본다(2026-10-11 Fable 판정 §2-2:
+    //   회사 공용 자료를 매니저에게 연다. 종전엔 매니저 자기 계정의 plan_type(없음)으로 봐서 항상 403).
+    let planUserId = req.user.id;
+    if (req.user.role === 'Brand Manager') {
+      const { companyOwnerIdFor } = require('../utils/managerBrandScope');
+      planUserId = await companyOwnerIdFor(req.user);
+    }
+    const owner = planUserId == null ? null : await User.findByPk(planUserId, { attributes: ['id', 'plan_type', 'is_demo'] });
     if (owner?.is_demo) return next();
     const planType = owner?.plan_type;
     if (planType) {

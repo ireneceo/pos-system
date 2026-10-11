@@ -52,6 +52,8 @@ async function projectContext(baseUser, ctx) {
       role: ctx.r,
       restaurant_id: (ctx.t === 'owner' || ctx.t === 'brand') ? null : ctx.id, // 오너·브랜드 모자는 매장 스칼라가 없다
       brand_id: ctx.t === 'brand' ? ctx.id : null,                              // 브랜드 관리자 모자(2026-10-04)
+      // 모자 = 그 브랜드 하나(교체). 매니저 «회사 전체»·연결표를 읽지 않게 고정(2026-10-11 managerBrandIds)
+      brand_scope_fixed: ctx.t === 'brand',
       foodcourt_id: null,
       branch_id: null,
       manager_id: null,
@@ -113,6 +115,13 @@ const authenticateToken = async (req, res, next) => {
       req.user = projection.user;
       req.contextProjected = projection.projected;
       if (projection.fallback) markContextFallback(res);
+    }
+
+    // Brand Manager 의 브랜드 범위(회사 전체 / 고른 브랜드) — 동기 판정처(getManagerScope)가 쓰도록 한 번 계산해 둔다.
+    //   판정은 utils/managerBrandScope.brandIdsForUser 하나(2026-10-11). BM 에게만 쿼리가 더 붙는다.
+    if (req.user.role === 'Brand Manager') {
+      const { brandIdsForUser } = require('../utils/managerBrandScope');
+      req.user.managed_brand_ids = await brandIdsForUser(req.user);
     }
 
     next();
@@ -456,14 +465,18 @@ const demoProtection = (req, res, next) => {
 // Resolve Manager scope limits. Returns:
 //   { scoped: false } — System Admin, General roles, or unscoped Manager (backward-compat: NULL = all)
 //   { scoped: true, branch_id } — Foodcourt Manager restricted to a branch
-//   { scoped: true, brand_id } — Brand Manager restricted to one brand
+//   { scoped: true, brand_id, brand_ids } — Brand Manager: 홈 브랜드 + 맡은 브랜드 전부(2026-10-11 — 회사 전체/고른 브랜드)
 const getManagerScope = (user) => {
   if (!user) return { scoped: false };
   if (user.role === 'Foodcourt Manager' && user.branch_id) {
     return { scoped: true, branch_id: Number(user.branch_id) };
   }
   if (user.role === 'Brand Manager' && user.brand_id) {
-    return { scoped: true, brand_id: Number(user.brand_id) };
+    return {
+      scoped: true,
+      brand_id: Number(user.brand_id),
+      brand_ids: Array.isArray(user.managed_brand_ids) ? user.managed_brand_ids : [Number(user.brand_id)]
+    };
   }
   return { scoped: false };
 };

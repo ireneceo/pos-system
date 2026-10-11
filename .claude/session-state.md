@@ -1,7 +1,35 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-10-11 UTC — 발주 카탈로그 «Add to My Stock» 표시 결함 수정 /개발완료 [작업방 ef2223fa] · 이전: 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
+**마지막 업데이트:** 2026-10-11 UTC — 브랜드 매니저 여러 브랜드·회사 전체 배정 /개발완료 [작업방 8315f30a] · 이전: 2026-10-11 UTC — 발주 카탈로그 «Add to My Stock» 표시 결함 수정 /개발완료 [작업방 ef2223fa] · 이전: 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
 **버전:** **v3.110** (2026-10-11 · Irene «응») · 운영 SW **5.90-preflight-security-20261010** (2026-10-11 06:36 UTC 배포 · 백업 20261011_062932 · DB 덤프 db_predeploy_20261011_062932 · 스모크 10/10 · 마이그 118/118) · 안드로이드 앱 0.3.4
 **작업 상태:** ✅ 운영 배포 완료 SW 5.90 (2026-10-11) — 남은 것: /운영검증 · 키오스크 태블릿 운영 확인 · 첫 주방 티켓 눈 확인 · E1·E3(서버 창, 선택) · Q6 · 재발 방지(마이그 «칸 추가 단계» 분리, Fable 설계 1회)
+
+### 완료 (10/12 00:00 정기 점검 · 2026-10-11 16:1xZ) — /개발완료 안 함 · 배포 막힘 · /개발시작 [Claude Code · 백그라운드 작업방 134aadff]
+- /개발완료 안 함: 같은 폴더 방 8315f30a(브랜드 매니저 검토) working · 마지막 /개발완료(56caff984) 뒤 새 커밋 0, 미커밋은 session-state.md 뿐(다른 방 기록)
+- 배포 막힘(스크립트 실행 안 함, 운영 무변경): ① 지난 배포(10-11 06:36Z) 뒤 범위에 예전 자동 저장 커밋 3개(e5d528256·8453714c2·208fc992c) — `--auto` 는 설계상 중단, 사본 배포 첫 실배포는 수동 /배포 1회(Fable 권고, 31f67057 절) ② K-DINE 재료 정돈 Fable 게이트(2회차) 대기 16:20Z(67f96715 절, «게이트 전 운영 배포 금지»)
+- 풀리는 길: 상황판 배포 버튼(수동 /배포) — 그 방이 wip 3개 범위를 목록으로 보고 확인, K-DINE 건 Fable 판정 뒤
+- 운영 문의(prod-query 읽기 전용, 16:1xZ): 새로 들어온 것 0 · 새 후속 글 0 · 랜딩 문의 0 · 열린 3건(SUPP-2026-6842-103 · 1886-062 · 2401-270) 10-07 판단 그대로 이미 해결(check-hook-tdz 643파일 0건 재확인) · 운영 문의 closed 4 / in-progress 1
+- 진행 중 없음 · 다음 확정 작업 없음 → 지시 대기
+
+### 완료 (2026-10-11) — 브랜드 매니저: 여러 브랜드·회사 전체 배정 + 회사 공용 자료 + 메뉴 접근 7묶음 (개발서버 · Fable 설계 + 검증 PASS · /개발완료) [Claude Code · 백그라운드 작업방 8315f30a]
+- Irene: «브랜드제너럴에서 매니저 추가할 때 왜 브랜드를 하나만 선택할 수 있어? …» → Fable 설계 C안 → Irene «권고대로 진행해 줘»
+- 판정문: backups/fable-pending/fable-verdict-20261011-brand-manager-scope.md(설계) · …-scope-gate.md(검증 PASS, 마커 4c0bef90e93e)
+- 바꾼 것: 마이그 migrate-brand-manager-scope-20261011.js(registry deploy 맨 앞, raw SQL·멱등, 기존 BM 홈 1행 백필) · users.brand_scope_all · brand_manager_brands · managerBrandIds/saveManagerBrandScope/companyOwnerIdFor · auth·brandScope·buyerScope(보기만)·sellerScope·requireModule · brands-core·badgeCounts·ingredients·suppliers·brand-products · BrandStaffPage·AuthContext·MainLayout(사이드바 묶음만, print-guard bless) · 4개 언어 · docs ROLES_AND_PERMISSIONS §3 · MULTI_CONTEXT §5.5 · SCHEMA-MIGRATION-GUIDE
+- 검증: 실호출 29/29 · 닫힘 5/5 · 고장주입 4/4 · health 85/85 · verify-all --full 24/24 · 실브라우저 13/13 · Fable 실호출 25/25
+- 확인용 데이터(지우지 말 것): 매니저 2001 «[확인용] 매니저 회사전체»(홈 1) · 2002 «[확인용] 매니저 고른브랜드»(홈 2, 2·4)
+- 배포 뒤 확인(운영 읽기): brand_manager_brands 행 수 = 운영 매니저 수(4) · users.brand_scope_all 칸 존재
+- 운영 반영: 다음 배포 때
+- 후속 후보(확정 X, Fable 기록): 모자로 브랜드 하나 자격을 줘도 회사 공용 자료 전체가 보임(모자 첫 부여 전 결정) · 홈 브랜드만 보는 곳 rent-billing·notificationService + 배정된 BG 범위 → 2단계에 한 함수로 · 메뉴 키 서버 강제 = 2단계 · 기존 매니저는 «리포트·실적» 키가 없어 Reports·Performance 숨음(소유자가 체크로 복구) · 푸드코트 매니저 화면 Payment Settings 문구
+- 커밋에서 뺀 다른 방 미커밋: dev-backend/scripts/migrate-brand-mirror-pairs-20261011.js · dev-frontend/src/mobile/pages/MenuPage.tsx (이 판정에서 검증 안 함)
+
+### 답 기다림 (2026-10-11) — 데모 5개를 한 아이디의 선택 화면(/pos/select-context)에서 고르기: 묶는 방식 [Claude Code · 백그라운드 작업방 297d3c23]
+- Irene: «데모들 여기서 다 확인되게 개발이나 운영 서버 모두 같은 아이디로 묶어서 선택하게 하자. https://dev.purplehere.com/pos/select-context»
+- 조사(개발 DB 읽기): 데모 5개 = demo-restaurant(23, 매장 38 RA) · demo-brand(22, 브랜드 10 BG) · demo-foodcourt(288, 푸드코트 44 FG) · demo-owner(289) · demo-supplier(227). 지금 역할 전환(모자)이 지원하는 건 매장 관리자·직원·오너·브랜드 관리자뿐 — 푸드코트·공급업체·브랜드 대표(BG)는 모자로 못 묶음
+- 운영 읽기 확인은 허락 창에서 멈춰 실행 안 함(운영 무접촉). 코드 변경 0
+- 왜 멈췄나: 묶는 방식이 로그인·권한 경계라 방향을 정해야 함
+- 선택지: A 데모 계정끼리 «바로 갈아타기» 카드(선택 화면에 데모 5장, 누르면 기존 비밀번호 없는 데모 로그인으로 그 계정으로 전환 · 권한 구조 무변경 · 개발·운영 같은 동작) / B 모자 구조를 푸드코트·공급업체·브랜드 대표까지 넓혀 한 계정에 진짜로 붙임(권한 판정 확장 · Fable 설계+검증 필요 · 큼)
+- Opus 의견: A (데모는 이미 누구나 로그인 화면 카드로 들어가는 공개 계정이라 새 권한이 생기지 않음, 작고 되돌리기 쉬움)
+- 답이 오면: A → 선택 화면에 데모 계정일 때 데모 5장 표시(현재 계정 표시) + 누르면 데모 로그인 전환 · 빌드 1회 · verify-all --full · 실브라우저로 5장 전환 확인. B → Fable 설계 1회부터
+
 
 
 ### 완료 (2026-10-11) — 발주 카탈로그: 브랜드 재료로 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 뜨던 것 (개발서버 · Fable 안 씀) [Claude Code · 백그라운드 작업방 ef2223fa]
@@ -62,6 +90,8 @@
 - Fable 완성 점검 PASS(이 사안 2/2): `backups/fable-pending/fable-verdict-20261011-kiosk-two-modes-gate.md` — 설계 밖 0 · verify-all 23/23 · 키오스크·모바일 회귀 15/15 · 사진 11장 확인. 게이트 마커는 안 찍음(워킹트리에 다른 방 청구서 결제 변경이 섞여 있어서) → 배포 방 묶음 게이트 때
 - 후속(막지 않음): ①카테고리 1개 매장에서 «뒤로» 가 메뉴 밖으로 ②담은 뒤 기기 뒤로 키로 또 담기 가능 ③docs/KIOSK_MODE.md 에 «메뉴 보기 방식» 한 줄 · 실태블릿 눈 확인 1회 · `.claude/.fable-gate-skip` 배포 전 정리
 - 추가(10-11 Irene «2가지 버전을 뭘로 표시할지 키오스크에서 직접 고를 수 없을까? 어차피 구조는 똑같고 보이는 방식 차이잖아. 그치?»): 키오스크 메뉴 화면 위 «Browse | Step by step» 스위치 — 고른 값은 그 태블릿에 기억(localStorage kiosk_menu_view, 유휴 리셋으로 안 지움), 매장 설정은 «처음 보일 방식». 실브라우저 65/65 · verify-all --full 24/24 · Fable 안 씀(화면 표시 스위치, 이 사안 Fable 2/2 소진)
+- 고침(10-11 Irene «다른 방식으로 들어가면 돌아올 수가 없네 … 카테고리1>카테고리2(있을경우)>메뉴>옵션1>옵션2 … 왜 메뉴부터 나오지?»): 원인 = 카테고리 1개면 카테고리 화면을 건너뛰던 규칙(데모 38 은 Others 하나뿐) + 스위치가 카테고리 화면에만 있었음 → 카테고리 화면은 항상 먼저(하위 단계만 «있을 때») · 스위치는 안내형 모든 메뉴 단계 위. 실브라우저 71/71 · verify-all --full 24/24
+- 데모 38 에 [확인용] 시험 메뉴 남김(지우지 않음): [확인용] Coffee › Hot·Iced / Snacks · Americano(추천·한 줄 소개·Size 필수·Extras 복수) · Latte · Cold Brew · Cookie · Coffee Set(세트) · 옵션묶음 [확인용] Size/Extras
 - 운영 반영: 다음 배포 때
 
 ### 완료 (2026-10-11) — 매장 메뉴 2단 카테고리 + 한 줄 소개·추천 표시 (개발서버 · 미커밋 · 운영 배포 대기) [Claude Code · 백그라운드 작업방 069db6c8]
@@ -232,7 +262,11 @@
 - 질문: 꺼진 상품을 매장 발주에서 어떻게 할지 — Opus 의견 A(목록에 «판매 중지» 표시 + 담기·발주 만들기·제출을 서버에서 막음, 연결 행은 안 지움 → 다시 켜면 그대로 복구)
 - 답이 오면: A → 3개 목록 응답에 상품 활성 칸 + 발주 만들기/제출 서버 거부(공급업체 상품도 같은 규칙인지 같이) + 화면 표시 + health-check 1건·고장주입 → 빌드 1회·verify-all --full → 주문 경로라 Fable 게이트 1회
 
-### 답 기다림 (2026-10-11) — K-DINE 브랜드 재료 정돈: 운영 추가 읽기 1회 + 짝 확인 Q1~Q6 (+ 🕓 Fable 게이트 대기 16:20 UTC) [Claude Code · 백그라운드 작업방 67f96715]
+### 답 기다림 (2026-10-11) — K-DINE 브랜드 재료 정돈: 남은 질문 7개(Q-A1·Q2·Q3·Q4·Q5·Q-R1·Q-R2) — Fable 게이트 PASS · 교체 기능 설계 판정 받음 [Claude Code · 백그라운드 작업방 67f96715]
+- Fable 판정(10-11): 게이트 PASS `backups/fable-pending/fable-verdict-20261011-kdine-ingredient-tidy-gate.md`(마커 c9d728e01656 · 이탈 ①~⑥ 수용 · Fable 이 짝 스크립트 영수증 순서 3줄 수정 — **migrate-brand-mirror-pairs-20261011.js 더 고치지 말 것**) · 교체 기능 설계 `backups/fable-pending/fable-verdict-20261011-stock-item-replace-on-delete.md`(만든다 · F8 과 모순 아님 → F8-2 · services/mirrorMerge.mergePair + POST /api/product-ingredients/:id/replace · 2차 묶음). 상황판 Fable 대기 2건 done
+- Irene 답으로 닫힘: A2~A10(K-소스 줄 전부) · A5 김치 → #94 «K-Kimchi Sauce 1kg» · B11·B12
+- 남은 질문: **Q-A1 육개장 소고기 #51→#75 합칠까요?**(권고 ○) · Q2 bp#16 45 g 유지+이름 «45g»(권고) · Q3 R5 그대로(권고) · Q4 매장 8 자기 줄 별건(권고) · Q5 쌀 손으로(권고) · Q-R1 교체 기능 설계대로(권고 예) · Q-R2 이번 묶음은 스크립트로 먼저(권고 예)
+- 답이 오면: Q-A1 × 면 kdine-pairs-20261011.json 에서 51 줄 빼기 · Q-R1 예면 2차 묶음 구현(설계 §4) → 게이트 · 운영: 다음 배포(A 자동 — «규격 불일치» 목록을 보고에 옮김) → Irene 터미널 B 드라이런→apply(A json → B json) → 점검표 재실행 → 손 작업(A10 pi312 Deactivate · 오이 1줄 · 쌀 7줄 · #27 끔 · 당면)
 - Irene: «Yukgaejang beef … K-DINE IPC 기준으로 왜 브랜드 공급업체 연결이 되지 않았어? 그리고 이것들은 왜 있어? … 제대로 레시피사용, 브랜드메뉴 재료, 우리 납품 브랜드로 공급업체 연결 제대로 해줄 수는 없는 거야??» → 운영 점검표(Irene 터미널, 10-11) → Fable 1회차 `backups/fable-pending/fable-verdict-20261011-kdine-ingredient-tidy.md`
 - 원인(Fable): 9-29 에 정한 «GIT 상품 출처 줄에 GIT 연결 자동»이 새 줄에만 들어가고 옛 77줄 채우기는 한 번도 안 돎 · «Yukgaejang beef»(#51)는 9/4 기계가 만든 GIT 재고아이템 거울이라 연결 붙을 자리가 없고 같은 물건 상품 줄 #75 «K-Yukgaejang Beef 1kg» 가 따로 있음 · K-소스 9쌍 같은 모양 · 새 줄이 계속 생기는 문 2개(레시피 재료 고르는 칸 · 매장 카탈로그 담기)
 - 구현 완료(개발서버 · 자동저장 커밋 208fc992c 에 포함): A 연결 채우기 마이그 `migrate-mirror-source-links-backfill.js`(deploy · 합치기 마이그 뒤 순서) · A′ 환산 = 상품 규격→거울 단위 · B 짝 합치기 `migrate-brand-mirror-pairs-20261011.js`(manual · 드라이런·영수증·되돌리기 · 한 레시피 두 줄이면 건너뜀) · C 레시피 고르는 칸에서 «상품이 가리키는 재고아이템» 숨김 · D 매장 카탈로그 담기 = 자기 브랜드 상품이면 브랜드 줄에 붙음(서비스 상품 제외) · E health-check C1~C3 + 기존 2건 기대값

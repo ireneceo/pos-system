@@ -24,16 +24,12 @@ const { Op } = require('sequelize');
  */
 async function brandIdsForUser(user) {
   if (!user || !['Brand General', 'Brand Manager'].includes(user.role)) return [];
+  if (user.role === 'Brand Manager') return managerBrandIds(user);
   const Brand = require('../models/Brand');
   const ids = new Set();
 
-  // Brand Manager 는 **소속 브랜드 하나**다(2026-09-06 판정). 소유 조회를 섞으면 브랜드 모자(user_contexts,
-  // 2026-10-04)를 쓴 BG 가 모자 아래에서 자기 소유 브랜드까지 보게 된다 — 모자는 추가가 아니라 교체(설계 §5.4).
-  // dev 실측: 소유자 역할이 BM 인 브랜드 0건이라 네이티브 BM 에게는 결과가 같다.
-  if (user.role !== 'Brand Manager') {
-    const owned = await Brand.findAll({ where: { owner_id: user.id }, attributes: ['id'] });
-    owned.forEach((b) => ids.add(b.id));
-  }
+  const owned = await Brand.findAll({ where: { owner_id: user.id }, attributes: ['id'] });
+  owned.forEach((b) => ids.add(b.id));
 
   // 배정된 브랜드 — 실제로 존재하는 브랜드일 때만 (지워진 브랜드 id 가 남아 있을 수 있다)
   const assigned = parseInt(user.brand_id, 10);
@@ -42,6 +38,108 @@ async function brandIdsForUser(user) {
     if (exists) ids.add(exists.id);
   }
   return [...ids];
+}
+
+/**
+ * Brand Manager 의 브랜드 범위 (2026-10-11 · Fable 판정 fable-verdict-20261011-brand-manager-scope.md §2-1 C안).
+ *
+ * 매니저 = **회사 직원**, 브랜드는 필터. 회사 = 홈 브랜드(users.brand_id)의 소유자(brands.owner_id).
+ *   - users.brand_scope_all = 1 → 그 소유자의 브랜드 **전부**(소유자 계정이 보는 것과 같은 규칙).
+ *   - 0 → brand_manager_brands 행 ∩ 회사 브랜드 ∪ 홈. 소유자가 바뀐 브랜드는 행이 남아 있어도 닫힌다.
+ *   - 홈 브랜드가 없거나 지워졌으면 0개(넓히지 않는다). 홈 소유자가 비어 있으면 홈 하나.
+ * 브랜드 «모자»(user_contexts brand×Brand Manager — 다른 회사 사람에게 주는 자격)로 투영된 사용자는
+ *   `brand_scope_fixed` 가 붙어 **모자 브랜드 하나**만이다(모자는 교체 — 설계 §5.4). 전체 칸·연결표를 읽지 않는다.
+ * ⚠ 전체 칸은 DB 에서 다시 읽는다 — 넘겨받은 user 객체(토큰 시점·소켓 등)의 값은 믿지 않는다.
+ */
+async function managerBrandIds(user) {
+  const Brand = require('../models/Brand');
+  const home = parseInt(user.brand_id, 10);
+  if (!Number.isFinite(home)) return [];
+  const homeRow = await Brand.findByPk(home, { attributes: ['id', 'owner_id'] });
+  if (!homeRow) return [];
+  if (user.brand_scope_fixed || homeRow.owner_id == null) return [homeRow.id];
+
+  const { sequelize } = require('../config/database');
+  const [[me]] = await sequelize.query(
+    'SELECT brand_scope_all FROM users WHERE id = :id AND role = \'Brand Manager\'',
+    { replacements: { id: user.id } }
+  );
+  if (!me) return [homeRow.id];
+
+  const company = (await Brand.findAll({ where: { owner_id: homeRow.owner_id }, attributes: ['id'] }))
+    .map((b) => b.id);
+  if (Number(me.brand_scope_all) === 1) return company;
+
+  const [rows] = await sequelize.query(
+    'SELECT brand_id FROM brand_manager_brands WHERE user_id = :id',
+    { replacements: { id: user.id } }
+  );
+  const picked = new Set(rows.map((r) => Number(r.brand_id)));
+  picked.add(homeRow.id);
+  return company.filter((id) => picked.has(id));
+}
+
+/**
+ * 매니저 범위 저장 — 추가·수정 화면 한 곳에서만 부른다.
+ * all=true 면 연결표를 홈 1행으로 정리(전체를 끄면 홈만 남는다), false 면 brandIds 를 회사 브랜드로 걸러 그대로 둔다.
+ * 홈 브랜드는 항상 포함. 회사 밖 브랜드 id 는 조용히 버리지 않고 에러로 돌려준다(부른 쪽이 400).
+ * @returns {Promise<{ok:true, brandIds:number[]}|{ok:false, message:string}>}
+ */
+async function saveManagerBrandScope(userId, homeBrandId, all, brandIds, transaction) {
+  const Brand = require('../models/Brand');
+  const { sequelize } = require('../config/database');
+  const homeRow = await Brand.findByPk(homeBrandId, { attributes: ['id', 'owner_id'], transaction });
+  if (!homeRow) return { ok: false, message: 'Home brand not found' };
+  const company = homeRow.owner_id == null
+    ? [homeRow.id]
+    : (await Brand.findAll({ where: { owner_id: homeRow.owner_id }, attributes: ['id'], transaction })).map((b) => b.id);
+  const wanted = new Set([homeRow.id]);
+  if (!all) {
+    for (const raw of (Array.isArray(brandIds) ? brandIds : [])) {
+      const id = parseInt(raw, 10);
+      if (!Number.isFinite(id)) continue;
+      if (!company.includes(id)) return { ok: false, message: `Brand ${id} does not belong to this company` };
+      wanted.add(id);
+    }
+  }
+  await sequelize.query('UPDATE users SET brand_scope_all = :all WHERE id = :id',
+    { replacements: { all: all ? 1 : 0, id: userId }, transaction });
+  await sequelize.query('DELETE FROM brand_manager_brands WHERE user_id = :id',
+    { replacements: { id: userId }, transaction });
+  for (const id of wanted) {
+    await sequelize.query('INSERT INTO brand_manager_brands (user_id, brand_id) VALUES (:u, :b)',
+      { replacements: { u: userId, b: id }, transaction });
+  }
+  return { ok: true, brandIds: [...wanted] };
+}
+
+/** 이 매니저 계정들의 저장된 범위 — 목록 화면 표시용. { [userId]: { all, brandIds } } */
+async function managerScopesFor(userIds) {
+  const ids = (userIds || []).map((x) => parseInt(x, 10)).filter(Number.isFinite);
+  if (!ids.length) return {};
+  const { sequelize } = require('../config/database');
+  const [users] = await sequelize.query('SELECT id, brand_scope_all FROM users WHERE id IN (:ids)', { replacements: { ids } });
+  const [rows] = await sequelize.query('SELECT user_id, brand_id FROM brand_manager_brands WHERE user_id IN (:ids)', { replacements: { ids } });
+  const out = {};
+  users.forEach((u) => { out[u.id] = { all: Number(u.brand_scope_all) === 1, brandIds: [] }; });
+  rows.forEach((r) => { if (out[r.user_id]) out[r.user_id].brandIds.push(Number(r.brand_id)); });
+  return out;
+}
+
+/**
+ * 회사 공용 자료(브랜드 상품·상품 레시피·재고 아이템·실사·공급업체 — owner_user_id 로 걸린 것)의 주인 번호.
+ *   Brand General → 자기 id(종전 그대로). Brand Manager → 홈 브랜드의 소유자 id(2026-10-11 Fable 판정 §2-2:
+ *   매니저는 회사 직원이라 회사 것을 본다. 매니저 자기 id 로 찾으면 0건이었다). 홈이 없거나 소유자가 비면 null.
+ */
+async function companyOwnerIdFor(user) {
+  if (!user) return null;
+  if (user.role === 'Brand General') return user.id;
+  if (user.role !== 'Brand Manager') return null;
+  const home = parseInt(user.brand_id, 10);
+  if (!Number.isFinite(home)) return null;
+  const Brand = require('../models/Brand');
+  const row = await Brand.findByPk(home, { attributes: ['owner_id'] });
+  return row && row.owner_id != null ? Number(row.owner_id) : null;
 }
 
 /** 위 브랜드들에 속한 매장 id 들. */
@@ -81,4 +179,4 @@ async function brandOwnerUserIds(brandId) {
   return [...ids];
 }
 
-module.exports = { brandIdsForUser, brandRestaurantIdsForUser, brandOwnerUserIds };
+module.exports = { brandIdsForUser, managerBrandIds, companyOwnerIdFor, saveManagerBrandScope, managerScopesFor, brandRestaurantIdsForUser, brandOwnerUserIds };

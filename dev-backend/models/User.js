@@ -92,6 +92,13 @@ User.init({
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  // Brand Manager 범위 (2026-10-11) — true = 홈 브랜드(brand_id) 소유자의 브랜드 전부, false = brand_manager_brands 행.
+  //   판정은 utils/managerBrandScope.brandIdsForUser 하나. 다른 역할에는 의미 없음.
+  brand_scope_all: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
   foodcourt_id: {
     type: DataTypes.INTEGER,
     allowNull: true

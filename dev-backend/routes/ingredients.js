@@ -55,7 +55,10 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
 
     // Get all brands owned by this user (shared ingredients across brands)
     const Brand = require('../models/Brand');
-    const userBrands = await Brand.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] });
+    // 매니저는 회사(홈 브랜드 소유자) 것을 본다(2026-10-11 Fable 판정 §2-2) — BG 는 종전처럼 자기 id.
+    const { companyOwnerIdFor } = require('../utils/managerBrandScope');
+    const companyOwnerId = req.user.role === 'System Admin' ? req.user.id : await companyOwnerIdFor(req.user);
+    const userBrands = companyOwnerId == null ? [] : await Brand.findAll({ where: { owner_id: companyOwnerId }, attributes: ['id'] });
     const allBrandIds = userBrands.map(b => b.id);
 
     // 소유 브랜드의 재료만. 예전엔 `OR brand_id IS NULL` 이 붙어 전 시스템의 모든 '레스토랑' 재료
