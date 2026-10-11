@@ -4,7 +4,26 @@
 **작업 상태:** ✅ 배포 준비 — 다음 배포 SW **5.90-preflight-security-20261010**(키오스크 묶음 포함, 별도 bump 없음) · 기록 `dev-backend/releases/2026-10-10-preflight-security.json` · 배포 전 묶음 Fable 게이트(아래 10-11 절) 뒤 Irene «배포» 대기(배포 직전 Irene 터미널 E1·E3·Q6 — 10-10 절)
 
 
-### 답 기다림 (2026-10-11) — 2단 카테고리 + 키오스크 «한 화면 한 선택» 전략: D1~D4 승인 [Claude Code · 백그라운드 작업방 069db6c8]
+### 답 기다림 (2026-10-11) — 운영 배포 재시도: 마이그 순서 고침(미커밋) · Fable 판정 대기 → Irene 터미널 배포 1줄 [Claude Code · 백그라운드 작업방 20234aa0/dc2ff8be]
+- Irene «권고대로» → `dev-backend/scripts/migrations.registry.json` 새 칸 6줄을 brand-account-payment-settings 바로 앞으로 옮김(완료, 미커밋). check-migration-registry 통과(118개) · 정적 대조 위반 0(base_quantity 1건은 다른 표 기존 칸) · verify-all 23/23 · 새 칸 없는 DB 재현 시험은 확인 불가(임시 DB 만들 권한 없음)
+- 마커 뒤 다른 변경: 자동 저장 3bdb3206d PaymentPage.tsx 10줄(18bc810d 카드 빈칸 수정, Irene 재확인 대기) — 실패한 배포 빌드에도 포함됐던 것
+- Fable 배포 재시도 게이트 요청함(판정문 예정 경로 backups/fable-pending/fable-verdict-20261011-deploy-retry-gate.md) — 아직 판정 없음, 지문 23af07dcfb85 마커 무효
+- 답이 오면: Fable PASS(마커) 확인 → 커밋 → Irene 에게 `! /var/www/deploy-to-production.sh --auto` 1줄 → 결과 확인·/운영검증. Fable 이 막으면 그 판정 그대로 전달
+- (이전 내용 — 배포 실패·원인)
+- Irene 터미널 `! /var/www/deploy-to-production.sh --auto` (06:01 UTC) → 마이그 `migrate-brand-account-payment-settings.js` 실패 «Unknown column 'b.delivery_zones'» → 스크립트가 백업 20261011_055546 으로 코드 원복·재시작. 운영 health ok · sw.js 5.89 그대로. DB 는 실패 전 마이그(전부 멱등·expand)만 적용된 채 — 덤프 운영 /var/backups/orderhere/pre-deploy/db_predeploy_20261011_055546.sql.gz
+- 원인: 배포 마이그는 registry `deploy` 배열 순서대로 돈다. 새 칸 6개 마이그(invoice-external-document · staff-meal-category-flag · add-seller-delivery-zones · ledger-cost-columns · stock-take-bg-warehouse · po-item-shipped-at)가 배열 맨 끝(113~118)인데, 22번 brand-account-payment-settings 와 94번 supplier-shop 이 delivery_zones 를 먼저 읽음. 개발 DB 엔 칸이 이미 있어 안 걸렸음
+- 고칠 것(최소 1곳): `dev-backend/scripts/migrations.registry.json` 에서 그 6줄을 brand-account-payment-settings 바로 앞으로 옮김(6개 모두 기존 표에 칸 추가만·자체 완결 확인). 이 방에서 파일 수정이 권한 거부 → 실행 안 함, 파일 무변경(확인)
+- 답이 오면: 수정 → check-migration-registry · verify-all → 순서 바뀐 목록으로 «새 칸 없는 DB» 재현 시험(임시 DB 만들기 권한 없음 — 확인 불가면 그렇게 기록) → 레지스트리=안전망 파일이라 Fable 게이트 1회 → Irene 터미널 배포 재실행
+
+### 답 기다림 (2026-10-11) — 2단 카테고리 ①구조+②카드 문구 설계 요약 확인 [Claude Code · 백그라운드 작업방 069db6c8]
+- Irene 답(D1~D4): «권고대로» → 설계 요약 `backups/fable-pending/MENU_CATEGORY_TWO_LEVEL.design.md`(구현 때 docs/ 로 옮김 — 지금 docs 에 두면 배포 묶음 지문이 바뀜) (코드 변경 0)
+- 실측 추가: 이름 겹치기 금지는 이미 서버에 있음(대소문자 무시) · 🔒 POS 는 빈 카테고리도 탭으로 보임 → «묶음 전용» 상위를 화면 공용 메뉴 자료에서 빼서 POS 파일 무접촉(Opus 세부)
+- Irene: «fable 의견 받아. 오퍼스 말고» → Fable 2차 판정: 섞인 상위 금지(카테고리는 메뉴 칸/하위 칸 중 하나) · 첫 하위 만들 때 «메뉴 전부 옮기기»(기본 켜짐) · POS 평평한 탭(파일 무접촉) · 브랜드 동기화 묶음 칸 → Uncategorized+결과 문구 · 설계 요약 반영 완료
+- 답 필요: (1) 상위 메뉴는 하위로 옮김 (2) POS 평평한 탭 — Fable 권고대로 할지
+- Fable 사용: 설계 2회(전략 판정 + Irene 지시로 세부 판정) · 남은 1 = 구현 뒤 검증
+- 답이 오면: 구현(백엔드 → 프론트 → 빌드 1회 → verify-all --full) → Fable 검증 1회 → 보고. 같은 폴더 다른 작업방이 MenuPage·PaymentPage 를 고치는 중이면 기다림
+
+### (이전) 답 기다림 (2026-10-11) — 2단 카테고리 + 키오스크 «한 화면 한 선택» 전략: D1~D4 승인 [Claude Code · 백그라운드 작업방 069db6c8]
 - Irene: «2뎁스 카테고리도 레스토랑메뉴에 생성 가능하게 하는 거 검토 … 이 전략에 맞게 지금의 모바일, 키오스크 UI/UX를 구조를 맞춘 후 보기방식을 제대로 맞출지 알려줘.»
 - 한 것: 실측(카테고리 1단·메뉴는 카테고리 «이름»으로 연결·옵션그룹 필수/여러개만·목록 카드에 설명·추천 표시 없음) → Fable 판정 `backups/fable-pending/fable-verdict-20261011-two-level-category-kiosk-guided.md` (코드 변경 0)
 - 답 필요: D1 2단 선택형·매장 먼저 / D2 이름 중복 금지(A) / D3 키오스크 전용 모드(A) / D4 ①구조+②카드 한 묶음 → ③안내형 흐름 별도 — Fable 권고 전부 위 괄호
