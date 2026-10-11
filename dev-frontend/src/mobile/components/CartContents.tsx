@@ -208,15 +208,73 @@ export function useCartTotals() {
   return { subtotal, serviceCharge, tax, total, operationSettings };
 }
 
+/** 키오스크 결제 패널 한 줄짜리 — 이름 · − 수량 + · 금액. 낮은 화면에서도 합계·결제수단이 보이게(2026-10-11) */
+const CompactRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 2px;
+  border-bottom: 1px solid #EEF0F3;
+  &:last-child { border-bottom: none; }
+`;
+
+const CompactName = styled.div`
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--mo-cart-name, 16px);
+  font-weight: 600;
+  color: #1F2937;
+  line-height: 1.25;
+  small { display: block; font-size: var(--mo-cart-meta-sm, 12px); font-weight: 400; color: #4B5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+`;
+
 /** 장바구니 줄 목록 + 수량 조작. 페이지와 패널이 같은 마크업을 쓴다.
  *  readOnly: 수량·삭제 조작 없이 보여만 준다(키오스크 QR·온라인 결제 화면 — 주문 내용이 이미 결제로 넘어갔다). */
-export const CartLines: React.FC<{ inPanel?: boolean; readOnly?: boolean }> = ({ inPanel, readOnly }) => {
+export const CartLines: React.FC<{ inPanel?: boolean; readOnly?: boolean; compact?: boolean }> = ({ inPanel, readOnly, compact }) => {
   const { cartItems, updateCartItem, removeFromCart, currency } = useMobileOrder();
 
   const handleQuantityChange = (cartItemId: string, newQuantity: number) => {
     if (newQuantity === 0) removeFromCart(cartItemId);
     else updateCartItem(cartItemId, newQuantity);
   };
+
+  if (compact) {
+    return (
+      <div>
+        {cartItems.map(item => {
+          const extra = [
+            ...(item.selectedOptions || []),
+            ...((item as any).setComponents || []).map((c: any) => c?.name).filter(Boolean),
+            item.specialInstructions ? `Note: ${item.specialInstructions}` : '',
+          ].filter(Boolean).join(', ');
+          return (
+            <CompactRow key={item.id}>
+              <CompactName>
+                {item.menuItem.code ? `${item.menuItem.code} ` : ''}{item.menuItem.name}
+                {extra && <small>{extra}</small>}
+              </CompactName>
+              {readOnly ? <QuantityValue>× {item.quantity}</QuantityValue> : (
+                <QuantityControl style={{ gap: 6 }}>
+                  <QuantityButton aria-label="−" onClick={() => handleQuantityChange(item.id, item.quantity - 1)}>
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </QuantityButton>
+                  <QuantityValue style={{ minWidth: 24 }}>{item.quantity}</QuantityValue>
+                  <QuantityButton aria-label="+" onClick={() => handleQuantityChange(item.id, item.quantity + 1)}>
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </QuantityButton>
+                </QuantityControl>
+              )}
+              <ItemPrice style={{ marginLeft: 'auto', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.totalPrice, currency)}</ItemPrice>
+            </CompactRow>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <CartContainer $inPanel={inPanel}>

@@ -16,14 +16,20 @@
     "판매자 배송 지역별 설정(지역마다 무료배송 기준·배송비)",
     "청구서 권한 경계(낼 쪽은 0원 확정만 · 삭제는 발행자·관리자만) · 하드웨어 청구서 낼 사람 보정 · 브랜드 메뉴 1:1 연결 잠금",
     "브랜드·푸드코트 청구서 «To Confirm» 탭 · 업무 버튼 색 규칙 · 청구서 목록 Actions 칸 통일 · 브랜드 결제 설정 = 계정 하나",
-    "K-DINE 재료 수정 창에 «분류를 골라야 저장» 안내"
+    "K-DINE 재료 수정 창에 «분류를 골라야 저장» 안내",
+    "키오스크 결제 화면 개편 — 카운터 결제는 키오스크에 안 나옴 · 가로 화면은 오른쪽 칸에 장바구니·합계·결제수단·결제 버튼 · 세로 화면은 한 칸(큰 결제수단 버튼) · 등록 안 된 태블릿이면 «모바일 결제수단을 보입니다» 안내 (작업방 4d64bbc0)",
+    "키오스크 전체 화면 — 좌우 여백 없이 크게 · 아래 Home/Menu/Cart 바 없앰 · 위 «처음으로/뒤로» · 낮은 가로 화면에서도 결제 버튼이 가리지 않음 (작업방 18bc810d)",
+    "키오스크 «대시보드로» 링크가 홈페이지로 가던 결함 — 로그인 있으면 역할별 대시보드, 등록 키오스크는 직원 로그인 화면 (작업방 72cfb0db)",
+    "새로 가입·생성되는 매장의 결제 기본설정 = 데모 매장 38 설정 (작업방 f5b1a378)"
   ],
   "issues": [
     "로그인 없는 손님 주문이 결제완료·임의 금액으로 들어갈 수 있었다(S1)",
     "매장 없는 계정이 남의 매장 주문을 열람·수정할 수 있었다(S4) · 자기 소속을 바꾸거나 승격할 수 있었다(S2)",
     "손님 주문 추적 화면 폴링이 같은 와이파이 손님들의 주문 한도를 소진했다(L1)",
     "판매자가 끈 상품도 매장 My Stock 발주에서 그대로 주문됐다",
-    "재고아이템이 매장의 재고 0 빈 줄 때문에 삭제되지 않았다(K-Sundubu)"
+    "재고아이템이 매장의 재고 0 빈 줄 때문에 삭제되지 않았다(K-Sundubu)",
+    "키오스크 결제 화면이 폰 화면을 넓힌 모양이라 결제수단이 아래로 밀리고, 세로 태블릿에서 결제 버튼이 결제수단을 가렸다",
+    "등록 안 된 태블릿의 키오스크 화면은 설정의 Kiosk 열이 아니라 Mobile 열을 따르는데 화면이 그걸 알려 주지 않았다"
   ],
   "upcoming": [
     "1단(운영 첫 2주, Fable 판정 §3): 익명 주문 points_used + 남의 customer_id 차단(손님 토큰 필수) · /api/mobile/order 칸 채우기 또는 닫기 · 고객 화면 전화 조회 401 · 익명 printed_offline·품절/판매시간 · 1단 나머지(S8·S10~S15·L2~L4·E2) · npm 의존성",
@@ -37,7 +43,9 @@
     "손님 결제 화면 합계가 바뀔 수 있음(포장비 있는 매장 — 이제 POS 와 같은 금액)",
     "판매 중지 상품이 들어간 발주는 제출·생성 시 400 SELLER_PRODUCT_INACTIVE",
     "주문 추적 화면은 완료·취소 뒤 폴링을 멈춤",
-    "SW 버전이 올라 매장 화면이 새 번들로 한 번 새로고침됨"
+    "SW 버전이 올라 매장 화면이 새 번들로 한 번 새로고침됨",
+    "키오스크에서 카운터 결제(Pay at Counter) 숨김 — 설정에 Kiosk 스위치도 없음, 서버도 키오스크 주문의 counter 를 400 (폰 주문은 그대로)",
+    "새 매장은 결제 설정이 비어 있지 않고 데모 38 값으로 시작 (기존 매장 무변화)"
   ],
   "check_areas": [
     "모바일 주문(QR → 메뉴 → 장바구니 → 결제 → 추적) — 합계 = 영수증",
@@ -45,16 +53,18 @@
     "첫 영업 주방 티켓 1장 눈 확인(print-guard 등록 조건)",
     "발주 만들기·제출(판매 중지 표시) · 재고아이템 삭제",
     "청구서 상세 창(인보이스 올리기·대조) · 판매자 품목별 발송 · 외부 공급업체 정산서",
-    "직원·사용자 수정 화면(소속·역할)"
+    "직원·사용자 수정 화면(소속·역할)",
+    "키오스크(등록 태블릿) 가로·세로: 처음 → 메뉴 → 상세 → 담기 → 결제 → 결제수단 → 주문 · 카드단말기 연동 매장은 카드 결제 1회",
+    "새 매장 가입 직후 설정 › 결제수단"
   ],
   "verification": {
     "api": "health-check 전체 통과(verify-all 2026-10-10) · security 84/84 · 새 계약: 보안 12 · invoice-boundary 9 · po 9 · 외부 SOA 10 등 각 방 기록",
     "fault_injection": "보안 0단 9/9+재계산 1 · 판매중지 2+1 · 청구서 경계 6종 · 외부 SOA 6종 · 재고 묶음 4건 — 전부 빨강→원복 초록(pm2 재시작 뒤)",
-    "browser": "mount sweep 크래시 0 · e2e 모바일 주문 3회 5/5 · 실브라우저 손님 화면 40.28 = DB 40.28 · 각 방 클릭 흐름",
+    "browser": "mount sweep 크래시 0 · e2e 모바일 주문 3회 5/5 · 실브라우저 손님 화면 40.28 = DB 40.28 · 각 방 클릭 흐름 · 키오스크 흐름 10-11 재점검: 6크기(1280×720·1024×600·1024×768·1920×1080·800×1280·1080×1920) BAD 0 · 실제 주문 1건(데모 38, 화면 RM 85.75 = DB 85.75, 확인 후 삭제) · 등록 기기 경로",
     "printer": "인쇄 줄 0 변경(Fable 직접 grep) · print-guard bless(Irene Q2 «권고대로») · 실프린터 확인 = 배포 후 첫 영업 티켓 1회",
     "migrations": "deploy 레지스트리 신규 10개(멱등): invoice-external-document · seller-delivery-zones · brand-account-payment-settings · hardware-invoice-payer · ledger-cost-columns · po-item-shipped-at · products-brand-menu-unique · staff-meal-category-flag · staff-meal-ingredients-20261007 · stock-take-bg-warehouse",
     "sw_version": "5.90-preflight-security-20261010",
-    "fable_note": "backups/fable-pending/fable-verdict-20261009-preflight-gate.md (PASS 조건부 — 미배포 묶음과 한 번에 배포 Q1-a, 이후 허용 변경 = SW bump·배포 기록·session-state, 2026-10-10 지문 재계산으로 코드 동일 확인) · 묶음 각 게이트: seller-product-inactive-gate · stock-item-delete-deadend-gate · invoice-page-actions-gate · invoice-owner-reconcile-brand-cost-gate (10-09) · ext-soa-staffmeal-gate · inventory-ledger-gate · inventory-b23-gate · partial-shipment-gate · seller-delivery-zones-gate (10-08) · invoice-payer-structure-gate · payment-settings-account (10-07)"
+    "fable_note": "backups/fable-pending/fable-verdict-20261009-preflight-gate.md (PASS 조건부 — 미배포 묶음과 한 번에 배포 Q1-a, 이후 허용 변경 = SW bump·배포 기록·session-state, 2026-10-10 지문 재계산으로 코드 동일 확인) · 묶음 각 게이트: seller-product-inactive-gate · stock-item-delete-deadend-gate · invoice-page-actions-gate · invoice-owner-reconcile-brand-cost-gate (10-09) · ext-soa-staffmeal-gate · inventory-ledger-gate · inventory-b23-gate · partial-shipment-gate · seller-delivery-zones-gate (10-08) · invoice-payer-structure-gate · payment-settings-account (10-07) · 키오스크(10-10): kiosk-checkout-layout-gate · kiosk-fullscreen-gate — 그 뒤 결제 패널 낮은 화면 수정(18bc810d, Fable 미검증)·대시보드 링크(72cfb0db)·새 매장 결제 기본값(f5b1a378) 포함 묶음 Fable 게이트 10-11 (판정문 경로는 아래 notes)"
   },
   "notes": [
     "🔒 orders-crud.js 변경(S1·S4 · 주문 생성 결제 원장 1회) — 인쇄 줄 0, Irene Q2 승인 후 Fable bless",

@@ -7868,7 +7868,8 @@ function defineSettingsTests() {
     for (const r of rows) {
       if (!r.payment_settings) continue;
       const ps = typeof r.payment_settings === 'string' ? JSON.parse(r.payment_settings) : r.payment_settings;
-      const keys = Object.keys(ps).filter(k => k !== '_order');
+      // _order·_kioskSplit 같은 «_» 표시 칸은 결제수단이 아니다(_kioskSplit = 화면 splitKioskFromMobile 이 쓰는 boolean, 2026-10-11)
+      const keys = Object.keys(ps).filter(k => !k.startsWith('_'));
       for (const k of keys) {
         const m = ps[k];
         if (!m || typeof m !== 'object' || typeof m.label !== 'string' || m.label.length === 0) {

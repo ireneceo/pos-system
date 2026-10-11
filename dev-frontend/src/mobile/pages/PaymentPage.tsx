@@ -635,6 +635,8 @@ const PaymentPage: React.FC = () => {
   // 이 기기가 매장에 등록된 키오스크인가(토큰). `?kiosk=1` 만으로 연 화면은 아니다 — 결제수단은 모바일과 같다.
   const kioskDevice = hasKioskToken();
   const splitView = useKioskSplit();
+  // 가로 키오스크 결제 패널: 결제수단을 아직 안 골랐으면 패널을 결제수단까지 내려 둔다(낮은 화면에서 줄·합계 아래로 숨지 않게)
+  const panelMethodsRef = React.useRef<HTMLDivElement>(null);
   // 키오스크 카드 = 카드단말기. 앱 브릿지가 있고 서버가 이 기기의 단말기를 «켜짐» 으로 줄 때만 카드를 보인다.
   //   앱은 브릿지를 페이지가 열린 뒤 끼워 넣으므로(계산대와 같은 이유) 처음 몇 초는 다시 본다.
   const [kioskTerminalReady, setKioskTerminalReady] = useState(false);
@@ -2211,7 +2213,8 @@ const PaymentPage: React.FC = () => {
                   : `No payment method is configured for ${orderType ? orderType.replace('-', ' ') : 'this'} orders. Please contact the restaurant.`}
               </div>
             )}
-            {kioskUnregistered && availableMethods.length > 0 && (
+            {/* 가로 키오스크(패널)에선 이 직원용 안내를 왼쪽 칸 맨 위로 — 패널 높이를 결제수단에 쓴다(2026-10-11) */}
+            {kioskUnregistered && !splitView && availableMethods.length > 0 && (
               <InlineNote $tone="info" style={{ marginBottom: 10, textAlign: 'left', fontSize: 13, padding: '6px 10px' }}>{t('menu:kiosk.pay.unregistered')}</InlineNote>
             )}
             {/* 키오스크는 결제 버튼 위 안내가 같은 문장을 이미 보인다 — 두 번 보이지 않게 */}
@@ -2227,7 +2230,8 @@ const PaymentPage: React.FC = () => {
                 Please select a payment method to continue
               </div>
             )}
-            {isCashless && (
+            {/* 키오스크 패널엔 쓸 수 있는 수단만 보이므로 «현금 안 받음» 안내는 생략(낮은 화면에서 결제수단을 가렸다) */}
+            {isCashless && !splitView && (
               <div role="note" style={{
                 background: '#F0EFFF',
                 border: '1px solid #DDD9FF',
@@ -2355,6 +2359,18 @@ const PaymentPage: React.FC = () => {
     </>
   );
 
+  React.useEffect(() => {
+    if (!splitView || paymentMethod) return;
+    const el = panelMethodsRef.current;
+    if (!el) return;
+    // 패널 안 스크롤 칸만 움직인다(화면 전체는 그대로)
+    let sc: HTMLElement | null = el.parentElement;
+    while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
+    if (!sc) return;
+    const over = el.getBoundingClientRect().bottom - sc.getBoundingClientRect().bottom;
+    if (over > 0) sc.scrollTop += over + 4;
+  }, [splitView, paymentMethod, availableMethods.length, cartItems.length]);
+
   // 결제 버튼이 왜 안 눌리는지(첫 미충족 항목)
   const payHintText = (() => {
     if (isProcessing) return '';
@@ -2428,6 +2444,9 @@ const PaymentPage: React.FC = () => {
         
         {/* 가로 키오스크는 결제 실패 문구를 오른쪽 패널 결제 버튼 위에 둔다(Fable 20261010 gate §3-3) */}
         {error && !splitView && <ErrorMessage>{error}</ErrorMessage>}
+        {kioskUnregistered && splitView && availableMethods.length > 0 && (
+          <InlineNote $tone="info" style={{ marginBottom: 16, textAlign: 'left', gridColumn: '1 / -1' }}>{t('menu:kiosk.pay.unregistered')}</InlineNote>
+        )}
         
         {/* Customer Information - wait for settings to load to prevent flash */}
         {paymentMethods && (
@@ -3298,12 +3317,16 @@ const PaymentPage: React.FC = () => {
           footer={(
             <>
               <PanelTotals>{summaryRows}</PanelTotals>
-              <PanelMethods>
+              <PanelMethods ref={panelMethodsRef}>
                 <PanelTitle>Payment Method</PanelTitle>
                 {paymentMethodBody}
               </PanelMethods>
+            </>
+          )}
+          action={(
+            <>
               {error && <ErrorMessage style={{ marginBottom: 0 }}>{error}</ErrorMessage>}
-              {payHintText && <InlineNote>{payHintText}</InlineNote>}
+              {payHintText && <InlineNote style={{ padding: '8px 12px', fontSize: 15 }}>{payHintText}</InlineNote>}
               <Button
                 variant="primary"
                 size="large"

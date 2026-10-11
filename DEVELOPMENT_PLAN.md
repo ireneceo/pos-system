@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-10 — [Claude Code] ✅ **아침 점검 /개발완료 — 미배포 묶음 배포 준비 (개발서버만)** — 10-08~10-09 완료분(운영 전 보안 0단 · 판매 중지 상품 발주 차단 · 재고아이템 삭제 · 청구서 창 · 품목별 발송 · 재고→원가 · 외부 정산서 · 배송 지역 등)을 CHANGELOG 에 정리 · SW 5.90-preflight-security-20261010 으로 올림(Fable 보안 게이트 판정 §5-1) · 배포 기록 `dev-backend/releases/2026-10-10-preflight-security.json` 작성 · Fable 통과 때 코드와 지금 코드가 같음을 지문 재계산으로 확인.
+> **최종 업데이트:** 2026-10-11 — [Claude Code] ✅ **키오스크 결제 화면 개편 + 키오스크 묶음 /개발완료 (개발서버만)** — 카운터 결제 키오스크 숨김 · 가로 = 오른쪽 결제 패널, 세로 = 한 칸 · 미등록 태블릿 안내 · 키오스크 전체 화면(18bc810d)·대시보드 링크(72cfb0db)·새 매장 결제 기본값(f5b1a378) 함께 기록 · Irene «좋아» · 키오스크 흐름 6크기 재점검 + 실제 주문 1건 확인.
+
+> **이전:** 2026-10-10 — [Claude Code] ✅ **아침 점검 /개발완료 — 미배포 묶음 배포 준비 (개발서버만)** — 10-08~10-09 완료분(운영 전 보안 0단 · 판매 중지 상품 발주 차단 · 재고아이템 삭제 · 청구서 창 · 품목별 발송 · 재고→원가 · 외부 정산서 · 배송 지역 등)을 CHANGELOG 에 정리 · SW 5.90-preflight-security-20261010 으로 올림(Fable 보안 게이트 판정 §5-1) · 배포 기록 `dev-backend/releases/2026-10-10-preflight-security.json` 작성 · Fable 통과 때 코드와 지금 코드가 같음을 지문 재계산으로 확인.
 
 > **이전:** 2026-10-09 — [Claude Code] ✅ **재고아이템 삭제 막힘(K-Sundubu) 해결 + 매장 재료 화면 브랜드 재료 공급처 표시 (개발서버만, Fable 게이트 PASS)** — GIT 재고아이템 삭제·공유 해제의 «사용 중» 기준을 한 함수로: 매장 재고 0 인 빈 줄·브랜드 자신의 연결은 사용 아님 · 막힘 창이 매장 이름·재고와 실제로 손쓸 화면을 보여 줌 · 매장 화면이 브랜드 재료의 공급처를 요청·표시. 마이그 0.
 
@@ -11022,6 +11024,27 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 - 서버: `services/stockItemMirror.js` · `routes/product-ingredients.js` · `scripts/health-check.js`
 - 화면: `pages/BrandProductRecipe/ProductIngredientsTab.tsx` · `pages/RecipeManagement/IngredientsTab.tsx` · `public/locales/{en,ko,zh,ms}/brand.json`
 - 문서: `docs/INGREDIENT_UNIFICATION_DESIGN.md` (F8-1)
+
+---
+
+## ✅ 완료: 키오스크 결제 화면 개편 (2026-10-10~11)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 카운터 결제 키오스크 숨김 | 화면 `utils/paymentChannel.ts` + 서버 `utils/paymentMethodGuard.js` 숨김 목록에 counter·payAtCounter. 카드 거절 뒤 «카운터에서 결제» 복구 길은 유지 | ✅ 완료 |
+| 가로 결제 패널 | 오른쪽 칸 = 장바구니 줄 + 합계 + 결제수단 + 결제 버튼(합계 한 곳) · 왼쪽은 입력만 | ✅ 완료 |
+| 세로 = 한 칸 | 2칸은 가로일 때만(`useKioskSplit`, MenuPage 복사본도 교체) · 세로 결제수단 큰 버튼 2열 | ✅ 완료 |
+| 미등록 태블릿 안내 | 키오스크 모양 화면이 Mobile 열을 따른다는 안내 1줄 + 설정 › Kiosk 주소 카드 1줄 | ✅ 완료 |
+| 검증 | jest 5/5 · health-check kiosk 4/4(카운터 키오스크 400 / 폰 201) · 고장주입 1 · verify-all --full 24/24 · Fable 설계·게이트 PASS · 10-11 흐름 6크기 BAD 0 + 실제 주문 1건 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/utils/paymentMethodGuard.js` · `dev-backend/scripts/health-check.js`
+- `dev-frontend/src/utils/paymentChannel.ts` · `paymentChannel.test.ts`
+- `dev-frontend/src/mobile/pages/PaymentPage.tsx` · `MenuPage.tsx` · `components/KioskCartAside.tsx`
+- `dev-frontend/src/pages/Settings/SettingsPage.tsx` · `public/locales/*/menu.json` · `settings.json`
+- `docs/KIOSK_MODE.md`
 
 ---
 

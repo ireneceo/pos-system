@@ -101,7 +101,7 @@ export const KIOSK_TOKENS: Record<string, string> = {
   '--mo-qr-max': 'none',
   '--mo-qr-box': 'border-box',
   '--mo-qr-display': 'grid',
-  '--mo-qr-cols': 'repeat(auto-fit, minmax(340px, 1fr))',
+  '--mo-qr-cols': 'repeat(auto-fit, minmax(max(340px, calc(50% - 10px)), 1fr))',
   '--mo-qr-span': 'span 2',
   '--mo-qr-size': 'min(44vh, calc(100% - 42px), 440px)',
   '--mo-qr-h': 'auto',

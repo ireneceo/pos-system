@@ -73,26 +73,40 @@ const Aside = styled.aside<{ $withFooter?: boolean }>`
   box-shadow: 0 2px 10px rgba(16, 24, 40, 0.06);
   max-height: var(--mo-panel-max-h, calc(100vh - 220px));
   box-sizing: border-box;
-  overflow-y: auto;
-  /* 결제 패널: 높이를 다 쓰고, 넘치면 줄 목록(LinesScroll)만 줄어든다 */
-  ${p => p.$withFooter && `padding: 18px 16px; gap: 12px;`}
+  overflow: hidden;
+  ${p => p.$withFooter && `padding: 18px 16px;`}
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 `;
 
-/** footer(결제 패널)가 있을 때 줄 목록만 스크롤 — 품목이 많아도 결제 버튼이 패널 밖으로 밀리지 않는다 */
-const LinesScroll = styled.div`
+/** 패널 가운데 — 줄·합계·결제수단이 여기서만 스크롤한다. 화면 높이가 낮아도(1280×720 등) 아래 버튼은 늘 보인다
+ *  (2026-10-11 Irene 실태블릿 «버튼이 아래랑 겹친다» — 종전엔 줄 목록만 줄어들다 결제 버튼이 패널 밖으로 잘렸다). */
+const PanelScroll = styled.div`
   flex: 1 1 auto;
-  min-height: 64px;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 `;
 
-const Footer = styled.div`
+/** 결제 화면 패널의 줄 목록 — 높이 상한(화면의 30%) 안에서 따로 스크롤. 낮은 화면에서도 합계·결제수단이 먼저 보이게 */
+const LinesBox = styled.div`
+  flex: 0 0 auto;
+  max-height: 24vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+`;
+
+/** 패널 맨 아래 — 결제하기/결제 버튼 자리(스크롤 밖) */
+const PanelAction = styled.div`
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  padding-top: 4px;
 `;
 
 const Title = styled.h2`
@@ -144,12 +158,14 @@ interface Props {
   readOnly?: boolean;
   /** 담은 수 뱃지 튀는 효과 등 — 메뉴 화면이 자기 뱃지를 넘길 때 */
   qtyBadge?: React.ReactNode;
-  /** 결제 화면: 줄 목록 아래 고정 칸(합계·결제수단·결제 버튼). 있으면 합계·«결제하기» 는 그리지 않는다 —
-   *  합계는 쿠폰·포인트까지 아는 결제 화면 쪽 식 하나만(Fable 20261010 D3). */
+  /** 결제 화면: 줄 목록 아래 칸(합계·결제수단). 있으면 합계·«결제하기» 는 그리지 않는다 —
+   *  합계는 쿠폰·포인트까지 아는 결제 화면 쪽 식 하나만(Fable 20261010 D3). 줄 목록과 함께 패널 안에서 스크롤한다. */
   footer?: React.ReactNode;
+  /** 결제 화면: 패널 맨 아래 늘 보이는 칸(안내 한 줄 + 결제 버튼) — 스크롤 밖 */
+  action?: React.ReactNode;
 }
 
-export const KioskCartAside: React.FC<Props> = ({ showCheckout: showCheckoutProp = true, showSummary: showSummaryProp, readOnly = false, qtyBadge, footer }) => {
+export const KioskCartAside: React.FC<Props> = ({ showCheckout: showCheckoutProp = true, showSummary: showSummaryProp, readOnly = false, qtyBadge, footer, action }) => {
   const showCheckout = footer ? false : showCheckoutProp;
   const showSummary = footer ? false : (showSummaryProp ?? showCheckout);
   const { t } = useTranslation();
@@ -165,34 +181,30 @@ export const KioskCartAside: React.FC<Props> = ({ showCheckout: showCheckoutProp
         <span>{t('menu:cartBar.viewCart', 'View cart')}</span>
         {qty > 0 && (qtyBadge || <QtyPill>{qty}</QtyPill>)}
       </Title>
-      {footer ? (
-        <>
-          <LinesScroll>
-            {cartItems.length === 0
-              ? <Empty>{t('menu:kiosk.cartEmpty', 'Tap a menu item to add it here.')}</Empty>
-              : <CartLines inPanel readOnly={readOnly} />}
-          </LinesScroll>
-          <Footer>{footer}</Footer>
-        </>
-      ) : cartItems.length === 0 ? (
-        <Empty>{t('menu:kiosk.cartEmpty', 'Tap a menu item to add it here.')}</Empty>
-      ) : (
-        <>
-          <CartLines inPanel readOnly={readOnly} />
-          {showSummary && <CartSummary />}
-        </>
-      )}
-      {showCheckout && (
-        <Button
-          variant="primary"
-          size="large"
-          style={checkoutStyle}
-          disabled={cartItems.length === 0}
-          onClick={() => navigate(`/mobile/${slug}/payment`)}
-        >
-          <span>{t('menu:kiosk.checkout', 'Checkout')}</span>
-          <span>{formatCurrency(total, currency)}</span>
-        </Button>
+      <PanelScroll>
+        {cartItems.length === 0
+          ? <Empty>{t('menu:kiosk.cartEmpty', 'Tap a menu item to add it here.')}</Empty>
+          : footer
+            ? <LinesBox><CartLines inPanel compact readOnly={readOnly} /></LinesBox>
+            : <CartLines inPanel readOnly={readOnly} />}
+        {footer ? footer : (cartItems.length > 0 && showSummary && <CartSummary />)}
+      </PanelScroll>
+      {(action || showCheckout) && (
+        <PanelAction>
+          {action}
+          {showCheckout && (
+            <Button
+              variant="primary"
+              size="large"
+              style={checkoutStyle}
+              disabled={cartItems.length === 0}
+              onClick={() => navigate(`/mobile/${slug}/payment`)}
+            >
+              <span>{t('menu:kiosk.checkout', 'Checkout')}</span>
+              <span>{formatCurrency(total, currency)}</span>
+            </Button>
+          )}
+        </PanelAction>
       )}
     </Aside>
   );
