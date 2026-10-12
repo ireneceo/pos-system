@@ -91,6 +91,8 @@ const VerifyEmailPage = React.lazy(() => import('./pages/Login/VerifyEmailPage')
 // Referral System (Refer & Earn)
 const ReferralLayout = React.lazy(() => import('./components/Referral/ReferralLayout'));
 const ReferralLoginPage = React.lazy(() => import('./pages/Referral/ReferralLoginPage'));
+// 개발서버 전용 — 상황판 «시험 계정으로 열기» 도착 화면(운영 호스트에선 첫 화면으로 보냄)
+const DevLoginPage = React.lazy(() => import('./pages/DevLogin/DevLoginPage'));
 const ReferralSignupPage = React.lazy(() => import('./pages/Referral/ReferralSignupPage'));
 const ReferralDashboardPage = React.lazy(() => import('./pages/Referral/ReferralDashboardPage'));
 const ReferralWalletPage = React.lazy(() => import('./pages/Referral/ReferralWalletPage'));
@@ -563,6 +565,7 @@ function App() {
                       {/* Referral System (Refer & Earn) — auth handled at the page/Layout level (Phase 1D will wire ProtectedRoute) */}
                       <Route path="/referral" element={<Navigate to="/referral/dashboard" replace />} />
                       <Route path="/referral/login" element={<ReferralLoginPage />} />
+                      <Route path="/dev-login" element={<DevLoginPage />} />
                       <Route path="/referral/signup" element={<ReferralSignupPage />} />
                       <Route path="/referral/dashboard" element={<ReferralLayout><ReferralDashboardPage /></ReferralLayout>} />
                       <Route path="/referral/wallet" element={<ReferralLayout><ReferralWalletPage /></ReferralLayout>} />

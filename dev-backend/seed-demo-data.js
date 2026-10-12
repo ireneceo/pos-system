@@ -1254,14 +1254,16 @@ async function resetDemoOrders() {
 
     // Find demo restaurants
     const demoRestaurants = await Restaurant.findAll({
-      where: { slug: { [Op.in]: DEMO_RESTAURANT_SLUGS } },
+      // slug 만 믿지 않는다 — 데모 표시(is_demo)가 없는 매장은 절대 지우지 않는다(2026-10-11).
+      where: { slug: { [Op.in]: DEMO_RESTAURANT_SLUGS }, is_demo: true },
       attributes: ['id'],
       transaction: t
     });
     const demoRestaurantIds = demoRestaurants.map(r => r.id);
 
-    if (demoRestaurantIds.length === 0) {
-      console.log('⚠️ [DEMO RESET] No demo restaurants found. Run full seed first.');
+    if (demoRestaurantIds.length !== DEMO_RESTAURANT_SLUGS.length) {
+      // 둘 다 데모 표시가 있어야 돈다 — 하나라도 빠지면 아무것도 지우지 않는다.
+      console.log(`⚠️ [DEMO RESET] Expected ${DEMO_RESTAURANT_SLUGS.length} demo restaurants (slug + is_demo), found ${demoRestaurantIds.length}. Skipped.`);
       await t.rollback();
       return;
     }
@@ -1274,23 +1276,56 @@ async function resetDemoOrders() {
       return;
     }
 
-    // Delete existing orders
-    const deletedOrders = await Order.destroy({ where: { restaurant_id: { [Op.in]: demoRestaurantIds } }, transaction: t });
+    // Delete existing orders — 단, 7일 안 된 «[확인용]» 행은 남긴다(작업방 보고 «확인할 곳» 링크가 보여 주는 시험 데이터 ·
+    // utils/checkDataTag.js). 7일 지나면 여기서 평소처럼 지워진다 = [확인용] 7일 정리.
+    const { keepCheckDataSql } = require('./utils/checkDataTag');
+    const notKeptOrder = sequelize.literal(`NOT ${keepCheckDataSql(['customer_name', 'notes'])}`);
+    const notKeptInvoice = sequelize.literal(`NOT ${keepCheckDataSql(['notes', 'custom_description'])}`);
+    const idsOf = async (sql, replacements) => (await sequelize.query(sql, {
+      replacements, type: sequelize.QueryTypes.SELECT, transaction: t
+    })).map(r => r.id);
 
-    // Delete existing invoices (with invoice_items)
+    // 지울 주문 id 를 먼저 정하고 → 딸린 기록 → 주문 순서로 지운다 (2026-10-11).
+    // 예전엔 주문을 바로 지워 order_actions·order_payments 연결(NO ACTION) 때문에 초기화가 통째로 실패했다.
+    const demoOrders = await Order.findAll({
+      where: { restaurant_id: { [Op.in]: demoRestaurantIds }, [Op.and]: [notKeptOrder] },
+      attributes: ['id'],
+      transaction: t
+    });
+    const demoOrderIds = demoOrders.map(o => o.id);
+    let deletedOrders = 0;
+    if (demoOrderIds.length > 0) {
+      await sequelize.query('DELETE FROM order_actions WHERE order_id IN (?)', { replacements: [demoOrderIds], transaction: t });
+      await sequelize.query('DELETE FROM order_payments WHERE order_id IN (?)', { replacements: [demoOrderIds], transaction: t });
+      // 예약은 지우지 않고 보증금 주문 연결만 끊는다(예약 기록은 남김).
+      await sequelize.query('UPDATE reservations SET deposit_order_id = NULL WHERE deposit_order_id IN (?)', { replacements: [demoOrderIds], transaction: t });
+      deletedOrders = await Order.destroy({ where: { id: { [Op.in]: demoOrderIds } }, transaction: t });
+    }
+
+    // Delete existing invoices (with invoice_items) — 품목과 청구서를 같은 id 목록으로 지운다.
+    // 하드웨어 견적이 가리키는 청구서는 남긴다(견적 기록을 깨지 않게).
+    const quotedInvoiceIds = await idsOf(
+      `SELECT DISTINCT x.id FROM (
+         SELECT invoice_id AS id FROM hardware_quotes WHERE invoice_id IS NOT NULL
+         UNION SELECT subscription_invoice_id FROM hardware_quotes WHERE subscription_invoice_id IS NOT NULL) x`
+    );
     const demoInvoices = await Invoice.findAll({
-      where: { restaurant_id: { [Op.in]: demoRestaurantIds } },
+      where: {
+        restaurant_id: { [Op.in]: demoRestaurantIds },
+        [Op.and]: [notKeptInvoice, ...(quotedInvoiceIds.length ? [{ id: { [Op.notIn]: quotedInvoiceIds } }] : [])]
+      },
       attributes: ['id'],
       transaction: t
     });
     const demoInvoiceIds = demoInvoices.map(i => i.id);
+    let deletedInvoices = 0;
     if (demoInvoiceIds.length > 0) {
       await sequelize.query('DELETE FROM invoice_items WHERE invoice_id IN (?)', {
         replacements: [demoInvoiceIds],
         transaction: t
       });
+      deletedInvoices = await Invoice.destroy({ where: { id: { [Op.in]: demoInvoiceIds } }, transaction: t });
     }
-    const deletedInvoices = await Invoice.destroy({ where: { restaurant_id: { [Op.in]: demoRestaurantIds } }, transaction: t });
 
     // Re-create orders
     const { r1Orders, r2Orders } = generateOrders(demoRestaurantIds[0], demoRestaurantIds[1]);

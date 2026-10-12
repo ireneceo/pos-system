@@ -9,6 +9,7 @@ import { useStore } from '../../contexts/StoreContext';
 import { formatDate } from '../../utils/dateFormat';
 import { getAuthToken } from '../../utils/auth';
 import ContextRequestModal from './ContextRequestModal';
+import { DEMO_BUNDLE, DemoBundleAccount, isDemoBundleUser, switchToDemoAccount } from '../../utils/demoAccountSwitch';
 
 /**
  * 컨텍스트 선택 화면 ("어느 자격으로 들어갈까").
@@ -197,6 +198,16 @@ const FooterHint = styled.p`
   color: var(--pos-text-muted, #425466);
 `;
 
+// 데모 묶음 제목 — 데모 계정으로 들어온 사람에게만 보인다(2026-10-11).
+const SectionTitle = styled.p`
+  margin: 12px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pos-text-muted, #425466);
+`;
+
 const Footer = styled.div`
   margin-top: 20px;
   display: flex;
@@ -240,7 +251,9 @@ const ContextSelectPage: React.FC = () => {
   const [confirmTarget, setConfirmTarget] = useState<UserContextOption | null>(null);
 
   // ── 역할 추가 요청 (v1.3) — SA 와 demo 계정은 입구 없음(서버도 403).
-  const canRequest = !!user && user.role !== 'System Admin' && !user.isDemo;
+  // 데모 묶음 계정(데모 5개)은 is_test 로만 표시된 것도 있어 따로 막는다 — 데모끼리는 아래 «데모 계정» 카드로 오간다.
+  const isDemoBundle = isDemoBundleUser(user);
+  const canRequest = !!user && user.role !== 'System Admin' && !user.isDemo && !isDemoBundle;
   const [myRequests, setMyRequests] = useState<MyRequest[]>([]);
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
@@ -264,6 +277,24 @@ const ContextSelectPage: React.FC = () => {
     setRequestSent(false);
     loadMyRequests();
   }, [loadMyRequests]);
+
+  // ── 데모 묶음 (2026-10-11 Irene «데모들 여기서 다 확인되게») — 지금 계정을 뺀 데모 4개.
+  //   카드를 누르면 그 데모 계정으로 새로 로그인한다(모자 전환이 아니라 계정 전환 — 페이지를 새로 연다).
+  const otherDemos = useMemo(
+    () => (isDemoBundle ? DEMO_BUNDLE.filter(d => d.role !== user?.role) : []),
+    [isDemoBundle, user?.role]
+  );
+
+  const onPickDemo = useCallback(async (d: DemoBundleAccount) => {
+    setBusyKey(`demo:${d.key}`);
+    setError(null);
+    try {
+      await switchToDemoAccount(d.key);
+    } catch (e: any) {
+      setBusyKey(null);
+      setError(e?.message || t('context.switchFailed'));
+    }
+  }, [t]);
 
   // 타임존 없는 날짜 표시 금지 — 매장 타임존이 없으면 날짜를 생략한다.
   const requestDate = (iso: string): string | null => {
@@ -345,6 +376,17 @@ const ContextSelectPage: React.FC = () => {
             </Card>
           ))}
 
+          {otherDemos.length > 0 && <SectionTitle>{t('context.demo.title')}</SectionTitle>}
+          {otherDemos.map((d) => (
+            <Card key={`demo:${d.key}`} onClick={() => onPickDemo(d)} disabled={busyKey !== null}>
+              <CardGlyph aria-hidden="true">{d.glyph}</CardGlyph>
+              <CardText>
+                <CardLabel>{t(`context.demo.${d.key}`)}</CardLabel>
+                <CardRole>{d.role}</CardRole>
+              </CardText>
+            </Card>
+          ))}
+
           {/* 맨 아래 — 내 요청(대기·거절) → 「+ 역할 추가 요청」 (Irene 지정 위치) */}
           {canRequest && myRequests.map((r) => {
             const date = r.status === 'pending' ? requestDate(r.created_at) : null;
@@ -383,7 +425,7 @@ const ContextSelectPage: React.FC = () => {
 
         {error && <ErrorText>{error}</ErrorText>}
 
-        <FooterHint>{t('context.select.grantHint')}</FooterHint>
+        <FooterHint>{isDemoBundle ? t('context.demo.hint') : t('context.select.grantHint')}</FooterHint>
 
         {/* 로그인 직후엔 돌아갈 곳이 없어 "뒤로"가 빈 동작이 된다. 이 화면에서 필요한 탈출구는
             "이 계정으로 안 들어가겠다" = 로그아웃 하나뿐이다. 앱 안에서 들어온 경우엔 쓰던 카드를

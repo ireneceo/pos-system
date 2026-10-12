@@ -78,6 +78,18 @@ if ! ssh -o ConnectTimeout=5 $PROD_SERVER "echo 'Connected'" > /dev/null 2>&1; t
 fi
 success "SSH connection OK"
 
+# 개발용 «시험 계정으로 열기»(dev-login) 비밀값은 운영 .env 에 있으면 안 된다 (~/dev-server/kit/DEV-LOGIN.md).
+# 라우트는 NODE_ENV=development 일 때만 등록되지만, 비밀값 자체가 운영에 있으면 막는다(이중 방어).
+log "Checking production .env has no DEV_LOGIN_SECRET..."
+DEV_LOGIN_IN_PROD=$(ssh $PROD_SERVER "grep -c '^[[:space:]]*DEV_LOGIN_SECRET' $REMOTE_PROD_BACKEND/.env 2>/dev/null; true" 2>/dev/null | head -1)
+if ! [[ "$DEV_LOGIN_IN_PROD" =~ ^[0-9]+$ ]]; then
+    error "운영 .env 의 DEV_LOGIN_SECRET 여부를 확인하지 못했습니다(응답: '${DEV_LOGIN_IN_PROD}') — 확인 못 하면 배포하지 않습니다."
+fi
+if [ "$DEV_LOGIN_IN_PROD" != "0" ]; then
+    error "운영 .env 에 DEV_LOGIN_SECRET 이 있습니다 — 개발 전용 값입니다. 운영 .env 에서 지운 뒤 다시 배포하세요."
+fi
+success "No DEV_LOGIN_SECRET in production .env"
+
 log "Checking local dev server health..."
 if ! curl -s --max-time 3 http://localhost:3001/api/health | grep -q '"status":"ok"'; then
     error "Local dev server is not healthy"

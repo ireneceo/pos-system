@@ -3,6 +3,25 @@
 **버전:** **v3.110** (2026-10-11 · Irene «응») · 운영 SW **5.90-preflight-security-20261010** (2026-10-11 06:36 UTC 배포 · 백업 20261011_062932 · DB 덤프 db_predeploy_20261011_062932 · 스모크 10/10 · 마이그 118/118) · 안드로이드 앱 0.3.4
 **작업 상태:** ✅ 운영 배포 완료 SW 5.90 (2026-10-11) — 남은 것: /운영검증 · 키오스크 태블릿 운영 확인 · 첫 주방 티켓 눈 확인 · E1·E3(서버 창, 선택) · Q6 · 재발 방지(마이그 «칸 추가 단계» 분리, Fable 설계 1회)
 
+### 완료 (2026-10-11) — 앱 다운로드 «컴퓨터면 QR» (개발서버 · Fable 안 씀 — 화면 다듬기) [Claude Code · 백그라운드 작업방 ad43a428]
+- Irene: «앱다운로드에서 데스크탑이면 모바일로 찍을 수 있는 QR도 넣어주면 편할 것 같아. 웹에서 쓰다가 앱 사용하고 싶을 때 주소 치고 안들어가고 바로 접속하게. 랜딩페이지에만 그렇게 할까?»
+- 판단(Opus 의견): 랜딩만이 아니라 앱 안에도 — «웹에서 쓰다가» 는 로그인한 화면이라. QR = 안드로이드 APK 주소 그대로(`/desktop/PurplePOS.apk`, 버튼과 같은 파일). 아이패드는 PWA 정책이라 QR 대상 아님
+- 바꾼 것: `pages/Landing/DownloadPage.tsx`(안드로이드 카드 아래 QR — 마우스+721px 이상에서만) · `components/Common/InstallGuideModal.tsx`(윈도우·맥에서 연 안내창에 QR) · `components/Common/PwaInstallBanner.tsx`(윈도우·맥 배너에 «안드로이드 태블릿에 설치? QR로 받기» 링크 → 안내창) · 4개 언어 landing `download.android.qr` · common `pwa.guide.qrAndroid`·`pwa.guide.qrLink`
+- 검증: 실브라우저 — 컴퓨터 폭 QR 보임(104px)·태블릿/휴대폰 숨김·가로 넘침 없음 · QR 내용 = https://dev.purplehere.com/desktop/PurplePOS.apk (같은 값으로 그린 그림과 대조 일치, 다운로드 화면·안내창 둘 다) · 윈도우 배너 링크→안내창 QR · console.error 0 · design-guard 신규 0 · print-guard 8/8 · i18n verify 통과 · verify-all --full 22/24(mount sweep 통과)
+- verify-all 실패 2건 = 이 일과 무관(바꾼 건 화면 3개+번역뿐, 서버·DB 0): ① inspection LEDGER-004 «장부 안 거친 재고 변경 2줄»(>=10-08) ② health [po] 수령 시험 4건 — 시험 뒷정리에서 재료 삭제가 stock_alerts 연결에 막힘(FK stock_alerts_ibfk_40). 재고아이템 쪽 작업이 확인할 것
+- /개발완료 안 함: 미커밋 대부분이 61da11f5(dev-login, Fable 게이트 대기)의 것 — 같이 커밋하면 검증 안 된 로그인 묶음이 섞임
+- 운영 반영: 다음 배포 때
+
+### 완료 (2026-10-11) — 상황판 «시험 계정으로 열기» 8역할·매장 범위 + 데모 매장 자정 초기화 복구 (개발서버 · Fable 게이트 PASS) [Claude Code · 백그라운드 작업방 61da11f5]
+- 맡은 일: dev-login 을 kit 규격대로 마무리(앞 방 297d3c23 의 5역할판 위에) · Irene «권고대로 진행해 줘»(초기화 고침 (가))
+- 바꾼 것: utils/devLoginAccounts.js(8역할 맵) · routes/auth.js(역할→이메일·store 범위·전용 횟수 제한) · services/authService.js(loginAsTestAccount 분리, 데모 카드 동작 그대로) · utils/demoReachableRestaurants.js(브랜드 매니저 범위) · scripts/seed-dev-login-test-accounts.js(개발 DB 시험 계정 2212·2213·2214) · scripts/health-check.js(security dev-login 1건) · seed-demo-data.js resetDemoOrders(딸린 기록 먼저 지움 · 데모 표시 2곳 아니면 건너뜀 · 7일 안 된 [확인용] 남김) · services/demoResetScheduler.js(자정 «24» → %24) · utils/checkDataTag.js · deploy-to-production.sh(운영 .env 확인 불가면 멈춤) · CLAUDE.md «🧪 시험 역할»
+- System Admin 은 맵에 없음(모든 매장을 봄) · admin@kdine.com 도 없음(실매장 5)
+- 검증: 실호출 23/23 · 라우트 등록 조건 4가지 · 고장주입 2+health 반증 · health security 86/86 2회 · 실브라우저 4역할 console.error 0 · 초기화 되돌림 실행(476→78, 새 [확인용] 남음, 다른 매장 981 그대로) + is_demo 반증(건너뜀) · print-guard 8/8 · verify-all 21/23(실패 2 = 무관: LEDGER-004 30832·30833 19:04Z 다른 시험 · po 수령 4건 stock_alerts FK, 재고 코드 무접촉)
+- Fable PASS: backups/fable-pending/fable-verdict-20261011-devlogin-roles-reset-gate.md (실호출 37/37 직접)
+- 배포 뒤 확인: 운영 데모 자정 초기화가 처음 실제로 돈다 — 다음 날 아침 운영 pm2 로그 `[DEMO RESET] Done!` 또는 `Failed:` 1회 확인(한 트랜잭션, 실패해도 통째로 되돌아감)
+- 후속: 서버 대기열 «purplehere devLogin 켜기» 보냄 · 상황판 버튼부터의 흐름은 켠 뒤 확인 · 앞 방 프론트가 같이 커밋됨 → 배포 때 SW 올림(배포 방)
+- 운영 반영: 다음 배포 때
+
 ### 완료 (10/12 00:00 정기 점검 · 2026-10-11 16:1xZ) — /개발완료 안 함 · 배포 막힘 · /개발시작 [Claude Code · 백그라운드 작업방 134aadff]
 - /개발완료 안 함: 같은 폴더 방 8315f30a(브랜드 매니저 검토) working · 마지막 /개발완료(56caff984) 뒤 새 커밋 0, 미커밋은 session-state.md 뿐(다른 방 기록)
 - 배포 막힘(스크립트 실행 안 함, 운영 무변경): ① 지난 배포(10-11 06:36Z) 뒤 범위에 예전 자동 저장 커밋 3개(e5d528256·8453714c2·208fc992c) — `--auto` 는 설계상 중단, 사본 배포 첫 실배포는 수동 /배포 1회(Fable 권고, 31f67057 절) ② K-DINE 재료 정돈 Fable 게이트(2회차) 대기 16:20Z(67f96715 절, «게이트 전 운영 배포 금지»)
@@ -21,13 +40,22 @@
 - 후속 후보(확정 X, Fable 기록): 모자로 브랜드 하나 자격을 줘도 회사 공용 자료 전체가 보임(모자 첫 부여 전 결정) · 홈 브랜드만 보는 곳 rent-billing·notificationService + 배정된 BG 범위 → 2단계에 한 함수로 · 메뉴 키 서버 강제 = 2단계 · 기존 매니저는 «리포트·실적» 키가 없어 Reports·Performance 숨음(소유자가 체크로 복구) · 푸드코트 매니저 화면 Payment Settings 문구
 - 커밋에서 뺀 다른 방 미커밋: dev-backend/scripts/migrate-brand-mirror-pairs-20261011.js · dev-frontend/src/mobile/pages/MenuPage.tsx (이 판정에서 검증 안 함)
 
-### 답 기다림 (2026-10-11) — 데모 5개를 한 아이디의 선택 화면(/pos/select-context)에서 고르기: 묶는 방식 [Claude Code · 백그라운드 작업방 297d3c23]
+### 완료 (2026-10-11) — 데모 5개 선택 화면 전환 + 상황판 «시험 계정으로 열기»(dev-login) (개발서버 · Fable 게이트 PASS) [Claude Code · 백그라운드 작업방 297d3c23]
+- Irene «권고대로 진행해 줘» → 구현: dev-backend/routes/auth.js POST /api/auth/dev-login(개발만, 역할키 restaurant/brand/foodcourt/owner/supplier → loginAsDemo) · utils/devLoginVerify.js · 개발 .env DEV_LOGIN_SECRET · deploy-to-production.sh 운영 .env 비밀값 있으면 중단 · 프론트 /dev-login 화면 · utils/demoAccountSwitch.ts · 선택 화면 «Demo accounts» 4장(데모 계정일 때만, 개발·운영 공통) · auth.json 4언어 · CLAUDE.md «🧪 시험 역할» 표
+- 검증: dev-login 5역할 200·재사용 409·만료/변조 400·모르는 역할 400·bad_next 400·scope 403 · 운영 모드 비활성 · 고장주입(HMAC 제거→통과, 원복→400) · 실브라우저 dev-login→선택 화면→데모 5개 모두 각 대시보드 · verify-all --full 23/24(실패 1=health-check 전체, 매회 다른 재고·현금 항목 — 다른 방 동시 작업 영향, auth 16/16·security 85/85)
+- Fable PASS: backups/fable-pending/fable-verdict-20261011-demo-bundle-devlogin-gate.md · 마커 지문 07f64305d037 (작업 폴더 바뀌면 무효)
+- 배포 조건(배포 방): health-check 전체 초록 · SW 버전 올림
+- 후속: 상황판 projects.json purplehere "devLogin": true — 서버 방(사람 할 일 분리 등록)에 요청 보냄 · [확인용] 7일 정리 장치 없음 · health-check 에 dev-login 영구 케이스 없음 · 배포 뒤 운영 선택 화면 데모 전환 1회 확인
+- 운영 반영: 다음 배포 때
+- (이전 질문 기록)
 - Irene: «데모들 여기서 다 확인되게 개발이나 운영 서버 모두 같은 아이디로 묶어서 선택하게 하자. https://dev.purplehere.com/pos/select-context»
 - 조사(개발 DB 읽기): 데모 5개 = demo-restaurant(23, 매장 38 RA) · demo-brand(22, 브랜드 10 BG) · demo-foodcourt(288, 푸드코트 44 FG) · demo-owner(289) · demo-supplier(227). 지금 역할 전환(모자)이 지원하는 건 매장 관리자·직원·오너·브랜드 관리자뿐 — 푸드코트·공급업체·브랜드 대표(BG)는 모자로 못 묶음
 - 운영 읽기 확인은 허락 창에서 멈춰 실행 안 함(운영 무접촉). 코드 변경 0
 - 왜 멈췄나: 묶는 방식이 로그인·권한 경계라 방향을 정해야 함
 - 선택지: A 데모 계정끼리 «바로 갈아타기» 카드(선택 화면에 데모 5장, 누르면 기존 비밀번호 없는 데모 로그인으로 그 계정으로 전환 · 권한 구조 무변경 · 개발·운영 같은 동작) / B 모자 구조를 푸드코트·공급업체·브랜드 대표까지 넓혀 한 계정에 진짜로 붙임(권한 판정 확장 · Fable 설계+검증 필요 · 큼)
 - Opus 의견: A (데모는 이미 누구나 로그인 화면 카드로 들어가는 공개 계정이라 새 권한이 생기지 않음, 작고 되돌리기 쉬움)
+- Irene 되물음(10-11): «그럼 여기서 보라고 주는 링크값이 이어질 수 잇어?» → 답: 지금은 안 이어짐(PurpleHere 에 상황판 «시험 계정으로 열기» 받는 입구 dev-login 이 아직 없음 — 백엔드 라우트·/dev-login 화면·.env 비밀값 0). 만들면 이어짐: 보고 링크 끝 [as=restaurant|brand|foodcourt|owner|supplier] → 그 데모 계정으로 로그인된 채 같은 주소. 개발서버 전용(운영엔 라우트 없음), 규격 ~/dev-server/kit/DEV-LOGIN.md(Fable 검토 완료)
+- 다시 물음: A(선택 화면 데모 5장, 개발·운영) + 상황판 링크 연결(dev-login, 개발만) 같이 할까요? Opus 의견: 같이. 끝나면 로그인 경로라 Fable 검증 1회 · 상황판 devLogin 켜기는 서버 방 몫
 - 답이 오면: A → 선택 화면에 데모 계정일 때 데모 5장 표시(현재 계정 표시) + 누르면 데모 로그인 전환 · 빌드 1회 · verify-all --full · 실브라우저로 5장 전환 확인. B → Fable 설계 1회부터
 
 
@@ -92,6 +120,7 @@
 - 추가(10-11 Irene «2가지 버전을 뭘로 표시할지 키오스크에서 직접 고를 수 없을까? 어차피 구조는 똑같고 보이는 방식 차이잖아. 그치?»): 키오스크 메뉴 화면 위 «Browse | Step by step» 스위치 — 고른 값은 그 태블릿에 기억(localStorage kiosk_menu_view, 유휴 리셋으로 안 지움), 매장 설정은 «처음 보일 방식». 실브라우저 65/65 · verify-all --full 24/24 · Fable 안 씀(화면 표시 스위치, 이 사안 Fable 2/2 소진)
 - 고침(10-11 Irene «다른 방식으로 들어가면 돌아올 수가 없네 … 카테고리1>카테고리2(있을경우)>메뉴>옵션1>옵션2 … 왜 메뉴부터 나오지?»): 원인 = 카테고리 1개면 카테고리 화면을 건너뛰던 규칙(데모 38 은 Others 하나뿐) + 스위치가 카테고리 화면에만 있었음 → 카테고리 화면은 항상 먼저(하위 단계만 «있을 때») · 스위치는 안내형 모든 메뉴 단계 위. 실브라우저 71/71 · verify-all --full 24/24
 - 데모 38 에 [확인용] 시험 메뉴 남김(지우지 않음): [확인용] Coffee › Hot·Iced / Snacks · Americano(추천·한 줄 소개·Size 필수·Extras 복수) · Latte · Cold Brew · Cookie · Coffee Set(세트) · 옵션묶음 [확인용] Size/Extras
+- 추가(10-11 Irene «Step by step에서 서브카테고리 2뎁스도 볼 수 있게 샘플로 넣어줘. 그리고 옵션들도 크게 크게 갯수대로 나오게 … 카테고리도 메뉴도 옵션도 다»): 칸 나누기 한 곳 `dev-frontend/src/mobile/components/GuidedGrid.tsx`(가로 1~3개 한 줄·4개 2×2·5~6개 3열·7+ 4열 / 세로 1~2개 한 열·3~6개 2열·7+ 3열, 칸 높이 = 남은 화면 ÷ 줄 수) — 카테고리·하위·메뉴(전용 큰 카드)·옵션 화면 모두 · [확인용] Meals › Rice·Noodles 샘플(Spice level 4단계 필수·Toppings 복수) 추가 · 실브라우저 75/75(2개 → 가로 절반씩·세로 한 열 가득, 200px 이상 측정) · verify-all --full 24/24
 - 운영 반영: 다음 배포 때
 
 ### 완료 (2026-10-11) — 매장 메뉴 2단 카테고리 + 한 줄 소개·추천 표시 (개발서버 · 미커밋 · 운영 배포 대기) [Claude Code · 백그라운드 작업방 069db6c8]
@@ -262,23 +291,16 @@
 - 질문: 꺼진 상품을 매장 발주에서 어떻게 할지 — Opus 의견 A(목록에 «판매 중지» 표시 + 담기·발주 만들기·제출을 서버에서 막음, 연결 행은 안 지움 → 다시 켜면 그대로 복구)
 - 답이 오면: A → 3개 목록 응답에 상품 활성 칸 + 발주 만들기/제출 서버 거부(공급업체 상품도 같은 규칙인지 같이) + 화면 표시 + health-check 1건·고장주입 → 빌드 1회·verify-all --full → 주문 경로라 Fable 게이트 1회
 
-### 답 기다림 (2026-10-11) — K-DINE 브랜드 재료 정돈: 남은 질문 7개(Q-A1·Q2·Q3·Q4·Q5·Q-R1·Q-R2) — Fable 게이트 PASS · 교체 기능 설계 판정 받음 [Claude Code · 백그라운드 작업방 67f96715]
-- Fable 판정(10-11): 게이트 PASS `backups/fable-pending/fable-verdict-20261011-kdine-ingredient-tidy-gate.md`(마커 c9d728e01656 · 이탈 ①~⑥ 수용 · Fable 이 짝 스크립트 영수증 순서 3줄 수정 — **migrate-brand-mirror-pairs-20261011.js 더 고치지 말 것**) · 교체 기능 설계 `backups/fable-pending/fable-verdict-20261011-stock-item-replace-on-delete.md`(만든다 · F8 과 모순 아님 → F8-2 · services/mirrorMerge.mergePair + POST /api/product-ingredients/:id/replace · 2차 묶음). 상황판 Fable 대기 2건 done
-- Irene 답으로 닫힘: A2~A10(K-소스 줄 전부) · A5 김치 → #94 «K-Kimchi Sauce 1kg» · B11·B12
-- 남은 질문: **Q-A1 육개장 소고기 #51→#75 합칠까요?**(권고 ○) · Q2 bp#16 45 g 유지+이름 «45g»(권고) · Q3 R5 그대로(권고) · Q4 매장 8 자기 줄 별건(권고) · Q5 쌀 손으로(권고) · Q-R1 교체 기능 설계대로(권고 예) · Q-R2 이번 묶음은 스크립트로 먼저(권고 예)
-- 답이 오면: Q-A1 × 면 kdine-pairs-20261011.json 에서 51 줄 빼기 · Q-R1 예면 2차 묶음 구현(설계 §4) → 게이트 · 운영: 다음 배포(A 자동 — «규격 불일치» 목록을 보고에 옮김) → Irene 터미널 B 드라이런→apply(A json → B json) → 점검표 재실행 → 손 작업(A10 pi312 Deactivate · 오이 1줄 · 쌀 7줄 · #27 끔 · 당면)
-- Irene: «Yukgaejang beef … K-DINE IPC 기준으로 왜 브랜드 공급업체 연결이 되지 않았어? 그리고 이것들은 왜 있어? … 제대로 레시피사용, 브랜드메뉴 재료, 우리 납품 브랜드로 공급업체 연결 제대로 해줄 수는 없는 거야??» → 운영 점검표(Irene 터미널, 10-11) → Fable 1회차 `backups/fable-pending/fable-verdict-20261011-kdine-ingredient-tidy.md`
-- 원인(Fable): 9-29 에 정한 «GIT 상품 출처 줄에 GIT 연결 자동»이 새 줄에만 들어가고 옛 77줄 채우기는 한 번도 안 돎 · «Yukgaejang beef»(#51)는 9/4 기계가 만든 GIT 재고아이템 거울이라 연결 붙을 자리가 없고 같은 물건 상품 줄 #75 «K-Yukgaejang Beef 1kg» 가 따로 있음 · K-소스 9쌍 같은 모양 · 새 줄이 계속 생기는 문 2개(레시피 재료 고르는 칸 · 매장 카탈로그 담기)
-- 구현 완료(개발서버 · 자동저장 커밋 208fc992c 에 포함): A 연결 채우기 마이그 `migrate-mirror-source-links-backfill.js`(deploy · 합치기 마이그 뒤 순서) · A′ 환산 = 상품 규격→거울 단위 · B 짝 합치기 `migrate-brand-mirror-pairs-20261011.js`(manual · 드라이런·영수증·되돌리기 · 한 레시피 두 줄이면 건너뜀) · C 레시피 고르는 칸에서 «상품이 가리키는 재고아이템» 숨김 · D 매장 카탈로그 담기 = 자기 브랜드 상품이면 브랜드 줄에 붙음(서비스 상품 제외) · E health-check C1~C3 + 기존 2건 기대값
-- 검증: 데모 A·B 17/17 · 고장주입 A·D 반증 · health po 10/10·inventory 60/60 · 실브라우저 R4 4/4 · verify-all --full 24/24
-- 🕓 Fable 게이트(2회차) 대기: 한도 16:20 UTC 해제 — 상황판 Fable 대기 등록(fwmv3y61xg). 자료 `~/.claude/jobs/67f96715/tmp/fable-gate-2.md`(이탈 ①~⑥). 게이트 전 운영 배포 금지
-- Irene 에게: 운영 추가 읽기 `backups/data-migrations/kdine-tidy-extra-read-20261011.js`(터미널 1회) + Q1 짝 표(A 1~10행) · Q2 bp#16 규격 45 g 유지+이름 · Q3 R5 · Q4 매장 8 자기 줄 별건 · Q5 쌀 손으로 · Q6 식용유·당면 남길 줄(읽기 결과 뒤)
-- 답이 오면: 읽기 출력 → B 표 «남길 줄» 사실로 채워 재제출 · Fable 게이트 통과 뒤 → 배포(정기 배포 때) → 운영: A 는 배포가 자동, B 는 Irene 터미널 드라이런 표 → 지시 → --apply(짝 파일 `backups/data-migrations/kdine-pairs-20261011.json`, A1~A9 · A10 은 GIT Stock Items 에서 pi312 Deactivate 손으로) → 점검표 재실행 → 손 작업(쌀·오이·소시지·당면) → 운영검증 ING-UNI 018/031/032/033
-- 운영 추가 읽기 결과(10-11 Irene 터미널 · 사본 대화 안): 지는 줄 매장 재고 ≠0 = 0행 · 한 레시피 두 줄 = 0행 · K-Sundubu #10·#96 이미 비활성(재고아이템 319 는 삭제됨) · bp#16 재고아이템 직접 연결 없음 · 상품 출처 줄 생성일 06-08 17줄 · 07-05 58줄(한 번에 복사) · B 표 남길 줄 = 식용유 #1123(pi291 — GIT 연결 1·프로덕트 레시피 1) · 깐마늘 #1143(pi12 — GIT 연결 1) · 쌀 #1099(pi71 — GIT 연결 1, #58 kg 7줄 손으로) · 짝 파일 B `backups/data-migrations/kdine-pairs-b-20261011.json`(B11·B12) · K-Kimchi #9 는 김치찌개·김치전·김치볶음밥 5개 레시피 80 g — bp#255 «Kimchi 1kg» 을 고르면 거울이 없어 스크립트 불가(레시피 화면에서 손으로)
-- Irene 답(10-11): «K-Kimchi Sauce for Fried Rice 1kg가 없어지는 거야. 이거 내가 이름을 K-Kimchi Sauce 1kg로 바꿨어. K-Kimchi가 K-Kimchi Sauce 1kg야. 다 합쳐서 K-Kimchi Sauce 1kg 프로덕트를 레시피에 사용한 것으로 해줘. … 이런거 연결된 재고아이템 삭제할 때 다른 재고아이템이나 프로덕트로 연결 교체하기 기능을 만들면 안돼? 이거 말고 다른 것도 있지?» → A5(#9→#94 bp#35) 확정 · «다른 것»: 점검표 기준 A 표 10행 + B 표 6묶음이 전부(상품이 직접 가리키는 재고아이템의 거울 줄 0건 — 10-11 재계산)
-- 🕓 Fable 대기 2건(16:20 UTC): 게이트(2회차) + 새 설계 «재고아이템 삭제 때 연결 바꾸기»(9-12 F8 «대신 바꾸지 않음» 번복 여부 — Fable 판정 필요) — 상황판 fable-wait 등록. 답 전 그 기능 코드 착수 안 함
-- 아직 답 없는 것: Q2 bp#16 규격·이름 · Q3 R5(코드는 Fable 권고 (a)로 구현돼 있음) — Fable 설계 결과와 묶어 한 번에 물음
-- 남은 것: 9-29 ⑤ 매장 8 자기 줄 28쌍(별건) · ING-UNI-032 차단 승격(다음 라운드) · 배포 뒤 TRADE_STRUCTURE §3 R2·R5 두 줄 · 판정문 .claude/ 이동
+### 완료 (2026-10-11) — K-DINE 재료 정돈 1·2·3차 (개발서버 · Fable 게이트 PASS ×3 · 운영 배포 대기) [Claude Code · 백그라운드 작업방 67f96715]
+- Irene: «Yukgaejang beef … 왜 브랜드 공급업체 연결이 되지 않았어? … 제대로 레시피사용, 브랜드메뉴 재료, 우리 납품 브랜드로 공급업체 연결 제대로 해줄 수는 없는 거야??» · «연결된 재고아이템 삭제할 때 다른 재고아이템이나 프로덕트로 연결 교체하기 기능» · «이름 만들 때 … 비슷한거 … 알려주는 거» → 전부 «권고대로»
+- 1차 정리 도구(커밋 208fc992c·e0cce8d76) — GIT 연결 77줄 채우기 마이그(deploy) · 짝 합치기 스크립트(manual) · 레시피 선택기 R4 · 카탈로그 담기 R5 — 게이트 `backups/fable-pending/fable-verdict-20261011-kdine-ingredient-tidy-gate.md`
+- 2차 «다른 재료로 바꾸고 삭제»(커밋 40317bb17) — 게이트 `…-stock-item-replace-on-delete-gate.md`
+- 3차 «비슷한 이름 묻기»(커밋 98e90673a) — 게이트 `…-similar-name-guard-gate.md` PASS · **마커 보류**: 워킹트리에 다른 방(«데모 계정 통합 선택») 미커밋 auth.js·deploy-to-production.sh·App.tsx·DevLogin 등이 섞여, Fable 이 읽지 않은 보안 변경까지 통과로 찍히지 않게 함. 그 방 변경이 커밋·게이트로 빠지면 Fable 을 불러 지문만 확인하고 마커(재판정 없음). 그 전에 훅이 막으면 다른 방 민감 변경 때문 — skip 은 Irene 몫
+- **배포 조건(2·3차): 이 묶음이 들어가는 배포 전 /배포 방이 verify-all --full 1회(타입 신규 0 · 브라우저 일괄 점검 크래시 0) — 실패하면 그 배포에서 2·3차를 뺀다**(이번엔 메모리 부족으로 브라우저 일괄 점검 확인 불가)
+- 한 폴더 동시 편집: 3차 작업 중 다른 방이 같은 폴더(auth.js·App.tsx 등)를 고쳤고, 그 방 알림으로 이 방 빌드 실패(useLabel → eslint rules-of-hooks) 원인을 찾아 고침(actionLabel)
+- Irene 할 일(상황판 등록): 다음 배포 뒤 터미널 짝 합치기 미리보기 → 이어서 적용·점검표·손 작업(그때 할 일로 하나씩)
+- Irene 손 작업(짝 합치기 뒤): K-Jjajang 재고아이템 Deactivate · 오이 «Jjajang Ramen» 1줄(0.05 piece → g) · 쌀 «Rice Carlos» 7줄(0.09 kg → Rice_Calose 90 g) 후 Rice Carlos 삭제 · Sausage Cocktail Deactivate · Chicken Sausage Cocktail 원가·규격 · 당면 «Prepare Glass Noodle for Japchae» 줄 → «Glass Noodle (당면) 1kg», 옛 Glass Noodle·Glass Noddle 1kg 끄기, 당면 재고아이템 재고 -1·원가 0 · bp#16 이름 «K-Yukgaejang Beef 45g»
+- 남은 것(다음 라운드): 교체 대상 서버 검사 1줄 · ING-UNI-032 차단 승격 · 문서(F8-2 · TRADE_STRUCTURE R2·R5 · 이름 규칙 4개+접두어 한 줄+실측 숫자 · BRAND_STOCK_SHARING 절) 배포 뒤 · 입력 중 이름 힌트(2차 후보) · 9-29 ⑤ 매장 8 자기 줄 별건 · Irene «너무 자주 묻는다» 하면 contains 를 2낱말 이상으로 1줄
 
 ### 완료 (2026-10-09) — 재고아이템 삭제 막힘(K-Sundubu) «사용 중» 기준 하나로 · 매장 재료 카드 공급처 표시 (개발서버 · Fable 게이트 PASS · 운영 배포 대기) [Claude Code · 백그라운드 작업방 67f96715]
 - Irene 답: «그냥 이거 아예 필요없어서 삭제할건데 아무곳에서도 삭제를 못하잖아. 정석대로 개발할게 있으면 해줘. 지금 문제가 있는게 없으면 권고대로»

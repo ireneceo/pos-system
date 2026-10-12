@@ -835,7 +835,17 @@ async function loginAsDemo(key) {
     err.code = 'INVALID_DEMO_KEY';
     throw err;
   }
+  return loginAsTestAccount(email, key);
+}
 
+/**
+ * 시험 계정 이메일로 로그인(비밀번호 없음) — 데모 빠른 로그인과 개발 전용 dev-login 이 같이 쓴다.
+ * 이메일은 반드시 코드 안 고정 맵(DEMO_KEY_TO_EMAIL · routes/auth.js DEV_LOGIN_ROLE_TO_EMAIL)에서만 온다.
+ * 가드 두 겹: ①닿는 매장 중 실매장(is_demo=0)이 하나라도 있으면 거부 ②계정 is_demo/is_test 아니면 거부.
+ * label = 로그 표시용(데모 키 또는 dev-login 역할키).
+ */
+async function loginAsTestAccount(email, label) {
+  const key = label;
   const { Op } = require('sequelize');
   const sequelize = require('../db').sequelize;
   const user = await User.findOne({
@@ -954,4 +964,4 @@ async function loginAsDemo(key) {
   };
 }
 
-module.exports = { login, loginAsDemo, register, signup, signupReferralPartner, sendVerificationEmail, DEMO_KEY_TO_EMAIL };
+module.exports = { login, loginAsDemo, loginAsTestAccount, register, signup, signupReferralPartner, sendVerificationEmail, DEMO_KEY_TO_EMAIL };

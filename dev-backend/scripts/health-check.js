@@ -1775,6 +1775,37 @@ function defineSecurityTests({ customerToken, member, restId }) {
     return true;
   });
 
+  // 개발 전용 dev-login(상황판 «시험 계정으로 열기», 2026-10-11) — 켜져 있을 때만 검사. 운영(라우트 없음)은 건너뜀.
+  // 역할키마다 서명 코드 → 200 + 실매장에 안 닿음 · 같은 코드 재사용 409 · 모르는 역할 400 · 남의 매장 범위 403.
+  test('security', 'dev-login 역할 계정은 실매장에 닿지 않는다 + 1회용·역할·범위 거부', async () => {
+    const { devLoginEnabled } = require('../utils/devLoginVerify');
+    if (process.env.NODE_ENV !== 'development' || !devLoginEnabled()) return true;
+    const crypto = require('crypto');
+    const { DEV_LOGIN_ROLE_TO_EMAIL } = require('../utils/devLoginAccounts');
+    const { findReachableRestaurants } = require('../utils/demoReachableRestaurants');
+    const { sequelize } = require('../config/database');
+    const User = require('../models/User');
+    const b64 = (b) => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const code = (as, scope = {}) => {
+      const p = b64(JSON.stringify({ as, scope, next: '/pos', exp: Date.now() + 90000, n: crypto.randomBytes(16).toString('hex') }));
+      return `v1.${p}.${b64(crypto.createHmac('sha256', String(process.env.DEV_LOGIN_SECRET).trim()).update(p).digest())}`;
+    };
+    for (const [as, email] of Object.entries(DEV_LOGIN_ROLE_TO_EMAIL)) {
+      const res = await request('POST', '/auth/dev-login', { code: code(as) });
+      if (res.status !== 200) { console.log(c.red(`      ↳ ${as} → ${res.status}`)); return false; }
+      const u = await User.findOne({ where: sequelize.where(sequelize.fn('LOWER', sequelize.col('email')), email.toLowerCase()) });
+      if (!u) return false;
+      const real = ((await findReachableRestaurants(sequelize, u)) || []).filter((r) => !r.is_demo);
+      if (real.length) { console.log(c.red(`      ↳ ${as} → 실매장 ${real[0].id}`)); return false; }
+    }
+    const once = code('restaurant');
+    const a = await request('POST', '/auth/dev-login', { code: once });
+    const b = await request('POST', '/auth/dev-login', { code: once });
+    const unknown = await request('POST', '/auth/dev-login', { code: code('nobody') });
+    const foreign = await request('POST', '/auth/dev-login', { code: code('restaurant', { store: '5' }) });
+    return a.status === 200 && b.status === 409 && unknown.status === 400 && foreign.status === 403;
+  });
+
   test('security', 'tier gate — brand-ingredients 읽기는 비차단', async () => {
     const Restaurant = require('../models/Restaurant');
     const User = require('../models/User');

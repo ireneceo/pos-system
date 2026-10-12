@@ -83,6 +83,53 @@ router.post('/demo-login', demoLoginLimiter, async (req, res, next) => {
   }
 });
 
+// ── 개발 전용: 상황판 «시험 계정으로 열기» (2026-10-11 · 규격 ~/dev-server/kit/DEV-LOGIN.md, Fable 검토 완료) ──
+// 보고 링크 끝 [as=<역할키> store=<번호>] → 상황판이 90초·1회용 서명 코드를 만들어 /dev-login 화면으로 보낸다 → 여기서 검증.
+// 등록 조건: NODE_ENV=development + DEV_LOGIN_SECRET(32자 이상). 운영은 라우트 자체가 없다(404).
+// 역할키 → 시험 계정 이메일(코드 안 고정 맵, 코드에서 이메일을 받지 않는다). 표 = CLAUDE.md «🧪 시험 역할».
+// 계정 확인·실매장 차단·토큰 발급은 데모 빠른 로그인과 같은 함수(loginAsTestAccount) = 보통 로그인과 같은 토큰.
+const { DEV_LOGIN_ROLE_TO_EMAIL, DEV_LOGIN_SCOPE_KEYS } = require('../utils/devLoginAccounts');
+// 범위 store=<번호>: 매장 고르기는 주소(next)에 들어 있어 서버 쪽 «전환» 은 없다 — 그 계정이 닿는 데모 매장인지 확인만 한다.
+const { devLoginEnabled, verifyDevLoginCode } = require('../utils/devLoginVerify');
+if (devLoginEnabled()) {
+  // 데모 빠른 로그인(공개 카드)과 횟수 칸을 나눈다 — 검사·상황판 클릭이 공개 카드 몫을 잡아먹지 않게.
+  const devLoginLimiter = rateLimit({
+    windowMs: 60 * 1000, max: 60,
+    message: { success: false, error: 'too_many' },
+    standardHeaders: true, legacyHeaders: false
+  });
+  router.post('/dev-login', devLoginLimiter, async (req, res) => {
+    const v = verifyDevLoginCode(req.body && req.body.code);
+    if (!v.ok) return res.status(v.status).json({ success: false, error: v.error });
+    const email = DEV_LOGIN_ROLE_TO_EMAIL[v.as];
+    if (!email) return res.status(400).json({ success: false, error: 'unknown_role' });
+    const scopeKeys = Object.keys(v.scope);
+    if (scopeKeys.some((k) => !DEV_LOGIN_SCOPE_KEYS.includes(k)) || (v.scope.store && !/^\d{1,9}$/.test(v.scope.store))) {
+      return res.status(403).json({ success: false, error: 'scope_not_allowed' });
+    }
+    let result;
+    try {
+      result = await authService.loginAsTestAccount(email, `dev-login:${v.as}`);
+    } catch (error) {
+      console.warn(`[dev-login] as=${v.as} 거부: ${error.code || error.message}`);
+      return res.status(403).json({ success: false, error: 'not_test_account' });
+    }
+    if (v.scope.store) {
+      const { sequelize } = require('../db');
+      const { findReachableRestaurants } = require('../utils/demoReachableRestaurants');
+      const reach = await findReachableRestaurants(sequelize, {
+        id: result.user.id,
+        restaurant_id: result.user.restaurant_id,
+        brand_id: result.user.brand_id,
+        foodcourt_id: result.user.foodcourt_id
+      });
+      const hit = reach.find((r) => String(r.id) === v.scope.store);
+      if (!hit || !hit.is_demo) return res.status(403).json({ success: false, error: 'scope_not_allowed' });
+    }
+    return successResponse(res, { ...result, dev_login: { as: v.as, scope: v.scope, next: v.next } }, 'Login successful');
+  });
+}
+
 // ⛔ 옛 회원가입 — 막음 (2026-09-24 보안). 로그인 없이 요청 본문의 role 을 그대로 저장해
 //   누구나 System Admin 계정을 만들 수 있었다(개발 재현: 익명 가입 201 → 로그인 → SA 전용 API 200).
 //   화면은 이 경로를 쓰지 않는다 — 가입은 /signup(역할 화이트리스트·이메일 인증·MX 검사).

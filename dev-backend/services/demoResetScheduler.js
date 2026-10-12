@@ -13,9 +13,11 @@ class DemoResetScheduler {
       try {
         const siteTimezone = await getSiteTimezone();
         const now = new Date();
+        // hour12:false 는 자정을 «24» 로 돌려준다(ICU) — 그래서 이 초기화가 한 번도 안 돌았다(2026-10-11 발견).
+        // % 24 로 0~23 에 맞춘다.
         const localHour = parseInt(
-          now.toLocaleString('en-US', { timeZone: siteTimezone, hour: 'numeric', hour12: false })
-        );
+          now.toLocaleString('en-US', { timeZone: siteTimezone, hour: 'numeric', hour12: false }), 10
+        ) % 24;
 
         // Only run at midnight (0:00) in site timezone
         if (localHour !== 0) return;

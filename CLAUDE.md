@@ -547,6 +547,29 @@ date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', timeZone:
 
 ---
 
+## 🧪 시험 역할 (Test roles) — 상황판 «시험 계정으로 열기» (2026-10-11)
+
+보고 «확인할 곳» 줄 끝에 `[as=<역할키>]` 또는 `[as=<역할키> store=<매장 번호>]` 를 붙이면 상황판이 그 시험 계정으로 로그인된 채 같은 주소를 연다(개발서버만, 규격 `~/dev-server/kit/DEV-LOGIN.md`).
+라우트 `POST /api/auth/dev-login` 은 `NODE_ENV=development` + 개발 `.env` 의 `DEV_LOGIN_SECRET`(32자 이상) 이 있을 때만 생긴다. **운영 `.env` 에 넣지 않는다**(배포 스크립트가 막음).
+
+| 역할키 | 시험 계정 | 보이는 곳 | 범위 (`store=`) |
+|---|---|---|---|
+| `restaurant` | demo-restaurant@purplehere.com (Restaurant Admin) | 데모 매장 38 (관리자 칸으로 1 도) | 38 · 1 |
+| `brand` | demo-brand@purplehere.com (Brand General) | 데모 브랜드 10·17 (매장 38·39) | 38 · 39 |
+| `foodcourt` | demo-foodcourt@purplehere.com (Foodcourt General) | 데모 푸드코트 44 (매장 38·39) | 38 · 39 |
+| `owner` | demo-owner@purplehere.com (Restaurant Owner) | 데모 매장 2·3 | 2 · 3 |
+| `supplier` | demo-supplier@purplehere.com (Supplier Admin) | 데모 공급업체 20 | 없음 |
+| `brand_manager` | test-brand-manager@example.com (Brand Manager) | 데모 브랜드 10 (매장 39) | 39 |
+| `foodcourt_manager` | test-foodcourt-manager@example.com (Foodcourt Manager) | 푸드코트 44 · 매장 38 담당 | 38 · 39 |
+| `supplier_staff` | test-supplier-staff@example.com (Supplier Staff) | 데모 공급업체 20 | 없음 |
+
+- 맵 = `dev-backend/utils/devLoginAccounts.js` 하나(라우트·health-check 같이 읽음). 아래 3개 계정은 `node scripts/seed-dev-login-test-accounts.js`(개발만·멱등)가 만든다.
+- **System Admin 은 없다** — 모든 매장을 보는 역할이라 «데모에만 닿음» 을 만족할 수 없다. 시스템 관리자 화면은 역할 꼬리표 없이 링크만.
+- `store=` 는 그 계정이 닿는 **데모** 매장일 때만 통과(아니면 403). 매장 고르기는 주소에 들어 있다 — 예: `- https://dev.purplehere.com/restaurant/38/dashboard — … [as=restaurant store=38]`
+- 계정 확인·실매장 차단은 데모 빠른 로그인과 같은 함수(`loginAsTestAccount` — 닿는 매장에 실매장이 하나라도 있으면 거부 + is_demo/is_test). health-check `security` 가 8역할 전부를 상시 검사.
+- **시험 데이터**: 데모 매장(38·39 등)에만, 이름(주문은 손님 이름·메모, 청구서는 메모)에 `[확인용]`. 보고 링크가 보여 주는 것이라 지우지 않는다. 데모 매장 자정 초기화(`resetDemoOrders`)가 7일 안 된 `[확인용]` 주문·청구서는 남기고 7일 지나면 지운다(`utils/checkDataTag.js` — 새 정리 일정 없음).
+- 같은 데모 5개는 선택 화면(`/pos/select-context`)에서도 서로 오간다(개발·운영 공통 — 데모 계정으로 들어왔을 때만 보임).
+
 ## 🔎 SEO 작업 규칙 (2026-09-21 Irene 지시 · PurpleHere 전용)
 
 **상세 단일 진실: `docs/SEO_OPERATIONS.md`** — SEO 작업 전 반드시 읽는다. 명령: `/SEO점검`.

@@ -11,6 +11,7 @@
  * `middleware/auth.js` 의 `userCanAccessRestaurant` 부여 경로를 **역할·관계유형 구분 없이
  * 통째로 합쳤다.** 실판정보다 넓다. fail-closed 가드는 과차단이 안전하고 미차단이 결함이다
  * (좁게 잡았다가 실제 부여 테이블 `restaurant_managers` 를 빠뜨려 구멍이 남았던 전례가 있다).
+ * 2026-10-11: 브랜드 매니저 범위(brand_manager_brands · brand_scope_all=회사 전체)도 합침 — managerBrandIds 와 같은 뜻.
  */
 
 const REACHABLE_SQL = `
@@ -20,6 +21,11 @@ const REACHABLE_SQL = `
       OR r.id IN (SELECT rm.restaurant_id FROM restaurant_managers rm WHERE rm.manager_id = :uid)
       OR r.brand_id IN (SELECT b.id FROM brands b WHERE b.owner_id = :uid)
       OR (:bid IS NOT NULL AND r.brand_id = :bid)
+      OR r.brand_id IN (SELECT bmb.brand_id FROM brand_manager_brands bmb WHERE bmb.user_id = :uid)
+      OR (:bid IS NOT NULL
+          AND EXISTS (SELECT 1 FROM users su WHERE su.id = :uid AND su.brand_scope_all = 1)
+          AND r.brand_id IN (SELECT b2.id FROM brands b2
+                              WHERE b2.owner_id = (SELECT b3.owner_id FROM brands b3 WHERE b3.id = :bid)))
       OR r.foodcourt_id IN (SELECT f.id FROM foodcourts f WHERE f.owner_id = :uid)
       OR (:fid IS NOT NULL AND r.foodcourt_id = :fid)
       OR r.id IN (
