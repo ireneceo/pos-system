@@ -281,6 +281,7 @@ V3 = 13/13 PASS. V4 는 두 개의 별개 블로커가 순차로 겹쳐 있었�
 
 ### 8-7. 릴리즈·배포
 - **서명키:** 사이드로드 전용 keystore 1개 생성(RSA4096, 유효 30년+), 리포 밖 `/opt/secrets/`(root 전용, 일일 백업 세트 포함), `keystore.properties`는 git-ignore. **키 변경 = 전 매장 재설치**이므로 영구 고정. Play 스토어는 안 간다(Windows 미서명 파일럿과 동일 결정).
+  - ⤷ **2026-10-12 Google Play 등록으로 대체**(Irene «안드로이드앱 정식으로 등록하고 심사 진행하자.») — 설계 `/var/www/.claude/fable-design-20261012-play-store.md`. 같은 키를 Play App Signing 에 올린다(D1). 릴리즈 기록은 §10.
 - **버전 단일 소스 = `build.gradle` versionName/versionCode.** diagnostics.appVersion·브릿지 version·App.tsx 배지 전부 여기서 파생. 웹 소스에 APK 버전 상수 금지.
 - **피드 (2026-10-04 확정 — `/mobile/` 계획 폐기):** `mobile-app/scripts/build-release.sh` 가 `dev-frontend-build/desktop/android-latest.json`{versionName,versionCode,file,sha256,size,minSdk,releaseDate,signerSha256}을 **생성**(손 편집 금지) + 버전본 `PurplePOS-x.y.z.apk` + 항상-최신 별칭 `PurplePOS.apk`. 배포 7a 가 `/desktop/` 을 운영으로 옮긴다. 게이트 = 기존 `check-desktop-feed.js` 의 `checkAndroidApk()`(피드 권위: sha256·크기·별칭 바이트 동일·피드보다 높은 버전본 금지·프론트 APK 버전 리터럴 금지). 별도 `check-mobile-feed.js` 는 만들지 않는다.
 - **인앱 업데이트 (2026-10-04, Irene 「바꿔. 업데이트 뜨게 해.」 · 설계 `/var/www/.claude/fable-design-20261004-android-update.md`):** 웹이 피드와 `__NATIVE_PRINT.version/versionCode` 를 비교해 우하단 카드 + 설정 › 프린터 › Android 카드 상시 줄. 0.3.1+ = `NativeUpdatePlugin`(같은 host https · sha256 확인 · FileProvider 설치 시트, 권한 `REQUEST_INSTALL_PACKAGES`). 0.2.0/0.3.0 = 플러그인이 없어 `http://<host>/desktop/<file>` 로 시스템 브라우저에 넘긴다(한 번만).
@@ -304,3 +305,14 @@ Irene 요청: «상황판 링크가 앱이 설치돼 있으면 앱으로 열리�
 - 받은 주소로 이동: `MainActivity.onNewIntent → openAppLink`. 처음 켤 때는 `BridgeActivity.load()` 가 `onNewIntent(getIntent())` 를 부르고, 켜져 있을 때(singleTask)는 안드로이드가 부른다. **같은 출처(빌드 때 고정된 앱 주소의 host)이고 `/pos` 또는 `/pos/…` 일 때만** 같은 WebView 에서 연다(§8-4 P0-5 — 다른 출처로 가면 네이티브 브릿지가 빠짐). 한 번 쓰면 intent 의 주소를 비워 화면 재생성 때 다시 끌려가지 않게 한다.
 - 개발용 APK 내려받기: `https://dev.purplehere.com/dev-apps/PurplePOS-dev.apk` (정식 앱 옆에 따로 깔림).
 - 에뮬레이터 확인(API 34, 2026-10-09): 구글 확인 에이전트 `dev.purplehere.com: verified` · 앱 꺼짐/켜짐 둘 다 링크 주소로 열림 · 링크 없이 앱 열면 보던 화면 그대로 · 손님 주문(/m)·운영 주소·앱 없음 → 크롬. 로그인 안 된 상태에서 오너 화면 링크는 웹앱이 /pos(로그인)로 돌려보낸다 — 브라우저와 같은 동작.
+
+## 10. Google Play 릴리즈 기록 (2026-10-12~)
+
+설계 `/var/www/.claude/fable-design-20261012-play-store.md`. 빌드 `scripts/build-release.sh` → AAB 는 `dev-frontend-build/dev-apps/PurplePOS-x.y.z.aab`(운영에 안 감) → Irene 이 Play Console 에 올린다.
+**어느 커밋의 AAB 인지 남긴다**(PlanQ 교훈 — 안 남기면 네이티브 회귀를 추적 못 함). 새 버전 피드(`desktop/android-latest.json`)는 Play 프로덕션 게시 뒤 `build-release.sh --publish-feed`.
+
+툴체인(전역 무변경): `mobile-app/.toolchain/node22`(Node 22.23.3, nodejs.org sha256 대조) · `.toolchain/jdk21`(Temurin 21.0.12.1, Adoptium sha256 대조) — Capacitor 8 이 Node 22+·Java 21 을 요구. 에뮬레이터 `purplepos-ci-36`(AOSP API 36, GMS 없음).
+
+| 버전 | code | 커밋 | 날짜 | 트랙 | 심사 | 비고 |
+|---|---|---|---|---|---|---|
+| 0.4.0 | 8 | 9fe342be4 + 미커밋 작업(Play 등록 묶음, 커밋 전 빌드) | 2026-10-15 | 내부 테스트 → 프로덕션 | 대기 | Capacitor 8 · targetSdk 36 · minSdk 24 · 자가 업데이트 제거 · allowBackup=false · AAB sha256 2b55a5a9…7b95 |

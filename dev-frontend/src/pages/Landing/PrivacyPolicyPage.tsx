@@ -211,6 +211,8 @@ const PrivacyPolicyPage: React.FC = () => {
               <ListItem>{t('landing:privacyPolicyPage.customerDataYouInputIntoTheSystem')}</ListItem>
               <ListItem>{t('landing:privacyPolicyPage.staffInformationAndAccessLogs')}</ListItem>
               <ListItem>{t('landing:privacyPolicyPage.reportsAndAnalyticsData')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.menuPhotosYouUpload', 'Photos you upload, such as menu and product images')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.inAppMessages', 'Messages and support requests you send inside the app')}</ListItem>
             </List>
 
             <SubSectionTitle>{t('landing:privacyPolicyPage.technicalInformation')}</SubSectionTitle>
@@ -222,6 +224,7 @@ const PrivacyPolicyPage: React.FC = () => {
               <ListItem>{t('landing:privacyPolicyPage.ipAddressAndLocationData')}</ListItem>
               <ListItem>{t('landing:privacyPolicyPage.usagePatternsAndFeatureInteractions')}</ListItem>
               <ListItem>{t('landing:privacyPolicyPage.errorLogsAndDiagnosticData')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.printDiagnosticDeviceId', 'A random identifier created by the app for each device, used only to diagnose printing (for example, which tablet failed to print)')}</ListItem>
             </List>
           </Section>
 
@@ -293,12 +296,14 @@ const PrivacyPolicyPage: React.FC = () => {
             </Paragraph>
             <List>
               <ListItem>{t('landing:privacyPolicyPage.accountInformationRetainedWhileYourAccou')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.deletionRequestRetention', 'If you request deletion, we delete or anonymise your personal profile within 30 days and keep only the records the law requires, for the periods above')}</ListItem>
               <ListItem>{t('landing:privacyPolicyPage.transactionRecordsRetainedFor7YearsForLe')}</ListItem>
               <ListItem>{t('landing:privacyPolicyPage.technicalLogsRetainedForUpTo12Months')}</ListItem>
             </List>
             <Paragraph>
               You may request deletion of your data at any time, subject to our legal obligations
-              to retain certain information.
+              to retain certain information.{' '}
+              <ContactLink href="/account-deletion">{t('landing:privacyPolicyPage.howToRequestDeletion', 'How to request account deletion')}</ContactLink>
             </Paragraph>
           </Section>
 

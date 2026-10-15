@@ -839,7 +839,9 @@
     "permission": "PurplePOS 의 '이 출처 허용'을 켠 뒤 업데이트를 다시 누르세요.",
     "error": "파일 확인 실패({{error}}). 잠시 후 다시 시도하거나 {{host}}/download 에서 받아 주세요.",
     "row": "앱 버전 {{current}} · 최신 {{latest}}",
-    "upToDate": "최신 버전입니다"
+    "upToDate": "최신 버전입니다",
+    "store": "Google Play 가 열립니다. 그 화면에서 '업데이트' 를 눌러 주세요.",
+    "openPlay": "Google Play 열기"
   },
   "loading": "불러오는 중…",
   "sellerProduct": {

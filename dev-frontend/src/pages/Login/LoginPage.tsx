@@ -7,6 +7,7 @@ import { LanguageSelector } from '../../components/Common';
 import StaffPinLogin from './StaffPinLogin';
 import { useTranslation } from 'react-i18next';
 import { useRoleDisplayName } from '../../utils/roleDisplay';
+import { useIsNativeShell } from '../../hooks/useNativeShell';
 
 // Demo / Test accounts — passwords are NOT shipped in the bundle.
 // Server resolves the email by `key` and issues a token via /api/auth/demo-login,
@@ -446,6 +447,7 @@ const HomeLink = styled(Link)`
 
 const LoginPage: React.FC = () => {
   const { t } = useTranslation('auth');
+  const inNativeShell = useIsNativeShell();
   const displayRole = useRoleDisplayName();
   const navigate = useNavigate();
   const location = useLocation();
@@ -670,13 +672,19 @@ const LoginPage: React.FC = () => {
 
           <BottomLinks>
             <Link to="/forgot-password" className="forgot-link">{t('auth:loginPage.forgotYourPassword')}</Link>
-            <span>{t('auth:loginPage.dontHaveAnAccount')}<Link to="/signup">{t('auth:loginPage.signUp')}</Link></span>
-            <HomeLink to="/">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-              Back to Home
-            </HomeLink>
+            {/* 계산대 앱(안드로이드·윈도우) 안에서는 가입 길을 두지 않는다 — 가입은 브라우저에서.
+                Play 정책: 앱 안에서 계정을 만들 수 있으면 앱 안 계정 삭제가 의무(2026-10-12 Play 등록 설계 D6) */}
+            {!inNativeShell && (
+              <>
+                <span>{t('auth:loginPage.dontHaveAnAccount')}<Link to="/signup">{t('auth:loginPage.signUp')}</Link></span>
+                <HomeLink to="/">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
+                  Back to Home
+                </HomeLink>
+              </>
+            )}
           </BottomLinks>
         </LeftSection>
         

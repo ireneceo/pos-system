@@ -18,11 +18,13 @@ const NativeAppUpdateBanner: React.FC = () => {
 
   const isCustomerDisplayRoute = /\/(checkout-display|display)(\/|\?|$)/.test(location.pathname);
   if (!inApp || !isAuthenticated || isCustomerDisplayRoute || !feed) return null;
-  if (!['available', 'installing', 'handoff', 'permission', 'error'].includes(status)) return null;
+  if (!['available', 'installing', 'handoff', 'store', 'permission', 'error'].includes(status)) return null;
   if (dismissed && status === 'available') return null;
 
   const host = window.location.host;
-  const body = status === 'handoff'
+  const body = status === 'store'
+    ? t('common:nativeUpdate.store', "Google Play opens. Tap 'Update' there.")
+    : status === 'handoff'
     ? t('common:nativeUpdate.handoff', "The browser opens and the download starts. When it finishes, tap 'Open' → 'Install'. The first time, turn on 'Allow from this source' for Chrome.")
     : status === 'permission'
       ? t('common:nativeUpdate.permission', "Turn on 'Allow from this source' for PurplePOS, then tap Update again.")
@@ -60,9 +62,11 @@ const NativeAppUpdateBanner: React.FC = () => {
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <Button variant="primary" size="small" disabled={status === 'installing'} onClick={install}>
-              {status === 'handoff' || status === 'error' || status === 'permission'
-                ? t('common:nativeUpdate.retry', 'Try again')
-                : t('common:nativeUpdate.update', 'Update')}
+              {status === 'store'
+                ? t('common:nativeUpdate.openPlay', 'Open Google Play')
+                : status === 'handoff' || status === 'error' || status === 'permission'
+                  ? t('common:nativeUpdate.retry', 'Try again')
+                  : t('common:nativeUpdate.update', 'Update')}
             </Button>
             <Button variant="secondary" size="small" onClick={dismiss}>{t('common:nativeUpdate.later', 'Later')}</Button>
           </div>
@@ -82,7 +86,7 @@ export const NativeAppVersionRow: React.FC = () => {
   const { t } = useTranslation();
   const { inApp, feed, current, status, install } = useNativeAppUpdate();
   if (!inApp || !feed) return null;
-  const available = status === 'available' || status === 'handoff' || status === 'permission' || status === 'error' || status === 'installing';
+  const available = status === 'available' || status === 'handoff' || status === 'store' || status === 'permission' || status === 'error' || status === 'installing';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 13, color: '#4B5563', marginBottom: 12 }} data-testid="native-version-row">
       <span>

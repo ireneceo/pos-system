@@ -4,12 +4,13 @@
  * 앱 밖(브라우저)에서는 아무것도 하지 않는다(fetch 0회).
  */
 import { useCallback, useEffect, useState } from 'react';
+import { useIsNativeShell } from './useNativeShell';
 import {
   AndroidFeed, fetchAndroidFeed, isNewer, currentNativeVersion, isAndroidNativeApp,
-  externalHandoffUrl, writeDismiss, isDismissed,
+  externalHandoffUrl, writeDismiss, isDismissed, installedFromPlay, PLAY_STORE_URL,
 } from '../utils/nativeAppUpdate';
 
-export type NativeUpdateStatus = 'idle' | 'checking' | 'up_to_date' | 'available' | 'installing' | 'handoff' | 'permission' | 'error';
+export type NativeUpdateStatus = 'idle' | 'checking' | 'up_to_date' | 'available' | 'installing' | 'handoff' | 'store' | 'permission' | 'error';
 
 let memo: { at: number; feed: AndroidFeed | null } | null = null;
 let inflight: Promise<AndroidFeed | null> | null = null;
@@ -39,20 +40,9 @@ export function useNativeAppUpdate() {
   const [status, setStatus] = useState<NativeUpdateStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [dismissedTick, setDismissedTick] = useState(0);
-  // 계산대 앱은 브릿지(__PURPLE_DESKTOP 등)를 «페이지가 다 열린 뒤» 끼워 넣는다(MainActivity onPageLoaded).
-  //   화면이 그보다 먼저 그려지면 «앱 아님» 이 굳어 카드가 영영 안 뜬다 — 단말기 설정 화면과 같은 결함
-  //   (2026-10-04 Irene 「업데이트 배너 안뜨는데」). 처음 10초는 다시 확인한다.
-  const [inApp, setInApp] = useState<boolean>(() => isAndroidNativeApp());
-  useEffect(() => {
-    if (inApp) return;
-    let tries = 0;
-    const timer = window.setInterval(() => {
-      tries += 1;
-      if (isAndroidNativeApp()) { setInApp(true); window.clearInterval(timer); }
-      else if (tries >= 20) window.clearInterval(timer);   // 0.5초 × 20 = 10초
-    }, 500);
-    return () => window.clearInterval(timer);
-  }, [inApp]);
+  // 계산대 앱은 브릿지를 «페이지가 다 열린 뒤» 끼워 넣는다 — 처음 10초 재확인은 useIsNativeShell 한 곳(2026-10-12 이동)
+  //   (2026-10-04 Irene 「업데이트 배너 안뜨는데」 — 단말기 설정 화면과 같은 결함)
+  const inApp = useIsNativeShell('android');
 
   const check = useCallback(async (force = false) => {
     if (!isAndroidNativeApp()) return;
@@ -60,7 +50,7 @@ export function useNativeAppUpdate() {
     const [f, cur] = await Promise.all([getFeed(force), readCurrent()]);
     setFeed(f);
     setCurrent(cur);
-    setStatus((s) => (s === 'installing' || s === 'handoff' || s === 'permission' || s === 'error') ? s
+    setStatus((s) => (s === 'installing' || s === 'handoff' || s === 'store' || s === 'permission' || s === 'error') ? s
       : (!f ? 'idle' : (isNewer(f, cur) ? 'available' : 'up_to_date')));
   }, []);
 
@@ -76,9 +66,16 @@ export function useNativeAppUpdate() {
   const install = useCallback(async () => {
     if (!feed) return;
     setError(null);
+    // (P) 0.4.0+ Play 설치본 — Play 정책상 Play 로만 업데이트(APK 를 받게 하지 않는다). 다른 host 라 Capacitor 가 Play 앱으로 넘긴다
+    //     (Play 등록 설계 D3). Play 의 자동 업데이트가 보통 먼저 올리고, 이 카드는 «지금 올리기» 길.
+    if (installedFromPlay()) {
+      setStatus('store');
+      window.location.assign(PLAY_STORE_URL);
+      return;
+    }
     const native = (window as any).__NATIVE_UPDATE;
     if (native && typeof native.install === 'function') {
-      // (A) 0.3.1 이후 — 앱이 직접 받아 sha256 확인 뒤 설치 시트
+      // (A) 0.3.1~0.3.4 사이드로드본 — 앱이 직접 받아 sha256 확인 뒤 설치 시트(0.4.0 에서 삭제된 플러그인 — 옛 앱만 탄다)
       setStatus('installing');
       try {
         const r = await native.install({ url: `${window.location.origin}/desktop/${feed.file}`, sha256: feed.sha256, size: feed.size });
@@ -90,7 +87,7 @@ export function useNativeAppUpdate() {
       }
       return;
     }
-    // (B) 0.2.0 / 0.3.0 — 앱 안 설치 코드가 없다. 시스템 브라우저로 넘긴다(딱 한 번)
+    // (B) 0.2.0 / 0.3.0 · 0.4.0+ 사이드로드본 — 앱 안 설치 코드가 없다. 시스템 브라우저로 넘긴다(딱 한 번)
     setStatus('handoff');
     window.location.assign(externalHandoffUrl(feed.file));
   }, [feed]);

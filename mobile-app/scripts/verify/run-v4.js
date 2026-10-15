@@ -34,7 +34,7 @@ const GATE = '/var/www/scripts/heavy-task-gate.sh';
 // real V4 result for three runs. The gate needs a WebView, not Google Play.
 const AVD = process.env.PURPLE_AVD || 'purplepos-ci';
 const APK = path.join(ROOT, 'android/app/build/outputs/apk/debug/app-debug.apk');
-const PKG = 'com.purplehere.pos.mobile';
+const PKG = process.env.PURPLE_PKG || 'com.purplehere.pos.mobile'; // 디버그 빌드는 .dev 접미(2026-10-01) — PURPLE_PKG=com.purplehere.pos.mobile.dev
 const CAP = '/tmp/fake-printer-v4.jsonl';       // 'KITCHEN' — the master kitchen printer
 const CAP_ST = '/tmp/fake-printer-v4-station.jsonl'; // 'KQ1' — a station printer
 const API = 'http://localhost:3001/api';
@@ -328,7 +328,7 @@ async function main() {
   console.log(`  에뮬레이터 시계: host=${_hostEpoch} guest=${_emuEpoch} (skew ${_emuEpoch - _hostEpoch}s)`);
 
   sh(ADB, ['install', '-r', APK]);
-  sh(ADB, ['shell', 'am', 'start', '-n', `${PKG}/.MainActivity`]);
+  sh(ADB, ['shell', 'am', 'start', '-n', `${PKG}/com.purplehere.pos.mobile.MainActivity`]);
 
   // Re-resolve the devtools socket on EVERY poll: `adb install -r` restarts the app, so
   // the socket name carries a new pid. Forwarding once to the pre-install socket leaves
@@ -384,7 +384,7 @@ async function main() {
       relaunches++;
       console.log(`  페이지 로드 실패(chrome-error) — 앱 재기동 ${relaunches}/4`);
       sh(ADB, ['shell', 'am', 'force-stop', PKG]);
-      sh(ADB, ['shell', 'am', 'start', '-n', `${PKG}/.MainActivity`]);
+      sh(ADB, ['shell', 'am', 'start', '-n', `${PKG}/com.purplehere.pos.mobile.MainActivity`]);
     }
     if (Date.now() - t0Bridge > 180000) throw new Error('브릿지(__NATIVE_PRINT)가 180초 안에 안 뜬다 — 앱은 살아 있음');
     await sleep(3000);

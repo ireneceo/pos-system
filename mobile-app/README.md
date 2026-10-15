@@ -35,6 +35,17 @@ npx cap sync android
 # open in Android Studio / gradle assembleRelease -> signed APK -> sideload
 ```
 
+## Release (2026-10-12 — Google Play + sideload, one build)
+```bash
+# 1) bump android/app/build.gradle: versionCode +1, versionName (only when native files changed)
+# 2) build AAB + APK, Play pre-checks (target 36 · no REQUEST_INSTALL_PACKAGES · allowBackup=false), signer check:
+bash scripts/build-release.sh
+# → dev-frontend-build/dev-apps/PurplePOS-x.y.z.aab (+ .apk) — upload the AAB in Play Console (internal test → production)
+# 3) after the Play production release is live: publish the sideload feed, then /배포
+bash scripts/build-release.sh --publish-feed   # (no rebuild — ships the dev-apps APK of the same build)
+```
+Record each release in docs/ANDROID_APP_DESIGN.md §10. Toolchain lives in `.toolchain/` (Node 22 · JDK 21), never global.
+
 ## Release (2026-10-04 — this is the only way to ship an APK)
 ```bash
 # 1) bump android/app/build.gradle: versionCode +1, versionName patch +1 (only when native files changed)

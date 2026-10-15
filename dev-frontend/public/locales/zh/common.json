@@ -839,7 +839,9 @@
     "permission": "请为 PurplePOS 开启“允许来自此来源”，然后再次点击更新。",
     "error": "文件校验失败（{{error}}）。请稍后重试，或从 {{host}}/download 下载。",
     "row": "应用版本 {{current}} · 最新 {{latest}}",
-    "upToDate": "已是最新版本"
+    "upToDate": "已是最新版本",
+    "store": "将打开 Google Play。请在那里点击“更新”。",
+    "openPlay": "打开 Google Play"
   },
   "loading": "加载中…",
   "sellerProduct": {

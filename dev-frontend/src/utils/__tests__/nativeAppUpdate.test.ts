@@ -1,4 +1,4 @@
-import { parseFeed, parseVersion, isNewer, isDismissed, writeDismiss } from '../nativeAppUpdate';
+import { parseFeed, parseVersion, isNewer, isDismissed, writeDismiss, installedFromPlay, appDownloadTarget, PLAY_STORE_URL } from '../nativeAppUpdate';
 
 const SHA = 'a'.repeat(64);
 const feed = (o: any = {}) => parseFeed({ versionName: '0.3.1', versionCode: 4, file: 'PurplePOS-0.3.1.apk', sha256: SHA, size: 3000000, ...o })!;
@@ -33,5 +33,27 @@ describe('nativeAppUpdate', () => {
     writeDismiss('0.3.1');
     expect(isDismissed(feed())).toBe(true);
     expect(isDismissed(feed({ versionName: '0.3.2', file: 'PurplePOS-0.3.2.apk' }))).toBe(false);
+  });
+  // 2026-10-12 Play 등록 D3 — Play 설치본은 Play 로만, 사이드로드본은 기존 브라우저 넘김
+  describe('Play 설치 출처', () => {
+    afterEach(() => { delete (window as any).__PURPLE_DESKTOP; delete (window as any).__NATIVE_PRINT; });
+    test('installedFromPlay — installer 가 com.android.vending 일 때만', () => {
+      expect(installedFromPlay()).toBe(false);
+      (window as any).__NATIVE_PRINT = { installer: null };
+      expect(installedFromPlay()).toBe(false);
+      (window as any).__NATIVE_PRINT = { installer: 'com.google.android.packageinstaller' };
+      expect(installedFromPlay()).toBe(false);
+      (window as any).__NATIVE_PRINT = { installer: 'com.android.vending' };
+      expect(installedFromPlay()).toBe(true);
+    });
+    test('appDownloadTarget — 안드로이드 앱: Play 본 → Play 페이지, 사이드로드본 → APK 넘김', () => {
+      (window as any).__PURPLE_DESKTOP = { isDesktop: true, platform: 'android' };
+      (window as any).__NATIVE_PRINT = { installer: 'com.android.vending' };
+      expect(appDownloadTarget()).toEqual({ kind: 'handoff', href: PLAY_STORE_URL });
+      (window as any).__NATIVE_PRINT = { installer: null };
+      const t = appDownloadTarget();
+      expect(t.kind).toBe('handoff');
+      expect(t.href).toMatch(/\/desktop\/PurplePOS\.apk$/);
+    });
   });
 });

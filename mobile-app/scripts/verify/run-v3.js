@@ -25,7 +25,7 @@ const ADB = path.join(SDK, 'platform-tools/adb');
 const EMULATOR = path.join(SDK, 'emulator/emulator');
 const AVD = process.env.PURPLE_AVD || 'purplepos';
 const APK = path.join(ROOT, 'android/app/build/outputs/apk/debug/app-debug.apk');
-const PKG = 'com.purplehere.pos.mobile';
+const PKG = process.env.PURPLE_PKG || 'com.purplehere.pos.mobile'; // 디버그 빌드는 .dev 접미(2026-10-01) — PURPLE_PKG=com.purplehere.pos.mobile.dev
 const CAP_KITCHEN = '/tmp/fake-printer-9100.jsonl';
 const CAP_BAR = '/tmp/fake-printer-9101.jsonl';
 const KEEP = process.argv.includes('--keep');
@@ -147,7 +147,7 @@ async function main() {
   sh(ADB, ['uninstall', PKG]);
   const inst = sh(ADB, ['install', '-r', APK]);
   if (!/Success/.test(inst.stdout || '')) throw new Error(`APK 설치 실패: ${(inst.stderr || inst.stdout || '').slice(0, 200)}`);
-  sh(ADB, ['shell', 'am', 'start', '-n', `${PKG}/.MainActivity`]);
+  sh(ADB, ['shell', 'am', 'start', '-n', `${PKG}/com.purplehere.pos.mobile.MainActivity`]);
   console.log('  APK 설치·기동 — 원격 웹앱(dev) 로드 대기...');
 
   // 4. devtools forward to the WebView — re-resolve the socket on EVERY poll: `adb
@@ -220,7 +220,7 @@ async function main() {
       relaunches++;
       console.log(`    페이지 로드 실패(chrome-error) — 앱 재기동 ${relaunches}/4`);
       sh(ADB, ['shell', 'am', 'force-stop', PKG]);
-      sh(ADB, ['shell', 'am', 'start', '-n', `${PKG}/.MainActivity`]);
+      sh(ADB, ['shell', 'am', 'start', '-n', `${PKG}/com.purplehere.pos.mobile.MainActivity`]);
       return false;
     }
     try { return JSON.parse(r.stdout)[0].value === true; } catch { return false; }
@@ -265,7 +265,9 @@ async function main() {
 
   const diag = byLabel('V3-2 diagnostics') || {};
   const gradleVersion = (fs.readFileSync(path.join(ROOT, 'android/app/build.gradle'), 'utf8')
-    .match(/versionName\s+"([^"]+)"/) || [])[1];
+    .match(/versionName\s+"([^"]+)"/) || [])[1]
+    // 디버그 빌드는 versionNameSuffix "-dev" (2026-10-01) — 같은 build.gradle 에서 오므로 단일소스 계약은 그대로
+    + (PKG.endsWith('.dev') ? '-dev' : '');
   assert('V3-2 diagnostics 계약 (§4 shape, appVersion=gradle 단일소스)',
     diag.platform === 'android' && diag.appVersion === gradleVersion && diag.hasPrinters === true && diag.bridgeVersion === gradleVersion,
     `appVersion=${diag.appVersion} gradle=${gradleVersion} bridge=${diag.bridgeVersion}`);

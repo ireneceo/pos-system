@@ -72,6 +72,17 @@ export function currentNativeVersion(): { versionName: string | null; versionCod
   return { versionName: typeof p?.version === 'string' ? p.version : null, versionCode: Number.isInteger(vc) ? vc : null };
 }
 
+/** Google Play 의 앱 페이지 (2026-10-12 Play 등록 · 설계 /var/www/.claude/fable-design-20261012-play-store.md D3) */
+export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.purplehere.pos.mobile';
+
+/**
+ * Play 에서 설치된 앱인가 — 0.4.0+ 브릿지가 채우는 설치 출처(__NATIVE_PRINT.installer).
+ * Play 설치본은 Play 정책상 Play 로만 업데이트한다(APK 를 받게 하면 안 됨). 사이드로드본·옛 앱은 installer 가 없다 → false.
+ */
+export function installedFromPlay(): boolean {
+  return (window as any).__NATIVE_PRINT?.installer === 'com.android.vending';
+}
+
 export function isAndroidNativeApp(): boolean {
   return (window as any).__PURPLE_DESKTOP?.platform === 'android';
 }
@@ -96,13 +107,15 @@ export function externalHandoffUrl(file: string): string {
 
 /**
  * 도움말 › «다운로드» — 기기에 맞는 계산대 앱으로 (2026-10-04 Irene 「좌측 도움말 하위메뉴에 다운로드도 다시 넣어줘. 기종에 맞게 다운되게」).
- *   안드로이드 앱 안 → 시스템 브라우저로 넘겨 APK(앱 WebView 는 다운로드를 못 한다 — externalHandoffUrl 과 같은 이유)
+ *   안드로이드 앱 안 → Play 설치본이면 Play 앱 페이지, 아니면 시스템 브라우저로 넘겨 APK(앱 WebView 는 다운로드를 못 한다 — externalHandoffUrl 과 같은 이유)
  *   안드로이드 브라우저 → APK 별칭 · Windows 브라우저 → 설치본 별칭 · 그 밖(아이폰·맥·Windows 앱) → /download 페이지
  *   파일은 항상-최신 별칭만 쓴다(버전 리터럴 금지 — check-desktop-feed).
  */
 export function appDownloadTarget(): { kind: 'handoff' | 'file' | 'page'; href: string } {
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
   const desk = (window as any).__PURPLE_DESKTOP;
+  // Play 설치본 → Play 앱 페이지(다른 host 라 Capacitor 가 바깥 앱으로 넘긴다 — navigate 가 아니라 assign 이어야 해서 'handoff')
+  if (desk?.platform === 'android' && installedFromPlay()) return { kind: 'handoff', href: PLAY_STORE_URL };
   if (desk?.platform === 'android') return { kind: 'handoff', href: `http://${window.location.host}/desktop/PurplePOS.apk` };
   if (desk) return { kind: 'page', href: '/download' };
   if (/Android/i.test(ua)) return { kind: 'file', href: '/desktop/PurplePOS.apk' };

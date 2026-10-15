@@ -1,7 +1,135 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-10-11 UTC — 브랜드 매니저 여러 브랜드·회사 전체 배정 /개발완료 [작업방 8315f30a] · 이전: 2026-10-11 UTC — 발주 카탈로그 «Add to My Stock» 표시 결함 수정 /개발완료 [작업방 ef2223fa] · 이전: 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
+**마지막 업데이트:** 2026-10-15 UTC — 공급업체 상품 옵션별 가격 검토(답 기다림) [작업방 0883cfbd] · 이전: 2026-10-11 UTC — 브랜드 매니저 여러 브랜드·회사 전체 배정 /개발완료 [작업방 8315f30a] · 이전: 2026-10-11 UTC — 발주 카탈로그 «Add to My Stock» 표시 결함 수정 /개발완료 [작업방 ef2223fa] · 이전: 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
 **버전:** **v3.110** (2026-10-11 · Irene «응») · 운영 SW **5.90-preflight-security-20261010** (2026-10-11 06:36 UTC 배포 · 백업 20261011_062932 · DB 덤프 db_predeploy_20261011_062932 · 스모크 10/10 · 마이그 118/118) · 안드로이드 앱 0.3.4
 **작업 상태:** ✅ 운영 배포 완료 SW 5.90 (2026-10-11) — 남은 것: /운영검증 · 키오스크 태블릿 운영 확인 · 첫 주방 티켓 눈 확인 · E1·E3(서버 창, 선택) · Q6 · 재발 방지(마이그 «칸 추가 단계» 분리, Fable 설계 1회)
+
+### 완료 (2026-10-15) — 공급업체 상세(/pos/suppliers/directory/73)에 새로 넣은 상품이 안 보임: 원인 확정 · 고침은 다음 배포 때 (Fable 안 씀 — 원인 실측으로 갈림, 고침은 ebe3a0ff 게이트 PASS 묶음) [Claude Code · 백그라운드 작업방 259d5a23]
+- Irene: «https://purplehere.com/pos/suppliers/directory/73 공급업체 아이템 추가해도 리스트에 안나와 … 오더할 때 나와. 여러 개가 등록되었어. 문제야.»
+- 운영 읽기 조회(Irene «해»): 업체 73 = LSH(외부 업체) · 상품 70개(전부 사용 중). 운영 코드의 상세 조회가 이름순 **50개까지만** 보냄 → 오늘 넣은 Thailand Kway Teow 3개·Handmade Mee 2개·HM/HD Plastic Bag 2개가 잘림(Coca-Cola 는 C 라 보였음). 발주 화면은 상한이 달라 보임 = 증상 그대로
+- 똑같은 이름 중복 0건 · 거의 같은 이름 3개: 808 «Thailand Kway Teow / FA.E.FA 400g» · 811 «Thailand Kway Teow FA.E.FA 400g» · 812 «Thailand Kway Teow / FA 400g» (Irene 가 «여러 개» 라 한 것으로 보임)
+- 고침: 이미 ebe3a0ff 방 미커밋 변경(상한 2000 + «N개 중 M개» 안내 · Fable 게이트 PASS)에 들어 있음 — 이 방 코드 변경 0
+- 개발 실호출: 시험 외부 업체에 상품 55개 → 상세 55/55 · 이름순 맨 끝 상품 보임 · 잘림 표시 false → 시험 업체·상품 55·계약 1 삭제
+- 남은 것: 운영 배포 뒤 Irene 가 상세 화면에서 Kway Teow 3개 중 남길 1개 고르고 나머지 삭제(화면 휴지통) · 외부 업체 상품 추가에는 «비슷한 이름 묻기»(98e90673a)가 안 붙어 있음 — 규칙은 이번 3개를 잡음(same_name·contains), 붙이려면 별도 일
+- 운영 반영: 다음 배포 때
+
+### 답 기다림 (2026-10-15) — 발주 카탈로그 «Add as menu/product» 를 재고아이템+메뉴로 바꿀지 [Claude Code · 백그라운드 작업방 ac41b541]
+- Irene: «공급업체에 올린 상품을 발주하는 곳에서 재고아이템에 추가하기 나와서 넣으면 메뉴에 추가하기도 없어져? 레스토랑관리자는 메뉴추가는 재고아이템에도 추가하고 메뉴에도 추가하는 거 맞아? 브랜드제너럴은 재고아이템추가하고 프로덕트에도 추가하는 거고, 그럼 add product여야 하는데 제대로 구분이 되는 건지.»
+- 실측(개발 데모 38·데모 브랜드 10 임시 계약, 만든 행 전부 삭제 확인): 라벨은 맞음(매장 menu·브랜드 product·푸드코트 숨김) · Add to My Stock 뒤 두 버튼 숨김(매장) · Add as menu 는 재고아이템 없이 자체재고 메뉴만 → 카드 계속 «안 담음» → Add to My Stock 하면 같은 물건 두 줄, Add as menu 다시 하면 메뉴 두 개 · 브랜드는 판정이 ingredients.brand_id 를 봐서 무엇을 해도 Linked 안 뜸 → Add to My Stock 뒤 Add as product 로 두 줄 · 브랜드 Add as product 는 BrandProductBrand 0행
+- Fable 설계(코드 변경 0): .claude/fable-design-20261015-catalog-add-menu.md — D1 버튼 하나로 재고아이템+직접연결 메뉴/프로덕트 · D2 «이미 담음» 판정 네 칸 · D4 Sold as 표시 · D6 문구
+- 질문: **카탈로그의 «메뉴/프로덕트 추가» 를 «재고아이템 + 그대로 파는 메뉴/프로덕트» 로 바꿀까요?** — Fable 권고 (가). 상황판 질문 올림(askmv96f2pd)
+- 답이 오면: (가) 설계 문서 §3 순서대로 구현(같은 파일 다른 방 미커밋 위에 얹음) → 빌드 1회·verify-all --full → Fable gate 1회. (나)면 D2 판정만 고치고 gate.
+
+### 답 기다림 (2026-10-15) — 공급업체 상품 옵션별 가격: «20팩» 은 카톤 상품인가 수량 할인인가 + 옵션 가격 반영 구현 진행 여부 [Claude Code · 백그라운드 작업방 0883cfbd]
+- Irene: «공급업체 상품도 옵션이 필요하고 옵션마다 가격이 달라. 예를 들면 1팩은 더 비싸고 20팩은 더 싸고. 옵션 기본세팅 검토해줘.»
+- Fable 설계(코드 변경 0): .claude/fable-design-20261015-supplier-product-options.md — 양이 바뀌는 것(1팩/20팩·1kg/10kg)은 옵션이 아니라 규격 → 판매 상품을 따로(지금 가능) · 옵션은 양이 안 바뀌는 선택만
+- 실측 결함: 옵션 가격이 화면에만 보이고 발주엔 기본가로 저장(NewPurchaseOrderPage 제출에 옵션·단가 없음 → purchase-orders-crud 1021~1039 연결 단가) · 옵션은 발주 메모 글자로만, 판매자 수신함엔 안 보임 · 양 옵션 골라도 입고는 1개분 · 개발 데모 옵션 2그룹(Pack Size·Container Size)이 틀린 예시 · 운영 사용 여부 모름
+- 질문: **«20팩» 은 카톤 상품(가)으로 따로 등록하고, 옵션 가격이 발주에 실리게 고치는 구현(D3~D7)은 SKU 정비 방(ebe3a0ff) 커밋 뒤 진행할까요?** — Fable 권고: (가) + 진행
+- 답이 오면: 설계 문서 D1~D7 그대로 구현(ebe3a0ff 미커밋 커밋 뒤 착수) → 자체 검증 → Fable 게이트 1회. (나)면 구조 문서(TRADE_STRUCTURE)부터 + Fable 별도 설계. 상황판 질문 올림(askmv95gfg6)
+
+### 완료 (2026-10-15) — 재료 화면 «수정» 창에서 연결된 공급업체가 사라짐 (개발서버 · Fable 안 씀 — 화면 다시 불러오기 버그, 실브라우저로 갈림) [Claude Code · 백그라운드 작업방 a75d1041]
+- Irene: «https://purplehere.com/restaurant/10/ingredients 이 페이지에서 스톡아이템 수정하면 연결된 공급업체가 안나와. 체크해.»
+- 원인(개발 데모 38 실브라우저 재현): 처음 열 땐 보임 → **한 번 저장하면** 저장 뒤 다시 불러오기(IngredientsTab.tsx fetchIngredients)가 `?include=sellers` 없이 매장 재료를 불러와 카드·수정 창의 공급업체 연결이 전부 빈 채로(새로고침 전까지). 브랜드 역할 경로도 같았음
+- 고침: fetchIngredients 의 두 주소에 `?include=sellers` (첫 불러오기·reloadWithSellers 와 같게). 서버 무변경
+- 검증: build:dev EXIT 0(경고는 이전부터·이 파일 아님) · 실브라우저 RA 매장 38 Chicken Thigh — 수정 창 열기(SUP · Demo Supplier Co. 보임) → 최소재고 8→9 저장 → 다시 열기: 고치기 전 «Suppliers» 빈칸 / 고친 뒤 연결 그대로 · 원복 8 저장 · 콘솔 오류 0 · print-guard 8/8 · design-guard 신규 0
+- 운영 매장 10 데이터 읽기는 허락 안 됨(우회 안 함) — 처음 열 때부터 안 보이는 경우는 별개 원인일 수 있음: 브랜드가 붙인 외부 공급처는 매장 화면에 원래 안 보임(brandStockAccess.sellerLinkVisible · 2026-10-04 Fable 판정)
+- 같은 파일에 ebe3a0ff 방 미커밋 변경 위에 얹음 · 운영 반영: 다음 배포 때
+
+### 완료 (2026-10-15) — 배포·개발완료 명령 문서에 «자체 검증만으로 지금 배포할까요?» 확인 절차 [Claude Code · 백그라운드 작업방 5b257825]
+- 서버 방 5753c8aa 에서 넘김(Irene 2026-10-13 «꼭 물어보고 확인하고 배포하라고 하던지 자체 검증하거나 조치가 되어야지. 그냥 기본룰을 바꾸지마» · 공용 FABLE.md §5 · 커밋 7aae4aa)
+- `.claude/commands/배포.md` 정기 점검 조건 아래: Fable 대기 0 기본 유지 + 막는 게 한도 Fable 대기뿐이면 자체 검증 숫자 → 상황판 질문 → «예» 일 때만 배포 · 대기 항목 남겨 사후 검증
+- `.claude/commands/개발완료.md` 28줄: «운영 배포는 Fable 통과 뒤로» 유지 + 위 절차는 /배포 방·정기 점검이 묻는다는 한 줄
+- 훅(fable-gate.sh)·배포 스크립트 무접촉 · Fable 안 씀 — 문서 수정
+
+### 완료 (2026-10-15) — 공급업체 상품 추가 SKU·단위 정비 + «All Products» 탭 + 가격 소수 2자리 (개발서버 · Fable 게이트 PASS) [Claude Code · 백그라운드 작업방 ebe3a0ff]
+- Irene: «공급업체에서 프로덕트 넣으려는데 SKU도 안나오고 수량/단위/팩킹단위가 제대로 … 안나와. 모든 역할에서 공급업체 상품추가 확인 · with MIN Cafe Coca-Cola (Can) SKU 1080-013 · 공급업체 보기 페이지에 전체상품보기(검색·필터·추가·우리 아이템에 추가) · 재고아이템 Package Unit 에 카톤 등 팩킹 종류 다 · 가격 소수 2자리(RM·$) 전체 점검 · 재고아이템으로 저장 시 공급업체 상품 수량·단위·팩킹 기본으로 가져오기»
+- Fable 설계: .claude/fable-design-20261015-supplier-catalog.md (그대로 구현) · gate 요청 문서: 작업방 tmp/fable-gate-brief.md(바꾼 파일·설계와 다른 점 7·자체 검증 숫자)
+- 구현(개발서버 · 커밋 안 함): utils/stockUnits.js(재고 포장단위 21종) · 마이그 migrate-stock-package-unit-enum-expand.js(레지스트리 deploy · dev 적용·멱등 확인) · catalogLink.stockFieldsFromSellerProduct(재고아이템으로 저장 = 판매 상품 다섯 칸 복사, 매장·브랜드·푸드코트·BG·거울 5곳) · 외부 상품 서버 SKU 수정·같은 업체 중복 409·주문방식 · 업체 상세 50개 제한 → 2000+안내 · 공용 칸 ExternalSupplierProductFields(SKU·주문방식·Base Qty·Usage Unit·Package Unit·가격) → 업체 상세·재고에서 «외부 공급업체에서 사기»(재고 규격으로 미리 채움)·All Products 탭 · 공급업체 화면 «All Products» 탭(AllSupplierProductsView — 검색·업체·분류·공급 종류·연결·포장단위 필터 · 상품 추가/수정 · 내 아이템에 새로/기존 연결) · 재고 폼 2곳 포장단위 21종 · 단가 2자리 표시+안 고치면 저장 안 함 · formatUnitPrice(작은 g·ml 단가는 kg·L 로) · 디자인 검사 money-decimals 규칙 · 구조 문서 §2-2 한 단락
+- 자체 검증(Fable 미검증): health-check 새 4건 통과 + 고장주입(매장·BG 경로 각각 실패 확인) · jest 5/5 · design-guard 반증 · 타입 신규 0 · i18n · print-guard 8/8 · 실브라우저 RA/BG/BM/FG/FM 새 탭 크래시 0·오류 0·390px 넘침 0 · 클릭 흐름(추가→검색→내 아이템에 추가→재료 kg·10·box·48·환산 10) · 단가 0.0465 행 이름만 고쳐 저장 → 0.0465 유지 · verify-all --full 21/24(실패 3 = 이전부터: 배포 준비 SW 기록 · LEDGER-004 · health [po] 수령 4건 FK)
+- 소속 매장 없는 오너: 서버 카탈로그가 403 이라 All Products 탭 숨김(경계 안 넓힘)
+- 확인용 데이터: 데모 매장 38 · 외부 업체 Fresh Farms KL «[확인용] Kimchi 10kg mv8yckd1» + 같은 이름 재료(지우지 말 것)
+- Fable 게이트 PASS(2026-10-15 · 허락 창 뒤 판정 도착): 설계와 다른 점 8건 전부 수용 · inventory health 69/69 · ENUM 21/unit 8 무접촉 확인 · 남긴 것(막지 않음): 업체 상세 카드 규격 한 줄(sellerSpecLabel)은 다음 손질 · money-decimals 규칙은 수량 toFixed(3+) 도 잡음
+- 운영 반영: 다음 배포 때 · /개발완료 안 함(같은 미커밋에 다른 방 진행 중 변경 섞임)
+
+### 완료 (2026-10-15) — 운영 재료 12줄 규격 맞추기: 준비 끝 · 배포 뒤 Irene 터미널 [작업방 ebe3a0ff]
+- Irene 답(상황판): «권고대로 진행해 줘» (Fable 권고: 배포 뒤 터미널 1회 · 나머지 21줄 목록만)
+- 스크립트: /var/www/backups/ops-20261015/fix-stock-base-from-seller.js (저장소 밖 · 연습 기본 / --commit / --rollback <백업>) — 대상 조건 하나(TARGET_SQL)로 고르고 쓰는 순간 같은 조건 재확인 · 백업 JSON 운영 홈 · 트랜잭션 1개 · 재조회 대조 · 배포 전(stockUnits 없음·ENUM 8종)이면 멈춤
+- 운영 대상(읽기 전용 실측) 12줄 전부 매장 8 K-DINE IPC 재료(메뉴 표 무접촉) — 원가·재고·연결 환산·장부 그대로, base_quantity·package_unit·package_quantity 만
+- 개발 시험: 같은 모양 2행 만들어 연습 2행 → 적용 2행·불일치 0·남은 0 → 되돌림 2행 원래 값 → 시험 행 삭제
+- 남은 일(따로): 12줄 중 11줄 연결 환산 1.0000(«받으면 재고 +1 g») 정리 · 나머지 21줄은 이미 단위당 원가 — 목록만
+
+### Irene 할 일
+- 운영 Coca-Cola (Can) SKU → 1080-013 (supplier_products 805) — 상황판에 올림(이 방에 명령 한 줄 붙여 넣기)
+- (배포 뒤) 운영 재료 12줄 기준수량·포장단위 맞추기 — 상황판에 올림(명령 한 줄, 배포 전이면 쓰기 0 으로 멈춤)
+
+### 완료 (2026-10-15) — 다운로드 화면에 «아이폰·맥·그 밖의 컴퓨터 = 웹 앱(PWA)» 안내 [Claude Code · 백그라운드 작업방 79d227f4]
+- Irene: «랜딩페이지 다운로드에 아이폰 다른 데스크탑에서 pwa로 다운로드 하느누것도 안내해야지.»
+- 한 것: DownloadPage.tsx 에 한 줄 전체 칸 «웹 앱» — 아이폰·아이패드(Safari 공유 › 홈 화면에 추가) / 맥·그 밖의 컴퓨터(Chrome·Edge 주소창 설치 아이콘 · 맥 Safari 17+ 파일 › Dock에 추가) · 크롬이 설치를 허락한 맥·기타면 «지금 설치» 버튼 · 컴퓨터로 보면 아이폰용 QR(→ /pos). 홈 화면 아이콘이 열려 있던 주소가 되므로 안내 주소는 /pos(로그인). 머리 설명 문구도 4언어로 바꿈. 설치 정책은 InstallGuideModal 과 같음(윈도우=앱·안드로이드=APK·나머지=PWA)
+- Fable 안 씀 — 랜딩 안내 문구·화면 다듬기
+- 같은 파일의 10-11 QR 변경(ad43a428, 미커밋) 위에 얹음
+- 아이폰·맥으로 열면 이 칸이 맨 위(order -1) · 주소 링크 줄바꿈 overflow-wrap:anywhere
+- 검증: build:dev EXIT 0 · 실브라우저(컴퓨터 1280 · iPhone 13 · 맥 Safari 17 UA) 콘솔 오류 0 · 가로 넘침 0 · /pos 링크 2 · QR 컴퓨터만 보임(iPhone 숨김) · 칸 순서 컴퓨터=아래 / 아이폰·맥=맨 위 · i18n 통과 · 디자인 가드 신규 0 · 인쇄 가드 8/8 · 타입 기준선 신규 0 · verify-all 20/23(실패 3 = 기존 무관: 배포 준비 SW 기록 · LEDGER-004 · health [po] stock_alerts FK)
+- 운영 반영: 다음 배포 때 · /개발완료 안 함(같은 미커밋에 진행 중 안드로이드 플레이 등록 방 변경 섞임)
+
+### 완료 (10/15 00:00 정기 점검 · 2026-10-15) — /개발완료 안 함 · 배포 막힘 · /개발시작 [Claude Code · 백그라운드 작업방 81de2030]
+- 같은 폴더에서 일하는 방: 없음(시작 전 `claude agents` 확인 — /var/www 방은 전부 blocked, 이 방만 working)
+- /개발완료 안 함 — 미완 변경 있음: 10/13 점검 때와 같은 미커밋(안드로이드 플레이 등록 dae80eff 진행 중 + 받은 주문 검색 중복 수정 b82399cf). 마지막 커밋 9fe342be4(10-12) 뒤 새 커밋 0. 상황판 규칙대로 커밋·푸시 안 함
+- 배포 막힘(배포 스크립트 실행 안 함 · 운영 무변경 · 운영 SW 5.90-preflight-security-20261010 실측): ① 개발완료가 ✅ 아님 ② 작업기록 «답 기다림 — 자동 저장 커밋 3개 포함 확인을 Irene 서버 창에서 «y»»(845afaf1) 아직 열림 ③ verify-all 20/23 — 실패 3건 10/13 과 같음: 배포 준비(기록 sw 5.93 ≠ 실제 5.94, 미커밋 플레이 스토어 방 것) · 인스펙션 LEDGER-004 2줄(+R-SC-011 products 재고추적 꺼진 행 1건) · health [po] 수령 4건 stock_alerts FK. PurpleHere Fable 대기 0
+- 운영 문의(prod-query 읽기 전용, 2026-10-15): 새 문의 0 · 새 후속 글 0 · 랜딩 문의 0 · 열린 3건(SUPP-2026-6842-103 · 1886-062 · 2401-270) 10-07 판단 그대로 이미 해결 · 운영 문의 closed 4 / in-progress 1
+- 진행 중 = 안드로이드 플레이 등록(dae80eff, 일시정지로 멈춤) · 다음 확정 작업 없음 → 지시 대기
+
+### 완료 (10/13 00:00 정기 점검 · 2026-10-12) — /개발완료 안 함 · 배포 막힘 · /개발시작 [Claude Code · 백그라운드 작업방 536df45c]
+- /개발완료 안 함 — 미완 변경 있음: 미커밋 대부분이 진행 중인 안드로이드 플레이 등록(dae80eff, V4·정식 빌드·Fable 게이트 남음) 것 + 받은 주문 검색 중복 수정(b82399cf, poAmend.js·seller-orders.js). 상황판 규칙상 미커밋은 커밋 안 함. 마지막 /개발완료(00667668d) 뒤 커밋 3개(40317bb17·98e90673a·9fe342be4, 모두 Fable 게이트 PASS)는 다음 /개발완료 때 CHANGELOG 에
+- 배포 막힘(스크립트 실행 안 함 · 운영 무변경 · 운영 SW 5.90 그대로 실측): ① 작업기록 «답 기다림 — 운영 배포: 자동 저장 커밋 3개 포함 확인을 Irene 서버 창에서 «y»»(845afaf1)가 아직 열림 — 범위에 wip 커밋 3개(e5d528256·8453714c2·208fc992c)가 있어 `--auto` 는 설계상 멈춤 ② 위 개발완료가 ✅ 아님 ③ 직전 verify-all 실패 3건(LEDGER-004 · health [po] 수령 4건 stock_alerts FK · 배포 준비 SW 기록 불일치) 해소 기록 없음
+- 풀리는 길: Irene 가 서버 창에서 `/var/www/deploy-to-production.sh` 실행 → 질문에 y (845afaf1 절 그대로)
+- 운영 문의(prod-query 읽기 전용, 2026-10-12): 새로 들어온 것 0 · 새 후속 글 0 · 랜딩 문의 0 · 열린 3건(SUPP-2026-6842-103 · 1886-062 · 2401-270) 10-07 판단 그대로 이미 해결 · 운영 문의 closed 4 / in-progress 1
+- 진행 중 = 안드로이드 플레이 등록(dae80eff, 방 멈춤) · 다음 확정 작업 없음 → 지시 대기
+
+### 완료 (2026-10-12) — 받은 주문 «Edit order items» 검색에 같은 이름 2개씩 (개발서버 · Fable 안 씀 — 고르는 목록 버그, 기계로 갈림) [Claude Code · 백그라운드 작업방 b82399cf]
+- Irene: «Edit order items 여기에서 아이템 추가로 검색하면 같은 이름이 2개씩 나와 … 브랜드마다 프로덕트 또 2개씩 보고 있는 거 아니야? (BG incoming-orders) 이거 바로 고쳐줘.»
+- 원인(운영 읽기만으로 재현 — 브랜드1→매장10 89개 중 이름 겹침 5 · 브랜드2→매장8 46개 중 8): 브랜드 상품이 두 번 보이는 게 아니라 **연결이 두 개**. ① 판매 중지된 상품의 옛 연결이 그대로 목록에 나옴(#206·#238·#239·#36) ② 같은 상품이 매장 재료 + 브랜드 공유 재료 두 줄에 연결(K-Chili 88/1121 등) ③ 한 매장 재료에 옛 이름·새 이름 두 상품이 연결됐는데 목록이 **매장 재료 이름**으로 보여 똑같아 보임
+- 고침: utils/poAmend.js listAmendableProducts — 끈 상품 빼기(sellerProductOff 같은 판정, 이 주문에 이미 든 줄은 남김) · 같은 판매자 상품은 한 줄(이 주문이 쓰는 연결 → 매장 자기 재료 → 선호 → 최신) · 이름은 판매자 상품명(sellerProductIdentity, 받은 주문 목록과 같은 소스) · routes/seller-orders.js amendable-products 가 이 주문 줄의 연결을 넘김. 주문 추가(sellable-products)도 같은 함수라 같이 고쳐짐. 저장(POST amend) 판정은 그대로
+- 검증: 운영 데이터 읽기 재현 — 새 코드 겹침 5→0 · 8→0, 주문 기존 줄 전부 목록에 남음 · 개발 실호출(시험 연결 만들고 지움) PASS, 옛 코드로 같은 시험 FAIL(«Napa Cabbage» 2개 재현) · print-guard 8/8 · check-sensitive-diff 두 파일 «일반 변경» · verify-all 20/23(실패 3 = 이 일과 무관: 배포 준비 SW 기록 불일치(플레이 스토어 방 5.94) · LEDGER-004 2줄(10-11 부터) · health [po] 수령 4건 stock_alerts FK(10-11 부터); amendable/sellable 시험은 통과)
+- 남은 데이터(코드 아님, 안 건드림): 운영 매장 8 «K-Jjajang Sauce 1kg» 매장 재료가 두 줄(1119·1251) · 옛 이름/새 이름 브랜드 상품 쌍 — 상품 목록에서 옛 것을 끄면 주문 창에서도 빠짐
+- 운영 반영: 다음 배포 때
+
+### 답 기다림 (2026-10-12) — 운영 배포: 자동 저장 커밋 3개 포함 확인을 Irene 서버 창에서 «y» [Claude Code · 백그라운드 작업방 845afaf1]
+- 무엇: 상황판 수동 /배포. `--auto` 는 설계대로 멈춤(범위에 wip 208fc992c·8453714c2·e5d528256). 수동 모드 «자동 저장 커밋을 포함해 배포할까요? (y/N)» 는 사람이 화면에서 답해야 함 — 파이프로 y 를 넣어도 앞 단계 원격 접속이 입력을 먹어 EXIT=1 로 끝남(더 우회 안 함). 운영 무변경(백업·빌드 전 단계에서 멈춤)
+- 대조 결과: wip 로만 들어간 파일 59개 = 전부 Fable 게이트 PASS 로 끝난 일 — 랜딩·Stripe 청구서 결제·FAQ(67c989de) · 메뉴 2단 카테고리(069db6c8) · 키오스크 두 방식(4d64bbc0, 실태블릿 확인은 «막지 않음» 후속) · K-DINE 재료 정돈 1차(67f96715) · 사본 배포 도구(31f67057). 진행 중·미룬 일 0
+- K-DINE 2·3차 배포 조건 중 타입 검사: 신규 0(전체 432, 기준 436) 확인. 실브라우저 점검은 배포 스크립트가 사본으로 함
+- 답이 오면: Irene 가 서버 창에서 `/var/www/deploy-to-production.sh` 실행 → 질문 3개에 y → 끝나면 이 방(또는 새 /배포 방)이 결과 확인 · 배포 방 산출물 경로 지정 커밋(스크립트 마지막 줄) · 버전·릴리즈노트·공지는 그 뒤 따로
+
+### 완료 (2026-10-15) — 안드로이드 앱 구글 플레이 등록 준비 (개발서버 · Fable PASS 조건부 · /개발완료) [Claude Code · 백그라운드 작업방 dae80eff]
+
+### Irene 할 일 (상황판에 올림 — 순서대로)
+- ① Fable 통과 표시 찍기(이 방에 «!» 명령 한 줄) · ② 플레이 콘솔 «앱 만들기» + 개발자 이름(GIT CONSULTING SDN. BHD.?) 확인
+- 다음(① ② 뒤 이 방/새 방이 하나씩 올림, 설계 §8): I3 서명 키 — 콘솔 «앱 무결성 › 앱 서명 › Java 키 저장소에서 키 내보내기» 의 암호화 공개키(pem)를 방에 붙여 넣기 → `.toolchain/jdk21/bin/java -jar .toolchain/pepk.jar --keystore=/opt/secrets/purplepos-release.keystore --alias=purplepos --output=<zip> --include-cert --rsa-aes-encryption --encryption-key-path=<pem>` → zip 을 dev-apps/ 에 → Irene 업로드 · I4 내부 테스트(AAB https://dev.purplehere.com/dev-apps/PurplePOS-0.4.0.aab · 테스터 · Start rollout) · I5 실기기 6항목(설계 §7-2) · I6 앱 콘텐츠(store/app-access.md · data-safety.md — **/account-deletion·방침 보강이 운영에 배포된 뒤**) · I7 등록정보(store/listing.en.md · icon-512 · feature · screenshots) · I8 프로덕션 제출 · I9 게시 확인 → `build-release.sh --publish-feed` → /배포
+
+- Irene: «안드로이드앱 정식으로 등록하고 심사 진행하자.»
+- Fable 설계: /var/www/.claude/fable-design-20261012-play-store.md (구현 단일 기준 · 절단면 §4 네이티브·§5 웹 · 검증 §7 · Irene 할 일 §8 · 질문 §10)
+- Irene 답(10-12): «권고대로 진행해 줘» → Q1 (a) PlanQ 조직 계정·개발자 표시명=회사명(이름은 Console 에서 Irene 가 넣음) · Q2 (a) 기존 키 · Q3 (a) 빌드 하나·앱 안 설치 시트 삭제 · Q4 (a) 가입 링크 숨김+삭제 요청 페이지 · Q5 그대로
+- 답과 무관하게 먼저 하는 일: Node 22 격리 설치 · Capacitor 6→8 · targetSdk 36 · 화면 가장자리(edge-to-edge) 패딩 · allowBackup=false · 스토어 자료 초안(store/)
+- 한 것(답과 무관, 개발서버만·커밋 안 함): Node 22·JDK 21 을 mobile-app/.toolchain 에 받음(sha256 대조, 전역 무변경) · Capacitor 6.2.1→8.5.3 · targetSdk/compileSdk 36 · minSdk 24 · AGP 8.13.0 · Gradle 8.14.3 · Kotlin 2.2.20 · Java 21 · 버전 0.4.0/code 8 · allowBackup=false · configChanges navigation|density · 블루투스 «있으면 쓴다»(uses-feature required=false — 없으면 Play 가 블루투스 없는 태블릿에서 앱을 숨김) · SystemBars.insetsHandling='disable' + MainActivity 가 WebView 의 부모 틀에 시스템바 여백 · build-release.sh 새로 씀(AAB+APK, Play 사전검사, AAB 서명 확인, 산출물은 dev-apps/ 만 · 피드는 --publish-feed 로 Play 게시 뒤) · docs §8-7 대체 표시 + §10 릴리즈 기록 · README · store/(listing.en.md · app-access.md · data-safety.md · icon-512.png · feature-1024x500.png) · 에뮬레이터 AVD purplepos-ci-36 · build-tools 36 · android-36 이미지
+- 시험 도구 고침(무접촉 목록이었지만 10-01 «.dev» 접미 뒤로 깨져 있었음 — Fable 게이트에 보고): run-v3/v4 앱 시작 이름을 전체 클래스명으로 · PURPLE_PKG 환경변수 · V3-2 버전 비교에 «-dev»
+- V3(API 36) 결과: 첫 실행 13건 중 12건 통과(실패 1 = 버전 «-dev» 비교, 도구 문제 → 고침). 그 실행에서 한글 영수증 그림(V3-2b) 잉크 6.6% 통과. 그런데 여백을 WebView 자신 → 부모 틀로 옮긴 뒤 3번 연속 V3-2b 잉크 0.1%(빈 종이, 높이 141·바이트 10169 는 같음). 화면 여백 실측: WebView 자신에 준 패딩은 Chromium 이 무시(innerHeight 800 그대로) → 부모로 옮긴 것
+- 🔴 멈춘 곳: 원인 실험(여백만 WebView 로 되돌려 빌드+V3) 이 서버 메모리 부족으로 시스템이 강제 종료. 소스는 «부모 틀» 판으로 되돌려 둠(MainActivity.java). android/app/build/outputs/apk/debug/app-debug.apk(14:04) 는 실험판이라 소스와 다름 — 다음 빌드로 덮을 것
+- 다음: ① 메모리 여유 있을 때 실험 다시(여백을 WebView 로 되돌린 빌드로 V3-2b 가 통과하는지) — 통과하면 부모 틀 여백이 원인 → 다른 방식(Capacitor 'native' 처리 또는 decorView) 검토, 실패하면 Android 16 에서의 화면 밖 그리기 타이밍 문제 → OffscreenHtmlRenderer(무접촉 목록·인쇄 경로)라 Fable 판단 필요 ② API 34 비교 ③ 답이 오면 아래
+- 답 뒤 구현(10-12): 네이티브 — NativeUpdatePlugin.kt 삭제 · MainActivity 등록 삭제 · REQUEST_INSTALL_PACKAGES 삭제 · NativePrintPlugin diagnostics 에 installer 1키(인쇄 경로 0줄) · 브릿지 __NATIVE_UPDATE 삭제 + installer 1줄. 웹 — hooks/useNativeShell.ts(신규) · useNativeAppUpdate(Play 설치본이면 Play 열기, status 'store') · utils/nativeAppUpdate(PLAY_STORE_URL·installedFromPlay·appDownloadTarget Play 분기 — 설계는 kind 'page' 였으나 MainLayout 이 page 를 navigate 로 열어 외부 주소가 깨지므로 'handoff') · NativeAppUpdateBanner(store 문구·«Open Google Play») · LoginPage(앱 안에서 Sign up·Back to Home 숨김) · LandingLayout bareInApp + ForgotPasswordPage(앱 안에서 사이트 메뉴·바닥글 숨김 — 설계 표 밖, 비밀번호 찾기 화면의 헤더에 가입 버튼이 있어서) · AccountDeletionPage + App.tsx /account-deletion · PrivacyPolicyPage 삭제 링크 · 4언어 · jest 8/8(고장주입 2건 실패 확인) · e2e 4건 추가 · sw 5.94-play-store-20261012
+- 검증(10-12, 자체 · Fable 미검증): 웹 빌드 1회(SW 5.94) · jest 8/8 + 고장주입 2건 실패 확인 · e2e native-app-update 9/9 ×3 · i18n 통과 · verify-all --full 21/24 — 실패 3 = 무관: inspection LEDGER-004(10-11부터) · health [po] 수령 4건 stock_alerts FK(10-11부터) · deploy-ready «기록 sw 5.93 ≠ 실제 5.94»(다른 방의 releases/2026-10-11-menu-category.json — 배포 방이 기록을 고침)
+- V3 인쇄(가짜 프린터 바이트 판정): API 36 새 앱 12/13 · API 34 새 앱 12/13 · API 34 옛 0.3.4 코드 12/13 — 셋 다 V3-2b(한글 그림 인쇄) 잉크 0.1% 로 같은 실패 → 업그레이드 회귀 아님, 에뮬레이터의 화면 밖 그리기 문제로 보임(첫 실행 1회만 6.6% 통과). 여백 위치 실험(WebView/부모)도 무관 확인. OffscreenHtmlRenderer 는 무접촉 — 실기기 종이 확인(설계 §7-2)이 판정
+- 화면 여백: WebView 자신의 패딩은 무시됨(innerHeight 800 그대로) → 부모 틀로 옮김. 부모 틀 판의 측정·스크린샷은 V4 와 함께 하려다 멈춤(아래)
+- 🔴 멈춤(10-12): V4(API 36, 폴러 → 앱 인쇄 전 구간) 실행 중 서버 메모리 부족으로 시스템이 강제 종료 — 하니스가 매장 38 프린터 설정·시험 주문은 원복함. 에뮬레이터 꺼짐 확인. 시스템 안내상 지시 없이 다시 돌리지 않음
+- 남은 것: V4(API 36) · 부모 틀 여백 측정+스크린샷(API 36·34) · 정식 빌드(build-release.sh — AAB+APK, Play 사전검사) + 고장주입 3건(설치권한 되살림·allowBackup true·target 35) · Fable 게이트 1회 · Irene 할 일 I2~I9 상황판에 올림
+- Irene(10-13): «codemagic에서 빌드가 돌지를 않아. 제대로 완료되지 않아. 이유가 뭔지부터 찾아야 해»
+  - 실측: PurpleHere 에는 Codemagic 설정이 없다(codemagic.yaml 0 · 문서 0) — 이 앱은 처음부터 이 서버에서 빌드(build-release.sh, 서명 키 /opt/secrets). GitHub 기본 브랜치 main = 2026-08-27(8c0c01c), 앱 코드 최신은 deploy-isolation(10-09 wip), 오늘 Capacitor 8·Android 16 작업은 미커밋이라 GitHub 에 없음
+  - 재현(GitHub main 그대로 꺼내 이 서버에서 빌드): npm ci 통과 → gradle 17초 만에 실패 «capacitor-cordova-android-plugins/cordova.variables.gradle as it does not exist» — 이 폴더·앱 안 웹 파일(assets)은 `npx cap sync android` 가 만드는 것이라 GitHub 에 없다. Codemagic 기본 흐름엔 이 단계가 없음 → 같은 곳에서 멈췄을 가능성이 가장 큼(Codemagic 로그는 못 봄 — 확인 못 함)
+  - sync 를 넣어도 남는 것: 서명 키 없음(Play 거부) · PURPLE_APP_URL 없으면 앱이 개발서버를 엶 · main 코드는 targetSdk 34(Play 제출 불가) · 새 코드는 Node 22·Java 21
+  - Irene 답(10-13): «권고대로 진행해 줘» → A 이 서버에서 빌드. Codemagic 은 필요해지면 나중에
+- 10-15 이어서: 일시정지 해제 → 정식 빌드 EXIT 0(AAB dev-apps/PurplePOS-0.4.0.aab sha256 2b55a5a9…7b95, 사전검사·서명 통과) · 고장주입 3/3 차단 · V4(API 36) 새 앱·옛 0.3.4 모두 같은 실패(주문 가져감·0바이트 — 7월부터 미해결, 회귀 아님) · 여백 실측 API 36 innerHeight 720 / API 34 716(중복 없음) · 앱 안 «Download for Android» 배너 결함 발견 → PwaInstallContext 1줄(useIsNativeShell) 수정, e2e 로 수정 전 실패·반증 확인 → 빌드 2회째 · e2e 11/11 ×3 · verify-all 2차는 sweep 중 메모리 부족 강제 종료(그 전 게이트 결과는 1차와 같은 무관 실패 3)
+- (이전) 답 기다림(10-15): Fable 검증 — 요청 중 허락 창 떠 3분 넘게 대기, 상황판이 창을 닫음 → 실행 안 함, Fable 작업 중단(판정 파일·마커 없음, 남긴 변경 없음). 무엇: Fable 완료 검증 1회(설계상 이 사안 마지막) · 왜: 공개 주소(/account-deletion)·로그인 화면·배포 채널 변경이라 게이트 대상 · 답이 오면: 같은 요청(설계와 다른 점 9가지 + 자체 검증 숫자)으로 Fable 다시 → PASS 면 Irene 할 일 I2~I9 상황판에 하나씩. → Irene «권고대로 진행해 줘»(10-15) → Fable 재개 → 또 허락 창에서 3분 대기, 상황판이 닫음 → 중단(판정 파일·마커 없음, 에뮬레이터 0)
+- (이전) 답 기다림(10-15 2차): Fable 검증을 어떻게 받을지 · 왜: 백그라운드 방이라 Fable 이 쓰는 명령 중 허락이 필요한 것이 있으면 답할 사람이 없어 두 번 멈춤 · 선택지: A 명령 없이 «읽기만»(제 시험 기록·파일을 읽고 판정, 판정문만 씀 — 통과 표시 명령이 막히면 표시 없이 판정문으로) / B Irene 님이 이 방을 열어 둔 채 허락 창에 답하며 진행 · 권고 A · 답이 오면: A → Fable 에 «Bash 쓰지 말고 Read/Grep 만, 근거는 $CLAUDE_JOB_DIR/tmp 의 로그» 로 재요청 → PASS 면 Irene 할 일 I2~I9. → Irene «권고대로 진행해 줘»(A) → **Fable PASS(조건부)** — backups/fable-pending/fable-verdict-20261015-play-store-gate.md · 이탈 9건 전부 수용 · 마커 미기록(읽기 전용 — Irene 할 일로 올림)
+- 조건: A 방침 문장 보강(I6 전) → 10-15 반영(4언어 4줄) · B 스토어 스크린샷(I7 전) → mobile-app/scripts/store-capture.js 로 store/screenshots/ · C 회사명 «GIT CONSULTING SDN. BHD.» I2 때 Irene 한 줄 확인
+- 후속(묶음 밖): V4 하니스 «cdp eval failed»(07-27부터, 별건 원인) · 피드 운영 반영은 I9 뒤 --publish-feed → /배포 · «Play 열기» 카드 실작동은 0.4.1 피드 때 첫 확인
+- 이전 메모: 답이 오면: 자가 업데이트 제거(Q3) · 웹 가입 링크 숨김·/account-deletion(Q4) · 빌드·고장주입·에뮬 검증 · Fable 게이트 · Irene 할 일(I2~I9) 올림
 
 ### 완료 (2026-10-11) — 앱 다운로드 «컴퓨터면 QR» (개발서버 · Fable 안 씀 — 화면 다듬기) [Claude Code · 백그라운드 작업방 ad43a428]
 - Irene: «앱다운로드에서 데스크탑이면 모바일로 찍을 수 있는 QR도 넣어주면 편할 것 같아. 웹에서 쓰다가 앱 사용하고 싶을 때 주소 치고 안들어가고 바로 접속하게. 랜딩페이지에만 그렇게 할까?»

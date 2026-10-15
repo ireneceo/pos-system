@@ -149,8 +149,17 @@ class NativePrintPlugin : Plugin() {
         r.put("printers", arr)
         r.put("defaultPrinter", registry.defaultPrinterName())
         r.put("btPermission", btPermissionState()) // additive, Android-only
+        // 설치 출처(2026-10-12 Play 등록 D3) — "com.android.vending" 이면 Play 설치본 → 웹 업데이트 카드가 Play 를 연다.
+        // 사이드로드(adb·브라우저 APK)는 null 또는 다른 값 → 기존 브라우저 넘김. 읽기만, 인쇄 경로 무관.
+        r.put("installer", installerPackage() ?: org.json.JSONObject.NULL)
         call.resolve(r)
     }
+
+    private fun installerPackage(): String? = try {
+        val pm = context.packageManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) pm.getInstallSourceInfo(context.packageName).installingPackageName
+        else @Suppress("DEPRECATION") pm.getInstallerPackageName(context.packageName)
+    } catch (e: Exception) { null }
 
     // ── Android-only setup surface (window.__NATIVE_PRINT_SETUP, design §8-2) ──
     // Not part of §4. The web Settings page is the ONLY consumer, so the existing

@@ -42,7 +42,7 @@ const ForgotPasswordPage: React.FC = () => {
     }
   };
   return (
-    <LandingLayout>
+    <LandingLayout bareInApp>
       <Helmet>
         <title>{t('landing:forgotPasswordPage.forgotPasswordPurplehere')}</title>
       </Helmet>

@@ -4,8 +4,14 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.view.WindowManager;
 import android.webkit.WebView;
+
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.WebViewListener;
@@ -22,8 +28,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NativePrintPlugin.class);
         // 카드단말기 ECR 운반(GHL, 2026-10-01) — nativePrintBridge.js 가 window.__NATIVE_ECR 로 노출
         registerPlugin(NativeEcrPlugin.class);
-        // 앱 자가 업데이트(2026-10-04) — nativePrintBridge.js 가 window.__NATIVE_UPDATE 로 노출
-        registerPlugin(NativeUpdatePlugin.class);
+        // 앱 자가 업데이트(2026-10-04 NativeUpdatePlugin)는 2026-10-12 삭제 — Play 정책상 자가 설치 금지(Play 등록 설계 D3).
+        // 업데이트는 Play(설치 출처가 Play 일 때) 또는 웹 카드의 브라우저 넘김(사이드로드본)으로만.
         super.onCreate(savedInstanceState);
 
         // Inject the __NATIVE_PRINT bridge on EVERY page load, registered here in
@@ -49,6 +55,20 @@ public class MainActivity extends BridgeActivity {
                 }
             }
         });
+
+        // Android 16(targetSdk 36)은 화면을 상태바·내비바 밑까지 깐다(끌 수 없음). 원격 페이지는 그 여백을 모르므로
+        // WebView 를 감싼 틀에 시스템바·키보드 높이만큼 패딩을 줘 지금(0.3.4)과 같은 모양을 유지한다 — 웹 코드 0줄
+        // (Play 등록 설계 D5). capacitor.config 의 SystemBars.insetsHandling='disable' 과 한 쌍.
+        // WebView 자신의 패딩은 Chromium 이 무시한다(2026-10-12 API 36 에뮬 실측: innerHeight 800 그대로) → 부모에 준다.
+        WebView webView = getBridge().getWebView();
+        View insetView = (View) webView.getParent();
+        insetView.setBackgroundColor(0xFFFFFFFF);
+        ViewCompat.setOnApplyWindowInsetsListener(insetView, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            return WindowInsetsCompat.CONSUMED;
+        });
+        WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView()).setAppearanceLightStatusBars(true);
 
         // Always-on POS tablet: keep the screen awake so the print poller keeps
         // running (design §7-4).

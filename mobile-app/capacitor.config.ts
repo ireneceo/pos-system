@@ -28,6 +28,12 @@ const config: CapacitorConfig = {
     allowMixedContent: false
   },
   plugins: {
+    // targetSdk 36(Android 16)은 화면을 상태바·내비바 밑까지 까는 것을 끌 수 없다. 원격 페이지는 그 여백을
+    // 모르므로(MainLayout 🔒) Capacitor 의 CSS 변수 처리는 끄고 MainActivity 가 WebView 에 inset 만큼 패딩을 준다
+    // (Play 등록 설계 D5 · /var/www/.claude/fable-design-20261012-play-store.md).
+    SystemBars: {
+      insetsHandling: 'disable'
+    },
     // NativePrint plugin (Kotlin) backs window.__NATIVE_PRINT (the §4 contract shared
     // with the Windows app) and the Android-only window.__NATIVE_PRINT_SETUP (printer
     // registration / BT permission — read by the web Settings page only).

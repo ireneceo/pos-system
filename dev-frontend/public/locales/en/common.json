@@ -839,7 +839,9 @@
     "permission": "Turn on 'Allow from this source' for PurplePOS, then tap Update again.",
     "error": "Could not verify the file ({{error}}). Try again later or download it from {{host}}/download.",
     "row": "App version {{current}} · latest {{latest}}",
-    "upToDate": "Up to date"
+    "upToDate": "Up to date",
+    "store": "Google Play opens. Tap 'Update' there.",
+    "openPlay": "Open Google Play"
   },
   "loading": "Loading…",
   "sellerProduct": {

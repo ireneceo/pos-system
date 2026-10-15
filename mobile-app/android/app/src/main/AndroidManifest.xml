@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -10,7 +10,7 @@
         android:theme="@style/AppTheme">
 
         <activity
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
@@ -44,12 +44,13 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- 앱 자가 업데이트(2026-10-04): 내려받은 새 APK 의 설치 시트를 띄운다. 매장이 «이 출처 허용» 을 한 번 켠다. -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Bluetooth printing (design §7-4). Bonded devices only — NO scan, so no
          location permission is needed. Runtime BLUETOOTH_CONNECT on API 31+. -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- 블루투스 권한이 있으면 Play 가 «블루투스 필수» 로 보고 블루투스 없는 기기에서 앱을 숨긴다(aapt2 uses-implied-feature).
+         네트워크(LAN/Wi-Fi) 프린터만 쓰는 태블릿도 받을 수 있게 «있으면 쓴다» 로 둔다(Play 등록 2026-10-12). -->
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 </manifest>

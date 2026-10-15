@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { isNativeDesktop } from '../utils/nativeDesktop';
+import { useIsNativeShell } from '../hooks/useNativeShell';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -215,7 +216,10 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // beforeinstallprompt (and the window isn't display-mode:standalone), so without this
   // the "Install App" sidebar button + banner would wrongly appear and install a second,
   // print-bridge-less PWA copy (with MIN, 2026-07-08).
-  const nativeApp = isNativeDesktop();
+  // 안드로이드 앱은 브릿지를 «페이지가 다 열린 뒤» 끼워 넣는다 — 첫 그림에서 «앱 아님» 이 굳으면 앱 안에서
+  // «Download for Android» 가 뜬다(2026-10-15 API 36 에뮬 실측, Play 앱 안에서 APK 를 권하면 정책 위반).
+  // 처음 10초 다시 확인하는 공용 훅으로(useNativeAppUpdate·LoginPage 와 같은 판정).
+  const nativeApp = useIsNativeShell();
   // 설치 가능한 플랫폼이면 전부 — 예전엔 iOS 만 `/pos` 경로로 좁혀져 매장 화면에서 안 보였다.
   const shouldShowBanner = !isStandalone && !isDismissed && !nativeApp && (Boolean(deferred) || platform !== 'other');
 

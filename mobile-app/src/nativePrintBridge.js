@@ -58,21 +58,15 @@
     };
   }
 
-  // 앱 자가 업데이트(2026-10-04) — 0.3.1+. 0.2.0/0.3.0 에는 없다 = 웹이 브라우저 경로로 분기하는 조건.
-  const U = Cap.Plugins.NativeUpdate;
-  if (U) {
-    window.__NATIVE_UPDATE = {
-      available: true,
-      canInstall: () => U.canInstall().catch(() => ({ granted: false })),
-      install: safe((job) => U.install(job))
-    };
-  }
+  // 앱 자가 업데이트(__NATIVE_UPDATE, 2026-10-04)는 2026-10-12 삭제 — Play 정책(Play 등록 설계 D3).
+  // 웹은 __NATIVE_PRINT.installer 로 Play 설치본을 가려 Play 를 연다.
 
   // Resolve the real APK version onto the bridge (App.tsx renders it as a badge).
   P.diagnostics()
     .then((d) => {
       if (d && d.appVersion) window.__NATIVE_PRINT.version = d.appVersion;
       if (d && d.appVersionCode != null) window.__NATIVE_PRINT.versionCode = d.appVersionCode; // 업데이트 비교용
+      if (d) window.__NATIVE_PRINT.installer = d.installer == null ? null : d.installer; // 설치 출처(Play = com.android.vending)
     })
     .catch(() => { /* stays null — the Settings diagnostics card surfaces the failure */ });
 })();

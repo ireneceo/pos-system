@@ -47,6 +47,7 @@ const ForgotPasswordPage = React.lazy(() => import('./pages/Landing/ForgotPasswo
 const ResetPasswordPage = React.lazy(() => import('./pages/Landing/ResetPasswordPage'));
 const CompanyPage = React.lazy(() => import('./pages/Landing/CompanyPage'));
 const PrivacyPolicyPage = React.lazy(() => import('./pages/Landing/PrivacyPolicyPage'));
+const AccountDeletionPage = React.lazy(() => import('./pages/Landing/AccountDeletionPage'));
 const TermsOfServicePage = React.lazy(() => import('./pages/Landing/TermsOfServicePage'));
 const FAQPage = React.lazy(() => import('./pages/Landing/FAQPage'));
 const BlogPage = React.lazy(() => import('./pages/Landing/BlogPage'));
@@ -545,6 +546,7 @@ function App() {
                       <Route path="/reset-password" element={<ResetPasswordPage />} />
                       <Route path="/company" element={<CompanyPage />} />
                       <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                      <Route path="/account-deletion" element={<AccountDeletionPage />} />
                       <Route path="/terms" element={<TermsOfServicePage />} />
                       <Route path="/faq" element={<FAQPage />} />
                       <Route path="/referral-program" element={<ReferralLandingPage />} />

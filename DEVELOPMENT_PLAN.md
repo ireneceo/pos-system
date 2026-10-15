@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-11 — [Claude Code] 브랜드 매니저 = 회사 직원: 여러 브랜드·회사 전체 배정 + 회사 공용 자료 개방 + 메뉴 접근 7묶음 정리(Fable 설계·검증 PASS · 개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 발주 카탈로그: 부모 브랜드 재료로 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 뜨던 표시 결함 수정(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] ✅ **v3.110 · 운영 배포 SW 5.90-preflight-security-20261010 (백업 20261011_062932 · 마이그 118/118 · 스모크 10/10)** — 10-08~10-11 묶음(운영 전 보안 0단 · 판매 중지 상품 · 청구서 창 · 재고→원가 · 외부 정산서 · 배송 지역 · 키오스크 결제/전체 화면 · 새 매장 결제 기본값) 운영 반영. 1차는 마이그 순서(새 칸이 목록 끝)로 실패→자동 원복, 레지스트리 순서 고쳐(Fable PASS) 2차 성공.
+> **최종 업데이트:** 2026-10-15 — [Claude Code] 안드로이드 앱 Google Play 등록 준비: Capacitor 8 · Android 16 기준 · 자가 업데이트 제거 · 앱 안 가입 길 닫기 + /account-deletion · 플레이 제출 파일 0.4.0(AAB) · Fable PASS(조건부) · 플레이 콘솔 작업은 Irene 할 일로(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 브랜드 매니저 = 회사 직원: 여러 브랜드·회사 전체 배정 + 회사 공용 자료 개방 + 메뉴 접근 7묶음 정리(Fable 설계·검증 PASS · 개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 발주 카탈로그: 부모 브랜드 재료로 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 뜨던 표시 결함 수정(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] ✅ **v3.110 · 운영 배포 SW 5.90-preflight-security-20261010 (백업 20261011_062932 · 마이그 118/118 · 스모크 10/10)** — 10-08~10-11 묶음(운영 전 보안 0단 · 판매 중지 상품 · 청구서 창 · 재고→원가 · 외부 정산서 · 배송 지역 · 키오스크 결제/전체 화면 · 새 매장 결제 기본값) 운영 반영. 1차는 마이그 순서(새 칸이 목록 끝)로 실패→자동 원복, 레지스트리 순서 고쳐(Fable PASS) 2차 성공.
 
 > **이전:** 2026-10-11 — [Claude Code] ✅ **키오스크 결제 화면 개편 + 키오스크 묶음 /개발완료 (개발서버만)** — 카운터 결제 키오스크 숨김 · 가로 = 오른쪽 결제 패널, 세로 = 한 칸 · 미등록 태블릿 안내 · 키오스크 전체 화면(18bc810d)·대시보드 링크(72cfb0db)·새 매장 결제 기본값(f5b1a378) 함께 기록 · Irene «좋아» · 키오스크 흐름 6크기 재점검 + 실제 주문 1건 확인.
 
@@ -11084,6 +11084,29 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 - `middleware/{auth,brandScope,buyerScope,sellerScope,requireModule}.js` · `routes/{brands-core,badgeCounts,ingredients,suppliers,brand-products}.js` · `scripts/health-check.js`
 - `dev-frontend/src/pages/Brand/BrandStaffPage.tsx` · `contexts/AuthContext.tsx` · `components/Layout/MainLayout.tsx`(사이드바 묶음만 · print-guard bless) · locales 4개
 - `docs/ROLES_AND_PERMISSIONS.md` §3
+
+---
+
+## ✅ 완료: 안드로이드 앱 Google Play 등록 준비 [Claude Code] (2026-10-15)
+
+> Irene «안드로이드앱 정식으로 등록하고 심사 진행하자.» · 설계 `.claude/fable-design-20261012-play-store.md`(Fable) · 검증 `backups/fable-pending/fable-verdict-20261015-play-store-gate.md`(Fable PASS 조건부, 읽기 전용 — 마커는 Irene 할 일)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Android 16 기준 | Capacitor 6.2.1→8.5.3 · targetSdk/compileSdk 36 · minSdk 24 · AGP 8.13 · Gradle 8.14.3 · Kotlin 2.2.20 · Java 21(툴체인은 mobile-app/.toolchain) | ✅ 완료 |
+| 화면 가장자리 | 상태바·내비바 여백을 WebView 부모 틀에(API 36 innerHeight 720 · API 34 716 실측) | ✅ 완료 |
+| 플레이 정책 | 자가 업데이트 플러그인·설치 권한 삭제 · allowBackup=false · 블루투스 «있으면 씀» · 앱이 설치 출처를 웹에 알림 | ✅ 완료 |
+| 웹 | Play 설치본은 업데이트 카드가 Google Play 를 엶 · 앱 안 로그인/비밀번호 찾기에서 가입·홈 길 숨김 · 앱 안 «Download for Android» 배너 결함 수정 · /account-deletion(4언어) · 개인정보처리방침 보강 | ✅ 완료 |
+| 빌드 | build-release.sh 새로(AAB+APK · Play 사전검사 · 서명 확인 · 산출물은 dev-apps/ 만, 피드는 --publish-feed) · 고장주입 3/3 · AAB 0.4.0 sha256 2b55a5a9…7b95 | ✅ 완료 |
+| 스토어 자료 | store/ 소개 문구·심사자 안내·Data safety 초안·아이콘 512·대표 이미지·스크린샷 9장(store-capture.js) | ✅ 완료 |
+| Codemagic | 빌드 실패 원인 재현(설정 없음 · cap sync 산출물 git 에 없음) → 이 서버에서 빌드로 결정(Irene) | ✅ 완료 |
+| 플레이 콘솔 | 앱 만들기 · 서명 키 · 내부 테스트 · 콘텐츠 선언 · 제출 — Irene 할 일(상황판) | ⏳ Irene |
+
+### 수정된 파일
+- `mobile-app/` (package.json·lock · android/* gradle·manifest · MainActivity.java · NativePrintPlugin.kt · NativeUpdatePlugin.kt 삭제 · src/nativePrintBridge.js · capacitor.config.ts · scripts/build-release.sh · scripts/store-capture.js · scripts/verify/run-v3.js·run-v4.js · docs/ANDROID_APP_DESIGN.md §10 · README.md · .gitignore · store/)
+- `dev-frontend/src/hooks/useNativeShell.ts` · `useNativeAppUpdate.ts` · `utils/nativeAppUpdate.ts`(+test) · `components/Common/NativeAppUpdateBanner.tsx` · `contexts/PwaInstallContext.tsx` · `pages/Login/LoginPage.tsx` · `components/Landing/LandingLayout.tsx` · `pages/Landing/ForgotPasswordPage.tsx` · `pages/Landing/AccountDeletionPage.tsx` · `pages/Landing/PrivacyPolicyPage.tsx` · `App.tsx` · locales 4언어 · `public/sw.js` · `e2e/native-app-update.spec.js`
 
 ---
 
