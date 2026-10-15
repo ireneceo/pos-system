@@ -34,7 +34,10 @@
     "searchProducts": "Search products...",
     "moq": "MOQ {{n}}",
     "perUnit": "/{{unit}}",
-    "loadFailed": "Failed to load supplier profile."
+    "loadFailed": "Failed to load supplier profile.",
+    "externalSupplier": "External supplier",
+    "truncated": "Showing {{shown}} of {{total}} products — search to narrow down.",
+    "noImage": "No image"
   },
   "myContracts": {
     "title": "My Suppliers",
@@ -224,7 +227,30 @@
     "orderedAs": "Ordered as: {{line}}",
     "stockConversion": "Stock conversion",
     "stockConversionHint": "How much of your stock unit is added when one package is received.",
-    "conversionRequired": "Enter how many {{unit}} one {{pkg}} adds to stock."
+    "conversionRequired": "Enter how many {{unit}} one {{pkg}} adds to stock.",
+    "nameRequired": "Product name is required.",
+    "unitRequired": "Choose the usage unit.",
+    "priceRequired": "Enter a valid price.",
+    "name": "Product name",
+    "namePlaceholder": "e.g. Chicken Breast",
+    "skuPlaceholder": "Supplier's product code (optional)",
+    "skuHint": "Leave empty to number it automatically.",
+    "orderMode": "How do you order this?",
+    "orderModePack": "By count (pack / box / carton)",
+    "orderModeMeasure": "By weight or volume (kg, g, L, ml)",
+    "baseQty": "Base Qty",
+    "usageUnit": "Usage Unit",
+    "selectUnit": "Select unit",
+    "leadTime": "Lead time (days)",
+    "supplierRequired": "Select an external supplier.",
+    "skuExists": "This SKU is already used by another product of this supplier.",
+    "saveFailed": "Failed to save product.",
+    "add": "Add Product",
+    "editTitle": "Edit Product",
+    "addTitle": "Add Product",
+    "hint": "This is an external supplier you registered. Add the products you buy from them — they'll be orderable from your stock items.",
+    "deleteTitle": "Delete product",
+    "nameHint": "The supplier's own name for this product. Defaults to your item name — edit if theirs differs."
   },
   "common": {
     "save": "Save",

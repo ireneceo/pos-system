@@ -2035,7 +2035,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
               <div key={inv.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.8fr 0.8fr 0.8fr', gap: 8, padding: '10px 12px', borderBottom: '1px solid #C7CED6', fontSize: 13, alignItems: 'center' }}>
                 <div style={{ fontWeight: 600, color: '#0A2540' }}>{inv.invoice_number}</div>
                 <div style={{ color: '#374151' }}>{inv.category_display_name || inv.invoice_category || '—'}</div>
-                <div style={{ color: '#0A2540', fontWeight: 600 }}>{getCurrencySymbol(inv.currency || 'MYR')} {Number(inv.total_amount).toLocaleString('en-MY', { minimumFractionDigits: 2 })}</div>
+                <div style={{ color: '#0A2540', fontWeight: 600 }}>{getCurrencySymbol(inv.currency || 'MYR')} {Number(inv.total_amount).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 <div>
                   <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600,
                     background: inv.status === 'paid' ? '#D1FAE5' : inv.status === 'overdue' ? '#FEE2E2' : inv.status === 'pending_payment' ? '#FEF3C7' : '#C7CED6',

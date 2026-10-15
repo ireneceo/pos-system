@@ -27,6 +27,7 @@ const router = express.Router();
 //   줄에는 포장단위(unit) + 주문 시점 용량 스냅샷(base_quantity·base_unit)이 함께 저장된다: «10 kg/BOX × 3 BOX».
 //   (같은 날 결함: supplier 상품을 매장 메뉴 표에서 찾아 'piece' 가 찍히던 것 — util 주석 참조)
 const { resolveOrderLine } = require('../utils/poLineSpec');
+const { resolveLineOptions, descriptionWithOptions, optionsKey, LineOptionError, lineOptionErrorBody } = require('../utils/poLineOptions');
 async function orderLineUnitFields(mapping, stockRow, raw, transaction) {
   const r = await resolveOrderLine(mapping, stockRow, transaction);
   return { unit: r.unit || (raw && raw.unit) || null, base_quantity: r.base_quantity, base_unit: r.base_unit };
@@ -881,6 +882,17 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
   }
   const contractId = relation.contractId;
 
+  // 고른 옵션(공급업체 상품) — 연결 하나와 option_ids 로 스냅샷·조정액을 서버가 낸다(utils/poLineOptions.js).
+  //   옵션이 있는 줄은 화면의 unit_price 를 보지 않는다 — 단가 = 연결 단가 + DB 조정액.
+  const lineOptionsFor = async (raw, mappingRow) => {
+    try {
+      return { ok: true, ...(await resolveLineOptions({ mapping: mappingRow, optionIds: raw.option_ids, transaction })) };
+    } catch (e) {
+      if (e instanceof LineOptionError) return { ok: false, status: 400, body: lineOptionErrorBody(e) };
+      throw e;
+    }
+  };
+
   const validatedItems = [];
   for (const raw of items) {
     // 2026-09-01: 레시피 없는 프로덕트 = 재고아이템 자체(수량이 프로덕트에 산다).
@@ -917,7 +929,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
           body: { success: false, code: 'PRODUCT_HAS_RECIPE', message: `Product ${pid} has a recipe or a linked stock item (or is a set) — order the stock item instead` }
         };
       }
-      let convP = 1, priceP = 0, mappingP = raw.ingredient_seller_product_id || null;
+      let convP = 1, priceP = 0, mappingP = raw.ingredient_seller_product_id || null, mappingRowP = null;
       if (seller_type !== 'system_admin') {
         const mw = { [targetKey]: pid, seller_type, seller_entity_id: seller_entity_id ? parseInt(seller_entity_id, 10) : null, is_active: true };
         if (raw.ingredient_seller_product_id) mw.id = raw.ingredient_seller_product_id;
@@ -926,9 +938,14 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
           return { ok: false, status: 400, body: { success: false, code: 'MAPPING_REQUIRED', message: `Product ${pid} is not mapped to this seller` } };
         }
         mappingP = mapping.id; convP = parseFloat(mapping.unit_conversion) || 1; priceP = parseFloat(mapping.unit_price) || 0;
+        mappingRowP = mapping;
       }
+      const optP = await lineOptionsFor(raw, mappingRowP);
+      if (!optP.ok) return optP;
       const fConvP = raw.unit_conversion != null ? (parseFloat(raw.unit_conversion) || 1) : convP;
-      const fPriceP = raw.unit_price != null ? (parseFloat(raw.unit_price) || 0) : priceP;
+      const fPriceP = optP.options
+        ? Math.round((priceP + optP.adjustment) * 100) / 100
+        : (raw.unit_price != null ? (parseFloat(raw.unit_price) || 0) : priceP);
       validatedItems.push({
         ...stockTargetAttrs(targetKey, pid),
         ingredient_seller_product_id: mappingP,
@@ -938,8 +955,9 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
         unit_price: fPriceP,
         unit_conversion: fConvP,
         line_total: Math.round((qtyP * fPriceP) * 100) / 100,
+        options: optP.options,
         notes: raw.notes ? sanitizeString(String(raw.notes)).slice(0, 255) : null,
-        description: prod.name ? String(prod.name).slice(0, 255) : null
+        description: descriptionWithOptions(prod.name, optP.options)
       });
       continue;
     }
@@ -968,8 +986,12 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
         mappingB = mapping.id; convB = parseFloat(mapping.unit_conversion) || 1; priceB = parseFloat(mapping.unit_price) || 0;
         mappingRowB = mapping;
       }
+      const optB = await lineOptionsFor(raw, mappingRowB);
+      if (!optB.ok) return optB;
       const fConv = raw.unit_conversion != null ? (parseFloat(raw.unit_conversion) || 1) : convB;
-      const fPrice = raw.unit_price != null ? (parseFloat(raw.unit_price) || 0) : priceB;
+      const fPrice = optB.options
+        ? Math.round((priceB + optB.adjustment) * 100) / 100
+        : (raw.unit_price != null ? (parseFloat(raw.unit_price) || 0) : priceB);
       validatedItems.push({
         ...stockTargetAttrs('product_ingredient_id', piId),
         ingredient_seller_product_id: mappingB,
@@ -979,8 +1001,9 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
         unit_price: fPrice,
         unit_conversion: fConv,
         line_total: Math.round((qtyB * fPrice) * 100) / 100,
+        options: optB.options,
         notes: raw.notes ? sanitizeString(String(raw.notes)).slice(0, 255) : null,
-        description: pIng.name ? String(pIng.name).slice(0, 255) : null
+        description: descriptionWithOptions(pIng.name, optB.options)
       });
       continue;
     }
@@ -1028,8 +1051,12 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
       }
     }
 
+    const optI = await lineOptionsFor(raw, mappingRow);
+    if (!optI.ok) return optI;
     const finalConv = raw.unit_conversion != null ? (parseFloat(raw.unit_conversion) || 1) : convFallback;
-    const finalPrice = raw.unit_price != null ? (parseFloat(raw.unit_price) || 0) : priceFallback;
+    const finalPrice = optI.options
+      ? Math.round((priceFallback + optI.adjustment) * 100) / 100
+      : (raw.unit_price != null ? (parseFloat(raw.unit_price) || 0) : priceFallback);
     validatedItems.push({
       ...stockTargetAttrs('ingredient_id', ingredientId),
       ingredient_seller_product_id: resolvedMappingId,
@@ -1039,8 +1066,9 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
       unit_price: finalPrice,
       unit_conversion: finalConv,
       line_total: Math.round((qty * finalPrice) * 100) / 100,
+      options: optI.options,
       notes: raw.notes ? sanitizeString(String(raw.notes)).slice(0, 255) : null,
-      description: ing.name ? String(ing.name).slice(0, 255) : null
+      description: descriptionWithOptions(ing.name, optI.options)
     });
   }
 
@@ -1163,8 +1191,9 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
       const prevItems = await PurchaseOrderItem.findAll({
         where: { purchase_order_id: existing.id }, transaction, lock: transaction.LOCK.UPDATE
       });
+      // 고른 옵션이 다르면 다른 줄이다(Whole 과 Sliced 를 합치지 않는다 · utils/poLineOptions.js)
       const keyOf = (it) => [
-        it.ingredient_id ?? 'n', it.product_ingredient_id ?? 'n', it.ingredient_seller_product_id ?? 'n'
+        it.ingredient_id ?? 'n', it.product_ingredient_id ?? 'n', it.ingredient_seller_product_id ?? 'n', optionsKey(it.options)
       ].join('|');
       const prevByKey = new Map(prevItems.map(it => [keyOf(it), it]));
 

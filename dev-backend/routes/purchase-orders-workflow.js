@@ -16,6 +16,7 @@
 
 const express = require('express');
 const { currencySymbol } = require('../utils/currency');
+const { optionsAdjustment } = require('../utils/poLineOptions');
 const router = express.Router();
 const { Op } = require('sequelize');
 const database = require('../config/database');
@@ -517,11 +518,13 @@ router.post('/purchase-orders/:id/refresh-prices', async (req, res) => {
       const live = priceByMap[it.ingredient_seller_product_id];
       // 현재가가 없거나 0 이면 건드리지 않는다 — 0 은 「공짜」가 아니라 「아직 안 정함」이다.
       if (live === undefined || live === null || !(live > 0)) continue;
+      // 고른 옵션이 있는 줄 = 현재 기본가 + 담을 때 고른 옵션 조정액(스냅샷 · utils/poLineOptions.js)
+      const target = Math.round((live + optionsAdjustment(it.options)) * 100) / 100;
       const before = Number(it.unit_price) || 0;
-      if (Math.abs(before - live) < 0.005) continue;
+      if (Math.abs(before - target) < 0.005) continue;
       const qty = Number(it.quantity_ordered) || 0;
-      await it.update({ unit_price: live, line_total: Math.round(qty * live * 100) / 100 }, { transaction: t });
-      changed.push({ item_id: it.id, name: it.description, from: before, to: live });
+      await it.update({ unit_price: target, line_total: Math.round(qty * target * 100) / 100 }, { transaction: t });
+      changed.push({ item_id: it.id, name: it.description, from: before, to: target });
     }
 
     if (!changed.length) { await t.rollback(); return res.json({ success: true, data: po, changed: [], message: 'Already up to date' }); }

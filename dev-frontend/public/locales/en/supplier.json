@@ -88,7 +88,10 @@
       "measure": "Price per 1 {{unit}}",
       "pack": "Price per 1 unit of {{spec}}",
       "needUnit": "Choose a unit below to see what this price covers"
-    }
+    },
+    "optionsEmptyHint": "Options are choices that do not change the amount — cut, grade, aging, brand. If the pack or size differs (1 kg / 5 kg, 1 pack / 20-pack carton), add a separate product instead.",
+    "optionGroupHint": "Use options for choices that do not change the amount (cut, grade, aging, brand). A different pack or size (1 kg / 5 kg, 1 pack / 20-pack carton) is a separate product — each gets its own spec and price.",
+    "optionGroupPlaceholder": "e.g., Cut Style, Grade, Aging"
   },
   "inventory": {
     "title": "Inventory Management",
@@ -251,20 +254,29 @@
     },
     "amend": {
       "title": "Edit order items",
-      "hint": "The buyer is told what changed. You cannot raise the order total — to charge more, reject the order and ask the buyer to reorder.",
+      "hint": "The buyer is told what changed. Raising the total asks you to confirm; if the buyer's Owner approval is on, the new total waits for that approval.",
       "item": "Item",
       "qty": "Qty",
       "choose": "Search a product",
       "addLine": "Add item",
       "removeLine": "Remove this line",
       "itemsTotal": "Items total",
-      "exceeds": "This exceeds the amount the buyer approved. Lower the quantities, or reject the order so the buyer can reorder.",
+      "exceeds": "Order total rises above the current total. Confirm the increase when you save.",
       "reason": "Reason (optional)",
       "reasonPlaceholder": "The buyer always sees what changed. Add a note if it helps.",
       "submit": "Save changes",
       "cancel": "Cancel",
       "loading": "Loading…",
-      "noProducts": "No matching product in your catalogue"
+      "noProducts": "No matching product in your catalogue",
+      "raiseNotice": "Order total rises {{totals}}. The buyer will be notified of the change.",
+      "raiseNeedsApproval": "This buyer requires Owner approval for the new total — the order leaves your list until it is approved.",
+      "confirmRaiseTitle": "Raise the order total?",
+      "confirmRaiseBody": "{{totals}} (+{{diff}}). The buyer is told what changed.",
+      "confirmRaiseApprovalBody": "The buyer's Owner must approve the new total. Until then the order is not in your list. If declined, it returns to the buyer as a draft and the buyer reorders. Once approved it comes back as Submitted — confirm it again.",
+      "confirmRaiseOk": "Raise total",
+      "savedTitle": "Order updated",
+      "savedPendingApproval": "Saved — waiting for the buyer's Owner to approve the new total.",
+      "ok": "OK"
     },
     "create": {
       "action": "Add order",
@@ -360,7 +372,12 @@
     "partiallyCompleted": "Partially Completed"
   },
   "nav": {
-    "direct": "External"
+    "direct": "External",
+    "suppliers": "Suppliers",
+    "allSuppliers": "All Suppliers",
+    "allProducts": "All Products",
+    "contracts": "Contracts",
+    "findSuppliers": "Find Suppliers"
   },
   "viewNote": {
     "own": "You can edit or delete this supplier from the External tab.",
@@ -427,5 +444,52 @@
   "deleteConfirm": {
     "storesKeep": "Stores that received a copy keep their own copy.",
     "ownerStores": "All your restaurants will stop seeing it. Orders already placed are kept."
+  },
+  "allProducts": {
+    "saved": "\"{{name}}\" saved",
+    "pickItem": "Choose one of your items.",
+    "addFailed": "Could not add to your items.",
+    "added": "\"{{name}}\" is now in your items",
+    "search": "Search name, SKU, supplier, category",
+    "allSuppliers": "All suppliers",
+    "allCategories": "All categories",
+    "sourceAll": "All sources",
+    "sourceMine": "External suppliers I registered",
+    "sourceOther": "Platform & brand sellers",
+    "linkAll": "Linked or not",
+    "linked": "In my items",
+    "unlinked": "Not in my items",
+    "allPackages": "All package units",
+    "truncated": "Showing {{shown}} of {{total}} supplier products — search to narrow down.",
+    "count": "{{n}} products",
+    "col": {
+      "product": "Product",
+      "supplier": "Supplier",
+      "spec": "Spec",
+      "price": "Price",
+      "min": "Min. order",
+      "myItems": "My items",
+      "actions": "Actions"
+    },
+    "loading": "Loading…",
+    "empty": "No products match.",
+    "kindMine": "External (mine)",
+    "kindBrand": "Brand",
+    "kindFoodcourt": "Foodcourt",
+    "kindSupplier": "Supplier",
+    "notLinkedShort": "Not added",
+    "addToItems": "Add to my items",
+    "openSupplier": "Supplier",
+    "externalSupplier": "External supplier",
+    "pickSupplier": "Select an external supplier",
+    "noExternal": "You have not registered an external supplier yet. Add one in the All Suppliers tab first, then add its products here.",
+    "externalOnly": "Platform suppliers manage their own catalog — you can add products only to suppliers you registered.",
+    "addToItemsTitle": "Add to my items",
+    "howToAdd": "How do you want to add it?",
+    "modeNew": "As a new item",
+    "modeLink": "Link to an item I already have (same thing — avoid a second line)",
+    "itemName": "Item name",
+    "newPreview": "New item: {{spec}} · price {{price}} per package — same as the supplier product",
+    "myItem": "My item"
   }
 }

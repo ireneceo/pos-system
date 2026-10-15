@@ -768,6 +768,8 @@
   "nav.rentManagement": "Rent Management",
   "ewalletTypeQuestion": "Which e-wallet are you paying with?",
   "pwa.guide.title": "Install the app",
+  "pwa.guide.qrAndroid": "Installing on an Android tablet or phone? Scan this with its camera to download the app — no need to type the address.",
+  "pwa.guide.qrLink": "Installing on an Android tablet? Scan a QR code",
   "pwa.guide.install": "Install",
   "pwa.guide.downloadWindows": "Download for Windows",
   "pwa.guide.downloadAndroid": "Download app",

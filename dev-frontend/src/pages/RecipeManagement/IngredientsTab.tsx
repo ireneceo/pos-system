@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { parseMinOrderQty, sellerSpecLabel, stockSpecLabel } from '../../utils/unitConversion';
+import { parseMinOrderQty, sellerSpecLabel, stockSpecLabel, PACKAGE_UNIT_SUGGESTIONS, withCurrentUnit } from '../../utils/unitConversion';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
@@ -852,6 +852,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   // 매장 소유 재료만 — 브랜드 표준 재료는 브랜드가 관리한다(매장에서는 읽기전용).
   const [sellAsProductTarget, setSellAsProductTarget] = useState<Ingredient | null>(null);
 
+  // 저장 뒤 다시 불러오기 — 첫 불러오기와 같이 `?include=sellers` 를 붙인다(2026-10-15).
+  //   빠뜨리면 저장 한 번에 카드·수정 창의 공급업체 연결이 다 사라져 보였다(새로고침 전까지)
+  //   — Irene «스톡아이템 수정하면 연결된 공급업체가 안나와».
   const fetchIngredients = async () => {
     try {
       const token = getToken();
@@ -859,7 +862,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       // Brand General/Manager
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
         if (brandId) {
-          const response = await fetch(`/api/brands/${brandId}/ingredients`, {
+          const response = await fetch(`/api/brands/${brandId}/ingredients?include=sellers`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           const data = await response.json();
@@ -871,7 +874,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       // Restaurant Admin - 자체 재료 + 브랜드 재료 함께 조회
       else if (user?.role === 'Restaurant Admin' && effectiveRestaurantId) {
         const [ownRes, brandRes] = await Promise.all([
-          fetch(`/api/restaurants/${effectiveRestaurantId}/ingredients`, {
+          fetch(`/api/restaurants/${effectiveRestaurantId}/ingredients?include=sellers`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }).then(r => r.json()),
           fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients?include=sellers`, {
@@ -948,7 +951,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         base_quantity: ingredient.base_quantity?.toString() || '1',
         package_unit: (ingredient as any).package_unit || '',
         package_quantity: ((ingredient as any).package_quantity ?? 1).toString(),
-        unit_cost: ingredient.unit_cost.toString(),
+        // 소수 둘째 자리로 보인다(DB 4자리 «1.8800») — 손대지 않으면 저장 때 보내지 않아 원래 값이 그대로 남는다(2026-10-15 Fable D6)
+        unit_cost: Number(ingredient.unit_cost).toFixed(2),
         supplier_id: ingredient.supplier_id || '',
         min_stock: ingredient.min_stock?.toString() || '0',
       };
@@ -1040,7 +1044,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           // 기준단위를 안 고르면 취급단위와 같다는 뜻 — 서버·화면 모두 `package_unit ?? unit` 으로 읽는다
           package_unit: formData.package_unit || null,
           package_quantity: parseFloat(formData.package_quantity) || 1,
-          unit_cost: parseFloat(formData.unit_cost),
+          // 수정 창에서 단가를 안 고쳤으면 보내지 않는다 — «0.0465» 를 «0.05» 로 깎아 저장하지 않게(서버는 보낸 칸만 고친다)
+          ...(selectedIngredient && formData.unit_cost === initialFormData?.unit_cost ? {} : { unit_cost: parseFloat(formData.unit_cost) }),
           min_stock: parseInt(formData.min_stock) || 0,
         })
       });
@@ -1580,14 +1585,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 onChange={(e) => setFormData({ ...formData, package_unit: e.target.value })}
               >
                 <option value="">{t('brand:productIngredientsTab.selectUnit')}</option>
-                <option value="kg">kg</option>
-                <option value="g">g</option>
-                <option value="L">L</option>
-                <option value="ml">ml</option>
-                <option value="piece">piece</option>
-                <option value="pack">pack</option>
-                <option value="can">can</option>
-                <option value="bottle">bottle</option>
+                {/* 포장 종류 전부 — 판매 상품 폼 제안 목록과 같은 어휘(서버 ENUM utils/stockUnits.js, 2026-10-15 Irene «카톤도 … 팩킹 종류 다») */}
+                {withCurrentUnit(PACKAGE_UNIT_SUGGESTIONS, formData.package_unit).map((u) => <option key={u} value={u}>{u}</option>)}
               </FormSelect>
             </UIFormGroup>
           </UIFormRow>
@@ -1948,7 +1947,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       />
       {/* 경로② — 이 재고를 외부공급업체 상품으로 등록 (공유 부품 · BG 재고 화면과 같은 코드) */}
       <RegisterExternalSupplierModal
-        target={extTarget ? { id: extTarget.id, name: extTarget.name, unit: extTarget.unit } : null}
+        target={extTarget ? { id: extTarget.id, name: extTarget.name, unit: extTarget.unit, base_quantity: (extTarget as any).base_quantity, package_unit: (extTarget as any).package_unit, package_quantity: (extTarget as any).package_quantity } : null}
         targetKind="ingredient"
         buyerApiBase={isBrandRole && brandId ? `/api/brands/${brandId}` : `/api/restaurants/${effectiveRestaurantId}`}
         buyerScopeQS={buyerScopeQS}

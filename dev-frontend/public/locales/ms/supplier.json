@@ -88,7 +88,10 @@
       "measure": "Harga bagi 1 {{unit}}",
       "pack": "Harga bagi 1 unit {{spec}}",
       "needUnit": "Pilih unit di bawah untuk melihat asas harga ini"
-    }
+    },
+    "optionsEmptyHint": "Pilihan ialah pilihan yang tidak mengubah kuantiti — potongan, gred, pemeraman, jenama. Jika pek atau saiz berbeza (1 kg / 5 kg, 1 pek / karton 20 pek), tambah produk berasingan.",
+    "optionGroupHint": "Gunakan pilihan untuk pilihan yang tidak mengubah kuantiti (potongan, gred, pemeraman, jenama). Pek atau saiz berbeza (1 kg / 5 kg, 1 pek / karton 20 pek) ialah produk berasingan — setiap satu ada spesifikasi dan harga sendiri.",
+    "optionGroupPlaceholder": "cth., Gaya Potongan, Gred, Pemeraman"
   },
   "inventory": {
     "title": "Pengurusan Inventori",
@@ -251,20 +254,29 @@
     },
     "amend": {
       "title": "Ubah item pesanan",
-      "hint": "Pembeli dimaklumkan tentang perubahan secara automatik. Anda tidak boleh menaikkan jumlah pesanan — untuk mengenakan caj lebih, tolak pesanan dan minta pembeli memesan semula.",
+      "hint": "Pembeli dimaklumkan tentang perubahan. Menaikkan jumlah memerlukan pengesahan anda; jika kelulusan Pemilik pembeli dihidupkan, jumlah baharu menunggu kelulusan itu.",
       "item": "Item",
       "qty": "Kuantiti",
       "choose": "Cari produk",
       "addLine": "Tambah item",
       "removeLine": "Buang baris ini",
       "itemsTotal": "Jumlah item",
-      "exceeds": "Ini melebihi jumlah yang diluluskan pembeli. Kurangkan kuantiti, atau tolak pesanan supaya pembeli boleh memesan semula.",
+      "exceeds": "Jumlah pesanan naik melebihi jumlah semasa. Sahkan kenaikan semasa menyimpan.",
       "reason": "Sebab (pilihan)",
       "reasonPlaceholder": "Perubahan sentiasa dimaklumkan. Tambah nota jika perlu.",
       "submit": "Simpan",
       "cancel": "Batal",
       "loading": "Memuatkan…",
-      "noProducts": "Tiada produk sepadan dalam katalog anda"
+      "noProducts": "Tiada produk sepadan dalam katalog anda",
+      "raiseNotice": "Jumlah pesanan naik {{totals}}. Pembeli akan dimaklumkan tentang perubahan.",
+      "raiseNeedsApproval": "Pembeli ini memerlukan kelulusan Pemilik untuk jumlah baharu — pesanan keluar dari senarai anda sehingga diluluskan.",
+      "confirmRaiseTitle": "Naikkan jumlah pesanan?",
+      "confirmRaiseBody": "{{totals}} (+{{diff}}). Pembeli dimaklumkan tentang perubahan.",
+      "confirmRaiseApprovalBody": "Pemilik pembeli mesti meluluskan jumlah baharu. Sehingga itu pesanan tidak berada dalam senarai anda. Jika ditolak, ia kembali kepada pembeli sebagai draf dan pembeli membuat pesanan semula. Setelah diluluskan ia kembali sebagai Dihantar — sahkan sekali lagi.",
+      "confirmRaiseOk": "Naikkan jumlah",
+      "savedTitle": "Pesanan dikemas kini",
+      "savedPendingApproval": "Disimpan — menunggu Pemilik pembeli meluluskan jumlah baharu.",
+      "ok": "OK"
     },
     "create": {
       "action": "Tambah pesanan",
@@ -360,7 +372,12 @@
     "partiallyCompleted": "Selesai Sebahagian"
   },
   "nav": {
-    "direct": "Luaran"
+    "direct": "Luaran",
+    "suppliers": "Pembekal",
+    "allSuppliers": "Semua Pembekal",
+    "allProducts": "Semua Produk",
+    "contracts": "Kontrak",
+    "findSuppliers": "Cari Pembekal"
   },
   "viewNote": {
     "own": "Anda boleh sunting atau padam pembekal ini dari tab Luaran.",
@@ -427,5 +444,52 @@
   "deleteConfirm": {
     "storesKeep": "Kedai yang menerima salinan mengekalkan salinan mereka sendiri.",
     "ownerStores": "Semua restoran anda tidak akan melihatnya lagi. Pesanan yang sudah dibuat disimpan."
+  },
+  "allProducts": {
+    "saved": "\"{{name}}\" disimpan",
+    "pickItem": "Pilih salah satu item anda.",
+    "addFailed": "Tidak dapat menambah ke item anda.",
+    "added": "\"{{name}}\" kini dalam item anda",
+    "search": "Cari nama, SKU, pembekal, kategori",
+    "allSuppliers": "Semua pembekal",
+    "allCategories": "Semua kategori",
+    "sourceAll": "Semua sumber",
+    "sourceMine": "Pembekal luar yang saya daftar",
+    "sourceOther": "Penjual platform & jenama",
+    "linkAll": "Dipaut atau tidak",
+    "linked": "Dalam item saya",
+    "unlinked": "Tiada dalam item saya",
+    "allPackages": "Semua unit pembungkusan",
+    "truncated": "Menunjukkan {{shown}} daripada {{total}} produk pembekal — cari untuk mengecilkan.",
+    "count": "{{n}} produk",
+    "col": {
+      "product": "Produk",
+      "supplier": "Pembekal",
+      "spec": "Spesifikasi",
+      "price": "Harga",
+      "min": "Pesanan min.",
+      "myItems": "Item saya",
+      "actions": "Tindakan"
+    },
+    "loading": "Memuatkan…",
+    "empty": "Tiada produk sepadan.",
+    "kindMine": "Luar (milik saya)",
+    "kindBrand": "Jenama",
+    "kindFoodcourt": "Medan selera",
+    "kindSupplier": "Pembekal",
+    "notLinkedShort": "Belum ditambah",
+    "addToItems": "Tambah ke item saya",
+    "openSupplier": "Pembekal",
+    "externalSupplier": "Pembekal luar",
+    "pickSupplier": "Pilih pembekal luar",
+    "noExternal": "Anda belum mendaftar pembekal luar. Tambah satu di tab Semua Pembekal dahulu, kemudian tambah produknya di sini.",
+    "externalOnly": "Pembekal platform mengurus katalog sendiri — anda hanya boleh menambah produk kepada pembekal yang anda daftar.",
+    "addToItemsTitle": "Tambah ke item saya",
+    "howToAdd": "Bagaimana anda mahu menambahnya?",
+    "modeNew": "Sebagai item baharu",
+    "modeLink": "Paut ke item sedia ada (barang sama — elak baris kedua)",
+    "itemName": "Nama item",
+    "newPreview": "Item baharu: {{spec}} · harga {{price}} setiap bungkusan — sama seperti produk pembekal",
+    "myItem": "Item saya"
   }
 }

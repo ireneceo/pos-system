@@ -7,6 +7,7 @@
  *   - External:      직접 등록한 외부업체(솔루션 미가입) + brand 공유 — 계약 개념 없음
  *   - Contracts:     계약된 supplier_company (active SupplierContract)
  *   - Find:          **솔루션 가입** supplier 검색·계약신청 (외부업체는 여기 안 나온다)
+ *   - All Products:  모든 공급처의 상품을 한 목록으로 — 검색·필터·상품 추가·내 아이템에 추가 (2026-10-15 Fable D5, AllSupplierProductsView)
  */
 import React from 'react';
 import styled from 'styled-components';
@@ -16,11 +17,12 @@ import PageHeader from '../../components/Common/PageHeader';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import AllSuppliersView from './AllSuppliersView';
+import AllSupplierProductsView from './AllSupplierProductsView';
 import MySuppliersPage from '../SupplierDirectory/MySuppliersPage';
 import SupplierDirectoryPage from '../SupplierDirectory/SupplierDirectoryPage';
 import { useAuth } from '../../contexts/AuthContext';
 
-type TabKey = 'all' | 'direct' | 'contracts' | 'find';
+type TabKey = 'all' | 'products' | 'direct' | 'contracts' | 'find';
 
 const HostShell = styled.div`
   /* 자식 페이지(MySuppliersPage / SupplierDirectoryPage) 의 Container/Content padding 무력화.
@@ -53,6 +55,11 @@ export default function UnifiedSuppliersPage() {
           <Tab active={tab === 'all'} onClick={() => setTab('all')}>
             {t('supplier:nav.allSuppliers', 'All Suppliers')}
           </Tab>
+          {/* 업체마다 들어가지 않고 전체 상품을 한 번에 (2026-10-15 Irene).
+              소속 매장 없는 오너는 숨긴다 — 서버 카탈로그(/api/supplier-catalog)가 오너에게 열려 있지 않다(403). 오너는 업체 상세에서 상품을 관리한다. */}
+          <Tab active={tab === 'products'} onClick={() => setTab('products')}>
+            {t('supplier:nav.allProducts', 'All Products')}
+          </Tab>
           <Tab active={tab === 'direct'} onClick={() => setTab('direct')}>
             {t('supplier:nav.direct', 'External')}
           </Tab>
@@ -67,6 +74,7 @@ export default function UnifiedSuppliersPage() {
           {/* All / Direct — AllSuppliersView 단일 list (suppliers-direct-mount class 로 HostShell padding 무력화 제외)
               Contracts / Find — 자식 페이지 그대로 (Container/Content padding 무력화 적용) */}
           {(tab === 'all' || isOwner) && <div className="suppliers-direct-mount"><AllSuppliersView /></div>}
+          {!isOwner && tab === 'products' && <div className="suppliers-direct-mount"><AllSupplierProductsView /></div>}
           {!isOwner && tab === 'direct' && (
             <div className="suppliers-direct-mount">
               <AllSuppliersView sources={['own', 'external', 'owner_shared', 'brand_shared', 'brand_parent', 'foodcourt_parent']} />

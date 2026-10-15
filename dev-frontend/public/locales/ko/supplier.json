@@ -88,7 +88,10 @@
       "measure": "{{unit}} 1개당 가격",
       "pack": "{{spec}} 1개당 가격",
       "needUnit": "아래에서 단위를 고르면 이 가격이 무엇 기준인지 표시됩니다"
-    }
+    },
+    "optionsEmptyHint": "옵션은 양이 바뀌지 않는 선택입니다 — 손질·등급·숙성·브랜드. 포장이나 용량이 다르면(1 kg / 5 kg, 1팩 / 20팩 카톤) 옵션 대신 상품을 따로 추가하세요.",
+    "optionGroupHint": "옵션은 양이 바뀌지 않는 선택(손질·등급·숙성·브랜드)에만 쓰세요. 포장·용량이 다르면(1 kg / 5 kg, 1팩 / 20팩 카톤) 상품을 따로 등록합니다 — 규격과 가격이 각자 들어갑니다.",
+    "optionGroupPlaceholder": "예: 손질 방식, 등급, 숙성"
   },
   "inventory": {
     "title": "재고 관리",
@@ -251,20 +254,29 @@
     },
     "amend": {
       "title": "주문 품목 수정",
-      "hint": "무엇이 바뀌었는지는 주문한 곳에 자동으로 안내됩니다. 주문 금액은 올릴 수 없습니다 — 더 받아야 하면 주문을 거부하고 다시 주문받으세요.",
+      "hint": "바뀐 내용은 구매자에게 안내됩니다. 총액을 올리면 한 번 더 확인하고, 구매자 매장이 오너 승인을 쓰면 새 총액은 오너 승인을 기다립니다.",
       "item": "품목",
       "qty": "수량",
       "choose": "상품 이름으로 검색",
       "addLine": "품목 추가",
       "removeLine": "이 줄 지우기",
       "itemsTotal": "품목 합계",
-      "exceeds": "주문한 곳이 승인한 금액을 넘습니다. 수량을 줄이거나, 주문을 거부해 다시 주문받으세요.",
+      "exceeds": "주문 총액이 지금보다 올라갑니다. 저장할 때 인상을 확인해 주세요.",
       "reason": "이유 (선택)",
       "reasonPlaceholder": "무엇이 바뀌었는지는 늘 함께 갑니다. 덧붙일 설명이 있으면 적으세요.",
       "submit": "저장",
       "cancel": "취소",
       "loading": "불러오는 중…",
-      "noProducts": "내 카탈로그에 맞는 상품이 없습니다"
+      "noProducts": "내 카탈로그에 맞는 상품이 없습니다",
+      "raiseNotice": "주문 총액이 {{totals}} 로 올라갑니다. 구매자에게 변경 내용이 안내됩니다.",
+      "raiseNeedsApproval": "이 구매자는 새 총액에 오너 승인이 필요합니다 — 승인될 때까지 주문이 목록에서 빠집니다.",
+      "confirmRaiseTitle": "주문 총액을 올릴까요?",
+      "confirmRaiseBody": "{{totals}} (+{{diff}}). 바뀐 내용은 구매자에게 안내됩니다.",
+      "confirmRaiseApprovalBody": "구매자 매장의 오너가 새 총액을 승인해야 합니다. 그때까지 이 주문은 목록에 보이지 않습니다. 반려되면 구매자에게 초안으로 돌아가 구매자가 다시 주문합니다. 승인되면 «제출됨» 으로 돌아오니 다시 확인해 주세요.",
+      "confirmRaiseOk": "총액 올리기",
+      "savedTitle": "주문 수정됨",
+      "savedPendingApproval": "저장했습니다 — 구매자 매장 오너의 새 총액 승인을 기다립니다.",
+      "ok": "확인"
     },
     "create": {
       "action": "주문 추가",
@@ -360,7 +372,12 @@
     "partiallyCompleted": "부분 완료"
   },
   "nav": {
-    "direct": "외부업체"
+    "direct": "외부업체",
+    "suppliers": "공급업체",
+    "allSuppliers": "전체 공급업체",
+    "allProducts": "전체 상품",
+    "contracts": "계약",
+    "findSuppliers": "공급업체 찾기"
   },
   "viewNote": {
     "own": "이 공급업체는 외부업체 탭에서 수정·삭제할 수 있습니다.",
@@ -427,5 +444,52 @@
   "deleteConfirm": {
     "storesKeep": "사본을 받은 매장은 자기 사본을 그대로 가집니다.",
     "ownerStores": "모든 매장에서 보이지 않게 됩니다. 이미 넣은 발주는 그대로 남습니다."
+  },
+  "allProducts": {
+    "saved": "«{{name}}» 저장됨",
+    "pickItem": "내 아이템 하나를 골라 주세요.",
+    "addFailed": "내 아이템에 추가하지 못했습니다.",
+    "added": "«{{name}}» 이(가) 내 아이템에 들어갔습니다",
+    "search": "이름·SKU·공급업체·분류 검색",
+    "allSuppliers": "모든 공급업체",
+    "allCategories": "모든 분류",
+    "sourceAll": "모든 공급처",
+    "sourceMine": "내가 등록한 외부 공급업체",
+    "sourceOther": "플랫폼·브랜드 판매처",
+    "linkAll": "연결 여부 전체",
+    "linked": "내 아이템에 있음",
+    "unlinked": "내 아이템에 없음",
+    "allPackages": "모든 포장 단위",
+    "truncated": "공급업체 상품 {{total}}개 중 {{shown}}개를 보여 줍니다 — 검색으로 좁혀 보세요.",
+    "count": "상품 {{n}}개",
+    "col": {
+      "product": "상품",
+      "supplier": "공급업체",
+      "spec": "규격",
+      "price": "가격",
+      "min": "최소 주문",
+      "myItems": "내 아이템",
+      "actions": "작업"
+    },
+    "loading": "불러오는 중…",
+    "empty": "맞는 상품이 없습니다.",
+    "kindMine": "외부(내 등록)",
+    "kindBrand": "브랜드",
+    "kindFoodcourt": "푸드코트",
+    "kindSupplier": "공급업체",
+    "notLinkedShort": "추가 안 됨",
+    "addToItems": "내 아이템에 추가",
+    "openSupplier": "공급업체",
+    "externalSupplier": "외부 공급업체",
+    "pickSupplier": "외부 공급업체 선택",
+    "noExternal": "아직 등록한 외부 공급업체가 없습니다. 전체 공급업체 탭에서 먼저 등록한 뒤 여기서 상품을 추가하세요.",
+    "externalOnly": "플랫폼 가입 공급업체는 자기 상품을 직접 관리합니다 — 상품 추가는 내가 등록한 공급업체에만 됩니다.",
+    "addToItemsTitle": "내 아이템에 추가",
+    "howToAdd": "어떻게 추가할까요?",
+    "modeNew": "새 아이템으로",
+    "modeLink": "이미 있는 아이템에 연결(같은 물건 — 두 줄 방지)",
+    "itemName": "아이템 이름",
+    "newPreview": "새 아이템: {{spec}} · 포장당 가격 {{price}} — 공급업체 상품과 같게",
+    "myItem": "내 아이템"
   }
 }

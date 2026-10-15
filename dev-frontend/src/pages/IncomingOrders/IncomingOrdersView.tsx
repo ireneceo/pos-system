@@ -16,6 +16,7 @@ import { FormGrid3 } from '../../components/UI/FormGrid';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
+import ConfirmModal from '../../components/ConfirmModal';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
 import { useTabParam } from '../../hooks/useTabParam';
@@ -232,6 +233,10 @@ interface AmendLine {
   key: string;
   ingredient_seller_product_id: number | null;
   quantity_ordered: string;
+  // 원래 줄이면 그 줄 번호와 고른 옵션 조정액 — 같은 상품으로 남으면 서버가 옵션을 이어 붙인다(2026-10-15)
+  item_id?: number;
+  orig_seller_product_id?: number | null;
+  option_adjustment?: number;
 }
 
 interface SellerOrderStats {
@@ -549,6 +554,10 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
   const [amendReason, setAmendReason] = useState('');
   const [amendLoading, setAmendLoading] = useState(false);
   const [amendOriginalTotal, setAmendOriginalTotal] = useState(0);
+  // 총액 인상 — 저장 전 확인 1번 · 오너 승인 매장이면 승인 대기로 간다(2026-10-15 Irene «수정이 자유로워야»)
+  const [amendRaiseNeedsApproval, setAmendRaiseNeedsApproval] = useState(false);
+  const [amendRaiseConfirmOpen, setAmendRaiseConfirmOpen] = useState(false);
+  const [amendPendingNotice, setAmendPendingNotice] = useState(false);
 
   // 주문 추가(판매자가 구매자 대신) — 상품 후보는 구매자를 고른 뒤에야 정해진다.
   const [createOpen, setCreateOpen] = useState(false);
@@ -871,11 +880,11 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     return formatCurrency(n, currency || 'MYR');
   };
 
-  const tNs = (key: string, fallback?: string) => {
+  const tNs = (key: string, fallback?: string, vars?: Record<string, string | number>) => {
     // try namespace-scoped first then fall back to supplier namespace
-    const local = t(`${i18nNamespace}:${key}`, { defaultValue: '' }) as string;
+    const local = t(`${i18nNamespace}:${key}`, { defaultValue: '', ...(vars || {}) }) as string;
     if (local) return local;
-    return t(`supplier:${key}`, { defaultValue: fallback ?? key }) as string;
+    return t(`supplier:${key}`, { defaultValue: fallback ?? key, ...(vars || {}) }) as string;
   };
 
   const refreshAll = () => {
@@ -1132,6 +1141,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     setAmendLines([]);
     setAmendProducts([]);
     setAmendOriginalTotal(Number(row.total_amount) || 0);
+    setAmendRaiseNeedsApproval(false);
     setAmendLoading(true);
     try {
       const token = getAuthToken();
@@ -1147,12 +1157,19 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
           ? { ...p, ingredient_seller_product_id: -Number(p.link_brand_product_id) }
           : p
       )));
+      if (prods?.success) setAmendRaiseNeedsApproval(prods.data?.raise_requires_approval === true);
       const items = detail?.data?.items || [];
-      setAmendLines(items.map((it: any, i: number) => ({
-        key: `l${i}-${it.id || i}`,
-        ingredient_seller_product_id: it.ingredient_seller_product_id ?? null,
-        quantity_ordered: String(Number(it.quantity_ordered) || 0)
-      })));
+      setAmendLines(items.map((it: any, i: number) => {
+        const opts = Array.isArray(it.options) ? it.options : [];
+        return {
+          key: `l${i}-${it.id || i}`,
+          ingredient_seller_product_id: it.ingredient_seller_product_id ?? null,
+          quantity_ordered: String(Number(it.quantity_ordered) || 0),
+          item_id: it.id,
+          orig_seller_product_id: it.ingredient_seller_product_id ?? null,
+          option_adjustment: opts.reduce((sum: number, o: any) => sum + (Number(o?.price_adjustment) || 0), 0)
+        };
+      }));
       if (detail?.data?.total_amount != null) setAmendOriginalTotal(Number(detail.data.total_amount) || 0);
     } catch (err) {
       console.error(err);
@@ -1171,16 +1188,26 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     const p = amendProductById(l.ingredient_seller_product_id);
     const qty = parseFloat(l.quantity_ordered);
     if (!p || !Number.isFinite(qty) || qty <= 0) return sum;
-    return sum + Math.round(qty * p.unit_price * 100) / 100;
+    // 원래 줄 그대로의 상품이면 고른 옵션 조정액이 단가에 붙는다(서버 규칙과 같게)
+    const adj = l.item_id && l.ingredient_seller_product_id === l.orig_seller_product_id ? (l.option_adjustment || 0) : 0;
+    return sum + Math.round(qty * (p.unit_price + adj) * 100) / 100;
   }, 0);
   const amendExceeds = amendNewSubtotal - amendOriginalTotal > 0.005;
   const amendHasInvalidLine = amendLines.some(l => {
     const qty = parseFloat(l.quantity_ordered);
     return l.ingredient_seller_product_id == null || !Number.isFinite(qty) || qty <= 0;
   });
-  const amendCanSave = amendLines.length > 0 && !amendHasInvalidLine && !amendExceeds && !submitting && !amendLoading;
+  const amendCanSave = amendLines.length > 0 && !amendHasInvalidLine && !submitting && !amendLoading;
+  const amendTotalsText = `${formatMoney(amendOriginalTotal, amendModalRow?.currency)} → ${formatMoney(amendNewSubtotal, amendModalRow?.currency)}`;
 
-  const handleAmend = async () => {
+  // 올리는 수정이면 확인 창부터 — 확인이 confirm_increase 를 보낸다(서버도 이 값 없이는 인상을 거부한다)
+  const handleAmendClick = () => {
+    if (!amendModalRow || !amendCanSave) return;
+    if (amendExceeds) { setAmendRaiseConfirmOpen(true); return; }
+    handleAmend(false);
+  };
+
+  const handleAmend = async (confirmIncrease: boolean) => {
     if (!amendModalRow || !amendCanSave) return;
     setSubmitting(true);
     setErrorMessage(null);
@@ -1194,10 +1221,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
             const key = Number(l.ingredient_seller_product_id);
             return {
               ...(key < 0 ? { brand_product_id: -key } : { ingredient_seller_product_id: key }),
+              ...(l.item_id ? { item_id: l.item_id } : {}),
               quantity_ordered: parseFloat(l.quantity_ordered)
             };
           }),
-          ...(amendReason.trim() ? { reason: amendReason.trim() } : {})
+          ...(amendReason.trim() ? { reason: amendReason.trim() } : {}),
+          ...(confirmIncrease ? { confirm_increase: true } : {})
         })
       });
       const data = await res.json();
@@ -1206,6 +1235,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         return;
       }
       setAmendModalRow(null);
+      if (data.data?.status === 'pending_approval') setAmendPendingNotice(true);
       refreshAll();
     } catch (err) {
       console.error(err);
@@ -1846,7 +1876,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
             <ModalButton onClick={() => setAmendModalRow(null)} disabled={submitting}>
               {tNs('orders.amend.cancel', 'Cancel')}
             </ModalButton>
-            <ModalButton variant="primary" onClick={handleAmend} disabled={!amendCanSave}>
+            <ModalButton variant="primary" onClick={handleAmendClick} disabled={!amendCanSave}>
               {tNs('orders.amend.submit', 'Save changes')}
             </ModalButton>
           </>
@@ -1859,7 +1889,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         ) : (
           <>
             <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>
-              {tNs('orders.amend.hint', 'The buyer is told what changed. You cannot raise the order total — to charge more, reject the order and ask the buyer to reorder.')}
+              {tNs('orders.amend.hint', "The buyer is told what changed. Raising the total asks you to confirm; if the buyer's Owner approval is on, the new total waits for that approval.")}
             </p>
 
             {amendLines.map((line, idx) => {
@@ -1945,15 +1975,23 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                   {formatMoney(amendOriginalTotal, amendModalRow?.currency)}
                 </span>
                 {'  →  '}
-                <strong style={{ color: amendExceeds ? '#DC2626' : '#111827' }}>
+                <strong style={{ color: amendExceeds ? '#92400E' : '#111827' }}>
                   {formatMoney(amendNewSubtotal, amendModalRow?.currency)}
                 </strong>
               </span>
             </div>
 
             {amendExceeds && (
-              <div style={{ color: '#DC2626', fontSize: 13, margin: '0 0 16px', lineHeight: 1.6 }}>
-                {tNs('orders.amend.exceeds', 'This exceeds the amount the buyer approved. Lower the quantities, or reject the order so the buyer can reorder.')}
+              <div style={{
+                background: '#FFFBEB', borderLeft: '4px solid #F59E0B', borderRadius: '0 8px 8px 0',
+                color: '#92400E', fontSize: 13, padding: '10px 14px', margin: '0 0 16px', lineHeight: 1.6
+              }}>
+                <div>{tNs('orders.amend.raiseNotice', 'Order total rises {{totals}}. The buyer will be notified of the change.', { totals: amendTotalsText })}</div>
+                {amendRaiseNeedsApproval && (
+                  <div style={{ marginTop: 4 }}>
+                    {tNs('orders.amend.raiseNeedsApproval', "This buyer requires Owner approval for the new total — the order leaves your list until it is approved.")}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1973,6 +2011,35 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
           </>
         )}
       </Modal>
+
+      {/* 총액 인상 확인 — 확인하면 confirm_increase 로 저장 */}
+      <ConfirmModal
+        isOpen={amendRaiseConfirmOpen}
+        title={tNs('orders.amend.confirmRaiseTitle', 'Raise the order total?')}
+        message={
+          tNs('orders.amend.confirmRaiseBody', '{{totals}} (+{{diff}}). The buyer is told what changed.', {
+            totals: amendTotalsText,
+            diff: formatMoney(Math.max(0, amendNewSubtotal - amendOriginalTotal), amendModalRow?.currency)
+          }) + (amendRaiseNeedsApproval
+            ? '\n\n' + tNs('orders.amend.confirmRaiseApprovalBody', "The buyer's Owner must approve the new total. Until then the order is not in your list. If declined, it returns to the buyer as a draft and the buyer reorders. Once approved it comes back as Submitted — confirm it again.")
+            : '')
+        }
+        confirmText={tNs('orders.amend.confirmRaiseOk', 'Raise total') as string}
+        cancelText={tNs('orders.amend.cancel', 'Cancel') as string}
+        type="warning"
+        onConfirm={() => { setAmendRaiseConfirmOpen(false); handleAmend(true); }}
+        onCancel={() => setAmendRaiseConfirmOpen(false)}
+      />
+      <ConfirmModal
+        isOpen={amendPendingNotice}
+        title={tNs('orders.amend.savedTitle', 'Order updated')}
+        message={tNs('orders.amend.savedPendingApproval', "Saved — waiting for the buyer's Owner to approve the new total.")}
+        confirmText={tNs('orders.amend.ok', 'OK') as string}
+        type="info"
+        singleButton
+        onConfirm={() => setAmendPendingNotice(false)}
+        onCancel={() => setAmendPendingNotice(false)}
+      />
 
       {/* Sprint 5: Detail drawer — items + DeliveryTimeline */}
       <Modal

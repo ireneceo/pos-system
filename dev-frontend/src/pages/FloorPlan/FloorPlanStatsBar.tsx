@@ -279,9 +279,9 @@ const FloorPlanStatsBar: React.FC<FloorPlanStatsBarProps> = ({ tables, tableStat
       {orderStats && (
         <>
           <Divider />
-          <StatItem>{t('floorplan:floorPlanStatsBar.sales')}<span>{sym}{orderStats.totalSales.toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2 })}</span></StatItem>
-          <StatItem>{t('floorplan:floorPlanStatsBar.avg')}<span>{sym}{orderStats.avgAmount.toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2 })}</span></StatItem>
-          <StatItem>{t('floorplan:floorPlanStatsBar.max')}<span>{sym}{orderStats.maxAmount.toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2 })}</span></StatItem>
+          <StatItem>{t('floorplan:floorPlanStatsBar.sales')}<span>{sym}{orderStats.totalSales.toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2, maximumFractionDigits: currency === 'KRW' ? 0 : 2 })}</span></StatItem>
+          <StatItem>{t('floorplan:floorPlanStatsBar.avg')}<span>{sym}{orderStats.avgAmount.toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2, maximumFractionDigits: currency === 'KRW' ? 0 : 2 })}</span></StatItem>
+          <StatItem>{t('floorplan:floorPlanStatsBar.max')}<span>{sym}{orderStats.maxAmount.toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2, maximumFractionDigits: currency === 'KRW' ? 0 : 2 })}</span></StatItem>
           <StatItem>
             ≥{sym}
             <ThresholdInput

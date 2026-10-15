@@ -8,6 +8,8 @@
  *   mark-sent-external(외부업체 수동전송). 셋 다 이 파일의 `applySubmitGate` 를 타야 한다.
  *   게이트를 라우트에 복붙하면 새 경로가 생길 때 조용히 우회된다(실제로 bulk·external 두 경로가
  *   승인 없이 발주를 내보내고 있었다 — Fable 2026-07-13).
+ *   + 판매자가 총액을 **올리는** 수정(amend)도 같은 승인을 다시 받는다 — `applyAmendRaiseGate`
+ *   (2026-10-15 Fable 설계 · 판매자 대리 주문 추가와 같은 길).
  */
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
@@ -99,9 +101,49 @@ async function applySubmitGate(po, t, appendTrackingEvent, actor) {
   return needsApproval;
 }
 
+/** 이 발주의 구매 매장이 오너 승인을 요구하는가 (판매자 화면 안내·인상 수정 게이트가 같은 판정을 본다). */
+async function isApprovalRequiredForPo(po, t) {
+  if (!po || po.entity_type !== 'restaurant') return false;
+  const Restaurant = require('../models/Restaurant');
+  const restaurant = await Restaurant.findByPk(po.entity_id, {
+    attributes: ['id', 'operation_settings'], transaction: t
+  });
+  return isApprovalRequiredForRestaurant(restaurant);
+}
+
+/**
+ * 판매자가 총액을 올린 수정 뒤의 승인 게이트 (2026-10-15 Fable 설계 §2-2).
+ * 오너 승인이 켜진 매장이면 `pending_approval` 로 되돌리고 true. 아니면 **상태를 건드리지 않고** false.
+ * (`applySubmitGate` 를 쓰지 않는 이유: 그 함수는 승인이 필요 없을 때 submitted·submitted_at 을 다시 쓴다.)
+ * 행위자 예외(오너가 작성자면 생략)는 없다 — 판매자 대리 주문 추가와 같다.
+ */
+async function applyAmendRaiseGate(po, t, appendTrackingEvent, { totalBefore, totalAfter, byUserId } = {}) {
+  if (!(await isApprovalRequiredForPo(po, t))) return false;
+  const tracking = appendTrackingEvent(
+    po, 'pending_approval',
+    `Awaiting Owner approval — seller raised the total ${(+totalBefore || 0).toFixed(2)} → ${(+totalAfter || 0).toFixed(2)}`,
+    null,
+    {
+      raised_by_seller: true,
+      status_before: po.status,
+      total_before: totalBefore,
+      total_after: totalAfter,
+      by_user_id: byUserId || null
+    }
+  );
+  await po.update({
+    status: 'pending_approval',
+    approval_required: true,
+    tracking_info: tracking
+  }, { transaction: t });
+  return true;
+}
+
 module.exports = {
   resolveOwnerRestaurantIds,
   restaurantHasOwner,
   isApprovalRequiredForRestaurant,
-  applySubmitGate
+  isApprovalRequiredForPo,
+  applySubmitGate,
+  applyAmendRaiseGate
 };

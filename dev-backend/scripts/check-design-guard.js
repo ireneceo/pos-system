@@ -12,6 +12,7 @@
  *   local-statcard       — 공용 DashboardStatCard 대신 로컬 StatCard 신설
  *   decorative-emoji     — 장식 컬러 이모지(🔒🟢⚠📦🔍 등) JSX 렌더 (기하 글리프 ▦◐□◯● 은 허용)
  *   danger-ff6b6b        — 일반 danger 버튼에 #FF6B6B (정답: #EF4444. #FF6B6B 는 LiveOrders 전용)
+ *   money-decimals       — 금액 소수 3자리 이상(toFixed(3+) 등) — 표시는 2자리, 작은 단가는 formatUnitPrice (2026-10-15)
  *
  * 사용법:
  *   node scripts/check-design-guard.js          # 검사 — 신규 위반 시 exit 1
@@ -95,6 +96,18 @@ for (const f of files) {
       }
     });
   }
+  // 6) 금액 소수 3자리 이상 (2026-10-15 Fable 설계 D6 · Irene «가격표시 … 소수점 4자리까지 나오는 일 없게 … 2자리까지만»)
+  //   toFixed(3+) · maximumFractionDigits 3+ · minimumFractionDigits 만 있고 maximum 이 없는 toLocaleString(최대 3자리가 됨).
+  //   단위당 작은 단가는 utils/currency.formatUnitPrice(kg·L 로 올림) 를 쓴다. 금액이 아닌 수량이면 maximumFractionDigits 를 같이 적는다.
+  lines.forEach((ln, i) => {
+    const t = ln.trim();
+    if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return;
+    const code = ln.split('//')[0];
+    if (/toFixed\(\s*[3-9]\s*\)/.test(code) || /maximumFractionDigits:\s*[3-9]\b/.test(code)
+      || (/minimumFractionDigits/.test(code) && !/maximumFractionDigits/.test(code) && /toLocaleString/.test(code))) {
+      violations.push({ kind: 'money-decimals', file: r, sig: `L${i + 1}`, line: i + 1, text: t.slice(0, 80) });
+    }
+  });
 }
 
 function lineOf(lines, re) { const i = lines.findIndex(l => re.test(l)); return i < 0 ? 0 : i + 1; }

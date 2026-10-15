@@ -140,6 +140,20 @@ const PwaInstallBanner: React.FC = () => {
             </div>
           )}
 
+          {/* 2026-10-11 Irene «데스크탑이면 모바일로 찍을 수 있는 QR도» — 컴퓨터에서 안드로이드 기기로 옮겨 설치하는 길. 안내창에 QR. */}
+          {(platform === 'windows' || platform === 'mac') && (
+            <button
+              type="button"
+              onClick={openInstallGuide}
+              style={{
+                background: 'none', border: 'none', padding: 0, marginTop: 10, color: '#635BFF',
+                fontSize: 13, fontWeight: 500, cursor: 'pointer', textDecoration: 'underline', textAlign: 'left',
+              }}
+            >
+              {t('common:pwa.guide.qrLink', 'Installing on an Android tablet? Scan a QR code')}
+            </button>
+          )}
+
           {!isWindowsDesktop && !isAndroidBrowser && canInstall && !isIOS && (
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button

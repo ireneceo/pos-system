@@ -251,6 +251,22 @@ const specTextOf = (seller?: Partial<SellerOpt> | null): string => {
   return sellerSpecText(seller) || packSpecOf(seller.seller_product_name);
 };
 
+/** 같은 판매자인지 — 판매자 종류 + 번호(연결·상품이 달라도 같은 판매자). */
+const sellerIdentityKey = (s: Pick<SellerOpt, 'seller_type' | 'seller_entity_id' | 'seller_name'>) =>
+  `${s.seller_type}:${s.seller_entity_id ?? s.seller_name}`;
+
+/**
+ * 장바구니 판매자 고르기 글 — 같은 판매자의 상품이 둘 이상이면(규격별 상품 · 2026-10-15 Fable D6)
+ * «판매자 · 규격(없으면 판매자 상품명) · 가격», 하나면 지금처럼 «판매자 가격».
+ */
+const sellerChoiceLabel = (s: SellerOpt, all: SellerOpt[]): string => {
+  const price = s.unit_price.toFixed(2);
+  const sameSeller = all.filter(o => sellerIdentityKey(o) === sellerIdentityKey(s)).length > 1;
+  if (!sameSeller) return `${s.seller_name} ${price}`;
+  const spec = specTextOf(s) || s.seller_product_name || '';
+  return spec ? `${s.seller_name} · ${spec} · ${price}` : `${s.seller_name} ${price}`;
+};
+
 /**
  * 단위당 가격 — 업체 비교의 유일하게 공정한 축.
  * 규격이 다르면(5kg 포대 vs 1kg 봉지) 표시가격끼리는 비교가 안 된다.
@@ -2036,14 +2052,10 @@ const NewPurchaseOrderPage: React.FC = () => {
     setError(null);
     try {
       const token = getAuthToken();
-      // 옵션 선택 정보는 group notes 에 직렬화 (PurchaseOrder.notes — Phase D 에서 backend item-level 처리 예정)
+      // 고른 옵션은 줄마다 번호만 보낸다 — 단가·설명은 서버가 DB 값으로 낸다(2026-10-15 · utils/poLineOptions.js).
+      const optionIdsOf = (row: CartRow) => (row.selected_options && row.selected_options.length > 0
+        ? { option_ids: row.selected_options.map(o => o.option_id) } : {});
       const groupsBody = groups.map(g => {
-        const optionLines = g.items
-          .filter(({ row }) => row.selected_options && row.selected_options.length > 0)
-          .map(({ row }) => `${row.ingredient_name}: ${row.selected_options!.map(o => `${o.group_name}=${o.option_name}`).join(', ')}`);
-        const baseNotes = optionLines.length > 0
-          ? `[Options]\n${optionLines.join('\n')}`
-          : null;
         return {
           seller_type: g.seller_type,
           seller_entity_id: g.seller_entity_id,
@@ -2053,30 +2065,34 @@ const NewPurchaseOrderPage: React.FC = () => {
               ? {
                   product_id: row.product_id,
                   ingredient_seller_product_id: seller.id,
-                  quantity_ordered: row.quantity
+                  quantity_ordered: row.quantity,
+                  ...optionIdsOf(row)
                 }
               : row.brand_product_id
               ? {
                   brand_product_id: row.brand_product_id,
                   ingredient_seller_product_id: seller.id,
-                  quantity_ordered: row.quantity
+                  quantity_ordered: row.quantity,
+                  ...optionIdsOf(row)
                 }
               : row.product_ingredient_id
               ? {
                   // BG Stock Item (ProductIngredient) — backend accepts product_ingredient_id.
                   product_ingredient_id: row.product_ingredient_id,
                   ingredient_seller_product_id: seller.id,
-                  quantity_ordered: row.quantity
+                  quantity_ordered: row.quantity,
+                  ...optionIdsOf(row)
                 }
               : {
                   ingredient_id: row.ingredient_id,
                   ingredient_seller_product_id: seller.id,
-                  quantity_ordered: row.quantity
+                  quantity_ordered: row.quantity,
+                  ...optionIdsOf(row)
                 }
           )),
           expected_delivery_date: expectedDate || null,
           delivery_address: deliveryAddress.trim() || null,
-          notes: baseNotes
+          notes: null
         };
       });
       // Cart submit (1차) → status='draft' staging. 사용자가 staging 페이지에서 외부 PO 처리 후 일괄 Submit
@@ -2386,11 +2402,13 @@ const NewPurchaseOrderPage: React.FC = () => {
                       // 이름이 비어도 «undefined» 를 찍지 않는다 — 2026-09-15 운영에서 «/piece · undefined» 로
                       // 나갔다(그 목록 경로만 seller_name 을 안 내려주던 것이 원인). 서버는 고쳤고,
                       // 여기서도 한 번 더 막는다 — 화면이 자료 부족으로 깨지면 안 된다.
-                      const vendorName = row.sellers.length === 1
+                      // 판매자 수는 연결 수가 아니라 판매자 수 — 한 판매자의 규격별 상품 둘(1 kg / 10 kg)은 판매자 하나다(2026-10-15).
+                      const vendorCount = new Set(row.sellers.map(sv => sellerIdentityKey(sv))).size;
+                      const vendorName = vendorCount === 1
                         ? (row.sellers[0].seller_name
                             || row.sellers[0].seller_product_name
                             || t('newPo.unknownSeller', 'Supplier'))
-                        : `${row.sellers.length} ${t('newPo.vendors', 'vendors')}`;
+                        : `${vendorCount} ${t('newPo.vendors', 'vendors')}`;
                       // 최소주문 표시도 소수 대응 — measure 의 "최소 0.5kg" 이 "1" 로 보이면 거짓말이다.
                       const minOrderText = minOrder > 1 ? ` · ${t('newPo.minOrder', 'Min')} ${formatQuantity(minOrder)}` : '';
                       // 가격 옆 단위는 **어느 뷰에서든 항상** 붙는다.
@@ -2823,7 +2841,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                             .sort((a, b) => a.unit_price - b.unit_price)
                             .map(s => (
                               <option key={s.id} value={s.id}>
-                                {s.seller_name} {s.unit_price.toFixed(2)}
+                                {sellerChoiceLabel(s, row.available_sellers)}
                               </option>
                             ))}
                         </VendorMini>

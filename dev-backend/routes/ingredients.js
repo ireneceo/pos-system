@@ -320,9 +320,8 @@ router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBr
       brand_id: bid,
       restaurant_id: null,
       name: body.name || seller.productName,
-      unit: catalogLink.resolveUnit(body.unit, seller.productUnit),
-      base_quantity: 1,
-      unit_cost: parseFloat(seller.productPrice) || 0,
+      // 다섯 칸 = 판매 상품 규격 그대로 (2026-10-15 Fable D4 — 단일 규칙 catalogLink.stockFieldsFromSellerProduct)
+      ...catalogLink.stockFieldsFromSellerProduct(seller.sellerProductRow, { unit: catalogLink.resolveUnit(body.unit, seller.productUnit) }),
       supplier_name: null,
       supplier_id: null,
       min_stock: 0,
@@ -1037,8 +1036,8 @@ router.post('/foodcourts/:foodcourtId/ingredients/from-catalog', authenticateTok
     const ingredient = await Ingredient.create({
       owner_type: 'foodcourt', foodcourt_id: fcid, brand_id: null, restaurant_id: null,
       name: body.name || seller.productName,
-      unit: catalogLink.resolveUnit(body.unit, seller.productUnit),
-      base_quantity: 1, unit_cost: parseFloat(seller.productPrice) || 0,
+      // 다섯 칸 = 판매 상품 규격 그대로 (2026-10-15 Fable D4)
+      ...catalogLink.stockFieldsFromSellerProduct(seller.sellerProductRow, { unit: catalogLink.resolveUnit(body.unit, seller.productUnit) }),
       min_stock: 0, current_stock: 0, is_active: true, code: fcCode
     }, { transaction: t });
 

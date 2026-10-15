@@ -26,7 +26,7 @@ const { parseMinOrderQty } = require('./quantity');
  *   통일은 별건이다 — 설계문서 §7 참조. 여기서 조용히 "고치면" 다른 패밀리 동작이 바뀐다.
  */
 
-const UNIT_ENUM = ['kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'];
+const UNIT_ENUM = require('./stockUnits').STOCK_UNIT_ENUM; // 단일 소스 utils/stockUnits.js
 
 const UNIT_MAP = {
   kg: 'kg', kgs: 'kg', kilogram: 'kg', kilograms: 'kg',
@@ -231,8 +231,49 @@ function normalizeName(v) {
     .toLowerCase();
 }
 
+/**
+ * «재고아이템으로 저장»(from-catalog 신규 생성) — 판매 상품 다섯 칸을 새 재고 행으로 옮기는 **단일 규칙**
+ *   (2026-10-15 Fable 설계 D4 · Irene «재고아이템으로 저장해도 공급업체상품에 등록한 수량단위팩킹수랑팩킹단위들 안가져오네»)
+ *   예전엔 4벌 모두 `base_quantity: 1` · 포장단위 없음 · `unit_cost = 판매가` 라 «10 kg/BOX RM 48» 이
+ *   «1 kg 에 RM 48» 로 저장됐다(원가식 costSync.convertPrice 와 10배 어긋남).
+ * 규칙 (docs/TRADE_STRUCTURE.md §2-2 — 항등식 base_quantity × unit = 1 package_unit = unit_cost):
+ *   - measure(무게·부피로 주문): base 1 · 포장단위 = 판매자 포장단위(정규화, 없으면 null) · 원가 = 단위당 가격
+ *   - pack: 판매자 내용물 단위 = 행 단위면 base = 판매자 기준숫자, kg↔g·L↔ml 이면 × costSync.FACTOR, 환산 불가면 1.
+ *           포장단위 = 판매자 포장단위(utils/stockUnits.normalizeStockPackageUnit) → 없고 base≠1 이면 'pack'
+ *           (화면 sellerOrderUnitOf 가 수량 단위를 pack 으로 접는 것과 같은 모양) · 없고 base=1 이면 null(배포 수렴 마이그에 맡김)
+ *   - package_quantity 1 · unit_cost = 판매가(= 포장 1개 값). 연결 환산은 deriveLinkConversion 이 따로 낸다(행 base 를 보지 않는다).
+ * @param {object} sellerRow 판매 상품 행(supplier/brand/foodcourt) — unit · base_quantity · package_unit · order_mode · unit_price
+ * @param {{unit: string}} o  새 행의 취급단위(resolveUnit 결과)
+ * @returns {{unit, base_quantity, package_unit, package_quantity, unit_cost}}
+ */
+function stockFieldsFromSellerProduct(sellerRow, { unit }) {
+  const { normalizeStockPackageUnit } = require('./stockUnits');
+  const sp = sellerRow || {};
+  const price = parseFloat(sp.unit_price) || 0;
+  const pkg = normalizeStockPackageUnit(sp.package_unit);
+  if (sp.order_mode === 'measure') {
+    return { unit, base_quantity: 1, package_unit: pkg, package_quantity: 1, unit_cost: price };
+  }
+  const sBase = parseFloat(sp.base_quantity);
+  let base = 1;
+  if (Number.isFinite(sBase) && sBase > 0) {
+    const su = normalizeUnit(sp.unit).toLowerCase();
+    const mu = String(unit || '').toLowerCase();
+    if (su === mu) base = sBase;
+    else {
+      const { FACTOR } = require('../services/costSync');
+      const f = FACTOR[`${su}->${mu}`];
+      if (f != null) base = sBase * f;
+    }
+  }
+  base = Math.round(base * 100) / 100 || 1;   // DECIMAL(10,2)
+  const packageUnit = pkg || (base !== 1 ? 'pack' : null);
+  return { unit, base_quantity: base, package_unit: packageUnit, package_quantity: 1, unit_cost: price };
+}
+
 module.exports = {
   normalizeName,
+  stockFieldsFromSellerProduct,
   UNIT_ENUM,
   UNIT_MAP,
   normalizeUnit,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { parseMinOrderQty, OrderMode, PACKAGE_UNIT_SUGGESTIONS, CONTENT_UNIT_OPTIONS, withCurrentUnit, sellerSpecLabel } from '../../utils/unitConversion';
+import { formatUnitPrice } from '../../utils/currency';
 import { marginStateOf } from '../../utils/productMargin';
 import { getErrorMessage } from '../../utils/apiError';
 import styled from 'styled-components';
@@ -683,7 +684,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   // 그대로 쓴다 — 여기서 두 번째 연결 경로를 만들지 않는다.
   const [connectSeller, setConnectSeller] = useState<{ id: number; name: string; unit?: string | null } | null>(null);
   // 카탈로그에 아직 없는 공급업체 상품은 여기서 만들어 붙인다 — 재고아이템 화면과 같은 부품·같은 경로.
-  const [createSeller, setCreateSeller] = useState<{ id: number; name: string; unit?: string | null } | null>(null);
+  const [createSeller, setCreateSeller] = useState<{ id: number; name: string; unit?: string | null; base_quantity?: number | string | null; package_unit?: string | null; package_quantity?: number | string | null } | null>(null);
 
   /**
    * 한 창에서 **파는 기준 · 사는 기준**을 나란히 (2026-09-15 Irene 「주문할 때 쓰는 기준 단위 … 이게 제일 중요해」).
@@ -1715,7 +1716,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                           10kg 한 박스 값을 1g 값으로 읽게 된다(2026-09-20 김치 −540% 사고). */}
                       {Number(si.base_quantity) || 1} {si.unit} · RM {Number(si.unit_cost || 0).toFixed(2)}
                       {Number(si.base_quantity) > 1 && (
-                        <> (1 {si.unit} · RM {(Number(si.unit_cost || 0) / (Number(si.base_quantity) || 1)).toFixed(4)})</>
+                        <> ({formatUnitPrice(Number(si.unit_cost || 0) / (Number(si.base_quantity) || 1), si.unit, 'MYR')})</>
                       )}
                     </div>
                   );
@@ -1802,7 +1803,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                         onClick={() => setCreateSeller({
                           id: formData.product_ingredient_id as number,
                           name: si?.name || formData.name,
-                          unit: si?.unit || formData.unit
+                          unit: si?.unit || formData.unit,
+                          // 재고아이템 규격으로 창을 채운다(2026-10-15 Fable D1)
+                          base_quantity: (si as any)?.base_quantity, package_unit: (si as any)?.package_unit, package_quantity: (si as any)?.package_quantity
                         })}
                       >
                         {t('products.createSupplierProduct', { defaultValue: 'Create supplier product' })}

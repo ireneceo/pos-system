@@ -1,10 +1,11 @@
 /**
  * 판매자 주문 수정(amend) — 판정 단일 소스.
  *
- * Fable 판정 2026-09-24 의 원칙 한 줄이 이 파일의 전부다:
- *   **발주서는 구매자의 돈 약속이다. 판매자는 그 약속을 줄이거나 같은 값으로 바꿀 수는 있어도,
- *   구매자 동의 없이 늘릴 수는 없다.**
- * 그래서 오너 승인(제출 전 금액 승인)을 우회하지 않고, 「수정 제안 → 구매자 승인」 왕복 상태도 필요 없다.
+ * 원칙 (2026-10-15 Fable 설계 — Irene «브랜드제너럴이 추가하고 수정하는게 자유로워야 해» 로 09-24 원칙 대체):
+ *   **발주서는 구매자의 돈 약속이다. 판매자는 그 약속을 줄이거나 바꿀 수 있고, 늘릴 때는
+ *   ①판매자가 확인하고(confirm_increase) ②구매자에게 전후 금액이 안내되며
+ *   ③오너 승인이 켜진 매장이면 새 주문과 같은 승인을 다시 받는다(poOwnerApproval.applyAmendRaiseGate).**
+ *   (옛 원칙 2026-09-24: «구매자 동의 없이 늘릴 수 없다» — 대리 주문 추가는 상한이 없는데 인상만 막아 일관성이 없었다.)
  *
  * ⚠ 왜 판정이 여기 한 곳인가: 후보 목록(GET amendable-products)과 실제 수정(POST amend)이
  *   **서로 다른 조건**을 쓰면 "화면엔 떴는데 저장하면 400" 이거나 그 반대가 된다.
@@ -15,6 +16,9 @@ const { Ingredient, Product, IngredientSellerProduct } = require('../models');
 const { resolveStockTarget, stockTargetAttrs } = require('./stockTarget');
 const { readableIngredient, sellerLinkVisible } = require('./brandStockAccess');
 const { resolveOrderLine } = require('./poLineSpec');
+const { attachSellerProductActive } = require('./poSellerProductActive');
+const { attachSellerProductIdentity, supplierFacingName } = require('./sellerProductIdentity');
+const { optionsArray, optionsAdjustment, optionsKey, descriptionWithOptions } = require('./poLineOptions');
 
 /** 판매자가 고칠 수 있는 상태 = 출고 전. shipped 이후는 물건이 이미 나갔다. */
 const AMENDABLE_STATUSES = ['submitted', 'confirmed'];
@@ -82,7 +86,7 @@ async function mappingUsableBy(mapping, po, buyerEntity, transaction) {
  * 이 주문에 쓸 수 있는 판매자 상품 후보.
  * 판매자 카탈로그 ∩ 이 구매자에게 연결된 것. 화면 선택지와 저장 검증이 같은 답을 보게 한다.
  */
-async function listAmendableProducts(po, buyerEntity, transaction) {
+async function listAmendableProducts(po, buyerEntity, transaction, { keepMappingIds = [] } = {}) {
   const where = { seller_type: po.seller_type, is_active: true };
   if (po.seller_entity_id === null || po.seller_entity_id === undefined) {
     where.seller_entity_id = null;
@@ -91,10 +95,45 @@ async function listAmendableProducts(po, buyerEntity, transaction) {
   }
 
   const mappings = await IngredientSellerProduct.findAll({ where, transaction });
-  const out = [];
-  for (const m of mappings) {
+  // 판매자가 끈 상품은 고르는 목록에서 뺀다 — 판정은 구매자 발주와 같은 함수(sellerProductOff).
+  //   이 주문에 이미 들어 있는 줄의 상품은 남긴다(줄 이름·합계가 그 항목을 찾아야 한다).
+  const keep = new Set((keepMappingIds || []).map(Number).filter(Number.isFinite));
+  const srcs = mappings.map(m => ({ seller_type: m.seller_type, seller_product_id: m.seller_product_id }));
+  await attachSellerProductActive(srcs);
+
+  const candidates = [];
+  for (let i = 0; i < mappings.length; i++) {
+    const m = mappings[i];
+    if (srcs[i].seller_product_active === false && !keep.has(m.id)) continue;
     const check = await mappingUsableBy(m, po, buyerEntity, transaction);
     if (!check.ok) continue;
+    candidates.push({ m, check });
+  }
+
+  // 같은 판매자 상품이 구매자 재고 자리 둘에 연결돼 있으면(브랜드 공유 재료 + 매장 자기 재료 등) 한 줄만 보인다
+  //   (2026-10-12 Irene «같은 이름이 2개씩 나와»). 고르는 순서: 이 주문이 쓰는 연결 → 구매자 자기 재고 자리 →
+  //   선호 연결 → 최신 연결. 다른 판매자 상품끼리는 이름이 같아도 그대로 둔다.
+  const ownRow = (c) => (c.check.target.kind === 'product'
+    || parseInt(c.check.stockRow.restaurant_id, 10) === buyerEntity.id) ? 1 : 0;
+  const rank = (c) => [keep.has(c.m.id) ? 1 : 0, ownRow(c), c.m.is_preferred ? 1 : 0, c.m.id];
+  const better = (a, b) => {
+    const ra = rank(a); const rb = rank(b);
+    for (let k = 0; k < ra.length; k++) if (ra[k] !== rb[k]) return ra[k] > rb[k];
+    return false;
+  };
+  const bySp = new Map();
+  const picked = [];
+  for (const c of candidates) {
+    if (c.m.seller_product_id == null || keep.has(c.m.id)) { picked.push(c); continue; }
+    const key = String(c.m.seller_product_id);
+    const cur = bySp.get(key);
+    if (!cur || better(c, cur)) bySp.set(key, c);
+  }
+  const keptSp = new Set(picked.filter(c => c.m.seller_product_id != null).map(c => String(c.m.seller_product_id)));
+  for (const [key, c] of bySp) if (!keptSp.has(key)) picked.push(c);
+
+  const out = [];
+  for (const { m, check } of picked) {
     const spec = await resolveOrderLine(m, check.stockRow, transaction);
     out.push({
       ingredient_seller_product_id: m.id,
@@ -108,6 +147,10 @@ async function listAmendableProducts(po, buyerEntity, transaction) {
       stock_target: check.target.kind
     });
   }
+  // 판매자가 고르는 목록 — 이름은 **판매자 자기 상품명**(받은 주문 목록·상세와 같은 단일 소스).
+  //   구매자 재고 이름을 쓰면 한 재고에 연결된 다른 상품 둘(옛 이름·새 이름)이 같은 이름으로 보인다.
+  await attachSellerProductIdentity({ items: out });
+  for (const p of out) p.name = p.seller_product_name || supplierFacingName(p.name) || null;
   out.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
   return out;
 }
@@ -121,9 +164,12 @@ function lineTotalOf(qty, unitPrice) {
  * 요청 줄 → PurchaseOrderItem 생성 attrs.
  * ⚠ 단가는 **판매자 카탈로그의 현재 값**을 서버가 채운다 — 요청 본문의 unit_price 는 믿지 않는다.
  */
-async function buildAmendedLine(po, raw, mapping, stockRow, target, transaction) {
+async function buildAmendedLine(po, raw, mapping, stockRow, target, transaction, carriedOptions = null) {
   const qty = parseFloat(raw.quantity_ordered);
-  const unitPrice = parseFloat(mapping.unit_price) || 0;
+  // 남는 줄의 고른 옵션은 그대로 따라간다 — 단가 = 연결 현재가 + 그 줄 스냅샷 조정액(utils/poLineOptions.js).
+  //   수정 화면은 옵션을 고르지 못하므로 새로 넣는 줄은 옵션 없음.
+  const options = optionsArray(carriedOptions).length ? optionsArray(carriedOptions) : null;
+  const unitPrice = Math.round(((parseFloat(mapping.unit_price) || 0) + optionsAdjustment(options)) * 100) / 100;
   const spec = await resolveOrderLine(mapping, stockRow, transaction);
   return {
     purchase_order_id: po.id,
@@ -137,10 +183,12 @@ async function buildAmendedLine(po, raw, mapping, stockRow, target, transaction)
     unit_price: unitPrice,
     unit_conversion: parseFloat(mapping.unit_conversion) || 1,
     line_total: lineTotalOf(qty, unitPrice),
+    options,
     notes: raw.notes ? String(raw.notes).slice(0, 255) : null,
-    description: stockRow.name ? String(stockRow.name).slice(0, 255) : null
+    description: descriptionWithOptions(stockRow.name, options)
   };
 }
+
 
 /**
  * 무엇이 바뀌었는지 — 이유가 비어도 구매자는 이걸 보고 안다(그래서 이유는 선택, diff 는 항상).
@@ -150,7 +198,7 @@ function diffLines(beforeRows, afterAttrs) {
   const keyOf = (r) => {
     const t = ['ingredient_id', 'product_ingredient_id', 'product_id', 'brand_product_id']
       .map((k) => (r[k] ? `${k}:${r[k]}` : null)).filter(Boolean)[0] || 'unknown';
-    return `${t}|${r.ingredient_seller_product_id || 0}`;
+    return `${t}|${r.ingredient_seller_product_id || 0}|${optionsKey(r.options)}`;
   };
   const snap = (r) => ({
     name: r.description || null,

@@ -768,6 +768,8 @@
   "nav.rentManagement": "임대 관리",
   "ewalletTypeQuestion": "어떤 이월렛으로 결제하시나요?",
   "pwa.guide.title": "앱 설치",
+  "pwa.guide.qrAndroid": "안드로이드 태블릿·휴대폰에 설치하려면 그 기기 카메라로 이 코드를 찍으세요. 주소를 칠 필요 없이 바로 받아집니다.",
+  "pwa.guide.qrLink": "안드로이드 태블릿에 설치하나요? QR로 받기",
   "pwa.guide.install": "설치",
   "pwa.guide.downloadWindows": "윈도우용 내려받기",
   "pwa.guide.downloadAndroid": "앱 내려받기",

@@ -23,6 +23,7 @@ const PurchaseOrderItem = sequelize.define('PurchaseOrderItem', {
   // 판매자 품목별 발송 표시 (2026-10-08 Fable 판정) — null = 미발송. «받은 양» 의 거울이지만 수량이 아니라
   //   «보냈다/안 보냈다» 하나다. 한 줄은 한 번만 보낸다(재고 차감도 그 줄 수량 전부 1회). 마이그 migrate-po-item-shipped-at.js
   shipped_at: { type: DataTypes.DATE, allowNull: true, comment: '판매자가 이 줄을 보낸 시각. null = 미발송' },
+  options: { type: DataTypes.JSON, allowNull: true, comment: '고른 공급업체 상품 옵션 스냅샷 [{group_id,group_name,option_id,option_name,price_adjustment}] · NULL=없음 (utils/poLineOptions.js)' },
   unit: { type: DataTypes.STRING(50), allowNull: true },
   // 주문 시점 용량 스냅샷 (2026-09-11) — «10 kg/BOX × 3 BOX» 의 10 kg. unit 은 포장단위(BOX).
   //   판매자가 나중에 규격을 바꿔도 지난 발주서·인보이스 대조가 흔들리지 않게 줄에 적어 둔다.

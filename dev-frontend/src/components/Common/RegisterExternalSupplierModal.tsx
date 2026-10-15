@@ -15,16 +15,19 @@
  */
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, ModalButton, FormGroup, FormLabel, FormInput, FormRow, FormSelect } from '../UI/Modal';
+import { Modal, ModalButton, FormGroup, FormLabel, FormInput } from '../UI/Modal';
 import SearchableSelect from './SearchableSelect';
 import { getAuthToken } from '../../utils/auth';
-import { parseMinOrderQty, PACKAGE_UNIT_SUGGESTIONS, sellerSpecText, sellerOrderUnitOf, defaultLinkConversion } from '../../utils/unitConversion';
+import { sellerOrderUnitOf, defaultLinkConversion } from '../../utils/unitConversion';
+import ExternalSupplierProductFields, { EMPTY_EXT_PRODUCT, extProductPayload, extProductError, type ExtProductForm } from './ExternalSupplierProductFields';
 
 export type ExternalSupplierTargetKind = 'ingredient' | 'product_ingredient' | 'product' | 'brand_product';
 
 interface Props {
-  /** 연결할 우리 쪽 재고 — id 는 targetKind 가 가리키는 테이블의 id 다. */
-  target: { id: number; name: string; unit?: string | null } | null;
+  /** 연결할 우리 쪽 재고 — id 는 targetKind 가 가리키는 테이블의 id 다.
+   *  base_quantity·package_unit·package_quantity 를 주면 창을 열 때 그 규격으로 채운다(2026-10-15 Fable D1 —
+   *  Irene «우리가 바꾼 프로덕트나 재료에 사용한대로 안나와»). */
+  target: { id: number; name: string; unit?: string | null; base_quantity?: number | string | null; package_unit?: string | null; package_quantity?: number | string | null } | null;
   targetKind?: ExternalSupplierTargetKind;
   /** '/api/restaurants/5' | '/api/brands/1' — ingredient·product 대상일 때 쓰인다. */
   buyerApiBase: string;
@@ -42,14 +45,26 @@ export default function RegisterExternalSupplierModal({
   const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string }>>([]);
   // content_unit·base_quantity·package_unit = «10 kg/BOX» (2026-09-11 Irene: «이름이랑 용량, 그리고 UOM이 포장 단위»)
   // conversion = «발주 단위 1개 = ? 우리 재고 단위». 사람이 손대기 전(conversion_touched=false)에는 용량·단위에서 자동으로 채운다.
-  const [form, setForm] = useState({ supplier_id: null as number | null, product_name: '', sku: '', unit_price: '', min_order_quantity: '', content_unit: '', base_quantity: '1', package_unit: '', conversion: '', conversion_touched: false });
+  const [supplierId, setSupplierId] = useState<number | null>(null);
+  const [fields, setFields] = useState<ExtProductForm>(EMPTY_EXT_PRODUCT);
+  const [conv, setConv] = useState<{ value: string; touched: boolean }>({ value: '', touched: false });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!target) return;
-    // 판매품목명 기본값 = 우리 쪽 재고명(편의 프리필, 잠그지 않는다)
-    setForm({ supplier_id: null, product_name: target.name || '', sku: '', unit_price: '', min_order_quantity: '', content_unit: target.unit || 'kg', base_quantity: '1', package_unit: '', conversion: '', conversion_touched: false });
+    // 기본값 = 우리 쪽 재고의 이름·규격(편의 프리필, 잠그지 않는다). 재고 «2000 g / 1 pack» → 상품 «Base Qty 2000 · g · pack».
+    //   기준양(package_quantity)이 1 이 아니면 포장 1개 분량으로 나눈다(«1980 ml / 6 bottle» → 330 ml · bottle).
+    const pq = Number(target.package_quantity) > 0 ? Number(target.package_quantity) : 1;
+    const bq = Number(target.base_quantity) > 0 ? Number(target.base_quantity) / pq : 1;
+    // 취급단위는 재고 단위 그대로(Fable D1) — 옛 «can» 재고면 선택지에 그 값이 남는다(withCurrentUnit). 그래야 환산 «1 pack = 24 can» 이 저절로 나온다.
+    const contentUnit = target.unit || '';
+    setSupplierId(null);
+    setFields({ ...EMPTY_EXT_PRODUCT, name: target.name || '', unit: contentUnit,
+      base_quantity: String(Math.round(bq * 100) / 100),
+      // 재고 포장단위가 취급단위와 같으면(옛 데이터 «g/g») 포장 이름이 아니다 — 비워 둔다
+      package_unit: target.package_unit && target.package_unit !== target.unit ? target.package_unit : '' });
+    setConv({ value: '', touched: false });
     setError(null);
     const token = getAuthToken();
     fetch(`/api/external-suppliers${buyerScopeQS}`, { headers: { Authorization: `Bearer ${token}` } })
@@ -61,36 +76,29 @@ export default function RegisterExternalSupplierModal({
   if (!target) return null;
 
   // 재고 환산 — 사람이 손댄 값이 우선, 아니면 용량·단위에서 계산(변환 불가면 빈 칸 → 저장 시 입력 요구)
-  const autoConversion = defaultLinkConversion(form.base_quantity, form.content_unit, target.unit);
-  const conversionValue = form.conversion_touched ? form.conversion : (autoConversion != null ? String(autoConversion) : '');
-  const orderUnitLabel = sellerOrderUnitOf({ seller_unit: form.content_unit, base_quantity: form.base_quantity, seller_package_unit: form.package_unit }, target.unit) || 'unit';
+  const measure = fields.order_mode === 'measure';
+  const autoConversion = defaultLinkConversion(measure ? 1 : fields.base_quantity, fields.unit, target.unit);
+  const conversionValue = conv.touched ? conv.value : (autoConversion != null ? String(autoConversion) : '');
+  const orderUnitLabel = sellerOrderUnitOf({ seller_unit: fields.unit, base_quantity: measure ? 1 : fields.base_quantity, seller_package_unit: measure ? '' : fields.package_unit, order_mode: fields.order_mode }, target.unit) || 'unit';
 
   const save = async () => {
     setError(null);
-    if (!form.supplier_id) { setError('Select an external supplier.'); return; }
-    if (!form.unit_price || parseFloat(form.unit_price) < 0) { setError('Enter a valid price.'); return; }
+    if (!supplierId) { setError(t('extProduct.supplierRequired', { defaultValue: 'Select an external supplier.' }) as string); return; }
+    const invalid = extProductError(fields, t as any);
+    if (invalid) { setError(invalid); return; }
     // 재고 환산이 비었거나 0 이하면 저장하지 않는다 — 1 로 떨어뜨리면 10 kg 박스 입고가 재고 +1 이 된다(§2-⑤)
     const conversion = parseFloat(conversionValue);
     if (!(conversion > 0)) {
       setError(t('extProduct.conversionRequired', { defaultValue: 'Enter how many {{unit}} one {{pkg}} adds to stock.', unit: target.unit || '', pkg: orderUnitLabel }) as string);
       return;
     }
-    const productName = form.product_name.trim() || target.name;
     setSaving(true);
     try {
       const token = getAuthToken();
       const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
-      const cr = await fetch(`/api/external-suppliers/${form.supplier_id}/products${buyerScopeQS}`, {
+      const cr = await fetch(`/api/external-suppliers/${supplierId}/products${buyerScopeQS}`, {
         method: 'POST', headers,
-        body: JSON.stringify({
-          name: productName,
-          sku: form.sku.trim() || undefined,
-          unit: form.content_unit || target.unit || 'kg',
-          base_quantity: parseFloat(form.base_quantity) > 0 ? parseFloat(form.base_quantity) : 1,
-          package_unit: form.package_unit.trim(),   // 빈 값은 서버가 null 로 저장
-          unit_price: parseFloat(form.unit_price),
-          min_order_quantity: parseMinOrderQty(form.min_order_quantity),
-        }),
+        body: JSON.stringify(extProductPayload(fields)),
       });
       const cj = await cr.json().catch(() => null);
       if (!cr.ok || !cj?.success) { setError(cj?.message || 'Failed to create product.'); setSaving(false); return; }
@@ -111,7 +119,7 @@ export default function RegisterExternalSupplierModal({
           [targetBodyKey]: target.id,
           // 2026-09-11 Fable 판정: 1 고정을 없앤다 — 입고 = 수량 × 이 값, 원가 = 단가 ÷ 이 값
           unit_conversion: conversion,
-          unit_price: parseFloat(form.unit_price),
+          unit_price: parseFloat(fields.unit_price),
         }),
       });
       const mj = await mr.json().catch(() => null);
@@ -130,7 +138,7 @@ export default function RegisterExternalSupplierModal({
       isOpen
       onClose={onClose}
       title="Buy from an external supplier"
-      size="small"
+      size="medium"
       footer={<>
         <ModalButton variant="secondary" onClick={onClose}>Cancel</ModalButton>
         <ModalButton variant="primary" disabled={saving} onClick={save}>{saving ? '…' : 'Save'}</ModalButton>
@@ -149,8 +157,8 @@ export default function RegisterExternalSupplierModal({
         {suppliers.length > 0 ? (
           <SearchableSelect
             options={suppliers.map(s => ({ value: s.id, label: s.name }))}
-            value={form.supplier_id}
-            onChange={(v) => setForm({ ...form, supplier_id: v == null ? null : Number(v) })}
+            value={supplierId}
+            onChange={(v) => setSupplierId(v == null ? null : Number(v))}
             placeholder="Select an external supplier"
             noOptionsMessage="No external suppliers found"
           />
@@ -160,55 +168,8 @@ export default function RegisterExternalSupplierModal({
           </div>
         )}
       </FormGroup>
-      <FormRow>
-        <FormGroup>
-          <FormLabel>Product name *</FormLabel>
-          <FormInput type="text" value={form.product_name} onChange={(e) => setForm({ ...form, product_name: e.target.value })} placeholder={target.name} />
-          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>The supplier's own name for this product. Defaults to your item name — edit if theirs differs.</div>
-        </FormGroup>
-        <FormGroup>
-          <FormLabel>SKU</FormLabel>
-          <FormInput type="text" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="Optional — supplier's product code" />
-        </FormGroup>
-      </FormRow>
-      <FormRow>
-        <FormGroup>
-          <FormLabel>Unit price *</FormLabel>
-          <FormInput type="number" step="0.01" min="0" value={form.unit_price} onChange={(e) => setForm({ ...form, unit_price: e.target.value })} placeholder={`0.00 /${sellerOrderUnitOf({ seller_unit: form.content_unit, base_quantity: form.base_quantity, seller_package_unit: form.package_unit }, target.unit) || 'unit'}`} />
-        </FormGroup>
-        <FormGroup>
-          <FormLabel>Min. order qty</FormLabel>
-          <FormInput type="number" min="1" value={form.min_order_quantity} onChange={(e) => setForm({ ...form, min_order_quantity: e.target.value })} placeholder="1" />
-        </FormGroup>
-      </FormRow>
-      {/* 용량 × 포장단위 — 인보이스의 «10KG · BOX». 가격은 포장단위 1개 값이다. */}
-      <FormRow>
-        <FormGroup>
-          <FormLabel>{t('extProduct.baseQuantity', { defaultValue: 'Amount per package' })}</FormLabel>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <FormInput type="number" step="0.01" min="0.01" value={form.base_quantity} onChange={(e) => setForm({ ...form, base_quantity: e.target.value })} placeholder="1" />
-            <FormSelect value={form.content_unit} onChange={(e) => setForm({ ...form, content_unit: e.target.value })}>
-              {['kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'].map(u => <option key={u} value={u}>{u}</option>)}
-            </FormSelect>
-          </div>
-        </FormGroup>
-        <FormGroup>
-          <FormLabel>{t('extProduct.packageUnit', { defaultValue: 'Package unit' })}</FormLabel>
-          <FormInput type="text" list="register-ext-package-unit-options" maxLength={50} value={form.package_unit} onChange={(e) => setForm({ ...form, package_unit: e.target.value })} placeholder={t('extProduct.packageUnitPlaceholder', { defaultValue: 'e.g. box, pack, bottle' }) as string} />
-          <datalist id="register-ext-package-unit-options">
-            {PACKAGE_UNIT_SUGGESTIONS.map(u => <option key={u} value={u} />)}
-          </datalist>
-        </FormGroup>
-      </FormRow>
-      {(() => {
-        const s = { seller_unit: form.content_unit, base_quantity: form.base_quantity, seller_package_unit: form.package_unit };
-        const spec = sellerSpecText(s, target.unit);
-        return (
-          <div style={{ fontSize: 12, color: '#4B5563' }}>
-            {t('extProduct.orderedAs', { defaultValue: 'Ordered as: {{line}}', line: `${spec ? spec + ' · ' : ''}× 1 ${sellerOrderUnitOf(s, target.unit)}` })}
-          </div>
-        );
-      })()}
+      <ExternalSupplierProductFields value={fields} onChange={setFields} idPrefix="register-ext-product"
+        nameHint={t('extProduct.nameHint', { defaultValue: "The supplier's own name for this product. Defaults to your item name — edit if theirs differs." }) as string} />
       {/* 재고 환산 (2026-09-11 Fable 판정) — «1 BOX = 10 kg». 용량에서 자동으로 채우고 사람이 고칠 수 있다.
           변환이 안 되는 조합(bottle → ml 등)은 빈 칸이라 반드시 적어야 저장된다. */}
       <FormGroup style={{ marginTop: 12 }}>
@@ -218,7 +179,7 @@ export default function RegisterExternalSupplierModal({
           <FormInput
             type="number" step="0.0001" min="0" inputMode="decimal"
             value={conversionValue}
-            onChange={(e) => setForm({ ...form, conversion: e.target.value, conversion_touched: true })}
+            onChange={(e) => setConv({ value: e.target.value, touched: true })}
             style={{ maxWidth: 140 }}
           />
           <span style={{ whiteSpace: 'nowrap' }}>{target.unit || ''}</span>

@@ -1248,13 +1248,14 @@ Irene 원문: 「주문내역 좀 바꿔줘. … 이런 거 주문관리 수정�
 계기: GIT Consulting 에 들어온 `PO-R8-20260924-001` 에 짜장소스가 잘못 담겨, 더 싼 `_2nd` 로 바꿔야 했다.
 그때까지 **판매자에게도 구매자에게도 품목을 바꿀 화면 경로가 없었다**(구매자용 `PUT /api/purchase-orders/:id` 는 서버에만 있고 호출하는 화면이 0건).
 
-### 원칙 (Fable 판정)
+### 원칙 (2026-10-15 Fable 설계 — Irene «브랜드제너럴이 추가하고 수정하는게 자유로워야 해» 로 대체)
 
-> **발주서는 구매자의 돈 약속이다. 판매자는 그 약속을 줄이거나 같은 값으로 바꿀 수는 있어도,
-> 구매자 동의 없이 늘릴 수는 없다.**
+> **발주서는 구매자의 돈 약속이다. 판매자는 그 약속을 줄이거나 바꿀 수 있고, 늘릴 때는
+> ①판매자가 확인하고 ②구매자에게 전후 금액이 안내되며 ③오너 승인이 켜진 매장이면 새 주문과 같은 승인을 다시 받는다.**
 
-이 한 줄이 나머지를 정한다 — 오너 승인(제출 전 금액 승인)을 우회하지 않고, 「수정 제안 → 구매자 승인」 같은 왕복 상태도 만들지 않는다.
-총액을 올려야 하면 기존 길(Reject + 구매자 재발주)로 간다.
+(옛 원칙 2026-09-24: «구매자 동의 없이 늘릴 수는 없다 — 올리려면 Reject + 재발주». 판매자 대리 주문 추가는 상한이 없는데
+기존 주문 인상만 막아 일관성이 없어 대체. 지키려던 ①오너 승인 우회 방지 ②구매자 모르게 금액 변경 방지는 아래 «총액 인상» 이 지킨다.)
+「수정 제안 → 구매자 승인」 같은 왕복 상태는 여전히 만들지 않는다.
 
 ### 계약
 
@@ -1263,9 +1264,10 @@ Irene 원문: 「주문내역 좀 바꿔줘. … 이런 거 주문관리 수정�
 | 라우트 | `POST /api/seller-orders/:id/amend` · 후보 조회 `GET /api/seller-orders/:id/amendable-products` |
 | 허용 상태 | `submitted` · `confirmed` (출고 전). 그 외 400 |
 | 소유권 | `checkSellerOwnership`(= `ownsPurchaseOrder`) — 남의 주문 404. 구매자 토큰은 `requireSellerRole` 에서 403 |
-| 🔒 돈 게이트 | **새 총액 ≤ 기존 총액**. 넘으면 400 `TOTAL_EXCEEDS`(1 센트 반올림 오차는 허용) |
+| 🔒 돈 게이트 | 새 총액 ≤ 기존 총액(1 센트 오차 포함) → 그대로 200. **인상인데 `confirm_increase:true` 없음 → 400 `TOTAL_EXCEEDS`**(+`requires_confirmation`·`approval_required`·`total_before`·`total_after`). 확인 있으면 200 → 아래 «총액 인상» |
 | 품목 범위 | 수량 변경 · 상품 교체 · 줄 삭제 · 줄 추가. 최소 1줄 |
 | 단가 | **서버가 판매자 카탈로그에서 채운다** — 요청 본문의 `unit_price` 는 믿지 않는다 |
+| 고른 옵션 (2026-10-15) | 원래 줄이 같은 연결로 남으면 그 줄의 옵션 스냅샷(`options`)이 따라간다 — 화면이 `item_id` 를 같이 보내고 단가 = 연결가 + 조정액(`utils/poLineOptions.js` `carriedOptionsFor`). 수정 창은 옵션을 고르지 못하므로 새 줄은 옵션 없음 |
 | 상품 조건 | 이 주문의 판매자 카탈로그 ∩ 구매자에게 재고 자리가 있는 것. 아니면 400 `NOT_LINKED_TO_BUYER` |
 | 수령된 줄 | `quantity_received > 0` 이 하나라도 있으면 400 `ALREADY_RECEIVED` |
 | 총액 계산 | 구매자 경로와 **같은** `computeTotalsWithDelivery`. 별도 계산식 금지 |
@@ -1284,11 +1286,19 @@ Irene 원문: 「주문내역 좀 바꿔줘. … 이런 거 주문관리 수정�
 
 - `product_ingredient` · `brand_product` 재고 타깃(= BG 가 구매자인 경우) → 400 `UNSUPPORTED_STOCK_TARGET`.
   구매자 수정 라우트도 `ingredient` 만 받는다. 넓히려면 그때 사안으로 올린다.
-- 총액 인상 수정(오너 재승인 흐름 필요) · 수령 후 수정 · 구매자 쪽 「수정 제안 승인/거부」 UI · 청구서 재발행.
+- 수령 후 수정 · 구매자 쪽 「수정 제안 승인/거부」 UI · 청구서 재발행.
+
+### 총액 인상 — 2026-10-15
+
+- 화면(`IncomingOrdersView`): 저장 버튼은 막지 않는다. 인상이면 호박색 안내(«RM a → RM b, 구매자에게 안내») + 저장 때 `ConfirmModal` «Raise the order total?» → 확인이 `confirm_increase:true` 를 보낸다. 옛 번들·직접 호출은 확인 없이 못 올린다(서버가 요구).
+- 오너 승인 매장(`isApprovalRequiredForPo` = 오너 연결 AND `requirePoOwnerApproval !== false`): 인상 저장 뒤 같은 트랜잭션에서 `applyAmendRaiseGate` → `pending_approval`+`approval_required` + 이벤트(`raised_by_seller`·`status_before`·전후 총액) → 커밋 뒤 오너 메일 `po_approval_pending`. 판매자 목록·상세에서 빠진다(`SELLER_HIDDEN` 그대로). 승인 → `submitted`(판매자가 다시 확인) · 반려 → 구매자 `draft`. 감량·동액은 게이트를 타지 않는다. 행위자 예외 없음(대리 주문 추가와 같다).
+- 후보 조회 응답 `raise_requires_approval` = 저장 게이트와 같은 함수 → 확인 창 문구가 서버 행동과 같다.
+- 기록: `amended` 이벤트에 `total_increased`. 구매자 «Order Amended» 메일에 승인 대기면 호박색 블록. 새 테이블·ENUM·상태값 없음.
+- 검사: health-check `inventory` «A안 … (P1~P8)» — P7 미확인 인상 400·확인 인상 200(상태 그대로)·감량 200 / P8 오너 승인 매장 감량 무게이트·인상 → pending_approval·판매자 404·오너 목록·승인 → 판매자 200. 고장주입 2건(확인 요구 제거·게이트 호출 제거) 모두 실패 확인.
 
 ### 관련 파일
 
-`utils/poAmend.js`(판정 단일 소스 — 후보 목록과 저장 검증이 같은 함수를 본다) ·
+`utils/poOwnerApproval.js`(`applyAmendRaiseGate`·`isApprovalRequiredForPo`) · `utils/poAmend.js`(판정 단일 소스 — 후보 목록과 저장 검증이 같은 함수를 본다) ·
 `routes/seller-orders.js`(라우트 2개) · `services/poRealtimeService.js`(`appendTrackingEvent` 확장) ·
 `pages/IncomingOrders/IncomingOrdersView.tsx`(「품목 수정」 버튼·모달) ·
 `pages/PurchaseOrders/PurchaseOrderDetailPage.tsx`(구매자 배너).

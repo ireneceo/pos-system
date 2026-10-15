@@ -34,7 +34,10 @@
     "searchProducts": "搜索产品...",
     "moq": "起订量 {{n}}",
     "perUnit": "/{{unit}}",
-    "loadFailed": "加载供应商资料失败。"
+    "loadFailed": "加载供应商资料失败。",
+    "externalSupplier": "外部供应商",
+    "truncated": "显示 {{total}} 个商品中的 {{shown}} 个 — 请搜索缩小范围。",
+    "noImage": "无图片"
   },
   "myContracts": {
     "title": "我的供应商",
@@ -224,7 +227,30 @@
     "orderedAs": "订购显示：{{line}}",
     "stockConversion": "库存换算",
     "stockConversionHint": "每收货一个包装，计入多少库存单位。",
-    "conversionRequired": "请输入 1 个 {{pkg}} 计入多少 {{unit}} 库存。"
+    "conversionRequired": "请输入 1 个 {{pkg}} 计入多少 {{unit}} 库存。",
+    "nameRequired": "请输入商品名称。",
+    "unitRequired": "请选择使用单位。",
+    "priceRequired": "请输入有效价格。",
+    "name": "商品名称",
+    "namePlaceholder": "例如：Chicken Breast",
+    "skuPlaceholder": "供应商商品编码（可选）",
+    "skuHint": "留空则自动编号。",
+    "orderMode": "如何订购？",
+    "orderModePack": "按数量（包 / 盒 / 箱）",
+    "orderModeMeasure": "按重量或体积（kg、g、L、ml）",
+    "baseQty": "基准数量",
+    "usageUnit": "使用单位",
+    "selectUnit": "选择单位",
+    "leadTime": "交货期（天）",
+    "supplierRequired": "请选择外部供应商。",
+    "skuExists": "该供应商的其他商品已使用此 SKU。",
+    "saveFailed": "商品保存失败。",
+    "add": "添加商品",
+    "editTitle": "编辑商品",
+    "addTitle": "添加商品",
+    "hint": "这是您登记的外部供应商。添加您向其采购的商品后，即可从库存项目下单。",
+    "deleteTitle": "删除商品",
+    "nameHint": "供应商对该商品的名称。默认使用您的项目名称，如不同请修改。"
   },
   "common": {
     "save": "保存",

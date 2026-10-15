@@ -5,6 +5,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit } from '../components/KioskCartAside';
 import { KioskActionBar } from '../components/common/KioskLayout';
+import { useLandscape, guidedGrid, GuidedGrid, GUIDED_FONT } from '../components/GuidedGrid';
 import { isKioskMode, isMenuBoardMode, withMenuBoardQuery } from '../utils/kioskMode';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useMenu } from '../../contexts/MenuContext';
@@ -58,13 +59,8 @@ const ItemName = styled.h1`
 const GPath = styled.div`font-size: 16px; color: #4B5563; margin: 4px 0 6px;`;
 const GTitle = styled.h2`font-size: 28px; font-weight: 700; color: #0A2540; margin: 0 0 6px;`;
 const GSub = styled.div`font-size: 16px; color: #4B5563; margin-bottom: 20px;`;
-const GGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px;
-  margin-bottom: 24px;
-`;
 const GOption = styled.button<{ $on: boolean }>`
+  height: 100%;
   min-height: 112px;
   border-radius: 16px;
   border: 2px solid ${p => (p.$on ? '#635BFF' : '#E5E8EC')};
@@ -434,6 +430,7 @@ const ItemDetailPage: React.FC = () => {
   const location = useLocation();
   const guided = kiosk && !menuBoard && new URLSearchParams(location.search).get('flow') === 'guided';
   const gsRaw = new URLSearchParams(location.search).get('gs') || '0';
+  const landscape = useLandscape();
   const { slug, itemId } = useParams<{ slug: string; itemId: string }>();
   const navigate = useNavigate();
   const { addToCart, currency, cartItems } = useMobileOrder();
@@ -954,19 +951,27 @@ const ItemDetailPage: React.FC = () => {
           <GSub>{st.sub || (st.multiple
             ? t('menu:guided.pickAny', 'Pick any, then tap Next')
             : optional ? t('menu:guided.pickOptional', 'Optional — pick one or tap None') : t('menu:guided.pickOne', 'Pick one'))}</GSub>
-          <GGrid>
-            {optional && !st.multiple && (
-              <GOption type="button" $on={st.count() === 0} onClick={() => { st.clear(); setTimeout(() => next(stepNo), 160); }}>
-                <GOptionName>{t('menu:guided.none', 'None')}</GOptionName>
-              </GOption>
-            )}
-            {st.options.map(o => (
-              <GOption key={o.id} type="button" $on={st.isSel(o.id)} disabled={o.soldOut} onClick={() => choose(o)}>
-                <GOptionName>{o.name}</GOptionName>
-                <GOptionPrice>{o.soldOut ? t('itemDetail.soldOut', { defaultValue: 'Sold out' }) : priceText(o.price)}</GOptionPrice>
-              </GOption>
-            ))}
-          </GGrid>
+          {(() => {
+            // 선택지 개수대로 크게 — 2개면 화면 절반씩, 4개면 2×2 (카테고리·메뉴 화면과 같은 칸 나누기)
+            const showNone = optional && !st.multiple;
+            const g = guidedGrid(st.options.length + (showNone ? 1 : 0), landscape);
+            const f = GUIDED_FONT[g.scale];
+            return (
+              <GuidedGrid $cols={g.cols} $rows={g.rows} $reserve={st.multiple ? 420 : 330}>
+                {showNone && (
+                  <GOption type="button" $on={st.count() === 0} onClick={() => { st.clear(); setTimeout(() => next(stepNo), 160); }}>
+                    <GOptionName style={{ fontSize: f.name }}>{t('menu:guided.none', 'None')}</GOptionName>
+                  </GOption>
+                )}
+                {st.options.map(o => (
+                  <GOption key={o.id} type="button" $on={st.isSel(o.id)} disabled={o.soldOut} onClick={() => choose(o)}>
+                    <GOptionName style={{ fontSize: f.name }}>{o.name}</GOptionName>
+                    <GOptionPrice style={{ fontSize: f.meta }}>{o.soldOut ? t('itemDetail.soldOut', { defaultValue: 'Sold out' }) : priceText(o.price)}</GOptionPrice>
+                  </GOption>
+                ))}
+              </GuidedGrid>
+            );
+          })()}
         </>
       );
       if (st.multiple) {

@@ -6,7 +6,7 @@
  * 규칙을 화면마다 따로 적으면 곧 갈라지므로 여기 한 곳에 둔다 —
  * 실제로 이번에 RA 화면에만 넣고 BG 화면을 빠뜨려 한 번 갈라졌다.
  */
-import { formatCurrency } from './currency';
+import { formatCurrency, formatUnitPrice } from './currency';
 
 /** 값이 있으면 통화 표기, 0·null 이면 "미설정" 문구(호출부가 i18n 으로 넘긴다). */
 export function costOrNotSet(
@@ -46,9 +46,9 @@ export function costPerBaseText(
   const bq = Number.isFinite(bqRaw) && bqRaw > 0 ? bqRaw : 1;
   const head = unit ? `${formatCurrency(n, currency)} / ${bq} ${unit}` : formatCurrency(n, currency);
   if (bq === 1 || !unit) return head;
-  // 단위당 값은 작다(0.0279) — 통화 기호는 공용 표기에서 가져오고 숫자만 4자리로 쓴다.
-  const symbol = formatCurrency(0, currency).replace(/[\d.,\s]+$/, '');
-  const per = Math.round((n / bq) * 10000) / 10000;
-  return `${head} · ${perUnitLabel || unit} ${symbol} ${per}`;
+  // 단위당 값 — 소수 2자리(통화 설정). 너무 작은 g·ml 값은 kg·L 로 올린다(2026-10-15 Irene «2자리까지만», utils/currency.formatUnitPrice).
+  //   예전엔 «g 당 RM 0.0279» 처럼 4자리를 그대로 썼다. perUnitLabel 은 옛 호출부 호환으로 받기만 한다.
+  void perUnitLabel;
+  return `${head} · ${formatUnitPrice(n / bq, unit, currency)}`;
 }
 

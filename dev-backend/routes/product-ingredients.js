@@ -460,9 +460,8 @@ router.post('/from-catalog', async (req, res) => {
       owner_user_id: req.bgOwnerId,
       code,
       name: body.name || seller.productName,
-      unit: finalUnit,
-      base_quantity: 1,
-      unit_cost: parseFloat(seller.productPrice) || 0,
+      // 다섯 칸 = 판매 상품 규격 그대로 (2026-10-15 Fable D4 — 단일 규칙 catalogLink.stockFieldsFromSellerProduct)
+      ...catalogLink.stockFieldsFromSellerProduct(seller.sellerProductRow, { unit: finalUnit }),
       min_stock: 0,
       min_order: 0,
       current_stock: 0,

@@ -21,11 +21,17 @@ export interface SellerSpecFields {
   min_order_quantity?: string | number | null;
 }
 
-/** 금액 표기 — 소수 둘째 자리까지, 그보다 작은 단가(RM 0.0045/g)는 넷째 자리까지 */
-const money = (n: number): string => {
-  if (!Number.isFinite(n)) return '0.00';
-  if (n !== 0 && Math.abs(n) < 0.01) return n.toFixed(4).replace(/0+$/, '');
-  return n.toFixed(2);
+/** 금액 표기 — 소수 둘째 자리까지만 (2026-10-15 Irene «2자리까지만 나와야 해»). 작은 단가는 아래 perUnit 이 kg·L 로 올린다. */
+const money = (n: number): string => (Number.isFinite(n) ? n.toFixed(2) : '0.00');
+
+/** 단위당 값 «0.0045 / g» → «4.50 / kg» — utils/currency.formatUnitPrice 와 같은 규칙(문구 틀 안에 숫자·단위만 넣는다) */
+const perUnit = (n: number, unit: string): { per: string; unit: string } => {
+  if (Number.isFinite(n) && n > 0 && n < 0.01) {
+    const up: Record<string, string> = { g: 'kg', ml: 'L' };
+    if (up[unit]) return { per: money(n * 1000), unit: up[unit] };
+    return { per: '< 0.01', unit };
+  }
+  return { per: money(n), unit };
 };
 
 export function sellerSpecParts(f: SellerSpecFields) {
@@ -78,7 +84,7 @@ export function useSellerSpecCopy(f: SellerSpecFields) {
     : p.hasContent && p.price > 0
       ? t('sellerProduct.price.meaningContent', {
           defaultValue: '{{price}} / {{orderUnit}} ({{content}} · RM {{per}}/{{unit}})',
-          price: priceText, orderUnit: ou, content: p.content, per: money(p.price / p.base), unit: p.unit })
+          price: priceText, orderUnit: ou, content: p.content, ...perUnit(p.price / p.base, p.unit) })
       : t('sellerProduct.price.meaningPlain', { defaultValue: '{{price}} / {{orderUnit}}', price: priceText, orderUnit: p.measure ? p.unit : ou });
 
   const minHint = p.min === 1

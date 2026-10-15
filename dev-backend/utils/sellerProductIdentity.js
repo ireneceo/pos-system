@@ -19,6 +19,8 @@
  * @param {object|object[]} pos - PO plain object(들). 각각 `items` 배열을 가진다.
  *                                items 는 제자리에서 `seller_product_name`/`seller_product_sku` 를 부여받는다.
  */
+const { descriptionWithOptions } = require('./poLineOptions');
+
 async function attachSellerProductIdentity(pos) {
   const list = Array.isArray(pos) ? pos : [pos];
   const allItems = list.flatMap(p => (p && p.items) || []);
@@ -70,7 +72,9 @@ async function attachSellerProductIdentity(pos) {
   for (const it of allItems) {
     const sp = it.ingredient_seller_product_id ? ispMap[it.ingredient_seller_product_id] : null;
     if (sp) {
-      it.seller_product_name = sp.name || null;
+      // 고른 옵션이 있는 줄은 판매자에게도 «Australian Beef Rib (Cut Style: Sliced)» 로 — 줄 설명과 같은 표기
+      //   (2026-10-15 · utils/poLineOptions.js). 받은 주문·청구서·PDF·메일이 이 이름을 쓴다.
+      it.seller_product_name = sp.name ? descriptionWithOptions(sp.name, it.options) : null;
       it.seller_product_sku = sp.sku || null;
     }
   }

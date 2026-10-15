@@ -159,6 +159,16 @@ const EmptyDescription = styled.p`
   margin: 0 0 24px 0;
 `;
 
+const ModalHint = styled.p`
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #F5F3FF;
+  color: #4B5563;
+  font-size: 13px;
+  line-height: 1.5;
+`;
+
 const CheckboxLabel = styled.label`
   display: flex;
   align-items: center;
@@ -459,8 +469,7 @@ const SupplierProductOptionsTab: React.FC<Props> = ({ onCountChange, onOptionGro
         <EmptyState>
           <EmptyTitle>No option groups yet</EmptyTitle>
           <EmptyDescription>
-            Create option groups to add customizable options (size, packaging, grade) to your
-            products.
+            {t('products.optionsEmptyHint', 'Options are choices that do not change the amount — cut, grade, aging, brand. If the pack or size differs (1 kg / 5 kg, 1 pack / 20-pack carton), add a separate product instead.')}
           </EmptyDescription>
           <ThemedButton onClick={() => handleOpenModal()}>
             {t('products.addOptionGroup', 'Add Option Group')}
@@ -538,13 +547,16 @@ const SupplierProductOptionsTab: React.FC<Props> = ({ onCountChange, onOptionGro
           onClose={handleCloseModal}
           title={editingGroup ? 'Edit Option Group' : t('products.addOptionGroup', 'Add Option Group')}
         >
+          <ModalHint>
+            {t('products.optionGroupHint', 'Use options for choices that do not change the amount (cut, grade, aging, brand). A different pack or size (1 kg / 5 kg, 1 pack / 20-pack carton) is a separate product — each gets its own spec and price.')}
+          </ModalHint>
           <UIFormGroup>
             <FormLabel>Group Name *</FormLabel>
             <FormInput
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g., Size, Grade, Packaging"
+              placeholder={t('products.optionGroupPlaceholder', 'e.g., Cut Style, Grade, Aging')}
             />
           </UIFormGroup>
 

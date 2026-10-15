@@ -240,6 +240,9 @@ async function shareProductToBrand(brandProduct, brandId, { transaction } = {}) 
       // 재료 단위는 정해진 목록(ENUM)만 받는다 — 상품의 «hour»·«tray» 같은 값은 매장 담기와 같은 규칙으로 맞춘다(catalogLink.normalizeUnit)
       name: brandProduct.name, unit: require('../utils/catalogLink').normalizeUnit(brandProduct.unit || 'pack'),
       base_quantity: brandProduct.base_quantity || 1,
+      // 기준단위(포장)도 상품 규격대로 (2026-10-15 Fable D4 — 같은 정규화 catalogLink.stockFieldsFromSellerProduct)
+      package_unit: require('../utils/catalogLink').stockFieldsFromSellerProduct(brandProduct,
+        { unit: require('../utils/catalogLink').normalizeUnit(brandProduct.unit || 'pack') }).package_unit,
       unit_cost: brandProduct.unit_price || 0, // 초기값 폴백 — 이후 동기화 대상 아님
       category: 'other', min_stock: 0, current_stock: 0, is_active: true
     }, { transaction });

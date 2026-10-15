@@ -333,8 +333,11 @@ router.get('/supplier-directory/:supplierCompanyId', async (req, res) => {
       where: { supplier_company_id: supplierCompanyId, is_active: true },
       include: [{ model: SupplierProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] }],
       order: [['sort_order', 'ASC'], ['name', 'ASC']],
-      limit: 50
+      // 2026-10-15: 50 에서 잘려 큰 업체(LSH 63개)의 뒤쪽 상품이 상세 화면에 안 보였다 — 카탈로그와 같은 상한 + 잘렸는지 알림
+      limit: CATALOG_LIMIT
     });
+    const productTotal = products.length < CATALOG_LIMIT ? products.length
+      : await SupplierProduct.count({ where: { supplier_company_id: supplierCompanyId, is_active: true } });
 
     const categories = await SupplierProductCategory.findAll({
       where: { supplier_company_id: supplierCompanyId, is_active: true },
@@ -353,6 +356,7 @@ router.get('/supplier-directory/:supplierCompanyId', async (req, res) => {
       data: {
         supplier: supplierOut,
         products,
+        products_meta: { total: productTotal, shown: products.length, limit: CATALOG_LIMIT, truncated: products.length < productTotal },
         categories,
         my_contract: myContract ? myContract.toJSON() : null,
         // 외부 업체 «청구 방식» — 그 구매자 계약 기준 (2026-10-07 ⑩). 가입 업체는 판매자 조건이라 null.
@@ -1349,6 +1353,10 @@ function buildProductFields(body) {
   if (!Number.isInteger(lead_time_days) || lead_time_days < 0) return { error: 'lead_time_days must be a non-negative integer' };
   return { value: {
     name, unit_price, base_quantity, min_order_quantity, lead_time_days,
+    // SKU — 빈 값이면 칸을 안 실어 POST 는 자동 채번·PUT 은 그대로 (2026-10-15 Fable D2 · Irene «SKU도 안나오고»)
+    ...(body.sku !== undefined && String(body.sku).trim() !== '' ? { sku: sanitizeString(String(body.sku)).trim().slice(0, 100) } : {}),
+    // 주문방식 — 판매자 폼과 같은 두 값만(pack=개수 · measure=무게·부피). 다른 값은 pack.
+    ...(body.order_mode !== undefined ? { order_mode: body.order_mode === 'measure' ? 'measure' : 'pack' } : {}),
     unit: body.unit ? sanitizeString(String(body.unit)) : null,
     // 기준단위(포장) — 인보이스 UOM(BOX·Btl·PKT). 자유 입력 (2026-09-11, utils/poLineSpec.js)
     package_unit: require('../utils/poLineSpec').normalizePackageUnit(body.package_unit),
@@ -1359,6 +1367,18 @@ function buildProductFields(body) {
     is_active: body.is_active !== false
   } };
 }
+
+/**
+ * 같은 업체 안 SKU 중복 — 유니크 인덱스가 없어 서버가 막는다(2026-10-15 Fable D2 · S6).
+ * 다른 업체의 같은 SKU 는 허용(브랜드 LSH 와 매장 LSH 사본이 같은 번호 체계를 쓴다 — 정상). 지운 행은 보지 않는다(paranoid).
+ */
+async function skuTaken(companyId, sku, exceptId) {
+  if (!sku) return false;
+  const where = { supplier_company_id: companyId, sku };
+  if (exceptId) where.id = { [Op.ne]: exceptId };
+  return !!(await SupplierProduct.findOne({ where, attributes: ['id'] }));
+}
+const SKU_EXISTS = (sku) => ({ success: false, code: 'SKU_EXISTS', message: `SKU "${sku}" is already used by another product of this supplier` });
 
 // GET /api/external-suppliers — 내가 등록한 외부공급업체 목록 (+상품수)
 router.get('/external-suppliers', async (req, res) => {
@@ -1590,12 +1610,13 @@ router.post('/external-suppliers/:id/products', async (req, res) => {
   try {
     const built = buildProductFields(req.body || {});
     if (built.error) return res.status(400).json({ success: false, message: built.error });
+    if (built.value.sku && await skuTaken(sc.id, built.value.sku)) return res.status(409).json(SKU_EXISTS(built.value.sku));
     // 2026-09-06: `count + 1` 제거 — 지운 번호가 다시 나온다. 채번 단일 소스 = utils/codeGenerator.js.
     const { generateCode } = require('../utils/codeGenerator');
-    const sku = req.body.sku ? sanitizeString(String(req.body.sku))
-      : await generateCode(SupplierProduct, `SP-${sc.id}`, {
+    const sku = built.value.sku
+      || await generateCode(SupplierProduct, `SP-${sc.id}`, {
           field: 'sku', padLength: 4, whereClause: { supplier_company_id: sc.id } });
-    const product = await SupplierProduct.create({ supplier_company_id: sc.id, sku, current_stock: 0, low_stock_threshold: 0, sort_order: 0, ...built.value });
+    const product = await SupplierProduct.create({ supplier_company_id: sc.id, current_stock: 0, low_stock_threshold: 0, sort_order: 0, ...built.value, sku });
     const created = await SupplierProduct.findByPk(product.id, { include: [{ model: SupplierProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] }] });
     res.status(201).json({ success: true, data: created });
   } catch (err) {
@@ -1612,6 +1633,7 @@ router.put('/external-suppliers/:id/products/:productId', async (req, res) => {
     if (!product || product.supplier_company_id !== sc.id) return res.status(404).json({ success: false, message: 'Product not found' });
     const built = buildProductFields(req.body || {});
     if (built.error) return res.status(400).json({ success: false, message: built.error });
+    if (built.value.sku && await skuTaken(sc.id, built.value.sku, product.id)) return res.status(409).json(SKU_EXISTS(built.value.sku));
     await product.update(built.value);
 
     // 💰 가격 전파 (2026-09-08) — 외부 공급업체 상품도 가입 공급업체(supplier-products.js)와 같은 규칙을 따른다.

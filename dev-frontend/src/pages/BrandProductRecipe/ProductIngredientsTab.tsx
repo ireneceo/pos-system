@@ -19,7 +19,7 @@ import { fetchAPI } from '../../utils/api';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
-import { sellerSpecLabel, stockSpecLabel } from '../../utils/unitConversion';
+import { sellerSpecLabel, stockSpecLabel, PACKAGE_UNIT_SUGGESTIONS, withCurrentUnit } from '../../utils/unitConversion';
 
 import { getAuthToken } from '../../utils/auth';
 interface ProductIngredientsTabProps {
@@ -561,7 +561,8 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
         base_quantity: ingredient.base_quantity.toString(),
         package_unit: ingredient.package_unit || '',
         package_quantity: (ingredient.package_quantity ?? 1).toString(),
-        unit_cost: ingredient.unit_cost.toString(),
+        // 소수 둘째 자리로 보인다(DB 4자리) — 손대지 않으면 저장 때 보내지 않는다(2026-10-15 Fable D6)
+        unit_cost: Number(ingredient.unit_cost).toFixed(2),
         supplier_name: ingredient.supplier_name || '',
         supplier_id: ingredient.supplier_id || '',
         min_stock: ingredient.min_stock.toString(),
@@ -730,7 +731,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
           // 기준단위를 안 고르면 취급단위와 같다는 뜻 — 서버·화면 모두 `package_unit ?? unit` 으로 읽는다
           package_unit: formData.package_unit || null,
           package_quantity: parseFloat(formData.package_quantity) || 1,
-          unit_cost: parseFloat(formData.unit_cost) || 0,
+          ...(editingIngredient && formData.unit_cost === Number(editingIngredient.unit_cost).toFixed(2) ? {} : { unit_cost: parseFloat(formData.unit_cost) || 0 }),
           min_stock: parseFloat(formData.min_stock) || 0,
           min_order: parseFloat(formData.min_order) || 0,
           current_stock: parseFloat(formData.current_stock) || 0
@@ -1131,7 +1132,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
         onConnected={() => { setPickSellerTarget(null); fetchData(); }}
       />
       <RegisterExternalSupplierModal
-        target={extTarget ? { id: extTarget.id, name: extTarget.name, unit: extTarget.unit } : null}
+        target={extTarget ? { id: extTarget.id, name: extTarget.name, unit: extTarget.unit, base_quantity: (extTarget as any).base_quantity, package_unit: (extTarget as any).package_unit, package_quantity: (extTarget as any).package_quantity } : null}
         targetKind="product_ingredient"
         buyerApiBase={brandId ? `/api/brands/${brandId}` : ''}
         buyerScopeQS={brandId ? `?entity_type=brand&entity_id=${brandId}` : ''}
@@ -1244,14 +1245,8 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                 onChange={(e) => setFormData({ ...formData, package_unit: e.target.value })}
               >
                 <option value="">{t('brand:productIngredientsTab.selectUnit')}</option>
-                <option value="kg">kg</option>
-                <option value="g">g</option>
-                <option value="L">L</option>
-                <option value="ml">ml</option>
-                <option value="piece">piece</option>
-                <option value="pack">pack</option>
-                <option value="can">can</option>
-                <option value="bottle">bottle</option>
+                {/* 포장 종류 전부 — 판매 상품 폼 제안 목록과 같은 어휘(서버 ENUM utils/stockUnits.js, 2026-10-15 Irene «카톤도 … 팩킹 종류 다») */}
+                {withCurrentUnit(PACKAGE_UNIT_SUGGESTIONS, formData.package_unit).map((u) => <option key={u} value={u}>{u}</option>)}
               </FormSelect>
             </UIFormGroup>
           </UIFormRow>

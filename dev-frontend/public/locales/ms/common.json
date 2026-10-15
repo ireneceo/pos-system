@@ -768,6 +768,8 @@
   "nav.rentManagement": "Pengurusan Sewa",
   "ewalletTypeQuestion": "E-dompet manakah yang anda gunakan untuk membayar?",
   "pwa.guide.title": "Pasang aplikasi",
+  "pwa.guide.qrAndroid": "Mahu pasang pada tablet atau telefon Android? Imbas kod ini dengan kameranya untuk muat turun terus — tak perlu taip alamat.",
+  "pwa.guide.qrLink": "Pasang pada tablet Android? Imbas kod QR",
   "pwa.guide.install": "Pasang",
   "pwa.guide.downloadWindows": "Muat turun untuk Windows",
   "pwa.guide.downloadAndroid": "Muat turun aplikasi",

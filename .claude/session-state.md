@@ -1,7 +1,16 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-10-15 UTC — 공급업체 상품 옵션별 가격 검토(답 기다림) [작업방 0883cfbd] · 이전: 2026-10-11 UTC — 브랜드 매니저 여러 브랜드·회사 전체 배정 /개발완료 [작업방 8315f30a] · 이전: 2026-10-11 UTC — 발주 카탈로그 «Add to My Stock» 표시 결함 수정 /개발완료 [작업방 ef2223fa] · 이전: 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
+**마지막 업데이트:** 2026-10-15 UTC — 공급업체 상품 옵션 가격 발주 반영 /개발완료(끝난 방들 미커밋 묶음 같이 커밋) [작업방 0883cfbd] · 이전: 2026-10-11 UTC — 브랜드 매니저 여러 브랜드·회사 전체 배정 /개발완료 [작업방 8315f30a] · 이전: 2026-10-11 UTC — 발주 카탈로그 «Add to My Stock» 표시 결함 수정 /개발완료 [작업방 ef2223fa] · 이전: 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
 **버전:** **v3.110** (2026-10-11 · Irene «응») · 운영 SW **5.90-preflight-security-20261010** (2026-10-11 06:36 UTC 배포 · 백업 20261011_062932 · DB 덤프 db_predeploy_20261011_062932 · 스모크 10/10 · 마이그 118/118) · 안드로이드 앱 0.3.4
 **작업 상태:** ✅ 운영 배포 완료 SW 5.90 (2026-10-11) — 남은 것: /운영검증 · 키오스크 태블릿 운영 확인 · 첫 주방 티켓 눈 확인 · E1·E3(서버 창, 선택) · Q6 · 재발 방지(마이그 «칸 추가 단계» 분리, Fable 설계 1회)
+
+### 완료 (2026-10-15) — 판매자 주문 수정에서 총액이 늘어도 «확인» 누르면 저장 (개발서버 · Fable 설계 1 + 게이트 PASS) [Claude Code · 백그라운드 작업방 fa58b0c2]
+- Irene: «이렇게 무조건 안되게 하면 안돼. 브랜드제너럴이 추가하고 수정하는게 자유로워야 해. 이거 확인 누르면 바뀌게 해줘야 해. Items total RM 804.60 → RM 830.50 … incoming-orders 이 페이지에서 에디트할 때»
+- Fable 설계: .claude/fable-design-20261015-amend-raise-total.md — 09-24 «인상 금지» 원칙 폐기 · 인상은 확인 1번(confirm_increase, 서버가 요구) · 오너 승인 매장이면 대리 주문 추가와 같은 승인 대기(poOwnerApproval.applyAmendRaiseGate) · 감량은 그대로
+- 구현: routes/seller-orders.js · utils/poOwnerApproval.js · utils/poAmend.js(주석) · IncomingOrdersView.tsx(저장 막힘 해제·호박색 안내·«Raise the order total?» 확인 창·승인 대기 안내) · supplier.json 4언어 · health-check P7 수정+P8 · 문서 SELLER_ORDER_MANAGEMENT_SYSTEM·PURCHASE_ORDER_SYSTEM
+- 검증: inventory 69/69 · 고장주입 2건 실패 확인 후 원복 · 실호출 데모 38 [확인용] PO-R38-20261015-002(38623) 8→20→28 · 실브라우저 클릭 흐름 콘솔 오류 0 · verify-all --full 21/24(실패 3 이전부터: 배포 기록·LEDGER-004·health [po] 수령 FK) · Fable 게이트 PASS(지문 58152a1edfc8)
+- 커밋 안 함: 같은 파일에 다른 방(0883cfbd, 일하는 중) 미커밋 변경 섞임 — 그 방 PASS 조건(클릭 흐름) 확인 뒤 함께 커밋
+- 남은 것(작은 별건): 배송비 있는 판매자에서 소계를 배송비보다 적게 올리면 화면이 인상을 못 알아채 확인 창 없이 서버 400 문구만 뜸(09-24 부터 있던 틈, dev 128건 중 2건) — handleAmend 400 에서 requires_confirmation 이면 확인 창 열기
+- 운영 반영: 다음 배포 때(마이그 없음)
 
 ### 완료 (2026-10-15) — 공급업체 상세(/pos/suppliers/directory/73)에 새로 넣은 상품이 안 보임: 원인 확정 · 고침은 다음 배포 때 (Fable 안 씀 — 원인 실측으로 갈림, 고침은 ebe3a0ff 게이트 PASS 묶음) [Claude Code · 백그라운드 작업방 259d5a23]
 - Irene: «https://purplehere.com/pos/suppliers/directory/73 공급업체 아이템 추가해도 리스트에 안나와 … 오더할 때 나와. 여러 개가 등록되었어. 문제야.»
@@ -19,12 +28,22 @@
 - 질문: **카탈로그의 «메뉴/프로덕트 추가» 를 «재고아이템 + 그대로 파는 메뉴/프로덕트» 로 바꿀까요?** — Fable 권고 (가). 상황판 질문 올림(askmv96f2pd)
 - 답이 오면: (가) 설계 문서 §3 순서대로 구현(같은 파일 다른 방 미커밋 위에 얹음) → 빌드 1회·verify-all --full → Fable gate 1회. (나)면 D2 판정만 고치고 gate.
 
-### 답 기다림 (2026-10-15) — 공급업체 상품 옵션별 가격: «20팩» 은 카톤 상품인가 수량 할인인가 + 옵션 가격 반영 구현 진행 여부 [Claude Code · 백그라운드 작업방 0883cfbd]
-- Irene: «공급업체 상품도 옵션이 필요하고 옵션마다 가격이 달라. 예를 들면 1팩은 더 비싸고 20팩은 더 싸고. 옵션 기본세팅 검토해줘.»
-- Fable 설계(코드 변경 0): .claude/fable-design-20261015-supplier-product-options.md — 양이 바뀌는 것(1팩/20팩·1kg/10kg)은 옵션이 아니라 규격 → 판매 상품을 따로(지금 가능) · 옵션은 양이 안 바뀌는 선택만
-- 실측 결함: 옵션 가격이 화면에만 보이고 발주엔 기본가로 저장(NewPurchaseOrderPage 제출에 옵션·단가 없음 → purchase-orders-crud 1021~1039 연결 단가) · 옵션은 발주 메모 글자로만, 판매자 수신함엔 안 보임 · 양 옵션 골라도 입고는 1개분 · 개발 데모 옵션 2그룹(Pack Size·Container Size)이 틀린 예시 · 운영 사용 여부 모름
-- 질문: **«20팩» 은 카톤 상품(가)으로 따로 등록하고, 옵션 가격이 발주에 실리게 고치는 구현(D3~D7)은 SKU 정비 방(ebe3a0ff) 커밋 뒤 진행할까요?** — Fable 권고: (가) + 진행
-- 답이 오면: 설계 문서 D1~D7 그대로 구현(ebe3a0ff 미커밋 커밋 뒤 착수) → 자체 검증 → Fable 게이트 1회. (나)면 구조 문서(TRADE_STRUCTURE)부터 + Fable 별도 설계. 상황판 질문 올림(askmv95gfg6)
+### 완료 (2026-10-15) — 공급업체 상품 옵션 가격 발주 반영 (개발서버 · Fable gate PASS · 조건(클릭 흐름 1회) 충족 · /개발완료) [Claude Code · 백그라운드 작업방 0883cfbd]
+- Irene: «공급업체 상품도 옵션이 필요하고 옵션마다 가격이 달라. 예를 들면 1팩은 더 비싸고 20팩은 더 싸고. 옵션 기본세팅 검토해줘.» → 상황판 답 «권고대로 진행해 줘»(20팩 = 카톤 상품 따로 등록 · 옵션 가격 반영 구현)
+- 한 것(개발서버 · 커밋 안 함): 발주 줄 «고른 옵션» 칸(마이그 migrate-po-item-options.js · registry deploy · dev 적용 2회 멱등) · 규칙 한 곳 utils/poLineOptions.js(서버가 DB 조정액으로 단가 = 연결가 + 옵션, 화면 값 불신 · 4갈래 거부) · 발주 만들기 3경로 · 초안 합치기 키 · 가격 다시 불러오기 · 판매자 수정(원래 줄 옵션 이어 붙임) · 판매자에게 나가는 상품명에도 옵션 표기(sellerProductIdentity) · 발주 화면이 option_ids 를 보내고 메모 «[Options]» 제거 · 장바구니 판매자 고르기에 규격(같은 판매자 둘일 때) · 판매자 수 중복 제거 · 옵션 탭 안내문 4언어 «양이 바뀌면 옵션이 아니라 상품을 따로» · 판매자 수정 창 item_id·미리보기 조정액 · 데모 공급업체 14 크기 옵션 2그룹 → 규격별 상품 6행(scripts/dev-demo-split-size-options.js, 개발만) · 문서 TRADE_STRUCTURE §2-2 · PURCHASE_ORDER_SYSTEM 08-30 ① 확정
+- 착수 조건 «ebe3a0ff 커밋 뒤» 는 못 지킴 — 그 방은 끝나 멈췄고 커밋 없음. 겹치는 파일은 착수 직전 사본을 떠 이 방 변경만 분리(작업방 tmp/my.diff · baseline/)
+- 운영 실사용(읽기 전용 prod-query): 옵션 그룹 0 · «[Options]» 발주 0 → 잘못 청구된 발주 없음, 소급 없음
+- 자체 검증(Fable 미검증): jest 9/9(고장주입 4 실패→원복) · health-check 새 1건 [po] O1~O5 통과(고장주입: 조정액 빼면 O1 실패 95/190 → 원복 통과) · build:dev EXIT 0 · verify-all --full 21/24(실패 3 = 이전부터: 배포 준비 기록 · LEDGER-004 · [po] 수령 FK 4) · mount sweep 8역할 크래시 0 · 판매자 받은 주문 화면에 «Cut Style: Sliced» · 옵션 그룹 창 안내문 · print-guard 8/8 · design-guard 신규 0 · i18n · 타입 신규 0
+- 확인 못 함: 매장 발주 화면 클릭 흐름(Options → Sliced → 장바구니 43 → 제출) — 서버 메모리 부족으로 시스템이 브라우저 확인을 중단(재시작 안 함)
+- 확인용 데이터(지우지 말 것): 데모 매장 38 «[확인용] Beef Brisket» 재료(1 kg 옵션 상품 + 5 kg 상품 두 연결) · 데모 공급업체 20 «[확인용] Cut Style» 옵션 그룹 · 발주 PO-R38-20261015-001(제출됨, Sliced 2×43 + 5 kg 1×180 = 266)
+- Fable gate PASS(조건부 1 · 지시 3) — 판정문 backups/fable-pending/fable-verdict-20261015-supplier-options-gate.md · 마커 지문 9f57446c69b7 · 설계와 다른 점 9 전부 수용 · pageerror «reading 'update'» 는 서비스워커 갱신 타이머(src/index.tsx:133, 무접촉) — 이 변경 결함 아님
+- 커밋할 때(Fable 지시 3): 이 방 변경 = 작업방 tmp/my.diff 21파일 **+ dev-backend/routes/seller-orders.js**(carriedOptionsFor 2 hunk — diff 추출에서 빠졌음). 같은 파일의 다른 방 hunk(keepMappingIds)도 게이트 받은 변경이라 같이 커밋, 메시지에 설계 문서 두 개(fable-design-20261015-supplier-catalog.md · …-supplier-product-options.md) 적기
+- 별건 메모(S6, Fable 지시 2): PUT /purchase-orders/:id 는 화면 unit_price 를 믿고 줄을 지우고 다시 만들며 options 를 싣지 않는다(화면 호출 0 = 잠자는 구멍). S6 닫을 때 그 경로도 resolveLineOptions 를 타게
+- 운영 반영: 다음 정기 배포(마이그 registry deploy 자동 · SW 는 배포 방) · 롤백: 칸 추가만이라 옛 코드 그대로 돈다
+- 상황판 질문(askmv99g6zt «Fable 최종 검증 다시 돌릴까요?»)은 판정이 도착해 답 불필요 — 지울 길이 없어 남아 있음
+
+- Fable 조건 충족(Irene «권고대로 진행해 줘» 뒤, 메모리 회복 후 1회): 실브라우저 데모 매장 38 «[확인용] Beef Brisket» Options → Sliced → 장바구니 43.00 + 옵션 표시 → Create POs → 요청 본문 option_ids [57] → Staging 43.00 · pageerror 0 · 판매자 고르기 «Demo Supplier Co. · 5 kg/bag · 180.00» · 저장된 줄 43.00 + options 스냅샷(시험 초안 38790 은 지움)
+- 관찰(이 변경 아님, 막지 않음): 내 재고 탭 카드 자체를 누르면 옵션 창 없이 기본가로 담긴다(필수 옵션 상품도). 서버는 옵션 없는 줄을 기본가로 받음 — 바꾸려면 별건
 
 ### 완료 (2026-10-15) — 재료 화면 «수정» 창에서 연결된 공급업체가 사라짐 (개발서버 · Fable 안 씀 — 화면 다시 불러오기 버그, 실브라우저로 갈림) [Claude Code · 백그라운드 작업방 a75d1041]
 - Irene: «https://purplehere.com/restaurant/10/ingredients 이 페이지에서 스톡아이템 수정하면 연결된 공급업체가 안나와. 체크해.»

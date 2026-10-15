@@ -1133,12 +1133,14 @@ router.put('/:id/tracking', async (req, res) => {
 // 11. POST /api/seller-orders/:id/amend   (Fable 판정 2026-09-24)
 // ============================================
 // 판매자가 받은 주문의 품목을 고친다. 원칙은 utils/poAmend.js 머리글 참조 —
-// **총액을 늘리지 못한다**(늘려야 하면 Reject 하고 구매자가 다시 발주한다).
+// 총액을 **늘릴 때는 확인(confirm_increase)** 을 받고, 오너 승인 매장이면 승인을 다시 받는다(2026-10-15).
 // 이유는 선택, 변경 내역(diff)은 서버가 항상 만든다.
 const {
   AMENDABLE_STATUSES, buyerEntityOf, mappingUsableBy,
   listAmendableProducts, buildAmendedLine, diffLines
 } = require('../utils/poAmend');
+const { carriedOptionsFor } = require('../utils/poLineOptions');
+const { isApprovalRequiredForPo, applyAmendRaiseGate } = require('../utils/poOwnerApproval');
 const { computeTotalsWithDelivery } = require('../utils/purchaseOrderTotals');
 const { currencySymbol } = require('../utils/currency');
 
@@ -1305,13 +1307,21 @@ router.get('/:id/amendable-products', async (req, res) => {
     if (!po || !checkSellerOwnership(po, req)) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
-    const products = await listAmendableProducts(po, buyerEntityOf(po), undefined);
+    const lines = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, attributes: ['ingredient_seller_product_id'] });
+    const products = await listAmendableProducts(po, buyerEntityOf(po), undefined, {
+      keepMappingIds: lines.map(l => l.ingredient_seller_product_id).filter(Boolean)
+    });
     // 주문 추가와 같은 답 — 배포됐지만 매장이 아직 안 담은 상품도 고를 수 있다(Fable A안 S3, Irene Q3 «허용»).
     if (po.seller_type === 'brand' && po.entity_type === 'restaurant') {
       products.push(...await unlinkedBrandProductsFor(po.entity_id, po.seller_entity_id, products));
       products.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
     }
-    res.json({ success: true, data: { products, amendable: AMENDABLE_STATUSES.includes(po.status) && !po.trade_invoice_id } });
+    // 인상 시 오너 재승인 여부 — 저장 게이트(applyAmendRaiseGate)와 같은 판정이라 화면 말과 서버 행동이 같다.
+    res.json({ success: true, data: {
+      products,
+      amendable: AMENDABLE_STATUSES.includes(po.status) && !po.trade_invoice_id,
+      raise_requires_approval: await isApprovalRequiredForPo(po)
+    } });
   } catch (err) {
     console.error('GET /api/seller-orders/:id/amendable-products error:', err);
     res.status(500).json({ success: false, message: 'Failed to load products' });
@@ -1325,6 +1335,7 @@ router.post('/:id/amend', async (req, res) => {
     if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Order not found' });
 
     const reason = sanitizeString(String(req.body?.reason || '').trim()).slice(0, 1000);
+    const confirmIncrease = req.body?.confirm_increase === true;
     const items = req.body?.items;
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: 'At least one item is required' });
@@ -1382,17 +1393,25 @@ router.post('/:id/amend', async (req, res) => {
         const mapping = await IngredientSellerProduct.findByPk(mappingId, { transaction: t });
         const check = await mappingUsableBy(mapping, po, buyerEntity, t);
         if (!check.ok) { const e = new Error(check.message); e.code = check.code; throw e; }
-        validated.push(await buildAmendedLine(po, raw, mapping, check.stockRow, check.target, t));
+        validated.push(await buildAmendedLine(po, raw, mapping, check.stockRow, check.target, t,
+          carriedOptionsFor(raw, mappingId, beforeRows)));
       }
 
       const totals = await computeTotalsWithDelivery(validated, po, { orderCurrency: po.currency });
       const totalBefore = parseFloat(po.total_amount) || 0;
       const totalAfter = parseFloat(totals.total_amount) || 0;
-      // 🔒 돈 게이트 — 구매자가 약속한 금액을 넘기지 못한다(오너 승인 우회 방지).
-      //    반올림 1 센트 오차까지 막지는 않는다.
-      if (totalAfter - totalBefore > 0.005) {
-        const e = new Error("Amended total exceeds the buyer's approved amount");
-        e.code = 'TOTAL_EXCEEDS'; e.meta = { total_before: totalBefore, total_after: totalAfter };
+      // 🔒 돈 게이트 — 총액을 올리려면 판매자 확인(confirm_increase)이 꼭 있어야 한다
+      //    (옛 번들·직접 호출이 모르고 올리지 못하게). 반올림 1 센트 오차는 인상으로 보지 않는다.
+      //    오너 승인 매장이면 아래 applyAmendRaiseGate 가 승인 대기로 되돌린다(2026-10-15 Fable 설계).
+      const totalIncreased = totalAfter - totalBefore > 0.005;
+      if (totalIncreased && !confirmIncrease) {
+        const e = new Error('Amended total exceeds the current total — confirm the increase to proceed');
+        e.code = 'TOTAL_EXCEEDS';
+        e.meta = {
+          requires_confirmation: true,
+          approval_required: await isApprovalRequiredForPo(po, t),
+          total_before: totalBefore, total_after: totalAfter
+        };
         throw e;
       }
 
@@ -1409,7 +1428,8 @@ router.post('/:id/amend', async (req, res) => {
           reason: reason || null,
           by_user_id: req.user?.id || req.user?.userId || null,
           total_before: totalBefore,
-          total_after: totalAfter
+          total_after: totalAfter,
+          total_increased: totalIncreased
         }
       );
       // ⚠ status 는 바꾸지 않는다 — 'amended' 는 이력 이벤트 이름일 뿐이다.
@@ -1422,7 +1442,14 @@ router.post('/:id/amend', async (req, res) => {
         tracking_info: tracking
       }, { transaction: t });
 
-      return { po, changes, reason, totalBefore, totalAfter };
+      // 올렸으면 오너 승인 매장은 새 주문과 같은 승인을 다시 받는다(아니면 상태 불변).
+      const needsApproval = totalIncreased
+        ? await applyAmendRaiseGate(po, t, appendTrackingEvent, {
+          totalBefore, totalAfter, byUserId: req.user?.id || req.user?.userId || null
+        })
+        : false;
+
+      return { po, changes, reason, totalBefore, totalAfter, needsApproval };
     });
 
     emitPoEvent(req, result.po, 'seller-order-updated');
@@ -1457,6 +1484,9 @@ router.post('/:id/amend', async (req, res) => {
              <tbody>${rows}</tbody>
            </table>
            <p style="color:#374151;font-size:14px;margin:0 0 20px;">Order total: <span style="color:#9CA3AF;">${money(result.totalBefore)}</span> → <strong>${money(result.totalAfter)}</strong></p>
+           ${result.needsApproval
+             ? '<div style="background:#FFFBEB;border-left:4px solid #F59E0B;padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;"><p style="color:#92400E;font-size:14px;margin:0;">This change is waiting for Owner approval before it is confirmed.</p></div>'
+             : ''}
            ${result.reason ? `<div style="background:#F9FAFB;border-left:4px solid #635BFF;padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;">
              <p style="color:#4B5563;font-size:13px;font-weight:600;margin:0 0 6px;">Reason</p>
              <p style="color:#374151;font-size:14px;margin:0;">${result.reason.slice(0, 600)}</p>
@@ -1473,11 +1503,18 @@ router.post('/:id/amend', async (req, res) => {
         console.error('[seller-orders] amend notification error:', e.message);
       }
     });
+    if (result.needsApproval) {
+      const { fireOwnerApprovalPendingNotification } = require('../services/poNotifications');
+      setImmediate(() => fireOwnerApprovalPendingNotification(result.po));
+    }
 
     const updated = await PurchaseOrder.findByPk(result.po.id, {
       include: [{ model: PurchaseOrderItem, as: 'items' }]
     });
-    res.json({ success: true, data: updated, message: 'Order amended' });
+    res.json({
+      success: true, data: updated,
+      message: result.needsApproval ? 'Order amended — awaiting buyer Owner approval' : 'Order amended'
+    });
   } catch (err) {
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
     if (err.code === 'TOTAL_EXCEEDS') {

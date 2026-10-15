@@ -34,7 +34,10 @@
     "searchProducts": "상품 검색...",
     "moq": "최소 주문 {{n}}",
     "perUnit": "/{{unit}}",
-    "loadFailed": "공급업체 프로필을 불러오지 못했습니다."
+    "loadFailed": "공급업체 프로필을 불러오지 못했습니다.",
+    "externalSupplier": "외부 공급업체",
+    "truncated": "상품 {{total}}개 중 {{shown}}개를 보여 줍니다 — 검색으로 좁혀 보세요.",
+    "noImage": "이미지 없음"
   },
   "myContracts": {
     "title": "내 공급업체",
@@ -224,7 +227,30 @@
     "orderedAs": "주문 표시: {{line}}",
     "stockConversion": "재고 환산",
     "stockConversionHint": "한 포장을 입고하면 우리 재고 단위로 얼마가 들어가는지입니다.",
-    "conversionRequired": "{{pkg}} 1개가 재고에 {{unit}} 얼마로 들어가는지 입력하세요."
+    "conversionRequired": "{{pkg}} 1개가 재고에 {{unit}} 얼마로 들어가는지 입력하세요.",
+    "nameRequired": "상품 이름을 입력해 주세요.",
+    "unitRequired": "사용 단위를 골라 주세요.",
+    "priceRequired": "올바른 가격을 입력해 주세요.",
+    "name": "상품 이름",
+    "namePlaceholder": "예: Chicken Breast",
+    "skuPlaceholder": "공급업체 상품 코드(선택)",
+    "skuHint": "비워 두면 번호가 자동으로 붙습니다.",
+    "orderMode": "어떻게 주문하나요?",
+    "orderModePack": "개수로 (팩 / 박스 / 카톤)",
+    "orderModeMeasure": "무게·부피로 (kg, g, L, ml)",
+    "baseQty": "기준 수량",
+    "usageUnit": "사용 단위",
+    "selectUnit": "단위 선택",
+    "leadTime": "배송 소요(일)",
+    "supplierRequired": "외부 공급업체를 골라 주세요.",
+    "skuExists": "이 공급업체의 다른 상품이 이미 이 SKU 를 쓰고 있습니다.",
+    "saveFailed": "상품을 저장하지 못했습니다.",
+    "add": "상품 추가",
+    "editTitle": "상품 수정",
+    "addTitle": "상품 추가",
+    "hint": "직접 등록한 외부 공급업체입니다. 이곳에서 사는 상품을 추가하면 재고 아이템에서 발주할 수 있습니다.",
+    "deleteTitle": "상품 삭제",
+    "nameHint": "공급업체가 부르는 상품 이름입니다. 기본값은 우리 아이템 이름 — 다르면 고치세요."
   },
   "common": {
     "save": "저장",

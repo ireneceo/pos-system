@@ -50,7 +50,8 @@ ProductIngredient.init({
     comment: '취급 기준숫자 — 기준양 전체에 든 취급단위 양 = 가격이 사는 양'
   },
   package_unit: {
-    type: DataTypes.ENUM('kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'),
+    // 어휘 단일 소스 utils/stockUnits.js (2026-10-15 — 판매 상품 포장단위 carton·box… 까지)
+    type: DataTypes.ENUM(...require('../utils/stockUnits').STOCK_PACKAGE_UNIT_ENUM),
     allowNull: true,
     comment: '기준단위(포장) — 포장·발주 단위. 비면 취급단위와 같다'
   },

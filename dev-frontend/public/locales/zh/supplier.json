@@ -88,7 +88,10 @@
       "measure": "每 1 {{unit}} 的价格",
       "pack": "每 1 个 {{spec}} 的价格",
       "needUnit": "在下方选择单位后，将显示此价格的计价基准"
-    }
+    },
+    "optionsEmptyHint": "选项是不改变数量的选择——切法、等级、熟成、品牌。如果包装或规格不同（1 kg / 5 kg、1包 / 20包整箱），请改为单独添加商品。",
+    "optionGroupHint": "选项只用于不改变数量的选择（切法、等级、熟成、品牌）。包装或规格不同（1 kg / 5 kg、1包 / 20包整箱）请单独登记商品——各自有规格和价格。",
+    "optionGroupPlaceholder": "例如：切法、等级、熟成"
   },
   "inventory": {
     "title": "库存管理",
@@ -251,20 +254,29 @@
     },
     "amend": {
       "title": "修改订单项目",
-      "hint": "系统会自动告知买方改动内容。您无法提高订单金额——若需收取更多费用，请拒绝该订单并请买方重新下单。",
+      "hint": "变更内容会通知买方。提高总额时需要您再次确认；若买方开启了业主审批，新总额需等待业主批准。",
       "item": "项目",
       "qty": "数量",
       "choose": "搜索商品名称",
       "addLine": "添加项目",
       "removeLine": "删除此行",
       "itemsTotal": "项目合计",
-      "exceeds": "超出买方已批准的金额。请减少数量，或拒绝订单让买方重新下单。",
+      "exceeds": "订单总额将高于当前总额。保存时请确认涨价。",
       "reason": "原因（选填）",
       "reasonPlaceholder": "改动内容始终会一并送出。如有补充说明可在此填写。",
       "submit": "保存",
       "cancel": "取消",
       "loading": "载入中…",
-      "noProducts": "您的目录中没有符合的商品"
+      "noProducts": "您的目录中没有符合的商品",
+      "raiseNotice": "订单总额将变为 {{totals}}。变更会通知买方。",
+      "raiseNeedsApproval": "该买方的新总额需要业主批准——批准前此订单将从您的列表中移除。",
+      "confirmRaiseTitle": "提高订单总额？",
+      "confirmRaiseBody": "{{totals}}（+{{diff}}）。变更内容会通知买方。",
+      "confirmRaiseApprovalBody": "买方的业主必须批准新总额。在此之前该订单不会出现在您的列表中。若被拒绝，订单将作为草稿退回买方，由买方重新下单。批准后订单会以“已提交”状态返回——请再次确认。",
+      "confirmRaiseOk": "提高总额",
+      "savedTitle": "订单已更新",
+      "savedPendingApproval": "已保存——等待买方业主批准新总额。",
+      "ok": "确定"
     },
     "create": {
       "action": "添加订单",
@@ -360,7 +372,12 @@
     "partiallyCompleted": "部分完成"
   },
   "nav": {
-    "direct": "外部供应商"
+    "direct": "外部供应商",
+    "suppliers": "供应商",
+    "allSuppliers": "全部供应商",
+    "allProducts": "全部商品",
+    "contracts": "合同",
+    "findSuppliers": "查找供应商"
   },
   "viewNote": {
     "own": "可在“外部供应商”标签中编辑或删除该供应商。",
@@ -427,5 +444,52 @@
   "deleteConfirm": {
     "storesKeep": "已收到副本的门店会保留各自的副本。",
     "ownerStores": "您的所有门店将不再看到该供应商。已下的订单会保留。"
+  },
+  "allProducts": {
+    "saved": "已保存“{{name}}”",
+    "pickItem": "请选择您的一个项目。",
+    "addFailed": "无法添加到您的项目。",
+    "added": "“{{name}}”已加入您的项目",
+    "search": "搜索名称、SKU、供应商、分类",
+    "allSuppliers": "全部供应商",
+    "allCategories": "全部分类",
+    "sourceAll": "全部来源",
+    "sourceMine": "我登记的外部供应商",
+    "sourceOther": "平台与品牌卖家",
+    "linkAll": "全部（已关联/未关联）",
+    "linked": "已在我的项目",
+    "unlinked": "不在我的项目",
+    "allPackages": "全部包装单位",
+    "truncated": "显示 {{total}} 个供应商商品中的 {{shown}} 个 — 请搜索缩小范围。",
+    "count": "{{n}} 个商品",
+    "col": {
+      "product": "商品",
+      "supplier": "供应商",
+      "spec": "规格",
+      "price": "价格",
+      "min": "最低订购",
+      "myItems": "我的项目",
+      "actions": "操作"
+    },
+    "loading": "加载中…",
+    "empty": "没有符合的商品。",
+    "kindMine": "外部（我登记）",
+    "kindBrand": "品牌",
+    "kindFoodcourt": "美食广场",
+    "kindSupplier": "供应商",
+    "notLinkedShort": "未添加",
+    "addToItems": "加入我的项目",
+    "openSupplier": "供应商",
+    "externalSupplier": "外部供应商",
+    "pickSupplier": "选择外部供应商",
+    "noExternal": "您尚未登记外部供应商。请先在“全部供应商”标签中添加，然后在此添加其商品。",
+    "externalOnly": "平台供应商自行管理商品目录 — 您只能为自己登记的供应商添加商品。",
+    "addToItemsTitle": "加入我的项目",
+    "howToAdd": "您想如何添加？",
+    "modeNew": "作为新项目",
+    "modeLink": "关联到已有项目（同一物品 — 避免重复）",
+    "itemName": "项目名称",
+    "newPreview": "新项目：{{spec}} · 每包装价格 {{price}} — 与供应商商品相同",
+    "myItem": "我的项目"
   }
 }

@@ -3200,6 +3200,119 @@ function defineReservationTests({ customerToken }) {
 // 쓰기가 필요한 검사는 **트랜잭션 안에서 하고 롤백**한다 — 잔재를 남기지 않는다.
 // ==========================================================================
 function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgToken, adminToken } = {}) {
+  // ── 공급업체 상품 다섯 칸 · SKU · 재고 포장단위 (2026-10-15 Fable 설계 D2·D3·D4 · /var/www/.claude/fable-design-20261015-supplier-catalog.md) ──
+  //   Irene: «SKU도 안나오고 수량/단위/팩킹단위가 제대로 … 재고아이템으로 저장해도 … 안가져오네 · Package Unit 카톤도»
+  test('inventory', '재고 포장단위 ENUM — ingredients·product_ingredients 가 utils/stockUnits 어휘를 전부 담는다', async () => {
+    const { sequelize } = require('../config/database');
+    const { STOCK_PACKAGE_UNIT_ENUM } = require('../utils/stockUnits');
+    const rows = await sequelize.query(`SELECT TABLE_NAME t, COLUMN_TYPE ct FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'package_unit' AND TABLE_NAME IN ('ingredients','product_ingredients')`, { type: sequelize.QueryTypes.SELECT });
+    const missing = rows.map(r => [r.t, STOCK_PACKAGE_UNIT_ENUM.filter(v => !String(r.ct).includes(`'${v}'`))]).filter(([, m]) => m.length);
+    if (rows.length !== 2 || missing.length) console.log(c.red(`      ↳ ${JSON.stringify({ rows: rows.length, missing })}`));
+    return rows.length === 2 && missing.length === 0;
+  });
+
+  test('inventory', '포장단위 정규화·재고 복사 규칙 — pkt→pack · CTN→carton · ea · 미지어휘 base12→pack/base1→null · measure → base1', async () => {
+    const { normalizeStockPackageUnit: n } = require('../utils/stockUnits');
+    const { stockFieldsFromSellerProduct: f } = require('../utils/catalogLink');
+    const a = f({ unit: 'kg', base_quantity: 10, package_unit: 'BOX', unit_price: 48, order_mode: 'pack' }, { unit: 'kg' });
+    const b = f({ unit: 'g', base_quantity: 12, package_unit: 'zz-unknown', unit_price: 5 }, { unit: 'g' });
+    const d = f({ unit: 'g', base_quantity: 1, package_unit: 'zz-unknown', unit_price: 5 }, { unit: 'g' });
+    const m = f({ unit: 'kg', base_quantity: 5, package_unit: 'ea', unit_price: 12, order_mode: 'measure' }, { unit: 'kg' });
+    const kgToG = f({ unit: 'kg', base_quantity: 0.5, package_unit: 'pkt', unit_price: 9 }, { unit: 'g' });
+    const ok = n('pkt') === 'pack' && n('CTN') === 'carton' && n('ea') === 'ea' && n('Carton') === 'carton' && n('zz') === null && n('') === null
+      && a.base_quantity === 10 && a.package_unit === 'box' && a.package_quantity === 1 && a.unit_cost === 48
+      && b.base_quantity === 12 && b.package_unit === 'pack' && d.package_unit === null && d.base_quantity === 1
+      && m.base_quantity === 1 && m.unit_cost === 12 && m.package_unit === 'ea'
+      && kgToG.base_quantity === 500 && kgToG.package_unit === 'pack';
+    if (!ok) console.log(c.red(`      ↳ ${JSON.stringify({ a, b, d, m, kgToG })}`));
+    return ok;
+  });
+
+  test('inventory', '외부 공급업체 상품 — SKU 받음·수정됨 · 같은 업체 SKU 중복 409 · 다른 업체 같은 SKU 201 · 주문방식·포장단위 저장 · 플랫폼 업체 403', async () => {
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 RA 없음 — 계약 미검증)')); return true; }
+    const { sequelize } = require('../config/database');
+    const auth = { Authorization: `Bearer ${demoRaToken}` };
+    const tag = 'ZZ-HC-SKU-' + Date.now().toString(36);
+    const sids = [];
+    try {
+      const s1 = await request('POST', '/external-suppliers', { name: `${tag} A` }, auth);
+      const s2 = await request('POST', '/external-suppliers', { name: `${tag} B` }, auth);
+      const a = s1.body?.data?.supplier?.id, b = s2.body?.data?.supplier?.id;
+      if (a) sids.push(a); if (b) sids.push(b);
+      if (!a || !b) return false;
+      const p1 = await request('POST', `/external-suppliers/${a}/products`, { name: `${tag} P1`, sku: `${tag}-1`, unit: 'kg', base_quantity: 1, package_unit: 'CTN', order_mode: 'measure', unit_price: 12.5 }, auth);
+      const pid = p1.body?.data?.id;
+      const put = pid ? await request('PUT', `/external-suppliers/${a}/products/${pid}`, { name: `${tag} P1`, sku: `${tag}-2`, unit: 'kg', base_quantity: 1, package_unit: 'CTN', order_mode: 'measure', unit_price: 12.5 }, auth) : { status: 0 };
+      const [row] = pid ? await sequelize.query('SELECT sku, order_mode, package_unit, unit FROM supplier_products WHERE id = ?', { replacements: [pid], type: sequelize.QueryTypes.SELECT }) : [{}];
+      const keepSku = pid ? await request('PUT', `/external-suppliers/${a}/products/${pid}`, { name: `${tag} P1`, unit: 'kg', unit_price: 12.5 }, auth) : { status: 0 };
+      const [row2] = pid ? await sequelize.query('SELECT sku FROM supplier_products WHERE id = ?', { replacements: [pid], type: sequelize.QueryTypes.SELECT }) : [{}];
+      const dup = await request('POST', `/external-suppliers/${a}/products`, { name: `${tag} P2`, sku: `${tag}-2`, unit: 'kg', unit_price: 1 }, auth);
+      const other = await request('POST', `/external-suppliers/${b}/products`, { name: `${tag} P3`, sku: `${tag}-2`, unit: 'kg', unit_price: 1 }, auth);
+      const auto = await request('POST', `/external-suppliers/${a}/products`, { name: `${tag} P4`, unit: 'kg', unit_price: 1 }, auth);
+      const [plat] = await sequelize.query('SELECT id FROM supplier_companies WHERE is_system_registered = 1 LIMIT 1', { type: sequelize.QueryTypes.SELECT });
+      const platform = plat ? await request('POST', `/external-suppliers/${plat.id}/products`, { name: `${tag} X`, unit: 'kg', unit_price: 1 }, auth) : { status: 403 };
+      const ok = p1.status === 201 && put.status === 200 && row.sku === `${tag}-2` && row.order_mode === 'measure' && row.package_unit === 'CTN'
+        && keepSku.status === 200 && row2.sku === `${tag}-2`
+        && dup.status === 409 && dup.body?.code === 'SKU_EXISTS' && other.status === 201
+        && auto.status === 201 && /^SP-/.test(auto.body?.data?.sku || '') && platform.status === 403;
+      if (!ok) console.log(c.red(`      ↳ ${JSON.stringify({ p1: p1.status, put: put.status, row, keep: keepSku.status, row2, dup: [dup.status, dup.body?.code], other: other.status, auto: [auto.status, auto.body?.data?.sku], platform: platform.status })}`));
+      return ok;
+    } finally {
+      for (const id of sids) {
+        await sequelize.query('DELETE FROM supplier_products WHERE supplier_company_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM supplier_companies WHERE id = ?', { replacements: [id] });
+      }
+    }
+  });
+
+  test('inventory', '«재고아이템으로 저장» — 매장·BG 둘 다 판매 상품 규격(kg·10·BOX·48)이 새 재고 행 다섯 칸으로 · 환산 10 · 원가식 일치', async () => {
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 RA 없음 — 계약 미검증)')); return true; }
+    const { sequelize } = require('../config/database');
+    const { convertPrice } = require('../services/costSync');
+    const tag = 'ZZ-HC-STOCKCOPY-' + Date.now().toString(36);
+    const sids = []; const ingIds = []; const piIds = [];
+    const one = async (auth, url, idKey) => {
+      const s = await request('POST', '/external-suppliers', { name: `${tag} ${idKey}` }, auth);
+      const sid = s.body?.data?.supplier?.id; if (!sid) return { err: `supplier ${s.status}` }; sids.push(sid);
+      const p = await request('POST', `/external-suppliers/${sid}/products`, { name: `${tag} Kimchi ${idKey}`, unit: 'kg', base_quantity: 10, package_unit: 'BOX', unit_price: 48 }, auth);
+      const spid = p.body?.data?.id; if (!spid) return { err: `product ${p.status}` };
+      const r = await request('POST', url, { supplier_product_id: spid }, auth);
+      const target = r.body?.data?.ingredient;
+      if (target?.id) (idKey === 'bg' ? piIds : ingIds).push(target.id);
+      const table = idKey === 'bg' ? 'product_ingredients' : 'ingredients';
+      const [row] = target?.id ? await sequelize.query(`SELECT unit, base_quantity, package_unit, package_quantity, unit_cost FROM ${table} WHERE id = ?`, { replacements: [target.id], type: sequelize.QueryTypes.SELECT }) : [null];
+      const [map] = target?.id ? await sequelize.query(`SELECT unit_conversion FROM ingredient_seller_products WHERE ${idKey === 'bg' ? 'product_ingredient_id' : 'ingredient_id'} = ? AND seller_product_id = ?`, { replacements: [target.id, spid], type: sequelize.QueryTypes.SELECT }) : [null];
+      return { status: r.status, row, conv: map && Number(map.unit_conversion) };
+    };
+    const good = (x) => x && x.status === 201 && x.row && x.row.unit === 'kg' && Number(x.row.base_quantity) === 10 && x.row.package_unit === 'box'
+      && Number(x.row.package_quantity) === 1 && Number(x.row.unit_cost) === 48 && x.conv === 10
+      && convertPrice({ sellerPrice: 48, sellerUnit: 'kg', sellerBase: 10, myUnit: x.row.unit, myBase: Number(x.row.base_quantity) }).cost === Number(x.row.unit_cost);
+    try {
+      const ra = await one({ Authorization: `Bearer ${demoRaToken}` }, `/restaurants/${demoRestId}/ingredients/from-catalog`, 'ra');
+      const bg = demoBgToken ? await one({ Authorization: `Bearer ${demoBgToken}` }, '/product-ingredients/from-catalog', 'bg') : null;
+      const ok = good(ra) && (bg === null || good(bg));
+      if (!ok) console.log(c.red(`      ↳ ${JSON.stringify({ ra, bg })}`));
+      return ok;
+    } finally {
+      for (const id of ingIds) {
+        await sequelize.query('DELETE FROM ingredient_seller_products WHERE ingredient_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM stock_alerts WHERE ingredient_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM ingredients WHERE id = ?', { replacements: [id] });
+      }
+      for (const id of piIds) {
+        await sequelize.query('DELETE FROM ingredient_seller_products WHERE product_ingredient_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM product_ingredients WHERE id = ?', { replacements: [id] });
+      }
+      for (const id of sids) {
+        await sequelize.query('DELETE FROM supplier_products WHERE supplier_company_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM supplier_companies WHERE id = ?', { replacements: [id] });
+      }
+    }
+  });
+
   // ── 재고 장부 = 단일 진실 (2026-10-08 · Fable 판정 Ⅱ-2) ─────────────────────────
   //   재고 수량은 services/stockLedger.record() 하나로만 바뀌고, 장부 줄에 금액·사유가 남는다.
   //   이 계약이 깨지면 재고 총액·기간 원가·폐기 금액이 조용히 틀어진다 — 데모 매장에서 매번 확인한다.
@@ -5685,9 +5798,9 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
   // A안(Fable 2026-10-01 · .claude/fable-design-20261001-a-plan.md §4) — 판매자는 매장에 아직 안 담긴
   //   배포 상품(서비스 포함)을 바로 주문·수정에 넣는다. 서버가 매장의 «카탈로그에서 담기» 와 같은 함수로 먼저 담는다.
   //   구매자 수령: 서비스 줄은 재고·배치·원장 무접촉(수령량만 적힘) · 주문제작은 재고 올림.
-  //   P1 목록 · P2 생성+멱등 · P3 남의 상품/범위 밖 · P4 혼합 수령(전체+분할) · P5 서비스 전용 완료 · P6 주문제작 · P7 수정
+  //   P1 목록 · P2 생성+멱등 · P3 남의 상품/범위 밖 · P4 혼합 수령(전체+분할) · P5 서비스 전용 완료 · P6 주문제작 · P7 수정(인상은 확인) · P8 인상+오너 승인
   // ══════════════════════════════════════════════════════════════════
-  test('inventory', 'A안 미연결 배포 상품 주문·수정 + 서비스 줄 수령 재고 무접촉 (P1~P7)', async () => {
+  test('inventory', 'A안 미연결 배포 상품 주문·수정 + 서비스 줄 수령 재고 무접촉 (P1~P8)', async () => {
     const { sequelize } = require('../config/database');
     const jwtLib = require('jsonwebtoken');
     const { BrandProduct, BrandProductRestaurant, Ingredient, IngredientSellerProduct,
@@ -5789,21 +5902,86 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       if (done.status !== 200 || (await PurchaseOrder.findByPk(po3)).status !== 'received') return fail(`P5 완료 ${done.status}`);
       if (await stock(iSvc) !== 0) return fail('P5 서비스 재고가 움직임');
 
-      // P7 — 품목 수정 후보에 미연결 상품 · 그 줄로 수정(총액 이하) 200 · 초과면 TOTAL_EXCEEDS
+      // P7 — 품목 수정 후보에 미연결 상품 · 인상은 확인(confirm_increase) 없으면 400 TOTAL_EXCEEDS ·
+      //      확인하면 200(총액 오름·상태 그대로) · 감량은 확인 없이 200 (2026-10-15 Irene «수정이 자유로워야»)
       const c4 = await request('POST', '/seller-orders', body([{ brand_product_id: stk.id, quantity_ordered: 5 }]), bgAuth);
       const po4 = c4.body?.data?.id || c4.body?.data?.po?.id;
       if (po4) poIds.push(po4);
       if (c4.status !== 201) return fail(`P7 생성 ${c4.status}`);
       const am = await request('GET', `/seller-orders/${po4}/amendable-products`, null, bgAuth);
       if (!(am.body?.data?.products || []).some(p => Number(p.link_brand_product_id) === stk2.id)) return fail('P7 수정 후보에 미연결 상품 없음');
+      if (typeof am.body?.data?.raise_requires_approval !== 'boolean') return fail('P7 raise_requires_approval 없음');
+      const statusBefore4 = (await PurchaseOrder.findByPk(po4)).status;
       const over = await request('POST', `/seller-orders/${po4}/amend`, { items: [{ brand_product_id: stk2.id, quantity_ordered: 100 }] }, bgAuth);
-      if (over.status !== 400 || !/exceeds/i.test(over.body?.message || '')) return fail(`P7 초과 ${over.status} ${over.body?.message}`);
+      if (over.status !== 400 || !/exceeds/i.test(over.body?.message || '') || over.body?.requires_confirmation !== true) {
+        return fail(`P7 미확인 인상 ${over.status} ${over.body?.message} confirm=${over.body?.requires_confirmation}`);
+      }
+      const total4a = Number((await PurchaseOrder.findByPk(po4)).total_amount);
+      const raised = await request('POST', `/seller-orders/${po4}/amend`, { items: [{ brand_product_id: stk2.id, quantity_ordered: 100 }], confirm_increase: true }, bgAuth);
+      if (raised.status !== 200) return fail(`P7 확인 인상 ${raised.status} ${JSON.stringify(raised.body).slice(0, 160)}`);
+      const po4r = await PurchaseOrder.findByPk(po4);
+      const lastAmend = (po4r.tracking_info?.events || []).filter(e => e.status === 'amended').pop();
+      if (!(Number(po4r.total_amount) > total4a)) return fail(`P7 인상 총액 ${total4a} → ${po4r.total_amount}`);
+      if (!lastAmend || lastAmend.total_increased !== true) return fail(`P7 amended 이벤트 total_increased 없음 ${JSON.stringify(lastAmend || null).slice(0, 120)}`);
+      if (po4r.status !== statusBefore4) return fail(`P7 인상 뒤 상태 ${statusBefore4} → ${po4r.status} (오너 승인 없는 매장은 그대로)`);
       const ok = await request('POST', `/seller-orders/${po4}/amend`, { items: [{ brand_product_id: stk2.id, quantity_ordered: 4 }] }, bgAuth);
       if (ok.status !== 200) return fail(`P7 수정 ${ok.status} ${JSON.stringify(ok.body).slice(0, 160)}`);
       const lines4 = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po4 } });
       if (lines4.length !== 1 || Number(lines4[0].quantity_ordered) !== 4) return fail('P7 수정 줄 불일치');
       const fo = await request('POST', `/seller-orders/${po4}/amend`, { items: [{ brand_product_id: foreign.id, quantity_ordered: 1 }] }, bgAuth);
       if (fo.status !== 400 || fo.body?.code !== 'PRODUCT_NOT_YOURS') return fail(`P7 남의 상품 수정 ${fo.status} ${fo.body?.code}`);
+
+      // P8 — 오너 승인 매장: 감량은 게이트 안 탐 · 확인 인상은 pending_approval(판매자 목록·상세에서 빠짐)
+      //      → 오너 승인 → submitted → 판매자에게 다시 보임 (2026-10-15 Fable 설계 §2-2 · 대리 주문 추가와 같은 길)
+      const { Restaurant } = require('../models');
+      const { Op: OpP8 } = require('sequelize');
+      const owner8 = await User.findOne({
+        where: { role: 'Restaurant Owner', [OpP8.or]: [{ username: { [OpP8.like]: '%demo%' } }, { username: { [OpP8.like]: '%test%' } }] }
+      });
+      if (!owner8) return true;
+      const c5 = await request('POST', '/seller-orders', body([{ brand_product_id: stk.id, quantity_ordered: 5 }]), bgAuth);
+      const po5 = c5.body?.data?.id || c5.body?.data?.po?.id;
+      if (po5) poIds.push(po5);
+      if (c5.status !== 201) return fail(`P8 생성 ${c5.status}`);
+      const st5 = (await PurchaseOrder.findByPk(po5)).status;
+      if (st5 !== 'submitted') return fail(`P8 생성 상태 ${st5} (승인 켜기 전 submitted 기대)`);
+      const rest8 = await Restaurant.findByPk(fx.rid);
+      const settings8 = JSON.parse(JSON.stringify(rest8.operation_settings || {}));
+      const hadOwner8 = (await q(`SELECT COUNT(*) n FROM restaurant_managers WHERE restaurant_id = :r AND manager_id = :u AND relationship_type = 'ownership'`,
+        { r: fx.rid, u: owner8.id }))[0].n > 0;
+      try {
+        if (!hadOwner8) {
+          await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, relationship_type, assigned_at, createdAt, updatedAt)
+             VALUES (:r, :u, 'ownership', NOW(), NOW(), NOW())`, { replacements: { r: fx.rid, u: owner8.id } });
+        }
+        await rest8.update({ operation_settings: { ...settings8, requirePoOwnerApproval: true } });
+        const am8 = await request('GET', `/seller-orders/${po5}/amendable-products`, null, bgAuth);
+        if (am8.body?.data?.raise_requires_approval !== true) return fail('P8 raise_requires_approval ≠ true');
+        const down = await request('POST', `/seller-orders/${po5}/amend`, { items: [{ brand_product_id: stk.id, quantity_ordered: 4 }] }, bgAuth);
+        if (down.status !== 200 || (await PurchaseOrder.findByPk(po5)).status !== 'submitted') return fail(`P8 감량 ${down.status} — 게이트를 타면 안 됨`);
+        const up = await request('POST', `/seller-orders/${po5}/amend`, { items: [{ brand_product_id: stk.id, quantity_ordered: 50 }], confirm_increase: true }, bgAuth);
+        const po5u = await PurchaseOrder.findByPk(po5);
+        const ev = (po5u.tracking_info?.events || []).slice(-1)[0] || {};
+        if (up.status !== 200 || po5u.status !== 'pending_approval' || !po5u.approval_required || ev.raised_by_seller !== true) {
+          return fail(`P8 인상 ${up.status} 상태 ${po5u.status} 승인필요 ${po5u.approval_required} 이벤트 ${JSON.stringify(ev).slice(0, 100)}`);
+        }
+        const hid = await request('GET', `/seller-orders/${po5}`, null, bgAuth);
+        if (hid.status !== 404) return fail(`P8 승인 대기 주문이 판매자에게 보임 ${hid.status}`);
+        const ownerAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: owner8.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+        const queue = await request('GET', '/purchase-orders/pending-approval', null, ownerAuth);
+        const inQueue = JSON.stringify(queue.body?.data || []).includes(`"id":${po5}`);
+        if (queue.status !== 200 || !inQueue) return fail(`P8 오너 승인 목록 ${queue.status} 있음=${inQueue}`);
+        const ap = await request('POST', `/purchase-orders/${po5}/approve`, {}, ownerAuth);
+        if (ap.status !== 200 || (await PurchaseOrder.findByPk(po5)).status !== 'submitted') return fail(`P8 승인 ${ap.status}`);
+        const back = await request('GET', `/seller-orders/${po5}`, null, bgAuth);
+        if (back.status !== 200) return fail(`P8 승인 뒤 판매자 상세 ${back.status}`);
+      } finally {
+        if (!hadOwner8) {
+          await sequelize.query(`DELETE FROM restaurant_managers WHERE restaurant_id = :r AND manager_id = :u AND relationship_type = 'ownership'`,
+            { replacements: { r: fx.rid, u: owner8.id } });
+        }
+        await rest8.update({ operation_settings: settings8 });
+      }
       return true;
     } catch (e) { return fail(`예외: ${e.message}`); }
     finally {
@@ -6034,6 +6212,151 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
           }
           await BrandProduct.destroy({ where: { id: ids }, force: true });
         }
+      } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
+    }
+  });
+
+  // ══════════════════════════════════════════════════════════════════
+  // 공급업체 상품 옵션 가격이 발주 줄에 실린다 (2026-10-15 Fable 설계 D3·D4
+  //   .claude/fable-design-20261015-supplier-product-options.md §4 ①~④)
+  //   O1 Sliced(+3) 담기 → 줄 단가 = 연결가 + 3 · 설명에 옵션 · 스냅샷 · 머리 메모에 «[Options]» 없음 · 화면이 보낸 단가 무시
+  //   O2 Whole 을 같은 초안에 담으면 줄이 따로, Sliced 를 또 담으면 수량만 합침
+  //   O3 검증 네 갈래(남의 옵션 · 필수 빠짐 · 최대 초과 · 옵션 없는 판매자)
+  //   O4 판매 상품 값 올림 → 가격 다시 불러오기 = 새 기본가 + 3
+  //   O5 보낸 뒤 판매자 수정(수량만) → 단가 그대로 · 옵션 따라감 · 판매자 받은 주문에 같은 단가·설명
+  // ══════════════════════════════════════════════════════════════════
+  test('po', '공급업체 옵션 가격 = 발주 줄 단가 · 검증 4갈래 · 가격 다시 불러오기·판매자 수정에도 유지 (O1~O5)', async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const { Ingredient, IngredientSellerProduct, SupplierProduct, SupplierProductOptionGroup, SupplierProductOption,
+      SupplierProductOptionGroupProduct, PurchaseOrderItem, PurchaseOrder, User } = require('../models');
+    const q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const RID = 38;
+    const sup = await User.findOne({ where: { email: 'demo-supplier@purplehere.com' } });
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: RID } });
+    const [ct] = sup && sup.supplier_company_id
+      ? await q(`SELECT id FROM supplier_contracts WHERE supplier_company_id = :s AND entity_type = 'restaurant' AND entity_id = :r AND status = 'active' AND deleted_at IS NULL LIMIT 1`, { s: sup.supplier_company_id, r: RID })
+      : [];
+    if (!sup || !ra || !ct) { console.log(c.gray('      (건너뜀: 데모 공급업체·매장 38 계약 픽스처 불가)')); return true; }
+    const SID = sup.supplier_company_id;
+    const auth = (u) => ({ Authorization: `Bearer ${jwtLib.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` });
+    const raAuth = auth(ra), supAuth = auth(sup);
+    const tag = 'ZZ-HC-OPT-' + Date.now();
+    const made = { sp: null, groups: [], ing: null, map: null, other: null }, poIds = [];
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      made.sp = await SupplierProduct.create({ supplier_company_id: SID, name: tag, unit: 'kg', base_quantity: 1,
+        unit_price: 95, min_order_quantity: 1, is_active: true, sku: 'ZZO-' + Math.random().toString(36).slice(2, 9) });
+      const cut = await SupplierProductOptionGroup.create({ supplier_company_id: SID, name: 'Cut Style', is_required: true, min_selections: 1, max_selections: 1 });
+      const trim = await SupplierProductOptionGroup.create({ supplier_company_id: SID, name: 'Trim Style', is_required: false, min_selections: 0, max_selections: 1 });
+      const foreignG = await SupplierProductOptionGroup.create({ supplier_company_id: SID, name: 'ZZ Unattached', max_selections: 1 });
+      made.groups.push(cut.id, trim.id, foreignG.id);
+      const whole = await SupplierProductOption.create({ option_group_id: cut.id, name: 'Whole', price_adjustment: 0 });
+      const sliced = await SupplierProductOption.create({ option_group_id: cut.id, name: 'Sliced', price_adjustment: 3 });
+      const cubed = await SupplierProductOption.create({ option_group_id: cut.id, name: 'Cubed', price_adjustment: 5 });
+      const bone = await SupplierProductOption.create({ option_group_id: trim.id, name: 'Boneless', price_adjustment: 4 });
+      const alien = await SupplierProductOption.create({ option_group_id: foreignG.id, name: 'Alien', price_adjustment: 50 });
+      await SupplierProductOptionGroupProduct.create({ product_id: made.sp.id, option_group_id: cut.id, sort_order: 0 });
+      await SupplierProductOptionGroupProduct.create({ product_id: made.sp.id, option_group_id: trim.id, sort_order: 1 });
+      made.ing = await Ingredient.create({ restaurant_id: RID, name: tag, unit: 'kg', current_stock: 0, track_stock: true, is_active: true });
+      made.map = await IngredientSellerProduct.create({ ingredient_id: made.ing.id, seller_type: 'supplier', seller_entity_id: SID,
+        seller_product_id: made.sp.id, unit_price: 95, unit_conversion: 1, min_order_quantity: 1, is_active: true });
+
+      const line = (opts, extra = {}) => ({ ingredient_id: made.ing.id, ingredient_seller_product_id: made.map.id, quantity_ordered: 2, option_ids: opts, ...extra });
+      const bulk = (ln) => request('POST', '/purchase-orders/bulk', { groups: [{ seller_type: 'supplier', seller_entity_id: SID, items: [ln], notes: null }] }, raAuth);
+      const track = (r) => { const os = r.body?.data?.orders; if (Array.isArray(os)) for (const o of os) if (o?.id && !poIds.includes(o.id)) poIds.push(o.id); };
+      // 혹시 남은 이 매장·이 판매자 초안이 있으면 합쳐지므로, 새 초안 번호는 응답에서 받는다
+      const b1 = await bulk(line([sliced.id], { unit_price: 1, adjusted_unit_price: 1 }));
+      track(b1);
+      if (b1.status !== 201 && b1.status !== 200) return fail(`O1 bulk ${b1.status} ${JSON.stringify(b1.body).slice(0, 200)}`);
+      const poId = poIds[0];
+      const rows = await PurchaseOrderItem.findAll({ where: { purchase_order_id: poId, ingredient_seller_product_id: made.map.id }, order: [['id', 'ASC']] });
+      const r1 = rows[0];
+      const opt1 = typeof r1?.options === 'string' ? JSON.parse(r1.options) : r1?.options;
+      if (!r1 || Number(r1.unit_price) !== 98 || Number(r1.line_total) !== 196) return fail(`O1 단가 ${r1 && r1.unit_price}/${r1 && r1.line_total} (기대 98/196)`);
+      if (r1.description !== `${tag} (Cut Style: Sliced)`) return fail(`O1 설명 ${r1.description}`);
+      if (!Array.isArray(opt1) || opt1.length !== 1 || opt1[0].option_id !== sliced.id || opt1[0].price_adjustment !== 3) return fail(`O1 스냅샷 ${JSON.stringify(opt1)}`);
+      const po1 = await PurchaseOrder.findByPk(poId);
+      if (String(po1.notes || '').includes('[Options]')) return fail('O1 머리 메모에 [Options]');
+
+      // O2 Whole → 다른 줄 · Sliced 다시 → 합침
+      track(await bulk(line([whole.id])));
+      track(await bulk(line([sliced.id])));
+      const rows2 = await PurchaseOrderItem.findAll({ where: { purchase_order_id: poId, ingredient_seller_product_id: made.map.id }, order: [['id', 'ASC']] });
+      const bySliced = rows2.find(r => String(r.description).includes('Sliced'));
+      const byWhole = rows2.find(r => String(r.description).includes('Whole'));
+      if (rows2.length !== 2 || !bySliced || !byWhole || Number(bySliced.quantity_ordered) !== 4 || Number(byWhole.unit_price) !== 95)
+        return fail(`O2 줄 ${JSON.stringify(rows2.map(r => [r.description, r.quantity_ordered, r.unit_price]))}`);
+
+      // O3 검증
+      const bad = async (opts, code, ln) => {
+        const r = await bulk(ln || line(opts)); track(r);
+        return r.status === 400 && r.body?.code === code ? null : `${code} → ${r.status} ${r.body?.code}`;
+      };
+      const otherMapNoOpt = await IngredientSellerProduct.findOne({ where: { seller_type: 'brand', is_active: true } });
+      const errs = [
+        await bad([alien.id], 'OPTION_INVALID'),
+        await bad([bone.id], 'OPTION_REQUIRED'),
+        await bad([whole.id, sliced.id], 'OPTION_TOO_MANY'),
+      ].filter(Boolean);
+      // 옵션 없는 판매자(브랜드) 연결에 option_ids → 거부 (연결이 있을 때만 — 단위 테스트가 같은 규칙을 덮는다)
+      if (otherMapNoOpt && otherMapNoOpt.ingredient_id) {
+        const { resolveLineOptions } = require('../utils/poLineOptions');
+        try { await resolveLineOptions({ mapping: otherMapNoOpt, optionIds: [sliced.id] }); errs.push('OPTIONS_NOT_SUPPORTED 통과됨'); }
+        catch (e) { if (e.code !== 'OPTIONS_NOT_SUPPORTED') errs.push(`OPTIONS_NOT_SUPPORTED → ${e.code}`); }
+      }
+      if (errs.length) return fail(`O3 ${errs.join(' · ')}`);
+
+      // O4 판매 상품 95 → 100 → 다시 불러오기 = 103(옵션 유지) · Whole 줄 = 100
+      await made.sp.update({ unit_price: 100 });
+      const rp = await request('POST', `/purchase-orders/${poId}/refresh-prices`, {}, raAuth);
+      if (rp.status !== 200) return fail(`O4 refresh ${rp.status} ${JSON.stringify(rp.body).slice(0, 160)}`);
+      const s4 = await PurchaseOrderItem.findByPk(bySliced.id), w4 = await PurchaseOrderItem.findByPk(byWhole.id);
+      if (Number(s4.unit_price) !== 103 || Number(w4.unit_price) !== 100) return fail(`O4 ${s4.unit_price}/${w4.unit_price} (기대 103/100)`);
+
+      // O5 보내기 → 판매자 받은 주문 · 수정(수량만) — 연결가 95 기준이라 Sliced 98 · Whole 95
+      // (같은 초안에 다른 품목이 섞여 있을 수 있으므로 이 품목 두 줄만 남긴 새 발주로 시험한다)
+      const fresh = await request('POST', '/purchase-orders', { seller_type: 'supplier', seller_entity_id: SID,
+        items: [line([sliced.id, bone.id]), line([whole.id])] }, raAuth);
+      const po5 = fresh.body?.data?.id;
+      if (po5) poIds.push(po5);
+      if (fresh.status !== 201 || !po5) return fail(`O5 POST ${fresh.status} ${JSON.stringify(fresh.body).slice(0, 160)}`);
+      const sub = await request('POST', `/purchase-orders/${po5}/submit`, {}, raAuth);
+      const p5 = await PurchaseOrder.findByPk(po5);
+      if (!['submitted', 'confirmed'].includes(p5.status)) return fail(`O5 submit ${sub.status} 상태 ${p5.status} ${JSON.stringify(sub.body).slice(0, 120)}`);
+      const inc = await request('GET', `/seller-orders/${po5}`, null, supAuth);
+      const incItems = inc.body?.data?.items || [];
+      const incOpt = incItems.find(i => String(i.description).includes('Boneless'));
+      if (!incOpt || Number(incOpt.unit_price) !== 102) return fail(`O5 판매자 받은 주문 ${inc.status} ${JSON.stringify(incItems.map(i => [i.description, i.unit_price]))}`);
+      // 판매자에게 나가는 이름(받은 주문·청구서·PDF·메일 공통)에도 고른 옵션
+      if (incOpt.seller_product_name !== `${tag} (Cut Style: Sliced, Trim Style: Boneless)`) return fail(`O5 판매자 상품명 ${incOpt.seller_product_name}`);
+      const before5 = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po5 }, order: [['id', 'ASC']] });
+      const am = await request('POST', `/seller-orders/${po5}/amend`, { items: before5.map(r => ({
+        item_id: r.id, ingredient_seller_product_id: r.ingredient_seller_product_id, quantity_ordered: Number(r.description.includes('Boneless') ? 1 : r.quantity_ordered)
+      })) }, supAuth);
+      if (am.status !== 200) return fail(`O5 amend ${am.status} ${JSON.stringify(am.body).slice(0, 200)}`);
+      const after5 = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po5 }, order: [['id', 'ASC']] });
+      const a1 = after5.find(r => String(r.description).includes('Boneless')), a2 = after5.find(r => String(r.description).includes('Whole'));
+      // 수정 단가 = 연결 현재가(95 — O4 는 판매 상품만 100 으로 올렸다) + 그 줄 스냅샷 조정액(3+4)
+      if (!a1 || Number(a1.unit_price) !== 102 || Number(a1.quantity_ordered) !== 1 || !a2 || Number(a2.unit_price) !== 95)
+        return fail(`O5 수정 뒤 ${JSON.stringify(after5.map(r => [r.description, r.quantity_ordered, r.unit_price]))} (기대 Boneless 1×102 · Whole 95)`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try { await hcCleanupPurchaseOrders(poIds); } catch {}
+      try {
+        if (made.map) await IngredientSellerProduct.destroy({ where: { id: made.map.id }, force: true });
+        if (made.ing) {
+          for (const tb of ['restaurant_ingredient_costs', 'stock_alerts', 'inventory_transactions', 'inventory_batches'])
+            try { await sequelize.query(`DELETE FROM ${tb} WHERE ingredient_id = :a`, { replacements: { a: made.ing.id } }); } catch {}
+          await Ingredient.destroy({ where: { id: made.ing.id }, force: true });
+        }
+        if (made.sp) await SupplierProductOptionGroupProduct.destroy({ where: { product_id: made.sp.id } });
+        if (made.groups.length) {
+          await SupplierProductOption.destroy({ where: { option_group_id: made.groups } });
+          await SupplierProductOptionGroup.destroy({ where: { id: made.groups } });
+        }
+        if (made.sp) await SupplierProduct.destroy({ where: { id: made.sp.id }, force: true });
       } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
     }
   });

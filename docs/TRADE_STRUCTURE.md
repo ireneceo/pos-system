@@ -140,6 +140,7 @@
   - **판매 상품·발주 줄도 다섯 칸을 따른다** (2026-09-11 Fable 판정 · Irene 「권고대로 해」).
     Irene 원문: 「발주할 때 기본용량 포장단위가 있고 거기에 수량이 올라가는 거잖아. 수량에 포장단위가 붙는거고.」
     - 판매 상품 3표(`supplier_products`·`brand_products`·`foodcourt_products`): `unit`=취급단위(내용물 kg) · `base_quantity`=취급 기준숫자(10) · **`package_unit`=기준단위(포장, BOX)** — 자유 문자열(인보이스 UOM 그대로). 기준양은 판매 상품에서 항상 1 이라 칸이 없다.
+    - **옵션은 양을 바꾸지 않는다 (2026-10-15 Irene «권고대로» · Fable 설계 `.claude/fable-design-20261015-supplier-product-options.md`).** 규격이 다르면(1 kg / 10 kg · 1팩 / 20팩 카톤) **판매 상품 행을 따로** 둔다 — 규격·가격·SKU·연결 환산이 각자 들어간다. 옵션은 손질·등급·숙성·브랜드처럼 양이 같은 선택에만, 가격은 기본가에 더하는 조정액. 발주 줄은 고른 옵션을 `purchase_order_items.options` 스냅샷으로 들고, 단가 = 연결 단가 + 조정액 합(서버 계산 · `utils/poLineOptions.js`). 수량 구간 할인(«20개 이상이면 단가 ↓»)은 자리 없음 — 필요하면 이 문서부터.
     - 발주 줄 `purchase_order_items`: `unit`=포장단위(BOX) · **`base_quantity`·`base_unit`=주문 시점 용량 스냅샷**(10 / kg). 판매자가 나중에 규격을 바꿔도 지난 발주서·대조가 흔들리지 않는다.
     - 표시: `Kimchi · 10 kg/BOX · × 3 BOX @ 48.00 = 144.00`. 규칙 단일 소스 = 서버 `utils/poLineSpec.js` · 화면 `utils/unitConversion.ts`(`sellerOrderUnitOf`·`sellerSpecText`·`lineSpecText`).
     - 줄 단위 순서: 포장단위 → (용량 ≠ 1 이면) `pack` → 판매자 내용물 단위 → 구매자 재고행 단위. 무게 주문(measure)은 내용물 단위 자체.
@@ -156,6 +157,10 @@
     - 반영 절차(검토표 → 확인필요 행만 Irene 답 → 백업·트랜잭션 1개·재조회)는 `docs/EXTERNAL_SUPPLIER_PRODUCTS.md` §11.
     - Irene 추가 원문(같은 날, 구현 중): 「레시피나 재고관리에 사용하는 단위는 포장 기준수량에 사용하는 단위와 같아야 해. 그리고 포장단위가 있는거야. 그러니까 레시피에서나 재고에서는 g이나 kg 등을 쓰고, 발주에서는 1kg/pack 이런식인거야. 그리고 이 정보면 모든 아이템 정보에 다 똑같이 나오게 하는 거고」 — **Fable 판정: 설계 변경 아님(§2-2 그대로의 확인).** ①용량 미상 규칙 교체(위) ②재료 카드·브랜드 재고아이템 카드의 자기 규격 줄도 같은 규격 함수(`unitConversion.ts` `stockSpecLabel`) ③**기존 재료·재고아이템 취급단위 pack→g/kg 수렴은 이번 범위 밖**(레시피 줄·재고·연결 환산을 한 트랜잭션에서 함께 바꿔야 하는 비가역 작업 — 상품 정리 → 수렴 후보 보고서(셈만) → 별도 설계 1회).
       운영 실측(SELECT): 매장 10 재료 385 중 `unit` 포장 이름 212(레시피 줄 0) · 브랜드 거울 brand 1 63/63 · brand 2 «K-DINE with MIN»(GIT Consulting · 실매장 8 «K-DINE IPC Branch») 163 중 81 · 브랜드 재고아이템 321 중 193(레시피 줄 55/74 가 여기에).
+  - **재고 행 기준단위 어휘 = 판매 상품 포장단위 어휘** (2026-10-15 Fable 설계 D3·D4 · Irene «Package Unit이 재고아이템에는 부족한데 … 카톤도» · «재고아이템으로 저장해도 … 안가져오네»).
+    `ingredients`·`product_ingredients` 의 `package_unit` ENUM 은 `utils/stockUnits.STOCK_PACKAGE_UNIT_ENUM`(21개 — box·carton·tub·tin·drum·roll…, expand-only 마이그 `migrate-stock-package-unit-enum-expand.js`). 화면 선택지 = `PACKAGE_UNIT_SUGGESTIONS`.
+    **«재고아이템으로 저장»(from-catalog 신규)은 판매 상품 다섯 칸을 그대로 옮긴다** — 규칙 한 곳 `utils/catalogLink.stockFieldsFromSellerProduct`(base = 판매자 기준숫자 · 포장단위 정규화 · unit_cost = 포장 1개 값). 그전엔 base 1 고정이라 «10 kg/BOX RM 48» 이 «kg 당 48» 로 저장됐다. 옛 행은 자동 백필하지 않는다(`scripts/report-stock-base-vs-seller.js` 읽기 보고서).
+    화면 금액은 소수 2자리(통화 설정) — 작은 단위당 값은 `formatUnitPrice` 가 kg·L 로 올린다. 저장 칸 4자리는 그대로.
 - **판매 차감은 환산하지 않는다.** `inventoryDeductionService.js` 가 레시피 줄 수량을 그대로 뺀다 — 그래서 **"레시피 줄 단위 = 재료 취급단위"가 불변식**이고, 인스펙션 `ING-UNI-011/012` 가 이걸 지킨다.
 - **재고는 어디서나 취급단위로 센다.** 브랜드 창고도 g. 화면이 괄호로 포장 환산을 같이 보여준다.
 - **취급단위는 레시피 줄이 하나라도 붙어 있으면 바꿀 수 없다** — `UNIT_LOCKED_BY_RECIPES` 409, 브랜드·매장 공통. 바꾸려면 **줄 수량·재고·매핑 환산을 같은 트랜잭션에서 함께 환산**한다(P1 수렴 스크립트, 이후 P2 화면). 바꾸는 순간 `20 g` 이 `20 pack` 이 되기 때문이고, 이것이 Irene 이 화면에서 만난 에러의 자리다.

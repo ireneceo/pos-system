@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { parseMinOrderQty, PACKAGE_UNIT_SUGGESTIONS, CONTENT_UNIT_OPTIONS, withCurrentUnit, sellerSpecText, sellerOrderUnitOf } from '../../utils/unitConversion';
+import { sellerSpecText, sellerOrderUnitOf } from '../../utils/unitConversion';
+import ExternalSupplierProductFields, { EMPTY_EXT_PRODUCT, extProductFormFrom, extProductPayload, extProductError, type ExtProductForm } from '../../components/Common/ExternalSupplierProductFields';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -26,6 +27,7 @@ interface ProductRow {
   order_mode?: string | null;               // 무게 주문(measure)이면 kg 자체가 수량 단위
   unit_price: number;
   min_order_quantity?: number | null;
+  lead_time_days?: number | null;
   category_id?: number | null;
   category_name?: string | null;
   image_url?: string | null;
@@ -57,6 +59,7 @@ interface SupplierProfile {
   category_names?: string[] | null;
   products?: ProductRow[];
   product_categories?: ProductCategory[];
+  products_meta?: { total: number; shown: number; truncated: boolean } | null;
   currency?: string | null;
   is_system_registered?: boolean;
   registered_by_entity_type?: string | null;
@@ -368,6 +371,7 @@ const SupplierProfilePage: React.FC = () => {
       const flattened: SupplierProfile = {
         ...d.supplier,
         products: Array.isArray(d.products) ? d.products : [],
+        products_meta: d.products_meta || null,
         product_categories: cats,
         category_names: cats.map((c: ProductCategory) => c.name).filter(Boolean),
         my_contract: d.my_contract || { status: 'none' }
@@ -436,11 +440,10 @@ const SupplierProfilePage: React.FC = () => {
     && profile.registered_by_entity_type === buyerEntity.type
     && myEntityId != null && Number(profile.registered_by_entity_id) === Number(myEntityId);
 
-  // 2026-09-11 Irene: «이름이랑 용량, 그리고 UOM이 포장 단위잖아» — 용량(base_quantity)·포장단위(package_unit) 칸 추가.
-  const EMPTY_PRODUCT = { name: '', unit: 'kg', base_quantity: '1', package_unit: '', unit_price: '', min_order_quantity: '', lead_time_days: '' };
+  // 2026-10-15 Fable D1: 칸은 공용 부품 ExternalSupplierProductFields(SKU·주문방식·다섯 칸) — 재고에서 여는 창·All Products 탭과 같다.
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductRow | null>(null);
-  const [productForm, setProductForm] = useState<{ name: string; unit: string; base_quantity: string; package_unit: string; unit_price: string; min_order_quantity: string; lead_time_days: string }>(EMPTY_PRODUCT);
+  const [productForm, setProductForm] = useState<ExtProductForm>(EMPTY_EXT_PRODUCT);
   const [savingProduct, setSavingProduct] = useState(false);
   const [productError, setProductError] = useState<string | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<ProductRow | null>(null);
@@ -480,33 +483,21 @@ const SupplierProfilePage: React.FC = () => {
     } finally { setBillingSaving(false); }
   };
 
-  const openAddProduct = () => { setEditingProduct(null); setProductForm(EMPTY_PRODUCT); setProductError(null); setShowProductModal(true); };
+  const openAddProduct = () => { setEditingProduct(null); setProductForm(EMPTY_EXT_PRODUCT); setProductError(null); setShowProductModal(true); };
+  // 수정 창은 저장된 값 그대로 연다 — 전엔 리드타임을 빈 칸으로 열어 저장하면 0 으로 덮였다(2026-10-15)
   const openEditProduct = (p: ProductRow) => {
     setEditingProduct(p);
-    setProductForm({
-      name: p.name || '', unit: p.unit || 'kg', unit_price: String(p.unit_price ?? ''),
-      base_quantity: p.base_quantity != null ? String(Number(p.base_quantity)) : '1',
-      package_unit: p.package_unit || '',
-      min_order_quantity: p.min_order_quantity != null ? String(p.min_order_quantity) : '',
-      lead_time_days: ''
-    });
+    setProductForm(extProductFormFrom(p));
     setProductError(null); setShowProductModal(true);
   };
 
   const saveProduct = async () => {
     if (!profile) return;
     setProductError(null);
-    if (!productForm.name.trim()) { setProductError(t('extProduct.nameRequired', { defaultValue: 'Product name is required.' }) as string); return; }
-    if (!productForm.unit_price || parseFloat(productForm.unit_price) < 0) { setProductError(t('extProduct.priceRequired', { defaultValue: 'Enter a valid price.' }) as string); return; }
+    const invalid = extProductError(productForm, t as any);
+    if (invalid) { setProductError(invalid); return; }
     setSavingProduct(true);
-    const payload = {
-      name: productForm.name.trim(), unit: productForm.unit,
-      base_quantity: parseFloat(productForm.base_quantity) > 0 ? parseFloat(productForm.base_quantity) : 1,
-      package_unit: productForm.package_unit.trim(),   // 빈 값은 서버가 null 로 저장
-      unit_price: parseFloat(productForm.unit_price),
-      min_order_quantity: parseMinOrderQty(productForm.min_order_quantity),
-      lead_time_days: productForm.lead_time_days ? parseInt(productForm.lead_time_days, 10) : 0
-    };
+    const payload = extProductPayload(productForm);
     try {
       const token = getAuthToken();
       const url = editingProduct
@@ -770,6 +761,9 @@ const SupplierProfilePage: React.FC = () => {
             )}
           </FilterBar>
 
+          {profile.products_meta?.truncated && (
+            <InfoBox>{t('profile.truncated', { defaultValue: 'Showing {{shown}} of {{total}} products — search to narrow down.', shown: profile.products_meta.shown, total: profile.products_meta.total })}</InfoBox>
+          )}
           {filteredProducts.length === 0 ? (
             <EmptyBox>
               {t('profile.noProducts')}
@@ -907,64 +901,14 @@ const SupplierProfilePage: React.FC = () => {
           isOpen
           onClose={() => setShowProductModal(false)}
           title={editingProduct ? t('extProduct.editTitle', { defaultValue: 'Edit Product' }) as string : t('extProduct.addTitle', { defaultValue: 'Add Product' }) as string}
-          size="small"
+          size="medium"
           footer={<>
             <ModalButton variant="secondary" onClick={() => setShowProductModal(false)}>{t('common:button.cancel', { defaultValue: 'Cancel' })}</ModalButton>
             <ModalButton variant="primary" disabled={savingProduct} onClick={saveProduct}>{savingProduct ? '…' : t('common:button.save', { defaultValue: 'Save' })}</ModalButton>
           </>}
         >
           {productError && <ErrorBox style={{ marginTop: 0, marginBottom: 12 }}>{productError}</ErrorBox>}
-          <UIFormGroup>
-            <FormLabel>{t('extProduct.name', { defaultValue: 'Product name' })} *</FormLabel>
-            <FormInput type="text" value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} placeholder={t('extProduct.namePlaceholder', { defaultValue: 'e.g. Chicken Breast' }) as string} />
-          </UIFormGroup>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <UIFormGroup style={{ flex: 1 }}>
-              <FormLabel>{t('extProduct.unitPrice', { defaultValue: 'Unit price' })} *</FormLabel>
-              <FormInput type="number" step="0.01" min="0" value={productForm.unit_price} onChange={(e) => setProductForm({ ...productForm, unit_price: e.target.value })} placeholder="0.00" />
-            </UIFormGroup>
-            <UIFormGroup style={{ flex: 1 }}>
-              <FormLabel>{t('extProduct.unit', { defaultValue: 'Unit' })}</FormLabel>
-              <FormSelect value={productForm.unit} onChange={(e) => setProductForm({ ...productForm, unit: e.target.value })}>
-                {/* 내용물 단위만 — 포장 이름은 아래 Package unit 칸. 옛 상품의 값은 그대로 남긴다. */}
-                {withCurrentUnit(CONTENT_UNIT_OPTIONS, productForm.unit).map(u => <option key={u} value={u}>{u}</option>)}
-              </FormSelect>
-            </UIFormGroup>
-          </div>
-          {/* 용량 × 포장단위 — 인보이스의 «10KG · BOX» 를 그대로 옮긴다. 가격은 포장단위 1개 값이다. */}
-          <div style={{ display: 'flex', gap: 12 }}>
-            <UIFormGroup style={{ flex: 1 }}>
-              <FormLabel>{t('extProduct.baseQuantity', { defaultValue: 'Amount per package' })}</FormLabel>
-              <FormInput type="number" step="0.01" min="0.01" value={productForm.base_quantity} onChange={(e) => setProductForm({ ...productForm, base_quantity: e.target.value })} placeholder="1" />
-            </UIFormGroup>
-            <UIFormGroup style={{ flex: 1 }}>
-              <FormLabel>{t('extProduct.packageUnit', { defaultValue: 'Package unit' })}</FormLabel>
-              <FormInput type="text" list="ext-package-unit-options" maxLength={50} value={productForm.package_unit} onChange={(e) => setProductForm({ ...productForm, package_unit: e.target.value })} placeholder={t('extProduct.packageUnitPlaceholder', { defaultValue: 'e.g. box, pack, bottle' }) as string} />
-              <datalist id="ext-package-unit-options">
-                {PACKAGE_UNIT_SUGGESTIONS.map(u => <option key={u} value={u} />)}
-              </datalist>
-            </UIFormGroup>
-          </div>
-          {(() => {
-            const s = { seller_unit: productForm.unit, base_quantity: productForm.base_quantity, seller_package_unit: productForm.package_unit };
-            const spec = sellerSpecText(s);
-            const orderUnit = sellerOrderUnitOf(s);
-            return (
-              <div style={{ fontSize: 12, color: '#4B5563', marginTop: -4 }}>
-                {t('extProduct.orderedAs', { defaultValue: 'Ordered as: {{line}}', line: `${spec ? spec + ' · ' : ''}× 1 ${orderUnit}` })}
-              </div>
-            );
-          })()}
-          <div style={{ display: 'flex', gap: 12 }}>
-            <UIFormGroup style={{ flex: 1 }}>
-              <FormLabel>{t('extProduct.moq', { defaultValue: 'Min. order qty' })}</FormLabel>
-              <FormInput type="number" min="1" value={productForm.min_order_quantity} onChange={(e) => setProductForm({ ...productForm, min_order_quantity: e.target.value })} placeholder="1" />
-            </UIFormGroup>
-            <UIFormGroup style={{ flex: 1 }}>
-              <FormLabel>{t('extProduct.leadTime', { defaultValue: 'Lead time (days)' })}</FormLabel>
-              <FormInput type="number" min="0" value={productForm.lead_time_days} onChange={(e) => setProductForm({ ...productForm, lead_time_days: e.target.value })} placeholder="0" />
-            </UIFormGroup>
-          </div>
+          <ExternalSupplierProductFields value={productForm} onChange={setProductForm} idPrefix="profile-ext-product" />
         </CommonModal>
       )}
 

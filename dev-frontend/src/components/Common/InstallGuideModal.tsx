@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalButton } from '../UI';
+import { QRCodeSVG } from 'qrcode.react';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
 
 /**
@@ -120,6 +121,16 @@ const InstallGuideModal: React.FC = () => {
       </>}
     >
       {body}
+      {/* 2026-10-11 Irene «웹에서 쓰다가 앱 사용하고 싶을 때 주소 치고 안들어가고 바로 접속하게» —
+          컴퓨터에서 연 안내에만, 안드로이드 기기로 찍으면 같은 APK 가 바로 받아진다. */}
+      {(platform === 'windows' || platform === 'mac') && (
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 16, paddingTop: 16, borderTop: '1px solid #E3E8EE' }}>
+          <QRCodeSVG value={`${window.location.origin}${androidAppUrl}`} size={104} level="M" style={{ flexShrink: 0 }} />
+          <span style={{ fontSize: 13, color: '#425466', lineHeight: 1.5 }}>
+            {t('common:pwa.guide.qrAndroid', 'Installing on an Android tablet or phone? Scan this with its camera to download the app — no need to type the address.')}
+          </span>
+        </div>
+      )}
     </Modal>
   );
 };

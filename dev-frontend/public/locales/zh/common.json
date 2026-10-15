@@ -768,6 +768,8 @@
   "nav.rentManagement": "租金管理",
   "ewalletTypeQuestion": "您使用哪种电子钱包付款？",
   "pwa.guide.title": "安装应用",
+  "pwa.guide.qrAndroid": "要装在安卓平板或手机上？用该设备相机扫描此码即可直接下载，无需输入网址。",
+  "pwa.guide.qrLink": "要装在安卓平板上？扫码下载",
   "pwa.guide.install": "安装",
   "pwa.guide.downloadWindows": "下载 Windows 版",
   "pwa.guide.downloadAndroid": "下载应用",

@@ -7,6 +7,7 @@ import MobileLayout from '../components/common/MobileLayout';
 import { KioskActionBar } from '../components/common/KioskLayout';
 import { isKioskMode, isMenuBoardMode, withMenuBoardQuery, getKioskViewPref, setKioskViewPref, KioskMenuView } from '../utils/kioskMode';
 import { KioskCartAside, KioskSplit, KioskMain, useKioskSplit } from '../components/KioskCartAside';
+import { useLandscape, guidedGrid, GuidedGrid, GUIDED_FONT } from '../components/GuidedGrid';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
 import { getStoreOpenState } from '../utils/storeHours';
@@ -544,13 +545,9 @@ const GuidedTitle = styled.h2`
   color: #0A2540;
   margin: 0;
 `;
-const GuidedTileGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-`;
 const GuidedTile = styled.button`
-  min-height: 160px;
+  height: 100%;
+  min-height: 140px;
   border-radius: 18px;
   border: 1px solid #E5E8EC;
   background: #FFFFFF;
@@ -579,10 +576,37 @@ const GuidedTileMeta = styled.span`
   font-size: 15px;
   color: #4B5563;
 `;
-const GuidedItemGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
+/* 안내형 메뉴 카드 — 칸을 꽉 채움: 위 사진(남는 높이 전부) · 아래 이름·한 줄 소개·가격 */
+const GuidedMenuCard = styled.button`
+  height: 100%;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  border: 1px solid #E5E8EC;
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  position: relative;
+  &:active { transform: scale(0.99); }
+  &:disabled { opacity: 0.55; cursor: not-allowed; }
+`;
+const GuidedMenuImg = styled.div`
+  flex: 1 1 auto;
+  min-height: 0;
+  background: #F1F4F8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  img { width: 100%; height: 100%; object-fit: cover; }
+`;
+const GuidedMenuInfo = styled.div`
+  flex: 0 0 auto;
+  padding: 14px 18px 16px;
 `;
 
 const SetItemsPreview = styled.div`
@@ -795,6 +819,7 @@ const MenuPage: React.FC = () => {
   const guided = kiosk && !menuBoard && (viewPref || mobileSettings.kiosk_menu_mode) === 'guided';
   const guidedParams = new URLSearchParams(location.search);
   const guidedStep = guidedParams.get('g') || '';
+  const landscape = useLandscape();
   const guidedCat = guidedParams.get('gc') || '';
   const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
   const [popularItems, setPopularItems] = useState<(MenuItem & { orderCount?: number })[]>([]);
@@ -1167,13 +1192,8 @@ const MenuPage: React.FC = () => {
   const guidedHasFeatured = mobileSettings.show_featured && featuredItems.length > 0;
   // 카테고리 타일의 메뉴 개수 — 전체 메뉴를 한 번 받아 센다(검색과 같은 목록)
   useEffect(() => { if (guided) loadAllMenuItemsForSearch(); }, [guided]); // eslint-disable-line react-hooks/exhaustive-deps
-  // 고를 게 하나뿐이면 건너뛴다(카테고리 1개 → 바로 다음 단계)
-  useEffect(() => {
-    if (!guided || isLoading || !featuredLoaded || guidedStep !== '') return;
-    if (topCategories.length + (guidedHasFeatured ? 1 : 0) === 1) {
-      openGuidedCategory(guidedHasFeatured ? '__featured__' : topCategories[0].id, true);
-    }
-  }, [guided, isLoading, featuredLoaded, guidedStep, topCategories.length, guidedHasFeatured]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 카테고리 화면은 카테고리가 하나여도 항상 먼저 보인다(2026-10-11 Irene «카테고리1>카테고리2(있을경우)>메뉴>옵션 … 왜 메뉴부터 나오지?»).
+  // 건너뛰는 것은 하위 카테고리 단계(하위가 없을 때)뿐 — openGuidedCategory 가 정한다.
   // 메뉴 단계: 고른 카테고리의 메뉴를 불러온다(둘러보기와 같은 불러오기·캐시)
   useEffect(() => {
     if (!guided || guidedStep !== 'items' || !guidedCat || guidedCat === '__featured__') return;
@@ -1532,13 +1552,18 @@ const MenuPage: React.FC = () => {
       if (parent) pathParts.push(categoryDisplayName(parent));
       if (c) pathParts.push(categoryDisplayName(c));
     }
-    const renderTile = (key: string, name: string, icon: string | undefined, count: number | null, onClick: () => void) => (
-      <GuidedTile key={key} type="button" onClick={onClick}>
-        {icon ? <GuidedTileIcon aria-hidden="true">{icon}</GuidedTileIcon> : null}
-        <GuidedTileName>{name}</GuidedTileName>
-        {count != null && <GuidedTileMeta>{t('menu:guided.itemCount', { count, defaultValue: '{{count}} items' })}</GuidedTileMeta>}
-      </GuidedTile>
-    );
+    const reserve = 330 + (cartItems.length > 0 ? 96 : 0);   // 위 바·스위치·제목 + 아래 장바구니 바
+    let tileScale: 'xl' | 'lg' | 'md' = 'lg';
+    const renderTile = (key: string, name: string, icon: string | undefined, count: number | null, onClick: () => void) => {
+      const f = GUIDED_FONT[tileScale];
+      return (
+        <GuidedTile key={key} type="button" onClick={onClick}>
+          {icon ? <GuidedTileIcon aria-hidden="true" style={{ fontSize: f.icon }}>{icon}</GuidedTileIcon> : null}
+          <GuidedTileName style={{ fontSize: f.name }}>{name}</GuidedTileName>
+          {count != null && <GuidedTileMeta style={{ fontSize: f.meta }}>{t('menu:guided.itemCount', { count, defaultValue: '{{count}} items' })}</GuidedTileMeta>}
+        </GuidedTile>
+      );
+    };
     let body: React.ReactNode;
     if (guidedStep === 'sub' && guidedCat) {
       body = (
@@ -1547,9 +1572,10 @@ const MenuPage: React.FC = () => {
             <GuidedPath>{pathParts.join(' › ')}</GuidedPath>
             <GuidedTitle>{t('menu:guided.pickSub', 'Choose a type')}</GuidedTitle>
           </GuidedHead>
-          <GuidedTileGrid>
-            {subCategoriesOf(guidedCat).map(sub => renderTile(sub.id, sub.name, sub.emoji || undefined, countFor(sub.id), () => goGuided('items', sub.id)))}
-          </GuidedTileGrid>
+          {(() => { const subs = subCategoriesOf(guidedCat); const g = guidedGrid(subs.length, landscape); tileScale = g.scale;
+            return <GuidedGrid $cols={g.cols} $rows={g.rows} $reserve={reserve}>
+              {subs.map(sub => renderTile(sub.id, sub.name, sub.emoji || undefined, countFor(sub.id), () => goGuided('items', sub.id)))}
+            </GuidedGrid>; })()}
         </>
       );
     } else if (guidedStep === 'items' && guidedCat) {
@@ -1561,7 +1587,28 @@ const MenuPage: React.FC = () => {
             <GuidedTitle>{t('menu:guided.pickItem', 'Choose a menu item')}</GuidedTitle>
           </GuidedHead>
           {list.length > 0
-            ? <GuidedItemGrid>{list.map(it => renderMenuItemCard(it, guidedCat === '__featured__'))}</GuidedItemGrid>
+            ? (() => {
+                const g = guidedGrid(list.length, landscape);
+                const f = GUIDED_FONT[g.scale];
+                return (
+                  <GuidedGrid $cols={g.cols} $rows={g.rows} $reserve={reserve}>
+                    {list.map(it => (
+                      <GuidedMenuCard key={it.id} type="button" disabled={it.schedule_unavailable === true} onClick={() => handleItemClick(it)}>
+                        {it.is_set_menu && <SetBadge>SET</SetBadge>}
+                        {it.is_featured && guidedCat !== '__featured__' && <RecommendedBadge style={{ fontSize: '14px', padding: '5px 10px' }}>{t('menu:recommended', 'Recommended')}</RecommendedBadge>}
+                        <GuidedMenuImg>
+                          {it.image ? <LazyImage src={it.image} alt={it.name} fallback={it.emoji || ''} /> : <span style={{ fontSize: f.icon }}>{it.emoji || ''}</span>}
+                        </GuidedMenuImg>
+                        <GuidedMenuInfo>
+                          <h3 style={{ margin: 0, fontSize: f.name, fontWeight: 700, color: '#0A2540', lineHeight: 1.2 }}>{it.name}</h3>
+                          {it.tagline && <div style={{ fontSize: f.meta, color: '#4B5563', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.tagline}</div>}
+                          <div style={{ fontSize: f.meta, fontWeight: 700, color: '#635BFF', marginTop: 6 }}>{formatCurrency(it.price, currency)}</div>
+                        </GuidedMenuInfo>
+                      </GuidedMenuCard>
+                    ))}
+                  </GuidedGrid>
+                );
+              })()
             : <EmptyState><p>{t('menu:guided.noItems', 'No items available here')}</p></EmptyState>}
           <LoadTrigger ref={loadTriggerRef} />
         </>
@@ -1569,14 +1616,14 @@ const MenuPage: React.FC = () => {
     } else {
       body = (
         <>
-          {viewSwitch}
           <GuidedHead>
             <GuidedTitle>{t('menu:guided.pickCategory', 'What would you like?')}</GuidedTitle>
           </GuidedHead>
-          <GuidedTileGrid>
-            {guidedHasFeatured && renderTile('__featured__', t('menu:recommended', 'Recommended'), undefined, featuredItems.length, () => openGuidedCategory('__featured__'))}
-            {topCategories.map(c => renderTile(c.id, categoryDisplayName(c), c.emoji || undefined, countFor(c.id), () => openGuidedCategory(c.id)))}
-          </GuidedTileGrid>
+          {(() => { const g = guidedGrid(topCategories.length + (guidedHasFeatured ? 1 : 0), landscape); tileScale = g.scale;
+            return <GuidedGrid $cols={g.cols} $rows={g.rows} $reserve={reserve}>
+              {guidedHasFeatured && renderTile('__featured__', t('menu:recommended', 'Recommended'), undefined, featuredItems.length, () => openGuidedCategory('__featured__'))}
+              {topCategories.map(c => renderTile(c.id, categoryDisplayName(c), c.emoji || undefined, countFor(c.id), () => openGuidedCategory(c.id)))}
+            </GuidedGrid>; })()}
         </>
       );
     }
@@ -1590,6 +1637,8 @@ const MenuPage: React.FC = () => {
         showBack={guidedStep !== ''}
         onBack={() => navigate(-1)}
       >
+        {/* 보기 방식 스위치 — 안내형의 모든 메뉴 단계(카테고리·하위·메뉴) 위에. 어디서든 둘러보기로 돌아갈 수 있게 */}
+        {viewSwitch}
         {body}
         {cartItems.length > 0 && (
           <KioskActionBar>

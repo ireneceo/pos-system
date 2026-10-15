@@ -106,6 +106,26 @@ export function formatCurrency(
 }
 
 /**
+ * 단위당 가격 «RM 4.50 / kg» — 소수 자리는 통화 설정 그대로(RM·$ 2자리 · 원 0자리) (2026-10-15 Fable 설계 D6)
+ *   Irene: «가격표시가 이런식으로 소수점 4자리까지 나오는 일 없게 … 2자리까지만 나와야 해. RM은. 달러도.»
+ *   g·ml 당 값이 표시 최소 단위(0.01)보다 작으면 kg·L 로 올려 보여 준다(«RM 0.0045 / g» → «RM 4.50 / kg»).
+ *   올릴 단위가 없으면(piece 등) «< RM 0.01 / piece». 저장값은 그대로다 — 표시만.
+ *   ⛔ 금액을 toFixed(4) 로 직접 쓰지 말 것 — check-design-guard 가 막는다.
+ */
+export function formatUnitPrice(amount: number | string, unit?: string | null, currencyCode: string = 'MYR'): string {
+  const n = typeof amount === 'string' ? parseFloat(amount) : amount;
+  const u = String(unit || '').trim();
+  const tail = (x: string) => (u ? `${x} / ${u}` : x);
+  if (!Number.isFinite(n)) return tail(formatCurrency(0, currencyCode));
+  const step = Math.pow(10, -getCurrencyDecimals(currencyCode));
+  if (n === 0 || Math.abs(n) >= step - 1e-12) return tail(formatCurrency(n, currencyCode));
+  const up: Record<string, string> = { g: 'kg', ml: 'L' };
+  const bigger = up[u] || up[u.toLowerCase()];
+  if (bigger) return `${formatCurrency(n * 1000, currencyCode)} / ${bigger}`;
+  return tail(`< ${formatCurrency(step, currencyCode)}`);
+}
+
+/**
  * Apply cash rounding to an amount
  * @param amount - The amount to round
  * @param precision - Rounding precision (0.05, 0.10, 0.50, 1.00)

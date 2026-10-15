@@ -208,9 +208,9 @@ async function linkCatalogProductToRestaurant(rid, body = {}) {
       restaurant_id: rid,
       brand_id: null,
       name: body.name || seller.productName,
-      unit: catalogLink.resolveUnit(body.unit, seller.productUnit),
-      base_quantity: 1,
-      unit_cost: parseFloat(seller.productPrice) || 0,
+      // 다섯 칸 = 판매 상품 규격 그대로 (2026-10-15 Fable D4 · Irene «재고아이템으로 저장해도 … 기본적으로 가져와야지»)
+      //   예전 base 1 고정 · 포장단위 없음 · 원가 = 판매가 → «10 kg/BOX RM 48» 이 «kg 당 48» 로 저장됐다. 규칙 = catalogLink.stockFieldsFromSellerProduct
+      ...catalogLink.stockFieldsFromSellerProduct(seller.sellerProductRow, { unit: catalogLink.resolveUnit(body.unit, seller.productUnit) }),
       supplier_name: null,
       supplier_id: null,
       min_stock: 0,

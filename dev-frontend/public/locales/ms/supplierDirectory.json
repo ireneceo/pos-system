@@ -34,7 +34,10 @@
     "searchProducts": "Cari produk...",
     "moq": "MOQ {{n}}",
     "perUnit": "/{{unit}}",
-    "loadFailed": "Gagal memuatkan profil pembekal."
+    "loadFailed": "Gagal memuatkan profil pembekal.",
+    "externalSupplier": "Pembekal luar",
+    "truncated": "Menunjukkan {{shown}} daripada {{total}} produk — cari untuk mengecilkan.",
+    "noImage": "Tiada imej"
   },
   "myContracts": {
     "title": "Pembekal Saya",
@@ -224,7 +227,30 @@
     "orderedAs": "Dipesan sebagai: {{line}}",
     "stockConversion": "Penukaran stok",
     "stockConversionHint": "Berapa banyak unit stok anda ditambah apabila satu bungkusan diterima.",
-    "conversionRequired": "Masukkan berapa {{unit}} satu {{pkg}} tambah ke stok."
+    "conversionRequired": "Masukkan berapa {{unit}} satu {{pkg}} tambah ke stok.",
+    "nameRequired": "Nama produk diperlukan.",
+    "unitRequired": "Pilih unit penggunaan.",
+    "priceRequired": "Masukkan harga yang sah.",
+    "name": "Nama produk",
+    "namePlaceholder": "cth. Chicken Breast",
+    "skuPlaceholder": "Kod produk pembekal (pilihan)",
+    "skuHint": "Biarkan kosong untuk nombor automatik.",
+    "orderMode": "Bagaimana anda memesan ini?",
+    "orderModePack": "Mengikut kiraan (pek / kotak / karton)",
+    "orderModeMeasure": "Mengikut berat atau isipadu (kg, g, L, ml)",
+    "baseQty": "Kuantiti Asas",
+    "usageUnit": "Unit Penggunaan",
+    "selectUnit": "Pilih unit",
+    "leadTime": "Masa penghantaran (hari)",
+    "supplierRequired": "Pilih pembekal luar.",
+    "skuExists": "SKU ini sudah digunakan oleh produk lain pembekal ini.",
+    "saveFailed": "Gagal menyimpan produk.",
+    "add": "Tambah Produk",
+    "editTitle": "Edit Produk",
+    "addTitle": "Tambah Produk",
+    "hint": "Ini pembekal luar yang anda daftarkan. Tambah produk yang anda beli — ia boleh dipesan dari item stok anda.",
+    "deleteTitle": "Padam produk",
+    "nameHint": "Nama pembekal untuk produk ini. Lalai nama item anda — ubah jika berbeza."
   },
   "common": {
     "save": "Simpan",

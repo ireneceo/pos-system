@@ -1089,6 +1089,9 @@ draft ──submit──▶ (오너승인 ON & 오너연결) pending_approval �
                                               └──오너 반려──▶ draft (rejected_reason)
         (OFF 또는 오너 미연결) ───────────────────────────────▶ submitted (기존 동작)
 ```
+
+- **판매자가 총액을 올리는 수정(amend + `confirm_increase`)도 같은 게이트** — 오너 승인 매장이면 `pending_approval` 로 되돌아가 판매자 목록에서 빠지고, 승인되면 `submitted` 로 돌아와 판매자가 다시 확인한다(`poOwnerApproval.applyAmendRaiseGate`, 2026-10-15). 상세 `docs/SELLER_ORDER_MANAGEMENT_SYSTEM.md` «총액 인상».
+
 - 오너 연결 = `restaurant_managers.relationship_type='ownership'` 행 존재. 승인 주체 = 그 `manager_id`(Restaurant Owner). 다수 오너면 누구나 승인 가능.
 - BG/FG 발주(brand/foodcourt buyer)는 오너 개념 없음 → 항상 기존 즉시 submit.
 
@@ -1314,7 +1317,7 @@ WhatsApp 은 `*텍스트*` 를 굵게 렌더한다. 메일(mailto 평문)은 굵
 # 📌 단위 주문(UoM) · 다중 공급업체 오더 방향 — 설계 (2026-08-30, Fable 점검)
 
 > ## ⛔ Irene 컨펌 대기 3건 — 컨펌 전 구현 착수 금지
-> 1. **팩 규격이 여러 개인 품목은 옵션이 아니라 판매상품을 따로 등록** (25kg 포대 / 5kg 백 각각). *Fable 권고: 이 방식으로.*
+> 1. **팩 규격이 여러 개인 품목은 옵션이 아니라 판매상품을 따로 등록** (25kg 포대 / 5kg 백 각각). *Fable 권고: 이 방식으로.* → **✅ 확정 2026-10-15** (Irene «권고대로 진행해 줘» — 질문 «20팩은 카톤 상품인가 수량할인인가» 에 (가) 카톤 상품). 같은 날 옵션 가격이 발주 줄에 실리게 완성(`purchase_order_items.options` · `utils/poLineOptions.js`).
 > 2. **`order_mode='measure'`(kg/g 직접 주문) 신설.** *Fable 권고: 도입.*
 > 3. **다중 공급업체는 현 구조 유지 + 3곳 보완.** *Fable 권고: 유지+보완.*
 > 4. **"RA 먼저" 3단계 진행** (2026-08-30 Irene 질문 "일단 레스토랑관리자에서 하고 나서 볼까?" → Fable 찬성). *Fable 권고: 아래 §4 순서로.*
