@@ -1,0 +1,45 @@
+{
+  "tag": "staff-attendance",
+  "sw_version": "5.95-staff-attendance-20261017",
+  "date": "2026-10-17",
+  "in_progress": "none",
+  "completed": [
+    "직원 출퇴근·휴가·휴일(매장 전용) — 관리 5탭·내 출퇴근·공용 태블릿 타임클락(PIN) · 휴가 신청/승인 · 휴가 잔여일 · 공휴일(MY 2026·2027) · «매장 와이파이(같은 주소)에서만 출퇴근» 설정 · 휴가 메일 4언어 · 급여 제외",
+    "재고아이템 삭제 막힘 창 «검색해서 다른 재고아이템으로 바꾸고 삭제» 2차 — 프로덕트 레시피·상품 옵션까지(단위 같을 때만)",
+    "재고 장부 동시 쓰기 경합 고침 — 재고 행 잠금 뒤 읽기 · 주문 차감 데드락이면 통째 재시도(최대 3회) · 같은 초 두 조정이 옛 재고로 계산해 재고가 틀어지던 결함"
+  ],
+  "issues": [
+    "같은 초에 입고·조정이 겹치면 재고가 하나 틀어지고 장부 사슬이 끊겼다(10-11부터 운영에 있음)",
+    "재고아이템 사용처에 프로덕트 레시피가 하나라도 섞이면 «바꾸고 삭제» 버튼이 숨었다"
+  ],
+  "upcoming": [
+    "출퇴근: 키오스크 주소 따라가기가 루프백·사설 주소도 등록하는 것 건너뛰기 · 클릭 시험에 2단 패널 펼치기",
+    "재고아이템 바꾸기: 미리보기 «원가 미정» 표시 · 상품이 직접 가리키는 재고아이템을 대상으로 고르면 서버가 막기",
+    "서버 연결 풀이 20 이 아니라 5 로 잡히는 문제(pm2 판별) — 운영 max_connections 측정 뒤 결정"
+  ],
+  "behavior_changes": [
+    "매장 사이드바에 출퇴근 메뉴 · 새 화면 3개(관리·내 출퇴근·타임클락) — 출퇴근 설정을 안 켠 매장은 기존 동작 변화 0",
+    "재고 쓰기가 대상 행을 잠그므로 같은 재료 동시 쓰기는 차례로 처리된다(결과 정확)",
+    "재고아이템 삭제 시 옮길 수 있는 사용처뿐이면 막힘 창 대신 검색 창이 바로 열림"
+  ],
+  "check_areas": [
+    "매장 관리자 › 출퇴근 관리 5탭 · 타임클락 PIN 출퇴근 · 휴가 신청→승인",
+    "출퇴근 «매장 와이파이에서만» 켠 뒤 모바일 데이터에서 거절되는지(실기기)",
+    "재고 조정·입고 뒤 재고·장부 일치 · 주문 차감",
+    "브랜드 재고아이템 삭제 → 바꾸고 삭제"
+  ],
+  "verification": {
+    "api": "출퇴근 실호출 48/48 · health security 89/89 · pos 55/55 · inventory 77/77",
+    "fault_injection": "출퇴근 2건(위조 헤더·UNIQUE 제거) · 장부 잠금 4건(잠금 제거 ③④⑤ 실패·원가 맵 트랜잭션 제거·롤백 가드 제거) · 재고아이템 바꾸기 3건 — 모두 빨강→원복 초록",
+    "browser": "mount sweep 크래시 0 · 출퇴근 클릭 흐름 12/13(1 = 시험이 2단 패널 안 펼침) · 재고아이템 바꾸기 클릭 흐름",
+    "printer": "🔒 인쇄 보호 파일: MainLayout 메뉴 줄만 추가(print-guard bless 8/8, Fable 게이트에서 확인)",
+    "migrations": "deploy 신규 1개(멱등): migrate-create-staff-attendance.js (새 표 7 + kiosk_devices 칸 1)",
+    "sw_version": "5.95-staff-attendance-20261017",
+    "fable_note": "출퇴근: .claude/fable-design-20261016-staff-attendance.md + .claude/fable-gate-20261016-staff-attendance.md (PASS) · 재고 장부 잠금: .claude/fable-design-20261016-stock-ledger-lock.md + .claude/fable-gate-20261016-stock-ledger-lock.md (재게이트 PASS) · 재고아이템 바꾸기 2차: backups/fable-pending/fable-verdict-20261016-stock-item-replace-2nd-gate.md (PASS)"
+  },
+  "notes": "정기 점검 10/17 배포(버전·릴리즈노트·공지 없음) · 커밋 5810e4c9c·e0a037527 · SW 는 배포 방이 올림",
+  "irene_actions_after_deploy": [
+    "실기기로 «매장 와이파이에서만 출퇴근» 확인(상황판 할 일)"
+  ],
+  "fable_note": "출퇴근·재고 장부 잠금·재고아이템 바꾸기 2차 — 각 Fable 게이트 PASS (verification.fable_note 경로)"
+}
