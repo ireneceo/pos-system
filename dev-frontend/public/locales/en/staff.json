@@ -29,5 +29,19 @@
   "staffPage.ok": "OK",
   "staffPage.reset": "Reset",
   "staffPage.linkedAccount": "Linked account",
-  "staffPage.linkedNoPin": "Signs in with their own account and switches to this store — no Staff ID or PIN."
+  "staffPage.linkedNoPin": "Signs in with their own account and switches to this store — no Staff ID or PIN.",
+  "staffPage.inviteExisting": "Invite existing account",
+  "staffPage.inviteTitle": "Invite an existing account as staff",
+  "staffPage.inviteHint": "This person already has a PurpleHere account. They accept on their role selection screen, then sign in with their own password and switch to this store. Staff ID and PIN are not used.",
+  "staffPage.inviteEmail": "Account email",
+  "staffPage.inviteMessage": "Message (optional)",
+  "staffPage.inviteSend": "Send invitation",
+  "staffPage.inviteSending": "Sending…",
+  "staffPage.inviteSent": "Invitation sent. They will appear in this list once they accept.",
+  "staffPage.inviteFailed": "Could not send the invitation.",
+  "staffPage.invitePickOne": "Pick at least one permission.",
+  "staffPage.emailExistsInvite": "This email already has a PurpleHere account. Invite it to join this store as staff?",
+  "staffPage.editPermissions": "Edit permissions",
+  "staffPage.unlink": "Unlink",
+  "staffPage.unlinkConfirm": "this account will lose access to this store. Their own account stays as it is."
 }

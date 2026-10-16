@@ -25,6 +25,25 @@ const { findReachableRealRestaurant } = require('../utils/demoReachableRestauran
  * exist before this transaction, but emails could match if a user attempts to
  * re-signup with their own code).
  */
+
+/**
+ * 받은 초대(pending, initiator='grantor') 수 — 멀티 로그인 v1.4. 로그인·빠른 로그인·GET /auth/contexts 가 같이 쓴다.
+ * 칸이 없는 환경(마이그 전)·오류면 0 — 로그인은 막지 않는다.
+ */
+async function countPendingInvitations(userId) {
+  try {
+    const { sequelize } = require('../config/database');
+    const [[row]] = await sequelize.query(
+      `SELECT COUNT(*) AS c FROM user_context_requests
+        WHERE user_id = :uid AND initiator = 'grantor' AND status = 'pending'`,
+      { replacements: { uid: userId } }
+    );
+    return Number(row && row.c) || 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
 async function applyReferralCodeToNewUser(user, referralCode, transaction) {
   if (!referralCode) return;
   const trimmed = String(referralCode).trim().toUpperCase();
@@ -148,6 +167,8 @@ async function login(emailOrUsername, password) {
   } catch (e) {
     console.warn('[AUTH] listContexts 실패(로그인은 계속):', e.message);
   }
+  // v1.4 받은 초대 수 — 0 보다 크면 화면이 선택 화면으로 유도(컨텍스트 1개여도). 실패해도 로그인은 계속.
+  const pendingInvitations = await countPendingInvitations(user.id);
 
   // Resolve restaurant context for RA/Staff so the frontend can decide whether to
   // pin the user to the invoice page (suspended account UX). Demo / test
@@ -170,6 +191,7 @@ async function login(emailOrUsername, password) {
 
   return {
     contexts,
+    pending_invitations: pendingInvitations,
     token,
     user: {
       id: user.id,
@@ -936,9 +958,11 @@ async function loginAsTestAccount(email, label) {
   } catch (e) {
     console.warn('[AUTH] listContexts 실패(빠른 로그인은 계속):', e.message);
   }
+  const pendingInvitations = await countPendingInvitations(user.id);
 
   return {
     contexts,
+    pending_invitations: pendingInvitations,
     token,
     user: {
       id: user.id,
@@ -964,4 +988,4 @@ async function loginAsTestAccount(email, label) {
   };
 }
 
-module.exports = { login, loginAsDemo, loginAsTestAccount, register, signup, signupReferralPartner, sendVerificationEmail, DEMO_KEY_TO_EMAIL };
+module.exports = { login, loginAsDemo, loginAsTestAccount, register, signup, signupReferralPartner, sendVerificationEmail, DEMO_KEY_TO_EMAIL, countPendingInvitations };

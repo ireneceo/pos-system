@@ -472,27 +472,21 @@ router.post('/', authenticateToken, async (req, res) => {
     });
 
     if (existingUser) {
-      // Build descriptive error message
+      // v1.4(.claude/fable-design-20261016-link-existing-account-staff.md §5.1): 기존 계정의 역할·매장 번호를
+      // 문구에 싣지 않는다(남의 계정 정보 노출). 코드로 화면이 분기 — RA + 이메일 중복이면 «초대» 로 잇는다.
       // 화면 표시는 매장 prefix(r5:) 벗긴 친근한 ID 로.
       const displayId = String(effectiveUsername).replace(/^r\d+:/i, '');
-      let errorDetail = '';
-      if (existingUser.email === email && existingUser.username === effectiveUsername) {
-        errorDetail = `Both email "${email}" and Staff ID "${displayId}" are already in use`;
-      } else if (existingUser.email === email) {
-        errorDetail = `Email "${email}" is already in use`;
-      } else {
-        errorDetail = `Staff ID "${displayId}" is already in use`;
-      }
+      const emailTaken = !!email && existingUser.email === email;
+      const idTaken = existingUser.username === effectiveUsername;
+      const parts = [];
+      if (emailTaken) parts.push('An account with this email already exists.');
+      if (idTaken) parts.push(`Staff ID "${displayId}" is already in use in this restaurant.`);
+      if (!parts.length) parts.push('An account with this email already exists.');
+      const code = emailTaken && idTaken ? 'EMAIL_AND_STAFF_ID_IN_USE' : (idTaken ? 'STAFF_ID_IN_USE' : 'EMAIL_IN_USE');
 
-      // Add context about existing user
-      const userContext = existingUser.restaurant_id
-        ? `by a ${existingUser.role} at restaurant ID ${existingUser.restaurant_id}`
-        : `by a ${existingUser.role} (system user)`;
-
-      return res.status(400).json({
-        success: false,
-        error: `${errorDetail} ${userContext}. Please use a different email or username.`
-      });
+      const body = { success: false, error: parts.join(' '), code };
+      if (code === 'EMAIL_IN_USE' && req.user.role === 'Restaurant Admin') body.canInvite = true;
+      return res.status(400).json(body);
     }
 
     // PIN duplicate check within same restaurant
@@ -1429,7 +1423,71 @@ router.post('/:id/contexts', authenticateToken, requireRole('System Admin'), asy
 });
 
 // 모자 회수. 회수돼도 그 사용자의 세션은 살아남고 본래 정체로 폴백한다(설계 §4.3).
-router.delete('/:id/contexts/:contextId', authenticateToken, requireRole('System Admin'), async (req, res) => {
+/**
+ * 이 모자 행을 요청자가 관리(권한 수정·회수)할 수 있나 — PUT·DELETE 가 같이 쓰는 **유일한 판정**.
+ * v1.4 D2(Irene 10-16 «권고대로»): RA 는 **자기 매장 × Staff** 모자만. RA·오너·BM 모자는 여전히 SA.
+ * 만들기(POST /:id/contexts)는 RA 에게 열지 않는다 — 모자는 승인·수락을 거쳐서만 생긴다.
+ */
+function canManageContextRow(reqUser, row) {
+  if (!reqUser || !row) return false;
+  if (reqUser.role === 'System Admin') return true;
+  if (reqUser.role === 'Restaurant Admin') {
+    const rid = userContexts.normalizeEntityId(reqUser.restaurant_id);
+    return !!rid && row.entity_type === 'restaurant' && row.role === 'Staff' && Number(row.entity_id) === rid;
+  }
+  return false;
+}
+
+// 연결 계정(Staff 모자)의 권한 수정 — 쓰기는 grantContext 하나(ON DUPLICATE 가 permissions 를 갱신).
+router.put('/:id/contexts/:contextId', authenticateToken, async (req, res) => {
+  try {
+    const uid = userContexts.normalizeEntityId(req.params.id);
+    const ctxId = userContexts.normalizeEntityId(req.params.contextId);
+    if (!uid || !ctxId) {
+      return res.status(400).json({ success: false, message: 'Invalid id' });
+    }
+    const [rows] = await _seq.query(
+      'SELECT id, entity_type, entity_id, role FROM user_contexts WHERE id = :c AND user_id = :u',
+      { replacements: { c: ctxId, u: uid } }
+    );
+    // 범위 밖이면 존재 여부도 흘리지 않는다(404).
+    if (!rows.length || !canManageContextRow(req.user, rows[0]) || !userContexts.isStaffHat(rows[0].entity_type, rows[0].role)) {
+      return res.status(404).json({ success: false, message: 'Context not found' });
+    }
+    const norm = userContexts.normalizeStaffPermissions((req.body || {}).permissions);
+    if (norm.error) return res.status(400).json({ success: false, message: norm.error });
+
+    const target = await User.findByPk(uid);
+    if (!target) return res.status(404).json({ success: false, message: 'Context not found' });
+    const result = await userContexts.grantContext({
+      target,
+      entity_type: rows[0].entity_type,
+      entity_id: rows[0].entity_id,
+      role: rows[0].role,
+      permissions: norm.permissions,
+      grantedBy: req.user.id
+    });
+    if (!result.ok) return res.status(result.status).json({ success: false, message: result.message });
+
+    logActivity(req, {
+      action_type: 'update',
+      entity_type: 'user_context',
+      entity_id: uid,
+      entity_name: target.full_name || target.username || target.email,
+      description: `Updated Staff context permissions for restaurant #${rows[0].entity_id} of user #${uid} [${norm.permissions.join(', ')}]`,
+      restaurant_id: rows[0].entity_id
+    });
+    // 당사자(권한 바뀜 → 다시 읽기)·그 매장 직원 목록 갱신.
+    emitContextChanged({ kind: 'updated', userId: uid, entityType: rows[0].entity_type, entityId: rows[0].entity_id, role: rows[0].role, label: result.entityName || null });
+
+    res.json({ success: true, data: { id: ctxId, permissions: norm.permissions }, message: 'Permissions updated' });
+  } catch (error) {
+    console.error('[users] PUT /:id/contexts/:contextId error:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+router.delete('/:id/contexts/:contextId', authenticateToken, async (req, res) => {
   try {
     const uid = userContexts.normalizeEntityId(req.params.id);
     const ctxId = userContexts.normalizeEntityId(req.params.contextId);
@@ -1441,7 +1499,8 @@ router.delete('/:id/contexts/:contextId', authenticateToken, requireRole('System
       'SELECT id, entity_type, entity_id, role FROM user_contexts WHERE id = :c AND user_id = :u',
       { replacements: { c: ctxId, u: uid } }
     );
-    if (!rows.length) {
+    // SA 는 종전 그대로(모든 행) · RA 는 자기 매장 Staff 모자만 — 범위 밖은 404(존재 여부 안 흘림).
+    if (!rows.length || !canManageContextRow(req.user, rows[0])) {
       return res.status(404).json({ success: false, message: 'Context not found' });
     }
 

@@ -29,5 +29,19 @@
   "staffPage.ok": "OK",
   "staffPage.reset": "Set Semula",
   "staffPage.linkedAccount": "Akaun dipautkan",
-  "staffPage.linkedNoPin": "Log masuk dengan akaun sendiri dan tukar ke kedai ini — tiada ID Staf atau PIN"
+  "staffPage.linkedNoPin": "Log masuk dengan akaun sendiri dan tukar ke kedai ini — tiada ID Staf atau PIN",
+  "staffPage.inviteExisting": "Jemput akaun sedia ada",
+  "staffPage.inviteTitle": "Jemput akaun sedia ada sebagai kakitangan",
+  "staffPage.inviteHint": "Orang ini sudah mempunyai akaun PurpleHere. Mereka terima di skrin pilihan peranan, kemudian log masuk dengan kata laluan sendiri dan bertukar ke kedai ini. ID Kakitangan dan PIN tidak digunakan.",
+  "staffPage.inviteEmail": "E-mel akaun",
+  "staffPage.inviteMessage": "Mesej (pilihan)",
+  "staffPage.inviteSend": "Hantar jemputan",
+  "staffPage.inviteSending": "Menghantar…",
+  "staffPage.inviteSent": "Jemputan dihantar. Mereka akan muncul dalam senarai ini selepas menerima.",
+  "staffPage.inviteFailed": "Tidak dapat menghantar jemputan.",
+  "staffPage.invitePickOne": "Pilih sekurang-kurangnya satu kebenaran.",
+  "staffPage.emailExistsInvite": "E-mel ini sudah mempunyai akaun PurpleHere. Jemput untuk menyertai kedai ini sebagai kakitangan?",
+  "staffPage.editPermissions": "Edit kebenaran",
+  "staffPage.unlink": "Nyahpaut",
+  "staffPage.unlinkConfirm": "akaun ini akan hilang akses ke kedai ini. Akaun mereka sendiri kekal seperti biasa."
 }

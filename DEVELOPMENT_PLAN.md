@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-16 — [Claude Code] 스탭 요청 승인 즉시 반영: 승인하면 매장 직원 목록에 «연결 계정» 으로 바로 뜨고, 요청한 사람 화면에도 새로고침 없이 매장 카드·알림이 뜸(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 직원 출퇴근·휴가·휴일(매장 직원만 · 같은 매장 네트워크에서만 찍기 설정 · 공용 태블릿 PIN 타임클락 · 휴가 신청·승인·잔여일 · 매장 휴일 달력 · 급여 제외) + 재고아이템 «바꾸고 삭제» 2차(프로덕트 레시피·상품 옵션) (둘 다 Fable 게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 재고 장부 동시 쓰기 경합 고침: 재고 행 잠금 + 주문 차감 데드락 재시도 + 연결 풀 막힘(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 10-15 끝난 방 미커밋 묶음 /개발완료: 매장 발주 후 품목 빼기·추가(오너 승인 매장은 수정도 승인) · 발주 카탈로그 «Add as menu / Add as product» = 재고아이템 + 그대로 파는 메뉴/프로덕트 (둘 다 Fable 게이트 PASS · 개발서버·미배포) · 운영 배포는 10-16 수동 /배포가 health [po] 수령 FK 4건에서 막힘 → 게이트 고치기 대기 · 이전: 2026-10-15 — [Claude Code] 공급업체 상품 옵션 가격이 발주·판매자 받은 주문·청구서에 실림 + 규격(1팩/20팩 카톤)은 상품을 따로(Irene «권고대로») · 같은 날 끝난 방들 미커밋 묶음 /개발완료(SKU·단위 정비 · 재료 수정 창 공급업체 · 다운로드 웹 앱 안내 · 판매자 주문 수정 총액 확인 등)(개발서버·미배포) · 이전: 2026-10-15 — [Claude Code] 안드로이드 앱 Google Play 등록 준비: Capacitor 8 · Android 16 기준 · 자가 업데이트 제거 · 앱 안 가입 길 닫기 + /account-deletion · 플레이 제출 파일 0.4.0(AAB) · Fable PASS(조건부) · 플레이 콘솔 작업은 Irene 할 일로(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 브랜드 매니저 = 회사 직원: 여러 브랜드·회사 전체 배정 + 회사 공용 자료 개방 + 메뉴 접근 7묶음 정리(Fable 설계·검증 PASS · 개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 발주 카탈로그: 부모 브랜드 재료로 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 뜨던 표시 결함 수정(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] ✅ **v3.110 · 운영 배포 SW 5.90-preflight-security-20261010 (백업 20261011_062932 · 마이그 118/118 · 스모크 10/10)** — 10-08~10-11 묶음(운영 전 보안 0단 · 판매 중지 상품 · 청구서 창 · 재고→원가 · 외부 정산서 · 배송 지역 · 키오스크 결제/전체 화면 · 새 매장 결제 기본값) 운영 반영. 1차는 마이그 순서(새 칸이 목록 끝)로 실패→자동 원복, 레지스트리 순서 고쳐(Fable PASS) 2차 성공.
+> **최종 업데이트:** 2026-10-16 — [Claude Code] 기존 계정(브랜드 매니저 등)을 매장 직원으로 «초대 → 본인 수락» + 매장 관리자가 연결 계정 권한 수정·연결 해제 + 중복 오류 문구에서 상대 계정 역할·매장 번호 삭제(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 스탭 요청 승인 즉시 반영: 승인하면 매장 직원 목록에 «연결 계정» 으로 바로 뜨고, 요청한 사람 화면에도 새로고침 없이 매장 카드·알림이 뜸(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 직원 출퇴근·휴가·휴일(매장 직원만 · 같은 매장 네트워크에서만 찍기 설정 · 공용 태블릿 PIN 타임클락 · 휴가 신청·승인·잔여일 · 매장 휴일 달력 · 급여 제외) + 재고아이템 «바꾸고 삭제» 2차(프로덕트 레시피·상품 옵션) (둘 다 Fable 게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 재고 장부 동시 쓰기 경합 고침: 재고 행 잠금 + 주문 차감 데드락 재시도 + 연결 풀 막힘(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 10-15 끝난 방 미커밋 묶음 /개발완료: 매장 발주 후 품목 빼기·추가(오너 승인 매장은 수정도 승인) · 발주 카탈로그 «Add as menu / Add as product» = 재고아이템 + 그대로 파는 메뉴/프로덕트 (둘 다 Fable 게이트 PASS · 개발서버·미배포) · 운영 배포는 10-16 수동 /배포가 health [po] 수령 FK 4건에서 막힘 → 게이트 고치기 대기 · 이전: 2026-10-15 — [Claude Code] 공급업체 상품 옵션 가격이 발주·판매자 받은 주문·청구서에 실림 + 규격(1팩/20팩 카톤)은 상품을 따로(Irene «권고대로») · 같은 날 끝난 방들 미커밋 묶음 /개발완료(SKU·단위 정비 · 재료 수정 창 공급업체 · 다운로드 웹 앱 안내 · 판매자 주문 수정 총액 확인 등)(개발서버·미배포) · 이전: 2026-10-15 — [Claude Code] 안드로이드 앱 Google Play 등록 준비: Capacitor 8 · Android 16 기준 · 자가 업데이트 제거 · 앱 안 가입 길 닫기 + /account-deletion · 플레이 제출 파일 0.4.0(AAB) · Fable PASS(조건부) · 플레이 콘솔 작업은 Irene 할 일로(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 브랜드 매니저 = 회사 직원: 여러 브랜드·회사 전체 배정 + 회사 공용 자료 개방 + 메뉴 접근 7묶음 정리(Fable 설계·검증 PASS · 개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 발주 카탈로그: 부모 브랜드 재료로 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 뜨던 표시 결함 수정(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] ✅ **v3.110 · 운영 배포 SW 5.90-preflight-security-20261010 (백업 20261011_062932 · 마이그 118/118 · 스모크 10/10)** — 10-08~10-11 묶음(운영 전 보안 0단 · 판매 중지 상품 · 청구서 창 · 재고→원가 · 외부 정산서 · 배송 지역 · 키오스크 결제/전체 화면 · 새 매장 결제 기본값) 운영 반영. 1차는 마이그 순서(새 칸이 목록 끝)로 실패→자동 원복, 레지스트리 순서 고쳐(Fable PASS) 2차 성공.
 
 > **이전:** 2026-10-11 — [Claude Code] ✅ **키오스크 결제 화면 개편 + 키오스크 묶음 /개발완료 (개발서버만)** — 카운터 결제 키오스크 숨김 · 가로 = 오른쪽 결제 패널, 세로 = 한 칸 · 미등록 태블릿 안내 · 키오스크 전체 화면(18bc810d)·대시보드 링크(72cfb0db)·새 매장 결제 기본값(f5b1a378) 함께 기록 · Irene «좋아» · 키오스크 흐름 6크기 재점검 + 실제 주문 1건 확인.
 
@@ -476,6 +476,31 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 기존 계정을 매장 직원으로 «초대 → 본인 수락» (2026-10-16, 개발서버만) [Claude Code]
+
+Irene: «레스토랑관리자가 스탭으로 같은 아이디를 추가하고 싶거든 … already in use by a Brand Manager (system user) … 기존 아이디를 연결할 방법은 없는 걸까?» → «권고대로 진행해 줘»(D1=A 초대→수락 · D2=예). 설계 `.claude/fable-design-20261016-link-existing-account-staff.md` · 판정 `.claude/fable-gate-20261016-staff-invite.md` · `docs/MULTI_CONTEXT_LOGIN_DESIGN.md §6.4.2`
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 초대 보내기 | 직원 화면 «기존 계정 초대» · Add Staff 에서 이미 있는 이메일이면 «초대 보내기» 로 이어짐(권한 골라 보냄) | ✅ 완료 |
+| 받은 초대 | 로그인하면 선택 화면 «받은 초대» — 권한 보기 · 수락 1번으로 매장 카드 · 거절(사유) · 메일 4언어 | ✅ 완료 |
+| 연결 계정 관리 | 매장 관리자가 자기 매장 연결 계정의 권한 수정·연결 해제(남의 매장·다른 모자는 불가) | ✅ 완료 |
+| 오류 문구 보안 | 중복 400 에서 상대 계정의 역할·매장 번호 삭제(EMAIL_IN_USE 코드) | ✅ 완료 |
+| 셀프 부여 차단 | 초대한 관리자는 자기 초대를 «승인» 못 함 · 좌석 한도는 보낼 때·수락 때 둘 다 | ✅ 완료 |
+| 화면 캐시 결함 | 신호 직후 목록이 2초 전 답을 받던 것 — /context-requests 를 캐시 제외 | ✅ 완료 |
+| 검증 | jest 81/81 · 고장주입 5/5 · UC-009/010 · health 394/394 · 클릭 22/22 ×3 · verify-all --full 23/24(✗=배포 기록 SW, 배포 방 몫) | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/routes/context-requests.js` · `routes/users.js` · `routes/auth.js` · `services/authService.js` · `services/contextSignals.js` · `models/UserContextRequest.js`
+- `dev-backend/scripts/migrate-user-context-requests-invite.js`(신규) · `scripts/migrations.registry.json` · `routes/notification-settings.js` · `utils/notificationTemplates.js` · `locales/*/email.json`
+- `dev-backend/scripts/health-check.js` · `scripts/inspection/suites/user-contexts.js` · `tests/context-invites.test.js`(신규)
+- `dev-frontend/src/components/Staff/InviteExistingStaffModal.tsx`(신규) · `pages/Staff/StaffPage.tsx` · `components/ContextRequests/ContextRequestsPanel.tsx` · `pages/ContextSelect/ContextSelectPage.tsx` · `contexts/AuthContext.tsx` · `pages/Login/LoginPage.tsx` · `components/Common/NotificationToaster.tsx` · `utils/fetchDedupe.ts` · `public/locales/*/{staff,auth}.json` · `public/sw.js`(5.97)
+- `docs/MULTI_CONTEXT_LOGIN_DESIGN.md` · `docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md`
+
+---
 
 ## ✅ 완료: 재고 장부 동시 쓰기 경합 (2026-10-16, 개발서버만) [Claude Code]
 

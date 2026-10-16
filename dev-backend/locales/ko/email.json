@@ -223,5 +223,33 @@
       "note": "관리자 메모",
       "cta": "내 출퇴근 보기"
     }
+  },
+  "contextInvite": {
+    "received": {
+      "subject": "{{target}} 매장 직원으로 초대되었습니다",
+      "heading": "매장 직원 초대",
+      "body": "{{inviter}} 님이 {{target}} 매장 직원으로 초대했습니다.",
+      "target": "매장",
+      "role": "역할",
+      "permissions": "권한 수",
+      "message": "메시지",
+      "hint": "역할 선택 화면에서 수락해 주세요. 지금 계정 그대로 로그인하고 이 매장으로 전환해 씁니다.",
+      "cta": "받은 초대 보기",
+      "textFallback": "{{inviter}} 님이 {{target}} 매장 직원으로 초대했습니다."
+    },
+    "result": {
+      "subjectAccepted": "초대 수락: {{who}} · {{target}}",
+      "subjectDeclined": "초대 거절: {{who}} · {{target}}",
+      "headingAccepted": "초대가 수락되었습니다",
+      "headingDeclined": "초대가 거절되었습니다",
+      "bodyAccepted": "{{who}} 님이 초대를 수락했습니다. 직원 목록에 «연결 계정» 으로 나타납니다.",
+      "bodyDeclined": "{{who}} 님이 초대를 거절했습니다.",
+      "invitee": "초대한 계정",
+      "target": "매장",
+      "status": "상태",
+      "reason": "사유",
+      "cta": "직원 화면 열기",
+      "textFallback": "{{target}} 의 {{who}} 초대: {{result}}"
+    }
   }
 }

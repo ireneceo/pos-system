@@ -37,3 +37,16 @@ describe('fetchDedupe 무효화', () => {
     expect(await (await dedupedFetch('k3', undefined, run)).text()).toBe('new1');
   });
 });
+
+// 2026-10-16 v1.4: 신호로 다시 읽는 목록은 캐시를 타지 않는다(거절된 초대가 패널에 남던 결함).
+describe('shouldDedupe — live 목록 제외', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { shouldDedupe } = require('./fetchDedupe');
+  test('context-requests 는 dedupe 안 함', () => {
+    expect(shouldDedupe('/api/context-requests/sent')).toBe(false);
+    expect(shouldDedupe('/api/context-requests?status=pending')).toBe(false);
+    expect(shouldDedupe('/api/context-requests/mine')).toBe(false);
+    expect(shouldDedupe('/api/auth/contexts')).toBe(false);
+    expect(shouldDedupe('/api/menu-items')).toBe(true);
+  });
+});

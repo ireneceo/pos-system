@@ -223,5 +223,33 @@
       "note": "Manager note",
       "cta": "View my attendance"
     }
+  },
+  "contextInvite": {
+    "received": {
+      "subject": "You're invited to join {{target}} as staff",
+      "heading": "Staff invitation",
+      "body": "{{inviter}} invited you to work at {{target}} as staff.",
+      "target": "Store",
+      "role": "Role",
+      "permissions": "Permissions",
+      "message": "Message",
+      "hint": "Accept on the role selection screen. You keep signing in with your own account and switch to this store.",
+      "cta": "Open invitations",
+      "textFallback": "{{inviter}} invited you to join {{target}} as staff."
+    },
+    "result": {
+      "subjectAccepted": "Invitation accepted: {{who}} · {{target}}",
+      "subjectDeclined": "Invitation declined: {{who}} · {{target}}",
+      "headingAccepted": "Invitation accepted",
+      "headingDeclined": "Invitation declined",
+      "bodyAccepted": "{{who}} accepted your invitation and now appears in your staff list as a linked account.",
+      "bodyDeclined": "{{who}} declined your invitation.",
+      "invitee": "Invited account",
+      "target": "Store",
+      "status": "Status",
+      "reason": "Reason",
+      "cta": "Open staff",
+      "textFallback": "Invitation for {{who}} at {{target}}: {{result}}"
+    }
   }
 }

@@ -29,5 +29,19 @@
   "staffPage.ok": "确定",
   "staffPage.reset": "重置",
   "staffPage.linkedAccount": "关联账户",
-  "staffPage.linkedNoPin": "使用本人账户登录并切换到本店 — 无员工 ID 和 PIN"
+  "staffPage.linkedNoPin": "使用本人账户登录并切换到本店 — 无员工 ID 和 PIN",
+  "staffPage.inviteExisting": "邀请现有账户",
+  "staffPage.inviteTitle": "邀请现有账户成为员工",
+  "staffPage.inviteHint": "此人已有 PurpleHere 账户。对方在角色选择页面接受后，用自己的密码登录并切换到本门店。不使用员工 ID 和 PIN。",
+  "staffPage.inviteEmail": "账户邮箱",
+  "staffPage.inviteMessage": "留言（可选）",
+  "staffPage.inviteSend": "发送邀请",
+  "staffPage.inviteSending": "发送中…",
+  "staffPage.inviteSent": "邀请已发送。对方接受后会出现在此列表中。",
+  "staffPage.inviteFailed": "无法发送邀请。",
+  "staffPage.invitePickOne": "请至少选择一项权限。",
+  "staffPage.emailExistsInvite": "此邮箱已有 PurpleHere 账户。要邀请其成为本门店员工吗？",
+  "staffPage.editPermissions": "编辑权限",
+  "staffPage.unlink": "解除关联",
+  "staffPage.unlinkConfirm": "该账户将失去本门店的访问权限。其本人账户保持不变。"
 }

@@ -1,5 +1,5 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-10-16 UTC — 스탭 요청 승인 즉시 반영 /개발완료(Fable 설계+게이트 PASS · 개발서버·미배포) [작업방 f320f0a8] · 이전: 2026-10-16 UTC — 직원 출퇴근·휴가·휴일 /개발완료(Fable 설계+게이트 PASS · 개발서버·미배포) [작업방 62218c29] · 이전: 2026-10-16 UTC — 재고 장부 동시 쓰기 경합 고침 /개발완료(행 잠금 · 데드락 재시도 · 풀 막힘 · Fable 설계+게이트 PASS · 개발서버·미배포) [작업방 dd467d4b] · 이전: 2026-10-16 UTC — 10-15 끝난 방 미커밋 묶음 /개발완료(발주 후 품목 수정 736a78f9 · 카탈로그 Add as menu ac41b541, 둘 다 Fable PASS) · 배포 버튼 답 처리 [작업방 05c7f32b] · 이전: 2026-10-15 UTC — 공급업체 상품 옵션 가격 발주 반영 /개발완료(끝난 방들 미커밋 묶음 같이 커밋) [작업방 0883cfbd] · 이전: 2026-10-11 UTC — 브랜드 매니저 여러 브랜드·회사 전체 배정 /개발완료 [작업방 8315f30a] · 이전: 2026-10-11 UTC — 발주 카탈로그 «Add to My Stock» 표시 결함 수정 /개발완료 [작업방 ef2223fa] · 이전: 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
+**마지막 업데이트:** 2026-10-16 UTC — 기존 계정을 매장 직원으로 «초대 → 본인 수락» /개발완료(Fable 설계+게이트 PASS · 개발서버·미배포) [작업방 2ad9cc97] · 이전: 2026-10-16 UTC — 스탭 요청 승인 즉시 반영 /개발완료(Fable 설계+게이트 PASS · 개발서버·미배포) [작업방 f320f0a8] · 이전: 2026-10-16 UTC — 직원 출퇴근·휴가·휴일 /개발완료(Fable 설계+게이트 PASS · 개발서버·미배포) [작업방 62218c29] · 이전: 2026-10-16 UTC — 재고 장부 동시 쓰기 경합 고침 /개발완료(행 잠금 · 데드락 재시도 · 풀 막힘 · Fable 설계+게이트 PASS · 개발서버·미배포) [작업방 dd467d4b] · 이전: 2026-10-16 UTC — 10-15 끝난 방 미커밋 묶음 /개발완료(발주 후 품목 수정 736a78f9 · 카탈로그 Add as menu ac41b541, 둘 다 Fable PASS) · 배포 버튼 답 처리 [작업방 05c7f32b] · 이전: 2026-10-15 UTC — 공급업체 상품 옵션 가격 발주 반영 /개발완료(끝난 방들 미커밋 묶음 같이 커밋) [작업방 0883cfbd] · 이전: 2026-10-11 UTC — 브랜드 매니저 여러 브랜드·회사 전체 배정 /개발완료 [작업방 8315f30a] · 이전: 2026-10-11 UTC — 발주 카탈로그 «Add to My Stock» 표시 결함 수정 /개발완료 [작업방 ef2223fa] · 이전: 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
 **버전:** **v3.110** (2026-10-11 · Irene «응») · 운영 SW **5.90-preflight-security-20261010** (2026-10-11 06:36 UTC 배포 · 백업 20261011_062932 · DB 덤프 db_predeploy_20261011_062932 · 스모크 10/10 · 마이그 118/118) · 안드로이드 앱 0.3.4
 ### 완료 (2026-10-16) — 스탭 요청 승인 즉시 반영: RA 직원 목록 «연결 계정» + 상대 화면 실시간 (개발서버 · Fable 설계 1 + 게이트 PASS 지문 3d6f4ded88f3) [Claude Code · 백그라운드 작업방 f320f0a8]
 - Irene: «본인이 원하는 경우 직접 레스토랑에 스탭요청이 들어와서 승인했는데 바로 스탭리스트에 안떠. 상대도 승인된거 화면에서 바로 적용 안되고 나갔다 들어오거나 이상한 제스처를 해야 된대. 자연스럽게 리스트업되고 권한 가게 해줘.»
@@ -13,18 +13,25 @@
 - 시험 데이터: 전량 삭제(남긴 확인용 없음 — 데모 RA 매장 38 은 좌석 5/5)
 - 운영 반영: 다음 배포 때(마이그 0 · 배포 기록 sw_version 5.96 으로)
 
-### 답 기다림 (2026-10-16) — 기존 계정(브랜드 매니저)을 매장 직원으로 연결: 방식 D1·D2 [Claude Code · 백그라운드 작업방 2ad9cc97]
+### 완료 (2026-10-16) — 기존 계정(브랜드 매니저 등)을 매장 직원으로 연결: «초대 → 본인 수락» (Irene «권고대로 진행해 줘» D1=A · D2=예 · 개발서버 · Fable 설계 1 + 게이트 PASS 지문 bbf1adfb1bbe) [Claude Code · 백그라운드 작업방 2ad9cc97]
 - Irene: «브랜드매니저에서 매니저로 추가 … 레스토랑관리자가 스탭으로 같은 아이디를 추가하고 싶거든 … already in use by a Brand Manager (system user) … 이메일을 아무곳에서 검색하게 하면 안되는 걸까? 기존 아이디를 연결할 방법은 없는 걸까?»
-- 실측: 에러 = routes/users.js POST / 중복 검사(역할·매장번호 노출). 지금도 되는 길 = 본인이 선택 화면 «+ 역할 추가 요청»(매장 이름 검색) → RA 승인(권한 1개 이상) → Staff 모자 — 실호출 확인(매장 1, 요청 186 [확인용]·모자는 지움). 빈 곳: RA 가 먼저 시작하는 길 없음 · 승인 뒤 RA 직원 목록에 안 보임 · 수정/회수 SA 전용
-- Fable 설계: .claude/fable-design-20261016-link-existing-account-staff.md (초대→수락 · 400 에 EMAIL_IN_USE+canInvite · 문구에서 역할/매장번호 삭제 · RA 직원 목록 «연결 계정» · 마이그 1 ADD COLUMN×3)
-- 무엇을: D1 초대→수락(A) / 바로 연결(B) · D2 RA 가 연결 계정 권한 수정·해제 — Fable 권고 A · 예
-- 답이 오면: 설계 문서 §5·§6 대로 개발서버 구현 → 빌드 1회 · verify-all --full · Fable 게이트 1회. «스탭 승인 즉시 반영»(f320f0a8)은 10-16 먼저 끝남 — §5.2·§6.1-1·2 완료, 인계는 그 절 참고
+- 설계 .claude/fable-design-20261016-link-existing-account-staff.md · 판정 .claude/fable-gate-20261016-staff-invite.md · docs/MULTI_CONTEXT_LOGIN_DESIGN.md §6.4.2
+- 백엔드: user_context_requests 칸 3(initiator·created_by·permissions) 마이그 migrate-user-context-requests-invite.js(registry deploy · dev 적용) · context-requests POST /invite · GET /sent · /mine meta.invitations · /:id/accept · /:id/decline · DELETE 확장 · 승인 범위 initiator='requester' · users POST 중복 400 문구에서 역할·매장번호 삭제(code EMAIL_IN_USE + canInvite) · PUT/DELETE /users/:id/contexts/:cid RA 자기 매장 Staff 모자(canManageContextRow) · 로그인·/auth/contexts pending_invitations · 알림 2 카테고리 + 메일 4언어 · 신호 updated/invited/invite_cancelled
+- 프론트: InviteExistingStaffModal · StaffPage(«기존 계정 초대» · Add Staff 400 → 초대 잇기 · 연결 계정 권한 수정·연결 해제) · 요청 패널 «보낸 초대» · 선택 화면 «받은 초대»(수락·거절·권한 보기) · 로그인 뒤 초대 있으면 선택 화면 · fetchDedupe 에 /context-requests 제외(거절 뒤 패널에 남던 결함) · 4언어 · SW 5.97
+- 검증: jest 81/81(병렬 3회) · 고장주입 FI-18~22 전부 잡힘 · UC-009/010 반증 · health 394/394 · 타입 신규 0 · 실브라우저 클릭 22/22 ×3(390·1440) · verify-all --full 23/24(✗=배포 기록 sw_version 5.95≠5.97, 배포 방 몫) · mount sweep 크래시 0
+- 배포 방 몫: 배포 기록 sw_version → 5.97-staff-invite-20261016 · 롤백 메모에 `DELETE FROM user_context_requests WHERE initiator='grantor' AND status='pending'` 1줄 · 마이그 1 포함
+- Fable 비차단: dev 매장 18(inactive) staff_limit 999 남아 있음(출처 불명, 설계상 5) · /invite 400 문구가 SA/demo/비활성 종류를 알림(설계 명시, 기록만)
+- 확인 못 함: 메일 실수신 · 실제 휴대폰 · 운영 · 빠른 로그인 pending_invitations(코드만)
+- 시험 데이터: 전량 삭제(남긴 확인용 없음)
+- 운영 반영: 다음 배포 때(마이그 1 = 칸 3 + 인덱스 1)
 
 ### 답 기다림 (2026-10-17) — 정기 점검 배포: 프론트 빌드 강제 종료(메모리) · 운영 무변경 · 다시 배포할지 [Claude Code · 백그라운드 작업방 bd47ba64]
 - 나갈 것: 5810e4c9c 재고 장부 행 잠금 · e0a037527 출퇴근·휴가·휴일 + 재고아이템 바꾸고 삭제 2차 (각 Fable PASS) · 배포 방 산출물 1d50b5d38 = SW 5.95-staff-attendance-20261017 + dev-backend/releases/2026-10-17-staff-attendance.json (check-deploy-ready 통과)
 - 결과: `deploy-to-production.sh --auto` 안전 검사 전부 OK · 스키마 차이 = 등록 마이그가 커버 · DB 덤프 /var/backups/orderhere/pre-deploy/db_predeploy_20261016_163209.sql.gz · 운영 백업 /var/www/backups/20261016_163209 → 사본 프론트 빌드 «Terminated»(/tmp/build.log) → EXIT 1. rsync 전이라 **운영 무변경**(되돌릴 것 없음)
 - 원인 추정: 같은 시각 PlanQ 야간 점검(/opt/planq/scripts/e2e/nightly-patrol.sh, 크롬 렌더러 2.1GB) — 다른 솔루션이라 손대지 않음. 규칙상 재시도 안 함
 - 왜: 정기 점검 배포 실패 시 즉흥 재시도 금지
+- Irene 답(상황판): «응. 그래. 거기 끝나면 바로 해.» → PlanQ 점검이 끝나면 배포가 돌도록 기다리는 명령을 걸었으나 운영 배포 명령이 백그라운드 허락 창에서 3분 넘게 멈춰 상황판이 닫음 → **실행 안 됨**(deploy2.log 없음 · 운영 무변경). 백그라운드 방은 운영 배포 명령의 허락 창을 넘지 못함
+- 지금 답 기다림: Irene 가 PlanQ 야간 점검이 끝난 뒤 이 방에 `! /var/www/deploy-to-production.sh --auto` 를 붙여 넣기(상황판 «터미널에서 하기») — 붙여 넣으면 결과가 이 방에 들어와 이어서 확인
 - 답이 오면: «예» → PlanQ 점검 끝난 것 확인 후 `/var/www/deploy-to-production.sh --auto` (상황판에 터미널 1줄 올림) → 성공 시 배포 방 산출물 경로 지정 커밋(스크립트 마지막 줄) · 버전·CHANGELOG·릴리즈노트·공지는 안 함(할 것)
 - 개발시작(10-17 00:xxZ): 운영 문의(prod-query 읽기 전용) 새 문의 0 · 새 후속 글 0 · 랜딩 문의 0 · 열린 3건(SUPP-2026-6842-103 · 1886-062 · 2401-270) 10-07 판단 그대로 이미 해결 · 운영 문의 closed 4 / in-progress 1 · 진행 중인 작업 없음
 

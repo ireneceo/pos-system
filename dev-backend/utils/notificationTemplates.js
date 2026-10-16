@@ -1132,6 +1132,58 @@ function contextRequestResultEmail({ approved, role, targetName, note, link }, l
   }, title, body, lang);
 }
 
+// v1.4 초대(.claude/fable-design-20261016-link-existing-account-staff.md §5.6) — 매장 관리자 → 기존 계정.
+function contextInviteReceivedEmail({ inviterName, targetName, permissionCount, message, link }, lang = 'en') {
+  const { getEmailText } = require('./i18n');
+  const t = (k, p) => getEmailText(lang, 'contextInvite.received.' + k, p);
+  const who = escHtml((inviterName || '—').toString().slice(0, 120));
+  const target = escHtml((targetName || '—').toString().slice(0, 160));
+  const title = t('heading');
+  const msgRow = message ? infoRow(t('message'), escHtml(String(message).slice(0, 300))) : '';
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">${t('body', { inviter: `<strong>${who}</strong>`, target: `<strong>${target}</strong>` })}</p>
+    ${infoTable(
+      infoRow(t('target'), target) +
+      infoRow(t('role'), escHtml(contextRoleLabel('Staff', lang))) +
+      infoRow(t('permissions'), escHtml(String(Number(permissionCount) || 0))) +
+      msgRow
+    )}
+    <p style="color:#6B7280;font-size:14px;margin:0 0 16px;">${t('hint')}</p>
+    ${ctaButton(t('cta'), link)}`;
+  return withRenderMeta({
+    subject: t('subject', { target: (targetName || '—').toString().slice(0, 160) }),
+    html: wrapTemplate(title, body, lang),
+    text: t('textFallback', { inviter: inviterName || '—', target: targetName || '—' })
+  }, title, body, lang);
+}
+
+function contextInviteResultEmail({ accepted, inviteeName, targetName, note, link }, lang = 'en') {
+  const { getEmailText } = require('./i18n');
+  const t = (k, p) => getEmailText(lang, 'contextInvite.result.' + k, p);
+  const who = escHtml((inviteeName || '—').toString().slice(0, 160));
+  const target = escHtml((targetName || '—').toString().slice(0, 160));
+  const title = accepted ? t('headingAccepted') : t('headingDeclined');
+  const statusHtml = accepted
+    ? `<span style="color:#10B981;font-weight:600;">${t('headingAccepted')}</span>`
+    : `<span style="color:#EF4444;font-weight:600;">${t('headingDeclined')}</span>`;
+  const noteRow = (!accepted && note) ? infoRow(t('reason'), escHtml(String(note).slice(0, 300))) : '';
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">${accepted ? t('bodyAccepted', { who: `<strong>${who}</strong>` }) : t('bodyDeclined', { who: `<strong>${who}</strong>` })}</p>
+    ${infoTable(
+      infoRow(t('invitee'), who) +
+      infoRow(t('target'), target) +
+      infoRow(t('status'), statusHtml) +
+      noteRow
+    )}
+    ${ctaButton(t('cta'), link)}`;
+  const subjParams = { who: (inviteeName || '—').toString().slice(0, 160), target: (targetName || '—').toString().slice(0, 160) };
+  return withRenderMeta({
+    subject: accepted ? t('subjectAccepted', subjParams) : t('subjectDeclined', subjParams),
+    html: wrapTemplate(title, body, lang),
+    text: t('textFallback', { ...subjParams, result: title })
+  }, title, body, lang);
+}
+
 module.exports = {
   wrapTemplate,
   noticeReceivedEmail,
@@ -1170,5 +1222,7 @@ module.exports = {
   payoutRejectedEmail,
   // 역할 추가 요청 (v1.3)
   contextRequestReceivedEmail,
-  contextRequestResultEmail
+  contextRequestResultEmail,
+  contextInviteReceivedEmail,
+  contextInviteResultEmail
 };

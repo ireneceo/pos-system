@@ -677,7 +677,9 @@ router.get('/contexts', authenticateToken, async (req, res, next) => {
       return errorResponse(res, 'User not found', 401, 'USER_NOT_FOUND');
     }
     const contexts = await userContexts.listContexts(native);
-    successResponse(res, { contexts }, 'Contexts retrieved');
+    // v1.4 받은 초대 수 — 화면이 다시 읽을 때(신호·새로고침) 같이 갱신된다.
+    const pending_invitations = await authService.countPendingInvitations(native.id);
+    successResponse(res, { contexts, pending_invitations }, 'Contexts retrieved');
   } catch (error) {
     next(error);
   }

@@ -6,12 +6,13 @@
  * 그건 'notification' 이벤트라 전원 토스트 + 게이트), 데이터도 싣지 않는다. «다시 읽어라» 만 전하고
  * 받는 쪽이 자기 권한으로 GET 한다. 이름·이메일·user_id 를 페이로드에 넣지 말 것(매장 룸엔 Staff 도 있다).
  *
- *   context:changed       → user:{userId}        (granted · rejected · revoked)   + label(토스트 문구용)
+ *   context:changed       → user:{userId}        (granted · rejected · revoked · updated · invited · invite_cancelled) + label(토스트 문구용)
+ *     v1.4: updated = RA 가 연결 계정 권한 수정 · invited/invite_cancelled = 받은 초대 생김/취소(선택 화면 다시 읽기)
  *   context:store-changed → restaurant:{entityId} (모든 kind, entity_type='restaurant' 일 때)
  *
  * 실패해도 호출한 쓰기(승인 등)를 실패시키지 않는다 — 예외를 전부 삼킨다.
  */
-const SUBJECT_KINDS = new Set(['granted', 'rejected', 'revoked']);
+const SUBJECT_KINDS = new Set(['granted', 'rejected', 'revoked', 'updated', 'invited', 'invite_cancelled']);
 
 function emitContextChanged({ kind, userId, entityType, entityId, role, requestId = null, label = null }) {
   try {

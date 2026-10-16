@@ -451,7 +451,7 @@ const LoginPage: React.FC = () => {
   const displayRole = useRoleDisplayName();
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, loginAsDemo, user, isAuthenticated, isLoading: authLoading, contexts } = useAuth();
+  const { login, loginAsDemo, user, isAuthenticated, isLoading: authLoading, contexts, pendingInvitations } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -491,17 +491,17 @@ const LoginPage: React.FC = () => {
       if (isValidPath && from !== '/pos' && !isFullScreen) {
         // Redirect to the originally requested page
         navigate(from, { replace: true });
-      } else if (contexts.length >= 2) {
+      } else if (contexts.length >= 2 || pendingInvitations > 0) {
         // 고를 수 있는 자격이 2개 이상일 때만 선택 화면으로 보낸다.
         // 부여받은 모자가 없으면 목록은 [기본 정체] 1개뿐이라 여기 걸리지 않는다 = 기존 동작 그대로.
-        // (docs/MULTI_CONTEXT_LOGIN_DESIGN.md §6.1)
+        // (docs/MULTI_CONTEXT_LOGIN_DESIGN.md §6.1) · v1.4: 받은 초대가 있으면 1개여도 선택 화면(수락하는 자리).
         navigate('/pos/select-context', { replace: true });
       } else {
         // 역할별 대시보드 — 규칙은 utils/dashboardPath 단일 소스(전환·팔로우와 공유).
         navigate(getDashboardPath(user.role, { restaurantId: user.restaurantId }), { replace: true });
       }
     }
-  }, [authLoading, isAuthenticated, user, navigate, location, contexts]);
+  }, [authLoading, isAuthenticated, user, navigate, location, contexts, pendingInvitations]);
 
   const handleQuickLogin = async (account: typeof DEMO_ACCOUNTS[0] | typeof TEST_ACCOUNTS[0]) => {
     setError('');

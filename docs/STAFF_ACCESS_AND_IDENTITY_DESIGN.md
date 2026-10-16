@@ -68,6 +68,7 @@
 - 이메일: `POST /users` — role==='Staff' 면 **email 필수 해제** + 빈 이메일이면 MX 검증·인증메일 스킵. 그 외 역할은 필수 유지.
 - `User.email` 모델 `allowNull: true` (UNIQUE 유지 — MySQL 은 NULL 중복 허용이라 직원 다수 무이메일 OK). 다른 역할은 라우트단에서 필수 강제.
 - 비번 재설정: 이메일 없는 직원은 이메일 복구 불가 → **매니저 리셋**(기존 `POST /users/:id/reset-password` / PIN) 안내.
+- **연결 계정(2026-10-16 v1.4)**: 다른 역할로 이미 가입한 사람(예: 브랜드 매니저)은 직원 계정을 새로 만들지 않고 «초대 → 본인 수락» 으로 이 매장 Staff 모자를 받는다. **Staff ID·PIN 없음**(자기 계정으로 로그인해 전환) · RA 는 권한 수정·연결 해제만(이름·이메일·비밀번호는 남의 계정이라 못 고침). 상세 `docs/MULTI_CONTEXT_LOGIN_DESIGN.md §6.4.2`.
 
 ### 3-B. 프론트 라우트 가드 (신규 — permission 기반)
 - 지금 `canAccessRoute` = 역할(ROLE_ROUTES)만. **운영 라우트에 permission 가드 추가**:

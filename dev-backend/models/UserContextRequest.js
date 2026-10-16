@@ -48,6 +48,24 @@ const UserContextRequest = sequelize.define('UserContextRequest', {
     allowNull: false,
     defaultValue: 'pending'
   },
+  // v1.4 초대(.claude/fable-design-20261016-link-existing-account-staff.md §4.1) — 같은 표의 반대 방향.
+  // requester = 본인이 요청(RA·SA 가 승인) · grantor = RA 가 초대(본인이 수락). 끝은 둘 다 grantContext.
+  initiator: {
+    type: DataTypes.ENUM('requester', 'grantor'),
+    allowNull: false,
+    defaultValue: 'requester'
+  },
+  // 시작한 사람 — 요청이면 본인, 초대면 RA. 옛 행 NULL.
+  created_by: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: 'users', key: 'id' }
+  },
+  // 초대 전용: RA 가 보낼 때 고른 Staff 권한(수락 때 grantContext 로 그대로). 요청 행 NULL.
+  permissions: {
+    type: DataTypes.JSON,
+    allowNull: true
+  },
   decided_by: {
     type: DataTypes.INTEGER,
     allowNull: true,
@@ -70,7 +88,8 @@ const UserContextRequest = sequelize.define('UserContextRequest', {
   indexes: [
     { fields: ['user_id', 'status'] },
     { fields: ['status', 'created_at'] },
-    { fields: ['entity_type', 'entity_id', 'status'] }
+    { fields: ['entity_type', 'entity_id', 'status'] },
+    { name: 'user_context_requests_entity_status_initiator', fields: ['entity_type', 'entity_id', 'status', 'initiator'] }
   ]
 });
 

@@ -223,5 +223,33 @@
       "note": "Nota pengurus",
       "cta": "Lihat kehadiran saya"
     }
+  },
+  "contextInvite": {
+    "received": {
+      "subject": "Anda dijemput menyertai {{target}} sebagai kakitangan",
+      "heading": "Jemputan kakitangan",
+      "body": "{{inviter}} menjemput anda bekerja di {{target}} sebagai kakitangan.",
+      "target": "Kedai",
+      "role": "Peranan",
+      "permissions": "Kebenaran",
+      "message": "Mesej",
+      "hint": "Terima di skrin pilihan peranan. Anda terus log masuk dengan akaun sendiri dan bertukar ke kedai ini.",
+      "cta": "Buka jemputan",
+      "textFallback": "{{inviter}} menjemput anda menyertai {{target}} sebagai kakitangan."
+    },
+    "result": {
+      "subjectAccepted": "Jemputan diterima: {{who}} · {{target}}",
+      "subjectDeclined": "Jemputan ditolak: {{who}} · {{target}}",
+      "headingAccepted": "Jemputan diterima",
+      "headingDeclined": "Jemputan ditolak",
+      "bodyAccepted": "{{who}} menerima jemputan anda dan kini muncul dalam senarai kakitangan sebagai akaun dipautkan.",
+      "bodyDeclined": "{{who}} menolak jemputan anda.",
+      "invitee": "Akaun dijemput",
+      "target": "Kedai",
+      "status": "Status",
+      "reason": "Sebab",
+      "cta": "Buka kakitangan",
+      "textFallback": "Jemputan untuk {{who}} di {{target}}: {{result}}"
+    }
   }
 }

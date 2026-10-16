@@ -651,6 +651,18 @@ P2/P3a 에 순증. 반대로 F1 재설계는 백필 폐기로 P1 을 **1일 단�
 - RA 직원 목록: `GET /api/users?include_contexts=1`(RA 분기만) 에 그 매장 Staff 모자 보유자를 «연결 계정»(`access_kind:'context'`)으로. 권한 수정·연결 해제 버튼은 초대 설계(D2) 몫.
 - 함께 고친 결함: `/notifications` 의 `user:{id}` 룸이 토큰 키 `id` 를 읽어 **한 번도 만들어지지 않았다**(발급 토큰은 `userId`) → `auth.userId || auth.id`.
 
+### §6.4.2 v1.4 초대 — RA 가 시작, 본인이 수락 (2026-10-16 · Irene «권고대로» D1=A·D2=예 · 설계 `.claude/fable-design-20261016-link-existing-account-staff.md`)
+- 출발: 브랜드 매니저 계정을 매장 RA 가 같은 이메일로 직원 추가 → 400 «already in use by a Brand Manager (system user)». 계정은 둘 만들지 않는다 — **같은 Staff 모자(restaurant × Staff)** 를 반대 방향으로 시작하는 길만 더했다.
+- 표: `user_context_requests` 에 칸 3개 — `initiator`(requester 요청 / grantor 초대, 옛 행 requester) · `created_by` · `permissions`(초대 전용). 마이그 `migrate-user-context-requests-invite.js`(registry deploy · 멱등 · 인덱스 1). 쓰기는 여전히 `grantContext` 하나(§8-3).
+- 라우트(`routes/context-requests.js`): `POST /invite`(RA 자기 매장 강제 · SA 는 body restaurant_id · demo 403 · 응답에 대상 id/역할 없음 · 좌석 미리 검사 · 매장당 pending 20) · `GET /sent` · `/mine` 의 `meta.invitations` · `POST /:id/accept`(본인만 · 좌석 본검사) · `POST /:id/decline` · `DELETE /:id`(내 요청 또는 보낸 초대 취소 — 받은 사람은 DELETE 로 못 지움).
+- 승인자 범위 `visibleRequestScope` 에 **`initiator='requester'`** 고정 — 초대한 RA·SA 가 그 초대를 «승인» 하면 본인 동의 없는 부여가 되므로 막는다(FI-19). 중복은 **방향 무관**(요청이 와 있으면 «approve it instead», 초대가 있으면 «accept it instead»).
+- §8-3 갱신: **RA 는 자기 매장 × Staff 모자의 권한 수정(`PUT /users/:id/contexts/:cid` — 내부 grantContext)·연결 해제(`DELETE`) 가능.** 판정 `canManageContextRow` 한 함수. 조회·생성(`GET`/`POST /users/:id/contexts`)은 SA 전용 그대로 — 모자는 승인·수락을 거쳐서만 생긴다.
+- 보안: `POST /users` 중복 400 문구에서 기존 계정의 역할·매장 번호 삭제 → `code: EMAIL_IN_USE | STAFF_ID_IN_USE | EMAIL_AND_STAFF_ID_IN_USE` (+RA 이메일 중복이면 `canInvite`). 전 플랫폼 이메일 검색은 만들지 않는다(계정 존재 조회기).
+- 화면: 직원 화면 «기존 계정 초대» 버튼 + Add Staff 400 에서 «초대 보내기» 로 잇기 · 연결 계정 행 «권한 수정»·«연결 해제» · 요청 패널 «보낸 초대»(취소) · 선택 화면 «받은 초대»(수락·거절·권한 보기) · 로그인 응답·`GET /auth/contexts` 의 `pending_invitations` > 0 이면 컨텍스트 1개여도 선택 화면으로.
+- 신호: `context:changed` kind 에 `updated`(권한 수정)·`invited`·`invite_cancelled` 추가(토스트는 updated·invited). 알림 카테고리 `context_invite_received`(대상자)·`context_invite_result`(초대한 RA) + 메일 4언어.
+- 안전망: `tests/context-invites.test.js` 20건 · 고장주입 FI-18~22 · health-check 3건 · 인스펙션 UC-009(초대/요청 행 모양)·UC-010(초대는 본인 수락 · 요청은 남이 승인).
+- Q3 갱신(v1.4): 초대 허용 · 셀프 부여 금지 유지(초대자는 자기 초대를 승인할 수 없다).
+
 ## 부록 A. 실측 근거 색인
 
 | 사실 | 근거 |

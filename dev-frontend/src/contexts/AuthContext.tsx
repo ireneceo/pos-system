@@ -87,6 +87,8 @@ interface AuthContextType {
   // 목록 재조회 (부여/회수 후 동기화).
   // 성공 시 목록, **조회 실패 시 null** (빈 목록과 구분 — 옛 목록 잔존 방지).
   refreshContexts: () => Promise<UserContextOption[] | null>;
+  // v1.4 받은 초대 수(매장 관리자가 이 계정을 직원으로 초대) — 0 보다 크면 로그인 뒤 선택 화면으로.
+  pendingInvitations: number;
   // 컨텍스트 전환 — 서버가 새 토큰을 발급하고 switchUser 로 갈아끼운다. 성공 시 이동할 경로 반환.
   switchContext: (target: SwitchContextTarget) => Promise<{ ok: boolean; path?: string; error?: string }>;
   // Refetch /me and update user in place. Use after server-side state changes
@@ -512,6 +514,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   // 고를 수 있는 컨텍스트 목록 — 부여 0건이면 [기본 정체] 1개뿐(= UI 변화 0).
   const [contexts, setContexts] = useState<UserContextOption[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -639,6 +642,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // 로그인 응답의 컨텍스트 목록(additive) — 부여 0건이면 [기본 정체] 1개뿐이라
           // LoginPage 는 기존과 동일하게 대시보드로 직행한다(무회귀).
           setContexts(Array.isArray(result.data.contexts) ? result.data.contexts : []);
+          setPendingInvitations(Number(result.data.pending_invitations) || 0);
 
           // Staff는 DB에서 받은 메뉴 permissions 사용
           const loginPermissions = menuPermissionsFor(apiUser);
@@ -714,6 +718,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // 로그인 응답의 컨텍스트 목록(additive) — 부여 0건이면 [기본 정체] 1개뿐이라
           // LoginPage 는 기존과 동일하게 대시보드로 직행한다(무회귀).
           setContexts(Array.isArray(result.data.contexts) ? result.data.contexts : []);
+          setPendingInvitations(Number(result.data.pending_invitations) || 0);
           const loginPermissions = menuPermissionsFor(apiUser);
           const userData: User = {
             id: apiUser.id?.toString() || '1',
@@ -947,6 +952,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const json = await res.json();
       const list: UserContextOption[] = json?.data?.contexts || [];
       setContexts(list);
+      setPendingInvitations(Number(json?.data?.pending_invitations) || 0);
       return list;
     } catch {
       return null;
@@ -1142,6 +1148,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     refreshUser,
     contexts,
     refreshContexts,
+    pendingInvitations,
     switchContext
   };
 

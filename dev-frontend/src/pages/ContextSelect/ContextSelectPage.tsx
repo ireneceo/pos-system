@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { useAuth, UserContextOption } from '../../contexts/AuthContext';
-import { Button, IconButton } from '../../components/UI';
+import { Button, IconButton, ThemedButton } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDate } from '../../utils/dateFormat';
 import { getAuthToken } from '../../utils/auth';
 import ContextRequestModal from './ContextRequestModal';
+import { Modal, ModalButton, FormGroup, FormLabel, FormTextArea } from '../../components/UI/Modal';
+import { MENU_GROUPS, WORK_ACCESS } from '../../components/Staff/StaffPermissionPicker';
 import { DEMO_BUNDLE, DemoBundleAccount, isDemoBundleUser, switchToDemoAccount } from '../../utils/demoAccountSwitch';
 
 /**
@@ -199,6 +201,51 @@ const FooterHint = styled.p`
 `;
 
 // 데모 묶음 제목 — 데모 계정으로 들어온 사람에게만 보인다(2026-10-11).
+// v1.4 받은 초대 — 요청 행과 같은 틀, 오른쪽에 수락·거절(좁은 폭에선 줄바꿈).
+const InviteRow = styled(RequestRow)`
+  flex-wrap: wrap;
+`;
+
+// 좁은 폭에선 글이 먼저 자리를 잡고(최소 180px) 버튼이 아랫줄로 내려간다 — 매장 이름·초대한 사람이 잘리지 않게.
+const InviteText = styled(RequestText)`
+  min-width: 180px;
+`;
+
+const InviteStatus = styled(RequestStatus)`
+  white-space: normal;
+`;
+
+const InviteActions = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+`;
+
+const InvitePerms = styled.div`
+  width: 100%;
+  padding-left: 38px;
+  font-size: 12px;
+  color: var(--pos-text-muted, #425466);
+  line-height: 1.6;
+`;
+
+const InviteError = styled.div`
+  width: 100%;
+  padding-left: 38px;
+  font-size: 13px;
+  color: #EF4444;
+`;
+
+const LinkToggle = styled.span`
+  margin-left: 6px;
+  color: #635BFF;
+  cursor: pointer;
+  text-decoration: underline;
+`;
+
+const permLabel = (k: string) => [...WORK_ACCESS, ...MENU_GROUPS].find(g => g.key === k)?.label || k;
+
 const SectionTitle = styled.p`
   margin: 12px 0 0;
   font-size: 12px;
@@ -215,6 +262,16 @@ const Footer = styled.div`
 `;
 
 const contextKey = (c: UserContextOption) => `${c.kind}:${c.entity_type}:${c.entity_id ?? 'none'}:${c.role}`;
+
+interface Invitation {
+  id: number;
+  entity_id: number;
+  label: string | null;
+  permissions: string[];
+  message: string | null;
+  invited_by_name: string | null;
+  created_at: string;
+}
 
 interface MyRequest {
   id: number;
@@ -258,6 +315,13 @@ const ContextSelectPage: React.FC = () => {
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<MyRequest | null>(null);
+  // v1.4 받은 초대 — 매장 관리자가 이 계정을 직원으로 초대(수락해야 카드가 생긴다).
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [inviteErrors, setInviteErrors] = useState<Record<number, string>>({});
+  const [inviteBusy, setInviteBusy] = useState<number | null>(null);
+  const [permsOpen, setPermsOpen] = useState<number | null>(null);
+  const [declineTarget, setDeclineTarget] = useState<Invitation | null>(null);
+  const [declineNote, setDeclineNote] = useState('');
 
   const loadMyRequests = useCallback(async () => {
     if (!canRequest) return;
@@ -265,8 +329,52 @@ const ContextSelectPage: React.FC = () => {
       const res = await fetch('/api/context-requests/mine', { headers: requestHeaders() });
       const body = await res.json().catch(() => null);
       if (res.ok && body && Array.isArray(body.data)) setMyRequests(body.data);
+      if (res.ok && body) setInvitations(Array.isArray(body.meta?.invitations) ? body.meta.invitations : []);
     } catch { /* 요청 목록은 부가 정보 — 실패해도 카드 선택은 된다 */ }
   }, [canRequest]);
+
+  const setInviteError = (id: number, msg: string | null) =>
+    setInviteErrors(prev => { const n = { ...prev }; if (msg) n[id] = msg; else delete n[id]; return n; });
+
+  const acceptInvite = useCallback(async (inv: Invitation) => {
+    if (inviteBusy) return;
+    setInviteBusy(inv.id);
+    setInviteError(inv.id, null);
+    try {
+      const res = await fetch(`/api/context-requests/${inv.id}/accept`, { method: 'POST', headers: requestHeaders() });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        setInviteError(inv.id, (body && body.message) || t('context.invite.failed'));
+      } else {
+        const fresh = await refreshContexts();
+        if (fresh) setList(fresh);
+      }
+    } catch {
+      setInviteError(inv.id, t('context.invite.failed'));
+    }
+    setInviteBusy(null);
+    loadMyRequests();
+  }, [inviteBusy, refreshContexts, loadMyRequests, t]);
+
+  const declineInvite = useCallback(async () => {
+    const inv = declineTarget;
+    if (!inv) return;
+    setDeclineTarget(null);
+    setInviteError(inv.id, null);
+    try {
+      const res = await fetch(`/api/context-requests/${inv.id}/decline`, {
+        method: 'POST',
+        headers: requestHeaders(),
+        body: JSON.stringify({ note: declineNote.trim() || undefined })
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) setInviteError(inv.id, (body && body.message) || t('context.invite.failed'));
+    } catch {
+      setInviteError(inv.id, t('context.invite.failed'));
+    }
+    setDeclineNote('');
+    loadMyRequests();
+  }, [declineTarget, declineNote, loadMyRequests, t]);
 
   useEffect(() => { loadMyRequests(); }, [loadMyRequests]);
 
@@ -376,6 +484,7 @@ const ContextSelectPage: React.FC = () => {
         <Header>
           <Title>{t('context.select.title')}</Title>
           <Subtitle>{t('context.select.subtitle')}</Subtitle>
+          {invitations.length > 0 && <Subtitle style={{ fontWeight: 600, color: 'var(--pos-text, #0A2540)' }}>{t('context.invite.banner')}</Subtitle>}
         </Header>
 
         <List>
@@ -402,6 +511,39 @@ const ContextSelectPage: React.FC = () => {
               </CardText>
             </Card>
           ))}
+
+          {/* 받은 초대 — 행동이 필요한 것이 먼저(요청 행 위) */}
+          {invitations.length > 0 && <SectionTitle>{t('context.invite.title')}</SectionTitle>}
+          {invitations.map((inv) => {
+            const date = requestDate(inv.created_at);
+            const line = t('context.invite.line', { who: inv.invited_by_name || '—', count: inv.permissions.length });
+            return (
+              <InviteRow key={`inv-${inv.id}`}>
+                <CardGlyph aria-hidden="true">▦</CardGlyph>
+                <InviteText>
+                  <CardLabel>{inv.label || t('context.request.deletedTarget')}</CardLabel>
+                  <InviteStatus>
+                    {t('context.request.typeStoreStaff')} · {line}{date ? ` · ${date}` : ''}
+                    <LinkToggle role="button" tabIndex={0} onClick={() => setPermsOpen(permsOpen === inv.id ? null : inv.id)}>
+                      {t('context.invite.viewPermissions')}
+                    </LinkToggle>
+                  </InviteStatus>
+                </InviteText>
+                <InviteActions>
+                  <ThemedButton variant="primary" size="small" disabled={inviteBusy !== null} onClick={() => acceptInvite(inv)}>
+                    {t('context.invite.accept')}
+                  </ThemedButton>
+                  <ThemedButton variant="secondary" size="small" disabled={inviteBusy !== null} onClick={() => { setDeclineNote(''); setDeclineTarget(inv); }}>
+                    {t('context.invite.decline')}
+                  </ThemedButton>
+                </InviteActions>
+                {permsOpen === inv.id && (
+                  <InvitePerms>{inv.permissions.map(permLabel).join(' · ')}{inv.message ? ` — “${inv.message}”` : ''}</InvitePerms>
+                )}
+                {inviteErrors[inv.id] && <InviteError>{inviteErrors[inv.id]}</InviteError>}
+              </InviteRow>
+            );
+          })}
 
           {/* 맨 아래 — 내 요청(대기·거절) → 「+ 역할 추가 요청」 (Irene 지정 위치) */}
           {canRequest && myRequests.map((r) => {
@@ -475,6 +617,24 @@ const ContextSelectPage: React.FC = () => {
           isNativeOwner={(list.find(c => c.kind === 'default')?.role ?? user?.role) === 'Restaurant Owner'}
         />
       )}
+
+      <Modal
+        isOpen={declineTarget !== null}
+        onClose={() => setDeclineTarget(null)}
+        title={t('context.invite.declineTitle')}
+        size="small"
+        footer={
+          <>
+            <ModalButton variant="secondary" onClick={() => setDeclineTarget(null)}>{t('context.requests.cancel')}</ModalButton>
+            <ModalButton variant="danger" onClick={declineInvite}>{t('context.invite.decline')}</ModalButton>
+          </>
+        }
+      >
+        <FormGroup>
+          <FormLabel>{t('context.invite.declineNote')}</FormLabel>
+          <FormTextArea rows={3} maxLength={300} value={declineNote} onChange={(e) => setDeclineNote(e.target.value)} />
+        </FormGroup>
+      </Modal>
 
       <ConfirmModal
         isOpen={cancelTarget !== null}

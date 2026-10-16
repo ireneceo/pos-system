@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import StaffPermissionPicker, { MENU_GROUPS, WORK_ACCESS } from '../../components/Staff/StaffPermissionPicker';
 import ContextRequestsPanel from '../../components/ContextRequests/ContextRequestsPanel';
+import InviteExistingStaffModal from '../../components/Staff/InviteExistingStaffModal';
 
 // Staff ID 매장 네임스페이스(r{restaurant_id}:counter) → 화면 표시용으로 prefix 제거.
 // 백엔드가 저장 시 prefix 를 붙이므로 폼/리스트에는 항상 벗긴 친근한 ID 만 노출한다.
@@ -281,6 +282,19 @@ const StaffPage: React.FC = () => {
   const [resetPasswordTarget, setResetPasswordTarget] = useState<Staff | null>(null);
   // Form error (shown inside modal)
   const [formError, setFormError] = useState('');
+  // v1.4 기존 계정 초대 — Add Staff 400(EMAIL_IN_USE + canInvite) 에서 잇거나 헤더 버튼으로 연다.
+  const [inviteOffer, setInviteOffer] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [invitePreset, setInvitePreset] = useState<{ email?: string; permissions?: string[] }>({});
+  const [inviteNotice, setInviteNotice] = useState('');
+  const [panelKey, setPanelKey] = useState(0);
+  // 연결 계정(Staff 모자) — 권한 수정 · 연결 해제(RA 는 자기 매장 Staff 모자만, 서버가 판정)
+  const [linkedEditTarget, setLinkedEditTarget] = useState<Staff | null>(null);
+  const [linkedPerms, setLinkedPerms] = useState<string[]>([]);
+  const [linkedError, setLinkedError] = useState('');
+  const [linkedSaving, setLinkedSaving] = useState(false);
+  const [unlinkTarget, setUnlinkTarget] = useState<Staff | null>(null);
+  const [unlinking, setUnlinking] = useState(false);
 
   const fetchStaff = useCallback(async () => {
     setListError('');
@@ -406,17 +420,96 @@ const StaffPage: React.FC = () => {
       permissions: []
     });
     setFormError('');
+    setInviteOffer(false);
     setShowAddModal(true);
   };
 
   const handleCloseAddModal = () => {
     setShowAddModal(false);
     setFormError('');
+    setInviteOffer(false);
   };
 
   const handleAddInputChange = (field: string, value: string) => {
     setNewStaff(prev => ({ ...prev, [field]: value }));
     if (formError) setFormError('');
+    if (inviteOffer) setInviteOffer(false);
+  };
+
+  const openInvite = (preset: { email?: string; permissions?: string[] } = {}) => {
+    setInviteNotice('');
+    setInvitePreset(preset);
+    setInviteOpen(true);
+  };
+
+  // Add Staff 에서 «이미 계정이 있는 이메일» → 같은 이메일·고른 권한으로 초대 창.
+  const handleInviteFromAdd = () => {
+    const preset = { email: (newStaff.email || '').trim(), permissions: [...newStaff.permissions] };
+    handleCloseAddModal();
+    openInvite(preset);
+  };
+
+  const handleInviteSent = () => {
+    setInviteOpen(false);
+    setInviteNotice(t('staff:staffPage.inviteSent'));
+    setPanelKey(k => k + 1); // 패널 «보낸 초대» 다시 읽기
+  };
+
+  // === 연결 계정: 권한 수정 · 연결 해제 ===
+  const openLinkedEdit = (staff: Staff) => {
+    setLinkedEditTarget(staff);
+    setLinkedPerms([...staff.permissions]);
+    setLinkedError('');
+    setLinkedSaving(false);
+  };
+
+  const saveLinkedPerms = async () => {
+    if (!linkedEditTarget || linkedSaving || linkedPerms.length === 0) return;
+    setLinkedSaving(true);
+    setLinkedError('');
+    try {
+      const res = await fetch(`/api/users/${linkedEditTarget.id}/contexts/${linkedEditTarget.contextId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ permissions: linkedPerms })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || body?.success === false) {
+        setLinkedError(body?.message || body?.error || 'Failed to update permissions');
+        setLinkedSaving(false);
+        return;
+      }
+      setLinkedEditTarget(null);
+      setLinkedSaving(false);
+      await fetchStaff();
+    } catch (e) {
+      setLinkedError((e as Error).message);
+      setLinkedSaving(false);
+    }
+  };
+
+  const executeUnlink = async () => {
+    const target = unlinkTarget;
+    if (!target || unlinking) return;
+    setUnlinking(true);
+    try {
+      const res = await fetch(`/api/users/${target.id}/contexts/${target.contextId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${getAuthToken()}` }
+      });
+      const body = await res.json().catch(() => ({}));
+      setUnlinkTarget(null);
+      setUnlinking(false);
+      if (!res.ok || body?.success === false) {
+        setErrorMessage(body?.message || body?.error || 'Failed to unlink');
+        return;
+      }
+      await fetchStaff();
+    } catch (e) {
+      setUnlinkTarget(null);
+      setUnlinking(false);
+      setErrorMessage((e as Error).message);
+    }
   };
 
   const handleSubmitStaff = async () => {
@@ -476,7 +569,13 @@ const StaffPage: React.FC = () => {
         }
       } else {
         const errorData = await response.json();
-        setFormError(errorData.error || 'Failed to create staff');
+        // v1.4: 이미 계정이 있는 이메일(RA) → 서버가 canInvite 를 준다. 같은 자리에서 «초대» 로 잇는다.
+        if (errorData.code === 'EMAIL_IN_USE' && errorData.canInvite) {
+          setFormError(t('staff:staffPage.emailExistsInvite'));
+          setInviteOffer(true);
+        } else {
+          setFormError(errorData.error || 'Failed to create staff');
+        }
       }
     } catch (error) {
       setFormError((error as Error).message);
@@ -609,6 +708,11 @@ const StaffPage: React.FC = () => {
         <Header>
           <HeaderTitle>{t('staff:staffPage.restaurantStaff')}</HeaderTitle>
           <HeaderActions>
+            {user?.role === 'Restaurant Admin' && (
+              <Button variant="secondary" onClick={() => openInvite()}>
+                {t('staff:staffPage.inviteExisting')}
+              </Button>
+            )}
             <Button variant="primary" onClick={handleOpenAddModal}>
               Add Staff
             </Button>
@@ -616,9 +720,12 @@ const StaffPage: React.FC = () => {
         </Header>
 
         {/* 역할 추가 요청 (멀티 로그인 v1.3) — 이 매장 Staff 요청만(서버 범위). 이 페이지는 BG/FG/매니저도 열므로 RA·SA 일 때만. */}
-        {(user?.role === 'Restaurant Admin' || user?.role === 'System Admin') && <ContextRequestsPanel scope="restaurant" onChanged={fetchStaff} />}
+        {(user?.role === 'Restaurant Admin' || user?.role === 'System Admin') && <ContextRequestsPanel key={panelKey} scope="restaurant" onChanged={fetchStaff} />}
 
         <Content>
+          {inviteNotice && (
+            <div style={{ fontSize: 14, color: '#1F2937', marginBottom: 12 }}>{inviteNotice}</div>
+          )}
           {listError && (
             <div style={{
               background: '#FEF2F2',
@@ -745,7 +852,7 @@ const StaffPage: React.FC = () => {
                           <PermissionTags>
                             {staff.permissions.map(p => (
                               <PermissionTag key={p}>
-                                {[...WORK_ACCESS, ...MENU_GROUPS].find(g => g.key === p)?.label.split(' (')[0] || p}
+                                {[...WORK_ACCESS, ...MENU_GROUPS].find(g => g.key === p)?.label.split(' — ')[0].split(' (')[0] || p}
                               </PermissionTag>
                             ))}
                           </PermissionTags>
@@ -759,6 +866,16 @@ const StaffPage: React.FC = () => {
                       </DataTableCell>
 
                       <DataTableCell data-label="" align="right" mobileFullWidth>
+                        {staff.accessKind === 'context' && canManageRequests && staff.contextId != null && (
+                          <ActionGroup>
+                            <ActionButton onClick={() => openLinkedEdit(staff)}>
+                              {t('staff:staffPage.editPermissions')}
+                            </ActionButton>
+                            <ActionButton onClick={() => setUnlinkTarget(staff)}>
+                              {t('staff:staffPage.unlink')}
+                            </ActionButton>
+                          </ActionGroup>
+                        )}
                         {staff.accessKind !== 'context' && <ActionGroup>
                           <ActionButton onClick={() => handleOpenEditModal(staff)}>
                             Edit
@@ -907,6 +1024,13 @@ const StaffPage: React.FC = () => {
 
           {formError && showAddModal && (
             <ModalWarning>{formError}</ModalWarning>
+          )}
+          {inviteOffer && showAddModal && (
+            <div style={{ marginTop: 8 }}>
+              <ModalButton variant="secondary" onClick={handleInviteFromAdd}>
+                {t('staff:staffPage.inviteSend')}
+              </ModalButton>
+            </div>
           )}
         </Modal>
 
@@ -1123,6 +1247,56 @@ const StaffPage: React.FC = () => {
           </div>
           <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '8px' }}>
             A new password will be generated. The current password will no longer work.
+          </div>
+        </Modal>
+
+        {/* ===== 기존 계정 초대 (v1.4) ===== */}
+        <InviteExistingStaffModal
+          isOpen={inviteOpen}
+          onClose={() => setInviteOpen(false)}
+          presetEmail={invitePreset.email}
+          presetPermissions={invitePreset.permissions}
+          onSent={handleInviteSent}
+        />
+
+        {/* ===== 연결 계정 권한 수정 — 남의 계정이라 이름·이메일·PIN 은 안 보인다 ===== */}
+        <Modal
+          isOpen={!!linkedEditTarget}
+          onClose={() => setLinkedEditTarget(null)}
+          title={`${t('staff:staffPage.editPermissions')}: ${linkedEditTarget?.name || ''}`}
+          size="large"
+          footer={
+            <>
+              <ModalButton variant="secondary" onClick={() => setLinkedEditTarget(null)}>{t('staff:staffPage.cancel')}</ModalButton>
+              <ModalButton variant="primary" onClick={saveLinkedPerms} disabled={linkedSaving || linkedPerms.length === 0}>
+                {t('staff:staffPage.updateStaff')}
+              </ModalButton>
+            </>
+          }
+        >
+          <div style={{ fontSize: 13, color: '#4B5563', marginBottom: 12 }}>{t('staff:staffPage.linkedNoPin')}</div>
+          <StaffPermissionPicker value={linkedPerms} onChange={setLinkedPerms} />
+          {linkedPerms.length === 0 && (
+            <div style={{ fontSize: 12, color: '#4B5563', marginTop: 6 }}>{t('staff:staffPage.invitePickOne')}</div>
+          )}
+          {linkedError && <ModalWarning>{linkedError}</ModalWarning>}
+        </Modal>
+
+        {/* ===== 연결 해제 확인 ===== */}
+        <Modal
+          isOpen={!!unlinkTarget}
+          onClose={() => setUnlinkTarget(null)}
+          title={t('staff:staffPage.unlink')}
+          size="small"
+          footer={
+            <>
+              <ModalButton variant="secondary" onClick={() => setUnlinkTarget(null)}>{t('staff:staffPage.cancel')}</ModalButton>
+              <ModalButton variant="danger" onClick={executeUnlink} disabled={unlinking}>{t('staff:staffPage.unlink')}</ModalButton>
+            </>
+          }
+        >
+          <div style={{ fontSize: 14, color: '#1F2937' }}>
+            <strong>{unlinkTarget?.name}</strong> — {t('staff:staffPage.unlinkConfirm')}
           </div>
         </Modal>
 

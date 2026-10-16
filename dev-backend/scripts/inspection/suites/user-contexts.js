@@ -127,6 +127,34 @@ module.exports = {
       );
       add('UC-006 요청 조합은 부여 가능 집합 안', badReq === 0,
         badReq === 0 ? '0건' : `${badReq}건 — 부여 불가 조합의 요청`);
+
+      const [invCol] = await q(
+        `SELECT COUNT(*) c FROM information_schema.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_context_requests' AND COLUMN_NAME = 'initiator'`
+      );
+      if (Number(invCol.c)) {
+        // UC-009 (v1.4 초대): 초대 행은 보낸 사람·권한(1개 이상) 있음 · Staff 매장 모자만 · 요청 행은 permissions NULL.
+        const badInv = await cnt(
+          `SELECT COUNT(*) c FROM user_context_requests
+            WHERE (initiator = 'grantor' AND (created_by IS NULL OR permissions IS NULL
+                     OR JSON_LENGTH(permissions) < 1 OR entity_type <> 'restaurant' OR role <> 'Staff'))
+               OR (initiator = 'requester' AND permissions IS NOT NULL)`
+        );
+        add('UC-009 초대 행 모양(보낸 사람·권한) · 요청 행 permissions 없음', badInv === 0,
+          badInv === 0 ? '0건' : `${badInv}건 — 초대/요청 행 모양 어긋남`);
+
+        // UC-010: 승인된 초대의 결정자 = 본인(수락) · 승인된 요청의 결정자 ≠ 본인(셀프 부여 사후 감시).
+        const selfGrant = await cnt(
+          `SELECT COUNT(*) c FROM user_context_requests
+            WHERE status = 'approved'
+              AND ((initiator = 'grantor' AND decided_by <> user_id)
+                OR (initiator = 'requester' AND decided_by = user_id))`
+        );
+        add('UC-010 초대는 본인이 수락 · 요청은 남이 승인', selfGrant === 0,
+          selfGrant === 0 ? '0건' : `${selfGrant}건 — 본인 동의 없는 초대 승인 또는 셀프 승인`);
+      } else {
+        add('UC-009/010 초대 칸', true, 'user_context_requests.initiator 미생성 — 마이그 이전 환경이라 스킵');
+      }
     } else {
       add('UC-005/006 요청 표', true, 'user_context_requests 미생성 — 마이그 이전 환경이라 스킵');
     }

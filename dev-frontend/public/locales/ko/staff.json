@@ -29,5 +29,19 @@
   "staffPage.ok": "확인",
   "staffPage.reset": "초기화",
   "staffPage.linkedAccount": "연결 계정",
-  "staffPage.linkedNoPin": "본인 계정으로 로그인해 이 매장으로 전환합니다 — Staff ID·PIN 없음"
+  "staffPage.linkedNoPin": "본인 계정으로 로그인해 이 매장으로 전환합니다 — Staff ID·PIN 없음",
+  "staffPage.inviteExisting": "기존 계정 초대",
+  "staffPage.inviteTitle": "기존 계정을 직원으로 초대",
+  "staffPage.inviteHint": "이미 PurpleHere 계정이 있는 사람입니다. 본인이 역할 선택 화면에서 수락하면, 자기 비밀번호로 로그인해 이 매장으로 전환해 씁니다. Staff ID·PIN 은 쓰지 않습니다.",
+  "staffPage.inviteEmail": "계정 이메일",
+  "staffPage.inviteMessage": "메시지 (선택)",
+  "staffPage.inviteSend": "초대 보내기",
+  "staffPage.inviteSending": "보내는 중…",
+  "staffPage.inviteSent": "초대를 보냈습니다. 본인이 수락하면 이 목록에 나타납니다.",
+  "staffPage.inviteFailed": "초대를 보내지 못했습니다.",
+  "staffPage.invitePickOne": "권한을 1개 이상 고르세요.",
+  "staffPage.emailExistsInvite": "이 이메일은 이미 PurpleHere 계정이 있습니다. 이 매장 직원으로 초대할까요?",
+  "staffPage.editPermissions": "권한 수정",
+  "staffPage.unlink": "연결 해제",
+  "staffPage.unlinkConfirm": "이 계정의 이 매장 접근을 끊습니다. 본인 계정은 그대로입니다."
 }

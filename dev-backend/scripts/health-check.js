@@ -455,6 +455,34 @@ function defineContextRequestTests({ adminToken }) {
     const b2 = await request('GET', '/users?include_contexts=1', null, bg);
     return okRa && b1.status === 200 && b2.status === 200 && JSON.stringify(b1.body) === JSON.stringify(b2.body);
   });
+
+  // 기존 계정 초대(.claude/fable-design-20261016-link-existing-account-staff.md §8.1) — 멀티 로그인 v1.4.
+  test('security', '직원 초대 — 익명 invite · accept · 연결 계정 권한 수정 → 401', async () => {
+    const a = await request('POST', '/context-requests/invite', { email: 'x@example.com', permissions: ['access_pos'] });
+    const b = await request('POST', '/context-requests/1/accept', {});
+    const c = await request('PUT', '/users/1/contexts/1', { permissions: ['access_pos'] });
+    return a.status === 401 && b.status === 401 && c.status === 401;
+  });
+
+  test('security', '직원 초대 — 데모 RA: 보내기 403(demo) · 보낸 초대 200 배열 / 데모 BG: 보낸 초대 403 · 권한 수정 404', async () => {
+    const ra = await tokenFor('demo-restaurant@purplehere.com');
+    const bg = await tokenFor('demo-brand@purplehere.com');
+    if (!ra || !bg) return false;
+    const inv = await request('POST', '/context-requests/invite', { email: 'demo-brand@purplehere.com', permissions: ['access_pos'] }, ra);
+    const sent = await request('GET', '/context-requests/sent', null, ra);
+    const bgSent = await request('GET', '/context-requests/sent', null, bg);
+    const bgPut = await request('PUT', '/users/1/contexts/1', { permissions: ['access_pos'] }, bg);
+    return inv.status === 403 && sent.status === 200 && Array.isArray(sent.body?.data)
+      && bgSent.status === 403 && bgPut.status === 404;
+  });
+
+  test('security', '직원 생성 중복 400 — 기존 계정 역할·매장 번호를 문구에 싣지 않음(EMAIL_IN_USE)', async () => {
+    const ra = await tokenFor('demo-restaurant@purplehere.com');
+    if (!ra) return false;
+    const r = await request('POST', '/users', { username: 'hcdupcheck', email: 'demo-brand@purplehere.com', role: 'Staff', permissions: ['access_pos'] }, ra);
+    const text = JSON.stringify(r.body || {});
+    return r.status === 400 && r.body?.code === 'EMAIL_IN_USE' && !/Brand General|restaurant ID|system user/i.test(text);
+  });
 }
 
 // ============================================

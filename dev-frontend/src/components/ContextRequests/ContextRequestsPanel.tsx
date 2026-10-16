@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { ThemedButton, ThemedModalButton, DataTableStatus } from '../UI';
 import { Modal, FormGroup, FormLabel, FormTextArea } from '../UI/Modal';
-import StaffPermissionPicker from '../Staff/StaffPermissionPicker';
+import StaffPermissionPicker, { MENU_GROUPS, WORK_ACCESS } from '../Staff/StaffPermissionPicker';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/dateFormat';
 import { useStore } from '../../contexts/StoreContext';
@@ -28,6 +28,19 @@ interface RequestRow {
   created_at: string;
   requester: { id: number; full_name: string | null; email: string | null; role: string };
 }
+
+// v1.4 보낸 초대(RA 가 기존 계정을 직원으로 초대 — 본인 수락 대기)
+interface SentInvite {
+  id: number;
+  entity_id: number;
+  label: string | null;
+  email: string | null;
+  full_name: string | null;
+  permissions: string[];
+  created_at: string;
+}
+
+const permLabel = (k: string) => [...WORK_ACCESS, ...MENU_GROUPS].find(g => g.key === k)?.label.split(' — ')[0].split(' (')[0] || k;
 
 const ROLE_KEY: Record<string, string> = {
   'Staff': 'context.request.typeStoreStaff',
@@ -157,6 +170,8 @@ const ContextRequestsPanel: React.FC<Props> = ({ scope, onChanged }) => {
   const [picked, setPicked] = useState<string[]>([]);
   const [rejecting, setRejecting] = useState<RequestRow | null>(null);
   const [note, setNote] = useState('');
+  const [sent, setSent] = useState<SentInvite[]>([]);
+  const [cancelling, setCancelling] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -165,6 +180,13 @@ const ContextRequestsPanel: React.FC<Props> = ({ scope, onChanged }) => {
       setRows(res.ok && body && Array.isArray(body.data) ? body.data : []);
     } catch {
       setRows([]);
+    }
+    try {
+      const res = await fetch('/api/context-requests/sent', { headers: authHeaders() });
+      const body = await res.json().catch(() => null);
+      setSent(res.ok && body && Array.isArray(body.data) ? body.data : []);
+    } catch {
+      setSent([]);
     }
   }, []);
 
@@ -227,13 +249,28 @@ const ContextRequestsPanel: React.FC<Props> = ({ scope, onChanged }) => {
     }
   };
 
-  if (!rows.length) return null;
+  const cancelInvite = async (inv: SentInvite) => {
+    if (cancelling) return;
+    setCancelling(inv.id);
+    setRowError(inv.id, null);
+    try {
+      const res = await fetch(`/api/context-requests/${inv.id}`, { method: 'DELETE', headers: authHeaders() });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) setRowError(inv.id, (body && body.message) || t('context.requests.failed'));
+      else after();
+    } catch {
+      setRowError(inv.id, t('context.requests.failed'));
+    }
+    setCancelling(null);
+  };
+
+  if (!rows.length && !sent.length) return null;
 
   const tz = getStoreInfo()?.timeZone;
 
   return (
     <Panel data-scope={scope}>
-      <PanelTitle>{t('context.requests.title')} ({rows.length})</PanelTitle>
+      {rows.length > 0 && <PanelTitle>{t('context.requests.title')} ({rows.length})</PanelTitle>}
       {rows.map(row => {
         const isStaff = row.entity_type === 'restaurant' && row.role === 'Staff';
         const glyph = row.role === 'Restaurant Owner' ? '◯' : row.entity_type === 'brand' ? '◐' : '▦';
@@ -288,6 +325,34 @@ const ContextRequestsPanel: React.FC<Props> = ({ scope, onChanged }) => {
           </Row>
         );
       })}
+
+      {sent.length > 0 && (
+        <>
+          <PanelTitle style={rows.length ? { marginTop: 16 } : undefined}>{t('context.invite.sent')} ({sent.length})</PanelTitle>
+          {sent.map(inv => (
+            <Row key={`inv-${inv.id}`}>
+              <RowMain>
+                <RowText>
+                  <Requester>
+                    {inv.full_name || inv.email} {inv.full_name && inv.email && <Muted>({inv.email})</Muted>}
+                  </Requester>
+                  <Target>
+                    <span>▦ {inv.label || t('context.request.deletedTarget')}</span>
+                    {inv.permissions.map(p => <DataTableStatus key={p} variant="info">{permLabel(p)}</DataTableStatus>)}
+                    {tz && <Muted>{t('context.invite.sentOn', { date: formatDate(inv.created_at, tz) })}</Muted>}
+                  </Target>
+                </RowText>
+                <Actions>
+                  <ThemedButton variant="danger" size="small" disabled={cancelling === inv.id} onClick={() => cancelInvite(inv)}>
+                    {t('context.invite.cancel')}
+                  </ThemedButton>
+                </Actions>
+              </RowMain>
+              {errors[inv.id] && <ErrorText>{errors[inv.id]}</ErrorText>}
+            </Row>
+          ))}
+        </>
+      )}
 
       <Modal
         isOpen={rejecting !== null}

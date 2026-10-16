@@ -140,7 +140,7 @@ const NotificationToaster: React.FC = () => {
     sock.on('context:changed', (d: any) => {
       window.dispatchEvent(new CustomEvent('context-changed', { detail: d }));
       const kind = d?.kind;
-      if (kind !== 'granted' && kind !== 'rejected' && kind !== 'revoked') return;
+      if (kind !== 'granted' && kind !== 'rejected' && kind !== 'revoked' && kind !== 'updated' && kind !== 'invited') return;
       const label = d?.label || '';
       pushToast({
         id: `context-${kind}-${Date.now()}`,

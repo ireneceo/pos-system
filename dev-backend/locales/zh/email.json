@@ -223,5 +223,33 @@
       "note": "经理备注",
       "cta": "查看我的考勤"
     }
+  },
+  "contextInvite": {
+    "received": {
+      "subject": "您被邀请加入 {{target}} 成为员工",
+      "heading": "员工邀请",
+      "body": "{{inviter}} 邀请您以员工身份加入 {{target}}。",
+      "target": "门店",
+      "role": "角色",
+      "permissions": "权限数",
+      "message": "留言",
+      "hint": "请在角色选择页面接受。您继续使用自己的账户登录，并切换到该门店。",
+      "cta": "查看邀请",
+      "textFallback": "{{inviter}} 邀请您以员工身份加入 {{target}}。"
+    },
+    "result": {
+      "subjectAccepted": "邀请已接受：{{who}} · {{target}}",
+      "subjectDeclined": "邀请已拒绝：{{who}} · {{target}}",
+      "headingAccepted": "邀请已接受",
+      "headingDeclined": "邀请已拒绝",
+      "bodyAccepted": "{{who}} 已接受您的邀请，并以“关联账户”显示在员工列表中。",
+      "bodyDeclined": "{{who}} 拒绝了您的邀请。",
+      "invitee": "受邀账户",
+      "target": "门店",
+      "status": "状态",
+      "reason": "原因",
+      "cta": "打开员工页面",
+      "textFallback": "{{target}} 对 {{who}} 的邀请：{{result}}"
+    }
   }
 }

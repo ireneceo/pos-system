@@ -26,6 +26,24 @@ const BASE_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'producti
 
 const bad = (res, status, message) => res.status(status).json({ success: false, message });
 
+// JSON 칸은 드라이버에 따라 문자열로 온다.
+function parsePermissions(v) {
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string') { try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch (_) { return []; } }
+  return [];
+}
+
+// 같은 (대상, 매장/브랜드, 역할) 의 pending 행 — **방향 무관**(요청·초대). 요청·초대 양쪽 중복 판정이 같이 쓴다.
+async function findPendingAnyDirection(userId, entityType, entityId, role) {
+  const [[row]] = await sequelize.query(
+    `SELECT id, initiator FROM user_context_requests
+      WHERE user_id = :u AND entity_type = :t AND entity_id = :e AND role = :r AND status = 'pending'
+      ORDER BY id ASC LIMIT 1`,
+    { replacements: { u: userId, t: entityType, e: entityId, r: role } }
+  );
+  return row || null;
+}
+
 function cleanText(v, max) {
   if (v === null || v === undefined) return null;
   const s = sanitizeString(String(v));
@@ -40,12 +58,14 @@ function cleanText(v, max) {
  */
 function visibleRequestScope(reqUser) {
   if (!reqUser) return null;
-  if (reqUser.role === 'System Admin') return { sql: '1=1', replacements: {} };
+  // v1.4: 승인자 범위는 «받은 요청»(initiator='requester') 만 — 초대(grantor)는 본인만 수락한다.
+  // 이 조건이 빠지면 초대한 RA 가 자기 초대를 «승인» 해 본인 동의 없이 부여된다(FI-19).
+  if (reqUser.role === 'System Admin') return { sql: "ucr.initiator = 'requester'", replacements: {} };
   if (reqUser.role === 'Restaurant Admin') {
     const rid = userContexts.normalizeEntityId(reqUser.restaurant_id);
     if (!rid) return null;
     return {
-      sql: "ucr.entity_type = 'restaurant' AND ucr.role = 'Staff' AND ucr.entity_id = :scopeRid",
+      sql: "ucr.initiator = 'requester' AND ucr.entity_type = 'restaurant' AND ucr.role = 'Staff' AND ucr.entity_id = :scopeRid",
       replacements: { scopeRid: rid }
     };
   }
@@ -122,11 +142,27 @@ router.get('/mine', authenticateToken, async (req, res) => {
       `SELECT ucr.id, ucr.entity_type, ucr.entity_id, ucr.role, ucr.message, ucr.status,
               ucr.decision_note, ucr.created_at, ucr.decided_at, ${LABEL_SELECT}
          FROM user_context_requests ucr ${LABEL_JOIN}
-        WHERE ucr.user_id = :uid AND ucr.status IN ('pending', 'rejected')
+        WHERE ucr.user_id = :uid AND ucr.initiator = 'requester' AND ucr.status IN ('pending', 'rejected')
         ORDER BY ucr.created_at DESC, ucr.id DESC`,
       { replacements: { uid: req.user.id } }
     );
-    res.json({ success: true, data: rows.map(r => ({ ...r, label: r.label ?? null })) });
+    // v1.4 받은 초대(pending) — data 는 종전 배열 그대로(호환), 초대는 meta 로.
+    const [inv] = await sequelize.query(
+      `SELECT ucr.id, ucr.entity_type, ucr.entity_id, ucr.role, ucr.permissions, ucr.message, ucr.created_at, ${LABEL_SELECT},
+              COALESCE(NULLIF(cb.full_name, ''), cb.username) AS invited_by_name
+         FROM user_context_requests ucr ${LABEL_JOIN}
+         LEFT JOIN users cb ON cb.id = ucr.created_by
+        WHERE ucr.user_id = :uid AND ucr.initiator = 'grantor' AND ucr.status = 'pending'
+        ORDER BY ucr.created_at DESC, ucr.id DESC`,
+      { replacements: { uid: req.user.id } }
+    );
+    const invitations = inv.map(r => ({
+      id: r.id, entity_type: r.entity_type, entity_id: r.entity_id, role: r.role,
+      label: r.label ?? null, permissions: parsePermissions(r.permissions), message: r.message,
+      invited_by_name: r.invited_by_name ? String(r.invited_by_name).replace(/^r\d+:/i, '') : null,
+      created_at: r.created_at
+    }));
+    res.json({ success: true, data: rows.map(r => ({ ...r, label: r.label ?? null })), meta: { invitations } });
   } catch (error) {
     console.error('[context-requests] GET /mine error:', error.message);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -150,6 +186,209 @@ router.get('/targets', authenticateToken, async (req, res) => {
     res.json({ success: true, data: rows.map(r => ({ id: r.id, name: r.name })) });
   } catch (error) {
     console.error('[context-requests] GET /targets error:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// ── 초대 (v1.4 · .claude/fable-design-20261016-link-existing-account-staff.md §5.4) ──────────────
+// RA 가 기존 계정을 자기 매장 직원(Staff 모자)으로 «초대» → 본인이 «수락» 해야 grantContext.
+// 같은 표의 반대 방향(initiator='grantor'). 대상의 id·역할·소속은 응답에 싣지 않는다(계정 정보 노출 금지).
+const MAX_PENDING_INVITES_PER_STORE = 20;
+
+// 초대하는 사람의 매장 — RA 는 자기 매장 강제(body 무시) · SA 는 body.restaurant_id. 아니면 null(403).
+function inviterRestaurantId(reqUser, body) {
+  if (!reqUser) return null;
+  if (reqUser.role === 'Restaurant Admin') return userContexts.normalizeEntityId(reqUser.restaurant_id);
+  if (reqUser.role === 'System Admin') return userContexts.normalizeEntityId((body || {}).restaurant_id);
+  return null;
+}
+
+// 요금제 직원 한도 — 직원 생성·요청 승인과 같은 함수(countRestaurantSeats). 가득이면 403 본문, 아니면 null.
+async function seatLimitBody(restaurantId) {
+  const Restaurant = require('../models/Restaurant');
+  const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'staff_limit'] });
+  if (!restaurant || !restaurant.staff_limit || restaurant.staff_limit <= 0) return null;
+  const current = await userContexts.countRestaurantSeats(restaurantId);
+  if (current < restaurant.staff_limit) return null;
+  return {
+    success: false,
+    message: `Staff limit reached. Your plan allows up to ${restaurant.staff_limit} staff members (including Restaurant Admin). Currently: ${current}.`,
+    limit: restaurant.staff_limit,
+    current,
+    upgradeRequired: true
+  };
+}
+
+// 취소할 수 있는 초대 1행 — 보낸 사람 · 그 매장 RA · SA. 아니면 null(404 — 존재 여부 안 흘림).
+async function findCancellableInvite(reqUser, id) {
+  const [[row]] = await sequelize.query(
+    `SELECT id, user_id, entity_type, entity_id, role, created_by FROM user_context_requests
+      WHERE id = :id AND initiator = 'grantor' AND status = 'pending' LIMIT 1`,
+    { replacements: { id } }
+  );
+  if (!row || !reqUser) return null;
+  if (reqUser.role === 'System Admin') return row;
+  if (Number(row.created_by) === Number(reqUser.id)) return row;
+  if (reqUser.role === 'Restaurant Admin'
+      && row.entity_type === 'restaurant'
+      && Number(row.entity_id) === userContexts.normalizeEntityId(reqUser.restaurant_id)) return row;
+  return null;
+}
+
+// 받은 초대 1행 — **초대받은 본인만**. 아니면 null(404).
+async function findMyInvite(reqUser, id) {
+  const rid = userContexts.normalizeEntityId(id);
+  if (!rid || !reqUser) return null;
+  const [[row]] = await sequelize.query(
+    `SELECT ucr.*, ${LABEL_SELECT}
+       FROM user_context_requests ucr ${LABEL_JOIN}
+      WHERE ucr.id = :id AND ucr.user_id = :uid AND ucr.initiator = 'grantor' LIMIT 1`,
+    { replacements: { id: rid, uid: reqUser.id } }
+  );
+  return row || null;
+}
+
+async function notifyInviteReceived({ userId, inviter, targetName, permissionCount, message }) {
+  try {
+    const ns = require('../utils/notificationService');
+    const { contextInviteReceivedEmail } = require('../utils/notificationTemplates');
+    const inviterName = inviter ? String(inviter.full_name || inviter.username || '').replace(/^r\d+:/i, '') || null : null;
+    const args = { inviterName, targetName, permissionCount, message, link: `${BASE_URL}/pos/select-context` };
+    await ns.sendNotification(userId, 'context_invite_received',
+      (user) => contextInviteReceivedEmail(args, user.preferred_language || 'en'));
+  } catch (e) {
+    console.warn('[context-requests] invite notification failed (ignored):', e.message);
+  }
+}
+
+async function notifyInviteResult({ inviterId, accepted, invitee, targetName, entityId, note }) {
+  if (!inviterId) return;
+  try {
+    const ns = require('../utils/notificationService');
+    const { contextInviteResultEmail } = require('../utils/notificationTemplates');
+    const inviteeName = invitee ? (invitee.full_name || invitee.email || null) : null;
+    const args = { accepted, inviteeName, targetName, note, link: `${BASE_URL}/restaurant/${entityId}/staff` };
+    await ns.sendNotification(inviterId, 'context_invite_result',
+      (user) => contextInviteResultEmail(args, user.preferred_language || 'en'));
+  } catch (e) {
+    console.warn('[context-requests] invite result notification failed (ignored):', e.message);
+  }
+}
+
+router.post('/invite', authenticateToken, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const rid = inviterRestaurantId(req.user, body);
+    if (req.user.role !== 'Restaurant Admin' && req.user.role !== 'System Admin') return bad(res, 403, 'Not allowed');
+    // demo = 공개 로그인 계정이라 스팸 경로(요청과 같은 이유). is_test 는 허용.
+    if (req.user.is_demo) return bad(res, 403, 'Demo accounts cannot invite');
+    if (!rid) return bad(res, req.user.role === 'System Admin' ? 400 : 403,
+      req.user.role === 'System Admin' ? 'restaurant_id is required' : 'Your account is not assigned to a restaurant.');
+
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase().slice(0, 255) : '';
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad(res, 400, 'A valid email is required');
+
+    const norm = userContexts.normalizeStaffPermissions(body.permissions);
+    if (norm.error) return bad(res, 400, norm.error);
+
+    const restaurant = await userContexts.loadGrantEntity('restaurant', rid);
+    if (!restaurant) return bad(res, 404, userContexts.NOT_FOUND_MESSAGE.restaurant);
+
+    const User = require('../models/User');
+    const target = await User.findOne({ where: { email } });
+    if (!target) return bad(res, 404, 'No account with this email');
+    if (Number(target.id) === Number(req.user.id)) return bad(res, 400, 'You cannot invite yourself');
+    if (target.role === 'System Admin') return bad(res, 400, 'Cannot invite a system administrator');
+    if (target.is_demo) return bad(res, 400, 'Demo accounts cannot be invited');
+    if (target.is_active === false || target.is_active === 0) return bad(res, 400, 'Cannot grant to a deactivated account');
+
+    const held = await userContexts.alreadyHoldsContext(target, { entity_type: 'restaurant', entity_id: rid, role: 'Staff' }, restaurant);
+    if (held) return bad(res, held.status, held.message);
+
+    const dup = await findPendingAnyDirection(target.id, 'restaurant', rid, 'Staff');
+    if (dup) {
+      return bad(res, 409, dup.initiator === 'requester'
+        ? 'A request from this person is already waiting — approve it instead'
+        : 'An invitation for this account is already pending');
+    }
+
+    const [[pend]] = await sequelize.query(
+      `SELECT COUNT(*) AS c FROM user_context_requests
+        WHERE entity_type = 'restaurant' AND entity_id = :e AND status = 'pending' AND initiator = 'grantor'`,
+      { replacements: { e: rid } }
+    );
+    if (Number(pend.c) >= MAX_PENDING_INVITES_PER_STORE) {
+      return bad(res, 400, `A store can have at most ${MAX_PENDING_INVITES_PER_STORE} pending invitations`);
+    }
+
+    // 좌석 미리 검사(보낼 때) — 수락 때 같은 함수로 다시 센다.
+    const full = await seatLimitBody(rid);
+    if (full) return res.status(403).json(full);
+
+    const message = cleanText(body.message, 300);
+    const UserContextRequest = require('../models/UserContextRequest');
+    const created = await UserContextRequest.create({
+      user_id: target.id, entity_type: 'restaurant', entity_id: rid, role: 'Staff', message, status: 'pending',
+      initiator: 'grantor', created_by: req.user.id, permissions: norm.permissions
+    });
+
+    logActivity(req, {
+      action_type: 'create',
+      entity_type: 'user_context',
+      entity_id: target.id,
+      description: `Invited ${email} to restaurant "${restaurant.name}" (#${rid}) as Staff [${norm.permissions.join(', ')}] (invitation #${created.id})`,
+      restaurant_id: rid
+    });
+    notifyInviteReceived({ userId: target.id, inviter: req.user, targetName: restaurant.name, permissionCount: norm.permissions.length, message });
+    emitContextChanged({ kind: 'invited', userId: target.id, entityType: 'restaurant', entityId: rid, role: 'Staff', requestId: created.id, label: restaurant.name });
+
+    // 대상의 id·역할·소속은 싣지 않는다.
+    res.status(201).json({
+      success: true,
+      data: { id: created.id, email, status: 'pending', label: restaurant.name },
+      message: 'Invitation sent'
+    });
+  } catch (error) {
+    console.error('[context-requests] POST /invite error:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// 보낸 초대(pending) — RA: 자기 매장 · SA: 전부.
+router.get('/sent', authenticateToken, async (req, res) => {
+  try {
+    let where;
+    const replacements = {};
+    if (req.user.role === 'System Admin') {
+      where = '1=1';
+    } else if (req.user.role === 'Restaurant Admin') {
+      const rid = userContexts.normalizeEntityId(req.user.restaurant_id);
+      if (!rid) return bad(res, 403, 'Not allowed');
+      where = "ucr.entity_type = 'restaurant' AND ucr.entity_id = :rid";
+      replacements.rid = rid;
+    } else {
+      return bad(res, 403, 'Not allowed');
+    }
+    const [rows] = await sequelize.query(
+      `SELECT ucr.id, ucr.entity_type, ucr.entity_id, ucr.role, ucr.permissions, ucr.message, ucr.created_at, ucr.created_by,
+              ${LABEL_SELECT}, u.email, u.full_name
+         FROM user_context_requests ucr ${LABEL_JOIN}
+         JOIN users u ON u.id = ucr.user_id
+        WHERE ucr.initiator = 'grantor' AND ucr.status = 'pending' AND (${where})
+        ORDER BY ucr.created_at DESC, ucr.id DESC
+        LIMIT 200`,
+      { replacements }
+    );
+    res.json({
+      success: true,
+      data: rows.map(r => ({
+        id: r.id, entity_type: r.entity_type, entity_id: r.entity_id, role: r.role, label: r.label ?? null,
+        email: r.email, full_name: r.full_name, permissions: parsePermissions(r.permissions),
+        message: r.message, created_at: r.created_at, created_by: r.created_by
+      }))
+    });
+  } catch (error) {
+    console.error('[context-requests] GET /sent error:', error.message);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
@@ -234,15 +473,15 @@ router.post('/', authenticateToken, async (req, res) => {
     const held = await userContexts.alreadyHoldsContext(native, { entity_type, entity_id: entityId, role }, entity);
     if (held) return bad(res, held.status, held.message);
 
-    const [[dup]] = await sequelize.query(
-      `SELECT COUNT(*) AS c FROM user_context_requests
-        WHERE user_id = :u AND entity_type = :t AND entity_id = :e AND role = :r AND status = 'pending'`,
-      { replacements: { u: native.id, t: entity_type, e: entityId, r: role } }
-    );
-    if (Number(dup.c) > 0) return bad(res, 409, 'A request for this role is already pending');
+    const dup = await findPendingAnyDirection(native.id, entity_type, entityId, role);
+    if (dup) {
+      return bad(res, 409, dup.initiator === 'grantor'
+        ? 'You have an invitation for this role — accept it instead'
+        : 'A request for this role is already pending');
+    }
 
     const [[pend]] = await sequelize.query(
-      `SELECT COUNT(*) AS c FROM user_context_requests WHERE user_id = :u AND status = 'pending'`,
+      `SELECT COUNT(*) AS c FROM user_context_requests WHERE user_id = :u AND status = 'pending' AND initiator = 'requester'`,
       { replacements: { u: native.id } }
     );
     if (Number(pend.c) >= MAX_PENDING) return bad(res, 400, `You can have at most ${MAX_PENDING} pending requests`);
@@ -250,7 +489,8 @@ router.post('/', authenticateToken, async (req, res) => {
     const message = cleanText(req.body.message, 500);
     const UserContextRequest = require('../models/UserContextRequest');
     const created = await UserContextRequest.create({
-      user_id: native.id, entity_type, entity_id: entityId, role, message, status: 'pending'
+      user_id: native.id, entity_type, entity_id: entityId, role, message, status: 'pending',
+      initiator: 'requester', created_by: native.id
     });
 
     notifyReceived({ combo, entityId, targetName: entity.name, requester: native, message });
@@ -387,29 +627,132 @@ router.post('/:id/reject', authenticateToken, async (req, res) => {
   }
 });
 
+// ── 초대받은 본인: 수락 · 거절 ───────────────────────────────────────────────
+
+router.post('/:id/accept', authenticateToken, async (req, res) => {
+  try {
+    const row = await findMyInvite(req.user, req.params.id);
+    if (!row) return bad(res, 404, 'Request not found');
+    if (row.status !== 'pending') return bad(res, 409, 'Request is not pending');
+
+    // 수락은 네이티브 행 기준(투영본 아님) — 요청 라우트와 같은 규칙.
+    const User = require('../models/User');
+    const native = await User.findByPk(req.user.id);
+    if (!native) return bad(res, 401, 'User not found');
+    if (native.is_active === false || native.is_active === 0) return bad(res, 400, 'Cannot grant to a deactivated account');
+
+    // 좌석 본검사(수락 순간) — 보낸 뒤 늘어난 직원이 새지 않게(FI-22).
+    const full = await seatLimitBody(row.entity_id);
+    if (full) return res.status(403).json(full);
+
+    const result = await userContexts.grantContext({
+      target: native,
+      entity_type: row.entity_type,
+      entity_id: row.entity_id,
+      role: row.role,
+      permissions: parsePermissions(row.permissions),
+      grantedBy: row.created_by || native.id
+    });
+    if (!result.ok) return bad(res, result.status, result.message);
+
+    const [, meta] = await sequelize.query(
+      `UPDATE user_context_requests
+          SET status = 'approved', decided_by = :by, decided_at = NOW(), updated_at = NOW()
+        WHERE id = :id AND initiator = 'grantor' AND status = 'pending'`,
+      { replacements: { by: native.id, id: row.id } }
+    );
+    const affected = meta && typeof meta.affectedRows === 'number' ? meta.affectedRows : 1;
+    if (!affected) return bad(res, 409, 'Request is not pending');
+
+    logActivity(req, {
+      action_type: 'create',
+      entity_type: 'user_context',
+      entity_id: native.id,
+      entity_name: native.full_name || native.username || native.email,
+      description: `${result.logDescription} (accepted invitation #${row.id})`,
+      ...(result.restaurantId ? { restaurant_id: result.restaurantId } : {})
+    });
+    notifyInviteResult({ inviterId: row.created_by, accepted: true, invitee: native, targetName: row.label, entityId: row.entity_id });
+    emitContextChanged({ kind: 'granted', userId: native.id, entityType: row.entity_type, entityId: row.entity_id, role: row.role, requestId: row.id, label: row.label });
+
+    res.json({ success: true, data: { id: row.id, status: 'approved', grant: result.data }, message: 'Invitation accepted' });
+  } catch (error) {
+    console.error('[context-requests] POST /:id/accept error:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+router.post('/:id/decline', authenticateToken, async (req, res) => {
+  try {
+    const row = await findMyInvite(req.user, req.params.id);
+    if (!row) return bad(res, 404, 'Request not found');
+    if (row.status !== 'pending') return bad(res, 409, 'Request is not pending');
+    const note = cleanText((req.body || {}).note, 300);
+    const [, meta] = await sequelize.query(
+      `UPDATE user_context_requests
+          SET status = 'rejected', decided_by = :by, decided_at = NOW(), decision_note = :note, updated_at = NOW()
+        WHERE id = :id AND initiator = 'grantor' AND status = 'pending'`,
+      { replacements: { by: req.user.id, note, id: row.id } }
+    );
+    const affected = meta && typeof meta.affectedRows === 'number' ? meta.affectedRows : 1;
+    if (!affected) return bad(res, 409, 'Request is not pending');
+
+    const User = require('../models/User');
+    const native = await User.findByPk(req.user.id);
+    notifyInviteResult({ inviterId: row.created_by, accepted: false, invitee: native, targetName: row.label, entityId: row.entity_id, note });
+    emitContextChanged({ kind: 'invite_declined', userId: req.user.id, entityType: row.entity_type, entityId: row.entity_id, role: row.role, requestId: row.id });
+
+    res.json({ success: true, data: { id: row.id, status: 'rejected' }, message: 'Invitation declined' });
+  } catch (error) {
+    console.error('[context-requests] POST /:id/decline error:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 // ── 사용자: 내 요청 취소/지우기 ────────────────────────────────────────────
 
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const id = userContexts.normalizeEntityId(req.params.id);
     if (!id) return bad(res, 404, 'Request not found');
-    // 신호용으로 지우기 전 행을 읽는다(같은 조건) — pending 취소일 때만 승인자 패널에 알린다.
+    // ① 내 요청(requester) — 종전 그대로. 초대(grantor)는 받은 사람이 여기로 지울 수 없다(거절은 /decline).
     const [[before]] = await sequelize.query(
       `SELECT id, entity_type, entity_id, role, status FROM user_context_requests
-        WHERE id = :id AND user_id = :uid AND status IN ('pending', 'rejected')`,
+        WHERE id = :id AND user_id = :uid AND initiator = 'requester' AND status IN ('pending', 'rejected')`,
       { replacements: { id, uid: req.user.id } }
     );
-    const [, meta] = await sequelize.query(
-      `DELETE FROM user_context_requests
-        WHERE id = :id AND user_id = :uid AND status IN ('pending', 'rejected')`,
-      { replacements: { id, uid: req.user.id } }
-    );
-    const affected = meta && typeof meta.affectedRows === 'number' ? meta.affectedRows : 0;
-    if (!affected) return bad(res, 404, 'Request not found');
-    if (before && before.status === 'pending') {
-      emitContextChanged({ kind: 'request_cancelled', userId: req.user.id, entityType: before.entity_type, entityId: before.entity_id, role: before.role, requestId: before.id });
+    if (before) {
+      const [, meta] = await sequelize.query(
+        `DELETE FROM user_context_requests
+          WHERE id = :id AND user_id = :uid AND initiator = 'requester' AND status IN ('pending', 'rejected')`,
+        { replacements: { id, uid: req.user.id } }
+      );
+      const affected = meta && typeof meta.affectedRows === 'number' ? meta.affectedRows : 0;
+      if (!affected) return bad(res, 404, 'Request not found');
+      if (before.status === 'pending') {
+        emitContextChanged({ kind: 'request_cancelled', userId: req.user.id, entityType: before.entity_type, entityId: before.entity_id, role: before.role, requestId: before.id });
+      }
+      return res.json({ success: true, data: { id }, message: 'Request removed' });
     }
-    res.json({ success: true, data: { id }, message: 'Request removed' });
+
+    // ② 보낸 초대 취소 — 보낸 사람 또는 그 매장 RA · SA. pending 만.
+    const inv = await findCancellableInvite(req.user, id);
+    if (!inv) return bad(res, 404, 'Request not found');
+    const [, meta2] = await sequelize.query(
+      `DELETE FROM user_context_requests WHERE id = :id AND initiator = 'grantor' AND status = 'pending'`,
+      { replacements: { id } }
+    );
+    const affected2 = meta2 && typeof meta2.affectedRows === 'number' ? meta2.affectedRows : 0;
+    if (!affected2) return bad(res, 404, 'Request not found');
+    logActivity(req, {
+      action_type: 'delete',
+      entity_type: 'user_context',
+      entity_id: inv.user_id,
+      description: `Cancelled staff invitation #${inv.id} for restaurant #${inv.entity_id}`,
+      restaurant_id: inv.entity_id
+    });
+    emitContextChanged({ kind: 'invite_cancelled', userId: inv.user_id, entityType: inv.entity_type, entityId: inv.entity_id, role: inv.role, requestId: inv.id });
+    res.json({ success: true, data: { id }, message: 'Invitation cancelled' });
   } catch (error) {
     console.error('[context-requests] DELETE /:id error:', error.message);
     res.status(500).json({ success: false, message: 'Internal server error' });
