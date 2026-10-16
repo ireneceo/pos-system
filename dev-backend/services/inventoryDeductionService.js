@@ -94,8 +94,9 @@ const checkAndCreateAlert = (restaurantId, ingredientId, currentStock, _minStock
 /**
  * Get recipe ingredients for a product
  */
-async function getProductRecipeIngredients(productId) {
+async function getProductRecipeIngredients(productId, transaction = null) {
   const product = await Product.findByPk(productId, {
+    transaction,
     include: [{
       model: Recipe,
       as: 'recipe',
@@ -148,7 +149,27 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
   // 장부 줄에 주문 연결(order_id) — 호출부는 주문번호(또는 id 문자열)만 넘긴다(🔒 orders-crud.js 무접촉).
   //   주문번호로 먼저 찾고, 없으면 id 로. 못 찾아도 차감은 그대로 진행(order_id 만 비움).
   const orderRef = await resolveOrderRef(restaurantId, orderId);
-  orderId = orderRef.label;
+  // 재고 행을 잠그므로(stockLedger 잠금 규칙) 여러 재료를 다른 순서로 잡는 두 주문이 데드락날 수 있다 —
+  //   MySQL 이 한쪽을 되돌리면 그 주문 차감을 통째로 다시 한다(최대 3회 · 2026-10-16 Fable 판정 stock-ledger-lock).
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await deductOnce(restaurantId, orderItems, orderRef);
+    } catch (e) {
+      if (!isDeadlock(e) || attempt >= 3) {
+        console.error('Inventory deduction error:', e);
+        return { success: false, error: e.message };
+      }
+      console.warn(`[INVENTORY] deadlock, retry ${attempt}/3 order ${orderRef.label}`);
+      await new Promise(r => setTimeout(r, 50 * attempt));
+    }
+  }
+}
+
+const isDeadlock = (e) => !!e && ['ER_LOCK_DEADLOCK'].includes((e.original && e.original.code) || (e.parent && e.parent.code));
+
+/** 한 번의 차감 트랜잭션. 데드락이면 되돌리고 다시 던진다(바깥이 재시도) — 그 밖의 오류는 예전처럼 { success:false } 반환. */
+async function deductOnce(restaurantId, orderItems, orderRef) {
+  const orderId = orderRef.label;
   const transaction = await database.sequelize.transaction();
 
   try {
@@ -192,7 +213,7 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
         }
 
         // Get recipe ingredients for this product (component or standalone)
-        let recipeIngredients = await getProductRecipeIngredients(productId);
+        let recipeIngredients = await getProductRecipeIngredients(productId, transaction);
 
         // ── 재고아이템 다이렉트 (docs/TRADE_STRUCTURE.md §2-1) ─────────────
         // 메뉴 = 재고아이템: 1개 팔면 그 재료 1개가 빠진다. **수량·단위 환산 없이 1:1**.
@@ -221,7 +242,7 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
           //   스위치가 꺼져 있으면 팔려도 조용히 안 깎였고, 그게 GIT 포장재가 안 빠진
           //   직접 원인이었다(포장재 6개 전부 꺼져 있었다). 안 쓰는 품목은 "비활성"으로 끈다.
           // 입고도 같은 자리로 들어온다(purchase-orders-workflow receiveIntoProduct).
-          const prod = await Product.findByPk(productId, { transaction });
+          const prod = await Product.findByPk(productId, { transaction, lock: transaction.LOCK.UPDATE });
           if (prod) {
             const cur = parseFloat(prod.current_stock) || 0;
             const take = Math.min(tgtQty, cur);        // 음수 재고 금지(재료 차감과 같은 규칙)
@@ -282,7 +303,7 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
           }
 
           // 브랜드 공유 재료면 이 매장의 오버레이 재고가 기준
-          const currentStock = await stockFor(ingredient, restaurantId, transaction);
+          const currentStock = await stockLedger.lockAndReadStock({ kind: 'ingredient', row: ingredient }, restaurantId, transaction);
 
           // Check if we have enough stock
           if (deductQty > currentStock) {
@@ -355,13 +376,14 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
 
         const optIngredients = await OptionIngredient.findAll({
           where: { option_id: optionId },
-          include: [{ model: Ingredient, as: 'ingredient' }]
+          include: [{ model: Ingredient, as: 'ingredient' }],
+          transaction, // 앞 품목이 재고 행을 잠근 뒤라 둘째 연결을 기다리지 않게(풀 고갈 · 2026-10-16)
         });
 
         for (const oi of optIngredients) {
           if (!oi.ingredient) continue;
           const oiDeductQty = parseFloat(oi.quantity) * orderQty;
-          const oiCurrentStock = await stockFor(oi.ingredient, restaurantId, transaction);
+          const oiCurrentStock = await stockLedger.lockAndReadStock({ kind: 'ingredient', row: oi.ingredient }, restaurantId, transaction);
           const oiActualDeduct = Math.min(oiDeductQty, oiCurrentStock);
 
           if (oiActualDeduct > 0) {
@@ -400,7 +422,9 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
     return results;
 
   } catch (error) {
-    await transaction.rollback();
+    // 데드락(1213)이면 Sequelize 가 이미 되돌려 두었다 — 다시 rollback() 하면 새 오류가 데드락을 덮어 재시도가 안 돈다(2026-10-16 Fable 게이트)
+    if (!transaction.finished) await transaction.rollback();
+    if (isDeadlock(error)) throw error;
     console.error('Inventory deduction error:', error);
     return {
       success: false,

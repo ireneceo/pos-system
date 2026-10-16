@@ -10,10 +10,11 @@ const { getStartOfMonth, getRestaurantTimezone } = require('../utils/dateTimeHel
 // inventory CRUD + alerts + transactions + stock-takes + reorder + expiring
 // split from inventory-routes.js (2026-05-03)
 
-async function getRestaurantCostMap(restaurantId) {
+async function getRestaurantCostMap(restaurantId, transaction = null) {
   // 브랜드 공유 재료의 오버레이만 (2026-09-11 §8-4 D-5) — 매장 소유 재료는 재료 행 unit_cost 가 매장 층이라
   //   그 재료에 남은 옛 오버레이를 읽지 않는다(원가 칸 둘 → 하나). 단일 소스는 services/storeCost.js.
-  const overlay = await require('../services/storeCost').loadOverlayMap(restaurantId);
+  //   트랜잭션 안에서 부르면 그 트랜잭션으로 — 연결을 쥔 채 둘째 연결을 기다리면 동시 요청에 풀이 고갈된다(2026-10-16).
+  const overlay = await require('../services/storeCost').loadOverlayMap(restaurantId, undefined, { transaction });
   const map = {};
   overlay.forEach((v, k) => { map[k] = v; });
   return map;
@@ -511,7 +512,7 @@ router.post('/:restaurantId/inventory/receive', async (req, res) => {
       initial_quantity: addQty,
       remaining_quantity: addQty,
       unit: ingredient.unit,
-      unit_cost: unit_cost || (await getRestaurantCostMap(restaurantId))[ingredient_id] || ingredient.unit_cost || 0,
+      unit_cost: unit_cost || (await getRestaurantCostMap(restaurantId, transaction))[ingredient_id] || ingredient.unit_cost || 0,
       manufacture_date: manufacture_date || null,
       expiry_date: expiry_date || null,
       received_date: new Date(),
@@ -839,7 +840,7 @@ router.post('/:restaurantId/stock-takes', async (req, res) => {
     }
 
     // 레스토랑 코스트 오버라이드 맵 조회
-    const costMap = await getRestaurantCostMap(restaurantId);
+    const costMap = await getRestaurantCostMap(restaurantId, transaction);
     // 브랜드 재료의 기대재고는 브랜드 행이 아니라 **이 매장의 오버레이**가 진실이다
     const takeStockMap = await stockMapFor(
       restaurantId,

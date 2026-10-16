@@ -802,3 +802,13 @@ async function updateAvgDailyUsage(ingredientId) {
   칸과 숫자가 다른 말을 할 수 있고 막는 장치가 없다. 어떻게 정리할지는 **Fable 판정 대기** —
   `docs/TRADE_STRUCTURE.md` §5-12(실측·갈리는 길 3갈래).
 - 매장(RA) 재고와는 별개 경로다. 이 표의 나머지 내용은 매장 재고 기준으로 읽는다.
+
+## 재고 장부 동시 쓰기 — 잠금 규칙 (2026-10-16 · Fable 설계·게이트 PASS)
+
+- **재고 수량을 바꾸는 단일 함수 `services/stockLedger.record` 가 대상 행을 잠근다** — 마스터 행 `FOR UPDATE` → 잠금 읽기로 «지금 재고»(브랜드 공유 재료는 매장 오버레이도 잠금 읽기) → PK 기준 UPDATE → 장부 한 줄. 예전엔 잠금 없이 읽어, 같은 재료를 두 요청이 겹쳐 바꾸면 한쪽 변화가 사라지고 장부 `stock_after` 사슬이 끊겼다(개발 장부 30830~30833 · 재현: 입고+1/조정−1 동시 → 최종 101, 정답 100).
+- 호출부가 `record` 앞에서 재고를 읽어 수량을 정하면(부족 판정·FIFO) **`stockLedger.lockAndReadStock`** 으로 읽는다(주문 차감·수동 차감).
+- 잠금 때문에 여러 재료를 다른 순서로 잡는 두 주문이 데드락날 수 있다 → `inventoryDeductionService.deductInventoryForOrder` 가 그 주문 차감을 통째로 다시 한다(최대 3회). Sequelize 는 데드락(1213)에서 트랜잭션을 스스로 되돌려 두므로 catch 의 rollback 은 `if (!transaction.finished)` 로만.
+- 재고 트랜잭션 안에서는 **모든 읽기를 같은 트랜잭션으로** — 연결을 쥔 채 둘째 연결을 기다리면 같은 행을 기다리는 요청들이 풀을 다 잡아 50초 잠금 대기로 실패한다(서버 풀은 실제로 5, 아래 별건).
+- 상시 검사: health-check `inventory` 장부 ③ 잠금 계약 · ④ 동시 HTTP 12건 · ⑤ 동시 입고 20건 · ⑥ 주문 차감 데드락 재시도. 인스펙션 LEDGER-004(사슬 끊김 0)가 배포 차단.
+- 별건(미조치): `config/database.js` 의 «서버면 풀 20» 판별이 pm2 에선 안 맞아 풀이 5 — 고칠 땐 운영 max_connections 실측 먼저.
+- 설계·판정: `.claude/fable-design-20261016-stock-ledger-lock.md` · `.claude/fable-gate-20261016-stock-ledger-lock.md`

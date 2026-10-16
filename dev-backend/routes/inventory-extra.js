@@ -540,7 +540,8 @@ router.post('/:restaurantId/inventory/deduct', async (req, res) => {
 
     const deductQty = parseFloat(quantity) || 0;
     // 브랜드 공유 재료면 이 매장의 오버레이 재고가 기준
-    const currentStock = await stockFor(ingredient, restaurantId, transaction);
+    //   잠금 읽기 — 이 값으로 부족 판정·FIFO 를 record 앞에서 하므로 겹친 쓰기에 낡으면 안 된다(stockLedger 잠금 규칙)
+    const currentStock = await stockLedger.lockAndReadStock({ kind: 'ingredient', row: ingredient }, restaurantId, transaction);
 
     if (deductQty > currentStock) {
       await transaction.rollback();

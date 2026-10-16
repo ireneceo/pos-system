@@ -3435,6 +3435,194 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
   });
 
+  // ── 장부 잠금 (2026-10-16 Fable 판정 .claude/fable-design-20261016-stock-ledger-lock.md) ──
+  //   10-11 겹쳐 돈 시험 두 개가 옛 재고로 계산해 장부 사슬이 끊겼다(lost update). record 가 대상 행을 잠그는지
+  //   ③ 결정적으로(DB 직접) ④ 동시 HTTP 로 ⑤ 동시 20건 풀 고갈 없이 — 세 겹으로 본다.
+  const ledgerScratch = async (sequelize, tag, opts = {}) => {
+    const brand = opts.brandId;
+    const [id] = await sequelize.query(`INSERT INTO ingredients (name, restaurant_id, brand_id, owner_type, unit, base_quantity, unit_cost, current_stock, min_stock, is_active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'g', 1000, 20, ?, 0, 1, NOW(), NOW())`,
+      { replacements: [tag, brand ? null : demoRestId, brand || null, brand ? 'brand' : 'restaurant', brand ? 0 : 100] });
+    if (brand) {
+      await sequelize.query(`INSERT INTO restaurant_ingredient_stocks (restaurant_id, ingredient_id, current_stock, created_at, updated_at) VALUES (?, ?, 100, NOW(), NOW())`,
+        { replacements: [demoRestId, id] });
+    }
+    return id;
+  };
+  const ledgerCleanup = async (sequelize, ids) => {
+    for (const id of ids.filter(Boolean)) {
+      await sequelize.query('DELETE FROM inventory_transactions WHERE ingredient_id = ?', { replacements: [id] });
+      await sequelize.query('DELETE FROM inventory_batches WHERE ingredient_id = ?', { replacements: [id] });
+      await sequelize.query('DELETE FROM stock_alerts WHERE ingredient_id = ?', { replacements: [id] });
+      await sequelize.query('DELETE FROM restaurant_ingredient_stocks WHERE ingredient_id = ?', { replacements: [id] });
+      await sequelize.query('DELETE FROM ingredients WHERE id = ?', { replacements: [id] });
+    }
+  };
+  // 동시 요청 묶음에 기한 — 잠금·풀 결함이면 요청이 50~60초씩 매달려 검사 전체가 멈춘다(반증 때 15분 정지 실측). 기한을 넘기면 실패로 센다.
+  const ledgerWithin = (p, ms) => Promise.race([p, new Promise((res) => setTimeout(() => res(null), ms))]);
+  const ledgerChainOk = async (sequelize, id, start) => {
+    const rows = await sequelize.query('SELECT quantity_change q, stock_after a FROM inventory_transactions WHERE ingredient_id = ? ORDER BY id',
+      { replacements: [id], type: sequelize.QueryTypes.SELECT });
+    let prev = start, breaks = 0, sum = 0;
+    for (const r of rows) { if (Math.abs(prev + Number(r.q) - Number(r.a)) > 0.001) breaks++; prev = Number(r.a); sum += Number(r.q); }
+    return { rows: rows.length, breaks, sum: Math.round(sum * 100) / 100 };
+  };
+
+  test('inventory', '장부 ③ 잠금 계약: 겹친 두 쓰기 — 뒤 쓰기는 앞 커밋을 기다리고 새 값으로 계산 (매장 재료 · 브랜드 오버레이)', async () => {
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 RA 없음 — 계약 미검증)')); return true; }
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const stockLedger = require('../services/stockLedger');
+    const [rest] = await sequelize.query('SELECT brand_id FROM restaurants WHERE id = ?', { replacements: [demoRestId], type: sequelize.QueryTypes.SELECT });
+    const variants = [{ label: 'restaurant' }, ...(rest && rest.brand_id ? [{ label: 'brand', brandId: rest.brand_id }] : [])];
+    const ids = [];
+    const out = [];
+    try {
+      for (const v of variants) {
+        const id = await ledgerScratch(sequelize, `ZZ-HC-LEDGER-LOCK-${v.label}-${Date.now()}`, v);
+        ids.push(id);
+        const t1 = await sequelize.transaction();
+        const t2 = await sequelize.transaction();
+        let r2 = null, early = false;
+        try {
+          const row2 = await M.Ingredient.findByPk(id, { transaction: t2 });   // 스냅샷 고정(일반 읽기)
+          const row1 = await M.Ingredient.findByPk(id, { transaction: t1 });
+          await stockLedger.record({ target: { kind: 'ingredient', row: row1 }, restaurantId: demoRestId, type: 'adjustment', delta: 1, transaction: t1 });
+          let done = false;
+          const p2 = stockLedger.record({ target: { kind: 'ingredient', row: row2 }, restaurantId: demoRestId, type: 'adjustment', delta: -1, transaction: t2 })
+            .then((r) => { done = true; return r; });
+          await new Promise((res) => setTimeout(res, 300));
+          early = done;
+          await t1.commit();
+          r2 = await p2;
+          await t2.commit();
+        } catch (e) {
+          try { await t1.rollback(); } catch (_) {} try { await t2.rollback(); } catch (_) {}
+          out.push({ v: v.label, error: e.message }); continue;
+        }
+        const chain = await ledgerChainOk(sequelize, id, 100);
+        const [cur] = v.brandId
+          ? await sequelize.query('SELECT current_stock FROM restaurant_ingredient_stocks WHERE restaurant_id = ? AND ingredient_id = ?', { replacements: [demoRestId, id], type: sequelize.QueryTypes.SELECT })
+          : await sequelize.query('SELECT current_stock FROM ingredients WHERE id = ?', { replacements: [id], type: sequelize.QueryTypes.SELECT });
+        out.push({ v: v.label, early, before: r2 && r2.before, after: r2 && r2.after, ...chain, final: Number(cur.current_stock) });
+      }
+      const ok = out.length === variants.length && out.every((o) => !o.error && o.early === false && o.before === 101 && o.after === 100
+        && o.breaks === 0 && o.rows === 2 && o.final === 100);
+      if (!ok) console.log(c.red(`      ↳ ${JSON.stringify(out)}`));
+      return ok;
+    } finally {
+      await ledgerCleanup(sequelize, ids);
+    }
+  });
+
+  test('inventory', '장부 ④ 동시 HTTP: 입고 +1 ×6 · 조정 −1 ×6 → 사슬 끊김 0 · 합 0 · 최종 100', async () => {
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 RA 없음 — 계약 미검증)')); return true; }
+    const { sequelize } = require('../config/database');
+    const auth = { Authorization: `Bearer ${demoRaToken}` };
+    let id = null;
+    try {
+      id = await ledgerScratch(sequelize, `ZZ-HC-LEDGER-RACE-${Date.now()}`);
+      const reqs = [];
+      for (let i = 0; i < 6; i++) {
+        reqs.push(request('POST', `/restaurants/${demoRestId}/inventory/receive`, { ingredient_id: id, quantity: 1 }, auth));
+        reqs.push(request('POST', `/restaurants/${demoRestId}/inventory/adjust`, { ingredient_id: id, quantity: -1 }, auth));
+      }
+      const all = await ledgerWithin(Promise.all(reqs), 20000);
+      if (!all) { console.log(c.red('      ↳ 12건이 20초 안에 안 끝남(잠금 대기·풀 고갈)')); return false; }
+      const st = all.map((r) => r.status);
+      const chain = await ledgerChainOk(sequelize, id, 100);
+      const [cur] = await sequelize.query('SELECT current_stock FROM ingredients WHERE id = ?', { replacements: [id], type: sequelize.QueryTypes.SELECT });
+      const ok = st.every((s) => s === 200) && chain.rows === 12 && chain.breaks === 0 && chain.sum === 0 && Number(cur.current_stock) === 100;
+      if (!ok) console.log(c.red(`      ↳ ${JSON.stringify({ st, ...chain, final: cur.current_stock })}`));
+      return ok;
+    } finally {
+      await ledgerCleanup(sequelize, [id]);
+    }
+  });
+
+  test('inventory', '장부 ⑤ 입고 20건 동시 → 20/20 · 15초 이내 (연결 풀 고갈 없음)', async () => {
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 RA 없음 — 계약 미검증)')); return true; }
+    const { sequelize } = require('../config/database');
+    const auth = { Authorization: `Bearer ${demoRaToken}` };
+    let id = null;
+    try {
+      id = await ledgerScratch(sequelize, `ZZ-HC-LEDGER-POOL-${Date.now()}`);
+      const t0 = Date.now();
+      const all = await ledgerWithin(Promise.all(Array.from({ length: 20 }, () =>
+        request('POST', `/restaurants/${demoRestId}/inventory/receive`, { ingredient_id: id, quantity: 1 }, auth))), 20000);
+      if (!all) { console.log(c.red(`      ↳ 20건이 20초 안에 안 끝남(풀 고갈) — ${Date.now() - t0}ms`)); return false; }
+      const st = all.map((r) => r.status);
+      const ms = Date.now() - t0;
+      const chain = await ledgerChainOk(sequelize, id, 100);
+      const [cur] = await sequelize.query('SELECT current_stock FROM ingredients WHERE id = ?', { replacements: [id], type: sequelize.QueryTypes.SELECT });
+      const ok = st.every((s) => s === 200) && ms < 15000 && chain.breaks === 0 && Number(cur.current_stock) === 120;
+      if (!ok) console.log(c.red(`      ↳ ${JSON.stringify({ ok200: st.filter((s) => s === 200).length, ms, ...chain, final: cur.current_stock })}`));
+      return ok;
+    } finally {
+      await ledgerCleanup(sequelize, [id]);
+    }
+  });
+
+  test('inventory', '장부 ⑥ 주문 차감 데드락 → 재시도 1회 뒤 성공 (A·B 각 −1 · 장부 2줄 · 사슬 0)', async () => {
+    // 2026-10-16 Fable 게이트: 잠금이 데드락을 만들 수 있는데, Sequelize 가 1213 에서 트랜잭션을 스스로 되돌려 두어
+    //   catch 의 rollback() 이 새 오류를 던져 데드락을 덮었다 → 재시도 0회 · 그 주문 차감이 조용히 빠졌다.
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 RA 없음 — 계약 미검증)')); return true; }
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
+    const tag = `ZZ-HC-LEDGER-DL-${Date.now()}`;
+    const ids = [], prodIds = [];
+    let t1 = null;
+    const origWarn = console.warn;
+    let retries = 0;
+    try {
+      const [cat] = await sequelize.query('SELECT name FROM categories WHERE restaurant_id = ? ORDER BY id LIMIT 1', { replacements: [demoRestId], type: sequelize.QueryTypes.SELECT });
+      if (!cat) { console.log(c.gray('      (건너뜀: 데모 매장 카테고리 없음 — 계약 미검증)')); return true; }
+      const A = await ledgerScratch(sequelize, `${tag}-A`); ids.push(A);
+      const B = await ledgerScratch(sequelize, `${tag}-B`); ids.push(B);
+      for (const [n, ing] of [['PA', A], ['PB', B]]) {
+        const p = await M.Product.create({ restaurant_id: demoRestId, name: `${tag}-${n}`, price: 1, category: cat.name, ingredient_id: ing });
+        prodIds.push(p.id);
+      }
+      // T1 을 무겁게(30줄) 만들어 MySQL 이 서비스 쪽을 데드락 피해자로 고르게 한다 → B 잠금
+      t1 = await sequelize.transaction();
+      for (let i = 0; i < 30; i++) {
+        await sequelize.query(`INSERT INTO ingredients (name, restaurant_id, owner_type, unit, base_quantity, unit_cost, current_stock, min_stock, is_active, created_at, updated_at)
+          VALUES (?, ?, 'restaurant', 'g', 1, 1, 0, 0, 1, NOW(), NOW())`, { replacements: [`${tag}-W${i}`, demoRestId], transaction: t1 });
+      }
+      await sequelize.query('SELECT id FROM ingredients WHERE id = ? FOR UPDATE', { replacements: [B], transaction: t1 });
+      console.warn = (...a) => { if (String(a[0]).includes('[INVENTORY] deadlock, retry')) retries++; else origWarn(...a); };
+      const p = deductInventoryForOrder(demoRestId, [{ product_id: prodIds[0], quantity: 1 }, { product_id: prodIds[1], quantity: 1 }], `${tag}-ORDER`);
+      await new Promise((res) => setTimeout(res, 700));
+      let t1LockA = true;
+      try { await sequelize.query('SELECT id FROM ingredients WHERE id = ? FOR UPDATE', { replacements: [A], transaction: t1 }); } catch (e) { t1LockA = false; }
+      await new Promise((res) => setTimeout(res, 700));
+      if (!t1.finished) await t1.rollback();
+      t1 = null;
+      const r = await p;
+      console.warn = origWarn;
+      const rows = await sequelize.query('SELECT ingredient_id, quantity_change q, stock_after a FROM inventory_transactions WHERE ingredient_id IN (?, ?) ORDER BY id',
+        { replacements: [A, B], type: sequelize.QueryTypes.SELECT });
+      const cur = await sequelize.query('SELECT id, current_stock FROM ingredients WHERE id IN (?, ?)', { replacements: [A, B], type: sequelize.QueryTypes.SELECT });
+      const chainA = await ledgerChainOk(sequelize, A, 100), chainB = await ledgerChainOk(sequelize, B, 100);
+      const ok = t1LockA && r && r.success === true && (r.deductions || []).length === 2 && retries === 1
+        && rows.length === 2 && rows.every((x) => Number(x.q) === -1 && Number(x.a) === 99)
+        && cur.every((x) => Number(x.current_stock) === 99) && chainA.breaks === 0 && chainB.breaks === 0;
+      if (!ok) console.log(c.red(`      ↳ ${JSON.stringify({ t1LockA, success: r && r.success, error: r && r.error, deductions: r && (r.deductions || []).length, retries, rows, cur })}`));
+      return ok;
+    } finally {
+      console.warn = origWarn;
+      if (t1 && !t1.finished) { try { await t1.rollback(); } catch (_) {} }
+      for (const id of ids) {
+        await sequelize.query('DELETE FROM inventory_transactions WHERE ingredient_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM inventory_batches WHERE ingredient_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM stock_alerts WHERE ingredient_id = ?', { replacements: [id] });
+      }
+      if (prodIds.length) await sequelize.query(`DELETE FROM products WHERE id IN (${prodIds.map(Number).join(',')})`);
+      await sequelize.query("DELETE FROM ingredients WHERE name LIKE 'ZZ-HC-LEDGER-DL-%'");
+    }
+  });
+
   test('security', '장부 ② Staff 는 재고 조정·초기재고·실사 확정 403 (입고·폐기는 허용)', async () => {
     const { sequelize } = require('../config/database');
     const [staff] = await sequelize.query(`SELECT u.id, u.restaurant_id FROM users u JOIN restaurants r ON r.id = u.restaurant_id

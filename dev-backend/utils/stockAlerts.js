@@ -19,7 +19,9 @@ const { effectiveMinStock } = require('./brandStockAccess');
  * restaurant_id 로 좁히지 않으면 A 매장의 입고가 B 매장의 부족 알림을 지운다.
  */
 async function checkAndCreateAlert(ingredientId, restaurantId, newStock, transaction = null) {
-  const ingredient = await Ingredient.findByPk(ingredientId);
+  // 읽기도 호출부 트랜잭션으로 — 재고 행을 잠근 트랜잭션이 연결을 쥔 채 둘째 연결을 기다리면,
+  //   같은 행을 기다리는 요청들이 풀을 다 잡아 50초 잠금 대기로 실패한다(2026-10-16 장부 잠금 · 풀 고갈 같은 결함)
+  const ingredient = await Ingredient.findByPk(ingredientId, { transaction });
   if (!ingredient) return;
 
   // 임계치도 매장별 — 브랜드 재료면 이 매장의 오버라이드가 우선(지점마다 발주점이 다르다)
@@ -31,7 +33,8 @@ async function checkAndCreateAlert(ingredientId, restaurantId, newStock, transac
       ingredient_id: ingredientId,
       restaurant_id: restaurantId,
       is_resolved: false
-    }
+    },
+    transaction
   });
 
   if (currentStock <= 0) {

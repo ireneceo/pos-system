@@ -1,7 +1,31 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-10-16 UTC — 10-15 끝난 방 미커밋 묶음 /개발완료(발주 후 품목 수정 736a78f9 · 카탈로그 Add as menu ac41b541, 둘 다 Fable PASS) · 배포 버튼 답 처리 [작업방 05c7f32b] · 이전: 2026-10-15 UTC — 공급업체 상품 옵션 가격 발주 반영 /개발완료(끝난 방들 미커밋 묶음 같이 커밋) [작업방 0883cfbd] · 이전: 2026-10-11 UTC — 브랜드 매니저 여러 브랜드·회사 전체 배정 /개발완료 [작업방 8315f30a] · 이전: 2026-10-11 UTC — 발주 카탈로그 «Add to My Stock» 표시 결함 수정 /개발완료 [작업방 ef2223fa] · 이전: 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
+**마지막 업데이트:** 2026-10-16 UTC — 재고 장부 동시 쓰기 경합 고침 /개발완료(행 잠금 · 데드락 재시도 · 풀 막힘 · Fable 설계+게이트 PASS · 개발서버·미배포) [작업방 dd467d4b] · 이전: 2026-10-16 UTC — 10-15 끝난 방 미커밋 묶음 /개발완료(발주 후 품목 수정 736a78f9 · 카탈로그 Add as menu ac41b541, 둘 다 Fable PASS) · 배포 버튼 답 처리 [작업방 05c7f32b] · 이전: 2026-10-15 UTC — 공급업체 상품 옵션 가격 발주 반영 /개발완료(끝난 방들 미커밋 묶음 같이 커밋) [작업방 0883cfbd] · 이전: 2026-10-11 UTC — 브랜드 매니저 여러 브랜드·회사 전체 배정 /개발완료 [작업방 8315f30a] · 이전: 2026-10-11 UTC — 발주 카탈로그 «Add to My Stock» 표시 결함 수정 /개발완료 [작업방 ef2223fa] · 이전: 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
 **버전:** **v3.110** (2026-10-11 · Irene «응») · 운영 SW **5.90-preflight-security-20261010** (2026-10-11 06:36 UTC 배포 · 백업 20261011_062932 · DB 덤프 db_predeploy_20261011_062932 · 스모크 10/10 · 마이그 118/118) · 안드로이드 앱 0.3.4
-### 막힘 (2026-10-16) — 수동 /배포(Irene 직접 지시): 안전 게이트 health [po] 수령 4건에서 멈춤 · 운영 무변경 [Claude Code · 백그라운드 작업방 7a1af9cb]
+### 완료 (2026-10-16) — 재고 장부 동시 쓰기 경합 고침: 재고 행 잠금 + 주문 차감 데드락 재시도 + 연결 풀 막힘 (개발서버 · Fable 설계 1 + 게이트 PASS 지문 d25bae92d7c3) [Claude Code · 백그라운드 작업방 dd467d4b]
+- 출처: 배포 방 7a1af9cb 이 남긴 장부 30830~30833(10-11 같은 초 두 health-check 가 옛 재고로 계산 → 사슬 끊김)
+- 재현(데모 38 · 재료 46): 입고+1/조정−1 동시 → 장부 101→99→99→101, 최종 101(정답 100) = 실제 재고 손실 확인
+- 설계 .claude/fable-design-20261016-stock-ledger-lock.md · 판정 .claude/fable-gate-20261016-stock-ledger-lock.md (1회차 불통과 → 재게이트 PASS)
+- 고침: services/stockLedger.js(lockTarget·lockAndReadStock — 대상 행 FOR UPDATE 뒤 읽기 · PK 기준 UPDATE) · utils/brandStockAccess.js(오버레이 잠금 읽기·findOrCreate 제거) · services/inventoryDeductionService.js(사전 읽기 잠금 · 데드락이면 주문 차감 통째 재시도 최대 3회 · 레시피·옵션 읽기 트랜잭션 안으로) · routes/inventory-core.js·inventory-extra.js(원가 맵 트랜잭션 전달 · 수동 차감 잠금 읽기) · utils/stockAlerts.js(읽기 트랜잭션 안으로) · scripts/check-sensitive-diff.js(재고 본체 파일을 돈 분류에) · health-check 장부 ③④⑤⑥
+- 검증: inventory 74/74 · 반증 4건 모두 잡힘(잠금 빼면 ③④⑤ 3/3 실패 · 원가 맵 트랜잭션 빼면 ④⑤ 20초 실패 · 롤백 가드 빼면 ⑥ 재시도 0 실패) · verify-all 22/23(실패 1 = 배포 기록 파일 없음, 이전부터) · print-guard 8/8 · 격리수준 실측 READ COMMITTED · MySQL 데드락 코드 ER_LOCK_DEADLOCK
+- 별건(비차단 · 다음 정기 점검 때 측정→결정): 서버 연결 풀이 20 이 아니라 5 — config/database.js 4행이 process.argv[1] 로 server.js 를 판별하는데 pm2 에선 ProcessContainerFork.js (09-17 커밋부터, 운영 포함). 고칠 땐 운영 max_connections·Max_used 먼저. config retry.match 의 ER_LOCK_DEADLOCK/WAIT_TIMEOUT 은 매치 안 되는 죽은 항목(관찰만)
+- 참고: 데모 38 재료 46 마지막 장부 69 vs 현재고 100 — 이전부터의 차이(LEDGER-001 목록형, 차단 아님)
+- 운영 반영: 다음 배포 때(마이그 0 · 프론트 0) · 배포 뒤 운영검증 방이 운영 DB 읽기로 chainBreakSql('2026-10-11') 확인
+
+### 완료 (2026-10-16) — 운영 배포 (Irene 직접 지시 · 커밋 9fcf73eb6 · SW 5.94) [Claude Code · 백그라운드 작업방 7a1af9cb]
+- 결과: Deployment Complete · 스모크 10/10 · 마이그 124/124 · mount sweep 크래시 0(710초) · 운영 sw.js = 5.94-play-store-20261012 실측 · 백업 /var/www/backups/20261016_024643 · DB 덤프 /var/backups/orderhere/pre-deploy/db_predeploy_20261016_024643.sql.gz
+- 막힘 푼 것: ① health [po] 수령 4건 = 시험 뒷정리에 stock_alerts 누락(732db2ee4 · 반증 옛 판 4실패→12/12) ② LEDGER-004 = 10-11 19:04 겹쳐 돈 시험 장부 4줄(30830~30833) Irene 허락 뒤 백업(backups/deploy-tools/ledger-rows-30830-30833-20261016.json) 후 삭제 ③ 배포 기록 SW 5.93→5.94(9fcf73eb6) ④ 1회차 빌드가 서버 메모리 부족(OOM)으로 죽음 → 운영 무변경 상태에서 1회 재시도 성공
+- 자동 저장 커밋 3개: 파일 합집합 77 = 845afaf1 대조 목록, 벗어남 0 → pexpect 로 y(backups/deploy-tools/run-deploy.py)
+- 배포 방 산출물 커밋 6e422dd7c (보관함 이동 + 배포 지문)
+- 할 것: 버전 올리기 · CHANGELOG [Unreleased] 정리 · 릴리즈노트·공지 — 이번엔 안 함 · dev-login 데모 자정 초기화 첫 실행 확인(다음 날 운영 pm2 로그 [DEMO RESET])
+- 따로 고칠 일: stockLedger 동시 쓰기 경합(같은 초 두 조정이 옛 재고로 계산 → 장부 사슬 끊김) — 운영에 10-11부터 있음 · 돈·재고라 Fable 설계 필요
+
+### 답 기다림 (이전) (2026-10-16) — PurpleHere 배포: 장부 시험 줄 4개 정리 + 배포 기록 SW 5.94 맞추기 허락 [Claude Code · 백그라운드 작업방 7a1af9cb]
+- Irene «고치고 배포해. 당장 해» → 발주 수령 시험 4건 고쳐 커밋 732db2ee4(뒷정리에 stock_alerts · 반증: 옛 판 4건 실패 → 고친 판 12/12 · 쌓인 시험 재료 174 → 0)
+- 남은 막힘(자동 권한 확인이 막음 — 우회 안 함): ① 인스펙션 LEDGER-004 = 개발 DB 장부 30830~30833(데모 매장 1 · 시험 계정 163 · 10-11 19:04:18 같은 초에 겹쳐 돈 시험) — 지우면 사슬 0→+3=3 로 이어짐 ② 배포 기록 releases/2026-10-11-menu-category.json sw_version 5.93 → 커밋된 sw.js 5.94
+- 답이 오면: ① 원본을 backups/deploy-tools/ 에 떠 두고 4줄 삭제 ② 기록 sw 5.94 + notes(10-11 이후 커밋 전부 실림) → inspection·check-deploy-ready 재확인 → backups/deploy-tools/run-deploy.py 로 배포(wip 질문 y — 77파일 대조 벗어남 0) → 배포 방 산출물 경로 지정 커밋
+- 따로 고칠 일: stockLedger 동시 쓰기 경합(같은 초 두 조정이 옛 재고로 계산) — 10-11 배포부터 운영에 있음, 이번 배포가 새로 들이지 않음 · 돈·재고라 Fable 필요
+
+### 막힘 (이전) (2026-10-16) — 수동 /배포(Irene 직접 지시): 안전 게이트 health [po] 수령 4건에서 멈춤 · 운영 무변경 [Claude Code · 백그라운드 작업방 7a1af9cb]
 - Fable(서버 방 dc7471ba) 조건 1: 자동 저장 커밋 3개 파일 합집합 77개 = 845afaf1 대조 목록(wipfiles.txt 77개)과 같음, 벗어남 0 → pexpect(가짜 터미널)로 «자동 저장 커밋을 포함해 배포할까요?» 에 y (파이프 아님)
 - 결과: 게이트 1~6 통과 → 7/10 health-check 4건 실패 / 374 통과 (10-11 부터 같은 실패 — 시험 뒷정리에서 재료 삭제가 stock_alerts_ibfk_40 FK 에 막힘) → 스크립트 EXIT=1. 백업·빌드·rsync 전이라 운영 무변경·되돌릴 것 없음. LEDGER-004·SW 기록 불일치 게이트는 그 뒤 순서라 이번엔 안 돌았음
 - 조건 3대로 멈추고 PurpleHere 대기열에 «배포 막는 기계 게이트 3건 고치기» 넣음 · --skip-safety 안 씀

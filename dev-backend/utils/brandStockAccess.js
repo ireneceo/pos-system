@@ -170,17 +170,20 @@ async function applyStock(ing, restaurantId, newStock, transaction, opts = {}) {
     ...(opts.recordActual ? { last_actual_stock: rounded } : {}),
   };
 
+  // 전제: 호출자는 stockLedger.lockTarget 으로 재료 마스터 행을 잠근 상태다(호출자 = stockLedger 하나).
+  //   그래서 오버레이 생성 경합이 없고 findOrCreate 가 필요 없다 — REPEATABLE-READ 스냅샷에선 findOrCreate 가
+  //   «있는 행을 못 보고 INSERT → 중복키» 로 실패할 수 있다(2026-10-16 Fable 판정 stock-ledger-lock).
   if (ing.owner_type === 'brand') {
-    const [row] = await RestaurantIngredientStock.findOrCreate({
-      where: { restaurant_id: restaurantId, ingredient_id: ing.id },
-      defaults: { restaurant_id: restaurantId, ingredient_id: ing.id, current_stock: 0 },
-      transaction,
-    });
-    await row.update({ current_stock: rounded, ...stamp }, { transaction });
+    const where = { restaurant_id: restaurantId, ingredient_id: ing.id };
+    const row = await RestaurantIngredientStock.findOne({ where, transaction, lock: transaction ? transaction.LOCK.UPDATE : undefined });
+    if (row) await row.update({ current_stock: rounded, ...stamp }, { transaction });
+    else await RestaurantIngredientStock.create({ ...where, current_stock: rounded, ...stamp }, { transaction });
     return rounded;
   }
 
-  await ing.update({ current_stock: rounded, ...stamp }, { transaction });
+  // PK 기준 정적 UPDATE — 낡은 인스턴스와 값이 같으면 인스턴스 update 는 SQL 을 안 낸다
+  await Ingredient.update({ current_stock: rounded, ...stamp }, { where: { id: ing.id }, transaction });
+  ing.set({ current_stock: rounded, ...stamp }, { raw: true });
   return rounded;
 }
 

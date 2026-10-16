@@ -46,6 +46,9 @@ const CLASSES = [
       || /dev-backend\/utils\/(orderTotals|orderCharge|purchaseOrderTotals)/i.test(f)
       // 발주 총액식(배송비 포함)과 소급 단가 반영도 돈이다 (2026-09-17 Fable 판정 ⑦)
       || /dev-backend\/services\/retroApplyPrice/i.test(f)
+      // 재고 수량·금액 본체(장부 단일 함수·주문 차감·발주 수령·오버레이·장부 대조)도 빠져 있었다
+      //   (2026-10-16 Fable 판정 stock-ledger-lock H — purchaseOrderPayment 누락과 같은 구멍)
+      || /dev-backend\/(services\/(stockLedger|inventoryDeductionService|purchaseOrderReceive)|utils\/(brandStockAccess|ledgerDrift))/i.test(f)
       || /dev-frontend\/src\/.*(offlineSync|offlineStore|offlineOverlay|Payment|Stripe|PayPal|Checkout)/i.test(f),
   },
   {

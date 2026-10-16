@@ -18,13 +18,53 @@
  *   foodcourt_product   푸드코트 상품 — 장부에 FK 칸이 없어 entity_type='foodcourt' + product_id(foodcourt_products.id) 로 적는다
  *
  * 이 함수가 하지 않는 것: FIFO 배치 차감·배치 생성(호출부 몫) · 저재고 알림(호출부 몫) · 원가 갱신(services/storeCost 몫).
+ *
+ * 잠금 규칙(2026-10-16 · Fable 판정 `.claude/fable-design-20261016-stock-ledger-lock.md`):
+ *   잠금은 이 함수 안에서 한다 — 대상 마스터 행 FOR UPDATE → 잠금 읽기로 «지금 재고» → PK 기준 정적 UPDATE.
+ *   예전엔 잠금 없이 읽고 계산해, 같은 대상을 두 트랜잭션이 겹쳐 바꾸면 한쪽 변화가 증발했다(lost update · 장부 사슬 끊김).
+ *   호출부가 record 앞에서 재고를 읽어 수량을 정하면(FIFO·부족 판정) `lockAndReadStock` 을 먼저 부른다.
  */
-const { InventoryTransaction } = require('../models');
+const { QueryTypes } = require('sequelize');
+const { InventoryTransaction, RestaurantIngredientStock } = require('../models');
 const { stockFor, applyStock } = require('../utils/brandStockAccess');
 
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const round4 = (n) => Math.round((Number(n) || 0) * 10000) / 10000;
 const KINDS = ['ingredient', 'product_ingredient', 'product', 'brand_product', 'foodcourt_product'];
+const TABLE_OF = {
+  ingredient: 'ingredients', product_ingredient: 'product_ingredients', product: 'products',
+  brand_product: 'brand_products', foodcourt_product: 'foodcourt_products',
+};
+const MODEL_OF = {
+  ingredient: 'Ingredient', product_ingredient: 'ProductIngredient', product: 'Product',
+  brand_product: 'BrandProduct', foodcourt_product: 'FoodcourtProduct',
+};
+
+/** 대상 마스터 행을 잠그고(FOR UPDATE) 그 행의 current_stock 을 돌려준다. 같은 트랜잭션에서 여러 번 불러도 된다. */
+async function lockTarget(target, transaction) {
+  if (!transaction) throw new Error('stockLedger.lockTarget: transaction 필요');
+  const table = TABLE_OF[target.kind];
+  if (!table) throw new Error(`stockLedger: unknown target kind ${target.kind}`);
+  const rows = await InventoryTransaction.sequelize.query(
+    `SELECT id, current_stock FROM ${table} WHERE id = :id FOR UPDATE`,
+    { replacements: { id: target.row.id }, type: QueryTypes.SELECT, transaction });
+  if (!rows.length) throw new Error(`stockLedger: ${target.kind} ${target.row.id} not found`);
+  return parseFloat(rows[0].current_stock) || 0;
+}
+
+/** 잠근 뒤의 «지금 재고» — 브랜드 재료+매장이면 오버레이를 잠금 읽기로, 아니면 잠근 마스터 행 값. */
+async function lockAndReadStock(target, restaurantId, transaction) {
+  const master = await lockTarget(target, transaction);
+  const { kind, row } = target;
+  if (kind === 'ingredient' && restaurantId && row.owner_type === 'brand') {
+    const o = await RestaurantIngredientStock.findOne({
+      where: { restaurant_id: restaurantId, ingredient_id: row.id },
+      transaction, lock: transaction.LOCK.UPDATE,
+    });
+    return o ? parseFloat(o.current_stock) || 0 : 0;
+  }
+  return master;
+}
 
 /** 대상의 지금 재고 */
 async function currentStockOf(target, restaurantId, transaction) {
@@ -69,7 +109,9 @@ async function applyNewStock(target, restaurantId, newStock, transaction, applyO
   const { kind, row } = target;
   if (kind === 'ingredient' && restaurantId) return applyStock(row, restaurantId, newStock, transaction, applyOpts);
   const extra = kind === 'ingredient' && applyOpts && applyOpts.stockTake ? { last_stock_take_at: new Date() } : {};
-  await row.update({ current_stock: newStock, ...extra }, { transaction });
+  // PK 기준 정적 UPDATE — 인스턴스 row.update() 는 인스턴스 값과 같으면 SQL 을 안 낸다(낡은 인스턴스면 쓰기가 빠짐)
+  await require('../models')[MODEL_OF[kind]].update({ current_stock: newStock, ...extra }, { where: { id: row.id }, transaction });
+  row.set({ current_stock: newStock, ...extra }, { raw: true });
   return newStock;
 }
 
@@ -98,7 +140,7 @@ async function record(p) {
   if (!transaction) throw new Error('stockLedger.record: transaction 필요 — 재고와 장부는 한 트랜잭션');
   if (delta === undefined && setTo === undefined) throw new Error('stockLedger.record: delta 또는 setTo 필요');
 
-  const before = round2(await currentStockOf(target, restaurantId, transaction));
+  const before = round2(await lockAndReadStock(target, restaurantId, transaction));
   let after = setTo !== undefined ? round2(setTo) : round2(before + (parseFloat(delta) || 0));
   if (clampAtZero && after < 0) after = 0;
   const change = round2(after - before);
@@ -140,4 +182,4 @@ async function record(p) {
   return { before, after, change, unitCost, costValue, entry };
 }
 
-module.exports = { record, currentStockOf, costBasisOf };
+module.exports = { record, currentStockOf, costBasisOf, lockTarget, lockAndReadStock };
