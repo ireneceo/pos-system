@@ -479,6 +479,8 @@ app.use('/api/dashboard', dashboardRouter);
 app.use('/api/categories', categoriesRouter);
 // External QR ↔ Coupon mapping — must mount BEFORE restaurantsRouter (inventory-core uses
 // router.use(authenticateToken) which would otherwise gate all /api/restaurants/* requests)
+// 직원 출퇴근·휴가·휴일 — 가드는 파일 안(정확한 경로 마운트, 다른 /api/restaurants 라우터보다 먼저) · .claude/fable-design-20261016-staff-attendance.md
+app.use('/api/restaurants/:restaurantId/attendance', require('./routes/attendance'));
 app.use('/api/restaurants', require('./routes/external-qrs').router);
 // #11c 크로스셀 RA 추천 — restaurantsRouter 보다 먼저(구체 경로 우선, fall-through 회피)
 app.use('/api/restaurants', require('./routes/recommendations'));

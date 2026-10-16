@@ -5109,6 +5109,103 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     });
   }
 
+  // ── «바꾸고 삭제» 2차: 프로덕트 레시피·상품 옵션 줄도 옮긴다 (2026-10-16 Irene «여기서 다른 재고아이템으로 변경하게 해줘 … 이렇게 다 오픈해서 뭘 하라는 거야?») ──
+  //   P-a 재고아이템으로: 프로덕트 레시피 줄·옵션 줄·브랜드 레시피 줄(모두 같은 단위 L) → 미리보기 무변화 · 적용 = 셋 다 이동 · 줄 원가·레시피 합계 새 재료로 · 삭제
+  //   P-b 재고아이템을 안 가리키는 상품으로: 프로덕트 레시피 줄이 있으면 400 REPLACE_BLOCKED · 무변화
+  //   P-c 단위 다름(줄 ml ↔ 대상 L — 환산 가능해도 막는다: 줄 단위 = 재고아이템 단위 불변식 ING-UNI-012): 400 REPLACE_BLOCKED · 무변화
+  for (const kase of ['ok', 'productNoStock', 'unit']) {
+    const title = kase === 'ok' ? '프로덕트 레시피·옵션·브랜드 레시피 → 재고아이템 — 셋 다 이동 · 원가 다시 계산 · 삭제'
+      : kase === 'productNoStock' ? '재고아이템 없는 상품으로는 프로덕트 레시피 줄 400 · 무변화'
+      : '단위 다름(ml ↔ L — 환산 안 함) 400 · 무변화';
+    test('inventory', `바꾸고 삭제 2차: ${title}`, async () => {
+      const { sequelize } = require('../config/database');
+      const M = require('../models');
+      const Q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+      const X = (s, r) => sequelize.query(s, { replacements: r });
+      const bgUser = (await Q("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1"))[0];
+      const brand = bgUser && (await Q('SELECT id FROM brands WHERE owner_id = :o ORDER BY id LIMIT 1', { o: bgUser.id }))[0];
+      if (!bgUser || !brand) { console.log(c.gray('      (건너뜀: 데모 BG/브랜드 없음 — 계약 미검증)')); return true; }
+      const auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: bgUser.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+      const tag = `ZZ-HC-REPL2-${kase}-${Date.now()}`;
+      const made = { recipe: [], pr: [], og: [], bp: [] };
+      const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+      try {
+        const { shareToBrand } = require('../services/stockItemMirror');
+        const pi = await M.ProductIngredient.create({ owner_user_id: bgUser.id, name: tag, unit: 'ml', base_quantity: 1000, unit_cost: 10, is_active: true });
+        const to = await M.ProductIngredient.create({ owner_user_id: bgUser.id, name: tag + ' New', unit: 'L', base_quantity: 1, unit_cost: 20, is_active: true });
+        // 프로덕트 레시피 — 이 재료 300 ml + 다른 재료 1줄(합계가 두 줄 합인지 보려고)
+        const other = await M.ProductIngredient.create({ owner_user_id: bgUser.id, name: tag + ' Other', unit: 'g', base_quantity: 1, unit_cost: 1, is_active: true });
+        const [prId] = await X(`INSERT INTO product_recipes (brand_id, name, total_ingredient_cost, is_active, created_at, updated_at) VALUES (:b, :n, 5, 1, NOW(), NOW())`, { b: brand.id, n: tag + '-PR' }); made.pr.push(prId);
+        await X(`INSERT INTO product_recipe_ingredients (recipe_id, ingredient_id, quantity, unit, cost, created_at, updated_at) VALUES (:r,:i,300,'ml',3,NOW(),NOW()),(:r,:o,2,'g',2,NOW(),NOW())`, { r: prId, i: pi.id, o: other.id });
+        // 상품 옵션 줄(수량은 재료 단위) — 대상 단위가 다르면 막혀야 하므로 ok 경우에만 넣는다
+        if (kase === 'ok') {
+          const [ogId] = await X(`INSERT INTO brand_product_option_groups (name, owner_user_id, created_at, updated_at) VALUES (:n, :o, NOW(), NOW())`, { n: tag + '-OG', o: bgUser.id }); made.og.push(ogId);
+          const [oId] = await X(`INSERT INTO brand_product_options (option_group_id, name, owner_user_id, created_at, updated_at) VALUES (:g, :n, :o, NOW(), NOW())`, { g: ogId, n: tag + '-OPT', o: bgUser.id });
+          await M.ProductIngredient.update({ unit: 'L' }, { where: { id: pi.id } }); await pi.reload();
+          await X(`UPDATE product_recipe_ingredients SET unit = 'L', quantity = 0.3 WHERE recipe_id = :r AND ingredient_id = :i`, { r: prId, i: pi.id });
+          await X(`INSERT INTO brand_product_option_ingredients (option_id, ingredient_id, quantity, created_at, updated_at) VALUES (:o, :i, 0.05, NOW(), NOW())`, { o: oId, i: pi.id });
+          // 브랜드 레시피(거울 경유) 1줄
+          const mirror = (await shareToBrand(pi, brand.id)).ingredient;
+          const recipe = await M.Recipe.create({ owner_type: 'brand', brand_id: brand.id, name: tag + '-R', is_active: true }); made.recipe.push(recipe.id);
+          await X(`INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit, created_at, updated_at) VALUES (:r,:i,30,'L',NOW(),NOW())`, { r: recipe.id, i: mirror.id });
+        }
+        let target = { product_ingredient_id: to.id };
+        if (kase === 'productNoStock') {
+          const bp = await M.BrandProduct.create({ owner_user_id: bgUser.id, name: tag + ' Product', unit: 'L', base_quantity: 1, unit_price: 9,
+            is_active: true, distribution_mode: 'all', product_kind: 'stock', sku: 'ZZR2-' + Math.random().toString(36).slice(2, 9) }); made.bp.push(bp.id);
+          target = { brand_product_id: bp.id };
+        }
+        const snap = async () => JSON.stringify(await Q(`SELECT id, ingredient_id, quantity, unit, cost FROM product_recipe_ingredients WHERE recipe_id = :r ORDER BY id`, { r: prId }))
+          + JSON.stringify(await Q('SELECT total_ingredient_cost FROM product_recipes WHERE id = :r', { r: prId }))
+          + JSON.stringify(await Q('SELECT ingredient_id FROM brand_product_option_ingredients WHERE ingredient_id IN (:i) ORDER BY id', { i: [pi.id, to.id] }))
+          + JSON.stringify(await Q('SELECT COUNT(*) n FROM product_ingredients WHERE id = :i', { i: pi.id }));
+        const before = await snap();
+        const prev = await request('POST', `/product-ingredients/${pi.id}/replace`, { target, dry_run: true }, auth);
+        if (kase !== 'ok') {
+          const r = await request('POST', `/product-ingredients/${pi.id}/replace`, { target, dry_run: false }, auth);
+          const uses = r.body?.error?.uses || [];
+          if (r.status !== 400 || r.body?.error?.code !== 'REPLACE_BLOCKED' || !uses.some((u) => u.type === 'product_recipe' && u.reason)) return fail(`${kase} ${r.status} ${JSON.stringify(r.body).slice(0, 240)}`);
+          if ((await snap()) !== before) return fail(`${kase} 막혔는데 무언가 바뀜`);
+          return true;
+        }
+        const kinds = (prev.body?.data?.moved || []).map((m) => `${m.kind}:${m.lines}`).sort().join(',');
+        if (prev.status !== 200 || kinds !== 'brand_recipe:1,product_option:1,product_recipe:1') return fail(`미리보기 ${prev.status} ${kinds} ${JSON.stringify(prev.body).slice(0, 240)}`);
+        if ((await snap()) !== before) return fail('미리보기인데 바뀜');
+        const r = await request('POST', `/product-ingredients/${pi.id}/replace`, { target, dry_run: false }, auth);
+        if (r.status !== 200 || r.body?.data?.deleted !== true) return fail(`적용 ${r.status} ${JSON.stringify(r.body).slice(0, 240)}`);
+        const [line] = await Q(`SELECT ingredient_id, quantity, unit, cost FROM product_recipe_ingredients WHERE recipe_id = :r AND ingredient_id <> :o`, { r: prId, o: other.id });
+        const [pr] = await Q('SELECT total_ingredient_cost t FROM product_recipes WHERE id = :r', { r: prId });
+        const [opt] = await Q('SELECT COUNT(*) n FROM brand_product_option_ingredients WHERE ingredient_id = :t AND quantity = 0.05', { t: to.id });
+        const [gone] = await Q('SELECT COUNT(*) n FROM product_ingredients WHERE id = :i', { i: pi.id });
+        // 0.3 L × (20 / 1 L) = 6 · 합계 = 6 + 2
+        if (Number(line.ingredient_id) !== to.id || Number(line.quantity) !== 0.3 || line.unit !== 'L' || Math.abs(Number(line.cost) - 6) > 0.0001) return fail(`레시피 줄 ${JSON.stringify(line)}`);
+        if (Math.abs(Number(pr.t) - 8) > 0.0001) return fail(`레시피 합계 ${pr.t}`);
+        if (Number(opt.n) !== 1) return fail('옵션 줄이 안 옮겨짐');
+        if (Number(gone.n) !== 0) return fail('재고아이템이 안 지워짐');
+        return true;
+      } catch (e) { return fail(`예외: ${e.message}`); }
+      finally {
+        try {
+          if (made.recipe.length) { await X('DELETE FROM recipe_ingredients WHERE recipe_id IN (:i)', { i: made.recipe }); await X('DELETE FROM recipes WHERE id IN (:i)', { i: made.recipe }); }
+          if (made.pr.length) { await X('DELETE FROM product_recipe_ingredients WHERE recipe_id IN (:i)', { i: made.pr }); await X('DELETE FROM product_recipes WHERE id IN (:i)', { i: made.pr }); }
+          if (made.og.length) {
+            await X('DELETE oi FROM brand_product_option_ingredients oi JOIN brand_product_options o ON o.id = oi.option_id WHERE o.option_group_id IN (:i)', { i: made.og });
+            await X('DELETE FROM brand_product_options WHERE option_group_id IN (:i)', { i: made.og });
+            await X('DELETE FROM brand_product_option_groups WHERE id IN (:i)', { i: made.og });
+          }
+          const ings = (await Q('SELECT id FROM ingredients WHERE name LIKE :t', { t: tag + '%' })).map((r) => r.id);
+          if (ings.length) {
+            await X('DELETE FROM ingredient_seller_products WHERE ingredient_id IN (:i)', { i: ings });
+            await X('DELETE FROM ingredient_cost_logs WHERE ingredient_id IN (:i)', { i: ings }).catch(() => {});
+            await X('DELETE FROM ingredients WHERE id IN (:i)', { i: ings });
+          }
+          if (made.bp.length) await X('DELETE FROM brand_products WHERE id IN (:i)', { i: made.bp });
+          await X('DELETE FROM product_ingredients WHERE name LIKE :t', { t: tag + '%' });
+        } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
+      }
+    });
+  }
+
   // ── 비슷한 이름 묻기 (2026-10-11 Fable 판정 fable-verdict-20261011-similar-name-guard §5-7 · Irene «권고대로») ──
   //   Irene «이거 있는데 그래도 만들거면 만들어. 라는 형태 … 틀리게 재등록하고 연결 엉망 만드는 거 제지해야 해»
   //   N-a 규칙 표(DB 없음): 반드시 잡는 쌍 · 반드시 안 잡는 쌍(Carlos/Calose 는 «못 잡음» 으로 고정 — 바뀌면 판정 다시)
@@ -10743,6 +10840,125 @@ function multipartRecognize(rid, buf, auth) {
 }
 
 // ============================================
+// 직원 출퇴근·휴가 (2026-10-16 · .claude/fable-design-20261016-staff-attendance.md §3-4)
+//   데모 매장 38 의 [확인용] 시험 계정만 쓴다(없으면 만든다 — is_test·이메일 없음/@example.com).
+//   매장 네트워크 검사는 localhost 직접 호출의 X-Real-IP 로 손님 주소를 흉내 낸다(utils/clientIp — 루프백만 믿음).
+// ============================================
+function defineAttendanceTests() {
+  const jwtLib = require('jsonwebtoken');
+  const R = 38;
+  const P = `/restaurants/${R}/attendance`;
+  const accounts = [
+    { username: 'r38:chk-att-a', full_name: '[확인용] Staff Aina', role: 'Staff', pin_code: '7101', permissions: ['access_pos', 'access_serving'] },
+    { username: 'r38:chk-att-b', full_name: '[확인용] Staff Bala', role: 'Staff', pin_code: '7102', permissions: ['access_kitchen'] },
+    { username: 'r38:chk-att-m', full_name: '[확인용] Manager Mei', role: 'Restaurant Admin', pin_code: '7100', permissions: [], email: 'chk-att-manager@example.com' },
+  ];
+  let ids = null;
+  const ensure = async () => {
+    if (ids) return ids;
+    const { User } = require('../models');
+    const out = [];
+    for (const a of accounts) {
+      const [u] = await User.findOrCreate({ where: { username: a.username }, defaults: {
+        ...a, restaurant_id: R, is_active: true, is_test: true, email_verified: false,
+        password: 'Hc' + require('crypto').randomBytes(8).toString('hex') + '9A',
+      } });
+      out.push(u.id);
+    }
+    ids = { a: out[0], b: out[1], m: out[2] };
+    return ids;
+  };
+  const auth = (id, ip) => ({ Authorization: `Bearer ${jwtLib.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: '5m' })}`, ...(ip ? { 'X-Real-IP': ip } : {}) });
+  const reset = async () => {
+    const { sequelize } = require('../config/database');
+    const u = Object.values(await ensure());
+    await sequelize.query('DELETE FROM attendance_records WHERE user_id IN (:u)', { replacements: { u } });
+    await sequelize.query("DELETE FROM attendance_networks WHERE restaurant_id = :r AND ip LIKE '203.0.113.%'", { replacements: { r: R } });
+  };
+
+  test('security', '출퇴근 — 익명 401 · 다른 매장 403 · 직원이 관리 API/남의 휴가 잔여 403', async () => {
+    const { a, b } = await ensure();
+    const anon = await request('GET', `${P}/live`);
+    const cross = await request('GET', `/restaurants/1/attendance/live`, null, auth(a));
+    const adminApi = await request('GET', `${P}/records`, null, auth(a));
+    const other = await request('GET', `${P}/leave/balance?user_id=${b}`, null, auth(a));
+    return anon.status === 401 && cross.status === 403 && adminApi.status === 403 && other.status === 403;
+  });
+
+  test('security', '출퇴근 — PIN 찍기: 주방 전용 세션 403 · 틀린 PIN 401', async () => {
+    const { a, b } = await ensure();
+    const kitchen = await request('POST', `${P}/clock`, { action: 'in', method: 'pos_pin', pin_code: '7101' }, auth(b));
+    const wrong = await request('POST', `${P}/clock`, { action: 'in', method: 'pos_pin', pin_code: '0001' }, auth(a));
+    return kitchen.status === 403 && wrong.status === 401 && wrong.body?.code === 'INVALID_PIN';
+  });
+
+  test('security', '출퇴근 — 매장 네트워크 제한: 다른 회선 409 · Cloudflare 아닌 상대의 CF/XFF 위조 무시 · 관리자 PIN 통과', async () => {
+    const { a, m } = await ensure();
+    await reset();
+    try {
+      await request('POST', `${P}/networks/register-current`, { label: 'hc' }, auth(m, '203.0.113.21'));
+      const on = await request('PUT', `${P}/settings`, { network_restriction: true }, auth(m));
+      const mismatch = await request('POST', `${P}/clock`, { action: 'in' }, auth(a, '198.51.100.21'));
+      const forged = await request('POST', `${P}/clock`, { action: 'in' }, { ...auth(a, '198.51.100.21'), 'X-Forwarded-For': '203.0.113.21', 'CF-Connecting-IP': '203.0.113.21' });
+      const override = await request('POST', `${P}/clock`, { action: 'in', admin_pin: '7100' }, auth(a, '203.0.113.22'));
+      return on.status === 200 && mismatch.status === 409 && mismatch.body?.code === 'NETWORK_MISMATCH'
+        && forged.status === 409 && override.status === 201 && override.body?.data?.record?.clock_in_network === 'override';
+    } finally {
+      await request('PUT', `${P}/settings`, { network_restriction: false }, auth(m));
+      await reset();
+    }
+  });
+
+  test('pos', '출퇴근 — 출근 201 → 동시 재출근은 열린 기록 1줄 → 퇴근 200 → 월 합계에 보임', async () => {
+    const { a, m } = await ensure();
+    await reset();
+    try {
+      const first = await request('POST', `${P}/clock`, { action: 'in' }, auth(a));
+      const { sequelize } = require('../config/database');
+      // 60초 멱등 창 밖으로 밀어 두고 동시 3번 → UNIQUE(open_user_id) 가 1줄만 남긴다
+      await sequelize.query('UPDATE attendance_records SET clock_in_at = DATE_SUB(clock_in_at, INTERVAL 90 MINUTE) WHERE user_id = :u', { replacements: { u: a } });
+      const again = await Promise.all([1, 2, 3].map(() => request('POST', `${P}/clock`, { action: 'in' }, auth(a))));
+      const [[open]] = await sequelize.query('SELECT COUNT(*) n FROM attendance_records WHERE user_id = :u AND clock_out_at IS NULL', { replacements: { u: a } });
+      const out = await request('POST', `${P}/clock`, { action: 'out' }, auth(a));
+      const sum = await request('GET', `${P}/summary`, null, auth(m));
+      const mine = (sum.body?.data?.staff || []).find(s => s.user_id === a);
+      return first.status === 201 && again.every(r => r.status === 409) && Number(open.n) === 1
+        && out.status === 200 && out.body?.data?.record?.minutes >= 89 && mine && mine.minutes >= 89;
+    } finally { await reset(); }
+  });
+
+  test('pos', '휴가 — 신청(휴일·쉬는 요일 뺀 일수) → 겹침 400 → 승인 → 잔여 줄어듦', async () => {
+    const { a, m } = await ensure();
+    const { sequelize } = require('../config/database');
+    const types = await request('GET', `${P}/leave/types`, null, auth(m));
+    const annual = (types.body?.data || []).find(t => t.code === 'annual');
+    if (!annual) return false;
+    // 먼 미래 주(2030-03-04 월 ~ 03-06 수) · 03-05 매장 휴일 · 수요일 쉬는 날 → 1일
+    await sequelize.query("DELETE FROM leave_requests WHERE user_id = :u AND start_date >= '2030-01-01'", { replacements: { u: a } });
+    await request('POST', `${P}/holidays`, { date: '2030-03-05', name: '[확인용] hc holiday', kind: 'store_closed' }, auth(m));
+    const prof = await request('GET', `${P}/profiles/${a}`, null, auth(m));
+    const keepRest = prof.body?.data?.rest_days || [];
+    await request('PUT', `${P}/profiles/${a}`, { rest_days: [3] }, auth(m));
+    await request('PUT', `${P}/leave/entitlements`, { user_id: a, leave_type_id: annual.id, year: 2030, days: 8 }, auth(m));
+    try {
+      const reqd = await request('POST', `${P}/leave/requests`, { leave_type_id: annual.id, start_date: '2030-03-04', end_date: '2030-03-06', reason: '[확인용] hc' }, auth(a));
+      const overlap = await request('POST', `${P}/leave/requests`, { leave_type_id: annual.id, start_date: '2030-03-04', end_date: '2030-03-04' }, auth(a));
+      const staffApprove = await request('POST', `${P}/leave/requests/${reqd.body?.data?.id}/approve`, {}, auth(a));
+      const approve = await request('POST', `${P}/leave/requests/${reqd.body?.data?.id}/approve`, { note: 'hc' }, auth(m));
+      const bal = await request('GET', `${P}/leave/balance?year=2030`, null, auth(a));
+      const b = (bal.body?.data?.balances || []).find(x => x.leave_type_id === annual.id);
+      return reqd.status === 201 && reqd.body?.data?.days === 1 && overlap.status === 400 && overlap.body?.code === 'OVERLAP'
+        && staffApprove.status === 403 && approve.status === 200 && b && b.remaining === 7;
+    } finally {
+      await sequelize.query("DELETE FROM leave_requests WHERE user_id = :u AND start_date >= '2030-01-01'", { replacements: { u: a } });
+      await sequelize.query("DELETE FROM leave_entitlements WHERE user_id = :u AND year = 2030", { replacements: { u: a } });
+      await sequelize.query("DELETE FROM store_holidays WHERE restaurant_id = :r AND date = '2030-03-05'", { replacements: { r: R } });
+      await request('PUT', `${P}/profiles/${a}`, { rest_days: keepRest }, auth(m));
+    }
+  });
+}
+
+// ============================================
 // 실행기
 // ============================================
 async function runTests(allTests, category) {
@@ -10838,6 +11054,7 @@ async function runTests(allTests, category) {
   defineDbTests();
   defineInventoryTests(ctx);
   defineStockLedgerTests(ctx);
+  defineAttendanceTests();
 
   // 🔴 잔재 감시 — 검사 자체가 데모 매장에 **돈·재고 흔적을 남기는지** 실행 전후로 잰다.
   //   2026-09-18: 이 지문 함수는 **정의만 있고 호출이 0곳**이었다. 그래서 직접구매 계약이

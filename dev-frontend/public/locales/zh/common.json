@@ -341,7 +341,10 @@
     "download": "下载应用",
     "reload": "刷新",
     "purchaseOrder": "采购订单",
-    "kiosk": "自助点餐机"
+    "kiosk": "自助点餐机",
+    "attendance": "考勤",
+    "myAttendance": "我的考勤",
+    "timeClock": "打卡机"
   },
   "language": {
     "en": "English",

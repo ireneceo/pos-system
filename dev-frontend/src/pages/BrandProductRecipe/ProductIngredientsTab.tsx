@@ -380,6 +380,9 @@ interface IngredientUse {
   status?: string;
 }
 
+// «다른 재료로 바꾸고 삭제» 로 옮길 수 있는 사용처 — 서버 routes/product-ingredients.js SWITCHABLE_USES 와 같은 목록
+const SWITCHABLE_USES = new Set<IngredientUse['type']>(['brand_recipe', 'product_recipe', 'product_option']);
+
 const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, onCountChange, categoryRefreshKey }) => {
   const { t } = useTranslation(['brand', 'common', 'ingredients']);
   const { defaultCurrency } = useBrandCurrency();
@@ -390,10 +393,12 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
   const [deleteBlocked, setDeleteBlocked] = useState<{ open: boolean; name: string; uses: IngredientUse[]; id?: number | null }>({ open: false, name: '', uses: [] });
   // 다른 재료로 바꾸고 삭제 (2026-10-11 Fable 판정 fable-verdict-20261011-stock-item-replace-on-delete §3-1 · F8-2)
   //   Irene «이런거 연결된 재고아이템 삭제할 때 다른 재고아이템이나 프로덕트로 연결 교체하기 기능을 만들면 안돼?»
-  //   막힘 사유가 **전부 브랜드 레시피 줄**일 때만 연다. 레시피 줄은 옮기기만 한다(수량·단위 그대로). 서버가 미리보기·적용·막기를 정한다.
+  //   막힘 사유가 **전부 레시피 줄**(브랜드 레시피·프로덕트 레시피·상품 옵션)이면 막힘 창 대신 이 창을 바로 연다
+  //   (2026-10-16 Irene «여기서 다른 재고아이템으로 변경하게 해줘. 검색해서 선택해서 대체하게 해줘야지. 이렇게 다 오픈해서 뭘 하라는 거야?»).
+  //   레시피 줄은 옮기기만 한다(수량·단위 그대로). 서버가 미리보기·적용·막기를 정한다.
   const [replaceState, setReplaceState] = useState<{ open: boolean; id: number | null; name: string; target: string | null; showInactive: boolean;
-    sellOptions: any[]; preview: any | null; blockReasons: any[]; busy: boolean; done: boolean }>({
-    open: false, id: null, name: '', target: null, showInactive: false, sellOptions: [], preview: null, blockReasons: [], busy: false, done: false });
+    sellOptions: any[]; preview: any | null; blockReasons: any[]; busy: boolean; done: boolean; uses: IngredientUse[] }>({
+    open: false, id: null, name: '', target: null, showInactive: false, sellOptions: [], preview: null, blockReasons: [], busy: false, done: false, uses: [] });
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -479,9 +484,19 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
     }
   }, [defaultCurrency]);
 
-  const openReplace = async () => {
-    const base = { open: true, id: deleteBlocked.id ?? null, name: deleteBlocked.name, target: null, showInactive: false,
-      sellOptions: [] as any[], preview: null, blockReasons: [] as any[], busy: true, done: false };
+  // 사용처 이름표 — 막힘 창과 바꾸기 창이 같이 쓴다
+  const labelOfUse = (u: IngredientUse) => (u.type === 'product_recipe' ? t('brand:productIngredientsTab.useProductRecipe', 'Product recipe')
+    : u.type === 'product_option' ? t('brand:productIngredientsTab.useProductOption', 'Product option')
+    : u.type === 'brand_recipe' ? t('brand:productIngredientsTab.useBrandRecipe', 'Brand recipe')
+    : u.type === 'store_stock' ? t('brand:productIngredientsTab.useStoreStock', 'Store inventory')
+    : u.type === 'purchase_order' ? t('brand:productIngredientsTab.usePurchaseOrder', 'Purchase order')
+    : u.type === 'brand_product_direct' ? t('brand:productIngredientsTab.useBrandProductDirect', 'Product (stock item linked directly)')
+    : u.type === 'menu_direct' ? t('brand:productIngredientsTab.useMenuDirect', 'Store menu (stock item linked directly)')
+    : t('brand:productIngredientsTab.useStoreSellerLink', 'Supplier link added by the store ({{count}})', { count: u.count || 0 }));
+
+  const openReplace = async (from: { id?: number | null; name: string; uses: IngredientUse[] }) => {
+    const base = { open: true, id: from.id ?? null, name: from.name, target: null, showInactive: false,
+      sellOptions: [] as any[], preview: null, blockReasons: [] as any[], busy: true, done: false, uses: from.uses };
     setDeleteBlocked({ open: false, name: '', uses: [] });
     setReplaceState(base);
     try {
@@ -807,7 +822,9 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
         fetchData();
       } else if (response.error && Array.isArray(response.error.uses) && response.error.uses.length) {
         // 쓰는 곳이 남아 있다 — 문장 하나로 닫지 않고 목록 + «보러가기» 로 안내한다
-        setDeleteBlocked({ open: true, name: deleteConfirm.ingredientName, uses: response.error.uses, id: deleteConfirm.ingredientId });
+        const blockedInfo = { open: true, name: deleteConfirm.ingredientName, uses: response.error.uses as IngredientUse[], id: deleteConfirm.ingredientId };
+        if (blockedInfo.uses.length > 0 && blockedInfo.uses.every((u) => SWITCHABLE_USES.has(u.type))) openReplace(blockedInfo);
+        else setDeleteBlocked(blockedInfo);
       } else {
         const err: any = response.error;
         setInfoModal({
@@ -1550,16 +1567,14 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
           <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: 1.6 }}>
             {t('brand:productIngredientsTab.deleteBlockedIntro', '"{{name}}" is still used in the places below. Open each one and remove it there, then delete this stock item.', { name: deleteBlocked.name })}
           </div>
+          {deleteBlocked.uses.some((u) => SWITCHABLE_USES.has(u.type)) && (
+            <div style={{ fontSize: '12px', color: '#B45309', lineHeight: 1.6 }}>
+              {t('brand:productIngredientsTab.deleteBlockedMixedNote', 'Recipes and options can be switched to another item in one go — clear the other places first, then delete again.')}
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {deleteBlocked.uses.map((u, i) => {
-              const label = u.type === 'product_recipe' ? t('brand:productIngredientsTab.useProductRecipe', 'Product recipe')
-                : u.type === 'product_option' ? t('brand:productIngredientsTab.useProductOption', 'Product option')
-                : u.type === 'brand_recipe' ? t('brand:productIngredientsTab.useBrandRecipe', 'Brand recipe')
-                : u.type === 'store_stock' ? t('brand:productIngredientsTab.useStoreStock', 'Store inventory')
-                : u.type === 'purchase_order' ? t('brand:productIngredientsTab.usePurchaseOrder', 'Purchase order')
-                : u.type === 'brand_product_direct' ? t('brand:productIngredientsTab.useBrandProductDirect', 'Product (stock item linked directly)')
-                : u.type === 'menu_direct' ? t('brand:productIngredientsTab.useMenuDirect', 'Store menu (stock item linked directly)')
-                : t('brand:productIngredientsTab.useStoreSellerLink', 'Supplier link added by the store ({{count}})', { count: u.count || 0 });
+              const label = labelOfUse(u);
               const target = u.type === 'brand_recipe'
                 ? `/pos/recipes?brandId=${u.brandId ?? u.mirrorBrandId ?? ''}&search=${encodeURIComponent(u.name || '')}`
                 : u.type === 'product_recipe' ? `/pos/brand-product-recipes?search=${encodeURIComponent(u.name || '')}`
@@ -1609,11 +1624,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
             })}
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
-            {deleteBlocked.id && deleteBlocked.uses.length > 0 && deleteBlocked.uses.every((u) => u.type === 'brand_recipe') && (
-              <ModalButton type="button" variant="secondary" onClick={openReplace}>
-                {t('brand:productIngredientsTab.replaceOpen', 'Switch to another item & delete')}
-              </ModalButton>
-            )}
+
             <ModalButton type="button" variant="primary" onClick={() => setDeleteBlocked({ open: false, name: '', uses: [] })}>
               {t('common:close', 'Close')}
             </ModalButton>
@@ -1645,7 +1656,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: 1.6 }}>
-                {t('brand:productIngredientsTab.replaceIntro', 'Recipes that use "{{name}}" will use the item you pick instead — amounts stay the same. Then "{{name}}" is deleted.', { name: replaceState.name })}
+                {t('brand:productIngredientsTab.replaceIntroInUse', '"{{name}}" is still used in {{count}} place(s) below, so it cannot just be deleted. Search and pick the item to use instead — they all switch to it (amounts stay the same), then "{{name}}" is deleted.', { name: replaceState.name, count: replaceState.uses.length })}
               </div>
               {!replaceState.done && (
                 <>
@@ -1662,6 +1673,16 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                   </label>
                 </>
               )}
+              {!replaceState.done && replaceState.uses.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '180px', overflowY: 'auto', border: '1px solid #C7CED6', borderRadius: '6px', padding: '8px 10px' }}>
+                  {replaceState.uses.map((u, i) => (
+                    <div key={`${u.type}-${u.id}-${i}`} style={{ display: 'flex', gap: '8px', fontSize: '12px', lineHeight: 1.5, minWidth: 0 }}>
+                      <span style={{ color: '#6B7280', whiteSpace: 'nowrap' }}>{labelOfUse(u)}</span>
+                      <span style={{ color: '#0A2540', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name || `#${u.id}`}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               {(replaceState.blockReasons || []).length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <div style={{ fontSize: '12px', color: '#B91C1C', fontWeight: 600 }}>
@@ -1669,6 +1690,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                   </div>
                   {(replaceState.blockReasons || []).map((e: any, i: number) => (
                     <div key={i} style={{ fontSize: '12px', color: '#4B5563', border: '1px solid #C7CED6', borderRadius: '6px', padding: '8px 10px' }}>
+                      {e.type && SWITCHABLE_USES.has(e.type) ? <span style={{ color: '#6B7280' }}>{labelOfUse(e)} · </span> : null}
                       {e.name ? <strong style={{ color: '#0A2540' }}>{e.name}</strong> : null}{e.name && e.reason ? ' — ' : ''}{e.reason || e.type}
                     </div>
                   ))}
@@ -1686,7 +1708,11 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                   )}
                   {pv.moved.map((m: any, i: number) => (
                     <div key={i} style={{ fontSize: '12px', color: '#4B5563', border: '1px solid #C7CED6', borderRadius: '6px', padding: '8px 10px', lineHeight: 1.6 }}>
-                      {t('brand:productIngredientsTab.replaceMovedLine', '{{count}} recipe line(s) → "{{to}}"', { count: m.lines, to: m.toName })}
+                      {m.kind === 'product_recipe'
+                        ? t('brand:productIngredientsTab.replaceMovedProductRecipe', 'Product recipes: {{count}} line(s) → "{{to}}"', { count: m.lines, to: m.toName })
+                        : m.kind === 'product_option'
+                          ? t('brand:productIngredientsTab.replaceMovedOption', 'Product options: {{count}} line(s) → "{{to}}"', { count: m.lines, to: m.toName })
+                          : t('brand:productIngredientsTab.replaceMovedLine', '{{count}} recipe line(s) → "{{to}}"', { count: m.lines, to: m.toName })}
                       {m.unitInherited ? ` · ${t('brand:productIngredientsTab.replaceUnitInherited', 'unit taken over')}` : ''}
                       {m.cost ? <div style={{ color: '#6B7280' }}>{t('brand:productIngredientsTab.replaceCost', 'Cost {{from}} → {{to}}', { from: m.cost.loser, to: m.cost.winnerAfter })}</div> : null}
                     </div>

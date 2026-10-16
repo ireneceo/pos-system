@@ -117,6 +117,10 @@ const CategoryManagementPage = React.lazy(() => import('./pages/CategoryManageme
 const OptionManagementPage = React.lazy(() => import('./pages/OptionManagement/OptionManagementPage'));
 const CustomersPage = React.lazy(() => import('./pages/Customers/CustomersPage'));
 const StaffPage = React.lazy(() => import('./pages/Staff/StaffPage'));
+// 직원 출퇴근·휴가 (2026-10-16 · .claude/fable-design-20261016-staff-attendance.md)
+const AttendancePage = React.lazy(() => import('./pages/Attendance/AttendancePage'));
+const MyAttendancePage = React.lazy(() => import('./pages/Attendance/MyAttendancePage'));
+const TimeClockPage = React.lazy(() => import('./pages/Attendance/TimeClockPage'));
 const ProfilePage = React.lazy(() => import('./pages/Profile/ProfilePage'));
 const SalesPage = React.lazy(() => import('./pages/Sales/SalesPage'));
 const CompanyInformationPage = React.lazy(() => import('./pages/CompanyInformation/CompanyInformationPage'));
@@ -584,6 +588,11 @@ function App() {
                       <Route path="/restaurant/:restaurantId/pos-terminal" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <POSTerminalPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:restaurantId/time-clock" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
+                          <TimeClockPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/kitchen" element={
@@ -1294,6 +1303,16 @@ function App() {
                       <Route path="/restaurant/:restaurantId/staff" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
                           <StaffPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:restaurantId/attendance" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Restaurant Admin']}>
+                          <AttendancePage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:restaurantId/my-attendance" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
+                          <MyAttendancePage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/sales" element={

@@ -14,6 +14,8 @@ const KioskDevice = sequelize.define('KioskDevice', {
   terminal_host: { type: DataTypes.STRING(64), allowNull: true },
   terminal_port: { type: DataTypes.INTEGER, allowNull: true },
   last_seen_at: { type: DataTypes.DATE, allowNull: true },
+  // 이 기기가 서버에 닿을 때 보인 손님 공인 주소 — 출퇴근 «매장 네트워크» 자동 따라가기(직원 출퇴근 설계 §2-8)
+  last_seen_ip: { type: DataTypes.STRING(45), allowNull: true },
   created_by: { type: DataTypes.INTEGER, allowNull: true },
   revoked_at: { type: DataTypes.DATE, allowNull: true },
   revoked_by: { type: DataTypes.INTEGER, allowNull: true },

@@ -198,5 +198,30 @@
       "cta": "Open Role Selection",
       "textFallback": "Your request for {{role}} at {{target}}: {{result}}."
     }
+  },
+  "attendance": {
+    "leaveRequested": {
+      "subject": "Leave request from {{name}}",
+      "heading": "New leave request",
+      "body": "{{name}} has requested leave. Please approve or reject it.",
+      "type": "Leave type",
+      "period": "Period",
+      "days": "Days",
+      "reason": "Reason",
+      "cta": "Review request"
+    },
+    "leaveDecided": {
+      "subjectApproved": "Your leave request was approved",
+      "subjectRejected": "Your leave request was rejected",
+      "headingApproved": "Leave approved",
+      "headingRejected": "Leave rejected",
+      "bodyApproved": "Your leave request has been approved.",
+      "bodyRejected": "Your leave request was not approved.",
+      "type": "Leave type",
+      "period": "Period",
+      "days": "Days",
+      "note": "Manager note",
+      "cta": "View my attendance"
+    }
   }
 }

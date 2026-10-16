@@ -42,7 +42,11 @@ async function authenticateKioskDevice(req, res, next) {
     };
     const seen = row.last_seen_at ? new Date(row.last_seen_at).getTime() : 0;
     if (Date.now() - seen > SEEN_THROTTLE_MS) {
-      KioskDevice.update({ last_seen_at: new Date() }, { where: { id: row.id }, silent: true }).catch(() => {});
+      // 출퇴근 «매장 네트워크» 자동 따라가기 — 키오스크는 늘 매장 안에 있다(직원 출퇴근 설계 §2-8). 실패해도 키오스크 흐름 무영향.
+      let ip = null;
+      try { ip = require('../utils/clientIp').clientIp(req); } catch (_) { ip = null; }
+      KioskDevice.update({ last_seen_at: new Date(), last_seen_ip: ip }, { where: { id: row.id }, silent: true }).catch(() => {});
+      if (ip) require('../utils/attendanceNetwork').followKioskAddress(row.restaurant_id, ip).catch(() => {});
     }
     return next();
   } catch (e) {

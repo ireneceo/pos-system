@@ -198,5 +198,30 @@
       "cta": "Buka Pemilihan Peranan",
       "textFallback": "Permintaan anda untuk {{role}} di {{target}}: {{result}}."
     }
+  },
+  "attendance": {
+    "leaveRequested": {
+      "subject": "Permohonan cuti daripada {{name}}",
+      "heading": "Permohonan cuti baharu",
+      "body": "{{name}} telah memohon cuti. Sila luluskan atau tolak.",
+      "type": "Jenis cuti",
+      "period": "Tempoh",
+      "days": "Hari",
+      "reason": "Sebab",
+      "cta": "Semak permohonan"
+    },
+    "leaveDecided": {
+      "subjectApproved": "Permohonan cuti anda diluluskan",
+      "subjectRejected": "Permohonan cuti anda ditolak",
+      "headingApproved": "Cuti diluluskan",
+      "headingRejected": "Cuti ditolak",
+      "bodyApproved": "Permohonan cuti anda telah diluluskan.",
+      "bodyRejected": "Permohonan cuti anda tidak diluluskan.",
+      "type": "Jenis cuti",
+      "period": "Tempoh",
+      "days": "Hari",
+      "note": "Nota pengurus",
+      "cta": "Lihat kehadiran saya"
+    }
   }
 }

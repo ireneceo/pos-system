@@ -504,6 +504,8 @@ const STAFF_ROUTE_ACCESS: { test: RegExp; keys: string[] }[] = [
   { test: /\/kitchen/, keys: ['access_kitchen'] },
   { test: /\/display/, keys: ['access_pos'] },
   { test: /\/dashboard/, keys: ['access_pos'] },
+  // 공용 태블릿 타임클락 — POS 세션 위에서만(서버도 같은 판정: routes/attendance.js pos_pin)
+  { test: /\/time-clock/, keys: ['access_pos'] },
 ];
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {

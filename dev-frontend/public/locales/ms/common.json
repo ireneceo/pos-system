@@ -341,7 +341,10 @@
     "download": "Muat turun aplikasi",
     "reload": "Muat semula",
     "purchaseOrder": "Pesanan Belian",
-    "kiosk": "Kiosk"
+    "kiosk": "Kiosk",
+    "attendance": "Kehadiran",
+    "myAttendance": "Kehadiran Saya",
+    "timeClock": "Jam Kehadiran"
   },
   "language": {
     "en": "English",

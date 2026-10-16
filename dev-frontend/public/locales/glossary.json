@@ -403,6 +403,41 @@
       "ko": "한 줄 소개",
       "zh": "一句话介绍",
       "ms": "Ringkasan satu baris"
+    },
+    "Attendance": {
+      "ko": "출퇴근",
+      "zh": "考勤",
+      "ms": "Kehadiran"
+    },
+    "Clock in": {
+      "ko": "출근",
+      "zh": "上班打卡",
+      "ms": "Masuk"
+    },
+    "Clock out": {
+      "ko": "퇴근",
+      "zh": "下班打卡",
+      "ms": "Keluar"
+    },
+    "Time Clock": {
+      "ko": "타임클락",
+      "zh": "打卡机",
+      "ms": "Jam Kehadiran"
+    },
+    "Leave Request": {
+      "ko": "휴가 신청",
+      "zh": "请假申请",
+      "ms": "Permohonan Cuti"
+    },
+    "Rest Day": {
+      "ko": "쉬는 요일",
+      "zh": "休息日",
+      "ms": "Hari Rehat"
+    },
+    "Store Network": {
+      "ko": "매장 네트워크",
+      "zh": "门店网络",
+      "ms": "Rangkaian Kedai"
     }
   }
 }

@@ -57,6 +57,7 @@
 | Kitchen Display | `access_kitchen` |
 | Customer Display / Pickup Display | `access_pos` |
 | Dashboard / Mobile Order(메뉴설정) | `access_pos` |
+| Time Clock(공용 태블릿 PIN 출퇴근, 2026-10-16) | `access_pos` — 서버도 같은 판정(`routes/attendance.js` pos_pin). 직원 «My Attendance» 는 키 없이 모든 Staff·RA. 설계 `docs/STAFF_ATTENDANCE_DESIGN.md` |
 | Products/Stock/Marketing/Analytics/Support/Settings | 기존 백오피스 그룹키 |
 | Profile | 항상 |
 

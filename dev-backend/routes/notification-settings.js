@@ -36,6 +36,9 @@ const NOTIFICATION_CATEGORIES = [
   { key: 'referral_commission', label: 'Referral Commission', description: 'When a commission is credited to your wallet (referrer) or a referral signs up', section: 'Referrals', roles: ['all'] },
   { key: 'referral_payout', label: 'Referral Payout Updates', description: 'Payout request status updates (approved / paid / rejected)', section: 'Referrals', roles: ['all'] },
 
+  // 직원 휴가 신청·결과 (2026-10-16 · 출퇴근 설계 §4-4)
+  { key: 'staff_leave', label: 'Staff Leave Requests', description: 'When staff request leave (managers) or when your leave request is approved or rejected', section: 'Staff', roles: ['Restaurant Admin', 'Staff'] },
+
   // POS operations push categories (v3.28+) — push/in-app only, no email
   { key: 'order_new', label: 'New Order', description: 'When a new order is placed at your restaurant', section: 'POS Operations', roles: ['Restaurant Admin', 'Staff'], push_only: true },
   { key: 'order_status', label: 'Order Status Changes', description: 'When an order is paid, cancelled, or refunded', section: 'POS Operations', roles: ['Restaurant Admin', 'Staff'], push_only: true },

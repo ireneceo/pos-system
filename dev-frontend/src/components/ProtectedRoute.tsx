@@ -144,7 +144,11 @@ const RESTAURANT_MODULE_GATED: Array<{ suffix: string; module: string }> = [
   { suffix: '/categories', module: 'menu_management' },
   { suffix: '/options', module: 'menu_management' },
   { suffix: '/pos-terminal', module: 'pos_terminal' },
-  { suffix: '/kitchen', module: 'kitchen_display' }
+  { suffix: '/kitchen', module: 'kitchen_display' },
+  // 직원 출퇴근·휴가(2026-10-16) — 서버 requireRestaurantModule('staff_attendance') 와 같은 모듈
+  { suffix: '/attendance', module: 'staff_attendance' },
+  { suffix: '/my-attendance', module: 'staff_attendance' },
+  { suffix: '/time-clock', module: 'staff_attendance' }
 ];
 
 interface ProtectedRouteProps {

@@ -1003,19 +1003,25 @@ async function replaceStockItem(req, res) {
     return blocked(400, 'TARGET_REQUIRED', 'Pick the stock item or product to use instead.');
   }
 
-  // 바꿀 수 있는 것은 브랜드 레시피 줄뿐 — 다른 사용처가 있으면 종전대로 «그 자리에서 정리» 로 안내(F8)
+  // 바꿀 수 있는 것 = 레시피처럼 «재료 줄» 인 곳 — 브랜드 레시피 · 프로덕트 레시피 · 상품 옵션 (2026-10-16 2차 · Fable 판정 §3-4 «같은 창에 같은 모양으로»)
+  //   Irene «재고 아이템에 연결된 거 삭제할 때 … 여기서 다른 재고아이템으로 변경하게 해줘. 검색해서 선택해서 대체하게 해줘야지. 이렇게 다 오픈해서 뭘 하라는 거야?»
+  //   발주 이력·상품/메뉴 직접 연결·매장 재고·매장이 붙인 연결은 종전대로 «그 자리에서 정리»(F8).
   const before = await collectStockItemUses(ingredient);
-  const others = before.filter((u) => u.type !== 'brand_recipe');
+  const others = before.filter((u) => !SWITCHABLE_USES.has(u.type));
   if (others.length) {
     return blocked(400, 'REPLACE_BLOCKED', 'This Stock Item is also used in places that cannot be switched automatically. Open each one first.', others);
   }
 
   const t = await ProductIngredient.sequelize.transaction();
   try {
+    const moved = [], skipped = [];
+    // ① 프로덕트 레시피·상품 옵션 줄 — 이 표들은 재고아이템(product_ingredients)만 가리킨다.
+    //   상품을 고르면 그 상품이 직접 가리키는 재고아이템으로 옮긴다(선택기가 그 재고아이템을 숨기고 상품을 보이는 R4 와 같은 짝).
+    const own = await moveOwnLines(ingredient, targetPi, targetBp, t);
+    moved.push(...own.moved); skipped.push(...own.skipped);
     const mirrors = await Ingredient.findAll({
       where: { source_product_ingredient_id: ingredient.id, is_active: true }, attributes: ['id', 'brand_id', 'name'], transaction: t
     });
-    const moved = [], skipped = [];
     for (const m of mirrors) {
       const { ingredient: winner } = targetPi
         ? await shareToBrand(targetPi, m.brand_id, { transaction: t })
@@ -1023,7 +1029,7 @@ async function replaceStockItem(req, res) {
       const r = await mergePair({ loser: m.id, winner: winner.id }, t, { ownerUserId: ownerId });
       if (r.skipped) { skipped.push({ type: 'replace_blocked', id: m.id, name: m.name, brandId: m.brand_id, reason: r.skipped }); continue; }
       const w = await ingRow(winner.id, t);
-      moved.push({ brandId: m.brand_id, from: m.id, to: winner.id, toName: w.name, lines: r.rec.movedRecipeLineIds.length,
+      moved.push({ kind: 'brand_recipe', brandId: m.brand_id, from: m.id, to: winner.id, toName: w.name, lines: r.rec.movedRecipeLineIds.length,
         unitInherited: r.rec.unitInherited, cost: r.rec.cost });
     }
     if (skipped.length) {
@@ -1047,6 +1053,76 @@ async function replaceStockItem(req, res) {
     if (!t.finished) await t.rollback();
     throw error;
   }
+}
+
+const SWITCHABLE_USES = new Set(['brand_recipe', 'product_recipe', 'product_option']);
+const UNIT_KEY = (u) => { const x = String(u || '').trim(); return x.toLowerCase() === 'l' ? 'L' : x.toLowerCase(); };
+
+/**
+ * 프로덕트 레시피 줄·상품 옵션 줄을 다른 재고아이템으로 옮긴다 (replaceStockItem 의 같은 트랜잭션 안).
+ *   레시피 줄: 수량·단위 그대로, 원가는 새 재료로 서버가 다시 계산(utils/recipeCost — 단가 0 이면 0=미정) · 레시피 합계 다시 계산.
+ *   옵션 줄: 수량이 재료 단위로 적혀 있다.
+ *   둘 다 **새 재료 단위가 줄 단위와 같을 때만** 옮긴다 — 환산 가능한 ml↔L 도 막는다: 줄 단위 = 재고아이템 단위가 불변식이다
+ *   (인스펙션 ING-UNI-012 · 차감이 환산 없이 뺀다). 수량 환산은 사람이 레시피에서(Fable 판정 §3-4 «환산 없음»).
+ *   막는 것: 레시피·옵션이 두 재료를 다 씀(수량 합치기는 손으로) · 단위 다름 · 상품이 재고아이템을 안 가리킴.
+ * @returns {{ moved: object[], skipped: object[] }}
+ */
+async function moveOwnLines(ingredient, targetPi, targetBp, t) {
+  const { computeLineCost } = require('../utils/recipeCost');
+  const db = ProductIngredient.sequelize;
+  const q = (sql, r) => db.query(sql, { replacements: r, type: db.QueryTypes.SELECT, transaction: t });
+  const run = (sql, r) => db.query(sql, { replacements: r, transaction: t });
+  const recipeLines = await q(`SELECT pri.id, pri.recipe_id, pri.quantity, pri.unit, pr.name FROM product_recipe_ingredients pri
+      JOIN product_recipes pr ON pr.id = pri.recipe_id WHERE pri.ingredient_id = :id ORDER BY pri.id`, { id: ingredient.id });
+  const optionLines = await q(`SELECT oi.id, oi.option_id, o.name FROM brand_product_option_ingredients oi
+      JOIN brand_product_options o ON o.id = oi.option_id WHERE oi.ingredient_id = :id ORDER BY oi.id`, { id: ingredient.id });
+  if (!recipeLines.length && !optionLines.length) return { moved: [], skipped: [] };
+
+  let to = targetPi;
+  if (!to && targetBp) {
+    to = targetBp.product_ingredient_id ? await ProductIngredient.findByPk(targetBp.product_ingredient_id, { transaction: t }) : null;
+    if (!to || Number(to.owner_user_id) !== Number(ingredient.owner_user_id) || to.is_active === false) {
+      const reason = 'This product is not linked to a stock item — product recipes and options can only use a stock item. Pick a stock item instead.';
+      return { moved: [], skipped: [...recipeLines.map((r) => ({ type: 'product_recipe', id: r.recipe_id, name: r.name, reason })),
+        ...optionLines.map((r) => ({ type: 'product_option', id: r.option_id, name: r.name, reason }))] };
+    }
+  }
+  const skipped = [];
+  for (const r of recipeLines) {
+    const [both] = await q(`SELECT COUNT(*) n FROM product_recipe_ingredients WHERE recipe_id = :r AND ingredient_id = :to`, { r: r.recipe_id, to: to.id });
+    if (Number(both.n)) { skipped.push({ type: 'product_recipe', id: r.recipe_id, name: r.name, reason: `Already uses "${to.name}" too — combine the amounts in the recipe by hand` }); continue; }
+    if (UNIT_KEY(r.unit) !== UNIT_KEY(to.unit)) {
+      skipped.push({ type: 'product_recipe', id: r.recipe_id, name: r.name, reason: `Amount is in ${r.unit} — "${to.name}" is counted in ${to.unit}, change it in the recipe by hand` });
+    }
+  }
+  for (const r of optionLines) {
+    const [both] = await q(`SELECT COUNT(*) n FROM brand_product_option_ingredients WHERE option_id = :o AND ingredient_id = :to`, { o: r.option_id, to: to.id });
+    if (Number(both.n)) { skipped.push({ type: 'product_option', id: r.option_id, name: r.name, reason: `Already uses "${to.name}" too — combine the amounts in the option by hand` }); continue; }
+    if (UNIT_KEY(ingredient.unit) !== UNIT_KEY(to.unit)) {
+      skipped.push({ type: 'product_option', id: r.option_id, name: r.name, reason: `Amount is in ${ingredient.unit} — "${to.name}" is counted in ${to.unit}, change the option by hand` });
+    }
+  }
+  if (skipped.length) return { moved: [], skipped };
+
+  const moved = [];
+  if (recipeLines.length) {
+    for (const r of recipeLines) {
+      const cost = computeLineCost(to, r.quantity, r.unit);
+      await run(`UPDATE product_recipe_ingredients SET ingredient_id = :to, cost = :c, updated_at = NOW() WHERE id = :id`,
+        { to: to.id, c: cost == null ? 0 : Math.round(cost * 10000) / 10000, id: r.id });
+    }
+    const recipeIds = [...new Set(recipeLines.map((r) => r.recipe_id))];
+    await run(`UPDATE product_recipes pr SET total_ingredient_cost =
+        (SELECT COALESCE(SUM(x.cost), 0) FROM product_recipe_ingredients x WHERE x.recipe_id = pr.id), updated_at = NOW()
+      WHERE pr.id IN (:ids)`, { ids: recipeIds });
+    moved.push({ kind: 'product_recipe', to: to.id, toName: to.name, lines: recipeLines.length, recipes: recipeIds.length });
+  }
+  if (optionLines.length) {
+    await run(`UPDATE brand_product_option_ingredients SET ingredient_id = :to, updated_at = NOW() WHERE id IN (:ids)`,
+      { to: to.id, ids: optionLines.map((r) => r.id) });
+    moved.push({ kind: 'product_option', to: to.id, toName: to.name, lines: optionLines.length });
+  }
+  return { moved, skipped: [] };
 }
 
 // 재고 조정

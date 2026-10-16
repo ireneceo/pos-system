@@ -20,7 +20,7 @@ import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
 import { isNativeDesktop } from '../../utils/nativeDesktop';
-import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, Tablet, TrendingUp, HelpCircle, BookOpen, Download, RotateCw, Building2, MapPin, Gift, Bell, Target } from 'lucide-react';
+import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, Tablet, TrendingUp, HelpCircle, BookOpen, Download, RotateCw, Building2, MapPin, Gift, Bell, Target, Clock } from 'lucide-react';
 import { appDownloadTarget } from '../../utils/nativeAppUpdate';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
 
@@ -2012,6 +2012,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       { id: 'floor-plan', label: t('nav.floorPlan', 'Floor Plan'), icon: <LayoutGrid />, path: `/restaurant/${rid}/floor-plan`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/floor-plan`) && canOpenStaffRoute(`/restaurant/${rid}/floor-plan`) },
       // Cash Management(시재관리) — 현금 입출금 회계 리스트. 오늘 운영(개시·캐시인/아웃)은 라이브/플로어 Today's Cash Drawer.
       { id: 'cash-management', label: t('nav.cashManagement', 'Cash Management'), icon: <CreditCard />, path: `/restaurant/${rid}/cash-management`, visible: user?.role === 'Restaurant Owner' || hasMenuPermission('access_pos') },
+      { id: 'time-clock', label: t('nav.timeClock', 'Time Clock'), icon: <Clock />, path: `/restaurant/${rid}/time-clock`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/time-clock`) && canOpenStaffRoute(`/restaurant/${rid}/time-clock`) },
       { id: 'kitchen', label: t('nav.kitchenDisplay', 'Kitchen Display'), icon: <ChefHat />, path: `/restaurant/${rid}/kitchen`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/kitchen`) && canOpenStaffRoute(`/restaurant/${rid}/kitchen`), locked: !routesLoading && !hasModule('kitchen_display') },
       { id: 'pickup-display', label: t('nav.pickupDisplay', 'Pickup Display'), icon: <Tv />, path: `/restaurant/${rid}/display`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/display`) && canOpenStaffRoute(`/restaurant/${rid}/display`) },
       { id: 'mobile-order', label: t('nav.mobileOrder', 'Mobile Order'), icon: <Smartphone />, path: '/mobile', openInNewTab: true, mobileOrder: true, visible: isRouteAllowed('/mobile/:slug/menu') },
@@ -2068,10 +2069,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         id: 'team-marketing', label: t('nav.section.teamMarketing'), icon: <Users />,
         items: [
           { path: `/restaurant/${rid}/staff`, label: t('nav.staff'), visible: user?.role === 'Restaurant Admin' && isRouteAllowed(`/restaurant/${rid}/staff`) },
+          { path: `/restaurant/${rid}/attendance`, label: t('nav.attendance', 'Attendance'), visible: user?.role === 'Restaurant Admin' && isRouteAllowed(`/restaurant/${rid}/attendance`) },
+          { path: `/restaurant/${rid}/my-attendance`, label: t('nav.myAttendance', 'My Attendance'), visible: isRouteAllowed(`/restaurant/${rid}/my-attendance`) },
           { path: `/restaurant/${rid}/customers`, label: t('nav.customers'), visible: hasMenuPermission('marketing') && isRouteAllowed(`/restaurant/${rid}/customers`) },
           { path: `/restaurant/${rid}/coupons`, label: t('nav.coupons'), visible: hasMenuPermission('marketing') && isRouteAllowed(`/restaurant/${rid}/coupons`) }
         ].filter(i => i.visible !== false),
-        visible: user?.role === 'Restaurant Admin' || hasMenuPermission('marketing')
+        visible: user?.role === 'Restaurant Admin' || hasMenuPermission('marketing') || isRouteAllowed(`/restaurant/${rid}/my-attendance`)
       },
       {
         id: 'communication', label: t('nav.section.communication'), icon: <MessageSquare />,

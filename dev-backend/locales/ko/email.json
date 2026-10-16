@@ -198,5 +198,30 @@
       "cta": "역할 선택 화면 열기",
       "textFallback": "{{target}} 의 {{role}} 요청: {{result}}"
     }
+  },
+  "attendance": {
+    "leaveRequested": {
+      "subject": "{{name}} 님의 휴가 신청",
+      "heading": "새 휴가 신청",
+      "body": "{{name}} 님이 휴가를 신청했습니다. 승인 또는 반려해 주세요.",
+      "type": "휴가 종류",
+      "period": "기간",
+      "days": "일수",
+      "reason": "사유",
+      "cta": "신청 확인하기"
+    },
+    "leaveDecided": {
+      "subjectApproved": "휴가 신청이 승인되었습니다",
+      "subjectRejected": "휴가 신청이 반려되었습니다",
+      "headingApproved": "휴가 승인",
+      "headingRejected": "휴가 반려",
+      "bodyApproved": "휴가 신청이 승인되었습니다.",
+      "bodyRejected": "휴가 신청이 승인되지 않았습니다.",
+      "type": "휴가 종류",
+      "period": "기간",
+      "days": "일수",
+      "note": "관리자 메모",
+      "cta": "내 출퇴근 보기"
+    }
   }
 }

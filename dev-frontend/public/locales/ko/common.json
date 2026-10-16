@@ -341,7 +341,10 @@
     "download": "앱 다운로드",
     "reload": "새로고침",
     "purchaseOrder": "발주",
-    "kiosk": "키오스크"
+    "kiosk": "키오스크",
+    "attendance": "출퇴근",
+    "myAttendance": "내 출퇴근",
+    "timeClock": "타임클락"
   },
   "language": {
     "en": "English",

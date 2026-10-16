@@ -1,0 +1,20 @@
+{
+  "country": "MY",
+  "year": 2027,
+  "note": "전국(연방) 공휴일만 — 출처가 서로 맞는 날짜만 넣었다(Deepavali 2027 은 출처 확인이 안 돼 빠짐 — 매장이 직접 추가). 이슬람력 날짜는 하루 바뀔 수 있음. 출처: humanresourcesonline.net 2027 목록(총리실 BKPP 발표 인용) · officeholidays.com/countries/malaysia/2027 (2026-10-16 조회).",
+  "holidays": [
+    { "date": "2027-02-06", "name": "Chinese New Year" },
+    { "date": "2027-02-07", "name": "Chinese New Year (Day 2)" },
+    { "date": "2027-03-10", "name": "Hari Raya Aidilfitri" },
+    { "date": "2027-03-11", "name": "Hari Raya Aidilfitri (Day 2)" },
+    { "date": "2027-05-01", "name": "Labour Day" },
+    { "date": "2027-05-17", "name": "Hari Raya Aidiladha" },
+    { "date": "2027-05-20", "name": "Wesak Day" },
+    { "date": "2027-06-06", "name": "Awal Muharram" },
+    { "date": "2027-06-07", "name": "Agong's Birthday" },
+    { "date": "2027-08-15", "name": "Maulidur Rasul" },
+    { "date": "2027-08-31", "name": "National Day" },
+    { "date": "2027-09-16", "name": "Malaysia Day" },
+    { "date": "2027-12-25", "name": "Christmas Day" }
+  ]
+}

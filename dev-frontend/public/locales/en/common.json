@@ -341,7 +341,10 @@
     "download": "Download app",
     "reload": "Reload",
     "purchaseOrder": "Purchase Order",
-    "kiosk": "Kiosk"
+    "kiosk": "Kiosk",
+    "attendance": "Attendance",
+    "myAttendance": "My Attendance",
+    "timeClock": "Time Clock"
   },
   "language": {
     "en": "English",

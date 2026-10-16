@@ -1,6 +1,38 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-10-16 UTC — 재고 장부 동시 쓰기 경합 고침 /개발완료(행 잠금 · 데드락 재시도 · 풀 막힘 · Fable 설계+게이트 PASS · 개발서버·미배포) [작업방 dd467d4b] · 이전: 2026-10-16 UTC — 10-15 끝난 방 미커밋 묶음 /개발완료(발주 후 품목 수정 736a78f9 · 카탈로그 Add as menu ac41b541, 둘 다 Fable PASS) · 배포 버튼 답 처리 [작업방 05c7f32b] · 이전: 2026-10-15 UTC — 공급업체 상품 옵션 가격 발주 반영 /개발완료(끝난 방들 미커밋 묶음 같이 커밋) [작업방 0883cfbd] · 이전: 2026-10-11 UTC — 브랜드 매니저 여러 브랜드·회사 전체 배정 /개발완료 [작업방 8315f30a] · 이전: 2026-10-11 UTC — 발주 카탈로그 «Add to My Stock» 표시 결함 수정 /개발완료 [작업방 ef2223fa] · 이전: 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
+**마지막 업데이트:** 2026-10-16 UTC — 직원 출퇴근·휴가·휴일 /개발완료(Fable 설계+게이트 PASS · 개발서버·미배포) [작업방 62218c29] · 이전: 2026-10-16 UTC — 재고 장부 동시 쓰기 경합 고침 /개발완료(행 잠금 · 데드락 재시도 · 풀 막힘 · Fable 설계+게이트 PASS · 개발서버·미배포) [작업방 dd467d4b] · 이전: 2026-10-16 UTC — 10-15 끝난 방 미커밋 묶음 /개발완료(발주 후 품목 수정 736a78f9 · 카탈로그 Add as menu ac41b541, 둘 다 Fable PASS) · 배포 버튼 답 처리 [작업방 05c7f32b] · 이전: 2026-10-15 UTC — 공급업체 상품 옵션 가격 발주 반영 /개발완료(끝난 방들 미커밋 묶음 같이 커밋) [작업방 0883cfbd] · 이전: 2026-10-11 UTC — 브랜드 매니저 여러 브랜드·회사 전체 배정 /개발완료 [작업방 8315f30a] · 이전: 2026-10-11 UTC — 발주 카탈로그 «Add to My Stock» 표시 결함 수정 /개발완료 [작업방 ef2223fa] · 이전: 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
 **버전:** **v3.110** (2026-10-11 · Irene «응») · 운영 SW **5.90-preflight-security-20261010** (2026-10-11 06:36 UTC 배포 · 백업 20261011_062932 · DB 덤프 db_predeploy_20261011_062932 · 스모크 10/10 · 마이그 118/118) · 안드로이드 앱 0.3.4
+### 완료 (2026-10-16) — 직원 출퇴근·휴가·휴일 (Irene «권고대로» = Q1·Q2·Q3 A · 개발서버 · Fable 설계 1 + 게이트 PASS 지문 9c44b7722713) [Claude Code · 백그라운드 작업방 62218c29]
+- Irene: «스탭들 출퇴근 관리 좀 하자. 휴일하고, 휴일신청하고 승인하는 거랑, 출퇴근 찍는 거. 급여는 빼고 … 같은 와이파이로 연결된 경우만 되게 하는 설정 … 레스토랑에서만»
+- 설계 .claude/fable-design-20261016-staff-attendance.md (docs/STAFF_ATTENDANCE_DESIGN.md 에 구현 상태 붙여 보관) · 판정 .claude/fable-gate-20261016-staff-attendance.md
+- 백엔드: 모델 7 · 마이그 migrate-create-staff-attendance.js(개발 DB 적용·레지스트리 deploy) · routes/attendance.js · utils/clientIp·attendanceNetwork·leaveDays·attendanceEmail · settingsGuard 허용 키 attendance · 키오스크 주소 따라가기 · 알림 staff_leave · 메일 4언어 · health-check 5건 · data/holidays/MY-2026·2027
+- 프론트: pages/Attendance/*(관리 5탭·내 출퇴근·타임클락) · App 라우트 3 · MainLayout 메뉴 줄만(print-guard bless 8/8) · ProtectedRoute 모듈 잠금 · AuthContext time-clock=access_pos · attendance.json 4언어 · 용어집 · sweep 목록 7화면
+- 검증: API 실호출 48/48 · 고장주입 2건(위조 헤더·UNIQUE 제거) · health security 89/89 · pos 55/55 · tsc 431(기준 439, 새 파일 0) · build:dev 1회 · 클릭 흐름 12/13(1 = 시험이 2단 패널 안 펼침) · 실경로 손님 주소 정상(87.106.11.184) · verify-all --full 21/24(인쇄 지문 → bless 8/8 · 배포 기록 파일 없음은 배포 방 몫) · mount sweep 크래시 0
+- 설계 이탈 3건(Fable 수용): IPv6 /64 비교 · 설정 저장 행 잠금 읽기→attendance 칸만 교체 · 앱 알림 = 탭 대기 배지 + 메일
+- 확인 못 함: 실기기 와이파이/모바일데이터 전환(Irene 할 일로 올림) · 메일 실수신 · 모듈 없는 매장 403(전 요금제 포함이라 닿지 않는 경로) · 운영 nginx(배포 뒤 /운영검증)
+- Fable 비차단(다음): followKioskAddress 가 루프백·사설 주소도 등록(개발 매장 1 에 127.0.0.1 1줄, health 키오스크 시험 부산물) — 건너뛰거나 뒷정리 · 클릭 시험에 2단 패널 펼치기
+- 확인용 데이터(데모 38, 지우지 말 것): [확인용] Staff Aina(2559·PIN 7101·access_pos) · Staff Bala(2560·7102·주방만) · Manager Mei(2561·RA·7100)
+- 운영 반영: 다음 배포 때(마이그 1 = 새 표 7 + kiosk_devices 칸 1 · SW 버전은 배포 묶음 때)
+
+### Irene 할 일 — 실기기로 «매장 와이파이에서만 출퇴근» 확인 (상황판에 올림 · check)
+
+### 답 기다림 (이전) (2026-10-16) — 직원 출퇴근·휴가·휴일: 설계 결정 3건 [Claude Code · 백그라운드 작업방 62218c29]
+- Irene: «스탭들 출퇴근 관리 좀 하자. 휴일하고, 휴일신청하고 승인하는 거랑, 출퇴근 찍는 거. 급여는 빼고 … 같은 와이파이로 연결된 경우만 되게 하는 설정 … 레스토랑에서만»
+- Fable 설계 완료: .claude/fable-design-20261016-staff-attendance.md (코드 변경 0 · 새 표 6 · 새 API 묶음 1 · 화면 3)
+- 무엇을: Q1 공용 태블릿 PIN 출퇴근 화면 1차 포함? · Q2 휴가 잔여일 추적 1차 포함? · Q3 요금제(전 요금제 / 상위만) — Fable 권고 셋 다 A
+- 왜: Q1=TimeClockPage, Q2=leave_entitlements 표 — 표 구조에 영향이라 답 전 구현 금지(Fable)
+- 답이 오면: 설계 문서 §5 파일·§6 검증(고장주입 2건: IP 위조 헤더·UNIQUE 제거) 대로 개발서버 구현 → 끝에 Fable gate 1회
+
+### 완료 (2026-10-16) — 재고아이템 삭제 막힘 창에서 «검색해서 다른 재고아이템으로 바꾸고 삭제» — 프로덕트 레시피·상품 옵션까지 (개발서버 · Fable 게이트 PASS 지문 88142b768670) [Claude Code · 백그라운드 작업방 d2742f33]
+- Irene: «재고 아이템에 연결된 거 삭제할 때 연결되어서 안된다고 나오는데 여기서 다른 재고아이템으로 변경하게 해줘. 검색해서 선택해서 대체하게 해줘야지. 이렇게 다 오픈해서 뭘 하라는 거야?» (Cooking Oil — Product recipe 1 + Brand recipe 9)
+- 원인: 10-11 «다른 재료로 바꾸고 삭제»(40317bb17)는 사용처가 **전부 브랜드 레시피**일 때만 버튼이 떴다(Fable 판정 §3-4 «프로덕트 레시피·옵션은 2차») → 프로덕트 레시피 1줄이 섞여 버튼이 숨음
+- 고침: routes/product-ingredients.js(SWITCHABLE_USES = 브랜드 레시피·프로덕트 레시피·상품 옵션 · moveOwnLines — 줄 원가·레시피 합계 새 재료로 다시 계산 · 막음: 같은 레시피/옵션이 두 재료를 다 씀 · 단위 환산 불가 · 재고아이템 안 가리키는 상품) · ProductIngredientsTab.tsx(옮길 수 있는 사용처뿐이면 막힘 창 대신 «검색해서 고르기» 창을 바로 엶 + 쓰는 곳 목록 · 섞이면 안내 한 줄) · brand.json 4언어 · health-check 2차 3건
+- 검증(지금까지): inventory 77/77 · 고장주입 2건(단위 검사·상품 재고아이템 검사 빼면 해당 검사 실패) 원복 · print-guard 8/8 · design-guard 신규 0
+- 규칙 정정: 처음엔 ml↔L 처럼 환산 가능한 단위도 옮기게 짰는데 인스펙션 ING-UNI-012(줄 단위 = 재고아이템 단위)가 잡음 → «단위가 같을 때만» 으로 바꿈
+- 최종 검증: inventory 77/77 · 고장주입 3건 · verify-all --full 22/24(실패 2 = 배포 기록 없음(이전부터) + 인스펙션 신규 2 = 내 확인용 데이터 단위 → 고친 뒤 신규 0) · mount sweep 크래시 0 · 실브라우저 클릭 흐름 · Fable 게이트 PASS (backups/fable-pending/fable-verdict-20261016-stock-item-replace-2nd-gate.md)
+- Fable 비차단(다음 라운드): ① health 에 «같은 레시피/옵션이 대상도 이미 씀» 1건 ② 미리보기에 «원가 미정(대상 단가 0)» 표시 ③ 상품이 직접 가리키는 재고아이템을 대상으로 고르면 서버가 막기(1차부터) ④ 배포 뒤 INGREDIENT_UNIFICATION_DESIGN F8-2 에 «2차» 한 줄
+- 커밋: 출퇴근 /개발완료(작업방 62218c29)에 함께 실음 · 운영 반영: 다음 배포 때(마이그 0)
+- 확인용 데이터: 데모 브랜드 10 재고아이템 «[확인용] Cooking Oil»(5276 — 프로덕트 레시피 2308 + 브랜드 레시피 2) · 대상 «[확인용] Sunflower Cooking Oil 5L»(5277) — 지우지 말 것
+
 ### 완료 (2026-10-16) — 재고 장부 동시 쓰기 경합 고침: 재고 행 잠금 + 주문 차감 데드락 재시도 + 연결 풀 막힘 (개발서버 · Fable 설계 1 + 게이트 PASS 지문 d25bae92d7c3) [Claude Code · 백그라운드 작업방 dd467d4b]
 - 출처: 배포 방 7a1af9cb 이 남긴 장부 30830~30833(10-11 같은 초 두 health-check 가 옛 재고로 계산 → 사슬 끊김)
 - 재현(데모 38 · 재료 46): 입고+1/조정−1 동시 → 장부 101→99→99→101, 최종 101(정답 100) = 실제 재고 손실 확인
@@ -495,7 +527,8 @@
 - 3차 «비슷한 이름 묻기»(커밋 98e90673a) — 게이트 `…-similar-name-guard-gate.md` PASS · **마커 보류**: 워킹트리에 다른 방(«데모 계정 통합 선택») 미커밋 auth.js·deploy-to-production.sh·App.tsx·DevLogin 등이 섞여, Fable 이 읽지 않은 보안 변경까지 통과로 찍히지 않게 함. 그 방 변경이 커밋·게이트로 빠지면 Fable 을 불러 지문만 확인하고 마커(재판정 없음). 그 전에 훅이 막으면 다른 방 민감 변경 때문 — skip 은 Irene 몫
 - **배포 조건(2·3차): 이 묶음이 들어가는 배포 전 /배포 방이 verify-all --full 1회(타입 신규 0 · 브라우저 일괄 점검 크래시 0) — 실패하면 그 배포에서 2·3차를 뺀다**(이번엔 메모리 부족으로 브라우저 일괄 점검 확인 불가)
 - 한 폴더 동시 편집: 3차 작업 중 다른 방이 같은 폴더(auth.js·App.tsx 등)를 고쳤고, 그 방 알림으로 이 방 빌드 실패(useLabel → eslint rules-of-hooks) 원인을 찾아 고침(actionLabel)
-- Irene 할 일(상황판 등록): 다음 배포 뒤 터미널 짝 합치기 미리보기 → 이어서 적용·점검표·손 작업(그때 할 일로 하나씩)
+- 10-16 운영 배포(9fcf73eb6)에 1·2·3차 전부 포함 확인(git 조상). Irene «뭘 하는지 모르는데 잘못될까봐 무서워 … 운영에서 수동으로 하게 안내하면 안돼?» → 터미널 스크립트 대신 **운영 화면 «다른 재료로 바꾸고 삭제»(같은 규칙·미리보기·확인)로 손 작업** 안내로 바꿈
+- Irene 할 일(상황판): ① 소스·육개장·김치 5개 바꾸고 삭제(todomv58uo3b) ② 옛 소스 5개 Delete(todomvaja41k) ③ 식용유 2·깐마늘 1 바꾸고 삭제(todomvaja4ce) → 끝나면 운영 점검표 읽기 → 손 작업(쌀·오이·소시지·당면·상품 이름)
 - Irene 손 작업(짝 합치기 뒤): K-Jjajang 재고아이템 Deactivate · 오이 «Jjajang Ramen» 1줄(0.05 piece → g) · 쌀 «Rice Carlos» 7줄(0.09 kg → Rice_Calose 90 g) 후 Rice Carlos 삭제 · Sausage Cocktail Deactivate · Chicken Sausage Cocktail 원가·규격 · 당면 «Prepare Glass Noodle for Japchae» 줄 → «Glass Noodle (당면) 1kg», 옛 Glass Noodle·Glass Noddle 1kg 끄기, 당면 재고아이템 재고 -1·원가 0 · bp#16 이름 «K-Yukgaejang Beef 45g»
 - 남은 것(다음 라운드): 교체 대상 서버 검사 1줄 · ING-UNI-032 차단 승격 · 문서(F8-2 · TRADE_STRUCTURE R2·R5 · 이름 규칙 4개+접두어 한 줄+실측 숫자 · BRAND_STOCK_SHARING 절) 배포 뒤 · 입력 중 이름 힌트(2차 후보) · 9-29 ⑤ 매장 8 자기 줄 별건 · Irene «너무 자주 묻는다» 하면 contains 를 2낱말 이상으로 1줄
 

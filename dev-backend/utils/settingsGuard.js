@@ -46,7 +46,10 @@ const OPERATION_SETTINGS_ALLOWED_KEYS = new Set([
   'aiServing',
   // 캐시서랍 자동열림 매장(2026-07-08). true=프린터가 인쇄 시 서랍 자동 개방 → 현금관리 화면의
   // 수동 '서랍 열기' 버튼 숨김. 화이트리스트 누락 시 저장 round-trip 에서 조용히 stripped → 토글이 저장 안 됨. 반드시 보존.
-  'cashDrawerAutoOpen'
+  'cashDrawerAutoOpen',
+  // 직원 출퇴근 설정(2026-10-16). { network_restriction, allow_self_clock, ... } — 저장은 routes/attendance.js 전용 라우트.
+  // 화이트리스트 누락 시 설정 화면 저장 round-trip 에서 조용히 stripped → 네트워크 제한이 꺼진다. 반드시 보존.
+  'attendance'
 ]);
 
 function parseJsonSafe(v) {

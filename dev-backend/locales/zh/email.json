@@ -198,5 +198,30 @@
       "cta": "打开角色选择",
       "textFallback": "您对 {{target}} 的 {{role}} 申请：{{result}}。"
     }
+  },
+  "attendance": {
+    "leaveRequested": {
+      "subject": "{{name}} 的请假申请",
+      "heading": "新的请假申请",
+      "body": "{{name}} 提交了请假申请，请批准或拒绝。",
+      "type": "假期类型",
+      "period": "期间",
+      "days": "天数",
+      "reason": "原因",
+      "cta": "查看申请"
+    },
+    "leaveDecided": {
+      "subjectApproved": "您的请假申请已批准",
+      "subjectRejected": "您的请假申请被拒绝",
+      "headingApproved": "请假已批准",
+      "headingRejected": "请假被拒绝",
+      "bodyApproved": "您的请假申请已获批准。",
+      "bodyRejected": "您的请假申请未获批准。",
+      "type": "假期类型",
+      "period": "期间",
+      "days": "天数",
+      "note": "经理备注",
+      "cta": "查看我的考勤"
+    }
   }
 }

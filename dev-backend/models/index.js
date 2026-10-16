@@ -11,6 +11,14 @@ const OrderAction = require('./OrderAction');
 const OrderPayment = require('./OrderPayment');
 const TerminalTransaction = require('./TerminalTransaction');
 const KioskDevice = require('./KioskDevice');
+// 직원 출퇴근·휴가 (2026-10-16 — .claude/fable-design-20261016-staff-attendance.md)
+const AttendanceRecord = require('./AttendanceRecord');
+const AttendanceNetwork = require('./AttendanceNetwork');
+const StaffWorkProfile = require('./StaffWorkProfile');
+const LeaveType = require('./LeaveType');
+const LeaveEntitlement = require('./LeaveEntitlement');
+const LeaveRequest = require('./LeaveRequest');
+const StoreHoliday = require('./StoreHoliday');
 const UserContext = require('./UserContext');
 const UserContextRequest = require('./UserContextRequest');
 const CashierShift = require('./CashierShift');
@@ -1029,6 +1037,13 @@ MenuReferencePhoto.belongsTo(Product, { foreignKey: 'product_id', as: 'product' 
 Restaurant.hasMany(RecognitionLog, { foreignKey: 'restaurant_id', as: 'recognitionLogs' });
 RecognitionLog.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
 
+
+// 직원 출퇴근·휴가 — 화면 목록에 직원 이름·휴가 종류를 붙이는 용도만(쓰기 경로는 id 로 직접)
+AttendanceRecord.belongsTo(User, { foreignKey: 'user_id', as: 'user', constraints: false });
+LeaveRequest.belongsTo(User, { foreignKey: 'user_id', as: 'user', constraints: false });
+LeaveRequest.belongsTo(LeaveType, { foreignKey: 'leave_type_id', as: 'leaveType', constraints: false });
+LeaveEntitlement.belongsTo(LeaveType, { foreignKey: 'leave_type_id', as: 'leaveType', constraints: false });
+
 module.exports = {
   DeployRecord,
   User,
@@ -1044,6 +1059,13 @@ module.exports = {
   OrderPayment,
   TerminalTransaction,
   KioskDevice,
+  AttendanceRecord,
+  AttendanceNetwork,
+  StaffWorkProfile,
+  LeaveType,
+  LeaveEntitlement,
+  LeaveRequest,
+  StoreHoliday,
   UserContext,
   UserContextRequest,
   CashierShift,
