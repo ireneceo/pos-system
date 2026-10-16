@@ -139,7 +139,40 @@ async function applyAmendRaiseGate(po, t, appendTrackingEvent, { totalBefore, to
   return true;
 }
 
+/**
+ * 구매자가 보낸 뒤 발주를 고쳤을 때의 승인 게이트 (2026-10-15 Fable 설계 buyer-po-edit §3-4).
+ * 오너 승인 매장이면 인상·감량 불문 pending_approval(Irene «수정도 승인하게»). 행위자가 그 매장 ownership 오너면 생략
+ * (applySubmitGate 와 같은 예외 — 승인자가 작성자). 아니면 상태를 건드리지 않고 false.
+ * applyAmendRaiseGate(판매자·인상만) 와 다른 함수인 이유: 조건(전부 vs 인상)·행위자 예외(있음 vs 없음)가 다르다.
+ */
+async function applyBuyerAmendGate(po, t, appendTrackingEvent, { actor, totalBefore, totalAfter } = {}) {
+  if (!(await isApprovalRequiredForPo(po, t))) return false;
+  if (actor) {
+    const owned = await resolveOwnerRestaurantIds(actor);
+    if (owned.includes(parseInt(po.entity_id, 10))) return false;
+  }
+  const tracking = appendTrackingEvent(
+    po, 'pending_approval',
+    `Awaiting Owner approval — buyer edited the order ${(+totalBefore || 0).toFixed(2)} → ${(+totalAfter || 0).toFixed(2)}`,
+    null,
+    {
+      edited_by_buyer: true,
+      status_before: po.status,
+      total_before: totalBefore,
+      total_after: totalAfter,
+      by_user_id: (actor && actor.id) || null
+    }
+  );
+  await po.update({
+    status: 'pending_approval',
+    approval_required: true,
+    tracking_info: tracking
+  }, { transaction: t });
+  return true;
+}
+
 module.exports = {
+  applyBuyerAmendGate,
   resolveOwnerRestaurantIds,
   restaurantHasOwner,
   isApprovalRequiredForRestaurant,

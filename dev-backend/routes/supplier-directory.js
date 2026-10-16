@@ -737,60 +737,16 @@ router.get('/supplier-catalog', async (req, res) => {
       subQuery: false
     });
 
-    // 3. 매핑 여부 lookup — 내 ingredient 와 IngredientSellerProduct 매핑된 supplier_product_id 모음
-    // ingredient 매핑 lookup — buyer entity 별로 적용 + 3 seller_type (supplier/brand/foodcourt) 모두
-    const myIngsWhere = req.buyerEntity.type === 'restaurant'
-      ? { restaurant_id: req.buyerEntity.id }
-      : req.buyerEntity.type === 'brand'
-      ? { brand_id: req.buyerEntity.id }
-      : req.buyerEntity.type === 'foodcourt'
-      ? { foodcourt_id: req.buyerEntity.id }
-      : null;
-    const myIngs = myIngsWhere ? await Ingredient.findAll({ where: myIngsWhere, attributes: ['id'] }) : [];
-    const myIngIds = myIngs.map(i => i.id);
-    // 매장은 부모 브랜드 재료에 자기 연결을 붙일 수 있다(2026-10-04) — 그 연결도 «이미 담음».
-    // 부모 브랜드 재료에 브랜드가 붙인 «출처 연결»(buyer 없음 · 판매자 = 그 브랜드)도 «이미 담음» 이다 (2026-10-11).
-    //   매장은 그 브랜드 줄로 발주한다(운영 K-DINE IPC Branch: 육개장 소스 = 브랜드 재료 57 ↔ 브랜드 상품 11).
-    //   전엔 매장 소유 줄만 봐서 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 떴다.
-    //   보이는 연결 규칙은 utils/brandStockAccess.sellerLinkVisibleWhere 와 같다(공용 연결은 브랜드 자신이 판매자인 것만).
-    let parentBrandIngIds = [];
-    let parentBrandId = null;
-    if (req.buyerEntity.type === 'restaurant') {
-      const { parentBrandIdOf } = require('../utils/brandStockAccess');
-      parentBrandId = await parentBrandIdOf(req.buyerEntity.id);
-      if (parentBrandId) {
-        const brandIngs = await Ingredient.findAll({
-          where: { owner_type: 'brand', brand_id: parentBrandId, is_active: true }, attributes: ['id']
-        });
-        parentBrandIngIds = brandIngs.map(i => i.id);
-      }
-    }
-    const mapWhere = req.buyerEntity.type === 'restaurant'
-      ? { [Op.or]: [
-          { ingredient_id: { [Op.in]: myIngIds.length ? myIngIds : [0] } },
-          { buyer_restaurant_id: req.buyerEntity.id },
-          ...(parentBrandIngIds.length ? [{
-            ingredient_id: { [Op.in]: parentBrandIngIds }, buyer_restaurant_id: null,
-            seller_type: 'brand', seller_entity_id: parentBrandId
-          }] : [])
-        ], is_active: true }
-      : { ingredient_id: { [Op.in]: myIngIds }, is_active: true };
-    const allMapRows = (myIngIds.length === 0 && req.buyerEntity.type !== 'restaurant') ? [] : await IngredientSellerProduct.findAll({
-      where: mapWhere,
-      attributes: ['ingredient_id', 'seller_type', 'seller_product_id', 'buyer_restaurant_id']
-    });
-    // 같은 상품에 매장 자기 연결과 브랜드 출처 연결이 둘 다 있으면 매장 것이 이긴다 — 브랜드 출처 연결을 먼저 깔고 덮는다.
-    const brandIngSet = new Set(parentBrandIngIds);
-    const isBrandSource = (m) => m.buyer_restaurant_id == null && brandIngSet.has(m.ingredient_id);
-    allMapRows.sort((a, b) => (isBrandSource(b) ? 1 : 0) - (isBrandSource(a) ? 1 : 0));
-    const mappedMap = {};
-    const mappedBrandMap = {};
-    const mappedFoodcourtMap = {};
-    for (const m of allMapRows) {
-      if (m.seller_type === 'supplier') mappedMap[m.seller_product_id] = m.ingredient_id;
-      else if (m.seller_type === 'brand') mappedBrandMap[m.seller_product_id] = m.ingredient_id;
-      else if (m.seller_type === 'foodcourt') mappedFoodcourtMap[m.seller_product_id] = m.ingredient_id;
-    }
+    // 3. 매핑 여부 lookup — «이미 담았나» 단일 판정 utils/catalogLink.linkedSellerProductMap (2026-10-15 Fable 설계 D2).
+    //   네 연결 칸(재고아이템·브랜드 재고아이템·자체재고 메뉴·자체재고 브랜드 프로덕트) 모두 본다.
+    //   전에는 ingredient_id 만 봐서 메뉴로 담은 것은 계속 «안 담음», 브랜드 구매자는 무엇을 해도 «안 담음»이었다
+    //   (같은 물건 두 줄의 문). 매장의 부모 브랜드 재료 연결 규칙(2026-10-04·10-11)은 그 함수 안에 그대로 옮겼다.
+    const linked = await require('../utils/catalogLink').linkedSellerProductMap(req.buyerEntity);
+    const mappedMap = linked.supplier;
+    const mappedBrandMap = linked.brand;
+    const mappedFoodcourtMap = linked.foodcourt;
+    // mapped_ingredient_id 는 재료 연결일 때만(카드 더블클릭이 재료 id 로 장바구니를 늘린다) · mapped_target 은 무엇에 붙었는지
+    const mappedIngId = (t) => (t && t.kind === 'ingredient' ? t.id : null);
 
     // 4. supplier 회사명 lookup
     const suppliers = await SupplierCompany.findAll({
@@ -840,7 +796,8 @@ router.get('/supplier-catalog', async (req, res) => {
         category_name: p.category?.name || null,
         supplier: sp ? { id: sp.id, name: sp.name, code: sp.code, logo_url: sp.logo_url, seller_type: 'supplier' } : null,
         already_mapped: !!mappedMap[p.id],
-        mapped_ingredient_id: mappedMap[p.id] || null,
+        mapped_ingredient_id: mappedIngId(mappedMap[p.id]),
+        mapped_target: mappedMap[p.id] || null,
         option_groups: groups,
         has_options: groups.length > 0
       };
@@ -967,7 +924,8 @@ router.get('/supplier-catalog', async (req, res) => {
               category_name: p.category?.name || null,
               supplier: { id: brand.id, name: brandSellerName, code: brand.code, logo_url: brand.logo_url, seller_type: 'brand' },
               already_mapped: !!mappedBrandMap[p.id],
-              mapped_ingredient_id: mappedBrandMap[p.id] || null,
+              mapped_ingredient_id: mappedIngId(mappedBrandMap[p.id]),
+        mapped_target: mappedBrandMap[p.id] || null,
               option_groups: [],
               has_options: false
             });
@@ -1020,7 +978,8 @@ router.get('/supplier-catalog', async (req, res) => {
                 category_name: p.category?.name || null,
                 supplier: { id: b.id, name: extSellerName, code: b.code, logo_url: b.logo_url, seller_type: 'brand' },
                 already_mapped: !!mappedBrandMap[p.id],
-                mapped_ingredient_id: mappedBrandMap[p.id] || null,
+                mapped_ingredient_id: mappedIngId(mappedBrandMap[p.id]),
+        mapped_target: mappedBrandMap[p.id] || null,
                 option_groups: [],
                 has_options: false
               });
@@ -1075,7 +1034,8 @@ router.get('/supplier-catalog', async (req, res) => {
               category_name: p.category?.name || null,
               supplier: { id: fc.id, name: fcSellerName, code: fc.code, logo_url: fc.logo_url, seller_type: 'foodcourt' },
               already_mapped: !!mappedFoodcourtMap[p.id],
-              mapped_ingredient_id: mappedFoodcourtMap[p.id] || null,
+              mapped_ingredient_id: mappedIngId(mappedFoodcourtMap[p.id]),
+        mapped_target: mappedFoodcourtMap[p.id] || null,
               option_groups: [],
               has_options: false
             });

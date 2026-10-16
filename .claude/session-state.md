@@ -1,7 +1,30 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-10-15 UTC — 공급업체 상품 옵션 가격 발주 반영 /개발완료(끝난 방들 미커밋 묶음 같이 커밋) [작업방 0883cfbd] · 이전: 2026-10-11 UTC — 브랜드 매니저 여러 브랜드·회사 전체 배정 /개발완료 [작업방 8315f30a] · 이전: 2026-10-11 UTC — 발주 카탈로그 «Add to My Stock» 표시 결함 수정 /개발완료 [작업방 ef2223fa] · 이전: 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
+**마지막 업데이트:** 2026-10-16 UTC — 10-15 끝난 방 미커밋 묶음 /개발완료(발주 후 품목 수정 736a78f9 · 카탈로그 Add as menu ac41b541, 둘 다 Fable PASS) · 배포 버튼 답 처리 [작업방 05c7f32b] · 이전: 2026-10-15 UTC — 공급업체 상품 옵션 가격 발주 반영 /개발완료(끝난 방들 미커밋 묶음 같이 커밋) [작업방 0883cfbd] · 이전: 2026-10-11 UTC — 브랜드 매니저 여러 브랜드·회사 전체 배정 /개발완료 [작업방 8315f30a] · 이전: 2026-10-11 UTC — 발주 카탈로그 «Add to My Stock» 표시 결함 수정 /개발완료 [작업방 ef2223fa] · 이전: 2026-10-11 UTC — 키오스크 묶음 /개발완료 (Irene «좋아» · 흐름 6크기 재점검 · 배포 기록에 키오스크 4줄) [작업방 4d64bbc0] · 이전: 2026-10-11 UTC — 아침 점검(배포 막힘: 키오스크 실태블릿 확인 대기) [작업방 20234aa0] · 이전: 2026-10-10 아침 점검 /개발완료 (미배포 묶음 배포 준비: SW 5.90 · 배포 기록 · verify-all --full 24/24) [작업방 481f7115] · 운영 최신 SW **5.89-kiosk-receipt-20261007** · 아래 버전 줄은 /배포 때만 갱신
 **버전:** **v3.110** (2026-10-11 · Irene «응») · 운영 SW **5.90-preflight-security-20261010** (2026-10-11 06:36 UTC 배포 · 백업 20261011_062932 · DB 덤프 db_predeploy_20261011_062932 · 스모크 10/10 · 마이그 118/118) · 안드로이드 앱 0.3.4
+### 막힘 (2026-10-16) — 수동 /배포(Irene 직접 지시): 안전 게이트 health [po] 수령 4건에서 멈춤 · 운영 무변경 [Claude Code · 백그라운드 작업방 7a1af9cb]
+- Fable(서버 방 dc7471ba) 조건 1: 자동 저장 커밋 3개 파일 합집합 77개 = 845afaf1 대조 목록(wipfiles.txt 77개)과 같음, 벗어남 0 → pexpect(가짜 터미널)로 «자동 저장 커밋을 포함해 배포할까요?» 에 y (파이프 아님)
+- 결과: 게이트 1~6 통과 → 7/10 health-check 4건 실패 / 374 통과 (10-11 부터 같은 실패 — 시험 뒷정리에서 재료 삭제가 stock_alerts_ibfk_40 FK 에 막힘) → 스크립트 EXIT=1. 백업·빌드·rsync 전이라 운영 무변경·되돌릴 것 없음. LEDGER-004·SW 기록 불일치 게이트는 그 뒤 순서라 이번엔 안 돌았음
+- 조건 3대로 멈추고 PurpleHere 대기열에 «배포 막는 기계 게이트 3건 고치기» 넣음 · --skip-safety 안 씀
+- 로그·도구: backups/deploy-tools/deploy-20261016-7a1af9cb.log · backups/deploy-tools/run-deploy.py(다음 배포 때 질문에만 y)
+- 다음: 대기열 일이 셋 다 고치고 /개발완료 → 상황판 수동 /배포. 버전·릴리즈노트·공지·CHANGELOG 정리는 그 배포 뒤
+
+### 완료 (2026-10-16) — «배포 버튼으로 내보낼까요?» 답 처리 → 배포 방(7a1af9cb)이 이미 실행, 게이트에서 막힘 [Claude Code · 백그라운드 작업방 05c7f32b]
+- (이전) 질문: «운영 화면이 10-11 배포 그대로, 커밋 16개 미배포 — 지금 «배포» 버튼으로 내보낼까요?» → Irene «권고대로 진행해 줘»
+- 확인: 배포 방 7a1af9cb 가 수동 /배포 실행(위 «막힘» 절) · 운영 sw.js 실측 = 5.90-preflight-security-20261010 그대로(운영 무변경)
+- 이 방은 배포하지 않음(배포는 배포 방 몫). 남은 길: 대기열 «배포 막는 기계 게이트 3건 고치기» → /개발완료 → 상황판 수동 /배포
+
 **작업 상태:** ✅ 운영 배포 완료 SW 5.90 (2026-10-11) — 남은 것: /운영검증 · 키오스크 태블릿 운영 확인 · 첫 주방 티켓 눈 확인 · E1·E3(서버 창, 선택) · Q6 · 재발 방지(마이그 «칸 추가 단계» 분리, Fable 설계 1회)
+
+### 완료 (2026-10-15) — 매장 발주 후 품목 빼기·추가 + 오너 승인 매장은 수정도 승인 (개발서버 · Fable 설계 1 + 게이트 PASS) [Claude Code · 백그라운드 작업방 736a78f9]
+- Irene: «외부공급업체는 언제나 수정 · 우리 솔루션 공급업체는 오너 승인으로 넘어가기 전까지 · 레스토랑관리자나 발주권한 스탭 · 오너 승인 설정이면 수정도 승인 · 아이템별 삭제·추가(해당 공급업체 것)를 발주내역에서»
+- 설계 .claude/fable-design-20261015-buyer-po-edit.md · 판정 .claude/fable-gate-20261015-buyer-po-edit.md (PASS · 마커 지문 c91bc1abcb69)
+- 구현: routes/purchase-orders-amend.js(GET amendable-products · POST amend — 판매자 amend 거울, 단가 서버 계산) · poAmend.buyerAmendBlock(상태·청구서·대조·결제·수령·발송 6가지, 상세 can_amend 와 같은 함수) · poOwnerApproval.applyBuyerAmendGate(승인 매장 = 다시 pending_approval, 오너 본인은 생략) · poMinOrder.minOrderRulesByMapping(화면 미리 채우기와 검사 같은 규칙) · buyerScope 오너 허용 1줄 · poNotifications 판매자 «구매자가 고침» 메일 · 상세 화면 «품목 수정» 버튼+창(components/PurchaseOrders/EditPoItemsModal.tsx) · 상단 «매장이/오너가 수정함» · 오너 승인 화면 «Edited» 배지 · 4언어 · 문서 PURCHASE_ORDER_SYSTEM
+- 검증: health-check B1~B10 · 고장주입 4건(+Fable 1건) 모두 잡힘 · verify-all --full 20/24 → 고친 뒤 표준 20/23(실패 3 이전부터: 배포 준비 기록 · LEDGER-004 · [po] 수령 FK 4) · mount sweep 크래시 0 · 실브라우저 클릭 흐름(데모 38)
+- 확인 못 함: 오너 승인 화면 «Edited» 배지 실브라우저(데모 38 오너 없음 — API 로만) · 판매자 메일 실수신
+- 확인용 데이터: 데모 38 [확인용] PO-R38-20261015-003(39359) — 지우지 말 것
+- Fable 지시(비차단): ① 오너 본인 판정 두 곳(req.buyerIsOwnerView vs resolveOwnerRestaurantIds) 통일 ② [po] 수령 검사 4건 stock_alerts FK 정리 별건 · 무관 관찰: jest store-cost-base-quantity ③ 실패(수령 원가 평균)
+- Irene 답(상황판): «권고대로 진행해 줘» → (가) 허용 확정 — 가입 공급업체 발주도 공급업체 «확인» 전까지 매장 수정 가능(이미 그렇게 구현, 코드 변경 없음)
+- 커밋 안 함(같은 파일에 다른 방 미커밋 변경 섞임) · 운영 반영: 다음 배포 때(마이그 없음)
 
 ### 완료 (2026-10-15) — 판매자 주문 수정에서 총액이 늘어도 «확인» 누르면 저장 (개발서버 · Fable 설계 1 + 게이트 PASS) [Claude Code · 백그라운드 작업방 fa58b0c2]
 - Irene: «이렇게 무조건 안되게 하면 안돼. 브랜드제너럴이 추가하고 수정하는게 자유로워야 해. 이거 확인 누르면 바뀌게 해줘야 해. Items total RM 804.60 → RM 830.50 … incoming-orders 이 페이지에서 에디트할 때»
@@ -21,12 +44,14 @@
 - 남은 것: 운영 배포 뒤 Irene 가 상세 화면에서 Kway Teow 3개 중 남길 1개 고르고 나머지 삭제(화면 휴지통) · 외부 업체 상품 추가에는 «비슷한 이름 묻기»(98e90673a)가 안 붙어 있음 — 규칙은 이번 3개를 잡음(same_name·contains), 붙이려면 별도 일
 - 운영 반영: 다음 배포 때
 
-### 답 기다림 (2026-10-15) — 발주 카탈로그 «Add as menu/product» 를 재고아이템+메뉴로 바꿀지 [Claude Code · 백그라운드 작업방 ac41b541]
-- Irene: «공급업체에 올린 상품을 발주하는 곳에서 재고아이템에 추가하기 나와서 넣으면 메뉴에 추가하기도 없어져? 레스토랑관리자는 메뉴추가는 재고아이템에도 추가하고 메뉴에도 추가하는 거 맞아? 브랜드제너럴은 재고아이템추가하고 프로덕트에도 추가하는 거고, 그럼 add product여야 하는데 제대로 구분이 되는 건지.»
-- 실측(개발 데모 38·데모 브랜드 10 임시 계약, 만든 행 전부 삭제 확인): 라벨은 맞음(매장 menu·브랜드 product·푸드코트 숨김) · Add to My Stock 뒤 두 버튼 숨김(매장) · Add as menu 는 재고아이템 없이 자체재고 메뉴만 → 카드 계속 «안 담음» → Add to My Stock 하면 같은 물건 두 줄, Add as menu 다시 하면 메뉴 두 개 · 브랜드는 판정이 ingredients.brand_id 를 봐서 무엇을 해도 Linked 안 뜸 → Add to My Stock 뒤 Add as product 로 두 줄 · 브랜드 Add as product 는 BrandProductBrand 0행
-- Fable 설계(코드 변경 0): .claude/fable-design-20261015-catalog-add-menu.md — D1 버튼 하나로 재고아이템+직접연결 메뉴/프로덕트 · D2 «이미 담음» 판정 네 칸 · D4 Sold as 표시 · D6 문구
-- 질문: **카탈로그의 «메뉴/프로덕트 추가» 를 «재고아이템 + 그대로 파는 메뉴/프로덕트» 로 바꿀까요?** — Fable 권고 (가). 상황판 질문 올림(askmv96f2pd)
-- 답이 오면: (가) 설계 문서 §3 순서대로 구현(같은 파일 다른 방 미커밋 위에 얹음) → 빌드 1회·verify-all --full → Fable gate 1회. (나)면 D2 판정만 고치고 gate.
+### 완료 (2026-10-15) — 발주 카탈로그 «Add as menu / Add as product» = 재고아이템 + 그대로 파는 메뉴/프로덕트 (개발서버 · Fable 게이트 PASS) [Claude Code · 백그라운드 작업방 ac41b541]
+- Irene: «공급업체에 올린 상품을 발주하는 곳에서 재고아이템에 추가하기 나와서 넣으면 메뉴에 추가하기도 없어져? 레스토랑관리자는 메뉴추가는 재고아이템에도 추가하고 메뉴에도 추가하는 거 맞아? 브랜드제너럴은 … add product여야 하는데 제대로 구분이 되는 건지.» → 상황판 답 «권고대로 진행해 줘»(Fable 권고 (가))
+- 설계 .claude/fable-design-20261015-catalog-add-menu.md · 판정 .claude/fable-gate-20261015-catalog-add-menu.md
+- 한 것: services/sellStockItemDirect.js(재고아이템 → 직접 연결 메뉴/프로덕트 · 중복 409 · 브랜드 귀속)를 두 문이 같이 씀 — 카탈로그 from-catalog new_product(매장 restaurantCatalogLink · 브랜드 product-ingredients) · 재고 목록 register-as-product 2벌(×1 레시피 → 직접 연결). 자체재고 메뉴/프로덕트 새로 만드는 길 삭제(기존 것·연결 모드 유지) · «이미 담음» 판정 utils/catalogLink.linkedSellerProductMap(네 칸, 브랜드도 Linked) · 카탈로그 mapped_target · 매장 재료 목록 sold_as_menu + 화면 «Sold as» · 설명 문구 4언어 · findAlreadyLinked 범위를 내 매장/소유자로(남의 연결을 집어 두 줄 만들던 원래 결함) · 보고 스크립트 scripts/report-self-stock-product-links.js(개발 0·0)
+- 검증: API 16/16 · 판매 1개 → 재고아이템 10→9 · 고장주입(팀원 2회 · Fable 1회) 모두 잡힘 · inventory 70/70 · health 373/377(실패 4 = 이전부터 [po] 수령 FK) · verify-all --full 21/24(실패 3 이전부터) · 클릭 흐름 데모 38
+- 확인용 데이터: 데모 38 메뉴 «[확인용] Premium Tomato»(24727) → 재고아이템 Premium Tomato(21458) — 지우지 말 것
+- 남은 것(비차단): health-check 새 검사 finally 가 실패 때 생긴 dup 메뉴도 거두게 · 운영 D5 보고 스크립트는 운영검증 때
+- 운영 반영: 다음 배포 때 · /개발완료 안 함(같은 미커밋에 다른 방 진행 중 변경 섞임)
 
 ### 완료 (2026-10-15) — 공급업체 상품 옵션 가격 발주 반영 (개발서버 · Fable gate PASS · 조건(클릭 흐름 1회) 충족 · /개발완료) [Claude Code · 백그라운드 작업방 0883cfbd]
 - Irene: «공급업체 상품도 옵션이 필요하고 옵션마다 가격이 달라. 예를 들면 1팩은 더 비싸고 20팩은 더 싸고. 옵션 기본세팅 검토해줘.» → 상황판 답 «권고대로 진행해 줘»(20팩 = 카톤 상품 따로 등록 · 옵션 가격 반영 구현)
@@ -74,6 +99,7 @@
 - 스크립트: /var/www/backups/ops-20261015/fix-stock-base-from-seller.js (저장소 밖 · 연습 기본 / --commit / --rollback <백업>) — 대상 조건 하나(TARGET_SQL)로 고르고 쓰는 순간 같은 조건 재확인 · 백업 JSON 운영 홈 · 트랜잭션 1개 · 재조회 대조 · 배포 전(stockUnits 없음·ENUM 8종)이면 멈춤
 - 운영 대상(읽기 전용 실측) 12줄 전부 매장 8 K-DINE IPC 재료(메뉴 표 무접촉) — 원가·재고·연결 환산·장부 그대로, base_quantity·package_unit·package_quantity 만
 - 개발 시험: 같은 모양 2행 만들어 연습 2행 → 적용 2행·불일치 0·남은 0 → 되돌림 2행 원래 값 → 시험 행 삭제
+- 10-15 Irene 가 배포 전에 명령 실행 → «중단: 운영에 utils/stockUnits.js 가 없습니다» (쓰기 0, 의도대로 멈춤) · 할 일 다시 올림(배포 뒤 같은 명령)
 - 남은 일(따로): 12줄 중 11줄 연결 환산 1.0000(«받으면 재고 +1 g») 정리 · 나머지 21줄은 이미 단위당 원가 — 목록만
 
 ### Irene 할 일
@@ -120,7 +146,7 @@
 ### 완료 (2026-10-15) — 안드로이드 앱 구글 플레이 등록 준비 (개발서버 · Fable PASS 조건부 · /개발완료) [Claude Code · 백그라운드 작업방 dae80eff]
 
 ### Irene 할 일 (상황판에 올림 — 순서대로)
-- ① Fable 통과 표시 찍기(이 방에 «!» 명령 한 줄) · ② 플레이 콘솔 «앱 만들기» + 개발자 이름(GIT CONSULTING SDN. BHD.?) 확인
+- ① Fable 통과 표시 — ✅ 10-15 Irene 실행, 마커 지문 135f29dc2184(워킹트리 바뀌면 무효 — 다른 방 미커밋이 섞여 있어 곧 바뀔 수 있음) · ② 플레이 콘솔 «앱 만들기» + 개발자 이름(GIT CONSULTING SDN. BHD.?) 확인
 - 다음(① ② 뒤 이 방/새 방이 하나씩 올림, 설계 §8): I3 서명 키 — 콘솔 «앱 무결성 › 앱 서명 › Java 키 저장소에서 키 내보내기» 의 암호화 공개키(pem)를 방에 붙여 넣기 → `.toolchain/jdk21/bin/java -jar .toolchain/pepk.jar --keystore=/opt/secrets/purplepos-release.keystore --alias=purplepos --output=<zip> --include-cert --rsa-aes-encryption --encryption-key-path=<pem>` → zip 을 dev-apps/ 에 → Irene 업로드 · I4 내부 테스트(AAB https://dev.purplehere.com/dev-apps/PurplePOS-0.4.0.aab · 테스터 · Start rollout) · I5 실기기 6항목(설계 §7-2) · I6 앱 콘텐츠(store/app-access.md · data-safety.md — **/account-deletion·방침 보강이 운영에 배포된 뒤**) · I7 등록정보(store/listing.en.md · icon-512 · feature · screenshots) · I8 프로덕션 제출 · I9 게시 확인 → `build-release.sh --publish-feed` → /배포
 
 - Irene: «안드로이드앱 정식으로 등록하고 심사 진행하자.»

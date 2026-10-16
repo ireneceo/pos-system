@@ -1312,6 +1312,12 @@ WhatsApp 은 `*텍스트*` 를 굵게 렌더한다. 메일(mailto 평문)은 굵
 - 라인 상태 신설(예: `removed_by_seller` + 사유) + 구매자 알림 + **총액은 표준 재계산 경로로만**.
 - 구매자 쪽 라인 단위 빼기 UI 도 같은 묶음으로.
 
+> **2026-10-15 — 구매자(매장) 쪽 품목 수정 완성** (Fable 설계 `.claude/fable-design-20261015-buyer-po-edit.md` · Irene «미스 발주 … 아이템별 삭제·추가를 발주내역에서 · 오너 승인 매장은 수정도 승인»)
+> - 경로: `GET /purchase-orders/:id/amendable-products` · `POST /purchase-orders/:id/amend` (`routes/purchase-orders-amend.js`) — 판매자 amend 와 같은 판정(`utils/poAmend`)·금액식·`amended` 이벤트(+`by_buyer`).
+> - 언제: `pending_approval`·`submitted`(판매자 확인 전). 외부 공급업체는 confirm 이 없어 수령 전까지 사실상 언제나. 막는 조건 6개 = `poAmend.buyerAmendBlock`(상세 GET `can_amend` 와 같은 함수).
+> - 오너 승인 매장은 수정 = 다시 승인 대기(`poOwnerApproval.applyBuyerAmendGate`, 오너 본인 수정은 생략). 화면 = 발주 상세 «Edit items» · 오너 승인 화면 «Edited» 배지.
+> - `PUT /purchase-orders/:id` 는 품목 수정 경로로 쓰지 않는다(화면 진입점 없음 유지 · 화면 단가를 믿는 기존 부채 — 다음 정리 후보).
+
 ---
 
 # 📌 단위 주문(UoM) · 다중 공급업체 오더 방향 — 설계 (2026-08-30, Fable 점검)

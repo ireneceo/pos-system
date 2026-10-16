@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-15 — [Claude Code] 공급업체 상품 옵션 가격이 발주·판매자 받은 주문·청구서에 실림 + 규격(1팩/20팩 카톤)은 상품을 따로(Irene «권고대로») · 같은 날 끝난 방들 미커밋 묶음 /개발완료(SKU·단위 정비 · 재료 수정 창 공급업체 · 다운로드 웹 앱 안내 · 판매자 주문 수정 총액 확인 등)(개발서버·미배포) · 이전: 2026-10-15 — [Claude Code] 안드로이드 앱 Google Play 등록 준비: Capacitor 8 · Android 16 기준 · 자가 업데이트 제거 · 앱 안 가입 길 닫기 + /account-deletion · 플레이 제출 파일 0.4.0(AAB) · Fable PASS(조건부) · 플레이 콘솔 작업은 Irene 할 일로(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 브랜드 매니저 = 회사 직원: 여러 브랜드·회사 전체 배정 + 회사 공용 자료 개방 + 메뉴 접근 7묶음 정리(Fable 설계·검증 PASS · 개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 발주 카탈로그: 부모 브랜드 재료로 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 뜨던 표시 결함 수정(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] ✅ **v3.110 · 운영 배포 SW 5.90-preflight-security-20261010 (백업 20261011_062932 · 마이그 118/118 · 스모크 10/10)** — 10-08~10-11 묶음(운영 전 보안 0단 · 판매 중지 상품 · 청구서 창 · 재고→원가 · 외부 정산서 · 배송 지역 · 키오스크 결제/전체 화면 · 새 매장 결제 기본값) 운영 반영. 1차는 마이그 순서(새 칸이 목록 끝)로 실패→자동 원복, 레지스트리 순서 고쳐(Fable PASS) 2차 성공.
+> **최종 업데이트:** 2026-10-16 — [Claude Code] 10-15 끝난 방 미커밋 묶음 /개발완료: 매장 발주 후 품목 빼기·추가(오너 승인 매장은 수정도 승인) · 발주 카탈로그 «Add as menu / Add as product» = 재고아이템 + 그대로 파는 메뉴/프로덕트 (둘 다 Fable 게이트 PASS · 개발서버·미배포) · 운영 배포는 10-16 수동 /배포가 health [po] 수령 FK 4건에서 막힘 → 게이트 고치기 대기 · 이전: 2026-10-15 — [Claude Code] 공급업체 상품 옵션 가격이 발주·판매자 받은 주문·청구서에 실림 + 규격(1팩/20팩 카톤)은 상품을 따로(Irene «권고대로») · 같은 날 끝난 방들 미커밋 묶음 /개발완료(SKU·단위 정비 · 재료 수정 창 공급업체 · 다운로드 웹 앱 안내 · 판매자 주문 수정 총액 확인 등)(개발서버·미배포) · 이전: 2026-10-15 — [Claude Code] 안드로이드 앱 Google Play 등록 준비: Capacitor 8 · Android 16 기준 · 자가 업데이트 제거 · 앱 안 가입 길 닫기 + /account-deletion · 플레이 제출 파일 0.4.0(AAB) · Fable PASS(조건부) · 플레이 콘솔 작업은 Irene 할 일로(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 브랜드 매니저 = 회사 직원: 여러 브랜드·회사 전체 배정 + 회사 공용 자료 개방 + 메뉴 접근 7묶음 정리(Fable 설계·검증 PASS · 개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 발주 카탈로그: 부모 브랜드 재료로 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 뜨던 표시 결함 수정(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] ✅ **v3.110 · 운영 배포 SW 5.90-preflight-security-20261010 (백업 20261011_062932 · 마이그 118/118 · 스모크 10/10)** — 10-08~10-11 묶음(운영 전 보안 0단 · 판매 중지 상품 · 청구서 창 · 재고→원가 · 외부 정산서 · 배송 지역 · 키오스크 결제/전체 화면 · 새 매장 결제 기본값) 운영 반영. 1차는 마이그 순서(새 칸이 목록 끝)로 실패→자동 원복, 레지스트리 순서 고쳐(Fable PASS) 2차 성공.
 
 > **이전:** 2026-10-11 — [Claude Code] ✅ **키오스크 결제 화면 개편 + 키오스크 묶음 /개발완료 (개발서버만)** — 카운터 결제 키오스크 숨김 · 가로 = 오른쪽 결제 패널, 세로 = 한 칸 · 미등록 태블릿 안내 · 키오스크 전체 화면(18bc810d)·대시보드 링크(72cfb0db)·새 매장 결제 기본값(f5b1a378) 함께 기록 · Irene «좋아» · 키오스크 흐름 6크기 재점검 + 실제 주문 1건 확인.
 
@@ -476,6 +476,24 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 10-15 끝난 방 미커밋 묶음 (2026-10-16 /개발완료, 개발서버만) [Claude Code]
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 매장 발주 후 품목 빼기·추가 | 외부 공급업체는 언제나, 가입 공급업체는 공급업체 확인 전까지 · 오너 승인 매장은 다시 승인 대기 · 판매자에 «구매자가 고침» 메일 (Fable 설계+게이트 PASS, 작업방 736a78f9) | ✅ 완료 |
+| 발주 카탈로그 «Add as menu / Add as product» | 재고아이템 + 그대로 파는 메뉴/프로덕트 한 번에 · 자체재고 메뉴 새로 만드는 길 삭제 · «Sold as» 표시 (Fable 게이트 PASS, 작업방 ac41b541) | ✅ 완료 |
+| 배포 버튼 답 처리 | 배포 방 7a1af9cb 가 실행 → health [po] 수령 FK 4건에서 막힘(운영 무변경) | ✅ 확인 |
+
+### 수정된 파일
+- `dev-backend/routes/purchase-orders-amend.js`(신규) · `routes/purchase-orders*.js` · `utils/poAmend.js` · `utils/poOwnerApproval.js` · `utils/poMinOrder.js` · `middleware/buyerScope.js` · `services/poNotifications.js`
+- `dev-backend/services/sellStockItemDirect.js`(신규) · `services/restaurantCatalogLink.js` · `routes/product-ingredients.js` · `routes/restaurants-ingredients.js` · `routes/menu.js` · `routes/supplier-directory.js` · `utils/catalogLink.js` · `scripts/report-self-stock-product-links.js`(신규) · `scripts/health-check.js`
+- `dev-frontend/src/components/PurchaseOrders/EditPoItemsModal.tsx`(신규) · `PurchaseOrderDetailPage.tsx` · `NewPurchaseOrderPage.tsx` · `OwnerPoApprovalsPage.tsx` · `IngredientsTab.tsx` · `locales/*/purchaseOrders.json`
+- `docs/PURCHASE_ORDER_SYSTEM.md`
+
+---
 
 ## ✅ 완료: 공급업체 상품 옵션 가격 → 발주 줄 (2026-10-15, 개발서버만) [Claude Code]
 

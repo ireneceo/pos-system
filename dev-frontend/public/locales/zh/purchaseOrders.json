@@ -235,7 +235,8 @@
       "receiveAndPay": "收货 + 付款",
       "pay": "记录付款",
       "refund": "撤销付款",
-      "download": "下载 PDF"
+      "download": "下载 PDF",
+      "editItems": "修改品项"
     },
     "noNotes": "无备注。",
     "returns": {
@@ -282,7 +283,39 @@
     "pdfDownloadFailed": "下载失败",
     "orderMore": "+ 追加订购",
     "awaitingApproval": "此采购单正在等待业主批准，批准后才会发送给供应商。",
-    "rejectedByOwner": "业主已拒绝"
+    "rejectedByOwner": "业主已拒绝",
+    "amendedByBuyer": "门店修改了此采购单",
+    "amendedByOwner": "店主修改了此采购单",
+    "editItems": {
+      "title": "修改品项",
+      "addItem": "添加品项",
+      "reason": "修改原因（可选）",
+      "reasonPlaceholder": "例如：下错了品项",
+      "itemsTotal": "品项合计",
+      "deliveryNote": "保存时系统会重新计算单价和运费。",
+      "approvalNote": "保存后此修改将提交店主审批。审批前供应商看不到。",
+      "externalResendNote": "此供应商不使用本应用。保存后请通过 WhatsApp 或邮件重新发送更新后的采购单。",
+      "emptyHint": "至少要保留一个品项。如需全部删除，请取消该采购单。",
+      "save": "保存修改",
+      "choose": "搜索此供应商的商品",
+      "noProducts": "此供应商没有其他与您库存关联的商品",
+      "removeLine": "移除此品项",
+      "loadFailed": "无法加载商品列表",
+      "saveFailed": "无法保存修改",
+      "savedTitle": "修改已保存",
+      "savedPendingApproval": "修改正在等待店主审批，审批后供应商才能看到。",
+      "error": {
+        "BAD_STATUS": "供应商已确认此采购单，无法修改。请联系供应商修改或取消采购单。",
+        "ALREADY_INVOICED": "此采购单已有发票，无法修改。",
+        "ALREADY_RECONCILED": "此采购单的供应商发票已对账，无法修改。",
+        "ALREADY_PAID": "此采购单已付款。请先撤销付款再修改。",
+        "ALREADY_RECEIVED": "已有品项收货，无法修改。",
+        "ALREADY_SHIPPED": "供应商已发出部分品项，无法修改。",
+        "EMPTY_ITEMS": "至少要保留一个品项。如需全部删除，请取消该采购单。",
+        "BELOW_MIN_ORDER": "低于最低订购量{{detail}}"
+      },
+      "minQty": "最少 {{n}}"
+    }
   },
   "receive": {
     "modalTitle": "收货登记",
@@ -485,10 +518,10 @@
     "minOrder": "最少",
     "needsUnitSetup": "需确认单位",
     "addAsProduct": "注册为商品",
-    "addAsProductHint": "注册为您销售的商品（必须填写售价）",
+    "addAsProductHint": "加入我的库存并作为商品销售（必须填写售价）",
     "newProduct": {
       "title": "注册为商品",
-      "desc": "此商品按原样销售（无配方），因此库存记在商品本身上——采购入库增加，销售扣减。",
+      "desc": "将创建（或沿用已有的）库存项目，此商品按原样销售它——采购入库增加该库存项目，每售出 1 件就从中扣减 1。",
       "name": "商品名称",
       "price": "售价",
       "priceHelp": "供应价为 {{cost}} — 请输入您的售价（绝不会从成本自动填入）。",
@@ -506,11 +539,11 @@
       "button": "也登记为商品"
     },
     "addAsMenu": "登记为菜单",
-    "addAsMenuHint": "登记为我们销售的菜单项（需填售价）",
+    "addAsMenuHint": "加入我的库存并作为菜单项销售（需填售价）",
     "newMenu": {
       "title": "登记为菜单项",
       "name": "菜单名称",
-      "desc": "此菜单项按原样销售（无配方），因此库存记在该项目上 — 采购增加，销售减少。"
+      "desc": "将创建（或沿用已有的）库存项目，此菜单项按原样销售它——采购入库增加该库存项目，每售出 1 份就从中扣减 1。"
     },
     "unknownSeller": "供应商",
     "sellAsMenu": {
@@ -648,7 +681,8 @@
     "sendAfterApprove": "批准后可发送",
     "approvedBadge": "已批准",
     "justApprovedExternal": "刚刚批准 — 该供应商不使用本应用。请通过 WhatsApp、PDF 或电子邮件发送订单。之后也可在采购单详情中发送。",
-    "justApprovedSystem": "刚刚批准 — 订单已传送到供应商的应用。"
+    "justApprovedSystem": "刚刚批准 — 订单已传送到供应商的应用。",
+    "editedBadge": "已修改 · 等待重新审批"
   },
   "newPo.viewMode": "显示方式",
   "newPo.viewCard": "卡片",

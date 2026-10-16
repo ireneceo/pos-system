@@ -216,7 +216,78 @@ async function fireBuyerConfirmNotification(po) {
   }
 }
 
+/**
+ * 구매자(매장)가 보낸 뒤 발주 품목을 고쳤다 — **판매자**에게 통지 (2026-10-15 Fable 설계 buyer-po-edit §6).
+ * 판매자 → 구매자 amend 메일(routes/seller-orders.js)과 같은 표(품목·변경·전·후) · 'en' 고정(그 메일과 같은 수준).
+ * 승인 대기로 들어간 수정은 호출하지 않는다(판매자에게 아직 없는 주문 — 승인 뒤 approve 라우트가 통지).
+ * 계정 없는 외부 공급업체는 수신자 0 → 조용히 끝(화면이 WhatsApp/Email 수동 재전송을 안내).
+ */
+async function fireSellerAmendedByBuyerNotification(po, { changes = [], reason = null, totalBefore = 0, totalAfter = 0 } = {}) {
+  try {
+    let userIds = [];
+    if (po.seller_type === 'supplier' && po.seller_entity_id) {
+      userIds = await getSupplierAdminIds(po.seller_entity_id);
+    } else if (po.seller_type === 'brand' && po.seller_entity_id) {
+      userIds = await getBrandManagerIds(po.seller_entity_id);
+    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id) {
+      userIds = await getFoodcourtManagerIds(po.seller_entity_id);
+    }
+    if (userIds.length === 0) {
+      console.log(`[notify] buyer_amended po=${po.po_number} seller=${po.seller_type}:${po.seller_entity_id} recipients=none`);
+      return;
+    }
+    const { wrapTemplate } = require('../utils/notificationTemplates');
+    const { currencySymbol } = require('../utils/currency');
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const buyerName = await resolveBuyerName(po);
+    const sym = currencySymbol(po.currency);
+    const money = (n) => `${sym} ${(parseFloat(n) || 0).toFixed(2)}`;
+    const label = { added: 'Added', removed: 'Removed', changed: 'Changed' };
+    const rows = changes.map((c) => {
+      const name = (c.after || c.before || {}).name || '-';
+      const was = c.before ? `${c.before.quantity} ${c.before.unit || ''} × ${money(c.before.unit_price)}` : '—';
+      const now = c.after ? `${c.after.quantity} ${c.after.unit || ''} × ${money(c.after.unit_price)}` : '—';
+      return `<tr>
+        <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#374151;">${esc(name)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:12px;color:#6B7280;">${label[c.type] || esc(c.type)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#9CA3AF;">${esc(was)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#111827;font-weight:600;">${esc(now)}</td>
+      </tr>`;
+    }).join('');
+    const html = wrapTemplate(
+      'Order Edited by Buyer',
+      `<p style="color:#374151;font-size:16px;margin:0 0 16px;"><strong>${esc(buyerName || 'The buyer')}</strong> edited purchase order <strong>${esc(po.po_number)}</strong> before you confirmed it.</p>
+       <table style="width:100%;border-collapse:collapse;margin:0 0 20px;">
+         <thead><tr>
+           <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">Item</th>
+           <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">Change</th>
+           <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">Before</th>
+           <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">After</th>
+         </tr></thead>
+         <tbody>${rows}</tbody>
+       </table>
+       <p style="color:#374151;font-size:14px;margin:0 0 20px;">Order total: <span style="color:#9CA3AF;">${money(totalBefore)}</span> → <strong>${money(totalAfter)}</strong></p>
+       ${reason ? `<div style="background:#F9FAFB;border-left:4px solid #635BFF;padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;">
+         <p style="color:#4B5563;font-size:13px;font-weight:600;margin:0 0 6px;">Reason</p>
+         <p style="color:#374151;font-size:14px;margin:0;">${esc(String(reason).slice(0, 600))}</p>
+       </div>` : ''}
+       <div style="text-align:center;margin:24px 0;"><a href="${FRONTEND_URL}/pos/seller-orders" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Orders</a></div>`,
+      'en'
+    );
+    const _brandingEntity = sellerBrandingEntity(po);
+    await sendNotificationBatch(userIds, 'seller_order_received', () => ({
+      subject: `Order Edited by Buyer: ${po.po_number}`,
+      html,
+      text: `${buyerName || 'The buyer'} edited purchase order ${po.po_number}. Total ${money(totalBefore)} → ${money(totalAfter)}.${reason ? ` Reason: ${reason}` : ''}`,
+      _brandingEntity
+    }));
+  } catch (e) {
+    console.error('[poNotifications] fireSellerAmendedByBuyerNotification error:', e.message);
+  }
+}
+
 module.exports = {
+  fireSellerAmendedByBuyerNotification,
   resolveBuyerName,
   fireSellerSubmittedNotification,
   fireBuyerConfirmNotification,

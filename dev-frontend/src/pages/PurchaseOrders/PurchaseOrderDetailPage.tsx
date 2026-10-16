@@ -11,6 +11,7 @@ import {
 } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ReceivePayModal, { ReceivePayMode } from '../../components/PurchaseOrders/ReceivePayModal';
+import EditPoItemsModal from '../../components/PurchaseOrders/EditPoItemsModal';
 import ConfirmModal from '../../components/ConfirmModal';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
@@ -146,6 +147,11 @@ interface PODetail {
   rejected_reason?: string | null;
   rejected_at?: string | null;
   approval_required?: boolean;
+  /** 매장 품목 수정 가능 여부 — 서버 utils/poAmend.buyerAmendBlock 판정(2026-10-15 buyer-po-edit). 상태 목록을 화면에 두지 않는다. */
+  /** 앱을 안 쓰는 외부 공급업체 — 상세 API(utils/sellerNames.isExternalSeller) */
+  is_external?: boolean;
+  can_amend?: boolean;
+  amend_blocked?: string | null;
   tracking_number?: string | null;
   items: POItem[];
 }
@@ -534,6 +540,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   const [receiveSubmitting, setReceiveSubmitting] = useState(false);
 
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [editItemsOpen, setEditItemsOpen] = useState(false);
   // 결제 모달 (P4-5) — 되돌리기 어려운 3효과 확인창은 공용 부품이 맡는다(staging 과 같은 부품).
   const [payModal, setPayModal] = useState<{ mode: ReceivePayMode } | null>(null);
   const [payNotice, setPayNotice] = useState<string | null>(null);
@@ -1132,6 +1139,11 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
             {t('detail.actions.receive')}
           </ThemedButton>
         )}
+        {detail.can_amend === true && (
+          <ThemedButton variant="outline" onClick={() => setEditItemsOpen(true)}>
+            {t('detail.actions.editItems', 'Edit items')}
+          </ThemedButton>
+        )}
         {(s === 'submitted') && (
           <ThemedButton variant="danger-outline" onClick={openCancel}>
             {t('detail.actions.cancel')}
@@ -1163,6 +1175,11 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
             </ThemedButton>
           )}
           {externalShare}
+          {detail.can_amend === true && (
+            <ThemedButton variant="outline" onClick={() => setEditItemsOpen(true)}>
+              {t('detail.actions.editItems', 'Edit items')}
+            </ThemedButton>
+          )}
           {['draft', 'submitted', 'pending_approval'].includes(s) && (
             <ThemedButton variant="danger-outline" onClick={openCancel}>
               {t('detail.actions.cancel')}
@@ -1295,7 +1312,11 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                   padding: '12px 16px', marginBottom: 16, color: '#3730A3', fontSize: 14, lineHeight: 1.6
                 }}>
                   <strong>
-                    {t('detail.amendedBySeller', 'The seller amended this order')}
+                    {last.by_owner
+                      ? t('detail.amendedByOwner', 'The Owner edited this order')
+                      : last.by_buyer
+                        ? t('detail.amendedByBuyer', 'This order was edited by the store')
+                        : t('detail.amendedBySeller', 'The seller amended this order')}
                     {when ? ` · ${when}` : ''}
                   </strong>
                   {last.reason ? <div style={{ marginTop: 4 }}>{last.reason}</div> : null}
@@ -1597,6 +1618,28 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       )}
 
       {/* 수령·결제 확인창 (P4-5) — staging 과 같은 공용 부품 */}
+      <EditPoItemsModal
+        open={editItemsOpen}
+        po={detail as any}
+        role={poRole}
+        zIndex={embedded ? 1200 : undefined}
+        onClose={() => setEditItemsOpen(false)}
+        onSaved={(saved: any) => {
+          setEditItemsOpen(false);
+          fetchDetail();
+          if (saved?.status === 'pending_approval') {
+            setAlertDlg({
+              title: t('detail.editItems.savedTitle', 'Changes saved') as string,
+              message: t('detail.editItems.savedPendingApproval', 'The change is waiting for Owner approval. The supplier will see it after approval.') as string
+            });
+          } else if (detail?.is_external) {
+            setAlertDlg({
+              title: t('detail.editItems.savedTitle', 'Changes saved') as string,
+              message: t('detail.editItems.externalResendNote', 'This supplier does not use the app. After saving, send the updated order again by WhatsApp or Email.') as string
+            });
+          }
+        }}
+      />
       <ReceivePayModal
         open={!!payModal}
         mode={payModal?.mode || 'pay'}

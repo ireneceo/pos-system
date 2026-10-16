@@ -61,6 +61,9 @@ const OWNER_ACTING_ROUTES = [
   ['POST',   /^\/api\/purchase-orders\/\d+\/reconcile$/],
   // 공급업체 인보이스 올리기·다시 올리기(2026-10-09 Fable 판정 A-6) — 파일 붙이기는 되돌릴 수 있는 일, 청구서 창에서 부른다.
   ['POST',   /^\/api\/purchase-orders\/\d+\/upload-invoice$/],
+  // 2026-10-15 buyer-po-edit §4-3 — 오너가 소유 매장 발주를 고치면 승인 생략(utils/poOwnerApproval.applyBuyerAmendGate).
+  //   후보 목록 GET /:id/amendable-products 는 위 GET 정규식이 이미 덮는다.
+  ['POST',   /^\/api\/purchase-orders\/\d+\/amend$/],
 ];
 
 function isOwnerActingRoute(method, originalUrl) {

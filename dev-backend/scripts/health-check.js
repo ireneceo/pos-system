@@ -3313,6 +3313,94 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
   });
 
+  // ── 카탈로그 «Add as menu / product» = 재고아이템 + 그대로 파는 메뉴/프로덕트 (2026-10-15 Fable 설계 D1·D2) ──
+  //   Irene «레스토랑관리자는 메뉴추가는 재고아이템에도 추가하고 메뉴에도 추가하는 거 맞아?» → 그렇게 만든다.
+  //   깨지면: 같은 물건 두 줄(메뉴 자체재고 + 재고아이템) · 메뉴 두 개 · 브랜드 카드가 영영 «안 담음».
+  test('inventory', '카탈로그 Add as menu/product → 재고아이템 + 직접 연결 메뉴/프로덕트 · Linked · 다시 누르면 409 · 브랜드는 Add to My Stock 뒤 Linked', async () => {
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 RA 없음 — 계약 미검증)')); return true; }
+    const { sequelize } = require('../config/database');
+    const Q = (sql, r = []) => sequelize.query(sql, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const tag = 'ZZ-HC-SELLDIRECT-' + Date.now().toString(36);
+    const sids = []; const ingIds = []; const piIds = []; const prodIds = []; const bpIds = [];
+    const ra = { Authorization: `Bearer ${demoRaToken}` };
+    const bg = demoBgToken ? { Authorization: `Bearer ${demoBgToken}` } : null;
+    const supplierWith = async (auth, key, n) => {
+      const s = await request('POST', '/external-suppliers', { name: `${tag} ${key}` }, auth);
+      const sid = s.body?.data?.supplier?.id; if (!sid) return [];
+      sids.push(sid);
+      const out = [];
+      for (let i = 1; i <= n; i++) {
+        const p = await request('POST', `/external-suppliers/${sid}/products`, { name: `${tag} ${key}${i}`, unit: 'pcs', unit_price: 2 }, auth);
+        out.push(p.body?.data?.id);
+      }
+      return out;
+    };
+    const linkedIn = async (auth, spid) => {
+      const r = await request('GET', `/supplier-catalog?search=${encodeURIComponent(tag)}`, null, auth);
+      const row = (r.body?.data || []).find((x) => x.id === spid && (x.supplier?.seller_type || 'supplier') === 'supplier');
+      return row ? row.already_mapped === true : null;
+    };
+    const say = {};
+    try {
+      // ── 매장 ──
+      const [p1, p2] = await supplierWith(ra, 'ra', 2);
+      const m1 = await request('POST', `/restaurants/${demoRestId}/ingredients/from-catalog`, { supplier_product_id: p1, new_product: { name: `${tag} menu1`, price: 9 } }, ra);
+      const ing1 = m1.body?.data?.ingredient; const prod1 = m1.body?.data?.product;
+      if (ing1?.id) ingIds.push(ing1.id); if (prod1?.id) prodIds.push(prod1.id);
+      const [pRow] = prod1?.id ? await Q('SELECT ingredient_id, recipe_id FROM products WHERE id = ?', [prod1.id]) : [null];
+      const again1 = await request('POST', `/restaurants/${demoRestId}/ingredients/from-catalog`, { supplier_product_id: p1, new_product: { name: `${tag} dup`, price: 9 } }, ra);
+      const s2 = await request('POST', `/restaurants/${demoRestId}/ingredients/from-catalog`, { supplier_product_id: p2 }, ra);
+      const ing2 = s2.body?.data?.ingredient; if (ing2?.id) ingIds.push(ing2.id);
+      const reg2 = ing2?.id ? await request('POST', `/restaurants/${demoRestId}/ingredients/${ing2.id}/register-as-product`, { price: 5, name: `${tag} menu2` }, ra) : { status: 0 };
+      if (reg2.body?.data?.product?.id) prodIds.push(reg2.body.data.product.id);
+      const regAgain = ing2?.id ? await request('POST', `/restaurants/${demoRestId}/ingredients/${ing2.id}/register-as-product`, { price: 5 }, ra) : { status: 0 };
+      const raOk = m1.status === 201 && pRow && pRow.ingredient_id === ing1.id && pRow.recipe_id == null
+        && (await linkedIn(ra, p1)) === true && again1.status === 409 && again1.body?.code === 'ALREADY_A_PRODUCT'
+        && reg2.status === 201 && reg2.body?.data?.product?.ingredient_id === ing2.id && regAgain.status === 409;
+      Object.assign(say, { m1: m1.status, pRow, again1: again1.status, reg2: reg2.status, regAgain: regAgain.status });
+      // ── 브랜드 ──
+      let bgOk = true;
+      if (bg) {
+        const uid = require('jsonwebtoken').decode(demoBgToken)?.userId;
+        const [brand] = await Q('SELECT id FROM brands WHERE owner_id = ? ORDER BY id LIMIT 1', [uid]);
+        const [p3, p4] = await supplierWith(bg, 'bg', 2);
+        const s4 = await request('POST', '/product-ingredients/from-catalog', { supplier_product_id: p4 }, bg);
+        if (s4.body?.data?.ingredient?.id) piIds.push(s4.body.data.ingredient.id);
+        const linked4 = await linkedIn(bg, p4);
+        const m3 = await request('POST', '/product-ingredients/from-catalog', { supplier_product_id: p3, brand_id: brand?.id, new_product: { name: `${tag} prod3`, price: 9 } }, bg);
+        const pi3 = m3.body?.data?.ingredient; const bp3 = m3.body?.data?.product;
+        if (pi3?.id) piIds.push(pi3.id); if (bp3?.id) bpIds.push(bp3.id);
+        const [bpRow] = bp3?.id ? await Q('SELECT product_ingredient_id, product_recipe_id FROM brand_products WHERE id = ?', [bp3.id]) : [null];
+        const [bpb] = bp3?.id ? await Q('SELECT COUNT(*) n FROM brand_product_brands WHERE product_id = ? AND brand_id = ?', [bp3.id, brand?.id]) : [{ n: 0 }];
+        bgOk = s4.status === 201 && linked4 === true && m3.status === 201 && bpRow && bpRow.product_ingredient_id === pi3.id
+          && bpRow.product_recipe_id == null && Number(bpb.n) === 1 && (await linkedIn(bg, p3)) === true;
+        Object.assign(say, { s4: s4.status, linked4, m3: [m3.status, m3.body?.message], bpRow, bpb: bpb.n });
+      }
+      if (!(raOk && bgOk)) console.log(c.red(`      ↳ ${JSON.stringify(say)}`));
+      return raOk && bgOk;
+    } finally {
+      for (const id of prodIds) await sequelize.query('DELETE FROM products WHERE id = ?', { replacements: [id] });
+      for (const id of bpIds) {
+        await sequelize.query('DELETE FROM brand_product_brands WHERE product_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM brand_products WHERE id = ?', { replacements: [id] });
+      }
+      for (const id of ingIds) {
+        await sequelize.query('DELETE FROM ingredient_seller_products WHERE ingredient_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM stock_alerts WHERE ingredient_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM ingredients WHERE id = ?', { replacements: [id] });
+      }
+      for (const id of piIds) {
+        await sequelize.query('DELETE FROM ingredient_seller_products WHERE product_ingredient_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM product_ingredients WHERE id = ?', { replacements: [id] });
+      }
+      for (const id of sids) {
+        await sequelize.query('DELETE FROM supplier_products WHERE supplier_company_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id = ?', { replacements: [id] });
+        await sequelize.query('DELETE FROM supplier_companies WHERE id = ?', { replacements: [id] });
+      }
+    }
+  });
+
   // ── 재고 장부 = 단일 진실 (2026-10-08 · Fable 판정 Ⅱ-2) ─────────────────────────
   //   재고 수량은 services/stockLedger.record() 하나로만 바뀌고, 장부 줄에 금액·사유가 남는다.
   //   이 계약이 깨지면 재고 총액·기간 원가·폐기 금액이 조용히 틀어진다 — 데모 매장에서 매번 확인한다.
@@ -5019,7 +5107,8 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
   //      (실제 사고: 스크립트로 41/41 원가를 판매가에 복사 [[reference_supplier_cost_copied_as_price]]).
   //   ⑵ 같은 재고를 두 번 등록하면 같은 물건이 두 프로덕트로 갈라진다 → 409 로 막는다.
   // 만든 행은 전부 지운다(데모 매장 한정).
-  test('inventory', 'P3 재료→프로덕트 등록: 판매가 없으면 400 · 재료 ×1 레시피 · 중복 409', async () => {
+  // 2026-10-15 Fable 설계 D1(Irene «권고대로»): «Also sell as menu» 는 ×1 레시피 대신 직접 FK products.ingredient_id 로 판다.
+  test('inventory', 'P3 재료→메뉴 등록: 판매가 없으면 400 · 재료 직접 연결(레시피 없음) · 중복 409', async () => {
     const { sequelize } = require('../config/database');
     if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음 — 계약 미검증)')); return true; }
     const { Ingredient, Recipe, RecipeIngredient, Product } = require('../models');
@@ -5042,20 +5131,16 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
         console.log(c.gray('      (400 인데 프로덕트가 생겼다)')); return false;
       }
 
-      // 정상 등록 → 재료 ×1 레시피 + 프로덕트(재고는 재료에 남는다)
+      // 정상 등록 → 메뉴가 그 재료를 직접 가리킨다(재고는 재료에 남는다 · 레시피 만들지 않음)
       const ok = await request('POST', base, { price: 9.9 }, auth);
-      prodId = ok.body?.data?.product?.id; recipeId = ok.body?.data?.recipe?.id;
-      if (ok.status !== 201 || !prodId || !recipeId) {
+      prodId = ok.body?.data?.product?.id;
+      if (ok.status !== 201 || !prodId) {
         console.log(c.gray(`      (등록 실패: ${ok.status} ${JSON.stringify(ok.body).slice(0, 160)})`)); return false;
-      }
-      const links = await RecipeIngredient.findAll({ where: { recipe_id: recipeId } });
-      if (links.length !== 1 || Number(links[0].ingredient_id) !== Number(ing.id) || Number(links[0].quantity) !== 1) {
-        console.log(c.gray(`      (레시피가 그 재료 ×1 이 아니다: ${JSON.stringify(links.map(l => [l.ingredient_id, l.quantity]))})`)); return false;
       }
       const prod = await Product.findByPk(prodId);
       // 판매가는 입력값 그대로 — 원가(4.44)가 새어 들어오면 실패
-      if (Number(prod.price) !== 9.9 || Number(prod.current_stock) !== 0 || Number(prod.recipe_id) !== Number(recipeId)) {
-        console.log(c.gray(`      (프로덕트 계약 위반: price=${prod.price} stock=${prod.current_stock} recipe=${prod.recipe_id})`)); return false;
+      if (Number(prod.price) !== 9.9 || Number(prod.current_stock) !== 0 || Number(prod.ingredient_id) !== Number(ing.id) || prod.recipe_id != null) {
+        console.log(c.gray(`      (프로덕트 계약 위반: price=${prod.price} stock=${prod.current_stock} ingredient=${prod.ingredient_id} recipe=${prod.recipe_id})`)); return false;
       }
 
       // ⑵ 중복 → 409, 추가 생성 0
@@ -5082,7 +5167,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
 
   // BG 쪽 같은 계약(대칭). 브랜드를 여러 개 소유할 수 있으므로 **어느 브랜드인지 밝히지 않으면 400**
   // — 임의로 고르면 남의 브랜드에 프로덕트를 만든다.
-  test('inventory', 'P3 BG 재고→브랜드 프로덕트: brand_id 없으면 400 · ×1 레시피 · 중복 409', async () => {
+  test('inventory', 'P3 BG 재고→브랜드 프로덕트: brand_id 없으면 400 · 재고아이템 직접 연결 · 브랜드 귀속 · 중복 409', async () => {
     const { sequelize } = require('../config/database');
     const jwtLib = require('jsonwebtoken');
     const { ProductIngredient, ProductRecipe, ProductRecipeIngredient, BrandProduct } = require('../models');
@@ -5109,15 +5194,16 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       }
 
       const ok = await request('POST', url, { price: 7.5, brand_id: brands[0].id }, auth);
-      prodId = ok.body?.data?.product?.id; recipeId = ok.body?.data?.recipe?.id;
-      if (ok.status !== 201 || !prodId || !recipeId) {
+      prodId = ok.body?.data?.product?.id;
+      if (ok.status !== 201 || !prodId) {
         console.log(c.gray(`      (등록 실패: ${ok.status} ${JSON.stringify(ok.body).slice(0, 160)})`)); return false;
       }
-      const links = await ProductRecipeIngredient.findAll({ where: { recipe_id: recipeId } });
       const bp = await BrandProduct.findByPk(prodId);
+      const [bpb] = await sequelize.query('SELECT COUNT(*) n FROM brand_product_brands WHERE product_id = :p AND brand_id = :b',
+        { replacements: { p: prodId, b: brands[0].id }, type: sequelize.QueryTypes.SELECT });
       // 판매가는 입력값 그대로 — 원가(3.33)가 새어 들어오면 실패
-      if (links.length !== 1 || Number(links[0].ingredient_id) !== Number(ing.id) || Number(bp.unit_price) !== 7.5) {
-        console.log(c.gray(`      (계약 위반: links=${links.length} price=${bp && bp.unit_price})`)); return false;
+      if (Number(bp.product_ingredient_id) !== Number(ing.id) || bp.product_recipe_id != null || Number(bp.unit_price) !== 7.5 || Number(bpb.n) !== 1) {
+        console.log(c.gray(`      (계약 위반: pi=${bp && bp.product_ingredient_id} recipe=${bp && bp.product_recipe_id} price=${bp && bp.unit_price} brand=${bpb.n})`)); return false;
       }
       const dup = await request('POST', url, { price: 9, brand_id: brands[0].id }, auth);
       return dup.status === 409;
@@ -6357,6 +6443,214 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
           await SupplierProductOptionGroup.destroy({ where: { id: made.groups } });
         }
         if (made.sp) await SupplierProduct.destroy({ where: { id: made.sp.id }, force: true });
+      } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
+    }
+  });
+
+  // ══════════════════════════════════════════════════════════════════
+  // 매장이 보낸 발주를 품목별로 고친다 (2026-10-15 Fable 설계 .claude/fable-design-20261015-buyer-po-edit.md §9-1)
+  //   Irene «미스 발주 했을 때 다 삭제하고 다시 하기에 너무 힘들어 … 오너 승인 절차가 있는 경우에는 수정요청 … 승인»
+  //   B1 후보 GET · B2 빼기+추가+수량 · B3 confirmed 400 · B4 가드 5종(상세 amend_blocked 와 같은 코드) ·
+  //   B5 승인 매장 RA 수정 → pending_approval · 판매자 목록에서 사라짐 · B6 오너 승인 → submitted · 줄 유지 ·
+  //   B7 오너 본인 수정 = 승인 생략 · B8 외부 공급업체 · B9 거부 묶음 · B10 draft 400
+  //   데모 매장 38 · 원래 operation_settings 는 DB 원문 그대로 저장했다 되돌린다.
+  // ══════════════════════════════════════════════════════════════════
+  test('po', '매장 발주 품목 수정 = 판매자 확인 전·돈/물건 안 움직였을 때 · 승인 매장은 다시 승인 · 오너 본인은 생략 (B1~B10)', async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const M = require('../models');
+    const q = (sql, r) => sequelize.query(sql, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const RID = 38;
+    const sup = await M.User.findOne({ where: { email: 'demo-supplier@purplehere.com' } });
+    const ra = await M.User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: RID } });
+    const [ct] = sup && sup.supplier_company_id
+      ? await q(`SELECT id FROM supplier_contracts WHERE supplier_company_id = :s AND entity_type = 'restaurant' AND entity_id = :r AND status = 'active' AND deleted_at IS NULL LIMIT 1`, { s: sup.supplier_company_id, r: RID })
+      : [];
+    const [other] = await q(`SELECT id FROM restaurants WHERE is_demo = 1 AND id <> :r ORDER BY id LIMIT 1`, { r: RID });
+    if (!sup || !ra || !ct || !other) { console.log(c.gray('      (건너뜀: 데모 공급업체·매장 38 계약 픽스처 불가)')); return true; }
+    const SID = sup.supplier_company_id;
+    const tok = (id) => ({ Authorization: `Bearer ${jwtLib.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` });
+    const raAuth = tok(ra.id), supAuth = tok(sup.id);
+    const tag = 'ZZ-HC-BAM-' + Date.now();
+    const [[rawSettings]] = await sequelize.query('SELECT operation_settings AS s FROM restaurants WHERE id = :r', { replacements: { r: RID } });
+    const origSettings = rawSettings ? rawSettings.s : null;
+    const setApproval = async (on) => {
+      const cur = await M.Restaurant.findByPk(RID);
+      await cur.update({ operation_settings: { ...(cur.operation_settings || {}), requirePoOwnerApproval: on } });
+    };
+    const made = { sps: [], ings: [], maps: [], users: [], ext: null, otherIng: null, otherMap: null }, poIds = [];
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      // 픽스처: 가입 판매자(데모 공급업체) 상품 3 + 외부 업체 상품 1 · 각각 매장 38 재료에 연결
+      const mkProd = async (companyId, name, price) => {
+        const sp = await M.SupplierProduct.create({ supplier_company_id: companyId, name, unit: 'kg', base_quantity: 1,
+          unit_price: price, min_order_quantity: 1, is_active: true, sku: 'ZZB-' + Math.random().toString(36).slice(2, 9) });
+        made.sps.push(sp.id);
+        const ing = await M.Ingredient.create({ restaurant_id: RID, name, unit: 'kg', current_stock: 0, track_stock: true, is_active: true });
+        made.ings.push(ing.id);
+        const map = await M.IngredientSellerProduct.create({ ingredient_id: ing.id, seller_type: 'supplier', seller_entity_id: companyId,
+          seller_product_id: sp.id, unit_price: price, unit_conversion: 1, min_order_quantity: 1, is_active: true });
+        made.maps.push(map.id);
+        return { sp, ing, map };
+      };
+      const A = await mkProd(SID, tag + '-A', 10);
+      const B = await mkProd(SID, tag + '-B', 20);
+      const C = await mkProd(SID, tag + '-C', 7);
+      made.ext = await M.SupplierCompany.create({ name: tag + '-ext', status: 'active', is_system_registered: false, registered_by_entity_type: 'restaurant', registered_by_entity_id: RID });
+      const X = await mkProd(made.ext.id, tag + '-X', 5);
+      // 남의 판매자(외부 업체) 상품 — 가입 판매자 발주에 끼우면 PRODUCT_NOT_YOURS
+      const mkPo = async (sellerId, status, lines) => {
+        const total = lines.reduce((a, l) => a + l.qty * l.price, 0);
+        const po = await M.PurchaseOrder.create({ po_number: `${tag}-${poIds.length}`, entity_type: 'restaurant', entity_id: RID,
+          seller_type: 'supplier', seller_entity_id: sellerId, contract_id: sellerId === SID ? ct.id : null, status, subtotal: total, tax_amount: 0, total_amount: total,
+          currency: 'MYR', payment_status: 'unpaid', submitted_at: status === 'draft' ? null : new Date(), created_by_user_id: ra.id });
+        poIds.push(po.id);
+        for (const l of lines) {
+          await M.PurchaseOrderItem.create({ purchase_order_id: po.id, ingredient_id: l.f.ing.id, ingredient_seller_product_id: l.f.map.id,
+            quantity_ordered: l.qty, quantity_received: 0, unit_price: l.price, unit_conversion: 1, line_total: l.qty * l.price, description: l.f.ing.name, unit: 'kg' });
+        }
+        return po;
+      };
+      const linesOf = async (id) => M.PurchaseOrderItem.findAll({ where: { purchase_order_id: id }, order: [['id', 'ASC']] });
+      const amend = (id, items, auth = raAuth, qs = '') => request('POST', `/purchase-orders/${id}/amend${qs}`, { items, reason: 'hc' }, auth);
+      const lastEv = async (id) => { const p = await M.PurchaseOrder.findByPk(id); const ev = (p.tracking_info && p.tracking_info.events) || []; return { p, ev, last: ev[ev.length - 1] }; };
+
+      await setApproval(false);
+      // B1
+      const p1 = await mkPo(SID, 'submitted', [{ f: A, qty: 2, price: 10 }, { f: B, qty: 1, price: 20 }]);
+      const g1 = await request('GET', `/purchase-orders/${p1.id}/amendable-products`, null, raAuth);
+      const prods = g1.body?.data?.products || [];
+      if (g1.status !== 200 || g1.body.data.can_amend !== true || !prods.some(p => p.ingredient_seller_product_id === C.map.id)
+          || prods.some(p => p.ingredient_seller_product_id === X.map.id) || !prods.find(p => p.ingredient_seller_product_id === C.map.id).stock_name)
+        return fail(`B1 ${g1.status} can=${g1.body?.data?.can_amend} 후보 ${prods.length}`);
+      const d1 = await request('GET', `/purchase-orders/${p1.id}`, null, raAuth);
+      if (d1.body?.data?.can_amend !== true || d1.body?.data?.amend_blocked !== null) return fail(`B1 상세 can_amend ${d1.body?.data?.can_amend}`);
+      // B2 A 수량 2→3 · B 빼기 · C 추가 2
+      const r1 = await linesOf(p1.id);
+      const lineA = r1.find(r => r.ingredient_seller_product_id === A.map.id);
+      const a2 = await amend(p1.id, [
+        { item_id: lineA.id, ingredient_seller_product_id: A.map.id, quantity_ordered: 3, unit_price: 0.01 },
+        { ingredient_seller_product_id: C.map.id, quantity_ordered: 2 }
+      ]);
+      if (a2.status !== 200) return fail(`B2 ${a2.status} ${JSON.stringify(a2.body).slice(0, 200)}`);
+      const r2 = await linesOf(p1.id);
+      const { p: pp2, last: ev2 } = await lastEv(p1.id);
+      const { computeTotalsWithDelivery } = require('../utils/purchaseOrderTotals');
+      const re = await computeTotalsWithDelivery(r2.map(r => r.toJSON()), pp2, { orderCurrency: pp2.currency });
+      const types = (ev2 && ev2.changes || []).map(x => x.type).sort().join(',');
+      if (r2.length !== 2 || Number(r2.find(r => r.ingredient_seller_product_id === A.map.id)?.unit_price) !== 10
+          || Number(r2.find(r => r.ingredient_seller_product_id === C.map.id)?.quantity_ordered) !== 2
+          || Math.abs(Number(pp2.total_amount) - Number(re.total_amount)) > 0.01 || Math.abs(Number(pp2.subtotal) - 44) > 0.01
+          || !ev2 || ev2.status !== 'amended' || ev2.by_buyer !== true || types !== 'added,changed,removed' || pp2.status !== 'submitted')
+        return fail(`B2 줄 ${JSON.stringify(r2.map(r => [r.ingredient_seller_product_id, r.quantity_ordered, r.unit_price]))} 합 ${pp2.subtotal}/${pp2.total_amount}(재계산 ${re.total_amount}) 이벤트 ${ev2 && ev2.status}/${types} 상태 ${pp2.status}`);
+      // B3 confirmed
+      await pp2.update({ status: 'confirmed' });
+      const a3 = await amend(p1.id, [{ ingredient_seller_product_id: A.map.id, quantity_ordered: 1 }]);
+      if (a3.status !== 400 || a3.body?.code !== 'BAD_STATUS' || (await linesOf(p1.id)).length !== 2) return fail(`B3 ${a3.status} ${a3.body?.code}`);
+      await pp2.update({ status: 'submitted' });
+      // B4 가드 5종 — 각각 상세 amend_blocked 와 같은 코드
+      const guards = [
+        ['ALREADY_RECEIVED', 400, async (p) => { const [l] = await linesOf(p.id); await l.update({ quantity_received: 1 }); }],
+        ['ALREADY_INVOICED', 400, async (p) => p.update({ trade_invoice_id: 999999999 })],
+        ['ALREADY_PAID', 400, async (p) => p.update({ payment_status: 'paid' })],
+        ['ALREADY_SHIPPED', 409, async (p) => { const [l] = await linesOf(p.id); await l.update({ shipped_at: new Date() }); }],
+        ['ALREADY_RECONCILED', 400, async (p) => p.update({ invoice_reconciled_at: new Date() })]
+      ];
+      for (const [code, http, setup] of guards) {
+        const pg = await mkPo(SID, 'submitted', [{ f: A, qty: 1, price: 10 }]);
+        await setup(pg);
+        const a4 = await amend(pg.id, [{ ingredient_seller_product_id: A.map.id, quantity_ordered: 2 }]);
+        const d4 = await request('GET', `/purchase-orders/${pg.id}`, null, raAuth);
+        if (a4.status !== http || a4.body?.code !== code || d4.body?.data?.amend_blocked !== code || d4.body?.data?.can_amend !== false)
+          return fail(`B4 ${code} → ${a4.status} ${a4.body?.code} · 상세 ${d4.body?.data?.amend_blocked}`);
+        if (code === 'ALREADY_INVOICED') await pg.update({ trade_invoice_id: null });
+      }
+      // B5~B7 승인 매장 — 임시 오너
+      const [ownerId] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag.toLowerCase() + 'o', `${tag.toLowerCase()}o@example.com`] });
+      made.users.push(ownerId);
+      await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (:r, :u, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: { r: RID, u: ownerId } });
+      const ownerAuth = tok(ownerId);
+      await setApproval(true);
+      const p5 = await mkPo(SID, 'submitted', [{ f: A, qty: 4, price: 10 }, { f: B, qty: 1, price: 20 }]);
+      const sellerSees0 = await request('GET', `/seller-orders/${p5.id}`, null, supAuth);
+      const r5 = await linesOf(p5.id);
+      const a5 = await amend(p5.id, [{ item_id: r5[0].id, ingredient_seller_product_id: A.map.id, quantity_ordered: 1 }]);
+      const { p: pp5, ev: ev5 } = await lastEv(p5.id);
+      const queue = await request('GET', '/purchase-orders/pending-approval', null, ownerAuth);
+      const inQueue = (queue.body?.data || []).some(r => r.id === p5.id);
+      const sellerSees = await request('GET', `/seller-orders/${p5.id}`, null, supAuth);
+      const gateEv = ev5.find(e => e.status === 'pending_approval' && e.edited_by_buyer);
+      if (a5.status !== 200 || pp5.status !== 'pending_approval' || !pp5.approval_required || !inQueue || !gateEv || sellerSees0.status !== 200 || sellerSees.status === 200)
+        return fail(`B5 ${a5.status} 상태 ${pp5.status} 큐 ${inQueue} 이벤트 ${!!gateEv} 판매자 전 ${sellerSees0.status}/후 ${sellerSees.status}`);
+      // B6 오너 승인 → submitted · 줄 유지
+      const ap = await request('POST', `/purchase-orders/${p5.id}/approve`, {}, ownerAuth);
+      const pp6 = await M.PurchaseOrder.findByPk(p5.id);
+      const r6 = await linesOf(p5.id);
+      if (ap.status !== 200 || pp6.status !== 'submitted' || r6.length !== 1 || Number(r6[0].quantity_ordered) !== 1) return fail(`B6 ${ap.status} ${pp6.status} 줄 ${r6.length}`);
+      // B7 오너 본인 수정 → 승인 생략
+      const a7 = await amend(p5.id, [{ item_id: r6[0].id, ingredient_seller_product_id: A.map.id, quantity_ordered: 2 }], ownerAuth, `?entity_type=restaurant&entity_id=${RID}`);
+      const { p: pp7, last: ev7 } = await lastEv(p5.id);
+      if (a7.status !== 200 || pp7.status !== 'submitted' || !ev7 || ev7.status !== 'amended' || ev7.by_owner !== true)
+        return fail(`B7 ${a7.status} ${JSON.stringify(a7.body).slice(0, 120)} 상태 ${pp7.status} 이벤트 ${ev7 && ev7.status}/${ev7 && ev7.by_owner}`);
+      // B7' 오너가 소유 안 한 매장으로 전환 → 403
+      const a7b = await amend(p5.id, [{ ingredient_seller_product_id: A.map.id, quantity_ordered: 2 }], ownerAuth, `?entity_type=restaurant&entity_id=${other.id}`);
+      if (a7b.status !== 403) return fail(`B7 남의 매장 전환 ${a7b.status}`);
+      await setApproval(false);
+      // B8 외부 공급업체 — submitted 수정 가능 · 상태 유지 · 옵션 거부
+      const p8 = await mkPo(made.ext.id, 'submitted', [{ f: X, qty: 3, price: 5 }]);
+      const a8 = await amend(p8.id, [{ ingredient_seller_product_id: X.map.id, quantity_ordered: 1 }]);
+      const pp8 = await M.PurchaseOrder.findByPk(p8.id);
+      const a8o = await amend(p8.id, [{ ingredient_seller_product_id: X.map.id, quantity_ordered: 1, option_ids: [1] }]);
+      if (a8.status !== 200 || pp8.status !== 'submitted' || Math.abs(Number(pp8.subtotal) - 5) > 0.01
+          || a8o.status !== 400 || !['OPTIONS_NOT_SUPPORTED', 'OPTION_INVALID'].includes(a8o.body?.code))
+        return fail(`B8 ${a8.status} ${pp8.status} ${pp8.subtotal} · 옵션 ${a8o.status} ${a8o.body?.code}`);
+      // B9 거부 묶음
+      const [staffId] = await sequelize.query(`INSERT INTO users (username, email, password, role, restaurant_id, permissions, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Staff', :r, '[]', 1, 1, NOW(), NOW())`.replace(':r', String(RID)), { replacements: [tag.toLowerCase() + 's', `${tag.toLowerCase()}s@example.com`] });
+      made.users.push(staffId);
+      const pOther = await M.PurchaseOrder.create({ po_number: `${tag}-other`, entity_type: 'restaurant', entity_id: other.id, seller_type: 'supplier', seller_entity_id: SID,
+        status: 'submitted', subtotal: 1, tax_amount: 0, total_amount: 1, currency: 'MYR', payment_status: 'unpaid', created_by_user_id: ra.id });
+      poIds.push(pOther.id);
+      const p9 = await mkPo(SID, 'submitted', [{ f: A, qty: 1, price: 10 }]);
+      await C.sp.update({ min_order_quantity: 5 });   // MOQ 기준 = 판매자 상품 현재 값(utils/poMinOrder)
+      const checks = [
+        ['빈 줄', await amend(p9.id, []), 400, 'EMPTY_ITEMS'],
+        ['수량 0', await amend(p9.id, [{ ingredient_seller_product_id: A.map.id, quantity_ordered: 0 }]), 400, 'BAD_ITEM'],
+        ['남의 판매자', await amend(p9.id, [{ ingredient_seller_product_id: X.map.id, quantity_ordered: 1 }]), 400, 'PRODUCT_NOT_YOURS'],
+        ['최소주문', await amend(p9.id, [{ ingredient_seller_product_id: C.map.id, quantity_ordered: 1 }]), 400, 'BELOW_MIN_ORDER'],
+        ['남의 매장 발주', await amend(pOther.id, [{ ingredient_seller_product_id: A.map.id, quantity_ordered: 1 }]), 404, null],
+        ['권한 없는 직원', await amend(p9.id, [{ ingredient_seller_product_id: A.map.id, quantity_ordered: 2 }], tok(staffId)), 403, null],
+        ['판매자 토큰', await amend(p9.id, [{ ingredient_seller_product_id: A.map.id, quantity_ordered: 2 }], supAuth), 403, null]
+      ];
+      await C.sp.update({ min_order_quantity: 1 });
+      const bad9 = checks.filter(([, r, st, code]) => r.status !== st || (code && r.body?.code !== code)).map(([n, r]) => `${n} ${r.status} ${r.body?.code || ''}`);
+      if (bad9.length) return fail(`B9 ${bad9.join(' · ')}`);
+      if (Number((await linesOf(p9.id))[0].quantity_ordered) !== 1) return fail('B9 거부됐는데 줄이 바뀜');
+      // B10 draft
+      const p10 = await mkPo(SID, 'draft', [{ f: A, qty: 1, price: 10 }]);
+      const a10 = await amend(p10.id, [{ ingredient_seller_product_id: A.map.id, quantity_ordered: 2 }]);
+      if (a10.status !== 400 || a10.body?.code !== 'BAD_STATUS') return fail(`B10 ${a10.status} ${a10.body?.code}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try { await sequelize.query('UPDATE restaurants SET operation_settings = :s WHERE id = :r', { replacements: { s: origSettings, r: RID } }); } catch (e) { console.log(c.gray(`      (설정 복원 실패: ${e.message})`)); }
+      try { await sequelize.query('UPDATE purchase_orders SET trade_invoice_id = NULL WHERE id IN (:ids)', { replacements: { ids: poIds.length ? poIds : [0] } }); } catch {}
+      try { await hcCleanupPurchaseOrders(poIds, { waitMs: 0 }); } catch {}
+      try {
+        if (made.users.length) {
+          await sequelize.query('DELETE FROM restaurant_managers WHERE manager_id IN (:u)', { replacements: { u: made.users } });
+          await sequelize.query('DELETE FROM users WHERE id IN (:u)', { replacements: { u: made.users } });
+        }
+        if (made.maps.length) await M.IngredientSellerProduct.destroy({ where: { id: made.maps }, force: true });
+        for (const ingId of made.ings) {
+          for (const tb of ['restaurant_ingredient_costs', 'stock_alerts', 'inventory_transactions', 'inventory_batches'])
+            try { await sequelize.query(`DELETE FROM ${tb} WHERE ingredient_id = :a`, { replacements: { a: ingId } }); } catch {}
+        }
+        if (made.ings.length) await M.Ingredient.destroy({ where: { id: made.ings }, force: true });
+        if (made.sps.length) await M.SupplierProduct.destroy({ where: { id: made.sps }, force: true });
+        if (made.ext) {
+          await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id = :s', { replacements: { s: made.ext.id } });
+          await sequelize.query('DELETE FROM supplier_companies WHERE id = :s', { replacements: { s: made.ext.id } });
+        }
       } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
     }
   });

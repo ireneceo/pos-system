@@ -1725,8 +1725,8 @@ const NewPurchaseOrderPage: React.FC = () => {
     await ensureIngredientAndAddToCart(row, [], row.unit_price, undefined, undefined, { stockOnly: true });
   };
 
-  // 카탈로그 상품을 **판매 프로덕트**로 등록(P3-②). 레시피 없는 프로덕트는 그 자체가 재고아이템이라
-  // 이렇게 등록하면 사온 수량이 프로덕트로 들어오고, 팔릴 때 그 자리에서 빠진다.
+  // 카탈로그 상품을 **재고아이템 + 그것을 그대로 파는 메뉴/프로덕트**로 등록(2026-10-15 Fable 설계 D1 — 전엔 P3-② 자체재고).
+  // 사온 수량은 재고아이템에 들어오고, 1개 팔리면 재고아이템에서 1개 빠진다(§2-1 «메뉴 = 재고아이템 그대로»).
   // ⛔ 판매가는 사람이 넣는다 — 공급가를 판매가로 복사하지 않는다(마진 0 사고 재발 방지).
   const [newProductModal, setNewProductModal] = useState<{ row: CatalogRow } | null>(null);
   const [newProductForm, setNewProductForm] = useState<{ name: string; price: string; min_stock: string }>({ name: '', price: '', min_stock: '' });
@@ -1761,6 +1761,9 @@ const NewPurchaseOrderPage: React.FC = () => {
         unit: row.unit || undefined,
         min_stock: parseFloat(newProductForm.min_stock) || 0,
       };
+      // 서버가 재고아이템(없으면 새로·있으면 그대로) + 그것을 그대로 파는 메뉴/프로덕트를 한 번에 만든다(2026-10-15 Fable 설계 D1).
+      //   브랜드는 «어느 브랜드가 파는지» 를 밝혀야 매장 카탈로그에 보인다 — 발주 화면의 구매 브랜드.
+      if (isBG && buyerEntity?.id) body.brand_id = buyerEntity.id;
       const url = isBG ? '/api/product-ingredients/from-catalog' : `${buyerApiBase}/ingredients/from-catalog`;
       const res = await fetch(url, {
         method: 'POST',
@@ -2587,8 +2590,8 @@ const NewPurchaseOrderPage: React.FC = () => {
                             type="button"
                             onClick={(e) => { e.stopPropagation(); openNewProductModal(p); }}
                             title={(buyerEntity?.type === 'brands'
-                              ? t('newPo.addAsProductHint', 'Register as a product you sell (selling price required)')
-                              : t('newPo.addAsMenuHint', 'Register as a menu item you sell (selling price required)')) as string}
+                              ? t('newPo.addAsProductHint', 'Add to My Stock and sell it as a product (selling price required)')
+                              : t('newPo.addAsMenuHint', 'Add to My Stock and sell it as a menu item (selling price required)')) as string}
                           >
                             {/* 파는 것을 부르는 말이 역할마다 다르다 — 매장은 «메뉴», 브랜드는 «프로덕트».
                                 한 말로 통일하면 한쪽 화면에서 남의 말이 된다(2026-09-15 Irene 「Add as menu지」). */}
@@ -2951,8 +2954,8 @@ const NewPurchaseOrderPage: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <p style={{ margin: 0, color: '#475569', fontSize: 13, lineHeight: 1.5 }}>
               {buyerEntity?.type === 'brands'
-                ? t('newPo.newProduct.desc', 'This product is sold as-is (no recipe), so its stock lives on the product itself — purchases add to it and sales take from it.')
-                : t('newPo.newMenu.desc', 'This menu item is sold as-is (no recipe), so its stock lives on the item itself — purchases add to it and sales take from it.')}
+                ? t('newPo.newProduct.desc', 'A stock item is created (or reused) and this product sells it as-is — purchases add to the stock item, and one sale takes 1 unit from it.')
+                : t('newPo.newMenu.desc', 'A stock item is created (or reused) and this menu item sells it as-is — purchases add to the stock item, and one sale takes 1 unit from it.')}
             </p>
             <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
               {buyerEntity?.type === 'brands'

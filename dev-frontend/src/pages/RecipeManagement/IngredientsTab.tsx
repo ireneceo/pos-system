@@ -82,6 +82,8 @@ interface Ingredient {
   is_active: boolean;
   min_stock?: number;
   current_stock?: number;
+  // 이 재료를 이미 그대로 파는 메뉴(직접 연결) — 있으면 «Also sell as menu» 대신 이름을 보인다(2026-10-15 Fable D4)
+  sold_as_menu?: { id: number; name: string } | null;
   sellers?: Array<{
     id: number;
     seller_type: 'supplier' | 'brand' | 'foodcourt';
@@ -1390,7 +1392,12 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                           </button>
                           {/* 그대로 파는 물건이면 프로덕트로도 등록 — 재고는 이 아이템 한 곳에만 남는다
                               (브랜드 재료는 매장이 못 판다 — 재료 본체는 브랜드 것) */}
-                          {!isBrandRole && !isItemReadOnly(ingredient) && (
+                          {!isBrandRole && ingredient.sold_as_menu && (
+                            <span style={{ fontSize: 12, color: '#4B5563', alignSelf: 'center' }}>
+                              {t('ingredients:stock.alreadyProduct', { defaultValue: 'Sold as' })}: {ingredient.sold_as_menu.name}
+                            </span>
+                          )}
+                          {!isBrandRole && !isItemReadOnly(ingredient) && !ingredient.sold_as_menu && (
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setSellAsProductTarget(ingredient); }}
@@ -1728,7 +1735,12 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   >
                     Register on external supplier
                   </button>
-                  {!isBrandRole && (
+                  {!isBrandRole && selectedIngredient?.sold_as_menu && (
+                    <span style={{ fontSize: 13, color: '#4B5563', alignSelf: 'center' }}>
+                      {t('ingredients:stock.alreadyProduct', { defaultValue: 'Sold as' })}: {selectedIngredient?.sold_as_menu?.name}
+                    </span>
+                  )}
+                  {!isBrandRole && !selectedIngredient?.sold_as_menu && (
                     <button
                       type="button"
                       onClick={() => { setSellAsProductTarget(selectedIngredient); }}

@@ -83,6 +83,15 @@ const ReasonTextarea = styled.textarea`
   &::placeholder { color: #9CA3AF; }
 `;
 
+
+/** 마지막 승인 대기 이벤트가 «매장이 보낸 뒤 고침» 인가 (서버 utils/poOwnerApproval.applyBuyerAmendGate 가 edited_by_buyer 를 단다). */
+function editedByBuyer(row: any): boolean {
+  const events = row?.tracking_info?.events;
+  if (!Array.isArray(events)) return false;
+  const last = [...events].reverse().find((e: any) => e?.status === 'pending_approval');
+  return !!(last && last.edited_by_buyer);
+}
+
 const OwnerPoApprovalsPage: React.FC = () => {
   const { t } = useTranslation(['purchaseOrders', 'common']);
   const navigate = useNavigate();
@@ -313,7 +322,10 @@ const OwnerPoApprovalsPage: React.FC = () => {
                     <DataTableCell data-label={t('list.table.status') as string} align="center">
                       {isApproved
                         ? <DataTableStatus variant="success">{t('ownerApprovals.approvedBadge')}</DataTableStatus>
-                        : <DataTableStatus variant="warning">{t('status.pending_approval')}</DataTableStatus>}
+                        : editedByBuyer(row)
+                          // 매장이 보낸 뒤 고쳐 다시 승인 대기 — 무엇이 바뀌었는지는 Details(상세) 상단 박스가 보여 준다(2026-10-15 buyer-po-edit §5-2)
+                          ? <DataTableStatus variant="warning">{t('ownerApprovals.editedBadge', 'Edited · awaiting re-approval')}</DataTableStatus>
+                          : <DataTableStatus variant="warning">{t('status.pending_approval')}</DataTableStatus>}
                     </DataTableCell>
                     <DataTableCell data-label={t('ownerApprovals.table.createdAt') as string}>
                       {formatDate(row.created_at) || '-'}

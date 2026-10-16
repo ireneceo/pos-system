@@ -63,9 +63,34 @@ function minOrderErrorBody(err) {
 async function assertLinesMeetMinOrder(items, { transaction } = {}) {
   const lines = (items || []).filter(it => it && it.ingredient_seller_product_id);
   if (!lines.length) return;
+  const byMap = await minOrderRulesByMapping(lines.map(it => it.ingredient_seller_product_id), { transaction });
+
+  const violations = [];
+  for (const it of lines) {
+    const rule = byMap[parseInt(it.ingredient_seller_product_id, 10)];
+    if (!rule) continue;
+    const qty = round2(it.quantity_ordered);
+    if (qty < round2(rule.min)) {
+      violations.push({
+        item_id: it.id || null,
+        description: it.description || null,
+        quantity: qty,
+        min: round2(rule.min),
+        unit: rule.unit || it.unit || null
+      });
+    }
+  }
+  if (violations.length) throw new MinOrderError(violations);
+}
+
+/**
+ * 연결(mapping) id → 지금 적용되는 하한 { min, unit }. 하한 없는 연결은 빠진다.
+ * 검사(assertLinesMeetMinOrder)와 화면 미리 채우기(구매자 품목 수정 후보 · 2026-10-15)가 **같은 답**을 보게 한 곳에 둔다.
+ */
+async function minOrderRulesByMapping(mappingIds, { transaction } = {}) {
   const { sequelize } = require('../config/database');
-  const mapIds = [...new Set(lines.map(it => parseInt(it.ingredient_seller_product_id, 10)).filter(Number.isFinite))];
-  if (!mapIds.length) return;
+  const mapIds = [...new Set((mappingIds || []).map(v => parseInt(v, 10)).filter(Number.isFinite))];
+  if (!mapIds.length) return {};
 
   // seller_product_id 는 다형 참조다 — seller_type 별로 따로 붙인다(refresh-prices·costSync 와 같은 조인).
   const [rows] = await sequelize.query(`
@@ -91,23 +116,7 @@ async function assertLinesMeetMinOrder(items, { transaction } = {}) {
     if (min === null) continue;
     byMap[r.map_id] = { min, unit: sp ? sellerOrderLine(sp, null).unit : null };
   }
-
-  const violations = [];
-  for (const it of lines) {
-    const rule = byMap[parseInt(it.ingredient_seller_product_id, 10)];
-    if (!rule) continue;
-    const qty = round2(it.quantity_ordered);
-    if (qty < round2(rule.min)) {
-      violations.push({
-        item_id: it.id || null,
-        description: it.description || null,
-        quantity: qty,
-        min: round2(rule.min),
-        unit: rule.unit || it.unit || null
-      });
-    }
-  }
-  if (violations.length) throw new MinOrderError(violations);
+  return byMap;
 }
 
-module.exports = { assertLinesMeetMinOrder, effectiveMinOrder, MinOrderError, minOrderErrorBody };
+module.exports = { assertLinesMeetMinOrder, minOrderRulesByMapping, effectiveMinOrder, MinOrderError, minOrderErrorBody };

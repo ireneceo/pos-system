@@ -235,7 +235,8 @@
       "receiveAndPay": "Terima + bayar",
       "pay": "Rekod pembayaran",
       "refund": "Batalkan pembayaran",
-      "download": "Muat turun PDF"
+      "download": "Muat turun PDF",
+      "editItems": "Edit item"
     },
     "noNotes": "Tiada nota.",
     "returns": {
@@ -282,7 +283,39 @@
     "pdfDownloadFailed": "Gagal memuat turun",
     "orderMore": "+ Pesan Lagi",
     "awaitingApproval": "Pesanan belian ini menunggu kelulusan Pemilik sebelum dihantar kepada pembekal.",
-    "rejectedByOwner": "Ditolak oleh Pemilik"
+    "rejectedByOwner": "Ditolak oleh Pemilik",
+    "amendedByBuyer": "Pesanan ini telah diedit oleh kedai",
+    "amendedByOwner": "Pemilik telah mengedit pesanan ini",
+    "editItems": {
+      "title": "Edit item",
+      "addItem": "Tambah item",
+      "reason": "Sebab (pilihan)",
+      "reasonPlaceholder": "cth. Tersalah pesan item",
+      "itemsTotal": "Jumlah item",
+      "deliveryNote": "Harga dan caj penghantaran dikira semula oleh sistem apabila disimpan.",
+      "approvalNote": "Menyimpan akan menghantar perubahan ini kepada Pemilik untuk kelulusan. Pembekal tidak akan melihatnya sehingga diluluskan.",
+      "externalResendNote": "Pembekal ini tidak menggunakan aplikasi. Selepas menyimpan, hantar semula pesanan yang dikemas kini melalui WhatsApp atau E-mel.",
+      "emptyHint": "Sekurang-kurangnya satu item mesti kekal. Untuk membuang semua, batalkan pesanan.",
+      "save": "Simpan perubahan",
+      "choose": "Cari produk daripada pembekal ini",
+      "noProducts": "Tiada produk lain daripada pembekal ini yang dipautkan ke stok anda",
+      "removeLine": "Buang item ini",
+      "loadFailed": "Gagal memuatkan produk",
+      "saveFailed": "Gagal menyimpan perubahan",
+      "savedTitle": "Perubahan disimpan",
+      "savedPendingApproval": "Perubahan sedang menunggu kelulusan Pemilik. Pembekal akan melihatnya selepas diluluskan.",
+      "error": {
+        "BAD_STATUS": "Pesanan ini tidak boleh diedit lagi — pembekal telah mengesahkannya. Minta pembekal mengubahnya, atau batalkan pesanan.",
+        "ALREADY_INVOICED": "Pesanan ini sudah mempunyai invois dan tidak boleh diedit.",
+        "ALREADY_RECONCILED": "Invois pembekal untuk pesanan ini telah disesuaikan, jadi ia tidak boleh diedit.",
+        "ALREADY_PAID": "Pesanan ini telah dibayar. Batalkan bayaran dahulu, kemudian edit.",
+        "ALREADY_RECEIVED": "Sesetengah item telah diterima, jadi pesanan ini tidak boleh diedit.",
+        "ALREADY_SHIPPED": "Pembekal telah menghantar item, jadi pesanan ini tidak boleh diedit.",
+        "EMPTY_ITEMS": "Sekurang-kurangnya satu item mesti kekal. Untuk membuang semua, batalkan pesanan.",
+        "BELOW_MIN_ORDER": "Di bawah kuantiti pesanan minimum{{detail}}"
+      },
+      "minQty": "min {{n}}"
+    }
   },
   "receive": {
     "modalTitle": "Terima Pesanan",
@@ -485,10 +518,10 @@
     "minOrder": "Min",
     "needsUnitSetup": "Semak unit",
     "addAsProduct": "Daftar sebagai produk",
-    "addAsProductHint": "Daftar sebagai produk yang anda jual (harga jualan diperlukan)",
+    "addAsProductHint": "Tambah ke Stok Saya dan jual sebagai produk (harga jualan diperlukan)",
     "newProduct": {
       "title": "Daftar sebagai produk",
-      "desc": "Produk ini dijual sebagaimana adanya (tiada resipi), jadi stoknya disimpan pada produk itu sendiri — belian menambah, jualan menolak.",
+      "desc": "Item stok akan dicipta (atau yang sedia ada digunakan) dan produk ini menjualnya sebagaimana adanya — pembelian menambah item stok, dan setiap jualan menolak 1 unit daripadanya.",
       "name": "Nama produk",
       "price": "Harga jualan",
       "priceHelp": "Kos pembekal ialah {{cost}} — masukkan harga jualan anda (ia tidak pernah disalin daripada kos).",
@@ -506,11 +539,11 @@
       "button": "Jual juga sebagai produk"
     },
     "addAsMenu": "Tambah sebagai menu",
-    "addAsMenuHint": "Daftar sebagai item menu yang anda jual (harga jualan diperlukan)",
+    "addAsMenuHint": "Tambah ke Stok Saya dan jual sebagai item menu (harga jualan diperlukan)",
     "newMenu": {
       "title": "Daftar sebagai item menu",
       "name": "Nama menu",
-      "desc": "Item menu ini dijual sebagaimana adanya (tiada resipi), jadi stoknya disimpan pada item itu sendiri — pembelian menambah, jualan mengurangkan."
+      "desc": "Item stok akan dicipta (atau yang sedia ada digunakan) dan item menu ini menjualnya sebagaimana adanya — pembelian menambah item stok, dan setiap jualan menolak 1 unit daripadanya."
     },
     "unknownSeller": "Pembekal",
     "sellAsMenu": {
@@ -648,7 +681,8 @@
     "sendAfterApprove": "Tersedia selepas diluluskan",
     "approvedBadge": "Diluluskan",
     "justApprovedExternal": "Baru diluluskan — pembekal ini tidak menggunakan aplikasi. Hantar pesanan melalui WhatsApp, PDF atau e-mel. Anda juga boleh menghantarnya kemudian dari butiran pesanan.",
-    "justApprovedSystem": "Baru diluluskan — pesanan telah disampaikan ke aplikasi pembekal."
+    "justApprovedSystem": "Baru diluluskan — pesanan telah disampaikan ke aplikasi pembekal.",
+    "editedBadge": "Diedit · menunggu kelulusan semula"
   },
   "newPo.viewMode": "Mod paparan",
   "newPo.viewCard": "Kad",

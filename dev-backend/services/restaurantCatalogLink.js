@@ -123,10 +123,13 @@ async function linkCatalogProductToRestaurant(rid, body = {}) {
       return __r(r.status, r.body);
     }
 
-    // 새 프로덕트로 등록 — 판매가는 **사람이 넣어야 한다**(빈 값·0 이하면 400)
-    if (body.new_product && typeof body.new_product === 'object') {
-      const np = body.new_product;
-      const price = parseFloat(np.price);
+    // «Add as menu»(body.new_product) = 재고아이템(아래 흐름 그대로 — 있으면 재사용) + 그 재고아이템을 그대로 파는 메뉴.
+    //   2026-10-15 Fable 설계 D1(.claude/fable-design-20261015-catalog-add-menu.md) · Irene «권고대로 진행해 줘».
+    //   전에는 재고아이템 없이 자체 수량을 가진 메뉴만 만들었다(P3-②) → 카드가 계속 «안 담음» → 같은 물건 두 줄·메뉴 두 개.
+    //   ⛔ 판매가 필수 — 재고아이템을 만들기 전에 막는다(공급가 복사 금지). 카테고리 검사도 먼저.
+    const newProduct = body.new_product && typeof body.new_product === 'object' ? body.new_product : null;
+    if (newProduct) {
+      const price = parseFloat(newProduct.price);
       if (!Number.isFinite(price) || price <= 0) {
         await t.rollback();
         return __r(400, {
@@ -134,29 +137,27 @@ async function linkCatalogProductToRestaurant(rid, body = {}) {
           message: 'Selling price is required for a new product (supplier cost is never copied into it)'
         });
       }
-      if (np.category) {
-        const catErr = await menuCategoryError(rid, sanitizeString(String(np.category)).slice(0, 50), { transaction: t });
+      if (newProduct.category) {
+        const catErr = await menuCategoryError(rid, sanitizeString(String(newProduct.category)).slice(0, 50), { transaction: t });
         if (catErr) { await t.rollback(); return __r(400, catErr); }
       }
-      const { Product } = require('../models');
-      const prod = await Product.create({
-        restaurant_id: rid,
-        name: sanitizeString(String(np.name || seller.productName || '')).slice(0, 255),
-        // products.category 는 NOT NULL(기본값 없음) — null 로 넣으면 통째로 500 이 난다.
-        // 이 화면엔 카테고리 칸이 없으므로 기존 관행값으로 떨어뜨린다(운영·dev 공통 'Uncategorized').
-        category: np.category ? sanitizeString(String(np.category)).slice(0, 50) : 'Uncategorized',
-        price,
-        is_active: true,
-        current_stock: 0,
-        min_stock: parseFloat(np.min_stock) || 0,
-        stock_unit: catalogLink.resolveUnit(np.unit, seller.productUnit),
-      }, { transaction: t });
-      const mapping = await catalogLink.createMappingFor({
-        target: prod, seller, unitConversion: convFor(prod), targetKey: 'product_id', transaction: t
-      });
-      await t.commit();
-      return __r(201, { success: true, data: { product: prod, mapping, created: true } });
     }
+    // 재고아이템이 정해진 뒤 — new_product 면 같은 트랜잭션에서 메뉴까지 만들고, 아니면 그대로 끝낸다.
+    const finish = async (status, data) => {
+      if (!newProduct) { await t.commit(); return __r(status, { success: true, data }); }
+      const { sellAsRestaurantMenu } = require('./sellStockItemDirect');
+      const r = await sellAsRestaurantMenu({
+        ingredient: data.ingredient, restaurantId: rid,
+        price: parseFloat(newProduct.price), name: newProduct.name, category: newProduct.category,
+        transaction: t
+      });
+      if (!r.ok) { await t.rollback(); return __r(r.status, r.body); }
+      await t.commit();
+      return __r(201, { success: true, data: {
+        ...data, product: r.product,
+        created: { ingredient: !!data.created, product: true }
+      } });
+    };
 
     const existingIngredientId = parseInt(body.existing_ingredient_id, 10);
     if (Number.isFinite(existingIngredientId)) {
@@ -180,9 +181,12 @@ async function linkCatalogProductToRestaurant(rid, body = {}) {
       seller, targetKey: 'ingredient_id',
       findTarget: (id) => Ingredient.findByPk(id, { transaction: t }),
       ownsTarget: (ing) => ing.restaurant_id === rid,
+      // 이 매장 재료의 연결만 찾는다 — 범위 없이 찾으면 같은 상품을 담은 **다른 매장**의 연결을 먼저 집고
+      //   «안 담음» 으로 떨어져 같은 물건 두 줄을 만든다(2026-10-15 실측: 공급업체 20 상품 28·29 는 매장 둘이 담아 둠).
+      extraWhere: { ingredient_id: { [require('sequelize').Op.in]: Ingredient.sequelize.literal(`(SELECT id FROM ingredients WHERE restaurant_id = ${parseInt(rid, 10)})`) } },
       transaction: t
     });
-    if (already) { await t.commit(); return __r(already.status, already.body); }
+    if (already) return finish(already.status, already.body.data);
 
     // 자기 브랜드(GIT) 상품이면 매장 줄을 새로 만들지 않고 **브랜드 재료 줄(거울)에 붙인다**
     //   (2026-10-11 Fable 판정 `fable-verdict-20261011-kdine-ingredient-tidy` R5 · Irene «우리 납품 브랜드로 공급업체 연결 제대로»).
@@ -199,8 +203,7 @@ async function linkCatalogProductToRestaurant(rid, body = {}) {
           seller_entity_id: seller.sellerEntityId, seller_product_id: seller.sellerProductRow.id },
         transaction: t
       });
-      await t.commit();
-      return __r(created ? 201 : 200, { success: true, data: { ingredient: mirror, mapping, created, brand_ingredient: true } });
+      return finish(created ? 201 : 200, { ingredient: mirror, mapping, created, brand_ingredient: true });
     }
 
     const ingredient = await Ingredient.create({
@@ -233,8 +236,7 @@ async function linkCatalogProductToRestaurant(rid, body = {}) {
       target: ingredient, seller, unitConversion: convFor(ingredient), targetKey: 'ingredient_id', transaction: t
     });
 
-    await t.commit();
-    return __r(201, { success: true, data: { ingredient, mapping, created: true } });
+    return finish(201, { ingredient, mapping, created: true });
   } catch (err) {
     if (!t.finished) await t.rollback();
     console.error('POST /restaurants/:restaurantId/ingredients/from-catalog error:', err);

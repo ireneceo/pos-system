@@ -235,7 +235,8 @@
       "receiveAndPay": "Receive + pay",
       "pay": "Record payment",
       "refund": "Reverse payment",
-      "download": "Download PDF"
+      "download": "Download PDF",
+      "editItems": "Edit items"
     },
     "noNotes": "No notes.",
     "returns": {
@@ -282,7 +283,39 @@
     "pdfDownloadFailed": "Failed to download",
     "orderMore": "+ Order More",
     "awaitingApproval": "This purchase order is awaiting Owner approval before it is sent to the supplier.",
-    "rejectedByOwner": "Rejected by Owner"
+    "rejectedByOwner": "Rejected by Owner",
+    "amendedByBuyer": "This order was edited by the store",
+    "amendedByOwner": "The Owner edited this order",
+    "editItems": {
+      "title": "Edit items",
+      "addItem": "Add item",
+      "reason": "Reason (optional)",
+      "reasonPlaceholder": "e.g. Ordered the wrong item",
+      "itemsTotal": "Items total",
+      "deliveryNote": "Prices and delivery fee are recalculated by the system when you save.",
+      "approvalNote": "Saving sends this change to the Owner for approval. The supplier will not see it until it is approved.",
+      "externalResendNote": "This supplier does not use the app. After saving, send the updated order again by WhatsApp or Email.",
+      "emptyHint": "At least one item must remain. To remove everything, cancel the order instead.",
+      "save": "Save changes",
+      "choose": "Search a product from this supplier",
+      "noProducts": "No other product from this supplier is linked to your stock",
+      "removeLine": "Remove this item",
+      "loadFailed": "Failed to load products",
+      "saveFailed": "Failed to save changes",
+      "savedTitle": "Changes saved",
+      "savedPendingApproval": "The change is waiting for Owner approval. The supplier will see it after approval.",
+      "error": {
+        "BAD_STATUS": "This order can no longer be edited — the supplier has already confirmed it. Ask the supplier to change it, or cancel the order.",
+        "ALREADY_INVOICED": "This order already has an invoice and cannot be edited.",
+        "ALREADY_RECONCILED": "The supplier invoice for this order is already reconciled, so it cannot be edited.",
+        "ALREADY_PAID": "This order is paid. Reverse the payment first, then edit.",
+        "ALREADY_RECEIVED": "Some items were already received, so this order cannot be edited.",
+        "ALREADY_SHIPPED": "The supplier has already dispatched items, so this order cannot be edited.",
+        "EMPTY_ITEMS": "At least one item must remain. To remove everything, cancel the order instead.",
+        "BELOW_MIN_ORDER": "Below the minimum order quantity{{detail}}"
+      },
+      "minQty": "min {{n}}"
+    }
   },
   "receive": {
     "modalTitle": "Receive Order",
@@ -485,10 +518,10 @@
     "minOrder": "Min",
     "needsUnitSetup": "Check unit",
     "addAsProduct": "Add as product",
-    "addAsProductHint": "Register as a product you sell (selling price required)",
+    "addAsProductHint": "Add to My Stock and sell it as a product (selling price required)",
     "newProduct": {
       "title": "Register as a product",
-      "desc": "This product is sold as-is (no recipe), so its stock lives on the product itself — purchases add to it and sales take from it.",
+      "desc": "A stock item is created (or reused) and this product sells it as-is — purchases add to the stock item, and one sale takes 1 unit from it.",
       "name": "Product name",
       "price": "Selling price",
       "priceHelp": "Supplier cost is {{cost}} — enter what you sell it for (it is never copied from the cost).",
@@ -506,11 +539,11 @@
       "button": "Also sell as product"
     },
     "addAsMenu": "Add as menu",
-    "addAsMenuHint": "Register as a menu item you sell (selling price required)",
+    "addAsMenuHint": "Add to My Stock and sell it as a menu item (selling price required)",
     "newMenu": {
       "title": "Register as a menu item",
       "name": "Menu name",
-      "desc": "This menu item is sold as-is (no recipe), so its stock lives on the item itself — purchases add to it and sales take from it."
+      "desc": "A stock item is created (or reused) and this menu item sells it as-is — purchases add to the stock item, and one sale takes 1 unit from it."
     },
     "unknownSeller": "Supplier",
     "sellAsMenu": {
@@ -648,7 +681,8 @@
     "sendAfterApprove": "Available after approval",
     "approvedBadge": "Approved",
     "justApprovedExternal": "Just approved — this supplier doesn't use the app. Send the order via WhatsApp, PDF or email. Later you can also send it from the order details.",
-    "justApprovedSystem": "Just approved — the order was delivered to the supplier's app."
+    "justApprovedSystem": "Just approved — the order was delivered to the supplier's app.",
+    "editedBadge": "Edited · awaiting re-approval"
   },
   "newPo.viewMode": "View mode",
   "newPo.viewCard": "Card",

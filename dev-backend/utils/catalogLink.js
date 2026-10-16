@@ -271,6 +271,83 @@ function stockFieldsFromSellerProduct(sellerRow, { unit }) {
   return { unit, base_quantity: base, package_unit: packageUnit, package_quantity: 1, unit_cost: price };
 }
 
+/**
+ * «이 판매자 상품을 이미 담았나» — 구매자의 네 연결 칸을 모두 보는 판정 하나 (2026-10-15 Fable 설계 D2).
+ *   재고아이템(ingredient_id / product_ingredient_id) · 자체재고 메뉴(product_id) · 자체재고 브랜드 프로덕트(brand_product_id).
+ * 전에는 카탈로그가 ingredient_id 만 봤다 → 메뉴로 담은 것·브랜드 재고아이템은 늘 «안 담음»(같은 물건 두 줄의 문).
+ * 매장은 부모 브랜드 재료에 붙인 자기 연결과, 브랜드가 붙인 «출처 연결»(판매자 = 그 브랜드)도 담음으로 본다(2026-10-04·10-11 규칙 그대로).
+ * @returns {Promise<{supplier:Object, brand:Object, foodcourt:Object}>} 각 seller_product_id → {kind, id}
+ *   kind: 'ingredient' | 'product_ingredient' | 'product' | 'brand_product'. 한 상품에 여럿이면 재고아이템이 이긴다.
+ */
+async function linkedSellerProductMap(buyerEntity, { transaction } = {}) {
+  const out = { supplier: {}, brand: {}, foodcourt: {} };
+  if (!buyerEntity) return out;
+  const { Op } = require('sequelize');
+  const Ingredient = require('../models/Ingredient');
+  const IngredientSellerProduct = require('../models/IngredientSellerProduct');
+  const or = [];
+  let brandSourceIngIds = new Set();
+
+  if (buyerEntity.type === 'restaurant') {
+    const rid = buyerEntity.id;
+    const myIngIds = (await Ingredient.findAll({ where: { restaurant_id: rid }, attributes: ['id'], transaction })).map((i) => i.id);
+    if (myIngIds.length) or.push({ ingredient_id: { [Op.in]: myIngIds } });
+    or.push({ buyer_restaurant_id: rid });
+    const { parentBrandIdOf } = require('./brandStockAccess');
+    const parentBrandId = await parentBrandIdOf(rid);
+    if (parentBrandId) {
+      const brandIngs = (await Ingredient.findAll({
+        where: { owner_type: 'brand', brand_id: parentBrandId, is_active: true }, attributes: ['id'], transaction
+      })).map((i) => i.id);
+      if (brandIngs.length) {
+        brandSourceIngIds = new Set(brandIngs);
+        or.push({ ingredient_id: { [Op.in]: brandIngs }, buyer_restaurant_id: null, seller_type: 'brand', seller_entity_id: parentBrandId });
+      }
+    }
+    const Product = require('../models/Product');
+    const myProdIds = (await Product.findAll({ where: { restaurant_id: rid }, attributes: ['id'], transaction })).map((p) => p.id);
+    if (myProdIds.length) or.push({ product_id: { [Op.in]: myProdIds } });
+  } else if (buyerEntity.type === 'brand') {
+    const myIngIds = (await Ingredient.findAll({ where: { brand_id: buyerEntity.id }, attributes: ['id'], transaction })).map((i) => i.id);
+    if (myIngIds.length) or.push({ ingredient_id: { [Op.in]: myIngIds } });
+    // 브랜드 구매자의 재고아이템·프로덕트는 소유자(owner_user_id) 기준 — product-ingredients 의 req.bgOwnerId 와 같은 사람들
+    const { brandOwnerUserIds } = require('./managerBrandScope');
+    const owners = await brandOwnerUserIds(buyerEntity.id);
+    if (owners.length) {
+      const ProductIngredient = require('../models/ProductIngredient');
+      const BrandProduct = require('../models/BrandProduct');
+      const piIds = (await ProductIngredient.findAll({ where: { owner_user_id: { [Op.in]: owners } }, attributes: ['id'], transaction })).map((x) => x.id);
+      if (piIds.length) or.push({ product_ingredient_id: { [Op.in]: piIds } });
+      const bpIds = (await BrandProduct.findAll({ where: { owner_user_id: { [Op.in]: owners } }, attributes: ['id'], transaction })).map((x) => x.id);
+      if (bpIds.length) or.push({ brand_product_id: { [Op.in]: bpIds } });
+    }
+  } else if (buyerEntity.type === 'foodcourt') {
+    const myIngIds = (await Ingredient.findAll({ where: { foodcourt_id: buyerEntity.id }, attributes: ['id'], transaction })).map((i) => i.id);
+    if (myIngIds.length) or.push({ ingredient_id: { [Op.in]: myIngIds } });
+  }
+  if (!or.length) return out;
+
+  const rows = await IngredientSellerProduct.findAll({
+    where: { [Op.or]: or, is_active: true },
+    attributes: ['ingredient_id', 'product_ingredient_id', 'product_id', 'brand_product_id', 'seller_type', 'seller_product_id', 'buyer_restaurant_id'],
+    transaction
+  });
+  const targetOf = (m) => (m.ingredient_id ? { kind: 'ingredient', id: m.ingredient_id }
+    : m.product_ingredient_id ? { kind: 'product_ingredient', id: m.product_ingredient_id }
+    : m.product_id ? { kind: 'product', id: m.product_id }
+    : m.brand_product_id ? { kind: 'brand_product', id: m.brand_product_id } : null);
+  // 덮어쓰기 순서(뒤가 이긴다): 자체재고 프로덕트 → 브랜드 출처 연결 → 자기 재고아이템 연결
+  const rank = (m) => (!m.ingredient_id && !m.product_ingredient_id ? 0
+    : (m.buyer_restaurant_id == null && brandSourceIngIds.has(m.ingredient_id) ? 1 : 2));
+  rows.sort((a, b) => rank(a) - rank(b));
+  for (const m of rows) {
+    const bucket = out[m.seller_type];
+    const target = targetOf(m);
+    if (bucket && target) bucket[m.seller_product_id] = target;
+  }
+  return out;
+}
+
 module.exports = {
   normalizeName,
   stockFieldsFromSellerProduct,
@@ -283,5 +360,6 @@ module.exports = {
   connectExisting,
   findAlreadyLinked,
   createMappingFor,
+  linkedSellerProductMap,
   mappingAttrs
 };

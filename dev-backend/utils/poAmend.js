@@ -144,7 +144,9 @@ async function listAmendableProducts(po, buyerEntity, transaction, { keepMapping
       unit: spec.unit || null,
       base_quantity: spec.base_quantity,
       base_unit: spec.base_unit,
-      stock_target: check.target.kind
+      stock_target: check.target.kind,
+      // 구매자 수정 화면은 자기 재고 이름으로 고른다(2026-10-15 buyer-po-edit §4-1). 판매자 화면은 name 그대로.
+      stock_name: check.stockRow.name || null
     });
   }
   // 판매자가 고르는 목록 — 이름은 **판매자 자기 상품명**(받은 주문 목록·상세와 같은 단일 소스).
@@ -227,7 +229,53 @@ function diffLines(beforeRows, afterAttrs) {
   return changes;
 }
 
+// ============================================
+// 구매자(매장) 쪽 수정 — 2026-10-15 Fable 설계 .claude/fable-design-20261015-buyer-po-edit.md §3
+// ============================================
+
+/**
+ * 구매자가 고칠 수 있는 상태 = 판매자가 확인하기 전. (판매자 AMENDABLE_STATUSES 와 다르다 — 판매자는 confirmed 도 고친다)
+ *   외부 공급업체는 confirm 이 없어 수령 전까지 submitted 에 머문다 → 사실상 «언제나»(Irene R1).
+ *   Irene Q1(설계 §10) 답이 «승인 뒤엔 불가» 면 isExternal=false 쪽에서 'submitted' 를 뺀다 — 이 한 줄.
+ *   draft 는 Staging(품목 빼기·장바구니)이 맡는다.
+ */
+// eslint-disable-next-line no-unused-vars
+function buyerAmendableStatuses(isExternal) {
+  return ['pending_approval', 'submitted'];
+}
+
+/**
+ * 구매자 수정을 막는 조건 — 첫 번째 걸리는 것 하나. null 이면 고칠 수 있다.
+ * ⚠ 상세 GET 의 can_amend/amend_blocked 와 POST amend 거부가 **이 함수 하나**를 부른다.
+ * @returns {null | {code:string, message:string, http:number}}
+ */
+function buyerAmendBlock(po, lines, { isExternal } = {}) {
+  if (!buyerAmendableStatuses(!!isExternal).includes(po.status)) {
+    return { code: 'BAD_STATUS', http: 400, message: `Cannot edit an order in status '${po.status}'` };
+  }
+  if (po.trade_invoice_id) {
+    return { code: 'ALREADY_INVOICED', http: 400, message: 'Cannot edit an order that already has an invoice' };
+  }
+  if (po.invoice_reconciled_at) {
+    return { code: 'ALREADY_RECONCILED', http: 400, message: 'Cannot edit an order whose supplier invoice is reconciled' };
+  }
+  // 낸 돈과 발주 총액이 어긋나면 장부가 갈라진다 — «Reverse payment» 뒤에 고친다. (ENUM: unpaid·paid·refunded)
+  if (po.payment_status === 'paid') {
+    return { code: 'ALREADY_PAID', http: 400, message: 'Cannot edit a paid order — reverse the payment first' };
+  }
+  const rows = lines || [];
+  if (rows.some(r => (parseFloat(r.quantity_received) || 0) > 0)) {
+    return { code: 'ALREADY_RECEIVED', http: 400, message: 'Cannot edit an order that already has received quantities' };
+  }
+  if (rows.some(r => r.shipped_at)) {
+    return { code: 'ALREADY_SHIPPED', http: 409, message: 'Cannot edit an order that already has dispatched items' };
+  }
+  return null;
+}
+
 module.exports = {
+  buyerAmendableStatuses,
+  buyerAmendBlock,
   AMENDABLE_STATUSES,
   buyerEntityOf,
   mappingUsableBy,

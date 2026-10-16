@@ -1083,3 +1083,5 @@ router.delete('/product/:id', checkProductTenant, async (req, res) => {
 });
 
 module.exports = router;
+// 매장 메뉴 직접 FK 소유 판정 단일 소스 — services/sellStockItemDirect 의 두 문(카탈로그·재고 목록)이 같이 쓴다(2026-10-15).
+module.exports.isIngredientInScope = isIngredientInScope;

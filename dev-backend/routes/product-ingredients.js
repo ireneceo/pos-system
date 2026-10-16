@@ -392,10 +392,14 @@ router.post('/from-catalog', async (req, res) => {
       return res.status(r.status).json(r.body);
     }
 
-    // 새 브랜드 프로덕트로 등록 — 판매가 필수(빈 값·0 이하면 400)
-    if (body.new_product && typeof body.new_product === 'object') {
-      const np = body.new_product;
-      const price = parseFloat(np.price);
+    // «Add as product»(body.new_product) = 재고아이템(아래 흐름 그대로 — 있으면 재사용) + 그 재고아이템을 그대로 파는 브랜드 프로덕트.
+    //   2026-10-15 Fable 설계 D1(.claude/fable-design-20261015-catalog-add-menu.md) · Irene «권고대로 진행해 줘».
+    //   전에는 재고아이템 없이 자체 수량을 가진 프로덕트만, 그것도 어느 브랜드에도 안 붙은 채로 만들었다(P3-②).
+    //   ⛔ 판매가 필수 — 재고아이템을 만들기 전에 막는다. 브랜드도 먼저 정한다(남의 브랜드에 만들지 않게).
+    const newProduct = body.new_product && typeof body.new_product === 'object' ? body.new_product : null;
+    let sellBrandId = null;
+    if (newProduct) {
+      const price = parseFloat(newProduct.price);
       if (!Number.isFinite(price) || price <= 0) {
         await t.rollback();
         return res.status(400).json({
@@ -403,28 +407,45 @@ router.post('/from-catalog', async (req, res) => {
           message: 'Selling price is required for a new product (supplier cost is never copied into it)'
         });
       }
-      const { BrandProduct } = require('../models');
-      const unitForProduct = catalogLink.resolveUnit(np.unit, seller.productUnit);
-      const bp = await BrandProduct.create({
-        owner_user_id: req.bgOwnerId,
-        category_id: np.category_id || null,
-        name: sanitizeString(String(np.name || seller.productName || '')).slice(0, 255),
-        unit: unitForProduct,
-        // 레시피 없는 프로덕트는 판매 단위 = 재고 단위여야 한다(환산 필드가 없다 — R-SC-012)
-        stock_unit: unitForProduct,
-        base_quantity: 1,
-        unit_price: price,
-        min_order_quantity: 1,
-        is_active: true,
-        current_stock: 0,
-        min_stock: parseFloat(np.min_stock) || 0,
-      }, { transaction: t });
-      const mapping = await catalogLink.createMappingFor({
-        target: bp, seller, unitConversion: convFor(bp), targetKey: 'brand_product_id', transaction: t
-      });
-      await t.commit();
-      return res.status(201).json({ success: true, data: { product: bp, mapping, created: true } });
+      // 브랜드 = 요청의 brand_id(발주 화면의 구매 브랜드). 범위 판정은 requireBrandScope 와 같은 단일 소스.
+      const wanted = parseInt(body.brand_id ?? newProduct.brand_id, 10);
+      if (req.bgOwnerIsAdmin) {
+        sellBrandId = Number.isFinite(wanted) ? wanted : null;
+      } else {
+        const { brandIdsForUser } = require('../utils/managerBrandScope');
+        let mine = await brandIdsForUser(req.user);
+        if (!mine.length) mine = (await Brand.findAll({ where: { owner_id: req.bgOwnerId }, attributes: ['id'], transaction: t })).map(x => x.id);
+        if (Number.isFinite(wanted)) {
+          if (!mine.map(Number).includes(wanted)) {
+            await t.rollback();
+            return res.status(404).json({ success: false, message: 'Brand not found' });
+          }
+          sellBrandId = wanted;
+        } else if (mine.length === 1) {
+          sellBrandId = Number(mine[0]);
+        }
+      }
+      if (sellBrandId == null) {
+        await t.rollback();
+        return res.status(400).json({ success: false, code: 'BRAND_REQUIRED', message: 'brand_id required' });
+      }
     }
+    // 재고아이템이 정해진 뒤 — new_product 면 같은 트랜잭션에서 프로덕트까지 만들고, 아니면 그대로 끝낸다.
+    const finish = async (status, data) => {
+      if (!newProduct) { await t.commit(); return res.status(status).json({ success: true, data }); }
+      const { sellAsBrandProduct } = require('../services/sellStockItemDirect');
+      const r = await sellAsBrandProduct({
+        stockItem: data.ingredient, ownerUserId: req.bgOwnerId, brandId: sellBrandId,
+        price: parseFloat(newProduct.price), name: newProduct.name, categoryId: newProduct.category_id,
+        transaction: t
+      });
+      if (!r.ok) { await t.rollback(); return res.status(r.status).json(r.body); }
+      await t.commit();
+      return res.status(201).json({ success: true, data: {
+        ...data, product: r.product,
+        created: { ingredient: !!data.created, product: true }
+      } });
+    };
 
     // Connect mode — 기존 BG 소유 ProductIngredient 에 매핑만 추가
     const existingPiId = parseInt(body.existing_product_ingredient_id, 10);
@@ -446,10 +467,11 @@ router.post('/from-catalog', async (req, res) => {
       seller, targetKey: 'product_ingredient_id',
       findTarget: (id) => ProductIngredient.findByPk(id, { transaction: t }),
       ownsTarget: (pi) => pi.owner_user_id === req.bgOwnerId,
-      extraWhere: { product_ingredient_id: { [Op.ne]: null } },
+      // 이 소유자 재고아이템의 연결만 — 범위 없이 찾으면 다른 브랜드 소유자의 연결을 먼저 집어 두 줄을 만든다(2026-10-15)
+      extraWhere: { product_ingredient_id: { [Op.in]: ProductIngredient.sequelize.literal(`(SELECT id FROM product_ingredients WHERE owner_user_id = ${parseInt(req.bgOwnerId, 10)})`) } },
       transaction: t
     });
-    if (already) { await t.commit(); return res.status(already.status).json(already.body); }
+    if (already) return finish(already.status, already.body.data);
 
     // 새 ProductIngredient + 매핑 생성
     // 채번 단일 소스(원자 카운터) — `count + 1` 은 지운 번호를 재사용한다(2026-09-06).
@@ -475,8 +497,7 @@ router.post('/from-catalog', async (req, res) => {
       target: ingredient, seller, unitConversion: convFor(ingredient), targetKey: 'product_ingredient_id', transaction: t
     });
 
-    await t.commit();
-    res.status(201).json({ success: true, data: { ingredient, mapping, created: true } });
+    return finish(201, { ingredient, mapping, created: true });
   } catch (err) {
     if (!t.finished) await t.rollback();
     console.error('POST /api/product-ingredients/from-catalog error:', err);
@@ -1102,33 +1123,22 @@ router.get('/:id/open-po-lines', async (req, res) => {
 });
 
 // POST /api/product-ingredients/:id/register-as-product
-// 재고아이템을 **그대로 파는 브랜드 프로덕트**로도 등록한다 (P3-③ · RA 대칭).
-// 수량은 재고아이템 한 곳에만 산다 — 프로덕트에는 **재료 ×1 레시피**를 걸어
-// 출고(판매) 때 재고아이템에서 빠지게 한다(seller-orders 의 BOM 차감 경로).
+// 재고아이템을 **그대로 파는 브랜드 프로덕트**로도 등록한다 — 직접 FK `brand_products.product_ingredient_id` (2026-10-15).
+// 전에는 ×1 프로덕트 레시피를 만들었다(P3-③). §2-1 «프로덕트 = 재고아이템 그대로» 로 맞추고,
+// 발주 카탈로그 «Add as product» 와 같은 함수(services/sellStockItemDirect)를 쓴다 — 중복 검사(직접 FK ① · ×1 레시피 ②)·
+// 브랜드 귀속(BrandProductBrand)도 그 함수 안. 기존 ×1 레시피 프로덕트는 그대로 둔다.
 // ⛔ 판매가 필수(공급가 복사 금지) · 중복이면 409 · 전부 한 트랜잭션.
 router.post('/:id/register-as-product', requireBrandScope(), async (req, res) => {
   const { sequelize } = require('../config/database');
   const t = await sequelize.transaction();
   try {
-    const { BrandProduct, ProductRecipe } = require('../models');
-    const price = parseFloat(req.body?.price);
-    if (!Number.isFinite(price) || price <= 0) {
-      await t.rollback();
-      return res.status(400).json({
-        success: false, code: 'PRICE_REQUIRED',
-        message: 'Selling price is required (supplier cost is never copied into it)'
-      });
-    }
+    const { sellAsBrandProduct } = require('../services/sellStockItemDirect');
 
     // 브랜드 결정 — 명시된 brand_id, 없으면 소유 브랜드가 하나일 때만 자동.
     // 둘 이상이면 **고르게 한다**(임의 선택은 남의 브랜드에 프로덕트를 만드는 사고가 된다).
     let brandId = req.brandScope.brandId;
     if (brandId == null && !req.brandScope.isAdmin && req.brandScope.ownedBrandIds?.length === 1) {
       brandId = req.brandScope.ownedBrandIds[0];
-    }
-    if (brandId == null) {
-      await t.rollback();
-      return res.status(400).json({ success: false, code: 'BRAND_REQUIRED', message: 'brand_id required' });
     }
 
     const ing = await ProductIngredient.findByPk(parseInt(req.params.id, 10), { transaction: t });
@@ -1137,107 +1147,15 @@ router.post('/:id/register-as-product', requireBrandScope(), async (req, res) =>
       return res.status(404).json({ success: false, message: 'Stock item not found' });
     }
 
-    // 중복 ① 직접 연결 — 이 재고아이템을 그대로 가리키는 프로덕트가 이미 있으면 그것이 답이다.
-    //   2026-09-15: 아래 레시피 경로만 보고 있어서, 프로덕트 창의 «재고아이템도 같이 만들기» 로 붙은
-    //   직접 연결(product_ingredient_id)을 못 봤다. 그 상태에서 이 버튼을 또 누르면 **같은 이름 프로덕트가
-    //   두 개** 생겼다(실측: 201 통과, 이름 중복 2건). 「같은 물건 두 줄」 사고의 재발 경로라 먼저 막는다.
-    const dupDirect = await BrandProduct.findOne({
-      where: { owner_user_id: req.bgOwnerId, product_ingredient_id: ing.id, is_active: true },
-      attributes: ['id', 'name'], transaction: t
+    const r = await sellAsBrandProduct({
+      stockItem: ing, ownerUserId: req.bgOwnerId, brandId,
+      price: parseFloat(req.body?.price), name: req.body?.name, categoryId: req.body?.category_id,
+      transaction: t
     });
-    if (dupDirect) {
-      await t.rollback();
-      return res.status(409).json({
-        success: false, code: 'ALREADY_A_PRODUCT',
-        message: `Already sold as a product: ${dupDirect.name}`,
-        data: { product_id: dupDirect.id, product_name: dupDirect.name }
-      });
-    }
-
-    // 중복 ② 레시피 경로 — 이 재고아이템 하나만 쓰는 레시피에 걸린 내 브랜드 프로덕트.
-    const linksOfIngredient = await ProductRecipeIngredient.findAll({
-      where: { ingredient_id: ing.id }, attributes: ['recipe_id'], transaction: t
-    });
-    const candidateRecipeIds = [...new Set(linksOfIngredient.map((l) => l.recipe_id))];
-    let soloRecipeIds = [];
-    if (candidateRecipeIds.length) {
-      const allLinks = await ProductRecipeIngredient.findAll({
-        where: { recipe_id: candidateRecipeIds }, attributes: ['recipe_id', 'ingredient_id'], transaction: t
-      });
-      const countByRecipe = allLinks.reduce((m, l) => { m[l.recipe_id] = (m[l.recipe_id] || 0) + 1; return m; }, {});
-      soloRecipeIds = candidateRecipeIds.filter((id) => countByRecipe[id] === 1);
-    }
-    if (soloRecipeIds.length) {
-      const dup = await BrandProduct.findOne({
-        where: { owner_user_id: req.bgOwnerId, product_recipe_id: soloRecipeIds, is_active: true },
-        attributes: ['id', 'name'], transaction: t
-      });
-      if (dup) {
-        await t.rollback();
-        return res.status(409).json({
-          success: false, code: 'ALREADY_A_PRODUCT',
-          message: `Already sold as a product: ${dup.name}`,
-          data: { product_id: dup.id, product_name: dup.name }
-        });
-      }
-    }
-
-    const name = sanitizeString(String(req.body?.name || ing.name)).slice(0, 255);
-    // 코드는 기존 화면과 같은 방식(브랜드 스코프 내 카운트) — 형식을 여기서 새로 만들지 않는다.
-    const { generateCode: genPRCode } = require('../utils/codeGenerator');
-    const prCode = await genPRCode(ProductRecipe, 'PR', { whereClause: { brand_id: brandId }, transaction: t });
-    const recipe = await ProductRecipe.create({
-      brand_id: brandId,
-      code: prCode,
-      name: name.slice(0, 100),
-      yield_amount: 1,
-      yield_unit: ing.unit || 'piece',
-      is_active: true,
-    }, { transaction: t });
-
-    await ProductRecipeIngredient.create({
-      recipe_id: recipe.id,
-      ingredient_id: ing.id,
-      quantity: 1,
-      unit: ing.unit || 'piece',
-      cost: parseFloat(ing.unit_cost) || 0,
-    }, { transaction: t });
-
-    const product = await BrandProduct.create({
-      owner_user_id: req.bgOwnerId,
-      category_id: req.body?.category_id || null,
-      name,
-      unit: ing.unit || null,
-      // 레시피가 걸린 프로덕트는 자기 수량을 쓰지 않는다 — 재고는 재고아이템에 산다.
-      stock_unit: ing.unit || null,
-      base_quantity: 1,
-      unit_price: price,
-      min_order_quantity: 1,
-      product_recipe_id: recipe.id,
-      is_active: true,
-      current_stock: 0,
-      min_stock: 0,
-    }, { transaction: t });
-
-    // 브랜드 귀속 — 브랜드 프로덕트는 owner 소유이고, 어느 브랜드가 파는지는 별도 링크 테이블에 있다.
-    try {
-      const { BrandProductBrand } = require('../models');
-      if (BrandProductBrand) {
-        // 컬럼명은 product_id (brand_product_id 가 아니다 — 중간테이블 실제 스키마)
-        await BrandProductBrand.findOrCreate({
-          where: { product_id: product.id, brand_id: brandId },
-          defaults: { product_id: product.id, brand_id: brandId },
-          transaction: t,
-        });
-      }
-    } catch (linkErr) {
-      await t.rollback();
-      console.error('register-as-product (BG) brand link failed:', linkErr);
-      return res.status(500).json({ success: false, message: 'Failed to link product to brand' });
-    }
+    if (!r.ok) { await t.rollback(); return res.status(r.status).json(r.body); }
 
     await t.commit();
-    res.status(201).json({ success: true, data: { product, recipe } });
+    res.status(201).json({ success: true, data: { product: r.product } });
   } catch (error) {
     await t.rollback().catch(() => {});
     console.error('register-as-product (BG) error:', error);

@@ -646,6 +646,13 @@ router.get('/purchase-orders/:id', async (req, res) => {
     const payableOne = payableFrom(plain, plain.is_external);
     plain.payable_amount = payableOne.amount;
     plain.payable_basis = payableOne.basis;
+    // 구매자 품목 수정 가능 여부 — POST /amend 거부와 같은 함수(utils/poAmend.buyerAmendBlock · 2026-10-15 buyer-po-edit §4-2)
+    {
+      const { buyerAmendBlock } = require('../utils/poAmend');
+      const blk = buyerAmendBlock(po, plain.items || [], { isExternal: plain.is_external });
+      plain.can_amend = !blk;
+      plain.amend_blocked = blk ? blk.code : null;
+    }
 
     // Item-level identity flattening (P0-3): internal name (RA Ingredient or BG
     // ProductIngredient or description) + supplier's own sale-product name/SKU via
