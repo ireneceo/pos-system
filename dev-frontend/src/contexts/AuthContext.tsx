@@ -901,6 +901,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => setOnContextFallbackHandler(null);
   }, []);
 
+  // 모자 부여·거절·회수 즉시 반영 — 알림 소켓의 «다시 읽어라» 신호(NotificationToaster 가 중계).
+  // 헤더 스위처·선택 화면이 contexts 를 읽으므로 목록만 다시 받으면 된다(새로고침·재로그인 불필요).
+  useEffect(() => {
+    const onChanged = () => { refreshContextsRef.current?.(); };
+    window.addEventListener('context-changed', onChanged);
+    return () => window.removeEventListener('context-changed', onChanged);
+  }, []);
+
   // PIN 전환 시 JWT 교체 + user 상태 교체 (리다이렉트 없음)
   const switchUser = (token: string, userData: SwitchUserData) => {
     const newUser: User = {

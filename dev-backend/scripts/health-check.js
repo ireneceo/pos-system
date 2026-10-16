@@ -443,6 +443,18 @@ function defineContextRequestTests({ adminToken }) {
     const saPost = await request('POST', '/context-requests', { entity_type: 'brand', entity_id: 17, role: 'Brand Manager' }, sa);
     return list.status === 403 && pc.status === 200 && typeof pc.body?.data?.count === 'number' && saPost.status === 403;
   });
+
+  // 승인 즉시 반영(.claude/fable-design-20261016-staff-approval-live.md §6.1) — RA 직원 목록 «연결 계정» opt-in.
+  test('security', '직원 목록 include_contexts — 데모 RA 200·password 없음 · 데모 BG 는 플래그 무시(응답 동일)', async () => {
+    const ra = await tokenFor('demo-restaurant@purplehere.com');
+    const bg = await tokenFor('demo-brand@purplehere.com');
+    if (!ra || !bg) return false;
+    const r = await request('GET', '/users?include_contexts=1', null, ra);
+    const okRa = r.status === 200 && Array.isArray(r.body?.data) && r.body.data.every(u => !('password' in u));
+    const b1 = await request('GET', '/users', null, bg);
+    const b2 = await request('GET', '/users?include_contexts=1', null, bg);
+    return okRa && b1.status === 200 && b2.status === 200 && JSON.stringify(b1.body) === JSON.stringify(b2.body);
+  });
 }
 
 // ============================================

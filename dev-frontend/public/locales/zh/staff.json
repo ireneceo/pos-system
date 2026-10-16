@@ -27,5 +27,7 @@
   "staffPage.staffIdUsername": "员工ID（用户名）",
   "staffPage.pinCode4Digits": "PIN码（4位数）",
   "staffPage.ok": "确定",
-  "staffPage.reset": "重置"
+  "staffPage.reset": "重置",
+  "staffPage.linkedAccount": "关联账户",
+  "staffPage.linkedNoPin": "使用本人账户登录并切换到本店 — 无员工 ID 和 PIN"
 }

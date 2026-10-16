@@ -645,6 +645,12 @@ P2/P3a 에 순증. 반대로 F1 재설계는 백필 폐기로 P1 을 **1일 단�
 - demo 계정 요청 403, is_test 허용.
 - **Q3 갱신(v1.3):** 셀프 **요청** 허용 · 셀프 부여 금지 유지 · Staff 승인은 그 매장 RA · 쓰기 경로는 `services/userContexts.grantContext` 하나(SA 직접 부여·요청 승인이 같은 함수).
 
+### §6.4.1 v1.3.1 즉시 반영 (2026-10-16 · 설계 `.claude/fable-design-20261016-staff-approval-live.md`)
+- 신호 2개(기존 `/notifications` 소켓): `context:changed` → 당사자 `user:{id}`(granted·rejected·revoked, 토스트 1줄) · `context:store-changed` → 매장 `restaurant:{rid}`(요청 생성·취소·승인·거절·회수, 토스트 없음). 헬퍼 `services/contextSignals.js`.
+- 페이로드에 이름·이메일·user_id 없음(«다시 읽어라» 만) · 알림 설정 게이트 없음(상태 동기화). 프론트는 `NotificationToaster` 가 window 이벤트 `context-changed`/`context-store-changed` 로 중계 → AuthContext·선택 화면·직원 화면·요청 패널이 다시 읽음. 재연결 때 resync 1회 · 선택 화면은 탭이 다시 보일 때 1회.
+- RA 직원 목록: `GET /api/users?include_contexts=1`(RA 분기만) 에 그 매장 Staff 모자 보유자를 «연결 계정»(`access_kind:'context'`)으로. 권한 수정·연결 해제 버튼은 초대 설계(D2) 몫.
+- 함께 고친 결함: `/notifications` 의 `user:{id}` 룸이 토큰 키 `id` 를 읽어 **한 번도 만들어지지 않았다**(발급 토큰은 `userId`) → `auth.userId || auth.id`.
+
 ## 부록 A. 실측 근거 색인
 
 | 사실 | 근거 |

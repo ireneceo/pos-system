@@ -27,5 +27,7 @@
   "staffPage.staffIdUsername": "직원 ID (사용자명)",
   "staffPage.pinCode4Digits": "PIN 코드 (4자리)",
   "staffPage.ok": "확인",
-  "staffPage.reset": "초기화"
+  "staffPage.reset": "초기화",
+  "staffPage.linkedAccount": "연결 계정",
+  "staffPage.linkedNoPin": "본인 계정으로 로그인해 이 매장으로 전환합니다 — Staff ID·PIN 없음"
 }

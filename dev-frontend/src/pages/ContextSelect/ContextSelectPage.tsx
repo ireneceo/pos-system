@@ -308,6 +308,22 @@ const ContextSelectPage: React.FC = () => {
     refreshContexts().then((fresh) => { if (fresh) setList(fresh); });
   }, [refreshContexts]);
 
+  // 승인·거절·회수 즉시 반영 — 소켓 신호(context-changed) + 탭이 다시 보일 때 1회(소켓이 끊겨 있었을 때 대비).
+  // focus 는 쓰지 않는다(모달·입력 포커스마다 연발).
+  useEffect(() => {
+    const reload = () => {
+      refreshContexts().then((fresh) => { if (fresh) setList(fresh); });
+      loadMyRequests();
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') reload(); };
+    window.addEventListener('context-changed', reload);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('context-changed', reload);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [refreshContexts, loadMyRequests]);
+
   // 이 기기가 특정 매장 POS 로 고정돼 있는지 — 다른 매장으로 넘어갈 때 강하게 경고한다.
   // (로그인 시에만 기록되는 값이라 컨텍스트 전환이 이 값을 덮어쓰지 않는다 — 설계 §4.5)
   const deviceRestaurant = useMemo(() => {

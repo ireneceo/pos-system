@@ -170,6 +170,20 @@ const ContextRequestsPanel: React.FC<Props> = ({ scope, onChanged }) => {
 
   useEffect(() => { load(); }, [load]);
 
+  // 새 요청·취소·다른 관리자의 처리 — 매장 룸 신호로 새로고침 없이 다시 읽는다(300ms 로 묶음).
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onStore = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { load(); }, 300);
+    };
+    window.addEventListener('context-store-changed', onStore);
+    return () => {
+      window.removeEventListener('context-store-changed', onStore);
+      if (timer) clearTimeout(timer);
+    };
+  }, [load]);
+
   const after = useCallback(() => { load(); if (onChanged) onChanged(); }, [load, onChanged]);
 
   const setRowError = (id: number, msg: string | null) =>

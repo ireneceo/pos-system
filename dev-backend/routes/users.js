@@ -7,6 +7,7 @@ const bcrypt = require('bcrypt');
 const { authenticateToken, requireRole, demoProtection, userCanAccessRestaurant } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLogger');
 const { currencySymbol } = require('../utils/currency');
+const { emitContextChanged } = require('../services/contextSignals');
 
 // Get all users (System Admin only)
 router.get('/', authenticateToken, async (req, res) => {
@@ -171,6 +172,47 @@ router.get('/', authenticateToken, async (req, res) => {
       }
       return u;
     });
+
+    // 승인·부여로 이 매장 Staff 모자를 가진 «연결 계정» — RA 의 직원 화면만 opt-in(include_contexts=1).
+    // 그 외 호출자(BG/FG/SA · 플래그 없는 RA)는 바이트 동일. .claude/fable-design-20261016-staff-approval-live.md §3.3
+    if (req.user.role === 'Restaurant Admin' && req.query.include_contexts === '1'
+        && (!req.query.role || req.query.role === 'Staff')) {
+      const rid = req.user.restaurant_id;
+      const linked = await sequelize.query(`
+        SELECT u.id, u.username, u.email, u.full_name, u.phone, u.role AS native_role, u.is_active,
+               uc.id AS context_id, uc.permissions, uc.created_at AS linked_at, r.name AS restaurant_name
+          FROM user_contexts uc
+          JOIN users u ON u.id = uc.user_id
+          LEFT JOIN restaurants r ON r.id = uc.entity_id
+         WHERE uc.entity_type = 'restaurant' AND uc.entity_id = ? AND uc.role = 'Staff'
+         ORDER BY u.full_name
+      `, { replacements: [rid], type: sequelize.QueryTypes.SELECT });
+      const term = searchTerm.toLowerCase();
+      for (const l of linked) {
+        if (term && ![l.full_name, l.email, l.username].some(v => v && String(v).toLowerCase().includes(term))) continue;
+        let perms = l.permissions;
+        for (let i = 0; i < 3 && typeof perms === 'string'; i++) { try { perms = JSON.parse(perms); } catch { perms = []; } }
+        usersWithoutPassword.push({
+          id: l.id,
+          username: l.username,
+          email: l.email,
+          full_name: l.full_name,
+          phone: l.phone,
+          role: 'Staff',
+          restaurant_id: rid,
+          restaurant_name: l.restaurant_name,
+          permissions: Array.isArray(perms) ? perms : [],
+          access_kind: 'context',
+          context_id: l.context_id,
+          native_role: l.native_role,
+          linked_at: l.linked_at,
+          createdAt: l.linked_at,
+          pin_code: null,
+          department: null,
+          is_active: l.is_active
+        });
+      }
+    }
 
     console.log(`✓ Found ${usersWithoutPassword.length} users with role: ${req.query.role || 'all'}`);
     res.json({ success: true, data: usersWithoutPassword });
@@ -1377,6 +1419,8 @@ router.post('/:id/contexts', authenticateToken, requireRole('System Admin'), asy
       ...(result.restaurantId ? { restaurant_id: result.restaurantId } : {})
     });
 
+    emitContextChanged({ kind: 'granted', userId: target.id, entityType: entity_type, entityId: userContexts.normalizeEntityId(entity_id), role, label: result.entityName || null });
+
     res.json({ success: true, data: result.data, message: result.message });
   } catch (error) {
     console.error('[users] POST /:id/contexts error:', error.message);
@@ -1394,7 +1438,7 @@ router.delete('/:id/contexts/:contextId', authenticateToken, requireRole('System
     }
 
     const [rows] = await _seq.query(
-      'SELECT id, entity_id, role FROM user_contexts WHERE id = :c AND user_id = :u',
+      'SELECT id, entity_type, entity_id, role FROM user_contexts WHERE id = :c AND user_id = :u',
       { replacements: { c: ctxId, u: uid } }
     );
     if (!rows.length) {
@@ -1411,6 +1455,9 @@ router.delete('/:id/contexts/:contextId', authenticateToken, requireRole('System
       description: `Revoked ${rows[0].role} context for restaurant #${rows[0].entity_id} from user #${uid}`,
       restaurant_id: rows[0].entity_id
     });
+
+    // 당사자 화면(헤더 스위처·선택 화면)과 그 매장 직원 목록을 즉시 갱신 — 데이터 없는 «다시 읽어라» 신호.
+    emitContextChanged({ kind: 'revoked', userId: uid, entityType: rows[0].entity_type, entityId: rows[0].entity_id, role: rows[0].role });
 
     res.json({ success: true, message: 'Context revoked' });
   } catch (error) {

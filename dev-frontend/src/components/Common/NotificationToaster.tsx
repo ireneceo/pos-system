@@ -66,6 +66,8 @@ const NotificationToaster: React.FC = () => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const lastPingRef = useRef(0);
   const socketRef = useRef<Socket | null>(null);
+  const tRef = useRef(t);
+  tRef.current = t;
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
@@ -113,6 +115,8 @@ const NotificationToaster: React.FC = () => {
       reconnectionDelayMax: 10000
     });
     socketRef.current = sock;
+    // 재연결이면(첫 연결 제외) 끊긴 동안 놓친 모자 변화를 한 번 다시 읽게 한다.
+    let connectedOnce = false;
 
     sock.on('connect', () => {
       // Auto-join user-scoped rooms based on role/identity
@@ -124,6 +128,31 @@ const NotificationToaster: React.FC = () => {
         foodcourt_id: user.foodcourt_id,
         supplier_company_id: (user as any).supplier_company_id
       });
+      if (connectedOnce) {
+        window.dispatchEvent(new CustomEvent('context-changed', { detail: { kind: 'resync' } }));
+        window.dispatchEvent(new CustomEvent('context-store-changed', { detail: { kind: 'resync' } }));
+      }
+      connectedOnce = true;
+    });
+
+    // 모자(컨텍스트) 상태 동기화 — 알림이 아니라 «다시 읽어라» 신호(.claude/fable-design-20261016-staff-approval-live.md §4.1).
+    // 실제 반영은 듣는 쪽(AuthContext·선택 화면·직원 화면·요청 패널)이 자기 권한으로 다시 읽는다.
+    sock.on('context:changed', (d: any) => {
+      window.dispatchEvent(new CustomEvent('context-changed', { detail: d }));
+      const kind = d?.kind;
+      if (kind !== 'granted' && kind !== 'rejected' && kind !== 'revoked') return;
+      const label = d?.label || '';
+      pushToast({
+        id: `context-${kind}-${Date.now()}`,
+        title: tRef.current(`auth:context.live.${kind}`, { label }),
+        category: 'context_change',
+        url: kind === 'revoked' ? undefined : '/pos/select-context',
+        createdAt: Date.now()
+      });
+    });
+    // 매장 룸 전원이 받는다 — 토스트 없음.
+    sock.on('context:store-changed', (d: any) => {
+      window.dispatchEvent(new CustomEvent('context-store-changed', { detail: d }));
     });
 
     sock.on('notification', (data: any) => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
-import { DataTableContainer, DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
+import { DataTableContainer, DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty, DataTableStatus } from '../../components/UI/DataTable';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { Modal, ModalButton, ModalWarning, FormRow, FormGroup, FormLabel, FormInput, FormSelect } from '../../components/UI/Modal';
@@ -10,7 +10,7 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
-import StaffPermissionPicker, { MENU_GROUPS } from '../../components/Staff/StaffPermissionPicker';
+import StaffPermissionPicker, { MENU_GROUPS, WORK_ACCESS } from '../../components/Staff/StaffPermissionPicker';
 import ContextRequestsPanel from '../../components/ContextRequests/ContextRequestsPanel';
 
 // Staff ID 매장 네임스페이스(r{restaurant_id}:counter) → 화면 표시용으로 prefix 제거.
@@ -32,6 +32,9 @@ interface Staff {
   status: 'active' | 'inactive';
   joinDate: string;
   permissions: string[];
+  /** 'context' = 승인·부여로 이 매장 Staff 모자를 가진 다른 계정(«연결 계정») — Staff ID·PIN 없음, 남의 계정이라 수정 버튼 없음 */
+  accessKind?: 'native' | 'context';
+  contextId?: number;
 }
 
 const StaffContainer = styled.div`
@@ -286,7 +289,8 @@ const StaffPage: React.FC = () => {
       const token = getAuthToken();
       const headers = { 'Authorization': `Bearer ${token}` };
 
-      const usersResponse = await fetch('/api/users', { headers });
+      // include_contexts=1 — 승인으로 이 매장 직원이 된 연결 계정도 같은 목록에(RA 만 의미, 서버가 다른 역할엔 무시).
+      const usersResponse = await fetch('/api/users?include_contexts=1', { headers });
 
       if (!usersResponse.ok) {
         // Surface a useful message instead of silently showing an empty list.
@@ -322,6 +326,8 @@ const StaffPage: React.FC = () => {
         company_name: u.company_name || '',
         restaurantId: u.restaurant_id?.toString(),
         status: 'active' as const,
+        accessKind: u.access_kind === 'context' ? 'context' as const : 'native' as const,
+        contextId: u.context_id ?? undefined,
         joinDate: u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '',
         permissions: (() => {
           let p = u.permissions;
@@ -349,6 +355,22 @@ const StaffPage: React.FC = () => {
       setStaffList([]);
     }
   }, [user, fetchStaff]);
+
+  // 승인·회수 즉시 반영 — 다른 관리자·다른 탭에서 처리해도 매장 룸 신호로 다시 읽는다(300ms 로 묶음).
+  const canManageRequests = user?.role === 'Restaurant Admin' || user?.role === 'System Admin';
+  useEffect(() => {
+    if (!canManageRequests) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onStore = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { fetchStaff(); }, 300);
+    };
+    window.addEventListener('context-store-changed', onStore);
+    return () => {
+      window.removeEventListener('context-store-changed', onStore);
+      if (timer) clearTimeout(timer);
+    };
+  }, [canManageRequests, fetchStaff]);
 
   const filteredStaff = staffList.filter(staff => {
     if (searchQuery) {
@@ -594,7 +616,7 @@ const StaffPage: React.FC = () => {
         </Header>
 
         {/* 역할 추가 요청 (멀티 로그인 v1.3) — 이 매장 Staff 요청만(서버 범위). 이 페이지는 BG/FG/매니저도 열므로 RA·SA 일 때만. */}
-        {(user?.role === 'Restaurant Admin' || user?.role === 'System Admin') && <ContextRequestsPanel scope="restaurant" />}
+        {(user?.role === 'Restaurant Admin' || user?.role === 'System Admin') && <ContextRequestsPanel scope="restaurant" onChanged={fetchStaff} />}
 
         <Content>
           {listError && (
@@ -680,7 +702,14 @@ const StaffPage: React.FC = () => {
                             {getInitials(staff.name)}
                           </StaffAvatar>
                           <StaffDetails>
-                            <StaffName>{staff.name}</StaffName>
+                            <StaffName>
+                              {staff.name}
+                              {staff.accessKind === 'context' && (
+                                <DataTableStatus variant="info" style={{ marginLeft: 8 }} title={t('staff:staffPage.linkedNoPin')}>
+                                  {t('staff:staffPage.linkedAccount')}
+                                </DataTableStatus>
+                              )}
+                            </StaffName>
                             <StaffMeta>{staff.email}</StaffMeta>
                           </StaffDetails>
                         </StaffInfo>
@@ -699,7 +728,10 @@ const StaffPage: React.FC = () => {
                       </DataTableCell>
 
                       <DataTableCell data-label="PIN" align="center">
-                        <span style={{ fontSize: '14px', color: '#4B5563', fontFamily: 'monospace', letterSpacing: '2px' }}>
+                        <span
+                          style={{ fontSize: '14px', color: '#4B5563', fontFamily: 'monospace', letterSpacing: '2px' }}
+                          title={staff.accessKind === 'context' ? t('staff:staffPage.linkedNoPin') : undefined}
+                        >
                           {staff.pin_code ? '****' : '—'}
                         </span>
                       </DataTableCell>
@@ -713,7 +745,7 @@ const StaffPage: React.FC = () => {
                           <PermissionTags>
                             {staff.permissions.map(p => (
                               <PermissionTag key={p}>
-                                {MENU_GROUPS.find(g => g.key === p)?.label.split(' (')[0] || p}
+                                {[...WORK_ACCESS, ...MENU_GROUPS].find(g => g.key === p)?.label.split(' (')[0] || p}
                               </PermissionTag>
                             ))}
                           </PermissionTags>
@@ -727,7 +759,7 @@ const StaffPage: React.FC = () => {
                       </DataTableCell>
 
                       <DataTableCell data-label="" align="right" mobileFullWidth>
-                        <ActionGroup>
+                        {staff.accessKind !== 'context' && <ActionGroup>
                           <ActionButton onClick={() => handleOpenEditModal(staff)}>
                             Edit
                           </ActionButton>
@@ -736,7 +768,7 @@ const StaffPage: React.FC = () => {
                               Reset PW
                             </ActionButton>
                           )}
-                        </ActionGroup>
+                        </ActionGroup>}
                       </DataTableCell>
                     </DataTableRow>
                   ))}

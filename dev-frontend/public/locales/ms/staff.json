@@ -27,5 +27,7 @@
   "staffPage.staffIdUsername": "ID Kakitangan (Nama Pengguna)",
   "staffPage.pinCode4Digits": "Kod PIN (4 digit)",
   "staffPage.ok": "OK",
-  "staffPage.reset": "Set Semula"
+  "staffPage.reset": "Set Semula",
+  "staffPage.linkedAccount": "Akaun dipautkan",
+  "staffPage.linkedNoPin": "Log masuk dengan akaun sendiri dan tukar ke kedai ini — tiada ID Staf atau PIN"
 }

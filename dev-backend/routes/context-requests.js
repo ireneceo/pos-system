@@ -19,6 +19,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { sanitizeString } = require('../middleware/validation');
 const { logActivity } = require('../utils/activityLogger');
 const userContexts = require('../services/userContexts');
+const { emitContextChanged } = require('../services/contextSignals');
 
 const MAX_PENDING = 5;
 const BASE_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
@@ -253,6 +254,8 @@ router.post('/', authenticateToken, async (req, res) => {
     });
 
     notifyReceived({ combo, entityId, targetName: entity.name, requester: native, message });
+    // 승인자 화면(요청 패널)을 새로고침 없이 갱신 — 데이터 없는 신호(contextSignals).
+    emitContextChanged({ kind: 'request_created', userId: native.id, entityType: entity_type, entityId, role, requestId: created.id });
 
     res.status(201).json({
       success: true,
@@ -337,6 +340,8 @@ router.post('/:id/approve', authenticateToken, async (req, res) => {
     });
 
     notifyResult({ userId: requester.id, approved: true, role: row.role, targetName: row.label });
+    // 요청자 화면(카드·헤더 스위처)과 그 매장 직원 목록을 즉시 갱신.
+    emitContextChanged({ kind: 'granted', userId: requester.id, entityType: row.entity_type, entityId: row.entity_id, role: row.role, requestId: row.id, label: row.label });
 
     res.json({ success: true, data: { id: row.id, status: 'approved', grant: result.data }, message: 'Request approved' });
   } catch (error) {
@@ -373,6 +378,7 @@ router.post('/:id/reject', authenticateToken, async (req, res) => {
     });
 
     notifyResult({ userId: row.user_id, approved: false, role: row.role, targetName: row.label, note });
+    emitContextChanged({ kind: 'rejected', userId: row.user_id, entityType: row.entity_type, entityId: row.entity_id, role: row.role, requestId: row.id, label: row.label });
 
     res.json({ success: true, data: { id: row.id, status: 'rejected' }, message: 'Request declined' });
   } catch (error) {
@@ -387,6 +393,12 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const id = userContexts.normalizeEntityId(req.params.id);
     if (!id) return bad(res, 404, 'Request not found');
+    // 신호용으로 지우기 전 행을 읽는다(같은 조건) — pending 취소일 때만 승인자 패널에 알린다.
+    const [[before]] = await sequelize.query(
+      `SELECT id, entity_type, entity_id, role, status FROM user_context_requests
+        WHERE id = :id AND user_id = :uid AND status IN ('pending', 'rejected')`,
+      { replacements: { id, uid: req.user.id } }
+    );
     const [, meta] = await sequelize.query(
       `DELETE FROM user_context_requests
         WHERE id = :id AND user_id = :uid AND status IN ('pending', 'rejected')`,
@@ -394,6 +406,9 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     );
     const affected = meta && typeof meta.affectedRows === 'number' ? meta.affectedRows : 0;
     if (!affected) return bad(res, 404, 'Request not found');
+    if (before && before.status === 'pending') {
+      emitContextChanged({ kind: 'request_cancelled', userId: req.user.id, entityType: before.entity_type, entityId: before.entity_id, role: before.role, requestId: before.id });
+    }
     res.json({ success: true, data: { id }, message: 'Request removed' });
   } catch (error) {
     console.error('[context-requests] DELETE /:id error:', error.message);

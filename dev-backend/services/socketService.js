@@ -350,7 +350,9 @@ function initSocketServer(server) {
     socket.on('join', (payload = {}) => {
       const auth = socket.data.user || {};
       // Trust ONLY the authenticated identity. Ignore any spoofed payload fields.
-      const userId = auth.id;
+      // 발급 토큰의 사용자 번호 키는 `userId`(authService·auth.js switch-context·staff.js). 예전엔 `id` 만 읽어
+      // user:{id} 룸이 한 번도 만들어지지 않았다(2026-10-16 실측 — 개인 신호가 아무에게도 안 갔다).
+      const userId = auth.userId || auth.id;
       if (userId) socket.join(`user:${userId}`);
       if (auth.restaurant_id) socket.join(`restaurant:${auth.restaurant_id}`);
       if (auth.brand_id) socket.join(`brand:${auth.brand_id}`);

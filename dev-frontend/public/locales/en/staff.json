@@ -27,5 +27,7 @@
   "staffPage.staffIdUsername": "Staff ID (Username)",
   "staffPage.pinCode4Digits": "PIN Code (4 digits)",
   "staffPage.ok": "OK",
-  "staffPage.reset": "Reset"
+  "staffPage.reset": "Reset",
+  "staffPage.linkedAccount": "Linked account",
+  "staffPage.linkedNoPin": "Signs in with their own account and switches to this store — no Staff ID or PIN."
 }
