@@ -5370,7 +5370,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     const { Ingredient, PurchaseOrder, PurchaseOrderItem } = require('../models');
     const ids = (await Ingredient.findAll({ where: { name: `${PO_MARKER} po ingredient` }, attributes: ['id'] })).map(x => x.id);
     if (ids.length) {
-      for (const tbl of ['restaurant_ingredient_costs','restaurant_ingredient_stocks','inventory_batches','inventory_transactions','ingredient_seller_products'])
+      for (const tbl of ['restaurant_ingredient_costs','restaurant_ingredient_stocks','inventory_batches','inventory_transactions','ingredient_seller_products','stock_alerts'])
         await sequelize.query(`DELETE FROM ${tbl} WHERE ingredient_id IN (:ids)`, { replacements: { ids } }).catch(() => {});
       await sequelize.query('DELETE FROM purchase_order_items WHERE ingredient_id IN (:ids)', { replacements: { ids } });
       await sequelize.query('DELETE FROM ingredients WHERE id IN (:ids)', { replacements: { ids } });
