@@ -86,12 +86,30 @@ BUILD_START=$(date +%s)
 
 # 빌드를 cgroup 상자에 가둔다 — 폭주해도 빌드만 죽고 서버는 산다.
 # (실측 총피크 3.08GiB → 4G 캡. 힙 상한 2560MB 는 package.json.)
+# 2026-10-17: 화면이 늘어 4G 를 넘어 배포 빌드가 oom-kill 3회(10-16 16:37·23:57 외) → 5G. 시작 전 메모리 게이트(2.5GB 여유)는 그대로.
 BUILD_RUNNER=""
 if systemd-run --user --scope -q -p MemoryMax=10M true >/dev/null 2>&1; then
-    BUILD_RUNNER="systemd-run --user --scope -q -p MemoryMax=4G -p MemorySwapMax=512M"
+    BUILD_UNIT="purple-build-$$"
+    BUILD_RUNNER="systemd-run --user --scope -q --unit=${BUILD_UNIT} -p MemoryMax=5G -p MemorySwapMax=512M"
 else
     echo -e "${YELLOW}⚠ systemd-run 사용 불가 — cgroup 상자 없이 빌드합니다${NC}"
 fi
+
+# 상자 메모리 피크 기록 (2026-10-17 Fable 조건 B) — 5G 가 맞는지 숫자로 가른다. scope 는 끝나면 사라지므로
+#   빌드 도는 동안 5초마다 memory.peak 를 읽어 둔다. 실패해도 빌드엔 영향 없음.
+PEAK_FILE="/tmp/purple-build-peak-$$"
+if [ -n "${BUILD_UNIT:-}" ]; then
+    ( for _ in $(seq 1 1800); do
+        f=$(ls -d /sys/fs/cgroup/user.slice/user-$(id -u).slice/user@$(id -u).service/app.slice/${BUILD_UNIT}.scope 2>/dev/null)
+        [ -n "$f" ] && [ -r "$f/memory.peak" ] && cat "$f/memory.peak" > "$PEAK_FILE" 2>/dev/null
+        sleep 5
+      done ) &
+    PEAK_PID=$!
+fi
+report_peak() {
+    [ -n "${PEAK_PID:-}" ] && kill "$PEAK_PID" 2>/dev/null
+    if [ -s "$PEAK_FILE" ]; then echo -e "  빌드 상자 메모리 피크: $(( $(cat "$PEAK_FILE") / 1048576 ))MB (상한 5120MB)"; rm -f "$PEAK_FILE"; fi
+}
 
 # 빌드 실행 — 진행 상황을 실시간 출력
 set -o pipefail
@@ -103,11 +121,12 @@ $BUILD_RUNNER npm run build 2>&1 | while IFS= read -r line; do
 done
 BUILD_STATUS=${PIPESTATUS[0]}
 set +o pipefail
+report_peak
 
 if [ "$BUILD_STATUS" -ne 0 ]; then
     echo -e "${RED}✗ 빌드 실패 (exit ${BUILD_STATUS})${NC}"
     if [ "$BUILD_STATUS" -eq 137 ] || [ "$BUILD_STATUS" -eq 134 ]; then
-        echo -e "${RED}  메모리 상한(4G)에 걸려 죽었습니다. 다른 무거운 작업을 끄고 재시도하거나,${NC}"
+        echo -e "${RED}  메모리 상한(5G)에 걸려 죽었습니다. 다른 무거운 작업을 끄고 재시도하거나,${NC}"
         echo -e "${RED}  필요치를 재측정해 package.json 힙 상한(현재 2560MB)을 조정하세요.${NC}"
     fi
     exit 1

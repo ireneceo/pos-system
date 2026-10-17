@@ -219,6 +219,15 @@ $SYNTAX_FAIL
     fi
     success "배포 마이그 실전 실행 통과"
 
+    # 4f. 배포 마이그를 **운영 칸 기준**으로 순서 검사 — 4c 는 이미 칸이 있는 dev DB 라 순서 결함을 못 본다.
+    #   2026-10-17: 옛 마이그가 있는 표에 model.sync() → 새 색인(initiator) 을, 그 칸을 더하는 마이그보다 먼저
+    #   만들려다 운영에서 죽음 → 자동 원복. 운영 information_schema 만 읽는다(읽기 전용 prod-query).
+    log "Safety gate (4f/10): 🧭 배포 마이그 운영 순서 (운영에 없는 칸을 쓰는 색인 sync 순서)..."
+    if ! node scripts/check-migration-prod-order.js; then
+        error "🧭 배포 마이그 순서 결함 — 운영에서 «Key column … doesn't exist» 로 죽습니다. 위 출력대로 레지스트리 순서 또는 «표 없을 때만 sync» 로 고쳐 커밋 후 재배포. (긴급 우회: --skip-safety)"
+    fi
+    success "배포 마이그 운영 순서 OK"
+
     log "Safety gate (5/10): 🕐 타임존 가드 (신규 위반 0 — 매장 타임존 규칙)..."
     if ! node scripts/timezone-check.js; then
         error "🕐 신규 타임존 위반 — 브라우저 로컬시간 사용. getTodayBounds/formatDateTime 로 교체 후 재배포. 정식이면 'node scripts/timezone-check.js --bless'. (긴급 우회: --skip-safety)"
@@ -406,6 +415,24 @@ fi
 #   프로세스는 옛 코드인 반쪽 상태가 남고, 누가 pm2 를 재시작하면 마이그 없이 새 코드가 뜬다.
 #
 # 복구: gunzip -c <덤프경로> | mysql -u <DB_USER> -p<DB_PASSWORD> <DB_NAME>
+# 빌드 메모리 게이트를 **운영에 손대기 전에** 기다린다 (2026-10-17 · Irene «이거 반복 안하게 조치 안돼?»).
+#   예전엔 덤프·백업을 다 만든 뒤 빌드 단계에서 게이트에 막혀 실패했다(다른 솔루션 빌드·검사가 4GB+ 쓰던 중).
+#   공용 규칙: 메모리 게이트가 막으면 **기다린다**(우회·강제 종료 금지). 최대 60분, 30초마다 다시 본다.
+MEMGATE_WAIT_MAX=${MEMGATE_WAIT_MAX:-3600}
+memgate_wait() {   # $1 = 어디서(로그용) · 두 번 부른다: 운영 덤프 전 + 빌드 직전(그 사이 다른 빌드가 시작될 수 있음 — Fable 10-17 남은 위험 1)
+    local waited=0
+    until bash /var/www/scripts/heavy-task-gate.sh build >/tmp/memgate.log 2>&1; do
+        if [ "$waited" -ge "$MEMGATE_WAIT_MAX" ]; then
+            cat /tmp/memgate.log
+            error "빌드 메모리 게이트가 ${MEMGATE_WAIT_MAX}초 동안 계속 막음($1) — 다른 무거운 작업이 끝난 뒤 재배포."
+        fi
+        if [ "$waited" -eq 0 ]; then warn "빌드 메모리 게이트가 막는 중($1) — 기다립니다(최대 $((MEMGATE_WAIT_MAX/60))분):"; sed 's/^/    /' /tmp/memgate.log; fi
+        sleep 30; waited=$((waited+30))
+    done
+    if [ "$waited" -gt 0 ]; then success "빌드 메모리 게이트 풀림 ($1 · ${waited}초 기다림)"; fi
+}
+memgate_wait "운영 덤프 전 — 운영 아직 무변경"
+
 log "Creating pre-deploy DB dump (rollback point)..."
 PREDEPLOY_DIR="$PROD_PREDEPLOY_DIR"
 DUMP_FILE="$(predeploy_dump_of "$TIMESTAMP")"
@@ -536,6 +563,7 @@ fi
 # 사본의 deploy-dev.sh 는 자기 폴더(SCRIPT_DIR) 기준이라 **사본에서 빌드**하고, 그 결과를 dev nginx 폴더에도
 # 올린다 → 아래 mount sweep 이 «운영에 갈 바로 그 번들» 을 검사한다. 그 대신 배포 뒤 개발서버 화면은
 # 커밋된 상태로 보인다 — 진행 중인 방은 이어서 일할 때 자기 build:dev 로 다시 올리면 된다.
+memgate_wait "빌드 직전"
 log "Building frontend from clean source (commit ${DEPLOY_COMMIT:0:9})..."
 cd $SRC_FRONTEND
 npm run build:dev > /tmp/build.log 2>&1 || {
