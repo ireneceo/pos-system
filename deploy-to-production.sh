@@ -10,6 +10,14 @@
 
 set -e
 
+# 한 번에 배포 하나만 (2026-10-17) — 배포 두 개가 같은 사본 폴더(~/.cache/purplehere-deploy/deploy-clean)를
+#   지우고 다시 만들며 동시에 빌드해 둘 다 실패했다(01:28·01:30·01:32 세 개가 겹침). 잠금은 프로세스가 끝나면 저절로 풀린다.
+exec 9>/tmp/purplehere-deploy.lock
+if ! flock -n 9; then
+    echo "✗ 다른 운영 배포가 이미 돌고 있습니다 — 그 배포가 끝난 뒤 다시 실행하세요. (지금 도는 것: pgrep -af deploy-to-production)"
+    exit 1
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
