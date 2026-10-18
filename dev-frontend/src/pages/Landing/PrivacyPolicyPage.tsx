@@ -334,6 +334,7 @@ const PrivacyPolicyPage: React.FC = () => {
               <ListItem><strong>{t('landing:privacyPolicyPage.essentialCookies')}</strong> {t('landing:privacyPolicyPage.requiredForBasicFunctionalityAndSecurity')}</ListItem>
               <ListItem><strong>{t('landing:privacyPolicyPage.analyticsCookies')}</strong> {t('landing:privacyPolicyPage.helpUsUnderstandHowUsersInteractWithOurS')}</ListItem>
               <ListItem><strong>{t('landing:privacyPolicyPage.preferenceCookies')}</strong> {t('landing:privacyPolicyPage.rememberYourSettingsAndPreferences')}</ListItem>
+              <ListItem><strong>{t('landing:privacyPolicyPage.marketingCookies')}</strong> {t('landing:privacyPolicyPage.marketingCookiesDesc')}</ListItem>
             </List>
             <Paragraph>
               You can manage cookie preferences through your browser settings. Note that disabling

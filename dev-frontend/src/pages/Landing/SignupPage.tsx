@@ -7,6 +7,7 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 import { setAuthToken } from '../../utils/auth';
 import { useAuth } from '../../contexts/AuthContext';
+import { roleKey, track } from '../../utils/tracking';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface Plan {
@@ -668,6 +669,14 @@ const SignupPage: React.FC = () => {
       }
 
       clearDraft();
+      track('sign_up', {
+        method: 'email',
+        account_type: roleKey(form.role),
+        plan_id: form.plan_id,
+        billing_cycle: form.billing_cycle,
+        currency: selectedCurrency,
+        has_referral: !!form.referral_code?.trim(),
+      });
 
       // Email verification required — show confirmation instead of auto-login
       if (result.data?.email_verification_required) {

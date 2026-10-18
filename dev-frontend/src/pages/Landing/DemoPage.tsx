@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { setAuthToken } from '../../utils/auth';
+import { track } from '../../utils/tracking';
 
 const PageContainer = styled.div`
   background: #F9FAFB;
@@ -313,6 +314,7 @@ const DemoPage: React.FC = () => {
         setAuthToken(data.data.token);
         localStorage.setItem('user', JSON.stringify(data.data.user));
         await loginAsDemo(account.key);
+        track('try_demo', { demo_account: account.key });
         navigate(defaultRouteForUser(data.data.user));
       } else {
         setError(data?.error?.message || data.message || t('landing:demoPage.loginFailed'));

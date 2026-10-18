@@ -601,7 +601,7 @@
   "rentManagement.ownerName": "오너 이름",
   "rentManagement.monthlyRentRm": "월 임대료 (RM)",
   "rentManagement.contractEndDate": "계약 종료일",
-  "cookie.message": "더 나은 경험과 사이트 트래픽 분석을 위해 쿠키를 사용합니다. \"모두 수락\"을 클릭하면 쿠키 사용에 동의하게 됩니다. 자세한 내용은 <a href=\"/privacy\">개인정보 처리방침</a>을 참조하세요.",
+  "cookie.message": "더 나은 경험, 사이트 트래픽 분석, 마케팅 효과 측정(Google Analytics, Meta Pixel)을 위해 쿠키를 사용합니다. \"모두 수락\"을 클릭하면 쿠키 사용에 동의하게 됩니다. 자세한 내용은 <a href=\"/privacy\">개인정보 처리방침</a>을 참조하세요.",
   "cookie.acceptAll": "모두 수락",
   "cookie.essentialOnly": "필수만",
   "address": {

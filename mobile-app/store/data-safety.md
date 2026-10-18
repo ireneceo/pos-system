@@ -18,7 +18,7 @@
 | Financial info › Purchase history | 매장 주문·결제 기록 | 필수 | App functionality | 주문·POS |
 | Photos | 메뉴 사진 업로드 | 선택 | App functionality | 메뉴 이미지 업로드 |
 | Messages › Other in-app messages | 앱 안 Inbox·문의 | 선택 | App functionality | pages/Inbox/InboxPage.tsx |
-| App activity › App interactions | 화면 사용 통계 | 선택(쿠키 동의) | Analytics | public/index.html Google Analytics G-LTTLKH1J85 + Consent Mode |
+| App activity › App interactions | 화면 사용 통계 | 선택(쿠키 동의) | Analytics | utils/tracking.ts — 마케팅 경로에서만 GTM(Google Analytics G-LTTLKH1J85) + Consent Mode · 앱 화면(/pos 등)은 미로드 |
 | Device or other IDs | 인쇄 진단용 기기 ID(앱이 만든 무작위 값) | 필수 | App functionality(인쇄 상태 진단) | utils/printDiagnostics.ts `print_device_id` |
 
 ## 수집 안 함

@@ -453,6 +453,8 @@
   "privacyPolicyPage.requiredForBasicFunctionalityAndSecurity": "기본 기능과 보안에 필요",
   "privacyPolicyPage.analyticsCookies": "분석 쿠키:",
   "privacyPolicyPage.helpUsUnderstandHowUsersInteractWithOurS": "사용자가 당사 서비스를 어떻게 이용하는지 이해하는 데 도움",
+  "privacyPolicyPage.marketingCookies": "마케팅 쿠키 (Meta Pixel):",
+  "privacyPolicyPage.marketingCookiesDesc": "광고 효과를 측정합니다. 쿠키 배너에서 \"모두 수락\"을 눌렀을 때만 설정됩니다. 위 분석 쿠키는 Google Analytics 입니다. 선택을 바꾸려면 브라우저에서 이 사이트의 쿠키와 사이트 데이터를 지우세요 — 배너가 다시 나타납니다.",
   "privacyPolicyPage.preferenceCookies": "환경설정 쿠키:",
   "privacyPolicyPage.rememberYourSettingsAndPreferences": "귀하의 설정과 환경설정을 기억",
   "privacyPolicyPage.continuedUseOfOurServicesAfterAnyChanges": "변경 후에도 당사 서비스를 계속 이용하는 경우, 변경된 방침에 동의한 것으로 간주됩니다.",

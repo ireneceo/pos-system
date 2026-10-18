@@ -453,6 +453,8 @@
   "privacyPolicyPage.requiredForBasicFunctionalityAndSecurity": "为实现基本功能和安全所必需",
   "privacyPolicyPage.analyticsCookies": "分析 Cookie：",
   "privacyPolicyPage.helpUsUnderstandHowUsersInteractWithOurS": "帮助我们了解用户如何使用我们的服务",
+  "privacyPolicyPage.marketingCookies": "营销 Cookie（Meta Pixel）：",
+  "privacyPolicyPage.marketingCookiesDesc": "用于衡量我们的广告效果。仅在您点击 Cookie 横幅上的“全部接受”后设置。上述分析 Cookie 为 Google Analytics。如需更改选择，请在浏览器中清除本网站的 Cookie 和网站数据——横幅将再次出现。",
   "privacyPolicyPage.preferenceCookies": "偏好 Cookie：",
   "privacyPolicyPage.rememberYourSettingsAndPreferences": "记住您的设置和偏好",
   "privacyPolicyPage.continuedUseOfOurServicesAfterAnyChanges": "在任何变更之后继续使用我们的服务，即表示您接受更新后的政策。",

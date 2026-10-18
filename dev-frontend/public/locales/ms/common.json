@@ -601,7 +601,7 @@
   "rentManagement.ownerName": "Pemilik Nama",
   "rentManagement.monthlyRentRm": "Bulanan Sewa (RM)",
   "rentManagement.contractEndDate": "Tarikh Tamat Kontrak",
-  "cookie.message": "Kami menggunakan kuki untuk meningkatkan pengalaman anda dan menganalisis trafik laman. Dengan mengklik \"Terima Semua\", anda bersetuju dengan penggunaan kuki kami. Lihat <a href=\"/privacy\">Dasar Privasi</a> kami untuk butiran.",
+  "cookie.message": "Kami menggunakan kuki untuk meningkatkan pengalaman anda, menganalisis trafik laman dan mengukur pemasaran kami (Google Analytics, Meta Pixel). Dengan mengklik \"Terima Semua\", anda bersetuju dengan penggunaan kuki kami. Lihat <a href=\"/privacy\">Dasar Privasi</a> kami untuk butiran.",
   "cookie.acceptAll": "Terima Semua",
   "cookie.essentialOnly": "Penting Sahaja",
   "address": {

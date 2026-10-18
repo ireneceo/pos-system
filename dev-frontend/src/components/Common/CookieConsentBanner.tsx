@@ -2,14 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { getStoredConsent, isMarketingPath, restoreConsent, setConsent } from '../../utils/tracking';
 
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-  }
-}
-
-const COOKIE_CONSENT_KEY = 'cookie_consent_accepted';
 
 const slideUp = keyframes`
   from {
@@ -115,57 +109,26 @@ const CookieConsentBanner: React.FC = () => {
   const [visible, setVisible] = useState(false);
   const location = useLocation();
 
-  // Only show on public website pages, not inside POS/restaurant/referral app
-  const isPosRoute = location.pathname.startsWith('/pos') ||
-                     location.pathname.startsWith('/restaurant') ||
-                     location.pathname.startsWith('/kitchen') ||
-                     location.pathname.startsWith('/customer-display') ||
-                     location.pathname.startsWith('/mobile-order') ||
-                     location.pathname.startsWith('/mobile') ||
-                     location.pathname.startsWith('/referral');
+  // Only show on public marketing pages — same list as GTM/page_view (utils/tracking.ts)
+  const isMarketing = isMarketingPath(location.pathname);
 
   useEffect(() => {
-    const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
-    if (!consent && !isPosRoute) {
+    const consent = getStoredConsent();
+    if (!consent && isMarketing) {
       const timer = setTimeout(() => setVisible(true), 1000);
       return () => clearTimeout(timer);
     }
-    // Restore previous consent state for GA4
-    if (consent === 'true' && typeof window.gtag === 'function') {
-      window.gtag('consent', 'update', {
-        'analytics_storage': 'granted',
-        'ad_storage': 'granted',
-        'ad_user_data': 'granted',
-        'ad_personalization': 'granted'
-      });
-    }
-  }, [isPosRoute]);
+    // Restore previous consent state (Consent Mode v2)
+    restoreConsent();
+  }, [isMarketing]);
 
   const handleAccept = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'true');
-    // Google Consent Mode v2: grant all
-    if (typeof window.gtag === 'function') {
-      window.gtag('consent', 'update', {
-        'analytics_storage': 'granted',
-        'ad_storage': 'granted',
-        'ad_user_data': 'granted',
-        'ad_personalization': 'granted'
-      });
-    }
+    setConsent('accept_all');
     setVisible(false);
   };
 
   const handleDecline = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'essential_only');
-    // Google Consent Mode v2: keep denied
-    if (typeof window.gtag === 'function') {
-      window.gtag('consent', 'update', {
-        'analytics_storage': 'denied',
-        'ad_storage': 'denied',
-        'ad_user_data': 'denied',
-        'ad_personalization': 'denied'
-      });
-    }
+    setConsent('essential_only');
     setVisible(false);
   };
 

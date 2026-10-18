@@ -6,6 +6,7 @@ import SEOHead from '../../components/Common/SEOHead';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 import { getErrorMessage } from '../../utils/apiError';
+import { track } from '../../utils/tracking';
 
 const PageContainer = styled.div`
   background: #F9FAFB;
@@ -363,6 +364,11 @@ const ContactPage: React.FC = () => {
       });
 
       if (response.ok) {
+        track('generate_lead', {
+          lead_type: 'contact',
+          inquiry_type: formData.inquiry_type,
+          interested_plan: formData.interested_plan,
+        });
         setSuccess(true);
         setFormData({
           name: '',

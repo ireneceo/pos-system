@@ -14,6 +14,7 @@ import { SiteSettingsProvider } from './contexts/SiteSettingsContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
 import CookieConsentBanner from './components/Common/CookieConsentBanner';
+import PageViewTracker from './components/Common/PageViewTracker';
 import PosLayout from './components/Layout/PosLayout';
 import { PwaInstallProvider } from './contexts/PwaInstallContext';
 import { OfflineProvider } from './contexts/OfflineContext';
@@ -520,6 +521,7 @@ function App() {
                             (0.1.5+ shows its own "restart to update" prompt). Native app only. */}
                         <NativeVersionBadge />
                         <CookieConsentBanner />
+                        <PageViewTracker />
                         <NotificationToaster />
                         <PwaInstallBanner />
                         <NativeAppUpdateBanner />

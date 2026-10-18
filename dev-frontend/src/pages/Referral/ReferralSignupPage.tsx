@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import ReferralAuthLayout from '../../components/Referral/ReferralAuthLayout';
+import { track } from '../../utils/tracking';
 
 // ─── Required indicator ───────────────────────────────────────
 const Req = styled.span`
@@ -459,6 +460,7 @@ const ReferralSignupPage: React.FC = () => {
         setError(body?.error?.message || body?.message || t('signup.error.signupFailed', 'Sign up failed.'));
         return;
       }
+      track('sign_up', { method: 'email', account_type: 'referral_partner', has_referral: !!referralCode.trim() });
       setSuccess(t('signup.success', 'Account created. Check your inbox for the verification link, then log in.'));
       setTimeout(() => navigate('/referral/login', { replace: true }), 2000);
     } catch (err) {

@@ -601,7 +601,7 @@
   "rentManagement.ownerName": "业主 名称",
   "rentManagement.monthlyRentRm": "月租金 (RM)",
   "rentManagement.contractEndDate": "合同结束日期",
-  "cookie.message": "我们使用Cookie来改善您的体验并分析网站流量。点击\"全部接受\"即表示您同意我们使用Cookie。详情请参阅<a href=\"/privacy\">隐私政策</a>。",
+  "cookie.message": "我们使用Cookie来改善您的体验、分析网站流量并衡量营销效果（Google Analytics、Meta Pixel）。点击\"全部接受\"即表示您同意我们使用Cookie。详情请参阅<a href=\"/privacy\">隐私政策</a>。",
   "cookie.acceptAll": "全部接受",
   "cookie.essentialOnly": "仅必要",
   "address": {

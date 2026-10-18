@@ -453,6 +453,8 @@
   "privacyPolicyPage.requiredForBasicFunctionalityAndSecurity": "Required for basic functionality and security",
   "privacyPolicyPage.analyticsCookies": "Analytics Cookies:",
   "privacyPolicyPage.helpUsUnderstandHowUsersInteractWithOurS": "Help us understand how users interact with our services",
+  "privacyPolicyPage.marketingCookies": "Marketing Cookies (Meta Pixel):",
+  "privacyPolicyPage.marketingCookiesDesc": "Measure the results of our advertising. Set only after you click \"Accept All\" on the cookie banner. Google Analytics is the analytics cookie above. To change your choice, clear this site's cookies and site data in your browser — the banner will appear again.",
   "privacyPolicyPage.preferenceCookies": "Preference Cookies:",
   "privacyPolicyPage.rememberYourSettingsAndPreferences": "Remember your settings and preferences",
   "privacyPolicyPage.continuedUseOfOurServicesAfterAnyChanges": "Continued use of our services after any changes constitutes acceptance of the updated policy.",

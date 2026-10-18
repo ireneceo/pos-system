@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
+import { track } from '../../utils/tracking';
 
 const Container = styled.div`
   display: flex;
@@ -47,6 +48,7 @@ const VerifyEmailPage: React.FC = () => {
             setStatus('already');
             setMessage('Your email is already verified.');
           } else {
+            track('email_verified');
             setStatus('success');
             setMessage('Your email has been verified successfully!');
           }

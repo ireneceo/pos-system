@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-16 — [Claude Code] 기존 계정(브랜드 매니저 등)을 매장 직원으로 «초대 → 본인 수락» + 매장 관리자가 연결 계정 권한 수정·연결 해제 + 중복 오류 문구에서 상대 계정 역할·매장 번호 삭제(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 스탭 요청 승인 즉시 반영: 승인하면 매장 직원 목록에 «연결 계정» 으로 바로 뜨고, 요청한 사람 화면에도 새로고침 없이 매장 카드·알림이 뜸(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 직원 출퇴근·휴가·휴일(매장 직원만 · 같은 매장 네트워크에서만 찍기 설정 · 공용 태블릿 PIN 타임클락 · 휴가 신청·승인·잔여일 · 매장 휴일 달력 · 급여 제외) + 재고아이템 «바꾸고 삭제» 2차(프로덕트 레시피·상품 옵션) (둘 다 Fable 게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 재고 장부 동시 쓰기 경합 고침: 재고 행 잠금 + 주문 차감 데드락 재시도 + 연결 풀 막힘(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 10-15 끝난 방 미커밋 묶음 /개발완료: 매장 발주 후 품목 빼기·추가(오너 승인 매장은 수정도 승인) · 발주 카탈로그 «Add as menu / Add as product» = 재고아이템 + 그대로 파는 메뉴/프로덕트 (둘 다 Fable 게이트 PASS · 개발서버·미배포) · 운영 배포는 10-16 수동 /배포가 health [po] 수령 FK 4건에서 막힘 → 게이트 고치기 대기 · 이전: 2026-10-15 — [Claude Code] 공급업체 상품 옵션 가격이 발주·판매자 받은 주문·청구서에 실림 + 규격(1팩/20팩 카톤)은 상품을 따로(Irene «권고대로») · 같은 날 끝난 방들 미커밋 묶음 /개발완료(SKU·단위 정비 · 재료 수정 창 공급업체 · 다운로드 웹 앱 안내 · 판매자 주문 수정 총액 확인 등)(개발서버·미배포) · 이전: 2026-10-15 — [Claude Code] 안드로이드 앱 Google Play 등록 준비: Capacitor 8 · Android 16 기준 · 자가 업데이트 제거 · 앱 안 가입 길 닫기 + /account-deletion · 플레이 제출 파일 0.4.0(AAB) · Fable PASS(조건부) · 플레이 콘솔 작업은 Irene 할 일로(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 브랜드 매니저 = 회사 직원: 여러 브랜드·회사 전체 배정 + 회사 공용 자료 개방 + 메뉴 접근 7묶음 정리(Fable 설계·검증 PASS · 개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 발주 카탈로그: 부모 브랜드 재료로 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 뜨던 표시 결함 수정(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] ✅ **v3.110 · 운영 배포 SW 5.90-preflight-security-20261010 (백업 20261011_062932 · 마이그 118/118 · 스모크 10/10)** — 10-08~10-11 묶음(운영 전 보안 0단 · 판매 중지 상품 · 청구서 창 · 재고→원가 · 외부 정산서 · 배송 지역 · 키오스크 결제/전체 화면 · 새 매장 결제 기본값) 운영 반영. 1차는 마이그 순서(새 칸이 목록 끝)로 실패→자동 원복, 레지스트리 순서 고쳐(Fable PASS) 2차 성공.
+> **최종 업데이트:** 2026-10-18 — [Claude Code] 마케팅 추적 준비: 이벤트 7개 설계·GTM 가져오기 파일·사이트 이벤트 기록·쿠키 배너/방침 메타 픽셀 항목(Fable 설계 · Irene 목록 승인 · GTM 번호 오면 켜짐 · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 기존 계정(브랜드 매니저 등)을 매장 직원으로 «초대 → 본인 수락» + 매장 관리자가 연결 계정 권한 수정·연결 해제 + 중복 오류 문구에서 상대 계정 역할·매장 번호 삭제(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 스탭 요청 승인 즉시 반영: 승인하면 매장 직원 목록에 «연결 계정» 으로 바로 뜨고, 요청한 사람 화면에도 새로고침 없이 매장 카드·알림이 뜸(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 직원 출퇴근·휴가·휴일(매장 직원만 · 같은 매장 네트워크에서만 찍기 설정 · 공용 태블릿 PIN 타임클락 · 휴가 신청·승인·잔여일 · 매장 휴일 달력 · 급여 제외) + 재고아이템 «바꾸고 삭제» 2차(프로덕트 레시피·상품 옵션) (둘 다 Fable 게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 재고 장부 동시 쓰기 경합 고침: 재고 행 잠금 + 주문 차감 데드락 재시도 + 연결 풀 막힘(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 10-15 끝난 방 미커밋 묶음 /개발완료: 매장 발주 후 품목 빼기·추가(오너 승인 매장은 수정도 승인) · 발주 카탈로그 «Add as menu / Add as product» = 재고아이템 + 그대로 파는 메뉴/프로덕트 (둘 다 Fable 게이트 PASS · 개발서버·미배포) · 운영 배포는 10-16 수동 /배포가 health [po] 수령 FK 4건에서 막힘 → 게이트 고치기 대기 · 이전: 2026-10-15 — [Claude Code] 공급업체 상품 옵션 가격이 발주·판매자 받은 주문·청구서에 실림 + 규격(1팩/20팩 카톤)은 상품을 따로(Irene «권고대로») · 같은 날 끝난 방들 미커밋 묶음 /개발완료(SKU·단위 정비 · 재료 수정 창 공급업체 · 다운로드 웹 앱 안내 · 판매자 주문 수정 총액 확인 등)(개발서버·미배포) · 이전: 2026-10-15 — [Claude Code] 안드로이드 앱 Google Play 등록 준비: Capacitor 8 · Android 16 기준 · 자가 업데이트 제거 · 앱 안 가입 길 닫기 + /account-deletion · 플레이 제출 파일 0.4.0(AAB) · Fable PASS(조건부) · 플레이 콘솔 작업은 Irene 할 일로(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 브랜드 매니저 = 회사 직원: 여러 브랜드·회사 전체 배정 + 회사 공용 자료 개방 + 메뉴 접근 7묶음 정리(Fable 설계·검증 PASS · 개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 발주 카탈로그: 부모 브랜드 재료로 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 뜨던 표시 결함 수정(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] ✅ **v3.110 · 운영 배포 SW 5.90-preflight-security-20261010 (백업 20261011_062932 · 마이그 118/118 · 스모크 10/10)** — 10-08~10-11 묶음(운영 전 보안 0단 · 판매 중지 상품 · 청구서 창 · 재고→원가 · 외부 정산서 · 배송 지역 · 키오스크 결제/전체 화면 · 새 매장 결제 기본값) 운영 반영. 1차는 마이그 순서(새 칸이 목록 끝)로 실패→자동 원복, 레지스트리 순서 고쳐(Fable PASS) 2차 성공.
 
 > **이전:** 2026-10-11 — [Claude Code] ✅ **키오스크 결제 화면 개편 + 키오스크 묶음 /개발완료 (개발서버만)** — 카운터 결제 키오스크 숨김 · 가로 = 오른쪽 결제 패널, 세로 = 한 칸 · 미등록 태블릿 안내 · 키오스크 전체 화면(18bc810d)·대시보드 링크(72cfb0db)·새 매장 결제 기본값(f5b1a378) 함께 기록 · Irene «좋아» · 키오스크 흐름 6크기 재점검 + 실제 주문 1건 확인.
 
@@ -11232,6 +11232,30 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 - `dev-backend/services/contextSignals.js`(새) · `routes/context-requests.js` · `routes/users.js` · `services/socketService.js` · `scripts/health-check.js` · `tests/context-live.test.js`(새)
 - `dev-frontend/src/components/Common/NotificationToaster.tsx` · `contexts/AuthContext.tsx` · `pages/ContextSelect/ContextSelectPage.tsx` · `components/ContextRequests/ContextRequestsPanel.tsx` · `pages/Staff/StaffPage.tsx` · `public/locales/*/{auth,staff}.json` · `public/sw.js`(5.96)
 - `docs/MULTI_CONTEXT_LOGIN_DESIGN.md` §6.4.1 · 설계/판정 `.claude/fable-design|gate-20261016-staff-approval-live.md`
+
+---
+
+## ✅ 완료: 마케팅 추적 준비 — GTM·GA4·메타 픽셀·서치콘솔 (2026-10-18) [Claude Code]
+
+> Irene «메타 픽셀, 구글 서치콘솔, GA4, GTM 설정. 이벤트는 사이트 구조에 맞게 설계하고 설계서도 남기고 발행·게시 전에는 목록 보여주고 승인» → Fable 설계 1회 · Irene «권고대로» (이벤트 7개·GTM 태그 12개 승인). 설계서 `docs/MARKETING_TRACKING.md`.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 현황 점검 | GA4 페이지뷰만·전환 0·개발 트래픽 섞임·앱 화면까지 실림 / GTM·메타 없음 / 서치콘솔 DNS 인증(사이트맵·GA4 연결은 Irene 이미 함) | ✅ 완료 |
+| 이벤트 설계 | page_view · sign_up · email_verified · generate_lead · try_demo · cookie_consent + GA4 자동 측정 | ✅ 완료 |
+| 사이트 기록 | utils/tracking.ts(마케팅 경로 목록 하나 · 개인정보 빼기 · 동의) · PageViewTracker · 전환 6곳 | ✅ 완료 |
+| 쿠키 배너·방침 | 배너 = 같은 경로 목록(/referral-program 배너 결함 해소) · 문구·방침 «Marketing Cookies (Meta Pixel)» 4언어 | ✅ 완료 |
+| GTM 가져오기 파일 | docs/gtm-container-purplehere.json (태그 12 · 트리거 12 · 변수 23) | ✅ 완료 |
+| GTM 켜기 | GTM 번호 오면 상수 교체 + index.html gtag 삭제 → 빌드 → 미리보기·게시(Irene) | ⏳ Irene 할 일 |
+
+### 수정된 파일
+- `dev-frontend/src/utils/tracking.ts` (신규) · `dev-frontend/src/components/Common/PageViewTracker.tsx` (신규)
+- `dev-frontend/src/App.tsx` · `components/Common/CookieConsentBanner.tsx`
+- `dev-frontend/src/pages/Landing/{SignupPage,ContactPage,PackagesPage,DemoPage,PrivacyPolicyPage}.tsx` · `pages/Login/VerifyEmailPage.tsx` · `pages/Referral/ReferralSignupPage.tsx`
+- `dev-frontend/public/locales/{en,ko,zh,ms}/{common,landing}.json`
+- `docs/MARKETING_TRACKING.md` (신규) · `docs/gtm-container-purplehere.json` (신규) · `mobile-app/store/data-safety.md`
 
 ---
 

@@ -5,6 +5,7 @@ import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
+import { track } from '../../utils/tracking';
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -1319,6 +1320,13 @@ const PackagesPage: React.FC = () => {
       });
 
       if (response.ok) {
+        track('generate_lead', {
+          lead_type: 'hardware_quote',
+          value: totalAmount,
+          currency: selectedCurrency,
+          plan_id: formData.plan_id || undefined,
+          package_name: selectedPackage.name,
+        });
         setQuoteSubmitted(true);
       } else {
         const data = await response.json();

@@ -601,7 +601,7 @@
   "rentManagement.ownerName": "Owner Name",
   "rentManagement.monthlyRentRm": "Monthly Rent (RM)",
   "rentManagement.contractEndDate": "Contract End Date",
-  "cookie.message": "We use cookies to enhance your experience and analyze site traffic. By clicking \"Accept All\", you consent to our use of cookies. See our <a href=\"/privacy\">Privacy Policy</a> for details.",
+  "cookie.message": "We use cookies to enhance your experience, analyze site traffic and measure our marketing (Google Analytics, Meta Pixel). By clicking \"Accept All\", you consent to our use of cookies. See our <a href=\"/privacy\">Privacy Policy</a> for details.",
   "cookie.acceptAll": "Accept All",
   "cookie.essentialOnly": "Essential Only",
   "address": {
