@@ -1,0 +1,43 @@
+{
+  "tag": "marketing-tracking",
+  "sw_version": "5.98-marketing-tracking-20261018",
+  "date": "2026-10-19",
+  "in_progress": "none",
+  "completed": [
+    "마케팅 추적 준비(1e72bf7e4 · Fable 설계 · Irene 목록 승인) — 마케팅 경로 목록 하나(utils/tracking.ts: 쿠키 배너·GTM·page_view 같은 판정) · 페이지뷰 추적 · 전환 6곳(가입 2·메일 인증·문의 2·데모 체험) · 쿠키 배너가 같은 경로 목록 사용(/referral-program 배너 결함 해소) · 배너 문구·개인정보 방침 마케팅 쿠키 4언어 · 설계서 docs/MARKETING_TRACKING.md · GTM 가져오기 파일 docs/gtm-container-purplehere.json"
+  ],
+  "issues": [
+    "쿠키 배너가 /referral-program 등 일부 공개 화면에서 판정이 어긋나던 결함"
+  ],
+  "upcoming": [
+    "GTM 번호가 오면 tracking.ts 상수 교체 + index.html gtag 블록 삭제(같은 커밋) → 빌드 → e2e → GTM 가져오기·미리보기·게시",
+    "메타 픽셀 번호 + 도메인 인증 · GA4 관리 4개(Irene 할 일)",
+    "개발 사이트 noindex 장치가 실제로 없음 → SEO 별건",
+    "빌드 상자 메모리 피크 4960MB / 5120MB — 빌드 메모리 줄이기 검토"
+  ],
+  "behavior_changes": [
+    "GTM 번호가 자리표시라 GTM·메타 픽셀은 실리지 않음 · 기존 GA4 gtag 그대로 → 운영 측정 동작 변화 거의 없음",
+    "쿠키 배너 문구·개인정보 방침에 마케팅 쿠키 문단 추가(4언어)",
+    "공개 화면 이동 때 dataLayer 에 page_view·전환 이벤트가 쌓임(GTM 없으면 아무 데도 안 감)"
+  ],
+  "check_areas": [
+    "purplehere.com 공개 화면 쿠키 배너 표시·동의/거절 · /referral-program 배너",
+    "개인정보 방침 마케팅 쿠키 문단",
+    "가입·문의·데모 체험 흐름이 그대로 되는지(전환 track 1줄씩 추가된 곳)",
+    "POS·손님 주문 화면에 배너가 안 뜨는지"
+  ],
+  "verification": {
+    "api": "백엔드 변경 0 · health-check 는 배포 게이트에서 실행",
+    "fault_injection": "경로 목록에서 /contact 를 빼면 dataLayer e2e 가 잡음(반증 1)",
+    "browser": "dataLayer e2e 22/22 · mount sweep 크래시 0(개발완료 때 · 배포 게이트에서 다시)",
+    "printer": "🔒 인쇄 보호 파일 무접촉(print-guard 8/8)",
+    "migrations": "없음",
+    "sw_version": "5.98-marketing-tracking-20261018",
+    "fable_note": "설계 Fable 1회(docs/MARKETING_TRACKING.md) · 민감 diff 비대상이라 게이트 없음"
+  },
+  "notes": "정기 점검 10/19 배포(버전·릴리즈노트·공지 없음) · 커밋 1e72bf7e4 · SW 는 배포 방이 올림",
+  "irene_actions_after_deploy": [
+    "GTM 번호 · 메타 픽셀 · GA4 관리(상황판 할 일 그대로)"
+  ],
+  "fable_note": "설계 Fable 1회(docs/MARKETING_TRACKING.md) · 민감 diff 비대상이라 게이트 없음"
+}
