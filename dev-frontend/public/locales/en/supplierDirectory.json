@@ -274,5 +274,9 @@
     "immediateExplain": "Each delivery invoice is marked paid on its own.",
     "dayRange": "Days must be between 1 and 28.",
     "saveFailed": "Could not save. Please try again."
+  },
+  "delivery": {
+    "title": "Delivery",
+    "editTitle": "Delivery terms"
   }
 }

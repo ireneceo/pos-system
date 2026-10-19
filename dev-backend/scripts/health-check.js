@@ -852,6 +852,20 @@ function defineSecurityTests({ customerToken, member, restId }) {
     return r.status === 403 && /Insufficient permissions/i.test(JSON.stringify(r.body));
   });
 
+  // 2026-10-19 구조도(시스템 관리자 전용 읽기) — 익명 401 · 매장 관리자 403 · 시스템 관리자 200 + 원본 HTML·갱신 날짜
+  test('security', '구조도 structure-map — 익명 401 · RA 403 · SA 200', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    const sa = await User.findOne({ where: { role: 'System Admin', is_active: true } });
+    if (!ra || !sa) return false;
+    const url = '/admin/deploy-records/structure-map';
+    const anon = await request('GET', url);
+    const r1 = await request('GET', url, null, { Authorization: `Bearer ${jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+    const r2 = await request('GET', url, null, { Authorization: `Bearer ${jwt.sign({ userId: sa.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+    return anon.status === 401 && r1.status === 403 && r2.status === 200
+      && /<h1>/.test(r2.body?.data?.html || '') && /^\d{4}-\d{2}-\d{2}/.test(r2.body?.data?.updated || '');
+  });
+
   // Manager-tier roles must not create restaurants either (must request General).
   // Closes the v3.18+ pre-existing gap.
   test('security', 'Brand Manager가 POST /restaurants → 403', async () => {

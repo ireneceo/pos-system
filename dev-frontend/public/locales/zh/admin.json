@@ -1466,6 +1466,10 @@
   "managerSubscriptionsPage.payerSwitchedInvoicesUnchanged": "账单对象已更改，发票未更新",
   "managerSubscriptionsPage.payerSwitchedInvoicesUnchangedMessage": "订阅的账单对象已更新，但现有未付发票未能重新指向。请检查发票页面。",
   "deployRecords": {
+    "tabRecords": "开发问题",
+    "tabStructure": "结构图",
+    "structureUpdated": "最后更新 {{at}} · 只读 — 每次结构变更都会更新源文件，并随部署一起发布",
+    "structureFailed": "无法加载结构图。",
     "title": "解决方案开发问题",
     "openOnly": "仅未解决",
     "colDeploy": "部署",

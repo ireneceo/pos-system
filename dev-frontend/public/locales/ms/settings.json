@@ -1274,6 +1274,7 @@
     "notReconciled": "Invois dimuat naik · belum disemak",
     "noUpload": "Tiada invois dimuat naik",
     "viewUploadedInvoice": "Lihat invois dimuat naik",
+    "downloadUploadedInvoice": "Muat turun invois dimuat naik",
     "viewReconcile": "Lihat semakan",
     "reconcileNow": "Semak dengan invois",
     "ordered": "Dipesan",

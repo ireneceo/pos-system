@@ -1274,6 +1274,7 @@
     "notReconciled": "인보이스 올림 · 미대조",
     "noUpload": "올린 인보이스 없음",
     "viewUploadedInvoice": "올린 인보이스 보기",
+    "downloadUploadedInvoice": "올린 인보이스 내려받기",
     "viewReconcile": "대조 내역 보기",
     "reconcileNow": "인보이스와 대조하기",
     "ordered": "주문",

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import styled, { keyframes } from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -76,7 +77,9 @@ const InboxDrawer: React.FC<Props> = ({ open, onClose, onItemRead }) => {
 
   const visibleItems = unreadOnly ? items.filter(i => !i.read) : items;
 
-  return (
+  // body 로 portal — 모바일 머리줄(z-index 999) 안에 그리면 그 층에 갇혀
+  // 열린 왼쪽 메뉴(1000) 뒤로 깔린다(2026-10-19).
+  return createPortal(
     <>
       <Backdrop $open={open} onClick={onClose} aria-hidden={!open} />
       <Drawer
@@ -161,7 +164,8 @@ const InboxDrawer: React.FC<Props> = ({ open, onClose, onItemRead }) => {
           </FooterLink>
         </Footer>
       </Drawer>
-    </>
+    </>,
+    document.body
   );
 };
 

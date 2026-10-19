@@ -274,5 +274,9 @@
     "immediateExplain": "每张送货发票单独标记已付。",
     "dayRange": "日期须在 1 到 28 之间。",
     "saveFailed": "保存失败，请重试。"
+  },
+  "delivery": {
+    "title": "配送",
+    "editTitle": "配送条件"
   }
 }

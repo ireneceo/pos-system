@@ -1,4 +1,6 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const router = express.Router();
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { DeployRecord } = require('../models');
@@ -31,6 +33,23 @@ router.get('/', authenticateToken, requireRole('System Admin'), async (req, res)
   } catch (error) {
     console.error('List deploy records error:', error);
     res.status(500).json({ success: false, message: 'Failed to load deploy records' });
+  }
+});
+
+// GET /api/admin/deploy-records/structure-map — 구조도(재료·레시피·공급업체·청구 연결 지도) 원본 HTML
+// (2026-10-19 Irene «시스템관리자 메뉴에 구조도 보게 … 항상 보게 … 계속 업데이트»)
+// 원본은 저장소 `content/structure-map.html` 한 곳 — 구조를 바꾸는 작업이 이 파일을 고치고 배포로 같이 나간다.
+// 배포 기록과 같은 이유로 쓰기 API 는 없다. `/:id` 보다 먼저 둔다.
+router.get('/structure-map', authenticateToken, requireRole('System Admin'), async (req, res) => {
+  try {
+    const file = path.join(__dirname, '..', 'content', 'structure-map.html');
+    const html = await fs.promises.readFile(file, 'utf8');
+    // «마지막 갱신» = 문서 맨 위 변경 기록의 첫 날짜. 파일 시각은 배포 사본에서 복사 시각이 되므로 쓰지 않는다.
+    const m = html.match(/class="log-date">([^<]+)</);
+    res.json({ success: true, data: { html, updated: m ? m[1].trim() : null } });
+  } catch (error) {
+    console.error('Get structure map error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load structure map' });
   }
 });
 

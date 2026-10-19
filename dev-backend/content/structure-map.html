@@ -1,0 +1,710 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>재료·레시피 연결고리</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* 레이아웃: 한 줄 폭 문서 · 판(보드)마다 구조도 → 표 → 정석과 다른 곳. 변경은 날짜 태그 3종으로 표시 */
+  :root{
+    --ground:#F6F5F9; --surface:#FFFFFF; --surface-2:#FBFAFD;
+    --ink:#17161C; --ink-2:#4A4655; --muted:#7B7688;
+    --line:#DCD8E6; --line-soft:#EAE7F0;
+    --flow:#4B3FA8;        /* 연결·동기화 · 진행 중 */
+    --buy:#9C5F22;         /* 매입 · 바뀜 */
+    --make:#1F6F6B;        /* 만드는 것 · 신설 */
+    --off:#B4433B;         /* 정석과 다른 곳 */
+    --ok:#2F6B4F;
+    --chip:#EFEDF6;
+    --chip-make:#E4F1EF;
+    --chip-buy:#F6EEE4;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --ground:#131218; --surface:#1C1A23; --surface-2:#201E29;
+      --ink:#EDEBF2; --ink-2:#BEB9CC; --muted:#8F8AA0;
+      --line:#33303F; --line-soft:#2A2835;
+      --flow:#A79BF0; --buy:#D9A264; --make:#6FC6BF; --off:#E58B83; --ok:#7FC3A0;
+      --chip:#272433; --chip-make:#1E2E2D; --chip-buy:#2E261C;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --ground:#131218; --surface:#1C1A23; --surface-2:#201E29;
+    --ink:#EDEBF2; --ink-2:#BEB9CC; --muted:#8F8AA0;
+    --line:#33303F; --line-soft:#2A2835;
+    --flow:#A79BF0; --buy:#D9A264; --make:#6FC6BF; --off:#E58B83; --ok:#7FC3A0;
+    --chip:#272433; --chip-make:#1E2E2D; --chip-buy:#2E261C;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground); color:var(--ink);
+    font-family:'IBM Plex Sans KR', system-ui, -apple-system, 'Malgun Gothic', sans-serif;
+    font-size:15px; line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding-block:56px 96px; padding-inline:24px; display:flex; flex-direction:column; gap:52px}
+
+  header{display:flex; flex-direction:column; gap:14px; border-bottom:1px solid var(--line); padding-bottom:28px}
+  .eyebrow{
+    font-family:'IBM Plex Mono', ui-monospace, monospace; font-size:11.5px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--muted);
+  }
+  h1{margin:0; font-size:clamp(28px,4.4vw,40px); font-weight:600; letter-spacing:-.02em; text-wrap:balance; line-height:1.2}
+  .lede{margin:0; max-width:64ch; color:var(--ink-2); font-size:16px}
+
+  .rule{
+    display:flex; flex-wrap:wrap; gap:10px; padding:16px 18px; border-radius:4px;
+    background:var(--surface); border:1px solid var(--line); align-items:center;
+  }
+  .rule b{font-weight:600}
+  .rule .sep{color:var(--muted)}
+  .rule.new{border-left:3px solid var(--make)}
+  .rule.chg{border-left:3px solid var(--buy)}
+
+  section{display:flex; flex-direction:column; gap:18px}
+  h2{margin:0; font-size:21px; font-weight:600; letter-spacing:-.01em; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; text-wrap:balance}
+  h2 .who{
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px; font-weight:400;
+    letter-spacing:.08em; color:var(--muted); text-transform:uppercase;
+  }
+  .board{
+    background:var(--surface); border:1px solid var(--line); border-radius:4px;
+    padding:8px; overflow-x:auto;
+  }
+  .board svg{display:block; min-width:920px; width:100%; height:auto}
+
+  /* diagram type */
+  .n-title{font-family:'IBM Plex Sans KR',sans-serif; font-size:14.5px; font-weight:600; fill:var(--ink)}
+  .n-sub{font-family:'IBM Plex Mono',monospace; font-size:11px; fill:var(--muted)}
+  .a-label{font-family:'IBM Plex Mono',monospace; font-size:10.5px; fill:var(--flow)}
+  .a-label.buy{fill:var(--buy)}
+  .a-label.make{fill:var(--make)}
+  .a-label.off{fill:var(--off)}
+  .n-box{fill:var(--surface-2); stroke:var(--line); stroke-width:1}
+  .n-box.key{fill:var(--chip); stroke:var(--flow); stroke-width:1.4}
+  .n-box.make{fill:var(--chip-make); stroke:var(--make); stroke-width:1.4}
+  .n-box.buy{fill:var(--chip-buy); stroke:var(--buy); stroke-width:1.4}
+  .n-note{fill:none; stroke:var(--line-soft); stroke-width:1; stroke-dasharray:3 3}
+  .n-note-t{font-family:'IBM Plex Sans KR',sans-serif; font-size:12px; fill:var(--ink-2)}
+  .edge{fill:none; stroke:var(--flow); stroke-width:1.6}
+  .edge.buy{stroke:var(--buy)}
+  .edge.make{stroke:var(--make)}
+  .edge.off{stroke:var(--off); stroke-dasharray:6 4}
+  .edge.thin{stroke:var(--line); stroke-width:1.2; stroke-dasharray:3 3}
+
+  .legend{display:flex; flex-wrap:wrap; gap:20px; font-size:13px; color:var(--ink-2)}
+  .legend span{display:inline-flex; align-items:center; gap:8px}
+  .legend i{width:22px; height:0; border-top:2px solid; display:inline-block}
+
+  table{border-collapse:collapse; width:100%; font-size:13.5px}
+  .tw{overflow-x:auto; border:1px solid var(--line); border-radius:4px; background:var(--surface)}
+  th,td{text-align:left; padding:10px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top}
+  thead th{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--muted); font-weight:500; background:var(--surface-2); white-space:nowrap;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  code{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--flow); white-space:nowrap}
+  td.n{font-variant-numeric:tabular-nums; white-space:nowrap}
+  tr.fresh td:first-child{box-shadow:inset 3px 0 0 var(--make)}
+  tr.changed td:first-child{box-shadow:inset 3px 0 0 var(--buy)}
+  tr.wip td:first-child{box-shadow:inset 3px 0 0 var(--flow)}
+  s.was{color:var(--muted); text-decoration-color:var(--buy)}
+
+  /* 변경 태그 3종 — 신설 / 바뀜 / 진행 중 */
+  .tag-new, .tag-chg, .tag-wip{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+    border:1px solid; border-radius:2px; padding:1px 5px; margin-left:8px;
+    white-space:nowrap; vertical-align:2px;
+  }
+  .tag-new{color:var(--make); border-color:var(--make)}
+  .tag-chg{color:var(--buy); border-color:var(--buy)}
+  .tag-wip{color:var(--flow); border-color:var(--flow)}
+
+  .flag{border-left:3px solid var(--off); background:var(--surface); padding:16px 20px; border-radius:0 4px 4px 0}
+  .flag.done{border-left-color:var(--make)}
+  .flag.wip{border-left-color:var(--flow)}
+  .flag h3{margin:0 0 6px; font-size:15px; font-weight:600; color:var(--off)}
+  .flag.done h3{color:var(--make)}
+  .flag.wip h3{color:var(--flow)}
+  .flag p{margin:0 0 8px; color:var(--ink-2); max-width:70ch}
+  .flag p:last-child{margin-bottom:0}
+
+  .steps{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px}
+  .step{background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:16px 18px; display:flex; flex-direction:column; gap:6px}
+  .step .k{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--make)}
+  .step .t{font-weight:600}
+  .step .d{color:var(--ink-2); font-size:13.5px}
+
+  /* 변경 기록 */
+  .log{display:flex; flex-direction:column; gap:0; background:var(--surface); border:1px solid var(--line); border-radius:4px}
+  .log-row{display:grid; grid-template-columns:112px 1fr; gap:16px; padding:14px 18px; border-bottom:1px solid var(--line-soft)}
+  .log-row:last-child{border-bottom:none}
+  .log-date{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-2); font-variant-numeric:tabular-nums; padding-top:2px}
+  .log ul{margin:0; padding-left:18px; display:flex; flex-direction:column; gap:4px; color:var(--ink-2); font-size:14px}
+  .log li b{color:var(--ink); font-weight:600}
+  .keybar{display:flex; flex-wrap:wrap; gap:18px; font-size:13px; color:var(--ink-2); align-items:center}
+  .keybar .tag-new, .keybar .tag-chg, .keybar .tag-wip{margin-left:0}
+  @media (max-width:560px){ .log-row{grid-template-columns:1fr; gap:4px} }
+
+  footer{border-top:1px solid var(--line); padding-top:20px; color:var(--muted); font-size:12.5px; max-width:74ch}
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Purple POS · 구조 지도 · 2026-09-04 → 09-17 → 09-30 보완</div>
+  <h1>재료·레시피 연결고리</h1>
+  <p class="lede">메뉴 · 프로덕트 · 레시피 · 재고아이템 · 공급업체 상품이 실제로 어느 컬럼으로 이어지고, 어느 방향으로 동기화되는지. 09-30 보완에서 <b>판매자 주문 추가</b>와 <b>청구·정산</b> 흐름을 더했습니다. 화살표와 컬럼명은 전부 코드·스키마 실측입니다.</p>
+</header>
+
+<!-- ─────────── 변경 기록 ─────────── -->
+<section>
+  <h2>변경 기록 <span class="who">이 페이지를 고칠 때마다 한 줄씩</span></h2>
+  <div class="keybar">
+    <span><span class="tag-new">신설</span> 새로 생긴 구조</span>
+    <span><span class="tag-chg">바뀜</span> 예전 설명이 달라진 곳 (옛 내용은 줄 그음)</span>
+    <span><span class="tag-wip">진행 중</span> 결정됐고 아직 개발 중</span>
+  </div>
+  <div class="log">
+    <div class="log-row">
+      <div class="log-date">2026-10-19</div>
+      <ul>
+        <li><b>시스템 관리자 화면에서 보기</b> — Solution Issues › Dev Issues › «구조도» 탭. 원본은 저장소 <code>dev-backend/content/structure-map.html</code> 한 곳, 구조를 바꾸면 이 파일을 고치고 배포 때 함께 나간다</li>
+      </ul>
+    </div>
+    <div class="log-row">
+      <div class="log-date">2026-09-30</div>
+      <ul>
+        <li><b>판매자 주문 추가</b> 절 신설 — 목록은 매장의 판매 연결만 본다 · 연결 방법 · 자동 담기(진행 중)</li>
+        <li><b>청구·정산</b> 절 신설 — 정산서에는 판매자가 확정한 주문이 전부 들어간다(청구서 선발행)</li>
+        <li>브랜드 «Issued Invoices» 가 계정의 모든 브랜드 발행분을 본다</li>
+      </ul>
+    </div>
+    <div class="log-row">
+      <div class="log-date">2026-09-29</div>
+      <ul>
+        <li>청구서 발행 시점 설정(입고 완료 시 / 주문 확정 시) · 월결제 매장은 정산서로만 결제</li>
+        <li>정산서 발행일(1~28) · 수동 발행한 달은 자동 발행 건너뜀 · 정산서 PDF = 표지 + 청구서 전부</li>
+        <li>판매자 «배송 가능 지역» 글 칸(브랜드·푸드코트·공급업체) — 발주 화면에 한 줄 표시, 계산에는 안 씀</li>
+      </ul>
+    </div>
+    <div class="log-row">
+      <div class="log-date">2026-09-24~25</div>
+      <ul>
+        <li>공급업체: 브랜드→매장은 <b>복사본</b>(상속 종료), 오너→소유 매장은 <b>상속</b>으로 갈림 — 활성/비활성 표 수정</li>
+        <li>푸드코트 판매자에도 무료배송 기준·배송비 두 칸</li>
+      </ul>
+    </div>
+    <div class="log-row">
+      <div class="log-date">2026-09-17</div>
+      <ul>
+        <li>준비된 재고(만드는 것) · 발주 배송비 · 재료 분류 정본 · 메뉴 주인은 매장</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="rule">
+  <b>규칙</b><span class="sep">—</span>
+  <span>메뉴·프로덕트 = <b>재고아이템</b></span><span class="sep">또는</span>
+  <span>메뉴·프로덕트 = <b>레시피</b> = 재고아이템들</span>
+  <span class="sep">·</span><span style="color:var(--muted)">둘 중 하나. 재고는 재고아이템에만 쌓인다. 둘 다 걸면 저장 거부.</span>
+</div>
+
+<div class="rule new">
+  <b>재료의 출처</b><span class="sep">—</span>
+  <span><b>사는 것</b> = 재고아이템</span><span class="sep">·</span>
+  <span><b>파는 것</b> = 브랜드 프로덕트</span><span class="sep">·</span>
+  <span><b>만드는 것</b> = 레시피 <code>ingredients.source_recipe_id</code><span class="tag-new">09-17</span></span>
+  <span class="sep">·</span><span style="color:var(--muted)">셋 중 정확히 하나. 준비된 재고(1차 가공)는 새 표가 아니라 재료 목록의 한 줄이다.</span>
+</div>
+
+<!-- ─────────── 브랜드 제너럴 ─────────── -->
+<section>
+  <h2>브랜드 제너럴 <span class="who">GIT Consulting · 파는 쪽</span></h2>
+  <div class="board">
+  <svg viewBox="0 0 1020 430" role="img" aria-label="브랜드 제너럴의 공급업체 상품·재고아이템·레시피·프로덕트·브랜드 메뉴 연결 구조도">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="var(--flow)"/>
+      </marker>
+      <marker id="ah-buy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="var(--buy)"/>
+      </marker>
+      <marker id="ah-make" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="var(--make)"/>
+      </marker>
+      <marker id="ah-off" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="var(--off)"/>
+      </marker>
+    </defs>
+
+    <path class="edge" marker-end="url(#ah)" d="M365,96 V52 H865 V92"/>
+    <text class="a-label" x="470" y="44">재고아이템 다이렉트 — brand_products.product_ingredient_id · 1:1, 환산 없음</text>
+
+    <g>
+      <rect class="n-box" x="20" y="96" width="190" height="68" rx="3"/>
+      <text class="n-title" x="36" y="126">공급업체 상품</text>
+      <text class="n-sub" x="36" y="146">supplier_products</text>
+
+      <rect class="n-box key" x="270" y="96" width="190" height="68" rx="3"/>
+      <text class="n-title" x="286" y="126">재고아이템</text>
+      <text class="n-sub" x="286" y="146">product_ingredients</text>
+
+      <rect class="n-box" x="520" y="96" width="190" height="68" rx="3"/>
+      <text class="n-title" x="536" y="126">프로덕트 레시피</text>
+      <text class="n-sub" x="536" y="146">product_recipes</text>
+
+      <rect class="n-box key" x="770" y="96" width="190" height="68" rx="3"/>
+      <text class="n-title" x="786" y="126">브랜드 프로덕트</text>
+      <text class="n-sub" x="786" y="146">brand_products</text>
+    </g>
+
+    <path class="edge buy" marker-end="url(#ah-buy)" d="M210,130 H266"/>
+    <text class="a-label buy" x="196" y="118" text-anchor="middle">매입</text>
+
+    <path class="edge" marker-end="url(#ah)" d="M460,130 H516"/>
+    <text class="a-label" x="488" y="120" text-anchor="middle">recipe_ingredients</text>
+
+    <path class="edge" marker-end="url(#ah)" d="M710,130 H766"/>
+    <text class="a-label" x="738" y="120" text-anchor="middle">product_recipe_id</text>
+
+    <path class="edge" marker-end="url(#ah)" d="M330,164 V296"/>
+    <text class="a-label" x="316" y="212" text-anchor="end">source_</text>
+    <text class="a-label" x="316" y="226" text-anchor="end">product_ingredient_id</text>
+    <text class="a-label" x="316" y="240" text-anchor="end">이름·단위·활성 자동 반영</text>
+
+    <path class="edge" marker-end="url(#ah)" d="M865,164 V232 H400 V296"/>
+    <text class="a-label" x="620" y="224" text-anchor="middle">source_brand_product_id — 파는 물건을 레시피 재료로 쓸 때</text>
+
+    <g>
+      <rect class="n-box" x="270" y="300" width="190" height="68" rx="3"/>
+      <text class="n-title" x="286" y="330">재료 거울</text>
+      <text class="n-sub" x="286" y="350">ingredients (brand)</text>
+
+      <rect class="n-box" x="520" y="300" width="190" height="68" rx="3"/>
+      <text class="n-title" x="536" y="330">브랜드 레시피</text>
+      <text class="n-sub" x="536" y="350">recipes (brand)</text>
+
+      <rect class="n-box" x="770" y="300" width="190" height="68" rx="3"/>
+      <text class="n-title" x="786" y="330">브랜드 메뉴</text>
+      <text class="n-sub" x="786" y="350">brand_menus</text>
+    </g>
+
+    <path class="edge" marker-end="url(#ah)" d="M460,334 H516"/>
+    <text class="a-label" x="488" y="392" text-anchor="middle">recipe_ingredients</text>
+
+    <path class="edge" marker-end="url(#ah)" d="M710,334 H766"/>
+    <text class="a-label" x="738" y="392" text-anchor="middle">recipe_id</text>
+
+    <path class="edge thin" d="M710,310 H766"/>
+    <text class="a-label" x="738" y="304" text-anchor="middle" style="fill:var(--muted)">product_recipe_id 도 가능</text>
+  </svg>
+  </div>
+
+  <div class="legend">
+    <span><i style="border-color:var(--buy)"></i> 매입 — 돈이 나가고 물건이 들어온다</span>
+    <span><i style="border-color:var(--flow)"></i> 연결·동기화</span>
+    <span><i style="border-color:var(--make)"></i> 만드는 것 — 준비된 재고</span>
+    <span><i style="border-color:var(--off); border-top-style:dashed"></i> 정석과 다른 곳</span>
+  </div>
+</section>
+
+<!-- ─────────── 레스토랑 ─────────── -->
+<section>
+  <h2>레스토랑 <span class="who">K-DINE IPC · with MIN Cafe · 사는 쪽</span></h2>
+  <div class="board">
+  <svg viewBox="0 0 1020 470" role="img" aria-label="레스토랑의 공급업체 상품·재료·레시피·메뉴 연결 구조도와 준비된 재고 경로">
+    <path class="edge thin" marker-end="url(#ah)" d="M865,52 V92"/>
+    <text class="a-label" x="880" y="44">brand_menu_id — 브랜드가 골라서 내려보냄</text>
+    <rect class="n-note" x="770" y="16" width="190" height="34" rx="3"/>
+    <text class="n-note-t" x="786" y="38">브랜드 메뉴 (위 판)</text>
+
+    <path class="edge" marker-end="url(#ah)" d="M365,96 V70 H865 V92"/>
+    <text class="a-label" x="380" y="62">재고아이템 다이렉트 — products.ingredient_id · 1:1, 환산 없음</text>
+
+    <g>
+      <rect class="n-box" x="20" y="96" width="190" height="68" rx="3"/>
+      <text class="n-title" x="36" y="122">공급업체 상품</text>
+      <text class="n-sub" x="36" y="140">supplier_products</text>
+      <text class="n-sub" x="36" y="155">+ 브랜드 프로덕트</text>
+
+      <rect class="n-box key" x="270" y="96" width="190" height="68" rx="3"/>
+      <text class="n-title" x="286" y="122">재료 = 재고아이템</text>
+      <text class="n-sub" x="286" y="140">ingredients (매장)</text>
+      <text class="n-sub" x="286" y="155">+ 브랜드 공유 거울 (읽기전용)</text>
+
+      <rect class="n-box" x="520" y="96" width="190" height="68" rx="3"/>
+      <text class="n-title" x="536" y="126">레시피</text>
+      <text class="n-sub" x="536" y="146">recipes (매장 · 브랜드)</text>
+
+      <rect class="n-box key" x="770" y="96" width="190" height="68" rx="3"/>
+      <text class="n-title" x="786" y="126">메뉴</text>
+      <text class="n-sub" x="786" y="146">products — 주인은 매장</text>
+    </g>
+
+    <path class="edge buy" marker-end="url(#ah-buy)" d="M210,130 H266"/>
+    <text class="a-label buy" x="238" y="118" text-anchor="middle">발주·입고</text>
+
+    <path class="edge" marker-end="url(#ah)" d="M460,130 H516"/>
+    <text class="a-label" x="488" y="120" text-anchor="middle">recipe_ingredients</text>
+
+    <path class="edge" marker-end="url(#ah)" d="M710,130 H766"/>
+    <text class="a-label" x="738" y="120" text-anchor="middle">recipe_id</text>
+
+    <text class="a-label buy" x="238" y="186" text-anchor="middle">ingredient_seller_products</text>
+    <text class="a-label buy" x="238" y="200" text-anchor="middle">.ingredient_id + .seller_product_id</text>
+
+    <path class="edge make" marker-end="url(#ah-make)" d="M590,164 V236 H400 V236 H390 V164"/>
+    <text class="a-label make" x="596" y="196">준비 레시피 — ingredients.source_recipe_id</text>
+    <text class="a-label make" x="596" y="210">「만들기」 한 번에 원재료 −, 준비 재료 +</text>
+
+    <path class="edge thin" d="M300,164 V290"/>
+    <rect class="n-note" x="220" y="290" width="230" height="62" rx="3"/>
+    <text class="n-note-t" x="236" y="312">브랜드 공유 재료의 매장 재고는</text>
+    <text class="n-note-t" x="236" y="330">따로 쌓인다 — 매장별 오버레이</text>
+    <text class="n-sub" x="236" y="346">restaurant_ingredient_stocks</text>
+
+    <path class="edge" marker-end="url(#ah)" d="M865,164 V416 H440 V168"/>
+    <text class="a-label" x="655" y="408" text-anchor="middle">판매되면 레시피를 타고 재고가 빠진다 — inventoryDeductionService</text>
+  </svg>
+  </div>
+</section>
+
+<!-- ─────────── 판매자 주문 추가 (09-30 신설) ─────────── -->
+<section>
+  <h2>판매자 주문 추가 <span class="tag-new">09-30 신설</span> <span class="who">브랜드가 매장 대신 발주를 넣을 때</span></h2>
+  <div class="rule new">
+    <b>규칙</b><span class="sep">—</span>
+    <span>주문 추가 창에 나오는 상품 = <b>그 매장이 자기 재고아이템에 연결해 둔 판매자 상품</b></span>
+    <span class="sep">·</span><span style="color:var(--muted)">주문 한 줄은 «받은 물건이 들어갈 재고 자리» 하나를 반드시 가리킨다(<code>utils/stockTarget.js</code> — 넷 중 정확히 하나).</span>
+  </div>
+  <div class="board">
+  <svg viewBox="0 0 1020 250" role="img" aria-label="브랜드 프로덕트가 매장 카탈로그 담기로 매장 재고아이템과 판매 연결을 얻고 판매자 주문 추가 목록에 나타나는 구조도">
+    <g>
+      <rect class="n-box key" x="20" y="60" width="200" height="68" rx="3"/>
+      <text class="n-title" x="36" y="90">브랜드 프로덕트</text>
+      <text class="n-sub" x="36" y="110">배포: 전체 프랜차이즈 등</text>
+
+      <rect class="n-box" x="290" y="60" width="210" height="68" rx="3"/>
+      <text class="n-title" x="306" y="90">매장 카탈로그</text>
+      <text class="n-sub" x="306" y="110">배포 설정 = 보이기만</text>
+
+      <rect class="n-box buy" x="570" y="60" width="200" height="68" rx="3"/>
+      <text class="n-title" x="586" y="90">매장 재고아이템 + 판매 연결</text>
+      <text class="n-sub" x="586" y="110">ingredients · ingredient_seller_products</text>
+
+      <rect class="n-box key" x="840" y="60" width="160" height="68" rx="3"/>
+      <text class="n-title" x="856" y="90">주문 추가 목록</text>
+      <text class="n-sub" x="856" y="110">/seller-orders/sellable</text>
+    </g>
+    <path class="edge thin" marker-end="url(#ah)" d="M220,94 H286"/>
+    <text class="a-label" x="253" y="84" text-anchor="middle">보임</text>
+    <path class="edge buy" marker-end="url(#ah-buy)" d="M500,94 H566"/>
+    <text class="a-label buy" x="533" y="84" text-anchor="middle">카탈로그에서 담기</text>
+    <path class="edge" marker-end="url(#ah)" d="M770,94 H836"/>
+    <text class="a-label" x="803" y="84" text-anchor="middle">나옴</text>
+
+    <rect class="n-note" x="570" y="160" width="430" height="66" rx="3"/>
+    <text class="n-note-t" x="586" y="184">판매자 = 그 매장의 브랜드(결정적)</text>
+    <text class="n-note-t" x="586" y="204">POST /restaurants/:id/ingredients/from-catalog · 같은 상품은 한 번만(멱등)</text>
+    <path class="edge thin" d="M670,128 V160"/>
+  </svg>
+  </div>
+  <div class="tw">
+  <table>
+    <thead><tr><th>상황</th><th>주문 추가 목록</th><th>근거</th></tr></thead>
+    <tbody>
+      <tr class="fresh"><td>브랜드가 상품을 «전체 프랜차이즈» 로 배포만 함</td><td><b>안 나온다</b></td><td>배포는 카탈로그 노출. 9/4 이후 상품 등록은 재고아이템을 만들지 않는다(<code>ENABLE_PRODUCT_INGREDIENT_MIRROR=false</code>)</td></tr>
+      <tr class="fresh"><td>매장이 «카탈로그에서 담기» 로 자기 재고아이템에 연결</td><td>나온다</td><td>운영 예: K-DINE IPC 인쇄 상품 3개(메뉴 라미네이팅·라이트박스 A1·A4) 09-30 연결 → 목록 49개</td></tr>
+      <tr class="fresh"><td>서비스 상품(라미네이팅 등)</td><td>연결되면 나온다</td><td>서비스만 담긴 주문은 배송 없이 «완료» 한 번 — 판정 <code>utils/orderFulfillment.isServiceOnlyOrder</code></td></tr>
+      <tr class="changed"><td>브랜드 재고아이템(Stock Items) 쪽 담기</td><td>쓰지 않는다</td><td>브랜드 2개를 가진 소유자면 판매자가 임의로 정해진다(<code>utils/catalogLink.js</code> 주석). 매장 쪽 담기만 판매자가 결정적</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="flag wip">
+    <h3>자동 담기 <span class="tag-wip">진행 중</span></h3>
+    <p>Irene 결정(09-30): 배포한 상품은 매장 연결 없이 바로 주문에 넣고, 서비스 상품도 넣을 수 있게 한다.</p>
+    <p>설계: 주문 추가 목록에 «매장이 연결한 상품 + 그 매장에 배포된 브랜드 상품» 을 함께 보이고, 연결 안 된 상품을 고르면 서버가 매장의 «카탈로그에서 담기» 를 매장 대신 실행한 뒤 주문 줄을 만든다. 새 경로·새 칸 없이 매장이 쓰는 정식 경로를 그대로 쓴다.</p>
+  </div>
+</section>
+
+<!-- ─────────── 청구·정산 (09-29~30 신설) ─────────── -->
+<section>
+  <h2>청구·정산 <span class="tag-new">09-29 신설</span> <span class="who">주문 → 청구서 → 월 정산서</span></h2>
+  <div class="rule new">
+    <b>규칙</b><span class="sep">—</span>
+    <span>정산서(SOA)에는 <b>판매자가 확정한 주문이 전부</b> 들어간다</span>
+    <span class="sep">·</span><span style="color:var(--muted)">정산서를 만들기 직전에, 확정했는데 청구서가 아직 없는 주문의 청구서를 먼저 낸다. 매장 입고 여부와 무관.</span>
+  </div>
+  <div class="board">
+  <svg viewBox="0 0 1020 250" role="img" aria-label="판매자 주문 확정에서 거래 청구서, 월 정산서, 결제로 이어지는 청구 흐름도">
+    <g>
+      <rect class="n-box" x="20" y="60" width="190" height="68" rx="3"/>
+      <text class="n-title" x="36" y="90">주문</text>
+      <text class="n-sub" x="36" y="110">purchase_orders</text>
+
+      <rect class="n-box key" x="280" y="60" width="200" height="68" rx="3"/>
+      <text class="n-title" x="296" y="90">거래 청구서</text>
+      <text class="n-sub" x="296" y="110">invoices · category trade</text>
+
+      <rect class="n-box make" x="550" y="60" width="200" height="68" rx="3"/>
+      <text class="n-title" x="566" y="90">월 정산서</text>
+      <text class="n-sub" x="566" y="110">invoices · category soa</text>
+
+      <rect class="n-box" x="820" y="60" width="180" height="68" rx="3"/>
+      <text class="n-title" x="836" y="90">결제</text>
+      <text class="n-sub" x="836" y="110">정산서에서 한 번에</text>
+    </g>
+    <path class="edge" marker-end="url(#ah)" d="M210,94 H276"/>
+    <text class="a-label" x="243" y="50" text-anchor="middle">입고 시 · 확정 시</text>
+    <text class="a-label" x="243" y="84" text-anchor="middle">trade_invoice_id</text>
+    <path class="edge make" marker-end="url(#ah-make)" d="M480,94 H546"/>
+    <text class="a-label make" x="513" y="84" text-anchor="middle">parent_soa_invoice_id</text>
+    <path class="edge" marker-end="url(#ah)" d="M750,94 H816"/>
+    <text class="a-label" x="783" y="84" text-anchor="middle">Pay All</text>
+
+    <path class="edge make" marker-end="url(#ah-make)" d="M115,128 V190 H380 V132"/>
+    <text class="a-label make" x="126" y="210">정산서 발행 직전 선발행 — 확정·출고·배송완료인데 청구서 없는 주문</text>
+    <text class="a-label make" x="126" y="224">soaScheduler.issueMissingTradeInvoices · 09-30</text>
+  </svg>
+  </div>
+  <div class="tw">
+  <table>
+    <thead><tr><th>무엇</th><th>어디에 사는가</th><th>동작</th></tr></thead>
+    <tbody>
+      <tr class="fresh"><td>청구서 발행 시점<span class="tag-new">09-29</span></td><td>브랜드 청구 조건 <code>brand_billing_terms.invoice_trigger</code></td><td><b>입고 완료 시</b>(기본) / <b>주문 확정 시</b>. 확정 시면 판매자가 확정하는 순간 청구서. 금액은 어느 쪽이든 주문 수량 × 단가</td></tr>
+      <tr class="fresh"><td>정산서 = 확정 주문 전부<span class="tag-new">09-30</span></td><td><code>services/soaScheduler.js</code></td><td>수동·자동 발행 모두, 청구서 없는 확정 이후 주문(확정·출고·배송중·배송완료·일부입고·입고·마감)의 청구서를 먼저 낸다. 확정 전·배송 실패·취소는 제외. 같은 청구서는 두 번 안 생긴다</td></tr>
+      <tr class="fresh"><td>정산서 발행일<span class="tag-new">09-29</span></td><td><code>brand_billing_terms.soa_issue_day</code> (1~28, 기본 1)</td><td>매일 확인해 그 날에만 자동 발행. 기간 = 지난 정산서 다음 날 ~ 어제. <b>그 달에 수동 발행했으면 자동은 건너뛴다</b></td></tr>
+      <tr class="fresh"><td>월결제 매장의 개별 결제<span class="tag-new">09-29</span></td><td><code>utils/payViaSoa.js</code></td><td>월결제 매장의 거래 청구서는 Pay 대신 «Pay via SOA», 서버도 개별 결제 400. 정산서에서만 한 번에 낸다</td></tr>
+      <tr class="fresh"><td>정산서 PDF<span class="tag-new">09-29</span></td><td>매장 Invoices 화면</td><td>한 파일 = 표지(번호·기간·마감일·청구서 표·총액·은행) + 청구서 전부, 청구서마다 새 장</td></tr>
+      <tr class="fresh"><td>받는 사람이 없을 때<span class="tag-new">09-29</span></td><td>매장 관리자·오너 이메일</td><td>정산서는 만들고 메일만 건너뛴다(화면에 «관리자 이메일을 넣으세요»). 메일 버튼은 매장 Invoices 화면으로</td></tr>
+      <tr class="fresh"><td>브랜드 발행 목록<span class="tag-new">09-30</span></td><td>브랜드 Invoices «Issued»</td><td>계정의 <b>모든 브랜드</b>(소유 ∪ 배정) 발행분. 전에는 첫 브랜드 하나만 보여 K-DINE 정산서가 빠졌다</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ─────────── 준비된 재고 ─────────── -->
+<section>
+  <h2>준비된 재고 <span class="who">1차 가공 · 2026-09-17 신설</span></h2>
+  <div class="rule new">
+    <b>한 줄</b><span class="sep">—</span>
+    <span>준비 레시피를 만들면 <b>재료가 저절로 생기고</b></span><span class="sep">·</span>
+    <span>재고 화면에서 <b>「만들기」</b> 를 누르면 원재료가 빠지고 준비 재료가 들어오고</span><span class="sep">·</span>
+    <span>메뉴 레시피에서 그 준비 재료를 고르면 <b>팔릴 때 준비 재료만</b> 빠진다</span>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="k">걸음 1 — 레시피 화면</div>
+      <div class="t">「이 레시피의 결과물을 재료로 씁니다」 스위치</div>
+      <div class="d">소고기 3kg · 간장 200ml · 마늘 100g, <b>실제 나오는 양 2.5kg</b> 을 적는다. 저장하면 재료 목록에 「불고기 양념육」 이 자동으로 생긴다. 이름·단위는 레시피가 정하고 재료 쪽에선 못 고친다.</div>
+    </div>
+    <div class="step">
+      <div class="k">걸음 2 — 재고 화면</div>
+      <div class="t">버튼이 「입고」 가 아니라 「만들기」</div>
+      <div class="d">몇 판 만드는지 넣으면 빠질 원재료와 부족분이 미리 보인다. 실제 나온 양(2.4kg)을 넣고 확인하면 <b>한 번에</b> 원재료 빠짐 · 준비 재료 +2.4kg · 장부 한 줄 · kg당 원가 반영. 발주 화면에는 안 나온다.</div>
+    </div>
+    <div class="step">
+      <div class="k">걸음 3 — 메뉴 레시피</div>
+      <div class="t">보통 재료처럼 고른다</div>
+      <div class="d">「불고기 덮밥」 재료 선택기에 「불고기 양념육 · 준비 재료」 가 나온다. 0.2kg 을 적으면 팔릴 때 <b>양념육만</b> 빠진다 — 원재료는 걸음 2 에서 이미 빠졌으니 두 번 빠지지 않는다.</div>
+    </div>
+  </div>
+  <div class="tw">
+  <table>
+    <thead><tr><th>지켜지는 것</th><th>어떻게</th></tr></thead>
+    <tbody>
+      <tr><td>새 목록을 만들지 않는다</td><td>준비된 재고는 <code>ingredients</code> 의 한 행. 수량·FIFO 배치·실사·저재고 경보·원가 2층을 그대로 탄다</td></tr>
+      <tr><td>차감은 한 번만</td><td>준비 레시피는 <b>메뉴에 붙일 수 없다</b>(400). 붙이면 원재료가 「만들기」 에서 한 번, 판매에서 또 한 번 빠진다</td></tr>
+      <tr><td>이름·단위는 한 곳에서만</td><td>재료 쪽 수정 403 — 레시피를 고치면 따라온다. 사람이 두 군데 맞춰 적을 자리가 없다</td></tr>
+      <tr><td>중첩 금지</td><td>준비 레시피 안에 다른 준비 재료를 넣을 수 없다(1단계) — 차감이 몇 단계 내려가야 하는지가 정해지지 않는다</td></tr>
+      <tr><td>브랜드 준비 레시피</td><td>매장은 <b>읽어서 「만들기」 만</b>. 배합을 바꾸려면 복사해서 매장 것으로 — 브랜드 레시피는 건드리지 않는다</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ─────────── 연결 열쇠 표 ─────────── -->
+<section>
+  <h2>연결 열쇠 <span class="who">어느 컬럼이 무엇을 잇는가</span></h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>잇는 것</th><th>열쇠</th><th>방향·동기화</th></tr></thead>
+    <tbody>
+      <tr><td>공급업체 상품 → 재고아이템</td><td><code>ingredient_seller_products.product_ingredient_id</code> + <code>.seller_product_id</code></td><td>매입 경로. 한 재고아이템에 판매자 여러 곳이 붙을 수 있고 <code>is_preferred</code> 가 기본값</td></tr>
+      <tr><td>공급업체 상품 → 매장 재료</td><td><code>ingredient_seller_products.ingredient_id</code> + <code>.seller_product_id</code></td><td>같은 표의 다른 열쇠. 매장은 <code>ingredient_id</code>, 브랜드는 <code>product_ingredient_id</code> 를 쓴다</td></tr>
+      <tr class="fresh"><td>매장 판매 연결 → 판매자 주문 추가<span class="tag-new">09-30</span></td><td><code>ingredient_seller_products</code> (seller_type·seller_entity_id)</td><td>판매자가 매장 대신 주문을 넣을 때 목록의 <b>유일한 출처</b>. 연결 없는 상품은 안 나온다(위 «판매자 주문 추가»)</td></tr>
+      <tr class="fresh"><td>주문 → 거래 청구서<span class="tag-new">09-29</span></td><td><code>purchase_orders.trade_invoice_id</code></td><td>주문 하나에 청구서 하나. 청구서가 붙은 주문은 판매자가 품목을 못 고친다(400)</td></tr>
+      <tr class="fresh"><td>거래 청구서 → 월 정산서<span class="tag-new">09-29</span></td><td><code>invoices.parent_soa_invoice_id</code></td><td>정산서를 취소하면 묶였던 청구서가 풀려 다음 정산서에 다시 들어간다</td></tr>
+      <tr><td>재고아이템 → 프로덕트 레시피</td><td><code>product_recipe_ingredients.ingredient_id</code></td><td>레시피 한 줄 = 재고아이템 하나 + 수량</td></tr>
+      <tr><td>프로덕트 레시피 → 프로덕트</td><td><code>brand_products.product_recipe_id</code></td><td>프로덕트 하나에 레시피 하나</td></tr>
+      <tr><td>재고아이템 → 재료 거울</td><td><code>ingredients.source_product_ingredient_id</code></td><td><b>한 방향 자동 반영</b>. 재고아이템의 이름·단위·활성이 바뀌면 거울이 따라간다. 거울에서 올라오는 수정은 403 으로 막힌다</td></tr>
+      <tr><td>프로덕트 → 재료 거울</td><td><code>ingredients.source_brand_product_id</code></td><td>GIT 이 파는 물건(K-소스·포장재)을 레시피 재료로 쓸 때. 출처는 <b>셋 중 하나만</b></td></tr>
+      <tr class="fresh"><td>레시피 → 준비 재료<span class="tag-new">09-17</span></td><td><code>ingredients.source_recipe_id</code></td><td><b>만드는 것</b>의 출처. FK + UNIQUE — 레시피 1개 ↔ 준비 재료 1행. 수율은 <code>recipes.yield_amount/yield_unit</code>(재고 단위만, portion 금지)</td></tr>
+      <tr><td>재료 거울 → 브랜드 레시피</td><td><code>recipe_ingredients.ingredient_id</code></td><td>브랜드 레시피가 보는 재료는 전부 거울이라, 결국 재고아이템을 본다</td></tr>
+      <tr><td>레시피 → 브랜드 메뉴</td><td><code>brand_menus.recipe_id</code> · <code>brand_menus.product_recipe_id</code></td><td>둘 다 가능</td></tr>
+      <tr><td>브랜드 메뉴 → 매장 메뉴</td><td><code>products.brand_menu_id</code></td><td>브랜드가 <b>골라서 내려보낸다</b>. 2026-09-17 확정: <b>메뉴의 주인은 매장</b>이고 브랜드 메뉴는 매장과 달라도 된다 — 매장→브랜드 자동 역방향은 없다. <code>brand_menu_link_status</code> 가 in_sync / pending_update / unlinked 를 들고 있다</td></tr>
+      <tr><td>매장 메뉴 → 브랜드 목록의 출처<span class="tag-new">09-17</span></td><td><code>brand_menus.origin_restaurant_id</code></td><td>매장에서 올라온 브랜드 메뉴에 「○○ 가 만든 것」 을 표시. 브랜드 화면에는 <b>「매장 자체 메뉴 (보기 전용)」 탭</b>이 따로 있다(쓰기 0)</td></tr>
+      <tr><td>레시피 → 매장 메뉴</td><td><code>products.recipe_id</code></td><td>레시피를 거쳐 재고가 빠진다. <b>준비 레시피는 여기에 못 붙는다</b>(이중 차감 방지)</td></tr>
+      <tr><td>재고아이템 → 매장 메뉴 (다이렉트)</td><td><code>products.ingredient_id</code></td><td><b>1:1, 환산 없음.</b> 1개 팔면 그 재료 1개가 빠진다. <code>recipe_id</code> 와 동시에 채울 수 없다</td></tr>
+      <tr><td>재고아이템 → 프로덕트 (다이렉트)</td><td><code>brand_products.product_ingredient_id</code></td><td>같은 규칙. 다이렉트로 붙은 프로덕트는 <b>발주 줄로 살 수 없다</b> — 재고아이템을 산다</td></tr>
+      <tr><td>브랜드 공유 재료 → 매장 재고</td><td><code>restaurant_ingredient_stocks</code></td><td>거울은 여러 매장이 함께 보므로 <b>수량은 매장별 오버레이에만</b> 쌓인다</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ─────────── 발주 금액 ─────────── -->
+<section>
+  <h2>발주 금액 <span class="who">배송비가 들어갈 자리 · 2026-09-17 · 09-25·09-29 보완</span></h2>
+  <div class="rule new">
+    <b>총액식</b><span class="sep">—</span>
+    <span><code>total_amount = subtotal + tax_amount + delivery_fee</code></span>
+    <span class="sep">·</span><span style="color:var(--muted)">식은 <code>utils/purchaseOrderTotals.js</code> 한 곳에만 있다. 그전까지 발주 두 라우트에 같은 함수가 두 벌로 복제돼 있었다.</span>
+  </div>
+  <div class="tw">
+  <table>
+    <thead><tr><th>판매자가 적는 것</th><th>값</th><th>발주 화면에서</th></tr></thead>
+    <tbody>
+      <tr><td>무료배송 기준 금액</td><td><code>min_order_amount</code></td><td>이 금액 <b>이상</b>이면 배송비 0 (경계는 무료)</td></tr>
+      <tr><td>기준 미만 배송비</td><td><code>delivery_fee</code></td><td>고정액이 붙는다</td></tr>
+      <tr><td><b>안 적었을 때</b></td><td><code>delivery_fee = null</code></td><td><b>「미설정」 — 무료가 아니다.</b> 규칙을 적용하지 않는다(운영 공급업체 42곳이 전부 비어 있어, 미설정을 부과로 두면 전원이 배송비를 문다)</td></tr>
+      <tr class="fresh"><td>배송 가능 지역<span class="tag-new">09-29</span></td><td><code>delivery_policy</code> (글)</td><td>발주 담기 화면에 판매자 옆 한 줄로 보인다. <b>계산에는 안 쓴다</b>. 브랜드·푸드코트는 이 칸을 09-29 에 새로 받았다</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="tw">
+  <table>
+    <thead><tr><th>지키는 것</th><th>어떻게</th></tr></thead>
+    <tbody>
+      <tr class="changed"><td>새 표 없음</td><td>칸을 <code>SupplierCompany</code> · <code>Brand</code> · <code>Foodcourt</code> 에 <b>같은 이름</b>으로. 해석은 <code>utils/sellerNames.js resolveSellers</code> 한 곳. <b>푸드코트도 무료배송 기준·배송비 카드(09-25)</b><span class="tag-chg">09-25</span></td></tr>
+      <tr><td>원가에 안 태운다</td><td>세금·배송·할인은 품목 단가에 섞지 않는다는 기존 원칙 그대로. 배송비는 총액·청구서·리포트에 <b>별도 줄</b>로만</td></tr>
+      <tr><td>주문 때 합의된 금액</td><td>draft 에서 품목이 바뀌면 다시 계산, submit 시 동결. 소급 단가 반영은 배송비를 건드리지 않는다</td></tr>
+      <tr><td>대조에서 보이는 것</td><td>발주 때 «예상» 배송비를 미리 채우고 청구액과의 <b>차이</b>를 보여 준다. 저장되는 값의 뜻은 그대로 «공급업체가 실제로 청구한 배송비»</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ─────────── 원가 ─────────── -->
+<section>
+  <h2>원가 <span class="who">누구의 단가가 어느 계산에 들어가는가 · 2026-09-11</span></h2>
+  <div class="rule">
+    <b>규칙</b><span class="sep">—</span>
+    <span>원가는 <b>두 층</b></span><span class="sep">·</span>
+    <span><b>브랜드 층</b> = 브랜드가 사는 값 <code>ingredients.unit_cost</code></span><span class="sep">·</span>
+    <span><b>매장 층</b> = 매장이 실제로 산 값 <code>restaurant_ingredient_costs</code></span>
+    <span class="sep">·</span><span style="color:var(--muted)">계산하는 쪽이 자기 층을 읽는다. 매장은 자기 층이 비었을 때만 브랜드 층으로 폴백.</span>
+  </div>
+  <div class="tw">
+  <table>
+    <thead><tr><th>계산</th><th>읽는 층</th><th>코드</th><th>판정</th></tr></thead>
+    <tbody>
+      <tr><td>브랜드 레시피 저장 (GIT)</td><td>브랜드</td><td><code>recipes.js resolveLineCost</code></td><td>정석</td></tr>
+      <tr><td>브랜드 프로덕트 레시피 (GIT)</td><td>브랜드 · 재고아이템</td><td><code>product-recipes.js</code></td><td>정석</td></tr>
+      <tr><td>매장 자기 레시피 저장</td><td>매장 → 브랜드 폴백</td><td><code>recipes.js withOverrideCost</code></td><td>정석</td></tr>
+      <tr><td>매장이 보는 브랜드 레시피</td><td>매장 → 브랜드 폴백</td><td><code>recipes.js effective_ingredient_cost</code></td><td>정석</td></tr>
+      <tr><td>매장 프로덕트 레시피</td><td>매장 → 브랜드 폴백</td><td><code>product-recipe.js</code></td><td>정석</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="tw">
+  <table>
+    <thead><tr><th>매장 층에 쓰는 손</th><th>언제</th><th>값</th></tr></thead>
+    <tbody>
+      <tr><td>수령</td><td>발주 물건이 들어올 때</td><td>발주가(대조가 먼저 됐으면 청구가) 가중평균</td></tr>
+      <tr><td>대조</td><td>인보이스 대조 저장</td><td><b>청구 단가로 덮어씀</b> — 인보이스가 진짜</td></tr>
+      <tr><td>수동</td><td>재료 화면에서 직접 입력</td><td>입력값</td></tr>
+      <tr class="fresh"><td><b>만들기</b><span class="tag-new">09-17</span></td><td>준비된 재고를 만들 때</td><td><b>실제 쓴 돈 ÷ 실제로 나온 양</b> — 3kg 재서 2.4kg 나오면 그 2.4 로 나눈다</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="legend">
+    <span><i style="border-color:var(--flow)"></i> 판매자 주도 전파(가입 공급업체 가격·브랜드 프로덕트 가격) → 모든 구매자의 브랜드 층으로</span>
+    <span><i style="border-color:var(--buy)"></i> 구매자 주도 전파(대조·매장의 외부 공급업체 가격 수정) → 구매자 자기 층만</span>
+  </div>
+</section>
+
+<!-- ─────────── 공급업체 활성/비활성 ─────────── -->
+<section>
+  <h2>공급업체 활성/비활성 <span class="tag-chg">09-24 바뀜</span> <span class="who">구매자별 · 2026-09-11 설계 · 09-24~25 구조 변경</span></h2>
+  <div class="rule chg">
+    <b>규칙</b><span class="sep">—</span>
+    <span>활성/비활성 = <b>그 구매자의 계약 행</b> <code>supplier_contracts.status</code></span>
+    <span class="sep">·</span><span style="color:var(--muted)">브랜드→매장은 <b>복사본</b>(09-24, 이후 서로 독립) · 오너→소유 매장은 <b>상속</b>(09-25, 한 행을 함께 씀). 단일 기준 <code>docs/SUPPLIER_CONTRACT_SYSTEM.md</code> §H-2·§H-3</span>
+  </div>
+  <div class="tw">
+  <table>
+    <thead><tr><th>공급업체</th><th>끄기</th><th>켜기</th><th>영향 범위</th></tr></thead>
+    <tbody>
+      <tr><td>가입 공급업체</td><td>계약 종료 (기존)</td><td>다시 요청 → 공급업체 승인 (기존)</td><td>나만</td></tr>
+      <tr><td>내가 등록한 외부</td><td>내 행 terminated</td><td>내 행 active</td><td>나만</td></tr>
+      <tr class="changed"><td><b>브랜드가 매장에 공유한 외부</b><span class="tag-chg">09-24</span></td><td>매장 사본의 내 행 terminated</td><td>매장 사본의 내 행 active</td><td><b>이 매장만.</b> «매장에 공유» = 업체·상품 전체 <b>사본</b>(<code>utils/supplierShare.copySupplierToStore</code>), 이후 브랜드와 매장은 따로 수정한다<br><s class="was">내 행을 만들어 terminated — 상속을 막는 스위치 · 켜기는 내 행을 지워 상속 복귀</s></td></tr>
+      <tr class="changed"><td>브랜드가 자기 외부를 끔<span class="tag-chg">09-24</span></td><td>브랜드 행 terminated</td><td>브랜드 행 active</td><td><b>브랜드만.</b> 매장 사본은 그대로 남는다<br><s class="was">전 매장 (상속이 끊긴다 — 브랜드의 권리)</s></td></tr>
+      <tr class="fresh"><td><b>오너가 등록한 외부</b><span class="tag-new">09-25</span></td><td>매장: 자기 행 terminated</td><td>매장: 자기 행 <b>삭제</b>(active 로 바꾸지 않는다)</td><td>오너의 소유 매장 전부가 한 행을 <b>상속</b>. 수정은 오너만. 판정 <code>utils/supplierAccess.findParentContract</code> + <code>inheritedOwnerSupplierIds</code> 가 같은 조건</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ─────────── 정석과 다른 곳 ─────────── -->
+<section>
+  <h2>지금 정석과 다른 곳</h2>
+
+  <div class="flag wip">
+    <h3>배포한 상품이 주문 추가에 바로 안 나온다 <span class="tag-wip">09-30 진행 중</span></h3>
+    <p>브랜드가 «전체 프랜차이즈» 로 배포해도 매장이 «카탈로그에서 담기» 를 해야 판매자 주문 추가 목록에 나온다. 09-30 K-DINE IPC 인쇄 상품 3개는 사람이 대신 담아 해결했다.</p>
+    <p>고치는 방향은 위 «판매자 주문 추가 → 자동 담기». 그 전까지 새 상품은 매장 담기가 필요하다.</p>
+  </div>
+
+  <div class="flag done">
+    <h3>배송완료한 주문이 정산서에서 빠졌다 — 고침(09-30 운영 배포)</h3>
+    <p>청구서가 매장 입고 때만 생겨서, 판매자가 배송완료했는데 매장이 입고를 안 누른 주문(K-DINE IPC RM 1,089.80 · RM 677.00)이 정산서에 안 들어갔다. 정산서 발행 직전에 확정 이후 주문의 청구서를 먼저 내도록 바꿨다. 9월 정산서는 청구서 10장 · RM 7,691.90 으로 발행됐다.</p>
+  </div>
+
+  <div class="flag">
+    <h3>재고아이템 다이렉트가 레시피를 거치던 것 — 고침</h3>
+    <p>「재고아이템 다이렉트」로 이으면 뒤에서 <code>"&lt;이름&gt; (auto)"</code> 레시피가 만들어져 물렸습니다. 화면에는 레시피가 안 보이지만 DB 에는 있었습니다 — "둘 중 하나"에 없는 세 번째 길이었습니다.</p>
+    <p>직결 컬럼 <code>products.ingredient_id</code> · <code>brand_products.product_ingredient_id</code> 를 만들고, 재고차감이 그 길도 읽게 했습니다(우선순위: 레시피 → 다이렉트 → 프로덕트 자체 재고). 폼은 수량 칸 없는 <b>Select 하나</b>가 됐습니다 — 환산을 넣는 순간 그게 레시피가 되기 때문입니다.</p>
+    <p>기존 <code>(auto)</code> 레시피는 재료 1개·수량 1이면 다이렉트로 옮기고, 2개 이상이면 진짜 레시피로 보아 이름만 정리했습니다. 인스펙션 008(양쪽 동시 연결 0)·009(<code>(auto)</code> 0)가 재발을 막습니다.</p>
+  </div>
+
+  <div class="flag">
+    <h3>매장 메뉴 화면이 브랜드 공유 재고아이템을 못 보고 있었다 — 고침</h3>
+    <p>메뉴 폼이 자기 매장 재료만 불러와서, 브랜드가 공유한 재고아이템은 목록에 아예 없었습니다. 레시피 화면은 이미 둘 다 불러오고 있었는데 메뉴 화면만 빠져 있었습니다.</p>
+    <p>실측(개발서버): FOODCOURT CENTRAL 자기 4 vs 브랜드공유 10 · with MIN Cafe 7 vs 7 · Test3 24 vs 10. 지금은 두 곳을 합쳐 받습니다. 넓어진 경로에는 소유범위 가드를 붙였고, 가드를 떼면 남의 매장 재료가 그대로 들어가는 것을 확인해 방어가 실제로 동작함을 증명했습니다.</p>
+  </div>
+
+  <div class="flag">
+    <h3>매장의 대조가 브랜드 공유 재료 원가를 바꾸고 있었다 — 고침</h3>
+    <p>매장이 자기 외부 공급업체에 브랜드 공유 재료를 매핑해 두고 인보이스를 대조하면, 청구가가 <b>브랜드 층</b> <code>ingredients.unit_cost</code>(15 → 22)에 들어갔습니다. 오버라이드 없는 다른 매장의 레시피 원가가 남의 청구서로 움직이고, 정작 대조한 매장은 자기 층(발주가 20)이 그대로라 화면이 안 바뀌었습니다.</p>
+    <p>대조 값은 <b>매장 층에 덮어쓰고</b>, 구매자가 일으킨 전파는 구매자 소유 행 밖으로 못 나가게 소유자 검사를 넣었습니다. 기대값(개발 실측 스크립트 재실행): 세 판매자 유형 모두 매장 화면 1.10 · 브랜드 층 15 불변 · 매장 층 22.</p>
+  </div>
+
+  <div class="flag">
+    <h3>매장의 외부 공급업체 가격 수정도 같은 문이 열려 있다 — 보완 대상</h3>
+    <p><code>supplier-directory.js</code> 의 외부 공급업체 상품 가격 PUT 이 전파에 주체(actor)를 안 넘깁니다. 대조와 같은 검사를 붙여야 매장이 브랜드 공유 재료 원가를 못 건드립니다. 위 수정과 한 묶음.</p>
+  </div>
+
+  <div class="flag done">
+    <h3>재료 분류가 매장 것·브랜드 것 두 벌로 갈려 있다 — 정본 확정(2026-09-17)</h3>
+    <p>매장 재료 화면에 「매장 카테고리」와 「Brand Categories (Read Only)」 두 벌이 겹쳐 보이고 이름이 14쌍 겹쳤습니다. 브랜드 쪽 벌은 2026-07-05 에 폐기된 프로덕트→재료 미러가 남긴 사본이고, 지금 그것을 만드는 살아 있는 경로는 <b>0개</b>입니다(브랜드의 진짜 분류는 Stock Items 쪽에 따로 있습니다).</p>
+    <p><b>정본 = 매장 소유 한 벌.</b> 브랜드 소유 재료 카테고리는 쓰기 중단하고, 그것을 가리키던 재료를 같은 이름의 매장 분류로 옮긴 뒤 <b>삭제가 아니라 비활성</b>(되돌릴 수 있게)합니다. 합치기 스크립트는 기본이 미리보기이고, 짝이 없거나 다른 매장 재료가 섞여 있으면 <b>아무것도 쓰지 않고 멈춥니다</b>. 재발은 인스펙션이 배포 게이트에서 막습니다.</p>
+  </div>
+
+  <div class="flag done">
+    <h3>브랜드가 매장 메뉴의 주인이 될 뻔했다 — 되돌림(2026-09-17)</h3>
+    <p>「모든 메뉴·옵션을 공유하고 공유한 곳에서만 수정」 을 설계했다가, <b>「지금은 레스토랑 기준이 맞아」</b> 로 방향이 바뀌어 그 조각을 걷어냈습니다. 지금 기준은 <b>메뉴의 주인은 매장</b>이고, 브랜드 메뉴는 브랜드의 원본 목록이며 <b>매장과 달라도 됩니다</b>. 매장→브랜드 자동 반영은 만들지 않습니다.</p>
+    <p>남긴 것은 <b>보이기</b>뿐입니다 — 브랜드 목록의 「○○ 가 만든 것」 표시와 「매장 자체 메뉴 (보기 전용)」 탭. 브랜드 레시피는 <b>브랜드제너럴 것</b>으로 그대로 두었고, 매장 계정이 브랜드 레시피를 수정·삭제하면 403 으로 막히는 것을 실호출로 확인했습니다(가드를 일부러 빼면 뚫리는 것까지 확인 후 원복).</p>
+  </div>
+</section>
+
+<footer>
+  화살표·컬럼명은 2026-09-04 기준(원가·공급업체 활성은 09-11, 준비된 재고·배송비·재료 분류·메뉴 주인은 09-17, 공급업체 복사본·오너 상속은 09-24~25, 판매자 주문 추가·청구·정산은 <b>09-29~30</b> 보완) 코드와 스키마에서 직접 읽은 것입니다. 09-29~30 분은 운영에 배포됐고(v3.104 · 09-30 추가 배포), 자동 담기만 개발 중입니다. 09-17 분의 운영 반영 여부는 이번 보완에서 다시 재지 않았습니다. 단일 진실 문서: <code>docs/TRADE_STRUCTURE.md</code> · <code>docs/INGREDIENT_UNIFICATION_DESIGN.md</code> · <code>docs/RECIPE_MANAGEMENT_SYSTEM.md</code> · <code>docs/PURCHASE_ORDER_SYSTEM.md</code> · <code>docs/INVOICE_SYSTEM.md</code> §11 · <code>docs/SUPPLIER_CONTRACT_SYSTEM.md</code>
+</footer>
+
+</div>
+
+</body></html>

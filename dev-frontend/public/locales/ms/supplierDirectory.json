@@ -274,5 +274,9 @@
     "immediateExplain": "Setiap invois penghantaran ditanda dibayar secara berasingan.",
     "dayRange": "Hari mesti antara 1 dan 28.",
     "saveFailed": "Tidak dapat disimpan. Sila cuba lagi."
+  },
+  "delivery": {
+    "title": "Penghantaran",
+    "editTitle": "Syarat penghantaran"
   }
 }

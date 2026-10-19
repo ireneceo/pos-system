@@ -1466,6 +1466,10 @@
   "managerSubscriptionsPage.payerSwitchedInvoicesUnchanged": "청구 대상은 변경됨, 인보이스는 그대로",
   "managerSubscriptionsPage.payerSwitchedInvoicesUnchangedMessage": "구독 청구 대상은 변경되었으나 기존 미결제 인보이스의 청구 대상은 바뀌지 않았습니다. 인보이스 페이지를 확인하세요.",
   "deployRecords": {
+    "tabRecords": "개발이슈",
+    "tabStructure": "구조도",
+    "structureUpdated": "마지막 갱신 {{at}} · 읽기 전용 — 구조를 바꿀 때마다 원본 파일을 고치고 배포 때 함께 반영됩니다",
+    "structureFailed": "구조도를 불러오지 못했습니다.",
     "title": "솔루션 개발이슈",
     "openOnly": "미해결만",
     "colDeploy": "배포",

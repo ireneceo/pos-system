@@ -26,6 +26,7 @@ import SupplierViewModal from '../../components/Suppliers/SupplierViewModal';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormRow as UIFormRow } from '../../components/UI/Modal';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDate } from '../../utils/dateFormat';
+import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
 
 export type SourceKey = 'own' | 'brand_shared' | 'owner_shared' | 'contract' | 'brand_parent' | 'foodcourt_parent' | 'external';
 interface Row {
@@ -167,7 +168,7 @@ interface Props {
 const DEFAULT_SOURCES: SourceKey[] = ['own', 'external', 'owner_shared', 'brand_shared', 'contract', 'brand_parent', 'foodcourt_parent'];
 
 export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
-  const { t } = useTranslation(['supplier', 'suppliers', 'common']);
+  const { t } = useTranslation(['supplier', 'suppliers', 'supplierDirectory', 'common']);
   const { user } = useAuth();
   const navigate = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
@@ -182,7 +183,7 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
   const [editing, setEditing] = useState<Row | null>(null);
   const [adding, setAdding] = useState(false);
   // 2026-06-22 (Irene): Direct 탭 외부공급업체 등록 (Find 에서 이동). 등록 후 프로필로 이동해 상품 등록.
-  const [extReg, setExtReg] = useState<{ name: string; contact_person: string; phone: string; email: string } | null>(null);
+  const [extReg, setExtReg] = useState<{ name: string; contact_person: string; phone: string; email: string; min_order_amount: string; delivery_fee: string } | null>(null);
   const [extRegSaving, setExtRegSaving] = useState(false);
   const [extRegError, setExtRegError] = useState<string | null>(null);
   const [bridging, setBridging] = useState<number | null>(null);
@@ -330,7 +331,10 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
       const token = getAuthToken();
       const res = await fetch('/api/external-suppliers', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name, contact_person: extReg.contact_person || undefined, phone: extReg.phone || undefined, email: extReg.email || undefined })
+        body: JSON.stringify({ name, contact_person: extReg.contact_person || undefined, phone: extReg.phone || undefined, email: extReg.email || undefined,
+          // 배송 조건(무료배송 기준·그 미만 고정 배송비) — 가입 공급업체·브랜드·푸드코트와 같은 칸, 발주 총액 계산이 그대로 읽는다
+          min_order_amount: extReg.min_order_amount === '' ? null : extReg.min_order_amount,
+          delivery_fee: extReg.delivery_fee === '' ? null : extReg.delivery_fee })
       });
       const j = await res.json().catch(() => null);
       if (!res.ok || !j?.success) { setExtRegError(j?.message || (t('supplier:external.failed', 'Failed to register supplier.') as string)); setExtRegSaving(false); return; }
@@ -483,7 +487,7 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
             {/* 새 업체는 **외부 공급업체(EXTERNAL)** 로 등록 — 예전 방식(OWN, `suppliers`)은 상품을 못 담는다
                 (2026-09-21 Irene 「OWN이 왜있냐고」). 등록 직후 그 업체 프로필(상품 등록)로 간다. */}
             {/* 브랜드가 등록한 업체는 매장에 자동 공유되지 않는다(서버 shared_with_stores=false, 2026-09-22) — 역할 구분 없이 EXTERNAL 등록. */}
-            <ThemedButton variant="primary" onClick={() => { setExtRegError(null); setExtReg({ name: '', contact_person: '', phone: '', email: '' }); }}>
+            <ThemedButton variant="primary" onClick={() => { setExtRegError(null); setExtReg({ name: '', contact_person: '', phone: '', email: '', min_order_amount: '', delivery_fee: '' }); }}>
               {t('supplier:directory.addSupplier', 'Add Supplier')}
             </ThemedButton>
           </div>
@@ -731,6 +735,23 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
             <FormLabel>{t('supplier:external.email', 'Email')}</FormLabel>
             <FormInput type="email" value={extReg.email} onChange={(e) => setExtReg({ ...extReg, email: e.target.value })} />
           </UIFormGroup>
+          <UIFormRow>
+            <UIFormGroup>
+              <FormLabel>{t('supplierDirectory:externalSupplier.freeDeliveryAbove', 'Free delivery at or above this amount')}</FormLabel>
+              <FormInput type="number" min="0" step="0.01" value={extReg.min_order_amount} onChange={(e) => setExtReg({ ...extReg, min_order_amount: e.target.value })} placeholder="300" />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>{t('supplierDirectory:externalSupplier.deliveryFee', 'Delivery fee below that (fixed)')}</FormLabel>
+              <FormInput type="number" min="0" step="0.01" value={extReg.delivery_fee} onChange={(e) => setExtReg({ ...extReg, delivery_fee: e.target.value })} placeholder="15" />
+            </UIFormGroup>
+          </UIFormRow>
+          {/* 입력한 값이 발주 화면에서 어떻게 보이는지 한 문장으로 */}
+          <div style={{ padding: '8px 12px', background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 12, color: '#4B5563' }}>
+            <DeliveryTermsText terms={{
+              min_order_amount: extReg.min_order_amount === '' ? null : Number(extReg.min_order_amount),
+              delivery_fee: extReg.delivery_fee === '' ? null : Number(extReg.delivery_fee)
+            }} />
+          </div>
         </Modal>
       )}
     </div>

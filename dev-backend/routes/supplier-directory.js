@@ -323,7 +323,8 @@ router.get('/supplier-directory/:supplierCompanyId', async (req, res) => {
 
     const supplier = await SupplierCompany.findOne({
       where: { id: supplierCompanyId, status: 'active' },
-      attributes: PUBLIC_SUPPLIER_ATTRS
+      // 배송 조건 — 구매자가 발주 화면에서도 보는 값. 외부 업체 프로필에서 등록한 구매자가 고칠 수 있게 싣는다 (2026-10-19)
+      attributes: [...PUBLIC_SUPPLIER_ATTRS, 'min_order_amount', 'delivery_fee', 'currency']
     });
     if (!supplier) {
       return res.status(404).json({ success: false, message: 'Supplier not found' });

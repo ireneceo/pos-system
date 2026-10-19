@@ -732,6 +732,7 @@ async function attachOwnerInvoicePurchaseOrders(invoices, transformed) {
       supplier_invoice_total: po ? po.invoice_total : null,
       invoice_reconciled_at: po ? po.invoice_reconciled_at : null,
       uploaded_invoice_url: po ? po.external_invoice_url : null,
+      uploaded_invoice_filename: po ? po.external_invoice_filename : null,
       // 총액 수정 창·수정 이력 (2026-10-07 Fable 판정 D5·D6) — 매장 목록과 같은 칸
       reconcile_invoiced_lines: po ? Number(po.reconcile_invoiced_lines) || 0 : 0,
       is_modified: inv ? !!inv.is_modified : false,

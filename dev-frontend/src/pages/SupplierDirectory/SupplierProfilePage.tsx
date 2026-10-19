@@ -16,6 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getAuthToken } from '../../utils/auth';
 import { formatAddress, AppLocale } from '../../utils/formatAddress';
 import { formatCurrency } from '../../utils/currency';
+import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
 
 interface ProductRow {
   id: number;
@@ -61,6 +62,8 @@ interface SupplierProfile {
   product_categories?: ProductCategory[];
   products_meta?: { total: number; shown: number; truncated: boolean } | null;
   currency?: string | null;
+  min_order_amount?: number | string | null;
+  delivery_fee?: number | string | null;
   is_system_registered?: boolean;
   registered_by_entity_type?: string | null;
   registered_by_entity_id?: number | null;
@@ -339,6 +342,12 @@ const SupplierProfilePage: React.FC = () => {
   const [billingSaving, setBillingSaving] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
 
+  // 외부 업체 «배송 조건» — 무료배송 기준 · 그 미만 고정 배송비 (2026-10-19 Irene «외부공급업체 등록 시에도 적용되어야»)
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [deliveryForm, setDeliveryForm] = useState<{ min_order_amount: string; delivery_fee: string }>({ min_order_amount: '', delivery_fee: '' });
+  const [deliverySaving, setDeliverySaving] = useState(false);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
+
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
   const [requestSubmitting, setRequestSubmitting] = useState(false);
@@ -456,6 +465,35 @@ const SupplierProfilePage: React.FC = () => {
       payment_due_day: String(billing?.payment_due_day || 15),
     });
     setBillingOpen(true);
+  };
+  const numOrNull = (v: unknown) => (v === null || v === undefined || v === '' ? null : Number(v));
+  const openDelivery = () => {
+    setDeliveryError(null);
+    setDeliveryForm({
+      min_order_amount: profile?.min_order_amount != null ? String(Number(profile.min_order_amount)) : '',
+      delivery_fee: profile?.delivery_fee != null ? String(Number(profile.delivery_fee)) : '',
+    });
+    setDeliveryOpen(true);
+  };
+  const saveDelivery = async () => {
+    if (!profile) return;
+    setDeliverySaving(true); setDeliveryError(null);
+    try {
+      const res = await fetch(`/api/external-suppliers/${profile.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({
+          min_order_amount: deliveryForm.min_order_amount === '' ? null : deliveryForm.min_order_amount,
+          delivery_fee: deliveryForm.delivery_fee === '' ? null : deliveryForm.delivery_fee,
+        }),
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.success) { setDeliveryError(j?.message || (t('billing.saveFailed', { defaultValue: 'Could not save. Please try again.' }) as string)); return; }
+      setProfile(p => p ? { ...p, min_order_amount: j.data?.min_order_amount ?? null, delivery_fee: j.data?.delivery_fee ?? null } : p);
+      setDeliveryOpen(false);
+    } catch {
+      setDeliveryError(t('billing.saveFailed', { defaultValue: 'Could not save. Please try again.' }) as string);
+    } finally { setDeliverySaving(false); }
   };
   const saveBilling = async () => {
     if (!profile) return;
@@ -729,6 +767,18 @@ const SupplierProfilePage: React.FC = () => {
           </Section>
         )}
 
+        {isOwnedExternal && (
+          <Section>
+            <SectionTitle>{t('delivery.title', { defaultValue: 'Delivery' })}</SectionTitle>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 14, color: '#0A2540', flex: 1, minWidth: 220 }}>
+                <DeliveryTermsText terms={{ min_order_amount: numOrNull(profile.min_order_amount), delivery_fee: numOrNull(profile.delivery_fee), currency: profile.currency || undefined }} />
+              </div>
+              <ThemedButton variant="secondary" onClick={openDelivery}>{t('common:button.edit', { defaultValue: 'Edit' })}</ThemedButton>
+            </div>
+          </Section>
+        )}
+
         <Section>
           <SectionTitle>{t('profile.catalog')}</SectionTitle>
           {isOwnedExternal && (
@@ -891,6 +941,35 @@ const SupplierProfilePage: React.FC = () => {
             {billingForm.invoice_cycle === 'monthly_soa'
               ? t('billing.monthlyExplain', { defaultValue: 'On the statement day, all unpaid invoices from this supplier are bundled into one statement. Attach the SOA the supplier sends, check the difference, then mark the statement paid once.' })
               : t('billing.immediateExplain', { defaultValue: 'Each delivery invoice is marked paid on its own.' })}
+          </InfoBox>
+        </CommonModal>
+      )}
+
+      {/* 외부 업체 «배송 조건» (2026-10-19) — 발주 총액 계산(computeTotalsWithDelivery)이 이 두 칸을 그대로 읽는다 */}
+      {deliveryOpen && (
+        <CommonModal
+          isOpen
+          onClose={() => setDeliveryOpen(false)}
+          title={t('delivery.editTitle', { defaultValue: 'Delivery terms' }) as string}
+          size="small"
+          footer={<>
+            <ModalButton variant="secondary" onClick={() => setDeliveryOpen(false)}>{t('common:button.cancel', { defaultValue: 'Cancel' })}</ModalButton>
+            <ModalButton variant="primary" disabled={deliverySaving} onClick={saveDelivery}>{deliverySaving ? '…' : t('common:button.save', { defaultValue: 'Save' })}</ModalButton>
+          </>}
+        >
+          {deliveryError && <ErrorBox style={{ marginTop: 0, marginBottom: 12 }}>{deliveryError}</ErrorBox>}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <UIFormGroup style={{ flex: 1 }}>
+              <FormLabel>{t('externalSupplier.freeDeliveryAbove', { defaultValue: 'Free delivery at or above this amount' })}</FormLabel>
+              <FormInput type="number" min="0" step="0.01" value={deliveryForm.min_order_amount} onChange={(e) => setDeliveryForm({ ...deliveryForm, min_order_amount: e.target.value })} placeholder="300" />
+            </UIFormGroup>
+            <UIFormGroup style={{ flex: 1 }}>
+              <FormLabel>{t('externalSupplier.deliveryFee', { defaultValue: 'Delivery fee below that (fixed)' })}</FormLabel>
+              <FormInput type="number" min="0" step="0.01" value={deliveryForm.delivery_fee} onChange={(e) => setDeliveryForm({ ...deliveryForm, delivery_fee: e.target.value })} placeholder="15" />
+            </UIFormGroup>
+          </div>
+          <InfoBox>
+            <DeliveryTermsText terms={{ min_order_amount: numOrNull(deliveryForm.min_order_amount), delivery_fee: numOrNull(deliveryForm.delivery_fee), currency: profile?.currency || undefined }} />
           </InfoBox>
         </CommonModal>
       )}

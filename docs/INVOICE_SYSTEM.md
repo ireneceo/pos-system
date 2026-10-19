@@ -1044,3 +1044,8 @@ ALTER TABLE invoices ADD COLUMN parent_soa_invoice_id INT NULL;
 - 대조: `POST /api/invoices/:id/soa-reconcile`(공급업체 SOA 파일·번호·날짜·총액 → `external_document`, 차액 줄 «Supplier statement difference», 수정 이력 `source:'soa_reconcile'`). 묶인 청구서 총액 수정은 정산서 합계를 따라가게 한다(`source:'soa_child_sync'`, 결제·취소된 정산서는 무접촉 `soa_locked`).
 - 결제: `POST /api/invoices/:id/mark-paid-external` 정산서 가지 — 자식 청구서·발주 전부 한 트랜잭션 결제됨. 월별 업체의 건별 «결제함» 은 `pay_via_soa` 400.
 - 상세 `docs/TRADE_STRUCTURE.md` ⑩.
+
+## 11-3. 올린 공급업체 인보이스 내려받기 (2026-10-19) [Claude Code]
+- RA(`pages/Restaurant/InvoicesPage.tsx`)·오너(`pages/Owner/OwnerInvoicesPage.tsx`) 청구서 목록 줄 액션: 연결 발주에 올린 인보이스(`purchase_orders.external_invoice_url`)가 있으면 «문서+아래화살표» 아이콘 → 원래 파일 이름(`external_invoice_filename`)으로 내려받기. 우리 청구서 PDF(«Download PDF»)와 별개.
+- 목록 응답 칸: `uploaded_invoice_url` · `uploaded_invoice_filename` (RA = invoices-list 의 attachPurchaseOrders, 오너 = owner.js 목록 — 오너 쪽에 filename 추가).
+- 파일은 같은 주소 `/uploads/...` 라 링크 `download` 속성으로 받는다(새 API 없음).

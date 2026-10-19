@@ -102,6 +102,7 @@ interface Invoice {
   supplierInvoiceTotal?: number | null;
   invoiceReconciledAt?: string | null;
   uploadedInvoiceUrl?: string | null;
+  uploadedInvoiceFilename?: string | null;
   /** 총액 수정 창·수정 이력 (2026-10-07 Fable 판정 D5·D6) */
   reconcileInvoicedLines?: number;
   isModified?: boolean;
@@ -218,6 +219,9 @@ const StatusBadge = styled(CommonStatusBadge)`
 
 const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'email' | 'cancel' | 'success' }>`
   padding: 6px;
+  /* as="a"(올린 인보이스 내려받기)도 버튼과 같은 32px 칸 */
+  box-sizing: border-box;
+  text-decoration: none;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
@@ -423,6 +427,7 @@ const OwnerInvoicesPage: React.FC = () => {
     supplierInvoiceTotal: inv.supplier_invoice_total != null ? parseFloat(inv.supplier_invoice_total) : null,
     invoiceReconciledAt: inv.invoice_reconciled_at ?? null,
     uploadedInvoiceUrl: inv.uploaded_invoice_url ?? null,
+    uploadedInvoiceFilename: inv.uploaded_invoice_filename ?? null,
     reconcileInvoicedLines: Number(inv.reconcile_invoiced_lines || 0) || 0,
     isModified: !!inv.is_modified,
     modificationHistory: inv.modification_history || [],
@@ -1093,6 +1098,24 @@ const OwnerInvoicesPage: React.FC = () => {
                         <line x1="12" y1="15" x2="12" y2="3"/>
                       </svg>
                     </LocalActionButton>
+
+                    {/* 매장이 올린 공급업체 인보이스 원본 — 우리 청구서 PDF 와 따로 내려받기 (2026-10-19 Irene «우리 내역 말고») */}
+                    {invoice.uploadedInvoiceUrl && (
+                      <LocalActionButton
+                        as="a"
+                        href={invoice.uploadedInvoiceUrl}
+                        download={invoice.uploadedInvoiceFilename || ''}
+                        title={t('settings:invoicesPage.downloadUploadedInvoice', 'Download uploaded invoice')}
+                        aria-label={t('settings:invoicesPage.downloadUploadedInvoice', 'Download uploaded invoice')}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14,2 14,8 20,8"/>
+                          <line x1="12" y1="11" x2="12" y2="18"/>
+                          <polyline points="9,15 12,18 15,15"/>
+                        </svg>
+                      </LocalActionButton>
+                    )}
 
                     <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

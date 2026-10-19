@@ -274,5 +274,9 @@
     "immediateExplain": "배송 청구서마다 따로 결제 표시합니다.",
     "dayRange": "날짜는 1~28 사이로 넣어 주세요.",
     "saveFailed": "저장하지 못했습니다. 다시 시도해 주세요."
+  },
+  "delivery": {
+    "title": "배송",
+    "editTitle": "배송 조건"
   }
 }

@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-10-18 — [Claude Code] 마케팅 추적 준비: 이벤트 7개 설계·GTM 가져오기 파일·사이트 이벤트 기록·쿠키 배너/방침 메타 픽셀 항목(Fable 설계 · Irene 목록 승인 · GTM 번호 오면 켜짐 · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 기존 계정(브랜드 매니저 등)을 매장 직원으로 «초대 → 본인 수락» + 매장 관리자가 연결 계정 권한 수정·연결 해제 + 중복 오류 문구에서 상대 계정 역할·매장 번호 삭제(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 스탭 요청 승인 즉시 반영: 승인하면 매장 직원 목록에 «연결 계정» 으로 바로 뜨고, 요청한 사람 화면에도 새로고침 없이 매장 카드·알림이 뜸(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 직원 출퇴근·휴가·휴일(매장 직원만 · 같은 매장 네트워크에서만 찍기 설정 · 공용 태블릿 PIN 타임클락 · 휴가 신청·승인·잔여일 · 매장 휴일 달력 · 급여 제외) + 재고아이템 «바꾸고 삭제» 2차(프로덕트 레시피·상품 옵션) (둘 다 Fable 게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 재고 장부 동시 쓰기 경합 고침: 재고 행 잠금 + 주문 차감 데드락 재시도 + 연결 풀 막힘(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 10-15 끝난 방 미커밋 묶음 /개발완료: 매장 발주 후 품목 빼기·추가(오너 승인 매장은 수정도 승인) · 발주 카탈로그 «Add as menu / Add as product» = 재고아이템 + 그대로 파는 메뉴/프로덕트 (둘 다 Fable 게이트 PASS · 개발서버·미배포) · 운영 배포는 10-16 수동 /배포가 health [po] 수령 FK 4건에서 막힘 → 게이트 고치기 대기 · 이전: 2026-10-15 — [Claude Code] 공급업체 상품 옵션 가격이 발주·판매자 받은 주문·청구서에 실림 + 규격(1팩/20팩 카톤)은 상품을 따로(Irene «권고대로») · 같은 날 끝난 방들 미커밋 묶음 /개발완료(SKU·단위 정비 · 재료 수정 창 공급업체 · 다운로드 웹 앱 안내 · 판매자 주문 수정 총액 확인 등)(개발서버·미배포) · 이전: 2026-10-15 — [Claude Code] 안드로이드 앱 Google Play 등록 준비: Capacitor 8 · Android 16 기준 · 자가 업데이트 제거 · 앱 안 가입 길 닫기 + /account-deletion · 플레이 제출 파일 0.4.0(AAB) · Fable PASS(조건부) · 플레이 콘솔 작업은 Irene 할 일로(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 브랜드 매니저 = 회사 직원: 여러 브랜드·회사 전체 배정 + 회사 공용 자료 개방 + 메뉴 접근 7묶음 정리(Fable 설계·검증 PASS · 개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 발주 카탈로그: 부모 브랜드 재료로 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 뜨던 표시 결함 수정(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] ✅ **v3.110 · 운영 배포 SW 5.90-preflight-security-20261010 (백업 20261011_062932 · 마이그 118/118 · 스모크 10/10)** — 10-08~10-11 묶음(운영 전 보안 0단 · 판매 중지 상품 · 청구서 창 · 재고→원가 · 외부 정산서 · 배송 지역 · 키오스크 결제/전체 화면 · 새 매장 결제 기본값) 운영 반영. 1차는 마이그 순서(새 칸이 목록 끝)로 실패→자동 원복, 레지스트리 순서 고쳐(Fable PASS) 2차 성공.
+> **최종 업데이트:** 2026-10-19 — [Claude Code] 끝난 방 미커밋 묶음 /개발완료: RA·오너 청구서 «올린 인보이스 내려받기» 아이콘 · 외부 공급업체 무료배송 기준·배송비 칸 · 모바일 알림창이 왼쪽 메뉴 뒤로 숨던 결함 · 시스템 관리자 «구조도» 탭(개발서버·미배포 · Fable 안 씀) · 이전: 2026-10-18 — [Claude Code] 마케팅 추적 준비: 이벤트 7개 설계·GTM 가져오기 파일·사이트 이벤트 기록·쿠키 배너/방침 메타 픽셀 항목(Fable 설계 · Irene 목록 승인 · GTM 번호 오면 켜짐 · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 기존 계정(브랜드 매니저 등)을 매장 직원으로 «초대 → 본인 수락» + 매장 관리자가 연결 계정 권한 수정·연결 해제 + 중복 오류 문구에서 상대 계정 역할·매장 번호 삭제(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 스탭 요청 승인 즉시 반영: 승인하면 매장 직원 목록에 «연결 계정» 으로 바로 뜨고, 요청한 사람 화면에도 새로고침 없이 매장 카드·알림이 뜸(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 직원 출퇴근·휴가·휴일(매장 직원만 · 같은 매장 네트워크에서만 찍기 설정 · 공용 태블릿 PIN 타임클락 · 휴가 신청·승인·잔여일 · 매장 휴일 달력 · 급여 제외) + 재고아이템 «바꾸고 삭제» 2차(프로덕트 레시피·상품 옵션) (둘 다 Fable 게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 재고 장부 동시 쓰기 경합 고침: 재고 행 잠금 + 주문 차감 데드락 재시도 + 연결 풀 막힘(Fable 설계·게이트 PASS · 개발서버·미배포) · 이전: 2026-10-16 — [Claude Code] 10-15 끝난 방 미커밋 묶음 /개발완료: 매장 발주 후 품목 빼기·추가(오너 승인 매장은 수정도 승인) · 발주 카탈로그 «Add as menu / Add as product» = 재고아이템 + 그대로 파는 메뉴/프로덕트 (둘 다 Fable 게이트 PASS · 개발서버·미배포) · 운영 배포는 10-16 수동 /배포가 health [po] 수령 FK 4건에서 막힘 → 게이트 고치기 대기 · 이전: 2026-10-15 — [Claude Code] 공급업체 상품 옵션 가격이 발주·판매자 받은 주문·청구서에 실림 + 규격(1팩/20팩 카톤)은 상품을 따로(Irene «권고대로») · 같은 날 끝난 방들 미커밋 묶음 /개발완료(SKU·단위 정비 · 재료 수정 창 공급업체 · 다운로드 웹 앱 안내 · 판매자 주문 수정 총액 확인 등)(개발서버·미배포) · 이전: 2026-10-15 — [Claude Code] 안드로이드 앱 Google Play 등록 준비: Capacitor 8 · Android 16 기준 · 자가 업데이트 제거 · 앱 안 가입 길 닫기 + /account-deletion · 플레이 제출 파일 0.4.0(AAB) · Fable PASS(조건부) · 플레이 콘솔 작업은 Irene 할 일로(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 브랜드 매니저 = 회사 직원: 여러 브랜드·회사 전체 배정 + 회사 공용 자료 개방 + 메뉴 접근 7묶음 정리(Fable 설계·검증 PASS · 개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] 발주 카탈로그: 부모 브랜드 재료로 이미 발주 중인 브랜드 상품에 «Add to My Stock» 이 뜨던 표시 결함 수정(개발서버·미배포) · 이전: 2026-10-11 — [Claude Code] ✅ **v3.110 · 운영 배포 SW 5.90-preflight-security-20261010 (백업 20261011_062932 · 마이그 118/118 · 스모크 10/10)** — 10-08~10-11 묶음(운영 전 보안 0단 · 판매 중지 상품 · 청구서 창 · 재고→원가 · 외부 정산서 · 배송 지역 · 키오스크 결제/전체 화면 · 새 매장 결제 기본값) 운영 반영. 1차는 마이그 순서(새 칸이 목록 끝)로 실패→자동 원복, 레지스트리 순서 고쳐(Fable PASS) 2차 성공.
 
 > **이전:** 2026-10-11 — [Claude Code] ✅ **키오스크 결제 화면 개편 + 키오스크 묶음 /개발완료 (개발서버만)** — 카운터 결제 키오스크 숨김 · 가로 = 오른쪽 결제 패널, 세로 = 한 칸 · 미등록 태블릿 안내 · 키오스크 전체 화면(18bc810d)·대시보드 링크(72cfb0db)·새 매장 결제 기본값(f5b1a378) 함께 기록 · Irene «좋아» · 키오스크 흐름 6크기 재점검 + 실제 주문 1건 확인.
 
@@ -11256,6 +11256,25 @@ verify-all --full **23/23** · mount sweep 683.8초 크래시 0 · 실브라우�
 - `dev-frontend/src/pages/Landing/{SignupPage,ContactPage,PackagesPage,DemoPage,PrivacyPolicyPage}.tsx` · `pages/Login/VerifyEmailPage.tsx` · `pages/Referral/ReferralSignupPage.tsx`
 - `dev-frontend/public/locales/{en,ko,zh,ms}/{common,landing}.json`
 - `docs/MARKETING_TRACKING.md` (신규) · `docs/gtm-container-purplehere.json` (신규) · `mobile-app/store/data-safety.md`
+
+---
+
+## ✅ 완료: 10-19 끝난 방 미커밋 묶음 (2026-10-19)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 올린 인보이스 내려받기 [Claude Code · 4f76d062] | RA·오너 청구서 목록 액션에 공급업체가 준 원본 인보이스를 원래 파일 이름으로 따로 내려받는 아이콘(올린 파일 있을 때만) | ✅ 완료 |
+| 외부 공급업체 배송 조건 [Claude Code · f881ec24] | 공급업체 등록 창·프로필에 무료배송 기준·배송비 칸, 상세 조회에 두 값 | ✅ 완료 |
+| 모바일 알림창 가림 [Claude Code · 248c2fc2] | InboxDrawer 를 body 포털로 — 왼쪽 메뉴 뒤로 숨지 않음 | ✅ 완료 |
+| 구조도 탭 [Claude Code · 3259bc08] | SA Dev Issues › 구조도 탭(원본 dev-backend/content/structure-map.html) | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/routes/owner.js` · `dev-frontend/src/pages/Restaurant/InvoicesPage.tsx` · `dev-frontend/src/pages/Owner/OwnerInvoicesPage.tsx` · locales `settings.json` 4언어
+- `dev-backend/routes/supplier-directory.js` · `dev-frontend/src/pages/Suppliers/AllSuppliersView.tsx` · `dev-frontend/src/pages/SupplierDirectory/SupplierProfilePage.tsx` · locales `supplierDirectory.json` 4언어
+- `dev-frontend/src/components/Inbox/InboxDrawer.tsx`
+- `dev-backend/routes/admin-deploy-records.js` · `dev-backend/scripts/health-check.js` · `dev-backend/content/structure-map.html` · `dev-frontend/src/pages/Admin/DeployRecordsPage.tsx` · `dev-frontend/src/pages/Admin/StructureMapView.tsx` · locales `admin.json` 4언어
 
 ---
 

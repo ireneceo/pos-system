@@ -1466,6 +1466,10 @@
   "managerSubscriptionsPage.payerSwitchedInvoicesUnchanged": "Pembayar ditukar, invois tidak berubah",
   "managerSubscriptionsPage.payerSwitchedInvoicesUnchangedMessage": "Pembayar langganan telah dikemas kini, tetapi invois belum berbayar tidak dapat dialihkan. Sila semak halaman invois.",
   "deployRecords": {
+    "tabRecords": "Isu Pembangunan",
+    "tabStructure": "Peta Struktur",
+    "structureUpdated": "Kemas kini terakhir {{at}} · baca sahaja — fail sumber dikemas kini setiap kali struktur berubah dan dihantar bersama penghantaran",
+    "structureFailed": "Peta struktur tidak dapat dimuatkan.",
     "title": "Isu Pembangunan Solusi",
     "openOnly": "Belum selesai sahaja",
     "colDeploy": "Penghantaran",

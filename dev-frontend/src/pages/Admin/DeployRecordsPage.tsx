@@ -7,6 +7,9 @@ import {
   DataTableCell, DataTableHeaderCell, DataTableEmpty,
 } from '../../components/UI';
 import { getAuthToken } from '../../utils/auth';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
+import StructureMapView from './StructureMapView';
 
 /**
  * 솔루션 개발이슈 — 배포 회차별 개발 현황(시스템 관리자 전용).
@@ -70,6 +73,8 @@ const DeployRecordsPage: React.FC = () => {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
   const [openOnly, setOpenOnly] = useState(false);
+  // 구조도 탭(2026-10-19) — 사이드바(🔒 MainLayout)를 건드리지 않고 이 화면 안에 둔다. 주소 ?tab=structure 로 바로 연다.
+  const [tab, setTab] = useTabParam<'records' | 'structure'>('records');
 
   const load = useCallback(async () => {
     try {
@@ -132,12 +137,19 @@ const DeployRecordsPage: React.FC = () => {
     <Container>
       <Header>
         <Title>{t('deployRecords.title')}</Title>
-        <Toggle>
-          <input type="checkbox" checked={openOnly} onChange={e => setOpenOnly(e.target.checked)} />
-          {t('deployRecords.openOnly')}
-        </Toggle>
+        {tab === 'records' && (
+          <Toggle>
+            <input type="checkbox" checked={openOnly} onChange={e => setOpenOnly(e.target.checked)} />
+            {t('deployRecords.openOnly')}
+          </Toggle>
+        )}
       </Header>
       <Content>
+        <Tabs>
+          <Tab active={tab === 'records'} onClick={() => setTab('records')}>{t('deployRecords.tabRecords')}</Tab>
+          <Tab active={tab === 'structure'} onClick={() => setTab('structure')}>{t('deployRecords.tabStructure')}</Tab>
+        </Tabs>
+        {tab === 'structure' ? <StructureMapView /> : (
         <Split>
           <DataTableContainer>
             <DataTable>
@@ -220,6 +232,7 @@ const DeployRecordsPage: React.FC = () => {
             )}
           </Panel>
         </Split>
+        )}
       </Content>
     </Container>
   );
