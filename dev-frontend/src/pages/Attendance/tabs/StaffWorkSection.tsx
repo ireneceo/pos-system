@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { DataTableContainer, DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../../components/UI/DataTable';
 import { Button } from '../../../components/UI/Button';
 import { attendanceApi, LeaveBalance, StaffProfile, WEEKDAY_KEYS, todayIn } from '../attendanceApi';
@@ -9,6 +10,7 @@ interface Draft { rest_days: number[]; days: Record<number, string>; }
 
 const StaffWorkSection: React.FC<{ restaurantId: string; timeZone: string }> = ({ restaurantId, timeZone }) => {
   const { t } = useTranslation('attendance');
+  const navigate = useNavigate();
   const thisYear = Number(todayIn(timeZone).slice(0, 4));
   const [year, setYear] = useState(thisYear);
   const [staff, setStaff] = useState<StaffProfile[]>([]);
@@ -72,7 +74,14 @@ const StaffWorkSection: React.FC<{ restaurantId: string; timeZone: string }> = (
       <Muted style={{ margin: '8px 0 12px' }}>{t('settings.staffHelp', 'Rest days are not counted as leave. Leave a day box empty to use the leave type default (shown in grey).')}</Muted>
       {error && <ErrorBox>{error}</ErrorBox>}
       <DataTableContainer>
-        {staff.length === 0 ? <DataTableEmpty>{t('settings.noStaff', 'No staff in this store yet.')}</DataTableEmpty> : (
+        {staff.length === 0 ? (
+          <DataTableEmpty>
+            {t('settings.noStaff', 'No staff in this store yet.')}
+            <div style={{ marginTop: 10 }}>
+              <Button size="small" variant="primary" onClick={() => navigate(`/restaurant/${restaurantId}/staff?add=1&from=attendance`)}>{t('guide.addStaff', 'Add staff')}</Button>
+            </div>
+          </DataTableEmpty>
+        ) : (
           <DataTable>
             <DataTableHead>
               <tr>
@@ -87,7 +96,11 @@ const StaffWorkSection: React.FC<{ restaurantId: string; timeZone: string }> = (
                 <DataTableRow key={s.user_id}>
                   <DataTableCell>
                     <div>{s.name}</div>
-                    {!s.has_pin && <Badge tone="amber">{t('settings.noPin', 'No PIN — cannot use Time Clock')}</Badge>}
+                    {!s.has_pin && (
+                      <button type="button" onClick={() => navigate(`/restaurant/${restaurantId}/staff?from=attendance`)} style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer' }} title={t('guide.setPin', 'Set PINs')}>
+                        <Badge tone="amber">{t('settings.noPin', 'No PIN — cannot use Time Clock')} ›</Badge>
+                      </button>
+                    )}
                   </DataTableCell>
                   <DataTableCell>
                     <Row gap={4}>

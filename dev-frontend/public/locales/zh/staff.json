@@ -43,5 +43,7 @@
   "staffPage.emailExistsInvite": "此邮箱已有 PurpleHere 账户。要邀请其成为本门店员工吗？",
   "staffPage.editPermissions": "编辑权限",
   "staffPage.unlink": "解除关联",
-  "staffPage.unlinkConfirm": "该账户将失去本门店的访问权限。其本人账户保持不变。"
+  "staffPage.unlinkConfirm": "该账户将失去本门店的访问权限。其本人账户保持不变。",
+  "staffPage.attendanceLinkHelp": "考勤只计算在此添加的员工。请为每位员工设置 4 位 PIN —— 员工在打卡机上输入。添加完成后返回考勤。",
+  "staffPage.backToAttendance": "返回考勤"
 }

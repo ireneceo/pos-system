@@ -13,6 +13,7 @@ import RecordsTab from './tabs/RecordsTab';
 import LeaveTab from './tabs/LeaveTab';
 import CalendarTab from './tabs/CalendarTab';
 import SettingsTab from './tabs/SettingsTab';
+import AttendanceGuide from './AttendanceGuide';
 
 const TABS = ['today', 'records', 'leave', 'calendar', 'settings'] as const;
 type TabKey = typeof TABS[number];
@@ -48,6 +49,7 @@ const AttendancePage: React.FC = () => {
         <Title>{t('attendance:page.title', 'Attendance')}</Title>
       </Header>
       <Content>
+        <AttendanceGuide restaurantId={restaurantId} onOpenTab={go} />
         <TabContainer>
           <Tab active={tab === 'today'} onClick={() => go('today')}>{t('attendance:tabs.today', 'Today')}</Tab>
           <Tab active={tab === 'records'} onClick={() => go('records')}>{t('attendance:tabs.records', 'Records')}</Tab>

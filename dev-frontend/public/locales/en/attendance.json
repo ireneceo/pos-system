@@ -32,7 +32,8 @@
     "title": "Time Clock",
     "tooMany": "Too many tries. Wait a minute.",
     "workingSince": "Working since {{time}} ({{hours}})",
-    "wrongPin": "PIN not recognised. Try again."
+    "wrongPin": "PIN not recognised. Try again.",
+    "wrongPinHint": "New staff? Ask a manager to add you in Staff with a 4-digit PIN."
   },
   "common": {
     "loading": "Loading…"
@@ -228,5 +229,36 @@
     "thu": "Thu",
     "tue": "Tue",
     "wed": "Wed"
+  },
+  "guide": {
+    "title": "How attendance works",
+    "needStaffBadge": "Add staff first",
+    "hide": "Hide",
+    "show": "Show steps",
+    "step1Title": "Add your staff",
+    "step1Help": "Attendance only covers staff added to this store. Add each person in",
+    "staffMenuPath": "Team & Marketing › Staff",
+    "step1Pin": "with a 4-digit PIN — the PIN is what they type on the Time Clock.",
+    "noStaffYet": "No staff in this store yet — nobody can clock in until you add them.",
+    "staffCount": "{{count}} staff added",
+    "noPinCount": "{{count}} without a PIN (cannot use Time Clock)",
+    "addStaff": "Add staff",
+    "setPin": "Set PINs",
+    "openStaff": "Open Staff",
+    "step2Title": "Choose where staff can clock in (optional)",
+    "step2Help": "In the Settings tab you can allow clocking only on the store Wi-Fi, and choose phone and/or store tablet.",
+    "networkOn": "Store network check: on",
+    "networkOff": "Store network check: off — staff can clock in from anywhere",
+    "openSettings": "Open Settings",
+    "step3Title": "Staff clock in and out",
+    "step3Phone": "On their own phone: log in and open",
+    "myMenuPath": "Team & Marketing › My Attendance",
+    "step3Tablet": "On the store tablet: open",
+    "timeClockMenu": "Time Clock",
+    "step3TabletEnd": "in the left menu and type the 4-digit PIN.",
+    "openTimeClock": "Open Time Clock",
+    "step4Title": "Check hours and approve leave",
+    "step4Help": "Today shows who is working now. Records has hours per day and month. Staff request leave in My Attendance and you approve it in the Leave tab.",
+    "openLeave": "Open Leave"
   }
 }

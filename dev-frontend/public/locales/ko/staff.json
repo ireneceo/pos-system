@@ -43,5 +43,7 @@
   "staffPage.emailExistsInvite": "이 이메일은 이미 PurpleHere 계정이 있습니다. 이 매장 직원으로 초대할까요?",
   "staffPage.editPermissions": "권한 수정",
   "staffPage.unlink": "연결 해제",
-  "staffPage.unlinkConfirm": "이 계정의 이 매장 접근을 끊습니다. 본인 계정은 그대로입니다."
+  "staffPage.unlinkConfirm": "이 계정의 이 매장 접근을 끊습니다. 본인 계정은 그대로입니다.",
+  "staffPage.attendanceLinkHelp": "출퇴근은 여기 추가된 직원만 셉니다. 직원마다 4자리 PIN 을 넣어 주세요 — 타임클락에서 이 PIN 을 누릅니다. 다 추가했으면 출퇴근으로 돌아가세요.",
+  "staffPage.backToAttendance": "출퇴근으로 돌아가기"
 }

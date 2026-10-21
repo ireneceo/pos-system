@@ -32,7 +32,8 @@
     "title": "打卡机",
     "tooMany": "尝试次数过多，请一分钟后再试。",
     "workingSince": "自 {{time}} 起上班（{{hours}}）",
-    "wrongPin": "PIN 无效，请重试。"
+    "wrongPin": "PIN 无效，请重试。",
+    "wrongPinHint": "新员工？请让经理在员工页面为您添加 4 位 PIN。"
   },
   "common": {
     "loading": "加载中…"
@@ -228,5 +229,36 @@
     "thu": "四",
     "tue": "二",
     "wed": "三"
+  },
+  "guide": {
+    "title": "考勤使用步骤",
+    "needStaffBadge": "请先添加员工",
+    "hide": "收起",
+    "show": "查看步骤",
+    "step1Title": "添加员工",
+    "step1Help": "考勤只适用于已添加到本店的员工。请在",
+    "staffMenuPath": "团队与营销 › 员工",
+    "step1Pin": "中为每位员工添加 4 位 PIN —— 员工在打卡机上输入这个 PIN。",
+    "noStaffYet": "本店还没有员工 —— 添加后员工才能打卡。",
+    "staffCount": "已添加 {{count}} 名员工",
+    "noPinCount": "{{count}} 名员工没有 PIN（无法使用打卡机）",
+    "addStaff": "添加员工",
+    "setPin": "设置 PIN",
+    "openStaff": "打开员工页面",
+    "step2Title": "选择打卡地点（可选）",
+    "step2Help": "在设置标签中，可以限制只能连接店内 Wi-Fi 时打卡，并选择用手机或店内平板打卡。",
+    "networkOn": "店铺网络检查：开启",
+    "networkOff": "店铺网络检查：关闭 —— 任何地方都能打卡",
+    "openSettings": "打开设置",
+    "step3Title": "员工上下班打卡",
+    "step3Phone": "用自己的手机：登录后打开",
+    "myMenuPath": "团队与营销 › 我的考勤",
+    "step3Tablet": "用店内平板：在左侧菜单打开",
+    "timeClockMenu": "打卡机",
+    "step3TabletEnd": "并输入 4 位 PIN。",
+    "openTimeClock": "打开打卡机",
+    "step4Title": "查看工时并审批请假",
+    "step4Help": "今天标签显示正在上班的人，记录标签显示每日和每月工时。员工在我的考勤中申请请假，您在请假标签中审批。",
+    "openLeave": "打开请假"
   }
 }

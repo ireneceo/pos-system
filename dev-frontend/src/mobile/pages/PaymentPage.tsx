@@ -1182,6 +1182,8 @@ const PaymentPage: React.FC = () => {
           // list when no Floor Plan tables are registered.
           const fpTables = Array.isArray(restaurant.floor_plan?.tables)
             ? restaurant.floor_plan.tables
+                // 주방·카운터·입구 같은 시설물은 앉는 자리가 아니라 뺀다 (POS 와 같은 기준)
+                .filter((tt: any) => tt && (!tt.tableType || tt.tableType === 'table'))
                 .map((tt: any) => (tt && tt.label != null ? String(tt.label)
                   : (tt && tt.tableNumber != null ? String(tt.tableNumber) : null)))
                 .filter(Boolean)

@@ -32,7 +32,8 @@
     "title": "타임클락",
     "tooMany": "너무 많이 시도했습니다. 1분 뒤 다시 하세요.",
     "workingSince": "{{time}}부터 근무 중 ({{hours}})",
-    "wrongPin": "PIN 을 찾을 수 없습니다. 다시 입력하세요."
+    "wrongPin": "PIN 을 찾을 수 없습니다. 다시 입력하세요.",
+    "wrongPinHint": "새 직원이면 관리자에게 직원 화면에서 4자리 PIN 과 함께 추가해 달라고 하세요."
   },
   "common": {
     "loading": "불러오는 중…"
@@ -228,5 +229,36 @@
     "thu": "목",
     "tue": "화",
     "wed": "수"
+  },
+  "guide": {
+    "title": "출퇴근 사용 순서",
+    "needStaffBadge": "직원 먼저 추가",
+    "hide": "접기",
+    "show": "순서 보기",
+    "step1Title": "직원 추가",
+    "step1Help": "출퇴근은 이 매장에 추가된 직원만 대상입니다. 직원마다",
+    "staffMenuPath": "팀 및 마케팅 › 직원",
+    "step1Pin": "에서 4자리 PIN 과 함께 추가하세요 — 타임클락에서 이 PIN 을 누릅니다.",
+    "noStaffYet": "아직 이 매장에 직원이 없습니다 — 추가해야 출퇴근을 찍을 수 있습니다.",
+    "staffCount": "직원 {{count}}명 추가됨",
+    "noPinCount": "PIN 없는 직원 {{count}}명 (타임클락 사용 불가)",
+    "addStaff": "직원 추가",
+    "setPin": "PIN 설정",
+    "openStaff": "직원 화면 열기",
+    "step2Title": "어디서 찍을지 정하기 (선택)",
+    "step2Help": "설정 탭에서 매장 와이파이에서만 찍게 하거나, 폰·매장 태블릿 중 무엇으로 찍을지 고릅니다.",
+    "networkOn": "매장 네트워크 확인: 켜짐",
+    "networkOff": "매장 네트워크 확인: 꺼짐 — 어디서든 찍을 수 있음",
+    "openSettings": "설정 열기",
+    "step3Title": "직원이 출근·퇴근 찍기",
+    "step3Phone": "자기 폰: 로그인 후",
+    "myMenuPath": "팀 및 마케팅 › 내 출퇴근",
+    "step3Tablet": "매장 태블릿: 왼쪽 메뉴",
+    "timeClockMenu": "타임클락",
+    "step3TabletEnd": "을 열고 4자리 PIN 을 누릅니다.",
+    "openTimeClock": "타임클락 열기",
+    "step4Title": "근무시간 확인·휴가 승인",
+    "step4Help": "오늘 탭에서 지금 일하는 사람을, 기록 탭에서 날짜·월별 근무시간을 봅니다. 직원이 내 출퇴근에서 휴가를 신청하면 휴가 탭에서 승인합니다.",
+    "openLeave": "휴가 열기"
   }
 }

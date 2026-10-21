@@ -140,7 +140,7 @@ const TimeClockPage: React.FC = () => {
     const r = await attendanceApi<{ user: { id: number; name: string }; open: AttendanceRecord | null }>(restaurantId, '/pin-lookup', { method: 'POST', body: { pin_code: code } });
     if (!r.ok) {
       setPin('');
-      setMessage({ tone: 'err', text: r.code === 'TOO_MANY_PIN_ATTEMPTS' ? t('clock.tooMany', 'Too many tries. Wait a minute.') : t('clock.wrongPin', 'PIN not recognised. Try again.') });
+      setMessage({ tone: 'err', text: r.code === 'TOO_MANY_PIN_ATTEMPTS' ? t('clock.tooMany', 'Too many tries. Wait a minute.') : `${t('clock.wrongPin', 'PIN not recognised. Try again.')} ${t('clock.wrongPinHint', 'New staff? Ask a manager to add you in Staff with a 4-digit PIN.')}` });
       return;
     }
     setPerson({ id: r.data.user.id, name: r.data.user.name, open: r.data.open });

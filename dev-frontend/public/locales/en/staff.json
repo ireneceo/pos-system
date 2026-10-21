@@ -43,5 +43,7 @@
   "staffPage.emailExistsInvite": "This email already has a PurpleHere account. Invite it to join this store as staff?",
   "staffPage.editPermissions": "Edit permissions",
   "staffPage.unlink": "Unlink",
-  "staffPage.unlinkConfirm": "this account will lose access to this store. Their own account stays as it is."
+  "staffPage.unlinkConfirm": "this account will lose access to this store. Their own account stays as it is.",
+  "staffPage.attendanceLinkHelp": "Attendance only counts staff added here. Give each person a 4-digit PIN — they type it on the Time Clock. When you are done, go back to Attendance.",
+  "staffPage.backToAttendance": "Back to Attendance"
 }

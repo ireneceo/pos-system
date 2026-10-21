@@ -134,7 +134,9 @@ router.get('/store/:slug', async (req, res) => {
       floorTables: (() => {
         const fp = restaurant.floor_plan || {};
         const tbls = Array.isArray(fp.tables) ? fp.tables : [];
+        // 주방·카운터·입구 같은 시설물(tableType ≠ 'table')은 앉는 자리가 아니라 뺀다 — POS·예약과 같은 기준
         return tbls
+          .filter(tt => tt && (!tt.tableType || tt.tableType === 'table'))
           .map(tt => (tt && tt.label != null ? String(tt.label)
             : (tt && tt.tableNumber != null ? String(tt.tableNumber) : null)))
           .filter(Boolean);

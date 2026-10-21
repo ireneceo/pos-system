@@ -32,7 +32,8 @@
     "title": "Jam Kehadiran",
     "tooMany": "Terlalu banyak cubaan. Tunggu seminit.",
     "workingSince": "Bekerja sejak {{time}} ({{hours}})",
-    "wrongPin": "PIN tidak dikenali. Cuba lagi."
+    "wrongPin": "PIN tidak dikenali. Cuba lagi.",
+    "wrongPinHint": "Staf baharu? Minta pengurus tambah anda di Kakitangan dengan PIN 4 digit."
   },
   "common": {
     "loading": "Memuatkan…"
@@ -228,5 +229,36 @@
     "thu": "Kha",
     "tue": "Sel",
     "wed": "Rab"
+  },
+  "guide": {
+    "title": "Cara kehadiran berfungsi",
+    "needStaffBadge": "Tambah staf dahulu",
+    "hide": "Sembunyi",
+    "show": "Tunjuk langkah",
+    "step1Title": "Tambah staf anda",
+    "step1Help": "Kehadiran hanya untuk staf yang ditambah ke kedai ini. Tambah setiap orang di",
+    "staffMenuPath": "Pasukan & Pemasaran › Kakitangan",
+    "step1Pin": "dengan PIN 4 digit — PIN inilah yang ditaip di Jam Kehadiran.",
+    "noStaffYet": "Belum ada staf di kedai ini — tiada siapa boleh daftar masuk sehingga anda menambahnya.",
+    "staffCount": "{{count}} staf ditambah",
+    "noPinCount": "{{count}} tanpa PIN (tidak boleh guna Jam Kehadiran)",
+    "addStaff": "Tambah staf",
+    "setPin": "Tetapkan PIN",
+    "openStaff": "Buka Kakitangan",
+    "step2Title": "Pilih di mana staf boleh daftar masuk (pilihan)",
+    "step2Help": "Di tab Tetapan anda boleh benarkan daftar masuk hanya di Wi-Fi kedai, dan pilih telefon dan/atau tablet kedai.",
+    "networkOn": "Semakan rangkaian kedai: hidup",
+    "networkOff": "Semakan rangkaian kedai: mati — staf boleh daftar masuk dari mana-mana",
+    "openSettings": "Buka Tetapan",
+    "step3Title": "Staf daftar masuk dan keluar",
+    "step3Phone": "Di telefon sendiri: log masuk dan buka",
+    "myMenuPath": "Pasukan & Pemasaran › Kehadiran Saya",
+    "step3Tablet": "Di tablet kedai: buka",
+    "timeClockMenu": "Jam Kehadiran",
+    "step3TabletEnd": "di menu kiri dan taip PIN 4 digit.",
+    "openTimeClock": "Buka Jam Kehadiran",
+    "step4Title": "Semak jam dan luluskan cuti",
+    "step4Help": "Hari ini menunjukkan siapa sedang bekerja. Rekod ada jam setiap hari dan bulan. Staf memohon cuti di Kehadiran Saya dan anda meluluskannya di tab Cuti.",
+    "openLeave": "Buka Cuti"
   }
 }

@@ -8,6 +8,7 @@ import { Modal, ModalButton, ModalWarning, FormRow, FormGroup, FormLabel, FormIn
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { getAuthToken } from '../../utils/auth';
 import StaffPermissionPicker, { MENU_GROUPS, WORK_ACCESS } from '../../components/Staff/StaffPermissionPicker';
@@ -424,6 +425,22 @@ const StaffPage: React.FC = () => {
     setShowAddModal(true);
   };
 
+  // 출퇴근 화면에서 «직원 추가» 로 넘어온 경우(?add=1&from=attendance) — 추가 창을 바로 열고, 위에 «출퇴근으로 돌아가기» 를 둔다.
+  // 출퇴근은 이 화면에 추가된 직원만 대상이라 두 화면을 잇는다 (2026-10-20 Irene).
+  const navigate = useNavigate();
+  const { restaurantId: routeRestaurantId } = useParams<{ restaurantId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fromAttendance = searchParams.get('from') === 'attendance';
+  const attendanceUrl = `/restaurant/${routeRestaurantId || user?.restaurantId}/attendance`;
+  useEffect(() => {
+    if (searchParams.get('add') !== '1') return;
+    handleOpenAddModal();
+    const next = new URLSearchParams(searchParams);
+    next.delete('add');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   const handleCloseAddModal = () => {
     setShowAddModal(false);
     setFormError('');
@@ -723,6 +740,12 @@ const StaffPage: React.FC = () => {
         {(user?.role === 'Restaurant Admin' || user?.role === 'System Admin') && <ContextRequestsPanel key={panelKey} scope="restaurant" onChanged={fetchStaff} />}
 
         <Content>
+          {fromAttendance && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: '#F5F3FF', border: '1px solid #DDD6FE', color: '#4C1D95', padding: '12px 16px', borderRadius: 8, marginBottom: 16, fontSize: 14, lineHeight: 1.5 }}>
+              <div style={{ flex: 1, minWidth: 220 }}>{t('staff:staffPage.attendanceLinkHelp')}</div>
+              <Button variant="secondary" onClick={() => navigate(attendanceUrl)}>{t('staff:staffPage.backToAttendance')}</Button>
+            </div>
+          )}
           {inviteNotice && (
             <div style={{ fontSize: 14, color: '#1F2937', marginBottom: 12 }}>{inviteNotice}</div>
           )}

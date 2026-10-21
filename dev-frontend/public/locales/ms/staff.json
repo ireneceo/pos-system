@@ -43,5 +43,7 @@
   "staffPage.emailExistsInvite": "E-mel ini sudah mempunyai akaun PurpleHere. Jemput untuk menyertai kedai ini sebagai kakitangan?",
   "staffPage.editPermissions": "Edit kebenaran",
   "staffPage.unlink": "Nyahpaut",
-  "staffPage.unlinkConfirm": "akaun ini akan hilang akses ke kedai ini. Akaun mereka sendiri kekal seperti biasa."
+  "staffPage.unlinkConfirm": "akaun ini akan hilang akses ke kedai ini. Akaun mereka sendiri kekal seperti biasa.",
+  "staffPage.attendanceLinkHelp": "Kehadiran hanya mengira staf yang ditambah di sini. Beri setiap orang PIN 4 digit — mereka menaipnya di Jam Kehadiran. Apabila selesai, kembali ke Kehadiran.",
+  "staffPage.backToAttendance": "Kembali ke Kehadiran"
 }

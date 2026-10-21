@@ -439,7 +439,8 @@ router.post('/order', async (req, res) => {
           if (!resolvedFloorPlanTableId && actualTableNumber && actualOrderType === 'dine_in') {
             const fp = restaurant.floor_plan || {};
             const fpTables = Array.isArray(fp.tables) ? fp.tables : [];
-            const matched = fpTables.find(t =>
+            // 시설물(주방·카운터·입구)은 주문 자리가 아니므로 매칭에서 뺀다
+            const matched = fpTables.filter(t => t && (!t.tableType || t.tableType === 'table')).find(t =>
               (t && t.label != null && String(t.label) === String(actualTableNumber)) ||
               (t && t.tableNumber != null && String(t.tableNumber) === String(actualTableNumber))
             );
