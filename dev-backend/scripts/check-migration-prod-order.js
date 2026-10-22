@@ -31,6 +31,8 @@ const SCRIPTS = path.join(ROOT, 'scripts');
 const reg = JSON.parse(fs.readFileSync(path.join(SCRIPTS, 'migrations.registry.json'), 'utf8'));
 const deploy = (reg.deploy || []).filter((f) => fs.existsSync(path.join(SCRIPTS, f)));
 const src = Object.fromEntries(deploy.map((f) => [f, fs.readFileSync(path.join(SCRIPTS, f), 'utf8')]));
+// sync 대상 판정은 주석을 뺀 코드로 — 주석에 모델 이름만 나와도 «그 모델을 sync» 로 오인하던 것(2026-10-23 sprint6 오탐)
+const code = Object.fromEntries(deploy.map((f) => [f, src[f].replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1')]));
 
 // 표 존재 확인 뒤에만 sync 하는 마이그는 «있는 표엔 손대지 않음» — 대상 아님
 const GUARD = /information_schema\.TABLES|tableExists|showAllTables|describeTable/i;
@@ -90,7 +92,7 @@ for (const table of tables) {
   if (!missing.length) continue;
   const nameRe = new RegExp(`\\b${model}\\b`);
   deploy.forEach((f, i) => {
-    const s = src[f];
+    const s = code[f];
     if (!/\.sync\(/.test(s) || GUARD.test(s) || !nameRe.test(s)) return;
     checked++;
     for (const col of missing) {
