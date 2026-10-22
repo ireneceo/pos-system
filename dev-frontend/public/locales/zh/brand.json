@@ -802,7 +802,8 @@
     "siCostFailed": "成本",
     "siStockFailed": "库存",
     "siSaveFailed": "商品已保存，但库存项目的{{what}}未能更新",
-    "stockItemExistsKeepsValues": "该库存项目的库存和成本保持不变。可在 Edit Product 中修改。"
+    "stockItemExistsKeepsValues": "该库存项目的库存和成本保持不变。可在 Edit Product 中修改。",
+    "siStockInPacks": "= {{packs}} {{pkg}}"
   },
   "brandIngredientsPage": {
     "subtitle": "唯一的食材清单。开启品牌共享后即可用于配方与采购。"

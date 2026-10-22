@@ -87,8 +87,27 @@ async function resolveDirectLink(body, current, ownerUserId) {
       return { ok: false, status: 400, body: { success: false, code: 'STOCK_ITEM_NOT_OWNED',
         message: 'That stock item belongs to someone else.' } };
     }
+    // 새로 걸거나 바꿀 때만 — 판매 단위와 재고아이템 단위가 환산되는지(출고 차감 = 주문 수량 × 상품 규격).
+    //   이미 걸린 옛 행의 이름 수정 같은 저장은 막지 않는다(2026-10-22 Fable 판정 D2).
+    if (String(nextDirect) !== String(current ? current.product_ingredient_id : '')) {
+      const spec = {
+        unit: body.unit !== undefined ? body.unit : current?.unit,
+        base_quantity: body.base_quantity !== undefined ? body.base_quantity : current?.base_quantity,
+        order_mode: body.order_mode !== undefined ? body.order_mode : current?.order_mode,
+      };
+      const incompatible = unitIncompatible(si, spec);
+      if (incompatible) return incompatible;
+    }
   }
   return { ok: true, patch };
+}
+
+/** 상품 판매 단위 ↔ 재고아이템 단위가 환산 안 되면 400 본문, 되면 null (출고·반품 차감과 같은 판정). */
+function unitIncompatible(stockItem, sellerSpec) {
+  const { directDeductConversion } = require('../services/sellerLinkConversion');
+  if (directDeductConversion({ stock: stockItem, sellerProduct: sellerSpec }).compatible) return null;
+  return { ok: false, status: 400, body: { success: false, code: 'UNIT_INCOMPATIBLE',
+    message: `This product sells in ${sellerSpec.unit} but the stock item counts in ${stockItem.unit} — use the same unit family (g/kg, ml/L, or pieces)` } };
 }
 
 router.use(['/brand-products', '/brand-product-categories', '/brand-product-option-groups'],
@@ -1516,6 +1535,8 @@ router.post('/brand-products/:productId/stock-item', authenticateToken, requireB
         await t.rollback();
         return res.status(404).json({ success: false, message: 'Stock item not found' });
       }
+      const incompatible = unitIncompatible(stockItem, product);
+      if (incompatible) { await t.rollback(); return res.status(incompatible.status).json(incompatible.body); }
     } else {
       const name = sanitizeString(String(body.name || product.name || '')).slice(0, 255);
       if (!name) {

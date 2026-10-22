@@ -802,7 +802,8 @@
     "siCostFailed": "cost",
     "siStockFailed": "stock",
     "siSaveFailed": "Product saved, but the stock item {{what}} could not be updated",
-    "stockItemExistsKeepsValues": "That stock item's stock and cost stay as they are. You can change them in Edit Product."
+    "stockItemExistsKeepsValues": "That stock item's stock and cost stay as they are. You can change them in Edit Product.",
+    "siStockInPacks": "= {{packs}} {{pkg}}"
   },
   "brandIngredientsPage": {
     "subtitle": "The single list of ingredients. Turn on brand sharing to use them in recipes and orders."

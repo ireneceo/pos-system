@@ -502,6 +502,16 @@ module.exports = {
     add('ING-UNI-033 파는 프로덕트와 같은 이름의 Stock Item (목록)',
       sellAsStock === 0, sellAsStock ? `${sellAsStock}건 — 파는 물건은 Stock Item 을 만들지 않는다(9/4)` : '', true);
 
+    // ING-UNI-034: 재고아이템 다이렉트 상품 중 판매 단위 ↔ 재고아이템 단위가 **환산 안 되는** 행 (비차단 목록).
+    //   출고·반품은 막지 않고 1 로 빼며 장부에 [unit_mismatch] 를 남긴다. 새 연결은 400(UNIT_INCOMPATIBLE)이 막고,
+    //   이 목록은 옛 행을 드러낸다 — 판정은 출고 차감과 같은 함수(utils/directDeductAudit · 2026-10-22 Fable D4).
+    const { listDirectDeductRows } = require('../../../utils/directDeductAudit');
+    const mismatch = (await listDirectDeductRows(q)).filter((r) => !r.compatible);
+    add('ING-UNI-034 재고아이템 다이렉트 상품 단위 환산 가능 (목록)',
+      mismatch.length === 0,
+      mismatch.length ? `${mismatch.length}건 — 상품 단위와 재고아이템 단위를 같은 계열로(g/kg·ml/L·개수). 예: `
+        + mismatch.slice(0, 3).map((r) => `#${r.product_id} ${r.product_name} ${r.sell_unit}↔${r.stock_unit}`).join(' · ') : '', true);
+
     return checks;
   },
 };

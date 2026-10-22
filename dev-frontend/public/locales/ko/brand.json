@@ -802,7 +802,8 @@
     "siCostFailed": "원가",
     "siStockFailed": "재고",
     "siSaveFailed": "상품은 저장됐지만 재고아이템 {{what}}은(는) 반영되지 않았습니다",
-    "stockItemExistsKeepsValues": "그 재고아이템의 재고·원가는 그대로입니다. Edit Product 에서 고칠 수 있습니다."
+    "stockItemExistsKeepsValues": "그 재고아이템의 재고·원가는 그대로입니다. Edit Product 에서 고칠 수 있습니다.",
+    "siStockInPacks": "= {{packs}} {{pkg}}"
   },
   "brandIngredientsPage": {
     "subtitle": "재료의 유일한 목록입니다. 브랜드 공유를 켜면 레시피와 발주에서 쓸 수 있습니다."

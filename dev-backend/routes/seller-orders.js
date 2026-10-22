@@ -796,7 +796,9 @@ router.post('/:id/ship', async (req, res) => {
           if (!bp) continue;
 
           // ── 재고아이템 다이렉트 (docs/TRADE_STRUCTURE.md §2-1) ─────────────
-          // 프로덕트 = 재고아이템: 1개 팔면 그 재고아이템 1개가 빠진다. **1:1, 환산 없음**.
+          // 프로덕트 = 재고아이템: 차감 = 주문 수량 × 상품 규격(1 주문단위에 든 재고아이템 취급단위 양).
+          //   «500 g/pack» 3 pack → −1500 g. 구매자 입고 환산과 같은 규칙(sellerLinkConversion) — 2026-10-22 Fable 판정.
+          //   단위가 안 맞으면(개수↔g 등) 출고는 막지 않고 1 로 빼며 장부에 [unit_mismatch] 를 남긴다.
           // 우선순위는 레시피 > 다이렉트 > 프로덕트 자체 재고. 레시피 분기와 같은 방식으로
           // ProductIngredient 를 깎는다 — 새 차감 경로를 만들지 않는다.
           if (!bp.product_recipe_id && bp.product_ingredient_id) {
@@ -804,10 +806,14 @@ router.post('/:id/ship', async (req, res) => {
             if (soldQtyD > 0) {
               const pIngD = await ProductIngredient.findByPk(bp.product_ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
               if (pIngD) {
+                const { directDeductConversion } = require('../services/sellerLinkConversion');
+                const { conv, compatible } = directDeductConversion({ stock: pIngD, sellerProduct: bp });
+                const takeD = Math.round(soldQtyD * conv * 100) / 100;
                 // 재고 + 장부(금액 = 그 순간 재고아이템 원가) — services/stockLedger 단일 함수
                 await stockLedger.record({
-                  target: { kind: 'product_ingredient', row: pIngD }, entity: { type: 'brand', id: locked.seller_entity_id }, type: 'order_deduct', delta: -soldQtyD,
-                  refs: { purchase_order_id: locked.id }, notes: `Sold on PO ${locked.po_number} (${bp.name})`,
+                  target: { kind: 'product_ingredient', row: pIngD }, entity: { type: 'brand', id: locked.seller_entity_id }, type: 'order_deduct', delta: -takeD,
+                  refs: { purchase_order_id: locked.id },
+                  notes: `Sold on PO ${locked.po_number} (${bp.name})` + (compatible ? '' : ` [unit_mismatch ${bp.unit}↔${pIngD.unit}]`),
                   userId: req.user?.id || null, transaction: t,
                 });
               }

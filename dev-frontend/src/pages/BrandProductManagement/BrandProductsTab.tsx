@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { parseMinOrderQty, OrderMode, PACKAGE_UNIT_SUGGESTIONS, CONTENT_UNIT_OPTIONS, withCurrentUnit, sellerSpecLabel, stockSpecLabel } from '../../utils/unitConversion';
+import { parseMinOrderQty, OrderMode, PACKAGE_UNIT_SUGGESTIONS, CONTENT_UNIT_OPTIONS, withCurrentUnit, sellerSpecLabel, stockSpecLabel, formatQuantity } from '../../utils/unitConversion';
 import { formatUnitPrice } from '../../utils/currency';
 import { marginStateOf } from '../../utils/productMargin';
 import { getErrorMessage } from '../../utils/apiError';
@@ -807,6 +807,16 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                   ? t('products.siOpeningStockHint', { defaultValue: 'Counted on the new stock item in {{unit}}.', unit: unitLabel })
                   : t('products.siCurrentStockHint', { defaultValue: 'Counted on stock item «{{name}}». A change adds an adjustment line to its stock history.', name: item.name || '' })}
               </OrderModeHint>
+              {/* 재고는 취급단위(g)로 센다 — 포장 수로 알고 적는 실수를 막는 환산 줄(계산만 · 저장 0, 2026-10-22 Fable D6) */}
+              {bq > 1 && (parseFloat(siStock) || 0) > 0 && (
+                <OrderModeHint style={{ color: '#0A2540', fontWeight: 600 }}>
+                  {t('products.siStockInPacks', {
+                    defaultValue: '= {{packs}} {{pkg}}',
+                    packs: formatQuantity(Math.round(((parseFloat(siStock) || 0) / bq) * 100) / 100),
+                    pkg: item.package_unit || 'pack'
+                  })}
+                </OrderModeHint>
+              )}
             </UIFormGroup>
           )}
         </div>

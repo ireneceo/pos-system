@@ -7372,15 +7372,16 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     const { sequelize } = require('../config/database');
     if (!demoBgToken || !demoBgUserId) { console.log(c.gray('      (건너뜀: 데모 브랜드 관리자 없음 — 계약 미검증)')); return true; }
     const q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
-    const si = (await q('SELECT id FROM product_ingredients WHERE is_active = 1 AND owner_user_id = :u LIMIT 1', { u: demoBgUserId }))[0];
+    const si = (await q('SELECT id, unit FROM product_ingredients WHERE is_active = 1 AND owner_user_id = :u LIMIT 1', { u: demoBgUserId }))[0];
     if (!si) { console.log(c.gray('      (건너뜀: 재고아이템 없음 — 계약 미검증)')); return true; }
 
     const auth = { Authorization: `Bearer ${demoBgToken}` };
     const probeName = PROBE + Date.now();
     try {
       const autoBefore = Number((await q("SELECT COUNT(*) AS c FROM product_recipes WHERE name LIKE '% (auto)'"))[0].c);
+      // 판매 단위 = 재고아이템 단위 — 환산 안 되는 단위로는 연결이 400 이다(2026-10-22 UNIT_INCOMPATIBLE)
       const r1 = await request('POST', '/brand-products',
-        { name: probeName, unit: 'ea', unit_price: 1, product_ingredient_id: si.id }, auth);
+        { name: probeName, unit: si.unit || 'ea', unit_price: 1, product_ingredient_id: si.id }, auth);
       const pid = r1.body?.data?.id;
       if (!pid) return false;
       const row = (await q('SELECT product_ingredient_id, product_recipe_id FROM brand_products WHERE id = :p', { p: pid }))[0];
@@ -11218,6 +11219,7 @@ async function runTests(allTests, category) {
   defineStockLedgerTests(ctx);
   defineAttendanceTests();
   defineProductFormCostStockTests();
+  defineDirectDeductUnitTests();
 
   // 🔴 잔재 감시 — 검사 자체가 데모 매장에 **돈·재고 흔적을 남기는지** 실행 전후로 잰다.
   //   2026-09-18: 이 지문 함수는 **정의만 있고 호출이 0곳**이었다. 그래서 직접구매 계약이
@@ -11323,5 +11325,139 @@ function defineProductFormCostStockTests() {
       { Authorization: `Bearer ${jwt.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
     await sp.reload();
     return r.status === 400 && r.body?.code === 'USE_INVENTORY_ADJUST' && Number(sp.current_stock) === before;
+  });
+}
+
+// ============================================
+// 재고아이템 다이렉트 상품 출고·반품 차감 = 주문 수량 × 상품 규격 (2026-10-22 Fable 판정 §7 P1~P4
+//   · .claude/fable-design-20261022-direct-deduct-unit.md)
+// ============================================
+//   P1 500 g/pack 3 pack 출고 → 재고아이템 −1500 g · 장부 금액 = 3 × 원가
+//   P2 그 뒤 1 pack 반품 승인 → +500 g (출고의 정확한 역방향)
+//   P3 kg/1 ↔ g 재고아이템 2 pack → −2000 g
+//   P4 piece ↔ g(옛 연결) 출고 → −2 + [unit_mismatch] · 새로 연결 → 400 UNIT_INCOMPATIBLE · 이름만 수정 → 200
+//   데모 브랜드(소유자 계정)·데모 매장만 · 만든 행은 전부 지운다.
+function defineDirectDeductUnitTests() {
+  const fixture = async () => {
+    const { User, Brand, Restaurant, Ingredient } = require('../models');
+    const bg = await User.findOne({ where: { email: 'demo-brand@purplehere.com' } });
+    // 데모 브랜드 소유자의 브랜드 중 **매장 관리자·재료가 있는 데모 매장**을 가진 것 (반품은 매장이 만든다)
+    let brand = null, rest = null, ra = null, ing = null;
+    for (const b of bg ? await Brand.findAll({ where: { owner_id: bg.id }, order: [['id', 'ASC']] }) : []) {
+      for (const r of await Restaurant.findAll({ where: { brand_id: b.id, is_demo: true } })) {
+        const a = await User.findOne({ where: { restaurant_id: r.id, role: 'Restaurant Admin' } });
+        const i = a ? await Ingredient.findOne({ where: { restaurant_id: r.id, is_active: true } }) : null;
+        if (a && i) { brand = b; rest = r; ra = a; ing = i; break; }
+      }
+      if (rest) break;
+    }
+    if (!bg || !brand || !rest || !ra || !ing) return null;
+    const tok = (u) => ({ Authorization: `Bearer ${jwt.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` });
+    return { bg, brand, rest, ra, ing, bgAuth: tok(bg), raAuth: tok(ra) };
+  };
+  // 재고아이템 + 그것을 그대로 파는 상품 + 매장 발주(confirmed) 한 줄
+  const setup = async (fx, { stockUnit, stockBase, stockQty, cost, sellUnit, sellBase, qty, link = true }) => {
+    const { ProductIngredient, BrandProduct, IngredientSellerProduct, PurchaseOrder, PurchaseOrderItem } = require('../models');
+    const tag = `[hc] 다이렉트차감 ${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    const si = await ProductIngredient.create({ owner_user_id: fx.bg.id, name: tag, unit: stockUnit, base_quantity: stockBase,
+      unit_cost: cost, current_stock: stockQty, min_stock: 0, is_active: true });
+    const bp = await BrandProduct.create({ owner_user_id: fx.bg.id, name: tag, unit: sellUnit, base_quantity: sellBase,
+      package_unit: 'pack', order_mode: 'pack', product_kind: 'stock', unit_price: 10, current_stock: 0,
+      min_order_quantity: 1, is_active: true, distribution_mode: 'all', product_ingredient_id: link ? si.id : null });
+    const isp = await IngredientSellerProduct.create({ ingredient_id: fx.ing.id, seller_type: 'brand', seller_entity_id: fx.brand.id,
+      seller_product_id: bp.id, unit_price: 10, unit_conversion: 1, is_active: true });
+    const po = await PurchaseOrder.create({ po_number: `HC-DDU-${Date.now() % 10000000}`, entity_type: 'restaurant', entity_id: fx.rest.id,
+      seller_type: 'brand', seller_entity_id: fx.brand.id, status: 'confirmed', currency: 'MYR',
+      subtotal: 10 * qty, total_amount: 10 * qty, created_by_user_id: fx.ra.id });
+    const item = await PurchaseOrderItem.create({ purchase_order_id: po.id, ingredient_id: fx.ing.id, ingredient_seller_product_id: isp.id,
+      description: tag, quantity_ordered: qty, quantity_received: qty, unit_price: 10, unit_conversion: 1, line_total: 10 * qty });
+    return { si, bp, isp, po, item };
+  };
+  const teardown = async (r) => {
+    if (!r) return;
+    const { Op: OpD } = require('sequelize');
+    const { ProductIngredient, BrandProduct, IngredientSellerProduct, PurchaseOrderItem, PurchaseOrderReturn,
+      InventoryTransaction, Invoice, InvoiceItem } = require('../models');
+    if (r.po) {
+      const cn = await Invoice.findAll({ where: { invoice_number: { [OpD.like]: `CN-${r.po.po_number}%` } } });
+      for (const x of cn) { await InvoiceItem.destroy({ where: { invoice_id: x.id }, force: true }); await x.destroy({ force: true }); }
+      await PurchaseOrderReturn.destroy({ where: { purchase_order_id: r.po.id }, force: true });
+      await InventoryTransaction.destroy({ where: { purchase_order_id: r.po.id } });
+      await PurchaseOrderItem.destroy({ where: { purchase_order_id: r.po.id }, force: true });
+      await hcCleanupPurchaseOrders(r.po.id);
+    }
+    if (r.isp) await IngredientSellerProduct.destroy({ where: { id: r.isp.id }, force: true });
+    for (const id of [r.bp && r.bp.id, r.bp2 && r.bp2.id].filter(Boolean)) {
+      await InventoryTransaction.destroy({ where: { brand_product_id: id } });
+      await BrandProduct.destroy({ where: { id }, force: true });
+    }
+    for (const id of [r.si && r.si.id, r.si2 && r.si2.id].filter(Boolean)) {
+      await InventoryTransaction.destroy({ where: { product_ingredient_id: id } });
+      await ProductIngredient.destroy({ where: { id }, force: true });
+    }
+  };
+  const stockOf = async (id) => Number((await require('../models').ProductIngredient.findByPk(id)).current_stock);
+
+  test('inventory', '다이렉트 출고 = 주문 수량 × 상품 규격 (500 g/pack 3 pack → −1500 g) · 반품 1 pack → +500 g (P1·P2)', async () => {
+    const fx = await fixture(); if (!fx) { console.log(c.gray('      (건너뜀: 데모 브랜드/매장 픽스처 없음)')); return false; }
+    const { InventoryTransaction } = require('../models');
+    let r = null;
+    try {
+      r = await setup(fx, { stockUnit: 'g', stockBase: 500, stockQty: 2000, cost: 6.5, sellUnit: 'g', sellBase: 500, qty: 3 });
+      const ship = await request('POST', `/seller-orders/${r.po.id}/ship`, { tracking_info: { carrier: 'HC' } }, fx.bgAuth);
+      const afterShip = await stockOf(r.si.id);
+      const led = await InventoryTransaction.findAll({ where: { product_ingredient_id: r.si.id, purchase_order_id: r.po.id } });
+      const shipOk = ship.status === 200 && afterShip === 500 && led.length === 1
+        && Number(led[0].quantity_change) === -1500 && Number(led[0].cost_value) === -19.5;
+      await r.po.update({ status: 'delivered' });
+      const created = await request('POST', `/purchase-orders/${r.po.id}/returns`,
+        { items: [{ purchase_order_item_id: r.item.id, quantity: 1, reason: 'damaged' }] }, fx.raAuth);
+      const retId = created.body?.data?.[0]?.id;
+      const appr = await request('POST', `/seller-orders/${r.po.id}/returns/${retId}/approve`, {}, fx.bgAuth);
+      const afterReturn = await stockOf(r.si.id);
+      if (!shipOk || appr.status !== 200 || afterReturn !== 1000) {
+        console.log(c.gray(`      (출고 ${ship.status} ${afterShip} 장부 ${led.map((l) => l.quantity_change + '/' + l.cost_value)} · 반품 ${created.status}/${appr.status} ${afterReturn})`));
+        return false;
+      }
+      return true;
+    } finally { await teardown(r); }
+  });
+
+  test('inventory', '다이렉트 출고 단위 환산 (kg/1 상품 ↔ g 재고아이템 2 pack → −2000 g) (P3)', async () => {
+    const fx = await fixture(); if (!fx) { console.log(c.gray('      (건너뜀: 데모 브랜드/매장 픽스처 없음)')); return false; }
+    let r = null;
+    try {
+      r = await setup(fx, { stockUnit: 'g', stockBase: 1000, stockQty: 5000, cost: 20, sellUnit: 'kg', sellBase: 1, qty: 2 });
+      const ship = await request('POST', `/seller-orders/${r.po.id}/ship`, { tracking_info: { carrier: 'HC' } }, fx.bgAuth);
+      const after = await stockOf(r.si.id);
+      if (ship.status !== 200 || after !== 3000) { console.log(c.gray(`      (출고 ${ship.status} 재고 ${after}, 기대 3000)`)); return false; }
+      return true;
+    } finally { await teardown(r); }
+  });
+
+  test('inventory', '다이렉트 단위 안 맞음 — 출고는 −2 + [unit_mismatch] · 새 연결 400 · 이름만 수정 200 (P4)', async () => {
+    const fx = await fixture(); if (!fx) { console.log(c.gray('      (건너뜀: 데모 브랜드/매장 픽스처 없음)')); return false; }
+    const { InventoryTransaction, ProductIngredient } = require('../models');
+    let r = null;
+    try {
+      r = await setup(fx, { stockUnit: 'g', stockBase: 1, stockQty: 100, cost: 1, sellUnit: 'piece', sellBase: 1, qty: 2 });
+      const ship = await request('POST', `/seller-orders/${r.po.id}/ship`, { tracking_info: { carrier: 'HC' } }, fx.bgAuth);
+      const after = await stockOf(r.si.id);
+      const led = await InventoryTransaction.findOne({ where: { product_ingredient_id: r.si.id, purchase_order_id: r.po.id } });
+      const shipOk = ship.status === 200 && after === 98 && led && /\[unit_mismatch piece↔g\]/.test(led.notes || '');
+      // 이름만 고치는 PUT — 옛 연결은 그대로 저장된다
+      const rename = await request('PUT', `/brand-products/${r.bp.id}`, { name: r.bp.name + ' r', force: true }, fx.bgAuth);
+      // 다른 g 재고아이템으로 새로 연결 — 400
+      r.si2 = await ProductIngredient.create({ owner_user_id: fx.bg.id, name: `[hc] 다이렉트차감 B ${Date.now()}`, unit: 'g',
+        base_quantity: 1, unit_cost: 1, current_stock: 0, min_stock: 0, is_active: true });
+      const relink = await request('PUT', `/brand-products/${r.bp.id}`, { product_ingredient_id: r.si2.id }, fx.bgAuth);
+      const viaStockItem = await request('POST', `/brand-products/${r.bp.id}/stock-item`, { existing_stock_item_id: r.si2.id }, fx.bgAuth);
+      if (!shipOk || rename.status !== 200 || relink.status !== 400 || relink.body?.code !== 'UNIT_INCOMPATIBLE'
+        || viaStockItem.status !== 400 || viaStockItem.body?.code !== 'UNIT_INCOMPATIBLE') {
+        console.log(c.gray(`      (출고 ${ship.status} ${after} ${led && led.notes} · 이름 ${rename.status} · 연결 ${relink.status} ${relink.body?.code} · stock-item ${viaStockItem.status} ${viaStockItem.body?.code})`));
+        return false;
+      }
+      return true;
+    } finally { await teardown(r); }
   });
 }

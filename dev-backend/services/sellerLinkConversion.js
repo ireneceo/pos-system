@@ -203,16 +203,30 @@ function deriveLinkConversion({ raw, stock, sellerProduct }) {
   if (raw !== undefined && raw !== null && raw !== '' && Number.isFinite(n) && n > 0) {
     return Math.min(Math.round(n * 10000) / 10000, MAX_CONVERSION - 1);
   }
-  if (!stock || !sellerProduct) return 1;
+  return linkConversionOf({ stock, sellerProduct }).conv;
+}
+
+/**
+ * 데이터로 정해지는 환산값 + 그 단위쌍이 환산 가능한가.
+ *   새 연결의 기본값(`deriveLinkConversion`)과 재고아이템 다이렉트 상품의 출고·반품 차감
+ *   (`directDeductConversion`)이 **같은 규칙**을 쓰도록 본체를 여기 하나에 둔다(2026-10-22 Fable 판정 D1).
+ *   compatible=false 는 `classifyConversion` 의 H(질량↔부피 · 개수↔질량 · 포장 낱말이 다른 개수) — 값은 1.
+ *   단위를 모르면(한쪽 빈 칸) 판정하지 않는다 — 1 · compatible.
+ */
+function linkConversionOf({ stock, sellerProduct }) {
+  if (!stock || !sellerProduct) return { conv: 1, compatible: true };
   const { classifyConversion, sameUnit } = require('../utils/unitConversionRule');
   const stockUnit = stock.unit || stock.stock_unit || null;
   const sellerUnit = sellerProduct.unit || null;
-  if (!stockUnit || !sellerUnit) return 1;
+  if (!stockUnit || !sellerUnit) return { conv: 1, compatible: true };
   const mode = sellerProduct.order_mode === 'measure' ? 'measure' : 'pack';
   const sellerBase = Number(sellerProduct.base_quantity);
   if (mode === 'pack' && sameUnit(sellerUnit, stockUnit)) {
-    return Number.isFinite(sellerBase) && sellerBase > 0 && sellerBase < MAX_CONVERSION
-      ? Math.round(sellerBase * 10000) / 10000 : 1;
+    return {
+      conv: Number.isFinite(sellerBase) && sellerBase > 0 && sellerBase < MAX_CONVERSION
+        ? Math.round(sellerBase * 10000) / 10000 : 1,
+      compatible: true
+    };
   }
   const verdict = classifyConversion({
     conv: 1,
@@ -224,11 +238,23 @@ function deriveLinkConversion({ raw, stock, sellerProduct }) {
     stock_package_unit: stock.package_unit,
     stock_package_quantity: stock.package_quantity
   });
-  return verdict.kind === 'D' && verdict.want > 0 ? verdict.want : 1;
+  if (verdict.kind === 'D' && verdict.want > 0) return { conv: verdict.want, compatible: true };
+  return { conv: 1, compatible: verdict.kind !== 'H' };
+}
+
+/**
+ * 재고아이템 다이렉트 상품(프로덕트 = 재고아이템) 1 주문단위가 재고아이템 취급단위로 몇인가.
+ *   출고 = 주문 수량 × conv 를 빼고, 반품 = 같은 conv 로 되돌린다 — 구매자 입고 환산과 같은 식.
+ *   (예: 상품 500 g/pack ↔ 재고아이템 g → 500 · 상품 kg/1 ↔ g → 1000 · pack/1 ↔ pack → 1)
+ * @param {{stock: object, sellerProduct: object}} o  재고아이템 행 · 판매 상품(브랜드 프로덕트) 행
+ * @returns {{conv:number, compatible:boolean}}
+ */
+function directDeductConversion({ stock, sellerProduct }) {
+  return linkConversionOf({ stock, sellerProduct });
 }
 
 module.exports = {
   parseConversion, propagateToOpenPoLines, buildConfirmationFields, resolveUnitsForConfirmation,
-  conversionStatusFor, deriveLinkConversion,
+  conversionStatusFor, deriveLinkConversion, directDeductConversion,
   ConversionError, MAX_CONVERSION, SELLER_MODEL_BY_TYPE
 };
