@@ -27,6 +27,7 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import { useStore } from '../../contexts/StoreContext';
 import { formatDate } from '../../utils/dateFormat';
 import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
+import { ownerSupplierActingRid, withOwnerSupplierScope } from '../../utils/ownerPoScope';
 
 export type SourceKey = 'own' | 'brand_shared' | 'owner_shared' | 'contract' | 'brand_parent' | 'foodcourt_parent' | 'external';
 interface Row {
@@ -201,7 +202,12 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
   const [shareBlocked, setShareBlocked] = useState<string | null>(null);
 
   const role = user?.role;
-  const restaurantId = (user as any)?.restaurantId || (user as any)?.restaurant_id;
+  // 오너가 공급업체 화면에서 소유 매장을 골랐으면 그 매장 자격으로 본다(2026-10-22 §3-E) — 서버 주소에 전환 값을 붙인다.
+  const actingRid = ownerSupplierActingRid(role);
+  const restaurantId = actingRid || (user as any)?.restaurantId || (user as any)?.restaurant_id;
+  const S = useCallback((url: string) => withOwnerSupplierScope(url, role), [role]);
+  const [promoting, setPromoting] = useState<Row | null>(null);
+  const [promoteSaving, setPromoteSaving] = useState(false);
   const brandId = (user as any)?.brandId || (user as any)?.brand_id;
   const foodcourtId = (user as any)?.foodcourtId || (user as any)?.foodcourt_id;
 
@@ -236,11 +242,8 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
           if (s.supplier_company_id) return; // 외부(DIRECT)로 이관·링크된 레거시는 external 카드로 뜨므로 중복 숨김
           list.push({ key: `s-${s.id}`, id: s.id, name: s.name, source: 'own', contact: s.contact_name, email: s.email, phone: s.phone, raw: s });
         });
-        (own.data?.brand_suppliers || []).forEach((s: any) => {
-          if (!enabled.has('brand_shared')) return;
-          if (s.supplier_company_id) return; // 외부 업체로 이어진 옛 브랜드 행 — 매장은 공유받은 사본을 쓴다(2026-09-24 ⑥, 중복 숨김)
-          list.push({ key: `bs-${s.id}`, id: s.id, name: s.name, source: 'brand_shared', contact: s.contact_name, email: s.email, phone: s.phone, raw: s });
-        });
+        // 옛 방식(suppliers) 브랜드 행 «BRAND SHARED» 카드는 뺐다(2026-10-22 Fable 설계 §3-G · Irene 컨펌 ⑤ — 운영 0건 실측).
+        //   브랜드 → 매장 연동은 끊겼다(§H-2 복사본). 브랜드가 준 업체는 매장 소유 사본으로 아래 외부 업체 목록에 나온다.
       } else if ((role === 'Brand General' || role === 'Brand Manager') && brandId) {
         if (enabled.has('own')) {
           const own = await fetch(`/api/brands/${brandId}/suppliers`, auth).then(r => r.json()).catch(() => ({}));
@@ -260,7 +263,7 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
 
       // 소속 매장 없는 오너는 계약 라우트를 쓰지 않는다(서버가 403) — 부르지 않는다
       if (enabled.has('contract') && !(role === 'Restaurant Owner' && !restaurantId)) {
-        const contracts = await fetch(`/api/supplier-contracts?status=active`, auth).then(r => r.json()).catch(() => ({}));
+        const contracts = await fetch(S(`/api/supplier-contracts?status=active`), auth).then(r => r.json()).catch(() => ({}));
         (contracts.data || []).forEach((c: any) => {
           const sc = c.supplierCompany;
           if (!sc) return;
@@ -271,7 +274,7 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
       // 2026-06-22 (Irene): 내가 등록한 외부공급업체(supplier_companies) — Direct 탭에 노출.
       // id = supplier_company id → 카드 클릭 시 프로필(/pos/suppliers/directory/:id)에서 상품(Catalog) 등록.
       if (enabled.has('external') || enabled.has('brand_shared') || enabled.has('owner_shared')) {
-        const ext = await fetch(`/api/external-suppliers`, auth).then(r => r.json()).catch(() => ({}));
+        const ext = await fetch(S(`/api/external-suppliers`), auth).then(r => r.json()).catch(() => ({}));
         (ext.data || []).forEach((s: any) => {
           // scope='owner' → 오너가 등록해 소유 매장들이 같이 쓰는 업체(보기·발주·끄기만, 2026-09-24 §H-3). 그 밖은 우리 업체.
           const src: SourceKey = s.scope === 'owner' ? 'owner_shared' : s.scope === 'brand' ? 'brand_shared' : 'external';
@@ -301,7 +304,7 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [user, enabled, role, restaurantId, brandId, foodcourtId]);
+  }, [user, enabled, role, restaurantId, brandId, foodcourtId, S]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -310,7 +313,7 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
     setBridging(r.id);
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/external-suppliers/from-legacy/${r.id}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(S(`/api/external-suppliers/from-legacy/${r.id}`), { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       const j = await res.json().catch(() => null);
       if (res.ok && j?.success && j.data?.supplier_company_id) {
         navigate(`/pos/suppliers/directory/${j.data.supplier_company_id}`);
@@ -329,7 +332,7 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
     setExtRegSaving(true); setExtRegError(null);
     try {
       const token = getAuthToken();
-      const res = await fetch('/api/external-suppliers', {
+      const res = await fetch(S('/api/external-suppliers'), {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name, contact_person: extReg.contact_person || undefined, phone: extReg.phone || undefined, email: extReg.email || undefined,
           // 배송 조건(무료배송 기준·그 미만 고정 배송비) — 가입 공급업체·브랜드·푸드코트와 같은 칸, 발주 총액 계산이 그대로 읽는다
@@ -348,7 +351,7 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
 
   const handleDelete = async (r: Row) => {
     // external(Direct)은 외부공급업체 soft-delete, own 은 레거시 삭제 엔드포인트.
-    const url = r.source === 'external' ? `/api/external-suppliers/${r.id}` : ownEndpoint(r.id);
+    const url = r.source === 'external' ? S(`/api/external-suppliers/${r.id}`) : ownEndpoint(r.id);
     if (!url) { setDeleting(null); return; }
     const token = getAuthToken();
     try {
@@ -435,7 +438,7 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
     const next = isOff(r);
     const token = getAuthToken();
     try {
-      const res = await fetch(`/api/external-suppliers/${r.id}/active`, {
+      const res = await fetch(S(`/api/external-suppliers/${r.id}/active`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ is_active: next }),
@@ -451,6 +454,23 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
     } finally {
       setToggling(null);
     }
+  };
+
+  // 매장 업체를 «오너 공통»으로 올리기 (2026-10-22 Fable 설계 §3-B) — 사본이 아니라 같은 업체를 오너의 모든 매장이 같이 쓰게 된다.
+  //   이 매장의 연결·발주·청구서는 그대로. 가입 공급업체·월결제 업체는 서버가 막고 그 사유를 그대로 보여 준다.
+  const handlePromote = async (r: Row) => {
+    setPromoteSaving(true);
+    try {
+      const res = await fetch(S(`/api/external-suppliers/${r.id}/promote-to-owner`), { method: 'POST', headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.success) {
+        setInfoModal({ open: true, title: t('common:error.title', 'Error') as string, message: j?.message || (t('supplier:promote.failed', 'Could not share this supplier to all your restaurants. Please try again.') as string) });
+        return;
+      }
+      fetchAll();
+    } catch {
+      setInfoModal({ open: true, title: t('common:error.title', 'Error') as string, message: t('supplier:promote.failed', 'Could not share this supplier to all your restaurants. Please try again.') as string });
+    } finally { setPromoteSaving(false); setPromoting(null); }
   };
 
   const q = search.trim().toLowerCase();
@@ -577,6 +597,9 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
                     {isBrandRole && (
                       <ActionButton onClick={() => openShare(r)}>{t('supplier:share.button', 'Share to stores')}</ActionButton>
                     )}
+                    {actingRid && (
+                      <ActionButton style={{ flexBasis: '100%' }} onClick={() => setPromoting(r)}>{t('supplier:promote.button', 'Share to all my restaurants')}</ActionButton>
+                    )}
                   </>
                 )}
                 {/* 켜기/끄기는 늘 **자기 줄 전체 폭** — 버튼 2개 카드에 끼우면 «View Products (3)» 가 세 줄로 접혀
@@ -608,6 +631,16 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
         confirmText={t('common:delete', 'Delete') as string}
         cancelText={t('common:cancel', 'Cancel') as string}
         type="danger"
+      />
+
+      <ConfirmModal
+        isOpen={!!promoting}
+        title={t('supplier:promote.title', 'Share to all your restaurants?') as string}
+        message={t('supplier:promote.desc', '{{name}} will be used by all your restaurants, and only you (the owner) will edit it. This restaurant\'s stock item links, orders and invoices stay as they are. Each restaurant can turn it off for itself.', { name: promoting?.name }) as string}
+        onConfirm={() => promoting && !promoteSaving && handlePromote(promoting)}
+        onCancel={() => setPromoting(null)}
+        confirmText={t('supplier:promote.confirm', 'Share') as string}
+        cancelText={t('common:cancel', 'Cancel') as string}
       />
 
       <ConfirmModal

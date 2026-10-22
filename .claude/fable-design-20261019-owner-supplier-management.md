@@ -171,3 +171,9 @@ Irene 09-24 원문 «오너가 공급업체를 같이 관리하면 레스토랑�
 
 - 운영 읽기 1회: `SELECT COUNT(*) FROM suppliers WHERE owner_type='brand' AND supplier_company_id IS NULL` (§3-G 잔재 수). 쓰기 없음.
 - 구현 중 설계와 다른 판단이 필요해지면 즉시 중단하고 이 문서 경로와 사실만 돌려보낸다.
+
+## 10. 게이트 정정 (2026-10-22 · Fable 게이트 `fable-gate-20261022-owner-supplier-management.md`)
+
+- **§3-C 구멍 1개**: «공급업체 4경로 → `inventory`» 로 적었는데, 발주 작성 화면(`NewPurchaseOrderPage.tsx` `fetchCatalog`)의 상품 목록이 `GET /api/supplier-catalog` 다 → `purchasing` 만 가진 직원은 카탈로그가 403 이라 **발주를 만들 수 없었다**(팀원 실호출 ④ 의 «purchasing 만: 업체 403» 이 바로 그 값). 설계 자체의 오류.
+- **정정(게이트에서 Fable 이 직접 적용)**: 공급업체 4경로의 **읽기(GET)** 는 `inventory` 또는 `purchasing` · **쓰기(POST/PUT/DELETE)** 는 `inventory` 만. 분리의 뜻(«발주하는 것» 과 «관리하는 것»)은 그대로 — 관리 = 쓰기. 바뀐 곳: `middleware/buyerScope.js` 직원 분기 · health-check «직원 발주/업체 권한 분리» · 증거 스크립트 ④ · 구조도 표 «보기» 행 · `docs/SUPPLIER_CONTRACT_SYSTEM.md` §H-4. 화면 변경 0(사이드바는 그대로 — Suppliers 메뉴는 `inventory` 만).
+- 알려진 결과: 청구서 화면의 «외부 월정산서 발행» 단추(`ExternalSoaIssueButton`, `GET /api/external-suppliers`)는 이제 `inventory`·`purchasing` 어느 것도 없는 직원(예: `support` 만)에게는 숨는다(403 → 목록 0 → 단추 없음, 오류 아님). 전엔 직원 게이트가 없어 누구나 보였다. 이 사안 범위 밖 — 필요해지면 별건.

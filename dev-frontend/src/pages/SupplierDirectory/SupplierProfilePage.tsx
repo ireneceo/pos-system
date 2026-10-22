@@ -13,6 +13,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { ownerSupplierActingRid, withOwnerSupplierScope } from '../../utils/ownerPoScope';
 import { getAuthToken } from '../../utils/auth';
 import { formatAddress, AppLocale } from '../../utils/formatAddress';
 import { formatCurrency } from '../../utils/currency';
@@ -325,6 +326,10 @@ const SupplierProfilePage: React.FC = () => {
   const { supplierId } = useParams<{ supplierId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  // 오너가 공급업체 화면에서 소유 매장을 골랐으면 이 프로필도 그 매장 자격으로 연다(2026-10-22 §3-E — 범위는 탭 저장값을 이어받는다)
+  const actingRid = ownerSupplierActingRid(user?.role);
+  const scopeRole = user?.role;
+  const S = useCallback((url: string) => withOwnerSupplierScope(url, scopeRole), [scopeRole]);
 
   const locale = (i18n.language?.split('-')[0] as AppLocale) || 'en';
 
@@ -359,7 +364,7 @@ const SupplierProfilePage: React.FC = () => {
     setLoadError(null);
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/supplier-directory/${supplierId}`, {
+      const res = await fetch(S(`/api/supplier-directory/${supplierId}`), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -393,7 +398,7 @@ const SupplierProfilePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [supplierId, t]);
+  }, [supplierId, t, S]);
 
   useEffect(() => {
     fetchProfile();
@@ -426,23 +431,24 @@ const SupplierProfilePage: React.FC = () => {
       return { type: 'foodcourt', name: '' };
     }
     // 소속 매장 없는 오너 = 오너 자기 이름으로 업체를 등록·관리(소유 매장들이 같이 씀, 2026-09-24 §H-3)
-    if (user.role === 'Restaurant Owner' && !user.restaurantId) {
+    if (user.role === 'Restaurant Owner' && !user.restaurantId && !actingRid) {
       return { type: 'owner', name: '' };
     }
     if (user.role === 'Restaurant Admin' || user.role === 'Restaurant Owner' || user.role === 'Staff') {
       return { type: 'restaurant', name: '' };
     }
     return { type: '', name: '' };
-  }, [user]);
+  }, [user, actingRid]);
 
   // 내 entity id (소유 외부공급업체 판별용). RA=restaurantId / BG=brand_id / FG=foodcourt_id
   const myEntityId = useMemo<number | null>(() => {
     if (!user) return null;
     if (user.role === 'Brand General' || user.role === 'Brand Manager') return (user as any).brand_id ?? null;
     if (user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') return (user as any).foodcourt_id ?? null;
+    if (user.role === 'Restaurant Owner' && actingRid) return actingRid;
     if (user.role === 'Restaurant Owner' && !user.restaurantId) return user.id != null ? Number(user.id) : null;
     return user.restaurantId ? Number(user.restaurantId) : null;
-  }, [user]);
+  }, [user, actingRid]);
 
   // "내가 등록한 외부공급업체" 일 때만 상품 등록/수정/삭제 UI 노출. 플랫폼 가입 공급업체 카탈로그는 못 건드림.
   const isOwnedExternal = !!profile && profile.is_system_registered === false
@@ -479,7 +485,7 @@ const SupplierProfilePage: React.FC = () => {
     if (!profile) return;
     setDeliverySaving(true); setDeliveryError(null);
     try {
-      const res = await fetch(`/api/external-suppliers/${profile.id}`, {
+      const res = await fetch(S(`/api/external-suppliers/${profile.id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
         body: JSON.stringify({
@@ -505,7 +511,7 @@ const SupplierProfilePage: React.FC = () => {
     }
     setBillingSaving(true); setBillingError(null);
     try {
-      const res = await fetch(`/api/external-suppliers/${profile.id}`, {
+      const res = await fetch(S(`/api/external-suppliers/${profile.id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
         body: JSON.stringify({ billing: monthly
@@ -541,7 +547,7 @@ const SupplierProfilePage: React.FC = () => {
       const url = editingProduct
         ? `/api/external-suppliers/${profile.id}/products/${editingProduct.id}`
         : `/api/external-suppliers/${profile.id}/products`;
-      const res = await fetch(url, {
+      const res = await fetch(S(url), {
         method: editingProduct ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload)
@@ -557,7 +563,7 @@ const SupplierProfilePage: React.FC = () => {
     if (!profile || !deletingProduct) return;
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/external-suppliers/${profile.id}/products/${deletingProduct.id}`, {
+      const res = await fetch(S(`/api/external-suppliers/${profile.id}/products/${deletingProduct.id}`), {
         method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) { setDeletingProduct(null); fetchProfile(); }
@@ -571,7 +577,7 @@ const SupplierProfilePage: React.FC = () => {
     setRequestSubmitting(true);
     try {
       const token = getAuthToken();
-      const res = await fetch('/api/supplier-contracts', {
+      const res = await fetch(S('/api/supplier-contracts'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

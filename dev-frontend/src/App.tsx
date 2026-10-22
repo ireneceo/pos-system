@@ -1545,7 +1545,7 @@ function App() {
                       } />
 
                       {/* Sprint 3 — Purchase Orders */}
-                      {/* 2026-10-04 Irene «직원 로그인에서 Purchase Order 안 뜬다»: 만들기·대기·원가대조에 Staff 추가. 메뉴는 «Stock Management»(inventory) 권한 직원만 보이고, 서버도 같은 권한을 확인한다(middleware/buyerScope). */}
+                      {/* 2026-10-04 Irene «직원 로그인에서 Purchase Order 안 뜬다»: 만들기·대기·원가대조에 Staff 추가. 메뉴는 «Purchase Orders»(purchasing) 권한 직원만 보이고(10-22 inventory 에서 나눔), 서버도 같은 권한을 확인한다(middleware/buyerScope). */}
                       {/* 오너는 소유 매장을 골라 그 매장 자격으로 발주한다(2026-10-04 Fable 판정 owner-po-on-behalf ① — 9-24 «오너는 만들지 않는다» 대체).
                           발주 주인은 그 매장(그 매장 이력), 오너 제출은 승인 생략. 오너 메뉴 «Purchase Order»(MainLayout, 인쇄 보호파일)는 그대로 여기로 온다. */}
                       <Route path="/pos/purchase-orders" element={

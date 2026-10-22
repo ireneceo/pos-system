@@ -958,3 +958,20 @@ Irene 원문: 「오너가 공급업체를 같이 관리하면 레스토랑마�
 - **화면**: 오너 = `/pos/suppliers`(외부 업체만, 계약·찾기 탭 없음, 카드에 «매장 N곳 중 M곳이 사용») · 발주 목록 «내 매장 전체» 선택(기본)·행에 매장 이름·«내 공급업체» 버튼. 매장 = «오너 등록» 카드(상품 보기·끄기).
   - ⚠ 오너 사이드바 «공급업체» 메뉴는 아직 없다 — 사이드바가 🔒 인쇄 보호 파일(`MainLayout.tsx`)이라 Irene 승인·bless 뒤 한 줄. 그때까지 발주 화면의 «내 공급업체» 버튼으로 들어간다.
 - **검증**: health-check security «오너 공급업체 — 소유 매장만 상속 …» (고장주입: 상속 보기 소유 확인 제거 → ✗).
+
+
+### §H-4. 오너가 소유 매장의 공급업체·가격까지 관리 · «오너 공통으로 올리기» · 직원 발주/업체 권한 분리 (2026-10-22 · Fable 설계 owner-supplier-management · Irene «권고대로» · 개발)
+
+Irene 원문: 「레스토랑 오너가 공급업체랑 공급업체 가격도 관리하게 해줘. 재고아이템이랑 연결하는 건 레스토랑 관리자 몫이고 공급업체랑 상품은 레스토랑오너도 관리해야 해. 발주관리에서 발주하는 거랑 관리하는 걸 권한을 나눠야 하는 것 같아. 그리고 같은 공급업체와 그들의 상품을 레스토랑 오너가 다른 자기 레스토랑에 연결되게 해줘. 브랜드제너럴에 전에 연동되던건 제대로 끊긴 건지 확인하고.」
+설계 원문: `.claude/fable-design-20261019-owner-supplier-management.md`
+
+- **새 실체·새 표·사본 없음.**
+- **오너의 매장 업체 관리 = 매장 전환 문 확장.** `buyerScope.OWNER_ACTING_ROUTES` 에 `/api/external-suppliers*`(GET·POST·PUT·DELETE) · `/api/supplier-contracts*`(GET · 신청 POST · `/:id/terminate`) · `GET /api/supplier-directory*` · `GET /api/supplier-catalog` 추가. «등록자=나» 검사가 `req.buyerEntity` 하나라 전환하면 그 매장 RA 와 똑같이 돈다(코드 0줄). **재고아이템 연결(`/api/ingredients*` · `/api/ingredient-seller-products*` · `/seller-catalog`)은 전환해도 403**(Irene ②).
+- **오너 공통으로 올리기** `POST /api/external-suppliers/:id/promote-to-owner` (오너가 그 매장으로 전환한 상태에서만): 한 트랜잭션 — ① `supplier_companies.registered_by = owner, 오너 users.id`(행 id 유지) ② 오너 계약 1행 active(매장 active 계약 `payment_terms` 복사) ③ 그 매장 계약 행 삭제(모든 status, paranoid — «다시 켜기 = 자기 행 삭제» 와 같은 손). 상품·가격·옵션·연결·발주·청구서·원가 이력은 업체 id 를 가리켜 **옮길 것 0**.
+  - 거부: 가입 공급업체 400 `MEMBER_SUPPLIER_NOT_PROMOTABLE` · 그 매장 계약이 월결제 400 `MONTHLY_BILLING_STORE_ONLY`(Irene 컨펌 ⑥) · 이미 오너 것 400 `ALREADY_SHARED` · 다른 매장 업체 403 · 전환 없음 403 · 같은 브랜드 원본 사본이 이미 오너 공통 409 `ALREADY_PROMOTED_COPY`(`uq_supplier_company_live_copy`, 자동 병합 없음).
+  - 되돌림 버튼 없음(Irene 컨펌 ①) — 필요하면 SA 스크립트(같은 단계 역순).
+- **직원 권한**: 새 키 `purchasing`(Purchase Orders — 발주·내역·수령·결제). `inventory` 는 Stock Items·Inventory·Suppliers·연결. 서버 `requireBuyerRole` 직원 분기: `/api/purchase-orders*` → `purchasing` · 공급업체 4경로(`external-suppliers`·`supplier-contracts`·`supplier-directory`·`supplier-catalog`) **쓰기** → `inventory` · **읽기(GET)** → `inventory` 또는 `purchasing`(발주 작성 화면의 상품 목록이 `GET /api/supplier-catalog` 라 발주만 가진 직원도 봐야 한다 — 2026-10-22 Fable 게이트 정정)(전에는 공급업체 라우트에 직원 게이트가 **없었다**). 키 목록 3곳: `services/userContexts.STAFF_PERMISSION_KEYS` · `StaffPermissionPicker.MENU_GROUPS` · `tests/context-requests.test.js ⑪`. 백필 `scripts/migrate-staff-purchasing-permission.js`(deploy · 멱등 · `--dry-run` · users / user_contexts / 대기 중 user_context_requests 에 inventory 있으면 purchasing 추가).
+- **화면**: 오너 `/pos/suppliers` 위 범위 선택 «내 공통 업체(전 매장)» | 소유 매장 — 매장을 고르면 RA 와 같은 5탭, 저장값 `utils/ownerPoScope` `ownerSupplierScope`(매장을 고르면 발주 값도 맞춤). 매장 범위 외부 업체 카드에 «Share to all my restaurants». 오너 사이드바 Suppliers · 직원 발주 메뉴 `purchasing` · 푸드코트 매니저 발주 메뉴 `operations`(🔒 MainLayout — Irene 컨펌 ④).
+- **브랜드 → 매장 연동 끊김 (재확인)**: 코드 브랜드 상속 분기 0 · 운영(10-19 읽기) 브랜드 등록 업체 29곳에 매장 연결·발주·청구서 0, 매장 계약 terminated 3(09-21 전환 전 끈 흔적). 보기 잔재 1종 = 옛 방식 `suppliers` 브랜드 행 «BRAND SHARED» 카드 — 운영 0건(10-22 읽기) → `AllSuppliersView` 매장 분기에서 카드 제거(Irene 컨펌 ⑤). 라우트 `GET /restaurants/:id/all-suppliers` 의 `brand_suppliers` 칸·`SourceKey 'brand_shared'` 는 남김(외부 업체 scope 'brand' 표시가 같이 씀).
+- **검증**: health-check security «오너 발주 보기 …공급업체 전환 200 · 재료 연결 전환 403» · «오너 공통으로 올리기 …» · «직원 발주/업체 권한 분리 …» · «Staff 발주 API — purchasing …» (고장주입 3: 전환 허용 제거 · 매장 등록 검사 제거 · 직원 업체 문 제거 → 각 ✗).
+

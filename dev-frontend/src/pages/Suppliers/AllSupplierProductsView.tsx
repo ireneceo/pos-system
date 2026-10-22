@@ -17,6 +17,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { withOwnerSupplierScope } from '../../utils/ownerPoScope';
 import { getAuthToken } from '../../utils/auth';
 import { formatCurrency } from '../../utils/currency';
 import { formatQuantity, sellerOrderUnitOf, sellerSpecLabel, defaultLinkConversion } from '../../utils/unitConversion';
@@ -72,6 +73,10 @@ export default function AllSupplierProductsView() {
     return null;
   }, [user]);
   const buyerApiBase = buyer ? `/api/${buyer.kind}/${buyer.id}` : null;
+  // 오너가 소유 매장을 골랐으면 그 매장 자격으로 카탈로그·업체 상품을 본다(2026-10-22 §3-E).
+  //   «내 아이템에 추가»(재고아이템 연결)는 매장 관리자 몫이라 오너에겐 그대로 숨긴다(buyer 없음 — 서버도 막는다).
+  const scopeRole = user?.role;
+  const S = useCallback((url: string) => withOwnerSupplierScope(url, scopeRole), [scopeRole]);
 
   const [rows, setRows] = useState<CatalogRow[]>([]);
   const [meta, setMeta] = useState<{ total: number; shown: number; truncated: boolean } | null>(null);
@@ -99,7 +104,7 @@ export default function AllSupplierProductsView() {
       // 서버 supplier_id 는 공급업체만 거른다 — 브랜드·푸드코트 판매자는 화면에서 거른다
       if (supplierFilter.startsWith('supplier:')) qs.set('supplier_id', supplierFilter.split(':')[1]);
       if (categoryFilter !== 'all') qs.set('category_id', categoryFilter);
-      const res = await fetch(`/api/supplier-catalog?${qs.toString()}`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      const res = await fetch(S(`/api/supplier-catalog?${qs.toString()}`), { headers: { Authorization: `Bearer ${getAuthToken()}` } });
       const j = await res.json().catch(() => null);
       if (res.ok && j?.success) {
         setRows(Array.isArray(j.data) ? j.data : []);
@@ -111,17 +116,17 @@ export default function AllSupplierProductsView() {
         }
       } else { setRows([]); setMeta(null); }
     } catch { setRows([]); } finally { setLoading(false); }
-  }, [debounced, supplierFilter, categoryFilter]);
+  }, [debounced, supplierFilter, categoryFilter, S]);
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
   const fetchMyExt = useCallback(async () => {
     try {
-      const res = await fetch('/api/external-suppliers', { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      const res = await fetch(S('/api/external-suppliers'), { headers: { Authorization: `Bearer ${getAuthToken()}` } });
       const j = await res.json().catch(() => null);
       // 등록자 본인 것만(오너에게서 받은 업체는 수정 못 한다 — scope 'owner')
       setMyExt(res.ok && Array.isArray(j?.data) ? j.data.filter((s: any) => s.scope !== 'owner').map((s: any) => ({ id: s.id, name: s.name })) : []);
     } catch { setMyExt([]); }
-  }, []);
+  }, [S]);
   useEffect(() => { fetchMyExt(); }, [fetchMyExt]);
 
   // 내 아이템(연결 표시 + «기존 아이템에 연결» 후보) — 발주 화면 fetchMine 과 같은 주소
@@ -191,7 +196,7 @@ export default function AllSupplierProductsView() {
     setProductError(null);
     // 카탈로그 줄엔 리드타임이 없다 — 저장된 값 그대로 열려고 그 업체 상품을 다시 읽는다
     try {
-      const res = await fetch(`/api/external-suppliers/${r.supplier.id}/products`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      const res = await fetch(S(`/api/external-suppliers/${r.supplier.id}/products`), { headers: { Authorization: `Bearer ${getAuthToken()}` } });
       const j = await res.json().catch(() => null);
       const full = Array.isArray(j?.data) ? j.data.find((p: any) => p.id === r.id) : null;
       setProductForm(extProductFormFrom(full || r));
@@ -206,8 +211,8 @@ export default function AllSupplierProductsView() {
     setProductSaving(true); setProductError(null);
     try {
       const url = productModal.mode === 'edit'
-        ? `/api/external-suppliers/${productModal.supplierId}/products/${productModal.productId}`
-        : `/api/external-suppliers/${productModal.supplierId}/products`;
+        ? S(`/api/external-suppliers/${productModal.supplierId}/products/${productModal.productId}`)
+        : S(`/api/external-suppliers/${productModal.supplierId}/products`);
       const res = await fetch(url, {
         method: productModal.mode === 'edit' ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },

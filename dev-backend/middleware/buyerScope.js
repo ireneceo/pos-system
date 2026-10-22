@@ -4,7 +4,7 @@
  * Resolves the buyer's (entity_type, entity_id) pair from the authenticated user's role:
  *   - Restaurant Admin / Staff → ('restaurant', user.restaurant_id)
  *   - Restaurant Owner       → ('restaurant', user.restaurant_id) if assigned
- *        + 소유 매장 «으로 행동» 전환(?entity_type=restaurant&entity_id=N) — ownership 확인, OWNER_ACTING_ROUTES 만(보기·작성·제출·취소)
+ *        + 소유 매장 «으로 행동» 전환(?entity_type=restaurant&entity_id=N) — ownership 확인, OWNER_ACTING_ROUTES 만(발주 보기·작성·제출·취소 + 공급업체 관리 — 재고아이템 연결은 제외)
  *        + 소속 매장 없는 오너: 외부 공급업체 라우트 → ('owner', user.id) · 발주 목록 → 소유 매장 전체(§H-3)
  *   - Brand General / Manager → ('brand', user.brand_id)
  *        + Brand General 은 **자기가 소유한 다른 브랜드**로 전환 가능(?entity_type=brand&entity_id=N).
@@ -64,6 +64,18 @@ const OWNER_ACTING_ROUTES = [
   // 2026-10-15 buyer-po-edit §4-3 — 오너가 소유 매장 발주를 고치면 승인 생략(utils/poOwnerApproval.applyBuyerAmendGate).
   //   후보 목록 GET /:id/amendable-products 는 위 GET 정규식이 이미 덮는다.
   ['POST',   /^\/api\/purchase-orders\/\d+\/amend$/],
+  // 2026-10-22 Fable 설계 owner-supplier-management §3-A · Irene «권고대로» — 오너가 소유 매장의 공급업체·상품·가격·계약을 관리.
+  //   «등록자=나» 검사가 req.buyerEntity 하나라 전환하면 그 매장 RA 와 똑같이 돈다. 오너 공통으로 올리기(promote-to-owner)도 이 문으로.
+  //   재고아이템 연결(/api/ingredients* · /api/ingredient-seller-products* · /seller-catalog)은 넣지 않는다 — 매장 관리자 몫(Irene ②).
+  ['GET',    /^\/api\/external-suppliers(\/|$)/],
+  ['POST',   /^\/api\/external-suppliers(\/|$)/],
+  ['PUT',    /^\/api\/external-suppliers\/\d+(\/|$)/],
+  ['DELETE', /^\/api\/external-suppliers\/\d+(\/|$)/],
+  ['GET',    /^\/api\/supplier-contracts(\/|$)/],
+  ['POST',   /^\/api\/supplier-contracts$/],                          // 가입 공급업체 계약 신청
+  ['POST',   /^\/api\/supplier-contracts\/\d+\/terminate$/],          // 계약 종료
+  ['GET',    /^\/api\/supplier-directory(\/|$)/],                       // 찾기·프로필
+  ['GET',    /^\/api\/supplier-catalog$/],                             // 상품 전체 보기(읽기)
 ];
 
 function isOwnerActingRoute(method, originalUrl) {
@@ -97,12 +109,26 @@ async function requireBuyerRole(req, res, next) {
     });
   }
 
-  // 직원(Staff)의 발주 = «Stock Management»(inventory) 권한 직원만 (2026-10-04 Irene «직원 로그인에서 Purchase Order 안 뜬다»).
-  //   화면 메뉴가 같은 권한으로 보이고 숨는다(MainLayout hasMenuPermission('inventory')). 서버가 더 넓으면 안 된다.
-  //   발주 주소(/api/purchase-orders*)만 — 이 가드는 재료·공급업체 라우터에도 걸려 있어 넓히면 레시피 편집 직원이 막힌다.
-  if (user.role === 'Staff' && /^\/api\/purchase-orders(\/|\?|$)/.test(req.originalUrl || '')
-      && !(Array.isArray(user.permissions) && user.permissions.includes('inventory'))) {
-    return res.status(403).json({ success: false, message: 'Stock Management permission required for purchase orders' });
+  // 직원(Staff) 권한 — 발주와 업체 관리를 나눈다 (2026-10-22 Fable 설계 owner-supplier-management §3-C · Irene «권고대로»).
+  //   발주(/api/purchase-orders*) = «Purchase Orders»(purchasing) · 공급업체·계약·찾기·카탈로그 **쓰기** = «Stock Management»(inventory).
+  //   공급업체 4경로의 **읽기(GET)** 는 purchasing 도 통과한다 — 발주 작성 화면(NewPurchaseOrderPage)의 상품 목록이 GET /api/supplier-catalog 라
+  //   발주만 가진 직원이 카탈로그를 못 보면 발주를 못 만든다(2026-10-22 Fable 게이트 정정 — 설계 §3-C «카탈로그=inventory» 의 구멍).
+  //   (10-04 엔 발주가 inventory 였다 — 그 직원들은 마이그 migrate-staff-purchasing-permission 이 purchasing 을 더해 그대로 된다.)
+  //   화면 메뉴가 같은 키로 보이고 숨는다(MainLayout hasMenuPermission). 서버가 더 넓으면 안 된다.
+  //   재료 라우트(/api/ingredients* · /seller-catalog)는 넣지 않는다 — 이 가드가 재료 라우터에도 걸려 있어 넓히면 레시피 편집 직원이 막힌다.
+  if (user.role === 'Staff') {
+    const url = req.originalUrl || '';
+    const perms = Array.isArray(user.permissions) ? user.permissions : [];
+    if (/^\/api\/purchase-orders(\/|\?|$)/.test(url) && !perms.includes('purchasing')) {
+      return res.status(403).json({ success: false, message: 'Purchase Orders permission required' });
+    }
+    if (/^\/api\/(external-suppliers|supplier-contracts|supplier-directory|supplier-catalog)(\/|\?|$)/.test(url)) {
+      const canRead = perms.includes('inventory') || perms.includes('purchasing');
+      const canWrite = perms.includes('inventory');
+      if (req.method === 'GET' ? !canRead : !canWrite) {
+        return res.status(403).json({ success: false, message: 'Stock Management permission required for suppliers' });
+      }
+    }
   }
 
   // Restaurant Owner — 소유 매장 «으로 행동» (2026-10-04 Fable 판정 owner-po-on-behalf ① — 9-24 §2-A «오너는 만들지 않는다» 대체).
@@ -114,7 +140,7 @@ async function requireBuyerRole(req, res, next) {
     const wanted = parseInt(req.query.entity_id, 10);
     if (Number.isFinite(wanted)) {
       if (!isOwnerActingRoute(req.method, req.originalUrl || '')) {
-        return res.status(403).json({ success: false, message: 'Owners can view, create, submit and cancel purchase orders of their restaurants only' });
+        return res.status(403).json({ success: false, message: 'Owners can manage purchase orders and suppliers of their restaurants only (stock item links stay with the restaurant)' });
       }
       try {
         const { RestaurantManager } = require('../models');

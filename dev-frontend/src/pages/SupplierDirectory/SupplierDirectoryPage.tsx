@@ -6,6 +6,8 @@ import { Container, Header, Title, Content } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
+import { withOwnerSupplierScope } from '../../utils/ownerPoScope';
 import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
 import Modal, { ModalButton, FormRow, FormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
 import AddressFields from '../../components/Form/AddressFields';
@@ -238,6 +240,10 @@ function initialsOf(name: string | null | undefined): string {
 
 const SupplierDirectoryPage: React.FC = () => {
   const { t } = useTranslation(['supplierDirectory', 'common']);
+  // 오너가 공급업체 화면에서 소유 매장을 골랐으면 그 매장 자격으로 부른다(2026-10-22 Fable 설계 owner-supplier-management §3-E)
+  const { user: scopeUser } = useAuth();
+  const scopeRole = scopeUser?.role;
+  const S = useCallback((url: string) => withOwnerSupplierScope(url, scopeRole), [scopeRole]);
   const navigate = useNavigate();
 
   const [rows, setRows] = useState<DirectoryRow[]>([]);
@@ -263,7 +269,7 @@ const SupplierDirectoryPage: React.FC = () => {
       params.set('page', String(page));
       params.set('limit', '24');
 
-      const res = await fetch(`/api/supplier-directory?${params.toString()}`, {
+      const res = await fetch(S(`/api/supplier-directory?${params.toString()}`), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data: DirectoryResponse = await res.json();
@@ -288,7 +294,7 @@ const SupplierDirectoryPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, categoryFilter, countryFilter, page]);
+  }, [search, categoryFilter, countryFilter, page, S]);
 
   useEffect(() => {
     fetchDirectory();
@@ -353,7 +359,7 @@ const SupplierDirectoryPage: React.FC = () => {
     setExternalError(null);
     try {
       const token = getAuthToken();
-      const res = await fetch('/api/external-suppliers', {
+      const res = await fetch(S('/api/external-suppliers'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({

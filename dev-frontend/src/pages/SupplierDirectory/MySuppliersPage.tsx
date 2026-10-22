@@ -13,6 +13,8 @@ import {
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
+import { withOwnerSupplierScope } from '../../utils/ownerPoScope';
 import { formatDate } from '../../utils/timezone';
 import { getCurrencySymbol } from '../../utils/currency';
 
@@ -153,6 +155,10 @@ function formatPaymentTerms(t: PaymentTerms | null | undefined): string {
 
 const MySuppliersPage: React.FC = () => {
   const { t } = useTranslation(['supplierDirectory', 'common']);
+  // 오너가 공급업체 화면에서 소유 매장을 골랐으면 그 매장 자격으로 부른다(2026-10-22 Fable 설계 owner-supplier-management §3-E)
+  const { user: scopeUser } = useAuth();
+  const scopeRole = scopeUser?.role;
+  const S = useCallback((url: string) => withOwnerSupplierScope(url, scopeRole), [scopeRole]);
   const navigate = useNavigate();
   const { contractId: routeContractId } = useParams<{ contractId?: string }>();
 
@@ -181,7 +187,7 @@ const MySuppliersPage: React.FC = () => {
       if (statusFilter !== 'all') params.set('status', statusFilter);
 
       const url = `/api/supplier-contracts${params.toString() ? `?${params.toString()}` : ''}`;
-      const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch(S(url), { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       if (!res.ok || !data.success) {
         setRows([]);
@@ -197,7 +203,7 @@ const MySuppliersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, S]);
 
   useEffect(() => { fetchList(); }, [fetchList]);
 
@@ -208,7 +214,7 @@ const MySuppliersPage: React.FC = () => {
     setDetailLoading(true);
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/supplier-contracts/${id}`, {
+      const res = await fetch(S(`/api/supplier-contracts/${id}`), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -223,7 +229,7 @@ const MySuppliersPage: React.FC = () => {
     } finally {
       setDetailLoading(false);
     }
-  }, [t]);
+  }, [t, S]);
 
   // Auto-open detail when accessed via /pos/suppliers/contracts/:contractId
   useEffect(() => {
@@ -279,7 +285,7 @@ const MySuppliersPage: React.FC = () => {
     setTerminateSubmitting(true);
     try {
       const token = getAuthToken();
-      const res = await fetch(`/api/supplier-contracts/${terminateTarget.id}/terminate`, {
+      const res = await fetch(S(`/api/supplier-contracts/${terminateTarget.id}/terminate`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

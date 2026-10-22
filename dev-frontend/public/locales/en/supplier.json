@@ -495,5 +495,18 @@
     "itemName": "Item name",
     "newPreview": "New item: {{spec}} · price {{price}} per package — same as the supplier product",
     "myItem": "My item"
+  },
+  "ownerScope": {
+    "label": "Manage suppliers for",
+    "common": "My shared suppliers (all my restaurants)",
+    "commonHint": "Suppliers here are used by all your restaurants. Each restaurant can turn one off for itself.",
+    "storeHint": "You are managing this restaurant's suppliers, products, prices and contracts. Linking to stock items stays with the restaurant manager."
+  },
+  "promote": {
+    "button": "Share to all my restaurants",
+    "title": "Share to all your restaurants?",
+    "desc": "{{name}} will be used by all your restaurants, and only you (the owner) will edit it. This restaurant's stock item links, orders and invoices stay as they are. Each restaurant can turn it off for itself.",
+    "confirm": "Share",
+    "failed": "Could not share this supplier to all your restaurants. Please try again."
   }
 }

@@ -282,6 +282,12 @@ if (req.user.role === 'Restaurant Owner') {
 - ✅ 레스토랑별 발주 설정 (`operation_settings.requirePoOwnerApproval`, 오너 연결 시 기본 ON)
 - 상세 설계·구현: `docs/PURCHASE_ORDER_SYSTEM.md §G`, 메모리 [[reference_po_owner_approval]]
 
+### Phase 4: 오너 공급업체·가격 관리 — ✅ 개발 완료 (2026-10-22 · 미배포)
+- ✅ 공급업체 화면 범위 선택(«내 공통 업체» | 소유 매장) — 매장을 고르면 그 매장 업체·상품·가격·계약·찾기 (재고아이템 연결은 매장 관리자만)
+- ✅ 매장 업체를 «오너 공통으로 올리기»(복사 없음) · 오너 사이드바 Suppliers
+- ✅ 오너 참여 범위: 발주 작성·제출·취소·수정·인보이스·대조·승인·청구서 결제 · 업체 관리 (수령·재료 연결은 매장)
+- 상세: `docs/SUPPLIER_CONTRACT_SYSTEM.md §H-4`
+
 ---
 
 ## 검증 방법

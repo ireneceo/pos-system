@@ -9,7 +9,7 @@
  *   - Find:          **솔루션 가입** supplier 검색·계약신청 (외부업체는 여기 안 나온다)
  *   - All Products:  모든 공급처의 상품을 한 목록으로 — 검색·필터·상품 추가·내 아이템에 추가 (2026-10-15 Fable D5, AllSupplierProductsView)
  */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { Container, Content } from '../../components/UI';
@@ -21,6 +21,9 @@ import AllSupplierProductsView from './AllSupplierProductsView';
 import MySuppliersPage from '../SupplierDirectory/MySuppliersPage';
 import SupplierDirectoryPage from '../SupplierDirectory/SupplierDirectoryPage';
 import { useAuth } from '../../contexts/AuthContext';
+import SearchableSelect from '../../components/Common/SearchableSelect';
+import { getAuthToken } from '../../utils/auth';
+import { getOwnerSupplierScope, setOwnerSupplierScope, OWNER_SUPPLIER_COMMON } from '../../utils/ownerPoScope';
 
 type TabKey = 'all' | 'products' | 'direct' | 'contracts' | 'find';
 
@@ -39,18 +42,66 @@ const HostShell = styled.div`
   & h1 { display: none; }
 `;
 
+const ScopeBar = styled.div`
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+  & > span { font-size: 13px; font-weight: 600; color: #4B5563; }
+`;
+const ScopeHint = styled.div`font-size: 12px; color: #4B5563; flex-basis: 100%;`;
+
 export default function UnifiedSuppliersPage() {
   const { t } = useTranslation(['supplier', 'common']);
   const [tab, setTab] = useTabParam<TabKey>('all');
   const { user } = useAuth();
   // 소속 매장 없는 오너 — 자기 이름으로 등록한 외부 업체만 관리한다(소유 매장들이 같이 씀, §H-3).
   //   계약·가입 공급업체 찾기는 매장이 하는 일이라 오너 화면에는 두지 않는다(서버도 오너에게 그 라우트를 열지 않는다).
-  const isOwner = user?.role === 'Restaurant Owner' && !(user as any)?.restaurantId && !(user as any)?.restaurant_id;
+  const isOwnerAccount = user?.role === 'Restaurant Owner' && !(user as any)?.restaurantId && !(user as any)?.restaurant_id;
+  // 2026-10-22 Fable 설계 owner-supplier-management §3-E — 오너는 범위를 고른다: «내 공통 업체» | 소유 매장 하나.
+  //   매장을 고르면 그 매장 관리자와 같은 5탭(서버가 그 매장으로 전환해 받는다). 재고아이템 연결은 서버가 계속 막는다.
+  const [ownerRestaurants, setOwnerRestaurants] = useState<Array<{ id: number; name: string }>>([]);
+  const [scope, setScopeState] = useState<number>(() => (isOwnerAccount ? getOwnerSupplierScope() : OWNER_SUPPLIER_COMMON));
+  useEffect(() => {
+    if (!isOwnerAccount) return;
+    let alive = true;
+    fetch('/api/owner/restaurants', { headers: { Authorization: `Bearer ${getAuthToken()}` } })
+      .then(r => r.json())
+      .then(j => {
+        if (!alive) return;
+        const list = (Array.isArray(j?.data) ? j.data : []).map((r: any) => ({ id: Number(r.id), name: String(r.name) }));
+        setOwnerRestaurants(list);
+        const keep = getOwnerSupplierScope();
+        if (keep && !list.some((r: { id: number }) => r.id === keep)) { setOwnerSupplierScope(OWNER_SUPPLIER_COMMON); setScopeState(OWNER_SUPPLIER_COMMON); }
+      })
+      .catch(() => { if (alive) setOwnerRestaurants([]); });
+    return () => { alive = false; };
+  }, [isOwnerAccount]);
+  const changeScope = (v: number) => { setOwnerSupplierScope(v); setScopeState(v > 0 ? v : OWNER_SUPPLIER_COMMON); };
+  // 공통 범위만 오너 전용 화면(외부 업체 하나) — 매장 범위는 매장 관리자 화면 그대로
+  const isOwner = isOwnerAccount && scope === OWNER_SUPPLIER_COMMON;
 
   return (
     <Container>
       <PageHeader title={t('supplier:nav.suppliers', 'Suppliers') as string} />
       <Content>
+        {isOwnerAccount && (
+          <ScopeBar>
+            <span>{t('supplier:ownerScope.label', 'Manage suppliers for')}</span>
+            <div style={{ width: 300, maxWidth: '100%' }}>
+              <SearchableSelect
+                options={[
+                  { value: OWNER_SUPPLIER_COMMON, label: t('supplier:ownerScope.common', 'My shared suppliers (all my restaurants)') as string },
+                  ...ownerRestaurants.map(r => ({ value: r.id, label: r.name })),
+                ]}
+                value={scope}
+                onChange={(v) => { const n = Number(v); changeScope(Number.isFinite(n) ? n : OWNER_SUPPLIER_COMMON); }}
+              />
+            </div>
+            <ScopeHint>
+              {isOwner
+                ? t('supplier:ownerScope.commonHint', 'Suppliers here are used by all your restaurants. Each restaurant can turn one off for itself.')
+                : t('supplier:ownerScope.storeHint', 'You are managing this restaurant\'s suppliers, products, prices and contracts. Linking to stock items stays with the restaurant manager.')}
+            </ScopeHint>
+          </ScopeBar>
+        )}
         {!isOwner && <Tabs>
           <Tab active={tab === 'all'} onClick={() => setTab('all')}>
             {t('supplier:nav.allSuppliers', 'All Suppliers')}
@@ -70,7 +121,7 @@ export default function UnifiedSuppliersPage() {
             {t('supplier:nav.findSuppliers', 'Find Suppliers')}
           </Tab>
         </Tabs>}
-        <HostShell>
+        <HostShell key={`scope-${scope}`}>
           {/* All / Direct — AllSuppliersView 단일 list (suppliers-direct-mount class 로 HostShell padding 무력화 제외)
               Contracts / Find — 자식 페이지 그대로 (Container/Content padding 무력화 적용) */}
           {(tab === 'all' || isOwner) && <div className="suppliers-direct-mount"><AllSuppliersView /></div>}

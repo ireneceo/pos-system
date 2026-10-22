@@ -15,7 +15,9 @@ import { useTranslation } from 'react-i18next';
 // MainLayout에서 항상 표시되므로 여기에 포함하지 않음
 export const MENU_GROUPS: { key: string; label: string; alwaysOn: boolean }[] = [
   { key: 'menu_management', label: 'Products (Menu / Categories / Options / Recipe)', alwaysOn: false },
-  { key: 'inventory', label: 'Stock Management (Suppliers / Inventory / Purchase Orders)', alwaysOn: false },
+  // 2026-10-22 발주와 업체 관리를 나눔(Fable 설계 owner-supplier-management §3-C) — 서버 middleware/buyerScope 가 같은 키를 본다.
+  { key: 'inventory', label: 'Stock Management (Stock Items / Inventory / Suppliers)', alwaysOn: false },
+  { key: 'purchasing', label: 'Purchase Orders (Order / History / Receive / Pay)', alwaysOn: false },
   { key: 'marketing', label: 'Marketing (Customers / Coupons)', alwaysOn: false },
   { key: 'reports', label: 'Analytics (Reports / Activity History)', alwaysOn: false },
   { key: 'support', label: 'Communication (Notices / Manuals / Inquiries)', alwaysOn: false },

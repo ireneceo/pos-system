@@ -153,9 +153,9 @@
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Purple POS · 구조 지도 · 2026-09-04 → 09-17 → 09-30 보완</div>
+  <div class="eyebrow">Purple POS · 구조 지도 · 2026-09-04 → 09-17 → 09-30 보완 → 10-22</div>
   <h1>재료·레시피 연결고리</h1>
-  <p class="lede">메뉴 · 프로덕트 · 레시피 · 재고아이템 · 공급업체 상품이 실제로 어느 컬럼으로 이어지고, 어느 방향으로 동기화되는지. 09-30 보완에서 <b>판매자 주문 추가</b>와 <b>청구·정산</b> 흐름을 더했습니다. 화살표와 컬럼명은 전부 코드·스키마 실측입니다.</p>
+  <p class="lede">메뉴 · 프로덕트 · 레시피 · 재고아이템 · 공급업체 상품이 실제로 어느 컬럼으로 이어지고, 어느 방향으로 동기화되는지. 09-30 보완에서 <b>판매자 주문 추가</b>와 <b>청구·정산</b> 흐름을 더했습니다. 10-22 보완에서 <b>오너·공급업체·발주 권한</b> 표를 더했습니다. 화살표와 컬럼명은 전부 코드·스키마 실측입니다.</p>
 </header>
 
 <!-- ─────────── 변경 기록 ─────────── -->
@@ -167,6 +167,15 @@
     <span><span class="tag-wip">진행 중</span> 결정됐고 아직 개발 중</span>
   </div>
   <div class="log">
+    <div class="log-row">
+      <div class="log-date">2026-10-22</div>
+      <ul>
+        <li><b>오너 공급업체 관리</b> — 오너가 소유 매장으로 전환해 그 매장의 업체·상품·가격·계약까지 관리(재고아이템 연결은 매장만)<span class="tag-wip">진행 중</span></li>
+        <li>매장 업체를 <b>오너 공통으로 올리기</b> — 행 하나를 소유 매장 전부가 상속(사본 아님), 연결·발주·청구서 무접촉<span class="tag-wip">진행 중</span></li>
+        <li>직원 권한 <b>발주(purchasing) / 재고·업체 관리(inventory)</b> 분리 · 서버에 공급업체 라우트 직원 게이트 신설<span class="tag-wip">진행 중</span></li>
+        <li>브랜드→매장 공급업체 연동 끊김 재확인(코드 분기 0 · 운영 사용 0) — 옛 방식 카드(운영 0건)도 화면에서 뺌</li>
+      </ul>
+    </div>
     <div class="log-row">
       <div class="log-date">2026-10-19</div>
       <ul>
@@ -627,6 +636,34 @@
   </div>
 </section>
 
+<!-- ─────────── 오너 · 공급업체 · 발주 (10-22 진행 중) ─────────── -->
+<section>
+  <h2>오너 · 공급업체 · 발주 — 누가 무엇을 <span class="tag-wip">10-22 진행 중</span> <span class="who">Fable 설계 10-22 · Irene «권고대로» · 개발서버 완료(미배포)</span></h2>
+  <div class="rule chg">
+    <b>규칙</b><span class="sep">—</span>
+    <span>오너는 <b>자기 공통 업체</b>(상속) + <b>매장 전환</b>(그 매장 자격)으로 관리</span>
+    <span class="sep">·</span><span>재고아이템 연결은 <b>매장만</b></span>
+    <span class="sep">·</span><span style="color:var(--muted)">발주와 업체 관리는 직원 키가 다르다(<code>purchasing</code> / <code>inventory</code> — 업체·카탈로그 <b>보기</b>는 둘 다, <b>쓰기</b>는 inventory 만)</span>
+  </div>
+  <div class="tw">
+  <table>
+    <thead><tr><th>일</th><th>매장 관리자</th><th>오너 (공통)</th><th>오너 (매장 전환)</th><th>직원 purchasing</th><th>직원 inventory</th></tr></thead>
+    <tbody>
+      <tr class="wip"><td>업체·상품·가격·카탈로그 <b>보기</b></td><td>✓</td><td>✓ 공통 업체</td><td>✓<span class="tag-wip">10-22</span></td><td>✓ (발주 작성에 필요)</td><td>✓</td></tr>
+      <tr class="wip"><td>업체 등록·수정·상품·가격</td><td>✓</td><td>✓ 공통 업체</td><td>✓<span class="tag-wip">10-22</span></td><td>✗</td><td>✓</td></tr>
+      <tr class="wip"><td>가입 공급업체 계약 신청·종료</td><td>✓</td><td>✗ (계약은 매장별)</td><td>✓<span class="tag-wip">10-22</span></td><td>✗</td><td>✓</td></tr>
+      <tr class="wip"><td>켜기·끄기</td><td>✓</td><td>✓ 공통 업체 (전 매장)</td><td>✓<span class="tag-wip">10-22</span></td><td>✗</td><td>✓</td></tr>
+      <tr><td>재고아이템 연결</td><td>✓</td><td>✗</td><td>✗ (전환해도 막힘)</td><td>✗</td><td>✓</td></tr>
+      <tr class="wip"><td>발주 작성·제출·취소·수정</td><td>✓</td><td>✗</td><td>✓ (오너 제출 = 승인 생략)</td><td>✓<span class="tag-wip">10-22</span></td><td><s class="was">✓</s> ✗</td></tr>
+      <tr><td>수령</td><td>✓</td><td>✗</td><td>✗ (물건 있는 매장 몫)</td><td>✓</td><td>✗</td></tr>
+      <tr><td>청구서 결제</td><td>✓</td><td colspan="2">✓ 청구서 화면</td><td>✓</td><td>✗</td></tr>
+      <tr class="wip"><td>오너 공통으로 올리기</td><td>✗</td><td colspan="2"><b>오너만</b><span class="tag-wip">10-22</span> · 가입 공급업체·월결제 업체는 불가</td><td>✗</td><td>✗</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="legend"><span style="color:var(--muted)">서버 단일 소스 <code>middleware/buyerScope.js</code> <code>OWNER_ACTING_ROUTES</code> · 상속 판정 <code>utils/supplierAccess.findParentContract</code> · 설계 <code>.claude/fable-design-20261019-owner-supplier-management.md</code></span></div>
+</section>
+
 <!-- ─────────── 공급업체 활성/비활성 ─────────── -->
 <section>
   <h2>공급업체 활성/비활성 <span class="tag-chg">09-24 바뀜</span> <span class="who">구매자별 · 2026-09-11 설계 · 09-24~25 구조 변경</span></h2>
@@ -644,6 +681,7 @@
       <tr class="changed"><td><b>브랜드가 매장에 공유한 외부</b><span class="tag-chg">09-24</span></td><td>매장 사본의 내 행 terminated</td><td>매장 사본의 내 행 active</td><td><b>이 매장만.</b> «매장에 공유» = 업체·상품 전체 <b>사본</b>(<code>utils/supplierShare.copySupplierToStore</code>), 이후 브랜드와 매장은 따로 수정한다<br><s class="was">내 행을 만들어 terminated — 상속을 막는 스위치 · 켜기는 내 행을 지워 상속 복귀</s></td></tr>
       <tr class="changed"><td>브랜드가 자기 외부를 끔<span class="tag-chg">09-24</span></td><td>브랜드 행 terminated</td><td>브랜드 행 active</td><td><b>브랜드만.</b> 매장 사본은 그대로 남는다<br><s class="was">전 매장 (상속이 끊긴다 — 브랜드의 권리)</s></td></tr>
       <tr class="fresh"><td><b>오너가 등록한 외부</b><span class="tag-new">09-25</span></td><td>매장: 자기 행 terminated</td><td>매장: 자기 행 <b>삭제</b>(active 로 바꾸지 않는다)</td><td>오너의 소유 매장 전부가 한 행을 <b>상속</b>. 수정은 오너만. 판정 <code>utils/supplierAccess.findParentContract</code> + <code>inheritedOwnerSupplierIds</code> 가 같은 조건</td></tr>
+      <tr class="wip"><td><b>매장 업체를 오너 공통으로 올림</b><span class="tag-wip">10-22</span></td><td colspan="2">이후 끄기·켜기는 «오너가 등록한 외부» 행과 같음</td><td>업체 행 id 유지 · 올린 매장의 계약 행은 삭제(상속으로) · 연결·발주·청구서 무접촉 · 같은 원본 사본 두 번째는 거부</td></tr>
     </tbody>
   </table>
   </div>
@@ -683,6 +721,11 @@
     <p>대조 값은 <b>매장 층에 덮어쓰고</b>, 구매자가 일으킨 전파는 구매자 소유 행 밖으로 못 나가게 소유자 검사를 넣었습니다. 기대값(개발 실측 스크립트 재실행): 세 판매자 유형 모두 매장 화면 1.10 · 브랜드 층 15 불변 · 매장 층 22.</p>
   </div>
 
+  <div class="flag wip">
+    <h3>브랜드→매장 옛 방식 공유 카드 — 화면에서 뺌 <span class="tag-wip">10-22 개발서버 · 미배포</span></h3>
+    <p>브랜드→매장 공급업체 연동은 끊겼다(코드 분기 0 · 운영 브랜드 등록 업체 29곳에 매장 연결·발주·청구서 0). 남은 것은 예전 공급업체 목록의 브랜드 행이 매장 화면에 «BRAND SHARED» 카드로 <b>보이기만</b> 하는 것 1종 — 운영 0건(10-22 읽기)이라 매장 화면에서 그 카드를 뺐다.</p>
+  </div>
+
   <div class="flag">
     <h3>매장의 외부 공급업체 가격 수정도 같은 문이 열려 있다 — 보완 대상</h3>
     <p><code>supplier-directory.js</code> 의 외부 공급업체 상품 가격 PUT 이 전파에 주체(actor)를 안 넘깁니다. 대조와 같은 검사를 붙여야 매장이 브랜드 공유 재료 원가를 못 건드립니다. 위 수정과 한 묶음.</p>
@@ -702,7 +745,7 @@
 </section>
 
 <footer>
-  화살표·컬럼명은 2026-09-04 기준(원가·공급업체 활성은 09-11, 준비된 재고·배송비·재료 분류·메뉴 주인은 09-17, 공급업체 복사본·오너 상속은 09-24~25, 판매자 주문 추가·청구·정산은 <b>09-29~30</b> 보완) 코드와 스키마에서 직접 읽은 것입니다. 09-29~30 분은 운영에 배포됐고(v3.104 · 09-30 추가 배포), 자동 담기만 개발 중입니다. 09-17 분의 운영 반영 여부는 이번 보완에서 다시 재지 않았습니다. 단일 진실 문서: <code>docs/TRADE_STRUCTURE.md</code> · <code>docs/INGREDIENT_UNIFICATION_DESIGN.md</code> · <code>docs/RECIPE_MANAGEMENT_SYSTEM.md</code> · <code>docs/PURCHASE_ORDER_SYSTEM.md</code> · <code>docs/INVOICE_SYSTEM.md</code> §11 · <code>docs/SUPPLIER_CONTRACT_SYSTEM.md</code>
+  화살표·컬럼명은 2026-09-04 기준(원가·공급업체 활성은 09-11, 준비된 재고·배송비·재료 분류·메뉴 주인은 09-17, 공급업체 복사본·오너 상속은 09-24~25, 판매자 주문 추가·청구·정산은 <b>09-29~30</b>, 오너·공급업체 권한은 <b>10-22</b>(개발 중) 보완) 코드와 스키마에서 직접 읽은 것입니다. 09-29~30 분은 운영에 배포됐고(v3.104 · 09-30 추가 배포), 자동 담기만 개발 중입니다. 09-17 분의 운영 반영 여부는 이번 보완에서 다시 재지 않았습니다. 단일 진실 문서: <code>docs/TRADE_STRUCTURE.md</code> · <code>docs/INGREDIENT_UNIFICATION_DESIGN.md</code> · <code>docs/RECIPE_MANAGEMENT_SYSTEM.md</code> · <code>docs/PURCHASE_ORDER_SYSTEM.md</code> · <code>docs/INVOICE_SYSTEM.md</code> §11 · <code>docs/SUPPLIER_CONTRACT_SYSTEM.md</code>
 </footer>
 
 </div>

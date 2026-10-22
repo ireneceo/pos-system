@@ -1846,8 +1846,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: '/pos/foodcourt/invoices', label: t('nav.invoices'), hasPending: badgeCounts.invoices > 0, visible: isRouteAllowed('/pos/foodcourt/invoices') },
           { path: '/pos/foodcourt/trade-invoices', label: t('nav.tradeInvoices', 'Trade Invoices'), visible: isRouteAllowed('/pos/foodcourt/trade-invoices') },
           { path: '/pos/manager/coupons', label: t('nav.coupons'), visible: isRouteAllowed('/pos/manager/coupons') },
-          { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasManagerPermission('management') && isRouteAllowed('/pos/purchase-orders') },
-          { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasManagerPermission('management') && isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasManagerPermission('operations') && isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasManagerPermission('operations') && isRouteAllowed('/pos/purchase-orders') },
         ].filter(i => i.visible !== false),
         visible: hasManagerPermission('operations') || hasManagerPermission('management')
       },
@@ -1911,6 +1911,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: '/pos/owner/po-approvals', label: t('nav.poApprovals', 'PO Approvals'), hasPending: (badgeCounts.poApprovals || 0) > 0, visible: isRouteAllowed('/pos/owner/po-approvals') },
           { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: isRouteAllowed('/pos/purchase-orders') },
           { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/suppliers', label: t('nav.suppliers'), visible: isRouteAllowed('/pos/suppliers') },
         ].filter(i => i.visible !== false),
         visible: isRouteAllowed('/pos/owner/invoices') || isRouteAllowed('/pos/owner/performance') || isRouteAllowed('/pos/owner/po-approvals') || isRouteAllowed('/pos/purchase-orders')
       },
@@ -2039,8 +2040,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         id: 'operations', label: t('nav.section.operations'), icon: <Briefcase />,
         items: [
           { path: `/restaurant/${rid}/invoices`, label: t('nav.invoices'), hasPending: badgeCounts.invoices > 0, visible: hasMenuPermission('support') && isRouteAllowed(`/restaurant/${rid}/invoices`) },
-          { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/purchase-orders') },
-          { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasMenuPermission('purchasing') && isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasMenuPermission('purchasing') && isRouteAllowed('/pos/purchase-orders') },
           // 재고 계열은 요금제에 없으면 **숨기지 않고 잠근다** — 눌러 보고 «업그레이드하면 자동 계산»을 알게 한다
           //   (2026-09-12 · 발주 전용 무료 등급 · docs/BUYER_FREE_TIER_DESIGN.md §5-2)
           // ⚠ 요금제를 아직 못 읽은 동안(routesLoading)에는 잠그지 않는다 — 로딩 중 전부 잠긴 것처럼 보이면 오해한다
@@ -2049,7 +2050,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: `/restaurant/${rid}/inventory`, label: t('nav.inventory'), visible: hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${rid}/inventory`), locked: !routesLoading && !hasModule('inventory_management') },
           { path: '/pos/suppliers', label: t('nav.suppliers'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/suppliers') }
         ].filter(i => i.visible !== false),
-        visible: hasMenuPermission('support') || hasMenuPermission('reports') || hasMenuPermission('inventory')
+        visible: hasMenuPermission('support') || hasMenuPermission('reports') || hasMenuPermission('inventory') || hasMenuPermission('purchasing')
       },
       {
         id: 'reports', label: t('nav.reports', 'Reports'), icon: <TrendingUp />,

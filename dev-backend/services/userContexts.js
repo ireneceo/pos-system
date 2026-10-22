@@ -78,7 +78,7 @@ function isRestaurantHat(entityType, role) {
 // 두 목록이 같은지는 tests/context-requests.test.js ⑪ 가 소스를 읽어 대조한다.
 const STAFF_PERMISSION_KEYS = Object.freeze([
   'access_pos', 'access_payment', 'access_void', 'access_serving', 'access_kitchen',
-  'menu_management', 'inventory', 'marketing', 'reports', 'support', 'settings'
+  'menu_management', 'inventory', 'purchasing', 'marketing', 'reports', 'support', 'settings'
 ]);
 /**
  * Staff 모자 권한 정규화 — 집합 밖 키·빈 배열은 거부, 중복 제거.

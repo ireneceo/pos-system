@@ -495,5 +495,18 @@
     "itemName": "Nama item",
     "newPreview": "Item baharu: {{spec}} · harga {{price}} setiap bungkusan — sama seperti produk pembekal",
     "myItem": "Item saya"
+  },
+  "ownerScope": {
+    "label": "Urus pembekal untuk",
+    "common": "Pembekal kongsi saya (semua restoran saya)",
+    "commonHint": "Pembekal di sini digunakan oleh semua restoran anda. Setiap restoran boleh mematikannya untuk dirinya sahaja.",
+    "storeHint": "Anda sedang mengurus pembekal, produk, harga dan kontrak restoran ini. Pautan ke item stok kekal dengan pengurus restoran."
+  },
+  "promote": {
+    "button": "Kongsi ke semua restoran saya",
+    "title": "Kongsi ke semua restoran anda?",
+    "desc": "{{name}} akan digunakan oleh semua restoran anda, dan hanya anda (pemilik) yang boleh menyuntingnya. Pautan item stok, pesanan dan invois restoran ini kekal seperti sedia ada. Setiap restoran boleh mematikannya untuk dirinya sahaja.",
+    "confirm": "Kongsi",
+    "failed": "Tidak dapat berkongsi pembekal ini ke semua restoran anda. Sila cuba lagi."
   }
 }

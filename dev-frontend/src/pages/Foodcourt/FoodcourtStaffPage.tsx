@@ -25,8 +25,8 @@ interface Manager {
 // Foodcourt Manager 권한 그룹 (MainLayout 사이드바 섹션 기반, products 없음)
 const PERMISSION_GROUPS = [
   { key: 'dashboard', label: 'Dashboard' },
-  { key: 'management', label: 'Management (Foodcourts / Restaurants / Staff)' },
-  { key: 'operations', label: 'Operations (Invoices / Statistics / Customers / Coupons)' },
+  { key: 'management', label: 'Management (Foodcourts / Restaurants / Staff / Suppliers)' },
+  { key: 'operations', label: 'Operations (Invoices / Statistics / Customers / Coupons / Purchase Order)' },
   { key: 'communication', label: 'Communication (Notices / Inquiries)' },
   { key: 'plans_payments', label: 'Plans & Payments (Plans / Subscriptions / Payment Settings)' },
 ];

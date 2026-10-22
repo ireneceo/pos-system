@@ -1547,6 +1547,61 @@ router.put('/external-suppliers/:id/active', async (req, res) => {
   }
 });
 
+// POST /api/external-suppliers/:id/promote-to-owner — 매장 업체를 «오너 공통»으로 올린다
+// (2026-10-22 Fable 설계 owner-supplier-management §3-B · Irene «권고대로»: «같은 공급업체와 그들의 상품을 다른 자기 레스토랑에»).
+//   사본을 만들지 않는다 — 업체 행 id 를 그대로 두고 주인만 매장 → 오너로 바꿔 §H-3 상속에 태운다.
+//   그래서 상품·가격·재고아이템 연결·발주·청구서·원가 이력은 옮길 것이 없다(전부 업체 id 를 가리킨다).
+//   오너가 그 매장으로 전환한 상태(?entity_type=restaurant&entity_id=N)에서만. 되돌리는 버튼은 두지 않는다(Irene 컨펌 ①).
+router.post('/external-suppliers/:id/promote-to-owner', async (req, res) => {
+  if (req.user.role !== 'Restaurant Owner' || !req.buyerIsOwnerView || !req.buyerEntity || req.buyerEntity.type !== 'restaurant') {
+    return res.status(403).json({ success: false, message: 'Only an owner acting for one of their restaurants can do this' });
+  }
+  const B = req.buyerEntity;
+  const id = parseInt(req.params.id, 10);
+  const sc = Number.isFinite(id) ? await SupplierCompany.findByPk(id) : null;
+  if (!sc) return res.status(404).json({ success: false, message: 'Supplier not found' });
+  if (sc.is_system_registered) {
+    // 가입 공급업체는 계약이 매장마다 따로다(청구 상대 = 계약 주체) — 상속하지 않는다(§H-3)
+    return res.status(400).json({ success: false, code: 'MEMBER_SUPPLIER_NOT_PROMOTABLE', message: 'Platform suppliers keep a contract per restaurant and cannot be shared to all your restaurants' });
+  }
+  if (sc.registered_by_entity_type === 'owner') {
+    return res.status(400).json({ success: false, code: 'ALREADY_SHARED', message: 'This supplier is already shared to all your restaurants' });
+  }
+  if (sc.registered_by_entity_type !== 'restaurant' || Number(sc.registered_by_entity_id) !== Number(B.id)) {
+    return res.status(403).json({ success: false, message: 'Not a supplier of this restaurant' });
+  }
+  const t = await SupplierContract.sequelize.transaction();
+  try {
+    const storeRows = await SupplierContract.findAll({
+      where: { supplier_company_id: sc.id, entity_type: 'restaurant', entity_id: B.id }, order: [['id', 'DESC']], transaction: t
+    });
+    const active = storeRows.find(r => r.status === 'active') || null;
+    const pt = (active && active.payment_terms && typeof active.payment_terms === 'object') ? active.payment_terms : null;
+    if (pt && pt.invoice_cycle === 'monthly_soa') {
+      // 오너 등록 업체는 월 정산서를 지원하지 않는다(계약 행이 오너 것 하나라 발행기가 매장을 못 찾는다 — Irene 컨펌 ⑥)
+      await t.rollback();
+      return res.status(400).json({ success: false, code: 'MONTHLY_BILLING_STORE_ONLY', message: 'This supplier bills this restaurant by monthly statement. Monthly billing stays per restaurant, so it cannot be shared.' });
+    }
+    await sc.update({ registered_by_entity_type: 'owner', registered_by_entity_id: req.user.id }, { transaction: t });
+    const ownerContract = await SupplierContract.create({
+      entity_type: 'owner', entity_id: req.user.id, supplier_company_id: sc.id,
+      status: 'active', requested_by_user_id: req.user.id, ...(pt ? { payment_terms: pt } : {})
+    }, { transaction: t });
+    // 매장 자기 행은 모두 지운다(«다시 켜기 = 자기 행 삭제» 와 같은 손 — 남기면 오너가 꺼도 이 매장만 계속 발주한다)
+    await SupplierContract.destroy({ where: { supplier_company_id: sc.id, entity_type: 'restaurant', entity_id: B.id }, transaction: t });
+    await t.commit();
+    res.json({ success: true, data: { id: sc.id, scope: 'owner', owner_contract_id: ownerContract.id } });
+  } catch (err) {
+    await t.rollback();
+    if (err && (err.name === 'SequelizeUniqueConstraintError' || /uq_supplier_company_live_copy/.test(String(err.message)))) {
+      // 같은 브랜드 원본의 사본이 이미 오너 공통에 있다 — 자동으로 합치지 않는다(§H-3 §1-C)
+      return res.status(409).json({ success: false, code: 'ALREADY_PROMOTED_COPY', message: 'A copy of the same brand supplier is already shared to all your restaurants. Use that one and turn this copy off for this restaurant.' });
+    }
+    console.error('POST /api/external-suppliers/:id/promote-to-owner error:', err);
+    res.status(500).json({ success: false, message: 'Failed to share supplier to all your restaurants' });
+  }
+});
+
 // GET /api/external-suppliers/:id/products — 그 외부공급업체 상품 목록
 router.get('/external-suppliers/:id/products', async (req, res) => {
   // 보기는 오너에게서 받은 업체도(매장 재료에 공급처를 붙이려면 상품이 보여야 한다). 등록·수정·삭제는 아래처럼 등록자만.

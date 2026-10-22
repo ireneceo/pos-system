@@ -2254,6 +2254,7 @@ RA 목록이 붙이는 **발주 정보(purchase_order_id · payable_amount/basis
 **백로그(이 절단면 밖 — 기록만)**: 다매장 오너는 발주 라우터 전체가 403 이다(`buyerScope` 가 primary 매장 없으면 null). 오너 사이드바가 발주·발주내역을 노출하므로 그 화면들과 모달의 「먼저 대조하기」(`/purchase-orders/:id/reconcile` 저장)는 오너에게 막힌다. BG 두 번째 브랜드도 발주내역·대조 화면은 스코프 쿼리를 안 붙여 404. 해법은 「오너·다중 브랜드의 발주 스코프」 사안으로 따로 설계(buyerScope 오너 분기 + 화면 스코프 전달) — 운영검증에서 `restaurant_id` NULL 오너 수만 센다.
 
 > ✅ **2026-10-05 갱신(Fable 판정 owner-po-on-behalf ① · SW 5.83 운영)**: 오너는 소유 매장을 골라 **그 매장 자격으로** 발주를 만들고·제출·취소한다(`buyerScope.OWNER_ACTING_ROUTES` 10개, ownership 확인 · 수령·결제·반품·재료 연결·공급업체 등록은 403). 발주 주인 = 매장(그 매장 이력). **2026-10-07 예외 1개(§8-7)**: 청구서 «총액 수정»(`POST …/reconcile` total_only)만 오너 허용 — 줄 단가 대조는 계속 403(`OWNER_TOTAL_ONLY`). 오너 제출 = 승인 생략(`applySubmitGate` actor, «Submitted by Owner»). 오너 화면엔 카탈로그 탭·공급처 연결 없음(매장이 연결한 품목만).
+> ✅ **2026-10-22 갱신(Fable 설계 owner-supplier-management · Irene «권고대로» · 개발)**: 오너 매장 전환이 **그 매장 공급업체·상품·가격·계약·켜기끄기·찾기·카탈로그 보기**까지 열렸다(재고아이템 연결·수령·반품은 계속 403). 매장 업체를 «오너 공통으로 올리기»(`POST /api/external-suppliers/:id/promote-to-owner`) — 상세 `SUPPLIER_CONTRACT_SYSTEM.md` §H-4. 직원 권한은 **발주 = `purchasing`(새 키) · 공급업체 = `inventory`** 로 나뉘었다(`buyerScope` 직원 분기 · 기존 inventory 직원은 마이그 `migrate-staff-purchasing-permission.js` 가 purchasing 을 더함). 푸드코트 매니저 발주 메뉴는 Operations 묶음으로.
 
 
 ### 8-7. 청구서에서 총액 수정 + 수정 이력 (2026-10-07 · Fable 판정 · Irene 승인 «승인. fable 권고대로 진행해»)

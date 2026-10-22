@@ -340,12 +340,13 @@ Staff의 권한은 **메뉴 보이기/숨기기**로 제어됨. Restaurant Admin
 - Mobile Order
 - Profile
 
-**선택적 접근 (6개 메뉴 그룹, 토글 방식):**
+**선택적 접근 (7개 메뉴 그룹, 토글 방식):**
 
 | 그룹 키 | 표시명 | 포함 메뉴 |
 |---------|--------|----------|
 | `menu_management` | Products | Menu / Categories / Options / Recipe |
-| `inventory` | Stock Management | Suppliers / Inventory |
+| `inventory` | Stock Management | Stock Items / Inventory / Suppliers — 서버: 공급업체 쓰기(등록·수정·가격·계약)도 이 키 |
+| `purchasing` | Purchase Orders | Purchase Order / Order History (수령·결제 포함) — 2026-10-22 inventory 에서 나눔, 서버 `/api/purchase-orders*` 가 이 키 · 공급업체·카탈로그 **보기**는 inventory 또는 purchasing (`docs/SUPPLIER_CONTRACT_SYSTEM.md` §H-4) |
 | `marketing` | Marketing | Customers / Coupons |
 | `reports` | Analytics | Reports / Activity History |
 | `support` | Support | Invoices / Inquiries |
