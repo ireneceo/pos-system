@@ -2,13 +2,14 @@
   "tag": "owner-supplier-notify",
   "sw_version": "6.01-owner-supplier-notify-20261023",
   "date": "2026-10-23",
-  "in_progress": "정기 발주 자동화(작업방 a58bff0a) — 미커밋·답 기다림, 이번 배포에서 빠짐",
+  "in_progress": "none",
   "completed": [
     "오너 발주 «승인 전 / 승인 완료» 탭 · 승인취소(f414c2403)",
     "브랜드·공급업체 상품 창 원가·재고 = 재고아이템 한 곳 · 공급업체 상품 단가 저장 되살림(f414c2403)",
     "재고아이템 직접 연결 상품 출고·반품 차감 = 주문 수량 × 상품 규격 · 비호환 단위 연결 400(9e09c4cbe)",
     "레스토랑 오너 공급업체·가격 관리 · 오너 공통으로 올리기 · 직원 발주(purchasing)/업체(inventory) 권한 분리(ff59bf974)",
-    "알림(메일·앱) 받는 자격 꼬리표 · 미리보기 · 할 일 칸 · /go 진입 화면 · 연체 메일 수신자 확대(eb9bd3ba8)"
+    "알림(메일·앱) 받는 자격 꼬리표 · 미리보기 · 할 일 칸 · /go 진입 화면 · 연체 메일 수신자 확대(eb9bd3ba8)",
+    "정기 발주(Standing order): 외부 구독 업체 자동 발주 기록 + 오너 1회 승인(1e7bc3639)"
   ],
   "issues": [
     "브랜드 다이렉트 상품 출고가 규격을 안 곱해 재고가 적게 빠지던 결함(500 g/pack 3 pack → −3 g)",
@@ -17,7 +18,6 @@
   ],
   "upcoming": [
     "운영검증 때 node scripts/report-direct-deduct-unit.js 숫자 보고(0 이면 끝)",
-    "정기 발주 자동화 — 답 기다림(외부 업체 이메일 자동 발송 기본값) 뒤 빌드·검증·Fable 게이트",
     "알림 후속 R1~R5"
   ],
   "behavior_changes": [
@@ -25,25 +25,27 @@
     "두 권한 다 없는 직원에게 «외부 월정산서 발행» 단추 안 보임",
     "브랜드 다이렉트 상품 출고·반품 차감이 수량 × 규격으로 바뀜",
     "공급업체 상품 PUT 으로 current_stock 직접 수정은 400(재고 조정 사용)",
-    "알림 메일 제목 앞 꼬리표 · 받는 분 띠 · 할 일 칸 · 버튼이 /go 를 거쳐 맞는 모자로 이동"
+    "알림 메일 제목 앞 꼬리표 · 받는 분 띠 · 할 일 칸 · 버튼이 /go 를 거쳐 맞는 모자로 이동",
+    "발주 상세·대기 초안에 «Repeat this order» · 정기 발주 화면 /pos/purchase-orders/recurring · 매 정각 스케줄러가 정한 날 발주 생성(외부 업체엔 메일 안 보냄)"
   ],
   "check_areas": [
     "오너 /pos/suppliers 범위 선택 · Share to all my restaurants · 직원 권한 피커",
     "오너 발주 승인 전/승인 완료 탭 · 승인취소",
     "브랜드 상품 창 Stock Item 블록 원가·재고 · 공급업체 상품 등록/수정 단가",
     "브랜드 출고·반품 뒤 재고 숫자",
-    "알림 메일 제목·버튼 이동 · 앱 알림 클릭"
+    "알림 메일 제목·버튼 이동 · 앱 알림 클릭",
+    "정기 발주 만들기·오너 승인 1회·다음 날짜 발주 생성"
   ],
   "verification": {
     "api": "각 방 실호출 — 오너 공급업체 24/24 · 상품 창 P1~P6 · health inventory 80/80 · health 404/404(알림 방)",
     "fault_injection": "오너 공급업체 4 · 직접 차감 2(+Fable 1) · 상품 창 2(+Fable 1) · 알림 contextMatch 2 · 주소 대조 26→0",
     "browser": "클릭 흐름 owner-po-approval-revoke 1440·390 ×3 · 오너 공급업체 1440·390 · /go 4경로 · mount sweep 크래시 0(배포 게이트에서 다시)",
     "printer": "🔒 MainLayout nav 6줄(Irene ④ 승인·bless 완료) · 인쇄 동작 무변경 · print-guard 8/8",
-    "migrations": "migrate-staff-purchasing-permission.js(deploy·멱등)",
+    "migrations": "migrate-staff-purchasing-permission.js · migrate-po-schedules-20261022.js(표 2·칸 1, deploy·멱등)",
     "sw_version": "6.01-owner-supplier-notify-20261023",
-    "fable_note": "4건 모두 Fable 설계/판정 + 게이트 PASS"
+    "fable_note": "5건 모두 Fable 설계/판정 + 게이트 PASS"
   },
-  "notes": "정기 점검 10/23 자동 배포(버전·릴리즈노트·공지 없음) · 커밋 f414c2403·9e09c4cbe·ff59bf974·eb9bd3ba8 · SW 는 배포 방이 올림",
+  "notes": "정기 점검 10/23 배포(버전·릴리즈노트·공지 없음) · 커밋 f414c2403·9e09c4cbe·ff59bf974·eb9bd3ba8·1e7bc3639 · 배포 검사 오탐 2건 고침(59c57029e·44d1bc224) · SW 는 배포 방이 올림",
   "irene_actions_after_deploy": [],
   "fable_note": "Fable 미검증 건 없음"
 }
