@@ -11,6 +11,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import RecurringOrderModal from '../../components/PurchaseOrders/RecurringOrderModal';
 import { isOwnerRole, getOwnerPoRestaurantId, withOwnerPoScope } from '../../utils/ownerPoScope';
 import { sharePoViaWhatsApp, sharePoViaEmail, isRealSupplierSku } from '../../utils/poShare';
 import { useNavigate } from 'react-router-dom';
@@ -225,6 +226,8 @@ const PurchaseOrderStagingPage: React.FC = () => {
   // 오너 = 고른 소유 매장 자격으로 초안을 다룬다 (2026-10-04 Fable owner-po-on-behalf ①). 매장을 안 골랐으면 작성 화면에서 먼저 고른다.
   const { user } = useAuth();
   const isOwner = isOwnerRole(user?.role);
+  // 정기 발주 만들기 — 이 초안을 틀로(2026-10-22 recurring-po §8-1)
+  const [repeatPoId, setRepeatPoId] = useState<number | null>(null);
   const ownerRid = isOwner ? getOwnerPoRestaurantId() : null;
   useEffect(() => {
     if (isOwner && !ownerRid) navigate('/pos/purchase-orders', { replace: true });
@@ -615,6 +618,11 @@ const PurchaseOrderStagingPage: React.FC = () => {
                 {t('staging.directPurchase', 'Receive + pay')}
               </Button>
             )}
+            {po.seller_type === 'supplier' && (
+              <ThemedButton variant="outline" size="small" onClick={() => setRepeatPoId(po.id)}>
+                ↻ {t('recurring.repeat')}
+              </ThemedButton>
+            )}
             <Button variant="danger-outline" size="small" onClick={() => setDiscardTarget(po)}>
               {t('staging.discard', 'Discard')}
             </Button>
@@ -641,6 +649,11 @@ const PurchaseOrderStagingPage: React.FC = () => {
                 {t('staging.directPurchase', 'Receive + pay')}
               </Button>
             )}
+            {po.seller_type === 'supplier' && (
+              <ThemedButton variant="outline" size="small" onClick={() => setRepeatPoId(po.id)}>
+                ↻ {t('recurring.repeat')}
+              </ThemedButton>
+            )}
             <Button variant="danger-outline" size="small" onClick={() => setDiscardTarget(po)}>
               {t('staging.discard', 'Discard')}
             </Button>
@@ -653,6 +666,13 @@ const PurchaseOrderStagingPage: React.FC = () => {
   return (
     // flex column + Content flex:1 — 목록이 짧아도 SubmitBar 가 하단에 붙어 있게 (위 SubmitBar 주석 참조)
     <Container style={{ display: 'flex', flexDirection: 'column' }}>
+      <RecurringOrderModal
+        isOpen={repeatPoId != null}
+        sourcePoId={repeatPoId}
+        role={user?.role}
+        onClose={() => setRepeatPoId(null)}
+        onSaved={() => { setRepeatPoId(null); navigate('/pos/purchase-orders/recurring'); }}
+      />
       <PageHeader>
         <div>
           <PageTitle>{t('staging.title', 'Pending Purchase Orders')}</PageTitle>
@@ -677,6 +697,9 @@ const PurchaseOrderStagingPage: React.FC = () => {
               {t('staging.nameMode.internal', 'Our stock name')}
             </Button>
           </NameModeToggle>
+          <ThemedButton variant="outline" size="small" onClick={() => navigate('/pos/purchase-orders/recurring')}>
+            ↻ {t('recurring.link')}
+          </ThemedButton>
           <ThemedButton variant="ghost" onClick={() => navigate('/pos/purchase-orders')}>
             {t('staging.back', '← Back to Cart')}
           </ThemedButton>

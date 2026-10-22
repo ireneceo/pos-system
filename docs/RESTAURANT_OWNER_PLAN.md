@@ -279,6 +279,7 @@ if (req.user.role === 'Restaurant Owner') {
 ### Phase 3: 발주 오너 승인 — ✅ 구현 완료 (2026-06-21)
 - ✅ Purchase Order 오너 승인 워크플로우 (submit → pending_approval → 오너 승인 → 판매자 전송 / 반려 → draft)
 - ✅ Owner → Admin 발주 승인/거부 기능 (오너 전용 `/pos/owner/po-approvals` 승인 큐)
+- ✅ 정기 발주(Standing order) 오너 1회 승인 (2026-10-22) — 오너 탭 «정기 발주»(`/pos/purchase-orders/recurring`)에서 지금 가격으로 검토·승인·반려·일시정지·종료. 승인 뒤 매 주기 발주는 «오너 사전 승인 발주»로 나가고, 총액 10% 넘게 바뀌거나 수량·주기 수정 시 다시 승인. 상세 `docs/PURCHASE_ORDER_SYSTEM.md` «정기 발주»
 - ✅ 레스토랑별 발주 설정 (`operation_settings.requirePoOwnerApproval`, 오너 연결 시 기본 ON)
 - 상세 설계·구현: `docs/PURCHASE_ORDER_SYSTEM.md §G`, 메모리 [[reference_po_owner_approval]]
 

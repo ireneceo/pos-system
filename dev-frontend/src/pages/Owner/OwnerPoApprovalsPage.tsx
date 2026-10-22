@@ -39,6 +39,17 @@ interface PendingPO {
   entity_id: number;
   /** 외부(앱 미사용) 공급업체 — 서버 목록·상세와 같은 해석기(utils/sellerNames.isExternalSeller) */
   is_external?: boolean;
+  /** 정기 발주에서 만든 발주(2026-10-22 recurring-po) — 마지막 승인 대기 사유(허용폭 밖 등)를 같이 보인다 */
+  schedule_id?: number | null;
+  tracking_info?: any;
+}
+
+/** 정기 발주 발주의 마지막 «Standing order #N: …» 사유 — 서버 poScheduleService 가 tracking 에 남긴다. */
+function scheduleReason(row: PendingPO): string | null {
+  const events = row?.tracking_info?.events;
+  if (!row.schedule_id || !Array.isArray(events)) return null;
+  const last = [...events].reverse().find((e: any) => typeof e?.note === 'string' && e.note.startsWith('Standing order #'));
+  return last ? String(last.note).replace(/^Standing order #\d+:\s*/, '') : null;
 }
 
 /**
@@ -308,6 +319,14 @@ const OwnerPoApprovalsPage: React.FC = () => {
                   <DataTableRow>
                     <DataTableCell data-label={t('ownerApprovals.table.poNumber') as string}>
                       <span style={{ fontWeight: 700, color: '#1F2937' }}>{row.po_number}</span>
+                      {row.schedule_id && (
+                        <span style={{ marginLeft: 6, fontSize: 10, padding: '2px 6px', background: '#EEF2FF', color: '#4338CA', borderRadius: 999, fontWeight: 700 }}>
+                          ↻ {t('recurring.fromSchedule')}
+                        </span>
+                      )}
+                      {scheduleReason(row) && (
+                        <div style={{ fontSize: 12, color: '#92400E', marginTop: 2 }}>{scheduleReason(row)}</div>
+                      )}
                     </DataTableCell>
                     <DataTableCell data-label={t('ownerApprovals.table.restaurant') as string}>
                       {row.restaurant_name || '-'}

@@ -61,10 +61,13 @@ async function isApprovalRequiredForRestaurant(restaurant) {
  * @param {function} appendTrackingEvent - 라우트가 쓰는 tracking 헬퍼(순환 require 회피용 주입)
  * @param {object} [actor] - 제출한 사람(req.user). **그 매장의 ownership 오너**면 승인 생략 — 승인자가 작성자다
  *          (2026-10-04 Fable 판정 owner-po-on-behalf ① §2-2). 구매자 쪽 경로만 넘긴다(판매자 대리 추가는 안 넘김).
+ * @param {object} [opts] - { preApproved: { scheduleId, approvedByUserId, approvedAt } } — 정기 발주 틀을 오너가 이미 승인했고
+ *          스케줄러가 허용폭 안이라고 판정한 경우(2026-10-22 Fable 설계 recurring-po §3-2). 승인이 필요한 매장이어도
+ *          «승인을 거친 발주»(approval_required·approved_by·approved_at)로 기록하고 통과한다. 넘길지 말지는 호출부가 정한다.
  * @returns {Promise<boolean>} needsApproval — true 면 호출부는 **판매자 통지·seller-order-created 를
  *          내보내면 안 되고**, 대신 오너 승인 대기 통지를 보내야 한다.
  */
-async function applySubmitGate(po, t, appendTrackingEvent, actor) {
+async function applySubmitGate(po, t, appendTrackingEvent, actor, opts = {}) {
   const Restaurant = require('../models/Restaurant');
 
   let needsApproval = false;
@@ -79,6 +82,22 @@ async function applySubmitGate(po, t, appendTrackingEvent, actor) {
       byOwner = owned.includes(parseInt(po.entity_id, 10));
       if (byOwner) needsApproval = false;
     }
+  }
+
+  const pre = opts && opts.preApproved;
+  if (needsApproval && pre && pre.approvedByUserId) {
+    const when = pre.approvedAt ? new Date(pre.approvedAt).toISOString().slice(0, 10) : '';
+    const tracking = appendTrackingEvent(po, 'submitted',
+      `Pre-approved by Owner via standing order #${pre.scheduleId}${when ? ` (approved ${when})` : ''}`);
+    await po.update({
+      status: 'submitted',
+      submitted_at: new Date(),
+      approval_required: true,
+      approved_by_user_id: pre.approvedByUserId,
+      approved_at: new Date(),
+      tracking_info: tracking
+    }, { transaction: t });
+    return false;
   }
 
   if (needsApproval) {

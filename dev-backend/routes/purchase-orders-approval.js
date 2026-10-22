@@ -17,7 +17,7 @@ const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 const database = require('../config/database');
-const { PurchaseOrder, PurchaseOrderItem, Restaurant } = require('../models');
+const { PurchaseOrder, PurchaseOrderItem, PurchaseOrderSchedule, Restaurant } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
@@ -111,6 +111,7 @@ router.get('/purchase-orders/pending-approval', authenticateToken, requireOwnerS
 // ============================================
 router.post('/purchase-orders/:id/approve', authenticateToken, requireOwnerScope, async (req, res) => {
   let po;
+  let scheduleForDispatch = null;
   try {
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Purchase order not found' });
@@ -136,14 +137,32 @@ router.post('/purchase-orders/:id/approve', authenticateToken, requireOwnerScope
         approved_at: now,
         tracking_info: tracking
       }, { transaction: t });
+      // 정기 발주에서 나온 발주 — 오너가 본 이 총액이 새 기준선(«다시 1번 승인» · 2026-10-22 recurring-po §3-5).
+      // 틀이 아직 오너 승인을 거친 적이 없으면(오너가 나중에 연결된 매장) 이 승인으로 틀도 승인된다(§4-2 ①).
+      if (locked.schedule_id) {
+        const sched = await PurchaseOrderSchedule.findByPk(locked.schedule_id, { lock: t.LOCK.UPDATE, transaction: t });
+        if (sched) {
+          await sched.update({
+            approved_total: locked.total_amount,
+            ...(sched.approved_at ? {} : { approved_by_user_id: req.user.id, approved_at: now })
+          }, { transaction: t });
+          scheduleForDispatch = sched;
+        }
+      }
       return locked;
     });
 
     emitPoEvent(req, po, 'seller-order-created');
     // 승인 후 판매자 통지 + 작성자 결과 통지
     setImmediate(() => fireSellerSubmittedNotification(po));
-    setImmediate(() => fireBuyerConfirmNotification(po));
-    setImmediate(() => fireOwnerApprovalResultNotification(po, { approved: true }));
+    if (scheduleForDispatch) {
+      // 정기 발주 — 작성자 쪽엔 «정기 발주 나감/기록됨» 한 통(외부 구독 업체에 «보내 주세요» 를 쓰지 않는다 · Irene 10-22)
+      const { notePlaced } = require('../services/poScheduleService');
+      await notePlaced(scheduleForDispatch, po);
+    } else {
+      setImmediate(() => fireBuyerConfirmNotification(po));
+      setImmediate(() => fireOwnerApprovalResultNotification(po, { approved: true }));
+    }
 
     res.json({ success: true, data: po });
   } catch (err) {
@@ -189,6 +208,12 @@ router.post('/purchase-orders/:id/reject', authenticateToken, requireOwnerScope,
         rejected_reason: reason.slice(0, 1000),
         tracking_info: tracking
       }, { transaction: t });
+      // 정기 발주에서 나온 발주를 반려 → 틀 일시정지(매주 같은 반려가 반복되지 않게 · recurring-po §4-4)
+      if (locked.schedule_id) {
+        await PurchaseOrderSchedule.update(
+          { status: 'paused', paused_reason: `Owner rejected PO ${locked.po_number}: ${reason}`.slice(0, 255) },
+          { where: { id: locked.schedule_id, status: { [Op.in]: ['active', 'pending_approval'] } }, transaction: t });
+      }
       return locked;
     });
 
@@ -273,6 +298,144 @@ router.post('/purchase-orders/:id/revoke-approval', authenticateToken, requireOw
     if (err.code === 'NOT_REVOKABLE') return res.status(400).json({ success: false, code: err.reasonCode, message: err.message });
     console.error('POST /api/purchase-orders/:id/revoke-approval error:', err);
     res.status(500).json({ success: false, message: 'Failed to revoke approval' });
+  }
+});
+
+// ============================================
+// 정기 발주(Standing order) — 오너 (2026-10-22 Fable 설계 recurring-po §3-5 · §4-1)
+//   GET  /purchase-orders/schedules/pending-approval   승인 대기 틀 + 지금 가격 미리보기
+//   GET  /purchase-orders/schedules/owned              소유 매장의 모든 틀
+//   POST /purchase-orders/schedules/:id/approve        승인 → active (기준선 = 지금 총액)
+//   POST /purchase-orders/schedules/:id/reject         반려(사유 필수) → paused
+//   POST /purchase-orders/schedules/:id/owner-pause    일시정지 · /owner-end 종료
+//   (구매자 쪽 pause/end 와 경로를 나눈 이유: 이 라우터가 앞에 마운트돼 같은 경로면 매장 관리자가 오너 가드 403 에 막힌다)
+// ============================================
+function ownsSchedule(s, req) {
+  if (!s || s.entity_type !== 'restaurant') return false;
+  if (req.ownerIsAdmin) return true;
+  return Array.isArray(req.ownerRestaurantIds) && req.ownerRestaurantIds.includes(parseInt(s.entity_id, 10));
+}
+
+async function ownerSchedulesWhere(req, extra = {}) {
+  const where = { entity_type: 'restaurant', ...extra };
+  if (!req.ownerIsAdmin) where.entity_id = { [Op.in]: req.ownerRestaurantIds };
+  return where;
+}
+
+async function withRestaurantNames(list) {
+  const rids = [...new Set(list.map(s => s.entity_id))];
+  const rs = rids.length ? await Restaurant.findAll({ where: { id: { [Op.in]: rids } }, attributes: ['id', 'name'] }) : [];
+  const m = new Map(rs.map(r => [r.id, r.name]));
+  return list.map(s => ({ ...s, restaurant_name: m.get(s.entity_id) || null }));
+}
+
+router.get('/purchase-orders/schedules/pending-approval', authenticateToken, requireOwnerScope, async (req, res) => {
+  try {
+    const { decorateSchedules } = require('./purchase-orders-recurring');
+    const { previewSchedule } = require('../services/poScheduleService');
+    const rows = await PurchaseOrderSchedule.findAll({ where: await ownerSchedulesWhere(req, { status: 'pending_approval' }), order: [['created_at', 'DESC']] });
+    const list = await withRestaurantNames(await decorateSchedules(rows));
+    for (const s of list) {
+      const p = await previewSchedule(s);
+      s.preview = p.ok ? { total: p.total, subtotal: p.subtotal, delivery_fee: p.delivery_fee, currency: p.currency, lines: p.lines } : null;
+      s.preview_error = p.ok ? null : p.error.message;
+    }
+    res.json({ success: true, data: list });
+  } catch (err) {
+    console.error('GET /purchase-orders/schedules/pending-approval error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load standing orders' });
+  }
+});
+
+router.get('/purchase-orders/schedules/owned', authenticateToken, requireOwnerScope, async (req, res) => {
+  try {
+    const { decorateSchedules } = require('./purchase-orders-recurring');
+    const rows = await PurchaseOrderSchedule.findAll({ where: await ownerSchedulesWhere(req), order: [['created_at', 'DESC']] });
+    res.json({ success: true, data: await withRestaurantNames(await decorateSchedules(rows)) });
+  } catch (err) {
+    console.error('GET /purchase-orders/schedules/owned error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load standing orders' });
+  }
+});
+
+async function loadOwnerSchedule(req, res) {
+  const id = parseInt(req.params.id, 10);
+  const s = Number.isFinite(id) ? await PurchaseOrderSchedule.findByPk(id) : null;
+  if (!ownsSchedule(s, req)) { res.status(404).json({ success: false, message: 'Standing order not found' }); return null; }
+  return s;
+}
+
+router.post('/purchase-orders/schedules/:id/approve', authenticateToken, requireOwnerScope, async (req, res) => {
+  try {
+    const s = await loadOwnerSchedule(req, res); if (!s) return;
+    if (s.status !== 'pending_approval') return res.status(400).json({ success: false, message: 'Only standing orders awaiting approval can be approved' });
+    const { previewSchedule, computeFirstRunDate } = require('../services/poScheduleService');
+    // 오너가 승인하는 금액 = 지금 가격 총액(화면 미리보기와 같은 계산)
+    const p = await previewSchedule(s);
+    if (!p.ok) return res.status(400).json({ success: false, code: p.error.code, message: `This standing order cannot be placed now: ${p.error.message}` });
+    await s.update({
+      status: 'active',
+      approved_by_user_id: req.user.id,
+      approved_at: new Date(),
+      approved_total: p.total,
+      rejected_by_user_id: null, rejected_at: null, rejected_reason: null,
+      paused_reason: null,
+      next_run_date: await computeFirstRunDate(s)
+    });
+    const { fireScheduleApprovalResultNotification } = require('../services/poScheduleNotifications');
+    setImmediate(() => fireScheduleApprovalResultNotification(s, { approved: true }));
+    const [out] = await require('./purchase-orders-recurring').decorateSchedules([s]);
+    res.json({ success: true, data: out });
+  } catch (err) {
+    console.error('POST /purchase-orders/schedules/:id/approve error:', err);
+    res.status(500).json({ success: false, message: 'Failed to approve standing order' });
+  }
+});
+
+router.post('/purchase-orders/schedules/:id/reject', authenticateToken, requireOwnerScope, async (req, res) => {
+  try {
+    const reason = sanitizeString(req.body && req.body.reason ? String(req.body.reason) : '').trim();
+    if (!reason) return res.status(400).json({ success: false, message: 'Rejection reason is required' });
+    const s = await loadOwnerSchedule(req, res); if (!s) return;
+    if (s.status !== 'pending_approval') return res.status(400).json({ success: false, message: 'Only standing orders awaiting approval can be rejected' });
+    await s.update({
+      status: 'paused',
+      paused_reason: `Rejected by Owner: ${reason}`.slice(0, 255),
+      rejected_by_user_id: req.user.id, rejected_at: new Date(), rejected_reason: reason.slice(0, 1000)
+    });
+    const { fireScheduleApprovalResultNotification } = require('../services/poScheduleNotifications');
+    setImmediate(() => fireScheduleApprovalResultNotification(s, { approved: false, reason }));
+    const [out] = await require('./purchase-orders-recurring').decorateSchedules([s]);
+    res.json({ success: true, data: out });
+  } catch (err) {
+    console.error('POST /purchase-orders/schedules/:id/reject error:', err);
+    res.status(500).json({ success: false, message: 'Failed to reject standing order' });
+  }
+});
+
+router.post('/purchase-orders/schedules/:id/owner-pause', authenticateToken, requireOwnerScope, async (req, res) => {
+  try {
+    const s = await loadOwnerSchedule(req, res); if (!s) return;
+    if (s.status !== 'active' && s.status !== 'pending_approval') return res.status(400).json({ success: false, message: 'Only active standing orders can be paused' });
+    await s.update({ status: 'paused', paused_reason: 'Paused by Owner' });
+    const [out] = await require('./purchase-orders-recurring').decorateSchedules([s]);
+    res.json({ success: true, data: out });
+  } catch (err) {
+    console.error('owner-pause error:', err);
+    res.status(500).json({ success: false, message: 'Failed to pause' });
+  }
+});
+
+router.post('/purchase-orders/schedules/:id/owner-end', authenticateToken, requireOwnerScope, async (req, res) => {
+  try {
+    const s = await loadOwnerSchedule(req, res); if (!s) return;
+    if (s.status === 'ended') return res.status(400).json({ success: false, message: 'Already ended' });
+    await s.update({ status: 'ended', paused_reason: 'Ended by Owner' });
+    const [out] = await require('./purchase-orders-recurring').decorateSchedules([s]);
+    res.json({ success: true, data: out });
+  } catch (err) {
+    console.error('owner-end error:', err);
+    res.status(500).json({ success: false, message: 'Failed to end' });
   }
 });
 

@@ -34,6 +34,9 @@ const NOTIFICATION_CATEGORIES = [
   { key: 'po_approval_pending', label: 'Purchase Order Awaiting Approval', description: 'When a restaurant purchase order needs your approval as the Owner', section: 'Supply Chain', roles: ['Restaurant Owner'] },
   { key: 'po_approval_result', label: 'Purchase Order Approval Result', description: 'When the Owner approves or rejects your purchase order', section: 'Supply Chain', roles: ['Restaurant Admin', 'Restaurant Owner', 'Staff'] },
   { key: 'po_buyer_confirm', label: 'Purchase Order Placed (Confirmation)', description: 'Confirmation to you when your purchase order is sent to the seller', section: 'Supply Chain', roles: ['Restaurant Admin', 'Restaurant Owner', 'Staff', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] },
+  // 정기 발주 (2026-10-22 Fable 설계 recurring-po §7) — 틀 승인 요청·결과는 po_approval_pending/result 를 같이 쓴다
+  { key: 'po_schedule_placed', label: 'Standing Order Placed', description: 'When a standing order places this period\'s purchase order (sent, recorded for a subscription supplier, or awaiting approval)', section: 'Supply Chain', roles: ['Restaurant Admin', 'Restaurant Owner', 'Staff', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] },
+  { key: 'po_schedule_failed', label: 'Standing Order Failed', description: 'When a standing order could not place its order, or was paused', section: 'Supply Chain', roles: ['Restaurant Admin', 'Restaurant Owner', 'Staff', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] },
   // Phase 3 — Referral Program
   { key: 'referral_commission', label: 'Referral Commission', description: 'When a commission is credited to your wallet (referrer) or a referral signs up', section: 'Referrals', roles: ['all'] },
   { key: 'referral_payout', label: 'Referral Payout Updates', description: 'Payout request status updates (approved / paid / rejected)', section: 'Referrals', roles: ['all'] },

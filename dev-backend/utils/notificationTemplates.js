@@ -760,6 +760,59 @@ function poApprovalResultEmail({ poNumber, approved, revoked, reason, total, cur
   }, title, body, lang, { action: approvalResultAction({ approved, revoked, isExternal }, lang) });
 }
 
+/** 정기 발주 주기 글자 — «매주 월요일» 등 (메일·화면 같은 뜻). */
+function poScheduleCadenceText({ frequency, weekday, day_of_month }, lang = 'en') {
+  const { getEmailText } = require('./i18n');
+  const t = (k, p) => getEmailText(lang, 'po.schedule.' + k, p);
+  if (frequency === 'monthly') return t('monthly', { day: day_of_month });
+  const day = t('days.' + Number(weekday));
+  return t(frequency === 'biweekly' ? 'biweekly' : 'weekly', { day });
+}
+
+/**
+ * 정기 발주(Standing order) 메일 — 한 틀, kind 로 갈린다 (2026-10-22 Fable 설계 recurring-po §7).
+ * kind: sent(가입 업체로 나감) · recorded(외부 구독 업체 — 기록만, 업체엔 안 보냄) · pending(오너 승인 대기) · failed · paused
+ *       · approval(오너에게 틀 승인 요청) · approved · rejected
+ */
+function poScheduleEmail(kind, {
+  scheduleName, sellerName, buyerName, poNumber, total, currency, items, reason, cadence, tolerance, link
+} = {}, lang = 'en') {
+  const { getEmailText } = require('./i18n');
+  const t = (k, p) => getEmailText(lang, 'po.schedule.' + k, p);
+  const ts = (k, p) => getEmailText(lang, 'po.sellerReceived.' + k, p);
+  const esc = (v, n) => String(v == null ? '' : v).slice(0, n).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+  const p = {
+    schedule: esc(scheduleName || '—', 100), seller: esc(sellerName || '—', 120), buyer: esc(buyerName || '—', 120),
+    poNumber: esc(poNumber || '—', 80), reason: esc(reason || '', 300),
+    cadence: esc(cadence || '', 80), tolerance: tolerance == null ? 10 : Number(tolerance)
+  };
+  const title = t(kind + 'Heading');
+  const hasPo = ['sent', 'recorded', 'pending'].includes(kind);
+  const money = total != null ? fmtMoney(total, currency) : null;
+  let rows = infoRow(t('schedule'), p.schedule) + infoRow(t('seller'), p.seller);
+  if (cadence) rows += infoRow(t('cadence'), p.cadence);
+  if (hasPo) rows += infoRow(ts('poNumber'), p.poNumber);
+  if (money) rows += infoRow(ts('total'), `<span style="color:${BRAND_COLOR};font-weight:700;">${money}</span>`);
+  if (reason && ['failed', 'paused', 'rejected'].includes(kind)) rows += infoRow(t('reason'), p.reason);
+  const ctaKey = kind === 'approval' ? 'ctaApprove' : hasPo ? 'ctaOrder' : 'ctaSchedules';
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      ${t(kind + 'Body', p)}
+    </p>
+    ${infoTable(rows)}
+    ${Array.isArray(items) && items.length ? poItemsTable(items, currency, total, lang) : ''}
+    ${link ? ctaButton(t(ctaKey), link) : ''}`;
+  const action = kind === 'approval' ? { state: 'action', key: 'approve_or_reject_standing_order' }
+    : kind === 'recorded' ? { state: 'action', key: 'confirm_receipt' }
+    : (kind === 'failed' || kind === 'paused') ? { state: 'action', key: 'fix_and_resume_standing_order' }
+    : { state: 'fyi', key: 'no_action' };
+  return withRenderMeta({
+    subject: t(kind + 'Subject', p),
+    html: wrapTemplate(title, body, lang),
+    text: t('textFallback', { ...p, heading: title })
+  }, title, body, lang, { action });
+}
+
 /**
  * 계정 없는 외부 공급업체에게 보내는 발주서 메일 (2026-08-30 신설).
  * 수신자 계정이 없어 언어 축이 없다 → 호출부가 'en' 을 넘긴다.
@@ -1287,6 +1340,8 @@ module.exports = {
   poApprovalPendingEmail,
   poApprovalResultEmail,
   poBuyerConfirmEmail,
+  poScheduleEmail,
+  poScheduleCadenceText,
   poExternalSendEmail,
   returnExternalSendEmail,
   tradeInvoiceCreatedEmail,

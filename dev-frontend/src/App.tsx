@@ -297,6 +297,7 @@ const PurchaseOrdersPage = React.lazy(() => import('./pages/PurchaseOrders/Purch
 const StockLedgerLinkPage = React.lazy(() => import('./pages/StockLedger/StockLedgerLinkPage'));
 const NewPurchaseOrderPage = React.lazy(() => import('./pages/PurchaseOrders/NewPurchaseOrderPage'));
 const PurchaseOrderStagingPage = React.lazy(() => import('./pages/PurchaseOrders/PurchaseOrderStagingPage'));
+const RecurringOrdersPage = React.lazy(() => import('./pages/PurchaseOrders/RecurringOrdersPage'));
 const InvoiceReconcilePage = React.lazy(() => import('./pages/PurchaseOrders/InvoiceReconcilePage'));
 const PurchaseOrderDetailPage = React.lazy(() => import('./pages/PurchaseOrders/PurchaseOrderDetailPage'));
 
@@ -1564,6 +1565,12 @@ function App() {
                       <Route path="/pos/purchase-orders/staging" element={
                         <ProtectedRoute requiredRole={['Restaurant Admin','Staff','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                           <PurchaseOrderStagingPage />
+                        </ProtectedRoute>
+                      } />
+                      {/* 정기 발주(Standing order) 목록 — 2026-10-22 Fable 설계 recurring-po §8-2. :id 보다 앞 */}
+                      <Route path="/pos/purchase-orders/recurring" element={
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Staff','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <RecurringOrdersPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/purchase-orders/new" element={

@@ -10,7 +10,7 @@ import { getAuthToken } from '../../utils/auth';
  * 경로 이동으로 오간다. «승인 완료» = 발주내역 화면 그대로(?approved=1 → «승인 완료만» 켜진 채).
  */
 interface OwnerPoTabsProps {
-  active: 'pending' | 'approved';
+  active: 'pending' | 'approved' | 'standing';
   /** 부모가 이미 아는 승인 대기 수(승인 화면). 없으면 /api/badge-counts 의 poApprovals 를 읽는다. */
   pendingCount?: number;
   /** 바뀌면 배지 수를 다시 읽는다(승인취소 뒤 등). */
@@ -40,6 +40,10 @@ const OwnerPoTabs: React.FC<OwnerPoTabsProps> = ({ active, pendingCount, refresh
       </Tab>
       <Tab type="button" active={active === 'approved'} onClick={() => navigate('/pos/purchase-orders/history?approved=1')}>
         {t('ownerApprovals.tabApproved')}
+      </Tab>
+      {/* 정기 발주 — 틀 승인·진행 (2026-10-22 recurring-po §8-3) */}
+      <Tab type="button" active={active === 'standing'} onClick={() => navigate('/pos/purchase-orders/recurring')}>
+        {t('recurring.tabStanding')}
       </Tab>
     </TabContainer>
   );

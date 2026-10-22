@@ -255,6 +255,7 @@ interface POListRow {
   seller_type: string;
   seller_name?: string | null;
   status: POStatus;
+  schedule_id?: number | null;   // 정기 발주에서 만든 발주(2026-10-22 recurring-po)
   item_count?: number;
   total_quantity?: number;
   total_amount?: number | string | null;
@@ -856,6 +857,10 @@ const PurchaseOrdersPage: React.FC = () => {
     <Container>
       <Header>
         <Title>{t('list.title')}</Title>
+        {/* 정기 발주 목록 — 사이드바 항목 없이 발주 화면 아래 하위 화면(2026-10-22 recurring-po §8-2) */}
+        <ThemedButton size="small" variant="outline" onClick={() => navigate('/pos/purchase-orders/recurring')}>
+          ↻ {t('recurring.link')}
+        </ThemedButton>
         {isOwner && (
           // 오너 사이드바에는 공급업체 메뉴가 아직 없다(🔒 MainLayout — 별도 승인) — 발주 화면에서 들어간다
           <ThemedButton size="small" variant="outline" onClick={() => navigate('/pos/suppliers')}>
@@ -1087,6 +1092,12 @@ const PurchaseOrdersPage: React.FC = () => {
                           marginLeft: 8, fontSize: 10, padding: '2px 6px',
                           background: '#FEF3C7', color: '#92400E', borderRadius: 999, fontWeight: 700
                         }}>{t('list.externalBadge', 'EXT')}</span>
+                      )}
+                      {row.schedule_id && (
+                        <span title={t('recurring.fromSchedule') as string} style={{
+                          marginLeft: 6, fontSize: 10, padding: '2px 6px',
+                          background: '#EEF2FF', color: '#4338CA', borderRadius: 999, fontWeight: 700
+                        }}>↻ {t('recurring.fromSchedule')}</span>
                       )}
                       {isOwner && ownerRid === OWNER_PO_ALL && row.restaurant_name && (
                         <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2 }}>{row.restaurant_name}</div>

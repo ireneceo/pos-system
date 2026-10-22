@@ -94,6 +94,9 @@ const SupplierInventoryTransaction = require('./SupplierInventoryTransaction');
 const Carrier = require('./Carrier');
 const CarrierWebhookEvent = require('./CarrierWebhookEvent');
 const PurchaseOrderReturn = require('./PurchaseOrderReturn');
+// 정기 발주 (2026-10-22 Fable 설계 recurring-po)
+const PurchaseOrderSchedule = require('./PurchaseOrderSchedule');
+const PurchaseOrderScheduleRun = require('./PurchaseOrderScheduleRun');
 const StockTake = require('./StockTake');
 const StockTakeItem = require('./StockTakeItem');
 const StockAlert = require('./StockAlert');
@@ -881,6 +884,9 @@ PurchaseOrder.belongsTo(SupplierContract, { foreignKey: 'contract_id', as: 'cont
 PurchaseOrder.belongsTo(User, { foreignKey: 'created_by_user_id', as: 'createdBy' });
 PurchaseOrderItem.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
 PurchaseOrderItem.belongsTo(IngredientSellerProduct, { foreignKey: 'ingredient_seller_product_id', as: 'sellerSource' });
+PurchaseOrderSchedule.hasMany(PurchaseOrderScheduleRun, { foreignKey: 'schedule_id', as: 'runs', constraints: false });
+PurchaseOrderScheduleRun.belongsTo(PurchaseOrderSchedule, { foreignKey: 'schedule_id', as: 'schedule', constraints: false });
+PurchaseOrder.belongsTo(PurchaseOrderSchedule, { foreignKey: 'schedule_id', as: 'schedule', constraints: false });
 
 // Sprint 7: Carrier ↔ CarrierWebhookEvent / InventoryTransaction ↔ PurchaseOrder
 Carrier.hasMany(CarrierWebhookEvent, { foreignKey: 'carrier_id', as: 'webhookEvents' });
@@ -1192,6 +1198,8 @@ module.exports = {
   CostChangeLog,
   PurchaseOrder,
   PurchaseOrderItem,
+  PurchaseOrderSchedule,
+  PurchaseOrderScheduleRun,
   // Referral System
   ReferralWallet,
   ReferralCommission,

@@ -26,6 +26,7 @@ const KIND_ROLE = {
 // target → kind → 경로(:rid · :poId 는 params 로 채움). 없는 칸 = 그 자격 메일에 안 쓰임.
 const PO_COMMON = '/pos/purchase-orders/:poId';
 const PO_HISTORY = '/pos/purchase-orders/history';
+const PO_SCHEDULES = '/pos/purchase-orders/recurring';  // 정기 발주 목록 (2026-10-22)
 const TARGETS = {
   dashboard: {
     store: '/restaurant/:rid/dashboard', store_staff: '/restaurant/:rid/dashboard', owner: '/pos/owner/dashboard',
@@ -42,6 +43,10 @@ const TARGETS = {
     foodcourt: PO_HISTORY, foodcourt_manager: PO_HISTORY, admin: PO_HISTORY
   },
   po_approvals: { owner: '/pos/owner/po-approvals' },
+  po_schedules: {
+    store: PO_SCHEDULES, store_staff: PO_SCHEDULES, owner: PO_SCHEDULES, brand: PO_SCHEDULES, brand_manager: PO_SCHEDULES,
+    foodcourt: PO_SCHEDULES, foodcourt_manager: PO_SCHEDULES
+  },
   seller_orders: {
     brand: '/pos/brand/general/incoming-orders', brand_manager: '/pos/brand/general/incoming-orders',
     foodcourt: '/pos/foodcourt/general/incoming-orders', foodcourt_manager: '/pos/foodcourt/general/incoming-orders',

@@ -22,6 +22,7 @@ import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
 import { useAuth } from '../../contexts/AuthContext';
 import { isOwnerRole, withOwnerPoScope } from '../../utils/ownerPoScope';
+import RecurringOrderModal from '../../components/PurchaseOrders/RecurringOrderModal';
 import AlertDialog from '../../components/Common/AlertDialog';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { getCurrencySymbol } from '../../utils/currency';
@@ -556,6 +557,8 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
   // 오너 승인취소 확인창 (2026-10-22 Fable 설계 owner-po-approval-revoke)
   const [revokeOpen, setRevokeOpen] = useState(false);
+  // 정기 발주(Standing order) 만들기 창 — 2026-10-22 recurring-po §8-1
+  const [repeatOpen, setRepeatOpen] = useState(false);
   const [shippedError, setShippedError] = useState<string | null>(null);
   const [shippedSubmitting, setShippedSubmitting] = useState(false);
 
@@ -1218,6 +1221,17 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
             </ThemedButton>
           )}
         </>)}
+        {/* 정기 발주 — 공급업체 발주를 반복하기 · 정기 발주에서 나온 발주면 관리 화면으로(2026-10-22 recurring-po §8-1·§8-4) */}
+        {(detail as any).schedule_id ? (
+          <ThemedButton variant="outline" onClick={() => navigate('/pos/purchase-orders/recurring')}
+            title={t('recurring.fromScheduleHint', { name: `#${(detail as any).schedule_id}` }) as string}>
+            ↻ {t('recurring.fromSchedule')} · {t('recurring.manage')}
+          </ThemedButton>
+        ) : (detail.seller_type === 'supplier' && s !== 'cancelled' && (
+          <ThemedButton variant="outline" onClick={() => setRepeatOpen(true)}>
+            ↻ {t('recurring.repeat')}
+          </ThemedButton>
+        ))}
         {!embedded && (
           <>
             <HeaderIconBtn
@@ -1249,6 +1263,15 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   const Outer: any = embedded ? React.Fragment : Container;
   return (
     <Outer>
+      {detail && (
+        <RecurringOrderModal
+          isOpen={repeatOpen}
+          sourcePoId={detail.id}
+          role={poRole}
+          onClose={() => setRepeatOpen(false)}
+          onSaved={() => { setRepeatOpen(false); navigate('/pos/purchase-orders/recurring'); }}
+        />
+      )}
       {embedded ? (
         detail && (
           <EmbeddedTitle>

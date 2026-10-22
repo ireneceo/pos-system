@@ -364,7 +364,68 @@ async function invoiceOnConfirm(po) {
   return r.brand_billing_terms?.invoice_trigger === 'on_confirmed';
 }
 
+/**
+ * 초안(draft) 발주를 판매자에게 내보내는 **한 길** — 잠금 → 상태/줄 검사 → 최소주문 → 판매 중지 → 배송비 재계산 → 승인 게이트.
+ * 2026-10-22 Fable 설계 recurring-po §3-1: `POST /purchase-orders/:id/submit` 본문을 그대로 옮겼다.
+ * 라우트와 정기 발주 스케줄러가 같은 함수를 쓴다(복붙하면 한쪽만 고쳐진다 — 2026-07-13 사고).
+ * 커밋 뒤 알림(판매자/오너/구매자)은 호출부가 쏜다.
+ *
+ * @param {number} id  - 발주 id
+ * @param {object} t   - transaction
+ * @param {object} opts - { canAccess(po) → bool, actor, preApproved }
+ * @returns {Promise<{po, needsApproval}>}
+ *   throw: e.code NOT_FOUND / BAD_STATUS / EMPTY_ITEMS · MinOrderError · InactiveSellerProductError
+ */
+async function submitDraftInTx(id, t, { canAccess, actor, preApproved } = {}) {
+  const { assertLinesMeetMinOrder } = require('../utils/poMinOrder');
+  const { assertLinesSellerProductActive } = require('../utils/poSellerProductActive');
+  const { computeTotalsWithDelivery } = require('../utils/purchaseOrderTotals');
+  const { applySubmitGate } = require('../utils/poOwnerApproval');
+  const { appendTrackingEvent } = require('./poRealtimeService');
+
+  const locked = await PurchaseOrder.findByPk(id, {
+    lock: t.LOCK.UPDATE,
+    include: [{ model: PurchaseOrderItem, as: 'items' }],
+    transaction: t
+  });
+  if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+  if (canAccess && !canAccess(locked)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+  if (locked.status !== 'draft') {
+    const e = new Error('Only draft orders can be submitted');
+    e.code = 'BAD_STATUS';
+    throw e;
+  }
+  if (!locked.items || locked.items.length === 0) {
+    const e = new Error('Purchase order has no items');
+    e.code = 'EMPTY_ITEMS';
+    throw e;
+  }
+  // 최소주문 — 옛 초안·담은 뒤 판매자가 MOQ 를 올린 경우의 안전망 (utils/poMinOrder.js · MinOrderError 로 던진다)
+  await assertLinesMeetMinOrder(locked.items, { transaction: t });
+  // 판매 중지 상품 — 담은 뒤 판매자가 끈 경우(utils/poSellerProductActive.js)
+  await assertLinesSellerProductActive(locked.items, { transaction: t });
+  // 배송비 제출 때 1회 재계산 (2026-10-07 Fable 배송 지역) — 담은 뒤 매장 주소(주)·판매자 지역이 바뀌었으면
+  //   제출 시점 값으로 맞춘다. 품목은 그대로라 subtotal 은 같아야 한다. 판매자 확인 후 동결 규칙은 그대로.
+  const subTotals = await computeTotalsWithDelivery(locked.items, locked,
+    { orderCurrency: locked.currency, tax_amount: locked.tax_amount });
+  if (Math.abs((parseFloat(locked.subtotal) || 0) - subTotals.subtotal) > 0.005) {
+    console.warn(`[po-submit] PO ${locked.id} subtotal ${locked.subtotal} → ${subTotals.subtotal} (라인 기준으로 맞춤)`);
+  }
+  await locked.update({
+    subtotal: subTotals.subtotal,
+    delivery_fee: subTotals.delivery_fee,
+    delivery_fee_basis: subTotals.delivery_fee_basis,
+    total_amount: subTotals.total_amount
+  }, { transaction: t });
+  // Owner approval gate — restaurant POs only, when an Owner is connected
+  // and operation_settings.requirePoOwnerApproval !== false (default ON).
+  // 승인 게이트는 utils/poOwnerApproval 단일 소스 (submit / bulk / 외부전송 / 정기 발주 경로 공유)
+  const needsApproval = await applySubmitGate(locked, t, appendTrackingEvent, actor, preApproved ? { preApproved } : {});
+  return { po: locked, needsApproval };
+}
+
 module.exports = {
+  submitDraftInTx,
   createTradeInvoice,
   issueTradeInvoiceAfterCommit,
   invoiceOnConfirm,

@@ -4233,6 +4233,229 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
   });
 
 
+
+  // ── 정기 발주(Standing order) 계약 7건 (2026-10-22 Fable 설계 recurring-po §9-1) ─────────────────
+  //   데모 매장 2(오너 연결·승인 ON) 공급업체 20 · 데모 매장 38(오너 없음) 외부 공급업체 4019.
+  //   틀 이름 표지 ZZ-HC-RPO- · 출처 초안 notes ZZ-HC-RPO · 시작/끝 정리(멱등). 스케줄러는 now 를 넣어 직접 부른다.
+  //   예정일은 «내일» 요일로 잡는다 — 서버의 실제 매시 틱이 검사 도중 이 틀을 집어 가지 않게.
+  const RPO = { ready: false };
+  const RPO_NOTE = 'ZZ-HC-RPO';
+  const rpoFail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+  async function rpoCleanup() {
+    const { sequelize } = require('../config/database');
+    const [ss] = await sequelize.query("SELECT id FROM purchase_order_schedules WHERE name LIKE 'ZZ-HC-RPO-%'");
+    const sids = ss.map(r => Number(r.id));
+    const [pos] = await sequelize.query(
+      `SELECT id FROM purchase_orders WHERE notes = '${RPO_NOTE}'${sids.length ? ` OR schedule_id IN (${sids.join(',')})` : ''}`);
+    if (pos.length) await hcCleanupPurchaseOrders(pos.map(r => r.id), { waitMs: 0 });
+    if (sids.length) {
+      await sequelize.query(`DELETE FROM purchase_order_schedule_runs WHERE schedule_id IN (${sids.join(',')})`);
+      await sequelize.query(`DELETE FROM purchase_order_schedules WHERE id IN (${sids.join(',')})`);
+    }
+    if (RPO.mapping && RPO.origPrice != null) {
+      await sequelize.query('UPDATE ingredient_seller_products SET unit_price = :p WHERE id = :i', { replacements: { p: RPO.origPrice, i: RPO.mapping } });
+    }
+    if (RPO.rest && RPO.origSettings) await RPO.rest.update({ operation_settings: RPO.origSettings });
+  }
+  const rpoTok = (uid) => ({ Authorization: `Bearer ${jwt.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '15m' })}` });
+  function rpoAt(dateStr, hhmm) {
+    return require('../utils/dateTimeHelper').localClockToUTC(dateStr, hhmm, 'Asia/Kuala_Lumpur');
+  }
+  async function rpoSetup() {
+    if (RPO.ready) return RPO;
+    const { sequelize } = require('../config/database');
+    const { Restaurant } = require('../models');
+    const D = require('../utils/poScheduleDates');
+    await rpoCleanup();
+    const [[m]] = await sequelize.query(`
+      SELECT isp.id mapping, isp.unit_price, i.id ingredient_id, i.unit, isp.seller_entity_id, COALESCE(sp.min_order_quantity, 1) moq
+        FROM ingredient_seller_products isp JOIN ingredients i ON i.id = isp.ingredient_id
+        LEFT JOIN supplier_products sp ON sp.id = isp.seller_product_id
+       WHERE i.restaurant_id = 2 AND isp.seller_type = 'supplier' AND isp.is_active = 1 ORDER BY i.id LIMIT 1`);
+    const [[ra]] = await sequelize.query("SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 2 AND is_active = 1 LIMIT 1");
+    const [[ow]] = await sequelize.query("SELECT manager_id id FROM restaurant_managers WHERE restaurant_id = 2 AND relationship_type = 'ownership' LIMIT 1");
+    if (!m || !ra || !ow) return null;
+    RPO.mapping = m.mapping; RPO.origPrice = m.unit_price;
+    RPO.rest = await Restaurant.findByPk(2);
+    RPO.origSettings = RPO.rest.operation_settings ? JSON.parse(JSON.stringify(RPO.rest.operation_settings)) : {};
+    await RPO.rest.update({ operation_settings: { ...RPO.origSettings, requirePoOwnerApproval: true } });
+    RPO.ra = rpoTok(ra.id); RPO.owner = rpoTok(ow.id); RPO.ownerId = Number(ow.id);
+    const today = D.localParts(new Date(), 'Asia/Kuala_Lumpur').date;
+    RPO.tomorrow = D.addDays(today, 1);
+    RPO.weekday = new Date(RPO.tomorrow + 'T00:00:00Z').getUTCDay();
+    const src = await request('POST', '/purchase-orders', {
+      seller_type: 'supplier', seller_entity_id: m.seller_entity_id, notes: RPO_NOTE,
+      items: [{ ingredient_id: m.ingredient_id, quantity_ordered: Math.max(2, Number(m.moq) || 1), unit: m.unit }]
+    }, RPO.ra);
+    RPO.sourcePoId = src.body?.data?.id;
+    if (!RPO.sourcePoId) { console.log(c.gray(`      (출처 초안 ${src.status} ${src.body?.message || ''})`)); return null; }
+    RPO.ready = true;
+    return RPO;
+  }
+  async function rpoCountPos() {
+    const { sequelize } = require('../config/database');
+    return Number((await sequelize.query('SELECT COUNT(*) c FROM purchase_orders'))[0][0].c);
+  }
+  async function rpoRun(dateStr, hhmm) {
+    const { runDueSchedules } = require('../services/poScheduleService');
+    return runDueSchedules({ now: rpoAt(dateStr, hhmm), onlyIds: [RPO.scheduleId].concat(RPO.extId ? [RPO.extId] : []) });
+  }
+
+  test('inventory', '정기 발주 ① 오너 승인 매장에서 틀 만들기 → 승인 대기 · 실제 발주 0건(드라이런은 롤백)', async () => {
+    try {
+      const s = await rpoSetup(); if (!s) { console.log(c.gray('      (건너뜀: 데모 매장 2 준비물 없음)')); return true; }
+      const before = await rpoCountPos();
+      const r = await request('POST', '/purchase-orders/schedules',
+        { source_po_id: s.sourcePoId, frequency: 'weekly', weekday: s.weekday, name: 'ZZ-HC-RPO-1' }, s.ra);
+      const after = await rpoCountPos();
+      if (r.status !== 201) return rpoFail(`POST ${r.status} ${r.body?.message || ''}`);
+      s.scheduleId = r.body.data.id;
+      const d = r.body.data;
+      if (d.status !== 'pending_approval' || d.approved_at) return rpoFail(`status=${d.status} approved_at=${d.approved_at}`);
+      if (after !== before) return rpoFail(`발주 수 ${before}→${after}`);
+      if (d.next_run_date !== s.tomorrow) return rpoFail(`next_run_date ${d.next_run_date} ≠ ${s.tomorrow}`);
+      // 매장 관리자는 오너 승인 문을 못 연다
+      const bad = await request('POST', `/purchase-orders/schedules/${s.scheduleId}/approve`, {}, s.ra);
+      if (bad.status !== 403) return rpoFail(`RA 승인 시도 ${bad.status}`);
+      return true;
+    } catch (e) { return rpoFail(`예외: ${e.message}`); }
+  });
+
+  test('inventory', '정기 발주 ② 오너 승인 → 진행 중 · 기준 총액 · 첫 발주일', async () => {
+    try {
+      const s = RPO; if (!s.scheduleId) return rpoFail('① 미완');
+      const r = await request('POST', `/purchase-orders/schedules/${s.scheduleId}/approve`, {}, s.owner);
+      if (r.status !== 200) return rpoFail(`approve ${r.status} ${r.body?.message || ''}`);
+      const d = r.body.data;
+      s.approvedTotal = parseFloat(d.approved_total);
+      if (d.status !== 'active' || !(s.approvedTotal > 0) || Number(d.approved_by_user_id) !== s.ownerId) return rpoFail(JSON.stringify({ st: d.status, t: d.approved_total }));
+      if (d.next_run_date !== s.tomorrow) return rpoFail(`next ${d.next_run_date}`);
+      const list = await request('GET', '/purchase-orders/schedules/owned', null, s.owner);
+      if (!(list.body?.data || []).some(x => x.id === s.scheduleId)) return rpoFail('오너 목록에 없음');
+      return true;
+    } catch (e) { return rpoFail(`예외: ${e.message}`); }
+  });
+
+  test('inventory', '정기 발주 ③ 06:59 엔 안 만듦 · 07:30 에 1건(오너 사전 승인 기록) · 같은 시각 다시 → +0', async () => {
+    try {
+      const s = RPO; if (!s.scheduleId) return rpoFail('① 미완');
+      const { sequelize } = require('../config/database');
+      const c0 = await rpoCountPos();
+      await rpoRun(s.tomorrow, '06:59');
+      if (await rpoCountPos() !== c0) return rpoFail('07:00 전에 만들었다');
+      const r1 = await rpoRun(s.tomorrow, '07:30');
+      const c1 = await rpoCountPos();
+      const [[po]] = await sequelize.query(`SELECT id, status, approval_required, approved_by_user_id, schedule_id FROM purchase_orders WHERE schedule_id = ${s.scheduleId} ORDER BY id DESC LIMIT 1`);
+      if (c1 !== c0 + 1 || !po) return rpoFail(`발주 ${c0}→${c1} ${JSON.stringify(r1.sample)}`);
+      if (po.status !== 'submitted' || Number(po.approval_required) !== 1 || Number(po.approved_by_user_id) !== s.ownerId) return rpoFail(JSON.stringify(po));
+      await rpoRun(s.tomorrow, '07:30');
+      const runs = Number((await sequelize.query(`SELECT COUNT(*) c FROM purchase_order_schedule_runs WHERE schedule_id = ${s.scheduleId}`))[0][0].c);
+      if (await rpoCountPos() !== c1 || runs !== 1) return rpoFail(`두 번째 실행: 발주 ${c1}→${await rpoCountPos()} runs=${runs}`);
+      const [[sc]] = await sequelize.query(`SELECT next_run_date FROM purchase_order_schedules WHERE id = ${s.scheduleId}`);
+      s.next2 = require('../utils/poScheduleDates').addDays(s.tomorrow, 7);
+      const nd = sc.next_run_date instanceof Date ? sc.next_run_date.toISOString().slice(0, 10) : String(sc.next_run_date);
+      if (nd !== s.next2) return rpoFail(`next ${nd} ≠ ${s.next2}`);
+      return true;
+    } catch (e) { return rpoFail(`예외: ${e.message}`); }
+  });
+
+  test('inventory', '정기 발주 ④ 단가 +20%(허용 10% 밖) → 승인 대기로 · 오너 승인하면 기준선 = 그 총액', async () => {
+    try {
+      const s = RPO; if (!s.next2) return rpoFail('③ 미완');
+      const { sequelize } = require('../config/database');
+      await sequelize.query('UPDATE ingredient_seller_products SET unit_price = :p WHERE id = :i',
+        { replacements: { p: Math.round(parseFloat(s.origPrice) * 1.2 * 100) / 100, i: s.mapping } });
+      await rpoRun(s.next2, '07:30');
+      await sequelize.query('UPDATE ingredient_seller_products SET unit_price = :p WHERE id = :i', { replacements: { p: s.origPrice, i: s.mapping } });
+      const [[run]] = await sequelize.query(`SELECT outcome, drift_pct, po_id FROM purchase_order_schedule_runs WHERE schedule_id = ${s.scheduleId} AND run_date = '${s.next2}'`);
+      const [[sc]] = await sequelize.query(`SELECT status FROM purchase_order_schedules WHERE id = ${s.scheduleId}`);
+      if (!run || run.outcome !== 'pending_approval' || Math.abs(parseFloat(run.drift_pct) - 20) > 2 || sc.status !== 'active') {
+        return rpoFail(JSON.stringify({ run, st: sc && sc.status }));
+      }
+      const ap = await request('POST', `/purchase-orders/${run.po_id}/approve`, {}, s.owner);
+      const [[po]] = await sequelize.query(`SELECT total_amount, status FROM purchase_orders WHERE id = ${run.po_id}`);
+      const [[sc2]] = await sequelize.query(`SELECT approved_total FROM purchase_order_schedules WHERE id = ${s.scheduleId}`);
+      if (ap.status !== 200 || po.status !== 'submitted' || Math.abs(parseFloat(sc2.approved_total) - parseFloat(po.total_amount)) > 0.005) {
+        return rpoFail(`approve ${ap.status} po=${JSON.stringify(po)} base=${sc2.approved_total}`);
+      }
+      // 기준선을 원래 값으로 — 다음 계약이 단가 원복 상태에서 돈다
+      await sequelize.query(`UPDATE purchase_order_schedules SET approved_total = ${s.approvedTotal} WHERE id = ${s.scheduleId}`);
+      return true;
+    } catch (e) { return rpoFail(`예외: ${e.message}`); }
+  });
+
+  test('inventory', '정기 발주 ⑤ 오너 승인 기록이 없는 틀 → 금액이 같아도 승인 대기(사전 승인 무시)', async () => {
+    try {
+      const s = RPO; if (!s.next2) return rpoFail('④ 미완');
+      const { sequelize } = require('../config/database');
+      s.next3 = require('../utils/poScheduleDates').addDays(s.next2, 7);
+      await sequelize.query(`UPDATE purchase_order_schedules SET approved_at = NULL, approved_by_user_id = NULL WHERE id = ${s.scheduleId}`);
+      await rpoRun(s.next3, '07:30');
+      const [[run]] = await sequelize.query(`SELECT outcome, po_id FROM purchase_order_schedule_runs WHERE schedule_id = ${s.scheduleId} AND run_date = '${s.next3}'`);
+      if (!run || run.outcome !== 'pending_approval') return rpoFail(JSON.stringify(run));
+      s.pendingPo = run.po_id;
+      return true;
+    } catch (e) { return rpoFail(`예외: ${e.message}`); }
+  });
+
+  test('inventory', '정기 발주 ⑥ 오너가 정기 발주에서 나온 발주를 반려 → 틀 일시정지(사유에 발주 번호)', async () => {
+    try {
+      const s = RPO; if (!s.pendingPo) return rpoFail('⑤ 미완');
+      const { sequelize } = require('../config/database');
+      const r = await request('POST', `/purchase-orders/${s.pendingPo}/reject`, { reason: 'ZZ test reject' }, s.owner);
+      const [[po]] = await sequelize.query(`SELECT po_number FROM purchase_orders WHERE id = ${s.pendingPo}`);
+      const [[sc]] = await sequelize.query(`SELECT status, paused_reason FROM purchase_order_schedules WHERE id = ${s.scheduleId}`);
+      if (r.status !== 200 || sc.status !== 'paused' || !String(sc.paused_reason || '').includes(po.po_number)) return rpoFail(`${r.status} ${JSON.stringify(sc)}`);
+      // 멈춘 틀은 다음 예정일에도 안 만든다
+      const c0 = await rpoCountPos();
+      await rpoRun(require('../utils/poScheduleDates').addDays(s.next3, 7), '07:30');
+      if (await rpoCountPos() !== c0) return rpoFail('멈춘 틀이 발주를 만들었다');
+      return true;
+    } catch (e) { return rpoFail(`예외: ${e.message}`); }
+  });
+
+  test('inventory', '정기 발주 ⑦ 외부(구독) 공급업체 → 발주는 나감(submitted)·기록만 · 업체에 메일 시도 0 · 추적에 «nothing sent»', async () => {
+    try {
+      const s = RPO; if (!s.ready) return rpoFail('준비 미완');
+      const { sequelize } = require('../config/database');
+      const [[m]] = await sequelize.query(`
+        SELECT i.id ingredient_id, i.unit, isp.seller_entity_id, COALESCE(sp.min_order_quantity, 1) moq
+          FROM ingredient_seller_products isp JOIN ingredients i ON i.id = isp.ingredient_id
+          JOIN supplier_companies sc ON sc.id = isp.seller_entity_id AND sc.is_system_registered = 0 AND sc.owner_id IS NULL
+          LEFT JOIN supplier_products sp ON sp.id = isp.seller_product_id
+         WHERE i.restaurant_id = 38 AND isp.seller_type = 'supplier' AND isp.is_active = 1 ORDER BY i.id LIMIT 1`);
+      const [[ra]] = await sequelize.query("SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 AND is_active = 1 LIMIT 1");
+      if (!m || !ra) { console.log(c.gray('      (건너뜀: 데모 매장 38 외부 업체 연결 없음)')); return true; }
+      const tok = rpoTok(ra.id);
+      const src = await request('POST', '/purchase-orders', {
+        seller_type: 'supplier', seller_entity_id: m.seller_entity_id, notes: RPO_NOTE,
+        items: [{ ingredient_id: m.ingredient_id, quantity_ordered: Math.max(1, Number(m.moq) || 1), unit: m.unit }]
+      }, tok);
+      if (!src.body?.data?.id) return rpoFail(`출처 ${src.status} ${src.body?.message || ''}`);
+      const r = await request('POST', '/purchase-orders/schedules',
+        { source_po_id: src.body.data.id, frequency: 'weekly', weekday: s.weekday, name: 'ZZ-HC-RPO-7' }, tok);
+      if (r.status !== 201 || r.body.data.status !== 'active' || r.body.data.is_external !== true) return rpoFail(`POST ${r.status} ${JSON.stringify(r.body?.data?.status)} ${r.body?.message || ''}`);
+      s.extId = r.body.data.id;
+      await rpoRun(s.tomorrow, '07:30');
+      const [[run]] = await sequelize.query(`SELECT outcome, reason, po_id FROM purchase_order_schedule_runs WHERE schedule_id = ${s.extId}`);
+      if (!run || run.outcome !== 'submitted') return rpoFail(JSON.stringify(run));
+      const [[po]] = await sequelize.query(`SELECT status, tracking_info FROM purchase_orders WHERE id = ${run.po_id}`);
+      const tr = typeof po.tracking_info === 'string' ? po.tracking_info : JSON.stringify(po.tracking_info);
+      // 구독 업체는 알아서 배송·청구한다 — 우리는 기록만, 업체로 메일을 보내지 않는다(Irene 10-22)
+      if (po.status !== 'submitted' || !tr.includes('nothing sent') || tr.includes('emailed to')) return rpoFail(`po ${po.status}`);
+      return true;   // 판매자 포털 봉인(§G-6)은 기존 security 계약이 그대로 증명한다
+    } catch (e) { return rpoFail(`예외: ${e.message}`); }
+  });
+
+  test('inventory', '정기 발주 정리 — 시험 틀·발주·단가·매장 설정 원복', async () => {
+    try {
+      await rpoCleanup();
+      const { sequelize } = require('../config/database');
+      const [[x]] = await sequelize.query("SELECT COUNT(*) c FROM purchase_order_schedules WHERE name LIKE 'ZZ-HC-RPO-%'");
+      return Number(x.c) === 0;
+    } catch (e) { return rpoFail(`예외: ${e.message}`); }
+  });
+
   // ── 개인금액(직원이 자기 돈으로 삼) 계약 (2026-09-18 Fable 판정 ⑨ · Irene 승인) ─────────────
   //   Irene 「개인돈으로 쓴 건 비용처리가 안되고 개인에게 돈을 줘야 하는 거야. 회계처리에 안들어가야 해.」
   //   뜻: 결제 시점에는 **회사 금고가 움직이지 않고**(회사 돈이 아니니까), **갚을 때** 나간다.

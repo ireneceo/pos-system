@@ -438,6 +438,11 @@
       "ko": "매장 네트워크",
       "zh": "门店网络",
       "ms": "Rangkaian Kedai"
+    },
+    "Standing order": {
+      "ko": "정기 발주",
+      "zh": "定期采购",
+      "ms": "Pesanan tetap"
     }
   }
 }

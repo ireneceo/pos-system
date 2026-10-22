@@ -110,7 +110,9 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
   approved_at: { type: DataTypes.DATE, allowNull: true },
   rejected_by_user_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'Owner who rejected (User.id)' },
   rejected_at: { type: DataTypes.DATE, allowNull: true },
-  rejected_reason: { type: DataTypes.TEXT, allowNull: true }
+  rejected_reason: { type: DataTypes.TEXT, allowNull: true },
+  // 정기 발주에서 만든 발주 (2026-10-22 · purchase_order_schedules.id, FK 없음)
+  schedule_id: { type: DataTypes.INTEGER, allowNull: true }
 }, {
   tableName: 'purchase_orders',
   timestamps: true,
@@ -123,7 +125,8 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
     { fields: ['entity_type', 'entity_id'] },
     { fields: ['seller_type', 'seller_entity_id'] },
     { fields: ['status'] },
-    { fields: ['entity_type', 'entity_id', 'status'] }
+    { fields: ['entity_type', 'entity_id', 'status'] },
+    { fields: ['schedule_id'] }
   ]
 });
 

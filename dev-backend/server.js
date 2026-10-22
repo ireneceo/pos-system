@@ -82,6 +82,7 @@ const dailyStatsScheduler = require('./services/dailyStatsScheduler');
 const mallSalesScheduler = require('./services/mallSalesScheduler');
 const invoiceOverdueScheduler = require('./services/invoiceOverdueScheduler');
 const reservationScheduler = require('./services/reservationScheduler');
+const recurringPoScheduler = require('./services/recurringPoScheduler');
 const base64ImageSweep = require('./services/base64ImageSweep');
 const { startSoaCron } = require('./services/soaScheduler');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -749,6 +750,9 @@ async function startServer() {
 
     // Start reservation scheduler — runs hourly (24h/2h reminders + no_show auto)
     reservationScheduler.start();
+
+    // Start standing-order (정기 발주) scheduler — hourly, buyer-local 07:00 (2026-10-22 recurring-po)
+    recurringPoScheduler.start(io);
 
     // Start base64 image sweep — weekly Sunday 04:00 UTC, detects inline base64
     // images in DB columns and alerts System Admins (v3.30 perf incident guard).

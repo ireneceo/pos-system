@@ -8,6 +8,8 @@
 const express = require('express');
 const router = express.Router();
 
+// 정기 발주(2026-10-22) — crud 의 GET /purchase-orders/:id 보다 앞이어야 /purchase-orders/schedules 가 산다
+router.use(require('./purchase-orders-recurring'));
 router.use(require('./purchase-orders-crud'));
 router.use(require('./purchase-orders-workflow'));
 router.use(require('./purchase-orders-amend'));   // 구매자 품목 수정(2026-10-15 buyer-po-edit)

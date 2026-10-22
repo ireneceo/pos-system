@@ -256,6 +256,8 @@ graph TD
 
 ---
 
+> **정기 발주(Standing order, 2026-10-22)** — 재료·상품·가격 목록 신설 없음. 발주를 «만드는 길» 하나(틀 → 같은 `createPurchaseOrderCore` → `submitDraftInTx`)가 더해졌을 뿐이고 단가는 그날 연결(`ingredient_seller_products.unit_price`) 현재가. 상세 `docs/PURCHASE_ORDER_SYSTEM.md` «정기 발주» 절.
+
 ## 3. "재료"가 두 군데인 이유 — 주방이 둘이다
 
 같은 "재료"라는 말을 쓰지만 **주인이 다르다.**

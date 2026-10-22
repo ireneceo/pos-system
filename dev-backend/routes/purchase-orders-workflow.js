@@ -39,14 +39,15 @@ const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
 const { isApprovalRequiredForRestaurant, applySubmitGate } = require('../utils/poOwnerApproval');
-const { assertLinesMeetMinOrder, MinOrderError, minOrderErrorBody } = require('../utils/poMinOrder');
+const { MinOrderError, minOrderErrorBody } = require('../utils/poMinOrder');
 const { assertLinesSellerProductActive, InactiveSellerProductError, inactiveSellerProductErrorBody } = require('../utils/poSellerProductActive');
 const { fireSellerSubmittedNotification, fireOwnerApprovalPendingNotification, fireBuyerConfirmNotification, fireBuyerReceivedNotification } = require('../services/poNotifications');
 // 수령 시 재고 반영 단일 소스 — /receive 와 mark-received 가 같은 함수를 쓴다(P4-2, 복제 금지)
 const { applyReceipt, markAllReceived } = require('../services/purchaseOrderReceive');
 
 // 수령이 끝난 발주에 거래 청구서를 발행한다 — 단일 소스는 services/purchaseOrderService (2026-09-29 이동, 세 경로 공용)
-const { issueTradeInvoiceAfterCommit } = require('../services/purchaseOrderService');
+const { issueTradeInvoiceAfterCommit, submitDraftInTx } = require('../services/purchaseOrderService');
+const { sendExternalPoEmail } = require('../services/poExternalEmail');
 
 // 결제·되돌리기 단일 소스 (P4-3) — 발주 행 기록 + 현금이면 드로어 이동. 마감 공식은 자동으로 잡는다.
 const { recordPayment, reversePayment, reimbursePersonalPayment } = require('../services/purchaseOrderPayment');
@@ -417,49 +418,14 @@ router.post('/purchase-orders/:id/send-external-email', async (req, res) => {
     const po = await PurchaseOrder.findByPk(id);
     if (!po) return res.status(404).json({ success: false, message: 'Not found' });
     if (!checkPOOwnership(po, req)) return res.status(404).json({ success: false, message: 'Not found' });
-    if (po.seller_type !== 'supplier' || !po.seller_entity_id) {
-      return res.status(400).json({ success: false, message: 'External email is only for supplier orders' });
+    // 본문 = services/poExternalEmail.sendExternalPoEmail (정기 발주 자동 발송과 같은 길 — 2026-10-22)
+    const r = await sendExternalPoEmail(po);
+    if (r.code === 'SUPPLIER_NOT_FOUND') return res.status(404).json({ success: false, message: r.reason });
+    if (r.code && r.code !== 'GUARD') return res.status(400).json({ success: false, message: r.reason });
+    if (!r.sent) {
+      return res.json({ success: true, data: { sent: false, reason: r.reason }, message: 'Email not sent (blocked by guard)' });
     }
-
-    const SupplierCompany = require('../models/SupplierCompany');
-    const sc = await SupplierCompany.findByPk(po.seller_entity_id);
-    if (!sc) return res.status(404).json({ success: false, message: 'Supplier not found' });
-    if (sc.owner_id) {
-      return res.status(400).json({ success: false, message: 'This supplier has an account — they are notified in the app' });
-    }
-    if (!sc.email) {
-      return res.status(400).json({ success: false, message: 'Supplier has no email address on file' });
-    }
-
-    // 구매자 표시명 — 판매자/구매자 신원 단일 소스 규칙과 같은 계열
-    let buyerName = 'A buyer';
-    try {
-      const { resolveBuyerName } = require('../services/poNotifications');
-      if (typeof resolveBuyerName === 'function') buyerName = await resolveBuyerName(po);
-    } catch (_) { /* keep default */ }
-
-    const { poExternalSendEmail } = require('../utils/notificationTemplates');
-    const { loadPoEmailItems } = require('../utils/poEmailItems');
-    const mail = poExternalSendEmail({
-      buyerName,
-      poNumber: po.po_number,
-      total: po.total_amount,
-      currency: po.currency || 'MYR',
-      items: await loadPoEmailItems(po.id)
-    }, 'en');
-
-    const { sendPlatformEmail } = require('../utils/emailService');
-    const result = await sendPlatformEmail({ to: sc.email, subject: mail.subject, html: mail.html, text: mail.text });
-
-    // 가드에 걸려 안 나갔으면 그대로 알린다 — "보냈다" 고 거짓말하지 않는다.
-    if (result && result.skipped) {
-      return res.json({ success: true, data: { sent: false, reason: result.reason }, message: 'Email not sent (blocked by guard)' });
-    }
-
-    appendTrackingEvent(po, po.status, `Purchase order emailed to ${sc.email}`, { source: 'system_email' });
-    await po.save();
-
-    res.json({ success: true, data: { sent: true, to: sc.email } });
+    res.json({ success: true, data: { sent: true, to: r.to } });
   } catch (err) {
     console.error('send-external-email error:', err);
     res.status(500).json({ success: false, message: 'Failed to send email' });
@@ -941,46 +907,10 @@ router.post('/purchase-orders/:id/submit', async (req, res) => {
     if (!Number.isFinite(id)) {
       return res.status(404).json({ success: false, message: 'Purchase order not found' });
     }
+    // 본문 = services/purchaseOrderService.submitDraftInTx (정기 발주 스케줄러와 같은 길 — 2026-10-22)
     po = await database.sequelize.transaction(async (t) => {
-      const locked = await PurchaseOrder.findByPk(id, {
-        lock: t.LOCK.UPDATE,
-        include: [{ model: PurchaseOrderItem, as: 'items' }],
-        transaction: t
-      });
-      if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
-      if (!checkPOOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
-      if (locked.status !== 'draft') {
-        const e = new Error('Only draft orders can be submitted');
-        e.code = 'BAD_STATUS';
-        throw e;
-      }
-      if (!locked.items || locked.items.length === 0) {
-        const e = new Error('Purchase order has no items');
-        e.code = 'EMPTY_ITEMS';
-        throw e;
-      }
-      // 최소주문 — 옛 초안·담은 뒤 판매자가 MOQ 를 올린 경우의 안전망 (utils/poMinOrder.js · MinOrderError 로 던진다)
-      await assertLinesMeetMinOrder(locked.items, { transaction: t });
-      // 판매 중지 상품 — 담은 뒤 판매자가 끈 경우(utils/poSellerProductActive.js)
-      await assertLinesSellerProductActive(locked.items, { transaction: t });
-      // 배송비 제출 때 1회 재계산 (2026-10-07 Fable 배송 지역) — 담은 뒤 매장 주소(주)·판매자 지역이 바뀌었으면
-      //   제출 시점 값으로 맞춘다. 품목은 그대로라 subtotal 은 같아야 한다. 판매자 확인 후 동결 규칙은 그대로.
-      const subTotals = await computeTotalsWithDelivery(locked.items, locked,
-        { orderCurrency: locked.currency, tax_amount: locked.tax_amount });
-      if (Math.abs((parseFloat(locked.subtotal) || 0) - subTotals.subtotal) > 0.005) {
-        console.warn(`[po-submit] PO ${locked.id} subtotal ${locked.subtotal} → ${subTotals.subtotal} (라인 기준으로 맞춤)`);
-      }
-      await locked.update({
-        subtotal: subTotals.subtotal,
-        delivery_fee: subTotals.delivery_fee,
-        delivery_fee_basis: subTotals.delivery_fee_basis,
-        total_amount: subTotals.total_amount
-      }, { transaction: t });
-      // Owner approval gate — restaurant POs only, when an Owner is connected
-      // and operation_settings.requirePoOwnerApproval !== false (default ON).
-      // 승인 게이트는 utils/poOwnerApproval 단일 소스 (submit / bulk / 외부전송 3경로 공유)
-      await applySubmitGate(locked, t, appendTrackingEvent, req.user);
-      return locked;
+      const r = await submitDraftInTx(id, t, { canAccess: (p) => checkPOOwnership(p, req), actor: req.user });
+      return r.po;
     });
 
     if (po.status === 'pending_approval') {

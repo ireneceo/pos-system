@@ -2656,3 +2656,14 @@ Irene 「Submit 한 순서대로 나와야해. 생성일이 발주일이여야�
 - **변경 0**: 구매자 수령(보냄과 무관하게 받을 수 있음 — 공급업체 판매 발주는 «보내기» 없이 수령이 실사용 경로) · 반품 · 청구서 · 정산서 · `TRADE_STRUCTURE.md`.
 - **범위 밖**: 한 품목 안에서 수량 나눠 보내기 · «나머지 못 보냄(품절)» 처리(돈 문제 — 별도) · 지난 발송 송장 개별 수정 · 발송별 포장 목록.
 - 검사: health-check `inventory` «품목별 발송» 2건(S1~S5 · 동시 S7).
+
+## 정기 발주(Standing order) — 같은 품목·같은 수량을 주기마다 자동 발주 (2026-10-22 · Fable 설계 · [Claude Code])
+> Irene: «외부공급업체 중에 구독구매의 경우 발주가 정기적으로 생성되게 … 매주 1회 항상 같거든 … 레스토랑오너 승인도 1번만 하면 그 다음 계속 자동으로»
+> 설계 전문: `.claude/fable-design-20261022-recurring-po.md` (이 절은 요지·단일 소스 지도)
+- **데이터**: `purchase_order_schedules`(틀 — 구매자·판매자 1·`line_items`(단가 없음)·주기 weekly/biweekly/monthly·`next_run_date`(구매자 시간대 날짜)·오너 승인·`approved_total` 기준선) · `purchase_order_schedule_runs`(UNIQUE(schedule_id, run_date) = 하루 1건) · `purchase_orders.schedule_id`. 마이그 `migrate-po-schedules-20261022.js`(deploy).
+- **만들기 = 한 길**: 생성 `createPurchaseOrderCore`(mergeDraft **false** — 직원 장바구니에 합쳐지면 안 됨) → 제출 `services/purchaseOrderService.submitDraftInTx`(submit 라우트 본문을 옮김, 라우트도 이걸 부름) → `applySubmitGate`(+`opts.preApproved` 입구 하나). 단가는 그날 판매자 현재가.
+- **승인**: 틀을 오너가 1번 승인(`/purchase-orders/schedules/:id/approve`, 승인 금액 = 그때 드라이런 총액). 생성 발주는 틀 승인 + 총액 허용폭(기본 10%) 안이면 «오너 사전 승인 발주»(approval_required·approved_by=오너)로 나감 → 기존 승인취소 그대로 가능. 밖이면 승인 대기(오너가 승인하면 그 총액이 새 기준선). 틀 수량·주기 수정 = 다시 승인. 생성 발주 반려 = 틀 일시정지. 브랜드·푸드코트 구매자는 승인 없음.
+- **스케줄러**: `services/recurringPoScheduler.js` 매 정각 → `poScheduleService.runDueSchedules`(구매자 시간대 07:00 이후 · 밀려도 1건 · 승인 대기 발주가 남아 있으면 그 주 건너뜀 · 실패 3회 연속 일시정지 · SchedulerRun `recurring_po_hourly`).
+- **외부 공급업체에는 아무것도 보내지 않는다** (2026-10-22 Irene 답 — Fable 원설계 §5 «이메일 자동 발송» 폐기): «구독설정된 업체라서 이미 계속 알아서 우리한테 인보이스 주고 진행하는데 … 우리가 수동으로 반복처리 하는 거 안하려는 건데. 무슨 이메일을 자동 발송해?» → 외부 구독 업체 정기 발주 = **우리 쪽 기록**(받기·인보이스 대조·결제 체크용). submitted 로 만들고 추적에 «nothing sent» 한 줄, 구매자 알림은 «기록됨 — 오면 수령 처리»(`po_schedule_placed` kind `recorded`). 가입 업체는 평소처럼 앱 알림. `auto_send_email` 칸·`needs_send` 결과 없음. (`services/poExternalEmail` 는 사람이 누르는 send-external-email 라우트 전용으로 남음 — 옛 라우트가 추적 기록을 버리던 결함·바운스 차단을 «보냄» 으로 세던 결함은 같이 고침)
+- **화면**: 발주 상세·대기 초안 «↻ Repeat this order»(`RecurringOrderModal`) · `/pos/purchase-orders/recurring`(`RecurringOrdersPage` — 매장: 수정·일시정지·다시 시작·종료·기록 / 오너: 검토(지금 가격)·승인·반려·일시정지·종료, OwnerPoTabs 셋째 탭) · 목록·오너 승인 큐 «↻ 정기» 표시 · 외부 업체면 만들기 창에 «업체엔 안 보냄 — 기록만» 안내.
+- **검증**: health-check inventory «정기 발주 ①~⑦ + 정리» · jest `tests/po-schedule-dates.test.js`.
