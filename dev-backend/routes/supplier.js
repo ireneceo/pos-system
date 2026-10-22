@@ -1003,16 +1003,15 @@ router.post('/soa/:contractId/remind', async (req, res) => {
     }
 
     const supplierName = company.company_name || company.name || 'Supplier';
-    const link = `${FRONTEND_BASE_URL}/pos/restaurant/invoices`;
-    const html = `
-      <p>This is a friendly reminder that you have <strong>${invoices.length} unpaid invoice${invoices.length > 1 ? 's' : ''}</strong> from ${supplierName}.</p>
-      <p><strong>Total due:</strong> ${currencySymbol(currency)} ${totalDue.toFixed(2)}</p>
-      <p><a href="${link}">View invoices in Purple POS</a></p>
-    `;
-    await sendNotificationBatch(recipients, 'monthly_soa', {
-      subject: `[Reminder] Unpaid invoices from ${supplierName}`,
-      html
-    });
+    // 2026-10-22 notification-addressee: 공통 틀 + 수신자마다 자격 + 그 자격 청구서 화면 버튼
+    //   (옛 버튼 /pos/restaurant/invoices 는 레거시 리다이렉트 — 브랜드·푸드코트 구매자에겐 틀린 화면이었다)
+    const { getEntityAddressees } = require('../utils/notificationService');
+    const { mailFor } = require('../utils/notificationAddressee');
+    const { goLink } = require('../utils/notificationLinks');
+    const { unpaidReminderEmail } = require('../utils/notificationTemplates');
+    const addressees = await getEntityAddressees(contract.entity_type, contract.entity_id);
+    await sendNotificationBatch(recipients, 'monthly_soa', mailFor(addressees, (a) =>
+      unpaidReminderEmail({ sellerName: supplierName, count: invoices.length, totalDue, currency, link: goLink(a, 'trade_invoices_buyer') })));
 
     res.json({ success: true, data: { recipientCount: recipients.length, invoiceCount: invoices.length } });
   } catch (err) {
@@ -1346,12 +1345,16 @@ router.post('/contracts/:contractId/approve', requireSupplierModule('supplier_co
         const buyer = await resolveBuyerEntityFull(contract.entity_type, contract.entity_id);
         if (buyer && buyer.ownerIds.length > 0) {
           const supplier = req.supplierCompany || await SupplierCompany.findByPk(contract.supplier_company_id);
-          const link = `${FRONTEND_BASE_URL}/pos/supply/contracts`;
-          const mail = supplierContractApprovedEmail({
+          // 2026-10-22 notification-addressee: 구매자 자리 자격 + 그 자격 계약 화면(옛 /pos/supply/contracts 는 없는 화면)
+          const { getUserAddressee } = require('../utils/notificationService');
+          const { mailFor } = require('../utils/notificationAddressee');
+          const { goLink } = require('../utils/notificationLinks');
+          const addressees = await Promise.all(buyer.ownerIds.map(async (id) => ({ id, addressee: await getUserAddressee(id, contract.entity_type, contract.entity_id) })));
+          const mail = mailFor(addressees, (a) => supplierContractApprovedEmail({
             supplierName: supplier?.name || 'the supplier',
             paymentTerms: contract.payment_terms,
-            link
-          });
+            link: goLink(a, 'contracts')
+          }));
           await sendNotificationBatch(buyer.ownerIds, 'supplier_contract', mail);
         }
       } catch (e) {
@@ -1399,12 +1402,16 @@ router.post('/contracts/:contractId/reject', requireSupplierModule('supplier_con
         const buyer = await resolveBuyerEntityFull(contract.entity_type, contract.entity_id);
         if (buyer && buyer.ownerIds.length > 0) {
           const supplier = req.supplierCompany || await SupplierCompany.findByPk(contract.supplier_company_id);
-          const link = `${FRONTEND_BASE_URL}/pos/supply/contracts`;
-          const mail = supplierContractRejectedEmail({
+          // 2026-10-22 notification-addressee: 구매자 자리 자격 + 그 자격 계약 화면(옛 /pos/supply/contracts 는 없는 화면)
+          const { getUserAddressee } = require('../utils/notificationService');
+          const { mailFor } = require('../utils/notificationAddressee');
+          const { goLink } = require('../utils/notificationLinks');
+          const addressees = await Promise.all(buyer.ownerIds.map(async (id) => ({ id, addressee: await getUserAddressee(id, contract.entity_type, contract.entity_id) })));
+          const mail = mailFor(addressees, (a) => supplierContractRejectedEmail({
             supplierName: supplier?.name || 'the supplier',
             reason,
-            link
-          });
+            link: goLink(a, 'contracts')
+          }));
           await sendNotificationBatch(buyer.ownerIds, 'supplier_contract', mail);
         }
       } catch (e) {
@@ -1452,13 +1459,17 @@ router.post('/contracts/:contractId/terminate', requireSupplierModule('supplier_
       try {
         const buyer = await resolveBuyerEntityFull(contract.entity_type, contract.entity_id);
         if (buyer && buyer.ownerIds.length > 0) {
-          const link = `${FRONTEND_BASE_URL}/pos/supply/contracts`;
-          const mail = supplierContractTerminatedEmail({
+          // 2026-10-22 notification-addressee: 구매자 자리 자격 + 그 자격 계약 화면(옛 /pos/supply/contracts 는 없는 화면)
+          const { getUserAddressee } = require('../utils/notificationService');
+          const { mailFor } = require('../utils/notificationAddressee');
+          const { goLink } = require('../utils/notificationLinks');
+          const addressees = await Promise.all(buyer.ownerIds.map(async (id) => ({ id, addressee: await getUserAddressee(id, contract.entity_type, contract.entity_id) })));
+          const mail = mailFor(addressees, (a) => supplierContractTerminatedEmail({
             otherPartyName: (req.supplierCompany?.name) || 'the supplier',
             terminatedBy: 'supplier',
             reason,
-            link
-          });
+            link: goLink(a, 'contracts')
+          }));
           await sendNotificationBatch(buyer.ownerIds, 'supplier_contract', mail);
         }
       } catch (e) {

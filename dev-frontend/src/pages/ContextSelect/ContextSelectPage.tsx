@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { useAuth, UserContextOption } from '../../contexts/AuthContext';
@@ -299,6 +299,9 @@ const requestHeaders = () => {
 const ContextSelectPage: React.FC = () => {
   const { t } = useTranslation('auth');
   const navigate = useNavigate();
+  const location = useLocation();
+  // 알림 버튼(/go)이 «이 계정엔 그 자격이 없다» 며 보낸 안내 한 줄 (2026-10-22 notification-addressee)
+  const entryNotice = typeof (location.state as any)?.notice === 'string' ? (location.state as any).notice as string : null;
   const { contexts, refreshContexts, switchContext, logout, user } = useAuth();
   const { getStoreInfo } = useStore();
 
@@ -484,6 +487,7 @@ const ContextSelectPage: React.FC = () => {
         <Header>
           <Title>{t('context.select.title')}</Title>
           <Subtitle>{t('context.select.subtitle')}</Subtitle>
+          {entryNotice && <Subtitle style={{ fontWeight: 600, color: '#B45309' }}>{entryNotice}</Subtitle>}
           {invitations.length > 0 && <Subtitle style={{ fontWeight: 600, color: 'var(--pos-text, #0A2540)' }}>{t('context.invite.banner')}</Subtitle>}
         </Header>
 

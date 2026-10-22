@@ -37,8 +37,15 @@ function getLogoAttachment() {
  * @param {Object} [issuerInfo] - Optional issuer branding
  * @param {string} [lang='en'] - Language code for footer text
  */
-function emailLayout(bodyContent, issuerInfo, lang) {
+function emailLayout(bodyContent, issuerInfo, lang, opts) {
   const { getEmailText } = require('./i18n');
+  // opts(2026-10-22 알림 «받는 자격» 설계) — 없으면 예전 3인자 호출과 바이트 동일.
+  //   preheader  : 메일 목록 미리보기 한 줄(숨김). 없으면 목록에 머리글 이름이 보인다.
+  //   footerLine : 바닥글 맨 위 «이 자격으로 받고 있습니다» 한 줄(이미 이스케이프된 문자열).
+  const preheaderHtml = opts && opts.preheader
+    ? `<div style="display:none;font-size:1px;color:#F4F5F7;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">${opts.preheader}${'&zwnj;&nbsp;'.repeat(40)}</div>\n  `
+    : '';
+  const footerLineHtml = opts && opts.footerLine ? `${opts.footerLine}<br>` : '';
   const emailLang = lang || 'en';
   const hasIssuer = !!(issuerInfo && issuerInfo.name);
   const brandName = issuerInfo?.name || 'PurpleHere';
@@ -77,7 +84,7 @@ function emailLayout(bodyContent, issuerInfo, lang) {
   <title>${brandName}</title>
 </head>
 <body style="margin:0;padding:0;background:#F4F5F7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4F5F7;padding:40px 20px;">
+  ${preheaderHtml}<table width="100%" cellpadding="0" cellspacing="0" style="background:#F4F5F7;padding:40px 20px;">
     <tr><td align="center">
       <!-- Accent top bar -->
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
@@ -96,7 +103,7 @@ function emailLayout(bodyContent, issuerInfo, lang) {
         <!-- Footer -->
         <tr><td style="padding:20px 32px;border-top:1px solid #EEEEF0;">
           <p style="margin:0;color:#9CA3AF;font-size:12px;line-height:1.6;text-align:center;">
-            ${getEmailText(emailLang, 'footer.automated', { company: footerText })}<br>${getEmailText(emailLang, 'footer.noReply')}${hasIssuer ? '' : '<br><a href="' + platformUrl + '/notification-preferences" style="color:#6B7280;text-decoration:underline;">' + getEmailText(emailLang, 'footer.managePreferences') + '</a><br><a href="' + platformUrl + '" style="color:#6B7280;text-decoration:none;">' + platformUrl.replace(/^https?:\/\//, '') + '</a>'}${hasIssuer && issuerInfo.website ? '<br><a href="' + issuerInfo.website + '" style="color:#6B7280;text-decoration:none;">' + issuerInfo.website.replace(/^https?:\/\//, '') + '</a>' : ''}
+            ${footerLineHtml}${getEmailText(emailLang, 'footer.automated', { company: footerText })}<br>${getEmailText(emailLang, 'footer.noReply')}${hasIssuer ? '' : '<br><a href="' + platformUrl + '/notification-preferences" style="color:#6B7280;text-decoration:underline;">' + getEmailText(emailLang, 'footer.managePreferences') + '</a><br><a href="' + platformUrl + '" style="color:#6B7280;text-decoration:none;">' + platformUrl.replace(/^https?:\/\//, '') + '</a>'}${hasIssuer && issuerInfo.website ? '<br><a href="' + issuerInfo.website + '" style="color:#6B7280;text-decoration:none;">' + issuerInfo.website.replace(/^https?:\/\//, '') + '</a>' : ''}
           </p>
         </td></tr>
       </table>

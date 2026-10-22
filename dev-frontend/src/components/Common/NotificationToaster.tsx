@@ -21,6 +21,8 @@ interface ToastItem {
   body?: string;
   category: string;
   url?: string;
+  // 어느 매장 알림인지 — 제목이 잘려도 보이게 한 번 더 (2026-10-22 notification-addressee §5-5)
+  entityName?: string;
   createdAt: number;
 }
 
@@ -161,7 +163,9 @@ const NotificationToaster: React.FC = () => {
         title: data.title,
         body: data.body,
         category: data.category,
-        url: data.url,
+        // 주문·예약 알림은 이동 주소를 data.url 에 싣는다(OS 알림 sw.js 와 같은 자리)
+        url: data.url || data.data?.url,
+        entityName: data.entity?.name || undefined,
         createdAt: Date.now()
       });
     });
@@ -228,6 +232,9 @@ const NotificationToaster: React.FC = () => {
               <div style={{ fontSize: 14, fontWeight: 600, color: '#0A2540', marginBottom: 2 }}>
                 {item.title}
               </div>
+              {item.entityName && !item.title.includes(item.entityName) && (
+                <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 2 }}>{item.entityName}</div>
+              )}
               {item.body && (
                 <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.45 }}>
                   {item.body}

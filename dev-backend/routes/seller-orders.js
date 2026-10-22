@@ -55,7 +55,6 @@ async function attachSellerProductInfo(pos) {
 // Helpers
 // ============================================
 
-const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
 
 /**
  * 판매자에게 **보이면 안 되는** 발주 상태.
@@ -128,14 +127,58 @@ async function getBuyerRecipientUserIds(po) {
   }
 }
 
+/**
+ * 판매자 → 구매자 알림 (2026-10-22 notification-addressee §5-2).
+ *   수신자 집합 = 예전 getBuyerRecipientUserIds 와 같다(매장 = 관리자 전원 + 오너 · 브랜드/푸드코트 = 관리자).
+ *   수신자마다 «받는 자격»(매장/오너/브랜드…) 꼬리표 + 그 자격으로 여는 버튼 주소.
+ * mail = { subject, html: buyerMail(title, (link) => body), text, action }
+ *   html 이 buyerMail 묶음이면 수신자별로 버튼 주소를 채워 공통 틀(wrapTemplate)로 그린다.
+ */
+function buyerMail(title, bodyFn) {
+  return { __buyerMail: true, title, bodyFn };
+}
+
+async function buyerAddressees(po) {
+  const { getRestaurantAddressees, getEntityAddressees } = require('../utils/notificationService');
+  if (po.entity_type === 'restaurant') return getRestaurantAddressees(po.entity_id);
+  if (po.entity_type === 'brand' || po.entity_type === 'foodcourt') return getEntityAddressees(po.entity_type, po.entity_id);
+  return [];
+}
+
 async function fireBuyerNotification(po, category, mailOptions) {
   try {
-    const userIds = await getBuyerRecipientUserIds(po);
+    const list = await buyerAddressees(po);
+    const userIds = list.map(r => r.id);
     if (userIds.length === 0) return;
-    await sendNotificationBatch(userIds, category, mailOptions);
+    const spec = mailOptions.html && mailOptions.html.__buyerMail ? mailOptions.html : null;
+    const { mailFor } = require('../utils/notificationAddressee');
+    const { goLink } = require('../utils/notificationLinks');
+    const { wrapTemplate, withRenderMeta, ctaButton } = require('../utils/notificationTemplates');
+    await sendNotificationBatch(userIds, category, mailFor(list, (a) => {
+      const link = goLink(a, 'po_detail', { poId: po.id });
+      if (!spec) {
+        // 옛 모양(맨 HTML) — 공통 틀로 감싸 자격 띠·할 일 칸이 붙게 한다
+        const title = mailOptions.title || mailOptions.subject;
+        const body = `${mailOptions.html || ''}${ctaButton('View Order', link)}`;
+        return withRenderMeta({ subject: mailOptions.subject, html: wrapTemplate(title, body, 'en'), text: mailOptions.text },
+          title, body, 'en', { action: mailOptions.action });
+      }
+      const body = spec.bodyFn(link);
+      return withRenderMeta({ subject: mailOptions.subject, html: wrapTemplate(spec.title, body, 'en'), text: mailOptions.text },
+        spec.title, body, 'en', { action: mailOptions.action });
+    }));
   } catch (e) {
     console.error(`[seller-orders] notification (${category}) error:`, e.message);
   }
+}
+
+/** 제목에 쓸 판매자 표시 이름(단일 소스 utils/sellerNames). */
+async function sellerNameOf(po) {
+  try {
+    const { resolveSellers, getSellerName } = require('../utils/sellerNames');
+    const map = await resolveSellers([{ seller_type: po.seller_type, seller_entity_id: po.seller_entity_id }]);
+    return getSellerName(map, po.seller_type, po.seller_entity_id) || '';
+  } catch (_) { return ''; }
 }
 
 /**
@@ -551,10 +594,12 @@ router.post('/:id/complete', async (req, res) => {
       return locked;
     });
     emitPoEvent(req, po, 'seller-order-updated');
-    fireBuyerNotification(po, 'purchase_order', {
-      subject: `Service completed — ${po.po_number}`,
-      html: `<p>Order ${po.po_number} has been completed.</p>`
-    });
+    sellerNameOf(po).then((sellerName) => fireBuyerNotification(po, 'purchase_order', {
+      subject: `Service completed: ${po.po_number}${sellerName ? ` · ${sellerName}` : ''}`,
+      title: 'Service Completed',
+      html: `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Order <strong>${po.po_number}</strong> has been completed.</p>`,
+      action: { state: 'fyi', key: 'no_action' }
+    }));
     res.json({ success: true, data: po });
   } catch (err) {
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
@@ -603,16 +648,16 @@ router.post('/:id/confirm', async (req, res) => {
     setImmediate(async () => {
       try {
         const buyer = await resolveBuyerInfo(po);
-        const { sellerOrderReceivedEmail } = require('../utils/notificationTemplates');
         // Reuse "order received" template flavor — buyer-facing variant: tell buyer it's confirmed
+        const sellerName = await sellerNameOf(po);
         const mail = {
-          subject: `Order Confirmed: ${po.po_number}`,
-          html: require('../utils/notificationTemplates').wrapTemplate(
+          subject: `Order confirmed: ${po.po_number}${sellerName ? ` · ${sellerName}` : ''}`,
+          action: { state: 'fyi', key: 'dispatch_update_follows' },
+          html: buyerMail(
             'Purchase Order Confirmed',
-            `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your purchase order <strong>${po.po_number}</strong> has been confirmed by the seller.</p>
+            (link) => `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your purchase order <strong>${po.po_number}</strong> has been confirmed by the seller.</p>
              <p style="color:#6B7280;font-size:14px;margin:0 0 16px;line-height:1.6;">You will receive a shipping update once the order is dispatched.</p>
-             <div style="text-align:center;margin:24px 0;"><a href="${FRONTEND_URL}/pos/purchase-orders/${po.id}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Order</a></div>`,
-            'en'
+             <div style="text-align:center;margin:24px 0;"><a href="${link}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Order</a></div>`
           ),
           text: `Your purchase order ${po.po_number} has been confirmed.`
         };
@@ -905,7 +950,6 @@ router.post('/:id/ship', async (req, res) => {
 
     setImmediate(async () => {
       try {
-        const { wrapTemplate } = require('../utils/notificationTemplates');
         const ti = newTracking || {};
         const carrierLine = ti.carrier_name || ti.carrier;
         const carrier = carrierLine ? `<p style="color:#374151;font-size:14px;margin:0 0 8px;"><strong>Carrier:</strong> ${carrierLine}</p>` : '';
@@ -926,15 +970,15 @@ router.post('/:id/ship', async (req, res) => {
           splitHtml = `<p style="color:#374151;font-size:14px;margin:12px 0 4px;"><strong>In this shipment:</strong></p><ul style="color:#374151;font-size:14px;margin:0 0 8px;">${li(sentNow)}</ul>`
             + (notYet.length ? `<p style="color:#B45309;font-size:14px;margin:12px 0 4px;"><strong>Not yet dispatched (${notYet.length}):</strong></p><ul style="color:#374151;font-size:14px;margin:0 0 8px;">${li(notYet)}</ul>` : '');
         }
-        const html = wrapTemplate(
+        const html = buyerMail(
           'Order Out for Delivery',
-          `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your purchase order <strong>${po.po_number}</strong> is out for delivery.</p>
+          (link) => `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your purchase order <strong>${po.po_number}</strong> is out for delivery.</p>
            ${carrier}${trackingNo}${eta}${splitHtml}
-           <div style="text-align:center;margin:24px 0;"><a href="${FRONTEND_URL}/pos/purchase-orders/${po.id}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Track Order</a></div>`,
-          'en'
+           <div style="text-align:center;margin:24px 0;"><a href="${link}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Track Order</a></div>`
         );
         const mail = {
-          subject: `Order Out for Delivery: ${po.po_number}`,
+          subject: `Arriving: ${po.po_number} · confirm receipt on delivery`,
+          action: { state: 'action', key: 'confirm_receipt' },
           html,
           text: `Your purchase order ${po.po_number} is out for delivery.${ti.tracking_number ? ' Tracking: ' + ti.tracking_number : ''}`
         };
@@ -996,19 +1040,19 @@ router.post('/:id/reject', async (req, res) => {
 
     setImmediate(async () => {
       try {
-        const { wrapTemplate } = require('../utils/notificationTemplates');
-        const html = wrapTemplate(
+        const html = buyerMail(
           'Purchase Order Rejected',
-          `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your purchase order <strong>${po.po_number}</strong> has been rejected by the seller.</p>
+          (link) => `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your purchase order <strong>${po.po_number}</strong> has been rejected by the seller.</p>
            <div style="background:#FEF2F2;border-left:4px solid #DC2626;padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;">
              <p style="color:#991B1B;font-size:13px;font-weight:600;margin:0 0 6px;">Reason</p>
              <p style="color:#374151;font-size:14px;margin:0;">${reason.slice(0, 600)}</p>
            </div>
-           <div style="text-align:center;margin:24px 0;"><a href="${FRONTEND_URL}/pos/purchase-orders/${po.id}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Order</a></div>`,
-          'en'
+           <div style="text-align:center;margin:24px 0;"><a href="${link}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Order</a></div>`
         );
+        const sellerName = await sellerNameOf(po);
         const mail = {
-          subject: `Order Rejected: ${po.po_number}`,
+          subject: `Rejected: ${po.po_number}${sellerName ? ` · ${sellerName}` : ''}`,
+          action: { state: 'result', tone: 'bad', key: 'review_reason_reorder' },
           html,
           text: `Your purchase order ${po.po_number} was rejected. Reason: ${reason}`
         };
@@ -1064,16 +1108,15 @@ router.post('/:id/deliver', async (req, res) => {
 
     setImmediate(async () => {
       try {
-        const { wrapTemplate } = require('../utils/notificationTemplates');
-        const html = wrapTemplate(
+        const html = buyerMail(
           'Order Delivered',
-          `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your purchase order <strong>${po.po_number}</strong> has been delivered.</p>
+          (link) => `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your purchase order <strong>${po.po_number}</strong> has been delivered.</p>
            <p style="color:#6B7280;font-size:14px;margin:0 0 16px;">Please confirm receipt in your system.</p>
-           <div style="text-align:center;margin:24px 0;"><a href="${FRONTEND_URL}/pos/purchase-orders/${po.id}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Confirm Receipt</a></div>`,
-          'en'
+           <div style="text-align:center;margin:24px 0;"><a href="${link}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Confirm Receipt</a></div>`
         );
         await fireBuyerNotification(po, 'seller_order_received', {
-          subject: `Order Delivered: ${po.po_number}`,
+          subject: `Delivered: ${po.po_number} · confirm receipt`,
+          action: { state: 'action', key: 'confirm_receipt_now' },
           html,
           text: `Your purchase order ${po.po_number} has been delivered. Please confirm receipt.`
         });
@@ -1267,21 +1310,21 @@ router.post('/', async (req, res) => {
 
     setImmediate(async () => {
       try {
-        const { wrapTemplate } = require('../utils/notificationTemplates');
         const sym = currencySymbol(po.currency);
         const total = `${sym} ${(parseFloat(po.total_amount) || 0).toFixed(2)}`;
-        const html = wrapTemplate(
+        const html = buyerMail(
           'Order Added by Seller',
-          `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your seller has added purchase order <strong>${po.po_number}</strong> on your behalf.</p>
+          (link) => `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your seller has added purchase order <strong>${po.po_number}</strong> on your behalf.</p>
            <p style="color:#374151;font-size:14px;margin:0 0 20px;">Order total: <strong>${total}</strong></p>
            ${needsApproval
              ? '<div style="background:#FFFBEB;border-left:4px solid #F59E0B;padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;"><p style="color:#92400E;font-size:14px;margin:0;">This order is waiting for Owner approval before it is confirmed.</p></div>'
              : ''}
-           <div style="text-align:center;margin:24px 0;"><a href="${FRONTEND_URL}/pos/purchase-orders/${po.id}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Order</a></div>`,
-          'en'
+           <div style="text-align:center;margin:24px 0;"><a href="${link}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Order</a></div>`
         );
+        const sellerName = await sellerNameOf(po);
         await fireBuyerNotification(po, 'seller_order_received', {
-          subject: `Order Added: ${po.po_number}`,
+          subject: `Items added: ${po.po_number}${sellerName ? ` · by ${sellerName}` : ''}`,
+          action: { state: 'action', key: 'review_added_items' },
           html,
           text: `Your seller added purchase order ${po.po_number} (${total}) on your behalf.`
         });
@@ -1462,7 +1505,6 @@ router.post('/:id/amend', async (req, res) => {
 
     setImmediate(async () => {
       try {
-        const { wrapTemplate } = require('../utils/notificationTemplates');
         const sym = currencySymbol(result.po.currency);
         const money = (n) => `${sym} ${(parseFloat(n) || 0).toFixed(2)}`;
         const label = { added: 'Added', removed: 'Removed', changed: 'Changed' };
@@ -1477,9 +1519,9 @@ router.post('/:id/amend', async (req, res) => {
             <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#111827;font-weight:600;">${now}</td>
           </tr>`;
         }).join('');
-        const html = wrapTemplate(
+        const html = buyerMail(
           'Order Amended',
-          `<p style="color:#374151;font-size:16px;margin:0 0 16px;">The seller has amended your purchase order <strong>${result.po.po_number}</strong>.</p>
+          (link) => `<p style="color:#374151;font-size:16px;margin:0 0 16px;">The seller has amended your purchase order <strong>${result.po.po_number}</strong>.</p>
            <table style="width:100%;border-collapse:collapse;margin:0 0 20px;">
              <thead><tr>
                <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">Item</th>
@@ -1497,11 +1539,12 @@ router.post('/:id/amend', async (req, res) => {
              <p style="color:#4B5563;font-size:13px;font-weight:600;margin:0 0 6px;">Reason</p>
              <p style="color:#374151;font-size:14px;margin:0;">${result.reason.slice(0, 600)}</p>
            </div>` : ''}
-           <div style="text-align:center;margin:24px 0;"><a href="${FRONTEND_URL}/pos/purchase-orders/${result.po.id}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Order</a></div>`,
-          'en'
+           <div style="text-align:center;margin:24px 0;"><a href="${link}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Order</a></div>`
         );
+        const sellerName = await sellerNameOf(result.po);
         await fireBuyerNotification(result.po, 'seller_order_received', {
-          subject: `Order Amended: ${result.po.po_number}`,
+          subject: `Order amended: ${result.po.po_number}${sellerName ? ` · by ${sellerName}` : ''}`,
+          action: { state: 'action', key: 'review_changes' },
           html,
           text: `Your purchase order ${result.po.po_number} was amended by the seller.${result.reason ? ` Reason: ${result.reason}` : ''}`
         });
@@ -1538,3 +1581,6 @@ router.post('/:id/amend', async (req, res) => {
 });
 
 module.exports = router;
+
+// 시험 하니스용(렌더 확인) — 라우트 아님
+router._notifyForTest = { fireBuyerNotification, buyerMail, sellerNameOf };

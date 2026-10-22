@@ -3,7 +3,8 @@
     "automated": "Ini adalah mesej automatik daripada {{company}}.",
     "noReply": "Ini alamat hantar sahaja — sila jangan balas e-mel ini.",
     "managePreferences": "Urus tetapan pemberitahuan",
-    "unsubscribe": "Nyahlanggan"
+    "unsubscribe": "Nyahlanggan",
+    "receivingAs": "Anda menerima e-mel ini sebagai {{label}}."
   },
   "notice": {
     "subject": "Notis Baharu: {{title}}",
@@ -83,7 +84,7 @@
   },
   "po": {
     "sellerReceived": {
-      "subject": "PO baharu {{poNumber}} daripada {{buyer}}",
+      "subject": "Sahkan pesanan: {{poNumber}} · {{buyer}} · {{total}}",
       "heading": "Pesanan Belian Baharu Diterima",
       "body": "<strong>{{buyer}}</strong> telah menghantar pesanan belian baharu kepada syarikat anda.",
       "poNumber": "No. PO",
@@ -96,15 +97,15 @@
       "textFallback": "Pesanan belian baharu {{poNumber}} daripada {{buyer}}. Jumlah: {{total}}."
     },
     "approvalPending": {
-      "subject": "Kelulusan diperlukan: PO {{poNumber}}",
+      "subject": "Luluskan belian: {{poNumber}} · {{buyer}} · {{total}}",
       "heading": "Pesanan Belian Menunggu Kelulusan Anda",
       "body": "<strong>{{buyer}}</strong> menghantar pesanan belian yang memerlukan kelulusan anda.",
       "cta": "Semak & Luluskan",
       "textFallback": "Pesanan belian {{poNumber}} memerlukan kelulusan anda. Jumlah: {{total}}."
     },
     "approvalResult": {
-      "subjectApproved": "Diluluskan: PO {{poNumber}}",
-      "subjectRejected": "Ditolak: PO {{poNumber}}",
+      "subjectApproved": "Diluluskan: {{poNumber}}",
+      "subjectRejected": "Ditolak: {{poNumber}}",
       "headingApproved": "Pesanan Belian Diluluskan",
       "headingRejected": "Pesanan Belian Ditolak",
       "bodyApproved": "Pesanan belian anda telah diluluskan dan dihantar kepada penjual.",
@@ -113,20 +114,20 @@
       "cta": "Lihat Pesanan",
       "textFallback": "Pesanan belian {{poNumber}}: {{result}}.",
       "bodyApprovedExternal": "Pesanan belian anda telah diluluskan. Pembekal ini tidak menggunakan aplikasi, jadi ia <strong>belum dihantar</strong> — hantar melalui WhatsApp, PDF atau e-mel dari butiran pesanan.",
-      "subjectRevoked": "Kelulusan dibatalkan: PO {{poNumber}}",
+      "subjectRevoked": "Kelulusan ditarik balik: {{poNumber}}",
       "headingRevoked": "Kelulusan Dibatalkan",
       "bodyRevoked": "Pemilik telah membatalkan kelulusan pesanan belian ini. Ia menunggu kelulusan semula.",
       "bodyRevokedExternal": "Pemilik telah membatalkan kelulusan pesanan belian ini. Ia menunggu kelulusan semula. Jika anda sudah menghantarnya kepada pembekal melalui WhatsApp, PDF atau e-mel, sila maklumkan mereka."
     },
     "buyerConfirm": {
-      "subject": "Pesanan dibuat: PO {{poNumber}}",
+      "subject": "Pesanan dibuat: {{poNumber}} · kepada {{seller}}",
       "heading": "Pesanan Belian Anda Telah Dibuat",
       "body": "Pesanan belian anda telah dihantar kepada <strong>{{seller}}</strong>.",
       "seller": "Penjual",
       "cta": "Lihat Pesanan",
       "hint": "Anda akan dimaklumkan apabila penjual mengesahkan pesanan.",
       "textFallback": "Pesanan belian {{poNumber}} dibuat dengan {{seller}}. Jumlah: {{total}}.",
-      "subjectExternal": "Sedia untuk dihantar: PO {{poNumber}}",
+      "subjectExternal": "Hantar kepada pembekal: {{poNumber}} · {{seller}}",
       "headingExternal": "Pesanan Belian Anda Sedia untuk Dihantar",
       "bodyExternal": "Pesanan belian anda kepada <strong>{{seller}}</strong> telah dibuat, tetapi <strong>belum dihantar</strong> — pembekal ini tidak menggunakan aplikasi.",
       "statusExternal": "Belum dihantar",
@@ -148,7 +149,7 @@
       "grandTotal": "Jumlah"
     },
     "buyerReceived": {
-      "subject": "{{buyer}} mengesahkan penerimaan PO {{poNumber}}",
+      "subject": "Rekod penghantaran: {{poNumber}} · diterima oleh {{buyer}}",
       "heading": "Pembeli Mengesahkan Penerimaan",
       "body": "<strong>{{buyer}}</strong> telah mengesahkan penerimaan pesanan belian <strong>{{poNumber}}</strong>.",
       "poNumber": "No. PO",
@@ -160,7 +161,8 @@
       "hintNeedsShip": "Stok anda ditolak apabila anda mula penghantaran. Sila rekod penghantaran supaya inventori kekal tepat.",
       "hintShipped": "Tiada tindakan diperlukan — pesanan ini sudah dalam penghantaran.",
       "cta": "Buka Pesanan",
-      "textFallback": "{{buyer}} mengesahkan penerimaan {{poNumber}}. Jumlah: {{total}}."
+      "textFallback": "{{buyer}} mengesahkan penerimaan {{poNumber}}. Jumlah: {{total}}.",
+      "subjectShipped": "Penerimaan disahkan: {{poNumber}} · {{buyer}}"
     },
     "returnExternalSend": {
       "subject": "Permintaan Pemulangan {{poNumber}} daripada {{buyer}}",
@@ -205,7 +207,7 @@
   },
   "attendance": {
     "leaveRequested": {
-      "subject": "Permohonan cuti daripada {{name}}",
+      "subject": "Luluskan permohonan cuti: {{name}}",
       "heading": "Permohonan cuti baharu",
       "body": "{{name}} telah memohon cuti. Sila luluskan atau tolak.",
       "type": "Jenis cuti",
@@ -255,5 +257,61 @@
       "cta": "Buka kakitangan",
       "textFallback": "Jemputan untuk {{who}} di {{target}}: {{result}}"
     }
+  },
+  "addressee": {
+    "kind": {
+      "store": "Kedai",
+      "store_staff": "Kakitangan kedai",
+      "owner": "Pemilik",
+      "brand": "Jenama",
+      "brand_manager": "Pengurus jenama",
+      "foodcourt": "Medan selera",
+      "foodcourt_manager": "Pengurus medan selera",
+      "supplier": "Pembekal",
+      "admin": "Pentadbir platform",
+      "referral": "Rakan rujukan"
+    },
+    "to": "Kepada: {{name}} — sebagai {{label}}",
+    "toNoName": "Dihantar kepada anda sebagai {{label}}"
+  },
+  "notify": {
+    "actionTitle": "Apa yang perlu anda lakukan",
+    "fyiTitle": "Untuk makluman",
+    "resultTitle": "Keputusan",
+    "dueBy": "sebelum {{date}}"
+  },
+  "action": {
+    "confirm_or_reject_order": "Sahkan atau tolak pesanan ini.",
+    "record_dispatch": "Rekod penghantaran supaya stok anda ditolak.",
+    "approve_or_reject_purchase": "Luluskan atau tolak pesanan belian ini.",
+    "send_po_to_supplier": "Hantar pesanan belian ini kepada pembekal (WhatsApp, PDF atau e-mel) — sistem tidak menghantarnya untuk anda.",
+    "review_changes": "Semak perubahan sebelum anda mengesahkan.",
+    "review_added_items": "Semak item yang ditambah.",
+    "do_not_fulfil_on_hold": "Jangan proses pesanan ini sehingga ia dihantar semula kepada anda.",
+    "confirm_receipt": "Sahkan penerimaan apabila barang tiba.",
+    "confirm_receipt_now": "Sahkan penerimaan barang yang telah dihantar.",
+    "pay_by_due": "Bayar invois ini sebelum tarikh akhir.",
+    "pay_now_overdue": "Bayar sekarang — invois ini telah melepasi tarikh akhir.",
+    "compare_statement": "Bandingkan penyata ini dengan penyata yang dihantar oleh pembekal anda.",
+    "pay_statement": "Bayar penyata ini sebelum tarikh akhir.",
+    "settle_unpaid": "Jelaskan invois tertunggak yang disenaraikan di bawah.",
+    "approve_or_reject_contract": "Luluskan atau tolak permohonan kontrak bekalan ini.",
+    "approve_or_reject_request": "Luluskan atau tolak permintaan ini.",
+    "reply_inquiry": "Balas pertanyaan ini.",
+    "choose_plan_and_pay": "Pilih pelan dan bayar untuk terus menggunakan perkhidmatan.",
+    "review_reason_reorder": "Semak sebabnya dan buat pesanan baharu jika perlu.",
+    "edit_and_resubmit": "Semak sebabnya, kemudian ubah dan hantar semula jika perlu.",
+    "can_order_now": "Anda kini boleh membuat pesanan daripada pembekal ini.",
+    "no_action": "Tiada tindakan diperlukan — untuk rekod anda.",
+    "trial_no_payment": "Tiada bayaran diperlukan semasa percubaan percuma — untuk rekod anda.",
+    "dispatch_update_follows": "Tiada tindakan diperlukan — anda akan dimaklumkan apabila ia dihantar."
+  },
+  "result": {
+    "approved": "Diluluskan",
+    "rejected": "Ditolak",
+    "withdrawn": "Kelulusan ditarik balik",
+    "terminated": "Ditamatkan",
+    "accepted": "Diterima",
+    "declined": "Ditolak"
   }
 }

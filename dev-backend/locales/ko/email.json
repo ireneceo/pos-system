@@ -3,7 +3,8 @@
     "automated": "{{company}}에서 발송된 자동 메시지입니다.",
     "noReply": "발신전용 주소입니다 — 이 메일에는 회신하실 수 없습니다.",
     "managePreferences": "알림 설정 관리",
-    "unsubscribe": "수신 거부"
+    "unsubscribe": "수신 거부",
+    "receivingAs": "{{label}} 자격으로 이 메일을 받고 계십니다."
   },
   "notice": {
     "subject": "새 공지: {{title}}",
@@ -83,7 +84,7 @@
   },
   "po": {
     "sellerReceived": {
-      "subject": "{{buyer}} 님의 새 발주 {{poNumber}}",
+      "subject": "주문 확인: 발주 {{poNumber}} · {{buyer}} · {{total}}",
       "heading": "새 발주가 접수되었습니다",
       "body": "<strong>{{buyer}}</strong> 님이 귀사에 새 발주를 넣었습니다.",
       "poNumber": "발주번호",
@@ -96,7 +97,7 @@
       "textFallback": "{{buyer}} 님의 새 발주 {{poNumber}}. 합계: {{total}}."
     },
     "approvalPending": {
-      "subject": "승인 필요: 발주 {{poNumber}}",
+      "subject": "발주 승인: {{poNumber}} · {{buyer}} · {{total}}",
       "heading": "승인을 기다리는 발주가 있습니다",
       "body": "<strong>{{buyer}}</strong> 이(가) 승인이 필요한 발주를 제출했습니다.",
       "cta": "확인하고 승인하기",
@@ -113,20 +114,20 @@
       "cta": "발주 보기",
       "textFallback": "발주 {{poNumber}}: {{result}}.",
       "bodyApprovedExternal": "발주가 승인되었습니다. 이 공급업체는 앱을 쓰지 않아 <strong>자동으로 보내지 않았습니다</strong> — 발주 상세에서 WhatsApp·PDF·이메일로 보내 주세요.",
-      "subjectRevoked": "승인 취소: 발주 {{poNumber}}",
+      "subjectRevoked": "승인 취소됨: 발주 {{poNumber}}",
       "headingRevoked": "승인이 취소되었습니다",
       "bodyRevoked": "오너가 이 발주의 승인을 취소했습니다. 다시 승인 대기 중입니다.",
       "bodyRevokedExternal": "오너가 이 발주의 승인을 취소했습니다. 다시 승인 대기 중입니다. 이미 WhatsApp·PDF·이메일로 공급업체에 보냈다면 공급업체에 알려 주세요."
     },
     "buyerConfirm": {
-      "subject": "발주 완료: {{poNumber}}",
+      "subject": "발주 완료: {{poNumber}} · {{seller}} 앞",
       "heading": "발주가 접수되었습니다",
       "body": "<strong>{{seller}}</strong> 에게 발주가 전달되었습니다.",
       "seller": "판매자",
       "cta": "발주 보기",
       "hint": "판매자가 발주를 확인하면 알려드립니다.",
       "textFallback": "{{seller}} 에게 발주 {{poNumber}} 완료. 합계: {{total}}.",
-      "subjectExternal": "보낼 준비 완료: 발주 {{poNumber}}",
+      "subjectExternal": "공급업체에 보내기: 발주 {{poNumber}} · {{seller}}",
       "headingExternal": "발주를 보내 주세요",
       "bodyExternal": "<strong>{{seller}}</strong> 발주가 만들어졌지만 <strong>아직 보내지 않았습니다</strong> — 이 공급업체는 앱을 쓰지 않습니다.",
       "statusExternal": "아직 안 보냄",
@@ -148,7 +149,7 @@
       "grandTotal": "합계"
     },
     "buyerReceived": {
-      "subject": "{{buyer}} 님이 발주 {{poNumber}} 수령을 확인했습니다",
+      "subject": "출고 기록: 발주 {{poNumber}} · {{buyer}} 수령함",
       "heading": "구매자가 수령을 확인했습니다",
       "body": "<strong>{{buyer}}</strong> 님이 발주 <strong>{{poNumber}}</strong> 의 수령을 확인했습니다.",
       "poNumber": "발주 번호",
@@ -160,7 +161,8 @@
       "hintNeedsShip": "배송을 시작할 때 재고가 차감됩니다. 재고가 맞게 유지되도록 배송을 기록해 주세요.",
       "hintShipped": "조치할 것이 없습니다 — 이 주문은 이미 배송 중입니다.",
       "cta": "발주 열기",
-      "textFallback": "{{buyer}} 님이 {{poNumber}} 수령을 확인했습니다. 합계: {{total}}."
+      "textFallback": "{{buyer}} 님이 {{poNumber}} 수령을 확인했습니다. 합계: {{total}}.",
+      "subjectShipped": "수령 확인됨: 발주 {{poNumber}} · {{buyer}}"
     },
     "returnExternalSend": {
       "subject": "{{buyer}} 반품 요청 — {{poNumber}}",
@@ -205,7 +207,7 @@
   },
   "attendance": {
     "leaveRequested": {
-      "subject": "{{name}} 님의 휴가 신청",
+      "subject": "휴가 승인: {{name}} 님 신청",
       "heading": "새 휴가 신청",
       "body": "{{name}} 님이 휴가를 신청했습니다. 승인 또는 반려해 주세요.",
       "type": "휴가 종류",
@@ -255,5 +257,61 @@
       "cta": "직원 화면 열기",
       "textFallback": "{{target}} 의 {{who}} 초대: {{result}}"
     }
+  },
+  "addressee": {
+    "kind": {
+      "store": "매장",
+      "store_staff": "매장 직원",
+      "owner": "오너",
+      "brand": "브랜드",
+      "brand_manager": "브랜드 담당자",
+      "foodcourt": "푸드코트",
+      "foodcourt_manager": "푸드코트 담당자",
+      "supplier": "공급업체",
+      "admin": "플랫폼 관리자",
+      "referral": "추천 파트너"
+    },
+    "to": "받는 분: {{name}} — {{label}} 자격",
+    "toNoName": "{{label}} 자격으로 보내는 알림입니다"
+  },
+  "notify": {
+    "actionTitle": "해야 할 일",
+    "fyiTitle": "안내",
+    "resultTitle": "결과",
+    "dueBy": "{{date}}까지"
+  },
+  "action": {
+    "confirm_or_reject_order": "이 주문을 확인하거나 거절해 주세요.",
+    "record_dispatch": "출고를 기록해 주세요 — 그래야 재고가 빠집니다.",
+    "approve_or_reject_purchase": "이 발주를 승인하거나 반려해 주세요.",
+    "send_po_to_supplier": "이 발주서를 공급업체에 직접 보내 주세요(WhatsApp·PDF·메일) — 시스템이 대신 보내지 않습니다.",
+    "review_changes": "확인하기 전에 바뀐 내용을 살펴봐 주세요.",
+    "review_added_items": "추가된 품목을 확인해 주세요.",
+    "do_not_fulfil_on_hold": "다시 보내 올 때까지 이 주문을 처리하지 마세요.",
+    "confirm_receipt": "물건이 도착하면 수령 확인을 눌러 주세요.",
+    "confirm_receipt_now": "배송된 물건의 수령 확인을 눌러 주세요.",
+    "pay_by_due": "마감일까지 이 청구서를 결제해 주세요.",
+    "pay_now_overdue": "지금 결제해 주세요 — 마감일이 지났습니다.",
+    "compare_statement": "공급업체가 보낸 명세서와 이 명세서를 대조해 주세요.",
+    "pay_statement": "마감일까지 이 명세서를 결제해 주세요.",
+    "settle_unpaid": "아래 미결제 청구서를 결제해 주세요.",
+    "approve_or_reject_contract": "이 공급 계약 요청을 승인하거나 거절해 주세요.",
+    "approve_or_reject_request": "이 요청을 승인하거나 거절해 주세요.",
+    "reply_inquiry": "이 문의에 답해 주세요.",
+    "choose_plan_and_pay": "계속 쓰시려면 요금제를 고르고 결제해 주세요.",
+    "review_reason_reorder": "사유를 확인하고 필요하면 새로 주문해 주세요.",
+    "edit_and_resubmit": "사유를 확인하고 필요하면 고쳐서 다시 올려 주세요.",
+    "can_order_now": "이제 이 공급업체에 주문할 수 있습니다.",
+    "no_action": "할 일은 없습니다 — 기록용 안내입니다.",
+    "trial_no_payment": "무료 체험 중에는 결제할 필요가 없습니다 — 기록용 안내입니다.",
+    "dispatch_update_follows": "할 일은 없습니다 — 출고되면 다시 알려 드립니다."
+  },
+  "result": {
+    "approved": "승인됨",
+    "rejected": "반려됨",
+    "withdrawn": "승인 취소됨",
+    "terminated": "종료됨",
+    "accepted": "수락됨",
+    "declined": "거절됨"
   }
 }

@@ -1140,7 +1140,7 @@ class SubscriptionScheduler {
     let sent = 0;
     const byThreshold = { '3': 0, '0': 0, '-1': 0 };
 
-    const sendOne = async ({ entityType, entity, recipientUserId, recipientName, displayName, threshold, payNowUrl }) => {
+    const sendOne = async ({ entityType, entity, recipientUserId, recipientName, displayName, threshold, payNowUrl, addressee }) => {
       try {
         const mail = trialExpiringSoonEmail({
           entityName: displayName,
@@ -1152,7 +1152,17 @@ class SubscriptionScheduler {
         });
         // Per-user notification respects opt-out via `trial_expiry_reminder` category.
         if (recipientUserId) {
-          await sendNotification(recipientUserId, 'trial_expiry_reminder', mail);
+          // 2026-10-22 notification-addressee: 자격 꼬리표가 «[{이름}]» 자리를 대신한다(두 번 안 붙게 옛 머리를 뗀다)
+          if (addressee) {
+            const prefix = `[${displayName}] `;
+            const tagged = Object.assign({}, mail, {
+              subject: mail.subject.startsWith(prefix) ? mail.subject.slice(prefix.length) : mail.subject,
+              _addressee: addressee
+            });
+            await sendNotification(recipientUserId, 'trial_expiry_reminder', tagged);
+          } else {
+            await sendNotification(recipientUserId, 'trial_expiry_reminder', mail);
+          }
         } else {
           // Fallback: direct entity email when no user id available
           const recipientEmail = entity.email;
@@ -1197,7 +1207,8 @@ class SubscriptionScheduler {
           recipientName: r.name,
           displayName: r.name,
           threshold: t,
-          payNowUrl: `${frontendUrl()}/restaurant/${r.id}/invoices`
+          payNowUrl: `${frontendUrl()}/restaurant/${r.id}/invoices`,
+          addressee: { kind: 'store', entity_type: 'restaurant', entity_id: r.id, entity_name: r.name }
         });
       }
 
@@ -1216,7 +1227,8 @@ class SubscriptionScheduler {
           recipientName: b.name,
           displayName: b.name,
           threshold: t,
-          payNowUrl: `${frontendUrl()}/pos/brand/general/invoices`
+          payNowUrl: `${frontendUrl()}/pos/brand/invoices`, // 옛 «general» 청구서 주소는 없는 화면이었다
+          addressee: { kind: 'brand', entity_type: 'brand', entity_id: b.id, entity_name: b.name }
         });
       }
 
@@ -1235,7 +1247,8 @@ class SubscriptionScheduler {
           recipientName: f.name,
           displayName: f.name,
           threshold: t,
-          payNowUrl: `${frontendUrl()}/pos/foodcourt/general/invoices`
+          payNowUrl: `${frontendUrl()}/pos/foodcourt/invoices`, // 옛 «general» 청구서 주소는 없는 화면이었다
+          addressee: { kind: 'foodcourt', entity_type: 'foodcourt', entity_id: f.id, entity_name: f.name }
         });
       }
 
@@ -1254,7 +1267,8 @@ class SubscriptionScheduler {
           recipientName: u.full_name || u.username,
           displayName: u.full_name || u.username,
           threshold: t,
-          payNowUrl: `${frontendUrl()}/pos/owner/invoices`
+          payNowUrl: `${frontendUrl()}/pos/owner/invoices`,
+          addressee: { kind: 'owner', entity_type: 'owner', entity_id: u.id, entity_name: u.full_name || u.username || '' }
         });
       }
 

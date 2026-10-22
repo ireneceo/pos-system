@@ -1,6 +1,15 @@
 # 이메일 알림 매트릭스
 
-> **최종 업데이트:** 2026-04-04
+> **최종 업데이트:** 2026-10-22 (받는 자격 규칙 추가 — 아래 표 전체 갱신은 후속 R5) · 이전 2026-04-04
+
+## 받는 자격 · 할 일 규칙 (2026-10-22 · Fable 설계 `.claude/fable-design-20261022-notification-addressee.md`)
+
+- 모든 알림은 **받는 자격**(`_addressee` = kind · entity · 이름)을 달고 나간다 — 제목 맨 앞 꼬리표 `[K-DINE · Brand]` · 미리보기 줄 · 본문 «받는 분» 띠 · 바닥글 한 줄 · 버튼 주소가 **같은 값**. 자격은 수신자 계정 역할이 아니라 **그 발송의 자리**(판매자 메일 = 판매자 자리).
+- 꼬리표는 `utils/notificationService.sendNotification` **한 곳**에서 붙인다(템플릿은 동사 문장만). 템플릿은 `withRenderMeta(…, { action })` 로 «할 일» 칸(action/fyi/result)을 싣는다 — 문장은 `locales/*/email.json` `action.*` 사전 키.
+- 수신자 목록 + 자격: `getRestaurantAddressees` · `getEntityAddressees` · `getUserAddressee` · `getNativeAddressee`(공지·댓글·문의) — 집합은 옛 id 함수와 같다. 배치는 `utils/notificationAddressee.mailFor(list, build)`.
+- 버튼 주소는 `utils/notificationLinks.goLink(addressee, target)` 표 하나 → `/go?ctx=…&to=…` 진입 화면(다른 모자면 확인 1번 후 전환). 표 경로는 `node scripts/check-notification-links.js` 가 App.tsx 와 대조(옛 없는 주소 0).
+- 새 알림을 만들면: 자격 리졸버로 수신자 → 템플릿 `withRenderMeta` + action → `goLink` 버튼. **spread(`{...mail}`) 금지** — 재렌더 메타(비열거)가 지워진다, `Object.assign`.
+- 연체 메일 수신자 = 관리자 전원 + 오너(2026-10-22 Irene «권고대로»). 모자(부여 역할) 보유자 수신은 후속 R1(다음 설계).
 
 ## SMTP 설정 구조
 

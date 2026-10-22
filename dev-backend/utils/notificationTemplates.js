@@ -17,11 +17,25 @@ function ctaButton(label, url) {
     </div>`;
 }
 
-function wrapTemplate(title, bodyContent, lang, branding) {
-  const content = `
+function wrapTemplate(title, bodyContent, lang, branding, meta) {
+  // meta(2026-10-22 «받는 자격» 설계) = { addressee, action, preheader, recipientName }.
+  //   없으면 예전과 바이트 동일. 있으면 ②받는 분 띠 → ③제목 → ④할 일 블록 → 본문 순서 + 미리보기 줄 + 바닥글 한 줄.
+  if (!meta) {
+    const content = `
     <h2 style="color:#1A1A2E;font-size:20px;font-weight:600;margin:0 0 8px;">${title}</h2>
     ${bodyContent}`;
-  return emailLayout(content, branding, lang);
+    return emailLayout(content, branding, lang);
+  }
+  const A = require('./notificationAddressee');
+  const content = `
+    ${A.addresseeBandHtml(meta.addressee, meta.recipientName, lang)}
+    <h2 style="color:#1A1A2E;font-size:20px;font-weight:600;margin:0 0 12px;">${title}</h2>
+    ${A.actionBlockHtml(meta.action, lang)}
+    ${bodyContent}`;
+  return emailLayout(content, branding, lang, {
+    preheader: A.preheaderText(meta, lang),
+    footerLine: A.footerLineHtml(meta.addressee, lang)
+  });
 }
 
 /**
@@ -30,11 +44,17 @@ function wrapTemplate(title, bodyContent, lang, branding) {
  *
  * non-enumerable 로 저장 → spread({...mail}) / JSON.stringify / nodemailer 직렬화에 노출되지 않음.
  * 직접 접근(mail._title)은 가능.
+ * ⚠ spread 하면 사라진다 — 메타를 더할 땐 Object.assign(mail, {...}) 로(원본 유지).
+ *
+ * extra(2026-10-22) = { action, preheader } — 할 일 블록·미리보기 줄. 자격(_addressee)은 수신자마다
+ * 다를 수 있어 호출부가 mailOptions 에 직접 싣는다(_brandingEntity 와 같은 자리).
  */
-function withRenderMeta(result, title, body, lang) {
+function withRenderMeta(result, title, body, lang, extra) {
   Object.defineProperty(result, '_title', { value: title, enumerable: false, writable: false, configurable: false });
   Object.defineProperty(result, '_body', { value: body, enumerable: false, writable: false, configurable: false });
   Object.defineProperty(result, '_lang', { value: lang, enumerable: false, writable: false, configurable: false });
+  if (extra && extra.action) Object.defineProperty(result, '_action', { value: extra.action, enumerable: false, writable: false, configurable: false });
+  if (extra && extra.preheader) Object.defineProperty(result, '_preheader', { value: extra.preheader, enumerable: false, writable: false, configurable: false });
   return result;
 }
 
@@ -53,7 +73,7 @@ function infoTable(rows) {
 /**
  * New notice received
  */
-function noticeReceivedEmail(notice, authorName, lang = 'en', timezone = DEFAULT_TZ) {
+function noticeReceivedEmail(notice, authorName, lang = 'en', timezone = DEFAULT_TZ, link = null) {
   const { getEmailText } = require('./i18n');
   const t = (key, params) => getEmailText(lang, key, params);
 
@@ -70,19 +90,19 @@ function noticeReceivedEmail(notice, authorName, lang = 'en', timezone = DEFAULT
     <div style="color: #6B7280; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
       ${(notice.content || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>').slice(0, 500)}${(notice.content || '').length > 500 ? '...' : ''}
     </div>
-    ${ctaButton(t('notice.viewButton'), `${BASE_URL}/pos/notices`)}`;
+    ${ctaButton(t('notice.viewButton'), link || `${BASE_URL}/pos`)}`;
 
   return withRenderMeta({
     subject: t('notice.subject', { title: (notice.title || 'Untitled').slice(0, 60) }),
     html: wrapTemplate(title, body, lang),
     text: `${title}: ${notice.title}\n${t('notice.postedBy')}: ${authorName}\n\n${(notice.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}`
-  }, title, body, lang);
+  }, title, body, lang, { action: { state: 'fyi', key: 'no_action' } });
 }
 
 /**
  * New comment on a notice or ticket
  */
-function commentReceivedEmail(comment, entityTitle, commenterName, lang = 'en') {
+function commentReceivedEmail(comment, entityTitle, commenterName, lang = 'en', link = null) {
   const { getEmailText } = require('./i18n');
   const t = (key, params) => getEmailText(lang, key, params);
 
@@ -96,19 +116,19 @@ function commentReceivedEmail(comment, entityTitle, commenterName, lang = 'en') 
         ${(comment.content || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>').slice(0, 500)}
       </p>
     </div>
-    ${ctaButton(t('comment.viewButton'), `${BASE_URL}/pos/dashboard`)}`;
+    ${ctaButton(t('comment.viewButton'), link || `${BASE_URL}/pos/dashboard`)}`;
 
   return withRenderMeta({
     subject: t('comment.subject', { title: (entityTitle || 'item').slice(0, 50) }),
     html: wrapTemplate(title, body, lang),
     text: `${commenterName} → "${entityTitle}":\n\n${(comment.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}`
-  }, title, body, lang);
+  }, title, body, lang, { action: { state: 'fyi', key: 'no_action' } });
 }
 
 /**
  * New inquiry/ticket received (for managers)
  */
-function inquiryReceivedEmail(ticket, requesterName) {
+function inquiryReceivedEmail(ticket, requesterName, link = null) {
   const title = 'New Inquiry';
   const body = `
     <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
@@ -123,19 +143,19 @@ function inquiryReceivedEmail(ticket, requesterName) {
     <div style="color: #6B7280; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
       ${(ticket.description || ticket.content || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>').slice(0, 500)}
     </div>
-    ${ctaButton('Review Inquiry', `${BASE_URL}/pos/dashboard`)}`;
+    ${ctaButton('Review Inquiry', link || `${BASE_URL}/pos/dashboard`)}`;
 
   return withRenderMeta({
-    subject: `New Inquiry: ${(ticket.title || ticket.subject || 'No subject').slice(0, 50)}`,
+    subject: `Reply to inquiry: ${(ticket.title || ticket.subject || 'No subject').slice(0, 50)}`,
     html: wrapTemplate(title, body),
     text: `New Inquiry from ${requesterName}\nSubject: ${ticket.title || ticket.subject}\nCategory: ${ticket.category}\n\n${(ticket.description || ticket.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}`
-  }, title, body, 'en');
+  }, title, body, 'en', { action: { state: 'action', key: 'reply_inquiry' } });
 }
 
 /**
  * Inquiry reply received (for the requester)
  */
-function inquiryRepliedEmail(ticket, reply, replierName) {
+function inquiryRepliedEmail(ticket, reply, replierName, link = null) {
   const title = 'Inquiry Reply';
   const body = `
     <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
@@ -150,19 +170,19 @@ function inquiryRepliedEmail(ticket, reply, replierName) {
         ${(reply.content || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>').slice(0, 500)}
       </p>
     </div>
-    ${ctaButton('View Conversation', `${BASE_URL}/pos/dashboard`)}`;
+    ${ctaButton('View Conversation', link || `${BASE_URL}/pos/dashboard`)}`;
 
   return withRenderMeta({
-    subject: `Reply to: ${(ticket.title || ticket.subject || 'Your inquiry').slice(0, 50)}`,
+    subject: `New reply: ${(ticket.title || ticket.subject || 'Your inquiry').slice(0, 50)}`,
     html: wrapTemplate(title, body),
     text: `Reply to "${ticket.title || ticket.subject}" from ${replierName}:\n\n${(reply.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}`
-  }, title, body, 'en');
+  }, title, body, 'en', { action: { state: 'fyi', key: 'no_action' } });
 }
 
 /**
  * Ticket status changed
  */
-function ticketStatusChangedEmail(ticket, newStatus) {
+function ticketStatusChangedEmail(ticket, newStatus, link = null) {
   const statusColors = {
     'open': '#3B82F6',
     'in_progress': '#F59E0B',
@@ -181,13 +201,13 @@ function ticketStatusChangedEmail(ticket, newStatus) {
       infoRow('Subject', ticket.title || ticket.subject || 'No subject') +
       infoRow('New Status', `<span style="display: inline-block; padding: 4px 12px; background: ${color}20; color: ${color}; border-radius: 12px; font-weight: 600; font-size: 13px;">${newStatus}</span>`)
     )}
-    ${ctaButton('View Ticket', `${BASE_URL}/pos/dashboard`)}`;
+    ${ctaButton('View Ticket', link || `${BASE_URL}/pos/dashboard`)}`;
 
   return withRenderMeta({
     subject: `Ticket Update: ${(ticket.title || ticket.subject || 'Ticket').slice(0, 40)} - ${newStatus}`,
     html: wrapTemplate(title, body),
     text: `Ticket "${ticket.title || ticket.subject}" status changed to: ${newStatus}`
-  }, title, body, 'en');
+  }, title, body, 'en', { action: { state: 'fyi', key: 'no_action' } });
 }
 
 /**
@@ -221,13 +241,18 @@ function invoiceCreatedEmail(invoice, restaurantName, options = {}) {
       infoRow('Due Date', dueDate) +
       infoRow('Status', options.isTrial ? '<span style="color: #059669;">Trial Period</span>' : 'Pending')
     )}
-    ${ctaButton('View Invoice', `${BASE_URL}/pos/invoices`)}`;
+    ${ctaButton(options.isTrial ? 'View Invoice' : 'View & Pay Invoice', options.link || `${BASE_URL}/login`)}`;
 
+  // 2026-10-22 notification-addressee: 제목 = 할 일 동사 먼저 · 버튼 = 받는 자격 화면(호출부 options.link)
   return withRenderMeta({
-    subject: `Invoice ${invoice.invoice_number} - ${amount} Due ${dueDate}`,
+    subject: options.isTrial
+      ? `Invoice issued (free trial): ${invoice.invoice_number} · ${amount}`
+      : `Pay invoice: ${invoice.invoice_number} · ${amount} · due ${dueDate}`,
     html: wrapTemplate(title, body),
     text: `New Invoice ${invoice.invoice_number}\nAmount: ${amount}\nDue: ${dueDate}\nRestaurant: ${restaurantName}`
-  }, title, body, 'en');
+  }, title, body, 'en', {
+    action: options.isTrial ? { state: 'fyi', key: 'trial_no_payment' } : { state: 'action', key: 'pay_by_due', due: dueDate }
+  });
 }
 
 /**
@@ -251,19 +276,19 @@ function invoiceOverdueEmail(invoice, restaurantName, options = {}) {
       infoRow('Due Date', `<span style="color: #EF4444;">${dueDate}</span>`) +
       infoRow('Status', '<span style="color: #EF4444; font-weight: 600;">Overdue</span>')
     )}
-    ${ctaButton('Pay Now', `${BASE_URL}/pos/invoices`)}`;
+    ${ctaButton('Pay Now', options.link || `${BASE_URL}/login`)}`;
 
   return withRenderMeta({
-    subject: `OVERDUE: Invoice ${invoice.invoice_number} - ${amount}`,
+    subject: `Pay now — overdue: ${invoice.invoice_number} · ${amount}`,
     html: wrapTemplate(title, body),
     text: `OVERDUE Invoice ${invoice.invoice_number}\nAmount: ${amount}\nDue: ${dueDate}\nRestaurant: ${restaurantName}`
-  }, title, body, 'en');
+  }, title, body, 'en', { action: { state: 'action', tone: 'urgent', key: 'pay_now_overdue' } });
 }
 
 /**
  * Invoice payment confirmed (for the issuer)
  */
-function invoicePaidEmail(invoice, restaurantName) {
+function invoicePaidEmail(invoice, restaurantName, options = {}) {
   const amount = `${currencySymbol(invoice.currency)} ${parseFloat(invoice.total_amount).toFixed(2)}`;
   const title = 'Payment Confirmed';
 
@@ -276,13 +301,13 @@ function invoicePaidEmail(invoice, restaurantName) {
       infoRow('Amount', `<span style="color: #10B981; font-weight: 700; font-size: 16px;">${amount}</span>`) +
       infoRow('Status', '<span style="color: #10B981; font-weight: 600;">Paid</span>')
     )}
-    ${ctaButton('View Details', `${BASE_URL}/pos/invoices`)}`;
+    ${ctaButton('View Details', options.link || `${BASE_URL}/login`)}`;
 
   return withRenderMeta({
-    subject: `Payment Confirmed: Invoice ${invoice.invoice_number} - ${amount}`,
+    subject: `Payment received: ${invoice.invoice_number} · ${amount} · ${restaurantName}`,
     html: wrapTemplate(title, body),
     text: `Payment Confirmed for Invoice ${invoice.invoice_number}\nAmount: ${amount}\nRestaurant: ${restaurantName}`
-  }, title, body, 'en');
+  }, title, body, 'en', { action: { state: 'fyi', key: 'no_action' } });
 }
 
 /**
@@ -401,13 +426,13 @@ function supplierContractRequestedEmail({ buyerName, buyerType, message, link })
     <p style="color:#6B7280;font-size:14px;margin:0 0 16px;line-height:1.6;">
       Review the request and approve or reject it. On approval, please define payment terms (terms, invoice cycle, credit limit, currency).
     </p>
-    ${ctaButton('Review Request', link || `${BASE_URL}/supplier/contracts`)}`;
+    ${ctaButton('Review Request', link || `${BASE_URL}/pos`)}`;
 
   return withRenderMeta({
-    subject: `New Contract Request from ${buyerName || 'a buyer'}`,
+    subject: `Review contract request: ${buyerName || 'a buyer'}`,
     html: wrapTemplate(title, body, 'en'),
     text: `New contract request from ${buyerName || 'a buyer'} (${buyerType}). ${safeMessage ? '\n\n' + safeMessage : ''}`
-  }, title, body, 'en');
+  }, title, body, 'en', { action: { state: 'action', key: 'approve_or_reject_contract' } });
 }
 
 /**
@@ -435,13 +460,13 @@ function supplierContractApprovedEmail({ supplierName, paymentTerms, link }) {
     ${pt.notes ? `<div style="background:#F9FAFB;border-left:4px solid ${BRAND_COLOR};padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;">
       <p style="color:#374151;font-size:14px;margin:0;">${(pt.notes || '').replace(/<[^>]*>/g, '').slice(0, 500)}</p>
     </div>` : ''}
-    ${ctaButton('View Contract', link || `${BASE_URL}/pos/supply/contracts`)}`;
+    ${ctaButton('View Contract', link || `${BASE_URL}/pos`)}`;
 
   return withRenderMeta({
-    subject: `Contract Approved by ${supplierName || 'Supplier'}`,
+    subject: `Contract approved: ${supplierName || 'Supplier'}`,
     html: wrapTemplate(title, body, 'en'),
     text: `Contract approved by ${supplierName || 'supplier'}. Terms: ${pt.terms || ''} / ${pt.invoice_cycle || ''}.`
-  }, title, body, 'en');
+  }, title, body, 'en', { action: { state: 'result', tone: 'good', key: 'can_order_now' } });
 }
 
 /**
@@ -458,13 +483,13 @@ function supplierContractRejectedEmail({ supplierName, reason, link }) {
       <p style="color:#991B1B;font-size:13px;font-weight:600;margin:0 0 6px;">Reason</p>
       <p style="color:#374151;font-size:14px;margin:0;">${safeReason}</p>
     </div>` : ''}
-    ${ctaButton('View Details', link || `${BASE_URL}/pos/supply/contracts`)}`;
+    ${ctaButton('View Details', link || `${BASE_URL}/pos`)}`;
 
   return withRenderMeta({
-    subject: `Contract Request Rejected by ${supplierName || 'Supplier'}`,
+    subject: `Contract request rejected: ${supplierName || 'Supplier'}`,
     html: wrapTemplate(title, body, 'en'),
     text: `Your contract request with ${supplierName || 'supplier'} was rejected.${safeReason ? '\nReason: ' + safeReason : ''}`
-  }, title, body, 'en');
+  }, title, body, 'en', { action: { state: 'result', tone: 'bad', key: 'no_action' } });
 }
 
 /**
@@ -484,13 +509,13 @@ function supplierContractTerminatedEmail({ otherPartyName, terminatedBy, reason,
       <p style="color:#92400E;font-size:13px;font-weight:600;margin:0 0 6px;">Reason</p>
       <p style="color:#374151;font-size:14px;margin:0;">${safeReason}</p>
     </div>` : ''}
-    ${ctaButton('View Contract', link || `${BASE_URL}/pos/supply/contracts`)}`;
+    ${ctaButton('View Contract', link || `${BASE_URL}/pos`)}`;
 
   return withRenderMeta({
-    subject: `Contract Terminated — ${otherPartyName || 'Supply Contract'}`,
+    subject: `Contract terminated: ${otherPartyName || 'Supply Contract'}`,
     html: wrapTemplate(title, body, 'en'),
     text: `${actor} terminated the supply contract with ${otherPartyName || 'the other party'}.${safeReason ? '\nReason: ' + safeReason : ''}`
-  }, title, body, 'en');
+  }, title, body, 'en', { action: { state: 'result', tone: 'bad', key: 'no_action' } });
 }
 
 /**
@@ -608,12 +633,16 @@ function buyerReceivedEmail({ buyerName, poNumber, total, currency, link, items,
     <p style="color:#6B7280;font-size:14px;margin:0 0 16px;line-height:1.6;">
       ${alreadyShipped ? t('hintShipped') : t('hintNeedsShip')}
     </p>
-    ${ctaButton(t('cta'), link || `${BASE_URL}/pos/seller-orders`)}`;
+    ${ctaButton(t('cta'), link || `${BASE_URL}/pos`)}`;
 
+  // 2026-10-22: 재렌더 메타가 빠져 있었다(title·body 없이 불러 머리글 브랜딩·자격 띠가 안 붙었다).
+  const title = t('heading');
   return withRenderMeta({
-    subject: t('subject', { poNumber: safePo, buyer: safeBuyer }),
-    html: wrapTemplate(t('heading'), body, lang),
+    subject: t(alreadyShipped ? 'subjectShipped' : 'subject', { poNumber: safePo, buyer: safeBuyer }),
+    html: wrapTemplate(title, body, lang),
     text: t('textFallback', { poNumber: safePo, buyer: safeBuyer, total: money })
+  }, title, body, lang, {
+    action: alreadyShipped ? { state: 'fyi', key: 'no_action' } : { state: 'action', key: 'record_dispatch' }
   });
 }
 
@@ -638,13 +667,13 @@ function sellerOrderReceivedEmail({ buyerName, poNumber, total, currency, link, 
     <p style="color:#6B7280;font-size:14px;margin:0 0 16px;line-height:1.6;">
       ${t('hint')}
     </p>
-    ${ctaButton(t('cta'), link || `${BASE_URL}/pos/seller/orders`)}`;
+    ${ctaButton(t('cta'), link || `${BASE_URL}/pos`)}`;
 
   return withRenderMeta({
-    subject: t('subject', { poNumber: safePo, buyer: safeBuyer }),
+    subject: t('subject', { poNumber: safePo, buyer: safeBuyer, total: money }),
     html: wrapTemplate(title, body, lang),
     text: t('textFallback', { poNumber: safePo, buyer: safeBuyer, total: money })
-  }, title, body, lang);
+  }, title, body, lang, { action: { state: 'action', key: 'confirm_or_reject_order' } });
 }
 
 /**
@@ -672,10 +701,21 @@ function poApprovalPendingEmail({ buyerName, poNumber, total, currency, link, it
     ${ctaButton(t('cta'), link || `${BASE_URL}/pos/owner/po-approvals`)}`;
 
   return withRenderMeta({
-    subject: t('subject', { poNumber: safePo }),
+    subject: t('subject', { poNumber: safePo, buyer: safeBuyer, total: money }),
     html: wrapTemplate(title, body, lang),
     text: t('textFallback', { poNumber: safePo, total: money })
-  }, title, body, lang);
+  }, title, body, lang, { action: { state: 'action', key: 'approve_or_reject_purchase' } });
+}
+
+/** 오너 승인 결과 → 작성자 «할 일» 블록 (2026-10-22 notification-addressee §5-1). */
+function approvalResultAction({ approved, revoked, isExternal }, lang) {
+  const { getEmailText } = require('./i18n');
+  const r = (k) => getEmailText(lang, 'result.' + k);
+  const a = (k) => getEmailText(lang, 'action.' + k);
+  if (revoked) return { state: 'result', tone: 'bad', text: `${r('withdrawn')}. ${a('no_action')}` };
+  if (!approved) return { state: 'result', tone: 'bad', text: `${r('rejected')}. ${a('edit_and_resubmit')}` };
+  if (isExternal) return { state: 'action', key: 'send_po_to_supplier' };
+  return { state: 'result', tone: 'good', text: `${r('approved')}. ${a('dispatch_update_follows')}` };
 }
 
 /**
@@ -717,7 +757,7 @@ function poApprovalResultEmail({ poNumber, approved, revoked, reason, total, cur
       : approved ? t('subjectApproved', { poNumber: safePo }) : t('subjectRejected', { poNumber: safePo }),
     html: wrapTemplate(title, body, lang),
     text: t('textFallback', { poNumber: safePo, result: title })
-  }, title, body, lang);
+  }, title, body, lang, { action: approvalResultAction({ approved, revoked, isExternal }, lang) });
 }
 
 /**
@@ -822,10 +862,12 @@ function poBuyerConfirmEmail({ sellerName, poNumber, total, currency, link, item
     ${ctaButton(t('cta'), link || `${BASE_URL}/pos/purchase-orders/history`)}`;
 
   return withRenderMeta({
-    subject: t('subject' + x, { poNumber: safePo }),
+    subject: t('subject' + x, { poNumber: safePo, seller: safeSeller }),
     html: wrapTemplate(title, body, lang),
     text: t('textFallback' + x, { poNumber: safePo, seller: safeSeller, total: money })
-  }, title, body, lang);
+  }, title, body, lang, {
+    action: isExternal ? { state: 'action', key: 'send_po_to_supplier' } : { state: 'fyi', key: 'dispatch_update_follows' }
+  });
 }
 
 /**
@@ -847,7 +889,7 @@ function tradeInvoiceCreatedEmail({ sellerName, invoiceNumber, total, currency, 
       infoRow('Due Date', fmtDate(dueDate, 'en', tz)) +
       infoRow('Status', '<span style="color:#F59E0B;font-weight:600;">Pending</span>')
     )}
-    ${ctaButton('View Invoice', link || `${BASE_URL}/pos/purchase-invoices`)}`;
+    ${ctaButton('View Invoice', link || `${BASE_URL}/pos`)}`;
 
   return withRenderMeta({
     subject: `Trade Invoice ${safeInv} - ${fmtMoney(total, currency)}`,
@@ -873,7 +915,7 @@ function tradeInvoicePaidEmail({ buyerName, invoiceNumber, total, currency, link
       infoRow('Amount', `<span style="color:#10B981;font-weight:700;">${fmtMoney(total, currency)}</span>`) +
       infoRow('Status', '<span style="color:#10B981;font-weight:600;">Paid</span>')
     )}
-    ${ctaButton('View Details', link || `${BASE_URL}/pos/seller/orders`)}`;
+    ${ctaButton('View Details', link || `${BASE_URL}/pos`)}`;
 
   return withRenderMeta({
     subject: `Payment Received: ${safeInv} - ${fmtMoney(total, currency)}`,
@@ -933,10 +975,40 @@ function monthlySoaEmail({ sellerName, month, dueInDays, invoices = [], totalDue
     ${ctaButton('View SOA & Pay', link || `${BASE_URL}/login`)}`;
 
   return withRenderMeta({
-    subject: `${isExternal ? 'Monthly statement (to compare) for ' : 'Monthly SOA from '}${safeSeller} - ${safeMonth} (${fmtMoney(totalDue, currency)})`,
+    subject: isExternal
+      ? `Compare statement: ${safeSeller} · ${safeMonth} · ${fmtMoney(totalDue, currency)}`
+      : `Pay statement: ${safeSeller} · ${safeMonth} · ${fmtMoney(totalDue, currency)}`,
     html: wrapTemplate(title, body, 'en'),
     text: `Monthly statement from ${safeSeller} for ${safeMonth}. Invoices: ${(invoices || []).length}. Total due: ${fmtMoney(totalDue, currency)}. Please pay by ${fmtDate(dueDate, 'en', tz)}${days === null ? '' : ` (within ${days} day${days === 1 ? '' : 's'})`}.`
-  }, title, body, 'en');
+  }, title, body, 'en', {
+    action: isExternal ? { state: 'action', key: 'compare_statement' } : { state: 'action', key: 'pay_statement', due: fmtDate(dueDate, 'en', tz) }
+  });
+}
+
+/**
+ * 미결제 청구서 독촉 — 판매자(브랜드·푸드코트·공급업체)가 구매자에게 (2026-10-22 notification-addressee §5-3).
+ * 예전엔 세 라우트가 같은 맨 <p> 3줄을 각자 만들었다(틀·할 일 칸 없음). 문구는 그대로 옮겼다.
+ */
+function unpaidReminderEmail({ sellerName, count, totalDue, currency, link }) {
+  const safeSeller = (sellerName || 'Your supplier').toString().slice(0, 120);
+  const n = Number(count) || 0;
+  const money = fmtMoney(totalDue, currency);
+  const title = 'Payment Reminder';
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      This is a friendly reminder that you have <strong>${n} unpaid invoice${n === 1 ? '' : 's'}</strong> from <strong>${safeSeller}</strong>.
+    </p>
+    ${infoTable(
+      infoRow('From', safeSeller) +
+      infoRow('Unpaid invoices', String(n)) +
+      infoRow('Total due', `<span style="color:${BRAND_COLOR};font-weight:700;font-size:16px;">${money}</span>`)
+    )}
+    ${ctaButton('View & Pay Invoices', link || `${BASE_URL}/login`)}`;
+  return withRenderMeta({
+    subject: `Reminder — pay ${n} invoice${n === 1 ? '' : 's'}: ${safeSeller} · ${money}`,
+    html: wrapTemplate(title, body, 'en'),
+    text: `You have ${n} unpaid invoice${n === 1 ? '' : 's'} from ${safeSeller}. Total due: ${money}.`
+  }, title, body, 'en', { action: { state: 'action', key: 'settle_unpaid' } });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1192,6 +1264,8 @@ function contextInviteResultEmail({ accepted, inviteeName, targetName, note, lin
 
 module.exports = {
   wrapTemplate,
+  withRenderMeta,
+  ctaButton,
   noticeReceivedEmail,
   commentReceivedEmail,
   inquiryReceivedEmail,
@@ -1218,6 +1292,7 @@ module.exports = {
   tradeInvoiceCreatedEmail,
   tradeInvoicePaidEmail,
   monthlySoaEmail,
+  unpaidReminderEmail,
   // Phase 3 — Referral Program
   referralPartnerWelcomeEmail,
   referredSignupEmail,

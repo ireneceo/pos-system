@@ -690,15 +690,22 @@ router.post('/:id/confirm-payment', authenticateToken, async (req, res) => {
     (async () => {
       try {
         const restaurant = await Restaurant.findByPk(invoice.restaurant_id, { attributes: ['id', 'name'] });
-        const mail = invoicePaidEmail(invoice, restaurant?.name || 'Unknown Restaurant');
+        // 2026-10-22 notification-addressee: 발행자 자리(브랜드/푸드코트/플랫폼) 자격 + 발행 청구서 화면 버튼
+        const { getEntityAddressees } = require('../utils/notificationService');
+        const { mailFor } = require('../utils/notificationAddressee');
+        const { goLink } = require('../utils/notificationLinks');
         let issuerIds = [];
+        let addressees = [];
         if (invoice.issuer_type === 'system_admin') {
           issuerIds = await getSystemAdminIds();
-        } else if (invoice.issuer_type === 'brand' && invoice.issuer_id) {
-          issuerIds = await getBrandManagerIds(invoice.issuer_id);
-        } else if (invoice.issuer_type === 'foodcourt' && invoice.issuer_id) {
-          issuerIds = await getFoodcourtManagerIds(invoice.issuer_id);
+          addressees = issuerIds.map(id => ({ id, addressee: { kind: 'admin', entity_type: 'system', entity_id: null, entity_name: 'PurpleHere' } }));
+        } else if ((invoice.issuer_type === 'brand' || invoice.issuer_type === 'foodcourt') && invoice.issuer_id) {
+          // 집합 = getBrandManagerIds / getFoodcourtManagerIds (getEntityAddressees 가 그대로 부른다)
+          addressees = await getEntityAddressees(invoice.issuer_type, invoice.issuer_id);
+          issuerIds = addressees.map(r => r.id);
         }
+        const restaurantName = restaurant?.name || 'Unknown Restaurant';
+        const mail = mailFor(addressees, (a) => invoicePaidEmail(invoice, restaurantName, { link: goLink(a, 'issued_invoices') }));
         const filteredIds = issuerIds.filter(id => id !== req.user.id);
         if (filteredIds.length > 0) {
           await sendNotificationBatch(filteredIds, 'invoice_paid', mail);

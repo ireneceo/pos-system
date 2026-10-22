@@ -202,8 +202,7 @@ router.post('/', authenticateToken, async (req, res) => {
             entityOwnerId = String(ticket.requesterId) === String(req.user.id) ? ticket.managerId : ticket.requesterId;
             // For ticket comments, use inquiry_replied category
             if (entityOwnerId && entityOwnerId !== req.user.id) {
-              const mail = inquiryRepliedEmail({ title: entityTitle, subject: entityTitle }, comment, req.user.full_name);
-              await sendNotification(entityOwnerId, 'inquiry_replied', mail);
+              await require('../utils/notificationService').sendWithNativeAddressee(entityOwnerId, 'inquiry_replied', (link) => inquiryRepliedEmail({ title: entityTitle, subject: entityTitle }, comment, req.user.full_name, link));
             }
             return;
           }
@@ -217,8 +216,7 @@ router.post('/', authenticateToken, async (req, res) => {
               entityOwnerId = parseInt(ticket.customerId);
             }
             if (entityOwnerId && entityOwnerId !== req.user.id) {
-              const mail = inquiryRepliedEmail({ title: entityTitle, subject: entityTitle }, comment, req.user.full_name);
-              await sendNotification(entityOwnerId, 'inquiry_replied', mail);
+              await require('../utils/notificationService').sendWithNativeAddressee(entityOwnerId, 'inquiry_replied', (link) => inquiryRepliedEmail({ title: entityTitle, subject: entityTitle }, comment, req.user.full_name, link));
             }
             return;
           }
@@ -238,8 +236,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
         // For notices: notify entity owner if commenter is different
         if (entityOwnerId && entityOwnerId !== req.user.id) {
-          const mail = commentReceivedEmail(comment, entityTitle, req.user.full_name);
-          await sendNotification(entityOwnerId, 'comment_received', mail);
+          await require('../utils/notificationService').sendWithNativeAddressee(entityOwnerId, 'comment_received', (link) => commentReceivedEmail(comment, entityTitle, req.user.full_name, 'en', link));
         }
       } catch (e) {
         console.error('[Comment notification error]', e.message);

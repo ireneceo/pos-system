@@ -1202,7 +1202,11 @@ class InvoiceScheduler {
     try {
       const isTrial = restaurant.status === 'trial';
       const restaurantTz = getRestaurantTimezone(restaurant);
-      const mail = invoiceCreatedEmail(invoice, restaurant.name, { isTrial, timezone: restaurantTz });
+      // 2026-10-22 notification-addressee: 수신자마다 자격(매장/오너) 꼬리표 + 그 자격 청구서 화면 버튼
+      const { getRestaurantAddressees } = require('../utils/notificationService');
+      const { goLink } = require('../utils/notificationLinks');
+      const addressees = await getRestaurantAddressees(restaurant.id);
+      const byId = new Map(addressees.map(r => [Number(r.id), r.addressee]));
       // 2026-08-31 — 예전엔 `restaurant.admin_id` **단일 컬럼**을 읽었다. 그 컬럼은 관리자 명부가
       // 아니라 매장당 1명만 담는 옛 필드라, 실측(dev)에서 관리자가 2명인 매장 4곳은 1명만 받고,
       // admin_id 가 비었거나(rid 2·3) 남의 매장 관리자를 가리키는 매장(rid 1 → 23번은 매장 38 관리자)
@@ -1210,7 +1214,9 @@ class InvoiceScheduler {
       // 나머지 5개 호출부와 같은 의미의 단일 리졸버로 통일한다.
       const recipientIds = await getRestaurantAdminAndOwnerIds(restaurant.id);
       for (const uid of recipientIds) {
-        sendNotification(uid, 'invoice_created', mail);
+        const addressee = byId.get(Number(uid)) || null;
+        const mail = invoiceCreatedEmail(invoice, restaurant.name, { isTrial, timezone: restaurantTz, link: goLink(addressee, 'invoices') });
+        sendNotification(uid, 'invoice_created', Object.assign(mail, { _addressee: addressee }));
       }
     } catch (e) {
       console.error('[Invoice notification error]', e.message);

@@ -5,11 +5,22 @@
  * 승인 라우터(purchase-orders-approval.js)와 재사용. 모든 함수는 throw 하지 않음
  * (알림 실패가 PO 상태전이를 막지 않음).
  */
-const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
 const {
   sendNotificationBatch,
-  getSupplierAdminIds, getBrandManagerIds, getFoodcourtManagerIds, getRestaurantOwnerIds
+  getEntityAddressees, getRestaurantAddressees, getUserAddressee
 } = require('../utils/notificationService');
+const { mailFor } = require('../utils/notificationAddressee');
+const { goLink } = require('../utils/notificationLinks');
+
+/**
+ * 판매자 자리 수신자 + 자격 (2026-10-22 notification-addressee) — 집합은 예전 getter 와 같다
+ * (공급업체 → getSupplierAdminIds · 브랜드 → getBrandManagerIds · 푸드코트 → getFoodcourtManagerIds).
+ */
+async function sellerAddressees(po) {
+  if (!po || !po.seller_entity_id) return [];
+  if (!['supplier', 'brand', 'foodcourt'].includes(po.seller_type)) return [];
+  return getEntityAddressees(po.seller_type, po.seller_entity_id);
+}
 
 /**
  * 이 메일의 머리글을 **누구 이름으로** 낼지 (2026-09-15 Irene 「이메일 위에 브랜드명 바꿔」).
@@ -50,14 +61,8 @@ async function resolveBuyerName(po) {
 /** 새 발주가 판매자에게 제출됨 — 판매자(Supplier/Brand/Foodcourt) 통지. */
 async function fireSellerSubmittedNotification(po) {
   try {
-    let userIds = [];
-    if (po.seller_type === 'supplier' && po.seller_entity_id) {
-      userIds = await getSupplierAdminIds(po.seller_entity_id);
-    } else if (po.seller_type === 'brand' && po.seller_entity_id) {
-      userIds = await getBrandManagerIds(po.seller_entity_id);
-    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id) {
-      userIds = await getFoodcourtManagerIds(po.seller_entity_id);
-    }
+    const list = await sellerAddressees(po);
+    const userIds = list.map(r => r.id);
     if (userIds.length === 0) return;
     const buyerName = await resolveBuyerName(po);
     const { sellerOrderReceivedEmail } = require('../utils/notificationTemplates');
@@ -68,14 +73,14 @@ async function fireSellerSubmittedNotification(po) {
       poNumber: po.po_number,
       total: po.total_amount,
       currency: po.currency || 'MYR',
-      link: `${FRONTEND_URL}/pos/seller-orders`,
       items
     };
     // 팩토리 전달 — 수신자마다 자기 언어로 렌더된다(2026-08-30).
-    // 예전엔 본문을 수신자 모른 채 1개 만들어 N명에게 그대로 보냈다 → 언어 고정이었다.
+    // 2026-10-22: 수신자마다 자격(브랜드/브랜드 담당자/공급업체)과 그 자격 화면 버튼.
+    //   spread 대신 Object.assign — spread 는 재렌더 메타(_title/_body, 비열거)를 지운다.
     const _brandingEntity = sellerBrandingEntity(po);
-    await sendNotificationBatch(userIds, 'seller_order_received',
-      (user) => ({ ...sellerOrderReceivedEmail(args, user.preferred_language || 'en'), _brandingEntity }));
+    await sendNotificationBatch(userIds, 'seller_order_received', mailFor(list, (a, user) =>
+      Object.assign(sellerOrderReceivedEmail({ ...args, link: goLink(a, 'seller_orders') }, user.preferred_language || 'en'), { _brandingEntity })));
   } catch (e) {
     console.error('[poNotifications] fireSellerSubmittedNotification error:', e.message);
   }
@@ -88,14 +93,8 @@ async function fireSellerSubmittedNotification(po) {
  */
 async function fireBuyerReceivedNotification(po) {
   try {
-    let userIds = [];
-    if (po.seller_type === 'supplier' && po.seller_entity_id) {
-      userIds = await getSupplierAdminIds(po.seller_entity_id);
-    } else if (po.seller_type === 'brand' && po.seller_entity_id) {
-      userIds = await getBrandManagerIds(po.seller_entity_id);
-    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id) {
-      userIds = await getFoodcourtManagerIds(po.seller_entity_id);
-    }
+    const list = await sellerAddressees(po);
+    const userIds = list.map(r => r.id);
     if (userIds.length === 0) {
       // 계정 없는 외부 공급업체 — 조용히 끝내되 "왜 안 갔는지"는 남긴다
       console.log(`[notify] buyer_received po=${po.po_number} seller=${po.seller_type}:${po.seller_entity_id} recipients=none`);
@@ -110,7 +109,6 @@ async function fireBuyerReceivedNotification(po) {
       poNumber: po.po_number,
       total: po.total_amount,
       currency: po.currency || 'MYR',
-      link: `${FRONTEND_URL}/pos/seller-orders`,
       items,
       alreadyShipped: !!po.shipped_at,
     };
@@ -119,8 +117,8 @@ async function fireBuyerReceivedNotification(po) {
     // 개인정보는 넣지 않는다(사용자 id 만).
     console.log(`[notify] buyer_received po=${po.po_number} seller=${po.seller_type}:${po.seller_entity_id} recipients=${userIds.length ? userIds.join(',') : 'none'}`);
     const _brandingEntity = sellerBrandingEntity(po);
-    await sendNotificationBatch(userIds, 'buyer_received',
-      (user) => ({ ...buyerReceivedEmail(args, user.preferred_language || 'en'), _brandingEntity }));
+    await sendNotificationBatch(userIds, 'buyer_received', mailFor(list, (a, user) =>
+      Object.assign(buyerReceivedEmail({ ...args, link: goLink(a, 'seller_orders') }, user.preferred_language || 'en'), { _brandingEntity })));
   } catch (e) {
     console.error('[poNotifications] fireBuyerReceivedNotification error:', e.message);
   }
@@ -130,7 +128,9 @@ async function fireBuyerReceivedNotification(po) {
 async function fireOwnerApprovalPendingNotification(po) {
   try {
     if (po.entity_type !== 'restaurant') return;
-    const ownerIds = await getRestaurantOwnerIds(po.entity_id);
+    // 오너 전원(집합 = getRestaurantOwnerIds) · 자격 «{매장} · 오너»
+    const list = (await getRestaurantAddressees(po.entity_id)).filter(r => r.addressee.kind === 'owner');
+    const ownerIds = list.map(r => r.id);
     if (!ownerIds.length) return;
     const buyerName = await resolveBuyerName(po);
     const { poApprovalPendingEmail } = require('../utils/notificationTemplates');
@@ -140,11 +140,10 @@ async function fireOwnerApprovalPendingNotification(po) {
       poNumber: po.po_number,
       total: po.total_amount,
       currency: po.currency || 'MYR',
-      link: `${FRONTEND_URL}/pos/owner/po-approvals`,
       items: await loadPoEmailItems(po.id)
     };
-    await sendNotificationBatch(ownerIds, 'po_approval_pending',
-      (user) => poApprovalPendingEmail(args, user.preferred_language || 'en'));
+    await sendNotificationBatch(ownerIds, 'po_approval_pending', mailFor(list, (a, user) =>
+      poApprovalPendingEmail({ ...args, link: goLink(a, 'po_approvals') }, user.preferred_language || 'en')));
   } catch (e) {
     console.error('[poNotifications] fireOwnerApprovalPendingNotification error:', e.message);
   }
@@ -173,11 +172,12 @@ async function fireOwnerApprovalResultNotification(po, { approved, revoked = fal
       reason: reason || '',
       currency: po.currency || 'MYR',
       total: po.total_amount,
-      link: `${FRONTEND_URL}/pos/purchase-orders/history`,
       items: await loadPoEmailItems(po.id)   // 2026-08-30: 같은 가족 중 여기만 품목표가 없었다
     };
-    await sendNotificationBatch([po.created_by_user_id], 'po_approval_result',
-      (user) => poApprovalResultEmail(args, user.preferred_language || 'en'));
+    // 작성자 자격 = 그 발주의 구매자 자리 + 작성자 역할(매장 관리자/직원/브랜드…)
+    const a = await getUserAddressee(po.created_by_user_id, po.entity_type, po.entity_id);
+    await sendNotificationBatch([po.created_by_user_id], 'po_approval_result', mailFor([{ id: po.created_by_user_id, addressee: a }], (ad, user) =>
+      poApprovalResultEmail({ ...args, link: goLink(ad, 'po_detail', { poId: po.id }) }, user.preferred_language || 'en')));
   } catch (e) {
     console.error('[poNotifications] fireOwnerApprovalResultNotification error:', e.message);
   }
@@ -207,11 +207,11 @@ async function fireBuyerConfirmNotification(po) {
       poNumber: po.po_number,
       total: po.total_amount,
       currency: po.currency || 'MYR',
-      link: `${FRONTEND_URL}/pos/purchase-orders/history`,
       items: await loadPoEmailItems(po.id)
     };
-    await sendNotificationBatch([po.created_by_user_id], 'po_buyer_confirm',
-      (user) => poBuyerConfirmEmail(args, user.preferred_language || 'en'));
+    const a = await getUserAddressee(po.created_by_user_id, po.entity_type, po.entity_id);
+    await sendNotificationBatch([po.created_by_user_id], 'po_buyer_confirm', mailFor([{ id: po.created_by_user_id, addressee: a }], (ad, user) =>
+      poBuyerConfirmEmail({ ...args, link: goLink(ad, 'po_detail', { poId: po.id }) }, user.preferred_language || 'en')));
   } catch (e) {
     console.error('[poNotifications] fireBuyerConfirmNotification error:', e.message);
   }
@@ -225,19 +225,13 @@ async function fireBuyerConfirmNotification(po) {
  */
 async function fireSellerAmendedByBuyerNotification(po, { changes = [], reason = null, totalBefore = 0, totalAfter = 0 } = {}) {
   try {
-    let userIds = [];
-    if (po.seller_type === 'supplier' && po.seller_entity_id) {
-      userIds = await getSupplierAdminIds(po.seller_entity_id);
-    } else if (po.seller_type === 'brand' && po.seller_entity_id) {
-      userIds = await getBrandManagerIds(po.seller_entity_id);
-    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id) {
-      userIds = await getFoodcourtManagerIds(po.seller_entity_id);
-    }
+    const list = await sellerAddressees(po);
+    const userIds = list.map(r => r.id);
     if (userIds.length === 0) {
       console.log(`[notify] buyer_amended po=${po.po_number} seller=${po.seller_type}:${po.seller_entity_id} recipients=none`);
       return;
     }
-    const { wrapTemplate } = require('../utils/notificationTemplates');
+    const { wrapTemplate, withRenderMeta, ctaButton } = require('../utils/notificationTemplates');
     const { currencySymbol } = require('../utils/currency');
     const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const buyerName = await resolveBuyerName(po);
@@ -255,9 +249,8 @@ async function fireSellerAmendedByBuyerNotification(po, { changes = [], reason =
         <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#111827;font-weight:600;">${esc(now)}</td>
       </tr>`;
     }).join('');
-    const html = wrapTemplate(
-      'Order Edited by Buyer',
-      `<p style="color:#374151;font-size:16px;margin:0 0 16px;"><strong>${esc(buyerName || 'The buyer')}</strong> edited purchase order <strong>${esc(po.po_number)}</strong> before you confirmed it.</p>
+    const title = 'Order Edited by Buyer';
+    const bodyFor = (link) => `<p style="color:#374151;font-size:16px;margin:0 0 16px;"><strong>${esc(buyerName || 'The buyer')}</strong> edited purchase order <strong>${esc(po.po_number)}</strong> before you confirmed it.</p>
        <table style="width:100%;border-collapse:collapse;margin:0 0 20px;">
          <thead><tr>
            <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">Item</th>
@@ -272,15 +265,15 @@ async function fireSellerAmendedByBuyerNotification(po, { changes = [], reason =
          <p style="color:#4B5563;font-size:13px;font-weight:600;margin:0 0 6px;">Reason</p>
          <p style="color:#374151;font-size:14px;margin:0;">${esc(String(reason).slice(0, 600))}</p>
        </div>` : ''}
-       <div style="text-align:center;margin:24px 0;"><a href="${FRONTEND_URL}/pos/seller-orders" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Orders</a></div>`,
-      'en'
-    );
+       ${ctaButton('Review Order', link)}`;
     const _brandingEntity = sellerBrandingEntity(po);
-    await sendNotificationBatch(userIds, 'seller_order_received', () => ({
-      subject: `Order Edited by Buyer: ${po.po_number}`,
-      html,
-      text: `${buyerName || 'The buyer'} edited purchase order ${po.po_number}. Total ${money(totalBefore)} → ${money(totalAfter)}.${reason ? ` Reason: ${reason}` : ''}`,
-      _brandingEntity
+    await sendNotificationBatch(userIds, 'seller_order_received', mailFor(list, (a) => {
+      const body = bodyFor(goLink(a, 'seller_orders'));
+      return Object.assign(withRenderMeta({
+        subject: `Review changes: ${po.po_number} · edited by ${buyerName || 'the buyer'}`,
+        html: wrapTemplate(title, body, 'en'),
+        text: `${buyerName || 'The buyer'} edited purchase order ${po.po_number}. Total ${money(totalBefore)} → ${money(totalAfter)}.${reason ? ` Reason: ${reason}` : ''}`
+      }, title, body, 'en', { action: { state: 'action', key: 'review_changes' } }), { _brandingEntity });
     }));
   } catch (e) {
     console.error('[poNotifications] fireSellerAmendedByBuyerNotification error:', e.message);
@@ -294,34 +287,25 @@ async function fireSellerAmendedByBuyerNotification(po, { changes = [], reason =
  */
 async function fireSellerApprovalRevokedNotification(po) {
   try {
-    let userIds = [];
-    if (po.seller_type === 'supplier' && po.seller_entity_id) {
-      userIds = await getSupplierAdminIds(po.seller_entity_id);
-    } else if (po.seller_type === 'brand' && po.seller_entity_id) {
-      userIds = await getBrandManagerIds(po.seller_entity_id);
-    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id) {
-      userIds = await getFoodcourtManagerIds(po.seller_entity_id);
-    }
+    const list = await sellerAddressees(po);
+    const userIds = list.map(r => r.id);
     if (userIds.length === 0) {
       console.log(`[notify] approval_revoked po=${po.po_number} seller=${po.seller_type}:${po.seller_entity_id} recipients=none`);
       return;
     }
-    const { wrapTemplate } = require('../utils/notificationTemplates');
+    const { wrapTemplate, withRenderMeta, ctaButton } = require('../utils/notificationTemplates');
     const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const buyerName = await resolveBuyerName(po);
-    const html = wrapTemplate(
-      'Order Withdrawn for Re-approval',
-      `<p style="color:#374151;font-size:16px;margin:0 0 16px;"><strong>${esc(buyerName || 'The buyer')}</strong> withdrew purchase order <strong>${esc(po.po_number)}</strong> pending owner re-approval.</p>
-       <p style="color:#374151;font-size:14px;margin:0 0 20px;">Please do not fulfil it until it is sent to you again.</p>
-       <div style="text-align:center;margin:24px 0;"><a href="${FRONTEND_URL}/pos/seller-orders" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Orders</a></div>`,
-      'en'
-    );
+    const title = 'Order Withdrawn for Re-approval';
     const _brandingEntity = sellerBrandingEntity(po);
-    await sendNotificationBatch(userIds, 'seller_order_received', () => ({
-      subject: `Order Withdrawn: ${po.po_number}`,
-      html,
-      text: `${buyerName || 'The buyer'} withdrew purchase order ${po.po_number} pending owner re-approval — do not fulfil it until it is re-sent.`,
-      _brandingEntity
+    await sendNotificationBatch(userIds, 'seller_order_received', mailFor(list, (a) => {
+      const body = `<p style="color:#374151;font-size:16px;margin:0 0 16px;"><strong>${esc(buyerName || 'The buyer')}</strong> withdrew purchase order <strong>${esc(po.po_number)}</strong> pending owner re-approval.</p>
+       ${ctaButton('View Orders', goLink(a, 'seller_orders'))}`;
+      return Object.assign(withRenderMeta({
+        subject: `On hold: ${po.po_number} · withdrawn for re-approval`,
+        html: wrapTemplate(title, body, 'en'),
+        text: `${buyerName || 'The buyer'} withdrew purchase order ${po.po_number} pending owner re-approval — do not fulfil it until it is re-sent.`
+      }, title, body, 'en', { action: { state: 'action', key: 'do_not_fulfil_on_hold' } }), { _brandingEntity });
     }));
   } catch (e) {
     console.error('[poNotifications] fireSellerApprovalRevokedNotification error:', e.message);

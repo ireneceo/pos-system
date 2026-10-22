@@ -479,8 +479,9 @@ router.post('/', authenticateToken, async (req, res) => {
     (async () => {
       try {
         const siteTz = await getSiteTimezone();
-        const mail = noticeReceivedEmail(fullNotice, fullNotice.author?.full_name || user.full_name, 'en', siteTz);
         const recipientUserIds = new Set();
+        // 2026-10-22 notification-addressee: 매장으로 받은 사람은 그 매장 자격, 개인으로 받은 사람은 본래 자리 자격
+        const viaRestaurant = new Map();
 
         for (const r of (fullNotice.recipients || [])) {
           if (r.user_id && r.user_id !== user.id) {
@@ -491,6 +492,7 @@ router.post('/', authenticateToken, async (req, res) => {
             const rest = await Restaurant.findByPk(r.restaurant_id, { attributes: ['admin_id', 'is_demo', 'is_test'] });
             if (rest?.admin_id && rest.admin_id !== user.id && !rest.is_demo && !rest.is_test) {
               recipientUserIds.add(rest.admin_id);
+              viaRestaurant.set(Number(rest.admin_id), r.restaurant_id);
             }
           }
         }
@@ -503,6 +505,17 @@ router.post('/', authenticateToken, async (req, res) => {
           });
           const safeIds = safeUsers.map(u => u.id);
           if (safeIds.length > 0) {
+            const { getNativeAddressee, getUserAddressee } = require('../utils/notificationService');
+            const { mailFor } = require('../utils/notificationAddressee');
+            const { goLink } = require('../utils/notificationLinks');
+            const addressees = await Promise.all(safeIds.map(async (id) => ({
+              id,
+              addressee: viaRestaurant.has(Number(id))
+                ? await getUserAddressee(id, 'restaurant', viaRestaurant.get(Number(id)))
+                : await getNativeAddressee(id)
+            })));
+            const mail = mailFor(addressees, (a) =>
+              noticeReceivedEmail(fullNotice, fullNotice.author?.full_name || user.full_name, 'en', siteTz, a ? goLink(a, 'notices') : null));
             await sendNotificationBatch(safeIds, 'notice_received', mail);
           }
         }

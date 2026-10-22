@@ -483,14 +483,17 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
       // Check if there's a redirect path from location state
-      const from = (location.state as any)?.from?.pathname;
+      const fromLoc = (location.state as any)?.from;
+      const from = fromLoc?.pathname;
+      // 주소 뒤 조건(?…)도 되살린다 — 알림 버튼 /go?ctx=…&to=… 가 로그인 뒤 조건 없이 열리던 것(2026-10-22)
+      const fromSearch = typeof fromLoc?.search === 'string' && fromLoc.search.startsWith('?') ? fromLoc.search : '';
 
       const fullScreenPages = ['/pos-terminal', '/kitchen', '/display', '/checkout-display'];
       const isFullScreen = from && fullScreenPages.some(p => from.includes(p));
       const isValidPath = from && from.startsWith('/') && !from.startsWith('//') && !from.includes('javascript:') // eslint-disable-line no-script-url -- security validation;
       if (isValidPath && from !== '/pos' && !isFullScreen) {
         // Redirect to the originally requested page
-        navigate(from, { replace: true });
+        navigate(from + fromSearch, { replace: true });
       } else if (contexts.length >= 2 || pendingInvitations > 0) {
         // 고를 수 있는 자격이 2개 이상일 때만 선택 화면으로 보낸다.
         // 부여받은 모자가 없으면 목록은 [기본 정체] 1개뿐이라 여기 걸리지 않는다 = 기존 동작 그대로.

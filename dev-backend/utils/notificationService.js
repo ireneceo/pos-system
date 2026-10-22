@@ -275,14 +275,40 @@ async function sendNotification(recipientUserId, category, mailOptions) {
     // `_brandingEntity` 는 메일 본문이 아니라 「머리글을 누구 이름으로 낼지」다 — nodemailer 로는
     // 넘기지 않는다(아래 cleanOptions 에서 함께 걸러진다).
     const branding = await resolveReceiverBranding(user, mailOptions._brandingEntity);
+
+    // 4-b. 수신 자격(2026-10-22 Fable 설계 notification-addressee) — «누구로서 받는지 · 무엇을 할지».
+    //   `_addressee` 는 객체 또는 `(user) => 객체`(같은 배치 안에서 RA·오너처럼 자격이 갈릴 때).
+    //   `_action`/`_preheader` 는 템플릿이 withRenderMeta 로 싣거나(비열거) 호출부가 직접 싣는다.
+    //   제목 꼬리표는 **여기 한 곳**에서 붙인다 — 템플릿 수십 곳이 각자 붙이지 않게.
+    let addressee = null;
+    if (typeof mailOptions._addressee === 'function') {
+      try { addressee = await mailOptions._addressee(user); } catch (_) { addressee = null; }
+    } else if (mailOptions._addressee) {
+      addressee = mailOptions._addressee;
+    }
+    const hasMeta = !!(addressee || mailOptions._action || mailOptions._preheader);
+    const mailLang = mailOptions._lang || 'en';
+
     let renderedHtml = mailOptions.html;
-    if (branding && mailOptions._title && mailOptions._body) {
+    // 재렌더 조건 — 예전엔 브랜딩이 있을 때만. 자격 띠는 브랜딩 없는 수신자(오너·공급업체·SA)에게도
+    // 필요하므로 «브랜딩 또는 자격 메타» 로 넓힌다(메타 없는 메일은 예전과 같다).
+    if (mailOptions._title && mailOptions._body && (branding || hasMeta)) {
       const { wrapTemplate } = require('./notificationTemplates');
-      renderedHtml = wrapTemplate(mailOptions._title, mailOptions._body, mailOptions._lang, branding);
+      const meta = hasMeta ? {
+        addressee,
+        action: mailOptions._action,
+        preheader: mailOptions._preheader,
+        recipientName: user.full_name || user.username || ''
+      } : undefined;
+      renderedHtml = wrapTemplate(mailOptions._title, mailOptions._body, mailOptions._lang, branding, meta);
     }
 
     // 5. Send email — exclude metadata fields from nodemailer payload
-    const { _title, _body, _lang, _brandingEntity, ...cleanOptions } = mailOptions;
+    const { _title, _body, _lang, _brandingEntity, _addressee, _action, _preheader, ...cleanOptions } = mailOptions;
+    if (addressee) {
+      const { tagSubject } = require('./notificationAddressee');
+      cleanOptions.subject = tagSubject(cleanOptions.subject, addressee, mailLang);
+    }
     const transporter = emailService.createTransporter(smtp.settings);
 
     // 첨부 정책 — 깨진 로고("?") 방지를 위해 "실제 렌더된 html 이 참조하는 cid" 기준으로 첨부:
@@ -293,7 +319,7 @@ async function sendNotification(recipientUserId, category, mailOptions) {
     //    cid:purplehere-logo 가 남는데, 옛 `!branding` 가드가 이때 첨부를 건너뛰어 로고가 깨졌음.)
     //  - 기존 cleanOptions.attachments 는 그대로 유지 (caller 가 명시적으로 넣은 것)
     let finalAttachments = [...(cleanOptions.attachments || [])];
-    const reRenderedWithBranding = !!(branding && _title && _body);
+    const reRenderedWithBranding = !!(branding && mailOptions._title && mailOptions._body);
     if (reRenderedWithBranding && branding?.logoAttachment) {
       finalAttachments.push(...branding.logoAttachment);
     }
@@ -461,7 +487,144 @@ async function getSupplierAdminIds(supplierCompanyId) {
   return users.map(u => u.id);
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 자격 포함 리졸버 (2026-10-22 Fable 설계 notification-addressee §7 U2)
+//   기존 id 리졸버를 그대로 부르고 «받는 자격» 만 붙인다 — **수신자 집합은 동일**.
+//   반환 [{ id, addressee }] → utils/notificationAddressee.addresseeFor(list) 로 배치 팩토리.
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function entityNameOf(entityType, entityId) {
+  if (!entityId) return '';
+  const table = { restaurant: 'restaurants', brand: 'brands', foodcourt: 'foodcourts', supplier: 'supplier_companies' }[entityType];
+  if (!table) return '';
+  try {
+    const cols = entityType === 'supplier' ? 'name, company_name, trade_name' : 'name';
+    const rows = await sequelize.query(`SELECT ${cols} FROM ${table} WHERE id = :id LIMIT 1`,
+      { replacements: { id: entityId }, type: QueryTypes.SELECT });
+    const r = rows[0];
+    if (!r) return '';
+    return ((entityType === 'supplier' ? (r.trade_name || r.company_name || r.name) : r.name) || '').toString().trim();
+  } catch { return ''; }
+}
+
+async function rolesOf(ids) {
+  if (!ids.length) return new Map();
+  const rows = await sequelize.query('SELECT id, role FROM users WHERE id IN (:ids)',
+    { replacements: { ids }, type: QueryTypes.SELECT });
+  return new Map(rows.map(r => [Number(r.id), r.role]));
+}
+
+/** 매장 앞 알림 — 관리자(store) + 오너(owner). 집합 = getRestaurantAdminAndOwnerIds. */
+async function getRestaurantAddressees(restaurantId) {
+  const name = await entityNameOf('restaurant', restaurantId);
+  const ids = await getRestaurantAdminAndOwnerIds(restaurantId);
+  const owners = new Set((await getRestaurantOwnerIds(restaurantId)).map(Number));
+  return ids.map(id => ({
+    id,
+    addressee: { kind: owners.has(Number(id)) ? 'owner' : 'store', entity_type: 'restaurant', entity_id: Number(restaurantId), entity_name: name }
+  }));
+}
+
+/** 브랜드·푸드코트·공급업체 «자리» 앞 알림. 집합 = 각 id 리졸버. 매니저 역할은 *_manager 자격. */
+async function getEntityAddressees(entityType, entityId) {
+  let ids = [];
+  if (entityType === 'brand') ids = await getBrandManagerIds(entityId);
+  else if (entityType === 'foodcourt') ids = await getFoodcourtManagerIds(entityId);
+  else if (entityType === 'supplier') ids = await getSupplierAdminIds(entityId);
+  else if (entityType === 'restaurant') return getRestaurantAddressees(entityId);
+  if (!ids.length) return [];
+  const name = await entityNameOf(entityType, entityId);
+  const roles = await rolesOf(ids);
+  return ids.map(id => {
+    const role = roles.get(Number(id));
+    let kind = entityType;
+    if (entityType === 'brand' && role === 'Brand Manager') kind = 'brand_manager';
+    if (entityType === 'foodcourt' && role === 'Foodcourt Manager') kind = 'foodcourt_manager';
+    return { id, addressee: { kind, entity_type: entityType, entity_id: Number(entityId), entity_name: name } };
+  });
+}
+
+/** 한 사람(작성자 등) 앞 알림의 자격 — 그 건의 자리(entity)와 그 사람의 역할로 정한다. */
+async function getUserAddressee(userId, entityType, entityId) {
+  const name = await entityNameOf(entityType, entityId);
+  const role = (await rolesOf([userId])).get(Number(userId));
+  let kind = entityType === 'restaurant' ? 'store' : entityType;
+  if (entityType === 'restaurant') {
+    if (role === 'Restaurant Owner') kind = 'owner';
+    else if (role === 'Staff') kind = 'store_staff';
+  }
+  if (entityType === 'brand' && role === 'Brand Manager') kind = 'brand_manager';
+  if (entityType === 'foodcourt' && role === 'Foodcourt Manager') kind = 'foodcourt_manager';
+  return { kind, entity_type: entityType, entity_id: Number(entityId) || null, entity_name: name };
+}
+
+/**
+ * 그 사람의 «본래 자리» 자격 — 건의 자리가 따로 없는 알림(공지·댓글·문의)용.
+ * 역할 → 자리: 매장 관리자/직원 = 자기 매장 · 브랜드/푸드코트 = 자기 브랜드/푸드코트 · 공급업체 = 자기 회사 ·
+ * 오너 = 첫 소유 매장 · SA = 플랫폼. 모르는 역할은 자격 없음(꼬리표 없이 예전 모양).
+ */
+async function getNativeAddressee(userId) {
+  try {
+    const rows = await sequelize.query(
+      'SELECT id, role, restaurant_id, brand_id, foodcourt_id, supplier_company_id FROM users WHERE id = :id LIMIT 1',
+      { replacements: { id: userId }, type: QueryTypes.SELECT });
+    const u = rows[0];
+    if (!u) return null;
+    switch (u.role) {
+      case 'Restaurant Admin': case 'Staff':
+        return u.restaurant_id ? getUserAddressee(u.id, 'restaurant', u.restaurant_id) : null;
+      case 'Restaurant Owner': {
+        const own = await sequelize.query(
+          "SELECT restaurant_id FROM restaurant_managers WHERE manager_id = :uid AND relationship_type = 'ownership' ORDER BY restaurant_id LIMIT 1",
+          { replacements: { uid: u.id }, type: QueryTypes.SELECT });
+        const rid = own[0] && own[0].restaurant_id;
+        return { kind: 'owner', entity_type: 'restaurant', entity_id: rid || null, entity_name: rid ? await entityNameOf('restaurant', rid) : '' };
+      }
+      case 'Brand General': case 'Brand Manager': {
+        let bid = u.brand_id;
+        if (!bid) {
+          const b = await sequelize.query('SELECT id FROM brands WHERE owner_id = :uid ORDER BY id LIMIT 1', { replacements: { uid: u.id }, type: QueryTypes.SELECT });
+          bid = b[0] && b[0].id;
+        }
+        return getUserAddressee(u.id, 'brand', bid || null);
+      }
+      case 'Foodcourt General': case 'Foodcourt Manager':
+        return getUserAddressee(u.id, 'foodcourt', u.foodcourt_id || null);
+      case 'Supplier Admin': case 'Supplier Staff': {
+        let sid = u.supplier_company_id;
+        if (!sid) {
+          const sc = await sequelize.query('SELECT id FROM supplier_companies WHERE owner_id = :uid LIMIT 1', { replacements: { uid: u.id }, type: QueryTypes.SELECT });
+          sid = sc[0] && sc[0].id;
+        }
+        return { kind: 'supplier', entity_type: 'supplier', entity_id: sid || null, entity_name: sid ? await entityNameOf('supplier', sid) : '' };
+      }
+      case 'System Admin':
+        return { kind: 'admin', entity_type: 'system', entity_id: null, entity_name: 'PurpleHere' };
+      default:
+        return null;
+    }
+  } catch (_) { return null; }
+}
+
+/**
+ * 본래 자리 자격으로 보내기 — 건의 자리가 없는 알림(댓글·문의·티켓) 공용.
+ *   build(link) → mail. link = 그 자격 대시보드(/go 경유). 자격을 못 정하면 link=null(템플릿 기본 주소).
+ */
+async function sendWithNativeAddressee(userId, category, build) {
+  const { goLink } = require('./notificationLinks');
+  const addressee = await getNativeAddressee(userId);
+  const mail = build(addressee ? goLink(addressee, 'dashboard') : null);
+  return sendNotification(userId, category, addressee ? Object.assign(mail, { _addressee: addressee }) : mail);
+}
+
 module.exports = {
+  sendWithNativeAddressee,
+  getNativeAddressee,
+  entityNameOf,
+  getRestaurantAddressees,
+  getEntityAddressees,
+  getUserAddressee,
   sendNotification,
   sendNotificationBatch,
   resolveReceiverSmtp,

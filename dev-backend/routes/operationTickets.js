@@ -175,11 +175,10 @@ router.post('/', authenticateToken, async (req, res) => {
     (async () => {
       try {
         if (createdTicket.managerId && createdTicket.managerId !== user.id) {
-          const mail = inquiryReceivedEmail(
+          await require('../utils/notificationService').sendWithNativeAddressee(createdTicket.managerId, 'inquiry_received', (link) => inquiryReceivedEmail(
             { title: createdTicket.title || createdTicket.subject, subject: createdTicket.subject, category: createdTicket.inquiryType || createdTicket.category, priority: createdTicket.priority, description: createdTicket.description },
-            createdTicket.requesterName || user.full_name
-          );
-          await sendNotification(createdTicket.managerId, 'inquiry_received', mail);
+            createdTicket.requesterName || user.full_name, link
+          ));
         }
       } catch (e) {
         console.error('[OpTicket notification error]', e.message);
@@ -221,12 +220,11 @@ router.put('/:id', async (req, res) => {
     if (req.body.status) {
       (async () => {
         try {
-          const mail = ticketStatusChangedEmail(
-            { title: updatedTicket.title || updatedTicket.subject, subject: updatedTicket.subject },
-            req.body.status
-          );
           if (updatedTicket.requesterId) {
-            await sendNotification(updatedTicket.requesterId, 'ticket_status_changed', mail);
+            await require('../utils/notificationService').sendWithNativeAddressee(updatedTicket.requesterId, 'ticket_status_changed', (link) => ticketStatusChangedEmail(
+              { title: updatedTicket.title || updatedTicket.subject, subject: updatedTicket.subject },
+              req.body.status, link
+            ));
           }
         } catch (e) {
           console.error('[OpTicket status notification error]', e.message);

@@ -3,7 +3,8 @@
     "automated": "This is an automated message from {{company}}.",
     "noReply": "This is a send-only address — please do not reply to this email.",
     "managePreferences": "Manage notification preferences",
-    "unsubscribe": "Unsubscribe"
+    "unsubscribe": "Unsubscribe",
+    "receivingAs": "You are receiving this as {{label}}."
   },
   "notice": {
     "subject": "New Notice: {{title}}",
@@ -83,7 +84,7 @@
   },
   "po": {
     "sellerReceived": {
-      "subject": "New PO {{poNumber}} from {{buyer}}",
+      "subject": "Confirm order: {{poNumber}} · {{buyer}} · {{total}}",
       "heading": "New Purchase Order Received",
       "body": "<strong>{{buyer}}</strong> has submitted a new purchase order to your company.",
       "poNumber": "PO Number",
@@ -96,15 +97,15 @@
       "textFallback": "New purchase order {{poNumber}} from {{buyer}}. Total: {{total}}."
     },
     "approvalPending": {
-      "subject": "Approval needed: PO {{poNumber}}",
+      "subject": "Approve purchase: {{poNumber}} · {{buyer}} · {{total}}",
       "heading": "Purchase Order Awaiting Your Approval",
       "body": "<strong>{{buyer}}</strong> submitted a purchase order that needs your approval.",
       "cta": "Review & Approve",
       "textFallback": "Purchase order {{poNumber}} needs your approval. Total: {{total}}."
     },
     "approvalResult": {
-      "subjectApproved": "Approved: PO {{poNumber}}",
-      "subjectRejected": "Rejected: PO {{poNumber}}",
+      "subjectApproved": "Approved: {{poNumber}}",
+      "subjectRejected": "Rejected: {{poNumber}}",
       "headingApproved": "Purchase Order Approved",
       "headingRejected": "Purchase Order Rejected",
       "bodyApproved": "Your purchase order has been approved and sent to the seller.",
@@ -113,20 +114,20 @@
       "cta": "View Order",
       "textFallback": "Purchase order {{poNumber}}: {{result}}.",
       "bodyApprovedExternal": "Your purchase order has been approved. This supplier doesn't use the app, so it has <strong>not been sent</strong> — send it via WhatsApp, PDF or email from the order details.",
-      "subjectRevoked": "Approval revoked: PO {{poNumber}}",
+      "subjectRevoked": "Approval withdrawn: {{poNumber}}",
       "headingRevoked": "Approval Revoked",
       "bodyRevoked": "The owner revoked the approval of this purchase order. It is awaiting approval again.",
       "bodyRevokedExternal": "The owner revoked the approval of this purchase order. It is awaiting approval again. If you already sent it to the supplier by WhatsApp, PDF or email, please let them know."
     },
     "buyerConfirm": {
-      "subject": "Order placed: PO {{poNumber}}",
+      "subject": "Order placed: {{poNumber}} · to {{seller}}",
       "heading": "Your Purchase Order Was Placed",
       "body": "Your purchase order has been sent to <strong>{{seller}}</strong>.",
       "seller": "Seller",
       "cta": "View Order",
       "hint": "You will be notified when the seller confirms the order.",
       "textFallback": "Purchase order {{poNumber}} placed with {{seller}}. Total: {{total}}.",
-      "subjectExternal": "Ready to send: PO {{poNumber}}",
+      "subjectExternal": "Send to supplier: {{poNumber}} · {{seller}}",
       "headingExternal": "Your Purchase Order Is Ready to Send",
       "bodyExternal": "Your purchase order to <strong>{{seller}}</strong> was created, but it has <strong>not been sent</strong> — this supplier doesn't use the app.",
       "statusExternal": "Not sent yet",
@@ -148,7 +149,7 @@
       "grandTotal": "Total"
     },
     "buyerReceived": {
-      "subject": "{{buyer}} confirmed receipt of PO {{poNumber}}",
+      "subject": "Record dispatch: {{poNumber}} · received by {{buyer}}",
       "heading": "Buyer Confirmed Receipt",
       "body": "<strong>{{buyer}}</strong> has confirmed receipt of purchase order <strong>{{poNumber}}</strong>.",
       "poNumber": "PO Number",
@@ -160,7 +161,8 @@
       "hintNeedsShip": "Your stock is deducted when you start delivery. Please record the delivery so your inventory stays correct.",
       "hintShipped": "No action needed — this order is already out for delivery.",
       "cta": "Open Order",
-      "textFallback": "{{buyer}} confirmed receipt of {{poNumber}}. Total: {{total}}."
+      "textFallback": "{{buyer}} confirmed receipt of {{poNumber}}. Total: {{total}}.",
+      "subjectShipped": "Receipt confirmed: {{poNumber}} · {{buyer}}"
     },
     "returnExternalSend": {
       "subject": "Return Request {{poNumber}} from {{buyer}}",
@@ -205,7 +207,7 @@
   },
   "attendance": {
     "leaveRequested": {
-      "subject": "Leave request from {{name}}",
+      "subject": "Approve leave request: {{name}}",
       "heading": "New leave request",
       "body": "{{name}} has requested leave. Please approve or reject it.",
       "type": "Leave type",
@@ -255,5 +257,61 @@
       "cta": "Open staff",
       "textFallback": "Invitation for {{who}} at {{target}}: {{result}}"
     }
+  },
+  "addressee": {
+    "kind": {
+      "store": "Store",
+      "store_staff": "Store staff",
+      "owner": "Owner",
+      "brand": "Brand",
+      "brand_manager": "Brand manager",
+      "foodcourt": "Food court",
+      "foodcourt_manager": "Food court manager",
+      "supplier": "Supplier",
+      "admin": "Platform admin",
+      "referral": "Referral partner"
+    },
+    "to": "To: {{name}} — as {{label}}",
+    "toNoName": "Sent to you as {{label}}"
+  },
+  "notify": {
+    "actionTitle": "What you need to do",
+    "fyiTitle": "For your information",
+    "resultTitle": "Result",
+    "dueBy": "by {{date}}"
+  },
+  "action": {
+    "confirm_or_reject_order": "Confirm or reject this order.",
+    "record_dispatch": "Record dispatch so your stock is deducted.",
+    "approve_or_reject_purchase": "Approve or reject this purchase order.",
+    "send_po_to_supplier": "Send this purchase order to the supplier (WhatsApp, PDF or email) — the system does not send it for you.",
+    "review_changes": "Review the changes before you confirm.",
+    "review_added_items": "Review the added items.",
+    "do_not_fulfil_on_hold": "Do not fulfil this order until it is sent to you again.",
+    "confirm_receipt": "Confirm receipt when the goods arrive.",
+    "confirm_receipt_now": "Confirm receipt of the delivered goods.",
+    "pay_by_due": "Pay this invoice by the due date.",
+    "pay_now_overdue": "Pay now — this invoice is past its due date.",
+    "compare_statement": "Compare this statement with the one your supplier sent.",
+    "pay_statement": "Pay this statement by the due date.",
+    "settle_unpaid": "Settle the unpaid invoices listed below.",
+    "approve_or_reject_contract": "Approve or reject this supply contract request.",
+    "approve_or_reject_request": "Approve or decline this request.",
+    "reply_inquiry": "Reply to this inquiry.",
+    "choose_plan_and_pay": "Choose a plan and pay to keep using the service.",
+    "review_reason_reorder": "Check the reason and place a new order if needed.",
+    "edit_and_resubmit": "Check the reason, then edit and resubmit if needed.",
+    "can_order_now": "You can now order from this supplier.",
+    "no_action": "No action needed — for your records.",
+    "trial_no_payment": "No payment needed during your free trial — for your records.",
+    "dispatch_update_follows": "No action needed — you will get an update when it is dispatched."
+  },
+  "result": {
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "withdrawn": "Approval withdrawn",
+    "terminated": "Terminated",
+    "accepted": "Accepted",
+    "declined": "Declined"
   }
 }

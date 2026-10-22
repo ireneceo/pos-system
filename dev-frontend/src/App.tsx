@@ -34,6 +34,7 @@ import KioskEntryGate from './components/Kiosk/KioskEntryGate';
 // Landing Pages — lazy (logged-in users never hit these; visitors see "Loading…" once)
 // 멀티 컨텍스트 로그인 — 선택 화면(lazy) + 크로스탭 팔로우 게이트(항상 마운트, 렌더는 이벤트 시에만)
 const ContextSelectPage = React.lazy(() => import('./pages/ContextSelect/ContextSelectPage'));
+const NotificationEntryPage = React.lazy(() => import('./pages/NotificationEntry/NotificationEntryPage'));
 const HomePage = React.lazy(() => import('./pages/Landing/HomePage'));
 const AboutPage = React.lazy(() => import('./pages/Landing/AboutPage'));
 const FeaturesPage = React.lazy(() => import('./pages/Landing/FeaturesPage'));
@@ -568,6 +569,8 @@ function App() {
                       <Route path="/pos" element={<KioskEntryGate><LoginPage /></KioskEntryGate>} />
                       {/* 컨텍스트 선택 — 부여받은 모자가 2개 이상인 사용자만 도달한다 */}
                       <Route path="/pos/select-context" element={<ProtectedRoute><ContextSelectPage /></ProtectedRoute>} />
+                      {/* 알림(메일·앱) 버튼 진입 — 받는 자격으로 모자를 맞춘 뒤 목적 화면으로 (2026-10-22 notification-addressee) */}
+                      <Route path="/go" element={<ProtectedRoute><NotificationEntryPage /></ProtectedRoute>} />
                       <Route path="/verify-email" element={<VerifyEmailPage />} />
 
                       {/* Referral System (Refer & Earn) — auth handled at the page/Layout level (Phase 1D will wire ProtectedRoute) */}

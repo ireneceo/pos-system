@@ -50,11 +50,19 @@ async function fireNewOrderNotification(order) {
     if (order.status === 'cancelled') return;
 
     const label = describeOrder(order);
+    // 제목에 매장 이름 — 여러 매장을 보는 사람이 «어느 매장 주문인지» 알게 (2026-10-22 notification-addressee §5-5)
+    let storeName = '';
+    try {
+      const Restaurant = require('../models/Restaurant');
+      const r = await Restaurant.findByPk(order.restaurant_id, { attributes: ['id', 'name'] });
+      storeName = (r && r.name) || '';
+    } catch (_) { /* 이름 없이 보낸다 */ }
     await pushService.sendPushToRestaurant(order.restaurant_id, {
-      title: 'New Order',
+      title: storeName ? `New order · ${storeName}` : 'New order',
       body: [order.order_number ? `#${order.order_number}` : null, label].filter(Boolean).join(' · ') || 'New order received',
       category: 'order_new',
-      data: { type: 'order_new', order_id: order.id, url: `/restaurant/${order.restaurant_id}/live-orders` }
+      data: { type: 'order_new', order_id: order.id, url: `/restaurant/${order.restaurant_id}/live-orders` },
+      entity: { type: 'restaurant', id: order.restaurant_id, name: storeName }
     });
   } catch (e) {
     console.error('[orderNotification] new order push failed:', e && e.message);

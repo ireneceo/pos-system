@@ -65,15 +65,20 @@ async function transitionOverdueInvoices() {
         (async () => {
           try {
             if (!invoice.restaurant_id) return; // external/system payer — skip auto email here
-            const restaurant = await Restaurant.findByPk(invoice.restaurant_id, {
-              attributes: ['id', 'name', 'admin_id']
-            });
-            if (!restaurant?.admin_id) return;
-            const admin = await User.findByPk(restaurant.admin_id, { attributes: ['id', 'email'] });
-            if (!admin?.email) return;
-
-            const mail = invoiceOverdueEmail(invoice, restaurant.name);
-            await sendNotification(admin.id, 'invoice_overdue', mail);
+            const restaurant = await Restaurant.findByPk(invoice.restaurant_id, { attributes: ['id', 'name'] });
+            if (!restaurant) return;
+            // 2026-10-22 (Irene «권고대로»): 수신자 = 그 매장 관리자 전원 + 오너 — 다른 청구 메일 5곳과 같은 뜻.
+            //   예전엔 restaurants.admin_id 한 명(2026-08-31 교정에서 빠진 자리)이라 관리자 2명 매장은 1명만,
+            //   admin_id 가 비었거나 남의 매장 관리자를 가리키면 엉뚱하게 갔다.
+            //   자격 «{매장} · 매장/오너» + 그 자격 청구서 화면 버튼.
+            const { getRestaurantAddressees } = require('../utils/notificationService');
+            const { goLink } = require('../utils/notificationLinks');
+            const list = await getRestaurantAddressees(restaurant.id);
+            if (!list.length) return;
+            for (const r of list) {
+              const mail = invoiceOverdueEmail(invoice, restaurant.name, { link: goLink(r.addressee, 'invoices') });
+              await sendNotification(r.id, 'invoice_overdue', Object.assign(mail, { _addressee: r.addressee }));
+            }
             emailsSent++;
           } catch (e) {
             logger.warn(`[InvoiceOverdueScheduler] email failed for invoice ${invoice.id}:`, e.message);

@@ -3,7 +3,8 @@
     "automated": "这是来自 {{company}} 的自动消息。",
     "noReply": "这是仅发送地址 — 请勿回复此邮件。",
     "managePreferences": "管理通知设置",
-    "unsubscribe": "退订"
+    "unsubscribe": "退订",
+    "receivingAs": "您以 {{label}} 的身份收到此邮件。"
   },
   "notice": {
     "subject": "新公告：{{title}}",
@@ -83,7 +84,7 @@
   },
   "po": {
     "sellerReceived": {
-      "subject": "来自 {{buyer}} 的新采购单 {{poNumber}}",
+      "subject": "确认订单：{{poNumber}} · {{buyer}} · {{total}}",
       "heading": "收到新采购单",
       "body": "<strong>{{buyer}}</strong> 已向贵公司提交新采购单。",
       "poNumber": "采购单号",
@@ -96,15 +97,15 @@
       "textFallback": "来自 {{buyer}} 的新采购单 {{poNumber}}。合计：{{total}}。"
     },
     "approvalPending": {
-      "subject": "需要审批：采购单 {{poNumber}}",
+      "subject": "审批采购：{{poNumber}} · {{buyer}} · {{total}}",
       "heading": "有采购单等待您审批",
       "body": "<strong>{{buyer}}</strong> 提交了需要您审批的采购单。",
       "cta": "查看并审批",
       "textFallback": "采购单 {{poNumber}} 需要您审批。合计：{{total}}。"
     },
     "approvalResult": {
-      "subjectApproved": "已批准：采购单 {{poNumber}}",
-      "subjectRejected": "已拒绝：采购单 {{poNumber}}",
+      "subjectApproved": "已批准：{{poNumber}}",
+      "subjectRejected": "已驳回：{{poNumber}}",
       "headingApproved": "采购单已批准",
       "headingRejected": "采购单已拒绝",
       "bodyApproved": "您的采购单已获批准并发送给卖方。",
@@ -113,20 +114,20 @@
       "cta": "查看订单",
       "textFallback": "采购单 {{poNumber}}：{{result}}。",
       "bodyApprovedExternal": "您的采购单已获批准。该供应商不使用本应用，因此<strong>未自动发送</strong>——请在订单详情中通过 WhatsApp、PDF 或电子邮件发送。",
-      "subjectRevoked": "批准已撤销：采购单 {{poNumber}}",
+      "subjectRevoked": "已撤销批准：{{poNumber}}",
       "headingRevoked": "批准已撤销",
       "bodyRevoked": "业主已撤销此采购单的批准，现重新等待批准。",
       "bodyRevokedExternal": "业主已撤销此采购单的批准，现重新等待批准。如果您已通过 WhatsApp、PDF 或电子邮件发送给供应商，请通知对方。"
     },
     "buyerConfirm": {
-      "subject": "下单成功：采购单 {{poNumber}}",
+      "subject": "已下单：{{poNumber}} · 发往 {{seller}}",
       "heading": "您的采购单已提交",
       "body": "您的采购单已发送给 <strong>{{seller}}</strong>。",
       "seller": "卖方",
       "cta": "查看订单",
       "hint": "卖方确认订单后我们会通知您。",
       "textFallback": "已向 {{seller}} 提交采购单 {{poNumber}}。合计：{{total}}。",
-      "subjectExternal": "待发送：采购单 {{poNumber}}",
+      "subjectExternal": "请发送给供应商：{{poNumber}} · {{seller}}",
       "headingExternal": "请发送您的采购单",
       "bodyExternal": "发给 <strong>{{seller}}</strong> 的采购单已创建，但<strong>尚未发送</strong>——该供应商不使用本应用。",
       "statusExternal": "尚未发送",
@@ -148,7 +149,7 @@
       "grandTotal": "合计"
     },
     "buyerReceived": {
-      "subject": "{{buyer}} 已确认收到采购单 {{poNumber}}",
+      "subject": "记录发货：{{poNumber}} · {{buyer}} 已收货",
       "heading": "买方已确认收货",
       "body": "<strong>{{buyer}}</strong> 已确认收到采购单 <strong>{{poNumber}}</strong>。",
       "poNumber": "采购单号",
@@ -160,7 +161,8 @@
       "hintNeedsShip": "开始配送时会扣减库存。请记录配送，以保持库存准确。",
       "hintShipped": "无需处理 — 该订单已在配送中。",
       "cta": "打开采购单",
-      "textFallback": "{{buyer}} 已确认收到 {{poNumber}}。合计：{{total}}。"
+      "textFallback": "{{buyer}} 已确认收到 {{poNumber}}。合计：{{total}}。",
+      "subjectShipped": "已确认收货：{{poNumber}} · {{buyer}}"
     },
     "returnExternalSend": {
       "subject": "{{buyer}} 的退货申请 — {{poNumber}}",
@@ -205,7 +207,7 @@
   },
   "attendance": {
     "leaveRequested": {
-      "subject": "{{name}} 的请假申请",
+      "subject": "审批请假：{{name}}",
       "heading": "新的请假申请",
       "body": "{{name}} 提交了请假申请，请批准或拒绝。",
       "type": "假期类型",
@@ -255,5 +257,61 @@
       "cta": "打开员工页面",
       "textFallback": "{{target}} 对 {{who}} 的邀请：{{result}}"
     }
+  },
+  "addressee": {
+    "kind": {
+      "store": "门店",
+      "store_staff": "门店员工",
+      "owner": "店主",
+      "brand": "品牌",
+      "brand_manager": "品牌负责人",
+      "foodcourt": "美食广场",
+      "foodcourt_manager": "美食广场负责人",
+      "supplier": "供应商",
+      "admin": "平台管理员",
+      "referral": "推荐合作伙伴"
+    },
+    "to": "收件人：{{name}} — 身份：{{label}}",
+    "toNoName": "此通知发送给 {{label}}"
+  },
+  "notify": {
+    "actionTitle": "您需要做的事",
+    "fyiTitle": "通知",
+    "resultTitle": "结果",
+    "dueBy": "请于 {{date}} 前"
+  },
+  "action": {
+    "confirm_or_reject_order": "请确认或拒绝此订单。",
+    "record_dispatch": "请记录发货，以便扣减库存。",
+    "approve_or_reject_purchase": "请批准或驳回此采购单。",
+    "send_po_to_supplier": "请自行将此采购单发送给供应商（WhatsApp、PDF 或邮件）——系统不会代为发送。",
+    "review_changes": "确认前请查看变更内容。",
+    "review_added_items": "请查看新增的品项。",
+    "do_not_fulfil_on_hold": "在再次收到之前，请勿处理此订单。",
+    "confirm_receipt": "货物到达后请确认收货。",
+    "confirm_receipt_now": "请确认已送达货物的收货。",
+    "pay_by_due": "请在到期日前支付此发票。",
+    "pay_now_overdue": "请立即付款——此发票已逾期。",
+    "compare_statement": "请将此对账单与供应商发送的对账单核对。",
+    "pay_statement": "请在到期日前支付此对账单。",
+    "settle_unpaid": "请结清下列未付发票。",
+    "approve_or_reject_contract": "请批准或拒绝此供应合同申请。",
+    "approve_or_reject_request": "请批准或拒绝此申请。",
+    "reply_inquiry": "请回复此咨询。",
+    "choose_plan_and_pay": "如需继续使用，请选择方案并付款。",
+    "review_reason_reorder": "请查看原因，如有需要请重新下单。",
+    "edit_and_resubmit": "请查看原因，如有需要请修改后重新提交。",
+    "can_order_now": "您现在可以向此供应商下单。",
+    "no_action": "无需操作——仅供记录。",
+    "trial_no_payment": "免费试用期间无需付款——仅供记录。",
+    "dispatch_update_follows": "无需操作——发货后会再通知您。"
+  },
+  "result": {
+    "approved": "已批准",
+    "rejected": "已驳回",
+    "withdrawn": "已撤销批准",
+    "terminated": "已终止",
+    "accepted": "已接受",
+    "declined": "已拒绝"
   }
 }

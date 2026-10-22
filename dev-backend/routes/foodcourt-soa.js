@@ -169,17 +169,14 @@ router.post(
 
       const fc = await Foodcourt.findByPk(restaurant.foodcourt_id, { attributes: ['name'] });
       const sellerName = fc?.name || 'Foodcourt';
-      const link = `${FRONTEND_BASE_URL}/restaurant/${restaurant.id}/invoices`; // 옛 /trade-invoices 는 없는 주소였다 (2026-09-29)
-      const html = `
-        <p>This is a friendly reminder that you have <strong>${invoices.length} unpaid invoice${invoices.length > 1 ? 's' : ''}</strong> from ${sellerName}.</p>
-        <p><strong>Total due:</strong> ${currencySymbol(currency)} ${totalDue.toFixed(2)}</p>
-        <p><a href="${link}">View invoices in Purple POS</a></p>
-      `;
-
-      await sendNotificationBatch(Array.from(recipients), 'monthly_soa', {
-        subject: `[Reminder] Unpaid invoices from ${sellerName}`,
-        html
-      });
+      // 2026-10-22 notification-addressee: 공통 틀 + 수신자마다 자격(매장/오너) + 그 자격 청구서 화면 버튼
+      const { getRestaurantAddressees } = require('../utils/notificationService');
+      const { mailFor } = require('../utils/notificationAddressee');
+      const { goLink } = require('../utils/notificationLinks');
+      const { unpaidReminderEmail } = require('../utils/notificationTemplates');
+      const addressees = await getRestaurantAddressees(restaurant.id);
+      await sendNotificationBatch(Array.from(recipients), 'monthly_soa', mailFor(addressees, (a) =>
+        unpaidReminderEmail({ sellerName, count: invoices.length, totalDue, currency, link: goLink(a, 'trade_invoices_buyer') })));
 
       res.json({
         success: true,

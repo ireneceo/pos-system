@@ -94,7 +94,7 @@ function emitInApp(rooms, payload) {
     const io = server && server.io;
     if (!io) return;
     const ns = io.of('/notifications');
-    const evt = { title: payload.title, body: payload.body, category: payload.category, url: payload.url, data: payload.data };
+    const evt = { title: payload.title, body: payload.body, category: payload.category, url: payload.url, data: payload.data, entity: payload.entity };
     for (const room of rooms) ns.to(room).emit('notification', evt);
   } catch (e) {
     // server not yet ready or io not attached — non-fatal

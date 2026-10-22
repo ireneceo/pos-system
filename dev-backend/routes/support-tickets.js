@@ -113,11 +113,11 @@ router.post('/', authenticateToken, async (req, res) => {
         const adminIds = await getSystemAdminIds();
         const filteredIds = adminIds.filter(id => id !== req.user.id);
         if (filteredIds.length > 0) {
-          const mail = inquiryReceivedEmail(
+          // 2026-10-22 notification-addressee: 받는 사람 본래 자리 자격 + 그 자격 대시보드 버튼
+          await Promise.allSettled(filteredIds.map(id => require('../utils/notificationService').sendWithNativeAddressee(id, 'inquiry_received', (link) => inquiryReceivedEmail(
             { title: ticket.subject, subject: ticket.subject, category: ticket.category, priority: ticket.priority, description: ticket.description },
-            customerName
-          );
-          await sendNotificationBatch(filteredIds, 'inquiry_received', mail);
+            customerName, link
+          ))));
         }
       } catch (e) {
         console.error('[SupportTicket notification error]', e.message);
@@ -150,11 +150,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (req.body.status && ticket.customerId) {
       (async () => {
         try {
-          const mail = ticketStatusChangedEmail(
+          await require('../utils/notificationService').sendWithNativeAddressee(parseInt(ticket.customerId), 'ticket_status_changed', (link) => ticketStatusChangedEmail(
             { title: ticket.subject, subject: ticket.subject },
-            req.body.status
-          );
-          await sendNotification(parseInt(ticket.customerId), 'ticket_status_changed', mail);
+            req.body.status, link
+          ));
         } catch (e) {
           console.error('[SupportTicket status notification error]', e.message);
         }

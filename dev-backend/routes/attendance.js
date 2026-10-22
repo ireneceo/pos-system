@@ -734,7 +734,13 @@ async function notifyLeaveRequested(restaurantId, request, staffName, typeName) 
     const { leaveRequestedEmail } = require('../utils/attendanceEmail');
     const ids = (await getRestaurantAdminIds(restaurantId)).filter(id => id !== request.user_id);
     if (!ids.length) return;
-    await sendNotificationBatch(ids, 'staff_leave', (user) => leaveRequestedEmail({ staffName, typeName, request, restaurantId }, user.preferred_language || 'en'));
+    // 2026-10-22 notification-addressee: 자격 «{매장} · 매장» + 그 매장 휴가 승인 화면(/go 경유)
+    const { getUserAddressee } = require('../utils/notificationService');
+    const { goLink } = require('../utils/notificationLinks');
+    await sendNotificationBatch(ids, 'staff_leave', async (user) => {
+      const a = await getUserAddressee(user.id, 'restaurant', restaurantId);
+      return Object.assign(leaveRequestedEmail({ staffName, typeName, request, restaurantId, link: goLink(a, 'leave_requests') }, user.preferred_language || 'en'), { _addressee: a });
+    });
   } catch (e) { console.error('[attendance] notifyLeaveRequested:', e.message); }
 }
 
@@ -742,7 +748,12 @@ async function notifyLeaveDecided(restaurantId, request, typeName) {
   try {
     const { sendNotificationBatch } = require('../utils/notificationService');
     const { leaveDecidedEmail } = require('../utils/attendanceEmail');
-    await sendNotificationBatch([request.user_id], 'staff_leave', (user) => leaveDecidedEmail({ typeName, request, restaurantId }, user.preferred_language || 'en'));
+    const { getUserAddressee } = require('../utils/notificationService');
+    const { goLink } = require('../utils/notificationLinks');
+    await sendNotificationBatch([request.user_id], 'staff_leave', async (user) => {
+      const a = await getUserAddressee(user.id, 'restaurant', restaurantId);
+      return Object.assign(leaveDecidedEmail({ typeName, request, restaurantId, link: goLink(a, 'my_attendance') }, user.preferred_language || 'en'), { _addressee: a });
+    });
   } catch (e) { console.error('[attendance] notifyLeaveDecided:', e.message); }
 }
 

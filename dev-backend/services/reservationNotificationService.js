@@ -66,10 +66,11 @@ async function notifyCreated(reservation, restaurant) {
   // 1) Staff push (reservation_new)
   try {
     await pushService.sendPushToRestaurant(restaurant.id, {
-      title: 'New Reservation',
+      title: restaurant.name ? `New reservation · ${restaurant.name}` : 'New reservation',
       body: `${reservation.guest_name} · ${reservation.party_size} pax · ${fmtDateTime(reservation.reserved_at, restaurant.operation_settings?.timeZone)}`,
       category: 'reservation_new',
-      data: { type: 'reservation_new', reservation_id: reservation.id, url: `/pos/reservations` }
+      data: { type: 'reservation_new', reservation_id: reservation.id, url: `/restaurant/${restaurant.id}/reservations` },
+      entity: { type: 'restaurant', id: restaurant.id, name: restaurant.name || '' }
     });
   } catch (e) { console.error('[Reservation] staff push failed:', e.message); }
 
@@ -90,10 +91,11 @@ async function notifyStatusChanged(reservation, restaurant, newStatus) {
   // staff push
   try {
     await pushService.sendPushToRestaurant(restaurant.id, {
-      title: `Reservation ${newStatus}`,
+      title: restaurant.name ? `Reservation ${newStatus} · ${restaurant.name}` : `Reservation ${newStatus}`,
       body: `${reservation.guest_name} · #${reservation.id}`,
       category: newStatus === 'no_show' ? 'reservation_no_show' : 'reservation_status_changed',
-      data: { type: 'reservation_status_changed', reservation_id: reservation.id, url: `/pos/reservations` }
+      data: { type: 'reservation_status_changed', reservation_id: reservation.id, url: `/restaurant/${restaurant.id}/reservations` },
+      entity: { type: 'restaurant', id: restaurant.id, name: restaurant.name || '' }
     });
   } catch (e) { console.error('[Reservation] status push failed:', e.message); }
 

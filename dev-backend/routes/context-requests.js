@@ -113,8 +113,14 @@ async function notifyReceived({ combo, entityId, targetName, requester, message 
       message,
       link: approverLink(combo.approver, entityId)
     };
+    // 2026-10-22 notification-addressee: 승인자 자격(매장 관리자 = «{매장} · 매장» / SA = 플랫폼) + 할 일 «승인 또는 거절»
+    const { goLink } = require('../utils/notificationLinks');
+    const addressee = combo.approver === 'restaurant_admin'
+      ? { kind: 'store', entity_type: 'restaurant', entity_id: Number(entityId), entity_name: targetName || '' }
+      : { kind: 'admin', entity_type: 'system', entity_id: null, entity_name: 'PurpleHere' };
     await ns.sendNotificationBatch(ids, 'context_request_received',
-      (user) => contextRequestReceivedEmail(args, user.preferred_language || 'en'));
+      (user) => Object.assign(contextRequestReceivedEmail({ ...args, link: goLink(addressee, 'staff') }, user.preferred_language || 'en'),
+        { _addressee: addressee, _action: { state: 'action', key: 'approve_or_reject_request' } }));
   } catch (e) {
     console.warn('[context-requests] received notification failed (ignored):', e.message);
   }
@@ -267,9 +273,12 @@ async function notifyInviteResult({ inviterId, accepted, invitee, targetName, en
     const ns = require('../utils/notificationService');
     const { contextInviteResultEmail } = require('../utils/notificationTemplates');
     const inviteeName = invitee ? (invitee.full_name || invitee.email || null) : null;
-    const args = { accepted, inviteeName, targetName, note, link: `${BASE_URL}/restaurant/${entityId}/staff` };
+    const { goLink } = require('../utils/notificationLinks');
+    const addressee = await ns.getUserAddressee(inviterId, 'restaurant', entityId);
+    const args = { accepted, inviteeName, targetName, note, link: goLink(addressee, 'staff') };
     await ns.sendNotification(inviterId, 'context_invite_result',
-      (user) => contextInviteResultEmail(args, user.preferred_language || 'en'));
+      (user) => Object.assign(contextInviteResultEmail(args, user.preferred_language || 'en'),
+        { _addressee: addressee, _action: { state: 'result', tone: accepted ? 'good' : 'bad', key: 'no_action' } }));
   } catch (e) {
     console.warn('[context-requests] invite result notification failed (ignored):', e.message);
   }

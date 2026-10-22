@@ -277,7 +277,13 @@ async function issueSoaForPair({
   if (issuerType === 'supplier') {
     try { isExternal = await require('../utils/externalIssuer').isExternalIssuer('supplier', issuerId); } catch (_) { /* keep false */ }
   }
-  const mail = monthlySoaEmail({
+  // 2026-10-22 notification-addressee: 수신자마다 자격(매장/오너/브랜드…) + 그 자격 청구서 화면 버튼.
+  //   수신자 집합은 getBuyerRecipientUserIds 그대로(getRestaurantAddressees/getEntityAddressees 가 같은 함수를 부른다).
+  const { getEntityAddressees } = require('../utils/notificationService');
+  const { mailFor } = require('../utils/notificationAddressee');
+  const { goLink } = require('../utils/notificationLinks');
+  const addressees = await getEntityAddressees(buyerEntityType, buyerEntityId);
+  const soaArgs = {
     isExternal,
     sellerName,
     month: monthLabel,
@@ -286,9 +292,9 @@ async function issueSoaForPair({
     totalDue,
     currency,
     dueDate,
-    link: soaLinkFor(buyerEntityType, buyerEntityId),
     timezone: buyerTz
-  });
+  };
+  const mail = mailFor(addressees, (a) => monthlySoaEmail({ ...soaArgs, link: a ? goLink(a, 'trade_invoices_buyer') : soaLinkFor(buyerEntityType, buyerEntityId) }));
 
   if (recipients.length === 0) {
     console.warn(`[soaScheduler] SOA #${soaInvoice.id} created without email — no recipient at ${buyerEntityType} #${buyerEntityId}`);

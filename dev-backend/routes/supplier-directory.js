@@ -543,14 +543,17 @@ router.post('/supplier-contracts', async (req, res) => {
         if (supplier.owner_id) {
           const buyerInfo = await resolveBuyerEntity(req.buyerEntity.type, req.buyerEntity.id);
           const buyerName = buyerInfo?.name || `${req.buyerEntity.type}#${req.buyerEntity.id}`;
-          const link = (process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com')) + '/supplier/contracts';
+          // 2026-10-22 notification-addressee: 자격 «{공급업체} · 공급업체» + 공급업체 계약 화면(옛 /supplier/contracts 는 없는 화면)
+          const { goLink } = require('../utils/notificationLinks');
+          const addressee = { kind: 'supplier', entity_type: 'supplier', entity_id: supplier.id, entity_name: supplier.trade_name || supplier.company_name || supplier.name || '' };
+          const link = goLink(addressee, 'contracts');
           const mail = supplierContractRequestedEmail({
             buyerName,
             buyerType: req.buyerEntity.type,
             message,
             link
           });
-          await sendNotificationBatch([supplier.owner_id], 'supplier_contract', mail);
+          await sendNotificationBatch([supplier.owner_id], 'supplier_contract', Object.assign(mail, { _addressee: addressee }));
         }
       } catch (e) {
         console.error('[supplier-contracts] notify on create error:', e.message);
@@ -615,14 +618,17 @@ router.post('/supplier-contracts/:contractId/terminate', async (req, res) => {
         if (supplier?.owner_id) {
           const buyerInfo = await resolveBuyerEntity(contract.entity_type, contract.entity_id);
           const buyerName = buyerInfo?.name || `${contract.entity_type}#${contract.entity_id}`;
-          const link = (process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com')) + '/supplier/contracts';
+          // 2026-10-22 notification-addressee: 자격 «{공급업체} · 공급업체» + 공급업체 계약 화면(옛 /supplier/contracts 는 없는 화면)
+          const { goLink } = require('../utils/notificationLinks');
+          const addressee = { kind: 'supplier', entity_type: 'supplier', entity_id: supplier.id, entity_name: supplier.trade_name || supplier.company_name || supplier.name || '' };
+          const link = goLink(addressee, 'contracts');
           const mail = supplierContractTerminatedEmail({
             otherPartyName: buyerName,
             terminatedBy: 'buyer',
             reason,
             link
           });
-          await sendNotificationBatch([supplier.owner_id], 'supplier_contract', mail);
+          await sendNotificationBatch([supplier.owner_id], 'supplier_contract', Object.assign(mail, { _addressee: addressee }));
         }
       } catch (e) {
         console.error('[supplier-contracts] notify on terminate error:', e.message);
