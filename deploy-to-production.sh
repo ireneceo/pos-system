@@ -366,12 +366,27 @@ if [ -f /tmp/deploy_prod_schema.json ] && [ -s /tmp/deploy_prod_schema.json ]; t
         MISSING_NAMES=$(echo "$SCHEMA_DIFF" | grep -E "^   \+ " | sed -E 's/^   \+ ([A-Za-z0-9_.]+).*/\1/' | sort -u)
         if [ -n "$MISSING_NAMES" ]; then
             UNCOVERED=""
+            DEV_ONLY=""
             for NAME in $MISSING_NAMES; do
                 BARE=${NAME##*.}   # table.column 형태면 컬럼명만
+                # 2026-10-23 (Irene «권고대로» A) — dev DB 는 미커밋 작업(다른 방)이 만든 표·칸도 갖고 있다.
+                # 배포는 커밋된 사본만 내보내므로, 사본 코드가 그 이름을 전혀 안 쓰면 운영에 없어도 무해 → 제외(경고만).
+                # 표 = 사본 앱 코드(scripts·tests·node_modules 제외) 어디에도 이름이 없을 때 / 칸 = 그 표의 사본 모델에 칸 이름이 없을 때.
+                if [ "$NAME" = "$BARE" ]; then
+                    REF_IN="$SRC_BACKEND"
+                else
+                    REF_IN=$(grep -ls -- "tableName: *['\"]${NAME%%.*}['\"]" $SRC_BACKEND/models/*.js 2>/dev/null | head -1)
+                    [ -z "$REF_IN" ] && REF_IN="$SRC_BACKEND"
+                fi
+                if ! grep -rqsw --include='*.js' --exclude-dir=node_modules --exclude-dir=scripts --exclude-dir=tests -- "$BARE" $REF_IN 2>/dev/null; then
+                    DEV_ONLY="$DEV_ONLY $NAME"
+                    continue
+                fi
                 if ! grep -rqs -- "$BARE" $SRC_BACKEND/scripts/migrate-*.js $SRC_BACKEND/scripts/sprint*-migration.js 2>/dev/null; then
                     UNCOVERED="$UNCOVERED $NAME"
                 fi
             done
+            [ -n "$DEV_ONLY" ] && warn "dev DB 에만 있고 이번 사본 코드는 안 쓰는 스키마(미커밋 작업 것) — 이번 배포와 무관해 제외:${DEV_ONLY}"
             if [ -n "$UNCOVERED" ]; then
                 if [ "$SKIP_SAFETY" = true ]; then
                     warn "마이그가 없는 스키마 드리프트(${UNCOVERED} ) — --skip-safety 로 진행 (의식적 선택)."
