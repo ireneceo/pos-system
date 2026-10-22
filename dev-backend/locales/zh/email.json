@@ -112,7 +112,11 @@
       "reason": "原因",
       "cta": "查看订单",
       "textFallback": "采购单 {{poNumber}}：{{result}}。",
-      "bodyApprovedExternal": "您的采购单已获批准。该供应商不使用本应用，因此<strong>未自动发送</strong>——请在订单详情中通过 WhatsApp、PDF 或电子邮件发送。"
+      "bodyApprovedExternal": "您的采购单已获批准。该供应商不使用本应用，因此<strong>未自动发送</strong>——请在订单详情中通过 WhatsApp、PDF 或电子邮件发送。",
+      "subjectRevoked": "批准已撤销：采购单 {{poNumber}}",
+      "headingRevoked": "批准已撤销",
+      "bodyRevoked": "业主已撤销此采购单的批准，现重新等待批准。",
+      "bodyRevokedExternal": "业主已撤销此采购单的批准，现重新等待批准。如果您已通过 WhatsApp、PDF 或电子邮件发送给供应商，请通知对方。"
     },
     "buyerConfirm": {
       "subject": "下单成功：采购单 {{poNumber}}",

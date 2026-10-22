@@ -171,7 +171,27 @@ async function applyBuyerAmendGate(po, t, appendTrackingEvent, { actor, totalBef
   return true;
 }
 
+/**
+ * 오너 승인취소(승인 → 다시 승인 대기) 가능 판정 (2026-10-22 Fable 설계 owner-po-approval-revoke §1-1).
+ * revoke 라우트와 목록·상세의 `approval_revocable` 플래그가 **같은 함수**를 본다(검사와 수정은 같은 조건).
+ * 외부 공급업체 = 받기 전 전부 · 가입 공급업체 = 판매자 확인 전(submitted)만 · 결제된 발주는 불가(돈 무접촉).
+ * @param {object} po - status·approved_at·payment_status 를 가진 발주(인스턴스 또는 평범한 객체)
+ * @param {boolean} isExternal - utils/sellerNames.isExternalSeller 결과
+ * @returns {{ok:true}|{ok:false, code:'NOT_APPROVED'|'PAID'|'RECEIVED'|'SELLER_CONFIRMED'|'BAD_STATUS'}}
+ */
+const REVOKABLE_EXTERNAL = ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered'];
+const REVOKABLE_REGISTERED = ['submitted'];
+function canRevokeApproval(po, isExternal) {
+  if (!po || !po.approved_at) return { ok: false, code: 'NOT_APPROVED' };
+  if (po.payment_status === 'paid') return { ok: false, code: 'PAID' };
+  if (['received', 'partial_received', 'closed'].includes(po.status)) return { ok: false, code: 'RECEIVED' };
+  const allowed = isExternal ? REVOKABLE_EXTERNAL : REVOKABLE_REGISTERED;
+  if (!allowed.includes(po.status)) return { ok: false, code: isExternal ? 'BAD_STATUS' : 'SELLER_CONFIRMED' };
+  return { ok: true };
+}
+
 module.exports = {
+  canRevokeApproval,
   applyBuyerAmendGate,
   resolveOwnerRestaurantIds,
   restaurantHasOwner,

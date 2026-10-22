@@ -682,7 +682,17 @@
     "approvedBadge": "Diluluskan",
     "justApprovedExternal": "Baru diluluskan — pembekal ini tidak menggunakan aplikasi. Hantar pesanan melalui WhatsApp, PDF atau e-mel. Anda juga boleh menghantarnya kemudian dari butiran pesanan.",
     "justApprovedSystem": "Baru diluluskan — pesanan telah disampaikan ke aplikasi pembekal.",
-    "editedBadge": "Diedit · menunggu kelulusan semula"
+    "editedBadge": "Diedit · menunggu kelulusan semula",
+    "tabPending": "Menunggu kelulusan",
+    "tabApproved": "Diluluskan",
+    "approvedOnly": "Diluluskan sahaja",
+    "approvedOnlyHint": "Pesanan yang melalui kelulusan anda. Matikan untuk melihat semua pesanan, termasuk yang anda buat sendiri.",
+    "revoke": "Batal kelulusan",
+    "revokeTitle": "Batal Kelulusan",
+    "revokeConfirmExternal": "Batalkan kelulusan \"{{po}}\"? Pesanan akan kembali menunggu kelulusan. Jika anda sudah menghantarnya melalui WhatsApp atau e-mel, sila maklumkan pembekal sendiri.",
+    "revokeConfirmRegistered": "Batalkan kelulusan \"{{po}}\"? Pesanan akan kembali menunggu kelulusan dan dikeluarkan dari aplikasi pembekal (pembekal dimaklumkan).",
+    "revoked": "Kelulusan dibatalkan — pesanan menunggu kelulusan semula.",
+    "revokeFailed": "Tidak dapat membatalkan kelulusan."
   },
   "newPo.viewMode": "Mod paparan",
   "newPo.viewCard": "Kad",

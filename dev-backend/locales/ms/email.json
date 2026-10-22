@@ -112,7 +112,11 @@
       "reason": "Sebab",
       "cta": "Lihat Pesanan",
       "textFallback": "Pesanan belian {{poNumber}}: {{result}}.",
-      "bodyApprovedExternal": "Pesanan belian anda telah diluluskan. Pembekal ini tidak menggunakan aplikasi, jadi ia <strong>belum dihantar</strong> — hantar melalui WhatsApp, PDF atau e-mel dari butiran pesanan."
+      "bodyApprovedExternal": "Pesanan belian anda telah diluluskan. Pembekal ini tidak menggunakan aplikasi, jadi ia <strong>belum dihantar</strong> — hantar melalui WhatsApp, PDF atau e-mel dari butiran pesanan.",
+      "subjectRevoked": "Kelulusan dibatalkan: PO {{poNumber}}",
+      "headingRevoked": "Kelulusan Dibatalkan",
+      "bodyRevoked": "Pemilik telah membatalkan kelulusan pesanan belian ini. Ia menunggu kelulusan semula.",
+      "bodyRevokedExternal": "Pemilik telah membatalkan kelulusan pesanan belian ini. Ia menunggu kelulusan semula. Jika anda sudah menghantarnya kepada pembekal melalui WhatsApp, PDF atau e-mel, sila maklumkan mereka."
     },
     "buyerConfirm": {
       "subject": "Pesanan dibuat: PO {{poNumber}}",

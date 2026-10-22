@@ -58,7 +58,7 @@ const { resolveSellers, getSeller, getSellerName, isExternalSeller } = require('
 // 지불 금액 규칙은 결제 서비스가 단일 소스다 — 화면이 따로 계산하지 않게 여기서 실어 보낸다.
 const { payableFrom } = require('../services/purchaseOrderPayment');
 const { readableIngredient, parentBrandIdOf, overlayMapFor, effectiveSettings, sellerLinkVisible, sellerLinkVisibleWhere } = require('../utils/brandStockAccess');
-const { applySubmitGate } = require('../utils/poOwnerApproval');
+const { applySubmitGate, canRevokeApproval } = require('../utils/poOwnerApproval');
 const { assertLinesMeetMinOrder, MinOrderError, minOrderErrorBody } = require('../utils/poMinOrder');
 const { assertLinesSellerProductActive, InactiveSellerProductError, inactiveSellerProductErrorBody } = require('../utils/poSellerProductActive');
 const { stockTargetAttrs } = require('../utils/stockTarget');
@@ -261,6 +261,12 @@ router.get('/purchase-orders', async (req, res) => {
     if (req.query.seller_type && VALID_SELLER_TYPES.includes(req.query.seller_type)) {
       where.seller_type = req.query.seller_type;
     }
+    // 오너 «승인 후» — 오너 승인을 거친 발주만(수정으로 다시 승인 대기에 들어간 건 제외) · 2026-10-22 Fable 설계 owner-po-approval-revoke §1-3
+    if (req.query.approved === '1' || req.query.approved === 'true') {
+      where[Op.and] = [...(where[Op.and] || []),
+        { approved_at: { [Op.ne]: null } },
+        { status: { [Op.ne]: 'pending_approval' } }];
+    }
     // 발주일 = 보낸 시각(Mark as Sent · Submit · 직접구매 — 전부 applySubmitGate 가 submitted_at 을 찍는다).
     //   장바구니에 담긴 시각(created_at)이 아니다 (2026-09-21 Irene 「Submit 한 순서대로 나와야해. 발주일은 POs에서 Mark나 서브밋을 한 시점」).
     //   규칙은 utils/poOrderedAt 한 곳 — 판매자 받은 주문 목록과 같은 기준.
@@ -392,6 +398,8 @@ router.get('/purchase-orders', async (req, res) => {
       plain.total_quantity = parseFloat(agg.total_quantity || 0);
       plain.seller_name = getSellerName(sellerMap, p.seller_type, p.seller_entity_id);
       plain.is_external = isExternalSeller(sellerMap, p.seller_type, p.seller_entity_id);
+      // 오너 승인취소 버튼 — revoke-approval 라우트와 같은 판정 함수
+      plain.approval_revocable = canRevokeApproval(plain, plain.is_external).ok;
       const payable = payableFrom(plain, plain.is_external);
       plain.payable_amount = payable.amount;
       plain.payable_basis = payable.basis;
@@ -643,6 +651,8 @@ router.get('/purchase-orders/:id', async (req, res) => {
     plain.seller_name = getSellerName(sellerMap, po.seller_type, po.seller_entity_id);
     plain.seller = getSeller(sellerMap, po.seller_type, po.seller_entity_id);
     plain.is_external = isExternalSeller(sellerMap, po.seller_type, po.seller_entity_id);
+    // 오너 승인취소 버튼 — revoke-approval 라우트와 같은 판정 함수
+    plain.approval_revocable = canRevokeApproval(plain, plain.is_external).ok;
     const payableOne = payableFrom(plain, plain.is_external);
     plain.payable_amount = payableOne.amount;
     plain.payable_basis = payableOne.basis;

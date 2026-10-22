@@ -24,6 +24,9 @@ const { requireBGScope, applyBGFilter, assertBGOwnsRow } = require('../middlewar
 const { requireBrandUserModule } = require('../middleware/requireModule');
 const { normalizeImageField } = require('../utils/imageProcessor');
 const { sanitizeString } = require('../middleware/validation');
+// 상품 창이 연결된 재고아이템의 원가·재고를 보여 주고 고친다 — 목록·상세가 같은 칸을 내려준다
+// (2026-10-22 Fable 설계 D3 · .claude/fable-design-20261021-product-form-cost-stock.md).
+const STOCK_ITEM_ATTRS = ['id', 'name', 'unit', 'base_quantity', 'package_unit', 'package_quantity', 'unit_cost', 'current_stock'];
 
 // P0-3 Wave B: 브랜드 상품 관리(카탈로그/카테고리/옵션그룹/상품레시피)는 Advanced(brand_products).
 // BG 유저 스코프 경로만 게이트 — 레스토랑이 브랜드 카탈로그를 읽는 `/brands/:brandId/products`(별도 prefix)는
@@ -765,7 +768,7 @@ router.get('/brand-products', authenticateToken, requireBGScope, async (req, res
         },
         // 재고아이템 다이렉트 — 목록·단건 모두 연결된 재고아이템을 함께 내려준다(화면이 배지로 쓴다).
         // `unit_cost` 도 **기준양(base_quantity) 만큼**의 값이다 — 같은 이유로 기준양을 함께 보낸다.
-        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'base_quantity', 'unit_cost'] }
+        { model: ProductIngredientModel, as: 'stockItem', attributes: STOCK_ITEM_ATTRS }
       ],
       order: [['sort_order', 'ASC'], ['name', 'ASC']]
     });
@@ -860,7 +863,7 @@ router.get('/brand-products/:productId', authenticateToken, requireBGScope, asyn
         },
         // 재고아이템 다이렉트 — 목록·단건 모두 연결된 재고아이템을 함께 내려준다(화면이 배지로 쓴다).
         // `unit_cost` 도 **기준양(base_quantity) 만큼**의 값이다 — 같은 이유로 기준양을 함께 보낸다.
-        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'base_quantity', 'unit_cost'] }
+        { model: ProductIngredientModel, as: 'stockItem', attributes: STOCK_ITEM_ATTRS }
       ]
     });
 
@@ -1096,7 +1099,7 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
         },
         // 재고아이템 다이렉트 — 목록·단건 모두 연결된 재고아이템을 함께 내려준다(화면이 배지로 쓴다).
         // `unit_cost` 도 **기준양(base_quantity) 만큼**의 값이다 — 같은 이유로 기준양을 함께 보낸다.
-        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'base_quantity', 'unit_cost'] }
+        { model: ProductIngredientModel, as: 'stockItem', attributes: STOCK_ITEM_ATTRS }
       ]
     });
 
@@ -1297,7 +1300,7 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
         },
         // 재고아이템 다이렉트 — 목록·단건 모두 연결된 재고아이템을 함께 내려준다(화면이 배지로 쓴다).
         // `unit_cost` 도 **기준양(base_quantity) 만큼**의 값이다 — 같은 이유로 기준양을 함께 보낸다.
-        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'base_quantity', 'unit_cost'] }
+        { model: ProductIngredientModel, as: 'stockItem', attributes: STOCK_ITEM_ATTRS }
       ]
     });
 
@@ -1426,7 +1429,7 @@ router.post('/brand-products/:productId/copy', authenticateToken, requireBGScope
         { model: BrandProductOptionGroup, as: 'optionGroups', through: { attributes: [] }, include: [{ model: BrandProductOption, as: 'options' }] },
         { model: ProductRecipe, as: 'productRecipe', attributes: ['id', 'name', 'total_ingredient_cost'] },
         // `unit_cost` 도 **기준양(base_quantity) 만큼**의 값이다 — 같은 이유로 기준양을 함께 보낸다.
-        { model: ProductIngredientModel, as: 'stockItem', attributes: ['id', 'name', 'unit', 'base_quantity', 'unit_cost'] }
+        { model: ProductIngredientModel, as: 'stockItem', attributes: STOCK_ITEM_ATTRS }
       ]
     });
 
@@ -1544,14 +1547,32 @@ router.post('/brand-products/:productId/stock-item', authenticateToken, requireB
         name,
         unit: sanitizeString(String(body.unit || product.unit || '')).slice(0, 20) || null,
         base_quantity: Number.isFinite(bq) && bq > 0 ? bq : 1,
-        unit_cost: 0,          // 원가는 사 오는 쪽이 정한다 — 판매가를 베끼지 않는다
+        // 원가는 사 오는 쪽이 정한다 — 판매가를 베끼지 않는다. 사람이 상품 창에 적은 원가만 받는다
+        // (재고아이템 POST 와 같다 · 0 이면 공급처를 붙일 때 그 가격이 들어온다 — costSync onlyIfZero).
+        unit_cost: Math.max(0, parseFloat(body.unit_cost) || 0),
         min_stock: parseFloat(body.min_stock) || 0,
-        current_stock: 0,
+        current_stock: 0, // 개시 재고는 아래 장부(initial)로 — 장부 없이 수량이 생기지 않게
         is_active: true
       }, { transaction: t });
+      const startQty = Math.max(0, parseFloat(body.current_stock) || 0);
+      if (startQty > 0) {
+        await stockLedger.record({
+          target: { kind: 'product_ingredient', row: stockItem }, entity: { type: 'brand', id: req.user?.brand_id || null },
+          type: 'initial', setTo: startQty, notes: 'Initial stock', userId: req.user?.id || null, transaction: t,
+        });
+      }
     }
 
     await product.update({ product_ingredient_id: stockItem.id }, { transaction: t });
+    // 다이렉트로 붙으면 재고는 그 재고아이템에서 센다 — 상품 자체 재고는 0 으로(PUT 과 같은 문구·같은 함수).
+    // 단위가 달라(pack 수 ↔ 취급단위) 재고아이템으로 옮기지 않는다 — 사람이 적는다(Fable 설계 D5).
+    if ((parseFloat(product.current_stock) || 0) !== 0) {
+      await stockLedger.record({
+        target: { kind: 'brand_product', row: product }, entity: { type: 'brand', id: req.user?.brand_id || null },
+        type: 'adjustment', setTo: 0, unit: require('../utils/poLineSpec').selfStockUnit(product, 'ea'),
+        notes: 'Linked to recipe/stock item — self stock cleared', userId: req.user?.id || null, transaction: t,
+      });
+    }
 
     // 사 오는 곳 — 재고아이템에 붙는다(프로덕트가 아니다). 프로덕트의 가격·규격은 **파는 기준**이고
     // 여기 값은 **사는 기준**이라 서로 다른 숫자다.
@@ -1610,6 +1631,9 @@ router.post('/brand-products/:productId/stock-item', authenticateToken, requireB
         is_preferred: true,
         is_active: true
       }, { transaction: t });
+      // 원가가 비어 있으면 공급처 가격으로 채운다 — 재고아이템 화면의 연결 문과 같은 규칙(사람 값 보존)
+      const { recomputeUnitCost } = require('../services/costSync');
+      await recomputeUnitCost('product_ingredient', stockItem.id, { onlyIfZero: true, sequelize, transaction: t });
     }
 
     await t.commit();

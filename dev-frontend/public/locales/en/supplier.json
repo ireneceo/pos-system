@@ -68,7 +68,8 @@
       "leadTimeDays": "Lead Time (days)",
       "isActive": "Active",
       "orderMode": "Order Method",
-      "baseQuantityHint": "If sold in packs, put the content unit here (kg, g) and the amount in Base Qty (e.g. 5)"
+      "baseQuantityHint": "If sold in packs, put the content unit here (kg, g) and the amount in Base Qty (e.g. 5)",
+      "openingStock": "Opening stock ({{orderUnit}})"
     },
     "categoryManagement": "Category Management",
     "optionGroups": "Option Groups",
@@ -91,7 +92,10 @@
     },
     "optionsEmptyHint": "Options are choices that do not change the amount — cut, grade, aging, brand. If the pack or size differs (1 kg / 5 kg, 1 pack / 20-pack carton), add a separate product instead.",
     "optionGroupHint": "Use options for choices that do not change the amount (cut, grade, aging, brand). A different pack or size (1 kg / 5 kg, 1 pack / 20-pack carton) is a separate product — each gets its own spec and price.",
-    "optionGroupPlaceholder": "e.g., Cut Style, Grade, Aging"
+    "optionGroupPlaceholder": "e.g., Cut Style, Grade, Aging",
+    "currentStockReadOnly": "{{qty}} {{orderUnit}} — change it in Inventory (adjust or receive).",
+    "openInventory": "Open Inventory",
+    "openingStockFailed": "Product saved, but the opening stock could not be recorded. Add it in Inventory."
   },
   "inventory": {
     "title": "Inventory Management",

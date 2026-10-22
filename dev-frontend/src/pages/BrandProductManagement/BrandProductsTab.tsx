@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { parseMinOrderQty, OrderMode, PACKAGE_UNIT_SUGGESTIONS, CONTENT_UNIT_OPTIONS, withCurrentUnit, sellerSpecLabel } from '../../utils/unitConversion';
+import { parseMinOrderQty, OrderMode, PACKAGE_UNIT_SUGGESTIONS, CONTENT_UNIT_OPTIONS, withCurrentUnit, sellerSpecLabel, stockSpecLabel } from '../../utils/unitConversion';
 import { formatUnitPrice } from '../../utils/currency';
 import { marginStateOf } from '../../utils/productMargin';
 import { getErrorMessage } from '../../utils/apiError';
@@ -90,7 +90,7 @@ interface Product {
   productRecipe?: ProductRecipe;
   // 재고아이템 다이렉트 (docs/TRADE_STRUCTURE.md §2-1) — 레시피와 둘 중 하나만 채워진다.
   product_ingredient_id?: number | null;
-  stockItem?: { id: number; name: string; unit: string; base_quantity?: number | string; unit_cost: number } | null;
+  stockItem?: { id: number; name: string; unit: string; base_quantity?: number | string; package_unit?: string | null; package_quantity?: number | string | null; unit_cost: number; current_stock?: number | string } | null;
   sort_order: number;
   brands?: Brand[];
   optionGroups?: OptionGroup[];
@@ -478,7 +478,23 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   // 판매가 빠진 것만 걸러 보기(요약 줄의 숫자 클릭). 건수는 거르기 전 기준으로 유지된다.
   const [showMissingPriceOnly, setShowMissingPriceOnly] = useState(false);
-  const [productIngredientsList, setProductIngredientsList] = useState<{id: number; name: string; unit: string; unit_cost: number}[]>([]);
+  const [productIngredientsList, setProductIngredientsList] = useState<{id: number; name: string; unit: string; base_quantity?: number; package_unit?: string | null; package_quantity?: number | null; unit_cost: number; current_stock: number}[]>([]);
+  // 재고아이템 목록 — 상품 창이 그 원가·재고를 보여 주고 고친다(저장 뒤 다시 읽어 수정 창이 새 값을 본다).
+  const fetchStockItems = useCallback(async () => {
+    try {
+      const token = getAuthToken();
+      const piRes = await fetch('/api/product-ingredients', { headers: { 'Authorization': `Bearer ${token}` } });
+      if (piRes.ok) {
+        const piData = await piRes.json();
+        setProductIngredientsList((Array.isArray(piData.data) ? piData.data : Array.isArray(piData) ? piData : []).map((pi: any) => ({
+          id: pi.id, name: pi.name, unit: pi.unit,
+          base_quantity: Number(pi.base_quantity) || 1, package_unit: pi.package_unit || null,
+          package_quantity: pi.package_quantity != null ? Number(pi.package_quantity) : null,
+          unit_cost: Number(pi.unit_cost || 0), current_stock: Number(pi.current_stock || 0)
+        })));
+      }
+    } catch (e) { console.error('Failed to fetch product ingredients:', e); }
+  }, []);
 
   const getToken = useCallback(() => getAuthToken(), []);
 
@@ -552,14 +568,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
       setLoading(true);
       await Promise.all([fetchProducts(), fetchCategories(), fetchOptionGroups(), fetchProductRecipes()]);
       // Fetch product ingredients for direct linking
-      try {
-        const token = getAuthToken();
-        const piRes = await fetch('/api/product-ingredients', { headers: { 'Authorization': `Bearer ${token}` } });
-        if (piRes.ok) {
-          const piData = await piRes.json();
-          setProductIngredientsList((Array.isArray(piData.data) ? piData.data : Array.isArray(piData) ? piData : []).map((pi: any) => ({ id: pi.id, name: pi.name, unit: pi.unit, unit_cost: Number(pi.unit_cost || 0) })));
-        }
-      } catch (e) { console.error('Failed to fetch product ingredients:', e); }
+      await fetchStockItems();
       // Fetch restaurants of BG's brands (for specific_restaurants distribution)
       try {
         const token = getAuthToken();
@@ -572,7 +581,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
       setLoading(false);
     };
     loadData();
-  }, [fetchProducts, fetchCategories, fetchOptionGroups, fetchProductRecipes]);
+  }, [fetchProducts, fetchCategories, fetchOptionGroups, fetchProductRecipes, fetchStockItems]);
 
   useEffect(() => {
     if (categoryRefreshKey !== undefined) {
@@ -679,6 +688,28 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     open: boolean; productId: number | null; candidates: { id: number; name: string; unit?: string }[];
   }>({ open: false, productId: null, candidates: [] });
 
+  // 원가·재고는 **재고아이템 한 곳**에 산다 — 상품 창은 그 칸을 보여 주고 고친다(두 번째 저장소가 아니다).
+  //   새 재고아이템(체크) = 원가·개시 재고를 같이 만든다 · 연결된 재고아이템 = 그 값을 읽고, 바뀐 것만 그쪽에 쓴다.
+  //   2026-10-22 Fable 설계 D1·D2 (.claude/fable-design-20261021-product-form-cost-stock.md)
+  const [siCost, setSiCost] = useState('0');
+  const [siStock, setSiStock] = useState('0');
+  const [siOrig, setSiOrig] = useState<{ cost: number; stock: number } | null>(null);
+  useEffect(() => {
+    if (!showModal) return;
+    const si = formData.product_ingredient_id
+      ? productIngredientsList.find(i => i.id === formData.product_ingredient_id)
+      : null;
+    if (si) {
+      setSiCost(String(si.unit_cost || 0));
+      setSiStock(String(si.current_stock || 0));
+      setSiOrig({ cost: Number(si.unit_cost) || 0, stock: Number(si.current_stock) || 0 });
+    } else {
+      setSiCost('0');
+      setSiStock('0');
+      setSiOrig(null);
+    }
+  }, [showModal, formData.product_ingredient_id, productIngredientsList]);
+
   // 「어디서 사 오나」 — 같은 창에서 이어서 연결한다(재고아이템 화면으로 나갔다 오지 않게).
   // 연결 자체는 기존 창(ConnectSellerModal)과 기존 경로(/api/product-ingredients/from-catalog)를
   // 그대로 쓴다 — 여기서 두 번째 연결 경로를 만들지 않는다.
@@ -733,6 +764,56 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     return false;
   }, []);
 
+  /**
+   * 재고아이템의 원가·재고 두 칸 — 새로 만들 때(B)와 연결된 것(C)이 같은 칸을 쓴다(Fable 설계 D1 상태표).
+   * 원가는 기준양 전체 값(§2-2)이라 라벨에 규격을 박는다(«500 g/pack 의 원가»). 재고는 재고아이템 단위(취급단위)로 센다.
+   */
+  const renderStockItemFields = (mode: 'new' | 'linked', item: { name?: string; unit?: string | null; base_quantity?: number | string | null; package_unit?: string | null; package_quantity?: number | string | null }) => {
+    // 포장 이름이 비면 기준양이 1 이 아닐 때 «pack»(Fable D1 — 「500 g/g」 처럼 같은 말이 겹치지 않게)
+    const bq = Number(item.base_quantity) || 1;
+    const spec = stockSpecLabel({ ...item, package_unit: item.package_unit || (bq !== 1 ? 'pack' : null) }) || `1 ${item.unit || ''}`;
+    const unitLabel = item.unit || '';
+    const selfStock = Number((editingProduct as any)?.current_stock) || 0;
+    return (
+      <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {selfStock > 0 && (
+          <OrderModeHint style={{ color: '#B45309' }}>
+            {t('products.selfStockWillClear', {
+              defaultValue: 'This product has its own stock of {{qty}}. Saving sets it to 0 (recorded) — stock is then counted on the stock item. Enter the stock item quantity below.',
+              qty: selfStock
+            })}
+          </OrderModeHint>
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+          <UIFormGroup style={{ marginBottom: 0 }}>
+            <FormLabel>{t('products.siCostLabel', { defaultValue: 'Cost of {{spec}} (RM)', spec })}</FormLabel>
+            <FormInput type="number" step="0.01" min="0" value={siCost} onChange={(e) => setSiCost(e.target.value)} placeholder="0.00" />
+            <OrderModeHint>
+              {buySpec
+                ? t('products.siCostHintSupplier', { defaultValue: 'Follows the supplier price (We buy line). A value changed here is replaced when the supplier changes the price.' })
+                : t('products.siCostHintNone', { defaultValue: 'What you pay for {{spec}}. Leave 0 and the supplier price comes in when you connect a supplier below.', spec })}
+            </OrderModeHint>
+          </UIFormGroup>
+          {formData.product_kind === 'stock' && (
+            <UIFormGroup style={{ marginBottom: 0 }}>
+              <FormLabel>
+                {mode === 'new'
+                  ? t('products.siOpeningStockLabel', { defaultValue: 'Opening stock ({{unit}})', unit: unitLabel })
+                  : t('products.siCurrentStockLabel', { defaultValue: 'Current stock ({{unit}})', unit: unitLabel })}
+              </FormLabel>
+              <FormInput type="number" step="any" min="0" value={siStock} onChange={(e) => setSiStock(e.target.value)} placeholder="0" />
+              <OrderModeHint>
+                {mode === 'new'
+                  ? t('products.siOpeningStockHint', { defaultValue: 'Counted on the new stock item in {{unit}}.', unit: unitLabel })
+                  : t('products.siCurrentStockHint', { defaultValue: 'Counted on stock item «{{name}}». A change adds an adjustment line to its stock history.', name: item.name || '' })}
+              </OrderModeHint>
+            </UIFormGroup>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -751,6 +832,12 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
       setFormError('Unit is required');
       return;
     }
+
+    // 상품 자체 재고(A)는 재고아이템 없이 그대로 파는 재고 상품일 때만 싣는다. 새 재고아이템(B)·연결(C)이면
+    // 재고는 재고아이템에서 센다 — 싣지 않아야 서버가 연결 시점에 «self stock cleared» 로 비운다(Fable D2).
+    const selfStockMode = !linkStockItemId && !formData.product_recipe_id && !formData.product_ingredient_id
+      && !createStockItem && formData.product_kind === 'stock';
+    const numOrZero = (v: string) => { const n = parseFloat(v); return Number.isFinite(n) && n > 0 ? n : 0; };
 
     setIsSubmitting(true);
 
@@ -778,7 +865,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           order_mode: formData.order_mode,
           product_kind: formData.product_kind,
           unit_price: parseFloat(formData.unit_price) || 0,
-          current_stock: !formData.product_recipe_id ? (Number(formData.current_stock) || 0) : 0,
+          current_stock: selfStockMode ? (Number(formData.current_stock) || 0) : undefined,
           min_order_quantity: parseMinOrderQty(formData.min_order_quantity),
           category_id: formData.category_id ? parseInt(formData.category_id) : null,
           image_url: formData.image_url || null,
@@ -810,12 +897,47 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           const ok = await linkStockItem(savedId, {
             name: formData.name.trim(),
             unit: formData.unit || null,
-            base_quantity: parseFloat(formData.base_quantity) || 1
+            base_quantity: parseFloat(formData.base_quantity) || 1,
+            unit_cost: numOrZero(siCost),
+            ...(formData.product_kind === 'stock' ? { current_stock: numOrZero(siStock) } : {})
           });
-          if (!ok) { fetchProducts(); return; }
+          if (!ok) { fetchProducts(); fetchStockItems(); return; }
+        }
+        // 연결된 재고아이템(C) — 바뀐 칸만 그 재고아이템에 쓴다. 원가는 재고아이템 수정과 같은 길(PUT),
+        // 재고는 장부 조정(adjust-stock). 비슷한 이름 창에서 «기존 것 쓰기»로 고른 경우는 남의 값을 덮지 않는다.
+        const linkedId = !linkStockItemId ? formData.product_ingredient_id : null;
+        if (linkedId && siOrig) {
+          const fail: string[] = [];
+          const nextCost = numOrZero(siCost);
+          if (Math.round(nextCost * 10000) !== Math.round(siOrig.cost * 10000)) {
+            const r = await fetch(`/api/product-ingredients/${linkedId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ unit_cost: nextCost })
+            }).then(x => x.json()).catch(() => null);
+            if (!r?.success) fail.push(t('products.siCostFailed', { defaultValue: 'cost' }) as string);
+          }
+          const nextStock = numOrZero(siStock);
+          if (formData.product_kind === 'stock' && Math.round(nextStock * 100) !== Math.round(siOrig.stock * 100)) {
+            const r = await fetch(`/api/product-ingredients/${linkedId}/adjust-stock`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ new_quantity: nextStock, transaction_type: 'adjustment', reason: 'Edited in product form' })
+            }).then(x => x.json()).catch(() => null);
+            if (!r?.success) fail.push(t('products.siStockFailed', { defaultValue: 'stock' }) as string);
+          }
+          if (fail.length) {
+            setFormError(t('products.siSaveFailed', {
+              defaultValue: 'Product saved, but the stock item {{what}} could not be updated',
+              what: fail.join(', ')
+            }) as string);
+            fetchProducts(); fetchStockItems();
+            return;
+          }
         }
         handleCloseModal();
         fetchProducts();
+        fetchStockItems();
       } else if (response.status === 409 && data?.error?.code === 'SIMILAR_EXISTS') {
         // 차단이 아니라 확인이다 — 사람이 "같은 물건인지" 판단한다.
         setSimilarConfirm({ open: true, candidates: candidatesFrom409(data), retry: () => submitProduct(true) });
@@ -1468,25 +1590,6 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               </OrderModeHint>
             </UIFormGroup>
 
-            {/* 6. 현재 재고 — 레시피(BOM)·재고아이템 없이 그대로 파는 재고 상품만. 레시피를 연결하면 매입자재가 빠지므로
-                이 칸은 나타나지 않는다(둘 중 하나다 · 2026-09-01 Q5).
-                «재고 단위» 글자 칸은 없앴다(2026-10-05 Fable 설계 §4-D = TRADE_STRUCTURE §5-12 A) —
-                출고가 `current_stock -= 주문 수량` 이라 재고는 **주문 단위(포장단위) 수**로 센다. 다른 단위를 적을 자리가 원래 없었다. */}
-            {!formData.product_recipe_id && !formData.product_ingredient_id && formData.product_kind === 'stock' && (
-              <UIFormGroup>
-                <FormLabel>{specCopy.stockLabel}</FormLabel>
-                <FormInput
-                  type="number"
-                  step="1"
-                  min="0"
-                  value={formData.current_stock ?? 0}
-                  onChange={(e) => setFormData({ ...formData, current_stock: parseFloat(e.target.value) || 0 })}
-                  placeholder="0"
-                />
-                <OrderModeHint>{specCopy.stockHint}</OrderModeHint>
-              </UIFormGroup>
-            )}
-
             <UIFormGroup>
               <FormLabel>{'Product Image'}</FormLabel>
               <ImageUploadDropzone
@@ -1721,6 +1824,10 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                     </div>
                   );
                 })()}
+                {formData.product_ingredient_id && (() => {
+                  const si = productIngredientsList.find(i => i.id === formData.product_ingredient_id);
+                  return si ? renderStockItemFields('linked', si) : null;
+                })()}
                 {/* 고를 재고아이템이 없을 때 여기서 바로 만든다 — 재고아이템 화면으로 나갔다 오지 않게.
                     이름·단위·기준수량은 위에 적은 값을 그대로 쓴다(따로 또 적지 않는다). */}
                 {/* 파는 기준 ↔ 사는 기준 — 같은 물건의 두 방향을 한 줄씩. 마진은 여기서 계산해 보여 준다
@@ -1741,7 +1848,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                     product_ingredient_id: formData.product_ingredient_id,
                     stockItem: (Number.isFinite(buyPerStockUnit) && buyPerStockUnit > 0)
                       ? { unit: si?.unit, base_quantity: 1, unit_cost: buyPerStockUnit }
-                      : si,
+                      // 공급처가 없으면 원가 칸의 지금 값으로 — 저장 전에도 마진이 맞게 보인다
+                      : (si ? { ...si, unit_cost: parseFloat(siCost) || 0 } : si),
                     unit: sellUnit,
                     base_quantity: sellBq,
                     unit_price: sellPrice,
@@ -1830,7 +1938,29 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                         {formData.name.trim() || '—'} · {formData.base_quantity || 1} {formData.unit || '—'}
                       </div>
                     )}
+                    {createStockItem && renderStockItemFields('new', {
+                      name: formData.name, unit: formData.unit,
+                      base_quantity: formData.base_quantity, package_unit: formData.package_unit.trim() || null
+                    })}
                   </div>
+                )}
+                {/* 재고아이템 없이 그대로 파는 재고 상품 — 수량은 이 상품 자체에 센다(주문 단위 수 · §5-12 A) */}
+                {!formData.product_ingredient_id && !createStockItem && formData.product_kind === 'stock' && (
+                  <UIFormGroup style={{ marginTop: '12px', marginBottom: 0 }}>
+                    <FormLabel>{specCopy.stockLabel}</FormLabel>
+                    <FormInput
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={formData.current_stock ?? 0}
+                      onChange={(e) => setFormData({ ...formData, current_stock: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                    />
+                    <OrderModeHint>{specCopy.stockHint}</OrderModeHint>
+                    <OrderModeHint>
+                      {t('products.selfStockHint', { defaultValue: 'Counted on this product itself. Link or create a stock item and it is counted there instead.' })}
+                    </OrderModeHint>
+                  </UIFormGroup>
                 )}
               </UIFormGroup>
             )}
@@ -1929,13 +2059,17 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           + t('products.stockItemExistsBody', {
               defaultValue: 'Link this product to the existing stock item instead of creating a second one?'
             })
+          + '\n'
+          + t('products.stockItemExistsKeepsValues', {
+              defaultValue: "That stock item's stock and cost stay as they are. You can change them in Edit Product."
+            })
         }
         onConfirm={async () => {
           const { productId, candidates } = stockDup;
           setStockDup({ open: false, productId: null, candidates: [] });
           if (productId && candidates[0]) {
             const ok = await linkStockItem(productId, { existing_stock_item_id: candidates[0].id });
-            if (ok) { handleCloseModal(); fetchProducts(); }
+            if (ok) { handleCloseModal(); fetchProducts(); fetchStockItems(); }
           }
         }}
         onCancel={() => setStockDup({ open: false, productId: null, candidates: [] })}

@@ -654,6 +654,114 @@ function defineSecurityTests({ customerToken, member, restId }) {
       await sequelize.query(`DELETE FROM users WHERE id = ?`, { replacements: [uid] });
     }
   });
+  // 2026-10-22 Fable 설계 owner-po-approval-revoke §4: 오너 승인취소 = 승인 → 다시 pending_approval.
+  //   외부 = 받기 전 전부(submitted~delivered) · 가입 = 판매자 확인 전(submitted)만 · 결제·수령·승인 안 거친 발주 400 ·
+  //   목록 approval_revocable 플래그 = 라우트 판정(같은 함수) · ?approved=1 «승인 후» 목록 · 재고·돈 무변경 · 남의 404·RA 403·익명 401.
+  //   데모 매장 38 + 임시 오너 + 데모 가입 공급업체 20 · finally 로 전부 지운다.
+  test('pos', '오너 승인취소 — 외부 받기 전 200·가입 확인 전만·결제/수령/미승인 400·플래그=판정·승인 후 목록·재고 돈 무변경', async () => {
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const jwt = require('jsonwebtoken');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const tag = 'zzhcorv' + Date.now().toString(36);
+    const [other] = await Q(`SELECT id FROM restaurants WHERE is_demo = 1 AND id <> 38 ORDER BY id LIMIT 1`);
+    const [ra] = await Q(`SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 AND is_active = 1 ORDER BY id LIMIT 1`);
+    const [supUser] = await Q(`SELECT u.id, u.supplier_company_id FROM users u JOIN supplier_companies sc ON sc.id = u.supplier_company_id
+      WHERE u.email = 'demo-supplier@purplehere.com' AND sc.is_system_registered = 1 LIMIT 1`);
+    if (!other || !ra || !supUser) { console.log(c.gray('      (준비물 없음 — 다른 데모 매장/RA 38/데모 공급업체)')); return false; }
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@example.com`] });
+    const scs = []; const pos = [];
+    try {
+      await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (38, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [uid] });
+      const sign = (id) => ({ Authorization: `Bearer ${jwt.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+      const own = sign(uid); const raAuth = sign(ra.id); const supAuth = sign(supUser.id);
+      const ext = await M.SupplierCompany.create({ name: tag + '-ext', status: 'active', is_system_registered: false, registered_by_entity_type: 'restaurant', registered_by_entity_id: 38 }); scs.push(ext.id);
+      const regId = supUser.supplier_company_id;
+      const approvedAt = new Date(Date.now() - 60000);
+      const mk = async (rid, seller, status, extra = {}) => {
+        const po = await M.PurchaseOrder.create({ po_number: `${tag}-${pos.length}`, entity_type: 'restaurant', entity_id: rid, seller_type: 'supplier', seller_entity_id: seller,
+          status, subtotal: 5, tax_amount: 0, total_amount: 5, currency: 'MYR', payment_status: 'unpaid', submitted_at: new Date(), created_by_user_id: uid,
+          approval_required: true, approved_at: approvedAt, approved_by_user_id: uid, ...extra });
+        pos.push(po.id); return po;
+      };
+      const extSub = await mk(38, ext.id, 'submitted');
+      const extShip = await mk(38, ext.id, 'shipped');
+      const extRcv = await mk(38, ext.id, 'received');
+      const extPaid = await mk(38, ext.id, 'confirmed', { payment_status: 'paid', paid_at: new Date() });
+      const regSub = await mk(38, regId, 'submitted');
+      const regConf = await mk(38, regId, 'confirmed');
+      const ownSub = await mk(38, ext.id, 'submitted', { approved_at: null, approved_by_user_id: null, approval_required: false });
+      const othersSub = await mk(other.id, ext.id, 'submitted');
+      const sw = `entity_type=restaurant&entity_id=38`;
+      const rv = (id, auth) => request('POST', `/purchase-orders/${id}/revoke-approval`, {}, auth);
+      // 7. 플래그 — 목록(오너 전체 보기) 행의 approval_revocable
+      const before = await request('GET', `/purchase-orders?approved=1&limit=100`, null, own);
+      const bRows = Array.isArray(before.body && before.body.data) ? before.body.data : [];
+      const flag = (id) => { const r = bRows.find(x => x.id === id); return r ? r.approval_revocable : undefined; };
+      const flagsOk = flag(extSub.id) === true && flag(extShip.id) === true && flag(regSub.id) === true
+        && flag(extRcv.id) === false && flag(extPaid.id) === false && flag(regConf.id) === false
+        && flag(ownSub.id) === undefined && !bRows.some(x => Number(x.entity_id) !== 38);
+      // 8. 무변경 증명 전 — 재고 장부·결제
+      const [stockBefore] = await Q(`SELECT (SELECT COUNT(*) FROM stock_ledger_batch_items) l, (SELECT COALESCE(SUM(current_stock),0) FROM restaurant_ingredient_stocks WHERE restaurant_id = 38) s`);
+      // 판매자 목록에 가입 submitted 가 보이는지(전)
+      const sBefore = await request('GET', '/seller-orders?limit=100', null, supAuth);
+      const sawBefore = (sBefore.body && sBefore.body.data || []).some(x => x.id === regSub.id);
+      const r1 = await rv(extSub.id, own);
+      const [row1] = await Q('SELECT status, approved_at, approved_by_user_id, payment_status, paid_at, tracking_info FROM purchase_orders WHERE id = :i', { i: extSub.id });
+      const ti = typeof row1.tracking_info === 'string' ? JSON.parse(row1.tracking_info) : (row1.tracking_info || {});
+      const last = (ti.events || []).slice(-1)[0] || {};
+      const trackOk = last.approval_revoked === true && last.status_before === 'submitted' && !!last.approved_at_before;
+      const r1b = await rv(extSub.id, own); // 멱등 — 두 번째는 NOT_APPROVED
+      const r2 = await rv(extShip.id, own);
+      const r3 = await rv(extRcv.id, own);
+      const r4 = await rv(extPaid.id, own);
+      const r5 = await rv(regSub.id, own);
+      const sAfter = await request('GET', '/seller-orders?limit=100', null, supAuth);
+      const goneFromSeller = !(sAfter.body && sAfter.body.data || []).some(x => x.id === regSub.id);
+      const r6 = await rv(regConf.id, own);
+      const r7 = await rv(ownSub.id, own);
+      const r8 = await rv(othersSub.id, own);
+      const r9 = await rv(extShip.id, raAuth);
+      const r10 = await request('POST', `/purchase-orders/${regConf.id}/revoke-approval`, {}, {});
+      const [stockAfter] = await Q(`SELECT (SELECT COUNT(*) FROM stock_ledger_batch_items) l, (SELECT COALESCE(SUM(current_stock),0) FROM restaurant_ingredient_stocks WHERE restaurant_id = 38) s`);
+      const [ship] = await Q('SELECT status, payment_status, paid_at FROM purchase_orders WHERE id = :i', { i: extShip.id });
+      // 1. 승인 대기 큐에 다시 · 승인 후 목록에서 빠짐
+      const q = await request('GET', '/purchase-orders/pending-approval', null, own);
+      const qList = Array.isArray(q.body && q.body.data) ? q.body.data : [];
+      const after = await request('GET', `/purchase-orders?approved=1&limit=100`, null, own);
+      const aIds = (after.body && after.body.data || []).map(x => x.id);
+      // 6. 되돌린 발주 → 다시 승인 / 반려
+      const ap = await request('POST', `/purchase-orders/${extSub.id}/approve`, {}, own);
+      const rj = await request('POST', `/purchase-orders/${extShip.id}/reject`, { reason: 'hc' }, own);
+      const [reAp] = await Q('SELECT status, approved_at FROM purchase_orders WHERE id = :i', { i: extSub.id });
+      const [reRj] = await Q('SELECT status FROM purchase_orders WHERE id = :i', { i: extShip.id });
+      const code = (r) => r.body && r.body.code;
+      const ok = before.status === 200 && flagsOk
+        && r1.status === 200 && row1.status === 'pending_approval' && row1.approved_at === null && row1.approved_by_user_id === null
+        && row1.payment_status === 'unpaid' && trackOk
+        && r1b.status === 400 && code(r1b) === 'NOT_APPROVED'
+        && r2.status === 200 && ship.status === 'pending_approval' && ship.payment_status === 'unpaid' && ship.paid_at === null
+        && r3.status === 400 && code(r3) === 'RECEIVED'
+        && r4.status === 400 && code(r4) === 'PAID'
+        && r5.status === 200 && sawBefore && goneFromSeller
+        && r6.status === 400 && code(r6) === 'SELLER_CONFIRMED'
+        && r7.status === 400 && code(r7) === 'NOT_APPROVED'
+        && r8.status === 404 && r9.status === 403 && r10.status === 401
+        && Number(stockBefore.l) === Number(stockAfter.l) && Number(stockBefore.s) === Number(stockAfter.s)
+        && qList.some(x => x.id === extSub.id) && qList.some(x => x.id === regSub.id)
+        && bRows.some(x => x.id === extSub.id) && !aIds.includes(extSub.id) && !aIds.includes(regSub.id) && aIds.includes(regConf.id)
+        && ap.status === 200 && reAp.status === 'submitted' && !!reAp.approved_at
+        && rj.status === 200 && reRj.status === 'draft';
+      if (!ok) console.log(c.gray(`      (목록 ${before.status} 플래그 ${flagsOk} · 외부submitted ${r1.status}/${row1.status}/기록 ${trackOk} · 두번째 ${r1b.status}/${code(r1b)} · 외부shipped ${r2.status}/${ship.status} · 수령 ${r3.status}/${code(r3)} · 결제 ${r4.status}/${code(r4)} · 가입submitted ${r5.status} 판매자 전 ${sawBefore}/후 사라짐 ${goneFromSeller} · 가입confirmed ${r6.status}/${code(r6)} · 오너제출 ${r7.status}/${code(r7)} · 남의 ${r8.status} · RA ${r9.status} · 익명 ${r10.status} · 재고 ${stockBefore.l}/${stockAfter.l} ${stockBefore.s}/${stockAfter.s} · 큐 ${q.status} · 승인후 빠짐 ${!aIds.includes(extSub.id)} · 재승인 ${ap.status}/${reAp.status} · 반려 ${rj.status}/${reRj.status})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      try { await hcCleanupPurchaseOrders(pos, { waitMs: 0 }); } catch {}
+      if (scs.length) { try { await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id IN (:s)', { replacements: { s: scs } }); } catch {} try { await sequelize.query('DELETE FROM supplier_companies WHERE id IN (:s)', { replacements: { s: scs } }); } catch {} }
+      await sequelize.query(`DELETE FROM restaurant_managers WHERE manager_id = ?`, { replacements: [uid] });
+      await sequelize.query(`DELETE FROM users WHERE id = ?`, { replacements: [uid] });
+    }
+  });
   // 2026-10-04 Fable 판정 owner-po-on-behalf ①: 오너는 소유 매장을 골라 **그 매장 자격으로** 발주를 만들고 제출한다.
   //   발주 주인 = 매장(그 매장 RA 이력에 보임) · 오너 제출 = 승인 생략(submitted + «Submitted by Owner» 기록)
   //   · 같은 매장 RA 제출 = 그대로 pending_approval · 남의 매장/전환 없음 403 · 수령·공급업체 전환은 열지 않음(403).
@@ -11109,6 +11217,7 @@ async function runTests(allTests, category) {
   defineInventoryTests(ctx);
   defineStockLedgerTests(ctx);
   defineAttendanceTests();
+  defineProductFormCostStockTests();
 
   // 🔴 잔재 감시 — 검사 자체가 데모 매장에 **돈·재고 흔적을 남기는지** 실행 전후로 잰다.
   //   2026-09-18: 이 지문 함수는 **정의만 있고 호출이 0곳**이었다. 그래서 직접구매 계약이
@@ -11136,3 +11245,83 @@ async function runTests(allTests, category) {
   console.error(c.gray(e.stack));
   process.exit(1);
 });
+
+// ============================================
+// 상품 창 원가·재고 — 재고아이템 한 곳 (2026-10-22 Fable 설계 §7 P1·P3·P6
+//   · .claude/fable-design-20261021-product-form-cost-stock.md)
+// ============================================
+//   P1 새 재고아이템과 같이 등록 → 원가·개시 재고는 재고아이템에, 상품 자체 재고 0
+//   P3 자체 재고 있는 상품을 재고아이템에 연결 → 상품 0 + 장부 «self stock cleared»
+//   P6 공급업체 상품 PUT 의 재고 직접 쓰기 → 400 USE_INVENTORY_ADJUST
+//   데모 브랜드 소유자 계정만 · 만든 행은 끝에 지운다(장부 줄까지).
+function defineProductFormCostStockTests() {
+  const bgAuth = async () => {
+    const { User } = require('../models');
+    const u = await User.findOne({ where: { email: 'demo-brand@purplehere.com' } });
+    return u ? { Authorization: `Bearer ${jwt.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` } : null;
+  };
+  const cleanup = async (productId, stockItemId) => {
+    const { BrandProduct, ProductIngredient, InventoryTransaction } = require('../models');
+    if (productId) {
+      await InventoryTransaction.destroy({ where: { brand_product_id: productId }, force: true });
+      await BrandProduct.destroy({ where: { id: productId }, force: true });
+    }
+    if (stockItemId) {
+      await InventoryTransaction.destroy({ where: { product_ingredient_id: stockItemId }, force: true });
+      await ProductIngredient.destroy({ where: { id: stockItemId }, force: true });
+    }
+  };
+  const base = (name, extra = {}) => ({
+    name, unit: 'g', base_quantity: 500, package_unit: 'pack', unit_price: 20, product_kind: 'stock',
+    order_mode: 'pack', distribution_mode: 'all', option_group_ids: [], force: true, ...extra
+  });
+
+  test('pos', '상품 창 새 재고아이템 — 원가·개시 재고는 재고아이템에, 상품 자체 재고 0 (P1)', async () => {
+    const H = await bgAuth(); if (!H) return true;
+    const { BrandProduct, ProductIngredient, InventoryTransaction } = require('../models');
+    let pid = null; let sid = null;
+    try {
+      const nm = `[hc] 원가재고 P1 ${Date.now()}`;
+      const p = await request('POST', '/brand-products', base(nm), H);
+      pid = p.body?.data?.id; if (!pid) return false;
+      const l = await request('POST', `/brand-products/${pid}/stock-item`, { name: nm, unit: 'g', base_quantity: 500, unit_cost: 3.5, current_stock: 7 }, H);
+      sid = l.body?.data?.stock_item?.id; if (!sid) return false;
+      const bp = await BrandProduct.findByPk(pid); const si = await ProductIngredient.findByPk(sid);
+      const ledger = await InventoryTransaction.findAll({ where: { product_ingredient_id: sid } });
+      const selfLedger = await InventoryTransaction.count({ where: { brand_product_id: pid } });
+      return Number(bp.current_stock) === 0 && Number(si.current_stock) === 7 && Number(si.unit_cost) === 3.5
+        && ledger.length === 1 && ledger[0].transaction_type === 'initial' && selfLedger === 0;
+    } finally { await cleanup(pid, sid); }
+  });
+
+  test('pos', '자체 재고 있는 상품을 재고아이템에 연결 → 상품 0 + 장부 «self stock cleared» (P3)', async () => {
+    const H = await bgAuth(); if (!H) return true;
+    const { BrandProduct, InventoryTransaction } = require('../models');
+    let pid = null; let sid = null;
+    try {
+      const nm = `[hc] 원가재고 P3 ${Date.now()}`;
+      const p = await request('POST', '/brand-products', base(nm, { unit: 'pack', base_quantity: 1, current_stock: 7 }), H);
+      pid = p.body?.data?.id; if (!pid) return false;
+      const l = await request('POST', `/brand-products/${pid}/stock-item`, { name: nm, unit: 'pack', base_quantity: 1 }, H);
+      sid = l.body?.data?.stock_item?.id; if (!sid) return false;
+      const bp = await BrandProduct.findByPk(pid);
+      const cleared = await InventoryTransaction.count({
+        where: { brand_product_id: pid, transaction_type: 'adjustment', notes: 'Linked to recipe/stock item — self stock cleared' }
+      });
+      return Number(bp.current_stock) === 0 && cleared === 1;
+    } finally { await cleanup(pid, sid); }
+  });
+
+  test('security', '공급업체 상품 PUT 의 재고 직접 쓰기 → 400 USE_INVENTORY_ADJUST (P6)', async () => {
+    const { User, SupplierProduct } = require('../models');
+    const u = await User.findOne({ where: { email: 'demo-supplier@purplehere.com' } });
+    if (!u || !u.supplier_company_id) return true;
+    const sp = await SupplierProduct.findOne({ where: { supplier_company_id: u.supplier_company_id } });
+    if (!sp) return true;
+    const before = Number(sp.current_stock);
+    const r = await request('PUT', `/supplier-products/${sp.id}`, { current_stock: before + 99 },
+      { Authorization: `Bearer ${jwt.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+    await sp.reload();
+    return r.status === 400 && r.body?.code === 'USE_INVENTORY_ADJUST' && Number(sp.current_stock) === before;
+  });
+}

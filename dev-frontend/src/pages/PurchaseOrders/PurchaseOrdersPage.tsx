@@ -3,7 +3,7 @@ import { formatCurrency } from '../../utils/currency';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { reconcileGap, isTotalOnly, formatGap } from '../../utils/reconcileGap';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container, Header, Title, Content,
   StatsGrid, StatCard, StatValue, StatLabel,
@@ -23,6 +23,7 @@ import { Modal as CommonModal } from '../../components/UI/Modal';
 import { Button } from '../../components/UI/Button';
 import { getErrorMessage } from '../../utils/apiError';
 import ReceivePayModal, { ReceivePayMode } from '../../components/PurchaseOrders/ReceivePayModal';
+import OwnerPoTabs from '../../components/PurchaseOrders/OwnerPoTabs';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { formatQuantity } from '../../utils/unitConversion';
 import { useAuth } from '../../contexts/AuthContext';
@@ -282,6 +283,8 @@ interface POListRow {
   payable_amount?: number | string | null;
   payable_basis?: 'purchase_order' | 'supplier_invoice' | null;
   pay_via_soa?: boolean;
+  /** 오너 승인취소 가능 — 서버 revoke-approval 라우트와 같은 판정(utils/poOwnerApproval.canRevokeApproval) */
+  approval_revocable?: boolean;
   entity_type?: string | null;
   /** 대조 결과 — 청구가가 발주가와 다른 줄 수와 금액 차이 */
   reconcile_diff_lines?: number;
@@ -450,12 +453,17 @@ const PurchaseOrdersPage: React.FC = () => {
   const [suggestionsCount, setSuggestionsCount] = useState(0);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
-  const [confirmDlg, setConfirmDlg] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+  const [confirmDlg, setConfirmDlg] = useState<{ title: string; message: string; onConfirm: () => void; variant?: 'danger' | 'warning' | 'info'; confirmText?: string } | null>(null);
   // 결제·되돌리기 모달 (2026-09-10 Fable B1) — 발주 상세·staging 이 쓰던 모달을 목록 행에서도 연다.
   // 백엔드는 그대로다. 목록에서 바로 결제하지 못해 상세로 들어갔다 나오던 왕복을 없앤다.
   const [payModal, setPayModal] = useState<{ mode: ReceivePayMode; row: PurchaseOrderRow } | null>(null);
   // 개인금액 미정산만 보기 (2026-09-18) — 서버에 새 조회를 만들지 않고 받은 목록을 거른다.
   const [owedOnly, setOwedOnly] = useState(false);
+  // 오너 «승인 완료만» (2026-10-22 Fable 설계 owner-po-approval-revoke) — 승인 화면 «승인 완료» 탭이 ?approved=1 로 연다.
+  //   서버가 거른다(approved_at 있음 · 다시 승인 대기 아님). 끄면 오너 본인 제출·승인 OFF 매장 발주까지 전체.
+  const location = useLocation();
+  const [approvedOnly, setApprovedOnly] = useState(() => new URLSearchParams(location.search).get('approved') === '1');
+  const [tabsKey, setTabsKey] = useState(0);
   const [reimburseRow, setReimburseRow] = useState<PurchaseOrderRow | null>(null);
   const [reimburseMethod, setReimburseMethod] = useState<'cash' | 'bank_transfer'>('cash');
   const [reimbursing, setReimbursing] = useState(false);
@@ -471,6 +479,7 @@ const PurchaseOrdersPage: React.FC = () => {
       params.set('limit', '100');
       if (isOwner) {
         if (ownerRid == null) { setRows([]); return; }
+        if (approvedOnly) params.set('approved', '1');
         if (ownerRid !== OWNER_PO_ALL) {
           params.set('entity_type', 'restaurant');
           params.set('entity_id', String(ownerRid));
@@ -491,7 +500,7 @@ const PurchaseOrdersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, dateRange, isOwner, ownerRid]);
+  }, [statusFilter, dateRange, isOwner, ownerRid, approvedOnly]);
 
   // 오너 — 소유 매장 목록을 받아 고른 매장이 없거나 목록에 없으면 첫 매장으로
   useEffect(() => {
@@ -814,6 +823,35 @@ const PurchaseOrdersPage: React.FC = () => {
     navigate(`/pos/purchase-orders/new?${params.toString()}`);
   };
 
+  // 오너 승인취소 — 발주를 «승인 전» 으로 되돌린다(서버 revoke-approval). fetchAPI 는 실패 본문을 버리므로 직접 fetch.
+  const askRevokeApproval = (row: POListRow) => {
+    setConfirmDlg({
+      title: t('ownerApprovals.revokeTitle') as string,
+      message: t(row.is_external ? 'ownerApprovals.revokeConfirmExternal' : 'ownerApprovals.revokeConfirmRegistered', { po: row.po_number }) as string,
+      variant: 'warning',
+      confirmText: t('ownerApprovals.revoke') as string,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/purchase-orders/${row.id}/revoke-approval`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
+            body: '{}',
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.success) {
+            setAlertDlg({ title: t('ownerApprovals.revokeFailed') as string, message: data.message || (t('ownerApprovals.actionFailed') as string) });
+            return;
+          }
+          setAlertDlg({ title: t('ownerApprovals.revokeTitle') as string, message: t('ownerApprovals.revoked') as string });
+          setTabsKey(k => k + 1);
+          fetchList();
+        } catch {
+          setAlertDlg({ title: t('ownerApprovals.revokeFailed') as string, message: t('ownerApprovals.actionFailed') as string });
+        }
+      },
+    });
+  };
+
   return (
     <Container>
       <Header>
@@ -835,6 +873,7 @@ const PurchaseOrdersPage: React.FC = () => {
       </Header>
 
       <Content>
+        {isOwner && <OwnerPoTabs active="approved" refreshKey={tabsKey} />}
         <StatsGrid>
           <StatCard color="#4B5563">
             <StatValue>{stats.draft}</StatValue>
@@ -950,6 +989,7 @@ const PurchaseOrdersPage: React.FC = () => {
           <StatusFilter value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="all">{t('list.filter.allStatuses')}</option>
             <option value="draft">{t('status.draft')}</option>
+            <option value="pending_approval">{t('status.pending_approval')}</option>
             <option value="submitted">{t('status.submitted')}</option>
             <option value="confirmed">{t('status.confirmed')}</option>
             <option value="shipped">{t('status.shipped')}</option>
@@ -967,6 +1007,17 @@ const PurchaseOrdersPage: React.FC = () => {
           >
             {t('list.filter.owed', '개인금액 미정산')}{owedCount > 0 ? ` (${owedCount})` : ''}
           </Button>
+          {isOwner && (
+            <Button
+              type="button"
+              size="small"
+              variant={approvedOnly ? 'primary' : 'secondary'}
+              onClick={() => setApprovedOnly(v => !v)}
+              title={t('ownerApprovals.approvedOnlyHint') as string}
+            >
+              {t('ownerApprovals.approvedOnly')}
+            </Button>
+          )}
         </FilterToolbar>
 
         <DataTableContainer>
@@ -1199,6 +1250,11 @@ const PurchaseOrdersPage: React.FC = () => {
                         )}
                         {/* 결제·되돌리기 (2026-09-10 Fable B1) — 상세·staging 이 쓰는 모달을 그대로 목록에 붙인다.
                             취소·초안은 낼 돈이 없고, 승인 대기는 아직 판매자에게 나가지도 않았다. */}
+                        {isOwner && row.approval_revocable === true && (
+                          <ThemedButton size="small" variant="danger-outline" onClick={() => askRevokeApproval(row)}>
+                            {t('ownerApprovals.revoke')}
+                          </ThemedButton>
+                        )}
                         {isOwner && row.receipt_url && (
                           <ThemedButton size="small" variant="outline"
                             onClick={() => window.open(row.receipt_url as string, '_blank')}
@@ -1448,6 +1504,8 @@ const PurchaseOrdersPage: React.FC = () => {
         onConfirm={() => { const c = confirmDlg; setConfirmDlg(null); c?.onConfirm(); }}
         title={confirmDlg?.title || ''}
         message={confirmDlg?.message || ''}
+        variant={confirmDlg?.variant}
+        confirmText={confirmDlg?.confirmText}
       />
     </Container>
   );

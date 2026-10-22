@@ -458,6 +458,12 @@ router.post('/from-catalog', async (req, res) => {
       const r = await catalogLink.connectExisting({
         target: targetPi, seller, unitConversion: convFor(targetPi), targetKey: 'product_ingredient_id', transaction: t
       });
+      // 원가가 비어 있으면 붙인 공급처 가격으로 채운다 — `/:id/seller-sources` 와 같은 호출·같은 모드(사람 값 보존).
+      //   상품 창 «Where do we buy this?» 가 이 문이다 — 전엔 매핑만 만들고 원가는 0 그대로였다(2026-10-22 Fable 설계 D2).
+      if (r.status < 300) {
+        const { recomputeUnitCost } = require('../services/costSync');
+        await recomputeUnitCost('product_ingredient', targetPi.id, { onlyIfZero: true, sequelize: ProductIngredient.sequelize, transaction: t });
+      }
       await t.commit();
       return res.status(r.status).json(r.body);
     }

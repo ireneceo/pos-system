@@ -68,7 +68,8 @@
       "leadTimeDays": "Masa Hantaran (hari)",
       "isActive": "Aktif",
       "orderMode": "Kaedah Pesanan",
-      "baseQuantityHint": "Jika dijual dalam pek, isi unit kandungan (kg, g) di Unit dan jumlahnya di Base Qty (cth: 5)"
+      "baseQuantityHint": "Jika dijual dalam pek, isi unit kandungan (kg, g) di Unit dan jumlahnya di Base Qty (cth: 5)",
+      "openingStock": "Stok pembukaan ({{orderUnit}})"
     },
     "categoryManagement": "Pengurusan Kategori",
     "optionGroups": "Kumpulan Pilihan",
@@ -91,7 +92,10 @@
     },
     "optionsEmptyHint": "Pilihan ialah pilihan yang tidak mengubah kuantiti — potongan, gred, pemeraman, jenama. Jika pek atau saiz berbeza (1 kg / 5 kg, 1 pek / karton 20 pek), tambah produk berasingan.",
     "optionGroupHint": "Gunakan pilihan untuk pilihan yang tidak mengubah kuantiti (potongan, gred, pemeraman, jenama). Pek atau saiz berbeza (1 kg / 5 kg, 1 pek / karton 20 pek) ialah produk berasingan — setiap satu ada spesifikasi dan harga sendiri.",
-    "optionGroupPlaceholder": "cth., Gaya Potongan, Gred, Pemeraman"
+    "optionGroupPlaceholder": "cth., Gaya Potongan, Gred, Pemeraman",
+    "currentStockReadOnly": "{{qty}} {{orderUnit}} — ubah dalam Inventory (laras atau terima).",
+    "openInventory": "Buka Inventory",
+    "openingStockFailed": "Produk disimpan, tetapi stok pembukaan tidak dapat direkodkan. Tambahkannya dalam Inventory."
   },
   "inventory": {
     "title": "Pengurusan Inventori",

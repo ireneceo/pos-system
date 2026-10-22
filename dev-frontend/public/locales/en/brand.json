@@ -789,7 +789,20 @@
     "marginNoCost": "No cost",
     "marginNoCostHint": "The linked source has no cost, so margin cannot be calculated — add the supplier price",
     "marginNoConvert": "Units not convertible",
-    "marginNoConvertHint": "The selling unit ({{from}}) and the cost unit ({{to}}) cannot be converted, so margin cannot be calculated"
+    "marginNoConvertHint": "The selling unit ({{from}}) and the cost unit ({{to}}) cannot be converted, so margin cannot be calculated",
+    "siCostLabel": "Cost of {{spec}} (RM)",
+    "siCostHintSupplier": "Follows the supplier price (We buy line). A value changed here is replaced when the supplier changes the price.",
+    "siCostHintNone": "What you pay for {{spec}}. Leave 0 and the supplier price comes in when you connect a supplier below.",
+    "siOpeningStockLabel": "Opening stock ({{unit}})",
+    "siCurrentStockLabel": "Current stock ({{unit}})",
+    "siOpeningStockHint": "Counted on the new stock item in {{unit}}.",
+    "siCurrentStockHint": "Counted on stock item «{{name}}». A change adds an adjustment line to its stock history.",
+    "selfStockHint": "Counted on this product itself. Link or create a stock item and it is counted there instead.",
+    "selfStockWillClear": "This product has its own stock of {{qty}}. Saving sets it to 0 (recorded) — stock is then counted on the stock item. Enter the stock item quantity below.",
+    "siCostFailed": "cost",
+    "siStockFailed": "stock",
+    "siSaveFailed": "Product saved, but the stock item {{what}} could not be updated",
+    "stockItemExistsKeepsValues": "That stock item's stock and cost stay as they are. You can change them in Edit Product."
   },
   "brandIngredientsPage": {
     "subtitle": "The single list of ingredients. Turn on brand sharing to use them in recipes and orders."

@@ -681,22 +681,27 @@ function poApprovalPendingEmail({ buyerName, poNumber, total, currency, link, it
 /**
  * PO Approval Result — sent to the PO creator when the Owner approves or rejects (2026-06-21).
  */
-function poApprovalResultEmail({ poNumber, approved, reason, total, currency, link, items, isExternal }, lang = 'en') {
+function poApprovalResultEmail({ poNumber, approved, revoked, reason, total, currency, link, items, isExternal }, lang = 'en') {
   const { getEmailText } = require('./i18n');
   const t = (k, p) => getEmailText(lang, 'po.approvalResult.' + k, p);
   const ts = (k, p) => getEmailText(lang, 'po.sellerReceived.' + k, p);
   const safePo = (poNumber || '—').toString().slice(0, 80);
-  const title = approved ? t('headingApproved') : t('headingRejected');
+  // revoked = 오너가 승인을 되돌림(→ 다시 승인 대기, 2026-10-22 Fable 설계 owner-po-approval-revoke)
+  const title = revoked ? t('headingRevoked') : approved ? t('headingApproved') : t('headingRejected');
   const money = fmtMoney(total, currency);
-  const statusHtml = approved
+  const statusHtml = revoked
+    ? `<span style="color:#F59E0B;font-weight:600;">${t('headingRevoked')}</span>`
+    : approved
     ? `<span style="color:#10B981;font-weight:600;">${t('headingApproved')}</span>`
     : `<span style="color:#FF6B6B;font-weight:600;">${t('headingRejected')}</span>`;
   const reasonRow = (!approved && reason)
     ? infoRow(t('reason'), (reason || '').toString().slice(0, 300))
     : '';
+  const bodyKey = revoked ? (isExternal ? 'bodyRevokedExternal' : 'bodyRevoked')
+    : approved ? (isExternal ? 'bodyApprovedExternal' : 'bodyApproved') : 'bodyRejected';
   const body = `
     <p style="color:#374151;font-size:16px;margin:0 0 16px;">
-      ${approved ? t(isExternal ? 'bodyApprovedExternal' : 'bodyApproved') : t('bodyRejected')}
+      ${t(bodyKey)}
     </p>
     ${infoTable(
       infoRow(ts('poNumber'), safePo) +
@@ -708,9 +713,10 @@ function poApprovalResultEmail({ poNumber, approved, reason, total, currency, li
     ${ctaButton(t('cta'), link || `${BASE_URL}/pos/purchase-orders/history`)}`;
 
   return withRenderMeta({
-    subject: approved ? t('subjectApproved', { poNumber: safePo }) : t('subjectRejected', { poNumber: safePo }),
+    subject: revoked ? t('subjectRevoked', { poNumber: safePo })
+      : approved ? t('subjectApproved', { poNumber: safePo }) : t('subjectRejected', { poNumber: safePo }),
     html: wrapTemplate(title, body, lang),
-    text: t('textFallback', { poNumber: safePo, result: approved ? t('headingApproved') : t('headingRejected') })
+    text: t('textFallback', { poNumber: safePo, result: title })
   }, title, body, lang);
 }
 

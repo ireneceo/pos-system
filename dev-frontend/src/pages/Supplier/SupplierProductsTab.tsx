@@ -473,6 +473,8 @@ const SupplierProductsTab: React.FC<Props> = ({
   });
   // 등록 폼의 «구매자가 보는 문장»·칸 설명 — 브랜드 폼과 같은 한 벌(2026-10-05 Fable 설계 §4-C)
   const specCopy = useSellerSpecCopy(formData);
+  // 개시 재고 — 등록할 때만. 수량은 상품 행에 직접 쓰지 않고 Inventory 조정 기록으로 넣는다(2026-10-22 Fable 설계 D6).
+  const [openingStock, setOpeningStock] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [planLimit, setPlanLimit] = useState<PlanLimitError | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -572,6 +574,7 @@ const SupplierProductsTab: React.FC<Props> = ({
 
   const handleOpenModal = async (product?: SupplierProduct) => {
     setFormError(null);
+    setOpeningStock('');
     if (product) {
       // Refetch full detail to get optionGroups
       const detail = (await fetchProductDetail(product.id)) || product;
@@ -663,6 +666,8 @@ const SupplierProductsTab: React.FC<Props> = ({
           base_quantity: parseFloat(formData.base_quantity) || 1,
           // 기준단위(포장) — 빈 값은 서버가 null 로 저장 (utils/poLineSpec.normalizePackageUnit)
           package_unit: formData.package_unit.trim(),
+          // 2026-08-30 단위 주문 작업 때 빠져 등록은 400 · 수정한 가격은 저장 안 됐다 — 되살림(2026-10-22)
+          unit_price: unitPrice,
           order_mode: formData.order_mode,
           // ⛔ parseInt 금지 — measure 모드의 "최소 0.5kg" 이 1 로 잘린다 (utils/unitConversion)
           min_order_quantity: parseMinOrderQty(formData.min_order_quantity),
@@ -679,6 +684,20 @@ const SupplierProductsTab: React.FC<Props> = ({
       const data = await response.json();
 
       if (data.success) {
+        const opening = parseFloat(openingStock);
+        if (!editingProduct && data.data?.id && Number.isFinite(opening) && opening > 0) {
+          const adj = await fetch('/api/supplier-inventory/adjust', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ product_id: data.data.id, quantity_delta: opening, reason: 'Opening stock' })
+          }).then((r) => r.json()).catch(() => null);
+          if (!adj?.success) {
+            await fetchProducts();
+            setEditingProduct(data.data);
+            setFormError(t('products.openingStockFailed', 'Product saved, but the opening stock could not be recorded. Add it in Inventory.') as string);
+            return;
+          }
+        }
         handleCloseModal();
         await fetchProducts();
       } else if (data.code === 'PLAN_LIMIT_REACHED') {
@@ -1193,6 +1212,36 @@ const SupplierProductsTab: React.FC<Props> = ({
                 />
               </UIFormGroup>
             </FormGrid2>
+
+            {/* 재고 — 상품 행 자체가 재고다. 등록 때 개시 재고만 받고, 그 뒤 수량은 Inventory(조정·입고 기록)에서 바꾼다. */}
+            {!editingProduct ? (
+              <UIFormGroup>
+                <FormLabel>{t('products.fields.openingStock', { defaultValue: 'Opening stock ({{orderUnit}})', orderUnit: specCopy.orderUnit || formData.unit || '' })}</FormLabel>
+                <FormInput
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={openingStock}
+                  onChange={(e) => setOpeningStock(e.target.value)}
+                  placeholder="0"
+                />
+                <PriceMeaning>{specCopy.stockHint}</PriceMeaning>
+              </UIFormGroup>
+            ) : (
+              <UIFormGroup>
+                <FormLabel>{t('products.fields.currentStock', 'Current stock')}</FormLabel>
+                <PriceMeaning style={{ marginTop: 0 }}>
+                  {t('products.currentStockReadOnly', {
+                    defaultValue: '{{qty}} {{orderUnit}} — change it in Inventory (adjust or receive).',
+                    qty: Number(editingProduct.current_stock) || 0,
+                    orderUnit: specCopy.orderUnit || formData.unit || ''
+                  })}{' '}
+                  <a href="/pos/supplier/inventory" style={{ color: '#635BFF', textDecoration: 'underline' }} onClick={(e) => { e.preventDefault(); navigate('/pos/supplier/inventory'); }}>
+                    {t('products.openInventory', 'Open Inventory')}
+                  </a>
+                </PriceMeaning>
+              </UIFormGroup>
+            )}
 
             <UIFormGroup>
               <FormLabel>{t('products.fields.image', 'Product Image')}</FormLabel>

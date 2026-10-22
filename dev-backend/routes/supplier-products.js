@@ -763,13 +763,14 @@ router.put('/supplier-products/:productId', ...baseGates, async (req, res) => {
       }
       updates.lead_time_days = v;
     }
+    // 재고 수량은 여기서 쓰지 않는다 — 거래 기록 없이 수량이 바뀌던 문이었다(화면은 안 보냈다).
+    //   조정은 Inventory(`/supplier-inventory/adjust` · 입고 `/receive`)에서 기록과 함께 (2026-10-22 Fable 설계 D6).
     if (req.body.current_stock !== undefined) {
-      const v = parseFloat(req.body.current_stock);
-      if (!Number.isFinite(v) || v < 0) {
-        await t.rollback();
-        return res.status(400).json({ success: false, message: 'current_stock must be a non-negative number' });
-      }
-      updates.current_stock = v;
+      await t.rollback();
+      return res.status(400).json({
+        success: false, code: 'USE_INVENTORY_ADJUST',
+        message: 'Stock quantity is changed in Inventory (adjust or receive), not in the product form'
+      });
     }
     if (req.body.image_url !== undefined) updates.image_url = req.body.image_url || null;
     if (req.body.image_thumbnail !== undefined) updates.image_thumbnail = req.body.image_thumbnail || null;

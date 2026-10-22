@@ -789,7 +789,20 @@
     "marginNoCost": "원가 없음",
     "marginNoCostHint": "연결된 곳의 원가가 0이라 마진을 계산할 수 없습니다 — 공급업체 가격을 넣어 주세요",
     "marginNoConvert": "단위 환산 불가",
-    "marginNoConvertHint": "판매 단위({{from}})와 원가 단위({{to}})를 서로 바꿀 수 없어 마진을 계산할 수 없습니다"
+    "marginNoConvertHint": "판매 단위({{from}})와 원가 단위({{to}})를 서로 바꿀 수 없어 마진을 계산할 수 없습니다",
+    "siCostLabel": "{{spec}} 원가 (RM)",
+    "siCostHintSupplier": "공급업체 가격을 따릅니다(사는 기준 줄). 여기서 고친 값은 공급업체가 가격을 바꾸면 다시 바뀝니다.",
+    "siCostHintNone": "{{spec}}을(를) 사는 값입니다. 0 으로 두면 아래에서 공급업체를 연결할 때 그 가격이 들어옵니다.",
+    "siOpeningStockLabel": "개시 재고 ({{unit}})",
+    "siCurrentStockLabel": "현재 재고 ({{unit}})",
+    "siOpeningStockHint": "새 재고아이템에 {{unit}} 단위로 셉니다.",
+    "siCurrentStockHint": "재고아이템 «{{name}}» 에서 셉니다. 바꾸면 재고 기록에 조정 한 줄이 남습니다.",
+    "selfStockHint": "이 상품 자체에 셉니다. 재고아이템을 연결하거나 만들면 그쪽에서 셉니다.",
+    "selfStockWillClear": "이 상품에 자체 재고 {{qty}} 이(가) 있습니다. 저장하면 0 이 되고(기록 남음) 재고는 재고아이템에서 셉니다 — 아래 칸에 재고아이템 수량을 적어 주세요.",
+    "siCostFailed": "원가",
+    "siStockFailed": "재고",
+    "siSaveFailed": "상품은 저장됐지만 재고아이템 {{what}}은(는) 반영되지 않았습니다",
+    "stockItemExistsKeepsValues": "그 재고아이템의 재고·원가는 그대로입니다. Edit Product 에서 고칠 수 있습니다."
   },
   "brandIngredientsPage": {
     "subtitle": "재료의 유일한 목록입니다. 브랜드 공유를 켜면 레시피와 발주에서 쓸 수 있습니다."

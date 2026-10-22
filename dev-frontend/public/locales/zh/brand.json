@@ -789,7 +789,20 @@
     "marginNoCost": "无成本",
     "marginNoCostHint": "关联来源成本为 0，无法计算毛利 — 请填写供应商价格",
     "marginNoConvert": "单位无法换算",
-    "marginNoConvertHint": "销售单位（{{from}}）与成本单位（{{to}}）无法换算，无法计算毛利"
+    "marginNoConvertHint": "销售单位（{{from}}）与成本单位（{{to}}）无法换算，无法计算毛利",
+    "siCostLabel": "{{spec}} 的成本 (RM)",
+    "siCostHintSupplier": "跟随供应商价格（我们买 一行）。在此修改的值会在供应商改价时被替换。",
+    "siCostHintNone": "购买 {{spec}} 的价格。保留 0，在下方连接供应商时会填入其价格。",
+    "siOpeningStockLabel": "期初库存（{{unit}}）",
+    "siCurrentStockLabel": "当前库存（{{unit}}）",
+    "siOpeningStockHint": "在新库存项目中按 {{unit}} 计数。",
+    "siCurrentStockHint": "在库存项目「{{name}}」中计数。修改后会在库存记录中留下一条调整。",
+    "selfStockHint": "在此商品本身计数。连接或创建库存项目后，改在库存项目中计数。",
+    "selfStockWillClear": "此商品有自身库存 {{qty}}。保存后变为 0（留有记录），库存改在库存项目中计数——请在下方填写库存项目数量。",
+    "siCostFailed": "成本",
+    "siStockFailed": "库存",
+    "siSaveFailed": "商品已保存，但库存项目的{{what}}未能更新",
+    "stockItemExistsKeepsValues": "该库存项目的库存和成本保持不变。可在 Edit Product 中修改。"
   },
   "brandIngredientsPage": {
     "subtitle": "唯一的食材清单。开启品牌共享后即可用于配方与采购。"

@@ -23,6 +23,7 @@ import { renderIframeToPdf } from '../../utils/invoicePdf';
 import { useAuth } from '../../contexts/AuthContext';
 import { isOwnerRole, withOwnerPoScope } from '../../utils/ownerPoScope';
 import AlertDialog from '../../components/Common/AlertDialog';
+import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { getCurrencySymbol } from '../../utils/currency';
 import { reconcileGap, formatGap, gapColor } from '../../utils/reconcileGap';
 
@@ -150,6 +151,8 @@ interface PODetail {
   /** 매장 품목 수정 가능 여부 — 서버 utils/poAmend.buyerAmendBlock 판정(2026-10-15 buyer-po-edit). 상태 목록을 화면에 두지 않는다. */
   /** 앱을 안 쓰는 외부 공급업체 — 상세 API(utils/sellerNames.isExternalSeller) */
   is_external?: boolean;
+  /** 오너 승인취소 가능 — 서버 revoke-approval 라우트와 같은 판정(utils/poOwnerApproval.canRevokeApproval) */
+  approval_revocable?: boolean;
   can_amend?: boolean;
   amend_blocked?: string | null;
   tracking_number?: string | null;
@@ -551,6 +554,8 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   const [shippedOpen, setShippedOpen] = useState(false);
   const [trackingNo, setTrackingNo] = useState('');
   const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
+  // 오너 승인취소 확인창 (2026-10-22 Fable 설계 owner-po-approval-revoke)
+  const [revokeOpen, setRevokeOpen] = useState(false);
   const [shippedError, setShippedError] = useState<string | null>(null);
   const [shippedSubmitting, setShippedSubmitting] = useState(false);
 
@@ -934,6 +939,28 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   };
 
   // Cancel
+  // 오너 승인취소 — 발주를 «승인 전» 으로 되돌린다. fetchAPI 는 실패 본문을 버리므로 직접 fetch.
+  const handleRevokeApproval = async () => {
+    if (!detail) return;
+    setRevokeOpen(false);
+    try {
+      const res = await fetch(`/api/purchase-orders/${detail.id}/revoke-approval`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        setAlertDlg({ title: t('ownerApprovals.revokeFailed') as string, message: data.message || (t('ownerApprovals.actionFailed') as string) });
+        return;
+      }
+      setAlertDlg({ title: t('ownerApprovals.revokeTitle') as string, message: t('ownerApprovals.revoked') as string });
+      await fetchDetail();
+    } catch {
+      setAlertDlg({ title: t('ownerApprovals.revokeFailed') as string, message: t('ownerApprovals.actionFailed') as string });
+    }
+  };
+
   const openCancel = () => {
     setCancelReason('');
     setCancelError(null);
@@ -1178,6 +1205,11 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
           {detail.can_amend === true && (
             <ThemedButton variant="outline" onClick={() => setEditItemsOpen(true)}>
               {t('detail.actions.editItems', 'Edit items')}
+            </ThemedButton>
+          )}
+          {detail.approval_revocable === true && (
+            <ThemedButton variant="danger-outline" onClick={() => setRevokeOpen(true)}>
+              {t('ownerApprovals.revoke')}
             </ThemedButton>
           )}
           {['draft', 'submitted', 'pending_approval'].includes(s) && (
@@ -2009,6 +2041,15 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
         onClose={() => setAlertDlg(null)}
         title={alertDlg?.title || ''}
         message={alertDlg?.message || ''}
+      />
+      <ConfirmDialog
+        isOpen={revokeOpen}
+        onClose={() => setRevokeOpen(false)}
+        onConfirm={handleRevokeApproval}
+        title={t('ownerApprovals.revokeTitle') as string}
+        message={detail ? t(detail.is_external ? 'ownerApprovals.revokeConfirmExternal' : 'ownerApprovals.revokeConfirmRegistered', { po: detail.po_number }) as string : ''}
+        variant="warning"
+        confirmText={t('ownerApprovals.revoke') as string}
       />
     </Outer>
   );

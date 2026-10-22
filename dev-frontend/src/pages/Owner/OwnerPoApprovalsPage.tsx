@@ -22,6 +22,7 @@ import { formatQuantity } from '../../utils/unitConversion';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
 import { sharePoViaWhatsApp, sharePoViaEmail } from '../../utils/poShare';
 import { setOwnerPoRestaurantId } from '../../utils/ownerPoScope';
+import OwnerPoTabs from '../../components/PurchaseOrders/OwnerPoTabs';
 
 interface PendingPO {
   id: number;
@@ -257,6 +258,7 @@ const OwnerPoApprovalsPage: React.FC = () => {
       </Header>
 
       <Content>
+        <OwnerPoTabs active="pending" pendingCount={pendingCount} />
         <StatsGrid>
           <StatCard>
             <StatValue>{pendingCount}</StatValue>

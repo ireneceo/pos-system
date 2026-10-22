@@ -68,7 +68,8 @@
       "leadTimeDays": "리드 타임 (일)",
       "isActive": "활성화",
       "orderMode": "주문 방식",
-      "baseQuantityHint": "포대·박스로 팔면 Unit 에는 내용물 단위(kg·g), Base Qty 에는 그 양(예: 5)을 넣으세요"
+      "baseQuantityHint": "포대·박스로 팔면 Unit 에는 내용물 단위(kg·g), Base Qty 에는 그 양(예: 5)을 넣으세요",
+      "openingStock": "개시 재고 ({{orderUnit}})"
     },
     "categoryManagement": "카테고리 관리",
     "optionGroups": "옵션 그룹",
@@ -91,7 +92,10 @@
     },
     "optionsEmptyHint": "옵션은 양이 바뀌지 않는 선택입니다 — 손질·등급·숙성·브랜드. 포장이나 용량이 다르면(1 kg / 5 kg, 1팩 / 20팩 카톤) 옵션 대신 상품을 따로 추가하세요.",
     "optionGroupHint": "옵션은 양이 바뀌지 않는 선택(손질·등급·숙성·브랜드)에만 쓰세요. 포장·용량이 다르면(1 kg / 5 kg, 1팩 / 20팩 카톤) 상품을 따로 등록합니다 — 규격과 가격이 각자 들어갑니다.",
-    "optionGroupPlaceholder": "예: 손질 방식, 등급, 숙성"
+    "optionGroupPlaceholder": "예: 손질 방식, 등급, 숙성",
+    "currentStockReadOnly": "{{qty}} {{orderUnit}} — 수량은 Inventory 에서 바꿉니다(조정·입고).",
+    "openInventory": "Inventory 열기",
+    "openingStockFailed": "상품은 저장됐지만 개시 재고는 기록되지 않았습니다. Inventory 에서 넣어 주세요."
   },
   "inventory": {
     "title": "재고 관리",

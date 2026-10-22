@@ -11,6 +11,7 @@
  *   GET  /purchase-orders/pending-approval        — 오너 승인 대기 큐
  *   POST /purchase-orders/:id/approve             — 승인 → submitted (판매자 통지)
  *   POST /purchase-orders/:id/reject              — 반려 → draft (사유)
+ *   POST /purchase-orders/:id/revoke-approval     — 승인취소 → pending_approval (2026-10-22 Fable 설계)
  */
 const express = require('express');
 const router = express.Router();
@@ -20,12 +21,13 @@ const { PurchaseOrder, PurchaseOrderItem, Restaurant } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
-const { resolveOwnerRestaurantIds } = require('../utils/poOwnerApproval');
+const { resolveOwnerRestaurantIds, canRevokeApproval } = require('../utils/poOwnerApproval');
 const { resolveSellers, getSellerName, isExternalSeller } = require('../utils/sellerNames');
 const {
   fireSellerSubmittedNotification,
   fireBuyerConfirmNotification,
-  fireOwnerApprovalResultNotification
+  fireOwnerApprovalResultNotification,
+  fireSellerApprovalRevokedNotification
 } = require('../services/poNotifications');
 
 /**
@@ -199,6 +201,78 @@ router.post('/purchase-orders/:id/reject', authenticateToken, requireOwnerScope,
     if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
     console.error('POST /api/purchase-orders/:id/reject error:', err);
     res.status(500).json({ success: false, message: 'Failed to reject purchase order' });
+  }
+});
+
+// ============================================
+// POST /purchase-orders/:id/revoke-approval — 승인취소 → pending_approval
+// 발주를 죽이지 않고 «승인 전» 으로 되돌린다(취소는 기존 cancel). 판정은 canRevokeApproval 하나 —
+// 외부 = 받기 전 전부 · 가입 = 판매자 확인 전 · 결제·수령된 발주 불가. 재고·돈 이동 0.
+// 되돌린 발주는 기존 approve/reject 로 그대로 이어진다. (2026-10-22 Fable 설계 owner-po-approval-revoke)
+// ============================================
+const REVOKE_MESSAGES = {
+  NOT_APPROVED: 'This order did not go through owner approval',
+  PAID: 'Already paid — reverse the payment first',
+  RECEIVED: 'Goods already received — use the returns flow',
+  SELLER_CONFIRMED: 'The supplier has already confirmed this order',
+  BAD_STATUS: 'Approval cannot be revoked in this status'
+};
+
+router.post('/purchase-orders/:id/revoke-approval', authenticateToken, requireOwnerScope, async (req, res) => {
+  let po;
+  let isExternal = false;
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Purchase order not found' });
+
+    const reason = sanitizeString(req.body && req.body.reason ? String(req.body.reason) : '').trim().slice(0, 1000);
+
+    po = await database.sequelize.transaction(async (t) => {
+      const locked = await PurchaseOrder.findByPk(id, {
+        lock: t.LOCK.UPDATE,
+        include: [{ model: PurchaseOrderItem, as: 'items' }],
+        transaction: t
+      });
+      if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!ownsPO(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+
+      const sellerMap = await resolveSellers([locked]);
+      isExternal = isExternalSeller(sellerMap, locked.seller_type, locked.seller_entity_id);
+      const verdict = canRevokeApproval(locked, isExternal);
+      if (!verdict.ok) {
+        const e = new Error(REVOKE_MESSAGES[verdict.code] || REVOKE_MESSAGES.BAD_STATUS);
+        e.code = 'NOT_REVOKABLE'; e.reasonCode = verdict.code; throw e;
+      }
+
+      const tracking = appendTrackingEvent(locked, 'pending_approval',
+        `Approval revoked by Owner${reason ? ': ' + reason.slice(0, 200) : ''}`, null,
+        {
+          approval_revoked: true,
+          status_before: locked.status,
+          approved_at_before: locked.approved_at,
+          approved_by_before: locked.approved_by_user_id,
+          by_user_id: req.user.id
+        });
+      await locked.update({
+        status: 'pending_approval',
+        approval_required: true,
+        approved_at: null,
+        approved_by_user_id: null,
+        tracking_info: tracking
+      }, { transaction: t });
+      return locked;
+    });
+
+    emitPoEvent(req, po, 'seller-order-updated');
+    if (!isExternal) setImmediate(() => fireSellerApprovalRevokedNotification(po));
+    setImmediate(() => fireOwnerApprovalResultNotification(po, { approved: false, revoked: true, reason }));
+
+    res.json({ success: true, data: po });
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    if (err.code === 'NOT_REVOKABLE') return res.status(400).json({ success: false, code: err.reasonCode, message: err.message });
+    console.error('POST /api/purchase-orders/:id/revoke-approval error:', err);
+    res.status(500).json({ success: false, message: 'Failed to revoke approval' });
   }
 });
 

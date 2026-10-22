@@ -682,7 +682,17 @@
     "approvedBadge": "Approved",
     "justApprovedExternal": "Just approved — this supplier doesn't use the app. Send the order via WhatsApp, PDF or email. Later you can also send it from the order details.",
     "justApprovedSystem": "Just approved — the order was delivered to the supplier's app.",
-    "editedBadge": "Edited · awaiting re-approval"
+    "editedBadge": "Edited · awaiting re-approval",
+    "tabPending": "Awaiting approval",
+    "tabApproved": "Approved",
+    "approvedOnly": "Approved only",
+    "approvedOnlyHint": "Orders that went through your approval. Turn off to see every order, including ones you placed yourself.",
+    "revoke": "Revoke approval",
+    "revokeTitle": "Revoke Approval",
+    "revokeConfirmExternal": "Revoke the approval of \"{{po}}\"? The order goes back to awaiting approval. If you already sent it by WhatsApp or email, please let the supplier know yourself.",
+    "revokeConfirmRegistered": "Revoke the approval of \"{{po}}\"? The order goes back to awaiting approval and is removed from the supplier's app (the supplier is notified).",
+    "revoked": "Approval revoked — the order is awaiting approval again.",
+    "revokeFailed": "Could not revoke the approval."
   },
   "newPo.viewMode": "View mode",
   "newPo.viewCard": "Card",

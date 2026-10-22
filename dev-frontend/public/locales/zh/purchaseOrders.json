@@ -682,7 +682,17 @@
     "approvedBadge": "已批准",
     "justApprovedExternal": "刚刚批准 — 该供应商不使用本应用。请通过 WhatsApp、PDF 或电子邮件发送订单。之后也可在采购单详情中发送。",
     "justApprovedSystem": "刚刚批准 — 订单已传送到供应商的应用。",
-    "editedBadge": "已修改 · 等待重新审批"
+    "editedBadge": "已修改 · 等待重新审批",
+    "tabPending": "待批准",
+    "tabApproved": "已批准",
+    "approvedOnly": "仅已批准",
+    "approvedOnlyHint": "只显示经您批准的采购单。关闭后可看到全部，包括您自己下的单。",
+    "revoke": "撤销批准",
+    "revokeTitle": "撤销批准",
+    "revokeConfirmExternal": "撤销 \"{{po}}\" 的批准？采购单将回到待批准状态。如果您已通过 WhatsApp 或电子邮件发送，请自行通知供应商。",
+    "revokeConfirmRegistered": "撤销 \"{{po}}\" 的批准？采购单将回到待批准状态，并从供应商应用中移除（会通知供应商）。",
+    "revoked": "已撤销批准 — 采购单重新等待批准。",
+    "revokeFailed": "无法撤销批准。"
   },
   "newPo.viewMode": "显示方式",
   "newPo.viewCard": "卡片",

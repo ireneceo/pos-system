@@ -151,14 +151,14 @@ async function fireOwnerApprovalPendingNotification(po) {
 }
 
 /** 오너가 발주를 승인/반려 — 발주 작성자에게 결과 통지. */
-async function fireOwnerApprovalResultNotification(po, { approved, reason }) {
+async function fireOwnerApprovalResultNotification(po, { approved, revoked = false, reason }) {
   try {
     if (!po.created_by_user_id) return;
     const { poApprovalResultEmail } = require('../utils/notificationTemplates');
     const { loadPoEmailItems } = require('../utils/poEmailItems');
     // 승인됐어도 외부 공급업체에는 시스템이 보내지 않는다 — «판매자에게 전달됨» 거짓 문구 방지
     let isExternal = false;
-    if (approved) {
+    if (approved || revoked) {
       try {
         const { resolveSellers, isExternalSeller } = require('../utils/sellerNames');
         const map = await resolveSellers([{ seller_type: po.seller_type, seller_entity_id: po.seller_entity_id }]);
@@ -168,6 +168,7 @@ async function fireOwnerApprovalResultNotification(po, { approved, reason }) {
     const args = {
       poNumber: po.po_number,
       approved: !!approved,
+      revoked: !!revoked,
       isExternal,
       reason: reason || '',
       currency: po.currency || 'MYR',
@@ -286,7 +287,49 @@ async function fireSellerAmendedByBuyerNotification(po, { changes = [], reason =
   }
 }
 
+/**
+ * 오너가 승인을 취소했다 — **가입 판매자**에게 «이 주문은 다시 승인 대기, 처리하지 말 것» 통지
+ * (2026-10-22 Fable 설계 owner-po-approval-revoke §1-2). 수신자 해석·'en' 고정은 위 buyer-amended 메일과 같다.
+ * 외부 공급업체는 호출부가 부르지 않는다(계정 없음).
+ */
+async function fireSellerApprovalRevokedNotification(po) {
+  try {
+    let userIds = [];
+    if (po.seller_type === 'supplier' && po.seller_entity_id) {
+      userIds = await getSupplierAdminIds(po.seller_entity_id);
+    } else if (po.seller_type === 'brand' && po.seller_entity_id) {
+      userIds = await getBrandManagerIds(po.seller_entity_id);
+    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id) {
+      userIds = await getFoodcourtManagerIds(po.seller_entity_id);
+    }
+    if (userIds.length === 0) {
+      console.log(`[notify] approval_revoked po=${po.po_number} seller=${po.seller_type}:${po.seller_entity_id} recipients=none`);
+      return;
+    }
+    const { wrapTemplate } = require('../utils/notificationTemplates');
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const buyerName = await resolveBuyerName(po);
+    const html = wrapTemplate(
+      'Order Withdrawn for Re-approval',
+      `<p style="color:#374151;font-size:16px;margin:0 0 16px;"><strong>${esc(buyerName || 'The buyer')}</strong> withdrew purchase order <strong>${esc(po.po_number)}</strong> pending owner re-approval.</p>
+       <p style="color:#374151;font-size:14px;margin:0 0 20px;">Please do not fulfil it until it is sent to you again.</p>
+       <div style="text-align:center;margin:24px 0;"><a href="${FRONTEND_URL}/pos/seller-orders" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Orders</a></div>`,
+      'en'
+    );
+    const _brandingEntity = sellerBrandingEntity(po);
+    await sendNotificationBatch(userIds, 'seller_order_received', () => ({
+      subject: `Order Withdrawn: ${po.po_number}`,
+      html,
+      text: `${buyerName || 'The buyer'} withdrew purchase order ${po.po_number} pending owner re-approval — do not fulfil it until it is re-sent.`,
+      _brandingEntity
+    }));
+  } catch (e) {
+    console.error('[poNotifications] fireSellerApprovalRevokedNotification error:', e.message);
+  }
+}
+
 module.exports = {
+  fireSellerApprovalRevokedNotification,
   fireSellerAmendedByBuyerNotification,
   resolveBuyerName,
   fireSellerSubmittedNotification,

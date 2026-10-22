@@ -789,7 +789,20 @@
     "marginNoCost": "Tiada kos",
     "marginNoCostHint": "Sumber yang dipaut tiada kos, margin tidak dapat dikira — masukkan harga pembekal",
     "marginNoConvert": "Unit tidak boleh ditukar",
-    "marginNoConvertHint": "Unit jualan ({{from}}) dan unit kos ({{to}}) tidak boleh ditukar, margin tidak dapat dikira"
+    "marginNoConvertHint": "Unit jualan ({{from}}) dan unit kos ({{to}}) tidak boleh ditukar, margin tidak dapat dikira",
+    "siCostLabel": "Kos {{spec}} (RM)",
+    "siCostHintSupplier": "Mengikut harga pembekal (baris Kita beli). Nilai yang diubah di sini akan diganti apabila pembekal mengubah harga.",
+    "siCostHintNone": "Harga yang anda bayar untuk {{spec}}. Biarkan 0 dan harga pembekal akan masuk apabila anda menyambung pembekal di bawah.",
+    "siOpeningStockLabel": "Stok pembukaan ({{unit}})",
+    "siCurrentStockLabel": "Stok semasa ({{unit}})",
+    "siOpeningStockHint": "Dikira pada item stok baharu dalam {{unit}}.",
+    "siCurrentStockHint": "Dikira pada item stok «{{name}}». Perubahan menambah satu baris pelarasan dalam sejarah stoknya.",
+    "selfStockHint": "Dikira pada produk ini sendiri. Pautkan atau cipta item stok dan ia dikira di sana.",
+    "selfStockWillClear": "Produk ini mempunyai stok sendiri sebanyak {{qty}}. Menyimpan akan menjadikannya 0 (direkodkan) — stok kemudian dikira pada item stok. Masukkan kuantiti item stok di bawah.",
+    "siCostFailed": "kos",
+    "siStockFailed": "stok",
+    "siSaveFailed": "Produk disimpan, tetapi {{what}} item stok tidak dapat dikemas kini",
+    "stockItemExistsKeepsValues": "Stok dan kos item stok itu kekal. Anda boleh mengubahnya dalam Edit Product."
   },
   "brandIngredientsPage": {
     "subtitle": "Senarai bahan tunggal. Hidupkan perkongsian jenama untuk guna dalam resipi dan pesanan."

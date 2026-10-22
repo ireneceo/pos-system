@@ -112,7 +112,11 @@
       "reason": "사유",
       "cta": "발주 보기",
       "textFallback": "발주 {{poNumber}}: {{result}}.",
-      "bodyApprovedExternal": "발주가 승인되었습니다. 이 공급업체는 앱을 쓰지 않아 <strong>자동으로 보내지 않았습니다</strong> — 발주 상세에서 WhatsApp·PDF·이메일로 보내 주세요."
+      "bodyApprovedExternal": "발주가 승인되었습니다. 이 공급업체는 앱을 쓰지 않아 <strong>자동으로 보내지 않았습니다</strong> — 발주 상세에서 WhatsApp·PDF·이메일로 보내 주세요.",
+      "subjectRevoked": "승인 취소: 발주 {{poNumber}}",
+      "headingRevoked": "승인이 취소되었습니다",
+      "bodyRevoked": "오너가 이 발주의 승인을 취소했습니다. 다시 승인 대기 중입니다.",
+      "bodyRevokedExternal": "오너가 이 발주의 승인을 취소했습니다. 다시 승인 대기 중입니다. 이미 WhatsApp·PDF·이메일로 공급업체에 보냈다면 공급업체에 알려 주세요."
     },
     "buyerConfirm": {
       "subject": "발주 완료: {{poNumber}}",

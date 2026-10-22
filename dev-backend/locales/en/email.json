@@ -112,7 +112,11 @@
       "reason": "Reason",
       "cta": "View Order",
       "textFallback": "Purchase order {{poNumber}}: {{result}}.",
-      "bodyApprovedExternal": "Your purchase order has been approved. This supplier doesn't use the app, so it has <strong>not been sent</strong> — send it via WhatsApp, PDF or email from the order details."
+      "bodyApprovedExternal": "Your purchase order has been approved. This supplier doesn't use the app, so it has <strong>not been sent</strong> — send it via WhatsApp, PDF or email from the order details.",
+      "subjectRevoked": "Approval revoked: PO {{poNumber}}",
+      "headingRevoked": "Approval Revoked",
+      "bodyRevoked": "The owner revoked the approval of this purchase order. It is awaiting approval again.",
+      "bodyRevokedExternal": "The owner revoked the approval of this purchase order. It is awaiting approval again. If you already sent it to the supplier by WhatsApp, PDF or email, please let them know."
     },
     "buyerConfirm": {
       "subject": "Order placed: PO {{poNumber}}",
