@@ -61,7 +61,7 @@
     "i18n:verify": "node scripts/verify-translations.js",
     "check:hydration": "node scripts/state-hydration-check.js",
     "start": "react-scripts start",
-    "build": "GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=2560' react-scripts build",
+    "build": "GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=2560' node scripts/react-build.js",
     "build:dev": "./deploy-dev.sh",
     "build:prod": "NODE_OPTIONS='--max-old-space-size=1024' react-scripts --max_old_space_size=1024 build && ./deploy.sh",
     "deploy:dev": "./deploy-dev.sh",

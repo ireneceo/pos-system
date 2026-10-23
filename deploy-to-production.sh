@@ -592,6 +592,12 @@ cd $SRC_FRONTEND
 npm run build:dev > /tmp/build.log 2>&1 || {
     error "Frontend build failed. Check /tmp/build.log"
 }
+# 빌드 안의 node 가 메모리로 죽어도 react-scripts 는 «Compiled with warnings» 로 exit 0 을 낼 수 있다
+#   (2026-10-23 실측: 타입 검사기 SIGABRT 뒤 번들이 그대로 나옴). 그런 빌드는 «통과» 가 아니다.
+if grep -qE "heap out of memory|RpcIpcMessagePortClosedError|Ineffective mark-compacts" /tmp/build.log; then
+    grep -nE "heap out of memory|RpcIpcMessagePortClosedError|Ineffective mark-compacts" /tmp/build.log | head -5
+    error "빌드 중 node 가 메모리 부족으로 죽음(위 줄) — exit 0 이어도 실패로 본다. 다른 무거운 작업이 끝난 뒤 재배포. Check /tmp/build.log"
+fi
 success "Frontend built successfully (clean source)"
 
 # ──────────────────────────────────────────
