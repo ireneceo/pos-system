@@ -23,6 +23,8 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { costPerBaseText } from '../../utils/costDisplay';
 import { getAuthToken } from '../../utils/auth';
+import { useStore } from '../../contexts/StoreContext';
+import { formatDate } from '../../utils/dateFormat';
 import SimilarNameDialog, { SimilarCandidate, candidatesFrom409 } from '../../components/UI/SimilarNameDialog';
 interface IngredientsTabProps {
   brandId: number | null;
@@ -68,6 +70,7 @@ interface Ingredient {
   brand_product_id: number | null;
   code: string | null;
   name: string;
+  created_at?: string;
   image_url: string | null;
   category: string;
   unit: string;
@@ -490,6 +493,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   // 다섯 칸(§2-2) 라벨은 BG 화면과 **같은 i18n 키**를 쓴다 — 문구를 복사하면 곧 갈라진다(2026-09-06).
   const { t } = useTranslation(['purchaseOrders', 'common', 'brand', 'ingredients']);
   const { user } = useAuth();
+  const { operationSettings } = useStore();
   const { defaultCurrency } = useBrandCurrency();
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
@@ -1424,6 +1428,13 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   <InfoRow>
                     <InfoLabel>{'Code'}</InfoLabel>
                     <InfoValue>{ingredient.code}</InfoValue>
+                  </InfoRow>
+                )}
+                {/* 등록일 — 스톡아이템 관리용(2026-10-23 Irene «스톡아이템 리스트에 등록한 날짜로 알려줘 … 모든 역할에»). 매장 타임존 기준. */}
+                {ingredient.created_at && (
+                  <InfoRow>
+                    <InfoLabel>{t('ingredients:stock.addedOn', 'Added on')}</InfoLabel>
+                    <InfoValue>{formatDate(ingredient.created_at, operationSettings?.timeZone)}</InfoValue>
                   </InfoRow>
                 )}
               </IngredientInfo>

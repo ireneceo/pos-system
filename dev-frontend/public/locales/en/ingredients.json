@@ -7,6 +7,7 @@
     "pickSellerProduct": "Link supplier product",
     "createSellerProduct": "Create supplier product",
     "alsoSellAsProduct": "Also sell as product",
-    "alreadyProduct": "Sold as"
+    "alreadyProduct": "Sold as",
+    "addedOn": "Added on"
   }
 }

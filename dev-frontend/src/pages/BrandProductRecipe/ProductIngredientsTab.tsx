@@ -22,6 +22,8 @@ import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { sellerSpecLabel, stockSpecLabel, PACKAGE_UNIT_SUGGESTIONS, withCurrentUnit } from '../../utils/unitConversion';
 
 import { getAuthToken } from '../../utils/auth';
+import { useStore } from '../../contexts/StoreContext';
+import { formatDate } from '../../utils/dateFormat';
 interface ProductIngredientsTabProps {
   brandId?: number | null;
   onCountChange?: (count: number) => void;
@@ -40,6 +42,7 @@ interface Ingredient {
   sold_as_product?: { id: number; name: string } | null;
   code: string;
   name: string;
+  created_at?: string;
   category_id: number | null;
   category?: Category;
   image_url: string | null;
@@ -386,6 +389,7 @@ const SWITCHABLE_USES = new Set<IngredientUse['type']>(['brand_recipe', 'product
 const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, onCountChange, categoryRefreshKey }) => {
   const { t } = useTranslation(['brand', 'common', 'ingredients']);
   const { defaultCurrency } = useBrandCurrency();
+  const { operationSettings } = useStore();
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const navigate = useNavigate();
   // 삭제가 막혔을 때 «어디서 쓰는지» 를 보여주고 그 자리로 보내 준다 (2026-09-12 · Irene 「연결된 레시피 보러가기」)
@@ -1021,6 +1025,13 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                   <InfoRow>
                     <InfoLabel>{'Code'}</InfoLabel>
                     <InfoValue>{ingredient.code}</InfoValue>
+                  </InfoRow>
+                )}
+                {/* 등록일 — 스톡아이템 관리용(2026-10-23 Irene «스톡아이템 리스트에 등록한 날짜로 알려줘 … 모든 역할에»). 매장 타임존 기준. */}
+                {ingredient.created_at && (
+                  <InfoRow>
+                    <InfoLabel>{t('ingredients:stock.addedOn', 'Added on')}</InfoLabel>
+                    <InfoValue>{formatDate(ingredient.created_at, operationSettings?.timeZone)}</InfoValue>
                   </InfoRow>
                 )}
                 {/* 이 재고아이템을 쓰는 레시피 — 프로덕트 레시피 + (거울 경유) 브랜드 레시피
