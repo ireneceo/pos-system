@@ -5,6 +5,7 @@ const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const { sendNotification } = require('../utils/notificationService');
+const { getInboxRestaurantIds } = require('../utils/inquiryTargets');
 const { inquiryReceivedEmail, ticketStatusChangedEmail } = require('../utils/notificationTemplates');
 
 // All routes require authentication
@@ -18,32 +19,14 @@ router.get('/', async (req, res) => {
 
     if (userRole === 'Foodcourt General' || userRole === 'Foodcourt Manager') {
       // Foodcourt managers see all foodcourt inquiries from their restaurants
-      const restaurants = await Restaurant.findAll({
-        include: [{
-          model: User,
-          as: 'managers',
-          where: { id: userId },
-          attributes: []
-        }],
-        attributes: ['id']
-      });
-      const restaurantIds = restaurants.map(r => r.id);
+      const restaurantIds = await getInboxRestaurantIds(userId, 'foodcourt');
       whereClause = {
         restaurantId: { [Op.in]: restaurantIds },
         inquiryType: 'foodcourt'
       };
     } else if (userRole === 'Brand General' || userRole === 'Brand Manager') {
       // Brand managers see all brand inquiries from their restaurants
-      const restaurants = await Restaurant.findAll({
-        include: [{
-          model: User,
-          as: 'managers',
-          where: { id: userId },
-          attributes: []
-        }],
-        attributes: ['id']
-      });
-      const restaurantIds = restaurants.map(r => r.id);
+      const restaurantIds = await getInboxRestaurantIds(userId, 'brand');
       whereClause = {
         restaurantId: { [Op.in]: restaurantIds },
         inquiryType: 'brand'

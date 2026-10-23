@@ -9,62 +9,11 @@ import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/UI/Button';
 import { attendanceApi, StaffProfile } from './attendanceApi';
-import { Card, CardTitle, Muted, Row, Spacer, Badge } from './attendanceStyles';
+import { Card, CardTitle, Muted, Row, Spacer, Badge, Steps, Step, Num, StepBody, StepTitle, StepActions } from './attendanceStyles';
 
 interface Props { restaurantId: string; onOpenTab: (tab: 'leave' | 'settings') => void; }
 
 const COLLAPSE_KEY = 'attendance.guide.collapsed';
-
-const Steps = styled.ol`
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 10px;
-`;
-
-const Step = styled.li<{ attention?: boolean }>`
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid ${p => (p.attention ? '#FCD34D' : '#E5E7EB')};
-  background: ${p => (p.attention ? '#FFFBEB' : '#F9FAFB')};
-  @media (max-width: 640px) { flex-wrap: wrap; }
-`;
-
-const Num = styled.span<{ done?: boolean }>`
-  flex: 0 0 26px;
-  height: 26px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  color: ${p => (p.done ? '#FFFFFF' : '#635BFF')};
-  background: ${p => (p.done ? '#10B981' : '#EEF2FF')};
-`;
-
-const StepBody = styled.div`
-  flex: 1;
-  min-width: 200px;
-`;
-
-const StepTitle = styled.div`
-  font-size: 14px;
-  font-weight: 600;
-  color: #0A2540;
-  margin-bottom: 2px;
-`;
-
-const StepActions = styled.div`
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  align-self: center;
-`;
 
 const MenuPath = styled.span`
   font-weight: 600;
@@ -89,7 +38,11 @@ const AttendanceGuide: React.FC<Props> = ({ restaurantId, onOpenTab }) => {
     if (p.ok) setStaff(p.data || []);
     if (s.ok) setNetworkOn(!!s.data?.network_restriction);
   }, [restaurantId]);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    window.addEventListener('attendance:settings-saved', load);
+    return () => window.removeEventListener('attendance:settings-saved', load);
+  }, [load]);
 
   // 관리자 본인(Restaurant Admin)도 목록에 오므로 «직원» 은 Staff 역할만 센다.
   const staffOnly = (staff || []).filter(s => s.role === 'Staff');
@@ -158,8 +111,13 @@ const AttendanceGuide: React.FC<Props> = ({ restaurantId, onOpenTab }) => {
             <StepBody>
               <StepTitle>{t('guide.step3Title', 'Staff clock in and out')}</StepTitle>
               <Muted>
-                {t('guide.step3Phone', 'On their own phone: log in and open')} <MenuPath>{t('guide.myMenuPath', 'Team & Marketing › My Attendance')}</MenuPath>.{' '}
-                {t('guide.step3Tablet', 'On the store tablet: open')} <MenuPath>{t('guide.timeClockMenu', 'Time Clock')}</MenuPath> {t('guide.step3TabletEnd', 'in the left menu and type the 4-digit PIN.')}
+                <strong>{t('guide.step3TabletLead', 'Store tablet (Time Clock):')}</strong>{' '}
+                {t('guide.step3TabletA', 'a manager logs in on the tablet once, opens')} <MenuPath>{t('guide.timeClockMenu', 'Time Clock')}</MenuPath>{' '}
+                {t('guide.step3TabletB', 'in the left menu (under POS Terminal — it opens in a new full-screen window) and leaves it open. Staff only type their 4-digit PIN there — they do not log in.')}
+              </Muted>
+              <Muted style={{ marginTop: 4 }}>
+                <strong>{t('guide.step3PhoneLead', 'Own phone:')}</strong>{' '}
+                {t('guide.step3PhoneA', 'staff log in with their own account and open')} <MenuPath>{t('guide.myMenuPath', 'Team & Marketing › My Attendance')}</MenuPath>.
               </Muted>
             </StepBody>
             <StepActions>

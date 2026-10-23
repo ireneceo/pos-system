@@ -381,9 +381,10 @@ const OperationInquiryPage: React.FC = () => {
         const data = await response.json();
         console.log('Restaurant data:', data);
 
-        // Extract managers from restaurant data
-        if (data.managers && data.managers.length > 0) {
-          setManagers(data.managers);
+        // 문의 대상 = 감독·소유 연결 + 브랜드·푸드코트 주인(inquiry_targets). `managers` 는 감독 줄만이라 오너가 빠진다
+        const targets = data.inquiry_targets || data.managers;
+        if (targets && targets.length > 0) {
+          setManagers(targets);
         } else {
           console.warn('No managers found for restaurant');
         }

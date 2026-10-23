@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/UI/Button';
 import { formatTime } from '../../utils/dateFormat';
 import { attendanceApi, AttendanceRecord, formatMinutes } from './attendanceApi';
+import NetworkStatus from './NetworkStatus';
 
 const Screen = styled.div`
   min-height: 100vh;
@@ -99,6 +100,13 @@ const Msg = styled.div<{ tone?: 'ok' | 'err' }>`
   color: ${p => (p.tone === 'err' ? '#B91C1C' : p.tone === 'ok' ? '#047857' : 'inherit')};
 `;
 
+const Help = styled.div`
+  font-size: 13px;
+  color: var(--pos-text-muted, #425466);
+  line-height: 1.5;
+  margin: -2px 0 6px;
+`;
+
 type Step = 'pin' | 'confirm' | 'admin' | 'done';
 
 const TimeClockPage: React.FC = () => {
@@ -113,11 +121,12 @@ const TimeClockPage: React.FC = () => {
   const [person, setPerson] = useState<{ id: number; name: string; open: AttendanceRecord | null } | null>(null);
   const [message, setMessage] = useState<{ tone?: 'ok' | 'err'; text: string } | null>(null);
   const [disabled, setDisabled] = useState(false);
+  const [onStoreNetwork, setOnStoreNetwork] = useState<boolean | null>(null);
   const resetTimer = useRef<number | null>(null);
 
   useEffect(() => {
     attendanceApi(restaurantId, '/me/status').then(r => {
-      if (r.ok) { setTz(r.data.time_zone); setDisabled(!r.data.settings.allow_pos_pin_clock); }
+      if (r.ok) { setTz(r.data.time_zone); setDisabled(!r.data.settings.allow_pos_pin_clock); setOnStoreNetwork(r.data.on_store_network ?? null); }
     });
     const id = window.setInterval(() => setNow(new Date()), 10000);
     return () => window.clearInterval(id);
@@ -177,6 +186,8 @@ const TimeClockPage: React.FC = () => {
       return;
     }
     const rec = r.data.record;
+    // 관리자 PIN 으로 통과하면 그 네트워크가 등록될 수 있다 → 위 «매장 와이파이» 표시를 다시 읽는다
+    if (withAdmin) attendanceApi(restaurantId, '/me/status').then(s => { if (s.ok) setOnStoreNetwork(s.data.on_store_network ?? null); });
     setMessage({
       tone: 'ok',
       text: action === 'in'
@@ -196,7 +207,8 @@ const TimeClockPage: React.FC = () => {
         <Button size="small" variant="secondary" onClick={() => navigate(-1)}>{t('actions.close', 'Close')}</Button>
       </TopBar>
       <Clock>{now.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', timeZone: tz })}</Clock>
-      <Sub>{now.toLocaleDateString('en-MY', { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz })}</Sub>
+      <Sub style={{ marginBottom: 12 }}>{now.toLocaleDateString('en-MY', { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz })}</Sub>
+      <NetworkStatus onStoreNetwork={onStoreNetwork} style={{ marginBottom: 16 }} />
 
       <Panel>
         {disabled ? (
@@ -204,7 +216,9 @@ const TimeClockPage: React.FC = () => {
         ) : (
           <>
             {step === 'pin' && <Sub style={{ marginBottom: 8 }}>{t('clock.enterPin', 'Enter your 4-digit PIN')}</Sub>}
+            {step === 'pin' && !pin && !message && <Help>{t('clock.howTo', 'Staff: type your own PIN, then tap Clock in or Clock out. No login needed on this screen.')}</Help>}
             {step === 'admin' && <Sub style={{ marginBottom: 8 }}>{t('clock.enterAdminPin', 'Manager PIN')}</Sub>}
+            {step === 'admin' && <Help>{t('clock.adminHow', 'A manager types their own 4-digit PIN and taps Confirm to allow this clock-in/out.')}</Help>}
             {(step === 'confirm' || step === 'done') && person && (
               <>
                 <Name>{person.name}</Name>

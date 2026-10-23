@@ -245,8 +245,13 @@ router.get('/me/status', ...common, requireOwnStaff, async (req, res) => {
   try {
     const store = await loadStore(rid(req));
     const open = await AttendanceRecord.findOne({ where: { open_user_id: req.user.id } });
+    // 찍기 전에 «지금 매장 네트워크인지» 를 화면에 미리 보여 준다(2026-10-23 Irene «어떻게 하라는지 헷갈려»). 검사 끔 = null.
+    const onStoreNetwork = store.settings.network_restriction
+      ? !!(await findMatchingNetwork(rid(req), clientIp(req)))
+      : null;
     return res.json({ success: true, data: {
       open: open ? recordView(open, store.tz) : null,
+      on_store_network: onStoreNetwork,
       settings: {
         network_restriction: store.settings.network_restriction,
         allow_self_clock: store.settings.allow_self_clock,

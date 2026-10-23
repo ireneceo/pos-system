@@ -33,7 +33,9 @@
     "tooMany": "Too many tries. Wait a minute.",
     "workingSince": "Working since {{time}} ({{hours}})",
     "wrongPin": "PIN not recognised. Try again.",
-    "wrongPinHint": "New staff? Ask a manager to add you in Staff with a 4-digit PIN."
+    "wrongPinHint": "New staff? Ask a manager to add you in Staff with a 4-digit PIN.",
+    "howTo": "Staff: type your own PIN, then tap Clock in or Clock out. No login needed on this screen.",
+    "adminHow": "A manager types their own 4-digit PIN and taps Confirm to allow this clock-in/out."
   },
   "common": {
     "loading": "Loading…"
@@ -126,7 +128,9 @@
   "network": {
     "off": "No check",
     "ok": "Store network",
-    "override": "Manager PIN"
+    "override": "Manager PIN",
+    "onStore": "On the store Wi-Fi",
+    "offStore": "Not on the store Wi-Fi — a manager PIN will be needed"
   },
   "page": {
     "title": "Attendance"
@@ -164,7 +168,6 @@
     "methodsTitle": "How staff clock in",
     "name": "Name",
     "needNetwork": "Register the store network first (button below), then turn this on.",
-    "networkHelp": "When on, staff can only clock in or out while connected to the store Wi-Fi. The system checks the store internet line, so mobile data or home Wi-Fi will not work. If the store line changes, a manager can confirm with their PIN once and the new line is remembered.",
     "networkRestriction": "Only allow clocking on the store network",
     "networkTitle": "Store network check",
     "networks": "Store networks",
@@ -177,7 +180,6 @@
     "pause": "Pause",
     "paused": "Paused",
     "registerCurrent": "Register the network I am on now",
-    "registerHint": "Press this while this device is connected to the store Wi-Fi.",
     "registered": "Registered",
     "removeConfirm": "Remove {{ip}}? Staff on this network will not be able to clock in while the check is on.",
     "removeTitle": "Remove network",
@@ -194,7 +196,17 @@
     "staffTitle": "Staff rest days and leave days",
     "thisDevice": "This device:",
     "thisDeviceBadge": "This device",
-    "usedLine": "used {{used}}"
+    "usedLine": "used {{used}}",
+    "networkIntro": "Optional. Use it if staff should only clock in or out while they are at the store. It checks the store internet line, so mobile data or home Wi-Fi will not work.",
+    "stepRegisterTitle": "Register the store Wi-Fi",
+    "stepRegisterHelp": "Do this on a phone, tablet or computer that is connected to the store Wi-Fi right now (not mobile data).",
+    "notRegistered": "Not registered",
+    "stepTurnOnTitle": "Turn on the check",
+    "turnOnNeedsStep1": "Finish step 1 first.",
+    "stepTryTitle": "Check it works",
+    "stepTryHelp": "Open the Time Clock on the store tablet (or My Attendance on a staff phone). On the store Wi-Fi it shows «On the store Wi-Fi». On mobile data it shows «Not on the store Wi-Fi» and a manager must type their PIN to allow it.",
+    "overrideRegistersHelp": "Handy if the store internet changes: after one manager PIN, staff on the new line can clock in normally.",
+    "sourceLegend": "Added by — Manager: the register button · Manager PIN: remembered when a manager confirmed with PIN · Kiosk: follows the registered kiosk."
   },
   "status": {
     "approved": "Approved",
@@ -251,14 +263,16 @@
     "networkOff": "Store network check: off — staff can clock in from anywhere",
     "openSettings": "Open Settings",
     "step3Title": "Staff clock in and out",
-    "step3Phone": "On their own phone: log in and open",
     "myMenuPath": "Team & Marketing › My Attendance",
-    "step3Tablet": "On the store tablet: open",
     "timeClockMenu": "Time Clock",
-    "step3TabletEnd": "in the left menu and type the 4-digit PIN.",
     "openTimeClock": "Open Time Clock",
     "step4Title": "Check hours and approve leave",
     "step4Help": "Today shows who is working now. Records has hours per day and month. Staff request leave in My Attendance and you approve it in the Leave tab.",
-    "openLeave": "Open Leave"
+    "openLeave": "Open Leave",
+    "step3TabletLead": "Store tablet (Time Clock):",
+    "step3TabletA": "a manager logs in on the tablet once, opens",
+    "step3TabletB": "in the left menu (under POS Terminal — it opens in a new full-screen window) and leaves it open. Staff only type their 4-digit PIN there — they do not log in.",
+    "step3PhoneLead": "Own phone:",
+    "step3PhoneA": "staff log in with their own account and open"
   }
 }

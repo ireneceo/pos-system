@@ -237,5 +237,12 @@ PIN 4자리 → 직원 이름·현재 상태 확인 → «출근»/«퇴근» �
   3. 앱 안 알림함이 없어 «앱 알림» = Today/Leave 탭 대기 건수 + 메일(`staff_leave`).
 - 작은 추가: `POST /pin-lookup`(PIN 으로 이름·상태만 확인) · `GET /profiles`(직원 목록, PIN 원문 대신 has_pin) · PIN 시도 1분 20회 제한 · `leave_requests.created_by` · DATE 칸은 모델 get 으로 'YYYY-MM-DD'.
 - 실제 손님 주소: `utils/clientIp.js`(루프백이면 nginx X-Real-IP · Cloudflare 대역이면 CF-Connecting-IP). 개발서버 실경로 확인 완료, **운영 nginx 는 배포 뒤 /운영검증에서 1회 확인**.
-- 시험 계정(데모 38, 지우지 말 것): [확인용] Staff Aina(PIN 7101, access_pos) · Staff Bala(7102, 주방만) · Manager Mei(RA, 7100).
+- 시험 계정(데모 38, 지우지 말 것): Aina (test staff)(PIN 7101, access_pos) · Bala (test kitchen)(7102, 주방만) · Mei (test manager)(RA, 7100) — 10-23 이름 영어로(§11).
 - 다음(급여 제외 범위 밖): 급여(나라별 규칙 `payroll_rules/<국가>.js`) · 근무표 · 지각/초과근무.
+
+## 11. 안내·표시 보완 (2026-10-23 · [Claude Code] 작업방 c14bd647 · Irene 실기기 확인 «문제 있음» 반영)
+- 설정 탭 «Store network check» = ①와이파이 등록 → ②검사 켜기(①전엔 잠김) → ③확인, 순서 카드. «Added by» 뜻(Manager / Manager PIN / Kiosk) 한 줄.
+- `GET /me/status` 에 `on_store_network`(검사 꺼짐 = null · 등록 주소 = true · 아니면 false, 읽기만 — last_matched_at 안 바꿈). Time Clock·My Attendance 위에 초록/노랑 표시(`NetworkStatus.tsx`).
+- Time Clock = 관리자(또는 POS 권한 직원)가 그 기기에 한 번 로그인해 둔 공용 화면. 왼쪽 메뉴 «POS Terminal» 아래(새 전체 화면 창). 직원은 PIN 만 — 로그인 안 함. 로그아웃 상태로 주소를 열면 로그인 뒤 그 화면으로 돌아옴.
+- 키오스크 주소 따라가기(`followKioskAddress`)는 공인 주소만(`isPublicKey` — 루프백·사설·링크로컬 제외).
+- 시험 계정 이름 영어로 바뀜: Aina (test staff) · Bala (test kitchen) · Mei (test manager) — 영어 화면에 «[확인용]» 한글이 보이던 것.

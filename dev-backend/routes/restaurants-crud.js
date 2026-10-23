@@ -916,6 +916,14 @@ router.get('/:id', authenticateToken, requireRestaurantScope('id'), async (req, 
       console.error('Restaurant contract/plan summary load error:', e.message);
     }
 
+    // 이 응답은 POS·프린터 설정의 1차 소스라 문의 대상 계산이 실패해도 상세는 그대로 내려준다
+    let inquiry_targets = [];
+    try {
+      inquiry_targets = await require('../utils/inquiryTargets').getInquiryTargets(restaurantData);
+    } catch (e) {
+      console.error('Restaurant inquiry targets load error:', e.message);
+    }
+
     const response = {
       ...restaurantData,
       admin: adminData ? {
@@ -937,7 +945,9 @@ router.get('/:id', authenticateToken, requireRestaurantScope('id'), async (req, 
       })),
       contract_summary,
       contract_summaries,
-      entity_plan_summary
+      entity_plan_summary,
+      // 운영 문의 대상(감독 + 소유 + 브랜드·푸드코트 주인) — `managers` 는 수정 창 계약이라 따로 둔다
+      inquiry_targets
     };
 
     res.json(response);

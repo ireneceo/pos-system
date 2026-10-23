@@ -33,7 +33,9 @@
     "tooMany": "Terlalu banyak cubaan. Tunggu seminit.",
     "workingSince": "Bekerja sejak {{time}} ({{hours}})",
     "wrongPin": "PIN tidak dikenali. Cuba lagi.",
-    "wrongPinHint": "Staf baharu? Minta pengurus tambah anda di Kakitangan dengan PIN 4 digit."
+    "wrongPinHint": "Staf baharu? Minta pengurus tambah anda di Kakitangan dengan PIN 4 digit.",
+    "howTo": "Staf: taip PIN anda sendiri, kemudian tekan Masuk atau Keluar. Skrin ini tidak perlu log masuk.",
+    "adminHow": "Pengurus menaip PIN 4 digit mereka dan tekan Sahkan untuk membenarkan rekod ini."
   },
   "common": {
     "loading": "Memuatkan…"
@@ -126,7 +128,9 @@
   "network": {
     "off": "Tiada semakan",
     "ok": "Rangkaian kedai",
-    "override": "PIN pengurus"
+    "override": "PIN pengurus",
+    "onStore": "Disambung ke Wi-Fi kedai",
+    "offStore": "Bukan Wi-Fi kedai — PIN pengurus diperlukan"
   },
   "page": {
     "title": "Kehadiran"
@@ -164,7 +168,6 @@
     "methodsTitle": "Cara pekerja rekod kehadiran",
     "name": "Nama",
     "needNetwork": "Daftarkan rangkaian kedai dahulu (butang di bawah), kemudian hidupkan.",
-    "networkHelp": "Apabila hidup, pekerja hanya boleh rekod masuk atau keluar semasa disambung ke Wi-Fi kedai. Sistem menyemak talian internet kedai, jadi data mudah alih atau Wi-Fi rumah tidak berfungsi. Jika talian kedai berubah, pengurus boleh sahkan sekali dengan PIN dan talian baharu akan diingati.",
     "networkRestriction": "Hanya benarkan rekod di rangkaian kedai",
     "networkTitle": "Semakan rangkaian kedai",
     "networks": "Rangkaian kedai",
@@ -177,7 +180,6 @@
     "pause": "Jeda",
     "paused": "Dijeda",
     "registerCurrent": "Daftar rangkaian yang saya guna sekarang",
-    "registerHint": "Tekan ini semasa peranti ini disambung ke Wi-Fi kedai.",
     "registered": "Didaftarkan",
     "removeConfirm": "Buang {{ip}}? Pekerja di rangkaian ini tidak boleh rekod kehadiran semasa semakan hidup.",
     "removeTitle": "Buang rangkaian",
@@ -194,7 +196,17 @@
     "staffTitle": "Hari rehat dan hari cuti pekerja",
     "thisDevice": "Peranti ini:",
     "thisDeviceBadge": "Peranti ini",
-    "usedLine": "guna {{used}}"
+    "usedLine": "guna {{used}}",
+    "networkIntro": "Pilihan. Gunakan jika staf hanya boleh masuk atau keluar semasa berada di kedai. Ia menyemak talian internet kedai, jadi data mudah alih atau Wi-Fi rumah tidak akan berfungsi.",
+    "stepRegisterTitle": "Daftar Wi-Fi kedai",
+    "stepRegisterHelp": "Lakukan ini pada telefon, tablet atau komputer yang sedang disambung ke Wi-Fi kedai (bukan data mudah alih).",
+    "notRegistered": "Belum didaftar",
+    "stepTurnOnTitle": "Hidupkan semakan",
+    "turnOnNeedsStep1": "Selesaikan langkah 1 dahulu.",
+    "stepTryTitle": "Semak ia berfungsi",
+    "stepTryHelp": "Buka Jam Waktu pada tablet kedai (atau Kehadiran Saya pada telefon staf). Pada Wi-Fi kedai ia menunjukkan «Disambung ke Wi-Fi kedai». Pada data mudah alih ia menunjukkan «Bukan Wi-Fi kedai» dan pengurus perlu menaip PIN untuk membenarkannya.",
+    "overrideRegistersHelp": "Berguna jika internet kedai bertukar: selepas satu PIN pengurus, staf pada talian baharu boleh masuk seperti biasa.",
+    "sourceLegend": "Ditambah oleh — Pengurus: butang daftar · PIN Pengurus: diingat apabila pengurus mengesahkan dengan PIN · Kiosk: mengikut kiosk berdaftar."
   },
   "status": {
     "approved": "Diluluskan",
@@ -251,14 +263,16 @@
     "networkOff": "Semakan rangkaian kedai: mati — staf boleh daftar masuk dari mana-mana",
     "openSettings": "Buka Tetapan",
     "step3Title": "Staf daftar masuk dan keluar",
-    "step3Phone": "Di telefon sendiri: log masuk dan buka",
     "myMenuPath": "Pasukan & Pemasaran › Kehadiran Saya",
-    "step3Tablet": "Di tablet kedai: buka",
     "timeClockMenu": "Jam Kehadiran",
-    "step3TabletEnd": "di menu kiri dan taip PIN 4 digit.",
     "openTimeClock": "Buka Jam Kehadiran",
     "step4Title": "Semak jam dan luluskan cuti",
     "step4Help": "Hari ini menunjukkan siapa sedang bekerja. Rekod ada jam setiap hari dan bulan. Staf memohon cuti di Kehadiran Saya dan anda meluluskannya di tab Cuti.",
-    "openLeave": "Buka Cuti"
+    "openLeave": "Buka Cuti",
+    "step3TabletLead": "Tablet kedai (Jam Waktu):",
+    "step3TabletA": "pengurus log masuk sekali pada tablet, buka",
+    "step3TabletB": "di menu kiri (di bawah POS Terminal — dibuka dalam tetingkap skrin penuh baharu) dan biarkan terbuka. Staf hanya menaip PIN 4 digit — mereka tidak log masuk.",
+    "step3PhoneLead": "Telefon sendiri:",
+    "step3PhoneA": "staf log masuk dengan akaun sendiri dan buka"
   }
 }

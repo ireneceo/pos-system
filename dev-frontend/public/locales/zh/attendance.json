@@ -33,7 +33,9 @@
     "tooMany": "尝试次数过多，请一分钟后再试。",
     "workingSince": "自 {{time}} 起上班（{{hours}}）",
     "wrongPin": "PIN 无效，请重试。",
-    "wrongPinHint": "新员工？请让经理在员工页面为您添加 4 位 PIN。"
+    "wrongPinHint": "新员工？请让经理在员工页面为您添加 4 位 PIN。",
+    "howTo": "员工：输入自己的 PIN，然后点上班或下班。此页面无需登录。",
+    "adminHow": "经理输入自己的 4 位 PIN 并点确认，即可允许本次打卡。"
   },
   "common": {
     "loading": "加载中…"
@@ -126,7 +128,9 @@
   "network": {
     "off": "不检查",
     "ok": "门店网络",
-    "override": "经理 PIN"
+    "override": "经理 PIN",
+    "onStore": "已连接店内 Wi-Fi",
+    "offStore": "未连接店内 Wi-Fi — 需要经理 PIN"
   },
   "page": {
     "title": "考勤"
@@ -164,7 +168,6 @@
     "methodsTitle": "员工打卡方式",
     "name": "名称",
     "needNetwork": "请先登记门店网络（下方按钮），再开启。",
-    "networkHelp": "开启后，员工只能在连接门店 Wi-Fi 时打卡。系统检查的是门店网络线路，所以手机流量或家里 Wi-Fi 无法打卡。如果门店线路变更，经理用 PIN 确认一次即可记住新线路。",
     "networkRestriction": "只允许在门店网络打卡",
     "networkTitle": "门店网络检查",
     "networks": "门店网络",
@@ -177,7 +180,6 @@
     "pause": "暂停",
     "paused": "已暂停",
     "registerCurrent": "登记我现在连接的网络",
-    "registerHint": "请在此设备连接门店 Wi-Fi 时点击。",
     "registered": "已登记",
     "removeConfirm": "删除 {{ip}}？开启检查时，此网络上的员工将无法打卡。",
     "removeTitle": "删除网络",
@@ -194,7 +196,17 @@
     "staffTitle": "员工休息日与假期天数",
     "thisDevice": "此设备：",
     "thisDeviceBadge": "此设备",
-    "usedLine": "已用 {{used}}"
+    "usedLine": "已用 {{used}}",
+    "networkIntro": "可选。如需员工只能在店内打卡，请开启。系统会检查店内网络线路，因此移动数据或家里的 Wi-Fi 无法打卡。",
+    "stepRegisterTitle": "登记店内 Wi-Fi",
+    "stepRegisterHelp": "请在当前已连接店内 Wi-Fi 的手机、平板或电脑上操作（不要用移动数据）。",
+    "notRegistered": "未登记",
+    "stepTurnOnTitle": "开启检查",
+    "turnOnNeedsStep1": "请先完成第 1 步。",
+    "stepTryTitle": "确认是否生效",
+    "stepTryHelp": "在店内平板打开打卡钟（或在员工手机打开我的考勤）。连接店内 Wi-Fi 时显示«已连接店内 Wi-Fi»；使用移动数据时显示«未连接店内 Wi-Fi»，需要经理输入 PIN 才能打卡。",
+    "overrideRegistersHelp": "店内网络更换时很方便：经理输入一次 PIN 后，员工即可在新线路上正常打卡。",
+    "sourceLegend": "添加方式 — 经理：登记按钮 · 经理 PIN：经理用 PIN 确认时记住 · 自助机：跟随已登记的自助机。"
   },
   "status": {
     "approved": "已批准",
@@ -251,14 +263,16 @@
     "networkOff": "店铺网络检查：关闭 —— 任何地方都能打卡",
     "openSettings": "打开设置",
     "step3Title": "员工上下班打卡",
-    "step3Phone": "用自己的手机：登录后打开",
     "myMenuPath": "团队与营销 › 我的考勤",
-    "step3Tablet": "用店内平板：在左侧菜单打开",
     "timeClockMenu": "打卡机",
-    "step3TabletEnd": "并输入 4 位 PIN。",
     "openTimeClock": "打开打卡机",
     "step4Title": "查看工时并审批请假",
     "step4Help": "今天标签显示正在上班的人，记录标签显示每日和每月工时。员工在我的考勤中申请请假，您在请假标签中审批。",
-    "openLeave": "打开请假"
+    "openLeave": "打开请假",
+    "step3TabletLead": "店内平板（打卡钟）：",
+    "step3TabletA": "经理在平板上登录一次，在左侧菜单打开",
+    "step3TabletB": "（在 POS 终端下方 — 以新的全屏窗口打开）并保持开启。员工只需输入 4 位 PIN — 无需登录。",
+    "step3PhoneLead": "自己的手机：",
+    "step3PhoneA": "员工用自己的账号登录后打开"
   }
 }

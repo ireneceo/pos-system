@@ -161,3 +161,55 @@ export const Mono = styled.span`
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;
 `;
+
+/* 번호 붙은 단계 카드 — 출퇴근 «사용 순서»(AttendanceGuide) · 설정 «매장 와이파이» 순서가 같이 쓴다 */
+export const Steps = styled.ol`
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+`;
+
+export const Step = styled.li<{ attention?: boolean }>`
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid ${p => (p.attention ? '#FCD34D' : '#E5E7EB')};
+  background: ${p => (p.attention ? '#FFFBEB' : '#F9FAFB')};
+  @media (max-width: 640px) { flex-wrap: wrap; }
+`;
+
+export const Num = styled.span<{ done?: boolean }>`
+  flex: 0 0 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: ${p => (p.done ? '#FFFFFF' : '#635BFF')};
+  background: ${p => (p.done ? '#10B981' : '#EEF2FF')};
+`;
+
+export const StepBody = styled.div`
+  flex: 1;
+  min-width: 200px;
+`;
+
+export const StepTitle = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 2px;
+`;
+
+export const StepActions = styled.div`
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-self: center;
+`;

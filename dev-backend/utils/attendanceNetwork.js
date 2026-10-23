@@ -31,6 +31,21 @@ function networkKey(raw) {
   return g.slice(0, 4).map(n => n.toString(16)).join(':') + '::/64';
 }
 
+/**
+ * 매장 회선으로 쓸 수 있는 공인 주소인가 — 루프백·사설·링크로컬은 «매장 와이파이» 가 아니다.
+ * 키오스크 자동 따라가기가 서버 안 시험 호출(127.0.0.1)까지 «Kiosk» 줄로 남기던 것(2026-10-16 Fable 비차단 지적) 막기.
+ */
+function isPublicKey(key) {
+  if (!key) return false;
+  if (net.isIP(key) === 4) {
+    const [a, b] = key.split('.').map(Number);
+    return !(a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127));
+  }
+  const first = parseInt(key.split(':')[0], 16);
+  // ::/64(루프백 포함) · fc00::/7(사설) · fe80::/10(링크로컬)
+  return !(first === 0 || (first & 0xfe00) === 0xfc00 || (first & 0xffc0) === 0xfe80);
+}
+
 /** 매장 설정(operation_settings.attendance) 기본값 — §2-7 */
 const DEFAULT_SETTINGS = Object.freeze({
   network_restriction: false,
@@ -89,7 +104,7 @@ async function registerNetwork(restaurantId, ip, { source = 'manual', label = nu
 async function followKioskAddress(restaurantId, ip) {
   const { AttendanceNetwork } = require('../models');
   const key = networkKey(ip);
-  if (!key) return;
+  if (!key || !isPublicKey(key)) return;
   const same = await AttendanceNetwork.findOne({ where: { restaurant_id: restaurantId, ip: key } });
   if (same) {
     if (!same.is_active && same.source === 'kiosk_auto') await same.update({ is_active: true });
@@ -100,4 +115,4 @@ async function followKioskAddress(restaurantId, ip) {
   else await AttendanceNetwork.create({ restaurant_id: restaurantId, ip: key, source: 'kiosk_auto', label: 'Kiosk' });
 }
 
-module.exports = { networkKey, readSettings, DEFAULT_SETTINGS, findMatchingNetwork, registerNetwork, followKioskAddress };
+module.exports = { networkKey, isPublicKey, readSettings, DEFAULT_SETTINGS, findMatchingNetwork, registerNetwork, followKioskAddress };

@@ -15,6 +15,7 @@ import { attendanceApi, AttendanceRecord, LeaveBalance, LeaveRequestRow, formatM
 import { Card, CardTitle, Muted, Row, Spacer, Badge, Dot, ErrorBox, InfoBox, TextInput, PersonGrid, PersonCard, PersonName } from './attendanceStyles';
 import LeaveRequestModal from './LeaveRequestModal';
 import { statusTone } from './tabs/LeaveTab';
+import NetworkStatus from './NetworkStatus';
 
 const ClockCard = styled(Card)`
   text-align: center;
@@ -39,6 +40,7 @@ interface Status {
   open: AttendanceRecord | null;
   settings: { network_restriction: boolean; allow_self_clock: boolean; allow_pos_pin_clock: boolean };
   time_zone: string;
+  on_store_network?: boolean | null;
 }
 
 const MyAttendancePage: React.FC = () => {
@@ -144,6 +146,7 @@ const MyAttendancePage: React.FC = () => {
                 </ClockButton>
               </div>
               {status?.settings.network_restriction && <Muted style={{ marginTop: 10 }}>{t('my.networkNote', 'This store only allows clocking on the store Wi-Fi.')}</Muted>}
+              <NetworkStatus onStoreNetwork={status?.on_store_network} style={{ marginTop: 8 }} />
             </>
           )}
         </ClockCard>

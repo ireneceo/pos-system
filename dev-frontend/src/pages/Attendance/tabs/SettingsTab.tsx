@@ -5,7 +5,7 @@ import { Button } from '../../../components/UI/Button';
 import ConfirmModal from '../../../components/ConfirmModal';
 import { formatDateTime } from '../../../utils/dateFormat';
 import { attendanceApi } from '../attendanceApi';
-import { Card, CardTitle, Muted, Row, Spacer, Badge, ErrorBox, Toggle, Mono, TextInput, InfoBox } from '../attendanceStyles';
+import { Card, CardTitle, Muted, Row, Badge, ErrorBox, Toggle, Mono, TextInput, InfoBox, Steps, Step, Num, StepBody, StepTitle, StepActions } from '../attendanceStyles';
 import LeaveTypesSection from './LeaveTypesSection';
 import StaffWorkSection from './StaffWorkSection';
 
@@ -49,6 +49,7 @@ const SettingsTab: React.FC<Props> = ({ restaurantId, timeZone }) => {
       return;
     }
     setSettings(r.data); setSaved(t('settings.saved', 'Saved'));
+    window.dispatchEvent(new Event('attendance:settings-saved')); // 위 «사용 순서» 안내의 «검사 켜짐/꺼짐» 도 바로 맞춘다
   };
 
   const registerCurrent = async () => {
@@ -71,6 +72,7 @@ const SettingsTab: React.FC<Props> = ({ restaurantId, timeZone }) => {
 
   if (!settings) return error ? <ErrorBox>{error}</ErrorBox> : <Muted>{t('common.loading', 'Loading…')}</Muted>;
   const currentRegistered = networks.some(n => n.is_current && n.is_active);
+  const hasActiveNetwork = networks.some(n => n.is_active);
 
   return (
     <>
@@ -79,32 +81,69 @@ const SettingsTab: React.FC<Props> = ({ restaurantId, timeZone }) => {
 
       <Card>
         <CardTitle>{t('settings.networkTitle', 'Store network check')}</CardTitle>
-        <Muted style={{ marginBottom: 8 }}>
-          {t('settings.networkHelp', 'When on, staff can only clock in or out while connected to the store Wi-Fi. The system checks the store internet line, so mobile data or home Wi-Fi will not work. If the store line changes, a manager can confirm with their PIN once and the new line is remembered.')}
+        <Muted style={{ marginBottom: 4 }}>
+          {t('settings.networkIntro', 'Optional. Use it if staff should only clock in or out while they are at the store. It checks the store internet line, so mobile data or home Wi-Fi will not work.')}
         </Muted>
-        <Toggle>
-          <input type="checkbox" checked={settings.network_restriction} onChange={e => save({ network_restriction: e.target.checked })} />
-          <span>{t('settings.networkRestriction', 'Only allow clocking on the store network')}</span>
-        </Toggle>
-        <Toggle>
-          <input type="checkbox" checked={settings.pin_override_registers_network} onChange={e => save({ pin_override_registers_network: e.target.checked })} />
-          <span>{t('settings.overrideRegisters', 'When a manager confirms with PIN, remember that network')}</span>
-        </Toggle>
+
+        <Steps>
+          <Step attention={!hasActiveNetwork}>
+            <Num done={hasActiveNetwork}>{hasActiveNetwork ? '✓' : '1'}</Num>
+            <StepBody>
+              <StepTitle>{t('settings.stepRegisterTitle', 'Register the store Wi-Fi')}</StepTitle>
+              <Muted>{t('settings.stepRegisterHelp', 'Do this on a phone, tablet or computer that is connected to the store Wi-Fi right now (not mobile data).')}</Muted>
+              <Muted style={{ marginTop: 6 }}>
+                {t('settings.thisDevice', 'This device:')} <Mono>{current || '—'}</Mono>{' '}
+                {currentRegistered
+                  ? <Badge tone="green">{t('settings.registered', 'Registered')}</Badge>
+                  : <Badge tone="amber">{t('settings.notRegistered', 'Not registered')}</Badge>}
+              </Muted>
+              {!currentRegistered && (
+                <Row style={{ marginTop: 10 }}>
+                  <TextInput placeholder={t('settings.labelPlaceholder', 'Name, e.g. Main Wi-Fi')} value={label} onChange={e => setLabel(e.target.value)} maxLength={60} style={{ minWidth: 200 }} />
+                  <Button variant="primary" onClick={registerCurrent}>{t('settings.registerCurrent', 'Register the network I am on now')}</Button>
+                </Row>
+              )}
+            </StepBody>
+          </Step>
+
+          <Step>
+            <Num done={settings.network_restriction}>{settings.network_restriction ? '✓' : '2'}</Num>
+            <StepBody>
+              <StepTitle>{t('settings.stepTurnOnTitle', 'Turn on the check')}</StepTitle>
+              <Toggle style={{ opacity: hasActiveNetwork || settings.network_restriction ? 1 : 0.55 }}>
+                <input type="checkbox" checked={settings.network_restriction} disabled={!hasActiveNetwork && !settings.network_restriction} onChange={e => save({ network_restriction: e.target.checked })} />
+                <span>{t('settings.networkRestriction', 'Only allow clocking on the store network')}</span>
+              </Toggle>
+              {!hasActiveNetwork && !settings.network_restriction && <Muted>{t('settings.turnOnNeedsStep1', 'Finish step 1 first.')}</Muted>}
+            </StepBody>
+          </Step>
+
+          <Step>
+            <Num>3</Num>
+            <StepBody>
+              <StepTitle>{t('settings.stepTryTitle', 'Check it works')}</StepTitle>
+              <Muted>{t('settings.stepTryHelp', 'Open the Time Clock on the store tablet (or My Attendance on a staff phone). On the store Wi-Fi it shows «On the store Wi-Fi». On mobile data it shows «Not on the store Wi-Fi» and a manager must type their PIN to allow it.')}</Muted>
+            </StepBody>
+            <StepActions>
+              <Button size="small" variant="secondary" onClick={() => window.open(`/restaurant/${restaurantId}/time-clock`, '_blank', 'noopener')}>{t('guide.openTimeClock', 'Open Time Clock')}</Button>
+            </StepActions>
+          </Step>
+        </Steps>
 
         <div style={{ marginTop: 16 }}>
-          <Row>
-            <strong style={{ fontSize: 14 }}>{t('settings.networks', 'Store networks')}</strong>
-            <Spacer />
-            <Muted>{t('settings.thisDevice', 'This device:')} <Mono>{current || '—'}</Mono> {currentRegistered && <Badge tone="green">{t('settings.registered', 'Registered')}</Badge>}</Muted>
-          </Row>
-          {!currentRegistered && (
-            <Row style={{ marginTop: 10 }}>
-              <TextInput placeholder={t('settings.labelPlaceholder', 'Name, e.g. Main Wi-Fi')} value={label} onChange={e => setLabel(e.target.value)} maxLength={60} style={{ minWidth: 200 }} />
-              <Button variant="primary" onClick={registerCurrent}>{t('settings.registerCurrent', 'Register the network I am on now')}</Button>
-              <Muted>{t('settings.registerHint', 'Press this while this device is connected to the store Wi-Fi.')}</Muted>
-            </Row>
-          )}
-          <DataTableContainer style={{ marginTop: 12 }}>
+          <Toggle>
+            <input type="checkbox" checked={settings.pin_override_registers_network} onChange={e => save({ pin_override_registers_network: e.target.checked })} />
+            <span>
+              {t('settings.overrideRegisters', 'When a manager confirms with PIN, remember that network')}
+              <Muted as="span" style={{ display: 'block', fontWeight: 400 }}>{t('settings.overrideRegistersHelp', 'Handy if the store internet changes: after one manager PIN, staff on the new line can clock in normally.')}</Muted>
+            </span>
+          </Toggle>
+        </div>
+
+        <div style={{ marginTop: 12 }}>
+          <strong style={{ fontSize: 14 }}>{t('settings.networks', 'Store networks')}</strong>
+          <Muted style={{ marginTop: 2 }}>{t('settings.sourceLegend', 'Added by — Manager: the register button · Manager PIN: remembered when a manager confirmed with PIN · Kiosk: follows the registered kiosk.')}</Muted>
+          <DataTableContainer style={{ marginTop: 8 }}>
             {networks.length === 0 ? <DataTableEmpty>{t('settings.noNetworks', 'No store network registered yet.')}</DataTableEmpty> : (
               <DataTable>
                 <DataTableHead>
