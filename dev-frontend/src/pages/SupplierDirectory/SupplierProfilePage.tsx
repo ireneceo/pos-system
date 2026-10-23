@@ -11,7 +11,7 @@ import {
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
-import ConfirmModal from '../../components/ConfirmModal';
+import DeleteSupplierProductFlow from '../Suppliers/DeleteSupplierProductFlow';
 import { useAuth } from '../../contexts/AuthContext';
 import { ownerSupplierActingRid, withOwnerSupplierScope } from '../../utils/ownerPoScope';
 import { getAuthToken } from '../../utils/auth';
@@ -559,17 +559,6 @@ const SupplierProfilePage: React.FC = () => {
     finally { setSavingProduct(false); }
   };
 
-  const doDeleteProduct = async () => {
-    if (!profile || !deletingProduct) return;
-    try {
-      const token = getAuthToken();
-      const res = await fetch(S(`/api/external-suppliers/${profile.id}/products/${deletingProduct.id}`), {
-        method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) { setDeletingProduct(null); fetchProfile(); }
-    } catch { /* noop */ }
-  };
-
   const submitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (requestSubmitting || !profile) return;
@@ -997,15 +986,15 @@ const SupplierProfilePage: React.FC = () => {
         </CommonModal>
       )}
 
-      {deletingProduct && (
-        <ConfirmModal
-          isOpen
-          title={t('extProduct.deleteTitle', { defaultValue: 'Delete product' }) as string}
-          message={t('extProduct.deleteConfirm', { defaultValue: `Delete "${deletingProduct.name}"? This cannot be undone.`, name: deletingProduct.name }) as string}
-          confirmText={t('common:button.delete', { defaultValue: 'Delete' }) as string}
-          type="danger"
-          onConfirm={doDeleteProduct}
-          onCancel={() => setDeletingProduct(null)}
+      {deletingProduct && profile && (
+        // 연결된 재고아이템이 있으면 «다른 상품으로 바꾸고 삭제» 로 잇는다 — 전체 상품 탭과 같은 흐름 (2026-10-23 Fable D5).
+        //   그전 doDeleteProduct 는 실패를 조용히 버렸고, 서버는 연결 검사 없이 지웠다.
+        <DeleteSupplierProductFlow
+          supplierId={profile.id}
+          product={{ id: deletingProduct.id, name: deletingProduct.name }}
+          scopeUrl={S}
+          onClose={() => setDeletingProduct(null)}
+          onDeleted={() => fetchProfile()}
         />
       )}
     </Container>

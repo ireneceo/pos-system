@@ -255,6 +255,6 @@ function directDeductConversion({ stock, sellerProduct }) {
 
 module.exports = {
   parseConversion, propagateToOpenPoLines, buildConfirmationFields, resolveUnitsForConfirmation,
-  conversionStatusFor, deriveLinkConversion, directDeductConversion,
+  conversionStatusFor, deriveLinkConversion, directDeductConversion, linkConversionOf,
   ConversionError, MAX_CONVERSION, SELLER_MODEL_BY_TYPE
 };

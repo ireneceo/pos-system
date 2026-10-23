@@ -29,6 +29,7 @@ import {
 import { Modal, ModalButton, FormGroup, FormLabel, FormInput } from '../../components/UI/Modal';
 import { Button } from '../../components/UI/Button';
 import SearchableSelect from '../../components/Common/SearchableSelect';
+import DeleteSupplierProductFlow from './DeleteSupplierProductFlow';
 import ExternalSupplierProductFields, { EMPTY_EXT_PRODUCT, extProductFormFrom, extProductPayload, extProductError, type ExtProductForm } from '../../components/Common/ExternalSupplierProductFields';
 
 type SellerType = 'supplier' | 'brand' | 'foodcourt';
@@ -182,6 +183,7 @@ export default function AllSupplierProductsView() {
   }), [rows, supplierFilter, sourceFilter, linkFilter, pkgFilter, isMine, isLinked]);
 
   // ── 상품 추가·수정 ─────────────────────────────────────────────
+  const [deleting, setDeleting] = useState<CatalogRow | null>(null);
   const [productModal, setProductModal] = useState<{ mode: 'add' | 'edit'; supplierId: number | null; productId?: number } | null>(null);
   const [productForm, setProductForm] = useState<ExtProductForm>(EMPTY_EXT_PRODUCT);
   const [productError, setProductError] = useState<string | null>(null);
@@ -390,6 +392,10 @@ export default function AllSupplierProductsView() {
                       {isMine(r) && (
                         <Button size="small" variant="outline" onClick={() => openEdit(r)}>{t('common:button.edit', { defaultValue: 'Edit' })}</Button>
                       )}
+                      {/* 삭제 — 내가 등록한 외부 업체 상품만(Edit 과 같은 문). 연결이 있으면 «다른 상품으로 바꾸고 삭제» 창으로 잇는다 (2026-10-23 Fable D5) */}
+                      {isMine(r) && (
+                        <Button size="small" variant="danger-outline" onClick={() => setDeleting(r)}>{t('common:button.delete', { defaultValue: 'Delete' })}</Button>
+                      )}
                       {st === 'supplier' && r.supplier && (
                         <Button size="small" variant="outline" onClick={() => navigate(`/pos/suppliers/directory/${r.supplier!.id}`)}>
                           {t('allProducts.openSupplier', { defaultValue: 'Supplier' })}
@@ -511,6 +517,15 @@ export default function AllSupplierProductsView() {
             </>
           )}
         </Modal>
+      )}
+      {deleting && deleting.supplier && (
+        <DeleteSupplierProductFlow
+          supplierId={deleting.supplier.id}
+          product={{ id: deleting.id, name: deleting.name }}
+          scopeUrl={S}
+          onClose={() => setDeleting(null)}
+          onDeleted={() => { fetchRows(); fetchMyItems(); }}
+        />
       )}
     </div>
   );

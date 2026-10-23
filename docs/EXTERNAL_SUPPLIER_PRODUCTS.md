@@ -24,7 +24,9 @@
 - `GET /api/external-suppliers/:id/products` — 소유 검증 후 그 업체 SupplierProduct 목록.
 - `POST /api/external-suppliers/:id/products` — 소유 검증 + 검증(name*, unit_price*≥0, base_quantity, min_order_quantity, unit, lead_time_days). sku 자동 `SP-{id}-NNNN`. option group 미사용.
 - `PUT /api/external-suppliers/:id/products/:productId` — 소유 + product.supplier_company_id===id 검증 후 필드 수정.
-- `DELETE /api/external-suppliers/:id/products/:productId` — 소유 검증 후 soft delete.
+- `DELETE /api/external-suppliers/:id/products/:productId` — 소유 검증 후 soft delete. 재고아이템·재료 연결(ingredient_seller_products)이 있으면 409 `IN_USE` + `uses[]` (2026-10-23).
+- `POST /api/external-suppliers/:id/products/:productId/replace` `{ target_product_id, dry_run }` — 연결을 같은 업체 다른 상품으로 옮기고(연결 id 보존) 삭제. dry_run 기본 true. 규칙 `services/supplierProductDelete.js` · 설계 `.claude/fable-design-20261023-supplier-product-delete.md`.
+- `POST /api/external-suppliers/:id/products/:productId/unlink` `{ dry_run }` — 이력 없는 연결 삭제 · 발주·정기 발주가 쓰는 연결은 is_active=0 으로 남기고 삭제.
 - 경로② 원샷(선택): 프론트가 POST products(생성) → from-catalog(매핑) 2콜로 오케스트레이션(원자성 불필요, 기존 검증된 엔드포인트 재사용).
 
 검증 미러: `supplier-products.js` create(line 542~620) 필드/검증. 응답 표준 `{success,data}` / 에러 `{success:false,message,code?}`.

@@ -1695,16 +1695,88 @@ router.put('/external-suppliers/:id/products/:productId', async (req, res) => {
 });
 
 // DELETE /api/external-suppliers/:id/products/:productId — soft delete
+//   2026-10-23 Fable 설계(supplier-product-delete): 재고아이템·재료가 이 상품을 공급처로 붙여 두었으면 지우지 않고
+//   409 IN_USE + uses[] 를 돌려준다 → 화면이 «다른 상품으로 바꾸고 삭제»(/replace) 또는 «연결 끊고 삭제»(/unlink) 로 잇는다.
+//   그전엔 연결 검사 없이 지워, 재고아이템이 지운 상품을 가리키는 공급처를 단 채 남았다(발주 400).
+async function loadOwnedProduct(req, res) {
+  const sc = await loadOwnedExternalSupplier(req, res); if (!sc) return null;
+  const pid = parseInt(req.params.productId, 10);
+  const product = Number.isFinite(pid) ? await SupplierProduct.findByPk(pid) : null;
+  if (!product || product.supplier_company_id !== sc.id) { res.status(404).json({ success: false, message: 'Product not found' }); return null; }
+  return { sc, product };
+}
+const productDeleteBlocked = (res, status, code, message, uses = []) => res.status(status).json({ success: false, message, error: { code, message, uses } });
+
 router.delete('/external-suppliers/:id/products/:productId', async (req, res) => {
-  const sc = await loadOwnedExternalSupplier(req, res); if (!sc) return;
+  const v = await loadOwnedProduct(req, res); if (!v) return;
   try {
-    const product = await SupplierProduct.findByPk(parseInt(req.params.productId, 10));
-    if (!product || product.supplier_company_id !== sc.id) return res.status(404).json({ success: false, message: 'Product not found' });
-    await product.destroy();
+    const { collectSupplierProductUses } = require('../services/supplierProductDelete');
+    const uses = await collectSupplierProductUses(v.product.id, { sequelize: SupplierProduct.sequelize });
+    if (uses.length) return productDeleteBlocked(res, 409, 'IN_USE', 'Stock items use this product as their supplier source. Switch them to another product or unlink them first.', uses);
+    await v.product.destroy();
     res.json({ success: true });
   } catch (err) {
     console.error('DELETE /api/external-suppliers/:id/products/:productId error:', err);
     res.status(500).json({ success: false, message: 'Failed to delete product' });
+  }
+});
+
+// POST /api/external-suppliers/:id/products/:productId/replace { target_product_id, dry_run }
+//   연결들을 같은 업체의 다른 상품으로 옮기고(연결 줄 id 보존) 상품을 지운다. dry_run 기본 true(해 보고 롤백).
+router.post('/external-suppliers/:id/products/:productId/replace', async (req, res) => {
+  const v = await loadOwnedProduct(req, res); if (!v) return;
+  const { product, sc } = v;
+  const dryRun = !(req.body && req.body.dry_run === false);
+  const tid = parseInt(req.body && req.body.target_product_id, 10);
+  if (!Number.isFinite(tid)) return productDeleteBlocked(res, 400, 'TARGET_REQUIRED', 'Pick the product to use instead.');
+  const target = await SupplierProduct.findByPk(tid);
+  if (!target || target.supplier_company_id !== sc.id) return productDeleteBlocked(res, 400, 'TARGET_INVALID', 'Pick another product from the same supplier.');
+  if (target.id === product.id) return productDeleteBlocked(res, 400, 'TARGET_INVALID', 'Pick a different product.');
+  if (target.is_active === false) return productDeleteBlocked(res, 400, 'TARGET_INVALID', 'That product is turned off — turn it on first.');
+  const sequelize = SupplierProduct.sequelize;
+  const svc = require('../services/supplierProductDelete');
+  const t = await sequelize.transaction();
+  try {
+    const r = await svc.replaceSupplierProductLinks({ product, target, actor: req.buyerEntity ? { entity_type: req.buyerEntity.type, entity_id: req.buyerEntity.id } : undefined, user: req.user, sequelize, transaction: t });
+    if (r.blocked) { await t.rollback(); return productDeleteBlocked(res, 400, 'REPLACE_BLOCKED', 'Some stock items cannot be switched automatically. Fix these first — nothing was changed.', r.blocked); }
+    // 옮긴 뒤 같은 판정으로 다시 센다 — 남아 있으면 지우지 않는다
+    const left = await svc.collectSupplierProductUses(product.id, { sequelize, transaction: t });
+    if (left.length) { await t.rollback(); return productDeleteBlocked(res, 400, 'REPLACE_BLOCKED', 'Still in use after switching — nothing was changed.', left); }
+    await product.destroy({ transaction: t });
+    if (dryRun) await t.rollback(); else await t.commit();
+    res.json({ success: true, data: { dry_run: dryRun, target: { id: target.id, name: target.name }, moved: r.moved, deleted: !dryRun } });
+  } catch (err) {
+    if (!t.finished) await t.rollback();
+    console.error('POST /api/external-suppliers/:id/products/:productId/replace error:', err);
+    res.status(500).json({ success: false, message: 'Failed to switch and delete product' });
+  }
+});
+
+// POST /api/external-suppliers/:id/products/:productId/unlink { dry_run }
+//   대체할 상품이 없을 때 — 이력 없는 연결은 지우고, 발주·정기 발주가 가리키는 연결은 끈 채 남기고, 상품을 지운다.
+router.post('/external-suppliers/:id/products/:productId/unlink', async (req, res) => {
+  const v = await loadOwnedProduct(req, res); if (!v) return;
+  const { product } = v;
+  const dryRun = !(req.body && req.body.dry_run === false);
+  const sequelize = SupplierProduct.sequelize;
+  const svc = require('../services/supplierProductDelete');
+  const t = await sequelize.transaction();
+  try {
+    const r = await svc.unlinkSupplierProductLinks({ product, sequelize, transaction: t });
+    // 남은 연결 = 이력 때문에 끈 채 둔 것뿐이어야 한다
+    const left = await svc.collectSupplierProductUses(product.id, { sequelize, transaction: t });
+    const keptIds = new Set(r.deactivated.map((u) => u.link_id));
+    if (left.some((u) => u.is_active || !keptIds.has(u.link_id))) {
+      await t.rollback();
+      return productDeleteBlocked(res, 400, 'UNLINK_BLOCKED', 'Still in use after unlinking — nothing was changed.', left);
+    }
+    await product.destroy({ transaction: t });
+    if (dryRun) await t.rollback(); else await t.commit();
+    res.json({ success: true, data: { dry_run: dryRun, removed: r.removed, deactivated: r.deactivated, deleted: !dryRun } });
+  } catch (err) {
+    if (!t.finished) await t.rollback();
+    console.error('POST /api/external-suppliers/:id/products/:productId/unlink error:', err);
+    res.status(500).json({ success: false, message: 'Failed to unlink and delete product' });
   }
 });
 

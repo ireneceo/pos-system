@@ -250,7 +250,32 @@
     "addTitle": "Tambah Produk",
     "hint": "Ini pembekal luar yang anda daftarkan. Tambah produk yang anda beli — ia boleh dipesan dari item stok anda.",
     "deleteTitle": "Padam produk",
-    "nameHint": "Nama pembekal untuk produk ini. Lalai nama item anda — ubah jika berbeza."
+    "nameHint": "Nama pembekal untuk produk ini. Lalai nama item anda — ubah jika berbeza.",
+    "deleteConfirm": "Padam \"{{name}}\"? Tindakan ini tidak boleh dibatalkan.",
+    "del": {
+      "failed": "Tidak dapat memadam produk.",
+      "replaceTitle": "Tukar item stok ke produk lain, kemudian padam",
+      "intro": "\"{{name}}\" ialah sumber pembekal bagi {{count}} item stok di bawah, jadi ia tidak boleh dipadam terus. Pilih produk lain daripada pembekal ini — semuanya akan ditukar kepadanya, kemudian \"{{name}}\" dipadam.",
+      "off": "dimatikan",
+      "modeSwitch": "Tukar ke produk lain daripada pembekal ini",
+      "pick": "Cari produk untuk digunakan...",
+      "noOthers": "Pembekal ini tiada produk lain. Tambah satu dahulu, atau nyahpaut di bawah.",
+      "modeUnlink": "Buang sumber pembekal ini daripada item stok",
+      "reasonDup": "sudah mempunyai produk yang dipilih sebagai sumber pembekal — buang salah satu daripada item stok dahulu",
+      "reasonUnit": "unit tidak boleh ditukar ({{from}} → {{to}}) — pilih produk dengan unit yang sepadan",
+      "done": "Selesai — produk telah dipadam.",
+      "preview": "Pratonton — tiada apa diubah sehingga anda sahkan:",
+      "price": "Harga {{from}} → {{to}}",
+      "conv": "Penukaran stok {{from}} → {{to}}",
+      "needsConfirm": "sila semak pada item stok",
+      "cost": "Kos unit {{from}} → {{to}}",
+      "unlinkSummary": "{{removed}} sumber dibuang · {{kept}} disimpan tetapi dimatikan (digunakan oleh pesanan belian)",
+      "openPo": "{{count}} pesanan belian terbuka menggunakan sumber ini — yang telah dihantar kekal; buka draf untuk menyemak.",
+      "schedules": "{{count}} pesanan berulang akan memesan \"{{to}}\" mulai larian seterusnya.",
+      "applySwitch": "Tukar & padam",
+      "applyUnlink": "Nyahpaut & padam",
+      "check": "Pratonton"
+    }
   },
   "common": {
     "save": "Simpan",

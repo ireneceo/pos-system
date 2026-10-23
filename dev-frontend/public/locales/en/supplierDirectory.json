@@ -250,7 +250,32 @@
     "addTitle": "Add Product",
     "hint": "This is an external supplier you registered. Add the products you buy from them — they'll be orderable from your stock items.",
     "deleteTitle": "Delete product",
-    "nameHint": "The supplier's own name for this product. Defaults to your item name — edit if theirs differs."
+    "nameHint": "The supplier's own name for this product. Defaults to your item name — edit if theirs differs.",
+    "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone.",
+    "del": {
+      "failed": "Could not delete the product.",
+      "replaceTitle": "Switch stock items to another product, then delete",
+      "intro": "\"{{name}}\" is the supplier source of {{count}} stock item(s) below, so it cannot just be deleted. Pick another product from this supplier — they all switch to it, then \"{{name}}\" is deleted.",
+      "off": "off",
+      "modeSwitch": "Switch to another product from this supplier",
+      "pick": "Search the product to use instead...",
+      "noOthers": "This supplier has no other product. Add one first, or unlink below.",
+      "modeUnlink": "Remove this supplier source from the stock items",
+      "reasonDup": "already has the chosen product as a supplier source — remove one of the two from the stock item first",
+      "reasonUnit": "units cannot be converted ({{from}} → {{to}}) — pick a product in a matching unit",
+      "done": "Done — the product was deleted.",
+      "preview": "Preview — nothing is changed until you confirm:",
+      "price": "Price {{from}} → {{to}}",
+      "conv": "Stock conversion {{from}} → {{to}}",
+      "needsConfirm": "please check on the stock item",
+      "cost": "Unit cost {{from}} → {{to}}",
+      "unlinkSummary": "{{removed}} source(s) removed · {{kept}} kept but turned off (used by purchase orders)",
+      "openPo": "{{count}} open purchase order(s) use these sources — sent ones stay as they are; open drafts to check them.",
+      "schedules": "{{count}} recurring order(s) will order \"{{to}}\" from the next run.",
+      "applySwitch": "Switch & delete",
+      "applyUnlink": "Unlink & delete",
+      "check": "Preview"
+    }
   },
   "common": {
     "save": "Save",

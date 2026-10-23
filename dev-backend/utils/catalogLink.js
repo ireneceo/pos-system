@@ -129,6 +129,24 @@ async function resolveSellerProduct({ body, transaction, supplierContract, brand
   };
 }
 
+/**
+ * 연결 줄이 판매 상품에서 **복사해 오는 칸** — 새 연결(mappingAttrs)과 공급업체 상품 교체
+ *   (services/supplierProductDelete — 연결을 같은 업체 다른 상품으로 옮길 때)가 같은 목록을 쓴다.
+ */
+function sellerCopiedLinkFields({ productPrice, productMinQty }) {
+  return {
+    unit_price: parseFloat(productPrice) || 0,
+    // 최소주문은 소수를 허용한다 (measure 모드의 "최소 0.5kg").
+    //   그전까지 `parseInt(...) || 1` 이었다 — 0.5 가 0 으로 잘리고 `|| 1` 이 1 로 되살려
+    //   **판매자가 0.5kg 로 등록해도 링크에는 1 이 박혔다**(컬럼은 DECIMAL 로 넓혔는데
+    //   4벌 공통 쓰기 경로가 잘라내면 확폭이 무의미하다 — 2026-08-30).
+    //   폴백 1 은 유지한다: 값이 없거나(NaN/null) 0 이하면 종전대로 1.
+    //   ⚠ `|| 1` 만으로는 부족하다 — 0.5 는 truthy 라 통과하지만 parseInt 가 먼저 죽인다.
+    //     그래서 절삭(parseInt) 자체를 없애고 유한 양수만 통과시킨다.
+    min_order_quantity: parseMinOrderQty(productMinQty)
+  };
+}
+
 /** 매핑 1건 생성에 쓰는 필드 (4벌 공통). */
 function mappingAttrs({ seller, unitConversion, isPreferred, targetKey, targetId, buyerRestaurantId = null }) {
   // 2026-09-01: 타깃 컬럼이 4개(재료 2 + 프로덕트 2)로 늘었다. 여기서 손으로 분기하면
@@ -141,16 +159,8 @@ function mappingAttrs({ seller, unitConversion, isPreferred, targetKey, targetId
     seller_type: seller.sellerType,
     seller_entity_id: seller.sellerEntityId,
     seller_product_id: seller.sellerProductRow.id,
-    unit_price: parseFloat(seller.productPrice) || 0,
+    ...sellerCopiedLinkFields(seller),
     unit_conversion: unitConversion,
-    // 최소주문은 소수를 허용한다 (measure 모드의 "최소 0.5kg").
-    //   그전까지 `parseInt(...) || 1` 이었다 — 0.5 가 0 으로 잘리고 `|| 1` 이 1 로 되살려
-    //   **판매자가 0.5kg 로 등록해도 링크에는 1 이 박혔다**(컬럼은 DECIMAL 로 넓혔는데
-    //   4벌 공통 쓰기 경로가 잘라내면 확폭이 무의미하다 — 2026-08-30).
-    //   폴백 1 은 유지한다: 값이 없거나(NaN/null) 0 이하면 종전대로 1.
-    //   ⚠ `|| 1` 만으로는 부족하다 — 0.5 는 truthy 라 통과하지만 parseInt 가 먼저 죽인다.
-    //     그래서 절삭(parseInt) 자체를 없애고 유한 양수만 통과시킨다.
-    min_order_quantity: parseMinOrderQty(seller.productMinQty),
     lead_time_days: 0,
     is_preferred: isPreferred,
     is_active: true
@@ -350,6 +360,7 @@ async function linkedSellerProductMap(buyerEntity, { transaction } = {}) {
 
 module.exports = {
   normalizeName,
+  sellerCopiedLinkFields,
   stockFieldsFromSellerProduct,
   UNIT_ENUM,
   UNIT_MAP,

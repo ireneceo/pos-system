@@ -5282,6 +5282,143 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     finally { await hcSupplierCleanup(f); }
   });
 
+  // 2026-10-23 Fable 설계 supplier-product-delete §5 — 외부 업체 상품 삭제: 연결 있으면 409 · 같은 업체 다른 상품으로 바꾸고 삭제 · 연결 끊고 삭제.
+  //   준비물: 데모 매장 38 RA 가 등록한 임시 외부 업체 + 상품 A(1 kg/pack RM5)·B(10 kg/pack RM48)·C(1 L/pack) + 재료(kg) 2개 + A 연결 + 발주(submitted) 1건.
+  //   고장주입: ① replace 라우트의 «같은 업체» 검사 제거 → 다른 업체 상품 TARGET_INVALID 실패 ② 서비스 중복 연결 검사 제거 → 중복 REPLACE_BLOCKED 실패.
+  async function hcSpDelFixture() {
+    const { sequelize } = require('../config/database');
+    const jwt = require('jsonwebtoken');
+    const M = require('../models');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const [ra] = await Q(`SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 AND is_active = 1 ORDER BY id LIMIT 1`);
+    const [raOther] = await Q(`SELECT u.id FROM users u JOIN restaurants r ON r.id = u.restaurant_id WHERE r.is_demo = 1 AND r.id <> 38 AND u.role = 'Restaurant Admin' AND u.is_active = 1 ORDER BY r.id LIMIT 1`);
+    if (!ra || !raOther) return null;
+    const auth = (id) => ({ Authorization: `Bearer ${jwt.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+    const tag = 'ZZ-HC-SPDEL-' + Date.now().toString(36);
+    const f = { tag, auth: auth(ra.id), otherAuth: auth(raOther.id), scIds: [], ingIds: [], poIds: [], M, Q, sequelize };
+    const sc = await M.SupplierCompany.create({ name: tag, status: 'active', is_system_registered: false, registered_by_entity_type: 'restaurant', registered_by_entity_id: 38 }); f.scIds.push(sc.id);
+    const sc2 = await M.SupplierCompany.create({ name: tag + '-2', status: 'active', is_system_registered: false, registered_by_entity_type: 'restaurant', registered_by_entity_id: 38 }); f.scIds.push(sc2.id);
+    const mkP = (co, name, unit, base, price) => M.SupplierProduct.create({ supplier_company_id: co, name: `${tag} ${name}`, sku: `${tag}-${name}`, unit, base_quantity: base, order_mode: 'pack', unit_price: price, min_order_quantity: 1, is_active: true, current_stock: 0, low_stock_threshold: 0, sort_order: 0 });
+    f.sc = sc; f.sc2 = sc2;
+    f.A = await mkP(sc.id, 'A', 'kg', 1, 5);
+    f.B = await mkP(sc.id, 'B', 'kg', 10, 48);
+    f.C = await mkP(sc.id, 'C', 'L', 1, 7);
+    f.X = await mkP(sc2.id, 'X', 'kg', 1, 6);
+    f.ing = await M.Ingredient.create({ owner_type: 'restaurant', restaurant_id: 38, name: tag + ' ING', unit: 'kg', base_quantity: 1, unit_cost: 5, is_active: true }); f.ingIds.push(f.ing.id);
+    f.ing2 = await M.Ingredient.create({ owner_type: 'restaurant', restaurant_id: 38, name: tag + ' ING2', unit: 'kg', base_quantity: 1, unit_cost: 5, is_active: true }); f.ingIds.push(f.ing2.id);
+    f.link = await M.IngredientSellerProduct.create({ ingredient_id: f.ing.id, seller_type: 'supplier', seller_entity_id: sc.id, seller_product_id: f.A.id, unit_price: 5, unit_conversion: 1, is_active: true, is_preferred: true, conversion_confirmed_at: new Date(), conversion_confirmed_pair: 'kg>kg' });
+    f.link2 = await M.IngredientSellerProduct.create({ ingredient_id: f.ing2.id, seller_type: 'supplier', seller_entity_id: sc.id, seller_product_id: f.A.id, unit_price: 5, unit_conversion: 1, is_active: true, is_preferred: true });
+    const po = await M.PurchaseOrder.create({ po_number: tag, entity_type: 'restaurant', entity_id: 38, seller_type: 'supplier', seller_entity_id: sc.id,
+      status: 'submitted', subtotal: 5, tax_amount: 0, total_amount: 5, currency: 'MYR', payment_status: 'unpaid', submitted_at: new Date(), created_by_user_id: ra.id });
+    f.poIds.push(po.id);
+    f.poi = await M.PurchaseOrderItem.create({ purchase_order_id: po.id, ingredient_id: f.ing.id, ingredient_seller_product_id: f.link.id, description: tag, quantity_ordered: 1, unit_price: 5, total_price: 5, unit: 'kg' });
+    return f;
+  }
+  async function hcSpDelCleanup(f) {
+    if (!f) return;
+    const { sequelize } = f;
+    try { await hcCleanupPurchaseOrders(f.poIds, { waitMs: 0 }); } catch {}
+    if (f.ingIds.length) {
+      await sequelize.query('DELETE FROM ingredient_seller_products WHERE ingredient_id IN (?)', { replacements: [f.ingIds] });
+      await sequelize.query("DELETE FROM cost_change_logs WHERE subject_type = 'ingredient' AND subject_id IN (?)", { replacements: [f.ingIds] }).catch(() => {});
+      await sequelize.query('DELETE FROM ingredients WHERE id IN (?)', { replacements: [f.ingIds] });
+    }
+    await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id IN (?)', { replacements: [f.scIds] });
+    await sequelize.query('DELETE FROM supplier_products WHERE supplier_company_id IN (?)', { replacements: [f.scIds] });
+    await sequelize.query('DELETE FROM supplier_companies WHERE id IN (?)', { replacements: [f.scIds] });
+  }
+
+  test('supplier', '외부 업체 상품 삭제 — 연결 있으면 409 IN_USE · 바꾸고 삭제 미리보기는 무변화 · 적용하면 연결 id 그대로 새 상품·가격·환산·원가 · 발주 줄 FK 그대로', async () => {
+    let f = null;
+    try {
+      f = await hcSpDelFixture();
+      if (!f) { console.log(c.gray('      (준비물 없음 — 데모 매장 RA)')); return false; }
+      const { M } = f;
+      const base = `/external-suppliers/${f.sc.id}/products/${f.A.id}`;
+      const del = await request('DELETE', base, null, f.auth);
+      const uses = (del.body && del.body.error && del.body.error.uses) || [];
+      const u1 = uses.find((u) => u.link_id === f.link.id);
+      const aliveAfterDel = !!(await M.SupplierProduct.findByPk(f.A.id));
+      const dry = await request('POST', `${base}/replace`, { target_product_id: f.B.id }, f.auth);
+      const l1dry = await M.IngredientSellerProduct.findByPk(f.link.id);
+      const m1 = dry.body && dry.body.data && (dry.body.data.moved || []).find((m) => m.link_id === f.link.id);
+      const aliveAfterDry = !!(await M.SupplierProduct.findByPk(f.A.id));
+      const go = await request('POST', `${base}/replace`, { target_product_id: f.B.id, dry_run: false }, f.auth);
+      const l1 = await M.IngredientSellerProduct.findByPk(f.link.id);
+      const ing = await M.Ingredient.findByPk(f.ing.id);
+      const poi = await M.PurchaseOrderItem.findByPk(f.poi.id);
+      const goneA = !(await M.SupplierProduct.findByPk(f.A.id));
+      const [log] = await f.Q("SELECT COUNT(*) n FROM cost_change_logs WHERE subject_type = 'ingredient' AND subject_id = :i AND source = 'seller_edit' AND note LIKE '공급업체 상품 교체%'", { i: f.ing.id });
+      const ok = del.status === 409 && del.body.error.code === 'IN_USE' && uses.length === 2 && !!u1 && u1.open_po_count === 1 && aliveAfterDel
+        && dry.status === 200 && dry.body.data.dry_run === true && !!m1 && m1.price.from === 5 && m1.price.to === 48 && m1.conversion.to === 10 && m1.conversion.needs_confirm === true
+        && Number(l1dry.seller_product_id) === f.A.id && aliveAfterDry
+        && go.status === 200 && go.body.data.deleted === true
+        && Number(l1.seller_product_id) === f.B.id && Number(l1.unit_price) === 48 && Number(l1.unit_conversion) === 10 && l1.conversion_confirmed_at === null
+        && Math.abs(Number(ing.unit_cost) - 4.8) < 0.001 && Number(log.n) >= 1
+        && Number(poi.ingredient_seller_product_id) === f.link.id && goneA;
+      if (!ok) console.log(c.gray(`      (삭제 ${del.status} uses ${uses.length} po ${u1 && u1.open_po_count} · 미리보기 ${dry.status} ${JSON.stringify(m1 || dry.body).slice(0, 200)} · 적용 ${go.status} 연결 ${l1 && l1.seller_product_id}/${l1 && l1.unit_price}/${l1 && l1.unit_conversion}/${l1 && l1.conversion_confirmed_at} 원가 ${ing && ing.unit_cost} 이력 ${log.n} 발주줄 ${poi && poi.ingredient_seller_product_id} A삭제 ${goneA})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await hcSpDelCleanup(f); }
+  });
+
+  test('supplier', '외부 업체 상품 바꾸고 삭제 — 막힘(다른 업체·자기·중복 연결·kg↔L)은 무변화 · 보안(남의 매장 403/404 · 가입 공급업체 상품 403 NOT_EXTERNAL)', async () => {
+    let f = null;
+    try {
+      f = await hcSpDelFixture();
+      if (!f) { console.log(c.gray('      (준비물 없음 — 데모 매장 RA)')); return false; }
+      const { M } = f;
+      const base = `/external-suppliers/${f.sc.id}/products/${f.A.id}`;
+      const otherCo = await request('POST', `${base}/replace`, { target_product_id: f.X.id, dry_run: false }, f.auth);
+      const self = await request('POST', `${base}/replace`, { target_product_id: f.A.id, dry_run: false }, f.auth);
+      const unitBad = await request('POST', `${base}/replace`, { target_product_id: f.C.id, dry_run: false }, f.auth);
+      const dupRow = await M.IngredientSellerProduct.create({ ingredient_id: f.ing2.id, seller_type: 'supplier', seller_entity_id: f.sc.id, seller_product_id: f.B.id, unit_price: 48, unit_conversion: 10, is_active: true });
+      const dup = await request('POST', `${base}/replace`, { target_product_id: f.B.id, dry_run: false }, f.auth);
+      const l1 = await M.IngredientSellerProduct.findByPk(f.link.id);
+      const l2 = await M.IngredientSellerProduct.findByPk(f.link2.id);
+      const aliveA = !!(await M.SupplierProduct.findByPk(f.A.id));
+      const otherDel = await request('DELETE', base, null, f.otherAuth);
+      const otherRep = await request('POST', `${base}/replace`, { target_product_id: f.B.id, dry_run: false }, f.otherAuth);
+      await dupRow.destroy();
+      const [reg] = await f.Q('SELECT sp.id, sp.supplier_company_id sc FROM supplier_products sp JOIN supplier_companies c ON c.id = sp.supplier_company_id WHERE c.is_system_registered = 1 AND sp.deleted_at IS NULL ORDER BY sp.id LIMIT 1');
+      const regDel = reg ? await request('DELETE', `/external-suppliers/${reg.sc}/products/${reg.id}`, null, f.auth) : { status: 403, body: { code: 'NOT_EXTERNAL' } };
+      const code = (r) => r.body && r.body.error && r.body.error.code;
+      const ok = otherCo.status === 400 && code(otherCo) === 'TARGET_INVALID'
+        && self.status === 400 && code(self) === 'TARGET_INVALID'
+        && unitBad.status === 400 && code(unitBad) === 'REPLACE_BLOCKED'
+        && dup.status === 400 && code(dup) === 'REPLACE_BLOCKED' && (dup.body.error.uses || []).some((u) => u.reason === 'already_linked')
+        && Number(l1.seller_product_id) === f.A.id && Number(l2.seller_product_id) === f.A.id && aliveA
+        && [403, 404].includes(otherDel.status) && [403, 404].includes(otherRep.status)
+        && regDel.status === 403 && regDel.body.code === 'NOT_EXTERNAL';
+      if (!ok) console.log(c.gray(`      (가입업체 ${regDel.status}/${regDel.body && regDel.body.code} · 다른업체 ${otherCo.status}/${code(otherCo)} · 자기 ${self.status}/${code(self)} · 단위 ${unitBad.status}/${code(unitBad)} · 중복 ${dup.status}/${code(dup)} · 연결 ${l1.seller_product_id},${l2.seller_product_id} A ${aliveA} · 남의매장 ${otherDel.status}/${otherRep.status})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await hcSpDelCleanup(f); }
+  });
+
+  test('supplier', '외부 업체 상품 연결 끊고 삭제 — 이력 없는 연결은 지우고 발주가 쓰는 연결은 꺼서 남김 · 발주 줄 FK 그대로 · 미리보기는 무변화', async () => {
+    let f = null;
+    try {
+      f = await hcSpDelFixture();
+      if (!f) { console.log(c.gray('      (준비물 없음 — 데모 매장 RA)')); return false; }
+      const { M } = f;
+      const base = `/external-suppliers/${f.sc.id}/products/${f.A.id}`;
+      const dry = await request('POST', `${base}/unlink`, {}, f.auth);
+      const keptDry = !!(await M.IngredientSellerProduct.findByPk(f.link2.id)) && !!(await M.SupplierProduct.findByPk(f.A.id));
+      const go = await request('POST', `${base}/unlink`, { dry_run: false }, f.auth);
+      const l1 = await M.IngredientSellerProduct.findByPk(f.link.id);
+      const l2 = await M.IngredientSellerProduct.findByPk(f.link2.id);
+      const poi = await M.PurchaseOrderItem.findByPk(f.poi.id);
+      const goneA = !(await M.SupplierProduct.findByPk(f.A.id));
+      const ok = dry.status === 200 && dry.body.data.dry_run === true && keptDry
+        && go.status === 200 && go.body.data.removed.length === 1 && go.body.data.deactivated.length === 1
+        && !!l1 && !l1.is_active && !l2 && Number(poi.ingredient_seller_product_id) === f.link.id && goneA;
+      if (!ok) console.log(c.gray(`      (미리보기 ${dry.status} 그대로 ${keptDry} · 적용 ${go.status} ${JSON.stringify(go.body).slice(0, 160)} · 이력연결 ${l1 && l1.is_active} · 빈연결 ${!!l2} · 발주줄 ${poi && poi.ingredient_seller_product_id} · A삭제 ${goneA})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await hcSpDelCleanup(f); }
+  });
+
   // §8-4 D-3 의 두 번째 문 (2026-09-11 Fable): 매장이 자기 외부 공급업체 **가격을 고칠 때**도 브랜드 층 원가를 건드리면 안 된다.
   //   «전부 건너뛰기»가 아님도 함께 증명한다 — 같은 상품에 매핑된 **매장 자기 재료**의 원가는 따라가야 한다.
   //   고장주입: supplier-directory.js 외부 공급업체 상품 PUT 의 ctx.actor 제거 → 브랜드 재료 원가가 25 로 바뀌어 실패
