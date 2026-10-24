@@ -464,6 +464,10 @@ const PurchaseOrdersPage: React.FC = () => {
   //   서버가 거른다(approved_at 있음 · 다시 승인 대기 아님). 끄면 오너 본인 제출·승인 OFF 매장 발주까지 전체.
   const location = useLocation();
   const [approvedOnly, setApprovedOnly] = useState(() => new URLSearchParams(location.search).get('approved') === '1');
+  // 이미 이 화면에 있을 때 «승인 완료» 탭을 눌러도(주소만 바뀜) 토글이 따라 켜지게 — Fable 게이트 비차단 후속 ①
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('approved') === '1') setApprovedOnly(true);
+  }, [location.search]);
   const [tabsKey, setTabsKey] = useState(0);
   const [reimburseRow, setReimburseRow] = useState<PurchaseOrderRow | null>(null);
   const [reimburseMethod, setReimburseMethod] = useState<'cash' | 'bank_transfer'>('cash');

@@ -109,6 +109,7 @@ fi
 report_peak() {
     [ -n "${PEAK_PID:-}" ] && kill "$PEAK_PID" 2>/dev/null
     if [ -s "$PEAK_FILE" ]; then echo -e "  빌드 상자 메모리 피크: $(( $(cat "$PEAK_FILE") / 1048576 ))MB (상한 5120MB)"; rm -f "$PEAK_FILE"; fi
+    return 0  # 피크를 못 읽었어도(set -e) 빌드 성공을 실패로 끝내지 않는다
 }
 
 # 빌드 실행 — 진행 상황을 실시간 출력

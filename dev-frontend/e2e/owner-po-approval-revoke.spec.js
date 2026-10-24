@@ -102,3 +102,21 @@ for (const vp of [{ w: 1440, h: 900 }, { w: 390, h: 844 }]) {
     expect(errors.filter(e => !/favicon|ResizeObserver|net::ERR|Failed to load resource/i.test(e))).toEqual([]);
   });
 }
+
+// 2026-10-24 — 이미 발주내역(토글 OFF)에 있을 때 «Approved» 탭을 눌러도 «승인 완료만» 이 켜져 서버에 approved=1 이 간다.
+test('발주내역에서 «Approved» 탭 다시 누르면 승인 완료만 켜짐', async ({ page }) => {
+  test.skip(!owner, '데모 오너 없음');
+  const token = jwt.sign({ userId: owner.id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+  await page.context().addInitScript((t) => {
+    localStorage.setItem('auth_token', t); localStorage.setItem('currentUserRole', 'Restaurant Owner');
+  }, token);
+  const listCalls = [];
+  page.on('request', (r) => { if (/\/api\/purchase-orders\?/.test(r.url())) listCalls.push(r.url()); });
+  await page.goto('/pos/purchase-orders/history', { waitUntil: 'networkidle' });
+  expect(listCalls.length).toBeGreaterThan(0);
+  expect(listCalls.every(u => !/approved=1/.test(u))).toBe(true);
+  const approvedReq = page.waitForRequest(r => /\/api\/purchase-orders\?.*approved=1/.test(r.url()), { timeout: 8000 });
+  await page.getByRole('button', { name: 'Approved', exact: true }).first().click();
+  await page.waitForURL(/\/pos\/purchase-orders\/history\?approved=1/);
+  await approvedReq; // 토글이 주소를 따라 켜지지 않으면 이 요청이 오지 않아 시간 초과로 실패한다
+});
