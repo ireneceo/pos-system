@@ -6,6 +6,7 @@
 # 사용법:
 #   ./deploy-to-production.sh           # 대화형 모드
 #   ./deploy-to-production.sh --auto    # 자동 모드
+#   ./deploy-to-production.sh --dry-run # 미리 보기 — 깨끗한 사본·안전 게이트·나갈 범위만 보고 끝 (운영 변경 없음)
 #
 
 set -e
@@ -52,10 +53,16 @@ SKIP_BUILD=false
 SKIP_SAFETY=false                  # 인쇄/주문 안전 게이트. 기본 ON(막힘). 긴급 핫픽스 시에만 --skip-safety 로 우회
 SYNC_CONTENT=true                  # default ON: 랜딩/블로그 콘텐츠는 코드와 함께 운영에 반영되어야 함
 SYNC_CONTENT_SINCE="90d"           # 최근 90일 발행/수정분 sync (그 이상 과거 글은 사용자가 별도 --group=N 지정)
+# 미리 보기 (2026-10-24 · ~/dev-server/DEPLOY_STRUCTURE.md 5절 ②) — 상황판 배포 버튼 시험용.
+#   운영 접속은 읽기·연결 확인만(SSH 연결 · .env grep · 운영 칸 순서 검사(읽기 전용) · 스키마 export 를 stdout 으로).
+#   덤프·백업·빌드·rsync·마이그·재시작은 하지 않는다 — 3단계(확인) 앞에서 끝난다. 묻는 창도 띄우지 않는다.
+DRY_RUN=false
+DRY_BLOCKERS=""
 
 for arg in "$@"; do
     case $arg in
         --auto) AUTO_MODE=true ;;
+        --dry-run) DRY_RUN=true ;;
         --skip-build) SKIP_BUILD=true ;;
         --skip-safety) SKIP_SAFETY=true ;;         # 인쇄/주문 안전 게이트 우회 (긴급 핫픽스 전용)
         --sync-content) SYNC_CONTENT=true ;;       # 명시적 ON (기본값과 동일, 이전 호환)
@@ -74,6 +81,7 @@ echo "============================================"
 echo "  Production Deployment (Remote)"
 echo "  From: 개발서버 (87.106.11.184)"
 echo "  To:   운영서버 (87.106.78.146)"
+[ "$DRY_RUN" = true ] && echo "  Mode: DRY-RUN — 미리 보기 (운영 변경 없음)"
 echo "============================================"
 echo ""
 
@@ -134,16 +142,50 @@ WIP_COMMITS=$(git -C /var/www log --format='    %h %ad %s' --date=format:'%m-%d 
 if [ -n "$WIP_COMMITS" ]; then
     warn "이번에 나갈 범위에 자동 저장(wip) 커밋이 있습니다 — 진행 중인 일이 섞였을 수 있음:"
     echo "$WIP_COMMITS"
-    if [ "$AUTO_MODE" = true ]; then
+    if [ "$DRY_RUN" = true ]; then
+        warn "[DRY-RUN] 실제 배포라면 --auto 는 여기서 멈추고, 수동은 포함 여부를 묻습니다."
+        DRY_BLOCKERS="${DRY_BLOCKERS}\n  - 나갈 범위에 자동 저장(wip) 커밋 — --auto 배포는 여기서 멈춤"
+    elif [ "$AUTO_MODE" = true ]; then
         error "자동 배포(--auto) 중단 — 나갈 범위에 자동 저장(wip) 커밋이 있습니다. 그 일을 한 방이 확인하고 «/개발완료» 로 정식 커밋한 뒤, 수동 /배포 로 확인하고 내보내세요."
+    else
+        read -p "자동 저장 커밋을 포함해 배포할까요? (y/N): " wip_confirm
+        [[ "$wip_confirm" =~ ^[Yy]$ ]] || { echo "Cancelled."; exit 0; }
     fi
-    read -p "자동 저장 커밋을 포함해 배포할까요? (y/N): " wip_confirm
-    [[ "$wip_confirm" =~ ^[Yy]$ ]] || { echo "Cancelled."; exit 0; }
 fi
 success "배포 대상 = 커밋 ${DEPLOY_COMMIT:0:9} ($CLEAN_ROOT)"
 if [ "${LEFT_OUT:-0}" -gt 0 ]; then
     warn "작업 폴더 미커밋·미추적 ${LEFT_OUT}개는 이번 배포에서 빠집니다 (진행 중인 일 — 커밋되면 다음 배포에 나감):"
     git -C /var/www status --porcelain -- dev-backend dev-frontend desktop-pos | head -20 | sed 's/^/    /'
+fi
+
+# 미리 보기: 나갈 범위 — 게이트가 중간에 막아도 보이게 게이트 앞에서 찍는다.
+if [ "$DRY_RUN" = true ]; then
+    echo ""
+    log "[DRY-RUN] 나갈 범위"
+    if [ -n "$LAST_DEPLOY_COMMIT" ]; then
+        echo "  지난 배포 커밋 ${LAST_DEPLOY_COMMIT:0:9} → 이번 ${DEPLOY_COMMIT:0:9}"
+    else
+        echo "  지난 배포 커밋 기록 없음 — ${LAST_DEPLOY_AT:-7 days ago} 이후 커밋으로 봄 → 이번 ${DEPLOY_COMMIT:0:9}"
+    fi
+    # shellcheck disable=SC2086
+    SCOPE_COMMITS=$(git -C /var/www log --format='    %h %ad %s' --date=format:'%m-%d %H:%M' $WIP_RANGE_ARGS 2>/dev/null || true)
+    echo "  커밋 $(echo -n "$SCOPE_COMMITS" | grep -c '^' || true)개:"
+    [ -n "$SCOPE_COMMITS" ] && echo "$SCOPE_COMMITS" | head -40
+    if [ -n "$LAST_DEPLOY_COMMIT" ]; then
+        for AREA in dev-backend dev-frontend desktop-pos; do
+            N=$(git -C /var/www diff --name-only "${LAST_DEPLOY_COMMIT}..${DEPLOY_COMMIT}" -- "$AREA" 2>/dev/null | grep -c . || true)
+            echo "  바뀐 파일 ${AREA}: ${N}개"
+        done
+    fi
+    MIG_LIST=$(cd $SRC_BACKEND && node scripts/check-migration-registry.js --list-deploy 2>/dev/null || true)
+    echo "  운영에서 돌 배포 마이그(매 배포 재실행·멱등): $(echo -n "$MIG_LIST" | grep -c '[^[:space:]]' || true)개"
+    REC_FILES=$(ls -1 $SRC_BACKEND/releases/*.json 2>/dev/null | xargs -r -n1 basename | tr '\n' ' ')
+    echo "  배포 기록: ${REC_FILES:-(없음 — 게이트 10 이 막음)}"
+    SW_NEW=$(grep -oP "SW_VERSION\s*=\s*'\K[^']+" $SRC_FRONTEND/public/sw.js 2>/dev/null | head -1)
+    SW_PROD=$(curl -s --max-time 5 https://purplehere.com/sw.js 2>/dev/null | grep -oP "SW_VERSION\s*=\s*'\K[^']+" | head -1)
+    echo "  화면 버전(SW): 이번 ${SW_NEW:-?} · 운영 지금 ${SW_PROD:-확인 못 함}"
+    [ -n "$SW_NEW" ] && [ "$SW_NEW" = "$SW_PROD" ] && warn "[DRY-RUN] 화면 버전이 운영과 같습니다 — 프론트가 바뀌었으면 손님 화면이 옛 번들을 쓸 수 있음(게이트 10 이 기록과 대조)"
+    echo ""
 fi
 
 # ──────────────────────────────────────────
@@ -332,10 +374,17 @@ fi
 DEV_TABLES=$(node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('/tmp/deploy_dev_schema.json','utf-8'))).length)" 2>/dev/null) ||     error "🗄️ dev 스키마 파일을 읽지 못했다 (/tmp/deploy_dev_schema.json 손상)"
 
 # Export prod DB schema via SSH (실패해도 배포는 계속 — 아래 if 가 없으면 경고만)
-PROD_EXPORT_ERR=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node compare-schema.js --export --out /tmp/deploy_prod_schema.json 2>&1 >/dev/null" 2>&1) || true
-[ -n "$PROD_EXPORT_ERR" ] && echo -e "  ${YELLOW}운영 스키마 export 경고:${NC} $(echo "$PROD_EXPORT_ERR" | tail -1)"
 rm -f /tmp/deploy_prod_schema.json
-scp -q $PROD_SERVER:/tmp/deploy_prod_schema.json /tmp/deploy_prod_schema.json 2>/dev/null || true
+if [ "$DRY_RUN" = true ]; then
+    # 미리 보기는 운영에 파일도 남기지 않는다 — 스키마를 ssh 출력으로 받아 이 기계에만 쓴다.
+    #   --out 없이(stdout)는 process.exit 가 파이프를 다 비우기 전에 끝나 JSON 이 잘린다(실측 10-24) →
+    #   --out /dev/fd/3(동기 쓰기)을 ssh 출력에 잇고, 완료 안내 줄(console.log)은 버린다.
+    PROD_EXPORT_ERR=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node compare-schema.js --export --out /dev/fd/3 3>&1 1>/dev/null 2>&2" 2>&1 >/tmp/deploy_prod_schema.json) || true
+else
+    PROD_EXPORT_ERR=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node compare-schema.js --export --out /tmp/deploy_prod_schema.json 2>&1 >/dev/null" 2>&1) || true
+    scp -q $PROD_SERVER:/tmp/deploy_prod_schema.json /tmp/deploy_prod_schema.json 2>/dev/null || true
+fi
+[ -n "$PROD_EXPORT_ERR" ] && echo -e "  ${YELLOW}운영 스키마 export 경고:${NC} $(echo "$PROD_EXPORT_ERR" | tail -1)"
 
 if [ -f /tmp/deploy_prod_schema.json ] && [ -s /tmp/deploy_prod_schema.json ]; then
     PROD_TABLES=$(node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('/tmp/deploy_prod_schema.json','utf-8'))).length)")
@@ -398,7 +447,7 @@ if [ -f /tmp/deploy_prod_schema.json ] && [ -s /tmp/deploy_prod_schema.json ]; t
             fi
         fi
 
-        if [ "$AUTO_MODE" = false ]; then
+        if [ "$AUTO_MODE" = false ] && [ "$DRY_RUN" = false ]; then
             warn "위 차이는 registry 마이그레이션으로만 적용된다."
             read -p "Continue with deployment? (y/N): " schema_confirm
             if [[ ! "$schema_confirm" =~ ^[Yy]$ ]]; then
@@ -409,6 +458,30 @@ if [ -f /tmp/deploy_prod_schema.json ] && [ -s /tmp/deploy_prod_schema.json ]; t
     fi
 else
     warn "Could not export prod schema (compare-schema.js may not exist on prod yet). Will sync after deploy."
+fi
+
+# ──────────────────────────────────────────
+# 미리 보기는 여기서 끝 — 아래(덤프·백업·빌드·rsync·마이그·재시작)는 운영을 바꾼다.
+# ──────────────────────────────────────────
+if [ "$DRY_RUN" = true ]; then
+    echo ""
+    echo "============================================"
+    if [ -n "$DRY_BLOCKERS" ]; then
+        echo -e "${YELLOW}  DRY-RUN 끝 — 게이트는 통과했지만 실제 배포를 막을 것이 있음:${NC}"
+        echo -e "$DRY_BLOCKERS"
+        echo "  운영 변경 0 (덤프·백업·빌드·보내기·마이그·재시작 안 함)"
+        echo "============================================"
+        exit 1
+    fi
+    if [ "$SKIP_SAFETY" = true ]; then
+        echo -e "${YELLOW}  DRY-RUN 끝 — 안전 게이트 건너뜀(--skip-safety) · 깨끗한 사본·스키마 대조만 통과 (커밋 ${DEPLOY_COMMIT:0:9})${NC}"
+    else
+        echo -e "${GREEN}  DRY-RUN 끝 — 깨끗한 사본·안전 게이트·스키마 대조 통과 (커밋 ${DEPLOY_COMMIT:0:9})${NC}"
+    fi
+    echo "  운영 변경 0 (덤프·백업·빌드·보내기·마이그·재시작 안 함)"
+    echo "  남은 것(실제 배포 때만 확인됨): 빌드·실브라우저 전 화면 검사·운영 마이그·스모크"
+    echo "============================================"
+    exit 0
 fi
 
 # ──────────────────────────────────────────
