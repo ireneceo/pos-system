@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Navigate, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAllowedRoutes } from '../hooks/useAllowedRoutes';
@@ -6,7 +6,8 @@ import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 // 이 파일에는 기존 로컬 `Button`(아래 styled)이 이미 있다 — 이름 충돌을 피해 별칭으로 가져온다.
 // (기존 로컬 버튼은 baseline 부채라 이번 작업 범위에서 건드리지 않는다.)
-import { Button as SharedButton } from './UI';
+import { ThemedButton as SharedButton } from './UI';
+import { getAuthToken } from '../utils/auth';
 
 // ── POS 현장 단말 가드용 헬퍼 (설계 §6.3) ──────────────────────────────────
 // 이 기기가 어느 매장 POS 로 고정됐는지는 로그인 시에만 기록된다(`pos_device_restaurant`,
@@ -77,17 +78,54 @@ const MismatchText = styled.p`
   color: var(--pos-text-muted, #425466);
 `;
 
-// 진입 차단 화면 — "이 기기의 매장으로 전환" 버튼으로 정상 상태로 돌아갈 수 있게 한다.
-const DeviceContextMismatchScreen: React.FC<{ device: { id: string; name: string }; session: string }> = ({ device }) => {
+const MismatchHint = styled.p`
+  margin: 8px 0 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pos-text-muted, #425466);
+`;
+
+// 진입 차단 화면 — 두 길로 정상 상태로 돌아간다.
+//   ① «이 기기를 지금 매장으로» — 기기 고정값을 세션 매장으로 덮어써 화면·기기·세션 3자를 다시 맞춘다
+//      (2026-10-25 Irene «권고대로» — 관리자 노트북이 예전 로그인 매장에 묶여 플로어플랜이 막히던 일).
+//      이후 이 기기의 직원 PIN 로그인도 새 매장 기준이 된다 — 문구로 알린다.
+//   ② «Choose context» — 기기 매장 쪽으로 세션을 되돌린다(기존).
+const DeviceContextMismatchScreen: React.FC<{
+  device: { id: string; name: string };
+  session: string;
+  onAdopted: () => void;
+}> = ({ device, session, onAdopted }) => {
   const { t } = useTranslation('auth');
   const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+
+  const adoptThisStore = async () => {
+    if (busy) return;
+    setBusy(true);
+    // 매장 이름은 서버의 세션 매장 기준(/me) — 컨텍스트 전환 뒤 user.restaurantName 은 비어 있다.
+    let name = '';
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/auth/me', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const json = await res.json().catch(() => null);
+      if (String(json?.data?.restaurant_id ?? '') === session) name = json?.data?.restaurantName || '';
+    } catch { /* 이름은 표시용 — 없어도 매장 번호로 동작 */ }
+    try { localStorage.setItem('pos_device_restaurant', JSON.stringify({ id: session, name })); } catch {}
+    setBusy(false);
+    onAdopted();
+  };
+
   return (
     <MismatchWrap>
       <MismatchPanel>
         <MismatchGlyph aria-hidden="true">◐</MismatchGlyph>
         <MismatchTitle>{t('context.deviceMismatch.title')}</MismatchTitle>
         <MismatchText>{t('context.deviceMismatch.message', { device: device.name || device.id })}</MismatchText>
-        <SharedButton variant="primary" fullWidth onClick={() => navigate('/pos/select-context')}>
+        <SharedButton variant="primary" fullWidth onClick={adoptThisStore} disabled={busy}>
+          {t('context.deviceMismatch.adopt')}
+        </SharedButton>
+        <MismatchHint>{t('context.deviceMismatch.adoptHint', { device: device.name || device.id })}</MismatchHint>
+        <SharedButton variant="secondary" fullWidth onClick={() => navigate('/pos/select-context')}>
           {t('context.deviceMismatch.switch')}
         </SharedButton>
       </MismatchPanel>
@@ -233,6 +271,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams<{ restaurantId?: string }>();
+  // 기기 고정 매장을 바꾼 뒤 가드를 다시 판정하게 하는 신호(localStorage 는 렌더를 일으키지 않는다).
+  const [, setDeviceAdoptTick] = useState(0);
 
   // Resolve module entitlements for the current user (brand/foodcourt context).
   // hasModule fails open when plan filtering is skipped (System Admin or error state).
@@ -503,7 +543,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (user && isPosDeviceRoute(location.pathname)) {
     const mismatch = getDeviceContextMismatch(user);
     if (mismatch) {
-      return <DeviceContextMismatchScreen device={mismatch.device} session={mismatch.session} />;
+      return (
+        <DeviceContextMismatchScreen
+          device={mismatch.device}
+          session={mismatch.session}
+          onAdopted={() => setDeviceAdoptTick((n) => n + 1)}
+        />
+      );
     }
   }
 
