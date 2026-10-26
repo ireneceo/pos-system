@@ -99,6 +99,7 @@ System Admin (최고 관리자)
 > - 회사 공용 자료(브랜드 상품·상품 레시피·재고 아이템·실사·공급업체 — `owner_user_id`)는 매니저에게 **회사(홈 브랜드 소유자) 것**으로: `requireBGScope` · `ingredients.js` 브랜드 재료 · `suppliers.js` 브랜드 목록/수정 · `requireBrandUserModule`(요금제는 소유자 것). 공급업체 **삭제**는 소유자만(종전 그대로).
 > - 판매 주문은 맡은 브랜드 합쳐 보기(`sellerScope` BM 분기 · 배지 같은 범위). 발주(구매)는 다른 맡은 브랜드는 **보기만**(`buyerScope`), 쓰기는 홈 브랜드 명의.
 > - 모자(`user_contexts` brand×Brand Manager)는 `brand_scope_fixed` 로 **그 브랜드 하나** 고정 — 다른 회사 사람에게 주는 자격.
+> - **2026-10-26 (Fable 설계·게이트 PASS · Irene «권고대로»): 모자(멀티아이디) 매니저의 메뉴 권한 = 그 모자 행 `user_contexts.permissions`.** 같은 7키(dashboard 항상) · NULL = 기본 `dashboard·products`(예전 행). 투영·전환 응답 모두 `services/userContexts.hatPermissions` 하나. 고치는 곳: SA 매니저/직원 상세 «매장·브랜드 접근 권한» 체크칸 · **그 브랜드 소유자(BG)** «매니저» 화면(연결 계정 행 — 권한만, 비밀번호·삭제 없음) → `PUT /api/users/:id/contexts/:contextId`(`canEditContextPermissions`). 붙이기·떼기는 여전히 SA. 계정(users.permissions) 값은 모자에 쓰이지 않는다.
 > - 돈 경계 그대로: 결제 설정·은행 · 브랜드 수정/삭제 · 매니저 추가/수정 · 구독은 소유자만.
 > - 메뉴 접근 키 7개(dashboard/management/products/operations/reports/communication/plans_payments)는 **사이드바 표시 전용**(`MainLayout` brandCategories ↔ `BrandStaffPage` PERMISSION_GROUPS 같은 표). 서버 강제는 2단계(미착수).
 > - 아래 «권한/접근 가능 페이지» 목록은 옛 기록이다 — 위 규칙이 이긴다.

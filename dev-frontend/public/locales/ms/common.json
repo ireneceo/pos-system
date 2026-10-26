@@ -937,5 +937,7 @@
   "similarName.useOpen": "Buka ini",
   "similarName.useSellAsIs": "Jual item stok ini",
   "similarName.useProductInstead": "Guna produk ini",
-  "similarName.productInsteadInfo": "\"{{name}}\" sudah menjadi produk yang anda jual. Jangan cipta item stok untuknya — pilih produk itu dalam resipi."
+  "similarName.productInsteadInfo": "\"{{name}}\" sudah menjadi produk yang anda jual. Jangan cipta item stok untuknya — pilih produk itu dalam resipi.",
+  "brandStaffPage.linkedTag": "Akaun dipautkan",
+  "brandStaffPage.linkedHint": "Pengurus ini menggunakan akaun sendiri (dipautkan). Nama, e-mel dan kata laluan milik akaun itu — di sini anda boleh menukar menu yang mereka lihat untuk jenama ini."
 }

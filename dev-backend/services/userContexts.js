@@ -58,7 +58,14 @@ function isBrandManagerHat(entityType, role) {
 // 브랜드 관리자 모자의 **화면 표시 권한 키** (2026-10-04 Fable 표적 판정). 프론트 사이드바(hasManagerPermission)가
 //   Brand Manager 에겐 user.permissions 를 요구한다 — 비어 있으면 Dashboard·Brand Menus 가 안 보였다(dev 실브라우저 재현).
 //   서버 판정에는 쓰이지 않는 표시 전용 키다. 모자의 약속 범위(메뉴·레시피)만 — plans_payments(돈 경계)·운영·관리 키는 넣지 않는다.
+//   2026-10-26 Fable 판정으로 대체: 모자 행(user_contexts.permissions)에 권한을 저장하고 그대로 투영한다(Staff 모자 v1.3 과 같은 모양).
+//   이 상수는 **행 값이 NULL 일 때의 기본값**(예전 모자 행 무회귀)으로만 남는다 — 저절로 넓히지 않는다.
 const BRAND_MANAGER_HAT_PERMISSIONS = ['dashboard', 'products'];
+// 브랜드 매니저 메뉴 키 7개 = 일반 매니저와 같은 집합 — 프론트 utils/brandManagerPermissions.ts BRAND_MANAGER_PERMISSION_GROUPS.
+//   두 목록이 같은지는 tests/brand-manager-hat-permissions.test.js 가 소스를 읽어 대조한다.
+const BRAND_MANAGER_PERMISSION_KEYS = Object.freeze([
+  'dashboard', 'management', 'products', 'operations', 'reports', 'communication', 'plans_payments'
+]);
 // 부여 행이 가리키는 엔티티 표 — 목록·검증·전환이 같은 표를 JOIN 해야 list ⊆ detail 이 유지된다.
 const GRANT_JOIN_TABLE = { restaurant: 'restaurants', brand: 'brands' };
 
@@ -96,6 +103,27 @@ function normalizeStaffPermissions(arr) {
   if (!out.length) return { error: 'Pick at least one permission' };
   return { permissions: out };
 }
+/**
+ * 브랜드 매니저 모자 권한 정규화 — 집합 밖 키는 거부, 중복 제거, dashboard 는 항상(화면 alwaysOn 과 같게).
+ * @returns {{permissions:string[]}|{error:string}}
+ */
+function normalizeBrandManagerPermissions(arr) {
+  if (!Array.isArray(arr)) return { error: 'permissions must be an array' };
+  const out = ['dashboard'];
+  for (const k of arr) {
+    if (typeof k !== 'string' || !BRAND_MANAGER_PERMISSION_KEYS.includes(k)) {
+      return { error: `Unknown permission: ${String(k).slice(0, 40)}` };
+    }
+    if (!out.includes(k)) out.push(k);
+  }
+  return { permissions: out };
+}
+/** 모자 종류에 맞는 권한 정규화 — 권한을 저장하는 모자(Staff·브랜드 매니저)만. 나머지는 null. */
+function permissionNormalizerFor(entityType, role) {
+  if (isStaffHat(entityType, role)) return normalizeStaffPermissions;
+  if (isBrandManagerHat(entityType, role)) return normalizeBrandManagerPermissions;
+  return null;
+}
 // JSON 칸 값 → 배열|null (드라이버가 문자열로 줄 수도, 파싱해 줄 수도 있다).
 function parsePermissions(v) {
   if (v === null || v === undefined) return null;
@@ -104,6 +132,19 @@ function parsePermissions(v) {
     try { const p = JSON.parse(v); return Array.isArray(p) ? p : null; } catch { return null; }
   }
   return null;
+}
+
+/**
+ * 모자로 들어왔을 때 실을 permissions — 투영(middleware/auth.js)과 전환 응답(routes/auth.js)이 **같이 부르는 하나**.
+ *   브랜드 매니저 모자 = 그 행 값(정규화) · NULL·깨진 값이면 기본 2키 / Staff 모자 = 그 행 값 / 나머지 = [].
+ */
+function hatPermissions(entityType, role, rowPermissions) {
+  if (isBrandManagerHat(entityType, role)) {
+    const norm = Array.isArray(rowPermissions) ? normalizeBrandManagerPermissions(rowPermissions) : null;
+    return norm && norm.permissions ? norm.permissions : [...BRAND_MANAGER_HAT_PERMISSIONS];
+  }
+  if (role === STAFF_HAT.role) return Array.isArray(rowPermissions) ? [...rowPermissions] : [];
+  return [];
 }
 
 /**
@@ -251,7 +292,7 @@ async function listContexts(user) {
 
   // 브랜드 관리자 모자 (v1.2) — 브랜드 행은 brands 를 JOIN 한다(고아 모자는 목록에서 빠진다).
   const [brandRows] = await sequelize.query(
-    `SELECT uc.id, uc.entity_type, uc.entity_id, uc.role, uc.last_used_at, b.name AS entity_name
+    `SELECT uc.id, uc.entity_type, uc.entity_id, uc.role, uc.permissions, uc.last_used_at, b.name AS entity_name
        FROM user_contexts uc
        JOIN brands b ON b.id = uc.entity_id
       WHERE uc.user_id = :userId
@@ -268,7 +309,9 @@ async function listContexts(user) {
       entity_id: row.entity_id,
       role: row.role,
       label: row.entity_name,
-      last_used_at: row.last_used_at
+      last_used_at: row.last_used_at,
+      // 메뉴 권한(2026-10-26) — 들어갔을 때 실제로 실리는 값(NULL 이면 기본 2키). 관리 화면 체크칸 표시용.
+      permissions: hatPermissions(row.entity_type, row.role, parsePermissions(row.permissions))
     });
   }
 
@@ -543,13 +586,21 @@ async function grantContext({ target, entity_type, entity_id, role, grantedBy, p
     if (!brand) return fail(404, NOT_FOUND_MESSAGE.brand);
     const conflict = nativeHoldConflict(target, entity_type, entityId, role, brand);
     if (conflict) return fail(conflict.status, conflict.message);
+    // 메뉴 권한(2026-10-26) — 주면 정규화해 저장, 안 주면(NULL) 다시 부여해도 저장된 값을 지우지 않는다.
+    let perms = null;
+    if (permissions !== undefined && permissions !== null) {
+      const norm = normalizeBrandManagerPermissions(permissions);
+      if (norm.error) return fail(400, norm.error);
+      perms = norm.permissions;
+    }
     await sequelize.query(
-      `INSERT INTO user_contexts (user_id, entity_type, entity_id, role, granted_by, created_at, updated_at)
-       VALUES (:u, 'brand', :e, :r, :by, NOW(), NOW()) ON DUPLICATE KEY UPDATE updated_at = NOW()`,
-      { replacements: { u: target.id, e: entityId, r: role, by: grantedBy } }
+      `INSERT INTO user_contexts (user_id, entity_type, entity_id, role, permissions, granted_by, created_at, updated_at)
+       VALUES (:u, 'brand', :e, :r, :p, :by, NOW(), NOW())
+       ON DUPLICATE KEY UPDATE permissions = COALESCE(VALUES(permissions), permissions), updated_at = NOW()`,
+      { replacements: { u: target.id, e: entityId, r: role, p: perms ? JSON.stringify(perms) : null, by: grantedBy } }
     );
     return {
-      ok: true, data: { user_id: target.id, entity_id: entityId, role }, message: 'Context granted',
+      ok: true, data: { user_id: target.id, entity_id: entityId, role, ...(perms ? { permissions: perms } : {}) }, message: 'Context granted',
       entityName: brand.name,
       logDescription: `Granted Brand Manager context for brand "${brand.name}" (#${entityId}) to ${who}`
     };
@@ -669,6 +720,10 @@ module.exports = {
   isRestaurantHat,
   STAFF_PERMISSION_KEYS,
   normalizeStaffPermissions,
+  BRAND_MANAGER_PERMISSION_KEYS,
+  normalizeBrandManagerPermissions,
+  permissionNormalizerFor,
+  hatPermissions,
   parsePermissions,
   findGrantableCombination,
   resolveGrantedContext,

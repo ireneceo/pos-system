@@ -937,5 +937,7 @@
   "similarName.useOpen": "Open this",
   "similarName.useSellAsIs": "Sell this stock item",
   "similarName.useProductInstead": "Use this product",
-  "similarName.productInsteadInfo": "\"{{name}}\" is already a product you sell. Don't create a stock item for it — pick the product in recipes instead."
+  "similarName.productInsteadInfo": "\"{{name}}\" is already a product you sell. Don't create a stock item for it — pick the product in recipes instead.",
+  "brandStaffPage.linkedTag": "Linked account",
+  "brandStaffPage.linkedHint": "This manager uses their own account (linked). Name, email and password belong to that account — here you can change which menus they see for this brand."
 }

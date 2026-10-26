@@ -80,17 +80,24 @@ module.exports = {
 
     if (await hasCol('user_contexts', 'permissions')) {
       // UC-007: Staff 모자는 권한 1개 이상(0개 = 들어가서 아무것도 못 보는 죽은 카드),
-      //         다른 모자는 permissions NULL(값이 있으면 투영이 읽지 않는 유령 권한).
+      //         브랜드 매니저 모자는 NULL(=기본 2키) 또는 정규화된 값(dashboard 포함 배열 — 2026-10-26),
+      //         나머지 모자는 permissions NULL(값이 있으면 투영이 읽지 않는 유령 권한).
       const staffNoPerm = await cnt(
         `SELECT COUNT(*) c FROM user_contexts
           WHERE role = 'Staff' AND (permissions IS NULL OR JSON_LENGTH(permissions) = 0)`
       );
-      const otherWithPerm = await cnt(
-        `SELECT COUNT(*) c FROM user_contexts WHERE role <> 'Staff' AND permissions IS NOT NULL`
+      const bmBadPerm = await cnt(
+        `SELECT COUNT(*) c FROM user_contexts
+          WHERE entity_type = 'brand' AND role = 'Brand Manager' AND permissions IS NOT NULL
+            AND (JSON_TYPE(permissions) <> 'ARRAY' OR NOT JSON_CONTAINS(permissions, '"dashboard"'))`
       );
-      const ok7 = staffNoPerm === 0 && otherWithPerm === 0;
-      add('UC-007 Staff 모자 권한 1개 이상 · 다른 모자 NULL', ok7,
-        ok7 ? '0건' : `Staff 권한 없음 ${staffNoPerm}건 · 다른 모자 권한 값 ${otherWithPerm}건`);
+      const otherWithPerm = await cnt(
+        `SELECT COUNT(*) c FROM user_contexts
+          WHERE role <> 'Staff' AND NOT (entity_type = 'brand' AND role = 'Brand Manager') AND permissions IS NOT NULL`
+      );
+      const ok7 = staffNoPerm === 0 && bmBadPerm === 0 && otherWithPerm === 0;
+      add('UC-007 Staff 모자 권한 1개 이상 · 브랜드 매니저 모자 NULL/정규화 값 · 다른 모자 NULL', ok7,
+        ok7 ? '0건' : `Staff 권한 없음 ${staffNoPerm}건 · 브랜드 매니저 모자 잘못된 값 ${bmBadPerm}건 · 다른 모자 권한 값 ${otherWithPerm}건`);
     } else {
       add('UC-007 Staff 모자 권한', true, 'user_contexts.permissions 미생성 — 마이그 이전 환경이라 스킵');
     }

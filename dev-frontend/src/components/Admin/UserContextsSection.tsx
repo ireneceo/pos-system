@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
-import { Button } from '../UI';
+import { Button, ThemedButton } from '../UI';
 import ConfirmModal from '../ConfirmModal';
 import { getAuthToken } from '../../utils/auth';
+import { BRAND_MANAGER_PERMISSION_GROUPS } from '../../utils/brandManagerPermissions';
 
 /**
  * 유저별 컨텍스트("모자") 부여 관리 — System Admin 전용 섹션.
@@ -88,6 +89,32 @@ const Picker = styled.select`
   font-size: 13px;
 `;
 
+const PermBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  margin: -4px 0 8px;
+  border: 1px solid var(--pos-border, #E3E8EE);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  font-size: 12px;
+  color: var(--pos-text, #0A2540);
+`;
+
+const PermLine = styled.label`
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.4;
+  cursor: pointer;
+`;
+
+const PermActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+`;
+
 const Error = styled.p`
   margin: 8px 0 0;
   font-size: 12px;
@@ -101,7 +128,11 @@ interface Ctx {
   entity_id: number | null;
   role: string;
   label: string;
+  permissions?: string[] | null;
 }
+
+// 브랜드 매니저 모자 기본 권한 = 서버 BRAND_MANAGER_HAT_PERMISSIONS(NULL 일 때 기본값)와 같게.
+const BM_DEFAULT_PERMISSIONS = ['dashboard', 'products'];
 
 interface Orphan { id: number; entity_type: string; entity_id: number; role: string; }
 
@@ -122,6 +153,9 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
   const [pick, setPick] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 브랜드 매니저 모자 메뉴 권한(2026-10-26) — 부여할 때 고르는 값 · 이미 있는 모자별 고치는 중인 값
+  const [grantPerms, setGrantPerms] = useState<string[]>(BM_DEFAULT_PERMISSIONS);
+  const [editPerms, setEditPerms] = useState<Record<number, string[]>>({});
   const [revoking, setRevoking] = useState<{ label: string; run: () => Promise<void> } | null>(null);
 
   const headers = useCallback(() => {
@@ -184,11 +218,15 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
       const res = await fetch(`/api/users/${userId}/contexts`, {
         method: 'POST',
         headers: headers(),
-        body: JSON.stringify({ entity_type: pickType, entity_id: Number(pick), role: pickRole })
+        body: JSON.stringify({
+          entity_type: pickType, entity_id: Number(pick), role: pickRole,
+          ...(pickRole === 'Brand Manager' ? { permissions: grantPerms } : {})
+        })
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) { setError(json?.message || t('context.admin.grantFailed')); return; }
       setPick('');
+      setGrantPerms(BM_DEFAULT_PERMISSIONS);
       await load();
     } catch {
       setError(t('context.admin.grantFailed'));
@@ -209,6 +247,44 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
       setBusy(false);
     }
   };
+
+  const savePermissions = async (ctx: Ctx) => {
+    const perms = editPerms[ctx.id as number];
+    if (!perms) return;
+    setBusy(true); setError(null);
+    try {
+      const res = await fetch(`/api/users/${userId}/contexts/${ctx.id}`, {
+        method: 'PUT', headers: headers(), body: JSON.stringify({ permissions: perms })
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(json?.message || t('context.admin.saveFailed')); return; }
+      setEditPerms((prev) => { const next = { ...prev }; delete next[ctx.id as number]; return next; });
+      await load();
+    } catch {
+      setError(t('context.admin.saveFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // 7개 메뉴 권한 체크칸 — 대시보드는 항상 켜짐(일반 매니저 화면과 같은 표)
+  const renderPermBox = (value: string[], onChange: (next: string[]) => void, footer?: React.ReactNode) => (
+    <PermBox>
+      <span>{t('context.admin.menuAccess')}</span>
+      {BRAND_MANAGER_PERMISSION_GROUPS.map((g) => (
+        <PermLine key={g.key}>
+          <input
+            type="checkbox"
+            checked={g.alwaysOn || value.includes(g.key)}
+            disabled={g.alwaysOn || busy}
+            onChange={(e) => onChange(e.target.checked ? [...value, g.key] : value.filter((k) => k !== g.key))}
+          />
+          <span>{g.label}</span>
+        </PermLine>
+      ))}
+      {footer}
+    </PermBox>
+  );
 
   const revokeOwnership = async (o: Ownership) => {
     setBusy(true); setError(null);
@@ -234,15 +310,33 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
 
       {granted.length === 0 && ownerships.length === 0 && <Empty>{t('context.admin.none')}</Empty>}
 
-      {granted.map((c) => (
-        <Row key={c.id}>
-          <RowLabel>{c.label}</RowLabel>
-          <Tag>{c.role}</Tag>
-          <Button variant="danger" size="small" disabled={busy} onClick={() => setRevoking({ label: c.label, run: () => revokeContext(c) })}>
-            {t('context.admin.revoke')}
-          </Button>
-        </Row>
-      ))}
+      {granted.map((c) => {
+        const isBM = c.entity_type === 'brand' && c.role === 'Brand Manager';
+        const pending = editPerms[c.id as number];
+        const current = pending || c.permissions || BM_DEFAULT_PERMISSIONS;
+        return (
+          <React.Fragment key={c.id}>
+            <Row>
+              <RowLabel>{c.label}</RowLabel>
+              <Tag>{c.role}</Tag>
+              <Button variant="danger" size="small" disabled={busy} onClick={() => setRevoking({ label: c.label, run: () => revokeContext(c) })}>
+                {t('context.admin.revoke')}
+              </Button>
+            </Row>
+            {isBM && renderPermBox(
+              current,
+              (next) => setEditPerms((prev) => ({ ...prev, [c.id as number]: next })),
+              pending ? (
+                <PermActions>
+                  <ThemedButton variant="primary" size="small" disabled={busy} onClick={() => savePermissions(c)}>
+                    {t('context.admin.savePermissions')}
+                  </ThemedButton>
+                </PermActions>
+              ) : null
+            )}
+          </React.Fragment>
+        );
+      })}
 
       {orphans.map((o) => (
         <Row key={'orphan-' + o.id}>
@@ -294,6 +388,8 @@ const UserContextsSection: React.FC<Props> = ({ userId }) => {
           {t('context.admin.grant')}
         </Button>
       </Row>
+
+      {pickRole === 'Brand Manager' && renderPermBox(grantPerms, setGrantPerms)}
 
       {error && <Error>{error}</Error>}
 

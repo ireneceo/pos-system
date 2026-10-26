@@ -895,6 +895,27 @@ router.get('/:id/staff', authenticateToken, async (req, res) => {
       return { ...m.toJSON(), brand_scope_all: sc.all, managed_brand_ids: sc.brandIds };
     });
 
+    // 멀티아이디(브랜드 매니저 모자) 매니저 — 그 브랜드 소유자·SA 에게만(2026-10-26). 권한 수정은 PUT /api/users/:id/contexts/:context_id.
+    //   비밀번호·삭제는 그 사람의 본 계정이라 화면이 숨긴다(linked=true). 권한 = 들어갔을 때 실리는 값(NULL 이면 기본 2키).
+    if (req.user.role === 'System Admin' || (req.user.role === 'Brand General' && brand.owner_id === req.user.id)) {
+      const userContexts = require('../services/userContexts');
+      const [hatRows] = await sequelize.query(
+        `SELECT uc.id AS context_id, uc.permissions AS hat_permissions, u.id, u.username, u.full_name, u.email, u.phone, u.createdAt
+           FROM user_contexts uc JOIN users u ON u.id = uc.user_id
+          WHERE uc.entity_type = 'brand' AND uc.entity_id = :b AND uc.role = 'Brand Manager'
+          ORDER BY u.full_name ASC`,
+        { replacements: { b: parseInt(brandId, 10) } }
+      );
+      for (const h of hatRows) {
+        data.push({
+          id: h.id, username: h.username, full_name: h.full_name, email: h.email, phone: h.phone, createdAt: h.createdAt,
+          brand_id: parseInt(brandId, 10), linked: true, context_id: h.context_id,
+          permissions: userContexts.hatPermissions('brand', 'Brand Manager', userContexts.parsePermissions(h.hat_permissions)),
+          brand_scope_all: false, managed_brand_ids: [parseInt(brandId, 10)]
+        });
+      }
+    }
+
     res.json({ success: true, data });
   } catch (error) {
     console.error('Error fetching brand managers:', error);

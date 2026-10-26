@@ -937,5 +937,7 @@
   "similarName.useOpen": "打开此项",
   "similarName.useSellAsIs": "直接销售此库存项目",
   "similarName.useProductInstead": "使用此商品",
-  "similarName.productInsteadInfo": "\"{{name}}\" 已是您在售的商品。请不要为其创建库存项目——在配方中选择该商品。"
+  "similarName.productInsteadInfo": "\"{{name}}\" 已是您在售的商品。请不要为其创建库存项目——在配方中选择该商品。",
+  "brandStaffPage.linkedTag": "关联账户",
+  "brandStaffPage.linkedHint": "该管理员使用自己的账户（已关联）。姓名、邮箱和密码属于该账户——这里只能更改其在本品牌可见的菜单。"
 }

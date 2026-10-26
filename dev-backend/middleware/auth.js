@@ -4,7 +4,7 @@ const Restaurant = require('../models/Restaurant');
 const RestaurantManager = require('../models/RestaurantManager');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
-const { resolveGrantedContext, BRAND_MANAGER_HAT_PERMISSIONS } = require('../services/userContexts');
+const { resolveGrantedContext, hatPermissions: hatPermissionsFor } = require('../services/userContexts');
 
 // ────────────────────────────────────────────────────────────────────────────
 // 컨텍스트 투영 — 멀티 컨텍스트 로그인의 유일한 초크포인트.
@@ -57,10 +57,9 @@ async function projectContext(baseUser, ctx) {
       foodcourt_id: null,
       branch_id: null,
       manager_id: null,
-      // 브랜드 관리자 모자는 사이드바 표시 키만(BRAND_MANAGER_HAT_PERMISSIONS) · Staff 모자는 그 행의 permissions(v1.3)
-      // — 나머지 모자는 종전대로 []
-      permissions: ctx.t === 'brand' ? [...BRAND_MANAGER_HAT_PERMISSIONS]
-        : (ctx.r === 'Staff' ? (Array.isArray(hatPermissions) ? [...hatPermissions] : []) : [])
+      // 브랜드 매니저 모자·Staff 모자는 그 행의 permissions(브랜드 NULL 이면 기본 2키) — 나머지 모자는 종전대로 []
+      //   전환 응답(routes/auth.js switch-context)과 같은 함수 하나(2026-10-26).
+      permissions: hatPermissionsFor(ctx.t, ctx.r, hatPermissions)
     },
     fallback: false,
     projected: true

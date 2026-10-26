@@ -10,6 +10,7 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { BRAND_MANAGER_PERMISSION_GROUPS } from '../../utils/brandManagerPermissions';
 interface Manager {
   id: string;
   username: string;
@@ -23,19 +24,12 @@ interface Manager {
   brand_name?: string;
   brand_scope_all?: boolean;
   managed_brand_ids?: number[];
+  // 멀티아이디(브랜드 매니저 모자)로 붙은 매니저 — 본 계정이 따로라 메뉴 권한만 여기서 고친다(2026-10-26)
+  linked?: boolean;
+  context_id?: number | null;
 }
 
-// Brand Manager 메뉴 접근 = 기능 묶음(2026-10-11 Fable 판정 §2-4). 괄호 안 = MainLayout brandCategories 가 실제로 켜는 메뉴 —
-//   두 곳을 같이 고친다. 브랜드 범위(회사 전체/고른 브랜드)는 아래 «Brand Access» 가 따로 정한다.
-const PERMISSION_GROUPS = [
-  { key: 'dashboard', label: 'Dashboard', alwaysOn: true },
-  { key: 'management', label: 'Brands & Franchise (Brands / Brand Menus / Recipes / Franchise / Restaurants / Restaurant Admins / Franchise Map / Coupons)', alwaysOn: false },
-  { key: 'products', label: 'Products & Stock (Products / Product Recipes / Stock Items / Bulk Link / Inventory / Suppliers)', alwaysOn: false },
-  { key: 'operations', label: 'Orders & Billing (Sales Orders / Purchase Order / Order History / Invoices / Trade Invoices)', alwaysOn: false },
-  { key: 'reports', label: 'Reports & Performance (Reports / Performance)', alwaysOn: false },
-  { key: 'communication', label: 'Communication (Notices / Work Manuals / Inquiries)', alwaysOn: false },
-  { key: 'plans_payments', label: 'Plans & Subscriptions (Brand Plans / Subscriptions)', alwaysOn: false },
-];
+const PERMISSION_GROUPS = BRAND_MANAGER_PERMISSION_GROUPS;
 
 const Container = styled.div`
   min-height: 100vh;
@@ -333,7 +327,9 @@ const BrandStaffPage: React.FC = () => {
         brand_id: u.brand_id || null,
         brand_name: u._brand_name || '',
         brand_scope_all: !!u.brand_scope_all,
-        managed_brand_ids: Array.isArray(u.managed_brand_ids) ? u.managed_brand_ids.map(Number) : []
+        managed_brand_ids: Array.isArray(u.managed_brand_ids) ? u.managed_brand_ids.map(Number) : [],
+        linked: !!u.linked,
+        context_id: u.context_id ?? null
       }));
       setManagers(transformed);
     } catch (_) { /* silently fail */ }
@@ -441,6 +437,27 @@ const BrandStaffPage: React.FC = () => {
 
   const handleUpdateManager = async () => {
     if (!editingManager) return;
+    // 연결 계정 = 메뉴 권한만 — 모자 행 권한 수정(PUT /api/users/:id/contexts/:context_id, 브랜드 소유자 허용)
+    if (editingManager.linked) {
+      try {
+        const res = await fetch(`/api/users/${editingManager.id}/contexts/${editingManager.context_id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
+          body: JSON.stringify({ permissions: editForm.permissions })
+        });
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          setFormError(errorData.message || 'Failed to update permissions');
+          return;
+        }
+        await fetchManagers();
+        setShowEditModal(false);
+        setEditingManager(null);
+      } catch (error) {
+        setFormError((error as Error).message);
+      }
+      return;
+    }
     if (!editForm.name.trim()) { setFormError('Full Name is required.'); return; }
     if (!editForm.email.trim()) { setFormError('Email is required.'); return; }
 
@@ -701,9 +718,12 @@ const BrandStaffPage: React.FC = () => {
               </DataTableHead>
               <tbody>
                 {filteredManagers.map(manager => (
-                  <DataTableRow key={manager.id}>
+                  <DataTableRow key={manager.linked ? `ctx-${manager.context_id}` : manager.id}>
                     <DataTableCell data-label="Manager">
-                      <ManagerName>{manager.name}</ManagerName>
+                      <ManagerName>
+                        {manager.name}
+                        {manager.linked && <PermissionTag style={{ marginLeft: 6 }}>{t('common:brandStaffPage.linkedTag', 'Linked account')}</PermissionTag>}
+                      </ManagerName>
                       <ManagerEmail>{manager.email}</ManagerEmail>
                     </DataTableCell>
 
@@ -748,7 +768,7 @@ const BrandStaffPage: React.FC = () => {
                         <ActionButton onClick={() => handleOpenEditModal(manager)}>
                           Edit
                         </ActionButton>
-                        {isGeneral && (
+                        {isGeneral && !manager.linked && (
                           <>
                             <ActionButton onClick={() => setResetPasswordTarget(manager)}>
                               Reset PW
@@ -857,7 +877,21 @@ const BrandStaffPage: React.FC = () => {
           </>
         }
       >
-        {editingManager && (
+        {editingManager && editingManager.linked && (
+          <>
+            <div style={{ fontSize: '13px', color: '#4B5563', marginBottom: '12px', lineHeight: 1.5 }}>
+              {t('common:brandStaffPage.linkedHint', 'This manager uses their own account (linked). Name, email and password belong to that account — here you can change which menus they see for this brand.')}
+            </div>
+            {renderPermissionCheckboxes(
+              editForm.permissions,
+              (updated) => setEditForm(prev => ({ ...prev, permissions: updated }))
+            )}
+            {formError && showEditModal && (
+              <ModalWarning>{formError}</ModalWarning>
+            )}
+          </>
+        )}
+        {editingManager && !editingManager.linked && (
           <>
             <FormRow>
               <FormGroup>

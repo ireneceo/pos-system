@@ -1397,7 +1397,7 @@ router.post('/:id/contexts', authenticateToken, requireRole('System Admin'), asy
 
     // 본문은 services/userContexts.grantContext 로 옮겼다(v1.3) — 자격 요청 승인과 **같은 함수**를 쓴다.
     // 응답 shape·메시지·상태코드는 옮기기 전과 바이트 동일(tests/user-contexts-switch.test.js · context-requests.test.js ⑨).
-    // permissions = Staff 모자일 때만 쓰인다(1개 이상·허용 키만, v1.3). 다른 조합은 무시된다.
+    // permissions = Staff 모자(1개 이상·허용 키만, v1.3)·브랜드 매니저 모자(메뉴 키 7개, 2026-10-26)만 쓰인다. 다른 조합은 무시된다.
     const { entity_type, entity_id, role, permissions } = req.body || {};
     const result = await userContexts.grantContext({ target, entity_type, entity_id, role, permissions, grantedBy: req.user.id });
     if (!result.ok) {
@@ -1438,7 +1438,20 @@ function canManageContextRow(reqUser, row) {
   return false;
 }
 
-// 연결 계정(Staff 모자)의 권한 수정 — 쓰기는 grantContext 하나(ON DUPLICATE 가 permissions 를 갱신).
+/**
+ * 권한 **수정만**(회수 아님) — canManageContextRow 에 더해, 브랜드 매니저 모자는 **그 브랜드 소유자(BG)** 도 고친다
+ * (2026-10-26 Fable 권고 · Irene «권고대로»). 부여·회수는 여전히 SA. 소유 판정은 brands.owner_id = 요청자 하나.
+ */
+async function canEditContextPermissions(reqUser, row) {
+  if (canManageContextRow(reqUser, row)) return true;
+  if (reqUser && reqUser.role === 'Brand General' && userContexts.isBrandManagerHat(row.entity_type, row.role)) {
+    const [[b]] = await _seq.query('SELECT owner_id FROM brands WHERE id = :e', { replacements: { e: row.entity_id } });
+    return !!b && Number(b.owner_id) === Number(reqUser.id);
+  }
+  return false;
+}
+
+// 연결 계정(Staff 모자·브랜드 매니저 모자)의 권한 수정 — 쓰기는 grantContext 하나(ON DUPLICATE 가 permissions 를 갱신).
 router.put('/:id/contexts/:contextId', authenticateToken, async (req, res) => {
   try {
     const uid = userContexts.normalizeEntityId(req.params.id);
@@ -1451,10 +1464,11 @@ router.put('/:id/contexts/:contextId', authenticateToken, async (req, res) => {
       { replacements: { c: ctxId, u: uid } }
     );
     // 범위 밖이면 존재 여부도 흘리지 않는다(404).
-    if (!rows.length || !canManageContextRow(req.user, rows[0]) || !userContexts.isStaffHat(rows[0].entity_type, rows[0].role)) {
+    const normalize = rows.length ? userContexts.permissionNormalizerFor(rows[0].entity_type, rows[0].role) : null;
+    if (!rows.length || !normalize || !(await canEditContextPermissions(req.user, rows[0]))) {
       return res.status(404).json({ success: false, message: 'Context not found' });
     }
-    const norm = userContexts.normalizeStaffPermissions((req.body || {}).permissions);
+    const norm = normalize((req.body || {}).permissions);
     if (norm.error) return res.status(400).json({ success: false, message: norm.error });
 
     const target = await User.findByPk(uid);
@@ -1474,8 +1488,8 @@ router.put('/:id/contexts/:contextId', authenticateToken, async (req, res) => {
       entity_type: 'user_context',
       entity_id: uid,
       entity_name: target.full_name || target.username || target.email,
-      description: `Updated Staff context permissions for restaurant #${rows[0].entity_id} of user #${uid} [${norm.permissions.join(', ')}]`,
-      restaurant_id: rows[0].entity_id
+      description: `Updated ${rows[0].role} context permissions for ${rows[0].entity_type} #${rows[0].entity_id} of user #${uid} [${norm.permissions.join(', ')}]`,
+      ...(rows[0].entity_type === 'restaurant' ? { restaurant_id: rows[0].entity_id } : {})
     });
     // 당사자(권한 바뀜 → 다시 읽기)·그 매장 직원 목록 갱신.
     emitContextChanged({ kind: 'updated', userId: uid, entityType: rows[0].entity_type, entityId: rows[0].entity_id, role: rows[0].role, label: result.entityName || null });

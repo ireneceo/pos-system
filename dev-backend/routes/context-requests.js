@@ -539,6 +539,11 @@ router.post('/:id/approve', authenticateToken, async (req, res) => {
       const norm = userContexts.normalizeStaffPermissions((req.body || {}).permissions);
       if (norm.error) return bad(res, 400, norm.error);
       permissions = norm.permissions;
+    } else if (userContexts.isBrandManagerHat(row.entity_type, row.role) && Array.isArray((req.body || {}).permissions)) {
+      // 브랜드 매니저 모자(2026-10-26) — 승인 때 메뉴 권한을 고르면 함께 저장(안 고르면 NULL = 기본 2키).
+      const norm = userContexts.normalizeBrandManagerPermissions(req.body.permissions);
+      if (norm.error) return bad(res, 400, norm.error);
+      permissions = norm.permissions;
     }
 
     // 요금제 직원 한도(D3) — 매장 모자(RA·Staff) 승인은 좌석을 센다. 직원 생성 경로와 같은 함수.
