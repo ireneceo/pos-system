@@ -2,7 +2,7 @@
  * 매장 관리자 «Attendance» — /restaurant/:restaurantId/attendance
  * 탭: Today · Records · Leave · Calendar · Settings (설계 .claude/fable-design-20261016-staff-attendance.md §4-1).
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Container, Header, Title, Content } from '../../components/UI/PageComponents';
@@ -37,11 +37,25 @@ const AttendancePage: React.FC = () => {
 
   useEffect(() => { loadMeta(); }, [loadMeta]);
 
+  // 폰에선 위 «사용 순서» 안내가 첫 화면을 다 차지해 탭 내용이 한참 아래에 있다(2026-10-27 Irene «이런 메뉴 자체가 없어»).
+  // 탭을 지정한 링크로 들어오거나 안내의 «… 열기» 버튼을 누르면 탭 줄까지 내려 준다. 탭을 직접 누를 때는 그대로.
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const scrollToTabs = useCallback(() => {
+    // 안내 카드가 직원 수를 읽어 와 높이가 바뀐 뒤에 내린다
+    window.setTimeout(() => tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 600);
+  }, []);
+  useEffect(() => {
+    if (params.get('tab') && !window.location.hash) scrollToTabs();
+    // 처음 들어올 때 한 번만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const go = (k: TabKey) => {
     const next = new URLSearchParams(params);
     next.set('tab', k);
     setParams(next, { replace: true });
   };
+  const openFromGuide = (k: TabKey) => { go(k); scrollToTabs(); };
 
   return (
     <Container>
@@ -49,7 +63,8 @@ const AttendancePage: React.FC = () => {
         <Title>{t('attendance:page.title', 'Attendance')}</Title>
       </Header>
       <Content>
-        <AttendanceGuide restaurantId={restaurantId} onOpenTab={go} />
+        <AttendanceGuide restaurantId={restaurantId} onOpenTab={openFromGuide} />
+        <div ref={tabsRef} style={{ scrollMarginTop: 96 }} />
         <TabContainer>
           <Tab active={tab === 'today'} onClick={() => go('today')}>{t('attendance:tabs.today', 'Today')}</Tab>
           <Tab active={tab === 'records'} onClick={() => go('records')}>{t('attendance:tabs.records', 'Records')}</Tab>

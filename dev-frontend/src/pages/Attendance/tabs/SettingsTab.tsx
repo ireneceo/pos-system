@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataTableContainer, DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../../components/UI/DataTable';
 import { Button } from '../../../components/UI/Button';
@@ -41,6 +41,15 @@ const SettingsTab: React.FC<Props> = ({ restaurantId, timeZone }) => {
   }, [restaurantId, t]);
   useEffect(() => { load(); }, [load]);
 
+  // 링크 끝 #store-network 이면 «매장 네트워크 확인» 칸으로 바로 내린다(안내·상황판 링크용) — 처음 한 번
+  const networkRef = useRef<HTMLDivElement>(null);
+  const scrolled = useRef(false);
+  useEffect(() => {
+    if (!settings || scrolled.current || window.location.hash !== '#store-network') return;
+    scrolled.current = true;
+    window.setTimeout(() => networkRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 600);
+  }, [settings]);
+
   const save = async (patch: Partial<Settings>) => {
     setError(''); setSaved('');
     const r = await attendanceApi<Settings>(restaurantId, '/settings', { method: 'PUT', body: patch });
@@ -79,7 +88,7 @@ const SettingsTab: React.FC<Props> = ({ restaurantId, timeZone }) => {
       {error && <ErrorBox>{error}</ErrorBox>}
       {saved && <InfoBox>{saved}</InfoBox>}
 
-      <Card>
+      <Card ref={networkRef} id="store-network" style={{ scrollMarginTop: 96 }}>
         <CardTitle>{t('settings.networkTitle', 'Store network check')}</CardTitle>
         <Muted style={{ marginBottom: 4 }}>
           {t('settings.networkIntro', 'Optional. Use it if staff should only clock in or out while they are at the store. It checks the store internet line, so mobile data or home Wi-Fi will not work.')}
@@ -99,8 +108,8 @@ const SettingsTab: React.FC<Props> = ({ restaurantId, timeZone }) => {
               </Muted>
               {!currentRegistered && (
                 <Row style={{ marginTop: 10 }}>
-                  <TextInput placeholder={t('settings.labelPlaceholder', 'Name, e.g. Main Wi-Fi')} value={label} onChange={e => setLabel(e.target.value)} maxLength={60} style={{ minWidth: 200 }} />
-                  <Button variant="primary" onClick={registerCurrent}>{t('settings.registerCurrent', 'Register the network I am on now')}</Button>
+                  <TextInput placeholder={t('settings.labelPlaceholder', 'Name, e.g. Main Wi-Fi')} value={label} onChange={e => setLabel(e.target.value)} maxLength={60} style={{ flex: '1 1 180px', minWidth: 0 }} />
+                  <Button variant="primary" onClick={registerCurrent} style={{ maxWidth: '100%', whiteSpace: 'normal' }}>{t('settings.registerCurrent', 'Register the network I am on now')}</Button>
                 </Row>
               )}
             </StepBody>
