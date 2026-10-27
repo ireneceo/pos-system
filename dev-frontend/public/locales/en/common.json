@@ -939,5 +939,32 @@
   "similarName.useProductInstead": "Use this product",
   "similarName.productInsteadInfo": "\"{{name}}\" is already a product you sell. Don't create a stock item for it — pick the product in recipes instead.",
   "brandStaffPage.linkedTag": "Linked account",
-  "brandStaffPage.linkedHint": "This manager uses their own account (linked). Name, email and password belong to that account — here you can change which menus they see for this brand."
+  "brandStaffPage.linkedHint": "This manager uses their own account (linked). Name, email and password belong to that account — here you can change which menus they see for this brand.",
+  "orderSchedule": {
+    "title": "Order cutoff & delivery days",
+    "help": "Staff see these when placing orders. Leave empty if the supplier has no fixed cutoff.",
+    "readonlyTitle": "Set by the supplier",
+    "timezoneNote": "Times are in {{tz}}",
+    "timezoneLater": "Times use your business time zone.",
+    "saveFailed": "Could not save order cutoffs",
+    "days": "Cutoff days",
+    "everyDay": "Every day",
+    "removeRule": "Remove cutoff",
+    "cutoffTime": "Cutoff time",
+    "delivery": "Delivery",
+    "deliveryNone": "Delivery not fixed",
+    "deliverySameDay": "Same day",
+    "deliveryNextDay": "Next day",
+    "deliveryRangeOption": "Days after cutoff…",
+    "deliveryWeekdayOption": "Fixed weekday…",
+    "minDays": "From (days)",
+    "maxDays": "To (days)",
+    "daysAfter": "days after",
+    "deliveryWeekday": "Every {{weekday}}",
+    "deliveryDays": "{{n}} days after",
+    "deliveryAfterDays": "{{min}}–{{max}} days after",
+    "incomplete": "Pick at least one day — this cutoff is saved once it has a day and a time.",
+    "addRule": "+ Add cutoff",
+    "preview": "{{days}} {{time}} → {{delivery}}"
+  }
 }

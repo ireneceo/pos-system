@@ -22,7 +22,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
 const { resolveOwnerRestaurantIds, canRevokeApproval } = require('../utils/poOwnerApproval');
-const { resolveSellers, getSellerName, isExternalSeller } = require('../utils/sellerNames');
+const { resolveSellers, getSeller, getSellerName, isExternalSeller } = require('../utils/sellerNames');
 const {
   fireSellerSubmittedNotification,
   fireBuyerConfirmNotification,
@@ -97,6 +97,8 @@ router.get('/purchase-orders/pending-approval', authenticateToken, requireOwnerS
       o.seller_name = getSellerName(sellerMap, p.seller_type, p.seller_entity_id);
       // 외부(앱 미사용) 공급업체 여부 — 승인 문구·보내기 버튼을 가른다. 목록·상세와 같은 해석기(2026-10-04 §5).
       o.is_external = isExternalSeller(sellerMap, p.seller_type, p.seller_entity_id);
+      // 발주 마감 (2026-10-27 Fable M-4 ④) — 오너가 늦게 승인하면 마감을 넘긴다. 같은 해석기 값 그대로
+      o.seller_order_windows = (getSeller(sellerMap, p.seller_type, p.seller_entity_id) || {}).order_windows || null;
       return o;
     });
     res.json({ success: true, data });
@@ -133,6 +135,8 @@ router.post('/purchase-orders/:id/approve', authenticateToken, requireOwnerScope
       await locked.update({
         status: 'submitted',
         submitted_at: now,
+        // 예상 배송일 — 승인 순간이 판매자에게 가는 순간(2026-10-27 Fable M-3 ④). 비어 있을 때만.
+        ...(await require('../utils/orderSchedule').expectedDeliveryPatch(locked, now)),
         approved_by_user_id: req.user.id,
         approved_at: now,
         tracking_info: tracking

@@ -3,6 +3,8 @@ import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import AutoSaveField from '../../components/Common/AutoSaveField';
 import DeliveryZonesEditor from '../../components/Common/DeliveryZonesEditor';
+import OrderScheduleEditor from '../../components/Common/OrderScheduleEditor';
+import type { OrderSchedule } from '../../utils/orderCutoff';
 import { DeliveryZone, readZones } from '../../utils/deliveryZones';
 import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
 import AutoSaveAddressFields from '../../components/Form/AutoSaveAddressFields';
@@ -219,6 +221,8 @@ const SupplierCompanyInfoPage: React.FC = () => {
   const [company, setCompany] = useState<SupplierCompany>(EMPTY);
   // 배송 지역 (2026-10-07 Fable) — 브랜드·푸드코트와 같은 편집기·같은 규칙
   const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([]);
+  // 발주 마감·배송일 (2026-10-27 Fable) — 판매자 3종 같은 칸
+  const [orderSchedule, setOrderSchedule] = useState<OrderSchedule | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -261,6 +265,7 @@ const SupplierCompanyInfoPage: React.FC = () => {
         bank_account_name: d.bank_account_name || ''
       });
       setDeliveryZones(readZones(d.delivery_zones));
+      setOrderSchedule(d.order_schedule || null);
     } catch (e: any) {
       console.error('[SupplierCompanyInfo] fetch error:', e);
       setError(e.message || 'Failed to load company info');
@@ -269,7 +274,7 @@ const SupplierCompanyInfoPage: React.FC = () => {
     }
   };
 
-  const saveField = async (field: keyof SupplierCompany | 'delivery_zones', value: any) => {
+  const saveField = async (field: keyof SupplierCompany | 'delivery_zones' | 'order_schedule', value: any) => {
     const token = getAuthToken();
     const res = await fetch('/api/supplier/company', {
       method: 'PUT',
@@ -279,10 +284,9 @@ const SupplierCompanyInfoPage: React.FC = () => {
       },
       body: JSON.stringify({ [field]: value })
     });
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      throw new Error(j.message || 'Failed to save');
-    }
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(j.message || 'Failed to save');
+    return j.data;
   };
 
   const handleChange = (field: keyof SupplierCompany, value: string) => {
@@ -497,6 +501,13 @@ const SupplierCompanyInfoPage: React.FC = () => {
                 onChange={setDeliveryZones}
                 onCommit={(zones) => saveField('delivery_zones', zones)}
                 defaultFee={company.delivery_fee === '' ? null : Number(company.delivery_fee)}
+              />
+            </FormGroup>
+
+            <FormGroup fullWidth>
+              <OrderScheduleEditor
+                value={orderSchedule}
+                onCommit={async (sch) => (await saveField('order_schedule', sch))?.order_schedule ?? null}
               />
             </FormGroup>
 

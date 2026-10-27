@@ -324,7 +324,7 @@ router.get('/supplier-directory/:supplierCompanyId', async (req, res) => {
     const supplier = await SupplierCompany.findOne({
       where: { id: supplierCompanyId, status: 'active' },
       // 배송 조건 — 구매자가 발주 화면에서도 보는 값. 외부 업체 프로필에서 등록한 구매자가 고칠 수 있게 싣는다 (2026-10-19)
-      attributes: [...PUBLIC_SUPPLIER_ATTRS, 'min_order_amount', 'delivery_fee', 'currency']
+      attributes: [...PUBLIC_SUPPLIER_ATTRS, 'min_order_amount', 'delivery_fee', 'currency', 'order_schedule']
     });
     if (!supplier) {
       return res.status(404).json({ success: false, message: 'Supplier not found' });
@@ -351,6 +351,8 @@ router.get('/supplier-directory/:supplierCompanyId', async (req, res) => {
     const supplierJson = supplier.toJSON();
     const supplierOut = { ...supplierJson, sales_access: salesAccessOf(supplierJson.operation_settings) };
     delete supplierOut.operation_settings;
+    // 발주 마감·배송일 (2026-10-27 Fable) — 정규화한 값으로만 내보낸다(가입 업체는 화면이 읽기 전용 요약)
+    supplierOut.order_schedule = require('../utils/orderSchedule').readSchedule(supplierJson.order_schedule);
 
     res.json({
       success: true,
@@ -1077,6 +1079,26 @@ router.get('/supplier-catalog', async (req, res) => {
   }
 });
 
+// 발주 마감·배송일 (2026-10-27 Fable M-1) — 외부 업체 일정의 시간대 = 등록 주체의 시간대(없으면 기본).
+//   외부 업체 정보는 등록한 매장·오너·BG·FG 가 적는다(delivery_policy 와 같은 권한).
+async function registrantTimezone(type, id) {
+  try {
+    if (type === 'restaurant') {
+      const r = await require('../models/Restaurant').findByPk(id, { attributes: ['id', 'operation_settings'] });
+      return require('../utils/dateTimeHelper').getRestaurantTimezone(r);
+    }
+    if (type === 'brand' || type === 'foodcourt') {
+      const M = require(type === 'brand' ? '../models/Brand' : '../models/Foodcourt');
+      const row = await M.findByPk(id, { attributes: ['id', 'operation_settings'] });
+      return row && row.operation_settings && row.operation_settings.timeZone;
+    }
+  } catch { /* 기본 시간대 */ }
+  return null;
+}
+function parseOrderScheduleOr400(raw, tz, prevTz) {
+  return require('../utils/orderSchedule').normalizeScheduleForSave(raw, tz, prevTz);
+}
+
 // ============================================
 // POST /api/external-suppliers — buyer 가 외부 (시스템 미가입) 공급업체 직접 등록
 // 등록 시 SupplierCompany(is_system_registered=false) + 자동 active SupplierContract 생성.
@@ -1104,6 +1126,13 @@ router.post('/external-suppliers', async (req, res) => {
       return res.status(400).json({ success: false, code: 'OWNER_SUPPLIER_MONTHLY_UNSUPPORTED', message: 'Monthly statements are set per store. Register this supplier from the store to use monthly billing.' });
     }
 
+    let orderSchedule = null;
+    if (req.body && req.body.order_schedule !== undefined) {
+      const r = parseOrderScheduleOr400(req.body.order_schedule, await registrantTimezone(req.buyerEntity.type, req.buyerEntity.id));
+      if (r.error) { await t.rollback(); return res.status(400).json({ success: false, message: r.error }); }
+      orderSchedule = r.schedule;
+    }
+
     const company = await SupplierCompany.create({
       name: sanitizeString(String(name).trim()).slice(0, 255),
       status: 'active',
@@ -1126,6 +1155,7 @@ router.post('/external-suppliers', async (req, res) => {
       delivery_fee: delivery_fee === undefined || delivery_fee === null || delivery_fee === ''
         ? null : Math.max(0, parseFloat(delivery_fee) || 0),
       delivery_policy: delivery_policy ? sanitizeString(String(delivery_policy)) : null,
+      order_schedule: orderSchedule,
       description: notes ? sanitizeString(String(notes)) : null
     }, { transaction: t });
 
@@ -1205,6 +1235,14 @@ router.put('/external-suppliers/:id', async (req, res) => {
     if (req.body.delivery_fee !== undefined) {
       const raw = req.body.delivery_fee;
       updates.delivery_fee = (raw === null || raw === '') ? null : Math.max(0, parseFloat(raw) || 0);
+    }
+    // 발주 마감·배송일 (2026-10-27 Fable) — undefined = 무변경 · null/빈 rules = 지움
+    if (req.body.order_schedule !== undefined) {
+      const prev = require('../utils/orderSchedule').readSchedule(sc.order_schedule);
+      const r = parseOrderScheduleOr400(req.body.order_schedule,
+        await registrantTimezone(sc.registered_by_entity_type, sc.registered_by_entity_id), prev && prev.timezone);
+      if (r.error) return res.status(400).json({ success: false, message: r.error });
+      updates.order_schedule = r.schedule;
     }
     let billing;
     await SupplierCompany.sequelize.transaction(async (t) => {

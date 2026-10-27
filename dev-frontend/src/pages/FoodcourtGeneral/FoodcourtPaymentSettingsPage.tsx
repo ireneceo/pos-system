@@ -13,6 +13,8 @@ import { getAuthToken } from '../../utils/auth';
 import { getCurrencySymbol } from '../../utils/currency';
 import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
 import DeliveryZonesEditor from '../../components/Common/DeliveryZonesEditor';
+import OrderScheduleEditor from '../../components/Common/OrderScheduleEditor';
+import type { OrderSchedule, OrderRule } from '../../utils/orderCutoff';
 import { DeliveryZone, readZones } from '../../utils/deliveryZones';
 interface CurrencyConfig {
   [code: string]: {
@@ -342,6 +344,19 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
   const [deliverySaving, setDeliverySaving] = useState(false);
   // 배송 지역 (2026-10-07 Fable) — 매장 주소의 주(州)로 자동 매칭, 안 맞으면 위 기본 배송비
   const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([]);
+  // 발주 마감·배송일 (2026-10-27 Fable) — 판매자 3종 같은 칸 · 검사·시간대는 서버
+  const [orderSchedule, setOrderSchedule] = useState<OrderSchedule | null>(null);
+  const saveOrderSchedule = async (schedule: { rules: OrderRule[] } | null): Promise<OrderSchedule | null> => {
+    if (!foodcourtId) return null;
+    const res = await fetch(`/api/foodcourts/${foodcourtId}/payment-settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+      body: JSON.stringify({ order_schedule: schedule })
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(j.message || 'Failed to save');
+    return j.data?.order_schedule ?? null;
+  };
   const saveDeliveryZones = async (zones: unknown[]) => {
     if (!foodcourtId) return;
     const res = await fetch(`/api/foodcourts/${foodcourtId}/payment-settings`, {
@@ -417,6 +432,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
         });
         // 배송 지역 (2026-10-07 Fable)
         setDeliveryZones(readZones(data.delivery_zones));
+        setOrderSchedule(data.order_schedule || null);
 
         // Set supported currencies from foodcourt settings (filtered by system-allowed currencies)
         if (data.supported_currencies && Array.isArray(data.supported_currencies)) {
@@ -721,6 +737,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
               {deliverySaving && <span style={{ marginLeft: 8, color: '#6B7280' }}>{t('common:label.saving', 'Saving…')}</span>}
               {deliverySaved && !deliverySaving && <span style={{ marginLeft: 8, color: '#059669' }}>✓</span>}
             </div>
+            <OrderScheduleEditor value={orderSchedule} onCommit={saveOrderSchedule} />
           </Section>
 
           {/* Section 1: Currency Settings */}

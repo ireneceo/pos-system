@@ -223,6 +223,11 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
             const z = resolveDeliveryZone(row.delivery_zones, buyerLoc);
             return { seller_delivery_zone: z.zone, seller_delivery_zone_reason: z.reason };
           })(),
+          // 발주 마감·배송일 (2026-10-27 Fable) — resolveSellers 가 계산한 값 그대로(따로 조회·계산하지 않는다)
+          seller_order_windows: (() => {
+            const row = getSeller(sellerResolved, m.seller_type, m.seller_entity_id);
+            return row && row.order_windows ? row.order_windows : null;
+          })(),
           // 판매자 통화 — 발주 통화와 다르면 서버가 배송비 규칙을 적용하지 않는다(0 저장).
           //   화면이 통화를 따로 조회하면 규칙이 두 벌이 되므로 여기서 같이 내려준다. (2026-09-17 게이트 B-2)
           seller_currency: (() => {

@@ -2667,3 +2667,157 @@ Irene 「Submit 한 순서대로 나와야해. 생성일이 발주일이여야�
 - **외부 공급업체에는 아무것도 보내지 않는다** (2026-10-22 Irene 답 — Fable 원설계 §5 «이메일 자동 발송» 폐기): «구독설정된 업체라서 이미 계속 알아서 우리한테 인보이스 주고 진행하는데 … 우리가 수동으로 반복처리 하는 거 안하려는 건데. 무슨 이메일을 자동 발송해?» → 외부 구독 업체 정기 발주 = **우리 쪽 기록**(받기·인보이스 대조·결제 체크용). submitted 로 만들고 추적에 «nothing sent» 한 줄, 구매자 알림은 «기록됨 — 오면 수령 처리»(`po_schedule_placed` kind `recorded`). 가입 업체는 평소처럼 앱 알림. `auto_send_email` 칸·`needs_send` 결과 없음. (`services/poExternalEmail` 는 사람이 누르는 send-external-email 라우트 전용으로 남음 — 옛 라우트가 추적 기록을 버리던 결함·바운스 차단을 «보냄» 으로 세던 결함은 같이 고침)
 - **화면**: 발주 상세·대기 초안 «↻ Repeat this order»(`RecurringOrderModal`) · `/pos/purchase-orders/recurring`(`RecurringOrdersPage` — 매장: 수정·일시정지·다시 시작·종료·기록 / 오너: 검토(지금 가격)·승인·반려·일시정지·종료, OwnerPoTabs 셋째 탭) · 목록·오너 승인 큐 «↻ 정기» 표시 · 외부 업체면 만들기 창에 «업체엔 안 보냄 — 기록만» 안내.
 - **검증**: health-check inventory «정기 발주 ①~⑦ + 정리» · jest `tests/po-schedule-dates.test.js`.
+
+## 판매자 발주 마감·배송일 — «오늘 몇 시까지 넣어야 언제 오나» (2026-10-27 · Fable 설계 · 구현 완료 개발서버 [Claude Code])
+> Irene 원문: «공급업체마다 발주마감일이랑 마감시간이 있어. 이걸 정보를 넣고 매일인지 무슨 요일인지. 그리고 배송일도 있는 경우가 있어. 배송일이 마감일시 이후로 1-2일 후나 익일, 매주 토요일 이런 식으로 정해지거든. 직원들이 이런 실수를 하지 않게 공급업체에 이런 발주관리 항목 추가하고 그걸 발주하기에서 요약해서 알려주게 보게 해주는 설정을 해주고 마감일시가 정해진 건 표시가 좀 더 그날은 강조되는 거 뭐 이런 거 체계 잡을 수 있을까? 외부업체등 솔루션 내부 브랜드제너럴이든 공급업체든 fable 판단.»
+
+### M-0. 결정 요지 (Fable 판단)
+1. **판매자 3종 전부에 둔다 — 같은 이름 칸 하나.** `SupplierCompany`(가입 공급업체 + 외부 업체) · `Brand`(BG 판매자) · `Foodcourt`(FG 판매자)에 `order_schedule` JSON 한 칸. `min_order_amount`·`delivery_fee`·`delivery_policy`·`delivery_zones` 와 같은 «판매자 3종 같은 이름» 규칙(2026-09-17 ⑦ · 2026-10-07). 판매자 종류마다 다른 개념을 만들지 않는다.
+   - 이유: 실수는 «어느 판매자냐» 와 상관없이 발주 화면에서 난다. 발주 화면은 이미 세 종류를 한 묶음(group) 모양으로 보여 준다 — 칸이 같아야 표시도 한 벌이다.
+   - **외부 업체가 오히려 주 대상이다**(Irene 이 «외부업체» 를 먼저 말함). `delivery_zones` 는 외부 업체에 두지 않았지만(구매자 주소 자동매칭 = 판매자 쪽 약속이라서) **마감·배송일은 외부 업체에도 둔다** — 외부 업체 정보는 등록한 매장·오너·BG 가 적는 것이 정상 경로다(`delivery_policy` 와 같은 권한).
+2. **새 목록·새 표·새 경로 없음.** 판매자 행의 속성 1칸. 판매자 해석은 기존 단일 자리 `utils/sellerNames.js resolveSellers` 가 읽어 함께 내린다. `TRADE_STRUCTURE.md` 의 재료·상품·가격 구조 무변경.
+3. **해석(«다음 마감은 언제, 그 마감이면 배송은 언제») = 새 순수 유틸 `utils/orderSchedule.js` 한 곳.** 서버만 계산한다. 화면은 서버가 준 «마감 시각(instant)» 으로 남은 시간·강조 단계만 정한다(시계는 흐르므로).
+4. **안내만, 막지 않는다.** 마감이 지나도 발주는 그대로 나간다(판매자가 늦은 주문을 받아 줄 수도 있고, 다음 배송분으로 갈 뿐이다). 화면은 «이번 마감 지남 → 다음 마감·다음 배송일» 을 보여 줄 뿐. 막기는 판매자와의 실제 약속을 우리가 강제하는 것이라 이번 범위 아님.
+5. **판정 시간대 = 판매자 시간대(칸 안에 저장), 표시 = 구매 매장 시간대.** 마감은 판매자 시계 기준 약속이다. 저장 때 `timezone` 을 칸 안에 박아 둔다(아래 M-1). 화면 표시는 프로젝트 규칙대로 매장 시간대(`formatTime(…, storeTimeZone)`). 둘이 다를 때만 시간 옆에 판매자 시간대 이름을 붙인다.
+6. **`delivery_policy`(자유 글)은 그대로 둔다** — 공휴일·예외·지역 같은 «규칙으로 못 적는 말» 자리. 새 메모 칸을 만들지 않는다.
+7. **`lead_time_days`(상품 칸)와 섞지 않는다.** 상품별 준비일 개념이라 판매자 마감 규칙과 다르다. 이번에 읽지도 쓰지도 않는다.
+8. **보낸 순간 «예상 배송일» 을 발주에 적는다(비어 있을 때만).** `purchase_orders.expected_delivery_date` 는 칸·표시(상세·인쇄·발주 대기·재고 «입고 예정»)가 이미 있는데 발주 화면이 값을 넣지 않아 늘 비어 있다(실측: `NewPurchaseOrderPage` `expectedDate` 상태에 setter 사용처 0). `submitted_at` 을 찍는 **바로 그 자리**에서, 그 시각 기준 마감 규칙의 배송일(범위면 이른 날)을 넣는다. 새 표시 경로 없음.
+
+### M-1. DB — 칸 1개 × 3표
+`brands.order_schedule` · `foodcourts.order_schedule` · `supplier_companies.order_schedule` — `JSON NULL`.
+- 마이그 `scripts/migrate-add-seller-order-schedule.js` (멱등 — `information_schema.COLUMNS` 확인 후 `ADD COLUMN`) · `migrations.registry.json` 에 **deploy** 로 등록. 모양은 `migrate-add-seller-delivery-zones.js` 를 그대로 본뜬다(TABLES 3개).
+- 모델 3개에 칸 추가(주석: «판매자 3종 같은 이름 · 해석 utils/orderSchedule.js 한 곳»). `sync-database --alter` 금지(SupplierCompany 주석 경고 그대로).
+- 외부 업체 «브랜드 → 매장 복사»(`utils/supplierShare.js` `COMPANY_SKIP`)는 새 칸을 **복사한다**(SKIP 에 넣지 않는다 — 복사 시점 값이 따라감, 이후는 독립 = §H 원칙 그대로).
+
+저장 모양(정규화된 값만 저장):
+```json
+{
+  "timezone": "Asia/Kuala_Lumpur",
+  "rules": [
+    { "days": [1, 4], "time": "15:00", "delivery": { "kind": "weekday", "weekday": 6 } },
+    { "days": [0,1,2,3,4,5,6], "time": "17:00", "delivery": { "kind": "after_days", "min": 1, "max": 2 } }
+  ]
+}
+```
+- `days`: 0=일 … 6=토. 1~7개, 중복 없음, 오름차순 정렬해 저장. **7개 = «매일»**(따로 플래그 두지 않는다).
+- `time`: `HH:MM` 24시간, 00:00~23:59.
+- `delivery`: `null`(배송일 안 정해짐) | `{kind:"after_days", min, max}`(0≤min≤max≤14 · `min=max=1` = «익일», `min=0` = 당일) | `{kind:"weekday", weekday}`(마감 날짜 **다음 날부터** 처음 오는 그 요일 — 토요일 마감에 «매주 토요일» 이면 다음 주 토요일).
+- `rules` 최대 7개. 같은 요일이 여러 규칙에 있어도 된다(오전·오후 마감 2번인 업체) — 단 같은 요일+같은 시각 중복은 400.
+- `rules` 가 비면 칸 전체를 `null` 로 저장. **`null` = 마감 정보 없음 = 화면에 아무것도 안 띄움**(«마감 없음» 이라고 쓰지 않는다 — 배송비 «미설정 ≠ 무료» 와 같은 원칙).
+- `timezone`: 화면에서 고르지 않는다. 저장하는 라우트가 넣는다 — 가입 공급업체·BG·FG = 그 판매자 행 `operation_settings.timeZone` · 외부 업체 = 등록 주체(`registered_by_entity_type/id`)의 시간대(매장은 `getRestaurantTimezone`) · 없으면 `Asia/Kuala_Lumpur`. 이미 값이 있으면 덮지 않는다(나중에 판매자 시간대 설정을 바꿔도 마감 규칙 의미가 몰래 바뀌지 않게 — 편집 화면은 시간대 이름을 보여 준다).
+
+### M-2. 해석 한 곳 — `dev-backend/utils/orderSchedule.js` (순수 함수, DB 안 읽음)
+날짜는 `poScheduleDates.js` 처럼 **판매자 시간대의 'YYYY-MM-DD' 문자열**로 다루고, 마감 순간만 `dateTimeHelper.localClockToUTC(date, time, tz)` 로 instant 를 만든다.
+- `normalizeScheduleForSave(raw, timezone)` → `{ schedule, error }` — M-1 규칙 검사·정렬. 판매자 3종 라우트가 전부 이것만 쓴다(`deliveryZones.normalizeZonesForSave` 와 같은 자리 역할).
+- `readSchedule(raw)` → 정규화된 객체 또는 `null`(깨진 JSON·빈 rules → null, 던지지 않는다).
+- `deliveryFor(rule, cutoffDate)` → `{ from, to }` 또는 `null`.
+- `orderWindows(schedule, now = new Date())` → `null`(일정 없음) 또는
+  ```
+  { timezone,
+    previous:  { cutoff_at } | null,              // now 이전 마지막 마감(최근 7일 안)
+    next:      Window | null,                     // now 이후 첫 마감
+    following: Window | null }                    // 그다음 마감 (화면이 열린 채 마감이 지나도 다시 부르지 않고 넘어가게)
+  Window = { cutoff_at: ISO, cutoff_date: 'YYYY-MM-DD', cutoff_time: 'HH:MM', delivery_from, delivery_to }  // delivery_* 는 null 가능
+  ```
+  탐색: 판매자 시간대 오늘 −7일 ~ +14일의 날짜마다 규칙을 대보고 instant 정렬. **경계: `now >= cutoff_at` 이면 지난 것**(마감 시각 정각은 늦음).
+- `expectedDeliveryAt(schedule, at)` → `'YYYY-MM-DD' | null` = `orderWindows(schedule, at).next` 의 `delivery_from`(M-0 ⑧ 전용).
+
+### M-3. 서버 — 어디에 붙나
+1. **`utils/sellerNames.js resolveSellers`**: `attributes` 에 `order_schedule` 추가 → 레코드에 `order_schedule: readSchedule(row.order_schedule)` · `order_windows: orderWindows(그것, new Date())` 두 키. 판매자 3종 모두(외부 업체 포함 — zones 처럼 걸러내지 않는다). 이로써 `GET /purchase-orders`(목록 `plain.seller` · 발주 대기 · 오너 승인 대기)와 상세가 자동으로 받는다.
+2. **`routes/restaurants-ingredients.js`(150-260)**: 다른 `seller_*` 칸과 같은 모양으로 `seller_order_windows: getSeller(...)?.order_windows ?? null` 한 키. 따로 조회·계산하지 않는다.
+3. **저장 라우트(4곳, 전부 `normalizeScheduleForSave`)** — `undefined` = 무변경, `null`/빈 rules = 지움, 오류 = 400 `{success:false, message}`:
+   - BG: `routes/brands-core.js`(delivery_zones 저장 옆 765-772 부근) + GET 응답(719·833 부근)에 `order_schedule`.
+   - FG: `routes/foodcourts-core.js`(618-625 부근) + GET(577·681 부근).
+   - 가입 공급업체 본인: `routes/supplier.js`(normalizeZonesForSave 쓰는 회사정보 저장) + GET.
+   - 외부 업체: `routes/supplier-directory.js` 등록(1094-1128) · 수정(1198 `fields` 옆 — **같은 권한 검사를 그대로 탄다**) + 프로필 GET. **가입 공급업체(is_system_registered) 행은 구매자가 못 고친다** — 수정 라우트가 이미 막는 그대로 둘 것(새 우회 경로 만들지 않기).
+4. **예상 배송일 기록(M-0 ⑧)** — `submitted_at` 을 찍는 3곳에서만, `expected_delivery_date` 가 비어 있을 때만:
+   `utils/poOwnerApproval.js applySubmitGate` 의 두 `po.update({status:'submitted', submitted_at…})` · `routes/purchase-orders-approval.js:~133` 오너 승인.
+   공용 함수 하나 `utils/orderSchedule.js stampExpectedDelivery(po, t)`(판매자 행을 `resolveSellers` 로 읽어 `expectedDeliveryAt(schedule, now)` → 있으면 같은 update 에 칸 하나 더). 승인 대기로 가는 갈래에서는 찍지 않는다(실제로 판매자에게 가는 순간 = 승인 순간이 기준). 실패해도 제출을 막지 않는다(try/catch → 기록 생략).
+   ⚠ `poOwnerApproval.js` 는 승인 관문 파일 → `check-sensitive-diff` 가 걸면 Fable 게이트 1회 대상. 이 변경은 칸 1개 채우기뿐이고 상태·금액·통지 분기 무접촉이어야 한다(diff 로 대조).
+
+### M-4. 화면
+**공용 2개를 새로 만든다(로컬 styled 복제 금지):**
+- `dev-frontend/src/utils/orderCutoff.ts` — `cutoffState(windows, nowMs, storeTz)` → `{ level, window, previous, minutesLeft } | null`.
+  `next.cutoff_at <= now` 면 `following` 을 next 로 당겨 쓴다(재조회 없이). `level`:
+  - `closing` — 남은 시간 ≤ 120분
+  - `today` — 마감이 매장 시간대 기준 오늘(그 외 남은 시간 > 120분)
+  - `upcoming` — 내일 이후
+  - 덧붙임 `missedToday: boolean` — `previous.cutoff_at` 이 매장 시간대 기준 오늘이고 이미 지남.
+- `dev-frontend/src/components/PurchaseOrders/OrderCutoffBadge.tsx` — 한 줄 표시(작은 글자, 아이콘·이모지 없음). 색(인라인 hex 대신 상수 한 곳):
+  - `closing`: 글자 `#B91C1C`, 배경 `#FEE2E2`, 굵게 — «Order by today 3:00 PM · closes in 1h 20m · Delivery Tue 28 Oct»
+  - `today`: 글자 `#B45309`, 배경 `#FEF3C7`, 굵게 — «Order by today 3:00 PM · Delivery Tue 28 Oct»
+  - `upcoming`: 글자 `#475569`, 배경 없음 — «Next cutoff Thu 3:00 PM · Delivery Sat 1 Nov»
+  - `missedToday` 이면 앞에 `#6B7280` 로 «Today's cutoff passed (3:00 PM) —» 를 붙이고 이어서 next 표시.
+  - 시간 = `formatTime(cutoff_at, storeTimeZone)`, 요일·날짜 = 매장 시간대. 배송일은 날짜 문자열이라 `timeZone:'UTC'` 로 `Date.UTC(y,m-1,d)` 를 포맷(밀림 방지 — [[reference_tz_offset_ms_bug]]). `windows.timezone !== storeTimeZone` 일 때만 시간 뒤 «(Asia/Bangkok)» 처럼 판매자 시간대 이름.
+  - 남은 시간 갱신: **페이지에 1분 interval 하나**, 배지는 `nowMs` prop 만 받는다(배지마다 타이머 금지).
+
+**편집 — `dev-frontend/src/components/Common/OrderScheduleEditor.tsx`** (`DeliveryZonesEditor` 와 같은 자리·같은 모양): 규칙 줄 목록 + «Add cutoff» · 줄마다 ① 요일 칩 7개 + «Every day» 토글 ② 마감 시각(`<input type="time">`) ③ 배송: 고르기 `Not fixed / Same day / Next day / N–M days after / Every <요일>`(N–M 은 숫자 두 칸) ④ 줄 삭제(`IconButton`). 아래 «Times are in {{tz}}» 한 줄(새 행은 저장 후 표시). 줄마다 미리보기 한 줄(«Mon, Thu 3:00 PM → delivered Sat»). 붙이는 화면 5곳:
+- `Supplier/SupplierCompanyInfoPage.tsx`(가입 공급업체 본인) · `BrandGeneral/BrandPaymentSettingsPage.tsx` · `FoodcourtGeneral/FoodcourtPaymentSettingsPage.tsx` — 배송 조건(배송비·지역) 묶음 바로 아래.
+- `SupplierDirectory/SupplierDirectoryPage.tsx`(외부 업체 등록 창) · `SupplierProfilePage.tsx`(외부 업체 편집) — `delivery_policy` 칸 바로 위. 가입 공급업체 프로필에서는 **읽기 전용 요약**(편집기 대신 규칙 문장 목록).
+
+**표시 — 발주하는 사람이 보는 곳:**
+1. **발주하기 `NewPurchaseOrderPage.tsx` — 맨 위 요약 띠 «Order cutoffs»** (이번 기능의 중심). 불러온 재료 줄의 `available_sellers[].seller_order_windows` 에서 판매자별 1개로 모아:
+   - 오늘 마감(`closing`·`today`·`missedToday`)인 판매자를 마감 시각 순 칩으로. `closing` 이 맨 앞. 칩 = 판매자 이름 + 배지 문구.
+   - 오늘 마감이 없으면 «No order cutoffs today» 한 줄 + 가장 가까운 다음 마감 1개.
+   - «All suppliers (N)» 펼침 → 일정이 있는 모든 판매자의 다음 마감·배송일 표(마감 시각 순). 일정 없는 판매자는 이 표에 넣지 않는다.
+   - 일정 있는 판매자가 0이면 띠 자체를 그리지 않는다.
+2. **장바구니 판매자 묶음 머리(~2680-2725)**: 판매자 이름 줄 바로 아래 `OrderCutoffBadge` 한 줄(배송비 줄들 위). 묶음 데이터에 `order_windows: seller.seller_order_windows ?? null` 을 추가(`terms` 밖 — 계산식 무관).
+3. **발주 대기 `PurchaseOrderStagingPage.tsx`**: 카드 `POMeta` 아래 `OrderCutoffBadge`(`po.seller.order_windows`). 실제로 보내는 곳이 여기다.
+   «Submit All» 확인 창: 오늘 마감이 이미 지난 판매자(`missedToday` 이고 next 가 오늘이 아님)가 있으면 목록으로 «{{seller}}: today's cutoff (3:00 PM) has passed — this goes to the next delivery ({{date}}).» — **경고만, 버튼은 그대로**.
+4. **오너 승인 대기 목록**(OwnerPoTabs 승인 큐): 같은 배지. 오너가 늦게 승인하면 마감을 넘기는 실수가 여기서 난다.
+5. 발주 상세·인쇄본: 기존 «Expected» 표시가 M-3 ④ 로 채워질 뿐, 새 표시 없음.
+- **범위 밖(이번 아님)**: 재료 줄의 판매자 고르기 드롭다운에 마감 표시 · 판매자 «들어온 주문» 에 «마감 후 접수» 표시 · 정기 발주 실행 시각과 마감 맞추기 · 공휴일 예외 규칙(→ `delivery_policy` 글로) · 마감 후 발주 막기.
+
+### M-5. i18n 키 (en → ko → zh → ms, `npm run i18n:verify`)
+`purchaseOrders` 네임스페이스 `orderCutoff.*`:
+`title`(Order cutoffs) · `noneToday`(No order cutoffs today) · `nearestNext`(Next: {{seller}} {{when}}) · `allSuppliers`(All suppliers ({{count}})) · `orderByToday`(Order by today {{time}}) · `closesIn`(closes in {{duration}}) · `durationHm`({{h}}h {{m}}m) · `durationM`({{m}}m) · `nextCutoff`(Next cutoff {{when}}) · `passedToday`(Today's cutoff passed ({{time}})) · `delivery`(Delivery {{date}}) · `deliveryRange`(Delivery {{from}}–{{to}}) · `tomorrow`(Tomorrow {{time}}) · `weekdayTime`({{weekday}} {{time}}) · `sellerTz`(({{tz}})) · `lateConfirmTitle`(Some cutoffs have passed) · `lateConfirmLine`({{seller}}: today's cutoff ({{time}}) has passed — this goes to the next delivery ({{date}}).) · 표 머리 `colSeller`·`colCutoff`·`colDelivery`.
+`common` 네임스페이스 `orderSchedule.*`(편집기 — DeliveryZonesEditor 와 같은 곳):
+`title`(Order cutoff & delivery days) · `help`(Staff see these when placing orders. Leave empty if the supplier has no fixed cutoff.) · `addRule`(Add cutoff) · `everyDay`(Every day) · `cutoffTime`(Cutoff time) · `delivery`(Delivery) · `deliveryNone`(Not fixed) · `deliverySameDay`(Same day) · `deliveryNextDay`(Next day) · `deliveryAfterDays`({{min}}–{{max}} days after) · `deliveryWeekday`(Every {{weekday}}) · `preview`({{days}} {{time}} → {{delivery}}) · `timezoneNote`(Times are in {{tz}}) · `removeRule` · `readonlyTitle`(Set by the supplier) · `errors.days`·`errors.time`·`errors.range`·`errors.duplicate`·`errors.tooMany`.
+요일 이름: 기존 공용 요일 키가 있으면 재사용(grep 먼저), 없으면 `Intl.DateTimeFormat(locale,{weekday:'short', timeZone:'UTC'})` 를 고정 UTC 날짜에 — 새 요일 키를 만들지 않는다.
+
+### M-6. 검증 사례 · 고장주입
+**jest `dev-backend/tests/order-schedule.test.js`** (순수, tz=Asia/Kuala_Lumpur, now 는 고정 instant):
+1. 매일 15:00, 익일 — 월 14:00 KL → next = 월 15:00(= 07:00Z), 배송 화. 
+2. 경계 — 월 15:00:00 정각 → 지난 것(previous=월 15:00), next = 화 15:00.
+3. 월·목 15:00 + 매주 토 — 월 → 토(같은 주) · 목 → 토 · 금 10:00 → next 다음 월, 배송 그다음 토.
+4. 토 마감 + 매주 토 → 다음 주 토(+7, 같은 날 아님).
+5. 1–2일 후, 금 마감 → from 토 · to 일.
+6. 당일(min=max=0) → from=to=마감 날.
+7. 12-31 마감 익일 → 다음 해 01-01.
+8. 같은 요일 09:00·15:00 두 규칙, 월 10:00 → next 월 15:00, previous 월 09:00.
+9. 일정 null·빈 rules·깨진 JSON → `orderWindows` = null, 던지지 않음.
+10. 저장 검사 — 요일 7(범위 밖)·`25:00`·min>max·max 15·같은 요일+시각 중복·규칙 8개 → 각각 error. 요일 순서 섞임·중복 → 정렬·제거.
+11. 시간대 — 같은 규칙을 `Asia/Bangkok` 으로 → cutoff_at 이 1시간 뒤(08:00Z).
+12. `expectedDeliveryAt` — 마감 지난 시각으로 부르면 다음 마감의 배송일.
+
+**health-check `inventory` 「판매자 발주 마감」 (데모 매장·데모 판매자만, 원본 먼저 저장 후 복원 — [[feedback_test_save_original_first]]):**
+- O1 BG(데모 브랜드)·FG·가입 공급업체(데모 20) 각 저장 → GET 이 같은 값 · 잘못된 값 400.
+- O2 외부 업체(데모 매장 등록) 저장·지우기(null) · **등록하지 않은 다른 매장 계정**으로 수정 → 거부(기존 권한 그대로).
+- O3 가입 공급업체 행을 구매자가 고치려 하면 거부.
+- O4 `GET /restaurants/:id/ingredients…`(발주 화면 데이터)에 `seller_order_windows.next.cutoff_at` 이 있고, `GET /purchase-orders?status=draft` 의 `seller.order_windows` 가 같은 값.
+- O5 일정 있는 판매자로 발주 제출 → `expected_delivery_date` = `expectedDeliveryAt` 값 · 이미 값 있는 발주는 안 바뀜 · 오너 승인 매장은 제출 때 null, 승인 때 찍힘 · 일정 없는 판매자 → null 그대로.
+**고장주입(반증 3건 — 주입 → 실패 확인 → 원복):**
+- G1 `deliveryFor` weekday 를 «당일 포함»(`>=`)으로 → jest 4번 실패.
+- G2 `resolveSellers` `attributes` 에서 `order_schedule` 빼기 → health-check O4 실패(pm2 restart 뒤 — [[feedback_fault_injection_is_mandatory]]).
+- G3 `orderWindows` 가 tz 대신 서버 시계(UTC) 로 날짜를 자르게 → jest 1·11 실패.
+**화면**: build 1회 후 `verify-all --full`(발주하기·발주 대기 mount) · 실브라우저로 데모 매장 38 발주하기에서 요약 띠·묶음 배지 3단계(closing/today/upcoming)와 `missedToday` 확인 — 시험 판매자 일정을 지금 시각 기준 +60분 / +5시간 / 내일 / −1시간 으로 맞춰 본다(화면에 보이는 시험 이름은 영어).
+**가드**: `check-print-guard`(무접촉 확인) · `check-design-guard` · `timezone-check` · `check-sensitive-diff`(poOwnerApproval 접촉 → 대상이면 Fable 게이트 1회).
+
+### M-7. 구현 파일 목록
+- 백엔드 새 파일: `utils/orderSchedule.js` · `scripts/migrate-add-seller-order-schedule.js` · `tests/order-schedule.test.js`
+- 백엔드 수정: `models/SupplierCompany.js`·`Brand.js`·`Foodcourt.js` · `scripts/migrations.registry.json` · `utils/sellerNames.js` · `routes/restaurants-ingredients.js` · `routes/brands-core.js` · `routes/foodcourts-core.js` · `routes/supplier.js` · `routes/supplier-directory.js` · `utils/poOwnerApproval.js`(칸 1개) · `routes/purchase-orders-approval.js`(칸 1개) · `scripts/health-check.js`
+- 프론트 새 파일: `utils/orderCutoff.ts` · `components/PurchaseOrders/OrderCutoffBadge.tsx` · `components/Common/OrderScheduleEditor.tsx`
+- 프론트 수정: `pages/PurchaseOrders/NewPurchaseOrderPage.tsx` · `PurchaseOrderStagingPage.tsx` · 오너 승인 큐 화면 · `Supplier/SupplierCompanyInfoPage.tsx` · `BrandGeneral/BrandPaymentSettingsPage.tsx` · `FoodcourtGeneral/FoodcourtPaymentSettingsPage.tsx` · `SupplierDirectory/SupplierDirectoryPage.tsx` · `SupplierProfilePage.tsx` · locales 4언어 `purchaseOrders.json`·`common.json`
+- 🔒 인쇄 8파일·KDS 무접촉. `TRADE_STRUCTURE.md` 무변경(판매자 속성 1칸, 새 목록 없음).
+- 설계와 다른 판단이 필요해지면 구현을 멈추고 Fable 에 다시 묻는다.
+
+### M-8. 구현 기록 (2026-10-27 [Claude Code])
+- 설계대로 구현. 설계와 다른 점(작은 것만):
+  - 예상 배송일 함수 이름 `expectedDeliveryPatch(po, at)` — `po.update` 에 펼쳐 넣는 객체를 돌려준다(설계 `stampExpectedDelivery` 역할 그대로).
+  - 오너 승인 대기 목록(`GET /purchase-orders/pending-approval`)은 판매자 이름만 펼쳐 내리는 응답이라 `seller_order_windows` 한 키를 같은 해석기 값으로 더했다.
+  - 발주하기 요약 띠는 3천 줄 화면에 넣지 않고 `components/PurchaseOrders/OrderCutoffSummary.tsx` 로 뺐다(공용 배지·유틸 그대로 사용).
+  - 고장주입 G3 은 «날짜를 UTC 로 자르기» 로는 안 잡힌다 — 앞뒤 3주를 펼쳐 시각순으로 고르는 구조라 기준일이 하루 밀려도 결과가 같다(무해). 실제 위험인 «마감 시각을 판매자 시간대 대신 UTC 로 계산» 으로 주입해 jest 6건 실패로 잡힘.
+  - health-check O4·O5 는 첫 데모 매장(1)에 공급업체 20 연결이 없어 조용히 «건너뜀=통과» 하던 것을 G2 주입에서 발견 → 연결 있는 데모 매장을 직접 고르고, 없으면 실패로 바꿈.
+- 외부 업체 «등록 창»(SupplierDirectoryPage 의 모달)은 v3.61 이후 여는 버튼이 없는 옛 창이다(편집기를 넣었지만 쓰이지 않음 · 해 없음). 실제 등록은 `Suppliers/AllSuppliersView.tsx` 빠른 등록 → 곧바로 업체 프로필로 넘어가 거기서 마감을 적는다. 옛 창 정리는 별도.
+- 게이트 조건(실브라우저 못 연 화면): 오너 승인 대기·공급업체 회사정보(390)·푸드코트 결제 설정 열어 배지/편집기 보임·오류 0 확인(2026-10-27).
+- 확인용 예시(데모만): 공급업체 20 = 월·목 15:00 → 매주 토 · 외부 업체 4019(Fresh Farms KL, 매장 38) = 매일 17:00 → 익일.

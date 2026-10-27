@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import OrderScheduleEditor from '../../components/Common/OrderScheduleEditor';
+import type { OrderRule } from '../../utils/orderCutoff';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -347,6 +349,9 @@ const SupplierDirectoryPage: React.FC = () => {
     name: '', phone: '', email: '', address: '', city: '', state: '', country: 'MY',
     min_order_amount: '', delivery_fee: '', delivery_policy: ''
   });
+  // 발주 마감·배송일 (2026-10-27 Fable) — 등록 때 같이 보낸다(검사·시간대는 서버). 창을 다시 열면 비운다(key).
+  const [externalSchedule, setExternalSchedule] = useState<{ rules: OrderRule[] } | null>(null);
+  const [externalScheduleKey, setExternalScheduleKey] = useState(0);
   const [externalSubmitting, setExternalSubmitting] = useState(false);
   const [externalError, setExternalError] = useState<string | null>(null);
 
@@ -366,7 +371,8 @@ const SupplierDirectoryPage: React.FC = () => {
           ...externalForm,
           min_order_amount: externalForm.min_order_amount ? parseFloat(externalForm.min_order_amount) : null,
           // 배송비 — 빈 칸은 «미설정»(null). 0 은 «무료배송» 이라는 뜻이라 서로 다르다. (2026-09-17)
-          delivery_fee: externalForm.delivery_fee === '' ? null : parseFloat(externalForm.delivery_fee)
+          delivery_fee: externalForm.delivery_fee === '' ? null : parseFloat(externalForm.delivery_fee),
+          order_schedule: externalSchedule
         })
       });
       const j = await res.json();
@@ -376,6 +382,8 @@ const SupplierDirectoryPage: React.FC = () => {
       }
       setShowExternalModal(false);
       setExternalForm({ name: '', phone: '', email: '', address: '', city: '', state: '', country: 'MY', min_order_amount: '', delivery_fee: '', delivery_policy: '' });
+      setExternalSchedule(null);
+      setExternalScheduleKey(k => k + 1);
       fetchDirectory();
     } catch (e: any) {
       setExternalError(e?.message || 'Network error');
@@ -565,6 +573,7 @@ const SupplierDirectoryPage: React.FC = () => {
           }))}
           defaultCountry="MY"
         />
+        <OrderScheduleEditor key={externalScheduleKey} value={null} onCommit={async (sch) => { setExternalSchedule(sch); }} />
         <FormGroup>
           <FormLabel>{t('externalSupplier.deliveryPolicy', '배송 메모 (요일·지역 등 — 계산에는 쓰지 않습니다)')}</FormLabel>
           <FormTextArea

@@ -67,6 +67,8 @@ async function isApprovalRequiredForRestaurant(restaurant) {
  * @returns {Promise<boolean>} needsApproval — true 면 호출부는 **판매자 통지·seller-order-created 를
  *          내보내면 안 되고**, 대신 오너 승인 대기 통지를 보내야 한다.
  */
+const { expectedDeliveryPatch } = require('./orderSchedule');
+
 async function applySubmitGate(po, t, appendTrackingEvent, actor, opts = {}) {
   const Restaurant = require('../models/Restaurant');
 
@@ -92,6 +94,8 @@ async function applySubmitGate(po, t, appendTrackingEvent, actor, opts = {}) {
     await po.update({
       status: 'submitted',
       submitted_at: new Date(),
+      // 예상 배송일 — 판매자에게 실제로 보내는 순간에만, 비어 있을 때만 (2026-10-27 Fable M-3 ④ · utils/orderSchedule.js)
+      ...(await expectedDeliveryPatch(po)),
       approval_required: true,
       approved_by_user_id: pre.approvedByUserId,
       approved_at: new Date(),
@@ -114,6 +118,7 @@ async function applySubmitGate(po, t, appendTrackingEvent, actor, opts = {}) {
     await po.update({
       status: 'submitted',
       submitted_at: new Date(),
+      ...(await expectedDeliveryPatch(po)),
       tracking_info: tracking
     }, { transaction: t });
   }

@@ -138,6 +138,12 @@ Brand.init({
     type: DataTypes.JSON, allowNull: true,
     comment: '배송 지역 목록 — 구매자 주소 주(州)로 자동 매칭, 미매칭은 delivery_fee'
   },
+  // 발주 마감·배송일 (2026-10-27 Fable · docs/PURCHASE_ORDER_SYSTEM.md «판매자 발주 마감·배송일») — 판매자 3종 같은 이름.
+  //   {timezone, rules:[{days, time, delivery}]} · null = 마감 정보 없음 · 해석 utils/orderSchedule.js 한 곳
+  order_schedule: {
+    type: DataTypes.JSON, allowNull: true,
+    comment: '발주 마감 요일·시각과 배송일 규칙 — 안내 전용(발주를 막지 않음)'
+  },
   // 주문용 상품 링크의 열쇠 (docs/BUYER_FREE_TIER_DESIGN.md §5-6).
   // 공급업체·브랜드가 **같은 칸 이름·같은 규칙**을 쓴다 — 판매자 종류마다 다른 개념을 만들지 않는다.
   // 링크는 `/shop/:slug` 하나이므로 두 표를 가로질러 유일해야 한다(utils/shopSlug.js 가 보장).

@@ -1015,5 +1015,28 @@
       "monthly": "매월 {{day}}일"
     },
     "externalNote": "이 업체는 구독대로 알아서 배송·인보이스합니다 — 업체에는 아무것도 보내지 않습니다. 주기마다 발주가 기록되어, 받으면 수령 처리하고 인보이스를 맞춰 보면 됩니다."
+  },
+  "orderCutoff": {
+    "title": "발주 마감",
+    "noneToday": "오늘 마감인 공급처 없음",
+    "nearestNext": "다음: {{seller}} {{when}}",
+    "allSuppliers": "전체 공급처 ({{count}})",
+    "orderBy": "{{when}}까지 발주",
+    "todayTime": "오늘 {{time}}",
+    "tomorrow": "내일 {{time}}",
+    "weekdayTime": "{{weekday}} {{time}}",
+    "closesIn": "{{duration}} 남음",
+    "durationHm": "{{h}}시간 {{m}}분",
+    "durationM": "{{m}}분",
+    "nextCutoff": "다음 마감 {{when}}",
+    "passedToday": "오늘 마감 지남 ({{time}})",
+    "delivery": "배송 {{date}}",
+    "deliveryRange": "배송 {{from}}–{{to}}",
+    "sellerTz": "({{tz}})",
+    "lateConfirmTitle": "마감이 지난 공급처가 있습니다:",
+    "lateConfirmLine": "{{seller}}: 오늘 마감({{time}})이 지나 다음 배송분({{date}})으로 갑니다.",
+    "colSeller": "공급처",
+    "colCutoff": "다음 마감",
+    "colDelivery": "배송"
   }
 }

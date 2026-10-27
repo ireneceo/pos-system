@@ -1015,5 +1015,28 @@
       "monthly": "Monthly on day {{day}}"
     },
     "externalNote": "This supplier delivers and invoices on its own subscription — nothing is sent to them. Each period an order is recorded here so you can receive it and match the invoice."
+  },
+  "orderCutoff": {
+    "title": "Order cutoffs",
+    "noneToday": "No order cutoffs today",
+    "nearestNext": "Next: {{seller}} {{when}}",
+    "allSuppliers": "All suppliers ({{count}})",
+    "orderBy": "Order by {{when}}",
+    "todayTime": "today {{time}}",
+    "tomorrow": "Tomorrow {{time}}",
+    "weekdayTime": "{{weekday}} {{time}}",
+    "closesIn": "closes in {{duration}}",
+    "durationHm": "{{h}}h {{m}}m",
+    "durationM": "{{m}}m",
+    "nextCutoff": "Next cutoff {{when}}",
+    "passedToday": "Today's cutoff passed ({{time}})",
+    "delivery": "Delivery {{date}}",
+    "deliveryRange": "Delivery {{from}}–{{to}}",
+    "sellerTz": "({{tz}})",
+    "lateConfirmTitle": "Some cutoffs have passed:",
+    "lateConfirmLine": "{{seller}}: today's cutoff ({{time}}) has passed — this goes to the next delivery ({{date}}).",
+    "colSeller": "Supplier",
+    "colCutoff": "Next cutoff",
+    "colDelivery": "Delivery"
   }
 }

@@ -62,7 +62,9 @@ const COMPANY_ALLOWED_FIELDS = [
   // 배송 가능 지역 안내 글 (2026-09-28 Fable) — 브랜드·푸드코트와 같은 칸
   'delivery_policy',
   // 배송 지역 (2026-10-07 Fable) — 브랜드·푸드코트와 같은 칸·같은 규칙
-  'delivery_zones'
+  'delivery_zones',
+  // 발주 마감·배송일 (2026-10-27 Fable) — 판매자 3종 같은 칸·같은 규칙(utils/orderSchedule.js)
+  'order_schedule'
 ];
 
 // Fields stored as plain strings (sanitized on save)
@@ -408,6 +410,13 @@ router.put('/company', async (req, res) => {
         const { zones, error: zoneErr } = require('../utils/deliveryZones').normalizeZonesForSave(value);
         if (zoneErr) return res.status(400).json({ success: false, message: zoneErr.message, code: zoneErr.code });
         value = zones;
+      } else if (key === 'order_schedule') {
+        const os = require('../utils/orderSchedule');
+        const prev = os.readSchedule(company.order_schedule);
+        const opTz = company.operation_settings && company.operation_settings.timeZone;
+        const { schedule, error: schErr } = os.normalizeScheduleForSave(value, opTz, prev && prev.timezone);
+        if (schErr) return res.status(400).json({ success: false, message: schErr });
+        value = schedule;
       } else if (key === 'shop_slug') {
         const { normalizeShopSlug, shopSlugTaken } = require('../utils/shopSlug');
         if (value === '' || value === null || value === undefined) {

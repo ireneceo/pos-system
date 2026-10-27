@@ -939,5 +939,32 @@
   "similarName.useProductInstead": "Guna produk ini",
   "similarName.productInsteadInfo": "\"{{name}}\" sudah menjadi produk yang anda jual. Jangan cipta item stok untuknya — pilih produk itu dalam resipi.",
   "brandStaffPage.linkedTag": "Akaun dipautkan",
-  "brandStaffPage.linkedHint": "Pengurus ini menggunakan akaun sendiri (dipautkan). Nama, e-mel dan kata laluan milik akaun itu — di sini anda boleh menukar menu yang mereka lihat untuk jenama ini."
+  "brandStaffPage.linkedHint": "Pengurus ini menggunakan akaun sendiri (dipautkan). Nama, e-mel dan kata laluan milik akaun itu — di sini anda boleh menukar menu yang mereka lihat untuk jenama ini.",
+  "orderSchedule": {
+    "title": "Had masa pesanan & hari penghantaran",
+    "help": "Kakitangan melihat ini semasa membuat pesanan. Biarkan kosong jika pembekal tiada had masa tetap.",
+    "readonlyTitle": "Ditetapkan oleh pembekal",
+    "timezoneNote": "Masa mengikut {{tz}}",
+    "timezoneLater": "Masa mengikut zon waktu perniagaan anda.",
+    "saveFailed": "Tidak dapat menyimpan had masa pesanan",
+    "days": "Hari had masa",
+    "everyDay": "Setiap hari",
+    "removeRule": "Buang had masa",
+    "cutoffTime": "Masa had",
+    "delivery": "Penghantaran",
+    "deliveryNone": "Penghantaran belum ditetapkan",
+    "deliverySameDay": "Hari yang sama",
+    "deliveryNextDay": "Hari berikutnya",
+    "deliveryRangeOption": "Hari selepas had masa…",
+    "deliveryWeekdayOption": "Hari tetap…",
+    "minDays": "Dari (hari)",
+    "maxDays": "Hingga (hari)",
+    "daysAfter": "hari selepas",
+    "deliveryWeekday": "Setiap {{weekday}}",
+    "deliveryDays": "{{n}} hari selepas",
+    "deliveryAfterDays": "{{min}}–{{max}} hari selepas",
+    "incomplete": "Pilih sekurang-kurangnya satu hari — had masa disimpan apabila ada hari dan masa.",
+    "addRule": "+ Tambah had masa",
+    "preview": "{{days}} {{time}} → {{delivery}}"
+  }
 }

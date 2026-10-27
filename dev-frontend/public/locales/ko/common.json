@@ -939,5 +939,32 @@
   "similarName.useProductInstead": "이 상품을 쓰기",
   "similarName.productInsteadInfo": "\"{{name}}\" 은(는) 이미 파는 상품입니다. 재고아이템을 만들지 말고 레시피에서 상품을 고르세요.",
   "brandStaffPage.linkedTag": "연결 계정",
-  "brandStaffPage.linkedHint": "이 매니저는 자기 계정으로 연결돼 있습니다. 이름·이메일·비밀번호는 그 계정의 것이라 여기서는 이 브랜드에서 보일 메뉴만 바꿀 수 있습니다."
+  "brandStaffPage.linkedHint": "이 매니저는 자기 계정으로 연결돼 있습니다. 이름·이메일·비밀번호는 그 계정의 것이라 여기서는 이 브랜드에서 보일 메뉴만 바꿀 수 있습니다.",
+  "orderSchedule": {
+    "title": "발주 마감·배송일",
+    "help": "직원이 발주할 때 이 정보를 봅니다. 정해진 마감이 없는 업체면 비워 두세요.",
+    "readonlyTitle": "공급업체가 정한 일정",
+    "timezoneNote": "시각 기준: {{tz}}",
+    "timezoneLater": "시각은 우리 사업장 시간대 기준입니다.",
+    "saveFailed": "발주 마감을 저장하지 못했습니다",
+    "days": "마감 요일",
+    "everyDay": "매일",
+    "removeRule": "마감 삭제",
+    "cutoffTime": "마감 시각",
+    "delivery": "배송",
+    "deliveryNone": "배송일 안 정해짐",
+    "deliverySameDay": "당일",
+    "deliveryNextDay": "익일",
+    "deliveryRangeOption": "마감 후 며칠…",
+    "deliveryWeekdayOption": "정해진 요일…",
+    "minDays": "부터(일)",
+    "maxDays": "까지(일)",
+    "daysAfter": "일 후",
+    "deliveryWeekday": "매주 {{weekday}}",
+    "deliveryDays": "{{n}}일 후",
+    "deliveryAfterDays": "{{min}}–{{max}}일 후",
+    "incomplete": "요일을 하나 이상 고르세요 — 요일과 시각이 있어야 저장됩니다.",
+    "addRule": "+ 마감 추가",
+    "preview": "{{days}} {{time}} → {{delivery}}"
+  }
 }

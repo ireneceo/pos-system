@@ -23,6 +23,9 @@ import { renderIframeToPdf } from '../../utils/invoicePdf';
 import { sharePoViaWhatsApp, sharePoViaEmail } from '../../utils/poShare';
 import { setOwnerPoRestaurantId } from '../../utils/ownerPoScope';
 import OwnerPoTabs from '../../components/PurchaseOrders/OwnerPoTabs';
+import OrderCutoffBadge, { useMinuteNow } from '../../components/PurchaseOrders/OrderCutoffBadge';
+import type { OrderWindows } from '../../utils/orderCutoff';
+import { useStore } from '../../contexts/StoreContext';
 
 interface PendingPO {
   id: number;
@@ -42,6 +45,8 @@ interface PendingPO {
   /** 정기 발주에서 만든 발주(2026-10-22 recurring-po) — 마지막 승인 대기 사유(허용폭 밖 등)를 같이 보인다 */
   schedule_id?: number | null;
   tracking_info?: any;
+  /** 발주 마감 (2026-10-27 Fable) — 늦게 승인하면 마감을 넘긴다. null = 판매자 일정 없음 */
+  seller_order_windows?: OrderWindows | null;
 }
 
 /** 정기 발주 발주의 마지막 «Standing order #N: …» 사유 — 서버 poScheduleService 가 tracking 에 남긴다. */
@@ -106,6 +111,9 @@ function editedByBuyer(row: any): boolean {
 
 const OwnerPoApprovalsPage: React.FC = () => {
   const { t } = useTranslation(['purchaseOrders', 'common']);
+  const nowMs = useMinuteNow();
+  const { operationSettings } = useStore();
+  const storeTimeZone = operationSettings?.timeZone || 'Asia/Kuala_Lumpur';
   const navigate = useNavigate();
   const [rows, setRows] = useState<PendingPO[]>([]);
   // 방금 승인한 발주 — id → 공유용 상세(판매자 연락처·품목명). 상세를 미리 받아 두어야
@@ -333,6 +341,11 @@ const OwnerPoApprovalsPage: React.FC = () => {
                     </DataTableCell>
                     <DataTableCell data-label={t('ownerApprovals.table.seller') as string}>
                       {row.seller_name || '-'}
+                      {row.seller_order_windows && (
+                        <div style={{ marginTop: 4 }}>
+                          <OrderCutoffBadge windows={row.seller_order_windows} nowMs={nowMs} storeTimeZone={storeTimeZone} />
+                        </div>
+                      )}
                     </DataTableCell>
                     <DataTableCell data-label={t('ownerApprovals.table.items') as string} align="center">
                       {itemCount(row)}

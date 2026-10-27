@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import OrderScheduleEditor from '../../components/Common/OrderScheduleEditor';
+import type { OrderSchedule, OrderRule } from '../../utils/orderCutoff';
 import { sellerSpecText, sellerOrderUnitOf } from '../../utils/unitConversion';
 import ExternalSupplierProductFields, { EMPTY_EXT_PRODUCT, extProductFormFrom, extProductPayload, extProductError, type ExtProductForm } from '../../components/Common/ExternalSupplierProductFields';
 import styled from 'styled-components';
@@ -65,6 +67,7 @@ interface SupplierProfile {
   currency?: string | null;
   min_order_amount?: number | string | null;
   delivery_fee?: number | string | null;
+  order_schedule?: OrderSchedule | null;
   is_system_registered?: boolean;
   registered_by_entity_type?: string | null;
   registered_by_entity_id?: number | null;
@@ -501,6 +504,20 @@ const SupplierProfilePage: React.FC = () => {
       setDeliveryError(t('billing.saveFailed', { defaultValue: 'Could not save. Please try again.' }) as string);
     } finally { setDeliverySaving(false); }
   };
+  // 발주 마감·배송일 (2026-10-27 Fable) — 외부 업체는 등록한 쪽이 적는다(바로 저장 · 검사·시간대는 서버)
+  const saveOrderSchedule = async (schedule: { rules: OrderRule[] } | null): Promise<OrderSchedule | null> => {
+    if (!profile) return null;
+    const res = await fetch(S(`/api/external-suppliers/${profile.id}`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+      body: JSON.stringify({ order_schedule: schedule }),
+    });
+    const j = await res.json().catch(() => null);
+    if (!res.ok || !j?.success) throw new Error(j?.message || 'Failed to save');
+    const saved = (j.data?.order_schedule ?? null) as OrderSchedule | null;
+    setProfile(p => p ? { ...p, order_schedule: saved } : p);
+    return saved;
+  };
   const saveBilling = async () => {
     if (!profile) return;
     const day = (v: string) => { const n = parseInt(v, 10); return Number.isInteger(n) && n >= 1 && n <= 28 ? n : NaN; };
@@ -771,6 +788,13 @@ const SupplierProfilePage: React.FC = () => {
               </div>
               <ThemedButton variant="secondary" onClick={openDelivery}>{t('common:button.edit', { defaultValue: 'Edit' })}</ThemedButton>
             </div>
+            <OrderScheduleEditor value={profile.order_schedule || null} onCommit={saveOrderSchedule} />
+          </Section>
+        )}
+
+        {!isOwnedExternal && profile.order_schedule && (
+          <Section>
+            <OrderScheduleEditor value={profile.order_schedule} readOnly />
           </Section>
         )}
 

@@ -3447,6 +3447,156 @@ function defineReservationTests({ customerToken }) {
 // 쓰기가 필요한 검사는 **트랜잭션 안에서 하고 롤백**한다 — 잔재를 남기지 않는다.
 // ==========================================================================
 function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgToken, adminToken } = {}) {
+  // ── 판매자 발주 마감·배송일 (2026-10-27 Fable 설계 · docs/PURCHASE_ORDER_SYSTEM.md M-6 O1~O5) ──
+  //   판매자 3종 같은 칸 order_schedule · 해석 utils/orderSchedule.js 한 곳 · 데모 판매자만 · 원본 먼저 저장 후 복원
+  test('inventory', '판매자 발주 마감 O1 — BG·FG·가입 공급업체 저장→조회 같은 값 · 잘못된 값 400', async () => {
+    const { sequelize } = require('../config/database');
+    const q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const tok = (uid) => ({ Authorization: `Bearer ${jwt.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+    const [b] = await q('SELECT id, owner_id, order_schedule FROM brands WHERE id = 10 AND is_demo = 1');
+    const [f] = await q('SELECT id, owner_id, order_schedule FROM foodcourts WHERE id = 44 AND is_demo = 1');
+    const [s] = await q('SELECT id, owner_id, order_schedule FROM supplier_companies WHERE id = 20 AND is_system_registered = 1');
+    if (!b || !f || !s) { console.log(c.gray('      (건너뜀: 데모 판매자 없음)')); return true; }
+    const sch = { rules: [{ days: [4, 1], time: '15:00', delivery: { kind: 'weekday', weekday: 6 } }] };
+    const want = JSON.stringify([{ days: [1, 4], time: '15:00', delivery: { kind: 'weekday', weekday: 6 } }]);
+    const bad = { rules: [{ days: [1], time: '25:00' }] };
+    const cases = [
+      ['brand', b, 'brands', () => request('PUT', `/brands/${b.id}/payment-settings`, { order_schedule: sch }, tok(b.owner_id)),
+        () => request('PUT', `/brands/${b.id}/payment-settings`, { order_schedule: bad }, tok(b.owner_id)),
+        () => request('GET', `/brands/${b.id}/payment-settings`, null, tok(b.owner_id)), r => r.body?.data?.order_schedule],
+      ['foodcourt', f, 'foodcourts', () => request('PUT', `/foodcourts/${f.id}/payment-settings`, { order_schedule: sch }, tok(f.owner_id)),
+        () => request('PUT', `/foodcourts/${f.id}/payment-settings`, { order_schedule: bad }, tok(f.owner_id)),
+        () => request('GET', `/foodcourts/${f.id}/payment-settings`, null, tok(f.owner_id)), r => r.body?.data?.order_schedule],
+      ['supplier', s, 'supplier_companies', () => request('PUT', '/supplier/company', { order_schedule: sch }, tok(s.owner_id)),
+        () => request('PUT', '/supplier/company', { order_schedule: bad }, tok(s.owner_id)),
+        () => request('GET', '/supplier/company', null, tok(s.owner_id)), r => r.body?.data?.order_schedule]
+    ];
+    const out = {};
+    try {
+      for (const [k, , , put, putBad, get, pick] of cases) {
+        const p = await put(); const pb = await putBad(); const g = await get();
+        const got = pick(g);
+        out[k] = [p.status, pb.status, g.status, JSON.stringify(got?.rules), got?.timezone];
+      }
+    } finally {
+      for (const [, row, table] of cases) {
+        await sequelize.query(`UPDATE ${table} SET order_schedule = ? WHERE id = ?`,
+          { replacements: [row.order_schedule == null ? null : JSON.stringify(row.order_schedule), row.id] });
+      }
+    }
+    const ok = Object.values(out).every(([p, pb, g, rules, tz]) => p === 200 && pb === 400 && g === 200 && rules === want && !!tz);
+    if (!ok) console.log(c.red(`      ↳ ${JSON.stringify(out)}`));
+    return ok;
+  });
+
+  test('inventory', '판매자 발주 마감 O2·O3 — 외부 업체 등록·수정·지우기 · 남의 매장 수정 403 · 가입 업체 구매자 수정 403', async () => {
+    if (!demoRaToken || !demoRestId) { console.log(c.gray('      (건너뜀: 데모 매장 RA 없음)')); return true; }
+    const { sequelize } = require('../config/database');
+    const q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const auth = { Authorization: `Bearer ${demoRaToken}` };
+    const tag = 'ZZ-HC-OSCH-' + Date.now().toString(36);
+    const sch = { rules: [{ days: [0, 1, 2, 3, 4, 5, 6], time: '17:00', delivery: { kind: 'after_days', min: 1, max: 2 } }] };
+    let sid = null;
+    try {
+      const reg = await request('POST', '/external-suppliers', { name: tag, order_schedule: sch }, auth);
+      sid = reg.body?.data?.supplier?.id;
+      if (!sid) { console.log(c.red(`      ↳ 등록 ${reg.status}`)); return false; }
+      const [r1] = await q('SELECT order_schedule FROM supplier_companies WHERE id = ?', [sid]);
+      const prof = await request('GET', `/supplier-directory/${sid}`, null, auth);
+      const put = await request('PUT', `/external-suppliers/${sid}`, { order_schedule: { rules: [{ days: [1], time: '09:30', delivery: null }] } }, auth);
+      const [r2] = await q('SELECT order_schedule FROM supplier_companies WHERE id = ?', [sid]);
+      const keep = await request('PUT', `/external-suppliers/${sid}`, { phone: '0123' }, auth);
+      const [r3] = await q('SELECT order_schedule FROM supplier_companies WHERE id = ?', [sid]);
+      const badPut = await request('PUT', `/external-suppliers/${sid}`, { order_schedule: { rules: [{ days: [9], time: '09:30' }] } }, auth);
+      const [other] = await q(`SELECT u.id FROM users u JOIN restaurants r ON r.id = u.restaurant_id
+        WHERE u.role = 'Restaurant Admin' AND r.is_demo = 1 AND r.id <> ? LIMIT 1`, [demoRestId]);
+      const otherPut = other ? await request('PUT', `/external-suppliers/${sid}`, { order_schedule: null },
+        { Authorization: `Bearer ${jwt.sign({ userId: other.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` }) : { status: 403 };
+      const clear = await request('PUT', `/external-suppliers/${sid}`, { order_schedule: null }, auth);
+      const [r4] = await q('SELECT order_schedule FROM supplier_companies WHERE id = ?', [sid]);
+      const sys = await request('PUT', '/external-suppliers/20', { order_schedule: sch }, auth);
+      const j = (v) => (typeof v === 'string' ? JSON.parse(v) : v);
+      const s1 = j(r1.order_schedule), s2 = j(r2.order_schedule), s3 = j(r3.order_schedule);
+      const ok = reg.status === 201 && s1?.rules?.[0]?.delivery?.max === 2 && !!s1?.timezone
+        && prof.status === 200 && prof.body?.data?.supplier?.order_schedule?.rules?.[0]?.time === '17:00'
+        && put.status === 200 && s2?.rules?.[0]?.time === '09:30' && s2?.timezone === s1.timezone
+        && keep.status === 200 && s3?.rules?.[0]?.time === '09:30'
+        && badPut.status === 400 && otherPut.status === 403
+        && clear.status === 200 && r4.order_schedule == null && sys.status === 403;
+      if (!ok) console.log(c.red(`      ↳ ${JSON.stringify({ reg: reg.status, s1, prof: prof.status, put: put.status, s2, keep: keep.status, bad: badPut.status, other: otherPut.status, clear: clear.status, r4: r4.order_schedule, sys: sys.status })}`));
+      return ok;
+    } finally {
+      if (sid) {
+        await sequelize.query('DELETE FROM supplier_contracts WHERE supplier_company_id = ?', { replacements: [sid] });
+        await sequelize.query('DELETE FROM supplier_companies WHERE id = ?', { replacements: [sid] });
+      }
+    }
+  });
+
+  test('inventory', '판매자 발주 마감 O4·O5 — 발주 화면·발주 대기에 같은 마감 · 보내는 순간 예상 배송일(비었을 때만 · 일정 없으면 null)', async () => {
+    const { sequelize } = require('../config/database');
+    const { PurchaseOrder } = require('../models');
+    const { applySubmitGate } = require('../utils/poOwnerApproval');
+    const { orderWindows, expectedDeliveryAt } = require('../utils/orderSchedule');
+    const q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    // 데모 공급업체 20 이 재료에 연결된 **데모 매장**을 고른다(첫 데모 매장엔 연결이 없어 조용히 건너뛰던 것 — 2026-10-27 고장주입에서 발견)
+    const [s] = await q('SELECT id, order_schedule FROM supplier_companies WHERE id = 20');
+    const [fx] = await q(`SELECT r.id rid, u.id uid FROM restaurants r
+      JOIN ingredients i ON i.restaurant_id = r.id
+      JOIN ingredient_seller_products isp ON isp.ingredient_id = i.id AND isp.seller_type = 'supplier' AND isp.seller_entity_id = 20
+      JOIN users u ON u.restaurant_id = r.id AND u.role = 'Restaurant Admin'
+      WHERE r.is_demo = 1 ORDER BY r.id LIMIT 1`);
+    if (!s || !fx) return (console.log(c.red('      ↳ 시험 재료 없음: 데모 매장에 공급업체 20 연결 없음 — 검사 불가')), false);
+    const demoRestId = fx.rid;
+    const auth = { Authorization: `Bearer ${jwt.sign({ userId: fx.uid }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    const ra = { id: fx.uid };
+    const sch = { timezone: 'Asia/Kuala_Lumpur', rules: [{ days: [0, 1, 2, 3, 4, 5, 6], time: '23:59', delivery: { kind: 'after_days', min: 1, max: 2 } }] };
+    const poIds = [];
+    const trackStub = (po, ev, note) => [...(Array.isArray(po.tracking_info) ? po.tracking_info : []), { event: ev, note }];
+    const fail = (m) => { console.log(c.red(`      ↳ ${m}`)); return false; };
+    try {
+      await sequelize.query('UPDATE supplier_companies SET order_schedule = ? WHERE id = 20', { replacements: [JSON.stringify(sch)] });
+      const want = orderWindows(sch, new Date());
+      // O4 발주 화면 데이터
+      const ing = await request('GET', `/restaurants/${demoRestId}/ingredients?include=sellers`, null, auth);
+      const list = Array.isArray(ing.body?.data) ? ing.body.data : (ing.body?.data?.ingredients || []);
+      const sellers = list.flatMap(i => i.available_sellers || i.sellers || []).filter(x => x.seller_type === 'supplier' && Number(x.seller_entity_id) === 20);
+      if (!sellers.length) return fail(`O4 발주 화면에 공급업체 20 줄 없음 (${ing.status})`);
+      if (!sellers.every(x => x.seller_order_windows?.next?.cutoff_at === want.next.cutoff_at)) return fail(`O4 마감 다름 ${JSON.stringify(sellers[0].seller_order_windows)} vs ${want.next.cutoff_at}`);
+      // O4 발주 대기(목록) — 같은 값
+      const mk = (extra = {}) => PurchaseOrder.create({ entity_type: 'restaurant', entity_id: demoRestId, seller_type: 'supplier', seller_entity_id: 20,
+        status: 'draft', created_by_user_id: ra.id, notes: 'ZZ-HC-OSCH', ...extra });
+      const po1 = await mk(); poIds.push(po1.id);
+      const drafts = await request('GET', '/purchase-orders?status=draft&limit=200', null, auth);
+      const rows = Array.isArray(drafts.body?.data) ? drafts.body.data : (drafts.body?.data?.orders || drafts.body?.data?.rows || []);
+      const mine = rows.find(r => r.id === po1.id);
+      if (!mine) return fail(`O4 발주 대기 목록에 시험 발주 없음 (${drafts.status})`);
+      if (mine.seller?.order_windows?.next?.cutoff_at !== want.next.cutoff_at) return fail(`O4 발주 대기 마감 다름 ${JSON.stringify(mine.seller?.order_windows)}`);
+      // O5 보내는 순간 예상 배송일
+      const exp = expectedDeliveryAt(sch, new Date());
+      const t1 = await sequelize.transaction();
+      const needs = await applySubmitGate(po1, t1, trackStub, null); await t1.commit();
+      await po1.reload();
+      const ds = (v) => (v == null ? null : v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10));
+      const d1 = ds(po1.expected_delivery_date);
+      if (needs) { if (d1 !== null) return fail(`O5 승인 대기인데 예상 배송일 찍힘 ${d1}`); }
+      else if (d1 !== exp) return fail(`O5 예상 배송일 ${d1} (기대 ${exp})`);
+      const po2 = await mk({ expected_delivery_date: '2030-01-05' }); poIds.push(po2.id);
+      const t2 = await sequelize.transaction(); await applySubmitGate(po2, t2, trackStub, null); await t2.commit(); await po2.reload();
+      if (ds(po2.expected_delivery_date) !== '2030-01-05') return fail(`O5 이미 있던 값이 바뀜 ${po2.expected_delivery_date}`);
+      await sequelize.query('UPDATE supplier_companies SET order_schedule = NULL WHERE id = 20');
+      const po3 = await mk(); poIds.push(po3.id);
+      const t3 = await sequelize.transaction(); await applySubmitGate(po3, t3, trackStub, null); await t3.commit(); await po3.reload();
+      if (po3.expected_delivery_date != null) return fail(`O5 일정 없는데 찍힘 ${po3.expected_delivery_date}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      await sequelize.query('UPDATE supplier_companies SET order_schedule = ? WHERE id = 20',
+        { replacements: [s.order_schedule == null ? null : JSON.stringify(s.order_schedule)] });
+      try { await hcCleanupPurchaseOrders(poIds, { waitMs: 0 }); } catch {}
+    }
+  });
+
   // ── 공급업체 상품 다섯 칸 · SKU · 재고 포장단위 (2026-10-15 Fable 설계 D2·D3·D4 · /var/www/.claude/fable-design-20261015-supplier-catalog.md) ──
   //   Irene: «SKU도 안나오고 수량/단위/팩킹단위가 제대로 … 재고아이템으로 저장해도 … 안가져오네 · Package Unit 카톤도»
   test('inventory', '재고 포장단위 ENUM — ingredients·product_ingredients 가 utils/stockUnits 어휘를 전부 담는다', async () => {

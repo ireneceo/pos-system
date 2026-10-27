@@ -1015,5 +1015,28 @@
       "monthly": "Bulanan pada hari {{day}}"
     },
     "externalNote": "Pembekal ini menghantar dan mengebil mengikut langganannya sendiri — tiada apa-apa dihantar kepada mereka. Setiap tempoh satu pesanan direkodkan di sini supaya anda boleh menerimanya dan memadankan invois."
+  },
+  "orderCutoff": {
+    "title": "Had masa pesanan",
+    "noneToday": "Tiada had masa pesanan hari ini",
+    "nearestNext": "Seterusnya: {{seller}} {{when}}",
+    "allSuppliers": "Semua pembekal ({{count}})",
+    "orderBy": "Pesan sebelum {{when}}",
+    "todayTime": "hari ini {{time}}",
+    "tomorrow": "Esok {{time}}",
+    "weekdayTime": "{{weekday}} {{time}}",
+    "closesIn": "tutup dalam {{duration}}",
+    "durationHm": "{{h}}j {{m}}m",
+    "durationM": "{{m}}m",
+    "nextCutoff": "Had masa seterusnya {{when}}",
+    "passedToday": "Had masa hari ini telah lepas ({{time}})",
+    "delivery": "Penghantaran {{date}}",
+    "deliveryRange": "Penghantaran {{from}}–{{to}}",
+    "sellerTz": "({{tz}})",
+    "lateConfirmTitle": "Sesetengah had masa telah lepas:",
+    "lateConfirmLine": "{{seller}}: had masa hari ini ({{time}}) telah lepas — pesanan ini masuk penghantaran seterusnya ({{date}}).",
+    "colSeller": "Pembekal",
+    "colCutoff": "Had masa seterusnya",
+    "colDelivery": "Penghantaran"
   }
 }

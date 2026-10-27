@@ -26,6 +26,8 @@ import { useStore } from '../../contexts/StoreContext';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
 import AlertDialog from '../../components/Common/AlertDialog';
 import ConfirmModal from '../../components/ConfirmModal';
+import OrderCutoffBadge, { useMinuteNow } from '../../components/PurchaseOrders/OrderCutoffBadge';
+import { OrderWindows, cutoffState, cutoffClock, cutoffWhen, dateInTz, deliveryText, intlLocale } from '../../utils/orderCutoff';
 import ReceivePayModal, { ReceivePayMode } from '../../components/PurchaseOrders/ReceivePayModal';
 import { getCurrencySymbol } from '../../utils/currency';
 
@@ -60,7 +62,9 @@ function loadNameMode(): NameMode {
     return v === 'internal' ? 'internal' : 'seller';
   } catch { return 'seller'; }
 }
-interface POSeller { id: number; name: string; phone?: string | null; email?: string | null; is_system_registered: boolean; }
+interface POSeller { id: number; name: string; phone?: string | null; email?: string | null; is_system_registered: boolean;
+  // 발주 마감 (2026-10-27 Fable) — 서버 resolveSellers 가 함께 내려 준다. null = 일정 없음
+  order_windows?: OrderWindows | null; }
 interface POStaging {
   id: number;
   po_number: string;
@@ -221,7 +225,7 @@ const PdfFrame = styled.iframe`
 `;
 
 const PurchaseOrderStagingPage: React.FC = () => {
-  const { t } = useTranslation('purchaseOrders');
+  const { t, i18n } = useTranslation('purchaseOrders');
   const navigate = useNavigate();
   // 오너 = 고른 소유 매장 자격으로 초안을 다룬다 (2026-10-04 Fable owner-po-on-behalf ①). 매장을 안 골랐으면 작성 화면에서 먼저 고른다.
   const { user } = useAuth();
@@ -249,6 +253,8 @@ const PurchaseOrderStagingPage: React.FC = () => {
    * 건수·금액을 보여주고 한 번 묻는다. 개별 Mark as Sent 는 한 건이라 묻지 않는다.
    */
   const [confirmSubmitAll, setConfirmSubmitAll] = useState(false);
+  // 발주 마감 (2026-10-27 Fable M-4 ③) — 실제로 보내는 곳. 시계는 페이지에 하나(1분)
+  const nowMs = useMinuteNow();
   // 받을 발주 (P4-5) — 보낸 뒤 아직 안 받은 발주를 여기서 바로 수령·결제한다.
   //   그전에는 이 화면이 draft 만 조회해서, 받는 동작을 하려면 발주 목록으로 나가야 했다.
   const [payModal, setPayModal] = useState<{ po: POStaging; mode: ReceivePayMode } | null>(null);
@@ -528,6 +534,27 @@ const PurchaseOrderStagingPage: React.FC = () => {
     }
   };
 
+  // 오늘 마감이 이미 지나 다음 배송분으로 넘어가는 판매자 — «Submit All» 확인 창에 덧붙인다
+  const lateCutoffWarning = (() => {
+    const tt = t as unknown as (k: string, d: string, o?: Record<string, unknown>) => string;
+    const locale = intlLocale(i18n.language);
+    const today = dateInTz(nowMs, storeTimeZone);
+    const seen = new Set<string>();
+    const lines: string[] = [];
+    for (const po of pos) {
+      const st = cutoffState(po.seller?.order_windows, nowMs, storeTimeZone);
+      const k = `${po.seller_type}:${po.seller_entity_id}`;
+      if (!st || !st.missedToday || !st.missedAt || seen.has(k)) continue;
+      if (dateInTz(Date.parse(st.window.cutoff_at), storeTimeZone) === today) continue;
+      seen.add(k);
+      lines.push(tt('orderCutoff.lateConfirmLine', "{{seller}}: today's cutoff ({{time}}) has passed — this goes to the next delivery ({{date}}).", {
+        seller: po.seller?.name || '—', time: cutoffClock(st.missedAt, storeTimeZone, locale),
+        date: deliveryText(st.window, locale, tt) || cutoffWhen(st.window, nowMs, storeTimeZone, locale, tt)
+      }));
+    }
+    return lines.length ? ` ${tt('orderCutoff.lateConfirmTitle', 'Some cutoffs have passed:')} ${lines.join(' ')}` : '';
+  })();
+
   const renderPO = (po: POStaging, isExternal: boolean) => (
     <POCard key={po.id} $external={isExternal}>
       <POHead>
@@ -543,6 +570,11 @@ const PurchaseOrderStagingPage: React.FC = () => {
             {po.created_at ? ` · ${t('staging.addedAt', 'Added')}: ${formatDateTime(po.created_at, storeTimeZone)}` : ''}
             {po.expected_delivery_date ? ` · ${t('staging.expected', 'Expected')}: ${po.expected_delivery_date}` : ''}
           </POMeta>
+          {po.seller?.order_windows && (
+            <div style={{ marginTop: 4 }}>
+              <OrderCutoffBadge windows={po.seller.order_windows} nowMs={nowMs} storeTimeZone={storeTimeZone} />
+            </div>
+          )}
         </POSellerBox>
         <POAmount>{getCurrencySymbol(po.currency || 'MYR')} {parseFloat(po.total_amount || '0').toFixed(2)}</POAmount>
       </POHead>
@@ -798,6 +830,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
         }}
       />
 
+      {/* «Submit All» 마감 지남 경고 — 경고만, 버튼은 그대로(안내 전용 · M-0 ④) */}
       <ConfirmModal
         isOpen={confirmSubmitAll}
         title={t('staging.submitAllConfirm.title', 'Send all purchase orders?') as string}
@@ -805,7 +838,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
           count: pos.length,
           amount: `${getCurrencySymbol(pos[0]?.currency || 'MYR')} ${grandTotal.toFixed(2)}`,
           defaultValue: '{{count}} purchase order(s) totalling {{amount}} will be sent to the suppliers. This cannot be undone.'
-        }) as string}
+        }) as string + lateCutoffWarning}
         onConfirm={submitAll}
         onClose={() => setConfirmSubmitAll(false)}
       />

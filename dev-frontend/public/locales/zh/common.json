@@ -939,5 +939,32 @@
   "similarName.useProductInstead": "使用此商品",
   "similarName.productInsteadInfo": "\"{{name}}\" 已是您在售的商品。请不要为其创建库存项目——在配方中选择该商品。",
   "brandStaffPage.linkedTag": "关联账户",
-  "brandStaffPage.linkedHint": "该管理员使用自己的账户（已关联）。姓名、邮箱和密码属于该账户——这里只能更改其在本品牌可见的菜单。"
+  "brandStaffPage.linkedHint": "该管理员使用自己的账户（已关联）。姓名、邮箱和密码属于该账户——这里只能更改其在本品牌可见的菜单。",
+  "orderSchedule": {
+    "title": "下单截止与送货日",
+    "help": "员工下单时会看到这些信息。如果该供应商没有固定截止时间，请留空。",
+    "readonlyTitle": "由供应商设定",
+    "timezoneNote": "时间以 {{tz}} 为准",
+    "timezoneLater": "时间以您的营业时区为准。",
+    "saveFailed": "无法保存下单截止时间",
+    "days": "截止日",
+    "everyDay": "每天",
+    "removeRule": "删除截止",
+    "cutoffTime": "截止时间",
+    "delivery": "送货",
+    "deliveryNone": "送货日未定",
+    "deliverySameDay": "当天",
+    "deliveryNextDay": "次日",
+    "deliveryRangeOption": "截止后几天…",
+    "deliveryWeekdayOption": "固定星期…",
+    "minDays": "从（天）",
+    "maxDays": "到（天）",
+    "daysAfter": "天后",
+    "deliveryWeekday": "每{{weekday}}",
+    "deliveryDays": "{{n}}天后",
+    "deliveryAfterDays": "{{min}}–{{max}}天后",
+    "incomplete": "请至少选择一天——有日期和时间才会保存。",
+    "addRule": "+ 添加截止",
+    "preview": "{{days}} {{time}} → {{delivery}}"
+  }
 }

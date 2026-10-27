@@ -35,6 +35,10 @@ import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { Modal as UIModal } from '../../components/UI/Modal';
+import OrderCutoffBadge, { useMinuteNow } from '../../components/PurchaseOrders/OrderCutoffBadge';
+import OrderCutoffSummary from '../../components/PurchaseOrders/OrderCutoffSummary';
+import type { OrderWindows } from '../../utils/orderCutoff';
+import { useStore } from '../../contexts/StoreContext';
 import { qtyStepForUnit, parseMinOrderQty, formatQuantity, sellerOrderUnitOf, sellerSpecText, defaultLinkConversion, minQtyOf, minOrderViolationText, inactiveSellerProductText, type OrderMode } from '../../utils/unitConversion';
 
 type SellerType = 'system_admin' | 'brand' | 'foodcourt' | 'supplier';
@@ -54,6 +58,8 @@ interface SellerOpt {
   // 배송 지역 (2026-10-07 Fable) — 서버가 이 매장 주소의 주(州)로 고른 지역. 없으면 기본 배송비
   seller_delivery_zone?: { id: string; name: string; fee: number | null } | null;
   seller_delivery_zone_reason?: 'no_zones' | 'buyer_location_unknown' | 'no_match' | null;
+  // 발주 마감·배송일 (2026-10-27 Fable) — 서버(utils/orderSchedule.js)가 계산한 지난/다음/그다음 마감. null = 일정 없음
+  seller_order_windows?: OrderWindows | null;
   unit_price: number;
   unit_conversion: number;
   min_order_quantity: number;
@@ -1994,6 +2000,7 @@ const NewPurchaseOrderPage: React.FC = () => {
       delivery_policy: string | null;
       zone_name: string | null;
       zone_reason: string | null;
+      order_windows: OrderWindows | null;
     }>();
     for (const row of cart) {
       const seller = row.available_sellers.find(s => s.id === row.selected_seller_id);
@@ -2018,7 +2025,9 @@ const NewPurchaseOrderPage: React.FC = () => {
         // terms 밖에 둔다 — computeDeliveryFee 가 받는 값은 그대로(안내 글은 계산에 들어가지 않는다)
         delivery_policy: seller.seller_delivery_policy || null,
         zone_name: seller.seller_delivery_zone?.name || null,
-        zone_reason: seller.seller_delivery_zone_reason || null
+        zone_reason: seller.seller_delivery_zone_reason || null,
+        // 발주 마감 (2026-10-27) — terms 밖(계산식 무관). 안내 전용
+        order_windows: seller.seller_order_windows ?? null
       });
     }
     // 배송비는 **품목 합계가 정해진 뒤** 얹는다(Irene 지정). 저장될 때 진실은 서버 계산값이다.
@@ -2036,6 +2045,19 @@ const NewPurchaseOrderPage: React.FC = () => {
   }, [cart, cartCurrency]);
 
   const grandTotal = useMemo(() => groups.reduce((s, g) => s + g.subtotal + (g.delivery_fee || 0), 0), [groups]);
+
+  // 발주 마감 요약 (2026-10-27 Fable M-4 ①) — 불러온 재고 품목·장바구니의 판매자에서 판매자별 하나씩.
+  //   시계는 페이지에 하나(1분) — 배지들은 nowMs 만 받는다. 표시는 매장 시간대.
+  const nowMs = useMinuteNow();
+  const { operationSettings } = useStore();
+  const storeTimeZone = operationSettings?.timeZone || 'Asia/Kuala_Lumpur';
+  const cutoffSellers = useMemo(() => {
+    const out: Array<{ key: string; name: string; windows: OrderWindows | null }> = [];
+    const push = (s: SellerOpt) => { if (s.seller_order_windows) out.push({ key: sellerKey(s), name: s.seller_name, windows: s.seller_order_windows }); };
+    for (const r of myList) for (const s of (r.sellers || [])) push(s);
+    for (const r of cart) for (const s of (r.available_sellers || [])) push(s);
+    return out;
+  }, [myList, cart]);
 
   const submit = async () => {
     if (cart.length === 0) {
@@ -2161,6 +2183,7 @@ const NewPurchaseOrderPage: React.FC = () => {
           </div>
         </OwnerPickBar>
       )}
+      <OrderCutoffSummary sellers={cutoffSellers} nowMs={nowMs} storeTimeZone={storeTimeZone} />
       {isOwner && !ownerRid ? (
         <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--pos-text-muted, #6B7280)', fontSize: 14 }}>
           {t('newPo.ownerPickFirst', 'Choose which of your restaurants this order is for. It will appear in that restaurant\'s order history.')}
@@ -2687,6 +2710,11 @@ const NewPurchaseOrderPage: React.FC = () => {
                     <span>{g.seller_name}</span>
                     <span style={{ color: '#635BFF' }}>{g.total.toFixed(2)}</span>
                   </div>
+                  {g.order_windows && (
+                    <div style={{ padding: '0 8px 6px' }}>
+                      <OrderCutoffBadge windows={g.order_windows} nowMs={nowMs} storeTimeZone={storeTimeZone} />
+                    </div>
+                  )}
                   {/* 품목 합계 / 배송비 / 총액 — 한 줄만 보여 주면 «왜 이 금액인가» 를 알 수 없다.
                       배송비가 없거나 미설정이어도 줄을 지우지 않는다(빈 줄이 «무료»로 읽히면 안 된다). */}
                   <div style={{ display: 'grid', gap: 2, padding: '0 8px 6px', fontSize: 11, color: '#475569' }}>

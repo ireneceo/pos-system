@@ -1015,5 +1015,28 @@
       "monthly": "每月{{day}}日"
     },
     "externalNote": "该供应商按订阅自行送货并开票 — 不会向其发送任何内容。每期会在此记录一张订单，到货后确认收货并核对发票即可。"
+  },
+  "orderCutoff": {
+    "title": "下单截止",
+    "noneToday": "今天没有截止的供应商",
+    "nearestNext": "下一个：{{seller}} {{when}}",
+    "allSuppliers": "全部供应商（{{count}}）",
+    "orderBy": "请在{{when}}前下单",
+    "todayTime": "今天 {{time}}",
+    "tomorrow": "明天 {{time}}",
+    "weekdayTime": "{{weekday}} {{time}}",
+    "closesIn": "还剩 {{duration}}",
+    "durationHm": "{{h}}小时{{m}}分",
+    "durationM": "{{m}}分",
+    "nextCutoff": "下次截止 {{when}}",
+    "passedToday": "今天截止已过（{{time}}）",
+    "delivery": "送货 {{date}}",
+    "deliveryRange": "送货 {{from}}–{{to}}",
+    "sellerTz": "（{{tz}}）",
+    "lateConfirmTitle": "部分供应商已过截止时间：",
+    "lateConfirmLine": "{{seller}}：今天的截止时间（{{time}}）已过——将按下一批送货（{{date}}）。",
+    "colSeller": "供应商",
+    "colCutoff": "下次截止",
+    "colDelivery": "送货"
   }
 }

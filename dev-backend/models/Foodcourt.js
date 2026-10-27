@@ -138,6 +138,12 @@ Foodcourt.init({
     type: DataTypes.JSON, allowNull: true,
     comment: '배송 지역 목록 — 구매자 주소 주(州)로 자동 매칭, 미매칭은 delivery_fee'
   },
+  // 발주 마감·배송일 (2026-10-27 Fable · docs/PURCHASE_ORDER_SYSTEM.md «판매자 발주 마감·배송일») — 판매자 3종 같은 이름.
+  //   {timezone, rules:[{days, time, delivery}]} · null = 마감 정보 없음 · 해석 utils/orderSchedule.js 한 곳
+  order_schedule: {
+    type: DataTypes.JSON, allowNull: true,
+    comment: '발주 마감 요일·시각과 배송일 규칙 — 안내 전용(발주를 막지 않음)'
+  },
   // Operation Settings
   operation_settings: {
     type: DataTypes.TEXT,

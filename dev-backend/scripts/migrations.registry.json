@@ -27,6 +27,7 @@
     "migrate-add-invoice-external-document.js",
     "migrate-staff-meal-category-flag.js",
     "migrate-add-seller-delivery-zones.js",
+    "migrate-add-seller-order-schedule.js",
     "migrate-ledger-cost-columns.js",
     "migrate-stock-take-bg-warehouse.js",
     "migrate-po-item-shipped-at.js",

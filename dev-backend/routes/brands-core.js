@@ -718,6 +718,7 @@ router.get('/:id/payment-settings', authenticateToken, async (req, res) => {
         delivery_fee: brand.delivery_fee,
         delivery_policy: brand.delivery_policy,
         delivery_zones: require('../utils/deliveryZones').readZones(brand.delivery_zones),
+        order_schedule: require('../utils/orderSchedule').readSchedule(brand.order_schedule),
         currency: brand.currency,
         // 결제 설정 = 계정 하나 (2026-10-07 Fable) — 이 값이 함께 적용되는 브랜드(같은 주인 전부)
         applies_to_brands: brand.owner_id == null
@@ -770,6 +771,14 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
       const { zones, error: zoneErr } = require('../utils/deliveryZones').normalizeZonesForSave(req.body.delivery_zones);
       if (zoneErr) return res.status(400).json({ success: false, message: zoneErr.message, code: zoneErr.code });
       brand.delivery_zones = zones;
+    }
+    // 발주 마감·배송일 (2026-10-27 Fable) — 판매자 3종 같은 규칙(utils/orderSchedule.js normalizeScheduleForSave)
+    if (req.body.order_schedule !== undefined) {
+      const os = require('../utils/orderSchedule');
+      const prev = os.readSchedule(brand.order_schedule);
+      const { schedule, error: schErr } = os.normalizeScheduleForSave(req.body.order_schedule, (brand.operation_settings && brand.operation_settings.timeZone), prev && prev.timezone);
+      if (schErr) return res.status(400).json({ success: false, message: schErr });
+      brand.order_schedule = schedule;
     }
 
 
@@ -832,6 +841,7 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
         delivery_fee: brand.delivery_fee,
         delivery_policy: brand.delivery_policy,
         delivery_zones: require('../utils/deliveryZones').readZones(brand.delivery_zones),
+        order_schedule: require('../utils/orderSchedule').readSchedule(brand.order_schedule),
         currency: brand.currency
       }
     });
