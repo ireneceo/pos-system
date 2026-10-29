@@ -275,6 +275,7 @@ interface POListRow {
   /** 결제 상태 · 실제로 낼 금액 (2026-09-10) — 규칙은 서버(services/purchaseOrderPayment.js)가 단일 소스 */
   payment_status?: string | null;
   payment_method?: string | null;
+  paid_at?: string | null;
   /** 개인금액 정산 (2026-09-18) — `payment_method='personal'` 이고 `reimbursed_at` 이 없으면 «갚을 것» */
   reimbursed_at?: string | null;
   reimbursement_method?: string | null;
@@ -440,6 +441,8 @@ const PurchaseOrdersPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  // 결제 여부 (2026-10-29 Fable 설계 invoice-pay-flow R-2) — 목록이 100건에서 잘리므로 서버가 거른다.
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'unpaid' | 'paid' | 'refunded'>('all');
   const [supplierFilter, setSupplierFilter] = useState<string | number | null>(null);
   const [search, setSearch] = useState('');
 
@@ -479,6 +482,7 @@ const PurchaseOrdersPage: React.FC = () => {
       const token = getAuthToken();
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.set('status', statusFilter);
+      if (paymentFilter !== 'all') params.set('payment_status', paymentFilter);
       if (dateRange?.start) params.set('from', dateRange.start);
       if (dateRange?.end) params.set('to', dateRange.end);
       params.set('limit', '100');
@@ -505,7 +509,7 @@ const PurchaseOrdersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, dateRange, isOwner, ownerRid, approvedOnly]);
+  }, [statusFilter, paymentFilter, dateRange, isOwner, ownerRid, approvedOnly]);
 
   // 오너 — 소유 매장 목록을 받아 고른 매장이 없거나 목록에 없으면 첫 매장으로
   useEffect(() => {
@@ -1006,6 +1010,16 @@ const PurchaseOrdersPage: React.FC = () => {
             <option value="received">{t('status.received')}</option>
             <option value="cancelled">{t('status.cancelled')}</option>
           </StatusFilter>
+          <StatusFilter
+            value={paymentFilter}
+            onChange={(e) => setPaymentFilter(e.target.value as typeof paymentFilter)}
+            aria-label={t('list.filter.payment', 'Payment') as string}
+          >
+            <option value="all">{t('list.filter.allPayments', 'All payments')}</option>
+            <option value="unpaid">{t('list.payment.unpaid', 'Unpaid')}</option>
+            <option value="paid">{t('list.payment.paid', 'Paid')}</option>
+            <option value="refunded">{t('list.payment.refunded', 'Refunded')}</option>
+          </StatusFilter>
           {/* 개인금액 미정산 — 「개인 돈으로 샀고 아직 안 갚은 것」. 새 목록이 아니라 이 목록의 걸러보기다. */}
           <Button
             type="button"
@@ -1139,6 +1153,25 @@ const PurchaseOrdersPage: React.FC = () => {
                       {(row.status === 'shipped' || row.status === 'delivered') && (
                         <div style={{ fontSize: '11px', fontWeight: 600, color: '#0369A1', marginTop: 2 }}>
                           {t('list.badge.sellerShipped', { defaultValue: 'Seller marked as dispatched' })}
+                        </div>
+                      )}
+                      {/* 결제 여부 한 줄 (2026-10-29 Fable 설계 invoice-pay-flow R-2) — 아직 낼 단계가 아닌 행엔 안 찍는다 */}
+                      {row.status !== 'draft' && row.status !== 'cancelled' && row.status !== 'pending_approval' && (
+                        <div style={{
+                          fontSize: '11px', fontWeight: 600, marginTop: 2,
+                          color: row.payment_status === 'paid' ? '#047857' : row.payment_status === 'refunded' ? '#6B7280' : '#B45309'
+                        }}>
+                          {row.payment_status === 'paid'
+                            ? [
+                                t('list.payment.paid', 'Paid'),
+                                row.payment_method ? t(`pay.method.${row.payment_method === 'bank_transfer' ? 'bank' : row.payment_method}`, row.payment_method) : null,
+                                row.paid_at ? formatDate(row.paid_at) : null,
+                              ].filter(Boolean).join(' · ')
+                            : row.payment_status === 'refunded'
+                              ? t('list.payment.refunded', 'Refunded')
+                              : row.pay_via_soa
+                                ? t('list.action.payViaSoa', 'Monthly · SOA')
+                                : t('list.payment.unpaid', 'Unpaid')}
                         </div>
                       )}
                     </DataTableCell>
@@ -1326,15 +1359,16 @@ const PurchaseOrdersPage: React.FC = () => {
                               {t('list.action.payViaSoa', 'Monthly · SOA')}
                             </span>
                           ) : (
-                            <ThemedButton
-                              size="small" variant="primary"
+                            /* 초록 = 청구서 화면 Pay 와 같은 색 (2026-10-29 Irene «여기도 Pay 버튼은 녹색») — 공용 Button success */
+                            <Button
+                              size="small" variant="success"
                               onClick={() => setPayModal({ mode: row.status === 'received' ? 'pay' : 'receive_and_pay', row })}
                               title={t('list.action.pay', 'Record payment') as string}
                             >
                               {row.status === 'received'
                                 ? t('list.action.payShort', 'Pay')
                                 : t('list.action.receiveAndPayShort', 'Receive & pay')}
-                            </ThemedButton>
+                            </Button>
                           )
                         )}
                         {hasInvoice && (

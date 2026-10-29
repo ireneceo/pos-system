@@ -261,6 +261,15 @@ router.get('/purchase-orders', async (req, res) => {
     if (req.query.seller_type && VALID_SELLER_TYPES.includes(req.query.seller_type)) {
       where.seller_type = req.query.seller_type;
     }
+    // 결제 여부 필터 (2026-10-29 Fable 설계 invoice-pay-flow R-2) — 목록이 100건에서 잘리므로 서버에서 거른다.
+    //   상태 필터와 달리 모르는 값은 400 — 조용히 전체 목록으로 넓어지면 «미결제만» 이 거짓말이 된다.
+    if (req.query.payment_status) {
+      const PAYMENT_STATUSES = ['unpaid', 'paid', 'refunded'];
+      if (!PAYMENT_STATUSES.includes(String(req.query.payment_status))) {
+        return res.status(400).json({ success: false, code: 'INVALID_PAYMENT_STATUS', message: `payment_status must be one of: ${PAYMENT_STATUSES.join(', ')}` });
+      }
+      where.payment_status = String(req.query.payment_status);
+    }
     // 오너 «승인 후» — 오너 승인을 거친 발주만(수정으로 다시 승인 대기에 들어간 건 제외) · 2026-10-22 Fable 설계 owner-po-approval-revoke §1-3
     if (req.query.approved === '1' || req.query.approved === 'true') {
       where[Op.and] = [...(where[Op.and] || []),

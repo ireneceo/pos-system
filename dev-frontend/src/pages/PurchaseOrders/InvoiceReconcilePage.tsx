@@ -29,6 +29,7 @@ import {
 import { readInvoiceText } from '../../utils/invoiceOcr';
 import { lineQtyText } from '../../utils/unitConversion';
 import DateField from '../../components/Common/DateField';
+import ReceivePayModal from '../../components/PurchaseOrders/ReceivePayModal';
 
 interface ReconcileItem extends PoLine {
   quantity_received: string | number;
@@ -59,6 +60,14 @@ interface ReconcilePo {
   /** 지난번이 «총액만 맞춤» 이었나 — 서버가 줄 값으로 도출해 내려준다 */
   total_only?: boolean;
   payment_status?: string;
+  /** 대조 화면에서 바로 결제 (2026-10-29 Fable 설계 invoice-pay-flow R-3) — 낼 금액·월결제 판정은 서버 단일 소스 */
+  payment_method?: string | null;
+  paid_at?: string | null;
+  trade_invoice_id?: number | null;
+  payable_amount?: number | string | null;
+  payable_basis?: 'purchase_order' | 'supplier_invoice' | null;
+  pay_via_soa?: boolean;
+  entity_type?: string;
 }
 
 /** 라인마다 사람이 확정할 값 — 기본은 발주 라인 값이다(§1 "다른 줄만 고침"). */
@@ -318,6 +327,7 @@ const InvoiceReconcilePage: React.FC = () => {
   const [totalMismatch, setTotalMismatch] = useState<{ message: string; diff?: number } | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [alert, setAlert] = useState<{ title: string; message: string } | null>(null);
+  const [payOpen, setPayOpen] = useState(false);
   // 자동 읽기 (2026-09-10 Fable D1·D2) — 올려 둔 인보이스를 브라우저에서 읽어 오른쪽을 채운다.
   const [ocr, setOcr] = useState<{ running: boolean; progress: number; error: string | null; done: boolean }>(
     { running: false, progress: 0, error: null, done: false });
@@ -679,7 +689,9 @@ const InvoiceReconcilePage: React.FC = () => {
                 : ` · ${t('reconcile.neverReconciled', '아직 대조하지 않았습니다')}`}
             </Muted>
           </div>
-          <Button variant="secondary" onClick={goBack}>{t('reconcile.backToPo', '발주로 돌아가기')}</Button>
+          <Button variant="secondary" onClick={goBack}>
+            {scopeQS ? t('reconcile.backToInvoices', 'Back to invoices') : t('reconcile.backToPo', 'Back to order')}
+          </Button>
         </div>
 
         {/* 지난번이 «총액만 맞춤» 이었으면 그 사실을 드러낸다 — 줄 단가가 비어 있는 이유이자,
@@ -697,7 +709,7 @@ const InvoiceReconcilePage: React.FC = () => {
           {t('reconcile.help.prefilled', '발주에 적힌 값이 이미 채워져 있습니다.')}{' '}
           <strong>{t('reconcile.help.editDiff', '공급업체 인보이스와 다른 줄만 고치세요.')}</strong>{' '}
           {t('reconcile.help.poUnchanged', '저장해도 발주 금액은 바뀌지 않습니다 — 예상(발주)과 실제(청구)를 나란히 남기는 것이 이 화면의 목적입니다.')}
-          {po.seller_is_external && ` ${t('reconcile.help.externalPay', '외부 공급업체는 우리 솔루션에서 결제할 수 없고, 실제로 지불한 뒤 청구서에서 «결제함»으로 표시합니다.')}`}
+          {po.seller_is_external && ` ${t('reconcile.help.externalPayHere', 'For an outside supplier, pay them as usual, then record the payment right here after confirming the total.')}`}
         </Note>
 
         {/* ① 총액 우선 (§8-6 A) — 줄을 하나하나 맞추지 않아도 청구 총액으로 확정할 수 있다.
@@ -764,6 +776,47 @@ const InvoiceReconcilePage: React.FC = () => {
                   ? t('reconcile.step1.needTotal', 'Enter the invoice total to confirm it.')
                   : t('reconcile.step1.hint', 'No need to match every line. Payment and the invoice use this total; line prices are not saved and do not change cost.')}
               </Muted>
+              {/* 결제 (2026-10-29 Irene «Confirm this total 이 버튼 옆에» · Fable 설계 invoice-pay-flow R-3) —
+                  청구서 문 하나(mark-paid-external)로 낸다: 매장·직원·오너·둘째 브랜드가 같은 길. 발주 문(/pay)은 여기서 안 쓴다.
+                  가입 공급업체는 그쪽 청구서 Pay 경로라 여기엔 아무것도 없다. 선불 허용(§8-3 B-4) — 확정 전 결제도 막지 않는다. */}
+              {po.seller_is_external && (() => {
+                if (po.payment_status === 'paid') {
+                  return (
+                    <Muted style={{ alignSelf: 'center', color: '#047857', fontWeight: 600 }}>
+                      {[
+                        t('list.payment.paid', 'Paid'),
+                        po.payment_method ? t(`pay.method.${po.payment_method === 'bank_transfer' ? 'bank' : po.payment_method}`, po.payment_method) : null,
+                        po.paid_at ? formatDateTime(po.paid_at, timeZone) : null,
+                      ].filter(Boolean).join(' · ')}
+                    </Muted>
+                  );
+                }
+                if (po.pay_via_soa) {
+                  return <Muted style={{ alignSelf: 'center' }}>{t('list.action.payViaSoa', 'Monthly · SOA')}</Muted>;
+                }
+                if (['draft', 'cancelled', 'pending_approval'].includes(po.status)) return null;
+                if (!po.trade_invoice_id) {
+                  return (
+                    <Muted style={{ alignSelf: 'center', width: '100%' }}>
+                      {t('reconcile.pay.notReceived', 'Receive the order first — pay from Order history (Receive & pay), or from here after receiving.')}
+                    </Muted>
+                  );
+                }
+                const unconfirmed = header.total !== '' && (!po.invoice_reconciled_at
+                  || po.invoice_total == null || Math.abs(Number(header.total) - Number(po.invoice_total)) >= 0.005);
+                return (
+                  <>
+                    <Button variant="success" onClick={() => setPayOpen(true)} disabled={saving}>
+                      {t('reconcile.pay.button', 'Record payment')}
+                    </Button>
+                    {unconfirmed && (
+                      <Muted style={{ alignSelf: 'center', color: '#B45309' }}>
+                        {t('reconcile.pay.confirmFirst', 'Confirm the total first so the payment uses the invoice amount.')}
+                      </Muted>
+                    )}
+                  </>
+                );
+              })()}
               {/* 2026-09-30 — 이미 결제된 외부 공급업체 발주: 확정하면 현금관리 차액·청구서 금액이 같이 맞춰진다(서버 adjustPaidAmount). */}
               {po.payment_status === 'paid' && po.seller_is_external && (
                 <Muted style={{ alignSelf: 'center', width: '100%', color: '#635BFF' }}>
@@ -1095,6 +1148,30 @@ const InvoiceReconcilePage: React.FC = () => {
             onClose={() => setAlert(null)}
           />
         )}
+
+        <ReceivePayModal
+          open={payOpen}
+          mode="pay"
+          po={{
+            id: po.id, po_number: po.po_number, total_amount: po.total_amount, seller_name: po.seller_name,
+            payable_amount: po.payable_amount, payable_basis: po.payable_basis,
+            invoice_total: po.invoice_total, invoice_reconciled_at: po.invoice_reconciled_at,
+            external_invoice_url: po.external_invoice_url,
+          }}
+          invoiceId={po.trade_invoice_id}
+          buyerIsRestaurant={(po.entity_type || 'restaurant') === 'restaurant'}
+          onClose={() => setPayOpen(false)}
+          onDone={({ drawerSkipped }) => {
+            setPayOpen(false);
+            if (drawerSkipped) {
+              setAlert({
+                title: t('pay.drawerSkipped.title', 'Recorded without a drawer movement') as string,
+                message: t('pay.drawerSkipped.desc', 'No shift is open, so this was not recorded as a cash withdrawal from the drawer.') as string,
+              });
+            }
+            load();
+          }}
+        />
       </Content>
     </Container>
   );

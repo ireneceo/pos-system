@@ -21,7 +21,9 @@
       "allOwnedRestaurants": "All my restaurants ({{n}})",
       "supplier": "All suppliers",
       "noSupplier": "No matching supplier",
-      "clearSearch": "Clear search"
+      "clearSearch": "Clear search",
+      "payment": "Payment",
+      "allPayments": "All payments"
     },
     "table": {
       "poNumber": "PO #",
@@ -109,7 +111,12 @@
     },
     "ownerSuppliers": "My suppliers",
     "externalBadge": "EXT",
-    "panelClose": "Close (Esc)"
+    "panelClose": "Close (Esc)",
+    "payment": {
+      "unpaid": "Unpaid",
+      "paid": "Paid",
+      "refunded": "Refunded"
+    }
   },
   "new": {
     "title": "New Purchase Order",
@@ -729,7 +736,8 @@
     "error": {
       "multipleShifts": "More than one shift is open — close one before recording a cash payment.",
       "failed": "Could not complete this action.",
-      "network": "Network error. Please try again."
+      "network": "Network error. Please try again.",
+      "alreadyPaid": "This order's invoice is already marked paid, so it was not charged again. Refresh the list — the order will show as paid."
     },
     "drawerSkipped": {
       "title": "Payment recorded — drawer not updated",
@@ -783,7 +791,7 @@
     "neverReconciled": "Not reconciled yet",
     "loading": "Loading…",
     "notFound": "Purchase order not found.",
-    "backToPo": "Back to purchase order",
+    "backToPo": "Back to order",
     "invoicePanel": "Supplier invoice",
     "pastePanel": "Paste a text invoice",
     "pastePlaceholder": "Paste what you received on WhatsApp or email.\ne.g. Australian Beef Rib   5   43.00   215.00",
@@ -850,7 +858,8 @@
       "prefilled": "The values from your purchase order are already filled in.",
       "editDiff": "Only edit the lines that differ from the supplier's invoice.",
       "poUnchanged": "Saving does not change the purchase order amount — this screen keeps the expected (ordered) and actual (invoiced) figures side by side.",
-      "externalPay": "External suppliers cannot be paid through this system. Pay them directly, then mark the invoice as Paid."
+      "externalPay": "External suppliers cannot be paid through this system. Pay them directly, then mark the invoice as Paid.",
+      "externalPayHere": "For an outside supplier, pay them as usual, then record the payment right here after confirming the total."
     },
     "openInNewTab": "Open larger in a new tab",
     "total": {
@@ -902,7 +911,13 @@
       "line": "Ordered {{ordered}} → Invoiced {{invoiced}} ="
     },
     "receivedQty": "Received",
-    "receivedMismatch": "Billed qty ≠ received qty"
+    "receivedMismatch": "Billed qty ≠ received qty",
+    "backToInvoices": "Back to invoices",
+    "pay": {
+      "button": "Record payment",
+      "notReceived": "Receive the order first — pay from Order history (Receive & pay), or from here after receiving.",
+      "confirmFirst": "Confirm the total first so the payment uses the invoice amount."
+    }
   },
   "newPo.error.profileTitle": "Business details needed",
   "newPo.error.goToCompanyInfo": "Open company information?",

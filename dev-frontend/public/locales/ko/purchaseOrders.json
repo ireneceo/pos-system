@@ -21,7 +21,9 @@
       "allOwnedRestaurants": "내 매장 전체 ({{n}})",
       "supplier": "전체 공급업체",
       "noSupplier": "일치하는 공급업체가 없습니다",
-      "clearSearch": "검색 지우기"
+      "clearSearch": "검색 지우기",
+      "payment": "결제",
+      "allPayments": "결제 전체"
     },
     "table": {
       "poNumber": "발주 번호",
@@ -109,7 +111,12 @@
     },
     "ownerSuppliers": "내 공급업체",
     "externalBadge": "외부",
-    "panelClose": "닫기 (Esc)"
+    "panelClose": "닫기 (Esc)",
+    "payment": {
+      "unpaid": "미결제",
+      "paid": "결제됨",
+      "refunded": "결제 취소됨"
+    }
   },
   "new": {
     "title": "새 구매 주문",
@@ -729,7 +736,8 @@
     "error": {
       "multipleShifts": "열려 있는 시프트가 둘 이상입니다 — 하나를 마감한 뒤 현금 결제를 기록하세요.",
       "failed": "처리하지 못했습니다.",
-      "network": "네트워크 오류입니다. 다시 시도해 주세요."
+      "network": "네트워크 오류입니다. 다시 시도해 주세요.",
+      "alreadyPaid": "이 발주의 청구서는 이미 결제됨으로 표시돼 있어 다시 결제하지 않았습니다. 목록을 새로 고치면 결제됨으로 보입니다."
     },
     "drawerSkipped": {
       "title": "결제는 기록됨 — 현금서랍은 반영 안 됨",
@@ -850,7 +858,8 @@
       "prefilled": "발주에 적힌 값이 이미 채워져 있습니다.",
       "editDiff": "공급업체 인보이스와 다른 줄만 고치세요.",
       "poUnchanged": "저장해도 발주 금액은 바뀌지 않습니다 — 예상(발주)과 실제(청구)를 나란히 남기는 것이 이 화면의 목적입니다.",
-      "externalPay": "외부 공급업체는 우리 솔루션에서 결제할 수 없고, 실제로 지불한 뒤 청구서에서 «결제함»으로 표시합니다."
+      "externalPay": "외부 공급업체는 우리 솔루션에서 결제할 수 없고, 실제로 지불한 뒤 청구서에서 «결제함»으로 표시합니다.",
+      "externalPayHere": "외부 공급업체는 평소처럼 지불한 뒤, 총액을 확정하고 여기서 바로 결제를 기록하면 됩니다."
     },
     "openInNewTab": "새 창에서 크게 보기",
     "total": {
@@ -902,7 +911,13 @@
       "line": "발주 {{ordered}} → 청구 {{invoiced}} ="
     },
     "receivedQty": "수령",
-    "receivedMismatch": "청구 수량 ≠ 받은 수량"
+    "receivedMismatch": "청구 수량 ≠ 받은 수량",
+    "backToInvoices": "청구서로 돌아가기",
+    "pay": {
+      "button": "결제 기록",
+      "notReceived": "먼저 물건을 받아야 합니다 — 발주 내역에서 «받으면서 결제» 하거나, 받은 뒤 여기서 결제하세요.",
+      "confirmFirst": "총액을 먼저 확정해야 청구서 금액으로 결제됩니다."
+    }
   },
   "newPo.error.profileTitle": "사업자 정보가 필요합니다",
   "newPo.error.goToCompanyInfo": "회사 정보 화면을 열까요?",

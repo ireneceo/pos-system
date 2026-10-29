@@ -21,7 +21,7 @@ const router = express.Router();
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 const {
-  PurchaseOrder, PurchaseOrderItem, SupplierCompany, SupplierProduct, IngredientSellerProduct, Ingredient
+  PurchaseOrder, PurchaseOrderItem, SupplierCompany, SupplierProduct, IngredientSellerProduct, Ingredient, Invoice
 } = require('../models');
 const { writeStoreCost, writeStockItemCost } = require('../services/storeCost');
 const { authenticateToken } = require('../middleware/auth');
@@ -94,11 +94,27 @@ router.get('/purchase-orders/:id/reconcile', async (req, res) => {
       for (const sp of sps) spById.set(sp.id, sp);
     }
 
+    // 대조 화면에서 바로 결제 (2026-10-29 Fable 설계 invoice-pay-flow R-3) — 낼 금액·월결제 판정은 서버 단일 소스를 그대로 쓴다.
+    const { payableFrom } = require('../services/purchaseOrderPayment');
+    const payable = payableFrom(po, sellerIsExternal);
+    let payViaSoaFlag = false;
+    if (po.trade_invoice_id) {
+      const tradeInv = await Invoice.findByPk(po.trade_invoice_id, {
+        attributes: ['id', 'invoice_category', 'issuer_type', 'issuer_id', 'payer_type', 'payer_id', 'parent_soa_invoice_id'],
+      });
+      if (tradeInv) payViaSoaFlag = !!(await require('../utils/payViaSoa').payViaSoa(tradeInv));
+    }
+
     res.json({
       success: true,
       data: {
         purchase_order: {
           id: po.id, po_number: po.po_number, status: po.status, payment_status: po.payment_status,
+          payment_method: po.payment_method, paid_at: po.paid_at,
+          trade_invoice_id: po.trade_invoice_id || null,
+          payable_amount: payable.amount, payable_basis: payable.basis,
+          pay_via_soa: payViaSoaFlag,
+          entity_type: po.entity_type,
           currency: po.currency, subtotal: po.subtotal, tax_amount: po.tax_amount, total_amount: po.total_amount,
           seller_type: po.seller_type, seller_entity_id: po.seller_entity_id,
           seller_is_external: sellerIsExternal, seller_name: sellerName,

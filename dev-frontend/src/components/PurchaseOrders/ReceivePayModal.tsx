@@ -120,7 +120,10 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
         // 서버 사정을 그대로 보여 준다 — 특히 "열린 시프트가 둘 이상" 은 사람이 정리해야 풀린다.
         setError(j?.code === 'MULTIPLE_OPEN_SHIFTS'
           ? (t('pay.error.multipleShifts', 'More than one shift is open — close one before recording a cash payment.') as string)
-          : (j?.message || (t('pay.error.failed', 'Could not complete this action.') as string)));
+          : j?.code === 'ALREADY_PAID'
+            // 연결 청구서가 이미 결제됨 — 두 번 내지 않았다는 것과 할 일을 사람 말로 (2026-10-29 Fable 설계 invoice-pay-flow R-4)
+            ? (t('pay.error.alreadyPaid', "This order's invoice is already marked paid, so it was not charged again. Refresh the list — the order will show as paid.") as string)
+            : (j?.message || (t('pay.error.failed', 'Could not complete this action.') as string)));
         setBusy(false);
         return;
       }

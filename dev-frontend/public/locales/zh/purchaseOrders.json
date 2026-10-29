@@ -21,7 +21,9 @@
       "allOwnedRestaurants": "我的全部门店（{{n}}）",
       "supplier": "全部供应商",
       "noSupplier": "没有匹配的供应商",
-      "clearSearch": "清除搜索"
+      "clearSearch": "清除搜索",
+      "payment": "付款",
+      "allPayments": "全部付款状态"
     },
     "table": {
       "poNumber": "采购单号",
@@ -109,7 +111,12 @@
     },
     "ownerSuppliers": "我的供应商",
     "externalBadge": "外部",
-    "panelClose": "关闭 (Esc)"
+    "panelClose": "关闭 (Esc)",
+    "payment": {
+      "unpaid": "未付款",
+      "paid": "已付款",
+      "refunded": "已撤销付款"
+    }
   },
   "new": {
     "title": "新建采购订单",
@@ -729,7 +736,8 @@
     "error": {
       "multipleShifts": "有多个班次处于开启状态——请先结束其中一个，再记录现金付款。",
       "failed": "无法完成此操作。",
-      "network": "网络错误，请重试。"
+      "network": "网络错误，请重试。",
+      "alreadyPaid": "此订单的发票已标记为已付款，因此没有重复付款。刷新列表后订单将显示为已付款。"
     },
     "drawerSkipped": {
       "title": "付款已记录——钱箱未更新",
@@ -850,7 +858,8 @@
       "prefilled": "采购单上的数值已自动填入。",
       "editDiff": "只需修改与供应商发票不同的行。",
       "poUnchanged": "保存不会更改采购单金额 — 本页面的目的是并列保留预计（采购）与实际（发票）金额。",
-      "externalPay": "外部供应商无法通过本系统付款。请直接付款后，在发票上标记为「已付款」。"
+      "externalPay": "外部供应商无法通过本系统付款。请直接付款后，在发票上标记为「已付款」。",
+      "externalPayHere": "外部供应商请照常付款，确认总额后可直接在此记录付款。"
     },
     "openInNewTab": "在新标签页中放大查看",
     "total": {
@@ -902,7 +911,13 @@
       "line": "订购 {{ordered}} → 发票 {{invoiced}} ="
     },
     "receivedQty": "已收",
-    "receivedMismatch": "开票数量 ≠ 收货数量"
+    "receivedMismatch": "开票数量 ≠ 收货数量",
+    "backToInvoices": "返回发票",
+    "pay": {
+      "button": "记录付款",
+      "notReceived": "请先收货 — 可在订单记录中“收货并付款”，或收货后在此付款。",
+      "confirmFirst": "请先确认总额，付款才会按发票金额计算。"
+    }
   },
   "newPo.error.profileTitle": "需要公司资料",
   "newPo.error.goToCompanyInfo": "要开启公司资料吗？",

@@ -8887,6 +8887,138 @@ function definePaymentTests() {
     return { row, hist: Array.isArray(h) ? h : [] };
   };
 
+  // ── 발주 내역·대조 화면 결제 동선 (2026-10-29 Fable 설계 .claude/fable-design-20261029-invoice-pay-flow.md) ─────────
+  //   T1 목록 결제 필터(paid/unpaid · 모르는 값 400) · T2 대조 GET 의 낼 금액·청구서 연결이 목록과 같다(확정 전·후)
+  //   T3 거울 백필 마이그 멱등(청구서 paid·발주 unpaid → paid · paid_at=청구서 · 드로어 0 · 재실행 0 · refunded 불변)
+  //   T4 대조 화면 결제 = 청구서 문(mark-paid-external) 200 → 재시도 409 ALREADY_PAID · 오너도 200
+  //   고장주입: ① 목록 where payment_status 줄 제거 → T1 ② 마이그 i.status='paid' 제거 → T3 ③ GET payable → total_amount → T2
+  test('invoice-pay-flow', 'T1 발주 목록 결제 필터 — paid 만 · unpaid 만 · 모르는 값 400', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    let a = null, b = null;
+    try {
+      a = await makeExternalPoReceived(fx, { lineTotal: 11 }); made.pos.push(a.po.id);
+      b = await makeExternalPoReceived(fx, { lineTotal: 12 }); made.pos.push(b.po.id);
+      const p = await request('POST', `/purchase-orders/${a.po.id}/pay`, { payment_method: 'bank_transfer' }, fx.auth);
+      const lp = await request('GET', '/purchase-orders?payment_status=paid&limit=100', null, fx.auth);
+      const lu = await request('GET', '/purchase-orders?payment_status=unpaid&limit=100', null, fx.auth);
+      const bad = await request('GET', '/purchase-orders?payment_status=zzz', null, fx.auth);
+      const ids = (r) => ((r.body && r.body.data) || []).map((x) => Number(x.id));
+      const allOf = (r, s) => ((r.body && r.body.data) || []).every((x) => x.payment_status === s);
+      const ok = p.status === 200 && lp.status === 200 && lu.status === 200
+        && ids(lp).includes(a.po.id) && !ids(lp).includes(b.po.id) && allOf(lp, 'paid')
+        && ids(lu).includes(b.po.id) && !ids(lu).includes(a.po.id) && allOf(lu, 'unpaid')
+        && bad.status === 400 && bad.body?.code === 'INVALID_PAYMENT_STATUS';
+      if (!ok) console.log(c.gray(`      (결제 ${p.status} · paid ${lp.status} ${ids(lp).length}건 a${ids(lp).includes(a.po.id)} b${ids(lp).includes(b.po.id)} · unpaid ${lu.status} · 잘못된 값 ${bad.status} ${bad.body?.code})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); if (a) await dropSupplierCompany(a.sc); if (b) await dropSupplierCompany(b.sc); }
+  });
+
+  test('invoice-pay-flow', 'T2 대조 GET — 청구서 연결·낼 금액·월결제가 목록과 같다(총액 확정 전·후)', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    try {
+      ext = await makeExternalPoReceived(fx, { lineTotal: 42 }); made.pos.push(ext.po.id);
+      if (!ext.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${ext.receiveStatus})`)); return false; }
+      const pick = async () => {
+        const g = await request('GET', `/purchase-orders/${ext.po.id}/reconcile`, null, fx.auth);
+        const l = await request('GET', '/purchase-orders?limit=100', null, fx.auth);
+        const row = ((l.body && l.body.data) || []).find((x) => Number(x.id) === ext.po.id) || {};
+        return { g: (g.body && g.body.data && g.body.data.purchase_order) || {}, row, st: g.status };
+      };
+      const x0 = await pick();
+      const r = await request('POST', `/purchase-orders/${ext.po.id}/reconcile`, { total_only: true, invoice: { total: 39.5 } }, fx.auth);
+      const x1 = await pick();
+      const same = (x) => Math.abs(Number(x.g.payable_amount) - Number(x.row.payable_amount)) < 0.001
+        && x.g.payable_basis === x.row.payable_basis && !!x.g.pay_via_soa === !!x.row.pay_via_soa
+        && Number(x.g.trade_invoice_id) === Number(ext.inv.id) && Number(x.row.trade_invoice_id) === Number(ext.inv.id);
+      const ok = x0.st === 200 && same(x0) && x0.g.payable_basis === 'purchase_order' && Math.abs(Number(x0.g.payable_amount) - 42) < 0.001
+        && r.status === 200 && x1.st === 200 && same(x1) && x1.g.payable_basis === 'supplier_invoice' && Math.abs(Number(x1.g.payable_amount) - 39.5) < 0.001
+        && x1.g.entity_type === 'restaurant' && x1.g.payment_status === 'unpaid';
+      if (!ok) console.log(c.gray(`      (전 ${x0.st} ${JSON.stringify({ g: [x0.g.payable_amount, x0.g.payable_basis, x0.g.trade_invoice_id, x0.g.pay_via_soa], l: [x0.row.payable_amount, x0.row.payable_basis, x0.row.trade_invoice_id] })} · 확정 ${r.status} · 후 ${JSON.stringify({ g: [x1.g.payable_amount, x1.g.payable_basis], l: [x1.row.payable_amount, x1.row.payable_basis] })})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); if (ext) await dropSupplierCompany(ext.sc); }
+  });
+
+  test('invoice-pay-flow', 'T3 거울 백필 마이그 — 청구서 paid·발주 unpaid → paid(paid_at=청구서, 드로어 0) · 재실행 0 · refunded 불변', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const { execFileSync } = require('child_process');
+    const run = () => execFileSync('node', [require('path').join(__dirname, 'migrate-po-payment-mirror-backfill.js')], { encoding: 'utf8', timeout: 60000 });
+    const made = { pos: [], prods: [], shifts: [] };
+    let a = null, b = null, u = null;
+    try {
+      a = await makeExternalPoReceived(fx, { lineTotal: 21 }); made.pos.push(a.po.id);
+      b = await makeExternalPoReceived(fx, { lineTotal: 22 }); made.pos.push(b.po.id);
+      u = await makeExternalPoReceived(fx, { lineTotal: 23 }); made.pos.push(u.po.id);   // 청구서 미결제 — 그대로여야 한다
+      if (!a.inv || !b.inv || !u.inv) { console.log(c.gray('      (청구서 발행 실패)')); return false; }
+      // 09-11 이전 모양을 만든다: 청구서만 paid (거울 없이)
+      const paidAt = '2026-09-10 17:22:13';
+      const { sequelize } = require('../config/database');
+      await sequelize.query("UPDATE invoices SET status = 'paid', paid_at = :d, payment_method = 'bank_transfer' WHERE id IN (:i)", { replacements: { d: paidAt, i: [a.inv.id, b.inv.id] } });
+      await sequelize.query("UPDATE purchase_orders SET payment_status = 'refunded' WHERE id = :p", { replacements: { p: b.po.id } });
+      const out1 = run();
+      const out2 = run();
+      const [pa] = await hcQ('SELECT po.payment_status, po.payment_method, (po.paid_at = i.paid_at) same_at FROM purchase_orders po JOIN invoices i ON i.id = po.trade_invoice_id WHERE po.id = :p', { p: a.po.id });
+      const [pb] = await hcQ('SELECT payment_status FROM purchase_orders WHERE id = :p', { p: b.po.id });
+      const [pu] = await hcQ('SELECT payment_status FROM purchase_orders WHERE id = :p', { p: u.po.id });
+      const [mv] = await hcQ('SELECT COUNT(*) n FROM cash_movements WHERE purchase_order_id IN (:p)', { p: [a.po.id, b.po.id] });
+      const ok = pa.payment_status === 'paid' && Number(pa.same_at) === 1
+        && pa.payment_method === 'bank_transfer' && pb.payment_status === 'refunded' && pu.payment_status === 'unpaid' && Number(mv.n) === 0
+        && out1.includes(a.po.po_number) && !out1.includes(b.po.po_number) && out2.includes('맞출 발주 0');
+      if (!ok) console.log(c.gray(`      (a ${JSON.stringify(pa)} b ${pb.payment_status} u ${pu.payment_status} 드로어 ${mv.n} · 1차 ${out1.trim().split('\n').pop()} · 2차 ${out2.trim().split('\n').pop()})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanCash(fx, made); if (a) await dropSupplierCompany(a.sc); if (b) await dropSupplierCompany(b.sc); if (u) await dropSupplierCompany(u.sc); }
+  });
+
+  test('invoice-pay-flow', 'T4 대조 화면 결제 = 청구서 문 — 총액 확정 → mark-paid-external 200(발주·청구서 paid, 낸 금액=청구 총액) → 재시도 409 · 오너 200', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const { sequelize } = require('../config/database');
+    const jwt = require('jsonwebtoken');
+    const tag = 'zzhcipf' + Date.now().toString(36);
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, full_name, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@example.com`, 'HC Owner ' + tag] });
+    const made = { pos: [], prods: [], shifts: [] };
+    let a = null, b = null;
+    try {
+      await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (?, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [fx.demoId, uid] });
+      const oauth = { Authorization: `Bearer ${jwt.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      a = await makeExternalPoReceived(fx, { lineTotal: 42 }); made.pos.push(a.po.id);
+      b = await makeExternalPoReceived(fx, { lineTotal: 30 }); made.pos.push(b.po.id);
+      if (!a.inv || !b.inv) { console.log(c.gray('      (청구서 발행 실패)')); return false; }
+      const r = await request('POST', `/purchase-orders/${a.po.id}/reconcile`, { total_only: true, invoice: { total: 40 } }, fx.auth);
+      const g = await request('GET', `/purchase-orders/${a.po.id}/reconcile`, null, fx.auth);
+      const invId = g.body?.data?.purchase_order?.trade_invoice_id;
+      const p1 = await request('POST', `/invoices/${invId}/mark-paid-external`, { payment_method: 'bank_transfer' }, fx.auth);
+      const p2 = await request('POST', `/invoices/${invId}/mark-paid-external`, { payment_method: 'bank_transfer' }, fx.auth);
+      const [po] = await hcQ('SELECT payment_status FROM purchase_orders WHERE id = :p', { p: a.po.id });
+      const [inv] = await hcQ('SELECT status, paid_amount FROM invoices WHERE id = :i', { i: a.inv.id });
+      const g2 = await request('GET', `/purchase-orders/${a.po.id}/reconcile`, null, fx.auth);
+      // 오너 — 청구서 화면에서 온 길(스코프 쿼리)로 GET, 결제는 청구서 문
+      const go = await request('GET', `/purchase-orders/${b.po.id}/reconcile?entity_type=restaurant&entity_id=${fx.demoId}`, null, oauth);
+      const po2 = await request('POST', `/invoices/${go.body?.data?.purchase_order?.trade_invoice_id}/mark-paid-external`, { payment_method: 'bank_transfer' }, oauth);
+      const [pob] = await hcQ('SELECT payment_status FROM purchase_orders WHERE id = :p', { p: b.po.id });
+      const ok = r.status === 200 && Number(invId) === Number(a.inv.id) && p1.status === 200
+        && p2.status === 409 && p2.body?.code === 'ALREADY_PAID'
+        && po.payment_status === 'paid' && inv.status === 'paid' && Math.abs(Number(inv.paid_amount) - 40) < 0.001
+        && g2.body?.data?.purchase_order?.payment_status === 'paid' && g2.body?.data?.purchase_order?.payment_method === 'bank_transfer'
+        && go.status === 200 && po2.status === 200 && pob.payment_status === 'paid';
+      if (!ok) console.log(c.gray(`      (확정 ${r.status} 청구서 ${invId}/${a.inv.id} 결제 ${p1.status} ${p1.body?.message || ''} 재시도 ${p2.status} ${p2.body?.code} 발주 ${po.payment_status} 청구서 ${JSON.stringify(inv)} · 오너 GET ${go.status} 결제 ${po2.status} ${po2.body?.message || ''} 발주 ${pob.payment_status})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      await cleanCash(fx, made); if (a) await dropSupplierCompany(a.sc); if (b) await dropSupplierCompany(b.sc);
+      await sequelize.query('DELETE FROM restaurant_managers WHERE manager_id = ?', { replacements: [uid] });
+      await sequelize.query('DELETE FROM users WHERE id = ?', { replacements: [uid] });
+    }
+  });
+
   test('invoice-total-fix', 'T1 매장 관리자 총액 수정 → 청구서 총액 · 이력 1줄(이름·from→to·PO) · 같은 값 재저장 무기록 · 다시 바꾸면 2줄', async () => {
     const fx = await cashFixtureBase();
     if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }

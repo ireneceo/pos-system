@@ -21,7 +21,9 @@
       "allOwnedRestaurants": "Semua restoran saya ({{n}})",
       "supplier": "Semua pembekal",
       "noSupplier": "Tiada pembekal sepadan",
-      "clearSearch": "Kosongkan carian"
+      "clearSearch": "Kosongkan carian",
+      "payment": "Bayaran",
+      "allPayments": "Semua bayaran"
     },
     "table": {
       "poNumber": "PO #",
@@ -109,7 +111,12 @@
     },
     "ownerSuppliers": "Pembekal saya",
     "externalBadge": "LUAR",
-    "panelClose": "Tutup (Esc)"
+    "panelClose": "Tutup (Esc)",
+    "payment": {
+      "unpaid": "Belum dibayar",
+      "paid": "Sudah dibayar",
+      "refunded": "Bayaran dibatalkan"
+    }
   },
   "new": {
     "title": "Pesanan Belian Baharu",
@@ -729,7 +736,8 @@
     "error": {
       "multipleShifts": "Lebih daripada satu syif dibuka — tutup satu sebelum merekod pembayaran tunai.",
       "failed": "Tindakan ini tidak dapat diselesaikan.",
-      "network": "Ralat rangkaian. Sila cuba lagi."
+      "network": "Ralat rangkaian. Sila cuba lagi.",
+      "alreadyPaid": "Invois pesanan ini sudah ditanda dibayar, jadi ia tidak dicaj lagi. Muat semula senarai — pesanan akan dipaparkan sebagai dibayar."
     },
     "drawerSkipped": {
       "title": "Pembayaran direkod — laci tidak dikemas kini",
@@ -850,7 +858,8 @@
       "prefilled": "Nilai daripada pesanan belian anda sudah diisi.",
       "editDiff": "Edit hanya baris yang berbeza daripada invois pembekal.",
       "poUnchanged": "Menyimpan tidak mengubah jumlah pesanan belian — skrin ini menyimpan angka dijangka (dipesan) dan sebenar (diinvois) bersebelahan.",
-      "externalPay": "Pembekal luar tidak boleh dibayar melalui sistem ini. Bayar terus kepada mereka, kemudian tandakan invois sebagai Dibayar."
+      "externalPay": "Pembekal luar tidak boleh dibayar melalui sistem ini. Bayar terus kepada mereka, kemudian tandakan invois sebagai Dibayar.",
+      "externalPayHere": "Untuk pembekal luar, bayar seperti biasa, kemudian rekod bayaran di sini selepas mengesahkan jumlah."
     },
     "openInNewTab": "Buka lebih besar dalam tab baharu",
     "total": {
@@ -902,7 +911,13 @@
       "line": "Dipesan {{ordered}} → Diinvois {{invoiced}} ="
     },
     "receivedQty": "Diterima",
-    "receivedMismatch": "Kuantiti bil ≠ kuantiti diterima"
+    "receivedMismatch": "Kuantiti bil ≠ kuantiti diterima",
+    "backToInvoices": "Kembali ke invois",
+    "pay": {
+      "button": "Rekod bayaran",
+      "notReceived": "Terima pesanan dahulu — bayar dari Sejarah pesanan (Terima & bayar), atau dari sini selepas menerima.",
+      "confirmFirst": "Sahkan jumlah dahulu supaya bayaran menggunakan amaun invois."
+    }
   },
   "newPo.error.profileTitle": "Maklumat perniagaan diperlukan",
   "newPo.error.goToCompanyInfo": "Buka maklumat syarikat?",
