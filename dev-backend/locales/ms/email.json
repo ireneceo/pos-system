@@ -288,7 +288,10 @@
       "message": "Mesej",
       "hint": "Terima di skrin pilihan peranan. Anda terus log masuk dengan akaun sendiri dan bertukar ke kedai ini.",
       "cta": "Buka jemputan",
-      "textFallback": "{{inviter}} menjemput anda menyertai {{target}} sebagai kakitangan."
+      "textFallback": "{{inviter}} menjemput anda menyertai {{target}} sebagai kakitangan.",
+      "subjectAdmin": "Anda dijemput menjadi pentadbir {{target}}",
+      "bodyAdmin": "{{inviter}} menjemput anda menjadi pentadbir restoran {{target}}.",
+      "textFallbackAdmin": "{{inviter}} menjemput anda menjadi pentadbir restoran {{target}}."
     },
     "result": {
       "subjectAccepted": "Jemputan diterima: {{who}} · {{target}}",

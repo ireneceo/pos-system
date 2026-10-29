@@ -1005,6 +1005,7 @@ router.post('/', authenticateToken, requireRole(
 ), validateRestaurantCreation, async (req, res) => {
   const { sequelize } = require('../config/database');
   const bcrypt = require('bcrypt');
+  const isSystemAdminCaller = req.user.role === 'System Admin';
   const transaction = await sequelize.transaction();
 
   try {
@@ -1094,6 +1095,7 @@ router.post('/', authenticateToken, requireRole(
 
     // === Restaurant Admin (Owner) 처리 ===
     let adminUser = null;
+    let inviteTarget = null;
     const adminAction = req.body.adminAction; // 'create' | 'assign' | undefined(하위 호환)
 
     if (adminAction === 'create') {
@@ -1158,6 +1160,19 @@ router.post('/', authenticateToken, requireRole(
         await transaction.rollback();
         return res.status(400).json({ error: `This user is already assigned to another restaurant (ID: ${adminUser.restaurant_id})` });
       }
+    } else if (adminAction === 'invite') {
+      // 이미 다른 매장이 있는 기존 계정을 이 매장 관리자로 (2026-10-29 Fable 판정 · Irene «권고대로»).
+      //   계정 소속은 옮기지 않는다 — commit 뒤 매장 관리자 모자를 SA 는 바로 주고, 그 외는 초대(본인 수락).
+      const email = typeof req.body.adminEmail === 'string' ? req.body.adminEmail.trim().toLowerCase() : '';
+      inviteTarget = email ? await User.findOne({ where: { email } }) : null;
+      const bad = async (status, message) => { await transaction.rollback(); return res.status(status).json({ success: false, message }); };
+      if (!inviteTarget) return bad(404, 'No account with this email');
+      if (!['Restaurant Admin', 'Staff'].includes(inviteTarget.role)) return bad(400, 'Only Restaurant Admin or Staff accounts can be added as a restaurant admin');
+      if (!inviteTarget.restaurant_id) return bad(400, 'This account has no restaurant yet — select it to assign directly');
+      if (Number(inviteTarget.id) === Number(req.user.id)) return bad(400, 'You cannot invite yourself');
+      if (inviteTarget.is_demo) return bad(400, 'Demo accounts cannot be invited');
+      if (inviteTarget.is_active === false || inviteTarget.is_active === 0) return bad(400, 'Cannot grant to a deactivated account');
+      if (req.user.is_demo && !isSystemAdminCaller) return bad(403, 'Demo accounts cannot invite');
     }
     // else: 하위 호환 - adminAction 없으면 기존 managerId 방식 사용
 
@@ -1245,9 +1260,10 @@ router.post('/', authenticateToken, requireRole(
       foodcourt_id: req.body.foodcourt_id || null,
       branch_id: req.body.branch_id || null,
       payment_model: req.body.payment_model || 'restaurant',
-      discount_type: req.body.discount_type || 'none',
-      discount_value: req.body.discount_value !== undefined ? (parseFloat(req.body.discount_value) || 0) : 0,
-      discount_reason: req.body.discount_reason || null,
+      // 구독 할인은 System Admin 만 정한다 — 다른 역할이 보낸 값은 무시(청구서 금액에 그대로 쓰임 · invoiceScheduler).
+      discount_type: isSystemAdminCaller ? (req.body.discount_type || 'none') : 'none',
+      discount_value: isSystemAdminCaller && req.body.discount_value !== undefined ? (parseFloat(req.body.discount_value) || 0) : 0,
+      discount_reason: isSystemAdminCaller ? (req.body.discount_reason || null) : null,
       ...(activateSubscription ? planLimits : { order_limit: null, menu_item_limit: null, staff_limit: null }),
       payment_settings: newRestaurantPaymentSettings()
     };
@@ -1403,6 +1419,19 @@ router.post('/', authenticateToken, requireRole(
     }
 
     const responseData = { success: true, restaurant };
+    // 이미 다른 매장이 있는 계정 → 매장 관리자 모자(SA 바로 · 그 외 초대). 매장은 이미 만들어졌으니 실패해도 201 + 사유.
+    if (inviteTarget) {
+      try {
+        const { attachRestaurantAdmin } = require('./context-requests');
+        const r = await attachRestaurantAdmin({ req, target: inviteTarget, restaurantId: restaurant.id });
+        responseData.adminInvite = r.ok
+          ? { status: r.mode, email: inviteTarget.email }
+          : { status: 'failed', email: inviteTarget.email, message: r.message };
+      } catch (e) {
+        console.error('[restaurant create] admin attach failed:', e.message);
+        responseData.adminInvite = { status: 'failed', email: inviteTarget.email, message: 'Internal server error' };
+      }
+    }
     if (adminUser) {
       responseData.adminUser = {
         id: adminUser.id,
@@ -1828,15 +1857,21 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       updateData.payment_model = req.body.payment_model;
     }
 
-    // Discount fields
-    if (req.body.discount_type !== undefined) {
-      updateData.discount_type = req.body.discount_type;
-    }
-    if (req.body.discount_value !== undefined) {
-      updateData.discount_value = parseFloat(req.body.discount_value) || 0;
-    }
-    if (req.body.discount_reason !== undefined) {
-      updateData.discount_reason = req.body.discount_reason || null;
+    // Discount fields — System Admin 만 (매장 관리자가 자기 구독 할인을 바꾸던 구멍 · 2026-10-29 Fable 판정).
+    // 다른 역할이 보낸 값은 400 대신 무시 — 옛 화면이 기본값을 함께 보내도 저장이 깨지지 않게.
+    const _discountKeys = ['discount_type', 'discount_value', 'discount_reason'].filter(k => req.body[k] !== undefined);
+    if (req.user.role === 'System Admin') {
+      if (req.body.discount_type !== undefined) {
+        updateData.discount_type = req.body.discount_type;
+      }
+      if (req.body.discount_value !== undefined) {
+        updateData.discount_value = parseFloat(req.body.discount_value) || 0;
+      }
+      if (req.body.discount_reason !== undefined) {
+        updateData.discount_reason = req.body.discount_reason || null;
+      }
+    } else if (_discountKeys.length) {
+      console.warn(`[restaurant update] discount fields ignored (role=${req.user.role}, user=${req.user.id}, restaurant=${req.params.id})`);
     }
 
     // Cuisine field

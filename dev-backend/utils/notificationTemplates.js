@@ -1264,7 +1264,7 @@ function contextRequestResultEmail({ approved, role, targetName, note, link }, l
 }
 
 // v1.4 초대(.claude/fable-design-20261016-link-existing-account-staff.md §5.6) — 매장 관리자 → 기존 계정.
-function contextInviteReceivedEmail({ inviterName, targetName, permissionCount, message, link }, lang = 'en') {
+function contextInviteReceivedEmail({ inviterName, targetName, permissionCount, message, link, role = 'Staff' }, lang = 'en') {
   const { getEmailText } = require('./i18n');
   const t = (k, p) => getEmailText(lang, 'contextInvite.received.' + k, p);
   const who = escHtml((inviterName || '—').toString().slice(0, 120));
@@ -1272,19 +1272,19 @@ function contextInviteReceivedEmail({ inviterName, targetName, permissionCount, 
   const title = t('heading');
   const msgRow = message ? infoRow(t('message'), escHtml(String(message).slice(0, 300))) : '';
   const body = `
-    <p style="color:#374151;font-size:16px;margin:0 0 16px;">${t('body', { inviter: `<strong>${who}</strong>`, target: `<strong>${target}</strong>` })}</p>
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">${t(role === 'Staff' ? 'body' : 'bodyAdmin', { inviter: `<strong>${who}</strong>`, target: `<strong>${target}</strong>` })}</p>
     ${infoTable(
       infoRow(t('target'), target) +
-      infoRow(t('role'), escHtml(contextRoleLabel('Staff', lang))) +
-      infoRow(t('permissions'), escHtml(String(Number(permissionCount) || 0))) +
+      infoRow(t('role'), escHtml(contextRoleLabel(role, lang))) +
+      (role === 'Staff' ? infoRow(t('permissions'), escHtml(String(Number(permissionCount) || 0))) : '') +
       msgRow
     )}
     <p style="color:#6B7280;font-size:14px;margin:0 0 16px;">${t('hint')}</p>
     ${ctaButton(t('cta'), link)}`;
   return withRenderMeta({
-    subject: t('subject', { target: (targetName || '—').toString().slice(0, 160) }),
+    subject: t(role === 'Staff' ? 'subject' : 'subjectAdmin', { target: (targetName || '—').toString().slice(0, 160) }),
     html: wrapTemplate(title, body, lang),
-    text: t('textFallback', { inviter: inviterName || '—', target: targetName || '—' })
+    text: t(role === 'Staff' ? 'textFallback' : 'textFallbackAdmin', { inviter: inviterName || '—', target: targetName || '—' })
   }, title, body, lang);
 }
 

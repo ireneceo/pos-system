@@ -282,6 +282,7 @@ restaurants(id,name,status)). **exclude 목록이 아니라 allowlist** 인 이�
 - ✅ **주문 관리**: 모든 주문 처리
 - ✅ **직원 관리**: Staff 생성/수정/삭제, PIN 설정, 메뉴 권한(permissions) 설정, Staff 승격
 - ✅ **연결 계정(2026-10-16)**: 이미 다른 역할로 가입한 계정을 자기 매장 직원으로 **초대**(본인 수락해야 Staff 모자) · 연결 계정의 **권한 수정·연결 해제**(자기 매장 Staff 모자만 — 이름·이메일·비밀번호는 못 고침) · 자기가 보낸 초대를 «승인» 하는 것은 불가. 상세 `docs/MULTI_CONTEXT_LOGIN_DESIGN.md §6.4.2`
+- ✅ **새 매장 관리자로 기존 계정 붙이기(2026-10-29 · Fable 설계+게이트)**: 매장 추가 창 «Select existing user» — 검색 `GET /api/users/available-admins` 는 SA·BG·FG·오너만(그 외 403) · SA 는 이름·이메일 검색, 나머지는 **정확한 이메일 1건**(Restaurant Admin·Staff · 활성 · 데모 제외 · `assigned` 표시). 매장 없는 계정 = 소속 배정(종전) · **이미 다른 매장이 있는 계정 = 소속 그대로 매장 관리자 모자**(`POST /api/restaurants` `adminAction:'invite'` → `context-requests.attachRestaurantAdmin` — SA 즉시 `grantContext` · 그 외 초대 → 본인 수락, 직원 한도 검사). **구독 할인(`discount_*`)은 SA 만 저장**(매장 POST·PUT, 사용자 POST — 다른 역할 값은 무시).
 - ✅ **리포트**: 자기 레스토랑 매출/통계
 - ✅ **코스트 오버라이드**: Brand 재료에 대한 My Cost 설정/수정/삭제 (원본 Brand Cost는 변경 불가)
 

@@ -1300,7 +1300,13 @@ const RestaurantsPage: React.FC = () => {
         restaurantData.adminFullName = newAdminData.fullName;
         restaurantData.adminPhone = newAdminData.phone || undefined;
       } else if (adminAction === 'assign') {
-        restaurantData.adminUserId = parseInt(selectedAdmin.id.toString());
+        if (selectedAdmin.assigned) {
+          // 이미 다른 매장이 있는 계정 — 소속은 그대로, 이 매장 관리자 권한만(SA 바로 · 그 외 초대 후 본인 수락)
+          restaurantData.adminAction = 'invite';
+          restaurantData.adminEmail = selectedAdmin.email;
+        } else {
+          restaurantData.adminUserId = parseInt(selectedAdmin.id.toString());
+        }
       }
 
       console.log('📤 Sending restaurant data:', restaurantData);
@@ -1320,6 +1326,7 @@ const RestaurantsPage: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json();
+        if (result.adminInvite?.status === 'failed') window.alert(t('admin:restaurantsPage.inviteFailed', { message: result.adminInvite.message || '' }));
         console.log('✅ Restaurant created successfully:', result);
 
         setAddModalWarning('');
@@ -2020,7 +2027,7 @@ const RestaurantsPage: React.FC = () => {
                         <DropdownMenu show={showAdminDropdown}>
                           {adminCandidates.length === 0 ? (
                             <div style={{padding: '12px 16px', color: '#4B5563', fontSize: '13px'}}>
-                              {adminSearchQuery.length > 0 ? 'No available users found' : 'Type to search users...'}
+                              {adminSearchQuery.length > 0 ? t('admin:restaurantsPage.saSearchEmpty') : 'Type to search users...'}
                             </div>
                           ) : (
                             adminCandidates.map(user => (
@@ -2048,6 +2055,9 @@ const RestaurantsPage: React.FC = () => {
                             <div style={{fontSize: '12px', color: '#4B5563'}}>
                               {selectedAdmin.email} • {selectedAdmin.role}
                             </div>
+                            {selectedAdmin.assigned && (
+                              <div style={{fontSize: '12px', color: '#635BFF', marginTop: '4px'}}>{t('admin:restaurantsPage.grantNote')}</div>
+                            )}
                           </div>
                           <button
                             onClick={() => { setSelectedAdmin(null); setAdminSearchQuery(''); }}
@@ -2431,12 +2441,12 @@ const RestaurantsPage: React.FC = () => {
                               onFocus={() => handleEditAdminSearch(editAdminSearchQuery)}
                               onBlur={() => setTimeout(() => setShowEditAdminDropdown(false), 200)} />
                             <DropdownMenu show={showEditAdminDropdown}>
-                              {adminCandidates.length === 0 ? (
+                              {adminCandidates.filter(u => !u.assigned).length === 0 ? (
                                 <div style={{padding: '12px 16px', color: '#4B5563', fontSize: '13px'}}>
-                                  {editAdminSearchQuery.length > 0 ? 'No available users found' : 'Type to search users...'}
+                                  {editAdminSearchQuery.length > 0 ? t('admin:restaurantsPage.saSearchEmpty') : 'Type to search users...'}
                                 </div>
                               ) : (
-                                adminCandidates.map(user => (
+                                adminCandidates.filter(u => !u.assigned).map(user => (
                                   <DropdownItem key={user.id} onClick={() => handleEditAdminSelect(user)}>
                                     <ManagerName>{user.full_name || user.username}</ManagerName>
                                     <ManagerDetails>{user.email} • {user.role}</ManagerDetails>

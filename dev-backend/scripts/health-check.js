@@ -2072,6 +2072,159 @@ function defineSecurityTests({ customerToken, member, restId }) {
   });
 }
 
+// 매장 추가 «기존 사용자 검색» 범위 + 구독 할인 = System Admin 전용 (2026-10-29 Fable 판정).
+//   할인 값은 구독 청구서 금액에 그대로 쓰인다(invoiceScheduler) — 매장 관리자가 PUT 으로 자기 할인을 바꾸던 구멍.
+function defineAdminSearchDiscountTests({ adminToken }) {
+  const signFor = async (email) => {
+    const User = require('../models/User');
+    const u = await User.findOne({ where: { email } });
+    return u ? { u, tk: jwt.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '5m' }) } : null;
+  };
+  const readDiscount = async (rid) => {
+    const { sequelize } = require('../config/database');
+    return (await sequelize.query('SELECT discount_type, discount_value, discount_reason FROM restaurants WHERE id = ?',
+      { replacements: [rid], type: sequelize.QueryTypes.SELECT }))[0];
+  };
+  const writeDiscount = async (rid, d) => {
+    const { sequelize } = require('../config/database');
+    await sequelize.query('UPDATE restaurants SET discount_type = ?, discount_value = ?, discount_reason = ? WHERE id = ?',
+      { replacements: [d.discount_type, d.discount_value, d.discount_reason, rid] });
+  };
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+  test('security', '구독 할인 — 매장 관리자 PUT 은 무시(값 불변) · System Admin 은 저장', async () => {
+    const ra = await signFor('demo-restaurant@purplehere.com');
+    if (!ra || !ra.u.restaurant_id) { console.log(c.red('      ↳ 데모 매장 관리자 계정 없음')); return false; }
+    const rid = ra.u.restaurant_id;
+    const Restaurant = require('../models/Restaurant');
+    const rest = await Restaurant.findByPk(rid);
+    if (!rest || !rest.is_demo) { console.log(c.red(`      ↳ 매장 ${rid} 데모 아님 — 쓰기 거부`)); return false; }
+    const before = await readDiscount(rid);
+    try {
+      const body = { discount_type: 'percentage', discount_value: 100, discount_reason: 'hc-self-discount' };
+      const r1 = await request('PUT', `/restaurants/${rid}`, body, { Authorization: `Bearer ${ra.tk}` });
+      const afterRa = await readDiscount(rid);
+      if (r1.status !== 200 || !same(before, afterRa)) {
+        console.log(c.red(`      ↳ RA PUT ${r1.status} · 전 ${JSON.stringify(before)} 후 ${JSON.stringify(afterRa)}`)); return false;
+      }
+      const r2 = await request('PUT', `/restaurants/${rid}`, body, { Authorization: `Bearer ${adminToken}` });
+      const afterSa = await readDiscount(rid);
+      if (r2.status !== 200 || afterSa.discount_type !== 'percentage' || Number(afterSa.discount_value) !== 100) {
+        console.log(c.red(`      ↳ SA PUT ${r2.status} · 후 ${JSON.stringify(afterSa)}`)); return false;
+      }
+      return true;
+    } finally {
+      await writeDiscount(rid, before);
+    }
+  });
+
+  test('security', '기존 사용자 검색 — SA 자유 검색 · BG 는 정확한 이메일 1건만 · RA 403', async () => {
+    const { sequelize } = require('../config/database');
+    const bg = await signFor('demo-brand@purplehere.com');
+    const ra = await signFor('demo-restaurant@purplehere.com');
+    if (!bg || !ra) { console.log(c.red('      ↳ 데모 BG/RA 계정 없음')); return false; }
+    const cand = (await sequelize.query(
+      `SELECT email FROM users WHERE role IN ('Restaurant Admin','Staff') AND is_active = 1 AND (is_demo = 0 OR is_demo IS NULL)
+         AND email LIKE '%@%.%' AND email NOT IN ('demo-brand@purplehere.com') ORDER BY id LIMIT 1`,
+      { type: sequelize.QueryTypes.SELECT }))[0];
+    if (!cand) { console.log(c.red('      ↳ RA/Staff 후보 0명 — 검사 불가')); return false; }
+    const H = (tk) => ({ Authorization: `Bearer ${tk}` });
+    const part = cand.email.slice(0, 2);
+    const sa = await request('GET', `/users/available-admins?q=${encodeURIComponent(part)}`, null, H(adminToken));
+    const bgPart = await request('GET', `/users/available-admins?q=${encodeURIComponent(part)}`, null, H(bg.tk));
+    const bgAll = await request('GET', '/users/available-admins?q=', null, H(bg.tk));
+    const bgExact = await request('GET', `/users/available-admins?q=${encodeURIComponent(cand.email.toUpperCase())}`, null, H(bg.tk));
+    const raRes = await request('GET', '/users/available-admins?q=a', null, H(ra.tk));
+    const d = (r) => (r.body && r.body.data) || [];
+    const exactKeys = d(bgExact)[0] ? Object.keys(d(bgExact)[0]).sort().join(',') : '';
+    const ok = sa.status === 200 && d(sa).length >= 1
+      && bgPart.status === 200 && d(bgPart).length === 0
+      && bgAll.status === 200 && d(bgAll).length === 0
+      && bgExact.status === 200 && d(bgExact).length === 1 && exactKeys === 'assigned,email,full_name,id,role'
+      && raRes.status === 403;
+    if (!ok) console.log(c.red(`      ↳ SA ${sa.status}/${d(sa).length} · BG 부분 ${d(bgPart).length} · BG 빈칸 ${d(bgAll).length} · BG 정확 ${d(bgExact).length}[${exactKeys}] · RA ${raRes.status}`));
+    return ok;
+  });
+
+  // 2단계(Irene «권고대로»): 이미 다른 매장이 있는 계정 → 소속은 그대로 · SA 는 바로 매장 관리자 모자 · 그 외는 초대 → 본인 수락.
+  //   쓰기는 데모 매장(demo-restaurant 의 매장)의 모자·초대 행만, 끝나면 지운다. 매장은 새로 만들지 않는다.
+  test('security', '매장 관리자 붙이기 — 다른 매장 계정: 초대 뒤 수락해야 권한 · 소속 불변 · SA 바로 · 없는 이메일 404(매장 안 만듦)', async () => {
+    const { sequelize } = require('../config/database');
+    const User = require('../models/User');
+    const Restaurant = require('../models/Restaurant');
+    // 실시간 신호(contextSignals)는 server.js 를 늦게 불러오는데, server.js 는 PM2 밖에서 바로 종료한다 — 빈 모듈로 막아 둔다.
+    const srvPath = require.resolve('../server');
+    if (!require.cache[srvPath]) require.cache[srvPath] = { id: srvPath, filename: srvPath, loaded: true, exports: {} };
+    const { attachRestaurantAdmin } = require('../routes/context-requests');
+    // 자리(요금제 직원 한도)가 남은 데모 매장 하나 + 꽉 찬 데모 매장 하나(있으면 «한도 막힘» 도 확인).
+    const { countRestaurantSeats } = require('../services/userContexts');
+    let rid = null, fullRid = null;
+    const fullRids = [];
+    for (const r of await Restaurant.findAll({ where: { is_demo: 1 }, order: [['id', 'DESC']] })) {
+      const seats = await countRestaurantSeats(r.id);
+      const roomy = !r.staff_limit || r.staff_limit <= 0 || seats < r.staff_limit;
+      if (roomy && !rid) rid = r.id;
+      if (!roomy) fullRids.push(r.id);
+    }
+    if (!rid) { console.log(c.red('      ↳ 자리 남은 데모 매장 없음 — 검사 불가')); return false; }
+    const target = await User.findOne({ where: sequelize.literal(
+      `role = 'Restaurant Admin' AND is_active = 1 AND (is_demo = 0 OR is_demo IS NULL) AND restaurant_id IS NOT NULL AND restaurant_id <> ${Number(rid)}
+       AND (is_test = 1 OR email LIKE '%@example.%' OR email LIKE '%@test.%')
+       AND id NOT IN (SELECT user_id FROM user_contexts WHERE entity_type = 'restaurant' AND entity_id = ${Number(rid)})
+       AND id NOT IN (SELECT user_id FROM user_context_requests WHERE entity_type = 'restaurant' AND entity_id = ${Number(rid)} AND status = 'pending')`) });
+    if (!target) { console.log(c.red('      ↳ 다른 매장 관리자 후보 0명 — 검사 불가')); return false; }
+    const native = target.restaurant_id;
+    for (const f of fullRids) {
+      const [held] = await sequelize.query(
+        "SELECT id FROM user_contexts WHERE user_id = ? AND entity_type = 'restaurant' AND entity_id = ? LIMIT 1",
+        { replacements: [target.id, f], type: sequelize.QueryTypes.SELECT });
+      if (String(f) !== String(native) && !held) { fullRid = f; break; }
+    }
+    const hats = async () => (await sequelize.query(
+      "SELECT role FROM user_contexts WHERE user_id = ? AND entity_type = 'restaurant' AND entity_id = ?",
+      { replacements: [target.id, rid], type: sequelize.QueryTypes.SELECT }));
+    const cleanup = async () => {
+      for (const e of [rid, fullRid].filter(Boolean)) {
+        await sequelize.query("DELETE FROM user_contexts WHERE user_id = ? AND entity_type = 'restaurant' AND entity_id = ?", { replacements: [target.id, e] });
+        await sequelize.query("DELETE FROM user_context_requests WHERE user_id = ? AND entity_type = 'restaurant' AND entity_id = ?", { replacements: [target.id, e] });
+      }
+    };
+    const fakeReq = (user) => ({ user, headers: {}, ip: '127.0.0.1', get: () => '', socket: {} });
+    try {
+      // 초대를 보낸 사람(created_by)은 실제 계정이어야 한다 — 데모 아닌 브랜드 총괄 아무나(쓰기는 데모 매장 초대 행뿐).
+      const bgRow = await User.findOne({ where: sequelize.literal("role = 'Brand General' AND (is_demo = 0 OR is_demo IS NULL)") });
+      if (!bgRow) { console.log(c.red('      ↳ 데모 아닌 브랜드 총괄 계정 없음 — 검사 불가')); return false; }
+      const bgUser = { id: bgRow.id, role: 'Brand General', is_demo: false, full_name: 'health-check' };
+      const inv = await attachRestaurantAdmin({ req: fakeReq(bgUser), target, restaurantId: rid });
+      const before = await hats();
+      const tk = jwt.sign({ userId: target.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+      const acc = inv.ok ? await request('POST', `/context-requests/${inv.id}/accept`, null, { Authorization: `Bearer ${tk}` }) : { status: 0 };
+      const after = await hats();
+      const nativeAfter = (await User.findByPk(target.id)).restaurant_id;
+      await cleanup();
+      const saUser = await User.findOne({ where: { role: 'System Admin' } });
+      const sa = await attachRestaurantAdmin({ req: fakeReq(saUser), target, restaurantId: rid });
+      const saHats = await hats();
+      const [[cnt0]] = await sequelize.query('SELECT COUNT(*) AS c FROM restaurants');
+      const miss = await request('POST', '/restaurants', { name: 'hc-invite-missing', address: '1 St', city: 'KL', country: 'MY',
+        activate_subscription: false, adminAction: 'invite', adminEmail: 'nobody-hc-invite@example.com' }, { Authorization: `Bearer ${jwt.sign({ userId: saUser.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+      const [[cnt1]] = await sequelize.query('SELECT COUNT(*) AS c FROM restaurants');
+      let fullRes = null;
+      if (fullRid) fullRes = await attachRestaurantAdmin({ req: fakeReq(bgUser), target, restaurantId: fullRid });
+      const ok = inv.ok && inv.mode === 'invited' && before.length === 0
+        && (!fullRid || (fullRes && !fullRes.ok && fullRes.status === 403))
+        && acc.status === 200 && after.length === 1 && after[0].role === 'Restaurant Admin'
+        && String(nativeAfter) === String(native)
+        && sa.ok && sa.mode === 'granted' && saHats.length === 1
+        && miss.status === 404 && Number(cnt0.c) === Number(cnt1.c);
+      if (!ok) console.log(c.red(`      ↳ 한도 찬 매장 ${fullRid}: ${JSON.stringify(fullRes)} · 초대 ${JSON.stringify(inv)} · 수락 전 ${before.length} · 수락 ${acc.status} · 후 ${JSON.stringify(after)} · 소속 ${native}→${nativeAfter} · SA ${JSON.stringify(sa)}/${saHats.length} · 없는 이메일 ${miss.status} 매장수 ${cnt0.c}→${cnt1.c}`));
+      return ok;
+    } finally {
+      await cleanup();
+    }
+  });
+}
+
 // ============================================
 // 카테고리 3: POS 핵심 API
 // ============================================
@@ -11925,6 +12078,7 @@ async function runTests(allTests, category) {
   const ctx = await setup();
 
   defineAuthTests(ctx);
+  defineAdminSearchDiscountTests(ctx);
   defineContextRequestTests(ctx);
   defineSecurityTests(ctx);
   definePosTests(ctx);

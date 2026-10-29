@@ -222,38 +222,56 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Get available admin candidates (users not assigned to any restaurant)
-router.get('/available-admins', authenticateToken, async (req, res) => {
+// Get available admin candidates (Restaurant Admin·Staff — assigned=true 면 이미 다른 매장이 있는 계정)
+// 2026-10-29 Fable 판정: 매장을 만들 수 있는 역할만(POST /restaurants 와 같은 4역할).
+//   System Admin = 이름·이메일·아이디 검색(종전과 같음). 그 외 = 미배정 계정은 어느 회사에도 안 속해
+//   «내 회사 사람만» 으로 좁힐 수 없으므로 자유 검색 대신 «정확한 이메일 1건» 만(직원 초대 /invite 와 같은 원칙).
+router.get('/available-admins', authenticateToken,
+  requireRole('System Admin', 'Brand General', 'Foodcourt General', 'Restaurant Owner'),
+  async (req, res) => {
   try {
-    const { q } = req.query;
+    const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 200) : '';
     const { sequelize } = require('../config/database');
+    // 2단계(Irene «권고대로»): 이미 다른 매장이 있는 계정도 찾는다 — assigned=1 이면 화면이 «초대» 로 보낸다
+    //   (계정 소속은 그대로, 매장 관리자 모자만 · POST /restaurants adminAction='invite').
+    const baseWhere = `u.role IN ('Restaurant Admin', 'Staff') AND u.is_active = 1 AND u.id <> ${Number(req.user.id) || 0}`;
+    const cols = 'u.id, u.email, u.role, u.full_name, (u.restaurant_id IS NOT NULL) AS assigned';
+
+    if (req.user.role !== 'System Admin') {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(q)) return res.json({ success: true, data: [] });
+      const users = await sequelize.query(`
+        SELECT ${cols}
+        FROM users u
+        WHERE ${baseWhere} AND (u.is_demo = 0 OR u.is_demo IS NULL) AND LOWER(u.email) = LOWER(?)
+        LIMIT 1
+      `, { replacements: [q], type: sequelize.QueryTypes.SELECT });
+      return res.json({ success: true, data: users.map(u => ({ ...u, assigned: !!Number(u.assigned) })) });
+    }
 
     let searchFilter = '';
     let replacements = [];
-
-    if (q && q.trim()) {
+    if (q) {
       searchFilter = 'AND (u.full_name LIKE ? OR u.email LIKE ? OR u.username LIKE ?)';
-      const searchTerm = `%${q.trim()}%`;
+      const searchTerm = '%' + q.replace(/[\\%_]/g, m => '\\' + m) + '%';
       replacements = [searchTerm, searchTerm, searchTerm];
     }
 
     const users = await sequelize.query(`
-      SELECT u.id, u.username, u.email, u.role, u.full_name, u.phone
+      SELECT ${cols}, u.username, u.phone
       FROM users u
-      WHERE u.restaurant_id IS NULL
-        AND u.role IN ('Restaurant Admin', 'Staff')
+      WHERE ${baseWhere}
         ${searchFilter}
-      ORDER BY u.full_name
+      ORDER BY (u.restaurant_id IS NOT NULL), u.full_name
       LIMIT 20
     `, {
       replacements,
       type: sequelize.QueryTypes.SELECT
     });
 
-    res.json({ success: true, data: users });
+    res.json({ success: true, data: users.map(u => ({ ...u, assigned: !!Number(u.assigned) })) });
   } catch (error) {
     console.error('Error fetching available admins:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
@@ -617,7 +635,8 @@ router.post('/', authenticateToken, async (req, res) => {
       userCreateData.auto_renew = auto_renew !== false;
 
       // Discount (none/percentage/fixed) — mirrors Restaurant.discount_*
-      const validDt = ['none', 'percentage', 'fixed'].includes(discount_type) ? discount_type : 'none';
+      // System Admin 만 정한다(PUT 의 ADMIN_ONLY_FIELDS 와 같은 규칙 · 2026-10-29).
+      const validDt = req.user.role === 'System Admin' && ['none', 'percentage', 'fixed'].includes(discount_type) ? discount_type : 'none';
       userCreateData.discount_type = validDt;
       userCreateData.discount_value = (validDt === 'none') ? 0 : (Number(discount_value) || 0);
       userCreateData.discount_reason = (validDt === 'none') ? null : (discount_reason || null);

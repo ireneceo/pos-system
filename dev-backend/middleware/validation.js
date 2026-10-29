@@ -205,8 +205,8 @@ const validateRestaurantCreation = [
     .withMessage('Restaurant name must be less than 255 characters'),
   body('adminAction')
     .optional()
-    .isIn(['create', 'assign'])
-    .withMessage('adminAction must be "create" or "assign"'),
+    .isIn(['create', 'assign', 'invite'])
+    .withMessage('adminAction must be "create", "assign" or "invite"'),
   body('adminEmail')
     .if(body('adminAction').equals('create'))
     .isEmail()

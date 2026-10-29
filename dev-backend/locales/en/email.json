@@ -288,7 +288,10 @@
       "message": "Message",
       "hint": "Accept on the role selection screen. You keep signing in with your own account and switch to this store.",
       "cta": "Open invitations",
-      "textFallback": "{{inviter}} invited you to join {{target}} as staff."
+      "textFallback": "{{inviter}} invited you to join {{target}} as staff.",
+      "subjectAdmin": "You're invited to be the admin of {{target}}",
+      "bodyAdmin": "{{inviter}} invited you to be the restaurant admin of {{target}}.",
+      "textFallbackAdmin": "{{inviter}} invited you to be the restaurant admin of {{target}}."
     },
     "result": {
       "subjectAccepted": "Invitation accepted: {{who}} · {{target}}",

@@ -266,6 +266,7 @@ const contextKey = (c: UserContextOption) => `${c.kind}:${c.entity_type}:${c.ent
 interface Invitation {
   id: number;
   entity_id: number;
+  role: string;
   label: string | null;
   permissions: string[];
   message: string | null;
@@ -520,17 +521,23 @@ const ContextSelectPage: React.FC = () => {
           {invitations.length > 0 && <SectionTitle>{t('context.invite.title')}</SectionTitle>}
           {invitations.map((inv) => {
             const date = requestDate(inv.created_at);
-            const line = t('context.invite.line', { who: inv.invited_by_name || '—', count: inv.permissions.length });
+            // 매장 관리자 초대(새 매장 만들 때 · 2026-10-29)는 권한 목록이 없다 — 역할만 보인다.
+            const isAdminInvite = inv.role === 'Restaurant Admin';
+            const line = isAdminInvite
+              ? t('context.invite.lineAdmin', { who: inv.invited_by_name || '—' })
+              : t('context.invite.line', { who: inv.invited_by_name || '—', count: inv.permissions.length });
             return (
               <InviteRow key={`inv-${inv.id}`}>
                 <CardGlyph aria-hidden="true">▦</CardGlyph>
                 <InviteText>
                   <CardLabel>{inv.label || t('context.request.deletedTarget')}</CardLabel>
                   <InviteStatus>
-                    {t('context.request.typeStoreStaff')} · {line}{date ? ` · ${date}` : ''}
-                    <LinkToggle role="button" tabIndex={0} onClick={() => setPermsOpen(permsOpen === inv.id ? null : inv.id)}>
-                      {t('context.invite.viewPermissions')}
-                    </LinkToggle>
+                    {t(isAdminInvite ? 'context.request.typeStoreAdmin' : 'context.request.typeStoreStaff')} · {line}{date ? ` · ${date}` : ''}
+                    {!isAdminInvite && (
+                      <LinkToggle role="button" tabIndex={0} onClick={() => setPermsOpen(permsOpen === inv.id ? null : inv.id)}>
+                        {t('context.invite.viewPermissions')}
+                      </LinkToggle>
+                    )}
                   </InviteStatus>
                 </InviteText>
                 <InviteActions>

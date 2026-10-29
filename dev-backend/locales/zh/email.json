@@ -288,7 +288,10 @@
       "message": "留言",
       "hint": "请在角色选择页面接受。您继续使用自己的账户登录，并切换到该门店。",
       "cta": "查看邀请",
-      "textFallback": "{{inviter}} 邀请您以员工身份加入 {{target}}。"
+      "textFallback": "{{inviter}} 邀请您以员工身份加入 {{target}}。",
+      "subjectAdmin": "您被邀请成为 {{target}} 的管理员",
+      "bodyAdmin": "{{inviter}} 邀请您成为 {{target}} 的餐厅管理员。",
+      "textFallbackAdmin": "{{inviter}} 邀请您成为 {{target}} 的餐厅管理员。"
     },
     "result": {
       "subjectAccepted": "邀请已接受：{{who}} · {{target}}",

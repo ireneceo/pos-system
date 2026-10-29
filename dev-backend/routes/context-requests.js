@@ -254,12 +254,12 @@ async function findMyInvite(reqUser, id) {
   return row || null;
 }
 
-async function notifyInviteReceived({ userId, inviter, targetName, permissionCount, message }) {
+async function notifyInviteReceived({ userId, inviter, targetName, permissionCount, message, role }) {
   try {
     const ns = require('../utils/notificationService');
     const { contextInviteReceivedEmail } = require('../utils/notificationTemplates');
     const inviterName = inviter ? String(inviter.full_name || inviter.username || '').replace(/^r\d+:/i, '') || null : null;
-    const args = { inviterName, targetName, permissionCount, message, link: `${BASE_URL}/pos/select-context` };
+    const args = { inviterName, targetName, permissionCount, message, role, link: `${BASE_URL}/pos/select-context` };
     await ns.sendNotification(userId, 'context_invite_received',
       (user) => contextInviteReceivedEmail(args, user.preferred_language || 'en'));
   } catch (e) {
@@ -362,6 +362,55 @@ router.post('/invite', authenticateToken, async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
+// 새 매장의 관리자로 «이미 다른 매장이 있는» 기존 계정을 붙이기 (2026-10-29 Fable 판정 · Irene «권고대로»).
+//   계정 소속(users.restaurant_id)은 옮기지 않는다 — 매장 관리자 모자(restaurant × Restaurant Admin)를 준다.
+//   System Admin = 바로 부여 · BG/FG/오너 = 초대(initiator='grantor') → 본인 수락(POST /:id/accept) 때 부여.
+//   호출자(routes/restaurants-crud.js)가 매장 접근 판정을 끝낸 뒤 부른다.
+// @returns {Promise<{ok:true, mode:'granted'|'invited', id?:number}|{ok:false, status:number, message:string}>}
+async function attachRestaurantAdmin({ req, target, restaurantId }) {
+  const fail = (status, message) => ({ ok: false, status, message });
+  const rid = userContexts.normalizeEntityId(restaurantId);
+  const restaurant = rid ? await userContexts.loadGrantEntity('restaurant', rid) : null;
+  if (!restaurant) return fail(404, userContexts.NOT_FOUND_MESSAGE.restaurant);
+  const role = 'Restaurant Admin';
+
+  if (req.user.role === 'System Admin') {
+    const result = await userContexts.grantContext({
+      target, entity_type: 'restaurant', entity_id: rid, role, grantedBy: req.user.id
+    });
+    if (!result.ok) return fail(result.status, result.message);
+    logActivity(req, {
+      action_type: 'create', entity_type: 'user_context', entity_id: target.id,
+      entity_name: target.full_name || target.username || target.email,
+      description: result.logDescription, restaurant_id: rid
+    });
+    emitContextChanged({ kind: 'granted', userId: target.id, entityType: 'restaurant', entityId: rid, role, label: restaurant.name });
+    return { ok: true, mode: 'granted' };
+  }
+
+  if (req.user.is_demo) return fail(403, 'Demo accounts cannot invite');
+  const held = await userContexts.alreadyHoldsContext(target, { entity_type: 'restaurant', entity_id: rid, role }, restaurant);
+  if (held) return fail(held.status, held.message);
+  const dup = await findPendingAnyDirection(target.id, 'restaurant', rid, role);
+  if (dup) return fail(409, 'An invitation for this account is already pending');
+  const full = await seatLimitBody(rid);
+  if (full) return fail(403, full.message);
+
+  const UserContextRequest = require('../models/UserContextRequest');
+  const created = await UserContextRequest.create({
+    user_id: target.id, entity_type: 'restaurant', entity_id: rid, role, status: 'pending',
+    initiator: 'grantor', created_by: req.user.id, permissions: null
+  });
+  logActivity(req, {
+    action_type: 'create', entity_type: 'user_context', entity_id: target.id,
+    description: `Invited ${target.email} to restaurant "${restaurant.name}" (#${rid}) as Restaurant Admin (invitation #${created.id})`,
+    restaurant_id: rid
+  });
+  notifyInviteReceived({ userId: target.id, inviter: req.user, targetName: restaurant.name, permissionCount: 0, message: null, role });
+  emitContextChanged({ kind: 'invited', userId: target.id, entityType: 'restaurant', entityId: rid, role, requestId: created.id, label: restaurant.name });
+  return { ok: true, mode: 'invited', id: created.id };
+}
 
 // 보낸 초대(pending) — RA: 자기 매장 · SA: 전부.
 router.get('/sent', authenticateToken, async (req, res) => {
@@ -775,3 +824,4 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
 module.exports = router;
 module.exports.visibleRequestScope = visibleRequestScope;
+module.exports.attachRestaurantAdmin = attachRestaurantAdmin;

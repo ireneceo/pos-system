@@ -708,3 +708,9 @@ P2/P3a 에 순증. 반대로 F1 재설계는 백필 폐기로 P1 을 **1일 단�
 | F8 userCanAccessEntity 누수 + 투영 필드 누락 | **수용** | §8-5 알려진 예외 명시 + 투영 전 필드 표(§4.3 — Staff 모자 제외 사유 포함) |
 | F9 수치 부풀림(323/84) | **수용 — 재실측으로 정정** (role 정확 259/284+20, restaurant_id 93곳/21파일 — 리뷰의 22파일과 1 차이는 집계 스코프, 방향 동일) | §0, §3.6, §8-3, 부록 A |
 | 일정 "4주 과소, 현실 5주" | **수용** | §7: 5주로 정정 (F1 재설계가 P1 을 1일 단축, F3~F5 가 +3~4일 순증) |
+
+### §6.4.3 새 매장 관리자 초대 — 매장을 만든 쪽이 시작 (2026-10-29 · Fable 설계+게이트 조건부 PASS bb9db3960f74 · Irene «권고대로»)
+- 매장 추가 창에서 **이미 다른 매장이 있는** Restaurant Admin·Staff 계정을 고르면 `POST /api/restaurants` `adminAction:'invite'`(+`adminEmail`). 계정 소속(`users.restaurant_id`)은 **옮기지 않는다**.
+- `routes/context-requests.js` `attachRestaurantAdmin` 하나: **SA = `grantContext`(restaurant × Restaurant Admin) 즉시** · **BG/FG/오너 = `user_context_requests` initiator='grantor' role='Restaurant Admin'** → 본인이 선택 화면에서 수락(`POST /:id/accept`, 기존 경로) 때 부여. RA 모자 요청의 «승인 주체 = SA»(D1)는 **요청**(아래→위)이고, 이것은 매장을 만든 주체가 **주는** 방향이라 본인 수락이 동의 장치.
+- 검사: 대상 존재·RA/Staff·활성·데모 아님·본인 아님(매장 만들기 전) · 이미 권한·중복 초대·직원 한도(보낼 때+수락 때) · 데모 호출자 403. SA 즉시 부여는 기존 SA 부여 경로처럼 직원 한도를 보지 않는다.
+- 남은 것(후속 후보): BG/FG/오너가 보낸 대기 중 초대를 보는 화면(`GET /sent` 는 RA·SA 만) · SA 수정 창에서 «이미 매장 있는 계정» 추가.

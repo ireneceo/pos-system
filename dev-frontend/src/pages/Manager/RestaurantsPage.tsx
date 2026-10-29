@@ -1023,7 +1023,13 @@ const ManagerRestaurantsPage: React.FC = () => {
         restaurantData.adminFullName = newAdminData.fullName;
         restaurantData.adminPhone = newAdminData.phone || undefined;
       } else if (adminAction === 'assign') {
-        restaurantData.adminUserId = parseInt(selectedAdmin.id.toString());
+        if (selectedAdmin.assigned) {
+          // 이미 다른 매장이 있는 계정 — 소속은 그대로, 이 매장 관리자 권한만(SA 바로 · 그 외 초대 후 본인 수락)
+          restaurantData.adminAction = 'invite';
+          restaurantData.adminEmail = selectedAdmin.email;
+        } else {
+          restaurantData.adminUserId = parseInt(selectedAdmin.id.toString());
+        }
       }
 
       const token = getAuthToken();
@@ -1038,6 +1044,7 @@ const ManagerRestaurantsPage: React.FC = () => {
       
       if (response.ok) {
         const result = await response.json();
+        if (result.adminInvite?.status === 'failed') window.alert(t('admin:restaurantsPage.inviteFailed', { message: result.adminInvite.message || '' }));
 
         // Show generated password if admin was created
         if (result.generatedPassword) {
@@ -1979,7 +1986,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                   <FormGroup style={{ position: 'relative', gridColumn: '1 / -1', zIndex: 100 }}>
                     <FormLabel>{t('admin:restaurantsPage.searchAndSelectAnExistingUser')}</FormLabel>
                     <DropdownContainer>
-                      <DropdownInput type="text" placeholder="Type to search by name, email, or username..."
+                      <DropdownInput type="email" placeholder={t('admin:restaurantsPage.emailOnlyPlaceholder')}
                         value={adminSearchQuery}
                         onChange={(e) => handleAdminSearch(e.target.value)}
                         onFocus={() => handleAdminSearch(adminSearchQuery)}
@@ -1987,7 +1994,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                       <DropdownMenu show={showAdminDropdown}>
                         {adminCandidates.length === 0 ? (
                           <div style={{padding: '12px 16px', color: '#4B5563', fontSize: '13px'}}>
-                            {adminSearchQuery.length > 0 ? 'No available users found' : 'Type to search users...'}
+                            {adminSearchQuery.length > 0 ? t('admin:restaurantsPage.emailOnlyEmpty') : t('admin:restaurantsPage.emailOnlyHint')}
                           </div>
                         ) : (
                           adminCandidates.map(u => (
@@ -2012,6 +2019,9 @@ const ManagerRestaurantsPage: React.FC = () => {
                           <div style={{fontSize: '12px', color: '#4B5563'}}>
                             {selectedAdmin.email} • {selectedAdmin.role}
                           </div>
+                          {selectedAdmin.assigned && (
+                            <div style={{fontSize: '12px', color: '#635BFF', marginTop: '4px'}}>{t('admin:restaurantsPage.inviteNote')}</div>
+                          )}
                         </div>
                         <button onClick={() => { setSelectedAdmin(null); setAdminSearchQuery(''); }}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', fontSize: '18px', fontWeight: '600' }}>

@@ -288,7 +288,10 @@
       "message": "메시지",
       "hint": "역할 선택 화면에서 수락해 주세요. 지금 계정 그대로 로그인하고 이 매장으로 전환해 씁니다.",
       "cta": "받은 초대 보기",
-      "textFallback": "{{inviter}} 님이 {{target}} 매장 직원으로 초대했습니다."
+      "textFallback": "{{inviter}} 님이 {{target}} 매장 직원으로 초대했습니다.",
+      "subjectAdmin": "{{target}} 매장 관리자로 초대되었습니다",
+      "bodyAdmin": "{{inviter}} 님이 {{target}} 매장 관리자로 초대했습니다.",
+      "textFallbackAdmin": "{{inviter}} 님이 {{target}} 매장 관리자로 초대했습니다."
     },
     "result": {
       "subjectAccepted": "초대 수락: {{who}} · {{target}}",
