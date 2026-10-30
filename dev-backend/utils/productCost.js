@@ -63,4 +63,34 @@ async function menuUnitCosts(restaurantId, productIds) {
   return out;
 }
 
-module.exports = { menuUnitCosts };
+/**
+ * 옵션 1개(수량 1)의 재료 원가 — 수익성 분석 설계 §3-1 «+ 옵션» (2026-10-29 · 위 menuUnitCosts 는 그대로 두고 추가만).
+ * 판매 차감과 같은 길: option_ingredients(option_id, ingredient_id, quantity) — 수량은 재료 취급단위(차감이 그대로 뺀다).
+ *   재료 연결이 없는 옵션은 Map 에 넣지 않는다(«옵션 원가 미등록» — 부르는 쪽이 0 이 아니라 모름으로 센다).
+ *   재료 줄 하나라도 원가를 모르면 null.
+ * @param {number} restaurantId
+ * @param {number[]} optionIds
+ * @returns {Promise<Map<number, number|null>>}
+ */
+async function optionUnitCosts(restaurantId, optionIds) {
+  const out = new Map();
+  const ids = [...new Set((optionIds || []).map(Number).filter(Boolean))];
+  if (!ids.length) return out;
+  const { OptionIngredient, Ingredient } = require('../models');
+  const { loadOverlayMap, effectiveStoreCost } = require('../services/storeCost');
+  const rows = await OptionIngredient.findAll({
+    where: { option_id: ids },
+    include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'unit', 'unit_cost', 'base_quantity', 'owner_type', 'restaurant_id'] }],
+  });
+  const overlay = await loadOverlayMap(restaurantId, rows.map(r => r.ingredient_id));
+  for (const r of rows) {
+    const prev = out.has(r.option_id) ? out.get(r.option_id) : 0;
+    if (prev === null) continue;
+    const ing = r.ingredient;
+    const c = ing ? computeLineCost({ unit: ing.unit, base_quantity: ing.base_quantity, unit_cost: effectiveStoreCost(ing, overlay.get(Number(ing.id)), restaurantId) }, r.quantity, ing.unit) : null;
+    out.set(r.option_id, c === null ? null : Math.round((prev + c) * 10000) / 10000);
+  }
+  return out;
+}
+
+module.exports = { menuUnitCosts, optionUnitCosts };

@@ -49,7 +49,10 @@ const OPERATION_SETTINGS_ALLOWED_KEYS = new Set([
   'cashDrawerAutoOpen',
   // 직원 출퇴근 설정(2026-10-16). { network_restriction, allow_self_clock, ... } — 저장은 routes/attendance.js 전용 라우트.
   // 화이트리스트 누락 시 설정 화면 저장 round-trip 에서 조용히 stripped → 네트워크 제한이 꺼진다. 반드시 보존.
-  'attendance'
+  'attendance',
+  // 수익성 분석 설정(2026-10-29). { fees, channel_fees, targets, quadrant_baseline, share_with_brand } — 저장은 routes/profitability.js 전용 라우트.
+  // 화이트리스트 누락 시 설정 화면 저장 round-trip 에서 조용히 stripped → 수수료율·브랜드 공유가 지워진다. 반드시 보존.
+  'profitability'
 ]);
 
 function parseJsonSafe(v) {

@@ -393,6 +393,16 @@ const avgAmount = totalOrderCount > 0 ? salesExcludingCancelled / totalOrderCoun
 
 ---
 
+## 8-1. 수익성 분석(Profitability) — 매출 숫자와 다른 점 (2026-10-30)
+
+- 계산 단일 소스: `dev-backend/services/profitability.js` + 순수 식 `utils/profitabilityMath.js`(검산 `tests/profitability-math.test.js`). 화면 시뮬레이터 식은 `dev-frontend/src/utils/profitSim.ts`.
+- 매출 주문은 `revenueOrderWhere` 그대로 + **직원식(staffMeal) 제외**(비용으로 따로 셈). 순매출 = subtotal + 포장요금 − 할인 4종(세금·서비스차지·배달요금 제외) → 기존 매출 리포트의 total 과 다를 수 있다(화면에 문구로 밝힘).
+- 원가 = «현재 레시피 기준»(`menuUnitCosts` + `optionUnitCosts` + 세트 구성품). 원가 모르는 라인은 0 이 아니라 null — 비율은 «원가 아는 매출» 만 분모, 그 비중을 같이 보여 준다.
+- 기간을 안 주면 서버가 매장 타임존의 «이번 달 1일~오늘» 을 쓴다(브라우저 시계 안 씀).
+- 설계 `.claude/fable-design-20261029-brand-profitability.md` · 2단계(인건비·실제 식재료비·운영비 손익)부터 같은 파일에 더한다.
+
+---
+
 ## 9. 체크리스트
 
 새로운 통계 기능 개발 시 확인:

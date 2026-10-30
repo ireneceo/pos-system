@@ -349,6 +349,7 @@ Brand General/Manager: 접근 불가 (표시 안됨)
 | 20 | `inventory_management` | Inventory & Supplier Management | advanced | Inventory, Suppliers |
 | 21 | `advanced_inventory` | Advanced Inventory | advanced | (Inventory upgrade) |
 | 22 | `staff_attendance` | Staff Attendance (2026-10-16) | basic — 매장이 받는 모든 요금제(restaurant·brand·foodcourt·owner)에 포함, 0원(Irene Q3=A · 유료 분리는 급여 붙은 뒤) | Attendance · My Attendance · Time Clock |
+| 23 | `profit_analysis` | Profit Analysis (2026-10-30) | basic — 매장이 받는 모든 요금제(restaurant·brand·foodcourt·owner)에 포함, 0원(Irene Q4=A · 키만 있으면 나중에 상위 요금제로) | Profitability(매장) · 오너·브랜드 매장 비교 |
 
 (*) **Operation Inquiry 조건부 노출:**
 - Brand/Foodcourt 소속 레스토랑만 사용 가능

@@ -33,3 +33,9 @@
 - `MainLayout.tsx` 24(Tablet 아이콘 import) · 1241(알림 판정 kiosk) · 1390(계산원 칸 'Kiosk') · 1573(타입 kiosk?) · 2013-2015(상단 Kiosk 열기) · 2099-2100(설정 › Kiosk) · 2686-2691(열기 클릭 분기) — 전부 메뉴·클릭 분기, `_printPollFn` 무접촉
 - `health-check --category=print` 10/10(지문 제외) · 인쇄 라우트 가드 ✓ · 동시 print-claim N→1 ✓ · `check-print-guard` → 재등록 후 **8/8 변경 없음**
 - 판정문 `.claude/fable-verdict-20261007-kiosk-final-gate.md`(앞선 §7 PASS: `…-kiosk-payment-split-gate.md`) — manifest 가 git 추적 파일이라 **bless → 마커** 순서
+
+## 2026-10-30T04:06Z — MainLayout.tsx (수익성 분석 사이드바 3항목 — 브랜드·오너·매장) — Fable 게이트 조건부 PASS «bless 해도 된다» 뒤 bless
+- Irene 원문 「권고대로 진행해 줘」(설계 Q1~Q5 · 빌드 재시작) · 「권고대로」(이 bless) — 설계 `.claude/fable-design-20261029-brand-profitability.md` §6
+- `MainLayout.tsx` 23(lucide `PieChart` import) · 사이드바 항목 3블록(`/pos/brand/general/profitability` · `/pos/owner/profitability` · `/restaurant/${rid}/profitability?tab=…`)뿐 — `_printPollFn`·인쇄 분기 무접촉(Fable 이 git diff 로 직접 확인)
+- `health-check --category=print` 인쇄 계약 10/10(지문 1건 = 이 파일) · 보호파일 7개 변경 0 · `check-print-guard` → 재등록 후 8/8 변경 없음
+- 종이 확인 대상 아님(인쇄 동작 변경 없음) — manifest 가 git 추적 파일이라 bless → Fable 마커 순서

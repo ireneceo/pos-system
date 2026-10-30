@@ -129,6 +129,7 @@
     "migrate-soa-child-status-sync.js",
     "migrate-faq-refresh-20261011.js",
     "migrate-create-staff-attendance.js",
+    "migrate-create-profitability.js",
     "migrate-po-schedules-20261022.js",
     "migrate-po-payment-mirror-backfill.js"
   ],

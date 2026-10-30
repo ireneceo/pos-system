@@ -19,6 +19,7 @@ const LeaveType = require('./LeaveType');
 const LeaveEntitlement = require('./LeaveEntitlement');
 const LeaveRequest = require('./LeaveRequest');
 const StoreHoliday = require('./StoreHoliday');
+const RestaurantCostEntry = require('./RestaurantCostEntry');
 const UserContext = require('./UserContext');
 const UserContextRequest = require('./UserContextRequest');
 const CashierShift = require('./CashierShift');
@@ -1072,6 +1073,7 @@ module.exports = {
   LeaveEntitlement,
   LeaveRequest,
   StoreHoliday,
+  RestaurantCostEntry,
   UserContext,
   UserContextRequest,
   CashierShift,

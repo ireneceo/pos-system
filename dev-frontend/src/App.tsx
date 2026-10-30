@@ -123,6 +123,10 @@ const StaffPage = React.lazy(() => import('./pages/Staff/StaffPage'));
 const AttendancePage = React.lazy(() => import('./pages/Attendance/AttendancePage'));
 const MyAttendancePage = React.lazy(() => import('./pages/Attendance/MyAttendancePage'));
 const TimeClockPage = React.lazy(() => import('./pages/Attendance/TimeClockPage'));
+// 수익성 분석 1단계 (2026-10-29 · .claude/fable-design-20261029-brand-profitability.md)
+const StoreProfitabilityPage = React.lazy(() => import('./pages/Profitability/StoreProfitabilityPage'));
+const OwnerProfitabilityPage = React.lazy(() => import('./pages/Profitability/OwnerProfitabilityPage'));
+const BrandProfitabilityPage = React.lazy(() => import('./pages/Profitability/BrandProfitabilityPage'));
 const ProfilePage = React.lazy(() => import('./pages/Profile/ProfilePage'));
 const SalesPage = React.lazy(() => import('./pages/Sales/SalesPage'));
 const CompanyInformationPage = React.lazy(() => import('./pages/CompanyInformation/CompanyInformationPage'));
@@ -830,6 +834,17 @@ function App() {
                           <OwnerReportsPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/owner/profitability" element={
+                        <ProtectedRoute requiredRole={['Restaurant Owner']}>
+                          <OwnerProfitabilityPage />
+                        </ProtectedRoute>
+                      } />
+                      {/* 오너가 비교 표에서 고른 매장 — 오너 허용 경로(/pos/owner/*) 안에 둔다(매장 접근 판정은 서버 checkRestaurantAccess) */}
+                      <Route path="/pos/owner/profitability/store/:restaurantId" element={
+                        <ProtectedRoute requiredRole={['Restaurant Owner']}>
+                          <StoreProfitabilityPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/pos/owner/invoices" element={
                         <ProtectedRoute requiredRole={['Restaurant Owner']}>
                           <OwnerInvoicesPage />
@@ -989,6 +1004,16 @@ function App() {
                       <Route path="/pos/brand/general/reports" element={
                         <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
                           <BrandRevenueReportPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/general/profitability" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
+                          <BrandProfitabilityPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/general/profitability/store/:restaurantId" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
+                          <StoreProfitabilityPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/general/subscriptions" element={
@@ -1314,6 +1339,12 @@ function App() {
                       <Route path="/restaurant/:restaurantId/attendance" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Restaurant Admin']}>
                           <AttendancePage />
+                        </ProtectedRoute>
+                      } />
+                      {/* 매장 수익성 — 매장 관리자. 오너·브랜드는 자기 경로(/pos/owner/… · /pos/brand/general/…/store/:id)로 같은 화면을 연다 */}
+                      <Route path="/restaurant/:restaurantId/profitability" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Restaurant Admin']}>
+                          <StoreProfitabilityPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/my-attendance" element={

@@ -20,7 +20,7 @@ import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
 import { isNativeDesktop } from '../../utils/nativeDesktop';
-import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, Tablet, TrendingUp, HelpCircle, BookOpen, Download, RotateCw, Building2, MapPin, Gift, Bell, Target, Clock } from 'lucide-react';
+import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, Tablet, TrendingUp, HelpCircle, BookOpen, Download, RotateCw, Building2, MapPin, Gift, Bell, Target, Clock, PieChart } from 'lucide-react';
 import { appDownloadTarget } from '../../utils/nativeAppUpdate';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
 
@@ -1701,6 +1701,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         visible: hasManagerPermission('reports') && isRouteAllowed('/pos/brand/general/performance')
       },
       {
+        // 수익성 분석 — 매장별 공헌이익 비교 (2026-10-29 · .claude/fable-design-20261029-brand-profitability.md §6-4)
+        id: 'profitability', label: t('nav.profitability', 'Profitability'), icon: <PieChart />,
+        path: '/pos/brand/general/profitability',
+        visible: hasManagerPermission('reports') && isRouteAllowed('/pos/brand/general/profitability')
+      },
+      {
         id: 'brands', label: t('nav.section.brands', 'Brands'), icon: <Building2 />,
         items: [
           { path: '/pos/brand/general/management', label: t('nav.allBrands', 'All Brands'), visible: isRouteAllowed('/pos/brand/general/management') },
@@ -1928,6 +1934,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         visible: isRouteAllowed('/pos/owner/reports')
       },
       {
+        // 수익성 분석 — 소유 매장 비교 → 매장 화면 (2026-10-29 · 설계 §6-3)
+        id: 'profitability', label: t('nav.profitability', 'Profitability'), icon: <PieChart />,
+        path: '/pos/owner/profitability',
+        visible: isRouteAllowed('/pos/owner/profitability')
+      },
+      {
         id: 'communication', label: t('nav.section.communication'), icon: <MessageSquare />,
         items: [
           { path: '/pos/owner/notices', label: t('nav.notices'), hasPending: badgeCounts.notices > 0 || (badgeCounts.unreadComments?.notices || 0) > 0, visible: isRouteAllowed('/pos/owner/notices') },
@@ -2065,6 +2077,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: `/restaurant/${rid}/reports?tab=void-log`, label: t('reports:voidLog.tab', 'Void & Cancel Log'), visible: user?.role === 'Restaurant Admin' || user?.role === 'Restaurant Owner' }
         ].filter(i => i.visible !== false),
         visible: isRouteAllowed(`/restaurant/${rid}/reports`)
+      },
+      {
+        // 수익성 분석(2026-10-29 · 설계 §6-2) — 원가·운영비는 관리 정보라 매장 관리자만(직원 X)
+        id: 'profitability', label: t('nav.profitability', 'Profitability'), icon: <PieChart />,
+        items: [
+          { path: `/restaurant/${rid}/profitability?tab=menus`, label: t('profitability:tabs.menus', 'Menu profit'), visible: true },
+          { path: `/restaurant/${rid}/profitability?tab=mix`, label: t('profitability:tabs.mix', 'Order mix'), visible: true },
+          { path: `/restaurant/${rid}/profitability?tab=simulator`, label: t('profitability:tabs.simulator', 'Simulator'), visible: true },
+          { path: `/restaurant/${rid}/profitability?tab=settings`, label: t('profitability:tabs.settings', 'Settings'), visible: true }
+        ],
+        visible: user?.role === 'Restaurant Admin' && isRouteAllowed(`/restaurant/${rid}/profitability`)
       },
       {
         id: 'team-marketing', label: t('nav.section.teamMarketing'), icon: <Users />,

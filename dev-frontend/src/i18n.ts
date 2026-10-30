@@ -23,7 +23,7 @@ i18n
       'validation', 'contract', 'supplier', 'supplierDirectory',
       'purchaseOrders', 'purchaseInvoices', 'referrals', 'billing',
       'walkthrough', 'subscription', 'reservation', 'cash', 'promotions',
-      'printDiagnostics', 'attendance'
+      'printDiagnostics', 'attendance', 'profitability'
     ],
     defaultNS: 'common',
 

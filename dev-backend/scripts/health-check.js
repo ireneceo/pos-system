@@ -938,6 +938,50 @@ function defineSecurityTests({ customerToken, member, restId }) {
       await sequelize.query(`DELETE FROM users WHERE id = ?`, { replacements: [uid] });
     }
   });
+  // 2026-10-29 오너 다매장 점검 — 오너 공통 업체 상품을 매장이 «내 아이템에 추가»(from-catalog) 하면 상속 계약으로 통과(예전 403 NO_ACTIVE_CONTRACT)
+  //   · 오너가 가격을 고치면 소유 매장 재고아이템 원가가 따라감(예전 그대로) · 오너가 매장 주소로 연결 403(연결은 매장 관리자 몫).
+  //   임시 오너(데모 매장 38 소유) · 임시 업체·상품 · RA38 이 만든 재고아이템을 finally 로 전부 지운다.
+  test('security', '오너 공통 업체 — 매장 내 아이템에 추가 201 · 오너 가격 수정 → 매장 원가 반영 · 오너 매장 주소 연결 403', async () => {
+    const { sequelize } = require('../config/database');
+    const jwt = require('jsonwebtoken');
+    const tag = 'zzhcolink' + Date.now().toString(36);
+    const [[ra38]] = await sequelize.query(`SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 38 AND is_active = 1 LIMIT 1`);
+    if (!ra38) return false;
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@example.com`] });
+    let sid = null; const ings = [];
+    try {
+      await sequelize.query(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (38, ?, 0, 'ownership', NOW(), NOW(), NOW())`, { replacements: [uid] });
+      const auth = id => ({ Authorization: `Bearer ${jwt.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+      const reg = await request('POST', '/external-suppliers', { name: `ZZ HC OLink ${tag}` }, auth(uid));
+      sid = reg.body && reg.body.data && reg.body.data.supplier && reg.body.data.supplier.id;
+      if (!sid) return false;
+      const p = await request('POST', `/external-suppliers/${sid}/products`, { name: `${tag}-flour`, unit: 'kg', base_quantity: 1, unit_price: 10 }, auth(uid));
+      const pid = p.body && p.body.data && p.body.data.id;
+      const link = await request('POST', '/restaurants/38/ingredients/from-catalog', { supplier_product_id: pid }, auth(ra38.id));
+      const ingId = link.body && link.body.data && link.body.data.ingredient && link.body.data.ingredient.id;
+      if (ingId) ings.push(ingId);
+      const up = await request('PUT', `/external-suppliers/${sid}/products/${pid}`, { name: `${tag}-flour`, unit: 'kg', base_quantity: 1, unit_price: 20 }, auth(uid));
+      const [[ing]] = ingId ? await sequelize.query(`SELECT unit_cost FROM ingredients WHERE id = ?`, { replacements: [ingId] }) : [[null]];
+      const ownerLink = await request('POST', '/restaurants/38/ingredients/from-catalog', { supplier_product_id: pid }, auth(uid));
+      const oid = ownerLink.body && ownerLink.body.data && ownerLink.body.data.ingredient && ownerLink.body.data.ingredient.id;
+      if (oid) ings.push(oid);
+      return link.status === 201 && !!ingId && up.status === 200 && ing && Number(ing.unit_cost) === 20 && ownerLink.status === 403;
+    } finally {
+      if (ings.length) {
+        await sequelize.query(`DELETE FROM ingredient_seller_products WHERE ingredient_id IN (?)`, { replacements: [ings] });
+        await sequelize.query(`DELETE FROM ingredients WHERE id IN (?)`, { replacements: [ings] });
+      }
+      if (sid) {
+        await sequelize.query(`DELETE FROM ingredient_seller_products WHERE seller_type = 'supplier' AND seller_entity_id = ?`, { replacements: [sid] });
+        await sequelize.query(`DELETE FROM cost_change_logs WHERE seller_type = 'supplier' AND seller_entity_id = ?`, { replacements: [sid] }).catch(() => {});
+        await sequelize.query(`DELETE FROM supplier_contracts WHERE supplier_company_id = ?`, { replacements: [sid] });
+        await sequelize.query(`DELETE FROM supplier_products WHERE supplier_company_id = ?`, { replacements: [sid] });
+        await sequelize.query(`DELETE FROM supplier_companies WHERE id = ?`, { replacements: [sid] });
+      }
+      await sequelize.query(`DELETE FROM restaurant_managers WHERE manager_id = ?`, { replacements: [uid] });
+      await sequelize.query(`DELETE FROM users WHERE id = ?`, { replacements: [uid] });
+    }
+  });
   // 2026-09-24: 옛 POST /invoices/:id/payment 는 로그인만 하면 아무 청구서나 결제완료로 찍었다 → 410.
   //   매장 없는 계정 토큰으로 쳐도 410 이고 청구서 상태가 그대로여야 한다.
   test('security', '폐기 라우트: /invoices/:id/payment 는 로그인해도 410 · 청구서 상태 불변', async () => {
@@ -11883,6 +11927,108 @@ function multipartRecognize(rid, buf, auth) {
 }
 
 // ============================================
+// 수익성 분석 1단계 (2026-10-29 · .claude/fable-design-20261029-brand-profitability.md §5 보안 반증)
+//   읽기만 한다(설정·운영비 쓰기 검사 없음). 고정물 = dev 데모 계정(이메일로 찾는다) · 데모 매장 38·39 · 브랜드 10·17.
+// ============================================
+function defineProfitabilityTests() {
+  const jwtLib = require('jsonwebtoken');
+  const tokenFor = async (email) => {
+    const { sequelize } = require('../config/database');
+    const [[u]] = await sequelize.query('SELECT id FROM users WHERE email = ? LIMIT 1', { replacements: [email] });
+    return u ? { Authorization: `Bearer ${jwtLib.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` } : null;
+  };
+  const staffOf = async (rid) => {
+    const { sequelize } = require('../config/database');
+    const [[u]] = await sequelize.query("SELECT id FROM users WHERE role = 'Staff' AND restaurant_id = ? AND (is_active = 1 OR is_active IS NULL) LIMIT 1", { replacements: [rid] });
+    return u ? { Authorization: `Bearer ${jwtLib.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` } : null;
+  };
+  const P = (rid, path) => `/restaurants/${rid}/profitability${path}`;
+
+  test('security', '수익성 — 익명 401 · 직원 403 · RA 다른 매장 403 · 오너 남의 매장 403 · 브랜드 남의 브랜드 404', async () => {
+    const ra = await tokenFor('demo-restaurant@purplehere.com');
+    const owner = await tokenFor('demo-owner@purplehere.com');
+    const bg = await tokenFor('demo-brand@purplehere.com');
+    const staff = await staffOf(38);
+    if (!ra || !owner || !bg || !staff) return false;
+    const anon = await request('GET', P(38, '/summary'));
+    const anonScope = await request('GET', '/profitability/owner/stores');
+    const st = await request('GET', P(38, '/summary'), null, staff);
+    const cross = await request('GET', P(39, '/summary'), null, ra);
+    const notOwned = await request('GET', P(38, '/summary'), null, owner);
+    const foreign = await request('GET', '/profitability/brands/1/stores', null, bg);
+    return anon.status === 401 && anonScope.status === 401 && st.status === 403 && cross.status === 403
+      && notOwned.status === 403 && foreign.status === 404;
+  });
+
+  test('security', '수익성 — 운영비·설정·시뮬레이터는 매장·오너만(브랜드 403 · Q1-A) · 브랜드가 오너 목록 403', async () => {
+    const bg = await tokenFor('demo-brand@purplehere.com');
+    if (!bg) return false;
+    const sim = await request('GET', P(38, '/sim-baseline'), null, bg);
+    const set = await request('PUT', P(38, '/settings'), { share_with_brand: 'full' }, bg);
+    const ce = await request('GET', P(38, '/cost-entries'), null, bg);
+    const own = await request('GET', '/profitability/owner/stores', null, bg);
+    return sim.status === 403 && set.status === 403 && ce.status === 403 && own.status === 403;
+  });
+
+  test('security', '수익성 — Brand Manager 는 금액 키 자체가 없다(financial_redacted)', async () => {
+    const bm = await tokenFor('test-brand-manager@example.com');
+    if (!bm) return false;
+    const r = await request('GET', '/profitability/brands/10/stores', null, bm);
+    const txt = JSON.stringify(r.body || {});
+    return r.status === 200 && r.body?.data?.financial_redacted === true && Array.isArray(r.body?.data?.stores)
+      && !/"(net_sales|contribution|avg_ticket|gross_sales)"/.test(txt);
+  });
+
+  // 2026-10-29 Fable 게이트: 매장 화면 접근은 브랜드 사람에게 «내 브랜드의 매장»(brandRestaurantIdsForUser) — 매니저 행이 없어도 200.
+  //   데모 BG 의 매장 39 매니저 행을 잠깐 빼고 확인한 뒤 같은 값으로 되돌린다(finally).
+  test('security', '수익성 — 브랜드 총괄은 매니저 행 없이도 자기 브랜드 매장 200 · 남의 매장 404 · BM 매장 응답에 금액 키 없음', async () => {
+    const { sequelize } = require('../config/database');
+    const bg = await tokenFor('demo-brand@purplehere.com');
+    const bm = await tokenFor('test-brand-manager@example.com');
+    if (!bg || !bm) return false;
+    const [[row]] = await sequelize.query("SELECT rm.* FROM restaurant_managers rm JOIN users u ON u.id = rm.manager_id WHERE u.email = 'demo-brand@purplehere.com' AND rm.restaurant_id = 39 LIMIT 1");
+    if (!row) return false;
+    let own;
+    try {
+      await sequelize.query('DELETE FROM restaurant_managers WHERE id = ?', { replacements: [row.id] });
+      own = await request('GET', P(39, '/summary'), null, bg);
+    } finally {
+      await sequelize.query(
+        'INSERT INTO restaurant_managers (id, restaurant_id, manager_id, is_primary, assigned_at, createdAt, updatedAt, relationship_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        { replacements: [row.id, row.restaurant_id, row.manager_id, row.is_primary, row.assigned_at, row.createdAt, row.updatedAt, row.relationship_type] });
+    }
+    const foreign = await request('GET', P(1, '/summary'), null, bg);
+    const bmStore = await request('GET', P(39, '/summary'), null, bm);
+    const txt = JSON.stringify(bmStore.body || {});
+    return own.status === 200 && foreign.status === 404
+      && bmStore.status === 200 && bmStore.body?.data?.financial_redacted === true && !/"(net_sales|contribution|avg_ticket)"/.test(txt);
+  });
+
+  test('pos', '수익성 — RA 요약·메뉴·주문 구성·시뮬레이터 기준값 200 + 모양 · 오너·브랜드 비교 200', async () => {
+    const ra = await tokenFor('demo-restaurant@purplehere.com');
+    const owner = await tokenFor('demo-owner@purplehere.com');
+    const bg = await tokenFor('demo-brand@purplehere.com');
+    if (!ra || !owner || !bg) return false;
+    const sum = await request('GET', P(38, '/summary'), null, ra);
+    const menus = await request('GET', P(38, '/menus'), null, ra);
+    const mix = await request('GET', P(38, '/order-mix'), null, ra);
+    const sim = await request('GET', P(38, '/sim-baseline'), null, ra);
+    const bad = await request('GET', P(38, '/summary?start=x&end=2026-10-01'), null, ra);
+    const os = await request('GET', '/profitability/owner/stores', null, owner);
+    const bs = await request('GET', '/profitability/brands/17/stores', null, bg);
+    const d = sum.body?.data || {};
+    return sum.status === 200 && typeof d.net_sales === 'number' && d.readiness && typeof d.readiness.menus_total === 'number'
+      && /^\d{4}-\d{2}-\d{2}$/.test(d.period?.start || '')
+      && menus.status === 200 && Array.isArray(menus.body?.data?.menus)
+      && mix.status === 200 && Array.isArray(mix.body?.data?.channels)
+      && sim.status === 200 && typeof sim.body?.data?.window?.days === 'number'
+      && bad.status === 400
+      && os.status === 200 && Array.isArray(os.body?.data?.stores)
+      && bs.status === 200 && Array.isArray(bs.body?.data?.stores);
+  });
+}
+
+// ============================================
 // 직원 출퇴근·휴가 (2026-10-16 · .claude/fable-design-20261016-staff-attendance.md §3-4)
 //   데모 매장 38 의 [확인용] 시험 계정만 쓴다(없으면 만든다 — is_test·이메일 없음/@example.com).
 //   매장 네트워크 검사는 localhost 직접 호출의 X-Real-IP 로 손님 주소를 흉내 낸다(utils/clientIp — 루프백만 믿음).
@@ -12099,6 +12245,7 @@ async function runTests(allTests, category) {
   defineInventoryTests(ctx);
   defineStockLedgerTests(ctx);
   defineAttendanceTests();
+  defineProfitabilityTests();
   defineProductFormCostStockTests();
   defineDirectDeductUnitTests();
 

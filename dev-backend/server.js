@@ -482,6 +482,10 @@ app.use('/api/categories', categoriesRouter);
 // router.use(authenticateToken) which would otherwise gate all /api/restaurants/* requests)
 // 직원 출퇴근·휴가·휴일 — 가드는 파일 안(정확한 경로 마운트, 다른 /api/restaurants 라우터보다 먼저) · .claude/fable-design-20261016-staff-attendance.md
 app.use('/api/restaurants/:restaurantId/attendance', require('./routes/attendance'));
+// 수익성 분석(매장 1개 · 오너/브랜드 비교) — 가드는 파일 안(정확한 경로 마운트) · .claude/fable-design-20261029-brand-profitability.md
+const profitabilityRoutes = require('./routes/profitability');
+app.use('/api/restaurants/:restaurantId/profitability', profitabilityRoutes.store);
+app.use('/api/profitability', profitabilityRoutes.scope);
 app.use('/api/restaurants', require('./routes/external-qrs').router);
 // #11c 크로스셀 RA 추천 — restaurantsRouter 보다 먼저(구체 경로 우선, fall-through 회피)
 app.use('/api/restaurants', require('./routes/recommendations'));
