@@ -1053,5 +1053,11 @@
     "colSeller": "Supplier",
     "colCutoff": "Next cutoff",
     "colDelivery": "Delivery"
+  },
+  "share": {
+    "apps": "KakaoTalk / other apps",
+    "copiedTitle": "Copied",
+    "copied": "The message is copied. Open KakaoTalk (or another chat app), pick the chat and paste it.",
+    "failed": "Could not share or copy on this device. Please use PDF or Email."
   }
 }

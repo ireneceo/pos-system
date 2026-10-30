@@ -47,9 +47,15 @@ function totalOf(r: ShareReturn): number {
 
 /** 왓츠앱 — 번호가 없으면 wa.me 가 번호 입력 화면을 연다(발주와 같은 동작). */
 export function shareReturnViaWhatsApp(r: ShareReturn): void {
+  const text = encodeURIComponent(returnShareText(r, (s) => `*${s}*`));
+  const phone = r.seller?.phone ? r.seller.phone.replace(/\D/g, '') : '';
+  window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+}
+
+/** 반품 공유 글 — 왓츠앱(굵게 `*`)·카톡·다른 앱(굵게 없음) 공용. */
+export function returnShareText(r: ShareReturn, b: (s: string) => string = (s) => s): string {
   const cur = getCurrencySymbol(r.currency || 'MYR');
-  const b = (s: string) => `*${s}*`;
-  const text = encodeURIComponent(
+  return (
     `${b('RETURN REQUEST')}\n` +
     `${r.po_number}\n` +
     `${r.seller?.name ? r.seller.name + '\n' : ''}` +
@@ -58,8 +64,6 @@ export function shareReturnViaWhatsApp(r: ShareReturn): void {
     `${b(`TOTAL: ${cur} ${money(totalOf(r))}`)}\n` +
     `\nPlease confirm this return and the credit amount.`
   );
-  const phone = r.seller?.phone ? r.seller.phone.replace(/\D/g, '') : '';
-  window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
 }
 
 /** 메일 앱 열기 — 주소가 없으면 false(호출부가 안내). 서버 발송은 별도 버튼이다. */

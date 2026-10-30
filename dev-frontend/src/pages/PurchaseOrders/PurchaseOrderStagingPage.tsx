@@ -13,7 +13,8 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import RecurringOrderModal from '../../components/PurchaseOrders/RecurringOrderModal';
 import { isOwnerRole, getOwnerPoRestaurantId, withOwnerPoScope } from '../../utils/ownerPoScope';
-import { sharePoViaWhatsApp, sharePoViaEmail, isRealSupplierSku } from '../../utils/poShare';
+import { sharePoViaWhatsApp, sharePoViaEmail, isRealSupplierSku, poShareText } from '../../utils/poShare';
+import { shareTextViaApps } from '../../utils/appShare';
 import { useNavigate } from 'react-router-dom';
 import { Container, Content } from '../../components/UI';
 import { Button } from '../../components/UI/Button';
@@ -436,6 +437,12 @@ const PurchaseOrderStagingPage: React.FC = () => {
 
   // 공유 메시지 빌더는 utils/poShare 단일 소스 — 발주 상세도 같은 함수를 쓴다(문구 갈라짐 방지)
   const shareViaWhatsApp = (po: POStaging) => sharePoViaWhatsApp(po as any, formatQuantity);
+  // 카톡·다른 앱 — 휴대폰은 공유하기 창, PC 는 복사 후 안내 (utils/appShare)
+  const shareViaApps = async (po: POStaging) => {
+    const r = await shareTextViaApps(poShareText(po as any, formatQuantity), po.po_number || undefined);
+    if (r === 'copied') setAlertDlg({ title: t('share.copiedTitle', 'Copied') as string, message: t('share.copied', 'The message is copied. Open KakaoTalk (or another chat app), pick the chat and paste it.') as string });
+    else if (r === 'failed') setAlertDlg({ title: t('share.apps', 'KakaoTalk / other apps') as string, message: t('share.failed', 'Could not share or copy on this device. Please use PDF or Email.') as string });
+  };
 
   const shareViaEmail = (po: POStaging) => {
     const sent = sharePoViaEmail(po as any, formatQuantity);
@@ -627,6 +634,15 @@ const PurchaseOrderStagingPage: React.FC = () => {
               title={needsOwnerApproval ? (t('staging.sendAfterApproval', 'Available after Owner approval') as string) : undefined}
             >
               {t('staging.whatsapp', 'WhatsApp')}
+            </ThemedButton>
+            <ThemedButton
+              variant="outline"
+              size="small"
+              onClick={() => shareViaApps(po)}
+              disabled={needsOwnerApproval}
+              title={needsOwnerApproval ? (t('staging.sendAfterApproval', 'Available after Owner approval') as string) : undefined}
+            >
+              {t('share.apps', 'KakaoTalk / other apps')}
             </ThemedButton>
             <ThemedButton
               variant="outline"

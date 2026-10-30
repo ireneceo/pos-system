@@ -300,7 +300,12 @@
       "sharePackingList": "배송 준비 목록 (가격 없음)",
       "uncategorized": "기타",
       "shipped": "보냄",
-      "notShipped": "아직 안 보냄"
+      "notShipped": "아직 안 보냄",
+      "shareApps": "카톡·다른 앱",
+      "sharePackingApps": "배송 준비 목록 → 카톡·다른 앱",
+      "shareCopiedTitle": "복사했습니다",
+      "shareCopied": "보낼 내용을 복사했습니다. 카톡(또는 다른 메신저)에서 대화를 고른 뒤 붙여 넣으세요.",
+      "shareFailed": "이 기기에서는 공유·복사를 할 수 없습니다. PDF 나 메일로 보내 주세요."
     }
   },
   "tradeInvoicesPage": {

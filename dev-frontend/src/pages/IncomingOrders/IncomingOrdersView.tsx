@@ -21,7 +21,9 @@ import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
 import { useTabParam } from '../../hooks/useTabParam';
 import { lineQtyText, formatQuantity } from '../../utils/unitConversion';
-import { supplierFacingName, groupItemsBySellerCategory, shareSellerOrderViaWhatsApp, shareSellerPackingListViaWhatsApp } from '../../utils/poShare';
+import { supplierFacingName, groupItemsBySellerCategory, shareSellerOrderViaWhatsApp, shareSellerPackingListViaWhatsApp, sellerOrderShareText, sellerPackingListText } from '../../utils/poShare';
+import { shareTextViaApps, AppShareResult } from '../../utils/appShare';
+import AlertDialog from '../../components/Common/AlertDialog';
 
 // Layout / Form / ModalButton primitives are inlined here on purpose.
 // Importing them across chunks from `components/UI` triggered a TDZ runtime
@@ -885,6 +887,13 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     const local = t(`${i18nNamespace}:${key}`, { defaultValue: '', ...(vars || {}) }) as string;
     if (local) return local;
     return t(`supplier:${key}`, { defaultValue: fallback ?? key, ...(vars || {}) }) as string;
+  };
+
+  // 카톡·다른 앱 결과 — PC 는 복사했다고 알려 준다 (utils/appShare)
+  const [shareNote, setShareNote] = useState<{ title: string; message: string } | null>(null);
+  const showAppShareResult = (r: AppShareResult) => {
+    if (r === 'copied') setShareNote({ title: tNs('orders.detail.shareCopiedTitle', 'Copied'), message: tNs('orders.detail.shareCopied', 'The message is copied. Open KakaoTalk (or another chat app), pick the chat and paste it.') });
+    else if (r === 'failed') setShareNote({ title: tNs('orders.detail.shareApps', 'KakaoTalk / other apps'), message: tNs('orders.detail.shareFailed', 'Could not share or copy on this device.') });
   };
 
   const refreshAll = () => {
@@ -2060,6 +2069,14 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 {tNs('orders.detail.shareWhatsApp', 'Share via WhatsApp')}
               </ModalButton>
             )}
+            {detailFull && (
+              <ModalButton
+                variant="secondary"
+                onClick={async () => showAppShareResult(await shareTextViaApps(sellerOrderShareText(detailFull, formatQuantity, tNs('orders.detail.uncategorized', 'Other')), detailFull.po_number || undefined))}
+              >
+                {tNs('orders.detail.shareApps', 'KakaoTalk / other apps')}
+              </ModalButton>
+            )}
             {/* 2026-10-05 Irene 「가격말고 딱 일하게 배송준비해야하는 정보만」 — 직원용: 품목·수량·배송지만 */}
             {detailFull && (
               <ModalButton
@@ -2067,6 +2084,14 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 onClick={() => shareSellerPackingListViaWhatsApp(detailFull, formatQuantity, tNs('orders.detail.uncategorized', 'Other'))}
               >
                 {tNs('orders.detail.sharePackingList', 'Packing list (no prices)')}
+              </ModalButton>
+            )}
+            {detailFull && (
+              <ModalButton
+                variant="secondary"
+                onClick={async () => showAppShareResult(await shareTextViaApps(sellerPackingListText(detailFull, formatQuantity, tNs('orders.detail.uncategorized', 'Other')), detailFull.po_number || undefined))}
+              >
+                {tNs('orders.detail.sharePackingApps', 'Packing list → KakaoTalk / other apps')}
               </ModalButton>
             )}
             {detailRow?.status === 'submitted' && (
@@ -2277,6 +2302,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
       {/* sellerScope is preserved as a prop so the backend can later branch
           if it ever needs to disambiguate seller_type from a hint. */}
       <input type="hidden" data-seller-scope={sellerScope} />
+      <AlertDialog
+        isOpen={!!shareNote}
+        onClose={() => setShareNote(null)}
+        title={shareNote?.title || ''}
+        message={shareNote?.message || ''}
+      />
     </Container>
   );
 };

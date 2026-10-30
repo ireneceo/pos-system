@@ -16,7 +16,9 @@ import ConfirmModal from '../../components/ConfirmModal';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
 import { formatQuantity, qtyStepForUnit, lineQtyText, inactiveSellerProductText } from '../../utils/unitConversion';
-import { sharePoViaWhatsApp, sharePoViaEmail, isRealSupplierSku, poItemName } from '../../utils/poShare';
+import { sharePoViaWhatsApp, sharePoViaEmail, isRealSupplierSku, poItemName, poShareText } from '../../utils/poShare';
+import { shareTextViaApps, AppShareResult } from '../../utils/appShare';
+import { returnShareText, shareReturnViaWhatsApp, shareReturnViaEmail, printReturnSheet } from '../../utils/returnShare';
 import { formatDate } from '../../utils/timezone';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
@@ -578,7 +580,13 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   const isExternalSupplier = !!(detail as any)?.is_external && (detail as any)?.seller_type === 'supplier';
 
   /** 반품서를 왓츠앱·메일·PDF 로 보내고, 보냈다는 사실을 서버에 남긴다. */
-  const sendReturnTo = useCallback(async (ret: any, channel: 'whatsapp' | 'email' | 'pdf') => {
+  /** 카톡·다른 앱 결과 안내 — PC 는 복사했다고 알려 준다(utils/appShare). */
+  const showAppShareResult = useCallback((r: AppShareResult) => {
+    if (r === 'copied') setAlertDlg({ title: t('share.copiedTitle', 'Copied') as string, message: t('share.copied', 'The message is copied. Open KakaoTalk (or another chat app), pick the chat and paste it.') as string });
+    else if (r === 'failed') setAlertDlg({ title: t('share.apps', 'KakaoTalk / other apps') as string, message: t('share.failed', 'Could not share or copy on this device. Please use PDF or Email.') as string });
+  }, [t]);
+
+  const sendReturnTo = useCallback(async (ret: any, channel: 'whatsapp' | 'email' | 'pdf' | 'share') => {
     const item = (detail?.items || []).find((it: any) => it.id === ret.purchase_order_item_id);
     const payload = {
       po_number: detail?.po_number || `#${id}`,
@@ -589,8 +597,12 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
         quantity: ret.quantity, unit: ret.unit, unit_price: ret.unit_price ?? (item as any)?.unit_price, reason: ret.reason
       }]
     };
-    const { shareReturnViaWhatsApp, shareReturnViaEmail, printReturnSheet } = await import('../../utils/returnShare');
-    if (channel === 'whatsapp') shareReturnViaWhatsApp(payload);
+    // 카톡·다른 앱 — 공유하기 창은 «방금 누름» 이 있어야 열린다(앞에 다른 await 를 두지 말 것).
+    if (channel === 'share') {
+      const r = await shareTextViaApps(returnShareText(payload), payload.po_number);
+      showAppShareResult(r);
+      if (r === 'cancelled' || r === 'failed') return;
+    } else if (channel === 'whatsapp') shareReturnViaWhatsApp(payload);
     else if (channel === 'pdf') printReturnSheet(payload);
     else if (!shareReturnViaEmail(payload)) {
       setReturnError(t('detail.returns.noSellerEmail', '공급업체 이메일이 등록돼 있지 않습니다') as string);
@@ -606,7 +618,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       });
       await loadReturnsRef.current?.();
     } catch (_) { /* 기록 실패가 발송을 되돌리지는 않는다 */ }
-  }, [detail, id, t]);
+  }, [detail, id, t, showAppShareResult]);
 
   /** 외부 공급업체 반품을 구매자가 닫는다 — 재고가 되돌아간다. */
   const closeReturn = useCallback(async (ret: any) => {
@@ -1103,6 +1115,12 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       <>
         <ThemedButton variant="outline" onClick={() => sharePoViaWhatsApp(detail as any, formatQuantity)}>
           {t('detail.actions.whatsapp', 'WhatsApp')}
+        </ThemedButton>
+        <ThemedButton
+          variant="outline"
+          onClick={async () => showAppShareResult(await shareTextViaApps(poShareText(detail as any, formatQuantity), detail.po_number || undefined))}
+        >
+          {t('share.apps', 'KakaoTalk / other apps')}
         </ThemedButton>
         <ThemedButton
           variant="outline"
@@ -1995,6 +2013,9 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
                       <ThemedButton size="small" variant="outline" onClick={() => sendReturnTo(r, 'whatsapp')}>
                         {t('detail.returns.sendWhatsapp', 'WhatsApp')}
+                      </ThemedButton>
+                      <ThemedButton size="small" variant="outline" onClick={() => sendReturnTo(r, 'share')}>
+                        {t('share.apps', 'KakaoTalk / other apps')}
                       </ThemedButton>
                       <ThemedButton size="small" variant="outline" onClick={() => sendReturnTo(r, 'email')}>
                         {t('detail.returns.sendEmail', '메일')}

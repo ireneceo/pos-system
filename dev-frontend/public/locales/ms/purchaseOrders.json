@@ -1053,5 +1053,11 @@
     "colSeller": "Pembekal",
     "colCutoff": "Had masa seterusnya",
     "colDelivery": "Penghantaran"
+  },
+  "share": {
+    "apps": "KakaoTalk / aplikasi lain",
+    "copiedTitle": "Disalin",
+    "copied": "Mesej telah disalin. Buka KakaoTalk (atau aplikasi sembang lain), pilih sembang dan tampal.",
+    "failed": "Tidak dapat berkongsi atau menyalin pada peranti ini. Sila guna PDF atau E-mel."
   }
 }

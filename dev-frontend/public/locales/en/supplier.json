@@ -300,7 +300,12 @@
       "sharePackingList": "Packing list (no prices)",
       "uncategorized": "Other",
       "shipped": "Shipped",
-      "notShipped": "Not dispatched yet"
+      "notShipped": "Not dispatched yet",
+      "shareApps": "KakaoTalk / other apps",
+      "sharePackingApps": "Packing list → KakaoTalk / other apps",
+      "shareCopiedTitle": "Copied",
+      "shareCopied": "The message is copied. Open KakaoTalk (or another chat app), pick the chat and paste it.",
+      "shareFailed": "Could not share or copy on this device. Please use PDF or Email."
     }
   },
   "tradeInvoicesPage": {

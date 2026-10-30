@@ -1217,6 +1217,16 @@ TaiYangFresh
 
 WhatsApp 은 `*텍스트*` 를 굵게 렌더한다. 메일(mailto 평문)은 굵게가 없어 `bold()` 를 항등함수로 넘긴다.
 
+#### 카톡·다른 앱으로 보내기 (2026-10-30 Irene «권고대로»)
+Irene: «발주할 때 여기 저기에 있는 왓츠앱으로 보내기처럼 카톡으로 보내기도 가능해?»
+- 카톡에는 wa.me 같은 «번호 + 글 채운 대화 열기» 링크가 없다 → 받는 사람은 카톡 안에서 고른다.
+- 버튼 «KakaoTalk / other apps»(한국어 «카톡·다른 앱»): 왓츠앱 버튼이 있는 6곳 전부 — 발주 확정(Staging) · 발주 상세 · 오너 승인 · 반품(«Request return» 창의 기존 반품) · 판매자 받은 주문 · 배송 준비 목록.
+- 동작 `utils/appShare.ts shareTextViaApps`: **휴대폰·태블릿**(pointer: coarse) = 공유하기 창(navigator.share) · **PC** = 글 복사 + «복사했습니다 — 카톡에서 붙여 넣기» 안내 · 취소는 아무 일 없음.
+- 글은 왓츠앱과 **같은 빌더**(`poShareText` · `sellerOrderShareText` · `sellerPackingListText` · `returnShareText`)에 굵게만 항등함수로 — 카톡은 `*` 를 굵게 바꾸지 않는다. 승인 전 잠금도 왓츠앱과 같다.
+- 반품 «보냄» 기록 채널 = `share`(`po-returns.js mark-sent-external` 허용 목록). 공유하기 창에서 취소하면 기록 안 남김.
+- 카카오 공식 «카카오톡 공유»(개발자 키)·알림톡 자동 발송은 쓰지 않는다(키 발급·한국 사업자 필요, 결과가 같거나 말레이시아 업체에 안 맞음).
+- 검사: `utils/poShare.test.ts`(왓츠앱 글 = 카톡 글 + 굵게 · PC/휴대폰 분기) · `e2e/po-share-apps.spec.js`(PC 복사 · 휴대폰 공유하기 · 기록 `share`).
+
 
 ---
 

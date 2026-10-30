@@ -300,7 +300,12 @@
       "sharePackingList": "Senarai bungkusan (tanpa harga)",
       "uncategorized": "Lain-lain",
       "shipped": "Dihantar",
-      "notShipped": "Belum dihantar"
+      "notShipped": "Belum dihantar",
+      "shareApps": "KakaoTalk / aplikasi lain",
+      "sharePackingApps": "Senarai bungkusan → KakaoTalk / aplikasi lain",
+      "shareCopiedTitle": "Disalin",
+      "shareCopied": "Mesej telah disalin. Buka KakaoTalk (atau aplikasi sembang lain), pilih sembang dan tampal.",
+      "shareFailed": "Tidak dapat berkongsi atau menyalin pada peranti ini. Sila guna PDF atau E-mel."
     }
   },
   "tradeInvoicesPage": {

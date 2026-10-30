@@ -300,7 +300,12 @@
       "sharePackingList": "备货清单（无价格）",
       "uncategorized": "其他",
       "shipped": "已发货",
-      "notShipped": "尚未发货"
+      "notShipped": "尚未发货",
+      "shareApps": "KakaoTalk·其他应用",
+      "sharePackingApps": "备货清单 → KakaoTalk·其他应用",
+      "shareCopiedTitle": "已复制",
+      "shareCopied": "内容已复制。请打开 KakaoTalk（或其他聊天应用），选择对话后粘贴。",
+      "shareFailed": "此设备无法分享或复制。请使用 PDF 或电子邮件。"
     }
   },
   "tradeInvoicesPage": {

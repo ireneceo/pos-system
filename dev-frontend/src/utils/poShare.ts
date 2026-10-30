@@ -163,10 +163,16 @@ export function poItemLines(
  * WhatsApp 은 `*텍스트*` 를 굵게 렌더한다 → 품목명·합계를 굵게 해 스캔이 쉽게.
  */
 export function sharePoViaWhatsApp(po: SharePO, formatQuantity: (q: any) => string): void {
+  const text = encodeURIComponent(poShareText(po, formatQuantity, (s) => `*${s}*`));
+  const phone = po.seller?.phone ? po.seller.phone.replace(/\D/g, '') : '';
+  window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+}
+
+/** 발주 공유 글 — 왓츠앱(굵게 `*`)·카톡·다른 앱(굵게 없음)이 같은 글을 쓴다. */
+export function poShareText(po: SharePO, formatQuantity: (q: any) => string, b: (s: string) => string = (s) => s): string {
   const cur = getCurrencySymbol(po.currency || 'MYR');
-  const b = (s: string) => `*${s}*`;
   const count = (po.items || []).length;
-  const text = encodeURIComponent(
+  return (
     `${b('PURCHASE ORDER')}\n` +
     `${po.po_number || '#' + po.id}\n` +
     `${po.seller?.name ? po.seller.name + '\n' : ''}` +
@@ -177,8 +183,6 @@ export function sharePoViaWhatsApp(po: SharePO, formatQuantity: (q: any) => stri
     `${po.delivery_address ? '\nDeliver to: ' + po.delivery_address : ''}` +
     `\n\nPlease confirm this order.`
   );
-  const phone = po.seller?.phone ? po.seller.phone.replace(/\D/g, '') : '';
-  window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
 }
 
 /** Email 발송 — 판매자 이메일이 없으면 false 반환(호출부가 안내). */
@@ -237,14 +241,23 @@ export function shareSellerOrderViaWhatsApp(
   formatQuantity: (q: any) => string,
   otherLabel: string,
 ): void {
+  window.open(`https://wa.me/?text=${encodeURIComponent(sellerOrderShareText(po, formatQuantity, otherLabel, (s) => `*${s}*`))}`, '_blank');
+}
+
+/** 받은 주문 공유 글 — 왓츠앱·카톡·다른 앱 공용. */
+export function sellerOrderShareText(
+  po: SharePO & { buyer?: { name?: string | null } | null; notes?: string | null },
+  formatQuantity: (q: any) => string,
+  otherLabel: string,
+  b: (s: string) => string = (s) => s,
+): string {
   const cur = getCurrencySymbol(po.currency || 'MYR');
-  const b = (s: string) => `*${s}*`;
   const groups = groupItemsBySellerCategory(po.items || []);
   const body = groups.map(g => {
     const title = b(`${g.name || otherLabel} (${g.items.length})`);
     return `${title}\n${poItemLines({ ...po, items: g.items }, formatQuantity, b)}`;
   }).join('\n\n');
-  const text = encodeURIComponent(
+  return (
     `${b('ORDER')} ${po.po_number || '#' + po.id}\n` +
     `${po.buyer?.name ? b(po.buyer.name) + '\n' : ''}` +
     `${po.expected_delivery_date ? 'Delivery: ' + po.expected_delivery_date + '\n' : ''}` +
@@ -253,7 +266,6 @@ export function shareSellerOrderViaWhatsApp(
     `\n${body || '(none)'}\n\n` +
     `${b(`Items: ${(po.items || []).length} · TOTAL: ${cur} ${parseFloat(String(po.total_amount || '0')).toFixed(2)}`)}`
   );
-  window.open(`https://wa.me/?text=${text}`, '_blank');
 }
 
 /**
@@ -267,7 +279,16 @@ export function shareSellerPackingListViaWhatsApp(
   formatQuantity: (q: any) => string,
   otherLabel: string,
 ): void {
-  const b = (s: string) => `*${s}*`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(sellerPackingListText(po, formatQuantity, otherLabel, (s) => `*${s}*`))}`, '_blank');
+}
+
+/** 배송 준비 글 — 왓츠앱·카톡·다른 앱 공용. */
+export function sellerPackingListText(
+  po: SharePO & { buyer?: { name?: string | null } | null; notes?: string | null },
+  formatQuantity: (q: any) => string,
+  otherLabel: string,
+  b: (s: string) => string = (s) => s,
+): string {
   const groups = groupItemsBySellerCategory(po.items || []);
   const body = groups.map(g => {
     const lines = g.items.map((it: SharePOItem) => {
@@ -277,7 +298,7 @@ export function shareSellerPackingListViaWhatsApp(
     }).join('\n');
     return `${b(g.name || otherLabel)}\n${lines}`;
   }).join('\n\n');
-  const text = encodeURIComponent(
+  return (
     `${b('PACKING')} ${po.po_number || '#' + po.id}\n` +
     `${po.buyer?.name ? po.buyer.name + '\n' : ''}` +
     `${po.expected_delivery_date ? 'Delivery: ' + po.expected_delivery_date + '\n' : ''}` +
@@ -286,5 +307,4 @@ export function shareSellerPackingListViaWhatsApp(
     `\n${body || '(none)'}\n\n` +
     `Items: ${(po.items || []).length}`
   );
-  window.open(`https://wa.me/?text=${text}`, '_blank');
 }

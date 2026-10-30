@@ -12,7 +12,9 @@
  *   ④«x» 곱셈 표기·«(ref: 내부명)» 꼬리는 없어졌다(공급업체 문서에서 내부명을 빼기로 한 Irene 지시).
  *   화면 jest 는 verify-all 게이트에 들어 있지 않다 — 프론트 유틸을 고치면 이 파일을 직접 돌릴 것.
  */
-import { poItemLines, poItemName, SharePO, groupItemsBySellerCategory, shareSellerOrderViaWhatsApp, shareSellerPackingListViaWhatsApp } from './poShare';
+import { poItemLines, poItemName, SharePO, groupItemsBySellerCategory, shareSellerOrderViaWhatsApp, shareSellerPackingListViaWhatsApp, sharePoViaWhatsApp, poShareText, sellerOrderShareText, sellerPackingListText } from './poShare';
+import { returnShareText, shareReturnViaWhatsApp } from './returnShare';
+import { shareTextViaApps } from './appShare';
 
 const fmt = (q: any) => String(q);
 
@@ -151,5 +153,93 @@ describe('판매자 주문 — 카테고리 묶음 · 그룹챗 공유 (2026-09-
     expect(text).not.toContain('*Beef*');
     expect(text).toContain('Items: 2');
     open.mockRestore();
+  });
+});
+
+// 2026-10-30 Irene «발주할 때 … 왓츠앱으로 보내기처럼 카톡으로 보내기도 가능해?» → «권고대로»(A: 공유하기 창·PC 는 복사)
+describe('카톡·다른 앱 — 왓츠앱과 같은 글에서 굵게(*)만 뺀다', () => {
+  const po: SharePO = {
+    id: 7, po_number: 'PO-77', currency: 'MYR', total_amount: 36, seller: { name: 'Fresh Co', phone: '+60 12-345 6789' },
+    items: [{ seller_product_name: 'Fresh Tomato', seller_product_sku: 'TMT-001', quantity_ordered: 3, unit_price: '12.00' }],
+  };
+  const unbold = (s: string) => s.replace(/\*/g, '');
+
+  test('발주: 왓츠앱 글 = 카톡 글 + 굵게 · 왓츠앱은 업체 번호로', () => {
+    const open = jest.spyOn(window, 'open').mockImplementation(() => null);
+    sharePoViaWhatsApp(po, fmt);
+    const url = String(open.mock.calls[0][0]);
+    expect(url.startsWith('https://wa.me/60123456789?text=')).toBe(true);
+    const wa = decodeURIComponent(url.split('?text=')[1]);
+    const plain = poShareText(po, fmt);
+    expect(wa).toContain('*PURCHASE ORDER*');
+    expect(plain).not.toContain('*');
+    expect(unbold(wa)).toBe(plain);
+    expect(plain).toContain('- Fresh Tomato  [TMT-001]  3 @ 12.00 = 36.00');
+    expect(plain).toContain('TOTAL: RM 36.00');
+    open.mockRestore();
+  });
+
+  test('받은 주문·배송 준비: 굵게만 다르다', () => {
+    const open = jest.spyOn(window, 'open').mockImplementation(() => null);
+    const so = { ...po, buyer: { name: 'K-DINE' }, items: [{ ...po.items![0], seller_product_category: { id: 1, name: 'Veg' } }] };
+    shareSellerOrderViaWhatsApp(so, fmt, 'Other');
+    shareSellerPackingListViaWhatsApp(so, fmt, 'Other');
+    const [a, b] = open.mock.calls.map(c => decodeURIComponent(String(c[0]).split('?text=')[1]));
+    expect(unbold(a)).toBe(sellerOrderShareText(so, fmt, 'Other'));
+    expect(unbold(b)).toBe(sellerPackingListText(so, fmt, 'Other'));
+    expect(sellerOrderShareText(so, fmt, 'Other')).not.toContain('*');
+    open.mockRestore();
+  });
+
+  test('반품: 굵게만 다르다', () => {
+    const open = jest.spyOn(window, 'open').mockImplementation(() => null);
+    const r = { po_number: 'PO-77', currency: 'MYR', seller: { name: 'Fresh Co', phone: '0123' }, lines: [{ name: 'Fresh Tomato', quantity: 1, unit: 'kg', unit_price: 12, reason: 'damaged' }] };
+    shareReturnViaWhatsApp(r);
+    const wa = decodeURIComponent(String(open.mock.calls[0][0]).split('?text=')[1]);
+    expect(unbold(wa)).toBe(returnShareText(r));
+    expect(returnShareText(r)).toContain('RETURN REQUEST');
+    open.mockRestore();
+  });
+});
+
+describe('shareTextViaApps — 휴대폰은 공유하기 창, PC 는 복사', () => {
+  const setPointer = (coarse: boolean) => {
+    (window as any).matchMedia = (q: string) => ({ matches: coarse && q.includes('coarse') });
+  };
+  afterEach(() => { delete (navigator as any).share; delete (navigator as any).clipboard; });
+
+  test('휴대폰 + 공유하기 있음 → 공유하기 창에 글 그대로', async () => {
+    setPointer(true);
+    const share = jest.fn().mockResolvedValue(undefined);
+    (navigator as any).share = share;
+    expect(await shareTextViaApps('hello', 'PO-1')).toBe('shared');
+    expect(share).toHaveBeenCalledWith({ title: 'PO-1', text: 'hello' });
+  });
+
+  test('휴대폰에서 취소 → cancelled (복사 안 함)', async () => {
+    setPointer(true);
+    (navigator as any).share = jest.fn().mockRejectedValue(Object.assign(new Error('x'), { name: 'AbortError' }));
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    (navigator as any).clipboard = { writeText };
+    expect(await shareTextViaApps('hello')).toBe('cancelled');
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  test('PC(공유하기 있어도) → 복사', async () => {
+    setPointer(false);
+    const share = jest.fn();
+    (navigator as any).share = share;
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    (navigator as any).clipboard = { writeText };
+    expect(await shareTextViaApps('hello')).toBe('copied');
+    expect(share).not.toHaveBeenCalled();
+    expect(writeText).toHaveBeenCalledWith('hello');
+  });
+
+  test('복사도 못 하면 failed', async () => {
+    setPointer(false);
+    (navigator as any).clipboard = { writeText: jest.fn().mockRejectedValue(new Error('denied')) };
+    (document as any).execCommand = () => false;
+    expect(await shareTextViaApps('hello')).toBe('failed');
   });
 });

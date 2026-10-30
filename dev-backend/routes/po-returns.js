@@ -594,7 +594,7 @@ router.post('/purchase-orders/:id/returns/:returnId/mark-sent-external', async (
     const loaded = await loadExternalReturnForBuyer(req);
     if (loaded.error) return res.status(loaded.status).json({ success: false, message: loaded.error });
     const { ret } = loaded;
-    const allowed = ['whatsapp', 'pdf', 'manual', 'email'];
+    const allowed = ['whatsapp', 'pdf', 'manual', 'email', 'share'];   // share = 카톡·다른 앱(2026-10-30)
     const channel = allowed.includes(String(req.body?.channel)) ? String(req.body.channel) : 'manual';
     await ret.update({
       sent_to_seller_at: new Date(), sent_channel: channel, sent_by_user_id: req.user?.id || null

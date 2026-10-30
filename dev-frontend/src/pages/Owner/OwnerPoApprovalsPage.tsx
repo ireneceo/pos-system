@@ -20,7 +20,8 @@ import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
 import { formatQuantity } from '../../utils/unitConversion';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
-import { sharePoViaWhatsApp, sharePoViaEmail } from '../../utils/poShare';
+import { sharePoViaWhatsApp, sharePoViaEmail, poShareText } from '../../utils/poShare';
+import { shareTextViaApps } from '../../utils/appShare';
 import { setOwnerPoRestaurantId } from '../../utils/ownerPoScope';
 import OwnerPoTabs from '../../components/PurchaseOrders/OwnerPoTabs';
 import OrderCutoffBadge, { useMinuteNow } from '../../components/PurchaseOrders/OrderCutoffBadge';
@@ -239,6 +240,15 @@ const OwnerPoApprovalsPage: React.FC = () => {
     }
   };
 
+  // 카톡·다른 앱 — 휴대폰은 공유하기 창, PC 는 복사 후 안내 (utils/appShare)
+  const shareApps = async (row: PendingPO) => {
+    const d = approved[row.id];
+    if (!d) return;
+    const r = await shareTextViaApps(poShareText(d, formatQuantity), row.po_number || undefined);
+    if (r === 'copied') setAlert({ title: t('share.copiedTitle') as string, message: t('share.copied') as string });
+    else if (r === 'failed') setAlert({ title: t('share.apps') as string, message: t('share.failed') as string });
+  };
+
   const doReject = async () => {
     if (!rejectTarget) return;
     const reason = rejectReason.trim();
@@ -383,6 +393,15 @@ const OwnerPoApprovalsPage: React.FC = () => {
                               onClick={() => { if (shareDetail) sharePoViaWhatsApp(shareDetail, formatQuantity); }}
                             >
                               {t('ownerApprovals.whatsapp')}
+                            </ThemedButton>
+                            <ThemedButton
+                              size="small"
+                              variant="outline"
+                              disabled={shareDisabled}
+                              title={shareTitle}
+                              onClick={() => shareApps(row)}
+                            >
+                              {t('share.apps')}
                             </ThemedButton>
                             <ThemedButton
                               size="small"
