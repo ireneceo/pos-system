@@ -1380,10 +1380,15 @@
       "reupload": "重新上传发票",
       "reuploadTitle": "要替换发票文件吗？",
       "reuploadChoose": "选择新文件",
-      "reuploadBody": "当前文件将被新文件替换。已核对的价格和总额保持不变——如果新发票内容不同，请重新核对。",
+      "reuploadBody": "当前文件将被删除并替换为新文件。已核对的价格和总额保持不变——如果新发票不同，请重新核对。",
       "uploadFailed": "上传失败",
       "attachFailed": "无法附加发票",
-      "network": "网络错误，请重试。"
+      "network": "网络错误，请重试。",
+      "delete": "删除发票文件",
+      "deleteTitle": "删除发票文件？",
+      "deleteBody": "已上传的发票文件将被删除。已核对的价格和总额记录保持不变。",
+      "deleteConfirm": "删除文件",
+      "deleteFailed": "无法删除发票文件"
     }
   },
   "settingsPage.kioskDevices.title": "已登记的自助点餐平板",

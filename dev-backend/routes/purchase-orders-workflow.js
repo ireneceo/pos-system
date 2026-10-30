@@ -51,6 +51,7 @@ const { sendExternalPoEmail } = require('../services/poExternalEmail');
 
 // 결제·되돌리기 단일 소스 (P4-3) — 발주 행 기록 + 현금이면 드로어 이동. 마감 공식은 자동으로 잡는다.
 const { recordPayment, reversePayment, reimbursePersonalPayment } = require('../services/purchaseOrderPayment');
+const { removePoFileIfUnused } = require('../utils/poUploadedFile');
 
 // Path-level guards so unrelated /api/* fall-throughs aren't blocked by buyer-role.
 router.use('/purchase-orders', authenticateToken, requireBuyerRole);
@@ -585,17 +586,41 @@ router.post('/purchase-orders/:id/upload-receipt', async (req, res) => {
       return res.status(400).json({ success: false, code: 'NOT_PAID', message: 'A receipt can only be attached to a paid purchase order' });
     }
 
+    const prevUrl = po.receipt_url;
     await po.update({
       receipt_url: url,
       receipt_filename: filename || url.split('/').pop(),
       receipt_uploaded_at: new Date(),
       receipt_uploaded_by_user_id: (req.user && req.user.id) || null,
     });
+    // 다시 올리기 — 옛 파일은 더는 아무도 안 가리키면 지운다 (2026-10-30)
+    if (prevUrl && prevUrl !== url) await removePoFileIfUnused(prevUrl);
 
     res.json({ success: true, data: po });
   } catch (err) {
     console.error('upload-receipt error:', err);
     res.status(500).json({ success: false, message: 'Failed to save receipt' });
+  }
+});
+
+// DELETE /api/purchase-orders/:id/upload-receipt — 붙인 영수증 떼기 (2026-10-30)
+//   결제 기록은 그대로 — 증빙 파일만 뗀다. 결제 상태와 무관하게 뗄 수 있다(잘못 붙인 것도 떼야 하므로).
+router.delete('/purchase-orders/:id/upload-receipt', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Not found' });
+    const po = await PurchaseOrder.findByPk(id);
+    if (!po) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!checkPOOwnership(po, req)) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!po.receipt_url) return res.status(400).json({ success: false, code: 'NO_RECEIPT', message: 'No receipt attached' });
+
+    const prevUrl = po.receipt_url;
+    await po.update({ receipt_url: null, receipt_filename: null, receipt_uploaded_at: null, receipt_uploaded_by_user_id: null });
+    await removePoFileIfUnused(prevUrl);
+    res.json({ success: true, data: po });
+  } catch (err) {
+    console.error('delete receipt error:', err);
+    res.status(500).json({ success: false, message: 'Failed to remove receipt' });
   }
 });
 
@@ -629,16 +654,41 @@ router.post('/purchase-orders/:id/upload-invoice', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invoice upload only for external (non-system) suppliers' });
     }
 
+    const prevUrl = po.external_invoice_url;
     await po.update({
       external_invoice_url: url,
       external_invoice_filename: filename || url.split('/').pop(),
       external_invoice_uploaded_at: new Date()
     });
+    // 다시 올리기 — 옛 파일은 더는 아무도 안 가리키면 지운다 (2026-10-30)
+    if (prevUrl && prevUrl !== url) await removePoFileIfUnused(prevUrl);
 
     res.json({ success: true, data: po });
   } catch (err) {
     console.error('upload-invoice error:', err);
     res.status(500).json({ success: false, message: 'Failed to save invoice' });
+  }
+});
+
+// DELETE /api/purchase-orders/:id/upload-invoice — 올린 인보이스 파일 떼기 (2026-10-30)
+//   파일만 뗀다 — 적어 둔 대조·총액 기록(invoice_number·invoice_total·invoiced_unit_price·invoice_reconciled_at)은
+//   그대로 둔다(파일은 증거, 숫자는 장부 · 2026-10-09 판정 A-3 과 같은 원칙).
+router.delete('/purchase-orders/:id/upload-invoice', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Not found' });
+    const po = await PurchaseOrder.findByPk(id);
+    if (!po) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!checkPOOwnership(po, req)) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!po.external_invoice_url) return res.status(400).json({ success: false, code: 'NO_INVOICE_FILE', message: 'No invoice file attached' });
+
+    const prevUrl = po.external_invoice_url;
+    await po.update({ external_invoice_url: null, external_invoice_filename: null, external_invoice_uploaded_at: null });
+    await removePoFileIfUnused(prevUrl);
+    res.json({ success: true, data: po });
+  } catch (err) {
+    console.error('delete invoice file error:', err);
+    res.status(500).json({ success: false, message: 'Failed to remove invoice file' });
   }
 });
 

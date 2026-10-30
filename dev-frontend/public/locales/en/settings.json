@@ -1380,10 +1380,15 @@
       "reupload": "Re-upload invoice",
       "reuploadTitle": "Replace the invoice file?",
       "reuploadChoose": "Choose new file",
-      "reuploadBody": "The current file will be replaced with the new one. Prices and totals already checked stay as they are — check again if the new invoice is different.",
+      "reuploadBody": "The current file will be deleted and replaced with the new one. Prices and totals already checked stay as they are — check again if the new invoice is different.",
       "uploadFailed": "Upload failed",
       "attachFailed": "Could not attach the invoice",
-      "network": "Network error. Please try again."
+      "network": "Network error. Please try again.",
+      "delete": "Delete invoice file",
+      "deleteTitle": "Delete the invoice file?",
+      "deleteBody": "The uploaded invoice file will be deleted. Prices and totals already checked stay as they are.",
+      "deleteConfirm": "Delete file",
+      "deleteFailed": "Could not delete the invoice file"
     }
   },
   "settingsPage.kioskDevices.title": "Registered kiosk tablets",

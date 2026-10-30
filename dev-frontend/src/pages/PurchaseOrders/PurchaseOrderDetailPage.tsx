@@ -27,6 +27,7 @@ import { isOwnerRole, withOwnerPoScope } from '../../utils/ownerPoScope';
 import RecurringOrderModal from '../../components/PurchaseOrders/RecurringOrderModal';
 import AlertDialog from '../../components/Common/AlertDialog';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
+import PoFileManageModal from '../../components/PurchaseOrders/PoFileManageModal';
 import { getCurrencySymbol } from '../../utils/currency';
 import { reconcileGap, formatGap, gapColor } from '../../utils/reconcileGap';
 
@@ -525,6 +526,8 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   // 오너 = 보기 + 취소·보내기 (2026-09-24 Fable «오너=슈퍼바이저» §2-A, 2026-10-04 §5·§6) — 조회는 고른 소유 매장 범위로.
   const poRole = user?.role;
   const ownerView = isOwnerRole(poRole);
+  // 올린 인보이스 «다시 올리기 · 삭제» 창 (2026-10-30)
+  const [invoiceFileOpen, setInvoiceFileOpen] = useState(false);
   const invoiceListPath = (() => {
     if (user?.role === 'Restaurant Admin' || user?.role === 'Staff') return user?.restaurant_id ? `/restaurant/${user.restaurant_id}/invoices` : '/pos/owner/invoices';
     if (user?.role === 'Brand General' || user?.role === 'Brand Manager') return '/pos/brand/invoices';
@@ -1652,6 +1655,11 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                     >
                       {t('detail.invoice.download', 'Download')}
                     </ThemedButton>
+                    {!ownerView && (detail as any).external_invoice_url && (
+                      <ThemedButton size="small" variant="outline" onClick={() => setInvoiceFileOpen(true)} data-testid="po-detail-invoice-manage">
+                        {t('fileManage.manage', 'Re-upload / delete')}
+                      </ThemedButton>
+                    )}
                   </div>
                 </div>
               </Section>
@@ -1744,6 +1752,19 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
           fetchDetail();
         }}
       />
+      {invoiceFileOpen && detail && (detail as any).external_invoice_url && (
+        <PoFileManageModal
+          poId={detail.id}
+          kind="invoice"
+          fileUrl={(detail as any).external_invoice_url}
+          fileName={(detail as any).external_invoice_filename}
+          canEdit={!ownerView}
+          onClose={() => setInvoiceFileOpen(false)}
+          onChanged={fetchDetail}
+          scopeUrl={(u) => withOwnerPoScope(u, poRole)}
+          zIndex={embedded ? 1300 : undefined}
+        />
+      )}
       {payNotice && (
         <ConfirmModal
           isOpen

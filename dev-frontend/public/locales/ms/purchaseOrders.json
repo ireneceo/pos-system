@@ -1059,5 +1059,21 @@
     "copiedTitle": "Disalin",
     "copied": "Mesej telah disalin. Buka KakaoTalk (atau aplikasi sembang lain), pilih sembang dan tampal.",
     "failed": "Tidak dapat berkongsi atau menyalin pada peranti ini. Sila guna PDF atau E-mel."
+  },
+  "fileManage": {
+    "invoiceTitle": "Invois dimuat naik",
+    "receiptTitle": "Resit dilampirkan",
+    "open": "Buka",
+    "replace": "Muat naik semula",
+    "delete": "Padam",
+    "deleteConfirm": "Padam fail",
+    "deleting": "Memadam...",
+    "uploading": "Memuat naik...",
+    "replaceHint": "Muat naik semula akan menggantikan fail ini dan memadam fail lama.",
+    "deleteInvoiceBody": "Fail invois akan dipadam. Rekod harga dan jumlah yang telah disemak kekal.",
+    "deleteReceiptBody": "Fail resit akan dipadam. Rekod bayaran kekal.",
+    "replaceFailed": "Tidak dapat menggantikan fail. Sila cuba lagi.",
+    "deleteFailed": "Tidak dapat memadam fail. Sila cuba lagi.",
+    "manage": "Muat naik semula / padam"
   }
 }

@@ -1380,10 +1380,15 @@
       "reupload": "인보이스 다시 올리기",
       "reuploadTitle": "인보이스 파일을 바꿀까요?",
       "reuploadChoose": "새 파일 고르기",
-      "reuploadBody": "지금 파일이 새 파일로 바뀝니다. 이미 확인한 가격·총액은 그대로 남습니다 — 새 인보이스 내용이 다르면 다시 대조해 주세요.",
+      "reuploadBody": "지금 파일은 삭제되고 새 파일로 바뀝니다. 이미 확인한 가격·총액은 그대로이니 새 인보이스가 다르면 다시 확인하세요.",
       "uploadFailed": "올리지 못했습니다",
       "attachFailed": "인보이스를 붙이지 못했습니다",
-      "network": "네트워크 오류입니다. 다시 시도해 주세요."
+      "network": "네트워크 오류입니다. 다시 시도해 주세요.",
+      "delete": "인보이스 파일 삭제",
+      "deleteTitle": "인보이스 파일을 삭제할까요?",
+      "deleteBody": "올린 인보이스 파일이 삭제됩니다. 이미 확인한 가격·총액 기록은 그대로 남습니다.",
+      "deleteConfirm": "파일 삭제",
+      "deleteFailed": "인보이스 파일을 삭제하지 못했습니다"
     }
   },
   "settingsPage.kioskDevices.title": "등록된 키오스크 태블릿",

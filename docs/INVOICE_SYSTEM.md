@@ -1047,5 +1047,6 @@ ALTER TABLE invoices ADD COLUMN parent_soa_invoice_id INT NULL;
 
 ## 11-3. 올린 공급업체 인보이스 내려받기 (2026-10-19) [Claude Code]
 - RA(`pages/Restaurant/InvoicesPage.tsx`)·오너(`pages/Owner/OwnerInvoicesPage.tsx`) 청구서 목록 줄 액션: 연결 발주에 올린 인보이스(`purchase_orders.external_invoice_url`)가 있으면 «문서+아래화살표» 아이콘 → 원래 파일 이름(`external_invoice_filename`)으로 내려받기. 우리 청구서 PDF(«Download PDF»)와 별개.
+- (2026-10-30) 청구서 창 `TradeInvoiceActions` — «Re-upload invoice» 는 옛 파일을 지우고 바꾼다 · «Delete invoice file»(확인창) = `DELETE /purchase-orders/:id/upload-invoice`(파일만 뗌 · 대조·총액 그대로 · 오너도 스코프로 가능). 상세 `docs/PURCHASE_ORDER_SYSTEM.md` 끝 절.
 - 목록 응답 칸: `uploaded_invoice_url` · `uploaded_invoice_filename` (RA = invoices-list 의 attachPurchaseOrders, 오너 = owner.js 목록 — 오너 쪽에 filename 추가).
 - 파일은 같은 주소 `/uploads/...` 라 링크 `download` 속성으로 받는다(새 API 없음).

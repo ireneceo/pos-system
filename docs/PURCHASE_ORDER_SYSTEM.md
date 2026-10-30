@@ -2831,3 +2831,12 @@ Irene 「Submit 한 순서대로 나와야해. 생성일이 발주일이여야�
 - 외부 업체 «등록 창»(SupplierDirectoryPage 의 모달)은 v3.61 이후 여는 버튼이 없는 옛 창이다(편집기를 넣었지만 쓰이지 않음 · 해 없음). 실제 등록은 `Suppliers/AllSuppliersView.tsx` 빠른 등록 → 곧바로 업체 프로필로 넘어가 거기서 마감을 적는다. 옛 창 정리는 별도.
 - 게이트 조건(실브라우저 못 연 화면): 오너 승인 대기·공급업체 회사정보(390)·푸드코트 결제 설정 열어 배지/편집기 보임·오류 0 확인(2026-10-27).
 - 확인용 예시(데모만): 공급업체 20 = 월·목 15:00 → 매주 토 · 외부 업체 4019(Fresh Farms KL, 매장 38) = 매일 17:00 → 익일.
+
+## 발주에 붙인 인보이스·영수증 — 다시 올리기 · 삭제 (2026-10-30 · [Claude Code] · 개발서버)
+- Irene 원문: «영수증이나 인보이스를 업로드하면 재업로드 기능이 나와야 해. 그래서 재업로드하면 이전 거 그냥 삭제하면 될 것 같아. 삭제도 가능해야 하지 않아? 검토하고 적용해줘.»
+- 대상 칸: 발주 `external_invoice_url`(외부 공급업체 인보이스) · `receipt_url`(이미 낸 돈의 영수증). 청구서 «결제 제출» 영수증 칸(`ReceiptUploadField`)은 제출 전 «바꾸기·지우기»가 이미 있어 그대로.
+- 서버: `DELETE /api/purchase-orders/:id/upload-invoice` · `DELETE …/upload-receipt` — 칸만 비운다(대조·총액·결제 기록 그대로 · 2026-10-09 A-3 «파일은 증거, 숫자는 장부»). 없으면 400(`NO_INVOICE_FILE`·`NO_RECEIPT`) · 스코프는 올리기와 같은 `checkPOOwnership`.
+- 옛 파일 치우기: 다시 올리거나 지우면 `utils/poUploadedFile.js` 가 디스크에서 지운다 — 첨부 폴더(`/uploads/attachments/`) 안(정규화 경로) + 다른 발주 인보이스·영수증 칸·청구서 영수증이 같은 주소를 안 쓸 때만. 실패해도 요청은 성공.
+- 화면: 공용 `components/PurchaseOrders/PoFileManageModal.tsx`(열기·다시 올리기·삭제, 삭제는 창 안 한 번 더 확인) — 발주 목록 «영수증 보기»·«Invoice»(외부 인보이스) · 발주 상세 «Re-upload / delete». 청구서 창 `TradeInvoiceActions` 에 «Delete invoice file»(확인창). 호출은 `utils/poAttachment.ts` 하나. 오너는 발주 목록에서 열기만(청구서 창은 스코프로 올리기·삭제 가능 — 기존 A-1 과 같음).
+- 검증: health-check invoice-actions A5(옛 파일 삭제·칸 비움·대조 유지·같이 쓰면 남김·400·401·폴더 밖 안 지움 · 고장주입 1 잡힘) · e2e `po-file-manage.spec.js` 2건×3회.
+- Fable 게이트 정정(2026-10-30 · `.claude/fable-gate-20261030-po-file-delete.md`): 오너가 청구서 창에서 «Delete invoice file» 을 누르면 서버가 403 이었다 — `middleware/buyerScope.js OWNER_ACTING_ROUTES` 에 POST 만 있고 DELETE `upload-invoice` 가 없었다. DELETE 를 더했다(다시 올리기 = 옛 파일 삭제라 힘이 같다 · 영수증 떼기는 그대로 매장 몫 403). A5 가 오너 스코프 떼기 200 · 영수증 떼기 403 · 올리기 200 을 상시 검사. e2e 는 데모 발주가 원래 가리키던 파일 바이트를 되돌린다.

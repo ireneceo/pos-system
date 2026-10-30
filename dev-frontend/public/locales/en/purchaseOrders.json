@@ -1059,5 +1059,21 @@
     "copiedTitle": "Copied",
     "copied": "The message is copied. Open KakaoTalk (or another chat app), pick the chat and paste it.",
     "failed": "Could not share or copy on this device. Please use PDF or Email."
+  },
+  "fileManage": {
+    "invoiceTitle": "Uploaded invoice",
+    "receiptTitle": "Attached receipt",
+    "open": "Open",
+    "replace": "Re-upload",
+    "delete": "Delete",
+    "deleteConfirm": "Delete file",
+    "deleting": "Deleting...",
+    "uploading": "Uploading...",
+    "replaceHint": "Re-uploading replaces this file and deletes the old one.",
+    "deleteInvoiceBody": "The invoice file will be deleted. Prices and totals already checked stay as they are.",
+    "deleteReceiptBody": "The receipt file will be deleted. The payment record stays as it is.",
+    "replaceFailed": "Could not replace the file. Please try again.",
+    "deleteFailed": "Could not delete the file. Please try again.",
+    "manage": "Re-upload / delete"
   }
 }

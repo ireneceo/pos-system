@@ -9463,6 +9463,75 @@ function definePaymentTests() {
     }
   });
 
+  // A5 (2026-10-30 Irene «재업로드하면 이전 거 그냥 삭제 · 삭제도 가능해야») — 발주 인보이스·영수증 떼기 + 옛 파일 치우기
+  //   다시 올리기 → 옛 파일 지워짐 · DELETE → 칸 비고 대조 기록 그대로 · 다른 칸이 같은 주소 쓰면 파일 남김
+  //   두 번째 DELETE 400 · 익명 401 · '..' 로 첨부 폴더 밖을 가리켜도 그 파일은 안 지움
+  test('invoice-actions', 'A5 인보이스·영수증 떼기 — 다시 올리면 옛 파일 삭제 · DELETE 칸 비움(대조 그대로) · 같이 쓰면 남김 · 400·401 · 폴더 밖 안 지움', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const fsS = require('fs'); const pathS = require('path');
+    const dir = '/var/www/uploads/attachments/zz-hc';
+    fsS.mkdirSync(dir, { recursive: true });
+    const tag = Date.now().toString(36);
+    const mk = (n) => { const f = pathS.join(dir, `a5-${n}-${tag}.pdf`); fsS.writeFileSync(f, '%PDF-1.4 hc'); return { f, u: f.replace('/var/www', '') }; };
+    const f1 = mk('1'); const f2 = mk('2'); const f3 = mk('3');
+    const sentinel = `/var/www/uploads/zz-hc-a5-sentinel-${tag}.txt`; fsS.writeFileSync(sentinel, 'keep');
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null; let ownerId = null;
+    const { sequelize: seqA5 } = require('../config/database');
+    const W = (sql, rep) => seqA5.query(sql, { replacements: rep });
+    try {
+      ext = await makeExternalPoReceived(fx, { lineTotal: 42 }); made.pos.push(ext.po.id);
+      const P = ext.po.id;
+      const up1 = await request('POST', `/purchase-orders/${P}/upload-invoice`, { url: f1.u, filename: 'one.pdf' }, fx.auth);
+      const rc = await request('POST', `/purchase-orders/${P}/reconcile`, { total_only: true, invoice: { total: 33 } }, fx.auth);
+      const up2 = await request('POST', `/purchase-orders/${P}/upload-invoice`, { url: f2.u, filename: 'two.pdf' }, fx.auth);
+      const f1Gone = !fsS.existsSync(f1.f); const f2Kept = fsS.existsSync(f2.f);
+      // 오너(소유 매장 «으로 행동» 스코프) — 청구서 창의 올리기와 같은 문(2026-10-09 A-6)으로 인보이스 떼기 200 · 영수증 떼기는 403(매장 몫)
+      //   (2026-10-30 Fable 게이트 정정 — OWNER_ACTING_ROUTES 에 DELETE upload-invoice 가 없어 화면 버튼은 보이는데 403 이던 구멍)
+      const jwtA5 = require('jsonwebtoken');
+      [ownerId] = await seqA5.query(`INSERT INTO users (username, email, password, role, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Restaurant Owner', 1, 1, NOW(), NOW())`, { replacements: [`zzhca5o${tag}`, `zzhca5o${tag}@example.com`] });
+      await W(`INSERT INTO restaurant_managers (restaurant_id, manager_id, is_primary, relationship_type, assigned_at, createdAt, updatedAt) VALUES (:r, :u, 0, 'ownership', NOW(), NOW(), NOW())`, { r: fx.demoId, u: ownerId });
+      const ownerAuth = { Authorization: `Bearer ${jwtA5.sign({ userId: ownerId }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const scope = `?entity_type=restaurant&entity_id=${fx.demoId}`;
+      const oDelR = await request('DELETE', `/purchase-orders/${P}/upload-receipt${scope}`, null, ownerAuth);
+      const oDel = await request('DELETE', `/purchase-orders/${P}/upload-invoice${scope}`, null, ownerAuth);
+      const f2GoneByOwner = !fsS.existsSync(f2.f);
+      const oUp = await request('POST', `/purchase-orders/${P}/upload-invoice${scope}`, { url: f3.u, filename: 'three.pdf' }, ownerAuth);
+      // 같은 주소를 영수증 칸도 쓰게 만든다 → 인보이스를 떼도 파일은 남아야 한다
+      await W("UPDATE purchase_orders SET payment_status = 'paid', receipt_url = :u, receipt_filename = 'three.pdf' WHERE id = :p", { u: f3.u, p: P });
+      const anon = await request('DELETE', `/purchase-orders/${P}/upload-invoice`);
+      const d1 = await request('DELETE', `/purchase-orders/${P}/upload-invoice`, null, fx.auth);
+      const [mid] = await hcQ('SELECT external_invoice_url, external_invoice_filename, invoice_reconciled_at, invoice_total, receipt_url FROM purchase_orders WHERE id = :p', { p: P });
+      const sharedKept = fsS.existsSync(f3.f);
+      const d1again = await request('DELETE', `/purchase-orders/${P}/upload-invoice`, null, fx.auth);
+      const r1 = await request('DELETE', `/purchase-orders/${P}/upload-receipt`, null, fx.auth);
+      const [end] = await hcQ('SELECT receipt_url, receipt_filename, payment_status FROM purchase_orders WHERE id = :p', { p: P });
+      const f3Gone = !fsS.existsSync(f3.f);
+      // '..' 로 첨부 폴더 밖을 가리키는 칸 — 떼기는 되지만 그 파일은 지우지 않는다
+      await W('UPDATE purchase_orders SET external_invoice_url = :u WHERE id = :p', { u: `/uploads/attachments/../${pathS.basename(sentinel)}`, p: P });
+      const d2 = await request('DELETE', `/purchase-orders/${P}/upload-invoice`, null, fx.auth);
+      const sentinelKept = fsS.existsSync(sentinel);
+      const ok = up1.status === 200 && rc.status === 200 && up2.status === 200 && f1Gone && f2Kept
+        && oDelR.status === 403 && oDel.status === 200 && f2GoneByOwner && oUp.status === 200
+        && anon.status === 401 && d1.status === 200 && mid.external_invoice_url === null && mid.external_invoice_filename === null
+        && !!mid.invoice_reconciled_at && Math.abs(Number(mid.invoice_total) - 33) < 0.001 && mid.receipt_url === f3.u && sharedKept
+        && d1again.status === 400 && d1again.body?.code === 'NO_INVOICE_FILE'
+        && r1.status === 200 && end.receipt_url === null && end.receipt_filename === null && end.payment_status === 'paid' && f3Gone
+        && d2.status === 200 && sentinelKept;
+      if (!ok) console.log(c.gray(`      (올리기 ${up1.status}/${rc.status}/${up2.status} 옛파일삭제 ${f1Gone} 새파일 ${f2Kept} 오너 영수증떼기 ${oDelR.status} 인보이스떼기 ${oDel.status} 삭제 ${f2GoneByOwner} 올리기 ${oUp.status} 익명 ${anon.status} 떼기 ${d1.status} ${JSON.stringify(mid)} 공유남김 ${sharedKept} 다시 ${d1again.status} 영수증 ${r1.status} ${JSON.stringify(end)} 삭제 ${f3Gone} 밖 ${d2.status} 보존 ${sentinelKept})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      await cleanCash(fx, made); if (ext) await dropSupplierCompany(ext.sc);
+      if (ownerId) {
+        try { await W('DELETE FROM restaurant_managers WHERE manager_id = :u', { u: ownerId }); } catch (_) { /* 없음 */ }
+        try { await W('DELETE FROM users WHERE id = :u', { u: ownerId }); } catch (_) { /* 없음 */ }
+      }
+      for (const f of [f1.f, f2.f, f3.f, sentinel]) { try { fsS.unlinkSync(f); } catch (_) { /* 이미 없음 */ } }
+    }
+  });
+
   test('invoice-actions', 'A3 둘째 브랜드 발주 — 올리기·대조 화면: 쿼리 없음 404 · 스코프 200 · 남의 브랜드 403', async () => {
     const { sequelize } = require('../config/database');
     const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });

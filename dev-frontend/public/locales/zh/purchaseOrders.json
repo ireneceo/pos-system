@@ -1059,5 +1059,21 @@
     "copiedTitle": "已复制",
     "copied": "内容已复制。请打开 KakaoTalk（或其他聊天应用），选择对话后粘贴。",
     "failed": "此设备无法分享或复制。请使用 PDF 或电子邮件。"
+  },
+  "fileManage": {
+    "invoiceTitle": "已上传的发票",
+    "receiptTitle": "已附收据",
+    "open": "打开",
+    "replace": "重新上传",
+    "delete": "删除",
+    "deleteConfirm": "删除文件",
+    "deleting": "正在删除...",
+    "uploading": "正在上传...",
+    "replaceHint": "重新上传会用新文件替换此文件，并删除旧文件。",
+    "deleteInvoiceBody": "发票文件将被删除。已核对的价格和总额记录保持不变。",
+    "deleteReceiptBody": "收据文件将被删除。付款记录保持不变。",
+    "replaceFailed": "无法替换文件，请重试。",
+    "deleteFailed": "无法删除文件，请重试。",
+    "manage": "重新上传 / 删除"
   }
 }

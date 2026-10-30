@@ -1059,5 +1059,21 @@
     "copiedTitle": "복사했습니다",
     "copied": "보낼 내용을 복사했습니다. 카톡(또는 다른 메신저)에서 대화를 고른 뒤 붙여 넣으세요.",
     "failed": "이 기기에서는 공유·복사를 할 수 없습니다. PDF 나 메일로 보내 주세요."
+  },
+  "fileManage": {
+    "invoiceTitle": "올린 인보이스",
+    "receiptTitle": "붙인 영수증",
+    "open": "열기",
+    "replace": "다시 올리기",
+    "delete": "삭제",
+    "deleteConfirm": "파일 삭제",
+    "deleting": "삭제 중...",
+    "uploading": "올리는 중...",
+    "replaceHint": "다시 올리면 이 파일이 새 파일로 바뀌고 이전 파일은 삭제됩니다.",
+    "deleteInvoiceBody": "인보이스 파일이 삭제됩니다. 이미 확인한 가격·총액 기록은 그대로 남습니다.",
+    "deleteReceiptBody": "영수증 파일이 삭제됩니다. 결제 기록은 그대로 남습니다.",
+    "replaceFailed": "파일을 바꾸지 못했습니다. 다시 시도해 주세요.",
+    "deleteFailed": "파일을 삭제하지 못했습니다. 다시 시도해 주세요.",
+    "manage": "다시 올리기 / 삭제"
   }
 }

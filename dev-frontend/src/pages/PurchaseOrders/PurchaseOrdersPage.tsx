@@ -25,6 +25,7 @@ import { getErrorMessage } from '../../utils/apiError';
 import ReceivePayModal, { ReceivePayMode } from '../../components/PurchaseOrders/ReceivePayModal';
 import OwnerPoTabs from '../../components/PurchaseOrders/OwnerPoTabs';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
+import PoFileManageModal from '../../components/PurchaseOrders/PoFileManageModal';
 import { formatQuantity } from '../../utils/unitConversion';
 import { useAuth } from '../../contexts/AuthContext';
 import { isOwnerRole, setOwnerPoRestaurantId, withOwnerPoScope, getOwnerPoListView, setOwnerPoListView, OWNER_PO_ALL } from '../../utils/ownerPoScope';
@@ -457,6 +458,8 @@ const PurchaseOrdersPage: React.FC = () => {
   const [suggestionsCount, setSuggestionsCount] = useState(0);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
+  // 붙인 인보이스·영수증 «열기 · 다시 올리기 · 삭제» 창 (2026-10-30)
+  const [fileManage, setFileManage] = useState<{ row: POListRow; kind: 'invoice' | 'receipt' } | null>(null);
   const [confirmDlg, setConfirmDlg] = useState<{ title: string; message: string; onConfirm: () => void; variant?: 'danger' | 'warning' | 'info'; confirmText?: string } | null>(null);
   // 결제·되돌리기 모달 (2026-09-10 Fable B1) — 발주 상세·staging 이 쓰던 모달을 목록 행에서도 연다.
   // 백엔드는 그대로다. 목록에서 바로 결제하지 못해 상세로 들어갔다 나오던 왕복을 없앤다.
@@ -1317,7 +1320,7 @@ const PurchaseOrdersPage: React.FC = () => {
                             {/* 영수증 — 이미 나간 돈의 증빙. 붙어 있으면 열어 보고, 없으면 올린다. */}
                             {row.receipt_url ? (
                               <ThemedButton size="small" variant="outline"
-                                onClick={() => window.open(row.receipt_url as string, '_blank')}
+                                onClick={() => setFileManage({ row, kind: 'receipt' })}
                                 title={row.receipt_filename || undefined}>
                                 {t('list.action.viewReceipt', '영수증 보기')}
                               </ThemedButton>
@@ -1376,7 +1379,9 @@ const PurchaseOrdersPage: React.FC = () => {
                             <ThemedButton
                               size="small"
                               variant="outline"
-                              onClick={() => handleViewInvoice(row)}
+                              onClick={() => (row.external_invoice_url && !isOwner
+                                ? setFileManage({ row, kind: 'invoice' })
+                                : handleViewInvoice(row))}
                               title={t('list.action.viewInvoice', 'View invoice') as string}
                             >
                               {t('list.action.invoiceShort', 'Invoice')}
@@ -1443,6 +1448,17 @@ const PurchaseOrdersPage: React.FC = () => {
           )}
         </PanelBody>
       </PanelWrap>
+      {fileManage && (
+        <PoFileManageModal
+          poId={fileManage.row.id}
+          kind={fileManage.kind}
+          fileUrl={(fileManage.kind === 'invoice' ? fileManage.row.external_invoice_url : fileManage.row.receipt_url) || ''}
+          fileName={fileManage.kind === 'invoice' ? fileManage.row.external_invoice_filename : fileManage.row.receipt_filename}
+          canEdit={!isOwner}
+          onClose={() => setFileManage(null)}
+          onChanged={fetchList}
+        />
+      )}
       <AlertDialog
         isOpen={!!alertDlg}
         onClose={() => setAlertDlg(null)}

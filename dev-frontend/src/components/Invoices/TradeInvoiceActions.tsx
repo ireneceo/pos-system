@@ -10,6 +10,8 @@
  *   - 부르는 자격 = 그 청구서에 붙은 **발주의 주인**(tradeInvoiceScopeQS) — 오너·둘째 브랜드도 같은 길.
  *   - 새 저장 경로 없음: 올리기 = `POST /purchase-orders/:id/upload-invoice`(덮어쓰기 허용), 대조 = 대조 화면.
  *   - 다시 올리기는 파일만 바꾼다 — 적어 둔 대조·총액 기록은 그대로(파일은 증거, 숫자는 장부 · 판정 A-3).
+ *   - 삭제(2026-10-30 Irene «삭제도 가능해야 하지 않아?») = `DELETE …/upload-invoice` — 같은 원칙으로 파일만 뗀다.
+ *     다시 올리거나 지우면 서버가 옛 파일도 지운다(utils/poUploadedFile.js).
  */
 import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -17,8 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../UI/Button';
 import { Modal, ModalButton } from '../UI/Modal';
 import SupplierInvoiceTotalFix, { TotalFixInvoice, isExternalTradeInvoice, withTradeInvoiceScope } from './SupplierInvoiceTotalFix';
-import { getAuthToken } from '../../utils/auth';
-import { getErrorMessage } from '../../utils/apiError';
+import { attachPoFile, removePoFile, poAttachmentErrorText, PoAttachmentError } from '../../utils/poAttachment';
 
 interface Props {
   invoice: TotalFixInvoice;
@@ -32,6 +33,7 @@ export default function TradeInvoiceActions({ invoice, onChanged }: Props) {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmReplace, setConfirmReplace] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!isExternalTradeInvoice(invoice)) return null;
@@ -40,33 +42,35 @@ export default function TradeInvoiceActions({ invoice, onChanged }: Props) {
   const poStatus = invoice.purchaseOrderStatus || '';
   const canUpload = poStatus !== 'draft' && poStatus !== 'cancelled';
 
+  const scopeUrl = (url: string) => withTradeInvoiceScope(url, invoice);
+
   const upload = async (file: File) => {
     setBusy(true);
     setError(null);
     try {
-      const token = getAuthToken();
-      const fd = new FormData();
-      fd.append('files', file);
-      const up = await fetch('/api/upload/files', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
-      const upData = await up.json().catch(() => ({}));
-      if (!up.ok || !upData.success || !upData.data?.[0]) {
-        setError(getErrorMessage(upData, t('settings:invoicesPage.tradeActions.uploadFailed', 'Upload failed') as string));
-        return;
-      }
-      const f = upData.data[0];
-      const res = await fetch(withTradeInvoiceScope(`/api/purchase-orders/${invoice.purchaseOrderId}/upload-invoice`, invoice), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: f.url, filename: f.originalName }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        setError(getErrorMessage(data, t('settings:invoicesPage.tradeActions.attachFailed', 'Could not attach the invoice') as string));
-        return;
-      }
+      await attachPoFile(invoice.purchaseOrderId as number, 'invoice', file, scopeUrl);
       onChanged?.();
-    } catch {
-      setError(t('settings:invoicesPage.tradeActions.network', 'Network error. Please try again.') as string);
+    } catch (e) {
+      const stage = e instanceof PoAttachmentError ? e.stage : 'network';
+      setError(stage === 'network'
+        ? t('settings:invoicesPage.tradeActions.network', 'Network error. Please try again.') as string
+        : poAttachmentErrorText(e, stage === 'upload'
+          ? t('settings:invoicesPage.tradeActions.uploadFailed', 'Upload failed') as string
+          : t('settings:invoicesPage.tradeActions.attachFailed', 'Could not attach the invoice') as string));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeFile = async () => {
+    setConfirmDelete(false);
+    setBusy(true);
+    setError(null);
+    try {
+      await removePoFile(invoice.purchaseOrderId as number, 'invoice', scopeUrl);
+      onChanged?.();
+    } catch (e) {
+      setError(poAttachmentErrorText(e, t('settings:invoicesPage.tradeActions.deleteFailed', 'Could not delete the invoice file') as string));
     } finally {
       setBusy(false);
     }
@@ -101,6 +105,11 @@ export default function TradeInvoiceActions({ invoice, onChanged }: Props) {
               : t('settings:invoicesPage.uploadSupplierInvoice', 'Upload supplier invoice')}
         </Button>
       )}
+      {canUpload && fileUrl && (
+        <Button variant="danger" disabled={busy} onClick={() => setConfirmDelete(true)}>
+          {t('settings:invoicesPage.tradeActions.delete', 'Delete invoice file')}
+        </Button>
+      )}
       {/* 가격 대조 — 오너도 (2026-10-09 Fable §3-1 · Irene «권고대로») */}
       <Button variant="secondary" onClick={() => navigate(withTradeInvoiceScope(`/pos/purchase-orders/${invoice.purchaseOrderId}/reconcile`, invoice))}>
         {invoice.invoiceReconciledAt
@@ -131,7 +140,25 @@ export default function TradeInvoiceActions({ invoice, onChanged }: Props) {
             </>
           )}>
           <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7 }}>
-            {t('settings:invoicesPage.tradeActions.reuploadBody', 'The current file will be replaced with the new one. Prices and totals already checked stay as they are — check again if the new invoice is different.')}
+            {t('settings:invoicesPage.tradeActions.reuploadBody', 'The current file will be deleted and replaced with the new one. Prices and totals already checked stay as they are — check again if the new invoice is different.')}
+          </div>
+        </Modal>
+      )}
+      {confirmDelete && (
+        <Modal isOpen onClose={() => setConfirmDelete(false)} size="small" zIndex={1100}
+          title={t('settings:invoicesPage.tradeActions.deleteTitle', 'Delete the invoice file?') as string}
+          footer={(
+            <>
+              <ModalButton variant="secondary" onClick={() => setConfirmDelete(false)}>
+                {t('common:cancel', 'Cancel')}
+              </ModalButton>
+              <ModalButton variant="danger" onClick={removeFile}>
+                {t('settings:invoicesPage.tradeActions.deleteConfirm', 'Delete file')}
+              </ModalButton>
+            </>
+          )}>
+          <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7 }}>
+            {t('settings:invoicesPage.tradeActions.deleteBody', 'The uploaded invoice file will be deleted. Prices and totals already checked stay as they are.')}
           </div>
         </Modal>
       )}
