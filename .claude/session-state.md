@@ -85,7 +85,12 @@
 - 매장 기기: 09:48 UTC 두 매장 기기 신호 정상 · 전환 뒤 요청 주소 실주소 전환은 아직 확인 못 함(브라우저 기존 연결·DNS 캐시 — 새로고침 뒤부터) → 다음 확인 때 activity_logs
 
 - (2026-10-29) Irene dev 다시 Proxied 완료 — dev.purplehere.com Cloudflare 주소 · /api/health 200 · 운영은 87.106.78.146 직접 그대로
-### 나중에 (2026-10-29) — 개발서버 dev.purplehere.com 인증서 만료(2026-05-03) 갱신 · 언제: 평소 작업 때 · 할 일: 개발서버 certbot 갱신이 왜 실패하는지 확인 → sudo 필요하면 Irene 할 일로 (지금은 Cloudflare 가 가려 줘서 화면은 열림)
+### ✅ 원인 고침 (2026-10-30) — 개발서버 인증서 갱신 실패 원인 [Claude Code · 백그라운드 작업방 6e75128a]
+- Irene 휴대폰 확인 «This site can't be reached · ERR_FAILED» → dev.purplehere.com 이 지금 서버 직접(87.106.11.184)이라 만료 인증서(2026-05-03)가 그대로 보임.
+- 원인: certbot 갱신 설정 webroot_path = /var/www/dev-frontend/build · nginx 80 은 /.well-known 를 /var/www/dev-frontend-build 에서 찾음 → 확인 파일 404 → 5월부터 갱신 실패.
+- 고침(sudo 없이): dev-frontend-build/.well-known/acme-challenge → dev-frontend/build/.well-known/acme-challenge 연결(밖에서 시험 파일 200) + deploy-dev.sh 가 빌드마다 다시 만듦.
+- Irene 할 일 todomvungci7: sudo certbot renew + nginx 다시 읽기 훅 → 휴대폰 카톡 확인. 안 하면 오늘 22:14 UTC 자동 갱신은 되지만 nginx 다시 읽기 훅이 없어 적용 안 될 수 있음.
+### 나중에 (이전) (2026-10-29) — 개발서버 dev.purplehere.com 인증서 만료(2026-05-03) 갱신 · 언제: 평소 작업 때 · 할 일: 개발서버 certbot 갱신이 왜 실패하는지 확인 → sudo 필요하면 Irene 할 일로 (지금은 Cloudflare 가 가려 줘서 화면은 열림)
 
 ### ✅ (2026-10-30 07:20 UTC) — Cloudflare 끈 뒤 1일 확인 + FortiGuard 신청 [Claude Code · 백그라운드 작업방 5a299bf3]
 - 운영 읽기: 10-29 10:00 UTC 뒤 매장 8 = 202.185.135.47(81건) · 매장 10 = 202.185.135.239(24건) 실주소 하나씩만 · Cloudflare 주소 0 · 오프라인 재전송(processed_ops pay·set_stage) 0건 · 주문 매장 8 41 · 매장 10 6 · 13·14 정상

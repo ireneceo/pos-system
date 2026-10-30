@@ -172,6 +172,11 @@ else
     exit 1
 fi
 
+# 2026-10-30: 인증서 자동 갱신(certbot webroot)은 확인 파일을 $BUILD_DIR/.well-known 에 쓰는데
+# nginx 는 $DEPLOY_DIR/.well-known 에서 찾는다 → 5월부터 갱신 실패·인증서 만료. 둘을 잇는다(빌드가 지워도 다시 만듦).
+mkdir -p "$BUILD_DIR/.well-known/acme-challenge" "$DEPLOY_DIR/.well-known"
+ln -sfn "$BUILD_DIR/.well-known/acme-challenge" "$DEPLOY_DIR/.well-known/acme-challenge"
+
 echo -e "\n${GREEN}✓ 배포 완료!${NC}"
 echo -e "${BLUE}📂 빌드 위치: $BUILD_DIR${NC}"
 echo -e "${BLUE}📂 배포 위치: $DEPLOY_DIR${NC}"
